@@ -7,7 +7,7 @@ use File::Basename;
 my %newdirs = ();
 my ($srcdir, $dstdir) = @ARGV;
 if (!$srcdir || !$dstdir) {
-	print "Usage: gencmd {srcdir} {dstdir}\n";
+	print "Usage: sync.pl {srcdir} {dstdir}\n";
 	exit(-1);
 }
 open OUT, ">:raw:encoding(gb2312)", "tmp.sh";

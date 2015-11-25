@@ -124,6 +124,9 @@ class ApiLog
 			if ($k == "pwd" || $k == "oldpwd") {
 				$v = "?";
 			}
+			else if (! is_scalar($v)) {
+				$v = "obj:" . json_encode($v, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+			}
 			if ($len == 0) {
 				$s = "$k=$v";
 			}
@@ -152,10 +155,10 @@ class ApiLog
 		}
 		if (! is_int($userId))
 			$userId = 'NULL';
-		$content = $this->myVarExport($_GET, 1000);
-		$content2 = $this->myVarExport($_POST);
+		$content = $this->myVarExport($_GET, 2000);
+		$content2 = $this->myVarExport($_POST, 2000);
 		if ($content2 != "")
-			$content .= "; " . $content2;
+			$content .= ";\n" . $content2;
 		$remoteAddr = @$_SERVER['REMOTE_ADDR'] ?: 'unknown';
 		$reqsz = strlen($_SERVER["REQUEST_URI"]) + (@$_SERVER["HTTP_CONTENT_LENGTH"]?:$_SERVER["CONTENT_LENGTH"]?:0);
 		$ua = $_SERVER["HTTP_USER_AGENT"];
