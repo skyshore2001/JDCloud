@@ -1,0 +1,81 @@
+ = 通用Web产品后台框架设计 =
+
+== 需求 ==
+
+- 提供REST-ful风格的服务端接口API, 可方便的添加函数形式(如queryLog)和对象操作形式(如log.query)的API.
+- 提供数据库设计、部署工具
+- 提供手工测试及回归测试工具
+- 提供Web部署工具
+
+== 设计 ==
+
+=== 文件结构 ===
+
+概念：
+- 产品：如“小鳄养车”，包括前端、后端等子系统，每个子系统包括多个应用，如前端包括客户端、管理端等应用，后端包括API接口、某工具、定时任务等应用。
+- 应用：一个可独立执行的应用程序（或网页入口）。
+- 工具：应用的一种，有的不发布（只用于开发过程），有的发布但做内部使用或被其它应用调用。
+- 库：被应用包含，提供共享数据和操作。
+- 框架：库的一种，一般成型后很少修改。被应用或其它库包含使用。
+
+注：以下标记*表示可变文件，根据实际应用添加内容。
+
+*[根目录]*
+
+{{{
+
+DESIGN.wiki* -- 主设计文档。其它文档在doc目录下。
+
+build_web.sh -- Web部署工具。
+
+}}}
+
+
+*[后端应用 - server目录]*
+
+api.php* ::  API接口应用。提供基于HTTP的访问接口，形式如：api.php/fn 或 api.php/obj.query；该文件包含其它实现文件，以及应用内共享的数据。其它应用可包含它从而直接以内部调用方式访问API接口。
+app.php* :: 应用共享库。存放被多个项目所使用的数据。所有应用一般都应包含它。它包含common.php,app_fw.php,conf.php,conf.user.php等。
+conf.php* :: 适用于所有应用（被app.php包含），保存易变逻辑。
+
+内部实现部分：
+
+php/common.php :: 通用共享库。基础公共函数部分，可适用一切php项目。
+php/app_fw.php :: 应用框架库。为所有应用提供框架支持（以app_开头表示适用于所有应用，fw表示framework），被app.php包含。
+php/conf.user.php* :: 可缺省，用于根据部署环境修改应用配置。被app.php包含。
+
+php/api_fw.php :: API接口应用的框架实现（以api_开头表示属于API接口应用）。被api.php包含。
+php/api_functions.php* :: API接口应用中的函数实现部分。被api.php包含。
+php/api_objects.php* :: API接口应用中的对象访问实现部分。被api.php包含。
+
+*[回归测试 - rtest目录]*
+
+rtest.php* :: 回归测试内容。（TODO: 类似api应用，可拆分为 rtest.php, php/rtest_fw.php, php/rtest_group1.php, php/rtest_group.php等)
+
+run_rtest.pl :: 回归测试执行工具。
+
+client.php :: 手工测试工具。模拟前端调用API接口。
+
+内部实现部分：
+
+WebAPI.php :: 测试应用框架库。
+
+*[文档 - doc目录]*
+
+index.html*:: 文档目录。修改它以增加文档。
+
+__README.html:: 介绍文档管理。
+
+后台框架.wiki:: 即本文，介绍通用产品框架设计。
+
+Web应用部署:: 部署工具文档。
+
+编码规范.wiki::
+
+*[工具 - tool目录]*
+
+upgrade.php:: 数据部署工具。创建或更新数据库表，导入数据等。
+
+webcc.php:: Web部署工具。用户上传或更新线上Web产品目录。
+
+cmdtool.template.php:: 使用app.php创建数据操作工具的示例，如用于特殊数据导入等。
+
