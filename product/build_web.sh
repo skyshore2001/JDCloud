@@ -42,7 +42,7 @@ if [[ $a != 'y' && $a != 'Y' ]]; then
 	exit
 fi
 
-cmd=`git status -s 2>/dev/null | awk '{print $2}' | perl -x $script getcmd`
+cmd=`git status -s 2>/dev/null | perl -x $script getcmd`
 if [[ -z $cmd ]]; then exit ; fi
 
 if $cmd; then
@@ -70,6 +70,7 @@ if ($ARGV[0] eq 'getcmd')
 	%files = (); # dir=>name
 	while (<STDIN>) {
 		chomp;
+		s/^..\s+//; # e.g. git status -b: "A  m/images/ui/icon-svcid-1.png"
 		$dir = dirname($_);
 		$files{$dir} = [] if !exists($files{$dir});
 		push @{$files{$dir}}, $_;

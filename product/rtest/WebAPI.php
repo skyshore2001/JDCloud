@@ -215,7 +215,7 @@ class WebAPI
 		curl_setopt($h, CURLOPT_HEADER, 1);
 		curl_setopt($h, CURLOPT_COOKIEFILE, $this->cookieFile);
 		curl_setopt($h, CURLOPT_COOKIEJAR, $this->cookieFile);
-		// curl_setopt($h, CURLOPT_USERAGENT, '小鳄养车 0.9.5 rv:15 (iPhone; iPhone OS 8.4; zh_CN)');
+		curl_setopt($h, CURLOPT_USERAGENT, 'RTEST');
 
 		$header = array();
 		if ($this->markInitDB) {

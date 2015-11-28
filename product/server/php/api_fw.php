@@ -601,10 +601,13 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 		if ($resSql == "") {
 			$resSql = "t0.id";
 		}
+		if (@$sqlConf["distinct"]) {
+			$resSql = "DISTINCT {$resSql}";
+		}
 
 		$tblSql = "$tbl t0";
 		if (count($sqlConf["join"]) > 0)
-			$tblSql .= " " . join(" ", $sqlConf["join"]);
+			$tblSql .= "\n" . join("\n", $sqlConf["join"]);
 		$condSql = "";
 		foreach ($sqlConf["cond"] as $cond) {
 			if ($cond == null)
@@ -636,25 +639,28 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 		if ($condSql)
 		{
 			flag_handleCond($condSql);
-			$sql .= " WHERE $condSql";
+			$sql .= "\nWHERE $condSql";
+		}
+		if (isset($sqlConf["union"])) {
+			$sql .= "\nUNION\n" . $sqlConf["union"];
 		}
 
 		if ($orderSql)
-			$sql .= " ORDER BY " . $orderSql;
+			$sql .= "\nORDER BY " . $orderSql;
 
 		if ($enablePaging) {
 			if ($enableTotalCnt) {
 				$cntSql = "SELECT COUNT(*) FROM $tblSql";
 				if ($condSql)
-					$cntSql .= " WHERE $condSql";
+					$cntSql .= "\nWHERE $condSql";
 				$totalCnt = queryOne($cntSql);
 			}
 
 			if ($enableParialQuery) {
-				$sql .= " LIMIT " . $pagesz;
+				$sql .= "\nLIMIT " . $pagesz;
 			}
 			else {
-				$sql .= " LIMIT " . ($pagekey-1)*$pagesz . "," . $pagesz;
+				$sql .= "\nLIMIT " . ($pagekey-1)*$pagesz . "," . $pagesz;
 			}
 		}
 
@@ -913,6 +919,8 @@ class AccessControl
 				"join" => [],
 				"orderby" => param("orderby"),
 				"subobj" => [],
+				"union" => param("union"),
+				"distinct" => param("distinct")
 			];
 
 			$this->initVColMap();
@@ -943,7 +951,7 @@ class AccessControl
 			$this->onQuery();
 
 			if (isset($res)) {
-				$this->sqlConf["res"][0] = $this->filterRes($res);
+				$this->filterRes($res);
 			}
 			else {
 				$this->addDefaultVCols();
@@ -953,7 +961,7 @@ class AccessControl
 			if ($ac == "query")
 			{
 				$rv = $this->supportEasyuiSort();
-				if (isset($this->sqlConf["orderby"]))
+				if (isset($this->sqlConf["orderby"]) && !isset($this->sqlConf["union"]))
 					$this->sqlConf["orderby"] = $this->filterOrderby($this->sqlConf["orderby"]);
 			}
 		}
@@ -1025,12 +1033,12 @@ class AccessControl
 	// return: new field list
 	private function filterRes($res)
 	{
-		$colArr = [];
+		$firstCol = "";
 		foreach (explode(',', $res) as $col) {
 			$col = trim($col);
 			$alias = null;
 			if ($col === "*") {
-				$colArr[] = "t0.*";
+				$firstCol = "t0.*";
 				continue;
 			}
 			// "col" / "col col1" / "col as col1"
@@ -1054,12 +1062,13 @@ class AccessControl
 					if (isset($alias)) {
 						$col .= " AS {$alias}";
 					}
-					$colArr[] = $col;
+					$this->addRes($col, false);
 				}
 			}
 		}
-		return join(",", $colArr);
+		$this->sqlConf["res"][0] = $firstCol;
 	}
+
 	private function filterOrderby($orderby)
 	{
 		$colArr = [];

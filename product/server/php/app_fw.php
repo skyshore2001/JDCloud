@@ -859,6 +859,15 @@ function addLog($str, $logLevel=1)
 		$g_dbgInfo[] = $str;
 	}
 }
+
+/**
+@fn getAppType()
+ */
+function getAppType()
+{
+	global $APP;
+	return preg_replace('/(\d+|-\w+)$/', '', $APP);
+}
 //}}}
 
 // ====== classes {{{
