@@ -44,7 +44,7 @@ $ADMIN = [
 
 function hashPwd($pwd)
 {
-	if (strlen($pwd) == 32)
+	if (strlen($pwd) == 32 || $pwd === "")
 		return $pwd;
 	return md5($pwd);
 }

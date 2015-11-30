@@ -315,39 +315,15 @@ class WebAPI
 	}
 
 	/** @api */
-	function genCode($phone, $type = "d6", $debug = 0)
+	function login($uname, $pwd)
 	{
-		return $this->callSvr("gencode", ["phone" => $phone, "type" => $type, "debug"=>$debug]);
+		return $this->callSvr("login", ["uname" => $uname, "pwd" => $pwd]);
 	}
 
 	/** @api */
-	function reg($phone, $pwd, $name, $code)
+	function logout()
 	{
-		return $this->callSvr("reg", ["phone" => $phone, "pwd" => $pwd, "name"=>$name, "code"=>$code]);
-	}
-
-	/** @api */
-	function login($uname, $pwd, $app = null)
-	{
-		return $this->callSvr("login", ["uname" => $uname, "pwd" => $pwd, "_app" => $app]);
-	}
-
-	/** @api */
-	function logout($type = null)
-	{
-		return $this->callSvr("logout", ["_t" => $type]);
-	}
-
-	/** @api */
-	function chpwd($pwd, $oldpwd=null, $code=null)
-	{
-		return $this->callSvr("chpwd", ["pwd"=>$pwd, "oldpwd"=>$oldpwd, "code"=>$code]);
-	}
-
-	/** @api */
-	function whoami($type = null)
-	{
-		return $this->callSvr("whoami", ["_t"=>$type]);
+		return $this->callSvr("logout");
 	}
 
 	/** @api */

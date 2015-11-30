@@ -29,7 +29,7 @@ function api_genCode()
 		throw new MyException(E_PARAM, "bad phone number", "手机号不合法");
 
 	$type = param("type", "d6");
-	$debug = param("debug/b", 0);
+	$debug = $GLOBALS["TEST_MODE"]? param("debug/b", false): false;
 	$codetm = $_SESSION["codetm"] ?: 0;
 	# dont generate again in 60s
 	if (!$debug && time() - $codetm < 55) // 说60s, 其实不到, 避免时间差一点导致出错.
@@ -50,10 +50,10 @@ function api_genCode()
 	return $ret;
 }
 
-function regUser($phone, $pwd, $name = null)
+function regUser($phone, $pwd)
 {
-	if ($name == null)
-		$name = "用户" . $phone;
+	$phone1 = preg_replace('/^\d{3}\K(\d{4})/', '****', $phone);
+	$name = "用户" . $phone1;
 
 	$sql = sprintf("INSERT INTO User (phone, pwd, name, createTm) VALUES (%s, %s, %s, %s)",
 		Q($phone),
@@ -62,206 +62,16 @@ function regUser($phone, $pwd, $name = null)
 		Q(date('c'))
 	);
 	$id = execOne($sql, true);
-	$ret = ["uid"=>$id, "name"=>$name];
-
-	$_SESSION["uid"] = $id;
-	getWeixinUser()->bindUser();
-
-	// 领取注册前生成的优惠券
-	$sql = "UPDATE Voucher SET userId=$id WHERE userId IS NULL AND userPhone=" . Q($phone);
-	$cnt = execOne($sql);
-
-	// 注册时送优惠券
-// svcId:
-// 100	上门洗车
-// 101	上门打蜡
-// 102	上门轮胎保养
-// 103	上门轮毂保养
-// 104	上门内饰精洗
-// 105	上门贴膜
-	$flag = 0;
-	// 已送0元洗车券，则不再送1元洗车券
-	if ($cnt > 0) {
-		$sql = "SELECT id FROM Voucher WHERE userId=$id AND type='V_FIX' AND relatedId=100 AND amount=0";
-		$vid = queryOne($sql);
-		if ($vid !== false) {
-			$flag = 1;
-		}
-	}
-	$src = "reg";
-	$content = Conf::getVoucherForReg($flag);
-	foreach ($content as $e) {
-		if ($e == null)
-			continue;
-		// 30天有效期
-		genVoucherForUser($id, $e["amount"], null, 30, $e["type"], $e["svcId"], $src, $phone);
-	}
-
-	// 领取红包中的优惠券
-	$rows = queryAll("SELECT id, content, vdays FROM HongbaoResult WHERE phone=" . Q($phone), PDO::FETCH_ASSOC);
-	foreach ($rows as $row) {
-		$content = @unserialize($row["content"]);
-		if ($content === false) {
-			logit("!!! bad HongbaoResult.content: id={$row['id']}, content={$row['content']}");
-			continue;
-		}
-		genVoucherByHongbao($id, $content, $row["id"], $phone, $row["vdays"]);
-	}
-
-	$msg = Conf::$MSGS["REG"];
-	sendSms($phone, $msg);
+	$ret = ["id"=>$id];
 
 	return $ret;
 }
 
-function api_reg()
-{
-	$code = mparam("code");
-	$phone = mparam("phone");
-	$pwd = mparam("pwd");
-	$phone1 = preg_replace('/^\d{3}\K(\d{4})/', '****', $phone);
-	$name = param("name", "用户" . $phone1);
-
-	validateDynCode($code, $phone);
-
-	$sql = sprintf("SELECT id FROM User WHERE phone=%s", Q($phone));
-	$row = queryOne($sql);
-	if ($row !== false) 
-		throw new MyException(E_PARAM, "phone number exists", "手机号已存在");
-
-	$ret = regUser($phone, $pwd, $name);
-	genLoginToken($ret, "", $phone, $pwd, 1);
-	return $ret;
-}
-
-// 默认对GET+POST字段做签名(忽略下划线开头的控制字段)
-function genSign($pwd, $params=null)
-{
-	if ($params == null)
-		$params = array_merge($_GET, $_POST);
-	ksort($params);
-	$str = null;
-	foreach ($params as $k=>$v) {
-		if (is_null($v) || substr($k, 0, 1) === "_") // e.g. "_pwd", "_sign", "_ac"
-			continue;
-		if ($str == null) {
-			$str = "{$k}={$v}";
-		}
-		else {
-			$str .= "&{$k}={$v}";
-		}
-	}
-	$str .= $pwd;
-	$sign = md5($str);
-	return $sign;
-}
-
-function api_genSign()
-{
-	$pwd = mparam("_pwd");
-	unset($_GET["ac"]);
-	return genSign($pwd);
-}
-
-function verifyPartnerSign($partnerId)
-{
-	list($sign, $pwd) = mparam(["_sign", "_pwd"]);
-
-	$partner = Conf::getPartner($partnerId);
-	$pwd1 = $partner["pwd"];
-
-	if (isset($pwd) && !isset($sign)) {
-		// 1: INTERNAL允许线上仍使用_pwd字段生成voucher.
-		if ($partnerId != 1 && !$GLOBALS["TEST_MODE"]) {
-			throw new MyException(E_FORBIDDEN, "Non-testmode: MUST use param `_sign` instead of `_pwd`", "上线后不允许使用`_pwd`");
-		}
-		if ($pwd != $pwd1)
-			throw new MyException(E_PARAM, "bad pwd for partner id=`$partnerId`", "密码错误");
-		return true;
-	}
-
-	$sign1 = genSign($pwd1);
-	if ($sign !== $sign1)
-		throw new MyException(E_PARAM, "bad sign for partner id=`$partnerId`", "签名错误");
-
-	return true;
-}
-
-# login(uname, pwd, type) -> {uid/storeId/adminId}
-function generalLogin($uname, $pwd, $type, $wantAll)
-{
-	$obj = null;
-	# user login
-	if ($type == "user") {
-		$obj = "User";
-		$sql = sprintf("SELECT id FROM User WHERE phone=%s AND pwd=%s", 
-			Q($uname), 
-			Q(hashPwd($pwd)));
-		$uid = queryOne($sql);
-		if ($uid === false)
-			throw new MyException(E_AUTHFAIL, "bad uname or password", "手机号或密码错误");
-
-		$_SESSION["uid"] = $uid;
-		$ret = ["uid" => $uid];
-	}
-	/*
-	# store login
-	else if ($type == "store") {
-		$obj = "Store";
-		$sql = sprintf("SELECT id FROM Store WHERE uname=%s AND pwd=%s", 
-			Q($uname), 
-			Q(hashPwd($pwd)));
-		$sth = $dbh->query($sql);
-		if (($row = $sth->fetch(PDO::FETCH_ASSOC)) === false)
-			throw new MyException(E_AUTHFAIL, "bad uname or password", "用户名或密码错误");
-
-		$storeId = $row["id"];
-		$_SESSION["storeId"] = $storeId;
-		$ret = ["storeId" => $storeId];
-	}
-	 */
-	# admin login
-	else if ($type == "admin") {
-		global $ADMIN;
-		if ($uname != $ADMIN["uname"] || $pwd != $ADMIN["pwd"])
-			throw new MyException(E_AUTHFAIL, "bad uname or password", "用户名或密码错误");
-		$_SESSION["adminId"] = $ADMIN["id"];
-		$ret = ["adminId" => $ADMIN["id"], "uname" => $ADMIN["uname"]];
-	}
-	else if ($type == "emp" || $type == "store") {
-		$obj = "Employee";
-		$sql = sprintf("SELECT id, name, storeId, storeList, perms FROM Employee WHERE uname=%s AND pwd=%s", 
-			Q($uname), 
-			Q(hashPwd($pwd)));
-		$row = queryOne($sql, PDO::FETCH_ASSOC);
-		if ($row === false)
-			throw new MyException(E_AUTHFAIL, "bad uname or password", "用户名或密码错误");
-
-		$storeId = $row["storeId"];
-		$empId = $row["id"];
-		$_SESSION["storeId"] = $storeId;
-		$_SESSION["empId"] = $empId;
-		// TODO: how to update perms
-		initEmpPerm( $row["perms"] );
-
-		$ret = ["storeId" => $storeId, "name" => $row["name"], "empId" => $empId, "uname" => $uname, "perms"=>$row["perms"] ];
-	}
-
-	if ($wantAll && $obj)
-	{
-		$rv = tableCRUD("get", $obj);
-		$ret += $rv;
-	}
-	return $ret;
-}
-
-function genLoginToken(&$ret, $uname, $phone, $pwd, $wantAll)
+function genLoginToken(&$ret, $uname, $pwd)
 {
 	$data = [
 		"uname" => $uname,
-		"phone" => $phone,
 		"pwd" => $pwd,
-		"wantAll" => $wantAll,
 		"create" => time(0),
 		"expire" => 99999999
 	];
@@ -277,7 +87,7 @@ function parseLoginToken($token)
 	if ($data === false)
 		throw new MyException(E_AUTHFAIL, "Bad login token!");
 
-	$diff = array_diff(["uname", "phone", "pwd", "create", "expire"], array_keys($data));
+	$diff = array_diff(["uname", "pwd", "create", "expire"], array_keys($data));
 	if (count($diff) != 0)
 		throw new MyException(E_AUTHFAIL, "Bad login token (miss some fields)!");
 	
@@ -291,121 +101,149 @@ function parseLoginToken($token)
 
 function api_login()
 {
-	global $APP;
-	$type = preg_replace('/\d+$/', '', $APP);
+	$type = getAppType();
 
-	if ($type != "user" && $type != "store" && $type != "admin" && $type != "emp") {
+	if ($type != "user" && $type != "emp" && $type != "admin") {
 		throw new MyException(E_PARAM, "Unknown type `$type`");
 	}
 
 	$token = param("token");
 	if (isset($token)) {
 		$rv = parseLoginToken($token);
-		$phone = $rv["phone"];
-		$pwd = $rv["pwd"];
 		$uname = $rv["uname"];
-		$wantAll = @$rv["wantAll"]?:0;
+		$pwd = $rv["pwd"];
 	}
 	else {
-		$phone = param("phone");
+		$uname = mparam("uname");
 		list($pwd, $code) = mparam(["pwd", "code"]);
-		$wantAll = param("wantAll/b", 0);
+	}
+	$wantAll = param("wantAll/b", 0);
+
+	if (isset($code) && $code != "")
+	{
+		validateDynCode($code, $uname);
+		unset($pwd);
 	}
 
-	# customized user login
-	if ($type == "user" && isset($phone))
-	{
-		$wantAll = 1;
-		if (isset($code) && $code != "") {
-			validateDynCode($code, $phone);
-			$sql = sprintf("SELECT id AS uid, pwd FROM User WHERE phone=%s", Q($phone));
-			$row = queryOne($sql, PDO::FETCH_ASSOC);
-			if ($row === false) {
-				// reg
-				$pwd = genDynCode("w8"); // 随机密码
-				return regUser($phone, $pwd);
+	$key = "uname";
+	if (ctype_digit($uname[0]))
+		$key = "phone";
+
+	$obj = null;
+	# user login
+	if ($type == "user") {
+		$obj = "User";
+		$sql = sprintf("SELECT id,pwd FROM User WHERE {$key}=%s", Q($uname));
+		$row = queryOne($sql, PDO::FETCH_ASSOC);
+
+		$ret = null;
+		if ($row === false) {
+			// code通过验证，直接注册新用户
+			if (isset($code))
+			{
+				$ret = regUser($uname, "");
+				$ret["_isNew"] = 1;
 			}
-			$pwd = $row["pwd"];
-			unset($row["pwd"]);
 		}
 		else {
-			$sql = sprintf("SELECT id AS uid FROM User WHERE phone=%s AND pwd=%s", 
-				Q($phone), 
-				Q(hashPwd($pwd)));
-			$row = queryOne($sql, PDO::FETCH_ASSOC);
-			if ($row === false)
-				throw new MyException(E_AUTHFAIL, "bad phone or password", "手机号或密码错误");
+			if (isset($pwd) && hashPwd($pwd) == $row["pwd"])
+			{
+				$ret = ["id" => $row["id"]];
+			}
 		}
-		$uid = $row["uid"];
-		$_SESSION["uid"] = $uid;
-		$ret = $row;
+		if (!isset($ret))
+			throw new MyException(E_AUTHFAIL, "bad uname or password", "手机号或密码错误");
 
-		$rv = tableCRUD("get", "User");
+		$_SESSION["uid"] = $ret["id"];
+	}
+	else if ($type == "emp") {
+		$obj = "Employee";
+		$sql = sprintf("SELECT id,pwd FROM Employee WHERE {$key}=%s", Q($uname));
+		$row = queryOne($sql, PDO::FETCH_ASSOC);
+		if ($row === false || (isset($pwd) && hashPwd($pwd) != $row["pwd"]) )
+			throw new MyException(E_AUTHFAIL, "bad uname or password", "用户名或密码错误");
+
+		$_SESSION["empId"] = $row["id"];
+		$ret = ["id" => $row["id"] ];
+	}
+	// admin login
+	else if ($type == "admin") {
+		global $ADMIN;
+		if ($uname != $ADMIN["uname"] || $pwd != $ADMIN["pwd"])
+			throw new MyException(E_AUTHFAIL, "bad uname or password", "用户名或密码错误");
+		$_SESSION["adminId"] = $ADMIN["id"];
+		$ret = ["id" => $ADMIN["id"], "uname" => $ADMIN["uname"]];
+	}
+
+	if ($wantAll && $obj)
+	{
+		$rv = tableCRUD("get", $obj);
 		$ret += $rv;
 	}
-	else {
-		if (! isset($uname))
-			$uname = mparam("uname");
-		$ret = generalLogin($uname, $pwd, $type, $wantAll);
-	}
-	getWeixinUser()->bindUser();
+
 	if (! isset($token)) {
-		genLoginToken($ret, $uname, $phone, $pwd, $wantAll);
+		genLoginToken($ret, $uname, $pwd);
 	}
 	return $ret;
 }
 
 function api_logout()
 {
-	global $APP;
-	$type = preg_replace('/\d+$/', '', $APP);
-
-	$force = param("force/b", 0);
-
-	if ($type == "user") {
-		unset($_SESSION["uid"]);
-	}
-	elseif ($type == "store" || $type == "emp") {
-		unset($_SESSION["storeId"]);
-		unset($_SESSION["empId"]);
-	}
-	elseif ($type == "admin") {
-		unset($_SESSION["adminId"]);
-	}
-	else {
-		throw new MyException(E_PARAM, "Unknown type `$type`");
-	}
-	$wx = getWeixinUser();
-	$wx->disableAutoLogin();
-	if ($force || ! (isUserLogin() || isStoreLogin() || isAdminLogin() || $wx->isLogin()))
-	{
-		session_destroy();
-	}
+	session_destroy();
 	return "OK";
 }
 
-function setUserPwd($userId, $pwd)
+function setUserPwd($userId, $pwd, $genToken)
 {
 	# change password
 	$sql = sprintf("UPDATE User SET pwd=%s WHERE id=%d", 
 		Q(hashPwd($pwd)),
 		$userId);
-	return execOne($sql);
+	execOne($sql);
+
+	if ($genToken) {
+		list($uname, $pwd) = queryOne("SELECT phone, pwd FROM User WHERE id={$userId}");
+		$ret = [];
+		genLoginToken($ret, $uname, $pwd);
+		return $ret;
+	}
+	return "OK";
 }
 
-function setEmployeePwd($empId, $pwd)
+function setEmployeePwd($empId, $pwd, $genToken)
 {
 	# change password
 	$sql = sprintf("UPDATE Employee SET pwd=%s WHERE id=%d", 
 		Q(hashPwd($pwd)),
 		$empId);
-	return execOne($sql);
+	execOne($sql);
+
+	if ($genToken) {
+		list($uname, $pwd) = queryOne("SELECT phone, pwd FROM Employee WHERE id={$empId}");
+		$ret = [];
+		genLoginToken($ret, $uname, $pwd);
+		return $ret;
+	}
+	return "OK";
+}
+
+// 制作密码字典。
+function addToPwdTable($pwd)
+{
+	$id = queryOne("SELECT id FROM Pwd WHERE pwd=" . Q($pwd));
+	if ($id === false) {
+		$sql = sprintf("INSERT INTO Pwd (pwd, cnt) VALUES (%s, 1)", Q($pwd));
+		execOne($sql);
+	}
+	else {
+		$sql = "UPDATE Pwd SET cnt=cnt+1 WHERE id={$id}";
+		execOne($sql);
+	}
 }
 
 function api_chpwd()
 {
-	global $APP;
-	$type = preg_replace('/\d+$/', '', $APP);
+	$type = getAppType();
 
 	if ($type == "user") {
 		checkAuth(AUTH_USER, true);
@@ -419,7 +257,11 @@ function api_chpwd()
 	list($oldpwd, $code) = mparam(["oldpwd", "code"]);
 	if (isset($oldpwd)) {
 		# validate oldpwd
-		if($type == "user"){
+		if ($type == "user" && $oldpwd === "_none") { // 表示不要验证，但只限于新用户注册1小时内
+			$dt = date("c", time()-T_HOUR);
+			$sql = sprintf("SELECT id FROM User WHERE id=%d and createTm>'$dt'", $uid);
+		}
+		elseif($type == "user"){
 			$sql = sprintf("SELECT id FROM User WHERE id=%d and pwd=%s", $uid, Q(hashPwd($oldpwd)));
 		}
 		elseif($type == "emp"){
@@ -429,65 +271,16 @@ function api_chpwd()
 		if ($row === false)
 			throw new MyException(E_AUTHFAIL, "bad password", "密码验证失败");
 	}
-	else { # use code
-		if ($code !== "080909") {
-			validateDynCode($code);
-		}
-	}
 	# change password
 	if($type == "user"){
-		$rv = setUserPwd($uid, $pwd);
+		$rv = setUserPwd($uid, $pwd, true);
 	}
 	elseif($type == "emp"){
-		$rv = setEmployeePwd($uid, $pwd);
+		$rv = setEmployeePwd($uid, $pwd, true);
 	}
-	return "OK";
-}
 
-function api_resetPwd()
-{
-	$code = mparam("code");
-	$phone = mparam("phone");
-	$pwd = mparam("pwd");
-
-	validateDynCode($code);
-
-	# change password
-	$sql = sprintf("UPDATE User SET pwd=%s WHERE phone=%s", 
-		Q(hashPwd($pwd)),
-		Q($phone));
-	execOne($sql);
-	return "OK";
-}
-
-function api_whoami()
-{
-	global $APP;
-	$type = preg_replace('/\d+$/', '', $APP);
-
-	if ($type == "user") {
-		checkAuth(AUTH_USER, true);
-		$ret = ["uid" => $_SESSION["uid"]];
-	}
-	/*
-	elseif($type == "store") {
-		checkAuth(AUTH_STORE, true);
-		$ret = ["storeId"=>$_SESSION["storeId"]];
-	}
-	 */
-	elseif($type == "emp" || $type == "store") {
-		checkAuth(AUTH_STORE, true);
-		$ret = ["storeId"=>$_SESSION["storeId"], "empId" => $_SESSION["empId"]];
-	}
-	elseif ($type == "admin") {
-		checkAuth(AUTH_ADMIN, true);
-		global $ADMIN;
-		$ret = ["adminId"=>$_SESSION["adminId"], "uname"=>$ADMIN["uname"]];
-	}
-	else {
-		throw new MyException(E_PARAM, "Unknown type `$type`");
-	}
-	return $ret;
+	addToPwdTable($pwd);
+	return $rv;
 }
 //}}}
 
@@ -764,6 +557,62 @@ function api_att()
 }
 //}}}
 
+// ==== verify partner sign {{{
+// 默认对GET+POST字段做签名(忽略下划线开头的控制字段)
+function genSign($pwd, $params=null)
+{
+	if ($params == null)
+		$params = array_merge($_GET, $_POST);
+	ksort($params);
+	$str = null;
+	foreach ($params as $k=>$v) {
+		if (is_null($v) || substr($k, 0, 1) === "_") // e.g. "_pwd", "_sign", "_ac"
+			continue;
+		if ($str == null) {
+			$str = "{$k}={$v}";
+		}
+		else {
+			$str .= "&{$k}={$v}";
+		}
+	}
+	$str .= $pwd;
+	$sign = md5($str);
+	return $sign;
+}
+
+function api_genSign()
+{
+	$pwd = mparam("_pwd");
+	unset($_GET["ac"]);
+	return genSign($pwd);
+}
+
+function verifyPartnerSign($partnerId)
+{
+	list($sign, $pwd) = mparam(["_sign", "_pwd"]);
+
+	$partner = Conf::getPartner($partnerId);
+	$pwd1 = $partner["pwd"];
+
+	if (isset($pwd) && !isset($sign)) {
+		// 1: INTERNAL允许线上仍使用_pwd字段生成voucher.
+		if ($partnerId != 1 && !$GLOBALS["TEST_MODE"]) {
+			throw new MyException(E_FORBIDDEN, "Non-testmode: MUST use param `_sign` instead of `_pwd`", "上线后不允许使用`_pwd`");
+		}
+		if ($pwd != $pwd1)
+			throw new MyException(E_PARAM, "bad pwd for partner id=`$partnerId`", "密码错误");
+		return true;
+	}
+
+	$sign1 = genSign($pwd1);
+	if ($sign !== $sign1)
+		throw new MyException(E_PARAM, "bad sign for partner id=`$partnerId`", "签名错误");
+
+	return true;
+}
+//}}}
+
+// ==== tool APIs {{{
 function api_proxy()
 {
 	$url = mparam("url");
@@ -774,6 +623,7 @@ function api_proxy()
 	 
 	return $rv;
 }
+//}}}
 
 //}}}
 

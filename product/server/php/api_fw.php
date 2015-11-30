@@ -843,7 +843,7 @@ class AccessControl
 			if (! class_exists($cls))
 				$cls = "AC_$tbl";
 		}
-		else if (isStoreLogin())
+		else if (isEmpLogin())
 		{
 			$cls = "AC2_$tbl";
 		}
