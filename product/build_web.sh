@@ -45,10 +45,12 @@ fi
 cmd=`git status -s 2>/dev/null | perl -x $script getcmd`
 if [[ -z $cmd ]]; then exit ; fi
 
+#echo $cmd > cmd1.log
 if $cmd; then
 	echo "=== 上传成功!"
 else
-	echo "!!! 出错了(返回值为$0), 请检查!!!"
+	echo "!!! 出错了(返回值为$?), 请检查!!!"
+	exit
 fi
 
 git commit -m "$lastlog"
@@ -71,6 +73,7 @@ if ($ARGV[0] eq 'getcmd')
 	while (<STDIN>) {
 		chomp;
 		s/^..\s+//; # e.g. git status -b: "A  m/images/ui/icon-svcid-1.png"
+		s/.+?->\s+//; # e.g. "R  web/js/app.js -> web/js/app_fw.js"
 		$dir = dirname($_);
 		$files{$dir} = [] if !exists($files{$dir});
 		push @{$files{$dir}}, $_;
@@ -87,7 +90,11 @@ if ($ARGV[0] eq 'getcmd')
 	}
 
 	exit unless defined $cmd;
-	print "curl -s -S --ftp-create-dirs -u www:ywtl_TPGJ $cmd";
+	$fullCmd = "curl -s -S --ftp-create-dirs -u www:ywtl_TPGJ $cmd";
+	print $fullCmd;
+	#open O, ">cmd.log";
+	#print O $fullCmd;
+	#close O;
 }
 #}}}
 # vim: set foldmethod=marker :

@@ -626,8 +626,10 @@ function Q($s, $dbh = null)
 {
 	if ($s === null)
 		return "null";
-	if ($dbh1 == null) {
+	if ($dbh == null) {
 		global $DBH;
+		if (!isset($DBH))
+			dbconn();
 		$dbh = $DBH;
 	}
 	return $dbh->quote($s);
@@ -868,6 +870,13 @@ function getAppType()
 	global $APP;
 	return preg_replace('/(\d+|-\w+)$/', '', $APP);
 }
+
+/** @fn hasSignFile($f) */
+function hasSignFile($f)
+{
+	global $BASE_DIR;
+	return file_exists("{$BASE_DIR}/{$f}");
+}
 //}}}
 
 // ====== classes {{{
@@ -897,7 +906,11 @@ class MyPDO extends PDO
 {
 	function __construct($dsn, $user = null, $pwd = null)
 	{
-		parent::__construct($dsn, $user, $pwd);
+		$opts = [];
+		// 如果使用连接池, 偶尔会出现连接失效问题, 所以缺省不用
+		if (hasSignFile("CFG_CONN_POOL"))
+			$opts[PDO::ATTR_PERSISTENT] = true;
+		parent::__construct($dsn, $user, $pwd, $opts);
 	}
 	private function addLog($str)
 	{
@@ -1067,8 +1080,6 @@ class AppFw_
 {
 	private static function initGlobal()
 	{
-		global $BASE_DIR;
-
 		global $DBG_LEVEL;
 		if (!isset($DBG_LEVEL)) {
 			$defaultDebugLevel = getenv("P_DEBUG")===false? 0 : intval(getenv("P_DEBUG"));
@@ -1077,13 +1088,13 @@ class AppFw_
 
 		global $TEST_MODE;
 		if (!isset($TEST_MODE)) {
-			$TEST_MODE = param("_test/i", isCLIServer() || file_exists("{$BASE_DIR}/CFG_TEST_MODE")?1:0);
+			$TEST_MODE = param("_test/i", isCLIServer() || hasSignFile("CFG_TEST_MODE")?1:0);
 		}
 
 		global $MOCK_MODE;
 		if (!isset($MOCK_MODE)) {
-			$MOCK_MODE = file_exists("{$BASE_DIR}/CFG_MOCK_MODE")
-				|| ($TEST_MODE && file_exists("{$BASE_DIR}/CFG_MOCK_T_MODE"));
+			$MOCK_MODE = hasSignFile("CFG_MOCK_MODE")
+				|| ($TEST_MODE && hasSignFile("CFG_MOCK_T_MODE"));
 		}
 
 		global $JSON_FLAG;

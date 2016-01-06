@@ -25,7 +25,7 @@ rtest/test/HttpResponseTest.php
 rtest/setTestEnv.bat*
 
 doc/index.html*
-doc/后台框架.wiki
+doc/后端框架.wiki
 
 tool/upgrade.php
 tool/webcc.php

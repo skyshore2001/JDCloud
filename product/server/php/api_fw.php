@@ -546,7 +546,7 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 				if (isset($pagekey))
 				{
 					$enableTotalCnt = true;
-					$enableParialQuery = false;
+					$enablePartialQuery = false;
 				}
 			}
 			if ($pagesz == 0)
@@ -555,10 +555,10 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 
 		$orderSql = $sqlConf["orderby"];
 
-		// setup cond for parialQuery
+		// setup cond for partialQuery
 		if ($enablePaging) {
 			if ($orderSql == null)
-				$orderSql = "t0.id";
+				$orderSql = $accessCtl->getDefaultSort();
 
 			if (!isset($enableTotalCnt))
 			{
@@ -567,24 +567,24 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 					$enableTotalCnt = true;
 			}
 
-			// 如果未指定orderby或只用了id(以后可放宽到唯一性字段), 则可以用parialQuery机制(性能更好更精准), _pagekey表示该字段的最后值；否则_pagekey表示下一页页码。
-			if (!isset($enableParialQuery)) {
-				$enableParialQuery = false;
+			// 如果未指定orderby或只用了id(以后可放宽到唯一性字段), 则可以用partialQuery机制(性能更好更精准), _pagekey表示该字段的最后值；否则_pagekey表示下一页页码。
+			if (!isset($enablePartialQuery)) {
+				$enablePartialQuery = false;
 			    if (preg_match('/^(t0\.)?id\b/', $orderSql)) {
-					$enableParialQuery = true;
+					$enablePartialQuery = true;
 					if ($pagekey) {
 						if (preg_match('/\bid DESC/i', $orderSql)) {
-							$parialQueryCond = "t0.id<$pagekey";
+							$partialQueryCond = "t0.id<$pagekey";
 						}
 						else {
-							$parialQueryCond = "t0.id>$pagekey";
+							$partialQueryCond = "t0.id>$pagekey";
 						}
-						// setup res for parialQuery
-						if ($parialQueryCond) {
+						// setup res for partialQuery
+						if ($partialQueryCond) {
 // 							if (isset($sqlConf["res"][0]) && !preg_match('/\bid\b/',$sqlConf["res"][0])) {
 // 								array_unshift($sqlConf["res"], "t0.id");
 // 							}
-							array_unshift($sqlConf["cond"], $parialQueryCond);
+							array_unshift($sqlConf["cond"], $partialQueryCond);
 						}
 					}
 				}
@@ -656,7 +656,7 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 				$totalCnt = queryOne($cntSql);
 			}
 
-			if ($enableParialQuery) {
+			if ($enablePartialQuery) {
 				$sql .= "\nLIMIT " . $pagesz;
 			}
 			else {
@@ -688,7 +688,7 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 				$ignoreAfter = true;
 
 				if ($enablePaging && $pagesz == count($ret)) { // 还有下一页数据, 添加nextkey
-					if ($enableParialQuery) {
+					if ($enablePartialQuery) {
 						$nextkey = $ret[count($ret)-1]["id"];
 					}
 					else {
@@ -805,6 +805,8 @@ class AccessControl
 	protected $requiredFields2 = [];
 	# for get/query
 	protected $hiddenFields = [];
+	# for query
+	protected $defaultSort = "t0.id";
 
 	# for get/query
 	# virtual columns
@@ -843,7 +845,7 @@ class AccessControl
 			if (! class_exists($cls))
 				$cls = "AC_$tbl";
 		}
-		else if (isEmpLogin())
+		else if (isStoreLogin())
 		{
 			$cls = "AC2_$tbl";
 		}
@@ -989,6 +991,10 @@ class AccessControl
 	{
 		return $this->onGenId();
 	}
+	final public function getDefaultSort()
+	{
+		return $this->defaultSort;
+	}
 
 	private function handleRow(&$rowData)
 	{
@@ -1008,10 +1014,12 @@ class AccessControl
 			if (stripos($this->sqlConf["cond"][0], "select") !== false) {
 				throw new MyException(E_SERVER, "forbidden SELECT in param cond");
 			}
-			# "aa = 100 and bb>30 and cc IS null" -> "t0.aa = 100 and t0.bb>30 and t0.cc IS null" 
-			$this->sqlConf["cond"][0] = preg_replace_callback('/\w+(?=(\s*[=><]|(\s+(IS|LIKE))))/i', function ($ms) {
+			# "aa = 100 and t1.bb>30 and cc IS null" -> "t0.aa = 100 and t1.bb>30 and t0.cc IS null" 
+			$this->sqlConf["cond"][0] = preg_replace_callback('/[\w|.]+(?=(\s*[=><]|(\s+(IS|LIKE))))/i', function ($ms) {
 				// 't0.$0' for col, or 'voldef' for vcol
 				$col = $ms[0];
+				if (strpos($col, '.') !== false)
+					return $col;
 				if (isset($this->vcolMap[$col])) {
 					return $this->vcolMap[$col]["def"];
 				}
@@ -1162,6 +1170,7 @@ class AccessControl
 	// return: T/F
 	// 可用于AccessControl子类添加已在vcolDefs中定义的vcol. 一般应先考虑调用addRes(col)函数.
 	// $col: 必须是一个英文词, 不允许"col as col1"形式; 该列必须在 vcolDefs 中已定义.
+	// $alias: 可以中文. 特殊字符"-"表示不加到最终res中(只添加join/cond等定义), 由addVColDef调用.
 	protected function addVCol($col, $ignoreError = false, $alias = null)
 	{
 		if (! isset($this->vcolMap[$col])) {
@@ -1173,7 +1182,8 @@ class AccessControl
 			return true;
 		$this->addVColDef($this->vcolMap[$col]["vcolDefIdx"], true);
 		if ($alias) {
-			$this->addRes($this->vcolMap[$col]["def"] . " AS {$alias}", false);
+			if ($alias !== "-")
+				$this->addRes($this->vcolMap[$col]["def"] . " AS {$alias}", false);
 		}
 		else {
 			$this->addRes($this->vcolMap[$col]["def0"], false);
@@ -1203,6 +1213,11 @@ class AccessControl
 			foreach ($vcolDef["res"] as $e) {
 				$this->addRes($e);
 			}
+		}
+		if (isset($vcolDef["require"]))
+		{
+			$requireCol = $vcolDef["require"];
+			$this->addVCol($requireCol, false, "-");
 		}
 		if (isset($vcolDef["join"]))
 			$this->addJoin($vcolDef["join"]);
@@ -1311,6 +1326,8 @@ class ApiApp extends AppBase
 			throw new MyException(E_PARAM, "Bad request - unknown ac: $ac");
 		}
 		$DBH->commit();
+		if (!isset($ret))
+			$ret = "OK";
 		setRet(0, $ret);
 		return $ret;
 	}

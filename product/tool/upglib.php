@@ -82,6 +82,9 @@ function genColSql($fieldDef)
 	elseif (preg_match('/Tm$/', $f) || $f == "tm") {
 		$def = "DATETIME";
 	}
+	elseif (preg_match('/Flag$/', $f)) {
+		$def = "TINYINT UNSIGNED NOT NULL DEFAULT 0";
+	}
 	elseif (preg_match('/^\w+$/', $f)) { # default
 		$def = "NVARCHAR(" . $CHAR_SZ['m'] . ")";
 	}
