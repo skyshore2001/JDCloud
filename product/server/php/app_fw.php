@@ -48,7 +48,7 @@ global $JSON_FLAG;
 $JSON_FLAG = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
 
 global $DB, $DBCRED, $USE_MYSQL;
-$DB = "localhost/carsvc";
+$DB = "localhost/myorder";
 $DBCRED = "bGo6bGlhbmcxMjM="; // base64({user}:{pwd})
 
 global $ALLOW_LCASE_PARAM;

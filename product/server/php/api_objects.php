@@ -67,4 +67,69 @@ class AC2_Employee extends AccessControl
 
 //}}}
 
+// ====== Ordr {{{
+class AC0_Ordr extends AccessControl
+{
+	protected $subobj = [
+		"orderLog" => ["sql"=>"SELECT ol.*, e.uname AS empPhone, e.name AS empName FROM OrderLog ol LEFT JOIN Employee e ON ol.empId=e.id WHERE orderId=%d", "wantOne"=>false],
+		"atts" => ["sql"=>"SELECT id, attId FROM OrderAtt WHERE orderId=%d", "wantOne"=>false],
+	];
+}
+
+class AC1_Ordr extends AC0_Ordr
+{
+	protected $allowedAc = ["get", "query", "add", "set"];
+	protected $readonlyFields = ["userId"];
+
+	protected function onQuery()
+	{
+		$userId = $_SESSION["uid"];
+		$this->addCond("t0.userId={$userId}");
+	}
+
+	protected function onValidate()
+	{
+		if ($this->ac == "add") {
+			$userId = $_SESSION["uid"];
+			$_POST["userId"] = $userId;
+			$_POST["status"] = "CR";
+			$this->onAfterActions[] = function () {
+				$orderId = $this->id;
+				$sql = sprintf("INSERT INTO OrderLog (orderId, action, tm, dscr) VALUES ($orderId,'CR','%s', '订单创建')", date('c'));
+				execOne($sql);
+			};
+		}
+	}
+}
+
+class AC2_Ordr extends AC0_Ordr
+{
+	protected $allowedAc = ["get", "query", "set"];
+	protected $readonlyFields = ["userId"];
+
+	protected function onValidate()
+	{
+		if ($this->ac == "set") {
+			if (issetval("status")) {
+				if ($_POST["status"] == "RE") {
+					$oldStatus = queryOne("SELECT status FROM Ordr WHERE id={$this->id}");
+					if ($oldStatus != "CR") {
+						throw new MyException(E_FORBIDDEN, "forbidden to change status to RE");
+					}
+					$this->onAfterActions[] = function () {
+						$orderId = $this->id;
+						$empId = $_SESSION["empId"];
+						$sql = sprintf("INSERT INTO OrderLog (orderId, action, tm, empId, dscr) VALUES ($orderId,'RE','%s', $empId, '订单完成')", date('c'));
+						execOne($sql);
+					};
+				}
+				else {
+					throw new MyException(E_FORBIDDEN, "forbidden to change status to {$_POST['status']}");
+				}
+			}
+		}
+	}
+}
+// }}}
+
 // vim: set foldmethod=marker :

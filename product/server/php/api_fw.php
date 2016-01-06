@@ -823,13 +823,18 @@ class AccessControl
 	// virtual columns
 	private $vcolMap; # elem: $vcol => {def, def0, added?, vcolDefIdx?=-1}
 
+	// 在add后自动设置; 在get/set/del操作调用onValidateId后设置。
+	protected $id;
+
 	static function create($tbl, $asAdmin = false) 
 	{
+		/*
 		if (!isUserLogin() && !isEmpLogin())
 		{
 			$wx = getWeixinUser();
 			$wx->autoLogin();
 		}
+		 */
 		$cls = null;
 		$noauth = 0;
 		# note the order.
@@ -845,7 +850,7 @@ class AccessControl
 			if (! class_exists($cls))
 				$cls = "AC_$tbl";
 		}
-		else if (isStoreLogin())
+		else if (isEmpLogin())
 		{
 			$cls = "AC2_$tbl";
 		}
@@ -878,6 +883,7 @@ class AccessControl
 
 		if ($ac == "get" || $ac == "set" || $ac == "del") {
 			$this->onValidateId();
+			$this->id = mparam("id");
 		}
 		if ($ac == "add" || $ac == "set") {
 			foreach ($this->readonlyFields as $field) {
@@ -978,6 +984,9 @@ class AccessControl
 			foreach ($ret as &$ret1) {
 				$this->handleRow($ret1);
 			}
+		}
+		else if ($ac === "add") {
+			$this->id = $ret;
 		}
 		$this->onAfter($ret);
 

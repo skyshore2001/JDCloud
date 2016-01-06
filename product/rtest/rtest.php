@@ -66,7 +66,7 @@ class WebAPITest extends WebAPITestBase
 		// 如果失败，请执行 testReg 先创建测试用户。
 		$res = self::$obj->login(self::USER, self::PWD);
 		$data = $this->validateRetAsObj($res, ["id", "_token", "_expire"]);
-		$this->assertTrue(ctype_digit($data->id));
+		$this->assertTrue((int)$data->id > 0, "*** id should be an integer");
 
 		self::$ut_data->userLoginData = $data;
 		return $data;
@@ -98,7 +98,7 @@ class WebAPITest extends WebAPITestBase
 		
 		$res = self::$obj->login(self::EMP_USER, self::PWD);
 		$data = $this->validateRetAsObj($res, ["id", "_token", "_expire"]);
-		$this->assertTrue(ctype_digit($data->id));
+		$this->assertTrue((int)$data->id > 0, "*** id should be an integer");
 
 		self::$ut_data->empLoginData = $data;
 		return $data;
@@ -144,6 +144,22 @@ class WebAPITest extends WebAPITestBase
 		unset(self::$ut_data->adminLoginData);
 	}
 
+	// return: orderId
+	function genOrder()
+	{
+		$app = $this->getApp();
+		$loginData = $this->userLogin(); // change app to 'user'
+		$order = [
+			"dscr" => "上门洗车",
+			"cmt" => "rtest-order",
+			];
+		$res = self::$obj->callSvr("Ordr.add");
+		$data = $this->validateRet($res);
+		$orderId = $data;
+		if ($app != $this->getApp())
+			$this->setApp($app);
+		return $orderId;
+	}
 	#}}}
 
 ###### unit test cases (sanity test) {{{
@@ -377,9 +393,15 @@ class WebAPITest extends WebAPITestBase
 
 	function testOrdr()
 	{
-		$this->markTestSkipped('TODO: testOrdr');
-		return;
-		$this->userLogin();
+		$loginData = $this->userLogin(); // change app to 'user'
+		$orderId = $this->genOrder();
+
+		$res = self::$obj->callSvr("Ordr.get", ["id"=>$orderId]);
+		$data = $this->validateRetAsObj($res, ["id", "userId", "orderLog", "atts"]);
+		$this->assertEquals($loginData->id, $data->userId);
+		$this->assertEquals('CR', $data->status);
+		$this->assertCount(1, $data->orderLog, "应有1条日志: CR");
+		$this->assertEquals('CR', $data->orderLog[0]->action);
 	}
 	#}}}
 
@@ -393,7 +415,20 @@ class WebAPITest extends WebAPITestBase
 		addCaseLog("forbidden actions");
 		$this->validateForbiddenAc(["add", "del"], $obj);
 
-		$this->markTestSkipped('TODO: testOrdr_emp');
+
+		$orderId = $this->genOrder();
+		$res = self::$obj->callSvr("Ordr.get", ["id"=>$orderId]);
+		$data = $this->validateRetAsObj($res, ["id", "userId", "orderLog", "atts"]);
+
+		// 修改订单状态为完成
+		$res = self::$obj->callSvr("Ordr.set", ["id"=>$orderId], ["status"=>"RE"]);
+		$data = $this->validateRet($res);
+		// 检查订单状态
+		$res = self::$obj->callSvr("Ordr.get", ["id"=>$orderId, "res"=>"status, orderLog"]);
+		$data = $this->validateRetAsObj($res, ["status"]);
+		$this->assertEquals("RE", $data->status);
+		$this->assertCount(2, $data->orderLog, "应有2条日志: CR, RE");
+		$this->assertEquals('RE', $data->orderLog[1]->action);
 	}
 
 	#}}}
@@ -403,7 +438,44 @@ class WebAPITest extends WebAPITestBase
 	function testCRUD()
 	{
 		$this->adminLogin();
-		$this->markTestSkipped('TODO: general CRUD');
+		# $this->markTestSkipped('TODO: general CRUD');
+
+		# 对Employee对象的CRUD
+		# @Employee: id, uname, phone(s), pwd, name(s), perms
+		$uname = "rtest-1";
+		$phone = "13799999999";
+		$name = "rtest name 1";
+
+		// =======================
+		addStepLog("admin: add"); 
+		$res = self::$obj->callSvr("Employee.add", null, ["uname"=>$uname, "phone"=>$phone]);
+		$empId = $this->validateRet($res);
+
+		// =======================
+		addStepLog("admin: query"); 
+		$res = self::$obj->callSvr("Employee.query", ["cond" => "id={$empId} and uname='$uname'"]);
+		$data = $this->validateRetAsTable($res, ["id", "uname", "phone"]);
+		$this->assertCount(1, $data);
+		$this->assertEquals($phone, $data[0]->phone);
+
+		// =======================
+		addStepLog("admin: set"); 
+		$res = self::$obj->callSvr("Employee.set", ["id" => $empId], ["name"=>$name]);
+		$data = $this->validateRet($res);
+
+		// =======================
+		addStepLog("admin: get"); 
+		$res = self::$obj->callSvr("Employee.get", ["id" => $empId, "res"=>"name"]);
+		$data = $this->validateRetAsObj($res, ["name"]);
+		$this->assertEquals($name, $data->name);
+
+		// =======================
+		addStepLog("admin: del"); 
+		$res = self::$obj->callSvr("Employee.del", ["id" => $empId]);
+		$data = $this->validateRet($res);
+
+		$res = self::$obj->callSvr("Employee.get", ["id" => $empId]);
+		$data = $this->validateRet($res, E_PARAM, "用户应已被删除");
 	}
 	#}}}
 
