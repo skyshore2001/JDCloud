@@ -81,7 +81,7 @@ window.onerror = function (msg) {
 
 	jf.submit(function () {
 		var ac = jf.attr("action");
-		callSvr(makeUrl(ac), fn, getFormParam(jf));
+		callSvr(ac, fn, getFormParam(jf));
 	});
 	
  */
@@ -479,7 +479,7 @@ JQM中的popup(或称dialog)一般放置在一个page中, 设置它的初始化�
 		function beforeShow() {
 			// var jdlg = this;
 			var jtxt = jdlg.find("#txt1");
-			callSvr(makeUrl("getxxx"), function (data) {
+			callSvr("getxxx", function (data) {
 				jtxt.val(data);
 			});
 		}
@@ -765,7 +765,7 @@ function setFormSubmit(jf, fn, rules)
 	/*
 	jf.submit(function () {
 		var ac = jf.attr("action");
-		callSvr(makeUrl(ac), fn, getFormParam(jf));
+		callSvr(ac, fn, getFormParam(jf));
 	});
 	*/
 
@@ -777,7 +777,7 @@ function setFormSubmit(jf, fn, rules)
 				return;
 			var ac = jf.attr("action");
 			var params = getFormParam(jf);
-			callSvr(makeUrl(ac), fn, params, {userPost: params});
+			callSvr(ac, fn, params, {userPost: params});
 		}
 	});
 }
@@ -910,17 +910,20 @@ function defDataProc(rv)
 @fn MUI.makeUrl(action, params)
 @alias makeUrl
 
-生成对后端调用的url. 对于GET参数(也称URL参数), 直接通过该函数生成. 对于POST参数(也称form参数), 则是通过callSvr第三个参数传递.
+生成对后端调用的url. 
 
 	var params = {id: 100};
-	var postParams = {status: 2};
 	var url = makeUrl("Ordr.set", params);
-	callSvr(url, fn, postParams);
 
+注意：调用该函数生成的url在结尾有标志字符串"zz=1", 如"../api.php/login?_app=user&zz=1"
  */
 window.makeUrl = self.makeUrl = makeUrl;
 function makeUrl(action, params)
 {
+	// 避免重复调用
+	if (action.indexOf("zz=1") >0)
+		return action;
+
 	if (params == null)
 		params = {};
 	var url;
@@ -946,40 +949,58 @@ function makeUrl(action, params)
 		params._test = 1;
 	if (g_args._debug)
 		params._debug = g_args._debug;
+	params.zz = 1; // zz标记
 	return appendParam(url, $.param(params)); // appendParam(url, params);
 }
 
 /**
-@fn MUI.callSvr(url, fn?, data?, userOptions?, wait?)
+@fn MUI.callSvr(ac, param?, fn?, data?, userOptions?)
+@fn MUI.callSvr(ac, fn?, data?, userOptions?)
 @alias callSvr
 
-@param url 请求地址, 一般使用makeUrl生成.
-@param data 如果有该参数, 则自动使用HTTP POST请求(data作为POST内容), 否则使用HTTP GET请求.
+@param ac String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)
+@param param Object. URL参数（或称HTTP GET参数）
+@param data Object. POST参数. 如果有该参数, 则自动使用HTTP POST请求(data作为POST内容), 否则使用HTTP GET请求.
+@param fn Function(data). 回调函数, data参考该接口的返回值定义。
 @param userOptions 用户自定义参数, 会合并到$.ajax调用的options参数中.可在回调函数中用"this.参数名"引用. 
 
 常用userOptions: 
 - 指定{async:0}来做同步请求, 一般直接用callSvrSync调用来替代.
 - 指定{noex:1}用于忽略错误处理, 当后端返回错误时, 回调函数会被调用, 且参数data=false.
+- 指定{noLoadingImg:1}用于忽略loading图标.
 
-	callSvr(makeUrl("User.get"), function (data) {
-		if (data === false) { // 仅当设置noex且服务端返回错误时可用, 
+例：
+
+	callSvr("logout");
+	callSvr("logout", api_logout);
+	callSvr("login", {wantAll:1}, api_login);
+	callSvr("info/hotline.php", {q: '大众'}, api_hotline);
+
+	// 也兼容使用makeUrl的旧格式如:
+	callSvr(makeUrl("logout"), api_logout);
+	callSvr(makeUrl("logout", {a:1}), api_logout);
+
+	callSvr("User.get", function (data) {
+		if (data === false) { // 仅当设置noex且服务端返回错误时可返回false
 			return;
 		}
 		foo(data);
 	}, null, {noex:1});
 
-TODO: wait参数
-
-TODO: 是否合并makeUrl(以后隐藏它, 以避免手工为callSvr设置url)和callSvr为 
-
-	callSvr([action, urlParams], fn, postParams, userOptions); 或
-	callSvr(action, fn, postParams, userOptions);
-
 */
 window.callSvr = self.callSvr = callSvr;
-function callSvr(url, fn, data, userOptions, wait)
+function callSvr(ac, params, fn, data, userOptions)
 {
-	wait == null || !wait ? enterWaiting() : console.log("not wait!");	// 是否需要等待
+	if (params instanceof Function) {
+		// 兼容格式：callSvr(url, fn?, data?, userOptions?);
+		userOptions = data;
+		data = fn;
+		fn = params;
+		params = null;
+	}
+	var url = makeUrl(ac, params);
+	if (! (userOptions && userOptions.noLoadingImg))
+		enterWaiting();
 	var method = (data == null? 'GET': 'POST');
 	var options = $.extend({
 		url: url,
@@ -1110,7 +1131,7 @@ function logout(dontReload)
 {
 	deleteLoginToken();
 	g_data.userInfo = null;
-	callSvr(makeUrl("logout"), function () {
+	callSvr("logout", function () {
 		if (! dontReload)
 			reloadSite();
 	});
@@ -1222,7 +1243,6 @@ function tryAutoLogin(onHandleLogin, reuseCmd, allowNoLogin)
 {
 	var ok = false;
 	var ajaxOpt = {async: false, noex: true};
-	var url;
 
 	function handleAutoLogin(data)
 	{
@@ -1235,8 +1255,7 @@ function tryAutoLogin(onHandleLogin, reuseCmd, allowNoLogin)
 
 	// first try "User.get"
 	if (reuseCmd != null) {
-		url = makeUrl(reuseCmd);
-		callSvr(url, handleAutoLogin, null, ajaxOpt);
+		callSvr(reuseCmd, handleAutoLogin, null, ajaxOpt);
 	}
 	if (ok)
 		return;
@@ -1245,9 +1264,9 @@ function tryAutoLogin(onHandleLogin, reuseCmd, allowNoLogin)
 	var token = loadLoginToken();
 	if (token != null)
 	{
-		url = makeUrl("login", {wantAll:1});
+		var param = {wantAll:1};
 		var postData = {token: token};
-		callSvr(url, handleAutoLogin, postData, ajaxOpt);
+		callSvr("login", param, handleAutoLogin, postData, ajaxOpt);
 	}
 	if (ok)
 		return;

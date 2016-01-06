@@ -74,7 +74,7 @@ function initPageHome()
 			param._pagekey = nextkey;
 			jlst.find(".nextpage").remove();
 		}
-		callSvr(makeUrl("Ordr.query", param), api_OrdrQuery);
+		callSvr("Ordr.query", param, api_OrdrQuery);
 		
 		function api_OrdrQuery(data) 
 		{
@@ -158,7 +158,7 @@ function initPageOrder()
 		var jlst = $(".p-list", jpage);
 		jlst.empty();
 
-		callSvr(makeUrl("Ordr.get", {id: PageOrder.id}), api_OrdrGet);
+		callSvr("Ordr.get", {id: PageOrder.id}, api_OrdrGet);
 
 		function api_OrdrGet(data)
 		{
