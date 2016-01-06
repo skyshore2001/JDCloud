@@ -153,7 +153,7 @@ class WebAPITest extends WebAPITestBase
 			"dscr" => "上门洗车",
 			"cmt" => "rtest-order",
 			];
-		$res = self::$obj->callSvr("Ordr.add");
+		$res = self::$obj->callSvr("Ordr.add", null, $order);
 		$data = $this->validateRet($res);
 		$orderId = $data;
 		if ($app != $this->getApp())
@@ -371,7 +371,7 @@ class WebAPITest extends WebAPITestBase
 
 		// ========================
 		addCaseLog("set");
-		$name = "new name - " . rand();
+		$name = "testuser " . rand();
 		$pwd = "newPwd";
 		$res = self::$obj->callSvr("User.set", null, ["name"=>$name, "pwd"=>$pwd]);
 		$data = $this->validateRet($res);
@@ -391,7 +391,7 @@ class WebAPITest extends WebAPITestBase
 		}
 	}
 
-	function testOrdr()
+	function testOrder()
 	{
 		$loginData = $this->userLogin(); // change app to 'user'
 		$orderId = $this->genOrder();
@@ -407,7 +407,7 @@ class WebAPITest extends WebAPITestBase
 
 	#### APP emp {{{
 
-	function testOrdr_emp()
+	function testOrder_emp()
 	{
 		$this->empLogin();
 		$obj = "Ordr";

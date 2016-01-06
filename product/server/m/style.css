@@ -1,0 +1,20 @@
+/* app_alert */
+.info {
+	color: darkgreen;
+}
+.error {
+	color: red;
+}
+.warning {
+}
+/* for jquery.validate */
+label.error {
+	color: red;
+	font-size: 16px;
+	font-weight: normal;
+	line-height: 1.4;
+	margin-top: 0.5em;
+	width: 100%;
+	float: none;
+}
+
