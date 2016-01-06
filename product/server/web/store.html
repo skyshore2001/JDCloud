@@ -1,0 +1,552 @@
+<html>
+<head>
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+<script language="javascript" src="lib/easyui/jquery.min.js" type="text/javascript"></script>
+
+<link rel="stylesheet" type="text/css" href="lib/easyui/themes/default/easyui.css">
+<link rel="stylesheet" type="text/css" href="lib/easyui/themes/icon.css">
+<link rel="stylesheet" type="text/css" href="style.css">
+<script language="javascript" src="lib/easyui/jquery.easyui.min.js" type="text/javascript" charset="utf-8"></script>
+<script language="javascript" src="lib/easyui/locale/easyui-lang-zh_CN.js" type="text/javascript" charset="utf-8"></script>
+
+<script language="javascript" src="../m/lib/common.js"type="text/javascript" charset="utf-8"></script>
+<script language="javascript" src="lib/app_fw.js"type="text/javascript" charset="utf-8"></script>
+<script language="javascript" src="app.js"type="text/javascript" charset="utf-8"></script>
+
+<style type="text/css">
+/* css {{{ */
+
+/* css }}} */
+</style>
+
+<script language="javascript">
+
+// ====== global {{{
+var g_data = {}; // {userInfo={id, storeId, perms,...}, hasPerm(perm)}
+//}}}
+
+// ====== functions {{{
+
+// ==== data-options {{{
+var ListOptions = {
+	// ListOptions.Emp()
+	Emp: function () {
+		var opts = {
+			valueField: "id",
+			textField: "name",
+			url: makeUrl('Employee.query', {
+		res: 'id,name,uname',
+		cond: 'storeId=' + g_data.userInfo.storeId,
+		wantArray:1
+					}),
+			formatter: function (row) { return row.name + '(' + row.uname + ')'; }
+		};
+		return opts;
+	},
+
+	// ListOptions.Store()
+	Store: function () {
+		var opts = {
+			valueField: "id",
+			textField: "name",
+			url: makeUrl('Store.query', {
+				res: 'id,name',
+				wantArray:1
+			}),
+			formatter: function (row) { return row.id + "-" + row.name; }
+		};
+		return opts;
+	}
+};
+
+var Formatter = {
+	number: function (value)
+	{
+		return parseFloat(value);
+	},
+	pics: function (value) {
+		if (value == null)
+			return "(无图)";
+		return value.replace(/(\d+),?/g, function (ms, picId) {
+			var url = makeUrl("att", {thumbId: picId});
+			return "<a target='_black' href='" + url + "'>" + picId + "</a>&nbsp;";
+		});
+	},
+	orderId: function (value) {
+		if (value != null)
+		{
+			return makeLinkTo("#dlgOrder", value, value);
+		}
+	},
+	// 必须有row.empId
+	empName: function (value, row) {
+		if (value == null)
+			return "";
+		return makeLinkTo("#dlgEmployee", row.empId, value);
+	},
+	// 必须有row.storeId
+	storeName: function (value, row) {
+		if (value == null)
+			return "";
+		return makeLinkTo("#dlgStore", row.storeId, value);
+	},
+};
+//}}}
+
+// ==== column settings {{{
+var EmpSigninColumns = {
+	type: function (value, row) {
+		if (value == 'CM')
+			return "签到";
+		return value;
+	}
+};
+
+// formatters and styler. Note: for one cell, styler executes prior to formatter
+var OrderColumns = {
+	statusStr: function (value, row) {
+		return OrderStatusStr[row.status] || row.status;
+	},
+	statusStyler: function (value, row) {
+		var color;
+		if (value == "CR")
+			color = Color.Warning;
+		else if (value == "ST")
+			color = Color.Error;
+		else if (value == "RE")
+			color = Color.Info;
+		if (color)
+			return "background-color: " + color;
+	},
+
+	empName: function (value, row) {
+		if (value == null)
+			return "";
+
+		value = addTooltip(value, row.__tooltip);
+		return makeLinkTo("#dlgEmployee", row.empId, value);
+	},
+
+	flagStyler: function (value, row) {
+			if (value)
+				return "background-color:" + Color.Info;
+	},
+};
+
+function flagFormatter(flag)
+{
+	return function (value, row) {
+		if (value) {
+			return '是';
+		}
+		else {
+			row[flag] = 0;
+			return '否';
+		}
+	}
+}
+
+var OrderLogColumns = {
+	actionStr: function (value, row) {
+		return ActionStrs[value] || value;
+	}
+};
+// }}}
+
+// ==== init page and dialog {{{
+function handleLogin(data)
+{
+	g_data.userInfo = data;
+	// 自动登录: http://...?autoLogin
+	if (g_args.autoLogin)
+		saveLoginToken(data);
+	MyUI.showPage("pageHome");
+}
+
+function initPageHome()
+{
+	var jpage = $(this);
+	var jtbl = jpage.find("#tblMe");
+	var jdlg = $("#dlgEmployee");
+
+	jtbl.datagrid({
+		url: makeUrl(["Employee", "query"], {cond: "id=" + g_data.userInfo.id}),
+		onLoadSuccess: function(data) {
+			applyPermission(data.rows[0].perms);
+		}
+	});
+}
+
+function applyPermission(perms)
+{
+	// e.g. "item,mgr" - ".perm-item, .perm-mgr"
+	if (perms == null)
+		perms = "emp";
+	var sel = perms.replace(/(\w+)/g, '.perm-$1');
+	var arr = perms.split(/,/);
+	if (sel) {
+		$(sel).show();
+	}
+
+	g_data.hasPerm = function (perm) {
+		var found = false;
+		$.each(arr, function (i, e) {
+				if (e == perm) {
+					found = true;
+					return false;
+				}
+		});
+		return found;
+	}
+}
+
+function initDlgEmployee()
+{
+	var jdlg = $(this);
+	var jfrm = jdlg.find("form");
+	jfrm.on("loaddata", function (ev, data) {
+		hiddenToCheckbox(jfrm.find("#divPerms"));
+	})
+	.on("savedata", function (ev) {
+		checkboxToHidden(jfrm.find("#divPerms"));
+	});
+}
+
+function initPageOrder() 
+{
+	var jpage = $(this);
+	var jtbl = jpage.find("#tblOrder");
+	var jdlg = $("#dlgOrder");
+
+	jtbl.jdata().toolbar = "rfs";
+
+  // 当天订单
+	var query1 = {cond: "createTm between '" + new Date().format("D") + "' and '" + new Date().addDay(1).format("D") + "'"};
+  // 显示待服务/正在服务订单
+	var query2 = {cond: "status='CR' OR status='PA' OR status='ST'"};
+
+	function getTodoOrders()
+	{
+		MyUI.reload(jtbl, null, query2);
+	}
+	function getTodayOrders()
+	{
+		MyUI.reload(jtbl, null, query1);
+	}
+	var btn1 = {text: "今天订单", iconCls:'icon-search', handler: getTodayOrders};
+	var btn2 = {text: "所有未完成", iconCls:'icon-search', handler: getTodoOrders};
+
+	var dgOpt = {
+		url: makeUrl(["Ordr", "query"], {res:"*,createTm,userPhone"}),
+		queryParams: query1,
+		toolbar: MyUI.dg_toolbar(jtbl, jdlg, "-", btn1, btn2),
+		onDblClickRow: MyUI.dg_dblclick(jtbl, jdlg)
+	};
+	jtbl.datagrid(dgOpt);
+}
+
+function initDlgOrder()
+{
+	var jdlg = $(this);
+	var jfrm = jdlg.find("form");
+	jfrm.on("beforeshow", function(ev, mode) {
+		jdlg.find(".forFind").toggle(mode == FormMode.forFind);
+		jdlg.find(".notForFind").toggle(mode != FormMode.forFind);
+	})
+	.on("loaddata", function (ev, data) {
+		var showMore = (data.items !== undefined);
+		var divOrderMore = jdlg.find("#divOrderMore");
+		if (! showMore) {
+			divOrderMore.hide();
+			jdlg.find("#btnOrderMore").show();
+			return;
+		}
+		jdlg.find("#btnOrderMore").hide();
+		divOrderMore.show();
+
+		jdlg.find("#tblOrderLog").datagrid({
+			data: data.orderLog
+		});
+	});
+}
+// init functions }}}
+
+// ==== show dialog {{{
+function showDlgLogin()
+{
+	var jdlg = $("#dlgLogin");
+	MyUI.showDlg(jdlg, {
+		url: makeUrl("login", {_t: "store"}),
+		noCancel: true,
+		okLabel: '登录',
+
+		onOk: function (data) {
+			MyUI.closeDlg(jdlg);
+			handleLogin(data);
+		}
+	});
+}
+
+function showDlgSendSms()
+{
+	var jdlg = $("#dlgSendSms");
+	MyUI.showDlg(jdlg, {
+		url: makeUrl("sendSms"),
+		reset: false,
+		onOk: function (data) {
+			MyUI.closeDlg(jdlg);
+			app_show('操作成功!');
+		}
+	});
+}
+// show dialog }}}
+
+//}}}
+
+// ====== main {{{
+var APP_TITLE = "商户管理端";
+var APP_NAME = "emp-adm";
+
+function main()
+{
+	setAppTitle(APP_TITLE);
+	MyApp.appName = APP_NAME;
+	MyApp.onShowLogin = showDlgLogin;
+
+	tryAutoLogin(handleLogin, "Employee.get");
+}
+
+$(main);
+//}}}
+
+</script>
+</head>
+
+<body class="easyui-layout">
+<div id="divNoScript"><font color=red>您的浏览器禁用了脚本，不能使用本系统!</font></div>
+
+<div id="menu" region="west" split="true" title="选择操作" style="width:150px;padding:10px;">
+	<!--a href="#pageHome" class="easyui-linkbutton" icon="icon-ok">首页</a><br/><br/-->
+	<!--a href="?logout" class="easyui-linkbutton" icon="icon-ok">修改密码</a><br/><br/-->
+	<a href="?logout" class="easyui-linkbutton" icon="icon-ok">退出系统</a><br/><br/>
+
+	<div class="perm-mgr perm-emp">
+		<hr>
+		<p>订单</p>
+		<a href="#pageOrder" class="easyui-linkbutton" icon="icon-ok">订单管理</a><br/><br/>
+	</div>
+
+	<div class="perm-mgr">
+		<hr>
+		<p>工具</p>
+		<a href="?showDlgSendSms" class="easyui-linkbutton" icon="icon-ok">群发短信</a><br/><br/>
+	</div>
+</div>
+
+<div region="center" title="管理端">
+	<div id="my-tabMain" class="easyui-tabs" fit=true>
+	</div>
+</div>
+
+<div id="my-pages" style="display:none">
+
+<!-- pages {{{ -->
+
+<div class="pageHome" title="首页" style="padding:5px" my-initfn="initPageHome">
+	<h2 class="my-title">管理端</h2>
+
+	<h3>用户</h3>
+	<table id="tblMe" style="width:auto;height:auto">
+		<thead><tr>
+			<th data-options="field:'id'">编号</th>
+			<th data-options="field:'phone'">手机号</th>
+			<th data-options="field:'name'">姓名</th>
+			<th data-options="field:'perms'">权限</th>
+		</tr></thead>
+	</table>
+</div>
+
+<div class="pageOrder" title="订单管理" my-initfn="initPageOrder">
+	<table id="tblOrder" style="width:auto;height:auto">
+		<thead><tr>
+			<th data-options="field:'id', sortable:true, sorter:intSort">订单号</th>
+			<th data-options="field:'userPhone', sortable:true">用户联系方式</th>
+			<th data-options="field:'createTm', sortable:true">创建时间</th>
+			<th data-options="field:'status', formatter:OrderColumns.statusStr, styler:OrderColumns.statusStyler, sortable:true">状态</th>
+			<th data-options="field:'dscr', sortable:true">描述</th>
+			<th data-options="field:'cmt'">用户备注</th>
+		</tr></thead>
+	</table>
+
+	<div style="font-size:0.6em; margin:10px">
+		<p><b>各列颜色说明</b></p>
+		<table class="x-grid" style="font-size:0.6em;">
+			<tr>
+				<th>状态</th>
+			<tr>
+				<td>
+					<li><span class="status-warning">待服务</span></li>
+					<li><span class="status-error">正在服务</span></li>
+					<li><span class="status-info">已服务/已评价</span></li>
+				</td>
+			</tr>
+		</table>
+	</div>
+</div>
+
+<!-- pages }}} -->
+
+<!-- dialogs {{{ -->
+
+<div id="dlgLogin" title="商户登录" style="padding:20px 40px 20px 40px;width:350px;height:200px;">  
+	<form method="POST">
+		<table>
+			<tr>
+				<td>登录名</td>
+				<td><input name="uname" class="easyui-validatebox" data-options="required:true"></td>
+			</tr>
+			<tr>
+				<td>密码</td>
+				<td><input type=password name="pwd" class="easyui-validatebox" data-options="required:true,validType:'pwd'"></td>
+			</tr>
+		</table>
+	</form>
+</div>
+
+<div id="dlgEmployee" my-obj="Employee" my-initfn="initDlgEmployee" title="商户员工" style="padding:20px 40px 20px 40px;width:520px;height:450px;">
+	<form method="POST">
+		<table>
+			<tr>
+				<td>编号</td>
+				<td><input name="id" disabled></td>
+			</tr>
+			<tr>
+				<td>手机号</td>
+				<td><input name="phone" class="easyui-validatebox" data-options="required:true, validType:'usercode'"></td>  
+			</tr>
+			<tr>
+				<td>姓名</td>
+				<td><input name="name" class="easyui-validatebox" data-options="required:true"></td>  
+			</tr>
+			<tr>
+				<td>登录密码</td>
+				<td><input notForFind=1 type="password" name="pwd" class="easyui-validatebox" data-options="required:true, validType:'pwd'">
+				</td>
+			</tr> 
+			<tr>
+				<td>权限</td>
+				<td id=divPerms>
+					<input type="hidden" name="perms">
+					<label><input type="checkbox" value="item">上架商品管理</label><br>
+					<label><input type="checkbox" value="emp" checked>员工:查看,操作订单(默认)</label><br>
+					<label><input type="checkbox" value="mgr">商户管理</label><br>
+					<label><input type="checkbox" value="mgr2">所有商户管理(含结算)</label><br>
+				</td>
+			</tr>
+		</table>  
+	</form>  
+</div>
+
+<div id="dlgOrder" my-obj="Ordr" my-initfn="initDlgOrder" title="用户订单" style="padding:20px 40px 20px 40px;width:520px;height:500px;">  
+	<form method="POST">
+		<table>
+			<tr>
+				<td>订单号</td>
+				<td><input name="id" disabled></td>
+			</tr>
+			<tr>
+				<td>订单状态</td>
+				<td>
+					<select name="status" style="width:150px">
+						<option value="">&nbsp;</option>
+						<option value="CR">未付款</option>
+						<option value="PA">待服务(已付款)</option>
+						<option value="ST">正在服务</option>
+						<option value="RE">已服务(待评价)</option>
+						<option value="RA">已评价</option>
+						<option value="CA">已取消</option>
+					</select>
+				</td>
+			</tr>
+			<tr>
+				<td>用户编号</td>
+				<td>
+					<input name="userId" disabled>
+					<input class="notForFind" type=button onClick="searchField(this, {userId: this.form.userId.value});" value="查询该用户所有订单">
+				</td>
+			</tr>
+			<tr>
+				<td>用户联系方式</td>
+				<td>
+					<input name="userPhone" class="easyui-validatebox" data-options="validType:'usercode'">
+					<input class="notForFind" type=button onClick="searchField(this, {userPhone: this.form.userPhone.value});" value="查询该手机所有订单">
+				</td>
+			</tr>
+			<tr>
+				<td>用户备注</td>
+				<td><textarea name="cmt" rows=3 cols=30></textarea></td>  
+			</tr>
+
+		</table>  
+		<input id="btnOrderMore" class="notForFind" type=button onClick="MyUI.showObjDlg($('#dlgOrder'), FormMode.forLink, this.form.id.value); return false;" value="查看明细">
+	</form>
+
+	<div id="divOrderMore" class="notForFind">
+		<p><b>明细</b></p>
+
+		<p><b>订单日志</b></p>
+		<table id="tblOrderLog" style="width:auto;height:auto">
+			<thead><tr>
+				<th data-options="field:'action', formatter:OrderLogColumns.actionStr">操作</th>
+				<th data-options="field:'empName'">员工</th>
+				<th data-options="field:'dscr'">描述</th>
+				<th data-options="field:'tm'">时间</th>
+			</tr></thead>
+		</table>
+
+	</div>
+</div>
+
+<div id="dlgSendSms" title="群发短信" style="padding:20px 40px 20px 40px;width:500px;height:300px;">  
+	<form method="POST">
+		<table>
+			<tr>
+				<td>通道</td>
+				<td>
+					<label><input type="checkbox" name="channel" value="1" checked>使用营销通道</label>
+					<p class=hint>营销通道速度慢，不会被人工阻止，适合营销信息</p>
+				</td>
+			</tr>
+			<tr>
+				<td></td>
+				<td>
+					<label><input type="checkbox" name="toAll" value="0">发送给所有用户</label>
+				</td>
+			</tr>
+			<tr>
+				<td width=100px>手机号</td>
+				<td>
+					<textarea name="phone" rows=1 cols=30 class="easyui-validatebox" data-options="required:true"></textarea>
+					<p class=hint>多个手机号使用逗号分隔</p>
+				</td>
+			</tr>
+			<tr>
+				<td>发送内容</td>
+				<td>
+					<textarea rows=5 cols=30 name="content"></textarea>
+					<p class=hint>注意：可以换行输入多行</p>
+				</td>
+			</tr>
+		</table>
+	</form>
+</div>
+<!-- dialogs }}} -->
+
+</div> <!-- my-pages -->
+
+<div id=block class=block></div>
+</body>
+
+</html>
+<!-- vim: set foldmethod=marker: -->

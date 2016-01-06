@@ -1,0 +1,70 @@
+button {
+	width: 100;
+	height: 30;
+}
+
+td {
+	vertical-align: top;
+}
+
+form table {
+	width: 100%;
+}
+
+.block {
+	position:absolute;
+	top:0px;
+	left:0px;
+	width:100px;
+	height:100px;
+	cursor: wait; 
+	filter: alpha(opacity=10);
+	-moz-opacity: 0.1;
+	opacity: 0.1;
+	background-color: white; /*IE auto use transparent*/
+	/*background: url('js/themes/default/images/pagination_loading.gif') no-repeat;*/
+	display: none;
+}
+
+.fieldsp {
+	font-weight: bold; 
+	color: red;
+	padding: 20px 10px 10px 0px;
+	min-width: 150px;
+}
+
+.status-info {
+	background-color: rgb(190, 247, 190) !important /*lightgreen*/
+}
+.status-warning {
+	background-color: yellow !important
+}
+.status-error {
+	background-color: rgb(253, 168, 172) !important /* red */
+}
+.status-disabled {
+	background-color: #cccccc !important /* grey */
+}
+
+.x-grid {
+	border: 1px solid grey;
+	border-collapse: collapse /* cellspacing:0 */
+}
+.x-grid td, .x-grid th {
+	border: 1px solid grey;
+	padding: 3px;
+}
+.x-grid th {
+	background-color: #eefeee
+}
+
+.hint {
+	font-size: 0.6em;
+	margin-top: 0;
+	color: blue;
+}
+
+.perm-mgr2, .perm-mgr, .perm-emp, .perm-item, .perm-astore {
+	display: none
+}
+
