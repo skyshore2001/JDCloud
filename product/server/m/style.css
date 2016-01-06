@@ -61,7 +61,7 @@ label.error {
 	border-color: #ff993f;
 	color: white;
     text-shadow: 0 0px;
-    font-weight: 600;
+    font-weight: normal;
 }
 
 html head+body .ui-page-theme-a .ui-btn.ui-btn-b:focus {
