@@ -74,6 +74,17 @@ class AC0_Ordr extends AccessControl
 		"orderLog" => ["sql"=>"SELECT ol.*, e.uname AS empPhone, e.name AS empName FROM OrderLog ol LEFT JOIN Employee e ON ol.empId=e.id WHERE orderId=%d", "wantOne"=>false],
 		"atts" => ["sql"=>"SELECT id, attId FROM OrderAtt WHERE orderId=%d", "wantOne"=>false],
 	];
+
+	protected $vcolDefs = [
+		[
+			"res" => ["u.name AS userName", "u.phone AS userPhone"],
+			"join" => "INNER JOIN User u ON u.id=t0.userId",
+		],
+		[
+			"res" => ["log_cr.tm AS createTm"],
+			"join" => "LEFT JOIN OrderLog log_cr ON log_cr.action='CR' AND log_cr.orderId=t0.id",
+		]
+	];
 }
 
 class AC1_Ordr extends AC0_Ordr

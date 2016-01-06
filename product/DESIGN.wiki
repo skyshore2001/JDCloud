@@ -411,15 +411,12 @@ Employee.del(id?)
 ==== 查看订单 ====
 
 {{{
-Ordr.query(q?) -> tbl( @Ordr表基本字段, brandName, seriesName, modelName, empName, empPhone )
+Ordr.query(q?) -> tbl( @Ordr表基本字段, brandName, seriesName, modelName, userName, userPhone )
 Ordr.get(id)
 Ordr.set(id)
 }}}
 
-- 对于Ordr.set操作：
-  - 允许在特定条件下修改status字段, 以完成"开始订单服务", "完成订单服务"这些操作.
-  - 允许修改预约时间(comeTm, comeSpan)、联系方式、备注等字段。
-  - 当该订单未清时，允许修改结算状态为有异议(closed=0 => closed=2)或反过来。已清的订单不允许修改。
+- 对于Ordr.set操作，只允许在特定条件下修改status字段, 以完成"开始订单服务", "完成订单服务"这些操作.
 
 *[权限]*
 
@@ -428,7 +425,7 @@ Ordr.set(id)
 
 *[参数]*
 
-q:: String. 查询参数。
+q:: String. 查询参数。暂不使用。
 
 === 管理端 ===
 

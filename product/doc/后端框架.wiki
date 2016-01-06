@@ -688,7 +688,6 @@ URL²ÎÊý"_ver"ÖµÎª¿Í»§¶Ë°æ±¾¡£È¡Öµ²Î¿¼±íApiLog.ver×Ö¶Î¡£Ä¿Ç°Ö»ÓÐ°²×¿¿Í»§¶ËÉèÖÃ¸Ã²
 - AUTH_TEST_MODE: ²âÊÔÄ£Ê½ÏÂ¿ÉÓÃ¡£
 - AUTH_MOCK_MODE: Ä£ÄâÄ£Ê½ÏÂ¿ÉÓÃ¡£
 - AUTH_ADMIN: ¿É²Ù×÷Ò»ÇÐ¶ÔÏó. µ«Ã»ÓÐ×Ô¶¯Íê³É¹¦ÄÜ. ÓÉ³ÌÐòÄÚ²¿Ê¹ÓÃ, ¶ÔÍâÒÑ·ÏÆú(Ô­³¬¼¶¹ÜÀí¶ËÒÑ²»ÔÙÊ¹ÓÃ)
-- AUTH_ASTORE: µ±Ç°ËùÊôÉÌ»§ÊÇ×ÔÓªÉÌ»§ÇÒÓÐÈ¨ÏÞAUTH_MGR/AUTH_MGR2Ê±¿ÉÓÃ.
 - AUTH_PARTNER: ÓÃÓÚÏµÍ³¼¯³ÉµÄÈ¨ÏÞÑéÖ¤¡£²»ÓÃµÇÂ¼£¨Ïàµ±ÓÚAUTH_GUEST£©£¬µ«µ÷ÓÃÃ¿¸öAPIÊ±±ØÐëÌá¹©_pwd/_sign²ÎÊýÖ®Ò»¹©ÑéÖ¤¡£
 
 Èç¹ûAPIÎ´Ã÷È·Ö¸¶¨È¨ÏÞ£¬ÔòÈÏÎªÊÇAUTH_GUEST.
@@ -1313,7 +1312,7 @@ sendSms(phone, content, channel?=0)
 
 *[È¨ÏÞ]*
 
-- AUTH_ASTORE
+- AUTH_EMP
 
 *[²ÎÊý]*
 
@@ -1324,58 +1323,6 @@ channel:: Integer. 0-ÑéÖ¤ÂëÍ¨µÀ£¨ËÙ¶È¿ì£¬¿ÉÄÜ±»ÈË¹¤ºË²éºó×èÖ¹£©£»1-ÓªÏúÍ¨µÀ£¨ËÙ¶
 ¶ÔÒ»¸ö»ò¶à¸öÊÖ»úÈº·¢¶ÌÐÅ¡£
 
 ²âÊÔÒ³Ãæ£ºtool/sms.html
-
-==== ²éÑ¯¶ÌÐÅ¼ÇÂ¼ ====
-
-{{{
-SmsLog.query([cond], [_pagesz=20])
-}}}
-
-²éÑ¯¶ÌÏûÏ¢·¢ËÍ¼ÇÂ¼. Ä¬ÈÏ°´idµ¹ÐòÅÅÁÐ¡£
-
-*[È¨ÏÞ]*
-
-- AUTH_ASTORE
-
-*[²ÎÊý]*
-
-cond:: ²éÑ¯Ìõ¼þ£¬¸ñÊ½²Î¿¼SQLÓï¾äµÄÌõ¼þ¡£Èç"id=1", "phone=12345678901"
-
-*[ÇëÇóÊ¾Àý]*
-²éÑ¯ÊÖ»úºÅÎª123456678901µÄ×î½ü2ÌõÏûÏ¢¼ÇÂ¼, °´ÕÕid½µÐòÅÅÁÐ
-{{{
-SmsLog.query(cond="phone=12345678901", _pagesz=2)
-}}}
-
-*[·µ»ØÊ¾Àý]*
-
-{{{
-{
-	"h": ["id", "phone", "content", "tm", "retval"],
-	"d": [
-			[18, "12345678901", "ÑéÖ¤Âë123872£¬ÇëÔÚ5·ÖÖÓÄÚÊ¹ÓÃ¡£", "2015-09-20 22:21:16", 0],
-			[15, "12345678901", "ÑéÖ¤Âë655288£¬ÇëÔÚ5·ÖÖÓÄÚÊ¹ÓÃ¡£", "2015-09-18 12:46:32", 0],
-		]
-]
-}}
-
-==== ¸øÓÃ»§·¢ÏûÏ¢ ====
-
-{{{
-notifyUser(orderId, content, noWeixin?)
-}}}
-
-¸ø¶©µ¥ÓÃ»§·¢ÏûÏ¢£¬Ä¬ÈÏ·¢Î¢ÐÅºÍ¶ÌÐÅ¡£
-
-*[È¨ÏÞ]*
-
-- AUTH_STORE
-
-*[²ÎÊý]*
-
-orderId:: Integer. ¶©µ¥±àºÅ.
-content:: String. ÏûÏ¢ÄÚÈÝ.
-noWeixin:: Boolean. Èç¹ûÎª1£¬ÔòÖ»·¢¶ÌÐÅ£¬²»·¢Î¢ÐÅÏûÏ¢¡£
 
 ==== ´úÀí ====
 
