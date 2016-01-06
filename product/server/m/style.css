@@ -1,7 +1,8 @@
 /* app_alert */
-.info {
+/*.info {
 	color: darkgreen;
 }
+*/
 .error {
 	color: red;
 }
@@ -17,4 +18,72 @@ label.error {
 	width: 100%;
 	float: none;
 }
+@media screen and (orientation: portrait) {
+	label.error {
+		margin-left: 0;
+		display: block;
+	}
+}
+@media screen and (orientation: landscape) {
+	label.error {
+		display: inline-block;
+		margin-left: 22%;
+	}
+}
 
+/* for button, use data-theme=b; for a, use "ui-btn ui-btn-b"*/
+/* #ff993f * */
+.ui-page-theme-a .ui-btn.ui-btn-active,
+ html .ui-bar-a .ui-btn.ui-btn-active,
+ html .ui-body-a .ui-btn.ui-btn-active,
+ html body .ui-group-theme-a .ui-btn.ui-btn-active,
+ html head+body .ui-btn.ui-btn-a.ui-btn-active,
+ .ui-page-theme-a .ui-checkbox-on:after,
+ html .ui-bar-a .ui-checkbox-on:after,
+ html .ui-body-a .ui-checkbox-on:after,
+ html body .ui-group-theme-a .ui-checkbox-on:after,
+ .ui-btn.ui-checkbox-on.ui-btn-a:after,
+ .ui-page-theme-a .ui-flipswitch-active,
+ html .ui-bar-a .ui-flipswitch-active,
+ html .ui-body-a .ui-flipswitch-active,
+ html body .ui-group-theme-a .ui-flipswitch-active,
+ html body .ui-flipswitch.ui-bar-a.ui-flipswitch-active,
+ .ui-page-theme-a .ui-slider-track .ui-btn-active,
+ html .ui-bar-a .ui-slider-track .ui-btn-active,
+ html .ui-body-a .ui-slider-track .ui-btn-active,
+ html body .ui-group-theme-a .ui-slider-track .ui-btn-active,
+ html body div.ui-slider-track.ui-body-a .ui-btn-active,
+
+ html head+body .ui-page-theme-a .ui-btn.ui-btn-b,
+ html head+body .ui-page-theme-a .ui-btn.ui-btn-b:hover
+{
+	background-color: #ff993f;
+	border-color: #ff993f;
+	color: white;
+    text-shadow: 0 0px;
+    font-weight: 600;
+}
+
+html head+body .ui-page-theme-a .ui-btn.ui-btn-b:focus {
+    box-shadow: 0 0px;
+}
+
+html .ui-bar-a .ui-btn:focus, .ui-page-theme-a .ui-btn:focus {
+    box-shadow: 0 0 0px;
+}
+
+html head+body .ui-btn.ui-btn-b {
+    text-shadow: 0 0px;
+}
+
+/* 如果一行显示不下，可拖动 */
+.ui-listview li {
+	text-overflow: clip !important;
+	overflow: auto !important;
+}
+
+.nextpage {
+	color: blue !important;
+	text-align:center !important;
+	cursor: pointer !important;
+}
