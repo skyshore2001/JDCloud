@@ -202,8 +202,9 @@ var self = this;
 */
 self.m_app = {
 	title: "客户端",
-	appName: null,
-	onShowLogin: function () { throw "NotImplemented"; }
+	appName: "user",
+	onShowLogin: function () { throw "NotImplemented"; },
+	pageHome: "pageHome"
 };
 
 // set g_args
@@ -996,9 +997,10 @@ page定义示例:
 
 page调用示例:
 
-	showPage("pageHome");
-	showPage("pageHome", "首页");
-	showPage("pageHome", "首页2");
+	WUI.showPage("pageHome");
+	WUI.showPage("pageHome", "首页");
+	WUI.showPage("pageHome", "首页2");
+
 */
 self.showPage = showPage;
 function showPage(pageName, title, paramArr)
@@ -1015,7 +1017,7 @@ function showPage(pageName, title, paramArr)
 
 	var id = tabid(title);
 	var content = "<div id='" + id + "' title='" + title + "' />";
-	var closable = (pageName != "pageHome");
+	var closable = (pageName != self.m_app.pageHome);
 
 	tt.tabs('add',{
 // 		id: id,
@@ -1692,19 +1694,17 @@ function handleLogin(data)
 	if (g_args.autoLogin || /android|ipad|iphone/i.test(navigator.userAgent))
 		saveLoginToken(data);
 
-	// TODO
-	showPage("pageHome");
+	showPage(self.m_app.pageHome);
 }
 //}}}
 
 /**
 @fn WUI.setApp(app)
 
-@param app={appName?=user, allowedEntries?, loginPage?="#login"}
+@param app={appName?=user, title?="客户端", onShowLogin, pageHome?="pageHome"}
 
 - appName: 用于与后端通讯时标识app.
-- allowedEntries: 一个数组, 如果初始页面不在该数组中, 则自动转向主页.
-- loginPage: login页面的地址, 默认为"#login"
+- pageHome: 首页的id, 默认为"pageHome"
 */
 self.setApp = setApp;
 function setApp(app)
