@@ -1,5 +1,41 @@
-// ====== toolkit {{{
-// 可使用$.closest替代
+// ====== global {{{
+var IsBusy = false;
+var g_args = {}; // {_test, _debug}
+
+// 应用内部共享数据
+var g_data = {}; // {userInfo}
+// 应用配置项
+//var g_cfg = {};
+
+var FormMode = {
+	forAdd: 0,
+	forSet: 1,
+	forLink: 2,
+	forFind: 3,
+	forDel: 4  // 该模式实际上不会打开dlg
+};
+
+var E_AUTHFAIL=-1;
+var E_NOAUTH=2;
+//}}}
+
+// ====== app toolkit {{{
+// for datagrid column sorter
+function intSort(a, b)
+{
+	return parseInt(a) > parseInt(b)? 1: -1;
+}
+
+function numberSort(a, b)
+{
+	return parseFloat(a) > parseFloat(b)? 1: -1;
+}
+
+/**
+@fn getAncestor(o, fn)
+
+取符合条件(fn)的对象，一般可使用$.closest替代
+*/
 function getAncestor(o, fn)
 {
 	while (o && !fn(o)) {
@@ -8,33 +44,32 @@ function getAncestor(o, fn)
 	return o;
 }
 
-function parseQuery(s)
+/**
+@fn app_abort()
+
+中止之后的调用, 直接返回.
+*/
+function app_abort()
 {
-	var ret = {};
-	if (s != "")
-	{
-		var a = s.split('&')
-		for (i=0; i<a.length; ++i) {
-			var a1 = a[i].split("=");
-			var val = a1[1];
-			if (val === undefined)
-				val = 1;
-			else if (/^-?[0-9]+$/.test(val)) {
-				val = parseInt(val);
-			}
-			else if (/^-?[0-9.]+$/.test(val)) {
-				val = parseFloat(val);
-			}
-			else {
-				val = decodeURIComponent(val);
-			}
-			ret[a1[0]] = val;
-		}
-	}
-	return ret;
+	throw("abort");
 }
 
-// ------ jQuery level {{{
+// allow throw("abort") as abort behavior.
+window.onerror = function (msg) {
+	if (/abort$/.test(msg))
+		return true;
+};
+
+// ------ jQuery based {{{
+/**
+@fn jQuery.fn.jdata(val?)
+
+和使用$.data()差不多，更好用一些. 例：
+
+	$(o).jdata().hello = 100;
+	$(o).jdata({hello:100, world:200});
+
+*/
 $.fn.jdata = function (val) {
 	if (val != null) {
 		this.data("jdata", val);
@@ -46,6 +81,11 @@ $.fn.jdata = function (val) {
 	return jd;
 }
 
+/**
+@fn jQuery.fn.getAncestor(expr)
+
+取符合条件(expr)的对象，一般可使用$.closest替代
+*/
 $.fn.getAncestor = function (expr) {
 	var jo = this;
 	while (jo && !jo.is(expr)) {
@@ -54,8 +94,13 @@ $.fn.getAncestor = function (expr) {
 	return jo;
 }
 
-// row: {\@cols}
-// col: {useTh?=false, html?, \%css?, \%attr?, \%on?}
+/**
+@fn row2tr(row)
+@return jquery tr对象
+@param row {\@cols}, col: {useTh?=false, html?, \%css?, \%attr?, \%on?}
+
+根据row结构构造jQuery tr对象。
+*/
 function row2tr(row)
 {
 	var jtr = $("<tr></tr>");
@@ -74,6 +119,9 @@ function row2tr(row)
 	return jtr;
 }
 
+/**
+@fn $.getScriptWithCache(url, options?)
+*/
 $.getScriptWithCache = function(url, options) 
 {
 	// allow user to set any option except for dataType, cache, and url
@@ -91,17 +139,80 @@ $.getScriptWithCache = function(url, options)
 
 //}}}
 
-// ====== app framework functions {{{
-var g_testMode = 0;
-var g_args = {};
+// ====== app framework {{{
+/*
+// ---- template for the singleton
 
-// set g_args, g_testMode
+var WUI = new nsWUI();
+
+function nsWUI()
+{
+	var self = this;
+
+	self.var1 = 100; // public var
+	var m_var2 = {}; // 私有变量
+
+	self.fn1 = fn1; // public function
+	function fn1(x) 
+	{
+		privateFn1();
+	}
+
+	function privateFn1() {
+		alert(self.var1 + m_var2);
+	}
+}
+
+// ---- another template: usually for interface declaration
+var WUI = {
+	var1: 100,
+	
+	fn1: null // Function(x)
+
+	fn2: function () {
+		 this._private1();
+	},
+
+	private1_: function () {
+		alert(this.var1);
+	},
+};
+
+initWUI();
+
+function initWUI()
+{
+	WUI.fn1 = fn1;
+	function fn1()
+	{
+	}
+}
+*/
+
+/** 
+@module WUI
+*/
+var WUI = new nsWUI();
+function nsWUI()
+{
+var self = this;
+
+/**
+@var WUI.m_app
+*/
+self.m_app = {
+	title: "客户端",
+	appName: null,
+	onShowLogin: function () { throw "NotImplemented"; }
+};
+
+// set g_args
 function parseArgs()
 {
 	if (location.search) {
 		g_args = parseQuery(location.search.substr(1));
 		if (g_args.test || g_args._test) {
-			g_testMode = 1;
+			g_args._test = 1;
 			alert("测试模式!");
 		}
 	}
@@ -109,10 +220,13 @@ function parseArgs()
 parseArgs();
 
 // ---- ajax setup {{{
-// TODO: require #block
+/**
+@fn WUI.enterWaiting()
+@alias enterWaiting()
 
-var IsBusy = false;
-
+TODO: require #block
+*/
+window.enterWaiting = self.enterWaiting = enterWaiting;
 function enterWaiting()
 {
 	IsBusy = true;
@@ -123,6 +237,11 @@ function enterWaiting()
 	}).show();
 }
 
+/**
+@fn WUI.leaveWaiting()
+@alias leaveWaiting
+*/
+window.leaveWaiting = self.leaveWaiting = leaveWaiting;
 function leaveWaiting()
 {
 	$('#block').hide();
@@ -149,17 +268,49 @@ function appendParam(url, params)
 	return url + (url.indexOf('?')>0? "&": "?") + paramStr(params);
 }
 
+/**
+@fn WUI.makeUrl(action, params)
+@alias makeUrl
+
+生成对后端调用的url. 
+
+	var params = {id: 100};
+	var url = makeUrl("Ordr.set", params);
+
+注意：调用该函数生成的url在结尾有标志字符串"zz=1", 如"../api.php/login?_app=user&zz=1"
+ */
+window.makeUrl = self.makeUrl = makeUrl;
 function makeUrl(ac, params)
 {
-	var url = MyApp.makeAcUrl(ac);
+	// 避免重复调用
+	if (ac instanceof String && ac.indexOf("zz=1") >0)
+		return ac;
+
+	if (params == null)
+		params = {};
+
+	var usePathInfo = true;
+	var url;
+	if (ac instanceof Array) {
+		ac = ac[0] + "." + ac[1];
+	}
+	if (usePathInfo) {
+		url = "../api.php/" + ac;
+	}
+	else {
+		url = "../api.php?ac=" + ac;
+	}
+
+	if (self.m_app.appName)
+		params._app = self.m_app.appName;
+	if (g_args._test)
+		params._test = 1;
+	if (g_args._debug)
+		params._debug = g_args._debug;
+
+	params.zz = 1; // zz标记
 	return appendParam(url, params);
 }
-
-// allow throw("abort") as abort behavior.
-window.onerror = function (msg) {
-	if (/abort$/.test(msg))
-		return true;
-};
 
 $.ajaxSetup({
 	dataType: "json",
@@ -183,8 +334,51 @@ $.ajaxSetup({
 	error: defAjaxErrProc
 });
 
-function callSvr(url, fn, data, userOpt)
+/**
+@fn WUI.callSvr(ac, param?, fn?, data?, userOptions?)
+@fn WUI.callSvr(ac, fn?, data?, userOptions?)
+@alias callSvr
+
+@param ac String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)
+@param param Object. URL参数（或称HTTP GET参数）
+@param data Object. POST参数. 如果有该参数, 则自动使用HTTP POST请求(data作为POST内容), 否则使用HTTP GET请求.
+@param fn Function(data). 回调函数, data参考该接口的返回值定义。
+@param userOptions 用户自定义参数, 会合并到$.ajax调用的options参数中.可在回调函数中用"this.参数名"引用. 
+
+常用userOptions: 
+- 指定{async:0}来做同步请求, 一般直接用callSvrSync调用来替代.
+- 指定{noex:1}用于忽略错误处理, 当后端返回错误时, 回调函数会被调用, 且参数data=false.
+
+例：
+
+	callSvr("logout");
+	callSvr("logout", api_logout);
+	callSvr("login", {wantAll:1}, api_login);
+	callSvr("info/hotline.php", {q: '大众'}, api_hotline);
+
+	// 也兼容使用makeUrl的旧格式如:
+	callSvr(makeUrl("logout"), api_logout);
+	callSvr(makeUrl("logout", {a:1}), api_logout);
+
+	callSvr("User.get", function (data) {
+		if (data === false) { // 仅当设置noex且服务端返回错误时可返回false
+			return;
+		}
+		foo(data);
+	}, null, {noex:1});
+
+*/
+window.callSvr = self.callSvr = callSvr;
+function callSvr(ac, params, fn, data, userOptions)
 {
+	if (params instanceof Function) {
+		// 兼容格式：callSvr(url, fn?, data?, userOptions?);
+		userOptions = data;
+		data = fn;
+		fn = params;
+		params = null;
+	}
+	var url = makeUrl(ac, params);
 	enterWaiting();
 	var method = (data === undefined? 'GET': 'POST');
 	var ret;
@@ -206,16 +400,32 @@ function callSvr(url, fn, data, userOpt)
 		}
 
 // 		error: defAjaxErrProc
-	}, userOpt);
+	}, userOptions);
 	$.ajax(opt);
 	return ret;
 }
 
-function callSvrSync(url, fn, data)
+/**
+@fn WUI.callSvrSync(ac, params, fn?, data?)
+@fn WUI.callSvrSync(ac, fn, data?)
+@alias callSvrSync
+@return 接口返回的数据
+
+同步模式调用callSvr.
+*/
+function callSvrSync(ac, params, fn, data)
 {
-	return callSvr(url, fn, data, {async: false});
+	var ret;
+	if (params instanceof Function) {
+		ret = callSvr(ac, null, params, fn, {async: false});
+	}
+	else {
+		ret = callSvr(ac, params, fn, data, {async: false});
+	}
+	return ret;
 }
 
+// TODO: doc for this.lastError
 // return: null/undefined - ignore processing; data - pre-processed app-level return; false - app-level failure handled by caller (and this.lastError=[code, msg, info?])
 function defDataProc(rv)
 {
@@ -236,8 +446,11 @@ function defDataProc(rv)
 		if (this.noex)
 			return false;
 
-		if (MyApp.checkAndShowLogin(rv[0]))
+		if (rv[0] == E_NOAUTH)
+		{
+			self.m_app.onShowLogin();
 			return;
+		}
 
 		window.showLastError = function () {
 			alert(rv[2]);
@@ -363,8 +576,8 @@ var DefaultValidateRules = {
 	number: {
 		validator: function(v) {
 			return v.length==0 || /^[0-9.-]+$/.test(v);
-        },
-        message: '必须为数字!'
+		},
+		message: '必须为数字!'
 	},
 	/*
 	workday: {
@@ -374,8 +587,8 @@ var DefaultValidateRules = {
 		message: '格式例："1,3a,5b"表示周一,周三上午,周五下午.'
 	},
 	idcard: {
-        validator: checkIdCard,
-        message: '18位身份证号有误!'
+		validator: checkIdCard,
+		message: '18位身份证号有误!'
 	},
 	*/
 	uname: {
@@ -450,14 +663,22 @@ $.extend($.fn.tabs.defaults, {
 */
 // }}}
 
-// type="i"|"e"|"w", 缺省为"i"
+/**
+@fn WUI.app_alert(msg, type?=i, fn?)
+@alias app_alert
+@param type String. "i"|"e"|"w"
+@param fn Function(). 用户点击确定后的回调。
+
+使用jQuery easyui弹出提示对话框.
+*/
+window.app_alert = self.app_alert = app_alert;
 function app_alert(msg, type, fn)
 {
 	type = type || "i";
 	var icon = {i: "info", w: "warning", e: "error"}[type];
 	var s = {i: "提示", w: "警告", e: "出错"}[type];
 	var s1 = "<b>[" + s + "]</b>";
-	$.messager.alert(MyApp.title + " - " + s, s1 + " " + msg, icon, fn);
+	$.messager.alert(self.m_app.title + " - " + s, s1 + " " + msg, icon, fn);
 
 	// 查看jquery-easyui对象，发现OK按钮的class=1-btn
 	setTimeout(function() {
@@ -465,35 +686,48 @@ function app_alert(msg, type, fn)
 	}, 50);
 }
 
+/**
+@fn WUI.app_confirm(msg, type?=i, fn?)
+@alias app_confirm
+@param fn Function(). 用户点击确定后的回调。
+
+使用jQuery easyui弹出确认对话框.
+*/
+window.app_confirm = self.app_confirm = app_confirm;
 function app_confirm(msg, fn)
 {
 	var s = "<div style='font-size:10pt'>" + msg.replace(/\n/g, "<br/>") + "</div>";
-	$.messager.confirm(MyApp.title + " - " + "确认", s, fn);
+	$.messager.confirm(self.m_app.title + " - " + "确认", s, fn);
 }
 
+/**
+@fn WUI.app_show(msg)
+@alias app_show
+
+使用jQuery easyui弹出对话框.
+*/
+window.app_show = self.app_show = app_show;
 function app_show(msg)
 {
-	$.messager.show({title: MyApp.title, msg: msg});
+	$.messager.show({title: self.m_app.title, msg: msg});
 }
 
+/**
+@fn WUI.makeLinkTo
+@alias makeLinkTo
+
+生成一个链接的html代码，点击该链接可以打开指定对象的对话框。
+*/
+window.makeLinkTo = self.makeLinkTo = makeLinkTo;
 function makeLinkTo(dlg, id, text)
 {
-	return "<a href=\"" + dlg + "\" onclick='MyUI.showObjDlg($(\"" + dlg + "\"),FormMode.forLink," + id + ");return false'>" + text + "</a>";
+	return "<a href=\"" + dlg + "\" onclick='WUI.showObjDlg($(\"" + dlg + "\"),FormMode.forLink," + id + ");return false'>" + text + "</a>";
 }
-
-// for datagrid column sorter
-function intSort(a, b)
-{
-	return parseInt(a) > parseInt(b)? 1: -1;
-}
-
-function numberSort(a, b)
-{
-	return parseFloat(a) > parseFloat(b)? 1: -1;
-}
-// }}}
 
 // ====== jquery plugin: mycombobox {{{
+/**
+@fn jQuery.fn.mycombobox
+ */
 var m_dataCache = {}; // url => data
 $.fn.mycombobox = function () 
 {
@@ -576,75 +810,9 @@ $.fn.mycombobox = function ()
 		}
 	}
 };
-
-// }}}
+//}}}
 
 // ======  UI framework {{{
-/*
-// ---- template for the singleton
-
-var MyUI = new nsMyUI();
-
-function nsMyUI()
-{
-	var self = this;
-
-	self.var1 = 100; // public var
-	var m_var2 = {}; // 私有变量
-
-	self.fn1 = fn1; // public function
-	function fn1(x) 
-	{
-		privateFn1();
-	}
-
-	function privateFn1() {
-		alert(self.var1 + m_var2);
-	}
-}
-
-// ---- another template: usually for interface declaration
-var MyUI = {
-	var1: 100,
-	
-	fn1: null // Function(x)
-
-	fn2: function () {
-		 this._private1();
-	},
-
-	private1_: function () {
-		alert(this.var1);
-	},
-};
-
-initMyUI();
-
-function initMyUI()
-{
-	MyUI.fn1 = fn1;
-	function fn1()
-	{
-	}
-}
-*/
-
-var FormMode = {
-	forAdd: 0,
-	forSet: 1,
-	forLink: 2,
-	forFind: 3,
-	forDel: 4  // 该模式实际上不会打开dlg
-};
-
-/** 
-@module MyUI
-*/
-var MyUI = new nsMyUI();
-function nsMyUI() 
-{
-	var self = this;
-
 // dlg中与数据库表关联的字段的name应以_开头，故调用add_转换；
 // 但如果字段名中间有"__"表示非关联到表的字段，不做转换，这之后该字段不影响数据保存。
 function add_(o)
@@ -669,7 +837,7 @@ function getRow(jtbl)
 }
 
 /** 
-@fn MyUI.reload(jtbl, url?, queryParams?) 
+@fn WUI.reload(jtbl, url?, queryParams?) 
 */
 self.reload = reload;
 function reload(jtbl, url, queryParams)
@@ -697,7 +865,7 @@ function reload(jtbl, url, queryParams)
 }
 
 /** 
-@fn MyUI.reloadTmp(jtbl, url?, queryParams?) 
+@fn WUI.reloadTmp(jtbl, url?, queryParams?) 
 临时reload一下，完事后恢复原url
 */
 self.reloadTmp = reloadTmp;
@@ -715,7 +883,7 @@ function reloadTmp(jtbl, url, queryParams)
 }
 
 /** 
-@fn MyUI.reloadRow(jtbl, rowData)
+@fn WUI.reloadRow(jtbl, rowData)
 @param rowData must be the original data from table row
  */
 self.reloadRow = reloadRow;
@@ -811,7 +979,7 @@ function callInitfn(jo, paramArr)
 }
 
 /** 
-@fn MyUI.showPage(pageName, title?, paramArr?)
+@fn WUI.showPage(pageName, title?, paramArr?)
 @param pageName 由page上的class指定。
 @param title? 如果未指定，则使用page上的title属性.
 @param paramArr? 调用initfn时使用的参数，是一个数组。
@@ -869,7 +1037,7 @@ function showPage(pageName, title, paramArr)
 }
 
 /**
-@fn MyUI.closeDlg(jdlg) 
+@fn WUI.closeDlg(jdlg) 
 */
 self.closeDlg = closeDlg;
 function closeDlg(jdlg)
@@ -922,7 +1090,7 @@ $.fn.okCancel = function (fnOk, fnCancel) {
 }
 
 /**
-@fn MyUI.showDlg(jdlg, opt?)
+@fn WUI.showDlg(jdlg, opt?)
 @param opt?={url, buttons, noCancel=false, okLabel="确定", cancelLabel="取消", modal=true, reset=true, validate=true, data, onOk, onSubmit, onAfterSubmit}
 
 - url: 点击确定时的操作动作。
@@ -1079,7 +1247,7 @@ function getop(v)
 }
 
 /**
-@fn MyUI.getQueryCond(kvList)
+@fn WUI.getQueryCond(kvList)
 */
 self.getQueryCond = getQueryCond;
 function getQueryCond(kvList)
@@ -1098,7 +1266,7 @@ function getQueryCond(kvList)
 }
 
 /**
-@fn MyUI.getQueryParam(kvList)
+@fn WUI.getQueryParam(kvList)
 */
 self.getQueryParam = getQueryParam;
 function getQueryParam(kvList)
@@ -1158,7 +1326,7 @@ function restoreFormFields(jfrm)
 }
 
 /**
-@fn MyUI.showObjDlg(jdlg, mode, id?)
+@fn WUI.showObjDlg(jdlg, mode, id?)
 @param id String. mode=link时必设，set/del如缺省则从关联的jtbl中取, add/find时不需要
 @param jdbl Datagrid. dialog/form关联的datagrid -- 如果dlg对应多个tbl, 必须每次打开都设置
 */
@@ -1321,7 +1489,7 @@ function showObjDlg(jdlg, mode, id)
 }
 
 /**
-@fn MyUI.dg_toolbar(jtbl, jdlg, button_lists...)
+@fn WUI.dg_toolbar(jtbl, jdlg, button_lists...)
 
 设置easyui-datagrid上toolbar上的按钮。缺省支持的按钮有r(refresh), f(find), a(add), s(set), d(del), 可通过以下设置方式修改：
 
@@ -1384,7 +1552,7 @@ function dg_toolbar(jtbl, jdlg)
 }
 
 /**
-@fn MyUI.dg_dblclick
+@fn WUI.dg_dblclick
 
 设置双击datagrid行的回调，功能是打开相应的dialog
 */
@@ -1399,14 +1567,13 @@ self.dg_dblclick = function (jtbl, jdlg)
 
 //}}}
 
-}
-
+// TODO: doc for WUI
 function link_onclick()
 {
 	var href = $(this).attr("href");
 	if (href.search(/^#(page\w+)$/) >= 0) {
 		var pageName = RegExp.$1;
-		MyUI.showPage.call(this, pageName);
+		WUI.showPage.call(this, pageName);
 		return false;
 	}
 	else if (href.search(/^\?(\w+)$/) >= 0) {
@@ -1425,55 +1592,13 @@ $(function () {
 
 //}}}
 
-// ====== MyApp interface {{{
-var MyApp = {
-	title: "小鳄养车",
-	appName: null,
-
-	makeAcUrl: function (ac) {
-		var usePathInfo = true;
-		var url;
-		if (ac instanceof Array) {
-			ac = ac[0] + "." + ac[1];
-		}
-		if (usePathInfo) {
-			url = "../api.php/" + ac;
-		}
-		else {
-			url = "../api.php?ac=" + ac;
-		}
-		var params = {};
-		if (this.appName)
-			params._app = this.appName;
-		if (window.g_testMode)
-			params._test = 1;
-		if (g_args._debug)
-			params._debug = g_args._debug;
-		return appendParam(url, params);
-	},
-
-	checkAndShowLogin: function (retCode) {
-		var E_NOAUTH = 2;
-		if (retCode != E_NOAUTH)
-			return false;
-		MyApp.onShowLogin();
-		return true;
-	},
-
-// protected:
-
-	// if (retcode == MyApp.codeNoAuth) { MyApp.showLogin(); return false; }
-	onShowLogin: function () { throw "NotImplemented"; }
-};
-//}}}
-
 // ====== login token for auto login {{{
 function tokenName()
 {
 	var name = "token";
-	if (MyApp.appName)
-		name += "_" + MyApp.appName;
-	if (window.g_testMode)
+	if (self.m_app.appName)
+		name += "_" + self.m_app.appName;
+	if (g_args._test)
 		name += "_test";
 	return name;
 }
@@ -1494,28 +1619,47 @@ function deleteLoginToken()
 	delStorage(tokenName());
 }
 
-// called in myInit() (before JQM works)
-// reuseCmd?=null
-function tryAutoLogin(onLoginOK, reuseCmd)
+/**
+@fn WUI.tryAutoLogin(onHandleLogin, reuseCmd?)
+
+@param onHandleLogin Function(data). 调用后台login()成功后的回调函数(里面使用this为ajax options); 可以直接使用WUI.handleLogin
+@param reuseCmd String. 当session存在时替代后台login()操作的API, 如"User.get", "Employee.get"等, 它们在已登录时返回与login相兼容的数据. 因为login操作比较重, 使用它们可减轻服务器压力. 
+
+该函数一般在页面加载完成后调用，如
+
+	function main()
+	{
+		WUI.setApp({
+			appName: APP_NAME,
+			title: APP_TITLE,
+			onShowLogin: showDlgLogin
+		});
+
+		WUI.tryAutoLogin(WUI.handleLogin, "whoami");
+	}
+
+	$(main);
+
+*/
+self.tryAutoLogin = tryAutoLogin;
+function tryAutoLogin(onHandleLogin, reuseCmd)
 {
 	var ok = false;
 	var ajaxOpt = {async: false, noex: true};
-	var url;
 
 	function handleAutoLogin(data)
 	{
 		if (data === false) // has exception (as noex=true)
 			return;
 
-		if (onLoginOK)
-			onLoginOK.call(this, data);
+		if (onHandleLogin)
+			onHandleLogin.call(this, data);
 		ok = true;
 	}
 
 	// first try "User.get"
 	if (reuseCmd != null) {
-		url = makeUrl(reuseCmd);
-		callSvr(url, handleAutoLogin, null, ajaxOpt);
+		callSvr(reuseCmd, handleAutoLogin, null, ajaxOpt);
 	}
 	if (ok)
 		return;
@@ -1524,15 +1668,70 @@ function tryAutoLogin(onLoginOK, reuseCmd)
 	var token = loadLoginToken();
 	if (token != null)
 	{
-		url = makeUrl("login");
 		var postData = {token: token};
-		callSvr(url, handleAutoLogin, postData, ajaxOpt);
+		callSvr("login", handleAutoLogin, postData, ajaxOpt);
 	}
 	if (ok)
 		return;
 
-	MyApp.onShowLogin();
+	self.m_app.onShowLogin();
+}
+
+/**
+@fn WUI.handleLogin(data)
+@param data 调用API "login"成功后的返回数据.
+
+处理login相关的操作, 如设置g_data.userInfo, 保存自动登录的token等等.
+
+*/
+self.handleLogin = handleLogin;
+function handleLogin(data)
+{
+	g_data.userInfo = data;
+	// 自动登录: http://...?autoLogin
+	if (g_args.autoLogin || /android|ipad|iphone/i.test(navigator.userAgent))
+		saveLoginToken(data);
+
+	// TODO
+	showPage("pageHome");
 }
 //}}}
+
+/**
+@fn WUI.setApp(app)
+
+@param app={appName?=user, allowedEntries?, loginPage?="#login"}
+
+- appName: 用于与后端通讯时标识app.
+- allowedEntries: 一个数组, 如果初始页面不在该数组中, 则自动转向主页.
+- loginPage: login页面的地址, 默认为"#login"
+*/
+self.setApp = setApp;
+function setApp(app)
+{
+	$.extend(self.m_app, app);
+}
+
+/**
+@fn WUI.logout(dontReload?=0)
+@param dontReload 如果非0, 则注销后不刷新页面.
+
+注销当前登录, 成功后刷新页面(除非指定dontReload=1)
+*/
+self.logout = logout;
+function logout(dontReload)
+{
+	deleteLoginToken();
+	g_data.userInfo = null;
+	callSvr("logout", function (data) {
+		if (! dontReload)
+			reloadSite();
+	});
+}
+
+// ========= END OF nsWUI ============
+}
+
+// }}}
 
 // vim: set foldmethod=marker:

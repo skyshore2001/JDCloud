@@ -157,11 +157,7 @@ var OrderLogColumns = {
 // ==== init page and dialog {{{
 function handleLogin(data)
 {
-	g_data.userInfo = data;
-	// 自动登录: http://...?autoLogin
-	if (g_args.autoLogin)
-		saveLoginToken(data);
-	MyUI.showPage("pageHome");
+	WUI.handleLogin(data);
 }
 
 function initPageHome()
@@ -228,11 +224,11 @@ function initPageOrder()
 
 	function getTodoOrders()
 	{
-		MyUI.reload(jtbl, null, query2);
+		WUI.reload(jtbl, null, query2);
 	}
 	function getTodayOrders()
 	{
-		MyUI.reload(jtbl, null, query1);
+		WUI.reload(jtbl, null, query1);
 	}
 	var btn1 = {text: "今天订单", iconCls:'icon-search', handler: getTodayOrders};
 	var btn2 = {text: "所有未完成", iconCls:'icon-search', handler: getTodoOrders};
@@ -240,8 +236,8 @@ function initPageOrder()
 	var dgOpt = {
 		url: makeUrl(["Ordr", "query"], {res:"*,createTm,userPhone"}),
 		queryParams: query1,
-		toolbar: MyUI.dg_toolbar(jtbl, jdlg, "-", btn1, btn2),
-		onDblClickRow: MyUI.dg_dblclick(jtbl, jdlg)
+		toolbar: WUI.dg_toolbar(jtbl, jdlg, "-", btn1, btn2),
+		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
 	};
 	jtbl.datagrid(dgOpt);
 }
@@ -255,7 +251,7 @@ function initDlgOrder()
 		jdlg.find(".notForFind").toggle(mode != FormMode.forFind);
 	})
 	.on("loaddata", function (ev, data) {
-		var showMore = (data.items !== undefined);
+		var showMore = (data.orderLog !== undefined);
 		var divOrderMore = jdlg.find("#divOrderMore");
 		if (! showMore) {
 			divOrderMore.hide();
@@ -276,13 +272,13 @@ function initDlgOrder()
 function showDlgLogin()
 {
 	var jdlg = $("#dlgLogin");
-	MyUI.showDlg(jdlg, {
-		url: makeUrl("login", {_t: "store"}),
+	WUI.showDlg(jdlg, {
+		url: makeUrl("login"),
 		noCancel: true,
 		okLabel: '登录',
 
 		onOk: function (data) {
-			MyUI.closeDlg(jdlg);
+			WUI.closeDlg(jdlg);
 			handleLogin(data);
 		}
 	});
@@ -291,11 +287,11 @@ function showDlgLogin()
 function showDlgSendSms()
 {
 	var jdlg = $("#dlgSendSms");
-	MyUI.showDlg(jdlg, {
+	WUI.showDlg(jdlg, {
 		url: makeUrl("sendSms"),
 		reset: false,
 		onOk: function (data) {
-			MyUI.closeDlg(jdlg);
+			WUI.closeDlg(jdlg);
 			app_show('操作成功!');
 		}
 	});
@@ -310,11 +306,14 @@ var APP_NAME = "emp-adm";
 
 function main()
 {
+	WUI.setApp({
+		appName: APP_NAME,
+		title: APP_TITLE,
+		onShowLogin: showDlgLogin
+	});
 	setAppTitle(APP_TITLE);
-	MyApp.appName = APP_NAME;
-	MyApp.onShowLogin = showDlgLogin;
 
-	tryAutoLogin(handleLogin, "Employee.get");
+	WUI.tryAutoLogin(handleLogin, "Employee.get");
 }
 
 $(main);
@@ -489,7 +488,7 @@ $(main);
 			</tr>
 
 		</table>  
-		<input id="btnOrderMore" class="notForFind" type=button onClick="MyUI.showObjDlg($('#dlgOrder'), FormMode.forLink, this.form.id.value); return false;" value="查看明细">
+		<input id="btnOrderMore" class="notForFind" type=button onClick="WUI.showObjDlg($('#dlgOrder'), FormMode.forLink, this.form.id.value); return false;" value="查看明细">
 	</form>
 
 	<div id="divOrderMore" class="notForFind">

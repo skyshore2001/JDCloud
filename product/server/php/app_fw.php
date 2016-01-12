@@ -594,8 +594,9 @@ function dbconn($fnConfirm = null)
 	try {
 		$DBH = new MyPDO ($C[0], $C[1], $C[2]);
 	}
-   	catch (PDOException $e) {
-		throw new MyException(E_DB, "dbconn fails", "数据库连接失败");
+	catch (PDOException $e) {
+		$msg = $GLOBALS["TEST_MODE"] ? $e->getMessage() : "dbconn fails";
+		throw new MyException(E_DB, $msg, "数据库连接失败");
 	}
 	
 	if ($USE_MYSQL) {
@@ -1088,7 +1089,7 @@ class AppFw_
 
 		global $TEST_MODE;
 		if (!isset($TEST_MODE)) {
-			$TEST_MODE = param("_test/i", isCLIServer() || hasSignFile("CFG_TEST_MODE")?1:0);
+			$TEST_MODE = param("_test/i", isCLIServer() || isCLI() || hasSignFile("CFG_TEST_MODE")?1:0);
 		}
 
 		global $MOCK_MODE;

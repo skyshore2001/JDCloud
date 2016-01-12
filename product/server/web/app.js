@@ -107,9 +107,9 @@ function imgToHidden(jp, sep)
 			// e.g. "data:image/jpeg;base64,..."
 			if (this.src.substr(0, 4) === "data") {
 				var b64data = this.src.substr(this.src.indexOf(",")+1);
-				var url = makeUrl("upload", {fmt: "raw_b64", genThumb: 1, f: "1.jpg", autoResize: 0});
+				var params = {fmt: "raw_b64", genThumb: 1, f: "1.jpg", autoResize: 0};
 				var ids;
-				callSvrSync(url, function (data) {
+				callSvrSync("upload", params, function (data) {
 					val.push(data[0].thumbId);
 				}, b64data);
 			}
@@ -171,10 +171,10 @@ function searchField(o, param)
 		app_alert("请先打开列表再查询", "w");
 		return;
 	}
-	var queryParams = MyUI.getQueryParam(param);
+	var queryParams = WUI.getQueryParam(param);
 	if (queryParams.cond == "")
 		return;
-	MyUI.reload(jtbl, null, queryParams);
+	WUI.reload(jtbl, null, queryParams);
 }
 
 //}}}
@@ -182,20 +182,15 @@ function searchField(o, param)
 // ==== functions {{{
 function setAppTitle(title)
 {
-	MyApp.title = title;
 	if (document.title == "")
-		document.title = MyApp.title;
+		document.title = title;
 	$(".my-title").html(document.title);
-	$("body.easyui-layout").layout("panel", "center").panel({title: "欢迎使用" + MyApp.title});
+	$("body.easyui-layout").layout("panel", "center").panel({title: "欢迎使用" + title});
 }
 
 function logout()
 {
-	deleteLoginToken();
-	g_data.userInfo = null;
-	callSvr(makeUrl("logout"), function (data) {
-		reloadSite();
-	});
+	WUI.logout();
 }
 // }}}
 

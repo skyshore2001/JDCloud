@@ -49,13 +49,13 @@ var OrderColumns = {
 function showDlgLogin()
 {
 		var jdlg = $("#dlgLogin");
-		MyUI.showDlg(jdlg, {
+		WUI.showDlg(jdlg, {
 			url: makeUrl("login"),
 			noCancel: true,
 			okLabel: '登录',
 
 			onOk: function (data) {
-				MyUI.closeDlg(jdlg);
+				WUI.closeDlg(jdlg);
 				handleLogin(data);
 			}
 		});
@@ -63,12 +63,9 @@ function showDlgLogin()
 
 function handleLogin(data)
 {
-	g_data.userInfo = data;
-	// 自动登录: http://...?autoLogin
-	if (g_args.autoLogin)
-		saveLoginToken(data);
+	WUI.handleLogin(data);
 
-	MyUI.showPage("pageHome");
+	WUI.showPage("pageHome");
 }
 
 function initPageHome()
@@ -92,8 +89,8 @@ function initPageEmployee()
 
 	jtbl.datagrid({
 		url: makeUrl(["Employee", "query"]),
-		toolbar: MyUI.dg_toolbar(jtbl, jdlg),
-		onDblClickRow: MyUI.dg_dblclick(jtbl, jdlg)
+		toolbar: WUI.dg_toolbar(jtbl, jdlg),
+		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
 	});
 }
 
@@ -117,8 +114,8 @@ function initPageUser()
 
 	jtbl.datagrid({
 		url: makeUrl(["User", "query"]),
-		toolbar: MyUI.dg_toolbar(jtbl, jdlg),
-		onDblClickRow: MyUI.dg_dblclick(jtbl, jdlg)
+		toolbar: WUI.dg_toolbar(jtbl, jdlg),
+		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
 	});
 }
 
@@ -130,8 +127,8 @@ function initPageOrder()
 
 	jtbl.datagrid({
 		url: makeUrl(["Ordr", "query"]),
-		toolbar: MyUI.dg_toolbar(jtbl, jdlg),
-		onDblClickRow: MyUI.dg_dblclick(jtbl, jdlg),
+		toolbar: WUI.dg_toolbar(jtbl, jdlg),
+		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg),
 		sortName:'id',
 		sortOrder:'desc'
 	});
@@ -180,7 +177,7 @@ function initPageQuery()
 			query = query.substr(1);
 		}
 
-		callSvr(makeUrl("execSql", {fmt: "table"}), api_execSql, {sql: query}, {noex: 1});
+		callSvr("execSql", {fmt: "table"}, api_execSql, {sql: query}, {noex: 1});
 
 		function api_execSql(data)
 		{
@@ -258,7 +255,7 @@ function initPageQuery()
 			var colName = jtbl.find("th:eq(" + jtd[0].cellIndex + ")").text();
 			var sql = "UPDATE " + tbl + " SET " + colName + "=" + newVal1 + " WHERE id=" + idVal;
 			addDynInfo("更新语句: <span class=\"status-warning\">" + sql + "<span>");
-			callSvr(makeUrl("execSql", {sql: sql}), function (data) {
+			callSvr("execSql", {sql: sql}, function (data) {
 					jtd.text(newVal).css({backgroundColor: "yellow"});
 					app_show("执行成功, 更新记录数: " + data);
 			});
@@ -274,11 +271,14 @@ var APP_NAME = "admin";
 
 function main()
 {
+	WUI.setApp({
+		appName: APP_NAME,
+		title: APP_TITLE,
+		onShowLogin: showDlgLogin
+	});
 	setAppTitle(APP_TITLE);
-	MyApp.appName = APP_NAME;
-	MyApp.onShowLogin = showDlgLogin;
 
-	tryAutoLogin(handleLogin, "whoami");
+	WUI.tryAutoLogin(handleLogin, "whoami");
 }
 
 $(main);

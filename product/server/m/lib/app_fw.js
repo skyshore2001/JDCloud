@@ -998,6 +998,7 @@ function callSvr(ac, params, fn, data, userOptions)
 		fn = params;
 		params = null;
 	}
+	var ret;
 	var url = makeUrl(ac, params);
 	if (! (userOptions && userOptions.noLoadingImg))
 		enterWaiting();
@@ -1006,21 +1007,34 @@ function callSvr(ac, params, fn, data, userOptions)
 		url: url,
 		data: data,
 		type: method,
-		success: fn
+		success: function (data) {
+			ret = data;
+			if (fn) fn.call(this, data);
+		}
 	}, userOptions);
 	$.ajax(options);
+	return ret;
 }
 
 /**
-@fn MUI.callSvrSync(url, fn?, data?)
+@fn MUI.callSvrSync(ac, params, fn?, data?)
+@fn MUI.callSvrSync(ac, fn, data?)
 @alias callSvrSync
+@return 接口返回的数据
 
 同步模式调用callSvr.
 */
 window.callSvrSync = self.callSvrSync = callSvrSync;
-function callSvrSync(url, fn, data)
+function callSvrSync(ac, params, fn, data)
 {
-	callSvr(url, fn, data, {async: false});
+	var ret;
+	if (params instanceof Function) {
+		ret = callSvr(ac, null, params, fn, {async: false});
+	}
+	else {
+		ret = callSvr(ac, params, fn, data, {async: false});
+	}
+	return ret;
 }
 
 /**

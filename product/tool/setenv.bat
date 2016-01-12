@@ -14,7 +14,7 @@ set /p opt="Your choice: "
 
 if "%opt%"=="0" (
 set P_DBCRED=
-set P_DB=d:/project/app_fw/product/server/%DB%.db
+set P_DB=%~dp0%../server/%DB%.db
 goto :END
 )
 
@@ -45,5 +45,5 @@ goto :END
 goto :again
 
 :END
-echo Done.
-::set P_DB
+::echo Done.
+set P_DB
