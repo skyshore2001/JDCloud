@@ -1,5 +1,5 @@
 // ====== global {{{
-var IsBusy = false;
+var IsBusy = 0;
 var g_args = {}; // {_test, _debug, cordova}
 var g_cordova = 0; // the version for the android/ios native cient. 0 means web app.
 var g_prevPage;
@@ -7,7 +7,7 @@ var g_prevPage;
 // 应用内部共享数据
 var g_data = {}; // {userInfo}
 // 应用配置项
-var g_cfg = {};
+var g_cfg = { logAction: false };
 
 //}}}
 
@@ -64,11 +64,11 @@ function loadScript(url)
 
 中止之后的调用, 直接返回.
 */
-app_abort = function () {
+window.app_abort = function () {
 	throw("abort");
 }
 // allow throw("abort") as abort behavior.
-window.onerror = function (msg) {
+window.onerror = function (msg, url, line) {
 	if (/abort$/.test(msg))
 		return true;
 };
@@ -267,7 +267,20 @@ self.m_app = {
 	loginPage: "#login",
 };
 
+/**
+@var MUI.lastError = ctx
+
+ctx: {ac, tm, tv, ret}
+
+- ac: action
+- tm: start time
+- tv: time interval
+- ret: return value
+*/
+self.lastError = null;
+
 var m_onLoginOK;
+var m_tmBusy;
 
 // ------ jquery mobile {{{
 // $pop - optional. if not assigned, check if no popup opens
@@ -569,7 +582,20 @@ function document_pageCreate(ev)
 		fixNavbarAsTab(jnavbar, jpage);
 }
 
+function document_popupShow(ev)
+{
+	var jpage = $(ev.target);
+	if (jpage.data("picLoaded_"))
+		return;
+	jpage.data("picLoaded_", true);
+	// 图片按需加载
+	jpage.find("img[data-src]").each(function () {
+		this.src = $(this).data("src");
+	});
+}
+
 $(document).on("pagecreate", document_pageCreate);
+$(document).on("popupbeforeposition", document_popupShow);
 //}}}
 
 // ---- 处理浏览器前进后退 {{{
@@ -827,33 +853,78 @@ $.ajaxSetup({
 	error: defAjaxErrProc
 });
 
-$(document).on("pageshow", function () {
-	if (IsBusy)
-		$.mobile.loading("show");
-});
+// $(document).on("pageshow", function () {
+// 	if (IsBusy)
+// 		$.mobile.loading("show");
+// });
 
-/**
-@fn MUI.enterWaiting()
-@alias enterWaiting()
-*/
-window.enterWaiting = self.enterWaiting = enterWaiting;
-function enterWaiting()
+// 多次置于事件队列最后，一般3次后其它js均已执行完毕，为idle状态
+// delayCnt?=3
+function delayDo(fn, delayCnt)
 {
-	IsBusy = true;
-	if ($.mobile)
-		$.mobile.loading("show");
+	if (delayCnt == null)
+		delayCnt = 3;
+	doIt();
+	function doIt()
+	{
+		if (delayCnt == 0)
+		{
+			fn();
+			return;
+		}
+		-- delayCnt;
+		setTimeout(doIt);
+	}
 }
 
 /**
-@fn MUI.leaveWaiting()
+@fn MUI.enterWaiting(noLoadingImg?=false)
+@alias enterWaiting()
+*/
+window.enterWaiting = self.enterWaiting = enterWaiting;
+function enterWaiting(noLoadingImg)
+{
+	if (IsBusy == 0) {
+		m_tmBusy = new Date();
+	}
+	++ IsBusy;
+// 	console.log("++busy=" + IsBusy);
+	delayDo(function () {
+		if ($.mobile && !noLoadingImg)
+			$.mobile.loading("show");
+	});
+}
+
+/**
+@fn MUI.leaveWaiting(ctx?)
 @alias leaveWaiting
 */
 window.leaveWaiting = self.leaveWaiting = leaveWaiting;
-function leaveWaiting()
+function leaveWaiting(ctx)
 {
-	if ($.mobile)
-		$.mobile.loading("hide");
-	IsBusy = false;
+	// 当无远程API调用或js调用时, 设置IsBusy=0
+	delayDo(function () {
+		-- IsBusy;
+		if (g_cfg.logAction && ctx && ctx.ac && ctx.tv) {
+			var tv2 = (new Date() - ctx.tm) - ctx.tv;
+			ctx.tv2 = tv2;
+			console.log(ctx);
+		}
+// 		console.log("--busy=" + IsBusy);
+		if (IsBusy < 0) {
+			IsBusy = 0;
+			console.log("!!! manual busy=0");
+		}
+		if (IsBusy == 0) {
+			var tv = new Date() - m_tmBusy;
+			m_tmBusy = 0;
+			console.log("idle after " + tv + "ms");
+
+			// handle idle
+			if ($.mobile)
+				$.mobile.loading("hide");
+		}
+	});
 }
 
 function defAjaxErrProc(xhr, textStatus, e)
@@ -883,13 +954,22 @@ function defDataProc(rv)
 		return;
 	}
 
-	leaveWaiting();
+	var ctx = this.ctx_ || {};
+	if (ctx.tm) {
+		ctx.tv = new Date() - ctx.tm;
+	}
+	ctx.ret = rv;
+
+	leaveWaiting(ctx);
 	if (rv && $.isArray(rv) && rv.length >= 2 && typeof rv[0] == "number") {
 		if (rv[0] == 0)
 			return rv[1];
 
 		if (this.noex)
+		{
+			self.lastError = ctx;
 			return false;
+		}
 
 		if (rv[0] == E_NOAUTH) {
 			popPageStack(0);
@@ -898,11 +978,21 @@ function defDataProc(rv)
 		}
 		else if (rv[0] == E_AUTHFAIL) {
 			app_alert("验证失败，请检查输入是否正确!", "e");
+			return;
 		}
+		logError();
 		app_alert("操作失败：" + rv[1], "e");
 	}
 	else {
+		logError();
 		app_alert("服务器通讯协议异常!", "e"); // 格式不对
+	}
+
+	function logError()
+	{
+		self.lastError = ctx;
+		console.log("failed call");
+		console.log(ctx);
 	}
 }
 
@@ -987,6 +1077,12 @@ function makeUrl(action, params)
 		foo(data);
 	}, null, {noex:1});
 
+框架会自动在ajaxOption中增加ctx_属性，它包含 {ac, tm, tv, tv2, ret} 这些信息。
+当设置g_cfg.logAction=1时，将输出这些信息。
+- ac: action
+- tm: start time
+- tv: time interval (从发起请求到服务器返回数据完成的时间, 单位是毫秒)
+- tv2: 从接到数据到完成处理的时间，毫秒(当并发处理多个调用时可能不精确)
 */
 window.callSvr = self.callSvr = callSvr;
 function callSvr(ac, params, fn, data, userOptions)
@@ -998,42 +1094,42 @@ function callSvr(ac, params, fn, data, userOptions)
 		fn = params;
 		params = null;
 	}
-	var ret;
 	var url = makeUrl(ac, params);
-	if (! (userOptions && userOptions.noLoadingImg))
-		enterWaiting();
+	enterWaiting(userOptions && userOptions.noLoadingImg);
 	var method = (data == null? 'GET': 'POST');
 	var options = $.extend({
 		url: url,
 		data: data,
 		type: method,
-		success: function (data) {
-			ret = data;
-			if (fn) fn.call(this, data);
-		}
+		success: fn,
+		ctx_: {ac: ac, tm: new Date()}
 	}, userOptions);
-	$.ajax(options);
-	return ret;
+	console.log("call " + ac);
+	return $.ajax(options);
 }
 
 /**
-@fn MUI.callSvrSync(ac, params, fn?, data?)
-@fn MUI.callSvrSync(ac, fn, data?)
+@fn MUI.callSvrSync(ac, params?, fn?, data?, userOptions?)
+@fn MUI.callSvrSync(ac, fn?, data?, userOptions?)
 @alias callSvrSync
-@return 接口返回的数据
 
 同步模式调用callSvr.
 */
 window.callSvrSync = self.callSvrSync = callSvrSync;
-function callSvrSync(ac, params, fn, data)
+function callSvrSync(ac, params, fn, data, userOptions)
 {
 	var ret;
 	if (params instanceof Function) {
-		ret = callSvr(ac, null, params, fn, {async: false});
+		userOptions = data;
+		data = fn;
+		fn = params;
+		params = null;
 	}
-	else {
-		ret = callSvr(ac, params, fn, data, {async: false});
-	}
+	userOptions = $.extend({async: false}, userOptions);
+	var dfd = callSvr(ac, params, fn, data, userOptions);
+	dfd.then(function(data) {
+		ret = data;
+	});
 	return ret;
 }
 
@@ -1084,6 +1180,7 @@ function setupCallSvrViaForm($form, $iframe, url, fn, callOpt)
 
 // ------ cordova setup {{{
 $(document).on("deviceready", function () {
+	// TODO: hardcode "home"
 	// 在home页按返回键退出应用。
 	$(document).on("backbutton", function () {
 		if ($.mobile.activePage.attr("id") == "home") {
@@ -1097,7 +1194,18 @@ $(document).on("deviceready", function () {
 
 	$(document).on("menubutton", function () {
 	});
+
+	if (navigator.splashscreen && navigator.splashscreen.hide)
+	{
+		// 成功加载后稍等一会(避免闪烁)后隐藏启动图
+		$(function () {
+			setTimeout(function () {
+				navigator.splashscreen.hide();
+			}, 500);
+		});
+	}
 });
+
 //}}}
 
 // ------ enter and exit {{{

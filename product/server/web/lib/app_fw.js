@@ -414,6 +414,7 @@ function callSvr(ac, params, fn, data, userOptions)
 
 同步模式调用callSvr.
 */
+window.callSvrSync = self.callSvrSync = callSvrSync;
 function callSvrSync(ac, params, fn, data)
 {
 	var ret;
