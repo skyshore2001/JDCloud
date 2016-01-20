@@ -3,7 +3,7 @@
 require_once(dirname(__FILE__) . "/../server/app.php");
 
 ###### config {{{
-$METAFILE = dirname(__FILE__) . '/../DESIGN.wiki';
+$METAFILE = getenv("P_METAFILE") ?: dirname(__FILE__) . '/../DESIGN.wiki';
 $LOGF = "upgrade.log";
 
 $CHAR_SZ = [
@@ -225,7 +225,9 @@ class UpgHelper
 	private function _initMeta()
 	{
 		global $METAFILE;
-		$fd = fopen($METAFILE, "r");
+		$file = $METAFILE;
+		//$file = iconv("utf-8", "gbk", $METAFILE); // for OS windows
+		$fd = fopen($file, "r");
 		if ($fd === false)
 			throw new Exception("*** cannot read meta file $METAFILE");
 
