@@ -70,6 +70,8 @@ function setupGenCodeButton(btnGenCode, txtPhone)
 
 function handleLogin(data)
 {
+	if (data._isNew)
+		PageHome.userInit = true;
 	MUI.handleLogin(data);
 }
 
@@ -89,7 +91,8 @@ function logoutUser()
 // ====== page home {{{
 var PageHome = {
 	// PageHome.show
-	show: null // Function(reload?=false)
+	show: null, // Function(reload?=false)
+	userInit: false, // Boolean. show dlgUserInit
 };
 
 $(document).on("pagecreate", "#home", initPageHome);
@@ -97,6 +100,7 @@ function initPageHome()
 {
 	var jpage = $(this);
 	var jlst = jpage.find(".p-list");
+	var dlgUserInit = jpage.find("#dlgUserInit");
 
 	// ==== function {{{
 	function refreshOrderList()
@@ -149,10 +153,40 @@ function initPageHome()
 			jlst.listview('refresh');
 		}
 	}
+
+	function page_show()
+	{
+		if (PageHome.userInit)
+		{
+			dlgUserInit.popup("open");
+			PageHome.userInit = false;
+		}
+	}
+
+	// ====== dialog dlgUserInit {{{
+	function initDlgUserInit()
+	{
+		var jdlg = this;
+		var jf = jdlg.find("form");
+		MUI.setFormSubmit(jf, api_UserSet);
+
+		function api_UserSet(data)
+		{
+			callSvr("User.get", function (data) {
+				g_data.userInfo = data;
+			});
+			jdlg.popup('close');
+		}
+	}
+	// }}}
+	
 	// }}}
 	
 	jpage.find("#btnRefreshList").click(refreshOrderList);
 	refreshOrderList();
+
+	MUI.setupPopup(dlgUserInit, initDlgUserInit);
+	jpage.on("pageshow", page_show);
 
 	PageHome.show = function(reload)
 	{
@@ -265,7 +299,7 @@ function initPageCreateOrder()
 {
 	var jpage = $(this);
 
-	var jf = jpage.find("form");
+	var jf = jpage.find("form:first");
 	MUI.setFormSubmit(jf, api_OrdrAdd, {validate: form_validate});
 
 	function form_validate(jf)
