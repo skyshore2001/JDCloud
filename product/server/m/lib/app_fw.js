@@ -782,12 +782,17 @@ if ($.validate) {
 
 
 /**
-@fn MUI.setFormSubmit(jf, fn?, rules)
+@fn MUI.setFormSubmit(jf, fn?, opt?={rules, validate})
 @param fn? the callback for callSvr. you can use this["userPost"] to retrieve the post param.
+
+opt.rules: 参考jquery.validate文档
+opt.validate: Function(jf). 如果返回false, 则取消submit.
+
 */
 self.setFormSubmit = setFormSubmit;
-function setFormSubmit(jf, fn, rules)
+function setFormSubmit(jf, fn, opt)
 {
+	opt = opt || {};
 	/*
 	jf.submit(function () {
 		var ac = jf.attr("action");
@@ -797,8 +802,12 @@ function setFormSubmit(jf, fn, rules)
 
 	// use jquery.validate
 	jf.validate({
-		rules: rules,
+		rules: opt.rules,
 		submitHandler: function (form) {
+			if (opt.validate) {
+				if (false === opt.validate(jf))
+					return false;
+			}
 			if (fn == null)
 				return;
 			var ac = jf.attr("action");

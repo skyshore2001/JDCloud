@@ -40,6 +40,7 @@ WEBCC_END }}} -->
 <!-- page home -->
 <div data-role="page" id="home">
 	<div data-role="header">
+		<a href="#createOrder" class="ui-btn ui-btn-left ui-corner-all">下单</a>
 		<h1>首页</h1>
 		<a href="#" id="btnRefreshList" class="ui-btn ui-btn-right ui-icon-refresh ui-btn-icon-right ui-corner-all ui-btn-icon-notext">刷新</a>
 	</div>
@@ -123,6 +124,32 @@ WEBCC_END }}} -->
 		</ul>
 	</div>
 </div>
+
+<!-- page createOrder -->
+<div data-role="page" id="createOrder">
+	<div data-role="header">
+		<a href="#home" class="ui-btn ui-icon-home ui-btn-left ui-btn-icon-left ui-corner-all">首页</a>
+		<h2>创建订单</h2>
+	</div><!-- /header -->
+
+	<form action="Ordr.add" role="main" class="ui-content">
+		<ul data-role="listview">
+			<li class="ui-field-contain">
+				<label>选择套餐:</label>
+				<select name="dscr">
+					<option value="基础套餐" data-amount=128>基础套餐 128元</option>
+					<option value="精英套餐" data-amount=228>精英套餐 228元</option>
+				</select>
+			</li>
+			<li class="ui-field-contain">
+				<label>备注信息:</label>
+				<textarea id="cmt" name="cmt"></textarea>
+			</li>
+			<li style="padding: 0 1em"><button id="btnCreateOrder" data-theme=b>创建订单</button></li>
+			<input type="hidden" name="amount" value="0">
+		</ul>
+	</form>
+</div><!-- /page -->
 
 <!-- footer -->
 <div data-role="footer" id="footer" data-id="foot" data-position="fixed" data-tap-toggle="false">

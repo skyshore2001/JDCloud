@@ -49,7 +49,7 @@ createTm:: DateTime. 注册日期. 可用于分析用户数增长。
 
 *[订单]*
 
-@Ordr: id, userId, status(2), dscr(l), cmt(l)
+@Ordr: id, userId, status(2), amount, dscr(l), cmt(l)
 
 注意:
 - 使用ordr而不是order是为了避免与sql关键字order冲突

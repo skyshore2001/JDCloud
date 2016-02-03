@@ -7,6 +7,17 @@ var MyApp = {
 }
 MUI.setApp(MyApp);
 
+var StatusStr = {
+	CR: "待服务",
+	RE: "已服务",
+	CA: "已取消"
+};
+
+var ActionStr = {
+	CR: "创建",
+	RE: "服务",
+	CA: "取消"
+};
 // }}}
 
 // ====== global {{{
@@ -75,6 +86,10 @@ function logoutUser()
 // }}}
 
 // ====== page home {{{
+var PageHome = {
+	// PageHome.show
+	show: null // Function(reload?=false)
+};
 
 $(document).on("pagecreate", "#home", initPageHome);
 function initPageHome()
@@ -111,7 +126,7 @@ function initPageHome()
 			$.each(rs2Array(data), function (i, e) {
 				var ji = $("<li><a><h2>" + e.dscr + "</h2>" + 
 					"<p>订单号: " + e.id + "</p>" +
-					"<p class=\"ui-li-aside\">状态: " + e.status + "</p>" +
+					"<p class=\"ui-li-aside\">状态: " + StatusStr[e.status] + "</p>" +
 					"</a></li>");
 				ji.appendTo(jlst);
 
@@ -137,6 +152,13 @@ function initPageHome()
 	
 	jpage.find("#btnRefreshList").click(refreshOrderList);
 	refreshOrderList();
+
+	PageHome.show = function(reload)
+	{
+		$.mobile.changePage("#home");
+		if (reload)
+			refreshOrderList();
+	}
 }
 
 //}}}
@@ -149,8 +171,9 @@ function initPageLogin()
 	var jpage = $(this);
 
 	var jf = jpage.find("form");
-	setupGenCodeButton(jpage.find("#btnGenCode"), jpage.find("#txtPhone"));
 	MUI.setFormSubmit(jf, handleLogin);
+
+	setupGenCodeButton(jpage.find("#btnGenCode"), jpage.find("#txtPhone"));
 }
 
 $(document).on("pagecreate", "#login1", initPageLogin1);
@@ -205,6 +228,7 @@ function initPageOrder()
 			var arr = [
 				"<h3>" + data.dscr + "</h3>",
 				"订单号: " + data.id,
+				"金额: " + data.amount + "元",
 			];
 			if (data.cmt) {
 				arr.push("备注: " + data.cmt);
@@ -219,7 +243,7 @@ function initPageOrder()
 			var div = $("<div><h4>订单日志</h4></div>").appendTo(jlst);
 			var ul_log = $("<ul></ul>").appendTo(div);
 			$.each(data.orderLog, function (i, e) {
-				var ji = $("<li>" + e.action + "- " + e.tm + "</li>");
+				var ji = $("<li>" + ActionStr[e.action] + "- " + e.tm + "</li>");
 				ji.appendTo(ul_log);
 			});
 			ul_log.listview();
@@ -231,6 +255,29 @@ function initPageOrder()
 	//}}}
 	
 	jpage.on("pagebeforeshow", showOrder);
+}
+//}}}
+
+// ====== page createOrder {{{
+$(document).on("pagecreate", "#createOrder", initPageCreateOrder);
+function initPageCreateOrder() 
+{
+	var jpage = $(this);
+
+	var jf = jpage.find("form");
+	MUI.setFormSubmit(jf, api_OrdrAdd, {validate: form_validate});
+
+	function form_validate(jf)
+	{
+		var f = jf[0];
+		f.amount.value = $(f.dscr).find("option:selected").data("amount");
+	}
+	function api_OrdrAdd(data)
+	{
+		app_alert("订单创建成功!", "i", function () {
+			PageHome.show(true);
+		});
+	}
 }
 //}}}
 
