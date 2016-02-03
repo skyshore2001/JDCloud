@@ -59,20 +59,6 @@ function loadScript(url)
 	document.body.appendChild(script);
 }
 
-/**
-@fn app_abort()
-
-中止之后的调用, 直接返回.
-*/
-window.app_abort = function () {
-	throw("abort");
-}
-// allow throw("abort") as abort behavior.
-window.onerror = function (msg, url, line) {
-	if (/abort$/.test(msg))
-		return true;
-};
-
 // --------- jquery {{{
 /**
 @fn getFormParam(jform)
@@ -236,9 +222,22 @@ Mobile UI framework, 基于jquery mobile库的增强和工具集.
 
 	<img data-src="../m/images/ui/carwash.png">
 
-== Cordova增强 ==
+== 原生应用支持 ==
 
-ios7以上, 为状态栏留出空间. 需要在style中定义如下样式:
+使用MUI框架的Web应用支持被安卓/苹果原生应用加载（通过cordova技术）。
+
+设置说明：
+
+- 在Web应用中指定正确的应用程序名appName (参考MUI.setApp方法), 该名字将可在g_args._app变量中查看。
+- App加载Web应用时在URL中添加cordova={ver}参数，就可自动加载cordova插件(m/cordova或m/cordova-ios目录下的cordova.js文件)，从而可以调用原生APP功能。
+- 在App打包后，将apk包或ipa包其中的cordova.js/cordova_plugins.js/plugins文件或目录拷贝出来，合并到 cordova 或 cordova-ios目录下。
+  其中，cordova_plugins.js文件应手工添加所需的插件，并根据应用(g_args._app)及版本(g_args.cordova)设置filter. 可通过 cordova.require("cordova/plugin_list") 查看应用究竟使用了哪些插件。
+- 在部署Web应用时，建议所有cordova相关的文件合并成一个文件（通过Webcc打包）
+
+对原生应用的额外增强包括：
+
+- 应用加载完成后，自动隐藏启动画面(SplashScreen)
+- ios7以上, 自动为状态栏留出空间. 注意需要在style中定义如下样式:
 
 	#ios7statusbar {
 		width:100%;
@@ -281,6 +280,7 @@ self.lastError = null;
 
 var m_onLoginOK;
 var m_tmBusy;
+var m_manualBusy = 0;
 
 // ------ jquery mobile {{{
 // $pop - optional. if not assigned, check if no popup opens
@@ -838,6 +838,37 @@ if ($.validator) {
 
 // ------ ajax {{{
 
+/**
+@fn app_abort()
+
+中止之后的调用, 直接返回.
+*/
+window.app_abort = app_abort;
+function app_abort()
+{
+	throw("abort");
+}
+
+/**
+@fn MUI.setOnError()
+
+一般框架自动设置onerror函数；如果onerror被其它库改写，应再次调用该函数。
+allow throw("abort") as abort behavior.
+ */
+self.setOnError = setOnError;
+function setOnError()
+{
+	var fn = window.onerror;
+	window.onerror = function (msg) {
+		if (fn && fn.apply(this, arguments) === true)
+			return true;
+		if (/abort$/.test(msg))
+			return true;
+		debugger;
+	}
+}
+setOnError();
+
 $.ajaxSetup({
 	dataType: "text",
 	dataFilter: function (data, type) {
@@ -845,6 +876,7 @@ $.ajaxSetup({
 			rv = defDataProc.call(this, data);
 			if (rv != null)
 				return rv;
+			-- $.active; // ajax调用中断,这里应做些清理
 			app_abort();
 		}
 		return data;
@@ -858,8 +890,13 @@ $.ajaxSetup({
 // 		$.mobile.loading("show");
 // });
 
-// 多次置于事件队列最后，一般3次后其它js均已执行完毕，为idle状态
-// delayCnt?=3
+/**
+@fn delayDo(fn, delayCnt?=3)
+
+设置延迟执行。当delayCnt=1时与setTimeout效果相同。
+多次置于事件队列最后，一般3次后其它js均已执行完毕，为idle状态
+*/
+window.delayDo = delayDo;
 function delayDo(fn, delayCnt)
 {
 	if (delayCnt == null)
@@ -878,21 +915,24 @@ function delayDo(fn, delayCnt)
 }
 
 /**
-@fn MUI.enterWaiting(noLoadingImg?=false)
+@fn MUI.enterWaiting(ctx?)
+@param ctx {ac, tm, tv?, tv2?, noLoadingImg?}
 @alias enterWaiting()
 */
 window.enterWaiting = self.enterWaiting = enterWaiting;
-function enterWaiting(noLoadingImg)
+function enterWaiting(ctx)
 {
 	if (IsBusy == 0) {
 		m_tmBusy = new Date();
 	}
-	++ IsBusy;
-// 	console.log("++busy=" + IsBusy);
+	IsBusy = 1;
+	if (ctx == null)
+		++ m_manualBusy;
+	// 延迟执行以防止在page show时被自动隐藏
 	delayDo(function () {
-		if ($.mobile && !noLoadingImg)
+		if ($.mobile && !(ctx && ctx.noLoadingImg))
 			$.mobile.loading("show");
-	});
+	},1);
 }
 
 /**
@@ -902,20 +942,20 @@ function enterWaiting(noLoadingImg)
 window.leaveWaiting = self.leaveWaiting = leaveWaiting;
 function leaveWaiting(ctx)
 {
+	if (ctx == null)
+	{
+		if (-- m_manualBusy < 0)
+			m_manualBusy = 0;
+	}
 	// 当无远程API调用或js调用时, 设置IsBusy=0
 	delayDo(function () {
-		-- IsBusy;
 		if (g_cfg.logAction && ctx && ctx.ac && ctx.tv) {
 			var tv2 = (new Date() - ctx.tm) - ctx.tv;
 			ctx.tv2 = tv2;
 			console.log(ctx);
 		}
-// 		console.log("--busy=" + IsBusy);
-		if (IsBusy < 0) {
+		if ($.active == 0 && IsBusy && m_manualBusy == 0) {
 			IsBusy = 0;
-			console.log("!!! manual busy=0");
-		}
-		if (IsBusy == 0) {
 			var tv = new Date() - m_tmBusy;
 			m_tmBusy = 0;
 			console.log("idle after " + tv + "ms");
@@ -929,14 +969,15 @@ function leaveWaiting(ctx)
 
 function defAjaxErrProc(xhr, textStatus, e)
 {
-	if (xhr.status != 200) {
+	if (xhr && xhr.status != 200) {
 		if (xhr.status == 0) {
 			app_alert("连不上服务器了，是不是网络连接不给力？", "e");
 		}
 		else {
 			app_alert("操作失败: 服务器错误. status=" + xhr.status + "-" + xhr.statusText, "e");
 		}
-		leaveWaiting();
+		var ctx = this._ctx || {};
+		leaveWaiting(ctx);
 	}
 }
 
@@ -944,17 +985,17 @@ function defAjaxErrProc(xhr, textStatus, e)
 // 注意：服务端不应返回null, 否则客户回调无法执行; 习惯上返回false表示让回调处理错误。
 function defDataProc(rv)
 {
+	var ctx = this.ctx_ || {};
 	try {
 		rv = $.parseJSON(rv);
 	}
 	catch (e)
 	{
-		leaveWaiting();
+		leaveWaiting(ctx);
 		app_alert("服务器通讯异常: " + e);
 		return;
 	}
 
-	var ctx = this.ctx_ || {};
 	if (ctx.tm) {
 		ctx.tv = new Date() - ctx.tm;
 	}
@@ -1095,14 +1136,17 @@ function callSvr(ac, params, fn, data, userOptions)
 		params = null;
 	}
 	var url = makeUrl(ac, params);
-	enterWaiting(userOptions && userOptions.noLoadingImg);
+	var ctx = {ac: ac, tm: new Date()};
+	if (userOptions && userOptions.noLoadingImg)
+		ctx.noLoadingImg = 1;
+	enterWaiting(ctx);
 	var method = (data == null? 'GET': 'POST');
 	var options = $.extend({
 		url: url,
 		data: data,
 		type: method,
 		success: fn,
-		ctx_: {ac: ac, tm: new Date()}
+		ctx_: ctx
 	}, userOptions);
 	console.log("call " + ac);
 	return $.ajax(options);
@@ -1294,10 +1338,10 @@ function parseArgs()
 			$(function () {
 				// to use cordova plugins like camera: require m2/cordova.js, cordova_plugins.js, plugins/...
 				if (isIOS()) {
-					loadScript("cordova-ios/cordova.js"); 
+					loadScript("cordova-ios/cordova.js?__HASH__,m2"); 
 				}
 				else {
-					loadScript("cordova/cordova.js"); 
+					loadScript("cordova/cordova.js?__HASH__,m2"); 
 				}
 			});
 		}
@@ -1486,6 +1530,7 @@ self.setApp = setApp;
 function setApp(app)
 {
 	$.extend(self.m_app, app);
+	g_args._app = app.appName;
 
 	if (app.allowedEntries)
 		validateEntry(app.allowedEntries);
