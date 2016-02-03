@@ -1,0 +1,384 @@
+ = 编码规范 =
+
+梁健 - 最近更新于2015/10
+
+%title 编码规范
+%toc
+
+== 命名规范 ==
+
+以下为通用规则，适用于前端(JS代码), 后端（PHP代码），数据库设计（表/字段），接口定义等。
+
+- 变量/函数名/数据库表的字段名使用驼峰式(首个单词小写，其余单词首字母大写)，如`getCarModel`, `svcId`。
+- 类名，枚举定义，模块名，或数据库表名，用大驼峰式（或叫Pascal命名，所有单词首字母大写）, 如`OrderStatus`.
+- 常量使用全部大写字母，如`ASTORE_ID`.
+- 全局变量加"g_"前缀，如`g_data`. 
+- 模块变量加"m_"前缀，如`m_orderId`.
+
+不同类型命名惯例：
+- 整数：id/orderId, cnt
+- 数值：price/price1, total, qty, amount
+- 纯日期：dt/startDt
+- 日期时间：tm/tm1/startTm
+- 数组：list/storeList, (用复数加s)/stores/orders, arr/paramArr
+
+在进行类型转型时，应特别注意区分，如
+{{{
+var startDt = parseDate(startDtStr); // startDt是日期类型，startDtStr是日期的格式化字符串
+var total = parseFloat(totalStr);
+}}}
+
+== 代码结构与分区 ==
+
+一个文件内或复杂模块的代码按惯例划分为多个区域，可配合使用手工折叠以方便查阅。
+优点：
+- 便于查找和参考。
+- 一旦文件增长过大，很容易做文件拆分。
+
+手工折叠使用vim默认方案，即三个花括号配对。
+
+文件级别常分为：
+- 全局变量区(config, global)
+- 通用函数区（tookit, app toolkit, 重构时这块可移到common级文件及app级文件）
+- 函数区(function)
+- 入口/初始化/主函数区(main)
+- 各子模块
+
+文件结构示例：
+{{{
+	// ====== config {{{
+	var g_allowedEntries = []
+	// }}}
+
+	// ====== global {{{
+	var g_data = {
+		userInfo : null, // {uid, name, phone}
+	};
+	//}}}
+
+	// ====== toolkit {{{
+	function each()
+	{
+	}
+	// }}}
+
+	// ====== app toolkit {{{
+	function setupPopup(jpopup, initfn)
+	{
+	}
+	// }}}
+
+	// ====== functions {{{
+	function logout()
+	{
+	}
+	//}}}
+			
+	// ====== main {{{
+
+	function main()
+	{
+	}
+
+	// }}}
+
+	// ====== 模块1 {{{
+	// }}}
+
+	// ====== 模块2 {{{
+	// }}}
+
+}}}
+
+模块（或复杂函数内部）常分为：
+- 变量区(var)
+- 函数区(function)
+- 初始化代码区
+ 
+复杂模块结构示例：
+{{{
+function PageOrder()
+{
+	// ====== var {{{
+	var jpage;
+	var m_orderId;
+	// }}}
+
+	// ====== functions {{{
+	function pagebeforeshow(ev)
+	{
+	}
+	//}}}
+			
+	// ====== main {{{
+	jpage.on("pagebeforeshow", pagebeforeshow);
+	// }}}
+}
+}}}
+
+== 前端代码 ==
+
+=== JS编码规范 ===
+
+常用的通用变量名：
+- i,j 整形循环变量，如`for(i=0; i<10; ++i)`
+- e (element) 用在foreach循环中表示一个数组元素，如 `$.each(arr, function (i, e) {}`
+- o和jo (object) 分别表示通用DOM对象和相应的jquery对象, 如 `o.id`, `jo.attr("id")`.
+
+界面元素的命名（包括在DOM中指定id），应加类型前缀，定义如下：
+- btn(button) 按钮(input[type=button/submit], button), 或当作按钮使用的链接或块区(a, div)
+- txt(text) 输入框，单行(input[type=text/password]或多行(textarea)
+- cbo(combobox) 下拉框 (select+option)
+- chk(checkbox) 复选框 (input[type=checkbox])
+- rdo(radio button) 单选框(input[type=radio])
+- lst(list) 列表。如ul,ol. 对应的jquery对象可用jlst, jul等。
+- li(list item) 列表项。如li. 对应的jquery对象用ji或jli.
+- div 非典型类型，如`<td id=divPerms>`, `<div id=divPrompt>`
+- o 通用对象, 只用于js中，不用于DOM对象命名。对应的jquery对象用jo.
+
+jquery-mobile中常用类型前缀:
+- dlg(popup) 弹出框, 为JQM popup.
+- page 页模块，为JQM page. (NOTE: 暂时不用)
+
+jquery-easyui中常用类型前缀:
+- tbl(table/datagrid) 表格
+- dlg(dialog/window)
+- tab(tab page) 选项卡
+- page 页模块，为tab内的具体内容。
+
+jquery对象的命名：加前缀"j"或"$", 如`jdlg`, `jpage`, `jchk`, 通用对象一般用`jo`.
+
+MyUI框架中使用的属性、css类，常加"my-"前缀，如
+- DOM属性: `my-obj`, `my-initfn`
+- 特定元素名: `my-pages`, `my-tabMain`
+
+css类命名采用驼峰式，如"notForFind", 如果有前缀，用"-"分隔，常用前缀：
+- "p-" (表示"param"), 用于js代码中替换它，如定义`class="p-userInfo"`, 在JS代码中：`jpage.find(".p-userInfo").text(xxx);`
+
+=== Jquery-mobile框架编码规范 ===
+
+设计目标：
+- 方便搜索: 方便直接或通过支持Tag类工具查找函数，快速定位到代码块。
+- 模块化：每个页面逻辑独立，接口清晰。
+
+约定：
+- 页面初始化函数前缀为"initPage", 如`initPageOrder`.
+- 模块或类的私有变量命令加前缀"m_" (除jpage等常用惯例变量外), 如`m_orderId`
+- 类模块及接口函数应增加*格式化注释*，如`/** @fn PageOrder.show(orderId) */`
+- 限制匿名函数使用。匿名函数常用于事件回调或函数回调。当函数较长（超过10行）或其中又嵌套子函数时，建议拆分为单独的函数，常用命名规范有：
+  - jquery事件，命名为"{对象}_{事件}"，如 `function btnGo_click(ev)`, `li_click(ev)`，如果对象与当前上下文相符时，可省略对象名，如在JQM page的模块中可以用 `function pagecreate(ev)`, `function pagebeforeshow(ev)`
+  - DOM事件，命名为"{对象}_on{事件}"，如 `function btnGo_onclick(ev)`, `li_onclick(ev)`
+  - 后台API调用的回调，命名为"api_{api调用名}", 如`function api_OrdrQuery(data)`
+
+page的DOM定义样例：
+{{{
+<div data-role="page" id="order">
+	<div data-role="header">
+	</div><!-- /header -->
+
+	<div role="main" class="ui-content">
+	</div><!-- /content -->
+</div>
+}}}
+
+page的JS代码样例：
+{{{
+// 接口：供其它页面调用
+var PageOrder = {
+	m_id: null,
+
+	/** @fn PageOrder.show(orderId) */
+	show: function(orderId) {
+		this.m_id = orderId;
+		$.mobile.changePage("#order");
+	}
+};
+
+function initPageOrder()
+{
+	// 类私有变量区
+	var jpage = $(this);
+
+	// 类私有成员函数区
+
+	function pagebeforeshow()
+	{
+		// show order PageOrder.m_id
+		callSvr("Ordr.get", {id: PageOrder.m_id}, api_OrdrGet);
+		
+		function api_OrdrGet(data)
+		{
+		}
+	}
+	
+	// 初始化
+	jpage.on("pagebeforeshow", pagebeforeshow);
+}
+
+document.on("pagecreate", "#order", initPageOrder);
+}}}
+
+=== Jquery-easyui/MyUI编码规范 ===
+
+主要约定：
+同一模块的相关对象（页面page, 数据表tbl, 对话框dlg）使用统一的命名，如订单模块(Order):
+- page: pageOrder，对应初始化函数 initPageOrder
+- table(grid): tblOrder
+- dialog: dlgOrder，对应初始化函数 initDlgOrder
+
+再如结算模块(CloseOrder), 应该用名称：页面pageCloseOrder (页面初始化initPageCloseOrder), 对象框dlgCloseOrder等。
+
+page的DOM定义样例：
+{{{
+<div id="my-pages" style="display:none">
+	...
+	<div class="pageOrder" title="订单管理" my-initfn="initPageOrder">
+		<table id="tblOrder" style="width:auto;height:auto">
+			<thead><tr>
+				<th data-options="field:'id', sortable:true, sorter:intSort">订单号</th>
+			</tr></thead>
+		</table>
+	</div>
+	
+	<div id="dlgOrder" my-obj="Ordr" my-initfn="initDlgOrder" title="用户订单" style="padding:20px 40px 20px 40px;width:520px;height:500px;">  
+		<form method="POST">
+			<table>
+				<tr>
+					<td>订单号</td>
+					<td><input name="id" disabled></td>
+				</tr>
+			</table>
+		</form>
+	</div>
+	...
+</div>
+}}}
+
+page及dialog的JS代码样例：
+
+{{{
+function initPageOrder() 
+{
+	var jpage = $(this);
+	var jtbl = jpage.find("#tblOrder");
+	var jdlg = $("#dlgOrder");
+	...
+}
+
+function initDlgOrder()
+{
+	var jdlg = $(this);
+	var jfrm = jdlg.find("form");
+	...
+}
+}}}
+
+== 后端代码 ==
+
+后端API框架强制要求：
+- 每个API类命名为`api_{接口名}`, 参数使用param/mparam函数获取
+- 对象访问类API使用AccessControl类簇定义，应清楚前缀"AC_", "AC0_", "AC1_", "AC2_"的含义。
+
+=== 命名 ===
+
+在应用中, 对于模块, 一般应考虑用类实现(如class Conf), 这样便于隐藏内部实现函数;
+
+在框架实现中, 增加以下要求: 
+对于框架(如app_fw, api_fw)模块, 因为类接口如ApiFw::param 或 命名空间如ApiFw\param使用麻烦, 所以基本只用函数接口(如param, 加/** @fn */标注接口). 
+这样框架的内部实现则放入内部类, 一般用下划线结尾标识, 如"class AppFw_".
+(对于应用此要求仅供参考.)
+
+例:
+
+{{{
+const T_HOUR = 3600; // 全局常量
+
+global TEST_MODE; // 全局变量, 使用全部大写, 表示在初始化后当作常量使用; 
+// 使用global声明, 好处是即使在函数中被include, 也仍然是全局变量.
+
+global g_dbgInfo; // 全局变量. 使用时应加global声明, 或用$GLOBALS["g_dbgInfo"]
+g_dbgInfo = [];
+
+class AppFw_  // 内部类, 与模块同名表示模块实现部分
+{
+	const C = 1; // 模块内部常量
+	static $SOLO; // 模块内部全局变量, 初始化后当常量使用
+	static $var; // 模块内部全局变量
+	
+	// 模块私有函数
+	private static function initGlobals() {}
+	// 模块内部接口函数
+	static function init();
+}
+
+// 模块内私有函数, 一般不建议使用, 应考虑放入AppFw_类中.
+function getParam_()
+{
+}
+
+/** @fn param($name) */
+// 接口函数
+function param($name)
+{
+}
+
+}}}
+
+规定:
+- 模块内部使用的类, 以 下划线结尾, 表示不对外暴露, 如 "class AppFw_".
+- 模块内部使用的变量或函数, 应放置在模块内部类中, 如 "AppFw_::init".
+- 全局变量使用全大写或g_开头.
+- 尽量少用全局变量(因为使用时要声明global, 常会忘记), 可使用类的静态变量替代.
+
+== 格式化注释 ==
+
+格式化注释用于描述接口，也可通过工具生成文档。
+
+设计时主要参考doxygen, javadoc, jsdoc等流行工具，设计理念：
+- 不做代码解析，只分析格式化注释部分
+- 可自定义关键字，描述部分支持markdown语法
+
+约定：
+- 在js/php中使用区块`/** */`
+- 主要关键字有 @fn, @module, @class, @param, @return, @key等
+- 描述信息可使用markdown语法。
+
+使用需知：
+框架中的接口应使用规范的格式化注释，便于生成文档。
+应用中的接口可简单标识，便于查询。
+
+示例：
+{{{
+
+/** 
+@fn MyUI.showPage(pageName, title?, paramArr?)
+@param pageName 由page上的class指定。
+@param title? 如果未指定，则使用page上的title属性.
+@param paramArr? 调用initfn时使用的参数，是一个数组。
+
+新页面以title作为id。
+注意：每个页面都是根据pages下相应pageName复制出来的，显示在一个新的tab页中。相同的title当作同一页面。
+初始化函数由page上的my-initfn属性指定。
+
+page定义示例: 
+
+	<div id="my-pages" style="display:none">
+		<div class="pageHome" title="首页" my-initfn="initPageHome"></div>
+	</div>
+
+page调用示例:
+
+	showPage("pageHome");
+	showPage("pageHome", "首页");
+	showPage("pageHome", "首页2");
+*/
+function showPage(pageName, title, paramArr)
+{
+}
+
+}}}
+
+参考：
+- javadoc: http://www.oracle.com/technetwork/java/javase/documentation/index-137868.html
+- doxygen: http://www.stack.nl/~dimitri/doxygen/manual/docblocks.html
+
