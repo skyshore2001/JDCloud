@@ -16,7 +16,7 @@
 	<script src="lib/jquery.mobile-1.4.5.js"></script>
 	<script src="lib/jquery.validate-1.13.1.js"></script-->
 
-	<script src="../m/messages_zh.min.js"></script>
+	<script src="lib/messages_zh.min.js"></script>
 <!-- WEBCC_USE_THIS
 	<script src="lib/jquery-1.11.1.min.js"></script>
 	<script src="lib-jqm.min.js?__HASH__"></script>
@@ -52,6 +52,31 @@ WEBCC_END }}} -->
 
 <!-- page login -->
 <div data-role="page" id="login">
+	<div data-role="header">
+		<h1>登录</h1>
+	</div>
+
+	<form action="login" role="main" class="ui-content">
+		<div class="ui-field-contain">
+			<fieldset data-role="controlgroup" data-type="horizontal">
+				<legend>手机号</legend>
+				<input id="txtPhone" name="uname" required >
+				<button id="btnGenCode" data-mini="true">发送验证码<span class="p-prompt"></span></button>
+			</fieldset>
+		</div>
+		<div class="ui-field-contain">
+			<label for="txtCode">验证码</label>
+			<input name="code" required minlength=4>
+		</div>
+		<input type="hidden" name="wantAll" value="1">
+		<button type="submit" data-theme="b">进入</button>
+
+		<a href="#login1" class="ui-btn ui-corner-all ui-mini">用户名密码登录</a>
+	</form>
+</div>
+
+<!-- page login1 -->
+<div data-role="page" id="login1">
 	<div data-role="header">
 		<h1>登录</h1>
 	</div>

@@ -21,6 +21,36 @@ var g_cfg = {
 //}}}
 
 // ====== functions {{{
+// <button id="btnGenCode">发送验证码<span class="p-prompt"></span></button>
+function setupGenCodeButton(btnGenCode, txtPhone)
+{
+	btnGenCode.click(btnGenCode_click);
+	function btnGenCode_click()
+	{
+		var phone = txtPhone.val();
+		if (phone == "") {
+			app_alert("填写手机号!")
+			return;
+		}
+		callSvr("genCode", {phone: phone});
+
+		var $btn = $(this);
+		$btn.attr("disabled", true);
+
+		var n = 60;
+		var tv = setInterval(function () {
+			var s = "";
+			-- n;
+			if (n > 0) 
+				s = "(" + n + "秒后可用)";
+			else {
+				clearInterval(tv);
+				$btn.attr("disabled", false);
+			}
+			btnGenCode.find(".p-prompt").text(s);
+		}, 1000);
+	}
+}
 
 //}}}
 
@@ -119,9 +149,19 @@ function initPageLogin()
 	var jpage = $(this);
 
 	var jf = jpage.find("form");
+	setupGenCodeButton(jpage.find("#btnGenCode"), jpage.find("#txtPhone"));
 	MUI.setFormSubmit(jf, handleLogin);
 }
 
+$(document).on("pagecreate", "#login1", initPageLogin1);
+
+function initPageLogin1()
+{
+	var jpage = $(this);
+
+	var jf = jpage.find("form");
+	MUI.setFormSubmit(jf, handleLogin);
+}
 //}}}
 
 // ====== page me {{{

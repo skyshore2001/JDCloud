@@ -44,7 +44,7 @@ function api_genCode()
 	if ($debug)
 		$ret = ["code" => $_SESSION["code"]];
 	else {
-		sendSms($phone, "验证码" . $_SESSION["code"] . "，请在5分钟内使用。" . Conf::$MSGS["MSG_REMARK"]);
+		sendSms($phone, "验证码" . $_SESSION["code"] . "，请在5分钟内使用。");
 	}
 
 	return $ret;
@@ -146,7 +146,7 @@ function api_login()
 			}
 		}
 		else {
-			if (isset($pwd) && hashPwd($pwd) == $row["pwd"])
+			if (isset($code) || (isset($pwd) && hashPwd($pwd) == $row["pwd"]))
 			{
 				$ret = ["id" => $row["id"]];
 			}
