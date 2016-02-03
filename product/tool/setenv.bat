@@ -14,7 +14,8 @@ set /p opt="Your choice: "
 
 if "%opt%"=="0" (
 set P_DBCRED=
-set P_DB=%~dp0%../server/%DB%.db
+set dir=%~dp0
+set P_DB=%dir%../server/%DB%.db
 goto :END
 )
 

@@ -10,19 +10,48 @@ $g_handledFiles = []; // elem: $file => 1
 $g_hash = []; // elem: $file => $hash
 
 $COPY_EXCLUDE = [];
-$HASH_INCLUDE = [];
+
+// 设置环境变量 DBG_LEVEL=1 显示调试信息
+$DBG_LEVEL = (int)getenv("P_DEBUG") ?: 0;
 //}}}
 
 // ====== functions {{{
-function getFileHash($basef, $f, $outDir)
+function logit($s, $level=1)
+{
+	global $DBG_LEVEL;
+	if ($DBG_LEVEL >= $level)
+		echo $s;
+}
+
+// 将当前路径加入PATH, 便于调用同目录的程序如jsmin
+function addPath()
+{
+	global $argv;
+	$path = realpath(dirname($argv[0]));
+	putenv("PATH=" . $path . PATH_SEPARATOR . getenv("PATH"));
+}
+
+// "xx\yy" => "xx/yy"
+// "xx/zz/../yy" => "xx/yy"
+function formatPath($f)
+{
+	$f = preg_replace('/[\\\\\/]+/', '/', $f);
+	$f = preg_replace('`[^/]+/\.\./`', '', $f);
+	return $f;
+}
+
+function getFileHash($basef, $f, $outDir, $relativeDir = null)
 {
 	global $g_hash;
 	global $g_handledFiles;
-	$f0 = dirname($basef) . "/$f";
+	if ($relativeDir == null) {
+		$relativeDir = dirname($basef);
+	}
+	$f0 = formatPath($relativeDir . "/$f");
 	$f1 = $outDir . "/" . $f0;
 	$f2 = realpath($f1);
-	if ($f2 === false || !array_key_exists(realpath($f0), $g_handledFiles))
-		handleOne($f0, $outDir);
+	if ($f2 === false || !array_key_exists($f0, $g_handledFiles))
+		handleOne($f0, $outDir, true);
 	$f2 = realpath($f1);
 	if ($f2 === false)
 		die("*** fail to find file `$f` base on `$basef` ($f2)\n");
@@ -39,13 +68,35 @@ function getFileHash($basef, $f, $outDir)
 }
 
 // <script src="main.js?__HASH__"></script>
-function handleHash($f, $outDir)
+// loadScript("cordova/cordova.js?__HASH__,m2)");  -> m2/cordova/cordova.js
+// 如果inputFile非空，直接读取它; 如果为null, 则用$f作为输入。
+function handleHash($f, $outDir, $inputFile = null)
 {
-	$s = file_get_contents($f);
-	$s = preg_replace_callback('/"([^"]+)\?__HASH__"/', function ($ms) use ($f, $outDir){
-		$hash = getFileHash($f, $ms[1], $outDir);
+	if ($inputFile == null)
+		$inputFile = $f;
+	$s = file_get_contents($inputFile);
+
+	if (preg_match('/\.html/', $f)) {
+		$s = preg_replace_callback('/
+			^.*WEBCC_BEGIN.*$ 
+			(?:.|\n)*?
+			(?:^.*WEBCC_USE_THIS.*$[\r\n]*
+				((?:.|\n)*?)
+			)?
+			^.*WEBCC_END.*$[\r\n]*
+		/xm', 
+		function ($ms) {
+			return $ms[1] ?: "";
+		}, $s);
+	}
+
+	$s = preg_replace_callback('/"([^"]+)\?__HASH__(?:,([^"]+))?"/',
+	function ($ms) use ($f, $outDir) {
+		$relativeDir = @$ms[2];
+		$hash = getFileHash($f, $ms[1], $outDir, $relativeDir);
 		return '"' . $ms[1] . '?v=' . $hash . '"';
 	}, $s);
+
 	$outf = $outDir . "/" . $f;
 	@mkdir(dirname($outf), 0777, true);
 // 	echo("=== hash $f\n");
@@ -60,38 +111,69 @@ function handleCopy($f, $outDir)
 	copy($f, $outf);
 }
 
-function handleOne($f, $outDir)
+function handleOne($f, $outDir, $force = false)
 {
+	global $FILES;
+	global $RULES;
 	global $COPY_EXCLUDE;
-	global $HASH_INCLUDE;
 	global $g_handledFiles;
-	$g_handledFiles[realpath($f)] = 1;
-	if (preg_match('/\.(html)$/', $f)) {
+
+	// $FILES设置一般用于调试 单个文件
+	if (!$force && isset($FILES)) {
 		$skip = true;
-		foreach ($HASH_INCLUDE as $re) {
-			if (preg_match($re, $f)) {
+		foreach ($FILES as $re) {
+			if (fnmatch($re, $f)) {
 				$skip = false;
 				break;
 			}
 		}
-		if (! $skip)
-		{
-#			echo("=== hash $f\n");
-			handleHash($f, $outDir);
+		if ($skip)
 			return;
-		}
 	}
 
-	$skip = false;
-	foreach ($COPY_EXCLUDE as $re) {
-		if (preg_match($re, $f)) {
-			$skip = true;
+	$g_handledFiles[formatPath($f)] = 1;
+
+	$rule = null;
+	foreach ($RULES as $re => $v) {
+		if (fnmatch($re, $f)) {
+			$rule = $v;
 			break;
 		}
 	}
-	if ($skip)
+	if (isset($rule))
+	{
+		logit("=== rule $re on $f\n");
+		if (! is_array($rule)) {
+			$rule = [ $rule ];
+		}
+		$outf = null;
+		foreach ($rule as $rule1) {
+			if ($rule1 === "HASH") {
+				logit("=== hash $f\n");
+				handleHash($f, $outDir, $outf);
+			}
+			else {
+				$outf = $outDir . "/" . $f;
+				@mkdir(dirname($outf), 0777, true);
+				putenv("TARGET={$outf}");
+				// system($rule1);
+				file_put_contents("tmp.sh", $rule1);
+				passthru("sh tmp.sh");
+			}
+		}
 		return;
-// 	echo("=== copy $f\n");
+	}
+
+	$noCopy = false;
+	foreach ($COPY_EXCLUDE as $re) {
+		if (fnmatch($re, $f)) {
+			$noCopy = true;
+			break;
+		}
+	}
+	if ($noCopy)
+		return;
+	logit("=== copy $f\n");
 	handleCopy($f, $outDir);
 }
 
@@ -128,6 +210,7 @@ if (is_null($opts["srcDir"]))
 if (! is_dir($opts["srcDir"]))
 	die("*** not a folder: `{$opts["srcDir"]}`\n");
 
+addPath();
 // load config
 $cfg = $opts["srcDir"] . "/webcc.conf.php";
 if (is_file($cfg)) {
@@ -135,7 +218,7 @@ if (is_file($cfg)) {
 	require($cfg);
 }
 
-$COPY_EXCLUDE[] = '/webcc\.conf\.php/';
+$COPY_EXCLUDE[] = 'webcc.conf.php';
 //}}}
 
 @mkdir($opts["outDir"], 0777, true);

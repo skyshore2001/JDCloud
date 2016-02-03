@@ -1,5 +1,5 @@
 #!/bin/sh
-OUT_DIR=../xeyc-sys-online
+OUT_DIR=../product-online
 
 if [[ ! -d $OUT_DIR ]]; then
 	echo "*** 文件夹不存在：$OUT_DIR"
@@ -38,19 +38,22 @@ git status -s
 
 echo
 read -p '=== 上传到服务器? (y/n) ' a
+doUpload=1
 if [[ $a != 'y' && $a != 'Y' ]]; then
-	exit
+	doUpload=0
 fi
 
-cmd=`git status -s 2>/dev/null | perl -x $script getcmd`
-if [[ -z $cmd ]]; then exit ; fi
+if [[ $doUpload != 0 ]]; then
+	cmd=`git status -s 2>/dev/null | perl -x $script getcmd`
+	if [[ -z $cmd ]]; then exit ; fi
 
-#echo $cmd > cmd1.log
-if $cmd; then
-	echo "=== 上传成功!"
-else
-	echo "!!! 出错了(返回值为$?), 请检查!!!"
-	exit
+	#echo $cmd > cmd1.log
+	if $cmd; then
+		echo "=== 上传成功!"
+	else
+		echo "!!! 出错了(返回值为$?), 请检查!!!"
+		exit
+	fi
 fi
 
 git commit -m "$lastlog"
@@ -90,7 +93,8 @@ if ($ARGV[0] eq 'getcmd')
 	}
 
 	exit unless defined $cmd;
-	$fullCmd = "curl -s -S --ftp-create-dirs -u www:ywtl_TPGJ $cmd";
+	# TODO: change your user/pwd
+	$fullCmd = "curl -s -S --ftp-create-dirs -u www:hello $cmd";
 	print $fullCmd;
 	#open O, ">cmd.log";
 	#print O $fullCmd;

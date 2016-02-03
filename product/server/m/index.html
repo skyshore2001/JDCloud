@@ -7,7 +7,7 @@
 	<meta name="format-detection"content="telephone=no"/>
 	<link rel="stylesheet" href="lib/jquery.mobile-1.4.5.min.css" />
 
-<!-- WEBCC_GROUP lib1 {{{ - framework, shared by other apps -->
+<!-- WEBCC_BEGIN {{{ - framework, shared by other apps -->
 	<script src="lib/jquery-1.11.1.min.js"></script>
 	<script src="lib/jquery.mobile-1.4.5.min.js"></script>
 	<script src="lib/jquery.validate.min.js"></script>
@@ -16,15 +16,19 @@
 	<script src="lib/jquery.mobile-1.4.5.js"></script>
 	<script src="lib/jquery.validate-1.13.1.js"></script-->
 
-	<script src="lib/messages_zh.min.js"></script>
-<!-- WEBCC_GROUP_END }}} -->
-
-<!-- WEBCC_GROUP lib2 {{{ - misc 3rd party lib-->
-<!-- WEBCC_GROUP_END }}} -->
-
-	<script src="lib/common.js?__HASH__"></script>
-	<script src="lib/app_fw.js?__HASH__"></script>
-	<script src="app.js?__HASH__"></script>
+	<script src="../m/messages_zh.min.js"></script>
+<!-- WEBCC_USE_THIS
+	<script src="lib/jquery-1.11.1.min.js"></script>
+	<script src="lib-jqm.min.js?__HASH__"></script>
+WEBCC_END }}} -->
+	
+<!-- WEBCC_BEGIN {{{ - misc 3rd party lib-->
+		<script src="lib/common.js?__HASH__"></script>
+		<script src="lib/app_fw.js?__HASH__"></script>
+		<script src="app.js?__HASH__"></script>
+<!-- WEBCC_USE_THIS
+		<script src="lib-app.min.js?__HASH__"></script>
+WEBCC_END }}} -->
 
 	<script src="main.js?__HASH__"></script>
 

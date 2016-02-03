@@ -1338,10 +1338,10 @@ function parseArgs()
 			$(function () {
 				// to use cordova plugins like camera: require m2/cordova.js, cordova_plugins.js, plugins/...
 				if (isIOS()) {
-					loadScript("cordova-ios/cordova.js?__HASH__,m2"); 
+					loadScript("cordova-ios/cordova.js?__HASH__,m"); 
 				}
 				else {
-					loadScript("cordova/cordova.js?__HASH__,m2"); 
+					loadScript("cordova/cordova.js?__HASH__,m"); 
 				}
 			});
 		}
