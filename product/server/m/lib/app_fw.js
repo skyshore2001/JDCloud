@@ -305,7 +305,7 @@ function app_alert(msg, type, fn, timeoutInterval)
 	type = type || "i";
 	var icon = {i: "info", w: "warning", e: "error", q: "question"}[type];
 	var s = {i: "提示", w: "警告", e: "出错", q: "确认"}[type];
-	var s1 = "<div class='alertTitle'>" + s + "</div>";
+	var s1 = "<b>[" + s + "]</b>";
 
 	// 如果没有jqm, 或当前有jqm popup在显示, 使用alert (jqm不能同时开两个popup)
 	if ($.mobile == null || isPopupOpened())
@@ -320,8 +320,8 @@ function app_alert(msg, type, fn, timeoutInterval)
 '<div id="mymsgbox" class="ui-content">' +
 	'<a href="#" class="ui-btn ui-corner-all ui-shadow ui-btn-a ui-icon-delete ui-btn-icon-notext ui-btn-right" data-rel="back">Close</a>' +
 	'<h3></h3>' +
-	'<span id=btns><button id="btnOK" class="ui-btn ui-corner-all ui-mini ui-btn-inline">取消订单</button>' + 
-	'<button id="btnCancel" class="ui-btn ui-mini ui-btn-inline">不取消</button></span>' +
+	'<span id=btns><button id="btnOK" class="ui-btn ui-corner-all ui-mini ui-btn-inline">确定</button>' + 
+	'<button id="btnCancel" class="ui-btn ui-mini ui-btn-inline">取消</button></span>' +
 '</div>');
 
 		jmsg.appendTo($.mobile.pageContainer);
@@ -336,10 +336,7 @@ function app_alert(msg, type, fn, timeoutInterval)
 		// NOTE: use "theme" option, or else it's transparent on the current page.
 		jmsg.popup({theme: 'a', history: false});
 	}
-	
-	// Todo ========
-	jmsg.find("h3").attr("class", icon).html(s1 + "<div class='alertInfo'>" + msg + "</div>");
-	
+	jmsg.find("h3").attr("class", icon).html(s1 + ": " + msg);
 	if (type == 'q') {
 		jmsg.find("#btns").show();
 	}

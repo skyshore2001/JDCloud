@@ -27,7 +27,8 @@ var g_data = {
 };
 
 var g_cfg = {
-	PAGE_SZ: 20
+	PAGE_SZ: 20,
+	WAIT: 3000, // 3s
 };
 //}}}
 
@@ -243,7 +244,7 @@ function initPageOrder()
 			var div = $("<div><h4>订单日志</h4></div>").appendTo(jlst);
 			var ul_log = $("<ul></ul>").appendTo(div);
 			$.each(data.orderLog, function (i, e) {
-				var ji = $("<li>" + ActionStr[e.action] + "- " + e.tm + "</li>");
+				var ji = $("<li>" + ActionStr[e.action] + ": " + parseDate(e.tm).format("yyyy-mm-dd HH:MM") + "</li>");
 				ji.appendTo(ul_log);
 			});
 			ul_log.listview();
@@ -276,8 +277,12 @@ function initPageCreateOrder()
 	{
 		app_alert("订单创建成功!", "i", function () {
 			PageHome.show(true);
-		});
+		}, g_cfg.WAIT);
 	}
+
+	jpage.on("pagebeforeshow", function () {
+		jf[0].reset();
+	});
 }
 //}}}
 
