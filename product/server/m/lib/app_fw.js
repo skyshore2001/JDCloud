@@ -553,7 +553,7 @@ function initJQM()
 	$.mobile.defaultPageTransition = "none"; 
 	$.mobile.defaultDialogTransition = "none"; 
 
-	$.mobile.toolbar.prototype.options.position = "fixed";
+	//$.mobile.toolbar.prototype.options.position = "fixed";
 	$.mobile.toolbar.prototype.options.tapToggle = false;
 
 	$.mobile.popup.prototype.options.history = false;
@@ -564,10 +564,24 @@ function initJQM()
 }
 initJQM();
 
-// ---- 图片按需加载 {{{
-function document_pageCreate(ev)
+// ---- JQM通用事件 {{{
+function document_pageBeforeCreate(ev)
 {
 	var jpage = $(ev.target);
+
+	var jhdr = jpage.find("> div[data-role=header]");
+
+	// 设置header位置不可变
+	// 注意：不要用 $.mobile.toolbar.prototype.options.position = "fixed"; 因为它将影响 popup的header.
+	jhdr.filter(":not([data-position])").attr("data-position", "fixed");
+
+	// 标题栏空白处点击5次, 进入测试模式
+	jhdr.click(function (ev) {
+		// 注意避免子元素bubble导致的事件
+		if ($(ev.target).attr("data-role") == "header")
+			switchTestMode(this); 
+	});
+
 	// 图片按需加载
 	jpage.find("img[data-src]").each(function () {
 		this.src = $(this).data("src");
@@ -581,17 +595,18 @@ function document_pageCreate(ev)
 
 function document_popupShow(ev)
 {
-	var jpage = $(ev.target);
-	if (jpage.data("picLoaded_"))
+	var jdlg = $(ev.target);
+	if (jdlg.data("picLoaded_"))
 		return;
-	jpage.data("picLoaded_", true);
+	jdlg.data("picLoaded_", true);
 	// 图片按需加载
-	jpage.find("img[data-src]").each(function () {
+	jdlg.find("img[data-src]").each(function () {
 		this.src = $(this).data("src");
 	});
 }
 
-$(document).on("pagecreate", document_pageCreate);
+$(document).on("pagebeforecreate", document_pageBeforeCreate);
+//$(document).on("pagecreate", document_pageCreate);
 $(document).on("popupbeforeposition", document_popupShow);
 //}}}
 
@@ -662,75 +677,79 @@ function popPageStack(n)
 	}
 }
 
-var lastFrom, lastTo;
-function pageContainer_beforeChange(ev, ui) 
+function handleGoBack()
 {
-	if (ui.options.role == "popup")
-		return;
+	$.mobile.pageContainer.on("pagecontainerbeforechange", pageContainer_beforeChange);
 
-	// 防止调用多次
-	var toPageId = getPageId(ui.toPage);
-	var fromPageId = getPageId(ui.prevPage);
+	var lastFrom, lastTo;
+	function pageContainer_beforeChange(ev, ui) 
+	{
+		if (ui.options.role == "popup")
+			return;
 
-	if (lastFrom == fromPageId || lastTo == toPageId)
-		return;
-	lastFrom = fromPageId;
-	lastTo = toPageId;
+		// 防止调用多次
+		var toPageId = getPageId(ui.toPage);
+		var fromPageId = getPageId(ui.prevPage);
 
-	// console.log("----before change-----");
-	g_prevPage = ui.prevPage;
+		if (lastFrom == fromPageId || lastTo == toPageId)
+			return;
+		lastFrom = fromPageId;
+		lastTo = toPageId;
+
+		// console.log("----before change-----");
+		g_prevPage = ui.prevPage;
 // 		console.log(ui.prevPage);
 // 		console.log(ui.toPage);
 
-	var ret = true;
-	var pageStack = self.m_pageStack;
+		var ret = true;
+		var pageStack = self.m_pageStack;
 
-	if (ui.options.fromHashChange && ui.options.direction && !self.m_disablePageStack) { // direction判断是点击了 后退/前进 按钮
-		var found = false;
-		var i;
-		// !!! 注意: ui.options.direction == "back"/"forward" 并不可靠, 有时点forward会当back处理, 所以不要用
+		if (ui.options.fromHashChange && ui.options.direction && !self.m_disablePageStack) { // direction判断是点击了 后退/前进 按钮
+			var found = false;
+			var i;
+			// !!! 注意: ui.options.direction == "back"/"forward" 并不可靠, 有时点forward会当back处理, 所以不要用
 
-		for (i=self.m_SP; i<pageStack.length; ++i) {
-			if (toPageId == pageStack[i])
-			{
-				found = true;
-				break;
-				//return false;
-			}
-		}
-		if (!found) {
-			for (i=self.m_SP; i>=0; --i) {
+			for (i=self.m_SP; i<pageStack.length; ++i) {
 				if (toPageId == pageStack[i])
 				{
 					found = true;
 					break;
+					//return false;
 				}
 			}
-		}
-
-		if (!found || self.m_SP == i) { // 如果回退页面和当前页面相同, 再回退一次
-			// 遇到已删除的历史, 当回退处理
-			if (self.m_SP > 0) {
-				-- self.m_SP;
+			if (!found) {
+				for (i=self.m_SP; i>=0; --i) {
+					if (toPageId == pageStack[i])
+					{
+						found = true;
+						break;
+					}
+				}
 			}
-			location.replace("#" + pageStack[self.m_SP]);//按了返回键: 当前的前一个页面
-			//history.replaceState(null, null, "#" + pageStack[self.m_SP]);
 
-			// 取消之后的动作
-			return false;
+			if (!found || self.m_SP == i) { // 如果回退页面和当前页面相同, 再回退一次
+				// 遇到已删除的历史, 当回退处理
+				if (self.m_SP > 0) {
+					-- self.m_SP;
+				}
+				location.replace("#" + pageStack[self.m_SP]);//按了返回键: 当前的前一个页面
+				//history.replaceState(null, null, "#" + pageStack[self.m_SP]);
+
+				// 取消之后的动作
+				return false;
+			}
+			self.m_SP = i;
+			return;
 		}
-		self.m_SP = i;
-		return;
-	}
 
-	if (pageStack.length == 0 || pageStack[self.m_SP] != toPageId)
-	{
-		++ self.m_SP;
-		pageStack.splice(self.m_SP, pageStack.length, toPageId);
+		if (pageStack.length == 0 || pageStack[self.m_SP] != toPageId)
+		{
+			++ self.m_SP;
+			pageStack.splice(self.m_SP, pageStack.length, toPageId);
+		}
+		return ret;
 	}
-	return ret;
 }
-
 //}}}
 
 // ---- 处理ios7以上标题栏问题(应下移以空出状态栏)
@@ -1506,17 +1525,11 @@ function switchTestMode(obj)
 
 function main()
 {
-	// popup's header dont appear to be 'fixed'
-	$("div[data-role=popup] div[data-role=header]").attr("data-position", "");
-
+	//初始化footer
 	$("#footer").toolbar({theme: "a"});
 	fixNavbarAsFooter($("#footer"));
 
-	// 标题栏点击5次, 进入测试模式
-	$("div[data-role=header]").click(function (ev) { if ($(ev.target).attr("data-role") == "header") switchTestMode(this); });
-
-	$.mobile.pageContainer.on("pagecontainerbeforechange", pageContainer_beforeChange);
-
+	handleGoBack();
 	handleIos7Statusbar();
 }
 
