@@ -1,0 +1,19 @@
+<div mui-initfn="initPageLogin1" mui-initfn="login1.js">
+	<div data-role="header">
+		<h1>登录</h1>
+	</div>
+
+	<form action="login" role="main" class="ui-content">
+		<div class="ui-field-contain">
+			<label for="txtPhone">手机号</label>
+			<input name="uname" required>
+		</div>
+		<div class="ui-field-contain">
+			<label for="txtPwd">密码</label>
+			<input type="password" name="pwd" required minlength=4>
+		</div>
+		<input type="hidden" name="wantAll" value="1">
+		<button type="submit" data-theme="b">登录</button>
+	</form>
+</div>
+

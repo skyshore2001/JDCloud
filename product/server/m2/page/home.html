@@ -1,0 +1,30 @@
+<div mui-initfn="initPageHome" mui-script="home.js">
+	<div class="hd">
+		<h1 class="page_title">订单</h1>
+	</div>
+
+	<div class="bd">
+		<ul class="p-list weui_cells weui_cells_access">
+		</ul>
+		<div class="weui_btn_area">
+			<a href="#createOrder" class="weui_btn weui_btn_primary">下单</a>
+			<a href="#" id="btnRefreshList" class="weui_btn weui_btn_default">刷新</a>
+		</div>
+	</div>
+
+	<!-- dialog dlgUserInit -->
+	<div id="dlgUserInit" style="display:none">
+		<div data-role="header" >
+			<h2>设置个人信息</h2>
+		</div>
+
+		<form action="User.set" style="min-width:300px">
+			<div class="ui-field-contain">
+				<label>昵称</label>
+				<input name="name" required>
+			</div>
+			<button data-theme="b">确定</button>
+		</form>
+	</div>
+	
+</div>
