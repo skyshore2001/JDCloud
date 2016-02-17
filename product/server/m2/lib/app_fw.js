@@ -252,10 +252,46 @@ Mobile UI framework, 基于jquery mobile库的增强和工具集.
 
  */
 
+// ------ CPageManager {{{
 /**
 @class CPageManager
 
 MUI的基类，提供showPage等操作。
+
+页面管理器提供单网页应用框架（一般称单页面应用/SPA，为与应用内page区分，我称之为单网页应用）。
+主要特性：
+- 页面路由。异步无刷新页面切换。支持浏览器前进后退操作。
+- 基于page的模块化开发。支持页面html片段和js片段。
+- 统一对待内部页面和外部页面（同样的方式访问，同样的行为）。开发时推荐用外部页面，发布时可打包常用页面成为内部页面。访问任何页面都是index.html#page1的方式，如果page1已存在则使用（内部页面），不存在则动态加载（如找到fragment/page1.html）
+- 页面栈管理。可自行pop掉一些页面控制返回行为。
+
+所有的page的html与js均可以独立开发。
+如添加一个订单页，使用外部页面，可以添加一个order.html (html片段):
+
+	<div mui-initfn="initPageOrder" mui-script="order.js">
+		...
+	</div>
+
+如果使用内部页面，则可以写为：
+
+	<script type="text/html" id="tpl_order">
+		<div mui-initfn="initPageOrder" mui-script="order.js">
+			...
+		</div>
+	</script>
+
+该页面的代码可以放在一个单独的文件order.js:
+
+	function initPageOrder() 
+	{
+		var jpage = $(this);
+		jpage.on("beforeshow", onBeforeShow);
+		jpage.on("show", onShow);
+		jpage.on("hide", onHide);
+		...
+	}
+
+框架提供beforeshow/show/hide三个事件。
  */
 function CPageManager()
 {
@@ -403,11 +439,424 @@ example:
 		location.hash = pageRef;
 	}
 }
+//}}}
 
+// ------ CComManager {{{
+/**
+@class CComManager
+@param app IApp={appName?=user}
+
+提供callSvr等与后台交互的API.
+
+*/
+function CComManager(app)
+{
+	var self = this;
+
+/**
+@var MUI.lastError = ctx
+
+ctx: {ac, tm, tv, ret}
+
+- ac: action
+- tm: start time
+- tv: time interval
+- ret: return value
+*/
+	self.lastError = null;
+	var m_app = app;
+	var m_tmBusy;
+	var m_manualBusy = 0;
+
+/**
+@fn app_abort()
+
+中止之后的调用, 直接返回.
+*/
+	window.app_abort = app_abort;
+	function app_abort()
+	{
+		throw("abort");
+	}
+
+/**
+@fn MUI.setOnError()
+
+一般框架自动设置onerror函数；如果onerror被其它库改写，应再次调用该函数。
+allow throw("abort") as abort behavior.
+ */
+	self.setOnError = setOnError;
+	function setOnError()
+	{
+		var fn = window.onerror;
+		window.onerror = function (msg) {
+			if (fn && fn.apply(this, arguments) === true)
+				return true;
+			if (/abort$/.test(msg))
+				return true;
+			debugger;
+		}
+	}
+	setOnError();
+
+	$.ajaxSetup({
+		//dataType: "text",
+		dataFilter: function (data, type) {
+			if (type == "text") {
+				rv = defDataProc.call(this, data);
+				if (rv != null)
+					return rv;
+				-- $.active; // ajax调用中断,这里应做些清理
+				app_abort();
+			}
+			return data;
+		},
+
+		error: defAjaxErrProc
+	});
+
+	// $(document).on("pageshow", function () {
+	// 	if (IsBusy)
+	// 		$.mobile.loading("show");
+	// });
+
+	/**
+	@fn delayDo(fn, delayCnt?=3)
+
+	设置延迟执行。当delayCnt=1时与setTimeout效果相同。
+	多次置于事件队列最后，一般3次后其它js均已执行完毕，为idle状态
+	*/
+	window.delayDo = delayDo;
+	function delayDo(fn, delayCnt)
+	{
+		if (delayCnt == null)
+			delayCnt = 3;
+		doIt();
+		function doIt()
+		{
+			if (delayCnt == 0)
+			{
+				fn();
+				return;
+			}
+			-- delayCnt;
+			setTimeout(doIt);
+		}
+	}
+
+/**
+@fn MUI.enterWaiting(ctx?)
+@param ctx {ac, tm, tv?, tv2?, noLoadingImg?}
+@alias enterWaiting()
+*/
+	window.enterWaiting = self.enterWaiting = enterWaiting;
+	function enterWaiting(ctx)
+	{
+		if (IsBusy == 0) {
+			m_tmBusy = new Date();
+		}
+		IsBusy = 1;
+		if (ctx == null)
+			++ m_manualBusy;
+		// 延迟执行以防止在page show时被自动隐藏
+		delayDo(function () {
+	// 		if ($.mobile && !(ctx && ctx.noLoadingImg))
+	// 			$.mobile.loading("show");
+		},1);
+	}
+
+/**
+@fn MUI.leaveWaiting(ctx?)
+@alias leaveWaiting
+*/
+	window.leaveWaiting = self.leaveWaiting = leaveWaiting;
+	function leaveWaiting(ctx)
+	{
+		if (ctx == null)
+		{
+			if (-- m_manualBusy < 0)
+				m_manualBusy = 0;
+		}
+		// 当无远程API调用或js调用时, 设置IsBusy=0
+		delayDo(function () {
+			if (g_cfg.logAction && ctx && ctx.ac && ctx.tv) {
+				var tv2 = (new Date() - ctx.tm) - ctx.tv;
+				ctx.tv2 = tv2;
+				console.log(ctx);
+			}
+			if ($.active == 0 && IsBusy && m_manualBusy == 0) {
+				IsBusy = 0;
+				var tv = new Date() - m_tmBusy;
+				m_tmBusy = 0;
+				console.log("idle after " + tv + "ms");
+
+				// handle idle
+	// 			if ($.mobile)
+	// 				$.mobile.loading("hide");
+			}
+		});
+	}
+
+	function defAjaxErrProc(xhr, textStatus, e)
+	{
+		if (xhr && xhr.status != 200) {
+			if (xhr.status == 0) {
+				app_alert("连不上服务器了，是不是网络连接不给力？", "e");
+			}
+			else {
+				app_alert("操作失败: 服务器错误. status=" + xhr.status + "-" + xhr.statusText, "e");
+			}
+			var ctx = this._ctx || {};
+			leaveWaiting(ctx);
+		}
+	}
+
+	// return: ==null: 做出错处理，不调用回调函数。
+	// 注意：服务端不应返回null, 否则客户回调无法执行; 习惯上返回false表示让回调处理错误。
+	function defDataProc(rv)
+	{
+		var ctx = this.ctx_ || {};
+		try {
+			rv = $.parseJSON(rv);
+		}
+		catch (e)
+		{
+			leaveWaiting(ctx);
+			app_alert("服务器通讯异常: " + e);
+			return;
+		}
+
+		if (ctx.tm) {
+			ctx.tv = new Date() - ctx.tm;
+		}
+		ctx.ret = rv;
+
+		leaveWaiting(ctx);
+		if (rv && $.isArray(rv) && rv.length >= 2 && typeof rv[0] == "number") {
+			if (rv[0] == 0)
+				return rv[1];
+
+			if (this.noex)
+			{
+				self.lastError = ctx;
+				return false;
+			}
+
+			if (rv[0] == E_NOAUTH) {
+				popPageStack(0);
+				showLogin();
+				return;
+			}
+			else if (rv[0] == E_AUTHFAIL) {
+				app_alert("验证失败，请检查输入是否正确!", "e");
+				return;
+			}
+			logError();
+			app_alert("操作失败：" + rv[1], "e");
+		}
+		else {
+			logError();
+			app_alert("服务器通讯协议异常!", "e"); // 格式不对
+		}
+
+		function logError()
+		{
+			self.lastError = ctx;
+			console.log("failed call");
+			console.log(ctx);
+		}
+	}
+
+/**
+@fn MUI.makeUrl(action, params)
+@alias makeUrl
+
+生成对后端调用的url. 
+
+	var params = {id: 100};
+	var url = makeUrl("Ordr.set", params);
+
+注意：调用该函数生成的url在结尾有标志字符串"zz=1", 如"../api.php/login?_app=user&zz=1"
+ */
+	window.makeUrl = self.makeUrl = makeUrl;
+	function makeUrl(action, params)
+	{
+		// 避免重复调用
+		if (action.indexOf("zz=1") >0)
+			return action;
+
+		if (params == null)
+			params = {};
+		var url;
+		if (action.indexOf(".php") < 0)
+		{
+			var usePathInfo = true;
+			if (usePathInfo) {
+				url = "../api.php/" + action;
+			}
+			else {
+				url = "../api.php";
+				params.ac = action;
+			}
+		}
+		else {
+			url = action;
+		}
+		if (g_cordova)
+			params._ver = "a/" + g_cordova;
+		if (m_app.appName)
+			params._app = m_app.appName;
+		if (g_args._test)
+			params._test = 1;
+		if (g_args._debug)
+			params._debug = g_args._debug;
+		params.zz = 1; // zz标记
+		return appendParam(url, $.param(params)); // appendParam(url, params);
+	}
+
+/**
+@fn MUI.callSvr(ac, param?, fn?, data?, userOptions?)
+@fn MUI.callSvr(ac, fn?, data?, userOptions?)
+@alias callSvr
+
+@param ac String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)
+@param param Object. URL参数（或称HTTP GET参数）
+@param data Object. POST参数. 如果有该参数, 则自动使用HTTP POST请求(data作为POST内容), 否则使用HTTP GET请求.
+@param fn Function(data). 回调函数, data参考该接口的返回值定义。
+@param userOptions 用户自定义参数, 会合并到$.ajax调用的options参数中.可在回调函数中用"this.参数名"引用. 
+
+常用userOptions: 
+- 指定{async:0}来做同步请求, 一般直接用callSvrSync调用来替代.
+- 指定{noex:1}用于忽略错误处理, 当后端返回错误时, 回调函数会被调用, 且参数data=false.
+- 指定{noLoadingImg:1}用于忽略loading图标.
+
+例：
+
+	callSvr("logout");
+	callSvr("logout", api_logout);
+	callSvr("login", {wantAll:1}, api_login);
+	callSvr("info/hotline.php", {q: '大众'}, api_hotline);
+
+	// 也兼容使用makeUrl的旧格式如:
+	callSvr(makeUrl("logout"), api_logout);
+	callSvr(makeUrl("logout", {a:1}), api_logout);
+
+	callSvr("User.get", function (data) {
+		if (data === false) { // 仅当设置noex且服务端返回错误时可返回false
+			return;
+		}
+		foo(data);
+	}, null, {noex:1});
+
+框架会自动在ajaxOption中增加ctx_属性，它包含 {ac, tm, tv, tv2, ret} 这些信息。
+当设置g_cfg.logAction=1时，将输出这些信息。
+- ac: action
+- tm: start time
+- tv: time interval (从发起请求到服务器返回数据完成的时间, 单位是毫秒)
+- tv2: 从接到数据到完成处理的时间，毫秒(当并发处理多个调用时可能不精确)
+*/
+	window.callSvr = self.callSvr = callSvr;
+	function callSvr(ac, params, fn, data, userOptions)
+	{
+		if (params instanceof Function) {
+			// 兼容格式：callSvr(url, fn?, data?, userOptions?);
+			userOptions = data;
+			data = fn;
+			fn = params;
+			params = null;
+		}
+		var url = makeUrl(ac, params);
+		var ctx = {ac: ac, tm: new Date()};
+		if (userOptions && userOptions.noLoadingImg)
+			ctx.noLoadingImg = 1;
+		enterWaiting(ctx);
+		var method = (data == null? 'GET': 'POST');
+		var options = $.extend({
+			dataType: 'text',
+			url: url,
+			data: data,
+			type: method,
+			success: fn,
+			ctx_: ctx
+		}, userOptions);
+		console.log("call " + ac);
+		return $.ajax(options);
+	}
+
+/**
+@fn MUI.callSvrSync(ac, params?, fn?, data?, userOptions?)
+@fn MUI.callSvrSync(ac, fn?, data?, userOptions?)
+@alias callSvrSync
+
+同步模式调用callSvr.
+*/
+	window.callSvrSync = self.callSvrSync = callSvrSync;
+	function callSvrSync(ac, params, fn, data, userOptions)
+	{
+		var ret;
+		if (params instanceof Function) {
+			userOptions = data;
+			data = fn;
+			fn = params;
+			params = null;
+		}
+		userOptions = $.extend({async: false}, userOptions);
+		var dfd = callSvr(ac, params, fn, data, userOptions);
+		dfd.then(function(data) {
+			ret = data;
+		});
+		return ret;
+	}
+
+/**
+@fn MUI.setupCallSvrViaForm($form, $iframe, url, fn, callOpt)
+
+@param $iframe 一个隐藏的iframe组件.
+@param callOpt 用户自定义参数. 参考callSvr的同名参数. e.g. {noex: 1}
+
+一般对后端的调用都使用callSvr函数, 但像上传图片等操作不方便使用ajax调用, 因为要自行拼装multipart/form-data格式的请求数据. 
+这种情况下可以使用form的提交和一个隐藏的iframe来实现类似的调用.
+
+先定义一个form, 在其中放置文件上传控件和一个隐藏的iframe. form的target属性设置为iframe的名字:
+
+	<form data-role="content" action="upload" method=post enctype="multipart/form-data" target="ifrUpload">
+		<input type=file name="file[]" multiple accept="image/*">
+		<input type=submit value="上传">
+		<iframe id='ifrUpload' name='ifrUpload' style="display:none"></iframe>
+	</form>
+
+然后就像调用callSvr函数一样调用setupCallSvrViaForm:
+
+	var url = makeUrl("upload", {genThumb: 1});
+	MUI.setupCallSvrViaForm($frm, $frm.find("iframe"), url, onUploadComplete);
+	function onUploadComplete(data) 
+	{
+		alert("上传成功");
+	}
+
+ */
+	self.setupCallSvrViaForm = setupCallSvrViaForm;
+	function setupCallSvrViaForm($form, $iframe, url, fn, callOpt)
+	{
+		$form.attr("action", url);
+
+		$iframe.on("load", function () {
+			var data = this.contentDocument.body.innerText;
+			if (data == "")
+				return;
+			var rv = defDataProc.call(callOpt, data);
+			if (rv == null)
+				app_abort();
+			fn(rv);
+		});
+	}
+}
+//}}}
+
+// ------ MUI {{{
 var MUI = new nsMUI();
 function nsMUI()
 {
-	CPageManager.apply(this);
 	var self = this;
 
 /**
@@ -421,21 +870,10 @@ function nsMUI()
 		loginPage: "#login",
 	};
 
-/**
-@var MUI.lastError = ctx
-
-ctx: {ac, tm, tv, ret}
-
-- ac: action
-- tm: start time
-- tv: time interval
-- ret: return value
-*/
-	self.lastError = null;
+	CPageManager.call(this);
+	CComManager.call(this, self.m_app);
 
 	var m_onLoginOK;
-	var m_tmBusy;
-	var m_manualBusy = 0;
 
 // ------ jquery mobile {{{
 
@@ -870,393 +1308,6 @@ if ($.validator) {
 }
 //}}}
 
-// ------ ajax {{{
-
-/**
-@fn app_abort()
-
-中止之后的调用, 直接返回.
-*/
-window.app_abort = app_abort;
-function app_abort()
-{
-	throw("abort");
-}
-
-/**
-@fn MUI.setOnError()
-
-一般框架自动设置onerror函数；如果onerror被其它库改写，应再次调用该函数。
-allow throw("abort") as abort behavior.
- */
-self.setOnError = setOnError;
-function setOnError()
-{
-	var fn = window.onerror;
-	window.onerror = function (msg) {
-		if (fn && fn.apply(this, arguments) === true)
-			return true;
-		if (/abort$/.test(msg))
-			return true;
-		debugger;
-	}
-}
-setOnError();
-
-$.ajaxSetup({
-	//dataType: "text",
-	dataFilter: function (data, type) {
-		if (type == "text") {
-			rv = defDataProc.call(this, data);
-			if (rv != null)
-				return rv;
-			-- $.active; // ajax调用中断,这里应做些清理
-			app_abort();
-		}
-		return data;
-	},
-
-	error: defAjaxErrProc
-});
-
-// $(document).on("pageshow", function () {
-// 	if (IsBusy)
-// 		$.mobile.loading("show");
-// });
-
-/**
-@fn delayDo(fn, delayCnt?=3)
-
-设置延迟执行。当delayCnt=1时与setTimeout效果相同。
-多次置于事件队列最后，一般3次后其它js均已执行完毕，为idle状态
-*/
-window.delayDo = delayDo;
-function delayDo(fn, delayCnt)
-{
-	if (delayCnt == null)
-		delayCnt = 3;
-	doIt();
-	function doIt()
-	{
-		if (delayCnt == 0)
-		{
-			fn();
-			return;
-		}
-		-- delayCnt;
-		setTimeout(doIt);
-	}
-}
-
-/**
-@fn MUI.enterWaiting(ctx?)
-@param ctx {ac, tm, tv?, tv2?, noLoadingImg?}
-@alias enterWaiting()
-*/
-window.enterWaiting = self.enterWaiting = enterWaiting;
-function enterWaiting(ctx)
-{
-	if (IsBusy == 0) {
-		m_tmBusy = new Date();
-	}
-	IsBusy = 1;
-	if (ctx == null)
-		++ m_manualBusy;
-	// 延迟执行以防止在page show时被自动隐藏
-	delayDo(function () {
-// 		if ($.mobile && !(ctx && ctx.noLoadingImg))
-// 			$.mobile.loading("show");
-	},1);
-}
-
-/**
-@fn MUI.leaveWaiting(ctx?)
-@alias leaveWaiting
-*/
-window.leaveWaiting = self.leaveWaiting = leaveWaiting;
-function leaveWaiting(ctx)
-{
-	if (ctx == null)
-	{
-		if (-- m_manualBusy < 0)
-			m_manualBusy = 0;
-	}
-	// 当无远程API调用或js调用时, 设置IsBusy=0
-	delayDo(function () {
-		if (g_cfg.logAction && ctx && ctx.ac && ctx.tv) {
-			var tv2 = (new Date() - ctx.tm) - ctx.tv;
-			ctx.tv2 = tv2;
-			console.log(ctx);
-		}
-		if ($.active == 0 && IsBusy && m_manualBusy == 0) {
-			IsBusy = 0;
-			var tv = new Date() - m_tmBusy;
-			m_tmBusy = 0;
-			console.log("idle after " + tv + "ms");
-
-			// handle idle
-// 			if ($.mobile)
-// 				$.mobile.loading("hide");
-		}
-	});
-}
-
-function defAjaxErrProc(xhr, textStatus, e)
-{
-	if (xhr && xhr.status != 200) {
-		if (xhr.status == 0) {
-			app_alert("连不上服务器了，是不是网络连接不给力？", "e");
-		}
-		else {
-			app_alert("操作失败: 服务器错误. status=" + xhr.status + "-" + xhr.statusText, "e");
-		}
-		var ctx = this._ctx || {};
-		leaveWaiting(ctx);
-	}
-}
-
-// return: ==null: 做出错处理，不调用回调函数。
-// 注意：服务端不应返回null, 否则客户回调无法执行; 习惯上返回false表示让回调处理错误。
-function defDataProc(rv)
-{
-	var ctx = this.ctx_ || {};
-	try {
-		rv = $.parseJSON(rv);
-	}
-	catch (e)
-	{
-		leaveWaiting(ctx);
-		app_alert("服务器通讯异常: " + e);
-		return;
-	}
-
-	if (ctx.tm) {
-		ctx.tv = new Date() - ctx.tm;
-	}
-	ctx.ret = rv;
-
-	leaveWaiting(ctx);
-	if (rv && $.isArray(rv) && rv.length >= 2 && typeof rv[0] == "number") {
-		if (rv[0] == 0)
-			return rv[1];
-
-		if (this.noex)
-		{
-			self.lastError = ctx;
-			return false;
-		}
-
-		if (rv[0] == E_NOAUTH) {
-			popPageStack(0);
-			showLogin();
-			return;
-		}
-		else if (rv[0] == E_AUTHFAIL) {
-			app_alert("验证失败，请检查输入是否正确!", "e");
-			return;
-		}
-		logError();
-		app_alert("操作失败：" + rv[1], "e");
-	}
-	else {
-		logError();
-		app_alert("服务器通讯协议异常!", "e"); // 格式不对
-	}
-
-	function logError()
-	{
-		self.lastError = ctx;
-		console.log("failed call");
-		console.log(ctx);
-	}
-}
-
-/**
-@fn MUI.makeUrl(action, params)
-@alias makeUrl
-
-生成对后端调用的url. 
-
-	var params = {id: 100};
-	var url = makeUrl("Ordr.set", params);
-
-注意：调用该函数生成的url在结尾有标志字符串"zz=1", 如"../api.php/login?_app=user&zz=1"
- */
-window.makeUrl = self.makeUrl = makeUrl;
-function makeUrl(action, params)
-{
-	// 避免重复调用
-	if (action.indexOf("zz=1") >0)
-		return action;
-
-	if (params == null)
-		params = {};
-	var url;
-	if (action.indexOf(".php") < 0)
-	{
-		var usePathInfo = true;
-		if (usePathInfo) {
-			url = "../api.php/" + action;
-		}
-		else {
-			url = "../api.php";
-			params.ac = action;
-		}
-	}
-	else {
-		url = action;
-	}
-	if (g_cordova)
-		params._ver = "a/" + g_cordova;
-	if (self.m_app.appName)
-		params._app = self.m_app.appName;
-	if (g_args._test)
-		params._test = 1;
-	if (g_args._debug)
-		params._debug = g_args._debug;
-	params.zz = 1; // zz标记
-	return appendParam(url, $.param(params)); // appendParam(url, params);
-}
-
-/**
-@fn MUI.callSvr(ac, param?, fn?, data?, userOptions?)
-@fn MUI.callSvr(ac, fn?, data?, userOptions?)
-@alias callSvr
-
-@param ac String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)
-@param param Object. URL参数（或称HTTP GET参数）
-@param data Object. POST参数. 如果有该参数, 则自动使用HTTP POST请求(data作为POST内容), 否则使用HTTP GET请求.
-@param fn Function(data). 回调函数, data参考该接口的返回值定义。
-@param userOptions 用户自定义参数, 会合并到$.ajax调用的options参数中.可在回调函数中用"this.参数名"引用. 
-
-常用userOptions: 
-- 指定{async:0}来做同步请求, 一般直接用callSvrSync调用来替代.
-- 指定{noex:1}用于忽略错误处理, 当后端返回错误时, 回调函数会被调用, 且参数data=false.
-- 指定{noLoadingImg:1}用于忽略loading图标.
-
-例：
-
-	callSvr("logout");
-	callSvr("logout", api_logout);
-	callSvr("login", {wantAll:1}, api_login);
-	callSvr("info/hotline.php", {q: '大众'}, api_hotline);
-
-	// 也兼容使用makeUrl的旧格式如:
-	callSvr(makeUrl("logout"), api_logout);
-	callSvr(makeUrl("logout", {a:1}), api_logout);
-
-	callSvr("User.get", function (data) {
-		if (data === false) { // 仅当设置noex且服务端返回错误时可返回false
-			return;
-		}
-		foo(data);
-	}, null, {noex:1});
-
-框架会自动在ajaxOption中增加ctx_属性，它包含 {ac, tm, tv, tv2, ret} 这些信息。
-当设置g_cfg.logAction=1时，将输出这些信息。
-- ac: action
-- tm: start time
-- tv: time interval (从发起请求到服务器返回数据完成的时间, 单位是毫秒)
-- tv2: 从接到数据到完成处理的时间，毫秒(当并发处理多个调用时可能不精确)
-*/
-window.callSvr = self.callSvr = callSvr;
-function callSvr(ac, params, fn, data, userOptions)
-{
-	if (params instanceof Function) {
-		// 兼容格式：callSvr(url, fn?, data?, userOptions?);
-		userOptions = data;
-		data = fn;
-		fn = params;
-		params = null;
-	}
-	var url = makeUrl(ac, params);
-	var ctx = {ac: ac, tm: new Date()};
-	if (userOptions && userOptions.noLoadingImg)
-		ctx.noLoadingImg = 1;
-	enterWaiting(ctx);
-	var method = (data == null? 'GET': 'POST');
-	var options = $.extend({
-		dataType: 'text',
-		url: url,
-		data: data,
-		type: method,
-		success: fn,
-		ctx_: ctx
-	}, userOptions);
-	console.log("call " + ac);
-	return $.ajax(options);
-}
-
-/**
-@fn MUI.callSvrSync(ac, params?, fn?, data?, userOptions?)
-@fn MUI.callSvrSync(ac, fn?, data?, userOptions?)
-@alias callSvrSync
-
-同步模式调用callSvr.
-*/
-window.callSvrSync = self.callSvrSync = callSvrSync;
-function callSvrSync(ac, params, fn, data, userOptions)
-{
-	var ret;
-	if (params instanceof Function) {
-		userOptions = data;
-		data = fn;
-		fn = params;
-		params = null;
-	}
-	userOptions = $.extend({async: false}, userOptions);
-	var dfd = callSvr(ac, params, fn, data, userOptions);
-	dfd.then(function(data) {
-		ret = data;
-	});
-	return ret;
-}
-
-/**
-@fn MUI.setupCallSvrViaForm($form, $iframe, url, fn, callOpt)
-
-@param $iframe 一个隐藏的iframe组件.
-@param callOpt 用户自定义参数. 参考callSvr的同名参数. e.g. {noex: 1}
-
-一般对后端的调用都使用callSvr函数, 但像上传图片等操作不方便使用ajax调用, 因为要自行拼装multipart/form-data格式的请求数据. 
-这种情况下可以使用form的提交和一个隐藏的iframe来实现类似的调用.
-
-先定义一个form, 在其中放置文件上传控件和一个隐藏的iframe. form的target属性设置为iframe的名字:
-
-	<form data-role="content" action="upload" method=post enctype="multipart/form-data" target="ifrUpload">
-		<input type=file name="file[]" multiple accept="image/*">
-		<input type=submit value="上传">
-		<iframe id='ifrUpload' name='ifrUpload' style="display:none"></iframe>
-	</form>
-
-然后就像调用callSvr函数一样调用setupCallSvrViaForm:
-
-	var url = makeUrl("upload", {genThumb: 1});
-	MUI.setupCallSvrViaForm($frm, $frm.find("iframe"), url, onUploadComplete);
-	function onUploadComplete(data) 
-	{
-		alert("上传成功");
-	}
-
- */
-self.setupCallSvrViaForm = setupCallSvrViaForm;
-function setupCallSvrViaForm($form, $iframe, url, fn, callOpt)
-{
-	$form.attr("action", url);
-
-	$iframe.on("load", function () {
-		var data = this.contentDocument.body.innerText;
-		if (data == "")
-			return;
-		var rv = defDataProc.call(callOpt, data);
-		if (rv == null)
-			app_abort();
-		fn(rv);
-	});
-}
-
-//}}}
-
 // ------ cordova setup {{{
 $(document).on("deviceready", function () {
 	// TODO: hardcode "home"
@@ -1571,6 +1622,8 @@ function setApp(app)
 }
 
 }
+//}}}
+
 //}}}
 
 // vim: set foldmethod=marker:
