@@ -1671,7 +1671,7 @@ function setApp(app)
 // init controls
 function autoStyle(jo)
 {
-	jo.find(".navbar>*").click(function () {
+	jo.find(".mui-navbar>*").click(function () {
 		$(this).parent().find(">*").removeClass("active");
 		$(this).addClass("active");
 	});
