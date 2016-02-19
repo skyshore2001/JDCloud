@@ -1,4 +1,3 @@
-// ====== page order {{{
 function initPageOrder() 
 {
 	var jpage = $(this);
@@ -41,5 +40,3 @@ function initPageOrder()
 	
 	jpage.on("pagebeforeshow", showOrder);
 }
-//}}}
-

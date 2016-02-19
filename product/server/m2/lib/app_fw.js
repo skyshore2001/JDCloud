@@ -187,6 +187,11 @@ function waitFor(dfd)
 
 //}}}
 
+if (window.console === undefined) {
+	window.console = {
+		log:function () {}
+	}
+}
 // }}}
 
 // ====== app fw {{{
@@ -368,7 +373,7 @@ function CPageManager()
 // 			}
 			// 如果html片段中有script, 在append时会同步获取和执行(jquery功能)
 			var jpage = $(html);
-			jpage.attr("id", pageId).addClass("page").addClass('slideIn'); //.appendTo(jLoader);
+			jpage.attr("id", pageId).addClass("mui-page").addClass('slideIn'); //.appendTo(jLoader);
 
 			var val = jpage.attr("mui-script");
 			if (val != null) {
@@ -396,6 +401,7 @@ function CPageManager()
 			var oldPage = self.activePage;
 			self.activePage = jpage;
 			// TODO: use animationend?
+			fixPageSize();
 			jpage.trigger("pageshow");
 			// TODO: destroy??
 			if (oldPage)
@@ -438,6 +444,21 @@ example:
 			pageRef = '#' + pageRef;
 		location.hash = pageRef;
 	}
+
+	$(window).on('orientationchange', fixPageSize);
+	$(window).on('resize'           , fixPageSize);
+
+	function fixPageSize()
+	{
+		if (self.activePage) {
+			var jpage = self.activePage;
+			var H = window.innerHeight;
+			var jfooter = $("#footer");
+			var hf = jfooter.is(":visible")? jfooter.height(): 0;
+			//jpage.height(H);
+			jpage.find(".bd").innerHeight(H - jpage.find(".hd").height() - hf);
+		}
+	}
 }
 //}}}
 
@@ -467,6 +488,7 @@ ctx: {ac, tm, tv, ret}
 	var m_app = app;
 	var m_tmBusy;
 	var m_manualBusy = 0;
+	var m_jLoader;
 
 /**
 @fn app_abort()
@@ -560,6 +582,8 @@ allow throw("abort") as abort behavior.
 			++ m_manualBusy;
 		// 延迟执行以防止在page show时被自动隐藏
 		delayDo(function () {
+			if (!(ctx && ctx.noLoadingImg))
+				showLoading();
 	// 		if ($.mobile && !(ctx && ctx.noLoadingImg))
 	// 			$.mobile.loading("show");
 		},1);
@@ -591,6 +615,7 @@ allow throw("abort") as abort behavior.
 				console.log("idle after " + tv + "ms");
 
 				// handle idle
+				hideLoading();
 	// 			if ($.mobile)
 	// 				$.mobile.loading("hide");
 			}
@@ -850,6 +875,28 @@ allow throw("abort") as abort behavior.
 			fn(rv);
 		});
 	}
+
+/**
+@fn MUI.showLoading()
+*/
+	self.showLoading = showLoading;
+	function showLoading()
+	{
+		if (m_jLoader == null) {
+			m_jLoader = $("<div class='mui-loader'></div>");
+		}
+		m_jLoader.appendTo(document.body);
+	}
+	
+/**
+@fn MUI.hideLoading()
+*/
+	self.hideLoading = hideLoading;
+	function hideLoading()
+	{
+		if (m_jLoader)
+			m_jLoader.remove();
+	}
 }
 //}}}
 
@@ -897,7 +944,7 @@ function app_alert(msg, type, fn, timeoutInterval)
 	if ($.mobile == null || isPopupOpened())
 	{
 		alert(s + ": " + msg);
-		fn();
+		fn && fn();
 		return;
 	}
 
@@ -1621,6 +1668,56 @@ function setApp(app)
 		validateEntry(app.allowedEntries);
 }
 
+// init controls
+function autoStyle(jo)
+{
+	jo.find(".navbar>*").click(function () {
+		$(this).parent().find(">*").removeClass("active");
+		$(this).addClass("active");
+	});
+}
+
+function fixNavbarAsFooter(jfooter)
+{
+	var jnavs = jfooter.find(">a");
+	var id2nav = {};
+	jnavs.each(function(i, e) {
+		var m = e.href.match(/#(\w+)/);
+		if (m) {
+			id2nav[m[1]] = $(e);
+		}
+	});
+
+	function checkNavbar(jpage)
+	{
+		var pageId = jpage.attr("id");
+		var jnav = id2nav[pageId];
+		if (jnav) {
+			jnavs.removeClass("active");
+			jnav.addClass("active");
+			jfooter.show();
+		}
+		else
+			jfooter.hide();
+	}
+
+	$(document).on("pageshow", function (ev) {
+		var jpage = $(ev.target);
+		checkNavbar(jpage);
+	});
+	if (self.activePage) {
+		checkNavbar(self.activePage);
+	}
+}
+
+$(function () {
+	autoStyle($(document));
+	fixNavbarAsFooter($("#footer"));
+});
+$(document).on("pageshow", function (ev) {
+	var jpage = $(ev.target);
+	autoStyle(jpage);
+});
 }
 //}}}
 
