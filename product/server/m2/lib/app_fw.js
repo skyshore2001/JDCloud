@@ -201,7 +201,12 @@ var E_NOAUTH=2;
 /**
 @module MUI
 
-Mobile UI framework, 基于jquery mobile库的增强和工具集.
+Mobile UI framework
+
+== 单网页应用 ==
+
+- 应用程序以page为基本单位，每个页面的html/js可完全分离。参考CPageManager文档。
+- 后台交互, callSvr系列方法
 
 == 登录与退出 ==
 
@@ -213,17 +218,14 @@ Mobile UI framework, 基于jquery mobile库的增强和工具集.
 设置id为"footer"的导航, 框架会对此做些设置: 如果当前页面为导航栏中的一项时, 就会自动显示导航栏.
 例: 在html中添加底部导航:
 
-	<div data-role="footer" id="footer" data-id="foot" data-position="fixed" data-tap-toggle="false">
-		<div data-role="navbar" data-iconpos="top">
-			<ul>
-				<li><a href="#home" data-icon="home" class="ui-btn-footer-home ui-btn-active">主页</a></li>
-				<li><a href="#orders" data-icon="bullets">订单</a></li>
-				<li><a href="#me" data-icon="user" class="ui-btn-footer-me">我</a></li>
-			</ul>
-		</div>
+	<div id="footer" class="mui-navbar">
+		<a href="#home">订单</a></li>
+		<a href="#me">我</a>
 	</div>
 
 == 图片按需加载 ==
+
+TODO:
 
 对于img标签, 可以将src属性改为data-src, 这样只有在img所在page创建时才加载, 而不是一打开应用就加载:
 
@@ -290,13 +292,13 @@ MUI的基类，提供showPage等操作。
 	function initPageOrder() 
 	{
 		var jpage = $(this);
-		jpage.on("beforeshow", onBeforeShow);
-		jpage.on("show", onShow);
-		jpage.on("hide", onHide);
+		jpage.on("pagebeforeshow", onBeforeShow);
+		jpage.on("pageshow", onShow);
+		jpage.on("pagehide", onHide);
 		...
 	}
 
-框架提供beforeshow/show/hide三个事件。
+框架提供muiInit/pagecreate/pagebeforeshow/pageshow/pagehide事件。
  */
 function CPageManager()
 {
@@ -321,7 +323,8 @@ function CPageManager()
 */
 	self.showFirstPage = true;
 
-	var m_footer; // footer object
+	var m_footer; // 页面下方导航栏；$.ready后可用
+	var m_jstash; // 页面暂存区; 首次加载页面后可用
 
 	function callInitfn(jo, paramArr)
 	{
@@ -350,6 +353,12 @@ function CPageManager()
 	
 	function showPage_(pageRef)
 	{
+		// 避免hashchange重复调用
+		var fn = arguments.callee;
+		if (fn.lastPageRef == pageRef)
+			return;
+		fn.lastPageRef = pageRef;
+
 		// find in document
 		var jpage = self.container.find(pageRef);
 		// find in template
@@ -378,13 +387,12 @@ function CPageManager()
 		function loadPage(html, pageId)
 		{
 			// 放入dom中，以便document可以收到pagecreate等事件。
-			var jp = self.container.find("#muiStash");
-			if (jp.size() == 0) {
-				jp = $("<div id='muiStash' style='display:none'></div>").appendTo(self.container);
+			if (m_jstash == null) {
+				m_jstash = $("<div id='muiStash' style='display:none'></div>").appendTo(self.container);
 			}
 			// 注意：如果html片段中有script, 在append时会同步获取和执行(jquery功能)
 			var jpage = $(html);
-			jpage.attr("id", pageId).addClass("mui-page").appendTo(jp);
+			jpage.attr("id", pageId).addClass("mui-page").appendTo(m_jstash);
 
 			var enableAni = true; // TODO
 			if (enableAni)
@@ -426,7 +434,7 @@ function CPageManager()
 			{
 				oldPage.trigger("pagehide");
 				if (oldPage.attr("autoDestroy")) {
-					oldPage.remove();
+					oldPage.appendTo(m_jstash);
 				}
 			}
 		}
@@ -575,7 +583,7 @@ example:
 		self.container.trigger("muiInit");
 
 		// 根据hash进入首页
-		if (self.showFirstPage && self.activePage == null)
+		if (self.showFirstPage)
 			applyHashChange();
 	}
 
@@ -1180,33 +1188,18 @@ function setupPopup(jpopup, initfn)
 	});
 }
 
-// ---- JQM通用事件 {{{
-function document_pageBeforeCreate(ev)
+// ---- 通用事件 {{{
+function document_pageCreate(ev)
 {
 	var jpage = $(ev.target);
 
-	var jhdr = jpage.find("> div[data-role=header]");
-
-	// 设置header位置不可变
-	// 注意：不要用 $.mobile.toolbar.prototype.options.position = "fixed"; 因为它将影响 popup的header.
-	jhdr.filter(":not([data-position])").attr("data-position", "fixed");
-
+	var jhdr = jpage.find("> .hd");
 	// 标题栏空白处点击5次, 进入测试模式
 	jhdr.click(function (ev) {
 		// 注意避免子元素bubble导致的事件
-		if ($(ev.target).attr("data-role") == "header")
+		if ($(ev.target).hasClass("hd"))
 			switchTestMode(this); 
 	});
-
-	// 图片按需加载
-	jpage.find("img[data-src]").each(function () {
-		this.src = $(this).data("src");
-	});
-
-	// fix tab: 从navbar移到下个页面再回来，JQM有bug会丢失上次选择．使用fixNavbarAsTab来解决．
-	var jnavbar = jpage.find("[data-role=navbar]");
-	if (jnavbar.size() >0)
-		fixNavbarAsTab(jnavbar, jpage);
 }
 
 function document_popupShow(ev)
@@ -1221,8 +1214,7 @@ function document_popupShow(ev)
 	});
 }
 
-$(document).on("pagebeforecreate", document_pageBeforeCreate);
-//$(document).on("pagecreate", document_pageCreate);
+$(document).on("pagecreate", document_pageCreate);
 $(document).on("popupbeforeposition", document_popupShow);
 //}}}
 
@@ -1384,28 +1376,6 @@ function handleIos7Statusbar()
 
 //}}}
 
-// ------ jquery validate {{{
-/*
-jquery.validate
-document: http://jqueryvalidation.org/documentation/
-*/
-/*
-if ($.validate) {
-	$.validator.addMethod("uname", function(value, element) {
-		return value.length >= 4;
-	}, "至少4个字母或数字");
-	
-	$.validator.addMethod("phone", function(value, element) {
-		return this.optional(element) || (value.length >= 11 && /^[0-9+-]+$/.test(value));
-	}, "手机填写11位数字");
-
-	$.validator.addMethod("pwd", function(value, element) {
-		return value.length >= 4;
-	}, "密码至少填写4个字符");
-}
-*/
-
-
 /**
 @fn MUI.setFormSubmit(jf, fn?, opt?={rules, validate})
 @param fn? the callback for callSvr. you can use this["userPost"] to retrieve the post param.
@@ -1428,29 +1398,12 @@ function setFormSubmit(jf, fn, opt)
 		callSvr(ac, fn, params, {userPost: params});
 		return false;
 	});
-
-	/*
-	// use jquery.validate
-	jf.validate({
-		rules: opt.rules,
-		submitHandler: function (form) {
-			if (opt.validate) {
-				if (false === opt.validate(jf))
-					return false;
-			}
-			if (fn == null)
-				return;
-			var ac = jf.attr("action");
-			var params = getFormParam(jf);
-			callSvr(ac, fn, params, {userPost: params});
-		}
-	});
-	*/
 }
 
 /**
 @fn MUI.showValidateErr(jvld, jo, msg)
 
+TODO: remove
 show error using jquery validator's method by jo's name
 */
 self.showValidateErr = showValidateErr;
@@ -1462,18 +1415,6 @@ function showValidateErr(jvld, jo, msg)
 	jo.focus();
 }
 
-// setup jquery.validate
-if ($.validator) {
-	$.validator.setDefaults({
-		// submitHandler: function(form) { alert("submitted!");form.submit(); }
-		errorPlacement: function( error, element ) {
-			error.insertAfter( element.parent() );
-		},
-		// dont submit form
-		submitHandler: function(form) { }
-	// 	debug: true,
-	});
-}
 //}}}
 
 // ------ cordova setup {{{
@@ -1635,15 +1576,15 @@ function deleteLoginToken()
 /**
 @fn MUI.tryAutoLogin(onHandleLogin, reuseCmd?, allowNoLogin?=false)
 
+尝试自动登录，如果失败则转到登录页（除非allowNoLogin=true）。
+
 @param onHandleLogin Function(data). 调用后台login()成功后的回调函数(里面使用this为ajax options); 可以直接使用MUI.handleLogin
 @param reuseCmd String. 当session存在时替代后台login()操作的API, 如"User.get", "Employee.get"等, 它们在已登录时返回与login相兼容的数据. 因为login操作比较重, 使用它们可减轻服务器压力. 
 @param allowNoLogin Boolean. 缺省未登录时会自动跳转登录页面, 如果设置为true, 如不会自动跳转登录框, 表示该应用允许未登录时使用.
 
-该函数应该在DOM元素加载完成后(以便显示登录页)且在$.ready之前(以便跳转到登录页)执行, 一般可以在html的结尾设置
+该函数应该在muiInit事件中执行, 以避免框架页面打开主页。
 
-	<script> myInit(); </script>
-
-然后在myInit中调用:
+	$(document).on("muiInit", myInit);
 
 	function myInit()
 	{
@@ -1716,8 +1657,8 @@ function handleLogin(data)
 		setTimeout(fn);
 	}
 	else {
-		// 转主页
-		MUI.showPage("#");
+		// 转主页 TODO: home
+		self.showPage("#home");
 	}
 }
 //}}}
@@ -1758,10 +1699,6 @@ function switchTestMode(obj)
 function main()
 {
 	/*
-	//初始化footer
-	$("#footer").toolbar({theme: "a"});
-	fixNavbarAsFooter($("#footer"));
-
 	handleGoBack();
 	handleIos7Statusbar();
 	*/
