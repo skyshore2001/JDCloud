@@ -106,6 +106,8 @@ function handleLogin(data)
 	MUI.handleLogin(data);
 }
 
+$(document).on("muiInit", myInit);
+
 // called after page is load. called in html page.
 function myInit()
 {

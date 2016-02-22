@@ -1,29 +1,28 @@
 <div mui-initfn="initPageCreateOrder" mui-script="createOrder.js">
+	<style>
+#createOrder .weui_cell_hd {
+	width: 5em;
+}
+	</style>
 	<div class="hd">
-		<h2 class="page_title">创建订单</h2>
+		<h2>创建订单</h2>
 	</div><!-- /header -->
 
-	<form action="Ordr.add" class="bd">
-		<ul class="weui_cells weui_cells_form">
-			<li class="weui_cell">
-				<div class="weui_cell_hd">
-					<label>选择套餐:</label>
-				</div>
-				<select name="dscr" class="weui_cell_bd weui_cell_primary">
-					<option value="基础套餐" data-amount=128>基础套餐 128元</option>
-					<option value="精英套餐" data-amount=228>精英套餐 228元</option>
-				</select>
-			</li>
-			<li class="weui_cell">
-				<div class="weui_cell_hd">
-					<label>备注信息:</label>
-				</div>
-				<textarea id="cmt" name="cmt" class="weui_cell_bd weui_cell_primary"></textarea>
-			</li>
-		</ul>
-		<div class="weui_btn_area">
+	<form action="Ordr.add" class="bd weui_cells weui_cells_form">
+		<li class="weui_cell">
+			<label class="weui_cell_hd">选择套餐:</label>
+			<select name="dscr" class="weui_cell_primary weui_select">
+				<option value="基础套餐" data-amount=128>基础套餐 128元</option>
+				<option value="精英套餐" data-amount=228>精英套餐 228元</option>
+			</select>
+		</li>
+		<li class="weui_cell">
+			<label class="weui_cell_hd">备注信息:</label>
+			<textarea id="cmt" name="cmt" class="weui_cell_primary weui_textarea" placeholder="留个话"></textarea>
+		</li>
+		<li class="weui_cell">
 			<button id="btnCreateOrder" class="weui_btn weui_btn_primary">创建订单</button>
-		</div>
+		</li>
 		<input type="hidden" name="amount" value="0">
 	</form>
 </div><!-- /page -->

@@ -308,11 +308,20 @@ function CPageManager()
 	self.activePage = null;
 
 /**
+@var MUI.container
+
+现在为$(document.body)
+*/
+	self.container = null;
+
+/**
 @var MUI.showFirstPage?=true
 
 如果为false, 则必须手工执行 MUI.showPage 来显示第一个页面。
 */
 	self.showFirstPage = true;
+
+	var m_footer; // footer object
 
 	function callInitfn(jo, paramArr)
 	{
@@ -342,7 +351,7 @@ function CPageManager()
 	function showPage_(pageRef)
 	{
 		// find in document
-		var jpage = $(pageRef);
+		var jpage = self.container.find(pageRef);
 		// find in template
 		if (jpage.size() > 0)
 		{
@@ -351,15 +360,16 @@ function CPageManager()
 		}
 
 		var pageId = pageRef.substr(1);
-		var tplRef = pageRef.replace('#', '#tpl_');
+		var tplRef = '#tpl_' + pageId;
 		var jtpl = $(tplRef);
 		if (jtpl.size() > 0) {
 			var html = $(tplRef).html();
 			loadPage(html, pageId);
 		}
 		else {
-			// TODO: validate
-			var pageFile = pageRef.replace('#', 'page/') + ".html";
+			// TODO: validate / hard-code folder
+			var pageFile = 'page/' + pageId + ".html";
+			enterWaiting(); // NOTE: leaveWaiting in initPage
 			$.ajax(pageFile).then(function (html) {
 				loadPage(html, pageId);
 			});
@@ -367,13 +377,18 @@ function CPageManager()
 
 		function loadPage(html, pageId)
 		{
-// 			var jLoader = $("#muiLoader");
-// 			if (jLoader.size() == 0) {
-// 				jLoader = $("<div id='muiLoader' style='display:none'></div>").appendTo(document.body);
-// 			}
-			// 如果html片段中有script, 在append时会同步获取和执行(jquery功能)
+			// 放入dom中，以便document可以收到pagecreate等事件。
+			var jp = self.container.find("#muiStash");
+			if (jp.size() == 0) {
+				jp = $("<div id='muiStash' style='display:none'></div>").appendTo(self.container);
+			}
+			// 注意：如果html片段中有script, 在append时会同步获取和执行(jquery功能)
 			var jpage = $(html);
-			jpage.attr("id", pageId).addClass("mui-page").addClass('slideIn'); //.appendTo(jLoader);
+			jpage.attr("id", pageId).addClass("mui-page").appendTo(jp);
+
+			var enableAni = true; // TODO
+			if (enableAni)
+				jpage.addClass("slideIn");
 
 			var val = jpage.attr("mui-script");
 			if (val != null) {
@@ -387,7 +402,9 @@ function CPageManager()
 			function initPage()
 			{
 				callInitfn(jpage);
+				jpage.trigger("pagecreate");
 				changePage(jpage);
+				leaveWaiting();
 			}
 		}
 
@@ -397,12 +414,13 @@ function CPageManager()
 			if (self.activePage && self.activePage[0] === jpage[0])
 				return;
 			jpage.trigger("pagebeforeshow");
-			jpage.appendTo(document.body);
+			jpage.appendTo(self.container);
 			var oldPage = self.activePage;
 			self.activePage = jpage;
 			// TODO: use animationend?
 			fixPageSize();
 			jpage.trigger("pageshow");
+			document.title = jpage.find(".hd h1, .hd h2").text();
 			// TODO: destroy??
 			if (oldPage)
 			{
@@ -421,12 +439,6 @@ function CPageManager()
 	}
 
 	$(window).on('hashchange', applyHashChange);
-
-	// 初始化后进入指定页
-	$(function () {
-		if (self.showFirstPage && self.activePage == null)
-			applyHashChange();
-	});
 
 /**
 @fn MUI.showPage(pageId/pageRef)
@@ -453,12 +465,121 @@ example:
 		if (self.activePage) {
 			var jpage = self.activePage;
 			var H = window.innerHeight;
-			var jfooter = $("#footer");
+			var jfooter = m_footer;
 			var hf = jfooter.is(":visible")? jfooter.height(): 0;
 			//jpage.height(H);
 			jpage.find(".bd").innerHeight(H - jpage.find(".hd").height() - hf);
 		}
 	}
+
+// ------ enhanceWithin {{{
+/**
+@var MUI.m_enhanceFn
+*/
+	self.m_enhanceFn = {}; // selector => enhanceFn
+
+/**
+@fn MUI.enhanceWithin(jparent)
+*/
+	self.enhanceWithin = enhanceWithin;
+	function enhanceWithin(jp)
+	{
+		$.each(self.m_enhanceFn, function (sel, fn) {
+			var jo = jp.find(sel);
+			if (jo.size() == 0)
+				return;
+			jo.each(function (i, e) {
+				var je = $(e);
+				var opt = getOptions(je);
+				if (opt.enhanced)
+					return;
+				opt.enhanced = true;
+				fn(je);
+			});
+		});
+	}
+
+/**
+@fn MUI.getOptions(jo)
+*/
+	self.getOptions = getOptions;
+	function getOptions(jo)
+	{
+		var opt = jo.data("muiOptions");
+		if (opt === undefined) {
+			opt = {};
+			jo.data("muiOptions", opt);
+		}
+		return opt;
+	}
+
+	$(document).on("pagecreate", function (ev) {
+		var jpage = $(ev.target);
+		enhanceWithin(jpage);
+	});
+//}}}
+
+// ------- ui: navbar and footer {{{
+
+	self.m_enhanceFn[".mui-navbar"] = enhanceNavbar;
+
+	function activateElem(jo)
+	{
+		jo.parent().find(">*").removeClass("active");
+		jo.addClass("active");
+	}
+
+	function enhanceNavbar(jo)
+	{
+		jo.find(">*").click(function () {
+			activateElem($(this));
+		});
+	}
+
+	function enhanceFooter(jfooter)
+	{
+		enhanceNavbar(jfooter);
+		var jnavs = jfooter.find(">a");
+		var id2nav = {};
+		jnavs.each(function(i, e) {
+			var m = e.href.match(/#(\w+)/);
+			if (m) {
+				id2nav[m[1]] = e;
+			}
+		});
+		$(document).on("pagebeforeshow", function (ev) {
+			var jpage = $(ev.target);
+			var pageId = jpage.attr("id");
+			var e = id2nav[pageId];
+			if (e === undefined)
+			{
+				jfooter.hide();
+				return;
+			}
+			jfooter.show();
+			activateElem($(e));
+		});
+	}
+
+//}}}
+
+// ------ main
+	
+	function main()
+	{
+		self.container = $(document.body);
+		m_footer = self.container.find("#footer");
+		enhanceFooter(m_footer);
+
+		// 在muiInit事件中可以调用showPage.
+		self.container.trigger("muiInit");
+
+		// 根据hash进入首页
+		if (self.showFirstPage && self.activePage == null)
+			applyHashChange();
+	}
+
+	$(main);
 }
 //}}}
 
@@ -581,12 +702,12 @@ allow throw("abort") as abort behavior.
 		if (ctx == null)
 			++ m_manualBusy;
 		// 延迟执行以防止在page show时被自动隐藏
-		delayDo(function () {
+		//delayDo(function () {
 			if (!(ctx && ctx.noLoadingImg))
 				showLoading();
 	// 		if ($.mobile && !(ctx && ctx.noLoadingImg))
 	// 			$.mobile.loading("show");
-		},1);
+		//},1);
 	}
 
 /**
@@ -1668,56 +1789,6 @@ function setApp(app)
 		validateEntry(app.allowedEntries);
 }
 
-// init controls
-function autoStyle(jo)
-{
-	jo.find(".mui-navbar>*").click(function () {
-		$(this).parent().find(">*").removeClass("active");
-		$(this).addClass("active");
-	});
-}
-
-function fixNavbarAsFooter(jfooter)
-{
-	var jnavs = jfooter.find(">a");
-	var id2nav = {};
-	jnavs.each(function(i, e) {
-		var m = e.href.match(/#(\w+)/);
-		if (m) {
-			id2nav[m[1]] = $(e);
-		}
-	});
-
-	function checkNavbar(jpage)
-	{
-		var pageId = jpage.attr("id");
-		var jnav = id2nav[pageId];
-		if (jnav) {
-			jnavs.removeClass("active");
-			jnav.addClass("active");
-			jfooter.show();
-		}
-		else
-			jfooter.hide();
-	}
-
-	$(document).on("pageshow", function (ev) {
-		var jpage = $(ev.target);
-		checkNavbar(jpage);
-	});
-	if (self.activePage) {
-		checkNavbar(self.activePage);
-	}
-}
-
-$(function () {
-	autoStyle($(document));
-	fixNavbarAsFooter($("#footer"));
-});
-$(document).on("pageshow", function (ev) {
-	var jpage = $(ev.target);
-	autoStyle(jpage);
-});
 }
 //}}}
 

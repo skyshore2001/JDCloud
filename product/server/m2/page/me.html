@@ -1,14 +1,13 @@
 <div mui-initfn="initPageMe" mui-script="me.js">
-	<div data-role="header">
-		<h1>个人信息</h1>
+	<div class="hd">
+		<h2>个人信息</h2>
 	</div>
 
-	<div role="main" class="ui-content">
-		<ul data-role="listview">
-			<li>用户: <span class="p-name"></span></li>
-			<li>手机号: <span class="p-phone"></span></li>
-			<li></li>
-			<li style="text-align:center" id="btnLogout" class="ui-btn ui-btn-b">退出</li>
+	<div class="bd">
+		<ul class="weui_cells">
+			<li class="weui_cell"><span class="weui_cell_primary">用户</span><span class="p-name weui_cell_ft"></span></li>
+			<li class="weui_cell"><span class="weui_cell_primary">手机号</span><span class="p-phone weui_cell_ft"></span></li>
+			<li class="weui_cell"><button id="btnLogout" class="weui_btn weui_btn_default">退出<button></li>
 		</ul>
 	</div>
 </div>

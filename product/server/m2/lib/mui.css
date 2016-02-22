@@ -23,7 +23,7 @@ html, body {
 .hd {
 	/*background-color: #ececec;*/
 	background-color: black; 
-	border-top: 1px solid black; /* 防止子元素margin越界*/
+	border: 1px solid transparent; /* 防止子元素margin越界*/
 	color: white;
 }
 
@@ -116,7 +116,6 @@ html, body {
 	}
 }
 
-/*
 .mui-page.slideIn {
 	-webkit-animation: slideIn .2s forwards;
 	animation: slideIn .2s forwards;
@@ -126,7 +125,6 @@ html, body {
 	-webkit-animation: slideOut .2s forwards;
 	animation: slideOut .2s forwards;
 }
-*/
 
 .mui-loader {
 	z-index: 99999;
