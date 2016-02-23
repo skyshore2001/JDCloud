@@ -218,19 +218,19 @@ Mobile UI framework
 设置id为"footer"的导航, 框架会对此做些设置: 如果当前页面为导航栏中的一项时, 就会自动显示导航栏.
 例: 在html中添加底部导航:
 
-	<div id="footer" class="mui-navbar">
+	<div id="footer">
 		<a href="#home">订单</a></li>
 		<a href="#me">我</a>
 	</div>
 
-如果要添加其它底部导航，可在page内放置class=ft的部件：
+如果要添加其它底部导航，可在page内放置如下部件：
 
 	<div class="ft mui-navbar">
 		<a href="#home" class="active">订单</a></li>
 		<a href="#me">我</a>
 	</div>
 
-注意：mui-navbar+ft在点击后不会自动设置active类，请自行添加。
+注意：mui-navbar与ft类并用后，在点击后不会自动设置active类，请自行添加。
 
 == 图片按需加载 ==
 
@@ -332,7 +332,6 @@ function CPageManager()
 */
 	self.showFirstPage = true;
 
-	var m_footer; // 页面下方导航栏；$.ready后可用
 	var m_jstash; // 页面暂存区; 首次加载页面后可用
 
 	function callInitfn(jo, paramArr)
@@ -504,6 +503,8 @@ example:
 	{
 		$.each(self.m_enhanceFn, function (sel, fn) {
 			var jo = jp.find(sel);
+			if (jp.is(sel))
+				jo = jo.add(jp);
 			if (jo.size() == 0)
 				return;
 			jo.each(function (i, e) {
@@ -539,6 +540,7 @@ example:
 
 // ------- ui: navbar and footer {{{
 
+	self.m_enhanceFn["#footer"] = enhanceFooter;
 	self.m_enhanceFn[".mui-navbar"] = enhanceNavbar;
 
 	function activateElem(jo)
@@ -562,7 +564,7 @@ example:
 	function enhanceFooter(jfooter)
 	{
 		enhanceNavbar(jfooter);
-		jfooter.addClass("ft");
+		jfooter.addClass("ft").addClass("mui-navbar");
 		var jnavs = jfooter.find(">a");
 		var id2nav = {};
 		jnavs.each(function(i, e) {
@@ -619,11 +621,15 @@ example:
 	}
 
 /**
-@fn MUI.closeDialog(jdlg)
+@fn MUI.closeDialog(jdlg, remove=false)
 */
 	self.closeDialog = closeDialog;
-	function closeDialog(jdlg)
+	function closeDialog(jdlg, remove)
 	{
+		if (remove) {
+			jdlg.parent().remove();
+			return;
+		}
 		jdlg.parent().hide();
 	}
 
@@ -659,6 +665,78 @@ example:
 		self.getOptions(jdlg).initfn = initfn;
 	}
 
+/**
+@fn MUI.app_alert(msg, type?=i, fn?, timeoutInterval?)
+@alias app_alert
+@param type "i"|"e"|"w", default="i"
+
+可自定义对话框，接口如下：
+- 对象id为muiAlert, class包含mui-dialog.
+- .p-title用于设置标题; .p-msg用于设置提示文字
+- 两个按钮 #btnOK, #btnCancel，仅当type=q时显示btnCancel.
+
+app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时将clone一份用于显示并在关闭后删除。
+
+*/
+	window.app_alert = self.app_alert = app_alert;
+	function app_alert(msg, type, fn, timeoutInterval)
+	{
+		type = type || "i";
+		var icon = {i: "info", w: "warning", e: "error", q: "question"}[type];
+		var s = {i: "提示", w: "警告", e: "出错", q: "确认"}[type];
+
+		var jmsg = $("#muiAlert");
+		if (jmsg.size() == 0) {
+			var html = '' + 
+	'<div id="muiAlert" class="mui-dialog">' + 
+	'	<h3 class="hd p-title"></h3>' + 
+	'	<div class="sp p-msg"></div>' +
+	'	<div class="sp">' +
+	'		<a href="javascript:;" id="btnOK" class="mui-btn primary">确定</a>' +
+	'		<a href="javascript:;" id="btnCancel" class="mui-btn">取消</a>' +
+	'	</div>' +
+	'</div>'
+			jmsg = $(html);
+			self.enhanceWithin(jmsg);
+			jmsg.parent().appendTo(self.container);
+		}
+
+		var isClone = false;
+		// 如果正在显示，则使用clone
+		if (jmsg.parent().is(":visible")) {
+			var jo = jmsg.parent().clone().appendTo(self.container);
+			jmsg = jo.find(".mui-dialog");
+			isClone = true;
+		}
+		var opt = self.getOptions(jmsg);
+		opt.fn = fn;
+		var rand = Math.random();
+		opt.rand_ = rand;
+		if (! opt.inited) {
+			jmsg.find("#btnOK, #btnCancel").click(function () {
+				if (opt.fn && this.id == "btnOK") {
+					opt.fn();
+				}
+				opt.rand_ = 0;
+				self.closeDialog(jmsg, isClone);
+			});
+			opt.inited = true;
+		}
+
+		jmsg.find("#btnCancel").toggle(type == "q");
+		jmsg.find(".p-title").html(s);
+		jmsg.find(".p-msg").html(msg);
+		self.showDialog(jmsg);
+
+		if (timeoutInterval != null) {
+			setTimeout(function() {
+				// 表示上次显示已结束
+				if (rand == opt.rand_)
+					jmsg.find("#btnOK").click();
+			}, timeoutInterval);
+		}
+	}
+
 //}}}
 
 // ------ main
@@ -666,8 +744,7 @@ example:
 	function main()
 	{
 		self.container = $(document.body);
-		m_footer = self.container.find("#footer");
-		enhanceFooter(m_footer);
+		enhanceWithin(self.container);
 
 		// 在muiInit事件中可以调用showPage.
 		self.container.trigger("muiInit");
@@ -1142,85 +1219,6 @@ function nsMUI()
 	var m_onLoginOK;
 
 // ------ jquery mobile {{{
-
-/**
-@fn MUI.app_alert(msg, type?=i, fn?, timeoutInterval?)
-@alias app_alert
-@param type "i"|"e"|"w", default="i"
-
-使用jquerymobile popup弹出对话框.
-要求定义css class "info", "warning", "error";
-*/
-window.app_alert = self.app_alert = app_alert;
-function app_alert(msg, type, fn, timeoutInterval)
-{
-	type = type || "i";
-	var icon = {i: "info", w: "warning", e: "error", q: "question"}[type];
-	var s = {i: "提示", w: "警告", e: "出错", q: "确认"}[type];
-	var s1 = "<b>[" + s + "]</b>";
-
-	// 如果没有jqm, 或当前有jqm popup在显示, 使用alert (jqm不能同时开两个popup)
-	if ($.mobile == null || isPopupOpened())
-	{
-		alert(s + ": " + msg);
-		fn && fn();
-		return;
-	}
-
-	var jmsg = $("#mymsgbox");
-	if (jmsg.size() == 0) {
-		jmsg = $(
-'<div id="mymsgbox" class="ui-content">' +
-	'<a href="#" class="ui-btn ui-corner-all ui-shadow ui-btn-a ui-icon-delete ui-btn-icon-notext ui-btn-right" data-rel="back">Close</a>' +
-	'<h3></h3>' +
-	'<span id=btns><button id="btnOK" class="ui-btn ui-corner-all ui-mini ui-btn-inline">确定</button>' + 
-	'<button id="btnCancel" class="ui-btn ui-mini ui-btn-inline">取消</button></span>' +
-'</div>');
-
-		jmsg.appendTo($.mobile.pageContainer);
-		jmsg.find("#btnOK").click(function () {
-			jmsg.data("ok", 1);
-			jmsg.popup('close');
-		});
-		jmsg.find("#btnCancel").click(function () {
-			jmsg.data("ok", 0);
-			jmsg.popup('close');
-		});
-		// NOTE: use "theme" option, or else it's transparent on the current page.
-		jmsg.popup({theme: 'a', history: false});
-	}
-	jmsg.find("h3").attr("class", icon).html(s1 + ": " + msg);
-	if (type == 'q') {
-		jmsg.find("#btns").show();
-	}
-	else {
-		jmsg.find("#btns").hide();
-	}
-
-	// NOTE:
-	setTimeout(function () {
-		if (timeoutInterval != null) {
-			setTimeout(function() {
-				jmsg.data("ok", 1);
-				jmsg.popup('close');   
-			}, timeoutInterval);
-		}
-		
-		jmsg.popup('open');
-
-		if (fn) {
-			jmsg.one('popupafterclose', function() { 
-				if (type == 'q') {
-					if (! jmsg.data("ok"))
-						return;
-					jmsg.data("ok", 0);
-				}
-				fn(); 
-			});
-		}
-	}, 50);
-	
-}
 
 // ---- 通用事件 {{{
 function document_pageCreate(ev)

@@ -166,7 +166,45 @@ html, body {
 	display: none;
 }
 
+.mui-btn {
+	border: 1px solid rgba(0, 0, 0, 0.2);
+	border-radius: 5px;
+	display: inline-block;
+	min-width: 80px;
+	text-align: center;
+	color: #454545;
+	background-color: #F7F7F7;
+	font-size: 1em;
+	line-height: 1.5;
+}
+
+.mui-btn:focus {
+	outline: 0;
+}
+
+.mui-btn:active {
+	background-color: #e7e7e7;
+}
+
+.mui-btn.primary {
+	color: #FFFFFF;
+	background-color: #04BE02;
+	border-color: transparent;
+}
+
+.mui-btn.primary:active {
+	background-color: #04AE02;
+}
+
+.sp {
+	margin: 10px;
+}
+
 /* overwrite weui */
 .weui_cells {
 	margin-top: 0;
+}
+
+.weui_btn_mini {
+	min-width: 80px;
 }
