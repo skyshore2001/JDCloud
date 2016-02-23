@@ -223,6 +223,15 @@ Mobile UI framework
 		<a href="#me">我</a>
 	</div>
 
+如果要添加其它底部导航，可在page内放置class=ft的部件：
+
+	<div class="ft mui-navbar">
+		<a href="#home" class="active">订单</a></li>
+		<a href="#me">我</a>
+	</div>
+
+注意：mui-navbar+ft在点击后不会自动设置active类，请自行添加。
+
 == 图片按需加载 ==
 
 TODO:
@@ -336,6 +345,7 @@ function CPageManager()
 		if (val == null)
 			return;
 
+		var initfn = null;
 		try {
 			initfn = eval(val);
 		}
@@ -473,10 +483,10 @@ example:
 		if (self.activePage) {
 			var jpage = self.activePage;
 			var H = window.innerHeight;
-			var jfooter = m_footer;
-			var hf = jfooter.is(":visible")? jfooter.height(): 0;
-			//jpage.height(H);
-			jpage.find(".bd").innerHeight(H - jpage.find(".hd").height() - hf);
+			var hd = jpage.find(">.hd").height() || 0;
+			var ft = jpage.find(">.ft").height() || 0;
+			jpage.height(H);
+			jpage.find(">.bd").innerHeight(H - hd - ft);
 		}
 	}
 
@@ -533,12 +543,17 @@ example:
 
 	function activateElem(jo)
 	{
+		if (jo.hasClass("active"))
+			return;
 		jo.parent().find(">*").removeClass("active");
 		jo.addClass("active");
 	}
 
 	function enhanceNavbar(jo)
 	{
+		// 如果有ft类，则不自动点击后active (#footer是特例)
+		if (jo.hasClass("ft"))
+			return;
 		jo.find(">*").click(function () {
 			activateElem($(this));
 		});
@@ -547,6 +562,7 @@ example:
 	function enhanceFooter(jfooter)
 	{
 		enhanceNavbar(jfooter);
+		jfooter.addClass("ft");
 		var jnavs = jfooter.find(">a");
 		var id2nav = {};
 		jnavs.each(function(i, e) {
@@ -561,12 +577,86 @@ example:
 			var e = id2nav[pageId];
 			if (e === undefined)
 			{
-				jfooter.hide();
+				if (jfooter.parent()[0] !== m_jstash[0])
+					jfooter.appendTo(m_jstash);
 				return;
 			}
-			jfooter.show();
+			jfooter.appendTo(jpage);
 			activateElem($(e));
 		});
+	}
+
+//}}}
+// ------- ui: dialog {{{
+
+	self.m_enhanceFn[".mui-dialog"] = enhanceDialog;
+
+	function enhanceDialog(jo)
+	{
+		jo.wrap("<div class=\"mui-mask\" style=\"display:none\"></div>");
+		jo.parent().click(function (ev) {
+			if (this !== ev.target)
+				return;
+			closeDialog(jo);
+		});
+	}
+
+/**
+@fn MUI.showDialog(jdlg)
+*/
+	self.showDialog = showDialog;
+	function showDialog(jdlg)
+	{
+		var opt = self.getOptions(jdlg);
+		if (opt.initfn) {
+			opt.onBeforeShow = opt.initfn.call(jdlg);
+			opt.initfn = null;
+		}
+		if (opt.onBeforeShow)
+			onBeforeShow.call(jdlg);
+		jdlg.show();
+		jdlg.parent().show();
+	}
+
+/**
+@fn MUI.closeDialog(jdlg)
+*/
+	self.closeDialog = closeDialog;
+	function closeDialog(jdlg)
+	{
+		jdlg.parent().hide();
+	}
+
+/**
+@fn MUI.setupDialog(jdlg, initfn)
+
+@return 可以不返回, 或返回一个回调函数beforeShow, 在每次Dialog显示前调用.
+
+使用该函数可设置dialog的初始化回调函数和beforeShow回调.
+
+使用方法:
+
+	MUI.setupDialog(jdlg, function () {
+		var jdlg = this;
+		jdlg.find("#btnOK").click(btnOK_click);
+
+		function btnOK_click(ev) { }
+
+		function beforeShow() {
+			// var jdlg = this;
+			var jtxt = jdlg.find("#txt1");
+			callSvr("getxxx", function (data) {
+				jtxt.val(data);
+			});
+		}
+		return beforeShow;
+	});
+
+*/
+	self.setupDialog = setupDialog;
+	function setupDialog(jdlg, initfn)
+	{
+		self.getOptions(jdlg).initfn = initfn;
 	}
 
 //}}}
@@ -1130,62 +1220,6 @@ function app_alert(msg, type, fn, timeoutInterval)
 		}
 	}, 50);
 	
-}
-
-/**
-@fn MUI.setupPopup(jpopup, initfn)
-
-@return 可以不返回, 或返回一个回调函数beforeShow, 在每次Dialog显示前调用.
-
-使用该函数可设置popup的初始化回调函数和beforeShow回调.
-
-JQM中的popup(或称dialog)一般放置在一个page中, 设置它的初始化函数不能像设置page那样使用popupcreate回调,
-因为它会在pagecreate事件后就立即调用, 而我们希望它在首次显示对话框时调用.
-
-注意:
-- 初始化回调或beforeShow回调 是通过 popupbeforeposition 事件来模拟实现的.
-
-使用方法:
-
-	MUI.setupPopup(jdlg, function () {
-		var jdlg = this;
-		jdlg.find("#btnOK").click(btnOK_click);
-
-		function btnOK_click(ev) { }
-
-		function beforeShow() {
-			// var jdlg = this;
-			var jtxt = jdlg.find("#txt1");
-			callSvr("getxxx", function (data) {
-				jtxt.val(data);
-			});
-		}
-		return beforeShow;
-	});
-
-*/
-self.setupPopup = setupPopup;
-function setupPopup(jpopup, initfn)
-{
-	var onBeforeShow;
-	var isBeforeShow = true;
-	jpopup.on("popupbeforeposition", function () {
-		if (onBeforeShow == null) {
-			// run only once
-			onBeforeShow = initfn.call(jpopup);
-			if (onBeforeShow == null)
-			{
-				jpopup.off("popupbeforeposition");
-				return;
-			}
-			jpopup.on("popupafterclose", function () {
-				isBeforeShow = true;
-			});
-		}
-		if (isBeforeShow)
-			onBeforeShow.call(jpopup);
-		isBeforeShow = false;
-	});
 }
 
 // ---- 通用事件 {{{

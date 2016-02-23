@@ -61,7 +61,7 @@ function initPageHome()
 	{
 		if (PageHome.userInit)
 		{
-			dlgUserInit.popup("open");
+			MUI.showDialog(dlgUserInit);
 			PageHome.userInit = false;
 		}
 	}
@@ -78,7 +78,7 @@ function initPageHome()
 			callSvr("User.get", function (data) {
 				g_data.userInfo = data;
 			});
-			jdlg.popup('close');
+			MUI.closeDialog(jdlg);
 		}
 	}
 	// }}}
@@ -88,7 +88,7 @@ function initPageHome()
 	jpage.find("#btnRefreshList").click(refreshOrderList);
 	refreshOrderList();
 
-	MUI.setupPopup(dlgUserInit, initDlgUserInit);
+	MUI.setupDialog(dlgUserInit, initDlgUserInit);
 	jpage.on("pageshow", page_show);
 
 	PageHome.show = function (reload) {

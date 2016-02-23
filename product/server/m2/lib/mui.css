@@ -33,11 +33,20 @@ html, body {
 	padding-bottom: 0.5em;
 }
 
-.hd h1, .hd h2 {
+.hd h1, .hd h2, .hd h3 {
 	text-align: center;
-	font-size: 20px;
+	font-size: 1.3em;
 	font-weight: bold;
-	margin: 0.3em auto;
+	margin: 0.1em auto;
+}
+
+.hd h3 {
+	font-size: 1.1em;
+}
+
+.ft {
+	position: absolute;
+	bottom: 0px;
 }
 
 /* navbar */
@@ -66,12 +75,6 @@ html, body {
 	color: #04be02;
 	font-weight: 500;
 	border-bottom: 3px solid #04be02;
-}
-
-#footer {
-	position: absolute;
-	bottom: 0px;
-	z-index: 100;
 }
 
 @keyframes slideIn {
@@ -138,6 +141,29 @@ html, body {
 	border: 0;
 	opacity: .18;
 	background: url(ajax-loader.gif) no-repeat;
+}
+
+.mui-mask {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(0,0,0,.5);
+	z-index: 100;
+}
+
+.mui-dialog {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 85%;
+	-webkit-transform: translate(-50%, -50%);
+	transform: translate(-50%, -50%);
+	border-radius: 3px;
+	text-align: center;
+	background-color: #fafafc;
+	display: none;
 }
 
 /* overwrite weui */

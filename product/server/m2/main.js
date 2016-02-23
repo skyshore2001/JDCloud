@@ -95,6 +95,16 @@ function createCell(o)
 	return $(html);
 }
 
+function showDlg(ref)
+{
+	var jdlg = MUI.activePage.find(ref);
+	MUI.showDialog(jdlg);
+}
+
+function closeDlg(o)
+{
+	MUI.closeDialog($(o).closest(".mui-dialog"));
+}
 //}}}
 
 // ====== main {{{

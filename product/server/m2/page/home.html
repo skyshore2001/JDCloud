@@ -13,22 +13,31 @@
 		<div class="weui_btn_area">
 			<a href="#createOrder" class="weui_btn weui_btn_primary">下单</a>
 			<a href="#" id="btnRefreshList" class="weui_btn weui_btn_default">刷新</a>
+			<a href="#" class="weui_btn weui_btn_default" onclick="showDlg('#dlgUserInit'); return false;">设置个人信息</a>
 		</div>
 	</div>
 
 	<!-- dialog dlgUserInit -->
-	<div id="dlgUserInit" style="display:none">
-		<div data-role="header" >
-			<h2>设置个人信息</h2>
+	<div id="dlgUserInit" class="mui-dialog"> <!-- data-dismissible="false"-->
+		<div class="hd">
+			<h3>设置个人信息</h3>
 		</div>
 
-		<form action="User.set" style="min-width:300px">
-			<div class="ui-field-contain">
-				<label>昵称</label>
-				<input name="name" required>
+		<form action="User.set" class="bd" style="min-width:300px">
+			<div class="weui_cells weui_cells_form">
+				<div class="weui_cell">
+					<label class="weui_label">昵称</label>
+					<input name="name" required class="weui_primary weui_input">
+				</div>
 			</div>
-			<button data-theme="b">确定</button>
+
+			<div>
+				<button class="weui_btn weui_btn_primary weui_btn_mini">确定</button>
+				<button class="weui_btn weui_btn_default weui_btn_mini" onclick="closeDlg(this); return false;">取消</button>
+			</div>
 		</form>
 	</div>
+
+</div>
 	
 </div>
