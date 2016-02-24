@@ -11,7 +11,7 @@ html, body {
 	display: none;
 }
 
-.mui-page {
+.mui-container, .mui-page {
 	background-color: #FBF9FE;
 	position: absolute;
 	top: 0;
