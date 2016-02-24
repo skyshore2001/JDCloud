@@ -7,6 +7,10 @@ html, body {
 	padding: 0;
 }
 
+.mui-container {
+	display: none;
+}
+
 .mui-page {
 	background-color: #FBF9FE;
 	position: absolute;

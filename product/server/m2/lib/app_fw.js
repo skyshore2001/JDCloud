@@ -431,6 +431,7 @@ function CPageManager()
 			if (self.activePage && self.activePage[0] === jpage[0])
 				return;
 			jpage.trigger("pagebeforeshow");
+			self.container.show(); // !!!! 
 			jpage.appendTo(self.container);
 			var oldPage = self.activePage;
 			self.activePage = jpage;
@@ -743,7 +744,9 @@ app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时�
 	
 	function main()
 	{
-		self.container = $(document.body);
+		self.container = $(".mui-container");
+		if (self.container.size() == 0)
+			self.container = $(document.body);
 		enhanceWithin(self.container);
 
 		// 在muiInit事件中可以调用showPage.
