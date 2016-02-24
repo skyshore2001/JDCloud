@@ -403,10 +403,6 @@ function CPageManager()
 			var jpage = $(html);
 			jpage.attr("id", pageId).addClass("mui-page").appendTo(m_jstash);
 
-			var enableAni = true; // TODO
-			if (enableAni)
-				jpage.addClass("slideIn");
-
 			var val = jpage.attr("mui-script");
 			if (val != null) {
 				val = "page/" + val; // TODO: hardcoded-folder
@@ -431,21 +427,44 @@ function CPageManager()
 			if (self.activePage && self.activePage[0] === jpage[0])
 				return;
 			jpage.trigger("pagebeforeshow");
+
+			var oldPage = self.activePage;
+
+			var enableAni = true; // TODO
+			if (enableAni) {
+				jpage.addClass("slideIn");
+				jpage.one("animationend", onAnimationEnd)
+					.one("webkitAnimationEnd", onAnimationEnd);
+
+// 				if (oldPage)
+// 					oldPage.addClass("slideOut");
+			}
+
 			self.container.show(); // !!!! 
 			jpage.appendTo(self.container);
-			var oldPage = self.activePage;
 			self.activePage = jpage;
-			// TODO: use animationend?
 			fixPageSize();
-			jpage.trigger("pageshow");
 			document.title = jpage.find(".hd h1, .hd h2").text();
-			// TODO: destroy??
-			if (oldPage)
+
+			if (!enableAni) {
+				onAnimationEnd();
+			}
+			function onAnimationEnd()
 			{
-				oldPage.trigger("pagehide");
-				if (oldPage.attr("autoDestroy")) {
-					oldPage.appendTo(m_jstash);
+				jpage.trigger("pageshow");
+
+				if (enableAni) {
+					jpage.removeClass("slideIn");
+// 					if (oldPage)
+// 						oldPage.removeClass("slideOut");
 				}
+				if (oldPage) {
+					oldPage.trigger("pagehide");
+				}
+			// TODO: destroy??
+// 				if (oldPage.attr("autoDestroy")) {
+// 					oldPage.remove();
+// 				}
 			}
 		}
 	}
