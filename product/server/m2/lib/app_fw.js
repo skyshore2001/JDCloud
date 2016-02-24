@@ -1240,8 +1240,6 @@ function nsMUI()
 
 	var m_onLoginOK;
 
-// ------ jquery mobile {{{
-
 // ---- 通用事件 {{{
 function document_pageCreate(ev)
 {
@@ -1251,25 +1249,12 @@ function document_pageCreate(ev)
 	// 标题栏空白处点击5次, 进入测试模式
 	jhdr.click(function (ev) {
 		// 注意避免子元素bubble导致的事件
-		if ($(ev.target).hasClass("hd"))
+		if ($(ev.target).hasClass("hd") || ev.target.tagName == "H1" || ev.target.tagName == "H2")
 			switchTestMode(this); 
 	});
 }
 
-function document_popupShow(ev)
-{
-	var jdlg = $(ev.target);
-	if (jdlg.data("picLoaded_"))
-		return;
-	jdlg.data("picLoaded_", true);
-	// 图片按需加载
-	jdlg.find("img[data-src]").each(function () {
-		this.src = $(this).data("src");
-	});
-}
-
 $(document).on("pagecreate", document_pageCreate);
-$(document).on("popupbeforeposition", document_popupShow);
 //}}}
 
 // ---- 处理浏览器前进后退 {{{
@@ -1427,8 +1412,6 @@ function handleIos7Statusbar()
 		}	
 	}
 }
-
-//}}}
 
 /**
 @fn MUI.setFormSubmit(jf, fn?, opt?={rules, validate})
