@@ -460,6 +460,7 @@ function CPageManager()
 				}
 				if (oldPage) {
 					oldPage.trigger("pagehide");
+					oldPage.appendTo(m_jstash);
 				}
 			// TODO: destroy??
 // 				if (oldPage.attr("autoDestroy")) {
@@ -900,8 +901,13 @@ allow throw("abort") as abort behavior.
 			++ m_manualBusy;
 		// 延迟执行以防止在page show时被自动隐藏
 		//delayDo(function () {
-			if (!(ctx && ctx.noLoadingImg))
-				showLoading();
+		if (!(ctx && ctx.noLoadingImg))
+		{
+			setTimeout(function () {
+				if (IsBusy)
+					showLoading();
+			}, 200);
+		}
 	// 		if ($.mobile && !(ctx && ctx.noLoadingImg))
 	// 			$.mobile.loading("show");
 		//},1);
