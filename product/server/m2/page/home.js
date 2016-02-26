@@ -44,13 +44,18 @@ function initPageHome()
 		
 		function api_OrdrQuery(data) 
 		{
+			var jp = jlst.children(":first");
+			if (jp.size() == 0) {
+				jp = $('<div class="weui_cells weui_cells_access"></div>').appendTo(jlst);
+				$("<div style='height:40px'></div>").appendTo(jlst); // 让出按钮区域
+			}
 			$.each(rs2Array(data), function (i, e) {
 				var cell = {
 					bd: "<p><b>" + e.dscr + "</b></p><p>订单号: " + e.id + "</p>",
 					ft: StatusStr[e.status]
 				};
 				var ji = createCell(cell);
-				ji.appendTo(jlst);
+				ji.appendTo(jp);
 
 				ji.click(function () {
 					PageOrder.id = e.id;
@@ -59,7 +64,7 @@ function initPageHome()
 				});
 			});
 			if (data.nextkey) {
-				ji = createCell({bd:"点击查看更多..."}).addClass("nextpage").appendTo(jlst);
+				ji = createCell({bd:"点击查看更多..."}).addClass("nextpage").appendTo(jp);
 				ji.click(function() {
 					showOrderList(jlst, cond, data.nextkey);
 				});

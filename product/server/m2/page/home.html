@@ -5,12 +5,6 @@
 	overflow-x: hidden;
 	overflow-y: auto;
 }
-#home .p-list:after {
-	position: static;
-}
-#home .nextpage {
-	padding-bottom: 40px;
-}
 </style>
 	<div class="hd" style="border-bottom: 0">
 		<h2>订单</h2>
@@ -21,8 +15,8 @@
 	</div>
 
 	<div class="bd">
-		<div id=lst1 class="p-list weui_cells weui_cells_access" data-cond="status in ('CR')"></div>
-		<div id=lst2 class="p-list weui_cells weui_cells_access" data-cond="status in ('RE','CA')" style="display:none"></div>
+		<div id=lst1 class="p-list" data-cond="status in ('CR')"></div>
+		<div id=lst2 class="p-list" data-cond="status in ('RE','CA')" style="display:none"></div>
 
 		<div class="ft sp nowrap">
 			<a href="#createOrder" class="mui-btn primary">下单</a>
