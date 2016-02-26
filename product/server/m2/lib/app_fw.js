@@ -506,7 +506,10 @@ example:
 			var hd = jpage.find(">.hd").height() || 0;
 			var ft = jpage.find(">.ft").height() || 0;
 			jpage.height(H);
-			jpage.find(">.bd").innerHeight(H - hd - ft);
+			jpage.find(">.bd").css({
+				top: hd,
+				bottom: ft
+			});
 		}
 	}
 

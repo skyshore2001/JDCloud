@@ -24,17 +24,22 @@ html, body {
 	flex-direction: column; */
 }
 
+.mui-page>.hd, .mui-page>.bd {
+	position: absolute;
+	width: 100%;
+	border: 0px;
+}
+
 .hd {
-	/*background-color: #ececec;*/
 	background-color: black; 
 	border: 1px solid transparent; /* 防止子元素margin越界*/
 	color: white;
 }
 
 .bd {
+	overflow-x: hidden;
+	overflow-y: auto;
 	/*flex: 1;*/
-	overflow: auto;
-	padding-bottom: 0.5em;
 }
 
 .hd h1, .hd h2, .hd h3 {
@@ -51,6 +56,8 @@ html, body {
 .ft {
 	position: absolute;
 	bottom: 0px;
+	width: 100%;
+	text-align: center;
 }
 
 /* navbar */
@@ -176,6 +183,7 @@ html, body {
 	background-color: #F7F7F7;
 	font-size: 1em;
 	line-height: 1.5;
+	padding: 0.1em 0.5em;
 }
 
 .mui-btn:focus {
@@ -198,6 +206,10 @@ html, body {
 
 .sp {
 	margin: 10px;
+}
+
+.nowrap {
+	white-space: nowrap;
 }
 
 /* overwrite weui */

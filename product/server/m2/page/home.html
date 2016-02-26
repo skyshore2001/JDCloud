@@ -8,12 +8,15 @@
 	</div>
 
 	<div class="bd">
-		<ul class="p-list weui_cells weui_cells_access">
-		</ul>
-		<div class="weui_btn_area">
-			<a href="#createOrder" class="weui_btn weui_btn_primary">下单</a>
-			<a href="#" id="btnRefreshList" class="weui_btn weui_btn_default">刷新</a>
-			<a href="#" class="weui_btn weui_btn_default" onclick="showDlg('#dlgUserInit'); return false;">设置个人信息</a>
+		<div class="wrapper" style="height:100%; overflow-x:hidden; overflow-y:auto">
+			<ul class="p-list weui_cells weui_cells_access" >
+			</ul>
+		</div>
+
+		<div class="ft sp nowrap">
+			<a href="#createOrder" class="mui-btn primary">下单</a>
+			<a href="#" id="btnRefreshList" class="mui-btn">刷新</a>
+			<a href="#" class="mui-btn" onclick="showDlg('#dlgUserInit'); return false;">设置个人信息</a>
 		</div>
 	</div>
 
@@ -31,9 +34,9 @@
 				</div>
 			</div>
 
-			<div>
-				<button class="weui_btn weui_btn_primary weui_btn_mini">确定</button>
-				<button class="weui_btn weui_btn_default weui_btn_mini" onclick="closeDlg(this); return false;">取消</button>
+			<div class="sp">
+				<button class="mui-btn primary">确定</button>
+				<button class="mui-btn" onclick="closeDlg(this); return false;">取消</button>
 			</div>
 		</form>
 	</div>
