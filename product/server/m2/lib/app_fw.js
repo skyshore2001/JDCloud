@@ -571,8 +571,21 @@ example:
 	{
 		if (jo.hasClass("active"))
 			return;
-		jo.parent().find(">*").removeClass("active");
+
+		var jo1 = jo.parent().find(">*.active").removeClass("active");
 		jo.addClass("active");
+
+		handleLinkto(jo, true);
+		handleLinkto(jo1, false);
+
+		function handleLinkto(jo, active)
+		{
+			var ref = jo.attr("mui-linkto");
+			if (ref) {
+				var jlink = self.activePage.find(ref);
+				jlink.toggle(active);
+			}
+		}
 	}
 
 	function enhanceNavbar(jo)
