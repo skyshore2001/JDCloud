@@ -1,13 +1,26 @@
 function initPageHome()
 {
 	var jpage = $(this);
-	var jlst = jpage.find(".p-list");
 	var dlgUserInit = jpage.find("#dlgUserInit");
 
 	// ==== function {{{
 	function refreshOrderList()
 	{
-		showOrderList(jlst);
+		PageHome.refresh = false;
+		jpage.find(".p-list").empty();
+		showCurrentList(true);
+	}
+
+	// force?=false
+	function showCurrentList(force)
+	{
+		var activeTab = jpage.find(".mui-navbar .active").attr("mui-linkto");
+		var jlst = jpage.find(activeTab);
+		if (! force && jlst.children().size() > 0) {
+			return;
+		}
+		var cond = jlst.data("cond");
+		showOrderList(jlst, cond);
 	}
 
 	// cond?
@@ -19,6 +32,7 @@ function initPageHome()
 // 		var cond = "status<>'CA'";
 		if (cond)
 			param.cond = cond;
+		param.orderby = "id desc";
 
 		if (nextkey == null)
 			jlst.empty();
@@ -45,7 +59,7 @@ function initPageHome()
 				});
 			});
 			if (data.nextkey) {
-				ji = $("<li class='nextpage'>点击查看更多...</li>").appendTo(jlst);
+				ji = createCell({bd:"点击查看更多..."}).addClass("nextpage").appendTo(jlst);
 				ji.click(function() {
 					showOrderList(jlst, cond, data.nextkey);
 				});
@@ -53,7 +67,6 @@ function initPageHome()
 			else {
 				checkEmptyList(jlst);
 			}
-			// jlst.listview('refresh');
 		}
 	}
 
@@ -63,6 +76,9 @@ function initPageHome()
 		{
 			MUI.showDialog(dlgUserInit);
 			PageHome.userInit = false;
+		}
+		if (PageHome.refresh) {
+			refreshOrderList();
 		}
 	}
 
@@ -86,7 +102,11 @@ function initPageHome()
 	// }}}
 	
 	jpage.find("#btnRefreshList").click(refreshOrderList);
-	refreshOrderList();
+	jpage.find(".hd .mui-navbar a").click(function () {
+		// 让系统先选中tab页再操作
+		setTimeout(showCurrentList);
+	});
+	showCurrentList();
 
 	MUI.setupDialog(dlgUserInit, initDlgUserInit);
 	jpage.on("pageshow", page_show);

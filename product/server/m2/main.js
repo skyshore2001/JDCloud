@@ -36,6 +36,7 @@ var PageHome = {
 	// PageHome.show
 	show: null, // Function(reload?=false)
 	userInit: false, // Boolean. show dlgUserInit
+	refresh: false, // Boolean
 };
 
 var PageOrder = {

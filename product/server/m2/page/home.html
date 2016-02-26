@@ -1,17 +1,28 @@
 <div mui-initfn="initPageHome" mui-script="home.js">
+<style>
+#home .p-list {
+	height: 100%;
+	overflow-x: hidden;
+	overflow-y: auto;
+}
+#home .p-list:after {
+	position: static;
+}
+#home .nextpage {
+	padding-bottom: 40px;
+}
+</style>
 	<div class="hd" style="border-bottom: 0">
 		<h2>订单</h2>
 		<div class="mui-navbar">
-			<a href="javascript:;" class="active" mui-linkto=".p-list">待服务</a>
-			<a href="javascript:;" mui-linkto=".p-list2">已完成</a>
+			<a href="javascript:;" class="active" mui-linkto="#lst1">待服务</a>
+			<a href="javascript:;" mui-linkto="#lst2">已完成</a>
 		</div>
 	</div>
 
 	<div class="bd">
-		<ul class="p-list weui_cells weui_cells_access" style="height:100%; overflow-x:hidden; overflow-y:auto">
-		</ul>
-		<ul class="p-list2 weui_cells weui_cells_access" style="height:100%; overflow-x:hidden; overflow-y:auto; display:none">
-		</ul>
+		<div id=lst1 class="p-list weui_cells weui_cells_access" data-cond="status in ('CR')"></div>
+		<div id=lst2 class="p-list weui_cells weui_cells_access" data-cond="status in ('RE','CA')" style="display:none"></div>
 
 		<div class="ft sp nowrap">
 			<a href="#createOrder" class="mui-btn primary">下单</a>

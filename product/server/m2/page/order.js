@@ -17,6 +17,7 @@ function initPageOrder()
 			var arr = [
 				{bd: "<h3>" + data.dscr + "</h3>"},
 				{bd: "订单号", ft: data.id},
+				{bd: "状态", ft: StatusStr[data.status]},
 				{bd: "金额", ft: data.amount + "元"}
 			];
 			if (data.cmt) {
@@ -34,9 +35,19 @@ function initPageOrder()
 				var ji = createCell(cell);
 				ji.appendTo(jlstLog);
 			});
+
+			jpage.find("#btnCancelOrder").toggle(data.status != "CA");
 		}
+	}
+
+	function cancelOrder()
+	{
+		var postParam = {status: "CA"};
+		callSvr("Ordr.set", {id: PageOrder.id}, showOrder, postParam);
+		PageHome.refresh = true;
 	}
 	//}}}
 	
 	jpage.on("pagebeforeshow", showOrder);
+	jpage.find("#btnCancelOrder").click(cancelOrder);
 }
