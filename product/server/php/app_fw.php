@@ -49,7 +49,7 @@ $JSON_FLAG = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
 
 global $DB, $DBCRED, $USE_MYSQL;
 $DB = "localhost/myorder";
-$DBCRED = "bGo6bGlhbmcxMjM="; // base64({user}:{pwd})
+$DBCRED = "ZGVtbzpkZW1vMTIz"; // base64({user}:{pwd}), default: demo:demo123
 
 global $ALLOW_LCASE_PARAM;
 $ALLOW_LCASE_PARAM = true;
