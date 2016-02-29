@@ -13,6 +13,7 @@ $FILES = [
 $RULES = [
 	'm/*.html' => 'HASH',
 	'm/lib/app_fw.js' => 'HASH',
+	'm2/*.html' => 'HASH',
 
 	/*
 	'm/cordova/cordova.js' => '

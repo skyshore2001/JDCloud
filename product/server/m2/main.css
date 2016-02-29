@@ -12,3 +12,8 @@
 	margin-right: 0.2em;
 	width: 20%;
 }
+.weui_cell:before {
+	right: 15px;
+	width: auto;
+}
+

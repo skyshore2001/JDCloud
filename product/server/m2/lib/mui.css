@@ -169,10 +169,13 @@ html, body {
 	min-width: 60%;
 	-webkit-transform: translate(-50%, -50%);
 	transform: translate(-50%, -50%);
-	border-radius: 3px;
+	border-radius: 5px;
 	text-align: center;
 	background-color: #fafafc;
 	display: none;
+}
+.mui-dialog>.hd {
+	border-radius: 5px 5px 0 0;
 }
 
 .mui-btn {
