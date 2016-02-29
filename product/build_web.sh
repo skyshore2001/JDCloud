@@ -1,5 +1,9 @@
 #!/bin/sh
 OUT_DIR=../product-online
+export URL=ftp://oliveche.com/default/jdy/
+if [[ -z FTP_AUTH ]]; then
+	export FTP_AUTH=www:hello
+fi
 
 if [[ ! -d $OUT_DIR ]]; then
 	echo "*** 文件夹不存在：$OUT_DIR"
@@ -89,12 +93,12 @@ if ($ARGV[0] eq 'getcmd')
 		else {
 			$dir .= "/";
 		}
-		$cmd .= " -T {" . join(',', @$fs) . "} ftp://oliveche.com/default/cheguanjia/$dir";
+		$cmd .= " -T {" . join(',', @$fs) . "} $ENV{URL}/$dir";
 	}
 
 	exit unless defined $cmd;
 	# TODO: change your user/pwd
-	$fullCmd = "curl -s -S --ftp-create-dirs -u www:hello $cmd";
+	$fullCmd = "curl -s -S --ftp-create-dirs -u $ENV{FTP_AUTH} $cmd";
 	print $fullCmd;
 	#open O, ">cmd.log";
 	#print O $fullCmd;
