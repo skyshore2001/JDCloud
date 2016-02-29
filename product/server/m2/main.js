@@ -78,6 +78,18 @@ function setupGenCodeButton(btnGenCode, txtPhone)
 	}
 }
 
+// fn(code) 找不到验证码时code=null
+function getDynCode(fn)
+{
+	MUI.enterWaiting();
+	$.get("../tool/log.php?f=ext&sz=500").then(function (data) {
+		MUI.leaveWaiting();
+		var m = data.match(/验证码(\d+)/);
+		var ret = m? m[1]: null;
+		fn(ret);
+	});
+}
+
 // o: {hd?, bd?, ft?}
 // return: jcell
 function createCell(o)
