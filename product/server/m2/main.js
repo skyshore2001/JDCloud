@@ -61,7 +61,8 @@ function setupGenCodeButton(btnGenCode, txtPhone)
 		callSvr("genCode", {phone: phone});
 
 		var $btn = $(this);
-		$btn.attr("disabled", true);
+		$btn.prop("disabled", true);
+		$btn.addClass("disabled");
 
 		var n = 60;
 		var tv = setInterval(function () {
@@ -71,7 +72,8 @@ function setupGenCodeButton(btnGenCode, txtPhone)
 				s = "(" + n + "秒后可用)";
 			else {
 				clearInterval(tv);
-				$btn.attr("disabled", false);
+				$btn.prop("disabled", false);
+				$btn.removeClass("disabled");
 			}
 			btnGenCode.find(".p-prompt").text(s);
 		}, 1000);

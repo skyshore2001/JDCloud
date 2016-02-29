@@ -204,6 +204,11 @@ html, body {
 	background-color: #04BE02;
 	border-color: transparent;
 }
+.mui-btn.disabled {
+	border: 1px solid rgba(0, 0, 0, 0.2);
+	background-color: #F7F7F7;
+	color: #C7C7C7;
+}
 
 .mui-btn.primary:active {
 	background-color: #04AE02;
