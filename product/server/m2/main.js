@@ -96,6 +96,17 @@ function createCell(o)
 	return $(html);
 }
 
+function checkEmptyList(jlst, dscr)
+{
+	if (jlst.find("li").size() == 0) {
+		if (dscr == null)
+			dscr = "空列表!";
+		var ji = createCell({bd: dscr});
+		ji.css("text-align", "center");
+		jlst.append(ji);
+	}
+}
+
 function showDlg(ref)
 {
 	var jdlg = MUI.activePage.find(ref);

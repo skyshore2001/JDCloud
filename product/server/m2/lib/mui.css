@@ -165,7 +165,8 @@ html, body {
 	position: absolute;
 	top: 50%;
 	left: 50%;
-	width: 85%;
+	max-width: 95%;
+	min-width: 60%;
 	-webkit-transform: translate(-50%, -50%);
 	transform: translate(-50%, -50%);
 	border-radius: 3px;
@@ -182,7 +183,7 @@ html, body {
 	text-align: center;
 	color: #454545;
 	background-color: #F7F7F7;
-	font-size: 1em;
+	font-size: 0.8em;
 	line-height: 1.5;
 	padding: 0.1em 0.5em;
 }
@@ -213,11 +214,3 @@ html, body {
 	white-space: nowrap;
 }
 
-/* overwrite weui */
-.weui_cells {
-	margin-top: 0;
-}
-
-.weui_btn_mini {
-	min-width: 80px;
-}

@@ -1,0 +1,14 @@
+/* overwrite weui */
+.weui_cells {
+	margin-top: 0;
+}
+
+.weui_btn_mini {
+	min-width: 80px;
+}
+
+.weui_label {
+	min-width: 4em;
+	margin-right: 0.2em;
+	width: 20%;
+}

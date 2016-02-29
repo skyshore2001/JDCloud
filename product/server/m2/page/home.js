@@ -70,7 +70,7 @@ function initPageHome()
 				});
 			}
 			else {
-				checkEmptyList(jlst);
+				checkEmptyList(jp, "没有订单");
 			}
 		}
 	}
@@ -79,6 +79,7 @@ function initPageHome()
 	{
 		if (PageHome.userInit)
 		{
+			dlgUserInit.find("#divPwd").show();
 			MUI.showDialog(dlgUserInit);
 			PageHome.userInit = false;
 		}
@@ -92,13 +93,25 @@ function initPageHome()
 	{
 		var jdlg = this;
 		var jf = jdlg.find("form");
-		MUI.setFormSubmit(jf, api_UserSet);
+		MUI.setFormSubmit(jf, api_UserSet, {validate: onValidate});
 
+		function onValidate()
+		{
+			var jpwd = jf.find("#txtPwd");
+			if (jpwd.is(":visible")) {
+				var pwd = jpwd.val();
+				if (pwd != "") {
+					jpwd.val("");
+					callSvr("chpwd", {pwd: pwd, oldpwd: "_none"});
+				}
+			}
+		}
 		function api_UserSet(data)
 		{
 			callSvr("User.get", function (data) {
 				g_data.userInfo = data;
 			});
+			jdlg.find("#divPwd").hide();
 			MUI.closeDialog(jdlg);
 		}
 	}
