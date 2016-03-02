@@ -13,7 +13,10 @@ function initPageCreateOrder()
 	function api_OrdrAdd(data)
 	{
 		app_alert("订单创建成功!", "i", function () {
-			PageHome.show(true);
+			// 到新页后，点返回不允许回到当前页
+			MUI.popPageStack();
+			PageOrders.refresh = true;
+			MUI.showPage("#orders");
 		}, g_cfg.WAIT);
 	}
 

@@ -334,6 +334,86 @@ function CPageManager()
 
 	var m_jstash; // 页面暂存区; 首次加载页面后可用
 
+	var m_fromHashChange = null;
+
+	// null: 非back或forward; 
+	// true: back操作;
+	// false: forward操作
+	var m_isback = null; // 在changePage之前设置，在changePage中清除为null
+
+
+	// class PageStack {{{
+	function PageStack()
+	{
+		this.stack_ = []; // elem: {page, isPoped?=0}
+		this.sp_ = -1;
+		this.nextId_ = 1;
+	}
+	PageStack.prototype = {
+		// PageStack.push(pageRef);
+		push: function (pageRef) {
+			if (this.sp_ < this.stack_.length-1) {
+				this.stack_.splice(this.sp_+1);
+			}
+			var state = {page: pageRef, id: this.nextId_};
+			++ this.nextId_;
+			this.stack_.push(state);
+			++ this.sp_;
+			history.replaceState(state, null);
+		},
+		// PageStack.pop(n?=1); 
+		// n=0: 清除到首页; n>1: 清除指定页数
+		pop: function (n) {
+			if (n == null || n < 0)
+				n = 1;
+			if (n == 0 || n > this.sp_) {
+				n = this.sp_;
+			}
+			for (var i=0; i<n; ++i) {
+				this.stack_[this.sp_ -i].isPoped = true;
+			}
+		},
+		// PageStack.go(n?=0);
+		// 移动指定步数(忽略标记isPoped的页面以及重复页面)，返回实际步数. 0表示不可移动。
+		go: function (n) {
+			do {
+				var sp = this.sp_ + n;
+				if (sp < 0 || sp >= this.stack_.length)
+					return 0;
+				if (! this.stack_[sp].isPoped) 
+					break;
+				if (n < 0) {
+					-- n;
+				}
+				else {
+					++ n;
+				}
+			} while (1);
+			this.sp_ = sp;
+			return n;
+		},
+		// PageStack.findCurrentState() -> n
+		// Return: n - 当前状态到sp的偏移，可用 this.go(n) 移动过去。
+		//findCurrentState
+		findCurrentState: function () {
+			var found = false;
+			var sp = this.sp_;
+			var state = history.state;
+			for (var i=this.stack_.length-1; i>=0; --i) {
+				if (state.id == this.stack_[i].id)
+				{
+					sp = i;
+					found = true;
+					break;
+				}
+			}
+			if (!found)
+				throw "history not found";
+			return sp - this.sp_;
+		},
+	};
+	//}}}
+
 	function callInitfn(jo, paramArr)
 	{
 		var ret = jo.data("mui.init");
@@ -360,12 +440,85 @@ function CPageManager()
 		return ret;
 	}
 	
+	// 页面栈处理 {{{
+	// return: false表示忽略之后的处理
+	function handlePageStack(pageRef)
+	{
+		if (! m_fromHashChange) {
+			// TODO
+			$(window).one('hashchange', function() {
+				self.m_pageStack.push(pageRef);
+			});
+			m_fromHashChange = true;
+			return;
+		}
+		// 手工输入#hash
+		else if (history.state == null) {
+			self.m_pageStack.push(pageRef);
+			return;
+		}
+
+		if (m_isback !== null)
+			return;
+
+		// 修改浏览器后退前进时的错误(忽略poped页面)
+		var n = self.m_pageStack.findCurrentState();
+		var n1 = self.m_pageStack.go(n);
+		m_isback = n < 0;
+		if (n != n1) {
+			History.prototype.go.call(history, n1-n);
+			return false;
+		}
+	}
+
+	function initPageStack()
+	{
+		// 重写history的前进后退方法
+		history.back = function () {
+			return history.go(-1);
+		};
+		history.forward = function () {
+			return history.go(1);
+		};
+		history.go = function (n) {
+			var n = self.m_pageStack.go(n);
+			if (n == 0)
+				return false;
+			m_isback = n < 0;
+			// history.go原函数
+			return History.prototype.go.call(this, n);
+		};
+
+		// 在移动端，左右划动页面可前进后退
+		// 依赖jquery.touchSwipe组件
+		if ('ontouchstart' in window && $.fn.swipe) {
+			// TODO: 检查IOS是否需要
+			$(document).on("pagecreate", function (ev) {
+				var jpage = $(ev.target);
+				jpage.swipe({
+					swipeLeft: function () {
+						history.forward();
+					},
+					swipeRight: function () {
+						history.back();
+					},
+				});
+			});
+		}
+	}
+	initPageStack();
+	// }}}
+
 	function showPage_(pageRef)
 	{
 		// 避免hashchange重复调用
 		var fn = arguments.callee;
 		if (fn.lastPageRef == pageRef)
 			return;
+		var ret = handlePageStack(pageRef);
+		if (ret === false)
+			return;
+		location.hash = pageRef;
 		fn.lastPageRef = pageRef;
 
 		// find in document
@@ -431,8 +584,10 @@ function CPageManager()
 			var oldPage = self.activePage;
 
 			var enableAni = true; // TODO
+			var slideInClass = m_isback? "slideIn1": "slideIn";
+			m_isback = null;
 			if (enableAni) {
-				jpage.addClass("slideIn");
+				jpage.addClass(slideInClass);
 				jpage.one("animationend", onAnimationEnd)
 					.one("webkitAnimationEnd", onAnimationEnd);
 
@@ -454,7 +609,7 @@ function CPageManager()
 				jpage.trigger("pageshow");
 
 				if (enableAni) {
-					jpage.removeClass("slideIn");
+					jpage.removeClass(slideInClass);
 // 					if (oldPage)
 // 						oldPage.removeClass("slideOut");
 				}
@@ -476,6 +631,37 @@ function CPageManager()
 		showPage_(pageRef);
 	}
 
+/**
+@var MUI.m_pageStack
+
+页面栈，MUI.popPageStack对它操作
+*/
+	self.m_pageStack = new PageStack();
+
+/** 
+@fn MUI.popPageStack(n?=1) 
+
+n=0: 退到首层, >0: 指定pop几层
+
+离开页面时, 如果不希望在点击后退按钮后回到该页面, 可以调用
+
+	MUI.popPageStack()
+
+如果要在后退时忽略两个页面, 可以调用
+
+	MUI.popPageStack(2)
+
+如果要在后退时直接回到主页(忽略所有历史记录), 可以调用
+
+	MUI.popPageStack(0)
+
+*/
+	self.popPageStack = popPageStack;
+	function popPageStack(n)
+	{
+		self.m_pageStack.pop(n);
+	}
+
 	$(window).on('hashchange', applyHashChange);
 
 /**
@@ -492,7 +678,8 @@ example:
 	{
 		if (pageRef[0] !== '#')
 			pageRef = '#' + pageRef;
-		location.hash = pageRef;
+		m_fromHashChange = false;
+		showPage_(pageRef);
 	}
 
 	$(window).on('orientationchange', fixPageSize);
@@ -776,6 +963,28 @@ app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时�
 	}
 
 //}}}
+// ------- ui: anchor {{{
+
+	self.m_enhanceFn["a[href^=#]"] = enhanceAnchor;
+
+	function enhanceAnchor(jo)
+	{
+		if (jo.attr("onclick"))
+			return;
+		// 使用showPage, 与直接链接导致的hashchange事件区分
+		jo.click(function () {
+			var href = jo.attr("href");
+			// 如果名字以 "#dlgXXX" 则自动打开dialog
+			if (href.substr(1,3) == "dlg") {
+				var jdlg = self.activePage.find(href);
+				self.showDialog(jdlg);
+				return false;
+			}
+			self.showPage(href);
+			return false;
+		});
+	}
+//}}}
 
 // ------ main
 	
@@ -792,17 +1001,6 @@ app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时�
 		// 根据hash进入首页
 		if (self.showFirstPage)
 			applyHashChange();
-
-		/*
-		$(document).swipe({
-			swipeLeft: function () {
-				history.forward();
-			},
-			swipeRight: function () {
-				history.back();
-			}
-		});
-		*/
 	}
 
 	$(main);
@@ -1020,8 +1218,8 @@ allow throw("abort") as abort behavior.
 			}
 
 			if (rv[0] == E_NOAUTH) {
-				popPageStack(0);
-				showLogin();
+				self.popPageStack(0);
+				self.showLogin();
 				return;
 			}
 			else if (rv[0] == E_AUTHFAIL) {
@@ -1289,148 +1487,6 @@ function document_pageCreate(ev)
 }
 
 $(document).on("pagecreate", document_pageCreate);
-//}}}
-
-// ---- 处理浏览器前进后退 {{{
-// 注: 以下私有属性暴露出去是为了在控制台中更方便查看.
-/**
-@var MUI.m_pageStack
-当前页面栈. 当浏览器前进后退(或调用history.back()之类方法)时, 会相应调整.
-*/
-self.m_pageStack = [""];
-
-/**
-@var MUI.m_SP
-当前页面栈指针
-*/
-self.m_SP = 0;
-
-/**
-@var MUI.m_disablePageStack?=false
-如果配置为true, 可比较禁用页面栈之后的效果.
-*/
-self.m_disablePageStack=false;
-
-function getPageId(page)
-{
-	if (page == null)
-		return null;
-	if (page.attr)
-		return page.attr("id");
-	var ms = page.match(/#(\w+)$/);
-	if (ms != null)
-		return ms[1];
-	return "";
-}
-
-/** 
-@fn MUI.popPageStack(n?=1) 
-
-离开页面时, 如果不希望在点击后退按钮后回到该页面, 可以调用
-
-	MUI.popPageStack()
-
-如果要在后退时忽略两个页面, 可以调用
-
-	MUI.popPageStack(2)
-
-如果要在后退时直接回到主页(忽略所有历史记录), 可以调用
-
-	MUI.popPageStack(0)
-
-*/
-self.popPageStack = popPageStack;
-// n?=1. n=0: 退到首层, >0: 指定pop几层
-function popPageStack(n)
-{
-	if (n == null)
-		n = 1;
-
-	if (n == 0) {
-		self.m_pageStack.splice(1);
-		self.m_SP = 0;
-	}
-	else if (n > 0) {
-		self.m_SP -= n;
-		if (self.m_SP < 0)
-			self.m_SP = 0;
-		self.m_pageStack.splice(self.m_SP+1, n);
-	}
-}
-
-function handleGoBack()
-{
-	//$.mobile.pageContainer.on("pagecontainerbeforechange", pageContainer_beforeChange);
-
-	var lastFrom, lastTo;
-	function pageContainer_beforeChange(ev, ui) 
-	{
-		if (ui.options.role == "popup")
-			return;
-
-		// 防止调用多次
-		var toPageId = getPageId(ui.toPage);
-		var fromPageId = getPageId(ui.prevPage);
-
-		if (lastFrom == fromPageId || lastTo == toPageId)
-			return;
-		lastFrom = fromPageId;
-		lastTo = toPageId;
-
-		// console.log("----before change-----");
-		g_prevPage = ui.prevPage;
-// 		console.log(ui.prevPage);
-// 		console.log(ui.toPage);
-
-		var ret = true;
-		var pageStack = self.m_pageStack;
-
-		if (ui.options.fromHashChange && ui.options.direction && !self.m_disablePageStack) { // direction判断是点击了 后退/前进 按钮
-			var found = false;
-			var i;
-			// !!! 注意: ui.options.direction == "back"/"forward" 并不可靠, 有时点forward会当back处理, 所以不要用
-
-			for (i=self.m_SP; i<pageStack.length; ++i) {
-				if (toPageId == pageStack[i])
-				{
-					found = true;
-					break;
-					//return false;
-				}
-			}
-			if (!found) {
-				for (i=self.m_SP; i>=0; --i) {
-					if (toPageId == pageStack[i])
-					{
-						found = true;
-						break;
-					}
-				}
-			}
-
-			if (!found || self.m_SP == i) { // 如果回退页面和当前页面相同, 再回退一次
-				// 遇到已删除的历史, 当回退处理
-				if (self.m_SP > 0) {
-					-- self.m_SP;
-				}
-				location.replace("#" + pageStack[self.m_SP]);//按了返回键: 当前的前一个页面
-				//history.replaceState(null, null, "#" + pageStack[self.m_SP]);
-
-				// 取消之后的动作
-				return false;
-			}
-			self.m_SP = i;
-			return;
-		}
-
-		if (pageStack.length == 0 || pageStack[self.m_SP] != toPageId)
-		{
-			++ self.m_SP;
-			pageStack.splice(self.m_SP, pageStack.length, toPageId);
-		}
-		return ret;
-	}
-}
 //}}}
 
 // ---- 处理ios7以上标题栏问题(应下移以空出状态栏)

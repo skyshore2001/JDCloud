@@ -47,6 +47,10 @@ var PageOrder = {
 	// PageOrder.id
 	id: null, 
 };
+
+var PageOrders = {
+	refresh: false
+};
 //}}}
 //}}}
 

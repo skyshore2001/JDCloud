@@ -98,6 +98,15 @@ html, body {
 	}
 }
 
+@keyframes slideIn1 {
+	from {
+		transform: translateX(-100%);
+	}
+	to {
+		transform: translateX(0);
+	}
+}
+
 @keyframes slideOut {
 	from {
 		transform: translateX(0);
@@ -110,6 +119,16 @@ html, body {
 @-webkit-keyframes slideIn {
 	from {
 		-webkit-transform: translateX(100%);
+	}
+
+	to {
+		-webkit-transform: translateX(0);
+	}
+}
+
+@-webkit-keyframes slideIn1 {
+	from {
+		-webkit-transform: translateX(-100%);
 	}
 
 	to {
@@ -131,7 +150,10 @@ html, body {
 	-webkit-animation: slideIn .2s forwards;
 	animation: slideIn .2s forwards;
 }
-
+.mui-page.slideIn1 {
+	-webkit-animation: slideIn1 .2s forwards;
+	animation: slideIn1 .2s forwards;
+}
 .mui-page.slideOut {
 	-webkit-animation: slideOut .2s forwards;
 	animation: slideOut .2s forwards;

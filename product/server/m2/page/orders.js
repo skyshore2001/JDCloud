@@ -10,8 +10,12 @@ function initPageOrders()
 	var jcont = jpage.find(">.bd");
 	initPullList(jcont[0], opt);
 
-	function showOrderList(isRefresh, loadIfEmpty)
+	function showOrderList(isRefresh, skipIfLoaded)
 	{
+		if (PageOrders.refresh) {
+			jpage.find(".p-list").data("nextkey", null);
+			PageOrders.refresh = false;
+		}
 		var jlst = jpage.find(".p-list.active");
 		var nextkey = jlst.data("nextkey");
 		if (isRefresh) {
@@ -20,7 +24,7 @@ function initPageOrders()
 		}
 		else if (nextkey === -1)
 			return;
-		if (loadIfEmpty && nextkey != null)
+		if (skipIfLoaded && nextkey != null)
 			return;
 		var param = {orderby: "id desc"};
 		param._pagesz = g_cfg.PAGE_SZ; // for test, default 20.
@@ -58,6 +62,11 @@ function initPageOrders()
 		}
 	}
 
+	jpage.find("pagebeforeshow", function () {
+		if (PageOrders.refresh) {
+			showOrderList();
+		}
+	});
 	showOrderList();
 
 	jpage.find(".hd .mui-navbar a").click(function (ev) {
