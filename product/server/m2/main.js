@@ -18,6 +18,10 @@ var ActionStr = {
 	RE: "服务",
 	CA: "取消"
 };
+
+var g_cfg = {
+	PAGE_SZ: 10
+};
 // }}}
 
 // ====== global {{{

@@ -120,7 +120,11 @@ function initPageHome()
 	// }}}
 	
 	jpage.find("#btnRefreshList").click(refreshOrderList);
-	jpage.find(".hd .mui-navbar a").click(function () {
+	jpage.find(".hd .mui-navbar a").click(function (ev) {
+		if ($(this).attr("mui-linkto") == null) {
+			ev.stopImmediatePropagation();
+			return;
+		}
 		// 让系统先选中tab页再操作
 		setTimeout(showCurrentList);
 	});

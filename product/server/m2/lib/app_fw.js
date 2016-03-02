@@ -584,6 +584,7 @@ example:
 			if (ref) {
 				var jlink = self.activePage.find(ref);
 				jlink.toggle(active);
+				jlink.toggleClass("active", active);
 			}
 		}
 	}
@@ -593,7 +594,7 @@ example:
 		// 如果有ft类，则不自动点击后active (#footer是特例)
 		if (jo.hasClass("ft"))
 			return;
-		jo.find(">*").click(function () {
+		jo.find(">*").on('click', function () {
 			activateElem($(this));
 		});
 	}
@@ -791,6 +792,17 @@ app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时�
 		// 根据hash进入首页
 		if (self.showFirstPage)
 			applyHashChange();
+
+		/*
+		$(document).swipe({
+			swipeLeft: function () {
+				history.forward();
+			},
+			swipeRight: function () {
+				history.back();
+			}
+		});
+		*/
 	}
 
 	$(main);
