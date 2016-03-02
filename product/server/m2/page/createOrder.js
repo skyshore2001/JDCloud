@@ -15,6 +15,7 @@ function initPageCreateOrder()
 		app_alert("订单创建成功!", "i", function () {
 			// 到新页后，点返回不允许回到当前页
 			MUI.popPageStack();
+			PageHome.refresh = true;
 			PageOrders.refresh = true;
 			MUI.showPage("#orders");
 		}, g_cfg.WAIT);

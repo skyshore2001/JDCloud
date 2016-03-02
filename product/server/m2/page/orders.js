@@ -12,13 +12,15 @@ function initPageOrders()
 
 	function showOrderList(isRefresh, skipIfLoaded)
 	{
+		// nextkey=null: 新开始或刷新
+		// nextkey=-1: 列表完成
 		if (PageOrders.refresh) {
 			jpage.find(".p-list").data("nextkey", null);
 			PageOrders.refresh = false;
 		}
 		var jlst = jpage.find(".p-list.active");
 		var nextkey = jlst.data("nextkey");
-		if (isRefresh) {
+		if (isRefresh || nextkey == null) {
 			nextkey = null;
 			jlst.empty();
 		}
@@ -62,7 +64,7 @@ function initPageOrders()
 		}
 	}
 
-	jpage.find("pagebeforeshow", function () {
+	jpage.on("pagebeforeshow", function () {
 		if (PageOrders.refresh) {
 			showOrderList();
 		}

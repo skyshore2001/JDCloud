@@ -343,6 +343,7 @@ function CPageManager()
 
 
 	// class PageStack {{{
+	var m_fn_history_go = history.go;
 	function PageStack()
 	{
 		this.stack_ = []; // elem: {page, isPoped?=0}
@@ -466,7 +467,7 @@ function CPageManager()
 		var n1 = self.m_pageStack.go(n);
 		m_isback = n < 0;
 		if (n != n1) {
-			History.prototype.go.call(history, n1-n);
+			m_fn_history_go.call(this, n1-n);
 			return false;
 		}
 	}
@@ -486,7 +487,7 @@ function CPageManager()
 				return false;
 			m_isback = n < 0;
 			// history.go原函数
-			return History.prototype.go.call(this, n);
+			return m_fn_history_go.call(this, n);
 		};
 
 		// 在移动端，左右划动页面可前进后退
