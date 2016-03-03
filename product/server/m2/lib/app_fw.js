@@ -334,35 +334,40 @@ function CPageManager()
 
 	var m_jstash; // 页面暂存区; 首次加载页面后可用
 
-	var m_fromHashChange = null;
+	// false: 来自浏览器前进后退操作，或直接输入hash值, 或调用history.back/forward/go操作
+	// true: 来自内部页面跳转(showPage)
+	var m_fromShowPage = false;
 
-	// null: 非back或forward; 
+	// null: 未知
 	// true: back操作;
-	// false: forward操作
+	// false: forward操作, 或进入新页面
 	var m_isback = null; // 在changePage之前设置，在changePage中清除为null
 
 
-	// class PageStack {{{
+	// @class PageStack {{{
 	var m_fn_history_go = history.go;
 	function PageStack()
 	{
-		this.stack_ = []; // elem: {page, isPoped?=0}
+		// @var PageStack.stack_ - elem: {pageRef, isPoped?=0}
+		this.stack_ = [];
+		// @var PageStack.sp_
 		this.sp_ = -1;
+		// @var PageStack.nextId_
 		this.nextId_ = 1;
 	}
 	PageStack.prototype = {
-		// PageStack.push(pageRef);
+		// @fn PageStack.push(pageRef);
 		push: function (pageRef) {
 			if (this.sp_ < this.stack_.length-1) {
 				this.stack_.splice(this.sp_+1);
 			}
-			var state = {page: pageRef, id: this.nextId_};
+			var state = {pageRef: pageRef, id: this.nextId_};
 			++ this.nextId_;
 			this.stack_.push(state);
 			++ this.sp_;
 			history.replaceState(state, null);
 		},
-		// PageStack.pop(n?=1); 
+		// @fn PageStack.pop(n?=1); 
 		// n=0: 清除到首页; n>1: 清除指定页数
 		pop: function (n) {
 			if (n == null || n < 0)
@@ -374,14 +379,17 @@ function CPageManager()
 				this.stack_[this.sp_ -i].isPoped = true;
 			}
 		},
-		// PageStack.go(n?=0);
+		// @fn PageStack.go(n?=0);
 		// 移动指定步数(忽略标记isPoped的页面以及重复页面)，返回实际步数. 0表示不可移动。
 		go: function (n) {
+			if (n == 0)
+				return 0;
+			var curState = this.stack_[this.sp_];
 			do {
 				var sp = this.sp_ + n;
 				if (sp < 0 || sp >= this.stack_.length)
 					return 0;
-				if (! this.stack_[sp].isPoped) 
+				if (! this.stack_[sp].isPoped && this.stack_[sp].pageRef != curState.pageRef)
 					break;
 				if (n < 0) {
 					-- n;
@@ -393,9 +401,8 @@ function CPageManager()
 			this.sp_ = sp;
 			return n;
 		},
-		// PageStack.findCurrentState() -> n
+		// @fn PageStack.findCurrentState() -> n
 		// Return: n - 当前状态到sp的偏移，可用 this.go(n) 移动过去。
-		//findCurrentState
 		findCurrentState: function () {
 			var found = false;
 			var sp = this.sp_;
@@ -445,31 +452,24 @@ function CPageManager()
 	// return: false表示忽略之后的处理
 	function handlePageStack(pageRef)
 	{
-		if (! m_fromHashChange) {
-			// TODO
-			$(window).one('hashchange', function() {
-				self.m_pageStack.push(pageRef);
-			});
-			m_fromHashChange = true;
-			return;
-		}
-		// 手工输入#hash
-		else if (history.state == null) {
-			self.m_pageStack.push(pageRef);
+		if (m_fromShowPage) {
+			m_fromShowPage = false;
 			return;
 		}
 
 		if (m_isback !== null)
 			return;
 
-		// 修改浏览器后退前进时的错误(忽略poped页面)
+		// 浏览器后退前进时, 同步m_pageStack, 并可能修正错误(忽略poped页面)
 		var n = self.m_pageStack.findCurrentState();
 		var n1 = self.m_pageStack.go(n);
-		m_isback = n < 0;
 		if (n != n1) {
-			m_fn_history_go.call(this, n1-n);
+			setTimeout(function () {
+				m_fn_history_go.call(window.history, n1-n);
+			});
 			return false;
 		}
+		m_isback = n <= 0;
 	}
 
 	function initPageStack()
@@ -515,7 +515,10 @@ function CPageManager()
 		// 避免hashchange重复调用
 		var fn = arguments.callee;
 		if (fn.lastPageRef == pageRef)
+		{
+			m_isback = null; // reset!
 			return;
+		}
 		var ret = handlePageStack(pageRef);
 		if (ret === false)
 			return;
@@ -629,6 +632,10 @@ function CPageManager()
 	function applyHashChange()
 	{
 		var pageRef = location.hash || "#home";
+		if (history.state == null) {
+			m_isback = false; // 新页面
+			self.m_pageStack.push(pageRef);
+		}
 		showPage_(pageRef);
 	}
 
@@ -679,7 +686,7 @@ example:
 	{
 		if (pageRef[0] !== '#')
 			pageRef = '#' + pageRef;
-		m_fromHashChange = false;
+		m_fromShowPage = true;
 		showPage_(pageRef);
 	}
 

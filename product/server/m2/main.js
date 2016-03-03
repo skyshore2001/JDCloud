@@ -2,7 +2,7 @@
 var MyApp = {
 	appName: "user",
 	allowedEntries: [
-		"#me"
+		"#home"
 	]
 }
 MUI.setApp(MyApp);
