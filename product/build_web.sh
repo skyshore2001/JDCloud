@@ -1,7 +1,7 @@
 #!/bin/sh
 OUT_DIR=../product-online
 export URL=ftp://oliveche.com/default/jdy/
-if [[ -z FTP_AUTH ]]; then
+if [[ -z $FTP_AUTH ]]; then
 	export FTP_AUTH=www:hello
 fi
 
@@ -97,7 +97,6 @@ if ($ARGV[0] eq 'getcmd')
 	}
 
 	exit unless defined $cmd;
-	# TODO: change your user/pwd
 	$fullCmd = "curl -s -S --ftp-create-dirs -u $ENV{FTP_AUTH} $cmd";
 	print $fullCmd;
 	#open O, ">cmd.log";
