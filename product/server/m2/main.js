@@ -19,9 +19,6 @@ var ActionStr = {
 	CA: "取消"
 };
 
-var g_cfg = {
-	PAGE_SZ: 10
-};
 // }}}
 
 // ====== global {{{
@@ -31,7 +28,7 @@ var g_data = {
 };
 
 var g_cfg = {
-	PAGE_SZ: 20,
+	PAGE_SZ: 10,
 	WAIT: 3000, // 3s
 };
 
