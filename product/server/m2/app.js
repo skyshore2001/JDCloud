@@ -73,6 +73,11 @@ function initPullList(obj, opt)
 {
 	var m_touchev = null; // {ac, x0, y0}
 	var m_mouseMoved = false;
+	var SAMPLE_INTERVAL = 300;
+
+	window.requestAnimationFrame = window.requestAnimationFrame || function (fn) {
+		setTimeout(fn, 1000/60);
+	};
 
 	if (opt.threshold == null)
 		opt.threshold = 200;
@@ -148,11 +153,21 @@ function initPullList(obj, opt)
 		var p = getPos(ev);
 		m_touchev = {
 			ac: null,
+			// 原始top位置
 			top0: obj.scrollTop,
+			// 原始光标位置
 			x0: p[0],
 			y0: p[1],
+			// 总移动位移
 			dx: 0,
-			dy: 0
+			dy: 0,
+
+			// 用于惯性滚动: 每SAMPLE_INTERVAL(500ms)取样时最后一次时间及光标位置(用于计算初速度)
+			momentum: {
+				x0: p[0],
+				y0: p[1],
+				startTime: new Date()
+			}
 		};
 		//ev.preventDefault(); // 防止click等事件无法触发
 	}
@@ -202,6 +217,15 @@ function initPullList(obj, opt)
 	function touchMove(ev)
 	{
 		var p = getPos(ev);
+		var m = m_touchev.momentum;
+		if (m) {
+			var now = new Date();
+			if ( now - m.startTime > SAMPLE_INTERVAL ) {
+				m.startTime = now;
+				m.x0 = p[0];
+				m.y0 = p[1];
+			}
+		}
 
 		m_touchev.dx = p[0] - m_touchev.x0;
 		m_touchev.dy = p[1] - m_touchev.y0;
@@ -226,11 +250,54 @@ function initPullList(obj, opt)
 		updateHint(null, 0);
 	}
 
+	function momentumScroll(ev)
+	{
+		if (m_touchev == null || m_touchev.momentum == null)
+			return;
+
+		// 惯性滚动
+		var m = m_touchev.momentum;
+		var dt = new Date();
+		var duration = dt - m.startTime;
+		if (duration > SAMPLE_INTERVAL)
+			return;
+
+		var p = getPos(ev);
+		var v0 = (p[1]-m.y0) / duration;
+		if (v0 == 0)
+			return;
+
+		var deceleration = 0.0006;
+		var sss = 0;
+
+		window.requestAnimationFrame(moveNext);
+		function moveNext() 
+		{
+			// 用户有新的点击，则取消动画
+			if (m_touchev != null)
+				return;
+
+			var dt1 = new Date();
+			var t = dt1 - dt;
+			dt = dt1;
+			var s = v0 * t / 2;
+			var dir = Math.sign(v0);
+			v0 -= deceleration * t * dir;
+
+			var top = obj.scrollTop;
+			obj.scrollTop = top - s;
+			if (v0 * dir > 0 && top != obj.scrollTop) {
+				window.requestAnimationFrame(moveNext);
+			}
+		}
+	}
+
 	function touchEnd(ev)
 	{
 		updateHint(null, 0);
 		if (m_touchev == null || m_touchev.ac == null || Math.abs(m_touchev.pully) < opt.threshold)
 		{
+			momentumScroll(ev);
 			m_touchev = null;
 			return;
 		}
