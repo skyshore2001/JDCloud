@@ -268,7 +268,6 @@ function initPullList(obj, opt)
 			return;
 
 		var deceleration = 0.0006;
-		var sss = 0;
 
 		window.requestAnimationFrame(moveNext);
 		function moveNext() 
@@ -281,7 +280,7 @@ function initPullList(obj, opt)
 			var t = dt1 - dt;
 			dt = dt1;
 			var s = v0 * t / 2;
-			var dir = Math.sign(v0);
+			var dir = v0<0? -1: 1;
 			v0 -= deceleration * t * dir;
 
 			var top = obj.scrollTop;
