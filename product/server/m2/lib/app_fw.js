@@ -234,11 +234,9 @@ Mobile UI framework
 
 == 图片按需加载 ==
 
-TODO:
+仅当页面创建时才会加载。
 
-对于img标签, 可以将src属性改为data-src, 这样只有在img所在page创建时才加载, 而不是一打开应用就加载:
-
-	<img data-src="../m/images/ui/carwash.png">
+	<img src="../m/images/ui/carwash.png">
 
 == 原生应用支持 ==
 
@@ -309,10 +307,15 @@ MUI的基类，提供showPage等操作。
 
 框架提供muiInit/pagecreate/pagebeforeshow/pageshow/pagehide事件。
  */
-function CPageManager()
+/**
+@class CPageManager(app)
+@param app IApp={homePage?="#home"}
+*/
+function CPageManager(app)
 {
 	var self = this;
 	
+	var m_app = app;
 /**
 @var MUI.activePage
 */
@@ -634,7 +637,7 @@ function CPageManager()
 	{
 		var pageRef = location.hash;
 		if (pageRef == "") {
-			pageRef = "#home";
+			pageRef = m_app.homePage;
 			location.hash = pageRef;
 		}
 		if (history.state == null || history.state.appId != m_appId) {
@@ -1474,14 +1477,15 @@ function nsMUI()
 
 参考MUI.setApp
 */
-	self.m_app = {
+	var m_app = self.m_app = {
 		appName: "user",
 		allowedEntries: [],
 		loginPage: "#login",
+		homePage: "#home",
 	};
 
-	CPageManager.call(this);
-	CComManager.call(this, self.m_app);
+	CPageManager.call(this, m_app);
+	CComManager.call(this, m_app);
 
 	var m_onLoginOK;
 
@@ -1559,10 +1563,11 @@ function showValidateErr(jvld, jo, msg)
 
 // ------ cordova setup {{{
 $(document).on("deviceready", function () {
+	var homePageId = m_app.homePage.substr(1); // "#home"
 	// TODO: hardcode "home"
 	// 在home页按返回键退出应用。
 	$(document).on("backbutton", function () {
-		if ($.mobile.activePage.attr("id") == "home") {
+		if ($.mobile.activePage.attr("id") == homePageId) {
 			if (! confirm("退出应用?"))
 				return;
 			navigator.app.exitApp();
@@ -1608,17 +1613,17 @@ function showLogin(jpage)
 		m_onLoginOK = function () {
 			MUI.showPage("#" + jcurPage.attr("id"));
 		}
-		MUI.showPage(self.m_app.loginPage);
+		MUI.showPage(m_app.loginPage);
 	}
 	else {
 		// only before jquery mobile inits
 		// back to this page after login:
-		var pageHash = location.hash || "#";
+		var pageHash = location.hash || m_app.homePage;
 		m_onLoginOK = function () {
 			MUI.showPage(pageHash);
 		}
 	}
-	MUI.showPage(self.m_app.loginPage);
+	MUI.showPage(m_app.loginPage);
 }
 
 /**
@@ -1688,8 +1693,8 @@ parseArgs();
 function tokenName()
 {
 	var name = "token";
-	if (self.m_app.appName)
-		name += "_" + self.m_app.appName;
+	if (m_app.appName)
+		name += "_" + m_app.appName;
 	if (g_args._test)
 		name += "_test";
 	return name;
@@ -1797,8 +1802,7 @@ function handleLogin(data)
 		setTimeout(fn);
 	}
 	else {
-		// 转主页 TODO: home
-		self.showPage("#home");
+		self.showPage(m_app.homePage);
 	}
 }
 //}}}
@@ -1850,16 +1854,17 @@ $(main);
 /**
 @fn MUI.setApp(app)
 
-@param app={appName?=user, allowedEntries?, loginPage?="#login"}
+@param app={appName?=user, allowedEntries?, loginPage?="#login", homePage?="#home"}
 
 - appName: 用于与后端通讯时标识app.
 - allowedEntries: 一个数组, 如果初始页面不在该数组中, 则自动转向主页.
 - loginPage: login页面的地址, 默认为"#login"
+- homePage: 首页的地址, 默认为"#home"
 */
 self.setApp = setApp;
 function setApp(app)
 {
-	$.extend(self.m_app, app);
+	$.extend(m_app, app);
 	g_args._app = app.appName;
 
 	if (app.allowedEntries)

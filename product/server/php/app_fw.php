@@ -1126,7 +1126,7 @@ class AppFw_
 		session_name($name);
 
 		// normal: "./session"; testmode: "./session/t";
-		$path = getenv("P_SESSION_DIR") ?: dirname(__FILE__) . "/session";
+		$path = getenv("P_SESSION_DIR") ?: $GLOBALS["BASE_DIR"] . "/session";
 		if ($TEST_MODE)
 			$path .= "/t";
 		if (!  is_dir($path)) {
