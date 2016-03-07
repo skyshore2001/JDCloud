@@ -346,6 +346,7 @@ function CPageManager()
 
 	// @class PageStack {{{
 	var m_fn_history_go = history.go;
+	var m_appId = Math.ceil(Math.random() *10000);
 	function PageStack()
 	{
 		// @var PageStack.stack_ - elem: {pageRef, isPoped?=0}
@@ -361,7 +362,7 @@ function CPageManager()
 			if (this.sp_ < this.stack_.length-1) {
 				this.stack_.splice(this.sp_+1);
 			}
-			var state = {pageRef: pageRef, id: this.nextId_};
+			var state = {pageRef: pageRef, id: this.nextId_, appId: m_appId};
 			++ this.nextId_;
 			this.stack_.push(state);
 			++ this.sp_;
@@ -631,8 +632,12 @@ function CPageManager()
 
 	function applyHashChange()
 	{
-		var pageRef = location.hash || "#home";
-		if (history.state == null) {
+		var pageRef = location.hash;
+		if (pageRef == "") {
+			pageRef = "#home";
+			location.hash = pageRef;
+		}
+		if (history.state == null || history.state.appId != m_appId) {
 			m_isback = false; // 新页面
 			self.m_pageStack.push(pageRef);
 		}
