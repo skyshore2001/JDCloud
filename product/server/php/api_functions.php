@@ -9,6 +9,7 @@
 
 // ====== config {{{
 const HTTP_NOT_FOUND = "HTTP/1.1 404 Not Found";
+const AUTO_PWD_PREFIX = "AUTO";
 
 # thumb size for upload type:
 global $UploadType;
@@ -62,6 +63,7 @@ function regUser($phone, $pwd)
 		Q(date('c'))
 	);
 	$id = execOne($sql, true);
+	addToPwdTable($pwd);
 	$ret = ["id"=>$id];
 
 	return $ret;
@@ -141,13 +143,16 @@ function api_login()
 			// code通过验证，直接注册新用户
 			if (isset($code))
 			{
-				$ret = regUser($uname, "");
+				$pwd = AUTO_PWD_PREFIX . genDynCode("d4");
+				$ret = regUser($uname, $pwd);
 				$ret["_isNew"] = 1;
 			}
 		}
 		else {
 			if (isset($code) || (isset($pwd) && hashPwd($pwd) == $row["pwd"]))
 			{
+				if (!isset($pwd))
+					$pwd = $row["pwd"]; // 用于生成token
 				$ret = ["id" => $row["id"]];
 			}
 		}
@@ -230,6 +235,8 @@ function setEmployeePwd($empId, $pwd, $genToken)
 // 制作密码字典。
 function addToPwdTable($pwd)
 {
+	if (substr($pwd, 0, strlen(AUTO_PWD_PREFIX)) == AUTO_PWD_PREFIX)
+		return;
 	$id = queryOne("SELECT id FROM Pwd WHERE pwd=" . Q($pwd));
 	if ($id === false) {
 		$sql = sprintf("INSERT INTO Pwd (pwd, cnt) VALUES (%s, 1)", Q($pwd));

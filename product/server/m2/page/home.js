@@ -102,7 +102,8 @@ function initPageHome()
 				var pwd = jpwd.val();
 				if (pwd != "") {
 					jpwd.val("");
-					callSvr("chpwd", {pwd: pwd, oldpwd: "_none"});
+					// 调用handleLogin保存token.
+					callSvr("chpwd", {pwd: pwd, oldpwd: "_none"}, handleLogin);
 				}
 			}
 		}

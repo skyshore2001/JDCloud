@@ -1234,7 +1234,7 @@ allow throw("abort") as abort behavior.
 			}
 
 			if (rv[0] == E_NOAUTH) {
-				if (self.tryAutoLogin(self.handleLogin)) {
+				if (self.tryAutoLogin()) {
 					var arg = ctx.arguments; // NOTE: arguments不是array, 不能直接用callSvr.apply
 					callSvr.call(this, arg[0], arg[1], arg[2], arg[3], arg[4]);
 				}
@@ -1759,6 +1759,8 @@ function tryAutoLogin(onHandleLogin, reuseCmd, allowNoLogin)
 	{
 		if (data === false) // has exception (as noex=true)
 			return;
+
+		g_data.userInfo = data;
 		if (onHandleLogin)
 			onHandleLogin.call(this, data);
 		ok = true;
@@ -1801,6 +1803,8 @@ self.handleLogin = handleLogin;
 function handleLogin(data)
 {
 	saveLoginToken(data);
+	if (data.id == null)
+		return;
 	g_data.userInfo = data;
 	if (m_onLoginOK) {
 		var fn = m_onLoginOK;
