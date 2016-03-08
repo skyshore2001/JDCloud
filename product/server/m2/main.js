@@ -117,7 +117,7 @@ function createCell(o)
 
 function checkEmptyList(jlst, dscr)
 {
-	if (jlst.find("li").size() == 0) {
+	if (jlst[0].children.length == 0) {
 		if (dscr == null)
 			dscr = "空列表!";
 		var ji = createCell({bd: dscr});

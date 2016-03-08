@@ -357,6 +357,10 @@ js调用逻辑示例：
 		onAddItem: function (jlst, itemData) {
 			var ji = $("<li>" + itemData.title + "</li>");
 			ji.appendTo(jlst);
+		},
+		onNoItem: function (jlst) {
+			var ji = $("<li>没有订单</li>");
+			ji.appendTo(jlst);
 		}
 	});
 
@@ -368,9 +372,11 @@ js调用逻辑示例：
 		$.each(rs2Array(data), function (i, itemData) {
 			opt.onAddItem(jlst, itemData);
 		});
+		if (data.d.length == 0)
+			opt.onNoItem(jlst);
 	});
 
-@param opt {onGetQueryParam, onAddItem, pageItf?, navRef?=">.hd .mui-navbar", listRef=">.bd .p-list"}
+@param opt {onGetQueryParam, onAddItem, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef=">.bd .p-list"}
 
 @param onGetQueryParam (jlst, callParam/o)
 
@@ -382,6 +388,10 @@ js调用逻辑示例：
 @param onAddItem (jlst, itemData)
 
 框架调用callSvr之后，处理每条返回数据时，通过调用该函数将itemData转换为DOM item并添加到jlst中。
+
+@param onNoItem (jlst)
+
+当没有任何数据时，可以插入提示信息。
 
 @param pageItf - page interface {refresh?/io}
 
@@ -461,12 +471,16 @@ function initNavbarAndList(jpage, opt)
 		function api_OrdrQuery(data)
 		{
 			$.each(rs2Array(data), function (i, itemData) {
-				opt.onAddItem(jlst, itemData);
+				opt_.onAddItem(jlst, itemData);
 			});
 			if (data.nextkey)
 				jlst.data("nextkey_", data.nextkey);
-			else
+			else {
+				if (jlst[0].children.length == 0) {
+					opt_.onNoItem && opt_.onNoItem(jlst);
+				}
 				jlst.data("nextkey_", -1);
+			}
 		}
 	}
 }

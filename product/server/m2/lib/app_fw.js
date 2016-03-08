@@ -1234,7 +1234,7 @@ allow throw("abort") as abort behavior.
 			}
 
 			if (rv[0] == E_NOAUTH) {
-				if (self.tryAutoLogin()) {
+				if (self.tryAutoLogin(self.handleLogin)) {
 					var arg = ctx.arguments; // NOTE: arguments不是array, 不能直接用callSvr.apply
 					callSvr.call(this, arg[0], arg[1], arg[2], arg[3], arg[4]);
 				}

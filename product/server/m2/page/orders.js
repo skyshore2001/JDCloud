@@ -9,7 +9,8 @@ function initPageOrders()
 			param.orderby = "id desc";
 			param.cond = jlst.attr("data-cond");
 		},
-		onAddItem: onAddItem
+		onAddItem: onAddItem,
+		onNoItem: onNoItem,
 	});
 
 	function onAddItem(jlst, itemData)
@@ -23,6 +24,13 @@ function initPageOrders()
 
 		// ev.data = itemData.id
 		ji.on("click", null, itemData.id, li_click);
+	}
+
+	function onNoItem(jlst)
+	{
+		var ji = createCell({bd: "没有订单"});
+		ji.css("text-align", "center");
+		ji.appendTo(jlst);
 	}
 
 	function li_click(ev)

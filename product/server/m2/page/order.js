@@ -45,6 +45,7 @@ function initPageOrder()
 		var postParam = {status: "CA"};
 		callSvr("Ordr.set", {id: PageOrder.id}, showOrder, postParam);
 		PageHome.refresh = true;
+		PageOrders.refresh = true;
 	}
 	//}}}
 	
