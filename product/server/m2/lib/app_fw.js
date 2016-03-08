@@ -1234,8 +1234,12 @@ allow throw("abort") as abort behavior.
 			}
 
 			if (rv[0] == E_NOAUTH) {
-				self.popPageStack(0);
-				self.showLogin();
+				if (self.tryAutoLogin()) {
+					var arg = ctx.arguments; // NOTE: arguments不是array, 不能直接用callSvr.apply
+					callSvr.call(this, arg[0], arg[1], arg[2], arg[3], arg[4]);
+				}
+// 				self.popPageStack(0);
+// 				self.showLogin();
 				return;
 			}
 			else if (rv[0] == E_AUTHFAIL) {
@@ -1357,7 +1361,7 @@ allow throw("abort") as abort behavior.
 			params = null;
 		}
 		var url = makeUrl(ac, params);
-		var ctx = {ac: ac, tm: new Date()};
+		var ctx = {ac: ac, tm: new Date(), arguments: arguments};
 		if (userOptions && userOptions.noLoadingImg)
 			ctx.noLoadingImg = 1;
 		enterWaiting(ctx);
@@ -1726,6 +1730,7 @@ function deleteLoginToken()
 @param onHandleLogin Function(data). 调用后台login()成功后的回调函数(里面使用this为ajax options); 可以直接使用MUI.handleLogin
 @param reuseCmd String. 当session存在时替代后台login()操作的API, 如"User.get", "Employee.get"等, 它们在已登录时返回与login相兼容的数据. 因为login操作比较重, 使用它们可减轻服务器压力. 
 @param allowNoLogin Boolean. 缺省未登录时会自动跳转登录页面, 如果设置为true, 如不会自动跳转登录框, 表示该应用允许未登录时使用.
+@return Boolean. true=登录成功; false=登录失败.
 
 该函数应该在muiInit事件中执行, 以避免框架页面打开主页。
 
@@ -1764,7 +1769,7 @@ function tryAutoLogin(onHandleLogin, reuseCmd, allowNoLogin)
 		callSvr(reuseCmd, handleAutoLogin, null, ajaxOpt);
 	}
 	if (ok)
-		return;
+		return ok;
 
 	// then use "login(token)"
 	var token = loadLoginToken();
@@ -1775,13 +1780,14 @@ function tryAutoLogin(onHandleLogin, reuseCmd, allowNoLogin)
 		callSvr("login", param, handleAutoLogin, postData, ajaxOpt);
 	}
 	if (ok)
-		return;
+		return ok;
 
 	if (! allowNoLogin)
 	{
 		self.showFirstPage = false;
 		showLogin();
 	}
+	return ok;
 }
 
 /**

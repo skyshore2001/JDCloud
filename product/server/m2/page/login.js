@@ -15,5 +15,6 @@ function initPageLogin()
 			jf[0].code.value = code;
 			app_alert("最新验证码为: " + code);
 		});
+		return false;
 	});
 }
