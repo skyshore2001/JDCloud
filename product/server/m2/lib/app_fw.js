@@ -309,7 +309,7 @@ MUI的基类，提供showPage等操作。
  */
 /**
 @class CPageManager(app)
-@param app IApp={homePage?="#home"}
+@param app IApp={homePage?="#home", pageFolder?="page"}
 */
 function CPageManager(app)
 {
@@ -546,8 +546,7 @@ function CPageManager(app)
 			loadPage(html, pageId);
 		}
 		else {
-			// TODO: validate / hard-code folder
-			var pageFile = 'page/' + pageId + ".html";
+			var pageFile = m_app.pageFolder + '/' + pageId + ".html";
 			enterWaiting(); // NOTE: leaveWaiting in initPage
 			$.ajax(pageFile).then(function (html) {
 				loadPage(html, pageId);
@@ -566,7 +565,7 @@ function CPageManager(app)
 
 			var val = jpage.attr("mui-script");
 			if (val != null) {
-				val = "page/" + val; // TODO: hardcoded-folder
+				val = m_app.pageFolder + "/" + val;
 				loadScript(val, initPage);
 			}
 			else {
@@ -1486,6 +1485,7 @@ function nsMUI()
 		allowedEntries: [],
 		loginPage: "#login",
 		homePage: "#home",
+		pageFolder: "page",
 	};
 
 	CPageManager.call(this, m_app);
@@ -1864,12 +1864,13 @@ $(main);
 /**
 @fn MUI.setApp(app)
 
-@param app={appName?=user, allowedEntries?, loginPage?="#login", homePage?="#home"}
+@param app={appName?=user, allowedEntries?, loginPage?="#login", homePage?="#home", pageFolder?="page"}
 
 - appName: 用于与后端通讯时标识app.
 - allowedEntries: 一个数组, 如果初始页面不在该数组中, 则自动转向主页.
 - loginPage: login页面的地址, 默认为"#login"
 - homePage: 首页的地址, 默认为"#home"
+- pageFolder: 页面文件(html及js)所在文件夹，默认为"page"
 */
 self.setApp = setApp;
 function setApp(app)
