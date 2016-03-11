@@ -561,6 +561,8 @@ function CPageManager(app)
 			}
 			// 注意：如果html片段中有script, 在append时会同步获取和执行(jquery功能)
 			var jpage = $(html);
+			// bugfix: 加载页面页背景图可能反复被加载
+			jpage.find("style").attr("mui-origin", pageId).appendTo(document.head);
 			jpage.attr("id", pageId).addClass("mui-page").appendTo(m_jstash);
 
 			var val = jpage.attr("mui-script");
