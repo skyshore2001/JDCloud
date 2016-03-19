@@ -2,7 +2,6 @@
 var IsBusy = 0;
 var g_args = {}; // {_test, _debug, cordova}
 var g_cordova = 0; // the version for the android/ios native cient. 0 means web app.
-var g_prevPage;
 
 // 应用内部共享数据
 var g_data = {}; // {userInfo}
@@ -318,8 +317,17 @@ function CPageManager(app)
 	var m_app = app;
 /**
 @var MUI.activePage
+
+当前页面。
 */
 	self.activePage = null;
+
+/**
+@var MUI.prevPageId
+
+上一个页面的id, 首次进入时为空.
+*/
+	self.prevPageId = null;
 
 /**
 @var MUI.container
@@ -346,6 +354,8 @@ function CPageManager(app)
 	// false: forward操作, 或进入新页面
 	var m_isback = null; // 在changePage之前设置，在changePage中清除为null
 
+	// 调用showPage_后，将要显示的页
+	var m_toPageId = null;
 
 	// @class PageStack {{{
 	var m_fn_history_go = history.go;
@@ -530,6 +540,8 @@ function CPageManager(app)
 		fn.lastPageRef = pageRef;
 
 		// find in document
+		var pageId = pageRef.substr(1);
+		m_toPageId = pageId;
 		var jpage = self.container.find(pageRef);
 		// find in template
 		if (jpage.size() > 0)
@@ -538,7 +550,6 @@ function CPageManager(app)
 			return;
 		}
 
-		var pageId = pageRef.substr(1);
 		var tplRef = '#tpl_' + pageId;
 		var jtpl = $(tplRef);
 		if (jtpl.size() > 0) {
@@ -550,6 +561,8 @@ function CPageManager(app)
 			enterWaiting(); // NOTE: leaveWaiting in initPage
 			$.ajax(pageFile).then(function (html) {
 				loadPage(html, pageId);
+			}).fail(function () {
+				leaveWaiting();
 			});
 		}
 
@@ -561,6 +574,11 @@ function CPageManager(app)
 			}
 			// 注意：如果html片段中有script, 在append时会同步获取和执行(jquery功能)
 			var jpage = $(html);
+			if (jpage.size() > 1 || jpage.size() == 0) {
+				console.log("!!! Warning: bad format for page '" + pageId + "'. Element count = " + jpage.size());
+				jpage = jpage.filter(":first");
+			}
+
 			// bugfix: 加载页面页背景图可能反复被加载
 			jpage.find("style").attr("mui-origin", pageId).appendTo(document.head);
 			jpage.attr("id", pageId).addClass("mui-page").appendTo(m_jstash);
@@ -588,9 +606,20 @@ function CPageManager(app)
 			// TODO: silde in for goback
 			if (self.activePage && self.activePage[0] === jpage[0])
 				return;
-			jpage.trigger("pagebeforeshow");
 
 			var oldPage = self.activePage;
+			if (oldPage) {
+				self.prevPageId = oldPage.attr("id");
+			}
+			var toPageId = m_toPageId;
+			jpage.trigger("pagebeforeshow");
+			// 如果在pagebeforeshow中调用showPage显示其它页，则不显示当前页，避免页面闪烁。
+			if (toPageId != m_toPageId)
+			{
+				self.popPageStack(1);
+				jpage.appendTo(m_jstash);
+				return;
+			}
 
 			var enableAni = true; // TODO
 			var slideInClass = m_isback? "slideIn1": "slideIn";
@@ -608,7 +637,8 @@ function CPageManager(app)
 			jpage.appendTo(self.container);
 			self.activePage = jpage;
 			fixPageSize();
-			document.title = jpage.find(".hd h1, .hd h2").text();
+			var title = jpage.find(".hd h1, .hd h2").text() || jpage.attr("id");
+			document.title = title;
 
 			if (!enableAni) {
 				onAnimationEnd();
@@ -695,6 +725,8 @@ example:
 	{
 		if (pageRef[0] !== '#')
 			pageRef = '#' + pageRef;
+		else if (pageRef === '#') 
+			pageRef = m_app.homePage;
 		m_fromShowPage = true;
 		showPage_(pageRef);
 	}
@@ -1808,6 +1840,15 @@ function handleLogin(data)
 	if (data.id == null)
 		return;
 	g_data.userInfo = data;
+
+	// 登录成功后点返回，避免出现login页
+	if (self.activePage) {
+		var curId = self.activePage.attr("id");
+		var loginPageId = m_app.loginPage.substr(1);
+		if (curId == loginPageId) {
+			self.popPageStack(1);
+		}
+	}
 	if (m_onLoginOK) {
 		var fn = m_onLoginOK;
 		m_onLoginOK = null;
