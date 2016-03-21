@@ -350,6 +350,7 @@ js调用逻辑示例：
 	initNavbarAndList(jpage, {
 		pageItf: PageOrders,
 		onGetQueryParam: function (jlst, callParam) {
+			callParam.ac = "Ordr.query";
 			var param = callParam.queryParam;
 			param.orderby = "id desc";
 			param.cond = "status=1";
@@ -364,7 +365,7 @@ js调用逻辑示例：
 		}
 	});
 
-框架基本逻辑是在合适的时机调用：
+框架基本原理是在合适的时机，自动调用类似这样的逻辑：
 
 	var callParam = {ac: "Ordr.query", queryParam: {} };
 	opt.onGetQueryParam(jlst, callParam);
