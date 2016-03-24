@@ -507,17 +507,16 @@ function CPageManager(app)
 		// 在移动端，左右划动页面可前进后退
 		// 依赖jquery.touchSwipe组件
 		if ('ontouchstart' in window && $.fn.swipe) {
-			// TODO: 检查IOS是否需要
-			$(document).on("pagecreate", function (ev) {
-				var jpage = $(ev.target);
-				jpage.swipe({
-					swipeLeft: function () {
-						history.forward();
-					},
-					swipeRight: function () {
-						history.back();
-					},
-				});
+			$(document).swipe({
+				swipeLeft: function () {
+					history.forward();
+				},
+				swipeRight: function () {
+					history.back();
+				},
+				// tempfix: ios中无法上下划动。
+				// NOTE: touchswipe库中calculateDirection可能有bug. 可下断validateDefaultEvent调试
+				preventDefaultEvents: false,
 			});
 		}
 	}
