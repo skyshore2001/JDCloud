@@ -779,7 +779,7 @@ ani:: String. 动画效果。设置为"none"禁用动画。
 
 如果不想在应用内打开页面，只要去掉链接中的"#"即可：
 
-	<a href="emp/empinfo">empinfo</a>
+	<a href="emp/empinfo.html">empinfo</a>
 
 特别地，如果href属性以"#dlg"开头，则会自动以showDialog方式显示对话框，如
 
