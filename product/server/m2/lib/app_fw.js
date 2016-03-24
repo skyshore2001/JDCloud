@@ -541,8 +541,10 @@ function CPageManager(app)
 		}
 		return ret;
 	}
-	function showPage_(pageRef)
+	function showPage_(pageRef, opt)
 	{
+		var showPageOpt_ = opt || {ani: 'auto'};
+
 		// 避免hashchange重复调用
 		var fn = arguments.callee;
 		if (fn.lastPageRef == pageRef)
@@ -637,7 +639,7 @@ function CPageManager(app)
 				return;
 			}
 
-			var enableAni = true; // TODO
+			var enableAni = showPageOpt_.ani !== 'none'; // TODO
 			var slideInClass = m_isback? "slideIn1": "slideIn";
 			m_isback = null;
 			if (enableAni) {
@@ -729,10 +731,13 @@ n=0: 退到首层, >0: 指定pop几层
 	$(window).on('hashchange', applyHashChange);
 
 /**
-@fn MUI.showPage(pageId/pageRef)
+@fn MUI.showPage(pageId/pageRef, opt)
 
 @param pageId String. 页面名字. 仅由字母、数字、"_"等字符组成。
 @param pageRef String. 页面引用（即location.hash），以"#"开头，后面可以是一个pageId（如"#home"）或一个相对页的地址（如"#info.html", "#emp/info.html"）。
+@param opt {ani?}
+
+ani:: String. 动画效果。设置为"none"禁用动画。
 
 在应用内无刷新地显示一个页面。
 
@@ -769,6 +774,10 @@ n=0: 退到首层, >0: 指定pop几层
 	<a href="#order">order</a>
 	<a href="#emp/empinfo.html">empinfo</a>
 
+可以通过`mui-opt`属性设置showPage的参数(若有多项，以逗号分隔)，如：
+
+	<a href="#me" mui-opt="ani:none">me</a>
+
 如果不想在应用内打开页面，只要去掉链接中的"#"即可：
 
 	<a href="emp/empinfo">empinfo</a>
@@ -783,14 +792,14 @@ n=0: 退到首层, >0: 指定pop几层
 
 */
 	self.showPage = showPage;
-	function showPage(pageRef)
+	function showPage(pageRef, opt)
 	{
 		if (pageRef[0] !== '#')
 			pageRef = '#' + pageRef;
 		else if (pageRef === '#') 
 			pageRef = m_app.homePage;
 		m_fromShowPage = true;
-		showPage_(pageRef);
+		showPage_(pageRef, opt);
 	}
 
 	$(window).on('orientationchange', fixPageSize);
@@ -1091,7 +1100,16 @@ app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时�
 				self.showDialog(jdlg);
 				return false;
 			}
-			self.showPage(href);
+			var opt = jo.attr("mui-opt");
+			if (opt) {
+				try {
+					opt = eval("({" + opt + "})");
+				}catch (e) {
+					alert('bad option: ' + opt);
+					opt = null;
+				}
+			}
+			self.showPage(href, opt);
 			return false;
 		});
 	}
