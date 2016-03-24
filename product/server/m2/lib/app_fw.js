@@ -576,14 +576,17 @@ function CPageManager(app)
 		}
 		else {
 			enterWaiting(); // NOTE: leaveWaiting in initPage
+			var m = pi.pageFile.match(/(.+)\//);
+			var path = m? m[1]: "";
 			$.ajax(pi.pageFile).then(function (html) {
-				loadPage(html, pageId);
+				loadPage(html, pageId, path);
 			}).fail(function () {
 				leaveWaiting();
 			});
 		}
 
-		function loadPage(html, pageId)
+		// path?=m_app.pageFolder
+		function loadPage(html, pageId, path)
 		{
 			// 放入dom中，以便document可以收到pagecreate等事件。
 			if (m_jstash == null) {
@@ -602,7 +605,10 @@ function CPageManager(app)
 
 			var val = jpage.attr("mui-script");
 			if (val != null) {
-				val = m_app.pageFolder + "/" + val;
+				if (path == null)
+					path = m_app.pageFolder;
+				if (path != "")
+					val = path + "/" + val;
 				loadScript(val, initPage);
 			}
 			else {
