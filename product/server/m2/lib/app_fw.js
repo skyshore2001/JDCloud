@@ -524,6 +524,23 @@ function CPageManager(app)
 	initPageStack();
 	// }}}
 
+	// "#aaa" => {pageId: "aaa", pageFile: "{pageFolder}/aaa.html", templateRef: "#tpl_aaa"}
+	// "#xx/aaa.html" => {pageId: "aaa", pageFile: "xx/aaa.html"}
+	function getPageInfo(pageRef)
+	{
+		var pageId = pageRef.substr(1);
+		var ret = {pageId: pageId};
+		var p = pageId.lastIndexOf(".");
+		if (p == -1) {
+			ret.pageFile = m_app.pageFolder + '/' + pageId + ".html";
+			ret.templateRef = "#tpl_" + pageId;
+		}
+		else {
+			ret.pageFile = pageId;
+			ret.pageId = pageId.match(/[^.\/]+(?=\.)/)[0];
+		}
+		return ret;
+	}
 	function showPage_(pageRef)
 	{
 		// 避免hashchange重复调用
@@ -540,9 +557,10 @@ function CPageManager(app)
 		fn.lastPageRef = pageRef;
 
 		// find in document
-		var pageId = pageRef.substr(1);
+		var pi = getPageInfo(pageRef);
+		var pageId = pi.pageId;
 		m_toPageId = pageId;
-		var jpage = self.container.find(pageRef);
+		var jpage = self.container.find("#" + pageId);
 		// find in template
 		if (jpage.size() > 0)
 		{
@@ -550,16 +568,14 @@ function CPageManager(app)
 			return;
 		}
 
-		var tplRef = '#tpl_' + pageId;
-		var jtpl = $(tplRef);
-		if (jtpl.size() > 0) {
-			var html = $(tplRef).html();
+		var jtpl = pi.templateRef? $(pi.templateRef): null;
+		if (jtpl && jtpl.size() > 0) {
+			var html = jtpl.html();
 			loadPage(html, pageId);
 		}
 		else {
-			var pageFile = m_app.pageFolder + '/' + pageId + ".html";
 			enterWaiting(); // NOTE: leaveWaiting in initPage
-			$.ajax(pageFile).then(function (html) {
+			$.ajax(pi.pageFile).then(function (html) {
 				loadPage(html, pageId);
 			}).fail(function () {
 				leaveWaiting();
@@ -648,6 +664,7 @@ function CPageManager(app)
 				jpage.trigger("pageshow");
 
 				if (enableAni) {
+					// NOTE: 如果不删除，动画效果将导致fixed position无效。
 					jpage.removeClass(slideInClass);
 // 					if (oldPage)
 // 						oldPage.removeClass("slideOut");
@@ -714,10 +731,55 @@ n=0: 退到首层, >0: 指定pop几层
 /**
 @fn MUI.showPage(pageId/pageRef)
 
-example:
+@param pageId String. 页面名字. 仅由字母、数字、"_"等字符组成。
+@param pageRef String. 页面引用（即location.hash），以"#"开头，后面可以是一个pageId（如"#home"）或一个相对页的地址（如"#info.html", "#emp/info.html"）。
 
-	MUI.showPage("home");
-	MUI.showPage("#orders");
+在应用内无刷新地显示一个页面。
+
+例：
+
+	MUI.showPage("order");  // 或者
+	MUI.showPage("#order");
+	
+显示order页，先在已加载的DOM对象中找id="order"的对象，如果找不到，则尝试找名为"tpl_home"的模板DOM对象，如果找不到，则以ajax方式动态加载页面"page/order.html"。
+
+注意：
+
+- 在加载页面时，只会取第一个DOM元素作为页面。
+
+加载成功后，会将该页面的id设置为"order"，然后依次：
+
+	调用 mui-initfn中指定的初始化函数，如 initPageOrder
+	触发pagecreate事件
+	触发pagebeforeshow事件
+	触发pageshow事件
+
+动态加载页面时，缺省目录名为`page`，如需修改，应在初始化时设置app.pageFolder属性：
+
+	MUI.setApp({pageFolder: "mypage"}) 
+
+也可以显示一个指定路径的页面：
+
+	MUI.showPage("#page/order.html"); 
+
+由于它对应的id是order, 在显示时，先找id="order"的对象是否存在，如果不存在，则动态加载页面"page/order.html"并为该对象添加id="order".
+
+在HTML中, 如果<a>标签的href属性以"#"开头，则会自动以showPage方式无刷新显示，如：
+
+	<a href="#order">order</a>
+	<a href="#emp/empinfo.html">empinfo</a>
+
+如果不想在应用内打开页面，只要去掉链接中的"#"即可：
+
+	<a href="emp/empinfo">empinfo</a>
+
+特别地，如果href属性以"#dlg"开头，则会自动以showDialog方式显示对话框，如
+
+	<a href="#dlgSetUserInfo">set user info</a>
+
+点击后相当于调用：
+
+	MUI.showDialog(MUI.activePage.find("#dlgSetUserInfo"));
 
 */
 	self.showPage = showPage;
