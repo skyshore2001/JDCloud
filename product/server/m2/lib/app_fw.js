@@ -252,15 +252,10 @@ Mobile UI framework
 对原生应用的额外增强包括：
 
 - 应用加载完成后，自动隐藏启动画面(SplashScreen)
-- ios7以上, 自动为状态栏留出空间. 注意需要在style中定义如下样式:
+- ios7以上, 自动为顶部状态栏留出20px高度的空间. 默认为白色，可以修改类mui-container的样式，如改为黑色：
 
-	#ios7statusbar {
-		width:100%;
-		height:20px;
-		background-color:white;
-		position:fixed;
-		z-index:10000;
-		top: 0;
+	.mui-container {
+		background-color:black;
 	}
 
  */
@@ -814,7 +809,7 @@ ani:: String. 动画效果。设置为"none"禁用动画。
 	{
 		if (self.activePage) {
 			var jpage = self.activePage;
-			var H = window.innerHeight;
+			var H = self.container.height();
 			var hd = jpage.find(">.hd").height() || 0;
 			var ft = jpage.find(">.ft").height() || 0;
 			jpage.height(H);
@@ -1637,8 +1632,9 @@ function handleIos7Statusbar()
 		var ms = navigator.userAgent.match(/(iPad.*|iPhone.*|iPod.*);.*CPU.*OS (\d+)_\d/i);
 		if(ms) {
 			var ver = ms[2];
-			if (ver >= 7)
-				$("body").addClass("ios7").append("<div id='ios7statusbar'>");;
+			if (ver >= 7) {
+				self.container.css("margin-top", "20px");
+			}
 		}	
 	}
 }
@@ -1980,10 +1976,7 @@ function switchTestMode(obj)
 
 function main()
 {
-	/*
-	handleGoBack();
 	handleIos7Statusbar();
-	*/
 }
 
 $(main);
