@@ -1942,9 +1942,6 @@ function handleLogin(data)
 		m_onLoginOK = null;
 		setTimeout(fn);
 	}
-	else {
-		self.showPage(m_app.homePage);
-	}
 }
 //}}}
 
