@@ -338,6 +338,12 @@ function CPageManager(app)
 */
 	self.showFirstPage = true;
 
+/**
+@var MUI.docTitle
+
+初始文档标题名。（当前标题可通过document.title查看）
+*/
+
 	var m_jstash; // 页面暂存区; 首次加载页面后可用
 
 	// false: 来自浏览器前进后退操作，或直接输入hash值, 或调用history.back/forward/go操作
@@ -655,7 +661,7 @@ function CPageManager(app)
 			jpage.appendTo(self.container);
 			self.activePage = jpage;
 			fixPageSize();
-			var title = jpage.find(".hd h1, .hd h2").text() || jpage.attr("id");
+			var title = jpage.find(".hd h1, .hd h2").text() || self.title || jpage.attr("id");
 			document.title = title;
 
 			if (!enableAni) {
@@ -1119,6 +1125,7 @@ app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时�
 	
 	function main()
 	{
+		self.title = document.title;
 		self.container = $(".mui-container");
 		if (self.container.size() == 0)
 			self.container = $(document.body);
