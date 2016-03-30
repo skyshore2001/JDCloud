@@ -183,7 +183,7 @@ function handleOne($f, $outDir, $force = false)
 
 // ==== parse args {{{
 if (count($argv) < 2) {
-	echo("Usage: webcc {srcDir} [-o {outDir}] [-rev {gitRevision}]\n");
+	echo("Usage: webcc {srcDir} [-o {outDir}]\n");
 	exit(1);
 }
 
@@ -223,14 +223,32 @@ $COPY_EXCLUDE[] = 'webcc.conf.php';
 
 @mkdir($opts["outDir"], 0777, true);
 $outDir = realpath($opts["outDir"]);
+$verFile = "$outDir/VERSION_SRC";
+$oldVer = null;
+if (file_exists($verFile)) {
+	$oldVer = @file($verFile, FILE_IGNORE_NEW_LINES)[0];
+}
 
 chdir($opts["srcDir"]);
-$fp = popen("git ls-files", "r");
+if (! isset($oldVer)) {
+	$cmd = "git ls-files";
+}
+else {
+	$cmd = "git diff $oldVer head --name-only --diff-filter=AM";
+}
+$fp = popen($cmd, "r");
+$updateVer = false;
 while (($s=fgets($fp)) !== false) {
+	$updateVer = true;
 	$f = rtrim($s);
 	handleOne($f, $outDir);
 }
 pclose($fp);
+
+if ($updateVer) {
+	// update new version
+	system("git log -1 --format=%H > $verFile");
+}
 
 echo("=== output to `$outDir`\n");
 //}}}
