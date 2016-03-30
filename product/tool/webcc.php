@@ -234,7 +234,8 @@ if (! isset($oldVer)) {
 	$cmd = "git ls-files";
 }
 else {
-	$cmd = "git diff $oldVer head --name-only --diff-filter=AM";
+	// NOTE: 仅限当前目录(srcDir)改动
+	$cmd = "git diff $oldVer head --name-only --diff-filter=AM -- .";
 }
 $fp = popen($cmd, "r");
 $updateVer = false;
