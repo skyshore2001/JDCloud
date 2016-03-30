@@ -29,8 +29,8 @@ tmpfile=`pwd`/tmp
 versionUrl=$FTP_PATH/VERSION_REL
 
 # e.g. "dir1\dir2\name" => "dir1/dir2/name" on windows.
-f=${0//\\/\/}
-script="perl -x $f"
+f=`perl -x $0 abs_path`
+script="perl -x -f $f"
 webcc="php `dirname $f`/webcc.php"
 
 # !!! CALL WEBCC
@@ -39,10 +39,8 @@ $webcc server -o $OUT_DIR
 lastlog=`git log -1 --oneline | tr \" \'`
 echo "=== 最后日志: $lastlog"
 
-#cd $OUT_DIR
-# 设置git工作目录，避免cd更换目录
-export GIT_WORK_TREE=$OUT_DIR
-export GIT_DIR=$OUT_DIR/.git
+# !!! 切换到OUT_DIR
+cd $OUT_DIR
 
 change=`git status -s`
 if [[ -z $change ]]; then
@@ -118,6 +116,8 @@ exit
 #!perl
 
 use File::Basename;
+use Cwd 'abs_path';
+
 if ($ARGV[0] eq 'getcmd')
 {
 	%files = (); # dir=>name
@@ -150,6 +150,9 @@ if ($ARGV[0] eq 'getcmd')
 	#open O, ">cmd.log";
 	#print O $fullCmd;
 	#close O;
+}
+elsif ($ARGV[0] eq 'abs_path') {
+	print abs_path($0);
 }
 #}}}
 # vi: foldmethod=marker
