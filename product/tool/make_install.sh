@@ -25,7 +25,7 @@ CURL_CMD="curl -s -S -u $FTP_AUTH"
 # 共享给perl
 export FTP_PATH FTP_AUTH CURL_CMD
 
-tmpfile=`pwd`/tmp
+tmpfile=/tmp/webcc.tmp
 versionUrl=$FTP_PATH/revision_rel.txt
 
 # e.g. "dir1\dir2\name" => "dir1/dir2/name" on windows.
@@ -102,6 +102,7 @@ if (( doUpload )) ; then
 		echo "!!! 出错了(返回值为$?), 请检查!!!"
 		exit
 	fi
+	rm $tmpfile
 fi
 
 echo
