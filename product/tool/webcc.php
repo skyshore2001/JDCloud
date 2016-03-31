@@ -223,7 +223,7 @@ $COPY_EXCLUDE[] = 'webcc.conf.php';
 
 @mkdir($opts["outDir"], 0777, true);
 $outDir = realpath($opts["outDir"]);
-$verFile = "$outDir/VERSION_SRC";
+$verFile = "$outDir/revision_dev.txt";
 $oldVer = null;
 if (file_exists($verFile)) {
 	$oldVer = @file($verFile, FILE_IGNORE_NEW_LINES)[0];
@@ -235,7 +235,7 @@ if (! isset($oldVer)) {
 }
 else {
 	// NOTE: 仅限当前目录(srcDir)改动
-	$cmd = "git diff $oldVer head --name-only --diff-filter=AM -- .";
+	$cmd = "git diff $oldVer head --name-only --diff-filter=AM --relative";
 }
 $fp = popen($cmd, "r");
 $updateVer = false;

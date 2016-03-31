@@ -26,7 +26,7 @@ CURL_CMD="curl -s -S -u $FTP_AUTH"
 export FTP_PATH FTP_AUTH CURL_CMD
 
 tmpfile=`pwd`/tmp
-versionUrl=$FTP_PATH/VERSION_REL
+versionUrl=$FTP_PATH/revision_rel.txt
 
 # e.g. "dir1\dir2\name" => "dir1/dir2/name" on windows.
 f=`perl -x $0 abs_path`
