@@ -1690,16 +1690,15 @@ function showValidateErr(jvld, jo, msg)
 // ------ cordova setup {{{
 $(document).on("deviceready", function () {
 	var homePageId = m_app.homePage.substr(1); // "#home"
-	// TODO: hardcode "home"
 	// 在home页按返回键退出应用。
 	$(document).on("backbutton", function () {
-		if ($.mobile.activePage.attr("id") == homePageId) {
+		if (self.activePage.attr("id") == homePageId) {
 			if (! confirm("退出应用?"))
 				return;
 			navigator.app.exitApp();
 			return;
 		}
-		$.mobile.back();
+		history.back();
 	});
 
 	$(document).on("menubutton", function () {
@@ -1803,11 +1802,15 @@ function parseArgs()
 			setStorage("cordova", g_cordova);
 			$(function () {
 				// to use cordova plugins like camera: require m2/cordova.js, cordova_plugins.js, plugins/...
+				var f = $("script[src*='/common.js']").attr("src");
+				var path = '../m/';
+				if (f) // 根据common.js定位cordova目录位置
+					path = f.substr(0, f.lastIndexOf('/')) + "/../";
 				if (isIOS()) {
-					loadScript("cordova-ios/cordova.js?__HASH__,m"); 
+					loadScript(path + "cordova-ios/cordova.js?__HASH__,m"); 
 				}
 				else {
-					loadScript("cordova/cordova.js?__HASH__,m"); 
+					loadScript(path + "cordova/cordova.js?__HASH__,m"); 
 				}
 			});
 		}

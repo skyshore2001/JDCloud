@@ -1,63 +1,43 @@
 cordova.define('cordova/plugin_list', function(require, exports, module) {
-module.exports = [
-    {
-        "file": "plugins/org.apache.cordova.camera/www/CameraConstants.js",
-        "id": "org.apache.cordova.camera.Camera",
-        "clobbers": [
-            "Camera"
-        ]
-    },
-    {
-        "file": "plugins/org.apache.cordova.camera/www/CameraPopoverOptions.js",
-        "id": "org.apache.cordova.camera.CameraPopoverOptions",
-        "clobbers": [
-            "CameraPopoverOptions"
-        ]
-    },
-    {
-        "file": "plugins/org.apache.cordova.camera/www/Camera.js",
-        "id": "org.apache.cordova.camera.camera",
-        "clobbers": [
-            "navigator.camera"
-        ]
-    },
-    {
-        "file": "plugins/org.apache.cordova.camera/www/CameraPopoverHandle.js",
-        "id": "org.apache.cordova.camera.CameraPopoverHandle",
-        "clobbers": [
-            "CameraPopoverHandle"
-        ]
-    },
-    {
-        "file": "plugins/com.jiusem.cordova.wechatshare/www/wechatshare.js",
-        "id": "com.jiusem.cordova.wechatshare.WechatShare",
-        "clobbers": [
-            "navigator.WechatShare"
-        ]
-    },
-    {
-        "file": "plugins/cordova-plugin-inappbrowser/www/inappbrowser.js",
-        "id": "cordova-plugin-inappbrowser.inappbrowser",
-        "clobbers": [
-            "cordova.InAppBrowser.open",
-            "window.open"
-        ]
-    },
-    {
-        "file": "plugins/com.spout.phonegap.plugins.baidulocation/www/baidulocation.js",
-        "id": "com.spout.phonegap.plugins.baidulocation.BiaduLocation",
-        "clobbers": [
-            "window.baiduLocation"
-        ]
-    }
+	// filter格式: [ [app1, minVer?=1, maxVer?=9999], ...], 仅当app匹配且版本在minVer/maxVer之间才使用
+	// 如果未指定filter, 表示总是使用
+	// app: "user"-客户端;"doctor"-医生端
+var plugins = [
+	{
+		"file": "plugins/cordova-plugin-splashscreen/www/splashscreen.js",
+		"id": "cordova-plugin-splashscreen.SplashScreen",
+		"clobbers": [
+			"navigator.splashscreen"
+		],
+		//"filter": [ ["user", 1], ["doctor", 1] ]
+	}
 ];
+
+module.exports = [];
+
+var app = g_args._app || 'user';
+var ver = g_args.cordova || 1;
+plugins.forEach(function (e) {
+	var yes = 0;
+	if (e.filter) {
+		e.filter.forEach(function (f) {
+			if (app == f[0] && ver >= (f[1] || 1) && ver <= (f[2] || 9999)) {
+				yes = 1;
+				return false;
+			}
+		});
+	}
+	else {
+		yes = 1;
+	}
+	if (yes)
+		module.exports.push(e);
+});
+
 module.exports.metadata = 
 // TOP OF METADATA
 {
-    "org.apache.cordova.camera": "0.3.4",
-    "com.jiusem.cordova.wechatshare": "1.0.0",
-    "cordova-plugin-inappbrowser": "1.0.2-dev",
-    "com.spout.phonegap.plugins.baidulocation": "0.1.0"
+	"cordova-plugin-splashscreen": "3.0.0"
 }
 // BOTTOM OF METADATA
 });
