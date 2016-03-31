@@ -17,3 +17,9 @@
 	width: auto;
 }
 
+.right {
+	text-align: right;
+}
+select.right {
+	direction: rtl;
+}
