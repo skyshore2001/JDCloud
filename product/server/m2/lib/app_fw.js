@@ -42,6 +42,11 @@ function isIOS()
 	return /iPhone|iPad/i.test(navigator.userAgent);
 }
 
+/** @fn isAndroid */
+function isAndroid()
+{
+	return /Android/i.test(navigator.userAgent);
+}
 /**
 @fn loadScript(url)
 
@@ -258,7 +263,19 @@ Mobile UI framework
 		background-color:black;
 	}
 
+== 系统类标识 ==
+
+框架自动根据系统环境为.mui-container类增加以下常用类标识：
+
+* mui-android: 安卓系统
+* mui-ios: 苹果IOS系统
+* mui-weixin: 微信浏览器
+* mui-cordova: 原生环境
+
+在css中可以利用它们做针对系统的特殊设置。
+
  */
+
 
 // ------ CPageManager {{{
 /**
@@ -1019,12 +1036,24 @@ ani:: String. 动画效果。设置为"none"禁用动画。
 /**
 @fn MUI.app_alert(msg, type?=i, fn?, timeoutInterval?)
 @alias app_alert
-@param type "i"|"e"|"w", default="i"
+@param type 对话框类型: "i": info, 信息提示框; "e": error, 错误框; "w": warning, 警告框; "q": question, 确认框(会有"确定"和"取消"两个按钮)
 
 可自定义对话框，接口如下：
+
 - 对象id为muiAlert, class包含mui-dialog.
 - .p-title用于设置标题; .p-msg用于设置提示文字
 - 两个按钮 #btnOK, #btnCancel，仅当type=q时显示btnCancel.
+
+示例：
+
+	<div id="muiAlert" class="mui-dialog">
+		<h3 class="p-title"></h3>
+		<div class="p-msg"></div>
+		<div>
+			<a href="javascript:;" id="btnOK" class="mui-btn primary">确定</a>
+			<a href="javascript:;" id="btnCancel" class="mui-btn">取消</a>
+		</div>
+	</div>
 
 app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时将clone一份用于显示并在关闭后删除。
 
@@ -1430,13 +1459,13 @@ allow throw("abort") as abort behavior.
 	}
 
 /**
-@fn MUI.callSvr(ac, param?, fn?, data?, userOptions?)
-@fn MUI.callSvr(ac, fn?, data?, userOptions?)
+@fn MUI.callSvr(ac, param?, fn?, postParam?, userOptions?)
+@fn MUI.callSvr(ac, fn?, postParam?, userOptions?)
 @alias callSvr
 
 @param ac String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)
 @param param Object. URL参数（或称HTTP GET参数）
-@param data Object. POST参数. 如果有该参数, 则自动使用HTTP POST请求(data作为POST内容), 否则使用HTTP GET请求.
+@param postParam Object. POST参数. 如果有该参数, 则自动使用HTTP POST请求(postParam作为POST内容), 否则使用HTTP GET请求.
 @param fn Function(data). 回调函数, data参考该接口的返回值定义。
 @param userOptions 用户自定义参数, 会合并到$.ajax调用的options参数中.可在回调函数中用"this.参数名"引用. 
 
@@ -1499,8 +1528,8 @@ allow throw("abort") as abort behavior.
 	}
 
 /**
-@fn MUI.callSvrSync(ac, params?, fn?, data?, userOptions?)
-@fn MUI.callSvrSync(ac, fn?, data?, userOptions?)
+@fn MUI.callSvrSync(ac, params?, fn?, postParam?, userOptions?)
+@fn MUI.callSvrSync(ac, fn?, postParam?, userOptions?)
 @alias callSvrSync
 
 同步模式调用callSvr.
@@ -1983,6 +2012,22 @@ function switchTestMode(obj)
 
 function main()
 {
+	var jc = self.container;
+	if (isIOS()) {
+		jc.addClass("mui-ios");
+	}
+	else if (isAndroid()) {
+		jc.addClass("mui-android");
+	}
+
+	if (g_cordova) {
+		jc.addClass("mui-cordova");
+	}
+	if (isWeixin()) {
+		jc.addClass("mui-weixin");
+	}
+	console.log(jc.attr("class"));
+
 	handleIos7Statusbar();
 }
 

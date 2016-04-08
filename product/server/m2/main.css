@@ -17,9 +17,20 @@
 	width: auto;
 }
 
+/****** my css ******/
+
+.mui-container.mui-ios {
+	/* 禁止选择。在IOS上尝试。 */
+	-webkit-user-select: none;
+	/* 禁止系统菜单 */
+	/*-webkit-touch-callout: none; */
+	/*-webkit-overflow-scrolling: touch;*/
+}
+
 .right {
 	text-align: right;
 }
 select.right {
 	direction: rtl;
 }
+
