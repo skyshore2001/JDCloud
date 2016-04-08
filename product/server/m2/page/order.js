@@ -1,6 +1,7 @@
 function initPageOrder() 
 {
 	var jpage = $(this);
+	var lastId_;
 
 	// ==== function {{{
 	function showOrder()
@@ -47,8 +48,16 @@ function initPageOrder()
 		PageHome.refresh = true;
 		PageOrders.refresh = true;
 	}
+
+	function pageBeforeShow()
+	{
+		if (lastId_ == PageOrder.id)
+			return;
+		lastId_ = PageOrder.id;
+		showOrder();
+	}
 	//}}}
 	
-	jpage.on("pagebeforeshow", showOrder);
+	jpage.on("pagebeforeshow", pageBeforeShow);
 	jpage.find("#btnCancelOrder").click(cancelOrder);
 }
