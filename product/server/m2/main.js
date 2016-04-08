@@ -64,25 +64,28 @@ function setupGenCodeButton(btnGenCode, txtPhone)
 			app_alert("填写手机号!")
 			return;
 		}
-		callSvr("genCode", {phone: phone});
+		callSvr("genCode", {phone: phone}, api_genCode);
 
-		var $btn = $(this);
-		$btn.prop("disabled", true);
-		$btn.addClass("disabled");
+		function api_genCode(data)
+		{
+			var $btn = btnGenCode;
+			$btn.prop("disabled", true);
+			$btn.addClass("disabled");
 
-		var n = 60;
-		var tv = setInterval(function () {
-			var s = "";
-			-- n;
-			if (n > 0) 
-				s = "(" + n + "秒后可用)";
-			else {
-				clearInterval(tv);
-				$btn.prop("disabled", false);
-				$btn.removeClass("disabled");
-			}
-			btnGenCode.find(".p-prompt").text(s);
-		}, 1000);
+			var n = 60;
+			var tv = setInterval(function () {
+				var s = "";
+				-- n;
+				if (n > 0) 
+					s = "(" + n + "秒后可用)";
+				else {
+					clearInterval(tv);
+					$btn.prop("disabled", false);
+					$btn.removeClass("disabled");
+				}
+				$btn.find(".p-prompt").text(s);
+			}, 1000);
+		}
 	}
 }
 
