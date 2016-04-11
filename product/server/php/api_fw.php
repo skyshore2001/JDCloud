@@ -1267,7 +1267,8 @@ function issetval($k, $arr = null)
 // ====== main routine {{{
 function apiMain()
 {
-	ApiFw_::$SOLO = basename($_SERVER["SCRIPT_NAME"]) == API_ENTRY_PAGE;
+	$script = basename($_SERVER["SCRIPT_NAME"]);
+	ApiFw_::$SOLO = ($script == API_ENTRY_PAGE || $script == 'index.php');
 	if (ApiFw_::$SOLO) {
 		$api = new ApiApp();
 		$api->exec();
@@ -1294,8 +1295,7 @@ class ApiApp extends AppBase
 		@$path = $_SERVER["PATH_INFO"];
 		if ($path != null)
 		{
-			// e.g. "/api.php/login" -> ac="login"
-			$ac = str_replace("/", ".", substr($path,1));
+			$ac = $this->parseRestfulUrl($path);
 		}
 		if (! isset($ac)) {
 			list($ac, $ac1) = mparam(['ac', '_ac'], $_GET);
@@ -1352,6 +1352,68 @@ class ApiApp extends AppBase
 			$this->apiWatch->postExecute();
 		if ($this->apiLog)
 			$this->apiLog->logAfter();
+	}
+
+	// return: $ac
+	private function parseRestfulUrl($pathInfo)
+	{
+		$method = $_SERVER["REQUEST_METHOD"];
+		$ac = substr($pathInfo,1);
+		// GET/POST /Store.add
+		if (strpos($ac, '.') !== false)
+		{
+			if ($method !== 'GET' && $method !== 'POST')
+				throw new MyException(E_PARAM, "bad verb '$method'. use 'GET' or 'POST'");
+			return $ac;
+		}
+
+		// {obj}/{id}
+		@list ($obj, $id) = explode('/', $ac, 2);
+		if ($id === "")
+			$id = null;
+
+		if (isset($id)) {
+			if (! ctype_digit($id))
+				throw new MyException(E_PARAM, "bad id: $id");
+			setParam('id', $id);
+		}
+
+		switch ($method) {
+
+		// GET /Store/123
+		// GET /Store
+		case 'GET':
+			if (isset($id))
+				$ac = 'get';
+			else
+				$ac = 'query';
+			break;
+
+		// POST /Store
+		case 'POST':
+			if (isset($id))
+				throw new MyException(E_PARAM, "bad verb '$method' on id: $id");
+			$ac = 'add';
+			break;
+
+		// PATCH /Store/123
+		case 'PATCH':
+			if (! isset($id))
+				throw new MyException(E_PARAM, "missing id");
+			$ac = 'set';
+			break;
+
+		// DELETE /Store/123
+		case 'DELETE':
+			if (! isset($id))
+				throw new MyException(E_PARAM, "missing id");
+			$ac = 'del';
+			break;
+
+		default:
+			throw new MyException(E_PARAM, "bad verb '$method'");
+		}
+		return "{$obj}.{$ac}";
 	}
 }
 
