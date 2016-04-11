@@ -39,7 +39,7 @@
 
 {{{
 <Directory "/alidata/www/default/cheguanjia/">
-	Options Indexes FollowSymLinks
+	Options FollowSymLinks
 	AllowOverride All
 	
 	Order allow,deny
@@ -106,14 +106,13 @@ loadScript("cordova/cordova.js?__HASH__");
 
 编译工具webcc
 {{{
-webcc {src-folder} -o {web-folder} [#from-git-revision]
+webcc {src-folder} -o {web-folder} 
 }}}
 
 *[参数]*
 
 src-folder:: 使用git管理的源代码目录，我们用xeyc-sys/server
 web-folder:: 使用git管理的实际web目录，我们用xeyc-sys-web, 它与ftp上的相应目录应保持一致。
-#from-git-revision:: 如果未指定，则处理所有文件，否则只处理从这个版本以来变化的文件。(TODO)
 
 *[工作原理]*
 
@@ -124,7 +123,8 @@ webcc做以下工作：
 - 加载 $RULES，它指定对每个匹配的文件采取何种操作。
 
 它结合git工作，比如取要处理的所有文件，用 `git ls-files`
-取某版本以来的文件，用 `git diff #xxx ...`
+取某版本以来的文件，用 `git diff rev1 head --name-status`
+更新完成后，输出VERSION_SRC文件。
 
 *[配置文件]*
 
