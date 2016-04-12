@@ -579,7 +579,7 @@ function CPageManager(app)
 		var pi = getPageInfo(pageRef);
 		var pageId = pi.pageId;
 		m_toPageId = pageId;
-		var jpage = self.container.find("#" + pageId);
+		var jpage = self.container.find("#" + pageId + ".mui-page");
 		// find in template
 		if (jpage.size() > 0)
 		{
