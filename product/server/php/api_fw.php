@@ -1359,8 +1359,9 @@ class ApiApp extends AppBase
 	{
 		$method = $_SERVER["REQUEST_METHOD"];
 		$ac = substr($pathInfo,1);
-		// GET/POST /Store.add
-		if (strpos($ac, '.') !== false)
+		// POST /login  (小写开头)
+		// GET/POST /Store.add (含.)
+		if (ctype_lower($ac[0]) || strpos($ac, '.') !== false)
 		{
 			if ($method !== 'GET' && $method !== 'POST')
 				throw new MyException(E_PARAM, "bad verb '$method'. use 'GET' or 'POST'");
