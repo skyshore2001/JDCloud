@@ -172,8 +172,17 @@ cmdtool.template.php:: 使用app.php创建数据操作工具的示例，如用于特殊数据导入等。
 
 例：
 {{{
-putenv("P_DB=localhost/carsvc_test");
+putenv("P_DB=localhost/carsvc");
 putenv("P_DBCRED=bGo6aWhxZ19VR0xH");
+}}}
+
+在线上，如果同时支持测试模式(TEST_MODE)和生产模式，则测试模式应使用专门的DB, 可以用变量P_DB_TEST设置：
+{{{
+putenv("P_DB=localhost/carsvc");
+putenv("P_DBCRED=bGo6aWhxZ19VR0xH");
+
+putenv("P_DB_TEST=localhost/carsvc_test");
+// putenv("P_DBCRED_TEST=bGo6aWhxZ19VR0xH"); // 可设置登录用户及密码，不设置则使用P_DBCRED
 }}}
 
 *[URL路径]*
