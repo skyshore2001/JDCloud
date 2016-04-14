@@ -32,7 +32,21 @@ class AC2_User extends AccessControl
 
 // ====== Employee {{{
 
-class AC2_Employee extends AccessControl
+class AC0_Employee extends AccessControl
+{
+	protected function onValidate()
+	{
+		if ($this->ac == "add" && !issetval("perms")) {
+			$_POST["perms"] = "emp";
+		}
+
+		if (issetval("pwd")) {
+			$_POST["pwd"] = hashPwd($_POST["pwd"]);
+		}
+	}
+}
+
+class AC2_Employee extends AC0_Employee
 {
 	protected $requiredFields = ["uname", "pwd"];
 	protected $allowedAc = ["query", "get", "set"];
@@ -50,17 +64,6 @@ class AC2_Employee extends AccessControl
 		$id = param("id");
 		if (is_null(param("id"))) {
 			setParam("id", $_SESSION["empId"]);
-		}
-	}
-
-	protected function onValidate()
-	{
-		if ($this->ac == "add" && !issetval("perms")) {
-			$_POST["perms"] = "emp";
-		}
-
-		if (issetval("pwd")) {
-			$_POST["pwd"] = hashPwd($_POST["pwd"]);
 		}
 	}
 }

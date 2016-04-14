@@ -1384,8 +1384,7 @@ allow throw("abort") as abort behavior.
 
 			if (rv[0] == E_NOAUTH) {
 				if (self.tryAutoLogin()) {
-					var arg = ctx.arguments; // NOTE: arguments不是array, 不能直接用callSvr.apply
-					callSvr.call(this, arg[0], arg[1], arg[2], arg[3], arg[4]);
+					$.ajax(this);
 				}
 // 				self.popPageStack(0);
 // 				self.showLogin();
@@ -1459,13 +1458,13 @@ allow throw("abort") as abort behavior.
 	}
 
 /**
-@fn MUI.callSvr(ac, param?, fn?, postParam?, userOptions?)
-@fn MUI.callSvr(ac, fn?, postParam?, userOptions?)
+@fn MUI.callSvr(ac, param?, fn?, postParams?, userOptions?)
+@fn MUI.callSvr(ac, fn?, postParams?, userOptions?)
 @alias callSvr
 
 @param ac String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)
 @param param Object. URL参数（或称HTTP GET参数）
-@param postParam Object. POST参数. 如果有该参数, 则自动使用HTTP POST请求(postParam作为POST内容), 否则使用HTTP GET请求.
+@param postParams Object. POST参数. 如果有该参数, 则自动使用HTTP POST请求(postParams作为POST内容), 否则使用HTTP GET请求.
 @param fn Function(data). 回调函数, data参考该接口的返回值定义。
 @param userOptions 用户自定义参数, 会合并到$.ajax调用的options参数中.可在回调函数中用"this.参数名"引用. 
 
@@ -1500,25 +1499,25 @@ allow throw("abort") as abort behavior.
 - tv2: 从接到数据到完成处理的时间，毫秒(当并发处理多个调用时可能不精确)
 */
 	window.callSvr = self.callSvr = callSvr;
-	function callSvr(ac, params, fn, data, userOptions)
+	function callSvr(ac, params, fn, postParams, userOptions)
 	{
 		if (params instanceof Function) {
-			// 兼容格式：callSvr(url, fn?, data?, userOptions?);
-			userOptions = data;
-			data = fn;
+			// 兼容格式：callSvr(url, fn?, postParams?, userOptions?);
+			userOptions = postParams;
+			postParams = fn;
 			fn = params;
 			params = null;
 		}
 		var url = makeUrl(ac, params);
-		var ctx = {ac: ac, tm: new Date(), arguments: arguments};
+		var ctx = {ac: ac, tm: new Date()};
 		if (userOptions && userOptions.noLoadingImg)
 			ctx.noLoadingImg = 1;
 		enterWaiting(ctx);
-		var method = (data == null? 'GET': 'POST');
+		var method = (postParams == null? 'GET': 'POST');
 		var options = $.extend({
 			dataType: 'text',
 			url: url,
-			data: data,
+			data: postParams,
 			type: method,
 			success: fn,
 			ctx_: ctx
@@ -1528,24 +1527,25 @@ allow throw("abort") as abort behavior.
 	}
 
 /**
-@fn MUI.callSvrSync(ac, params?, fn?, postParam?, userOptions?)
-@fn MUI.callSvrSync(ac, fn?, postParam?, userOptions?)
+@fn MUI.callSvrSync(ac, params?, fn?, postParams?, userOptions?)
+@fn MUI.callSvrSync(ac, fn?, postParams?, userOptions?)
 @alias callSvrSync
+@return data 原型规定的返回数据
 
 同步模式调用callSvr.
 */
 	window.callSvrSync = self.callSvrSync = callSvrSync;
-	function callSvrSync(ac, params, fn, data, userOptions)
+	function callSvrSync(ac, params, fn, postParams, userOptions)
 	{
 		var ret;
 		if (params instanceof Function) {
-			userOptions = data;
-			data = fn;
+			userOptions = postParams;
+			postParams = fn;
 			fn = params;
 			params = null;
 		}
 		userOptions = $.extend({async: false}, userOptions);
-		var dfd = callSvr(ac, params, fn, data, userOptions);
+		var dfd = callSvr(ac, params, fn, postParams, userOptions);
 		dfd.then(function(data) {
 			ret = data;
 		});

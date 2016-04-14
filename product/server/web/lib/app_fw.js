@@ -336,15 +336,16 @@ $.ajaxSetup({
 });
 
 /**
-@fn WUI.callSvr(ac, param?, fn?, data?, userOptions?)
-@fn WUI.callSvr(ac, fn?, data?, userOptions?)
+@fn WUI.callSvr(ac, params?, fn?, postParams?, userOptions?)
+@fn WUI.callSvr(ac, fn?, postParams?, userOptions?)
 @alias callSvr
 
 @param ac String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)
-@param param Object. URL参数（或称HTTP GET参数）
-@param data Object. POST参数. 如果有该参数, 则自动使用HTTP POST请求(data作为POST内容), 否则使用HTTP GET请求.
+@param params Object. URL参数（或称HTTP GET参数）
+@param postParams Object. POST参数. 如果有该参数, 则自动使用HTTP POST请求(postParams作为POST内容), 否则使用HTTP GET请求.
 @param fn Function(data). 回调函数, data参考该接口的返回值定义。
 @param userOptions 用户自定义参数, 会合并到$.ajax调用的options参数中.可在回调函数中用"this.参数名"引用. 
+@return XMLHttpRequest(XHR) 与$.ajax返回相同。
 
 常用userOptions: 
 - 指定{async:0}来做同步请求, 一般直接用callSvrSync调用来替代.
@@ -370,60 +371,52 @@ $.ajaxSetup({
 
 */
 window.callSvr = self.callSvr = callSvr;
-function callSvr(ac, params, fn, data, userOptions)
+function callSvr(ac, params, fn, postParams, userOptions)
 {
 	if (params instanceof Function) {
-		// 兼容格式：callSvr(url, fn?, data?, userOptions?);
-		userOptions = data;
-		data = fn;
+		// 兼容格式：callSvr(url, fn?, postParams?, userOptions?);
+		userOptions = postParams;
+		postParams = fn;
 		fn = params;
 		params = null;
 	}
 	var url = makeUrl(ac, params);
 	enterWaiting();
-	var method = (data === undefined? 'GET': 'POST');
+	var method = (postParams === undefined? 'GET': 'POST');
 	var ret;
 	var opt = $.extend({
 		url: url,
-		data: data,
+		data: postParams,
 // 		dataType: "text",
 		type: method,
-		success: function (data) {
-//			ret = defDataProc.call(this, data);
-// 			if (ret != null && fn)
-// 			{
-// 				fn (ret);
-// 			}
-			ret = data;
-			if (fn) {
-				fn.call(this, data);
-			}
-		}
-
-// 		error: defAjaxErrProc
+		success: fn,
 	}, userOptions);
-	$.ajax(opt);
-	return ret;
+	return $.ajax(opt);
 }
 
 /**
-@fn WUI.callSvrSync(ac, params, fn?, data?)
-@fn WUI.callSvrSync(ac, fn, data?)
+@fn WUI.callSvrSync(ac, params?, fn?, postParams?, userOptions?)
+@fn WUI.callSvrSync(ac, fn?, postParams?, userOptions?)
 @alias callSvrSync
-@return 接口返回的数据
+@return data 原型规定的返回数据
 
 同步模式调用callSvr.
 */
 window.callSvrSync = self.callSvrSync = callSvrSync;
-function callSvrSync(ac, params, fn, data)
+function callSvrSync(ac, params, fn, postParams, userOptions)
 {
 	var ret;
 	if (params instanceof Function) {
-		ret = callSvr(ac, null, params, fn, {async: false});
+		userOptions = postParams;
+		postParams = fn;
+		fn = params;
+		params = null;
 	}
-	else {
-		ret = callSvr(ac, params, fn, data, {async: false});
-	}
+	userOptions = $.extend({async: false}, userOptions);
+	var dfd = callSvr(ac, params, fn, postParams, userOptions);
+	dfd.then(function(data) {
+		ret = data;
+	});
 	return ret;
 }
 
@@ -450,7 +443,9 @@ function defDataProc(rv)
 
 		if (rv[0] == E_NOAUTH)
 		{
-			self.m_app.onShowLogin();
+			if (self.tryAutoLogin()) {
+				$.ajax(this);
+			}
 			return;
 		}
 
@@ -1627,6 +1622,7 @@ function deleteLoginToken()
 
 @param onHandleLogin Function(data). 调用后台login()成功后的回调函数(里面使用this为ajax options); 可以直接使用WUI.handleLogin
 @param reuseCmd String. 当session存在时替代后台login()操作的API, 如"User.get", "Employee.get"等, 它们在已登录时返回与login相兼容的数据. 因为login操作比较重, 使用它们可减轻服务器压力. 
+@return Boolean. true=登录成功; false=登录失败.
 
 该函数一般在页面加载完成后调用，如
 
@@ -1665,7 +1661,7 @@ function tryAutoLogin(onHandleLogin, reuseCmd)
 		callSvr(reuseCmd, handleAutoLogin, null, ajaxOpt);
 	}
 	if (ok)
-		return;
+		return ok;
 
 	// then use "login(token)"
 	var token = loadLoginToken();
@@ -1675,9 +1671,10 @@ function tryAutoLogin(onHandleLogin, reuseCmd)
 		callSvr("login", handleAutoLogin, postData, ajaxOpt);
 	}
 	if (ok)
-		return;
+		return ok;
 
 	self.m_app.onShowLogin();
+	return ok;
 }
 
 /**
