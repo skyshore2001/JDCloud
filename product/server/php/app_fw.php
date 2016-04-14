@@ -1106,6 +1106,10 @@ class AppFw_
 		global $DB, $DBCRED, $USE_MYSQL;
 		$DB = getenv("P_DB") ?: $DB;
 		$DBCRED = getenv("P_DBCRED") ?: $DBCRED;
+		if ($TEST_MODE) {
+			$DB = getenv("P_DB_TEST") ?: $DB;
+			$DBCRED = getenv("P_DBCRED_TEST") ?: $DBCRED;
+		}
 
 		// e.g. P_DB="../carsvc.db"
 		if (preg_match('/\.db$/i', $DB)) {
