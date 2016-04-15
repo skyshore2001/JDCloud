@@ -1292,7 +1292,7 @@ class ApiApp extends AppBase
 		}
 
 		// 支持PATH_INFO模式。
-		@$path = $_SERVER["PATH_INFO"];
+		@$path = $this->getPathInfo();
 		if ($path != null)
 		{
 			$ac = $this->parseRestfulUrl($path);
@@ -1354,6 +1354,32 @@ class ApiApp extends AppBase
 			$this->apiLog->logAfter();
 	}
 
+	private function getPathInfo()
+	{
+		$pi = $_SERVER["PATH_INFO"];
+		if ($pi === null) {
+			# 支持rewrite后解析pathinfo
+			$uri = $_SERVER["REQUEST_URI"];
+			if (strpos($uri, '.php') === false) {
+				$uri = preg_replace('/\?.*$/', '', $uri);
+				$baseUrl = getBaseUrl(false);
+
+				# uri=/jdy/api/login -> pi=/login
+				# uri=/jdy/login -> pi=/login
+				if (strpos($uri, $baseUrl) === 0) {
+					$script = basename($_SERVER["SCRIPT_NAME"], '.php'); // "api"
+					$len = strlen($baseUrl);
+					if (strpos($uri, $baseUrl . $script) === 0)
+						$len += strlen($script);
+					else
+						-- $len;
+					if ($len>0) // "/jdy/api" or "/jdy"
+						$pi = substr($uri, $len);
+				}
+			}
+		}
+		return $pi;
+	}
 	// return: $ac
 	private function parseRestfulUrl($pathInfo)
 	{
