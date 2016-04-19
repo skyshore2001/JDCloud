@@ -38,9 +38,13 @@ function numberSort(a, b)
 */
 function getAncestor(o, fn)
 {
-	while (o && !fn(o)) {
+	while (o) {
+		if (o.tagName == null)
+			return null;
+		if (fn(o))
+			return o;
 		o = o.parentNode;
-	} 
+	}
 	return o;
 }
 
@@ -922,7 +926,8 @@ function tabid(title)
 }
 function istab(o)
 {
-	return o.id && o.id.substr(0,3) == "pg_";
+	var id = o.getAttribute("id");
+	return id && id.substr(0,3) == "pg_";
 }
 
 // // 取jquery-easyui dialog 对象
