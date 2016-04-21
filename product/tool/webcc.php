@@ -1,5 +1,16 @@
 <?php
 
+/*
+上线工具，与build_web.sh配置使用。
+
+注意：
+
+- 修改webcc.conf.php会导致rebuild
+- 如果想强制rebuild, 可以删除输出文件夹下的revision_dev.txt, 比如当修改webcc.php后。
+- 如果本地有未提交的内容，也会更新到输出文件夹。
+
+ */
+
 //====== global {{{
 $opts = [
 "srcDir" => null,
@@ -9,6 +20,7 @@ $opts = [
 $g_handledFiles = []; // elem: $file => 1
 $g_hash = []; // elem: $file => $hash
 
+const CFG_FILE = "webcc.conf.php";
 $COPY_EXCLUDE = [];
 
 // 设置环境变量 DBG_LEVEL=1 显示调试信息
@@ -212,13 +224,13 @@ if (! is_dir($opts["srcDir"]))
 
 addPath();
 // load config
-$cfg = $opts["srcDir"] . "/webcc.conf.php";
+$cfg = $opts["srcDir"] . "/" . CFG_FILE;
 if (is_file($cfg)) {
 	echo("=== load config `$cfg`\n");
 	require($cfg);
 }
 
-$COPY_EXCLUDE[] = 'webcc.conf.php';
+$COPY_EXCLUDE[] = CFG_FILE;
 //}}}
 
 @mkdir($opts["outDir"], 0777, true);
@@ -230,21 +242,28 @@ if (file_exists($verFile)) {
 }
 
 chdir($opts["srcDir"]);
-if (! isset($oldVer)) {
-	$cmd = "git ls-files";
-}
-else {
+$isRebuild = true;
+$buildFiles = null;
+if (isset($oldVer)) {
 	// NOTE: 仅限当前目录(srcDir)改动
-	$cmd = "git diff $oldVer head --name-only --diff-filter=AM --relative";
+	$cmd = "git diff $oldVer --name-only --diff-filter=AM --relative";
+	exec($cmd, $buildFiles, $rv);
+	if ($rv == 0 && array_search(CFG_FILE, $buildFiles) === false) {
+		$isRebuild = false;
+	}
 }
-$fp = popen($cmd, "r");
+if ($isRebuild) {
+	$cmd = "git ls-files";
+	unset($buildFiles);
+	exec($cmd, $buildFiles, $rv);
+	echo("!!! build all files !!!\n");
+}
+
 $updateVer = false;
-while (($s=fgets($fp)) !== false) {
+foreach ($buildFiles as $f) {
 	$updateVer = true;
-	$f = rtrim($s);
 	handleOne($f, $outDir);
 }
-pclose($fp);
 
 if ($updateVer) {
 	// update new version
