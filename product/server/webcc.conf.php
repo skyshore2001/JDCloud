@@ -51,6 +51,12 @@ cat common.js app_fw.js ../app.js | jsmin > $TARGET
 ', 'HASH'],
 
 	'm/main.js' => 'jsmin < m/main.js > $TARGET',
+
+	'm2/lib-app.min.js' => ['
+cd m2
+cat ../m/lib/common.js lib/app_fw.js app.js | jsmin > $TARGET
+', 'HASH'],
+
 ];
 
 ?>
