@@ -106,7 +106,9 @@ function initPullList(container, opt)
 	else {
 		cont_.addEventListener("mousedown", mouseDown);
 	}
-	cont_.style.overflow = "hidden";
+	if ($(cont_).css("overflowY") == "visible") {
+		cont_.style.overflowY = "auto";
+	}
 
 	function getPos(ev)
 	{
@@ -533,8 +535,8 @@ navRef是否为空的区别是，如果非空，则表示listRef是一组互斥�
 function initNavbarAndList(jpage, opt)
 {
 	var opt_ = $.extend({
-		navRef: ">.bd .p-list",
-		listRef: ">.hd .mui-navbar"
+		navRef: ">.hd .mui-navbar",
+		listRef: ">.bd .p-list"
 	}, opt);
 	var jallList_ = opt_.listRef instanceof jQuery? opt_.listRef: jpage.find(opt_.listRef);
 	var jbtns_ = opt_.navRef instanceof jQuery? opt_.navRef: jpage.find(opt_.navRef);
