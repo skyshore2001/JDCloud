@@ -262,6 +262,8 @@ if (isset($oldVer)) {
 	// NOTE: 仅限当前目录(srcDir)改动
 	$cmd = "git diff $oldVer --name-only --diff-filter=AM --relative";
 	exec($cmd, $g_changedFiles, $rv);
+	if (count($g_changedFiles) == 0)
+		exit;
 }
 else {
 	echo("!!! build all files !!!\n");
