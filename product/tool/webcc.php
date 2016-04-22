@@ -8,6 +8,7 @@
 - 修改webcc.conf.php会导致rebuild
 - 如果想强制rebuild, 可以删除输出文件夹下的revision_dev.txt, 比如当修改webcc.php后。
 - 如果本地有未提交的内容，也会更新到输出文件夹。
+- 设置环境变量 DBG_LEVEL=1 显示调试信息
 
  */
 
@@ -25,6 +26,9 @@ $COPY_EXCLUDE = [];
 
 // 设置环境变量 DBG_LEVEL=1 显示调试信息
 $DBG_LEVEL = (int)getenv("P_DEBUG") ?: 0;
+
+$g_changedFiles = [];
+$g_isRebuild = true;
 //}}}
 
 // ====== functions {{{
@@ -50,6 +54,11 @@ function formatPath($f)
 	$f = preg_replace('/[\\\\\/]+/', '/', $f);
 	$f = preg_replace('`[^/]+/\.\./`', '', $f);
 	return $f;
+}
+
+function matchRule($rule, $file)
+{
+	return fnmatch($rule, $file, FNM_PATHNAME);
 }
 
 function getFileHash($basef, $f, $outDir, $relativeDir = null)
@@ -123,6 +132,7 @@ function handleCopy($f, $outDir)
 	copy($f, $outf);
 }
 
+// return: false - skipped
 function handleOne($f, $outDir, $force = false)
 {
 	global $FILES;
@@ -134,20 +144,20 @@ function handleOne($f, $outDir, $force = false)
 	if (!$force && isset($FILES)) {
 		$skip = true;
 		foreach ($FILES as $re) {
-			if (fnmatch($re, $f)) {
+			if (matchRule($re, $f)) {
 				$skip = false;
 				break;
 			}
 		}
 		if ($skip)
-			return;
+			return false;
 	}
 
 	$g_handledFiles[formatPath($f)] = 1;
 
 	$rule = null;
 	foreach ($RULES as $re => $v) {
-		if (fnmatch($re, $f)) {
+		if (matchRule($re, $f)) {
 			$rule = $v;
 			break;
 		}
@@ -175,16 +185,21 @@ function handleOne($f, $outDir, $force = false)
 		}
 		return;
 	}
+	global $g_isRebuild, $g_changedFiles;
+	if (!$g_isRebuild) {
+		if (array_search($f , $g_changedFiles) === false)
+			return false;
+	}
 
 	$noCopy = false;
 	foreach ($COPY_EXCLUDE as $re) {
-		if (fnmatch($re, $f)) {
+		if (matchRule($re, $f)) {
 			$noCopy = true;
 			break;
 		}
 	}
 	if ($noCopy)
-		return;
+		return false;
 	logit("=== copy $f\n");
 	handleCopy($f, $outDir);
 }
@@ -242,27 +257,26 @@ if (file_exists($verFile)) {
 }
 
 chdir($opts["srcDir"]);
-$isRebuild = true;
-$buildFiles = null;
 if (isset($oldVer)) {
+	$g_isRebuild = false;
 	// NOTE: 仅限当前目录(srcDir)改动
 	$cmd = "git diff $oldVer --name-only --diff-filter=AM --relative";
-	exec($cmd, $buildFiles, $rv);
-	if ($rv == 0 && array_search(CFG_FILE, $buildFiles) === false) {
-		$isRebuild = false;
-	}
+	exec($cmd, $g_changedFiles, $rv);
 }
-if ($isRebuild) {
-	$cmd = "git ls-files";
-	unset($buildFiles);
-	exec($cmd, $buildFiles, $rv);
+else {
 	echo("!!! build all files !!!\n");
 }
 
+$allFiles = null;
+$cmd = "git ls-files";
+exec($cmd, $allFiles, $rv);
+
 $updateVer = false;
-foreach ($buildFiles as $f) {
-	$updateVer = true;
-	handleOne($f, $outDir);
+foreach ($allFiles as $f) {
+	if (handleOne($f, $outDir) !== false)
+	{
+		$updateVer = true;
+	}
 }
 
 if ($updateVer) {

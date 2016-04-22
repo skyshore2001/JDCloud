@@ -53,6 +53,9 @@ else
 	echo
 	read -p '=== 确认改动? (y/n) ' a
 	if [[ $a != 'y' && $a != 'Y' ]]; then
+		echo "!!! 重置输出目录"
+		git clean -f
+		git reset --hard
 		exit
 	fi
 
