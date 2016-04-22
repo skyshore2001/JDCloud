@@ -59,9 +59,13 @@ else
 		exit
 	fi
 
-	git add .
-	git status -s
-	git commit -m "$lastlog"
+	# 隐藏windows系统上crlf相关warning:
+	if [[ -n $WINDIR ]]; then
+		gitconfig="-c core.safecrlf=false"
+	fi
+	git $gitconfig add .
+	git $gitconfig status -s
+	git $gitconfig commit -m "$lastlog"
 fi
 
 echo
