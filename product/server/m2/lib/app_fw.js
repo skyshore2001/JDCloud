@@ -534,7 +534,7 @@ function CPageManager(app)
 				},
 				// tempfix: ios中无法上下划动。
 				// NOTE: touchswipe库中calculateDirection可能有bug. 可下断validateDefaultEvent调试
-				preventDefaultEvents: false,
+				preventDefaultEvents: isIOS()?false:true,
 			});
 		}
 	}

@@ -358,13 +358,14 @@ function initPullList(obj, opt)
 		</div>
 
 		<div class="bd">
-			<div id="lst1" class="p-list"></div>
+			<div id="lst1" class="p-list active"></div>
 			<div id="lst2" class="p-list" style="display:none"></div>
 		</div>
 	</div>
 
 上面页面应注意：
 - navbar在header中，不随着滚动条移动而改变位置
+- 默认显示的list应加上active类，否则自动以第一个作为显示列表。
 - mui-navbar在点击一项时，会在被点击的<a>按钮上以及它对应的(mui-linkto标识)组件上添加class="active"
 
 js调用逻辑示例：
@@ -434,7 +435,10 @@ function initNavbarAndList(jpage, opt)
 
 	function init()
 	{
-		jpage.on("pagebeforeshow", function () {
+		jpage.on("pagebeforeshow", pagebeforeshow);
+
+		function pagebeforeshow()
+		{
 			if (opt_.pageItf && opt_.pageItf.refresh) {
 				jallList_.data("nextkey_", null);
 				opt_.pageItf.refresh = false;
@@ -444,7 +448,7 @@ function initNavbarAndList(jpage, opt)
 				firstShow_ = false;
 				showOrderList(false, false);
 			}
-		});
+		}
 
 		jnav_.find("a").click(function (ev) {
 			// 让系统先选中tab页再操作
@@ -459,6 +463,11 @@ function initNavbarAndList(jpage, opt)
 		};
 		var container = jallList_[0].parentNode;
 		initPullList(container, pullListOpt);
+
+		// 如果调用init时页面已经显示，则补充调用一次。
+		if (MUI.activePage && MUI.activePage.attr("id") == jpage.attr("id")) {
+			pagebeforeshow();
+		}
 	}
 
 	// (isRefresh?=false, skipIfLoaded?=false)
@@ -467,6 +476,8 @@ function initNavbarAndList(jpage, opt)
 		// nextkey=null: 新开始或刷新
 		// nextkey=-1: 列表完成
 		var jlst = jallList_.filter(".active");
+		if (jlst.size() == 0)
+			jlst = jallList_.filter(":first");
 		var nextkey = jlst.data("nextkey_");
 		if (isRefresh) {
 			nextkey = null;
