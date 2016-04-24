@@ -1387,7 +1387,7 @@ class ApiApp extends AppBase
 	private function parseRestfulUrl($pathInfo)
 	{
 		$method = $_SERVER["REQUEST_METHOD"];
-		$ac = substr($pathInfo,1);
+		$ac = htmlentities(substr($pathInfo,1));
 		// POST /login  (小写开头)
 		// GET/POST /Store.add (含.)
 		if (ctype_lower($ac[0]) || strpos($ac, '.') !== false)
