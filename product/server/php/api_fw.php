@@ -249,7 +249,7 @@ function api_execSql()
 	checkAuth(AUTH_ADMIN | AUTH_TEST_MODE);
 
 	# TODO: limit the function
-	$sql = mparam("sql");
+	$sql = html_entity_decode(mparam("sql"));
 	if (preg_match('/^\s*select/i', $sql)) {
 		global $DBH;
 		$sth = $DBH->query($sql);
@@ -461,6 +461,7 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 			$values = (string)$id;
 		}
 		foreach ($_POST as $k=>$v) {
+			$k = htmlentities($k);
 			if ($k === "id")
 				continue;
 			// ignore non-field param
@@ -477,7 +478,7 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 				$values .= ", ";
 			}
 			$keys .= $k;
-			$values .= Q($v);
+			$values .= Q(htmlentities($v));
 		}
 		if (strlen($keys) == 0) 
 			throw new MyException(E_PARAM, "no field found to be added");
@@ -490,6 +491,7 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 		$id = mparam("id", $_GET);
 		$kv = "";
 		foreach ($_POST as $k=>$v) {
+			$k = htmlentities($k);
 			if ($k === 'id')
 				continue;
 			// ignore non-field param
@@ -512,7 +514,7 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 				$kv .= flag_getExpForSet($k, $v);
 			}
 			else
-				$kv .= "$k=" . Q($v);
+				$kv .= "$k=" . Q(htmlentities($v));
 		}
 		if (strlen($kv) == 0) {
 			addLog("no field found to be set");
@@ -612,6 +614,7 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 		foreach ($sqlConf["cond"] as $cond) {
 			if ($cond == null)
 				continue;
+			$condSql = html_entity_decode($condSql);
 			if (strlen($condSql) > 0)
 				$condSql .= " AND ";
 			if (stripos($cond, " and ") !== false || stripos($cond, " or ") !== false)

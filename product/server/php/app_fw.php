@@ -147,6 +147,7 @@ function param_varr($str, $type, $name)
 				}
 				throw new MyException(E_PARAM, "Bad Request - param `$name`: list($type). require col: `$row0`[$i]");
 			}
+			$e = htmlentities($e);
 			if ($t === "i") {
 				if (! ctype_digit($e))
 					throw new MyException(E_PARAM, "Bad Request - param `$name`: list($type). require integer col: `$row0`[$i]=`$e`.");
@@ -250,8 +251,12 @@ function param($name, $defVal = null, $col = null)
 	if ($ret === "")
 		return $defVal;
 	# check type
-	if (isset($ret) && $type!=='s' && is_string($ret)) {
-		if ($type === "i") {
+	if (isset($ret) && is_string($ret)) {
+		// avoid XSS attack
+		$ret = htmlentities($ret);
+		if ($type === "s") {
+		}
+		elseif ($type === "i") {
 			if (! ctype_digit($ret))
 				throw new MyException(E_PARAM, "Bad Request - integer param `$name`=`$ret`.");
 			$ret = intval($ret);

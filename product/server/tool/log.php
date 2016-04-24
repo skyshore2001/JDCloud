@@ -4,7 +4,7 @@ header("Content-Type: text/html; charset=UTF-8");
 
 $F = @$_GET["f"] ?: "ext";
 $F = "../{$F}.log";
-$MAX_READ_SZ = @$_GET["sz"]?:5000;
+$MAX_READ_SZ = @intval($_GET["sz"])?:5000;
 
 $msgs = [];
 
