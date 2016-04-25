@@ -401,6 +401,7 @@ function CPageManager(app)
 		},
 		// @fn PageStack.pop(n?=1); 
 		// n=0: 清除到首页; n>1: 清除指定页数
+		// 注意：pop时只做标记，没有真正做pop动作，没有改变栈指针sp_. 只有调用go才会修改栈指针。
 		pop: function (n) {
 			if (n == null || n < 0)
 				n = 1;
