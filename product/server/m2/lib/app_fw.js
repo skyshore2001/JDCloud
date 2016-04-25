@@ -405,7 +405,7 @@ function CPageManager(app)
 			if (n == null || n < 0)
 				n = 1;
 			if (n == 0 || n > this.sp_) {
-				n = this.sp_;
+				n = this.sp_ + 1;
 			}
 			for (var i=0; i<n; ++i) {
 				this.stack_[this.sp_ -i].isPoped = true;
@@ -451,6 +451,15 @@ function CPageManager(app)
 				throw "history not found";
 			return sp - this.sp_;
 		},
+		// @fn PageStack.walk(fn)
+		// @param fn Function(state={pageRef, isPoped}).  返回false则停止遍历。
+		walk: function (fn) {
+			for (var i=this.sp_; i>=0; --i) {
+				var state = this.stack_[this.sp_];
+				if (fn(state) === false)
+					break;
+			}
+		}
 	};
 	//}}}
 
@@ -1757,6 +1766,12 @@ $(document).on("deviceready", function () {
 	...
 	</div>
 
+注意：
+
+- 登录成功后，会自动将login页面清除出页面栈，所以登录成功后，点返回键，不会回到登录页。
+- 如果有多个登录页（如动态验证码登录，用户名密码登录等），其它页的id起名时，应以app.loginPage指定内容作为前缀，
+  如loginPage="#login", 则登录页面名称可以为：#login(缺省登录页), #login1, #loginByPwd等；否则无法被识别为登录页，导致登录成功后按返回键仍会回到登录页
+
 */
 self.showLogin = showLogin;
 function showLogin(jpage)
@@ -1962,13 +1977,16 @@ function handleLogin(data)
 	g_data.userInfo = data;
 
 	// 登录成功后点返回，避免出现login页
-	if (self.activePage) {
-		var curId = self.activePage.attr("id");
-		var loginPageId = m_app.loginPage.substr(1);
-		if (curId == loginPageId) {
-			self.popPageStack(1);
-		}
-	}
+	var popN = 0;
+	self.m_pageStack.walk(function (state) {
+		// 所有登录页都应以app.loginPage指定内容作为前缀，如loginPage="#login", 
+		// 则登录页面名称可以为：#login, #login1, #loginByPwd等
+		if (state.pageRef.indexOf(m_app.loginPage) != 0)
+			return false;
+		++ popN;
+	});
+	self.popPageStack(popN);
+
 	if (m_onLoginOK) {
 		var fn = m_onLoginOK;
 		m_onLoginOK = null;
