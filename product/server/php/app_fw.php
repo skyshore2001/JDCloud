@@ -587,7 +587,10 @@ function dbconn($fnConfirm = null)
 		$dbhost = $ms[1];
 		$dbname = $ms[2];
 
-		list($dbuser, $dbpwd) = explode(":", base64_decode($DBCRED));
+		if (stripos($DBCRED, ":") === false) {
+			$DBCRED = base64_decode($DBCRED);
+		}
+		list($dbuser, $dbpwd) = explode(":", $DBCRED);
 		$C = ["mysql:host={$dbhost};dbname={$dbname}", $dbuser, $dbpwd];
 	}
 
