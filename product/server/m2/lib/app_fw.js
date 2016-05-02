@@ -274,6 +274,21 @@ Mobile UI framework
 
 在css中可以利用它们做针对系统的特殊设置。
 
+== 手势支持 ==
+
+如果使用了 jquery.touchSwipe 库，则默认支持手势：
+
+- 右划：页面后退
+- 左划：页面前进
+
+如果页面中某组件上的左右划与该功能冲突，可以设置属性mui-swipenav="no"来禁用该功能：
+
+	<div mui-swipenav="no"></div>
+
+左右划前进后退功能会导致横向滚动生效。可以通过添加noSwipe类（注意大小写）的方式禁用swipe事件恢复滚动功能：
+
+	<div class="noSwipe"></div>
+
  */
 
 
@@ -403,9 +418,22 @@ function CPageManager(app)
 		// n=0: 清除到首页; n>1: 清除指定页数
 		// 注意：pop时只做标记，没有真正做pop动作，没有改变栈指针sp_. 只有调用go才会修改栈指针。
 		pop: function (n) {
+			if (n === 0) {
+				// pop(0): 保留第一个未pop的页面，其它全部标记为poped.
+				var firstFound = false;
+				for (var i=0; i<this.sp_; ++i) {
+					if (! firstFound) {
+						if (! this.stack_[i].isPoped)
+							firstFound = true;
+						continue;
+					}
+					this.stack_[i].isPoped = true;
+				}
+				return;
+			}
 			if (n == null || n < 0)
 				n = 1;
-			if (n == 0 || n > this.sp_) {
+			if (n > this.sp_) {
 				n = this.sp_ + 1;
 			}
 			for (var i=0; i<n; ++i) {
@@ -456,8 +484,8 @@ function CPageManager(app)
 		// @param fn Function(state={pageRef, isPoped}).  返回false则停止遍历。
 		walk: function (fn) {
 			for (var i=this.sp_; i>=0; --i) {
-				var state = this.stack_[this.sp_];
-				if (fn(state) === false)
+				var state = this.stack_[i];
+				if (!state.isPoped && fn(state) === false)
 					break;
 			}
 		}
@@ -535,16 +563,27 @@ function CPageManager(app)
 		// 在移动端，左右划动页面可前进后退
 		// 依赖jquery.touchSwipe组件
 		if ('ontouchstart' in window && $.fn.swipe) {
-			$(document).swipe({
-				swipeLeft: function () {
-					history.forward();
-				},
-				swipeRight: function () {
+			function swipeH(ev, direction, distance, duration, fingerCnt, fingerData, currentDirection) {
+				var o = ev.target;
+				while (o) {
+					if ($(o).attr('mui-swipenav') === 'no')
+						return;
+					o = o.parentElement;
+				}
+				if (direction == 'right')
+				{
 					history.back();
-				},
-				// tempfix: ios中无法上下划动。
-				// NOTE: touchswipe库中calculateDirection可能有bug. 可下断validateDefaultEvent调试
-				preventDefaultEvents: isIOS()?false:true,
+				}
+				else if (direction == 'left')
+				{
+					history.forward();
+				}
+			}
+			$(document).swipe({
+				swipeLeft: swipeH,
+				swipeRight: swipeH,
+				threshold: 100, // default=75
+				// bug has fixed in jquery.touchSwipe.js, option preventDefaultEvents uses default=true, or else some device does not work
 			});
 		}
 	}
@@ -1986,7 +2025,8 @@ function handleLogin(data)
 			return false;
 		++ popN;
 	});
-	self.popPageStack(popN);
+	if (popN > 0)
+		self.popPageStack(popN);
 
 	if (m_onLoginOK) {
 		var fn = m_onLoginOK;
