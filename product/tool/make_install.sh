@@ -77,26 +77,34 @@ fi
 
 if (( doUpload )) ; then
 	ver=`$CURL_CMD $versionUrl`
-	if [[ $? -ne 0 || -z $ver ]]; then
-		read -p '!!! 输入线上版本号，留空会上传所有文件: ' ver
-	fi
-	if [[ -z $ver ]]; then
-		cmd=`git ls-files | $script getcmd`
-	else
-		git diff $ver head --name-only --diff-filter=AM > $tmpfile
-		cmd=`$script getcmd < $tmpfile`
-		if [[ -z $cmd ]]; then
-			echo "=== 服务器已是最新版本."
-			exit
+
+	while true; do
+		if [[ $? -ne 0 || -z $ver ]]; then
+			read -p '!!! 输入线上版本号，留空会上传所有文件: ' ver
 		fi
-		echo -e "将更新以下文件: \n------"
-		cat $tmpfile
-		echo -e "------\n"
-		read -p '=== 确认更新服务器? (y/n) ' a
-		if [[ $a != 'y' && $a != 'Y' ]]; then
-			exit
+		if [[ -z $ver ]]; then
+			cmd=`git ls-files | $script getcmd`
+		else
+			git diff $ver head --name-only --diff-filter=AM > $tmpfile
+			if (( $? != 0 )); then
+				unset ver
+				continue
+			fi
+			cmd=`$script getcmd < $tmpfile`
+			if [[ -z $cmd ]]; then
+				echo "=== 服务器已是最新版本."
+				exit
+			fi
+			echo -e "将更新以下文件: \n------"
+			cat $tmpfile
+			echo -e "------\n"
+			read -p '=== 确认更新服务器? (y/n) ' a
+			if [[ $a != 'y' && $a != 'Y' ]]; then
+				exit
+			fi
 		fi
-	fi
+		break
+	done
 	if [[ -z $cmd ]]; then exit ; fi
 
 	#echo $cmd > cmd1.log
