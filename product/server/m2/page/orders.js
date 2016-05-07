@@ -5,6 +5,7 @@ function initPageOrders()
 	initNavbarAndList(jpage, {
 		pageItf: PageOrders,
 		onGetQueryParam: function (jlst, callParam) {
+			callParam.ac = "Ordr.query";
 			var param = callParam.queryParam;
 			param.orderby = "id desc";
 			param.cond = jlst.attr("data-cond");
