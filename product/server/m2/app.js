@@ -548,6 +548,8 @@ function initNavbarAndList(jpage, opt)
 	else {
 		linkNavbarAndList(jbtns_, jallList_);
 	}
+	if (jallList_.size() == 0)
+		throw "bad list";
 
 	init();
 

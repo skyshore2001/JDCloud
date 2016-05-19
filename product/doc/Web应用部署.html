@@ -1,0 +1,465 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<link rel="Stylesheet" type="text/css" href="style.css">
+<title>Web应用部署</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+</head>
+<body>
+
+<h1 id="toc_1" class="justcenter"><a name="Web应用部署"> Web应用部署</a></h1>
+
+<p>
+2015/8 梁健
+</p>
+
+<h2 id="toc_1.1"><a name="从浏览器缓存问题讲起">1 从浏览器缓存问题讲起</a></h2>
+
+<p>
+对于单应用型网页，假设入口为 index.html, 它引用一些js与css。（部分js会动态加载其它js文件）
+当其中的一些文件更新后，看到的现象：
+</p>
+<ul>
+<li>
+有时主页无法刷新，什么时候会刷新未知，但一般一天内会刷新过来。
+
+<li>
+有时会出现主页和js有的刷新，有的未刷新的情况，出现冲突。
+
+<li>
+微信中css极难刷新，会持续多天无法刷新。
+
+</ul>
+
+<p>
+经分析：
+</p>
+<ul>
+<li>
+标准的浏览器一般能自动刷新过来（如chrome），有些则必须通过手工刷新才能更新加载（如IE，手机安卓浏览器）
+
+<li>
+对于微信浏览器，以及通过Cordova/PhoneGap/IntelXDK包装网页应用后生成的安卓应用（核心是WebView控件），其缓存策略不明，常常是无法刷新。主要规律有：
+
+<ul>
+<li>
+对于主页面（如index.html），再次访问时微信基本不重复远程获取。
+
+<li>
+如果主页面未变，则基本不会再远程取它引用的其它js/css文件。
+
+<li>
+如果主页面及某些js近期发生过变化，再次访问时，微信或Webview会增加重新远程取它的可能性，但不是每次都获取，策略不明。
+
+</ul>
+</ul>
+
+<p>
+我们希望的结果是：
+</p>
+<ul>
+<li>
+在微信中，或Webview控件构成的应用中，一旦远程有文件发生变化，应立即获取到。
+
+</ul>
+
+<h3 id="toc_1.1.1"><a name="解决方法">1.1 解决方法</a></h3>
+
+<ul>
+<li>
+对于主页文件(html入口文件)，通过修改Web服务器配置设置禁止缓存解决。如在Apache配置中设置HTTP头"Cache-Control: no-cache"来解决。
+
+<li>
+对于主页或其它js中引用的文件，通过在发布时对引用资源加随机参数解决。如 index.html 引用 main.js，在发布时我们用 main.js?v=333 来要求客户端重新取文件。
+
+</ul>
+
+<p>
+注意：
+</p>
+<ul>
+<li>
+"no-cache"并不意味着没有缓存，只是建议客户端每次去服务器取（一般会带If-None-Match/If-Modified-Since等参数在http头中），成熟的Web服务器如Apache一般会检查文件，无更新则返回"304 Not Modified" （以及Etag, Last-Modified等属性在HTTP头中），这样客户端收到304代码中使用缓存。
+
+<li>
+真正完全禁用缓存可用"no-store"值。如对api.php访问后一般会返回这个参数。
+
+<li>
+通过HTTP head中的meta标签如 <code>&lt;meta http-equiv="Cache-Control" content="no-cache" /&gt;</code> 理论上应与设置HTTP头相同，但试验对微信浏览器或Webview无效.
+
+<li>
+html5的manifest离线存储解决方案经测试在手机上行为不太确定（如有时多次才能刷新过来，微信浏览器支持似乎也有问题），且各浏览器支持程度不同，不建议现在使用。
+
+</ul>
+
+<h4 id="toc_1.1.1.1"><a name="解决主页文件缓存">1.1.1 解决主页文件缓存</a></h4>
+
+<p>
+在Apache的配置文件中设置目录的AllowOverride All权限，允许目录使用.htaccess自定义规则：
+</p>
+
+<p>
+（可将这些配置添加到一个新文件xeyc.conf中）
+</p>
+
+<pre>
+&lt;Directory "/alidata/www/default/cheguanjia/"&gt;
+	Options FollowSymLinks
+	AllowOverride All
+	
+	Order allow,deny
+	Allow from all
+#    Require all granted
+&lt;/Directory&gt;
+</pre>
+
+<p>
+(新版本的apache可以用Require语句替代上两句)
+</p>
+
+<p>
+对于web应用所有目录（m2/目录），增加.htaccess目录如下：
+（设置访问 m2/index.html 或直接 m2/ 时，必须来服务器验证）
+</p>
+
+<pre>
+&lt;FilesMatch "(\.html|\/)$"&gt;
+	#Header set Cache-Control "max-age=604800"
+	Header set Cache-Control "no-cache"
+&lt;/FilesMatch&gt;
+</pre>
+
+<h4 id="toc_1.1.1.2"><a name="解决关联文件缓存">1.1.2 解决关联文件缓存</a></h4>
+
+<p>
+对所有的易变资源, 引用时加个标识如<code>__HASH__</code>
+</p>
+
+<pre>
+html中：
+&lt;script src="main.js"&gt;&lt;/script&gt;
+--&gt;
+&lt;script src="main.js?__HASH__"&gt;&lt;/script&gt;
+
+JS中：
+
+loadScript("cordova/cordova.js"); 
+--&gt;
+loadScript("cordova/cordova.js?__HASH__"); 
+</pre>
+
+<p>
+通过编译工具以上最终生成
+</p>
+<pre>
+&lt;script src="main.js?v=321f2a"&gt;&lt;/script&gt;
+
+(__HASH__被改成文件的sha1代码后6位)
+</pre>
+
+<p>
+以上修改风格称为“覆盖式发布”。如果要使用“非覆盖式发布”，编译工具可生成：
+</p>
+<pre>
+&lt;script src="main_321f2a.js"&gt;&lt;/script&gt;
+</pre>
+
+<h2 id="toc_1.2"><a name="Web应用编译及部署">2 Web应用编译及部署</a></h2>
+
+<h3 id="toc_1.2.1"><a name="需求">2.1 需求</a></h3>
+
+<p>
+编译工具需求：
+</p>
+<ul>
+<li>
+解决文件缓存问题，自动替换<code>__HASH__</code>部分
+
+<li>
+合并与压缩(minify) js/css等文件
+
+</ul>
+
+<p>
+部署工具：
+</p>
+<ul>
+<li>
+可上传至ftp。
+
+<li>
+可手工选择上传哪些文件，未修改的内容不上传
+
+<li>
+可提示哪些文件需要上传，以便手工操作。
+
+</ul>
+
+<h3 id="toc_1.2.2"><a name="设计">2.2 设计</a></h3>
+
+<p>
+编译工具webcc
+</p>
+<pre>
+webcc {src-folder} -o {web-folder} 
+</pre>
+
+<p>
+<strong>[参数]</strong>
+</p>
+
+<dl>
+<dt>src-folder</dt>
+<dd>使用git管理的源代码目录，我们用xeyc-sys/server</dd>
+<dt>web-folder</dt>
+<dd>使用git管理的实际web目录，我们用xeyc-sys-web, 它与ftp上的相应目录应保持一致。</dd>
+</dl>
+
+<p>
+<strong>[工作原理]</strong>
+</p>
+
+<p>
+webcc做以下工作：
+</p>
+
+<ul>
+<li>
+加载{src-folder}下的配置文件webcc.conf.php
+
+<li>
+如果定义了$FILES（一个数组，每项为一个正则式）, 则只处理匹配的文件；否则处理所有 git管理的文件。一般设置该项只为调试个别文件。
+
+<li>
+加载 $RULES，它指定对每个匹配的文件采取何种操作。
+
+</ul>
+
+<p>
+它结合git工作，比如取要处理的所有文件，用 <code>git ls-files</code>
+取某版本以来的文件，用 <code>git diff rev1 head --name-status</code>
+更新完成后，输出VERSION_SRC文件。
+</p>
+
+<p>
+<strong>[配置文件]</strong>
+</p>
+
+<p>
+{src-folder}下的webcc.conf.php为配置文件。
+</p>
+
+<p>
+示例：
+</p>
+<pre>
+&lt;?php
+
+$COPY_EXCLUDE = [
+	'm1/*',
+	'wap/*'
+];
+
+/*
+$FILES = [
+	'm2/index.html'
+];
+ */
+
+$RULES = [
+	'm/*.html' =&gt; 'HASH', // 对m目录下所有html文件进行HASH处理
+	'm/app_fw.js' =&gt; 'HASH',  对 m/app_fw.js 文件进行HASH处理
+
+	// 指定脚本，其中先做了js文件归并，再用jsmin工具做压缩; $TARGET表示最终文件。
+	'm2/cordova/cordova.js' =&gt; '
+cd m2/cordova
+cat cordova.js cordova_plugins.js \
+	plugins/cordova-plugin-splashscreen/www/splashscreen.js \
+	plugins/org.apache.cordova.camera/www/Camera.js \
+	plugins/org.apache.cordova.camera/www/CameraConstants.js \
+	plugins/org.apache.cordova.camera/www/CameraPopoverHandle.js \
+	plugins/org.apache.cordova.camera/www/CameraPopoverOptions.js \
+	| jsmin &gt; $TARGET ',
+];
+?&gt;
+</pre>
+
+<p>
+解读：
+</p>
+
+<ul>
+<li>
+<code>$COPY_EXCLUDE</code> 中定义了在m1/ wap/目录下的文件不做复制处理。
+
+<li>
+<code>$FILES</code> 明确定义了要处理的文件，一般只用于调试；这里已注释掉。
+
+<li>
+<code>$RULES</code> 里面定义了几条规则，满足正则式则执行之后的步骤。步骤可以是一个数组（表示多步，依次处理）或一个字符串（只有一步）。每一步可以定义：
+
+<ul>
+<li>
+"HASH": 将<code>__HASH__</code> 标识换为实际文件的hash值。对html文件，还可根据WEBCC_BEGIN等标识做文件归并。
+
+<li>
+shell脚本块。注意，当前目录为{src-folder}; 且可以用变量 $TARGET 表示最终文件。
+
+</ul>
+<li>
+没有匹配\(RULES的文件，采用COPY行为，即 将{src-folder}下的文件复制到{web-folder}。除非在<code>\)COPY_EXCLUDE</code> 中指定。
+
+</ul>
+
+<p>
+<strong>[HASH处理规则]</strong>
+</p>
+
+<p>
+将 <code>__HASH__</code> 标识换为实际文件的hash值。对html文件，还可根据WEBCC_BEGIN等标识做文件归并。
+</p>
+
+<p>
+例如： m2/index.html中:
+</p>
+<pre>
+	&lt;script src="../m/app_fw.js?__HASH__"&gt;&lt;/script&gt;
+</pre>
+<p>
+将会替换为
+</p>
+<pre>
+	&lt;script src="../m/app_fw.js?v=3a4bac"&gt;&lt;/script&gt;
+</pre>
+<p>
+webcc在找文件时，自动以当前文件 (m2/index.html)所在目录(即m2目录)作为相对目录去找。如果目录不正确，可用 <code>__HASH__,{dir}</code> 方式指定正确目录.
+</p>
+
+<p>
+例如，在 m/app_fw.js 中：
+</p>
+<pre>
+	loadScript("cordova-ios/cordova.js?__HASH__,m2");  // 缺省webcc以 m/app_fw.js 所在目录即 "m/" 来找文件，而这里指定了目录为 "m2/", 所以webcc会查找文件 "m2/cordova-ios/cordova.js".
+</pre>
+ 
+<p>
+可以在html文件中定义了归并规则，例如文件 m2/index.html 中定义
+</p>
+
+<pre>
+&lt;!-- WEBCC_BEGIN --&gt;
+		&lt;script src="../m/common.js"&gt;&lt;/script&gt;
+		&lt;script src="../m/app_fw.js"&gt;&lt;/script&gt;
+		&lt;script src="../m/app.js"&gt;&lt;/script&gt;
+&lt;!-- WEBCC_USE_THIS
+		&lt;script src="../m/app.min.js?__HASH__"&gt;&lt;/script&gt;
+WEBCC_END --&gt;
+</pre>
+
+<p>
+这表示：
+</p>
+<ul>
+<li>
+WEBCC_BEGIN行到WEBCC_USE_THIS行中间的部分将删除，而WEBCC_USE_THIS行到WEBCC_END行中间的部分保留。处理后如下：
+<pre>
+		&lt;script src="../m/app.min.js?v=3a3345"&gt;&lt;/script&gt;
+</pre>
+ 通过注释技巧，使得测试时 WEBCC_USE_THIS 中的内容实际被注释掉，因而使用的是归并前的版本，而归并后该注释被打开，从而使用新文件 app.min.js。
+
+<li>
+如果没有 WEBCC_USE_THIS 行，则 WEBCC_BEGIN到WEBCC_END中间的部分都将删除。
+
+<li>
+对于新文件的生成，可以定义生成规则如：
+<pre>
+$RULES = [
+	'm/lib-app.min.js' =&gt; ['
+		// 第一步，先归并 common.js等几个文件，并通过jsmin进行压缩 
+		'cd m
+cat common.js app_fw.js app.js | jsmin &gt; $TARGET',     
+
+		// 第二步，再对合并的文件中使用 `__HASH__`的部分进行处理
+		'HASH'   
+	]
+];
+
+注意：
+
+- 文件匹配及脚本中的路径分隔一律用"/"而不是"\"
+- 脚本最终通过sh执行，不要写成bat脚本。
+
+</pre>
+
+</ul>
+
+<h3 id="toc_1.2.3"><a name="网站发布步骤">2.3 网站发布步骤</a></h3>
+
+<p>
+工具：
+</p>
+<ul>
+<li>
+git (版本管理)
+
+<li>
+php/webcc (生成web发布目录)
+
+<li>
+FileZilla (ftp手工上传工具)
+
+<li>
+curl (ftp自动上传工具)
+
+</ul>
+
+<p>
+准备：
+</p>
+<ul>
+<li>
+获取最新代码的rel分支, 存到目录<code>xeyc-sys</code>(或其它名字), 获取线上web目录的内容镜像到目录<code>xeyc-sys-online</code> (勿改此文件夹名称), 如果用命令行，参照：
+<pre>
+git clone -b rel server-pc:xeyc-sys xeyc-sys
+git clone server-pc:xeyc-sys-online xeyc-sys-online
+</pre>
+
+</ul>
+
+<p>
+更新步骤：
+</p>
+<ul>
+<li>
+进入xeyc-sys目录, 打开git bash，运行命令
+<pre>
+build_web.sh
+</pre>
+
+<li>
+根据提示确认修改的文件并上传线上。
+
+</ul>
+
+<p>
+注意：
+</p>
+<ul>
+<li>
+如果出错，解决错误后用Filezilla手工上传修改的文件，或上传整个文件夹。
+
+</ul>
+
+<h2 id="toc_1.3"><a name="附录">3 附录</a></h2>
+
+<p>
+推荐：
+</p>
+<ul>
+<li>
+前端工程与rails中的发布工具：<a href="http://www.zhihu.com/question/20790576">http://www.zhihu.com/question/20790576</a>
+
+</ul>
+
+</body>
+</html>

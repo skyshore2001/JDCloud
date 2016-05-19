@@ -254,13 +254,36 @@ Mobile UI framework
   其中，cordova_plugins.js文件应手工添加所需的插件，并根据应用(g_args._app)及版本(g_args.cordova)设置filter. 可通过 cordova.require("cordova/plugin_list") 查看应用究竟使用了哪些插件。
 - 在部署Web应用时，建议所有cordova相关的文件合并成一个文件（通过Webcc打包）
 
+不同的app大版本(通过URL参数cordova=?识别)或不同平台加载的插件是不一样的，要查看当前加载了哪些插件，可以在Web控制台中执行：
+
+	cordova.require('cordova/plugin_list')
+
 对原生应用的额外增强包括：
 
 - 应用加载完成后，自动隐藏启动画面(SplashScreen)
-- ios7以上, 自动为顶部状态栏留出20px高度的空间. 默认为白色，可以修改类mui-container的样式，如改为黑色：
+- ios7以上, 框架自动为顶部状态栏留出20px高度的空间. 默认为白色，可以修改类mui-container的样式，如改为黑色：
 
 	.mui-container {
 		background-color:black;
+	}
+
+如果使用了StatusBar插件, 可以取消该行为. 
+先在setApp中设置, 如
+
+	MUI.setApp({noHandleIosStatusBar: true, ...});
+
+然后在deviceready事件中自行设置样式, 如
+
+	function muiInit() {
+		$(document).on("deviceready", onSetStatusBar);
+		function onSetStatusBar()
+		{
+			var bar = window.StatusBar;
+			if (bar) {
+				bar.styleLightContent();
+				bar.backgroundColorByHexString("#ea8010");
+			}
+		}
 	}
 
 == 系统类标识 ==
@@ -594,7 +617,7 @@ function CPageManager(app)
 	// "#xx/aaa.html" => {pageId: "aaa", pageFile: "xx/aaa.html"}
 	function getPageInfo(pageRef)
 	{
-		var pageId = pageRef.substr(1);
+		var pageId = pageRef[0] == '#'? pageRef.substr(1): pageRef;
 		var ret = {pageId: pageId};
 		var p = pageId.lastIndexOf(".");
 		if (p == -1) {
@@ -727,7 +750,7 @@ function CPageManager(app)
 			jpage.appendTo(self.container);
 			self.activePage = jpage;
 			fixPageSize();
-			var title = jpage.find(".hd h1, .hd h2").text() || self.title || jpage.attr("id");
+			var title = jpage.find(".hd h1, .hd h2").filter(":first").text() || self.title || jpage.attr("id");
 			document.title = title;
 
 			if (!enableAni) {
@@ -1008,13 +1031,14 @@ ani:: String. 动画效果。设置为"none"禁用动画。
 //}}}
 // ------- ui: dialog {{{
 
-	self.m_enhanceFn[".mui-dialog"] = enhanceDialog;
+	self.m_enhanceFn[".mui-dialog, .mui-menu"] = enhanceDialog;
 
 	function enhanceDialog(jo)
 	{
 		jo.wrap("<div class=\"mui-mask\" style=\"display:none\"></div>");
+		var isMenu = jo[0].classList.contains("mui-menu");
 		jo.parent().click(function (ev) {
-			if (this !== ev.target)
+			if (!isMenu && this !== ev.target)
 				return;
 			closeDialog(jo);
 		});
@@ -1032,7 +1056,7 @@ ani:: String. 动画效果。设置为"none"禁用动画。
 			opt.initfn = null;
 		}
 		if (opt.onBeforeShow)
-			onBeforeShow.call(jdlg);
+			opt.onBeforeShow.call(jdlg);
 		jdlg.show();
 		jdlg.parent().show();
 	}
@@ -1120,7 +1144,7 @@ app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时�
 	'<div id="muiAlert" class="mui-dialog">' + 
 	'	<h3 class="hd p-title"></h3>' + 
 	'	<div class="sp p-msg"></div>' +
-	'	<div class="sp">' +
+	'	<div class="sp nowrap">' +
 	'		<a href="javascript:;" id="btnOK" class="mui-btn primary">确定</a>' +
 	'		<a href="javascript:;" id="btnCancel" class="mui-btn">取消</a>' +
 	'	</div>' +
@@ -2087,7 +2111,8 @@ function main()
 	}
 	console.log(jc.attr("class"));
 
-	handleIos7Statusbar();
+	if (! self.m_app.noHandleIosStatusBar)
+		handleIos7Statusbar();
 }
 
 $(main);
@@ -2096,7 +2121,7 @@ $(main);
 /**
 @fn MUI.setApp(app)
 
-@param app={appName?=user, allowedEntries?, loginPage?="#login", homePage?="#home", pageFolder?="page"}
+@param app={appName?=user, allowedEntries?, loginPage?="#login", homePage?="#home", pageFolder?="page", noHandleIosStatusBar?=false}
 
 - appName: 用于与后端通讯时标识app.
 - allowedEntries: 一个数组, 如果初始页面不在该数组中, 则自动转向主页.

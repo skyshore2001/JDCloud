@@ -485,7 +485,14 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 		$sql = sprintf("INSERT INTO %s (%s) VALUES (%s)", $tbl, $keys, $values);
 #			var_dump($sql);
 		$id = execOne($sql, true);
-		$ret = $id;
+
+		$res = param("res");
+		if (isset($res)) {
+			setParam("id", $id);
+			$ret = tableCRUD("get", $tbl);
+		}
+		else
+			$ret = $id;
 	}
 	elseif ($ac1 == "set") {
 		$id = mparam("id", $_GET);
@@ -1137,6 +1144,13 @@ class AccessControl
 		else
 			$this->sqlConf["cond"][] = $cond;
 	}
+
+	/**
+@fn AccessControl.addJoin(joinCond)
+
+添加Join条件. 参见vcolDefs[]["join"]
+
+	 */
 	final public function addJoin($join)
 	{
 		$this->sqlConf["join"][] = $join;

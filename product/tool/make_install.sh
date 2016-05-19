@@ -34,7 +34,7 @@ script="perl -x -f $f"
 webcc="php `dirname $f`/webcc.php"
 
 # !!! CALL WEBCC
-$webcc server -o $OUT_DIR
+$webcc server -o $OUT_DIR || exit
 
 lastlog=`git log -1 --oneline | tr \" \'`
 echo "=== 最后日志: $lastlog"
@@ -125,7 +125,7 @@ read -p '=== 推送到代码库? (y/n) ' a
 if [[ $a != 'y' && $a != 'Y' ]]; then
 	exit
 fi
-git push origin
+git push -u origin master
 
 exit
 ################# perl cmd {{{

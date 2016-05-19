@@ -572,16 +572,18 @@ class UpgHelper
 		$n = 0;
 		$recCnt = 0;
 		$fn = null;
+		$tmStart = null;
 		while (($ln = fgets($fd)) !== false) {
 			++ $n;
-			$ln = rtrim($ln);
+			$ln = preg_replace('/[ \r\n]+/', '', $ln);
 			if (strlen($ln) == 0)
 				continue;
 			if ($ln[0] == "#") {
 				if (preg_match('/table\s*\[(\w+)\]/i', $ln, $ms)) {
 					# show last table
 					if ($table && $recCnt>0) {
-						echo("=== import $recCnt records to table `$table`!\n\n");
+						$iv = time() - $tmStart;
+						echo("=== import $recCnt records to table `$table` in {$iv} sec!\n\n");
 						$recCnt = 0;
 					}
 
@@ -604,6 +606,7 @@ class UpgHelper
 					else {
 						$step = 1;
 					}
+					$tmStart = time();
 				}
 				continue;
 			}
@@ -619,12 +622,13 @@ class UpgHelper
 			if ($step == 2) {
 				$data = explode("\t", $ln);
 				if (count($data) != count($fields)) {
-					echo("*** Line $n: expect " . count($fields) . " records for table `$table`!");
+					echo("*** Line $n: expect " . count($fields) . " records for table `$table`, actual " . count($data). " fields!\n");
+					echo(">>>$ln<<<\n");
 					break;
 				}
 				# change "null" to null
 				foreach ($data as &$one) {
-					if (strcasecmp($one, "null") == 0) {
+					if ($one === '' || strcasecmp($one, "null") == 0) {
 						$one = null;
 					}
 				}
@@ -640,7 +644,8 @@ class UpgHelper
 			}
 		}
 		if ($table && $recCnt>0) {
-			echo("=== import $recCnt records to table `$table`!\n");
+			$iv = time() - $tmStart;
+			echo("=== import $recCnt records to table `$table` in {$iv} sec!\n\n");
 			$recCnt = 0;
 		}
 		fclose($fd);

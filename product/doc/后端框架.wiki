@@ -1,220 +1,220 @@
- = ͨ��Web��Ʒ��˿����� =
+ = 通用Web产品后端框架设计 =
 
-���� - ���������2015/12
+梁健 - 最近更新于2015/12
 
-%title ͨ��Web��Ʒ��˿�����
+%title 通用Web产品后端框架设计
 %toc
 
-== ���� ==
+== 需求 ==
 
-- �ṩREST-ful���ķ���˽ӿ�API, �ɷ�������Ӻ�����ʽ(��queryLog)�Ͷ��������ʽ(��log.query)��API.
-- �ṩ���ݿ���ơ����𹤾�
-- �ṩ�ֹ����Լ��ع���Թ���
-- �ṩWeb���𹤾�
+- 提供REST-ful风格的服务端接口API, 可方便的添加函数形式(如queryLog)和对象操作形式(如log.query)的API.
+- 提供数据库设计、部署工具
+- 提供手工测试及回归测试工具
+- 提供Web部署工具
 
-== ��Ҫ��� ==
+== 概要设计 ==
 
-=== �ļ��ṹ ===
+=== 文件结构 ===
 
-���
-- ��Ʒ���硰С��������������ǰ�ˡ���˵���ϵͳ��ÿ����ϵͳ�������Ӧ�ã���ǰ�˰����ͻ��ˡ������˵�Ӧ�ã���˰���API�ӿڡ�ĳ���ߡ���ʱ�����Ӧ�á�
-- Ӧ�ã�һ���ɶ���ִ�е�Ӧ�ó��򣨻���ҳ��ڣ���
-- ���ߣ�Ӧ�õ�һ�֣��еĲ�������ֻ���ڿ������̣����еķ��������ڲ�ʹ�û�����Ӧ�õ��á�
-- �⣺��Ӧ�ð������ṩ�������ݺͲ�����
-- ��ܣ����һ�֣�һ����ͺ�����޸ġ���Ӧ�û����������ʹ�á�
+概念：
+- 产品：如“小鳄养车”，包括前端、后端等子系统，每个子系统包括多个应用，如前端包括客户端、管理端等应用，后端包括API接口、某工具、定时任务等应用。
+- 应用：一个可独立执行的应用程序（或网页入口）。
+- 工具：应用的一种，有的不发布（只用于开发过程），有的发布但做内部使用或被其它应用调用。
+- 库：被应用包含，提供共享数据和操作。
+- 框架：库的一种，一般成型后很少修改。被应用或其它库包含使用。
 
-ע�����±��*��ʾ�ɱ��ļ�������ʵ��Ӧ���������ݡ�
+注：以下标记*表示可变文件，根据实际应用添加内容。
 
-*[��Ŀ¼]*
+*[根目录]*
 
 {{{
 
-DESIGN.wiki* -- ������ĵ��������ĵ���docĿ¼�¡�
+DESIGN.wiki* -- 主设计文档。其它文档在doc目录下。
 
-build_web.sh -- Web���𹤾ߡ�
+build_web.sh -- Web部署工具。
 
 }}}
 
-��Ʒ����ĵ�������
-- �������ĵ�������̨����ĵ�������ṩ���ܵ�˵������̨�����ӿڵȣ���ǰ̨����ĵ���ǰ̨��ܵĻ���ʹ�÷�����ӿ���������
-- ������ĵ�: ������Ʒ�����󡢸�Ҫ��ƣ����л�����ϵͳ��ģ����Ҫ����������ϸ��ơ�
- ������ϸ��ư��������ݿ����ƣ������ֶ����ͣ���ͨѶЭ����ƣ������������ҳ����ã����ͻ��˽ӿ���ƣ�ҳ�桢�����ȣ�
-- ר������ĵ�������ϸ����������ƣ��������ݿ⡢ͨѶЭ�鼰�ͻ��˽ӿڷ���һ��ר����������
+产品设计文档包括：
+- 框架设计文档：含后台框架文档（框架提供功能的说明，后台函数接口等）及前台框架文档（前台框架的基本使用方法与接口描述）。
+- 主设计文档: 包括产品的需求、概要设计（运行环境、系统建模、主要用例）、详细设计。
+ 其中详细设计包括：数据库表设计（表、字段类型），通讯协议设计（函数、对象或页面调用），客户端接口设计（页面、参数等）
+- 专题设计文档，与详细设计内容类似，但将数据库、通讯协议及客户端接口放在一个专题中描述。
 
 infrastructure; main app; incrementatal app;
 
-*[���Ӧ�� - serverĿ¼]*
+*[后端应用 - server目录]*
 
-api.php* ::  API�ӿ�Ӧ�á��ṩ����HTTP�ķ��ʽӿڣ���ʽ�磺api.php/fn �� api.php/obj.query�����ļ���������ʵ���ļ����Լ�Ӧ���ڹ��������ݡ�����Ӧ�ÿɰ������Ӷ�ֱ�����ڲ����÷�ʽ����API�ӿڡ�
-app.php* :: Ӧ�ù����⡣��ű������Ŀ��ʹ�õ����ݡ�����Ӧ��һ�㶼Ӧ��������������common.php,app_fw.php,conf.php,conf.user.php�ȡ�
-conf.php* :: ����������Ӧ�ã���app.php�������������ױ��߼���
+api.php* ::  API接口应用。提供基于HTTP的访问接口，形式如：api.php/fn 或 api.php/obj.query；该文件包含其它实现文件，以及应用内共享的数据。其它应用可包含它从而直接以内部调用方式访问API接口。
+app.php* :: 应用共享库。存放被多个项目所使用的数据。所有应用一般都应包含它。它包含common.php,app_fw.php,conf.php,conf.user.php等。
+conf.php* :: 适用于所有应用（被app.php包含），保存易变逻辑。
 
-�ڲ�ʵ�ֲ��֣�
+内部实现部分：
 
-php/common.php :: ͨ�ù����⡣���������������֣�������һ��php��Ŀ��
-php/app_fw.php :: Ӧ�ÿ�ܿ⡣Ϊ����Ӧ���ṩ���֧�֣���app_��ͷ��ʾ����������Ӧ�ã�fw��ʾframework������app.php������
-php/conf.user.php* :: ��ȱʡ�����ڸ��ݲ��𻷾��޸�Ӧ�����á���app.php������
+php/common.php :: 通用共享库。基础公共函数部分，可适用一切php项目。
+php/app_fw.php :: 应用框架库。为所有应用提供框架支持（以app_开头表示适用于所有应用，fw表示framework），被app.php包含。
+php/conf.user.php* :: 可缺省，用于根据部署环境修改应用配置。被app.php包含。
 
-php/api_fw.php :: API�ӿ�Ӧ�õĿ��ʵ�֣���api_��ͷ��ʾ����API�ӿ�Ӧ�ã�����api.php������
-php/api_functions.php* :: API�ӿ�Ӧ���еĺ���ʵ�ֲ��֡���api.php������
-php/api_objects.php* :: API�ӿ�Ӧ���еĶ������ʵ�ֲ��֡���api.php������
+php/api_fw.php :: API接口应用的框架实现（以api_开头表示属于API接口应用）。被api.php包含。
+php/api_functions.php* :: API接口应用中的函数实现部分。被api.php包含。
+php/api_objects.php* :: API接口应用中的对象访问实现部分。被api.php包含。
 
-*[�ع���� - rtestĿ¼]*
+*[回归测试 - rtest目录]*
 
-rtest.php* :: �ع�������ݡ���TODO: ����apiӦ�ã��ɲ��Ϊ rtest.php, php/rtest_fw.php, php/rtest_group1.php, php/rtest_group.php��)
+rtest.php* :: 回归测试内容。（TODO: 类似api应用，可拆分为 rtest.php, php/rtest_fw.php, php/rtest_group1.php, php/rtest_group.php等)
 
-run_rtest.pl :: �ع����ִ�й��ߡ�
+run_rtest.pl :: 回归测试执行工具。
 
-client.php :: �ֹ����Թ��ߡ�ģ��ǰ�˵���API�ӿڡ�
+client.php :: 手工测试工具。模拟前端调用API接口。
 
-�ڲ�ʵ�ֲ��֣�
+内部实现部分：
 
-WebAPI.php :: ����Ӧ�ÿ�ܿ⡣
+WebAPI.php :: 测试应用框架库。
 
-*[�ĵ� - docĿ¼]*
+*[文档 - doc目录]*
 
-index.html*:: �ĵ�Ŀ¼���޸����������ĵ���
+index.html*:: 文档目录。修改它以增加文档。
 
-__README.html:: �����ĵ�������
+__README.html:: 介绍文档管理。
 
-��̨���.wiki:: �����ģ�����ͨ�ò�Ʒ�����ơ�
+后台框架.wiki:: 即本文，介绍通用产品框架设计。
 
-WebӦ�ò���:: ���𹤾��ĵ���
+Web应用部署:: 部署工具文档。
 
-����淶.wiki::
+编码规范.wiki::
 
-*[���� - toolĿ¼]*
+*[工具 - tool目录]*
 
-upgrade.php:: ���ݲ��𹤾ߡ�������������ݿ�����������ݵȡ�
+upgrade.php:: 数据部署工具。创建或更新数据库表，导入数据等。
 
-webcc.php:: Web���𹤾ߡ��û��ϴ����������Web��ƷĿ¼��
+webcc.php:: Web部署工具。用户上传或更新线上Web产品目录。
 
-cmdtool.template.php:: ʹ��app.php�������ݲ������ߵ�ʾ�����������������ݵ���ȡ�
+cmdtool.template.php:: 使用app.php创建数据操作工具的示例，如用于特殊数据导入等。
 
-=== ���л��� ===
+=== 运行环境 ===
 
-*[���𻷾�]*
+*[部署环境]*
 
-- Linux CentOS5 ���ϰ汾 x64����ʹ�ð�����ƽ̨
+- Linux CentOS5 以上版本 x64，可使用阿里云平台
 - Apache2.4 + php5.4
-- Mysql5����
+- Mysql5以上
 
-*[��������]*
+*[开发环境]*
 
-- Windows��Linux
+- Windows或Linux
 - php5.4 (5.4.31)
 - Apache/IIS
-- ���ݿ�mysql5
+- 数据库mysql5
 
-*[��ʾ��]*
+*[演示版]*
 
-��ʾ�����ڿ��ٿ���ԭ�ͼ�������ʾ�������л�����Ҫ�󣬲�����򵥡�
-- Windows/Linux/Mac (һ����Windows����������������Linux�������У�֧����Mac�������Ա㿪��iphoneӦ��ʱ����ػ���)
+演示版用于快速开发原型及测试演示，对运行环境低要求，部署极其简单。
+- Windows/Linux/Mac (一般在Windows环境开发，最终在Linux环境运行，支持在Mac上运行以便开发iphone应用时搭建本地环境)
 - php5.4.31
-- phpunit4.2���ڻع���ԡ�
-- ����mysql�����ݿ���񡣣�ʹ������sqlite3�Է�����Ի���ʾ����
-- ����Apache��web��������(ֱ����php�������Է�����Ի���ʾ����
+- phpunit4.2用于回归测试。
+- 无需mysql等数据库服务。（使用内置sqlite3以方便测试或演示。）
+- 无需Apache等web服务器。(直接用php开服务以方便测试或演示。）
 
-=== ������ ===
+=== 配置项 ===
 
-*[���л���]*
+*[运行环境]*
 
-����֧��mysql��sqlite���ݿ⣬��������mysql���ݿ����
-- ������Linux������
-- Ӧ��Ŀ¼�²������ļ� CFG_USE_SQLITE
+服务支持mysql和sqlite数据库，服务连接mysql数据库仅当
+- 运行在Linux环境下
+- 应用目录下不存在文件 CFG_USE_SQLITE
 
-*[����ģʽ - TEST_MODE]*
+*[测试模式 - TEST_MODE]*
 
-����֧�ֲ���ģʽ����������Ϊcarsvc_test�����ݿ⣬������һЩ���������������
-- ����api.phpʱָ������_test��0 ��
-- ʹ��sqlite���ݿ� ��
-- Ӧ��Ŀ¼�´����ļ� CFG_TEST_MODE
+服务支持测试模式，它连接名为carsvc_test的数据库，并允许一些清除操作。仅当：
+- 调用api.php时指定参数_test非0 或
+- 使用sqlite数据库 或
+- 应用目录下存在文件 CFG_TEST_MODE
 
-������������ζ�ţ�
-- ��������Linuxƽ̨�ϣ�ȱʡ����mysql���ݿⲢ���ڷǲ���ģʽ�¡�
-- ��������Windows/iOSƽ̨�ϣ�ȱʡ����sqlite���ݿⲢ���ڲ���ģʽ�¡�
-- ����Webҳ�棬��ҳ����URL�к���"?test"ʱ��Ӧ�������ڲ���ģʽ��
-  ���web�ͻ���Ӧ��ʱ������5�ε���û���Ϣҳ��ͷ(һ��domԪ��Ϊ"#me div[data-role=header]")���ڲ���ģʽ������ģʽ���л���
-  Ӧ�ó���Ӧ�ӷ�����ȡ��Ϣ��ȷ���Ƿ������ڲ���ģʽ������ǣ�Ӧ��ȷ��ʾ������Web�ͻ���Ӧ��ѭ�����ԭ��
+以上设置项意味着：
+- 当运行在Linux平台上，缺省连接mysql数据库并处于非测试模式下。
+- 当运行在Windows/iOS平台上，缺省连接sqlite数据库并处于测试模式下。
+- 对于Web页面，打开页面且URL中含有"?test"时，应用运行在测试模式。
+  设计web客户端应用时，连续5次点击用户信息页标头(一般dom元素为"#me div[data-role=header]")可在测试模式与生产模式间切换。
+  应用程序应从服务器取信息以确定是否运行在测试模式，如果是，应明确显示。（各Web客户端应遵循该设计原则）
 
-*[����ѡ��]*
+*[配置选项]*
 
-�˴��г��õ���������, �����÷����������ĵ�. serverָ���������(����upgrade.php����), testָ�ֹ�����(��client.php), rtestָ�Զ��ع����(run_rtest.pl).
+此处列出用到的配置项, 具体用法请搜索本文档. server指服务端配置(包括upgrade.php工具), test指手工测试(如client.php), rtest指自动回归测试(run_rtest.pl).
 - file CFG_USE_SQLITE (for server)
 - file CFG_TEST_MODE (for server)
 - envvar P_DB (for server)
 - envvar SVC_URL (for test and rtest)
 - envvar P_DEBUG (for server, test and rtest) and URL param _debug (for server)
 - envvar P_SHARE_COOKIE (for rtest)
-- envvar P_TEST (for test/rtest) ����ͨ��URL����_test. WebAPI/client.phpȱʡ�����ڲ���ģʽ(��P_TEST=1)��run_rtest.pl�����ڻع����ģʽ(P_TEST=2), ���Ҫ������ģʽ���ֹ����øò���ΪP_TEST=0������ģʽ�����ģʽ��������������������ã��ò�����һ��ʵ������������ģʽ����
-- envvar P_DBCRED (for server) ָ�����ݿ��¼�û��������롣��ʽΪ"{user}:{pwd}"��base64������ʽ��
-- file `php/conf.user.php` (for server), ���ļ��������Զ����أ����������Զ�������ѡ��綨�����ݿ��û������� ($GLOBALS["dbcred"])��
-- envvar P_SESSION_DIR (for server) ָ��session�ļ�����λ�ã�ȱʡ��Ӧ��Ŀ¼�¡�ע�⣺����ģʽ��session�Ƿֿ�����ģ��ڸ�Ŀ¼����Ŀ¼"t"�С�
-- envvar P_URL_PATH (for server) ָ��Ӧ�õ�URL����·��(��"/"��ͷ)������ƴ����ȷ������url·����
+- envvar P_TEST (for test/rtest) 设置通用URL参数_test. WebAPI/client.php缺省运行于测试模式(即P_TEST=1)，run_rtest.pl运行于回归测试模式(P_TEST=2), 如果要用生产模式请手工设置该参数为P_TEST=0（生产模式或测试模式还决定于其它服务端配置，该参数不一定实际运行在生产模式）。
+- envvar P_DBCRED (for server) 指定数据库登录用户名及密码。格式为"{user}:{pwd}"的base64编码形式。
+- file `php/conf.user.php` (for server), 该文件存在则自动加载，用于设置自定义配置选项，如定义数据库用户名密码 ($GLOBALS["dbcred"])。
+- envvar P_SESSION_DIR (for server) 指定session文件保存位置，缺省是应用目录下。注意：测试模式的session是分开保存的，在该目录下子目录"t"中。
+- envvar P_URL_PATH (for server) 指定应用的URL绝对路径(以"/"开头)。用于拼出正确的完整url路径。
 
-*[ģ��ģʽ - MOCK_MODE]*
+*[模拟模式 - MOCK_MODE]*
 
-��Ӧ��Ŀ¼�´����ļ� CFG_MOCK_MODE ʱ������������ģ��ģʽ��
-���ߣ���Ӧ�ô�������ģʽ�£���Ӧ��Ŀ¼�����ļ� CFG_MOCK_T_MODE, ����������ģ��ģʽ��
-��ʱ�����ⲿϵͳ�������������ģ�飬΢�Žӿڣ�֧����֧���ȣ�����ģ�����У�ֻ������־�� ext.log �С�
+当应用目录下存在文件 CFG_MOCK_MODE 时，服务运行于模拟模式。
+或者，当应用处理测试模式下，且应用目录下有文件 CFG_MOCK_T_MODE, 服务运行于模拟模式。
+这时，对外部系统的依赖（如短信模块，微信接口，支付宝支付等）都将模拟运行，只生成日志到 ext.log 中。
 
-��ͨ������ tool/log.php �鿴��־��
+可通过工具 tool/log.php 查看日志。
 
-==== �������� ====
+==== 部署配置 ====
 
-��Ӧ�����ʱ��һ��ʹ��ǰ׺��Ϊ"P_"�Ļ���������ʹ��ʱ��չ��
+在应用设计时，一般使用前缀名为"P_"的环境变量供使用时扩展。
 
-���ݲ�ͬ�Ĳ��𻷾����ɴ����������ļ�`php/conf.user.php`��һ��ʹ��putenv���û�����������ini_set���ò�����
+根据不同的部署环境，可创建和配置文件`php/conf.user.php`。一般使用putenv设置环境变量或用ini_set设置参数。
 
-���磺
+例如：
 
-*[���ݿ�����]*
+*[数据库密码]*
 
-����
+例：
 {{{
 putenv("P_DB=localhost/carsvc");
 putenv("P_DBCRED=bGo6aWhxZ19VR0xH");
 }}}
 
-�����ϣ����ͬʱ֧�ֲ���ģʽ(TEST_MODE)������ģʽ�������ģʽӦʹ��ר�ŵ�DB, �����ñ���P_DB_TEST���ã�
+在线上，如果同时支持测试模式(TEST_MODE)和生产模式，则测试模式应使用专门的DB, 可以用变量P_DB_TEST设置：
 {{{
 putenv("P_DB=localhost/carsvc");
 putenv("P_DBCRED=bGo6aWhxZ19VR0xH");
 
 putenv("P_DB_TEST=localhost/carsvc_test");
-// putenv("P_DBCRED_TEST=bGo6aWhxZ19VR0xH"); // �����õ�¼�û������룬��������ʹ��P_DBCRED
+// putenv("P_DBCRED_TEST=bGo6aWhxZ19VR0xH"); // 可设置登录用户及密码，不设置则使用P_DBCRED
 }}}
 
-*[URL·��]*
+*[URL路径]*
 
-�粿��·��Ϊ http://oliveche.com/cheguanjia/ ��������
+如部署路径为 http://oliveche.com/cheguanjia/ ，则设置
 {{{
 putenv("P_URL_PATH=/cheguanjia");
 }}}
 
-��������ã�Ӧ�ý��Զ��жϣ��������������ʹ���˷������ӣ�����ж�ʧ�󣩡�
+如果不设置，应用将自动判断（但如果服务器上使用了符号链接，则会判断失误）。
 
-ע�⣺
-- ʹ�þ���·����һ����Ҫ"/"��ͷ�����ô�����cookieȨ�޵���Ӧ���޷�ʹ�á�
+注意：
+- 使用绝对路径，一定以要"/"开头；设置错误将因cookie权限导致应用无法使用。
 
-=== �����淶 ===
+=== 命名规范 ===
 
-����/������/���ݿ�����ֶ���ʹ���շ�ʽ(�׸�����Сд�����൥������ĸ��д)����getCarModel, svcId��
+变量/函数名/数据库表的字段名使用驼峰式(首个单词小写，其余单词首字母大写)，如getCarModel, svcId。
 
-WebAPI�ĵ������ʹ������Ҳ�����շ�ʽ������Ŀǰʵ��ʱ�����ִ�Сд, ���Ե���ʱҲ������ȫ��Сд��ϰ���ϣ�url�ﳣ��ֻ��Сд��ĸ���Ҳ����»��ߡ�)
-���磬���ýӿ���queryOrder���������ΪmodelId, storeId�ȡ�
+WebAPI的调用名和传入参数也采用驼峰式，由于目前实现时不区分大小写, 所以调用时也可以用全部小写（习惯上，url里常常只用小写字母，且不带下划线。)
+例如，调用接口名queryOrder，传入参数为modelId, storeId等。
 
-�����������ݿ�������ô��շ�ʽ�����Pascal���������е�������ĸ��д��, ��OrderStatus.
+类名，或数据库表名，用大驼峰式（或叫Pascal命名，所有单词首字母大写）, 如OrderStatus.
 
-== ���ݿ���� ==
+== 数据库设计 ==
 
-����[ϵͳ��ģ]������ݿ���ṹ��
+根据[系统建模]设计数据库表结构。
 
-*[ͨ�ù���]*
+*[通用规则]*
 
-- ÿ�������������ֶ�id��Ϊ������������Ҳ�����⡣
-- ����һ����xxxId��ʾ����������˵����һ����ֶηǿգ�
-- �ֶ�����ͨ��������ʽ˵��, ��ͨ��������׺��ʾ˵��, ��������: 
+- 每个表均有整型字段id作为主键；关联表也不例外。
+- 外链一般以xxxId表示，除非特殊说明，一般该字段非空；
+- 字段类型通过名称隐式说明, 或通过声明后缀显示说明, 规则如下: 
 | end with "Id"                           | Integer            |
 | end with "Price"/"Total"/"Qty"/"Amount" | Currency           |
 | end with "Tm"/"Dt"/"Time"               | Datetime/Date/Time |
@@ -223,83 +223,83 @@ WebAPI�ĵ������ʹ������Ҳ�����շ�ʽ������Ŀǰʵ��ʱ�����ִ�Сд, ���Ե���ʱҲ��
 | type=@                                  | Currency           |
 | type=#                                  | Double             |
 | end with "Flag"                         | TinyInt(1B)        |
- ����, �������ȷ��ʶ, ȱʡΪ�ַ�������. 
-- �ַ���һ�����nvarchar֧��unicode��������`name(s)`���ִ����������·�ʽ������
+ 此外, 如果无明确标识, 缺省为字符串类型. 
+- 字符串一般采用nvarchar支持unicode，描述如`name(s)`，字串长度以如下方式描述：
 | s | small=20            |
 | m | medium=50 (default) |
 | l | long=255            |
 | t | text                |
 
-����������, "@"��ͷ��ʾ���������Զ�����meta data����.
+下面描述中, "@"开头表示将被工具自动当作meta data处理.
 
-ע�⣺
-- һЩ����������ĳЩ���ݿ�ϵͳ�ؼ��ֳ�ͻӦ���⣬�粻ʹ��"desc", ����"dscr" (description).
+注意：
+- 一些名字由于与某些数据库系统关键字冲突应避免，如不使用"desc", 改用"dscr" (description).
 
 TODO: define unique-key, index
 
-== ͨѶЭ����� ==
+== 通讯协议设计 ==
 
-=== ͨ��ԭ�� ===
+=== 通用原则 ===
 
-�ͻ���ͨ��HTTPЭ�������˽��������÷����WebAPI��
-- Requestһ��ʹ��HTTP GET/POST�������緽������"fn(p1, p2)"������HTTP GET����(ͨ��URL����)ʵ��: `GET /api.php?ac=fn&p1=value1&p2=value2`,
-  Ҳ������POST����ʵ��:
+客户端通过HTTP协议与服务端交互，调用服务端WebAPI。
+- Request一般使用HTTP GET/POST方法，如方法描述"fn(p1, p2)"可以用HTTP GET请求(通过URL传参)实现: `GET /api.php?ac=fn&p1=value1&p2=value2`,
+  也可以用POST请求实现:
   {{{
 POST /api.php?ac=fn
 Content-Type: application/x-www-form-urlencoded
 
 p2=value2&p1=value1
   }}}
-  ����"ac"��"_ac"��ʶ������, ����ʹ��URL��������, ��������δ��˵����, ����ѡ��ͨ��URL��POST����.
-- ������������Ϊ"fn(p1)(p2,p3)", ����ʾ��һ�������еĲ�����ʾ����ͨ��POST����, ��ǰһ�����ŵĲ���������URL������, ��:
+  参数"ac"或"_ac"标识方法名, 必须使用URL参数传递, 其它参数未加说明的, 可以选择通过URL或POST传参.
+- 少数方法描述为"fn(p1)(p2,p3)", 它表示后一个括号中的参数表示必须通过POST传参, 而前一个括号的参数必须用URL传参数, 如:
   {{{
 POST /api.php?ac=fn&p1=value1
 Content-Type: application/x-www-form-urlencoded
 
 p2=value2&p3=value3
   }}}
-  ע��Content-Type��Ҫ������ȷ, ��������������ر�ָ��������upload��������ʹ��"Content-type: multipart/form-data"��
+  注意Content-Type需要设置正确, 少数例外情况会特别指出，比如upload方法，它使用"Content-type: multipart/form-data"。
   
-- ֻҪ�������ȷ�յ����󲢴�����������codeΪHTTP 200��Response��������ʹ��json��ʽ��Ϊһ�����ٺ���2Ԫ�ص����顣
- - ��WebAPI����ɹ�ʱ��������Ϊ `[0, data]`������`data`��������WebAPI�������������塣
- - ������ʧ��ʱ��������Ϊ `[��0������, ������Ϣ].
- - �ӷ�������ĵ�3��Ԫ����, Ϊ������Ϣ, �������������, ���ʺ���ʾ���û���.
-- ���н������ݲ���UTF-8���롣
+- 只要服务端正确收到请求并处理，均返回code为HTTP 200的Response，其内容使用json格式，为一个至少含有2元素的数组。
+ - 在WebAPI请求成功时返回内容为 `[0, data]`，其中`data`的类型由WebAPI返回类型所定义。
+ - 在请求失败时返回内容为 `[非0错误码, 错误信息].
+ - 从返回数组的第3个元素起, 为调试信息, 仅用于问题诊断, 不适合显示给用户看.
+- 所有交互内容采用UTF-8编码。
 
-�������WebAPI����Ϊ����
+以下面的WebAPI描述为例：
 {{{
-����idȡ������Ϣ��
+根据id取车型信息：
 getModel(id) -> {id, name, dscr}
 }}}
 
-������������Ϣ��
-- WebAPI������getModel������Ϊid����Ӧ��Request URLΪ `GET /api.php?ac=getModel&id=100`
-  URL����`ac`��ʾWebAPI���ƣ�һ����ȫСд��
-  Ϊ��ֹ����˻��壬һ������ʱ��Ӧ����һ������������� `GET /api.php?ac=getModel&id=100&rnd=5234762234`.
-  ֮�������ʾ����, HTTP���󽫱�������Ϊ:
+它包含以下信息：
+- WebAPI名称是getModel，参数为id，对应的Request URL为 `GET /api.php?ac=getModel&id=100`
+  URL参数`ac`表示WebAPI名称，一般用全小写。
+  为防止服务端缓冲，一般请求时还应加上一个随机参数，如 `GET /api.php?ac=getModel&id=100&rnd=5234762234`.
+  之后的请求示例中, HTTP请求将被简化描述为:
   {{{
 getModel(id=100)
   }}}
   
-- �����ɹ���������Ϊ`{id, name, dscr}`������`{id: 100, name: "myname", dscr:"mydscr"}`�����ڷ������ͱ�����ʽ����½������������ķ�������Ϊ
+- 处理成功返回类型为`{id, name, dscr}`，例如`{id: 100, name: "myname", dscr:"mydscr"}`，关于返回类型表述方式详见下节描述。完整的返回内容为
 {{{
 HTTP/1.1 200 OK
 
 [0, {id: 100, name: "myname", dscr:"mydscr"}]
 }}}
-  ֮���ʾ���У��������ݽ���������Ϊ��
+  之后的示例中，返回内容将被简化描述为：
 {{{
 {id: 100, name: "myname", dscr:"mydscr"}
 }}}
 
-- ����ʧ��ʱ������Ϣ��
+- 处理失败时返回信息如
 {{{
 HTTP/1.1 200 OK
 
-[1, "δ��֤"]
+[1, "未认证"]
 }}}
 
-*[�����붨��]*
+*[错误码定义]*
 
 {{{
 const E_OK=0;
@@ -310,48 +310,48 @@ const E_SERVER=4;
 const E_FORBIDDEN=5;
 
 $ERRINFO = [
-	E_PARAM => "��������ȷ",
-	E_AUTH => "δ��֤",
-	E_DB => "���ݿ����",
-	E_SERVER => "����������",
-	E_FORBIDDEN => "��ֹ����"
+	E_PARAM => "参数不正确",
+	E_AUTH => "未认证",
+	E_DB => "数据库错误",
+	E_SERVER => "服务器错误",
+	E_FORBIDDEN => "禁止操作"
 ];
 }}}
 
-TODO: ���ÿ�������Ϣ.
+TODO: 审查每项错误信息.
 
-*[���ڿ�ֵ]*
+*[关于空值]*
 
-�����в���"a=1&b=&c=hello", ���в���"b"ֵΪ�մ���
-һ������£�������δ��ֵ����������"a=1&c=hello"������ͬ��
+假如有参数"a=1&b=&c=hello", 其中参数"b"值为空串。
+一般情况下，被当作未赋值处理，即与"a=1&c=hello"意义相同。
 
-ֻ���ڶ��󱣴��������У����͵���ͨ�ñ�������{tblname}.set���������ҳ�����POST���ݵ�"a="��ʾ�����ֶ���null(��"a=null"������ͬ), ע�⣺�����ÿ��ַ�����
+只有在对象保存上下文中（典型的是通用表操作的{tblname}.set操作），且出现中POST内容的"a="表示将该字段置null(与"a=null"语义相同), 注意：不是置空字符串。
 
-==== ���÷����������� ====
+==== 常用返回类型描述 ====
 
 *{id, name}*
 
-һ���򵥶����������ֶ�id��name��e.g. `{id: 100, name: "name1"}`
+一个简单对象，有两个字段id和name。e.g. `{id: 100, name: "name1"}`
 
 *[id...] or [id]*
 
-һ�������飬Ԫ��Ϊid��e.g. `[100, 200, 400]`, ÿ��Ϊһ��id
+一个简单数组，元素为id。e.g. `[100, 200, 400]`, 每项为一个id
 
 *[id, name]*
 
-һ�������飬e.g.  `[100, "liang"]`����һ��Ϊid,  �ڶ���Ϊname
+一个简单数组，e.g.  `[100, "liang"]`，第一项为id,  第二项为name
 
-*[ [id, name] ] �� varr(id, name)*
+*[ [id, name] ] 或 varr(id, name)*
 
-�򵥶�ά���飬�ֳ�varr, �� `[ [100, "liang"], [101, "wang"] ]`.
+简单二维数组，又称varr, 如 `[ [100, "liang"], [101, "wang"] ]`.
 
-*[{id, name}] �� objarr(id, name)*
+*[{id, name}] 或 objarr(id, name)*
 
-һ�����飬ÿ��Ϊһ�������ֳ�objarr��e.g. `[{id: 100, name: "name1"}, {id: 101, name: "name2"}]`
+一个数组，每项为一个对象，又称objarr。e.g. `[{id: 100, name: "name1"}, {id: 101, name: "name2"}]`
 
 *tbl(id, name)*
 
-table��������ϸ��ʽΪ `{h: [header1, header2, ...], d:[row1, row2, ...]}`������
+table对象。其详细格式为 `{h: [header1, header2, ...], d:[row1, row2, ...]}`，例如
 {{{
 {
   h: ["id", "name"],
@@ -359,196 +359,196 @@ table��������ϸ��ʽΪ `{h: [header1, header2, ...], d:[row1, row2, ...]}`�����
 }
 }}}
 
-table����֧�ַ�ҳ����(paging)�������ֶ��а���"nextkey"�ȡ�
-������ο���һ�½�"��ҳ����".
+table对象支持分页机制(paging)，返回字段中包含"nextkey"等。
+详情请参考下一章节"分页机制".
 
-ע�⣺
-- Ŀǰ��json�������ݲ��������λ��ַ�����, ��඼������������
-- �����������ͣ������ܷ���null���ͻ��˱����ܹ�����null������תΪ��Ӧ������ȷ��ֵ��
+注意：
+- 目前的json返回内容不区分整形或字符串型, 大多都用引号括起来
+- 不论哪种类型，都可能返回null。客户端必须能够处理null，将其转为相应类型正确的值。
 
-*[��ѡ����]*
+*[可选参数]*
 
-���API�Ĳ�����ʾΪ:
+如果API的参数表示为:
 {{{
 fn(p1, p2?, p3?=1
 }}}
 
-����ʾ��
-- p1�Ǳ�ѡ����
-- p2,p3�ǿ�ѡ������p3��ȱʡֵ��1��p2ȱʡֵ��0/""/null(ȡ������������)
+它表示：
+- p1是必选参数
+- p2,p3是可选参数，p3的缺省值是1，p2缺省值是0/""/null(取决于它的类型)
 
-*[�����������л�Ϊ�ַ�������]*
+*[复杂类型序列化为字符串描述]*
 
-��ʱ��һ���ַ����ֶα�ʾ���ӵĽṹ����ʱ����������������ʽ��
+有时用一个字符串字段表示复杂的结构，这时常以下类型描述方式：
 
-- ���ŷָ��ļ��ַ������У���
+- 逗号分隔的简单字符串序列，如
 {{{
-"����,γ��"
-��
-"����/Double,γ��/Double"
+"经度,纬度"
+或
+"经度/Double,纬度/Double"
 }}}
-�ɱ�ʾ
+可表示
 `121.233543,31.345457`
 
-- Coord����
+- Coord类型
 
-Coord="����/Double,γ��/Double".
+Coord="经度/Double,纬度/Double".
 
-- ���ŷָ��У�ð�ŷָ��еı������list����
+- 逗号分隔行，冒号分隔列的表，简称list，如
 {{{
 "id:name?,"
-�������"?"��ʾ�ǿ�ѡ����(���Ų����٣���ʾ���飬��������ж���ظ���)
-��
+参数后加"?"表示是可选参数(逗号不可少，表示数组，即后面可有多个重复项)
+或
 list(id, name?)
-��ָ������ 
+或指定类型 
 list(id/Integer, name?/String)
 }}}
 
-ÿ��Ԫ����","�ָ�, Ԫ����ÿ���ֶ���":"�ָ���ÿ���ֶ��ڲ������������������(��������ڣ��м䲻������":", ��"2015/11/20 1030"��"20151120 1030")��
-����
+每个元组用","分隔, 元组内每个字段用":"分隔。每个字段内不能有这两个特殊符号(如果是日期，中间不可以有":", 如"2015/11/20 1030"或"20151120 1030")。
+例如
 {{{
 10:liang,11:wang
 }}}
-���name�ֶ�ʡ�ԣ���ɼ�Ϊ`10,11`.
+如果name字段省略，则可简化为`10,11`.
 
-TODO: Ҳ���Դ���ͷ��Ϣ�����ַ�"@"�����б�ͷ������ `@id:name,10:liang,11:wang` �� `@id,10,11`.
+TODO: 也可以带表头信息（首字符"@"标明有表头），如 `@id:name,10:liang,11:wang` 或 `@id,10,11`.
 
-���ָ�ʽһ������server/cient�䴫�ݼ򵥵ı���
+这种格式一般用于server/cient间传递简单的表。
 
-- json���л�����Table��ʽ��
-
-{{{
-json.tbl(id, name) �� json({h:["id","name"],d:[row1,row2...]})
-}}}
-
-�ʺϴ�����ͨ�ı���
-
-- php���л�:
+- json序列化及其Table格式。
 
 {{{
-php([{id,name}]) �� php.objarr(id, name)
+json.tbl(id, name) 或 json({h:["id","name"],d:[row1,row2...]})
 }}}
 
-�ʺϴ洢�������ݵ�һ�����ֶΣ���������server/client�����ݽ�����
-��ʹ��php��serialize/unserialize���ɣ���ʽ�磺
+适合传递普通的表。
+
+- php序列化:
+
+{{{
+php([{id,name}]) 或 php.objarr(id, name)
+}}}
+
+适合存储复杂数据到一个简单字段，但不用于server/client间数据交互。
+它使用php的serialize/unserialize生成，格式如：
 {{{
 a:2:{i:0;a:2:{s:2:"id";i:10;s:4:"name";s:5:"liang";}i:1;a:2:{s:2:"id";i:11;s:4:"name";s:4:"wang";}}
 }}}
 
-�����ֶ���server/client����ʱӦʹ�õȼ۵�json.objarr(id,name) ��
+上述字段在server/client交互时应使用等价的json.objarr(id,name) 如
 {{{
 [
 	{id: 10, name: "liang"},
 	{id: 11, name: "wang"},
 ]
 }}}
-�� list(id,name) ��
+或 list(id,name) 如
 {{{
 @id:name,10:liang,11:wang
 }}}
 
-- csv���У��м��ûس��ָ���ÿ���ֶ���","�ָ���
-�ʺϿͻ���������ͨ��http content��������� `csv(id,name,dscr)`
+- csv序列（行间用回车分隔，每个字段用","分隔）
+适合客户端向服务端通过http content传大表。如 `csv(id,name,dscr)`
 
-- url���л�
-��
+- url序列化
+如
 {{{
 urlist(id, qty)
 }}}
 
-�ɱ�ʾ
+可表示
 {{{
 items[0][id]=101&item[0][qty]=2&items[1][id]=102&item[1][qty]=4
 }}}
 
-==== ��ҳ���� ====
+==== 分页机制 ====
 
-���һ����ѯ֧�ַ�ҳ(paging), ��һ�������ʽΪ
+如果一个查询支持分页(paging), 则一般调用形式为
 
 {{{
 Ordr.query(_pagekey?, _pagesz?=20) -> {nextkey, total?, @h, @d}
-��
+或
 Ordr.query(page, rows?=20) -> {nextkey, total, @h, @d}
 }}}
 
-*[����]*
+*[参数]*
 
-_pagesz:: Integer. ҳ��С��Ĭ��Ϊ20�����ݡ�
-_pagekey:: String (Ŀǰ����ֵ). һ��ĳ�β�ѯ����д������Ҫ�����ܼ�¼����total�ֶΣ���Ӧ��дΪ0�������´β�ѯʱӦ�����ϴε���ʱ�������ݵ�"nextkey"�ֶ�����д��
+_pagesz:: Integer. 页大小，默认为20条数据。
+_pagekey:: String (目前是数值). 一般某次查询不填写（如需要返回总记录数即total字段，则应填写为0），而下次查询时应根据上次调用时返回数据的"nextkey"字段来填写。
 
-page/rows:: Ϊ֧��jquery-easyui������, ��_pagekey/_pagesz����, ��������: ÿ�ξ�����total�ֶ�; ǿ�Ʋ���"limit"�㷨(Ĭ�����û���÷���������,�����"���ֲ�ѯ"�㷨), ��ζ��nextkey����һҳҳ��.
+page/rows:: 为支持jquery-easyui而设置, 与_pagekey/_pagesz类似, 区别在于: 每次均返回total字段; 强制采用"limit"算法(默认如果没有用非主键排序,会采用"部分查询"算法), 意味着nextkey即下一页页码.
 
-*[����ֵ]*
+*[返回值]*
 
-nextkey:: String. һ���ַ���, ��ȡ��һҳʱ��д����"_pagekey". ��������ڸ��ֶΣ���˵���Ѿ������һ�����ݡ�
-total:: Integer. �����ܼ�¼��������_pagekeyָ��Ϊ0ʱ���ء�
-h/d:: ʵ�����ݱ���ͷ��Ϣ(header)��������(data)������table����ĸ�ʽ���ο���һ�½�tbl(id,name)���ܡ�
+nextkey:: String. 一个字符串, 供取下一页时填写参数"_pagekey". 如果不存在该字段，则说明已经是最后一批数据。
+total:: Integer. 返回总记录数，仅当_pagekey指定为0时返回。
+h/d:: 实际数据表的头信息(header)和数据行(data)，符合table对象的格式，参考上一章节tbl(id,name)介绍。
 
-*[ʾ��]*
+*[示例]*
 
-��һ�β�ѯ
+第一次查询
 {{{
 Ordr.query()
 }}}
 
-����
+返回
 {{{
 {nextkey: 10800910, h: [id, ...], data: [...]}
 }}}
 
-���е�nextkey�����´β�ѯʱ��д_pagekey�ֶΣ��״β�ѯ���᷵��total�ֶΡ�����ȱʡҳ��СΪ20�����Կɹ����ܹ���51/20=3ҳ��
+其中的nextkey将供下次查询时填写_pagekey字段；首次查询还会返回total字段。由于缺省页大小为20，所以可估计总共有51/20=3页。
 
-Ҫ���״β�ѯʱ�����ܼ�¼��������_pagekey=0��
+要在首次查询时返回总记录数，则用_pagekey=0：
 {{{
 Ordr.query(_pagekey=0)
 }}}
 
-��ʱ����
+这时返回
 {{{
 {nextkey: 10800910, total: 51, h: [id, ...], data: [...]}
 }}}
 
-�ڶ��β�ѯ(��һҳ)
+第二次查询(下一页)
 {{{
 Ordr.query(_pagekey=10800910)
 }}}
 
-����
+返回
 {{{
 {nextkey: 10800931, h: [...], d: [...]}
 }}}
 
-�Է���nextkey�ֶ�˵�������Լ�����ѯ��
+仍返回nextkey字段说明还可以继续查询，
 
-�ٲ�ѯ��һҳ
+再查询下一页
 {{{
 Ordr.query(_pagekey=10800931)
 }}}
 
-����
+返回
 {{{
 {h: [...], d: [...]}
 }}}
 
-���������в���"nextkey"���ԣ���ʾ�������ݻ�ȡ��ϡ�
+返回数据中不带"nextkey"属性，表示所有数据获取完毕。
 
-==== ��ҳ����ʵ��ԭ�� ====
+==== 分页机制实现原理 ====
 
-��ҳ������ʵ�ַ�ʽ���ֶβ�ѯ�ʹ�ͳ��ҳ��
+分页有两种实现方式：分段查询和传统分页。
 
-�ֶβ�ѯ���ܸߣ�����ȷ�����ᶪʧ���ݡ�������������δָ�������ֶΣ���orderby�������������ֶ���id����������磺orderby="id DESC"����
-ϵͳ������orderby�����Զ�ѡ��ֶβ�ѯ��ͳ��ҳ��
+分段查询性能高，更精确，不会丢失数据。但它仅适用于未指定排序字段（无orderby参数）或排序字段是id的情况（例如：orderby="id DESC"）。
+系统将根据orderby参数自动选择分段查询或传统分页。
 
-*[�ֶβ�ѯ]*
+*[分段查询]*
 
-�ֶβ�ѯ��ԭ������������id���в�ѯ�������ƣ��Զ��޸�WHERE��䣩��pagekey�ֶ�ʵ�����ϴ����ݵ����һ��id.
+分段查询的原理是利用主键id进行查询条件控制（自动修改WHERE语句），pagekey字段实际是上次数据的最后一个id.
 
-�״β�ѯ��
+首次查询：
 {{{
 Ordr.query()
 }}}
 
-SQL�������£�
+SQL样例如下：
 {{{
 SELECT * FROM Ordr t0
 ...
@@ -556,12 +556,12 @@ ORDER BY t0.id
 LIMIT {pagesz}
 }}}
 
-�ٴβ�ѯ
+再次查询
 {{{
 Ordr.query(_pagekey=10800910)
 }}}
 
-SQL�������£�
+SQL样例如下：
 {{{
 SELECT * FROM Ordr t0
 ...
@@ -570,17 +570,17 @@ ORDER BY t0.id
 LIMIT {pagesz}
 }}}
 
-*[��ͳ��ҳ]*
+*[传统分页]*
 
-��ͳ��ҳֻ��Ҫͨ��SQL����LIMIT�ؼ�����ʵ�֡�pagekey�ֶ�ʵ����ҳ�롣��ԭ���ǣ�
+传统分页只需要通过SQL语句的LIMIT关键字来实现。pagekey字段实际是页码。其原理是：
 
-�״β�ѯ
+首次查询
 {{{
 Ordr.query(orderby="comeTm DESC")
 }}}
-����comeTm��Ϊ�����ֶΣ��޷�Ӧ�÷ֶβ�ѯ���ƣ�ֻ��ʹ�ô�ͳ��ҳ����
+（以comeTm作为排序字段，无法应用分段查询机制，只能使用传统分页。）
 
-SQL�������£�
+SQL样例如下：
 {{{
 SELECT * FROM Ordr t0
 ...
@@ -588,12 +588,12 @@ ORDER BY comeTm DESC, t0.id
 LIMIT 0,{pagesz}
 }}}
 
-�ٴβ�ѯ
+再次查询
 {{{
 Ordr.query(_pagekey=2)
 }}}
 
-SQL�������£�
+SQL样例如下：
 {{{
 SELECT * FROM Ordr t0
 ...
@@ -601,192 +601,192 @@ ORDER BY comeTm DESC, t0.id
 LIMIT ({pagekey}-1)*{pagesz}, {pagesz}
 }}}
 
-==== HTTPS���� ====
+==== HTTPS服务 ====
 
-�����֧��HTTPS���񡣿ͻ���Ĭ��Ӧʹ��HTTPЭ���������ͨ�ţ����ڸ������е�API�����漰�û�����ĵ�¼��ע�ᡢ�޸�����Ȳ�����Ӧʹ��HTTPSЭ�����ͨ�š�
+服务端支持HTTPS服务。客户端默认应使用HTTP协议与服务器通信；对于个别敏感的API，如涉及用户密码的登录、注册、修改密码等操作，应使用HTTPS协议进行通信。
 
-ע�⣺
-- �������ܿ��ܲ�����ǩ֤�飬��֤����CN����(CommonName�ֶ�)����վʵ�����ƿ��ܲ���.
-  ���������һ���SSL��������ʱ����֤�����֤�鲢�������ͻ���Ӧ��������ѡ�������Щ�������磬����CURL�⣬�����ã�
+注意：
+- 服务器很可能采用自签证书，且证书中CN名称(CommonName字段)与网站实际名称可能不符.
+  这种情况下一般的SSL库在连接时会验证服务端证书并报错，客户端应设置连接选择忽略这些错误。例如，对于CURL库，可设置：
   {{{
 # for https, ignore cert errors (e.g. for self-signed cert)
 curl_setopt($h, CURLOPT_SSL_VERIFYPEER, false);
 curl_setopt($h, CURLOPT_SSL_VERIFYHOST, 0);
   }}}
 
-==== ���Եȼ�(_debug) ====
+==== 调试等级(_debug) ====
 
-�����URL����"_debug"������Եȼ�, Ĭ��Ϊ0. ���Ϊ1-9������, �����ӵ�����Ϣ�����������.
+特殊的URL参数"_debug"定义调试等级, 默认为0. 如果为1-9的数字, 将添加调试信息到结果数组中.
 
-_debug=9: ���SQL
+_debug=9: 输出SQL
 
-ͨ�����û�������P_DEBUG, �����ñ�ϵͳʹ�õĲ��Թ���(��client.php��rtest.php)����ʱָ�����Եȼ�. ��:
+通过设置环境变量P_DEBUG, 可以让本系统使用的测试工具(如client.php及rtest.php)请求时指定调试等级. 如:
 {{{
 set P_DEBUG=9
 client.php callsvr usercar.query
 }}}
 
-==== Ӧ�ñ�ʶ(_app) ====
+==== 应用标识(_app) ====
 
-�����URL����"_app"���ڶ��嵱ǰӦ��. ȱʡֵΪ"user"(��Ӧ�ͻ���Ӧ��). 
-ע��: ÿ�����󶼱�����˱�ʶ, ������session��Ӧ��cookie�������. ������Ӹò���, ����ܳ���δԤ�ϵĴ���.
+特殊的URL参数"_app"用于定义当前应用. 缺省值为"user"(对应客户端应用). 
+注意: 每个请求都必须带此标识, 它决定session对应的cookie项的名字. 如果不加该参数, 则可能出现未预料的错误.
 
-��ǰ����Ӧ�����ƶ�������:
-user:: ȱʡֵ. web�ƶ�Ӧ��, �û�ʹ�õĿͻ���.
-admin:: web����Ӧ��, ������.
-store:: web����Ӧ��, �̻�������.
-emp:: web�ƶ�Ӧ��, �̻���Ա��.
+当前可用应用名称定义如下:
+user:: 缺省值. web移动应用, 用户使用的客户端.
+admin:: web桌面应用, 管理端.
+store:: web桌面应用, 商户管理端.
+emp:: web移动应用, 商户雇员端.
 
-���ڲ�ͬӦ��(��ͻ���, �̻����������)����һ��api.phpҳ��, ����ͬһ������д򿪶��Ӧ��ʱ�����໥Ӱ��, �����̻����������ͬʱʹ��ʱ, �̻��˻��Զ��Թ����˵�Ȩ�޲���.
+由于不同应用(如客户端, 商户端与管理端)共用一个api.php页面, 当在同一浏览器中打开多个应用时可能相互影响, 比如商户端与管理端同时使用时, 商户端会自动以管理端的权限操作.
 
-���������, Ϊ��ͬӦ��ʹ�ò�ͬ��sessionId������. ʵ��ʱ�����ַ�ʽ, һ�Ƿ��ʲ�ͬ�ķ����ҳ��, ���̻��˷���api.php, �����˷���api0.php(����ָ��һ����ͬ��sessionId); ��һ�����̻������е����󶼴�һ������ָ��sessionId. 
-���ǽ����ú�һ�ֽ������.
+解决方法是, 为不同应用使用不同的sessionId以区分. 实现时有两种方式, 一是访问不同的服务端页面, 如商户端访问api.php, 管理端访问api0.php(其中指定一个不同的sessionId); 另一种是商户端所有的请求都带一个参数指定sessionId. 
+我们将采用后一种解决方法.
 
-URL����_app������ָ������Ӧ��, �粻ָ��Ĭ��ֵΪ"carsvc". ��������session������Ϊ"{_app}id"������
+URL参数_app可用于指定所属应用, 如不指定默认值为"carsvc". 它隐含着session的名称为"{_app}id"如请求
 {{{
 GET /api.php?_app=emp
 }}}
 
-��һ�η��ʽ�����
+第一次访问将返回
 {{{
 SetCookie: empid=xxxxxx
 }}}
 
-==== ����ģʽ(_test) ====
+==== 测试模式(_test) ====
 
-URL����"_test"ֵΪ��0ʱ��ʾ����ģʽ���ο��½�"��Ҫ���"->"������"->"����ģʽ".
+URL参数"_test"值为非0时表示测试模式。参考章节"概要设计"->"配置项"->"测试模式".
 
-��_testֵΪ2ʱ����ʾ���лع���ԡ�
+当_test值为2时，表示运行回归测试。
 
-==== ʹ��PATH_INFOģʽ��URL ====
+==== 使用PATH_INFO模式的URL ====
 
-ͨ����index.php�н���`$_SERVER["PATH_INFO"]`, ������URL���ɶ���
+通过在index.php中解析`$_SERVER["PATH_INFO"]`, 可以令URL更可读：
 {{{
 http://localhost/cheguanjia/api.php?ac=login&phone=137&pwd=1234
 ->
 http://localhost/cheguanjia/api.php/login?phone=137&pwd=1234
 }}}
 
-���ڶ����CRUD��URL��������
+对于对象的CRUD，URL像这样：
 {{{
 http://localhost/cheguanjia/api.php?ac=Ordr.query&res=id,dscr
 ->
 http://localhost/cheguanjia/api.php/Ordr/query?res=id,dscr
 }}}
-��"Ordr/query"ת��Ϊ"ac=Ordr.query".
+即"Ordr/query"转化为"ac=Ordr.query".
 
-==== �ͻ��˰汾(_ver) ====
+==== 客户端版本(_ver) ====
 
-URL����"_ver"ֵΪ�ͻ��˰汾��ȡֵ�ο���ApiLog.ver�ֶΡ�Ŀǰֻ�а�׿�ͻ������øò���Ϊ"a/{ver}" (��"a/2"), �����ͻ��˰汾����userAgent�Զ���ȡ��
+URL参数"_ver"值为客户端版本。取值参考表ApiLog.ver字段。目前只有安卓客户端设置该参数为"a/{ver}" (如"a/2"), 其它客户端版本根据userAgent自动获取。
 
-==== Ȩ��˵�� ====
+==== 权限说明 ====
 
-Ҫ����ÿ��API������ӵ����Ӧ��Ȩ�ޡ�Ȩ�޶������£�
+要访问每个API，必须拥有相应的权限。权限定义如下：
 
-- AUTH_GUEST: �κ��˿���, ��Ȩ�����ơ����õ�¼���ɲ鿴�̻�, ������. 
-- AUTH_USER: �û���¼�����. �����µ�, �鿴�����Ȳ���. 
+- AUTH_GUEST: 任何人可用, 无权限限制。不用登录即可查看商户, 天气等. 
+- AUTH_USER: 用户登录后可用. 可做下单, 查看订单等操作. 
 
-Ա����¼����ܻ������һ������Ȩ��(��Employee.permsָ��):
-- AUTH_ITEM: �����̻�������.
-- AUTH_EMP: �鿴�����Լ������Լ��Ķ���.
-- AUTH_MGR: �����̻�����������, ��������, ����, Ա����(����������Ա��Ȩ��). 
-- AUTH_MGR2: ���������̻�, ����Ա��Ȩ��, �̻������.
-- AUTH_STORE: Ա����¼���Ȩ��, �������ϸ�����.
+员工登录后可能获得以下一个或多个权限(由Employee.perms指定):
+- AUTH_ITEM: 管理商户的物料.
+- AUTH_EMP: 查看订单以及操作自己的订单.
+- AUTH_MGR: 操作商户的所有内容, 包括订单, 物料, 员工等(但不能设置员工权限). 
+- AUTH_MGR2: 管理所有商户, 设置员工权限, 商户结算等.
+- AUTH_STORE: 员工登录后的权限, 包含以上各类型.
 
-����Ȩ��:
-- AUTH_TEST_MODE: ����ģʽ�¿��á�
-- AUTH_MOCK_MODE: ģ��ģʽ�¿��á�
-- AUTH_ADMIN: �ɲ���һ�ж���. ��û���Զ���ɹ���. �ɳ����ڲ�ʹ��, �����ѷ���(ԭ�����������Ѳ���ʹ��)
-- AUTH_ASTORE: ��ǰ�����̻�����Ӫ�̻�����Ȩ��AUTH_MGR/AUTH_MGR2ʱ����.
-- AUTH_PARTNER: ����ϵͳ���ɵ�Ȩ����֤�����õ�¼���൱��AUTH_GUEST����������ÿ��APIʱ�����ṩ_pwd/_sign����֮һ����֤��
+其它权限:
+- AUTH_TEST_MODE: 测试模式下可用。
+- AUTH_MOCK_MODE: 模拟模式下可用。
+- AUTH_ADMIN: 可操作一切对象. 但没有自动完成功能. 由程序内部使用, 对外已废弃(原超级管理端已不再使用)
+- AUTH_ASTORE: 当前所属商户是自营商户且有权限AUTH_MGR/AUTH_MGR2时可用.
+- AUTH_PARTNER: 用于系统集成的权限验证。不用登录（相当于AUTH_GUEST），但调用每个API时必须提供_pwd/_sign参数之一供验证。
 
-���APIδ��ȷָ��Ȩ�ޣ�����Ϊ��AUTH_GUEST.
-����¼����Ĳ�ͬ, Ȩ���ַ�Ϊ �û���(AUTH_USER) �� �̻���(AUTH_STORE), �ֱ��Ӧ AC1_xxx �� AC2_xxx ϵ��ԭ��Ȩ��. ��Ҳʹ��ͬһ��API�ڲ�ͬȨ���µ�ִ�н�����ܲ�ͬ���� `Ordr.query` ��AUTH_USER��(����û�����)��AUTH_STORE�£�����̻��������ǲ�ͬ�ġ�
+如果API未明确指定权限，则认为是AUTH_GUEST.
+按登录对象的不同, 权限又分为 用户类(AUTH_USER) 和 商户类(AUTH_STORE), 分别对应 AC1_xxx 和 AC2_xxx 系列原子权限. 这也使得同一个API在不同权限下的执行结果可能不同，如 `Ordr.query` 在AUTH_USER下(查该用户订单)或AUTH_STORE下（查该商户订单）是不同的。
 
-һ���û�����ӵ�ж��Ȩ��, ����data ownership��Χ�Ĳ�ͬ, ֻ����һ��ownership level. ��������:
-- OWN_EMP(����Ա������)
-- OWN_STORE(�������ڵ�����)
-- OWN_ALL(�������е�����)
-- OWN_USER (�����û��Լ�����, Ŀǰ��AUTH_USERһ��, ��δʹ��)
+一个用户可以拥有多个权限, 但按data ownership范围的不同, 只会有一个ownership level. 定义如下:
+- OWN_EMP(操作员工数据)
+- OWN_STORE(操作所在店数据)
+- OWN_ALL(操作所有店数据)
+- OWN_USER (操作用户自己数据, 目前与AUTH_USER一致, 暂未使用)
 
-=== ͨ�ò��� ===
+=== 通用操作 ===
 
-==== ִ��sql��� ====
+==== 执行sql语句 ====
 
 {{{
 execSql(sql, wantArray?, wantId?, fmt?) -> rowSet or affectedRows or lastInsertedId
 }}}
 
 
-ֻ�й���Ա��¼�����ʹ��, ���ǲ���ģʽ�²���ʹ��. ����ģʽ�¿ͻ��˺��̻��˽�ֹʹ��. 
+只有管理员登录后才能使用, 或是测试模式下才能使用. 生产模式下客户端和商户端禁止使用. 
 
-�����SELECT���, ���ؽ����, ���򷵻�affectedRows.
+如果是SELECT语句, 返回结果集, 否则返回affectedRows.
 
-*[Ȩ��]*
+*[权限]*
 
 - AUTH_ADMIN
 - AUTH_TEST_MODE
 
-*[����]*
+*[参数]*
 
-sql:: String. SQL��䡣
-wantArray:: Boolean. ����ǿ�,���select���Ľ������������ǹ�����. ��fmt=array���, �Ѳ�����ʹ��.
-wantId:: Boolean. ����ǿգ����insert���Ľ�������������id���Ǽ�¼����
+sql:: String. SQL语句。
+wantArray:: Boolean. 如果非空,则对select语句的结果返回数组而非关联表. 由fmt=array替代, 已不建议使用.
+wantId:: Boolean. 如果非空，则对insert语句的结果返回最后插入的id而非记录数。
 
-fmt:: String. ָ��select��ѯ�Ľ�����ظ�ʽ: "table"-table��ʽ({h,d}), "array"-array��ʽ (�൱��wantArray=1), "one"-�����ѯ�ж���,��ֻȡ����, �����ѯֻ��һ��, ��ֻȡ������������(�൱�ڿ���е�queryOne����), ȱʡ: object aray / rowset
+fmt:: String. 指定select查询的结果返回格式: "table"-table格式({h,d}), "array"-array格式 (相当于wantArray=1), "one"-如果查询有多列,则只取首行, 如果查询只有一列, 则只取首行首列数据(相当于框架中的queryOne函数), 缺省: object aray / rowset
 
-*[ʾ��]*
+*[示例]*
 
-����
+请求
 {{{
 execSql(sql="SELECT COUNT(*) AS N FROM User")
 }}}
 
-����
+返回
 {{{
 [
 	{N: 3}
 ]
 }}}
 
-ע:
-- ʵ�ʷ�������ʱ, ע������Ƕ����ݽ���url����, ���ݲ�������.
-- ��select��䷵��rowSet, һ����һ������, ÿһ����ֶ�����select���ֶξ���.
+注:
+- 实际发送请求时, 注意别忘记对内容进行url编码, 内容不含引号.
+- 对select语句返回rowSet, 一定是一个数组, 每一项的字段名由select的字段决定.
 
-*[ʾ��]*
+*[示例]*
 
-����
+请求
 {{{
 execSql(sql="SELECT COUNT(*) AS N FROM User", fmt=one)
 }}}
 
-����
+返回
 {{{
 3
 }}}
 
-*[ʾ��]*
+*[示例]*
 
-����
+请求
 {{{
 execSql(sql="SELECT COUNT(*) AS N, MIN(createTm) AS createTm FROM User", fmt=one)
 }}}
 
-����
+返回
 {{{
 [3, '2015-1-1']
 }}}
 
-*[ʾ��]*
+*[示例]*
 
-����
+请求
 {{{
 execSql(sql="SELECT COUNT(*) AS N FROM User", wantArray=1)
-��
+或
 execSql(sql="SELECT COUNT(*) AS N FROM User", fmt=array)
 }}}
 
-����
+返回
 {{{
 [
 	[3]
@@ -794,14 +794,14 @@ execSql(sql="SELECT COUNT(*) AS N FROM User", fmt=array)
 
 }}}
 
-*[ʾ��]*
+*[示例]*
 
-����
+请求
 {{{
 execSql(sql="SELECT id FROM User")
 }}}
 
-����
+返回
 {{{
 [
 	{id: 1},
@@ -810,26 +810,26 @@ execSql(sql="SELECT id FROM User")
 ]
 }}}
 
-*[ʾ��]*
+*[示例]*
 
-����
+请求
 {{{
 execSql(sql="SELECT id FROM User", fmt=array)
 }}}
 
-����
+返回
 {{{
 [ [1], [2], [3] ]
 }}}
 
-*[ʾ��]*
+*[示例]*
 
-����
+请求
 {{{
 execSql(sql="SELECT id FROM User", fmt=table)
 }}}
 
-����
+返回
 {{{
 {
 	h: ["id"],
@@ -837,26 +837,26 @@ execSql(sql="SELECT id FROM User", fmt=table)
 }
 }}}
 
-*[ʾ��]*
+*[示例]*
 
-����
+请求
 {{{
 execsql(sql="DELETE User WHERE id=1 or id=2")
 }}}
 
-����
+返回
 {{{
 2
 }}}
 
-ע: ���ڷ�SELECT���, ����affectedRows
+注: 对于非SELECT语句, 返回affectedRows
 
-==== ͨ�ñ����� ====
+==== 通用表操作 ====
 
-����4��API��ɶԱ�����ɾ�Ĳ�(CRUD)����. ����˿ɸ��ݵ�ǰ�û���ӵ��Ȩ�޽��м��. 
+以下4条API完成对表的增删改查(CRUD)动作. 服务端可根据当前用户所拥有权限进行检查. 
 
 {{{
-{tblname}.add()(POST fields...) -> id
+{tblname}.add(res?)(POST fields...) -> {id} 
 
 {tblname}.set(id)(POST fields...)
 
@@ -869,162 +869,167 @@ execsql(sql="DELETE User WHERE id=1 or id=2")
 {tblname}.query(wantArray=1, @subobj?, res?, ...) -> [obj1, obj2...]
 }}}
 
-ȱʡ��Щ����ֻ�Թ���Ա��¼�󿪷�, �û����̼ҵ�¼����Ȩ����. ����Ա�ɶ����б��������ֶν���CRUD����.
+缺省这些操作只对管理员登录后开放, 用户或商家登录后无权操作. 管理员可对所有表的所有字段进行CRUD操作.
 
-���ֶ�����û����̼ҵ�¼�󿪷�, ���û���¼��ɲ���User,UserCar�ȶ���, ��Щ����������Ӧ�½ڵ����г���˵��, ��"�û�������Ϣ"�½�.
-����Щ�½��л�Բ�������(��ֻ��get/set,����add/del), ֻ���ֶ�(��ʹ�����и���,�����Ҳ�������Щ�ֶ�), ��ȱʡ�ֶ�(����˻��Զ���ȫ)����˵��.
+部分对象对用户或商家登录后开放, 如用户登录后可操作User,UserCar等对象, 这些操作会在相应章节单独列出来说明, 如"用户车辆信息"章节.
+在这些章节中会对操作限制(如只能get/set,不能add/del), 只读字段(即使请求中给出,服务端也会忽略这些字段), 可缺省字段(服务端会自动补全)做出说明.
 
-ϵͳ�еı����(����, �ֶε�)�μ�"���ݿ����"�½�. һ��������Ϊʹ�������ֶ�id��Ϊ����. ���ֶδ������ֻ��, ���������޸�.
+系统中的表设计(表名, 字段等)参见"数据库设计"章节. 一般表都设计为使用整形字段id作为主键. 该字段创建后变只读, 不允许被修改.
+
+对于add操作，默认返回{id}, 如果想多返回其它字段，可设置res，如 
+{{{
+Ordr.add(res="id,status,total")(POST fields...) -> {id, status, total}
+}}}
 
 *[query]*
 
-query�����ò���condָ����ѯ����, ��
+query可以用参数cond指定查询条件, 如
 {{{
 cond="type='A' and name like '%hello%'" 
 
-URL�����Ϊ
+URL编码后为
 
 cond=type%3d%27A%27+and+name+like+%27%25hello%25%27
 }}}
 
-query������������ʽ, ȱʡ����table���ͱ���֧�ַ�ҳ, ����֧�ֲ�ѯ�Ӷ���(subobj����). ���ָ��wantArray=1, ���Է����Ӷ���, ����֧�ַ�ҳ. ����, 
-queryȱʡ����:
+query返回有两种形式, 缺省返回table类型便于支持分页, 但不支持查询子对象(subobj参数). 如果指定wantArray=1, 可以返回子对象, 但则不支持分页. 例如, 
+query缺省返回:
 {{{
 {
 	"h": ["id", "name"],
 	"d": [[1, "liang"], [2, "wang"]]
 }
 }}}
-���ָ��wantArray=1�򷵻�:
+如果指定wantArray=1则返回:
 {{{
 {
 	[["id": 1, "name": "liang"], ["id": 2, "name": "wang"]]
 }
 }}}
 
-ע��:
-- ����add/set����, ʹ��HTTP POST����; fields��ʾ����ÿ���ֶε�key-valueֵ, ͨ��POST�ֶδ���(ʹ��URL����). set�����е�id�ֶ�ͨ��URL����.
-- ����set����, ���Ҫ��ĳ�ֶ��ÿ�, �����ÿմ���"null" (Сд). ��"picId="��"picId=null"; ��������set������POST�����У�����������ֶ�����Ϊ�մ��൱��û�����ø��ֶΡ�
-- ����set���������Ҫ��ĳ�ַ��������ֶ��ÿմ�(������ʹ��)��������"empty", ��"sn=empty"�����������ֵ�������������ã��ᵼ����ֵΪ0��0.0��
-- Ȩ�޹���. �ͻ��˻��̻��˿ɶ�д��Щ������������½�. ����Ա��¼�ɲ������б�. ��ͬ���͵ĵ�¼���еķ��ʿ��ƺͷ��ؽ���ǲ�һ����, ��������˵�¼û���κ����ƺ��Զ���ȫ. 
-  ���������, �ͻ��˺��̻���ͬʱ��¼(ʹ��ͬһsession), ��������߼�����, ����ǿͻ���, ������̻���. (TODO: �̻��˺Ϳͻ��˹���session���ܻ��г�ͻ)
-- TODO: �����metadata, ��̨�ɼ���ֶ��Ƿ����, �Ƿ�ֻ����. 
+注意:
+- 对于add/set方法, 使用HTTP POST请求; fields表示表中每个字段的key-value值, 通过POST字段传递(使用URL编码). set方法中的id字段通过URL传递.
+- 对于set操作, 如果要将某字段置空, 可以用空串或"null" (小写). 如"picId="或"picId=null"; 除了用在set操作的POST内容中，其它情况下字段设置为空串相当于没有设置该字段。
+- 对于set操作，如果要将某字符串类型字段置空串(不建议使用)，可以用"empty", 如"sn=empty"。但如果对数值等其它类型设置，会导致其值为0或0.0。
+- 权限管理. 客户端或商户端可读写哪些对象详见其它章节. 管理员登录可操作所有表. 不同类型的登录进行的访问控制和返回结果是不一样的, 比如管理端登录没有任何限制和自动补全. 
+  如果管理端, 客户端和商户端同时登录(使用同一session), 则管理端逻辑优先, 其次是客户端, 最后是商户端. (TODO: 商户端和客户端共用session可能会有冲突)
+- TODO: 如果有metadata, 后台可检查字段是否存在, 是否只读等. 
 
-*[��ҳ]*
+*[分页]*
 
-_pagesz:: Integer. ָ��ҳ��С, Ĭ��һ�η���20�����ݡ�
-_pagekey:: String. ָ�����������ݿ�ʼ��Ӧ�����ϴε���ʱ�������ݵ�"nextkey"�ֶ�����д��
+_pagesz:: Integer. 指定页大小, 默认一次返回20条数据。
+_pagekey:: String. 指定从哪条数据开始，应根据上次调用时返回数据的"nextkey"字段来填写。
 
-ע�⣺
-- ��ҳֻ������query, ��wantArray=0�������
+注意：
+- 分页只适用于query, 且wantArray=0的情况。
 
-��ϸ��ο��½�"��ҳ����".
+详细请参考章节"分页机制".
 
-*[����]*
+*[参数]*
 
-fields:: ÿ���ֶμ���ֵ.
-res, cond (get/query����), orderby(query����):: String. ָ�������ֶμ���ѯ����, ����, res="field1,field2", cond="field1>100 AND field2='hello'", orderby="id desc", ע��ʹ��UTF8+URL����, Ŀǰ��ʽ����SQL�﷨, �ַ���ֵӦ���ϵ�����.
-distinct:: Boolean. ���Ϊ1, ����"SELECT DISTINCT ..."��ѯ.
-res2, join, cond2 (get/query����):: �⼸���ֶ�ֻ���ڲ�ʹ�ã�û�а�ȫ����. res2, cond2Ϊ������ֶμ�����, ����Ϊ����; join����Ϊ�ַ������ַ�������.ע������join����, ָ�������ֶ�ʱ��ü��������Ĺ̶�����"t0". ���� res2=["b.name AS brandName", "s.name as storeName"], join="INNER JOIN CarBrand b ON b.id=t0.brandId", cond2=["t0.field1=100 and b.id IN (1,2,3)"]
-subobj:: Ŀǰ����server�ڲ�ʹ��, Ҫ�������������id�ֶ�(δָ��res/res2������������id�ֶ�). ��ʽΪ����, ÿ��ָ��һ���Ӷ���Ĳ�ѯ, ÿ�и�ʽΪ: {sql, wantOne?}. "sql"ָ����ѯ���, ������"%d"��ʾ����id; "wantOne"��ʾ���ض�����Ƕ��󼯺�(����), ȱ���Ƕ��󼯺�. ��: 
+fields:: 每个字段及其值.
+res, cond (get/query方法), orderby(query方法):: String. 指定返回字段及查询条件, 例如, res="field1,field2", cond="field1>100 AND field2='hello'", orderby="id desc", 注意使用UTF8+URL编码, 目前格式参照SQL语法, 字符串值应加上单引号.
+distinct:: Boolean. 如果为1, 生成"SELECT DISTINCT ..."查询.
+res2, join, cond2 (get/query方法):: 这几个字段只由内部使用，没有安全限制. res2, cond2为额外的字段及条件, 必须为数组; join可以为字符串或字符串数组.注意增加join表后, 指定主表字段时最好加上主表的固定别名"t0". 例如 res2=["b.name AS brandName", "s.name as storeName"], join="INNER JOIN CarBrand b ON b.id=t0.brandId", cond2=["t0.field1=100 and b.id IN (1,2,3)"]
+subobj:: 目前仅限server内部使用, 要求主对象必须有id字段(未指定res/res2参数或其中有id字段). 格式为数组, 每行指定一个子对象的查询, 每行格式为: {sql, wantOne?}. "sql"指定查询语句, 其中用"%d"表示主表id; "wantOne"表示返回对象而非对象集合(数组), 缺少是对象集合. 例: 
 	{{{
 		$_REQUEST["subobj"] = [
 			"items" => ["sql"=>"SELECT * FROM OrderItem WHERE orderId=%d", "wantOne"=>false]
 		];
 	}}}
-union:: ����server�ڲ�ʹ��. ָ��union��ѯ����, �����ݽ���������λ��Ӱ��SQL��ѯ: "SELECT ... FROM .. WHERE ... { UNION ... } ORDER BY ...". ע��: union�Ľ����res�������ֶ�ָ������ƥ��; where����������union������ָ��, ����ͨ��cond/cond2����; orderby������Ӧ�õ�union������ս��.
+union:: 仅限server内部使用. 指定union查询内容, 该内容将会在以下位置影响SQL查询: "SELECT ... FROM .. WHERE ... { UNION ... } ORDER BY ...". 注意: union的结果与res参数中字段指定必须匹配; where条件必须在union中自行指定, 不可通过cond/cond2参数; orderby参数可应用到union后的最终结果.
 
-��res, cond, orderby�İ�ȫ���ƣ�
-- res, orderbyֻ�����ֶΣ��������ֶΣ��б������ܳ��ֺ������Ӳ�ѯ�ȡ�
-- cond�������Ӳ�ѯ����������select�ȹؼ��֣���
+对res, cond, orderby的安全限制：
+- res, orderby只能是字段（或虚拟字段）列表，不能出现函数、子查询等。
+- cond不允许子查询（不可以有select等关键字）。
 
-_fmt:: Enum(csv,txt,excel). ����Query������Ϊָ����ʽ�����У�csvΪ���ŷָ�UTF8�����ı���txtΪ�Ʊ��ָ���UTF8�ı���excelΪ���ŷָ���gb2312�����ı�����ΪĬ��excel��Csv�ļ�ʱ��֧��utf8���룩��ע�⣬����Ĭ�ϻ��з�ҳ��Ҫ�뵼���������ݣ�һ���ָ��_pagesz=9999��
+_fmt:: Enum(csv,txt,excel). 导出Query的内容为指定格式。其中，csv为逗号分隔UTF8编码文本；txt为制表分隔的UTF8文本；excel为逗号分隔的gb2312编码文本（因为默认excel打开Csv文件时不支持utf8编码）。注意，由于默认会有分页，要想导出所有数据，一般可指定_pagesz=9999。
 
-*[������������flags��props]*
+*[操作特殊属性flags和props]*
 
-flagsΪ����ĸ��ʾ�ı�־λ���ϣ���"vg"��props�����Զ���ĸ��ʾ��־λ���м��Կո�ָ�����"suv mpv".
-һ��flags��Ӧ���ڲ����壻��props��չ�Ը�ǿ��
+flags为单字母表示的标志位集合，如"vg"；props可以以多字母表示标志位，中间以空格分隔，如"suv mpv".
+一般flags由应用内部定义；而props扩展性更强。
 
-query����֧������`flag_{flag}`��`prop_{prog}`���������ԡ�
-- `flag_f=1` �൱�� `flags LIKE '%f%'`
-- `flag_f=0` �൱�� `flags IS NULL OR flags NOT LIKE '%f%'`
+query操作支持形如`flag_{flag}`或`prop_{prog}`的虚拟属性。
+- `flag_f=1` 相当于 `flags LIKE '%f%'`
+- `flag_f=0` 相当于 `flags IS NULL OR flags NOT LIKE '%f%'`
 
-get/query���������������flags/props�����᷵����Ӧ���������ԣ�����flagsֵΪ"vg"����෵����������`flag_v=1`��`flag_g=1`
+get/query操作中如果返回了flags/props，还会返回相应的虚拟属性；例如flags值为"vg"，则多返回虚拟属性`flag_v=1`及`flag_g=1`
 
-set����֧�����·�ʽ����flags/props���ԣ�
-- flag_f=1 �൱�� `set flags=concat(ifnull(flags, ''), 'f')`
-- flag_f=0 �൱�� `set flags=replace(flags, 'f', '')`
+set操作支持以下方式设置flags/props属性：
+- flag_f=1 相当于 `set flags=concat(ifnull(flags, ''), 'f')`
+- flag_f=0 相当于 `set flags=replace(flags, 'f', '')`
 
-ע�⣺
-- flag/prop��ֵֻ��Ϊ0/1
-- (TODO) props�������ơ�
-- (TODO) flags/propsӦ���ִ�Сд(��������collation: utf8_bin)
+注意：
+- flag/prop的值只能为0/1
+- (TODO) props属性类似。
+- (TODO) flags/props应区分大小写(设置属性collation: utf8_bin)
 
-*[��: �����̻�]*
+*[例: 添加商户]*
 
-�����̻�, ָ��һЩ�ֶ�:
+添加商户, 指定一些字段:
 {{{
 Store.add()
-	name=��Ө����(�Ž���)
-	addr=���·88��
+	name=华莹汽车(张江店)
+	addr=金科路88号
 	tel=021-12345678
 }}}
 
-ע: 
-- Store���̻�����, ͨ��POST�ֶδ��ݸ��ֶ�����. HTTP POST����������ʾ(ʵ�ʷ���ʱ, ÿ���ֶε�ֵӦʹ��UTF8+URL����, ʾ����δ���б���):
+注: 
+- Store是商户表名, 通过POST字段传递各字段内容. HTTP POST请求如下所示(实际发送时, 每个字段的值应使用UTF8+URL编码, 示例中未进行编码):
  {{{
 POST /api.php?ac=Store.add
 Content-Type: application/x-www-form-urlencoded
 
-name=��Ө����(�Ž���)&addr=���·88��&tel=021-12345678
+name=华莹汽车(张江店)&addr=金科路88号&tel=021-12345678
  }}}
-- id����������ֻ���ֶ���������. ��ʹ����ҲӦ������. 
+- id这种主键或只读字段无须设置. 即使设置也应被忽略. 
 
-�����ɹ�ʱ����idֵ:
+操作成功时返回id值:
 
 {{{
 8
 }}}
 
-*[��: ��ȡ�̻�]*
+*[例: 获取商户]*
 
-ȡ�����ӵ��̻�(id=8):
+取刚添加的商户(id=8):
 {{{
 Store.get(id=8)
 }}}
 
-�����ɹ�ʱ���ظ�������:
+操作成功时返回该行内容:
 {{{
-{id: 8, name: "��Ө����(�Ž���)", addr: "���·88��", tel: "021-12345678", opentime: null, dscr: null}
+{id: 8, name: "华莹汽车(张江店)", addr: "金科路88号", tel: "021-12345678", opentime: null, dscr: null}
 }}}
 
-������query����һ����POST����resָ������ֵ, ��
+可以像query方法一样用POST参数res指定返回值, 如
 
 {{{
 Store.get(id=8)
 	res=id,name as storeName,addr
 }}}
 
-�����ɹ�ʱ���ظ�������:
+操作成功时返回该行内容:
 {{{
-{id: 8, storeName: "��Ө����(�Ž���)", addr: "���·88��"}
+{id: 8, storeName: "华莹汽车(张江店)", addr: "金科路88号"}
 }}}
 
-*[��: ��ѯ�̻�]*
+*[例: 查询商户]*
 
-��ѯ"��ʤ����"��"�ֶ�"���ŵ�, ����ѯ���ƺ���"��ʤ����"�ҵ�ַ�к���"�ֶ�"���̻�, ֻ����id, name, addr�ֶ�:
+查询"华胜汽车"在"浦东"的门店, 即查询名称含有"华胜汽车"且地址中含有"浦东"的商户, 只返回id, name, addr字段:
 {{{
 Store.query()
 	res=id,name,addr
-	cond=name like '%��ʤ%' and addr like '%�ֶ�%'
+	cond=name like '%华胜%' and addr like '%浦东%'
 }}}
 
-ע��: ���ݾ�UTF8+URL����, ����ʱ�������������:
-����: `client.php callsvr store.query null "res=id,name,addr&cond=name like '%25%E5%8D%8E%E8%83%9C%25' and addr like '%25%E6%B5%A6%E4%B8%9C%25'"`
-��
-`client.php callsvr store.query null "['res'=>'id,name,addr', 'cond'=>'name like \'%��ʤ%\' and addr like \'%�ֶ�%\'']"` (������UTF8 shell������, ������벻��)
+注意: 内容经UTF8+URL编码, 测试时大致是这个样子:
+测试: `client.php callsvr store.query null "res=id,name,addr&cond=name like '%25%E5%8D%8E%E8%83%9C%25' and addr like '%25%E6%B5%A6%E4%B8%9C%25'"`
+或
+`client.php callsvr store.query null "['res'=>'id,name,addr', 'cond'=>'name like \'%华胜%\' and addr like \'%浦东%\'']"` (必须在UTF8 shell中运行, 否则编码不对)
 
-�����ɹ�ʱ������������:
+操作成功时返回内容如下:
 {{{
 {
 	"h": [
@@ -1035,14 +1040,14 @@ Store.query()
 	"d": [
 		[
 			"100064",
-			"��ʤ���������ŵ꣩",
-			"�Ϻ����ֶ�������·2622Ū59��3����"
+			"华胜汽车（金桥店）",
+			"上海市浦东区金桥路2622弄59号3号门"
 		]
 	]
 }
 }}}
 
-*[�����̻�]*
+*[导出商户]*
 
 {{{
 Store.query()
@@ -1051,72 +1056,72 @@ Store.query()
 	_pagesz=9999
 }}}
 
-�ɵ���gb2312�����csv�ļ���ʹ�ýϴ��_pagesz�Ծ��������������ݡ�
+可导出gb2312编码的csv文件。使用较大的_pagesz以尽量返回所有数据。
 
-*[��: �����̻�]*
+*[例: 更新商户]*
 
-Ϊ�̻�����������Ϣ��:
+为商户设置描述信息等:
 {{{
 Store.set(id=8)
 	opentime=8:00-18:00
-	dscr=������Ϣ.
+	dscr=描述信息.
 }}}
 
-�����ɹ�ʱ�޷�������.
+操作成功时无返回内容.
 
-*[��: ɾ���̻�]*
+*[例: 删除商户]*
 
 {{{
 Store.del(id=8)
 }}}
 
-�����ɹ�ʱ�޷�������.
+操作成功时无返回内容.
 
-==== �����ϴ� ====
+==== 附件上传 ====
 
 {{{
-ʹ��multipart/form-data��ʽ�ϴ�����׼html֧�֣���һ�δ�����ļ���:
+使用multipart/form-data格式上传（标准html支持，可一次传多个文件）:
 upload(type?=default, genThumb?=0, autoResize?=1)(POST content:multipart/form-data) -> [{id, thumbId?}]
 
-ֱ�Ӵ��ļ����ݣ�һ��ֻ�ܴ�һ���ļ�:
+直接传文件内容，一次只能传一个文件:
 upload(fmt=raw|raw_b64, f, exif?, ...)(POST content:raw) -> [{id, thumbId?}]
 
-TODO: ���ʹ��΢�ŵ��ϴ��ӿ�, ���Ե���:
+TODO: 如果使用微信的上传接口, 可以调用:
 upload(..., weixinServerIds) -> [{id, thumbId?}]
 }}}
 
-�ϴ���Ƭ������. ���ظ���id. ��Ϊ����һ���ϴ�����ļ������ص���һ�����飬ÿ���Ӧ�ϴ���һ���ļ���
+上传照片等内容. 返回附件id. 因为允许一次上传多个文件，返回的是一个数组，每项对应上传的一个文件。
 
-Ա�����ϴ�ͼƬʱӦ��ͼƬ��չ��Ϣ��exif��Ϣ��������ʱ�䡢GPS��Ϣ���Ա���ڣ�ͨ������У�����ݣ���֤Ա���Ƿ���ָ����ʱ��ص�ȥϴ����
-ע�⣺exif��Ϣֻ���ϴ���ͼʱ�����塣
+员工端上传图片时应传图片扩展信息（exif信息），包括时间、GPS信息，以便后期（通过工具校验数据）验证员工是否在指定的时间地点去洗车。
+注意：exif信息只在上传单图时有意义。
 
-TODO:������ֻ֧��jpg�ȼ���ָ����ʽ; �Լ��������ɴ��ļ���size
+TODO:将限制只支持jpg等几种指定格式; 以及限制最大可传文件的size
 
-*[����]*
+*[参数]*
 
-genThumb:: Boolean. Ϊ1ʱ��������ͼ�����δָ��type, ��type=default��������ͼ��С.
-type:: String. �̼�ͼƬ�ϴ�ʹ��"store", �û�ͷ���ϴ�ʹ��"user", �����������ֵ. ��ͬ��type����������ͼʱ�ߴ粻ͬ��
-content:: �ļ����ݡ�Ĭ��ʹ��multipart/form-data��ʽ���������ʾ�������fmtΪ"raw"��"raw_b64"����ֱ��Ϊ�ļ����ݣ�����base64���룩
-autoResize:: Boolean. ȱʡΪ1������ͼƬ��С����500K, �Զ���СͼƬ���������1920x1080.
-exif:: Object. ��չ��Ϣ��JSON��ʽ�����ϴ�ʱ�估GPS��Ϣ��`{"DateTime": "2015:10:08 11:03:02", "GPSLongtitude": [121,42,7.19], "GPSLatitude": [31,14,45.8]}`
+genThumb:: Boolean. 为1时生成缩略图。如果未指定type, 则按type=default设置缩略图大小.
+type:: String. 商家图片上传使用"store", 用户头像上传使用"user", 其它情况不赋值. 不同的type在生成缩略图时尺寸不同。
+content:: 文件内容。默认使用multipart/form-data格式，详见请求示例。如果fmt为"raw"或"raw_b64"，则直接为文件内容（或其base64编码）
+autoResize:: Boolean. 缺省为1，即当图片大小超过500K, 自动缩小图片到最大像素1920x1080.
+exif:: Object. 扩展信息。JSON格式，如上传时间及GPS信息：`{"DateTime": "2015:10:08 11:03:02", "GPSLongtitude": [121,42,7.19], "GPSLatitude": [31,14,45.8]}`
 
-fmt:: ָ����ʽ����Ϊ"raw"��"raw_b64"����ʱ�����ò���"f"ָ���ļ���; ��POST contentΪ�ļ�����(fmt=raw)���ļ���base64�����(fmt=raw_b64)�����ݡ�
-f:: ָ���ļ�������̨���������չ��������fmt="raw"/"raw_b64"ʱʹ�á�
+fmt:: 指定格式，可为"raw"或"raw_b64"。这时必须用参数"f"指定文件名; 且POST content为文件内容(fmt=raw)或文件经base64编码后(fmt=raw_b64)的内容。
+f:: 指定文件名，后台将检查其扩展名。且在fmt="raw"/"raw_b64"时使用。
 
-type������������ͼ�Ĵ�С��
+type决定生成缩略图的大小：
 - type=user: 128x128
 - type=store: 200x150
 - type=default: 100x100
 
-*[����]*
+*[返回]*
 
-id:: ����id. �ɸ���att(id)�ӿڻ�ȡ���ļ���
-thumbId: �������������genThumb=1, �����������ͼ�����ظ��ֶ�Ϊ���ɵ�����ͼid.
+id:: 附件id. 可根据att(id)接口获取该文件。
+thumbId: 如果参数设置了genThumb=1, 则会生成缩略图并返回该字段为生成的缩略图id.
 
-*[ʾ��1]*
+*[示例1]*
 
-ʹ��Content-TypeΪmultipart/form-data��һ���ϴ�һ�������ļ���
-�����ϴ������ļ�"file1.txt"��"file2.txt", HTTP�������£�
+使用Content-Type为multipart/form-data可一次上传一个或多个文件。
+假如上传两个文件"file1.txt"和"file2.txt", HTTP请求如下：
 {{{
 POST api.php?ac=upload
 Content-Type:multipart/form-data; boundary=----WebKitFormBoundary6oVKiDmuQSPOtt2L
@@ -1135,55 +1140,55 @@ Content-Type: text/plain
 ------WebKitFormBoundary6oVKiDmuQSPOtt2L--
 }}}
 
-ע�⣺
-- "Content-Type"����Ϊ"multipart/form-data"��ָ��boundary. ���˽���ϸ��ʽ��ٶ�.
-- ����˴���ʱ�������filename����һ�������֣���ʹ��ͬ������չ��, �籾���е�".txt"����Ȼ���ļ����ݱ��浽���ļ��С�
+注意：
+- "Content-Type"必须为"multipart/form-data"并指定boundary. 欲了解详细格式请百度.
+- 服务端处理时，会根据filename生成一个新名字（会使用同样的扩展名, 如本例中的".txt"），然后将文件内容保存到该文件中。
 
-ʹ��html�Դ���form��file��������Զ�����������POST�������ϴ������ļ���
+使用html自带的form和file组件可以自动生成这样的POST请求，如上传两个文件：
 {{{
 <form action="api.php?ac=upload" method=post enctype="multipart/form-data">
 	<input type=file name="file1" accept="image/*">
 	<input type=file name="file2" accept="image/*">
-	<input type=submit value="�ϴ�">
+	<input type=submit value="上传">
 </form>
 }}}
 
-Ҳ����ֻʹ��һ��file�����ֻҪ��������multiple��������ѡ�ļ�(��chromeΪ�������ļ�ѡ����п��԰�Ctrl����ѡ�ļ�)����ע���ʱname����������ţ�
+也可以只使用一个file组件，只要设置属性multiple以允许多选文件(以chrome为例，在文件选择框中可以按Ctrl键多选文件)，但注意此时name必须带中括号：
 {{{
 <form action="api.php?ac=upload" method=post enctype="multipart/form-data">
 	<input type=file name="file[]" multiple="multiple" accept="image/*">
-	<input type=submit value="�ϴ�">
+	<input type=submit value="上传">
 </form>
 }}}
 
-multiple������html5�������ԣ�����������֧�֣�Ҳ��������д�����ļ��ϴ���
+multiple属性是html5新增属性，如果浏览器不支持，也可以这样写两个文件上传框：
 {{{
 <form action="api.php?ac=upload" method=post enctype="multipart/form-data">
 	<input type=file name="file[]" multiple="multiple" accept="image/*">
 	<input type=file name="file[]" multiple="multiple" accept="image/*">
-	<input type=submit value="�ϴ�">
+	<input type=submit value="上传">
 </form>
 }}}
 
-����ʾ�����£�
+返回示例如下：
 
 {{{
 [ {id:1, thumbId:2}, {id:3, thumbId:4} ]
 }}}
 
-*[ʾ��2]*
+*[示例2]*
 
-ʹ��fmt=raw�ϴ���
+使用fmt=raw上传：
 
 {{{
 POST api.php?ac=upload&fmt=raw&f=1.jpg
 Content-Type: image/jpeg
 Content-Length: ...
 
-(jpg�ļ�����)
+(jpg文件内容)
 }}}
 
-ʹ��fmt=raw_b64�ϴ���
+使用fmt=raw_b64上传：
 
 {{{
 POST api.php?ac=upload&fmt=raw_b64&f=1.jpg
@@ -1193,59 +1198,59 @@ Content-Length: ...
 /9j/4AAQSkZJRgABAQEASABIAAD/4QC+RXhpZgAATU0AKgAAAAgABgE...
 }}}
 
-����ʾ����
+返回示例：
 {{{
 [ {id:1, thumbId:2} ]
 }}}
 
-==== �������� ====
+==== 附件下载 ====
 
 {{{
 att(id)
 
-����id���ظ���.
+根据id下载附件.
 
 att(thumbId)
 
-ʹ������ͼid��ȡԭͼ. 
+使用缩略图id获取原图. 
 }}}
 
-ע��: �õ��ò����Ͻӿڹ淶, �������ظ�ʽΪ"[code, data]"��json��, ����ֱ�ӷ����ļ�����.
+注意: 该调用不符合接口规范, 它不返回格式为"[code, data]"的json串, 而是直接返回文件内容.
 
-HTTP header "Content-Type"����ʶ��ȷ���ļ�MIME���ͣ���jpg����Ϊ"image/jpeg".
+HTTP header "Content-Type"将标识正确的文件MIME类型，如jpg类型为"image/jpeg".
 
-����Ҳ���������������HTTP״̬��"404 Not Found"��
+如果找不到附件，将返回HTTP状态码"404 Not Found"。
 
-*[����]*
+*[参数]*
 
-thumbId:: ����ͼid
+thumbId:: 缩略图id
 
-*[ʾ��]*
+*[示例]*
 
-��ȡid=100�ĸ�����
+获取id=100的附件：
 {{{
 GET api.php?ac=att&id=100
 }}}
 
-��֪����ͼid=100, ��ȡ����Ӧ��ԭͼ��
+已知缩略图id=100, 获取它对应的原图：
 {{{
 GET api.php?ac=att&thumbId=100
 }}}
 
-����
+返回
 
-�ҵ�ͼƬ��
+找到图片：
 
 {{{
 HTTP/1.1 200 OK
 Content-Type: image/jpeg
 
-(ͼƬ����)
+(图片内容)
 }}}
 
-һ�������������ȷֱ����ʾ��ͼƬ��
+一般浏览器可以正确直接显示该图片。
 
-���Ҳ���ͼƬ��
+或找不到图片：
 
 {{{
 HTTP/1.1 404 Not Found
@@ -1253,49 +1258,49 @@ Content-Type: text/plain; charset=UTF-8
 
 }}}
 
-==== �ϴ����� ====
+==== 上传工具 ====
 
 upload_raw.php(f, d?=upload)(rawFileContent)
 
-*[����]*
+*[参数]*
 
-f:: �ϴ��ļ���
-d:: �ϴ���ָ��Ŀ¼��Ĭ����upload; ���Ŀ¼�����ڿ��Զ�������
-rawFileContent:: HTTP���������Ϊ�ļ����ݡ�
+f:: 上传文件名
+d:: 上传到指定目录，默认是upload; 如果目录不存在可自动创建。
+rawFileContent:: HTTP请求的内容为文件内容。
 
-�����ڹ���Ա�ϴ��ļ�������ʹ��wget���ߣ�
+可用于管理员上传文件。例如使用wget工具：
 {{{
 set PROG=wget -nv --user=lj --password=liang123 -t 1 --connect-timeout=6
 %PROG% --post-file=d:/test/1.jpg "http://localhost/upload_raw.php?f=1.jpg&d=upload/test"
 }}}
 
-TODO: ��֤����Ա
+TODO: 验证管理员
 
-==== ���ع��� ====
+==== 下载工具 ====
 
-�����
+浏览：
 upload_list.php(d?=upload)
 
-�ı�ģʽ�����
+文本模式浏览：
 upload_list.php(d?=upload, ac=list, f)
 
-ɾ���ļ�:
+删除文件:
 upload_list.php(d?=upload, ac=del, f[])
 
-�������ֹ�����������ϵ��ļ����������ػ�ɾ���ļ�.
+可用于手工浏览服务器上的文件。方便下载或删除文件.
 
-ע�⣺Ȩ�޿��ƣ�ֻ������ù�������Ŀ¼������Ŀ¼��
+注意：权限控制：只能浏览该工具所在目录及其子目录。
 
-TODO: ��֤����Ա
+TODO: 验证管理员
 
-*[����]*
+*[参数]*
 
-d:: �ļ���
-ac:: ��������֧��"del", "list"
-f[]:: Ҫɾ�����ļ��б�����"f[]=1.jpg&f[]=2.jpg"). �ļ��в��ɱ�ɾ����
-f:: �ı�ģʽ���ʱ, ���ڹ����ļ���.
+d:: 文件夹
+ac:: 操作名，支持"del", "list"
+f[]:: 要删除的文件列表（如"f[]=1.jpg&f[]=2.jpg"). 文件夹不可被删除。
+f:: 文本模式浏览时, 用于过滤文件名.
 
-*[ʾ��]*
+*[示例]*
 
 {{{
 (list folder "upload"; admin user/pwd=liang/liang123)
@@ -1305,136 +1310,136 @@ f:: �ı�ģʽ���ʱ, ���ڹ����ļ���.
 > curl "http://localhost:8080/upload_list.php?ac=list&d=.&f=.jpg" -u liang:liang123
 }}}
 
-==== ����ǩ�� ====
+==== 生成签名 ====
 {{{
 genSign(_pwd, ...) -> sign
 }}}
 
-������������д�ǩ���ֶν���ǩ����һ��أ����»��߿�ͷ���ֶζ��Ǵ�ǩ���ֶ�(����_pwd, _sign��Щ��������ǩ��)���ر�Ļ�ר��˵����
-��APIһ������ڲ��ԡ�ҳ�� `partner/voucher.html` ʹ�������API��
+根据密码对所有待签名字段进行签名。一般地，非下划线开头的字段都是待签名字段(例如_pwd, _sign这些都不参与签名)，特别的会专门说明。
+该API一般仅用于测试。页面 `partner/voucher.html` 使用了这个API。
 
-���ϣ��һ������������ǩ�������������������"_"��ͷ����"_ac".
+如果希望一个参数不参与签名，则设计它的名字以"_"开头，如"_ac".
 
-==== ������ ====
+==== 发短信 ====
 {{{
 sendSms(phone, content, channel?=0)
 }}}
 
-*[Ȩ��]*
+*[权限]*
 
 - AUTH_ASTORE
 
-*[����]*
+*[参数]*
 
-phone:: String. һ���ֻ��ţ�����Ӣ�Ķ��ŷָ��Ķ���ֻ���.
-content:: String. ��������
-channel:: Integer. 0-��֤��ͨ�����ٶȿ죬���ܱ��˹��˲����ֹ����1-Ӫ��ͨ�����ٶ����������ӵ��һ�㲻��ֹ��
+phone:: String. 一个手机号，或以英文逗号分隔的多个手机号.
+content:: String. 短信内容
+channel:: Integer. 0-验证码通道（速度快，可能被人工核查后阻止）；1-营销通道（速度慢，几分钟到达，一般不阻止）
 
-��һ�������ֻ�Ⱥ�����š�
+对一个或多个手机群发短信。
 
-����ҳ�棺tool/sms.html
+测试页面：tool/sms.html
 
-==== ��ѯ���ż�¼ ====
+==== 查询短信记录 ====
 
 {{{
 SmsLog.query([cond], [_pagesz=20])
 }}}
 
-��ѯ����Ϣ���ͼ�¼. Ĭ�ϰ�id�������С�
+查询短消息发送记录. 默认按id倒序排列。
 
-*[Ȩ��]*
+*[权限]*
 
 - AUTH_ASTORE
 
-*[����]*
+*[参数]*
 
-cond:: ��ѯ��������ʽ�ο�SQL������������"id=1", "phone=12345678901"
+cond:: 查询条件，格式参考SQL语句的条件。如"id=1", "phone=12345678901"
 
-*[����ʾ��]*
-��ѯ�ֻ���Ϊ123456678901�����2����Ϣ��¼, ����id��������
+*[请求示例]*
+查询手机号为123456678901的最近2条消息记录, 按照id降序排列
 {{{
 SmsLog.query(cond="phone=12345678901", _pagesz=2)
 }}}
 
-*[����ʾ��]*
+*[返回示例]*
 
 {{{
 {
 	"h": ["id", "phone", "content", "tm", "retval"],
 	"d": [
-			[18, "12345678901", "��֤��123872������5������ʹ�á�", "2015-09-20 22:21:16", 0],
-			[15, "12345678901", "��֤��655288������5������ʹ�á�", "2015-09-18 12:46:32", 0],
+			[18, "12345678901", "验证码123872，请在5分钟内使用。", "2015-09-20 22:21:16", 0],
+			[15, "12345678901", "验证码655288，请在5分钟内使用。", "2015-09-18 12:46:32", 0],
 		]
 ]
 }}
 
-==== ���û�����Ϣ ====
+==== 给用户发消息 ====
 
 {{{
 notifyUser(orderId, content, noWeixin?)
 }}}
 
-�������û�����Ϣ��Ĭ�Ϸ�΢�źͶ��š�
+给订单用户发消息，默认发微信和短信。
 
-*[Ȩ��]*
+*[权限]*
 
 - AUTH_STORE
 
-*[����]*
+*[参数]*
 
-orderId:: Integer. �������.
-content:: String. ��Ϣ����.
-noWeixin:: Boolean. ���Ϊ1����ֻ�����ţ�����΢����Ϣ��
+orderId:: Integer. 订单编号.
+content:: String. 消息内容.
+noWeixin:: Boolean. 如果为1，则只发短信，不发微信消息。
 
-==== ���� ====
+==== 代理 ====
 
 {{{
 proxy(url)
 }}}
 
-��������url��
+代理访问url。
 
-=== API���ü�� ===
+=== API调用监控 ===
 
-���ж�API�ĵ��ã���������Ӧ������¼����ApiLog�й�������
+所有对API的调用（请求与响应）均记录到表ApiLog中供分析。
 
-��һ��session, �����API�����Ƿ����쳣�������Զ���������Ϊ����ʱ������ E_FORBIDDEN ���󡣰�ȫ���쳣����¼����־�ļ� secure.log
+对一个session, 监控其API调用是否有异常，避免自动化操作行为，这时将返回 E_FORBIDDEN 错误。安全类异常将记录到日志文件 secure.log
 
-ע�⣺
-- �Զ�������ʱ��API��ز���������ʱ_test����ֵΪ2����
-- Ӧ����ͻ���һ��ȡ����ͼƬʱ������
+注意：
+- 自动化测试时，API监控不工作（这时_test参数值为2）。
+- 应避免客户端一次取多张图片时有问题
 
-== ������� ==
+== 测试设计 ==
 
-*[��������]*
+*[测试需求]*
 
-- ��ÿ��WebAPI���伯��ҵ�񳡾����Զ����ع����(rtest - regression test)
-- �ṩ���߿ɶ�ÿ��API�����ֹ�����(test tool)
-- �������ṩ��Ԫ����(UT - unit test)
-- �������ṩ����ģʽ��֧�����ݿ���������������
+- 对每个WebAPI及其集成业务场景有自动化回归测试(rtest - regression test)
+- 提供工具可对每个API进行手工测试(test tool)
+- 部分类提供单元测试(UT - unit test)
+- 服务器提供测试模式，支持数据库清除等特殊操作。
 
-���в������ݴ����`rtest`Ŀ¼�¡�
+所有测试内容存放在`rtest`目录下。
 
-ע:
-- ��������"SVC_URL"������ʹ�õ�URL, ��
+注:
+- 环境变量"SVC_URL"可设置使用的URL, 如
 {{{
 > set SVC_URL=http://115.29.199.210/cheguanjia
 > run_rtest.pl all
 }}}
 
-=== �ֹ����� ===
+=== 手工测试 ===
 
-����ͨ�������(��Chrome���Postman)�ȹ��߽��в����⣬���ṩclient.php���ߣ��ɷֱ����ÿ��API����
+除可通过浏览器(如Chrome插件Postman)等工具进行测试外，还提供client.php工具，可分别测试每个API，如
 {{{
 > client.php queryseries 100
 }}}
 
-Ҳ��ֱ�ӵ���callsvr������������api, �������µ��õȼ���ǰ������:
+也可直接调用callsvr方法调用任意api, 例如以下调用等价于前面例子:
 {{{
 > client.php callsvr queryseries brandId=100
 }}}
 
-����ͨ�õĶԱ��Ĳ�ѯ: ��ʽ`callsvr command [paramstr] [poststr]`, ����`paramstr`��`poststr`Ӧʹ��URL����.
+再如通用的对表的查询: 格式`callsvr command [paramstr] [poststr]`, 其中`paramstr`和`poststr`应使用URL编码.
 {{{
 (get item with id)
 > client.php callsvr item.get id=1 
@@ -1443,102 +1448,102 @@ proxy(url)
 > client.php callsvr item.set id=1 "price=434&dscr=hehe"
 }}}
 
-ע:
-- ֱ������`client.php`�ɲ鿴֧�ֵ�API.
-- ��һ��������Ϊ"?"��ʾ�鿴����, ��`client.php api1 ?`��ʾ��ʾapi1�İ���.
-- ��null��ʾ�ò�������ֵ, ��`client.php api1 param1 null param3`.
-- �ù���Ϊ�ع���Եĸ���Ʒ��
+注:
+- 直接运行`client.php`可查看支持的API.
+- 任一参数设置为"?"表示查看帮助, 如`client.php api1 ?`表示显示api1的帮助.
+- 用null表示该参数不赋值, 如`client.php api1 param1 null param3`.
+- 该工具为回归测试的副产品。
 
-=== �ع���� ===
+=== 回归测试 ===
 
-==== ʹ�÷��� ====
+==== 使用方法 ====
 
-*[ǰ������]*
+*[前提条件]*
 
 - php version >= 5.3.3 (required by phpunit 4.2)
-- ����php��phpunitʹ���ֱ�������� "./php" �� "./phpunit"
+- 配置php和phpunit使其可直接运行如 "./php" 和 "./phpunit"
 
 
-���з���˺ͻع���ԣ�
+运行服务端和回归测试：
 {{{
 > cd rtest
 > run_server.bat
 
-(���÷���URL��Ҳ�����ֹ�����)
+(设置服务URL，也可以手工设置)
 > setTestEnv.bat 
 > set SVC_URL=...
 
-(��������case)
+(运行所有case)
 > run_rtest.pl all
 
-(����һ��case)
+(运行一个case)
 > run_rtest.pl testcase1
 }}}
 
-��־"rtest.log"��¼����HTTP request��response�����ڷ���ҵ���߼�ʧ�ܵ�ԭ��
+日志"rtest.log"记录所有HTTP request和response，用于分析业务逻辑失败的原因。
 
-run_rtest�Ƕ�phpunit�����˷�װ�Ĺ��ߣ�������ܡ�
+run_rtest是对phpunit进行了封装的工具，下面介绍。
 
 *[run_rtest.pl]*
 
-phpunit����ִ�ж��case, �����Զ�����������ϵ. run_rtest.pl���߾������ڼ򻯶Ը���Case�Ĳ���, ��������һ�������ȫ������������
+phpunit可以执行多个case, 不能自动分析依赖关系. run_rtest.pl工具就是用于简化对个别Case的测试, 它可运行一个多个或全部测试用例。
 
 {{{
-(ִ����������)
+(执行所有用例)
 > run_rtest.pl all
 
-(ִ��һ������, �������ο�rtest.php�е�testϵ�к���, ���ƿɺ��Դ�Сд; ���߽��Զ���ִ������������)
+(执行一个用例, 用例名参考rtest.php中的test系列函数, 名称可忽略大小写; 工具将自动先执行依赖的用例)
 > run_rtest.pl testupload
 
-(ִ�ж�����������߽��Զ�����������ִ��˳��)
+(执行多个用例，工具将自动调整各用例执行顺序)
 > run_rtest.pl testatt testupload
 }}}
 
-������һЩ��������:
+下面是一些特殊配置:
 
 > P_DEBUG
 
-ͨ�����û�������P_DEBUG, �����ñ�ϵͳʹ�õĲ��Թ���(��client.php��rtest.php)����ʱָ�����Եȼ�. ��:
+通过设置环境变量P_DEBUG, 可以让本系统使用的测试工具(如client.php及rtest.php)请求时指定调试等级. 如:
 {{{
 set P_DEBUG=9
 client.php callsvr usercar.query
 }}}
 
-�ȼ�9����������SQL��䣬����ͨ���Զ�����URL����"XDEBUG_SESSION_START=netbeans-xdebug"���������php������(���밲װphp-xdebug).
+等级9将打出服务端SQL语句，并且通过自动设置URL参数"XDEBUG_SESSION_START=netbeans-xdebug"触发服务端php调试器(必须安装php-xdebug).
 
 > P_APP
 
-ָ��app����(���ָ��session��). ��ӦϵͳURL����"_app" (�ο��½�"Ӧ�ñ�ʶ(_app)). �ڶ��ֿͻ���ͬʱ��¼ʱ��������ÿ���Ự.
+指定app名称(间接指定session名). 对应系统URL参数"_app" (参考章节"应用标识(_app)). 在多种客户端同时登录时用于区分每个会话.
 
 > P_SHARE_COOKIE
 
-rtestȱʡ���ڲ���ǰ�󴴽���ɾ��cookie, ����ʱ���Զ���һ���û�����, ����������Ҳ�����������û�. 
+rtest缺省会在测试前后创建和删除cookie, 测试时会自动找一个用户测试, 测试用例中也包括创建新用户. 
 
-��������˻�������P_SHARE_COOKIE, �򲻻ᴴ����ɾ����cookie, �����õ�ǰ�ѵ�¼���û�����(���л��õ�API whoami��ȷ����ǰ�û�). 
+如果设置了环境变量P_SHARE_COOKIE, 则不会创建和删除新cookie, 而是用当前已登录的用户测试(其中会用到API whoami来确定当前用户). 
 
-����, �������rtestΪ�ض����û���������, ��������:
+例如, 你想借助rtest为特定的用户创建订单, 可以这样:
 {{{
 > set P_SHARE_COOKIE=1
 > client.php login 13712345678 1234
-(��¼�û�Ϊ13712345678)
+(登录用户为13712345678)
 
-(�õ�ǰ��¼�û�����order)
+(用当前登录用户添加order)
 > run_rtest.pl testaddorder
 
-(�õ�ǰ��¼�û��������в���, ������ע��, ��¼�Ƚӿڲ���)
+(用当前登录用户运行所有测试, 将忽略注册, 登录等接口测试)
 run_rtest.pl all
 }}}
 
-*[phpunit�÷�]*
+*[phpunit用法]*
 
-�������лع���ԣ�
+运行所有回归测试：
 {{{
 phpunit rtest.php
 }}}
 
-phpunit�������ò������£�
+phpunit其它常用参数如下：
 
-����һ������Case(ע�⣺���ƴ�Сд������ȷ����������case������ִ��)
+运行一个或多个Case(注意：名称大小写必须正确，被依赖的case必须先执行)
 {{{
 	run_rtest --filter testGeneralQuery
 	run_rtest --filter testUpload|testAtt
@@ -1554,30 +1559,30 @@ just sanity test:
 	run_rtest --exclude-group scenario
 }}}
 
-==== ����ģʽ��� ====
+==== 测试模式设计 ====
 
-- ��"php -S"ģʽ����ʱ��Server�Զ��л�������ģʽ�£���ʱʹ�õ���DB: "carsvc_test.db".
-- ��������˻�������"initdb" (��ָ�������HTTP header��������"bc-initdb")��Server���Զ���ʼ�����ݿ⡣
-- ����ģʽ�»��ڷ��ذ���HTTP status����" - FOR TEST!"������
+- 以"php -S"模式启动时，Server自动切换到测试模式下，这时使用单机DB: "carsvc_test.db".
+- 如果设置了环境参数"initdb" (在指请求包的HTTP header中设置了"bc-initdb")，Server可自动初始化数据库。
+- 测试模式下会在返回包的HTTP status行有" - FOR TEST!"字样。
 
-*[ʵ��]*
+*[实现]*
 
-rtestʵ�ֲμ�`rtest/rtest.php`�������ʵ������`server/api.php`������"CARSVC_TEST".
+rtest实现参见`rtest/rtest.php`，服务端实现请在`server/api.php`中搜索"CARSVC_TEST".
 
-==== API���Ժ��������� ====
+==== API测试和用例测试 ====
 
-*[ԭ��]*
+*[原则]*
 
-- API����(sanity test): ��ÿ��WEB API���в��ԣ�ע��ÿ��API�ĸ��ֳɹ��ͳ���������
-- �������Ի򳡾�����(usecase/scenraio): ͨ����������API���һ��������ĳ�����
+- API测试(sanity test): 对每个WEB API进行测试，注重每个API的各种成功和出错处理。
+- 用例测试或场景测试(usecase/scenraio): 通过调用若干API完成一个有意义的场景。
 
 - API test and scenario cases in one file: rtest.php
 - if sanity test fails, ignore scenario tests
 - if any critical case fails, ignore the rest.
 
-*[ʵ��]*
+*[实现]*
 
-�ο�file rtest.php:
+参考file rtest.php:
 {{{
 static private $isIT =false;
 static private $skipIT = false;
@@ -1585,93 +1590,93 @@ static private $skipAll = false;
 private $isCritical = false; 
 }}}
 
-=== ��Ԫ���� ===
+=== 单元测试 ===
 
-��Ҫʱ��ĳЩ�����ר�Ų��ԣ������"rtest/test"Ŀ¼���ֹ��������ǣ�
+必要时对某些类进行专门测试，存放在"rtest/test"目录，手工运行它们：
 {{{
 cd test
 phpunit xxxTest.php
 }}}
 
-=== �Զ������� ===
+=== 自动化测试 ===
 
-==== ȡ������־���һ�� ====
+==== 取短信日志最后一条 ====
 
 {{{
 getLastLog(type)
 }}}
 
-*[Ȩ��]*
+*[权限]*
 
 - AUTH_TEST_MODE
 
-*[����]*
+*[参数]*
 
 f::
 
-== ��¼������Ȩ�޹��� ==
+== 登录类型与权限管理 ==
 
-����ʹ�õ�Ȩ�޿���ģ��Ϊ: "�û�-Ȩ��(����ɫ/ԭ��Ȩ����)-ԭ��Ȩ��(����Ȩ��)".
-(ע:Ȩ����Ҳ��"��ɫ", ����ĳЩϵͳ��Ҳ��Ϊ"�û�-��ɫ-Ȩ��"ģ��.)
+我们使用的权限控制模型为: "用户-权限(即角色/原子权限组)-原子权限(基本权限)".
+(注:权限组也称"角色", 所以某些系统中也称为"用户-角色-权限"模型.)
 
-������ϵͳ��, �û���Ҫ��User��Employee����. 
+在我们系统中, 用户主要有User和Employee两类. 
 
-Ȩ��������: authorization(���permission), �Լ�data ownership. 
-- ǰ�߿����û����Է��ʵı�����, �Լ��Ըö���(�������ȵ��ֶ�)��������Щ����(��/д). ����, ������ϵͳ��, User��¼��������Ӷ���(Ordr.add, ��ֻ��������ָ�����ֶ�), ������ɾ������. ʵ��ʱ, ͨ��AC1_Ordr������˲�������, �ֶε�.
-- ���߿����û����Է��ʵ���, ����, ��Ȼ�û����Է��ʶ�������, ��ֻ�ܲ����Լ��Ķ���, �����ܲ������˵Ķ���. ʵ��ʱ, ��AC1_Ordr���onValidateId(���set/del/get����)/onQuery(���query����)��, �����˿���.
+权限有两类: authorization(或称permission), 以及data ownership. 
+- 前者控制用户可以访问的表及列, 以及对该对象(甚至粒度到字段)可以有哪些操作(读/写). 例如, 在我们系统中, User登录后可以添加订单(Ordr.add, 且只允许设置指定的字段), 不可以删除订单. 实现时, 通过AC1_Ordr类控制了操作类型, 字段等.
+- 后者控制用户可以访问的行, 例如, 虽然用户可以访问订单对象, 但只能操作自己的订单, 但不能操作别人的订单. 实现时, 在AC1_Ordr类的onValidateId(检查set/del/get操作)/onQuery(检查query操作)中, 均做了控制.
 
-�ں�̨ϵͳ��, ����������ԭ��Ȩ�޶�����ͨ��AccessControl���ʵ�ֵ�, ÿһ����(��AC1_Ordr)����һ��Ȩ�޶���(�����˶���Ȩ��, ��Ȩ�޼���Ȩ��). �����ں���������Ȩ����ͨ��checkAuth(��ɫ)��ʾ����: ֻ��ָ����ɫ���û����ܵ���.
+在后台系统中, 对象操作类的原子权限定义是通过AccessControl类簇实现的, 每一个类(如AC1_Ordr)即是一个权限定义(包括了对象权限, 列权限及行权限). 而对于函数操作类权限是通过checkAuth(角色)显示定义: 只有指定角色的用户才能调用.
 
-Ȩ�޶���ο��½�[Ȩ��˵��].
+权限定义参考章节[权限说明].
 
-== ����˲��������� ==
+== 服务端部署与升级 ==
 
-server/tool/upgrade.php - ��������
+server/tool/upgrade.php - 升级管理
 
-*[ԭ��]*
+*[原理]*
 
-����DESIGN.wiki�е�[���ݿ����]�½���������table meta data (@table)��meta version (@ver), �����������ݿ����ֶε�cinf.version, Ȼ����ݲ�����±���Ƽ�������.
+它以DESIGN.wiki中的[数据库设计]章节内容生成table meta data (@table)及meta version (@ver), 比照真正数据库中字段的cinf.version, 然后根据差异更新表设计及表内容.
 
-*[���ݿ�����]*
+*[数据库连接]*
 
-ȱʡ��, upgrade.php��api.php������ͬ�����ݿ�. ֧��mysql��sqlite.
-��������P_DB��Ϊ��������ָ�����ݿ�. ��
-- P_DB="carsvc.db"��ʾ���ص�sqlite db (��.db��β)
-- P_DB="../carsvc.db"��ʾ���ص�sqlite db, ָ����׼ȷ��λ��.
-- P_DB="carsvc" ��ʾ���صĵ�mysql db, �൱��"localhost/carsvc".
-- P_DB="115.29.199.210/carsvc_test" ��ʾλ��IP=115.29.199.210��Զ��mysql db.
+缺省地, upgrade.php与api.php连接相同的数据库. 支持mysql和sqlite.
+环境变量P_DB可为升级工具指定数据库. 如
+- P_DB="carsvc.db"表示本地的sqlite db (以.db结尾)
+- P_DB="../carsvc.db"表示本地的sqlite db, 指定了准确的位置.
+- P_DB="carsvc" 表示本地的的mysql db, 相当于"localhost/carsvc".
+- P_DB="115.29.199.210/carsvc_test" 表示位于IP=115.29.199.210的远程mysql db.
 
-��������P_DBCREDָ���������ݿ���û������롣��δָ������ʹ��php/dbcred.php�е��趨��
+环境变量P_DBCRED指定连接数据库的用户名密码。如未指定，则使用php/dbcred.php中的设定。
 
-=== �÷� ===
+=== 用法 ===
 
 upgrade.php
 
-ȱʡ���������н���.
+缺省进入命令行交互.
 
-==== �������� ====
+==== 交互命令 ====
 
-һ�������ʽ�뺯����������, Ҳ֧��ֱ�ӵ�sql���, ��
+一般命令格式与函数调用类似, 也支持直接的sql语句, 如
 {{{
 > addtable("item")
 > addtable("item", true)
 > quit()
 
-�����޲�������ɲ�������
+对于无参数命令可不加括号
 > quit
 
-֧��ֱ�ӵ�sql���
+支持直接的sql语句
 > select * from item limit 10
 > update item set price=333 where id=8
 }}}
 
 *[help]*
 
-����: [command]
+参数: [command]
 
-��ʾ����. ����ָ��command����, ȫ���򲿷־���.
+显示帮助. 可以指定command名称, 全部或部分均可.
 
-��:
+例:
 {{{
 > help
 > help("addtable")
@@ -1680,59 +1685,59 @@ upgrade.php
 
 *[upgrade]*
 
-�Զ����ݰ汾�����������ݿ�. ����ֶ�cinf.ver������, ���ؽ�DB(����������еı�, ����ɾ���������´���). ������ɺ�����cinf.ver�ֶ�.
-TODO: WebAPI "upgrade"����ͬ��������, �Ա���ͨ��web����Զ������.
+自动根据版本差异升级数据库. 如果字段cinf.ver不存在, 则重建DB(但会忽略已有的表, 不会删除它再重新创建). 升级完成后设置cinf.ver字段.
+TODO: WebAPI "upgrade"可做同样的事情, 以便于通过web请求远程升级.
 
-ע��: ����MYSQL���ݿ�, ��������ֻ������, ���������ݿⱾ��(�Լ�Ȩ������). 
+注意: 对于MYSQL数据库, 升级工具只创建表, 不创建数据库本身(以及权限设置). 
 
 *[showtable]*
 
-����: {table}
+参数: {table}
 
-�鿴ĳ����metadata�Լ�SQL�������.
+查看某表的metadata以及SQL创建语句.
 
-��: 
+例: 
 {{{
 > showtable("item")
 }}}
 
 *[addtable]*
 
-����: {table} [force=false]
+参数: {table} [force=false]
 
-����metadata����ָ���ı�{table}. δָ��force����ʱ, ������Ѵ�����δָ��force=true, ���������ȱʧ���ֶ�; ���ָ����force=true, ���ɾ�����ؽ�.
+根据metadata添加指定的表{table}. 未指定force参数时, 如果表已存在且未指定force=true, 则检查和添加缺失的字段; 如果指定了force=true, 则会删除表重建.
 
-��:
+例:
 {{{
 > addtable("item")
 
-(ɾ����item���ؽ�)
+(删除表item并重建)
 > addtable("item", true)
 }}}
 
 *[initdb]*
 
-�Զ��������б�. ��ͬ��updatedb����.
+自动添加所有表. 等同于updatedb命令.
 
 *[updatedb]*
 
-�Զ����ӻ�������б�. �൱�ڶ����б�����addtable����.
-���ĳ�ű��Ѵ���, �����Ƿ���ȱʧ���ֶ�(ע��: ֻ���ȱʧ, ������ֶ������Ƿ�仯), ��������, ����Ըñ���������.
+自动添加或更新所有表. 相当于对所有表调用addtable命令.
+如果某张表已存在, 则检查是否有缺失的字段(注意: 只检查缺失, 不检查字段类型是否变化), 有则添加, 否则对该表不做更改.
 
 *[execsql]*
 
-����: {sql} [silent=false]
+参数: {sql} [silent=false]
 
-����select���, ���ؽ��������; �����������, ����affectedRows.
+对于select语句, 返回结果集内容; 对于其它语句, 返回affectedRows.
 
-��:
+例:
 {{{
 > execsql("select * from item limit 10")
 > execsql("update item set price=10 where id=3")
 }}}
 
-ע:
-- ֧��ֱ������SQL���, ���Զ�����execsql()ִ��. ����ͨ����select�ȹؼ���ʶ��SQL, ��
+注:
+- 支持直接输入SQL语句, 会自动调用execsql()执行. 程序通过以select等关键字识别SQL, 如
 {{{
 > select * from item limit 10
 > update item set price=10 where id=3
@@ -1740,93 +1745,102 @@ TODO: WebAPI "upgrade"����ͬ��������, �Ա���ͨ��web����Զ������.
 
 *[quit]*
 
-�˳�����. �ɼ�дΪ"q".
+退出交互. 可简写为"q".
 
-��:
+例:
 {{{
 > quit
-��
+或
 > q
 }}}
 
 *[TODO: reload]*
 
-���¼���metadata. ���޸���DESIGN.wiki�еı��ṹ����ʱ, Ӧ���ø�����ˢ��metadata, �Ա�showtable/addtable������ʹ�����µ�metadata.
+重新加载metadata. 当修改了DESIGN.wiki中的表结构定义时, 应调用该命令刷新metadata, 以便showtable/addtable等命令使用最新的metadata.
 
 *[addcol]*
 
 addcol {table} {col}
 
-�����ֶ�{table}.{col}
+添加字段{table}.{col}
 
 *[getver]*
 
-ȡ�������version.
+取表定义的version.
 
 *[getdbver]*
 
-ȡ���ݿ��version. 
+取数据库的version. 
 
 *[import]*
 
-����: {filename} {noPrompt=false} [encoding=utf8]
+参数: {filename} {noPrompt=false} [encoding=utf8]
 
-���ļ����ݵ����������������ڣ����Զ�������������metadata����������Ѵ��ڣ���ɾ���ؽ����ļ�����Ĭ��Ϊutf8. (TODO: ֧��ָ�����룩
+将文件内容导入表，如果表不存在，会自动创建表（根据metadata），如果表已存在，会删除重建。文件编码默认为utf8. (TODO: 支持指定编码）
 
-noPrompt:: Ĭ�ϵ����֮ǰҪ��ȷ�ϣ����ָ������Ϊtrue������Ҫ��ʾ��ֱ�ӵ��롣
+noPrompt:: 默认导入表之前要求确认，如果指定该项为true，则不需要提示，直接导入。
 
-һ���ļ����԰����������ÿ�ű������ݸ�ʽ���£�
+一个文件可以包含多个表，每张表的数据格式如下：
 {{{
 # table [CarBrand]
 id	name	shortcut
-110	�µ�	A
-116	����	B
-103	����	B
+110	奥迪	A
+116	宝骏	B
+103	宝马	B
 ...
 }}}
 
-"#"��ͷΪע�ͣ�һ�㱻���ԣ��ر�أ�"table [����]"���ʶ��ʼһ���±���Ȼ�����ȥһ����header���壬��tab�ָ��������������ݶ��壬��tab�ָ���
+"#"开头为注释，一般被忽略；特别地，"table [表名]"会标识开始一个新表，然后接下去一行是header定义，以tab分隔，再下面是数据定义，以tab分隔。
 
-�����ļ�һ�������excel��ֱ�ӱ༭����ע�⣺excelĬ���ñ��ر��룬Ҳ֧��unicode��ucs-2le���룬����ֱ��֧��utf-8���룩
+这种文件一般可以在excel中直接编辑（但注意：excel默认用本地编码，也支持unicode即ucs-2le编码，但不直接支持utf-8编码）
 
-ע��:
-- ����ֶ�ֵΪ��, ֱ��дnull.
+注意:
+- 如果字段值为空, 直接写null.
 
-�������복�Ͳ�������
-�����ɲ������ݣ�
+例：导入车型测试数据
+先生成测试数据：
 {{{
 initdata\create_testdata.pl
-(���ɵ��ļ�brands.txt)
+(生成到文件brands.txt)
 }}}
 
-����upgrade.php����import���룺
+再在upgrade.php中用import导入：
 {{{
 > import("../initdata/brands.txt")
 }}}
 
-ע�⣺���������"-"��ͷ������Դ������ݣ���
+注意：如果列名以"-"开头，则忽略此列数据，如
 {{{
 # table [CarBrand]
 id	name	-shortcut
-110	�µ�	A
+110	奥迪	A
 ...
 }}}
-�����ᵼ��shortcut�С�
+将不会导入shortcut列。
 
-���������룺
+TODO: 带关联字段导入：
 {{{
-# table [Svc]
-id	name	Svc_ItemType(ittId,svcId)
-1	С����	1,2,6
-2	����	1,2,3,4,7
+# table [Figure]
+name	bookId(Book.name)	ref
+黄帝	史记	本纪-五帝
 }}}
 
-�����и��ֶα���Ϊ"Svc_ItemType(ittId,svcId)", ����ʾ���ֶι������� Svc_ItemType.ittId�ֶΣ���������id��Ӧ�������ֶ�svcId��������Ϊ�Զ��ŷָ���һ��ֵ�����������൱�ڣ�
+上例数据中，表示根据Book.name查找Book.id，然后填入Figure.bookId。如果Book中找不到相应项，会自动添加一项。
+
+关联表导入：
 {{{
 # table [Svc]
 id	name	Svc_ItemType(ittId,svcId)
-1	С����	1,2,6
-2	����	1,2,3,4,7
+1	小保养	1,2,6
+2	大保养	1,2,3,4,7
+}}}
+
+上例有个字段表述为"Svc_ItemType(ittId,svcId)", 它表示该字段关联到表 Svc_ItemType.ittId字段，而本表的id对应关联表字段svcId。其内容为以逗号分隔的一串值。以上描述相当于：
+{{{
+# table [Svc]
+id	name
+1	小保养
+2	大保养
 
 # table [Svc_ItemType]
 ittId	svcId
@@ -1836,18 +1850,18 @@ ittId	svcId
 ...
 }}}
 
-�������������ã�
+还可以这样设置：
 {{{
 # table [Svc]
 id	name	Svc_ItemType(ittId,svcId,ItemType.name)
-1	С����	����;����������
+1	小保养	机油;机油滤清器
 }}}
 
-������"Svc_ItemType"����һ������"ItemType.name", ����ʾ���������ǹ�����ItemType.name�ֶΣ�����Ҫ����"SELECT id FROM ItemType WHERE name=?"��ѯ��Svc_ItemType.ittId(��һ������)����ͬ�����������ӡ�
+上例中"Svc_ItemType"多了一个参数"ItemType.name", 它表示下面内容是关联到ItemType.name字段，即需要先用"SELECT id FROM ItemType WHERE name=?"查询出Svc_ItemType.ittId(第一个参数)，再同上例进行添加。
 {{}}
-==== �ǽ������� ====
+==== 非交互命令 ====
 
-��:
+例:
 
 {{{
 upgrade.php car_brand car_series car_model
@@ -1857,14 +1871,14 @@ upgrade.php all
 upgrade.php upgrade
 }}}
 
-=== д�����ű� ===
+=== 写升级脚本 ===
 
-�����ṹ�仯ʱ, 
+当表结构变化时, 
 
-- ��������ĵ��еı����(�൱�ڸ���meta data)
-- ��������ĵ��е���ư汾��(@ver)
-- �������ű������������߼�, �������ֶ�(������Ĭ��ֵ), ���ӱ�, �޸��ֶε�.
-- ���������ű���, �ϴ�����ĵ��������ű�, ��ͨ��API���¼������ִ��Զ������; ��ֱ���ڱ���ͨ������P_DB��������ֱ����������������Զ�����ݿ�.
+- 更新设计文档中的表设计(相当于更改meta data)
+- 增加设计文档中的设计版本号(@ver)
+- 在升级脚本中添加升级逻辑, 如添加字段(及设置默认值), 添加表, 修改字段等.
+- 测试升级脚本后, 上传设计文档及升级脚本, 再通过API或登录服务器执行远程升级; 或直接在本地通过设置P_DB环境变量直接用升级工具连接远端数据库.
 
 upgrade.php
 {{{
@@ -1896,7 +1910,7 @@ if (dbver < 4) {
 update cinf set ver, update_tm
 }}}
 
-== ���߽ӿ� ==
+== 工具接口 ==
 
 === tool/log.php ===
 
@@ -1904,77 +1918,77 @@ update cinf set ver, update_tm
 log.php(f?=ext, sz?=2500)
 }}}
 
-�鿴��־��ֻ��ʾ���µ����������������У���
+查看日志（只显示最新的若干条，倒序排列）。
 
-*[����]*
+*[参数]*
 
-f:: String. ָ����־���ͣ�ȱʡ�鿴ģ��ӿڵ���־(ext.log), ������Ϊ"trace".
-sz:: Integer. ����ȡ�ļ���С��log.php���ļ���β����ȱʡ3k�ֽڣ�������sz���޸ģ���λΪB.
+f:: String. 指定日志类型，缺省查看模拟接口的日志(ext.log), 还可以为"trace".
+sz:: Integer. 最多读取文件大小。log.php从文件结尾处读缺省3k字节，可以用sz来修改，单位为B.
 
-*[ʾ��]*
+*[示例]*
 
 {{{
 tool/log.php
 
 tool/log.php?f=trace
-(�鿴trace log)
+(查看trace log)
 }}}
 
-== �������� ==
+== 定期任务 ==
 {{{
 tool/task.php(ac)
 }}}
 
-����Ϊ�����й���ִ�С�ͨ��crontab���ö���ִ�и����
+它作为命令行工具执行。通过crontab设置定期执行该命令。
 
-*[��װ]*
+*[安装]*
 
-����toolĿ¼ִ��`php task.crontab.php`����һ���ı���������`crontab -e`�༭�ƻ����񣬽��ո����ɵ��ı����ƹ�������װ�á�
-��Ļ�������־�ļ� `tool/task.log`.
+进入tool目录执行`php task.crontab.php`生成一串文本，再运行`crontab -e`编辑计划任务，将刚刚生成的文本复制过来即安装好。
+屏幕输出到日志文件 `tool/task.log`.
 
-*[����]*
+*[参数]*
 
-ac:: String. ָ���������񡣶������¡�
+ac:: String. 指定具体任务。定义如下。
 
 *[ac=voucher]*
 
-����ÿ��ִ��һ���Ρ�
-����Ż�ȯ�ѹ��ڣ�����״̬Voucher.status�������Ż�ȯ�Ĺ���������3���ڣ������������û���
+建议每天执行一两次。
+如果优惠券已过期，设置状态Voucher.status。发现优惠券的过期日期在3天内，发短信提醒用户。
 
 *[ac=order]*
 
-����ÿСʱִ��һ�Ρ�
-����Ķ�������ǰ2Сʱ֪ͨ�û���
+建议每小时执行一次。
+隔天的订单，提前2小时通知用户。
 
 *[ac=db]*
 
-ÿ��ִ��һ�Ρ�
-�������ݿ⡣
+每天执行一次。
+备份数据库。
 
-== ���ݰ�ȫ ==
+== 数据安全 ==
 
-*[����]*
+*[需求]*
 
-�����������ѳ������ָ���ʽ��
-- �������������ػ�����������������ʧ -- ͨ�����ݿ��Դ��Ĺ����޸����������ݻָ�
-- ���ܲ������ƻ��������޷���ȡ���������Ӳ���� -- ʹ�ñ���(slave)���ݽ��лָ��������ÿ�ձ���+delta binlog�ķ�ʽ�ָ������binlog���ã�
-- ��Ϊ������������������ -- ����ÿ�ձ���+delta binlog�ķ�ʽ�ָ������������������֣�
+考虑以下灾难场景及恢复方式：
+- 服务器不正常关机，重启后数据有损失 -- 通过数据库自带的工具修复，不做数据恢复
+- 遭受病毒等破坏，数据无法读取；或服务器硬盘损坏 -- 使用备机(slave)数据进行恢复；或采用每日备份+delta binlog的方式恢复（如果binlog可用）
+- 人为不当操作导致数据损坏 -- 采用每日备份+delta binlog的方式恢复（跳过不当操作部分）
 
-*[���ݽ���]*
+*[备份建议]*
 
-- ÿ������ȫ���ݡ���Ҫ����Ӧ����7��10���ڵ�ÿ�ձ��ݣ��Ա����ٵ�����������·������������������Ҫ���ݿɶ��ڱ��ݣ���ApiLog��SmsLog�ȷ�ҵ������, �����ܴ�
-- �첽���Ʒ���(Async Replication)���ôӻ�(slave)��������������һ�¡�
-- ������������Ӧ���������������ϣ��Ա�һ̨���������𻵡�����ʹ�����ӻ�ͬʱ���ݵķ�ʽ��Ҳ�����������ݵ����Ƶ�����������
+- 每日数据全备份。重要数据应保留7到10天内的每日备份（以备长假等特殊情况导致发现问题较晚）。非重要数据可定期备份（如ApiLog，SmsLog等非业务数据, 但量很大）
+- 异步复制方案(Async Replication)。让从机(slave)与主机基本保持一致。
+- 备份数据至少应放在两个服务器上，以备一台机器数据损坏。可以使用主从机同时备份的方式，也可以主机备份到复制到其它机器。
 
-*[Ŀǰ����]*
+*[目前方案]*
 
-- ����oliveche.com, �ӻ�server-pc (��������), �����ݿ�carsvc�첽ȫ����(�ӻ����ݿ���Ϊcarsvc_online)��
-- ��������ÿ�ձ�����Ҫ���ݵ� tool/bak/db_{yyyymmdd_hhmmss}.gz (����ApiLog�ȷ�ҵ������), ����7-10���ڵ�ÿ�ձ��ݡ�
+- 主机oliveche.com, 从机server-pc (内网机器), 对数据库carsvc异步全复制(从机数据库名为carsvc_online)。
+- 主机设置每日备份重要数据到 tool/bak/db_{yyyymmdd_hhmmss}.gz (不含ApiLog等非业务数据), 保留7-10天内的每日备份。
 
-*[ע��]*
+*[注意]*
 
-- Ŀǰ����ֻʹ��ȫ���ݣ���������ļ����������󣬿�������������(mysqlbinlog --start-position/--start-date --stop-position/--stop-date).
-- Ŀǰ����������������ʡ�ɱ������������������ȣ���
-- ���ŷ��������󣬿ɽ��������ڹ�������ֻ��/���������ȷ�����������Ȼ���첽���ƻ��ƣ�
-- ���������������һ�����޷��������Ӧ�����Ⱥ��
+- 目前备份只使用全备份；如果备份文件增长到过大，可增加增量备份(mysqlbinlog --start-position/--start-date --stop-position/--stop-date).
+- 目前将备机置于内网节省成本（机器，网络流量等）。
+- 随着访问量增大，可将备机置于公网，做只读/报表分析等服务器。（仍然用异步复制机制）
+- 如果事务增长至单一主机无法解决，则应组件集群。
 

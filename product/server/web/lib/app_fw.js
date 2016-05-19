@@ -39,11 +39,9 @@ function numberSort(a, b)
 function getAncestor(o, fn)
 {
 	while (o) {
-		if (o.tagName == null)
-			return null;
 		if (fn(o))
 			return o;
-		o = o.parentNode;
+		o = o.parentElement;
 	}
 	return o;
 }
