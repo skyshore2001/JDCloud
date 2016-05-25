@@ -81,9 +81,30 @@ function getFormParam(jf)
 {
 	var param = {};
 	jf.find("[name]").each (function () {
-		param[$(this).attr("name")] = $(this).val();
+		var jo = $(this);
+		if (jo.prop("disabled"))
+			return;
+		param[jo.attr("name")] = jo.val();
 	});
 	return param;
+}
+
+/**
+@fn setFormParam(jform, param)
+
+对form中带name属性的控件, 分别以param[name]进行赋值。
+ */
+function setFormParam(jf, param)
+{
+	jf.find("[name]").each(function () {
+		var jo = $(this);
+// 		if (jo.prop("disabled"))
+// 			return;
+		var name = jo.attr("name");
+		if (param[name] !== undefined) {
+			jo.val(param[name]);
+		}
+	});
 }
 
 /**
@@ -683,7 +704,7 @@ function CPageManager(app)
 				m_jstash = $("<div id='muiStash' style='display:none'></div>").appendTo(self.container);
 			}
 			// 注意：如果html片段中有script, 在append时会同步获取和执行(jquery功能)
-			var jpage = $(html);
+			var jpage = $(html).filter("div");
 			if (jpage.size() > 1 || jpage.size() == 0) {
 				console.log("!!! Warning: bad format for page '" + pageId + "'. Element count = " + jpage.size());
 				jpage = jpage.filter(":first");
@@ -1050,6 +1071,9 @@ ani:: String. 动画效果。设置为"none"禁用动画。
 	self.showDialog = showDialog;
 	function showDialog(jdlg)
 	{
+		if (jdlg.constructor === String) {
+			jdlg = MUI.activePage.find(jdlg);
+		}
 		var opt = self.getOptions(jdlg);
 		if (opt.initfn) {
 			opt.onBeforeShow = opt.initfn.call(jdlg);
@@ -1107,21 +1131,26 @@ ani:: String. 动画效果。设置为"none"禁用动画。
 	}
 
 /**
-@fn MUI.app_alert(msg, type?=i, fn?, timeoutInterval?)
+@fn MUI.app_alert(msg, type?=i, fn?, opt?={timeoutInterval?, defValue?})
+@fn MUI.app_alert(msg, type?=i, opt?={timeoutInterval?, defValue?})
 @alias app_alert
-@param type 对话框类型: "i": info, 信息提示框; "e": error, 错误框; "w": warning, 警告框; "q": question, 确认框(会有"确定"和"取消"两个按钮)
+@param type 对话框类型: "i": info, 信息提示框; "e": error, 错误框; "w": warning, 警告框; "q": question, 确认框(会有"确定"和"取消"两个按钮); "p": prompt, 输入框
+@param fn Function(text?) 回调函数，当点击确定按钮时调用。当type="p" (prompt)时参数text为用户输入的内容。
+@param opt Object. 可选项。 timeoutInterval表示几秒后自动关闭对话框。defValue用于输入框(type=p)的缺省值.
 
 可自定义对话框，接口如下：
 
 - 对象id为muiAlert, class包含mui-dialog.
 - .p-title用于设置标题; .p-msg用于设置提示文字
-- 两个按钮 #btnOK, #btnCancel，仅当type=q时显示btnCancel.
+- 两个按钮 #btnOK, #btnCancel，仅当type=q (question)时显示btnCancel.
+- 输入框 #txtInput，仅当type=p (prompt)时显示。
 
 示例：
 
 	<div id="muiAlert" class="mui-dialog">
 		<h3 class="p-title"></h3>
 		<div class="p-msg"></div>
+		<input type="text" id="txtInput"> <!-- 当type=p时才会显示 -->
 		<div>
 			<a href="javascript:;" id="btnOK" class="mui-btn primary">确定</a>
 			<a href="javascript:;" id="btnCancel" class="mui-btn">取消</a>
@@ -1132,11 +1161,18 @@ app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时�
 
 */
 	window.app_alert = self.app_alert = app_alert;
-	function app_alert(msg, type, fn, timeoutInterval)
+	function app_alert(msg, type, fn, alertOpt)
 	{
 		type = type || "i";
-		var icon = {i: "info", w: "warning", e: "error", q: "question"}[type];
-		var s = {i: "提示", w: "警告", e: "出错", q: "确认"}[type];
+		if (typeof(fn) == "object") {
+			alertOpt = fn;
+			fn = null;
+		}
+		if (alertOpt == null)
+			alertOpt = {};
+
+		//var cls = {i: "mui-info", w: "mui-warning", e: "mui-error", q: "mui-question", p: "mui-prompt"}[type];
+		var s = {i: "提示", w: "警告", e: "出错", q: "确认", p: "输入"}[type];
 
 		var jmsg = $("#muiAlert");
 		if (jmsg.size() == 0) {
@@ -1144,6 +1180,7 @@ app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时�
 	'<div id="muiAlert" class="mui-dialog">' + 
 	'	<h3 class="hd p-title"></h3>' + 
 	'	<div class="sp p-msg"></div>' +
+	'	<input type="text" id="txtInput" style="border:1px solid #bbb; line-height:1.5">' +
 	'	<div class="sp nowrap">' +
 	'		<a href="javascript:;" id="btnOK" class="mui-btn primary">确定</a>' +
 	'		<a href="javascript:;" id="btnCancel" class="mui-btn">取消</a>' +
@@ -1162,13 +1199,19 @@ app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时�
 			isClone = true;
 		}
 		var opt = self.getOptions(jmsg);
+		opt.type = type;
 		opt.fn = fn;
+		opt.alertOpt = alertOpt;
 		var rand = Math.random();
 		opt.rand_ = rand;
 		if (! opt.inited) {
 			jmsg.find("#btnOK, #btnCancel").click(function () {
 				if (opt.fn && this.id == "btnOK") {
-					opt.fn();
+					var param;
+					if (opt.type == "p") {
+						param = jmsg.find("#txtInput").val();
+					}
+					opt.fn(param);
 				}
 				opt.rand_ = 0;
 				self.closeDialog(jmsg, isClone);
@@ -1176,17 +1219,23 @@ app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时�
 			opt.inited = true;
 		}
 
-		jmsg.find("#btnCancel").toggle(type == "q");
+		jmsg.find("#btnCancel").toggle(type == "q" || type == "p");
+		var jtxt = jmsg.find("#txtInput");
+		jtxt.toggle(type == "p");
+		if (type == "p") {
+			jtxt.val(alertOpt.defValue);
+		}
+
 		jmsg.find(".p-title").html(s);
 		jmsg.find(".p-msg").html(msg);
 		self.showDialog(jmsg);
 
-		if (timeoutInterval != null) {
+		if (alertOpt.timeoutInterval != null) {
 			setTimeout(function() {
 				// 表示上次显示已结束
 				if (rand == opt.rand_)
 					jmsg.find("#btnOK").click();
-			}, timeoutInterval);
+			}, opt.timeoutInterval);
 		}
 	}
 
@@ -1200,13 +1249,14 @@ app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时�
 		if (jo.attr("onclick"))
 			return;
 		// 使用showPage, 与直接链接导致的hashchange事件区分
-		jo.click(function () {
+		jo.click(function (ev) {
+			ev.preventDefault();
 			var href = jo.attr("href");
 			// 如果名字以 "#dlgXXX" 则自动打开dialog
 			if (href.substr(1,3) == "dlg") {
 				var jdlg = self.activePage.find(href);
 				self.showDialog(jdlg);
-				return false;
+				return;
 			}
 			var opt = jo.attr("mui-opt");
 			if (opt) {
@@ -1218,7 +1268,6 @@ app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时�
 				}
 			}
 			self.showPage(href, opt);
-			return false;
 		});
 	}
 //}}}

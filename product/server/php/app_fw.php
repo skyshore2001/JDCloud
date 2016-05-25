@@ -718,6 +718,7 @@ function queryAll($sql, $fetchMode = PDO::FETCH_NUM)
 	getBaseUrl() -> "http://host/cheguanjia/"
 	getBaseUrl(false) -> "/cheguanjia/"
 
+@see $BASE_DIR
  */
 function getBaseUrl($wantHost = true)
 {
@@ -860,6 +861,11 @@ END;
 
 /**
 @fn addLog($str, $logLevel=1)
+
+输出调试信息到前端。调试信息将出现在最终的JSON返回串中。
+如果只想输出调试信息到文件，不想让前端看到，应使用logit.
+
+@see logit
  */
 function addLog($str, $logLevel=1)
 {
@@ -873,6 +879,14 @@ function addLog($str, $logLevel=1)
 
 /**
 @fn getAppType()
+
+根据应用标识($APP)获取应用类型(AppType)。注意：应用标识一般由前端应用通过URL参数"_app"传递给后端。
+不同的应用标识可以对应相同的应用类型，如应用标识"emp", "emp2", "emp-adm" 都表示应用类型"emp"，即 应用类型=应用标识自动去除尾部的数字或"-xx"部分。
+
+不同的应用标识会使用不同的cookie名，因而即使用户同时操作多个应用，其session不会相互干扰。
+同样的应用类型将以相同的方式登录系统。
+
+@see $APP
  */
 function getAppType()
 {
@@ -880,7 +894,11 @@ function getAppType()
 	return preg_replace('/(\d+|-\w+)$/', '', $APP);
 }
 
-/** @fn hasSignFile($f) */
+/** 
+@fn hasSignFile($f)
+
+检查应用根目录下($BASE_DIR)下是否存在标志文件。标志文件一般命名为"CFG_XXX", 如"CFG_MOCK_MODE"等。
+*/
 function hasSignFile($f)
 {
 	global $BASE_DIR;
@@ -889,6 +907,17 @@ function hasSignFile($f)
 //}}}
 
 // ====== classes {{{
+/** 
+@class MyException($code, $internalMsg?, $outMsg?)
+
+@param $internalMsg String. 内部错误信息，前端不应处理。
+@param $outMsg String. 错误信息。如果为空，则会自动根据$code填上相应的错误信息。
+
+抛出错误，中断执行:
+
+	throw new MyException(E_PARAM, "Bad Request - numeric param `$name`=`$ret`.", "需要数值型参数");
+
+*/
 # Most time outMsg is optional because it can be filled according to code. It's set when you want to tell user the exact error.
 class MyException extends LogicException 
 {
@@ -907,6 +936,22 @@ class MyException extends LogicException
 	}
 }
 
+/**
+@class DirectReturn
+
+抛出该异常，可以中断执行直接返回，不显示任何错误。
+
+例：API返回非BPQ协议标准数据，可以跳出setRet而直接返回：
+
+	echo "return data";
+	throw new DirectReturn();
+
+例：返回指定数据后立即中断处理：
+
+	setRet(0, ["id"=>1]);
+	throw new DirectReturn();
+
+*/
 class DirectReturn extends LogicException 
 {
 }

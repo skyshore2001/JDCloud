@@ -200,19 +200,29 @@ html, body {
 	border-radius: 5px 5px 0 0;
 }
 
+/* 与mui-dialog一样居中显示，但点击一下自动消失 */
 .mui-menu {
 	position: absolute;
+	top: 50%;
+	left: 50%;
+	max-width: 95%;
+	min-width: 60%;
+	-webkit-transform: translate(-50%, -50%);
+	transform: translate(-50%, -50%);
+	border-radius: 5px;
+	background-color: #fafafc;
+	display: none;
+	list-style-type: none;
+}
+
+/* 右上角菜单 */
+.mui-menu.top {
+	-webkit-transform: none;
 	transform: none;
 	left: auto;
 	right: 5px;
 	top: 35px;
-	max-width: 95%;
 	min-width: 100px;
-	border-radius: 5px;
-	border: 1px solid #c8c7cc;
-	background-color: #fafafc;
-	list-style-type: none;
-	display: none;
 }
 
 .mui-menu li {
@@ -225,11 +235,11 @@ html, body {
 .mui-menu li:after {
 	position: absolute;
 	bottom: 0;
-	left: 10px;
-	right: 10px;
+	left: 2px;
+	right: 2px;
 	height: 1px;
 	content: '';
-	background-color: #c8c7cc;
+	background-color: #eee;
 }
 
 .mui-menu li:last-child:after {
@@ -238,6 +248,10 @@ html, body {
 
 .mui-menu li:hover {
 	background-color: #eee;
+}
+
+.mui-menu a {
+	color: inherit;
 }
 
 .mui-btn {
