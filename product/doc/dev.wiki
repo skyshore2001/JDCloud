@@ -21,6 +21,18 @@
 Name: liangjian
 Email: liangjian@oliveche.com
 
+在 Settings->Network 中，确认右侧 SSH Client 使用的是刚刚安装的Git中的ssh路径，如
+{{{
+C:\Program Files (x86)\Git\bin\ssh.exe
+}}}
+
+如果代码服务器不提供用户名密码登录，那么需要设置ssh证书登录方式：
+
+在用户主目录下(开始->运行->输入 "." 或 "%userprofile%")创建目录".ssh", 将 `${SHARE_SVR}\server-pc-key` 目录下的文件(config, id_rsa等)拷贝到".ssh"目录中。
+如果目前下已经有同名文件，请手工修改和合并。
+
+在文件夹空白处点右键，打开 Git Bash，尝试 ssh 是否可以自动登录到代码服务器。
+
 === 服务器环境PHP === 
 
 - 安装php 5.4
