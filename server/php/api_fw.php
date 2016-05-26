@@ -565,7 +565,7 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 		$sqlConf = $accessCtl->sqlConf;
 
 		$enablePaging = true;
-		if ($forGet || $wantArray) {
+		if ($forGet || $wantArray || isset($sqlConf["gres"])) {
 			$enablePaging = false;
 		}
 		if ($forGet) {
@@ -680,6 +680,9 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 		}
 		if (isset($sqlConf["union"])) {
 			$sql .= "\nUNION\n" . $sqlConf["union"];
+		}
+		if ($sqlConf["gres"]) {
+			$sql .= "\nGROUP BY {$sqlConf['gres']}";
 		}
 
 		if ($orderSql)
@@ -855,7 +858,7 @@ class AccessControl
 
 	# for get/query
 	# 注意：sqlConf["res"/"cond"][0]分别是传入的res/cond参数, sqlConf["orderby"]是传入的orderby参数, 为空(注意用isset/is_null判断)均表示未传值。
-	public $sqlConf; // {@cond, @res, @join, orderby, @subobj}
+	public $sqlConf; // {@cond, @res, @join, orderby, @subobj, @gres}
 
 	// virtual columns
 	private $vcolMap; # elem: $vcol => {def, def0, added?, vcolDefIdx?=-1}
@@ -957,9 +960,11 @@ class AccessControl
 			$this->onValidate();
 		}
 		elseif ($ac == "get" || $ac == "query") {
+			$gres = param("gres");
 			$res = param("res");
 			$this->sqlConf = [
 				"res" => [$res],
+				"gres" => $gres,
 				"cond" => [param("cond")],
 				"join" => [],
 				"orderby" => param("orderby"),
@@ -995,8 +1000,12 @@ class AccessControl
 
 			$this->onQuery();
 
+			// 确保res/gres参数符合安全限定
+			if (isset($gres)) {
+				$this->filterRes($gres);
+			}
 			if (isset($res)) {
-				$this->filterRes($res);
+				$this->filterRes($res, true);
 			}
 			else {
 				$this->addDefaultVCols();
@@ -1085,26 +1094,43 @@ class AccessControl
 		}
 	}
 	// return: new field list
-	private function filterRes($res)
+	private function filterRes($res, $supportFn=false)
 	{
 		$firstCol = "";
 		foreach (explode(',', $res) as $col) {
 			$col = trim($col);
 			$alias = null;
+			$fn = null;
 			if ($col === "*") {
 				$firstCol = "t0.*";
 				continue;
 			}
-			// "col" / "col col1" / "col as col1"
-			if (! preg_match('/(\w+)(?:\s+(?:as\s+)?(\S+))?/i', $col, $ms))
-				throw new MyException(E_PARAM, "bad property `$col`");
-			if ($ms[2]) {
-				$col = $ms[1];
-				$alias = $ms[2];
-				if ($alias[0] != '"') {
-					$alias = '"' . $alias . '"';
+			// 适用于res/gres, 支持格式："col" / "col col1" / "col as col1"
+			if (! preg_match('/^\s*(\w+)(?:\s+(?:AS\s+)?(\S+))?\s*$/i', $col, $ms))
+			{
+				// 对于res, 还支持部分函数: "fn(col) as col1", 目前支持函数: count/sum
+				if ($supportFn && preg_match('/(\w+)\([a-z0-9_.\'*]+\)\s+(?:AS\s+)?(\S+)/i', $col, $ms)) {
+					list($fn, $alias) = [strtoupper($ms[1]), $ms[2]];
+					if ($fn != "COUNT" && $fn != "SUM")
+						throw new MyException(E_FORBIDDEN, "function not allowed: `$fn`");
+				}
+				else 
+					throw new MyException(E_PARAM, "bad property `$col`");
+			}
+			else {
+				if ($ms[2]) {
+					$col = $ms[1];
+					$alias = $ms[2];
 				}
 			}
+			if (isset($alias) && $alias[0] != '"') {
+				$alias = '"' . $alias . '"';
+			}
+			if (isset($fn)) {
+				$this->addRes($col);
+				continue;
+			}
+
 // 			if (! ctype_alnum($col))
 // 				throw new MyException(E_PARAM, "bad property `$col`");
 			if ($this->addVCol($col, true, $alias) === false) {
