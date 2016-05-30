@@ -43,6 +43,33 @@ class ApiFw_
 //}}}
 
 // ====== functions {{{
+/**
+@fn setRet($code, $data?, $internalMsg?)
+
+@param $code Integer. 返回码, 0表示成功, 否则表示操作失败。
+@param $data 返回数据。
+@param $internalMsg 当返回错误时，作为额外调试信息返回。
+
+设置返回数据，最终返回JSON格式数据为 [ code, data, internalMsg, debugInfo1, ...]
+其中按照BQP协议，前两项为必须，后面的内容一般仅用于调试，前端应用不应处理。
+
+当成功时，返回数据可以是任何类型（根据API设计返回相应数据）。
+当失败时，为String类型错误信息。
+如果参数$data未指定，则操作成功时值为null（按BQP协议返回null表示客户端应忽略处理，一般无特定返回应指定$data="OK"）；操作失败时使用默认错误信息。
+
+调用完后，要返回的数据存储在全局数组 $X_RET 中，以JSON字符串形式存储在全局字符串 $X_RET_STR 中。
+注意：$X_RET_STR也可以在调用setRet前设置为要返回的字符串，从而避免setRet函数对返回对象进行JSON序列化，如
+
+	$GLOBALS["X_RET_STR"] = "{id:100, name:'aaa'}";
+	setRet(0, "OK");
+	throw new DirectReturn();
+	// 最终返回字符串为 "[0, {id:100, name:'aaa'}]"
+
+@see $X_RET
+@see $X_RET_STR
+@see $errorFn
+@see errQuit()
+*/
 function setRet($code, $data = null, $internalMsg = null)
 {
 	global $TEST_MODE;
