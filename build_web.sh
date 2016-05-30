@@ -1,6 +1,6 @@
 #!/bin/sh
 
-export OUT_DIR=../product-online
+export OUT_DIR=../jdcloud-online
 export FTP_PATH=ftp://server/path/
 export FTP_AUTH=www:hello
 

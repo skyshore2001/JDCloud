@@ -6,7 +6,7 @@ if (getenv("P_DB") === false) {
 	//putenv("P_DBCRED=");
 
 	// use MySQL:
-	putenv("P_DB=localhost/myorder");
+	putenv("P_DB=localhost/jdcloud");
 	putenv("P_DBCRED=ZGVtbzpkZW1vMTIz");
 
 	// Set the base URL, it affect session security, etc.
