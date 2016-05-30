@@ -43,6 +43,33 @@ class ApiFw_
 //}}}
 
 // ====== functions {{{
+/**
+@fn setRet($code, $data?, $internalMsg?)
+
+@param $code Integer. 返回码, 0表示成功, 否则表示操作失败。
+@param $data 返回数据。
+@param $internalMsg 当返回错误时，作为额外调试信息返回。
+
+设置返回数据，最终返回JSON格式数据为 [ code, data, internalMsg, debugInfo1, ...]
+其中按照BQP协议，前两项为必须，后面的内容一般仅用于调试，前端应用不应处理。
+
+当成功时，返回数据可以是任何类型（根据API设计返回相应数据）。
+当失败时，为String类型错误信息。
+如果参数$data未指定，则操作成功时值为null（按BQP协议返回null表示客户端应忽略处理，一般无特定返回应指定$data="OK"）；操作失败时使用默认错误信息。
+
+调用完后，要返回的数据存储在全局数组 $X_RET 中，以JSON字符串形式存储在全局字符串 $X_RET_STR 中。
+注意：$X_RET_STR也可以在调用setRet前设置为要返回的字符串，从而避免setRet函数对返回对象进行JSON序列化，如
+
+	$GLOBALS["X_RET_STR"] = "{id:100, name:'aaa'}";
+	setRet(0, "OK");
+	throw new DirectReturn();
+	// 最终返回字符串为 "[0, {id:100, name:'aaa'}]"
+
+@see $X_RET
+@see $X_RET_STR
+@see $errorFn
+@see errQuit()
+*/
 function setRet($code, $data = null, $internalMsg = null)
 {
 	global $TEST_MODE;
@@ -538,7 +565,7 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 		$sqlConf = $accessCtl->sqlConf;
 
 		$enablePaging = true;
-		if ($forGet || $wantArray) {
+		if ($forGet || $wantArray || isset($sqlConf["gres"])) {
 			$enablePaging = false;
 		}
 		if ($forGet) {
@@ -653,6 +680,9 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 		}
 		if (isset($sqlConf["union"])) {
 			$sql .= "\nUNION\n" . $sqlConf["union"];
+		}
+		if ($sqlConf["gres"]) {
+			$sql .= "\nGROUP BY {$sqlConf['gres']}";
 		}
 
 		if ($orderSql)
@@ -828,7 +858,7 @@ class AccessControl
 
 	# for get/query
 	# 注意：sqlConf["res"/"cond"][0]分别是传入的res/cond参数, sqlConf["orderby"]是传入的orderby参数, 为空(注意用isset/is_null判断)均表示未传值。
-	public $sqlConf; // {@cond, @res, @join, orderby, @subobj}
+	public $sqlConf; // {@cond, @res, @join, orderby, @subobj, @gres}
 
 	// virtual columns
 	private $vcolMap; # elem: $vcol => {def, def0, added?, vcolDefIdx?=-1}
@@ -930,9 +960,11 @@ class AccessControl
 			$this->onValidate();
 		}
 		elseif ($ac == "get" || $ac == "query") {
+			$gres = param("gres");
 			$res = param("res");
 			$this->sqlConf = [
 				"res" => [$res],
+				"gres" => $gres,
 				"cond" => [param("cond")],
 				"join" => [],
 				"orderby" => param("orderby"),
@@ -968,8 +1000,12 @@ class AccessControl
 
 			$this->onQuery();
 
+			// 确保res/gres参数符合安全限定
+			if (isset($gres)) {
+				$this->filterRes($gres);
+			}
 			if (isset($res)) {
-				$this->filterRes($res);
+				$this->filterRes($res, true);
 			}
 			else {
 				$this->addDefaultVCols();
@@ -1058,26 +1094,43 @@ class AccessControl
 		}
 	}
 	// return: new field list
-	private function filterRes($res)
+	private function filterRes($res, $supportFn=false)
 	{
 		$firstCol = "";
 		foreach (explode(',', $res) as $col) {
 			$col = trim($col);
 			$alias = null;
+			$fn = null;
 			if ($col === "*") {
 				$firstCol = "t0.*";
 				continue;
 			}
-			// "col" / "col col1" / "col as col1"
-			if (! preg_match('/(\w+)(?:\s+(?:as\s+)?(\S+))?/i', $col, $ms))
-				throw new MyException(E_PARAM, "bad property `$col`");
-			if ($ms[2]) {
-				$col = $ms[1];
-				$alias = $ms[2];
-				if ($alias[0] != '"') {
-					$alias = '"' . $alias . '"';
+			// 适用于res/gres, 支持格式："col" / "col col1" / "col as col1"
+			if (! preg_match('/^\s*(\w+)(?:\s+(?:AS\s+)?(\S+))?\s*$/i', $col, $ms))
+			{
+				// 对于res, 还支持部分函数: "fn(col) as col1", 目前支持函数: count/sum
+				if ($supportFn && preg_match('/(\w+)\([a-z0-9_.\'*]+\)\s+(?:AS\s+)?(\S+)/i', $col, $ms)) {
+					list($fn, $alias) = [strtoupper($ms[1]), $ms[2]];
+					if ($fn != "COUNT" && $fn != "SUM")
+						throw new MyException(E_FORBIDDEN, "function not allowed: `$fn`");
+				}
+				else 
+					throw new MyException(E_PARAM, "bad property `$col`");
+			}
+			else {
+				if ($ms[2]) {
+					$col = $ms[1];
+					$alias = $ms[2];
 				}
 			}
+			if (isset($alias) && $alias[0] != '"') {
+				$alias = '"' . $alias . '"';
+			}
+			if (isset($fn)) {
+				$this->addRes($col);
+				continue;
+			}
+
 // 			if (! ctype_alnum($col))
 // 				throw new MyException(E_PARAM, "bad property `$col`");
 			if ($this->addVCol($col, true, $alias) === false) {

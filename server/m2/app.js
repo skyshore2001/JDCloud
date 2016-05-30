@@ -355,7 +355,7 @@ function initPullList(container, opt)
 }
 
 /**
-@fn initNavbarAndList(jpage, opt)
+@fn initNavbarAndList(jpage, opt) -> ListOpInterface
 
 对一个导航栏(class="mui-navbar")加若干列表(class="p-list")的典型页面进行逻辑封装；也可以是若干button对应若干div-list区域，一次只显示一个区域；
 特别地，也可以是只有一个list，并没有button或navbar对应。
@@ -531,6 +531,10 @@ navRef是否为空的区别是，如果非空，则表示listRef是一组互斥�
 
 @param navRef,listRef  指定navbar与list，可以是选择器，也可以是jQuery对象；或是一组button与一组div，一次显示一个div；或是navRef为空，而listRef为一个或多个不相关联的list.
 
+@return ListOpInterface={refresh, markRefresh}
+
+refresh: Function(), 刷新当前列表
+markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 下次浏览该列表时刷新。
  */
 function initNavbarAndList(jpage, opt)
 {
@@ -652,6 +656,26 @@ function initNavbarAndList(jpage, opt)
 			}
 		}
 	}
+
+	function refresh()
+	{
+		// (isRefresh?=false, skipIfLoaded?=false)
+		showOrderList(true, false);
+	}
+
+	function markRefresh(jlst)
+	{
+		if (jlst)
+			jlst.data("nextkey_", null);
+		else
+			jallList_.data("nextkey_", null);
+	}
+
+	var itf = {
+		refresh: refresh,
+		markRefresh: markRefresh
+	};
+	return itf;
 }
 
 //}}}
