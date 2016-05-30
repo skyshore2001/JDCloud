@@ -1,0 +1,3557 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<link rel="Stylesheet" type="text/css" href="style.css">
+<title>通用Web产品后端框架设计</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+</head>
+<body>
+
+<h1 id="toc_1" class="justcenter"><a name="通用Web产品后端框架设计"> 通用Web产品后端框架设计</a></h1>
+
+<p>
+梁健 - 最近更新于2015/12
+</p>
+
+<div class="toc">
+<ul>
+<li><a href="#toc_1"> 通用Web产品后端框架设计</a>
+<ul>
+<li><a href="#toc_1.1">1 需求</a>
+<li><a href="#toc_1.2">2 概要设计</a>
+<ul>
+<li><a href="#toc_1.2.1">2.1 文件结构</a>
+<li><a href="#toc_1.2.2">2.2 运行环境</a>
+<li><a href="#toc_1.2.3">2.3 配置项</a>
+<ul>
+<li><a href="#toc_1.2.3.1">2.3.1 部署配置</a>
+</ul>
+<li><a href="#toc_1.2.4">2.4 命名规范</a>
+</ul>
+<li><a href="#toc_1.3">3 数据库设计</a>
+<li><a href="#toc_1.4">4 通讯协议设计</a>
+<ul>
+<li><a href="#toc_1.4.1">4.1 通用原则</a>
+<ul>
+<li><a href="#toc_1.4.1.1">4.1.1 常用返回类型描述</a>
+<li><a href="#toc_1.4.1.2">4.1.2 分页机制</a>
+<li><a href="#toc_1.4.1.3">4.1.3 分页机制实现原理</a>
+<li><a href="#toc_1.4.1.4">4.1.4 HTTPS服务</a>
+<li><a href="#toc_1.4.1.5">4.1.5 调试等级(_debug)</a>
+<li><a href="#toc_1.4.1.6">4.1.6 应用标识(_app)</a>
+<li><a href="#toc_1.4.1.7">4.1.7 测试模式(_test)</a>
+<li><a href="#toc_1.4.1.8">4.1.8 使用PATH_INFO模式的URL</a>
+<li><a href="#toc_1.4.1.9">4.1.9 客户端版本(_ver)</a>
+<li><a href="#toc_1.4.1.10">4.1.10 权限说明</a>
+</ul>
+<li><a href="#toc_1.4.2">4.2 通用操作</a>
+<ul>
+<li><a href="#toc_1.4.2.1">4.2.1 执行sql语句</a>
+<li><a href="#toc_1.4.2.2">4.2.2 通用表操作</a>
+<li><a href="#toc_1.4.2.3">4.2.3 附件上传</a>
+<li><a href="#toc_1.4.2.4">4.2.4 附件下载</a>
+<li><a href="#toc_1.4.2.5">4.2.5 上传工具</a>
+<li><a href="#toc_1.4.2.6">4.2.6 下载工具</a>
+<li><a href="#toc_1.4.2.7">4.2.7 生成签名</a>
+<li><a href="#toc_1.4.2.8">4.2.8 发短信</a>
+<li><a href="#toc_1.4.2.9">4.2.9 查询短信记录</a>
+<li><a href="#toc_1.4.2.10">4.2.10 代理</a>
+</ul>
+<li><a href="#toc_1.4.3">4.3 API调用监控</a>
+</ul>
+<li><a href="#toc_1.5">5 测试设计</a>
+<ul>
+<li><a href="#toc_1.5.1">5.1 手工测试</a>
+<li><a href="#toc_1.5.2">5.2 回归测试</a>
+<ul>
+<li><a href="#toc_1.5.2.1">5.2.1 使用方法</a>
+<li><a href="#toc_1.5.2.2">5.2.2 测试模式设计</a>
+<li><a href="#toc_1.5.2.3">5.2.3 API测试和用例测试</a>
+</ul>
+<li><a href="#toc_1.5.3">5.3 单元测试</a>
+<li><a href="#toc_1.5.4">5.4 自动化测试</a>
+<ul>
+<li><a href="#toc_1.5.4.1">5.4.1 取短信日志最后一条</a>
+</ul>
+</ul>
+<li><a href="#toc_1.6">6 登录类型与权限管理</a>
+<li><a href="#toc_1.7">7 服务端部署与升级</a>
+<ul>
+<li><a href="#toc_1.7.1">7.1 用法</a>
+<ul>
+<li><a href="#toc_1.7.1.1">7.1.1 交互命令</a>
+<li><a href="#toc_1.7.1.2">7.1.2 非交互命令</a>
+</ul>
+<li><a href="#toc_1.7.2">7.2 写升级脚本</a>
+</ul>
+<li><a href="#toc_1.8">8 工具接口</a>
+<ul>
+<li><a href="#toc_1.8.1">8.1 tool/log.php</a>
+</ul>
+<li><a href="#toc_1.9">9 定期任务</a>
+<li><a href="#toc_1.10">10 数据安全</a>
+</ul>
+</ul>
+</div>
+
+<h2 id="toc_1.1"><a name="需求">1 需求</a></h2>
+
+<ul>
+<li>
+提供REST-ful风格的服务端接口API, 可方便的添加函数形式(如queryLog)和对象操作形式(如log.query)的API.
+
+<li>
+提供数据库设计、部署工具
+
+<li>
+提供手工测试及回归测试工具
+
+<li>
+提供Web部署工具
+
+</ul>
+
+<h2 id="toc_1.2"><a name="概要设计">2 概要设计</a></h2>
+
+<h3 id="toc_1.2.1"><a name="文件结构">2.1 文件结构</a></h3>
+
+<p>
+概念：
+</p>
+<ul>
+<li>
+产品：如“小鳄养车”，包括前端、后端等子系统，每个子系统包括多个应用，如前端包括客户端、管理端等应用，后端包括API接口、某工具、定时任务等应用。
+
+<li>
+应用：一个可独立执行的应用程序（或网页入口）。
+
+<li>
+工具：应用的一种，有的不发布（只用于开发过程），有的发布但做内部使用或被其它应用调用。
+
+<li>
+库：被应用包含，提供共享数据和操作。
+
+<li>
+框架：库的一种，一般成型后很少修改。被应用或其它库包含使用。
+
+</ul>
+
+<p>
+注：以下标记*表示可变文件，根据实际应用添加内容。
+</p>
+
+<p>
+<strong>[根目录]</strong>
+</p>
+
+<pre>
+
+DESIGN.wiki* -- 主设计文档。其它文档在doc目录下。
+
+build_web.sh -- Web部署工具。
+
+</pre>
+
+<p>
+产品设计文档包括：
+</p>
+<ul>
+<li>
+框架设计文档：含后台框架文档（框架提供功能的说明，后台函数接口等）及前台框架文档（前台框架的基本使用方法与接口描述）。
+
+<li>
+主设计文档: 包括产品的需求、概要设计（运行环境、系统建模、主要用例）、详细设计。
+ 其中详细设计包括：数据库表设计（表、字段类型），通讯协议设计（函数、对象或页面调用），客户端接口设计（页面、参数等）
+
+<li>
+专题设计文档，与详细设计内容类似，但将数据库、通讯协议及客户端接口放在一个专题中描述。
+
+</ul>
+
+<p>
+infrastructure; main app; incrementatal app;
+</p>
+
+<p>
+<strong>[后端应用 - server目录]</strong>
+</p>
+
+<dl>
+<dt>api.php* </dt>
+<dd> API接口应用。提供基于HTTP的访问接口，形式如：api.php/fn 或 api.php/obj.query；该文件包含其它实现文件，以及应用内共享的数据。其它应用可包含它从而直接以内部调用方式访问API接口。</dd>
+<dt>app.php* </dt>
+<dd>应用共享库。存放被多个项目所使用的数据。所有应用一般都应包含它。它包含common.php,app_fw.php,conf.php,conf.user.php等。</dd>
+<dt>conf.php* </dt>
+<dd>适用于所有应用（被app.php包含），保存易变逻辑。</dd>
+</dl>
+
+<p>
+内部实现部分：
+</p>
+
+<dl>
+<dt>php/common.php </dt>
+<dd>通用共享库。基础公共函数部分，可适用一切php项目。</dd>
+<dt>php/app_fw.php </dt>
+<dd>应用框架库。为所有应用提供框架支持（以app_开头表示适用于所有应用，fw表示framework），被app.php包含。</dd>
+<dt>php/conf.user.php* </dt>
+<dd>可缺省，用于根据部署环境修改应用配置。被app.php包含。</dd>
+</dl>
+
+<dl>
+<dt>php/api_fw.php </dt>
+<dd>API接口应用的框架实现（以api_开头表示属于API接口应用）。被api.php包含。</dd>
+<dt>php/api_functions.php* </dt>
+<dd>API接口应用中的函数实现部分。被api.php包含。</dd>
+<dt>php/api_objects.php* </dt>
+<dd>API接口应用中的对象访问实现部分。被api.php包含。</dd>
+</dl>
+
+<p>
+<strong>[回归测试 - rtest目录]</strong>
+</p>
+
+<dl>
+<dt>rtest.php* </dt>
+<dd>回归测试内容。（<span class="todo">TODO:</span> 类似api应用，可拆分为 rtest.php, php/rtest_fw.php, php/rtest_group1.php, php/rtest_group.php等)</dd>
+</dl>
+
+<dl>
+<dt>run_rtest.pl </dt>
+<dd>回归测试执行工具。</dd>
+</dl>
+
+<dl>
+<dt>client.php </dt>
+<dd>手工测试工具。模拟前端调用API接口。</dd>
+</dl>
+
+<p>
+内部实现部分：
+</p>
+
+<dl>
+<dt>WebAPI.php </dt>
+<dd>测试应用框架库。</dd>
+</dl>
+
+<p>
+<strong>[文档 - doc目录]</strong>
+</p>
+
+<dl>
+<dt>index.html*</dt>
+<dd>文档目录。修改它以增加文档。</dd>
+</dl>
+
+<dl>
+<dt>__README.html</dt>
+<dd>介绍文档管理。</dd>
+</dl>
+
+<dl>
+<dt>后台框架.wiki</dt>
+<dd>即本文，介绍通用产品框架设计。</dd>
+</dl>
+
+<dl>
+<dt>Web应用部署</dt>
+<dd>部署工具文档。</dd>
+</dl>
+
+<dl>
+<dt>编码规范.wiki</dt>
+</dl>
+
+<p>
+<strong>[工具 - tool目录]</strong>
+</p>
+
+<dl>
+<dt>upgrade.php</dt>
+<dd>数据部署工具。创建或更新数据库表，导入数据等。</dd>
+</dl>
+
+<dl>
+<dt>webcc.php</dt>
+<dd>Web部署工具。用户上传或更新线上Web产品目录。</dd>
+</dl>
+
+<dl>
+<dt>cmdtool.template.php</dt>
+<dd>使用app.php创建数据操作工具的示例，如用于特殊数据导入等。</dd>
+</dl>
+
+<h3 id="toc_1.2.2"><a name="运行环境">2.2 运行环境</a></h3>
+
+<p>
+<strong>[部署环境]</strong>
+</p>
+
+<ul>
+<li>
+Linux CentOS5 以上版本 x64，可使用阿里云平台
+
+<li>
+Apache2.4 + php5.4
+
+<li>
+Mysql5以上
+
+</ul>
+
+<p>
+<strong>[开发环境]</strong>
+</p>
+
+<ul>
+<li>
+Windows或Linux
+
+<li>
+php5.4 (5.4.31)
+
+<li>
+Apache/IIS
+
+<li>
+数据库mysql5
+
+</ul>
+
+<p>
+<strong>[演示版]</strong>
+</p>
+
+<p>
+演示版用于快速开发原型及测试演示，对运行环境低要求，部署极其简单。
+</p>
+<ul>
+<li>
+Windows/Linux/Mac (一般在Windows环境开发，最终在Linux环境运行，支持在Mac上运行以便开发iphone应用时搭建本地环境)
+
+<li>
+php5.4.31
+
+<li>
+phpunit4.2用于回归测试。
+
+<li>
+无需mysql等数据库服务。（使用内置sqlite3以方便测试或演示。）
+
+<li>
+无需Apache等web服务器。(直接用php开服务以方便测试或演示。）
+
+</ul>
+
+<h3 id="toc_1.2.3"><a name="配置项">2.3 配置项</a></h3>
+
+<p>
+<strong>[运行环境]</strong>
+</p>
+
+<p>
+服务支持mysql和sqlite数据库，服务连接mysql数据库仅当
+</p>
+<ul>
+<li>
+运行在Linux环境下
+
+<li>
+应用目录下不存在文件 CFG_USE_SQLITE
+
+</ul>
+
+<p>
+<strong>[测试模式 - TEST_MODE]</strong>
+</p>
+
+<p>
+服务支持测试模式，它连接名为carsvc_test的数据库，并允许一些清除操作。仅当：
+</p>
+<ul>
+<li>
+调用api.php时指定参数_test非0 或
+
+<li>
+使用sqlite数据库 或
+
+<li>
+应用目录下存在文件 CFG_TEST_MODE
+
+</ul>
+
+<p>
+以上设置项意味着：
+</p>
+<ul>
+<li>
+当运行在Linux平台上，缺省连接mysql数据库并处于非测试模式下。
+
+<li>
+当运行在Windows/iOS平台上，缺省连接sqlite数据库并处于测试模式下。
+
+<li>
+对于Web页面，打开页面且URL中含有"?test"时，应用运行在测试模式。
+  设计web客户端应用时，连续5次点击用户信息页标头(一般dom元素为"#me div[data-role=header]")可在测试模式与生产模式间切换。
+  应用程序应从服务器取信息以确定是否运行在测试模式，如果是，应明确显示。（各Web客户端应遵循该设计原则）
+
+</ul>
+
+<p>
+<strong>[配置选项]</strong>
+</p>
+
+<p>
+此处列出用到的配置项, 具体用法请搜索本文档. server指服务端配置(包括upgrade.php工具), test指手工测试(如client.php), rtest指自动回归测试(run_rtest.pl).
+</p>
+<ul>
+<li>
+file CFG_USE_SQLITE (for server)
+
+<li>
+file CFG_TEST_MODE (for server)
+
+<li>
+envvar P_DB (for server)
+
+<li>
+envvar SVC_URL (for test and rtest)
+
+<li>
+envvar P_DEBUG (for server, test and rtest) and URL param _debug (for server)
+
+<li>
+envvar P_SHARE_COOKIE (for rtest)
+
+<li>
+envvar P_TEST (for test/rtest) 设置通用URL参数_test. WebAPI/client.php缺省运行于测试模式(即P_TEST=1)，run_rtest.pl运行于回归测试模式(P_TEST=2), 如果要用生产模式请手工设置该参数为P_TEST=0（生产模式或测试模式还决定于其它服务端配置，该参数不一定实际运行在生产模式）。
+
+<li>
+envvar P_DBCRED (for server) 指定数据库登录用户名及密码。格式为"{user}:{pwd}"的base64编码形式。
+
+<li>
+file <code>php/conf.user.php</code> (for server), 该文件存在则自动加载，用于设置自定义配置选项，如定义数据库用户名密码 ($GLOBALS["dbcred"])。
+
+<li>
+envvar P_SESSION_DIR (for server) 指定session文件保存位置，缺省是应用目录下。注意：测试模式的session是分开保存的，在该目录下子目录"t"中。
+
+<li>
+envvar P_URL_PATH (for server) 指定应用的URL绝对路径(以"/"开头)。用于拼出正确的完整url路径。
+
+</ul>
+
+<p>
+<strong>[模拟模式 - MOCK_MODE]</strong>
+</p>
+
+<p>
+当应用目录下存在文件 CFG_MOCK_MODE 时，服务运行于模拟模式。
+或者，当应用处理测试模式下，且应用目录下有文件 CFG_MOCK_T_MODE, 服务运行于模拟模式。
+这时，对外部系统的依赖（如短信模块，微信接口，支付宝支付等）都将模拟运行，只生成日志到 ext.log 中。
+</p>
+
+<p>
+可通过工具 tool/log.php 查看日志。
+</p>
+
+<h4 id="toc_1.2.3.1"><a name="部署配置">2.3.1 部署配置</a></h4>
+
+<p>
+在应用设计时，一般使用前缀名为"P_"的环境变量供使用时扩展。
+</p>
+
+<p>
+根据不同的部署环境，可创建和配置文件<code>php/conf.user.php</code>。一般使用putenv设置环境变量或用ini_set设置参数。
+</p>
+
+<p>
+例如：
+</p>
+
+<p>
+<strong>[数据库密码]</strong>
+</p>
+
+<p>
+例：
+</p>
+<pre>
+putenv("P_DB=localhost/carsvc");
+putenv("P_DBCRED=bGo6aWhxZ19VR0xH");
+</pre>
+
+<p>
+在线上，如果同时支持测试模式(TEST_MODE)和生产模式，则测试模式应使用专门的DB, 可以用变量P_DB_TEST设置：
+</p>
+<pre>
+putenv("P_DB=localhost/carsvc");
+putenv("P_DBCRED=bGo6aWhxZ19VR0xH");
+
+putenv("P_DB_TEST=localhost/carsvc_test");
+// putenv("P_DBCRED_TEST=bGo6aWhxZ19VR0xH"); // 可设置登录用户及密码，不设置则使用P_DBCRED
+</pre>
+
+<p>
+<strong>[URL路径]</strong>
+</p>
+
+<p>
+如部署路径为 <a href="http://oliveche.com/cheguanjia/">http://oliveche.com/cheguanjia/</a> ，则设置
+</p>
+<pre>
+putenv("P_URL_PATH=/cheguanjia");
+</pre>
+
+<p>
+如果不设置，应用将自动判断（但如果服务器上使用了符号链接，则会判断失误）。
+</p>
+
+<p>
+注意：
+</p>
+<ul>
+<li>
+使用绝对路径，一定以要"/"开头；设置错误将因cookie权限导致应用无法使用。
+
+</ul>
+
+<h3 id="toc_1.2.4"><a name="命名规范">2.4 命名规范</a></h3>
+
+<p>
+变量/函数名/数据库表的字段名使用驼峰式(首个单词小写，其余单词首字母大写)，如getCarModel, svcId。
+</p>
+
+<p>
+WebAPI的调用名和传入参数也采用驼峰式，由于目前实现时不区分大小写, 所以调用时也可以用全部小写（习惯上，url里常常只用小写字母，且不带下划线。)
+例如，调用接口名queryOrder，传入参数为modelId, storeId等。
+</p>
+
+<p>
+类名，或数据库表名，用大驼峰式（或叫Pascal命名，所有单词首字母大写）, 如OrderStatus.
+</p>
+
+<h2 id="toc_1.3"><a name="数据库设计">3 数据库设计</a></h2>
+
+<p>
+根据[系统建模]设计数据库表结构。
+</p>
+
+<p>
+<strong>[通用规则]</strong>
+</p>
+
+<ul>
+<li>
+每个表均有整型字段id作为主键；关联表也不例外。
+
+<li>
+外链一般以xxxId表示，除非特殊说明，一般该字段非空；
+
+<li>
+字段类型通过名称隐式说明, 或通过声明后缀显示说明, 规则如下: 
+
+</ul>
+<table>
+<tr>
+<td>
+end with "Id"
+</td>
+<td>
+Integer
+</td>
+</tr>
+<tr>
+<td>
+end with "Price"/"Total"/"Qty"/"Amount"
+</td>
+<td>
+Currency
+</td>
+</tr>
+<tr>
+<td>
+end with "Tm"/"Dt"/"Time"
+</td>
+<td>
+Datetime/Date/Time
+</td>
+</tr>
+<tr>
+<td>
+type=(n)
+</td>
+<td>
+String
+</td>
+</tr>
+<tr>
+<td>
+type=&amp;
+</td>
+<td>
+Integer
+</td>
+</tr>
+<tr>
+<td>
+type=@
+</td>
+<td>
+Currency
+</td>
+</tr>
+<tr>
+<td>
+type=#
+</td>
+<td>
+Double
+</td>
+</tr>
+<tr>
+<td>
+end with "Flag"
+</td>
+<td>
+TinyInt(1B)
+</td>
+</tr>
+</table>
+<p>
+ 此外, 如果无明确标识, 缺省为字符串类型. 
+</p>
+<ul>
+<li>
+字符串一般采用nvarchar支持unicode，描述如<code>name(s)</code>，字串长度以如下方式描述：
+
+</ul>
+<table>
+<tr>
+<td>
+s
+</td>
+<td>
+small=20
+</td>
+</tr>
+<tr>
+<td>
+m
+</td>
+<td>
+medium=50 (default)
+</td>
+</tr>
+<tr>
+<td>
+l
+</td>
+<td>
+long=255
+</td>
+</tr>
+<tr>
+<td>
+t
+</td>
+<td>
+text
+</td>
+</tr>
+</table>
+
+<p>
+下面描述中, "@"开头表示将被工具自动当作meta data处理.
+</p>
+
+<p>
+注意：
+</p>
+<ul>
+<li>
+一些名字由于与某些数据库系统关键字冲突应避免，如不使用"desc", 改用"dscr" (description).
+
+</ul>
+
+<p>
+<span class="todo">TODO:</span> define unique-key, index
+</p>
+
+<h2 id="toc_1.4"><a name="通讯协议设计">4 通讯协议设计</a></h2>
+
+<h3 id="toc_1.4.1"><a name="通用原则">4.1 通用原则</a></h3>
+
+<p>
+客户端通过HTTP协议与服务端交互，调用服务端WebAPI。
+</p>
+<ul>
+<li>
+Request一般使用HTTP GET/POST方法，如方法描述"fn(p1, p2)"可以用HTTP GET请求(通过URL传参)实现: <code>GET /api.php?ac=fn&amp;p1=value1&amp;p2=value2</code>,
+  也可以用POST请求实现:
+<pre>
+POST /api.php?ac=fn
+Content-Type: application/x-www-form-urlencoded
+
+p2=value2&amp;p1=value1
+</pre>
+  参数"ac"或"_ac"标识方法名, 必须使用URL参数传递, 其它参数未加说明的, 可以选择通过URL或POST传参.
+
+<li>
+少数方法描述为"fn(p1)(p2,p3)", 它表示后一个括号中的参数表示必须通过POST传参, 而前一个括号的参数必须用URL传参数, 如:
+<pre>
+POST /api.php?ac=fn&amp;p1=value1
+Content-Type: application/x-www-form-urlencoded
+
+p2=value2&amp;p3=value3
+</pre>
+  注意Content-Type需要设置正确, 少数例外情况会特别指出，比如upload方法，它使用"Content-type: multipart/form-data"。
+
+</ul>
+  
+<ul>
+<li>
+只要服务端正确收到请求并处理，均返回code为HTTP 200的Response，其内容使用json格式，为一个至少含有2元素的数组。
+
+<ul>
+<li>
+在WebAPI请求成功时返回内容为 <code>[0, data]</code>，其中<code>data</code>的类型由WebAPI返回类型所定义。
+
+<li>
+在请求失败时返回内容为 `[非0错误码, 错误信息].
+
+<li>
+从返回数组的第3个元素起, 为调试信息, 仅用于问题诊断, 不适合显示给用户看.
+
+</ul>
+<li>
+所有交互内容采用UTF-8编码。
+
+</ul>
+
+<p>
+以下面的WebAPI描述为例：
+</p>
+<pre>
+根据id取车型信息：
+getModel(id) -&gt; {id, name, dscr}
+</pre>
+
+<p>
+它包含以下信息：
+</p>
+<ul>
+<li>
+WebAPI名称是getModel，参数为id，对应的Request URL为 <code>GET /api.php?ac=getModel&amp;id=100</code>
+  URL参数<code>ac</code>表示WebAPI名称，一般用全小写。
+  为防止服务端缓冲，一般请求时还应加上一个随机参数，如 <code>GET /api.php?ac=getModel&amp;id=100&amp;rnd=5234762234</code>.
+  之后的请求示例中, HTTP请求将被简化描述为:
+<pre>
+getModel(id=100)
+</pre>
+
+</ul>
+  
+<ul>
+<li>
+处理成功返回类型为<code>{id, name, dscr}</code>，例如<code>{id: 100, name: "myname", dscr:"mydscr"}</code>，关于返回类型表述方式详见下节描述。完整的返回内容为
+<pre>
+HTTP/1.1 200 OK
+
+[0, {id: 100, name: "myname", dscr:"mydscr"}]
+</pre>
+  之后的示例中，返回内容将被简化描述为：
+<pre>
+{id: 100, name: "myname", dscr:"mydscr"}
+</pre>
+
+</ul>
+
+<ul>
+<li>
+处理失败时返回信息如
+<pre>
+HTTP/1.1 200 OK
+
+[1, "未认证"]
+</pre>
+
+</ul>
+
+<p>
+<strong>[错误码定义]</strong>
+</p>
+
+<pre>
+const E_OK=0;
+const E_PARAM=1;
+const E_AUTH=2;
+const E_DB=3;
+const E_SERVER=4;
+const E_FORBIDDEN=5;
+
+$ERRINFO = [
+	E_PARAM =&gt; "参数不正确",
+	E_AUTH =&gt; "未认证",
+	E_DB =&gt; "数据库错误",
+	E_SERVER =&gt; "服务器错误",
+	E_FORBIDDEN =&gt; "禁止操作"
+];
+</pre>
+
+<p>
+<span class="todo">TODO:</span> 审查每项错误信息.
+</p>
+
+<p>
+<strong>[关于空值]</strong>
+</p>
+
+<p>
+假如有参数"a=1&amp;b=&amp;c=hello", 其中参数"b"值为空串。
+一般情况下，被当作未赋值处理，即与"a=1&amp;c=hello"意义相同。
+</p>
+
+<p>
+只有在对象保存上下文中（典型的是通用表操作的{tblname}.set操作），且出现中POST内容的"a="表示将该字段置null(与"a=null"语义相同), 注意：不是置空字符串。
+</p>
+
+<h4 id="toc_1.4.1.1"><a name="常用返回类型描述">4.1.1 常用返回类型描述</a></h4>
+
+<p>
+<strong>{id, name}</strong>
+</p>
+
+<p>
+一个简单对象，有两个字段id和name。e.g. <code>{id: 100, name: "name1"}</code>
+</p>
+
+<p>
+<strong>[id...] or [id]</strong>
+</p>
+
+<p>
+一个简单数组，元素为id。e.g. <code>[100, 200, 400]</code>, 每项为一个id
+</p>
+
+<p>
+<strong>[id, name]</strong>
+</p>
+
+<p>
+一个简单数组，e.g.  <code>[100, "liang"]</code>，第一项为id,  第二项为name
+</p>
+
+<p>
+<strong>[ [id, name] ] 或 varr(id, name)</strong>
+</p>
+
+<p>
+简单二维数组，又称varr, 如 <code>[ [100, "liang"], [101, "wang"] ]</code>.
+</p>
+
+<p>
+<strong>[{id, name}] 或 objarr(id, name)</strong>
+</p>
+
+<p>
+一个数组，每项为一个对象，又称objarr。e.g. <code>[{id: 100, name: "name1"}, {id: 101, name: "name2"}]</code>
+</p>
+
+<p>
+<strong>tbl(id, name)</strong>
+</p>
+
+<p>
+table对象。其详细格式为 <code>{h: [header1, header2, ...], d:[row1, row2, ...]}</code>，例如
+</p>
+<pre>
+{
+  h: ["id", "name"],
+  d: [[100, "myname1"], [200, "myname2"]]
+}
+</pre>
+
+<p>
+table对象支持分页机制(paging)，返回字段中包含"nextkey"等。
+详情请参考下一章节"分页机制".
+</p>
+
+<p>
+注意：
+</p>
+<ul>
+<li>
+目前的json返回内容不区分整形或字符串型, 大多都用引号括起来
+
+<li>
+不论哪种类型，都可能返回null。客户端必须能够处理null，将其转为相应类型正确的值。
+
+</ul>
+
+<p>
+<strong>[可选参数]</strong>
+</p>
+
+<p>
+如果API的参数表示为:
+</p>
+<pre>
+fn(p1, p2?, p3?=1
+</pre>
+
+<p>
+它表示：
+</p>
+<ul>
+<li>
+p1是必选参数
+
+<li>
+p2,p3是可选参数，p3的缺省值是1，p2缺省值是0/""/null(取决于它的类型)
+
+</ul>
+
+<p>
+<strong>[复杂类型序列化为字符串描述]</strong>
+</p>
+
+<p>
+有时用一个字符串字段表示复杂的结构，这时常以下类型描述方式：
+</p>
+
+<ul>
+<li>
+逗号分隔的简单字符串序列，如
+<pre>
+"经度,纬度"
+或
+"经度/Double,纬度/Double"
+</pre>
+
+</ul>
+<p>
+可表示
+<code>121.233543,31.345457</code>
+</p>
+
+<ul>
+<li>
+Coord类型
+
+</ul>
+
+<p>
+Coord="经度/Double,纬度/Double".
+</p>
+
+<ul>
+<li>
+逗号分隔行，冒号分隔列的表，简称list，如
+<pre>
+"id:name?,"
+参数后加"?"表示是可选参数(逗号不可少，表示数组，即后面可有多个重复项)
+或
+list(id, name?)
+或指定类型 
+list(id/Integer, name?/String)
+</pre>
+
+</ul>
+
+<p>
+每个元组用","分隔, 元组内每个字段用":"分隔。每个字段内不能有这两个特殊符号(如果是日期，中间不可以有":", 如"2015/11/20 1030"或"20151120 1030")。
+例如
+</p>
+<pre>
+10:liang,11:wang
+</pre>
+<p>
+如果name字段省略，则可简化为<code>10,11</code>.
+</p>
+
+<p>
+<span class="todo">TODO:</span> 也可以带表头信息（首字符"@"标明有表头），如 <code>@id:name,10:liang,11:wang</code> 或 <code>@id,10,11</code>.
+</p>
+
+<p>
+这种格式一般用于server/cient间传递简单的表。
+</p>
+
+<ul>
+<li>
+json序列化及其Table格式。
+
+</ul>
+
+<pre>
+json.tbl(id, name) 或 json({h:["id","name"],d:[row1,row2...]})
+</pre>
+
+<p>
+适合传递普通的表。
+</p>
+
+<ul>
+<li>
+php序列化:
+
+</ul>
+
+<pre>
+php([{id,name}]) 或 php.objarr(id, name)
+</pre>
+
+<p>
+适合存储复杂数据到一个简单字段，但不用于server/client间数据交互。
+它使用php的serialize/unserialize生成，格式如：
+</p>
+<pre>
+a:2:{i:0;a:2:{s:2:"id";i:10;s:4:"name";s:5:"liang";}i:1;a:2:{s:2:"id";i:11;s:4:"name";s:4:"wang";}}
+</pre>
+
+<p>
+上述字段在server/client交互时应使用等价的json.objarr(id,name) 如
+</p>
+<pre>
+[
+	{id: 10, name: "liang"},
+	{id: 11, name: "wang"},
+]
+</pre>
+<p>
+或 list(id,name) 如
+</p>
+<pre>
+@id:name,10:liang,11:wang
+</pre>
+
+<ul>
+<li>
+csv序列（行间用回车分隔，每个字段用","分隔）
+
+</ul>
+<p>
+适合客户端向服务端通过http content传大表。如 <code>csv(id,name,dscr)</code>
+</p>
+
+<ul>
+<li>
+url序列化
+
+</ul>
+<p>
+如
+</p>
+<pre>
+urlist(id, qty)
+</pre>
+
+<p>
+可表示
+</p>
+<pre>
+items[0][id]=101&amp;item[0][qty]=2&amp;items[1][id]=102&amp;item[1][qty]=4
+</pre>
+
+<h4 id="toc_1.4.1.2"><a name="分页机制">4.1.2 分页机制</a></h4>
+
+<p>
+如果一个查询支持分页(paging), 则一般调用形式为
+</p>
+
+<pre>
+Ordr.query(_pagekey?, _pagesz?=20) -&gt; {nextkey, total?, @h, @d}
+或
+Ordr.query(page, rows?=20) -&gt; {nextkey, total, @h, @d}
+</pre>
+
+<p>
+<strong>[参数]</strong>
+</p>
+
+<dl>
+<dt>_pagesz</dt>
+<dd>Integer. 页大小，默认为20条数据。</dd>
+<dt>_pagekey</dt>
+<dd>String (目前是数值). 一般某次查询不填写（如需要返回总记录数即total字段，则应填写为0），而下次查询时应根据上次调用时返回数据的"nextkey"字段来填写。</dd>
+</dl>
+
+<dl>
+<dt>page/rows</dt>
+<dd>为支持jquery-easyui而设置, 与_pagekey/_pagesz类似, 区别在于: 每次均返回total字段; 强制采用"limit"算法(默认如果没有用非主键排序,会采用"部分查询"算法), 意味着nextkey即下一页页码.</dd>
+</dl>
+
+<p>
+<strong>[返回值]</strong>
+</p>
+
+<dl>
+<dt>nextkey</dt>
+<dd>String. 一个字符串, 供取下一页时填写参数"_pagekey". 如果不存在该字段，则说明已经是最后一批数据。</dd>
+<dt>total</dt>
+<dd>Integer. 返回总记录数，仅当_pagekey指定为0时返回。</dd>
+<dt>h/d</dt>
+<dd>实际数据表的头信息(header)和数据行(data)，符合table对象的格式，参考上一章节tbl(id,name)介绍。</dd>
+</dl>
+
+<p>
+<strong>[示例]</strong>
+</p>
+
+<p>
+第一次查询
+</p>
+<pre>
+Ordr.query()
+</pre>
+
+<p>
+返回
+</p>
+<pre>
+{nextkey: 10800910, h: [id, ...], data: [...]}
+</pre>
+
+<p>
+其中的nextkey将供下次查询时填写_pagekey字段；首次查询还会返回total字段。由于缺省页大小为20，所以可估计总共有51/20=3页。
+</p>
+
+<p>
+要在首次查询时返回总记录数，则用_pagekey=0：
+</p>
+<pre>
+Ordr.query(_pagekey=0)
+</pre>
+
+<p>
+这时返回
+</p>
+<pre>
+{nextkey: 10800910, total: 51, h: [id, ...], data: [...]}
+</pre>
+
+<p>
+第二次查询(下一页)
+</p>
+<pre>
+Ordr.query(_pagekey=10800910)
+</pre>
+
+<p>
+返回
+</p>
+<pre>
+{nextkey: 10800931, h: [...], d: [...]}
+</pre>
+
+<p>
+仍返回nextkey字段说明还可以继续查询，
+</p>
+
+<p>
+再查询下一页
+</p>
+<pre>
+Ordr.query(_pagekey=10800931)
+</pre>
+
+<p>
+返回
+</p>
+<pre>
+{h: [...], d: [...]}
+</pre>
+
+<p>
+返回数据中不带"nextkey"属性，表示所有数据获取完毕。
+</p>
+
+<h4 id="toc_1.4.1.3"><a name="分页机制实现原理">4.1.3 分页机制实现原理</a></h4>
+
+<p>
+分页有两种实现方式：分段查询和传统分页。
+</p>
+
+<p>
+分段查询性能高，更精确，不会丢失数据。但它仅适用于未指定排序字段（无orderby参数）或排序字段是id的情况（例如：orderby="id DESC"）。
+系统将根据orderby参数自动选择分段查询或传统分页。
+</p>
+
+<p>
+<strong>[分段查询]</strong>
+</p>
+
+<p>
+分段查询的原理是利用主键id进行查询条件控制（自动修改WHERE语句），pagekey字段实际是上次数据的最后一个id.
+</p>
+
+<p>
+首次查询：
+</p>
+<pre>
+Ordr.query()
+</pre>
+
+<p>
+SQL样例如下：
+</p>
+<pre>
+SELECT * FROM Ordr t0
+...
+ORDER BY t0.id
+LIMIT {pagesz}
+</pre>
+
+<p>
+再次查询
+</p>
+<pre>
+Ordr.query(_pagekey=10800910)
+</pre>
+
+<p>
+SQL样例如下：
+</p>
+<pre>
+SELECT * FROM Ordr t0
+...
+WHERE t0.id&gt;10800910
+ORDER BY t0.id
+LIMIT {pagesz}
+</pre>
+
+<p>
+<strong>[传统分页]</strong>
+</p>
+
+<p>
+传统分页只需要通过SQL语句的LIMIT关键字来实现。pagekey字段实际是页码。其原理是：
+</p>
+
+<p>
+首次查询
+</p>
+<pre>
+Ordr.query(orderby="comeTm DESC")
+</pre>
+<p>
+（以comeTm作为排序字段，无法应用分段查询机制，只能使用传统分页。）
+</p>
+
+<p>
+SQL样例如下：
+</p>
+<pre>
+SELECT * FROM Ordr t0
+...
+ORDER BY comeTm DESC, t0.id
+LIMIT 0,{pagesz}
+</pre>
+
+<p>
+再次查询
+</p>
+<pre>
+Ordr.query(_pagekey=2)
+</pre>
+
+<p>
+SQL样例如下：
+</p>
+<pre>
+SELECT * FROM Ordr t0
+...
+ORDER BY comeTm DESC, t0.id
+LIMIT ({pagekey}-1)*{pagesz}, {pagesz}
+</pre>
+
+<h4 id="toc_1.4.1.4"><a name="HTTPS服务">4.1.4 HTTPS服务</a></h4>
+
+<p>
+服务端支持HTTPS服务。客户端默认应使用HTTP协议与服务器通信；对于个别敏感的API，如涉及用户密码的登录、注册、修改密码等操作，应使用HTTPS协议进行通信。
+</p>
+
+<p>
+注意：
+</p>
+<ul>
+<li>
+服务器很可能采用自签证书，且证书中CN名称(CommonName字段)与网站实际名称可能不符.
+  这种情况下一般的SSL库在连接时会验证服务端证书并报错，客户端应设置连接选择忽略这些错误。例如，对于CURL库，可设置：
+<pre>
+# for https, ignore cert errors (e.g. for self-signed cert)
+curl_setopt($h, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($h, CURLOPT_SSL_VERIFYHOST, 0);
+</pre>
+
+</ul>
+
+<h4 id="toc_1.4.1.5"><a name="调试等级(_debug)">4.1.5 调试等级(_debug)</a></h4>
+
+<p>
+特殊的URL参数"_debug"定义调试等级, 默认为0. 如果为1-9的数字, 将添加调试信息到结果数组中.
+</p>
+
+<p>
+_debug=9: 输出SQL
+</p>
+
+<p>
+通过设置环境变量P_DEBUG, 可以让本系统使用的测试工具(如client.php及rtest.php)请求时指定调试等级. 如:
+</p>
+<pre>
+set P_DEBUG=9
+client.php callsvr usercar.query
+</pre>
+
+<h4 id="toc_1.4.1.6"><a name="应用标识(_app)">4.1.6 应用标识(_app)</a></h4>
+
+<p>
+特殊的URL参数"_app"用于定义当前应用. 缺省值为"user"(对应客户端应用). 
+注意: 每个请求都必须带此标识, 它决定session对应的cookie项的名字. 如果不加该参数, 则可能出现未预料的错误.
+</p>
+
+<p>
+当前可用应用名称定义如下:
+<dl>
+<dt>user</dt>
+<dd>缺省值. web移动应用, 用户使用的客户端.</dd>
+<dt>admin</dt>
+<dd>web桌面应用, 管理端.</dd>
+<dt>store</dt>
+<dd>web桌面应用, 商户管理端.</dd>
+<dt>emp</dt>
+<dd>web移动应用, 商户雇员端.</dd>
+</dl>
+</p>
+
+<p>
+由于不同应用(如客户端, 商户端与管理端)共用一个api.php页面, 当在同一浏览器中打开多个应用时可能相互影响, 比如商户端与管理端同时使用时, 商户端会自动以管理端的权限操作.
+</p>
+
+<p>
+解决方法是, 为不同应用使用不同的sessionId以区分. 实现时有两种方式, 一是访问不同的服务端页面, 如商户端访问api.php, 管理端访问api0.php(其中指定一个不同的sessionId); 另一种是商户端所有的请求都带一个参数指定sessionId. 
+我们将采用后一种解决方法.
+</p>
+
+<p>
+URL参数_app可用于指定所属应用, 如不指定默认值为"carsvc". 它隐含着session的名称为"{_app}id"如请求
+</p>
+<pre>
+GET /api.php?_app=emp
+</pre>
+
+<p>
+第一次访问将返回
+</p>
+<pre>
+SetCookie: empid=xxxxxx
+</pre>
+
+<h4 id="toc_1.4.1.7"><a name="测试模式(_test)">4.1.7 测试模式(_test)</a></h4>
+
+<p>
+URL参数"_test"值为非0时表示测试模式。参考章节"概要设计"-&gt;"配置项"-&gt;"测试模式".
+</p>
+
+<p>
+当_test值为2时，表示运行回归测试。
+</p>
+
+<h4 id="toc_1.4.1.8"><a name="使用PATH_INFO模式的URL">4.1.8 使用PATH_INFO模式的URL</a></h4>
+
+<p>
+通过在index.php中解析<code>$_SERVER["PATH_INFO"]</code>, 可以令URL更可读：
+</p>
+<pre>
+http://localhost/cheguanjia/api.php?ac=login&amp;phone=137&amp;pwd=1234
+-&gt;
+http://localhost/cheguanjia/api.php/login?phone=137&amp;pwd=1234
+</pre>
+
+<p>
+对于对象的CRUD，URL像这样：
+</p>
+<pre>
+http://localhost/cheguanjia/api.php?ac=Ordr.query&amp;res=id,dscr
+-&gt;
+http://localhost/cheguanjia/api.php/Ordr/query?res=id,dscr
+</pre>
+<p>
+即"Ordr/query"转化为"ac=Ordr.query".
+</p>
+
+<h4 id="toc_1.4.1.9"><a name="客户端版本(_ver)">4.1.9 客户端版本(_ver)</a></h4>
+
+<p>
+URL参数"_ver"值为客户端版本。取值参考表ApiLog.ver字段。目前只有安卓客户端设置该参数为"a/{ver}" (如"a/2"), 其它客户端版本根据userAgent自动获取。
+</p>
+
+<h4 id="toc_1.4.1.10"><a name="权限说明">4.1.10 权限说明</a></h4>
+
+<p>
+要访问每个API，必须拥有相应的权限。权限定义如下：
+</p>
+
+<ul>
+<li>
+AUTH_GUEST: 任何人可用, 无权限限制。不用登录即可查看商户, 天气等. 
+
+<li>
+AUTH_USER: 用户登录后可用. 可做下单, 查看订单等操作. 
+
+</ul>
+
+<p>
+员工登录后可能获得以下一个或多个权限(由Employee.perms指定):
+</p>
+<ul>
+<li>
+AUTH_ITEM: 管理商户的物料.
+
+<li>
+AUTH_EMP: 查看订单以及操作自己的订单.
+
+<li>
+AUTH_MGR: 操作商户的所有内容, 包括订单, 物料, 员工等(但不能设置员工权限). 
+
+<li>
+AUTH_MGR2: 管理所有商户, 设置员工权限, 商户结算等.
+
+<li>
+AUTH_STORE: 员工登录后的权限, 包含以上各类型.
+
+</ul>
+
+<p>
+其它权限:
+</p>
+<ul>
+<li>
+AUTH_TEST_MODE: 测试模式下可用。
+
+<li>
+AUTH_MOCK_MODE: 模拟模式下可用。
+
+<li>
+AUTH_ADMIN: 可操作一切对象. 但没有自动完成功能. 由程序内部使用, 对外已废弃(原超级管理端已不再使用)
+
+<li>
+AUTH_ASTORE: 当前所属商户是自营商户且有权限AUTH_MGR/AUTH_MGR2时可用.
+
+<li>
+AUTH_PARTNER: 用于系统集成的权限验证。不用登录（相当于AUTH_GUEST），但调用每个API时必须提供_pwd/_sign参数之一供验证。
+
+</ul>
+
+<p>
+如果API未明确指定权限，则认为是AUTH_GUEST.
+按登录对象的不同, 权限又分为 用户类(AUTH_USER) 和 商户类(AUTH_STORE), 分别对应 AC1_xxx 和 AC2_xxx 系列原子权限. 这也使得同一个API在不同权限下的执行结果可能不同，如 <code>Ordr.query</code> 在AUTH_USER下(查该用户订单)或AUTH_STORE下（查该商户订单）是不同的。
+</p>
+
+<p>
+一个用户可以拥有多个权限, 但按data ownership范围的不同, 只会有一个ownership level. 定义如下:
+</p>
+<ul>
+<li>
+OWN_EMP(操作员工数据)
+
+<li>
+OWN_STORE(操作所在店数据)
+
+<li>
+OWN_ALL(操作所有店数据)
+
+<li>
+OWN_USER (操作用户自己数据, 目前与AUTH_USER一致, 暂未使用)
+
+</ul>
+
+<h3 id="toc_1.4.2"><a name="通用操作">4.2 通用操作</a></h3>
+
+<h4 id="toc_1.4.2.1"><a name="执行sql语句">4.2.1 执行sql语句</a></h4>
+
+<pre>
+execSql(sql, wantArray?, wantId?, fmt?) -&gt; rowSet or affectedRows or lastInsertedId
+</pre>
+
+
+<p>
+只有管理员登录后才能使用, 或是测试模式下才能使用. 生产模式下客户端和商户端禁止使用. 
+</p>
+
+<p>
+如果是SELECT语句, 返回结果集, 否则返回affectedRows.
+</p>
+
+<p>
+<strong>[权限]</strong>
+</p>
+
+<ul>
+<li>
+AUTH_ADMIN
+
+<li>
+AUTH_TEST_MODE
+
+</ul>
+
+<p>
+<strong>[参数]</strong>
+</p>
+
+<dl>
+<dt>sql</dt>
+<dd>String. SQL语句。</dd>
+<dt>wantArray</dt>
+<dd>Boolean. 如果非空,则对select语句的结果返回数组而非关联表. 由fmt=array替代, 已不建议使用.</dd>
+<dt>wantId</dt>
+<dd>Boolean. 如果非空，则对insert语句的结果返回最后插入的id而非记录数。</dd>
+</dl>
+
+<dl>
+<dt>fmt</dt>
+<dd>String. 指定select查询的结果返回格式: "table"-table格式({h,d}), "array"-array格式 (相当于wantArray=1), "one"-如果查询有多列,则只取首行, 如果查询只有一列, 则只取首行首列数据(相当于框架中的queryOne函数), 缺省: object aray / rowset</dd>
+</dl>
+
+<p>
+<strong>[示例]</strong>
+</p>
+
+<p>
+请求
+</p>
+<pre>
+execSql(sql="SELECT COUNT(*) AS N FROM User")
+</pre>
+
+<p>
+返回
+</p>
+<pre>
+[
+	{N: 3}
+]
+</pre>
+
+<p>
+注:
+</p>
+<ul>
+<li>
+实际发送请求时, 注意别忘记对内容进行url编码, 内容不含引号.
+
+<li>
+对select语句返回rowSet, 一定是一个数组, 每一项的字段名由select的字段决定.
+
+</ul>
+
+<p>
+<strong>[示例]</strong>
+</p>
+
+<p>
+请求
+</p>
+<pre>
+execSql(sql="SELECT COUNT(*) AS N FROM User", fmt=one)
+</pre>
+
+<p>
+返回
+</p>
+<pre>
+3
+</pre>
+
+<p>
+<strong>[示例]</strong>
+</p>
+
+<p>
+请求
+</p>
+<pre>
+execSql(sql="SELECT COUNT(*) AS N, MIN(createTm) AS createTm FROM User", fmt=one)
+</pre>
+
+<p>
+返回
+</p>
+<pre>
+[3, '2015-1-1']
+</pre>
+
+<p>
+<strong>[示例]</strong>
+</p>
+
+<p>
+请求
+</p>
+<pre>
+execSql(sql="SELECT COUNT(*) AS N FROM User", wantArray=1)
+或
+execSql(sql="SELECT COUNT(*) AS N FROM User", fmt=array)
+</pre>
+
+<p>
+返回
+</p>
+<pre>
+[
+	[3]
+]
+
+</pre>
+
+<p>
+<strong>[示例]</strong>
+</p>
+
+<p>
+请求
+</p>
+<pre>
+execSql(sql="SELECT id FROM User")
+</pre>
+
+<p>
+返回
+</p>
+<pre>
+[
+	{id: 1},
+	{id: 2},
+	{id: 3}
+]
+</pre>
+
+<p>
+<strong>[示例]</strong>
+</p>
+
+<p>
+请求
+</p>
+<pre>
+execSql(sql="SELECT id FROM User", fmt=array)
+</pre>
+
+<p>
+返回
+</p>
+<pre>
+[ [1], [2], [3] ]
+</pre>
+
+<p>
+<strong>[示例]</strong>
+</p>
+
+<p>
+请求
+</p>
+<pre>
+execSql(sql="SELECT id FROM User", fmt=table)
+</pre>
+
+<p>
+返回
+</p>
+<pre>
+{
+	h: ["id"],
+	d: [ [1], [2], [3] ]
+}
+</pre>
+
+<p>
+<strong>[示例]</strong>
+</p>
+
+<p>
+请求
+</p>
+<pre>
+execsql(sql="DELETE User WHERE id=1 or id=2")
+</pre>
+
+<p>
+返回
+</p>
+<pre>
+2
+</pre>
+
+<p>
+注: 对于非SELECT语句, 返回affectedRows
+</p>
+
+<h4 id="toc_1.4.2.2"><a name="通用表操作">4.2.2 通用表操作</a></h4>
+
+<p>
+以下4条API完成对表的增删改查(CRUD)动作. 服务端可根据当前用户所拥有权限进行检查. 
+</p>
+
+<pre>
+{tblname}.add(res?)(POST fields...) -&gt; {id} 
+
+{tblname}.set(id)(POST fields...)
+
+{tblname}.get(id, res?) -&gt; {fields...}
+
+{tblname}.del(id)
+
+{tblname}.query(res?, cond?, @res2?, join?, @cond2?, union?, distinct?=0, _pagesz?=20, _pagekey?, _fmt?) -&gt; tbl(fields...)
+
+{tblname}.query(wantArray=1, @subobj?, res?, ...) -&gt; [obj1, obj2...]
+</pre>
+
+<p>
+缺省这些操作只对管理员登录后开放, 用户或商家登录后无权操作. 管理员可对所有表的所有字段进行CRUD操作.
+</p>
+
+<p>
+部分对象对用户或商家登录后开放, 如用户登录后可操作User,UserCar等对象, 这些操作会在相应章节单独列出来说明, 如"用户车辆信息"章节.
+在这些章节中会对操作限制(如只能get/set,不能add/del), 只读字段(即使请求中给出,服务端也会忽略这些字段), 可缺省字段(服务端会自动补全)做出说明.
+</p>
+
+<p>
+系统中的表设计(表名, 字段等)参见"数据库设计"章节. 一般表都设计为使用整形字段id作为主键. 该字段创建后变只读, 不允许被修改.
+</p>
+
+<p>
+对于add操作，默认返回{id}, 如果想多返回其它字段，可设置res，如 
+</p>
+<pre>
+Ordr.add(res="id,status,total")(POST fields...) -&gt; {id, status, total}
+</pre>
+
+<p>
+<strong>[query]</strong>
+</p>
+
+<p>
+query可以用参数cond指定查询条件, 如
+</p>
+<pre>
+cond="type='A' and name like '%hello%'" 
+
+URL编码后为
+
+cond=type%3d%27A%27+and+name+like+%27%25hello%25%27
+</pre>
+
+<p>
+query返回有两种形式, 缺省返回table类型便于支持分页, 但不支持查询子对象(subobj参数). 如果指定wantArray=1, 可以返回子对象, 但则不支持分页. 例如, 
+query缺省返回:
+</p>
+<pre>
+{
+	"h": ["id", "name"],
+	"d": [[1, "liang"], [2, "wang"]]
+}
+</pre>
+<p>
+如果指定wantArray=1则返回:
+</p>
+<pre>
+{
+	[["id": 1, "name": "liang"], ["id": 2, "name": "wang"]]
+}
+</pre>
+
+<p>
+注意:
+</p>
+<ul>
+<li>
+对于add/set方法, 使用HTTP POST请求; fields表示表中每个字段的key-value值, 通过POST字段传递(使用URL编码). set方法中的id字段通过URL传递.
+
+<li>
+对于set操作, 如果要将某字段置空, 可以用空串或"null" (小写). 如"picId="或"picId=null"; 除了用在set操作的POST内容中，其它情况下字段设置为空串相当于没有设置该字段。
+
+<li>
+对于set操作，如果要将某字符串类型字段置空串(不建议使用)，可以用"empty", 如"sn=empty"。但如果对数值等其它类型设置，会导致其值为0或0.0。
+
+<li>
+权限管理. 客户端或商户端可读写哪些对象详见其它章节. 管理员登录可操作所有表. 不同类型的登录进行的访问控制和返回结果是不一样的, 比如管理端登录没有任何限制和自动补全. 
+  如果管理端, 客户端和商户端同时登录(使用同一session), 则管理端逻辑优先, 其次是客户端, 最后是商户端. (<span class="todo">TODO:</span> 商户端和客户端共用session可能会有冲突)
+
+<li>
+<span class="todo">TODO:</span> 如果有metadata, 后台可检查字段是否存在, 是否只读等. 
+
+</ul>
+
+<p>
+<strong>[分页]</strong>
+</p>
+
+<dl>
+<dt>_pagesz</dt>
+<dd>Integer. 指定页大小, 默认一次返回20条数据。</dd>
+<dt>_pagekey</dt>
+<dd>String. 指定从哪条数据开始，应根据上次调用时返回数据的"nextkey"字段来填写。</dd>
+</dl>
+
+<p>
+注意：
+</p>
+<ul>
+<li>
+分页只适用于query, 且wantArray=0的情况。
+
+</ul>
+
+<p>
+详细请参考章节"分页机制".
+</p>
+
+<p>
+<strong>[参数]</strong>
+</p>
+
+<dl>
+<dt>fields</dt>
+<dd>每个字段及其值.</dd>
+<dt>res, cond (get/query方法), orderby(query方法)</dt>
+<dd>String. 指定返回字段及查询条件, 例如, res="field1,field2", cond="field1&gt;100 AND field2='hello'", orderby="id desc", 注意使用UTF8+URL编码, 目前格式参照SQL语法, 字符串值应加上单引号.</dd>
+<dt>distinct</dt>
+<dd>Boolean. 如果为1, 生成"SELECT DISTINCT ..."查询.</dd>
+<dt>res2, join, cond2 (get/query方法)</dt>
+<dd>这几个字段只由内部使用，没有安全限制. res2, cond2为额外的字段及条件, 必须为数组; join可以为字符串或字符串数组.注意增加join表后, 指定主表字段时最好加上主表的固定别名"t0". 例如 res2=["b.name AS brandName", "s.name as storeName"], join="INNER JOIN CarBrand b ON b.id=t0.brandId", cond2=["t0.field1=100 and b.id IN (1,2,3)"]</dd>
+<dt>subobj</dt>
+<dd>目前仅限server内部使用, 要求主对象必须有id字段(未指定res/res2参数或其中有id字段). 格式为数组, 每行指定一个子对象的查询, 每行格式为: {sql, wantOne?}. "sql"指定查询语句, 其中用"%d"表示主表id; "wantOne"表示返回对象而非对象集合(数组), 缺少是对象集合. 例: </dd>
+</dl>
+<pre>
+		$_REQUEST["subobj"] = [
+			"items" =&gt; ["sql"=&gt;"SELECT * FROM OrderItem WHERE orderId=%d", "wantOne"=&gt;false]
+		];
+</pre>
+<dl>
+<dt>union</dt>
+<dd>仅限server内部使用. 指定union查询内容, 该内容将会在以下位置影响SQL查询: "SELECT ... FROM .. WHERE ... { UNION ... } ORDER BY ...". 注意: union的结果与res参数中字段指定必须匹配; where条件必须在union中自行指定, 不可通过cond/cond2参数; orderby参数可应用到union后的最终结果.</dd>
+</dl>
+
+<p>
+对res, cond, orderby的安全限制：
+</p>
+<ul>
+<li>
+res, orderby只能是字段（或虚拟字段）列表，不能出现函数、子查询等。
+
+<li>
+cond不允许子查询（不可以有select等关键字）。
+
+</ul>
+
+<dl>
+<dt>_fmt</dt>
+<dd>Enum(csv,txt,excel). 导出Query的内容为指定格式。其中，csv为逗号分隔UTF8编码文本；txt为制表分隔的UTF8文本；excel为逗号分隔的gb2312编码文本（因为默认excel打开Csv文件时不支持utf8编码）。注意，由于默认会有分页，要想导出所有数据，一般可指定_pagesz=9999。</dd>
+</dl>
+
+<p>
+<strong>[操作特殊属性flags和props]</strong>
+</p>
+
+<p>
+flags为单字母表示的标志位集合，如"vg"；props可以以多字母表示标志位，中间以空格分隔，如"suv mpv".
+一般flags由应用内部定义；而props扩展性更强。
+</p>
+
+<p>
+query操作支持形如<code>flag_{flag}</code>或<code>prop_{prog}</code>的虚拟属性。
+</p>
+<ul>
+<li>
+<code>flag_f=1</code> 相当于 <code>flags LIKE '%f%'</code>
+
+<li>
+<code>flag_f=0</code> 相当于 <code>flags IS NULL OR flags NOT LIKE '%f%'</code>
+
+</ul>
+
+<p>
+get/query操作中如果返回了flags/props，还会返回相应的虚拟属性；例如flags值为"vg"，则多返回虚拟属性<code>flag_v=1</code>及<code>flag_g=1</code>
+</p>
+
+<p>
+set操作支持以下方式设置flags/props属性：
+</p>
+<ul>
+<li>
+flag_f=1 相当于 <code>set flags=concat(ifnull(flags, ''), 'f')</code>
+
+<li>
+flag_f=0 相当于 <code>set flags=replace(flags, 'f', '')</code>
+
+</ul>
+
+<p>
+注意：
+</p>
+<ul>
+<li>
+flag/prop的值只能为0/1
+
+<li>
+(TODO) props属性类似。
+
+<li>
+(TODO) flags/props应区分大小写(设置属性collation: utf8_bin)
+
+</ul>
+
+<p>
+<strong>[例: 添加商户]</strong>
+</p>
+
+<p>
+添加商户, 指定一些字段:
+</p>
+<pre>
+Store.add()
+	name=华莹汽车(张江店)
+	addr=金科路88号
+	tel=021-12345678
+</pre>
+
+<p>
+注: 
+</p>
+<ul>
+<li>
+Store是商户表名, 通过POST字段传递各字段内容. HTTP POST请求如下所示(实际发送时, 每个字段的值应使用UTF8+URL编码, 示例中未进行编码):
+<pre>
+POST /api.php?ac=Store.add
+Content-Type: application/x-www-form-urlencoded
+
+name=华莹汽车(张江店)&amp;addr=金科路88号&amp;tel=021-12345678
+</pre>
+
+<li>
+id这种主键或只读字段无须设置. 即使设置也应被忽略. 
+
+</ul>
+
+<p>
+操作成功时返回id值:
+</p>
+
+<pre>
+8
+</pre>
+
+<p>
+<strong>[例: 获取商户]</strong>
+</p>
+
+<p>
+取刚添加的商户(id=8):
+</p>
+<pre>
+Store.get(id=8)
+</pre>
+
+<p>
+操作成功时返回该行内容:
+</p>
+<pre>
+{id: 8, name: "华莹汽车(张江店)", addr: "金科路88号", tel: "021-12345678", opentime: null, dscr: null}
+</pre>
+
+<p>
+可以像query方法一样用POST参数res指定返回值, 如
+</p>
+
+<pre>
+Store.get(id=8)
+	res=id,name as storeName,addr
+</pre>
+
+<p>
+操作成功时返回该行内容:
+</p>
+<pre>
+{id: 8, storeName: "华莹汽车(张江店)", addr: "金科路88号"}
+</pre>
+
+<p>
+<strong>[例: 查询商户]</strong>
+</p>
+
+<p>
+查询"华胜汽车"在"浦东"的门店, 即查询名称含有"华胜汽车"且地址中含有"浦东"的商户, 只返回id, name, addr字段:
+</p>
+<pre>
+Store.query()
+	res=id,name,addr
+	cond=name like '%华胜%' and addr like '%浦东%'
+</pre>
+
+<p>
+注意: 内容经UTF8+URL编码, 测试时大致是这个样子:
+测试: <code>client.php callsvr store.query null "res=id,name,addr&amp;cond=name like '%25%E5%8D%8E%E8%83%9C%25' and addr like '%25%E6%B5%A6%E4%B8%9C%25'"</code>
+或
+<code>client.php callsvr store.query null "['res'=&gt;'id,name,addr', 'cond'=&gt;'name like \'%华胜%\' and addr like \'%浦东%\'']"</code> (必须在UTF8 shell中运行, 否则编码不对)
+</p>
+
+<p>
+操作成功时返回内容如下:
+</p>
+<pre>
+{
+	"h": [
+		"id",
+		"name",
+		"addr"
+	],
+	"d": [
+		[
+			"100064",
+			"华胜汽车（金桥店）",
+			"上海市浦东区金桥路2622弄59号3号门"
+		]
+	]
+}
+</pre>
+
+<p>
+<strong>[导出商户]</strong>
+</p>
+
+<pre>
+Store.query()
+	res=id,name,addr
+	_fmt=excel
+	_pagesz=9999
+</pre>
+
+<p>
+可导出gb2312编码的csv文件。使用较大的_pagesz以尽量返回所有数据。
+</p>
+
+<p>
+<strong>[例: 更新商户]</strong>
+</p>
+
+<p>
+为商户设置描述信息等:
+</p>
+<pre>
+Store.set(id=8)
+	opentime=8:00-18:00
+	dscr=描述信息.
+</pre>
+
+<p>
+操作成功时无返回内容.
+</p>
+
+<p>
+<strong>[例: 删除商户]</strong>
+</p>
+
+<pre>
+Store.del(id=8)
+</pre>
+
+<p>
+操作成功时无返回内容.
+</p>
+
+<h4 id="toc_1.4.2.3"><a name="附件上传">4.2.3 附件上传</a></h4>
+
+<pre>
+使用multipart/form-data格式上传（标准html支持，可一次传多个文件）:
+upload(type?=default, genThumb?=0, autoResize?=1)(POST content:multipart/form-data) -&gt; [{id, thumbId?}]
+
+直接传文件内容，一次只能传一个文件:
+upload(fmt=raw|raw_b64, f, exif?, ...)(POST content:raw) -&gt; [{id, thumbId?}]
+
+TODO: 如果使用微信的上传接口, 可以调用:
+upload(..., weixinServerIds) -&gt; [{id, thumbId?}]
+</pre>
+
+<p>
+上传照片等内容. 返回附件id. 因为允许一次上传多个文件，返回的是一个数组，每项对应上传的一个文件。
+</p>
+
+<p>
+员工端上传图片时应传图片扩展信息（exif信息），包括时间、GPS信息，以便后期（通过工具校验数据）验证员工是否在指定的时间地点去洗车。
+注意：exif信息只在上传单图时有意义。
+</p>
+
+<p>
+<span class="todo">TODO:</span>将限制只支持jpg等几种指定格式; 以及限制最大可传文件的size
+</p>
+
+<p>
+<strong>[参数]</strong>
+</p>
+
+<dl>
+<dt>genThumb</dt>
+<dd>Boolean. 为1时生成缩略图。如果未指定type, 则按type=default设置缩略图大小.</dd>
+<dt>type</dt>
+<dd>String. 商家图片上传使用"store", 用户头像上传使用"user", 其它情况不赋值. 不同的type在生成缩略图时尺寸不同。</dd>
+<dt>content</dt>
+<dd>文件内容。默认使用multipart/form-data格式，详见请求示例。如果fmt为"raw"或"raw_b64"，则直接为文件内容（或其base64编码）</dd>
+<dt>autoResize</dt>
+<dd>Boolean. 缺省为1，即当图片大小超过500K, 自动缩小图片到最大像素1920x1080.</dd>
+<dt>exif</dt>
+<dd>Object. 扩展信息。JSON格式，如上传时间及GPS信息：<code>{"DateTime": "2015:10:08 11:03:02", "GPSLongtitude": [121,42,7.19], "GPSLatitude": [31,14,45.8]}</code></dd>
+</dl>
+
+<dl>
+<dt>fmt</dt>
+<dd>指定格式，可为"raw"或"raw_b64"。这时必须用参数"f"指定文件名; 且POST content为文件内容(fmt=raw)或文件经base64编码后(fmt=raw_b64)的内容。</dd>
+<dt>f</dt>
+<dd>指定文件名，后台将检查其扩展名。且在fmt="raw"/"raw_b64"时使用。</dd>
+</dl>
+
+<p>
+type决定生成缩略图的大小：
+</p>
+<ul>
+<li>
+type=user: 128x128
+
+<li>
+type=store: 200x150
+
+<li>
+type=default: 100x100
+
+</ul>
+
+<p>
+<strong>[返回]</strong>
+</p>
+
+<dl>
+<dt>id</dt>
+<dd>附件id. 可根据att(id)接口获取该文件。</dd>
+</dl>
+<p>
+thumbId: 如果参数设置了genThumb=1, 则会生成缩略图并返回该字段为生成的缩略图id.
+</p>
+
+<p>
+<strong>[示例1]</strong>
+</p>
+
+<p>
+使用Content-Type为multipart/form-data可一次上传一个或多个文件。
+假如上传两个文件"file1.txt"和"file2.txt", HTTP请求如下：
+</p>
+<pre>
+POST api.php?ac=upload
+Content-Type:multipart/form-data; boundary=----WebKitFormBoundary6oVKiDmuQSPOtt2L
+Content-Length: ...
+
+------WebKitFormBoundary6oVKiDmuQSPOtt2L
+Content-Disposition: form-data; name="file1"; filename="file1.txt"
+Content-Type: text/plain
+
+(content of file1)
+------WebKitFormBoundary6oVKiDmuQSPOtt2L
+Content-Disposition: form-data; name="file2"; filename="file2.txt"
+Content-Type: text/plain
+
+(content of file2)
+------WebKitFormBoundary6oVKiDmuQSPOtt2L--
+</pre>
+
+<p>
+注意：
+</p>
+<ul>
+<li>
+"Content-Type"必须为"multipart/form-data"并指定boundary. 欲了解详细格式请百度.
+
+<li>
+服务端处理时，会根据filename生成一个新名字（会使用同样的扩展名, 如本例中的".txt"），然后将文件内容保存到该文件中。
+
+</ul>
+
+<p>
+使用html自带的form和file组件可以自动生成这样的POST请求，如上传两个文件：
+</p>
+<pre>
+&lt;form action="api.php?ac=upload" method=post enctype="multipart/form-data"&gt;
+	&lt;input type=file name="file1" accept="image/*"&gt;
+	&lt;input type=file name="file2" accept="image/*"&gt;
+	&lt;input type=submit value="上传"&gt;
+&lt;/form&gt;
+</pre>
+
+<p>
+也可以只使用一个file组件，只要设置属性multiple以允许多选文件(以chrome为例，在文件选择框中可以按Ctrl键多选文件)，但注意此时name必须带中括号：
+</p>
+<pre>
+&lt;form action="api.php?ac=upload" method=post enctype="multipart/form-data"&gt;
+	&lt;input type=file name="file[]" multiple="multiple" accept="image/*"&gt;
+	&lt;input type=submit value="上传"&gt;
+&lt;/form&gt;
+</pre>
+
+<p>
+multiple属性是html5新增属性，如果浏览器不支持，也可以这样写两个文件上传框：
+</p>
+<pre>
+&lt;form action="api.php?ac=upload" method=post enctype="multipart/form-data"&gt;
+	&lt;input type=file name="file[]" multiple="multiple" accept="image/*"&gt;
+	&lt;input type=file name="file[]" multiple="multiple" accept="image/*"&gt;
+	&lt;input type=submit value="上传"&gt;
+&lt;/form&gt;
+</pre>
+
+<p>
+返回示例如下：
+</p>
+
+<pre>
+[ {id:1, thumbId:2}, {id:3, thumbId:4} ]
+</pre>
+
+<p>
+<strong>[示例2]</strong>
+</p>
+
+<p>
+使用fmt=raw上传：
+</p>
+
+<pre>
+POST api.php?ac=upload&amp;fmt=raw&amp;f=1.jpg
+Content-Type: image/jpeg
+Content-Length: ...
+
+(jpg文件内容)
+</pre>
+
+<p>
+使用fmt=raw_b64上传：
+</p>
+
+<pre>
+POST api.php?ac=upload&amp;fmt=raw_b64&amp;f=1.jpg
+Content-Type: text/plain
+Content-Length: ...
+
+/9j/4AAQSkZJRgABAQEASABIAAD/4QC+RXhpZgAATU0AKgAAAAgABgE...
+</pre>
+
+<p>
+返回示例：
+</p>
+<pre>
+[ {id:1, thumbId:2} ]
+</pre>
+
+<h4 id="toc_1.4.2.4"><a name="附件下载">4.2.4 附件下载</a></h4>
+
+<pre>
+att(id)
+
+根据id下载附件.
+
+att(thumbId)
+
+使用缩略图id获取原图. 
+</pre>
+
+<p>
+注意: 该调用不符合接口规范, 它不返回格式为"[code, data]"的json串, 而是直接返回文件内容.
+</p>
+
+<p>
+HTTP header "Content-Type"将标识正确的文件MIME类型，如jpg类型为"image/jpeg".
+</p>
+
+<p>
+如果找不到附件，将返回HTTP状态码"404 Not Found"。
+</p>
+
+<p>
+<strong>[参数]</strong>
+</p>
+
+<dl>
+<dt>thumbId</dt>
+<dd>缩略图id</dd>
+</dl>
+
+<p>
+<strong>[示例]</strong>
+</p>
+
+<p>
+获取id=100的附件：
+</p>
+<pre>
+GET api.php?ac=att&amp;id=100
+</pre>
+
+<p>
+已知缩略图id=100, 获取它对应的原图：
+</p>
+<pre>
+GET api.php?ac=att&amp;thumbId=100
+</pre>
+
+<p>
+返回
+</p>
+
+<p>
+找到图片：
+</p>
+
+<pre>
+HTTP/1.1 200 OK
+Content-Type: image/jpeg
+
+(图片内容)
+</pre>
+
+<p>
+一般浏览器可以正确直接显示该图片。
+</p>
+
+<p>
+或找不到图片：
+</p>
+
+<pre>
+HTTP/1.1 404 Not Found
+Content-Type: text/plain; charset=UTF-8
+
+</pre>
+
+<h4 id="toc_1.4.2.5"><a name="上传工具">4.2.5 上传工具</a></h4>
+
+<p>
+upload_raw.php(f, d?=upload)(rawFileContent)
+</p>
+
+<p>
+<strong>[参数]</strong>
+</p>
+
+<dl>
+<dt>f</dt>
+<dd>上传文件名</dd>
+<dt>d</dt>
+<dd>上传到指定目录，默认是upload; 如果目录不存在可自动创建。</dd>
+<dt>rawFileContent</dt>
+<dd>HTTP请求的内容为文件内容。</dd>
+</dl>
+
+<p>
+可用于管理员上传文件。例如使用wget工具：
+</p>
+<pre>
+set PROG=wget -nv --user=lj --password=liang123 -t 1 --connect-timeout=6
+%PROG% --post-file=d:/test/1.jpg "http://localhost/upload_raw.php?f=1.jpg&amp;d=upload/test"
+</pre>
+
+<p>
+<span class="todo">TODO:</span> 验证管理员
+</p>
+
+<h4 id="toc_1.4.2.6"><a name="下载工具">4.2.6 下载工具</a></h4>
+
+<p>
+浏览：
+upload_list.php(d?=upload)
+</p>
+
+<p>
+文本模式浏览：
+upload_list.php(d?=upload, ac=list, f)
+</p>
+
+<p>
+删除文件:
+upload_list.php(d?=upload, ac=del, f[])
+</p>
+
+<p>
+可用于手工浏览服务器上的文件。方便下载或删除文件.
+</p>
+
+<p>
+注意：权限控制：只能浏览该工具所在目录及其子目录。
+</p>
+
+<p>
+<span class="todo">TODO:</span> 验证管理员
+</p>
+
+<p>
+<strong>[参数]</strong>
+</p>
+
+<dl>
+<dt>d</dt>
+<dd>文件夹</dd>
+<dt>ac</dt>
+<dd>操作名，支持"del", "list"</dd>
+<dt>f[]</dt>
+<dd>要删除的文件列表（如"f[]=1.jpg&amp;f[]=2.jpg"). 文件夹不可被删除。</dd>
+<dt>f</dt>
+<dd>文本模式浏览时, 用于过滤文件名.</dd>
+</dl>
+
+<p>
+<strong>[示例]</strong>
+</p>
+
+<pre>
+(list folder "upload"; admin user/pwd=liang/liang123)
+&gt; curl "http://localhost:8080/upload_list.php?ac=list" -u liang:liang123
+
+(list folder ".", filter file name by ".jpg")
+&gt; curl "http://localhost:8080/upload_list.php?ac=list&amp;d=.&amp;f=.jpg" -u liang:liang123
+</pre>
+
+<h4 id="toc_1.4.2.7"><a name="生成签名">4.2.7 生成签名</a></h4>
+<pre>
+genSign(_pwd, ...) -&gt; sign
+</pre>
+
+<p>
+根据密码对所有待签名字段进行签名。一般地，非下划线开头的字段都是待签名字段(例如_pwd, _sign这些都不参与签名)，特别的会专门说明。
+该API一般仅用于测试。页面 <code>partner/voucher.html</code> 使用了这个API。
+</p>
+
+<p>
+如果希望一个参数不参与签名，则设计它的名字以"_"开头，如"_ac".
+</p>
+
+<h4 id="toc_1.4.2.8"><a name="发短信">4.2.8 发短信</a></h4>
+<pre>
+sendSms(phone, content, channel?=0)
+</pre>
+
+<p>
+<strong>[权限]</strong>
+</p>
+
+<ul>
+<li>
+AUTH_ASTORE
+
+</ul>
+
+<p>
+<strong>[参数]</strong>
+</p>
+
+<dl>
+<dt>phone</dt>
+<dd>String. 一个手机号，或以英文逗号分隔的多个手机号.</dd>
+<dt>content</dt>
+<dd>String. 短信内容</dd>
+<dt>channel</dt>
+<dd>Integer. 0-验证码通道（速度快，可能被人工核查后阻止）；1-营销通道（速度慢，几分钟到达，一般不阻止）</dd>
+</dl>
+
+<p>
+对一个或多个手机群发短信。
+</p>
+
+<p>
+测试页面：tool/sms.html
+</p>
+
+<h4 id="toc_1.4.2.9"><a name="查询短信记录">4.2.9 查询短信记录</a></h4>
+
+<pre>
+SmsLog.query([cond], [_pagesz=20])
+</pre>
+
+<p>
+查询短消息发送记录. 默认按id倒序排列。
+</p>
+
+<p>
+<strong>[权限]</strong>
+</p>
+
+<ul>
+<li>
+AUTH_ASTORE
+
+</ul>
+
+<p>
+<strong>[参数]</strong>
+</p>
+
+<dl>
+<dt>cond</dt>
+<dd>查询条件，格式参考SQL语句的条件。如"id=1", "phone=12345678901"</dd>
+</dl>
+
+<p>
+<strong>[请求示例]</strong>
+查询手机号为123456678901的最近2条消息记录, 按照id降序排列
+</p>
+<pre>
+SmsLog.query(cond="phone=12345678901", _pagesz=2)
+</pre>
+
+<p>
+<strong>[返回示例]</strong>
+</p>
+
+<pre>
+{
+	"h": ["id", "phone", "content", "tm", "retval"],
+	"d": [
+			[18, "12345678901", "验证码123872，请在5分钟内使用。", "2015-09-20 22:21:16", 0],
+			[15, "12345678901", "验证码655288，请在5分钟内使用。", "2015-09-18 12:46:32", 0],
+		]
+]
+}}
+
+==== 给用户发消息 ====
+
+{{{
+notifyUser(orderId, content, noWeixin?)
+</pre>
+
+<p>
+给订单用户发消息，默认发微信和短信。
+</p>
+
+<p>
+<strong>[权限]</strong>
+</p>
+
+<ul>
+<li>
+AUTH_STORE
+
+</ul>
+
+<p>
+<strong>[参数]</strong>
+</p>
+
+<dl>
+<dt>orderId</dt>
+<dd>Integer. 订单编号.</dd>
+<dt>content</dt>
+<dd>String. 消息内容.</dd>
+<dt>noWeixin</dt>
+<dd>Boolean. 如果为1，则只发短信，不发微信消息。</dd>
+</dl>
+
+<h4 id="toc_1.4.2.10"><a name="代理">4.2.10 代理</a></h4>
+
+<pre>
+proxy(url)
+</pre>
+
+<p>
+代理访问url。
+</p>
+
+<h3 id="toc_1.4.3"><a name="API调用监控">4.3 API调用监控</a></h3>
+
+<p>
+所有对API的调用（请求与响应）均记录到表ApiLog中供分析。
+</p>
+
+<p>
+对一个session, 监控其API调用是否有异常，避免自动化操作行为，这时将返回 E_FORBIDDEN 错误。安全类异常将记录到日志文件 secure.log
+</p>
+
+<p>
+注意：
+</p>
+<ul>
+<li>
+自动化测试时，API监控不工作（这时_test参数值为2）。
+
+<li>
+应避免客户端一次取多张图片时有问题
+
+</ul>
+
+<h2 id="toc_1.5"><a name="测试设计">5 测试设计</a></h2>
+
+<p>
+<strong>[测试需求]</strong>
+</p>
+
+<ul>
+<li>
+对每个WebAPI及其集成业务场景有自动化回归测试(rtest - regression test)
+
+<li>
+提供工具可对每个API进行手工测试(test tool)
+
+<li>
+部分类提供单元测试(UT - unit test)
+
+<li>
+服务器提供测试模式，支持数据库清除等特殊操作。
+
+</ul>
+
+<p>
+所有测试内容存放在<code>rtest</code>目录下。
+</p>
+
+<p>
+注:
+</p>
+<ul>
+<li>
+环境变量"SVC_URL"可设置使用的URL, 如
+<pre>
+&gt; set SVC_URL=http://115.29.199.210/cheguanjia
+&gt; run_rtest.pl all
+</pre>
+
+</ul>
+
+<h3 id="toc_1.5.1"><a name="手工测试">5.1 手工测试</a></h3>
+
+<p>
+除可通过浏览器(如Chrome插件Postman)等工具进行测试外，还提供client.php工具，可分别测试每个API，如
+</p>
+<pre>
+&gt; client.php queryseries 100
+</pre>
+
+<p>
+也可直接调用callsvr方法调用任意api, 例如以下调用等价于前面例子:
+</p>
+<pre>
+&gt; client.php callsvr queryseries brandId=100
+</pre>
+
+<p>
+再如通用的对表的查询: 格式<code>callsvr command [paramstr] [poststr]</code>, 其中<code>paramstr</code>和<code>poststr</code>应使用URL编码.
+</p>
+<pre>
+(get item with id)
+&gt; client.php callsvr item.get id=1 
+
+(set item with id)
+&gt; client.php callsvr item.set id=1 "price=434&amp;dscr=hehe"
+</pre>
+
+<p>
+注:
+</p>
+<ul>
+<li>
+直接运行<code>client.php</code>可查看支持的API.
+
+<li>
+任一参数设置为"?"表示查看帮助, 如<code>client.php api1 ?</code>表示显示api1的帮助.
+
+<li>
+用null表示该参数不赋值, 如<code>client.php api1 param1 null param3</code>.
+
+<li>
+该工具为回归测试的副产品。
+
+</ul>
+
+<h3 id="toc_1.5.2"><a name="回归测试">5.2 回归测试</a></h3>
+
+<h4 id="toc_1.5.2.1"><a name="使用方法">5.2.1 使用方法</a></h4>
+
+<p>
+<strong>[前提条件]</strong>
+</p>
+
+<ul>
+<li>
+php version &gt;= 5.3.3 (required by phpunit 4.2)
+
+<li>
+配置php和phpunit使其可直接运行如 "./php" 和 "./phpunit"
+
+</ul>
+
+
+<p>
+运行服务端和回归测试：
+</p>
+<pre>
+&gt; cd rtest
+&gt; run_server.bat
+
+(设置服务URL，也可以手工设置)
+&gt; setTestEnv.bat 
+&gt; set SVC_URL=...
+
+(运行所有case)
+&gt; run_rtest.pl all
+
+(运行一个case)
+&gt; run_rtest.pl testcase1
+</pre>
+
+<p>
+日志"rtest.log"记录所有HTTP request和response，用于分析业务逻辑失败的原因。
+</p>
+
+<p>
+run_rtest是对phpunit进行了封装的工具，下面介绍。
+</p>
+
+<p>
+<strong>[run_rtest.pl]</strong>
+</p>
+
+<p>
+phpunit可以执行多个case, 不能自动分析依赖关系. run_rtest.pl工具就是用于简化对个别Case的测试, 它可运行一个多个或全部测试用例。
+</p>
+
+<pre>
+(执行所有用例)
+&gt; run_rtest.pl all
+
+(执行一个用例, 用例名参考rtest.php中的test系列函数, 名称可忽略大小写; 工具将自动先执行依赖的用例)
+&gt; run_rtest.pl testupload
+
+(执行多个用例，工具将自动调整各用例执行顺序)
+&gt; run_rtest.pl testatt testupload
+</pre>
+
+<p>
+下面是一些特殊配置:
+</p>
+
+<p>
+&gt; P_DEBUG
+</p>
+
+<p>
+通过设置环境变量P_DEBUG, 可以让本系统使用的测试工具(如client.php及rtest.php)请求时指定调试等级. 如:
+</p>
+<pre>
+set P_DEBUG=9
+client.php callsvr usercar.query
+</pre>
+
+<p>
+等级9将打出服务端SQL语句，并且通过自动设置URL参数"XDEBUG_SESSION_START=netbeans-xdebug"触发服务端php调试器(必须安装php-xdebug).
+</p>
+
+<p>
+&gt; P_APP
+</p>
+
+<p>
+指定app名称(间接指定session名). 对应系统URL参数"_app" (参考章节"应用标识(_app)). 在多种客户端同时登录时用于区分每个会话.
+</p>
+
+<p>
+&gt; P_SHARE_COOKIE
+</p>
+
+<p>
+rtest缺省会在测试前后创建和删除cookie, 测试时会自动找一个用户测试, 测试用例中也包括创建新用户. 
+</p>
+
+<p>
+如果设置了环境变量P_SHARE_COOKIE, 则不会创建和删除新cookie, 而是用当前已登录的用户测试(其中会用到API whoami来确定当前用户). 
+</p>
+
+<p>
+例如, 你想借助rtest为特定的用户创建订单, 可以这样:
+</p>
+<pre>
+&gt; set P_SHARE_COOKIE=1
+&gt; client.php login 13712345678 1234
+(登录用户为13712345678)
+
+(用当前登录用户添加order)
+&gt; run_rtest.pl testaddorder
+
+(用当前登录用户运行所有测试, 将忽略注册, 登录等接口测试)
+run_rtest.pl all
+</pre>
+
+<p>
+<strong>[phpunit用法]</strong>
+</p>
+
+<p>
+运行所有回归测试：
+</p>
+<pre>
+phpunit rtest.php
+</pre>
+
+<p>
+phpunit其它常用参数如下：
+</p>
+
+<p>
+运行一个或多个Case(注意：名称大小写必须正确，被依赖的case必须先执行)
+</p>
+<pre>
+	run_rtest --filter testGeneralQuery
+	run_rtest --filter testUpload|testAtt
+</pre>
+
+<p>
+just scenario test:
+</p>
+<pre>
+	run_rtest --group scenario
+</pre>
+
+<p>
+just sanity test:
+</p>
+<pre>
+	run_rtest --exclude-group scenario
+</pre>
+
+<h4 id="toc_1.5.2.2"><a name="测试模式设计">5.2.2 测试模式设计</a></h4>
+
+<ul>
+<li>
+以"php -S"模式启动时，Server自动切换到测试模式下，这时使用单机DB: "carsvc_test.db".
+
+<li>
+如果设置了环境参数"initdb" (在指请求包的HTTP header中设置了"bc-initdb")，Server可自动初始化数据库。
+
+<li>
+测试模式下会在返回包的HTTP status行有" - FOR TEST!"字样。
+
+</ul>
+
+<p>
+<strong>[实现]</strong>
+</p>
+
+<p>
+rtest实现参见<code>rtest/rtest.php</code>，服务端实现请在<code>server/api.php</code>中搜索"CARSVC_TEST".
+</p>
+
+<h4 id="toc_1.5.2.3"><a name="API测试和用例测试">5.2.3 API测试和用例测试</a></h4>
+
+<p>
+<strong>[原则]</strong>
+</p>
+
+<ul>
+<li>
+API测试(sanity test): 对每个WEB API进行测试，注重每个API的各种成功和出错处理。
+
+<li>
+用例测试或场景测试(usecase/scenraio): 通过调用若干API完成一个有意义的场景。
+
+</ul>
+
+<ul>
+<li>
+API test and scenario cases in one file: rtest.php
+
+<li>
+if sanity test fails, ignore scenario tests
+
+<li>
+if any critical case fails, ignore the rest.
+
+</ul>
+
+<p>
+<strong>[实现]</strong>
+</p>
+
+<p>
+参考file rtest.php:
+</p>
+<pre>
+static private $isIT =false;
+static private $skipIT = false;
+static private $skipAll = false;
+private $isCritical = false; 
+</pre>
+
+<h3 id="toc_1.5.3"><a name="单元测试">5.3 单元测试</a></h3>
+
+<p>
+必要时对某些类进行专门测试，存放在"rtest/test"目录，手工运行它们：
+</p>
+<pre>
+cd test
+phpunit xxxTest.php
+</pre>
+
+<h3 id="toc_1.5.4"><a name="自动化测试">5.4 自动化测试</a></h3>
+
+<h4 id="toc_1.5.4.1"><a name="取短信日志最后一条">5.4.1 取短信日志最后一条</a></h4>
+
+<pre>
+getLastLog(type)
+</pre>
+
+<p>
+<strong>[权限]</strong>
+</p>
+
+<ul>
+<li>
+AUTH_TEST_MODE
+
+</ul>
+
+<p>
+<strong>[参数]</strong>
+</p>
+
+<dl>
+<dt>f</dt>
+</dl>
+
+<h2 id="toc_1.6"><a name="登录类型与权限管理">6 登录类型与权限管理</a></h2>
+
+<p>
+我们使用的权限控制模型为: "用户-权限(即角色/原子权限组)-原子权限(基本权限)".
+(注:权限组也称"角色", 所以某些系统中也称为"用户-角色-权限"模型.)
+</p>
+
+<p>
+在我们系统中, 用户主要有User和Employee两类. 
+</p>
+
+<p>
+权限有两类: authorization(或称permission), 以及data ownership. 
+</p>
+<ul>
+<li>
+前者控制用户可以访问的表及列, 以及对该对象(甚至粒度到字段)可以有哪些操作(读/写). 例如, 在我们系统中, User登录后可以添加订单(Ordr.add, 且只允许设置指定的字段), 不可以删除订单. 实现时, 通过AC1_Ordr类控制了操作类型, 字段等.
+
+<li>
+后者控制用户可以访问的行, 例如, 虽然用户可以访问订单对象, 但只能操作自己的订单, 但不能操作别人的订单. 实现时, 在AC1_Ordr类的onValidateId(检查set/del/get操作)/onQuery(检查query操作)中, 均做了控制.
+
+</ul>
+
+<p>
+在后台系统中, 对象操作类的原子权限定义是通过AccessControl类簇实现的, 每一个类(如AC1_Ordr)即是一个权限定义(包括了对象权限, 列权限及行权限). 而对于函数操作类权限是通过checkAuth(角色)显示定义: 只有指定角色的用户才能调用.
+</p>
+
+<p>
+权限定义参考章节[权限说明].
+</p>
+
+<h2 id="toc_1.7"><a name="服务端部署与升级">7 服务端部署与升级</a></h2>
+
+<p>
+server/tool/upgrade.php - 升级管理
+</p>
+
+<p>
+<strong>[原理]</strong>
+</p>
+
+<p>
+它以DESIGN.wiki中的[数据库设计]章节内容生成table meta data (@table)及meta version (@ver), 比照真正数据库中字段的cinf.version, 然后根据差异更新表设计及表内容.
+</p>
+
+<p>
+<strong>[数据库连接]</strong>
+</p>
+
+<p>
+缺省地, upgrade.php与api.php连接相同的数据库. 支持mysql和sqlite.
+环境变量P_DB可为升级工具指定数据库. 如
+</p>
+<ul>
+<li>
+P_DB="carsvc.db"表示本地的sqlite db (以.db结尾)
+
+<li>
+P_DB="../carsvc.db"表示本地的sqlite db, 指定了准确的位置.
+
+<li>
+P_DB="carsvc" 表示本地的的mysql db, 相当于"localhost/carsvc".
+
+<li>
+P_DB="115.29.199.210/carsvc_test" 表示位于IP=115.29.199.210的远程mysql db.
+
+</ul>
+
+<p>
+环境变量P_DBCRED指定连接数据库的用户名密码。如未指定，则使用php/dbcred.php中的设定。
+</p>
+
+<h3 id="toc_1.7.1"><a name="用法">7.1 用法</a></h3>
+
+<p>
+upgrade.php
+</p>
+
+<p>
+缺省进入命令行交互.
+</p>
+
+<h4 id="toc_1.7.1.1"><a name="交互命令">7.1.1 交互命令</a></h4>
+
+<p>
+一般命令格式与函数调用类似, 也支持直接的sql语句, 如
+</p>
+<pre>
+&gt; addtable("item")
+&gt; addtable("item", true)
+&gt; quit()
+
+对于无参数命令可不加括号
+&gt; quit
+
+支持直接的sql语句
+&gt; select * from item limit 10
+&gt; update item set price=333 where id=8
+</pre>
+
+<p>
+<strong>[help]</strong>
+</p>
+
+<p>
+参数: [command]
+</p>
+
+<p>
+显示帮助. 可以指定command名称, 全部或部分均可.
+</p>
+
+<p>
+例:
+</p>
+<pre>
+&gt; help
+&gt; help("addtable")
+&gt; help("table")
+</pre>
+
+<p>
+<strong>[upgrade]</strong>
+</p>
+
+<p>
+自动根据版本差异升级数据库. 如果字段cinf.ver不存在, 则重建DB(但会忽略已有的表, 不会删除它再重新创建). 升级完成后设置cinf.ver字段.
+<span class="todo">TODO:</span> WebAPI "upgrade"可做同样的事情, 以便于通过web请求远程升级.
+</p>
+
+<p>
+注意: 对于MYSQL数据库, 升级工具只创建表, 不创建数据库本身(以及权限设置). 
+</p>
+
+<p>
+<strong>[showtable]</strong>
+</p>
+
+<p>
+参数: {table}
+</p>
+
+<p>
+查看某表的metadata以及SQL创建语句.
+</p>
+
+<p>
+例: 
+</p>
+<pre>
+&gt; showtable("item")
+</pre>
+
+<p>
+<strong>[addtable]</strong>
+</p>
+
+<p>
+参数: {table} [force=false]
+</p>
+
+<p>
+根据metadata添加指定的表{table}. 未指定force参数时, 如果表已存在且未指定force=true, 则检查和添加缺失的字段; 如果指定了force=true, 则会删除表重建.
+</p>
+
+<p>
+例:
+</p>
+<pre>
+&gt; addtable("item")
+
+(删除表item并重建)
+&gt; addtable("item", true)
+</pre>
+
+<p>
+<strong>[initdb]</strong>
+</p>
+
+<p>
+自动添加所有表. 等同于updatedb命令.
+</p>
+
+<p>
+<strong>[updatedb]</strong>
+</p>
+
+<p>
+自动添加或更新所有表. 相当于对所有表调用addtable命令.
+如果某张表已存在, 则检查是否有缺失的字段(注意: 只检查缺失, 不检查字段类型是否变化), 有则添加, 否则对该表不做更改.
+</p>
+
+<p>
+<strong>[execsql]</strong>
+</p>
+
+<p>
+参数: {sql} [silent=false]
+</p>
+
+<p>
+对于select语句, 返回结果集内容; 对于其它语句, 返回affectedRows.
+</p>
+
+<p>
+例:
+</p>
+<pre>
+&gt; execsql("select * from item limit 10")
+&gt; execsql("update item set price=10 where id=3")
+</pre>
+
+<p>
+注:
+</p>
+<ul>
+<li>
+支持直接输入SQL语句, 会自动调用execsql()执行. 程序通过以select等关键字识别SQL, 如
+<pre>
+&gt; select * from item limit 10
+&gt; update item set price=10 where id=3
+</pre>
+
+</ul>
+
+<p>
+<strong>[quit]</strong>
+</p>
+
+<p>
+退出交互. 可简写为"q".
+</p>
+
+<p>
+例:
+</p>
+<pre>
+&gt; quit
+或
+&gt; q
+</pre>
+
+<p>
+<strong>[<span class="todo">TODO:</span> reload]</strong>
+</p>
+
+<p>
+重新加载metadata. 当修改了DESIGN.wiki中的表结构定义时, 应调用该命令刷新metadata, 以便showtable/addtable等命令使用最新的metadata.
+</p>
+
+<p>
+<strong>[addcol]</strong>
+</p>
+
+<p>
+addcol {table} {col}
+</p>
+
+<p>
+添加字段{table}.{col}
+</p>
+
+<p>
+<strong>[getver]</strong>
+</p>
+
+<p>
+取表定义的version.
+</p>
+
+<p>
+<strong>[getdbver]</strong>
+</p>
+
+<p>
+取数据库的version. 
+</p>
+
+<p>
+<strong>[import]</strong>
+</p>
+
+<p>
+参数: {filename} {noPrompt=false} [encoding=utf8]
+</p>
+
+<p>
+将文件内容导入表，如果表不存在，会自动创建表（根据metadata），如果表已存在，会删除重建。文件编码默认为utf8. (<span class="todo">TODO:</span> 支持指定编码）
+</p>
+
+<dl>
+<dt>noPrompt</dt>
+<dd>默认导入表之前要求确认，如果指定该项为true，则不需要提示，直接导入。</dd>
+</dl>
+
+<p>
+一个文件可以包含多个表，每张表的数据格式如下：
+</p>
+<pre>
+# table [CarBrand]
+id	name	shortcut
+110	奥迪	A
+116	宝骏	B
+103	宝马	B
+...
+</pre>
+
+<p>
+"#"开头为注释，一般被忽略；特别地，"table [表名]"会标识开始一个新表，然后接下去一行是header定义，以tab分隔，再下面是数据定义，以tab分隔。
+</p>
+
+<p>
+这种文件一般可以在excel中直接编辑（但注意：excel默认用本地编码，也支持unicode即ucs-2le编码，但不直接支持utf-8编码）
+</p>
+
+<p>
+注意:
+</p>
+<ul>
+<li>
+如果字段值为空, 直接写null.
+
+</ul>
+
+<p>
+例：导入车型测试数据
+先生成测试数据：
+</p>
+<pre>
+initdata\create_testdata.pl
+(生成到文件brands.txt)
+</pre>
+
+<p>
+再在upgrade.php中用import导入：
+</p>
+<pre>
+&gt; import("../initdata/brands.txt")
+</pre>
+
+<p>
+注意：如果列名以"-"开头，则忽略此列数据，如
+</p>
+<pre>
+# table [CarBrand]
+id	name	-shortcut
+110	奥迪	A
+...
+</pre>
+<p>
+将不会导入shortcut列。
+</p>
+
+<p>
+<span class="todo">TODO:</span> 带关联字段导入：
+</p>
+<pre>
+# table [Figure]
+name	bookId(Book.name)	ref
+黄帝	史记	本纪-五帝
+</pre>
+
+<p>
+上例数据中，表示根据Book.name查找Book.id，然后填入Figure.bookId。如果Book中找不到相应项，会自动添加一项。
+</p>
+
+<p>
+关联表导入：
+</p>
+<pre>
+# table [Svc]
+id	name	Svc_ItemType(ittId,svcId)
+1	小保养	1,2,6
+2	大保养	1,2,3,4,7
+</pre>
+
+<p>
+上例有个字段表述为"Svc_ItemType(ittId,svcId)", 它表示该字段关联到表 Svc_ItemType.ittId字段，而本表的id对应关联表字段svcId。其内容为以逗号分隔的一串值。以上描述相当于：
+</p>
+<pre>
+# table [Svc]
+id	name
+1	小保养
+2	大保养
+
+# table [Svc_ItemType]
+ittId	svcId
+1	1
+2	1
+6	1
+...
+</pre>
+
+<p>
+还可以这样设置：
+</p>
+<pre>
+# table [Svc]
+id	name	Svc_ItemType(ittId,svcId,ItemType.name)
+1	小保养	机油;机油滤清器
+</pre>
+
+<p>
+上例中"Svc_ItemType"多了一个参数"ItemType.name", 它表示下面内容是关联到ItemType.name字段，即需要先用"SELECT id FROM ItemType WHERE name=?"查询出Svc_ItemType.ittId(第一个参数)，再同上例进行添加。
+<img src="" />
+</p>
+<h4 id="toc_1.7.1.2"><a name="非交互命令">7.1.2 非交互命令</a></h4>
+
+<p>
+例:
+</p>
+
+<pre>
+upgrade.php car_brand car_series car_model
+
+upgrade.php all
+
+upgrade.php upgrade
+</pre>
+
+<h3 id="toc_1.7.2"><a name="写升级脚本">7.2 写升级脚本</a></h3>
+
+<p>
+当表结构变化时, 
+</p>
+
+<ul>
+<li>
+更新设计文档中的表设计(相当于更改meta data)
+
+<li>
+增加设计文档中的设计版本号(@ver)
+
+<li>
+在升级脚本中添加升级逻辑, 如添加字段(及设置默认值), 添加表, 修改字段等.
+
+<li>
+测试升级脚本后, 上传设计文档及升级脚本, 再通过API或登录服务器执行远程升级; 或直接在本地通过设置P_DB环境变量直接用升级工具连接远端数据库.
+
+</ul>
+
+<p>
+upgrade.php
+</p>
+<pre>
+ver = getver();
+dbver = getdbver();
+if (ver &lt;= dbver)
+	return;
+
+if (dbver == 0) {
+	initdb();
+	return;
+}
+
+if (dbver &lt; 1) {
+	addcol(table, col);
+	execsql('update table set col=col1+1');
+}
+if (dbver &lt; 2) {
+	addtable(table);
+	importdata('data.txt');
+}
+if (dbver &lt; 3) {
+	addkey(key);
+}
+if (dbver &lt; 4) {
+	altercol(table, col);
+}
+
+update cinf set ver, update_tm
+</pre>
+
+<h2 id="toc_1.8"><a name="工具接口">8 工具接口</a></h2>
+
+<h3 id="toc_1.8.1"><a name="tool/log.php">8.1 tool/log.php</a></h3>
+
+<pre>
+log.php(f?=ext, sz?=2500)
+</pre>
+
+<p>
+查看日志（只显示最新的若干条，倒序排列）。
+</p>
+
+<p>
+<strong>[参数]</strong>
+</p>
+
+<dl>
+<dt>f</dt>
+<dd>String. 指定日志类型，缺省查看模拟接口的日志(ext.log), 还可以为"trace".</dd>
+<dt>sz</dt>
+<dd>Integer. 最多读取文件大小。log.php从文件结尾处读缺省3k字节，可以用sz来修改，单位为B.</dd>
+</dl>
+
+<p>
+<strong>[示例]</strong>
+</p>
+
+<pre>
+tool/log.php
+
+tool/log.php?f=trace
+(查看trace log)
+</pre>
+
+<h2 id="toc_1.9"><a name="定期任务">9 定期任务</a></h2>
+<pre>
+tool/task.php(ac)
+</pre>
+
+<p>
+它作为命令行工具执行。通过crontab设置定期执行该命令。
+</p>
+
+<p>
+<strong>[安装]</strong>
+</p>
+
+<p>
+进入tool目录执行<code>php task.crontab.php</code>生成一串文本，再运行<code>crontab -e</code>编辑计划任务，将刚刚生成的文本复制过来即安装好。
+屏幕输出到日志文件 <code>tool/task.log</code>.
+</p>
+
+<p>
+<strong>[参数]</strong>
+</p>
+
+<dl>
+<dt>ac</dt>
+<dd>String. 指定具体任务。定义如下。</dd>
+</dl>
+
+<p>
+<strong>[ac=voucher]</strong>
+</p>
+
+<p>
+建议每天执行一两次。
+如果优惠券已过期，设置状态Voucher.status。发现优惠券的过期日期在3天内，发短信提醒用户。
+</p>
+
+<p>
+<strong>[ac=order]</strong>
+</p>
+
+<p>
+建议每小时执行一次。
+隔天的订单，提前2小时通知用户。
+</p>
+
+<p>
+<strong>[ac=db]</strong>
+</p>
+
+<p>
+每天执行一次。
+备份数据库。
+</p>
+
+<h2 id="toc_1.10"><a name="数据安全">10 数据安全</a></h2>
+
+<p>
+<strong>[需求]</strong>
+</p>
+
+<p>
+考虑以下灾难场景及恢复方式：
+</p>
+<ul>
+<li>
+服务器不正常关机，重启后数据有损失 -- 通过数据库自带的工具修复，不做数据恢复
+
+<li>
+遭受病毒等破坏，数据无法读取；或服务器硬盘损坏 -- 使用备机(slave)数据进行恢复；或采用每日备份+delta binlog的方式恢复（如果binlog可用）
+
+<li>
+人为不当操作导致数据损坏 -- 采用每日备份+delta binlog的方式恢复（跳过不当操作部分）
+
+</ul>
+
+<p>
+<strong>[备份建议]</strong>
+</p>
+
+<ul>
+<li>
+每日数据全备份。重要数据应保留7到10天内的每日备份（以备长假等特殊情况导致发现问题较晚）。非重要数据可定期备份（如ApiLog，SmsLog等非业务数据, 但量很大）
+
+<li>
+异步复制方案(Async Replication)。让从机(slave)与主机基本保持一致。
+
+<li>
+备份数据至少应放在两个服务器上，以备一台机器数据损坏。可以使用主从机同时备份的方式，也可以主机备份到复制到其它机器。
+
+</ul>
+
+<p>
+<strong>[目前方案]</strong>
+</p>
+
+<ul>
+<li>
+主机oliveche.com, 从机server-pc (内网机器), 对数据库carsvc异步全复制(从机数据库名为carsvc_online)。
+
+<li>
+主机设置每日备份重要数据到 tool/bak/db_{yyyymmdd_hhmmss}.gz (不含ApiLog等非业务数据), 保留7-10天内的每日备份。
+
+</ul>
+
+<p>
+<strong>[注意]</strong>
+</p>
+
+<ul>
+<li>
+目前备份只使用全备份；如果备份文件增长到过大，可增加增量备份(mysqlbinlog --start-position/--start-date --stop-position/--stop-date).
+
+<li>
+目前将备机置于内网节省成本（机器，网络流量等）。
+
+<li>
+随着访问量增大，可将备机置于公网，做只读/报表分析等服务器。（仍然用异步复制机制）
+
+<li>
+如果事务增长至单一主机无法解决，则应组件集群。
+
+</ul>
+
+</body>
+</html>

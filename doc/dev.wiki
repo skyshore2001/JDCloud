@@ -1,0 +1,268 @@
+ = 开发环境搭建 =
+ 
+梁健 - 最近更新于2015/7
+
+%title 开发环境搭建
+%toc
+
+服务器共享软件的路径为 `\\server-pc\share\Software`, 请将以下`{SHARE_SVR}`替换成该地址。
+
+== Windows开发环境 ==
+
+=== 版本控制软件Git ===
+
+安装git：
+{{{
+{SHARE_SVR}\Git\Git-1.9.5-preview20150319.exe
+{SHARE_SVR}\Git\TortoiseGit-1.8.14.0-64bit.msi
+}}}
+
+浏览器右键点菜单 TortoiseGit->Settings->(左边菜单树中选择)Git->设置 Name 和 Email, 如
+Name: liangjian
+Email: liangjian@oliveche.com
+
+在 Settings->Network 中，确认右侧 SSH Client 使用的是刚刚安装的Git中的ssh路径，如
+{{{
+C:\Program Files (x86)\Git\bin\ssh.exe
+}}}
+
+如果代码服务器不提供用户名密码登录，那么需要设置ssh证书登录方式：
+
+在用户主目录下(开始->运行->输入 "." 或 "%userprofile%")创建目录".ssh", 将 `${SHARE_SVR}\server-pc-key` 目录下的文件(config, id_rsa等)拷贝到".ssh"目录中。
+如果目前下已经有同名文件，请手工修改和合并。
+
+在文件夹空白处点右键，打开 Git Bash，尝试 ssh 是否可以自动登录到代码服务器。
+
+=== 服务器环境PHP === 
+
+- 安装php 5.4
+ {{{
+解压 {SHARE_SVR}\php-5.4.31-nts-Win32-VC9-x86-xdebug.zip 到 c:\php54
+ }}}
+- 将解压路径如 c:\php54 加到系统环境变量 PATH 中(参考附注1)，以便可以直接在命令行访问 php.
+
+=== 数据库MYSQL ===
+
+办公室环境可直接使用配置好的数据库服务器。
+
+为直接访问数据库，可以安装数据库客户端：
+{{{
+{SHARE_SVR}\MYSQL\MySQL_Front_Setup_v5.3.1765185107.exe
+}}}
+
+=== 浏览器及移动设备 ===
+
+建议开发时使用chrome浏览器；请从网上下载并安装其最新版本。
+
+主要测试环境包括：
+- 安卓手机/平板
+- 苹果手机
+- 微信公众号
+
+=== 编辑器 ===
+
+建议安装上gvim编辑器。很多代码和文档(使用vimwiki格式)都使用gvim编写.
+
+{{{
+{SHARE_SVR}\vim\gvim74.exe
+}}}
+
+建议安装到 `c:\vim`
+安装完成后将 `{SHARE_SVR}\vim\_vimrc` 拷贝到安装目录， 如`c:\vim`
+
+安装vimwiki, 用于查看和书写文档.
+- 将{SHARE_SVR}\vim\vimwiki-lj-1.vmb拷贝到本地, 右键用gvim打开
+- 运行安装命令
+{{{
+:so! %
+}}}
+
+安装后查看文档(如doc/*.wiki文件)就有颜色、折叠、生成html网页文档等功能。
+
+== 测试环境 ==
+
+前提: 先配置好Windows开发环境(git/php等).
+
+=== 安装perl ===
+
+某些工具使用perl开发，所以应安装perl运行环境。
+{{{
+{SHARE_SVR}\ActivePerl-5.16.3.1604-MSWin32-x86-298023.msi
+}}}
+
+=== php单元测试工具phpunit ===
+
+phpunit可用于对php服务端提供的接口进行测试.
+
+安装 phpunit
+- 新建目录 c:\bat 用于放置自已创建的批处理文件。将该目录c:\bat加到PATH环境变量（参考附注1）。
+- 解压 `{SHARE_SVR}\php\phpunit.rar` 到c:\bat目录下，得到 c:\bat\phpunit.phar 文件
+- 新建 phpunit.bat 文件，内容如下：
+ {{{
+@echo off
+php c:/bat/phpunit.phar %*
+ }}}
+
+这时，打开一个cmd窗口，应该可以直接运行phpunit命令：
+{{{
+phpunit
+}}}
+
+具体用法请参考文档[[后端框架]] 章节"测试设计" -> "回归测试".
+
+=== 安装前端自动化测试环境 ===
+
+TODO: 主要软件：nunit, selenium, firefox浏览器, VS.net (C#)
+
+参考文档[[测试设计]]。
+
+== 运行环境 ==
+
+=== 下载代码 ===
+
+主要代码库：
+xeyc-sys:: 小鳄养车网上业务系统（含后台/前台），其中子目录`server`对应线上路径 http://xiaoeyangche.com/sys/
+xeyc-xdk:: 小鳄养车Android平台（使用xdk直接包装网页）
+xeyc-ios: 小鳄养车iOS客户端
+xeyc-site: 小鳄养车网站主页, 对应线上 http://xiaoeyangche.com/site/ 
+xeyc-test: 小鳄养车测试用例及回归测试代码
+
+{{{
+git clone builder@server-pc:xeyc-sys
+}}}
+可以在浏览器中右键选择Git Clone, 然后输入地址：`builder@server-pc:xeyc-sys`
+
+密码: builder
+
+注意: 
+- 如果要在办公室外访问代码库，可以用 `ssh://builder@oliveche.com:10022/home/builder/xeyc-sys`
+
+=== 运行服务 ===
+
+{{{
+cd {cheguanjia}\server
+set P_DB=server-pc/carsvc_test
+php -S 0.0.0.0:8080
+}}}
+
+如果`server-pc`访问慢，请换成IP地址或在/etc/hosts/文件中指定地址-机器名映射。
+
+文件C:\Windows\System32\drivers\etc\hosts，添加
+{{{
+192.168.3.135	server-pc
+}}}
+
+=== 主要页面 ===
+
+*[网页客户端]*
+
+http://localhost:8080/
+或
+http://localhost:8080/m2/index.html
+
+*[员工端]*
+
+（自营商户员工接单）：
+http://localhost:8080/m2/index.html
+
+*[商户端]*
+
+http://localhost:8080/m2/store.html
+
+*[商户管理端]*
+
+http://localhost:8080/web/store.html
+
+*[超级管理端]*
+
+http://localhost:8080/web/adm.html
+
+== 开发流程 ==
+
+*[概念]*
+
+开发周期:: 从开发部门确定下个版本开发计划到提交该版本产品截止。代码从主分支合并到发布分支意味着上一周期结束和下一周期开始。
+产品周期（版本周期）:: 某产品版本上线，意味着上一周期结束和下一周期开始。
+
+*[人员分工]*
+
+- 开发
+- 测试
+- 发布
+
+*[开发流程]*
+
+[[开发流程.xlsx]]
+
+- 开发截止日
+- 版本发布日
+
+== 测试与部署环境 ==
+
+*[内部服务器-测试服务]*
+
+数据库
+{{{
+server-pc/carsvc_test
+}}}
+
+对应的服务基址是
+
+{{{
+SVC_URL=http://server-pc:8080/cheguanjia
+}}}
+
+- 开发人员应使用该数据库进行开发；
+- 测试人员在开发周期截止前使用该服务地址。
+
+*[内部服务器-正式服务]*
+
+数据库
+{{{
+server-pc/carsvc
+}}}
+
+对应的服务基址是
+
+{{{
+SVC_URL=http://server-pc/cheguanjia
+}}}
+
+- 上线前（开发周期截止后）测试人员使用该服务地址进行测试。
+
+*[线上服务器-测试服务]*
+
+数据库
+{{{
+oliveche.com/carsvc_test
+}}}
+
+对应的服务基址和正式服务相同，但需要在URL最后加参数"?test"，如
+
+{{{
+SVC_URL=http://oliveche.com/cheguanjia/m2/index.html?test
+}}}
+
+- 上线后（产品周期开始后）测试人员使用该服务地址进行自动化回归测试。
+
+*[线上服务器-正式服务]*
+
+数据库
+{{{
+oliveche.com/carsvc
+}}}
+
+对应的服务基址是
+
+{{{
+SVC_URL=http://oliveche.com/cheguanjia
+}}}
+
+
+== 附注 ==
+
+*1. 添加新目录到PATH环境变量*
+
+按windows-break键 -> 打开"高级系统设置" -> 选择"高级"选项卡 -> 点击按钮"环境变量" -> 在用户变量中找"PATH"变量（如果不存在则新建一个），在变量值的最后添加该目录. 注意多个目录使用分号";"间隔。
+
+如仍不清楚请上网查询。
