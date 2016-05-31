@@ -1589,6 +1589,7 @@ function link_onclick()
 
 $(function () {
 	$('.easyui-linkbutton').click(link_onclick);
+	$('[data-type="easyui-linkbutton"]').click(link_onclick);
 });
 
 //}}}
