@@ -866,7 +866,11 @@ execsql(sql="DELETE User WHERE id=1 or id=2")
 
 {tblname}.query(res?, cond?, @res2?, join?, @cond2?, union?, distinct?=0, _pagesz?=20, _pagekey?, _fmt?) -> tbl(fields...)
 
+取对象数组：
 {tblname}.query(wantArray=1, @subobj?, res?, ...) -> [obj1, obj2...]
+
+分组统计：
+{tblname}.query(gres, res, cond) -> tbl(fields...)
 }}}
 
 缺省这些操作只对管理员登录后开放, 用户或商家登录后无权操作. 管理员可对所有表的所有字段进行CRUD操作.
@@ -943,7 +947,31 @@ union:: 仅限server内部使用. 指定union查询内容, 该内容将会在以
 - res, orderby只能是字段（或虚拟字段）列表，不能出现函数、子查询等。
 - cond不允许子查询（不可以有select等关键字）。
 
+*[导出文件]*
+
 _fmt:: Enum(csv,txt,excel). 导出Query的内容为指定格式。其中，csv为逗号分隔UTF8编码文本；txt为制表分隔的UTF8文本；excel为逗号分隔的gb2312编码文本（因为默认excel打开Csv文件时不支持utf8编码）。注意，由于默认会有分页，要想导出所有数据，一般可指定_pagesz=9999。
+
+*[分组统计]*
+
+gres:: String. 用于groupby的字段列表。如果使用了gres字段，则res参数中每项应该带统计函数，如"sum(cnt) sum, count(id) userCnt". 最终返回列数=gres参数指定的列+res参数指定的列; 如果res参数未指定，则默认值不再是"*", 而是空（即只返回gres字段指定内容）。
+
+例：统计2015年2月，按状态分类（如已付款、已评价、已取消等）的各类订单的总数和总金额。
+{{{
+Ordr.query(gres="status", res="count('A') totalCnt, sum(amount) totalAmount", cond="tm>='2016-1-1' and tm<'2016-2-1'")
+}}}
+
+返回内容示例：
+{{{
+[
+	h: ["status", "totalCnt", "totalAmount"],
+	d: [
+		[ "PA", 130, 1420 ],  // 已付款，共130单，1420元
+		[ "CA", 29, 310 ], // 取消的订单
+		[ "RA", 1530, 15580 ], // 已评价的订单
+	]
+]
+}}}
+
 
 *[操作特殊属性flags和props]*
 
@@ -1631,7 +1659,7 @@ f::
 
 == 服务端部署与升级 ==
 
-server/tool/upgrade.php - 升级管理
+tool/upgrade.php - 升级管理
 
 *[原理]*
 
@@ -1912,6 +1940,10 @@ update cinf set ver, update_tm
 
 == 工具接口 ==
 
+本节介绍目录 server/tool/ 下的工具。
+
+注意：`server/tool/`目录下的工具随项目一起发布，一般通过网络访问。而`tool/`目录下的工具一般是命令行工具，不发布。
+
 === tool/log.php ===
 
 {{{
@@ -1933,6 +1965,32 @@ tool/log.php
 tool/log.php?f=trace
 (查看trace log)
 }}}
+
+=== tool/init.php ===
+
+{{{
+init.php(ac?)
+}}}
+
+数据库初始化或配置文件初始化。可用的ac参数见源文件内部文档。
+
+项目初始化步骤：
+- 访问URL: `http://{server}/{path}/tool/init.php` 检查php环境是否满足需求。
+- 为应用创建数据库和专用用户，进行初始化，生成指定数据库和配置文件 php/conf.user.php.
+- 使用命令行工具 tool/upgrade.php 连接数据库进行表创建或更新。
+- 如果有initdata目录，查看该目录下相关文档，确定是否需要导入表内容或创建视图、函数等。
+
+如果需要重新配置，可删除配置文件 php/conf.user.php后再运行本工具。
+
+=== tool/tool.php ===
+
+{{{
+tool.php(ac?)
+}}}
+
+具体参数见源程序内部文档。
+
+工具包。目前支持base64编码、解码，md5编码等。
 
 == 定期任务 ==
 {{{

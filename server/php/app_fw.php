@@ -48,7 +48,7 @@ global $JSON_FLAG;
 $JSON_FLAG = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
 
 global $DB, $DBCRED, $USE_MYSQL;
-$DB = "localhost/myorder";
+$DB = "localhost/jdcloud";
 $DBCRED = "ZGVtbzpkZW1vMTIz"; // base64({user}:{pwd}), default: demo:demo123
 
 global $ALLOW_LCASE_PARAM;
@@ -554,6 +554,28 @@ function varr2objarr($varr, $headerLine)
 
 // ==== database {{{
 /**
+@fn getCred($cred) -> [user, pwd]
+
+$cred为"{user}:{pwd}"格式，支持使用base64编码。
+示例：
+
+	list($user, $pwd) = getCred(getenv("P_ADMIN_CRED"));
+	if (! isset($user)) {
+		// 未设置用户名密码
+	}
+
+*/
+function getCred($cred)
+{
+	if (! $cred)
+		return null;
+	if (stripos($cred, ":") === false) {
+		$cred = base64_decode($cred);
+	}
+	return explode(":", $cred, 2);
+}
+ 
+/**
 @fn dbconn($fnConfirm=$GLOBALS["dbConfirmFn"])
 @param fnConfirm fn(dbConnectionString), 如果返回false, 则程序中止退出。
 
@@ -587,10 +609,7 @@ function dbconn($fnConfirm = null)
 		$dbhost = $ms[1];
 		$dbname = $ms[2];
 
-		if (stripos($DBCRED, ":") === false) {
-			$DBCRED = base64_decode($DBCRED);
-		}
-		list($dbuser, $dbpwd) = explode(":", $DBCRED);
+		list($dbuser, $dbpwd) = getCred($DBCRED); 
 		$C = ["mysql:host={$dbhost};dbname={$dbname}", $dbuser, $dbpwd];
 	}
 

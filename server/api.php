@@ -28,12 +28,6 @@ $PERMS = [
 	AUTH_TEST_MODE => "testmode",
 	AUTH_MOCK_MODE => "mockmode",
 ];
-
-$ADMIN = [
-	"uname" => "liang",
-	"pwd" => "liang123",
-	"id" => 1
-	];
 //}}}
 
 // ====== global {{{

@@ -10,8 +10,31 @@
 <h1 id="toc_1" class="justcenter"><a name="产品服务端设计"> 产品服务端设计</a></h1>
 
 <p>
-梁健 - 最近更新于2015/7
+本文档分 <strong>主体设计</strong> 与 <strong>专题设计</strong> 两大部分.
+每块设计一般包括以下部分:
+<dl>
+<dt>概要设计</dt>
+<dd>简述需求, 定义概念/术语, 简述实现方式.</dd>
+<dt>数据库设计</dt>
+<dd>定义数据库表及字段</dd>
+<dt>交互接口</dt>
+<dd>定义前端访问后端的API接口</dd>
+<dt>前端应用接口</dt>
+<dd>定义前端应用接口或应用内的页面.</dd>
+</dl>
 </p>
+
+<p>
+参考文档：
+</p>
+<ul>
+<li>
+<a href="doc/后端框架.html">后端框架：关于数据库设计、通讯协议设计、测试设计的惯例</a>
+
+<li>
+<a href="doc/index.html">技术文档目录</a>
+
+</ul>
 
 <div class="toc">
 <ul>
@@ -394,6 +417,15 @@ login(token, wantAll?) -&gt; (与得到该token的登录返回相同内容, 但�
 </ul>
 
 <p>
+后端逻辑：
+</p>
+<ul>
+<li>
+超级管理端登录时，应检查环境变量 P_ADMIN_CRED, 格式为"{user}:{pwd}"，如果设置，则必须以指定用户名、密码登录。如果未设置，则不允许登录。
+
+</ul>
+
+<p>
 <strong>[参数]</strong>
 </p>
 
@@ -575,7 +607,7 @@ User.set([id])(fields...)
 </p>
 
 <p>
-注意：
+应用逻辑：
 </p>
 <ul>
 <li>
@@ -766,8 +798,13 @@ Employee.del(id?)
 </ul>
 
 <p>
-注意：当Employee被其它对象（如Ordr）引用时，不允许删除，只能做禁用等其它处理。
+应用逻辑：
 </p>
+<ul>
+<li>
+当Employee被其它对象（如Ordr）引用时，不允许删除，只能做禁用等其它处理。
+
+</ul>
 
 <p>
 <strong>[权限]</strong>
