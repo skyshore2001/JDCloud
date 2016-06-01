@@ -5,32 +5,33 @@ init.php(ac?)
 
 当ac为空时，显示环境检查等html页面。否则返回相应文本信息。
 
-init.php(ac="initdb")(db, dbcred0, dbcred, urlpath)
+init.php(ac="initdb")(db, dbcred0, dbcred, dbcred_ro?, urlpath)
 
 初始化数据库及配置文件：
 - 如果数据库不存在，创建它并指定用户。
 - 写用户配置文件 php/conf.user.php
 
-
-init.php(ac="md5")(text)
 */
 
 //var_dump(phpinfo(INFO_MODULES));
 global $INFO;
+const CONF_FILE = "../php/conf.user.php";
 
 $INFO = []; // { @check, allowInit }
 // check: [{value, result=0|1}]
 
 $INFO["check"] = checkEnv();
-$INFO["allowInit"] = !file_exists("../php/conf.user.php");
+$INFO["allowInit"] = !file_exists(CONF_FILE);
 
 $ac = param("ac");
 if ($ac) {
 	header("Content-Type: text/plain");
 	header("Cache-Control: no-cache");
 	if ($ac == "initdb") {
-		echo("INITDB...\n");
-		echo("done.");
+		if (! $INFO["allowInit"]) {
+			die("配置文件已存在。请删除后重新配置。");
+		}
+		api_initDb();
 	}
 	else if ($ac == "md5") {
 		$text = mparam("text");
@@ -56,8 +57,8 @@ function param($name, $defVal = null, $col = null)
 function mparam($name, $col = null)
 {
 	$val = param($name, null, $col);
-	if (! isset($val)) {
-		die("require param `$name`.");
+	if (! isset($val) || $val=="") {
+		die("缺少参数`$name`.");
 	}
 	return $val;
 }
@@ -110,6 +111,100 @@ function checkEnv()
 	return $check;
 }
 
+// $dbname?=null
+function dbconn($dbhost, $dbname, $dbuser, $dbpwd)
+{
+	try {
+		$connstr = "mysql:host={$dbhost}";
+		if ($dbname) {
+			$connstr .= ";dbname={$dbname}";
+		}
+		$dbh = new PDO($connstr, $dbuser, $dbpwd);
+	} catch (Exception $e) {
+		die("连接数据库失败.");
+	}
+
+	$dbh->exec('set names utf8');
+	$dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION); # by default use PDO::ERRMODE_SILENT
+
+	# enable real types (works on mysql after php5.4)
+	# require driver mysqlnd (view "PDO driver" by "php -i")
+	$dbh->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+	$dbh->setAttribute(PDO::ATTR_STRINGIFY_FETCHES, false);
+
+	return $dbh;
+}
+
+function api_initDb()
+{
+	$db = mparam("db");
+	$dbcred0 = mparam("dbcred0");
+	$dbcred = mparam("dbcred");
+	$urlpath = mparam("urlpath");
+	$dbcred_ro = param("dbcred_ro");
+
+	if (! preg_match('/^(.*?)\/(\w+)$/', $db, $ms))
+		die("数据库指定错误: `$db`");
+	$dbhost = $ms[1];
+	$dbname = $ms[2];
+
+	list($dbuser0, $dbpwd0) = explode(":", $dbcred0);
+	if (!$dbuser0 || !$dbpwd0) {
+		die("数据库管理员用户名密码指定错误: `$dbcred0`");
+	}
+	list($dbuser, $dbpwd) = explode(":", $dbcred);
+	if (!$dbuser || !$dbpwd) {
+		die("应用程序使用的数据库用户名密码指定错误: `$dbcred`");
+	}
+
+	if ($dbcred_ro) {
+		list($dbuser_ro, $dbpwd_ro) = explode(":", $dbcred_ro);
+	}
+
+	$dbh = dbconn($dbhost, null, $dbuser0, $dbpwd0);
+	try {
+		$dbh->exec("use {$dbname}");
+	}
+	catch (Exception $e) {
+		echo("=== 创建数据库: {$dbname}\n");
+		$dbh->exec("create database {$dbname}");
+		$dbh->exec("use {$dbname}");
+	}
+
+	echo("=== 设置用户权限: {$dbuser}\n");
+	$str = $dbpwd? " identified by '{$dbpwd}'": "";
+	$sql = "grant all on {$dbname}.* to {$dbuser}@localhost {$str}";
+	$dbh->exec($sql);
+	$sql = "grant all on {$dbname}.* to {$dbuser}@'%'";
+	$dbh->exec($sql);
+
+	if ($dbcred_ro) {
+		echo("=== 设置只读用户权限: {$dbuser_ro}\n");
+		$str = $dbpwd_ro? " identified by '{$dbpwd_ro}'": "";
+
+		$sql = "grant select, lock tables, show view on {$dbname}.* to {$dbuser_ro} {$str}";
+		$dbh->exec($sql);
+		$sql = "grant select on mysql.* to {$dbuser_ro}";
+		$dbh->exec($sql);
+		$sql = "grant reload, replication client, replication slave on *.* to {$dbuser_ro}";
+		$dbh->exec($sql);
+	}
+
+	echo "=== 写配置文件 " . CONF_FILE . "\n";
+	$dbcred_b64 = base64_encode($dbcred);
+	$str = <<<EOL
+<?php
+
+if (getenv("P_DB") === false) {
+	putenv("P_DB={$db}");
+	putenv("P_DBCRED={$dbcred_b64}");
+	putenv("P_URL_PATH={$urlpath}");
+}
+EOL;
+	file_put_contents(CONF_FILE, $str);
+
+	echo("=== 完成! 请使用upgrade命令行工具更新数据库。\n");
+}
 ?>
 <html>
 <head>
@@ -130,8 +225,18 @@ function checkEnv()
 	display: none;
 }
 
+table, iframe {
+	width: 90%;
+}
+
 iframe {
-	width: 80%
+	border: 1px solid #aaa;
+}
+
+.hint {
+	font-size: 12px;
+	color: #00f;
+	display: block;
 }
 </style>
 
@@ -169,24 +274,28 @@ iframe {
 	<form action="?ac=initdb" method="POST" target="ifrInitDb" class="allowInit">
 		<table border=1 style="border-spacing: 0" >
 		<tr>
-			<td>数据库(格式为"机器名/数据库名")</td>
-			<td><input type="text" name="db" value="localhost/jdcloud"</td>
+			<td>数据库<p class="hint">格式为"机器名/数据库名"</p></td>
+			<td><input type="text" name="db" placeholder="localhost/jdcloud" required></td>
 		</tr>
 		<tr>
-			<td>可创建数据库的MYSQL用户(格式为"用户名:密码")</td>
-			<td><input type="text" name="dbcred" value="root:123456"</td>
+			<td>MYSQL数据库管理员用户<p class="hint">格式为"用户名:密码"，用于创建数据库、用户，设置权限等</p></td>
+			<td><input type="text" name="dbcred0" placeholder="root:123456" required></td>
 		</tr>
 		<tr>
-			<td>本应用程序使用的MYSQL用户(格式为"用户名:密码), 如不存在会自动创建</td>
-			<td><input type="text" name="dbcred" value="jdcloud:FuZaMiMa"></td>
+			<td>本应用程序使用的MYSQL用户<p class="hint">格式为"用户名:密码, 如不存在会自动创建。将写入配置文件。</span></td>
+			<td><input type="text" name="dbcred" placeholder="jdcloud:FuZaMiMa" required></td>
 		</tr>
 		<tr>
-			<td>应用程序URL路径(以"/"开头，不包括主机名)</td>
-			<td><input type="text" name="urlpath" value="/jdcloud"</td>
+			<td>只读MYSQL用户<span class="hint">格式为"用户名:密码, 用于数据库备份等，可不填</span></td>
+			<td><input type="text" name="dbcred_ro" placeholder="jdcloudro:readonlypwd"></td>
+		</tr>
+		<tr>
+			<td>应用程序URL路径<span class="hint">以"/"开头，不包括主机名。如果配置错误则session无法工作。</span></td>
+			<td><input type="text" name="urlpath" placeholder="/jdcloud" required></td>
 		</tr>
 		<tr>
 			<td colspan=2 align=center>
-				<button>创建数据库</button>
+				<button>执行初始化</button>
 			</td>
 		</tr>
 		</table>
@@ -194,18 +303,6 @@ iframe {
 	<div class="allowInit">
 		<h3>结果</h3>
 		<iframe id="ifrInitDb" name="ifrInitDb"></iframe>
-	</div>
-</div>
-
-<div id="divTool">
-	<h2>工具</h2>
-	<form action="?ac=md5" method="POST" target="ifrTool">
-		文本：<input type="text" name="text" value="jdcloud:FuZaMiMa">
-		<button>提交</button>
-	</form>
-	<div>
-		<h3>结果</h3>
-		<iframe id="ifrTool" name="ifrTool" style="height: 50px"></iframe>
 	</div>
 </div>
 
