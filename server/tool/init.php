@@ -170,19 +170,29 @@ function api_initDb()
 		$dbh = dbconn($dbhost, null, $dbuser0, $dbpwd0);
 		try {
 			$dbh->exec("use {$dbname}");
+			echo("=== 数据库`{$dbname}`已存在。\n");
 		}
 		catch (Exception $e) {
 			echo("=== 创建数据库: {$dbname}\n");
-			$dbh->exec("create database {$dbname}");
+			try {
+				$dbh->exec("create database {$dbname}");
+			}
+			catch (Exception $e) {
+				die("*** 用户`{$dbuser0}`无法创建数据库!\n");
+			}
 			$dbh->exec("use {$dbname}");
 		}
 
 		echo("=== 设置用户权限: {$dbuser}\n");
-		$str = $dbpwd? " identified by '{$dbpwd}'": "";
-		$sql = "grant all on {$dbname}.* to {$dbuser}@localhost {$str}";
-		$dbh->exec($sql);
-		$sql = "grant all on {$dbname}.* to {$dbuser}@'%'";
-		$dbh->exec($sql);
+		try {
+			$str = $dbpwd? " identified by '{$dbpwd}'": "";
+			$sql = "grant all on {$dbname}.* to {$dbuser}@localhost {$str}";
+			$dbh->exec($sql);
+			$sql = "grant all on {$dbname}.* to {$dbuser}@'%'";
+			$dbh->exec($sql);
+		}catch (Exception $e) {
+			die("*** 用户`{$dbuser0}`无法设置用户权限!\n");
+		}
 
 		if ($dbcred_ro) {
 			echo("=== 设置只读用户权限: {$dbuser_ro}\n");
