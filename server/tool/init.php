@@ -6,7 +6,7 @@ init.php(ac?)
 
 当ac为空时，显示环境检查等html页面。否则返回相应文本信息。
 
-init.php(ac="initdb")(db, dbcred0, dbcred, dbcred_ro?, urlpath, cfgonly?=0)
+init.php(ac="initdb")(db, dbcred0, dbcred, dbcred_ro?, urlPath, adminCred?, cfgonly?=0)
 
 初始化数据库及配置文件：
 - 如果数据库不存在，创建它并指定用户。
@@ -146,7 +146,7 @@ function api_initDb()
 		$dbcred0 = mparam("dbcred0");
 		$dbcred_ro = param("dbcred_ro");
 	}
-	$urlpath = mparam("urlpath");
+	$urlPath = mparam("urlPath");
 
 	if (! preg_match('/^(.*?)\/(\w+)$/', $db, $ms))
 		die("数据库指定错误: `$db`");
@@ -209,15 +209,19 @@ function api_initDb()
 
 	echo "=== 写配置文件 " . CONF_FILE . "\n";
 	$dbcred_b64 = base64_encode($dbcred);
+	$adminCred = base64_encode(param("adminCred", ""));
+
 	$str = <<<EOL
 <?php
 
 if (getenv("P_DB") === false) {
 	putenv("P_DB={$db}");
 	putenv("P_DBCRED={$dbcred_b64}");
-	putenv("P_URL_PATH={$urlpath}");
 }
+putenv("P_URL_PATH={$urlPath}");
+putenv("P_ADMIN_CRED={$adminCred}");
 EOL;
+
 	file_put_contents(CONF_FILE, $str);
 
 	echo("=== 完成! 请使用upgrade命令行工具更新数据库。\n");
@@ -299,7 +303,7 @@ p.hint {
 	<form action="?ac=initdb" method="POST" target="ifrInitDb" class="allowInit">
 		<table border=1 style="border-spacing: 0" >
 		<tr>
-			<td>数据库<p class="hint">格式为"机器名/数据库名"</p></td>
+			<td>MYSQL数据库<p class="hint">P_DB, 格式为"机器名/数据库名"</p></td>
 			<td><input type="text" name="db" placeholder="localhost/jdcloud" required></td>
 		</tr>
 		<tr>
@@ -308,20 +312,24 @@ p.hint {
 			</td>
 		</tr>
 		<tr class="cfgonly">
-			<td>MYSQL数据库管理员用户<p class="hint">格式为"用户名:密码"，用于创建数据库、用户，设置权限等</p></td>
+			<td>数据库管理员帐号<p class="hint">P_DBCRED, 格式为"用户名:密码"，用于创建数据库、用户，设置权限等</p></td>
 			<td><input type="text" name="dbcred0" autocomplete="off" placeholder="root:123456" required></td>
 		</tr>
 		<tr>
-			<td>本应用程序使用的MYSQL用户<p class="hint">格式为"用户名:密码, 如不存在会自动创建。将写入配置文件。</span></td>
+			<td>创建应用专属的数据库帐号<p class="hint">格式为"用户名:密码", 该帐号将获得当前数据库操作的所有权限，并将写入配置文件。</span></td>
 			<td><input type="text" name="dbcred" autocomplete="off" placeholder="jdcloud:FuZaMiMa" required></td>
 		</tr>
 		<tr class="cfgonly">
-			<td>只读MYSQL用户<p class="hint">格式为"用户名:密码, 用于数据库备份等，可不填</p></td>
+			<td>创建只读权限的数据库帐号<p class="hint">格式为"用户名:密码", 该帐号获得当前数据库只读权限及数据库备份、主从复制等权限，可不填。</p></td>
 			<td><input type="text" name="dbcred_ro" autocomplete="off" placeholder="jdcloudro:readonlypwd"></td>
 		</tr>
 		<tr>
-			<td>应用程序URL路径<p class="hint">以"/"开头，不包括主机名。如果配置错误则session无法工作。</p></td>
-			<td><input type="text" name="urlpath" placeholder="/jdcloud" required></td>
+			<td>应用程序URL根路径<p class="hint">P_URL_PATH, 以"/"开头，不包括主机名。如果配置错误则session无法工作。</p></td>
+			<td><input type="text" name="urlPath" placeholder="/jdcloud" required></td>
+		</tr>
+		<tr>
+			<td>创建超级管理端登录帐号<p class="hint">P_ADMIN_CRED, 格式为"用户名:密码", 如不填写则无法登录超级管理端。</p></td>
+			<td><input type="text" name="adminCred" autocomplete="off" placeholder="admin:admin123"></td>
 		</tr>
 		<tr>
 			<td colspan=2 align=center>
