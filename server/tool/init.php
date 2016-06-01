@@ -238,6 +238,14 @@ iframe {
 	color: #00f;
 	display: block;
 }
+
+td {
+	padding: 3px;
+}
+
+p.hint {
+	margin: 1px;
+}
 </style>
 
 <h2>环境检查</h2>
@@ -286,11 +294,11 @@ iframe {
 			<td><input type="text" name="dbcred" placeholder="jdcloud:FuZaMiMa" required></td>
 		</tr>
 		<tr>
-			<td>只读MYSQL用户<span class="hint">格式为"用户名:密码, 用于数据库备份等，可不填</span></td>
+			<td>只读MYSQL用户<p class="hint">格式为"用户名:密码, 用于数据库备份等，可不填</p></td>
 			<td><input type="text" name="dbcred_ro" placeholder="jdcloudro:readonlypwd"></td>
 		</tr>
 		<tr>
-			<td>应用程序URL路径<span class="hint">以"/"开头，不包括主机名。如果配置错误则session无法工作。</span></td>
+			<td>应用程序URL路径<p class="hint">以"/"开头，不包括主机名。如果配置错误则session无法工作。</p></td>
 			<td><input type="text" name="urlpath" placeholder="/jdcloud" required></td>
 		</tr>
 		<tr>
