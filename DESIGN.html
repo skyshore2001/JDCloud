@@ -417,6 +417,15 @@ login(token, wantAll?) -&gt; (与得到该token的登录返回相同内容, 但�
 </ul>
 
 <p>
+后端逻辑：
+</p>
+<ul>
+<li>
+超级管理端登录时，应检查环境变量 P_ADMIN_CRED, 格式为"{user}:{pwd}"，如果设置，则必须以指定用户名、密码登录。如果未设置，则不允许登录。
+
+</ul>
+
+<p>
 <strong>[参数]</strong>
 </p>
 
@@ -598,7 +607,7 @@ User.set([id])(fields...)
 </p>
 
 <p>
-注意：
+应用逻辑：
 </p>
 <ul>
 <li>
@@ -789,8 +798,13 @@ Employee.del(id?)
 </ul>
 
 <p>
-注意：当Employee被其它对象（如Ordr）引用时，不允许删除，只能做禁用等其它处理。
+应用逻辑：
 </p>
+<ul>
+<li>
+当Employee被其它对象（如Ordr）引用时，不允许删除，只能做禁用等其它处理。
+
+</ul>
 
 <p>
 <strong>[权限]</strong>

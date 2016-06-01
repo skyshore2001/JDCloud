@@ -173,11 +173,14 @@ function api_login()
 	}
 	// admin login
 	else if ($type == "admin") {
-		global $ADMIN;
-		if ($uname != $ADMIN["uname"] || $pwd != $ADMIN["pwd"])
+		list ($uname1, $pwd1) = getCred(getenv("P_ADMIN_CRED"));
+		if (! isset($uname1))
+			throw new MyException(E_AUTHFAIL, "admin user is not enabled.", "超级管理员用户未设置，不可登录。");
+		if ($uname != $uname1 || $pwd != $pwd1)
 			throw new MyException(E_AUTHFAIL, "bad uname or password", "用户名或密码错误");
-		$_SESSION["adminId"] = $ADMIN["id"];
-		$ret = ["id" => $ADMIN["id"], "uname" => $ADMIN["uname"]];
+		$adminId = 1;
+		$_SESSION["adminId"] = $adminId;
+		$ret = ["id" => $adminId, "uname" => $uname1];
 	}
 
 	if ($wantAll && $obj)
