@@ -1,7 +1,5 @@
  = 编码规范 =
 
-梁健 - 最近更新于2015/10
-
 %title 编码规范
 %toc
 
@@ -13,7 +11,8 @@
 - 类名，枚举定义，模块名，或数据库表名，用大驼峰式（或叫Pascal命名，所有单词首字母大写）, 如`OrderStatus`.
 - 常量使用全部大写字母，如`ASTORE_ID`.
 - 全局变量加"g_"前缀，如`g_data`. 
-- 模块变量加"m_"前缀，如`m_orderId`.
+- 仅限于模块使用的全局变量加"m_"前缀，如`m_orderId`.
+- 模块内共用变量加"_"后缀，表示在内嵌函数中使用或修改，如 `orderId_`. 某些例外：如标识某特定jQuery对象的变量常常不加后缀，比如"jpage"，"$btnCancelOrder"等；但通用的名称在模块内共享时应该加后缀，如"jbtn_", "jo_"等。
 
 不同类型命名惯例：
 - 整数：id/orderId, cnt
@@ -30,12 +29,10 @@ var total = parseFloat(totalStr);
 
 == 代码结构与分区 ==
 
-一个文件内或复杂模块的代码按惯例划分为多个区域，可配合使用手工折叠以方便查阅。
+一个文件内或复杂模块的代码按惯例划分为多个区域，可配合使用折叠以方便查阅。
 优点：
 - 便于查找和参考。
 - 一旦文件增长过大，很容易做文件拆分。
-
-手工折叠使用vim默认方案，即三个花括号配对。
 
 文件级别常分为：
 - 全局变量区(config, global)
@@ -46,35 +43,35 @@ var total = parseFloat(totalStr);
 
 文件结构示例：
 {{{
-	// ====== config {{{
+	// ====== config: 全局配置区 {{{
 	var g_allowedEntries = []
 	// }}}
 
-	// ====== global {{{
+	// ====== global: 全局变量区 {{{
 	var g_data = {
 		userInfo : null, // {uid, name, phone}
 	};
 	//}}}
 
-	// ====== toolkit {{{
+	// ====== toolkit: 通用函数 {{{
 	function each()
 	{
 	}
 	// }}}
 
-	// ====== app toolkit {{{
+	// ====== app toolkit: 项目内各应用通用函数 {{{
 	function setupPopup(jpopup, initfn)
 	{
 	}
 	// }}}
 
-	// ====== functions {{{
+	// ====== functions: 本应用使用的函数 {{{
 	function logout()
 	{
 	}
 	//}}}
 			
-	// ====== main {{{
+	// ====== main: 初始化区域 {{{
 
 	function main()
 	{
@@ -90,29 +87,27 @@ var total = parseFloat(totalStr);
 
 }}}
 
+以上使用三个花括号配对来标识折叠，如使用vim编辑器，可通过设置 `foldmethod=marker` 来显示折叠。
+
 模块（或复杂函数内部）常分为：
 - 变量区(var)
-- 函数区(function)
 - 初始化代码区
+- 函数区(function)
  
 复杂模块结构示例：
 {{{
-function PageOrder()
+function initPageOrder()
 {
-	// ====== var {{{
-	var jpage;
-	var m_orderId;
-	// }}}
+	var jpage = $(this);
+	
+	// 变量，事件绑定等初始化区域
+	var orderId_;
+	jpage.on("pagebeforeshow", onPageBeforeShow);
 
-	// ====== functions {{{
-	function pagebeforeshow(ev)
+	// 函数区域
+	function onPageBeforeShow(ev)
 	{
 	}
-	//}}}
-			
-	// ====== main {{{
-	jpage.on("pagebeforeshow", pagebeforeshow);
-	// }}}
 }
 }}}
 
@@ -166,7 +161,7 @@ css类命名采用驼峰式，如"notForFind", 如果有前缀，用"-"分隔，
 - 模块或类的私有变量命令加前缀"m_" (除jpage等常用惯例变量外), 如`m_orderId`
 - 类模块及接口函数应增加*格式化注释*，如`/** @fn PageOrder.show(orderId) */`
 - 限制匿名函数使用。匿名函数常用于事件回调或函数回调。当函数较长（超过10行）或其中又嵌套子函数时，建议拆分为单独的函数，常用命名规范有：
-  - jquery事件，命名为"{对象}_{事件}"，如 `function btnGo_click(ev)`, `li_click(ev)`，如果对象与当前上下文相符时，可省略对象名，如在JQM page的模块中可以用 `function pagecreate(ev)`, `function pagebeforeshow(ev)`
+  - jquery事件，命名为"{对象}_{事件}"，如 `function btnGo_click(ev)`, `li_click(ev)`，如果对象与当前上下文相符时，可省略对象名，但应加上on，如在JQM page的模块中可以用 `function onPageCreate(ev)`, `function onPageBeforeShow(ev)`
   - DOM事件，命名为"{对象}_on{事件}"，如 `function btnGo_onclick(ev)`, `li_onclick(ev)`
   - 后台API调用的回调，命名为"api_{api调用名}", 如`function api_OrdrQuery(data)`
 
@@ -185,37 +180,52 @@ page的JS代码样例：
 {{{
 // 接口：供其它页面调用
 var PageOrder = {
-	m_id: null,
-
 	/** @fn PageOrder.show(orderId) */
 	show: function(orderId) {
-		this.m_id = orderId;
-		$.mobile.changePage("#order");
+		this.id_ = orderId;
+		MUI.showPage("#order");
 	}
+	
+	id_: null,
 };
 
 function initPageOrder()
 {
-	// 类私有变量区
+	// 模块变量，事件绑定及初始化代码区域
 	var jpage = $(this);
+	var orderId_;
+	
+	jpage.on("pagebeforeshow", onPageBeforeShow);
+	jpage.find("#btnCancelOrder", btnCancelOrder_click);
 
-	// 类私有成员函数区
-
-	function pagebeforeshow()
+	function onPageBeforeShow(ev)
 	{
 		// show order PageOrder.m_id
-		callSvr("Ordr.get", {id: PageOrder.m_id}, api_OrdrGet);
+		callSvr("Ordr.get", {id: PageOrder.id_}, api_OrdrGet);
 		
 		function api_OrdrGet(data)
 		{
+			orderId_ = data.id;
+			showOrder();
 		}
 	}
 	
-	// 初始化
-	jpage.on("pagebeforeshow", pagebeforeshow);
+	function btnCancelOrder_click(ev)
+	{
+		callSvr("cancelOrder", {id: orderId_}, api_cancelOrder);
+		
+		function api_cancelOrder(data)
+		{
+			app_alert("操作成功", "i", function () {
+				showOrder();
+			});
+		}
+	}
+	
+	function showOrder()
+	{
+	}
 }
-
-document.on("pagecreate", "#order", initPageOrder);
 }}}
 
 === Jquery-easyui/MyUI编码规范 ===
