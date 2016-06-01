@@ -1659,7 +1659,7 @@ f::
 
 == 服务端部署与升级 ==
 
-server/tool/upgrade.php - 升级管理
+tool/upgrade.php - 升级管理
 
 *[原理]*
 
@@ -1940,6 +1940,10 @@ update cinf set ver, update_tm
 
 == 工具接口 ==
 
+本节介绍目录 server/tool/ 下的工具。
+
+注意：`server/tool/`目录下的工具随项目一起发布，一般通过网络访问。而`tool/`目录下的工具一般是命令行工具，不发布。
+
 === tool/log.php ===
 
 {{{
@@ -1961,6 +1965,32 @@ tool/log.php
 tool/log.php?f=trace
 (查看trace log)
 }}}
+
+=== tool/init.php ===
+
+{{{
+init.php(ac?)
+}}}
+
+数据库初始化或配置文件初始化。可用的ac参数见源文件内部文档。
+
+项目初始化步骤：
+- 访问URL: `http://{server}/{path}/tool/init.php` 检查php环境是否满足需求。
+- 为应用创建数据库和专用用户，进行初始化，生成指定数据库和配置文件 php/conf.user.php.
+- 使用命令行工具 tool/upgrade.php 连接数据库进行表创建或更新。
+- 如果有initdata目录，查看该目录下相关文档，确定是否需要导入表内容或创建视图、函数等。
+
+如果需要重新配置，可删除配置文件 php/conf.user.php后再运行本工具。
+
+=== tool/tool.php ===
+
+{{{
+tool.php(ac?)
+}}}
+
+具体参数见源程序内部文档。
+
+工具包。目前支持base64编码、解码，md5编码等。
 
 == 定期任务 ==
 {{{

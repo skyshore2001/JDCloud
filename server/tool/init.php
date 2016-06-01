@@ -1,15 +1,17 @@
 <?php
-/*
+/**
+@module init.php
 
 init.php(ac?)
 
 当ac为空时，显示环境检查等html页面。否则返回相应文本信息。
 
-init.php(ac="initdb")(db, dbcred0, dbcred, dbcred_ro?, urlpath)
+init.php(ac="initdb")(db, dbcred0, dbcred, dbcred_ro?, urlpath, cfgonly?=0)
 
 初始化数据库及配置文件：
 - 如果数据库不存在，创建它并指定用户。
 - 写用户配置文件 php/conf.user.php
+- 如果cfgonly=1, 只写配置文件，不检查数据库或用户。
 
 */
 
@@ -138,56 +140,61 @@ function dbconn($dbhost, $dbname, $dbuser, $dbpwd)
 function api_initDb()
 {
 	$db = mparam("db");
-	$dbcred0 = mparam("dbcred0");
 	$dbcred = mparam("dbcred");
+	$cfgonly = (int)param("cfgonly", 0);
+	if (! $cfgonly) {
+		$dbcred0 = mparam("dbcred0");
+		$dbcred_ro = param("dbcred_ro");
+	}
 	$urlpath = mparam("urlpath");
-	$dbcred_ro = param("dbcred_ro");
 
 	if (! preg_match('/^(.*?)\/(\w+)$/', $db, $ms))
 		die("数据库指定错误: `$db`");
 	$dbhost = $ms[1];
 	$dbname = $ms[2];
 
-	list($dbuser0, $dbpwd0) = explode(":", $dbcred0);
-	if (!$dbuser0 || !$dbpwd0) {
-		die("数据库管理员用户名密码指定错误: `$dbcred0`");
-	}
-	list($dbuser, $dbpwd) = explode(":", $dbcred);
-	if (!$dbuser || !$dbpwd) {
-		die("应用程序使用的数据库用户名密码指定错误: `$dbcred`");
-	}
+	if (! $cfgonly) {
+		list($dbuser0, $dbpwd0) = explode(":", $dbcred0);
+		if (!$dbuser0 || !$dbpwd0) {
+			die("数据库管理员用户名密码指定错误: `$dbcred0`");
+		}
+		list($dbuser, $dbpwd) = explode(":", $dbcred);
+		if (!$dbuser || !$dbpwd) {
+			die("应用程序使用的数据库用户名密码指定错误: `$dbcred`");
+		}
 
-	if ($dbcred_ro) {
-		list($dbuser_ro, $dbpwd_ro) = explode(":", $dbcred_ro);
-	}
+		if ($dbcred_ro) {
+			list($dbuser_ro, $dbpwd_ro) = explode(":", $dbcred_ro);
+		}
 
-	$dbh = dbconn($dbhost, null, $dbuser0, $dbpwd0);
-	try {
-		$dbh->exec("use {$dbname}");
-	}
-	catch (Exception $e) {
-		echo("=== 创建数据库: {$dbname}\n");
-		$dbh->exec("create database {$dbname}");
-		$dbh->exec("use {$dbname}");
-	}
+		$dbh = dbconn($dbhost, null, $dbuser0, $dbpwd0);
+		try {
+			$dbh->exec("use {$dbname}");
+		}
+		catch (Exception $e) {
+			echo("=== 创建数据库: {$dbname}\n");
+			$dbh->exec("create database {$dbname}");
+			$dbh->exec("use {$dbname}");
+		}
 
-	echo("=== 设置用户权限: {$dbuser}\n");
-	$str = $dbpwd? " identified by '{$dbpwd}'": "";
-	$sql = "grant all on {$dbname}.* to {$dbuser}@localhost {$str}";
-	$dbh->exec($sql);
-	$sql = "grant all on {$dbname}.* to {$dbuser}@'%'";
-	$dbh->exec($sql);
-
-	if ($dbcred_ro) {
-		echo("=== 设置只读用户权限: {$dbuser_ro}\n");
-		$str = $dbpwd_ro? " identified by '{$dbpwd_ro}'": "";
-
-		$sql = "grant select, lock tables, show view on {$dbname}.* to {$dbuser_ro} {$str}";
+		echo("=== 设置用户权限: {$dbuser}\n");
+		$str = $dbpwd? " identified by '{$dbpwd}'": "";
+		$sql = "grant all on {$dbname}.* to {$dbuser}@localhost {$str}";
 		$dbh->exec($sql);
-		$sql = "grant select on mysql.* to {$dbuser_ro}";
+		$sql = "grant all on {$dbname}.* to {$dbuser}@'%'";
 		$dbh->exec($sql);
-		$sql = "grant reload, replication client, replication slave on *.* to {$dbuser_ro}";
-		$dbh->exec($sql);
+
+		if ($dbcred_ro) {
+			echo("=== 设置只读用户权限: {$dbuser_ro}\n");
+			$str = $dbpwd_ro? " identified by '{$dbpwd_ro}'": "";
+
+			$sql = "grant select, lock tables, show view on {$dbname}.* to {$dbuser_ro} {$str}";
+			$dbh->exec($sql);
+			$sql = "grant select on mysql.* to {$dbuser_ro}";
+			$dbh->exec($sql);
+			$sql = "grant reload, replication client, replication slave on *.* to {$dbuser_ro}";
+			$dbh->exec($sql);
+		}
 	}
 
 	echo "=== 写配置文件 " . CONF_FILE . "\n";
@@ -277,7 +284,7 @@ p.hint {
 </table>
 
 <div id="divInitDb">
-	<h2>初始化数据库</h2>
+	<h2>初始化数据库和配置文件</h2>
 	<div class="disallowInit">配置文件php/conf.user.php已存在。如需要重新配置，请删除该文件.</div>
 	<form action="?ac=initdb" method="POST" target="ifrInitDb" class="allowInit">
 		<table border=1 style="border-spacing: 0" >
@@ -286,16 +293,21 @@ p.hint {
 			<td><input type="text" name="db" placeholder="localhost/jdcloud" required></td>
 		</tr>
 		<tr>
+			<td colspan=2>
+				<label><input type="checkbox" name="cfgonly" value=1 id="chkCfgOnly">只写配置文件，不检查数据库</label>
+			</td>
+		</tr>
+		<tr class="cfgonly">
 			<td>MYSQL数据库管理员用户<p class="hint">格式为"用户名:密码"，用于创建数据库、用户，设置权限等</p></td>
-			<td><input type="text" name="dbcred0" placeholder="root:123456" required></td>
+			<td><input type="text" name="dbcred0" autocomplete="off" placeholder="root:123456" required></td>
 		</tr>
 		<tr>
 			<td>本应用程序使用的MYSQL用户<p class="hint">格式为"用户名:密码, 如不存在会自动创建。将写入配置文件。</span></td>
-			<td><input type="text" name="dbcred" placeholder="jdcloud:FuZaMiMa" required></td>
+			<td><input type="text" name="dbcred" autocomplete="off" placeholder="jdcloud:FuZaMiMa" required></td>
 		</tr>
-		<tr>
+		<tr class="cfgonly">
 			<td>只读MYSQL用户<p class="hint">格式为"用户名:密码, 用于数据库备份等，可不填</p></td>
-			<td><input type="text" name="dbcred_ro" placeholder="jdcloudro:readonlypwd"></td>
+			<td><input type="text" name="dbcred_ro" autocomplete="off" placeholder="jdcloudro:readonlypwd"></td>
 		</tr>
 		<tr>
 			<td>应用程序URL路径<p class="hint">以"/"开头，不包括主机名。如果配置错误则session无法工作。</p></td>
@@ -335,6 +347,19 @@ if (info.allowInit) {
 else {
 	$("#divInitDb .disallowInit").show();
 }
+
+$("#chkCfgOnly").change(function () {
+	if (this.checked) {
+		$(this.form.dbcred0).prop("disabled", true);
+		$(this.form.dbcred_ro).prop("disabled", true);
+		$(this.form).find(".cfgonly").hide();
+	}
+	else {
+		$(this.form.dbcred0).prop("disabled", false);
+		$(this.form.dbcred_ro).prop("disabled", false);
+		$(this.form).find(".cfgonly").show();
+	}
+});
 
 </script>
 </html>
