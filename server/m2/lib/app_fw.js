@@ -217,6 +217,43 @@ if (window.console === undefined) {
 		log:function () {}
 	}
 }
+
+/**
+@fn applyNamedData(jo, data)
+
+用于为带name属性的DOM项赋值。例：
+
+	<div id="div1">
+		<p>订单描述：<span name="dscr"></span></p>
+		<p>状态为：<input type=text name="status"></p>
+		<p>金额：<span name="amount"></span>元</p>
+	</div>
+
+Javascript:
+
+	var data = {
+		dscr: "筋斗云教程",
+		status: "已付款",
+		amount: 100
+	};
+	var jo = $("#div1");
+	applyNamedData(jo, data); 
+
+*/
+function applyNamedData(jo, data)
+{
+	jo.find("[name]").each (function () {
+		var ji = $(this);
+		var name = ji.attr("name");
+		var val = data[name] || "";
+		if (ji.is(":input")) {
+			ji.val(val);
+		}
+		else {
+			ji.html(val);
+		}
+	});
+}
 // }}}
 
 // ====== app fw {{{

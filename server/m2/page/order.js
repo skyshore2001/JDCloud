@@ -10,8 +10,6 @@ function initPageOrder()
 	// ==== function {{{
 	function showOrder()
 	{
-		var jlst = $(".p-list", jpage);
-		jlst.empty();
 		var jlstLog = $(".p-list-log", jpage);
 		jlstLog.empty();
 
@@ -19,20 +17,11 @@ function initPageOrder()
 
 		function api_OrdrGet(data)
 		{
-			var arr = [
-				{bd: "<h3>" + data.dscr + "</h3>"},
-				{bd: "订单号", ft: data.id},
-				{bd: "状态", ft: StatusStr[data.status]},
-				{bd: "金额", ft: data.amount + "元"}
-			];
-			if (data.cmt) {
-				arr.push({bd: "备注", ft: data.cmt});
-			}
+			data.amountStr_ = parseFloat(data.amount) + "元";
+			data.statusStr_ = StatusStr[data.status];
+			applyNamedData(jpage, data);
 
-			$.each(arr, function (i, e) {
-				var ji = createCell(e);
-				ji.appendTo(jlst);
-			});
+			jpage.find("#divCmt").toggle(!!data.cmt);
 
 			// order log
 			$.each(data.orderLog, function (i, e) {
