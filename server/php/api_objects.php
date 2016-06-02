@@ -103,13 +103,24 @@ class AC1_Ordr extends AC0_Ordr
 
 	protected function onValidate()
 	{
+		$logAction = null;
 		if ($this->ac == "add") {
 			$userId = $_SESSION["uid"];
 			$_POST["userId"] = $userId;
 			$_POST["status"] = "CR";
-			$this->onAfterActions[] = function () {
+			$logAction = "CR";
+		}
+		else {
+			if (issetval("status")) {
+				// TODO: validate status
+				$logAction = $_POST["status"];
+			}
+		}
+
+		if ($logAction) {
+			$this->onAfterActions[] = function () use ($logAction) {
 				$orderId = $this->id;
-				$sql = sprintf("INSERT INTO OrderLog (orderId, action, tm, dscr) VALUES ($orderId,'CR','%s', '订单创建')", date('c'));
+				$sql = sprintf("INSERT INTO OrderLog (orderId, action, tm) VALUES ({$orderId},%s,'%s')", Q($logAction), date('c'));
 				execOne($sql);
 			};
 		}

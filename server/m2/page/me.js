@@ -7,7 +7,6 @@ function initPageMe()
 
 	function onPageBeforeShow()
 	{
-		jpage.find(".p-name").text(g_data.userInfo.name);
-		jpage.find(".p-phone").text(g_data.userInfo.phone);
+		applyNamedData(jpage, g_data.userInfo);
 	}
 }

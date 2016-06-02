@@ -26,6 +26,7 @@ function initPageSetUserInfo()
 			g_data.userInfo = data;
 		});
 		jpage.find("#divPwd").hide();
+		jpage.find("#txtPwd").prop("disabled", true);
 		MUI.showPage("#home");
 	}
 
@@ -35,6 +36,7 @@ function initPageSetUserInfo()
 		form.reset();
 		if (PageSetUserInfo.userInit) {
 			jpage.find("#divPwd").show();
+			jpage.find("#txtPwd").prop("disabled", false);
 			PageSetUserInfo.userInit = false;
 		}
 		form.name.value = g_data.userInfo.name;
