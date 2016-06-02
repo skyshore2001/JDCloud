@@ -1780,7 +1780,6 @@ function document_pageCreate(ev)
 }
 
 $(document).on("pagecreate", document_pageCreate);
-//}}}
 
 // ---- 处理ios7以上标题栏问题(应下移以空出状态栏)
 // 需要定义css: #ios7statusbar
@@ -1891,19 +1890,19 @@ function showLogin(jpage)
 {
 	var jcurPage = jpage || MUI.activePage;
 	// back to this page after login
+	var toPageHash;
 	if (jcurPage) {
-		m_onLoginOK = function () {
-			MUI.showPage("#" + jcurPage.attr("id"));
-		}
-		MUI.showPage(m_app.loginPage);
+		toPageHash = "#" + jcurPage.attr("id");
 	}
 	else {
 		// only before jquery mobile inits
 		// back to this page after login:
-		var pageHash = location.hash || m_app.homePage;
-		m_onLoginOK = function () {
-			MUI.showPage(pageHash);
-		}
+		toPageHash = location.hash || m_app.homePage;
+	}
+	m_onLoginOK = function () {
+		// 如果当前仍在login系列页面上，则跳到指定页面。这样可以在handleLogin中用MUI.showPage手工指定跳转页面。
+		if (MUI.activePage && MUI.activePage.attr("id").indexOf(m_app.loginPage) == 0)
+			MUI.showPage(toPageHash);
 	}
 	MUI.showPage(m_app.loginPage);
 }
@@ -2189,6 +2188,8 @@ function setApp(app)
 }
 
 }
+//}}}
+
 //}}}
 
 // ====== app fw: pull list {{{
@@ -2868,7 +2869,6 @@ function initNavbarAndList(jpage, opt)
 	return itf;
 }
 
-//}}}
 //}}}
 
 // vim: set foldmethod=marker:

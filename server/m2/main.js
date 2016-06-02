@@ -33,14 +33,7 @@ var g_cfg = {
 	WAIT: 3000, // 3s
 };
 
-// ---- interface {{{
-var PageHome = {
-	// PageHome.show
-	show: null, // Function(reload?=false)
-	userInit: false, // Boolean. show dlgUserInit
-	refresh: false, // Boolean
-};
-
+// ---- page interface {{{
 var PageOrder = {
 	// PageOrder.id
 	id: null, 
@@ -49,6 +42,11 @@ var PageOrder = {
 var PageOrders = {
 	refresh: false
 };
+
+var PageSetUserInfo = {
+	userInit: false
+};
+
 //}}}
 //}}}
 
@@ -146,9 +144,11 @@ function closeDlg(o)
 
 function handleLogin(data)
 {
-	if (data._isNew)
-		PageHome.userInit = true;
 	MUI.handleLogin(data);
+	if (data._isNew) {
+		PageSetUserInfo.userInit = true;
+		MUI.showPage("#setUserInfo");
+	}
 }
 
 $(document).on("muiInit", myInit);

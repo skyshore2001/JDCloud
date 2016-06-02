@@ -7,10 +7,6 @@ html, body {
 	padding: 0;
 }
 
-.mui-container {
-	display: none;
-}
-
 .mui-container, .mui-page {
 	background-color: #FBF9FE;
 	position: absolute;
@@ -25,6 +21,11 @@ html, body {
 	flex-direction: column; */
 }
 
+.mui-container {
+	display: none;
+	background-color: #04be02;
+}
+
 .mui-page>.hd, .mui-page>.bd {
 	position: absolute;
 	width: 100%;
@@ -32,9 +33,10 @@ html, body {
 }
 
 .hd {
-	background-color: black; 
+	background-color: #04be02;
+	text-overflow: ellipsis;
 	border: 1px solid transparent; /* 防止子元素margin越界*/
-	color: white;
+	color: #fff;
 }
 
 .bd {

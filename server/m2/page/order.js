@@ -3,6 +3,9 @@ function initPageOrder()
 	var jpage = $(this);
 	var lastId_;
 
+	jpage.on("pagebeforeshow", onPageBeforeShow);
+	jpage.find("#btnCancelOrder").click(btnCancelOrder_click);
+
 	// ==== function {{{
 	function showOrder()
 	{
@@ -41,15 +44,14 @@ function initPageOrder()
 		}
 	}
 
-	function cancelOrder()
+	function btnCancelOrder_click(ev)
 	{
 		var postParam = {status: "CA"};
 		callSvr("Ordr.set", {id: PageOrder.id}, showOrder, postParam);
-		PageHome.refresh = true;
 		PageOrders.refresh = true;
 	}
 
-	function pageBeforeShow()
+	function onPageBeforeShow()
 	{
 		if (lastId_ == PageOrder.id)
 			return;
@@ -57,7 +59,4 @@ function initPageOrder()
 		showOrder();
 	}
 	//}}}
-	
-	jpage.on("pagebeforeshow", pageBeforeShow);
-	jpage.find("#btnCancelOrder").click(cancelOrder);
 }
