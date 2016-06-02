@@ -4,7 +4,8 @@ function initPageOrder()
 	var lastId_;
 
 	jpage.on("pagebeforeshow", onPageBeforeShow);
-	jpage.find("#btnCancelOrder").click(btnCancelOrder_click);
+	jpage.find("#mnuCancelOrder").click(mnuCancelOrder_click);
+	jpage.find("#mnuRefreshOrder").click(showOrder);
 
 	// ==== function {{{
 	function showOrder()
@@ -40,11 +41,11 @@ function initPageOrder()
 				ji.appendTo(jlstLog);
 			});
 
-			jpage.find("#btnCancelOrder").toggle(data.status != "CA");
+			jpage.find("#mnuCancelOrder").toggle(data.status != "CA");
 		}
 	}
 
-	function btnCancelOrder_click(ev)
+	function mnuCancelOrder_click(ev)
 	{
 		var postParam = {status: "CA"};
 		callSvr("Ordr.set", {id: PageOrder.id}, showOrder, postParam);

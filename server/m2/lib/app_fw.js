@@ -390,6 +390,18 @@ function CPageManager(app)
 @var MUI.activePage
 
 当前页面。
+
+注意：
+
+- 在初始化过程中，值可能为null;
+- 调用MUI.showPage后，该值在新页面加载之后，发出pageshow事件之前更新。因而在pagebeforeshow事件中，MUI.activePage尚未更新。
+
+要查看从哪个页面来，可以用 MUI.prevPageId。
+要查看最近一次调用MUI.showPage转向的页面，可以用 MUI.getToPageId().
+
+@see MUI.prevPageId
+@see MUI.getToPageId()
+
 */
 	self.activePage = null;
 
@@ -892,7 +904,7 @@ ani:: String. 动画效果。设置为"none"禁用动画。
 
 可以通过`mui-opt`属性设置showPage的参数(若有多项，以逗号分隔)，如：
 
-	<a href="#me" mui-opt="ani:none">me</a>
+	<a href="#me" mui-opt="ani:'none'">me</a>
 
 如果不想在应用内打开页面，只要去掉链接中的"#"即可：
 
@@ -934,6 +946,19 @@ ani:: String. 动画效果。设置为"none"禁用动画。
 				bottom: ft
 			});
 		}
+	}
+
+/**
+@fn MUI.getToPageId()
+
+返回最近一次调用MUI.showPage时转向页面的Id.
+
+@see MUI.prevPageId
+ */
+	self.getToPageId = getToPageId;
+	function getToPageId()
+	{
+		return m_toPageId;
 	}
 
 // ------ enhanceWithin {{{
@@ -1868,6 +1893,18 @@ $(document).on("deviceready", function () {
 //}}}
 
 // ------ enter and exit {{{
+// 所有登录页都应以app.loginPage指定内容作为前缀，如loginPage="#login", 
+// 则登录页面名称可以为：#login, #login1, #loginByPwd等
+function isLoginPage(pageRef)
+{
+	if (/^\w/.test(pageRef)) {
+		pageRef = "#" + pageRef;
+	}
+	if (pageRef.indexOf(m_app.loginPage) != 0)
+		return false;
+	return true;
+}
+
 /**
 @fn MUI.showLogin(jpage?)
 @param jpage 如果指定, 则登录成功后转向该页面; 否则转向登录前所在的页面.
@@ -1901,7 +1938,7 @@ function showLogin(jpage)
 	}
 	m_onLoginOK = function () {
 		// 如果当前仍在login系列页面上，则跳到指定页面。这样可以在handleLogin中用MUI.showPage手工指定跳转页面。
-		if (MUI.activePage && MUI.activePage.attr("id").indexOf(m_app.loginPage) == 0)
+		if (MUI.activePage && isLoginPage(MUI.getToPageId()))
 			MUI.showPage(toPageHash);
 	}
 	MUI.showPage(m_app.loginPage);
@@ -2091,9 +2128,7 @@ function handleLogin(data)
 	// 登录成功后点返回，避免出现login页
 	var popN = 0;
 	self.m_pageStack.walk(function (state) {
-		// 所有登录页都应以app.loginPage指定内容作为前缀，如loginPage="#login", 
-		// 则登录页面名称可以为：#login, #login1, #loginByPwd等
-		if (state.pageRef.indexOf(m_app.loginPage) != 0)
+		if (! isLoginPage(state.pageRef))
 			return false;
 		++ popN;
 	});

@@ -1,2 +1,100 @@
 /* This file contains styles used by all application */
 /* 所有应用共享部分 */
+
+/* overwrite weui */
+.weui_cells {
+	margin-top: 0;
+}
+
+.weui_cell {
+	-webkit-align-items: initial;
+	align-items: initial;
+}
+
+.weui_btn {
+	cursor: pointer;
+}
+
+.weui_btn_mini {
+	min-width: 80px;
+}
+
+.weui_label {
+	min-width: 4em;
+	margin-right: 0.2em;
+	width: 20%;
+}
+.weui_cell:before {
+	right: 15px;
+	width: auto;
+}
+
+.weui_select {
+	height: auto;
+	-webkit-appearance: menulist;
+}
+
+/****** my css ******/
+.mui-navbar > a {
+	padding: 3px 0;
+}
+
+.mui-container.mui-ios {
+	/* 禁止选择。在IOS上尝试。 */
+	-webkit-user-select: none;
+	/* 禁止系统菜单 */
+	/*-webkit-touch-callout: none; */
+	/*-webkit-overflow-scrolling: touch;*/
+}
+
+.right {
+	text-align: right;
+}
+select.right {
+	direction: rtl;
+}
+
+.icon {
+	background-repeat: no-repeat;
+}
+
+/* 适合 16x16 列表项或菜单项 */
+.mui-menu .icon {
+	background-size: 16px;
+	background-position: 15px 13px;
+	padding-left: 40px;
+}
+
+.weui_cell.icon {
+	background-size: 16px;
+	padding-left: 50px;
+	background-position: 20px 12px;
+}
+
+/* 适合 24x24 底部导航 */
+.mui-navbar .icon {
+	background-size: 24px;
+	background-position: 0px 3px;
+	padding-left: 32px;
+	padding-top: 5px;
+	display: inline-block;
+}
+
+/* 标题栏左右侧两个图标，一般是"返回"和"菜单"。放到.icon-xxx最前面，以便图片可被覆盖 */
+.icon-back {
+	background: url(icon/16/back.png) no-repeat center;
+	background-size: 16px;
+	width: 16px;
+	height: 16px;
+	padding: 10px;
+	position: absolute;
+}
+.icon-menu {
+	background: url(icon/16/menu.png) no-repeat center;
+	background-size: 16px;
+	width: 16px;
+	height: 16px;
+	padding: 10px;
+	position: absolute;
+	right: 0;
+}
