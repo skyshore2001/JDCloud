@@ -47,13 +47,14 @@
 常量使用全部大写字母，如<code>ASTORE_ID</code>.
 
 <li>
-全局变量加"g_"前缀，如<code>g_data</code>. 
+全局变量加<code>g_</code>前缀，如<code>g_data</code>. 
 
 <li>
-仅限于模块使用的全局变量加"m_"前缀，如<code>m_orderId</code>.
+仅限于模块使用的全局变量加<code>m_</code>前缀，如<code>m_orderId</code>.
 
 <li>
-模块内共用变量加"_"后缀，表示在内嵌函数中使用或修改，如 <code>orderId_</code>. 某些例外：如标识某特定jQuery对象的变量常常不加后缀，比如"jpage"，"$btnCancelOrder"等；但通用的名称在模块内共享时应该加后缀，如"jbtn_", "jo_"等。
+模块内共用变量加<code>_</code>后缀或<code>m_</code>前缀，表示在内嵌函数中使用或修改，如 <code>orderId_</code>, <code>m_orderId</code>. 
+  一些例外：如标识某特定jQuery对象的变量常常不加后缀，比如"jpage"，"$btnCancelOrder"等。
 
 </ul>
 
