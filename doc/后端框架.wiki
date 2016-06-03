@@ -1437,6 +1437,66 @@ proxy(url)
 - 自动化测试时，API监控不工作（这时_test参数值为2）。
 - 应避免客户端一次取多张图片时有问题
 
+=== 批量请求 ===
+
+TODO：BQP协议支持批量请求，即在一次请求中，包含多条调用。
+在创建批量请求时，可以指定这些调用是否在一个事务(transaction)中，一起成功提交或失败回滚。
+
+前端建议接口：
+
+{{{
+var batch = new MUI.batchCall();
+// var batch = new MUI.batchCall({useTrans: true}); // 使用同一事务时，可指定useTrans=true
+
+// 调用一
+var param = {res: "id,name,phone"};
+callSvr("User.get", param, function(data) {} )
+
+// 调用二
+var postParam = {page: "home", ver: "android", userId: "$1.id"};
+callSvr("ActionLog.add", function(data) {}, postParam );
+
+batch->commit();
+// batch->cancel();
+}}}
+
+其中，$1.id可以引用上一次调用返回的结果。（TODO：格式待定）
+数据传输格式: 
+
+使用multipart/form-data格式，示例如下
+
+{{{
+POST api/batch
+Content-Type:multipart/form-data; boundary=----WebKitFormBoundary6oVKiDmuQSPOtt2L
+Content-Length: ...
+
+------WebKitFormBoundary6oVKiDmuQSPOtt2L
+Content-Disposition: form-data; ac="User.get"; res="name,phone"
+Content-Type: text/plain
+
+------WebKitFormBoundary6oVKiDmuQSPOtt2L
+Content-Disposition: form-data; ac="ActionLog.add"
+Content-Type: application/x-www-form-urlencoded
+
+page=home&ver=android&userId=$1.id
+------WebKitFormBoundary6oVKiDmuQSPOtt2L--
+}}}
+
+如果使用事务，则URL为
+{{{
+POST api/batch?useTrans=1
+}}}
+
+其余部分相同。
+
+batch的返回内容是多条调用返回内容组成的数组，样例如下：
+{{{
+[0, [
+	[ 0, {id: 1, name: "用户1", phone: "13712345678"} ],  // 调用User.get的返回结果
+	[ 0, "OK" ]  // 调用ActionLog.add的返回结果
+]]
+}}}
+
 == 测试设计 ==
 
 *[测试需求]*
