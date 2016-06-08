@@ -1495,6 +1495,9 @@ ctx: {ac, tm, tv, ret}
 	var m_manualBusy = 0;
 	var m_jLoader;
 
+	var m_curBatch = null;
+	self.m_curBatch = m_curBatch;
+
 /**
 @fn app_abort()
 
@@ -1652,7 +1655,8 @@ allow throw("abort") as abort behavior.
 	{
 		var ctx = this.ctx_ || {};
 		try {
-			rv = $.parseJSON(rv);
+			if (typeof(rv) == "string")
+				rv = $.parseJSON(rv);
 		}
 		catch (e)
 		{
@@ -1818,6 +1822,12 @@ allow throw("abort") as abort behavior.
 			fn = params;
 			params = null;
 		}
+		if (m_curBatch &&
+			!(userOptions && userOptions.async == false))
+		{
+			return m_curBatch.addCall({ac: ac, get: params, post: postParams}, fn, userOptions);
+		}
+
 		var url = makeUrl(ac, params);
 		var ctx = {ac: ac, tm: new Date()};
 		if (userOptions && userOptions.noLoadingImg)
@@ -1926,6 +1936,95 @@ allow throw("abort") as abort behavior.
 		if (m_jLoader)
 			m_jLoader.remove();
 	}
+
+/**
+@class batchCall(opt?={useTrans?=0})
+*/
+	self.batchCall = batchCall;
+	function batchCall(opt)
+	{
+		this.opt_ = opt;
+		this.calls_ = [];
+		this.callOpts_ = [];
+		m_curBatch = this;
+	}
+
+	batchCall.prototype = {
+		// obj: { opt_, @calls_, @callOpts_ }
+		// calls_: elem={ac, get, post}
+		// callOpts_: elem={fn, opt, dfd}
+
+		//* batchCall.addCall(call={ac, get, post}, fn, opt)
+		addCall: function (call0, fn, opt0) {
+			var call = $.extend({}, call0);
+			var opt = $.extend({}, opt0);
+			if (opt.ref) {
+				call.ref = opt.ref;
+			}
+			this.calls_.push(call);
+
+			var callOpt = {
+				fn: fn,
+				opt: opt,
+				dfd: $.Deferred()
+			};
+			this.callOpts_.push(callOpt);
+			return callOpt.dfd;
+		},
+		//* batchCall.dfd()
+		deferred: function () {
+			return this.dfd_;
+		},
+		//* @fn batchCall.commit()
+		commit: function () {
+			m_curBatch = null;
+			var batch_ = this;
+			var postData = JSON.stringify(this.calls_);
+			callSvr("batch", this.opt_, api_batch, postData);
+
+			function api_batch(data)
+			{
+				var ajaxCtx_ = this;
+				$.each(data, function (i, e) {
+					var callOpt = batch_.callOpts_[i];
+					// simulate ajaxCtx_, e.g. for {noex, userPost}
+					var extendCtx = false;
+					if (callOpt.opt && !$.isEmptyObject(callOpt.opt)) {
+						extendCtx = true;
+						$.extend(ajaxCtx_, callOpt.opt);
+					}
+
+					var data1 = defDataProc.call(ajaxCtx_, e);
+					if (callOpt.fn) {
+						callOpt.fn.call(ajaxCtx_, data1);
+					}
+					callOpt.dfd.resolve(data1);
+
+					// restore ajaxCtx_
+					if (extendCtx) {
+						$.each(Object.keys(callOpt.opt), function () {
+							ajaxCtx_[this] = null;
+						});
+					}
+				});
+			}
+		},
+		//* @fn batchCall.cancel()
+		cancel: function () {
+			m_curBatch = null;
+		}
+	}
+
+	// TODO: remove
+	self.testBatch = function () {
+		var b = new MUI.batchCall();
+		function logit(data){console.log(data);}
+		var dfd =callSvr("login", {a: 1}, logit);
+		dfd.then(logit);
+		callSvr("User.get", {b: 2}, logit, null, {noex:true});
+		b.commit();
+	}
+
 }
 //}}}
 

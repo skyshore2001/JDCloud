@@ -1454,40 +1454,62 @@ callSvr("User.get", param, function(data) {} )
 
 // 调用二
 var postParam = {page: "home", ver: "android", userId: "$1.id"};
-callSvr("ActionLog.add", function(data) {}, postParam );
+callSvr("ActionLog.add", function(data) {}, postParam, {ref: ["userId"]} );
 
 batch->commit();
 // batch->cancel();
 }}}
 
-其中，$1.id可以引用上一次调用返回的结果。（TODO：格式待定）
+还有一种方式更简单：
+
+{{{
+MUI.useBatchCall(); // 在本次消息循环中执行所有的callSvr都加入批处理。
+// MUI.useBatchCall(20); // 表示20ms内所有callSvr都加入批处理。
+callSvr(...);
+callSvr(...);
+callSvr(..., {noBatch: 1}); // TODO:使用noBatch参数可以强制单独执行，不加入批处理。
+}}}
+
+其中，调用二中参数userId引用了调用一的返回结果，通过在callSvr后指定参数ref标明。userId的值"$1.id"表示取第一次调用值的id属性。
+TODO: 引用格式为 ${num}，其中num可以为正数或负数（但不能为0），表示对前num次调用结果的引用，如
+{{{
+$1
+$1.id
+$-1.d[0][0]
+}}}
+
+如果表达式非法，将直接抛出错误。
+
 数据传输格式: 
 
-使用multipart/form-data格式，示例如下
+提交使用JSON格式，示例如下
 
 {{{
 POST api/batch
-Content-Type:multipart/form-data; boundary=----WebKitFormBoundary6oVKiDmuQSPOtt2L
-Content-Length: ...
 
-------WebKitFormBoundary6oVKiDmuQSPOtt2L
-Content-Disposition: form-data; ac="User.get"; res="name,phone"
-Content-Type: text/plain
-
-------WebKitFormBoundary6oVKiDmuQSPOtt2L
-Content-Disposition: form-data; ac="ActionLog.add"
-Content-Type: application/x-www-form-urlencoded
-
-page=home&ver=android&userId=$1.id
-------WebKitFormBoundary6oVKiDmuQSPOtt2L--
+[
+	{
+		"ac": "User.get",
+		"get": {"res": "name,phone"}
+	},
+	{
+		"ac": "ActionLog.add",
+		"post": {"page": "home", "ver": "android", "userId": "$-1.id"},
+		"ref": ["userId"]
+	}
+]
 }}}
 
-如果使用事务，则URL为
+数组中每一项为一个调用，其格式为: {ac, %get?, %post?, @ref?}, 只有ac参数必须，其它均可省略。
+
+get:: URL请求参数。
+post:: POST请求参数。
+ref:: 使用了batch引用的参数列表。
+
+如果使用事务，只是URL上加个参数：
 {{{
 POST api/batch?useTrans=1
 }}}
-
-其余部分相同。
 
 batch的返回内容是多条调用返回内容组成的数组，样例如下：
 {{{

@@ -1387,6 +1387,81 @@ class ApiApp extends AppBase
 		$this->apiWatch = new ApiWatch($ac);
 		$this->apiWatch->execute();
 
+		if ($ac == "batch") {
+			$ret = $this->execBatch();
+		}
+		else {
+			$ret = $this->execOne($ac);
+		}
+
+		return $ret;
+	}
+
+	protected function execBatch()
+	{
+		$s = file_get_contents("php://input");
+		$calls = json_decode($s, true);
+		echo "[0, [\n";
+		$first = true;
+		foreach ($calls as $call) {
+			if ($first) {
+				$first = false;
+			}
+			else {
+				echo ",";
+			}
+			$_GET = $call["get"] ?: [];
+			$_POST = $call["post"] ?: [];
+			$_REQUEST = array_merge($_GET, $_POST);
+
+
+			// >>>>> TODO
+			global $DBH;
+			global $ERRINFO;
+			$ok = false;
+			$ret = false;
+			try {
+				//$ret = $this->onExec();
+				$this->execOne($call["ac"]);
+				$ok = true;
+			}
+			catch (DirectReturn $e) {
+				$ok = true;
+			}
+			catch (MyException $e) {
+				list($code, $msg, $msg2) = [$e->getCode(), $e->getMessage(), $e->internalMsg];
+			}
+			catch (PDOException $e) {
+				list($code, $msg, $msg2) = [E_DB, $ERRINFO[E_DB], $e->getMessage()];
+			}
+			catch (Exception $e) {
+				list($code, $msg, $msg2) = [E_SERVER, $ERRINFO[E_SERVER], $e->getMessage()];
+			}
+
+			try {
+				if ($DBH && $DBH->inTransaction())
+				{
+					if ($ok)
+						$DBH->commit();
+					else
+						$DBH->rollback();
+				}
+				if (!$ok) {
+					$this->onErr($code, $msg, $msg2);
+				}
+			}
+			catch (Exception $e) {}
+			// <<<<
+
+
+
+		}
+		echo "]]";
+		throw new DirectReturn();
+	}
+
+	protected function execOne($ac)
+	{
 		global $DBH;
 		$DBH->beginTransaction();
 		$fn = "api_$ac";
@@ -1394,7 +1469,7 @@ class ApiApp extends AppBase
 			$tbl = $ms[1];
 			# TODO: check meta
 			if (! preg_match('/^\w+$/', $tbl))
-				throw new MyException(E_PARAM, "bad table $k");
+				throw new MyException(E_PARAM, "bad table {$tbl}");
 			$ac1 = $ms[2];
 			$ret = tableCRUD($ac1, $tbl);
 		}
@@ -1402,13 +1477,12 @@ class ApiApp extends AppBase
 			$ret = $fn();
 		}
 		else {
-			throw new MyException(E_PARAM, "Bad request - unknown ac: $ac");
+			throw new MyException(E_PARAM, "Bad request - unknown ac: {$ac}");
 		}
 		$DBH->commit();
 		if (!isset($ret))
 			$ret = "OK";
 		setRet(0, $ret);
-		return $ret;
 	}
 
 	protected function onErr($code, $msg, $msg2)
