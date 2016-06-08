@@ -19,7 +19,7 @@ function initPageOrder()
 		{
 			data.amountStr_ = parseFloat(data.amount) + "元";
 			data.statusStr_ = StatusStr[data.status];
-			applyNamedData(jpage, data);
+			setFormData(jpage, data);
 
 			jpage.find("#divCmt").toggle(!!data.cmt);
 

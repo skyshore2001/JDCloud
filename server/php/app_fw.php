@@ -928,8 +928,8 @@ function hasSignFile($f)
 
 function htmlEscape($s)
 {
-	if ($s[0] == '{' || $s[0] == '[') // ]}
-		return $s;
+// 	if ($s[0] == '{' || $s[0] == '[') // ]}
+// 		return $s;
 	return htmlentities($s, ENT_NOQUOTES);
 }
 //}}}
