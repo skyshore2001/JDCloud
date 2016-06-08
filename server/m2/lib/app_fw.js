@@ -8,6 +8,7 @@ var g_data = {}; // {userInfo}
 // 应用配置项
 var g_cfg = { logAction: false };
 
+var m_appVer;
 //}}}
 
 // ====== app toolkit {{{
@@ -67,44 +68,129 @@ function loadScript(url, fnOK)
 
 // --------- jquery {{{
 /**
-@fn getFormParam(jform)
+@fn getFormData(jo)
 
-取form中带name属性的控件值, 放入一个对象中, 以便手工调用callSvr.
+取DOM对象中带name属性的子对象的内容, 放入一个JS对象中, 以便手工调用callSvr.
+
+注意: 
+
+- 这里Form不一定是Form标签, 可以是一切DOM对象.
+- 如果DOM对象有disabled属性, 则会忽略它, 这也与form提交时的规则一致.
+
+与setFormData配合使用时, 可以只返回变化的数据.
 
 	jf.submit(function () {
 		var ac = jf.attr("action");
-		callSvr(ac, fn, getFormParam(jf));
+		callSvr(ac, fn, getFormData(jf));
 	});
-	
+
+@see setFormData
  */
-function getFormParam(jf)
+function getFormData(jo)
 {
-	var param = {};
-	jf.find("[name]").each (function () {
-		var jo = $(this);
-		if (jo.prop("disabled"))
-			return;
-		param[jo.attr("name")] = jo.val();
+	var data = {};
+	var orgData = jo.data("origin_") || {};
+	jo.find("[name]:not([disabled])").each (function () {
+		var ji = $(this);
+		var name = ji.attr("name");
+		var content;
+		if (ji.is(":input"))
+			content = ji.val();
+		else
+			content = ji.html();
+
+		var orgContent = orgData[name];
+		if (orgContent == null)
+			orgContent = "";
+		if (content == null)
+			content = "";
+		if (content !== String(orgContent)) // 避免 "" == 0 或 "" == false
+			data[name] = content;
 	});
-	return param;
+	return data;
 }
 
 /**
-@fn setFormParam(jform, param)
+@fn setFormData(jo, data?, opt?)
 
-对form中带name属性的控件, 分别以param[name]进行赋值。
+用于为带name属性的DOM对象设置内容为data[name].
+要清空所有内容, 可以用 setFormData(jo), 相当于增强版的 form.reset().
+
+注意:
+- DOM项的内容指: 如果是input/textarea/select等对象, 内容为其value值; 如果是div组件, 内容为其innerHTML值.
+- 当data[name]未设置(即值为undefined, 注意不是null)时, 对于input/textarea等组件, 行为与form.reset()逻辑相同, 
+ 即恢复为初始化值, 除了input[type=hidden]对象, 它的内容不会变.
+ 对div等其它对象, 会清空该对象的内容.
+- 如果对象设置有属性"noReset", 则不会对它进行设置.
+
+@param opt {setOrigin?=false}
+
+选项 setOrigin: 为true时将data设置为数据源, 这样在getFormData时, 只会返回与数据源相比有变化的数据.
+缺省会设置该DOM对象数据源为空.
+
+对象关联的数据源, 可以通过 jo.data("origin_") 来获取, 或通过 jo.data("origin_", newOrigin) 来设置.
+
+示例：
+
+	<div id="div1">
+		<p>订单描述：<span name="dscr"></span></p>
+		<p>状态为：<input type=text name="status"></p>
+		<p>金额：<span name="amount"></span>元</p>
+	</div>
+
+Javascript:
+
+	var data = {
+		dscr: "筋斗云教程",
+		status: "已付款",
+		amount: "100"
+	};
+	var jo = $("#div1");
+	var data = setFormData(jo, data); 
+	$("[name=status]").html("已完成");
+	var changedData = getFormData(jo); // 返回 { dscr: "筋斗云教程", status: "已完成", amount: "100" }
+
+	var data = setFormData(jo, data, {setOrigin: true}); 
+	$("[name=status]").html("已完成");
+	var changedData = getFormData(jo); // 返回 { status: "已完成" }
+	$.extend(jo.data("origin_"), changedData); // 合并变化的部分到数据源.
+
+@see getFormData
  */
-function setFormParam(jf, param)
+function setFormData(jo, data, opt)
 {
-	jf.find("[name]").each(function () {
-		var jo = $(this);
-// 		if (jo.prop("disabled"))
-// 			return;
-		var name = jo.attr("name");
-		if (param[name] !== undefined) {
-			jo.val(param[name]);
+	var opt1 = $.extend({
+		setOrigin: false
+	}, opt);
+	if (data == null)
+		data = {};
+	var jo1 = jo.filter("[name]:not([noReset])");
+	jo.find("[name]:not([noReset])").add(jo1).each (function () {
+		var ji = $(this);
+		var name = ji.attr("name");
+		var content = data[name];
+		var isInput = ji.is(":input");
+		if (content === undefined) {
+			if (isInput) {
+				if (ji[0].tagName === "TEXTAREA")
+					content = ji.html();
+				else
+					content = ji.attr("value");
+				if (content === undefined)
+					content = "";
+			}
+			else {
+				content = "";
+			}
+		}
+		if (ji.is(":input")) {
+			ji.val(content);
+		}
+		else {
+			ji.html(content);
 		}
 	});
+	jo.data("origin_", opt1.setOrigin? data: null);
 }
 
 /**
@@ -219,40 +305,52 @@ if (window.console === undefined) {
 }
 
 /**
-@fn applyNamedData(jo, data)
+@fn evalAttr(jo, name)
 
-用于为带name属性的DOM项赋值。例：
+返回一个属性做eval后的js值。
 
-	<div id="div1">
-		<p>订单描述：<span name="dscr"></span></p>
-		<p>状态为：<input type=text name="status"></p>
-		<p>金额：<span name="amount"></span>元</p>
-	</div>
+示例：读取一个对象值：
 
-Javascript:
+	var opt = evalAttr(jo, "data-opt");
 
-	var data = {
-		dscr: "筋斗云教程",
-		status: "已付款",
-		amount: 100
-	};
-	var jo = $("#div1");
-	applyNamedData(jo, data); 
+	<div data-opt="{id:1, name:\"data1\"}"><div>
+
+考虑兼容性，也支持忽略括号的写法，
+
+	<div data-opt="id:1, name:\"data1\""><div>
+
+读取一个数组：
+
+	var arr = evalAttr(jo, "data-arr");
+
+	<div data-arr="['aa', 'bb']"><div>
+
+读取一个函数名（或变量）:
+
+	var fn = evalAttr(jo, "mui-initfn");
+
+	<div mui-initfn="initMyPage"><div>
 
 */
-function applyNamedData(jo, data)
+function evalAttr(jo, name, ctx)
 {
-	jo.find("[name]").each (function () {
-		var ji = $(this);
-		var name = ji.attr("name");
-		var val = data[name] || "";
-		if (ji.is(":input")) {
-			ji.val(val);
+	var val = jo.attr(name);
+	if (val) {
+		if (val[0] != '{' && val.indexOf(":")>0) {
+			val1 = "({" + val + "})";
 		}
 		else {
-			ji.html(val);
+			val1 = "(" + val + ")";
 		}
-	});
+		try {
+			val = eval(val1);
+		}
+		catch (ex) {
+			app_alert("属性`" + name + "'格式错误: " + val, "e");
+			val = null;
+		}
+	}
+	return val;
 }
 // }}}
 
@@ -591,19 +689,11 @@ function CPageManager(app)
 		if (ret !== undefined)
 			return ret;
 
-		var val = jo.attr("mui-initfn");
-		if (val == null)
+		var initfn = evalAttr(jo, "mui-initfn");
+		if (initfn == null)
 			return;
 
-		var initfn = null;
-		try {
-			initfn = eval(val);
-		}
-		catch (e) {
-			app_alert("bad initfn: " + val, "e");
-		}
-
-		if (initfn)
+		if (initfn && $.isFunction(initfn))
 		{
 			ret = initfn.apply(jo, paramArr) || true;
 		}
@@ -1193,12 +1283,31 @@ ani:: String. 动画效果。设置为"none"禁用动画。
 	}
 
 /**
-@fn MUI.app_alert(msg, type?=i, fn?, opt?={timeoutInterval?, defValue?})
-@fn MUI.app_alert(msg, type?=i, opt?={timeoutInterval?, defValue?})
+@fn MUI.app_alert(msg, [type?=i], [fn?], opt?={timeoutInterval?, defValue?})
 @alias app_alert
 @param type 对话框类型: "i": info, 信息提示框; "e": error, 错误框; "w": warning, 警告框; "q": question, 确认框(会有"确定"和"取消"两个按钮); "p": prompt, 输入框
 @param fn Function(text?) 回调函数，当点击确定按钮时调用。当type="p" (prompt)时参数text为用户输入的内容。
 @param opt Object. 可选项。 timeoutInterval表示几秒后自动关闭对话框。defValue用于输入框(type=p)的缺省值.
+
+示例:
+
+	// 信息框
+	app_alert("操作成功", function () {
+		MUI.showPage("#orderInfo");
+	}, {timeoutInterval: 3});
+
+	// 错误框
+	app_alert("操作失败", "e");
+
+	// 确认框(确定/取消)
+	app_alert("立即付款?", "q", function () {
+		MUI.showPage("#pay");
+	});
+
+	// 输入框
+	app_alert("输入要查询的名字:", "p", function (text) {
+		callSvr("Book.query", {cond: "name like '%" + text + "%'});
+	});
 
 可自定义对话框，接口如下：
 
@@ -1223,18 +1332,28 @@ app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时�
 
 */
 	window.app_alert = self.app_alert = app_alert;
-	function app_alert(msg, type, fn, alertOpt)
+	function app_alert(msg)
 	{
-		type = type || "i";
-		if (typeof(fn) == "object") {
-			alertOpt = fn;
-			fn = null;
+		var type = "i";
+		var fn = null;
+		var alertOpt = {};
+
+		for (var i=1; i<arguments.length; ++i) {
+			var arg = arguments[i];
+			if ($.isFunction(arg)) {
+				fn = arg;
+			}
+			else if ($.isPlainObject(arg)) {
+				alertOpt = arg;
+			}
+			else if (typeof(arg) === "string") {
+				type = arg;
+			}
 		}
-		if (alertOpt == null)
-			alertOpt = {};
+
 
 		//var cls = {i: "mui-info", w: "mui-warning", e: "mui-error", q: "mui-question", p: "mui-prompt"}[type];
-		var s = {i: "提示", w: "警告", e: "出错", q: "确认", p: "输入"}[type];
+		var s = {i: "提示", w: "警告", e: "出错了", q: "确认", p: "输入"}[type];
 
 		var jmsg = $("#muiAlert");
 		if (jmsg.size() == 0) {
@@ -1320,15 +1439,7 @@ app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时�
 				self.showDialog(jdlg);
 				return;
 			}
-			var opt = jo.attr("mui-opt");
-			if (opt) {
-				try {
-					opt = eval("({" + opt + "})");
-				}catch (e) {
-					alert('bad option: ' + opt);
-					opt = null;
-				}
-			}
+			var opt = evalAttr(jo, "mui-opt");
 			self.showPage(href, opt);
 		});
 	}
@@ -1619,6 +1730,10 @@ allow throw("abort") as abort behavior.
 		{
 			var usePathInfo = true;
 			if (usePathInfo) {
+				if (params.ac != null) {
+					action = params.ac;
+					delete(params.ac);
+				}
 				url = "../api.php/" + action;
 			}
 			else {
@@ -1629,8 +1744,20 @@ allow throw("abort") as abort behavior.
 		else {
 			url = action;
 		}
-		if (g_cordova)
-			params._ver = "a/" + g_cordova;
+		if (g_cordova) {
+			if (m_appVer === undefined)
+			{
+				var platform = "n";
+				if (isAndroid()) {
+					platform = "a";
+				}
+				else if (isIOS()) {
+					platform = "i";
+				}
+				m_appVer = platform + "/" + g_cordova;
+			}
+			params._ver = m_appVer;
+		}
 		if (m_app.appName)
 			params._app = m_app.appName;
 		if (g_args._test)
@@ -1642,8 +1769,7 @@ allow throw("abort") as abort behavior.
 	}
 
 /**
-@fn MUI.callSvr(ac, param?, fn?, postParams?, userOptions?)
-@fn MUI.callSvr(ac, fn?, postParams?, userOptions?)
+@fn MUI.callSvr(ac, [param?], fn?, postParams?, userOptions?)
 @alias callSvr
 
 @param ac String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)
@@ -1859,25 +1985,35 @@ function handleIos7Statusbar()
 }
 
 /**
-@fn MUI.setFormSubmit(jf, fn?, opt?={rules, validate})
+@fn MUI.setFormSubmit(jf, fn?, opt?={rules, validate?, onNoAction?})
 @param fn? the callback for callSvr. you can use this["userPost"] to retrieve the post param.
 
 opt.rules: 参考jquery.validate文档
-opt.validate: Function(jf). 如果返回false, 则取消submit.
+opt.validate: Function(jf, queryParam={ac?,res?,...}, postParam). 如果返回false, 则取消submit. queryParam和postParam为调用参数，可以修改。
+
+form提交时的调用参数, 如果不指定, 则以form的action属性作为queryParam.ac发起callSvr调用.
+
+opt.onNoAction: Function(jf). 当form中数据没有变化时, 不做提交. 这时可调用该回调函数.
 
 */
 self.setFormSubmit = setFormSubmit;
 function setFormSubmit(jf, fn, opt)
 {
 	opt = opt || {};
-	jf.submit(function () {
+	jf.submit(function (ev) {
+		ev.preventDefault();
+
+		var queryParam = {ac: jf.attr("action")};
+		var postParam = getFormData(jf);
 		if (opt.validate) {
-			if (false === opt.validate(jf))
+			if (false === opt.validate(jf, queryParam, postParam))
 				return false;
 		}
-		var ac = jf.attr("action");
-		var params = getFormParam(jf);
-		callSvr(ac, fn, params, {userPost: params});
+		if (! $.isEmptyObject(postParam))
+			callSvr(queryParam.ac, queryParam, fn, postParam, {userPost: postParam});
+		else if (opt.onNoAction) {
+			opt.onNoAction(jf);
+		}
 		return false;
 	});
 }
@@ -2264,7 +2400,7 @@ function setApp(app)
 
 //}}}
 
-// ====== app fw: pull list {{{
+// ====== app fw: list page {{{
 /**
 @fn initPullList(container, opt)
 
@@ -2309,9 +2445,9 @@ function setApp(app)
 注意：
 
 - 由于page body的高度自动由框架设定，所以可以作为带滚动条的容器；如果是其它容器，一定要确保它有限定的宽度，以便可以必要时出现滚动条。
-- *** 由于处理分页的逻辑比较复杂，请调用 initNavbarAndList替代, 即使只有一个list；它会屏蔽nextkey, refresh等细节，并做一些优化。像这样调用：
+- *** 由于处理分页的逻辑比较复杂，请调用 initPageList替代, 即使只有一个list；它会屏蔽nextkey, refresh等细节，并做一些优化。像这样调用：
 
-	initNavbarAndList(jpage, {
+	initPageList(jpage, {
 		pageItf: PageOrders,
 		navRef: null,
 		listRef: jlst,
@@ -2618,9 +2754,12 @@ function initPullList(container, opt)
 }
 
 /**
-@fn initNavbarAndList(jpage, opt) -> ListOpInterface
+@fn initPageList(jpage, opt) -> PageListInterface
+@alias initNavbarAndList
 
-对一个导航栏(class="mui-navbar")加若干列表(class="p-list")的典型页面进行逻辑封装；也可以是若干button对应若干div-list区域，一次只显示一个区域；
+列表页逻辑框架.
+
+对一个导航栏(class="mui-navbar")及若干列表(class="p-list")的典型页面进行逻辑封装；也可以是若干button对应若干div-list区域，一次只显示一个区域；
 特别地，也可以是只有一个list，并没有button或navbar对应。
 
 它包括以下功能：
@@ -2644,8 +2783,8 @@ function initPullList(container, opt)
 		</div>
 
 		<div class="bd">
-			<div id="lst1" class="p-list active"></div>
-			<div id="lst2" class="p-list" style="display:none"></div>
+			<div id="lst1" class="p-list active" data-cond="status='PA'"></div>
+			<div id="lst2" class="p-list" data-cond="status='RE'" style="display:none"></div>
 		</div>
 	</div>
 
@@ -2657,13 +2796,18 @@ function initPullList(container, opt)
 
 js调用逻辑示例：
 
-	initNavbarAndList(jpage, {
+	var lstItf = initPageList(jpage, {
 		pageItf: PageOrders,
-		onGetQueryParam: function (jlst, callParam) {
-			callParam.ac = "Ordr.query";
-			var param = callParam.queryParam;
-			param.orderby = "id desc";
-			param.cond = "status=1";
+
+		//以下两项是缺省值：
+		//navRef: ">.hd .mui-navbar",
+		//listRef: ">.bd .p-list",
+		
+		// 设置查询参数，静态值一般通过在列表对象上设置属性 data-ac, data-cond以及data-queryParam等属性来指定更方便。
+		onGetQueryParam: function (jlst, queryParam) {
+			queryParam.ac = "Ordr.query";
+			queryParam.orderby = "id desc";
+			// queryParam.cond 已在列表data-cond属性中指定
 		},
 		onAddItem: function (jlst, itemData) {
 			var ji = $("<li>" + itemData.title + "</li>");
@@ -2703,7 +2847,7 @@ js调用逻辑示例：
 
 	jpage.find(".p-panel").height(500); // !!! 注意：必须为list container指定高度，否则无法出现下拉列表。一般根据页高自动计算。
 
-	initNavbarAndList(jpage, {
+	var lstItf = initPageList(jpage, {
 		pageItf: PageOrders,
 		navRef: ".p-panelHd", // 点标题栏，显示相应列表区
 		listRef: ".p-panel .p-list", // 列表区
@@ -2718,15 +2862,10 @@ js调用逻辑示例：
 
 	jpage.find(".p-panel").height(500); // 一定要为容器设置高度
 
-	initNavbarAndList(jpage, {
+	var lstItf = initPageList(jpage, {
 		pageItf: PageOrders,
 		navRef: "", // 置空，表示不需要button链接到表，下面listRef中的多表各自显示不相关。
 		listRef: ".p-panel .p-list", // 列表区
-		onGetQueryParam: function (jlst, callParam) {
-			callParam.ac = jlst.attr("ac");
-			var param = callParam.queryParam;
-			param.cond = jlst.attr("cond");
-		},
 		...
 	});
 
@@ -2747,7 +2886,7 @@ navRef是否为空的区别是，如果非空，则表示listRef是一组互斥�
 
 由于bd对象的高度已自动设置，要设置p-list对象支持上下拉加载，可以简单调用：
 
-	initNavbarAndList(jpage, {
+	var lstItf = initPageList(jpage, {
 		pageItf: PageOrders,
 		navRef: "", // 一定置空，否则默认值是取mui-navbar
 		listRef: ".p-list"
@@ -2758,9 +2897,9 @@ navRef是否为空的区别是，如果非空，则表示listRef是一组互斥�
 
 原理是在合适的时机，自动调用类似这样的逻辑：
 
-	var callParam = {ac: "Ordr.query", queryParam: {} };
-	opt.onGetQueryParam(jlst, callParam);
-	callSvr(callParam.ac, callParam.queryParam, function (data) {
+	var queryParam = {ac: "Ordr.query"};
+	opt.onGetQueryParam(jlst, queryParam);
+	callSvr(queryParam.ac, queryParam, function (data) {
 		$.each(rs2Array(data), function (i, itemData) {
 			opt.onAddItem(jlst, itemData);
 		});
@@ -2770,14 +2909,19 @@ navRef是否为空的区别是，如果非空，则表示listRef是一组互斥�
 
 ## 参数说明
 
-@param opt {onGetQueryParam, onAddItem, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef=">.bd .p-list"}
+@param opt {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list"}
 
-@param onGetQueryParam (jlst, callParam/o)
+@param onGetQueryParam Function(jlst, queryParam/o)
 
-	@param callParam {ac?="Ordr.query", queryParam?={} }
+queryParam: {ac?, res?, cond?, ...}
 
-框架在调用callSvr之前获取参数，jlst为当前list组件，一般应设置 callParam.ac 及 callParam.queryParam 参数(如 queryParam.res/orderby/cond等)。
-框架将自动管理 queryParam._pagekey/_pagesz 参数。
+框架在调用callSvr之前，先取列表对象jlst上的data-queryParam属性作为queryParam的缺省值，再尝试取data-ac, data-res, data-cond, data-orderby属性作为queryParam.ac等参数的缺省值，
+最后再回调 onGetQueryParam。
+
+	<ul data-queryParam="{q: 'famous'}" data-ac="Person.query" data-res="*,familyName" data-cond="status='PA' and name like '王%'">
+	</ul>
+
+此外，框架将自动管理 queryParam._pagekey/_pagesz 参数。
 
 @param onAddItem (jlst, itemData)
 
@@ -2794,12 +2938,13 @@ navRef是否为空的区别是，如果非空，则表示listRef是一组互斥�
 
 @param navRef,listRef  指定navbar与list，可以是选择器，也可以是jQuery对象；或是一组button与一组div，一次显示一个div；或是navRef为空，而listRef为一个或多个不相关联的list.
 
-@return ListOpInterface={refresh, markRefresh}
+@return PageListInterface={refresh, markRefresh}
 
 refresh: Function(), 刷新当前列表
 markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 下次浏览该列表时刷新。
  */
-function initNavbarAndList(jpage, opt)
+window.initNavbarAndList = initPageList;
+function initPageList(jpage, opt)
 {
 	var opt_ = $.extend({
 		navRef: ">.hd .mui-navbar",
@@ -2894,20 +3039,27 @@ function initNavbarAndList(jpage, opt)
 		if (skipIfLoaded && nextkey != null)
 			return;
 
-		var queryParam = {};
-		var callParam = {ac: "Ordr.query", queryParam: queryParam };
-		opt_.onGetQueryParam(jlst, callParam);
+		var queryParam = evalAttr(jlst, "data-queryParam") || {};
+		$.each(["ac", "res", "cond", "orderby"], function () {
+			var val = jlst.attr("data-" + this);
+			if (val)
+				queryParam[this] = val;
+		});
+
+		if (opt_.onGetQueryParam) {
+			opt_.onGetQueryParam(jlst, queryParam);
+		}
 
 		queryParam._pagesz = g_cfg.PAGE_SZ; // for test, default 20.
 		if (nextkey) {
 			queryParam._pagekey = nextkey;
 		}
-		callSvr(callParam.ac, callParam.queryParam, api_OrdrQuery);
+		callSvr(queryParam.ac, queryParam, api_OrdrQuery);
 
 		function api_OrdrQuery(data)
 		{
 			$.each(rs2Array(data), function (i, itemData) {
-				opt_.onAddItem(jlst, itemData);
+				opt_.onAddItem && opt_.onAddItem(jlst, itemData);
 			});
 			if (data.nextkey)
 				jlst.data("nextkey_", data.nextkey);
@@ -2941,6 +3093,235 @@ function initNavbarAndList(jpage, opt)
 	return itf;
 }
 
+//}}}
+
+// ====== app fw: detail page {{{
+var FormMode = {
+	forAdd: "A",
+	forSet: "S",
+	//forView: "V",
+	forFind: "F"
+};
+
+/**
+@fn showByFormMode(jo, formMode)
+
+根据当前formMode自动显示或隐藏jo下的DOM对象.
+
+示例: 对以下DOM对象
+
+	<div id="div1">
+		<div id="div2"></div>
+		<div id="div3" class="forAdd"></div>
+		<div id="div4" class="forSet"></div>
+		<div id="div5" class="forSet forAdd"></div>
+	</div>
+
+调用showByFormMode(jo, FormMode.forAdd)时, 显示 div2, div3, div5;
+调用showByFormMode(jo, FormMode.forSet)时, 显示 div2, div4, div5;
+ */
+function showByFormMode(jo, formMode)
+{
+	jo.find(".forSet, .forAdd").each(function () {
+		var cls = null;
+		if (formMode == FormMode.forSet) {
+			cls = "forSet";
+		}
+		else if (formMode == FormMode.forAdd) {
+			cls = "forAdd";
+		}
+		if (cls)
+			$(this).toggle($(this).hasClass(cls));
+	});
+}
+
+/**
+@fn initPageDetail(jpage, opt) -> PageDetailInterface={refresh}
+
+详情页框架. 用于对象的添加/查看/更新多合一页面.
+form.action为对象名.
+
+@param opt {pageItf, jform?=jpage.find("form:first"), onValidate?, onGetData?, onNoAction?=history.back, onAdd?, onSet?, onGet?}
+
+pageItf: {formMode, formData}; formData用于forSet模式下显示数据, 它必须有属性id. 
+Form将则以pageItf.formData作为源数据, 除非它只有id一个属性(这时将则调用callSvr获取源数据)
+
+onValidate: Function(jform, queryParam, postParam); 提交前的验证, 或做字段补全的工作, 或补全调用参数。postParam是将提交的数据，可以添加或修改；queryParam是查询参数，它可能包含{ac?, res?, ...}，可以进行修改。
+onGetData: Function(jform, queryParam); 在forSet模式下，如果需要取数据，则回调该函数，获取get调用的参数。
+onNoAction: Function(jform); 一般用于更新模式下，当没有任何数据更改时，直接点按钮提交，其实不做任何调用, 这时将回调 onNoAction，缺省行为是返回上一页。
+onAdd: Function(id); 添加完成后的回调. id为新加数据的编号. 
+onSet: Function(data); 更新完成后的回调, data为更新后的数据.
+onGet: Function(data); 获取数据后并调用setFormData将数据显示到页面后，回调该函数, 可用于显示特殊数据.
+
+示例：制作一个人物详情页PagePerson：
+
+- 在page里面包含form，form的action属性标明对象名称，method属性不用。form下包含各展示字段，各字段以name属性标识。
+- 可以用 forAdd, forSet 等class标识对象只在添加或更新时显示。
+- 一个或多个提交按钮，触发提交事件。
+- 对于不想展示但需要提交的字段，可以用设置为隐藏的input[type=text]对象，或是input[type=hidden]对象；如果字段会变化应使用前者，type=hidden对象内容设置后不会变化(如调用setFormData不修改hidden对象)
+
+	<div mui-initfn="initPagePerson" mui-script="person.js">
+		...
+		<div class="bd">
+			<form action="Person">
+				<input name="name" required placeholder="输入名称">
+				<textarea name="dscr" placeholder="写点简介"></textarea>
+				<div class="forSet">人物标签</div>
+
+				<button type="submit" id="btnOK">确定</button>
+				<input type="text" style="display:none" name="familyId">
+
+			</form>
+		</div>
+	</div>
+
+调用initPageDetail使它成为支持添加、查看和更新的详情页：
+
+	var PagePerson = {
+		showForAdd: function (formData) ...
+		showForSet: function (formData) ...
+	};
+
+	function initPagePerson()
+	{
+		var jpage = this;
+		var pageItf = PagePerson;
+		initPageDetail(jpage, {
+			pageItf: pageItf, // 需要页面接口提供 formMode, formData等属性。
+			onValidate: function (jf) {
+				// 补足字段和验证字段，返回false则取消form提交。
+				if (pageItf.formMode == FormMode.forAdd) {
+					...
+				}
+			},
+			onAdd: function (id) {
+				PagePersons.show({refresh: true}); // 添加成功后跳到列表页并刷新。
+			},
+			onSet: function (data) {
+				app_alert("更新成功!", history.back); // 更新成功后提示信息，然后返回前一页。
+			}
+		});
+	}
+
+	// 其它页调用它：
+	PagePerson.showForAdd({familyId: 1}); // 添加人物，已设置familyId为1
+	PagePerson.showForSet(person); // 以person对象内容显示人物，可更新。
+	PagePerson.showForSet({id: 3}); // 以id=3查询人物并显示，可更新。
+
+对于forSet模式，框架先检查formData中是否只有id属性，如果是，则在进入页面时会自动调用{obj}.get获取数据.
+
+	<form action="Person">
+		<div name=familyName></div>
+		...
+	</form>
+
+如果formData中有多个属性，则自动以formData的内容作为数据源显示页面，不再发起查询。
+
+*/
+
+function initPageDetail(jpage, opt)
+{
+	var pageItf = opt.pageItf;
+	if (! pageItf)
+		throw("require opt.pageItf");
+	var jf = opt.jform || jpage.find("form:first");
+	var obj_ = jf.attr("action");
+	if (!obj_ || /\W/.test(obj_)) 
+		throw("bad object: form.action=" + obj_);
+
+	jpage.on("pagebeforeshow", onPageBeforeShow);
+
+	MUI.setFormSubmit(jf, api_Ordr, {
+		validate: onValidate,
+		onNoAction: opt.onNoAction || history.back,
+	});
+
+	function onValidate(jf, queryParam, postParam)
+	{
+		var ac;
+		if (pageItf.formMode == FormMode.forAdd) {
+			ac = "add";
+		}
+		else if (pageItf.formMode == FormMode.forSet) {
+			ac = "set";
+			queryParam.id = pageItf.formData.id;
+		}
+		queryParam.ac = obj_ + "." + ac;
+
+		var ret;
+		if (opt.onValidate) {
+			ret = opt.onValidate(jf, queryParam, postParam);
+		}
+		return ret;
+	}
+
+	function api_Ordr(data)
+	{
+		if (pageItf.formMode == FormMode.forAdd) {
+			// 到新页后，点返回不允许回到当前页
+			MUI.popPageStack();
+			opt.onAdd && opt.onAdd(data);
+		}
+		else if (pageItf.formMode == FormMode.forSet) {
+			var originData = jf.data("origin_");
+			$.extend(originData, this.userPost); // update origin data
+			opt.onSet && opt.onSet(originData);
+		}
+	}
+
+	function onPageBeforeShow() 
+	{
+		if (pageItf.formMode == FormMode.forAdd) {
+			setFormData(jf, pageItf.formData); // clear data
+		}
+		else if (pageItf.formMode == FormMode.forSet) {
+			showObject();
+		}
+		else if (pageItf.formMode == FormMode.forFind) {
+			// TODO: 之前不是forFind则应清空
+			setFormData(jf); // clear data
+		}
+		showByFormMode(jpage, pageItf.formMode);
+	}
+
+	function showObject()
+	{
+		var data = pageItf.formData;
+		if (data.id == null)
+			throw "bad id to get object";
+
+		// 如果formData中只有id属性，则发起get查询；否则直接用此数据。
+		var needGet = true;
+		for (var prop in data) {
+			if (prop == "id" || $.isFunction(data[prop]))
+				continue;
+			needGet = false;
+			break;
+		}
+		if (! needGet) {
+			onGet(data);
+		}
+		else {
+			var queryParam = {
+				ac: obj_ + ".get",
+				id: data.id
+			};
+			opt.onGetData && opt.onGetData(jf, queryParam);
+			callSvr(queryParam.ac, queryParam, onGet);
+		}
+
+		function onGet(data)
+		{
+			setFormData(jf, data, {setOrigin: true});
+			opt.onGet && opt.onGet(data);
+		}
+	}
+
+	var itf = {
+		refresh: showObject
+	}
+	return itf;
+}
 //}}}
 
 // vim: set foldmethod=marker:

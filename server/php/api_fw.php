@@ -488,7 +488,7 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 			$values = (string)$id;
 		}
 		foreach ($_POST as $k=>$v) {
-			$k = htmlentities($k);
+			$k = htmlEscape($k);
 			if ($k === "id")
 				continue;
 			// ignore non-field param
@@ -505,7 +505,7 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 				$values .= ", ";
 			}
 			$keys .= $k;
-			$values .= Q(htmlentities($v));
+			$values .= Q(htmlEscape($v));
 		}
 		if (strlen($keys) == 0) 
 			throw new MyException(E_PARAM, "no field found to be added");
@@ -525,7 +525,7 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 		$id = mparam("id", $_GET);
 		$kv = "";
 		foreach ($_POST as $k=>$v) {
-			$k = htmlentities($k);
+			$k = htmlEscape($k);
 			if ($k === 'id')
 				continue;
 			// ignore non-field param
@@ -548,7 +548,7 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 				$kv .= flag_getExpForSet($k, $v);
 			}
 			else
-				$kv .= "$k=" . Q(htmlentities($v));
+				$kv .= "$k=" . Q(htmlEscape($v));
 		}
 		if (strlen($kv) == 0) {
 			addLog("no field found to be set");
@@ -1454,7 +1454,7 @@ class ApiApp extends AppBase
 	private function parseRestfulUrl($pathInfo)
 	{
 		$method = $_SERVER["REQUEST_METHOD"];
-		$ac = htmlentities(substr($pathInfo,1));
+		$ac = htmlEscape(substr($pathInfo,1));
 		// POST /login  (小写开头)
 		// GET/POST /Store.add (含.)
 		if (ctype_lower($ac[0]) || strpos($ac, '.') !== false)
