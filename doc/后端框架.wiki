@@ -1439,10 +1439,10 @@ proxy(url)
 
 === 批量请求 ===
 
-TODO：BQP协议支持批量请求，即在一次请求中，包含多条调用。
+BQP协议支持批量请求，即在一次请求中，包含多条调用。
 在创建批量请求时，可以指定这些调用是否在一个事务(transaction)中，一起成功提交或失败回滚。
 
-前端建议接口：
+前端接口示例：
 
 {{{
 var batch = new MUI.batchCall();
@@ -1453,7 +1453,7 @@ var param = {res: "id,name,phone"};
 callSvr("User.get", param, function(data) {} )
 
 // 调用二
-var postParam = {page: "home", ver: "android", userId: "$1.id"};
+var postParam = {page: "home", ver: "android", userId: "{$1.id}"};
 callSvr("ActionLog.add", function(data) {}, postParam, {ref: ["userId"]} );
 
 batch->commit();
@@ -1464,21 +1464,23 @@ batch->commit();
 
 {{{
 MUI.useBatchCall(); // 在本次消息循环中执行所有的callSvr都加入批处理。
-// MUI.useBatchCall(20); // 表示20ms内所有callSvr都加入批处理。
+// MUI.useBatchCall({useTrans:1}, 20); // 表示20ms内所有callSvr都加入批处理, 且启用事务。
 callSvr(...);
 callSvr(...);
 callSvr(..., {noBatch: 1}); // TODO:使用noBatch参数可以强制单独执行，不加入批处理。
 }}}
 
-其中，调用二中参数userId引用了调用一的返回结果，通过在callSvr后指定参数ref标明。userId的值"$1.id"表示取第一次调用值的id属性。
-TODO: 引用格式为 ${num}，其中num可以为正数或负数（但不能为0），表示对前num次调用结果的引用，如
+其中，调用二中参数userId引用了调用一的返回结果，通过在callSvr后指定参数ref标明。userId的值"{$1.id}"表示取第一次调用值的id属性。
+注意：引用表达式应以"{}"包起来，"$n"中n可以为正数或负数（但不能为0），表示对第n次或前n次调用结果的引用，以下为可能的格式：
 {{{
-$1
-$1.id
-$-1.d[0][0]
+	"{$1}"
+	"id={$1.id}"
+	"{$-1.d[0][0]}"
+	"id in ({$1}, {$2})"
+	"diff={$-2 - $-1}"
 }}}
 
-如果表达式非法，将直接抛出错误。
+花括号中的内容将用计算后的结果替换。如果表达式非法，将使用"null"值替代。
 
 数据传输格式: 
 
@@ -1494,7 +1496,7 @@ POST api/batch
 	},
 	{
 		"ac": "ActionLog.add",
-		"post": {"page": "home", "ver": "android", "userId": "$-1.id"},
+		"post": {"page": "home", "ver": "android", "userId": "{$-1.id}"},
 		"ref": ["userId"]
 	}
 ]

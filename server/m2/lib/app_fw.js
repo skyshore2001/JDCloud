@@ -357,6 +357,7 @@ function evalAttr(jo, name, ctx)
 // ====== app fw {{{
 var E_AUTHFAIL=-1;
 var E_NOAUTH=2;
+var E_ABORT=-100;
 
 /**
 @module MUI
@@ -1693,6 +1694,10 @@ allow throw("abort") as abort behavior.
 				app_alert("验证失败，请检查输入是否正确!", "e");
 				return;
 			}
+			else if (rv[0] == E_ABORT) {
+				console.log("!!! abort call");
+				return;
+			}
 			logError();
 			app_alert("操作失败：" + rv[1], "e");
 		}
@@ -1834,14 +1839,20 @@ allow throw("abort") as abort behavior.
 			ctx.noLoadingImg = 1;
 		enterWaiting(ctx);
 		var method = (postParams == null? 'GET': 'POST');
-		var options = $.extend({
+		var options = {
 			dataType: 'text',
 			url: url,
 			data: postParams,
 			type: method,
 			success: fn,
 			ctx_: ctx
-		}, userOptions);
+		};
+		// support FormData object.
+		if (! $.isPlainObject(postParams)) {
+			options.processData = false;
+			options.contentType = false;
+		}
+		$.extend(options, userOptions);
 		console.log("call " + ac);
 		return $.ajax(options);
 	}
@@ -1938,7 +1949,52 @@ allow throw("abort") as abort behavior.
 	}
 
 /**
-@class batchCall(opt?={useTrans?=0})
+@class MUI.batchCall(opt?={useTrans?=0})
+
+批量调用。将若干个调用打包成一个特殊的batch调用发给服务端。
+注意：
+
+- 同步调用callSvrSync不会加入批处理。
+
+示例：
+
+	var batch = new MUI.batchCall();
+	callSvr("Family.query", {res: "id,name"}, api_FamilyQuery);
+	callSvr("User.get", {res: "id,phone"}, api_UserGet);
+	batch.commit();
+
+以上两条调用将一次发送到服务端。
+在批处理中，默认每条调用是一个事务，如果想把批处理中所有调用放到一个事务中，可以用useTrans选项：
+
+	var batch = new MUI.batchCall({useTrans: 1});
+	callSvr("Attachment.add", api_AttAdd, {path: "path-1"});
+	callSvr("Attachment.add", api_AttAdd, {path: "path-2"});
+	batch.commit();
+
+在一个事务中，所有调用要么成功要么都取消。
+任何一个调用失败，会导致它后面所有调用取消执行，且所有已执行的调用会回滚。
+
+参数中可以引用之前结果中的值，引用部分需要用"{}"括起来，且要在opt.ref参数中指定哪些参数使用了引用：
+
+	var batch = new MUI.batchCall({useTrans: 1});
+	callSvr("Attachment.add", api_AttAdd, {path: "path-1"}); // 假如返回 22
+	var opt = {ref: ["id"]};
+	callSvr("Attachment.get", {id: "{$1}"}, api_AttGet, null, opt); // {$1}=22, 假如返回 {id: 22, path: '/data/1.png'}
+	opt = {ref: ["cond"]};
+	callSvr("Attachment.query", {res: "count(*) cnt", cond: "path='{$-1.path}'"}, api_AttQuery, null, opt); // {$-1.path}计算出为 '/data/1.png'
+	batch.commit();
+
+以下为引用格式示例：
+
+	{$-2} // 前2次的结果。
+	{$2[0]} // 取第2次结果（是个数组）的第0个值。
+	{$-1.path} // 取前一次结果的path属性
+	{$2 -1}  // 可以做简单的计算
+
+如果值计算失败，则当作"null"填充。
+
+@see MUI.useBatchCall
+
 */
 	self.batchCall = batchCall;
 	function batchCall(opt)
@@ -1977,10 +2033,18 @@ allow throw("abort") as abort behavior.
 		},
 		//* @fn batchCall.commit()
 		commit: function () {
+			if (m_curBatch == null)
+				return;
 			m_curBatch = null;
+
+			if (this.calls_.length <= 1) {
+				console.log("!!! warning: batch has " + this.calls_.length + " calls!");
+			}
 			var batch_ = this;
 			var postData = JSON.stringify(this.calls_);
-			callSvr("batch", this.opt_, api_batch, postData);
+			callSvr("batch", this.opt_, api_batch, postData, {
+				contentType: "application/json"
+			});
 
 			function api_batch(data)
 			{
@@ -2015,14 +2079,29 @@ allow throw("abort") as abort behavior.
 		}
 	}
 
-	// TODO: remove
-	self.testBatch = function () {
-		var b = new MUI.batchCall();
-		function logit(data){console.log(data);}
-		var dfd =callSvr("login", {a: 1}, logit);
-		dfd.then(logit);
-		callSvr("User.get", {b: 2}, logit, null, {noex:true});
-		b.commit();
+/**
+@fn MUI.useBatchCall(opt?={useTrans?=0}, tv?=0)
+
+之后的callSvr调用都加入批量操作。例：
+
+	MUI.useBatchCall();
+	callSvr("Family.query", {res: "id,name"}, api_FamilyQuery);
+	callSvr("User.get", {res: "id,phone"}, api_UserGet);
+
+可指定多少毫秒以内的操作都使用批处理，如10ms内：
+
+	MUI.useBatchCall(null, 10);
+
+@see MUI.batchCall
+*/
+	self.useBatchCall = useBatchCall;
+	function useBatchCall(opt, tv)
+	{
+		tv = tv || 0;
+		var batch = new MUI.batchCall(opt);
+		setTimeout(function () {
+			batch.commit();
+		}, tv);
 	}
 
 }

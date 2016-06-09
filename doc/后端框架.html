@@ -17,18 +17,18 @@
 <ul>
 <li><a href="#toc_1"> 通用Web产品后端框架设计</a>
 <ul>
-<li><a href="#toc_1.1">1 需求</a>
+<li><a href="#toc_1.1">1 需求 </a>
 <li><a href="#toc_1.2">2 概要设计</a>
 <ul>
 <li><a href="#toc_1.2.1">2.1 文件结构</a>
 <li><a href="#toc_1.2.2">2.2 运行环境</a>
-<li><a href="#toc_1.2.3">2.3 配置项</a>
+<li><a href="#toc_1.2.3">2.3 配置项 </a>
 <ul>
 <li><a href="#toc_1.2.3.1">2.3.1 部署配置</a>
 </ul>
 <li><a href="#toc_1.2.4">2.4 命名规范</a>
 </ul>
-<li><a href="#toc_1.3">3 数据库设计</a>
+<li><a href="#toc_1.3">3 数据库设计 </a>
 <li><a href="#toc_1.4">4 通讯协议设计</a>
 <ul>
 <li><a href="#toc_1.4.1">4.1 通用原则</a>
@@ -47,17 +47,18 @@
 <li><a href="#toc_1.4.2">4.2 通用操作</a>
 <ul>
 <li><a href="#toc_1.4.2.1">4.2.1 执行sql语句</a>
-<li><a href="#toc_1.4.2.2">4.2.2 通用表操作</a>
+<li><a href="#toc_1.4.2.2">4.2.2 通用表操作 </a>
 <li><a href="#toc_1.4.2.3">4.2.3 附件上传</a>
 <li><a href="#toc_1.4.2.4">4.2.4 附件下载</a>
 <li><a href="#toc_1.4.2.5">4.2.5 上传工具</a>
 <li><a href="#toc_1.4.2.6">4.2.6 下载工具</a>
 <li><a href="#toc_1.4.2.7">4.2.7 生成签名</a>
-<li><a href="#toc_1.4.2.8">4.2.8 发短信</a>
+<li><a href="#toc_1.4.2.8">4.2.8 发短信 </a>
 <li><a href="#toc_1.4.2.9">4.2.9 查询短信记录</a>
 <li><a href="#toc_1.4.2.10">4.2.10 代理</a>
 </ul>
 <li><a href="#toc_1.4.3">4.3 API调用监控</a>
+<li><a href="#toc_1.4.4">4.4 批量请求</a>
 </ul>
 <li><a href="#toc_1.5">5 测试设计</a>
 <ul>
@@ -66,23 +67,23 @@
 <ul>
 <li><a href="#toc_1.5.2.1">5.2.1 使用方法</a>
 <li><a href="#toc_1.5.2.2">5.2.2 测试模式设计</a>
-<li><a href="#toc_1.5.2.3">5.2.3 API测试和用例测试</a>
+<li><a href="#toc_1.5.2.3">5.2.3 API测试和用例测试 </a>
 </ul>
 <li><a href="#toc_1.5.3">5.3 单元测试</a>
-<li><a href="#toc_1.5.4">5.4 自动化测试</a>
+<li><a href="#toc_1.5.4">5.4 自动化测试 </a>
 <ul>
-<li><a href="#toc_1.5.4.1">5.4.1 取短信日志最后一条</a>
+<li><a href="#toc_1.5.4.1">5.4.1 取短信日志最后一条 </a>
 </ul>
 </ul>
-<li><a href="#toc_1.6">6 登录类型与权限管理</a>
+<li><a href="#toc_1.6">6 登录类型与权限管理 </a>
 <li><a href="#toc_1.7">7 服务端部署与升级</a>
 <ul>
 <li><a href="#toc_1.7.1">7.1 用法</a>
 <ul>
 <li><a href="#toc_1.7.1.1">7.1.1 交互命令</a>
-<li><a href="#toc_1.7.1.2">7.1.2 非交互命令</a>
+<li><a href="#toc_1.7.1.2">7.1.2 非交互命令 </a>
 </ul>
-<li><a href="#toc_1.7.2">7.2 写升级脚本</a>
+<li><a href="#toc_1.7.2">7.2 写升级脚本 </a>
 </ul>
 <li><a href="#toc_1.8">8 工具接口</a>
 <ul>
@@ -96,7 +97,7 @@
 </ul>
 </div>
 
-<h2 id="toc_1.1"><a name="需求">1 需求</a></h2>
+<h2 id="toc_1.1"><a name="需求 ">1 需求 </a></h2>
 
 <ul>
 <li>
@@ -346,7 +347,7 @@ phpunit4.2用于回归测试。
 
 </ul>
 
-<h3 id="toc_1.2.3"><a name="配置项">2.3 配置项</a></h3>
+<h3 id="toc_1.2.3"><a name="配置项 ">2.3 配置项 </a></h3>
 
 <p>
 <strong>[运行环境]</strong>
@@ -533,7 +534,7 @@ WebAPI的调用名和传入参数也采用驼峰式，由于目前实现时不�
 类名，或数据库表名，用大驼峰式（或叫Pascal命名，所有单词首字母大写）, 如OrderStatus.
 </p>
 
-<h2 id="toc_1.3"><a name="数据库设计">3 数据库设计</a></h2>
+<h2 id="toc_1.3"><a name="数据库设计 ">3 数据库设计 </a></h2>
 
 <p>
 根据[系统建模]设计数据库表结构。
@@ -717,7 +718,7 @@ p2=value2&amp;p3=value3
 
 <ul>
 <li>
-在WebAPI请求成功时返回内容为 <code>[0, data]</code>，其中<code>data</code>的类型由WebAPI返回类型所定义。
+在WebAPI请求成功时返回内容为 <code>[0, data]</code>，其中`data`的类型由WebAPI返回类型所定义。
 
 <li>
 在请求失败时返回内容为 `[非0错误码, 错误信息].
@@ -756,7 +757,7 @@ getModel(id=100)
   
 <ul>
 <li>
-处理成功返回类型为<code>{id, name, dscr}</code>，例如<code>{id: 100, name: "myname", dscr:"mydscr"}</code>，关于返回类型表述方式详见下节描述。完整的返回内容为
+处理成功返回类型为`{id, name, dscr}<code>，例如`{id: 100, name: "myname", dscr:"mydscr"}</code>，关于返回类型表述方式详见下节描述。完整的返回内容为
 <pre>
 HTTP/1.1 200 OK
 
@@ -1364,7 +1365,7 @@ URL参数"_test"值为非0时表示测试模式。参考章节"概要设计"-&gt
 <h4 id="toc_1.4.1.8"><a name="使用PATH_INFO模式的URL">4.1.8 使用PATH_INFO模式的URL</a></h4>
 
 <p>
-通过在index.php中解析<code>$_SERVER["PATH_INFO"]</code>, 可以令URL更可读：
+通过在index.php中解析`$_SERVER["PATH_INFO"]`, 可以令URL更可读：
 </p>
 <pre>
 http://localhost/cheguanjia/api.php?ac=login&amp;phone=137&amp;pwd=1234
@@ -1692,7 +1693,7 @@ execsql(sql="DELETE User WHERE id=1 or id=2")
 注: 对于非SELECT语句, 返回affectedRows
 </p>
 
-<h4 id="toc_1.4.2.2"><a name="通用表操作">4.2.2 通用表操作</a></h4>
+<h4 id="toc_1.4.2.2"><a name="通用表操作 ">4.2.2 通用表操作 </a></h4>
 
 <p>
 以下4条API完成对表的增删改查(CRUD)动作. 服务端可根据当前用户所拥有权限进行检查. 
@@ -1904,7 +1905,7 @@ flags为单字母表示的标志位集合，如"vg"；props可以以多字母表
 </p>
 
 <p>
-query操作支持形如<code>flag_{flag}</code>或<code>prop_{prog}</code>的虚拟属性。
+query操作支持形如<code>flag_{flag}</code>或`prop_{prog}`的虚拟属性。
 </p>
 <ul>
 <li>
@@ -1916,7 +1917,7 @@ query操作支持形如<code>flag_{flag}</code>或<code>prop_{prog}</code>的虚
 </ul>
 
 <p>
-get/query操作中如果返回了flags/props，还会返回相应的虚拟属性；例如flags值为"vg"，则多返回虚拟属性<code>flag_v=1</code>及<code>flag_g=1</code>
+get/query操作中如果返回了flags/props，还会返回相应的虚拟属性；例如flags值为"vg"，则多返回虚拟属性`flag_v=1<code>及`flag_g=1</code>
 </p>
 
 <p>
@@ -1970,7 +1971,7 @@ Store是商户表名, 通过POST字段传递各字段内容. HTTP POST请求如�
 POST /api.php?ac=Store.add
 Content-Type: application/x-www-form-urlencoded
 
-name=华莹汽车(张江店)&amp;addr=金科路88号&amp;tel=021-12345678
+name=华莹汽车(张江店)&amp;addr=金科路88号&tel=021-12345678
 </pre>
 
 <li>
@@ -2144,7 +2145,7 @@ upload(..., weixinServerIds) -&gt; [{id, thumbId?}]
 <dt>autoResize</dt>
 <dd>Boolean. 缺省为1，即当图片大小超过500K, 自动缩小图片到最大像素1920x1080.</dd>
 <dt>exif</dt>
-<dd>Object. 扩展信息。JSON格式，如上传时间及GPS信息：<code>{"DateTime": "2015:10:08 11:03:02", "GPSLongtitude": [121,42,7.19], "GPSLatitude": [31,14,45.8]}</code></dd>
+<dd>Object. 扩展信息。JSON格式，如上传时间及GPS信息：`{"DateTime": "2015:10:08 11:03:02", "GPSLongtitude": [121,42,7.19], "GPSLatitude": [31,14,45.8]}`</dd>
 </dl>
 
 <dl>
@@ -2475,7 +2476,7 @@ genSign(_pwd, ...) -&gt; sign
 如果希望一个参数不参与签名，则设计它的名字以"_"开头，如"_ac".
 </p>
 
-<h4 id="toc_1.4.2.8"><a name="发短信">4.2.8 发短信</a></h4>
+<h4 id="toc_1.4.2.8"><a name="发短信 ">4.2.8 发短信 </a></h4>
 <pre>
 sendSms(phone, content, channel?=0)
 </pre>
@@ -2627,6 +2628,115 @@ proxy(url)
 
 </ul>
 
+<h3 id="toc_1.4.4"><a name="批量请求">4.4 批量请求</a></h3>
+
+<p>
+BQP协议支持批量请求，即在一次请求中，包含多条调用。
+在创建批量请求时，可以指定这些调用是否在一个事务(transaction)中，一起成功提交或失败回滚。
+</p>
+
+<p>
+前端接口示例：
+</p>
+
+<pre>
+var batch = new MUI.batchCall();
+// var batch = new MUI.batchCall({useTrans: true}); // 使用同一事务时，可指定useTrans=true
+
+// 调用一
+var param = {res: "id,name,phone"};
+callSvr("User.get", param, function(data) {} )
+
+// 调用二
+var postParam = {page: "home", ver: "android", userId: "{$1.id}"};
+callSvr("ActionLog.add", function(data) {}, postParam, {ref: ["userId"]} );
+
+batch-&gt;commit();
+// batch-&gt;cancel();
+</pre>
+
+<p>
+还有一种方式更简单：
+</p>
+
+<pre>
+MUI.useBatchCall(); // 在本次消息循环中执行所有的callSvr都加入批处理。
+// MUI.useBatchCall({useTrans:1}, 20); // 表示20ms内所有callSvr都加入批处理, 且启用事务。
+callSvr(...);
+callSvr(...);
+callSvr(..., {noBatch: 1}); // TODO:使用noBatch参数可以强制单独执行，不加入批处理。
+</pre>
+
+<p>
+其中，调用二中参数userId引用了调用一的返回结果，通过在callSvr后指定参数ref标明。userId的值"{$1.id}"表示取第一次调用值的id属性。
+注意：引用表达式应以"{}"包起来，"$n"中n可以为正数或负数（但不能为0），表示对第n次或前n次调用结果的引用，以下为可能的格式：
+</p>
+<pre>
+	"{$1}"
+	"id={$1.id}"
+	"{$-1.d[0][0]}"
+	"id in ({$1}, {$2})"
+	"diff={$-2 - $-1}"
+</pre>
+
+<p>
+花括号中的内容将用计算后的结果替换。如果表达式非法，将使用"null"值替代。
+</p>
+
+<p>
+数据传输格式: 
+</p>
+
+<p>
+提交使用JSON格式，示例如下
+</p>
+
+<pre>
+POST api/batch
+
+[
+	{
+		"ac": "User.get",
+		"get": {"res": "name,phone"}
+	},
+	{
+		"ac": "ActionLog.add",
+		"post": {"page": "home", "ver": "android", "userId": "{$-1.id}"},
+		"ref": ["userId"]
+	}
+]
+</pre>
+
+<p>
+数组中每一项为一个调用，其格式为: {ac, %get?, %post?, @ref?}, 只有ac参数必须，其它均可省略。
+</p>
+
+<dl>
+<dt>get</dt>
+<dd>URL请求参数。</dd>
+<dt>post</dt>
+<dd>POST请求参数。</dd>
+<dt>ref</dt>
+<dd>使用了batch引用的参数列表。</dd>
+</dl>
+
+<p>
+如果使用事务，只是URL上加个参数：
+</p>
+<pre>
+POST api/batch?useTrans=1
+</pre>
+
+<p>
+batch的返回内容是多条调用返回内容组成的数组，样例如下：
+</p>
+<pre>
+[0, [
+	[ 0, {id: 1, name: "用户1", phone: "13712345678"} ],  // 调用User.get的返回结果
+	[ 0, "OK" ]  // 调用ActionLog.add的返回结果
+]]
+</pre>
+
 <h2 id="toc_1.5"><a name="测试设计">5 测试设计</a></h2>
 
 <p>
@@ -2682,7 +2792,7 @@ proxy(url)
 </pre>
 
 <p>
-再如通用的对表的查询: 格式<code>callsvr command [paramstr] [poststr]</code>, 其中<code>paramstr</code>和<code>poststr</code>应使用URL编码.
+再如通用的对表的查询: 格式<code>callsvr command [paramstr] [poststr]</code>, 其中<code>paramstr</code>和`poststr`应使用URL编码.
 </p>
 <pre>
 (get item with id)
@@ -2700,10 +2810,10 @@ proxy(url)
 直接运行<code>client.php</code>可查看支持的API.
 
 <li>
-任一参数设置为"?"表示查看帮助, 如<code>client.php api1 ?</code>表示显示api1的帮助.
+任一参数设置为"?"表示查看帮助, 如`client.php api1 ?`表示显示api1的帮助.
 
 <li>
-用null表示该参数不赋值, 如<code>client.php api1 param1 null param3</code>.
+用null表示该参数不赋值, 如`client.php api1 param1 null param3`.
 
 <li>
 该工具为回归测试的副产品。
@@ -2887,7 +2997,7 @@ just sanity test:
 rtest实现参见<code>rtest/rtest.php</code>，服务端实现请在<code>server/api.php</code>中搜索"CARSVC_TEST".
 </p>
 
-<h4 id="toc_1.5.2.3"><a name="API测试和用例测试">5.2.3 API测试和用例测试</a></h4>
+<h4 id="toc_1.5.2.3"><a name="API测试和用例测试 ">5.2.3 API测试和用例测试 </a></h4>
 
 <p>
 <strong>[原则]</strong>
@@ -2938,9 +3048,9 @@ cd test
 phpunit xxxTest.php
 </pre>
 
-<h3 id="toc_1.5.4"><a name="自动化测试">5.4 自动化测试</a></h3>
+<h3 id="toc_1.5.4"><a name="自动化测试 ">5.4 自动化测试 </a></h3>
 
-<h4 id="toc_1.5.4.1"><a name="取短信日志最后一条">5.4.1 取短信日志最后一条</a></h4>
+<h4 id="toc_1.5.4.1"><a name="取短信日志最后一条 ">5.4.1 取短信日志最后一条 </a></h4>
 
 <pre>
 getLastLog(type)
@@ -2964,7 +3074,7 @@ AUTH_TEST_MODE
 <dt>f</dt>
 </dl>
 
-<h2 id="toc_1.6"><a name="登录类型与权限管理">6 登录类型与权限管理</a></h2>
+<h2 id="toc_1.6"><a name="登录类型与权限管理 ">6 登录类型与权限管理 </a></h2>
 
 <p>
 我们使用的权限控制模型为: "用户-权限(即角色/原子权限组)-原子权限(基本权限)".
@@ -3370,7 +3480,7 @@ id	name	Svc_ItemType(ittId,svcId,ItemType.name)
 上例中"Svc_ItemType"多了一个参数"ItemType.name", 它表示下面内容是关联到ItemType.name字段，即需要先用"SELECT id FROM ItemType WHERE name=?"查询出Svc_ItemType.ittId(第一个参数)，再同上例进行添加。
 <img src="" />
 </p>
-<h4 id="toc_1.7.1.2"><a name="非交互命令">7.1.2 非交互命令</a></h4>
+<h4 id="toc_1.7.1.2"><a name="非交互命令 ">7.1.2 非交互命令 </a></h4>
 
 <p>
 例:
@@ -3384,7 +3494,7 @@ upgrade.php all
 upgrade.php upgrade
 </pre>
 
-<h3 id="toc_1.7.2"><a name="写升级脚本">7.2 写升级脚本</a></h3>
+<h3 id="toc_1.7.2"><a name="写升级脚本 ">7.2 写升级脚本 </a></h3>
 
 <p>
 当表结构变化时, 
@@ -3444,7 +3554,7 @@ update cinf set ver, update_tm
 </p>
 
 <p>
-注意：<code>server/tool/</code>目录下的工具随项目一起发布，一般通过网络访问。而<code>tool/</code>目录下的工具一般是命令行工具，不发布。
+注意：`server/tool/<code>目录下的工具随项目一起发布，一般通过网络访问。而`tool/</code>目录下的工具一般是命令行工具，不发布。
 </p>
 
 <h3 id="toc_1.8.1"><a name="tool/log.php">8.1 tool/log.php</a></h3>
@@ -3539,7 +3649,7 @@ tool/task.php(ac)
 </p>
 
 <p>
-进入tool目录执行<code>php task.crontab.php</code>生成一串文本，再运行<code>crontab -e</code>编辑计划任务，将刚刚生成的文本复制过来即安装好。
+进入tool目录执行<code>php task.crontab.php</code>生成一串文本，再运行`crontab -e`编辑计划任务，将刚刚生成的文本复制过来即安装好。
 屏幕输出到日志文件 <code>tool/task.log</code>.
 </p>
 

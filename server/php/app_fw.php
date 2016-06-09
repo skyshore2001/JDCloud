@@ -14,6 +14,7 @@
 
 // ====== defines {{{
 # error code definition:
+const E_ABORT = -100; // 客户端不报错
 const E_AUTHFAIL=-1;
 const E_OK=0;
 const E_PARAM=1;
@@ -1090,10 +1091,13 @@ class Coord
 
 /**
 @class AppBase
+
+应用框架，用于提供符合BQP协议的接口。
+在onExec中返回协议数据；在onAfter中建议及时关闭DB.
  */
 class AppBase
 {
-	public function exec()
+	public function exec($handleTrans=true)
 	{
 		global $DBH;
 		global $ERRINFO;
@@ -1117,7 +1121,7 @@ class AppBase
 		}
 
 		try {
-			if ($DBH && $DBH->inTransaction())
+			if ($handleTrans && $DBH && $DBH->inTransaction())
 			{
 				if ($ok)
 					$DBH->commit();
@@ -1135,7 +1139,7 @@ class AppBase
 		}
 		catch (Exception $e) {}
 
-		$DBH = null;
+		//$DBH = null;
 		return $ret;
 	}
 
@@ -1150,8 +1154,11 @@ class AppBase
 		$fn($code, $msg, $msg2);
 	}
 
+	// 应用程序应及时关闭数据库连接
 	protected function onAfter($ok)
 	{
+		global $DBH;
+		$DBH = null;
 	}
 }
 // }}}
