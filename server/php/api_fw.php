@@ -110,6 +110,22 @@ function setRet($code, $data = null, $internalMsg = null)
 	}
 }
 
+/**
+@fn setServerRev()
+
+根据全局变量"SERVER_REV"或应用根目录下的文件"revision.txt"， 来设置HTTP响应头"X-Daca-Server-Rev"表示服务端版本信息（最多6位）。
+
+客户端框架可本地缓存该版本信息，一旦发现不一致，可刷新应用。
+ */
+function setServerRev()
+{
+	$ver = $GLOBALS["SERVER_REV"] ?: @file_get_contents("{$GLOBALS['BASE_DIR']}/revision.txt");
+	addLog($ver);
+	if (! $ver)
+		return;
+	$ver = substr($ver, 0, 6);
+	header("X-Daca-Server-Rev: {$ver}");
+}
 // }}}
 
 // ====== classes {{{
@@ -180,10 +196,17 @@ class ApiLog
 		else if ($type == "admin") {
 			$userId = $_SESSION["adminId"];
 		}
-		if (! is_int($userId))
+		if (! ctype_digit($userId))
 			$userId = 'NULL';
 		$content = $this->myVarExport($_GET, 2000);
-		$content2 = $this->myVarExport($_POST, 2000);
+		$ct = $_SERVER["HTTP_CONTENT_TYPE"];
+		if (! preg_match('/x-www-form-urlencoded|form-data/i', $ct)) {
+			$post = file_get_contents("php://input");
+			$content2 = $this->myVarExport($post, 2000);
+		}
+		else {
+			$content2 = $this->myVarExport($_POST, 2000);
+		}
 		if ($content2 != "")
 			$content .= ";\n" . $content2;
 		$remoteAddr = @$_SERVER['REMOTE_ADDR'] ?: 'unknown';
@@ -488,7 +511,7 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 			$values = (string)$id;
 		}
 		foreach ($_POST as $k=>$v) {
-			$k = htmlentities($k);
+			$k = htmlEscape($k);
 			if ($k === "id")
 				continue;
 			// ignore non-field param
@@ -505,7 +528,7 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 				$values .= ", ";
 			}
 			$keys .= $k;
-			$values .= Q(htmlentities($v));
+			$values .= Q(htmlEscape($v));
 		}
 		if (strlen($keys) == 0) 
 			throw new MyException(E_PARAM, "no field found to be added");
@@ -525,7 +548,7 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 		$id = mparam("id", $_GET);
 		$kv = "";
 		foreach ($_POST as $k=>$v) {
-			$k = htmlentities($k);
+			$k = htmlEscape($k);
 			if ($k === 'id')
 				continue;
 			// ignore non-field param
@@ -548,7 +571,7 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 				$kv .= flag_getExpForSet($k, $v);
 			}
 			else
-				$kv .= "$k=" . Q(htmlentities($v));
+				$kv .= "$k=" . Q(htmlEscape($v));
 		}
 		if (strlen($kv) == 0) {
 			addLog("no field found to be set");
@@ -1345,6 +1368,94 @@ function apiMain()
 	}
 }
 
+class BatchApiApp extends AppBase
+{
+	protected $apiApp;
+	protected $useTrans;
+
+	public $ac;
+
+	function __construct($apiApp, $useTrans)
+	{
+		$this->apiApp = $apiApp;
+		$this->useTrans = $useTrans;
+	}
+
+	protected function onExec()
+	{
+		$this->apiApp->call($this->ac, !$this->useTrans);
+	}
+
+	protected function onErr($code, $msg, $msg2)
+	{
+		setRet($code, $msg, $msg2);
+	}
+
+	protected function onAfter($ok)
+	{
+		global $X_RET_STR;
+		global $g_dbgInfo;
+		$X_RET_STR = null;
+		$g_dbgInfo = [];
+	}
+
+	static function handleBatchRef($ref, $retVal)
+	{
+		foreach ($ref as $k) {
+			if (isset($_GET[$k])) {
+				$_GET[$k] = self::calcRefValue($_GET[$k], $retVal);
+			}
+			if (isset($_POST[$k])) {
+				$_POST[$k] = self::calcRefValue($_POST[$k], $retVal);
+			}
+		}
+	}
+
+	// 原理：
+	// "{$n.id}" => "$f(n)["id"]"
+	// 如果计算错误，则返回NULL
+	private static function calcRefValue($val, $arr)
+	{
+		$f = function ($n) use ($arr) {
+			if ($n <= 0)
+				$n = count($arr) + $n;
+			else 
+				$n -= 1;
+			@$e = $arr[$n];
+			if (! isset($e) || $e[0] != 0)
+				return;
+			
+			return $e[1];
+		};
+
+		$calcOne = function ($expr) use ($f) {
+			$expr1 = preg_replace_callback('/\$(-?\d+)|\.(\w+)/', function ($ms) use ($f) {
+				@list ($m, $n, $prop) = $ms;
+				$ret = null;
+				if ($n != null) {
+					$ret = "\$f({$n})";
+				}
+				else if ($prop != null) {
+					$ret = "[\"{$prop}\"]";
+				}
+				return $ret;
+			}, $expr);
+			$rv = eval("return @({$expr1});");
+			return $rv;
+		};
+		
+		$v1 = preg_replace_callback('/\{(.+?)\}/', function ($ms) use ($calcOne) {
+			$expr = $ms[1];
+			$rv = $calcOne($expr);
+			if (!isset($rv))
+				$rv = "null";
+			return $rv;
+		}, $val);
+		addLog("### batch ref: `{$val}' -> `{$v1}'");
+		return $v1;
+	}
+}
+
 class ApiApp extends AppBase
 {
 	private $apiLog;
@@ -1360,6 +1471,7 @@ class ApiApp extends AppBase
 			}
 			header("Cache-Control: no-cache");
 		}
+		setServerRev();
 
 		// 支持PATH_INFO模式。
 		@$path = $this->getPathInfo();
@@ -1377,6 +1489,7 @@ class ApiApp extends AppBase
 
 		dbconn();
 
+		global $DBH;
 		if (! isCLI())
 			session_start();
 
@@ -1387,14 +1500,92 @@ class ApiApp extends AppBase
 		$this->apiWatch = new ApiWatch($ac);
 		$this->apiWatch->execute();
 
+		if ($ac == "batch") {
+			$useTrans = param("useTrans", false, $_GET);
+			$ret = $this->batchCall($useTrans);
+		}
+		else {
+			$ret = $this->call($ac, true);
+		}
+
+		return $ret;
+	}
+
+	protected function batchCall($useTrans)
+	{
+		$method = $_SERVER["REQUEST_METHOD"];
+		if ($method !== "POST")
+			throw new MyException(E_PARAM, "batch MUST use `POST' method");
+
+		$s = file_get_contents("php://input");
+		$calls = json_decode($s, true);
+		if (! is_array($calls))
+			throw new MyException(E_PARAM, "bad batch request");
+
 		global $DBH;
-		$DBH->beginTransaction();
+		global $X_RET;
+		// 以下过程不允许抛出异常
+		$batchApiApp = new BatchApiApp($this, $useTrans);
+		if ($useTrans)
+			$DBH->beginTransaction();
+		$solo = ApiFw_::$SOLO;
+		ApiFw_::$SOLO = false;
+		$retVal = [];
+		$retCode = 0;
+		$GLOBALS["errorFn"] = function () {};
+		foreach ($calls as $call) {
+			if ($useTrans && $retCode) {
+				$retVal[] = [E_ABORT, "事务失败，取消执行", "batch call cancelled."];
+				continue;
+			}
+			if (! isset($call["ac"])) {
+				$retVal[] = [E_PARAM, "参数错误", "bad batch request: require `ac'"];
+				continue;
+			}
+
+			$_GET = $call["get"] ?: [];
+			$_POST = $call["post"] ?: [];
+			if ($call["ref"]) {
+				if (! is_array($call["ref"])) {
+					$retVal[] = [E_PARAM, "参数错误", "batch `ref' should be array"];
+					continue;
+				}
+				BatchApiApp::handleBatchRef($call["ref"], $retVal);
+			}
+			$_REQUEST = array_merge($_GET, $_POST);
+
+			$batchApiApp->ac = $call["ac"];
+			// 如果batch使用trans, 则单次调用不用trans
+			$batchApiApp->exec(! $useTrans);
+
+			$retCode = $X_RET[0];
+			if ($retCode && $useTrans) {
+				if ($DBH && $DBH->inTransaction())
+				{
+					$DBH->rollback();
+				}
+			}
+			$retVal[] = $X_RET;
+		}
+		if ($useTrans && $DBH && $DBH->inTransaction())
+			$DBH->commit();
+		ApiFw_::$SOLO = $solo;
+		setRet(0, $retVal);
+		return $retVal;
+	}
+
+	// 将被BatchApiApp调用
+	public function call($ac, $useTrans)
+	{
+		global $DBH;
+		if ($useTrans)
+			$DBH->beginTransaction();
 		$fn = "api_$ac";
 		if (preg_match('/^(\w+)\.(add|set|get|del|query)$/', $ac, $ms)) {
 			$tbl = $ms[1];
 			# TODO: check meta
 			if (! preg_match('/^\w+$/', $tbl))
-				throw new MyException(E_PARAM, "bad table $k");
+				throw new MyException(E_PARAM, "bad table {$tbl}");
 			$ac1 = $ms[2];
 			$ret = tableCRUD($ac1, $tbl);
 		}
@@ -1402,9 +1593,10 @@ class ApiApp extends AppBase
 			$ret = $fn();
 		}
 		else {
-			throw new MyException(E_PARAM, "Bad request - unknown ac: $ac");
+			throw new MyException(E_PARAM, "Bad request - unknown ac: {$ac}");
 		}
-		$DBH->commit();
+		if ($useTrans)
+			$DBH->commit();
 		if (!isset($ret))
 			$ret = "OK";
 		setRet(0, $ret);
@@ -1422,6 +1614,10 @@ class ApiApp extends AppBase
 			$this->apiWatch->postExecute();
 		if ($this->apiLog)
 			$this->apiLog->logAfter();
+
+		// 及时关闭数据库连接
+		global $DBH;
+		$DBH = null;
 	}
 
 	private function getPathInfo()
@@ -1454,7 +1650,7 @@ class ApiApp extends AppBase
 	private function parseRestfulUrl($pathInfo)
 	{
 		$method = $_SERVER["REQUEST_METHOD"];
-		$ac = htmlentities(substr($pathInfo,1));
+		$ac = htmlEscape(substr($pathInfo,1));
 		// POST /login  (小写开头)
 		// GET/POST /Store.add (含.)
 		if (ctype_lower($ac[0]) || strpos($ac, '.') !== false)

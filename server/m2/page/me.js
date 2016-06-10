@@ -7,6 +7,6 @@ function initPageMe()
 
 	function onPageBeforeShow()
 	{
-		applyNamedData(jpage, g_data.userInfo);
+		setFormData(jpage, g_data.userInfo);
 	}
 }

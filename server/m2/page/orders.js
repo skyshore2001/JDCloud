@@ -2,15 +2,13 @@ function initPageOrders()
 {
 	var jpage = $(this);
 
-	initNavbarAndList(jpage, {
+	var lstIf = initPageList(jpage, {
 		pageItf: PageOrders,
 		navRef: ">.hd .mui-navbar",
 		listRef: ">.bd .p-list",
-		onGetQueryParam: function (jlst, callParam) {
-			callParam.ac = "Ordr.query";
-			var param = callParam.queryParam;
-			param.orderby = "id desc";
-			param.cond = jlst.attr("data-cond");
+		onGetQueryParam: function (jlst, queryParam) {
+			queryParam.ac = "Ordr.query";
+			queryParam.orderby = "id desc";
 		},
 		onAddItem: onAddItem,
 		onNoItem: onNoItem,
