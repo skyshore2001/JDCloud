@@ -2,7 +2,7 @@
 <html>
 <head>
 <link rel="Stylesheet" type="text/css" href="style.css">
-<title>WebӦ�ò���</title>
+<title>Web应用部署</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 </head>
 <body>
@@ -159,16 +159,16 @@ loadScript("cordova/cordova.js?__HASH__");
 &lt;script src="main_321f2a.js"&gt;&lt;/script&gt;
 </pre>
 
-<h2 id="toc_1.2"><a name="Web应用编译及部署 ">2 Web应用编译及部署 </a></h2>
+<h2 id="toc_1.2"><a name="Web应用编译及部署">2 Web应用编译及部署</a></h2>
 
-<h3 id="toc_1.2.1"><a name="需求 ">2.1 需求 </a></h3>
+<h3 id="toc_1.2.1"><a name="需求">2.1 需求</a></h3>
 
 <p>
 编译工具需求：
 </p>
 <ul>
 <li>
-解决文件缓存问题，自动替换`_<em>HASH</em>_`部分
+解决文件缓存问题，自动替换<code>__HASH__</code>部分
 
 <li>
 合并与压缩(minify) js/css等文件
@@ -295,7 +295,7 @@ cat cordova.js cordova_plugins.js \
 
 <ul>
 <li>
-"HASH": 将`_<em>HASH</em>_` 标识换为实际文件的hash值。对html文件，还可根据WEBCC_BEGIN等标识做文件归并。
+"HASH": 将<code>__HASH__</code> 标识换为实际文件的hash值。对html文件，还可根据WEBCC_BEGIN等标识做文件归并。
 
 <li>
 shell脚本块。注意，当前目录为{src-folder}; 且可以用变量 $TARGET 表示最终文件。
@@ -462,7 +462,7 @@ build_web.sh
 </p>
 <ul>
 <li>
-前端工程与rails中的发布工具：http://www.zhihu.com/question/20790576
+前端工程与rails中的发布工具：<a href="http://www.zhihu.com/question/20790576">http://www.zhihu.com/question/20790576</a>
 
 </ul>
 
