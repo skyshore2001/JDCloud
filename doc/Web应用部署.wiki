@@ -1,7 +1,5 @@
  = Web应用部署 =
 
-2015/8 梁健
-
 == 从浏览器缓存问题讲起 ==
 
 对于单应用型网页，假设入口为 index.html, 它引用一些js与css。（部分js会动态加载其它js文件）
@@ -35,8 +33,6 @@
 
 在Apache的配置文件中设置目录的AllowOverride All权限，允许目录使用.htaccess自定义规则：
 
-（可将这些配置添加到一个新文件xeyc.conf中）
-
 {{{
 <Directory "/alidata/www/default/cheguanjia/">
 	Options FollowSymLinks
@@ -50,15 +46,16 @@
 
 (新版本的apache可以用Require语句替代上两句)
 
-对于web应用所有目录（m2/目录），增加.htaccess目录如下：
-（设置访问 m2/index.html 或直接 m2/ 时，必须来服务器验证）
-
+对于想要禁用缓存的目录（例如移动客户端目录 `m2` 下），可以添加配置文件 .htaccess：
 {{{
 <FilesMatch "(\.html|\/)$">
 	#Header set Cache-Control "max-age=604800"
 	Header set Cache-Control "no-cache"
 </FilesMatch>
 }}}
+
+注意：成熟的Web服务器一般都支持文件版本（通过ETag等）检查，即浏览器请求的文件如果没有变化，则不会传输文件。
+因而，设置"no-cache"并不意味着客户端每次都要重新到服务器取文件，而是要求浏览器每次都去服务器检查文件是否需要更新。
 
 ==== 解决关联文件缓存 ====
 
@@ -236,17 +233,21 @@ cat common.js app_fw.js app.js | jsmin > $TARGET',
 - git (版本管理)
 - php/webcc (生成web发布目录)
 - FileZilla (ftp手工上传工具)
-- curl (ftp自动上传工具)
+- bash (Linux命令解析器，Windows系统中一般在git工具包中已包含)
+- curl (ftp自动上传工具，一般在git工具包中已包含)
 
 准备：
-- 获取最新代码的rel分支, 存到目录`xeyc-sys`(或其它名字), 获取线上web目录的内容镜像到目录`xeyc-sys-online` (勿改此文件夹名称), 如果用命令行，参照：
+- 已配置好webcc.conf.php.
+- 假定项目名为`jdcloud`, 那么在同一级创建一个发布目录名称为`jdcloud-online`，用git进行初始化。它将对应线上版本。
  {{{
-git clone -b rel server-pc:xeyc-sys xeyc-sys
-git clone server-pc:xeyc-sys-online xeyc-sys-online
+mkdir jdcloud-online
+cd jdcloud-online
+git init
  }}}
-
-更新步骤：
-- 进入xeyc-sys目录, 打开git bash，运行命令
+- 配置服务器上的ftp帐号，然后配置项目根目录下的 build_web.sh。其中"OUT_DIR"为发布代码库的路径。
+ 
+发布步骤：
+- 进入项目目录, 打开git bash，运行命令
  {{{
 build_web.sh
  }}}

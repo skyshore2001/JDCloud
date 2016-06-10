@@ -78,12 +78,18 @@
 <li><a href="#toc_1.6">6 登录类型与权限管理 </a>
 <li><a href="#toc_1.7">7 服务端部署与升级</a>
 <ul>
-<li><a href="#toc_1.7.1">7.1 用法</a>
+<li><a href="#toc_1.7.1">7.1 初始化配置 </a>
+<li><a href="#toc_1.7.2">7.2 升级管理</a>
 <ul>
-<li><a href="#toc_1.7.1.1">7.1.1 交互命令</a>
-<li><a href="#toc_1.7.1.2">7.1.2 非交互命令 </a>
+<li><a href="#toc_1.7.2.1">7.2.1 用法</a>
+<ul>
+<li><a href="#toc_1.7.2.1.1">7.2.1.1 交互命令</a>
+<li><a href="#toc_1.7.2.1.2">7.2.1.2 非交互命令 </a>
 </ul>
-<li><a href="#toc_1.7.2">7.2 写升级脚本 </a>
+<li><a href="#toc_1.7.2.2">7.2.2 写升级脚本 </a>
+</ul>
+<li><a href="#toc_1.7.3">7.3 版本发布</a>
+<li><a href="#toc_1.7.4">7.4 客户端自动升级 </a>
 </ul>
 <li><a href="#toc_1.8">8 工具接口</a>
 <ul>
@@ -3107,6 +3113,36 @@ AUTH_TEST_MODE
 
 <h2 id="toc_1.7"><a name="服务端部署与升级">7 服务端部署与升级</a></h2>
 
+<h3 id="toc_1.7.1"><a name="初始化配置 ">7.1 初始化配置 </a></h3>
+
+<p>
+项目初始化步骤：
+</p>
+<ul>
+<li>
+访问URL: <code>http://{server}/{app}/tool/init.php</code> 检查php环境是否满足需求。
+
+<li>
+为应用创建数据库和专用用户，进行初始化，生成指定数据库和配置文件 php/conf.user.php.
+
+<li>
+使用命令行工具 tool/upgrade.php 连接数据库进行表创建或更新。(详见下面章节)
+
+<li>
+如果有initdata目录，查看该目录下相关文档，确定是否需要导入表内容或创建视图、函数等。
+
+</ul>
+
+<p>
+如果需要重新配置，可删除配置文件 php/conf.user.php后再运行本工具。
+</p>
+
+<p>
+在配置文件中，很多帐户口令、密码采用base64等方式保存，可以用在线工具 <code>http://{server}/{app}/tool/tool.php</code>进行编解码。
+</p>
+
+<h3 id="toc_1.7.2"><a name="升级管理">7.2 升级管理</a></h3>
+
 <p>
 tool/upgrade.php - 升级管理
 </p>
@@ -3146,7 +3182,7 @@ P_DB="115.29.199.210/carsvc_test" 表示位于IP=115.29.199.210的远程mysql db
 环境变量P_DBCRED指定连接数据库的用户名密码。如未指定，则使用php/dbcred.php中的设定。
 </p>
 
-<h3 id="toc_1.7.1"><a name="用法">7.1 用法</a></h3>
+<h4 id="toc_1.7.2.1"><a name="用法">7.2.1 用法</a></h4>
 
 <p>
 upgrade.php
@@ -3156,7 +3192,7 @@ upgrade.php
 缺省进入命令行交互.
 </p>
 
-<h4 id="toc_1.7.1.1"><a name="交互命令">7.1.1 交互命令</a></h4>
+<h5 id="toc_1.7.2.1.1"><a name="交互命令">7.2.1.1 交互命令</a></h5>
 
 <p>
 一般命令格式与函数调用类似, 也支持直接的sql语句, 如
@@ -3480,7 +3516,7 @@ id	name	Svc_ItemType(ittId,svcId,ItemType.name)
 上例中"Svc_ItemType"多了一个参数"ItemType.name", 它表示下面内容是关联到ItemType.name字段，即需要先用"SELECT id FROM ItemType WHERE name=?"查询出Svc_ItemType.ittId(第一个参数)，再同上例进行添加。
 <img src="" />
 </p>
-<h4 id="toc_1.7.1.2"><a name="非交互命令 ">7.1.2 非交互命令 </a></h4>
+<h5 id="toc_1.7.2.1.2"><a name="非交互命令 ">7.2.1.2 非交互命令 </a></h5>
 
 <p>
 例:
@@ -3494,7 +3530,7 @@ upgrade.php all
 upgrade.php upgrade
 </pre>
 
-<h3 id="toc_1.7.2"><a name="写升级脚本 ">7.2 写升级脚本 </a></h3>
+<h4 id="toc_1.7.2.2"><a name="写升级脚本 ">7.2.2 写升级脚本 </a></h4>
 
 <p>
 当表结构变化时, 
@@ -3547,6 +3583,84 @@ if (dbver &lt; 4) {
 update cinf set ver, update_tm
 </pre>
 
+<h3 id="toc_1.7.3"><a name="版本发布">7.3 版本发布</a></h3>
+
+<p>
+版本发布又称“部署”或“版本上线”，是将开发版本进行构建和优化后，上传线上服务器的过程。
+</p>
+
+<p>
+筋斗云框架使用webcc组件进行版本发布，对构建后的版本，也要求git进行代码库管理。
+webcc提供的功能主要有：
+</p>
+<ul>
+<li>
+快速的差量热更新。只上传版本间有差异的文件到服务器。
+
+<li>
+构建优化。通过文件合并、最小化压缩等手段提高应用性能，通过文件指纹利用浏览器缓存等。
+
+</ul>
+
+<p>
+版本发布的配置包括：
+</p>
+<ul>
+<li>
+配置构建过程：编写webcc的配置文件：server/webcc.conf.php，详见文档 <a href="Web应用部署.html">Web应用部署</a>
+
+<li>
+创建发布代码库：创建一个新文件夹并用git进行项目初始化。习惯上该库命名为"{project}-online"，如项目名为"jdcloud"，则发布库的名称为"jdcloud-online"。
+
+<li>
+配置服务器上的ftp帐号，然后配置项目根目录下的 build_web.sh。其中"OUT_DIR"为发布代码库的路径。
+
+</ul>
+
+<p>
+发布或上线过程很简单，直接在git bash中运行 build_web.sh 即可。
+（注意：它会用到curl, bash等工具，好在git工具包中已包含这些。）
+</p>
+
+<p>
+<strong>[开发版本号与发布版本号]</strong>
+</p>
+
+<p>
+在构建后，online文件夹中会自动生成文件`revision.txt`，代表当前开发版本号。下次构建时通过检查该版本与最新开发版本间的差异，可实现差量构建（注意：其中还包含依赖文件管理）。
+</p>
+
+<p>
+在上传服务器后，会自动在服务器上生成文件<code>revision_rel.txt</code>, 代表当前发布版本号。下次上传时，只会进行差量上传。
+</p>
+
+<h3 id="toc_1.7.4"><a name="客户端自动升级 ">7.4 客户端自动升级 </a></h3>
+
+<p>
+对于Web应用，每次浏览器打开时均已是最新版本；但是如果浏览器一直未关闭，则需要手工刷新页面才能更新。
+</p>
+
+<p>
+在手机上，特别是将Web应用打包为手机原生应用后，当服务器升级后，用户必须将应用重新打开才能获得最新版本，这相当于在浏览器中刷新。
+如果用户一直不退出应用（这在手机上很常见，应用会在后台一直缓存着），必须有机制能保证版本更新后可自动刷新。
+</p>
+
+<p>
+筋斗云框架支持客户端自动升级，原理如下：
+</p>
+<ul>
+<li>
+服务端API自动将版本号通过HTTP头`X-Daca-Server-Rev<code>发送给客户端。版本号通过全局变量</code>API_VER<code>设定，或从文件`revision.txt</code>读取（注意该文件由webcc发布时自动生成），版本号最多为6位。
+
+<li>
+客户端在访问API时，检查版本号是否与本地之前缓存的版本号一致，如果不一致则自动刷新回首页。
+
+</ul>
+
+<p>
+通过以上过程，用户不必退出应用再重新打开，就能实现版本自动升级。
+</p>
+
 <h2 id="toc_1.8"><a name="工具接口">8 工具接口</a></h2>
 
 <p>
@@ -3583,9 +3697,9 @@ log.php(f?=ext, sz?=2500)
 </p>
 
 <pre>
-tool/log.php
+log.php
 
-tool/log.php?f=trace
+log.php?f=trace
 (查看trace log)
 </pre>
 
@@ -3600,25 +3714,7 @@ init.php(ac?)
 </p>
 
 <p>
-项目初始化步骤：
-</p>
-<ul>
-<li>
-访问URL: <code>http://{server}/{path}/tool/init.php</code> 检查php环境是否满足需求。
-
-<li>
-为应用创建数据库和专用用户，进行初始化，生成指定数据库和配置文件 php/conf.user.php.
-
-<li>
-使用命令行工具 tool/upgrade.php 连接数据库进行表创建或更新。
-
-<li>
-如果有initdata目录，查看该目录下相关文档，确定是否需要导入表内容或创建视图、函数等。
-
-</ul>
-
-<p>
-如果需要重新配置，可删除配置文件 php/conf.user.php后再运行本工具。
+项目初始化方法参考前面章节"服务端部署与升级"-&gt;"初始化配置".
 </p>
 
 <h3 id="toc_1.8.3"><a name="tool/tool.php">8.3 tool/tool.php</a></h3>
