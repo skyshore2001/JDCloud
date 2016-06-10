@@ -294,6 +294,19 @@ html, body {
 	background-color: #04AE02;
 }
 
+.mui-pullPrompt {
+	overflow: hidden;
+	text-align: center;
+	vertical-align: middle;
+}
+
+.mui-loadPrompt {
+	background-color: #FBF9FE;
+	padding: 5px 3px;
+	text-align: center;
+	vertical-align: middle;
+}
+
 .sp {
 	margin: 10px;
 }

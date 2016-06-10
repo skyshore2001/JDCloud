@@ -110,6 +110,22 @@ function setRet($code, $data = null, $internalMsg = null)
 	}
 }
 
+/**
+@fn setServerRev()
+
+根据全局变量"SERVER_REV"或应用根目录下的文件"revision.txt"， 来设置HTTP响应头"X-Daca-Server-Rev"表示服务端版本信息（最多6位）。
+
+客户端框架可本地缓存该版本信息，一旦发现不一致，可刷新应用。
+ */
+function setServerRev()
+{
+	$ver = $GLOBALS["SERVER_REV"] ?: @file_get_contents("{$GLOBALS['BASE_DIR']}/revision.txt");
+	addLog($ver);
+	if (! $ver)
+		return;
+	$ver = substr($ver, 0, 6);
+	header("X-Daca-Server-Rev: {$ver}");
+}
 // }}}
 
 // ====== classes {{{
@@ -1455,6 +1471,7 @@ class ApiApp extends AppBase
 			}
 			header("Cache-Control: no-cache");
 		}
+		setServerRev();
 
 		// 支持PATH_INFO模式。
 		@$path = $this->getPathInfo();

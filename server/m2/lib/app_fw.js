@@ -4,7 +4,7 @@ var g_args = {}; // {_test, _debug, cordova}
 var g_cordova = 0; // the version for the android/ios native cient. 0 means web app.
 
 // 应用内部共享数据
-var g_data = {}; // {userInfo}
+var g_data = {}; // {userInfo, serverRev}
 // 应用配置项
 var g_cfg = { logAction: false };
 
@@ -351,6 +351,44 @@ function evalAttr(jo, name, ctx)
 		}
 	}
 	return val;
+}
+
+/**
+@fn getTimeDiffDscr(tm, tm1)
+
+从tm到tm1的时间差描述，如"2分钟前", "3天前"等。
+
+tm和tm1可以为时间对象或时间字符串
+*/
+function getTimeDiffDscr(tm, tm1)
+{
+	if (!tm || !tm1)
+		return "";
+	if (! (tm instanceof Date)) {
+		tm = parseDate(tm);
+	}
+	if (! (tm1 instanceof Date)) {
+		tm1 = parseDate(tm1);
+	}
+	var diff = (tm1 - tm) / 1000;
+	if (diff < 60) {
+		return "刚刚";
+	}
+	diff /= 60; // 分钟
+	if (diff < 60) {
+		return Math.floor(diff) + "分钟前";
+	}
+	diff /= 60; // 小时
+	if (diff < 48) {
+		return Math.floor(diff) + "小时前";
+	}
+	diff /= 24; // 天
+	if (diff < 365*2)
+		return Math.floor(diff) + "天前";
+	diff /= 365;
+	if (diff < 10)
+		return Math.floor(diff) + "年前";
+	return "很久前";
 }
 // }}}
 
@@ -1531,6 +1569,10 @@ allow throw("abort") as abort behavior.
 	setOnError();
 
 	$.ajaxSetup({
+		beforeSend: function (xhr) {
+			// 保存xhr供dataFilter等函数内使用。
+			this.xhr_ = xhr;
+		},
 		//dataType: "text",
 		dataFilter: function (data, type) {
 			if (type == "text") {
@@ -1654,6 +1696,18 @@ allow throw("abort") as abort behavior.
 	// 注意：服务端不应返回null, 否则客户回调无法执行; 习惯上返回false表示让回调处理错误。
 	function defDataProc(rv)
 	{
+		// ajax-beforeSend回调中设置
+		if (this.xhr_) {
+			var serverRev = this.xhr_.getResponseHeader("X-Daca-Server-Rev");
+			if (serverRev && g_data.serverRev != serverRev) {
+				if (g_data.serverRev) {
+					reloadSite();
+				}
+				console.log("Server Revision: " + serverRev);
+				g_data.serverRev = serverRev;
+			}
+		}
+
 		var ctx = this.ctx_ || {};
 		try {
 			if (typeof(rv) == "string")
@@ -2670,6 +2724,8 @@ function initPullList(container, opt)
 	var SAMPLE_INTERVAL = 200; // ms
 	var TRIGGER_AUTOLOAD = 30; // px
 
+	var lastUpdateTm_ = new Date();
+
 	window.requestAnimationFrame = window.requestAnimationFrame || function (fn) {
 		setTimeout(fn, 1000/60);
 	};
@@ -2696,35 +2752,43 @@ function initPullList(container, opt)
 		return [t.pageX, t.pageY];
 	}
 
-	var jo;
+	var jo_;
 	function onHint(ac, dy, threshold)
 	{
 		var msg = null;
-		if (jo == null) {
-			jo = $("<div style='overflow:hidden;text-align:center;vertical-align:middle'></div>");
+		if (jo_ == null) {
+			jo_ = $("<div class='mui-pullPrompt'></div>");
 		}
 
 		if (ac == "U") {
 			msg = dy >= threshold? "<b>松开加载~~~</b>": "即将加载...";
 		}
 		else if (ac == "D") {
-			msg = dy >= threshold? "<b>松开刷新~~~</b>": "即将刷新...";
+			var diff = getTimeDiffDscr(lastUpdateTm_, new Date());
+			var str = diff + "刷新";
+			if (dy >= threshold) {
+				msg = "<b>" + str + "~~~</b>";
+			}
+			else {
+				msg = str;
+			}
 		}
-		var maxY = threshold*1.2;
-		if (dy > maxY)
-			dy = maxY;
+		var maxY = threshold * 1.2;
+		var height = Math.min(dy, maxY, 6*Math.sqrt(dy));
+		// 6*sqrt(x) => 36px内线性，超过36px则衰减
 
 		if (msg == null) {
-			jo.height(0).remove();
+			jo_.height(0).remove();
 			return;
 		}
-		jo.html(msg);
-		jo.height(dy).css("lineHeight", dy + "px");
+		jo_.html(msg);
+		jo_.height(height).css("lineHeight", height + "px");
+			
 		if (ac == "D") {
-			jo.prependTo(cont_);
+			jo_.prependTo(cont_);
 		}
 		else if (ac == "U") {
-			jo.appendTo(cont_);
+			jo_.appendTo(cont_);
 		}
 	}
 
@@ -2911,6 +2975,7 @@ function initPullList(container, opt)
 			// pulldown
 			if (ac == "D") {
 				console.log("refresh");
+				lastUpdateTm_ = new Date();
 				opt_.onLoadItem.call(cont_, true);
 			}
 			else if (ac == "U") {
@@ -3120,6 +3185,12 @@ queryParam: {ac?, res?, cond?, ...}
 
 refresh: Function(), 刷新当前列表
 markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 下次浏览该列表时刷新。
+
+## css类
+
+可以对以下两个类指定样式：
+mui-pullPrompt - 下拉刷新提示块
+mui-loadPrompt - 自动加载提示块
  */
 window.initNavbarAndList = initPageList;
 function initPageList(jpage, opt)
@@ -3232,10 +3303,25 @@ function initPageList(jpage, opt)
 		if (nextkey) {
 			queryParam._pagekey = nextkey;
 		}
+
+		var loadMore_ = !!nextkey;
+		var joLoadMore_;
+		if (loadMore_) {
+			if (joLoadMore_ == null) {
+				joLoadMore_ = $("<div class='mui-loadPrompt'>正在加载...</div>");
+			}
+			joLoadMore_.appendTo(jlst);
+			// scroll to bottom
+			var cont = jlst.parent()[0];
+			cont.scrollTop = cont.scrollHeight;
+		}
 		callSvr(queryParam.ac, queryParam, api_OrdrQuery);
 
 		function api_OrdrQuery(data)
 		{
+			if (loadMore_) {
+				joLoadMore_.remove();
+			}
 			$.each(rs2Array(data), function (i, itemData) {
 				opt_.onAddItem && opt_.onAddItem(jlst, itemData);
 			});
