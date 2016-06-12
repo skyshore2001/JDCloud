@@ -928,7 +928,18 @@ function CPageManager(app)
 			// 如果在pagebeforeshow中调用showPage显示其它页，则不显示当前页，避免页面闪烁。
 			if (toPageId != m_toPageId)
 			{
+				// NOTE: 如果toPageId与当前页面栈不一致，说明之前page还没入栈.
+				var doAdjustStack = self.m_pageStack.stack_[self.m_pageStack.sp_].pageRef != "#" + toPageId;
+				if (doAdjustStack) {
+					self.m_pageStack.push("#" + toPageId);
+				}
 				self.popPageStack(1);
+				// 调整栈后，新页面之后在hashchange中将无法入栈，故手工入栈。
+				// TODO: 如果在beforeShow中调用了多次showPage, 则仍有可能出故障。
+				if (doAdjustStack) {
+					self.m_pageStack.push("#" + m_toPageId);
+				}
+
 				jpage.appendTo(m_jstash);
 				return;
 			}
