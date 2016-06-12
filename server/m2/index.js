@@ -29,7 +29,7 @@ var g_data = {
 };
 
 var g_cfg = {
-	PAGE_SZ: 10,
+	PAGE_SZ: 20,
 	WAIT: 3000, // 3s
 };
 
@@ -104,13 +104,13 @@ function getDynCode(fn)
 function createCell(o)
 {
 	var html = "<li class=\"weui_cell\">";
-	if (o.hd) {
+	if (o.hd != null) {
 		html += "<div class=\"weui_cell_hd\">" + o.hd + "</div>";
 	}
-	if (o.bd) {
+	if (o.bd != null) {
 		html += "<div class=\"weui_cell_bd weui_cell_primary\">" + o.bd + "</div>";
 	}
-	if (o.ft) {
+	if (o.ft != null) {
 		html += "<div class=\"weui_cell_ft\">" + o.ft + "</div>";
 	}
 	html += "</li>";

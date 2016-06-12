@@ -1,18 +1,20 @@
 <div mui-initfn="initPageCreateOrder" mui-script="createOrder.js">
 	<div class="hd">
-		<a href="javascript:history.back();" class="icon-back"></a>
+		<a href="javascript:history.back();" class="icon icon-back"></a>
 		<h2>创建订单</h2>
 	</div><!-- /header -->
 
 	<form action="Ordr.add" class="bd weui_cells weui_cells_form">
-		<li class="weui_cell icon icon-search">
+		<li class="weui_cell">
+			<i class="icon icon-search"></i>
 			<label class="weui_cell_hd weui_label">选择套餐</label>
 			<select name="dscr" class="weui_cell_primary weui_select right">
 				<option value="基础套餐" data-amount=128>基础套餐 128元</option>
 				<option value="精英套餐" data-amount=228>精英套餐 228元</option>
 			</select>
 		</li>
-		<li class="weui_cell icon icon-dscr">
+		<li class="weui_cell">
+			<i class="icon icon-dscr"></i>
 			<label class="weui_cell_hd weui_label">备注信息</label>
 			<textarea id="cmt" name="cmt" class="weui_cell_primary weui_textarea right" placeholder="留个话"></textarea>
 		</li>

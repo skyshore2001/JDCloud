@@ -14,6 +14,7 @@
 
 // ====== defines {{{
 # error code definition:
+const E_ABORT = -100; // 客户端不报错
 const E_AUTHFAIL=-1;
 const E_OK=0;
 const E_PARAM=1;
@@ -147,7 +148,7 @@ function param_varr($str, $type, $name)
 				}
 				throw new MyException(E_PARAM, "Bad Request - param `$name`: list($type). require col: `$row0`[$i]");
 			}
-			$e = htmlentities($e);
+			$e = htmlEscape($e);
 			if ($t === "i") {
 				if (! ctype_digit($e))
 					throw new MyException(E_PARAM, "Bad Request - param `$name`: list($type). require integer col: `$row0`[$i]=`$e`.");
@@ -253,7 +254,7 @@ function param($name, $defVal = null, $col = null)
 	# check type
 	if (isset($ret) && is_string($ret)) {
 		// avoid XSS attack
-		$ret = htmlentities($ret);
+		$ret = htmlEscape($ret);
 		if ($type === "s") {
 		}
 		elseif ($type === "i") {
@@ -604,13 +605,15 @@ function dbconn($fnConfirm = null)
 	}
 	else {
 		// e.g. P_DB="115.29.199.210/carsvc"
-		if (! preg_match('/^"?(.*?)\/(\w+)"?$/', $DB, $ms))
+		// e.g. P_DB="115.29.199.210:3306/carsvc"
+		if (! preg_match('/^"?(.*?)(:(\d+))?\/(\w+)"?$/', $DB, $ms))
 			throw new MyException(E_SERVER, "bad db=`$DB`", "未知数据库");
 		$dbhost = $ms[1];
-		$dbname = $ms[2];
+		$dbport = $ms[3] ?: 3306;
+		$dbname = $ms[4];
 
 		list($dbuser, $dbpwd) = getCred($DBCRED); 
-		$C = ["mysql:host={$dbhost};dbname={$dbname}", $dbuser, $dbpwd];
+		$C = ["mysql:host={$dbhost};dbname={$dbname};port={$dbport}", $dbuser, $dbpwd];
 	}
 
 	if ($fnConfirm == null)
@@ -923,6 +926,13 @@ function hasSignFile($f)
 	global $BASE_DIR;
 	return file_exists("{$BASE_DIR}/{$f}");
 }
+
+function htmlEscape($s)
+{
+// 	if ($s[0] == '{' || $s[0] == '[')
+// 		return $s;
+	return htmlentities($s, ENT_NOQUOTES);
+}
 //}}}
 
 // ====== classes {{{
@@ -1081,10 +1091,13 @@ class Coord
 
 /**
 @class AppBase
+
+应用框架，用于提供符合BQP协议的接口。
+在onExec中返回协议数据；在onAfter中建议及时关闭DB.
  */
 class AppBase
 {
-	public function exec()
+	public function exec($handleTrans=true)
 	{
 		global $DBH;
 		global $ERRINFO;
@@ -1108,7 +1121,7 @@ class AppBase
 		}
 
 		try {
-			if ($DBH && $DBH->inTransaction())
+			if ($handleTrans && $DBH && $DBH->inTransaction())
 			{
 				if ($ok)
 					$DBH->commit();
@@ -1126,7 +1139,7 @@ class AppBase
 		}
 		catch (Exception $e) {}
 
-		$DBH = null;
+		//$DBH = null;
 		return $ret;
 	}
 
@@ -1141,8 +1154,11 @@ class AppBase
 		$fn($code, $msg, $msg2);
 	}
 
+	// 应用程序应及时关闭数据库连接
 	protected function onAfter($ok)
 	{
+		global $DBH;
+		$DBH = null;
 	}
 }
 // }}}

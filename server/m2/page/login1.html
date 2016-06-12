@@ -1,17 +1,19 @@
 <div mui-initfn="initPageLogin1" mui-script="login1.js">
 	<div class="hd">
-		<a href="javascript:history.back();" class="icon-back"></a>
+		<a href="javascript:history.back();" class="icon icon-back"></a>
 		<h1>登录</h1>
 	</div>
 
 	<form action="login" class="bd weui_cells weui_cells_form">
-		<div class="weui_cell icon icon-phone">
+		<div class="weui_cell">
+			<i class="icon icon-phone"></i>
 			<label for="txtPhone" class="weui_cell_hd weui_label">手机号</label>
 			<div class="weui_cell_bd weui_cell_primary">
 				<input name="uname" required placeholder="11位手机号" class="weui_input">
 			</div>
 		</div>
-		<div class="weui_cell icon icon-code">
+		<div class="weui_cell">
+			<i class="icon icon-code"></i>
 			<label for="txtPwd" class="weui_cell_hd weui_label">密码</label>
 			<div class="weui_cell_bd weui_cell_primary">
 				<input type="password" name="pwd" required placeholder="4位以上密码" minlength=4 class="weui_input">
