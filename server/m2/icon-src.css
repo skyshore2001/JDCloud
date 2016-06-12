@@ -1,0 +1,54 @@
+/* 导航栏图标 24x24 */
+/*
+.icon-home {
+	background-image: url(icon/24/home.png);
+}
+.active .icon-home {
+	background-image: url(icon/24/home2.png);
+}
+*/
+
+/* 列表项图标 16x16 */
+.icon-back {
+	background-image: url(icon/16/back.png);
+}
+.icon-menu {
+	background-image: url(icon/16/menu.png);
+}
+.icon-add {
+	background-image: url(icon/16/add.png);
+}
+.icon-edit {
+	background-image: url(icon/16/edit.png);
+}
+.icon-delete {
+	background-image: url(icon/16/delete.png);
+}
+.icon-refresh {
+	background-image: url(icon/16/refresh.png);
+}
+.icon-create {
+	background-image: url(icon/16/create.png);
+}
+.icon-search {
+	background-image: url(icon/16/search.png);
+}
+.icon-name {
+	background-image: url(icon/16/name.png);
+}
+.icon-dscr {
+	background-image: url(icon/16/dscr.png);
+}
+.icon-user {
+	background-image: url(icon/16/user.png);
+}
+.icon-phone {
+	background-image: url(icon/16/phone.png);
+}
+.icon-code {
+	background-image: url(icon/16/code.png);
+}
+.icon-address {
+	background-image: url(icon/16/address.png);
+}
+

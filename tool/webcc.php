@@ -6,7 +6,7 @@
 注意：
 
 - 修改webcc.conf.php会导致rebuild
-- 如果想强制rebuild, 可以删除输出文件夹下的revision_dev.txt, 比如当修改webcc.php后。
+- 如果想强制rebuild, 可以删除输出文件夹下的revision.txt, 比如当修改webcc.php后。
 - 如果本地有未提交的内容，也会更新到输出文件夹。
 - 设置环境变量 DBG_LEVEL=1 显示调试信息
 
@@ -250,7 +250,7 @@ $COPY_EXCLUDE[] = CFG_FILE;
 
 @mkdir($opts["outDir"], 0777, true);
 $outDir = realpath($opts["outDir"]);
-$verFile = "$outDir/revision_dev.txt";
+$verFile = "$outDir/revision.txt";
 $oldVer = null;
 if (file_exists($verFile)) {
 	$oldVer = @file($verFile, FILE_IGNORE_NEW_LINES)[0];

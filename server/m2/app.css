@@ -56,45 +56,42 @@ select.right {
 
 .icon {
 	background-repeat: no-repeat;
+	display: inline-block;
 }
 
 /* 适合 16x16 列表项或菜单项 */
 .mui-menu .icon {
+	width: 16px;
+	height: 16px;
+	margin: 2px 12px 0px -5px;
 	background-size: 16px;
-	background-position: 15px 13px;
-	padding-left: 40px;
 }
 
-.weui_cell.icon {
+.weui_cell .icon {
+	width: 16px;
+	height: 16px;
+	margin: 2px 12px 2px 5px;
 	background-size: 16px;
-	padding-left: 50px;
-	background-position: 20px 12px;
 }
 
 /* 适合 24x24 底部导航 */
 .mui-navbar .icon {
+	width: 24px;
+	height: 24px;
+	position: relative;
+	left: -5px;
+	top: 5px;
 	background-size: 24px;
-	background-position: 0px 3px;
-	padding-left: 32px;
-	padding-top: 5px;
-	display: inline-block;
 }
 
-/* 标题栏左右侧两个图标，一般是"返回"和"菜单"。放到.icon-xxx最前面，以便图片可被覆盖 */
-.icon-back {
-	background: url(icon/16/back.png) no-repeat center;
-	background-size: 16px;
+/* 标题栏左右侧两个图标，一般是返回和菜单。*/
+.hd > .icon {
 	width: 16px;
 	height: 16px;
-	padding: 10px;
+	margin: 10px;
 	position: absolute;
+	background-size: 16px;
 }
-.icon-menu {
-	background: url(icon/16/menu.png) no-repeat center;
-	background-size: 16px;
-	width: 16px;
-	height: 16px;
-	padding: 10px;
-	position: absolute;
+.hd > .icon:not(:first-of-type) {
 	right: 0;
 }
