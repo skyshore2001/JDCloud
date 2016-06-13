@@ -2702,7 +2702,7 @@ function setApp(app)
 本函数参数如下：
 
 @param container 容器，它的高度应该是限定的，因而当内部内容过长时才可出现滚动条
-@param opt {onLoadItem, autoLoadMore?=true, threshold?=80, onHint?}
+@param opt {onLoadItem, autoLoadMore?=true, threshold?=180, onHint?}
 
 @param onLoadItem function(isRefresh)
 
@@ -2733,7 +2733,7 @@ function setApp(app)
 function initPullList(container, opt)
 {
 	var opt_ = $.extend({
-		threshold: 80,
+		threshold: 180,
 		onHint: onHint,
 		autoLoadMore: true,
 	}, opt);
@@ -2793,9 +2793,7 @@ function initPullList(container, opt)
 			if (rv != null)
 				msg = rv;
 		}
-		var maxY = threshold * 1.2;
-		var height = Math.min(dy, maxY, 6*Math.sqrt(dy));
-		// 6*sqrt(x) => 36px内线性，超过36px则衰减
+		var height = Math.min(dy, 100, 2.0*Math.pow(dy, 0.7));
 
 		if (msg == null) {
 			jo_.height(0).remove();
