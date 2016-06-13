@@ -802,6 +802,7 @@ function CPageManager(app)
 				}
 			}
 			$(document).swipe({
+				excludedElements: "input,select,textarea,.noSwipe", // 与缺省相比，去掉了a,label,button
 				swipeLeft: swipeH,
 				swipeRight: swipeH,
 				threshold: 100, // default=75
@@ -928,7 +929,18 @@ function CPageManager(app)
 			// 如果在pagebeforeshow中调用showPage显示其它页，则不显示当前页，避免页面闪烁。
 			if (toPageId != m_toPageId)
 			{
+				// NOTE: 如果toPageId与当前页面栈不一致，说明之前page还没入栈.
+				var doAdjustStack = self.m_pageStack.stack_[self.m_pageStack.sp_].pageRef != "#" + toPageId;
+				if (doAdjustStack) {
+					self.m_pageStack.push("#" + toPageId);
+				}
 				self.popPageStack(1);
+				// 调整栈后，新页面之后在hashchange中将无法入栈，故手工入栈。
+				// TODO: 如果在beforeShow中调用了多次showPage, 则仍有可能出故障。
+				if (doAdjustStack) {
+					self.m_pageStack.push("#" + m_toPageId);
+				}
+
 				jpage.appendTo(m_jstash);
 				return;
 			}
@@ -2690,7 +2702,7 @@ function setApp(app)
 本函数参数如下：
 
 @param container 容器，它的高度应该是限定的，因而当内部内容过长时才可出现滚动条
-@param opt {onLoadItem, autoLoadMore?=true, threshold?=80, onHint?}
+@param opt {onLoadItem, autoLoadMore?=true, threshold?=180, onHint?}
 
 @param onLoadItem function(isRefresh)
 
@@ -2709,11 +2721,19 @@ function setApp(app)
 
 提供提示用户刷新或加载的动画效果. 缺省实现是下拉或上拉时显示提示信息。
 
+@param onHintText function(ac, uptoThreshold)
+
+修改用户下拉/上拉时的提示信息。仅当未设置onHint时有效。onHint会生成默认提示，如果onHintText返回非空，则以返回内容替代默认内容。
+内容可以是一个html字符串，所以可以加各种格式。
+
+	ac:: String. 当前动作，"D"或"U".
+	uptoThreshold:: Boolean. 是否达到阈值
+
 */
 function initPullList(container, opt)
 {
 	var opt_ = $.extend({
-		threshold: 80,
+		threshold: 180,
 		onHint: onHint,
 		autoLoadMore: true,
 	}, opt);
@@ -2725,6 +2745,7 @@ function initPullList(container, opt)
 	var TRIGGER_AUTOLOAD = 30; // px
 
 	var lastUpdateTm_ = new Date();
+	var dy_; // 纵向移动。<0为上拉，>0为下拉
 
 	window.requestAnimationFrame = window.requestAnimationFrame || function (fn) {
 		setTimeout(fn, 1000/60);
@@ -2760,22 +2781,19 @@ function initPullList(container, opt)
 			jo_ = $("<div class='mui-pullPrompt'></div>");
 		}
 
+		var uptoThreshold = dy >= threshold;
 		if (ac == "U") {
-			msg = dy >= threshold? "<b>松开加载~~~</b>": "即将加载...";
+			msg = uptoThreshold? "<b>松开加载~~~</b>": "即将加载...";
 		}
 		else if (ac == "D") {
-			var diff = getTimeDiffDscr(lastUpdateTm_, new Date());
-			var str = diff + "刷新";
-			if (dy >= threshold) {
-				msg = "<b>" + str + "~~~</b>";
-			}
-			else {
-				msg = str;
-			}
+			msg = uptoThreshold? "<b>松开刷新~~~</b>": "即将刷新...";
 		}
-		var maxY = threshold * 1.2;
-		var height = Math.min(dy, maxY, 6*Math.sqrt(dy));
-		// 6*sqrt(x) => 36px内线性，超过36px则衰减
+		if (opt_.onHintText) {
+			var rv = opt_.onHintText(ac, uptoThreshold);
+			if (rv != null)
+				msg = rv;
+		}
+		var height = Math.min(dy, 100, 2.0*Math.pow(dy, 0.7));
 
 		if (msg == null) {
 			jo_.height(0).remove();
@@ -2872,6 +2890,8 @@ function initPullList(container, opt)
 
 	function touchMove(ev)
 	{
+		if (touchev_ == null)
+			return;
 		var p = getPos(ev);
 		var m = touchev_.momentum;
 		if (m) {
@@ -2885,6 +2905,12 @@ function initPullList(container, opt)
 
 		touchev_.dx = p[0] - touchev_.x0;
 		touchev_.dy = p[1] - touchev_.y0;
+		dy_ = touchev_.dy;
+
+		if (touchev_.dy == 0) {
+			touchCancel();
+			return;
+		}
 
 		cont_.scrollTop = touchev_.top0 - touchev_.dy;
 		var dy = touchev_.dy + (cont_.scrollTop - touchev_.top0);
@@ -2975,7 +3001,6 @@ function initPullList(container, opt)
 			// pulldown
 			if (ac == "D") {
 				console.log("refresh");
-				lastUpdateTm_ = new Date();
 				opt_.onLoadItem.call(cont_, true);
 			}
 			else if (ac == "U") {
@@ -2986,7 +3011,7 @@ function initPullList(container, opt)
 
 		function onScrollEnd()
 		{
-			if (opt_.autoLoadMore) {
+			if (opt_.autoLoadMore && dy_ < -20) {
 				var distanceToBottom = cont_.scrollHeight - cont_.clientHeight - cont_.scrollTop;
 				if (distanceToBottom <= TRIGGER_AUTOLOAD) {
 					doAction("U");
@@ -3253,7 +3278,8 @@ function initPageList(jpage, opt)
 
 		var pullListOpt = {
 			onLoadItem: showOrderList,
-			//onHint: $.noop
+			//onHint: $.noop,
+			onHintText: onHintText,
 		};
 
 		jallList_.parent().each(function () {
@@ -3267,14 +3293,47 @@ function initPageList(jpage, opt)
 		}
 	}
 
+	// return jlst. (caller need check size>0)
+	function getActiveList()
+	{
+		if (jallList_.size() <= 1)
+			return jallList_;
+		var jlst = jallList_.filter(".active");
+		if (jlst.size() == 0)
+			jlst = jallList_.filter(":first");
+		return jlst;
+	}
+
+	function onHintText(ac, uptoThreshold)
+	{
+		if (ac == "D") {
+			var jlst = getActiveList();
+			if (jlst.size() == 0)
+				return;
+
+			var tm = jlst.data("lastUpdateTm_");
+			if (! tm)
+				return;
+			var diff = getTimeDiffDscr(tm, new Date());
+			var str = diff + "刷新";
+			if (uptoThreshold) {
+				msg = "<b>" + str + "~~~</b>";
+			}
+			else {
+				msg = str;
+			}
+			return msg;
+		}
+	}
+
 	// (isRefresh?=false, skipIfLoaded?=false)
 	function showOrderList(isRefresh, skipIfLoaded)
 	{
 		// nextkey=null: 新开始或刷新
 		// nextkey=-1: 列表完成
-		var jlst = jallList_.filter(".active");
+		var jlst = getActiveList();
 		if (jlst.size() == 0)
-			jlst = jallList_.filter(":first");
+			return;
 		var nextkey = jlst.data("nextkey_");
 		if (isRefresh) {
 			nextkey = null;
@@ -3314,6 +3373,9 @@ function initPageList(jpage, opt)
 			// scroll to bottom
 			var cont = jlst.parent()[0];
 			cont.scrollTop = cont.scrollHeight;
+		}
+		else {
+			jlst.data("lastUpdateTm_", new Date());
 		}
 		callSvr(queryParam.ac, queryParam, api_OrdrQuery);
 
