@@ -1,0 +1,203 @@
+<html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="style.css" />
+<h2>Keywords</h2>
+<div>
+<a href="#$.getScriptWithCache">$.getScriptWithCache</a><br>
+<a href="#WUI">WUI</a><br>
+<a href="#WUI.app_alert">WUI.app_alert</a><br>
+<a href="#WUI.app_confirm">WUI.app_confirm</a><br>
+<a href="#WUI.app_show">WUI.app_show</a><br>
+<a href="#WUI.callSvr">WUI.callSvr</a><br>
+<a href="#WUI.callSvrSync">WUI.callSvrSync</a><br>
+<a href="#WUI.closeDlg">WUI.closeDlg</a><br>
+<a href="#WUI.dg_dblclick">WUI.dg_dblclick</a><br>
+<a href="#WUI.dg_toolbar">WUI.dg_toolbar</a><br>
+<a href="#WUI.enterWaiting">WUI.enterWaiting</a><br>
+<a href="#WUI.getQueryCond">WUI.getQueryCond</a><br>
+<a href="#WUI.getQueryParam">WUI.getQueryParam</a><br>
+<a href="#WUI.handleLogin">WUI.handleLogin</a><br>
+<a href="#WUI.leaveWaiting">WUI.leaveWaiting</a><br>
+<a href="#WUI.logout">WUI.logout</a><br>
+<a href="#WUI.m_app">WUI.m_app</a><br>
+<a href="#WUI.makeLinkTo">WUI.makeLinkTo</a><br>
+<a href="#WUI.makeUrl">WUI.makeUrl</a><br>
+<a href="#WUI.reload">WUI.reload</a><br>
+<a href="#WUI.reloadRow">WUI.reloadRow</a><br>
+<a href="#WUI.reloadTmp">WUI.reloadTmp</a><br>
+<a href="#WUI.setApp">WUI.setApp</a><br>
+<a href="#WUI.showDlg">WUI.showDlg</a><br>
+<a href="#WUI.showObjDlg">WUI.showObjDlg</a><br>
+<a href="#WUI.showPage">WUI.showPage</a><br>
+<a href="#WUI.tryAutoLogin">WUI.tryAutoLogin</a><br>
+<a href="#app_abort">app_abort</a><br>
+<a href="#app_alert">app_alert</a><br>
+<a href="#app_confirm">app_confirm</a><br>
+<a href="#app_show">app_show</a><br>
+<a href="#callSvr">callSvr</a><br>
+<a href="#callSvrSync">callSvrSync</a><br>
+<a href="#enterWaiting">enterWaiting</a><br>
+<a href="#getAncestor">getAncestor</a><br>
+<a href="#jQuery.fn.getAncestor">jQuery.fn.getAncestor</a><br>
+<a href="#jQuery.fn.jdata">jQuery.fn.jdata</a><br>
+<a href="#jQuery.fn.mycombobox">jQuery.fn.mycombobox</a><br>
+<a href="#leaveWaiting">leaveWaiting</a><br>
+<a href="#makeLinkTo">makeLinkTo</a><br>
+<a href="#makeUrl">makeUrl</a><br>
+<a href="#row2tr">row2tr</a><br>
+</div><hr>
+<h2 id="getAncestor">@fn getAncestor(o, fn)</h2>
+<p>取符合条件(fn)的对象，一般可使用$.closest替代</p><hr>
+<h2 id="app_abort">@fn app_abort()</h2>
+<p>中止之后的调用, 直接返回.</p><hr>
+<h2 id="jQuery.fn.jdata">@fn jQuery.fn.jdata(val?)</h2>
+<p>和使用$.data()差不多，更好用一些. 例：</p>
+<pre><code>$(o).jdata().hello = 100;
+$(o).jdata({hello:100, world:200});</code></pre><hr>
+<h2 id="jQuery.fn.getAncestor">@fn jQuery.fn.getAncestor(expr)</h2>
+<p>取符合条件(expr)的对象，一般可使用$.closest替代</p><hr>
+<h2 id="row2tr">@fn row2tr(row)</h2>
+<p class="return"><strong>@return jquery</strong>  tr对象</p>
+<p class="param"><strong>@param row</strong>  {\@cols}, col: {useTh?=false, html?, \%css?, \%attr?, \%on?}</p>
+<p>根据row结构构造jQuery tr对象。</p><hr>
+<h2 id="$.getScriptWithCache">@fn $.getScriptWithCache(url, options?)</h2><hr>
+<h2 id="WUI">@module WUI</h2><hr>
+<h2 id="WUI.m_app">@var WUI.m_app</h2><hr>
+<h2 id="WUI.enterWaiting">@fn WUI.enterWaiting()</h2>
+<p class="alias"><strong>@alias <a id="enterWaiting">enterWaiting</a></strong> ()</p>
+<p>TODO: require #block</p><hr>
+<h2 id="WUI.leaveWaiting">@fn WUI.leaveWaiting()</h2>
+<p class="alias"><strong>@alias <a id="leaveWaiting">leaveWaiting</a></strong> </p><hr>
+<h2 id="WUI.makeUrl">@fn WUI.makeUrl(action, params)</h2>
+<p class="alias"><strong>@alias <a id="makeUrl">makeUrl</a></strong> </p>
+<p>生成对后端调用的url. </p>
+<pre><code>var params = {id: 100};
+var url = makeUrl("Ordr.set", params);</code></pre>
+<p>注意：调用该函数生成的url在结尾有标志字符串&quot;zz=1&quot;, 如&quot;../api.php/login?_app=user&amp;zz=1&quot;</p><hr>
+<h2 id="WUI.callSvr">@fn WUI.callSvr(ac, params?, fn?, postParams?, userOptions?)</h2>
+<p class="fn"><strong>@fn WUI.callSvr</strong> (ac, fn?, postParams?, userOptions?)</p>
+<p class="alias"><strong>@alias <a id="callSvr">callSvr</a></strong> </p>
+<p class="param"><strong>@param ac</strong>  String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)</p>
+<p class="param"><strong>@param params</strong>  Object. URL参数（或称HTTP GET参数）</p>
+<p class="param"><strong>@param postParams</strong>  Object. POST参数. 如果有该参数, 则自动使用HTTP POST请求(postParams作为POST内容), 否则使用HTTP GET请求.</p>
+<p class="param"><strong>@param fn</strong>  Function(data). 回调函数, data参考该接口的返回值定义。</p>
+<p class="param"><strong>@param userOptions</strong>  用户自定义参数, 会合并到$.ajax调用的options参数中.可在回调函数中用"this.参数名"引用. </p>
+<p class="return"><strong>@return XMLHttpRequest</strong> (XHR) 与$.ajax返回相同。</p>
+<p>常用userOptions: </p>
+<ul>
+<li>指定{async:0}来做同步请求, 一般直接用callSvrSync调用来替代.</li>
+<li>指定{noex:1}用于忽略错误处理, 当后端返回错误时, 回调函数会被调用, 且参数data=false.</li>
+</ul>
+<p>例：</p>
+<pre><code>callSvr("logout");
+callSvr("logout", api_logout);
+callSvr("login", {wantAll:1}, api_login);
+callSvr("info/hotline.php", {q: '大众'}, api_hotline);
+
+// 也兼容使用makeUrl的旧格式如:
+callSvr(makeUrl("logout"), api_logout);
+callSvr(makeUrl("logout", {a:1}), api_logout);
+
+callSvr("User.get", function (data) {
+    if (data === false) { // 仅当设置noex且服务端返回错误时可返回false
+        return;
+    }
+    foo(data);
+}, null, {noex:1});</code></pre><hr>
+<h2 id="WUI.callSvrSync">@fn WUI.callSvrSync(ac, params?, fn?, postParams?, userOptions?)</h2>
+<p class="fn"><strong>@fn WUI.callSvrSync</strong> (ac, fn?, postParams?, userOptions?)</p>
+<p class="alias"><strong>@alias <a id="callSvrSync">callSvrSync</a></strong> </p>
+<p class="return"><strong>@return data</strong>  原型规定的返回数据</p>
+<p>同步模式调用callSvr.</p><hr>
+<h2 id="WUI.app_alert">@fn WUI.app_alert(msg, type?=i, fn?)</h2>
+<p class="alias"><strong>@alias <a id="app_alert">app_alert</a></strong> </p>
+<p class="param"><strong>@param type</strong>  String. "i"|"e"|"w"</p>
+<p class="param"><strong>@param fn</strong>  Function(). 用户点击确定后的回调。</p>
+<p>使用jQuery easyui弹出提示对话框.</p><hr>
+<h2 id="WUI.app_confirm">@fn WUI.app_confirm(msg, type?=i, fn?)</h2>
+<p class="alias"><strong>@alias <a id="app_confirm">app_confirm</a></strong> </p>
+<p class="param"><strong>@param fn</strong>  Function(). 用户点击确定后的回调。</p>
+<p>使用jQuery easyui弹出确认对话框.</p><hr>
+<h2 id="WUI.app_show">@fn WUI.app_show(msg)</h2>
+<p class="alias"><strong>@alias <a id="app_show">app_show</a></strong> </p>
+<p>使用jQuery easyui弹出对话框.</p><hr>
+<h2 id="WUI.makeLinkTo">@fn WUI.makeLinkTo</h2>
+<p class="alias"><strong>@alias <a id="makeLinkTo">makeLinkTo</a></strong> </p>
+<p>生成一个链接的html代码，点击该链接可以打开指定对象的对话框。</p><hr>
+<h2 id="jQuery.fn.mycombobox">@fn jQuery.fn.mycombobox</h2><hr>
+<h2 id="WUI.reload">@fn WUI.reload(jtbl, url?, queryParams?)</h2><hr>
+<h2 id="WUI.reloadTmp">@fn WUI.reloadTmp(jtbl, url?, queryParams?) </h2>
+<p>临时reload一下，完事后恢复原url</p><hr>
+<h2 id="WUI.reloadRow">@fn WUI.reloadRow(jtbl, rowData)</h2>
+<p class="param"><strong>@param rowData</strong>  must be the original data from table row</p><hr>
+<h2 id="WUI.showPage">@fn WUI.showPage(pageName, title?, paramArr?)</h2>
+<p class="param"><strong>@param pageName</strong>  由page上的class指定。</p>
+<p class="param"><strong>@param title?</strong>  如果未指定，则使用page上的title属性.</p>
+<p class="param"><strong>@param paramArr?</strong>  调用initfn时使用的参数，是一个数组。</p>
+<p>新页面以title作为id。<br />
+注意：每个页面都是根据pages下相应pageName复制出来的，显示在一个新的tab页中。相同的title当作同一页面。<br />
+初始化函数由page上的my-initfn属性指定。</p>
+<p>page定义示例: </p>
+<pre><code>&lt;div id="my-pages" style="display:none"&gt;
+    &lt;div class="pageHome" title="首页" my-initfn="initPageHome"&gt;&lt;/div&gt;
+&lt;/div&gt;</code></pre>
+<p>page调用示例:</p>
+<pre><code>WUI.showPage("pageHome");
+WUI.showPage("pageHome", "首页");
+WUI.showPage("pageHome", "首页2");</code></pre><hr>
+<h2 id="WUI.closeDlg">@fn WUI.closeDlg(jdlg)</h2><hr>
+<h2 id="WUI.showDlg">@fn WUI.showDlg(jdlg, opt?)</h2>
+<p class="param"><strong>@param opt?=</strong> {url, buttons, noCancel=false, okLabel="确定", cancelLabel="取消", modal=true, reset=true, validate=true, data, onOk, onSubmit, onAfterSubmit}</p>
+<ul>
+<li>url: 点击确定时的操作动作。</li>
+<li>data: 如果是object, 则为form自动加载的数据；如果是string, 则认为是一个url, 将自动获取数据。(form的load方法一致)</li>
+<li>reset: 在加载数据前清空form</li>
+</ul>
+<p>特殊class my-reset: 当执行form reset时会将内容清除. (适用于在forSet/forLink模式下添加显示内容, 而在forFind/forAdd模式下时清除内容)</p>
+<pre><code>&lt;div class="my-reset"&gt;...&lt;/div&gt;</code></pre>
+<p>hidden上的特殊property noReset: (TODO)</p><hr>
+<h2 id="WUI.getQueryCond">@fn WUI.getQueryCond(kvList)</h2><hr>
+<h2 id="WUI.getQueryParam">@fn WUI.getQueryParam(kvList)</h2><hr>
+<h2 id="WUI.showObjDlg">@fn WUI.showObjDlg(jdlg, mode, id?)</h2>
+<p class="param"><strong>@param id</strong>  String. mode=link时必设，set/del如缺省则从关联的jtbl中取, add/find时不需要</p>
+<p class="param"><strong>@param jdbl</strong>  Datagrid. dialog/form关联的datagrid -- 如果dlg对应多个tbl, 必须每次打开都设置</p><hr>
+<h2 id="WUI.dg_toolbar">@fn WUI.dg_toolbar(jtbl, jdlg, button_lists...)</h2>
+<p>设置easyui-datagrid上toolbar上的按钮。缺省支持的按钮有r(refresh), f(find), a(add), s(set), d(del), 可通过以下设置方式修改：</p>
+<pre><code>jtbl.jdata().toolbar = "rfas"; // 没有d-删除按钮</code></pre>
+<p>如果要添加自定义按钮，则</p>
+<pre><code>jtbl.datagrid({
+    ...
+    toolbar: datagrid_toolbar(jtbl, jdlg, button lists...); //TODO
+})</code></pre><hr>
+<h2 id="WUI.dg_dblclick">@fn WUI.dg_dblclick</h2>
+<p>设置双击datagrid行的回调，功能是打开相应的dialog</p><hr>
+<h2 id="WUI.tryAutoLogin">@fn WUI.tryAutoLogin(onHandleLogin, reuseCmd?)</h2>
+<p class="param"><strong>@param onHandleLogin</strong>  Function(data). 调用后台login()成功后的回调函数(里面使用this为ajax options); 可以直接使用WUI.handleLogin</p>
+<p class="param"><strong>@param reuseCmd</strong>  String. 当session存在时替代后台login()操作的API, 如"User.get", "Employee.get"等, 它们在已登录时返回与login相兼容的数据. 因为login操作比较重, 使用它们可减轻服务器压力. </p>
+<p class="return"><strong>@return Boolean.</strong>  true=登录成功; false=登录失败.</p>
+<p>该函数一般在页面加载完成后调用，如</p>
+<pre><code>function main()
+{
+    WUI.setApp({
+        appName: APP_NAME,
+        title: APP_TITLE,
+        onShowLogin: showDlgLogin
+    });
+
+    WUI.tryAutoLogin(WUI.handleLogin, "whoami");
+}
+
+$(main);</code></pre><hr>
+<h2 id="WUI.handleLogin">@fn WUI.handleLogin(data)</h2>
+<p class="param"><strong>@param data</strong>  调用API "login"成功后的返回数据.</p>
+<p>处理login相关的操作, 如设置g_data.userInfo, 保存自动登录的token等等.</p><hr>
+<h2 id="WUI.setApp">@fn WUI.setApp(app)</h2>
+<p class="param"><strong>@param app=</strong> {appName?=user, title?="客户端", onShowLogin, pageHome?="pageHome"}</p>
+<ul>
+<li>appName: 用于与后端通讯时标识app.</li>
+<li>pageHome: 首页的id, 默认为&quot;pageHome&quot;</li>
+</ul><hr>
+<h2 id="WUI.logout">@fn WUI.logout(dontReload?=0)</h2>
+<p class="param"><strong>@param dontReload</strong>  如果非0, 则注销后不刷新页面.</p>
+<p>注销当前登录, 成功后刷新页面(除非指定dontReload=1)</p><hr>
+<hr><div>Generated by jdcloud-gendoc @ 2016-06-14T20:38:45+08:00</div>

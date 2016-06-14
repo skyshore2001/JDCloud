@@ -67,20 +67,21 @@ class MyParsedown extends Parsedown
 
 // ====== main
 
-@$f = $argv[1] or die ("*** require input file\n");
+array_shift($argv);
+foreach ($argv as $f) {
+	$str = file_get_contents($f) or die ("*** require input file.\n");
+	$pd = new MyParsedown();
 
-$str = file_get_contents($f);
-$pd = new MyParsedown();
+	preg_replace_callback('/
+		\/\*\*+\s* (@\w+ \s+ .*?) \s*\*+\/
+	/xs', function ($ms) {
 
-preg_replace_callback('/
-	\/\*\*+\s* (@\w+ \s+ .*?) \s*\*+\/
-/xs', function ($ms) {
+		global $newBlock, $pd, $blocks;
+		$newBlock = true;
+		$blocks[] = $pd->text($ms[1]);
 
-	global $newBlock, $pd, $blocks;
-	$newBlock = true;
-	$blocks[] = $pd->text($ms[1]);
-
-}, $str);
+	}, $str);
+}
 
 echo <<<EOL
 <html>

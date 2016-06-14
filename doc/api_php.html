@@ -1,0 +1,331 @@
+<html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="style.css" />
+<h2>Keywords</h2>
+<div>
+<a href="#AccessControl">AccessControl</a><br>
+<a href="#AccessControl.addJoin">AccessControl.addJoin</a><br>
+<a href="#AppBase">AppBase</a><br>
+<a href="#DirectReturn">DirectReturn</a><br>
+<a href="#MyException">MyException</a><br>
+<a href="#Q">Q</a><br>
+<a href="#addLog">addLog</a><br>
+<a href="#api_fw">api_fw</a><br>
+<a href="#app_fw">app_fw</a><br>
+<a href="#dbconn">dbconn</a><br>
+<a href="#errQuit">errQuit</a><br>
+<a href="#execOne">execOne</a><br>
+<a href="#getAppType">getAppType</a><br>
+<a href="#getBaseUrl">getBaseUrl</a><br>
+<a href="#getCred">getCred</a><br>
+<a href="#hasSignFile">hasSignFile</a><br>
+<a href="#logit">logit</a><br>
+<a href="#mparam">mparam</a><br>
+<a href="#myEncrypt">myEncrypt</a><br>
+<a href="#objarr2table">objarr2table</a><br>
+<a href="#param">param</a><br>
+<a href="#param_varr">param_varr</a><br>
+<a href="#queryAll">queryAll</a><br>
+<a href="#queryOne">queryOne</a><br>
+<a href="#setParam">setParam</a><br>
+<a href="#setRet">setRet</a><br>
+<a href="#setServerRev">setServerRev</a><br>
+<a href="#table2objarr">table2objarr</a><br>
+<a href="#varr2objarr">varr2objarr</a><br>
+</div><hr>
+<h2 id="app_fw">@module app_fw</h2>
+<ul>
+<li>获得指定类型参数(param/mparam)</li>
+<li>数据库连接及操作，如dbconn, execOne, queryOne, queryAll.</li>
+<li>包含 $BASE_DIR/conf.php, $BASE_DIR/php/conf.user.php</li>
+<li>MyException, errQuit等错误处理设施。</li>
+<li>TEST_MODE, MOCK_MODE</li>
+<li>DBG_LEVEL</li>
+<li>session管理</li>
+</ul><hr>
+<h2 id="param_varr">@fn param_varr($str, $type, $name)</h2>
+<p>type的格式如&quot;i:n:b?:dt:tm?&quot;.</p>
+<ul>
+<li>每个词表示一个字段类型<br />
+类型标识：i-Integer; n-Number/Double; b-Boolean(0/1); dt/tm-DateTime</li>
+<li>后置&quot;?&quot;表示该参数可缺省。</li>
+</ul><hr>
+<h2 id="param">@fn param($name, $defVal?, $col?=$_REQUEST)</h2>
+<p class="param"><strong>@param $col:</strong>  key-value collection</p>
+<p>获取名为$name的参数。<br />
+$name中可以指定类型，返回值根据类型确定。如果该参数未定义或是空串，直接返回缺省值$defVal。</p>
+<p>$name中指定类型的方式如下：</p>
+<ul>
+<li>名为&quot;id&quot;, 或以&quot;Id&quot;或&quot;/i&quot;结尾: int</li>
+<li>以&quot;/b&quot;结尾: bool</li>
+<li>以&quot;/dt&quot;或&quot;/tm&quot;结尾: datetime</li>
+<li>以&quot;/n&quot;结尾: numeric/double</li>
+<li>以&quot;/s&quot;结尾（缺省）: string</li>
+<li>复杂类型：以&quot;/i+&quot;结尾: int array</li>
+<li>复杂类型：以&quot;/js&quot;结尾: json object</li>
+<li>复杂类型：List类型（以&quot;,&quot;分隔行，以&quot;:&quot;分隔列），类型定义如&quot;/i:n:b:dt:tm&quot; （列只支持简单类型，不可为复杂类型）</li>
+</ul>
+<p>示例：</p>
+<pre><code>$id = param("id");
+$svcId = param("svcId/i", 99);
+$wantArray = param("wantArray/b", false);
+$startTm = param("startTm/dt", time());</code></pre>
+<p>List类型示例。参数&quot;items&quot;类型在文档中定义为list(id/Integer:qty/Double:dscr/String)，可用param(&quot;items/i:n:s&quot;)获取, 值如</p>
+<pre><code>items=100:1:洗车,101:1:打蜡</code></pre>
+<p>返回</p>
+<pre><code>[ [ 100, 1.0, "洗车"], [101, 1.0, "打蜡"] ]</code></pre>
+<p>如果某列可缺省，用&quot;?&quot;表示，如param(&quot;items/i:n?:s?&quot;)可获取值：</p>
+<pre><code>items=100:1,101::打蜡</code></pre>
+<p>返回</p>
+<pre><code>[ [ 100, 1.0, null], [101, null, "打蜡"] ]</code></pre>
+<p>TODO: 直接支持 param(&quot;items/(id,qty?/n,dscr?)&quot;), 添加param_objarr函数，去掉parseList函数。上例将返回</p>
+<pre><code>[
+    [ "id"=&gt;100, "qty"=&gt;1.0, dscr=&gt;null],
+    [ "id"=&gt;101, "qty"=&gt;null, dscr=&gt;"打蜡"]
+]</code></pre><hr>
+<h2 id="mparam">@fn mparam($name, $col = $_REQUEST)</h2>
+<p class="brief"><strong>@brief mandatory</strong>  param</p>
+<p>$name可以是一个数组，表示至少有一个参数有值，这时返回每个参数的值。<br />
+参考param函数，查看$name如何支持各种类型。</p>
+<p>示例：</p>
+<pre><code>$svcId = mparam("svcId");
+$svcId = mparam("svcId/i");
+$itts = mparam("itts/i+")
+list($svcId, $itts) = mparam(["svcId", "itts/i+"]); # require one of the 2 params</code></pre><hr>
+<h2 id="setParam">@fn setParam($k, $v)</h2><hr>
+<h2 id="objarr2table">@fn objarr2table ($objarr, $fixedColCnt=null)</h2>
+<p>将objarr格式转为table格式, 如：</p>
+<pre><code>objarr2table(
+    [
+        ["id"=&gt;100, "name"=&gt;"A"],
+        ["id"=&gt;101, "name"=&gt;"B"]
+    ]
+) -&gt; 
+    [
+        "h"=&gt;["id", "name"],
+        "d"=&gt;[ 
+            [100,"A"], 
+            [101,"B"]
+        ] 
+    ]</code></pre>
+<p>注意：</p>
+<ul>
+<li>objarr每行中列的顺序可以不一样，table列按首行顺序输出。</li>
+<li>
+<p>每行中列数可以不一样，这时可指定最少固定列数 $fixedColCnt, 而该列以后，将自动检查所有行决定是否加到header中。例：</p>
+<p>objarr2table(<br />
+[<br />
+[&quot;id&quot;=&gt;100, &quot;name&quot;=&gt;&quot;A&quot;],<br />
+[&quot;name&quot;=&gt;&quot;B&quot;, &quot;id&quot;=&gt;101, &quot;flag_v&quot;=&gt;1],<br />
+[&quot;id&quot;=&gt;102, &quot;name&quot;=&gt;&quot;C&quot;, &quot;flag_r&quot;=&gt;1]<br />
+], 2  // 2列固定<br />
+) -&gt;<br />
+[<br />
+&quot;h&quot;=&gt;[&quot;id&quot;, &quot;name&quot;, &quot;flag_v&quot;, &quot;flag_r&quot;],<br />
+&quot;d&quot;=&gt;[<br />
+[100,&quot;A&quot;, null,null],<br />
+[101,&quot;B&quot;, 1, null],<br />
+[102,&quot;C&quot;, null, 1]<br />
+]<br />
+]</p>
+</li>
+</ul><hr>
+<h2 id="table2objarr">@fn table2objarr</h2>
+<p>将table格式转为 objarr, 如：</p>
+<pre><code>table2objarr(
+    [
+        "h"=&gt;["id", "name"],
+        "d"=&gt;[ 
+            [100,"A"], 
+            [101,"B"]
+        ] 
+    ]
+) -&gt; [ ["id"=&gt;100, "name"=&gt;"A"], ["id"=&gt;101, "name"=&gt;"B"] ]</code></pre><hr>
+<h2 id="varr2objarr">@fn varr2objarr</h2>
+<p>将类型 varr (仅有值的二维数组, elem=[$col1, $col2] ) 转为 objarr (对象数组, elem={col1=&gt;cell1, col2=&gt;cell2})</p>
+<p>例：</p>
+<pre><code>varr2objarr(
+    [ [100, "A"], [101, "B"] ], 
+    ["id", "name"] )
+-&gt; [ ["id"=&gt;100, "name"=&gt;"A"], ["id"=&gt;101, "name"=&gt;"B"] ]</code></pre><hr>
+<h2 id="getCred">@fn getCred($cred) -> [user, pwd]</h2>
+<p>$cred为&quot;{user}:{pwd}&quot;格式，支持使用base64编码。<br />
+示例：</p>
+<pre><code>list($user, $pwd) = getCred(getenv("P_ADMIN_CRED"));
+if (! isset($user)) {
+    // 未设置用户名密码
+}</code></pre><hr>
+<h2 id="dbconn">@fn dbconn($fnConfirm=$GLOBALS["dbConfirmFn"])</h2>
+<p class="param"><strong>@param fnConfirm</strong>  fn(dbConnectionString), 如果返回false, 则程序中止退出。</p>
+<p>连接数据库</p>
+<p>数据库由全局变量$DB(或环境变量P_DB）指定，格式可以为：</p>
+<pre><code>host1/carsvc (无扩展名，表示某主机host1下的mysql数据库名；这时由 全局变量$DBCRED 或环境变量 P_DBCRED 指定用户名密码。
+
+dir1/dir2/carsvc.db (以.db文件扩展名标识的文件路径，表示SQLITE数据库）</code></pre>
+<p>环境变量 P_DBCRED 指定用户名密码，格式为 base64(dbuser:dbpwd).</p><hr>
+<h2 id="Q">@fn Q($str, $dbh=$DBH)</h2>
+<p>quote string</p>
+<p>一般是把字符串如&quot;abc&quot;转成加单引号的形式&quot;'abc'&quot;. 适用于根据用户输入串拼接成SQL语句时，对输入串处理，避免SQL注入。</p>
+<p>示例：</p>
+<pre><code>$sql = sprintf("SELECT id FROM User WHERE uname=%s AND pwd=%s", Q(param("uname")), Q(param("pwd")));</code></pre><hr>
+<h2 id="execOne">@fn execOne($sql, $getInsertId = false)</h2><hr>
+<h2 id="queryOne">@fn queryOne($sql, $fetchMode = PDO::FETCH_NUM)</h2><hr>
+<h2 id="queryAll">@fn queryAll($sql, $fetchMode = PDO::FETCH_NUM)</h2><hr>
+<h2 id="getBaseUrl">@fn getBaseUrl($wantHost = true)</h2>
+<p>返回 $BASE_DIR 对应的网络路径（最后以&quot;/&quot;结尾）。<br />
+如果指定了环境变量 P_URL_PATH（可在conf.user.php中设置）, 则根据该变量计算；否则自动判断（如果有符号链接可能不准）</p>
+<p>例：</p>
+<pre><code>P_URL_PATH = "/cheguanjia/" 或 P_URL_PATH = "/cheguanjia"</code></pre>
+<p>则</p>
+<pre><code>getBaseUrl() -&gt; "http://host/cheguanjia/"
+getBaseUrl(false) -&gt; "/cheguanjia/"</code></pre>
+<p class="see"><strong>@see <a href="#$BASE_DIR">$BASE_DIR</a></strong> </p><hr>
+<h2 id="logit">@fn logit($s, $addHeader=true, $type="trace")</h2>
+<p>记录日志。</p>
+<p>默认到日志文件 $BASE_DIR/trace.log. 如果指定type=secure, 则写到 $BASE_DIR/secure.log.</p><hr>
+<h2 id="myEncrypt">@fn myEncrypt($string,$operation='E',$key='carsvc')</h2>
+<p class="param"><strong>@param operation</strong>  'E': encrypt; 'D': decrypt</p>
+<p>加密解密字符串</p>
+<p>加密:</p>
+<pre><code>$cipher = myEncrypt('hello, world!');
+or
+$cipher = myEncrypt('hello, world!','E','nowamagic');</code></pre>
+<p>解密：</p>
+<pre><code>$text = myEncrypt($cipher,'D','nowamagic');</code></pre>
+<p>参数说明:<br />
+$string   :需要加密解密的字符串<br />
+$operation:判断是加密还是解密:E:加密   D:解密<br />
+$key      :加密的钥匙(密匙);</p>
+<p><a href="http://www.open-open.com/lib/view/open1388916054765.html">http://www.open-open.com/lib/view/open1388916054765.html</a></p><hr>
+<h2 id="errQuit">@fn errQuit($code, $msg, $msg2 =null)</h2>
+<p>生成html格式的错误信息并中止执行。<br />
+默认地，只显示中文错误，双击可显示详细信息。<br />
+例：</p>
+<pre><code>errQuit(E_PARAM, "接口错误", "Unknown ac=`$ac`");</code></pre><hr>
+<h2 id="addLog">@fn addLog($str, $logLevel=1)</h2>
+<p>输出调试信息到前端。调试信息将出现在最终的JSON返回串中。<br />
+如果只想输出调试信息到文件，不想让前端看到，应使用logit.</p>
+<p class="see"><strong>@see <a href="#logit">logit</a></strong> </p><hr>
+<h2 id="getAppType">@fn getAppType()</h2>
+<p>根据应用标识($APP)获取应用类型(AppType)。注意：应用标识一般由前端应用通过URL参数&quot;_app&quot;传递给后端。<br />
+不同的应用标识可以对应相同的应用类型，如应用标识&quot;emp&quot;, &quot;emp2&quot;, &quot;emp-adm&quot; 都表示应用类型&quot;emp&quot;，即 应用类型=应用标识自动去除尾部的数字或&quot;-xx&quot;部分。</p>
+<p>不同的应用标识会使用不同的cookie名，因而即使用户同时操作多个应用，其session不会相互干扰。<br />
+同样的应用类型将以相同的方式登录系统。</p>
+<p class="see"><strong>@see <a href="#$APP">$APP</a></strong> </p><hr>
+<h2 id="hasSignFile">@fn hasSignFile($f)</h2>
+<p>检查应用根目录下($BASE_DIR)下是否存在标志文件。标志文件一般命名为&quot;CFG_XXX&quot;, 如&quot;CFG_MOCK_MODE&quot;等。</p><hr>
+<h2 id="MyException">@class MyException($code, $internalMsg?, $outMsg?)</h2>
+<p class="param"><strong>@param $internalMsg</strong>  String. 内部错误信息，前端不应处理。</p>
+<p class="param"><strong>@param $outMsg</strong>  String. 错误信息。如果为空，则会自动根据$code填上相应的错误信息。</p>
+<p>抛出错误，中断执行:</p>
+<pre><code>throw new MyException(E_PARAM, "Bad Request - numeric param `$name`=`$ret`.", "需要数值型参数");</code></pre><hr>
+<h2 id="DirectReturn">@class DirectReturn</h2>
+<p>抛出该异常，可以中断执行直接返回，不显示任何错误。</p>
+<p>例：API返回非BPQ协议标准数据，可以跳出setRet而直接返回：</p>
+<pre><code>echo "return data";
+throw new DirectReturn();</code></pre>
+<p>例：返回指定数据后立即中断处理：</p>
+<pre><code>setRet(0, ["id"=&gt;1]);
+throw new DirectReturn();</code></pre><hr>
+<h2 id="AppBase">@class AppBase</h2>
+<p>应用框架，用于提供符合BQP协议的接口。<br />
+在onExec中返回协议数据；在onAfter中建议及时关闭DB.</p><hr>
+<h2 id="api_fw">@module api_fw</h2>
+<p>被api.php包含并执行：</p>
+<pre><code>require_once("app.php");
+require_once("php/api_fw.php");
+...
+apiMain();</code></pre>
+<p>可使用addLog输出调试信息而不破坏协议输出格式。<br />
+addLog(str, 0) means always output.</p>
+<p>api.php可以单独执行，也可直接被调用，如</p>
+<pre><code>// set_include_path(get_include_path() . PATH_SEPARATOR . "..");
+require_once("api.php");
+...
+$GLOBALS["errorFn"] = function($code, $msg, $msg2=null) {...}
+$ret = callSvc("genVoucher");
+// 如果没有异常，返回数据；否则调用指定的errorFn函数(未指定则调用errQuit)</code></pre><hr>
+<h2 id="setRet">@fn setRet($code, $data?, $internalMsg?)</h2>
+<p class="param"><strong>@param $code</strong>  Integer. 返回码, 0表示成功, 否则表示操作失败。</p>
+<p class="param"><strong>@param $data</strong>  返回数据。</p>
+<p class="param"><strong>@param $internalMsg</strong>  当返回错误时，作为额外调试信息返回。</p>
+<p>设置返回数据，最终返回JSON格式数据为 [ code, data, internalMsg, debugInfo1, ...]<br />
+其中按照BQP协议，前两项为必须，后面的内容一般仅用于调试，前端应用不应处理。</p>
+<p>当成功时，返回数据可以是任何类型（根据API设计返回相应数据）。<br />
+当失败时，为String类型错误信息。<br />
+如果参数$data未指定，则操作成功时值为null（按BQP协议返回null表示客户端应忽略处理，一般无特定返回应指定$data=&quot;OK&quot;）；操作失败时使用默认错误信息。</p>
+<p>调用完后，要返回的数据存储在全局数组 $X_RET 中，以JSON字符串形式存储在全局字符串 $X_RET_STR 中。<br />
+注意：$X_RET_STR也可以在调用setRet前设置为要返回的字符串，从而避免setRet函数对返回对象进行JSON序列化，如</p>
+<pre><code>$GLOBALS["X_RET_STR"] = "{id:100, name:'aaa'}";
+setRet(0, "OK");
+throw new DirectReturn();
+// 最终返回字符串为 "[0, {id:100, name:'aaa'}]"</code></pre>
+<p class="see"><strong>@see <a href="#$X_RET">$X_RET</a></strong> </p>
+<p class="see"><strong>@see <a href="#$X_RET_STR">$X_RET_STR</a></strong> </p>
+<p class="see"><strong>@see <a href="#$errorFn">$errorFn</a></strong> </p>
+<p class="see"><strong>@see <a href="#errQuit">errQuit</a></strong> ()</p><hr>
+<h2 id="setServerRev">@fn setServerRev()</h2>
+<p>根据全局变量&quot;SERVER_REV&quot;或应用根目录下的文件&quot;revision.txt&quot;， 来设置HTTP响应头&quot;X-Daca-Server-Rev&quot;表示服务端版本信息（最多6位）。</p>
+<p>客户端框架可本地缓存该版本信息，一旦发现不一致，可刷新应用。</p><hr>
+<h2 id="AccessControl">@module AccessControl framework</h2>
+<p>for access control and autocomplete for objects </p>
+<p>====== AccessControl framework</p>
+<pre><code>class AC_Object for guest
+class AC0_Object for admin
+class AC1_Object for user
+class AC2_Object for store
+if no AC0_Object, use AccessControl instead (for admin)
+if no AC1/AC2 object, use AC_Object (as guest)
+
+# define allowed actions.
+# Default: to allow all.
+protected $allowedAc = ["add", "get", "set", "del", "query"];
+
+# for add/set. Such fields cannot be modified via add/set. warning is logged if set such fields.
+# "id" is always readonly, not required in this array.
+# 添加/更新时填值无效（但暂不报错）
+protected $readonlyFields = [];
+# for set. 更新时对这些字段填值无效
+protected $readonlyFields2 = [];
+
+# for add/set. 添加时必须填值；更新时不允许置空。
+protected $requiredFields = [];
+# for set. 更新时不允许设置空
+protected $requiredFields2 = [];
+
+# for get/query
+protected $hiddenFields = [];
+
+# for get/query: vcolDefs, subobj
+# 如果查询指定了res参数，则分析每一列，它可能是普通列名(col)/虚拟列名(vcol)/子对象(subobj)名
+
+# for get/query, virtual columns. vcol: {res=@colDefList, join?, cond?, default?=false}
+# default: 为true表示，当Query未指定res参数时，自动加上该项.
+protected $vcolDefs = [];
+
+# for get/query
+protected $subobj = [];
+
+# for add/set. validate or auto complete fields
+protected function onValidate();
+
+# for get/set/del, validate or auto complete field "id"
+protected function onValidateId();
+
+# for get/query, add query fields or conditions
+protected function onQuery();
+
+# for get/query, reset or unset some fields; for add/set/del, operate other tables, etc.
+# protected function onAfter(&amp;$ret);
+
+# onAfter的替代方案，更易使用，可以在onValidateId/onValidate中直接添加回调函数。
+protected $onAfterActions = [];
+
+# for get/query, reset or unset some fields; run before onAfter.
+# protected function onHandleRow(&amp;$rowData);
+
+# for add. 指定添加对象时生成的id. 缺省返回0表示自动生成.
+protected function onGenId();</code></pre><hr>
+<h2 id="AccessControl.addJoin">@fn AccessControl.addJoin(joinCond)</h2>
+<p>添加Join条件. 参见vcolDefs[][&quot;join&quot;]</p><hr>
+<hr><div>Generated by jdcloud-gendoc @ 2016-06-14T20:38:45+08:00</div>
