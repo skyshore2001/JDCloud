@@ -1546,6 +1546,14 @@ ctx: {ac, tm, tv, ret}
 	var m_manualBusy = 0;
 	var m_jLoader;
 
+/**
+@var MUI.disableBatch ?= false
+*/
+	self.disableBatch = false;
+
+/**
+@var MUI.m_curBatch
+*/
 	var m_curBatch = null;
 	self.m_curBatch = m_curBatch;
 
@@ -2021,6 +2029,8 @@ allow throw("abort") as abort behavior.
 注意：
 
 - 同步调用callSvrSync不会加入批处理。
+- 对特别几个不符合BPQ协议输出格式规范的接口不可使用批处理，如upload, att等接口。
+- 如果MUI.disableBatch=true, 表示禁用批处理。
 
 示例：
 
@@ -2060,6 +2070,7 @@ allow throw("abort") as abort behavior.
 如果值计算失败，则当作"null"填充。
 
 @see MUI.useBatchCall
+@see MUI.disableBatch
 
 */
 	self.batchCall = batchCall;
@@ -2068,7 +2079,8 @@ allow throw("abort") as abort behavior.
 		this.opt_ = opt;
 		this.calls_ = [];
 		this.callOpts_ = [];
-		m_curBatch = this;
+		if (! self.disableBatch)
+			m_curBatch = this;
 	}
 
 	batchCall.prototype = {
@@ -2158,11 +2170,16 @@ allow throw("abort") as abort behavior.
 
 	MUI.useBatchCall(null, 10);
 
+如果MUI.disableBatch=true, 该函数不起作用。
+
 @see MUI.batchCall
+@see MUI.disableBatch
 */
 	self.useBatchCall = useBatchCall;
 	function useBatchCall(opt, tv)
 	{
+		if (self.disableBatch)
+			return;
 		tv = tv || 0;
 		var batch = new MUI.batchCall(opt);
 		setTimeout(function () {
