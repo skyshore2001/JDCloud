@@ -1,8 +1,18 @@
 <?php
-/*
-jdcloud-gendoc
+/**
+@module jdcloud-gendoc
 
-php gendoc.php mysrc.js -> doc.html
+代码内文档生成器。
+
+对以下关键字会生成标题(同时也生成链接): @fn, @var, @module, @class
+
+对以下关键字会生成链接：@alias, @key, @event
+
+用法：
+
+	php gendoc.php mysrc.js -title "API-Reference" > doc.html
+
+文档于utf-8编码，引用css文件style.css。该文件可自行配置。
 */
 
 require("lib/common.php");
@@ -62,7 +72,7 @@ class MyParsedown extends Parsedown
 			if ($class == "see") {
 				$key = "<a href=\"#{$key}\">{$key}</a>";
 			}
-			else if ($class == "alias") {
+			else if ($class == "alias" || $class == "key" || $class == "event" || $class == "fn" || $class == "var") {
 				$keys[] = makeKeyword(["name"=>$key, "type"=>$class]);
 				$key = "<a id=\"{$key}\">{$key}</a>";
 			}

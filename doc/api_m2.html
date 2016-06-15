@@ -1,90 +1,353 @@
 <html>
+<head>
 <meta charset="utf-8">
+<title>API参考 - 筋斗云前端（移动Web版）</title>
 <link rel="stylesheet" href="style.css" />
+</head>
+
+<h1>API参考 - 筋斗云前端（移动Web版）</h1>
+<div>最后更新：2016-06-15</div>
 <h2>Keywords</h2>
 <div>
-<a href="#$.getScriptWithCache">$.getScriptWithCache</a><br>
-<a href="#CComManager">CComManager</a><br>
-<a href="#CPageManager">CPageManager</a><br>
-<a href="#CPageManager">CPageManager</a><br>
-<a href="#MUI">MUI</a><br>
-<a href="#MUI.activePage">MUI.activePage</a><br>
-<a href="#MUI.app_alert">MUI.app_alert</a><br>
-<a href="#MUI.batchCall">MUI.batchCall</a><br>
-<a href="#MUI.callSvr">MUI.callSvr</a><br>
-<a href="#MUI.callSvrSync">MUI.callSvrSync</a><br>
-<a href="#MUI.closeDialog">MUI.closeDialog</a><br>
-<a href="#MUI.container">MUI.container</a><br>
-<a href="#MUI.disableBatch">MUI.disableBatch</a><br>
-<a href="#MUI.docTitle">MUI.docTitle</a><br>
-<a href="#MUI.enhanceWithin">MUI.enhanceWithin</a><br>
-<a href="#MUI.enterWaiting">MUI.enterWaiting</a><br>
-<a href="#MUI.getOptions">MUI.getOptions</a><br>
-<a href="#MUI.getToPageId">MUI.getToPageId</a><br>
-<a href="#MUI.handleLogin">MUI.handleLogin</a><br>
-<a href="#MUI.hideLoading">MUI.hideLoading</a><br>
-<a href="#MUI.lastError">MUI.lastError</a><br>
-<a href="#MUI.leaveWaiting">MUI.leaveWaiting</a><br>
-<a href="#MUI.logout">MUI.logout</a><br>
-<a href="#MUI.m_app">MUI.m_app</a><br>
-<a href="#MUI.m_curBatch">MUI.m_curBatch</a><br>
-<a href="#MUI.m_enhanceFn">MUI.m_enhanceFn</a><br>
-<a href="#MUI.m_pageStack">MUI.m_pageStack</a><br>
-<a href="#MUI.makeUrl">MUI.makeUrl</a><br>
-<a href="#MUI.popPageStack">MUI.popPageStack</a><br>
-<a href="#MUI.prevPageId">MUI.prevPageId</a><br>
-<a href="#MUI.setApp">MUI.setApp</a><br>
-<a href="#MUI.setFormSubmit">MUI.setFormSubmit</a><br>
-<a href="#MUI.setOnError">MUI.setOnError</a><br>
-<a href="#MUI.setupCallSvrViaForm">MUI.setupCallSvrViaForm</a><br>
-<a href="#MUI.setupDialog">MUI.setupDialog</a><br>
-<a href="#MUI.showDialog">MUI.showDialog</a><br>
-<a href="#MUI.showFirstPage?=true">MUI.showFirstPage?=true</a><br>
-<a href="#MUI.showLoading">MUI.showLoading</a><br>
-<a href="#MUI.showLogin">MUI.showLogin</a><br>
-<a href="#MUI.showPage">MUI.showPage</a><br>
-<a href="#MUI.showValidateErr">MUI.showValidateErr</a><br>
-<a href="#MUI.tryAutoLogin">MUI.tryAutoLogin</a><br>
-<a href="#MUI.useBatchCall">MUI.useBatchCall</a><br>
-<a href="#app_abort">app_abort</a><br>
-<a href="#app_alert">app_alert</a><br>
-<a href="#appendParam">appendParam</a><br>
-<a href="#callSvr">callSvr</a><br>
-<a href="#callSvrSync">callSvrSync</a><br>
-<a href="#delayDo">delayDo</a><br>
-<a href="#enterWaiting">enterWaiting</a><br>
-<a href="#evalAttr">evalAttr</a><br>
-<a href="#getFormData">getFormData</a><br>
-<a href="#getTimeDiffDscr">getTimeDiffDscr</a><br>
-<a href="#initNavbarAndList">initNavbarAndList</a><br>
-<a href="#initPageDetail">initPageDetail</a><br>
-<a href="#initPageList">initPageList</a><br>
-<a href="#initPullList">initPullList</a><br>
-<a href="#isAndroid">isAndroid</a><br>
-<a href="#isIOS">isIOS</a><br>
-<a href="#isWeixin">isWeixin</a><br>
-<a href="#leaveWaiting">leaveWaiting</a><br>
-<a href="#loadScript">loadScript</a><br>
-<a href="#makeUrl">makeUrl</a><br>
-<a href="#setDateBox">setDateBox</a><br>
-<a href="#setFormData">setFormData</a><br>
-<a href="#setTimeBox">setTimeBox</a><br>
-<a href="#showByFormMode">showByFormMode</a><br>
-<a href="#waitFor">waitFor</a><br>
+<a href="##footer">#footer (key)</a><br>
+<a href="#$.getScriptWithCache">$.getScriptWithCache (fn)</a><br>
+<a href="#.mui-android">.mui-android (key)</a><br>
+<a href="#.mui-container">.mui-container (key)</a><br>
+<a href="#.mui-cordova">.mui-cordova (key)</a><br>
+<a href="#.mui-dialog">.mui-dialog (key)</a><br>
+<a href="#.mui-ios">.mui-ios (key)</a><br>
+<a href="#.mui-menu">.mui-menu (key)</a><br>
+<a href="#.mui-navbar">.mui-navbar (key)</a><br>
+<a href="#.mui-page">.mui-page (key)</a><br>
+<a href="#.mui-weixin">.mui-weixin (key)</a><br>
+<a href="#.noSwipe">.noSwipe (key)</a><br>
+<a href="#CComManager">CComManager (class)</a><br>
+<a href="#CPageManager">CPageManager (class)</a><br>
+<a href="#Date.add">Date.add (fn)</a><br>
+<a href="#Date.addDay">Date.addDay (fn)</a><br>
+<a href="#Date.addHours">Date.addHours (fn)</a><br>
+<a href="#Date.addMin">Date.addMin (fn)</a><br>
+<a href="#Date.addMonth">Date.addMonth (fn)</a><br>
+<a href="#Date.diff">Date.diff (fn)</a><br>
+<a href="#Date.format">Date.format (fn)</a><br>
+<a href="#IsBusy">IsBusy (var)</a><br>
+<a href="#MUI">MUI (module)</a><br>
+<a href="#MUI.activePage">MUI.activePage (var)</a><br>
+<a href="#MUI.app_alert">MUI.app_alert (fn)</a><br>
+<a href="#MUI.batchCall">MUI.batchCall (class)</a><br>
+<a href="#MUI.callSvr">MUI.callSvr (fn)</a><br>
+<a href="#MUI.callSvrSync">MUI.callSvrSync (fn)</a><br>
+<a href="#MUI.callSvrSync">MUI.callSvrSync (fn)</a><br>
+<a href="#MUI.closeDialog">MUI.closeDialog (fn)</a><br>
+<a href="#MUI.container">MUI.container (var)</a><br>
+<a href="#MUI.disableBatch">MUI.disableBatch (var)</a><br>
+<a href="#MUI.docTitle">MUI.docTitle (var)</a><br>
+<a href="#MUI.enhanceWithin">MUI.enhanceWithin (fn)</a><br>
+<a href="#MUI.enterWaiting">MUI.enterWaiting (fn)</a><br>
+<a href="#MUI.getOptions">MUI.getOptions (fn)</a><br>
+<a href="#MUI.getToPageId">MUI.getToPageId (fn)</a><br>
+<a href="#MUI.handleLogin">MUI.handleLogin (fn)</a><br>
+<a href="#MUI.hideLoading">MUI.hideLoading (fn)</a><br>
+<a href="#MUI.lastError">MUI.lastError (var)</a><br>
+<a href="#MUI.leaveWaiting">MUI.leaveWaiting (fn)</a><br>
+<a href="#MUI.logout">MUI.logout (fn)</a><br>
+<a href="#MUI.m_app">MUI.m_app (var)</a><br>
+<a href="#MUI.m_curBatch">MUI.m_curBatch (var)</a><br>
+<a href="#MUI.m_enhanceFn">MUI.m_enhanceFn (var)</a><br>
+<a href="#MUI.m_pageStack">MUI.m_pageStack (var)</a><br>
+<a href="#MUI.makeUrl">MUI.makeUrl (fn)</a><br>
+<a href="#MUI.popPageStack">MUI.popPageStack (fn)</a><br>
+<a href="#MUI.prevPageId">MUI.prevPageId (var)</a><br>
+<a href="#MUI.setApp">MUI.setApp (fn)</a><br>
+<a href="#MUI.setFormSubmit">MUI.setFormSubmit (fn)</a><br>
+<a href="#MUI.setOnError">MUI.setOnError (fn)</a><br>
+<a href="#MUI.setupCallSvrViaForm">MUI.setupCallSvrViaForm (fn)</a><br>
+<a href="#MUI.setupDialog">MUI.setupDialog (fn)</a><br>
+<a href="#MUI.showDialog">MUI.showDialog (fn)</a><br>
+<a href="#MUI.showFirstPage">MUI.showFirstPage (var)</a><br>
+<a href="#MUI.showLoading">MUI.showLoading (fn)</a><br>
+<a href="#MUI.showLogin">MUI.showLogin (fn)</a><br>
+<a href="#MUI.showPage">MUI.showPage (fn)</a><br>
+<a href="#MUI.showValidateErr">MUI.showValidateErr (fn)</a><br>
+<a href="#MUI.tryAutoLogin">MUI.tryAutoLogin (fn)</a><br>
+<a href="#MUI.useBatchCall">MUI.useBatchCall (fn)</a><br>
+<a href="#app_abort">app_abort (fn)</a><br>
+<a href="#app_alert">app_alert (alias)</a><br>
+<a href="#appendParam">appendParam (fn)</a><br>
+<a href="#basename">basename (fn)</a><br>
+<a href="#callSvr">callSvr (alias)</a><br>
+<a href="#callSvrSync">callSvrSync (alias)</a><br>
+<a href="#common.js">common.js (module)</a><br>
+<a href="#delCookie">delCookie (fn)</a><br>
+<a href="#delStorage">delStorage (fn)</a><br>
+<a href="#delayDo">delayDo (fn)</a><br>
+<a href="#enterWaiting">enterWaiting (alias)</a><br>
+<a href="#evalAttr">evalAttr (fn)</a><br>
+<a href="#g_args">g_args (var)</a><br>
+<a href="#g_args._app">g_args._app (var)</a><br>
+<a href="#g_cfg">g_cfg (var)</a><br>
+<a href="#g_cfg.PAGE_SZ">g_cfg.PAGE_SZ (var)</a><br>
+<a href="#g_cfg.logAction">g_cfg.logAction (var)</a><br>
+<a href="#g_cordova">g_cordova (var)</a><br>
+<a href="#g_data">g_data (var)</a><br>
+<a href="#g_data.serverRev">g_data.serverRev (key)</a><br>
+<a href="#g_data.userInfo">g_data.userInfo (key)</a><br>
+<a href="#getCookie">getCookie (fn)</a><br>
+<a href="#getFormData">getFormData (fn)</a><br>
+<a href="#getStorage">getStorage (fn)</a><br>
+<a href="#getTimeDiffDscr">getTimeDiffDscr (fn)</a><br>
+<a href="#initNavbarAndList">initNavbarAndList (alias)</a><br>
+<a href="#initPageDetail">initPageDetail (fn)</a><br>
+<a href="#initPageList">initPageList (fn)</a><br>
+<a href="#initPullList">initPullList (fn)</a><br>
+<a href="#isAndroid">isAndroid (fn)</a><br>
+<a href="#isIOS">isIOS (fn)</a><br>
+<a href="#isWeixin">isWeixin (fn)</a><br>
+<a href="#leaveWaiting">leaveWaiting (alias)</a><br>
+<a href="#loadScript">loadScript (fn)</a><br>
+<a href="#makeUrl">makeUrl (alias)</a><br>
+<a href="#mui-initfn">mui-initfn (key)</a><br>
+<a href="#mui-loadPrompt">mui-loadPrompt (key)</a><br>
+<a href="#mui-pullPrompt">mui-pullPrompt (key)</a><br>
+<a href="#mui-script">mui-script (key)</a><br>
+<a href="#mui-swipenav">mui-swipenav (key)</a><br>
+<a href="#muiInit">muiInit (event)</a><br>
+<a href="#pagebeforeshow">pagebeforeshow (event)</a><br>
+<a href="#pagecreate">pagecreate (event)</a><br>
+<a href="#pagehide">pagehide (event)</a><br>
+<a href="#pageshow">pageshow (event)</a><br>
+<a href="#parseDate">parseDate (fn)</a><br>
+<a href="#parseQuery">parseQuery (fn)</a><br>
+<a href="#parseTime">parseTime (fn)</a><br>
+<a href="#randAlphanum">randAlphanum (fn)</a><br>
+<a href="#randInt">randInt (fn)</a><br>
+<a href="#reloadSite">reloadSite (fn)</a><br>
+<a href="#rs2Array">rs2Array (fn)</a><br>
+<a href="#rs2Hash">rs2Hash (fn)</a><br>
+<a href="#rs2MultiHash">rs2MultiHash (fn)</a><br>
+<a href="#setCookie">setCookie (fn)</a><br>
+<a href="#setDateBox">setDateBox (fn)</a><br>
+<a href="#setFormData">setFormData (fn)</a><br>
+<a href="#setStorage">setStorage (fn)</a><br>
+<a href="#setTimeBox">setTimeBox (fn)</a><br>
+<a href="#showByFormMode">showByFormMode (fn)</a><br>
+<a href="#tobool">tobool (fn)</a><br>
+<a href="#waitFor">waitFor (fn)</a><br>
 </div><hr>
+<h2 id="common.js">@module common.js</h2>
+<p>JS通用函数库</p><hr>
+<h2 id="randInt">@fn randInt(from, to)</h2>
+<p>生成一个随机整数。如生成10到20间的随机整数：</p>
+<pre><code>var n = randInt(10, 20)</code></pre><hr>
+<h2 id="randAlphanum">@fn randAlphanum(cnt)</h2>
+<p>生成指定长度(cnt)的随机代码。不出现&quot;0&quot;,&quot;1&quot;,&quot;o&quot;,&quot;l&quot;这些易混淆字符。</p>
+<p>示例：生成8位随机密码</p>
+<pre><code>var dyn_pwd = randAlphanum(8);</code></pre><hr>
+<h2 id="basename">@fn basename(name, ext?)</h2>
+<p>取名字的基础部分，如</p>
+<pre><code>var name = basename("/cc/ttt.asp"); // "ttt.asp"
+var name2 = basename("c:\\aaa\\bbb/cc/ttt.asp", ".asp"); // "ttt"</code></pre><hr>
+<h2 id="parseQuery">@fn parseQuery(str)</h2>
+<p>解析url编码格式的查询字符串，返回对应的对象。</p>
+<pre><code>if (location.search) {
+    var queryStr = location.search.substr(1); // "?id=100&amp;name=abc&amp;val=3.14"去掉"?"号
+    var args = parseQuery(queryStr); // {id: 100, name: "abc", val: 3.14}
+}</code></pre>
+<p>注意：</p>
+<p>如果值为整数或小数，则会转成相应类型。如上例中 id为100,不是字符串&quot;100&quot;.</p><hr>
+<h2 id="tobool">@fn tobool(v)</h2>
+<p>将字符串转成boolean值。除&quot;0&quot;, &quot;1&quot;外，还可以支持字符串 &quot;on&quot;/&quot;off&quot;, &quot;true&quot;/&quot;false&quot;等。</p><hr>
+<h2 id="reloadSite">@fn reloadSite()</h2>
+<p>重新加载当前页面，但不要#hash部分。</p><hr>
+<h2 id="Date.format">@fn Date.format(fmt?=L)</h2>
+<p>日期对象格式化字符串。</p>
+<p class="param"><strong>@param fmt</strong>  格式字符串。由以下组成：</p>
+<pre><code>yyyy - 四位年，如2008, 1999
+yy - 两位年，如 08, 99
+mm - 两位月，如 02, 12
+dd - 两位日，如 01, 30
+HH - 两位小时，如 00, 23
+MM - 两位分钟，如 00, 59
+SS - 两位秒，如 00, 59
+
+支持这几种常用格式：
+L - 标准日期时间，相当于 "yyyy-mm-dd HH:MM:SS"
+D - 标准日期，相当于 "yyyy-mm-dd"
+T - 标准时间，相当于 "HH:MM:SS"</code></pre>
+<p>示例：</p>
+<pre><code>var dt = new Date();
+var dtStr1 = dt.format("D"); // "2009-10-20"
+var dtStr2 = dt.format("yyyymmdd-HHMM"); // "20091020-2038"</code></pre><hr>
+<h2 id="Date.addDay">@fn Date.addDay(n)</h2><hr>
+<h2 id="Date.addHours">@fn Date.addHours(n)</h2><hr>
+<h2 id="Date.addMin">@fn Date.addMin(n)</h2><hr>
+<h2 id="Date.addMonth">@fn Date.addMonth(n)</h2><hr>
+<h2 id="parseTime">@fn parseTime(s)</h2>
+<p>将纯时间字符串生成一个日期对象。</p>
+<pre><code>var dt1 = parseTime("10:10:00");
+var dt2 = parseTime("10:11");</code></pre><hr>
+<h2 id="parseDate">@fn parseDate(dateStr)</h2>
+<p>将日期字符串转为日期时间格式。其效果相当于<code>new Date(Date.parse(dateStr))</code>，但兼容性更好（例如在safari中很多常见的日期格式无法解析）</p>
+<p>示例：</p>
+<pre><code>var dt1 = parseDate("2012-01-01");
+var dt2 = parseDate("2012/01/01 20:00:09");
+var dt3 = parseDate("2012.1.1 20:00");</code></pre><hr>
+<h2 id="Date.add">@fn Date.add(sInterval, n)</h2>
+<p>为日期对象加几天/小时等。参数n为整数，可以为负数。</p>
+<p class="param"><strong>@param sInterval</strong>  Enum. 间隔单位. d-天; m-月; y-年; h-小时; n-分; s-秒</p>
+<p>示例：</p>
+<pre><code>var dt = new Date();
+dt.add("d", 1); // 1天后
+dt.add("m", 1); // 1个月后
+dt.add("y", -1); // 1年前
+dt.add("h", 3); // 3小时后
+dt.add("n", 30); // 30分钟后
+dt.add("s", 30); // 30秒后</code></pre>
+<p class="see"><strong>@see <a href="#Date.diff">Date.diff</a></strong> </p><hr>
+<h2 id="Date.diff">@fn Date.diff(sInterval, dtEnd)</h2>
+<p>计算日期到另一日期间的间隔，单位由sInterval指定(具体值列表参见Date.add).</p>
+<pre><code>var dt = new Date();
+...
+var dt2 = new Date();
+var days = dt.diff("d", dt2); // 相隔多少天</code></pre>
+<p class="see"><strong>@see <a href="#Date.add">Date.add</a></strong> </p><hr>
+<h2 id="setCookie">@fn setCookie(name, value, days?=30)</h2>
+<p>设置cookie值。如果只是为了客户端长时间保存值，一般建议使用 setStorage.</p>
+<p class="see"><strong>@see <a href="#getCookie">getCookie</a></strong> </p>
+<p class="see"><strong>@see <a href="#delCookie">delCookie</a></strong> </p>
+<p class="see"><strong>@see <a href="#setStorage">setStorage</a></strong> </p><hr>
+<h2 id="getCookie">@fn getCookie(name)</h2>
+<p>取cookie值。</p>
+<p class="see"><strong>@see <a href="#setCookie">setCookie</a></strong> </p>
+<p class="see"><strong>@see <a href="#delCookie">delCookie</a></strong> </p><hr>
+<h2 id="delCookie">@fn delCookie(name)</h2>
+<p>删除一个cookie项。</p>
+<p class="see"><strong>@see <a href="#getCookie">getCookie</a></strong> </p>
+<p class="see"><strong>@see <a href="#setCookie">setCookie</a></strong> </p><hr>
+<h2 id="setStorage">@fn setStorage(name, value, useSession?=false)</h2>
+<p>使用localStorage存储(或使用sessionStorage存储, 如果useSession=true)。<br />
+注意只能存储字符串，所以value不可以为数组，对象等，必须序列化后存储。 </p>
+<p>如果浏览器不支持Storage，则使用cookie实现.</p>
+<p>示例：</p>
+<pre><code>setStorage("id", "100");
+var id = getStorage("id");
+delStorage("id");</code></pre>
+<p>示例2：对象需要序列化后存储：</p>
+<pre><code>var obj = {id:10, name:"Jason"};
+setStorage("obj", JSON.stringify(obj));
+var obj2 = getStorage("obj");
+alert(obj2.name);</code></pre>
+<p class="see"><strong>@see <a href="#getStorage">getStorage</a></strong> </p>
+<p class="see"><strong>@see <a href="#delStorage">delStorage</a></strong> </p><hr>
+<h2 id="getStorage">@fn getStorage(name, useSession?=false)</h2>
+<p>取storage中的一项。<br />
+默认使用localStorage存储，如果useSession=true，则使用sessionStorage存储。</p>
+<p>如果浏览器不支持Storage，则使用cookie实现.</p>
+<p class="see"><strong>@see <a href="#setStorage">setStorage</a></strong> </p>
+<p class="see"><strong>@see <a href="#delStorage">delStorage</a></strong> </p><hr>
+<h2 id="delStorage">@fn delStorage(name)</h2>
+<p>删除storage中的一项。</p>
+<p class="see"><strong>@see <a href="#getStorage">getStorage</a></strong> </p>
+<p class="see"><strong>@see <a href="#setStorage">setStorage</a></strong> </p><hr>
+<h2 id="rs2Array">@fn rs2Array(rs)</h2>
+<p class="param"><strong>@param rs=</strong> {h=[header], d=[ @row ]} rs对象(RowSet)</p>
+<p class="return"><strong>@return arr=[</strong>  %obj ]</p>
+<p>rs对象用于传递表格，包含表头与表内容。<br />
+函数用于将服务器发来的rs对象转成数组。</p>
+<p>示例：</p>
+<pre><code>var rs = {
+    h: ["id", "name"], 
+    d: [ [100, "Tom"], [101, "Jane"] ] 
+};
+var arr = rs2Array(rs); 
+
+// 结果为
+arr = [
+    {id: 100, name: "Tom"},
+    {id: 101, name: "Jane"} 
+];</code></pre>
+<p class="see"><strong>@see <a href="#rs2Hash">rs2Hash</a></strong> </p>
+<p class="see"><strong>@see <a href="#rs2MultiHash">rs2MultiHash</a></strong> </p><hr>
+<h2 id="rs2Hash">@fn rs2Hash(rs, key)</h2>
+<p class="param"><strong>@param rs=</strong> {h, d}  rs对象(RowSet)</p>
+<p class="return"><strong>@return hash=</strong> {key => %obj}</p>
+<p>示例：</p>
+<pre><code>var rs = {
+    h: ["id", "name"], 
+    d: [ [100, "Tom"], [101, "Jane"] ] 
+};
+var hash = rs2Hash(rs, "id"); 
+
+// 结果为
+hash = {
+    100: {id: 100, name: "Tom"},
+    101: {id: 101, name: "Jane"}
+};</code></pre>
+<p class="see"><strong>@see <a href="#rs2Array">rs2Array</a></strong> </p><hr>
+<h2 id="rs2MultiHash">@fn rs2MultiHash(rs, key)</h2>
+<p class="param"><strong>@param rs=</strong> {h, d}  rs对象(RowSet)</p>
+<p class="return"><strong>@return hash=</strong> {key => [ %obj ]}</p>
+<p>示例：</p>
+<pre><code>var rs = {
+    h: ["id", "name"], 
+    d: [ [100, "Tom"], [101, "Jane"], [102, "Tom"] ] 
+};
+var hash = rs2Hash(rs, "name");  
+
+// 结果为
+hash = {
+    "Tom": [{id: 100, name: "Tom"}, {id: 102, name: "Tom"}],
+    "Jane": [{id: 101, name: "Jane"}]
+};</code></pre>
+<p class="see"><strong>@see <a href="#rs2Hash">rs2Hash</a></strong> </p>
+<p class="see"><strong>@see <a href="#rs2Array">rs2Array</a></strong> </p><hr>
+<h2 id="IsBusy">@var IsBusy</h2>
+<p>标识应用当前是否正在与服务端交互。一般用于自动化测试。</p><hr>
+<h2 id="g_args">@var g_args</h2>
+<p>应用参数。</p>
+<p>URL参数会自动加入该对象，例如URL为 <code>http://{server}/{app}/index.html?orderId=10&amp;dscr=上门洗车</code>，则该对象有以下值：</p>
+<pre><code>g_args.orderId=10; // 注意：如果参数是个数值，则自动转为数值类型，不再是字符串。
+g_args.dscr="上门洗车"; // 对字符串会自动进行URL解码。</code></pre>
+<p>此外，框架会自动加一些参数：</p>
+<p class="var"><strong>@var <a id="g_args._app">g_args._app</a></strong> ?="user" 应用名称，由setApp({appName})指定。</p>
+<p class="see"><strong>@see <a href="#parseQuery">parseQuery</a></strong>  URL参数通过该函数获取。</p><hr>
+<h2 id="g_cordova">@var g_cordova</h2>
+<p>值是一个整数，默认为0.<br />
+如果非0，表示WEB应用在苹果或安卓APP中运行，且数值代表原生应用容器的大版本号。</p>
+<p>示例：检查用户APP版本是否可以使用某些插件。</p>
+<pre><code>if (g_cordova) { // 在原生APP中。可以使用插件。
+    // 假如在IOS应用的大版本3中，加入了某插件，如果用户未升级，可提示他升级：
+    if (g_cordova &lt; 3 &amp;&amp; isIOS()) {
+        app_alert("您的版本太旧，XX功能无法使用，请升级到最新版本");
+    }
+}</code></pre><hr>
+<h2 id="g_data">@var g_data = {userInfo?, serverRev?}</h2>
+<p>应用全局共享数据。</p>
+<p>在登录时，会自动设置userInfo属性为个人信息。所以可以通过 g_data.userInfo==null 来判断是否已登录。</p>
+<p>serverRev用于标识服务端版本，如果服务端版本升级，则应用可以实时刷新以更新到最新版本。</p>
+<p class="key"><strong>@key <a id="g_data.userInfo">g_data.userInfo</a></strong> </p>
+<p class="key"><strong>@key <a id="g_data.serverRev">g_data.serverRev</a></strong> </p><hr>
+<h2 id="g_cfg">@var g_cfg</h2>
+<p>应用配置项。</p>
+<p class="var"><strong>@var <a id="g_cfg.logAction">g_cfg.logAction</a></strong> ?=false  Boolean. 是否显示详细日志。</p>
+<p class="var"><strong>@var <a id="g_cfg.PAGE_SZ">g_cfg.PAGE_SZ</a></strong> ?=20  分页大小，作为每次调用{obj}.query的缺省值。</p><hr>
 <h2 id="appendParam">@fn appendParam(url, param)</h2>
-<p>例:</p>
+<p>示例:</p>
 <pre><code>var url = "http://xxx/api.php";
 if (a)
     url = appendParam(url, "a=" + a);
 if (b)
     url = appendParam(url, "b=" + b);</code></pre><hr>
-<h2 id="isWeixin">@fn isWeixin</h2><hr>
-<h2 id="isIOS">@fn isIOS</h2><hr>
-<h2 id="isAndroid">@fn isAndroid</h2><hr>
+<h2 id="isWeixin">@fn isWeixin()</h2>
+<p>当前应用运行在微信中。</p><hr>
+<h2 id="isIOS">@fn isIOS()</h2>
+<p>当前应用运行在IOS平台，如iphone或ipad中。</p><hr>
+<h2 id="isAndroid">@fn isAndroid()</h2>
+<p>当前应用运行在安卓平台。</p><hr>
 <h2 id="loadScript">@fn loadScript(url)</h2>
 <p>动态加载一个script. 如果曾经加载过, 可以重用cache.</p>
-<p>注意: $.getScript一般不缓存(仅当跨域时才使用Script标签方法加载,这时可用缓存), 自定义方法$.getScriptWithCache与本方法类似.</p><hr>
+<p>注意: $.getScript一般不缓存(仅当跨域时才使用Script标签方法加载,这时可用缓存), 自定义方法$.getScriptWithCache与本方法类似.</p>
+<p class="see"><strong>@see <a href="#$.getScriptWithCache">$.getScriptWithCache</a></strong> </p><hr>
 <h2 id="getFormData">@fn getFormData(jo)</h2>
 <p>取DOM对象中带name属性的子对象的内容, 放入一个JS对象中, 以便手工调用callSvr.</p>
 <p>注意: </p>
@@ -135,7 +398,9 @@ $("[name=status]").html("已完成");
 var changedData = getFormData(jo); // 返回 { status: "已完成" }
 $.extend(jo.data("origin_"), changedData); // 合并变化的部分到数据源.</code></pre>
 <p class="see"><strong>@see <a href="#getFormData">getFormData</a></strong> </p><hr>
-<h2 id="$.getScriptWithCache">@fn $.getScriptWithCache(url, options?)</h2><hr>
+<h2 id="$.getScriptWithCache">@fn $.getScriptWithCache(url, options?)</h2>
+<p class="param"><strong>@param options</strong> ? 传递给$.ajax的选项。</p>
+<p class="see"><strong>@see <a href="#loadScript">loadScript</a></strong> </p><hr>
 <h2 id="setDateBox">@fn setDateBox(jo, defDateFn?)</h2>
 <p>设置日期框, 如果输入了非法日期, 自动以指定日期(如未指定, 用当前日期)填充.</p>
 <pre><code>setDateBox($("#txtComeDt"), function () { return genDefVal()[0]; });</code></pre><hr>
@@ -179,16 +444,30 @@ function onSubmit()
 <p>从tm到tm1的时间差描述，如&quot;2分钟前&quot;, &quot;3天前&quot;等。</p>
 <p>tm和tm1可以为时间对象或时间字符串</p><hr>
 <h2 id="MUI">@module MUI</h2>
-<p>Mobile UI framework</p>
-<p>== 单网页应用 ==</p>
+<p>筋斗云移动UI框架 - JDCloud Mobile UI framework</p>
+<h4>单网页应用</h4>
 <ul>
 <li>应用程序以page为基本单位，每个页面的html/js可完全分离。参考CPageManager文档。</li>
-<li>后台交互, callSvr系列方法</li>
+<li>后台交互, callSvr系列方法。</li>
 </ul>
-<p>== 登录与退出 ==</p>
+<p class="see"><strong>@see <a href="#CPageManager">CPageManager</a></strong> </p>
+<p class="see"><strong>@see <a href="#CComManager">CComManager</a></strong> </p>
+<p class="see"><strong>@see <a href="#callSvr">callSvr</a></strong> </p>
+<h4>登录与退出</h4>
 <p>框架提供MUI.showLogin/MUI.logout操作.<br />
 调用MUI.tryAutoLogin可以支持自动登录.</p>
-<p>== 底部导航 ==</p>
+<p>登录后显示的主页，登录页，应用名称等均通过MUI.setApp设置。</p>
+<p class="see"><strong>@see <a href="#MUI.tryAutoLogin">MUI.tryAutoLogin</a></strong> </p>
+<p class="see"><strong>@see <a href="#MUI.showLogin">MUI.showLogin</a></strong> </p>
+<p class="see"><strong>@see <a href="#MUI.logout">MUI.logout</a></strong> </p>
+<p class="see"><strong>@see <a href="#MUI.setApp">MUI.setApp</a></strong> </p>
+<h4>常用组件</h4>
+<p>框架提供导航栏、对话框、弹出框、弹出菜单等常用组件。</p>
+<p class="key"><strong>@key <a id=".mui-navbar">.mui-navbar</a></strong>  导航栏</p>
+<p class="key"><strong>@key <a id=".mui-dialog">.mui-dialog</a></strong>  对话框</p>
+<p class="key"><strong>@key <a id=".mui-menu">.mui-menu</a></strong>  菜单</p>
+<h5>底部导航</h5>
+<p class="key"><strong>@key <a id="#footer">#footer</a></strong>  底部导航栏</p>
 <p>设置id为&quot;footer&quot;的导航, 框架会对此做些设置: 如果当前页面为导航栏中的一项时, 就会自动显示导航栏.<br />
 例: 在html中添加底部导航:</p>
 <pre><code>&lt;div id="footer"&gt;
@@ -201,10 +480,10 @@ function onSubmit()
     &lt;a href="#me"&gt;我&lt;/a&gt;
 &lt;/div&gt;</code></pre>
 <p>注意：mui-navbar与ft类并用后，在点击后不会自动设置active类，请自行添加。</p>
-<p>== 图片按需加载 ==</p>
+<h4>图片按需加载</h4>
 <p>仅当页面创建时才会加载。</p>
 <pre><code>&lt;img src="../m/images/ui/carwash.png"&gt;</code></pre>
-<p>== 原生应用支持 ==</p>
+<h4>原生应用支持</h4>
 <p>使用MUI框架的Web应用支持被安卓/苹果原生应用加载（通过cordova技术）。</p>
 <p>设置说明：</p>
 <ul>
@@ -241,37 +520,47 @@ background-color:black;<br />
         }
     }
 }</code></pre>
-<p>== 系统类标识 ==</p>
-<p>框架自动根据系统环境为.mui-container类增加以下常用类标识：</p>
-<ul>
-<li>mui-android: 安卓系统</li>
-<li>mui-ios: 苹果IOS系统</li>
-<li>mui-weixin: 微信浏览器</li>
-<li>mui-cordova: 原生环境</li>
-</ul>
+<h4>系统类标识</h4>
+<p>框架自动根据系统环境为应用容器(.mui-container类)增加以下常用类标识：</p>
+<p class="key"><strong>@key <a id=".mui-android">.mui-android</a></strong> : 安卓系统</p>
+<p class="key"><strong>@key <a id=".mui-ios">.mui-ios</a></strong> : 苹果IOS系统</p>
+<p class="key"><strong>@key <a id=".mui-weixin">.mui-weixin</a></strong> : 微信浏览器</p>
+<p class="key"><strong>@key <a id=".mui-cordova">.mui-cordova</a></strong> : 原生环境</p>
 <p>在css中可以利用它们做针对系统的特殊设置。</p>
-<p>== 手势支持 ==</p>
+<h4>手势支持</h4>
 <p>如果使用了 jquery.touchSwipe 库，则默认支持手势：</p>
 <ul>
 <li>右划：页面后退</li>
 <li>左划：页面前进</li>
 </ul>
+<p class="key"><strong>@key <a id="mui-swipenav">mui-swipenav</a></strong>  DOM属性</p>
 <p>如果页面中某组件上的左右划与该功能冲突，可以设置属性mui-swipenav=&quot;no&quot;来禁用该功能：</p>
 <pre><code>&lt;div mui-swipenav="no"&gt;&lt;/div&gt;</code></pre>
+<p class="key"><strong>@key <a id=".noSwipe">.noSwipe</a></strong>  CSS-class</p>
 <p>左右划前进后退功能会导致横向滚动生效。可以通过添加noSwipe类（注意大小写）的方式禁用swipe事件恢复滚动功能：</p>
 <pre><code>&lt;div class="noSwipe"&gt;&lt;/div&gt;</code></pre><hr>
-<h2 id="CPageManager">@class CPageManager</h2>
-<p>MUI的基类，提供showPage等操作。</p>
-<p>页面管理器提供单网页应用框架（一般称单页面应用/SPA，为与应用内page区分，我称之为单网页应用）。<br />
-主要特性：</p>
+<h2 id="CPageManager">@class CPageManager(app)</h2>
+<p>页面管理器，提供基于逻辑页面的单网页应用，亦称“变脸式应用”。</p>
+<p>该类作为MUI模块的基类，仅供内部使用，但它提供showPage等操作，以及pageshow等各类事件。</p>
+<p class="param"><strong>@param app</strong>  IApp={homePage?="#home", pageFolder?="page"}</p>
+<h4>主要特性</h4>
 <ul>
-<li>页面路由。异步无刷新页面切换。支持浏览器前进后退操作。</li>
-<li>基于page的模块化开发。支持页面html片段和js片段。</li>
-<li>统一对待内部页面和外部页面（同样的方式访问，同样的行为）。开发时推荐用外部页面，发布时可打包常用页面成为内部页面。访问任何页面都是index.html#page1的方式，如果page1已存在则使用（内部页面），不存在则动态加载（如找到fragment/page1.html）</li>
+<li>基于缺页中断思想的页面路由。异步无刷新页面切换。支持浏览器前进后退操作。</li>
+<li>支持页面对象模型(POM)，方便基于逻辑页面的模块化开发。支持页面html片段和js片段。</li>
+<li>统一对待内部页面和外部页面（同样的方式访问，同样的行为）。开发时推荐用外部页面，发布时可打包常用页面成为内部页面。<br />
+访问任何页面都是index.html#page1的方式，如果page1已存在则使用（内部页面），不存在则动态加载（如找到fragment/page1.html）</li>
 <li>页面栈管理。可自行pop掉一些页面控制返回行为。</li>
 </ul>
-<p>所有的page的html与js均可以独立开发。<br />
-如添加一个订单页，使用外部页面，可以添加一个order.html (html片段):</p>
+<p class="see"><strong>@see <a href="#MUI.showPage">MUI.showPage</a></strong> </p>
+<p class="see"><strong>@see <a href="#MUI.popPageStack">MUI.popPageStack</a></strong> </p>
+<h4>使用方法</h4>
+<p class="key"><strong>@key <a id=".mui-container">.mui-container</a></strong>  应用容器。</p>
+<p class="event"><strong>@event <a id="muiInit">muiInit</a></strong> () DOM事件。this为当前应用容器。</p>
+<p>先在主应用html中，用.mui-container类标识应用容器，在运行时，所有逻辑页面都将在该对象之下。如：</p>
+<pre><code>&lt;body class="mui-container"&gt;</code></pre>
+<p>应用初始化时会发出muiInit事件，该事件在页面加载完成($.ready)后，显示首页前调用。在这里调用MUI.showPage可动态显示首页。</p>
+<p>每个逻辑页面(page)以及它对应的脚本(js)均可以独立开发，或嵌入在主页面的应用容器中。</p>
+<p>如添加一个订单页，使用外部页面，可以添加一个order.html (html片段):</p>
 <pre><code>&lt;div mui-initfn="initPageOrder" mui-script="order.js"&gt;
     ...
 &lt;/div&gt;</code></pre>
@@ -290,9 +579,25 @@ background-color:black;<br />
     jpage.on("pagehide", onHide);
     ...
 }</code></pre>
-<p>框架提供muiInit/pagecreate/pagebeforeshow/pageshow/pagehide事件。</p><hr>
-<h2 id="CPageManager">@class CPageManager(app)</h2>
-<p class="param"><strong>@param app</strong>  IApp={homePage?="#home", pageFolder?="page"}</p><hr>
+<p>逻辑页面加载过程，以加载页面&quot;#order&quot;为例: </p>
+<pre><code>MUI.showPage("#order");</code></pre>
+<ul>
+<li>检查是否已加载该页面，如果已加载则显示该页并跳到&quot;pagebeforeshow&quot;事件这一步。</li>
+<li>检查内部模板页。如果内部页面模板中有名为&quot;tpl_{页面名}&quot;的对象，有则将其内容做为页面代码加载，然后跳到initPage步骤。</li>
+<li>加载外部模板页。加载 {pageFolder}/{页面名}.html 作为逻辑页面，如果加载失败则报错。页面所在文件夹可通过 MUI.setApp({pageFolder})指定。</li>
+<li>initPage页面初始化. 为页面添加.mui-page类。如果逻辑页面上指定了mui-script属性，则先加载该属性指定的JS文件。然后如果设置了mui-initfn属性，则将其作为页面初始化函数调用。</li>
+<li>发出pagecreate事件。</li>
+<li>发出pagebeforeshow事件。</li>
+<li>动画完成后，发出pageshow事件。</li>
+<li>如果之前有其它页面在显示，则触发之前页面的pagehide事件。</li>
+</ul>
+<p class="key"><strong>@key <a id=".mui-page">.mui-page</a></strong>  逻辑页面。</p>
+<p class="key"><strong>@key <a id="mui-script">mui-script</a></strong>  DOM属性。逻辑页面对应的JS文件。</p>
+<p class="key"><strong>@key <a id="mui-initfn">mui-initfn</a></strong>  DOM属性。逻辑页面对应的初始化函数，一般包含中mui-script指定的JS文件中。</p>
+<p class="event"><strong>@event <a id="pagecreate">pagecreate</a></strong> () DOM事件。this为当前页面jpage。</p>
+<p class="event"><strong>@event <a id="pagebeforeshow">pagebeforeshow</a></strong> () DOM事件。this为当前页面jpage。</p>
+<p class="event"><strong>@event <a id="pageshow">pageshow</a></strong> ()  DOM事件。this为当前页面jpage。</p>
+<p class="event"><strong>@event <a id="pagehide">pagehide</a></strong> () DOM事件。this为当前页面jpage。</p><hr>
 <h2 id="MUI.activePage">@var MUI.activePage</h2>
 <p>当前页面。</p>
 <p>注意：</p>
@@ -308,7 +613,7 @@ background-color:black;<br />
 <p>上一个页面的id, 首次进入时为空.</p><hr>
 <h2 id="MUI.container">@var MUI.container</h2>
 <p>现在为$(document.body)</p><hr>
-<h2 id="MUI.showFirstPage?=true">@var MUI.showFirstPage?=true</h2>
+<h2 id="MUI.showFirstPage">@var MUI.showFirstPage?=true</h2>
 <p>如果为false, 则必须手工执行 MUI.showPage 来显示第一个页面。</p><hr>
 <h2 id="MUI.docTitle">@var MUI.docTitle</h2>
 <p>初始文档标题名。（当前标题可通过document.title查看）</p><hr>
@@ -427,7 +732,10 @@ app_alert("输入要查询的名字:", "p", function (text) {
 <p>app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时将clone一份用于显示并在关闭后删除。</p><hr>
 <h2 id="CComManager">@class CComManager</h2>
 <p class="param"><strong>@param app</strong>  IApp={appName?=user}</p>
-<p>提供callSvr等与后台交互的API.</p><hr>
+<p>提供callSvr等与后台交互的API.</p>
+<p class="see"><strong>@see <a href="#MUI.callSvr">MUI.callSvr</a></strong> </p>
+<p class="see"><strong>@see <a href="#MUI.useBatchCall">MUI.useBatchCall</a></strong> </p>
+<p class="see"><strong>@see <a href="#MUI.setupCallSvrViaForm">MUI.setupCallSvrViaForm</a></strong> </p><hr>
 <h2 id="MUI.lastError">@var MUI.lastError = ctx</h2>
 <p>ctx: {ac, tm, tv, ret}</p>
 <ul>
@@ -436,16 +744,18 @@ app_alert("输入要查询的名字:", "p", function (text) {
 <li>tv: time interval</li>
 <li>ret: return value</li>
 </ul><hr>
-<h2 id="MUI.disableBatch">@var MUI.disableBatch ?= false</h2><hr>
-<h2 id="MUI.m_curBatch">@var MUI.m_curBatch</h2><hr>
+<h2 id="MUI.disableBatch">@var MUI.disableBatch ?= false</h2>
+<p>设置为true禁用batchCall, 仅用于内部测试。</p><hr>
+<h2 id="MUI.m_curBatch">@var MUI.m_curBatch</h2>
+<p>当前batchCall对象，用于内部调试。</p><hr>
 <h2 id="app_abort">@fn app_abort()</h2>
 <p>中止之后的调用, 直接返回.</p><hr>
 <h2 id="MUI.setOnError">@fn MUI.setOnError()</h2>
 <p>一般框架自动设置onerror函数；如果onerror被其它库改写，应再次调用该函数。<br />
 allow throw(&quot;abort&quot;) as abort behavior.</p><hr>
 <h2 id="delayDo">@fn delayDo(fn, delayCnt?=3)</h2>
-<pre><code>设置延迟执行。当delayCnt=1时与setTimeout效果相同。
-多次置于事件队列最后，一般3次后其它js均已执行完毕，为idle状态</code></pre><hr>
+<p>设置延迟执行。当delayCnt=1时与setTimeout效果相同。<br />
+多次置于事件队列最后，一般3次后其它js均已执行完毕，为idle状态</p><hr>
 <h2 id="MUI.enterWaiting">@fn MUI.enterWaiting(ctx?)</h2>
 <p class="param"><strong>@param ctx</strong>  {ac, tm, tv?, tv2?, noLoadingImg?}</p>
 <p class="alias"><strong>@alias <a id="enterWaiting">enterWaiting</a></strong> ()</p><hr>
@@ -495,7 +805,7 @@ callSvr("User.get", function (data) {
 <li>tv2: 从接到数据到完成处理的时间，毫秒(当并发处理多个调用时可能不精确)</li>
 </ul><hr>
 <h2 id="MUI.callSvrSync">@fn MUI.callSvrSync(ac, params?, fn?, postParams?, userOptions?)</h2>
-<p class="fn"><strong>@fn MUI.callSvrSync</strong> (ac, fn?, postParams?, userOptions?)</p>
+<p class="fn"><strong>@fn <a id="MUI.callSvrSync">MUI.callSvrSync</a></strong> (ac, fn?, postParams?, userOptions?)</p>
 <p class="alias"><strong>@alias <a id="callSvrSync">callSvrSync</a></strong> </p>
 <p class="return"><strong>@return data</strong>  原型规定的返回数据</p>
 <p>同步模式调用callSvr.</p><hr>
@@ -555,7 +865,8 @@ batch.commit();</code></pre>
 {$2 -1}  // 可以做简单的计算</code></pre>
 <p>如果值计算失败，则当作&quot;null&quot;填充。</p>
 <p class="see"><strong>@see <a href="#MUI.useBatchCall">MUI.useBatchCall</a></strong> </p>
-<p class="see"><strong>@see <a href="#MUI.disableBatch">MUI.disableBatch</a></strong> </p><hr>
+<p class="see"><strong>@see <a href="#MUI.disableBatch">MUI.disableBatch</a></strong> </p>
+<p class="see"><strong>@see <a href="#MUI.m_curBatch">MUI.m_curBatch</a></strong> </p><hr>
 <h2 id="MUI.useBatchCall">@fn MUI.useBatchCall(opt?={useTrans?=0}, tv?=0)</h2>
 <p>之后的callSvr调用都加入批量操作。例：</p>
 <pre><code>MUI.useBatchCall();
@@ -569,7 +880,7 @@ callSvr("User.get", {res: "id,phone"}, api_UserGet);</code></pre>
 <h2 id="MUI.m_app">@var MUI.m_app</h2>
 <p>参考MUI.setApp</p><hr>
 <h2 id="MUI.setFormSubmit">@fn MUI.setFormSubmit(jf, fn?, opt?={rules, validate?, onNoAction?})</h2>
-<p class="param"><strong>@param fn?</strong>  the callback for callSvr. you can use this["userPost"] to retrieve the post param.</p>
+<p class="param"><strong>@param fn</strong> ? the callback for callSvr. you can use this["userPost"] to retrieve the post param.</p>
 <p>opt.rules: 参考jquery.validate文档<br />
 opt.validate: Function(jf, queryParam={ac?,res?,...}, postParam). 如果返回false, 则取消submit. queryParam和postParam为调用参数，可以修改。</p>
 <p>form提交时的调用参数, 如果不指定, 则以form的action属性作为queryParam.ac发起callSvr调用.</p>
@@ -627,11 +938,11 @@ function handleLogin(data)
 <h2 id="initPullList">@fn initPullList(container, opt)</h2>
 <p>为列表添加下拉刷新和上拉加载功能。</p>
 <p>例：页面元素如下：</p>
-<div mui-initfn="initPageOrders" mui-script="orders.js">
-    <div class="bd">
-        <div class="p-list"></div>
-    </div>
-</div>
+<pre><code>&lt;div mui-initfn="initPageOrders" mui-script="orders.js"&gt;
+    &lt;div class="bd"&gt;
+        &lt;div class="p-list"&gt;&lt;/div&gt;
+    &lt;/div&gt;
+&lt;/div&gt;</code></pre>
 <p>设置下拉列表的示例代码如下：</p>
 <pre><code>var pullListOpt = {
     onLoadItem: showOrderList
@@ -663,13 +974,13 @@ function showOrderList(isRefresh)
 <li>由于page body的高度自动由框架设定，所以可以作为带滚动条的容器；如果是其它容器，一定要确保它有限定的宽度，以便可以必要时出现滚动条。</li>
 <li>
 <p>*** 由于处理分页的逻辑比较复杂，请调用 initPageList替代, 即使只有一个list；它会屏蔽nextkey, refresh等细节，并做一些优化。像这样调用：</p>
-<p>initPageList(jpage, {<br />
-pageItf: PageOrders,<br />
-navRef: null,<br />
-listRef: jlst,<br />
-onGetQueryParam: ...<br />
-onAddItem: ...<br />
-});</p>
+<pre><code>initPageList(jpage, {
+    pageItf: PageOrders,
+    navRef: null,
+    listRef: jlst,
+    onGetQueryParam: ...
+    onAddItem: ...
+});</code></pre>
 </li>
 </ul>
 <p>本函数参数如下：</p>
@@ -701,7 +1012,7 @@ uptoThreshold:: Boolean. 是否达到阈值</code></pre><hr>
 <li>点击导航栏自动切换列表，仅当首次显示列表时刷新数据</li>
 <li>支持强制刷新所有列表的控制，一般定义在page接口中，如 PageOrders.refresh</li>
 </ol>
-<h2>例：一个navbar与若干list的组合</h2>
+<h4>例：一个navbar与若干list的组合</h4>
 <p>基本页面结构如下：</p>
 <pre><code>&lt;div mui-initfn="initPageOrders" mui-script="orders.js"&gt;
     &lt;div class="hd"&gt;
@@ -747,7 +1058,7 @@ uptoThreshold:: Boolean. 是否达到阈值</code></pre><hr>
     }
 });</code></pre>
 <p>由于指定了pageItf属性，当外部页面设置了 PageOrders.refresh = true后，再进入本页面，所有关联的列表会在展现时自动刷新。且PageOrders.refresh会被自动重置为false.</p>
-<h2>例：若干button与若干list的组合(必须一一对应)，打开页面时只展现一个列表，点击相应按钮显示相应列表。</h2>
+<h4>例：若干button与若干list的组合(必须一一对应)，打开页面时只展现一个列表，点击相应按钮显示相应列表。</h4>
 <p>如果没有用navbar组件，而是一组button对应一组列表，点一个button显示对应列表，也可以使用本函数。页面如下：</p>
 <pre><code>&lt;div mui-initfn="initPageOrders" mui-script="orders.js"&gt;
     &lt;div class="hd"&gt;
@@ -776,7 +1087,7 @@ var lstItf = initPageList(jpage, {
     ...
 });</code></pre>
 <p>注意：navRef与listRef中的组件数目一定要一一对应。除了使用选择器，也可以直接用jQuery对象为navRef和listRef赋值。</p>
-<h2>例：只有一个list 的简单情况，也可以调用本函数简化分页处理</h2>
+<h4>例：只有一个list 的简单情况，也可以调用本函数简化分页处理</h4>
 <p>仍考虑上例，假如那两个列表需要进入页面时就同时显示，那么可以分开一一设置如下：</p>
 <pre><code>jpage.find(".p-panel").height(500); // 一定要为容器设置高度
 
@@ -805,7 +1116,7 @@ navRef是否为空的区别是，如果非空，则表示listRef是一组互斥�
     listRef: ".p-list"
     ...
 });</code></pre>
-<h2>框架基本原理</h2>
+<h4>框架基本原理</h4>
 <p>原理是在合适的时机，自动调用类似这样的逻辑：</p>
 <pre><code>var queryParam = {ac: "Ordr.query"};
 opt.onGetQueryParam(jlst, queryParam);
@@ -816,7 +1127,7 @@ callSvr(queryParam.ac, queryParam, function (data) {
     if (data.d.length == 0)
         opt.onNoItem(jlst);
 });</code></pre>
-<h2>参数说明</h2>
+<h4>参数说明</h4>
 <p class="param"><strong>@param opt</strong>  {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list"}</p>
 <p class="param"><strong>@param onGetQueryParam</strong>  Function(jlst, queryParam/o)</p>
 <p>queryParam: {ac?, res?, cond?, ...}</p>
@@ -836,10 +1147,10 @@ callSvr(queryParam.ac, queryParam, function (data) {
 <p class="return"><strong>@return PageListInterface=</strong> {refresh, markRefresh}</p>
 <p>refresh: Function(), 刷新当前列表<br />
 markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 下次浏览该列表时刷新。</p>
-<h2>css类</h2>
-<p>可以对以下两个类指定样式：<br />
-mui-pullPrompt - 下拉刷新提示块<br />
-mui-loadPrompt - 自动加载提示块</p><hr>
+<h4>css类</h4>
+<p>可以对以下两个CSS class指定样式：</p>
+<p class="key"><strong>@key <a id="mui-pullPrompt">mui-pullPrompt</a></strong>  CSS-class 下拉刷新提示块</p>
+<p class="key"><strong>@key <a id="mui-loadPrompt">mui-loadPrompt</a></strong>  CSS-class 自动加载提示块</p><hr>
 <h2 id="showByFormMode">@fn showByFormMode(jo, formMode)</h2>
 <p>根据当前formMode自动显示或隐藏jo下的DOM对象.</p>
 <p>示例: 对以下DOM对象</p>
@@ -868,24 +1179,23 @@ onGet: Function(data); 获取数据后并调用setFormData将数据显示到页�
 <li>在page里面包含form，form的action属性标明对象名称，method属性不用。form下包含各展示字段，各字段以name属性标识。</li>
 <li>可以用 forAdd, forSet 等class标识对象只在添加或更新时显示。</li>
 <li>一个或多个提交按钮，触发提交事件。</li>
-<li>
-<p>对于不想展示但需要提交的字段，可以用设置为隐藏的input[type=text]对象，或是input[type=hidden]对象；如果字段会变化应使用前者，type=hidden对象内容设置后不会变化(如调用setFormData不修改hidden对象)</p>
-<div mui-initfn="initPagePerson" mui-script="person.js">
-    ...
-    <div class="bd">
-        <form action="Person">
-            <input name="name" required placeholder="输入名称">
-            <textarea name="dscr" placeholder="写点简介"></textarea>
-            <div class="forSet">人物标签</div>
-
-            <button type="submit" id="btnOK">确定</button>
-            <input type="text" style="display:none" name="familyId">
-
-        </form>
-    </div>
-</div>
-</li>
+<li>对于不想展示但需要提交的字段，可以用设置为隐藏的input[type=text]对象，或是input[type=hidden]对象；如果字段会变化应使用前者，type=hidden对象内容设置后不会变化(如调用setFormData不修改hidden对象)</li>
 </ul>
+<p>逻辑页面（html片段）示例如下：</p>
+<pre><code>&lt;div mui-initfn="initPagePerson" mui-script="person.js"&gt;
+    ...
+    &lt;div class="bd"&gt;
+        &lt;form action="Person"&gt;
+            &lt;input name="name" required placeholder="输入名称"&gt;
+            &lt;textarea name="dscr" placeholder="写点简介"&gt;&lt;/textarea&gt;
+            &lt;div class="forSet"&gt;人物标签&lt;/div&gt;
+
+            &lt;button type="submit" id="btnOK"&gt;确定&lt;/button&gt;
+            &lt;input type="text" style="display:none" name="familyId"&gt;
+
+        &lt;/form&gt;
+    &lt;/div&gt;
+&lt;/div&gt;</code></pre>
 <p>调用initPageDetail使它成为支持添加、查看和更新的详情页：</p>
 <pre><code>var PagePerson = {
     showForAdd: function (formData) ...
@@ -923,4 +1233,5 @@ PagePerson.showForSet({id: 3}); // 以id=3查询人物并显示，可更新。</
     ...
 &lt;/form&gt;</code></pre>
 <p>如果formData中有多个属性，则自动以formData的内容作为数据源显示页面，不再发起查询。</p><hr>
-<hr><div>Generated by jdcloud-gendoc @ 2016-06-14T20:38:45+08:00</div>
+<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-06-15T20:08:55+08:00</div>
+</html>

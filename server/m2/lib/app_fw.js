@@ -1,11 +1,70 @@
 // ====== global {{{
+/**
+@var IsBusy
+
+标识应用当前是否正在与服务端交互。一般用于自动化测试。
+*/
 var IsBusy = 0;
+
+/**
+@var g_args
+
+应用参数。
+
+URL参数会自动加入该对象，例如URL为 `http://{server}/{app}/index.html?orderId=10&dscr=上门洗车`，则该对象有以下值：
+
+	g_args.orderId=10; // 注意：如果参数是个数值，则自动转为数值类型，不再是字符串。
+	g_args.dscr="上门洗车"; // 对字符串会自动进行URL解码。
+
+此外，框架会自动加一些参数：
+
+@var g_args._app?="user" 应用名称，由setApp({appName})指定。
+
+@see parseQuery URL参数通过该函数获取。
+*/
 var g_args = {}; // {_test, _debug, cordova}
+
+/**
+@var g_cordova
+
+值是一个整数，默认为0. 
+如果非0，表示WEB应用在苹果或安卓APP中运行，且数值代表原生应用容器的大版本号。
+
+示例：检查用户APP版本是否可以使用某些插件。
+
+	if (g_cordova) { // 在原生APP中。可以使用插件。
+		// 假如在IOS应用的大版本3中，加入了某插件，如果用户未升级，可提示他升级：
+		if (g_cordova < 3 && isIOS()) {
+			app_alert("您的版本太旧，XX功能无法使用，请升级到最新版本");
+		}
+	}
+*/
 var g_cordova = 0; // the version for the android/ios native cient. 0 means web app.
 
-// 应用内部共享数据
+/**
+@var g_data = {userInfo?, serverRev?}
+
+应用全局共享数据。
+
+在登录时，会自动设置userInfo属性为个人信息。所以可以通过 g_data.userInfo==null 来判断是否已登录。
+
+serverRev用于标识服务端版本，如果服务端版本升级，则应用可以实时刷新以更新到最新版本。
+
+@key g_data.userInfo
+@key g_data.serverRev
+
+*/
 var g_data = {}; // {userInfo, serverRev}
-// 应用配置项
+
+/**
+@var g_cfg
+
+应用配置项。
+
+@var g_cfg.logAction?=false  Boolean. 是否显示详细日志。
+@var g_cfg.PAGE_SZ?=20  分页大小，作为每次调用{obj}.query的缺省值。
+*/
+
 var g_cfg = { logAction: false };
 
 var m_appVer;
@@ -15,7 +74,7 @@ var m_appVer;
 /**
 @fn appendParam(url, param)
 
-例:
+示例:
 
 	var url = "http://xxx/api.php";
 	if (a)
@@ -31,19 +90,25 @@ function appendParam(url, param)
 	return url + (url.indexOf('?')>0? "&": "?") + param;
 }
 
-/** @fn isWeixin */
+/** @fn isWeixin()
+当前应用运行在微信中。
+*/
 function isWeixin()
 {
 	return /micromessenger/i.test(navigator.userAgent);
 }
 
-/** @fn isIOS */
+/** @fn isIOS()
+当前应用运行在IOS平台，如iphone或ipad中。
+*/
 function isIOS()
 {
 	return /iPhone|iPad/i.test(navigator.userAgent);
 }
 
-/** @fn isAndroid */
+/** @fn isAndroid()
+当前应用运行在安卓平台。
+*/
 function isAndroid()
 {
 	return /Android/i.test(navigator.userAgent);
@@ -54,6 +119,8 @@ function isAndroid()
 动态加载一个script. 如果曾经加载过, 可以重用cache.
 
 注意: $.getScript一般不缓存(仅当跨域时才使用Script标签方法加载,这时可用缓存), 自定义方法$.getScriptWithCache与本方法类似.
+
+@see $.getScriptWithCache
 */
 function loadScript(url, fnOK)
 {
@@ -195,6 +262,10 @@ function setFormData(jo, data, opt)
 
 /**
 @fn $.getScriptWithCache(url, options?)
+
+@param options? 传递给$.ajax的选项。
+
+@see loadScript
 */
 $.getScriptWithCache = function(url, options) 
 {
@@ -400,19 +471,40 @@ var E_ABORT=-100;
 /**
 @module MUI
 
-Mobile UI framework
+筋斗云移动UI框架 - JDCloud Mobile UI framework
 
-== 单网页应用 ==
+## 单网页应用
 
 - 应用程序以page为基本单位，每个页面的html/js可完全分离。参考CPageManager文档。
-- 后台交互, callSvr系列方法
+- 后台交互, callSvr系列方法。
 
-== 登录与退出 ==
+@see CPageManager
+@see CComManager
+@see callSvr
+
+## 登录与退出
 
 框架提供MUI.showLogin/MUI.logout操作. 
 调用MUI.tryAutoLogin可以支持自动登录.
 
-== 底部导航 ==
+登录后显示的主页，登录页，应用名称等均通过MUI.setApp设置。
+
+@see MUI.tryAutoLogin
+@see MUI.showLogin
+@see MUI.logout
+@see MUI.setApp
+
+## 常用组件
+
+框架提供导航栏、对话框、弹出框、弹出菜单等常用组件。
+
+@key .mui-navbar 导航栏
+@key .mui-dialog 对话框
+@key .mui-menu 菜单
+
+### 底部导航
+
+@key #footer 底部导航栏
 
 设置id为"footer"的导航, 框架会对此做些设置: 如果当前页面为导航栏中的一项时, 就会自动显示导航栏.
 例: 在html中添加底部导航:
@@ -431,13 +523,13 @@ Mobile UI framework
 
 注意：mui-navbar与ft类并用后，在点击后不会自动设置active类，请自行添加。
 
-== 图片按需加载 ==
+## 图片按需加载
 
 仅当页面创建时才会加载。
 
 	<img src="../m/images/ui/carwash.png">
 
-== 原生应用支持 ==
+## 原生应用支持
 
 使用MUI框架的Web应用支持被安卓/苹果原生应用加载（通过cordova技术）。
 
@@ -481,28 +573,30 @@ Mobile UI framework
 		}
 	}
 
-== 系统类标识 ==
+## 系统类标识
 
-框架自动根据系统环境为.mui-container类增加以下常用类标识：
+框架自动根据系统环境为应用容器(.mui-container类)增加以下常用类标识：
 
-* mui-android: 安卓系统
-* mui-ios: 苹果IOS系统
-* mui-weixin: 微信浏览器
-* mui-cordova: 原生环境
+@key .mui-android: 安卓系统
+@key .mui-ios: 苹果IOS系统
+@key .mui-weixin: 微信浏览器
+@key .mui-cordova: 原生环境
 
 在css中可以利用它们做针对系统的特殊设置。
 
-== 手势支持 ==
+## 手势支持
 
 如果使用了 jquery.touchSwipe 库，则默认支持手势：
 
 - 右划：页面后退
 - 左划：页面前进
 
+@key mui-swipenav DOM属性
 如果页面中某组件上的左右划与该功能冲突，可以设置属性mui-swipenav="no"来禁用该功能：
 
 	<div mui-swipenav="no"></div>
 
+@key .noSwipe CSS-class
 左右划前进后退功能会导致横向滚动生效。可以通过添加noSwipe类（注意大小写）的方式禁用swipe事件恢复滚动功能：
 
 	<div class="noSwipe"></div>
@@ -512,18 +606,38 @@ Mobile UI framework
 
 // ------ CPageManager {{{
 /**
-@class CPageManager
+@class CPageManager(app)
 
-MUI的基类，提供showPage等操作。
+页面管理器，提供基于逻辑页面的单网页应用，亦称“变脸式应用”。
 
-页面管理器提供单网页应用框架（一般称单页面应用/SPA，为与应用内page区分，我称之为单网页应用）。
-主要特性：
-- 页面路由。异步无刷新页面切换。支持浏览器前进后退操作。
-- 基于page的模块化开发。支持页面html片段和js片段。
-- 统一对待内部页面和外部页面（同样的方式访问，同样的行为）。开发时推荐用外部页面，发布时可打包常用页面成为内部页面。访问任何页面都是index.html#page1的方式，如果page1已存在则使用（内部页面），不存在则动态加载（如找到fragment/page1.html）
+该类作为MUI模块的基类，仅供内部使用，但它提供showPage等操作，以及pageshow等各类事件。
+
+@param app IApp={homePage?="#home", pageFolder?="page"}
+
+## 主要特性
+
+- 基于缺页中断思想的页面路由。异步无刷新页面切换。支持浏览器前进后退操作。
+- 支持页面对象模型(POM)，方便基于逻辑页面的模块化开发。支持页面html片段和js片段。
+- 统一对待内部页面和外部页面（同样的方式访问，同样的行为）。开发时推荐用外部页面，发布时可打包常用页面成为内部页面。
+  访问任何页面都是index.html#page1的方式，如果page1已存在则使用（内部页面），不存在则动态加载（如找到fragment/page1.html）
 - 页面栈管理。可自行pop掉一些页面控制返回行为。
 
-所有的page的html与js均可以独立开发。
+@see MUI.showPage
+@see MUI.popPageStack
+
+## 使用方法
+
+@key .mui-container 应用容器。
+@event muiInit() DOM事件。this为当前应用容器。
+
+先在主应用html中，用.mui-container类标识应用容器，在运行时，所有逻辑页面都将在该对象之下。如：
+
+	<body class="mui-container">
+
+应用初始化时会发出muiInit事件，该事件在页面加载完成($.ready)后，显示首页前调用。在这里调用MUI.showPage可动态显示首页。
+
+每个逻辑页面(page)以及它对应的脚本(js)均可以独立开发，或嵌入在主页面的应用容器中。
+
 如添加一个订单页，使用外部页面，可以添加一个order.html (html片段):
 
 	<div mui-initfn="initPageOrder" mui-script="order.js">
@@ -549,12 +663,28 @@ MUI的基类，提供showPage等操作。
 		...
 	}
 
-框架提供muiInit/pagecreate/pagebeforeshow/pageshow/pagehide事件。
+逻辑页面加载过程，以加载页面"#order"为例: 
+
+	MUI.showPage("#order");
+
+- 检查是否已加载该页面，如果已加载则显示该页并跳到"pagebeforeshow"事件这一步。
+- 检查内部模板页。如果内部页面模板中有名为"tpl_{页面名}"的对象，有则将其内容做为页面代码加载，然后跳到initPage步骤。
+- 加载外部模板页。加载 {pageFolder}/{页面名}.html 作为逻辑页面，如果加载失败则报错。页面所在文件夹可通过 MUI.setApp({pageFolder})指定。
+- initPage页面初始化. 为页面添加.mui-page类。如果逻辑页面上指定了mui-script属性，则先加载该属性指定的JS文件。然后如果设置了mui-initfn属性，则将其作为页面初始化函数调用。
+- 发出pagecreate事件。
+- 发出pagebeforeshow事件。
+- 动画完成后，发出pageshow事件。
+- 如果之前有其它页面在显示，则触发之前页面的pagehide事件。
+
+@key .mui-page 逻辑页面。
+@key mui-script DOM属性。逻辑页面对应的JS文件。
+@key mui-initfn DOM属性。逻辑页面对应的初始化函数，一般包含中mui-script指定的JS文件中。
+
+@event pagecreate() DOM事件。this为当前页面jpage。
+@event pagebeforeshow() DOM事件。this为当前页面jpage。
+@event pageshow()  DOM事件。this为当前页面jpage。
+@event pagehide() DOM事件。this为当前页面jpage。
  */
-/**
-@class CPageManager(app)
-@param app IApp={homePage?="#home", pageFolder?="page"}
-*/
 function CPageManager(app)
 {
 	var self = this;
@@ -1525,6 +1655,9 @@ app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时�
 
 提供callSvr等与后台交互的API.
 
+@see MUI.callSvr
+@see MUI.useBatchCall
+@see MUI.setupCallSvrViaForm
 */
 function CComManager(app)
 {
@@ -1548,11 +1681,15 @@ ctx: {ac, tm, tv, ret}
 
 /**
 @var MUI.disableBatch ?= false
+
+设置为true禁用batchCall, 仅用于内部测试。
 */
 	self.disableBatch = false;
 
 /**
 @var MUI.m_curBatch
+
+当前batchCall对象，用于内部调试。
 */
 	var m_curBatch = null;
 	self.m_curBatch = m_curBatch;
@@ -1613,12 +1750,12 @@ allow throw("abort") as abort behavior.
 	// 		$.mobile.loading("show");
 	// });
 
-	/**
-	@fn delayDo(fn, delayCnt?=3)
+/**
+@fn delayDo(fn, delayCnt?=3)
 
-	设置延迟执行。当delayCnt=1时与setTimeout效果相同。
-	多次置于事件队列最后，一般3次后其它js均已执行完毕，为idle状态
-	*/
+设置延迟执行。当delayCnt=1时与setTimeout效果相同。
+多次置于事件队列最后，一般3次后其它js均已执行完毕，为idle状态
+*/
 	window.delayDo = delayDo;
 	function delayDo(fn, delayCnt)
 	{
@@ -2071,6 +2208,7 @@ allow throw("abort") as abort behavior.
 
 @see MUI.useBatchCall
 @see MUI.disableBatch
+@see MUI.m_curBatch
 
 */
 	self.batchCall = batchCall;
@@ -2669,11 +2807,11 @@ function setApp(app)
 
 例：页面元素如下：
 
-<div mui-initfn="initPageOrders" mui-script="orders.js">
-	<div class="bd">
-		<div class="p-list"></div>
+	<div mui-initfn="initPageOrders" mui-script="orders.js">
+		<div class="bd">
+			<div class="p-list"></div>
+		</div>
 	</div>
-</div>
 
 设置下拉列表的示例代码如下：
 
@@ -2708,13 +2846,13 @@ function setApp(app)
 - 由于page body的高度自动由框架设定，所以可以作为带滚动条的容器；如果是其它容器，一定要确保它有限定的宽度，以便可以必要时出现滚动条。
 - *** 由于处理分页的逻辑比较复杂，请调用 initPageList替代, 即使只有一个list；它会屏蔽nextkey, refresh等细节，并做一些优化。像这样调用：
 
-	initPageList(jpage, {
-		pageItf: PageOrders,
-		navRef: null,
-		listRef: jlst,
-		onGetQueryParam: ...
-		onAddItem: ...
-	});
+		initPageList(jpage, {
+			pageItf: PageOrders,
+			navRef: null,
+			listRef: jlst,
+			onGetQueryParam: ...
+			onAddItem: ...
+		});
 
 本函数参数如下：
 
@@ -3230,9 +3368,10 @@ markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 
 
 ## css类
 
-可以对以下两个类指定样式：
-mui-pullPrompt - 下拉刷新提示块
-mui-loadPrompt - 自动加载提示块
+可以对以下两个CSS class指定样式：
+
+@key mui-pullPrompt CSS-class 下拉刷新提示块
+@key mui-loadPrompt CSS-class 自动加载提示块
  */
 window.initNavbarAndList = initPageList;
 function initPageList(jpage, opt)
@@ -3502,6 +3641,8 @@ onGet: Function(data); 获取数据后并调用setFormData将数据显示到页�
 - 可以用 forAdd, forSet 等class标识对象只在添加或更新时显示。
 - 一个或多个提交按钮，触发提交事件。
 - 对于不想展示但需要提交的字段，可以用设置为隐藏的input[type=text]对象，或是input[type=hidden]对象；如果字段会变化应使用前者，type=hidden对象内容设置后不会变化(如调用setFormData不修改hidden对象)
+
+逻辑页面（html片段）示例如下：
 
 	<div mui-initfn="initPagePerson" mui-script="person.js">
 		...

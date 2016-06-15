@@ -1,50 +1,58 @@
 <html>
+<head>
 <meta charset="utf-8">
+<title>API参考 - 筋斗云前端（桌面Web版）</title>
 <link rel="stylesheet" href="style.css" />
+</head>
+
+<h1>API参考 - 筋斗云前端（桌面Web版）</h1>
+<div>最后更新：2016-06-15</div>
 <h2>Keywords</h2>
 <div>
-<a href="#$.getScriptWithCache">$.getScriptWithCache</a><br>
-<a href="#WUI">WUI</a><br>
-<a href="#WUI.app_alert">WUI.app_alert</a><br>
-<a href="#WUI.app_confirm">WUI.app_confirm</a><br>
-<a href="#WUI.app_show">WUI.app_show</a><br>
-<a href="#WUI.callSvr">WUI.callSvr</a><br>
-<a href="#WUI.callSvrSync">WUI.callSvrSync</a><br>
-<a href="#WUI.closeDlg">WUI.closeDlg</a><br>
-<a href="#WUI.dg_dblclick">WUI.dg_dblclick</a><br>
-<a href="#WUI.dg_toolbar">WUI.dg_toolbar</a><br>
-<a href="#WUI.enterWaiting">WUI.enterWaiting</a><br>
-<a href="#WUI.getQueryCond">WUI.getQueryCond</a><br>
-<a href="#WUI.getQueryParam">WUI.getQueryParam</a><br>
-<a href="#WUI.handleLogin">WUI.handleLogin</a><br>
-<a href="#WUI.leaveWaiting">WUI.leaveWaiting</a><br>
-<a href="#WUI.logout">WUI.logout</a><br>
-<a href="#WUI.m_app">WUI.m_app</a><br>
-<a href="#WUI.makeLinkTo">WUI.makeLinkTo</a><br>
-<a href="#WUI.makeUrl">WUI.makeUrl</a><br>
-<a href="#WUI.reload">WUI.reload</a><br>
-<a href="#WUI.reloadRow">WUI.reloadRow</a><br>
-<a href="#WUI.reloadTmp">WUI.reloadTmp</a><br>
-<a href="#WUI.setApp">WUI.setApp</a><br>
-<a href="#WUI.showDlg">WUI.showDlg</a><br>
-<a href="#WUI.showObjDlg">WUI.showObjDlg</a><br>
-<a href="#WUI.showPage">WUI.showPage</a><br>
-<a href="#WUI.tryAutoLogin">WUI.tryAutoLogin</a><br>
-<a href="#app_abort">app_abort</a><br>
-<a href="#app_alert">app_alert</a><br>
-<a href="#app_confirm">app_confirm</a><br>
-<a href="#app_show">app_show</a><br>
-<a href="#callSvr">callSvr</a><br>
-<a href="#callSvrSync">callSvrSync</a><br>
-<a href="#enterWaiting">enterWaiting</a><br>
-<a href="#getAncestor">getAncestor</a><br>
-<a href="#jQuery.fn.getAncestor">jQuery.fn.getAncestor</a><br>
-<a href="#jQuery.fn.jdata">jQuery.fn.jdata</a><br>
-<a href="#jQuery.fn.mycombobox">jQuery.fn.mycombobox</a><br>
-<a href="#leaveWaiting">leaveWaiting</a><br>
-<a href="#makeLinkTo">makeLinkTo</a><br>
-<a href="#makeUrl">makeUrl</a><br>
-<a href="#row2tr">row2tr</a><br>
+<a href="#$.getScriptWithCache">$.getScriptWithCache (fn)</a><br>
+<a href="#WUI">WUI (module)</a><br>
+<a href="#WUI.app_alert">WUI.app_alert (fn)</a><br>
+<a href="#WUI.app_confirm">WUI.app_confirm (fn)</a><br>
+<a href="#WUI.app_show">WUI.app_show (fn)</a><br>
+<a href="#WUI.callSvr">WUI.callSvr (fn)</a><br>
+<a href="#WUI.callSvr">WUI.callSvr (fn)</a><br>
+<a href="#WUI.callSvrSync">WUI.callSvrSync (fn)</a><br>
+<a href="#WUI.callSvrSync">WUI.callSvrSync (fn)</a><br>
+<a href="#WUI.closeDlg">WUI.closeDlg (fn)</a><br>
+<a href="#WUI.dg_dblclick">WUI.dg_dblclick (fn)</a><br>
+<a href="#WUI.dg_toolbar">WUI.dg_toolbar (fn)</a><br>
+<a href="#WUI.enterWaiting">WUI.enterWaiting (fn)</a><br>
+<a href="#WUI.getQueryCond">WUI.getQueryCond (fn)</a><br>
+<a href="#WUI.getQueryParam">WUI.getQueryParam (fn)</a><br>
+<a href="#WUI.handleLogin">WUI.handleLogin (fn)</a><br>
+<a href="#WUI.leaveWaiting">WUI.leaveWaiting (fn)</a><br>
+<a href="#WUI.logout">WUI.logout (fn)</a><br>
+<a href="#WUI.m_app">WUI.m_app (var)</a><br>
+<a href="#WUI.makeLinkTo">WUI.makeLinkTo (fn)</a><br>
+<a href="#WUI.makeUrl">WUI.makeUrl (fn)</a><br>
+<a href="#WUI.reload">WUI.reload (fn)</a><br>
+<a href="#WUI.reloadRow">WUI.reloadRow (fn)</a><br>
+<a href="#WUI.reloadTmp">WUI.reloadTmp (fn)</a><br>
+<a href="#WUI.setApp">WUI.setApp (fn)</a><br>
+<a href="#WUI.showDlg">WUI.showDlg (fn)</a><br>
+<a href="#WUI.showObjDlg">WUI.showObjDlg (fn)</a><br>
+<a href="#WUI.showPage">WUI.showPage (fn)</a><br>
+<a href="#WUI.tryAutoLogin">WUI.tryAutoLogin (fn)</a><br>
+<a href="#app_abort">app_abort (fn)</a><br>
+<a href="#app_alert">app_alert (alias)</a><br>
+<a href="#app_confirm">app_confirm (alias)</a><br>
+<a href="#app_show">app_show (alias)</a><br>
+<a href="#callSvr">callSvr (alias)</a><br>
+<a href="#callSvrSync">callSvrSync (alias)</a><br>
+<a href="#enterWaiting">enterWaiting (alias)</a><br>
+<a href="#getAncestor">getAncestor (fn)</a><br>
+<a href="#jQuery.fn.getAncestor">jQuery.fn.getAncestor (fn)</a><br>
+<a href="#jQuery.fn.jdata">jQuery.fn.jdata (fn)</a><br>
+<a href="#jQuery.fn.mycombobox">jQuery.fn.mycombobox (fn)</a><br>
+<a href="#leaveWaiting">leaveWaiting (alias)</a><br>
+<a href="#makeLinkTo">makeLinkTo (alias)</a><br>
+<a href="#makeUrl">makeUrl (alias)</a><br>
+<a href="#row2tr">row2tr (fn)</a><br>
 </div><hr>
 <h2 id="getAncestor">@fn getAncestor(o, fn)</h2>
 <p>取符合条件(fn)的对象，一般可使用$.closest替代</p><hr>
@@ -75,7 +83,7 @@ $(o).jdata({hello:100, world:200});</code></pre><hr>
 var url = makeUrl("Ordr.set", params);</code></pre>
 <p>注意：调用该函数生成的url在结尾有标志字符串&quot;zz=1&quot;, 如&quot;../api.php/login?_app=user&amp;zz=1&quot;</p><hr>
 <h2 id="WUI.callSvr">@fn WUI.callSvr(ac, params?, fn?, postParams?, userOptions?)</h2>
-<p class="fn"><strong>@fn WUI.callSvr</strong> (ac, fn?, postParams?, userOptions?)</p>
+<p class="fn"><strong>@fn <a id="WUI.callSvr">WUI.callSvr</a></strong> (ac, fn?, postParams?, userOptions?)</p>
 <p class="alias"><strong>@alias <a id="callSvr">callSvr</a></strong> </p>
 <p class="param"><strong>@param ac</strong>  String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)</p>
 <p class="param"><strong>@param params</strong>  Object. URL参数（或称HTTP GET参数）</p>
@@ -105,7 +113,7 @@ callSvr("User.get", function (data) {
     foo(data);
 }, null, {noex:1});</code></pre><hr>
 <h2 id="WUI.callSvrSync">@fn WUI.callSvrSync(ac, params?, fn?, postParams?, userOptions?)</h2>
-<p class="fn"><strong>@fn WUI.callSvrSync</strong> (ac, fn?, postParams?, userOptions?)</p>
+<p class="fn"><strong>@fn <a id="WUI.callSvrSync">WUI.callSvrSync</a></strong> (ac, fn?, postParams?, userOptions?)</p>
 <p class="alias"><strong>@alias <a id="callSvrSync">callSvrSync</a></strong> </p>
 <p class="return"><strong>@return data</strong>  原型规定的返回数据</p>
 <p>同步模式调用callSvr.</p><hr>
@@ -132,8 +140,8 @@ callSvr("User.get", function (data) {
 <p class="param"><strong>@param rowData</strong>  must be the original data from table row</p><hr>
 <h2 id="WUI.showPage">@fn WUI.showPage(pageName, title?, paramArr?)</h2>
 <p class="param"><strong>@param pageName</strong>  由page上的class指定。</p>
-<p class="param"><strong>@param title?</strong>  如果未指定，则使用page上的title属性.</p>
-<p class="param"><strong>@param paramArr?</strong>  调用initfn时使用的参数，是一个数组。</p>
+<p class="param"><strong>@param title</strong> ? 如果未指定，则使用page上的title属性.</p>
+<p class="param"><strong>@param paramArr</strong> ? 调用initfn时使用的参数，是一个数组。</p>
 <p>新页面以title作为id。<br />
 注意：每个页面都是根据pages下相应pageName复制出来的，显示在一个新的tab页中。相同的title当作同一页面。<br />
 初始化函数由page上的my-initfn属性指定。</p>
@@ -147,7 +155,7 @@ WUI.showPage("pageHome", "首页");
 WUI.showPage("pageHome", "首页2");</code></pre><hr>
 <h2 id="WUI.closeDlg">@fn WUI.closeDlg(jdlg)</h2><hr>
 <h2 id="WUI.showDlg">@fn WUI.showDlg(jdlg, opt?)</h2>
-<p class="param"><strong>@param opt?=</strong> {url, buttons, noCancel=false, okLabel="确定", cancelLabel="取消", modal=true, reset=true, validate=true, data, onOk, onSubmit, onAfterSubmit}</p>
+<p class="param"><strong>@param opt</strong> ?={url, buttons, noCancel=false, okLabel="确定", cancelLabel="取消", modal=true, reset=true, validate=true, data, onOk, onSubmit, onAfterSubmit}</p>
 <ul>
 <li>url: 点击确定时的操作动作。</li>
 <li>data: 如果是object, 则为form自动加载的数据；如果是string, 则认为是一个url, 将自动获取数据。(form的load方法一致)</li>
@@ -200,4 +208,5 @@ $(main);</code></pre><hr>
 <h2 id="WUI.logout">@fn WUI.logout(dontReload?=0)</h2>
 <p class="param"><strong>@param dontReload</strong>  如果非0, 则注销后不刷新页面.</p>
 <p>注销当前登录, 成功后刷新页面(除非指定dontReload=1)</p><hr>
-<hr><div>Generated by jdcloud-gendoc @ 2016-06-14T20:38:45+08:00</div>
+<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-06-15T20:08:56+08:00</div>
+</html>
