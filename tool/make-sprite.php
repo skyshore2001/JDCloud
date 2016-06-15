@@ -1,6 +1,9 @@
 <?php
-/*
-jdcloud-sprite
+/**
+
+@module jdcloud-sprite
+
+sprite图生成工具。
 
 将多个小图标竖向拼合成一张大图片, 并生成相应的css描述文件.
 使用竖向拼合可减少图片大小。一般建议将相同宽度的图片一起生成竖图，效率更高。
@@ -33,28 +36,30 @@ jdcloud-sprite
 		
 用法:
 
-	php jdcloud-sprite.php icon.css
+	php make-sprite.php icon.css
 
 它在icon.css相同目录下生成 icon.out.css文件以 icon.png 图.
 一般建议按不同宽度的图分组生成多个sprite，可以加参数 -group 支持按指定宽度分组，这样宽度为16px（如果是@2x图，实际宽度是32）的图拼合到 icon-16.png中, 宽度为24px的图拼合到icon.24.png中, 等等。
 
-	php jdcloud-sprite.php icon.css -group
+	php make-sprite.php icon.css -group
 
 若要控制生成的文件名，可以用-out, -sprite等参数：
 
-	php jdcloud-sprite.php icon.css -2x -out icon/icon@2x.css -sprite icon@2x.png
+	php make-sprite.php icon.css -2x -out icon/icon@2x.css -sprite icon@2x.png
 
 运行命令后, 生成 icon/icon@2x.png, icon@2x.css; 如果加-group参数，则生成的图片文件名为 icon/icon@2x-16.png等。
 
 参数表：
 
-	php jdcloud-sprite.php {icon}.css [-group] [-2x] [-o {icon}.out.css] [-sprite {icon}.png]
+	php make-sprite.php {icon}.css [-group] [-2x] [-o {icon}.out.css] [-sprite {icon}.png]
 
 注意：
 
 - 生成图片的顺序是按照输入Css中指定的顺序。因此要加入新图片，最好加到同宽度图片的最后，这样生成图片及css的改动最小。
 
  */
+
+require("lib/common.php");
 
 // ====== global {{{
 $infile = null;
@@ -69,62 +74,6 @@ $maxWidth = 0;
 // }}}
 
 // ====== parse args {{{
-// $opt: similar to longopt of getopt()
-// return: $options
-// output: $argv1
-function mygetopt($opt, &$argv1)
-{
-	global $argv;
-	$options = [];
-	$argv1 = [];
-	$spec = [];
-
-	foreach ($opt as $e) {
-		if (! preg_match('/(\w+)(.*)$/', $e, $ms)) {
-			die("*** bad opt format: $e\n");
-		}
-		$spec[$ms[1]] = $ms[2] ?: "";
-	}
-
-	$first = true;
-	$curOpt = null; // {name, optional}
-	foreach ($argv as $e) {
-		if ($first) {
-			$first = false;
-			continue;
-		}
-		if ($e[0] == "-") {
-			if ($curOpt && !$curOpt["optional"]) {
-				die("*** require option value: {$curOpt}\n");
-			}
-
-			$opt = substr($e, 1);
-			if (! array_key_exists($opt, $spec)) {
-				die("*** unknown option value: {$curOpt}\n");
-			}
-			$tag = $spec[$opt];
-			if ($tag == "") {
-				$options[$opt] = true;
-				$curOpt = null;
-			}
-			else if ($tag == ":") {
-				$curOpt = [ "name"=>$opt, "optional"=>false];
-			}
-			else if ($tag == "::") {
-				$options[$opt] = true;
-				$curOpt = [ "name"=>$opt, "optional"=>true];
-			}
-		}
-		else if (isset($curOpt)) {
-			$options[$curOpt["name"]] = $e;
-			$curOpt = null;
-		}
-		else {
-			$argv1[] = $e;
-		}
-	}
-	return $options;
-}
 
 $options = mygetopt(["2x", "group", "out:", "sprite:", "ratio:"], $argv1);
 
