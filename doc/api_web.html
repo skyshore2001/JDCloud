@@ -6,9 +6,10 @@
 </head>
 
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2016-06-15</div>
+<div>最后更新：2016-06-16</div>
 <h2>Keywords</h2>
 <div>
+<a href="##my-pages">#my-pages (key)</a><br>
 <a href="#$.getScriptWithCache">$.getScriptWithCache (fn)</a><br>
 <a href="#WUI">WUI (module)</a><br>
 <a href="#WUI.app_alert">WUI.app_alert (fn)</a><br>
@@ -52,6 +53,8 @@
 <a href="#leaveWaiting">leaveWaiting (alias)</a><br>
 <a href="#makeLinkTo">makeLinkTo (alias)</a><br>
 <a href="#makeUrl">makeUrl (alias)</a><br>
+<a href="#my-initfn">my-initfn (key)</a><br>
+<a href="#my-obj">my-obj (key)</a><br>
 <a href="#row2tr">row2tr (fn)</a><br>
 </div><hr>
 <h2 id="getAncestor">@fn getAncestor(o, fn)</h2>
@@ -69,7 +72,192 @@ $(o).jdata({hello:100, world:200});</code></pre><hr>
 <p class="param"><strong>@param row</strong>  {\@cols}, col: {useTh?=false, html?, \%css?, \%attr?, \%on?}</p>
 <p>根据row结构构造jQuery tr对象。</p><hr>
 <h2 id="$.getScriptWithCache">@fn $.getScriptWithCache(url, options?)</h2><hr>
-<h2 id="WUI">@module WUI</h2><hr>
+<h2 id="WUI">@module WUI</h2>
+<p>筋斗云前端框架-Web应用桌面版</p>
+<p>此框架实现与筋斗云服务端接口的无缝整合。在界面上以jquery-easyui库为基础展示列表、Tab页等。<br />
+参考应用 web/store.html - 商户管理端应用。</p>
+<h4>1 对象管理功能</h4>
+<p>以订单对象Order为例：为订单对象增加“列表页”和“详情页”。</p>
+<p>列表页应包含分页功能，默认只显示“未完成”订单。<br />
+点击列表中一项（一个订单），可显示详情页，即订单详情，并可进行查找、更新等功能。</p>
+<h5>1.1 定义列表页和详情页</h5>
+<p class="key"><strong>@key <a id="#my-pages">#my-pages</a></strong>   包含所有页面、对话框定义的容器。</p>
+<p class="key"><strong>@key <a id="my-obj">my-obj</a></strong>  DOM属性，标识服务端对象</p>
+<p class="key"><strong>@key <a id="my-initfn">my-initfn</a></strong>  DOM属性，标识页面或对话框的初始化函数，首次显示页面/对话框时调用。</p>
+<p>列表页使用逻辑页面定义如下（放在div#my-pages之下），它最终展示为一个tab页：</p>
+<pre><code>&lt;div id="my-pages" style="display:none"&gt;
+    ...
+    &lt;div class="pageOrder" title="订单管理" my-initfn="initPageOrder"&gt;
+        &lt;table id="tblOrder" style="width:auto;height:auto"&gt;
+            &lt;thead&gt;&lt;tr&gt;
+                &lt;th data-options="field:'id', sortable:true, sorter:intSort"&gt;订单号&lt;/th&gt;
+                &lt;th data-options="field:'userPhone', sortable:true"&gt;用户联系方式&lt;/th&gt;
+                &lt;th data-options="field:'createTm', sortable:true"&gt;创建时间&lt;/th&gt;
+                &lt;th data-options="field:'status', formatter:OrderColumns.statusStr, styler:OrderColumns.statusStyler, sortable:true"&gt;状态&lt;/th&gt;
+                &lt;th data-options="field:'dscr', sortable:true"&gt;描述&lt;/th&gt;
+                &lt;th data-options="field:'cmt'"&gt;用户备注&lt;/th&gt;
+            &lt;/tr&gt;&lt;/thead&gt;
+        &lt;/table&gt;
+    &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+<p>注意：</p>
+<ul>
+<li>逻辑页面div.pageOrder，属性class=&quot;pageOrder&quot;定义了该逻辑页面的名字。它将作为页面模板，在WUI.showPage(&quot;pageOrder&quot;)时复制一份显示出来。</li>
+<li>属性my-initfn定义了该页面的初始化函数. 在初次调用WUI.showPage时，会执行该初始化函数，用于初始化列表，设定事件处理等。</li>
+<li>逻辑页面下包含了一个table，用于显示订单列表。里面每列对应订单的相关属性。</li>
+</ul>
+<p>详情页展示为一个对话框，也将它也放在 div#my-pages 下。定义如下（此处为展示原理已简化）：</p>
+<pre><code>&lt;div id="dlgOrder" my-obj="Ordr" my-initfn="initDlgOrder" title="用户订单" style="width:520px;height:500px;"&gt;  
+    &lt;form method="POST"&gt;
+        订单号：&lt;input name="id" disabled&gt;&lt;/td&gt;
+        订单状态：
+                    &lt;select name="status" style="width:150px"&gt;
+                        &lt;option value=""&gt;&amp;nbsp;&lt;/option&gt;
+                        &lt;option value="CR"&gt;未付款&lt;/option&gt;
+                        &lt;option value="PA"&gt;待服务(已付款)&lt;/option&gt;
+                        &lt;option value="ST"&gt;正在服务&lt;/option&gt;
+                        &lt;option value="RE"&gt;已服务(待评价)&lt;/option&gt;
+                        &lt;option value="RA"&gt;已评价&lt;/option&gt;
+                        &lt;option value="CA"&gt;已取消&lt;/option&gt;
+                    &lt;/select&gt;
+        用户备注：&lt;textarea name="cmt" rows=3 cols=30&gt;&lt;/textarea&gt;
+    &lt;/form&gt;
+&lt;div&gt;</code></pre>
+<p>注意：</p>
+<ul>
+<li>对话框div#dlgOrder. 与列表页使用class标识名称不同，详情页对话框以id标识（因为全局共用一个对话框，而列表页可以复制为多个同时显示）。</li>
+<li>对话框上定义了 &quot;my-obj&quot;属性，用于标识它对应的服务端对象名。对象增删改查操作都会用到它。</li>
+<li>对话框的属性 my-initfn 定义了初始化函数，在首次显示时调用。</li>
+<li>调用 WUI.showObjDlg($(&quot;#dlgOrder&quot;), formMode) 可显示该对话框，一般由列表页自动调用。</li>
+<li>对话框中包含一个form用于向服务端发起请求。form中每个带name属性的对象，都对应订单对象的一个属性，在添加、查找、显示或更新时都将用到，除非它上面加了disabled属性（这样就不会提交该字段）</li>
+<li>对话框一般不用加“提交”按钮，框架会自动为它添加“确定”、“取消”按钮。</li>
+</ul>
+<p class="see"><strong>@see <a href="#WUI.showObjDlg">WUI.showObjDlg</a></strong> </p>
+<p class="see"><strong>@see <a href="#WUI.showDlg">WUI.showDlg</a></strong> </p>
+<p>以上定义了订单对象的列表页和详情页，围绕对象&quot;Order&quot;, 按规范，我们定义了以下名字：</p>
+<ul>
+<li>列表页面（Tab页） div.pageOrder，列表 table#tblOrder，页面初始化函数 initPageOrder</li>
+<li>详情页（对话框）div#dlgOrder，其中包含一个form。对话框初始化函数</li>
+</ul>
+<h5>1.2 添加入口按钮</h5>
+<pre><code>&lt;a href="#pageOrder" class="easyui-linkbutton" icon="icon-ok"&gt;订单管理&lt;/a&gt;&lt;br/&gt;&lt;br/&gt;</code></pre>
+<h5>1.3 定义页面初始化函数</h5>
+<p>订单列表页的初始化，需要将列表页(代码中jpage)、列表(代码中jtbl)与详情页(代码中jdlg)关联起来，实现对话增删改查各项功能。</p>
+<pre><code>function initPageOrder() 
+{
+    var jpage = $(this);
+    var jtbl = jpage.find("#tblOrder");
+    var jdlg = $("#dlgOrder");
+
+    // 注意：此处定义显示哪些缺省操作按钮：
+    // r-refresh/刷新, f-find/查找, s-set/更新。参考 WUI.dg_toolbar.
+    // 如果不定义则所有操作按钮都展示。
+    jtbl.jdata().toolbar = "rfs";
+
+    // 当天订单
+    var query1 = {cond: "createTm between '" + new Date().format("D") + "' and '" + new Date().addDay(1).format("D") + "'"};
+    // 显示待服务/正在服务订单
+    var query2 = {cond: "status='CR' OR status='PA' OR status='ST'"};
+
+    function getTodoOrders()
+    {
+        WUI.reload(jtbl, null, query2);
+    }
+    function getTodayOrders()
+    {
+        WUI.reload(jtbl, null, query1);
+    }
+    var btn1 = {text: "今天订单", iconCls:'icon-search', handler: getTodayOrders};
+    var btn2 = {text: "所有未完成", iconCls:'icon-search', handler: getTodoOrders};
+
+    var dgOpt = {
+        // 设置查询接口
+        url: makeUrl(["Ordr", "query"], {res:"*,createTm,userPhone"}),
+        // 设置缺省查询条件
+        queryParams: query1,
+        // 设置工具栏上的按钮，并与对话框jdlg关联。
+        toolbar: WUI.dg_toolbar(jtbl, jdlg, "-", btn1, btn2),
+        // 双击一行，应展示详情页对话框
+        onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
+    };
+    jtbl.datagrid(dgOpt);
+}</code></pre>
+<p class="see"><strong>@see <a href="#WUI.showPage">WUI.showPage</a></strong> </p>
+<p class="see"><strong>@see <a href="#WUI.dg_toolbar">WUI.dg_toolbar</a></strong> </p>
+<p class="see"><strong>@see <a href="#WUI.dg_dblclick">WUI.dg_dblclick</a></strong> </p>
+<p class="see"><strong>@see <a href="#WUI.makeUrl">WUI.makeUrl</a></strong> </p>
+<h5>1.4 定义对话框的初始化函数</h5>
+<p>默认对话框中由于设定了底层对象(my-obj)及属性关联（form中带name属性的组件，已关联对象属性），因而可自动显示和提交数据。</p>
+<p>特别地，某些属性不宜直接展示，例如属性“人物头像”，服务器存储的是图片id(picId)，而展示时应显示为图片而不是一个数字；<br />
+或者如“权限列表”属性，服务器存储的是逗号分隔的一组权限比如&quot;emp,mgr&quot;，而展示时需要为每项显示一个勾选框。<br />
+这类需求就需要编码控制。</p>
+<p class="see"><strong>@see <a href="#loaddata">loaddata</a></strong>  对话框显示前事件，用于将服务端数据转为界面显示数据</p>
+<p class="see"><strong>@see <a href="#savedata">savedata</a></strong>  对话框提交前事件，用于将界面数据转为提交数据</p>
+<pre><code>function initDlgOrder()
+{
+    var jdlg = $(this);
+    var jfrm = jdlg.find("form");
+    jfrm.on("beforeshow", function(ev, mode) {
+        jdlg.find(".forFind").toggle(mode == FormMode.forFind);
+        jdlg.find(".notForFind").toggle(mode != FormMode.forFind);
+    })
+    .on("loaddata", function (ev, data) {
+        // data是列表页中一行对应的数据，框架自动根据此数据将对应属性填上值。
+        // 如果界面上展示的字段无法与属性直接对应，可以在该事件回调中设置。
+        // hiddenToCheckbox(jfrm.find("#divPerms"));
+    })
+    .on("savedata", function (ev) {
+        // 在form提交时，所有带name属性且不带disabled属性的对象值会被发往服务端。
+        // 此事件回调可以设置一些界面上无法与属性直接对应的内容。
+        // checkboxToHidden(jfrm.find("#divPerms"));
+    });
+}</code></pre>
+<p>TODO</p>
+<p class="see"><strong>@see <a href="#hiddenToCheckbox">hiddenToCheckbox</a></strong> </p>
+<p class="see"><strong>@see <a href="#checkboxToHidden">checkboxToHidden</a></strong> </p>
+<p class="see"><strong>@see <a href="#hiddenToImg">hiddenToImg</a></strong> </p>
+<p class="see"><strong>@see <a href="#imgToHidden">imgToHidden</a></strong> </p>
+<h5>1.5 列表页中的列，以特定格式展现。例如，展示订单状态。</h5>
+<p>TODO<br />
+详情页中的填写项与数据库属性不能对应的情况。如上传图片。</p>
+<h5>1.6 层次结构对象展示</h5>
+<p>TODO<br />
+如商户列表中，选择一行商户，点击操作按钮，在另一个列表页展示该商户的所有在售物料。</p>
+<h5>1.7 关联列表制作</h5>
+<p>例如，要将订单分派给员工，需要显示员工列表。</p>
+<h4>2 对话框功能</h4>
+<p>以群发短信功能为例。</p>
+<p>假定服务端已有以下接口：</p>
+<pre><code>sendSms(phone, content)
+phone:: 手机号
+content:: 发送内容</code></pre>
+<h5>2.1 定义对话框</h5>
+<p>注意：每个带name属性的组件对应接口中的参数。</p>
+<pre><code>&lt;div id="dlgSendSms" title="群发短信" style="width:500px;height:300px;"&gt;  
+    &lt;form method="POST"&gt;
+        手机号：&lt;input name="phone" data-options="required:true"&gt;
+        发送内容： &lt;textarea rows=5 cols=30 name="content"&gt;&lt;/textarea&gt;
+    &lt;/form&gt;
+&lt;/div&gt;</code></pre>
+<h5>2.2 显示对话框</h5>
+<p>可以调用WUI.showDlg，写一个显示对话框的函数：</p>
+<pre><code>function showDlgSendSms()
+{
+    var jdlg = $("#dlgSendSms");
+    WUI.showDlg(jdlg, {
+        url: makeUrl("sendSms"),
+        onOk: function (data) {
+            WUI.closeDlg(jdlg);
+            app_show('操作成功!');
+        }
+    });
+}</code></pre>
+<p>在showDlg的选项url中指定了接口为&quot;sendSms&quot;。操作成功后，显示一个消息。</p>
+<p class="see"><strong>@see <a href="#WUI.showDlg">WUI.showDlg</a></strong> </p>
+<p class="see"><strong>@see <a href="#app_show">app_show</a></strong> </p>
+<p>除了直接调用该函数显示对话框外，还有一种更简单的通过a标签href属性指定打开对话框的做法，如：</p>
+<pre><code>&lt;a href="?showDlgSendSms" class="easyui-linkbutton" icon="icon-ok"&gt;群发短信&lt;/a&gt;&lt;br/&gt;&lt;br/&gt;</code></pre>
+<p>点击该按钮，即调用了showDlgSendSms函数打开对话框。</p><hr>
 <h2 id="WUI.m_app">@var WUI.m_app</h2><hr>
 <h2 id="WUI.enterWaiting">@fn WUI.enterWaiting()</h2>
 <p class="alias"><strong>@alias <a id="enterWaiting">enterWaiting</a></strong> ()</p>
@@ -116,7 +304,8 @@ callSvr("User.get", function (data) {
 <p class="fn"><strong>@fn <a id="WUI.callSvrSync">WUI.callSvrSync</a></strong> (ac, fn?, postParams?, userOptions?)</p>
 <p class="alias"><strong>@alias <a id="callSvrSync">callSvrSync</a></strong> </p>
 <p class="return"><strong>@return data</strong>  原型规定的返回数据</p>
-<p>同步模式调用callSvr.</p><hr>
+<p>同步模式调用callSvr.</p>
+<p class="see"><strong>@see <a href="#WUI.callSvr">WUI.callSvr</a></strong> </p><hr>
 <h2 id="WUI.app_alert">@fn WUI.app_alert(msg, type?=i, fn?)</h2>
 <p class="alias"><strong>@alias <a id="app_alert">app_alert</a></strong> </p>
 <p class="param"><strong>@param type</strong>  String. "i"|"e"|"w"</p>
@@ -208,5 +397,5 @@ $(main);</code></pre><hr>
 <h2 id="WUI.logout">@fn WUI.logout(dontReload?=0)</h2>
 <p class="param"><strong>@param dontReload</strong>  如果非0, 则注销后不刷新页面.</p>
 <p>注销当前登录, 成功后刷新页面(除非指定dontReload=1)</p><hr>
-<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-06-15T20:08:56+08:00</div>
+<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-06-16T12:52:13+08:00</div>
 </html>

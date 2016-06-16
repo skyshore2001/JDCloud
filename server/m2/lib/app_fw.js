@@ -473,14 +473,86 @@ var E_ABORT=-100;
 
 筋斗云移动UI框架 - JDCloud Mobile UI framework
 
-## 单网页应用
+## 基于逻辑页面的单网页应用
 
-- 应用程序以page为基本单位，每个页面的html/js可完全分离。参考CPageManager文档。
-- 后台交互, callSvr系列方法。
+亦称“变脸式应用”。应用程序以逻辑页面（page）为基本单位，每个页面的html/js可完全分离。主要特性：
 
+- 基于缺页中断思想的页面路由。异步无刷新页面切换。支持浏览器前进后退操作。
+- 支持页面对象模型(POM)，方便基于逻辑页面的模块化开发。支持页面html片段和js片段。
+- 统一对待内部页面和外部页面（同样的方式访问，同样的行为）。开发时推荐用外部页面，发布时可打包常用页面成为内部页面。
+  访问任何页面都是index.html#page1的方式，如果page1已存在则使用（内部页面），不存在则动态加载（如找到fragment/page1.html）
+- 页面栈管理。可自行pop掉一些页面控制返回行为。
+
+@see MUI.showPage
+@see MUI.popPageStack
 @see CPageManager
+
+### 应用容器
+
+@key .mui-container 应用容器。
+@event muiInit() DOM事件。this为当前应用容器。
+
+先在主应用html中，用.mui-container类标识应用容器，在运行时，所有逻辑页面都将在该对象之下。如：
+
+	<body class="mui-container">
+
+应用初始化时会发出muiInit事件，该事件在页面加载完成($.ready)后，显示首页前调用。在这里调用MUI.showPage可动态显示首页。
+
+### 逻辑页面
+
+每个逻辑页面(page)以及它对应的脚本(js)均可以独立出一个文件开发，也可以直接嵌在主页面的应用容器中。
+
+如添加一个订单页，使用外部页面，可以添加一个order.html (html片段):
+
+	<div mui-initfn="initPageOrder" mui-script="order.js">
+		...
+	</div>
+
+如果使用内部页面，则可以写为：
+
+	<script type="text/html" id="tpl_order">
+		<div mui-initfn="initPageOrder" mui-script="order.js">
+			...
+		</div>
+	</script>
+
+@key .mui-page 逻辑页面。
+@key mui-script DOM属性。逻辑页面对应的JS文件。
+@key mui-initfn DOM属性。逻辑页面对应的初始化函数，一般包含在mui-script指定的JS文件中。
+
+该页面代码模块（即初始化函数）可以放在一个单独的文件order.js:
+
+	function initPageOrder() 
+	{
+		var jpage = $(this);
+		jpage.on("pagebeforeshow", onBeforeShow);
+		jpage.on("pageshow", onShow);
+		jpage.on("pagehide", onHide);
+		...
+	}
+
+逻辑页面加载过程，以加载页面"#order"为例: 
+
+	MUI.showPage("#order");
+
+- 检查是否已加载该页面，如果已加载则显示该页并跳到"pagebeforeshow"事件这一步。
+- 检查内部模板页。如果内部页面模板中有名为"tpl_{页面名}"的对象，有则将其内容做为页面代码加载，然后跳到initPage步骤。
+- 加载外部模板页。加载 {pageFolder}/{页面名}.html 作为逻辑页面，如果加载失败则报错。页面所在文件夹可通过 MUI.setApp({pageFolder})指定。
+- initPage页面初始化. 框架自动为页面添加.mui-page类。如果逻辑页面上指定了mui-script属性，则先加载该属性指定的JS文件。然后如果设置了mui-initfn属性，则将其作为页面初始化函数调用。
+- 发出pagecreate事件。
+- 发出pagebeforeshow事件。
+- 动画完成后，发出pageshow事件。
+- 如果之前有其它页面在显示，则触发之前页面的pagehide事件。
+
+@event pagecreate() DOM事件。this为当前页面jpage。
+@event pagebeforeshow() DOM事件。this为当前页面jpage。
+@event pageshow()  DOM事件。this为当前页面jpage。
+@event pagehide() DOM事件。this为当前页面jpage。
+
+## 服务端交互API
+
+@see callSvr 系列调用服务端接口的方法。
 @see CComManager
-@see callSvr
 
 ## 登录与退出
 
@@ -498,8 +570,16 @@ var E_ABORT=-100;
 
 框架提供导航栏、对话框、弹出框、弹出菜单等常用组件。
 
+### 导航栏
+
 @key .mui-navbar 导航栏
+
+### 对话框
+
 @key .mui-dialog 对话框
+
+### 弹出菜单
+
 @key .mui-menu 菜单
 
 ### 底部导航
@@ -608,82 +688,12 @@ var E_ABORT=-100;
 /**
 @class CPageManager(app)
 
-页面管理器，提供基于逻辑页面的单网页应用，亦称“变脸式应用”。
+页面管理器。提供基于逻辑页面的单网页应用，亦称“变脸式应用”。
 
 该类作为MUI模块的基类，仅供内部使用，但它提供showPage等操作，以及pageshow等各类事件。
 
 @param app IApp={homePage?="#home", pageFolder?="page"}
 
-## 主要特性
-
-- 基于缺页中断思想的页面路由。异步无刷新页面切换。支持浏览器前进后退操作。
-- 支持页面对象模型(POM)，方便基于逻辑页面的模块化开发。支持页面html片段和js片段。
-- 统一对待内部页面和外部页面（同样的方式访问，同样的行为）。开发时推荐用外部页面，发布时可打包常用页面成为内部页面。
-  访问任何页面都是index.html#page1的方式，如果page1已存在则使用（内部页面），不存在则动态加载（如找到fragment/page1.html）
-- 页面栈管理。可自行pop掉一些页面控制返回行为。
-
-@see MUI.showPage
-@see MUI.popPageStack
-
-## 使用方法
-
-@key .mui-container 应用容器。
-@event muiInit() DOM事件。this为当前应用容器。
-
-先在主应用html中，用.mui-container类标识应用容器，在运行时，所有逻辑页面都将在该对象之下。如：
-
-	<body class="mui-container">
-
-应用初始化时会发出muiInit事件，该事件在页面加载完成($.ready)后，显示首页前调用。在这里调用MUI.showPage可动态显示首页。
-
-每个逻辑页面(page)以及它对应的脚本(js)均可以独立开发，或嵌入在主页面的应用容器中。
-
-如添加一个订单页，使用外部页面，可以添加一个order.html (html片段):
-
-	<div mui-initfn="initPageOrder" mui-script="order.js">
-		...
-	</div>
-
-如果使用内部页面，则可以写为：
-
-	<script type="text/html" id="tpl_order">
-		<div mui-initfn="initPageOrder" mui-script="order.js">
-			...
-		</div>
-	</script>
-
-该页面的代码可以放在一个单独的文件order.js:
-
-	function initPageOrder() 
-	{
-		var jpage = $(this);
-		jpage.on("pagebeforeshow", onBeforeShow);
-		jpage.on("pageshow", onShow);
-		jpage.on("pagehide", onHide);
-		...
-	}
-
-逻辑页面加载过程，以加载页面"#order"为例: 
-
-	MUI.showPage("#order");
-
-- 检查是否已加载该页面，如果已加载则显示该页并跳到"pagebeforeshow"事件这一步。
-- 检查内部模板页。如果内部页面模板中有名为"tpl_{页面名}"的对象，有则将其内容做为页面代码加载，然后跳到initPage步骤。
-- 加载外部模板页。加载 {pageFolder}/{页面名}.html 作为逻辑页面，如果加载失败则报错。页面所在文件夹可通过 MUI.setApp({pageFolder})指定。
-- initPage页面初始化. 为页面添加.mui-page类。如果逻辑页面上指定了mui-script属性，则先加载该属性指定的JS文件。然后如果设置了mui-initfn属性，则将其作为页面初始化函数调用。
-- 发出pagecreate事件。
-- 发出pagebeforeshow事件。
-- 动画完成后，发出pageshow事件。
-- 如果之前有其它页面在显示，则触发之前页面的pagehide事件。
-
-@key .mui-page 逻辑页面。
-@key mui-script DOM属性。逻辑页面对应的JS文件。
-@key mui-initfn DOM属性。逻辑页面对应的初始化函数，一般包含中mui-script指定的JS文件中。
-
-@event pagecreate() DOM事件。this为当前页面jpage。
-@event pagebeforeshow() DOM事件。this为当前页面jpage。
-@event pageshow()  DOM事件。this为当前页面jpage。
-@event pagehide() DOM事件。this为当前页面jpage。
  */
 function CPageManager(app)
 {
