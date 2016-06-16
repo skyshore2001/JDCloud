@@ -58,6 +58,11 @@ $ALLOW_LCASE_PARAM = true;
 global $TEST_MODE, $MOCK_MODE, $DBG_LEVEL;
 
 global $DBH;
+/**
+@var $APP?=user
+
+客户端应用标识，默认为"user".
+ */
 global $APP;
 $APP = param("_app", "user", $_GET);
 // }}}
