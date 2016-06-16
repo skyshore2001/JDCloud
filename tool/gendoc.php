@@ -29,6 +29,8 @@ $newBlock = false;
 $blocks = [];
 $options = null; # {title, encoding}
 
+$titleStack = []; # elem: [num, level]
+
 // ====== function
 // key={type,name}
 function makeKeyword($key)
@@ -64,6 +66,8 @@ class MyParsedown extends Parsedown
 		$other = $ms[3] ?: "";
 
 		if ($newBlock) {
+			global $titleStack;
+			$titleStack = [];
 			$newBlock = false;
 			$keys[] = makeKeyword(["name"=>$key, "type"=>$class]);
 			$markup = "<h2 id=\"{$key}\">" . $ms[0] . "</h2>"; // remove '@'
@@ -84,13 +88,48 @@ class MyParsedown extends Parsedown
 		return $Block;
 	}
 
+	private function getTitleNum($level)
+	{
+		global $titleStack;
+		$titleNum = "1";
+		while (! empty($titleStack)) {
+			// titleStack: item=[num, level]
+			$item = &$titleStack[count($titleStack)-1];
+			if ($level > $item[1]) {
+				$titleNum = $item[0] . '.1';
+				$titleStack[] = [ $titleNum, $level ];
+				break;
+			}
+			else if ($level == $item[1]) {
+				$titleNum = preg_replace_callback('/(\d+)$/', function ($ms) {
+					return (int)$ms[1] +1;
+				}, $item[0]);
+				$item[0] = $titleNum;
+				break;
+			}
+			else {
+				array_pop($titleStack);
+			}
+			unset($item);
+		}
+		unset($item);
+		if (empty($titleStack)) {
+			$titleStack[] = [ $titleNum, $level ];
+		}
+		return $titleNum;
+	}
+
     protected function blockHeader($Line)
 	{
 		$e = parent::blockHeader($Line);
 		$text = $e['element']['name'];
-		// 注释中的标题降两级
+		// 注释中的标题降两级，并添加题标数
 		if (preg_match('/h(\d+)/', $text, $ms)) {
-			$e['element']['name'] = "h" . ((int)$ms[1] + 2);
+			$level = (int)$ms[1];
+			$titleNum = $this->getTitleNum($level);
+
+			$e['element']['name'] = "h" . ($level + 2);
+			$e['element']['text'] = $titleNum . " " . $e['element']['text'];
 		}
 		return $e;
 	}
