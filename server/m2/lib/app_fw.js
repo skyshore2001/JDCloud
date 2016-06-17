@@ -3034,10 +3034,10 @@ function initPullList(container, opt)
 
 	function mouseMove(ev)
 	{
+		touchMove(ev);
 		if (touchev_ == null)
 			return;
 
-		touchMove(ev);
 		if (touchev_.dx != 0 || touchev_.dy != 0)
 			mouseMoved_ = true;
 		ev.stopPropagation();
