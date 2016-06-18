@@ -6,19 +6,54 @@
 </head>
 
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2016-06-15</div>
+<div>最后更新：2016-06-18</div>
 <h2>Keywords</h2>
 <div>
 <a href="#$APP">$APP (var)</a><br>
+<a href="#$BASE_DIR">$BASE_DIR (var)</a><br>
+<a href="#AC0_">AC0_ (key)</a><br>
+<a href="#AC1_">AC1_ (key)</a><br>
+<a href="#AC2_">AC2_ (key)</a><br>
+<a href="#AC_">AC_ (key)</a><br>
 <a href="#AccessControl">AccessControl (module)</a><br>
-<a href="#AccessControl.addJoin">AccessControl.addJoin (fn)</a><br>
+<a href="#AccessControl::$allowedAc">AccessControl::$allowedAc (var)</a><br>
+<a href="#AccessControl::$defaultSort">AccessControl::$defaultSort (var)</a><br>
+<a href="#AccessControl::$hiddenFields">AccessControl::$hiddenFields (var)</a><br>
+<a href="#AccessControl::$id">AccessControl::$id (var)</a><br>
+<a href="#AccessControl::$onAfterActions">AccessControl::$onAfterActions (var)</a><br>
+<a href="#AccessControl::$readonlyFields">AccessControl::$readonlyFields (var)</a><br>
+<a href="#AccessControl::$readonlyFields2">AccessControl::$readonlyFields2 (var)</a><br>
+<a href="#AccessControl::$requiredFields">AccessControl::$requiredFields (var)</a><br>
+<a href="#AccessControl::$requiredFields2">AccessControl::$requiredFields2 (var)</a><br>
+<a href="#AccessControl::$subobj">AccessControl::$subobj (var)</a><br>
+<a href="#AccessControl::$vcolDefs">AccessControl::$vcolDefs (var)</a><br>
+<a href="#AccessControl::addCond">AccessControl::addCond (fn)</a><br>
+<a href="#AccessControl::addJoin">AccessControl::addJoin (fn)</a><br>
+<a href="#AccessControl::addRes">AccessControl::addRes (fn)</a><br>
+<a href="#AccessControl::addVCol">AccessControl::addVCol (fn)</a><br>
+<a href="#AccessControl::onAfter">AccessControl::onAfter (fn)</a><br>
+<a href="#AccessControl::onGenId">AccessControl::onGenId (fn)</a><br>
+<a href="#AccessControl::onHandleRow">AccessControl::onHandleRow (fn)</a><br>
+<a href="#AccessControl::onQuery">AccessControl::onQuery (fn)</a><br>
+<a href="#AccessControl::onValidate">AccessControl::onValidate (fn)</a><br>
+<a href="#AccessControl::onValidateId">AccessControl::onValidateId (fn)</a><br>
 <a href="#AppBase">AppBase (class)</a><br>
+<a href="#CFG_MOCK_MODE">CFG_MOCK_MODE (key)</a><br>
+<a href="#CFG_MOCK_T_MODE">CFG_MOCK_T_MODE (key)</a><br>
+<a href="#DBG_LEVEL">DBG_LEVEL (var)</a><br>
 <a href="#DirectReturn">DirectReturn (class)</a><br>
+<a href="#MOCK_MODE">MOCK_MODE (var)</a><br>
 <a href="#MyException">MyException (class)</a><br>
+<a href="#P_DB">P_DB (key)</a><br>
+<a href="#P_DBCRED">P_DBCRED (key)</a><br>
+<a href="#P_SESSION_DIR">P_SESSION_DIR (key)</a><br>
+<a href="#P_URL_PATH">P_URL_PATH (key)</a><br>
 <a href="#Q">Q (fn)</a><br>
+<a href="#TEST_MODE">TEST_MODE (var)</a><br>
 <a href="#addLog">addLog (fn)</a><br>
 <a href="#api_fw">api_fw (module)</a><br>
 <a href="#app_fw">app_fw (module)</a><br>
+<a href="#dbConfirmFn">dbConfirmFn (key)</a><br>
 <a href="#dbconn">dbconn (fn)</a><br>
 <a href="#errQuit">errQuit (fn)</a><br>
 <a href="#execOne">execOne (fn)</a><br>
@@ -42,6 +77,7 @@
 <a href="#setServerRev">setServerRev (fn)</a><br>
 <a href="#startsWith">startsWith (fn)</a><br>
 <a href="#table2objarr">table2objarr (fn)</a><br>
+<a href="#tableCRUD">tableCRUD (fn)</a><br>
 <a href="#tobool">tobool (fn)</a><br>
 <a href="#varr2objarr">varr2objarr (fn)</a><br>
 </div><hr>
@@ -53,17 +89,80 @@
 <p>php built-in web server e.g. run &quot;php -S 0.0.0.0:8080&quot;</p><hr>
 <h2 id="isEqualCollection">@fn isEqualCollection($col1, $col2)</h2><hr>
 <h2 id="app_fw">@module app_fw</h2>
+<p>筋斗云服务端通用应用框架。</p>
+<h4>1 通用函数</h4>
 <ul>
-<li>获得指定类型参数(param/mparam)</li>
-<li>数据库连接及操作，如dbconn, execOne, queryOne, queryAll.</li>
-<li>包含 $BASE_DIR/conf.php, $BASE_DIR/php/conf.user.php</li>
-<li>MyException, errQuit等错误处理设施。</li>
-<li>TEST_MODE, MOCK_MODE</li>
-<li>DBG_LEVEL</li>
-<li>session管理</li>
-</ul><hr>
+<li>
+<p>获得指定类型参数</p>
+<p class="see"><strong>@see <a href="#param">param</a><a href="#mparam">mparam</a></strong> </p>
+</li>
+<li>
+<p>数据库连接及操作</p>
+<p class="see"><strong>@see <a href="#dbconn">dbconn</a><a href="#execOne">execOne</a><a href="#queryOne">queryOne</a><a href="#queryAll">queryAll</a></strong> </p>
+</li>
+<li>错误处理设施
+<p class="see"><strong>@see <a href="#MyException">MyException</a><a href="#errQuit">errQuit</a></strong> </p></li>
+</ul>
+<h4>2 初始化配置</h4>
+<p>app_fw框架自动包含 $BASE_DIR/conf.php, $BASE_DIR/php/conf.user.php。</p>
+<p>前者定义代码中易变的逻辑；后者为项目配置，一般用于定义环境变量、全局变量等。</p>
+<h5>2.1 数据库配置</h5>
+<p class="key"><strong>@key <a id="P_DB">P_DB</a></strong>  环境变量，指定DB类型与地址。</p>
+<p class="key"><strong>@key <a id="P_DBCRED">P_DBCRED</a></strong>  环境变量，指定DB登录帐号</p>
+<p>P_DB格式为：</p>
+<pre><code>P_DB={主机名}/{数据库名}
+或
+P_DB={主机名}:{端口号}/{数据库名}</code></pre>
+<p>例如：</p>
+<pre><code>P_DB=localhost/myorder
+P_DB=www.myserver.com:3306/myorder</code></pre>
+<p>P_DBCRED格式为<code>{用户名}:{密码}</code>，或其base64编码后的值，如</p>
+<pre><code>P_DBCRED=ganlan:1234
+或
+P_DBCRED=Z2FubGFuOjEyMzQ=</code></pre>
+<p>此外，P_DB还支持SQLite数据库，直接指定以&quot;.db&quot;为扩展名的文件即可。例如：</p>
+<pre><code>P_DB=../myorder.db</code></pre>
+<h4>3 测试模式与调试等级</h4>
+<p class="var"><strong>@var <a id="TEST_MODE">TEST_MODE</a></strong>  Integer/Boolean. 0-生产模式；1-测试模式；2-自动化回归测试模式(RTEST_MODE)</p>
+<p class="var"><strong>@var <a id="DBG_LEVEL">DBG_LEVEL</a></strong>  Integer. 调试等级。值范围0-9.</p>
+<p>测试模式特点：</p>
+<ul>
+<li>通过在项目目录下放置文件 CFG_TEST_MODE，可强制使用测试模式。</li>
+<li>通过URL请求参数 &quot;_test=1&quot;可以测试模式打开应用。</li>
+<li>输出JSON内容更易读，且带调试信息。</li>
+<li>一般建议测试模式下连接不同的数据库。可在conf.user.php中指定。</li>
+</ul>
+<p>用于在测试模式下输出调试信息。</p>
+<ul>
+<li>可通过URL请求参数指定，如&quot;_test=1&amp;_debug=1&quot;。</li>
+<li>值为9时，可输出所有SQL调试日志。</li>
+</ul>
+<p class="see"><strong>@see <a href="#addLog">addLog</a></strong> </p>
+<h4>4 模拟模式</h4>
+<p class="var"><strong>@var <a id="MOCK_MODE">MOCK_MODE</a></strong>  Boolean. 模拟模式. 值：0/1.</p>
+<p class="key"><strong>@key <a id="CFG_MOCK_MODE">CFG_MOCK_MODE</a></strong>   符号文件，如文件存在则应用运行于模拟模式。</p>
+<p class="key"><strong>@key <a id="CFG_MOCK_T_MODE">CFG_MOCK_T_MODE</a></strong>  符号文件，如文件存在且在测试模式下，应用运行于模拟模式。</p>
+<p>对第三方系统依赖（如微信认证、支付宝支付、发送短信等），可通过设计Mock接口来模拟。</p>
+<p class="see"><strong>@see <a href="#ExtMock">ExtMock</a></strong> </p>
+<h4>5 session管理</h4>
+<ul>
+<li>应用的session名称为 &quot;{app}id&quot;, 如应用名为 &quot;user&quot;, 则session名为&quot;userid&quot;. 因而不同的应用同时调用服务端也不会冲突。</li>
+<li>保存session文件的目录为 $BASE_DIR/session, 可使用P_SESSION_DIR变量重定义。</li>
+<li>测试模式下session名称为 &quot;t{app}id&quot;, 保存session文件的目录为 $BASE_DIR/session/t。如果定义了环境变量P_SESSION_DIR，则目录为 {P_SESSION_DIR}/t</li>
+<li>同一主机，不同URL下的session即使APP名相同，也不会相互冲突，因为框架会根据当前URL，设置cookie的有效路径。</li>
+</ul>
+<p class="key"><strong>@key <a id="P_SESSION_DIR">P_SESSION_DIR</a></strong>  ?= $BASE_DIR/session 环境变量，定义session文件存放路径。</p>
+<p class="key"><strong>@key <a id="P_URL_PATH">P_URL_PATH</a></strong>  环境变量。项目的URL路径，如"/jdcloud", 用于定义cookie生效的作用域，也用于拼接相对URL路径。</p>
+<p class="see"><strong>@see <a href="#getBaseUrl">getBaseUrl</a></strong> </p>
+<h4>6 应用框架</h4>
+<p>继承AppBase类，可实现提供符合BQP协议接口的模块。<a href="#api_fw">api_fw</a>框架就是使用它的一个典型例子。</p>
+<p class="see"><strong>@see <a href="#AppBase">AppBase</a></strong> </p><hr>
+<h2 id="$BASE_DIR">@var $BASE_DIR</h2>
+<p>包含app_fw.php的主文件（如api.php）所在目录。常用于拼接子目录名。<br />
+最后不带&quot;/&quot;.</p><hr>
 <h2 id="$APP">@var $APP?=user</h2>
-<p>客户端应用标识，默认为&quot;user&quot;.</p><hr>
+<p>客户端应用标识，默认为&quot;user&quot;.<br />
+根据URL参数&quot;_app&quot;确定值。</p><hr>
 <h2 id="param_varr">@fn param_varr($str, $type, $name)</h2>
 <p>type的格式如&quot;i:n:b?:dt:tm?&quot;.</p>
 <ul>
@@ -72,7 +171,7 @@
 <li>后置&quot;?&quot;表示该参数可缺省。</li>
 </ul><hr>
 <h2 id="param">@fn param($name, $defVal?, $col?=$_REQUEST)</h2>
-<p class="param"><strong>@param $col</strong> : key-value collection</p>
+<p class="param"><strong>@param $col:</strong>  key-value collection</p>
 <p>获取名为$name的参数。<br />
 $name中可以指定类型，返回值根据类型确定。如果该参数未定义或是空串，直接返回缺省值$defVal。</p>
 <p>$name中指定类型的方式如下：</p>
@@ -91,7 +190,7 @@ $name中可以指定类型，返回值根据类型确定。如果该参数未定
 $svcId = param("svcId/i", 99);
 $wantArray = param("wantArray/b", false);
 $startTm = param("startTm/dt", time());</code></pre>
-<p>List类型示例。参数&quot;items&quot;类型在文档中定义为list(id/Integer:qty/Double:dscr/String)，可用param(&quot;items/i:n:s&quot;)获取, 值如</p>
+<p>List类型示例。参数&quot;items&quot;类型在文档中定义为list(id/Integer, qty/Double, dscr/String)，可用param(&quot;items/i:n:s&quot;)获取, 值如</p>
 <pre><code>items=100:1:洗车,101:1:打蜡</code></pre>
 <p>返回</p>
 <pre><code>[ [ 100, 1.0, "洗车"], [101, 1.0, "打蜡"] ]</code></pre>
@@ -113,7 +212,9 @@ $startTm = param("startTm/dt", time());</code></pre>
 $svcId = mparam("svcId/i");
 $itts = mparam("itts/i+")
 list($svcId, $itts) = mparam(["svcId", "itts/i+"]); # require one of the 2 params</code></pre><hr>
-<h2 id="setParam">@fn setParam($k, $v)</h2><hr>
+<h2 id="setParam">@fn setParam($k, $v)</h2>
+<p>设置参数，其实是模拟客户端传入的参数。以便供tableCRUD等函数使用。</p>
+<p class="see"><strong>@see <a href="#tableCRUD">tableCRUD</a></strong> </p><hr>
 <h2 id="objarr2table">@fn objarr2table ($objarr, $fixedColCnt=null)</h2>
 <p>将objarr格式转为table格式, 如：</p>
 <pre><code>objarr2table(
@@ -150,7 +251,9 @@ list($svcId, $itts) = mparam(["svcId", "itts/i+"]); # require one of the 2 param
 ]<br />
 ]</p>
 </li>
-</ul><hr>
+</ul>
+<p class="see"><strong>@see <a href="#table2objarr">table2objarr</a></strong> </p>
+<p class="see"><strong>@see <a href="#varr2objarr">varr2objarr</a></strong> </p><hr>
 <h2 id="table2objarr">@fn table2objarr</h2>
 <p>将table格式转为 objarr, 如：</p>
 <pre><code>table2objarr(
@@ -178,6 +281,7 @@ if (! isset($user)) {
 }</code></pre><hr>
 <h2 id="dbconn">@fn dbconn($fnConfirm=$GLOBALS["dbConfirmFn"])</h2>
 <p class="param"><strong>@param fnConfirm</strong>  fn(dbConnectionString), 如果返回false, 则程序中止退出。</p>
+<p class="key"><strong>@key <a id="dbConfirmFn">dbConfirmFn</a></strong>  连接数据库前回调。</p>
 <p>连接数据库</p>
 <p>数据库由全局变量$DB(或环境变量P_DB）指定，格式可以为：</p>
 <pre><code>host1/carsvc (无扩展名，表示某主机host1下的mysql数据库名；这时由 全局变量$DBCRED 或环境变量 P_DBCRED 指定用户名密码。
@@ -189,9 +293,64 @@ dir1/dir2/carsvc.db (以.db文件扩展名标识的文件路径，表示SQLITE�
 <p>一般是把字符串如&quot;abc&quot;转成加单引号的形式&quot;'abc'&quot;. 适用于根据用户输入串拼接成SQL语句时，对输入串处理，避免SQL注入。</p>
 <p>示例：</p>
 <pre><code>$sql = sprintf("SELECT id FROM User WHERE uname=%s AND pwd=%s", Q(param("uname")), Q(param("pwd")));</code></pre><hr>
-<h2 id="execOne">@fn execOne($sql, $getInsertId = false)</h2><hr>
-<h2 id="queryOne">@fn queryOne($sql, $fetchMode = PDO::FETCH_NUM)</h2><hr>
-<h2 id="queryAll">@fn queryAll($sql, $fetchMode = PDO::FETCH_NUM)</h2><hr>
+<h2 id="execOne">@fn execOne($sql, $getInsertId?=false)</h2>
+<p class="param"><strong>@param $getInsertId</strong> ?=false 取INSERT语句执行后得到的id. 仅用于INSERT语句。</p>
+<p>执行SQL语句，如INSERT, UPDATE等。执行SELECT语句请使用queryOne/queryAll.</p>
+<pre><code>$token = mparam("token");
+execOne("UPDATE cinf SET appleDeviceToken=" . Q($token));</code></pre>
+<p>注意：在拼接SQL语句时，对于传入的string类型参数，应使用Q函数进行转义，避免SQL注入攻击。</p>
+<p>对于INSERT语句，设置参数$getInsertId=true, 可取新加入数据行的id. 例：</p>
+<pre><code>$sql = sprintf("INSERT INTO Hongbao (userId, createTm, src, expireTm, vdays) VALUES ({$uid}, '%s', '{$src}', '%s', {$vdays})", date('c', $createTm), date('c', $expireTm));
+$hongbaoId = execOne($sql, true);</code></pre><hr>
+<h2 id="queryOne">@fn queryOne($sql, $fetchMode = PDO::FETCH_NUM)</h2>
+<p>执行查询语句，只返回一行数据，如果行中只有一列，则直接返回该列数值。<br />
+如果执行失败，返回false.</p>
+<p>示例：查询用户姓名与电话，默认返回值数组：</p>
+<pre><code>$row = queryOne("SELECT name,phone FROM User WHERE id={$id}");
+if ($row === false)
+    throw new MyException(E_PARAM, "bad user id");
+// $row = ["John", "13712345678"]</code></pre>
+<p>也可返回关联数组:</p>
+<pre><code>$row = queryOne("SELECT name,phone FROM User WHERE id={$id}", PDO::FETCH_ASSOC);
+if ($row === false)
+    throw new MyException(E_PARAM, "bad user id");
+// $row = ["name"=&gt;"John", "phone"=&gt;"13712345678"]</code></pre>
+<p>当查询结果只有一列时，直接返回该数值。</p>
+<pre><code>$phone = queryOne("SELECT phone FROM User WHERE id={$id}");
+if ($phone === false)
+    throw new MyException(E_PARAM, "bad user id");
+// $phone = "13712345678"</code></pre>
+<p class="see"><strong>@see <a href="#queryAll">queryAll</a></strong> </p><hr>
+<h2 id="queryAll">@fn queryAll($sql, $fetchMode = PDO::FETCH_NUM)</h2>
+<p>执行查询语句，返回数组。<br />
+如果查询失败，返回空数组。</p>
+<p>默认返回值数组(varr):</p>
+<pre><code>$rows = queryAll("SELECT name, phone FROM User");
+if (count($rows) &gt; 0) {
+    ...
+}
+// 值为：
+$rows = [
+    ["John", "13712345678"],
+    ["Lucy", "13712345679"]
+    ...
+]
+// 可转成table格式返回
+return ["h"=&gt;["name", "phone"], "d"=&gt;$rows];</code></pre>
+<p>也可以返回关联数组(objarr)，如：</p>
+<pre><code>$rows = queryAll("SELECT name, phone FROM User", PDO::FETCH_ASSOC);
+if (count($rows) &gt; 0) {
+    ...
+}
+// 值为：
+$rows = [
+    ["name"=&gt;"John", "phone"=&gt;"13712345678"],
+    ["name"=&gt;"Lucy", "phone"=&gt;"13712345679"]
+    ...
+]
+// 可转成table格式返回
+return objarr2table($rows);</code></pre>
+<p class="see"><strong>@see <a href="#objarr2table">objarr2table</a></strong> </p><hr>
 <h2 id="getBaseUrl">@fn getBaseUrl($wantHost = true)</h2>
 <p>返回 $BASE_DIR 对应的网络路径（最后以&quot;/&quot;结尾）。<br />
 如果指定了环境变量 P_URL_PATH（可在conf.user.php中设置）, 则根据该变量计算；否则自动判断（如果有符号链接可能不准）</p>
@@ -203,7 +362,8 @@ getBaseUrl(false) -&gt; "/cheguanjia/"</code></pre>
 <p class="see"><strong>@see <a href="#$BASE_DIR">$BASE_DIR</a></strong> </p><hr>
 <h2 id="logit">@fn logit($s, $addHeader=true, $type="trace")</h2>
 <p>记录日志。</p>
-<p>默认到日志文件 $BASE_DIR/trace.log. 如果指定type=secure, 则写到 $BASE_DIR/secure.log.</p><hr>
+<p>默认到日志文件 $BASE_DIR/trace.log. 如果指定type=secure, 则写到 $BASE_DIR/secure.log.</p>
+<p>可通过在线日志工具 tool/log.php 来查看日志。也可直接打开日志文件查看。</p><hr>
 <h2 id="myEncrypt">@fn myEncrypt($string,$operation='E',$key='carsvc')</h2>
 <p class="param"><strong>@param operation</strong>  'E': encrypt; 'D': decrypt</p>
 <p>加密解密字符串</p>
@@ -252,20 +412,59 @@ throw new DirectReturn();</code></pre><hr>
 <p>应用框架，用于提供符合BQP协议的接口。<br />
 在onExec中返回协议数据；在onAfter中建议及时关闭DB.</p><hr>
 <h2 id="api_fw">@module api_fw</h2>
-<p>被api.php包含并执行：</p>
-<pre><code>require_once("app.php");
-require_once("php/api_fw.php");
-...
-apiMain();</code></pre>
-<p>可使用addLog输出调试信息而不破坏协议输出格式。<br />
-addLog(str, 0) means always output.</p>
+<p>服务接口实现框架。</p>
+<p>服务接口包含：</p>
+<ul>
+<li>函数型接口，如 &quot;login&quot;, &quot;getToken&quot;等, 一般实现在 api_functions.php中。</li>
+<li>对象型接口，如 &quot;Ordr.query&quot;, &quot;User.get&quot; 等，一般实现在 api_objects.php中。</li>
+</ul>
+<h4>1 函数型接口</h4>
+<p>假设在文档有定义以下接口</p>
+<pre><code>用户修改密码
+chpwd(oldpwd, pwd) -&gt; {_token, _expire}
+
+权限：AUTH_USER</code></pre>
+<p>则在 api_functions.php 中创建该接口的实现：</p>
+<pre><code>function api_chpwd()
+{
+    checkAuth(AUTH_USER);
+    $oldPwd = mparam("oldpwd");
+    $pwd = mparam("pwd");
+    ...
+    $ret = [
+        "_token" =&gt; $token,
+        "_expire" =&gt; $expire,
+    ];
+    return $ret;
+}</code></pre>
+<p>说明：</p>
+<ul>
+<li>函数名称一定要符合 &quot;api_{接口名}&quot; 的规范。接口名以小写字母开头。</li>
+<li>使用checkAuth进行权限检查</li>
+<li>返回符合接口定义的对象。最终后端框架将其转为JSON串，再由前端框架解析后传递给应用程序。</li>
+</ul>
+<p class="see"><strong>@see <a href="#checkAuth">checkAuth</a></strong> </p>
+<p class="see"><strong>@see <a href="#mparam">mparam</a></strong>  取必选参数，如果缺少该参数则报错。</p>
+<p class="see"><strong>@see <a href="#param">param</a></strong>  取可选参数，可指定缺省值。</p>
+<h4>2 对象型接口</h4>
+<p class="see"><strong>@see <a href="#AccessControl">AccessControl</a></strong>  对象型接口框架。</p>
+<h4>3 接口复用</h4>
 <p>api.php可以单独执行，也可直接被调用，如</p>
 <pre><code>// set_include_path(get_include_path() . PATH_SEPARATOR . "..");
 require_once("api.php");
 ...
 $GLOBALS["errorFn"] = function($code, $msg, $msg2=null) {...}
 $ret = callSvc("genVoucher");
-// 如果没有异常，返回数据；否则调用指定的errorFn函数(未指定则调用errQuit)</code></pre><hr>
+// 如果没有异常，返回数据；否则调用指定的errorFn函数(未指定则调用errQuit)</code></pre>
+<h4>4 常用操作</h4>
+<p>错误处理</p>
+<p class="see"><strong>@see <a href="#MyException">MyException</a></strong> </p>
+<p>中断执行，直接返回</p>
+<p class="see"><strong>@see <a href="#DirectReturn">DirectReturn</a></strong> </p>
+<p>调试日志</p>
+<p>可使用addLog输出调试信息而不破坏协议输出格式。</p>
+<p class="see"><strong>@see <a href="#addLog">addLog</a></strong>  </p>
+<p class="see"><strong>@see <a href="#logit">logit</a></strong> </p><hr>
 <h2 id="setRet">@fn setRet($code, $data?, $internalMsg?)</h2>
 <p class="param"><strong>@param $code</strong>  Integer. 返回码, 0表示成功, 否则表示操作失败。</p>
 <p class="param"><strong>@param $data</strong>  返回数据。</p>
@@ -288,66 +487,338 @@ throw new DirectReturn();
 <h2 id="setServerRev">@fn setServerRev()</h2>
 <p>根据全局变量&quot;SERVER_REV&quot;或应用根目录下的文件&quot;revision.txt&quot;， 来设置HTTP响应头&quot;X-Daca-Server-Rev&quot;表示服务端版本信息（最多6位）。</p>
 <p>客户端框架可本地缓存该版本信息，一旦发现不一致，可刷新应用。</p><hr>
-<h2 id="AccessControl">@module AccessControl framework</h2>
-<p>for access control and autocomplete for objects </p>
-<p>====== AccessControl framework</p>
-<pre><code>class AC_Object for guest
-class AC0_Object for admin
-class AC1_Object for user
-class AC2_Object for store
-if no AC0_Object, use AccessControl instead (for admin)
-if no AC1/AC2 object, use AC_Object (as guest)
+<h2 id="tableCRUD">@fn tableCRUD($ac, $tbl, $asAdmin?=false)</h2>
+<p>对象型接口的入口。<br />
+也可直接被调用，常与setParam一起使用, 提供一些定制的操作。</p>
+<p class="param"><strong>@param $asAdmin</strong>  默认根据用户身份自动选择"AC_"类; 如果为true, 则以超级管理员身份调用，即使用"AC0_"类。</p>
+<p>设置$asAdmin=true好处是对于超级管理员权限来说，即使未定义&quot;AC0_&quot;类，默认也可以访问所有内容。</p>
+<p>假如有Rating（订单评价）对象，不想通过对象型接口来查询，而是通过函数型接口来定制输出，接口设计为：</p>
+<pre><code>queryRating(storeId, cond?) -&gt; tbl(id, score, dscr, tm, orderDscr)
 
-# define allowed actions.
-# Default: to allow all.
-protected $allowedAc = ["add", "get", "set", "del", "query"];
+查询店铺storeId的订单评价。
 
-# for add/set. Such fields cannot be modified via add/set. warning is logged if set such fields.
-# "id" is always readonly, not required in this array.
-# 添加/更新时填值无效（但暂不报错）
-protected $readonlyFields = [];
-# for set. 更新时对这些字段填值无效
-protected $readonlyFields2 = [];
+应用逻辑：
+- 按时间tm倒排序</code></pre>
+<p>底层利用tableCRUD实现它，这样便于保留分页、参数cond/gres等特性:</p>
+<pre><code>function api_queryRating()
+{
+    $storeId = mparam("storeId");
 
-# for add/set. 添加时必须填值；更新时不允许置空。
-protected $requiredFields = [];
-# for set. 更新时不允许设置空
-protected $requiredFields2 = [];
+    // 定死输出内容。
+    setParam("res", "id, score, dscr, tm, orderDscr");
 
-# for get/query
-protected $hiddenFields = [];
+    // 相当于AccessControl框架中调用 addCond，用Obj.query接口的内部参数cond2以保证用户还可以使用cond参数。
+    setParam("cond2", ["o.storeId=$storeId"]); 
 
-# for get/query: vcolDefs, subobj
-# 如果查询指定了res参数，则分析每一列，它可能是普通列名(col)/虚拟列名(vcol)/子对象(subobj)名
+    // 定死排序条件
+    setParam("orderby", "tm DESC");
 
-# for get/query, virtual columns. vcol: {res=@colDefList, join?, cond?, default?=false}
-# default: 为true表示，当Query未指定res参数时，自动加上该项.
-protected $vcolDefs = [];
+    $ret = tableCRUD("query", "Rating", true);
+    return $ret;
+}</code></pre>
+<p>注意：</p>
+<ul>
+<li>以上示例中的设计不可取，应使用标准对象接口来实现这个需求。</li>
+</ul>
+<p class="see"><strong>@see <a href="#setParam">setParam</a></strong> </p><hr>
+<h2 id="AccessControl">@module AccessControl</h2>
+<p>对象型接口框架。<br />
+AccessControl简写为AC，同时AC也表示自动补全(AutoComplete).</p>
+<p>在设计文档中完成数据库设计后，通过添加AccessControl的继承类，可以很方便的提供诸如 {Obj}.query/add/get/set/del 这些对象型接口。</p>
+<p>例如，设计文档中已定义订单对象(Ordr)的主表(Ordr)和订单日志子表(OrderLog)：</p>
+<pre><code>@Ordr: id, userId, status, amount
+@OrderLog: id, orderId, tm, dscr</code></pre>
+<p>注意：之所以用对象和主表名用Ordr而不是Order词是避免与SQL关键字冲突。</p>
+<p>有了表设计，订单的标准接口就已经自动生成好了：</p>
+<pre><code>// 查询订单
+Ordr.query() -&gt; tbl(id, userId, ...)
+// 添加订单
+Ordr.add()(userId=1, status='CR', amount=100) -&gt; id
+// 查看订单
+Ordr.get(id=1)
+// 修改订单状态
+Ordr.set(id=1)(status='PA')
+// 删除订单
+Ordr.del(id=1)</code></pre>
+<p>但是，只有超级管理员登录后（例如从示例应用中的超级管理端登录后，web/adm.html），才有权限使用这些接口。</p>
+<p>如果希望用户登录后，也可以使用这些接口，只要添加一个继承AccessControl的类，且命名为&quot;AC1_Ordr&quot;即可：</p>
+<pre><code>class AC1_Ordr extends AccessControl
+{
+}</code></pre>
+<p>有了以上定义，在用户登录系统后，就可以使用上述和超级管理员一样的标准订单接口了。</p>
+<p>说明：</p>
+<p>类的命名规则为AC前缀加对象名（或主表名，因为对象名与主表名一致）。框架默认提供的前缀如下：</p>
+<p class="key"><strong>@key <a id="AC_">AC_</a></strong>   游客权限(AUTH_GUEST)，如未定义则调用时报“无权操作”错误。</p>
+<p class="key"><strong>@key <a id="AC0_">AC0_</a></strong>  超级管理员权限(AUTH_ADMIN)，如未定义，默认拥有所有权限。</p>
+<p class="key"><strong>@key <a id="AC1_">AC1_</a></strong>   用户权限(AUTH_USER)，如未定义，则降级使用游客权限接口(AC_)。</p>
+<p class="key"><strong>@key <a id="AC2_">AC2_</a></strong>   商户权限(AUTH_STORE), 如未定义，则降级使用游客权限接口(AC_)。</p>
+<p>因而上例中命名为 &quot;AC1_Ordr&quot; 就表示用户登录后调用Ordr对象接口，将受该类控制。而这是个空的类，所以拥有一切操作权限。</p>
+<p>TODO: 权限扩展方案。</p>
+<h4>1 基本权限控制</h4>
+<p class="var"><strong>@var <a id="AccessControl::$allowedAc">AccessControl::$allowedAc</a></strong> ?=["add", "get", "set", "del", "query"] 设定允许的操作，如不指定，则允许所有操作。</p>
+<p class="var"><strong>@var <a id="AccessControl::$readonlyFields">AccessControl::$readonlyFields</a></strong>  ?=[]  (影响add/set) 字段列表，添加/更新时为这些字段填值无效（但不报错）。</p>
+<p class="var"><strong>@var <a id="AccessControl::$readonlyFields2">AccessControl::$readonlyFields2</a></strong>  ?=[]  (影响set操作) 字段列表，更新时对这些字段填值无效。</p>
+<p class="var"><strong>@var <a id="AccessControl::$hiddenFields">AccessControl::$hiddenFields</a></strong>  ?= []  (for get/query) 隐藏字段列表。默认表中所有字段都可返回。一些敏感字段不希望返回的可在此设置。</p>
+<p class="var"><strong>@var <a id="AccessControl::$requiredFields">AccessControl::$requiredFields</a></strong>  ?=[] (for add/set) 字段列表。添加时必须填值；更新时不允许置空。</p>
+<p class="var"><strong>@var <a id="AccessControl::$requiredFields2">AccessControl::$requiredFields2</a></strong>  ?=[] (for set) 字段列表。更新时不允许设置空。</p>
+<p class="fn"><strong>@fn <a id="AccessControl::onQuery">AccessControl::onQuery</a></strong> () (for get/query)  用于对查询条件进行设定。</p>
+<p class="fn"><strong>@fn <a id="AccessControl::onValidate">AccessControl::onValidate</a></strong> ()  (for add/set). 验证添加和更新时的字段，或做自动补全(AutoComplete)工作。</p>
+<p class="fn"><strong>@fn <a id="AccessControl::onValidateId">AccessControl::onValidateId</a></strong> () (for get/set/del) 用于对id字段进行检查。比如在del时检查用户是否有权操作该记录。</p>
+<p>上节例子中，用户可以操作系统的所有订单。</p>
+<p>现在我们到设计文档中，将接口API设计如下：</p>
+<pre><code>== 订单接口 ==
 
-# for get/query
-protected $subobj = [];
+添加订单：
+Ordr.add()(amount) -&gt; id
 
-# for add/set. validate or auto complete fields
-protected function onValidate();
+查看订单：
+Ordr.query() -&gt; tbl(id, userId, status, amount)
+Ordr.get(id)
 
-# for get/set/del, validate or auto complete field "id"
-protected function onValidateId();
+权限：AUTH_GUEST
 
-# for get/query, add query fields or conditions
-protected function onQuery();
+应用逻辑
+- 用户只能添加(add)、查看(get/query)订单，不可修改(set)、删除(del)订单
+- 用户只能查看(get/query)属于自己的订单。
+- 用户在添加订单时，必须设置amount字段，不必（也不允许）设置id, userId, status这些字段。
+  服务器应将userId字段自动设置为该用户编号，status字段自动设置为"CR"（已创建）</code></pre>
+<p>为实现以下逻辑，上面例子中代码可修改为：</p>
+<pre><code>class AC1_Ordr extends AccessControl
+{
+    protected $allowedAc = ["get", "query", "add"];
+    protected $requiredFields = ["amount"];
+    protected $readonlyFields = ["status", "userId"];
 
-# for get/query, reset or unset some fields; for add/set/del, operate other tables, etc.
-# protected function onAfter(&amp;$ret);
+    protected function onQuery()
+    {
+        $userId = $_SESSION["uid"];
+        $this-&gt;addCond("t0.userId={$userId}");
+    }
 
-# onAfter的替代方案，更易使用，可以在onValidateId/onValidate中直接添加回调函数。
-protected $onAfterActions = [];
+    protected function onValidate()
+    {
+        if ($this-&gt;ac == "add") {
+            $userId = $_SESSION["uid"];
+            $_POST["userId"] = $userId;
+            $_POST["status"] = "CR";
+        }
+    }
+}</code></pre>
+<p>说明：</p>
+<ul>
+<li>使用$allowedAc设定了该对象接口允许的操作。</li>
+<li>使用$requiredFields与$readonlyFields设定了添加时必须指定或不可指定的字段。由于&quot;id&quot;字段默认就是不可添加/更新的，所以不必在这里指定。</li>
+<li>在onQuery中，对用户可查看的订单做了限制：只允许访问自己的订单。这里通过添加了条件实现。<br />
+$_SESSION[&quot;uid&quot;]是在用户登录后设置的，可参考login接口定义(api_login).</li>
+<li>在onValidate中，对添加操作时的字段做自动补全。由于添加和更新都会走这个接口，所以用 $this-&gt;ac 判断只对添加操作时补全。<br />
+由于添加和更新操作的具体字段都通过 $_POST 来传递，故直接设置 $_POST中的相应字段即可。</li>
+</ul>
+<h4>2 虚拟字段</h4>
+<p class="var"><strong>@var <a id="AccessControl::$vcolDefs">AccessControl::$vcolDefs</a></strong>  (for get/query) 定义虚拟字段</p>
+<p>常用于展示关联表字段、统计字段等。<br />
+在query,get操作中可以通过res参数指定需要返回的每个字段，这些字段可能是普通列名(col)/虚拟列名(vcol)/子对象(subobj)名。</p>
+<h5>2.1 关联字段</h5>
+<p>例如，在订单列表中需要展示用户名字段。设计文档中定义接口：</p>
+<pre><code>Ordr.query() -&gt; tbl(id, ..., userName?, userPhone?, createTm?)</code></pre>
+<p>query接口的&quot;...&quot;之后就是虚拟字段。后缀&quot;?&quot;表示是非缺省字段，即必须在&quot;res&quot;参数中指定才会返回，如：</p>
+<pre><code>Ordr.query(res="*,userName")</code></pre>
+<p>通过设置$vcolDefs实现这些关联字段：</p>
+<pre><code>class AC1_Ordr extends AccessControl
+{
+    protected $vcolDefs = [
+        [
+            "res" =&gt; ["u.name AS userName", "u.phone AS userPhone"],
+            "join" =&gt; "INNER JOIN User u ON u.id=t0.userId",
+            // "default" =&gt; false, // 指定true表示Ordr.query在不指定res时默认会返回该字段。
+        ],
+        [
+            "res" =&gt; ["log_cr.tm AS createTm"],
+            "join" =&gt; "LEFT JOIN OrderLog log_cr ON log_cr.action='CR' AND log_cr.orderId=t0.id",
+        ]
+    ]
+}</code></pre>
+<h5>2.2 关联字段依赖</h5>
+<p>假设设计有“订单评价”对象，它会与“订单对象”相关联：</p>
+<pre><code>@Rating: id, orderId, content</code></pre>
+<p>表间的关系为：</p>
+<pre><code>订单评价Rating(orderId) &lt;-&gt; 订单Ordr(userId) &lt;-&gt; 用户User</code></pre>
+<p>现在要为Rating表增加关联字段 &quot;Ordr.dscr AS orderDscr&quot;, 以及&quot;User.name AS userName&quot;, 设计接口为：</p>
+<pre><code>Rating.query() -&gt; tbl(id, orderId, content, ..., orderDscr?, userName?)
+注意：userName字段不直接与Rating表关联，而是通过Ordr表桥接。</code></pre>
+<p>实现时，只需在vcolDefs中使用require指定依赖字段：</p>
+<pre><code>class AC1_Rating extends AccessControl
+{
+    protected $vcolDefs = [
+        [
+            "res" =&gt; ["o.dscr AS orderDscr", "o.userId"],
+            "join" =&gt; "INNER JOIN Ordr o ON o.id=t0.orderId",
+        ],
+        [
+            "res" =&gt; ["u.name AS userName"],
+            "join" =&gt; "INNER JOIN User u ON o.userId=u.id",
+            "require" =&gt; "userId", // *** 定义依赖，如果要用到res中的字段如userName，则自动添加userId字段引入的表关联。
+            // 这里指向orderDscr也可以，一般习惯上指向关联的字段。
+        ],
+    ];
+}</code></pre>
+<p>使用require, 框架可自动将Ordr表作为中间表关联进来。<br />
+如果没有require定义，以下调用</p>
+<pre><code>Rating.query(res="*,orderDscr,userName")</code></pre>
+<p>也不会出问题，因为在userName前指定了orderDscr，框架可自动引入相关表。而以下查询就会出问题：</p>
+<pre><code>Rating.query(res="*,userName")
+或
+Rating.query(res="*,userName,orderDscr")</code></pre>
+<h5>2.3 计算字段</h5>
+<p>示例：管理端应用在查询订单时，需要订单对象上有一个原价字段：</p>
+<pre><code>Ordr.query() -&gt; tbl(..., amount2)
+amount2:: 原价，通过OrderItem中每个项目重新计算累加得到，不考虑打折优惠。</code></pre>
+<p>可实现为：</p>
+<pre><code>class AC0_Ordr extends AccessControl
+{
+    protected $vcolDefs = [
+        [
+            "res" =&gt; ["(SELECT SUM(qty*ifnull(price2,0)) FROM OrderItem WHERE orderId=t0.id) AS amount2"],
+        ]
+    ];
+}</code></pre>
+<h5>2.4 子表压缩字段</h5>
+<p>除了使用<a href="#AccessControl::$subobj">子表</a>, 对于简单的情况，也可以设计为将子表压缩成一个虚拟字段，在Query操作时直接返回。</p>
+<p>示例：OrderItem是Ordr对象的一个子表，现在想在查询Ordr对象列表时，返回OrderItem的相关信息。<br />
+这就要把一张子表压缩成一个字段。我们使用List来描述这种压缩字段的格式：表中每行以&quot;,&quot;分隔，行中每个字段以&quot;:&quot;分隔。<br />
+利用List，可将接口设计为：</p>
+<pre><code>Ordr.query() -&gt; tbl(..., itemsInfo)
+itemsInfo:: List(name, price, qty). 例如"洗车:25:1,换轮胎:380:2", 表示两行记录，每行3个字段。注意字段内容中不可出现":", ","这些分隔符。</code></pre>
+<p>子表压缩是一种特殊的计算字段，可实现如下：</p>
+<pre><code>class AC1_Ordr extends AccessControl
+{
+    protected $vcolDefs = [
+        [
+            "res" =&gt; ["(SELECT group_concat(concat(oi.name, ':', oi.price, ':', oi.qty)) FROM OrderItem oi WHERE oi.orderId=t0.id) itemsInfo"] 
+        ],
+        ...
+    ]
+}</code></pre>
+<p>注意：计算字段，包括子表压缩字段都是很消耗性能的。</p>
+<h5>2.5 自定义字段</h5>
+<p>假设有张虚拟表Task, 它没有存储在数据库中, 另一张表UserTaskLog关联到它。在设计文档中定义如下:</p>
+<pre><code>@UserTaskLog: id, userId, taskId
+@Conf::$taskTable: id, type, name
+(关联： UserTaskLog(taskId) &lt;-&gt; Conf::$taskTable )
 
-# for get/query, reset or unset some fields; run before onAfter.
-# protected function onHandleRow(&amp;$rowData);
+提供查询接口：
+UserTaskLog.query() -&gt; tbl(id, taskId, ..., taskName)
+taskName:: 由关联表的taskTable.name字段得到。</code></pre>
+<p>实现中，在代码中直接定义Task表：</p>
+<pre><code>class Conf
+{
+    static $taskTable = [
+        ["id" =&gt; 1, "type"=&gt;"invite", "name" =&gt; "邀请5个用户注册"],
+        ["id" =&gt; 2, "type"=&gt;"invite", "name" =&gt; "邀请10个用户注册"],
+    ];
+}</code></pre>
+<p>通过在vcolDefs的join属性指定一个函数，可以实现返回taskName字段：</p>
+<pre><code>function getTaskName(&amp;$row)
+{
+    foreach (Conf::$taskTable as $task) {
+        if ($row["taskId"] == $task["id"]) {
+            $row["taskName"] = $task["name"];
+        }
+    }
+}
 
-# for add. 指定添加对象时生成的id. 缺省返回0表示自动生成.
-protected function onGenId();</code></pre><hr>
-<h2 id="AccessControl.addJoin">@fn AccessControl.addJoin(joinCond)</h2>
-<p>添加Join条件. 参见vcolDefs[][&quot;join&quot;]</p><hr>
-<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-06-15T20:08:56+08:00</div>
+class AC1_UserTaskLog extends AccessControl
+{
+    protected $vcolDefs = [
+        [
+            "res" =&gt; ["taskName"],
+            "join" =&gt; getTaskName
+        ]
+    ];
+}</code></pre>
+<p>注意:</p>
+<ul>
+<li>自定义字段只限于对query/get的最终结果集进行操作</li>
+<li>自定义字段不能用于设置cond条件.</li>
+</ul>
+<h4>3 子表</h4>
+<p class="var"><strong>@var <a id="AccessControl::$subobj">AccessControl::$subobj</a></strong>  (for get/query) 定义子表</p>
+<p>设计接口：</p>
+<pre><code>Ordr.get() -&gt; {id, ..., @orderLog}
+orderLog:: {id, tm, dscr, ..., empName} 订单日志子表。</code></pre>
+<p>实现：</p>
+<pre><code>class AC1_Ordr extends AccessControl
+{
+    protected $subobj = [
+        "orderLog" =&gt; ["sql"=&gt;"SELECT ol.*, e.name AS empName FROM OrderLog ol LEFT JOIN Employee e ON ol.empId=e.id WHERE orderId=%d", "wantOne"=&gt;false],
+    ];
+}</code></pre>
+<p>子表一般通过get操作来获取，执行指定的SQL语句作为结果。结果以一个数组返回[{id, tm, ...}]，如果指定wantOne=&gt;true, 则结果以一个对象返回即 {id, tm, ...}, 适用于主表与子表一对一的情况。</p>
+<p>通过在Query操作上指定参数{wantArray:1}也可以返回子表，但目前不支持分页等操作。</p>
+<h4>4 操作完成回调</h4>
+<p class="fn"><strong>@fn <a id="AccessControl::onAfter">AccessControl::onAfter</a></strong> (&$ret)  (for all) 操作完成时的回调。可修改操作结果ret。</p>
+<p>如果要对get/query结果中的每行字段进行设置，应重写回调 onHandleRow.<br />
+有时使用 onAfterActions 就近添加逻辑更加方便。</p>
+<p class="var"><strong>@var <a id="AccessControl::$onAfterActions">AccessControl::$onAfterActions</a></strong>  =[].  onAfter的替代方案，更易使用，便于与接近的逻辑写在一起。</p>
+<p class="var"><strong>@var <a id="AccessControl::$id">AccessControl::$id</a></strong>   get/set/del时指定的id, 或add后返回的id.</p>
+<p>例如，添加订单时，自动添加一条日志，可以用：</p>
+<pre><code>protected function onValidate()
+{
+    if ($this-&gt;ac == "add") {
+        ... 
+
+        $this-&gt;onAfterActions[] = function () use ($logAction) {
+            $orderId = $this-&gt;id;
+            $sql = sprintf("INSERT INTO OrderLog (orderId, action, tm) VALUES ({$orderId},'CR','%s')", date('c'));
+            execOne($sql);
+        };
+    }
+}</code></pre>
+<p class="fn"><strong>@fn <a id="AccessControl::onHandleRow">AccessControl::onHandleRow</a></strong> (&$rowData) (for get/query) 在onAfter之前运行，用于修改行中字段。</p>
+<h4>5 其它</h4>
+<p class="fn"><strong>@fn <a id="AccessControl::onGenId">AccessControl::onGenId</a></strong> () (for add) 指定添加对象时生成的id. 缺省返回0表示自动生成.</p>
+<p class="var"><strong>@var <a id="AccessControl::$defaultSort">AccessControl::$defaultSort</a></strong>  ?= "t0.id" (for query)指定缺省排序.</p><hr>
+<h2 id="AccessControl::addRes">@fn AccessControl::addRes($res, $analyzeCol=true)</h2>
+<p>添加列或计算列. </p>
+<p>注意: </p>
+<ul>
+<li>analyzeCol=true时, addRes(&quot;col&quot;); -- (analyzeCol=true) 添加一列, 注意:如果列是一个虚拟列(在vcolDefs中有定义), 不能指定alias, 且vcolDefs中同一组Res中所有定义的列都会加入查询; 如果希望只加一列且能定义alias, 可调用addVCol函数.</li>
+<li>addRes(&quot;col+1 as col1&quot;, false); -- 简单地新定义一个计算列, as可省略</li>
+</ul>
+<p class="see"><strong>@see <a href="#AccessControl::addCond">AccessControl::addCond</a></strong>  其中有示例</p>
+<p class="see"><strong>@see <a href="#AccessControl::addVCol">AccessControl::addVCol</a></strong>  添加已定义的虚拟列。</p><hr>
+<h2 id="AccessControl::addCond">@fn AccessControl::addCond($cond, $prepend=false)</h2>
+<p class="param"><strong>@param $prepend</strong>  为true时将条件排到前面。</p>
+<p>调用多次addCond时，多个条件会依次用&quot;AND&quot;连接起来。</p>
+<p>添加查询条件。<br />
+示例：假如设计有接口：</p>
+<pre><code>Ordr.query(q?) -&gt; tbl(..., payTm?)
+参数：
+q:: 查询条件，值为"paid"时，查询10天内已付款的订单。且结果会多返回payTm/付款时间字段。</code></pre>
+<p>实现时，在onQuery中检查参数&quot;q&quot;并定制查询条件：</p>
+<pre><code>protected function onQuery()
+{
+    // 限制只能看用户自己的订单
+    $uid = $_SESSION["uid"];
+    $this-&gt;addCond("t0.userId=$uid");
+
+    $q = param("q");
+    if (isset($q) &amp;&amp; $q == "paid") {
+        $validDate = date("Y-m-d", strtotime("-9 day"));
+        $this-&gt;addRes("olpay.tm payTm");
+        $this-&gt;addJoin("INNER JOIN OrderLog olpay ON olpay.orderId=t0.id");
+        $this-&gt;addCond("olpay.action='PA' AND olpay.tm&gt;'$validDate'");
+    }
+}</code></pre>
+<p class="see"><strong>@see <a href="#AccessControl::addRes">AccessControl::addRes</a></strong> </p>
+<p class="see"><strong>@see <a href="#AccessControl::addJoin">AccessControl::addJoin</a></strong> </p><hr>
+<h2 id="AccessControl::addJoin">@fn AccessControl::addJoin(joinCond)</h2>
+<p>添加Join条件.</p>
+<p class="see"><strong>@see <a href="#AccessControl::addCond">AccessControl::addCond</a></strong>  其中有示例</p><hr>
+<h2 id="AccessControl::addVCol">@fn AccessControl::addVCol($col, $ignoreError=false, $alias=null)</h2>
+<p class="param"><strong>@param $col</strong>  必须是一个英文词, 不允许"col as col1"形式; 该列必须在 vcolDefs 中已定义.</p>
+<p class="param"><strong>@param $alias</strong>  列的别名。可以中文. 特殊字符"-"表示不加到最终res中(只添加join/cond等定义), 由addVColDef内部调用时使用.</p>
+<p class="return"><strong>@return Boolean</strong>  T/F</p>
+<p>用于AccessControl子类添加已在vcolDefs中定义的vcol. 一般应先考虑调用addRes(col)函数.</p>
+<p class="see"><strong>@see <a href="#AccessControl::addRes">AccessControl::addRes</a></strong> </p><hr>
+<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-06-18T16:06:30+08:00</div>
 </html>

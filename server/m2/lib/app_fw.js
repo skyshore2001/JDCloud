@@ -657,10 +657,10 @@ var E_ABORT=-100;
 
 框架自动根据系统环境为应用容器(.mui-container类)增加以下常用类标识：
 
-@key .mui-android: 安卓系统
-@key .mui-ios: 苹果IOS系统
-@key .mui-weixin: 微信浏览器
-@key .mui-cordova: 原生环境
+@key .mui-android 安卓系统
+@key .mui-ios 苹果IOS系统
+@key .mui-weixin 微信浏览器
+@key .mui-cordova 原生环境
 
 在css中可以利用它们做针对系统的特殊设置。
 

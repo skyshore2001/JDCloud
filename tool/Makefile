@@ -11,7 +11,7 @@
 
 opt=-encoding gb2312
 
-all: refdoc sprite
+all: refdoc
 
 refdoc: ../doc/api_m2.html ../doc/api_php.html ../doc/api_web.html
 
@@ -29,7 +29,7 @@ sprite: ../server/m2/icon.out.css
 ../doc/api_php.html: ../server/php/common.php ../server/php/app_fw.php ../server/php/api_fw.php
 	php gendoc.php $^ -title "API²Î¿¼ - ½î¶·ÔÆ·þÎñ¶Ë" $(opt) > $@
 
-clean: clean-refdoc clean-sprite
+clean: clean-refdoc
 
 clean-refdoc: 
 	-rm -rf ../doc/api_m2.html ../doc/api_php.html ../doc/api_web.html
