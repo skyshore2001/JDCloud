@@ -6,13 +6,16 @@
 
 对以下关键字会生成标题(同时也生成链接): @fn, @var, @module, @class
 
-对以下关键字会生成链接：@alias, @key, @event
+对以下关键字会生成锚点（被链接对象）：@alias, @key, @event
+
+使用@see可以引用这些对象。特别的，@see后面可连用多个以","分隔的关键字，如 @see param,mparam 。
 
 用法：
 
 	php gendoc.php mysrc.js -title "API-Reference" > doc.html
 
 文档于utf-8编码，引用css文件style.css。该文件可自行配置。
+
 */
 
 require("lib/common.php");
@@ -57,7 +60,7 @@ class MyParsedown extends Parsedown
 	protected function blockFormatText($Line)
 	{
 		$text = $Line['text'];
-		if (! preg_match('/@(\w+)\s+([^(){}:? ]+)(.*)/', $text, $ms) )
+		if (! preg_match('/@(\w+)\s+([^(){}? ]+)(.*)/', $text, $ms) )
 			return;
 
 		global $newBlock, $keys;
@@ -74,7 +77,13 @@ class MyParsedown extends Parsedown
 		}
 		else {
 			if ($class == "see") {
-				$key = "<a href=\"#{$key}\">{$key}</a>";
+				// @see param
+				// @see param,mparam
+				$ks = explode(',', $key);
+				$key = '';
+				foreach ($ks as $k) {
+					$key .= "<a href=\"#{$k}\">{$k}</a>";
+				}
 			}
 			else if ($class == "alias" || $class == "key" || $class == "event" || $class == "fn" || $class == "var") {
 				$keys[] = makeKeyword(["name"=>$key, "type"=>$class]);
