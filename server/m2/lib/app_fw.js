@@ -657,10 +657,10 @@ var E_ABORT=-100;
 
 框架自动根据系统环境为应用容器(.mui-container类)增加以下常用类标识：
 
-@key .mui-android: 安卓系统
-@key .mui-ios: 苹果IOS系统
-@key .mui-weixin: 微信浏览器
-@key .mui-cordova: 原生环境
+@key .mui-android 安卓系统
+@key .mui-ios 苹果IOS系统
+@key .mui-weixin 微信浏览器
+@key .mui-cordova 原生环境
 
 在css中可以利用它们做针对系统的特殊设置。
 
@@ -2398,9 +2398,11 @@ function handleIos7Statusbar()
 @param fn? the callback for callSvr. you can use this["userPost"] to retrieve the post param.
 
 opt.rules: 参考jquery.validate文档
-opt.validate: Function(jf, queryParam={ac?,res?,...}, postParam). 如果返回false, 则取消submit. queryParam和postParam为调用参数，可以修改。
+opt.validate: Function(jf, queryParam={ac?,res?,...}). 如果返回false, 则取消submit. queryParam为调用参数，可以修改。
 
 form提交时的调用参数, 如果不指定, 则以form的action属性作为queryParam.ac发起callSvr调用.
+form提交时的POST参数，由带name属性且不带disabled属性的组件决定, 可在validate回调中设置．
+如果之前调用过setFormData(jo, data, {setOrigin:true})来展示数据, 则提交时会只加上修改的字段．
 
 opt.onNoAction: Function(jf). 当form中数据没有变化时, 不做提交. 这时可调用该回调函数.
 
@@ -2413,11 +2415,11 @@ function setFormSubmit(jf, fn, opt)
 		ev.preventDefault();
 
 		var queryParam = {ac: jf.attr("action")};
-		var postParam = getFormData(jf);
 		if (opt.validate) {
-			if (false === opt.validate(jf, queryParam, postParam))
+			if (false === opt.validate(jf, queryParam))
 				return false;
 		}
+		var postParam = getFormData(jf);
 		if (! $.isEmptyObject(postParam))
 			callSvr(queryParam.ac, queryParam, fn, postParam, {userPost: postParam});
 		else if (opt.onNoAction) {
@@ -2748,7 +2750,7 @@ function switchTestMode(obj)
 		f.cnt = 0;
 		f.lastTm = tm;
 		var url = prompt("切换URL?", location.href);
-		if (url == null || url == location.href)
+		if (url == null || url === "" || url == location.href)
 			return;
 		if (url[0] == "/") {
 			url = "http://" + url;
@@ -3034,10 +3036,10 @@ function initPullList(container, opt)
 
 	function mouseMove(ev)
 	{
+		touchMove(ev);
 		if (touchev_ == null)
 			return;
 
-		touchMove(ev);
 		if (touchev_.dx != 0 || touchev_.dy != 0)
 			mouseMoved_ = true;
 		ev.stopPropagation();
@@ -3638,7 +3640,7 @@ form.action为对象名.
 pageItf: {formMode, formData}; formData用于forSet模式下显示数据, 它必须有属性id. 
 Form将则以pageItf.formData作为源数据, 除非它只有id一个属性(这时将则调用callSvr获取源数据)
 
-onValidate: Function(jform, queryParam, postParam); 提交前的验证, 或做字段补全的工作, 或补全调用参数。postParam是将提交的数据，可以添加或修改；queryParam是查询参数，它可能包含{ac?, res?, ...}，可以进行修改。
+onValidate: Function(jform, queryParam); 提交前的验证, 或做字段补全的工作, 或补全调用参数。queryParam是查询参数，它可能包含{ac?, res?, ...}，可以进行修改。
 onGetData: Function(jform, queryParam); 在forSet模式下，如果需要取数据，则回调该函数，获取get调用的参数。
 onNoAction: Function(jform); 一般用于更新模式下，当没有任何数据更改时，直接点按钮提交，其实不做任何调用, 这时将回调 onNoAction，缺省行为是返回上一页。
 onAdd: Function(id); 添加完成后的回调. id为新加数据的编号. 
@@ -3730,7 +3732,7 @@ function initPageDetail(jpage, opt)
 		onNoAction: opt.onNoAction || history.back,
 	});
 
-	function onValidate(jf, queryParam, postParam)
+	function onValidate(jf, queryParam)
 	{
 		var ac;
 		if (pageItf.formMode == FormMode.forAdd) {
@@ -3744,7 +3746,7 @@ function initPageDetail(jpage, opt)
 
 		var ret;
 		if (opt.onValidate) {
-			ret = opt.onValidate(jf, queryParam, postParam);
+			ret = opt.onValidate(jf, queryParam);
 		}
 		return ret;
 	}

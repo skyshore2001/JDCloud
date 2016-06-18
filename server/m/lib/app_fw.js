@@ -1513,7 +1513,7 @@ function switchTestMode(obj)
 		f.cnt = 0;
 		f.lastTm = tm;
 		var url = prompt("切换URL?", location.href);
-		if (url == null || url == location.href)
+		if (url == null || url === "" || url == location.href)
 			return;
 		if (url[0] == "/") {
 			url = "http://" + url;

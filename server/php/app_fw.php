@@ -2,13 +2,96 @@
 /*********************************************************
 @module app_fw
 
-- 获得指定类型参数(param/mparam)
-- 数据库连接及操作，如dbconn, execOne, queryOne, queryAll.
-- 包含 $BASE_DIR/conf.php, $BASE_DIR/php/conf.user.php
-- MyException, errQuit等错误处理设施。
-- TEST_MODE, MOCK_MODE
-- DBG_LEVEL
-- session管理
+筋斗云服务端通用应用框架。
+
+## 通用函数
+
+- 获得指定类型参数
+@see param,mparam
+
+- 数据库连接及操作
+@see dbconn,execOne,queryOne,queryAll
+
+- 错误处理设施
+@see MyException,errQuit
+
+## 初始化配置
+
+app_fw框架自动包含 $BASE_DIR/conf.php, $BASE_DIR/php/conf.user.php。
+
+前者定义代码中易变的逻辑；后者为项目配置，一般用于定义环境变量、全局变量等。
+
+### 数据库配置
+
+@key P_DB 环境变量，指定DB类型与地址。
+@key P_DBCRED 环境变量，指定DB登录帐号
+
+P_DB格式为：
+
+	P_DB={主机名}/{数据库名}
+	或
+	P_DB={主机名}:{端口号}/{数据库名}
+
+例如：
+
+	P_DB=localhost/myorder
+	P_DB=www.myserver.com:3306/myorder
+
+P_DBCRED格式为`{用户名}:{密码}`，或其base64编码后的值，如
+
+	P_DBCRED=ganlan:1234
+	或
+	P_DBCRED=Z2FubGFuOjEyMzQ=
+
+此外，P_DB还支持SQLite数据库，直接指定以".db"为扩展名的文件即可。例如：
+
+	P_DB=../myorder.db
+
+## 测试模式与调试等级
+
+@var TEST_MODE Integer/Boolean. 0-生产模式；1-测试模式；2-自动化回归测试模式(RTEST_MODE)
+@var DBG_LEVEL Integer. 调试等级。值范围0-9.
+
+测试模式特点：
+
+- 通过在项目目录下放置文件 CFG_TEST_MODE，可强制使用测试模式。
+- 通过URL请求参数 "_test=1"可以测试模式打开应用。
+- 输出JSON内容更易读，且带调试信息。
+- 一般建议测试模式下连接不同的数据库。可在conf.user.php中指定。
+
+用于在测试模式下输出调试信息。
+
+- 可通过URL请求参数指定，如"_test=1&_debug=1"。
+- 值为9时，可输出所有SQL调试日志。
+
+@see addLog
+
+## 模拟模式
+
+@var MOCK_MODE Boolean. 模拟模式. 值：0/1.
+@key CFG_MOCK_MODE  符号文件，如文件存在则应用运行于模拟模式。
+@key CFG_MOCK_T_MODE 符号文件，如文件存在且在测试模式下，应用运行于模拟模式。
+
+对第三方系统依赖（如微信认证、支付宝支付、发送短信等），可通过设计Mock接口来模拟。
+
+@see ExtMock
+
+## session管理
+
+- 应用的session名称为 "{app}id", 如应用名为 "user", 则session名为"userid". 因而不同的应用同时调用服务端也不会冲突。
+- 保存session文件的目录为 $BASE_DIR/session, 可使用P_SESSION_DIR变量重定义。
+- 测试模式下session名称为 "t{app}id", 保存session文件的目录为 $BASE_DIR/session/t。如果定义了环境变量P_SESSION_DIR，则目录为 {P_SESSION_DIR}/t
+- 同一主机，不同URL下的session即使APP名相同，也不会相互冲突，因为框架会根据当前URL，设置cookie的有效路径。
+
+@key P_SESSION_DIR ?= $BASE_DIR/session 环境变量，定义session文件存放路径。
+@key P_URL_PATH 环境变量。项目的URL路径，如"/jdcloud", 用于定义cookie生效的作用域，也用于拼接相对URL路径。
+@see getBaseUrl
+
+## 应用框架
+
+继承AppBase类，可实现提供符合BQP协议接口的模块。[api_fw](#api_fw)框架就是使用它的一个典型例子。
+
+@see AppBase
 
 **********************************************************/
 
@@ -41,7 +124,12 @@ const RTEST_MODE=2;
 // ====== config {{{
 // such vars are set manually or by init proc (AppFw_::initGlobal); use it like consts.
 
-// 与api.php相同目录 (no trailing "/")
+/**
+@var $BASE_DIR
+
+包含app_fw.php的主文件（如api.php）所在目录。常用于拼接子目录名。
+最后不带"/".
+*/
 global $BASE_DIR;
 $BASE_DIR = dirname(dirname(__FILE__));
 
@@ -61,7 +149,8 @@ global $DBH;
 /**
 @var $APP?=user
 
-客户端应用标识，默认为"user".
+客户端应用标识，默认为"user". 
+根据URL参数"_app"确定值。
  */
 global $APP;
 $APP = param("_app", "user", $_GET);
@@ -211,7 +300,7 @@ $name中指定类型的方式如下：
 	$wantArray = param("wantArray/b", false);
 	$startTm = param("startTm/dt", time());
 
-List类型示例。参数"items"类型在文档中定义为list(id/Integer:qty/Double:dscr/String)，可用param("items/i:n:s")获取, 值如
+List类型示例。参数"items"类型在文档中定义为list(id/Integer, qty/Double, dscr/String)，可用param("items/i:n:s")获取, 值如
 
 	items=100:1:洗车,101:1:打蜡
 
@@ -361,6 +450,10 @@ function mparam($name, $col = null)
 
 /**
 @fn setParam($k, $v)
+
+设置参数，其实是模拟客户端传入的参数。以便供tableCRUD等函数使用。
+
+@see tableCRUD
  */
 function setParam($k, $v)
 {
@@ -476,6 +569,9 @@ function getRsAsTable($sql)
 				[102,"C", null, 1]
 			]
 		]
+
+@see table2objarr
+@see varr2objarr
 */
 function objarr2table($rs, $fixedColCnt=null)
 {
@@ -584,6 +680,7 @@ function getCred($cred)
 /**
 @fn dbconn($fnConfirm=$GLOBALS["dbConfirmFn"])
 @param fnConfirm fn(dbConnectionString), 如果返回false, 则程序中止退出。
+@key dbConfirmFn 连接数据库前回调。
 
 连接数据库
 
@@ -682,7 +779,22 @@ function sql_concat()
 }
 
 /**
-@fn execOne($sql, $getInsertId = false)
+@fn execOne($sql, $getInsertId?=false)
+
+@param $getInsertId?=false 取INSERT语句执行后得到的id. 仅用于INSERT语句。
+
+执行SQL语句，如INSERT, UPDATE等。执行SELECT语句请使用queryOne/queryAll.
+
+	$token = mparam("token");
+	execOne("UPDATE cinf SET appleDeviceToken=" . Q($token));
+
+注意：在拼接SQL语句时，对于传入的string类型参数，应使用Q函数进行转义，避免SQL注入攻击。
+
+对于INSERT语句，设置参数$getInsertId=true, 可取新加入数据行的id. 例：
+
+	$sql = sprintf("INSERT INTO Hongbao (userId, createTm, src, expireTm, vdays) VALUES ({$uid}, '%s', '{$src}', '%s', {$vdays})", date('c', $createTm), date('c', $expireTm));
+	$hongbaoId = execOne($sql, true);
+	
  */
 function execOne($sql, $getInsertId = false)
 {
@@ -697,6 +809,32 @@ function execOne($sql, $getInsertId = false)
 
 /**
 @fn queryOne($sql, $fetchMode = PDO::FETCH_NUM)
+
+执行查询语句，只返回一行数据，如果行中只有一列，则直接返回该列数值。
+如果执行失败，返回false.
+
+示例：查询用户姓名与电话，默认返回值数组：
+
+	$row = queryOne("SELECT name,phone FROM User WHERE id={$id}");
+	if ($row === false)
+		throw new MyException(E_PARAM, "bad user id");
+	// $row = ["John", "13712345678"]
+
+也可返回关联数组:
+
+	$row = queryOne("SELECT name,phone FROM User WHERE id={$id}", PDO::FETCH_ASSOC);
+	if ($row === false)
+		throw new MyException(E_PARAM, "bad user id");
+	// $row = ["name"=>"John", "phone"=>"13712345678"]
+
+当查询结果只有一列时，直接返回该数值。
+
+	$phone = queryOne("SELECT phone FROM User WHERE id={$id}");
+	if ($phone === false)
+		throw new MyException(E_PARAM, "bad user id");
+	// $phone = "13712345678"
+
+@see queryAll
  */
 function queryOne($sql, $fetchMode = PDO::FETCH_NUM)
 {
@@ -715,6 +853,41 @@ function queryOne($sql, $fetchMode = PDO::FETCH_NUM)
 
 /**
 @fn queryAll($sql, $fetchMode = PDO::FETCH_NUM)
+
+执行查询语句，返回数组。
+如果查询失败，返回空数组。
+
+默认返回值数组(varr):
+
+	$rows = queryAll("SELECT name, phone FROM User");
+	if (count($rows) > 0) {
+		...
+	}
+	// 值为：
+	$rows = [
+		["John", "13712345678"],
+		["Lucy", "13712345679"]
+		...
+	]
+	// 可转成table格式返回
+	return ["h"=>["name", "phone"], "d"=>$rows];
+
+也可以返回关联数组(objarr)，如：
+
+	$rows = queryAll("SELECT name, phone FROM User", PDO::FETCH_ASSOC);
+	if (count($rows) > 0) {
+		...
+	}
+	// 值为：
+	$rows = [
+		["name"=>"John", "phone"=>"13712345678"],
+		["name"=>"Lucy", "phone"=>"13712345679"]
+		...
+	]
+	// 可转成table格式返回
+	return objarr2table($rows);
+
+@see objarr2table
  */
 function queryAll($sql, $fetchMode = PDO::FETCH_NUM)
 {
@@ -779,6 +952,8 @@ function getBaseUrl($wantHost = true)
 记录日志。
 
 默认到日志文件 $BASE_DIR/trace.log. 如果指定type=secure, 则写到 $BASE_DIR/secure.log.
+
+可通过在线日志工具 tool/log.php 来查看日志。也可直接打开日志文件查看。
  */
 function logit($s, $addHeader=true, $type="trace")
 {
