@@ -13,12 +13,11 @@ opt=-encoding gb2312
 
 all: refdoc
 
-refdoc: ../doc/api_m2.html ../doc/api_php.html ../doc/api_web.html
+###### refdoc
 
-sprite: ../server/m2/icon.out.css
+refdoc_targets=../doc/api_m2.html ../doc/api_php.html ../doc/api_web.html
 
-../server/m2/icon.out.css: ../server/m2/icon.css
-	php make-sprite.php $< -2x -group -sprite icon/icon@2x.png
+refdoc: $(refdoc_targets)
 
 ../doc/api_m2.html: ../server/m/lib/common.js ../server/m2/lib/app_fw.js 
 	php gendoc.php $^ -title "API²Î¿¼ - ½î¶·ÔÆÇ°¶Ë£¨ÒÆ¶¯Web°æ£©" $(opt) > $@
@@ -33,6 +32,13 @@ clean: clean-refdoc
 
 clean-refdoc: 
 	-rm -rf ../doc/api_m2.html ../doc/api_php.html ../doc/api_web.html
+
+###### sprite 
+
+sprite: ../server/m2/icon.out.css
+
+../server/m2/icon.out.css: ../server/m2/icon.css
+	php make-sprite.php $< -2x -group -sprite icon/icon@2x.png
 
 clean-sprite:
 	-rm -rf ../server/m2/icon.out.css ../server/m2/icon/icon@2x-*.png
