@@ -1,6 +1,6 @@
 @echo off
 
-set DB=myorder
+set DB=jdcloud
 
 echo ========= please choose one =========
 echo 0. Local DB file

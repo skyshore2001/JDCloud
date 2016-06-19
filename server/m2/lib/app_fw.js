@@ -1474,11 +1474,13 @@ ani:: String. 动画效果。设置为"none"禁用动画。
 	}
 
 /**
-@fn MUI.app_alert(msg, [type?=i], [fn?], opt?={timeoutInterval?, defValue?})
+@fn MUI.app_alert(msg, [type?=i], [fn?], opt?={timeoutInterval?, defValue?, onCancel()?})
 @alias app_alert
 @param type 对话框类型: "i": info, 信息提示框; "e": error, 错误框; "w": warning, 警告框; "q": question, 确认框(会有"确定"和"取消"两个按钮); "p": prompt, 输入框
 @param fn Function(text?) 回调函数，当点击确定按钮时调用。当type="p" (prompt)时参数text为用户输入的内容。
 @param opt Object. 可选项。 timeoutInterval表示几秒后自动关闭对话框。defValue用于输入框(type=p)的缺省值.
+
+onCancel: 用于"q", 点取消时回调.
 
 示例:
 
@@ -1584,6 +1586,9 @@ app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时�
 						param = jmsg.find("#txtInput").val();
 					}
 					opt.fn(param);
+				}
+				else if (this.id == "btnCancel" && opt.alertOpt.onCancel) {
+					opt.alertOpt.onCancel();
 				}
 				opt.rand_ = 0;
 				self.closeDialog(jmsg, isClone);
@@ -3630,12 +3635,12 @@ function showByFormMode(jo, formMode)
 }
 
 /**
-@fn initPageDetail(jpage, opt) -> PageDetailInterface={refresh}
+@fn initPageDetail(jpage, opt) -> PageDetailInterface={refresh(), del()}
 
 详情页框架. 用于对象的添加/查看/更新多合一页面.
 form.action为对象名.
 
-@param opt {pageItf, jform?=jpage.find("form:first"), onValidate?, onGetData?, onNoAction?=history.back, onAdd?, onSet?, onGet?}
+@param opt {pageItf, jform?=jpage.find("form:first"), onValidate?, onGetData?, onNoAction?=history.back, onAdd?, onSet?, onGet?, onDel?}
 
 pageItf: {formMode, formData}; formData用于forSet模式下显示数据, 它必须有属性id. 
 Form将则以pageItf.formData作为源数据, 除非它只有id一个属性(这时将则调用callSvr获取源数据)
@@ -3646,6 +3651,7 @@ onNoAction: Function(jform); 一般用于更新模式下，当没有任何数据
 onAdd: Function(id); 添加完成后的回调. id为新加数据的编号. 
 onSet: Function(data); 更新完成后的回调, data为更新后的数据.
 onGet: Function(data); 获取数据后并调用setFormData将数据显示到页面后，回调该函数, 可用于显示特殊数据.
+onDel: Function(); 删除对象后回调.
 
 示例：制作一个人物详情页PagePerson：
 
@@ -3695,7 +3701,10 @@ onGet: Function(data); 获取数据后并调用setFormData将数据显示到页�
 			},
 			onSet: function (data) {
 				app_alert("更新成功!", history.back); // 更新成功后提示信息，然后返回前一页。
-			}
+			},
+			onDel: function () {
+				PagePersons.show({refresh: true});
+			},
 		});
 	}
 
@@ -3780,19 +3789,24 @@ function initPageDetail(jpage, opt)
 		showByFormMode(jpage, pageItf.formMode);
 	}
 
-	function showObject()
+	// refresh?=false
+	function showObject(refresh)
 	{
 		var data = pageItf.formData;
-		if (data.id == null)
-			throw "bad id to get object";
+		if (data == null || data.id == null) {
+			console.log("!!! showObject: no obj or obj.id");
+			return;
+		}
 
 		// 如果formData中只有id属性，则发起get查询；否则直接用此数据。
 		var needGet = true;
-		for (var prop in data) {
-			if (prop == "id" || $.isFunction(data[prop]))
-				continue;
-			needGet = false;
-			break;
+		if (! refresh) {
+			for (var prop in data) {
+				if (prop == "id" || $.isFunction(data[prop]))
+					continue;
+				needGet = false;
+				break;
+			}
 		}
 		if (! needGet) {
 			onGet(data);
@@ -3813,8 +3827,22 @@ function initPageDetail(jpage, opt)
 		}
 	}
 
+	function delObject()
+	{
+		var data = pageItf.formData;
+		if (data == null || data.id == null) {
+			console.log("!!! delObject: no obj or obj.id");
+			return;
+		}
+		var ac = obj_ + ".del";
+		callSvr(ac, {id: data.id}, opt.onDel);
+	}
+
 	var itf = {
-		refresh: showObject
+		refresh: function () {
+			showObject(true);
+		},
+		del: delObject
 	}
 	return itf;
 }

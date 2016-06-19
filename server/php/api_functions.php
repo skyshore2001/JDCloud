@@ -56,11 +56,11 @@ function regUser($phone, $pwd)
 	$phone1 = preg_replace('/^\d{3}\K(\d{4})/', '****', $phone);
 	$name = "用户" . $phone1;
 
-	$sql = sprintf("INSERT INTO User (phone, pwd, name, createTm) VALUES (%s, %s, %s, %s)",
+	$sql = sprintf("INSERT INTO User (phone, pwd, name, createTm) VALUES (%s, %s, %s, '%s')",
 		Q($phone),
 		Q(hashPwd($pwd)),
 		Q($name),
-		Q(date('c'))
+		date(FMT_DT)
 	);
 	$id = execOne($sql, true);
 	addToPwdTable($pwd);
@@ -268,7 +268,7 @@ function api_chpwd()
 	if (isset($oldpwd)) {
 		# validate oldpwd
 		if ($type == "user" && $oldpwd === "_none") { // 表示不要验证，但只限于新用户注册1小时内
-			$dt = date("c", time()-T_HOUR);
+			$dt = date(FMT_DT, time()-T_HOUR);
 			$sql = sprintf("SELECT id FROM User WHERE id=%d and createTm>'$dt'", $uid);
 		}
 		elseif($type == "user"){

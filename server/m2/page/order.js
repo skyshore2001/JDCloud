@@ -1,7 +1,7 @@
 function initPageOrder() 
 {
 	var jpage = $(this);
-	var lastId_;
+	var orderId_;
 
 	jpage.on("pagebeforeshow", onPageBeforeShow);
 	jpage.find("#mnuCancelOrder").click(mnuCancelOrder_click);
@@ -25,7 +25,11 @@ function initPageOrder()
 
 			// order log
 			$.each(data.orderLog, function (i, e) {
-				var cell = {bd: ActionStr[e.action], ft: parseDate(e.tm).format("yyyy-mm-dd HH:MM")};
+				var cell = {
+					hd: '<i class="icon icon-dscr"></i>',
+					bd: ActionStr[e.action],
+					ft: parseDate(e.tm).format("yyyy-mm-dd HH:MM")
+				};
 				var ji = createCell(cell);
 				ji.appendTo(jlstLog);
 			});
@@ -36,16 +40,18 @@ function initPageOrder()
 
 	function mnuCancelOrder_click(ev)
 	{
-		var postParam = {status: "CA"};
-		callSvr("Ordr.set", {id: PageOrder.id}, showOrder, postParam);
-		PageOrders.refresh = true;
+		app_alert("取消订单?", "q", function() {
+			var postParam = {status: "CA"};
+			callSvr("Ordr.set", {id: orderId_}, showOrder, postParam);
+			PageOrders.refresh = true;
+		});
 	}
 
 	function onPageBeforeShow()
 	{
-		if (lastId_ == PageOrder.id)
+		if (orderId_ == PageOrder.id)
 			return;
-		lastId_ = PageOrder.id;
+		orderId_ = PageOrder.id;
 		showOrder();
 	}
 	//}}}

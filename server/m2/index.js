@@ -1,6 +1,8 @@
 // ====== config {{{
 var MyApp = {
 	appName: "user",
+	homePage: "#home",
+	pageFolder: "page",
 	allowedEntries: [
 		"#home",
 		"#me"

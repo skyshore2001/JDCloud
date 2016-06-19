@@ -267,8 +267,8 @@ class ApiLog
 		$ua = $_SERVER["HTTP_USER_AGENT"];
 		$ver = getClientVersion();
 
-		$sql = sprintf("INSERT INTO ApiLog (tm, addr, ua, app, ses, userId, ac, req, reqsz, ver) VALUES (%s, %s, %s, %s, %s, $userId, %s, %s, $reqsz, %s)", 
-			Q(date("c")), Q($remoteAddr), Q($ua), Q($APP), Q(session_id()), Q($this->ac), Q($content), Q($ver["str"])
+		$sql = sprintf("INSERT INTO ApiLog (tm, addr, ua, app, ses, userId, ac, req, reqsz, ver) VALUES ('%s', %s, %s, %s, %s, $userId, %s, %s, $reqsz, %s)", 
+			date(FMT_DT), Q($remoteAddr), Q($ua), Q($APP), Q(session_id()), Q($this->ac), Q($content), Q($ver["str"])
 		);
 		$this->id = execOne($sql, true);
 // 		$logStr = "=== [" . date("Y-m-d H:i:s") . "] id={$this->logId} from=$remoteAddr ses=" . session_id() . " app=$APP user=$userId ac=$ac >>>$content<<<\n";
@@ -928,11 +928,13 @@ AccessControl简写为AC，同时AC也表示自动补全(AutoComplete).
 @key AC_  游客权限(AUTH_GUEST)，如未定义则调用时报“无权操作”错误。
 @key AC0_ 超级管理员权限(AUTH_ADMIN)，如未定义，默认拥有所有权限。
 @key AC1_  用户权限(AUTH_USER)，如未定义，则降级使用游客权限接口(AC_)。
-@key AC2_  商户权限(AUTH_STORE), 如未定义，则降级使用游客权限接口(AC_)。
+@key AC2_  员工权限(AUTH_EMP/AUTH_MGR), 如未定义，报权限不足错误。
 
 因而上例中命名为 "AC1_Ordr" 就表示用户登录后调用Ordr对象接口，将受该类控制。而这是个空的类，所以拥有一切操作权限。
 
-TODO: 权限扩展方案。
+框架为AUTH_ADMIN权限自动选择AC0_类，其它类可以通过函数 onCreateAC 进行自定义，仍未定义的框架使用AC_类。
+
+@see onCreateAC
 
 ## 基本权限控制
 
@@ -1284,22 +1286,15 @@ class AccessControl
 			if (! class_exists($cls))
 				$cls = "AccessControl";
 		}
-		else if (isUserLogin())
-		{
-			$cls = "AC1_$tbl";
-			if (! class_exists($cls))
+		else {
+			$cls = onCreateAC($tbl);
+			if (!isset($cls)) {
 				$cls = "AC_$tbl";
-		}
-		else if (isEmpLogin())
-		{
-			$cls = "AC2_$tbl";
-		}
-		else  {
-			$cls = "AC_$tbl";
-			if (! class_exists($cls))
-			{
-				$cls = null;
-				$noauth = 1;
+				if (! class_exists($cls))
+				{
+					$cls = null;
+					$noauth = 1;
+				}
 			}
 		}
 		if ($cls == null || ! class_exists($cls))

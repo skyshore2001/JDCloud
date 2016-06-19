@@ -16,13 +16,17 @@
 
 == 概要设计 ==
 
+=== 主要用例 ===
+
+定义用户使用本系统的主要场景。用于指导[系统建模]和[通讯协议设计]。
+
+系统用例图.
+
 === 系统建模 ===
 
 定义系统数据模型，描述基本概念。用于指导[数据库设计]。
 
-=== 主要用例 ===
-
-定义用户使用本系统的主要场景。用于指导[通讯协议设计]。
+系统类图或ER图.
 
 == 数据库设计 ==
 
@@ -32,13 +36,9 @@
 
 *[数据库信息]*
 
-@ver=1
-
 @Cinf: version, createTm, upgradeTm
 
-配置信息表.
-
-当设计更改时, 应更新@ver的版本值, 以便升级工具可自动升级.
+产品配置信息表.
 
 *[员工]*
 
@@ -194,7 +194,7 @@ login(uname, pwd/code, wantAll?) -> {id, _token, _expire, _isNew?}
 login(token, wantAll?) -> (与得到该token的登录返回相同内容, 但不包括_token, _expire, _isNew字段).
 }}}
 
-该API根据当前_app类型确定是用户或雇员或管理员登录（apptype分别为user, emp, admin）。支持用户名密码、用户名动态口令、token三种登录方式。
+该API根据当前app类型确定是用户或雇员或管理员登录（apptype分别为user, emp, admin）。支持用户名密码、用户名动态口令、token三种登录方式。
 
 对于用户登录，如果code验证成功, 但手机号不存在, 就以该手机号自动注册用户, 密码为空（由于登录时密码不允许空，所以空密码意味着无法用密码登录）。
 
@@ -250,13 +250,12 @@ logout(_app?, force?)
 *[权限]*
 
 - AUTH_USER
-- AUTH_STORE
 - AUTH_EMP
 - AUTH_ADMIN
 
 *[参数]*
 
-_app:: String. 应用名称, 缺省为"user", 商户登录用"store", 管理员登录用"admin", 参考[登录类型与权限管理]章节.
+_app:: String. 应用名称, 一般由客户端框架自动添加. 缺省为"user", 商户登录用"store", 管理员登录用"admin", 参考[登录类型与权限管理]章节.
 force:: Boolean. 强制删除session. 仅用于调试目的. 一般服务端会自动判断, 如果session中只有一个应用, 就会删除session, 否则只清楚该app相关的session字段.
 
 ==== 修改密码 ====
@@ -274,14 +273,13 @@ chpwd(oldpwd|code?, pwd, _app?) -> {_token, _expire}
 *[权限]*
 
 - AUTH_USER
-- AUTH_STORE
 - AUTH_EMP
 
 *[参数]*
 
 oldpwd:: String. 旧密码. 特殊值"_none"表示不检查oldpwd而直接设置密码，这仅可用于新用户注册一小时内。
 code:: String. 之前先由gencode生成动态验证码, 需验证code通过方可允许修改为新密码; 或者使用特别码"080909"跳过对验证码检查.
-_app:: String. 应用名称. 缺省为"user", 商户登录用"store", 管理员登录用"admin", 参考[登录类型与权限管理]章节.
+_app:: String. 应用名称. 一般由客户端框架自动添加. 缺省为"user", 商户登录用"store", 管理员登录用"admin", 参考[登录类型与权限管理]章节.
 
 *[返回]*
 
@@ -333,6 +331,8 @@ User.set()(phone=18912345678)
 
 === 客户端 ===
 
+app类型为"user".
+
 ==== 订单管理 ====
 
 使用Ordr.add/set/query/get方法添加、修改、查询和查看订单。
@@ -346,11 +346,10 @@ User.set()(phone=18912345678)
 Ordr.add()(Ordr表字段) -> id
 }}}
 
-添加订单后, 订单状态为"CR"; 且在OrderLog中添加一条创建记录(action=CR)
+应用逻辑：
 
-*[权限]*
-
-- AUTH_USER
+- 权限: AUTH_USER
+- 添加订单后, 订单状态为"CR"; 且在OrderLog中添加一条创建记录(action=CR)
 
 *[参数]*
 
@@ -363,12 +362,12 @@ Ordr.add()(Ordr表字段) -> id
 ===== 查看订单 =====
 
 {{{
-Ordr.get(id) -> {id, .., @orderLog, @atts}
+Ordr.query() -> tbl(id, status, ...)
+Ordr.get(id) -> {id, status, ..., @orderLog, @atts}
 }}}
 
-取订单主表字段及其相关子表. 
-
-要取用户所有订单概要, 可以用`Ordr.query`方法. 
+用`Ordr.query`取用户所有订单概要;
+用`Ordr.get`取订单主表字段及其相关子表. 
 
 *[权限]*
 
@@ -385,9 +384,10 @@ id:: Integer. 订单编号
 @orderLog:: Array(OrderLog). 日志子表, 包含订单创建时间等内容, 字段详细请查询表定义"@OrderLog".
 @atts:: Array(Att). 订单关联图片的子表. 字段为 {id, attId}. 根据attId取图片.
 
-=== 员工端 ===
+=== 员工端/后台管理端 ===
 
 本节API需要员工登录权限。
+app类型为"emp".
 
 ==== 员工管理 ====
 
@@ -404,6 +404,7 @@ Employee.set(id?)(POST fields)
 {{{
 Employee.query(cond?)
 }}}
+
 - AUTH_EMP权限只能获取当前登录的员工; 
 - AUTH_MGR权限可获取所有的员工; 
 
@@ -411,36 +412,33 @@ Employee.query(cond?)
 Employee.add()(POST fields)
 Employee.del(id?)
 }}}
-- 仅AUTH_MGR权限可用.
 
-应用逻辑：
+- 仅AUTH_MGR权限可用.
 - 当Employee被其它对象（如Ordr）引用时，不允许删除，只能做禁用等其它处理。
 
-*[权限]*
+==== 订单管理 ====
 
-- AUTH_EMP
-- AUTH_MGR
-
-==== 查看订单 ====
-
+查看订单
 {{{
-Ordr.query(q?) -> tbl( @Ordr表基本字段, brandName, seriesName, modelName, userName, userPhone )
-Ordr.get(id)
-Ordr.set(id)
+Ordr.query() -> tbl(id, status, 参考Ordr表字段...)
+Ordr.get(id) -> { 同query字段 }
 }}}
 
-- 对于Ordr.set操作，只允许在特定条件下修改status字段, 以完成"开始订单服务", "完成订单服务"这些操作.
+完成订单或取消订单
+{{{
+Ordr.set(id)(status=RE)
+Ordr.set(id)(status=CA)
+}}}
+
+- 订单状态必须为"CR"才能完成或取消.
+- 应生成相应订单日志(OrderLog).
 
 *[权限]*
 
 - AUTH_EMP
-- AUTH_MGR
 
-*[参数]*
+=== 超级管理端 ===
 
-q:: String. 查询参数。暂不使用。
+本节API需要超级管理员权限.
 
-=== 管理端 ===
-
-本节API需要管理员权限.
-
+app类型为adm.
