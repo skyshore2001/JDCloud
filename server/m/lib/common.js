@@ -1,13 +1,33 @@
-// common functions
+/**
+@module common.js
+
+JS通用函数库
+*/
 
 // ====== General {{{
-// eg. var ran = randInt(1, 10)
+/**
+@fn randInt(from, to)
+
+生成一个随机整数。如生成10到20间的随机整数：
+
+	var n = randInt(10, 20)
+
+*/
 function randInt(from, to)
 {
 	return Math.floor(Math.random() * (to - from + 1)) + from;
 }
 
-// eg. var dyn_pwd = randAlphanum(8)
+/**
+@fn randAlphanum(cnt)
+
+生成指定长度(cnt)的随机代码。不出现"0","1","o","l"这些易混淆字符。
+
+示例：生成8位随机密码
+
+	var dyn_pwd = randAlphanum(8);
+
+*/
 function randAlphanum(cnt)
 {
 	var r = '';
@@ -44,7 +64,15 @@ function range(from, to, step, max) // (from, to, step=1, max=0)
 	return arr;
 }
 
-// eg. println(basename("c:\\aaa\\bbb/cc/ttt.asp", ".asp"));
+/**
+@fn basename(name, ext?)
+
+取名字的基础部分，如
+
+	var name = basename("/cc/ttt.asp"); // "ttt.asp"
+	var name2 = basename("c:\\aaa\\bbb/cc/ttt.asp", ".asp"); // "ttt"
+
+ */
 function basename(name, ext)
 {
 	name = name.replace(/^.*(\\|\/)/, '');
@@ -78,13 +106,33 @@ function appendParam(url, params)
 	return url + (url.indexOf('?')>0? "&": "?") + paramStr(params);
 }
 
-function assert(dscr, cond)
+/**
+@fn assert(cond, dscr?)
+ */
+function assert(cond, dscr)
 {
 	if (!cond) {
-		throw("assert fail - " + dscr);
+		var msg = "!!! assert fail!";
+		if (dscr)
+			msg += " - " + dscr;
+		throw(msg);
 	}
 }
 
+/**
+@fn parseQuery(str)
+
+解析url编码格式的查询字符串，返回对应的对象。
+
+	if (location.search) {
+		var queryStr = location.search.substr(1); // "?id=100&name=abc&val=3.14"去掉"?"号
+		var args = parseQuery(queryStr); // {id: 100, name: "abc", val: 3.14}
+	}
+
+注意：
+
+如果值为整数或小数，则会转成相应类型。如上例中 id为100,不是字符串"100".
+ */
 function parseQuery(s)
 {
 	var ret = {};
@@ -111,6 +159,11 @@ function parseQuery(s)
 	return ret;
 }
 
+/**
+@fn tobool(v)
+
+将字符串转成boolean值。除"0", "1"外，还可以支持字符串 "on"/"off", "true"/"false"等。
+*/
 function tobool(v)
 {
 	if (typeof v === "string")
@@ -118,7 +171,11 @@ function tobool(v)
 	return !!v;
 }
 
-// goto default page without hash (#xx)
+/**
+@fn reloadSite()
+
+重新加载当前页面，但不要#hash部分。
+*/
 function reloadSite()
 {
 	if (location.href == location.pathname || location.href == location.pathname + location.search)
@@ -133,23 +190,38 @@ function reloadSite()
 // ====== Date {{{
 // ***************** DATE MANIPULATION: format, addMonth, addDay, addHours ******************
 
-// dt.format('yyyy-mm-dd HH:MM:SS');
-// dt.format(); // 即 yyyy-mm-dd HH:MM:SS (缺省)
-// dt.format('L'); // 即 yyyy-mm-dd HH:MM:SS (缺省)
-// dt.format('D'); // 即 yyyy-mm-dd
-// dt.format('T'); // 即 HH:MM:SS
-// dt.addMonth(-1);
-// dt.addDay(1);
-// dt.addHours(10);
-
 function setWidth_2(number)
 {
 	return number < 10? ("0" + number) : ("" + number);
 }
 
-// format a data object
-// by default: fmt = "L" ("L": long即date & time, "D": date, "T": time)
-// e.g. new Date.format("yyyy/mm/dd HH:MM:SS"
+/**
+@fn Date.format(fmt?=L)
+
+日期对象格式化字符串。
+
+@param fmt 格式字符串。由以下组成：
+
+	yyyy - 四位年，如2008, 1999
+	yy - 两位年，如 08, 99
+	mm - 两位月，如 02, 12
+	dd - 两位日，如 01, 30
+	HH - 两位小时，如 00, 23
+	MM - 两位分钟，如 00, 59
+	SS - 两位秒，如 00, 59
+
+	支持这几种常用格式：
+	L - 标准日期时间，相当于 "yyyy-mm-dd HH:MM:SS"
+	D - 标准日期，相当于 "yyyy-mm-dd"
+	T - 标准时间，相当于 "HH:MM:SS"
+
+示例：
+
+	var dt = new Date();
+	var dtStr1 = dt.format("D"); // "2009-10-20"
+	var dtStr2 = dt.format("yyyymmdd-HHMM"); // "20091020-2038"
+
+ */
 Date.prototype.format = function(fmt)
 {
 	if (fmt == null)
@@ -177,27 +249,28 @@ Date.prototype.format = function(fmt)
 			  ;
 }
 
-// addDay for Date object
+/** @fn Date.addDay(n) */
 Date.prototype.addDay = function(iDay)
 {
 	this.setDate(this.getDate() + iDay);
 	return this;
 }
 
-// addHour for Date object
+/** @fn Date.addHours(n) */
 Date.prototype.addHours = function (iHours)
 {
 	this.setHours(this.getHours() + iHours);
 	return this;
 }
 
-// addMin for Date object
+/** @fn Date.addMin(n) */
 Date.prototype.addMin = function (iMin)
 {
 	this.setMinutes(this.getMinutes() + iMin);
 	return this;
 }
-// addMonth for Date object
+
+/** @fn Date.addMonth(n) */
 Date.prototype.addMonth = function (iMonth)
 {
 	this.setMonth(this.getMonth() + iMonth);
@@ -222,6 +295,15 @@ function DateTime(d, t)
 	return new Date(d.getFullYear(), d.getMonth(), d.getDate(), t.getHours(),t.getMinutes(),t.getSeconds());
 }
 
+/**
+@fn parseTime(s)
+
+将纯时间字符串生成一个日期对象。
+
+	var dt1 = parseTime("10:10:00");
+	var dt2 = parseTime("10:11");
+
+ */
 function parseTime(s)
 {
 	var a = s.split(":");
@@ -231,7 +313,18 @@ function parseTime(s)
 	return dt;
 }
 
-// TODO: timezone
+/**
+@fn parseDate(dateStr)
+
+将日期字符串转为日期时间格式。其效果相当于`new Date(Date.parse(dateStr))`，但兼容性更好（例如在safari中很多常见的日期格式无法解析）
+
+示例：
+
+	var dt1 = parseDate("2012-01-01");
+	var dt2 = parseDate("2012/01/01 20:00:09");
+	var dt3 = parseDate("2012.1.1 20:00");
+
+ */
 function parseDate(str)
 {
 	if (str == null)
@@ -275,6 +368,25 @@ function parseDate(str)
 	return dt;
 }
 
+/**
+@fn Date.add(sInterval, n)
+
+为日期对象加几天/小时等。参数n为整数，可以为负数。
+
+@param sInterval Enum. 间隔单位. d-天; m-月; y-年; h-小时; n-分; s-秒
+
+示例：
+
+	var dt = new Date();
+	dt.add("d", 1); // 1天后
+	dt.add("m", 1); // 1个月后
+	dt.add("y", -1); // 1年前
+	dt.add("h", 3); // 3小时后
+	dt.add("n", 30); // 30分钟后
+	dt.add("s", 30); // 30秒后
+
+@see Date.diff
+ */
 Date.prototype.add = function (sInterval, n)
 {
     switch (sInterval) {
@@ -300,6 +412,18 @@ Date.prototype.add = function (sInterval, n)
 	return this;
 }
 
+/**
+@fn Date.diff(sInterval, dtEnd)
+
+计算日期到另一日期间的间隔，单位由sInterval指定(具体值列表参见Date.add).
+
+	var dt = new Date();
+	...
+	var dt2 = new Date();
+	var days = dt.diff("d", dt2); // 相隔多少天
+
+@see Date.add
+*/
 Date.prototype.diff = function(sInterval, dtEnd)
 {
 	var dtStart = this;
@@ -420,7 +544,15 @@ var toJSON = MyJSON.toJSON;
 // }}}
 
 // ====== Cookie and Storage (localStorage/sessionStorage) {{{
-// days: default=30
+/**
+@fn setCookie(name, value, days?=30)
+
+设置cookie值。如果只是为了客户端长时间保存值，一般建议使用 setStorage.
+
+@see getCookie
+@see delCookie
+@see setStorage
+*/
 function setCookie(name,value,days)
 {
 	if (days===undefined)
@@ -435,6 +567,14 @@ function setCookie(name,value,days)
 	document.cookie = name + "="+ escape (value) + ";expires=" + exp.toGMTString();
 }
 
+/**
+@fn getCookie(name)
+
+取cookie值。
+
+@see setCookie
+@see delCookie
+*/
 function getCookie(name)
 {
 	var m = document.cookie.match(new RegExp("(^| )"+name+"=([^;]*)(;|$)"));
@@ -445,6 +585,14 @@ function getCookie(name)
 	}
 }
 
+/**
+@fn delCookie(name)
+
+删除一个cookie项。
+
+@see getCookie
+@see setCookie
+*/
 function delCookie(name)
 {
 	if (getCookie(name) != null) {
@@ -452,12 +600,33 @@ function delCookie(name)
 	}
 }
 
-// 使用localStorage存储(或sessionStorage, 如果useSession=true)，只能存储字符串
-// 如果浏览器不支持，则使用cookie实现
-// useSession?=false
+/**
+@fn setStorage(name, value, useSession?=false)
+
+使用localStorage存储(或使用sessionStorage存储, 如果useSession=true)。
+注意只能存储字符串，所以value不可以为数组，对象等，必须序列化后存储。 
+
+如果浏览器不支持Storage，则使用cookie实现.
+
+示例：
+
+	setStorage("id", "100");
+	var id = getStorage("id");
+	delStorage("id");
+
+示例2：对象需要序列化后存储：
+
+	var obj = {id:10, name:"Jason"};
+	setStorage("obj", JSON.stringify(obj));
+	var obj2 = getStorage("obj");
+	alert(obj2.name);
+
+@see getStorage
+@see delStorage
+*/
 function setStorage(name, value, useSession)
 {
-	assert("value must be scalar!", typeof value != "object");
+	assert(typeof value != "object", "value must be scalar!");
 	if (window.localStorage == null)
 	{
 		setCookie(name, value);
@@ -469,6 +638,17 @@ function setStorage(name, value, useSession)
 		localStorage.setItem(name, value);
 }
 
+/**
+@fn getStorage(name, useSession?=false)
+
+取storage中的一项。
+默认使用localStorage存储，如果useSession=true，则使用sessionStorage存储。
+
+如果浏览器不支持Storage，则使用cookie实现.
+
+@see setStorage
+@see delStorage
+*/
 function getStorage(name, useSession)
 {
 	if (window.localStorage == null)
@@ -488,6 +668,14 @@ function getStorage(name, useSession)
 	return rv;
 }
 
+/**
+@fn delStorage(name)
+
+删除storage中的一项。
+
+@see getStorage
+@see setStorage
+*/
 function delStorage(name, useSession)
 {
 	if (window.localStorage == null)
@@ -504,7 +692,32 @@ function delStorage(name, useSession)
 //}}}
 
 // ====== rs object {{{
-// [{col1, col2}]
+/**
+@fn rs2Array(rs)
+
+@param rs={h=[header], d=[ @row ]} rs对象(RowSet)
+@return arr=[ %obj ]
+
+rs对象用于传递表格，包含表头与表内容。
+函数用于将服务器发来的rs对象转成数组。
+
+示例：
+
+	var rs = {
+		h: ["id", "name"], 
+		d: [ [100, "Tom"], [101, "Jane"] ] 
+	};
+	var arr = rs2Array(rs); 
+
+	// 结果为
+	arr = [
+		{id: 100, name: "Tom"},
+		{id: 101, name: "Jane"} 
+	];
+
+@see rs2Hash
+@see rs2MultiHash
+*/
 function rs2Array(rs)
 {
 	var a = [];
@@ -520,7 +733,28 @@ function rs2Array(rs)
 	return a;
 }
 
-// {k=>{col1, col2}}
+/**
+@fn rs2Hash(rs, key)
+
+@param rs={h, d}  rs对象(RowSet)
+@return hash={key => %obj}
+
+示例：
+
+	var rs = {
+		h: ["id", "name"], 
+		d: [ [100, "Tom"], [101, "Jane"] ] 
+	};
+	var hash = rs2Hash(rs, "id"); 
+
+	// 结果为
+	hash = {
+		100: {id: 100, name: "Tom"},
+		101: {id: 101, name: "Jane"}
+	};
+
+@see rs2Array
+*/
 function rs2Hash(rs, key)
 {
 	var h = {};
@@ -546,6 +780,29 @@ function rs2Hash(rs, key)
 	return h;
 }
 
+/**
+@fn rs2MultiHash(rs, key)
+
+@param rs={h, d}  rs对象(RowSet)
+@return hash={key => [ %obj ]}
+
+示例：
+
+	var rs = {
+		h: ["id", "name"], 
+		d: [ [100, "Tom"], [101, "Jane"], [102, "Tom"] ] 
+	};
+	var hash = rs2Hash(rs, "name");  
+
+	// 结果为
+	hash = {
+		"Tom": [{id: 100, name: "Tom"}, {id: 102, name: "Tom"}],
+		"Jane": [{id: 101, name: "Jane"}]
+	};
+
+@see rs2Hash
+@see rs2Array
+*/
 function rs2MultiHash(rs, key)
 {
 	var h = {};
@@ -578,4 +835,4 @@ function rs2MultiHash(rs, key)
 }
 //}}}
 
-// vim: set foldmethod=marker cms=//\ %s :
+// vi: foldmethod=marker 

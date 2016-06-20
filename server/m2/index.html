@@ -21,8 +21,10 @@
 	<script src="lib/jquery.touchSwipe.min.js"></script>
 	<link rel="stylesheet" href="lib/weui.min.css" />
 	<link rel="stylesheet" href="lib/mui.css?__HASH__" />
-	<!--link rel="stylesheet" href="app.css?__HASH__" /-->
-	<link rel="stylesheet" href="main.css?__HASH__" />
+	<link rel="stylesheet" href="app.css?__HASH__" />
+	<link rel="stylesheet" href="icon.out.css?__HASH__" />
+	<!--link rel="stylesheet" href="icon.css" /-->
+	<link rel="stylesheet" href="index.css?__HASH__" />
 
 <!-- WEBCC_BEGIN {{{ - app framework -->
 	<script src="../m/lib/common.js?__HASH__"></script>
@@ -32,7 +34,7 @@
 	<script src="lib-app.min.js?__HASH__"></script>
 WEBCC_END }}} -->
 
-	<script src="main.js?__HASH__"></script>
+	<script src="index.js?__HASH__"></script>
 
 </head>
 
@@ -40,9 +42,16 @@ WEBCC_END }}} -->
 
 <!-- footer -->
 <div id="footer">
-	<a href="#home" mui-opt="ani:'none'">首页</a></li>
-	<a href="#orders" mui-opt="ani:'none'">订单</a></li>
-	<a href="#me" mui-opt="ani:'none'">我</a>
+	<a href="#home" mui-opt="ani:'none'">
+		<!--span class="icon icon-home"></span-->
+		<span>首页</span>
+	</a>
+	<a href="#orders" mui-opt="ani:'none'">
+		<span>订单</span>
+	</a>
+	<a href="#me" mui-opt="ani:'none'">
+		<span>我</span>
+	</a>
 </div>
 
 </body>

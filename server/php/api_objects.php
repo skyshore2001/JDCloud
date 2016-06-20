@@ -62,7 +62,7 @@ class AC2_Employee extends AC0_Employee
 	protected function onValidateId()
 	{
 		$id = param("id");
-		if (is_null(param("id"))) {
+		if (!hasPerm(AUTH_MGR) || is_null(param("id"))) {
 			setParam("id", $_SESSION["empId"]);
 		}
 	}
@@ -103,13 +103,24 @@ class AC1_Ordr extends AC0_Ordr
 
 	protected function onValidate()
 	{
+		$logAction = null;
 		if ($this->ac == "add") {
 			$userId = $_SESSION["uid"];
 			$_POST["userId"] = $userId;
 			$_POST["status"] = "CR";
-			$this->onAfterActions[] = function () {
+			$logAction = "CR";
+		}
+		else {
+			if (issetval("status")) {
+				// TODO: validate status
+				$logAction = $_POST["status"];
+			}
+		}
+
+		if ($logAction) {
+			$this->onAfterActions[] = function () use ($logAction) {
 				$orderId = $this->id;
-				$sql = sprintf("INSERT INTO OrderLog (orderId, action, tm, dscr) VALUES ($orderId,'CR','%s', '订单创建')", date('c'));
+				$sql = sprintf("INSERT INTO OrderLog (orderId, action, tm) VALUES ({$orderId},%s,'%s')", Q($logAction), date(FMT_DT));
 				execOne($sql);
 			};
 		}
@@ -125,15 +136,16 @@ class AC2_Ordr extends AC0_Ordr
 	{
 		if ($this->ac == "set") {
 			if (issetval("status")) {
-				if ($_POST["status"] == "RE") {
+				$status = $_POST["status"];
+				if ($status == "RE" || $status == "CA") {
 					$oldStatus = queryOne("SELECT status FROM Ordr WHERE id={$this->id}");
 					if ($oldStatus != "CR") {
-						throw new MyException(E_FORBIDDEN, "forbidden to change status to RE");
+						throw new MyException(E_FORBIDDEN, "forbidden to change status to $status");
 					}
-					$this->onAfterActions[] = function () {
+					$this->onAfterActions[] = function () use ($status) {
 						$orderId = $this->id;
 						$empId = $_SESSION["empId"];
-						$sql = sprintf("INSERT INTO OrderLog (orderId, action, tm, empId, dscr) VALUES ($orderId,'RE','%s', $empId, '订单完成')", date('c'));
+						$sql = sprintf("INSERT INTO OrderLog (orderId, action, tm, empId) VALUES ($orderId,'$status','%s', $empId)", date(FMT_DT));
 						execOne($sql);
 					};
 				}

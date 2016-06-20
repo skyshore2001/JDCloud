@@ -9,10 +9,6 @@
 
 <h1 id="toc_1" class="justcenter"><a name="Web应用部署"> Web应用部署</a></h1>
 
-<p>
-2015/8 梁健
-</p>
-
 <h2 id="toc_1.1"><a name="从浏览器缓存问题讲起">1 从浏览器缓存问题讲起</a></h2>
 
 <p>
@@ -98,10 +94,6 @@ html5的manifest离线存储解决方案经测试在手机上行为不太确定�
 在Apache的配置文件中设置目录的AllowOverride All权限，允许目录使用.htaccess自定义规则：
 </p>
 
-<p>
-（可将这些配置添加到一个新文件xeyc.conf中）
-</p>
-
 <pre>
 &lt;Directory "/alidata/www/default/cheguanjia/"&gt;
 	Options FollowSymLinks
@@ -118,16 +110,19 @@ html5的manifest离线存储解决方案经测试在手机上行为不太确定�
 </p>
 
 <p>
-对于web应用所有目录（m2/目录），增加.htaccess目录如下：
-（设置访问 m2/index.html 或直接 m2/ 时，必须来服务器验证）
+对于想要禁用缓存的目录（例如移动客户端目录 <code>m2</code> 下），可以添加配置文件 .htaccess：
 </p>
-
 <pre>
 &lt;FilesMatch "(\.html|\/)$"&gt;
 	#Header set Cache-Control "max-age=604800"
 	Header set Cache-Control "no-cache"
 &lt;/FilesMatch&gt;
 </pre>
+
+<p>
+注意：成熟的Web服务器一般都支持文件版本（通过ETag等）检查，即浏览器请求的文件如果没有变化，则不会传输文件。
+因而，设置"no-cache"并不意味着客户端每次都要重新到服务器取文件，而是要求浏览器每次都去服务器检查文件是否需要更新。
+</p>
 
 <h4 id="toc_1.1.1.2"><a name="解决关联文件缓存">1.1.2 解决关联文件缓存</a></h4>
 
@@ -409,7 +404,10 @@ php/webcc (生成web发布目录)
 FileZilla (ftp手工上传工具)
 
 <li>
-curl (ftp自动上传工具)
+bash (Linux命令解析器，Windows系统中一般在git工具包中已包含)
+
+<li>
+curl (ftp自动上传工具，一般在git工具包中已包含)
 
 </ul>
 
@@ -418,20 +416,27 @@ curl (ftp自动上传工具)
 </p>
 <ul>
 <li>
-获取最新代码的rel分支, 存到目录<code>xeyc-sys</code>(或其它名字), 获取线上web目录的内容镜像到目录<code>xeyc-sys-online</code> (勿改此文件夹名称), 如果用命令行，参照：
+已配置好webcc.conf.php.
+
+<li>
+假定项目名为<code>jdcloud</code>, 那么在同一级创建一个发布目录名称为<code>jdcloud-online</code>，用git进行初始化。它将对应线上版本。
 <pre>
-git clone -b rel server-pc:xeyc-sys xeyc-sys
-git clone server-pc:xeyc-sys-online xeyc-sys-online
+mkdir jdcloud-online
+cd jdcloud-online
+git init
 </pre>
 
-</ul>
+<li>
+配置服务器上的ftp帐号，然后配置项目根目录下的 build_web.sh。其中"OUT_DIR"为发布代码库的路径。
 
+</ul>
+ 
 <p>
-更新步骤：
+发布步骤：
 </p>
 <ul>
 <li>
-进入xeyc-sys目录, 打开git bash，运行命令
+进入项目目录, 打开git bash，运行命令
 <pre>
 build_web.sh
 </pre>

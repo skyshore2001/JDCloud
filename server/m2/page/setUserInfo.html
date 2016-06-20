@@ -1,0 +1,26 @@
+<div mui-initfn="initPageSetUserInfo" mui-script="setUserInfo.js">
+	<div class="hd">
+		<a href="javascript:history.back();" class="icon icon-back"></a>
+		<h2>设置个人信息</h2>
+	</div>
+
+	<form class="bd" action="User.set">
+		<div class="weui_cells weui_cells_form">
+			<div class="weui_cell">
+				<i class="icon icon-user"></i>
+				<label class="weui_cell_hd weui_label">昵称</label>
+				<input name="name" required class="weui_cell_primary weui_input right">
+			</div>
+			<div id="divPwd" class="weui_cell" style="display:none">
+				<i class="icon icon-code"></i>
+				<label class="weui_cell_hd weui_label">登录密码</label>
+				<input id="txtPwd" type="password" class="weui_cell_primary weui_input right" disabled required>
+			</div>
+
+			<div class="weui_cell" style="display:block">
+				<button class="weui_btn weui_btn_primary">完成</button>
+			</div>
+		</div>
+	</form>
+
+</div>

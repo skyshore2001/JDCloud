@@ -2,10 +2,11 @@ function initPageMe()
 {
 	var jpage = $(this);
 
-	jpage.on("pagebeforeshow", function () {
-		jpage.find(".p-name").text(g_data.userInfo.name);
-		jpage.find(".p-phone").text(g_data.userInfo.phone);
-	});
-
+	jpage.on("pagebeforeshow", onPageBeforeShow);
 	jpage.find("#btnLogout").click(logoutUser);
+
+	function onPageBeforeShow()
+	{
+		setFormData(jpage, g_data.userInfo);
+	}
 }

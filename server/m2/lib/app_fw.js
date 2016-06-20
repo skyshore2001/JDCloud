@@ -1,20 +1,80 @@
 // ====== global {{{
+/**
+@var IsBusy
+
+标识应用当前是否正在与服务端交互。一般用于自动化测试。
+*/
 var IsBusy = 0;
+
+/**
+@var g_args
+
+应用参数。
+
+URL参数会自动加入该对象，例如URL为 `http://{server}/{app}/index.html?orderId=10&dscr=上门洗车`，则该对象有以下值：
+
+	g_args.orderId=10; // 注意：如果参数是个数值，则自动转为数值类型，不再是字符串。
+	g_args.dscr="上门洗车"; // 对字符串会自动进行URL解码。
+
+此外，框架会自动加一些参数：
+
+@var g_args._app?="user" 应用名称，由setApp({appName})指定。
+
+@see parseQuery URL参数通过该函数获取。
+*/
 var g_args = {}; // {_test, _debug, cordova}
+
+/**
+@var g_cordova
+
+值是一个整数，默认为0. 
+如果非0，表示WEB应用在苹果或安卓APP中运行，且数值代表原生应用容器的大版本号。
+
+示例：检查用户APP版本是否可以使用某些插件。
+
+	if (g_cordova) { // 在原生APP中。可以使用插件。
+		// 假如在IOS应用的大版本3中，加入了某插件，如果用户未升级，可提示他升级：
+		if (g_cordova < 3 && isIOS()) {
+			app_alert("您的版本太旧，XX功能无法使用，请升级到最新版本");
+		}
+	}
+*/
 var g_cordova = 0; // the version for the android/ios native cient. 0 means web app.
 
-// 应用内部共享数据
-var g_data = {}; // {userInfo}
-// 应用配置项
+/**
+@var g_data = {userInfo?, serverRev?}
+
+应用全局共享数据。
+
+在登录时，会自动设置userInfo属性为个人信息。所以可以通过 g_data.userInfo==null 来判断是否已登录。
+
+serverRev用于标识服务端版本，如果服务端版本升级，则应用可以实时刷新以更新到最新版本。
+
+@key g_data.userInfo
+@key g_data.serverRev
+
+*/
+var g_data = {}; // {userInfo, serverRev}
+
+/**
+@var g_cfg
+
+应用配置项。
+
+@var g_cfg.logAction?=false  Boolean. 是否显示详细日志。
+@var g_cfg.PAGE_SZ?=20  分页大小，作为每次调用{obj}.query的缺省值。
+*/
+
 var g_cfg = { logAction: false };
 
+var m_appVer;
 //}}}
 
 // ====== app toolkit {{{
 /**
 @fn appendParam(url, param)
 
-例:
+示例:
 
 	var url = "http://xxx/api.php";
 	if (a)
@@ -30,19 +90,25 @@ function appendParam(url, param)
 	return url + (url.indexOf('?')>0? "&": "?") + param;
 }
 
-/** @fn isWeixin */
+/** @fn isWeixin()
+当前应用运行在微信中。
+*/
 function isWeixin()
 {
 	return /micromessenger/i.test(navigator.userAgent);
 }
 
-/** @fn isIOS */
+/** @fn isIOS()
+当前应用运行在IOS平台，如iphone或ipad中。
+*/
 function isIOS()
 {
 	return /iPhone|iPad/i.test(navigator.userAgent);
 }
 
-/** @fn isAndroid */
+/** @fn isAndroid()
+当前应用运行在安卓平台。
+*/
 function isAndroid()
 {
 	return /Android/i.test(navigator.userAgent);
@@ -53,6 +119,8 @@ function isAndroid()
 动态加载一个script. 如果曾经加载过, 可以重用cache.
 
 注意: $.getScript一般不缓存(仅当跨域时才使用Script标签方法加载,这时可用缓存), 自定义方法$.getScriptWithCache与本方法类似.
+
+@see $.getScriptWithCache
 */
 function loadScript(url, fnOK)
 {
@@ -67,48 +135,137 @@ function loadScript(url, fnOK)
 
 // --------- jquery {{{
 /**
-@fn getFormParam(jform)
+@fn getFormData(jo)
 
-取form中带name属性的控件值, 放入一个对象中, 以便手工调用callSvr.
+取DOM对象中带name属性的子对象的内容, 放入一个JS对象中, 以便手工调用callSvr.
+
+注意: 
+
+- 这里Form不一定是Form标签, 可以是一切DOM对象.
+- 如果DOM对象有disabled属性, 则会忽略它, 这也与form提交时的规则一致.
+
+与setFormData配合使用时, 可以只返回变化的数据.
 
 	jf.submit(function () {
 		var ac = jf.attr("action");
-		callSvr(ac, fn, getFormParam(jf));
+		callSvr(ac, fn, getFormData(jf));
 	});
-	
+
+@see setFormData
  */
-function getFormParam(jf)
+function getFormData(jo)
 {
-	var param = {};
-	jf.find("[name]").each (function () {
-		var jo = $(this);
-		if (jo.prop("disabled"))
-			return;
-		param[jo.attr("name")] = jo.val();
+	var data = {};
+	var orgData = jo.data("origin_") || {};
+	jo.find("[name]:not([disabled])").each (function () {
+		var ji = $(this);
+		var name = ji.attr("name");
+		var content;
+		if (ji.is(":input"))
+			content = ji.val();
+		else
+			content = ji.html();
+
+		var orgContent = orgData[name];
+		if (orgContent == null)
+			orgContent = "";
+		if (content == null)
+			content = "";
+		if (content !== String(orgContent)) // 避免 "" == 0 或 "" == false
+			data[name] = content;
 	});
-	return param;
+	return data;
 }
 
 /**
-@fn setFormParam(jform, param)
+@fn setFormData(jo, data?, opt?)
 
-对form中带name属性的控件, 分别以param[name]进行赋值。
+用于为带name属性的DOM对象设置内容为data[name].
+要清空所有内容, 可以用 setFormData(jo), 相当于增强版的 form.reset().
+
+注意:
+- DOM项的内容指: 如果是input/textarea/select等对象, 内容为其value值; 如果是div组件, 内容为其innerHTML值.
+- 当data[name]未设置(即值为undefined, 注意不是null)时, 对于input/textarea等组件, 行为与form.reset()逻辑相同, 
+ 即恢复为初始化值, 除了input[type=hidden]对象, 它的内容不会变.
+ 对div等其它对象, 会清空该对象的内容.
+- 如果对象设置有属性"noReset", 则不会对它进行设置.
+
+@param opt {setOrigin?=false}
+
+选项 setOrigin: 为true时将data设置为数据源, 这样在getFormData时, 只会返回与数据源相比有变化的数据.
+缺省会设置该DOM对象数据源为空.
+
+对象关联的数据源, 可以通过 jo.data("origin_") 来获取, 或通过 jo.data("origin_", newOrigin) 来设置.
+
+示例：
+
+	<div id="div1">
+		<p>订单描述：<span name="dscr"></span></p>
+		<p>状态为：<input type=text name="status"></p>
+		<p>金额：<span name="amount"></span>元</p>
+	</div>
+
+Javascript:
+
+	var data = {
+		dscr: "筋斗云教程",
+		status: "已付款",
+		amount: "100"
+	};
+	var jo = $("#div1");
+	var data = setFormData(jo, data); 
+	$("[name=status]").html("已完成");
+	var changedData = getFormData(jo); // 返回 { dscr: "筋斗云教程", status: "已完成", amount: "100" }
+
+	var data = setFormData(jo, data, {setOrigin: true}); 
+	$("[name=status]").html("已完成");
+	var changedData = getFormData(jo); // 返回 { status: "已完成" }
+	$.extend(jo.data("origin_"), changedData); // 合并变化的部分到数据源.
+
+@see getFormData
  */
-function setFormParam(jf, param)
+function setFormData(jo, data, opt)
 {
-	jf.find("[name]").each(function () {
-		var jo = $(this);
-// 		if (jo.prop("disabled"))
-// 			return;
-		var name = jo.attr("name");
-		if (param[name] !== undefined) {
-			jo.val(param[name]);
+	var opt1 = $.extend({
+		setOrigin: false
+	}, opt);
+	if (data == null)
+		data = {};
+	var jo1 = jo.filter("[name]:not([noReset])");
+	jo.find("[name]:not([noReset])").add(jo1).each (function () {
+		var ji = $(this);
+		var name = ji.attr("name");
+		var content = data[name];
+		var isInput = ji.is(":input");
+		if (content === undefined) {
+			if (isInput) {
+				if (ji[0].tagName === "TEXTAREA")
+					content = ji.html();
+				else
+					content = ji.attr("value");
+				if (content === undefined)
+					content = "";
+			}
+			else {
+				content = "";
+			}
+		}
+		if (ji.is(":input")) {
+			ji.val(content);
+		}
+		else {
+			ji.html(content);
 		}
 	});
+	jo.data("origin_", opt1.setOrigin? data: null);
 }
 
 /**
 @fn $.getScriptWithCache(url, options?)
+
+@param options? 传递给$.ajax的选项。
+
+@see loadScript
 */
 $.getScriptWithCache = function(url, options) 
 {
@@ -217,28 +374,217 @@ if (window.console === undefined) {
 		log:function () {}
 	}
 }
+
+/**
+@fn evalAttr(jo, name)
+
+返回一个属性做eval后的js值。
+
+示例：读取一个对象值：
+
+	var opt = evalAttr(jo, "data-opt");
+
+	<div data-opt="{id:1, name:\"data1\"}"><div>
+
+考虑兼容性，也支持忽略括号的写法，
+
+	<div data-opt="id:1, name:\"data1\""><div>
+
+读取一个数组：
+
+	var arr = evalAttr(jo, "data-arr");
+
+	<div data-arr="['aa', 'bb']"><div>
+
+读取一个函数名（或变量）:
+
+	var fn = evalAttr(jo, "mui-initfn");
+
+	<div mui-initfn="initMyPage"><div>
+
+*/
+function evalAttr(jo, name, ctx)
+{
+	var val = jo.attr(name);
+	if (val) {
+		if (val[0] != '{' && val.indexOf(":")>0) {
+			val1 = "({" + val + "})";
+		}
+		else {
+			val1 = "(" + val + ")";
+		}
+		try {
+			val = eval(val1);
+		}
+		catch (ex) {
+			app_alert("属性`" + name + "'格式错误: " + val, "e");
+			val = null;
+		}
+	}
+	return val;
+}
+
+/**
+@fn getTimeDiffDscr(tm, tm1)
+
+从tm到tm1的时间差描述，如"2分钟前", "3天前"等。
+
+tm和tm1可以为时间对象或时间字符串
+*/
+function getTimeDiffDscr(tm, tm1)
+{
+	if (!tm || !tm1)
+		return "";
+	if (! (tm instanceof Date)) {
+		tm = parseDate(tm);
+	}
+	if (! (tm1 instanceof Date)) {
+		tm1 = parseDate(tm1);
+	}
+	var diff = (tm1 - tm) / 1000;
+	if (diff < 60) {
+		return "刚刚";
+	}
+	diff /= 60; // 分钟
+	if (diff < 60) {
+		return Math.floor(diff) + "分钟前";
+	}
+	diff /= 60; // 小时
+	if (diff < 48) {
+		return Math.floor(diff) + "小时前";
+	}
+	diff /= 24; // 天
+	if (diff < 365*2)
+		return Math.floor(diff) + "天前";
+	diff /= 365;
+	if (diff < 10)
+		return Math.floor(diff) + "年前";
+	return "很久前";
+}
 // }}}
 
 // ====== app fw {{{
 var E_AUTHFAIL=-1;
 var E_NOAUTH=2;
+var E_ABORT=-100;
 
 /**
 @module MUI
 
-Mobile UI framework
+筋斗云移动UI框架 - JDCloud Mobile UI framework
 
-== 单网页应用 ==
+## 基于逻辑页面的单网页应用
 
-- 应用程序以page为基本单位，每个页面的html/js可完全分离。参考CPageManager文档。
-- 后台交互, callSvr系列方法
+亦称“变脸式应用”。应用程序以逻辑页面（page）为基本单位，每个页面的html/js可完全分离。主要特性：
 
-== 登录与退出 ==
+- 基于缺页中断思想的页面路由。异步无刷新页面切换。支持浏览器前进后退操作。
+- 支持页面对象模型(POM)，方便基于逻辑页面的模块化开发。支持页面html片段和js片段。
+- 统一对待内部页面和外部页面（同样的方式访问，同样的行为）。开发时推荐用外部页面，发布时可打包常用页面成为内部页面。
+  访问任何页面都是index.html#page1的方式，如果page1已存在则使用（内部页面），不存在则动态加载（如找到fragment/page1.html）
+- 页面栈管理。可自行pop掉一些页面控制返回行为。
+
+@see MUI.showPage
+@see MUI.popPageStack
+@see CPageManager
+
+### 应用容器
+
+@key .mui-container 应用容器。
+@event muiInit() DOM事件。this为当前应用容器。
+
+先在主应用html中，用.mui-container类标识应用容器，在运行时，所有逻辑页面都将在该对象之下。如：
+
+	<body class="mui-container">
+
+应用初始化时会发出muiInit事件，该事件在页面加载完成($.ready)后，显示首页前调用。在这里调用MUI.showPage可动态显示首页。
+
+### 逻辑页面
+
+每个逻辑页面(page)以及它对应的脚本(js)均可以独立出一个文件开发，也可以直接嵌在主页面的应用容器中。
+
+如添加一个订单页，使用外部页面，可以添加一个order.html (html片段):
+
+	<div mui-initfn="initPageOrder" mui-script="order.js">
+		...
+	</div>
+
+如果使用内部页面，则可以写为：
+
+	<script type="text/html" id="tpl_order">
+		<div mui-initfn="initPageOrder" mui-script="order.js">
+			...
+		</div>
+	</script>
+
+@key .mui-page 逻辑页面。
+@key mui-script DOM属性。逻辑页面对应的JS文件。
+@key mui-initfn DOM属性。逻辑页面对应的初始化函数，一般包含在mui-script指定的JS文件中。
+
+该页面代码模块（即初始化函数）可以放在一个单独的文件order.js:
+
+	function initPageOrder() 
+	{
+		var jpage = $(this);
+		jpage.on("pagebeforeshow", onBeforeShow);
+		jpage.on("pageshow", onShow);
+		jpage.on("pagehide", onHide);
+		...
+	}
+
+逻辑页面加载过程，以加载页面"#order"为例: 
+
+	MUI.showPage("#order");
+
+- 检查是否已加载该页面，如果已加载则显示该页并跳到"pagebeforeshow"事件这一步。
+- 检查内部模板页。如果内部页面模板中有名为"tpl_{页面名}"的对象，有则将其内容做为页面代码加载，然后跳到initPage步骤。
+- 加载外部模板页。加载 {pageFolder}/{页面名}.html 作为逻辑页面，如果加载失败则报错。页面所在文件夹可通过 MUI.setApp({pageFolder})指定。
+- initPage页面初始化. 框架自动为页面添加.mui-page类。如果逻辑页面上指定了mui-script属性，则先加载该属性指定的JS文件。然后如果设置了mui-initfn属性，则将其作为页面初始化函数调用。
+- 发出pagecreate事件。
+- 发出pagebeforeshow事件。
+- 动画完成后，发出pageshow事件。
+- 如果之前有其它页面在显示，则触发之前页面的pagehide事件。
+
+@event pagecreate() DOM事件。this为当前页面jpage。
+@event pagebeforeshow() DOM事件。this为当前页面jpage。
+@event pageshow()  DOM事件。this为当前页面jpage。
+@event pagehide() DOM事件。this为当前页面jpage。
+
+## 服务端交互API
+
+@see callSvr 系列调用服务端接口的方法。
+@see CComManager
+
+## 登录与退出
 
 框架提供MUI.showLogin/MUI.logout操作. 
 调用MUI.tryAutoLogin可以支持自动登录.
 
-== 底部导航 ==
+登录后显示的主页，登录页，应用名称等均通过MUI.setApp设置。
+
+@see MUI.tryAutoLogin
+@see MUI.showLogin
+@see MUI.logout
+@see MUI.setApp
+
+## 常用组件
+
+框架提供导航栏、对话框、弹出框、弹出菜单等常用组件。
+
+### 导航栏
+
+@key .mui-navbar 导航栏
+
+### 对话框
+
+@key .mui-dialog 对话框
+
+### 弹出菜单
+
+@key .mui-menu 菜单
+
+### 底部导航
+
+@key #footer 底部导航栏
 
 设置id为"footer"的导航, 框架会对此做些设置: 如果当前页面为导航栏中的一项时, 就会自动显示导航栏.
 例: 在html中添加底部导航:
@@ -257,13 +603,13 @@ Mobile UI framework
 
 注意：mui-navbar与ft类并用后，在点击后不会自动设置active类，请自行添加。
 
-== 图片按需加载 ==
+## 图片按需加载
 
 仅当页面创建时才会加载。
 
 	<img src="../m/images/ui/carwash.png">
 
-== 原生应用支持 ==
+## 原生应用支持
 
 使用MUI框架的Web应用支持被安卓/苹果原生应用加载（通过cordova技术）。
 
@@ -307,28 +653,30 @@ Mobile UI framework
 		}
 	}
 
-== 系统类标识 ==
+## 系统类标识
 
-框架自动根据系统环境为.mui-container类增加以下常用类标识：
+框架自动根据系统环境为应用容器(.mui-container类)增加以下常用类标识：
 
-* mui-android: 安卓系统
-* mui-ios: 苹果IOS系统
-* mui-weixin: 微信浏览器
-* mui-cordova: 原生环境
+@key .mui-android 安卓系统
+@key .mui-ios 苹果IOS系统
+@key .mui-weixin 微信浏览器
+@key .mui-cordova 原生环境
 
 在css中可以利用它们做针对系统的特殊设置。
 
-== 手势支持 ==
+## 手势支持
 
 如果使用了 jquery.touchSwipe 库，则默认支持手势：
 
 - 右划：页面后退
 - 左划：页面前进
 
+@key mui-swipenav DOM属性
 如果页面中某组件上的左右划与该功能冲突，可以设置属性mui-swipenav="no"来禁用该功能：
 
 	<div mui-swipenav="no"></div>
 
+@key .noSwipe CSS-class
 左右划前进后退功能会导致横向滚动生效。可以通过添加noSwipe类（注意大小写）的方式禁用swipe事件恢复滚动功能：
 
 	<div class="noSwipe"></div>
@@ -338,49 +686,15 @@ Mobile UI framework
 
 // ------ CPageManager {{{
 /**
-@class CPageManager
-
-MUI的基类，提供showPage等操作。
-
-页面管理器提供单网页应用框架（一般称单页面应用/SPA，为与应用内page区分，我称之为单网页应用）。
-主要特性：
-- 页面路由。异步无刷新页面切换。支持浏览器前进后退操作。
-- 基于page的模块化开发。支持页面html片段和js片段。
-- 统一对待内部页面和外部页面（同样的方式访问，同样的行为）。开发时推荐用外部页面，发布时可打包常用页面成为内部页面。访问任何页面都是index.html#page1的方式，如果page1已存在则使用（内部页面），不存在则动态加载（如找到fragment/page1.html）
-- 页面栈管理。可自行pop掉一些页面控制返回行为。
-
-所有的page的html与js均可以独立开发。
-如添加一个订单页，使用外部页面，可以添加一个order.html (html片段):
-
-	<div mui-initfn="initPageOrder" mui-script="order.js">
-		...
-	</div>
-
-如果使用内部页面，则可以写为：
-
-	<script type="text/html" id="tpl_order">
-		<div mui-initfn="initPageOrder" mui-script="order.js">
-			...
-		</div>
-	</script>
-
-该页面的代码可以放在一个单独的文件order.js:
-
-	function initPageOrder() 
-	{
-		var jpage = $(this);
-		jpage.on("pagebeforeshow", onBeforeShow);
-		jpage.on("pageshow", onShow);
-		jpage.on("pagehide", onHide);
-		...
-	}
-
-框架提供muiInit/pagecreate/pagebeforeshow/pageshow/pagehide事件。
- */
-/**
 @class CPageManager(app)
+
+页面管理器。提供基于逻辑页面的单网页应用，亦称“变脸式应用”。
+
+该类作为MUI模块的基类，仅供内部使用，但它提供showPage等操作，以及pageshow等各类事件。
+
 @param app IApp={homePage?="#home", pageFolder?="page"}
-*/
+
+ */
 function CPageManager(app)
 {
 	var self = this;
@@ -390,6 +704,18 @@ function CPageManager(app)
 @var MUI.activePage
 
 当前页面。
+
+注意：
+
+- 在初始化过程中，值可能为null;
+- 调用MUI.showPage后，该值在新页面加载之后，发出pageshow事件之前更新。因而在pagebeforeshow事件中，MUI.activePage尚未更新。
+
+要查看从哪个页面来，可以用 MUI.prevPageId。
+要查看最近一次调用MUI.showPage转向的页面，可以用 MUI.getToPageId().
+
+@see MUI.prevPageId
+@see MUI.getToPageId()
+
 */
 	self.activePage = null;
 
@@ -542,19 +868,11 @@ function CPageManager(app)
 		if (ret !== undefined)
 			return ret;
 
-		var val = jo.attr("mui-initfn");
-		if (val == null)
+		var initfn = evalAttr(jo, "mui-initfn");
+		if (initfn == null)
 			return;
 
-		var initfn = null;
-		try {
-			initfn = eval(val);
-		}
-		catch (e) {
-			app_alert("bad initfn: " + val, "e");
-		}
-
-		if (initfn)
+		if (initfn && $.isFunction(initfn))
 		{
 			ret = initfn.apply(jo, paramArr) || true;
 		}
@@ -624,6 +942,7 @@ function CPageManager(app)
 				}
 			}
 			$(document).swipe({
+				excludedElements: "input,select,textarea,.noSwipe", // 与缺省相比，去掉了a,label,button
 				swipeLeft: swipeH,
 				swipeRight: swipeH,
 				threshold: 100, // default=75
@@ -750,7 +1069,18 @@ function CPageManager(app)
 			// 如果在pagebeforeshow中调用showPage显示其它页，则不显示当前页，避免页面闪烁。
 			if (toPageId != m_toPageId)
 			{
+				// NOTE: 如果toPageId与当前页面栈不一致，说明之前page还没入栈.
+				var doAdjustStack = self.m_pageStack.stack_[self.m_pageStack.sp_].pageRef != "#" + toPageId;
+				if (doAdjustStack) {
+					self.m_pageStack.push("#" + toPageId);
+				}
 				self.popPageStack(1);
+				// 调整栈后，新页面之后在hashchange中将无法入栈，故手工入栈。
+				// TODO: 如果在beforeShow中调用了多次showPage, 则仍有可能出故障。
+				if (doAdjustStack) {
+					self.m_pageStack.push("#" + m_toPageId);
+				}
+
 				jpage.appendTo(m_jstash);
 				return;
 			}
@@ -892,7 +1222,7 @@ ani:: String. 动画效果。设置为"none"禁用动画。
 
 可以通过`mui-opt`属性设置showPage的参数(若有多项，以逗号分隔)，如：
 
-	<a href="#me" mui-opt="ani:none">me</a>
+	<a href="#me" mui-opt="ani:'none'">me</a>
 
 如果不想在应用内打开页面，只要去掉链接中的"#"即可：
 
@@ -934,6 +1264,19 @@ ani:: String. 动画效果。设置为"none"禁用动画。
 				bottom: ft
 			});
 		}
+	}
+
+/**
+@fn MUI.getToPageId()
+
+返回最近一次调用MUI.showPage时转向页面的Id.
+
+@see MUI.prevPageId
+ */
+	self.getToPageId = getToPageId;
+	function getToPageId()
+	{
+		return m_toPageId;
 	}
 
 // ------ enhanceWithin {{{
@@ -1131,12 +1474,33 @@ ani:: String. 动画效果。设置为"none"禁用动画。
 	}
 
 /**
-@fn MUI.app_alert(msg, type?=i, fn?, opt?={timeoutInterval?, defValue?})
-@fn MUI.app_alert(msg, type?=i, opt?={timeoutInterval?, defValue?})
+@fn MUI.app_alert(msg, [type?=i], [fn?], opt?={timeoutInterval?, defValue?, onCancel()?})
 @alias app_alert
 @param type 对话框类型: "i": info, 信息提示框; "e": error, 错误框; "w": warning, 警告框; "q": question, 确认框(会有"确定"和"取消"两个按钮); "p": prompt, 输入框
 @param fn Function(text?) 回调函数，当点击确定按钮时调用。当type="p" (prompt)时参数text为用户输入的内容。
 @param opt Object. 可选项。 timeoutInterval表示几秒后自动关闭对话框。defValue用于输入框(type=p)的缺省值.
+
+onCancel: 用于"q", 点取消时回调.
+
+示例:
+
+	// 信息框
+	app_alert("操作成功", function () {
+		MUI.showPage("#orderInfo");
+	}, {timeoutInterval: 3});
+
+	// 错误框
+	app_alert("操作失败", "e");
+
+	// 确认框(确定/取消)
+	app_alert("立即付款?", "q", function () {
+		MUI.showPage("#pay");
+	});
+
+	// 输入框
+	app_alert("输入要查询的名字:", "p", function (text) {
+		callSvr("Book.query", {cond: "name like '%" + text + "%'});
+	});
 
 可自定义对话框，接口如下：
 
@@ -1161,18 +1525,28 @@ app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时�
 
 */
 	window.app_alert = self.app_alert = app_alert;
-	function app_alert(msg, type, fn, alertOpt)
+	function app_alert(msg)
 	{
-		type = type || "i";
-		if (typeof(fn) == "object") {
-			alertOpt = fn;
-			fn = null;
+		var type = "i";
+		var fn = null;
+		var alertOpt = {};
+
+		for (var i=1; i<arguments.length; ++i) {
+			var arg = arguments[i];
+			if ($.isFunction(arg)) {
+				fn = arg;
+			}
+			else if ($.isPlainObject(arg)) {
+				alertOpt = arg;
+			}
+			else if (typeof(arg) === "string") {
+				type = arg;
+			}
 		}
-		if (alertOpt == null)
-			alertOpt = {};
+
 
 		//var cls = {i: "mui-info", w: "mui-warning", e: "mui-error", q: "mui-question", p: "mui-prompt"}[type];
-		var s = {i: "提示", w: "警告", e: "出错", q: "确认", p: "输入"}[type];
+		var s = {i: "提示", w: "警告", e: "出错了", q: "确认", p: "输入"}[type];
 
 		var jmsg = $("#muiAlert");
 		if (jmsg.size() == 0) {
@@ -1212,6 +1586,9 @@ app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时�
 						param = jmsg.find("#txtInput").val();
 					}
 					opt.fn(param);
+				}
+				else if (this.id == "btnCancel" && opt.alertOpt.onCancel) {
+					opt.alertOpt.onCancel();
 				}
 				opt.rand_ = 0;
 				self.closeDialog(jmsg, isClone);
@@ -1258,15 +1635,7 @@ app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时�
 				self.showDialog(jdlg);
 				return;
 			}
-			var opt = jo.attr("mui-opt");
-			if (opt) {
-				try {
-					opt = eval("({" + opt + "})");
-				}catch (e) {
-					alert('bad option: ' + opt);
-					opt = null;
-				}
-			}
+			var opt = evalAttr(jo, "mui-opt");
 			self.showPage(href, opt);
 		});
 	}
@@ -1301,6 +1670,9 @@ app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时�
 
 提供callSvr等与后台交互的API.
 
+@see MUI.callSvr
+@see MUI.useBatchCall
+@see MUI.setupCallSvrViaForm
 */
 function CComManager(app)
 {
@@ -1321,6 +1693,21 @@ ctx: {ac, tm, tv, ret}
 	var m_tmBusy;
 	var m_manualBusy = 0;
 	var m_jLoader;
+
+/**
+@var MUI.disableBatch ?= false
+
+设置为true禁用batchCall, 仅用于内部测试。
+*/
+	self.disableBatch = false;
+
+/**
+@var MUI.m_curBatch
+
+当前batchCall对象，用于内部调试。
+*/
+	var m_curBatch = null;
+	self.m_curBatch = m_curBatch;
 
 /**
 @fn app_abort()
@@ -1354,6 +1741,10 @@ allow throw("abort") as abort behavior.
 	setOnError();
 
 	$.ajaxSetup({
+		beforeSend: function (xhr) {
+			// 保存xhr供dataFilter等函数内使用。
+			this.xhr_ = xhr;
+		},
 		//dataType: "text",
 		dataFilter: function (data, type) {
 			if (type == "text") {
@@ -1374,12 +1765,12 @@ allow throw("abort") as abort behavior.
 	// 		$.mobile.loading("show");
 	// });
 
-	/**
-	@fn delayDo(fn, delayCnt?=3)
+/**
+@fn delayDo(fn, delayCnt?=3)
 
-	设置延迟执行。当delayCnt=1时与setTimeout效果相同。
-	多次置于事件队列最后，一般3次后其它js均已执行完毕，为idle状态
-	*/
+设置延迟执行。当delayCnt=1时与setTimeout效果相同。
+多次置于事件队列最后，一般3次后其它js均已执行完毕，为idle状态
+*/
 	window.delayDo = delayDo;
 	function delayDo(fn, delayCnt)
 	{
@@ -1477,9 +1868,22 @@ allow throw("abort") as abort behavior.
 	// 注意：服务端不应返回null, 否则客户回调无法执行; 习惯上返回false表示让回调处理错误。
 	function defDataProc(rv)
 	{
+		// ajax-beforeSend回调中设置
+		if (this.xhr_) {
+			var serverRev = this.xhr_.getResponseHeader("X-Daca-Server-Rev");
+			if (serverRev && g_data.serverRev != serverRev) {
+				if (g_data.serverRev) {
+					reloadSite();
+				}
+				console.log("Server Revision: " + serverRev);
+				g_data.serverRev = serverRev;
+			}
+		}
+
 		var ctx = this.ctx_ || {};
 		try {
-			rv = $.parseJSON(rv);
+			if (typeof(rv) == "string")
+				rv = $.parseJSON(rv);
 		}
 		catch (e)
 		{
@@ -1514,6 +1918,10 @@ allow throw("abort") as abort behavior.
 			}
 			else if (rv[0] == E_AUTHFAIL) {
 				app_alert("验证失败，请检查输入是否正确!", "e");
+				return;
+			}
+			else if (rv[0] == E_ABORT) {
+				console.log("!!! abort call");
 				return;
 			}
 			logError();
@@ -1557,6 +1965,10 @@ allow throw("abort") as abort behavior.
 		{
 			var usePathInfo = true;
 			if (usePathInfo) {
+				if (params.ac != null) {
+					action = params.ac;
+					delete(params.ac);
+				}
 				url = "../api.php/" + action;
 			}
 			else {
@@ -1567,8 +1979,20 @@ allow throw("abort") as abort behavior.
 		else {
 			url = action;
 		}
-		if (g_cordova)
-			params._ver = "a/" + g_cordova;
+		if (g_cordova) {
+			if (m_appVer === undefined)
+			{
+				var platform = "n";
+				if (isAndroid()) {
+					platform = "a";
+				}
+				else if (isIOS()) {
+					platform = "i";
+				}
+				m_appVer = platform + "/" + g_cordova;
+			}
+			params._ver = m_appVer;
+		}
 		if (m_app.appName)
 			params._app = m_app.appName;
 		if (g_args._test)
@@ -1580,8 +2004,7 @@ allow throw("abort") as abort behavior.
 	}
 
 /**
-@fn MUI.callSvr(ac, param?, fn?, postParams?, userOptions?)
-@fn MUI.callSvr(ac, fn?, postParams?, userOptions?)
+@fn MUI.callSvr(ac, [param?], fn?, postParams?, userOptions?)
 @alias callSvr
 
 @param ac String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)
@@ -1630,20 +2053,32 @@ allow throw("abort") as abort behavior.
 			fn = params;
 			params = null;
 		}
+		if (m_curBatch &&
+			!(userOptions && userOptions.async == false))
+		{
+			return m_curBatch.addCall({ac: ac, get: params, post: postParams}, fn, userOptions);
+		}
+
 		var url = makeUrl(ac, params);
 		var ctx = {ac: ac, tm: new Date()};
 		if (userOptions && userOptions.noLoadingImg)
 			ctx.noLoadingImg = 1;
 		enterWaiting(ctx);
 		var method = (postParams == null? 'GET': 'POST');
-		var options = $.extend({
+		var options = {
 			dataType: 'text',
 			url: url,
 			data: postParams,
 			type: method,
 			success: fn,
 			ctx_: ctx
-		}, userOptions);
+		};
+		// support FormData object.
+		if (! $.isPlainObject(postParams)) {
+			options.processData = false;
+			options.contentType = false;
+		}
+		$.extend(options, userOptions);
 		console.log("call " + ac);
 		return $.ajax(options);
 	}
@@ -1738,6 +2173,173 @@ allow throw("abort") as abort behavior.
 		if (m_jLoader)
 			m_jLoader.remove();
 	}
+
+/**
+@class MUI.batchCall(opt?={useTrans?=0})
+
+批量调用。将若干个调用打包成一个特殊的batch调用发给服务端。
+注意：
+
+- 同步调用callSvrSync不会加入批处理。
+- 对特别几个不符合BPQ协议输出格式规范的接口不可使用批处理，如upload, att等接口。
+- 如果MUI.disableBatch=true, 表示禁用批处理。
+
+示例：
+
+	var batch = new MUI.batchCall();
+	callSvr("Family.query", {res: "id,name"}, api_FamilyQuery);
+	callSvr("User.get", {res: "id,phone"}, api_UserGet);
+	batch.commit();
+
+以上两条调用将一次发送到服务端。
+在批处理中，默认每条调用是一个事务，如果想把批处理中所有调用放到一个事务中，可以用useTrans选项：
+
+	var batch = new MUI.batchCall({useTrans: 1});
+	callSvr("Attachment.add", api_AttAdd, {path: "path-1"});
+	callSvr("Attachment.add", api_AttAdd, {path: "path-2"});
+	batch.commit();
+
+在一个事务中，所有调用要么成功要么都取消。
+任何一个调用失败，会导致它后面所有调用取消执行，且所有已执行的调用会回滚。
+
+参数中可以引用之前结果中的值，引用部分需要用"{}"括起来，且要在opt.ref参数中指定哪些参数使用了引用：
+
+	var batch = new MUI.batchCall({useTrans: 1});
+	callSvr("Attachment.add", api_AttAdd, {path: "path-1"}); // 假如返回 22
+	var opt = {ref: ["id"]};
+	callSvr("Attachment.get", {id: "{$1}"}, api_AttGet, null, opt); // {$1}=22, 假如返回 {id: 22, path: '/data/1.png'}
+	opt = {ref: ["cond"]};
+	callSvr("Attachment.query", {res: "count(*) cnt", cond: "path='{$-1.path}'"}, api_AttQuery, null, opt); // {$-1.path}计算出为 '/data/1.png'
+	batch.commit();
+
+以下为引用格式示例：
+
+	{$-2} // 前2次的结果。
+	{$2[0]} // 取第2次结果（是个数组）的第0个值。
+	{$-1.path} // 取前一次结果的path属性
+	{$2 -1}  // 可以做简单的计算
+
+如果值计算失败，则当作"null"填充。
+
+@see MUI.useBatchCall
+@see MUI.disableBatch
+@see MUI.m_curBatch
+
+*/
+	self.batchCall = batchCall;
+	function batchCall(opt)
+	{
+		this.opt_ = opt;
+		this.calls_ = [];
+		this.callOpts_ = [];
+		if (! self.disableBatch)
+			m_curBatch = this;
+	}
+
+	batchCall.prototype = {
+		// obj: { opt_, @calls_, @callOpts_ }
+		// calls_: elem={ac, get, post}
+		// callOpts_: elem={fn, opt, dfd}
+
+		//* batchCall.addCall(call={ac, get, post}, fn, opt)
+		addCall: function (call0, fn, opt0) {
+			var call = $.extend({}, call0);
+			var opt = $.extend({}, opt0);
+			if (opt.ref) {
+				call.ref = opt.ref;
+			}
+			this.calls_.push(call);
+
+			var callOpt = {
+				fn: fn,
+				opt: opt,
+				dfd: $.Deferred()
+			};
+			this.callOpts_.push(callOpt);
+			return callOpt.dfd;
+		},
+		//* batchCall.dfd()
+		deferred: function () {
+			return this.dfd_;
+		},
+		//* @fn batchCall.commit()
+		commit: function () {
+			if (m_curBatch == null)
+				return;
+			m_curBatch = null;
+
+			if (this.calls_.length <= 1) {
+				console.log("!!! warning: batch has " + this.calls_.length + " calls!");
+			}
+			var batch_ = this;
+			var postData = JSON.stringify(this.calls_);
+			callSvr("batch", this.opt_, api_batch, postData, {
+				contentType: "application/json"
+			});
+
+			function api_batch(data)
+			{
+				var ajaxCtx_ = this;
+				$.each(data, function (i, e) {
+					var callOpt = batch_.callOpts_[i];
+					// simulate ajaxCtx_, e.g. for {noex, userPost}
+					var extendCtx = false;
+					if (callOpt.opt && !$.isEmptyObject(callOpt.opt)) {
+						extendCtx = true;
+						$.extend(ajaxCtx_, callOpt.opt);
+					}
+
+					var data1 = defDataProc.call(ajaxCtx_, e);
+					if (callOpt.fn) {
+						callOpt.fn.call(ajaxCtx_, data1);
+					}
+					callOpt.dfd.resolve(data1);
+
+					// restore ajaxCtx_
+					if (extendCtx) {
+						$.each(Object.keys(callOpt.opt), function () {
+							ajaxCtx_[this] = null;
+						});
+					}
+				});
+			}
+		},
+		//* @fn batchCall.cancel()
+		cancel: function () {
+			m_curBatch = null;
+		}
+	}
+
+/**
+@fn MUI.useBatchCall(opt?={useTrans?=0}, tv?=0)
+
+之后的callSvr调用都加入批量操作。例：
+
+	MUI.useBatchCall();
+	callSvr("Family.query", {res: "id,name"}, api_FamilyQuery);
+	callSvr("User.get", {res: "id,phone"}, api_UserGet);
+
+可指定多少毫秒以内的操作都使用批处理，如10ms内：
+
+	MUI.useBatchCall(null, 10);
+
+如果MUI.disableBatch=true, 该函数不起作用。
+
+@see MUI.batchCall
+@see MUI.disableBatch
+*/
+	self.useBatchCall = useBatchCall;
+	function useBatchCall(opt, tv)
+	{
+		if (self.disableBatch)
+			return;
+		tv = tv || 0;
+		var batch = new MUI.batchCall(opt);
+		setTimeout(function () {
+			batch.commit();
+		}, tv);
+	}
+
 }
 //}}}
 
@@ -1780,7 +2382,6 @@ function document_pageCreate(ev)
 }
 
 $(document).on("pagecreate", document_pageCreate);
-//}}}
 
 // ---- 处理ios7以上标题栏问题(应下移以空出状态栏)
 // 需要定义css: #ios7statusbar
@@ -1798,25 +2399,37 @@ function handleIos7Statusbar()
 }
 
 /**
-@fn MUI.setFormSubmit(jf, fn?, opt?={rules, validate})
+@fn MUI.setFormSubmit(jf, fn?, opt?={rules, validate?, onNoAction?})
 @param fn? the callback for callSvr. you can use this["userPost"] to retrieve the post param.
 
 opt.rules: 参考jquery.validate文档
-opt.validate: Function(jf). 如果返回false, 则取消submit.
+opt.validate: Function(jf, queryParam={ac?,res?,...}). 如果返回false, 则取消submit. queryParam为调用参数，可以修改。
+
+form提交时的调用参数, 如果不指定, 则以form的action属性作为queryParam.ac发起callSvr调用.
+form提交时的POST参数，由带name属性且不带disabled属性的组件决定, 可在validate回调中设置．
+如果之前调用过setFormData(jo, data, {setOrigin:true})来展示数据, 则提交时会只加上修改的字段．
+
+opt.onNoAction: Function(jf). 当form中数据没有变化时, 不做提交. 这时可调用该回调函数.
 
 */
 self.setFormSubmit = setFormSubmit;
 function setFormSubmit(jf, fn, opt)
 {
 	opt = opt || {};
-	jf.submit(function () {
+	jf.submit(function (ev) {
+		ev.preventDefault();
+
+		var queryParam = {ac: jf.attr("action")};
 		if (opt.validate) {
-			if (false === opt.validate(jf))
+			if (false === opt.validate(jf, queryParam))
 				return false;
 		}
-		var ac = jf.attr("action");
-		var params = getFormParam(jf);
-		callSvr(ac, fn, params, {userPost: params});
+		var postParam = getFormData(jf);
+		if (! $.isEmptyObject(postParam))
+			callSvr(queryParam.ac, queryParam, fn, postParam, {userPost: postParam});
+		else if (opt.onNoAction) {
+			opt.onNoAction(jf);
+		}
 		return false;
 	});
 }
@@ -1869,6 +2482,18 @@ $(document).on("deviceready", function () {
 //}}}
 
 // ------ enter and exit {{{
+// 所有登录页都应以app.loginPage指定内容作为前缀，如loginPage="#login", 
+// 则登录页面名称可以为：#login, #login1, #loginByPwd等
+function isLoginPage(pageRef)
+{
+	if (/^\w/.test(pageRef)) {
+		pageRef = "#" + pageRef;
+	}
+	if (pageRef.indexOf(m_app.loginPage) != 0)
+		return false;
+	return true;
+}
+
 /**
 @fn MUI.showLogin(jpage?)
 @param jpage 如果指定, 则登录成功后转向该页面; 否则转向登录前所在的页面.
@@ -1891,19 +2516,19 @@ function showLogin(jpage)
 {
 	var jcurPage = jpage || MUI.activePage;
 	// back to this page after login
+	var toPageHash;
 	if (jcurPage) {
-		m_onLoginOK = function () {
-			MUI.showPage("#" + jcurPage.attr("id"));
-		}
-		MUI.showPage(m_app.loginPage);
+		toPageHash = "#" + jcurPage.attr("id");
 	}
 	else {
 		// only before jquery mobile inits
 		// back to this page after login:
-		var pageHash = location.hash || m_app.homePage;
-		m_onLoginOK = function () {
-			MUI.showPage(pageHash);
-		}
+		toPageHash = location.hash || m_app.homePage;
+	}
+	m_onLoginOK = function () {
+		// 如果当前仍在login系列页面上，则跳到指定页面。这样可以在handleLogin中用MUI.showPage手工指定跳转页面。
+		if (MUI.activePage && isLoginPage(MUI.getToPageId()))
+			MUI.showPage(toPageHash);
 	}
 	MUI.showPage(m_app.loginPage);
 }
@@ -2092,9 +2717,7 @@ function handleLogin(data)
 	// 登录成功后点返回，避免出现login页
 	var popN = 0;
 	self.m_pageStack.walk(function (state) {
-		// 所有登录页都应以app.loginPage指定内容作为前缀，如loginPage="#login", 
-		// 则登录页面名称可以为：#login, #login1, #loginByPwd等
-		if (state.pageRef.indexOf(m_app.loginPage) != 0)
+		if (! isLoginPage(state.pageRef))
 			return false;
 		++ popN;
 	});
@@ -2132,7 +2755,7 @@ function switchTestMode(obj)
 		f.cnt = 0;
 		f.lastTm = tm;
 		var url = prompt("切换URL?", location.href);
-		if (url == null || url == location.href)
+		if (url == null || url === "" || url == location.href)
 			return;
 		if (url[0] == "/") {
 			url = "http://" + url;
@@ -2191,7 +2814,9 @@ function setApp(app)
 }
 //}}}
 
-// ====== app fw: pull list {{{
+//}}}
+
+// ====== app fw: list page {{{
 /**
 @fn initPullList(container, opt)
 
@@ -2199,11 +2824,11 @@ function setApp(app)
 
 例：页面元素如下：
 
-<div mui-initfn="initPageOrders" mui-script="orders.js">
-	<div class="bd">
-		<div class="p-list"></div>
+	<div mui-initfn="initPageOrders" mui-script="orders.js">
+		<div class="bd">
+			<div class="p-list"></div>
+		</div>
 	</div>
-</div>
 
 设置下拉列表的示例代码如下：
 
@@ -2236,20 +2861,20 @@ function setApp(app)
 注意：
 
 - 由于page body的高度自动由框架设定，所以可以作为带滚动条的容器；如果是其它容器，一定要确保它有限定的宽度，以便可以必要时出现滚动条。
-- *** 由于处理分页的逻辑比较复杂，请调用 initNavbarAndList替代, 即使只有一个list；它会屏蔽nextkey, refresh等细节，并做一些优化。像这样调用：
+- *** 由于处理分页的逻辑比较复杂，请调用 initPageList替代, 即使只有一个list；它会屏蔽nextkey, refresh等细节，并做一些优化。像这样调用：
 
-	initNavbarAndList(jpage, {
-		pageItf: PageOrders,
-		navRef: null,
-		listRef: jlst,
-		onGetQueryParam: ...
-		onAddItem: ...
-	});
+		initPageList(jpage, {
+			pageItf: PageOrders,
+			navRef: null,
+			listRef: jlst,
+			onGetQueryParam: ...
+			onAddItem: ...
+		});
 
 本函数参数如下：
 
 @param container 容器，它的高度应该是限定的，因而当内部内容过长时才可出现滚动条
-@param opt {onLoadItem, autoLoadMore?=true, threshold?=80, onHint?}
+@param opt {onLoadItem, autoLoadMore?=true, threshold?=180, onHint?}
 
 @param onLoadItem function(isRefresh)
 
@@ -2268,11 +2893,19 @@ function setApp(app)
 
 提供提示用户刷新或加载的动画效果. 缺省实现是下拉或上拉时显示提示信息。
 
+@param onHintText function(ac, uptoThreshold)
+
+修改用户下拉/上拉时的提示信息。仅当未设置onHint时有效。onHint会生成默认提示，如果onHintText返回非空，则以返回内容替代默认内容。
+内容可以是一个html字符串，所以可以加各种格式。
+
+	ac:: String. 当前动作，"D"或"U".
+	uptoThreshold:: Boolean. 是否达到阈值
+
 */
 function initPullList(container, opt)
 {
 	var opt_ = $.extend({
-		threshold: 80,
+		threshold: 180,
 		onHint: onHint,
 		autoLoadMore: true,
 	}, opt);
@@ -2282,6 +2915,9 @@ function initPullList(container, opt)
 	var mouseMoved_ = false;
 	var SAMPLE_INTERVAL = 200; // ms
 	var TRIGGER_AUTOLOAD = 30; // px
+
+	var lastUpdateTm_ = new Date();
+	var dy_; // 纵向移动。<0为上拉，>0为下拉
 
 	window.requestAnimationFrame = window.requestAnimationFrame || function (fn) {
 		setTimeout(fn, 1000/60);
@@ -2309,35 +2945,40 @@ function initPullList(container, opt)
 		return [t.pageX, t.pageY];
 	}
 
-	var jo;
+	var jo_;
 	function onHint(ac, dy, threshold)
 	{
 		var msg = null;
-		if (jo == null) {
-			jo = $("<div style='overflow:hidden;text-align:center;vertical-align:middle'></div>");
+		if (jo_ == null) {
+			jo_ = $("<div class='mui-pullPrompt'></div>");
 		}
 
+		var uptoThreshold = dy >= threshold;
 		if (ac == "U") {
-			msg = dy >= threshold? "<b>松开加载~~~</b>": "即将加载...";
+			msg = uptoThreshold? "<b>松开加载~~~</b>": "即将加载...";
 		}
 		else if (ac == "D") {
-			msg = dy >= threshold? "<b>松开刷新~~~</b>": "即将刷新...";
+			msg = uptoThreshold? "<b>松开刷新~~~</b>": "即将刷新...";
 		}
-		var maxY = threshold*1.2;
-		if (dy > maxY)
-			dy = maxY;
+		if (opt_.onHintText) {
+			var rv = opt_.onHintText(ac, uptoThreshold);
+			if (rv != null)
+				msg = rv;
+		}
+		var height = Math.min(dy, 100, 2.0*Math.pow(dy, 0.7));
 
 		if (msg == null) {
-			jo.height(0).remove();
+			jo_.height(0).remove();
 			return;
 		}
-		jo.html(msg);
-		jo.height(dy).css("lineHeight", dy + "px");
+		jo_.html(msg);
+		jo_.height(height).css("lineHeight", height + "px");
+			
 		if (ac == "D") {
-			jo.prependTo(cont_);
+			jo_.prependTo(cont_);
 		}
 		else if (ac == "U") {
-			jo.appendTo(cont_);
+			jo_.appendTo(cont_);
 		}
 	}
 
@@ -2400,10 +3041,10 @@ function initPullList(container, opt)
 
 	function mouseMove(ev)
 	{
+		touchMove(ev);
 		if (touchev_ == null)
 			return;
 
-		touchMove(ev);
 		if (touchev_.dx != 0 || touchev_.dy != 0)
 			mouseMoved_ = true;
 		ev.stopPropagation();
@@ -2421,6 +3062,8 @@ function initPullList(container, opt)
 
 	function touchMove(ev)
 	{
+		if (touchev_ == null)
+			return;
 		var p = getPos(ev);
 		var m = touchev_.momentum;
 		if (m) {
@@ -2434,6 +3077,12 @@ function initPullList(container, opt)
 
 		touchev_.dx = p[0] - touchev_.x0;
 		touchev_.dy = p[1] - touchev_.y0;
+		dy_ = touchev_.dy;
+
+		if (touchev_.dy == 0) {
+			touchCancel();
+			return;
+		}
 
 		cont_.scrollTop = touchev_.top0 - touchev_.dy;
 		var dy = touchev_.dy + (cont_.scrollTop - touchev_.top0);
@@ -2534,7 +3183,7 @@ function initPullList(container, opt)
 
 		function onScrollEnd()
 		{
-			if (opt_.autoLoadMore) {
+			if (opt_.autoLoadMore && dy_ < -20) {
 				var distanceToBottom = cont_.scrollHeight - cont_.clientHeight - cont_.scrollTop;
 				if (distanceToBottom <= TRIGGER_AUTOLOAD) {
 					doAction("U");
@@ -2545,9 +3194,12 @@ function initPullList(container, opt)
 }
 
 /**
-@fn initNavbarAndList(jpage, opt) -> ListOpInterface
+@fn initPageList(jpage, opt) -> PageListInterface
+@alias initNavbarAndList
 
-对一个导航栏(class="mui-navbar")加若干列表(class="p-list")的典型页面进行逻辑封装；也可以是若干button对应若干div-list区域，一次只显示一个区域；
+列表页逻辑框架.
+
+对一个导航栏(class="mui-navbar")及若干列表(class="p-list")的典型页面进行逻辑封装；也可以是若干button对应若干div-list区域，一次只显示一个区域；
 特别地，也可以是只有一个list，并没有button或navbar对应。
 
 它包括以下功能：
@@ -2571,8 +3223,8 @@ function initPullList(container, opt)
 		</div>
 
 		<div class="bd">
-			<div id="lst1" class="p-list active"></div>
-			<div id="lst2" class="p-list" style="display:none"></div>
+			<div id="lst1" class="p-list active" data-cond="status='PA'"></div>
+			<div id="lst2" class="p-list" data-cond="status='RE'" style="display:none"></div>
 		</div>
 	</div>
 
@@ -2584,13 +3236,18 @@ function initPullList(container, opt)
 
 js调用逻辑示例：
 
-	initNavbarAndList(jpage, {
+	var lstItf = initPageList(jpage, {
 		pageItf: PageOrders,
-		onGetQueryParam: function (jlst, callParam) {
-			callParam.ac = "Ordr.query";
-			var param = callParam.queryParam;
-			param.orderby = "id desc";
-			param.cond = "status=1";
+
+		//以下两项是缺省值：
+		//navRef: ">.hd .mui-navbar",
+		//listRef: ">.bd .p-list",
+		
+		// 设置查询参数，静态值一般通过在列表对象上设置属性 data-ac, data-cond以及data-queryParam等属性来指定更方便。
+		onGetQueryParam: function (jlst, queryParam) {
+			queryParam.ac = "Ordr.query";
+			queryParam.orderby = "id desc";
+			// queryParam.cond 已在列表data-cond属性中指定
 		},
 		onAddItem: function (jlst, itemData) {
 			var ji = $("<li>" + itemData.title + "</li>");
@@ -2630,7 +3287,7 @@ js调用逻辑示例：
 
 	jpage.find(".p-panel").height(500); // !!! 注意：必须为list container指定高度，否则无法出现下拉列表。一般根据页高自动计算。
 
-	initNavbarAndList(jpage, {
+	var lstItf = initPageList(jpage, {
 		pageItf: PageOrders,
 		navRef: ".p-panelHd", // 点标题栏，显示相应列表区
 		listRef: ".p-panel .p-list", // 列表区
@@ -2645,15 +3302,10 @@ js调用逻辑示例：
 
 	jpage.find(".p-panel").height(500); // 一定要为容器设置高度
 
-	initNavbarAndList(jpage, {
+	var lstItf = initPageList(jpage, {
 		pageItf: PageOrders,
 		navRef: "", // 置空，表示不需要button链接到表，下面listRef中的多表各自显示不相关。
 		listRef: ".p-panel .p-list", // 列表区
-		onGetQueryParam: function (jlst, callParam) {
-			callParam.ac = jlst.attr("ac");
-			var param = callParam.queryParam;
-			param.cond = jlst.attr("cond");
-		},
 		...
 	});
 
@@ -2674,7 +3326,7 @@ navRef是否为空的区别是，如果非空，则表示listRef是一组互斥�
 
 由于bd对象的高度已自动设置，要设置p-list对象支持上下拉加载，可以简单调用：
 
-	initNavbarAndList(jpage, {
+	var lstItf = initPageList(jpage, {
 		pageItf: PageOrders,
 		navRef: "", // 一定置空，否则默认值是取mui-navbar
 		listRef: ".p-list"
@@ -2685,9 +3337,9 @@ navRef是否为空的区别是，如果非空，则表示listRef是一组互斥�
 
 原理是在合适的时机，自动调用类似这样的逻辑：
 
-	var callParam = {ac: "Ordr.query", queryParam: {} };
-	opt.onGetQueryParam(jlst, callParam);
-	callSvr(callParam.ac, callParam.queryParam, function (data) {
+	var queryParam = {ac: "Ordr.query"};
+	opt.onGetQueryParam(jlst, queryParam);
+	callSvr(queryParam.ac, queryParam, function (data) {
 		$.each(rs2Array(data), function (i, itemData) {
 			opt.onAddItem(jlst, itemData);
 		});
@@ -2697,14 +3349,19 @@ navRef是否为空的区别是，如果非空，则表示listRef是一组互斥�
 
 ## 参数说明
 
-@param opt {onGetQueryParam, onAddItem, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef=">.bd .p-list"}
+@param opt {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list"}
 
-@param onGetQueryParam (jlst, callParam/o)
+@param onGetQueryParam Function(jlst, queryParam/o)
 
-	@param callParam {ac?="Ordr.query", queryParam?={} }
+queryParam: {ac?, res?, cond?, ...}
 
-框架在调用callSvr之前获取参数，jlst为当前list组件，一般应设置 callParam.ac 及 callParam.queryParam 参数(如 queryParam.res/orderby/cond等)。
-框架将自动管理 queryParam._pagekey/_pagesz 参数。
+框架在调用callSvr之前，先取列表对象jlst上的data-queryParam属性作为queryParam的缺省值，再尝试取data-ac, data-res, data-cond, data-orderby属性作为queryParam.ac等参数的缺省值，
+最后再回调 onGetQueryParam。
+
+	<ul data-queryParam="{q: 'famous'}" data-ac="Person.query" data-res="*,familyName" data-cond="status='PA' and name like '王%'">
+	</ul>
+
+此外，框架将自动管理 queryParam._pagekey/_pagesz 参数。
 
 @param onAddItem (jlst, itemData)
 
@@ -2721,12 +3378,20 @@ navRef是否为空的区别是，如果非空，则表示listRef是一组互斥�
 
 @param navRef,listRef  指定navbar与list，可以是选择器，也可以是jQuery对象；或是一组button与一组div，一次显示一个div；或是navRef为空，而listRef为一个或多个不相关联的list.
 
-@return ListOpInterface={refresh, markRefresh}
+@return PageListInterface={refresh, markRefresh}
 
 refresh: Function(), 刷新当前列表
 markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 下次浏览该列表时刷新。
+
+## css类
+
+可以对以下两个CSS class指定样式：
+
+@key mui-pullPrompt CSS-class 下拉刷新提示块
+@key mui-loadPrompt CSS-class 自动加载提示块
  */
-function initNavbarAndList(jpage, opt)
+window.initNavbarAndList = initPageList;
+function initPageList(jpage, opt)
 {
 	var opt_ = $.extend({
 		navRef: ">.hd .mui-navbar",
@@ -2786,7 +3451,8 @@ function initNavbarAndList(jpage, opt)
 
 		var pullListOpt = {
 			onLoadItem: showOrderList,
-			//onHint: $.noop
+			//onHint: $.noop,
+			onHintText: onHintText,
 		};
 
 		jallList_.parent().each(function () {
@@ -2800,14 +3466,47 @@ function initNavbarAndList(jpage, opt)
 		}
 	}
 
+	// return jlst. (caller need check size>0)
+	function getActiveList()
+	{
+		if (jallList_.size() <= 1)
+			return jallList_;
+		var jlst = jallList_.filter(".active");
+		if (jlst.size() == 0)
+			jlst = jallList_.filter(":first");
+		return jlst;
+	}
+
+	function onHintText(ac, uptoThreshold)
+	{
+		if (ac == "D") {
+			var jlst = getActiveList();
+			if (jlst.size() == 0)
+				return;
+
+			var tm = jlst.data("lastUpdateTm_");
+			if (! tm)
+				return;
+			var diff = getTimeDiffDscr(tm, new Date());
+			var str = diff + "刷新";
+			if (uptoThreshold) {
+				msg = "<b>" + str + "~~~</b>";
+			}
+			else {
+				msg = str;
+			}
+			return msg;
+		}
+	}
+
 	// (isRefresh?=false, skipIfLoaded?=false)
 	function showOrderList(isRefresh, skipIfLoaded)
 	{
 		// nextkey=null: 新开始或刷新
 		// nextkey=-1: 列表完成
-		var jlst = jallList_.filter(".active");
+		var jlst = getActiveList();
 		if (jlst.size() == 0)
-			jlst = jallList_.filter(":first");
+			return;
 		var nextkey = jlst.data("nextkey_");
 		if (isRefresh) {
 			nextkey = null;
@@ -2821,20 +3520,45 @@ function initNavbarAndList(jpage, opt)
 		if (skipIfLoaded && nextkey != null)
 			return;
 
-		var queryParam = {};
-		var callParam = {ac: "Ordr.query", queryParam: queryParam };
-		opt_.onGetQueryParam(jlst, callParam);
+		var queryParam = evalAttr(jlst, "data-queryParam") || {};
+		$.each(["ac", "res", "cond", "orderby"], function () {
+			var val = jlst.attr("data-" + this);
+			if (val)
+				queryParam[this] = val;
+		});
+
+		if (opt_.onGetQueryParam) {
+			opt_.onGetQueryParam(jlst, queryParam);
+		}
 
 		queryParam._pagesz = g_cfg.PAGE_SZ; // for test, default 20.
 		if (nextkey) {
 			queryParam._pagekey = nextkey;
 		}
-		callSvr(callParam.ac, callParam.queryParam, api_OrdrQuery);
+
+		var loadMore_ = !!nextkey;
+		var joLoadMore_;
+		if (loadMore_) {
+			if (joLoadMore_ == null) {
+				joLoadMore_ = $("<div class='mui-loadPrompt'>正在加载...</div>");
+			}
+			joLoadMore_.appendTo(jlst);
+			// scroll to bottom
+			var cont = jlst.parent()[0];
+			cont.scrollTop = cont.scrollHeight;
+		}
+		else {
+			jlst.data("lastUpdateTm_", new Date());
+		}
+		callSvr(queryParam.ac, queryParam, api_OrdrQuery);
 
 		function api_OrdrQuery(data)
 		{
+			if (loadMore_) {
+				joLoadMore_.remove();
+			}
 			$.each(rs2Array(data), function (i, itemData) {
-				opt_.onAddItem(jlst, itemData);
+				opt_.onAddItem && opt_.onAddItem(jlst, itemData);
 			});
 			if (data.nextkey)
 				jlst.data("nextkey_", data.nextkey);
@@ -2869,6 +3593,259 @@ function initNavbarAndList(jpage, opt)
 }
 
 //}}}
+
+// ====== app fw: detail page {{{
+var FormMode = {
+	forAdd: "A",
+	forSet: "S",
+	//forView: "V",
+	forFind: "F"
+};
+
+/**
+@fn showByFormMode(jo, formMode)
+
+根据当前formMode自动显示或隐藏jo下的DOM对象.
+
+示例: 对以下DOM对象
+
+	<div id="div1">
+		<div id="div2"></div>
+		<div id="div3" class="forAdd"></div>
+		<div id="div4" class="forSet"></div>
+		<div id="div5" class="forSet forAdd"></div>
+	</div>
+
+调用showByFormMode(jo, FormMode.forAdd)时, 显示 div2, div3, div5;
+调用showByFormMode(jo, FormMode.forSet)时, 显示 div2, div4, div5;
+ */
+function showByFormMode(jo, formMode)
+{
+	jo.find(".forSet, .forAdd").each(function () {
+		var cls = null;
+		if (formMode == FormMode.forSet) {
+			cls = "forSet";
+		}
+		else if (formMode == FormMode.forAdd) {
+			cls = "forAdd";
+		}
+		if (cls)
+			$(this).toggle($(this).hasClass(cls));
+	});
+}
+
+/**
+@fn initPageDetail(jpage, opt) -> PageDetailInterface={refresh(), del()}
+
+详情页框架. 用于对象的添加/查看/更新多合一页面.
+form.action为对象名.
+
+@param opt {pageItf, jform?=jpage.find("form:first"), onValidate?, onGetData?, onNoAction?=history.back, onAdd?, onSet?, onGet?, onDel?}
+
+pageItf: {formMode, formData}; formData用于forSet模式下显示数据, 它必须有属性id. 
+Form将则以pageItf.formData作为源数据, 除非它只有id一个属性(这时将则调用callSvr获取源数据)
+
+onValidate: Function(jform, queryParam); 提交前的验证, 或做字段补全的工作, 或补全调用参数。queryParam是查询参数，它可能包含{ac?, res?, ...}，可以进行修改。
+onGetData: Function(jform, queryParam); 在forSet模式下，如果需要取数据，则回调该函数，获取get调用的参数。
+onNoAction: Function(jform); 一般用于更新模式下，当没有任何数据更改时，直接点按钮提交，其实不做任何调用, 这时将回调 onNoAction，缺省行为是返回上一页。
+onAdd: Function(id); 添加完成后的回调. id为新加数据的编号. 
+onSet: Function(data); 更新完成后的回调, data为更新后的数据.
+onGet: Function(data); 获取数据后并调用setFormData将数据显示到页面后，回调该函数, 可用于显示特殊数据.
+onDel: Function(); 删除对象后回调.
+
+示例：制作一个人物详情页PagePerson：
+
+- 在page里面包含form，form的action属性标明对象名称，method属性不用。form下包含各展示字段，各字段以name属性标识。
+- 可以用 forAdd, forSet 等class标识对象只在添加或更新时显示。
+- 一个或多个提交按钮，触发提交事件。
+- 对于不想展示但需要提交的字段，可以用设置为隐藏的input[type=text]对象，或是input[type=hidden]对象；如果字段会变化应使用前者，type=hidden对象内容设置后不会变化(如调用setFormData不修改hidden对象)
+
+逻辑页面（html片段）示例如下：
+
+	<div mui-initfn="initPagePerson" mui-script="person.js">
+		...
+		<div class="bd">
+			<form action="Person">
+				<input name="name" required placeholder="输入名称">
+				<textarea name="dscr" placeholder="写点简介"></textarea>
+				<div class="forSet">人物标签</div>
+
+				<button type="submit" id="btnOK">确定</button>
+				<input type="text" style="display:none" name="familyId">
+
+			</form>
+		</div>
+	</div>
+
+调用initPageDetail使它成为支持添加、查看和更新的详情页：
+
+	var PagePerson = {
+		showForAdd: function (formData) ...
+		showForSet: function (formData) ...
+	};
+
+	function initPagePerson()
+	{
+		var jpage = this;
+		var pageItf = PagePerson;
+		initPageDetail(jpage, {
+			pageItf: pageItf, // 需要页面接口提供 formMode, formData等属性。
+			onValidate: function (jf) {
+				// 补足字段和验证字段，返回false则取消form提交。
+				if (pageItf.formMode == FormMode.forAdd) {
+					...
+				}
+			},
+			onAdd: function (id) {
+				PagePersons.show({refresh: true}); // 添加成功后跳到列表页并刷新。
+			},
+			onSet: function (data) {
+				app_alert("更新成功!", history.back); // 更新成功后提示信息，然后返回前一页。
+			},
+			onDel: function () {
+				PagePersons.show({refresh: true});
+			},
+		});
+	}
+
+	// 其它页调用它：
+	PagePerson.showForAdd({familyId: 1}); // 添加人物，已设置familyId为1
+	PagePerson.showForSet(person); // 以person对象内容显示人物，可更新。
+	PagePerson.showForSet({id: 3}); // 以id=3查询人物并显示，可更新。
+
+对于forSet模式，框架先检查formData中是否只有id属性，如果是，则在进入页面时会自动调用{obj}.get获取数据.
+
+	<form action="Person">
+		<div name=familyName></div>
+		...
+	</form>
+
+如果formData中有多个属性，则自动以formData的内容作为数据源显示页面，不再发起查询。
+
+*/
+
+function initPageDetail(jpage, opt)
+{
+	var pageItf = opt.pageItf;
+	if (! pageItf)
+		throw("require opt.pageItf");
+	var jf = opt.jform || jpage.find("form:first");
+	var obj_ = jf.attr("action");
+	if (!obj_ || /\W/.test(obj_)) 
+		throw("bad object: form.action=" + obj_);
+
+	jpage.on("pagebeforeshow", onPageBeforeShow);
+
+	MUI.setFormSubmit(jf, api_Ordr, {
+		validate: onValidate,
+		onNoAction: opt.onNoAction || history.back,
+	});
+
+	function onValidate(jf, queryParam)
+	{
+		var ac;
+		if (pageItf.formMode == FormMode.forAdd) {
+			ac = "add";
+		}
+		else if (pageItf.formMode == FormMode.forSet) {
+			ac = "set";
+			queryParam.id = pageItf.formData.id;
+		}
+		queryParam.ac = obj_ + "." + ac;
+
+		var ret;
+		if (opt.onValidate) {
+			ret = opt.onValidate(jf, queryParam);
+		}
+		return ret;
+	}
+
+	function api_Ordr(data)
+	{
+		if (pageItf.formMode == FormMode.forAdd) {
+			// 到新页后，点返回不允许回到当前页
+			MUI.popPageStack();
+			opt.onAdd && opt.onAdd(data);
+		}
+		else if (pageItf.formMode == FormMode.forSet) {
+			var originData = jf.data("origin_");
+			$.extend(originData, this.userPost); // update origin data
+			opt.onSet && opt.onSet(originData);
+		}
+	}
+
+	function onPageBeforeShow() 
+	{
+		if (pageItf.formMode == FormMode.forAdd) {
+			setFormData(jf, pageItf.formData); // clear data
+		}
+		else if (pageItf.formMode == FormMode.forSet) {
+			showObject();
+		}
+		else if (pageItf.formMode == FormMode.forFind) {
+			// TODO: 之前不是forFind则应清空
+			setFormData(jf); // clear data
+		}
+		showByFormMode(jpage, pageItf.formMode);
+	}
+
+	// refresh?=false
+	function showObject(refresh)
+	{
+		var data = pageItf.formData;
+		if (data == null || data.id == null) {
+			console.log("!!! showObject: no obj or obj.id");
+			return;
+		}
+
+		// 如果formData中只有id属性，则发起get查询；否则直接用此数据。
+		var needGet = true;
+		if (! refresh) {
+			for (var prop in data) {
+				if (prop == "id" || $.isFunction(data[prop]))
+					continue;
+				needGet = false;
+				break;
+			}
+		}
+		if (! needGet) {
+			onGet(data);
+		}
+		else {
+			var queryParam = {
+				ac: obj_ + ".get",
+				id: data.id
+			};
+			opt.onGetData && opt.onGetData(jf, queryParam);
+			callSvr(queryParam.ac, queryParam, onGet);
+		}
+
+		function onGet(data)
+		{
+			setFormData(jf, data, {setOrigin: true});
+			opt.onGet && opt.onGet(data);
+		}
+	}
+
+	function delObject()
+	{
+		var data = pageItf.formData;
+		if (data == null || data.id == null) {
+			console.log("!!! delObject: no obj or obj.id");
+			return;
+		}
+		var ac = obj_ + ".del";
+		callSvr(ac, {id: data.id}, opt.onDel);
+	}
+
+	var itf = {
+		refresh: function () {
+			showObject(true);
+		},
+		del: delObject
+	}
+	return itf;
+}
 //}}}
 
 // vim: set foldmethod=marker:

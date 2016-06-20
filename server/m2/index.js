@@ -1,6 +1,8 @@
 // ====== config {{{
 var MyApp = {
 	appName: "user",
+	homePage: "#home",
+	pageFolder: "page",
 	allowedEntries: [
 		"#home",
 		"#me"
@@ -29,18 +31,11 @@ var g_data = {
 };
 
 var g_cfg = {
-	PAGE_SZ: 10,
+	PAGE_SZ: 20,
 	WAIT: 3000, // 3s
 };
 
-// ---- interface {{{
-var PageHome = {
-	// PageHome.show
-	show: null, // Function(reload?=false)
-	userInit: false, // Boolean. show dlgUserInit
-	refresh: false, // Boolean
-};
-
+// ---- page interface {{{
 var PageOrder = {
 	// PageOrder.id
 	id: null, 
@@ -49,6 +44,11 @@ var PageOrder = {
 var PageOrders = {
 	refresh: false
 };
+
+var PageSetUserInfo = {
+	userInit: false
+};
+
 //}}}
 //}}}
 
@@ -106,13 +106,13 @@ function getDynCode(fn)
 function createCell(o)
 {
 	var html = "<li class=\"weui_cell\">";
-	if (o.hd) {
+	if (o.hd != null) {
 		html += "<div class=\"weui_cell_hd\">" + o.hd + "</div>";
 	}
-	if (o.bd) {
+	if (o.bd != null) {
 		html += "<div class=\"weui_cell_bd weui_cell_primary\">" + o.bd + "</div>";
 	}
-	if (o.ft) {
+	if (o.ft != null) {
 		html += "<div class=\"weui_cell_ft\">" + o.ft + "</div>";
 	}
 	html += "</li>";
@@ -146,9 +146,11 @@ function closeDlg(o)
 
 function handleLogin(data)
 {
-	if (data._isNew)
-		PageHome.userInit = true;
 	MUI.handleLogin(data);
+	if (data._isNew) {
+		PageSetUserInfo.userInit = true;
+		MUI.showPage("#setUserInfo");
+	}
 }
 
 $(document).on("muiInit", myInit);

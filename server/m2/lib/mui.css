@@ -7,10 +7,6 @@ html, body {
 	padding: 0;
 }
 
-.mui-container {
-	display: none;
-}
-
 .mui-container, .mui-page {
 	background-color: #FBF9FE;
 	position: absolute;
@@ -20,9 +16,14 @@ html, body {
 	left: 0;
 	overflow: hidden;
 	-webkit-overflow-scrolling: touch;
-	z-index: 0;
+	z-index: -1;
 /*	display: flex;
 	flex-direction: column; */
+}
+
+.mui-container {
+	display: none;
+	background-color: #04be02;
 }
 
 .mui-page>.hd, .mui-page>.bd {
@@ -32,9 +33,10 @@ html, body {
 }
 
 .hd {
-	background-color: black; 
+	background-color: #04be02;
+	text-overflow: ellipsis;
 	border: 1px solid transparent; /* 防止子元素margin越界*/
-	color: white;
+	color: #fff;
 }
 
 .bd {
@@ -290,6 +292,19 @@ html, body {
 
 .mui-btn.primary:active {
 	background-color: #04AE02;
+}
+
+.mui-pullPrompt {
+	overflow: hidden;
+	text-align: center;
+	vertical-align: middle;
+}
+
+.mui-loadPrompt {
+	background-color: #FBF9FE;
+	padding: 5px 3px;
+	text-align: center;
+	vertical-align: middle;
 }
 
 .sp {

@@ -1437,6 +1437,90 @@ proxy(url)
 - 自动化测试时，API监控不工作（这时_test参数值为2）。
 - 应避免客户端一次取多张图片时有问题
 
+=== 批量请求 ===
+
+BQP协议支持批量请求，即在一次请求中，包含多条调用。
+在创建批量请求时，可以指定这些调用是否在一个事务(transaction)中，一起成功提交或失败回滚。
+
+前端接口示例：
+
+{{{
+var batch = new MUI.batchCall();
+// var batch = new MUI.batchCall({useTrans: true}); // 使用同一事务时，可指定useTrans=true
+
+// 调用一
+var param = {res: "id,name,phone"};
+callSvr("User.get", param, function(data) {} )
+
+// 调用二
+var postParam = {page: "home", ver: "android", userId: "{$1.id}"};
+callSvr("ActionLog.add", function(data) {}, postParam, {ref: ["userId"]} );
+
+batch->commit();
+// batch->cancel();
+}}}
+
+还有一种方式更简单：
+
+{{{
+MUI.useBatchCall(); // 在本次消息循环中执行所有的callSvr都加入批处理。
+// MUI.useBatchCall({useTrans:1}, 20); // 表示20ms内所有callSvr都加入批处理, 且启用事务。
+callSvr(...);
+callSvr(...);
+callSvr(..., {noBatch: 1}); // TODO:使用noBatch参数可以强制单独执行，不加入批处理。
+}}}
+
+其中，调用二中参数userId引用了调用一的返回结果，通过在callSvr后指定参数ref标明。userId的值"{$1.id}"表示取第一次调用值的id属性。
+注意：引用表达式应以"{}"包起来，"$n"中n可以为正数或负数（但不能为0），表示对第n次或前n次调用结果的引用，以下为可能的格式：
+{{{
+	"{$1}"
+	"id={$1.id}"
+	"{$-1.d[0][0]}"
+	"id in ({$1}, {$2})"
+	"diff={$-2 - $-1}"
+}}}
+
+花括号中的内容将用计算后的结果替换。如果表达式非法，将使用"null"值替代。
+
+数据传输格式: 
+
+提交使用JSON格式，示例如下
+
+{{{
+POST api/batch
+
+[
+	{
+		"ac": "User.get",
+		"get": {"res": "name,phone"}
+	},
+	{
+		"ac": "ActionLog.add",
+		"post": {"page": "home", "ver": "android", "userId": "{$-1.id}"},
+		"ref": ["userId"]
+	}
+]
+}}}
+
+数组中每一项为一个调用，其格式为: {ac, %get?, %post?, @ref?}, 只有ac参数必须，其它均可省略。
+
+get:: URL请求参数。
+post:: POST请求参数。
+ref:: 使用了batch引用的参数列表。
+
+如果使用事务，只是URL上加个参数：
+{{{
+POST api/batch?useTrans=1
+}}}
+
+batch的返回内容是多条调用返回内容组成的数组，样例如下：
+{{{
+[0, [
+	[ 0, {id: 1, name: "用户1", phone: "13712345678"} ],  // 调用User.get的返回结果
+	[ 0, "OK" ]  // 调用ActionLog.add的返回结果
+]]
+}}}
+
 == 测试设计 ==
 
 *[测试需求]*
@@ -1659,6 +1743,20 @@ f::
 
 == 服务端部署与升级 ==
 
+=== 初始化配置 ===
+
+项目初始化步骤：
+- 访问URL: `http://{server}/{app}/tool/init.php` 检查php环境是否满足需求。
+- 为应用创建数据库和专用用户，进行初始化，生成指定数据库和配置文件 php/conf.user.php.
+- 使用命令行工具 tool/upgrade.php 连接数据库进行表创建或更新。(详见下面章节)
+- 如果有initdata目录，查看该目录下相关文档，确定是否需要导入表内容或创建视图、函数等。
+
+如果需要重新配置，可删除配置文件 php/conf.user.php后再运行本工具。
+
+在配置文件中，很多帐户口令、密码采用base64等方式保存，可以用在线工具 `http://{server}/{app}/tool/tool.php`进行编解码。
+
+=== 升级管理 ===
+
 tool/upgrade.php - 升级管理
 
 *[原理]*
@@ -1676,13 +1774,13 @@ tool/upgrade.php - 升级管理
 
 环境变量P_DBCRED指定连接数据库的用户名密码。如未指定，则使用php/dbcred.php中的设定。
 
-=== 用法 ===
+==== 用法 ====
 
 upgrade.php
 
 缺省进入命令行交互.
 
-==== 交互命令 ====
+===== 交互命令 =====
 
 一般命令格式与函数调用类似, 也支持直接的sql语句, 如
 {{{
@@ -1887,7 +1985,7 @@ id	name	Svc_ItemType(ittId,svcId,ItemType.name)
 
 上例中"Svc_ItemType"多了一个参数"ItemType.name", 它表示下面内容是关联到ItemType.name字段，即需要先用"SELECT id FROM ItemType WHERE name=?"查询出Svc_ItemType.ittId(第一个参数)，再同上例进行添加。
 {{}}
-==== 非交互命令 ====
+===== 非交互命令 =====
 
 例:
 
@@ -1899,7 +1997,7 @@ upgrade.php all
 upgrade.php upgrade
 }}}
 
-=== 写升级脚本 ===
+==== 写升级脚本 ====
 
 当表结构变化时, 
 
@@ -1938,6 +2036,42 @@ if (dbver < 4) {
 update cinf set ver, update_tm
 }}}
 
+=== 版本发布 ===
+
+版本发布又称“部署”或“版本上线”，是将开发版本进行构建和优化后，上传线上服务器的过程。
+
+筋斗云框架使用webcc组件进行版本发布，对构建后的版本，也要求git进行代码库管理。
+webcc提供的功能主要有：
+- 快速的差量热更新。只上传版本间有差异的文件到服务器。
+- 构建优化。通过文件合并、最小化压缩等手段提高应用性能，通过文件指纹利用浏览器缓存等。
+
+版本发布的配置包括：
+- 配置构建过程：编写webcc的配置文件：server/webcc.conf.php，详见文档 [[Web应用部署]]
+- 创建发布代码库：创建一个新文件夹并用git进行项目初始化。习惯上该库命名为"{project}-online"，如项目名为"jdcloud"，则发布库的名称为"jdcloud-online"。
+- 配置服务器上的ftp帐号，然后配置项目根目录下的 build_web.sh。其中"OUT_DIR"为发布代码库的路径。
+
+发布或上线过程很简单，直接在git bash中运行 build_web.sh 即可。
+（注意：它会用到curl, bash等工具，好在git工具包中已包含这些。）
+
+*[开发版本号与发布版本号]*
+
+在构建后，online文件夹中会自动生成文件`revision.txt`，代表当前开发版本号。下次构建时通过检查该版本与最新开发版本间的差异，可实现差量构建（注意：其中还包含依赖文件管理）。
+
+在上传服务器后，会自动在服务器上生成文件`revision_rel.txt`, 代表当前发布版本号。下次上传时，只会进行差量上传。
+
+=== 客户端自动升级 ===
+
+对于Web应用，每次浏览器打开时均已是最新版本；但是如果浏览器一直未关闭，则需要手工刷新页面才能更新。
+
+在手机上，特别是将Web应用打包为手机原生应用后，当服务器升级后，用户必须将应用重新打开才能获得最新版本，这相当于在浏览器中刷新。
+如果用户一直不退出应用（这在手机上很常见，应用会在后台一直缓存着），必须有机制能保证版本更新后可自动刷新。
+
+筋斗云框架支持客户端自动升级，原理如下：
+- 服务端API自动将版本号通过HTTP头`X-Daca-Server-Rev`发送给客户端。版本号通过全局变量`API_VER`设定，或从文件`revision.txt`读取（注意该文件由webcc发布时自动生成），版本号最多为6位。
+- 客户端在访问API时，检查版本号是否与本地之前缓存的版本号一致，如果不一致则自动刷新回首页。
+
+通过以上过程，用户不必退出应用再重新打开，就能实现版本自动升级。
+
 == 工具接口 ==
 
 本节介绍目录 server/tool/ 下的工具。
@@ -1960,9 +2094,9 @@ sz:: Integer. 最多读取文件大小。log.php从文件结尾处读缺省3k字
 *[示例]*
 
 {{{
-tool/log.php
+log.php
 
-tool/log.php?f=trace
+log.php?f=trace
 (查看trace log)
 }}}
 
@@ -1974,13 +2108,7 @@ init.php(ac?)
 
 数据库初始化或配置文件初始化。可用的ac参数见源文件内部文档。
 
-项目初始化步骤：
-- 访问URL: `http://{server}/{path}/tool/init.php` 检查php环境是否满足需求。
-- 为应用创建数据库和专用用户，进行初始化，生成指定数据库和配置文件 php/conf.user.php.
-- 使用命令行工具 tool/upgrade.php 连接数据库进行表创建或更新。
-- 如果有initdata目录，查看该目录下相关文档，确定是否需要导入表内容或创建视图、函数等。
-
-如果需要重新配置，可删除配置文件 php/conf.user.php后再运行本工具。
+项目初始化方法参考前面章节"服务端部署与升级"->"初始化配置".
 
 === tool/tool.php ===
 

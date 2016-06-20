@@ -9,10 +9,6 @@
 
 <h1 id="toc_1" class="justcenter"><a name="编码规范"> 编码规范</a></h1>
 
-<p>
-梁健 - 最近更新于2015/10
-</p>
-
 <div class="toc">
 <ul>
 <li><a href="#toc_1"> 编码规范</a>
@@ -51,10 +47,14 @@
 常量使用全部大写字母，如<code>ASTORE_ID</code>.
 
 <li>
-全局变量加"g_"前缀，如<code>g_data</code>. 
+全局变量加<code>g_</code>前缀，如<code>g_data</code>. 
 
 <li>
-模块变量加"m_"前缀，如<code>m_orderId</code>.
+仅限于模块使用的全局变量加<code>m_</code>前缀，如<code>m_orderId</code>.
+
+<li>
+模块内共用变量加<code>_</code>后缀或<code>m_</code>前缀，表示在内嵌函数中使用或修改，如 <code>orderId_</code>, <code>m_orderId</code>. 
+  一些例外：如标识某特定jQuery对象的变量常常不加后缀，比如"jpage"，"$btnCancelOrder"等。
 
 </ul>
 
@@ -90,7 +90,7 @@ var total = parseFloat(totalStr);
 <h2 id="toc_1.2"><a name="代码结构与分区">2 代码结构与分区</a></h2>
 
 <p>
-一个文件内或复杂模块的代码按惯例划分为多个区域，可配合使用手工折叠以方便查阅。
+一个文件内或复杂模块的代码按惯例划分为多个区域，可配合使用折叠以方便查阅。
 优点：
 </p>
 <ul>
@@ -101,10 +101,6 @@ var total = parseFloat(totalStr);
 一旦文件增长过大，很容易做文件拆分。
 
 </ul>
-
-<p>
-手工折叠使用vim默认方案，即三个花括号配对。
-</p>
 
 <p>
 文件级别常分为：
@@ -131,35 +127,35 @@ var total = parseFloat(totalStr);
 文件结构示例：
 </p>
 <pre>
-	// ====== config {{{
+	// ====== config: 全局配置区 {{{
 	var g_allowedEntries = []
 	// }}}
 
-	// ====== global {{{
+	// ====== global: 全局变量区 {{{
 	var g_data = {
 		userInfo : null, // {uid, name, phone}
 	};
 	//}}}
 
-	// ====== toolkit {{{
+	// ====== toolkit: 通用函数 {{{
 	function each()
 	{
 	}
 	// }}}
 
-	// ====== app toolkit {{{
+	// ====== app toolkit: 项目内各应用通用函数 {{{
 	function setupPopup(jpopup, initfn)
 	{
 	}
 	// }}}
 
-	// ====== functions {{{
+	// ====== functions: 本应用使用的函数 {{{
 	function logout()
 	{
 	}
 	//}}}
 			
-	// ====== main {{{
+	// ====== main: 初始化区域 {{{
 
 	function main()
 	{
@@ -176,6 +172,10 @@ var total = parseFloat(totalStr);
 </pre>
 
 <p>
+以上使用三个花括号配对来标识折叠，如使用vim编辑器，可通过设置 <code>foldmethod=marker</code> 来显示折叠。
+</p>
+
+<p>
 模块（或复杂函数内部）常分为：
 </p>
 <ul>
@@ -183,10 +183,10 @@ var total = parseFloat(totalStr);
 变量区(var)
 
 <li>
-函数区(function)
+初始化代码区
 
 <li>
-初始化代码区
+函数区(function)
 
 </ul>
  
@@ -194,22 +194,18 @@ var total = parseFloat(totalStr);
 复杂模块结构示例：
 </p>
 <pre>
-function PageOrder()
+function initPageOrder()
 {
-	// ====== var {{{
-	var jpage;
-	var m_orderId;
-	// }}}
+	var jpage = $(this);
+	
+	// 变量，事件绑定等初始化区域
+	var orderId_;
+	jpage.on("pagebeforeshow", onPageBeforeShow);
 
-	// ====== functions {{{
-	function pagebeforeshow(ev)
+	// 函数区域
+	function onPageBeforeShow(ev)
 	{
 	}
-	//}}}
-			
-	// ====== main {{{
-	jpage.on("pagebeforeshow", pagebeforeshow);
-	// }}}
 }
 </pre>
 
@@ -352,7 +348,7 @@ css类命名采用驼峰式，如"notForFind", 如果有前缀，用"-"分隔，
 
 <ul>
 <li>
-jquery事件，命名为"{对象}_{事件}"，如 <code>function btnGo_click(ev)</code>, <code>li_click(ev)</code>，如果对象与当前上下文相符时，可省略对象名，如在JQM page的模块中可以用 <code>function pagecreate(ev)</code>, <code>function pagebeforeshow(ev)</code>
+jquery事件，命名为"{对象}_{事件}"，如 <code>function btnGo_click(ev)</code>, <code>li_click(ev)</code>，如果对象与当前上下文相符时，可省略对象名，但应加上on，如在JQM page的模块中可以用 <code>function onPageCreate(ev)</code>, <code>function onPageBeforeShow(ev)</code>
 
 <li>
 DOM事件，命名为"{对象}_on{事件}"，如 <code>function btnGo_onclick(ev)</code>, <code>li_onclick(ev)</code>
@@ -382,37 +378,52 @@ page的JS代码样例：
 <pre>
 // 接口：供其它页面调用
 var PageOrder = {
-	m_id: null,
-
 	/** @fn PageOrder.show(orderId) */
 	show: function(orderId) {
-		this.m_id = orderId;
-		$.mobile.changePage("#order");
+		this.id_ = orderId;
+		MUI.showPage("#order");
 	}
+	
+	id_: null,
 };
 
 function initPageOrder()
 {
-	// 类私有变量区
+	// 模块变量，事件绑定及初始化代码区域
 	var jpage = $(this);
+	var orderId_;
+	
+	jpage.on("pagebeforeshow", onPageBeforeShow);
+	jpage.find("#btnCancelOrder", btnCancelOrder_click);
 
-	// 类私有成员函数区
-
-	function pagebeforeshow()
+	function onPageBeforeShow(ev)
 	{
 		// show order PageOrder.m_id
-		callSvr("Ordr.get", {id: PageOrder.m_id}, api_OrdrGet);
+		callSvr("Ordr.get", {id: PageOrder.id_}, api_OrdrGet);
 		
 		function api_OrdrGet(data)
 		{
+			orderId_ = data.id;
+			showOrder();
 		}
 	}
 	
-	// 初始化
-	jpage.on("pagebeforeshow", pagebeforeshow);
+	function btnCancelOrder_click(ev)
+	{
+		callSvr("cancelOrder", {id: orderId_}, api_cancelOrder);
+		
+		function api_cancelOrder(data)
+		{
+			app_alert("操作成功", "i", function () {
+				showOrder();
+			});
+		}
+	}
+	
+	function showOrder()
+	{
+	}
 }
-
-document.on("pagecreate", "#order", initPageOrder);
 </pre>
 
 <h3 id="toc_1.3.3"><a name="Jquery-easyui/MyUI编码规范">3.3 Jquery-easyui/MyUI编码规范</a></h3>
