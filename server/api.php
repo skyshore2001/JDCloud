@@ -16,7 +16,7 @@ const AUTH_ADMIN = 0x08;
 const AUTH_TEST_MODE = 0x1000;
 const AUTH_MOCK_MODE = 0x2000;
 
-define("AUTH_STORE", AUTH_EMP|AUTH_MGR);
+define("AUTH_EMPS", AUTH_EMP|AUTH_MGR);
 
 $PERMS = [
 	AUTH_GUEST => "guest",
@@ -155,6 +155,31 @@ function checkAuth($perm)
 		}
 		throw new MyException($errCode, "require auth to " . join(" or ", $auth));
 	}
+}
+
+/**
+@fn onCreateAC($obj)
+
+@param $obj 对象名或主表名
+
+根据对象名，返回权限控制类名，如 AC1_{$obj}。
+如果返回null, 则默认为 AC_{obj}
+
+ */
+function onCreateAC($tbl)
+{
+	$cls = null;
+	if (isUserLogin())
+	{
+		$cls = "AC1_$tbl";
+		if (! class_exists($cls))
+			$cls = "AC_$tbl";
+	}
+	else if (isEmpLogin())
+	{
+		$cls = "AC2_$tbl";
+	}
+	return $cls;
 }
 //}}}
 

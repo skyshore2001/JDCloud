@@ -93,12 +93,6 @@ function checkEnv()
 		"result" => $val
 	];
 
-	$val = phpversion('mysql');
-	$check["mysql"] = [
-		"value"=>$val? "版本" . $val: "不可用",
-		"result" => $val
-	];
-
 	$val = phpversion('mysqlnd');
 	$check["mysqlnd"] = [
 		"value"=>$val? "版本" . $val: "不可用",
@@ -276,9 +270,6 @@ p.hint {
 	</tr>
 	<tr>
 		<td>php版本(不低于5.4)</td><td data-item="php_ver"></td>
-	</tr>
-	<tr>
-		<td>mysql模块</td><td data-item="mysql"></td>
 	</tr>
 	<tr>
 		<td>mysqlnd模块</td><td data-item="mysqlnd"></td>

@@ -2,7 +2,7 @@
 
 if (getenv("P_DB") === false) {
 	// use SQLite:
-	//putenv("P_DB=myorder.db");
+	//putenv("P_DB=jdcloud.db");
 	//putenv("P_DBCRED=");
 
 	// use MySQL:

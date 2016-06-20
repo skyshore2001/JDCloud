@@ -4,9 +4,9 @@ function initPageCreateOrder()
 	jpage.on("pagebeforeshow", onPageBeforeShow);
 	
 	var jf = jpage.find("form:first");
-	MUI.setFormSubmit(jf, api_OrdrAdd, {validate: form_validate});
+	MUI.setFormSubmit(jf, api_OrdrAdd, {validate: onValidate});
 
-	function form_validate(jf)
+	function onValidate(jf)
 	{
 		var f = jf[0];
 		f.amount.value = $(f.dscr).find("option:selected").data("amount");

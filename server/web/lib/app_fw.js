@@ -1178,14 +1178,6 @@ function istab(o)
 // 	}
 // }
 
-function assert(b)
-{
-	if (!b) {
-		app_alert("内部错误!", "e");
-		throw("assert fail");
-	}
-}
-
 // paramArr?
 function callInitfn(jo, paramArr)
 {

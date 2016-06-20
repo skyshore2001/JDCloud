@@ -106,10 +106,16 @@ function appendParam(url, params)
 	return url + (url.indexOf('?')>0? "&": "?") + paramStr(params);
 }
 
-function assert(dscr, cond)
+/**
+@fn assert(cond, dscr?)
+ */
+function assert(cond, dscr)
 {
 	if (!cond) {
-		throw("assert fail - " + dscr);
+		var msg = "!!! assert fail!";
+		if (dscr)
+			msg += " - " + dscr;
+		throw(msg);
 	}
 }
 
@@ -620,7 +626,7 @@ function delCookie(name)
 */
 function setStorage(name, value, useSession)
 {
-	assert("value must be scalar!", typeof value != "object");
+	assert(typeof value != "object", "value must be scalar!");
 	if (window.localStorage == null)
 	{
 		setCookie(name, value);
