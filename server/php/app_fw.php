@@ -348,7 +348,8 @@ function param($name, $defVal = null, $col = null)
 	# check type
 	if (isset($ret) && is_string($ret)) {
 		// avoid XSS attack
-		$ret = htmlEscape($ret);
+		if (! startsWith($name, "cond"))
+			$ret = htmlEscape($ret);
 		if ($type === "s") {
 		}
 		elseif ($type === "i") {

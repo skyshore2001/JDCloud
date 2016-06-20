@@ -767,7 +767,6 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 		foreach ($sqlConf["cond"] as $cond) {
 			if ($cond == null)
 				continue;
-			$condSql = html_entity_decode($condSql);
 			if (strlen($condSql) > 0)
 				$condSql .= " AND ";
 			if (stripos($cond, " and ") !== false || stripos($cond, " or ") !== false)
