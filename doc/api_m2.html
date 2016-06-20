@@ -6,7 +6,7 @@
 </head>
 
 <h1>API参考 - 筋斗云前端（移动Web版）</h1>
-<div>最后更新：2016-06-18</div>
+<div>最后更新：2016-06-20</div>
 <h2>Modules</h2>
 <div>
 <a href="#common.js">common.js (module)</a><br>
@@ -79,6 +79,7 @@
 <a href="#app_abort">app_abort (fn)</a><br>
 <a href="#app_alert">app_alert (alias)</a><br>
 <a href="#appendParam">appendParam (fn)</a><br>
+<a href="#assert">assert (fn)</a><br>
 <a href="#basename">basename (fn)</a><br>
 <a href="#callSvr">callSvr (alias)</a><br>
 <a href="#callSvrSync">callSvrSync (alias)</a><br>
@@ -152,6 +153,7 @@
 <p>取名字的基础部分，如</p>
 <pre><code>var name = basename("/cc/ttt.asp"); // "ttt.asp"
 var name2 = basename("c:\\aaa\\bbb/cc/ttt.asp", ".asp"); // "ttt"</code></pre><hr>
+<h2 id="assert">@fn assert(cond, dscr?)</h2><hr>
 <h2 id="parseQuery">@fn parseQuery(str)</h2>
 <p>解析url编码格式的查询字符串，返回对应的对象。</p>
 <pre><code>if (location.search) {
@@ -695,11 +697,12 @@ MUI.showPage("#order");</code></pre>
     }
     return beforeShow;
 });</code></pre><hr>
-<h2 id="MUI.app_alert">@fn MUI.app_alert(msg, [type?=i], [fn?], opt?={timeoutInterval?, defValue?})</h2>
+<h2 id="MUI.app_alert">@fn MUI.app_alert(msg, [type?=i], [fn?], opt?={timeoutInterval?, defValue?, onCancel()?})</h2>
 <p class="alias"><strong>@alias <a id="app_alert">app_alert</a></strong> </p>
 <p class="param"><strong>@param type</strong>  对话框类型: "i": info, 信息提示框; "e": error, 错误框; "w": warning, 警告框; "q": question, 确认框(会有"确定"和"取消"两个按钮); "p": prompt, 输入框</p>
 <p class="param"><strong>@param fn</strong>  Function(text?) 回调函数，当点击确定按钮时调用。当type="p" (prompt)时参数text为用户输入的内容。</p>
 <p class="param"><strong>@param opt</strong>  Object. 可选项。 timeoutInterval表示几秒后自动关闭对话框。defValue用于输入框(type=p)的缺省值.</p>
+<p>onCancel: 用于&quot;q&quot;, 点取消时回调.</p>
 <p>示例:</p>
 <pre><code>// 信息框
 app_alert("操作成功", function () {
@@ -1170,10 +1173,10 @@ markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 
 &lt;/div&gt;</code></pre>
 <p>调用showByFormMode(jo, FormMode.forAdd)时, 显示 div2, div3, div5;<br />
 调用showByFormMode(jo, FormMode.forSet)时, 显示 div2, div4, div5;</p><hr>
-<h2 id="initPageDetail">@fn initPageDetail(jpage, opt) -> PageDetailInterface={refresh}</h2>
+<h2 id="initPageDetail">@fn initPageDetail(jpage, opt) -> PageDetailInterface={refresh(), del()}</h2>
 <p>详情页框架. 用于对象的添加/查看/更新多合一页面.<br />
 form.action为对象名.</p>
-<p class="param"><strong>@param opt</strong>  {pageItf, jform?=jpage.find("form:first"), onValidate?, onGetData?, onNoAction?=history.back, onAdd?, onSet?, onGet?}</p>
+<p class="param"><strong>@param opt</strong>  {pageItf, jform?=jpage.find("form:first"), onValidate?, onGetData?, onNoAction?=history.back, onAdd?, onSet?, onGet?, onDel?}</p>
 <p>pageItf: {formMode, formData}; formData用于forSet模式下显示数据, 它必须有属性id.<br />
 Form将则以pageItf.formData作为源数据, 除非它只有id一个属性(这时将则调用callSvr获取源数据)</p>
 <p>onValidate: Function(jform, queryParam); 提交前的验证, 或做字段补全的工作, 或补全调用参数。queryParam是查询参数，它可能包含{ac?, res?, ...}，可以进行修改。<br />
@@ -1181,7 +1184,8 @@ onGetData: Function(jform, queryParam); 在forSet模式下，如果需要取数�
 onNoAction: Function(jform); 一般用于更新模式下，当没有任何数据更改时，直接点按钮提交，其实不做任何调用, 这时将回调 onNoAction，缺省行为是返回上一页。<br />
 onAdd: Function(id); 添加完成后的回调. id为新加数据的编号.<br />
 onSet: Function(data); 更新完成后的回调, data为更新后的数据.<br />
-onGet: Function(data); 获取数据后并调用setFormData将数据显示到页面后，回调该函数, 可用于显示特殊数据.</p>
+onGet: Function(data); 获取数据后并调用setFormData将数据显示到页面后，回调该函数, 可用于显示特殊数据.<br />
+onDel: Function(); 删除对象后回调.</p>
 <p>示例：制作一个人物详情页PagePerson：</p>
 <ul>
 <li>在page里面包含form，form的action属性标明对象名称，method属性不用。form下包含各展示字段，各字段以name属性标识。</li>
@@ -1227,7 +1231,10 @@ function initPagePerson()
         },
         onSet: function (data) {
             app_alert("更新成功!", history.back); // 更新成功后提示信息，然后返回前一页。
-        }
+        },
+        onDel: function () {
+            PagePersons.show({refresh: true});
+        },
     });
 }
 
@@ -1241,5 +1248,5 @@ PagePerson.showForSet({id: 3}); // 以id=3查询人物并显示，可更新。</
     ...
 &lt;/form&gt;</code></pre>
 <p>如果formData中有多个属性，则自动以formData的内容作为数据源显示页面，不再发起查询。</p><hr>
-<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-06-18T16:36:22+08:00</div>
+<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-06-20T09:34:45+08:00</div>
 </html>
