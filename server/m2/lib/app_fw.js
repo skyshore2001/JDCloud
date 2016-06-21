@@ -1031,7 +1031,8 @@ function CPageManager(app)
 
 			// bugfix: 加载页面页背景图可能反复被加载
 			jpage.find("style").attr("mui-origin", pageId).appendTo(document.head);
-			jpage.attr("id", pageId).addClass("mui-page").appendTo(m_jstash);
+			jpage.attr("id", pageId).addClass("mui-page")
+				.hide().appendTo(self.container);
 
 			var val = jpage.attr("mui-script");
 			if (val != null) {
@@ -1081,13 +1082,16 @@ function CPageManager(app)
 					self.m_pageStack.push("#" + m_toPageId);
 				}
 
-				jpage.appendTo(m_jstash);
-				return;
+			return;
 			}
 
 			var enableAni = showPageOpt_.ani !== 'none'; // TODO
 			var slideInClass = m_isback? "slideIn1": "slideIn";
 			m_isback = null;
+			self.container.show(); // !!!! 
+			jpage.css("z-index", 1).show();
+			if (oldPage)
+				oldPage.css("z-index", "-1");
 			if (enableAni) {
 				jpage.addClass(slideInClass);
 				jpage.one("animationend", onAnimationEnd)
@@ -1096,9 +1100,6 @@ function CPageManager(app)
 // 				if (oldPage)
 // 					oldPage.addClass("slideOut");
 			}
-
-			self.container.show(); // !!!! 
-			jpage.appendTo(self.container);
 			self.activePage = jpage;
 			fixPageSize();
 			var title = jpage.find(".hd h1, .hd h2").filter(":first").text() || self.title || jpage.attr("id");
@@ -1119,7 +1120,7 @@ function CPageManager(app)
 				}
 				if (oldPage) {
 					oldPage.trigger("pagehide");
-					oldPage.appendTo(m_jstash);
+					oldPage.hide();
 				}
 			// TODO: destroy??
 // 				if (oldPage.attr("autoDestroy")) {
