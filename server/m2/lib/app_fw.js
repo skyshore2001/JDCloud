@@ -3532,7 +3532,8 @@ function initPageList(jpage, opt)
 			opt_.onGetQueryParam(jlst, queryParam);
 		}
 
-		queryParam._pagesz = g_cfg.PAGE_SZ; // for test, default 20.
+		if (!queryParam._pagesz)
+			queryParam._pagesz = g_cfg.PAGE_SZ; // for test, default 20.
 		if (nextkey) {
 			queryParam._pagekey = nextkey;
 		}
