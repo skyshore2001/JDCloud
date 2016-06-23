@@ -684,7 +684,7 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 		$sqlConf = $accessCtl->sqlConf;
 
 		$enablePaging = true;
-		if ($forGet || $wantArray || isset($sqlConf["gres"])) {
+		if ($forGet || $wantArray) {
 			$enablePaging = false;
 		}
 		if ($forGet) {
@@ -706,6 +706,9 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 			}
 			if ($pagesz == 0)
 				$pagesz = 20;
+			if (isset($sqlConf["gres"])) {
+				$enablePartialQuery = false;
+			}
 		}
 
 		$orderSql = $sqlConf["orderby"];
@@ -819,6 +822,11 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 			}
 			else {
 				$sql .= "\nLIMIT " . ($pagekey-1)*$pagesz . "," . $pagesz;
+			}
+		}
+		else {
+			if ($pagesz) {
+				$sql .= "\nLIMIT " . $pagesz;
 			}
 		}
 
@@ -1653,7 +1661,7 @@ class AccessControl
 			$colName = $ms[2];
 			$def = $res;
 		}
-		else if (preg_match('/^(.*?)\s+(?:as\s+)?(\w+)\s*$/i', $res, $ms)) {
+		else if (preg_match('/^(.*?)\s+(?:as\s+)?(\w+)\s*$/is', $res, $ms)) {
 			$colName = $ms[2];
 			$def = $ms[1];
 		}
