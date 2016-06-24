@@ -182,7 +182,7 @@ function api_initDb()
 			$str = $dbpwd? " identified by '{$dbpwd}'": "";
 			$sql = "grant all on {$dbname}.* to {$dbuser}@localhost {$str}";
 			$dbh->exec($sql);
-			$sql = "grant all on {$dbname}.* to {$dbuser}@'%'";
+			$sql = "grant all on {$dbname}.* to {$dbuser}@'%' {$str}";
 			$dbh->exec($sql);
 		}catch (Exception $e) {
 			die("*** 用户`{$dbuser0}`无法设置用户权限!\n");

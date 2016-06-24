@@ -3080,7 +3080,8 @@ function initPullList(container, opt)
 		touchev_.dy = p[1] - touchev_.y0;
 		dy_ = touchev_.dy;
 
-		if (touchev_.dy == 0) {
+		// 如果不是竖直下拉，则取消
+		if (touchev_.dy == 0 || Math.abs(touchev_.dx) > Math.abs(touchev_.dy)) {
 			touchCancel();
 			return;
 		}
