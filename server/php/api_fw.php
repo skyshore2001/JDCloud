@@ -61,6 +61,8 @@ api.php可以单独执行，也可直接被调用，如
 	$ret = callSvc("genVoucher");
 	// 如果没有异常，返回数据；否则调用指定的errorFn函数(未指定则调用errQuit)
 
+@see callSvc
+
 ## 常用操作
 
 错误处理
@@ -1956,7 +1958,7 @@ class ApiApp extends AppBase
 		global $X_RET;
 		// 以下过程不允许抛出异常
 		$batchApiApp = new BatchApiApp($this, $useTrans);
-		if ($useTrans)
+		if ($useTrans && !$DBH->inTransaction())
 			$DBH->beginTransaction();
 		$solo = ApiFw_::$SOLO;
 		ApiFw_::$SOLO = false;
@@ -2008,7 +2010,7 @@ class ApiApp extends AppBase
 	public function call($ac, $useTrans)
 	{
 		global $DBH;
-		if ($useTrans)
+		if ($useTrans && ! $DBH->inTransaction())
 			$DBH->beginTransaction();
 		$fn = "api_$ac";
 		if (preg_match('/^(\w+)\.(add|set|get|del|query)$/', $ac, $ms)) {
@@ -2025,7 +2027,7 @@ class ApiApp extends AppBase
 		else {
 			throw new MyException(E_PARAM, "Bad request - unknown ac: {$ac}");
 		}
-		if ($useTrans)
+		if ($useTrans && $DBH && $DBH->inTransaction())
 			$DBH->commit();
 		if (!isset($ret))
 			$ret = "OK";
@@ -2140,17 +2142,46 @@ class ApiApp extends AppBase
 	}
 }
 
-function callSvc($ac, $xparam = null)
+/**
+@fn callSvc($ac?, $urlParam?, $postParam?, $cleanCall?=false, $hideResult?=false)
+
+直接调用接口，返回数据。如果出错，将调用$GLOBALS['errorFn'] (缺省为errQuit).
+
+@param $cleanCall Boolean. 如果为true, 则不使用现有的$_GET, $_POST等变量中的值。
+@param $hideResult Boolean. 如果为true, 不输出结果。
+ */
+function callSvc($ac = null, $urlParam = null, $postParam = null, $cleanCall = false, $hideResult = false)
 {
-	$_GET["_ac"] = $ac;
-	if ($xparam) {
-		foreach ($xparam as $k=>$v) {
+	global $DBH; // 避免api->exec完成后关闭数据库连接
+	$bak = [$_GET, $_POST, $_REQUEST, ApiFw_::$SOLO, $DBH];
+
+	if ($cleanCall) {
+		$_GET = [];
+		$_POST = [];
+		$_REQUEST = [];
+	}
+	if ($ac)
+		$_GET["_ac"] = $ac;
+	if ($urlParam) {
+		foreach ($urlParam as $k=>$v) {
 			setParam($k, $v);
 		}
+	}
+	if ($postParam) {
+		foreach ($postParam as $k=>$v) {
+			$_POST[$k] = $v;
+		}
+	}
+	if ($hideResult) {
+		ApiFw_::$SOLO = false;
 	}
 
 	$api = new ApiApp();
 	$ret = $api->exec();
+
+	global $X_RET_STR;
+	$X_RET_STR = null;
+	list($_GET, $_POST, $_REQUEST, ApiFw_::$SOLO, $DBH) = $bak;
 	return $ret;
 }
 #}}}
