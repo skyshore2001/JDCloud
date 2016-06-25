@@ -178,10 +178,9 @@ function tobool(v)
 */
 function reloadSite()
 {
-	if (location.href == location.pathname || location.href == location.pathname + location.search)
-		location.reload();
-	else
-		location.href = location.pathname + location.search;
+	var href = location.href.replace(/#\w+/, '#');
+	location.href = href;
+	location.reload();
 	throw "abort";
 }
 
