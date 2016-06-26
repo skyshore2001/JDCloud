@@ -68,6 +68,18 @@ var g_data = {}; // {userInfo, serverRev}
 var g_cfg = { logAction: false };
 
 var m_appVer;
+
+/**
+@var BASE_URL
+
+设置应用的基本路径, 应以"/"结尾.
+
+当用于本地调试网页时, 可以临时修改它, 比如在app.js中临时设置:
+
+	var BASE_URL = "http://oliveche.com/jdcloud/";
+
+*/
+var BASE_URL = "../";
 //}}}
 
 // ====== app toolkit {{{
@@ -681,6 +693,26 @@ var E_ABORT=-100;
 
 	<div class="noSwipe"></div>
 
+## 跨域前端开发支持
+
+典型应用是, 在开发前端页面时, 本地无须运行任何后端服务器(如apache/iis/php等), 直接跨域连接远程接口进行开发.
+
+支持直接在浏览器中打开html/js文件运行应用.
+需要浏览器支持CORS相关设置. 以下以chrome为例介绍.
+例如, 远程接口的基础URL地址为 http://oliveche.com/jdcloud/
+
+- 为chrome安装可设置CORS的插件(例如ForceCORS), 并设置:
+
+		添加URL: http://oliveche.com/*
+		Access-Control-Allow-Origin: file://
+		Access-Control-Allow-Credentials: true
+
+- 打开chrome时设置参数 --allow-file-access-from-files 以允许ajax取本地文件.
+- 在app.js中修改BASE_URL:
+
+	var BASE_URL = "http://oliveche.com/jdcloud/";
+
+这时直接在chrome中打开html文件即可连接远程接口运行起来.
  */
 
 
@@ -1741,7 +1773,7 @@ allow throw("abort") as abort behavior.
 	}
 	setOnError();
 
-	$.ajaxSetup({
+	var ajaxOpt = {
 		beforeSend: function (xhr) {
 			// 保存xhr供dataFilter等函数内使用。
 			this.xhr_ = xhr;
@@ -1759,7 +1791,11 @@ allow throw("abort") as abort behavior.
 		},
 
 		error: defAjaxErrProc
-	});
+	};
+	if (location.protocol == "file:") {
+		ajaxOpt.xhrFields = { withCredentials: true};
+	}
+	$.ajaxSetup(ajaxOpt);
 
 	// $(document).on("pageshow", function () {
 	// 	if (IsBusy)
@@ -1970,15 +2006,18 @@ allow throw("abort") as abort behavior.
 					action = params.ac;
 					delete(params.ac);
 				}
-				url = "../api.php/" + action;
+				url = BASE_URL + "api.php/" + action;
 			}
 			else {
-				url = "../api.php";
+				url = BASE_URL + "api.php";
 				params.ac = action;
 			}
 		}
 		else {
-			url = action;
+			if (location.protocol == "file:")
+				url = BASE_URL + "m2/" + action;
+			else
+				url = action;
 		}
 		if (g_cordova) {
 			if (m_appVer === undefined)

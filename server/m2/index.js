@@ -93,7 +93,8 @@ function setupGenCodeButton(btnGenCode, txtPhone)
 function getDynCode(fn)
 {
 	MUI.enterWaiting();
-	$.get("../tool/log.php?f=ext&sz=500").then(function (data) {
+	var url = BASE_URL + "tool/log.php?f=ext&sz=500";
+	$.get(url).then(function (data) {
 		MUI.leaveWaiting();
 		var m = data.match(/验证码(\d+)/);
 		var ret = m? m[1]: null;
