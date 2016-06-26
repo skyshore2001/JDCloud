@@ -719,17 +719,18 @@ rs对象用于传递表格，包含表头与表内容。
 */
 function rs2Array(rs)
 {
-	var a = [];
-	var cols = rs.h.length;
+	var ret = [];
+	var colCnt = rs.h.length;
 
 	for (var i=0; i<rs.d.length; ++i) {
-		var e = {};
-		for (var j=0; j<cols; ++j) {
-			e[rs.h[j]] = rs.d[i][j];
+		var obj = {};
+		var row = rs.d[i];
+		for (var j=0; j<colCnt; ++j) {
+			obj[rs.h[j]] = row[j];
 		}
-		a.push(e);
+		ret.push(obj);
 	}
-	return a;
+	return ret;
 }
 
 /**
@@ -756,27 +757,17 @@ function rs2Array(rs)
 */
 function rs2Hash(rs, key)
 {
-	var h = {};
-	var cols = rs.th.length;
-	var key_col;
-	for (var i=0; i<cols; ++i) {
-		if (rs.h[i] == key) {
-			key_col = i;
-			break;
-		}
-	}
-	if (key_col == null)
-		return h;
-
+	var ret = {};
+	var colCnt = rs.h.length;
 	for (var i=0; i<rs.d.length; ++i) {
-		var td = rs.d[i];
-		var e = [];
-		for (var j=0; j<cols; ++j) {
-			e[rs.h[j]] = td[j];
+		var obj = {};
+		var row = rs.d[i];
+		for (var j=0; j<colCnt; ++j) {
+			obj[rs.h[j]] = row[j];
 		}
-		h[td[key_col]] = e;
+		ret[ obj[key] ] = obj;
 	}
-	return h;
+	return ret;
 }
 
 /**
@@ -804,33 +795,19 @@ function rs2Hash(rs, key)
 */
 function rs2MultiHash(rs, key)
 {
-	var h = {};
-    var a = [];
-	var cols = rs.h.length;
-	var key_col;
-	for (var i=0; i<cols; ++i) {
-		if (rs.h[i] == key) {
-			key_col = i;
-			break;
-		}
-	}
-	if (key_col == null)
-		return h;
-
+	var ret = {};
+	var colCnt = rs.h.length;
 	for (var i=0; i<rs.d.length; ++i) {
-		var td = rs.d[i];
-		var e = {};
-		for (var j=0; j<cols; ++j) {
-			e[rs.h[j]] = td[j];
+		var obj = {};
+		var row = rs.d[i];
+		for (var j=0; j<colCnt; ++j) {
+			obj[rs.h[j]] = row[j];
 		}
-        
-        if (h[td[key_col]] == null) {
-            h[td[key_col]] = new Array();
-        }
-
-        h[td[key_col]].push(e);
+		if (ret[ obj[key] ] === undefined)
+			ret[ obj[key] ] = [];
+		ret[ obj[key] ].push(obj);
 	}
-	return h;
+	return ret;
 }
 //}}}
 
