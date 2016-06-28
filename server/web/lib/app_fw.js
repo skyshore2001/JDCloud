@@ -1234,10 +1234,12 @@ function makeLinkTo(dlg, id, text)
 
 // ====== jquery plugin: mycombobox {{{
 /**
-@fn jQuery.fn.mycombobox()
+@fn jQuery.fn.mycombobox(force?=false)
 
 @key .my-combobox 关联选择框
 @var ListOptions 定义关联选择框的数据源
+
+@param force?=false 如果为true, 则调用时强制重新初始化。默认只初始化一次。
 
 关联选择框组件。
 
@@ -1321,14 +1323,14 @@ JS代码ListOptions.Brand:
 
  */
 var m_dataCache = {}; // url => data
-$.fn.mycombobox = function () 
+$.fn.mycombobox = function (force) 
 {
 	this.each(initCombobox);
 
 	function initCombobox(i, o)
 	{
 		var jo = $(o);
-		if (jo.prop("inited_"))
+		if (!force && jo.prop("inited_"))
 			return;
 		jo.prop("inited_", true);
 
@@ -1391,7 +1393,7 @@ $.fn.mycombobox = function ()
 
 			if (!jo.attr("ondblclick"))
 			{
-				jo.dblclick(function () {
+				jo.off("dblclick").dblclick(function () {
 					if (! confirm("刷新数据?"))
 						return false;
 					var val = jo.val();
@@ -1618,7 +1620,7 @@ function showPage(pageName, title, paramArr)
 		callInitfn(jpageNew, paramArr);
 	}
 	else {
-		jtab.append("未实现");
+		jtab.append("开发中");
 	}
 }
 
