@@ -3420,7 +3420,7 @@ queryParam: {ac?, res?, cond?, ...}
 @param navRef,listRef  指定navbar与list，可以是选择器，也可以是jQuery对象；或是一组button与一组div，一次显示一个div；或是navRef为空，而listRef为一个或多个不相关联的list.
 
 @param onBeforeLoad(jlst, isFirstPage)->Boolean  如果返回false, 可取消load动作。参数isFirstPage=true表示是分页中的第一页，即刚刚加载数据。
-@param (jlst, isLastPage)  参数isLastPage=true表示是分页中的最后一页, 即全部数据已加载完。
+@param onLoad(jlst, isLastPage)  参数isLastPage=true表示是分页中的最后一页, 即全部数据已加载完。
 
 @return PageListInterface={refresh, markRefresh}
 

@@ -6,7 +6,7 @@
 </head>
 
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2016-06-18</div>
+<div>最后更新：2016-06-27</div>
 <h2>Modules</h2>
 <div>
 <a href="#WUI">WUI (module)</a><br>
@@ -15,6 +15,11 @@
 <div>
 <a href="##my-pages">#my-pages (key)</a><br>
 <a href="#$.getScriptWithCache">$.getScriptWithCache (fn)</a><br>
+<a href="#.easyui-linkbutton">.easyui-linkbutton (key)</a><br>
+<a href="#.my-combobox">.my-combobox (key)</a><br>
+<a href="#BASE_URL">BASE_URL (var)</a><br>
+<a href="#IsBusy">IsBusy (var)</a><br>
+<a href="#ListOptions">ListOptions (var)</a><br>
 <a href="#WUI">WUI (module)</a><br>
 <a href="#WUI.app_alert">WUI.app_alert (fn)</a><br>
 <a href="#WUI.app_confirm">WUI.app_confirm (fn)</a><br>
@@ -49,8 +54,18 @@
 <a href="#app_show">app_show (alias)</a><br>
 <a href="#callSvr">callSvr (alias)</a><br>
 <a href="#callSvrSync">callSvrSync (alias)</a><br>
+<a href="#datagrid.formatter">datagrid.formatter (key)</a><br>
+<a href="#datagrid.sortable">datagrid.sortable (key)</a><br>
+<a href="#datagrid.sorter">datagrid.sorter (key)</a><br>
+<a href="#datagrid.styler">datagrid.styler (key)</a><br>
 <a href="#enterWaiting">enterWaiting (alias)</a><br>
+<a href="#g_args">g_args (var)</a><br>
+<a href="#g_args._app">g_args._app (var)</a><br>
+<a href="#g_cfg">g_cfg (var)</a><br>
+<a href="#g_data">g_data (var)</a><br>
+<a href="#g_data.userInfo">g_data.userInfo (key)</a><br>
 <a href="#getAncestor">getAncestor (fn)</a><br>
+<a href="#intSort">intSort (fn)</a><br>
 <a href="#jQuery.fn.getAncestor">jQuery.fn.getAncestor (fn)</a><br>
 <a href="#jQuery.fn.jdata">jQuery.fn.jdata (fn)</a><br>
 <a href="#jQuery.fn.mycombobox">jQuery.fn.mycombobox (fn)</a><br>
@@ -59,8 +74,33 @@
 <a href="#makeUrl">makeUrl (alias)</a><br>
 <a href="#my-initfn">my-initfn (key)</a><br>
 <a href="#my-obj">my-obj (key)</a><br>
+<a href="#numberSort">numberSort (fn)</a><br>
 <a href="#row2tr">row2tr (fn)</a><br>
 </div><hr>
+<h2 id="IsBusy">@var IsBusy</h2>
+<p>标识应用当前是否正在与服务端交互。一般用于自动化测试。</p><hr>
+<h2 id="g_args">@var g_args</h2>
+<p>应用参数。</p>
+<p>URL参数会自动加入该对象，例如URL为 <code>http://{server}/{app}/index.html?orderId=10&amp;dscr=上门洗车</code>，则该对象有以下值：</p>
+<pre><code>g_args.orderId=10; // 注意：如果参数是个数值，则自动转为数值类型，不再是字符串。
+g_args.dscr="上门洗车"; // 对字符串会自动进行URL解码。</code></pre>
+<p>此外，框架会自动加一些参数：</p>
+<p class="var"><strong>@var <a id="g_args._app">g_args._app</a></strong> ?="user" 应用名称，由setApp({appName})指定。</p>
+<p class="see"><strong>@see <a href="#parseQuery">parseQuery</a></strong>  URL参数通过该函数获取。</p><hr>
+<h2 id="g_data">@var g_data = {userInfo?}</h2>
+<p>应用全局共享数据。</p>
+<p>在登录时，会自动设置userInfo属性为个人信息。所以可以通过 g_data.userInfo==null 来判断是否已登录。</p>
+<p class="key"><strong>@key <a id="g_data.userInfo">g_data.userInfo</a></strong> </p><hr>
+<h2 id="g_cfg">@var g_cfg</h2>
+<p>应用配置项。</p><hr>
+<h2 id="BASE_URL">@var BASE_URL</h2>
+<p>设置应用的基本路径, 应以&quot;/&quot;结尾.</p><hr>
+<h2 id="intSort">@fn intSort(a, b)</h2>
+<p>整数排序. 用于datagrid column sorter:</p>
+<pre><code>&lt;th data-options="field:'id', sortable:true, sorter:intSort"&gt;编号&lt;/th&gt;</code></pre><hr>
+<h2 id="numberSort">@fn numberSort(a, b)</h2>
+<p>小数排序. 用于datagrid column sorter:</p>
+<pre><code>&lt;th data-options="field:'score', sortable:true, sorter:numberSort"&gt;评分&lt;/th&gt;</code></pre><hr>
 <h2 id="getAncestor">@fn getAncestor(o, fn)</h2>
 <p>取符合条件(fn)的对象，一般可使用$.closest替代</p><hr>
 <h2 id="app_abort">@fn app_abort()</h2>
@@ -81,6 +121,7 @@ $(o).jdata({hello:100, world:200});</code></pre><hr>
 <p>此框架实现与筋斗云服务端接口的无缝整合。在界面上以jquery-easyui库为基础展示列表、Tab页等。<br />
 参考应用 web/store.html - 商户管理端应用。</p>
 <h4>1 对象管理功能</h4>
+<p>设计模式：列表页与详情页。</p>
 <p>以订单对象Order为例：为订单对象增加“列表页”和“详情页”。</p>
 <p>列表页应包含分页功能，默认只显示“未完成”订单。<br />
 点击列表中一项（一个订单），可显示详情页，即订单详情，并可进行查找、更新等功能。</p>
@@ -216,19 +257,186 @@ $(o).jdata({hello:100, world:200});</code></pre><hr>
         // checkboxToHidden(jfrm.find("#divPerms"));
     });
 }</code></pre>
-<p>TODO</p>
-<p class="see"><strong>@see <a href="#hiddenToCheckbox">hiddenToCheckbox</a></strong> </p>
-<p class="see"><strong>@see <a href="#checkboxToHidden">checkboxToHidden</a></strong> </p>
-<p class="see"><strong>@see <a href="#hiddenToImg">hiddenToImg</a></strong> </p>
+<p class="see"><strong>@see <a href="#checkboxToHidden　">checkboxToHidden　</a></strong> (有示例)</p>
+<p class="see"><strong>@see <a href="#hiddenToCheckbox">hiddenToCheckbox</a></strong>  </p>
 <p class="see"><strong>@see <a href="#imgToHidden">imgToHidden</a></strong> </p>
-<h5>1.5 列表页中的列，以特定格式展现。例如，展示订单状态。</h5>
-<p>TODO<br />
-详情页中的填写项与数据库属性不能对应的情况。如上传图片。</p>
-<h5>1.6 层次结构对象展示</h5>
-<p>TODO<br />
-如商户列表中，选择一行商户，点击操作按钮，在另一个列表页展示该商户的所有在售物料。</p>
-<h5>1.7 关联列表制作</h5>
-<p>例如，要将订单分派给员工，需要显示员工列表。</p>
+<p class="see"><strong>@see <a href="#hiddenToImg">hiddenToImg</a></strong>  (有示例)</p>
+<h5>1.5 列表页中的常见需求</h5>
+<p>框架中，对象列表通过easyui-datagrid来展现。<br />
+注意：由于历史原因，我们没有使用datagrid中的编辑功能。</p>
+<p>参考：<a href="http://www.jeasyui.net/plugins/183.html">http://www.jeasyui.net/plugins/183.html</a><br />
+教程：<a href="http://www.jeasyui.net/tutorial/148.html">http://www.jeasyui.net/tutorial/148.html</a></p>
+<h6>1.5.1 列表页中的列，以特定格式展现</h6>
+<p class="key"><strong>@key <a id="datagrid.formatter">datagrid.formatter</a></strong> </p>
+<p class="key"><strong>@key <a id="datagrid.styler">datagrid.styler</a></strong> </p>
+<p>示例一：显示名称及颜色</p>
+<p>订单状态字段定义为：</p>
+<pre><code>status:: Enum. 订单状态。CR-新创建,RE-已服务,CA-已取消. </code></pre>
+<p>在显示时，要求显示其中文名称，且根据状态不同，显示不同的背景颜色。</p>
+<p>在table中设置formatter与styler选项：</p>
+<pre><code>&lt;div class="pageOrder" title="订单管理" my-initfn="initPageOrder"&gt;
+    &lt;table id="tblOrder" style="width:auto;height:auto"&gt;
+        &lt;thead&gt;&lt;tr&gt;
+            &lt;th data-options="field:'id', sortable:true, sorter:intSort"&gt;订单号&lt;/th&gt;
+            ...
+            &lt;th data-options="field:'status', formatter:OrderColumns.statusStr, styler:OrderColumns.statusStyler, sortable:true"&gt;状态&lt;/th&gt;
+        &lt;/tr&gt;&lt;/thead&gt;
+    &lt;/table&gt;
+&lt;/div&gt;</code></pre>
+<p>formatter用于控制Cell中的HTML标签，styler用于控制Cell自己的CSS style.<br />
+在JS中定义函数：</p>
+<pre><code>var OrderColumns = {
+    statusStr: function (value, row) {
+        var OrderStatusStr = {
+            CR: "未付款", 
+            RE: "已服务", 
+            CA: "已取消"
+        };
+        return OrderStatusStr[value] || value;
+    },
+    statusStyler: function (value, row) {
+        var colors = {
+            CR: "#000",
+            RE: "#0f0",
+            CA: "#ccc"
+        };
+        var color = colors[value];
+        if (color)
+            return "background-color: " + color;
+    },
+    ...
+}</code></pre>
+<p>注意：</p>
+<ul>
+<li>习惯上，对同一个对象的字段的设定，都放到一个名为　{Obj}Columns 的变量中一起定义。</li>
+<li>对于通用的或多处共享的字段设定，放到变量 Formatter 中.</li>
+</ul>
+<p>示例二：下面是一些通用的例子，特别是生成对象链接经常会用到。</p>
+<pre><code>var Formatter = {
+    // 显示数值
+    number: function (value)
+    {
+        return parseFloat(value);
+    },
+    // 显示一张或一组图片链接，点一个链接可以在新页面上显示原图片
+    pics: function (value) {
+        if (value == null)
+            return "(无图)";
+        return value.replace(/(\d+),?/g, function (ms, picId) {
+            var url = makeUrl("att", {thumbId: picId});
+            return "&lt;a target='_black' href='" + url + "'&gt;" + picId + "&lt;/a&gt;&amp;nbsp;";
+        });
+    },
+    // 订单编号，显示为一个链接，点击就打开订单对话框该订单。
+    orderId: function (value) {
+        if (value != null)
+        {
+            return makeLinkTo("#dlgOrder", value, value);
+        }
+    }
+};</code></pre>
+<p class="see"><strong>@see <a href="#makeLinkTo">makeLinkTo</a></strong>  生成对象链接，以便点击时打开该对象的详情对话框。</p>
+<h6>1.5.2 排序与分页</h6>
+<p class="key"><strong>@key <a id="datagrid.sortable">datagrid.sortable</a></strong> </p>
+<p class="key"><strong>@key <a id="datagrid.sorter">datagrid.sorter</a></strong> </p>
+<p>使用sortable:true指定该列可排序（可点击列头排序），用sorter指定排序算法（缺省是字符串排序），例如：</p>
+<pre><code>&lt;th data-options="field:'name', sortable:true"&gt;姓名&lt;/th&gt;
+&lt;th data-options="field:'id', sortable:true, sorter:intSort"&gt;编号&lt;/th&gt;
+&lt;th data-options="field:'score', sortable:true, sorter:numberSort"&gt;评分&lt;/th&gt;</code></pre>
+<p>框架提供了intSort,numberSort这些函数用于整数排序或小数排序。也可以自定义函数。示例：</p>
+<pre><code>function intSort(a, b)
+{
+    return parseInt(a) - parseInt(b);
+}</code></pre>
+<p>注意：</p>
+<ul>
+<li>指定sorter函数只会影响本地排序。而多数情况下，只要有多页，框架会使用远程排序。<br />
+框架逻辑为：如果数据超过一页，使用远程排序, 否则使用本地排序减少请求。</li>
+<li>本地排序(localSort)：点击列标题排序时，会重新发请求到服务端，并指定sort/排序字段,order/顺序或倒序参数</li>
+<li>远程排序(remoteSort)：点排序时，直接本地计算重排，不会发请求到服务端.</li>
+</ul>
+<p class="see"><strong>@see <a href="#intSort">intSort</a> <a href="#numberSort">numberSort</a></strong> </p>
+<p>框架对datagrid还做了以下缺省设置：</p>
+<ul>
+<li>
+<p>默认开启datagrid的分页功能。每页缺省显示20条数据。可通过datagrid选项自行重新定义，如：</p>
+<pre><code>jtbl.datagrid({
+    ...
+    pageSize: 20,
+    pageList: [20,30,50] // 在分页栏中可以选择分页大小
+});</code></pre>
+</li>
+<li>当数据在一页内可显示完时，自动隐藏分页操作栏。</li>
+</ul>
+<p>如果需要禁用分页，可以设置：</p>
+<pre><code>jtbl.datagrid({
+    url: makeUrl("Ordr.query", {"_pagesz": 9999}), // 定义很大的pagesz, 一次取出所有
+    pagination: false, // 禁用分页组件
+    ...
+});</code></pre>
+<h5>1.6 详情页对话框的常见需求</h5>
+<h6>1.6.1 设计模式：关联选择框</h6>
+<p>示例：下拉框中显示员工列表 (Choose-from-list / 关联选择框)</p>
+<p class="see"><strong>@see <a href="#jQuery.fn.mycombobox">jQuery.fn.mycombobox</a></strong> </p>
+<h6>1.6.2 picId字段显示图片</h6>
+<p class="see"><strong>@see <a href="#hiddenToImg">hiddenToImg</a></strong>  (有示例)</p>
+<p class="see"><strong>@see <a href="#imgToHidden">imgToHidden</a></strong> </p>
+<h6>1.6.3 List字段显示为多个选项框</h6>
+<p class="see"><strong>@see <a href="#hiddenToCheckbox">hiddenToCheckbox</a></strong>  </p>
+<p class="see"><strong>@see <a href="#checkboxToHidden　">checkboxToHidden　</a></strong> (有示例)</p>
+<h5>1.7 设计模式：展示层次对象</h5>
+<p>例如设计有商品表Item, 每个商品属于特定的商户：</p>
+<pre><code>@Item: id, storeId, name
+storeId:: Integer. 商品所属商户编号。</code></pre>
+<p>也就是说，商户包含商品。要展现商品，可将它放在商户层次之下。<br />
+可以这样设计用户操作：在商户列表上增加一个按钮“查看商品”，点击后打开一个新的列表页，显示该商户的商品列表。</p>
+<p>定义两个列表页：</p>
+<pre><code>&lt;div class="pageStore" title="商户列表" my-initfn="initPageStore"&gt;
+&lt;/div&gt;
+
+&lt;div class="pageItem" title="商户商品" my-initfn="initPageItem"&gt;
+&lt;/div&gt;</code></pre>
+<p>为这两个列表页定义初始化函数：</p>
+<pre><code>// 商户列表页
+function initPageStore()
+{
+    function showItemPage()
+    {
+        var row = jtbl.datagrid('getSelected');
+        if(row == null){
+            alert("您需要选择需要操作的行");
+            return;
+        }
+        // !!! 调用showPage显示新页 !!!
+        WUI.showPage("pageItem", "商户商品-" + row.name, [row.id]);
+        // 要使每个商户都打开一个商品页面而不是共享一个页面，必须保证第二个参数（页面标题）根据商户不同而不一样。
+        // 第三个参数是传给该页面初始化函数的参数列表，是一个数组。
+    }
+    var btn1 = {text: "查看商品", iconCls: "icon-search", handler: showPageCloseOrder};
+
+    ...
+    jtbl.datagrid({
+        ...
+        toolbar: WUI.dg_toolbar(jtbl, jdlg, btn1),
+    });
+}
+
+// 商品列表页，注意有一个参数storeId, 并在查询时使用到它。
+function initPageItem(storeId)
+{
+    jtbl.datagrid({
+        // 用参数storeId过滤
+        url: makeUrl("Item.query", {cond: "storeId=" + storeId}),
+        ...
+    });
+}</code></pre>
+<p>注意：</p>
+<p>调用WUI.showPage时，除了指定页面名，还指定了页面标题(第二参数)和页面初始化参数(第三参数, 一定是一个数组):</p>
+<pre><code>WUI.showPage("pageItem", "商户商品-" + row.name, [row.id]);</code></pre>
+<p>显然，第二个参数随着商户名称不同而不同，这保证了不同商户打开的商品页面不会共用。<br />
+在商品页面初始化时，第三参数将传递给初始化函数：</p>
+<pre><code>function initPageItem(storeId) // storeId=row.id</code></pre>
+<p class="see"><strong>@see <a href="#WUI.showPage">WUI.showPage</a></strong> </p>
 <h4>2 对话框功能</h4>
 <p>以群发短信功能为例。</p>
 <p>假定服务端已有以下接口：</p>
@@ -322,10 +530,76 @@ callSvr("User.get", function (data) {
 <h2 id="WUI.app_show">@fn WUI.app_show(msg)</h2>
 <p class="alias"><strong>@alias <a id="app_show">app_show</a></strong> </p>
 <p>使用jQuery easyui弹出对话框.</p><hr>
-<h2 id="WUI.makeLinkTo">@fn WUI.makeLinkTo</h2>
+<h2 id="WUI.makeLinkTo">@fn WUI.makeLinkTo(dlg, id, text)</h2>
 <p class="alias"><strong>@alias <a id="makeLinkTo">makeLinkTo</a></strong> </p>
-<p>生成一个链接的html代码，点击该链接可以打开指定对象的对话框。</p><hr>
-<h2 id="jQuery.fn.mycombobox">@fn jQuery.fn.mycombobox</h2><hr>
+<p>生成一个链接的html代码，点击该链接可以打开指定对象的对话框。</p>
+<p>示例：根据订单号，生成一个链接，点击链接打开订单详情对话框。</p>
+<pre><code>var orderId = 101;
+var html = makeLinkTo("#dlgOrder", orderId, "订单" + orderId);</code></pre><hr>
+<h2 id="jQuery.fn.mycombobox">@fn jQuery.fn.mycombobox()</h2>
+<p class="key"><strong>@key <a id=".my-combobox">.my-combobox</a></strong>  关联选择框</p>
+<p class="var"><strong>@var <a id="ListOptions">ListOptions</a></strong>  定义关联选择框的数据源</p>
+<p>关联选择框组件。</p>
+<p>用法：先定义select组件：</p>
+<pre><code>&lt;select name="empId" class="my-combobox" data-options="valueField: 'id', ..."&gt;&lt;/select&gt;</code></pre>
+<p>通过data-options可设置选项: { valueField, textField, url, formatter(row), loadFilter(data) }</p>
+<p>初始化：</p>
+<pre><code>$(".my-combobox").mycombobox();</code></pre>
+<p>注意：使用WUI.showDlg显示的对话框中如果有.my-combobox组件，会在调用WUI.showDlg时自动初始化，无须再调用上述代码。</p>
+<p>特性：</p>
+<ul>
+<li>初始化时调用url指定接口取数据并生成下拉选项。</li>
+<li>双击可刷新列表。</li>
+<li>支持数据缓存，不必每次打开都刷新。</li>
+</ul>
+<p>例如，在订单上设计有empId字段：</p>
+<pre><code>@Ordr: id, ... empId
+
+empId:: Integer. 员工编号，关联Employee.id字段。</code></pre>
+<p>在显示订单详情对话框时，这列显示为“分派给员工”，是一个列出所有员工的下拉列表框，可以这样写：</p>
+<pre><code>&lt;tr&gt;
+    &lt;td&gt;分派给&lt;/td&gt;
+    &lt;td&gt;&lt;select name="empId" class="my-combobox" data-options="valueField:'id',textField:'name',url:makeUrl('Employee.query', {wantArray:1})"&gt;&lt;/select&gt;&lt;/td&gt;  
+&lt;/tr&gt;</code></pre>
+<p>为了精确控制返回字段与显示格式，data-options可能更加复杂，一般建议写一个返回这些属性的函数，像这样：</p>
+<pre><code>    &lt;td&gt;&lt;select name="empId" class="my-combobox" data-options="ListOptions.Emp()"&gt;&lt;/select&gt;&lt;/td&gt;  </code></pre>
+<p>习惯上，可以把函数统一放在ListOptions变量中：</p>
+<pre><code>var ListOptions = {
+    // ListOptions.Emp()
+    Emp: function () {
+        var opts = {
+            valueField: "id",
+            textField: "name",
+            url: makeUrl('Employee.query', {
+                res: 'id,name,uname',
+                cond: 'storeId=' + g_data.userInfo.storeId,
+                wantArray:1
+            }),
+            formatter: function (row) { return row.name + '(' + row.uname + ')'; }
+        };
+        return opts;
+    },
+    ...
+};</code></pre>
+<p>另一个例子：在返回列表后，可通过loadFilter修改列表，例如添加一项：</p>
+<pre><code>&lt;select name="brandId" class="my-combobox" data-options="ListOptions.Brand()" &gt;&lt;/select&gt;</code></pre>
+<p>JS代码ListOptions.Brand:</p>
+<pre><code>var ListOptions = {
+    ...
+    // ListOptions.Brand()
+    Brand: function () {
+        var opts = {
+            valueField: 'id',
+            textField:'name',
+            url:makeUrl('queryBrand', {wantArray:1}),
+            loadFilter: function(data) {
+                data.unshift({id:'0', name:'所有品牌'});
+                return data;
+            }
+        };
+        return opts;
+    }
+};</code></pre><hr>
 <h2 id="WUI.reload">@fn WUI.reload(jtbl, url?, queryParams?)</h2><hr>
 <h2 id="WUI.reloadTmp">@fn WUI.reloadTmp(jtbl, url?, queryParams?) </h2>
 <p>临时reload一下，完事后恢复原url</p><hr>
@@ -357,21 +631,78 @@ WUI.showPage("pageHome", "首页2");</code></pre><hr>
 <p>特殊class my-reset: 当执行form reset时会将内容清除. (适用于在forSet/forLink模式下添加显示内容, 而在forFind/forAdd模式下时清除内容)</p>
 <pre><code>&lt;div class="my-reset"&gt;...&lt;/div&gt;</code></pre>
 <p>hidden上的特殊property noReset: (TODO)</p><hr>
-<h2 id="WUI.getQueryCond">@fn WUI.getQueryCond(kvList)</h2><hr>
-<h2 id="WUI.getQueryParam">@fn WUI.getQueryParam(kvList)</h2><hr>
+<h2 id="WUI.getQueryCond">@fn WUI.getQueryCond(kvList)</h2>
+<p class="param"><strong>@param kvList</strong>  键值对，值中支持操作符及通配符。</p>
+<p>根据kvList生成BPQ协议定义的{obj}.query的cond参数。</p>
+<p>例如:</p>
+<pre><code>var kvList = {phone: "13712345678", id: "&gt;100", addr: "上海*", picId: "null"};
+WUI.getQueryCond(kvList);</code></pre>
+<p>有多项时，每项之间以&quot;AND&quot;相连，以上定义将返回如下内容：</p>
+<pre><code>"phone='13712345678' AND id&gt;100 AND addr LIKE '上海*' AND picId IS NULL"</code></pre>
+<p>设置值时，支持以下格式：</p>
+<ul>
+<li>{key: &quot;value&quot;} - 表示&quot;key=value&quot;</li>
+<li>{key: &quot;&gt;value&quot;} - 表示&quot;key&gt;value&quot;, 类似地，可以用 &gt;=, &lt;, &lt;=, <> 这些操作符。</li>
+<li>{key: &quot;value<em>&quot;} - 值中带通配符，表示&quot;key like 'value%'&quot; (以value开头), 类似地，可以用 &quot;</em>value&quot;, &quot;<em>value</em>&quot;, &quot;<em>val</em>ue&quot;等。</li>
+<li>{key: &quot;null&quot; } - 表示 &quot;key is null&quot;。要表示&quot;key is not null&quot;，可以用 &quot;<>null&quot;.</li>
+<li>{key: &quot;empty&quot; } - 表示 &quot;key=''&quot;.</li>
+</ul>
+<p>在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。</p><hr>
+<h2 id="WUI.getQueryParam">@fn WUI.getQueryParam(kvList)</h2>
+<p>根据键值对生成BQP协议中{obj}.query接口需要的cond参数.</p>
+<p>示例：</p>
+<pre><code>WUI.getQueryParam({phone: '13712345678', id: '&gt;100'})
+返回
+{cond: "phone='13712345678' AND id&gt;100"}</code></pre>
+<p class="see"><strong>@see <a href="#WUI.getQueryCond">WUI.getQueryCond</a></strong> </p><hr>
 <h2 id="WUI.showObjDlg">@fn WUI.showObjDlg(jdlg, mode, id?)</h2>
 <p class="param"><strong>@param id</strong>  String. mode=link时必设，set/del如缺省则从关联的jtbl中取, add/find时不需要</p>
 <p class="param"><strong>@param jdbl</strong>  Datagrid. dialog/form关联的datagrid -- 如果dlg对应多个tbl, 必须每次打开都设置</p><hr>
 <h2 id="WUI.dg_toolbar">@fn WUI.dg_toolbar(jtbl, jdlg, button_lists...)</h2>
 <p>设置easyui-datagrid上toolbar上的按钮。缺省支持的按钮有r(refresh), f(find), a(add), s(set), d(del), 可通过以下设置方式修改：</p>
-<pre><code>jtbl.jdata().toolbar = "rfas"; // 没有d-删除按钮</code></pre>
-<p>如果要添加自定义按钮，则</p>
-<pre><code>jtbl.datagrid({
-    ...
-    toolbar: datagrid_toolbar(jtbl, jdlg, button lists...); //TODO
-})</code></pre><hr>
+<pre><code>// jtbl.jdata().toolbar 缺省值为 "rfasd"
+jtbl.jdata().toolbar = "rfs"; // 没有a-添加,d-删除</code></pre>
+<p>如果要添加自定义按钮，可通过button_lists一一传递.<br />
+示例：添加两个自定义按钮查询“今天订单”和“所有未完成订单”。</p>
+<pre><code>function getTodayOrders()
+{
+    var queryParams = WUI.getQueryParam({comeTm: new Date().format("D")});
+    WUI.reload(jtbl, null, queryParams);
+}
+// 显示待服务/正在服务订单
+function getTodoOrders()
+{
+    var queryParams = {cond: "status=" + OrderStatus.Paid + " or status=" + OrderStatus.Started};
+    WUI.reload(jtbl, null, queryParams);
+}
+var btn1 = {text: "今天订单", iconCls:'icon-search', handler: getTodayOrders};
+var btn2 = {text: "所有未完成", iconCls:'icon-search', handler: getTodoOrders};
+
+// 默认显示当天订单
+var queryParams = WUI.getQueryParam({comeTm: new Date().format("D")});
+
+var dgOpt = {
+    url: makeUrl(["Ordr", "query"]),
+    queryParams: queryParams,
+    pageList: ...
+    pageSize: ...
+    // "-" 表示按钮之间加分隔符
+    toolbar: WUI.dg_toolbar(jtbl, jdlg, btn1, "-", btn2),
+    onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
+};
+jtbl.datagrid(dgOpt);</code></pre><hr>
 <h2 id="WUI.dg_dblclick">@fn WUI.dg_dblclick</h2>
 <p>设置双击datagrid行的回调，功能是打开相应的dialog</p><hr>
+<h2 id=".easyui-linkbutton">@key .easyui-linkbutton</h2>
+<p>使用.easyui-linkbutton时，其中的a[href]字段会被框架特殊处理：</p>
+<pre><code>&lt;a href="#pageHome" class="easyui-linkbutton" icon="icon-ok"&gt;首页&lt;/a&gt;
+&lt;a href="?showDlgSendSms" class="easyui-linkbutton" icon="icon-ok"&gt;群发短信&lt;/a&gt;</code></pre>
+<ul>
+<li>href=&quot;#pageXXX&quot;开头的，会调用 WUI.showPage(&quot;#pageXXX&quot;);</li>
+<li>href=&quot;?fn&quot;，会直接调用函数 fn();</li>
+</ul>
+<p>也可以使用 data-type=&quot;easyui-linkbutton&quot;, 如</p>
+<pre><code>&lt;a href="#pageHome" data-type="easyui-linkbutton" icon="icon-ok"&gt;首页&lt;/a&gt;</code></pre><hr>
 <h2 id="WUI.tryAutoLogin">@fn WUI.tryAutoLogin(onHandleLogin, reuseCmd?)</h2>
 <p class="param"><strong>@param onHandleLogin</strong>  Function(data). 调用后台login()成功后的回调函数(里面使用this为ajax options); 可以直接使用WUI.handleLogin</p>
 <p class="param"><strong>@param reuseCmd</strong>  String. 当session存在时替代后台login()操作的API, 如"User.get", "Employee.get"等, 它们在已登录时返回与login相兼容的数据. 因为login操作比较重, 使用它们可减轻服务器压力. </p>
@@ -401,5 +732,5 @@ $(main);</code></pre><hr>
 <h2 id="WUI.logout">@fn WUI.logout(dontReload?=0)</h2>
 <p class="param"><strong>@param dontReload</strong>  如果非0, 则注销后不刷新页面.</p>
 <p>注销当前登录, 成功后刷新页面(除非指定dontReload=1)</p><hr>
-<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-06-18T16:36:22+08:00</div>
+<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-06-27T18:54:23+08:00</div>
 </html>
