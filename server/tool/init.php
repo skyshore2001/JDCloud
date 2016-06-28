@@ -149,11 +149,11 @@ function api_initDb()
 
 	if (! $cfgonly) {
 		list($dbuser0, $dbpwd0) = explode(":", $dbcred0);
-		if (!$dbuser0 || !$dbpwd0) {
+		if (!$dbuser0 || !isset($dbpwd0)) {
 			die("数据库管理员用户名密码指定错误: `$dbcred0`");
 		}
 		list($dbuser, $dbpwd) = explode(":", $dbcred);
-		if (!$dbuser || !$dbpwd) {
+		if (!$dbuser || !isset($dbpwd)) {
 			die("应用程序使用的数据库用户名密码指定错误: `$dbcred`");
 		}
 
