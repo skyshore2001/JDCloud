@@ -3390,7 +3390,7 @@ navRef是否为空的区别是，如果非空，则表示listRef是一组互斥�
 
 ## 参数说明
 
-@param opt {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list"}
+@param opt {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list", onBeforeLoad?, onLoad?}
 
 @param onGetQueryParam Function(jlst, queryParam/o)
 
@@ -3418,6 +3418,9 @@ queryParam: {ac?, res?, cond?, ...}
 设置opt.pageItf=PageOrders, 框架可自动检查和管理refresh变量。
 
 @param navRef,listRef  指定navbar与list，可以是选择器，也可以是jQuery对象；或是一组button与一组div，一次显示一个div；或是navRef为空，而listRef为一个或多个不相关联的list.
+
+@param onBeforeLoad(jlst, isFirstPage)->Boolean  如果返回false, 可取消load动作。参数isFirstPage=true表示是分页中的第一页，即刚刚加载数据。
+@param (jlst, isLastPage)  参数isLastPage=true表示是分页中的最后一页, 即全部数据已加载完。
 
 @return PageListInterface={refresh, markRefresh}
 
@@ -3568,6 +3571,12 @@ function initPageList(jpage, opt)
 				queryParam[this] = val;
 		});
 
+		if (opt.onBeforeLoad) {
+			var rv = opt.onBeforeLoad(jlst, nextkey == null);
+			if (rv === false)
+				return;
+		}
+
 		if (opt_.onGetQueryParam) {
 			opt_.onGetQueryParam(jlst, queryParam);
 		}
@@ -3610,6 +3619,7 @@ function initPageList(jpage, opt)
 				}
 				jlst.data("nextkey_", -1);
 			}
+			opt.onLoad && opt.onLoad(jlst, data.nextkey == null);
 		}
 	}
 
