@@ -289,7 +289,7 @@ TODO: 添加图片压缩参数，图片框显示大小等。
 */
 function onChooseFile()
 {
-	var dfd = $.getScriptWithCache("js/lrz.mobile.min.js");
+	var dfd = $.getScriptWithCache("lib/lrz.mobile.min.js");
 	var picFiles = this.files;
 	var jdiv = $(this).parent().find("div.imgs");
 
