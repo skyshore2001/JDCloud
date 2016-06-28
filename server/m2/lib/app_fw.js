@@ -3481,7 +3481,6 @@ function initPageList(jpage, opt)
 				firstShow_ = true;
 			}
 			if (firstShow_ ) {
-				firstShow_ = false;
 				showOrderList(false, false);
 			}
 		}
@@ -3605,6 +3604,7 @@ function initPageList(jpage, opt)
 
 		function api_OrdrQuery(data)
 		{
+			firstShow_ = false;
 			if (loadMore_) {
 				joLoadMore_.remove();
 			}
