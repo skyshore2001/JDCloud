@@ -1855,22 +1855,38 @@ function getop(v)
 - {key: "null" } - 表示 "key is null"。要表示"key is not null"，可以用 "<>null".
 - {key: "empty" } - 表示 "key=''".
 
+支持简单的and/or查询，但不支持在其中使用括号:
+
+- {key: ">value and <=value"}  - 表示"key>'value' and key<='value'"
+- {key: "null or 0 or 1"}  - 表示"key is null or key=0 or key=1"
+
 在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。
 */
 self.getQueryCond = getQueryCond;
 function getQueryCond(kvList)
 {
-	var cond = '';
+	var condArr = [];
 	$.each(kvList, function(k,v) {
 		if (v == null || v === "")
 			return;
-		if (cond)
-			cond += " AND ";
-		cond += k + getop(v);
+		var arr = v.split(/\s+(and|or)\s+/i);
+		var str = '';
+		var bracket = false;
+		$.each(arr, function (i, v1) {
+			if ( (i % 2) == 1) {
+				str += ' ' + v1.toUpperCase() + ' ';
+				bracket = true;
+				return;
+			}
+			str += k + getop(v1);
+		});
+		if (bracket)
+			str = '(' + str + ')';
+		condArr.push(str);
 		//val[e.name] = escape(v);
 		//val[e.name] = v;
 	})
-	return cond;
+	return condArr.join(' AND ');
 }
 
 /**
