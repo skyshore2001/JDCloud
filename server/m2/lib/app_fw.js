@@ -639,7 +639,20 @@ var E_ABORT=-100;
 
 对原生应用的额外增强包括：
 
-- 应用加载完成后，自动隐藏启动画面(SplashScreen)
+@key g_cfg.manualSplash
+
+- 应用加载完成后，自动隐藏启动画面(SplashScreen)。如果需要自行隐藏启动画面，可以设置
+
+		var g_cfg = {
+			manualSplash: true
+			...
+		}
+
+	然后开发者自己加载完后隐藏SplashScreen:
+
+		if (navigator.splashscreen && navigator.splashscreen.hide)
+			navigator.splashscreen.hide();
+
 - ios7以上, 框架自动为顶部状态栏留出20px高度的空间. 默认为白色，可以修改类mui-container的样式，如改为黑色：
 
 	.mui-container {
@@ -2330,10 +2343,12 @@ allow throw("abort") as abort behavior.
 					}
 
 					var data1 = defDataProc.call(ajaxCtx_, e);
-					if (callOpt.fn) {
-						callOpt.fn.call(ajaxCtx_, data1);
+					if (data1 != null) {
+						if (callOpt.fn) {
+							callOpt.fn.call(ajaxCtx_, data1);
+						}
+						callOpt.dfd.resolve(data1);
 					}
-					callOpt.dfd.resolve(data1);
 
 					// restore ajaxCtx_
 					if (extendCtx) {
@@ -2508,7 +2523,7 @@ $(document).on("deviceready", function () {
 	$(document).on("menubutton", function () {
 	});
 
-	if (navigator.splashscreen && navigator.splashscreen.hide)
+	if (!g_cfg.manualSplash && navigator.splashscreen && navigator.splashscreen.hide)
 	{
 		// 成功加载后稍等一会(避免闪烁)后隐藏启动图
 		$(function () {
