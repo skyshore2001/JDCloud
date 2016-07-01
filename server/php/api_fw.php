@@ -1025,11 +1025,15 @@ AccessControl简写为AC，同时AC也表示自动补全(AutoComplete).
 
 例如，在订单列表中需要展示用户名字段。设计文档中定义接口：
 
-	Ordr.query() -> tbl(id, ..., userName?, userPhone?, createTm?)
+	Ordr.query() -> tbl(id, dscr, ..., userName?, userPhone?, createTm?)
 
 query接口的"..."之后就是虚拟字段。后缀"?"表示是非缺省字段，即必须在"res"参数中指定才会返回，如：
 
 	Ordr.query(res="*,userName")
+
+在cond中可以直接使用虚拟字段，不管它是否在res中指定，如
+
+	Ordr.query(cond="userName LIKE 'jian%'", res="id,dscr")
 
 通过设置$vcolDefs实现这些关联字段：
 
@@ -1039,7 +1043,7 @@ query接口的"..."之后就是虚拟字段。后缀"?"表示是非缺省字段�
 			[
 				"res" => ["u.name AS userName", "u.phone AS userPhone"],
 				"join" => "INNER JOIN User u ON u.id=t0.userId",
-				// "default" => false, // 指定true表示Ordr.query在不指定res时默认会返回该字段。
+				// "default" => false, // 指定true表示Ordr.query在不指定res时默认会返回该字段。一般不建议设置为true.
 			],
 			[
 				"res" => ["log_cr.tm AS createTm"],
@@ -1480,6 +1484,7 @@ class AccessControl
 				if (strpos($col, '.') !== false)
 					return $col;
 				if (isset($this->vcolMap[$col])) {
+					$this->addVCol($col, false, "-");
 					return $this->vcolMap[$col]["def"];
 				}
 				return "t0." . $col;

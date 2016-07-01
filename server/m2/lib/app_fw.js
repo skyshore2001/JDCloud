@@ -2282,6 +2282,7 @@ allow throw("abort") as abort behavior.
 	self.batchCall = batchCall;
 	function batchCall(opt)
 	{
+		assert(m_curBatch == null, "*** multiple batch call!");
 		this.opt_ = opt;
 		this.calls_ = [];
 		this.callOpts_ = [];
@@ -2387,6 +2388,8 @@ allow throw("abort") as abort behavior.
 	function useBatchCall(opt, tv)
 	{
 		if (self.disableBatch)
+			return;
+		if (m_curBatch != null)
 			return;
 		tv = tv || 0;
 		var batch = new MUI.batchCall(opt);
@@ -2512,9 +2515,9 @@ $(document).on("deviceready", function () {
 	// 在home页按返回键退出应用。
 	$(document).on("backbutton", function () {
 		if (self.activePage.attr("id") == homePageId) {
-			if (! confirm("退出应用?"))
-				return;
-			navigator.app.exitApp();
+			app_alert("退出应用?", 'q', function () {
+				navigator.app.exitApp();
+			});
 			return;
 		}
 		history.back();
