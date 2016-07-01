@@ -3462,6 +3462,7 @@ function initPageList(jpage, opt)
 	var jallList_ = opt_.listRef instanceof jQuery? opt_.listRef: jpage.find(opt_.listRef);
 	var jbtns_ = opt_.navRef instanceof jQuery? opt_.navRef: jpage.find(opt_.navRef);
 	var firstShow_ = true;
+	var busy_ = false;
 
 	if (jbtns_.hasClass("mui-navbar")) {
 		jbtns_ = jbtns_.find("a");
@@ -3581,6 +3582,16 @@ function initPageList(jpage, opt)
 		if (skipIfLoaded && nextkey != null)
 			return;
 
+		if (busy_) {
+			var tm = jlst.data("lastUpdateTm_");
+			if (tm && new Date() - tm <= 5000)
+			{
+				console.log('!!! pulldown too fast');
+				return;
+			}
+			// 5s后busy_标志还未清除，则可能是出问题了，允许不顾busy_标志直接进入。
+		}
+
 		var queryParam = evalAttr(jlst, "data-queryParam") || {};
 		$.each(["ac", "res", "cond", "orderby"], function () {
 			var val = jlst.attr("data-" + this);
@@ -3618,10 +3629,12 @@ function initPageList(jpage, opt)
 		else {
 			jlst.data("lastUpdateTm_", new Date());
 		}
+		busy_ = true;
 		callSvr(queryParam.ac, queryParam, api_OrdrQuery);
 
 		function api_OrdrQuery(data)
 		{
+			busy_ = false;
 			firstShow_ = false;
 			if (loadMore_) {
 				joLoadMore_.remove();
