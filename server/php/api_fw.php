@@ -87,6 +87,7 @@ const API_ENTRY_PAGE = "api.php";
 global $X_RET; // maybe set by the caller
 global $X_RET_STR;
 
+const PAGE_SZ_LIMIT = 10000;
 // }}}
 
 // ====== ApiFw_: module internals {{{
@@ -708,6 +709,11 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 			}
 			if ($pagesz == 0)
 				$pagesz = 20;
+
+			$maxPageSz = min($accessCtl->getMaxPageSz(), PAGE_SZ_LIMIT);
+			if ($pagesz < 0 || $pagesz > $maxPageSz)
+				$pagesz = $maxPageSz;
+
 			if (isset($sqlConf["gres"])) {
 				$enablePartialQuery = false;
 			}
@@ -1238,10 +1244,32 @@ query接口的"..."之后就是虚拟字段。后缀"?"表示是非缺省字段�
 
 ## 其它
 
+### 编号自定义生成
+
 @fn AccessControl::onGenId() (for add) 指定添加对象时生成的id. 缺省返回0表示自动生成.
 
+### 缺省排序
+
+@fn AccessControl::getDefaultSort()  (for query)取缺省排序.
 @var AccessControl::$defaultSort ?= "t0.id" (for query)指定缺省排序.
 
+### 最大每页数据条数
+
+@fn AccessControl::getMaxPageSz()  (for query) 取最大每页数据条数。为非负整数。
+@var AccessControl::$maxPageSz ?= 100 (for query) 指定最大每页数据条数。值为负数表示取PAGE_SZ_LIMIT值.
+
+前端通过 {obj}.query(_pagesz)来指定每页返回多少条数据，缺省是20条，最高不可超过100条。当指定为负数时，表示按最大允许值=min($maxPageSz, PAGE_SZ_LIMIT)返回。
+PAGE_SZ_LIMIT目前定为10000条。如果还不够，一定是应用设计有问题。
+
+如果想返回每页超过100条数据，必须在后端设置，如：
+
+	class MyObj extends AccessControl
+	{
+		protected $maxPageSz = 1000; // 最大允许返回1000条
+		// protected $maxPageSz = -1; // 最大允许返回 PAGE_SZ_LIMIT 条
+	}
+
+@var PAGE_SZ_LIMIT =10000
  */
 
 # ====== functions {{{
@@ -1262,6 +1290,8 @@ class AccessControl
 	protected $hiddenFields = [];
 	# for query
 	protected $defaultSort = "t0.id";
+	# for query
+	protected $maxPageSz = 100;
 
 	# for get/query
 	# virtual columns
@@ -1457,6 +1487,10 @@ class AccessControl
 	final public function getDefaultSort()
 	{
 		return $this->defaultSort;
+	}
+	final public function getMaxPageSz()
+	{
+		return $this->maxPageSz <0? PAGE_SZ_LIMIT: $this->maxPageSz;
 	}
 
 	private function handleRow(&$rowData)

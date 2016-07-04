@@ -353,7 +353,7 @@ function param($name, $defVal = null, $col = null)
 		if ($type === "s") {
 		}
 		elseif ($type === "i") {
-			if (! ctype_digit($ret))
+			if (! is_numeric($ret))
 				throw new MyException(E_PARAM, "Bad Request - integer param `$name`=`$ret`.");
 			$ret = intval($ret);
 		}
