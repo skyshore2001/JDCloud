@@ -2493,7 +2493,9 @@ function handleIos7Statusbar()
 
 /**
 @fn MUI.setFormSubmit(jf, fn?, opt?={rules, validate?, onNoAction?})
-@param fn? the callback for callSvr. you can use this["userPost"] to retrieve the post param.
+
+@param fn? Function(data); 与callSvr时的回调相同，data为服务器返回的数据。
+函数中可以使用this["userPost"] 来获取post参数。
 
 opt.rules: 参考jquery.validate文档
 opt.validate: Function(jf, queryParam={ac?,res?,...}). 如果返回false, 则取消submit. queryParam为调用参数，可以修改。
