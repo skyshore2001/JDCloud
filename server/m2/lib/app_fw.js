@@ -52,9 +52,10 @@ serverRev用于标识服务端版本，如果服务端版本升级，则应用�
 
 @key g_data.userInfo
 @key g_data.serverRev
+@key g_data.testMode,g_data.mockMode 测试模式和模拟模式
 
 */
-var g_data = {}; // {userInfo, serverRev}
+var g_data = {}; // {userInfo, serverRev?, testMode?, mockMode?}
 
 /**
 @var g_cfg
@@ -472,6 +473,25 @@ function getTimeDiffDscr(tm, tm1)
 	if (diff < 10)
 		return Math.floor(diff) + "年前";
 	return "很久前";
+}
+
+/**
+@fn parseValue(str)
+
+如果str符合整数或小数，则返回相应类型。
+ */
+function parseValue(str)
+{
+	if (str == null)
+		return str;
+	var val = str;
+	if (/^-?[0-9]+$/.test(str)) {
+		val = parseInt(str);
+	}
+	if (/^-?[0-9.]+$/.test(str)) {
+		val = parseFloat(str);
+	}
+	return val;
 }
 // }}}
 
@@ -1127,7 +1147,7 @@ function CPageManager(app)
 					self.m_pageStack.push("#" + m_toPageId);
 				}
 
-			return;
+				return;
 			}
 
 			var enableAni = showPageOpt_.ani !== 'none'; // TODO
@@ -1920,13 +1940,25 @@ allow throw("abort") as abort behavior.
 	{
 		// ajax-beforeSend回调中设置
 		if (this.xhr_) {
-			var serverRev = this.xhr_.getResponseHeader("X-Daca-Server-Rev");
-			if (serverRev && g_data.serverRev != serverRev) {
+			var val = this.xhr_.getResponseHeader("X-Daca-Server-Rev");
+			if (val && g_data.serverRev != val) {
 				if (g_data.serverRev) {
 					reloadSite();
 				}
-				console.log("Server Revision: " + serverRev);
-				g_data.serverRev = serverRev;
+				console.log("Server Revision: " + val);
+				g_data.serverRev = val;
+			}
+			val = parseValue(this.xhr_.getResponseHeader("X-Daca-Test-Mode"));
+			if (g_data.testMode != val) {
+				g_data.testMode = val;
+				if (g_data.testMode)
+					alert("测试模式!");
+			}
+			val = parseValue(this.xhr_.getResponseHeader("X-Daca-Mock-Mode"));
+			if (g_data.mockMode != val) {
+				g_data.mockMode = val;
+				if (g_data.mockMode)
+					alert("模拟模式!");
 			}
 		}
 
@@ -2629,7 +2661,6 @@ function parseArgs()
 
 	if (g_args.test || g_args._test) {
 		g_args._test = 1;
-		alert("测试模式!");
 	}
 
 	if (g_args.cordova || getStorage("cordova")) {

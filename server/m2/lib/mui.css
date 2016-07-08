@@ -314,3 +314,6 @@ html, body {
 	white-space: nowrap;
 }
 
+.hidden {
+	display: none;
+}
