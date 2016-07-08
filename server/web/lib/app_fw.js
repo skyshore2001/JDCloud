@@ -340,6 +340,18 @@ function initWUI()
 
 ### 定义页面初始化函数
 
+打开页面后，页面的生存周期如下：
+
+@key pagecreate,pageshow,pagedestroy 页面事件
+@key wui-pageName 属性：页面名
+@key .wui-page 页面类
+
+- 页面加载成功后，会为页面添加类"wui-page", 并将属性wui-pageName设置为页面名，然后调用 my-initfn指定的初始化函数，如initPageOrder
+- 触发pagecreate事件
+- 触发pageshow事件, 以后每次页面切换到当前页面，也会触发pageshow事件。
+- 在关闭页面时，触发pagedestroy事件
+- 注意：没有pagebeforeshow, pagehide事件
+
 订单列表页的初始化，需要将列表页(代码中jpage)、列表(代码中jtbl)与详情页(代码中jdlg)关联起来，实现对话增删改查各项功能。
 
 	function initPageOrder() 
@@ -1617,7 +1629,12 @@ function showPage(pageName, title, paramArr)
 	var jpage = $(sel);
 	if (jpage.length > 0) {
 		var jpageNew = jpage.clone().appendTo(jtab);
+		jpageNew.addClass('wui-page');
+		jpageNew.attr("wui-pageName", pageName);
 		callInitfn(jpageNew, paramArr);
+
+		jpageNew.trigger('pagecreate');
+		jpageNew.trigger('pageshow');
 	}
 	else {
 		jtab.append("开发中");
@@ -1834,7 +1851,7 @@ function getop(v)
 /**
 @fn WUI.getQueryCond(kvList)
 
-@param kvList 键值对，值中支持操作符及通配符。
+@param kvList {key=>value}, 键值对，值中支持操作符及通配符。也支持格式 [ [key, value] ], 这时允许key有重复。
 
 根据kvList生成BPQ协议定义的{obj}.query的cond参数。
 
@@ -1847,6 +1864,12 @@ function getop(v)
 
 	"phone='13712345678' AND id>100 AND addr LIKE '上海*' AND picId IS NULL"
 
+示例二：
+
+	var kvList = [ ["phone", "13712345678"], ["id", ">100"], ["addr", "上海*"], ["picId", "null"] ];
+	WUI.getQueryCond(kvList); // 结果同上。
+
+
 设置值时，支持以下格式：
 
 - {key: "value"} - 表示"key=value"
@@ -1855,22 +1878,47 @@ function getop(v)
 - {key: "null" } - 表示 "key is null"。要表示"key is not null"，可以用 "<>null".
 - {key: "empty" } - 表示 "key=''".
 
+支持简单的and/or查询，但不支持在其中使用括号:
+
+- {key: ">value and <=value"}  - 表示"key>'value' and key<='value'"
+- {key: "null or 0 or 1"}  - 表示"key is null or key=0 or key=1"
+
 在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。
 */
 self.getQueryCond = getQueryCond;
 function getQueryCond(kvList)
 {
-	var cond = '';
-	$.each(kvList, function(k,v) {
+	var condArr = [];
+	if ($.isPlainObject(kvList)) {
+		$.each(kvList, handleOne);
+	}
+	else if ($.isArray(kvList)) {
+		$.each(kvList, function (i, e) {
+			handleOne(e[0], e[1]);
+		});
+	}
+
+	function handleOne(k,v) {
 		if (v == null || v === "")
 			return;
-		if (cond)
-			cond += " AND ";
-		cond += k + getop(v);
+		var arr = v.split(/\s+(and|or)\s+/i);
+		var str = '';
+		var bracket = false;
+		$.each(arr, function (i, v1) {
+			if ( (i % 2) == 1) {
+				str += ' ' + v1.toUpperCase() + ' ';
+				bracket = true;
+				return;
+			}
+			str += k + getop(v1);
+		});
+		if (bracket)
+			str = '(' + str + ')';
+		condArr.push(str);
 		//val[e.name] = escape(v);
 		//val[e.name] = v;
-	})
-	return cond;
+	}
+	return condArr.join(' AND ');
 }
 
 /**
@@ -2387,6 +2435,36 @@ function logout(dontReload)
 			reloadSite();
 	});
 }
+
+function mainInit()
+{
+	var tt_ = $('#my-tabMain');   
+
+	function getCurrentPage()
+	{
+		var pp = tt_.tabs('getSelected');   
+		var jpage = pp.find(".wui-page");
+		return jpage;
+	}
+
+	var opt = tt_.tabs('options');
+	$.extend(opt, {
+		onSelect: function (title) {
+			var jpage = getCurrentPage();
+			if (jpage.size() == 0)
+				return;
+			jpage.trigger('pageshow');
+		},
+		onBeforeClose: function (title) {
+			var jpage = getCurrentPage();
+			if (jpage.size() == 0)
+				return;
+			jpage.trigger('pagedestroy');
+		}
+	});
+}
+
+$(mainInit);
 
 // ========= END OF nsWUI ============
 }

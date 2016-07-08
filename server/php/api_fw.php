@@ -87,6 +87,7 @@ const API_ENTRY_PAGE = "api.php";
 global $X_RET; // maybe set by the caller
 global $X_RET_STR;
 
+const PAGE_SZ_LIMIT = 10000;
 // }}}
 
 // ====== ApiFw_: module internals {{{
@@ -708,6 +709,11 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 			}
 			if ($pagesz == 0)
 				$pagesz = 20;
+
+			$maxPageSz = min($accessCtl->getMaxPageSz(), PAGE_SZ_LIMIT);
+			if ($pagesz < 0 || $pagesz > $maxPageSz)
+				$pagesz = $maxPageSz;
+
 			if (isset($sqlConf["gres"])) {
 				$enablePartialQuery = false;
 			}
@@ -1025,11 +1031,15 @@ AccessControl简写为AC，同时AC也表示自动补全(AutoComplete).
 
 例如，在订单列表中需要展示用户名字段。设计文档中定义接口：
 
-	Ordr.query() -> tbl(id, ..., userName?, userPhone?, createTm?)
+	Ordr.query() -> tbl(id, dscr, ..., userName?, userPhone?, createTm?)
 
 query接口的"..."之后就是虚拟字段。后缀"?"表示是非缺省字段，即必须在"res"参数中指定才会返回，如：
 
 	Ordr.query(res="*,userName")
+
+在cond中可以直接使用虚拟字段，不管它是否在res中指定，如
+
+	Ordr.query(cond="userName LIKE 'jian%'", res="id,dscr")
 
 通过设置$vcolDefs实现这些关联字段：
 
@@ -1039,7 +1049,7 @@ query接口的"..."之后就是虚拟字段。后缀"?"表示是非缺省字段�
 			[
 				"res" => ["u.name AS userName", "u.phone AS userPhone"],
 				"join" => "INNER JOIN User u ON u.id=t0.userId",
-				// "default" => false, // 指定true表示Ordr.query在不指定res时默认会返回该字段。
+				// "default" => false, // 指定true表示Ordr.query在不指定res时默认会返回该字段。一般不建议设置为true.
 			],
 			[
 				"res" => ["log_cr.tm AS createTm"],
@@ -1234,10 +1244,32 @@ query接口的"..."之后就是虚拟字段。后缀"?"表示是非缺省字段�
 
 ## 其它
 
+### 编号自定义生成
+
 @fn AccessControl::onGenId() (for add) 指定添加对象时生成的id. 缺省返回0表示自动生成.
 
+### 缺省排序
+
+@fn AccessControl::getDefaultSort()  (for query)取缺省排序.
 @var AccessControl::$defaultSort ?= "t0.id" (for query)指定缺省排序.
 
+### 最大每页数据条数
+
+@fn AccessControl::getMaxPageSz()  (for query) 取最大每页数据条数。为非负整数。
+@var AccessControl::$maxPageSz ?= 100 (for query) 指定最大每页数据条数。值为负数表示取PAGE_SZ_LIMIT值.
+
+前端通过 {obj}.query(_pagesz)来指定每页返回多少条数据，缺省是20条，最高不可超过100条。当指定为负数时，表示按最大允许值=min($maxPageSz, PAGE_SZ_LIMIT)返回。
+PAGE_SZ_LIMIT目前定为10000条。如果还不够，一定是应用设计有问题。
+
+如果想返回每页超过100条数据，必须在后端设置，如：
+
+	class MyObj extends AccessControl
+	{
+		protected $maxPageSz = 1000; // 最大允许返回1000条
+		// protected $maxPageSz = -1; // 最大允许返回 PAGE_SZ_LIMIT 条
+	}
+
+@var PAGE_SZ_LIMIT =10000
  */
 
 # ====== functions {{{
@@ -1258,6 +1290,8 @@ class AccessControl
 	protected $hiddenFields = [];
 	# for query
 	protected $defaultSort = "t0.id";
+	# for query
+	protected $maxPageSz = 100;
 
 	# for get/query
 	# virtual columns
@@ -1454,6 +1488,10 @@ class AccessControl
 	{
 		return $this->defaultSort;
 	}
+	final public function getMaxPageSz()
+	{
+		return $this->maxPageSz <0? PAGE_SZ_LIMIT: $this->maxPageSz;
+	}
 
 	private function handleRow(&$rowData)
 	{
@@ -1480,6 +1518,7 @@ class AccessControl
 				if (strpos($col, '.') !== false)
 					return $col;
 				if (isset($this->vcolMap[$col])) {
+					$this->addVCol($col, false, "-");
 					return $this->vcolMap[$col]["def"];
 				}
 				return "t0." . $col;
@@ -1566,7 +1605,7 @@ class AccessControl
 			}
 			$col = preg_replace_callback('/^\s*(\w+)/', function ($ms) {
 				$col1 = $ms[1];
-				if ($this->addVCol($col1, true) !== false)
+				if ($this->addVCol($col1, true, '-') !== false)
 					return $col1;
 				return "t0." . $col1;
 			}, $col);

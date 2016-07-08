@@ -71,19 +71,21 @@ function setupGenCodeButton(btnGenCode, txtPhone)
 			var $btn = btnGenCode;
 			$btn.prop("disabled", true);
 			$btn.addClass("disabled");
+			var btnText = $btn.text();
 
 			var n = 60;
 			var tv = setInterval(function () {
 				var s = "";
 				-- n;
 				if (n > 0) 
-					s = "(" + n + "秒后可用)";
+					s = n + "秒后可用";
 				else {
 					clearInterval(tv);
 					$btn.prop("disabled", false);
 					$btn.removeClass("disabled");
+					s = btnText;
 				}
-				$btn.find(".p-prompt").text(s);
+				$btn.text(s);
 			}, 1000);
 		}
 	}
