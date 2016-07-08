@@ -340,6 +340,18 @@ function initWUI()
 
 ### 定义页面初始化函数
 
+打开页面后，页面的生存周期如下：
+
+@key pagecreate,pageshow,pagedestroy 页面事件
+@key wui-pageName 属性：页面名
+@key .wui-page 页面类
+
+- 页面加载成功后，会为页面添加类"wui-page", 并将属性wui-pageName设置为页面名，然后调用 my-initfn指定的初始化函数，如initPageOrder
+- 触发pagecreate事件
+- 触发pageshow事件, 以后每次页面切换到当前页面，也会触发pageshow事件。
+- 在关闭页面时，触发pagedestroy事件
+- 注意：没有pagebeforeshow, pagehide事件
+
 订单列表页的初始化，需要将列表页(代码中jpage)、列表(代码中jtbl)与详情页(代码中jdlg)关联起来，实现对话增删改查各项功能。
 
 	function initPageOrder() 
@@ -1617,7 +1629,12 @@ function showPage(pageName, title, paramArr)
 	var jpage = $(sel);
 	if (jpage.length > 0) {
 		var jpageNew = jpage.clone().appendTo(jtab);
+		jpageNew.addClass('wui-page');
+		jpageNew.attr("wui-pageName", pageName);
 		callInitfn(jpageNew, paramArr);
+
+		jpageNew.trigger('pagecreate');
+		jpageNew.trigger('pageshow');
 	}
 	else {
 		jtab.append("开发中");
@@ -2418,6 +2435,36 @@ function logout(dontReload)
 			reloadSite();
 	});
 }
+
+function mainInit()
+{
+	var tt_ = $('#my-tabMain');   
+
+	function getCurrentPage()
+	{
+		var pp = tt_.tabs('getSelected');   
+		var jpage = pp.find(".wui-page");
+		return jpage;
+	}
+
+	var opt = tt_.tabs('options');
+	$.extend(opt, {
+		onSelect: function (title) {
+			var jpage = getCurrentPage();
+			if (jpage.size() == 0)
+				return;
+			jpage.trigger('pageshow');
+		},
+		onBeforeClose: function (title) {
+			var jpage = getCurrentPage();
+			if (jpage.size() == 0)
+				return;
+			jpage.trigger('pagedestroy');
+		}
+	});
+}
+
+$(mainInit);
 
 // ========= END OF nsWUI ============
 }
