@@ -1834,7 +1834,7 @@ function getop(v)
 /**
 @fn WUI.getQueryCond(kvList)
 
-@param kvList 键值对，值中支持操作符及通配符。
+@param kvList {key=>value}, 键值对，值中支持操作符及通配符。也支持格式 [ [key, value] ], 这时允许key有重复。
 
 根据kvList生成BPQ协议定义的{obj}.query的cond参数。
 
@@ -1846,6 +1846,12 @@ function getop(v)
 有多项时，每项之间以"AND"相连，以上定义将返回如下内容：
 
 	"phone='13712345678' AND id>100 AND addr LIKE '上海*' AND picId IS NULL"
+
+示例二：
+
+	var kvList = [ ["phone", "13712345678"], ["id", ">100"], ["addr", "上海*"], ["picId", "null"] ];
+	WUI.getQueryCond(kvList); // 结果同上。
+
 
 设置值时，支持以下格式：
 
@@ -1866,7 +1872,16 @@ self.getQueryCond = getQueryCond;
 function getQueryCond(kvList)
 {
 	var condArr = [];
-	$.each(kvList, function(k,v) {
+	if ($.isPlainObject(kvList)) {
+		$.each(kvList, handleOne);
+	}
+	else if ($.isArray(kvList)) {
+		$.each(kvList, function (i, e) {
+			handleOne(e[0], e[1]);
+		});
+	}
+
+	function handleOne(k,v) {
 		if (v == null || v === "")
 			return;
 		var arr = v.split(/\s+(and|or)\s+/i);
@@ -1885,7 +1900,7 @@ function getQueryCond(kvList)
 		condArr.push(str);
 		//val[e.name] = escape(v);
 		//val[e.name] = v;
-	})
+	}
 	return condArr.join(' AND ');
 }
 

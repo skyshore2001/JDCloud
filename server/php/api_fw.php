@@ -1605,7 +1605,7 @@ class AccessControl
 			}
 			$col = preg_replace_callback('/^\s*(\w+)/', function ($ms) {
 				$col1 = $ms[1];
-				if ($this->addVCol($col1, true) !== false)
+				if ($this->addVCol($col1, true, '-') !== false)
 					return $col1;
 				return "t0." . $col1;
 			}, $col);
