@@ -61,6 +61,8 @@ api.php可以单独执行，也可直接被调用，如
 	$ret = callSvc("genVoucher");
 	// 如果没有异常，返回数据；否则调用指定的errorFn函数(未指定则调用errQuit)
 
+@see callSvc
+
 ## 常用操作
 
 错误处理
@@ -85,6 +87,7 @@ const API_ENTRY_PAGE = "api.php";
 global $X_RET; // maybe set by the caller
 global $X_RET_STR;
 
+const PAGE_SZ_LIMIT = 10000;
 // }}}
 
 // ====== ApiFw_: module internals {{{
@@ -684,7 +687,7 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 		$sqlConf = $accessCtl->sqlConf;
 
 		$enablePaging = true;
-		if ($forGet || $wantArray || isset($sqlConf["gres"])) {
+		if ($forGet || $wantArray) {
 			$enablePaging = false;
 		}
 		if ($forGet) {
@@ -706,6 +709,14 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 			}
 			if ($pagesz == 0)
 				$pagesz = 20;
+
+			$maxPageSz = min($accessCtl->getMaxPageSz(), PAGE_SZ_LIMIT);
+			if ($pagesz < 0 || $pagesz > $maxPageSz)
+				$pagesz = $maxPageSz;
+
+			if (isset($sqlConf["gres"])) {
+				$enablePartialQuery = false;
+			}
 		}
 
 		$orderSql = $sqlConf["orderby"];
@@ -767,7 +778,6 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 		foreach ($sqlConf["cond"] as $cond) {
 			if ($cond == null)
 				continue;
-			$condSql = html_entity_decode($condSql);
 			if (strlen($condSql) > 0)
 				$condSql .= " AND ";
 			if (stripos($cond, " and ") !== false || stripos($cond, " or ") !== false)
@@ -820,6 +830,11 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 			}
 			else {
 				$sql .= "\nLIMIT " . ($pagekey-1)*$pagesz . "," . $pagesz;
+			}
+		}
+		else {
+			if ($pagesz) {
+				$sql .= "\nLIMIT " . $pagesz;
 			}
 		}
 
@@ -1016,11 +1031,15 @@ AccessControl简写为AC，同时AC也表示自动补全(AutoComplete).
 
 例如，在订单列表中需要展示用户名字段。设计文档中定义接口：
 
-	Ordr.query() -> tbl(id, ..., userName?, userPhone?, createTm?)
+	Ordr.query() -> tbl(id, dscr, ..., userName?, userPhone?, createTm?)
 
 query接口的"..."之后就是虚拟字段。后缀"?"表示是非缺省字段，即必须在"res"参数中指定才会返回，如：
 
 	Ordr.query(res="*,userName")
+
+在cond中可以直接使用虚拟字段，不管它是否在res中指定，如
+
+	Ordr.query(cond="userName LIKE 'jian%'", res="id,dscr")
 
 通过设置$vcolDefs实现这些关联字段：
 
@@ -1030,7 +1049,7 @@ query接口的"..."之后就是虚拟字段。后缀"?"表示是非缺省字段�
 			[
 				"res" => ["u.name AS userName", "u.phone AS userPhone"],
 				"join" => "INNER JOIN User u ON u.id=t0.userId",
-				// "default" => false, // 指定true表示Ordr.query在不指定res时默认会返回该字段。
+				// "default" => false, // 指定true表示Ordr.query在不指定res时默认会返回该字段。一般不建议设置为true.
 			],
 			[
 				"res" => ["log_cr.tm AS createTm"],
@@ -1225,10 +1244,32 @@ query接口的"..."之后就是虚拟字段。后缀"?"表示是非缺省字段�
 
 ## 其它
 
+### 编号自定义生成
+
 @fn AccessControl::onGenId() (for add) 指定添加对象时生成的id. 缺省返回0表示自动生成.
 
+### 缺省排序
+
+@fn AccessControl::getDefaultSort()  (for query)取缺省排序.
 @var AccessControl::$defaultSort ?= "t0.id" (for query)指定缺省排序.
 
+### 最大每页数据条数
+
+@fn AccessControl::getMaxPageSz()  (for query) 取最大每页数据条数。为非负整数。
+@var AccessControl::$maxPageSz ?= 100 (for query) 指定最大每页数据条数。值为负数表示取PAGE_SZ_LIMIT值.
+
+前端通过 {obj}.query(_pagesz)来指定每页返回多少条数据，缺省是20条，最高不可超过100条。当指定为负数时，表示按最大允许值=min($maxPageSz, PAGE_SZ_LIMIT)返回。
+PAGE_SZ_LIMIT目前定为10000条。如果还不够，一定是应用设计有问题。
+
+如果想返回每页超过100条数据，必须在后端设置，如：
+
+	class MyObj extends AccessControl
+	{
+		protected $maxPageSz = 1000; // 最大允许返回1000条
+		// protected $maxPageSz = -1; // 最大允许返回 PAGE_SZ_LIMIT 条
+	}
+
+@var PAGE_SZ_LIMIT =10000
  */
 
 # ====== functions {{{
@@ -1249,6 +1290,8 @@ class AccessControl
 	protected $hiddenFields = [];
 	# for query
 	protected $defaultSort = "t0.id";
+	# for query
+	protected $maxPageSz = 100;
 
 	# for get/query
 	# virtual columns
@@ -1445,6 +1488,10 @@ class AccessControl
 	{
 		return $this->defaultSort;
 	}
+	final public function getMaxPageSz()
+	{
+		return $this->maxPageSz <0? PAGE_SZ_LIMIT: $this->maxPageSz;
+	}
 
 	private function handleRow(&$rowData)
 	{
@@ -1471,6 +1518,7 @@ class AccessControl
 				if (strpos($col, '.') !== false)
 					return $col;
 				if (isset($this->vcolMap[$col])) {
+					$this->addVCol($col, false, "-");
 					return $this->vcolMap[$col]["def"];
 				}
 				return "t0." . $col;
@@ -1557,7 +1605,7 @@ class AccessControl
 			}
 			$col = preg_replace_callback('/^\s*(\w+)/', function ($ms) {
 				$col1 = $ms[1];
-				if ($this->addVCol($col1, true) !== false)
+				if ($this->addVCol($col1, true, '-') !== false)
 					return $col1;
 				return "t0." . $col1;
 			}, $col);
@@ -1654,7 +1702,7 @@ class AccessControl
 			$colName = $ms[2];
 			$def = $res;
 		}
-		else if (preg_match('/^(.*?)\s+(?:as\s+)?(\w+)\s*$/i', $res, $ms)) {
+		else if (preg_match('/^(.*?)\s+(?:as\s+)?(\w+)\s*$/is', $res, $ms)) {
 			$colName = $ms[2];
 			$def = $ms[1];
 		}
@@ -1949,7 +1997,7 @@ class ApiApp extends AppBase
 		global $X_RET;
 		// 以下过程不允许抛出异常
 		$batchApiApp = new BatchApiApp($this, $useTrans);
-		if ($useTrans)
+		if ($useTrans && !$DBH->inTransaction())
 			$DBH->beginTransaction();
 		$solo = ApiFw_::$SOLO;
 		ApiFw_::$SOLO = false;
@@ -2001,7 +2049,7 @@ class ApiApp extends AppBase
 	public function call($ac, $useTrans)
 	{
 		global $DBH;
-		if ($useTrans)
+		if ($useTrans && ! $DBH->inTransaction())
 			$DBH->beginTransaction();
 		$fn = "api_$ac";
 		if (preg_match('/^(\w+)\.(add|set|get|del|query)$/', $ac, $ms)) {
@@ -2018,7 +2066,7 @@ class ApiApp extends AppBase
 		else {
 			throw new MyException(E_PARAM, "Bad request - unknown ac: {$ac}");
 		}
-		if ($useTrans)
+		if ($useTrans && $DBH && $DBH->inTransaction())
 			$DBH->commit();
 		if (!isset($ret))
 			$ret = "OK";
@@ -2133,17 +2181,46 @@ class ApiApp extends AppBase
 	}
 }
 
-function callSvc($ac, $xparam = null)
+/**
+@fn callSvc($ac?, $urlParam?, $postParam?, $cleanCall?=false, $hideResult?=false)
+
+直接调用接口，返回数据。如果出错，将调用$GLOBALS['errorFn'] (缺省为errQuit).
+
+@param $cleanCall Boolean. 如果为true, 则不使用现有的$_GET, $_POST等变量中的值。
+@param $hideResult Boolean. 如果为true, 不输出结果。
+ */
+function callSvc($ac = null, $urlParam = null, $postParam = null, $cleanCall = false, $hideResult = false)
 {
-	$_GET["_ac"] = $ac;
-	if ($xparam) {
-		foreach ($xparam as $k=>$v) {
+	global $DBH; // 避免api->exec完成后关闭数据库连接
+	$bak = [$_GET, $_POST, $_REQUEST, ApiFw_::$SOLO, $DBH];
+
+	if ($cleanCall) {
+		$_GET = [];
+		$_POST = [];
+		$_REQUEST = [];
+	}
+	if ($ac)
+		$_GET["_ac"] = $ac;
+	if ($urlParam) {
+		foreach ($urlParam as $k=>$v) {
 			setParam($k, $v);
 		}
+	}
+	if ($postParam) {
+		foreach ($postParam as $k=>$v) {
+			$_POST[$k] = $v;
+		}
+	}
+	if ($hideResult) {
+		ApiFw_::$SOLO = false;
 	}
 
 	$api = new ApiApp();
 	$ret = $api->exec();
+
+	global $X_RET_STR;
+	$X_RET_STR = null;
+	list($_GET, $_POST, $_REQUEST, ApiFw_::$SOLO, $DBH) = $bak;
 	return $ret;
 }
 #}}}

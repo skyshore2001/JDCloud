@@ -35,8 +35,52 @@ var Color = {
 //}}}
 
 // ==== app toolkit {{{
-// jp: parent dom that contains checkbox and hidden
-// sep?=',': the seperate
+/**
+@fn checkboxToHidden(jp, sep?=',')
+
+@param jp  jquery结点
+@param sep?=','  分隔符，默认为逗号
+
+用于在对象详情对话框中，以一组复选框(checkbox)来对应一个逗号分隔式列表的字段。
+例如对象Employee中有一个“权限列表”字段perms定义如下：
+
+	perms:: List(perm)。权限列表，可用值为: item-上架商户管理权限, emp-普通员工权限, mgr-经理权限。
+
+现在以一组checkbox来在表达perms字段，希望字段中有几项就将相应的checkbox选中，例如值"emp,mgr"表示同时具有emp与mgr权限，显示时应选中这两项。
+定义HTML如下：
+
+	<div id="dlgEmployee" my-obj="Employee" my-initfn="initDlgEmployee" title="商户员工">
+		...
+		<div id="divPerms">
+			<input type="hidden" name="perms">
+			<label><input type="checkbox" value="item">上架商品管理</label><br>
+			<label><input type="checkbox" value="emp" checked>员工:查看,操作订单(默认)</label><br>
+			<label><input type="checkbox" value="mgr">商户管理</label><br>
+		</div>
+	</div>
+
+注意：
+
+- divPerms块中包含一个hidden对象和一组checkbox. hidden对象的name设置为字段名, 每个checkbox的value字段设置为每一项的内部名字。
+
+在JS中调用如下：
+
+	function initDlgEmployee()
+	{
+		var jdlg = $(this);
+		var jfrm = jdlg.find("form");
+		jfrm.on("loaddata", function (ev, data) {
+			// 显示时perms字段自动存在hidden对象中，通过调用 hiddenToCheckbox将相应的checkbox选中
+			hiddenToCheckbox(jfrm.find("#divPerms"));
+		})
+		.on("savedata", function (ev) {
+			// 保存时收集checkbox选中的内容，存储到hidden对象中。
+			checkboxToHidden(jfrm.find("#divPerms"));
+		});
+	}
+
+@see hiddenToCheckbox
+*/
 function checkboxToHidden(jp, sep)
 {
 	if (sep == null)
@@ -50,7 +94,16 @@ function checkboxToHidden(jp, sep)
 	jp.find("input[type=hidden]").val(val.join(sep));
 }
 
-// jp: parent dom that contains checkbox and hidden
+/**
+@fn hiddenToCheckbox(jp, sep?=",")
+
+@param jp  jquery结点
+@param sep?=','  分隔符，默认为逗号
+
+用于在对象详情对话框中，以一组复选框(checkbox)来对应一个逗号分隔式列表的字段。
+
+@see checkboxToHidden （有示例）
+*/
 function hiddenToCheckbox(jp, sep)
 {
 	if (sep == null)
@@ -79,16 +132,100 @@ function arrayToImg(jp, arr)
 	});
 }
 
-/*
-			<tr>
-				<td>门店照片</td>  
-				<td id="divStorePics">
-					<input type="hidden" name="pics">
-					<div class="imgs"></div><input type="file" accept="image/*" multiple onchange="onChooseFile.apply(this)">
-				</td>  
-			</tr> 
+/**
+@fn hiddenToImg(jp, sep?=",")
+
+用于在对象详情对话框中，展示关联图片字段。图片可以为单张或多张。
+
+以下是一个带图片的商户表设计，里面有两个字段picId与pics，一个显示单张图片，一个显示一组图片。
+
+	@Store: id, name, picId, pics
+
+	picId:: Integer. 商户头像。
+	pics:: List(Integer). 商户图片列表，格式如"101,102,103".
+
+要显示单张图片，可编写HTML如下：
+
+	<div id="dlgStore" my-obj="Store" title="商户" my-initfn="initDlgStore">
+		...
+		<tr>
+			<td>商户头像</td>
+			<td id="divStorePicId">
+				<input type="hidden" name="picId">
+				<div class="imgs"></div>
+				<input type="file" accept="image/*" onchange="onChooseFile.apply(this)">
+			</td>
+		</tr> 
+	</div>
+
+注意：
+
+- 在divStorePicId中，包括一个input[type=hidden]对象，用于保存原始字段值；一个div.imgs，用于显示图片；一个input[type=file]，用于选择图片。
+- 为input[type=file]组件设置onchange方法，以便在选择图片后，压缩图片并显示到div.imgs中。
+
+要显示多张图片，可编写HTML如下：
+
+	<tr>
+		<td>门店照片</td>
+		<td id="divStorePics">
+			<input type="hidden" name="pics">
+			<div class="imgs"></div>
+			<input type="file" accept="image/*" multiple onchange="onChooseFile.apply(this)">
+			<p>（图片上点右键，可以删除图片等操作）</p>
+		</td>
+	</tr>
+
+- 与上面显示单张图片的例子比较，只要将input[type=file]组件设置multiple属性，以便可以一次选择多个图片，
+ 同时onChooseFile函数会根据是否有该属性，决定添加图片还是覆盖原有图片。
+
+为了可以做删除图片等操作，可以在对话框中再加个右键菜单，比如
+
+	<div id="mnuPics">
+		<div id="mnuDelPic">删除图片</div>
+	</div>
+
+JS逻辑如下：
+	
+	function initDlgStore()
+	{
+		var jdlg = $(this);
+		var jmenu = jdlg.find("#mnuPics");
+		
+		var jfrm = jdlg.find("form");
+		jfrm.on("loaddata", function (ev, data) {
+			// 加载图片
+			hiddenToImg(jfrm.find("#divStorePics"));
+			hiddenToImg(jfrm.find("#divStorePicId"));
+		})
+		.on("savedata", function (ev) {
+			// 保存图片
+			imgToHidden(jfrm.find("#divStorePics"));
+			imgToHidden(jfrm.find("#divStorePicId"));
+		});
+
+		// 设置右键菜单，比如删除图片
+		var curImg;
+		jmenu.menu({
+			onClick: function (item) {
+				var jimg = $(curImg);
+				switch (item.id) {
+				case "mnuDelPic":
+					jimg.remove();
+					break;
+				}
+			}
+		});
+		jdlg.on("contextmenu", "img", function (ev) {
+			ev.preventDefault();
+			jmenu.menu('show', {left: ev.pageX, top: ev.pageY});
+			curImg = this;
+		});
+	}
+
+ 
+@see imgToHidden
+@see onChooseFile
 */
-// sep?=','
 function hiddenToImg(jp, sep)
 {
 	if (sep == null)
@@ -97,6 +234,15 @@ function hiddenToImg(jp, sep)
 	arrayToImg(jp, val);
 }
 
+/**
+@fn imgToHidden(jp, sep?=",")
+
+用于在对象详情对话框中，展示关联图片字段。图片可以为单张或多张。
+
+会先调用upload(fmt=raw_b64)接口保存所有改动的图片，然后将picId存储到hidden字段中。
+
+@see hiddenToImg 有示例
+*/
 function imgToHidden(jp, sep)
 {
 	if (sep == null)
@@ -129,9 +275,21 @@ function addTooltip(html, tooltip)
 	return "<span title='" + tooltip + "'>" + html + "</span>";
 }
 
+/**
+@fn onChooseFile()
+
+与hiddenToImg/imgToHidden合用，在对话框上显示一个图片字段。
+在文件输入框中，选中一个文件后，调用此方法，可将图片压缩后显示到指定的img标签中(div.imgs)。
+
+使用lrz组件进行图片压缩，最大宽高不超过1280px。然后以base64字串方式将图片显示到一个img组件中。
+
+TODO: 添加图片压缩参数，图片框显示大小等。
+
+@see hiddenToImg
+*/
 function onChooseFile()
 {
-	var dfd = $.getScriptWithCache("js/lrz.mobile.min.js");
+	var dfd = $.getScriptWithCache("lib/lrz.mobile.min.js");
 	var picFiles = this.files;
 	var jdiv = $(this).parent().find("div.imgs");
 
@@ -163,6 +321,25 @@ function onChooseFile()
 	})
 }
 
+/**
+@fn searchField(o, param)
+
+在详情页对话框中，以某字段作为查询条件来查询。
+
+@param o 当前对象。一般在onclick事件中调用时，直接填写this.
+@param param 查询参数，如 {userPhone: "13712345678"}，可以指定多个参数。
+
+示例：在订单表中，显示用户手机号，边上再增加一个按钮“查询该手机所有订单”，点击就以当前显示的手机号查询所有订单：
+
+	<div id="dlgOrder" my-obj="Ordr" my-initfn="initDlgOrder" title="用户订单" style="padding:20px 40px 20px 40px;width:520px;height:500px;">  
+		<form method="POST">
+			用户手机号 <input name="userPhone" class="easyui-validatebox" data-options="validType:'usercode'">
+			<input class="notForFind" type=button onClick="searchField(this, {userPhone: this.form.userPhone.value});" value="查询该手机所有订单">
+		</form>
+	</div>
+
+@see WUI.getQueryCond 值支持比较运行符等多种格式，可参考这里定义。
+*/
 function searchField(o, param)
 {
 	var jdlg = $(o).getAncestor(".window-body");

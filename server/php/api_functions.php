@@ -350,7 +350,7 @@ function getUploadTypeInfo($type)
 
 function api_upload()
 {
-	checkAuth(AUTH_USER | AUTH_STORE);
+	checkAuth(AUTH_USER | AUTH_EMP);
 	#$uid = $_SESSION["uid"];
 	$fmt = param("fmt");
 	if ($fmt === 'raw' || $fmt === 'raw_b64')

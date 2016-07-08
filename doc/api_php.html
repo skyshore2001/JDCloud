@@ -6,7 +6,7 @@
 </head>
 
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2016-06-20</div>
+<div>最后更新：2016-07-08</div>
 <h2>Modules</h2>
 <div>
 <a href="#app_fw">app_fw (module)</a><br>
@@ -26,6 +26,7 @@
 <a href="#AccessControl::$defaultSort">AccessControl::$defaultSort (var)</a><br>
 <a href="#AccessControl::$hiddenFields">AccessControl::$hiddenFields (var)</a><br>
 <a href="#AccessControl::$id">AccessControl::$id (var)</a><br>
+<a href="#AccessControl::$maxPageSz">AccessControl::$maxPageSz (var)</a><br>
 <a href="#AccessControl::$onAfterActions">AccessControl::$onAfterActions (var)</a><br>
 <a href="#AccessControl::$readonlyFields">AccessControl::$readonlyFields (var)</a><br>
 <a href="#AccessControl::$readonlyFields2">AccessControl::$readonlyFields2 (var)</a><br>
@@ -37,6 +38,8 @@
 <a href="#AccessControl::addJoin">AccessControl::addJoin (fn)</a><br>
 <a href="#AccessControl::addRes">AccessControl::addRes (fn)</a><br>
 <a href="#AccessControl::addVCol">AccessControl::addVCol (fn)</a><br>
+<a href="#AccessControl::getDefaultSort">AccessControl::getDefaultSort (fn)</a><br>
+<a href="#AccessControl::getMaxPageSz">AccessControl::getMaxPageSz (fn)</a><br>
 <a href="#AccessControl::onAfter">AccessControl::onAfter (fn)</a><br>
 <a href="#AccessControl::onGenId">AccessControl::onGenId (fn)</a><br>
 <a href="#AccessControl::onHandleRow">AccessControl::onHandleRow (fn)</a><br>
@@ -50,6 +53,7 @@
 <a href="#DirectReturn">DirectReturn (class)</a><br>
 <a href="#MOCK_MODE">MOCK_MODE (var)</a><br>
 <a href="#MyException">MyException (class)</a><br>
+<a href="#PAGE_SZ_LIMIT">PAGE_SZ_LIMIT (var)</a><br>
 <a href="#P_DB">P_DB (key)</a><br>
 <a href="#P_DBCRED">P_DBCRED (key)</a><br>
 <a href="#P_SESSION_DIR">P_SESSION_DIR (key)</a><br>
@@ -59,6 +63,7 @@
 <a href="#addLog">addLog (fn)</a><br>
 <a href="#api_fw">api_fw (module)</a><br>
 <a href="#app_fw">app_fw (module)</a><br>
+<a href="#callSvc">callSvc (fn)</a><br>
 <a href="#dbConfirmFn">dbConfirmFn (key)</a><br>
 <a href="#dbconn">dbconn (fn)</a><br>
 <a href="#errQuit">errQuit (fn)</a><br>
@@ -462,6 +467,7 @@ require_once("api.php");
 $GLOBALS["errorFn"] = function($code, $msg, $msg2=null) {...}
 $ret = callSvc("genVoucher");
 // 如果没有异常，返回数据；否则调用指定的errorFn函数(未指定则调用errQuit)</code></pre>
+<p class="see"><strong>@see <a href="#callSvc">callSvc</a></strong> </p>
 <h4>4 常用操作</h4>
 <p>错误处理</p>
 <p class="see"><strong>@see <a href="#MyException">MyException</a></strong> </p>
@@ -626,9 +632,11 @@ $_SESSION[&quot;uid&quot;]是在用户登录后设置的，可参考login接口�
 在query,get操作中可以通过res参数指定需要返回的每个字段，这些字段可能是普通列名(col)/虚拟列名(vcol)/子对象(subobj)名。</p>
 <h5>2.1 关联字段</h5>
 <p>例如，在订单列表中需要展示用户名字段。设计文档中定义接口：</p>
-<pre><code>Ordr.query() -&gt; tbl(id, ..., userName?, userPhone?, createTm?)</code></pre>
+<pre><code>Ordr.query() -&gt; tbl(id, dscr, ..., userName?, userPhone?, createTm?)</code></pre>
 <p>query接口的&quot;...&quot;之后就是虚拟字段。后缀&quot;?&quot;表示是非缺省字段，即必须在&quot;res&quot;参数中指定才会返回，如：</p>
 <pre><code>Ordr.query(res="*,userName")</code></pre>
+<p>在cond中可以直接使用虚拟字段，不管它是否在res中指定，如</p>
+<pre><code>Ordr.query(cond="userName LIKE 'jian%'", res="id,dscr")</code></pre>
 <p>通过设置$vcolDefs实现这些关联字段：</p>
 <pre><code>class AC1_Ordr extends AccessControl
 {
@@ -636,7 +644,7 @@ $_SESSION[&quot;uid&quot;]是在用户登录后设置的，可参考login接口�
         [
             "res" =&gt; ["u.name AS userName", "u.phone AS userPhone"],
             "join" =&gt; "INNER JOIN User u ON u.id=t0.userId",
-            // "default" =&gt; false, // 指定true表示Ordr.query在不指定res时默认会返回该字段。
+            // "default" =&gt; false, // 指定true表示Ordr.query在不指定res时默认会返回该字段。一般不建议设置为true.
         ],
         [
             "res" =&gt; ["log_cr.tm AS createTm"],
@@ -782,8 +790,23 @@ orderLog:: {id, tm, dscr, ..., empName} 订单日志子表。</code></pre>
 }</code></pre>
 <p class="fn"><strong>@fn <a id="AccessControl::onHandleRow">AccessControl::onHandleRow</a></strong> (&$rowData) (for get/query) 在onAfter之前运行，用于修改行中字段。</p>
 <h4>5 其它</h4>
+<h5>5.1 编号自定义生成</h5>
 <p class="fn"><strong>@fn <a id="AccessControl::onGenId">AccessControl::onGenId</a></strong> () (for add) 指定添加对象时生成的id. 缺省返回0表示自动生成.</p>
-<p class="var"><strong>@var <a id="AccessControl::$defaultSort">AccessControl::$defaultSort</a></strong>  ?= "t0.id" (for query)指定缺省排序.</p><hr>
+<h5>5.2 缺省排序</h5>
+<p class="fn"><strong>@fn <a id="AccessControl::getDefaultSort">AccessControl::getDefaultSort</a></strong> ()  (for query)取缺省排序.</p>
+<p class="var"><strong>@var <a id="AccessControl::$defaultSort">AccessControl::$defaultSort</a></strong>  ?= "t0.id" (for query)指定缺省排序.</p>
+<h5>5.3 最大每页数据条数</h5>
+<p class="fn"><strong>@fn <a id="AccessControl::getMaxPageSz">AccessControl::getMaxPageSz</a></strong> ()  (for query) 取最大每页数据条数。为非负整数。</p>
+<p class="var"><strong>@var <a id="AccessControl::$maxPageSz">AccessControl::$maxPageSz</a></strong>  ?= 100 (for query) 指定最大每页数据条数。值为负数表示取PAGE_SZ_LIMIT值.</p>
+<p>前端通过 {obj}.query(_pagesz)来指定每页返回多少条数据，缺省是20条，最高不可超过100条。当指定为负数时，表示按最大允许值=min($maxPageSz, PAGE_SZ_LIMIT)返回。<br />
+PAGE_SZ_LIMIT目前定为10000条。如果还不够，一定是应用设计有问题。</p>
+<p>如果想返回每页超过100条数据，必须在后端设置，如：</p>
+<pre><code>class MyObj extends AccessControl
+{
+    protected $maxPageSz = 1000; // 最大允许返回1000条
+    // protected $maxPageSz = -1; // 最大允许返回 PAGE_SZ_LIMIT 条
+}</code></pre>
+<p class="var"><strong>@var <a id="PAGE_SZ_LIMIT">PAGE_SZ_LIMIT</a></strong>  =10000</p><hr>
 <h2 id="AccessControl::addRes">@fn AccessControl::addRes($res, $analyzeCol=true)</h2>
 <p>添加列或计算列. </p>
 <p>注意: </p>
@@ -827,5 +850,9 @@ q:: 查询条件，值为"paid"时，查询10天内已付款的订单。且结�
 <p class="return"><strong>@return Boolean</strong>  T/F</p>
 <p>用于AccessControl子类添加已在vcolDefs中定义的vcol. 一般应先考虑调用addRes(col)函数.</p>
 <p class="see"><strong>@see <a href="#AccessControl::addRes">AccessControl::addRes</a></strong> </p><hr>
-<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-06-20T09:34:46+08:00</div>
+<h2 id="callSvc">@fn callSvc($ac?, $urlParam?, $postParam?, $cleanCall?=false, $hideResult?=false)</h2>
+<p>直接调用接口，返回数据。如果出错，将调用$GLOBALS['errorFn'] (缺省为errQuit).</p>
+<p class="param"><strong>@param $cleanCall</strong>  Boolean. 如果为true, 则不使用现有的$_GET, $_POST等变量中的值。</p>
+<p class="param"><strong>@param $hideResult</strong>  Boolean. 如果为true, 不输出结果。</p><hr>
+<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-07-08T15:09:39+08:00</div>
 </html>

@@ -16,7 +16,6 @@ html, body {
 	left: 0;
 	overflow: hidden;
 	-webkit-overflow-scrolling: touch;
-	z-index: -1;
 /*	display: flex;
 	flex-direction: column; */
 }
@@ -244,10 +243,6 @@ html, body {
 	background-color: #eee;
 }
 
-.mui-menu li:last-child:after {
-	display: none;
-}
-
 .mui-menu li:hover {
 	background-color: #eee;
 }
@@ -315,3 +310,6 @@ html, body {
 	white-space: nowrap;
 }
 
+.hidden {
+	display: none;
+}

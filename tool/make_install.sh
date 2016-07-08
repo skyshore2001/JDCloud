@@ -83,14 +83,14 @@ if (( doUpload )) ; then
 			read -p '!!! 输入线上版本号，留空会上传所有文件: ' ver
 		fi
 		if [[ -z $ver ]]; then
-			cmd=`git ls-files | $script getcmd`
+			cmd=$(git ls-files | $script getcmd) || exit
 		else
 			git diff $ver head --name-only --diff-filter=AM > $tmpfile
 			if (( $? != 0 )); then
 				unset ver
 				continue
 			fi
-			cmd=`$script getcmd < $tmpfile`
+			cmd=$($script getcmd < $tmpfile) || exit
 			if [[ -z $cmd ]]; then
 				echo "=== 服务器已是最新版本."
 				exit
@@ -137,13 +137,22 @@ use Cwd 'abs_path';
 if ($ARGV[0] eq 'getcmd')
 {
 	%files = (); # dir=>name
+	@badfiles = ();
 	while (<STDIN>) {
 		chomp;
+		if (/\s/) {
+			push @badfiles, $_;
+			next;
+		}
 #		s/^..\s+//; # e.g. git status -b: "A  m/images/ui/icon-svcid-1.png"
 #		s/.+?->\s+//; # e.g. "R  web/js/app.js -> web/js/app_fw.js"
 		$dir = dirname($_);
 		$files{$dir} = [] if !exists($files{$dir});
 		push @{$files{$dir}}, $_;
+	}
+	if (@badfiles) {
+		print STDERR "*** bad filename:\n" . join("\n", @badfiles) . "\n";
+		exit 1;
 	}
 
 	my $url = $ENV{FTP_PATH};

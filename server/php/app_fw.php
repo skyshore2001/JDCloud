@@ -348,11 +348,12 @@ function param($name, $defVal = null, $col = null)
 	# check type
 	if (isset($ret) && is_string($ret)) {
 		// avoid XSS attack
-		$ret = htmlEscape($ret);
+		if (! startsWith($name, "cond"))
+			$ret = htmlEscape($ret);
 		if ($type === "s") {
 		}
 		elseif ($type === "i") {
-			if (! ctype_digit($ret))
+			if (! is_numeric($ret))
 				throw new MyException(E_PARAM, "Bad Request - integer param `$name`=`$ret`.");
 			$ret = intval($ret);
 		}
@@ -1359,11 +1360,17 @@ class AppFw_
 		if (!isset($TEST_MODE)) {
 			$TEST_MODE = param("_test/i", isCLIServer() || isCLI() || hasSignFile("CFG_TEST_MODE")?1:0);
 		}
+		if ($TEST_MODE) {
+			header("X-Daca-Test-Mode: $TEST_MODE");
+		}
 
 		global $MOCK_MODE;
 		if (!isset($MOCK_MODE)) {
 			$MOCK_MODE = hasSignFile("CFG_MOCK_MODE")
 				|| ($TEST_MODE && hasSignFile("CFG_MOCK_T_MODE"));
+		}
+		if ($MOCK_MODE) {
+			header("X-Daca-Mock-Mode: $MOCK_MODE");
 		}
 
 		global $JSON_FLAG;

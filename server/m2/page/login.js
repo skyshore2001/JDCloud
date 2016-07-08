@@ -6,7 +6,10 @@ function initPageLogin()
 	MUI.setFormSubmit(jf, handleLogin);
 
 	setupGenCodeButton(jpage.find("#btnGenCode"), jpage.find("#txtPhone"));
-	jpage.find("#btnShowCode").click(btnShowCode_click);
+	// 在支持sms后删除注释部分
+	//if (g_data.mockMode) {
+		jpage.find("#btnShowCode").show().click(btnShowCode_click);
+	//}
 
 	function btnShowCode_click()
 	{

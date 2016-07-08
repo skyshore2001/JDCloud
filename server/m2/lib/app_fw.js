@@ -52,9 +52,10 @@ serverRev用于标识服务端版本，如果服务端版本升级，则应用�
 
 @key g_data.userInfo
 @key g_data.serverRev
+@key g_data.testMode,g_data.mockMode 测试模式和模拟模式
 
 */
-var g_data = {}; // {userInfo, serverRev}
+var g_data = {}; // {userInfo, serverRev?, testMode?, mockMode?}
 
 /**
 @var g_cfg
@@ -68,6 +69,18 @@ var g_data = {}; // {userInfo, serverRev}
 var g_cfg = { logAction: false };
 
 var m_appVer;
+
+/**
+@var BASE_URL
+
+设置应用的基本路径, 应以"/"结尾.
+
+当用于本地调试网页时, 可以临时修改它, 比如在app.js中临时设置:
+
+	var BASE_URL = "http://oliveche.com/jdcloud/";
+
+*/
+var BASE_URL = "../";
 //}}}
 
 // ====== app toolkit {{{
@@ -461,6 +474,25 @@ function getTimeDiffDscr(tm, tm1)
 		return Math.floor(diff) + "年前";
 	return "很久前";
 }
+
+/**
+@fn parseValue(str)
+
+如果str符合整数或小数，则返回相应类型。
+ */
+function parseValue(str)
+{
+	if (str == null)
+		return str;
+	var val = str;
+	if (/^-?[0-9]+$/.test(str)) {
+		val = parseInt(str);
+	}
+	if (/^-?[0-9.]+$/.test(str)) {
+		val = parseFloat(str);
+	}
+	return val;
+}
 // }}}
 
 // ====== app fw {{{
@@ -573,6 +605,9 @@ var E_ABORT=-100;
 ### 导航栏
 
 @key .mui-navbar 导航栏
+@key .mui-navbar.noactive
+
+默认行为是点击后添加active类（比如字体发生变化），如果不需要此行为，可再添加noactive类。
 
 ### 对话框
 
@@ -627,7 +662,20 @@ var E_ABORT=-100;
 
 对原生应用的额外增强包括：
 
-- 应用加载完成后，自动隐藏启动画面(SplashScreen)
+@key g_cfg.manualSplash
+
+- 应用加载完成后，自动隐藏启动画面(SplashScreen)。如果需要自行隐藏启动画面，可以设置
+
+		var g_cfg = {
+			manualSplash: true
+			...
+		}
+
+	然后开发者自己加载完后隐藏SplashScreen:
+
+		if (navigator.splashscreen && navigator.splashscreen.hide)
+			navigator.splashscreen.hide();
+
 - ios7以上, 框架自动为顶部状态栏留出20px高度的空间. 默认为白色，可以修改类mui-container的样式，如改为黑色：
 
 	.mui-container {
@@ -681,6 +729,26 @@ var E_ABORT=-100;
 
 	<div class="noSwipe"></div>
 
+## 跨域前端开发支持
+
+典型应用是, 在开发前端页面时, 本地无须运行任何后端服务器(如apache/iis/php等), 直接跨域连接远程接口进行开发.
+
+支持直接在浏览器中打开html/js文件运行应用.
+需要浏览器支持CORS相关设置. 以下以chrome为例介绍.
+例如, 远程接口的基础URL地址为 http://oliveche.com/jdcloud/
+
+- 为chrome安装可设置CORS的插件(例如ForceCORS), 并设置:
+
+		添加URL: http://oliveche.com/*
+		Access-Control-Allow-Origin: file://
+		Access-Control-Allow-Credentials: true
+
+- 打开chrome时设置参数 --allow-file-access-from-files 以允许ajax取本地文件.
+- 在app.js中修改BASE_URL:
+
+	var BASE_URL = "http://oliveche.com/jdcloud/";
+
+这时直接在chrome中打开html文件即可连接远程接口运行起来.
  */
 
 
@@ -1031,7 +1099,8 @@ function CPageManager(app)
 
 			// bugfix: 加载页面页背景图可能反复被加载
 			jpage.find("style").attr("mui-origin", pageId).appendTo(document.head);
-			jpage.attr("id", pageId).addClass("mui-page").appendTo(m_jstash);
+			jpage.attr("id", pageId).addClass("mui-page")
+				.hide().appendTo(self.container);
 
 			var val = jpage.attr("mui-script");
 			if (val != null) {
@@ -1081,13 +1150,16 @@ function CPageManager(app)
 					self.m_pageStack.push("#" + m_toPageId);
 				}
 
-				jpage.appendTo(m_jstash);
 				return;
 			}
 
 			var enableAni = showPageOpt_.ani !== 'none'; // TODO
 			var slideInClass = m_isback? "slideIn1": "slideIn";
 			m_isback = null;
+			self.container.show(); // !!!! 
+			jpage.css("z-index", 1).show();
+			if (oldPage)
+				oldPage.css("z-index", "-1");
 			if (enableAni) {
 				jpage.addClass(slideInClass);
 				jpage.one("animationend", onAnimationEnd)
@@ -1096,9 +1168,6 @@ function CPageManager(app)
 // 				if (oldPage)
 // 					oldPage.addClass("slideOut");
 			}
-
-			self.container.show(); // !!!! 
-			jpage.appendTo(self.container);
 			self.activePage = jpage;
 			fixPageSize();
 			var title = jpage.find(".hd h1, .hd h2").filter(":first").text() || self.title || jpage.attr("id");
@@ -1119,7 +1188,7 @@ function CPageManager(app)
 				}
 				if (oldPage) {
 					oldPage.trigger("pagehide");
-					oldPage.appendTo(m_jstash);
+					oldPage.hide();
 				}
 			// TODO: destroy??
 // 				if (oldPage.attr("autoDestroy")) {
@@ -1358,7 +1427,7 @@ ani:: String. 动画效果。设置为"none"禁用动画。
 	function enhanceNavbar(jo)
 	{
 		// 如果有ft类，则不自动点击后active (#footer是特例)
-		if (jo.hasClass("ft"))
+		if (jo.hasClass("ft") || jo.hasClass("noactive"))
 			return;
 		jo.find(">*").on('click', function () {
 			activateElem($(this));
@@ -1740,7 +1809,7 @@ allow throw("abort") as abort behavior.
 	}
 	setOnError();
 
-	$.ajaxSetup({
+	var ajaxOpt = {
 		beforeSend: function (xhr) {
 			// 保存xhr供dataFilter等函数内使用。
 			this.xhr_ = xhr;
@@ -1758,7 +1827,11 @@ allow throw("abort") as abort behavior.
 		},
 
 		error: defAjaxErrProc
-	});
+	};
+	if (location.protocol == "file:") {
+		ajaxOpt.xhrFields = { withCredentials: true};
+	}
+	$.ajaxSetup(ajaxOpt);
 
 	// $(document).on("pageshow", function () {
 	// 	if (IsBusy)
@@ -1870,13 +1943,25 @@ allow throw("abort") as abort behavior.
 	{
 		// ajax-beforeSend回调中设置
 		if (this.xhr_) {
-			var serverRev = this.xhr_.getResponseHeader("X-Daca-Server-Rev");
-			if (serverRev && g_data.serverRev != serverRev) {
+			var val = this.xhr_.getResponseHeader("X-Daca-Server-Rev");
+			if (val && g_data.serverRev != val) {
 				if (g_data.serverRev) {
 					reloadSite();
 				}
-				console.log("Server Revision: " + serverRev);
-				g_data.serverRev = serverRev;
+				console.log("Server Revision: " + val);
+				g_data.serverRev = val;
+			}
+			val = parseValue(this.xhr_.getResponseHeader("X-Daca-Test-Mode"));
+			if (g_data.testMode != val) {
+				g_data.testMode = val;
+				if (g_data.testMode)
+					alert("测试模式!");
+			}
+			val = parseValue(this.xhr_.getResponseHeader("X-Daca-Mock-Mode"));
+			if (g_data.mockMode != val) {
+				g_data.mockMode = val;
+				if (g_data.mockMode)
+					alert("模拟模式!");
 			}
 		}
 
@@ -1969,15 +2054,18 @@ allow throw("abort") as abort behavior.
 					action = params.ac;
 					delete(params.ac);
 				}
-				url = "../api.php/" + action;
+				url = BASE_URL + "api.php/" + action;
 			}
 			else {
-				url = "../api.php";
+				url = BASE_URL + "api.php";
 				params.ac = action;
 			}
 		}
 		else {
-			url = action;
+			if (location.protocol == "file:")
+				url = BASE_URL + "m2/" + action;
+			else
+				url = action;
 		}
 		if (g_cordova) {
 			if (m_appVer === undefined)
@@ -2229,6 +2317,7 @@ allow throw("abort") as abort behavior.
 	self.batchCall = batchCall;
 	function batchCall(opt)
 	{
+		assert(m_curBatch == null, "*** multiple batch call!");
 		this.opt_ = opt;
 		this.calls_ = [];
 		this.callOpts_ = [];
@@ -2290,10 +2379,12 @@ allow throw("abort") as abort behavior.
 					}
 
 					var data1 = defDataProc.call(ajaxCtx_, e);
-					if (callOpt.fn) {
-						callOpt.fn.call(ajaxCtx_, data1);
+					if (data1 != null) {
+						if (callOpt.fn) {
+							callOpt.fn.call(ajaxCtx_, data1);
+						}
+						callOpt.dfd.resolve(data1);
 					}
-					callOpt.dfd.resolve(data1);
 
 					// restore ajaxCtx_
 					if (extendCtx) {
@@ -2332,6 +2423,8 @@ allow throw("abort") as abort behavior.
 	function useBatchCall(opt, tv)
 	{
 		if (self.disableBatch)
+			return;
+		if (m_curBatch != null)
 			return;
 		tv = tv || 0;
 		var batch = new MUI.batchCall(opt);
@@ -2400,7 +2493,9 @@ function handleIos7Statusbar()
 
 /**
 @fn MUI.setFormSubmit(jf, fn?, opt?={rules, validate?, onNoAction?})
-@param fn? the callback for callSvr. you can use this["userPost"] to retrieve the post param.
+
+@param fn? Function(data); 与callSvr时的回调相同，data为服务器返回的数据。
+函数中可以使用this["userPost"] 来获取post参数。
 
 opt.rules: 参考jquery.validate文档
 opt.validate: Function(jf, queryParam={ac?,res?,...}). 如果返回false, 则取消submit. queryParam为调用参数，可以修改。
@@ -2457,9 +2552,9 @@ $(document).on("deviceready", function () {
 	// 在home页按返回键退出应用。
 	$(document).on("backbutton", function () {
 		if (self.activePage.attr("id") == homePageId) {
-			if (! confirm("退出应用?"))
-				return;
-			navigator.app.exitApp();
+			app_alert("退出应用?", 'q', function () {
+				navigator.app.exitApp();
+			});
 			return;
 		}
 		history.back();
@@ -2468,7 +2563,7 @@ $(document).on("deviceready", function () {
 	$(document).on("menubutton", function () {
 	});
 
-	if (navigator.splashscreen && navigator.splashscreen.hide)
+	if (!g_cfg.manualSplash && navigator.splashscreen && navigator.splashscreen.hide)
 	{
 		// 成功加载后稍等一会(避免闪烁)后隐藏启动图
 		$(function () {
@@ -2571,7 +2666,6 @@ function parseArgs()
 
 	if (g_args.test || g_args._test) {
 		g_args._test = 1;
-		alert("测试模式!");
 	}
 
 	if (g_args.cordova || getStorage("cordova")) {
@@ -3079,7 +3173,8 @@ function initPullList(container, opt)
 		touchev_.dy = p[1] - touchev_.y0;
 		dy_ = touchev_.dy;
 
-		if (touchev_.dy == 0) {
+		// 如果不是竖直下拉，则取消
+		if (touchev_.dy == 0 || Math.abs(touchev_.dx) > Math.abs(touchev_.dy)) {
 			touchCancel();
 			return;
 		}
@@ -3349,7 +3444,7 @@ navRef是否为空的区别是，如果非空，则表示listRef是一组互斥�
 
 ## 参数说明
 
-@param opt {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list"}
+@param opt {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list", onBeforeLoad?, onLoad?}
 
 @param onGetQueryParam Function(jlst, queryParam/o)
 
@@ -3378,6 +3473,9 @@ queryParam: {ac?, res?, cond?, ...}
 
 @param navRef,listRef  指定navbar与list，可以是选择器，也可以是jQuery对象；或是一组button与一组div，一次显示一个div；或是navRef为空，而listRef为一个或多个不相关联的list.
 
+@param onBeforeLoad(jlst, isFirstPage)->Boolean  如果返回false, 可取消load动作。参数isFirstPage=true表示是分页中的第一页，即刚刚加载数据。
+@param onLoad(jlst, isLastPage)  参数isLastPage=true表示是分页中的最后一页, 即全部数据已加载完。
+
 @return PageListInterface={refresh, markRefresh}
 
 refresh: Function(), 刷新当前列表
@@ -3400,6 +3498,7 @@ function initPageList(jpage, opt)
 	var jallList_ = opt_.listRef instanceof jQuery? opt_.listRef: jpage.find(opt_.listRef);
 	var jbtns_ = opt_.navRef instanceof jQuery? opt_.navRef: jpage.find(opt_.navRef);
 	var firstShow_ = true;
+	var busy_ = false;
 
 	if (jbtns_.hasClass("mui-navbar")) {
 		jbtns_ = jbtns_.find("a");
@@ -3437,7 +3536,6 @@ function initPageList(jpage, opt)
 				firstShow_ = true;
 			}
 			if (firstShow_ ) {
-				firstShow_ = false;
 				showOrderList(false, false);
 			}
 		}
@@ -3520,6 +3618,16 @@ function initPageList(jpage, opt)
 		if (skipIfLoaded && nextkey != null)
 			return;
 
+		if (busy_) {
+			var tm = jlst.data("lastUpdateTm_");
+			if (tm && new Date() - tm <= 5000)
+			{
+				console.log('!!! pulldown too fast');
+				return;
+			}
+			// 5s后busy_标志还未清除，则可能是出问题了，允许不顾busy_标志直接进入。
+		}
+
 		var queryParam = evalAttr(jlst, "data-queryParam") || {};
 		$.each(["ac", "res", "cond", "orderby"], function () {
 			var val = jlst.attr("data-" + this);
@@ -3527,11 +3635,18 @@ function initPageList(jpage, opt)
 				queryParam[this] = val;
 		});
 
+		if (opt.onBeforeLoad) {
+			var rv = opt.onBeforeLoad(jlst, nextkey == null);
+			if (rv === false)
+				return;
+		}
+
 		if (opt_.onGetQueryParam) {
 			opt_.onGetQueryParam(jlst, queryParam);
 		}
 
-		queryParam._pagesz = g_cfg.PAGE_SZ; // for test, default 20.
+		if (!queryParam._pagesz)
+			queryParam._pagesz = g_cfg.PAGE_SZ; // for test, default 20.
 		if (nextkey) {
 			queryParam._pagekey = nextkey;
 		}
@@ -3550,10 +3665,13 @@ function initPageList(jpage, opt)
 		else {
 			jlst.data("lastUpdateTm_", new Date());
 		}
+		busy_ = true;
 		callSvr(queryParam.ac, queryParam, api_OrdrQuery);
 
 		function api_OrdrQuery(data)
 		{
+			busy_ = false;
+			firstShow_ = false;
 			if (loadMore_) {
 				joLoadMore_.remove();
 			}
@@ -3568,6 +3686,7 @@ function initPageList(jpage, opt)
 				}
 				jlst.data("nextkey_", -1);
 			}
+			opt.onLoad && opt.onLoad(jlst, data.nextkey == null);
 		}
 	}
 

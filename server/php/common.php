@@ -2,7 +2,7 @@
 
 define("T_HOUR", 3600);
 define("T_DAY", 24*T_HOUR);
-define("FMT_DT", "Y-m-d h:i:s");
+define("FMT_DT", "Y-m-d H:i:s");
 
 // const T_DAY = 24*T_HOUR; // not allowed
 

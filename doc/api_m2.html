@@ -6,7 +6,7 @@
 </head>
 
 <h1>API参考 - 筋斗云前端（移动Web版）</h1>
-<div>最后更新：2016-06-20</div>
+<div>最后更新：2016-07-08</div>
 <h2>Modules</h2>
 <div>
 <a href="#common.js">common.js (module)</a><br>
@@ -23,9 +23,11 @@
 <a href="#.mui-ios">.mui-ios (key)</a><br>
 <a href="#.mui-menu">.mui-menu (key)</a><br>
 <a href="#.mui-navbar">.mui-navbar (key)</a><br>
+<a href="#.mui-navbar.noactive">.mui-navbar.noactive (key)</a><br>
 <a href="#.mui-page">.mui-page (key)</a><br>
 <a href="#.mui-weixin">.mui-weixin (key)</a><br>
 <a href="#.noSwipe">.noSwipe (key)</a><br>
+<a href="#BASE_URL">BASE_URL (var)</a><br>
 <a href="#CComManager">CComManager (class)</a><br>
 <a href="#CPageManager">CPageManager (class)</a><br>
 <a href="#Date.add">Date.add (fn)</a><br>
@@ -94,9 +96,11 @@
 <a href="#g_cfg">g_cfg (var)</a><br>
 <a href="#g_cfg.PAGE_SZ">g_cfg.PAGE_SZ (var)</a><br>
 <a href="#g_cfg.logAction">g_cfg.logAction (var)</a><br>
+<a href="#g_cfg.manualSplash">g_cfg.manualSplash (key)</a><br>
 <a href="#g_cordova">g_cordova (var)</a><br>
 <a href="#g_data">g_data (var)</a><br>
 <a href="#g_data.serverRev">g_data.serverRev (key)</a><br>
+<a href="#g_data.testMode,g_data.mockMode">g_data.testMode,g_data.mockMode (key)</a><br>
 <a href="#g_data.userInfo">g_data.userInfo (key)</a><br>
 <a href="#getCookie">getCookie (fn)</a><br>
 <a href="#getFormData">getFormData (fn)</a><br>
@@ -125,6 +129,7 @@
 <a href="#parseDate">parseDate (fn)</a><br>
 <a href="#parseQuery">parseQuery (fn)</a><br>
 <a href="#parseTime">parseTime (fn)</a><br>
+<a href="#parseValue">parseValue (fn)</a><br>
 <a href="#randAlphanum">randAlphanum (fn)</a><br>
 <a href="#randInt">randInt (fn)</a><br>
 <a href="#reloadSite">reloadSite (fn)</a><br>
@@ -333,11 +338,16 @@ g_args.dscr="上门洗车"; // 对字符串会自动进行URL解码。</code></p
 <p>在登录时，会自动设置userInfo属性为个人信息。所以可以通过 g_data.userInfo==null 来判断是否已登录。</p>
 <p>serverRev用于标识服务端版本，如果服务端版本升级，则应用可以实时刷新以更新到最新版本。</p>
 <p class="key"><strong>@key <a id="g_data.userInfo">g_data.userInfo</a></strong> </p>
-<p class="key"><strong>@key <a id="g_data.serverRev">g_data.serverRev</a></strong> </p><hr>
+<p class="key"><strong>@key <a id="g_data.serverRev">g_data.serverRev</a></strong> </p>
+<p class="key"><strong>@key <a id="g_data.testMode,g_data.mockMode">g_data.testMode,g_data.mockMode</a></strong>  测试模式和模拟模式</p><hr>
 <h2 id="g_cfg">@var g_cfg</h2>
 <p>应用配置项。</p>
 <p class="var"><strong>@var <a id="g_cfg.logAction">g_cfg.logAction</a></strong> ?=false  Boolean. 是否显示详细日志。</p>
 <p class="var"><strong>@var <a id="g_cfg.PAGE_SZ">g_cfg.PAGE_SZ</a></strong> ?=20  分页大小，作为每次调用{obj}.query的缺省值。</p><hr>
+<h2 id="BASE_URL">@var BASE_URL</h2>
+<p>设置应用的基本路径, 应以&quot;/&quot;结尾.</p>
+<p>当用于本地调试网页时, 可以临时修改它, 比如在app.js中临时设置:</p>
+<pre><code>var BASE_URL = "http://oliveche.com/jdcloud/";</code></pre><hr>
 <h2 id="appendParam">@fn appendParam(url, param)</h2>
 <p>示例:</p>
 <pre><code>var url = "http://xxx/api.php";
@@ -450,6 +460,8 @@ function onSubmit()
 <h2 id="getTimeDiffDscr">@fn getTimeDiffDscr(tm, tm1)</h2>
 <p>从tm到tm1的时间差描述，如&quot;2分钟前&quot;, &quot;3天前&quot;等。</p>
 <p>tm和tm1可以为时间对象或时间字符串</p><hr>
+<h2 id="parseValue">@fn parseValue(str)</h2>
+<p>如果str符合整数或小数，则返回相应类型。</p><hr>
 <h2 id="MUI">@module MUI</h2>
 <p>筋斗云移动UI框架 - JDCloud Mobile UI framework</p>
 <h4>1 基于逻辑页面的单网页应用</h4>
@@ -525,6 +537,8 @@ function onSubmit()
 <p>框架提供导航栏、对话框、弹出框、弹出菜单等常用组件。</p>
 <h5>4.1 导航栏</h5>
 <p class="key"><strong>@key <a id=".mui-navbar">.mui-navbar</a></strong>  导航栏</p>
+<p class="key"><strong>@key <a id=".mui-navbar.noactive">.mui-navbar.noactive</a></strong> </p>
+<p>默认行为是点击后添加active类（比如字体发生变化），如果不需要此行为，可再添加noactive类。</p>
 <h5>4.2 对话框</h5>
 <p class="key"><strong>@key <a id=".mui-dialog">.mui-dialog</a></strong>  对话框</p>
 <h5>4.3 弹出菜单</h5>
@@ -559,8 +573,18 @@ function onSubmit()
 <p>不同的app大版本(通过URL参数cordova=?识别)或不同平台加载的插件是不一样的，要查看当前加载了哪些插件，可以在Web控制台中执行：</p>
 <pre><code>cordova.require('cordova/plugin_list')</code></pre>
 <p>对原生应用的额外增强包括：</p>
+<p class="key"><strong>@key <a id="g_cfg.manualSplash">g_cfg.manualSplash</a></strong> </p>
 <ul>
-<li>应用加载完成后，自动隐藏启动画面(SplashScreen)</li>
+<li>
+<p>应用加载完成后，自动隐藏启动画面(SplashScreen)。如果需要自行隐藏启动画面，可以设置</p>
+<pre><code>var g_cfg = {
+    manualSplash: true
+    ...
+}</code></pre>
+<p>然后开发者自己加载完后隐藏SplashScreen:</p>
+<pre><code>if (navigator.splashscreen &amp;&amp; navigator.splashscreen.hide)
+    navigator.splashscreen.hide();</code></pre>
+</li>
 <li>
 <p>ios7以上, 框架自动为顶部状态栏留出20px高度的空间. 默认为白色，可以修改类mui-container的样式，如改为黑色：</p>
 <p>.mui-container {<br />
@@ -601,7 +625,26 @@ background-color:black;<br />
 <pre><code>&lt;div mui-swipenav="no"&gt;&lt;/div&gt;</code></pre>
 <p class="key"><strong>@key <a id=".noSwipe">.noSwipe</a></strong>  CSS-class</p>
 <p>左右划前进后退功能会导致横向滚动生效。可以通过添加noSwipe类（注意大小写）的方式禁用swipe事件恢复滚动功能：</p>
-<pre><code>&lt;div class="noSwipe"&gt;&lt;/div&gt;</code></pre><hr>
+<pre><code>&lt;div class="noSwipe"&gt;&lt;/div&gt;</code></pre>
+<h4>9 跨域前端开发支持</h4>
+<p>典型应用是, 在开发前端页面时, 本地无须运行任何后端服务器(如apache/iis/php等), 直接跨域连接远程接口进行开发.</p>
+<p>支持直接在浏览器中打开html/js文件运行应用.<br />
+需要浏览器支持CORS相关设置. 以下以chrome为例介绍.<br />
+例如, 远程接口的基础URL地址为 <a href="http://oliveche.com/jdcloud/">http://oliveche.com/jdcloud/</a></p>
+<ul>
+<li>
+<p>为chrome安装可设置CORS的插件(例如ForceCORS), 并设置:</p>
+<pre><code>添加URL: http://oliveche.com/*
+Access-Control-Allow-Origin: file://
+Access-Control-Allow-Credentials: true</code></pre>
+</li>
+<li>打开chrome时设置参数 --allow-file-access-from-files 以允许ajax取本地文件.</li>
+<li>
+<p>在app.js中修改BASE_URL:</p>
+<p>var BASE_URL = &quot;<a href="http://oliveche.com/jdcloud/">http://oliveche.com/jdcloud/</a>&quot;;</p>
+</li>
+</ul>
+<p>这时直接在chrome中打开html文件即可连接远程接口运行起来.</p><hr>
 <h2 id="CPageManager">@class CPageManager(app)</h2>
 <p>页面管理器。提供基于逻辑页面的单网页应用，亦称“变脸式应用”。</p>
 <p>该类作为MUI模块的基类，仅供内部使用，但它提供showPage等操作，以及pageshow等各类事件。</p>
@@ -1139,7 +1182,7 @@ callSvr(queryParam.ac, queryParam, function (data) {
         opt.onNoItem(jlst);
 });</code></pre>
 <h4>5 参数说明</h4>
-<p class="param"><strong>@param opt</strong>  {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list"}</p>
+<p class="param"><strong>@param opt</strong>  {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list", onBeforeLoad?, onLoad?}</p>
 <p class="param"><strong>@param onGetQueryParam</strong>  Function(jlst, queryParam/o)</p>
 <p>queryParam: {ac?, res?, cond?, ...}</p>
 <p>框架在调用callSvr之前，先取列表对象jlst上的data-queryParam属性作为queryParam的缺省值，再尝试取data-ac, data-res, data-cond, data-orderby属性作为queryParam.ac等参数的缺省值，<br />
@@ -1155,6 +1198,8 @@ callSvr(queryParam.ac, queryParam, function (data) {
 <p>在订单页面(PageOrder)修改订单后，如果想进入列表页面(PageOrders)时自动刷新所有列表，可以设置 PageOrders.refresh = true。<br />
 设置opt.pageItf=PageOrders, 框架可自动检查和管理refresh变量。</p>
 <p class="param"><strong>@param navRef,listRef</strong>   指定navbar与list，可以是选择器，也可以是jQuery对象；或是一组button与一组div，一次显示一个div；或是navRef为空，而listRef为一个或多个不相关联的list.</p>
+<p class="param"><strong>@param onBeforeLoad</strong> (jlst, isFirstPage)->Boolean  如果返回false, 可取消load动作。参数isFirstPage=true表示是分页中的第一页，即刚刚加载数据。</p>
+<p class="param"><strong>@param onLoad</strong> (jlst, isLastPage)  参数isLastPage=true表示是分页中的最后一页, 即全部数据已加载完。</p>
 <p class="return"><strong>@return PageListInterface=</strong> {refresh, markRefresh}</p>
 <p>refresh: Function(), 刷新当前列表<br />
 markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 下次浏览该列表时刷新。</p>
@@ -1248,5 +1293,5 @@ PagePerson.showForSet({id: 3}); // 以id=3查询人物并显示，可更新。</
     ...
 &lt;/form&gt;</code></pre>
 <p>如果formData中有多个属性，则自动以formData的内容作为数据源显示页面，不再发起查询。</p><hr>
-<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-06-20T09:34:45+08:00</div>
+<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-07-08T15:09:39+08:00</div>
 </html>
