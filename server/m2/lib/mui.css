@@ -243,10 +243,6 @@ html, body {
 	background-color: #eee;
 }
 
-.mui-menu li:last-child:after {
-	display: none;
-}
-
 .mui-menu li:hover {
 	background-color: #eee;
 }

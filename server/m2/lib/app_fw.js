@@ -605,6 +605,9 @@ var E_ABORT=-100;
 ### 导航栏
 
 @key .mui-navbar 导航栏
+@key .mui-navbar.noactive
+
+默认行为是点击后添加active类（比如字体发生变化），如果不需要此行为，可再添加noactive类。
 
 ### 对话框
 
@@ -1424,7 +1427,7 @@ ani:: String. 动画效果。设置为"none"禁用动画。
 	function enhanceNavbar(jo)
 	{
 		// 如果有ft类，则不自动点击后active (#footer是特例)
-		if (jo.hasClass("ft"))
+		if (jo.hasClass("ft") || jo.hasClass("noactive"))
 			return;
 		jo.find(">*").on('click', function () {
 			activateElem($(this));
