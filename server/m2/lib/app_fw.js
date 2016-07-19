@@ -2200,6 +2200,28 @@ allow throw("abort") as abort behavior.
 /**
 @fn MUI.setupCallSvrViaForm($form, $iframe, url, fn, callOpt)
 
+该方法已不建议使用。上传文件请用FormData。示例如下：
+
+@key example-upload
+
+HTML:
+
+	file: <input id="file1" type="file" multiple>
+	<button type="button" id="btn1">upload</button>
+
+JS:
+
+	jpage.find("#btn1").on('click', function () {
+		var fd = new FormData();
+		$.each(jpage.find('#file1')[0].files, function (i, e) {
+			fd.append('file' + (i+1), e);
+		});
+		callSvr('upload', api_upload, fd);
+
+		function api_upload(data) { ... }
+	});
+
+
 @param $iframe 一个隐藏的iframe组件.
 @param callOpt 用户自定义参数. 参考callSvr的同名参数. e.g. {noex: 1}
 
