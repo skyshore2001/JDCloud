@@ -851,8 +851,7 @@ $.ajaxSetup({
 });
 
 /**
-@fn WUI.callSvr(ac, params?, fn?, postParams?, userOptions?)
-@fn WUI.callSvr(ac, fn?, postParams?, userOptions?)
+@fn WUI.callSvr(ac, [params?], fn?, postParams?, userOptions?)
 @alias callSvr
 
 @param ac String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)
@@ -884,6 +883,29 @@ $.ajaxSetup({
 		foo(data);
 	}, null, {noex:1});
 
+## 文件上传支持(FormData)
+
+callSvr支持FormData对象，可用于上传文件等场景。示例如下：
+
+@key example-upload
+
+HTML:
+
+	file: <input id="file1" type="file" multiple>
+	<button type="button" id="btn1">upload</button>
+
+JS:
+
+	jpage.find("#btn1").on('click', function () {
+		var fd = new FormData();
+		$.each(jpage.find('#file1')[0].files, function (i, e) {
+			fd.append('file' + (i+1), e);
+		});
+		callSvr('upload', api_upload, fd);
+
+		function api_upload(data) { ... }
+	});
+
 */
 window.callSvr = self.callSvr = callSvr;
 function callSvr(ac, params, fn, postParams, userOptions)
@@ -897,21 +919,25 @@ function callSvr(ac, params, fn, postParams, userOptions)
 	}
 	var url = makeUrl(ac, params);
 	enterWaiting();
-	var method = (postParams === undefined? 'GET': 'POST');
-	var ret;
-	var opt = $.extend({
+	var method = (postParams == null? 'GET': 'POST');
+	var opt = {
 		url: url,
 		data: postParams,
 // 		dataType: "text",
 		type: method,
 		success: fn,
-	}, userOptions);
+	};
+	// support FormData object.
+	if (postParams instanceof FormData) {
+		opt.processData = false;
+		opt.contentType = false;
+	}
+	$.extend(opt, userOptions);
 	return $.ajax(opt);
 }
 
 /**
-@fn WUI.callSvrSync(ac, params?, fn?, postParams?, userOptions?)
-@fn WUI.callSvrSync(ac, fn?, postParams?, userOptions?)
+@fn WUI.callSvrSync(ac, [params?], fn?, postParams?, userOptions?)
 @alias callSvrSync
 @return data 原型规定的返回数据
 
