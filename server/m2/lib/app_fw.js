@@ -1937,8 +1937,16 @@ allow throw("abort") as abort behavior.
 		}
 	}
 
-	// return: ==null: 做出错处理，不调用回调函数。
-	// 注意：服务端不应返回null, 否则客户回调无法执行; 习惯上返回false表示让回调处理错误。
+/**
+@fn MUI.defDataProc(rv)
+
+@param rv BQP协议原始数据，如 "[0, {id: 1}]"，一般是字符串，也可以是JSON对象。
+@return data 按接口定义返回的数据对象，如 {id: 1}. 如果返回==null，调用函数应直接返回。
+
+注意：服务端不应返回null, 否则客户回调无法执行; 习惯上返回false表示让回调处理错误。
+
+*/
+	self.defDataProc = defDataProc;
 	function defDataProc(rv)
 	{
 		// ajax-beforeSend回调中设置
