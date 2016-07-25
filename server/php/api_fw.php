@@ -241,7 +241,7 @@ class ApiLog
 		$this->startTm = microtime(true);
 
 		global $APP;
-		$type = preg_replace('/\d+$/', '', $APP);
+		$type = getAppType();
 		$userId = null;
 		if ($type == "user") {
 			$userId = $_SESSION["uid"];
@@ -252,7 +252,7 @@ class ApiLog
 		else if ($type == "admin") {
 			$userId = $_SESSION["adminId"];
 		}
-		if (! ctype_digit($userId))
+		if (! (is_int($userId) || ctype_digit($userId)))
 			$userId = 'NULL';
 		$content = $this->myVarExport($_GET, 2000);
 		$ct = $_SERVER["HTTP_CONTENT_TYPE"];
