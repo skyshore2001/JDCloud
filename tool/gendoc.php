@@ -24,6 +24,7 @@ require("lib/Parsedown.php");
 // ====== config
 $defaultOptions = [
 	"title" => "API文档",
+	"subtoc" => 1,
 ];
 
 // ====== global
@@ -33,6 +34,10 @@ $blocks = [];
 $options = null; # {title, encoding}
 
 $titleStack = []; # elem: [num, level]
+
+// for sub-toc
+$curBlockId = null;
+$subTitles = [];
 
 // ====== function
 // key={type,name}
@@ -63,7 +68,7 @@ class MyParsedown extends Parsedown
 		if (! preg_match('/@(\w+)\s+([^(){}? ]+)(.*)/', $text, $ms) )
 			return;
 
-		global $newBlock, $keys;
+		global $newBlock, $keys, $curBlockId;
 		$class = $ms[1];
 		$key = $ms[2];
 		$other = $ms[3] ?: "";
@@ -74,6 +79,7 @@ class MyParsedown extends Parsedown
 			$newBlock = false;
 			$keys[] = makeKeyword(["name"=>$key, "type"=>$class]);
 			$markup = "<h2 id=\"{$key}\">" . $ms[0] . "</h2>"; // remove '@'
+			$curBlockId = $key;
 		}
 		else {
 			if ($class == "see") {
@@ -139,8 +145,20 @@ class MyParsedown extends Parsedown
 			$level = (int)$ms[1];
 			$titleNum = $this->getTitleNum($level);
 
-			$e['element']['name'] = "h" . ($level + 2);
-			$e['element']['text'] = $titleNum . " " . $e['element']['text'];
+			$elem = &$e['element'];
+			$elem['name'] = "h" . ($level + 2);
+			$txt = $titleNum . " " . $elem['text'];
+			$elem['text'] = $txt;
+
+			global $options;
+			if ($options['subtoc']) {
+				if (! isset($elem['attributes'])) {
+					$elem['attributes'] = [];
+				}
+				global $curBlockId, $subTitles;
+				$elem['attributes']['id'] = subTocId($curBlockId, $txt);
+				$subTitles[] = $txt;
+			}
 		}
 		return $e;
 	}
@@ -158,9 +176,40 @@ function handleOptionEncoding()
 
 function outputOneKey($key)
 {
-	echo "<a href=\"#{$key['name']}\">{$key['name']} ({$key['type']})</a><br>\n";
+	echo "<p><a href=\"#{$key['name']}\">{$key['name']} ({$key['type']})</a></p>\n";
 }
 
+function subTocId($blockId, $tocId)
+{
+	return "{$blockId}-{$tocId}";
+}
+
+function handleSubToc($txt)
+{
+	global $curBlockId, $subTitles;
+	$ts = '<div class="toc">';
+	foreach ($subTitles as $t) {
+		$href = subTocId($curBlockId, $t);
+
+		// calc level
+		$level = 0;
+		$len = strlen($t);
+		for ($i=0; $i<$len; ++$i) {
+			if ($t[$i] == '.') {
+				++ $level;
+			}
+			else if ($t[$i] == ' ') {
+				break;
+			}
+		}
+
+		$level *= 2;
+		$ts .= "<p style=\"margin-left:{$level}em\"><a href=\"#{$href}\">{$t}</a></p>\n";
+	}
+	$ts .= '</div>';
+	// NOTE: 在<h2>标签之后添加Toc
+	return preg_replace('/<\/h2>\K/', $ts, $txt, 1); // replace once.
+}
 // ====== main
 
 $argv1 = null;
@@ -174,9 +223,14 @@ foreach ($argv1 as $f) {
 		\/\*\*+\s* (@\w+ \s+ .*?) \s*\*+\/
 	/xs', function ($ms) {
 
-		global $newBlock, $pd, $blocks;
+		global $newBlock, $pd, $blocks, $options, $subTitles;
 		$newBlock = true;
-		$blocks[] = $pd->text($ms[1]);
+		$subTitles = [];
+		$txt = $pd->text($ms[1]);
+		if ($options['subtoc'] && count($subTitles) > 0) {
+			$txt = handleSubToc($txt);
+		}
+		$blocks[] = $txt;
 
 	}, $str);
 }
@@ -187,6 +241,33 @@ echo <<<EOL
 <head>
 <meta charset="utf-8">
 <title>{$options['title']}</title>
+<style>
+h3,h4,h5,h6 {
+	font-size: 1em;
+}
+
+pre {
+	border-left: 1px solid #ccc;
+	margin: 0 1em;
+	padding: 0 0.5em;
+	tab-size:4;
+}
+
+code {
+	font-family: "Courier New";
+    padding: 0px 3px;
+    display: inline-block;
+}
+
+.toc {
+	margin: 2em;
+}
+
+.toc p {
+	margin: 0.3em 0;
+}
+
+</style>
 <link rel="stylesheet" href="style.css" />
 </head>
 
@@ -202,7 +283,7 @@ foreach ($keys as $key) {
 		if ($first) {
 			$first = false;
 			echo "<h2>Modules</h2>\n";
-			echo "<div>\n";
+			echo "<div class=\"toc\">\n";
 		}
 		outputOneKey($key);
 	}
@@ -216,7 +297,7 @@ usort($keys, function ($a, $b) {
 	return strcmp($a['name'], $b['name']);
 });
 echo "<h2>Keywords</h2>\n";
-echo "<div>\n";
+echo "<div class=\"toc\">\n";
 foreach ($keys as $key) {
 	outputOneKey($key);
 }

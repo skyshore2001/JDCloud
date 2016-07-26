@@ -5,6 +5,7 @@
 # @var OUT_DIR
 # @var FTP_PATH
 # @var FTP_AUTH
+# @var CHECK_BRANCH? 如果指定，则要求OUT_DIR内必须为指定branch名。
 ####################
 
 # OUT_DIR=../product-online
@@ -19,6 +20,14 @@ fi
 if [[ ! -d $OUT_DIR ]]; then
 	echo "*** 文件夹不存在：$OUT_DIR"
 	exit
+fi
+
+if [[ -n $CHECK_BRANCH ]]; then
+	branch=$(cd $OUT_DIR && git status -b | perl -ne '/On branch (\w+)/ && print $1;')
+	if [[ $branch != $CHECK_BRANCH ]]; then
+		echo "*** branch mismatch: require '$CHECK_BRANCH', but actual on '$branch'";
+		exit
+	fi
 fi
 
 CURL_CMD="curl -s -S -u $FTP_AUTH"

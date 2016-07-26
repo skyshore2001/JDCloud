@@ -18,6 +18,20 @@ $UploadType = [
 	"store" => ["w"=>200, "h"=>150],
 	"default" => ["w"=>100, "h"=>100],
 ];
+
+// 允许上传的文件类型设置。设置为空表示允许所有。
+
+global $ALLOWED_MIME, $ALLOWED_EXTS;
+$ALLOWED_MIME = [
+	'jpg'=>'image/jpeg',
+	'png'=>'image/png',
+	'gif'=>'image/gif',
+	'txt'=>'text/plain',
+	'pdf' => 'application/pdf',
+	//'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+	//'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+];
+$ALLOWED_EXTS = ["jpeg", "jpg", "gif", "png", "txt"]; // ["pdf", "doc", "docx"];
 //}}}
 
 // ====== functions {{{
@@ -383,21 +397,18 @@ function api_upload()
 // 4 : 没有文件被上传
 
 		if ($f["name"] != "" && $f["size"] > 0) {
-			// allow images only
+			// 检查文件类型
 			$mtype = $f["type"];
-			if ($mtype != null) {
-				$ALLOWED_MIME = ['jpg'=>'image/jpeg', 'png'=>'image/png', 'gif'=>'image/gif', 'txt'=>'text/plain'];
+			$ext = strtolower(pathinfo($f["name"], PATHINFO_EXTENSION));
+			global $ALLOWED_MIME, $ALLOWED_EXTS;
+			if ($mtype != null && count($ALLOWED_MIME) > 0) {
 				$ext = array_search($mtype, $ALLOWED_MIME);
 				if ($ext === false) {
 					throw new MyException(E_PARAM, "MIME type not supported: `$mtype`", "文件类型`$mtype`不支持.");
 				}
 			}
 			else {
-				$ext = strtolower(pathinfo($f["name"], PATHINFO_EXTENSION));
-				if ($ext == "jpeg" || $ext == "")
-					$ext = "jpg";
-				$ALLOWED_EXTS = ["jpg", "gif", "png", "txt"]; // ["pdf", "doc", "docx"];
-				if ($ext == "" || !in_array($ext, $ALLOWED_EXTS)) {
+				if (count($ALLOWED_EXTS) > 0 && ($ext == "" || !in_array($ext, $ALLOWED_EXTS))) {
 					$name = basename($f["name"]);
 					throw new MyException(E_PARAM, "bad extention file name: `$name`", "文件扩展名`$ext`不支持");
 				}
@@ -548,21 +559,25 @@ function api_att()
 		exit;
 	}
 
-	# TODO: more types for attachment
+	# 对指定mime的直接返回，否则使用重定向。
+	# TODO: 使用 apache x-sendfile module 解决性能和安全性问题。
 	$ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-	$TYPE = [
-		'jpg' => 'image/jpeg',
-		'png' => 'image/png',
-		'gif' => 'image/gif',
-		'txt' => 'text/plain',
-		'pdf' => 'application/pdf',
-	];
-	$mimeType = $TYPE[$ext] ?: 'application/octet-stream';
-	header("Content-Type: $mimeType");
-	header("Etag: $etag");
-#	header("Expires: Thu, 3 Sep 2020 08:52:00 GMT");
-#	header('Content-Disposition: attachment; filename='.basename($file));
-	readfile($file);
+	global $ALLOWED_MIME;
+	//$mimeType = $ALLOWED_MIME[$ext] ?: 'application/octet-stream';
+	$mimeType = $ALLOWED_MIME[$ext];
+	if (@$mimeType) {
+		header("Content-Type: $mimeType");
+		header("Etag: $etag");
+		#header("Expires: Thu, 3 Sep 2020 08:52:00 GMT");
+		#header("Content-length: " . filesize($file));
+		#header('Content-Disposition: attachment; filename='.basename($file));
+		readfile($file);
+	}
+	else {
+		$baseUrl = getBaseUrl(false);
+		$url = $baseUrl . $file;
+		header('Location: ' . $url);
+	}
 	throw new DirectReturn();
 }
 //}}}

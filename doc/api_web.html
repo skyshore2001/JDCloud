@@ -2,83 +2,122 @@
 <head>
 <meta charset="utf-8">
 <title>API参考 - 筋斗云前端（桌面Web版）</title>
+<style>
+h3,h4,h5,h6 {
+	font-size: 1em;
+}
+
+pre {
+	border-left: 1px solid #ccc;
+	margin: 0 1em;
+	padding: 0 0.5em;
+	tab-size:4;
+}
+
+code {
+	font-family: "Courier New";
+    padding: 0px 3px;
+    display: inline-block;
+}
+
+.toc {
+	margin: 2em;
+}
+
+.toc p {
+	margin: 0.3em 0;
+}
+
+</style>
 <link rel="stylesheet" href="style.css" />
 </head>
 
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2016-07-08</div>
+<div>最后更新：2016-07-26</div>
 <h2>Modules</h2>
-<div>
-<a href="#WUI">WUI (module)</a><br>
+<div class="toc">
+<p><a href="#WUI">WUI (module)</a></p>
 </div><hr>
 <h2>Keywords</h2>
-<div>
-<a href="##my-pages">#my-pages (key)</a><br>
-<a href="#$.getScriptWithCache">$.getScriptWithCache (fn)</a><br>
-<a href="#.easyui-linkbutton">.easyui-linkbutton (key)</a><br>
-<a href="#.my-combobox">.my-combobox (key)</a><br>
-<a href="#.wui-page">.wui-page (key)</a><br>
-<a href="#BASE_URL">BASE_URL (var)</a><br>
-<a href="#IsBusy">IsBusy (var)</a><br>
-<a href="#ListOptions">ListOptions (var)</a><br>
-<a href="#WUI">WUI (module)</a><br>
-<a href="#WUI.app_alert">WUI.app_alert (fn)</a><br>
-<a href="#WUI.app_confirm">WUI.app_confirm (fn)</a><br>
-<a href="#WUI.app_show">WUI.app_show (fn)</a><br>
-<a href="#WUI.callSvr">WUI.callSvr (fn)</a><br>
-<a href="#WUI.callSvr">WUI.callSvr (fn)</a><br>
-<a href="#WUI.callSvrSync">WUI.callSvrSync (fn)</a><br>
-<a href="#WUI.callSvrSync">WUI.callSvrSync (fn)</a><br>
-<a href="#WUI.closeDlg">WUI.closeDlg (fn)</a><br>
-<a href="#WUI.dg_dblclick">WUI.dg_dblclick (fn)</a><br>
-<a href="#WUI.dg_toolbar">WUI.dg_toolbar (fn)</a><br>
-<a href="#WUI.enterWaiting">WUI.enterWaiting (fn)</a><br>
-<a href="#WUI.getQueryCond">WUI.getQueryCond (fn)</a><br>
-<a href="#WUI.getQueryParam">WUI.getQueryParam (fn)</a><br>
-<a href="#WUI.handleLogin">WUI.handleLogin (fn)</a><br>
-<a href="#WUI.leaveWaiting">WUI.leaveWaiting (fn)</a><br>
-<a href="#WUI.logout">WUI.logout (fn)</a><br>
-<a href="#WUI.m_app">WUI.m_app (var)</a><br>
-<a href="#WUI.makeLinkTo">WUI.makeLinkTo (fn)</a><br>
-<a href="#WUI.makeUrl">WUI.makeUrl (fn)</a><br>
-<a href="#WUI.reload">WUI.reload (fn)</a><br>
-<a href="#WUI.reloadRow">WUI.reloadRow (fn)</a><br>
-<a href="#WUI.reloadTmp">WUI.reloadTmp (fn)</a><br>
-<a href="#WUI.setApp">WUI.setApp (fn)</a><br>
-<a href="#WUI.showDlg">WUI.showDlg (fn)</a><br>
-<a href="#WUI.showObjDlg">WUI.showObjDlg (fn)</a><br>
-<a href="#WUI.showPage">WUI.showPage (fn)</a><br>
-<a href="#WUI.tryAutoLogin">WUI.tryAutoLogin (fn)</a><br>
-<a href="#app_abort">app_abort (fn)</a><br>
-<a href="#app_alert">app_alert (alias)</a><br>
-<a href="#app_confirm">app_confirm (alias)</a><br>
-<a href="#app_show">app_show (alias)</a><br>
-<a href="#callSvr">callSvr (alias)</a><br>
-<a href="#callSvrSync">callSvrSync (alias)</a><br>
-<a href="#datagrid.formatter">datagrid.formatter (key)</a><br>
-<a href="#datagrid.sortable">datagrid.sortable (key)</a><br>
-<a href="#datagrid.sorter">datagrid.sorter (key)</a><br>
-<a href="#datagrid.styler">datagrid.styler (key)</a><br>
-<a href="#enterWaiting">enterWaiting (alias)</a><br>
-<a href="#g_args">g_args (var)</a><br>
-<a href="#g_args._app">g_args._app (var)</a><br>
-<a href="#g_cfg">g_cfg (var)</a><br>
-<a href="#g_data">g_data (var)</a><br>
-<a href="#g_data.userInfo">g_data.userInfo (key)</a><br>
-<a href="#getAncestor">getAncestor (fn)</a><br>
-<a href="#intSort">intSort (fn)</a><br>
-<a href="#jQuery.fn.getAncestor">jQuery.fn.getAncestor (fn)</a><br>
-<a href="#jQuery.fn.jdata">jQuery.fn.jdata (fn)</a><br>
-<a href="#jQuery.fn.mycombobox">jQuery.fn.mycombobox (fn)</a><br>
-<a href="#leaveWaiting">leaveWaiting (alias)</a><br>
-<a href="#makeLinkTo">makeLinkTo (alias)</a><br>
-<a href="#makeUrl">makeUrl (alias)</a><br>
-<a href="#my-initfn">my-initfn (key)</a><br>
-<a href="#my-obj">my-obj (key)</a><br>
-<a href="#numberSort">numberSort (fn)</a><br>
-<a href="#pagecreate,pageshow,pagedestroy">pagecreate,pageshow,pagedestroy (key)</a><br>
-<a href="#row2tr">row2tr (fn)</a><br>
-<a href="#wui-pageName">wui-pageName (key)</a><br>
+<div class="toc">
+<p><a href="##my-pages">#my-pages (key)</a></p>
+<p><a href="#$.getScriptWithCache">$.getScriptWithCache (fn)</a></p>
+<p><a href="#.easyui-linkbutton">.easyui-linkbutton (key)</a></p>
+<p><a href="#.my-combobox">.my-combobox (key)</a></p>
+<p><a href="#.wui-dialog">.wui-dialog (key)</a></p>
+<p><a href="#.wui-page">.wui-page (key)</a></p>
+<p><a href="#BASE_URL">BASE_URL (var)</a></p>
+<p><a href="#IsBusy">IsBusy (var)</a></p>
+<p><a href="#ListOptions">ListOptions (var)</a></p>
+<p><a href="#WUI">WUI (module)</a></p>
+<p><a href="#WUI.app_alert">WUI.app_alert (fn)</a></p>
+<p><a href="#WUI.app_confirm">WUI.app_confirm (fn)</a></p>
+<p><a href="#WUI.app_show">WUI.app_show (fn)</a></p>
+<p><a href="#WUI.callSvr">WUI.callSvr (fn)</a></p>
+<p><a href="#WUI.callSvrSync">WUI.callSvrSync (fn)</a></p>
+<p><a href="#WUI.closeDlg">WUI.closeDlg (fn)</a></p>
+<p><a href="#WUI.dg_dblclick">WUI.dg_dblclick (fn)</a></p>
+<p><a href="#WUI.dg_toolbar">WUI.dg_toolbar (fn)</a></p>
+<p><a href="#WUI.enterWaiting">WUI.enterWaiting (fn)</a></p>
+<p><a href="#WUI.getQueryCond">WUI.getQueryCond (fn)</a></p>
+<p><a href="#WUI.getQueryParam">WUI.getQueryParam (fn)</a></p>
+<p><a href="#WUI.handleLogin">WUI.handleLogin (fn)</a></p>
+<p><a href="#WUI.leaveWaiting">WUI.leaveWaiting (fn)</a></p>
+<p><a href="#WUI.logout">WUI.logout (fn)</a></p>
+<p><a href="#WUI.m_app">WUI.m_app (var)</a></p>
+<p><a href="#WUI.makeLinkTo">WUI.makeLinkTo (fn)</a></p>
+<p><a href="#WUI.makeUrl">WUI.makeUrl (fn)</a></p>
+<p><a href="#WUI.reload">WUI.reload (fn)</a></p>
+<p><a href="#WUI.reloadRow">WUI.reloadRow (fn)</a></p>
+<p><a href="#WUI.reloadTmp">WUI.reloadTmp (fn)</a></p>
+<p><a href="#WUI.setApp">WUI.setApp (fn)</a></p>
+<p><a href="#WUI.showDlg">WUI.showDlg (fn)</a></p>
+<p><a href="#WUI.showObjDlg">WUI.showObjDlg (fn)</a></p>
+<p><a href="#WUI.showPage">WUI.showPage (fn)</a></p>
+<p><a href="#WUI.tryAutoLogin">WUI.tryAutoLogin (fn)</a></p>
+<p><a href="#app_abort">app_abort (fn)</a></p>
+<p><a href="#app_alert">app_alert (alias)</a></p>
+<p><a href="#app_confirm">app_confirm (alias)</a></p>
+<p><a href="#app_show">app_show (alias)</a></p>
+<p><a href="#beforeshow">beforeshow (key)</a></p>
+<p><a href="#callSvr">callSvr (alias)</a></p>
+<p><a href="#callSvrSync">callSvrSync (alias)</a></p>
+<p><a href="#checkboxToHidden">checkboxToHidden (fn)</a></p>
+<p><a href="#datagrid.formatter">datagrid.formatter (key)</a></p>
+<p><a href="#datagrid.sortable">datagrid.sortable (key)</a></p>
+<p><a href="#datagrid.sorter">datagrid.sorter (key)</a></p>
+<p><a href="#datagrid.styler">datagrid.styler (key)</a></p>
+<p><a href="#enterWaiting">enterWaiting (alias)</a></p>
+<p><a href="#example-upload">example-upload (key)</a></p>
+<p><a href="#g_args">g_args (var)</a></p>
+<p><a href="#g_args._app">g_args._app (var)</a></p>
+<p><a href="#g_cfg">g_cfg (var)</a></p>
+<p><a href="#g_data">g_data (var)</a></p>
+<p><a href="#g_data.userInfo">g_data.userInfo (key)</a></p>
+<p><a href="#getAncestor">getAncestor (fn)</a></p>
+<p><a href="#hiddenToCheckbox">hiddenToCheckbox (fn)</a></p>
+<p><a href="#hiddenToImg">hiddenToImg (fn)</a></p>
+<p><a href="#imgToHidden">imgToHidden (fn)</a></p>
+<p><a href="#initdata">initdata (key)</a></p>
+<p><a href="#intSort">intSort (fn)</a></p>
+<p><a href="#jQuery.fn.getAncestor">jQuery.fn.getAncestor (fn)</a></p>
+<p><a href="#jQuery.fn.jdata">jQuery.fn.jdata (fn)</a></p>
+<p><a href="#jQuery.fn.mycombobox">jQuery.fn.mycombobox (fn)</a></p>
+<p><a href="#leaveWaiting">leaveWaiting (alias)</a></p>
+<p><a href="#loaddata">loaddata (key)</a></p>
+<p><a href="#makeLinkTo">makeLinkTo (alias)</a></p>
+<p><a href="#makeUrl">makeUrl (alias)</a></p>
+<p><a href="#my-initfn">my-initfn (key)</a></p>
+<p><a href="#my-obj">my-obj (key)</a></p>
+<p><a href="#numberSort">numberSort (fn)</a></p>
+<p><a href="#onChooseFile">onChooseFile (fn)</a></p>
+<p><a href="#pagecreate,pageshow,pagedestroy">pagecreate,pageshow,pagedestroy (key)</a></p>
+<p><a href="#retdata">retdata (key)</a></p>
+<p><a href="#row2tr">row2tr (fn)</a></p>
+<p><a href="#savedata">savedata (key)</a></p>
+<p><a href="#searchField">searchField (fn)</a></p>
+<p><a href="#show">show (key)</a></p>
+<p><a href="#wui-pageName">wui-pageName (key)</a></p>
 </div><hr>
 <h2 id="IsBusy">@var IsBusy</h2>
 <p>标识应用当前是否正在与服务端交互。一般用于自动化测试。</p><hr>
@@ -119,16 +158,32 @@ $(o).jdata({hello:100, world:200});</code></pre><hr>
 <p class="param"><strong>@param row</strong>  {\@cols}, col: {useTh?=false, html?, \%css?, \%attr?, \%on?}</p>
 <p>根据row结构构造jQuery tr对象。</p><hr>
 <h2 id="$.getScriptWithCache">@fn $.getScriptWithCache(url, options?)</h2><hr>
-<h2 id="WUI">@module WUI</h2>
+<h2 id="WUI">@module WUI</h2><div class="toc"><p style="margin-left:0em"><a href="#WUI-1 对象管理功能">1 对象管理功能</a></p>
+<p style="margin-left:2em"><a href="#WUI-1.1 定义列表页和详情页">1.1 定义列表页和详情页</a></p>
+<p style="margin-left:2em"><a href="#WUI-1.2 添加入口按钮">1.2 添加入口按钮</a></p>
+<p style="margin-left:2em"><a href="#WUI-1.3 定义页面初始化函数">1.3 定义页面初始化函数</a></p>
+<p style="margin-left:2em"><a href="#WUI-1.4 定义对话框的初始化函数">1.4 定义对话框的初始化函数</a></p>
+<p style="margin-left:2em"><a href="#WUI-1.5 列表页中的常见需求">1.5 列表页中的常见需求</a></p>
+<p style="margin-left:4em"><a href="#WUI-1.5.1 列表页中的列，以特定格式展现">1.5.1 列表页中的列，以特定格式展现</a></p>
+<p style="margin-left:4em"><a href="#WUI-1.5.2 排序与分页">1.5.2 排序与分页</a></p>
+<p style="margin-left:2em"><a href="#WUI-1.6 详情页对话框的常见需求">1.6 详情页对话框的常见需求</a></p>
+<p style="margin-left:4em"><a href="#WUI-1.6.1 设计模式：关联选择框">1.6.1 设计模式：关联选择框</a></p>
+<p style="margin-left:4em"><a href="#WUI-1.6.2 picId字段显示图片">1.6.2 picId字段显示图片</a></p>
+<p style="margin-left:4em"><a href="#WUI-1.6.3 List字段显示为多个选项框">1.6.3 List字段显示为多个选项框</a></p>
+<p style="margin-left:2em"><a href="#WUI-1.7 设计模式：展示层次对象">1.7 设计模式：展示层次对象</a></p>
+<p style="margin-left:0em"><a href="#WUI-2 对话框功能">2 对话框功能</a></p>
+<p style="margin-left:2em"><a href="#WUI-2.1 定义对话框">2.1 定义对话框</a></p>
+<p style="margin-left:2em"><a href="#WUI-2.2 显示对话框">2.2 显示对话框</a></p>
+</div>
 <p>筋斗云前端框架-Web应用桌面版</p>
 <p>此框架实现与筋斗云服务端接口的无缝整合。在界面上以jquery-easyui库为基础展示列表、Tab页等。<br />
 参考应用 web/store.html - 商户管理端应用。</p>
-<h4>1 对象管理功能</h4>
+<h4 id="WUI-1 对象管理功能">1 对象管理功能</h4>
 <p>设计模式：列表页与详情页。</p>
 <p>以订单对象Order为例：为订单对象增加“列表页”和“详情页”。</p>
 <p>列表页应包含分页功能，默认只显示“未完成”订单。<br />
 点击列表中一项（一个订单），可显示详情页，即订单详情，并可进行查找、更新等功能。</p>
-<h5>1.1 定义列表页和详情页</h5>
+<h5 id="WUI-1.1 定义列表页和详情页">1.1 定义列表页和详情页</h5>
 <p class="key"><strong>@key <a id="#my-pages">#my-pages</a></strong>   包含所有页面、对话框定义的容器。</p>
 <p class="key"><strong>@key <a id="my-obj">my-obj</a></strong>  DOM属性，标识服务端对象</p>
 <p class="key"><strong>@key <a id="my-initfn">my-initfn</a></strong>  DOM属性，标识页面或对话框的初始化函数，首次显示页面/对话框时调用。</p>
@@ -187,9 +242,9 @@ $(o).jdata({hello:100, world:200});</code></pre><hr>
 <li>列表页面（Tab页） div.pageOrder，列表 table#tblOrder，页面初始化函数 initPageOrder</li>
 <li>详情页（对话框）div#dlgOrder，其中包含一个form。对话框初始化函数</li>
 </ul>
-<h5>1.2 添加入口按钮</h5>
+<h5 id="WUI-1.2 添加入口按钮">1.2 添加入口按钮</h5>
 <pre><code>&lt;a href="#pageOrder" class="easyui-linkbutton" icon="icon-ok"&gt;订单管理&lt;/a&gt;&lt;br/&gt;&lt;br/&gt;</code></pre>
-<h5>1.3 定义页面初始化函数</h5>
+<h5 id="WUI-1.3 定义页面初始化函数">1.3 定义页面初始化函数</h5>
 <p>打开页面后，页面的生存周期如下：</p>
 <p class="key"><strong>@key <a id="pagecreate,pageshow,pagedestroy">pagecreate,pageshow,pagedestroy</a></strong>  页面事件</p>
 <p class="key"><strong>@key <a id="wui-pageName">wui-pageName</a></strong>  属性：页面名</p>
@@ -245,42 +300,52 @@ $(o).jdata({hello:100, world:200});</code></pre><hr>
 <p class="see"><strong>@see <a href="#WUI.dg_toolbar">WUI.dg_toolbar</a></strong> </p>
 <p class="see"><strong>@see <a href="#WUI.dg_dblclick">WUI.dg_dblclick</a></strong> </p>
 <p class="see"><strong>@see <a href="#WUI.makeUrl">WUI.makeUrl</a></strong> </p>
-<h5>1.4 定义对话框的初始化函数</h5>
+<h5 id="WUI-1.4 定义对话框的初始化函数">1.4 定义对话框的初始化函数</h5>
 <p>默认对话框中由于设定了底层对象(my-obj)及属性关联（form中带name属性的组件，已关联对象属性），因而可自动显示和提交数据。</p>
 <p>特别地，某些属性不宜直接展示，例如属性“人物头像”，服务器存储的是图片id(picId)，而展示时应显示为图片而不是一个数字；<br />
 或者如“权限列表”属性，服务器存储的是逗号分隔的一组权限比如&quot;emp,mgr&quot;，而展示时需要为每项显示一个勾选框。<br />
 这类需求就需要编码控制。</p>
-<p class="see"><strong>@see <a href="#loaddata">loaddata</a></strong>  对话框显示前事件，用于将服务端数据转为界面显示数据</p>
-<p class="see"><strong>@see <a href="#savedata">savedata</a></strong>  对话框提交前事件，用于将界面数据转为提交数据</p>
+<p>相关事件：</p>
+<p class="see"><strong>@see <a href="#beforeshow">beforeshow</a> <a href="#show">show</a></strong>  对话框中form显示前后</p>
+<p class="see"><strong>@see <a href="#initdata">initdata</a> <a href="#loaddata">loaddata</a></strong>  对话框中form加载数据前后</p>
+<p class="see"><strong>@see <a href="#savedata">savedata</a> <a href="#retdata">retdata</a></strong>  对话框中form保存数据前后</p>
+<p>对话框类名：</p>
+<p class="see"><strong>@see <a href="#.wui-dialog">.wui-dialog</a></strong> </p>
 <pre><code>function initDlgOrder()
 {
     var jdlg = $(this);
     var jfrm = jdlg.find("form");
-    jfrm.on("beforeshow", function(ev, mode) {
-        jdlg.find(".forFind").toggle(mode == FormMode.forFind);
-        jdlg.find(".notForFind").toggle(mode != FormMode.forFind);
+    jfrm.on("beforeshow", function(ev, formMode) {
+        jdlg.find(".forFind").toggle(formMode == FormMode.forFind);
+        jdlg.find(".notForFind").toggle(formMode != FormMode.forFind);
     })
-    .on("loaddata", function (ev, data) {
+    .on("loaddata", function (ev, data, formMode) {
         // data是列表页中一行对应的数据，框架自动根据此数据将对应属性填上值。
         // 如果界面上展示的字段无法与属性直接对应，可以在该事件回调中设置。
         // hiddenToCheckbox(jfrm.find("#divPerms"));
     })
-    .on("savedata", function (ev) {
+    .on("savedata", function (ev, formMode) {
         // 在form提交时，所有带name属性且不带disabled属性的对象值会被发往服务端。
         // 此事件回调可以设置一些界面上无法与属性直接对应的内容。
         // checkboxToHidden(jfrm.find("#divPerms"));
-    });
+    })
+    .on("retdata", function (ev, data, formMode) {
+        var formMode = jdlg.jdata().mode;
+        if (formMode == FormMode.forAdd) {
+            alert('返回ID: ' + data);
+        }
+    };
 }</code></pre>
-<p class="see"><strong>@see <a href="#checkboxToHidden　">checkboxToHidden　</a></strong> (有示例)</p>
+<p class="see"><strong>@see <a href="#checkboxToHidden">checkboxToHidden</a></strong>  (有示例)</p>
 <p class="see"><strong>@see <a href="#hiddenToCheckbox">hiddenToCheckbox</a></strong>  </p>
 <p class="see"><strong>@see <a href="#imgToHidden">imgToHidden</a></strong> </p>
 <p class="see"><strong>@see <a href="#hiddenToImg">hiddenToImg</a></strong>  (有示例)</p>
-<h5>1.5 列表页中的常见需求</h5>
+<h5 id="WUI-1.5 列表页中的常见需求">1.5 列表页中的常见需求</h5>
 <p>框架中，对象列表通过easyui-datagrid来展现。<br />
 注意：由于历史原因，我们没有使用datagrid中的编辑功能。</p>
 <p>参考：<a href="http://www.jeasyui.net/plugins/183.html">http://www.jeasyui.net/plugins/183.html</a><br />
 教程：<a href="http://www.jeasyui.net/tutorial/148.html">http://www.jeasyui.net/tutorial/148.html</a></p>
-<h6>1.5.1 列表页中的列，以特定格式展现</h6>
+<h6 id="WUI-1.5.1 列表页中的列，以特定格式展现">1.5.1 列表页中的列，以特定格式展现</h6>
 <p class="key"><strong>@key <a id="datagrid.formatter">datagrid.formatter</a></strong> </p>
 <p class="key"><strong>@key <a id="datagrid.styler">datagrid.styler</a></strong> </p>
 <p>示例一：显示名称及颜色</p>
@@ -350,7 +415,7 @@ $(o).jdata({hello:100, world:200});</code></pre><hr>
     }
 };</code></pre>
 <p class="see"><strong>@see <a href="#makeLinkTo">makeLinkTo</a></strong>  生成对象链接，以便点击时打开该对象的详情对话框。</p>
-<h6>1.5.2 排序与分页</h6>
+<h6 id="WUI-1.5.2 排序与分页">1.5.2 排序与分页</h6>
 <p class="key"><strong>@key <a id="datagrid.sortable">datagrid.sortable</a></strong> </p>
 <p class="key"><strong>@key <a id="datagrid.sorter">datagrid.sorter</a></strong> </p>
 <p>使用sortable:true指定该列可排序（可点击列头排序），用sorter指定排序算法（缺省是字符串排序），例如：</p>
@@ -388,17 +453,17 @@ $(o).jdata({hello:100, world:200});</code></pre><hr>
     pagination: false, // 禁用分页组件
     ...
 });</code></pre>
-<h5>1.6 详情页对话框的常见需求</h5>
-<h6>1.6.1 设计模式：关联选择框</h6>
+<h5 id="WUI-1.6 详情页对话框的常见需求">1.6 详情页对话框的常见需求</h5>
+<h6 id="WUI-1.6.1 设计模式：关联选择框">1.6.1 设计模式：关联选择框</h6>
 <p>示例：下拉框中显示员工列表 (Choose-from-list / 关联选择框)</p>
 <p class="see"><strong>@see <a href="#jQuery.fn.mycombobox">jQuery.fn.mycombobox</a></strong> </p>
-<h6>1.6.2 picId字段显示图片</h6>
+<h6 id="WUI-1.6.2 picId字段显示图片">1.6.2 picId字段显示图片</h6>
 <p class="see"><strong>@see <a href="#hiddenToImg">hiddenToImg</a></strong>  (有示例)</p>
 <p class="see"><strong>@see <a href="#imgToHidden">imgToHidden</a></strong> </p>
-<h6>1.6.3 List字段显示为多个选项框</h6>
+<h6 id="WUI-1.6.3 List字段显示为多个选项框">1.6.3 List字段显示为多个选项框</h6>
 <p class="see"><strong>@see <a href="#hiddenToCheckbox">hiddenToCheckbox</a></strong>  </p>
 <p class="see"><strong>@see <a href="#checkboxToHidden　">checkboxToHidden　</a></strong> (有示例)</p>
-<h5>1.7 设计模式：展示层次对象</h5>
+<h5 id="WUI-1.7 设计模式：展示层次对象">1.7 设计模式：展示层次对象</h5>
 <p>例如设计有商品表Item, 每个商品属于特定的商户：</p>
 <pre><code>@Item: id, storeId, name
 storeId:: Integer. 商品所属商户编号。</code></pre>
@@ -451,13 +516,13 @@ function initPageItem(storeId)
 在商品页面初始化时，第三参数将传递给初始化函数：</p>
 <pre><code>function initPageItem(storeId) // storeId=row.id</code></pre>
 <p class="see"><strong>@see <a href="#WUI.showPage">WUI.showPage</a></strong> </p>
-<h4>2 对话框功能</h4>
+<h4 id="WUI-2 对话框功能">2 对话框功能</h4>
 <p>以群发短信功能为例。</p>
 <p>假定服务端已有以下接口：</p>
 <pre><code>sendSms(phone, content)
 phone:: 手机号
 content:: 发送内容</code></pre>
-<h5>2.1 定义对话框</h5>
+<h5 id="WUI-2.1 定义对话框">2.1 定义对话框</h5>
 <p>注意：每个带name属性的组件对应接口中的参数。</p>
 <pre><code>&lt;div id="dlgSendSms" title="群发短信" style="width:500px;height:300px;"&gt;  
     &lt;form method="POST"&gt;
@@ -465,7 +530,7 @@ content:: 发送内容</code></pre>
         发送内容： &lt;textarea rows=5 cols=30 name="content"&gt;&lt;/textarea&gt;
     &lt;/form&gt;
 &lt;/div&gt;</code></pre>
-<h5>2.2 显示对话框</h5>
+<h5 id="WUI-2.2 显示对话框">2.2 显示对话框</h5>
 <p>可以调用WUI.showDlg，写一个显示对话框的函数：</p>
 <pre><code>function showDlgSendSms()
 {
@@ -496,8 +561,8 @@ content:: 发送内容</code></pre>
 <pre><code>var params = {id: 100};
 var url = makeUrl("Ordr.set", params);</code></pre>
 <p>注意：调用该函数生成的url在结尾有标志字符串&quot;zz=1&quot;, 如&quot;../api.php/login?_app=user&amp;zz=1&quot;</p><hr>
-<h2 id="WUI.callSvr">@fn WUI.callSvr(ac, params?, fn?, postParams?, userOptions?)</h2>
-<p class="fn"><strong>@fn <a id="WUI.callSvr">WUI.callSvr</a></strong> (ac, fn?, postParams?, userOptions?)</p>
+<h2 id="WUI.callSvr">@fn WUI.callSvr(ac, [params?], fn?, postParams?, userOptions?)</h2><div class="toc"><p style="margin-left:0em"><a href="#WUI.callSvr-1 文件上传支持(FormData)">1 文件上传支持(FormData)</a></p>
+</div>
 <p class="alias"><strong>@alias <a id="callSvr">callSvr</a></strong> </p>
 <p class="param"><strong>@param ac</strong>  String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)</p>
 <p class="param"><strong>@param params</strong>  Object. URL参数（或称HTTP GET参数）</p>
@@ -525,9 +590,24 @@ callSvr("User.get", function (data) {
         return;
     }
     foo(data);
-}, null, {noex:1});</code></pre><hr>
-<h2 id="WUI.callSvrSync">@fn WUI.callSvrSync(ac, params?, fn?, postParams?, userOptions?)</h2>
-<p class="fn"><strong>@fn <a id="WUI.callSvrSync">WUI.callSvrSync</a></strong> (ac, fn?, postParams?, userOptions?)</p>
+}, null, {noex:1});</code></pre>
+<h4 id="WUI.callSvr-1 文件上传支持(FormData)">1 文件上传支持(FormData)</h4>
+<p>callSvr支持FormData对象，可用于上传文件等场景。示例如下：</p>
+<p class="key"><strong>@key <a id="example-upload">example-upload</a></strong> </p>
+<p>HTML:</p>
+<pre><code>file: &lt;input id="file1" type="file" multiple&gt;
+&lt;button type="button" id="btn1"&gt;upload&lt;/button&gt;</code></pre>
+<p>JS:</p>
+<pre><code>jpage.find("#btn1").on('click', function () {
+    var fd = new FormData();
+    $.each(jpage.find('#file1')[0].files, function (i, e) {
+        fd.append('file' + (i+1), e);
+    });
+    callSvr('upload', api_upload, fd);
+
+    function api_upload(data) { ... }
+});</code></pre><hr>
+<h2 id="WUI.callSvrSync">@fn WUI.callSvrSync(ac, [params?], fn?, postParams?, userOptions?)</h2>
 <p class="alias"><strong>@alias <a id="callSvrSync">callSvrSync</a></strong> </p>
 <p class="return"><strong>@return data</strong>  原型规定的返回数据</p>
 <p>同步模式调用callSvr.</p>
@@ -645,7 +725,16 @@ WUI.showPage("pageHome", "首页2");</code></pre><hr>
 </ul>
 <p>特殊class my-reset: 当执行form reset时会将内容清除. (适用于在forSet/forLink模式下添加显示内容, 而在forFind/forAdd模式下时清除内容)</p>
 <pre><code>&lt;div class="my-reset"&gt;...&lt;/div&gt;</code></pre>
-<p>hidden上的特殊property noReset: (TODO)</p><hr>
+<p>hidden上的特殊property noReset: (TODO)</p>
+<p>在dialog的form中将触发以下事件：</p>
+<p class="key"><strong>@key <a id="beforeshow">beforeshow</a></strong>  Function(ev, formMode)  form显示前事件.</p>
+<p class="key"><strong>@key <a id="show">show</a></strong>  Function(ev, formMode)  form显示事件.</p>
+<p class="key"><strong>@key <a id="initdata">initdata</a></strong>  Function(ev, data, formMode) form加载数据前，可修改要加载的数据即data</p>
+<p class="key"><strong>@key <a id="loaddata">loaddata</a></strong>  Function(ev, data, formMode) form加载数据后，一般用于将服务端数据转为界面显示数据</p>
+<p class="key"><strong>@key <a id="savedata">savedata</a></strong>  Function(ev, formMode) form提交前事件，用于将界面数据转为提交数据</p>
+<p class="key"><strong>@key <a id="retdata">retdata</a></strong>  Function(ev, data, formMode) form提交后事件，用于处理返回数据</p>
+<p>调用此函数后，对话框将加上以下CSS Class:</p>
+<p class="key"><strong>@key <a id=".wui-dialog">.wui-dialog</a></strong>  标识WUI对话框的类名。</p><hr>
 <h2 id="WUI.getQueryCond">@fn WUI.getQueryCond(kvList)</h2>
 <p class="param"><strong>@param kvList</strong>  {key=>value}, 键值对，值中支持操作符及通配符。也支持格式 [ [key, value] ], 这时允许key有重复。</p>
 <p>根据kvList生成BPQ协议定义的{obj}.query的cond参数。</p>
@@ -680,7 +769,9 @@ WUI.getQueryCond(kvList); // 结果同上。</code></pre>
 <p class="see"><strong>@see <a href="#WUI.getQueryCond">WUI.getQueryCond</a></strong> </p><hr>
 <h2 id="WUI.showObjDlg">@fn WUI.showObjDlg(jdlg, mode, id?)</h2>
 <p class="param"><strong>@param id</strong>  String. mode=link时必设，set/del如缺省则从关联的jtbl中取, add/find时不需要</p>
-<p class="param"><strong>@param jdbl</strong>  Datagrid. dialog/form关联的datagrid -- 如果dlg对应多个tbl, 必须每次打开都设置</p><hr>
+<p class="param"><strong>@param jdbl</strong>  Datagrid. dialog/form关联的datagrid -- 如果dlg对应多个tbl, 必须每次打开都设置</p>
+<p>事件参考：</p>
+<p class="see"><strong>@see <a href="#WUI.showDlg">WUI.showDlg</a></strong> </p><hr>
 <h2 id="WUI.dg_toolbar">@fn WUI.dg_toolbar(jtbl, jdlg, button_lists...)</h2>
 <p>设置easyui-datagrid上toolbar上的按钮。缺省支持的按钮有r(refresh), f(find), a(add), s(set), d(del), 可通过以下设置方式修改：</p>
 <pre><code>// jtbl.jdata().toolbar 缺省值为 "rfasd"
@@ -755,5 +846,148 @@ $(main);</code></pre><hr>
 <h2 id="WUI.logout">@fn WUI.logout(dontReload?=0)</h2>
 <p class="param"><strong>@param dontReload</strong>  如果非0, 则注销后不刷新页面.</p>
 <p>注销当前登录, 成功后刷新页面(除非指定dontReload=1)</p><hr>
-<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-07-08T15:09:39+08:00</div>
+<h2 id="checkboxToHidden">@fn checkboxToHidden(jp, sep?=',')</h2>
+<p class="param"><strong>@param jp</strong>   jquery结点</p>
+<p class="param"><strong>@param sep</strong> ?=','  分隔符，默认为逗号</p>
+<p>用于在对象详情对话框中，以一组复选框(checkbox)来对应一个逗号分隔式列表的字段。<br />
+例如对象Employee中有一个“权限列表”字段perms定义如下：</p>
+<pre><code>perms:: List(perm)。权限列表，可用值为: item-上架商户管理权限, emp-普通员工权限, mgr-经理权限。</code></pre>
+<p>现在以一组checkbox来在表达perms字段，希望字段中有几项就将相应的checkbox选中，例如值&quot;emp,mgr&quot;表示同时具有emp与mgr权限，显示时应选中这两项。<br />
+定义HTML如下：</p>
+<pre><code>&lt;div id="dlgEmployee" my-obj="Employee" my-initfn="initDlgEmployee" title="商户员工"&gt;
+    ...
+    &lt;div id="divPerms"&gt;
+        &lt;input type="hidden" name="perms"&gt;
+        &lt;label&gt;&lt;input type="checkbox" value="item"&gt;上架商品管理&lt;/label&gt;&lt;br&gt;
+        &lt;label&gt;&lt;input type="checkbox" value="emp" checked&gt;员工:查看,操作订单(默认)&lt;/label&gt;&lt;br&gt;
+        &lt;label&gt;&lt;input type="checkbox" value="mgr"&gt;商户管理&lt;/label&gt;&lt;br&gt;
+    &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+<p>注意：</p>
+<ul>
+<li>divPerms块中包含一个hidden对象和一组checkbox. hidden对象的name设置为字段名, 每个checkbox的value字段设置为每一项的内部名字。</li>
+</ul>
+<p>在JS中调用如下：</p>
+<pre><code>function initDlgEmployee()
+{
+    var jdlg = $(this);
+    var jfrm = jdlg.find("form");
+    jfrm.on("loaddata", function (ev, data) {
+        // 显示时perms字段自动存在hidden对象中，通过调用 hiddenToCheckbox将相应的checkbox选中
+        hiddenToCheckbox(jfrm.find("#divPerms"));
+    })
+    .on("savedata", function (ev) {
+        // 保存时收集checkbox选中的内容，存储到hidden对象中。
+        checkboxToHidden(jfrm.find("#divPerms"));
+    });
+}</code></pre>
+<p class="see"><strong>@see <a href="#hiddenToCheckbox">hiddenToCheckbox</a></strong> </p><hr>
+<h2 id="hiddenToCheckbox">@fn hiddenToCheckbox(jp, sep?=",")</h2>
+<p class="param"><strong>@param jp</strong>   jquery结点</p>
+<p class="param"><strong>@param sep</strong> ?=','  分隔符，默认为逗号</p>
+<p>用于在对象详情对话框中，以一组复选框(checkbox)来对应一个逗号分隔式列表的字段。</p>
+<p class="see"><strong>@see <a href="#checkboxToHidden">checkboxToHidden</a></strong>  （有示例）</p><hr>
+<h2 id="hiddenToImg">@fn hiddenToImg(jp, sep?=",")</h2>
+<p>用于在对象详情对话框中，展示关联图片字段。图片可以为单张或多张。</p>
+<p>以下是一个带图片的商户表设计，里面有两个字段picId与pics，一个显示单张图片，一个显示一组图片。</p>
+<pre><code>@Store: id, name, picId, pics
+
+picId:: Integer. 商户头像。
+pics:: List(Integer). 商户图片列表，格式如"101,102,103".</code></pre>
+<p>要显示单张图片，可编写HTML如下：</p>
+<pre><code>&lt;div id="dlgStore" my-obj="Store" title="商户" my-initfn="initDlgStore"&gt;
+    ...
+    &lt;tr&gt;
+        &lt;td&gt;商户头像&lt;/td&gt;
+        &lt;td id="divStorePicId"&gt;
+            &lt;input type="hidden" name="picId"&gt;
+            &lt;div class="imgs"&gt;&lt;/div&gt;
+            &lt;input type="file" accept="image/*" onchange="onChooseFile.apply(this)"&gt;
+        &lt;/td&gt;
+    &lt;/tr&gt; 
+&lt;/div&gt;</code></pre>
+<p>注意：</p>
+<ul>
+<li>在divStorePicId中，包括一个input[type=hidden]对象，用于保存原始字段值；一个div.imgs，用于显示图片；一个input[type=file]，用于选择图片。</li>
+<li>为input[type=file]组件设置onchange方法，以便在选择图片后，压缩图片并显示到div.imgs中。</li>
+</ul>
+<p>要显示多张图片，可编写HTML如下：</p>
+<pre><code>&lt;tr&gt;
+    &lt;td&gt;门店照片&lt;/td&gt;
+    &lt;td id="divStorePics"&gt;
+        &lt;input type="hidden" name="pics"&gt;
+        &lt;div class="imgs"&gt;&lt;/div&gt;
+        &lt;input type="file" accept="image/*" multiple onchange="onChooseFile.apply(this)"&gt;
+        &lt;p&gt;（图片上点右键，可以删除图片等操作）&lt;/p&gt;
+    &lt;/td&gt;
+&lt;/tr&gt;</code></pre>
+<ul>
+<li>与上面显示单张图片的例子比较，只要将input[type=file]组件设置multiple属性，以便可以一次选择多个图片，<br />
+同时onChooseFile函数会根据是否有该属性，决定添加图片还是覆盖原有图片。</li>
+</ul>
+<p>为了可以做删除图片等操作，可以在对话框中再加个右键菜单，比如</p>
+<pre><code>&lt;div id="mnuPics"&gt;
+    &lt;div id="mnuDelPic"&gt;删除图片&lt;/div&gt;
+&lt;/div&gt;</code></pre>
+<p>JS逻辑如下：</p>
+<pre><code>function initDlgStore()
+{
+    var jdlg = $(this);
+    var jmenu = jdlg.find("#mnuPics");
+
+    var jfrm = jdlg.find("form");
+    jfrm.on("loaddata", function (ev, data) {
+        // 加载图片
+        hiddenToImg(jfrm.find("#divStorePics"));
+        hiddenToImg(jfrm.find("#divStorePicId"));
+    })
+    .on("savedata", function (ev) {
+        // 保存图片
+        imgToHidden(jfrm.find("#divStorePics"));
+        imgToHidden(jfrm.find("#divStorePicId"));
+    });
+
+    // 设置右键菜单，比如删除图片
+    var curImg;
+    jmenu.menu({
+        onClick: function (item) {
+            var jimg = $(curImg);
+            switch (item.id) {
+            case "mnuDelPic":
+                jimg.remove();
+                break;
+            }
+        }
+    });
+    jdlg.on("contextmenu", "img", function (ev) {
+        ev.preventDefault();
+        jmenu.menu('show', {left: ev.pageX, top: ev.pageY});
+        curImg = this;
+    });
+}</code></pre>
+<p class="see"><strong>@see <a href="#imgToHidden">imgToHidden</a></strong> </p>
+<p class="see"><strong>@see <a href="#onChooseFile">onChooseFile</a></strong> </p><hr>
+<h2 id="imgToHidden">@fn imgToHidden(jp, sep?=",")</h2>
+<p>用于在对象详情对话框中，展示关联图片字段。图片可以为单张或多张。</p>
+<p>会先调用upload(fmt=raw_b64)接口保存所有改动的图片，然后将picId存储到hidden字段中。</p>
+<p class="see"><strong>@see <a href="#hiddenToImg">hiddenToImg</a></strong>  有示例</p><hr>
+<h2 id="onChooseFile">@fn onChooseFile()</h2>
+<p>与hiddenToImg/imgToHidden合用，在对话框上显示一个图片字段。<br />
+在文件输入框中，选中一个文件后，调用此方法，可将图片压缩后显示到指定的img标签中(div.imgs)。</p>
+<p>使用lrz组件进行图片压缩，最大宽高不超过1280px。然后以base64字串方式将图片显示到一个img组件中。</p>
+<p>TODO: 添加图片压缩参数，图片框显示大小等。</p>
+<p class="see"><strong>@see <a href="#hiddenToImg">hiddenToImg</a></strong> </p><hr>
+<h2 id="searchField">@fn searchField(o, param)</h2>
+<p>在详情页对话框中，以某字段作为查询条件来查询。</p>
+<p class="param"><strong>@param o</strong>  当前对象。一般在onclick事件中调用时，直接填写this.</p>
+<p class="param"><strong>@param param</strong>  查询参数，如 {userPhone: "13712345678"}，可以指定多个参数。</p>
+<p>示例：在订单表中，显示用户手机号，边上再增加一个按钮“查询该手机所有订单”，点击就以当前显示的手机号查询所有订单：</p>
+<pre><code>&lt;div id="dlgOrder" my-obj="Ordr" my-initfn="initDlgOrder" title="用户订单" style="padding:20px 40px 20px 40px;width:520px;height:500px;"&gt;  
+    &lt;form method="POST"&gt;
+        用户手机号 &lt;input name="userPhone" class="easyui-validatebox" data-options="validType:'usercode'"&gt;
+        &lt;input class="notForFind" type=button onClick="searchField(this, {userPhone: this.form.userPhone.value});" value="查询该手机所有订单"&gt;
+    &lt;/form&gt;
+&lt;/div&gt;</code></pre>
+<p class="see"><strong>@see <a href="#WUI.getQueryCond">WUI.getQueryCond</a></strong>  值支持比较运行符等多种格式，可参考这里定义。</p><hr>
+<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-07-26T15:36:45+08:00</div>
 </html>

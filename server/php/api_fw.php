@@ -241,7 +241,7 @@ class ApiLog
 		$this->startTm = microtime(true);
 
 		global $APP;
-		$type = preg_replace('/\d+$/', '', $APP);
+		$type = getAppType();
 		$userId = null;
 		if ($type == "user") {
 			$userId = $_SESSION["uid"];
@@ -252,7 +252,7 @@ class ApiLog
 		else if ($type == "admin") {
 			$userId = $_SESSION["adminId"];
 		}
-		if (! ctype_digit($userId))
+		if (! (is_int($userId) || ctype_digit($userId)))
 			$userId = 'NULL';
 		$content = $this->myVarExport($_GET, 2000);
 		$ct = $_SERVER["HTTP_CONTENT_TYPE"];
@@ -597,7 +597,8 @@ function handleFormat($ret, $fname)
 function tableCRUD($ac1, $tbl, $asAdmin = false)
 {
 	$accessCtl = AccessControl::create($tbl, $asAdmin);
-	$accessCtl->before($ac1, $tbl);
+	$accessCtl->before($ac1);
+	$tbl = $accessCtl->getTable();
 	$ignoreAfter = false;
 
 	if ($ac1 == "add") {
@@ -1253,6 +1254,18 @@ query接口的"..."之后就是虚拟字段。后缀"?"表示是非缺省字段�
 @fn AccessControl::getDefaultSort()  (for query)取缺省排序.
 @var AccessControl::$defaultSort ?= "t0.id" (for query)指定缺省排序.
 
+示例：Video对象默认按id倒序排列：
+
+	class AC_Video extends AccessControl 
+	{
+		protected $defaultSort = "t0.id DESC";
+		...
+	}
+
+### 缺省输出字段列表
+
+@var AccessControl::$defaultRes (for query)指定缺省输出字段列表. 如果不指定，则为 "t0.*" 加  default=true的虚拟字段
+
 ### 最大每页数据条数
 
 @fn AccessControl::getMaxPageSz()  (for query) 取最大每页数据条数。为非负整数。
@@ -1270,7 +1283,59 @@ PAGE_SZ_LIMIT目前定为10000条。如果还不够，一定是应用设计有�
 	}
 
 @var PAGE_SZ_LIMIT =10000
- */
+
+### 虚拟表和视图
+
+假如要对ApiLog进行过滤，只查询管理端的写操作。实现以下接口：
+
+	EmpLog.query() -> tbl(id, tm, userId, ac, req, res, reqsz, ressz, empName?, empPhone?)
+	
+一种办法可以在后台定义一个视图，如:
+
+	CREATE VIEW EmpLog AS
+	SELECT t0.id, tm, userId, ac, req, res, reqsz, ressz, e.name empName, e.phone empPhone
+	FROM ApiLog t0
+	LEFT JOIN Employee e ON e.id=t0.userId
+	WHERE t0.app='emp-adm' AND t0.userId IS NOT NULL
+	ORDER BY t0.id DESC
+
+然后可将该视图当作表一样查询（但不可更新），如：
+
+	class AC2_EmpLog extends AccessControl 
+	{
+		protected $allowedAc = ["query"];
+	}
+
+这样就可以实现上述接口了。
+
+另一种办法是直接使用AccessControl创建虚拟表，代码如下：
+
+	class AC2_EmpLog extends AccessControl 
+	{
+		protected $allowedAc = ["query"];
+		protected $table = 'ApiLog';
+		protected $defaultSort = "t0.id DESC";
+		protected $defaultRes = "id, tm, userId, ac, req, res, reqsz, ressz, empName, empPhone";
+		protected $vcolDefs = [
+			[
+				"res" => ["e.name AS empName", "e.phone AS empPhone"],
+				"join" => "LEFT JOIN Employee e ON e.id=t0.userId"
+			]
+		];
+
+		protected function onQuery() {
+			$this->addCond("t0.app='emp-adm' and t0.userId IS NOT NULL");
+		}
+	}
+
+与上例相比，它不仅无须在数据库中创建视图，还也可以进行更新。
+其要点是：
+
+- 重写 AccessControl::$table
+- 重写 AccessControl::$defaultRes
+- 用addCond添加缺省查询条件
+
+*/
 
 # ====== functions {{{
 class AccessControl
@@ -1289,6 +1354,7 @@ class AccessControl
 	# for get/query
 	protected $hiddenFields = [];
 	# for query
+	protected $defaultRes; // 缺省为 "t0.*" 加  default=true的虚拟字段
 	protected $defaultSort = "t0.id";
 	# for query
 	protected $maxPageSz = 100;
@@ -1345,7 +1411,8 @@ class AccessControl
 			throw new MyException($noauth? E_NOAUTH: E_FORBIDDEN, "Operation is not allowed for current user on object `$tbl`");
 		}
 		$x = new $cls;
-		$x->table = $tbl;
+		if (is_null($x->table))
+			$x->table = $tbl;
 		return $x;
 	}
 
@@ -1399,7 +1466,7 @@ class AccessControl
 		}
 		elseif ($ac == "get" || $ac == "query") {
 			$gres = param("gres");
-			$res = param("res");
+			$res = param("res") ?: $this->defaultRes;
 			$this->sqlConf = [
 				"res" => [$res],
 				"gres" => $gres,
@@ -1484,6 +1551,11 @@ class AccessControl
 	{
 		return $this->onGenId();
 	}
+
+	final public function getTable()
+	{
+		return $this->table;
+	}
 	final public function getDefaultSort()
 	{
 		return $this->defaultSort;
@@ -1544,7 +1616,7 @@ class AccessControl
 			$col = trim($col);
 			$alias = null;
 			$fn = null;
-			if ($col === "*") {
+			if ($col === "*" || $col === "t0.*") {
 				$firstCol = "t0.*";
 				continue;
 			}

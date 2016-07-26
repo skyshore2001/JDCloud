@@ -1937,8 +1937,16 @@ allow throw("abort") as abort behavior.
 		}
 	}
 
-	// return: ==null: 做出错处理，不调用回调函数。
-	// 注意：服务端不应返回null, 否则客户回调无法执行; 习惯上返回false表示让回调处理错误。
+/**
+@fn MUI.defDataProc(rv)
+
+@param rv BQP协议原始数据，如 "[0, {id: 1}]"，一般是字符串，也可以是JSON对象。
+@return data 按接口定义返回的数据对象，如 {id: 1}. 如果返回==null，调用函数应直接返回。
+
+注意：服务端不应返回null, 否则客户回调无法执行; 习惯上返回false表示让回调处理错误。
+
+*/
+	self.defDataProc = defDataProc;
 	function defDataProc(rv)
 	{
 		// ajax-beforeSend回调中设置
@@ -2124,12 +2132,40 @@ allow throw("abort") as abort behavior.
 		foo(data);
 	}, null, {noex:1});
 
+## 调用监控
+
+@var g_cfg.logAction
+
 框架会自动在ajaxOption中增加ctx_属性，它包含 {ac, tm, tv, tv2, ret} 这些信息。
 当设置g_cfg.logAction=1时，将输出这些信息。
 - ac: action
 - tm: start time
 - tv: time interval (从发起请求到服务器返回数据完成的时间, 单位是毫秒)
 - tv2: 从接到数据到完成处理的时间，毫秒(当并发处理多个调用时可能不精确)
+
+## 文件上传支持(FormData)
+
+callSvr支持FormData对象，可用于上传文件等场景。示例如下：
+
+@key example-upload
+
+HTML:
+
+	file: <input id="file1" type="file" multiple>
+	<button type="button" id="btn1">upload</button>
+
+JS:
+
+	jpage.find("#btn1").on('click', function () {
+		var fd = new FormData();
+		$.each(jpage.find('#file1')[0].files, function (i, e) {
+			fd.append('file' + (i+1), e);
+		});
+		callSvr('upload', api_upload, fd);
+
+		function api_upload(data) { ... }
+	});
+
 */
 	window.callSvr = self.callSvr = callSvr;
 	function callSvr(ac, params, fn, postParams, userOptions)
@@ -2153,7 +2189,7 @@ allow throw("abort") as abort behavior.
 			ctx.noLoadingImg = 1;
 		enterWaiting(ctx);
 		var method = (postParams == null? 'GET': 'POST');
-		var options = {
+		var opt = {
 			dataType: 'text',
 			url: url,
 			data: postParams,
@@ -2162,13 +2198,13 @@ allow throw("abort") as abort behavior.
 			ctx_: ctx
 		};
 		// support FormData object.
-		if (! $.isPlainObject(postParams)) {
-			options.processData = false;
-			options.contentType = false;
+		if (postParams instanceof FormData) {
+			opt.processData = false;
+			opt.contentType = false;
 		}
-		$.extend(options, userOptions);
+		$.extend(opt, userOptions);
 		console.log("call " + ac);
-		return $.ajax(options);
+		return $.ajax(opt);
 	}
 
 /**
@@ -2199,6 +2235,9 @@ allow throw("abort") as abort behavior.
 
 /**
 @fn MUI.setupCallSvrViaForm($form, $iframe, url, fn, callOpt)
+
+该方法已不建议使用。上传文件请用FormData。
+@see example-upload,callSvr
 
 @param $iframe 一个隐藏的iframe组件.
 @param callOpt 用户自定义参数. 参考callSvr的同名参数. e.g. {noex: 1}
@@ -3356,7 +3395,9 @@ js调用逻辑示例：
 
 由于指定了pageItf属性，当外部页面设置了 PageOrders.refresh = true后，再进入本页面，所有关联的列表会在展现时自动刷新。且PageOrders.refresh会被自动重置为false.
 
-## 例：若干button与若干list的组合(必须一一对应)，打开页面时只展现一个列表，点击相应按钮显示相应列表。
+## 例：若干button与若干list的组合
+
+一个button对应一个list; 打开页面时只展现一个列表，点击相应按钮显示相应列表。
 
 如果没有用navbar组件，而是一组button对应一组列表，点一个button显示对应列表，也可以使用本函数。页面如下：
 
@@ -3391,8 +3432,9 @@ js调用逻辑示例：
 
 注意：navRef与listRef中的组件数目一定要一一对应。除了使用选择器，也可以直接用jQuery对象为navRef和listRef赋值。
 
-## 例：只有一个list 的简单情况，也可以调用本函数简化分页处理
+## 例：只有一个list
 
+只有一个list 的简单情况，也可以调用本函数简化分页处理.
 仍考虑上例，假如那两个列表需要进入页面时就同时显示，那么可以分开一一设置如下：
 
 	jpage.find(".p-panel").height(500); // 一定要为容器设置高度

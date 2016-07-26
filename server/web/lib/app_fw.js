@@ -407,30 +407,41 @@ function initWUI()
 或者如“权限列表”属性，服务器存储的是逗号分隔的一组权限比如"emp,mgr"，而展示时需要为每项显示一个勾选框。
 这类需求就需要编码控制。
 
-@see loaddata 对话框显示前事件，用于将服务端数据转为界面显示数据
-@see savedata 对话框提交前事件，用于将界面数据转为提交数据
+相关事件：
+@see beforeshow,show 对话框中form显示前后
+@see initdata,loaddata 对话框中form加载数据前后
+@see savedata,retdata 对话框中form保存数据前后
+
+对话框类名：
+@see .wui-dialog
 
 	function initDlgOrder()
 	{
 		var jdlg = $(this);
 		var jfrm = jdlg.find("form");
-		jfrm.on("beforeshow", function(ev, mode) {
-			jdlg.find(".forFind").toggle(mode == FormMode.forFind);
-			jdlg.find(".notForFind").toggle(mode != FormMode.forFind);
+		jfrm.on("beforeshow", function(ev, formMode) {
+			jdlg.find(".forFind").toggle(formMode == FormMode.forFind);
+			jdlg.find(".notForFind").toggle(formMode != FormMode.forFind);
 		})
-		.on("loaddata", function (ev, data) {
+		.on("loaddata", function (ev, data, formMode) {
 			// data是列表页中一行对应的数据，框架自动根据此数据将对应属性填上值。
 			// 如果界面上展示的字段无法与属性直接对应，可以在该事件回调中设置。
 			// hiddenToCheckbox(jfrm.find("#divPerms"));
 		})
-		.on("savedata", function (ev) {
+		.on("savedata", function (ev, formMode) {
 			// 在form提交时，所有带name属性且不带disabled属性的对象值会被发往服务端。
 			// 此事件回调可以设置一些界面上无法与属性直接对应的内容。
 			// checkboxToHidden(jfrm.find("#divPerms"));
-		});
+		})
+		.on("retdata", function (ev, data, formMode) {
+			var formMode = jdlg.jdata().mode;
+			if (formMode == FormMode.forAdd) {
+				alert('返回ID: ' + data);
+			}
+		};
 	}
 
-@see checkboxToHidden　(有示例)
+@see checkboxToHidden (有示例)
 @see hiddenToCheckbox 
 
 @see imgToHidden
@@ -851,8 +862,7 @@ $.ajaxSetup({
 });
 
 /**
-@fn WUI.callSvr(ac, params?, fn?, postParams?, userOptions?)
-@fn WUI.callSvr(ac, fn?, postParams?, userOptions?)
+@fn WUI.callSvr(ac, [params?], fn?, postParams?, userOptions?)
 @alias callSvr
 
 @param ac String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)
@@ -884,6 +894,29 @@ $.ajaxSetup({
 		foo(data);
 	}, null, {noex:1});
 
+## 文件上传支持(FormData)
+
+callSvr支持FormData对象，可用于上传文件等场景。示例如下：
+
+@key example-upload
+
+HTML:
+
+	file: <input id="file1" type="file" multiple>
+	<button type="button" id="btn1">upload</button>
+
+JS:
+
+	jpage.find("#btn1").on('click', function () {
+		var fd = new FormData();
+		$.each(jpage.find('#file1')[0].files, function (i, e) {
+			fd.append('file' + (i+1), e);
+		});
+		callSvr('upload', api_upload, fd);
+
+		function api_upload(data) { ... }
+	});
+
 */
 window.callSvr = self.callSvr = callSvr;
 function callSvr(ac, params, fn, postParams, userOptions)
@@ -897,21 +930,25 @@ function callSvr(ac, params, fn, postParams, userOptions)
 	}
 	var url = makeUrl(ac, params);
 	enterWaiting();
-	var method = (postParams === undefined? 'GET': 'POST');
-	var ret;
-	var opt = $.extend({
+	var method = (postParams == null? 'GET': 'POST');
+	var opt = {
 		url: url,
 		data: postParams,
 // 		dataType: "text",
 		type: method,
 		success: fn,
-	}, userOptions);
+	};
+	// support FormData object.
+	if (postParams instanceof FormData) {
+		opt.processData = false;
+		opt.contentType = false;
+	}
+	$.extend(opt, userOptions);
 	return $.ajax(opt);
 }
 
 /**
-@fn WUI.callSvrSync(ac, params?, fn?, postParams?, userOptions?)
-@fn WUI.callSvrSync(ac, fn?, postParams?, userOptions?)
+@fn WUI.callSvrSync(ac, [params?], fn?, postParams?, userOptions?)
 @alias callSvrSync
 @return data 原型规定的返回数据
 
@@ -1708,6 +1745,19 @@ $.fn.okCancel = function (fnOk, fnCancel) {
 
 hidden上的特殊property noReset: (TODO)
 
+在dialog的form中将触发以下事件：
+
+@key beforeshow Function(ev, formMode)  form显示前事件.
+@key show Function(ev, formMode)  form显示事件.
+@key initdata Function(ev, data, formMode) form加载数据前，可修改要加载的数据即data
+@key loaddata Function(ev, data, formMode) form加载数据后，一般用于将服务端数据转为界面显示数据
+@key savedata Function(ev, formMode) form提交前事件，用于将界面数据转为提交数据
+@key retdata Function(ev, data, formMode) form提交后事件，用于处理返回数据
+
+调用此函数后，对话框将加上以下CSS Class:
+
+@key .wui-dialog 标识WUI对话框的类名。
+
  */
 self.showDlg = showDlg;
 function showDlg(jdlg, opt) 
@@ -1727,7 +1777,12 @@ function showDlg(jdlg, opt)
 	if ($.isArray(opt.buttons))
 		btns.push.apply(btns, opt.buttons);
 
+	jdlg.addClass('wui-dialog');
 	callInitfn(jdlg);
+
+	var jfrm = jdlg.find("Form");
+	var formMode = jdlg.jdata().mode;
+	jfrm.trigger("beforeshow", [formMode]);
 
 	var dlgOpt = {
 //		minimizable: true,
@@ -1757,7 +1812,6 @@ function showDlg(jdlg, opt)
 
 	jdlg.okCancel(fnOk, opt.noCancel? undefined: fnCancel);
 
-	var jfrm = jdlg.find("Form");
 	if (opt.reset)
 	{
 		jfrm.form("reset");
@@ -1767,9 +1821,9 @@ function showDlg(jdlg, opt)
 	}
 	if (opt.data)
 	{
-		jfrm.trigger("initdata", opt.data);
+		jfrm.trigger("initdata", [opt.data, formMode]);
 		jfrm.form("load", opt.data);
-		jfrm.trigger("loaddata", opt.data);
+		jfrm.trigger("loaddata", [opt.data, formMode]);
 // 		// load for jquery-easyui combobox
 // 		// NOTE: depend on jeasyui implementation. for ver 1.4.2.
 // 		jfrm.find("[comboname]").each (function (i, e) {
@@ -1779,6 +1833,7 @@ function showDlg(jdlg, opt)
 
 // 	openDlg(jdlg);
 	focusDlg(jdlg);
+	jfrm.trigger("show", [formMode]);
 
 	function fnCancel() {closeDlg(jdlg)}
 	function fnOk()
@@ -1787,19 +1842,22 @@ function showDlg(jdlg, opt)
 			jfrm.form('submit', {
 				url: opt.url,
 				onSubmit: function () {
-					jfrm.trigger("savedata");
 					if (opt.onSubmit && opt.onSubmit(jfrm) === false)
 						return false;
 					var ret = opt.validate? jfrm.form("validate"): true;
-					if (ret)
+					if (ret) {
+						jfrm.trigger("savedata", [formMode]);
 						enterWaiting();
+					}
 					return ret;
 				},
 				success: function (data) {
 					if (typeof data == "string")
 						data = defDataProc.call(this, data);
-					if (data != null && opt.onOk)
+					if (data != null && opt.onOk) {
 						opt.onOk.call(jdlg, data);
+						jfrm.trigger('retdata', [data, formMode]);
+					}
 				}
 			});
 			opt.onAfterSubmit && opt.onAfterSubmit(jfrm);
@@ -1995,6 +2053,9 @@ function restoreFormFields(jfrm)
 @fn WUI.showObjDlg(jdlg, mode, id?)
 @param id String. mode=link时必设，set/del如缺省则从关联的jtbl中取, add/find时不需要
 @param jdbl Datagrid. dialog/form关联的datagrid -- 如果dlg对应多个tbl, 必须每次打开都设置
+
+事件参考：
+@see WUI.showDlg
 */
 self.showObjDlg = showObjDlg;
 function showObjDlg(jdlg, mode, id)
@@ -2080,7 +2141,6 @@ function showObjDlg(jdlg, mode, id)
 
 	jd.mode = mode;
 
-	var jd_frm = jfrm.jdata();
 	// load data
 	var load_data;
 	if (mode == FormMode.forAdd) {
@@ -2101,7 +2161,6 @@ function showObjDlg(jdlg, mode, id)
 		load_data = add_(data);
 		saveFormFields(jfrm, load_data);
 	}
-	jfrm.trigger("beforeshow", mode);
 	// open the dialog
 	showDlg(jdlg, {
 		url: url,
@@ -2118,7 +2177,6 @@ function showObjDlg(jdlg, mode, id)
 
 	if (mode == FormMode.forSet || mode == FormMode.forLink)
 		jfrm.form("validate");
-	jfrm.trigger("show", mode);
 
 	function onOk (retData) {
 		if (mode==FormMode.forFind) {
