@@ -1254,9 +1254,17 @@ query接口的"..."之后就是虚拟字段。后缀"?"表示是非缺省字段�
 @fn AccessControl::getDefaultSort()  (for query)取缺省排序.
 @var AccessControl::$defaultSort ?= "t0.id" (for query)指定缺省排序.
 
+示例：Video对象默认按id倒序排列：
+
+	class AC_Video extends AccessControl 
+	{
+		protected $defaultSort = "t0.id DESC";
+		...
+	}
+
 ### 缺省输出字段列表
 
-@var AccessControl::$defaultRes ?= "t0.*" (for query)指定缺省输出字段列表
+@var AccessControl::$defaultRes (for query)指定缺省输出字段列表. 如果不指定，则为 "t0.*" 加  default=true的虚拟字段
 
 ### 最大每页数据条数
 
@@ -1346,7 +1354,7 @@ class AccessControl
 	# for get/query
 	protected $hiddenFields = [];
 	# for query
-	protected $defaultRes = "t0.*";
+	protected $defaultRes; // 缺省为 "t0.*" 加  default=true的虚拟字段
 	protected $defaultSort = "t0.id";
 	# for query
 	protected $maxPageSz = 100;
