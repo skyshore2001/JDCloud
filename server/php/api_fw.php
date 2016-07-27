@@ -290,7 +290,7 @@ class ApiLog
 		$content = $this->myVarExport($X_RET_STR);
 
 		$userIdStr = "";
-		if ($this->ac == 'login' && $X_RET[1] && $X_RET[1]['id']) {
+		if ($this->ac == 'login' && is_array($X_RET[1]) && @$X_RET[1]['id']) {
 			$userIdStr = ", userId={$X_RET[1]['id']}";
 		}
 		$sql = sprintf("UPDATE ApiLog SET t=$iv, retval=%d, ressz=%d, res=%s {$userIdStr} WHERE id={$this->id}", $X_RET[0], strlen($X_RET_STR), Q($content));
