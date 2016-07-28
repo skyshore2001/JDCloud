@@ -401,6 +401,8 @@ function initWUI()
 
 ### 定义对话框的初始化函数
 
+@key example-dialog
+
 默认对话框中由于设定了底层对象(my-obj)及属性关联（form中带name属性的组件，已关联对象属性），因而可自动显示和提交数据。
 
 特别地，某些属性不宜直接展示，例如属性“人物头像”，服务器存储的是图片id(picId)，而展示时应显示为图片而不是一个数字；
@@ -1751,12 +1753,14 @@ hidden上的特殊property noReset: (TODO)
 @key show Function(ev, formMode)  form显示事件.
 @key initdata Function(ev, data, formMode) form加载数据前，可修改要加载的数据即data
 @key loaddata Function(ev, data, formMode) form加载数据后，一般用于将服务端数据转为界面显示数据
-@key savedata Function(ev, formMode) form提交前事件，用于将界面数据转为提交数据
+@key savedata Function(ev, formMode) form提交前事件，用于将界面数据转为提交数据. 返回false或调用ev.preventDefault()可阻止form提交。
 @key retdata Function(ev, data, formMode) form提交后事件，用于处理返回数据
 
 调用此函数后，对话框将加上以下CSS Class:
 
 @key .wui-dialog 标识WUI对话框的类名。
+
+@see example-dialog 在对话框中使用事件
 
  */
 self.showDlg = showDlg;
@@ -1846,7 +1850,10 @@ function showDlg(jdlg, opt)
 						return false;
 					var ret = opt.validate? jfrm.form("validate"): true;
 					if (ret) {
-						jfrm.trigger("savedata", [formMode]);
+						var ev = $.Event("savedata");
+						jfrm.trigger(ev, [formMode]);
+						if (ev.isDefaultPrevented())
+							return false;
 						enterWaiting();
 					}
 					return ret;
