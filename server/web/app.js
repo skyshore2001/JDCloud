@@ -114,7 +114,8 @@ function hiddenToCheckbox(jp, sep)
 	});
 }
 
-function arrayToImg(jp, arr)
+// nothumb?=false
+function arrayToImg(jp, arr, nothumb)
 {
 	var jImgContainer = jp.find("div.imgs");
 	jImgContainer.empty();
@@ -123,7 +124,7 @@ function arrayToImg(jp, arr)
 		if (thumbId == "")
 			return;
 		var url = makeUrl("att", {id: thumbId});
-		var linkUrl = makeUrl("att", {thumbId: thumbId});
+		var linkUrl = nothumb? url: makeUrl("att", {thumbId: thumbId});
 		var ja = $("<a target='_black'>").attr("href", linkUrl).appendTo(jImgContainer);
 		$("<img>").attr("src", url)
 			.attr("picId", thumbId)
@@ -160,8 +161,15 @@ function arrayToImg(jp, arr)
 
 注意：
 
-- 在divStorePicId中，包括一个input[type=hidden]对象，用于保存原始字段值；一个div.imgs，用于显示图片；一个input[type=file]，用于选择图片。
+- 在divStorePicId中，包括一个input[type=hidden]对象，用于保存原始字段值；一个div.imgs，用于显示图片(其实是缩略图)；一个input[type=file]，用于选择图片。
 - 为input[type=file]组件设置onchange方法，以便在选择图片后，压缩图片并显示到div.imgs中。
+- 如果不需要压缩缩略图，则可在jp上设置属性 wui-nothumb, 如
+
+		<td id="divStorePicId" wui-nothumb>
+		...
+		</td>
+
+@key wui-nothumb
 
 要显示多张图片，可编写HTML如下：
 
@@ -231,7 +239,8 @@ function hiddenToImg(jp, sep)
 	if (sep == null)
 		sep = DEFAULT_SEP;
 	var val = jp.find("input[type=hidden]:first").val().split(sep);
-	arrayToImg(jp, val);
+	var nothumb = jp.attr('wui-nothumb') !== undefined;
+	arrayToImg(jp, val, nothumb);
 }
 
 /**
@@ -249,22 +258,39 @@ function imgToHidden(jp, sep)
 		sep = DEFAULT_SEP;
 	var val = [];
 	jp.find("div.imgs").addClass("my-reset"); // 用于在 查找/添加 模式时清除内容.
-	jp.find("img").each(function () {
-			// e.g. "data:image/jpeg;base64,..."
-			if (this.src.substr(0, 4) === "data") {
-				var b64data = this.src.substr(this.src.indexOf(",")+1);
-				var params = {fmt: "raw_b64", genThumb: 1, f: "1.jpg", autoResize: 0};
-				var ids;
-				callSvrSync("upload", params, function (data) {
-					val.push(data[0].thumbId);
-				}, b64data);
-			}
-			else {
-				var picId = $(this).attr("picId");
-				if (picId);
-					val.push(picId);
-			}
-	});
+	var nothumb = jp.attr('wui-nothumb') !== undefined;
+	if (! nothumb) {
+		jp.find("img").each(function () {
+				// e.g. "data:image/jpeg;base64,..."
+				if (this.src.substr(0, 4) === "data") {
+					var b64data = this.src.substr(this.src.indexOf(",")+1);
+					var params = {fmt: "raw_b64", genThumb: 1, f: "1.jpg", autoResize: 0};
+					var ids;
+					callSvrSync("upload", params, function (data) {
+						val.push(data[0].thumbId);
+					}, b64data);
+				}
+				else {
+					var picId = $(this).attr("picId");
+					if (picId);
+						val.push(picId);
+				}
+		});
+	}
+	else {
+		var files = jp.find("input[type=file]")[0].files;
+		if (files.length > 0) {
+			var fd = new FormData();
+			$.each(files, function (i, e) {
+				fd.append('file' + (i+1), e);
+			});
+			callSvrSync('upload', function (data) {
+				$.each(data, function (i, e) {
+					val.push(e.id);
+				});
+			}, fd);
+		}
+	}
 	jp.find("input[type=hidden]").val( val.join(sep));
 }
 
@@ -292,31 +318,39 @@ function onChooseFile()
 	var dfd = $.getScriptWithCache("lib/lrz.mobile.min.js");
 	var picFiles = this.files;
 	var jdiv = $(this).parent().find("div.imgs");
+	var compress = true; // todo
 
 	var onlyOne = $(this).prop("multiple") == false;
 
 	dfd.done(function () {
 		$.each(picFiles, function (i, file) {
-			lrz(file, {
-				width: 1280,
-				height: 1280,
-				done: function (results) {
-					//results.base64
-					var jimg;
-					if (onlyOne) {
-						jimg = jdiv.find("img:first");
-						if (jimg.size() == 0) {
+			if (compress) {
+				lrz(file, {
+					width: 1280,
+					height: 1280,
+					done: function (results) {
+						//results.base64
+						var jimg;
+						if (onlyOne) {
+							jimg = jdiv.find("img:first");
+							if (jimg.size() == 0) {
+								jimg = $("<img>");
+							}
+						}
+						else {
 							jimg = $("<img>");
 						}
+						jimg.attr("src", results.base64)
+							.css("max-width", "100px")
+							.appendTo(jdiv);
 					}
-					else {
-						jimg = $("<img>");
-					}
-					jimg.attr("src", results.base64)
-						.css("max-width", "100px")
-						.appendTo(jdiv);
-				}
-			});
+				});
+			}
+			else {
+				var windowURL = window.URL || window.webkitURL;
+				var dataURL = windowURL.createObjectURL(file);
+				jimg.attr('src', dataURL);
+			}
 		});
 	})
 }
