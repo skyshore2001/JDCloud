@@ -1846,16 +1846,19 @@ function showDlg(jdlg, opt)
 			jfrm.form('submit', {
 				url: opt.url,
 				onSubmit: function () {
+					var ret = opt.validate? jfrm.form("validate"): true;
+					if (! ret)
+						return false;
+
+					var ev = $.Event("savedata");
+					jfrm.trigger(ev, [formMode]);
+					if (ev.isDefaultPrevented())
+						return false;
+
 					if (opt.onSubmit && opt.onSubmit(jfrm) === false)
 						return false;
-					var ret = opt.validate? jfrm.form("validate"): true;
-					if (ret) {
-						var ev = $.Event("savedata");
-						jfrm.trigger(ev, [formMode]);
-						if (ev.isDefaultPrevented())
-							return false;
-						enterWaiting();
-					}
+
+					enterWaiting();
 					return ret;
 				},
 				success: function (data) {
