@@ -401,18 +401,16 @@ function api_upload()
 			$mtype = $f["type"];
 			$ext = strtolower(pathinfo($f["name"], PATHINFO_EXTENSION));
 			global $ALLOWED_MIME, $ALLOWED_EXTS;
-			if ($mtype != null && count($ALLOWED_MIME) > 0) {
+			if ($ext == "" && $mtype) {
 				$ext = array_search($mtype, $ALLOWED_MIME);
-				if ($ext === false) {
+				if ($ext === false)
 					throw new MyException(E_PARAM, "MIME type not supported: `$mtype`", "文件类型`$mtype`不支持.");
-				}
 			}
-			else {
-				if (count($ALLOWED_EXTS) > 0 && ($ext == "" || !in_array($ext, $ALLOWED_EXTS))) {
-					$name = basename($f["name"]);
-					throw new MyException(E_PARAM, "bad extention file name: `$name`", "文件扩展名`$ext`不支持");
-				}
+			if (count($ALLOWED_EXTS) > 0 && ($ext == "" || !in_array($ext, $ALLOWED_EXTS))) {
+				$name = basename($f["name"]);
+				throw new MyException(E_PARAM, "bad extention file name: `$name`", "文件扩展名`$ext`不支持");
 			}
+
 			if ($type) {
 				$dir = "upload/$type/" . date('Ym');
 			}
