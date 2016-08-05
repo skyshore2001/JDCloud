@@ -19,9 +19,12 @@ $UploadType = [
 	"default" => ["w"=>100, "h"=>100],
 ];
 
-// 允许上传的文件类型设置。设置为空表示允许所有。
+// 设置允许上传的文件类型。设置为空表示允许所有。
+global $ALLOWED_EXTS;
+$ALLOWED_EXTS = ["jpeg", "jpg", "gif", "png", "txt"]; // ["pdf", "doc", "docx"];
 
-global $ALLOWED_MIME, $ALLOWED_EXTS;
+// 如果扩展名未知，则使用MIME类型限制上传：
+global $ALLOWED_MIME;
 $ALLOWED_MIME = [
 	'jpg'=>'image/jpeg',
 	'png'=>'image/png',
@@ -31,7 +34,6 @@ $ALLOWED_MIME = [
 	//'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 	//'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 ];
-$ALLOWED_EXTS = ["jpeg", "jpg", "gif", "png", "txt"]; // ["pdf", "doc", "docx"];
 //}}}
 
 // ====== functions {{{
