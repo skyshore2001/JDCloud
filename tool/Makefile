@@ -22,7 +22,7 @@ refdoc: $(refdoc_targets)
 ../doc/api_m2.html: ../server/m/lib/common.js ../server/m2/lib/app_fw.js 
 	php gendoc.php $^ -title "API²Î¿¼ - ½î¶·ÔÆÇ°¶Ë£¨ÒÆ¶¯Web°æ£©" $(opt) > $@
 
-../doc/api_web.html: ../server/web/lib/app_fw.js 
+../doc/api_web.html: ../server/web/lib/app_fw.js ../server/web/app.js 
 	php gendoc.php $^ -title "API²Î¿¼ - ½î¶·ÔÆÇ°¶Ë£¨×ÀÃæWeb°æ£©" $(opt) > $@
 
 ../doc/api_php.html: ../server/php/common.php ../server/php/app_fw.php ../server/php/api_fw.php

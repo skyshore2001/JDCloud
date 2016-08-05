@@ -2,148 +2,178 @@
 <head>
 <meta charset="utf-8">
 <title>API参考 - 筋斗云前端（移动Web版）</title>
+<style>
+h3,h4,h5,h6 {
+	font-size: 1em;
+}
+
+pre {
+	border-left: 1px solid #ccc;
+	margin: 0 1em;
+	padding: 0 0.5em;
+	tab-size:4;
+}
+
+code {
+	font-family: "Courier New";
+    padding: 0px 3px;
+    display: inline-block;
+}
+
+.toc {
+	margin: 2em;
+}
+
+.toc p {
+	margin: 0.3em 0;
+}
+
+</style>
 <link rel="stylesheet" href="style.css" />
 </head>
 
 <h1>API参考 - 筋斗云前端（移动Web版）</h1>
-<div>最后更新：2016-07-08</div>
+<div>最后更新：2016-07-26</div>
 <h2>Modules</h2>
-<div>
-<a href="#common.js">common.js (module)</a><br>
-<a href="#MUI">MUI (module)</a><br>
+<div class="toc">
+<p><a href="#common.js">common.js (module)</a></p>
+<p><a href="#MUI">MUI (module)</a></p>
 </div><hr>
 <h2>Keywords</h2>
-<div>
-<a href="##footer">#footer (key)</a><br>
-<a href="#$.getScriptWithCache">$.getScriptWithCache (fn)</a><br>
-<a href="#.mui-android">.mui-android (key)</a><br>
-<a href="#.mui-container">.mui-container (key)</a><br>
-<a href="#.mui-cordova">.mui-cordova (key)</a><br>
-<a href="#.mui-dialog">.mui-dialog (key)</a><br>
-<a href="#.mui-ios">.mui-ios (key)</a><br>
-<a href="#.mui-menu">.mui-menu (key)</a><br>
-<a href="#.mui-navbar">.mui-navbar (key)</a><br>
-<a href="#.mui-navbar.noactive">.mui-navbar.noactive (key)</a><br>
-<a href="#.mui-page">.mui-page (key)</a><br>
-<a href="#.mui-weixin">.mui-weixin (key)</a><br>
-<a href="#.noSwipe">.noSwipe (key)</a><br>
-<a href="#BASE_URL">BASE_URL (var)</a><br>
-<a href="#CComManager">CComManager (class)</a><br>
-<a href="#CPageManager">CPageManager (class)</a><br>
-<a href="#Date.add">Date.add (fn)</a><br>
-<a href="#Date.addDay">Date.addDay (fn)</a><br>
-<a href="#Date.addHours">Date.addHours (fn)</a><br>
-<a href="#Date.addMin">Date.addMin (fn)</a><br>
-<a href="#Date.addMonth">Date.addMonth (fn)</a><br>
-<a href="#Date.diff">Date.diff (fn)</a><br>
-<a href="#Date.format">Date.format (fn)</a><br>
-<a href="#IsBusy">IsBusy (var)</a><br>
-<a href="#MUI">MUI (module)</a><br>
-<a href="#MUI.activePage">MUI.activePage (var)</a><br>
-<a href="#MUI.app_alert">MUI.app_alert (fn)</a><br>
-<a href="#MUI.batchCall">MUI.batchCall (class)</a><br>
-<a href="#MUI.callSvr">MUI.callSvr (fn)</a><br>
-<a href="#MUI.callSvrSync">MUI.callSvrSync (fn)</a><br>
-<a href="#MUI.callSvrSync">MUI.callSvrSync (fn)</a><br>
-<a href="#MUI.closeDialog">MUI.closeDialog (fn)</a><br>
-<a href="#MUI.container">MUI.container (var)</a><br>
-<a href="#MUI.disableBatch">MUI.disableBatch (var)</a><br>
-<a href="#MUI.docTitle">MUI.docTitle (var)</a><br>
-<a href="#MUI.enhanceWithin">MUI.enhanceWithin (fn)</a><br>
-<a href="#MUI.enterWaiting">MUI.enterWaiting (fn)</a><br>
-<a href="#MUI.getOptions">MUI.getOptions (fn)</a><br>
-<a href="#MUI.getToPageId">MUI.getToPageId (fn)</a><br>
-<a href="#MUI.handleLogin">MUI.handleLogin (fn)</a><br>
-<a href="#MUI.hideLoading">MUI.hideLoading (fn)</a><br>
-<a href="#MUI.lastError">MUI.lastError (var)</a><br>
-<a href="#MUI.leaveWaiting">MUI.leaveWaiting (fn)</a><br>
-<a href="#MUI.logout">MUI.logout (fn)</a><br>
-<a href="#MUI.m_app">MUI.m_app (var)</a><br>
-<a href="#MUI.m_curBatch">MUI.m_curBatch (var)</a><br>
-<a href="#MUI.m_enhanceFn">MUI.m_enhanceFn (var)</a><br>
-<a href="#MUI.m_pageStack">MUI.m_pageStack (var)</a><br>
-<a href="#MUI.makeUrl">MUI.makeUrl (fn)</a><br>
-<a href="#MUI.popPageStack">MUI.popPageStack (fn)</a><br>
-<a href="#MUI.prevPageId">MUI.prevPageId (var)</a><br>
-<a href="#MUI.setApp">MUI.setApp (fn)</a><br>
-<a href="#MUI.setFormSubmit">MUI.setFormSubmit (fn)</a><br>
-<a href="#MUI.setOnError">MUI.setOnError (fn)</a><br>
-<a href="#MUI.setupCallSvrViaForm">MUI.setupCallSvrViaForm (fn)</a><br>
-<a href="#MUI.setupDialog">MUI.setupDialog (fn)</a><br>
-<a href="#MUI.showDialog">MUI.showDialog (fn)</a><br>
-<a href="#MUI.showFirstPage">MUI.showFirstPage (var)</a><br>
-<a href="#MUI.showLoading">MUI.showLoading (fn)</a><br>
-<a href="#MUI.showLogin">MUI.showLogin (fn)</a><br>
-<a href="#MUI.showPage">MUI.showPage (fn)</a><br>
-<a href="#MUI.showValidateErr">MUI.showValidateErr (fn)</a><br>
-<a href="#MUI.tryAutoLogin">MUI.tryAutoLogin (fn)</a><br>
-<a href="#MUI.useBatchCall">MUI.useBatchCall (fn)</a><br>
-<a href="#app_abort">app_abort (fn)</a><br>
-<a href="#app_alert">app_alert (alias)</a><br>
-<a href="#appendParam">appendParam (fn)</a><br>
-<a href="#assert">assert (fn)</a><br>
-<a href="#basename">basename (fn)</a><br>
-<a href="#callSvr">callSvr (alias)</a><br>
-<a href="#callSvrSync">callSvrSync (alias)</a><br>
-<a href="#common.js">common.js (module)</a><br>
-<a href="#delCookie">delCookie (fn)</a><br>
-<a href="#delStorage">delStorage (fn)</a><br>
-<a href="#delayDo">delayDo (fn)</a><br>
-<a href="#enterWaiting">enterWaiting (alias)</a><br>
-<a href="#evalAttr">evalAttr (fn)</a><br>
-<a href="#g_args">g_args (var)</a><br>
-<a href="#g_args._app">g_args._app (var)</a><br>
-<a href="#g_cfg">g_cfg (var)</a><br>
-<a href="#g_cfg.PAGE_SZ">g_cfg.PAGE_SZ (var)</a><br>
-<a href="#g_cfg.logAction">g_cfg.logAction (var)</a><br>
-<a href="#g_cfg.manualSplash">g_cfg.manualSplash (key)</a><br>
-<a href="#g_cordova">g_cordova (var)</a><br>
-<a href="#g_data">g_data (var)</a><br>
-<a href="#g_data.serverRev">g_data.serverRev (key)</a><br>
-<a href="#g_data.testMode,g_data.mockMode">g_data.testMode,g_data.mockMode (key)</a><br>
-<a href="#g_data.userInfo">g_data.userInfo (key)</a><br>
-<a href="#getCookie">getCookie (fn)</a><br>
-<a href="#getFormData">getFormData (fn)</a><br>
-<a href="#getStorage">getStorage (fn)</a><br>
-<a href="#getTimeDiffDscr">getTimeDiffDscr (fn)</a><br>
-<a href="#initNavbarAndList">initNavbarAndList (alias)</a><br>
-<a href="#initPageDetail">initPageDetail (fn)</a><br>
-<a href="#initPageList">initPageList (fn)</a><br>
-<a href="#initPullList">initPullList (fn)</a><br>
-<a href="#isAndroid">isAndroid (fn)</a><br>
-<a href="#isIOS">isIOS (fn)</a><br>
-<a href="#isWeixin">isWeixin (fn)</a><br>
-<a href="#leaveWaiting">leaveWaiting (alias)</a><br>
-<a href="#loadScript">loadScript (fn)</a><br>
-<a href="#makeUrl">makeUrl (alias)</a><br>
-<a href="#mui-initfn">mui-initfn (key)</a><br>
-<a href="#mui-loadPrompt">mui-loadPrompt (key)</a><br>
-<a href="#mui-pullPrompt">mui-pullPrompt (key)</a><br>
-<a href="#mui-script">mui-script (key)</a><br>
-<a href="#mui-swipenav">mui-swipenav (key)</a><br>
-<a href="#muiInit">muiInit (event)</a><br>
-<a href="#pagebeforeshow">pagebeforeshow (event)</a><br>
-<a href="#pagecreate">pagecreate (event)</a><br>
-<a href="#pagehide">pagehide (event)</a><br>
-<a href="#pageshow">pageshow (event)</a><br>
-<a href="#parseDate">parseDate (fn)</a><br>
-<a href="#parseQuery">parseQuery (fn)</a><br>
-<a href="#parseTime">parseTime (fn)</a><br>
-<a href="#parseValue">parseValue (fn)</a><br>
-<a href="#randAlphanum">randAlphanum (fn)</a><br>
-<a href="#randInt">randInt (fn)</a><br>
-<a href="#reloadSite">reloadSite (fn)</a><br>
-<a href="#rs2Array">rs2Array (fn)</a><br>
-<a href="#rs2Hash">rs2Hash (fn)</a><br>
-<a href="#rs2MultiHash">rs2MultiHash (fn)</a><br>
-<a href="#setCookie">setCookie (fn)</a><br>
-<a href="#setDateBox">setDateBox (fn)</a><br>
-<a href="#setFormData">setFormData (fn)</a><br>
-<a href="#setStorage">setStorage (fn)</a><br>
-<a href="#setTimeBox">setTimeBox (fn)</a><br>
-<a href="#showByFormMode">showByFormMode (fn)</a><br>
-<a href="#tobool">tobool (fn)</a><br>
-<a href="#waitFor">waitFor (fn)</a><br>
+<div class="toc">
+<p><a href="##footer">#footer (key)</a></p>
+<p><a href="#$.getScriptWithCache">$.getScriptWithCache (fn)</a></p>
+<p><a href="#.mui-android">.mui-android (key)</a></p>
+<p><a href="#.mui-container">.mui-container (key)</a></p>
+<p><a href="#.mui-cordova">.mui-cordova (key)</a></p>
+<p><a href="#.mui-dialog">.mui-dialog (key)</a></p>
+<p><a href="#.mui-ios">.mui-ios (key)</a></p>
+<p><a href="#.mui-menu">.mui-menu (key)</a></p>
+<p><a href="#.mui-navbar">.mui-navbar (key)</a></p>
+<p><a href="#.mui-navbar.noactive">.mui-navbar.noactive (key)</a></p>
+<p><a href="#.mui-page">.mui-page (key)</a></p>
+<p><a href="#.mui-weixin">.mui-weixin (key)</a></p>
+<p><a href="#.noSwipe">.noSwipe (key)</a></p>
+<p><a href="#BASE_URL">BASE_URL (var)</a></p>
+<p><a href="#CComManager">CComManager (class)</a></p>
+<p><a href="#CPageManager">CPageManager (class)</a></p>
+<p><a href="#Date.add">Date.add (fn)</a></p>
+<p><a href="#Date.addDay">Date.addDay (fn)</a></p>
+<p><a href="#Date.addHours">Date.addHours (fn)</a></p>
+<p><a href="#Date.addMin">Date.addMin (fn)</a></p>
+<p><a href="#Date.addMonth">Date.addMonth (fn)</a></p>
+<p><a href="#Date.diff">Date.diff (fn)</a></p>
+<p><a href="#Date.format">Date.format (fn)</a></p>
+<p><a href="#IsBusy">IsBusy (var)</a></p>
+<p><a href="#MUI">MUI (module)</a></p>
+<p><a href="#MUI.activePage">MUI.activePage (var)</a></p>
+<p><a href="#MUI.app_alert">MUI.app_alert (fn)</a></p>
+<p><a href="#MUI.batchCall">MUI.batchCall (class)</a></p>
+<p><a href="#MUI.callSvr">MUI.callSvr (fn)</a></p>
+<p><a href="#MUI.callSvrSync">MUI.callSvrSync (fn)</a></p>
+<p><a href="#MUI.callSvrSync">MUI.callSvrSync (fn)</a></p>
+<p><a href="#MUI.closeDialog">MUI.closeDialog (fn)</a></p>
+<p><a href="#MUI.container">MUI.container (var)</a></p>
+<p><a href="#MUI.defDataProc">MUI.defDataProc (fn)</a></p>
+<p><a href="#MUI.disableBatch">MUI.disableBatch (var)</a></p>
+<p><a href="#MUI.docTitle">MUI.docTitle (var)</a></p>
+<p><a href="#MUI.enhanceWithin">MUI.enhanceWithin (fn)</a></p>
+<p><a href="#MUI.enterWaiting">MUI.enterWaiting (fn)</a></p>
+<p><a href="#MUI.getOptions">MUI.getOptions (fn)</a></p>
+<p><a href="#MUI.getToPageId">MUI.getToPageId (fn)</a></p>
+<p><a href="#MUI.handleLogin">MUI.handleLogin (fn)</a></p>
+<p><a href="#MUI.hideLoading">MUI.hideLoading (fn)</a></p>
+<p><a href="#MUI.lastError">MUI.lastError (var)</a></p>
+<p><a href="#MUI.leaveWaiting">MUI.leaveWaiting (fn)</a></p>
+<p><a href="#MUI.logout">MUI.logout (fn)</a></p>
+<p><a href="#MUI.m_app">MUI.m_app (var)</a></p>
+<p><a href="#MUI.m_curBatch">MUI.m_curBatch (var)</a></p>
+<p><a href="#MUI.m_enhanceFn">MUI.m_enhanceFn (var)</a></p>
+<p><a href="#MUI.m_pageStack">MUI.m_pageStack (var)</a></p>
+<p><a href="#MUI.makeUrl">MUI.makeUrl (fn)</a></p>
+<p><a href="#MUI.popPageStack">MUI.popPageStack (fn)</a></p>
+<p><a href="#MUI.prevPageId">MUI.prevPageId (var)</a></p>
+<p><a href="#MUI.setApp">MUI.setApp (fn)</a></p>
+<p><a href="#MUI.setFormSubmit">MUI.setFormSubmit (fn)</a></p>
+<p><a href="#MUI.setOnError">MUI.setOnError (fn)</a></p>
+<p><a href="#MUI.setupCallSvrViaForm">MUI.setupCallSvrViaForm (fn)</a></p>
+<p><a href="#MUI.setupDialog">MUI.setupDialog (fn)</a></p>
+<p><a href="#MUI.showDialog">MUI.showDialog (fn)</a></p>
+<p><a href="#MUI.showFirstPage">MUI.showFirstPage (var)</a></p>
+<p><a href="#MUI.showLoading">MUI.showLoading (fn)</a></p>
+<p><a href="#MUI.showLogin">MUI.showLogin (fn)</a></p>
+<p><a href="#MUI.showPage">MUI.showPage (fn)</a></p>
+<p><a href="#MUI.showValidateErr">MUI.showValidateErr (fn)</a></p>
+<p><a href="#MUI.tryAutoLogin">MUI.tryAutoLogin (fn)</a></p>
+<p><a href="#MUI.useBatchCall">MUI.useBatchCall (fn)</a></p>
+<p><a href="#app_abort">app_abort (fn)</a></p>
+<p><a href="#app_alert">app_alert (alias)</a></p>
+<p><a href="#appendParam">appendParam (fn)</a></p>
+<p><a href="#assert">assert (fn)</a></p>
+<p><a href="#basename">basename (fn)</a></p>
+<p><a href="#callSvr">callSvr (alias)</a></p>
+<p><a href="#callSvrSync">callSvrSync (alias)</a></p>
+<p><a href="#common.js">common.js (module)</a></p>
+<p><a href="#delCookie">delCookie (fn)</a></p>
+<p><a href="#delStorage">delStorage (fn)</a></p>
+<p><a href="#delayDo">delayDo (fn)</a></p>
+<p><a href="#enterWaiting">enterWaiting (alias)</a></p>
+<p><a href="#evalAttr">evalAttr (fn)</a></p>
+<p><a href="#example-upload">example-upload (key)</a></p>
+<p><a href="#g_args">g_args (var)</a></p>
+<p><a href="#g_args._app">g_args._app (var)</a></p>
+<p><a href="#g_cfg">g_cfg (var)</a></p>
+<p><a href="#g_cfg.PAGE_SZ">g_cfg.PAGE_SZ (var)</a></p>
+<p><a href="#g_cfg.logAction">g_cfg.logAction (var)</a></p>
+<p><a href="#g_cfg.logAction">g_cfg.logAction (var)</a></p>
+<p><a href="#g_cfg.manualSplash">g_cfg.manualSplash (key)</a></p>
+<p><a href="#g_cordova">g_cordova (var)</a></p>
+<p><a href="#g_data">g_data (var)</a></p>
+<p><a href="#g_data.serverRev">g_data.serverRev (key)</a></p>
+<p><a href="#g_data.testMode,g_data.mockMode">g_data.testMode,g_data.mockMode (key)</a></p>
+<p><a href="#g_data.userInfo">g_data.userInfo (key)</a></p>
+<p><a href="#getCookie">getCookie (fn)</a></p>
+<p><a href="#getFormData">getFormData (fn)</a></p>
+<p><a href="#getStorage">getStorage (fn)</a></p>
+<p><a href="#getTimeDiffDscr">getTimeDiffDscr (fn)</a></p>
+<p><a href="#initNavbarAndList">initNavbarAndList (alias)</a></p>
+<p><a href="#initPageDetail">initPageDetail (fn)</a></p>
+<p><a href="#initPageList">initPageList (fn)</a></p>
+<p><a href="#initPullList">initPullList (fn)</a></p>
+<p><a href="#isAndroid">isAndroid (fn)</a></p>
+<p><a href="#isIOS">isIOS (fn)</a></p>
+<p><a href="#isWeixin">isWeixin (fn)</a></p>
+<p><a href="#leaveWaiting">leaveWaiting (alias)</a></p>
+<p><a href="#loadScript">loadScript (fn)</a></p>
+<p><a href="#makeUrl">makeUrl (alias)</a></p>
+<p><a href="#mui-initfn">mui-initfn (key)</a></p>
+<p><a href="#mui-loadPrompt">mui-loadPrompt (key)</a></p>
+<p><a href="#mui-pullPrompt">mui-pullPrompt (key)</a></p>
+<p><a href="#mui-script">mui-script (key)</a></p>
+<p><a href="#mui-swipenav">mui-swipenav (key)</a></p>
+<p><a href="#muiInit">muiInit (event)</a></p>
+<p><a href="#pagebeforeshow">pagebeforeshow (event)</a></p>
+<p><a href="#pagecreate">pagecreate (event)</a></p>
+<p><a href="#pagehide">pagehide (event)</a></p>
+<p><a href="#pageshow">pageshow (event)</a></p>
+<p><a href="#parseDate">parseDate (fn)</a></p>
+<p><a href="#parseQuery">parseQuery (fn)</a></p>
+<p><a href="#parseTime">parseTime (fn)</a></p>
+<p><a href="#parseValue">parseValue (fn)</a></p>
+<p><a href="#randAlphanum">randAlphanum (fn)</a></p>
+<p><a href="#randInt">randInt (fn)</a></p>
+<p><a href="#reloadSite">reloadSite (fn)</a></p>
+<p><a href="#rs2Array">rs2Array (fn)</a></p>
+<p><a href="#rs2Hash">rs2Hash (fn)</a></p>
+<p><a href="#rs2MultiHash">rs2MultiHash (fn)</a></p>
+<p><a href="#setCookie">setCookie (fn)</a></p>
+<p><a href="#setDateBox">setDateBox (fn)</a></p>
+<p><a href="#setFormData">setFormData (fn)</a></p>
+<p><a href="#setStorage">setStorage (fn)</a></p>
+<p><a href="#setTimeBox">setTimeBox (fn)</a></p>
+<p><a href="#showByFormMode">showByFormMode (fn)</a></p>
+<p><a href="#tobool">tobool (fn)</a></p>
+<p><a href="#waitFor">waitFor (fn)</a></p>
 </div><hr>
 <h2 id="common.js">@module common.js</h2>
 <p>JS通用函数库</p><hr>
@@ -462,9 +492,24 @@ function onSubmit()
 <p>tm和tm1可以为时间对象或时间字符串</p><hr>
 <h2 id="parseValue">@fn parseValue(str)</h2>
 <p>如果str符合整数或小数，则返回相应类型。</p><hr>
-<h2 id="MUI">@module MUI</h2>
+<h2 id="MUI">@module MUI</h2><div class="toc"><p style="margin-left:0em"><a href="#MUI-1 基于逻辑页面的单网页应用">1 基于逻辑页面的单网页应用</a></p>
+<p style="margin-left:2em"><a href="#MUI-1.1 应用容器">1.1 应用容器</a></p>
+<p style="margin-left:2em"><a href="#MUI-1.2 逻辑页面">1.2 逻辑页面</a></p>
+<p style="margin-left:0em"><a href="#MUI-2 服务端交互API">2 服务端交互API</a></p>
+<p style="margin-left:0em"><a href="#MUI-3 登录与退出">3 登录与退出</a></p>
+<p style="margin-left:0em"><a href="#MUI-4 常用组件">4 常用组件</a></p>
+<p style="margin-left:2em"><a href="#MUI-4.1 导航栏">4.1 导航栏</a></p>
+<p style="margin-left:2em"><a href="#MUI-4.2 对话框">4.2 对话框</a></p>
+<p style="margin-left:2em"><a href="#MUI-4.3 弹出菜单">4.3 弹出菜单</a></p>
+<p style="margin-left:2em"><a href="#MUI-4.4 底部导航">4.4 底部导航</a></p>
+<p style="margin-left:0em"><a href="#MUI-5 图片按需加载">5 图片按需加载</a></p>
+<p style="margin-left:0em"><a href="#MUI-6 原生应用支持">6 原生应用支持</a></p>
+<p style="margin-left:0em"><a href="#MUI-7 系统类标识">7 系统类标识</a></p>
+<p style="margin-left:0em"><a href="#MUI-8 手势支持">8 手势支持</a></p>
+<p style="margin-left:0em"><a href="#MUI-9 跨域前端开发支持">9 跨域前端开发支持</a></p>
+</div>
 <p>筋斗云移动UI框架 - JDCloud Mobile UI framework</p>
-<h4>1 基于逻辑页面的单网页应用</h4>
+<h4 id="MUI-1 基于逻辑页面的单网页应用">1 基于逻辑页面的单网页应用</h4>
 <p>亦称“变脸式应用”。应用程序以逻辑页面（page）为基本单位，每个页面的html/js可完全分离。主要特性：</p>
 <ul>
 <li>基于缺页中断思想的页面路由。异步无刷新页面切换。支持浏览器前进后退操作。</li>
@@ -476,13 +521,13 @@ function onSubmit()
 <p class="see"><strong>@see <a href="#MUI.showPage">MUI.showPage</a></strong> </p>
 <p class="see"><strong>@see <a href="#MUI.popPageStack">MUI.popPageStack</a></strong> </p>
 <p class="see"><strong>@see <a href="#CPageManager">CPageManager</a></strong> </p>
-<h5>1.1 应用容器</h5>
+<h5 id="MUI-1.1 应用容器">1.1 应用容器</h5>
 <p class="key"><strong>@key <a id=".mui-container">.mui-container</a></strong>  应用容器。</p>
 <p class="event"><strong>@event <a id="muiInit">muiInit</a></strong> () DOM事件。this为当前应用容器。</p>
 <p>先在主应用html中，用.mui-container类标识应用容器，在运行时，所有逻辑页面都将在该对象之下。如：</p>
 <pre><code>&lt;body class="mui-container"&gt;</code></pre>
 <p>应用初始化时会发出muiInit事件，该事件在页面加载完成($.ready)后，显示首页前调用。在这里调用MUI.showPage可动态显示首页。</p>
-<h5>1.2 逻辑页面</h5>
+<h5 id="MUI-1.2 逻辑页面">1.2 逻辑页面</h5>
 <p>每个逻辑页面(page)以及它对应的脚本(js)均可以独立出一个文件开发，也可以直接嵌在主页面的应用容器中。</p>
 <p>如添加一个订单页，使用外部页面，可以添加一个order.html (html片段):</p>
 <pre><code>&lt;div mui-initfn="initPageOrder" mui-script="order.js"&gt;
@@ -522,10 +567,10 @@ function onSubmit()
 <p class="event"><strong>@event <a id="pagebeforeshow">pagebeforeshow</a></strong> () DOM事件。this为当前页面jpage。</p>
 <p class="event"><strong>@event <a id="pageshow">pageshow</a></strong> ()  DOM事件。this为当前页面jpage。</p>
 <p class="event"><strong>@event <a id="pagehide">pagehide</a></strong> () DOM事件。this为当前页面jpage。</p>
-<h4>2 服务端交互API</h4>
+<h4 id="MUI-2 服务端交互API">2 服务端交互API</h4>
 <p class="see"><strong>@see <a href="#callSvr">callSvr</a></strong>  系列调用服务端接口的方法。</p>
 <p class="see"><strong>@see <a href="#CComManager">CComManager</a></strong> </p>
-<h4>3 登录与退出</h4>
+<h4 id="MUI-3 登录与退出">3 登录与退出</h4>
 <p>框架提供MUI.showLogin/MUI.logout操作.<br />
 调用MUI.tryAutoLogin可以支持自动登录.</p>
 <p>登录后显示的主页，登录页，应用名称等均通过MUI.setApp设置。</p>
@@ -533,17 +578,17 @@ function onSubmit()
 <p class="see"><strong>@see <a href="#MUI.showLogin">MUI.showLogin</a></strong> </p>
 <p class="see"><strong>@see <a href="#MUI.logout">MUI.logout</a></strong> </p>
 <p class="see"><strong>@see <a href="#MUI.setApp">MUI.setApp</a></strong> </p>
-<h4>4 常用组件</h4>
+<h4 id="MUI-4 常用组件">4 常用组件</h4>
 <p>框架提供导航栏、对话框、弹出框、弹出菜单等常用组件。</p>
-<h5>4.1 导航栏</h5>
+<h5 id="MUI-4.1 导航栏">4.1 导航栏</h5>
 <p class="key"><strong>@key <a id=".mui-navbar">.mui-navbar</a></strong>  导航栏</p>
 <p class="key"><strong>@key <a id=".mui-navbar.noactive">.mui-navbar.noactive</a></strong> </p>
 <p>默认行为是点击后添加active类（比如字体发生变化），如果不需要此行为，可再添加noactive类。</p>
-<h5>4.2 对话框</h5>
+<h5 id="MUI-4.2 对话框">4.2 对话框</h5>
 <p class="key"><strong>@key <a id=".mui-dialog">.mui-dialog</a></strong>  对话框</p>
-<h5>4.3 弹出菜单</h5>
+<h5 id="MUI-4.3 弹出菜单">4.3 弹出菜单</h5>
 <p class="key"><strong>@key <a id=".mui-menu">.mui-menu</a></strong>  菜单</p>
-<h5>4.4 底部导航</h5>
+<h5 id="MUI-4.4 底部导航">4.4 底部导航</h5>
 <p class="key"><strong>@key <a id="#footer">#footer</a></strong>  底部导航栏</p>
 <p>设置id为&quot;footer&quot;的导航, 框架会对此做些设置: 如果当前页面为导航栏中的一项时, 就会自动显示导航栏.<br />
 例: 在html中添加底部导航:</p>
@@ -557,10 +602,10 @@ function onSubmit()
     &lt;a href="#me"&gt;我&lt;/a&gt;
 &lt;/div&gt;</code></pre>
 <p>注意：mui-navbar与ft类并用后，在点击后不会自动设置active类，请自行添加。</p>
-<h4>5 图片按需加载</h4>
+<h4 id="MUI-5 图片按需加载">5 图片按需加载</h4>
 <p>仅当页面创建时才会加载。</p>
 <pre><code>&lt;img src="../m/images/ui/carwash.png"&gt;</code></pre>
-<h4>6 原生应用支持</h4>
+<h4 id="MUI-6 原生应用支持">6 原生应用支持</h4>
 <p>使用MUI框架的Web应用支持被安卓/苹果原生应用加载（通过cordova技术）。</p>
 <p>设置说明：</p>
 <ul>
@@ -607,14 +652,14 @@ background-color:black;<br />
         }
     }
 }</code></pre>
-<h4>7 系统类标识</h4>
+<h4 id="MUI-7 系统类标识">7 系统类标识</h4>
 <p>框架自动根据系统环境为应用容器(.mui-container类)增加以下常用类标识：</p>
 <p class="key"><strong>@key <a id=".mui-android">.mui-android</a></strong>  安卓系统</p>
 <p class="key"><strong>@key <a id=".mui-ios">.mui-ios</a></strong>  苹果IOS系统</p>
 <p class="key"><strong>@key <a id=".mui-weixin">.mui-weixin</a></strong>  微信浏览器</p>
 <p class="key"><strong>@key <a id=".mui-cordova">.mui-cordova</a></strong>  原生环境</p>
 <p>在css中可以利用它们做针对系统的特殊设置。</p>
-<h4>8 手势支持</h4>
+<h4 id="MUI-8 手势支持">8 手势支持</h4>
 <p>如果使用了 jquery.touchSwipe 库，则默认支持手势：</p>
 <ul>
 <li>右划：页面后退</li>
@@ -626,7 +671,7 @@ background-color:black;<br />
 <p class="key"><strong>@key <a id=".noSwipe">.noSwipe</a></strong>  CSS-class</p>
 <p>左右划前进后退功能会导致横向滚动生效。可以通过添加noSwipe类（注意大小写）的方式禁用swipe事件恢复滚动功能：</p>
 <pre><code>&lt;div class="noSwipe"&gt;&lt;/div&gt;</code></pre>
-<h4>9 跨域前端开发支持</h4>
+<h4 id="MUI-9 跨域前端开发支持">9 跨域前端开发支持</h4>
 <p>典型应用是, 在开发前端页面时, 本地无须运行任何后端服务器(如apache/iis/php等), 直接跨域连接远程接口进行开发.</p>
 <p>支持直接在浏览器中打开html/js文件运行应用.<br />
 需要浏览器支持CORS相关设置. 以下以chrome为例介绍.<br />
@@ -813,13 +858,19 @@ allow throw(&quot;abort&quot;) as abort behavior.</p><hr>
 <p class="alias"><strong>@alias <a id="enterWaiting">enterWaiting</a></strong> ()</p><hr>
 <h2 id="MUI.leaveWaiting">@fn MUI.leaveWaiting(ctx?)</h2>
 <p class="alias"><strong>@alias <a id="leaveWaiting">leaveWaiting</a></strong> </p><hr>
+<h2 id="MUI.defDataProc">@fn MUI.defDataProc(rv)</h2>
+<p class="param"><strong>@param rv</strong>  BQP协议原始数据，如 "[0, {id: 1}]"，一般是字符串，也可以是JSON对象。</p>
+<p class="return"><strong>@return data</strong>  按接口定义返回的数据对象，如 {id: 1}. 如果返回==null，调用函数应直接返回。</p>
+<p>注意：服务端不应返回null, 否则客户回调无法执行; 习惯上返回false表示让回调处理错误。</p><hr>
 <h2 id="MUI.makeUrl">@fn MUI.makeUrl(action, params)</h2>
 <p class="alias"><strong>@alias <a id="makeUrl">makeUrl</a></strong> </p>
 <p>生成对后端调用的url. </p>
 <pre><code>var params = {id: 100};
 var url = makeUrl("Ordr.set", params);</code></pre>
 <p>注意：调用该函数生成的url在结尾有标志字符串&quot;zz=1&quot;, 如&quot;../api.php/login?_app=user&amp;zz=1&quot;</p><hr>
-<h2 id="MUI.callSvr">@fn MUI.callSvr(ac, [param?], fn?, postParams?, userOptions?)</h2>
+<h2 id="MUI.callSvr">@fn MUI.callSvr(ac, [param?], fn?, postParams?, userOptions?)</h2><div class="toc"><p style="margin-left:0em"><a href="#MUI.callSvr-1 调用监控">1 调用监控</a></p>
+<p style="margin-left:0em"><a href="#MUI.callSvr-2 文件上传支持(FormData)">2 文件上传支持(FormData)</a></p>
+</div>
 <p class="alias"><strong>@alias <a id="callSvr">callSvr</a></strong> </p>
 <p class="param"><strong>@param ac</strong>  String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)</p>
 <p class="param"><strong>@param param</strong>  Object. URL参数（或称HTTP GET参数）</p>
@@ -848,6 +899,8 @@ callSvr("User.get", function (data) {
     }
     foo(data);
 }, null, {noex:1});</code></pre>
+<h4 id="MUI.callSvr-1 调用监控">1 调用监控</h4>
+<p class="var"><strong>@var <a id="g_cfg.logAction">g_cfg.logAction</a></strong> </p>
 <p>框架会自动在ajaxOption中增加ctx_属性，它包含 {ac, tm, tv, tv2, ret} 这些信息。<br />
 当设置g_cfg.logAction=1时，将输出这些信息。</p>
 <ul>
@@ -855,13 +908,31 @@ callSvr("User.get", function (data) {
 <li>tm: start time</li>
 <li>tv: time interval (从发起请求到服务器返回数据完成的时间, 单位是毫秒)</li>
 <li>tv2: 从接到数据到完成处理的时间，毫秒(当并发处理多个调用时可能不精确)</li>
-</ul><hr>
+</ul>
+<h4 id="MUI.callSvr-2 文件上传支持(FormData)">2 文件上传支持(FormData)</h4>
+<p>callSvr支持FormData对象，可用于上传文件等场景。示例如下：</p>
+<p class="key"><strong>@key <a id="example-upload">example-upload</a></strong> </p>
+<p>HTML:</p>
+<pre><code>file: &lt;input id="file1" type="file" multiple&gt;
+&lt;button type="button" id="btn1"&gt;upload&lt;/button&gt;</code></pre>
+<p>JS:</p>
+<pre><code>jpage.find("#btn1").on('click', function () {
+    var fd = new FormData();
+    $.each(jpage.find('#file1')[0].files, function (i, e) {
+        fd.append('file' + (i+1), e);
+    });
+    callSvr('upload', api_upload, fd);
+
+    function api_upload(data) { ... }
+});</code></pre><hr>
 <h2 id="MUI.callSvrSync">@fn MUI.callSvrSync(ac, params?, fn?, postParams?, userOptions?)</h2>
 <p class="fn"><strong>@fn <a id="MUI.callSvrSync">MUI.callSvrSync</a></strong> (ac, fn?, postParams?, userOptions?)</p>
 <p class="alias"><strong>@alias <a id="callSvrSync">callSvrSync</a></strong> </p>
 <p class="return"><strong>@return data</strong>  原型规定的返回数据</p>
 <p>同步模式调用callSvr.</p><hr>
 <h2 id="MUI.setupCallSvrViaForm">@fn MUI.setupCallSvrViaForm($form, $iframe, url, fn, callOpt)</h2>
+<p>该方法已不建议使用。上传文件请用FormData。</p>
+<p class="see"><strong>@see <a href="#example-upload">example-upload</a> <a href="#callSvr">callSvr</a></strong> </p>
 <p class="param"><strong>@param $iframe</strong>  一个隐藏的iframe组件.</p>
 <p class="param"><strong>@param callOpt</strong>  用户自定义参数. 参考callSvr的同名参数. e.g. {noex: 1}</p>
 <p>一般对后端的调用都使用callSvr函数, 但像上传图片等操作不方便使用ajax调用, 因为要自行拼装multipart/form-data格式的请求数据.<br />
@@ -932,7 +1003,8 @@ callSvr("User.get", {res: "id,phone"}, api_UserGet);</code></pre>
 <h2 id="MUI.m_app">@var MUI.m_app</h2>
 <p>参考MUI.setApp</p><hr>
 <h2 id="MUI.setFormSubmit">@fn MUI.setFormSubmit(jf, fn?, opt?={rules, validate?, onNoAction?})</h2>
-<p class="param"><strong>@param fn</strong> ? the callback for callSvr. you can use this["userPost"] to retrieve the post param.</p>
+<p class="param"><strong>@param fn</strong> ? Function(data); 与callSvr时的回调相同，data为服务器返回的数据。</p>
+<p>函数中可以使用this[&quot;userPost&quot;] 来获取post参数。</p>
 <p>opt.rules: 参考jquery.validate文档<br />
 opt.validate: Function(jf, queryParam={ac?,res?,...}). 如果返回false, 则取消submit. queryParam为调用参数，可以修改。</p>
 <p>form提交时的调用参数, 如果不指定, 则以form的action属性作为queryParam.ac发起callSvr调用.<br />
@@ -1054,7 +1126,13 @@ dy,threshold  用户移动偏移及临界值。dy&gt;threshold时，认为触发
 内容可以是一个html字符串，所以可以加各种格式。</p>
 <pre><code>ac:: String. 当前动作，"D"或"U".
 uptoThreshold:: Boolean. 是否达到阈值</code></pre><hr>
-<h2 id="initPageList">@fn initPageList(jpage, opt) -> PageListInterface</h2>
+<h2 id="initPageList">@fn initPageList(jpage, opt) -> PageListInterface</h2><div class="toc"><p style="margin-left:0em"><a href="#initPageList-1 例：一个navbar与若干list的组合">1 例：一个navbar与若干list的组合</a></p>
+<p style="margin-left:0em"><a href="#initPageList-2 例：若干button与若干list的组合">2 例：若干button与若干list的组合</a></p>
+<p style="margin-left:0em"><a href="#initPageList-3 例：只有一个list">3 例：只有一个list</a></p>
+<p style="margin-left:0em"><a href="#initPageList-4 框架基本原理">4 框架基本原理</a></p>
+<p style="margin-left:0em"><a href="#initPageList-5 参数说明">5 参数说明</a></p>
+<p style="margin-left:0em"><a href="#initPageList-6 css类">6 css类</a></p>
+</div>
 <p class="alias"><strong>@alias <a id="initNavbarAndList">initNavbarAndList</a></strong> </p>
 <p>列表页逻辑框架.</p>
 <p>对一个导航栏(class=&quot;mui-navbar&quot;)及若干列表(class=&quot;p-list&quot;)的典型页面进行逻辑封装；也可以是若干button对应若干div-list区域，一次只显示一个区域；<br />
@@ -1066,7 +1144,7 @@ uptoThreshold:: Boolean. 是否达到阈值</code></pre><hr>
 <li>点击导航栏自动切换列表，仅当首次显示列表时刷新数据</li>
 <li>支持强制刷新所有列表的控制，一般定义在page接口中，如 PageOrders.refresh</li>
 </ol>
-<h4>1 例：一个navbar与若干list的组合</h4>
+<h4 id="initPageList-1 例：一个navbar与若干list的组合">1 例：一个navbar与若干list的组合</h4>
 <p>基本页面结构如下：</p>
 <pre><code>&lt;div mui-initfn="initPageOrders" mui-script="orders.js"&gt;
     &lt;div class="hd"&gt;
@@ -1112,7 +1190,8 @@ uptoThreshold:: Boolean. 是否达到阈值</code></pre><hr>
     }
 });</code></pre>
 <p>由于指定了pageItf属性，当外部页面设置了 PageOrders.refresh = true后，再进入本页面，所有关联的列表会在展现时自动刷新。且PageOrders.refresh会被自动重置为false.</p>
-<h4>2 例：若干button与若干list的组合(必须一一对应)，打开页面时只展现一个列表，点击相应按钮显示相应列表。</h4>
+<h4 id="initPageList-2 例：若干button与若干list的组合">2 例：若干button与若干list的组合</h4>
+<p>一个button对应一个list; 打开页面时只展现一个列表，点击相应按钮显示相应列表。</p>
 <p>如果没有用navbar组件，而是一组button对应一组列表，点一个button显示对应列表，也可以使用本函数。页面如下：</p>
 <pre><code>&lt;div mui-initfn="initPageOrders" mui-script="orders.js"&gt;
     &lt;div class="hd"&gt;
@@ -1141,8 +1220,9 @@ var lstItf = initPageList(jpage, {
     ...
 });</code></pre>
 <p>注意：navRef与listRef中的组件数目一定要一一对应。除了使用选择器，也可以直接用jQuery对象为navRef和listRef赋值。</p>
-<h4>3 例：只有一个list 的简单情况，也可以调用本函数简化分页处理</h4>
-<p>仍考虑上例，假如那两个列表需要进入页面时就同时显示，那么可以分开一一设置如下：</p>
+<h4 id="initPageList-3 例：只有一个list">3 例：只有一个list</h4>
+<p>只有一个list 的简单情况，也可以调用本函数简化分页处理.<br />
+仍考虑上例，假如那两个列表需要进入页面时就同时显示，那么可以分开一一设置如下：</p>
 <pre><code>jpage.find(".p-panel").height(500); // 一定要为容器设置高度
 
 var lstItf = initPageList(jpage, {
@@ -1170,7 +1250,7 @@ navRef是否为空的区别是，如果非空，则表示listRef是一组互斥�
     listRef: ".p-list"
     ...
 });</code></pre>
-<h4>4 框架基本原理</h4>
+<h4 id="initPageList-4 框架基本原理">4 框架基本原理</h4>
 <p>原理是在合适的时机，自动调用类似这样的逻辑：</p>
 <pre><code>var queryParam = {ac: "Ordr.query"};
 opt.onGetQueryParam(jlst, queryParam);
@@ -1181,7 +1261,7 @@ callSvr(queryParam.ac, queryParam, function (data) {
     if (data.d.length == 0)
         opt.onNoItem(jlst);
 });</code></pre>
-<h4>5 参数说明</h4>
+<h4 id="initPageList-5 参数说明">5 参数说明</h4>
 <p class="param"><strong>@param opt</strong>  {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list", onBeforeLoad?, onLoad?}</p>
 <p class="param"><strong>@param onGetQueryParam</strong>  Function(jlst, queryParam/o)</p>
 <p>queryParam: {ac?, res?, cond?, ...}</p>
@@ -1203,7 +1283,7 @@ callSvr(queryParam.ac, queryParam, function (data) {
 <p class="return"><strong>@return PageListInterface=</strong> {refresh, markRefresh}</p>
 <p>refresh: Function(), 刷新当前列表<br />
 markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 下次浏览该列表时刷新。</p>
-<h4>6 css类</h4>
+<h4 id="initPageList-6 css类">6 css类</h4>
 <p>可以对以下两个CSS class指定样式：</p>
 <p class="key"><strong>@key <a id="mui-pullPrompt">mui-pullPrompt</a></strong>  CSS-class 下拉刷新提示块</p>
 <p class="key"><strong>@key <a id="mui-loadPrompt">mui-loadPrompt</a></strong>  CSS-class 自动加载提示块</p><hr>
@@ -1293,5 +1373,5 @@ PagePerson.showForSet({id: 3}); // 以id=3查询人物并显示，可更新。</
     ...
 &lt;/form&gt;</code></pre>
 <p>如果formData中有多个属性，则自动以formData的内容作为数据源显示页面，不再发起查询。</p><hr>
-<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-07-08T15:09:39+08:00</div>
+<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-07-26T15:36:45+08:00</div>
 </html>

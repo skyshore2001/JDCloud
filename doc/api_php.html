@@ -2,95 +2,123 @@
 <head>
 <meta charset="utf-8">
 <title>API参考 - 筋斗云服务端</title>
+<style>
+h3,h4,h5,h6 {
+	font-size: 1em;
+}
+
+pre {
+	border-left: 1px solid #ccc;
+	margin: 0 1em;
+	padding: 0 0.5em;
+	tab-size:4;
+}
+
+code {
+	font-family: "Courier New";
+    padding: 0px 3px;
+    display: inline-block;
+}
+
+.toc {
+	margin: 2em;
+}
+
+.toc p {
+	margin: 0.3em 0;
+}
+
+</style>
 <link rel="stylesheet" href="style.css" />
 </head>
 
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2016-07-08</div>
+<div>最后更新：2016-07-26</div>
 <h2>Modules</h2>
-<div>
-<a href="#app_fw">app_fw (module)</a><br>
-<a href="#api_fw">api_fw (module)</a><br>
-<a href="#AccessControl">AccessControl (module)</a><br>
+<div class="toc">
+<p><a href="#app_fw">app_fw (module)</a></p>
+<p><a href="#api_fw">api_fw (module)</a></p>
+<p><a href="#AccessControl">AccessControl (module)</a></p>
 </div><hr>
 <h2>Keywords</h2>
-<div>
-<a href="#$APP">$APP (var)</a><br>
-<a href="#$BASE_DIR">$BASE_DIR (var)</a><br>
-<a href="#AC0_">AC0_ (key)</a><br>
-<a href="#AC1_">AC1_ (key)</a><br>
-<a href="#AC2_">AC2_ (key)</a><br>
-<a href="#AC_">AC_ (key)</a><br>
-<a href="#AccessControl">AccessControl (module)</a><br>
-<a href="#AccessControl::$allowedAc">AccessControl::$allowedAc (var)</a><br>
-<a href="#AccessControl::$defaultSort">AccessControl::$defaultSort (var)</a><br>
-<a href="#AccessControl::$hiddenFields">AccessControl::$hiddenFields (var)</a><br>
-<a href="#AccessControl::$id">AccessControl::$id (var)</a><br>
-<a href="#AccessControl::$maxPageSz">AccessControl::$maxPageSz (var)</a><br>
-<a href="#AccessControl::$onAfterActions">AccessControl::$onAfterActions (var)</a><br>
-<a href="#AccessControl::$readonlyFields">AccessControl::$readonlyFields (var)</a><br>
-<a href="#AccessControl::$readonlyFields2">AccessControl::$readonlyFields2 (var)</a><br>
-<a href="#AccessControl::$requiredFields">AccessControl::$requiredFields (var)</a><br>
-<a href="#AccessControl::$requiredFields2">AccessControl::$requiredFields2 (var)</a><br>
-<a href="#AccessControl::$subobj">AccessControl::$subobj (var)</a><br>
-<a href="#AccessControl::$vcolDefs">AccessControl::$vcolDefs (var)</a><br>
-<a href="#AccessControl::addCond">AccessControl::addCond (fn)</a><br>
-<a href="#AccessControl::addJoin">AccessControl::addJoin (fn)</a><br>
-<a href="#AccessControl::addRes">AccessControl::addRes (fn)</a><br>
-<a href="#AccessControl::addVCol">AccessControl::addVCol (fn)</a><br>
-<a href="#AccessControl::getDefaultSort">AccessControl::getDefaultSort (fn)</a><br>
-<a href="#AccessControl::getMaxPageSz">AccessControl::getMaxPageSz (fn)</a><br>
-<a href="#AccessControl::onAfter">AccessControl::onAfter (fn)</a><br>
-<a href="#AccessControl::onGenId">AccessControl::onGenId (fn)</a><br>
-<a href="#AccessControl::onHandleRow">AccessControl::onHandleRow (fn)</a><br>
-<a href="#AccessControl::onQuery">AccessControl::onQuery (fn)</a><br>
-<a href="#AccessControl::onValidate">AccessControl::onValidate (fn)</a><br>
-<a href="#AccessControl::onValidateId">AccessControl::onValidateId (fn)</a><br>
-<a href="#AppBase">AppBase (class)</a><br>
-<a href="#CFG_MOCK_MODE">CFG_MOCK_MODE (key)</a><br>
-<a href="#CFG_MOCK_T_MODE">CFG_MOCK_T_MODE (key)</a><br>
-<a href="#DBG_LEVEL">DBG_LEVEL (var)</a><br>
-<a href="#DirectReturn">DirectReturn (class)</a><br>
-<a href="#MOCK_MODE">MOCK_MODE (var)</a><br>
-<a href="#MyException">MyException (class)</a><br>
-<a href="#PAGE_SZ_LIMIT">PAGE_SZ_LIMIT (var)</a><br>
-<a href="#P_DB">P_DB (key)</a><br>
-<a href="#P_DBCRED">P_DBCRED (key)</a><br>
-<a href="#P_SESSION_DIR">P_SESSION_DIR (key)</a><br>
-<a href="#P_URL_PATH">P_URL_PATH (key)</a><br>
-<a href="#Q">Q (fn)</a><br>
-<a href="#TEST_MODE">TEST_MODE (var)</a><br>
-<a href="#addLog">addLog (fn)</a><br>
-<a href="#api_fw">api_fw (module)</a><br>
-<a href="#app_fw">app_fw (module)</a><br>
-<a href="#callSvc">callSvc (fn)</a><br>
-<a href="#dbConfirmFn">dbConfirmFn (key)</a><br>
-<a href="#dbconn">dbconn (fn)</a><br>
-<a href="#errQuit">errQuit (fn)</a><br>
-<a href="#execOne">execOne (fn)</a><br>
-<a href="#getAppType">getAppType (fn)</a><br>
-<a href="#getBaseUrl">getBaseUrl (fn)</a><br>
-<a href="#getCred">getCred (fn)</a><br>
-<a href="#hasSignFile">hasSignFile (fn)</a><br>
-<a href="#isCLI">isCLI (fn)</a><br>
-<a href="#isCLIServer">isCLIServer (fn)</a><br>
-<a href="#isEqualCollection">isEqualCollection (fn)</a><br>
-<a href="#logit">logit (fn)</a><br>
-<a href="#mparam">mparam (fn)</a><br>
-<a href="#myEncrypt">myEncrypt (fn)</a><br>
-<a href="#objarr2table">objarr2table (fn)</a><br>
-<a href="#param">param (fn)</a><br>
-<a href="#param_varr">param_varr (fn)</a><br>
-<a href="#queryAll">queryAll (fn)</a><br>
-<a href="#queryOne">queryOne (fn)</a><br>
-<a href="#setParam">setParam (fn)</a><br>
-<a href="#setRet">setRet (fn)</a><br>
-<a href="#setServerRev">setServerRev (fn)</a><br>
-<a href="#startsWith">startsWith (fn)</a><br>
-<a href="#table2objarr">table2objarr (fn)</a><br>
-<a href="#tableCRUD">tableCRUD (fn)</a><br>
-<a href="#tobool">tobool (fn)</a><br>
-<a href="#varr2objarr">varr2objarr (fn)</a><br>
+<div class="toc">
+<p><a href="#$APP">$APP (var)</a></p>
+<p><a href="#$BASE_DIR">$BASE_DIR (var)</a></p>
+<p><a href="#AC0_">AC0_ (key)</a></p>
+<p><a href="#AC1_">AC1_ (key)</a></p>
+<p><a href="#AC2_">AC2_ (key)</a></p>
+<p><a href="#AC_">AC_ (key)</a></p>
+<p><a href="#AccessControl">AccessControl (module)</a></p>
+<p><a href="#AccessControl::$allowedAc">AccessControl::$allowedAc (var)</a></p>
+<p><a href="#AccessControl::$defaultRes">AccessControl::$defaultRes (var)</a></p>
+<p><a href="#AccessControl::$defaultSort">AccessControl::$defaultSort (var)</a></p>
+<p><a href="#AccessControl::$hiddenFields">AccessControl::$hiddenFields (var)</a></p>
+<p><a href="#AccessControl::$id">AccessControl::$id (var)</a></p>
+<p><a href="#AccessControl::$maxPageSz">AccessControl::$maxPageSz (var)</a></p>
+<p><a href="#AccessControl::$onAfterActions">AccessControl::$onAfterActions (var)</a></p>
+<p><a href="#AccessControl::$readonlyFields">AccessControl::$readonlyFields (var)</a></p>
+<p><a href="#AccessControl::$readonlyFields2">AccessControl::$readonlyFields2 (var)</a></p>
+<p><a href="#AccessControl::$requiredFields">AccessControl::$requiredFields (var)</a></p>
+<p><a href="#AccessControl::$requiredFields2">AccessControl::$requiredFields2 (var)</a></p>
+<p><a href="#AccessControl::$subobj">AccessControl::$subobj (var)</a></p>
+<p><a href="#AccessControl::$vcolDefs">AccessControl::$vcolDefs (var)</a></p>
+<p><a href="#AccessControl::addCond">AccessControl::addCond (fn)</a></p>
+<p><a href="#AccessControl::addJoin">AccessControl::addJoin (fn)</a></p>
+<p><a href="#AccessControl::addRes">AccessControl::addRes (fn)</a></p>
+<p><a href="#AccessControl::addVCol">AccessControl::addVCol (fn)</a></p>
+<p><a href="#AccessControl::getDefaultSort">AccessControl::getDefaultSort (fn)</a></p>
+<p><a href="#AccessControl::getMaxPageSz">AccessControl::getMaxPageSz (fn)</a></p>
+<p><a href="#AccessControl::onAfter">AccessControl::onAfter (fn)</a></p>
+<p><a href="#AccessControl::onGenId">AccessControl::onGenId (fn)</a></p>
+<p><a href="#AccessControl::onHandleRow">AccessControl::onHandleRow (fn)</a></p>
+<p><a href="#AccessControl::onQuery">AccessControl::onQuery (fn)</a></p>
+<p><a href="#AccessControl::onValidate">AccessControl::onValidate (fn)</a></p>
+<p><a href="#AccessControl::onValidateId">AccessControl::onValidateId (fn)</a></p>
+<p><a href="#AppBase">AppBase (class)</a></p>
+<p><a href="#CFG_MOCK_MODE">CFG_MOCK_MODE (key)</a></p>
+<p><a href="#CFG_MOCK_T_MODE">CFG_MOCK_T_MODE (key)</a></p>
+<p><a href="#DBG_LEVEL">DBG_LEVEL (var)</a></p>
+<p><a href="#DirectReturn">DirectReturn (class)</a></p>
+<p><a href="#MOCK_MODE">MOCK_MODE (var)</a></p>
+<p><a href="#MyException">MyException (class)</a></p>
+<p><a href="#PAGE_SZ_LIMIT">PAGE_SZ_LIMIT (var)</a></p>
+<p><a href="#P_DB">P_DB (key)</a></p>
+<p><a href="#P_DBCRED">P_DBCRED (key)</a></p>
+<p><a href="#P_SESSION_DIR">P_SESSION_DIR (key)</a></p>
+<p><a href="#P_URL_PATH">P_URL_PATH (key)</a></p>
+<p><a href="#Q">Q (fn)</a></p>
+<p><a href="#TEST_MODE">TEST_MODE (var)</a></p>
+<p><a href="#addLog">addLog (fn)</a></p>
+<p><a href="#api_fw">api_fw (module)</a></p>
+<p><a href="#app_fw">app_fw (module)</a></p>
+<p><a href="#callSvc">callSvc (fn)</a></p>
+<p><a href="#dbConfirmFn">dbConfirmFn (key)</a></p>
+<p><a href="#dbconn">dbconn (fn)</a></p>
+<p><a href="#errQuit">errQuit (fn)</a></p>
+<p><a href="#execOne">execOne (fn)</a></p>
+<p><a href="#getAppType">getAppType (fn)</a></p>
+<p><a href="#getBaseUrl">getBaseUrl (fn)</a></p>
+<p><a href="#getCred">getCred (fn)</a></p>
+<p><a href="#hasSignFile">hasSignFile (fn)</a></p>
+<p><a href="#isCLI">isCLI (fn)</a></p>
+<p><a href="#isCLIServer">isCLIServer (fn)</a></p>
+<p><a href="#isEqualCollection">isEqualCollection (fn)</a></p>
+<p><a href="#logit">logit (fn)</a></p>
+<p><a href="#mparam">mparam (fn)</a></p>
+<p><a href="#myEncrypt">myEncrypt (fn)</a></p>
+<p><a href="#objarr2table">objarr2table (fn)</a></p>
+<p><a href="#param">param (fn)</a></p>
+<p><a href="#param_varr">param_varr (fn)</a></p>
+<p><a href="#queryAll">queryAll (fn)</a></p>
+<p><a href="#queryOne">queryOne (fn)</a></p>
+<p><a href="#setParam">setParam (fn)</a></p>
+<p><a href="#setRet">setRet (fn)</a></p>
+<p><a href="#setServerRev">setServerRev (fn)</a></p>
+<p><a href="#startsWith">startsWith (fn)</a></p>
+<p><a href="#table2objarr">table2objarr (fn)</a></p>
+<p><a href="#tableCRUD">tableCRUD (fn)</a></p>
+<p><a href="#tobool">tobool (fn)</a></p>
+<p><a href="#varr2objarr">varr2objarr (fn)</a></p>
 </div><hr>
 <h2 id="tobool">@fn tobool($s)</h2><hr>
 <h2 id="startsWith">@fn startsWith($s, $pat)</h2><hr>
@@ -99,9 +127,16 @@
 <h2 id="isCLIServer">@fn isCLIServer() </h2>
 <p>php built-in web server e.g. run &quot;php -S 0.0.0.0:8080&quot;</p><hr>
 <h2 id="isEqualCollection">@fn isEqualCollection($col1, $col2)</h2><hr>
-<h2 id="app_fw">@module app_fw</h2>
+<h2 id="app_fw">@module app_fw</h2><div class="toc"><p style="margin-left:0em"><a href="#app_fw-1 通用函数">1 通用函数</a></p>
+<p style="margin-left:0em"><a href="#app_fw-2 初始化配置">2 初始化配置</a></p>
+<p style="margin-left:2em"><a href="#app_fw-2.1 数据库配置">2.1 数据库配置</a></p>
+<p style="margin-left:0em"><a href="#app_fw-3 测试模式与调试等级">3 测试模式与调试等级</a></p>
+<p style="margin-left:0em"><a href="#app_fw-4 模拟模式">4 模拟模式</a></p>
+<p style="margin-left:0em"><a href="#app_fw-5 session管理">5 session管理</a></p>
+<p style="margin-left:0em"><a href="#app_fw-6 应用框架">6 应用框架</a></p>
+</div>
 <p>筋斗云服务端通用应用框架。</p>
-<h4>1 通用函数</h4>
+<h4 id="app_fw-1 通用函数">1 通用函数</h4>
 <ul>
 <li>
 <p>获得指定类型参数</p>
@@ -114,10 +149,10 @@
 <li>错误处理设施
 <p class="see"><strong>@see <a href="#MyException">MyException</a> <a href="#errQuit">errQuit</a></strong> </p></li>
 </ul>
-<h4>2 初始化配置</h4>
+<h4 id="app_fw-2 初始化配置">2 初始化配置</h4>
 <p>app_fw框架自动包含 $BASE_DIR/conf.php, $BASE_DIR/php/conf.user.php。</p>
 <p>前者定义代码中易变的逻辑；后者为项目配置，一般用于定义环境变量、全局变量等。</p>
-<h5>2.1 数据库配置</h5>
+<h5 id="app_fw-2.1 数据库配置">2.1 数据库配置</h5>
 <p class="key"><strong>@key <a id="P_DB">P_DB</a></strong>  环境变量，指定DB类型与地址。</p>
 <p class="key"><strong>@key <a id="P_DBCRED">P_DBCRED</a></strong>  环境变量，指定DB登录帐号</p>
 <p>P_DB格式为：</p>
@@ -133,7 +168,7 @@ P_DB=www.myserver.com:3306/myorder</code></pre>
 P_DBCRED=Z2FubGFuOjEyMzQ=</code></pre>
 <p>此外，P_DB还支持SQLite数据库，直接指定以&quot;.db&quot;为扩展名的文件即可。例如：</p>
 <pre><code>P_DB=../myorder.db</code></pre>
-<h4>3 测试模式与调试等级</h4>
+<h4 id="app_fw-3 测试模式与调试等级">3 测试模式与调试等级</h4>
 <p class="var"><strong>@var <a id="TEST_MODE">TEST_MODE</a></strong>  Integer/Boolean. 0-生产模式；1-测试模式；2-自动化回归测试模式(RTEST_MODE)</p>
 <p class="var"><strong>@var <a id="DBG_LEVEL">DBG_LEVEL</a></strong>  Integer. 调试等级。值范围0-9.</p>
 <p>测试模式特点：</p>
@@ -149,13 +184,13 @@ P_DBCRED=Z2FubGFuOjEyMzQ=</code></pre>
 <li>值为9时，可输出所有SQL调试日志。</li>
 </ul>
 <p class="see"><strong>@see <a href="#addLog">addLog</a></strong> </p>
-<h4>4 模拟模式</h4>
+<h4 id="app_fw-4 模拟模式">4 模拟模式</h4>
 <p class="var"><strong>@var <a id="MOCK_MODE">MOCK_MODE</a></strong>  Boolean. 模拟模式. 值：0/1.</p>
 <p class="key"><strong>@key <a id="CFG_MOCK_MODE">CFG_MOCK_MODE</a></strong>   符号文件，如文件存在则应用运行于模拟模式。</p>
 <p class="key"><strong>@key <a id="CFG_MOCK_T_MODE">CFG_MOCK_T_MODE</a></strong>  符号文件，如文件存在且在测试模式下，应用运行于模拟模式。</p>
 <p>对第三方系统依赖（如微信认证、支付宝支付、发送短信等），可通过设计Mock接口来模拟。</p>
 <p class="see"><strong>@see <a href="#ExtMock">ExtMock</a></strong> </p>
-<h4>5 session管理</h4>
+<h4 id="app_fw-5 session管理">5 session管理</h4>
 <ul>
 <li>应用的session名称为 &quot;{app}id&quot;, 如应用名为 &quot;user&quot;, 则session名为&quot;userid&quot;. 因而不同的应用同时调用服务端也不会冲突。</li>
 <li>保存session文件的目录为 $BASE_DIR/session, 可使用P_SESSION_DIR变量重定义。</li>
@@ -165,7 +200,7 @@ P_DBCRED=Z2FubGFuOjEyMzQ=</code></pre>
 <p class="key"><strong>@key <a id="P_SESSION_DIR">P_SESSION_DIR</a></strong>  ?= $BASE_DIR/session 环境变量，定义session文件存放路径。</p>
 <p class="key"><strong>@key <a id="P_URL_PATH">P_URL_PATH</a></strong>  环境变量。项目的URL路径，如"/jdcloud", 用于定义cookie生效的作用域，也用于拼接相对URL路径。</p>
 <p class="see"><strong>@see <a href="#getBaseUrl">getBaseUrl</a></strong> </p>
-<h4>6 应用框架</h4>
+<h4 id="app_fw-6 应用框架">6 应用框架</h4>
 <p>继承AppBase类，可实现提供符合BQP协议接口的模块。<a href="#api_fw">api_fw</a>框架就是使用它的一个典型例子。</p>
 <p class="see"><strong>@see <a href="#AppBase">AppBase</a></strong> </p><hr>
 <h2 id="$BASE_DIR">@var $BASE_DIR</h2>
@@ -422,14 +457,18 @@ throw new DirectReturn();</code></pre><hr>
 <h2 id="AppBase">@class AppBase</h2>
 <p>应用框架，用于提供符合BQP协议的接口。<br />
 在onExec中返回协议数据；在onAfter中建议及时关闭DB.</p><hr>
-<h2 id="api_fw">@module api_fw</h2>
+<h2 id="api_fw">@module api_fw</h2><div class="toc"><p style="margin-left:0em"><a href="#api_fw-1 函数型接口">1 函数型接口</a></p>
+<p style="margin-left:0em"><a href="#api_fw-2 对象型接口">2 对象型接口</a></p>
+<p style="margin-left:0em"><a href="#api_fw-3 接口复用">3 接口复用</a></p>
+<p style="margin-left:0em"><a href="#api_fw-4 常用操作">4 常用操作</a></p>
+</div>
 <p>服务接口实现框架。</p>
 <p>服务接口包含：</p>
 <ul>
 <li>函数型接口，如 &quot;login&quot;, &quot;getToken&quot;等, 一般实现在 api_functions.php中。</li>
 <li>对象型接口，如 &quot;Ordr.query&quot;, &quot;User.get&quot; 等，一般实现在 api_objects.php中。</li>
 </ul>
-<h4>1 函数型接口</h4>
+<h4 id="api_fw-1 函数型接口">1 函数型接口</h4>
 <p>假设在文档有定义以下接口</p>
 <pre><code>用户修改密码
 chpwd(oldpwd, pwd) -&gt; {_token, _expire}
@@ -457,9 +496,9 @@ chpwd(oldpwd, pwd) -&gt; {_token, _expire}
 <p class="see"><strong>@see <a href="#checkAuth">checkAuth</a></strong> </p>
 <p class="see"><strong>@see <a href="#mparam">mparam</a></strong>  取必选参数，如果缺少该参数则报错。</p>
 <p class="see"><strong>@see <a href="#param">param</a></strong>  取可选参数，可指定缺省值。</p>
-<h4>2 对象型接口</h4>
+<h4 id="api_fw-2 对象型接口">2 对象型接口</h4>
 <p class="see"><strong>@see <a href="#AccessControl">AccessControl</a></strong>  对象型接口框架。</p>
-<h4>3 接口复用</h4>
+<h4 id="api_fw-3 接口复用">3 接口复用</h4>
 <p>api.php可以单独执行，也可直接被调用，如</p>
 <pre><code>// set_include_path(get_include_path() . PATH_SEPARATOR . "..");
 require_once("api.php");
@@ -468,7 +507,7 @@ $GLOBALS["errorFn"] = function($code, $msg, $msg2=null) {...}
 $ret = callSvc("genVoucher");
 // 如果没有异常，返回数据；否则调用指定的errorFn函数(未指定则调用errQuit)</code></pre>
 <p class="see"><strong>@see <a href="#callSvc">callSvc</a></strong> </p>
-<h4>4 常用操作</h4>
+<h4 id="api_fw-4 常用操作">4 常用操作</h4>
 <p>错误处理</p>
 <p class="see"><strong>@see <a href="#MyException">MyException</a></strong> </p>
 <p>中断执行，直接返回</p>
@@ -533,7 +572,22 @@ throw new DirectReturn();
 <li>以上示例中的设计不可取，应使用标准对象接口来实现这个需求。</li>
 </ul>
 <p class="see"><strong>@see <a href="#setParam">setParam</a></strong> </p><hr>
-<h2 id="AccessControl">@module AccessControl</h2>
+<h2 id="AccessControl">@module AccessControl</h2><div class="toc"><p style="margin-left:0em"><a href="#AccessControl-1 基本权限控制">1 基本权限控制</a></p>
+<p style="margin-left:0em"><a href="#AccessControl-2 虚拟字段">2 虚拟字段</a></p>
+<p style="margin-left:2em"><a href="#AccessControl-2.1 关联字段">2.1 关联字段</a></p>
+<p style="margin-left:2em"><a href="#AccessControl-2.2 关联字段依赖">2.2 关联字段依赖</a></p>
+<p style="margin-left:2em"><a href="#AccessControl-2.3 计算字段">2.3 计算字段</a></p>
+<p style="margin-left:2em"><a href="#AccessControl-2.4 子表压缩字段">2.4 子表压缩字段</a></p>
+<p style="margin-left:2em"><a href="#AccessControl-2.5 自定义字段">2.5 自定义字段</a></p>
+<p style="margin-left:0em"><a href="#AccessControl-3 子表">3 子表</a></p>
+<p style="margin-left:0em"><a href="#AccessControl-4 操作完成回调">4 操作完成回调</a></p>
+<p style="margin-left:0em"><a href="#AccessControl-5 其它">5 其它</a></p>
+<p style="margin-left:2em"><a href="#AccessControl-5.1 编号自定义生成">5.1 编号自定义生成</a></p>
+<p style="margin-left:2em"><a href="#AccessControl-5.2 缺省排序">5.2 缺省排序</a></p>
+<p style="margin-left:2em"><a href="#AccessControl-5.3 缺省输出字段列表">5.3 缺省输出字段列表</a></p>
+<p style="margin-left:2em"><a href="#AccessControl-5.4 最大每页数据条数">5.4 最大每页数据条数</a></p>
+<p style="margin-left:2em"><a href="#AccessControl-5.5 虚拟表和视图">5.5 虚拟表和视图</a></p>
+</div>
 <p>对象型接口框架。<br />
 AccessControl简写为AC，同时AC也表示自动补全(AutoComplete).</p>
 <p>在设计文档中完成数据库设计后，通过添加AccessControl的继承类，可以很方便的提供诸如 {Obj}.query/add/get/set/del 这些对象型接口。</p>
@@ -567,7 +621,7 @@ Ordr.del(id=1)</code></pre>
 <p>因而上例中命名为 &quot;AC1_Ordr&quot; 就表示用户登录后调用Ordr对象接口，将受该类控制。而这是个空的类，所以拥有一切操作权限。</p>
 <p>框架为AUTH_ADMIN权限自动选择AC0_类，其它类可以通过函数 onCreateAC 进行自定义，仍未定义的框架使用AC_类。</p>
 <p class="see"><strong>@see <a href="#onCreateAC">onCreateAC</a></strong> </p>
-<h4>1 基本权限控制</h4>
+<h4 id="AccessControl-1 基本权限控制">1 基本权限控制</h4>
 <p class="var"><strong>@var <a id="AccessControl::$allowedAc">AccessControl::$allowedAc</a></strong> ?=["add", "get", "set", "del", "query"] 设定允许的操作，如不指定，则允许所有操作。</p>
 <p class="var"><strong>@var <a id="AccessControl::$readonlyFields">AccessControl::$readonlyFields</a></strong>  ?=[]  (影响add/set) 字段列表，添加/更新时为这些字段填值无效（但不报错）。</p>
 <p class="var"><strong>@var <a id="AccessControl::$readonlyFields2">AccessControl::$readonlyFields2</a></strong>  ?=[]  (影响set操作) 字段列表，更新时对这些字段填值无效。</p>
@@ -626,11 +680,11 @@ $_SESSION[&quot;uid&quot;]是在用户登录后设置的，可参考login接口�
 <li>在onValidate中，对添加操作时的字段做自动补全。由于添加和更新都会走这个接口，所以用 $this-&gt;ac 判断只对添加操作时补全。<br />
 由于添加和更新操作的具体字段都通过 $_POST 来传递，故直接设置 $_POST中的相应字段即可。</li>
 </ul>
-<h4>2 虚拟字段</h4>
+<h4 id="AccessControl-2 虚拟字段">2 虚拟字段</h4>
 <p class="var"><strong>@var <a id="AccessControl::$vcolDefs">AccessControl::$vcolDefs</a></strong>  (for get/query) 定义虚拟字段</p>
 <p>常用于展示关联表字段、统计字段等。<br />
 在query,get操作中可以通过res参数指定需要返回的每个字段，这些字段可能是普通列名(col)/虚拟列名(vcol)/子对象(subobj)名。</p>
-<h5>2.1 关联字段</h5>
+<h5 id="AccessControl-2.1 关联字段">2.1 关联字段</h5>
 <p>例如，在订单列表中需要展示用户名字段。设计文档中定义接口：</p>
 <pre><code>Ordr.query() -&gt; tbl(id, dscr, ..., userName?, userPhone?, createTm?)</code></pre>
 <p>query接口的&quot;...&quot;之后就是虚拟字段。后缀&quot;?&quot;表示是非缺省字段，即必须在&quot;res&quot;参数中指定才会返回，如：</p>
@@ -652,7 +706,7 @@ $_SESSION[&quot;uid&quot;]是在用户登录后设置的，可参考login接口�
         ]
     ]
 }</code></pre>
-<h5>2.2 关联字段依赖</h5>
+<h5 id="AccessControl-2.2 关联字段依赖">2.2 关联字段依赖</h5>
 <p>假设设计有“订单评价”对象，它会与“订单对象”相关联：</p>
 <pre><code>@Rating: id, orderId, content</code></pre>
 <p>表间的关系为：</p>
@@ -683,7 +737,7 @@ $_SESSION[&quot;uid&quot;]是在用户登录后设置的，可参考login接口�
 <pre><code>Rating.query(res="*,userName")
 或
 Rating.query(res="*,userName,orderDscr")</code></pre>
-<h5>2.3 计算字段</h5>
+<h5 id="AccessControl-2.3 计算字段">2.3 计算字段</h5>
 <p>示例：管理端应用在查询订单时，需要订单对象上有一个原价字段：</p>
 <pre><code>Ordr.query() -&gt; tbl(..., amount2)
 amount2:: 原价，通过OrderItem中每个项目重新计算累加得到，不考虑打折优惠。</code></pre>
@@ -696,7 +750,7 @@ amount2:: 原价，通过OrderItem中每个项目重新计算累加得到，不�
         ]
     ];
 }</code></pre>
-<h5>2.4 子表压缩字段</h5>
+<h5 id="AccessControl-2.4 子表压缩字段">2.4 子表压缩字段</h5>
 <p>除了使用<a href="#AccessControl::$subobj">子表</a>, 对于简单的情况，也可以设计为将子表压缩成一个虚拟字段，在Query操作时直接返回。</p>
 <p>示例：OrderItem是Ordr对象的一个子表，现在想在查询Ordr对象列表时，返回OrderItem的相关信息。<br />
 这就要把一张子表压缩成一个字段。我们使用List来描述这种压缩字段的格式：表中每行以&quot;,&quot;分隔，行中每个字段以&quot;:&quot;分隔。<br />
@@ -714,7 +768,7 @@ itemsInfo:: List(name, price, qty). 例如"洗车:25:1,换轮胎:380:2", 表示�
     ]
 }</code></pre>
 <p>注意：计算字段，包括子表压缩字段都是很消耗性能的。</p>
-<h5>2.5 自定义字段</h5>
+<h5 id="AccessControl-2.5 自定义字段">2.5 自定义字段</h5>
 <p>假设有张虚拟表Task, 它没有存储在数据库中, 另一张表UserTaskLog关联到它。在设计文档中定义如下:</p>
 <pre><code>@UserTaskLog: id, userId, taskId
 @Conf::$taskTable: id, type, name
@@ -755,7 +809,7 @@ class AC1_UserTaskLog extends AccessControl
 <li>自定义字段只限于对query/get的最终结果集进行操作</li>
 <li>自定义字段不能用于设置cond条件.</li>
 </ul>
-<h4>3 子表</h4>
+<h4 id="AccessControl-3 子表">3 子表</h4>
 <p class="var"><strong>@var <a id="AccessControl::$subobj">AccessControl::$subobj</a></strong>  (for get/query) 定义子表</p>
 <p>设计接口：</p>
 <pre><code>Ordr.get() -&gt; {id, ..., @orderLog}
@@ -769,7 +823,7 @@ orderLog:: {id, tm, dscr, ..., empName} 订单日志子表。</code></pre>
 }</code></pre>
 <p>子表一般通过get操作来获取，执行指定的SQL语句作为结果。结果以一个数组返回[{id, tm, ...}]，如果指定wantOne=&gt;true, 则结果以一个对象返回即 {id, tm, ...}, 适用于主表与子表一对一的情况。</p>
 <p>通过在Query操作上指定参数{wantArray:1}也可以返回子表，但目前不支持分页等操作。</p>
-<h4>4 操作完成回调</h4>
+<h4 id="AccessControl-4 操作完成回调">4 操作完成回调</h4>
 <p class="fn"><strong>@fn <a id="AccessControl::onAfter">AccessControl::onAfter</a></strong> (&$ret)  (for all) 操作完成时的回调。可修改操作结果ret。</p>
 <p>如果要对get/query结果中的每行字段进行设置，应重写回调 onHandleRow.<br />
 有时使用 onAfterActions 就近添加逻辑更加方便。</p>
@@ -789,13 +843,21 @@ orderLog:: {id, tm, dscr, ..., empName} 订单日志子表。</code></pre>
     }
 }</code></pre>
 <p class="fn"><strong>@fn <a id="AccessControl::onHandleRow">AccessControl::onHandleRow</a></strong> (&$rowData) (for get/query) 在onAfter之前运行，用于修改行中字段。</p>
-<h4>5 其它</h4>
-<h5>5.1 编号自定义生成</h5>
+<h4 id="AccessControl-5 其它">5 其它</h4>
+<h5 id="AccessControl-5.1 编号自定义生成">5.1 编号自定义生成</h5>
 <p class="fn"><strong>@fn <a id="AccessControl::onGenId">AccessControl::onGenId</a></strong> () (for add) 指定添加对象时生成的id. 缺省返回0表示自动生成.</p>
-<h5>5.2 缺省排序</h5>
+<h5 id="AccessControl-5.2 缺省排序">5.2 缺省排序</h5>
 <p class="fn"><strong>@fn <a id="AccessControl::getDefaultSort">AccessControl::getDefaultSort</a></strong> ()  (for query)取缺省排序.</p>
 <p class="var"><strong>@var <a id="AccessControl::$defaultSort">AccessControl::$defaultSort</a></strong>  ?= "t0.id" (for query)指定缺省排序.</p>
-<h5>5.3 最大每页数据条数</h5>
+<p>示例：Video对象默认按id倒序排列：</p>
+<pre><code>class AC_Video extends AccessControl 
+{
+    protected $defaultSort = "t0.id DESC";
+    ...
+}</code></pre>
+<h5 id="AccessControl-5.3 缺省输出字段列表">5.3 缺省输出字段列表</h5>
+<p class="var"><strong>@var <a id="AccessControl::$defaultRes">AccessControl::$defaultRes</a></strong>  (for query)指定缺省输出字段列表. 如果不指定，则为 "t0.*" 加  default=true的虚拟字段</p>
+<h5 id="AccessControl-5.4 最大每页数据条数">5.4 最大每页数据条数</h5>
 <p class="fn"><strong>@fn <a id="AccessControl::getMaxPageSz">AccessControl::getMaxPageSz</a></strong> ()  (for query) 取最大每页数据条数。为非负整数。</p>
 <p class="var"><strong>@var <a id="AccessControl::$maxPageSz">AccessControl::$maxPageSz</a></strong>  ?= 100 (for query) 指定最大每页数据条数。值为负数表示取PAGE_SZ_LIMIT值.</p>
 <p>前端通过 {obj}.query(_pagesz)来指定每页返回多少条数据，缺省是20条，最高不可超过100条。当指定为负数时，表示按最大允许值=min($maxPageSz, PAGE_SZ_LIMIT)返回。<br />
@@ -806,7 +868,48 @@ PAGE_SZ_LIMIT目前定为10000条。如果还不够，一定是应用设计有�
     protected $maxPageSz = 1000; // 最大允许返回1000条
     // protected $maxPageSz = -1; // 最大允许返回 PAGE_SZ_LIMIT 条
 }</code></pre>
-<p class="var"><strong>@var <a id="PAGE_SZ_LIMIT">PAGE_SZ_LIMIT</a></strong>  =10000</p><hr>
+<p class="var"><strong>@var <a id="PAGE_SZ_LIMIT">PAGE_SZ_LIMIT</a></strong>  =10000</p>
+<h5 id="AccessControl-5.5 虚拟表和视图">5.5 虚拟表和视图</h5>
+<p>假如要对ApiLog进行过滤，只查询管理端的写操作。实现以下接口：</p>
+<pre><code>EmpLog.query() -&gt; tbl(id, tm, userId, ac, req, res, reqsz, ressz, empName?, empPhone?)</code></pre>
+<p>一种办法可以在后台定义一个视图，如:</p>
+<pre><code>CREATE VIEW EmpLog AS
+SELECT t0.id, tm, userId, ac, req, res, reqsz, ressz, e.name empName, e.phone empPhone
+FROM ApiLog t0
+LEFT JOIN Employee e ON e.id=t0.userId
+WHERE t0.app='emp-adm' AND t0.userId IS NOT NULL
+ORDER BY t0.id DESC</code></pre>
+<p>然后可将该视图当作表一样查询（但不可更新），如：</p>
+<pre><code>class AC2_EmpLog extends AccessControl 
+{
+    protected $allowedAc = ["query"];
+}</code></pre>
+<p>这样就可以实现上述接口了。</p>
+<p>另一种办法是直接使用AccessControl创建虚拟表，代码如下：</p>
+<pre><code>class AC2_EmpLog extends AccessControl 
+{
+    protected $allowedAc = ["query"];
+    protected $table = 'ApiLog';
+    protected $defaultSort = "t0.id DESC";
+    protected $defaultRes = "id, tm, userId, ac, req, res, reqsz, ressz, empName, empPhone";
+    protected $vcolDefs = [
+        [
+            "res" =&gt; ["e.name AS empName", "e.phone AS empPhone"],
+            "join" =&gt; "LEFT JOIN Employee e ON e.id=t0.userId"
+        ]
+    ];
+
+    protected function onQuery() {
+        $this-&gt;addCond("t0.app='emp-adm' and t0.userId IS NOT NULL");
+    }
+}</code></pre>
+<p>与上例相比，它不仅无须在数据库中创建视图，还也可以进行更新。<br />
+其要点是：</p>
+<ul>
+<li>重写 AccessControl::$table</li>
+<li>重写 AccessControl::$defaultRes</li>
+<li>用addCond添加缺省查询条件</li>
+</ul><hr>
 <h2 id="AccessControl::addRes">@fn AccessControl::addRes($res, $analyzeCol=true)</h2>
 <p>添加列或计算列. </p>
 <p>注意: </p>
@@ -854,5 +957,5 @@ q:: 查询条件，值为"paid"时，查询10天内已付款的订单。且结�
 <p>直接调用接口，返回数据。如果出错，将调用$GLOBALS['errorFn'] (缺省为errQuit).</p>
 <p class="param"><strong>@param $cleanCall</strong>  Boolean. 如果为true, 则不使用现有的$_GET, $_POST等变量中的值。</p>
 <p class="param"><strong>@param $hideResult</strong>  Boolean. 如果为true, 不输出结果。</p><hr>
-<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-07-08T15:09:39+08:00</div>
+<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-07-26T15:36:45+08:00</div>
 </html>
