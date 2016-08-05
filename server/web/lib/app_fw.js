@@ -1091,6 +1091,11 @@ $.extend($.fn.datagrid.defaults, {
 		resetPageNumber(jtbl);
 	},
 
+	// bugfix: 有时无法显示横向滚动条
+	onLoadSuccess: function (data) {
+		$(this).datagrid("fitColumns");
+	},
+
 	// Decided in dgLoadFilter: 超过1页使用remoteSort, 否则使用localSort.
 	// remoteSort: false
 
