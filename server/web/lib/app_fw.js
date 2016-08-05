@@ -812,7 +812,7 @@ window.makeUrl = self.makeUrl = makeUrl;
 function makeUrl(ac, params)
 {
 	// 避免重复调用
-	if (ac instanceof String && ac.indexOf("zz=1") >0)
+	if (typeof(ac) === "string" && ac.indexOf("zz=1") >0)
 		return ac;
 
 	if (params == null)
