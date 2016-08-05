@@ -430,7 +430,7 @@ function initWUI()
 			// 如果界面上展示的字段无法与属性直接对应，可以在该事件回调中设置。
 			// hiddenToCheckbox(jfrm.find("#divPerms"));
 		})
-		.on("savedata", function (ev, formMode) {
+		.on("savedata", function (ev, formMode, initData) {
 			// 在form提交时，所有带name属性且不带disabled属性的对象值会被发往服务端。
 			// 此事件回调可以设置一些界面上无法与属性直接对应的内容。
 			// checkboxToHidden(jfrm.find("#divPerms"));
@@ -1758,7 +1758,7 @@ hidden上的特殊property noReset: (TODO)
 @key show Function(ev, formMode)  form显示事件.
 @key initdata Function(ev, data, formMode) form加载数据前，可修改要加载的数据即data
 @key loaddata Function(ev, data, formMode) form加载数据后，一般用于将服务端数据转为界面显示数据
-@key savedata Function(ev, formMode) form提交前事件，用于将界面数据转为提交数据. 返回false或调用ev.preventDefault()可阻止form提交。
+@key savedata Function(ev, formMode, initData) form提交前事件，用于将界面数据转为提交数据. 返回false或调用ev.preventDefault()可阻止form提交。
 @key retdata Function(ev, data, formMode) form提交后事件，用于处理返回数据
 
 调用此函数后，对话框将加上以下CSS Class:
@@ -1856,7 +1856,7 @@ function showDlg(jdlg, opt)
 						return false;
 
 					var ev = $.Event("savedata");
-					jfrm.trigger(ev, [formMode]);
+					jfrm.trigger(ev, [formMode, opt.data]);
 					if (ev.isDefaultPrevented())
 						return false;
 
