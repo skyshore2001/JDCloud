@@ -567,6 +567,17 @@ formatter用于控制Cell中的HTML标签，styler用于控制Cell自己的CSS s
 
 @see intSort,numberSort
 
+如果打开数据表就希望按某一列排序，可设置：
+
+	jtbl.datagrid({
+		...
+		sortName: 'id',
+		sortOrder: 'desc'
+	});
+
+手工点击列标题栏排序，会自动修改这两个属性。
+在添加数据时，如果当前sortOrder是倒序，则新数据显示在表格当前页的最前面，否则显示在最后。
+
 框架对datagrid还做了以下缺省设置：
 
 - 默认开启datagrid的分页功能。每页缺省显示20条数据。可通过datagrid选项自行重新定义，如：
@@ -2162,6 +2173,8 @@ function showObjDlg(jdlg, mode, id)
 		var init_data = jd.init_data || (jd2 && jd2.init_data);
 		if (init_data)
 			load_data = add_(init_data);
+		else
+			load_data = {};
 	}
 	else if (mode == FormMode.forSet && rowData) {
 		load_data = add_(rowData);
@@ -2206,6 +2219,7 @@ function showObjDlg(jdlg, mode, id)
 			return;
 		}
 		// add/set/link
+		// TODO: add option to force reload all (for set/add)
 		if (mode != FormMode.forLink && jd.jtbl) {
 			if (mode == FormMode.forSet && rowData)
 				reloadRow(jd.jtbl, rowData);
