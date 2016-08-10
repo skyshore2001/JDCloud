@@ -866,10 +866,18 @@ function CPageManager(app)
 	self.showFirstPage = true;
 
 /**
-@var MUI.docTitle
+@var MUI.options
 
-初始文档标题名。（当前标题可通过document.title查看）
+缺省配置项：
+
+	{
+		ani: 'auto' // 缺省切页动画效果. 'none'表示无动画。
+	}
+
 */
+	self.options = {
+		ani: 'auto',
+	};
 
 	var m_jstash; // 页面暂存区; 首次加载页面后可用
 
@@ -1097,7 +1105,9 @@ function CPageManager(app)
 	}
 	function showPage_(pageRef, opt)
 	{
-		var showPageOpt_ = opt || {ani: 'auto'};
+		var showPageOpt_ = $.extend({
+			ani: self.options.ani
+		}, opt);
 
 		// 避免hashchange重复调用
 		var fn = arguments.callee;
