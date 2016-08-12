@@ -1172,9 +1172,9 @@ var DefaultValidateRules = {
 		},
 		message: "4-16位字母、数字或符号."
 	},
-	same: {
-		validator: function (v, param) { // param: [dom_id]
-			return v.length==0 || v==gi(param[0]).value;
+	equalTo: {
+		validator: function (v, param) { // param: [selector]
+			return v.length==0 || v==$(param[0]).val();
 		},
 		message: "两次输入不一致."
 	},

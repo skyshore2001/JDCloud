@@ -276,7 +276,7 @@ function api_chpwd()
 		$uid = $_SESSION["uid"];
 	}
 	elseif($type == "emp") {
-		checkAuth(AUTH_STORE, true);
+		checkAuth(AUTH_EMP, true);
 		$uid = $_SESSION["empId"];
 	}
 	$pwd = mparam("pwd");
@@ -518,7 +518,7 @@ function api_att()
 	//header("Cache-Control: private");
 	header("Pragma: "); // session_start() set this one to "no-cache"
 
-	#checkAuth(AUTH_USER | AUTH_STORE);
+	#checkAuth(AUTH_USER | AUTH_EMP);
 	#$uid = $_SESSION["uid"];
 	$id = param("id");
 	$thumbId = param("thumbId");
