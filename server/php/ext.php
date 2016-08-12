@@ -6,7 +6,23 @@
 调用外部系统（如短信集成、微信集成等）将引入依赖，给开发和测试带来复杂性。
 筋斗云框架通过使用“模拟模式”(MOCK_MODE)，模拟这些外部功能，从而简化开发和测试。
 
-添加一个支持模拟的外部依赖步骤如下，以添加短信支持(SmsSupport)为例：
+对于一个简单的外部依赖，可以用函数isMockMode来分支。例如添加对象存储服务(OSS)支持，接口定义为：
+
+	getOssParam() -> {url, expire, dir, param={policy, OSSAccessKeyId, signature} }
+	模拟模式返回：
+	getOssParam() -> {url="mock"}
+
+在实现时，先在ext.php中定义外部依赖类型，如Ext_Oss，然后实现函数：
+
+	function api_getOssParam()
+	{
+		if (isMockMode(Ext_Oss)) {
+			return ["url"=>"mock"];
+		}
+		// 实际实现代码 ...
+	}
+
+添加一个复杂的（如支持多个函数调用的）支持模拟的外部依赖，也则可以定义接口，步骤如下，以添加短信支持(SmsSupport)为例：
 
 - 定义一个新的类型，如Ext_SmsSupport.
 - 定义接口，如 ISmsSupport.
@@ -32,7 +48,7 @@ const Ext_WxSupport = 2;
 // 短信集成
 interface ISmsSupport
 {
-	// throw MyException E_SMS for fail and write log in trace.log
+	// 如果失败，抛出 MyException(E_SMS) 异常，并写日志到trace.log
 	function sendSms($phone, $content, $channel);
 }
 
@@ -56,7 +72,7 @@ function onCreateExt($extType)
 	switch ($extType) {
 	case Ext_WxSupport:
 		/* TODO
-		require_once("../weixin/WxSupport.php");
+		require_once(__DIR__ . "/../weixin/WxSupport.php");
 		$obj = new WxSupport();
 		 */
 		$obj = new ExtMock();
@@ -77,6 +93,17 @@ function onCreateExt($extType)
 }
 
 // ======= 此部分APP不应修改 {{{
+/**
+@fn isMockMode($extType)
+
+判断是否模拟某外部扩展模块。如果$extType为null，则只要处于MOCK_MODE就返回true.
+ */
+function isMockMode($extType)
+{
+	// TODO: check extType
+	return $GLOBALS["MOCK_MODE"];
+}
+
 class ExtFactory
 {
 	private $objs = []; // {$extType => $ext}
@@ -107,9 +134,8 @@ class ExtFactory
  */
 	public function getObj($extType, $allowMock=true)
 	{
-		if ($allowMock) {
-			if ($GLOBALS["MOCK_MODE"])
-				return $this->getObj(Ext_Mock, false);
+		if ($allowMock && isMockMode($extType)) {
+			return $this->getObj(Ext_Mock, false);
 		}
 
 		@$ext = $this->objs[$extType];
