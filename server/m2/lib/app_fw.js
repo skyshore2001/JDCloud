@@ -493,6 +493,63 @@ function parseValue(str)
 	}
 	return val;
 }
+
+/**
+@fn filterCordovaModule(module)
+
+原生插件与WEB接口版本匹配。
+在cordova_plugins.js中使用，用于根据APP版本与当前应用标识，过滤当前Web可用的插件。
+
+例如，从客户端（应用标识为user）版本2.0，商户端（应用标识为store）版本3.0开始，添加插件 geolocation，可配置filter如下：
+
+	module.exports = [
+		...
+		{
+			"file": "plugins/cordova-plugin-geolocation/www/android/geolocation.js",
+			"id": "cordova-plugin-geolocation.geolocation",
+			"clobbers": [
+				"navigator.geolocation"
+			],
+			"filter": [ ["user",2], ["store",3] ] // 添加filter
+		}
+	];
+
+	filterCordovaModule(module); // 过滤模块
+
+配置后，尽管WEB已更新，但旧版本应用程序不会具有该接口。
+
+filter格式: [ [app1, minVer?=1, maxVer?=9999], ...], 仅当app匹配且版本在minVer/maxVer之间才使用
+如果未指定filter, 表示总是使用
+app标识由应用定义，常用如: "user"-客户端;"store"-商户端
+
+*/
+function filterCordovaModule(module)
+{
+	var plugins = module.exports;
+	module.exports = [];
+
+	var app = (window.g_args && g_args._app) || 'user';
+	var ver = (window.g_args && g_args.cordova) || 1;
+	plugins.forEach(function (e) {
+		var yes = 0;
+		if (e.filter) {
+			e.filter.forEach(function (f) {
+				if (app == f[0] && ver >= (f[1] || 1) && ver <= (f[2] || 9999)) {
+					yes = 1;
+					return false;
+				}
+			});
+		}
+		else {
+			yes = 1;
+		}
+		if (yes)
+			module.exports.push(e);
+	});
+	if (plugins.metadata)
+		module.exports.metadata = plugins.metadata;
+}
+
 // }}}
 
 // ====== app fw {{{
@@ -809,10 +866,18 @@ function CPageManager(app)
 	self.showFirstPage = true;
 
 /**
-@var MUI.docTitle
+@var MUI.options
 
-初始文档标题名。（当前标题可通过document.title查看）
+缺省配置项：
+
+	{
+		ani: 'auto' // 缺省切页动画效果. 'none'表示无动画。
+	}
+
 */
+	self.options = {
+		ani: 'auto',
+	};
 
 	var m_jstash; // 页面暂存区; 首次加载页面后可用
 
@@ -1040,7 +1105,9 @@ function CPageManager(app)
 	}
 	function showPage_(pageRef, opt)
 	{
-		var showPageOpt_ = opt || {ani: 'auto'};
+		var showPageOpt_ = $.extend({
+			ani: self.options.ani
+		}, opt);
 
 		// 避免hashchange重复调用
 		var fn = arguments.callee;

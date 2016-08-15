@@ -91,7 +91,7 @@ function checkboxToHidden(jp, sep)
 			val.push(this.value);
 		}
 	});
-	jp.find("input[type=hidden]").val(val.join(sep));
+	jp.find("input:hidden:first").val(val.join(sep));
 }
 
 /**
@@ -108,7 +108,7 @@ function hiddenToCheckbox(jp, sep)
 {
 	if (sep == null)
 		sep = DEFAULT_SEP;
-	var val = jp.find("input[type=hidden]").val().split(sep);
+	var val = jp.find("input:hidden:first").val().split(sep);
 	jp.find(":checkbox").each (function () {
 		this.checked = val.indexOf(this.value) !== -1;
 	});
@@ -116,19 +116,28 @@ function hiddenToCheckbox(jp, sep)
 
 function arrayToImg(jp, arr)
 {
+	var nothumb = jp.attr('wui-nothumb') !== undefined;
+	var nopic = jp.attr('wui-nopic') !== undefined;
+
 	var jImgContainer = jp.find("div.imgs");
 	jImgContainer.empty();
 	jImgContainer.addClass("my-reset"); // 用于在 查找/添加 模式时清除内容.
-	$.each (arr, function (i, thumbId) {
-		if (thumbId == "")
+	$.each (arr, function (i, attId) {
+		if (attId == "")
 			return;
-		var url = makeUrl("att", {id: thumbId});
-		var linkUrl = makeUrl("att", {thumbId: thumbId});
+		var url = makeUrl("att", {id: attId});
+		var linkUrl = (nothumb||nopic) ? url: makeUrl("att", {thumbId: attId});
 		var ja = $("<a target='_black'>").attr("href", linkUrl).appendTo(jImgContainer);
-		$("<img>").attr("src", url)
-			.attr("picId", thumbId)
-			.css("max-width", "100px")
-			.appendTo(ja);
+		if (!nopic) {
+			$("<img>").attr("src", url)
+				.attr("picId", attId)
+				.css("max-width", "100px")
+				.appendTo(ja);
+		}
+		else {
+			ja.html(attId);
+			jImgContainer.append($("<span> </span>"));
+		}
 	});
 }
 
@@ -136,6 +145,9 @@ function arrayToImg(jp, arr)
 @fn hiddenToImg(jp, sep?=",")
 
 用于在对象详情对话框中，展示关联图片字段。图片可以为单张或多张。
+除显示图片外，也可以展示其它用户上传的文件，如视频、文本等。
+
+## 显示图片
 
 以下是一个带图片的商户表设计，里面有两个字段picId与pics，一个显示单张图片，一个显示一组图片。
 
@@ -151,7 +163,7 @@ function arrayToImg(jp, arr)
 		<tr>
 			<td>商户头像</td>
 			<td id="divStorePicId">
-				<input type="hidden" name="picId">
+				<input name="picId" style="display:none">
 				<div class="imgs"></div>
 				<input type="file" accept="image/*" onchange="onChooseFile.apply(this)">
 			</td>
@@ -160,15 +172,25 @@ function arrayToImg(jp, arr)
 
 注意：
 
-- 在divStorePicId中，包括一个input[type=hidden]对象，用于保存原始字段值；一个div.imgs，用于显示图片；一个input[type=file]，用于选择图片。
+- 在divStorePicId中，包括一个hidden对象(隐藏的input对象或input[type=hidden]对象)，用于保存原始字段值；一个div.imgs，用于显示图片(其实是缩略图)；一个input[type=file]，用于选择图片。
 - 为input[type=file]组件设置onchange方法，以便在选择图片后，压缩图片并显示到div.imgs中。
+- 如果不需要压缩缩略图，则可在jp上设置属性 wui-nothumb, 如
+
+		<td id="divStorePicId" wui-nothumb>
+		...
+		</td>
+- 可以有多个hidden对象，该方法只对第一个读写。
+
+@key wui-nothumb
+
+## 显示多张图片
 
 要显示多张图片，可编写HTML如下：
 
 	<tr>
 		<td>门店照片</td>
 		<td id="divStorePics">
-			<input type="hidden" name="pics">
+			<input name="pics" style="display:none">
 			<div class="imgs"></div>
 			<input type="file" accept="image/*" multiple onchange="onChooseFile.apply(this)">
 			<p>（图片上点右键，可以删除图片等操作）</p>
@@ -222,7 +244,21 @@ JS逻辑如下：
 		});
 	}
 
+## 显示视频或其它文件
+
+@key wui-nopic
+
+以上传视频文件为例，HTML代码如下：
+
+	<td>上传素材视频</td>
+	<td id="divVideoFile" wui-nopic>
+		<input name="attId" style="display:none">
+		<div class="imgs"></div>
+		<input class="videoFile" type="file">
+	</td>
  
+通过添加属性"wui-nopic", 在.imgs区域内显示文件链接而非图片。其它JS代码与处理图片无异。
+
 @see imgToHidden
 @see onChooseFile
 */
@@ -230,7 +266,7 @@ function hiddenToImg(jp, sep)
 {
 	if (sep == null)
 		sep = DEFAULT_SEP;
-	var val = jp.find("input[type=hidden]:first").val().split(sep);
+	var val = jp.find("input:hidden:first").val().split(sep);
 	arrayToImg(jp, val);
 }
 
@@ -249,7 +285,12 @@ function imgToHidden(jp, sep)
 		sep = DEFAULT_SEP;
 	var val = [];
 	jp.find("div.imgs").addClass("my-reset"); // 用于在 查找/添加 模式时清除内容.
-	jp.find("img").each(function () {
+	var nothumb = jp.attr('wui-nothumb') !== undefined;
+	var nopic = jp.attr('wui-nopic') !== undefined;
+	var doUpdate = false;
+	if (! (nothumb||nopic) ) {
+		jp.find("img").each(function () {
+			doUpdate = true;
 			// e.g. "data:image/jpeg;base64,..."
 			if (this.src.substr(0, 4) === "data") {
 				var b64data = this.src.substr(this.src.indexOf(",")+1);
@@ -264,8 +305,25 @@ function imgToHidden(jp, sep)
 				if (picId);
 					val.push(picId);
 			}
-	});
-	jp.find("input[type=hidden]").val( val.join(sep));
+		});
+	}
+	else {
+		var files = jp.find("input[type=file]")[0].files;
+		if (files.length > 0) {
+			doUpdate = true;
+			var fd = new FormData();
+			$.each(files, function (i, e) {
+				fd.append('file' + (i+1), e);
+			});
+			callSvrSync('upload', function (data) {
+				$.each(data, function (i, e) {
+					val.push(e.id);
+				});
+			}, fd);
+		}
+	}
+	if (doUpdate)
+		jp.find("input:hidden:first").val( val.join(sep));
 }
 
 function addTooltip(html, tooltip)
@@ -289,34 +347,52 @@ TODO: 添加图片压缩参数，图片框显示大小等。
 */
 function onChooseFile()
 {
+	var jp = $(this).parent();
+	var jdiv = jp.find("div.imgs");
+
+	var nopic = jp.attr('wui-nopic') !== undefined;
+	if (nopic) {
+		jdiv.find("a").html("(待更新)");
+		return;
+	}
+
+	var nothumb = jp.attr('wui-nothumb') !== undefined;
+
 	var dfd = $.getScriptWithCache("lib/lrz.mobile.min.js");
 	var picFiles = this.files;
-	var jdiv = $(this).parent().find("div.imgs");
+	var compress = !nothumb;
 
 	var onlyOne = $(this).prop("multiple") == false;
 
 	dfd.done(function () {
 		$.each(picFiles, function (i, file) {
-			lrz(file, {
-				width: 1280,
-				height: 1280,
-				done: function (results) {
-					//results.base64
-					var jimg;
-					if (onlyOne) {
-						jimg = jdiv.find("img:first");
-						if (jimg.size() == 0) {
+			if (compress) {
+				lrz(file, {
+					width: 1280,
+					height: 1280,
+					done: function (results) {
+						//results.base64
+						var jimg;
+						if (onlyOne) {
+							jimg = jdiv.find("img:first");
+							if (jimg.size() == 0) {
+								jimg = $("<img>");
+							}
+						}
+						else {
 							jimg = $("<img>");
 						}
+						jimg.attr("src", results.base64)
+							.css("max-width", "100px")
+							.appendTo(jdiv);
 					}
-					else {
-						jimg = $("<img>");
-					}
-					jimg.attr("src", results.base64)
-						.css("max-width", "100px")
-						.appendTo(jdiv);
-				}
-			});
+				});
+			}
+			else {
+				var windowURL = window.URL || window.webkitURL;
+				var dataURL = windowURL.createObjectURL(file);
+				jimg.attr('src', dataURL);
+			}
 		});
 	})
 }
