@@ -2016,8 +2016,11 @@ allow throw("abort") as abort behavior.
 	self.defDataProc = defDataProc;
 	function defDataProc(rv)
 	{
+		var ctx = this.ctx_ || {};
+		var ext = ctx.ext;
+
 		// ajax-beforeSend回调中设置
-		if (this.xhr_) {
+		if (this.xhr_ && ext == null) {
 			var val = this.xhr_.getResponseHeader("X-Daca-Server-Rev");
 			if (val && g_data.serverRev != val) {
 				if (g_data.serverRev) {
@@ -2040,7 +2043,6 @@ allow throw("abort") as abort behavior.
 			}
 		}
 
-		var ctx = this.ctx_ || {};
 		try {
 			if (typeof(rv) == "string")
 				rv = $.parseJSON(rv);
@@ -2058,6 +2060,13 @@ allow throw("abort") as abort behavior.
 		ctx.ret = rv;
 
 		leaveWaiting(ctx);
+
+		if (ext) {
+			var filter = self.callSvrExt[ext] && self.callSvrExt[ext].dataFilter;
+			assert(filter, "*** missing dataFilter for callSvrExt: " + ext);
+			return filter.call(this, rv);
+		}
+
 		if (rv && $.isArray(rv) && rv.length >= 2 && typeof rv[0] == "number") {
 			if (rv[0] == 0)
 				return rv[1];
@@ -2114,6 +2123,10 @@ allow throw("abort") as abort behavior.
 	window.makeUrl = self.makeUrl = makeUrl;
 	function makeUrl(action, params)
 	{
+		if (/^http/.test(action)) {
+			return appendParam(action, $.param(params));
+		}
+
 		// 避免重复调用
 		if (action.indexOf("zz=1") >0)
 			return action;
@@ -2233,8 +2246,64 @@ JS:
 		function api_upload(data) { ... }
 	});
 
+## callSvr扩展
+
+@key MUI.callSvrExt
+
+当调用第三方API时，也可以使用callSvr扩展来代替$.ajax调用以实现：
+- 调用成功时直接可操作数据，不用每次检查返回码；
+- 调用出错时可以统一处理。
+
+例：合作方接口使用HTTP协议，格式如（以生成token调用为例）
+
+	http://<Host IP Address>:<Host Port>/lcapi/token/get-token?user=用户名&password=密码
+
+返回格式为：{code, msg, data}
+
+成功返回：
+
+	{
+		"code":"0",
+		"msg":"success",
+		"data":[ { "token":"xxxxxxxxxxxxxx" } ]
+	}
+
+失败返回：
+
+	{
+		"code":"4001",
+		"msg":"invalid username or password",
+		"data":[]
+	}
+
+注意：
+- 对方接口应允许JS跨域调用，或调用方支持跨域调用。
+
+	MUI.callSvrExt['zhanda'] = {
+		makeUrl: function(ac) {
+			return 'http://hostname/lcapi/' + ac;
+		}
+		dataFilter: function (data) {
+			if ($.isPlainObject(data) && data.code !== undefined) {
+				if (data.code == 0)
+					return data.data;
+				app_alert("操作失败：" + data.message, "e");
+			}
+			else {
+				app_alert("服务器通讯协议异常!", "e"); // 格式不对
+			}
+		}
+	};
+
+在调用时，ac参数传入一个数组：
+
+	callSvr(['token/get-token', 'zhanda'], {user: 'test', password: 'test123'}, function (data) {
+		console.log(data);
+	});
+
 */
 	window.callSvr = self.callSvr = callSvr;
+	self.callSvrExt = {};
 	function callSvr(ac, params, fn, postParams, userOptions)
 	{
 		if (params instanceof Function) {
@@ -2244,6 +2313,15 @@ JS:
 			fn = params;
 			params = null;
 		}
+
+		var ext = null;
+		if ($.isArray(ac)) {
+			ext = ac[1];
+			var extMakeUrl = self.callSvrExt[ext] && self.callSvrExt[ext].makeUrl;
+			assert(extMakeUrl, "*** missing makeUrl for callSvrExt: " + ext);
+			ac = extMakeUrl(ac[0]);
+		}
+
 		if (m_curBatch &&
 			!(userOptions && userOptions.async == false))
 		{
@@ -2254,6 +2332,9 @@ JS:
 		var ctx = {ac: ac, tm: new Date()};
 		if (userOptions && userOptions.noLoadingImg)
 			ctx.noLoadingImg = 1;
+		if (ext) {
+			ctx.ext = ext;
+		}
 		enterWaiting(ctx);
 		var method = (postParams == null? 'GET': 'POST');
 		var opt = {
@@ -2264,6 +2345,12 @@ JS:
 			success: fn,
 			ctx_: ctx
 		};
+		if (ext) {
+			// 允许跨域
+			opt.xhrFields = {
+				withCredentials: true
+			};
+		}
 		// support FormData object.
 		if (postParams instanceof FormData) {
 			opt.processData = false;
