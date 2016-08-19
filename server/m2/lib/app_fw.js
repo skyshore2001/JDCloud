@@ -2352,7 +2352,7 @@ JS:
 			};
 		}
 		// support FormData object.
-		if (postParams instanceof FormData) {
+		if (window.FormData && postParams instanceof FormData) {
 			opt.processData = false;
 			opt.contentType = false;
 		}
