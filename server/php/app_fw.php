@@ -105,7 +105,6 @@ const E_NOAUTH=2;
 const E_DB=3;
 const E_SERVER=4;
 const E_FORBIDDEN=5;
-const E_SMS=6;
 
 $ERRINFO = [
 	E_AUTHFAIL => "认证失败",
@@ -114,7 +113,6 @@ $ERRINFO = [
 	E_DB => "数据库错误",
 	E_SERVER => "服务器错误",
 	E_FORBIDDEN => "禁止操作",
-	E_SMS => "发送短信失败",
 ];
 
 const RTEST_MODE=2;
