@@ -44,6 +44,16 @@
 const Ext_Mock = 0;
 const Ext_SmsSupport = 1;
 const Ext_WxSupport = 2;
+const Ext_PushMsg = 3;
+const Ext_Oss = 4;
+
+const E_SMS = 1001;
+const E_WX = 1002;
+const E_PUSH_MSG = 1003;
+
+$ERRINFO[E_SMS] = "发送短信失败";
+$ERRINFO[E_WX] = "微信调用失败";
+$ERRINFO[E_PUSH_MSG] = "推送失败";
 
 // 短信集成
 interface ISmsSupport
@@ -66,6 +76,15 @@ interface IWxSupport
 	function sendUserNotification($wxOpenId, $msg, $linkUrl);
 }
 
+// 推送消息
+interface IPushMsg
+{
+	// $toUserId: 0表示所有用户
+	// $opt?={type?}
+	// 如果失败，返回false, 并写日志到trace.log
+	function pushMessage($toUserId, $msg, $opt=null);
+}
+
 function onCreateExt($extType)
 {
 	$obj = null;
@@ -85,7 +104,15 @@ function onCreateExt($extType)
 		 */
 		$obj = new ExtMock();
 		break;
-
+		
+	case Ext_PushMsg:
+		/*
+		require_once("ext_pushmsg.php");
+		$obj = new PushMsg();
+		*/
+		$obj = new ExtMock();
+		break;
+		
 	default:
 		throw new MyException(E_SERVER, "bad ext type `$extType`");
 	}
@@ -180,7 +207,7 @@ function logext($s, $addHeader=true)
 //}}}
 
 // ====== ExtMock: 模拟实现 {{{
-class ExtMock implements ISmsSupport, IWxSupport
+class ExtMock implements ISmsSupport, IWxSupport, IPushMsg
 {
 	function sendSms($phone, $content, $channel)
 	{
@@ -225,6 +252,12 @@ class ExtMock implements ISmsSupport, IWxSupport
 		$str = msgStructToStr($msg);
 
 		$log = "[微信用户推送] wxOpenId=`{$wxOpenId}`, linkUrl=`{$linkUrl}`, msg=\n`$str`\n";
+		logext($log);
+	}
+
+	function pushMessage($toUserId, $msg, $opt=null)
+	{
+		$log = "[消息推送] toUser=`{$toUserId}`, msg=`{$msg}`\n";
 		logext($log);
 	}
 }
