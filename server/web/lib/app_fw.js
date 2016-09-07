@@ -401,6 +401,8 @@ function initWUI()
 
 ### 定义对话框的初始化函数
 
+@key example-dialog
+
 默认对话框中由于设定了底层对象(my-obj)及属性关联（form中带name属性的组件，已关联对象属性），因而可自动显示和提交数据。
 
 特别地，某些属性不宜直接展示，例如属性“人物头像”，服务器存储的是图片id(picId)，而展示时应显示为图片而不是一个数字；
@@ -428,7 +430,7 @@ function initWUI()
 			// 如果界面上展示的字段无法与属性直接对应，可以在该事件回调中设置。
 			// hiddenToCheckbox(jfrm.find("#divPerms"));
 		})
-		.on("savedata", function (ev, formMode) {
+		.on("savedata", function (ev, formMode, initData) {
 			// 在form提交时，所有带name属性且不带disabled属性的对象值会被发往服务端。
 			// 此事件回调可以设置一些界面上无法与属性直接对应的内容。
 			// checkboxToHidden(jfrm.find("#divPerms"));
@@ -564,6 +566,17 @@ formatter用于控制Cell中的HTML标签，styler用于控制Cell自己的CSS s
 - 远程排序(remoteSort)：点排序时，直接本地计算重排，不会发请求到服务端.
 
 @see intSort,numberSort
+
+如果打开数据表就希望按某一列排序，可设置：
+
+	jtbl.datagrid({
+		...
+		sortName: 'id',
+		sortOrder: 'desc'
+	});
+
+手工点击列标题栏排序，会自动修改这两个属性。
+在添加数据时，如果当前sortOrder是倒序，则新数据显示在表格当前页的最前面，否则显示在最后。
 
 框架对datagrid还做了以下缺省设置：
 
@@ -810,7 +823,7 @@ window.makeUrl = self.makeUrl = makeUrl;
 function makeUrl(ac, params)
 {
 	// 避免重复调用
-	if (ac instanceof String && ac.indexOf("zz=1") >0)
+	if (typeof(ac) === "string" && ac.indexOf("zz=1") >0)
 		return ac;
 
 	if (params == null)
@@ -1089,6 +1102,11 @@ $.extend($.fn.datagrid.defaults, {
 		resetPageNumber(jtbl);
 	},
 
+	// bugfix: 有时无法显示横向滚动条
+	onLoadSuccess: function (data) {
+		$(this).datagrid("fitColumns");
+	},
+
 	// Decided in dgLoadFilter: 超过1页使用remoteSort, 否则使用localSort.
 	// remoteSort: false
 
@@ -1154,9 +1172,9 @@ var DefaultValidateRules = {
 		},
 		message: "4-16位字母、数字或符号."
 	},
-	same: {
-		validator: function (v, param) { // param: [dom_id]
-			return v.length==0 || v==gi(param[0]).value;
+	equalTo: {
+		validator: function (v, param) { // param: [selector]
+			return v.length==0 || v==$(param[0]).val();
 		},
 		message: "两次输入不一致."
 	},
@@ -1751,12 +1769,14 @@ hidden上的特殊property noReset: (TODO)
 @key show Function(ev, formMode)  form显示事件.
 @key initdata Function(ev, data, formMode) form加载数据前，可修改要加载的数据即data
 @key loaddata Function(ev, data, formMode) form加载数据后，一般用于将服务端数据转为界面显示数据
-@key savedata Function(ev, formMode) form提交前事件，用于将界面数据转为提交数据
+@key savedata Function(ev, formMode, initData) form提交前事件，用于将界面数据转为提交数据. 返回false或调用ev.preventDefault()可阻止form提交。
 @key retdata Function(ev, data, formMode) form提交后事件，用于处理返回数据
 
 调用此函数后，对话框将加上以下CSS Class:
 
 @key .wui-dialog 标识WUI对话框的类名。
+
+@see example-dialog 在对话框中使用事件
 
  */
 self.showDlg = showDlg;
@@ -1842,13 +1862,19 @@ function showDlg(jdlg, opt)
 			jfrm.form('submit', {
 				url: opt.url,
 				onSubmit: function () {
+					var ret = opt.validate? jfrm.form("validate"): true;
+					if (! ret)
+						return false;
+
+					var ev = $.Event("savedata");
+					jfrm.trigger(ev, [formMode, opt.data]);
+					if (ev.isDefaultPrevented())
+						return false;
+
 					if (opt.onSubmit && opt.onSubmit(jfrm) === false)
 						return false;
-					var ret = opt.validate? jfrm.form("validate"): true;
-					if (ret) {
-						jfrm.trigger("savedata", [formMode]);
-						enterWaiting();
-					}
+
+					enterWaiting();
 					return ret;
 				},
 				success: function (data) {
@@ -2147,6 +2173,8 @@ function showObjDlg(jdlg, mode, id)
 		var init_data = jd.init_data || (jd2 && jd2.init_data);
 		if (init_data)
 			load_data = add_(init_data);
+		else
+			load_data = {};
 	}
 	else if (mode == FormMode.forSet && rowData) {
 		load_data = add_(rowData);
@@ -2191,6 +2219,7 @@ function showObjDlg(jdlg, mode, id)
 			return;
 		}
 		// add/set/link
+		// TODO: add option to force reload all (for set/add)
 		if (mode != FormMode.forLink && jd.jtbl) {
 			if (mode == FormMode.forSet && rowData)
 				reloadRow(jd.jtbl, rowData);

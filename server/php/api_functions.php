@@ -19,9 +19,12 @@ $UploadType = [
 	"default" => ["w"=>100, "h"=>100],
 ];
 
-// 允许上传的文件类型设置。设置为空表示允许所有。
+// 设置允许上传的文件类型。设置为空表示允许所有。
+global $ALLOWED_EXTS;
+$ALLOWED_EXTS = ["jpeg", "jpg", "gif", "png", "txt"]; // ["pdf", "doc", "docx"];
 
-global $ALLOWED_MIME, $ALLOWED_EXTS;
+// 如果扩展名未知，则使用MIME类型限制上传：
+global $ALLOWED_MIME;
 $ALLOWED_MIME = [
 	'jpg'=>'image/jpeg',
 	'png'=>'image/png',
@@ -31,7 +34,6 @@ $ALLOWED_MIME = [
 	//'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 	//'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 ];
-$ALLOWED_EXTS = ["jpeg", "jpg", "gif", "png", "txt"]; // ["pdf", "doc", "docx"];
 //}}}
 
 // ====== functions {{{
@@ -274,7 +276,7 @@ function api_chpwd()
 		$uid = $_SESSION["uid"];
 	}
 	elseif($type == "emp") {
-		checkAuth(AUTH_STORE, true);
+		checkAuth(AUTH_EMP, true);
 		$uid = $_SESSION["empId"];
 	}
 	$pwd = mparam("pwd");
@@ -401,18 +403,16 @@ function api_upload()
 			$mtype = $f["type"];
 			$ext = strtolower(pathinfo($f["name"], PATHINFO_EXTENSION));
 			global $ALLOWED_MIME, $ALLOWED_EXTS;
-			if ($mtype != null && count($ALLOWED_MIME) > 0) {
+			if ($ext == "" && $mtype) {
 				$ext = array_search($mtype, $ALLOWED_MIME);
-				if ($ext === false) {
+				if ($ext === false)
 					throw new MyException(E_PARAM, "MIME type not supported: `$mtype`", "文件类型`$mtype`不支持.");
-				}
 			}
-			else {
-				if (count($ALLOWED_EXTS) > 0 && ($ext == "" || !in_array($ext, $ALLOWED_EXTS))) {
-					$name = basename($f["name"]);
-					throw new MyException(E_PARAM, "bad extention file name: `$name`", "文件扩展名`$ext`不支持");
-				}
+			if (count($ALLOWED_EXTS) > 0 && ($ext == "" || !in_array($ext, $ALLOWED_EXTS))) {
+				$name = basename($f["name"]);
+				throw new MyException(E_PARAM, "bad extention file name: `$name`", "文件扩展名`$ext`不支持");
 			}
+
 			if ($type) {
 				$dir = "upload/$type/" . date('Ym');
 			}
@@ -518,7 +518,7 @@ function api_att()
 	//header("Cache-Control: private");
 	header("Pragma: "); // session_start() set this one to "no-cache"
 
-	#checkAuth(AUTH_USER | AUTH_STORE);
+	#checkAuth(AUTH_USER | AUTH_EMP);
 	#$uid = $_SESSION["uid"];
 	$id = param("id");
 	$thumbId = param("thumbId");

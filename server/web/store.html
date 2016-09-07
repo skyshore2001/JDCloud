@@ -284,6 +284,19 @@ function showDlgLogin()
 	});
 }
 
+function showDlgChpwd()
+{
+	var jdlg = $("#dlgChpwd");
+	WUI.showDlg(jdlg, {
+		url: makeUrl("chpwd"),
+
+		onOk: function (data) {
+			WUI.closeDlg(jdlg);
+			app_show('密码修改成功!');
+		}
+	});
+}
+
 function showDlgSendSms()
 {
 	var jdlg = $("#dlgSendSms");
@@ -327,7 +340,7 @@ $(main);
 
 <div id="menu" region="west" split="true" title="选择操作" style="width:150px;padding:10px;">
 	<!--a href="#pageHome" class="easyui-linkbutton" icon="icon-ok">首页</a><br/><br/-->
-	<!--a href="?logout" class="easyui-linkbutton" icon="icon-ok">修改密码</a><br/><br/-->
+	<a href="?showDlgChpwd" class="easyui-linkbutton" icon="icon-ok">修改密码</a><br/><br/>
 	<a href="?logout" class="easyui-linkbutton" icon="icon-ok">退出系统</a><br/><br/>
 
 	<div class="perm-mgr perm-emp">
@@ -407,7 +420,26 @@ $(main);
 			</tr>
 			<tr>
 				<td>密码</td>
-				<td><input type=password name="pwd" class="easyui-validatebox" data-options="required:true,validType:'pwd'"></td>
+				<td><input type="password" name="pwd" class="easyui-validatebox" data-options="required:true,validType:'pwd'"></td>
+			</tr>
+		</table>
+	</form>
+</div>
+
+<div id="dlgChpwd" title="修改密码" style="padding:20px 40px 20px 40px;width:350px;height:200px;">  
+	<form method="POST">
+		<table>
+			<tr>
+				<td>旧密码</td>
+				<td><input type="password" name="oldpwd" class="easyui-validatebox" data-options="required:true,validType:'pwd'"></td>
+			</tr>
+			<tr>
+				<td>新密码</td>
+				<td><input type="password" id="txtNewPwd" name="pwd" class="easyui-validatebox" data-options="required:true,validType:'pwd'"></td>
+			</tr>
+			<tr>
+				<td>确认密码</td>
+				<td><input type="password" class="easyui-validatebox" data-options="required:true,validType:'equalTo[\'#txtNewPwd\']'"></td>
 			</tr>
 		</table>
 	</form>

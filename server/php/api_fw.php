@@ -288,7 +288,12 @@ class ApiLog
 		if ($X_RET_STR == null)
 			$X_RET_STR = json_encode($X_RET, $GLOBALS["JSON_FLAG"]);
 		$content = $this->myVarExport($X_RET_STR);
-		$sql = sprintf("UPDATE ApiLog SET t=$iv, retval=%d, ressz=%d, res=%s WHERE id={$this->id}", $X_RET[0], strlen($X_RET_STR), Q($content));
+
+		$userIdStr = "";
+		if ($this->ac == 'login' && is_array($X_RET[1]) && @$X_RET[1]['id']) {
+			$userIdStr = ", userId={$X_RET[1]['id']}";
+		}
+		$sql = sprintf("UPDATE ApiLog SET t=$iv, retval=%d, ressz=%d, res=%s {$userIdStr} WHERE id={$this->id}", $X_RET[0], strlen($X_RET_STR), Q($content));
 		$rv = execOne($sql);
 // 		$logStr = "=== id={$this->logId} t={$iv} >>>$content<<<\n";
 	}

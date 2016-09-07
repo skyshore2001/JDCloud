@@ -20,7 +20,7 @@ global $INFO;
 const CONF_FILE = "../php/conf.user.php";
 
 $INFO = []; // { @check, allowInit }
-// check: [{value, result=0|1}]
+// check: [{value, result=0|1|'ignore'}]
 
 $INFO["check"] = checkEnv();
 $INFO["allowInit"] = !file_exists(CONF_FILE);
@@ -103,6 +103,17 @@ function checkEnv()
 	$check["gd"] = [
 		"value"=>$val? "支持": "不支持(图像上传将受影响)",
 		"result" => $val
+	];
+
+	// upload
+	$val = sprintf("upload_max_filesize=%s, post_max_size=%s, max_execution_time=%s", 
+		ini_get('upload_max_filesize'),
+		ini_get('post_max_size'),
+		ini_get('max_execution_time')
+	);
+	$check["uploadsz"] = [
+		"value"=> $val,
+		"result" => 'ignore'
 	];
 	return $check;
 }
@@ -286,6 +297,9 @@ p.hint {
 	<tr>
 		<td>GD图像库</td><td data-item="gd"></td>
 	</tr>
+	<tr>
+		<td>上传文件设置</td><td data-item="uploadsz"></td>
+	</tr>
 </table>
 
 <div id="divInitDb">
@@ -346,7 +360,8 @@ $("#tblInfo td[data-item]").each(function () {
 	var e = info.check[item];
 	if (e) {
 		$(this).html(e.value);
-		$(this).addClass(e.result? "ok": "fail");
+		if (e.result !== 'ignore')
+			$(this).addClass(e.result? "ok": "fail");
 	}
 });
 
