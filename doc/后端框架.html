@@ -60,45 +60,55 @@
 <li><a href="#toc_1.4.3">4.3 API调用监控</a>
 <li><a href="#toc_1.4.4">4.4 批量请求</a>
 </ul>
-<li><a href="#toc_1.5">5 测试设计</a>
+<li><a href="#toc_1.5">5 前端应用接口</a>
 <ul>
-<li><a href="#toc_1.5.1">5.1 手工测试</a>
-<li><a href="#toc_1.5.2">5.2 回归测试</a>
+<li><a href="#toc_1.5.1">5.1 移动应用</a>
+<li><a href="#toc_1.5.2">5.2 桌面应用</a>
 <ul>
-<li><a href="#toc_1.5.2.1">5.2.1 使用方法</a>
-<li><a href="#toc_1.5.2.2">5.2.2 测试模式设计</a>
-<li><a href="#toc_1.5.2.3">5.2.3 API测试和用例测试</a>
-</ul>
-<li><a href="#toc_1.5.3">5.3 单元测试</a>
-<li><a href="#toc_1.5.4">5.4 自动化测试</a>
-<ul>
-<li><a href="#toc_1.5.4.1">5.4.1 取短信日志最后一条</a>
+<li><a href="#toc_1.5.2.1">5.2.1 桌面应用查询用法</a>
+<li><a href="#toc_1.5.2.2">5.2.2 通用参数</a>
+<li><a href="#toc_1.5.2.3">5.2.3 全局变量</a>
 </ul>
 </ul>
-<li><a href="#toc_1.6">6 登录类型与权限管理</a>
-<li><a href="#toc_1.7">7 服务端部署与升级</a>
+<li><a href="#toc_1.6">6 测试设计</a>
 <ul>
-<li><a href="#toc_1.7.1">7.1 初始化配置</a>
-<li><a href="#toc_1.7.2">7.2 升级管理</a>
+<li><a href="#toc_1.6.1">6.1 手工测试</a>
+<li><a href="#toc_1.6.2">6.2 回归测试</a>
 <ul>
-<li><a href="#toc_1.7.2.1">7.2.1 用法</a>
+<li><a href="#toc_1.6.2.1">6.2.1 使用方法</a>
+<li><a href="#toc_1.6.2.2">6.2.2 测试模式设计</a>
+<li><a href="#toc_1.6.2.3">6.2.3 API测试和用例测试</a>
+</ul>
+<li><a href="#toc_1.6.3">6.3 单元测试</a>
+<li><a href="#toc_1.6.4">6.4 自动化测试</a>
 <ul>
-<li><a href="#toc_1.7.2.1.1">7.2.1.1 交互命令</a>
-<li><a href="#toc_1.7.2.1.2">7.2.1.2 非交互命令</a>
+<li><a href="#toc_1.6.4.1">6.4.1 取短信日志最后一条</a>
 </ul>
-<li><a href="#toc_1.7.2.2">7.2.2 写升级脚本</a>
 </ul>
-<li><a href="#toc_1.7.3">7.3 版本发布</a>
-<li><a href="#toc_1.7.4">7.4 客户端自动升级</a>
-</ul>
-<li><a href="#toc_1.8">8 工具接口</a>
+<li><a href="#toc_1.7">7 登录类型与权限管理</a>
+<li><a href="#toc_1.8">8 服务端部署与升级</a>
 <ul>
-<li><a href="#toc_1.8.1">8.1 tool/log.php</a>
-<li><a href="#toc_1.8.2">8.2 tool/init.php</a>
-<li><a href="#toc_1.8.3">8.3 tool/tool.php</a>
+<li><a href="#toc_1.8.1">8.1 初始化配置</a>
+<li><a href="#toc_1.8.2">8.2 升级管理</a>
+<ul>
+<li><a href="#toc_1.8.2.1">8.2.1 用法</a>
+<ul>
+<li><a href="#toc_1.8.2.1.1">8.2.1.1 交互命令</a>
+<li><a href="#toc_1.8.2.1.2">8.2.1.2 非交互命令</a>
 </ul>
-<li><a href="#toc_1.9">9 定期任务</a>
-<li><a href="#toc_1.10">10 数据安全</a>
+<li><a href="#toc_1.8.2.2">8.2.2 写升级脚本</a>
+</ul>
+<li><a href="#toc_1.8.3">8.3 版本发布</a>
+<li><a href="#toc_1.8.4">8.4 客户端自动升级</a>
+</ul>
+<li><a href="#toc_1.9">9 工具接口</a>
+<ul>
+<li><a href="#toc_1.9.1">9.1 tool/log.php</a>
+<li><a href="#toc_1.9.2">9.2 tool/init.php</a>
+<li><a href="#toc_1.9.3">9.3 tool/tool.php</a>
+</ul>
+<li><a href="#toc_1.10">10 定期任务</a>
+<li><a href="#toc_1.11">11 数据安全</a>
 </ul>
 </ul>
 </div>
@@ -2743,7 +2753,215 @@ batch的返回内容是多条调用返回内容组成的数组，样例如下：
 ]]
 </pre>
 
-<h2 id="toc_1.5"><a name="测试设计">5 测试设计</a></h2>
+<h2 id="toc_1.5"><a name="前端应用接口">5 前端应用接口</a></h2>
+
+<p>
+定义前端应用入口及调用参数。
+</p>
+
+<h3 id="toc_1.5.1"><a name="移动应用">5.1 移动应用</a></h3>
+
+<p>
+移动应用按惯例放在m2目录下。以常用的客户端、商户端两个移动应用为例，其文件名一般是：
+</p>
+
+<p>
+移动客户端：
+</p>
+<ul>
+<li>
+index.html/index.js 客户端应用的UI框架及通用逻辑，js文件中包含多个页面共享的全局函数、全局变量等。
+
+<li>
+index.css 客户端应用全局样式。
+
+<li>
+page/{xx}.html, page/{xx}.js 每个逻辑页面的UI和逻辑。页面私有的样式可以内嵌在html页面中。
+
+</ul>
+
+<p>
+移动商户端：
+</p>
+<ul>
+<li>
+store.html/store.js 商户端应用的UI框架及通用逻辑
+
+<li>
+store.css 商户端应用的全局样式。
+
+<li>
+store/{xx}.html, store/{xx}.js 商户端中每个逻辑页面的UI和逻辑。
+
+</ul>
+
+<p>
+此外还有文件：
+</p>
+<ul>
+<li>
+app.js 所有移动应用共享的全局对象
+
+<li>
+app.css 所有移动应用共享的全局样式
+
+</ul>
+
+<p>
+移动应用的对外接口包括页面URL，允许的入口页面(entry)，URL参数等。下面举例描述这些接口。
+</p>
+
+<p>
+<strong>[移动客户端应用入口]</strong>
+</p>
+
+<pre>
+m2/index.html
+</pre>
+
+<p>
+这表示打开这个URL，就进入移动客户端应用。
+</p>
+
+<p>
+<strong>[进入移动客户端并显示指定订单]</strong>
+</p>
+
+<pre>
+m2/index.html#order(orderId)
+</pre>
+
+<p>
+这表示可以请求这样的URL:
+</p>
+<pre>
+m2/index.html?orderId=32#order
+</pre>
+
+<p>
+其中: m2/index.html是页面地址, "?"后为参数(使用URL编码方式), "#"后为入口点, 表示允许进入的逻辑页面.
+</p>
+
+<p>
+上例中的访问表示: 打开移动客户端的订单页面, 参数为orderId=32, 即显示32号订单.
+</p>
+
+<h3 id="toc_1.5.2"><a name="桌面应用">5.2 桌面应用</a></h3>
+
+<p>
+桌面应用按惯例放在web目录下。常见的桌面应用包括：
+</p>
+
+<p>
+管理端应用，一般由商户员工使用，管理员工、订单等：
+</p>
+<pre>
+web/store.html
+</pre>
+
+<p>
+超级管理端应用，一般由超级管理员使用，甚至可执行SQL语句：
+</p>
+<pre>
+web/adm.html
+</pre>
+
+<h4 id="toc_1.5.2.1"><a name="桌面应用查询用法">5.2.1 桌面应用查询用法</a></h4>
+
+<p>
+在查找对象的对话框中，可支持多种灵活的匹配方式：
+</p>
+
+<p>
+例如对字段a, 填写以下值：
+</p>
+<ul>
+<li>
+<code>hello</code> (匹配) -  生成查询条件 <code>a='hello'</code>
+
+<li>
+<code>100</code> (纯数字匹配) - 生成 <code>a=100</code>
+
+<li>
+<code>*28*</code> 或 <code>%28%</code> (部分匹配) - 生成<code>a like '%28%'</code>
+
+<li>
+<code>&gt;100</code> / <code>&gt;=100</code> / <code>&lt;100</code> / <code>&lt;=100</code> / <code>&lt;&gt;100</code> - 生成 <code>a&gt;100</code>等
+
+<li>
+<code>null</code> / <code>&lt;&gt;null</code> - 生成 <code>a is null</code> / <code>a is not null</code>
+
+<li>
+<code>empty</code> / <code>&lt;&gt;empty</code> - 生成 <code>a=''</code> / <code>a&lt;&gt;''</code>
+
+<li>
+支持简单的and/or查询，如 <code>&gt;=100 and &lt;200</code>, <code>null or 0 or 1</code>，不支持用括号组合条件。
+
+</ul>
+
+<p>
+如果同时对多个字段填写了搜索值，则表示这些条件需要同时满足，即<code>AND</code>关系。
+</p>
+
+<p>
+详细可参考文档 <a href="api_web.html#WUI.getQueryCond.html">API参考 -&gt; 筋斗云前端(桌面Web版) -&gt; WUI.getQueryCond</a>
+</p>
+
+<h4 id="toc_1.5.2.2"><a name="通用参数">5.2.2 通用参数</a></h4>
+
+<p>
+移动应用和桌面应用的框架支持以下通用参数：
+</p>
+
+<dl>
+<dt>test/_test?=0</dt>
+<dd>Integer. 设置后台使用测试模式。1表示测试模式.</dd>
+<dt>_debug?=0</dt>
+<dd>Integer. 设置本次调用的服务端调试等级. 调试信息可在调用交互接口的返回内容中查看(返回内容的第三项): [code, ret, debugInfo]. 常用值：0-无额外信息; 1-基本信息, 9-所有信息, 包含数据库查询语句.</dd>
+</dl>
+
+<p>
+以下参数适用于移动应用：
+</p>
+
+<dl>
+<dt>cordova?=0</dt>
+<dd>Integer. 0表示普通Web应用. 当网页通过[应用容器]以原生android/ios应用方式运行时, 值为非0, 表示容器的版本号. </dd>
+</dl>
+
+<p>
+注意: 一旦设置为非0, 则该值会被记住, 下次打开时即使未指定也会有值, 必须重新设置cordova=0清除(或在控制台中调用delStorage("cordova")).
+</p>
+
+<p>
+以下参数适用于桌面应用：
+</p>
+
+<dl>
+<dt>autoLogin</dt>
+<dd>Boolean. 如果为1, 则记住登录token, 下次打开时可以自动登录.</dd>
+</dl>
+
+<h4 id="toc_1.5.2.3"><a name="全局变量">5.2.3 全局变量</a></h4>
+
+<p>
+移动应用和桌面应用使用以下JS全局变量：
+</p>
+
+<dl>
+<dt>g_args</dt>
+<dd>Object. 应用打开时的URL参数. 由框架自动设置.</dd>
+<dt>g_data</dt>
+<dd>Object. 通用全局变量, 存储各项配置或应用数据. 常用项为userInfo, 表示登录后获取的用户信息.</dd>
+<dt>g_cfg</dt>
+<dd>Object. 全局配置。</dd>
+</dl>
+
+<p>
+以上变量可通过控制台手工调节部分参数.
+</p>
+
+<h2 id="toc_1.6"><a name="测试设计">6 测试设计</a></h2>
 
 <p>
 <strong>[测试需求]</strong>
@@ -2781,7 +2999,7 @@ batch的返回内容是多条调用返回内容组成的数组，样例如下：
 
 </ul>
 
-<h3 id="toc_1.5.1"><a name="手工测试">5.1 手工测试</a></h3>
+<h3 id="toc_1.6.1"><a name="手工测试">6.1 手工测试</a></h3>
 
 <p>
 除可通过浏览器(如Chrome插件Postman)等工具进行测试外，还提供client.php工具，可分别测试每个API，如
@@ -2826,9 +3044,9 @@ batch的返回内容是多条调用返回内容组成的数组，样例如下：
 
 </ul>
 
-<h3 id="toc_1.5.2"><a name="回归测试">5.2 回归测试</a></h3>
+<h3 id="toc_1.6.2"><a name="回归测试">6.2 回归测试</a></h3>
 
-<h4 id="toc_1.5.2.1"><a name="使用方法">5.2.1 使用方法</a></h4>
+<h4 id="toc_1.6.2.1"><a name="使用方法">6.2.1 使用方法</a></h4>
 
 <p>
 <strong>[前提条件]</strong>
@@ -2981,7 +3199,7 @@ just sanity test:
 	run_rtest --exclude-group scenario
 </pre>
 
-<h4 id="toc_1.5.2.2"><a name="测试模式设计">5.2.2 测试模式设计</a></h4>
+<h4 id="toc_1.6.2.2"><a name="测试模式设计">6.2.2 测试模式设计</a></h4>
 
 <ul>
 <li>
@@ -3003,7 +3221,7 @@ just sanity test:
 rtest实现参见<code>rtest/rtest.php</code>，服务端实现请在<code>server/api.php</code>中搜索"CARSVC_TEST".
 </p>
 
-<h4 id="toc_1.5.2.3"><a name="API测试和用例测试">5.2.3 API测试和用例测试</a></h4>
+<h4 id="toc_1.6.2.3"><a name="API测试和用例测试">6.2.3 API测试和用例测试</a></h4>
 
 <p>
 <strong>[原则]</strong>
@@ -3044,7 +3262,7 @@ static private $skipAll = false;
 private $isCritical = false; 
 </pre>
 
-<h3 id="toc_1.5.3"><a name="单元测试">5.3 单元测试</a></h3>
+<h3 id="toc_1.6.3"><a name="单元测试">6.3 单元测试</a></h3>
 
 <p>
 必要时对某些类进行专门测试，存放在"rtest/test"目录，手工运行它们：
@@ -3054,9 +3272,9 @@ cd test
 phpunit xxxTest.php
 </pre>
 
-<h3 id="toc_1.5.4"><a name="自动化测试">5.4 自动化测试</a></h3>
+<h3 id="toc_1.6.4"><a name="自动化测试">6.4 自动化测试</a></h3>
 
-<h4 id="toc_1.5.4.1"><a name="取短信日志最后一条">5.4.1 取短信日志最后一条</a></h4>
+<h4 id="toc_1.6.4.1"><a name="取短信日志最后一条">6.4.1 取短信日志最后一条</a></h4>
 
 <pre>
 getLastLog(type)
@@ -3080,7 +3298,7 @@ AUTH_TEST_MODE
 <dt>f</dt>
 </dl>
 
-<h2 id="toc_1.6"><a name="登录类型与权限管理">6 登录类型与权限管理</a></h2>
+<h2 id="toc_1.7"><a name="登录类型与权限管理">7 登录类型与权限管理</a></h2>
 
 <p>
 我们使用的权限控制模型为: "用户-权限(即角色/原子权限组)-原子权限(基本权限)".
@@ -3111,9 +3329,9 @@ AUTH_TEST_MODE
 权限定义参考章节[权限说明].
 </p>
 
-<h2 id="toc_1.7"><a name="服务端部署与升级">7 服务端部署与升级</a></h2>
+<h2 id="toc_1.8"><a name="服务端部署与升级">8 服务端部署与升级</a></h2>
 
-<h3 id="toc_1.7.1"><a name="初始化配置">7.1 初始化配置</a></h3>
+<h3 id="toc_1.8.1"><a name="初始化配置">8.1 初始化配置</a></h3>
 
 <p>
 项目初始化步骤：
@@ -3141,7 +3359,7 @@ AUTH_TEST_MODE
 在配置文件中，很多帐户口令、密码采用base64等方式保存，可以用在线工具 <code>http://{server}/{app}/tool/tool.php</code>进行编解码。
 </p>
 
-<h3 id="toc_1.7.2"><a name="升级管理">7.2 升级管理</a></h3>
+<h3 id="toc_1.8.2"><a name="升级管理">8.2 升级管理</a></h3>
 
 <p>
 tool/upgrade.php - 升级管理
@@ -3182,7 +3400,7 @@ P_DB="115.29.199.210/carsvc_test" 表示位于IP=115.29.199.210的远程mysql db
 环境变量P_DBCRED指定连接数据库的用户名密码。如未指定，则使用php/dbcred.php中的设定。
 </p>
 
-<h4 id="toc_1.7.2.1"><a name="用法">7.2.1 用法</a></h4>
+<h4 id="toc_1.8.2.1"><a name="用法">8.2.1 用法</a></h4>
 
 <p>
 upgrade.php
@@ -3192,7 +3410,7 @@ upgrade.php
 缺省进入命令行交互.
 </p>
 
-<h5 id="toc_1.7.2.1.1"><a name="交互命令">7.2.1.1 交互命令</a></h5>
+<h5 id="toc_1.8.2.1.1"><a name="交互命令">8.2.1.1 交互命令</a></h5>
 
 <p>
 一般命令格式与函数调用类似, 也支持直接的sql语句, 如
@@ -3516,7 +3734,7 @@ id	name	Svc_ItemType(ittId,svcId,ItemType.name)
 上例中"Svc_ItemType"多了一个参数"ItemType.name", 它表示下面内容是关联到ItemType.name字段，即需要先用"SELECT id FROM ItemType WHERE name=?"查询出Svc_ItemType.ittId(第一个参数)，再同上例进行添加。
 <img src="" />
 </p>
-<h5 id="toc_1.7.2.1.2"><a name="非交互命令">7.2.1.2 非交互命令</a></h5>
+<h5 id="toc_1.8.2.1.2"><a name="非交互命令">8.2.1.2 非交互命令</a></h5>
 
 <p>
 例:
@@ -3530,7 +3748,7 @@ upgrade.php all
 upgrade.php upgrade
 </pre>
 
-<h4 id="toc_1.7.2.2"><a name="写升级脚本">7.2.2 写升级脚本</a></h4>
+<h4 id="toc_1.8.2.2"><a name="写升级脚本">8.2.2 写升级脚本</a></h4>
 
 <p>
 当表结构变化时, 
@@ -3583,7 +3801,7 @@ if (dbver &lt; 4) {
 update cinf set ver, update_tm
 </pre>
 
-<h3 id="toc_1.7.3"><a name="版本发布">7.3 版本发布</a></h3>
+<h3 id="toc_1.8.3"><a name="版本发布">8.3 版本发布</a></h3>
 
 <p>
 版本发布又称“部署”或“版本上线”，是将开发版本进行构建和优化后，上传线上服务器的过程。
@@ -3634,7 +3852,7 @@ webcc提供的功能主要有：
 在上传服务器后，会自动在服务器上生成文件<code>revision_rel.txt</code>, 代表当前发布版本号。下次上传时，只会进行差量上传。
 </p>
 
-<h3 id="toc_1.7.4"><a name="客户端自动升级">7.4 客户端自动升级</a></h3>
+<h3 id="toc_1.8.4"><a name="客户端自动升级">8.4 客户端自动升级</a></h3>
 
 <p>
 对于Web应用，每次浏览器打开时均已是最新版本；但是如果浏览器一直未关闭，则需要手工刷新页面才能更新。
@@ -3661,7 +3879,7 @@ webcc提供的功能主要有：
 通过以上过程，用户不必退出应用再重新打开，就能实现版本自动升级。
 </p>
 
-<h2 id="toc_1.8"><a name="工具接口">8 工具接口</a></h2>
+<h2 id="toc_1.9"><a name="工具接口">9 工具接口</a></h2>
 
 <p>
 本节介绍目录 server/tool/ 下的工具。
@@ -3671,7 +3889,7 @@ webcc提供的功能主要有：
 注意：<code>server/tool/</code>目录下的工具随项目一起发布，一般通过网络访问。而<code>tool/</code>目录下的工具一般是命令行工具，不发布。
 </p>
 
-<h3 id="toc_1.8.1"><a name="tool/log.php">8.1 tool/log.php</a></h3>
+<h3 id="toc_1.9.1"><a name="tool/log.php">9.1 tool/log.php</a></h3>
 
 <pre>
 log.php(f?=ext, sz?=2500)
@@ -3703,7 +3921,7 @@ log.php?f=trace
 (查看trace log)
 </pre>
 
-<h3 id="toc_1.8.2"><a name="tool/init.php">8.2 tool/init.php</a></h3>
+<h3 id="toc_1.9.2"><a name="tool/init.php">9.2 tool/init.php</a></h3>
 
 <pre>
 init.php(ac?)
@@ -3717,7 +3935,7 @@ init.php(ac?)
 项目初始化方法参考前面章节"服务端部署与升级"-&gt;"初始化配置".
 </p>
 
-<h3 id="toc_1.8.3"><a name="tool/tool.php">8.3 tool/tool.php</a></h3>
+<h3 id="toc_1.9.3"><a name="tool/tool.php">9.3 tool/tool.php</a></h3>
 
 <pre>
 tool.php(ac?)
@@ -3731,7 +3949,7 @@ tool.php(ac?)
 工具包。目前支持base64编码、解码，md5编码等。
 </p>
 
-<h2 id="toc_1.9"><a name="定期任务">9 定期任务</a></h2>
+<h2 id="toc_1.10"><a name="定期任务">10 定期任务</a></h2>
 <pre>
 tool/task.php(ac)
 </pre>
@@ -3785,7 +4003,7 @@ tool/task.php(ac)
 备份数据库。
 </p>
 
-<h2 id="toc_1.10"><a name="数据安全">10 数据安全</a></h2>
+<h2 id="toc_1.11"><a name="数据安全">11 数据安全</a></h2>
 
 <p>
 <strong>[需求]</strong>
