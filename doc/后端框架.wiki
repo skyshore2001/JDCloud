@@ -147,10 +147,12 @@ cmdtool.template.php:: 使用app.php创建数据操作工具的示例，如用�
 - envvar P_DEBUG (for server, test and rtest) and URL param _debug (for server)
 - envvar P_SHARE_COOKIE (for rtest)
 - envvar P_TEST (for test/rtest) 设置通用URL参数_test. WebAPI/client.php缺省运行于测试模式(即P_TEST=1)，run_rtest.pl运行于回归测试模式(P_TEST=2), 如果要用生产模式请手工设置该参数为P_TEST=0（生产模式或测试模式还决定于其它服务端配置，该参数不一定实际运行在生产模式）。
-- envvar P_DBCRED (for server) 指定数据库登录用户名及密码。格式为"{user}:{pwd}"的base64编码形式。
-- file `php/conf.user.php` (for server), 该文件存在则自动加载，用于设置自定义配置选项，如定义数据库用户名密码 ($GLOBALS["dbcred"])。
+- envvar P_DBCRED (for server) 指定数据库登录用户名及密码。格式为"{user}:{pwd}"，或其base64编码形式，一般使用base64编码。
+- file `php/conf.user.php` (for server), 该文件存在则自动加载，用于设置自定义配置选项，如定义数据库用户名密码: `putenv("P_DBCRED=...")`
 - envvar P_SESSION_DIR (for server) 指定session文件保存位置，缺省是应用目录下。注意：测试模式的session是分开保存的，在该目录下子目录"t"中。
 - envvar P_URL_PATH (for server) 指定应用的URL绝对路径(以"/"开头)。用于拼出正确的完整url路径。
+- envvar P_URL_PATH (for server) 指定应用的URL绝对路径(以"/"开头)。用于拼出正确的完整url路径。
+- envvar P_ADMIN_CRED 指定超级管理员帐号。格式与P_DBCRED相同。
 
 *[模拟模式 - MOCK_MODE]*
 
@@ -1523,20 +1525,29 @@ batch的返回内容是多条调用返回内容组成的数组，样例如下：
 
 == 前端应用接口 ==
 
-定义前端应用入口及调用参数。每一个应用均应明确定义一个惟一的app代码。
+定义前端应用入口及调用参数。
+
+每一个应用均应定义一个唯一的应用标识(app)，如"emp", "emp-store"等。在调用交互接口时，框架会自动将应用标识作为参数传给后端。
+应用标识中字符"-"之前的部分称为应用类型(app type)，如果应用标识里没有"-"，则应用类型与应用标识相同。应用类型常用于登录类型与权限控制。
+
+例如，定义客户端应用标识app=user，其应用类型也是"user"，在login交互接口中，对应用类型"user"将作用户登录处理（如查询用户表），登录成功后赋予其用户权限。
+定义员工端应用标识为app=emp-store，它的应用类型是"emp"，在后端将作员工登录处理（比如查询的是员工表），登录成功后赋予其员工权限。
+定义管理端应用app=emp-adm，它与应用emp-store是相同类型，因而登录方式和权限是相同的，即应使用员工信息登录。
+
+可见，不同的应用可以是相同的应用类型。在实现交互接口时，不同的应用标识也会使用不同的cookie名称，以避免多个应用同时使用时相互干扰。
 
 === 移动应用 ===
 
 筋斗云的移动应用可做为Web应用在浏览器中运行, 也可以接入微信公众号或支付宝服务窗, 也可以通过cordova框架包装在应用容器中提供android/ios应用程序.
 
-移动应用按惯例放在m2目录下。以常用的客户端、商户端两个移动应用为例，其文件名一般是：
+移动应用按惯例放在m2目录下。以常用的客户端、员工端两个移动应用为例，其相关文件有：
 
-移动客户端(app=user)：
+客户端：
 - index.html/index.js 客户端应用的UI框架及通用逻辑，js文件中包含多个页面共享的全局函数、全局变量等。
 - index.css 客户端应用全局样式。
 - page/{xx}.html, page/{xx}.js 每个逻辑页面的UI和逻辑。页面私有的样式可以内嵌在html页面中。
 
-移动商户端(app=store)：
+商户端：
 - store.html/store.js 商户端应用的UI框架及通用逻辑
 - store.css 商户端应用的全局样式。
 - store/{xx}.html, store/{xx}.js 商户端中每个逻辑页面的UI和逻辑。
@@ -1547,13 +1558,15 @@ batch的返回内容是多条调用返回内容组成的数组，样例如下：
 
 移动应用的对外接口包括页面URL，允许的入口页面(entry)，URL参数等。下面举例描述这些接口。
 
-*[移动客户端应用]*
+==== 客户端(app=user) ====
 
 {{{
 m2/index.html
 }}}
 
 这表示打开这个URL，就进入移动客户端应用。
+
+该应用的应用标识定义为"user"，表示用户登录。
 
 *[进入移动客户端并显示指定订单]*
 
@@ -1570,19 +1583,40 @@ m2/index.html?orderId=32#order
 
 上例中的访问表示: 打开移动客户端的订单页面, 参数为orderId=32, 即显示32号订单.
 
+==== 员工端(app=emp-store) ====
+
+{{{
+m2/store.html
+}}}
+
+该应用的应用标识定义为"emp-store"，表示员工登录（应用类型为emp）。
+
 === 桌面应用 ===
 
-桌面应用按惯例放在web目录下。常见的桌面应用包括：
+桌面应用按惯例放在web目录下。其常用文件与移动应用类似，以管理端应用为例：
 
-管理端应用(app=store)，一般由商户员工使用，管理员工、订单等：
+- store.html 管理端应用。按需可拆分出 store.js, store.css等文件。
+- app.js / style.css 所有桌面应用共享的逻辑与全局样式。
+
+常见的桌面应用示例如下。
+
+==== 管理端应用(app=emp-adm) ====
+
+一般由商户员工使用，管理员工、订单等：
 {{{
 web/store.html
 }}}
 
-超级管理端应用(app=admin)，一般由超级管理员使用，甚至可执行SQL语句：
+该应用的应用标识定义为"emp-adm"，它与员工端(emp-store)的应用类型是相同的，都是"emp", 因而都用员工信息进行登录。
+
+==== 超级管理端应用(app=admin) ====
+
+一般由超级管理员使用，甚至可执行SQL语句：
 {{{
 web/adm.html
 }}}
+
+该应用的应用标识定义为"admin"，使用超级管理员帐号登录。注意：超级管理员帐号在用户配置文件`conf.user.php`中由`P_ADMIN_CRED`环境变量设定。
 
 ==== 桌面应用查询用法 ====
 
