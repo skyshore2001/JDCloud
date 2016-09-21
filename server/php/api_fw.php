@@ -901,6 +901,14 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 	return $ret;
 }
 
+function api_initClient()
+{
+	$ret = [];
+	if (! empty(Plugins::$map)) {
+		$ret['plugins'] = Plugins::$map;
+	}
+	return $ret;
+}
 //}}}
 
 // ====== access control framework {{{
@@ -2303,4 +2311,3 @@ function callSvc($ac = null, $urlParam = null, $postParam = null, $cleanCall = f
 #}}}
 
 // vim: set foldmethod=marker :
-?>

@@ -115,6 +115,15 @@
 </ul>
 <li><a href="#toc_1.10">10 定期任务</a>
 <li><a href="#toc_1.11">11 数据安全</a>
+<li><a href="#toc_1.12">12 插件机制</a>
+<ul>
+<li><a href="#toc_1.12.1">12.1 需求</a>
+<li><a href="#toc_1.12.2">12.2 插件目录结构</a>
+<li><a href="#toc_1.12.3">12.3 插件安装</a>
+<li><a href="#toc_1.12.4">12.4 后端PHP API</a>
+<li><a href="#toc_1.12.5">12.5 前端JS API</a>
+<li><a href="#toc_1.12.6">12.6 交互接口</a>
+</ul>
 </ul>
 </ul>
 </div>
@@ -4139,6 +4148,172 @@ tool/task.php(ac)
 如果事务增长至单一主机无法解决，则应组件集群。
 
 </ul>
+
+<h2 id="toc_1.12"><a name="插件机制">12 插件机制</a></h2>
+
+<p>
+支持版本: v3.0
+</p>
+
+<h3 id="toc_1.12.1"><a name="需求">12.1 需求</a></h3>
+
+<ul>
+<li>
+插件是一块独立的功能，可以被单独安装或删除。
+
+<li>
+插件有版本管理，可以升级。
+
+<li>
+插件开发的内容中包括数据模型定义、前端页面及后端接口。
+
+<li>
+插件间可以有依赖关系。还可能依赖原生cordova插件。
+
+</ul>
+
+<ul>
+<li>
+插件可以是通用于所有应用的，也可以是专用于某一应用的。
+
+</ul>
+
+<h3 id="toc_1.12.2"><a name="插件目录结构">12.2 插件目录结构</a></h3>
+
+<pre>
+plugin/  - 插件总目录
+
+plugin/index.php - 插件配置文件，指定应用使用哪些插件
+
+plugin/{pluginName}/  某插件的主目录
+plugin/{pluginName}/DESIGN.wiki 插件设计文档
+plugin/{pluginName}/plugin.php 插件配置及服务端接口
+plugin/{pluginName}/m2/page/{page}.[html|js] 插件前端逻辑页面，可直接在应用程序中使用
+plugin/{pluginName}/m2/plugin.js 可选，插件前端全局逻辑，文件名字任意，在plugin.php中通过return语句指定使用。
+TODO: plugin/{pluginName}/m2/plugin.css 可选，插件前端全局样式，文件名字任意，在plugin.php中通过return语句指定使用。
+</pre>
+
+<p>
+<strong>[插件配置文件 plugin/index.php]</strong>
+</p>
+
+<p>
+该文件被后端应用框架自动包含，其内容示例如下：
+</p>
+<pre>
+&lt;?php
+
+Plugins::add([ "plugin1", "plugin2" ]);
+</pre>
+
+<p>
+表示当前应用使用两个插件"plugin1"和"plugin2", 分别对应目录 plugin/plugin1和plugin/plugin2.
+如果该文件不存在，则后端应用不加载任何插件。
+</p>
+
+<p>
+<strong>[插件后端 plugin/{pluginName}/plugin.php]</strong>
+</p>
+
+<p>
+文件会被自动包含到应用api.php中。在这里实现插件的交互接口，在文件的最后可以返回插件的配置，如
+</p>
+<pre>
+&lt;?php
+
+// 实现交互接口 svcinfo
+function api_svrinfo()
+{ ... }
+
+// 返回插件配置
+return [
+	"js" =&gt; "m2/plugin.js" // 前端需要包含的文件
+];
+</pre>
+
+<p>
+<strong>[插件移动WEB前端 plugin/{pluginName}/m2/page/]</strong>
+</p>
+
+<p>
+和应用的 m2/page/ 目录一样，包含插件的每个逻辑页面。
+</p>
+
+<h3 id="toc_1.12.3"><a name="插件安装">12.3 插件安装</a></h3>
+
+<p>
+将插件直接复制到plugin目录下，在plugin/index.php中添加该插件名即可。
+</p>
+
+<p>
+<span class="todo">TODO:</span> 安装相关API和交互接口
+</p>
+
+<p>
+<span class="todo">TODO:</span> 相关表更新
+用upgrade.php
+</p>
+
+<h3 id="toc_1.12.4"><a name="后端PHP API">12.4 后端PHP API</a></h3>
+
+<pre>
+Plugins.add($pluginList);  // 添加插件
+Plugins.exists($pluginName); // 判断插件是否存在
+</pre>
+
+<p>
+<span class="todo">TODO:</span>
+服务端安装插件：
+</p>
+<pre>
+Plugins.install('plugin1@1.1'); -- 注册的插件, 下载到本地，解压到plugin目录下，再自动更新plugin/index.php文件。
+Plugins.uninstall('plugin1'); -- 删除插件目录，再更新plugin/index.php。
+</pre>
+
+<h3 id="toc_1.12.5"><a name="前端JS API">12.5 前端JS API</a></h3>
+
+<pre>
+MUI.initClient(); // 前端初始化，如需调用以下接口，须在muiInit事件中调用。
+
+Plugins.exists(pluginName); // 判断插件是否存在
+Plugins.list(); // 返回当前应用的插件列表
+</pre>
+
+<p>
+示例：
+</p>
+<pre>
+$(document).on("muiInit", myInit);
+function myInit()
+{
+	MUI.initClient(); // 初始化客户端环境，包括插件
+	...
+}
+
+// 判断和使用插件前端页面
+if (Plugins.exists('plugin1')) {
+	MUI.showPage('#plugin1-page1');
+}
+</pre>
+
+<h3 id="toc_1.12.6"><a name="交互接口">12.6 交互接口</a></h3>
+
+<p>
+返回插件列表：
+</p>
+<pre>
+initClient() -&gt; { @plugins? }
+
+plugins:: { name =&gt; {js?} }
+</pre>
+
+<p>
+<span class="todo">TODO:</span> 安装与卸载
+</p>
+<pre>
+addPlugin(name)
+delPlugin(name)
+</pre>
 
 </body>
 </html>
