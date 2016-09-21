@@ -127,7 +127,7 @@ function isAndroid()
 	return /Android/i.test(navigator.userAgent);
 }
 /**
-@fn loadScript(url)
+@fn loadScript(url, fnOK, sync?=false)
 
 动态加载一个script. 如果曾经加载过, 可以重用cache.
 
@@ -135,12 +135,12 @@ function isAndroid()
 
 @see $.getScriptWithCache
 */
-function loadScript(url, fnOK)
+function loadScript(url, fnOK, sync)
 {
 	var script= document.createElement('script');
 	script.type= 'text/javascript';
 	script.src= url;
-	script.async = true;
+	script.async = !sync;
 	if (fnOK)
 		script.onload = fnOK;
 	document.body.appendChild(script);
@@ -1088,13 +1088,22 @@ function CPageManager(app)
 
 	// "#aaa" => {pageId: "aaa", pageFile: "{pageFolder}/aaa.html", templateRef: "#tpl_aaa"}
 	// "#xx/aaa.html" => {pageId: "aaa", pageFile: "xx/aaa.html"}
+	// "#plugin1-page1" => {pageId: "plugin1-page1", pageFile: "../plugin/plugin1/m2/page/page1.html"}
 	function getPageInfo(pageRef)
 	{
 		var pageId = pageRef[0] == '#'? pageRef.substr(1): pageRef;
 		var ret = {pageId: pageId};
 		var p = pageId.lastIndexOf(".");
 		if (p == -1) {
-			ret.pageFile = m_app.pageFolder + '/' + pageId + ".html";
+			p = pageId.lastIndexOf('-');
+			if (p == -1) {
+				ret.pageFile = m_app.pageFolder + '/' + pageId + ".html";
+			}
+			else {
+				var plugin = pageId.substr(0, p);
+				var pageId2 = pageId.substr(p+1);
+				ret.pageFile = '../plugin/' + plugin + '/m2/page/' + pageId2 + '.html';
+			}
 			ret.templateRef = "#tpl_" + pageId;
 		}
 		else {
@@ -3018,7 +3027,46 @@ function handleLogin(data)
 	}
 }
 //}}}
+//}}}
 
+// ------ plugins {{{
+/**
+@fn MUI.initClient()
+*/
+self.initClient = initClient;
+var plugins_ = {};
+function initClient()
+{
+	callSvrSync('initClient', function (data) {
+		plugins_ = data.plugins || {};
+		$.each(plugins_, function (k, e) {
+			if (e.js) {
+				// plugin dir
+				var js = BASE_URL + 'plugin/' + k + '/' + e.js;
+				loadScript(js, null, true);
+			}
+		});
+	});
+}
+
+/**
+@class Plugins
+*/
+window.Plugins = {
+/**
+@fn Plugins.exists(pluginName)
+*/
+	exists: function (pname) {
+		return plugins_[pname] !== undefined;
+	},
+
+/**
+@fn Plugins.list()
+*/
+	list: function () {
+		return plugins_;
+	}
+};
 //}}}
 
 // ------ main {{{

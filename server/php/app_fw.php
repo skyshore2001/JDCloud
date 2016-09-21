@@ -159,6 +159,9 @@ global $g_dbgInfo;
 $g_dbgInfo = [];
 //}}}
 
+// optional plugins
+@include_once("plugin/index.php");
+
 require_once("{$BASE_DIR}/conf.php");
 
 // load user config
@@ -1338,6 +1341,48 @@ class AppBase
 	{
 		global $DBH;
 		$DBH = null;
+	}
+}
+
+class Plugins
+{
+/**
+@var Plugins::$map
+*/
+	public static $map = [];
+
+/**
+@fn Plugins::add($plugins)
+
+@param $plugins ={ pluginName => {js, php} }
+
+*/
+	public static function add($ps) {
+		global $BASE_DIR;
+		foreach ($ps as $pname) {
+			$pdir = $BASE_DIR . '/plugin/' . $pname;
+			if (! is_dir($pdir))
+				throw new MyException(E_SERVER, "cannot find plugin: $pname");
+
+			// load plugin
+			$f = "$pdir/plugin.php";
+			if (is_file($f)) {
+				$p = require_once($f);
+				if ($p === 1)
+					$p = [];
+			}
+			else {
+				$p = [];
+			}
+			self::$map[$pname] = $p;
+		}
+	}
+
+/**
+@fn Plugins::exists($pluginName)
+*/
+	public static function exists($pname) {
+		return array_key_exists($pname, self::$map);
 	}
 }
 // }}}
