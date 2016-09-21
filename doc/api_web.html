@@ -33,7 +33,7 @@ code {
 </head>
 
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2016-07-26</div>
+<div>最后更新：2016-09-21</div>
 <h2>Modules</h2>
 <div class="toc">
 <p><a href="#WUI">WUI (module)</a></p>
@@ -88,6 +88,7 @@ code {
 <p><a href="#datagrid.sorter">datagrid.sorter (key)</a></p>
 <p><a href="#datagrid.styler">datagrid.styler (key)</a></p>
 <p><a href="#enterWaiting">enterWaiting (alias)</a></p>
+<p><a href="#example-dialog">example-dialog (key)</a></p>
 <p><a href="#example-upload">example-upload (key)</a></p>
 <p><a href="#g_args">g_args (var)</a></p>
 <p><a href="#g_args._app">g_args._app (var)</a></p>
@@ -117,6 +118,8 @@ code {
 <p><a href="#savedata">savedata (key)</a></p>
 <p><a href="#searchField">searchField (fn)</a></p>
 <p><a href="#show">show (key)</a></p>
+<p><a href="#wui-nopic">wui-nopic (key)</a></p>
+<p><a href="#wui-nothumb">wui-nothumb (key)</a></p>
 <p><a href="#wui-pageName">wui-pageName (key)</a></p>
 </div><hr>
 <h2 id="IsBusy">@var IsBusy</h2>
@@ -301,6 +304,7 @@ $(o).jdata({hello:100, world:200});</code></pre><hr>
 <p class="see"><strong>@see <a href="#WUI.dg_dblclick">WUI.dg_dblclick</a></strong> </p>
 <p class="see"><strong>@see <a href="#WUI.makeUrl">WUI.makeUrl</a></strong> </p>
 <h5 id="WUI-1.4 定义对话框的初始化函数">1.4 定义对话框的初始化函数</h5>
+<p class="key"><strong>@key <a id="example-dialog">example-dialog</a></strong> </p>
 <p>默认对话框中由于设定了底层对象(my-obj)及属性关联（form中带name属性的组件，已关联对象属性），因而可自动显示和提交数据。</p>
 <p>特别地，某些属性不宜直接展示，例如属性“人物头像”，服务器存储的是图片id(picId)，而展示时应显示为图片而不是一个数字；<br />
 或者如“权限列表”属性，服务器存储的是逗号分隔的一组权限比如&quot;emp,mgr&quot;，而展示时需要为每项显示一个勾选框。<br />
@@ -324,7 +328,7 @@ $(o).jdata({hello:100, world:200});</code></pre><hr>
         // 如果界面上展示的字段无法与属性直接对应，可以在该事件回调中设置。
         // hiddenToCheckbox(jfrm.find("#divPerms"));
     })
-    .on("savedata", function (ev, formMode) {
+    .on("savedata", function (ev, formMode, initData) {
         // 在form提交时，所有带name属性且不带disabled属性的对象值会被发往服务端。
         // 此事件回调可以设置一些界面上无法与属性直接对应的内容。
         // checkboxToHidden(jfrm.find("#divPerms"));
@@ -435,6 +439,14 @@ $(o).jdata({hello:100, world:200});</code></pre><hr>
 <li>远程排序(remoteSort)：点排序时，直接本地计算重排，不会发请求到服务端.</li>
 </ul>
 <p class="see"><strong>@see <a href="#intSort">intSort</a> <a href="#numberSort">numberSort</a></strong> </p>
+<p>如果打开数据表就希望按某一列排序，可设置：</p>
+<pre><code>jtbl.datagrid({
+    ...
+    sortName: 'id',
+    sortOrder: 'desc'
+});</code></pre>
+<p>手工点击列标题栏排序，会自动修改这两个属性。<br />
+在添加数据时，如果当前sortOrder是倒序，则新数据显示在表格当前页的最前面，否则显示在最后。</p>
 <p>框架对datagrid还做了以下缺省设置：</p>
 <ul>
 <li>
@@ -731,10 +743,11 @@ WUI.showPage("pageHome", "首页2");</code></pre><hr>
 <p class="key"><strong>@key <a id="show">show</a></strong>  Function(ev, formMode)  form显示事件.</p>
 <p class="key"><strong>@key <a id="initdata">initdata</a></strong>  Function(ev, data, formMode) form加载数据前，可修改要加载的数据即data</p>
 <p class="key"><strong>@key <a id="loaddata">loaddata</a></strong>  Function(ev, data, formMode) form加载数据后，一般用于将服务端数据转为界面显示数据</p>
-<p class="key"><strong>@key <a id="savedata">savedata</a></strong>  Function(ev, formMode) form提交前事件，用于将界面数据转为提交数据</p>
+<p class="key"><strong>@key <a id="savedata">savedata</a></strong>  Function(ev, formMode, initData) form提交前事件，用于将界面数据转为提交数据. 返回false或调用ev.preventDefault()可阻止form提交。</p>
 <p class="key"><strong>@key <a id="retdata">retdata</a></strong>  Function(ev, data, formMode) form提交后事件，用于处理返回数据</p>
 <p>调用此函数后，对话框将加上以下CSS Class:</p>
-<p class="key"><strong>@key <a id=".wui-dialog">.wui-dialog</a></strong>  标识WUI对话框的类名。</p><hr>
+<p class="key"><strong>@key <a id=".wui-dialog">.wui-dialog</a></strong>  标识WUI对话框的类名。</p>
+<p class="see"><strong>@see <a href="#example-dialog">example-dialog</a></strong>  在对话框中使用事件</p><hr>
 <h2 id="WUI.getQueryCond">@fn WUI.getQueryCond(kvList)</h2>
 <p class="param"><strong>@param kvList</strong>  {key=>value}, 键值对，值中支持操作符及通配符。也支持格式 [ [key, value] ], 这时允许key有重复。</p>
 <p>根据kvList生成BPQ协议定义的{obj}.query的cond参数。</p>
@@ -887,8 +900,13 @@ $(main);</code></pre><hr>
 <p class="param"><strong>@param sep</strong> ?=','  分隔符，默认为逗号</p>
 <p>用于在对象详情对话框中，以一组复选框(checkbox)来对应一个逗号分隔式列表的字段。</p>
 <p class="see"><strong>@see <a href="#checkboxToHidden">checkboxToHidden</a></strong>  （有示例）</p><hr>
-<h2 id="hiddenToImg">@fn hiddenToImg(jp, sep?=",")</h2>
-<p>用于在对象详情对话框中，展示关联图片字段。图片可以为单张或多张。</p>
+<h2 id="hiddenToImg">@fn hiddenToImg(jp, sep?=",")</h2><div class="toc"><p style="margin-left:0em"><a href="#hiddenToImg-1 显示图片">1 显示图片</a></p>
+<p style="margin-left:0em"><a href="#hiddenToImg-2 显示多张图片">2 显示多张图片</a></p>
+<p style="margin-left:0em"><a href="#hiddenToImg-3 显示视频或其它文件">3 显示视频或其它文件</a></p>
+</div>
+<p>用于在对象详情对话框中，展示关联图片字段。图片可以为单张或多张。<br />
+除显示图片外，也可以展示其它用户上传的文件，如视频、文本等。</p>
+<h4 id="hiddenToImg-1 显示图片">1 显示图片</h4>
 <p>以下是一个带图片的商户表设计，里面有两个字段picId与pics，一个显示单张图片，一个显示一组图片。</p>
 <pre><code>@Store: id, name, picId, pics
 
@@ -900,7 +918,7 @@ pics:: List(Integer). 商户图片列表，格式如"101,102,103".</code></pre>
     &lt;tr&gt;
         &lt;td&gt;商户头像&lt;/td&gt;
         &lt;td id="divStorePicId"&gt;
-            &lt;input type="hidden" name="picId"&gt;
+            &lt;input name="picId" style="display:none"&gt;
             &lt;div class="imgs"&gt;&lt;/div&gt;
             &lt;input type="file" accept="image/*" onchange="onChooseFile.apply(this)"&gt;
         &lt;/td&gt;
@@ -908,14 +926,23 @@ pics:: List(Integer). 商户图片列表，格式如"101,102,103".</code></pre>
 &lt;/div&gt;</code></pre>
 <p>注意：</p>
 <ul>
-<li>在divStorePicId中，包括一个input[type=hidden]对象，用于保存原始字段值；一个div.imgs，用于显示图片；一个input[type=file]，用于选择图片。</li>
+<li>在divStorePicId中，包括一个hidden对象(隐藏的input对象或input[type=hidden]对象)，用于保存原始字段值；一个div.imgs，用于显示图片(其实是缩略图)；一个input[type=file]，用于选择图片。</li>
 <li>为input[type=file]组件设置onchange方法，以便在选择图片后，压缩图片并显示到div.imgs中。</li>
+<li>
+<p>如果不需要压缩缩略图，则可在jp上设置属性 wui-nothumb, 如</p>
+<pre><code>&lt;td id="divStorePicId" wui-nothumb&gt;
+...
+&lt;/td&gt;</code></pre>
+</li>
+<li>可以有多个hidden对象，该方法只对第一个读写。</li>
 </ul>
+<p class="key"><strong>@key <a id="wui-nothumb">wui-nothumb</a></strong> </p>
+<h4 id="hiddenToImg-2 显示多张图片">2 显示多张图片</h4>
 <p>要显示多张图片，可编写HTML如下：</p>
 <pre><code>&lt;tr&gt;
     &lt;td&gt;门店照片&lt;/td&gt;
     &lt;td id="divStorePics"&gt;
-        &lt;input type="hidden" name="pics"&gt;
+        &lt;input name="pics" style="display:none"&gt;
         &lt;div class="imgs"&gt;&lt;/div&gt;
         &lt;input type="file" accept="image/*" multiple onchange="onChooseFile.apply(this)"&gt;
         &lt;p&gt;（图片上点右键，可以删除图片等操作）&lt;/p&gt;
@@ -965,6 +992,16 @@ pics:: List(Integer). 商户图片列表，格式如"101,102,103".</code></pre>
         curImg = this;
     });
 }</code></pre>
+<h4 id="hiddenToImg-3 显示视频或其它文件">3 显示视频或其它文件</h4>
+<p class="key"><strong>@key <a id="wui-nopic">wui-nopic</a></strong> </p>
+<p>以上传视频文件为例，HTML代码如下：</p>
+<pre><code>&lt;td&gt;上传素材视频&lt;/td&gt;
+&lt;td id="divVideoFile" wui-nopic&gt;
+    &lt;input name="attId" style="display:none"&gt;
+    &lt;div class="imgs"&gt;&lt;/div&gt;
+    &lt;input class="videoFile" type="file"&gt;
+&lt;/td&gt;</code></pre>
+<p>通过添加属性&quot;wui-nopic&quot;, 在.imgs区域内显示文件链接而非图片。其它JS代码与处理图片无异。</p>
 <p class="see"><strong>@see <a href="#imgToHidden">imgToHidden</a></strong> </p>
 <p class="see"><strong>@see <a href="#onChooseFile">onChooseFile</a></strong> </p><hr>
 <h2 id="imgToHidden">@fn imgToHidden(jp, sep?=",")</h2>
@@ -989,5 +1026,5 @@ pics:: List(Integer). 商户图片列表，格式如"101,102,103".</code></pre>
     &lt;/form&gt;
 &lt;/div&gt;</code></pre>
 <p class="see"><strong>@see <a href="#WUI.getQueryCond">WUI.getQueryCond</a></strong>  值支持比较运行符等多种格式，可参考这里定义。</p><hr>
-<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-07-26T15:36:45+08:00</div>
+<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-09-21T17:33:33+08:00</div>
 </html>
