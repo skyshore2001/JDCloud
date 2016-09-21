@@ -11,6 +11,8 @@ function api_svrinfo()
 }
 
 // 可选，返回插件配置
+/*
 return [
 	"js" => "m2/plugin.js" // 前端需要包含的文件
 ];
+ */
