@@ -120,9 +120,13 @@
 <li><a href="#toc_1.12.1">12.1 需求</a>
 <li><a href="#toc_1.12.2">12.2 插件目录结构</a>
 <li><a href="#toc_1.12.3">12.3 插件安装</a>
-<li><a href="#toc_1.12.4">12.4 后端PHP API</a>
-<li><a href="#toc_1.12.5">12.5 前端JS API</a>
-<li><a href="#toc_1.12.6">12.6 交互接口</a>
+<li><a href="#toc_1.12.4">12.4 接口</a>
+<ul>
+<li><a href="#toc_1.12.4.1">12.4.1 后端PHP API</a>
+<li><a href="#toc_1.12.4.2">12.4.2 前端JS API</a>
+<li><a href="#toc_1.12.4.3">12.4.3 交互接口</a>
+</ul>
+<li><a href="#toc_1.12.5">12.5 发布与上线</a>
 </ul>
 </ul>
 </ul>
@@ -4254,7 +4258,9 @@ return [
 用upgrade.php
 </p>
 
-<h3 id="toc_1.12.4"><a name="后端PHP API">12.4 后端PHP API</a></h3>
+<h3 id="toc_1.12.4"><a name="接口">12.4 接口</a></h3>
+
+<h4 id="toc_1.12.4.1"><a name="后端PHP API">12.4.1 后端PHP API</a></h4>
 
 <pre>
 Plugins.add($pluginList);  // 添加插件
@@ -4270,7 +4276,7 @@ Plugins.install('plugin1@1.1'); -- 注册的插件, 下载到本地，解压到p
 Plugins.uninstall('plugin1'); -- 删除插件目录，再更新plugin/index.php。
 </pre>
 
-<h3 id="toc_1.12.5"><a name="前端JS API">12.5 前端JS API</a></h3>
+<h4 id="toc_1.12.4.2"><a name="前端JS API">12.4.2 前端JS API</a></h4>
 
 <pre>
 MUI.initClient(); // 前端初始化，如需调用以下接口，须在muiInit事件中调用。
@@ -4296,7 +4302,7 @@ if (Plugins.exists('plugin1')) {
 }
 </pre>
 
-<h3 id="toc_1.12.6"><a name="交互接口">12.6 交互接口</a></h3>
+<h4 id="toc_1.12.4.3"><a name="交互接口">12.4.3 交互接口</a></h4>
 
 <p>
 返回插件列表：
@@ -4314,6 +4320,29 @@ plugins:: { name =&gt; {js?} }
 addPlugin(name)
 delPlugin(name)
 </pre>
+
+<h3 id="toc_1.12.5"><a name="发布与上线">12.5 发布与上线</a></h3>
+
+<p>
+应用专属插件可直接存放在plugin目录下，使用与主应用相同的代码库。
+</p>
+
+<p>
+在上线时，不同的项目分别创建一个build_web.sh，根据配置不同选择不同的插件更新到服务器。
+文件plugin/index.php不上线，必须手工上传服务器。
+</p>
+
+<p>
+build_web.sh
+</p>
+<pre>
+export CFG_PLUGINS=plugin1,plugin2
+tool/make_install.sh
+</pre>
+
+<p>
+通用插件使用专门的代码库维护版本。如果要加到工程中，也可以放到plugin目录下作为子模块加到应用代码库中。
+</p>
 
 </body>
 </html>

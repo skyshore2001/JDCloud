@@ -2388,7 +2388,9 @@ TODO: 安装相关API和交互接口
 TODO: 相关表更新
 用upgrade.php
 
-=== 后端PHP API ===
+=== 接口 ===
+
+==== 后端PHP API ====
 
 {{{
 Plugins.add($pluginList);  // 添加插件
@@ -2402,7 +2404,7 @@ Plugins.install('plugin1@1.1'); -- 注册的插件, 下载到本地，解压到p
 Plugins.uninstall('plugin1'); -- 删除插件目录，再更新plugin/index.php。
 }}}
 
-=== 前端JS API ===
+==== 前端JS API ====
 
 {{{
 MUI.initClient(); // 前端初始化，如需调用以下接口，须在muiInit事件中调用。
@@ -2426,7 +2428,7 @@ if (Plugins.exists('plugin1')) {
 }
 }}}
 
-=== 交互接口 ===
+==== 交互接口 ====
 
 返回插件列表：
 {{{
@@ -2440,3 +2442,18 @@ TODO: 安装与卸载
 addPlugin(name)
 delPlugin(name)
 }}}
+
+=== 发布与上线 ===
+
+应用专属插件可直接存放在plugin目录下，使用与主应用相同的代码库。
+
+在上线时，不同的项目分别创建一个build_web.sh，根据配置不同选择不同的插件更新到服务器。
+文件plugin/index.php不上线，必须手工上传服务器。
+
+build_web.sh
+{{{
+export CFG_PLUGINS=plugin1,plugin2
+tool/make_install.sh
+}}}
+
+通用插件使用专门的代码库维护版本。如果要加到工程中，也可以放到plugin目录下作为子模块加到应用代码库中。
