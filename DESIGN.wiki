@@ -94,11 +94,12 @@ empId:: 操作该订单的员工号
 
 *[附件]*
 
-@Attachment: id, path, orgPicId, exif(t)
+@Attachment: id, path, orgPicId, exif(t), tm
 
 path:: String. 文件在服务器上的相对路径, 可方便的转成绝对路径或URL
 orgPicId:: Integer. 原图编号。对于缩略图片，链接到对应原始大图片的id.
 exif:: String. 图片或文件的扩展信息。以JSON字符串方式保存。典型的如时间和GPS信息，比如：`{"DateTime": "2015:10:08 11:03:02", "GPSLongtitude": [121,42,7.19], "GPSLatitude": [31,14,45.8]}`
+tm:: DateTime. 上传时间。
 
 路径使用以下规则: upload/{type}/{date:YYYYMM}/{randnum}.{ext}
 

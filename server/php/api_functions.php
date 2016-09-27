@@ -467,12 +467,15 @@ function api_upload()
 			}
 		}
 	}
-	if (count($files) == 0)
-		return $ret;
+	if (count($files) == 0) {
+		$sz = (@$_SERVER["HTTP_CONTENT_LENGTH"]?:$_SERVER["CONTENT_LENGTH"]?:0);
+		throw new MyException(E_PARAM, "no file uploaded. upload size=$sz", "没有文件上传或文件过大。");
+		// return $ret;
+	}
 
 	# 2nd round: save file and add to DB
 	global $DBH;
-	$sql = "INSERT INTO Attachment (path, orgPicId, exif) VALUES (?, ?, ?)";
+	$sql = "INSERT INTO Attachment (path, orgPicId, exif, tm) VALUES (?, ?, ?, now())";
 	$sth = $DBH->prepare($sql);
 	foreach ($files as $f) {
 		# 0: tmpname; 1: fname; 2: thumbName
@@ -553,6 +556,11 @@ function api_att()
 		header(HTTP_NOT_FOUND);
 		exit;
 	}
+	if (preg_match('/http:/', $file)) {
+		header('Location: ' . $file);
+		throw new DirectReturn();
+	}
+
 	chdir($GLOBALS["BASE_DIR"]);
 	if (! is_file($file)) {
 		header(HTTP_NOT_FOUND);
@@ -640,12 +648,27 @@ function verifyPartnerSign($partnerId)
 // ==== tool APIs {{{
 function api_proxy()
 {
-	$url = mparam("url");
-	if (! startsWith($url, "http")) {
-		$url = "http://" . $url;
+	// 通用API代理，支持cookie, get/post.
+	$url = $_GET["url"];
+	// @$rv = file_get_contents($url);
+	$ch = curl_init();
+	curl_setopt($ch, CURLOPT_URL, $url);
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+
+	// support session/cookie
+	$ses = session_save_path() . '/proxy_' . session_id() . '.txt';
+	curl_setopt($ch, CURLOPT_COOKIEFILE, $ses);
+	curl_setopt($ch, CURLOPT_COOKIEJAR, $ses);
+
+	if ($_SERVER["REQUEST_METHOD"] == "POST") 
+	{
+		curl_setopt($ch, CURLOPT_POST, 1);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, file_get_contents("php://input") );
 	}
-	@$rv = file_get_contents($url);
-	 
+
+	curl_setopt($ch, CURLOPT_HEADER, 0);
+	$rv = curl_exec($ch);
+	curl_close($ch);
 	return $rv;
 }
 //}}}
