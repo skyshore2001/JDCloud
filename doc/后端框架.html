@@ -4344,5 +4344,18 @@ tool/make_install.sh
 通用插件使用专门的代码库维护版本。如果要加到工程中，也可以放到plugin目录下作为子模块加到应用代码库中。
 </p>
 
+<p>
+注意：
+</p>
+
+<ul>
+<li>
+首次上线时，必须配置build_web.sh中的CFG_PLUGINS变量，上线后，在服务器上手工配置 php/index.php 文件。
+
+<li>
+上线后如果插件有增减，应先修改build_web.sh中的CFG_PLUGINS变量，再手工上传（或删除）相应插件文件夹，再到服务器上手工配置 php/index.php 文件。
+
+</ul>
+
 </body>
 </html>
