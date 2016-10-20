@@ -147,10 +147,12 @@ cmdtool.template.php:: 使用app.php创建数据操作工具的示例，如用�
 - envvar P_DEBUG (for server, test and rtest) and URL param _debug (for server)
 - envvar P_SHARE_COOKIE (for rtest)
 - envvar P_TEST (for test/rtest) 设置通用URL参数_test. WebAPI/client.php缺省运行于测试模式(即P_TEST=1)，run_rtest.pl运行于回归测试模式(P_TEST=2), 如果要用生产模式请手工设置该参数为P_TEST=0（生产模式或测试模式还决定于其它服务端配置，该参数不一定实际运行在生产模式）。
-- envvar P_DBCRED (for server) 指定数据库登录用户名及密码。格式为"{user}:{pwd}"的base64编码形式。
-- file `php/conf.user.php` (for server), 该文件存在则自动加载，用于设置自定义配置选项，如定义数据库用户名密码 ($GLOBALS["dbcred"])。
+- envvar P_DBCRED (for server) 指定数据库登录用户名及密码。格式为"{user}:{pwd}"，或其base64编码形式，一般使用base64编码。
+- file `php/conf.user.php` (for server), 该文件存在则自动加载，用于设置自定义配置选项，如定义数据库用户名密码: `putenv("P_DBCRED=...")`
 - envvar P_SESSION_DIR (for server) 指定session文件保存位置，缺省是应用目录下。注意：测试模式的session是分开保存的，在该目录下子目录"t"中。
 - envvar P_URL_PATH (for server) 指定应用的URL绝对路径(以"/"开头)。用于拼出正确的完整url路径。
+- envvar P_URL_PATH (for server) 指定应用的URL绝对路径(以"/"开头)。用于拼出正确的完整url路径。
+- envvar P_ADMIN_CRED 指定超级管理员帐号。格式与P_DBCRED相同。
 
 *[模拟模式 - MOCK_MODE]*
 
@@ -1521,6 +1523,145 @@ batch的返回内容是多条调用返回内容组成的数组，样例如下：
 ]]
 }}}
 
+== 前端应用接口 ==
+
+定义前端应用入口及调用参数。
+
+每一个应用均应定义一个唯一的应用标识(app)，如"emp", "emp-store"等。在调用交互接口时，框架会自动将应用标识作为参数传给后端。
+应用标识中字符"-"之前的部分称为应用类型(app type)，如果应用标识里没有"-"，则应用类型与应用标识相同。应用类型常用于登录类型与权限控制。
+
+例如，定义客户端应用标识app=user，其应用类型也是"user"，在login交互接口中，对应用类型"user"将作用户登录处理（如查询用户表），登录成功后赋予其用户权限。
+定义员工端应用标识为app=emp-store，它的应用类型是"emp"，在后端将作员工登录处理（比如查询的是员工表），登录成功后赋予其员工权限。
+定义管理端应用app=emp-adm，它与应用emp-store是相同类型，因而登录方式和权限是相同的，即应使用员工信息登录。
+
+可见，不同的应用可以是相同的应用类型。在实现交互接口时，不同的应用标识也会使用不同的cookie名称，以避免多个应用同时使用时相互干扰。
+
+=== 移动应用 ===
+
+筋斗云的移动应用可做为Web应用在浏览器中运行, 也可以接入微信公众号或支付宝服务窗, 也可以通过cordova框架包装在应用容器中提供android/ios应用程序.
+
+移动应用按惯例放在m2目录下。以常用的客户端、员工端两个移动应用为例，其相关文件有：
+
+客户端：
+- index.html/index.js 客户端应用的UI框架及通用逻辑，js文件中包含多个页面共享的全局函数、全局变量等。
+- index.css 客户端应用全局样式。
+- page/{xx}.html, page/{xx}.js 每个逻辑页面的UI和逻辑。页面私有的样式可以内嵌在html页面中。
+
+商户端：
+- store.html/store.js 商户端应用的UI框架及通用逻辑
+- store.css 商户端应用的全局样式。
+- store/{xx}.html, store/{xx}.js 商户端中每个逻辑页面的UI和逻辑。
+
+此外还有文件：
+- app.js 所有移动应用共享的全局对象
+- app.css 所有移动应用共享的全局样式
+
+移动应用的对外接口包括页面URL，允许的入口页面(entry)，URL参数等。下面举例描述这些接口。
+
+==== 客户端(app=user) ====
+
+{{{
+m2/index.html
+}}}
+
+这表示打开这个URL，就进入移动客户端应用。
+
+该应用的应用标识定义为"user"，表示用户登录。
+
+*[进入移动客户端并显示指定订单]*
+
+{{{
+m2/index.html#order(orderId)
+}}}
+
+这表示可以请求这样的URL:
+{{{
+m2/index.html?orderId=32#order
+}}}
+
+其中: m2/index.html是页面地址, "?"后为参数(使用URL编码方式), "#"后为入口点, 表示允许进入的逻辑页面.
+
+上例中的访问表示: 打开移动客户端的订单页面, 参数为orderId=32, 即显示32号订单.
+
+==== 员工端(app=emp-store) ====
+
+{{{
+m2/store.html
+}}}
+
+该应用的应用标识定义为"emp-store"，表示员工登录（应用类型为emp）。
+
+=== 桌面应用 ===
+
+桌面应用按惯例放在web目录下。其常用文件与移动应用类似，以管理端应用为例：
+
+- store.html 管理端应用。按需可拆分出 store.js, store.css等文件。
+- app.js / style.css 所有桌面应用共享的逻辑与全局样式。
+
+常见的桌面应用示例如下。
+
+==== 管理端应用(app=emp-adm) ====
+
+一般由商户员工使用，管理员工、订单等：
+{{{
+web/store.html
+}}}
+
+该应用的应用标识定义为"emp-adm"，它与员工端(emp-store)的应用类型是相同的，都是"emp", 因而都用员工信息进行登录。
+
+==== 超级管理端应用(app=admin) ====
+
+一般由超级管理员使用，甚至可执行SQL语句：
+{{{
+web/adm.html
+}}}
+
+该应用的应用标识定义为"admin"，使用超级管理员帐号登录。注意：超级管理员帐号在用户配置文件`conf.user.php`中由`P_ADMIN_CRED`环境变量设定。
+
+==== 桌面应用查询用法 ====
+
+在查找对象的对话框中，可支持多种灵活的匹配方式：
+
+例如对字段a, 填写以下值：
+- `hello` (匹配) -  生成查询条件 `a='hello'`
+- `100` (纯数字匹配) - 生成 `a=100`
+- `*28*` 或 `%28%` (部分匹配) - 生成`a like '%28%'`
+- `>100` / `>=100` / `<100` / `<=100` / `<>100` - 生成 `a>100`等
+- `null` / `<>null` - 生成 `a is null` / `a is not null`
+- `empty` / `<>empty` - 生成 `a=''` / `a<>''`
+- 支持简单的and/or查询，如 `>=100 and <200`, `null or 0 or 1`，不支持用括号组合条件。
+
+如果同时对多个字段填写了搜索值，则表示这些条件需要同时满足，即`AND`关系。
+
+详细可参考文档 [[api_web.html#WUI.getQueryCond|API参考 -> 筋斗云前端(桌面Web版) -> WUI.getQueryCond]]
+
+==== 通用参数 ====
+
+移动应用和桌面应用的框架支持以下通用参数：
+
+test/_test?=0:: Integer. 设置后台使用测试模式。1表示测试模式.
+_debug?=0:: Integer. 设置本次调用的服务端调试等级. 调试信息可在调用交互接口的返回内容中查看(返回内容的第三项): [code, ret, debugInfo]. 常用值：0-无额外信息; 1-基本信息, 9-所有信息, 包含数据库查询语句.
+
+以下参数适用于移动应用：
+
+cordova?=0:: Integer. 0表示普通Web应用. 当网页通过[应用容器]以原生android/ios应用方式运行时, 值为非0, 表示容器的版本号. 
+
+注意: 一旦设置为非0, 则该值会被记住, 下次打开时即使未指定也会有值, 必须重新设置cordova=0清除(或在控制台中调用delStorage("cordova")).
+
+以下参数适用于桌面应用：
+
+autoLogin:: Boolean. 如果为1, 则记住登录token, 下次打开时可以自动登录.
+
+==== 全局变量 ====
+
+移动应用和桌面应用使用以下JS全局变量：
+
+g_args:: Object. 应用打开时的URL参数. 由框架自动设置.
+g_data:: Object. 通用全局变量, 存储各项配置或应用数据. 常用项为userInfo, 表示登录后获取的用户信息.
+g_cfg:: Object. 全局配置。
+
+以上变量可通过控制台手工调节部分参数.
+
 == 测试设计 ==
 
 *[测试需求]*
@@ -2177,4 +2318,148 @@ ac:: String. 指定具体任务。定义如下。
 - 目前将备机置于内网节省成本（机器，网络流量等）。
 - 随着访问量增大，可将备机置于公网，做只读/报表分析等服务器。（仍然用异步复制机制）
 - 如果事务增长至单一主机无法解决，则应组件集群。
+
+== 插件机制 ==
+
+支持版本: v3.0
+
+=== 需求 ===
+
+- 插件是一块独立的功能，可以被单独安装或删除。
+- 插件有版本管理，可以升级。
+- 插件开发的内容中包括数据模型定义、前端页面及后端接口。
+- 插件间可以有依赖关系。还可能依赖原生cordova插件。
+
+- 插件可以是通用于所有应用的，也可以是专用于某一应用的。
+
+=== 插件目录结构 ===
+
+{{{
+plugin/  - 插件总目录
+
+plugin/index.php - 插件配置文件，指定应用使用哪些插件
+
+plugin/{pluginName}/  某插件的主目录
+plugin/{pluginName}/DESIGN.wiki 插件设计文档
+plugin/{pluginName}/plugin.php 插件配置及服务端接口
+plugin/{pluginName}/m2/page/{page}.[html|js] 插件前端逻辑页面，可直接在应用程序中使用
+plugin/{pluginName}/m2/plugin.js 可选，插件前端全局逻辑，文件名字任意，在plugin.php中通过return语句指定使用。
+TODO: plugin/{pluginName}/m2/plugin.css 可选，插件前端全局样式，文件名字任意，在plugin.php中通过return语句指定使用。
+}}}
+
+*[插件配置文件 plugin/index.php]*
+
+该文件被后端应用框架自动包含，其内容示例如下：
+{{{
+<?php
+
+Plugins::add([ "plugin1", "plugin2" ]);
+}}}
+
+表示当前应用使用两个插件"plugin1"和"plugin2", 分别对应目录 plugin/plugin1和plugin/plugin2.
+如果该文件不存在，则后端应用不加载任何插件。
+
+*[插件后端 plugin/{pluginName}/plugin.php]*
+
+文件会被自动包含到应用api.php中。在这里实现插件的交互接口，在文件的最后可以返回插件的配置，如
+{{{
+<?php
+
+// 实现交互接口 svcinfo
+function api_svrinfo()
+{ ... }
+
+// 返回插件配置
+return [
+	"js" => "m2/plugin.js" // 前端需要包含的文件
+];
+}}}
+
+*[插件移动WEB前端 plugin/{pluginName}/m2/page/]*
+
+和应用的 m2/page/ 目录一样，包含插件的每个逻辑页面。
+
+=== 插件安装 ===
+
+将插件直接复制到plugin目录下，在plugin/index.php中添加该插件名即可。
+
+TODO: 安装相关API和交互接口
+
+TODO: 相关表更新
+用upgrade.php
+
+=== 接口 ===
+
+==== 后端PHP API ====
+
+{{{
+Plugins.add($pluginList);  // 添加插件
+Plugins.exists($pluginName); // 判断插件是否存在
+}}}
+
+TODO:
+服务端安装插件：
+{{{
+Plugins.install('plugin1@1.1'); -- 注册的插件, 下载到本地，解压到plugin目录下，再自动更新plugin/index.php文件。
+Plugins.uninstall('plugin1'); -- 删除插件目录，再更新plugin/index.php。
+}}}
+
+==== 前端JS API ====
+
+{{{
+MUI.initClient(); // 前端初始化，如需调用以下接口，须在muiInit事件中调用。
+
+Plugins.exists(pluginName); // 判断插件是否存在
+Plugins.list(); // 返回当前应用的插件列表
+}}}
+
+示例：
+{{{
+$(document).on("muiInit", myInit);
+function myInit()
+{
+	MUI.initClient(); // 初始化客户端环境，包括插件
+	...
+}
+
+// 判断和使用插件前端页面
+if (Plugins.exists('plugin1')) {
+	MUI.showPage('#plugin1-page1');
+}
+}}}
+
+==== 交互接口 ====
+
+返回插件列表：
+{{{
+initClient() -> { @plugins? }
+
+plugins:: { name => {js?} }
+}}}
+
+TODO: 安装与卸载
+{{{
+addPlugin(name)
+delPlugin(name)
+}}}
+
+=== 发布与上线 ===
+
+应用专属插件可直接存放在plugin目录下，使用与主应用相同的代码库。
+
+在上线时，不同的项目分别创建一个build_web.sh，根据配置不同选择不同的插件更新到服务器。
+文件plugin/index.php不上线，必须手工上传服务器。
+
+build_web.sh
+{{{
+export CFG_PLUGINS=plugin1,plugin2
+tool/make_install.sh
+}}}
+
+通用插件使用专门的代码库维护版本。如果要加到工程中，也可以放到plugin目录下作为子模块加到应用代码库中。
+
+注意：
+
+- 首次上线时，必须配置build_web.sh中的CFG_PLUGINS变量，上线后，在服务器上手工配置 php/index.php 文件。
+- 上线后如果插件有增减，应先修改build_web.sh中的CFG_PLUGINS变量，再手工上传（或删除）相应插件文件夹，再到服务器上手工配置 php/index.php 文件。
 

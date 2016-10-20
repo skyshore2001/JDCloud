@@ -161,6 +161,7 @@ $(document).on("muiInit", myInit);
 // called after page is load. called in html page.
 function myInit()
 {
+	MUI.initClient();
 	// redirect to login if auto login fails
 	MUI.tryAutoLogin(handleLogin, "User.get");
 }

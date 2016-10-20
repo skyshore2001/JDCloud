@@ -94,7 +94,7 @@ if (( doUpload )) ; then
 		if [[ -z $ver ]]; then
 			cmd=$(git ls-files | $script getcmd) || exit
 		else
-			git diff $ver head --name-only --diff-filter=AM > $tmpfile
+			git diff $ver head --name-only --diff-filter=AM | $script filter > $tmpfile
 			if (( $? != 0 )); then
 				unset ver
 				continue
@@ -140,13 +140,26 @@ exit
 ################# perl cmd {{{
 #!perl
 
+=pod
+test:
+
+echo -e "m2/index.html\nm2/index.js" | perl -x -f make_install.sh getcmd
+
+export CFG_PLUGINS=plugin1,plugin2
+echo -e "plugin/index.php\nplugin/plugin1/aa\nplugin/plugin3/bb\n" | perl -x -f make_install.sh filter
+
+=cut
+
+use strict;
+use warnings;
 use File::Basename;
 use Cwd 'abs_path';
 
 if ($ARGV[0] eq 'getcmd')
 {
-	%files = (); # dir=>name
-	@badfiles = ();
+	my %files = (); # dir=>name
+	my @badfiles = ();
+
 	while (<STDIN>) {
 		chomp;
 		if (/\s/) {
@@ -155,7 +168,7 @@ if ($ARGV[0] eq 'getcmd')
 		}
 #		s/^..\s+//; # e.g. git status -b: "A  m/images/ui/icon-svcid-1.png"
 #		s/.+?->\s+//; # e.g. "R  web/js/app.js -> web/js/app_fw.js"
-		$dir = dirname($_);
+		my $dir = dirname($_);
 		$files{$dir} = [] if !exists($files{$dir});
 		push @{$files{$dir}}, $_;
 	}
@@ -164,7 +177,8 @@ if ($ARGV[0] eq 'getcmd')
 		exit 1;
 	}
 
-	my $url = $ENV{FTP_PATH};
+	my $url = $ENV{FTP_PATH} || '';
+	my $cmd;
 	if (substr($url, -1) ne '/') {
 		$url .= '/';
 	}
@@ -179,7 +193,8 @@ if ($ARGV[0] eq 'getcmd')
 	}
 
 	exit unless defined $cmd;
-	$fullCmd = "$ENV{CURL_CMD} --ftp-create-dirs $cmd";
+	my $curl = $ENV{CURL_CMD} || 'curl';
+	my $fullCmd = "$curl --ftp-create-dirs $cmd";
 	print $fullCmd;
 	#open O, ">cmd.log";
 	#print O $fullCmd;
@@ -187,6 +202,29 @@ if ($ARGV[0] eq 'getcmd')
 }
 elsif ($ARGV[0] eq 'abs_path') {
 	print abs_path($0);
+}
+elsif ($ARGV[0] eq 'filter') {
+	my @wants = ();
+	if ($ENV{CFG_PLUGINS}) {
+		for (split(',', $ENV{CFG_PLUGINS})) {
+			push @wants, 'plugin/' . $_ . '/';
+		}
+	}
+
+	while (<STDIN>) {
+		my $ignore = 0;
+		if (index($_, 'plugin/') == 0) {
+			$ignore = 1;
+			foreach my $pat (@wants) {
+				if (index($_, $pat) == 0) {
+					$ignore = 0;
+					last;
+				}
+			}
+		}
+		next if $ignore;
+		print;
+	}
 }
 #}}}
 # vi: foldmethod=marker

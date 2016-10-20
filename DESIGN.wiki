@@ -94,11 +94,12 @@ empId:: 操作该订单的员工号
 
 *[附件]*
 
-@Attachment: id, path, orgPicId, exif(t)
+@Attachment: id, path, orgPicId, exif(t), tm
 
 path:: String. 文件在服务器上的相对路径, 可方便的转成绝对路径或URL
 orgPicId:: Integer. 原图编号。对于缩略图片，链接到对应原始大图片的id.
 exif:: String. 图片或文件的扩展信息。以JSON字符串方式保存。典型的如时间和GPS信息，比如：`{"DateTime": "2015:10:08 11:03:02", "GPSLongtitude": [121,42,7.19], "GPSLatitude": [31,14,45.8]}`
+tm:: DateTime. 上传时间。
 
 路径使用以下规则: upload/{type}/{date:YYYYMM}/{randnum}.{ext}
 
@@ -118,9 +119,9 @@ ver:: 客户端版本。格式为："web"表示通用网页(通过ua可查看明
 
 @Pwd: id, pwd, cnt&
 
-== 通讯协议设计 ==
+== 交互接口设计 ==
 
-本章根据[主要用例]定义应用客户端与服务端的交互接口。先描述通讯协议基本规则，再描述各应用接口定义。
+本章根据[主要用例]定义应用客户端与服务端的交互接口。关于通讯协议基本规则，可参考文档[[doc/后端框架.html#通讯协议设计|后端框架 -> 通讯协议设计]]章节。
 
 === 注册与登录 ===
 
@@ -434,3 +435,36 @@ Ordr.set(id)(status=CA)
 本节API需要超级管理员权限.
 
 app类型为adm.
+
+== 前端应用接口 ==
+
+定义应用入口及调用参数。每一个应用均应明确定义一个惟一的app代码。
+
+=== 移动客户端(app=user) ===
+
+{{{
+m2/index.html
+}}}
+
+用户登录, 可以创建和查看订单等.
+
+=== 管理端(app=store) ===
+
+{{{
+web/store.html
+}}}
+
+员工登录, 可以查看和管理订单等.
+
+=== 超级管理端(app=admin) ===
+
+{{{
+web/adm.html
+}}}
+
+使用超级管理员帐号登录.
+
+ = 专题设计 =
+
+== 运营统计 ==
+
