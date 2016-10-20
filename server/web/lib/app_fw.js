@@ -2492,6 +2492,46 @@ function handleLogin(data)
 }
 //}}}
 
+// ------ plugins {{{
+/**
+@fn WUI.initClient()
+*/
+self.initClient = initClient;
+var plugins_ = {};
+function initClient()
+{
+	callSvrSync('initClient', function (data) {
+		plugins_ = data.plugins || {};
+		$.each(plugins_, function (k, e) {
+			if (e.js) {
+				// plugin dir
+				var js = BASE_URL + 'plugin/' + k + '/' + e.js;
+				loadScript(js, null, true);
+			}
+		});
+	});
+}
+
+/**
+@class Plugins
+*/
+window.Plugins = {
+/**
+@fn Plugins.exists(pluginName)
+*/
+	exists: function (pname) {
+		return plugins_[pname] !== undefined;
+	},
+
+/**
+@fn Plugins.list()
+*/
+	list: function () {
+		return plugins_;
+	}
+};
+//}}}
+
 /**
 @fn WUI.setApp(app)
 

@@ -15,27 +15,11 @@ $RULES = [
 	'm/lib/app_fw.js' => 'HASH',
 	'm2/*.html' => 'HASH',
 
-	/*
 	'm/cordova/cordova.js' => '
-cd m/cordova
-cat cordova.js cordova_plugins.js \
-	plugins/cordova-plugin-splashscreen/www/splashscreen.js \
-	plugins/org.apache.cordova.camera/www/Camera.js \
-	plugins/org.apache.cordova.camera/www/CameraConstants.js \
-	plugins/org.apache.cordova.camera/www/CameraPopoverHandle.js \
-	plugins/org.apache.cordova.camera/www/CameraPopoverOptions.js \
-	| jsmin > $TARGET ',
+git ls-files m/cordova | grep -i "\.js$" | xargs cat | jsmin > $TARGET',
 
 	'm/cordova-ios/cordova.js' => '
-cd m/cordova-ios
-cat cordova.js cordova_plugins.js \
-	plugins/cordova-plugin-splashscreen/www/splashscreen.js \
-	plugins/cordova-plugin-camera/www/CameraConstants.js \
-	plugins/cordova-plugin-camera/www/CameraPopoverOptions.js \
-	plugins/cordova-plugin-camera/www/Camera.js \
-	plugins/cordova-plugin-camera/www/ios/CameraPopoverHandle.js \
-	| jsmin > $TARGET ',
-	 */
+git ls-files m/cordova-ios | grep -i "\.js$" | xargs cat | jsmin > $TARGET',
 
 	'm/lib-jqm.min.js' => '
 cd m/lib

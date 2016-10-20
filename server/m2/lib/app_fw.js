@@ -1096,13 +1096,12 @@ function CPageManager(app)
 		var p = pageId.lastIndexOf(".");
 		if (p == -1) {
 			p = pageId.lastIndexOf('-');
-			if (p == -1) {
-				ret.pageFile = m_app.pageFolder + '/' + pageId + ".html";
-			}
-			else {
+			if (p != -1) {
 				var plugin = pageId.substr(0, p);
 				var pageId2 = pageId.substr(p+1);
-				ret.pageFile = '../plugin/' + plugin + '/m2/page/' + pageId2 + '.html';
+				if (Plugins.exists(plugin)) {
+					ret.pageFile = '../plugin/' + plugin + '/m2/page/' + pageId2 + '.html';
+				}
 			}
 			ret.templateRef = "#tpl_" + pageId;
 		}
@@ -1110,6 +1109,8 @@ function CPageManager(app)
 			ret.pageFile = pageId;
 			ret.pageId = pageId.match(/[^.\/]+(?=\.)/)[0];
 		}
+		if (ret.pageFile == null) 
+			ret.pageFile = m_app.pageFolder + '/' + pageId + ".html";
 		return ret;
 	}
 	function showPage_(pageRef, opt)

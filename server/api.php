@@ -6,6 +6,9 @@ require_once("php/api_fw.php");
 require_once('php/api_functions.php');
 require_once('php/api_objects.php');
 
+// optional plugins
+@include_once("plugin/index.php");
+
 // ====== config {{{
 const AUTH_GUEST = 0;
 const AUTH_USER = 0x01;

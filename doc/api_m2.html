@@ -33,7 +33,7 @@ code {
 </head>
 
 <h1>API参考 - 筋斗云前端（移动Web版）</h1>
-<div>最后更新：2016-07-26</div>
+<div>最后更新：2016-09-21</div>
 <h2>Modules</h2>
 <div class="toc">
 <p><a href="#common.js">common.js (module)</a></p>
@@ -70,19 +70,20 @@ code {
 <p><a href="#MUI.app_alert">MUI.app_alert (fn)</a></p>
 <p><a href="#MUI.batchCall">MUI.batchCall (class)</a></p>
 <p><a href="#MUI.callSvr">MUI.callSvr (fn)</a></p>
+<p><a href="#MUI.callSvrExt">MUI.callSvrExt (key)</a></p>
 <p><a href="#MUI.callSvrSync">MUI.callSvrSync (fn)</a></p>
 <p><a href="#MUI.callSvrSync">MUI.callSvrSync (fn)</a></p>
 <p><a href="#MUI.closeDialog">MUI.closeDialog (fn)</a></p>
 <p><a href="#MUI.container">MUI.container (var)</a></p>
 <p><a href="#MUI.defDataProc">MUI.defDataProc (fn)</a></p>
 <p><a href="#MUI.disableBatch">MUI.disableBatch (var)</a></p>
-<p><a href="#MUI.docTitle">MUI.docTitle (var)</a></p>
 <p><a href="#MUI.enhanceWithin">MUI.enhanceWithin (fn)</a></p>
 <p><a href="#MUI.enterWaiting">MUI.enterWaiting (fn)</a></p>
 <p><a href="#MUI.getOptions">MUI.getOptions (fn)</a></p>
 <p><a href="#MUI.getToPageId">MUI.getToPageId (fn)</a></p>
 <p><a href="#MUI.handleLogin">MUI.handleLogin (fn)</a></p>
 <p><a href="#MUI.hideLoading">MUI.hideLoading (fn)</a></p>
+<p><a href="#MUI.initClient">MUI.initClient (fn)</a></p>
 <p><a href="#MUI.lastError">MUI.lastError (var)</a></p>
 <p><a href="#MUI.leaveWaiting">MUI.leaveWaiting (fn)</a></p>
 <p><a href="#MUI.logout">MUI.logout (fn)</a></p>
@@ -91,6 +92,7 @@ code {
 <p><a href="#MUI.m_enhanceFn">MUI.m_enhanceFn (var)</a></p>
 <p><a href="#MUI.m_pageStack">MUI.m_pageStack (var)</a></p>
 <p><a href="#MUI.makeUrl">MUI.makeUrl (fn)</a></p>
+<p><a href="#MUI.options">MUI.options (var)</a></p>
 <p><a href="#MUI.popPageStack">MUI.popPageStack (fn)</a></p>
 <p><a href="#MUI.prevPageId">MUI.prevPageId (var)</a></p>
 <p><a href="#MUI.setApp">MUI.setApp (fn)</a></p>
@@ -106,6 +108,9 @@ code {
 <p><a href="#MUI.showValidateErr">MUI.showValidateErr (fn)</a></p>
 <p><a href="#MUI.tryAutoLogin">MUI.tryAutoLogin (fn)</a></p>
 <p><a href="#MUI.useBatchCall">MUI.useBatchCall (fn)</a></p>
+<p><a href="#Plugins">Plugins (class)</a></p>
+<p><a href="#Plugins.exists">Plugins.exists (fn)</a></p>
+<p><a href="#Plugins.list">Plugins.list (fn)</a></p>
 <p><a href="#app_abort">app_abort (fn)</a></p>
 <p><a href="#app_alert">app_alert (alias)</a></p>
 <p><a href="#appendParam">appendParam (fn)</a></p>
@@ -120,6 +125,7 @@ code {
 <p><a href="#enterWaiting">enterWaiting (alias)</a></p>
 <p><a href="#evalAttr">evalAttr (fn)</a></p>
 <p><a href="#example-upload">example-upload (key)</a></p>
+<p><a href="#filterCordovaModule">filterCordovaModule (fn)</a></p>
 <p><a href="#g_args">g_args (var)</a></p>
 <p><a href="#g_args._app">g_args._app (var)</a></p>
 <p><a href="#g_cfg">g_cfg (var)</a></p>
@@ -391,7 +397,7 @@ if (b)
 <p>当前应用运行在IOS平台，如iphone或ipad中。</p><hr>
 <h2 id="isAndroid">@fn isAndroid()</h2>
 <p>当前应用运行在安卓平台。</p><hr>
-<h2 id="loadScript">@fn loadScript(url)</h2>
+<h2 id="loadScript">@fn loadScript(url, fnOK, sync?=false)</h2>
 <p>动态加载一个script. 如果曾经加载过, 可以重用cache.</p>
 <p>注意: $.getScript一般不缓存(仅当跨域时才使用Script标签方法加载,这时可用缓存), 自定义方法$.getScriptWithCache与本方法类似.</p>
 <p class="see"><strong>@see <a href="#$.getScriptWithCache">$.getScriptWithCache</a></strong> </p><hr>
@@ -492,6 +498,27 @@ function onSubmit()
 <p>tm和tm1可以为时间对象或时间字符串</p><hr>
 <h2 id="parseValue">@fn parseValue(str)</h2>
 <p>如果str符合整数或小数，则返回相应类型。</p><hr>
+<h2 id="filterCordovaModule">@fn filterCordovaModule(module)</h2>
+<p>原生插件与WEB接口版本匹配。<br />
+在cordova_plugins.js中使用，用于根据APP版本与当前应用标识，过滤当前Web可用的插件。</p>
+<p>例如，从客户端（应用标识为user）版本2.0，商户端（应用标识为store）版本3.0开始，添加插件 geolocation，可配置filter如下：</p>
+<pre><code>module.exports = [
+    ...
+    {
+        "file": "plugins/cordova-plugin-geolocation/www/android/geolocation.js",
+        "id": "cordova-plugin-geolocation.geolocation",
+        "clobbers": [
+            "navigator.geolocation"
+        ],
+        "filter": [ ["user",2], ["store",3] ] // 添加filter
+    }
+];
+
+filterCordovaModule(module); // 过滤模块</code></pre>
+<p>配置后，尽管WEB已更新，但旧版本应用程序不会具有该接口。</p>
+<p>filter格式: [ [app1, minVer?=1, maxVer?=9999], ...], 仅当app匹配且版本在minVer/maxVer之间才使用<br />
+如果未指定filter, 表示总是使用<br />
+app标识由应用定义，常用如: &quot;user&quot;-客户端;&quot;store&quot;-商户端</p><hr>
 <h2 id="MUI">@module MUI</h2><div class="toc"><p style="margin-left:0em"><a href="#MUI-1 基于逻辑页面的单网页应用">1 基于逻辑页面的单网页应用</a></p>
 <p style="margin-left:2em"><a href="#MUI-1.1 应用容器">1.1 应用容器</a></p>
 <p style="margin-left:2em"><a href="#MUI-1.2 逻辑页面">1.2 逻辑页面</a></p>
@@ -711,8 +738,11 @@ Access-Control-Allow-Credentials: true</code></pre>
 <p>现在为$(document.body)</p><hr>
 <h2 id="MUI.showFirstPage">@var MUI.showFirstPage?=true</h2>
 <p>如果为false, 则必须手工执行 MUI.showPage 来显示第一个页面。</p><hr>
-<h2 id="MUI.docTitle">@var MUI.docTitle</h2>
-<p>初始文档标题名。（当前标题可通过document.title查看）</p><hr>
+<h2 id="MUI.options">@var MUI.options</h2>
+<p>缺省配置项：</p>
+<pre><code>{
+    ani: 'auto' // 缺省切页动画效果. 'none'表示无动画。
+}</code></pre><hr>
 <h2 id="MUI.m_pageStack">@var MUI.m_pageStack</h2>
 <p>页面栈，MUI.popPageStack对它操作</p><hr>
 <h2 id="MUI.popPageStack">@fn MUI.popPageStack(n?=1) </h2>
@@ -870,6 +900,7 @@ var url = makeUrl("Ordr.set", params);</code></pre>
 <p>注意：调用该函数生成的url在结尾有标志字符串&quot;zz=1&quot;, 如&quot;../api.php/login?_app=user&amp;zz=1&quot;</p><hr>
 <h2 id="MUI.callSvr">@fn MUI.callSvr(ac, [param?], fn?, postParams?, userOptions?)</h2><div class="toc"><p style="margin-left:0em"><a href="#MUI.callSvr-1 调用监控">1 调用监控</a></p>
 <p style="margin-left:0em"><a href="#MUI.callSvr-2 文件上传支持(FormData)">2 文件上传支持(FormData)</a></p>
+<p style="margin-left:0em"><a href="#MUI.callSvr-3 callSvr扩展">3 callSvr扩展</a></p>
 </div>
 <p class="alias"><strong>@alias <a id="callSvr">callSvr</a></strong> </p>
 <p class="param"><strong>@param ac</strong>  String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)</p>
@@ -924,6 +955,53 @@ callSvr("User.get", function (data) {
     callSvr('upload', api_upload, fd);
 
     function api_upload(data) { ... }
+});</code></pre>
+<h4 id="MUI.callSvr-3 callSvr扩展">3 callSvr扩展</h4>
+<p class="key"><strong>@key <a id="MUI.callSvrExt">MUI.callSvrExt</a></strong> </p>
+<p>当调用第三方API时，也可以使用callSvr扩展来代替$.ajax调用以实现：</p>
+<ul>
+<li>调用成功时直接可操作数据，不用每次检查返回码；</li>
+<li>调用出错时可以统一处理。</li>
+</ul>
+<p>例：合作方接口使用HTTP协议，格式如（以生成token调用为例）</p>
+<pre><code>http://&lt;Host IP Address&gt;:&lt;Host Port&gt;/lcapi/token/get-token?user=用户名&amp;password=密码</code></pre>
+<p>返回格式为：{code, msg, data}</p>
+<p>成功返回：</p>
+<pre><code>{
+    "code":"0",
+    "msg":"success",
+    "data":[ { "token":"xxxxxxxxxxxxxx" } ]
+}</code></pre>
+<p>失败返回：</p>
+<pre><code>{
+    "code":"4001",
+    "msg":"invalid username or password",
+    "data":[]
+}</code></pre>
+<p>注意：</p>
+<ul>
+<li>
+<p>对方接口应允许JS跨域调用，或调用方支持跨域调用。</p>
+<p>MUI.callSvrExt['zhanda'] = {<br />
+makeUrl: function(ac) {<br />
+return '<a href="http://hostname/lcapi/">http://hostname/lcapi/</a>' + ac;<br />
+}<br />
+dataFilter: function (data) {<br />
+if ($.isPlainObject(data) &amp;&amp; data.code !== undefined) {<br />
+if (data.code == 0)<br />
+return data.data;<br />
+app_alert(&quot;操作失败：&quot; + data.message, &quot;e&quot;);<br />
+}<br />
+else {<br />
+app_alert(&quot;服务器通讯协议异常!&quot;, &quot;e&quot;); // 格式不对<br />
+}<br />
+}<br />
+};</p>
+</li>
+</ul>
+<p>在调用时，ac参数传入一个数组：</p>
+<pre><code>callSvr(['token/get-token', 'zhanda'], {user: 'test', password: 'test123'}, function (data) {
+    console.log(data);
 });</code></pre><hr>
 <h2 id="MUI.callSvrSync">@fn MUI.callSvrSync(ac, params?, fn?, postParams?, userOptions?)</h2>
 <p class="fn"><strong>@fn <a id="MUI.callSvrSync">MUI.callSvrSync</a></strong> (ac, fn?, postParams?, userOptions?)</p>
@@ -1052,6 +1130,10 @@ function handleLogin(data)
 <h2 id="MUI.handleLogin">@fn MUI.handleLogin(data)</h2>
 <p class="param"><strong>@param data</strong>  调用API "login"成功后的返回数据.</p>
 <p>处理login相关的操作, 如设置g_data.userInfo, 保存自动登录的token等等.</p><hr>
+<h2 id="MUI.initClient">@fn MUI.initClient()</h2><hr>
+<h2 id="Plugins">@class Plugins</h2><hr>
+<h2 id="Plugins.exists">@fn Plugins.exists(pluginName)</h2><hr>
+<h2 id="Plugins.list">@fn Plugins.list()</h2><hr>
 <h2 id="MUI.setApp">@fn MUI.setApp(app)</h2>
 <p class="param"><strong>@param app=</strong> {appName?=user, allowedEntries?, loginPage?="#login", homePage?="#home", pageFolder?="page", noHandleIosStatusBar?=false}</p>
 <ul>
@@ -1373,5 +1455,5 @@ PagePerson.showForSet({id: 3}); // 以id=3查询人物并显示，可更新。</
     ...
 &lt;/form&gt;</code></pre>
 <p>如果formData中有多个属性，则自动以formData的内容作为数据源显示页面，不再发起查询。</p><hr>
-<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-07-26T15:36:45+08:00</div>
+<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-09-21T17:33:33+08:00</div>
 </html>
