@@ -159,9 +159,6 @@ global $g_dbgInfo;
 $g_dbgInfo = [];
 //}}}
 
-// optional plugins
-@include_once("plugin/index.php");
-
 require_once("{$BASE_DIR}/conf.php");
 
 // load user config
