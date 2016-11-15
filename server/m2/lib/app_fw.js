@@ -3732,6 +3732,65 @@ markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 
 
 @key mui-pullPrompt CSS-class 下拉刷新提示块
 @key mui-loadPrompt CSS-class 自动加载提示块
+
+## 列表页用于选择
+
+@key example-list-choose
+
+常见需求：在一个页面上，希望进入另一个列表页，选择一项后返回。
+
+可定义页面接口如下（主要是choose方法和onChoose回调）：
+
+	var PageOrders = {
+		...
+		// onChoose(order={id,dscr,...})
+		choose: function (onChoose) {
+			this.chooseOpt_ = {
+				onChoose: onChoose
+			}
+			MUI.showPage('orders');
+		},
+
+		chooseOpt_: null // {onChoose}
+	};
+
+在被调用页面上：
+
+- 点击一个列表项时，调用onChoose回调
+- 页面隐藏时，清空chooseOpt_参数。
+
+示例：
+
+	function initPageOrders()
+	{
+		jpage.on("pagehide", onPageHide);
+
+		function li_click(ev)
+		{
+			var order = $(this).data('obj');
+			if (PageOrders.chooseOpt_) {
+				PageOrders.chooseOpt_.onChoose(order);
+				return false;
+			}
+
+			// 正常点击操作 ...
+		}
+
+		function onPageHide()
+		{
+			PageOrders.chooseOpt_ = null;
+		}
+	}
+
+在调用时：
+
+	PageOrders.choose(onChoose);
+
+	function onChoose(order)
+	{
+		// 处理order
+		history.back(); // 由于进入列表选择时会离开当前页面，这时应返回
+	}
  */
 window.initNavbarAndList = initPageList;
 function initPageList(jpage, opt)
