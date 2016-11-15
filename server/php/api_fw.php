@@ -2029,16 +2029,18 @@ class ApiApp extends AppBase
 		}
 		setServerRev();
 
-		// 支持PATH_INFO模式。
-		@$path = $this->getPathInfo();
-		if ($path != null)
+		$ac = param('_ac', null, $_GET);
+		if (! isset($ac))
 		{
-			$ac = $this->parseRestfulUrl($path);
+			// 支持PATH_INFO模式。
+			@$path = $this->getPathInfo();
+			if ($path != null)
+			{
+				$ac = $this->parseRestfulUrl($path);
+			}
 		}
 		if (! isset($ac)) {
-			list($ac, $ac1) = mparam(['ac', '_ac'], $_GET);
-			if (is_null($ac))
-				$ac = $ac1;
+			$ac = mparam('ac', $_GET);
 		}
 
 		Conf::onApiInit();
