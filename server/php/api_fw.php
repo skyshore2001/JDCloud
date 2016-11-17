@@ -528,7 +528,7 @@ class Plugins
 */
 	public static function getInstance($pname, $ignoreError = false) {
 		static $list;
-		if (!isset($list[$name]))
+		if (!isset($list[$pname]))
 		{
 			if (! self::exists($pname))
 				throw new MyException(E_SERVER, "cannot find plugin: $pname");
@@ -545,9 +545,9 @@ class Plugins
 			$inst = call_user_func($creator);
 			if (! $inst instanceof PluginBase)
 				throw new MyException(E_SERVER, "'$clsName' for plugin $pname MUST extend PluginBase");
-			$list[$name] = $inst;
+			$list[$pname] = $inst;
 		}
-		return $list[$name];
+		return $list[$pname];
 	}
 }
 //}}}
