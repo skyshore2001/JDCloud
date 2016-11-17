@@ -3147,6 +3147,34 @@ function setApp(app)
 		validateEntry(app.allowedEntries);
 }
 
+/**
+@fn MUI.formatField(obj) -> obj
+
+对obj中的以字符串表示的currency/date等类型进行转换。
+判断类型的依据是属性名字，如以Tm结尾的属性（也允许带数字后缀）为日期属性，如"tm", "tm2", "createTm"都会被当作日期类型转换。
+
+注意：它将直接修改传入的obj，并最终返回该对象。
+
+	obj = {id: 1, amount: "15.0000", payAmount: "10.0000", createTm: "2016-01-11 11:00:00"}
+	var order = MUI.formatField(obj); // obj会被修改，最终与order相同
+	// order = {id: 1, amount: 15, payAmount: 10, createTm: (datetime类型)}
+*/
+var RE_CurrencyField = /(?:^(?:amount|price|total|qty)|(?:Amount|Price|Total|Qty))\d*$/;
+var RE_DateField = /(?:^(?:dt|tm)|(?:Dt|Tm))\d*$/;
+self.formatField = formatField;
+function formatField(obj)
+{
+	for (var k in obj) {
+		if (obj[k] == null || typeof obj[k] !== 'string')
+			continue;
+		if (RE_DateField.test(k))
+			obj[k] = parseDate(obj[k]);
+		else if (RE_CurrencyField.test(k))
+			obj[k] = parseFloat(obj[k]);
+	}
+	return obj;
+}
+
 }
 //}}}
 
