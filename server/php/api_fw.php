@@ -526,7 +526,7 @@ class Plugins
 
 主应用作为特殊模块，名称为'core', 对应类为 PluginCore.
 */
-	public static function getInstance($pname, $ignoreError = false) {
+	public static function getInstance($pname, $allowNull = false) {
 		static $list;
 		if (!isset($list[$pname]))
 		{
