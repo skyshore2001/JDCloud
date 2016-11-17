@@ -1,5 +1,16 @@
 <?php
 
+/*
+// 插件类，提供插件API
+class Plugin1 extends PluginBase
+{
+	// @event Plugin1.event.init()
+
+	// @fn Plugin1.fn1($src)
+	function fn1($src) {}
+}
+*/
+
 // 实现插件定义的交互接口
 function api_svrinfo()
 {
@@ -13,6 +24,7 @@ function api_svrinfo()
 // 可选，返回插件配置
 /*
 return [
-	"js" => "m2/plugin.js" // 前端需要包含的文件
+	"js" => "m2/plugin.js", // 前端需要包含的文件
+	"class" => "Plugin1" // 如果有插件类
 ];
  */

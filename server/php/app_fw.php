@@ -1341,45 +1341,101 @@ class AppBase
 	}
 }
 
-class Plugins
+/**
+@class JDSingleton (trait)
+
+用于单件类，提供getInstance方法，例：
+
+	class PluginCore
+	{
+		use JDSingleton;
+	}
+
+则可以调用
+
+	$pluginCore = PluginCore::getInstance();
+
+ */
+trait JDSingleton
 {
-/**
-@var Plugins::$map
-*/
-	public static $map = [];
-
-/**
-@fn Plugins::add($plugins)
-
-@param $plugins ={ pluginName => {js, php} }
-
-*/
-	public static function add($ps) {
-		global $BASE_DIR;
-		foreach ($ps as $pname) {
-			$pdir = $BASE_DIR . '/plugin/' . $pname;
-			if (! is_dir($pdir))
-				throw new MyException(E_SERVER, "cannot find plugin: $pname");
-
-			// load plugin
-			$f = "$pdir/plugin.php";
-			if (is_file($f)) {
-				$p = require_once($f);
-				if ($p === 1)
-					$p = [];
-			}
-			else {
-				$p = [];
-			}
-			self::$map[$pname] = $p;
+	private function __construct () {}
+	static function getInstance()
+	{
+		static $inst;
+		if (! isset($inst)) {
+			$inst = new static();
 		}
+		return $inst;
+	}
+}
+
+/**
+@class JDEvent (trait)
+
+提供事件监听(on)与触发(trigger)方法，例：
+
+	class PluginCore
+	{
+		use JDEvent;
+
+		// 提供事件"event1", 注释如下：
+		/// @event PluginCore.event.event1($arg1, $arg2)
+	}
+
+则可以调用
+
+	$pluginCore->on('event1', 'onEvent1');
+	$pluginCore->trigger('event1', [$arg1, $arg2]);
+
+	function onEvent1($arg1, $arg2)
+	{
+	}
+
+ */
+trait JDEvent
+{
+	protected $fns = [];
+
+/** 
+@fn JDEvent.on($ev, $fn) 
+*/
+	function on($ev, callable $fn)
+	{
+		if (array_key_exists($ev, $this->fns))
+			$this->fns[$ev][] = $fn;
+		else
+			$this->fns[$ev] = [$fn];
 	}
 
 /**
-@fn Plugins::exists($pluginName)
+@fn JDEvent.trigger($ev, $args)
+
+返回最后次调用的返回值，false表示中止之后事件调用 
+
+如果想在事件处理函数中返回复杂值，可使用$args传递，如下面返回一个数组：
+
+	$obj->on('getResult', 'onGetResult');
+	$out = new stdclass();
+	$out->result = [];
+	$obj->trigger('getArray', [$out]);
+
+	function onGetResult($out)
+	{
+		$out->result[] = 100;
+	}
+
 */
-	public static function exists($pname) {
-		return array_key_exists($pname, self::$map);
+	function trigger($ev, array $args=[])
+	{
+		if (! array_key_exists($ev, $this->fns))
+			return;
+		$fns = $this->fns[$ev];
+		foreach ($fns as $fn) {
+			$rv = call_user_func_array($fn, $args);
+			if ($rv === false)
+				break;
+		}
+		return $rv;
 	}
 }
 // }}}

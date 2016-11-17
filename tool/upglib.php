@@ -3,6 +3,8 @@
 require_once(dirname(__FILE__) . "/../server/app.php");
 
 ###### config {{{
+global $METAFILE, $LOGF, $CHAR_SZ, $SQLDIFF;
+
 $METAFILE = getenv("P_METAFILE") ?: __DIR__ . '/../DESIGN.wiki';
 $LOGF = "upgrade.log";
 

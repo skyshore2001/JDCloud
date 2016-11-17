@@ -1,13 +1,10 @@
 <?php
 
-require_once("app.php");
-require_once("php/api_fw.php");
+require_once('app.php');
+require_once('php/api_fw.php');
 
 require_once('php/api_functions.php');
 require_once('php/api_objects.php');
-
-// optional plugins
-@include_once("plugin/index.php");
 
 // ====== config {{{
 const AUTH_GUEST = 0;
@@ -273,8 +270,16 @@ function getIosVersion()
 }
 //}}}
 
+// ====== plugin integration {{{
+class PluginCore extends PluginBase
+{
+}
+
+// }}}
+
 // ====== main {{{
 
+// 确保在api.php的最后
 apiMain();
 
 //}}}
