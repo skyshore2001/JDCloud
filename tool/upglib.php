@@ -3,7 +3,9 @@
 require_once(dirname(__FILE__) . "/../server/app.php");
 
 ###### config {{{
-$METAFILE = getenv("P_METAFILE") ?: dirname(__FILE__) . '/../DESIGN.wiki';
+global $METAFILE, $LOGF, $CHAR_SZ, $SQLDIFF;
+
+$METAFILE = getenv("P_METAFILE") ?: __DIR__ . '/../DESIGN.wiki';
 $LOGF = "upgrade.log";
 
 $CHAR_SZ = [
@@ -225,24 +227,44 @@ class UpgHelper
 	private function _initMeta()
 	{
 		global $METAFILE;
-		$file = $METAFILE;
-		//$file = iconv("utf-8", "gbk", $METAFILE); // for OS windows
-		$fd = fopen($file, "r");
-		if ($fd === false)
-			throw new Exception("*** cannot read meta file $METAFILE");
+		$baseDir = dirname($METAFILE);
+		$files = [$METAFILE];
+		while ($file = array_pop($files)) {
 
-		while (($s = fgets($fd)) !== false) {
-			if (preg_match('/^@(\w+):\s+(\w.*?)\s*$/', $s, $ms)) {
-				$this->tableMeta[] = ["name"=>$ms[1], "fields"=>preg_split('/\s*,\s*/', $ms[2])];
-	# 			print "-- $_";
-	# 			print genSql($tbl, $fields) . "\n";
+			//$file = iconv("utf-8", "gbk", $METAFILE); // for OS windows
+			$fd = fopen($file, "r");
+			if ($fd === false)
+				throw new Exception("*** cannot read meta file $file");
+
+			while (($s = fgets($fd)) !== false) {
+				if (preg_match('/^@(\w+):\s+(\w.*?)\s*$/', $s, $ms)) {
+					$this->tableMeta[] = ["name"=>$ms[1], "fields"=>preg_split('/\s*,\s*/', $ms[2])];
+		# 			print "-- $_";
+		# 			print genSql($tbl, $fields) . "\n";
+				}
+				elseif (preg_match('/^@include\s+(\S+)/', $s, $ms)) {
+					$f = $baseDir . '/' . $ms[1];
+					if (strpos($f, "*") === false) {
+						if (! file_exists($f))
+							throw new Exception("*** cannot read included file $f");
+						if (array_search($f, $files) === false)
+							$files[] = $f;
+					}
+					else {
+						foreach (glob($f) as $e) {
+							if (array_search($f, $files) === false)
+								$files[] = $e;
+						}
+					}
+				}
+				elseif (preg_match('/^@ver=(\d+)/', $s, $ms))
+				{
+					$this->ver = $ms[1];
+				}
 			}
-			elseif (preg_match('/^\@ver=(\d+)/', $s, $ms))
-			{
-				$this->ver = $ms[1];
-			}
+			fclose($fd);
+
 		}
-		fclose($fd);
 	}
 
 	private function _init()

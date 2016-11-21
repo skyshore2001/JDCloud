@@ -1,4 +1,4 @@
 <?php
 
-Plugins::add([ "plugin1" ]);
+Plugins::add([ "plugin1", "syslog" ]);
 

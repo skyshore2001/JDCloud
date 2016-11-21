@@ -1867,6 +1867,28 @@ ctx: {ac, tm, tv, ret}
 	}
 
 /**
+@fn MUI.syslog(module, pri, content)
+
+向后端发送日志。后台必须已添加syslog插件。
+日志可在后台Syslog表中查看，客户端信息可查看ApiLog表。
+
+注意：如果操作失败，本函数不报错。
+ */
+	self.syslog = syslog;
+	function syslog(module, pri, content)
+	{
+		if (! Plugins.exists("syslog"))
+			return;
+
+		try {
+			var postParam = {module: module, pri: pri, content: content};
+			callSvr("Syslog.add", $.noop, postParam, {noex:1, noLoadingImg:1});
+		} catch (e) {
+			console.log(e);
+		}
+	}
+
+/**
 @fn MUI.setOnError()
 
 一般框架自动设置onerror函数；如果onerror被其它库改写，应再次调用该函数。
@@ -1882,6 +1904,7 @@ allow throw("abort") as abort behavior.
 			if (/abort$/.test(msg))
 				return true;
 			debugger;
+			syslog("fw", "ERR", JSON.stringify(arguments));
 		}
 	}
 	setOnError();
@@ -3147,6 +3170,34 @@ function setApp(app)
 		validateEntry(app.allowedEntries);
 }
 
+/**
+@fn MUI.formatField(obj) -> obj
+
+对obj中的以字符串表示的currency/date等类型进行转换。
+判断类型的依据是属性名字，如以Tm结尾的属性（也允许带数字后缀）为日期属性，如"tm", "tm2", "createTm"都会被当作日期类型转换。
+
+注意：它将直接修改传入的obj，并最终返回该对象。
+
+	obj = {id: 1, amount: "15.0000", payAmount: "10.0000", createTm: "2016-01-11 11:00:00"}
+	var order = MUI.formatField(obj); // obj会被修改，最终与order相同
+	// order = {id: 1, amount: 15, payAmount: 10, createTm: (datetime类型)}
+*/
+var RE_CurrencyField = /(?:^(?:amount|price|total|qty)|(?:Amount|Price|Total|Qty))\d*$/;
+var RE_DateField = /(?:^(?:dt|tm)|(?:Dt|Tm))\d*$/;
+self.formatField = formatField;
+function formatField(obj)
+{
+	for (var k in obj) {
+		if (obj[k] == null || typeof obj[k] !== 'string')
+			continue;
+		if (RE_DateField.test(k))
+			obj[k] = parseDate(obj[k]);
+		else if (RE_CurrencyField.test(k))
+			obj[k] = parseFloat(obj[k]);
+	}
+	return obj;
+}
+
 }
 //}}}
 
@@ -3732,6 +3783,65 @@ markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 
 
 @key mui-pullPrompt CSS-class 下拉刷新提示块
 @key mui-loadPrompt CSS-class 自动加载提示块
+
+## 列表页用于选择
+
+@key example-list-choose
+
+常见需求：在一个页面上，希望进入另一个列表页，选择一项后返回。
+
+可定义页面接口如下（主要是choose方法和onChoose回调）：
+
+	var PageOrders = {
+		...
+		// onChoose(order={id,dscr,...})
+		choose: function (onChoose) {
+			this.chooseOpt_ = {
+				onChoose: onChoose
+			}
+			MUI.showPage('orders');
+		},
+
+		chooseOpt_: null // {onChoose}
+	};
+
+在被调用页面上：
+
+- 点击一个列表项时，调用onChoose回调
+- 页面隐藏时，清空chooseOpt_参数。
+
+示例：
+
+	function initPageOrders()
+	{
+		jpage.on("pagehide", onPageHide);
+
+		function li_click(ev)
+		{
+			var order = $(this).data('obj');
+			if (PageOrders.chooseOpt_) {
+				PageOrders.chooseOpt_.onChoose(order);
+				return false;
+			}
+
+			// 正常点击操作 ...
+		}
+
+		function onPageHide()
+		{
+			PageOrders.chooseOpt_ = null;
+		}
+	}
+
+在调用时：
+
+	PageOrders.choose(onChoose);
+
+	function onChoose(order)
+	{
+		// 处理order
+		history.back(); // 由于进入列表选择时会离开当前页面，这时应返回
+	}
  */
 window.initNavbarAndList = initPageList;
 function initPageList(jpage, opt)
