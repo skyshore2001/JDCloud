@@ -1898,13 +1898,16 @@ allow throw("abort") as abort behavior.
 	function setOnError()
 	{
 		var fn = window.onerror;
-		window.onerror = function (msg) {
+		window.onerror = function (msg, script, line, col, errObj) {
 			if (fn && fn.apply(this, arguments) === true)
 				return true;
 			if (/abort$/.test(msg))
 				return true;
 			debugger;
-			syslog("fw", "ERR", JSON.stringify(arguments));
+			var content = msg + " (" + script + ":" + line + ":" + col + ")";
+			if (errObj && errObj.stack)
+				content += "\n" + errObj.stack.toString();
+			syslog("fw", "ERR", content);
 		}
 	}
 	setOnError();
