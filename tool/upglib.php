@@ -134,6 +134,8 @@ function sval($v)
 		return "null";
 	else if (is_bool($v))
 		return $v? "true": "false";
+	else if (is_string($v))
+		return '"'.$v.'"';
 	return $v;
 }
 
@@ -252,7 +254,7 @@ class UpgHelper
 					}
 					else {
 						foreach (glob($f) as $e) {
-							if (array_search($f, $files) === false)
+							if (array_search($e, $files) === false)
 								$files[] = $e;
 						}
 					}
@@ -317,17 +319,16 @@ class UpgHelper
 	}
 
 	/** @api */
-	function showTable($tbl)
+	function showTable($tbl = "*")
 	{
 		$found = false;
 		foreach ($this->tableMeta as $meta) {
-			if (strcasecmp($meta["name"], $tbl) != 0)
+			if (! fnmatch($tbl, $meta["name"], FNM_CASEFOLD))
 				continue;
 			echo("-- {$meta['name']}: " . join(',', $meta['fields']) . "\n");
 			$sql = genSql($meta);
 			echo("$sql\n");
 			$found = true;
-			break;
 		}
 		if (!$found) {
 			logstr("!!! cannot find table $tbl\n");
@@ -419,14 +420,6 @@ class UpgHelper
 	function quit()
 	{
 		exit;
-	}
-
-	/** @api */
-	function clearTimerDBCache()
-	{
-		$this->execSql("DELETE FROM CarBrand2");
-		$this->execSql("DELETE FROM CarSeries2");
-		$this->execSql("DELETE FROM CarModel2");
 	}
 
 	# check main or sub table, return the function to add data.
