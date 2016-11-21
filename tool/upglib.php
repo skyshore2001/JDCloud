@@ -44,6 +44,7 @@ function genColSql($fieldDef)
 {
 	global $CHAR_SZ, $SQLDIFF;
 	$f = $fieldDef;
+	$f1 = ucfirst(preg_replace('/(\d|\W)*$/', '', $f));
 	$def = '';
 	if ($f == 'id') {
 		$def = "INTEGER PRIMARY KEY " . $SQLDIFF['AUTO_INCREMENT'];
@@ -64,27 +65,25 @@ function genColSql($fieldDef)
 			die("unknown type of string fields");
 		}
 	}
-	elseif (preg_match('/@$/', $f, $ms)) {
+	elseif (preg_match('/(@|&|#)$/', $f, $ms)) {
 		$f = substr_replace($f, "", -1);
+		if ($ms[1] == '@')
+			$def = $SQLDIFF["MONEY"];
+		else if ($ms[1] == '&')
+			$def = "INTEGER";
+		else if ($ms[1] == '#')
+			$def = "REAL";
+	}
+	elseif (preg_match('/(Price|Qty|Total|Amount)$/', $f1)) {
 		$def = $SQLDIFF["MONEY"];
 	}
-	elseif (preg_match('/(Price|Qty|Total|Amount)$/', $f, $ms) || ($f == "price" || $f == "qty" || $f == "total" || $f == "amount")) {
-		$def = $SQLDIFF["MONEY"];
-	}
-	elseif (preg_match('/(&|Id)$/', $f, $ms)) {
-		if ($ms[1] == '&') {
-			$f = substr_replace($f, "", -1);
-		}
+	elseif (preg_match('/Id$/', $f1)) {
 		$def = "INTEGER";
 	}
-	elseif (preg_match('/#$/', $f)) {
-		$f = substr_replace($f, "", -1);
-		$def = "REAL";
-	}
-	elseif (preg_match('/Tm$/', $f) || $f == "tm") {
+	elseif (preg_match('/Tm$/', $f1)) {
 		$def = "DATETIME";
 	}
-	elseif (preg_match('/Flag$/', $f)) {
+	elseif (preg_match('/Flag$/', $f1)) {
 		$def = "TINYINT UNSIGNED NOT NULL DEFAULT 0";
 	}
 	elseif (preg_match('/^\w+$/', $f)) { # default
