@@ -244,9 +244,18 @@ class UpgHelper
 				}
 				elseif (preg_match('/^@include\s+(\S+)/', $s, $ms)) {
 					$f = $baseDir . '/' . $ms[1];
-					if (! file_exists($f))
-						throw new Exception("*** cannot read included file $f");
-					$files[] = $f;
+					if (strpos($f, "*") === false) {
+						if (! file_exists($f))
+							throw new Exception("*** cannot read included file $f");
+						if (array_search($f, $files) === false)
+							$files[] = $f;
+					}
+					else {
+						foreach (glob($f) as $e) {
+							if (array_search($f, $files) === false)
+								$files[] = $e;
+						}
+					}
 				}
 				elseif (preg_match('/^@ver=(\d+)/', $s, $ms))
 				{

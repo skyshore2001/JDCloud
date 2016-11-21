@@ -1867,6 +1867,28 @@ ctx: {ac, tm, tv, ret}
 	}
 
 /**
+@fn MUI.syslog(module, pri, content)
+
+向后端发送日志。后台必须已添加syslog插件。
+日志可在后台Syslog表中查看，客户端信息可查看ApiLog表。
+
+注意：如果操作失败，本函数不报错。
+ */
+	self.syslog = syslog;
+	function syslog(module, pri, content)
+	{
+		if (! Plugins.exists("syslog"))
+			return;
+
+		try {
+			var postParam = {module: module, pri: pri, content: content};
+			callSvr("Syslog.add", $.noop, postParam, {noex:1, noLoadingImg:1});
+		} catch (e) {
+			console.log(e);
+		}
+	}
+
+/**
 @fn MUI.setOnError()
 
 一般框架自动设置onerror函数；如果onerror被其它库改写，应再次调用该函数。
@@ -1882,6 +1904,7 @@ allow throw("abort") as abort behavior.
 			if (/abort$/.test(msg))
 				return true;
 			debugger;
+			syslog("fw", "ERR", JSON.stringify(arguments));
 		}
 	}
 	setOnError();
