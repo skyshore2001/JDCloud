@@ -42,7 +42,7 @@ var g_args = {}; // {_test, _debug, cordova}
 var g_cordova = 0; // the version for the android/ios native cient. 0 means web app.
 
 /**
-@var g_data = {userInfo?, serverRev?}
+@var g_data = {userInfo?, serverRev?, initClient?}
 
 应用全局共享数据。
 
@@ -52,10 +52,13 @@ serverRev用于标识服务端版本，如果服务端版本升级，则应用�
 
 @key g_data.userInfo
 @key g_data.serverRev
+@key g_data.initClient
+应用初始化时，调用initClient接口得到的返回值，通常为{plugins, ...}
+
 @key g_data.testMode,g_data.mockMode 测试模式和模拟模式
 
 */
-var g_data = {}; // {userInfo, serverRev?, testMode?, mockMode?}
+var g_data = {}; // {userInfo, serverRev?, initClient?, testMode?, mockMode?}
 
 /**
 @var g_cfg
@@ -3058,13 +3061,14 @@ function handleLogin(data)
 
 // ------ plugins {{{
 /**
-@fn MUI.initClient()
+@fn MUI.initClient(param)
 */
 self.initClient = initClient;
 var plugins_ = {};
-function initClient()
+function initClient(param = null)
 {
-	callSvrSync('initClient', function (data) {
+	callSvrSync('initClient', param, function (data) {
+		g_data.initClient = data;
 		plugins_ = data.plugins || {};
 		$.each(plugins_, function (k, e) {
 			if (e.js) {

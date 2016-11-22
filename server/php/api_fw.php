@@ -272,6 +272,67 @@ function setServerRev()
 // }}}
 
 // ====== classes {{{
+/**
+@class ConfBase
+
+在conf.php中定义Conf类并继承ConfBase, 实现代码配置：
+
+	class Conf extends ConfBase
+	{
+	}
+ */
+class ConfBase
+{
+/**
+@var ConfBase::$enableApiLog?=true
+
+设置为false可关闭ApiLog. 例：
+
+	static $enableApiLog = false;
+ */
+	static $enableApiLog = true;
+
+/**
+@fn ConfBase::onApiInit()
+
+所有API执行时都会先走这里。
+
+例：对所有API调用检查ios版本：
+
+	static function onApiInit()
+	{
+		$iosVer = getIosVersion();
+		if ($iosVer !== false && $iosVer<=15) {
+			throw new MyException(E_FORBIDDEN, "unsupport ios client version", "您使用的版本太低，请升级后使用!");
+		}
+	}
+ */
+	static function onApiInit()
+	{
+	}
+
+/**
+@fn ConfBase::onInitClient(&$ret)
+
+客户端初始化应用时会调用initClient接口，返回plugins等信息。若要加上其它信息，可在这里扩展。
+
+例：假如定义应用初始化接口为(plugins是框架默认返回的)：
+
+	initClient(app) -> {plugins, appName}
+
+实现：
+
+	static function onInitClient(&$ret)
+	{
+		$app = mparam('app');
+		$ret['appName'] = 'my-app';
+	}
+ */
+	static function onInitClient(&$ret)
+	{
+	}
+}
+
 class ApiLog
 {
 	private $startTm;
@@ -1121,6 +1182,7 @@ function api_initClient()
 			$ret['plugins'][$p] = filter_hash($cfg, $keys);
 		}
 	}
+	Conf::onInitClient($ret);
 	return $ret;
 }
 //}}}
@@ -2133,6 +2195,9 @@ function apiMain()
 	$script = basename($_SERVER["SCRIPT_NAME"]);
 	ApiFw_::$SOLO = ($script == API_ENTRY_PAGE || $script == 'index.php');
 
+	global $BASE_DIR;
+	require_once("{$BASE_DIR}/conf.php");
+
 	// optional plugins
 	if (file_exists('plugin/index.php'))
 		include_once('plugin/index.php');
@@ -2274,8 +2339,11 @@ class ApiApp extends AppBase
 		if (! isCLI())
 			session_start();
 
-		$this->apiLog = new ApiLog($ac);
-		$this->apiLog->logBefore();
+		if (Conf::$enableApiLog)
+		{
+			$this->apiLog = new ApiLog($ac);
+			$this->apiLog->logBefore();
+		}
 
 		// API调用监控
 		$this->apiWatch = new ApiWatch($ac);
