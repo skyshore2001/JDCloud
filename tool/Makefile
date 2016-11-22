@@ -25,7 +25,7 @@ refdoc: $(refdoc_targets)
 ../doc/api_web.html: ../server/web/lib/app_fw.js ../server/web/app.js 
 	php gendoc.php $^ -title "API²Î¿¼ - ½î¶·ÔÆÇ°¶Ë£¨×ÀÃæWeb°æ£©" $(opt) > $@
 
-../doc/api_php.html: ../server/php/common.php ../server/php/app_fw.php ../server/php/api_fw.php ../server/php/ext.php
+../doc/api_php.html: ../server/php/common.php ../server/php/app_fw.php ../server/php/api_fw.php
 	php gendoc.php $^ -title "API²Î¿¼ - ½î¶·ÔÆ·þÎñ¶Ë" $(opt) > $@
 
 clean: clean-refdoc
