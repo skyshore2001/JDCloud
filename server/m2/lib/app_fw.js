@@ -761,6 +761,16 @@ var E_ABORT=-100;
 		}
 	}
 
+@key deviceready APP初始化后回调事件
+
+APP初始化成功后，回调该事件。如果deviceready事件未被回调，则出现启动页无法消失、插件调用无效、退出程序时无提示等异常。
+其可能的原因是：
+
+- m/cordova/cordova.js文件版本不兼容，如创建插件cordova平台是5.0版本，而相应的cordova.js文件或接口文件版本不同。
+- 在编译原生程序时未设置 <allow-navigation href="*">，或者html中CSP设置不正确。
+- 主页中有跨域的script js文件无法下载。如 <script type="text/javascript" src="http://3.3.3.3/1.js"></script>
+- 某插件的初始化过程失败（需要在原生环境下调试）
+
 ## 系统类标识
 
 框架自动根据系统环境为应用容器(.mui-container类)增加以下常用类标识：
