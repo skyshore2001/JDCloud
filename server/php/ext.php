@@ -1,44 +1,7 @@
 <?php
 
-/**
-@module ext 集成外部系统
-
-调用外部系统（如短信集成、微信集成等）将引入依赖，给开发和测试带来复杂性。
-筋斗云框架通过使用“模拟模式”(MOCK_MODE)，模拟这些外部功能，从而简化开发和测试。
-
-对于一个简单的外部依赖，可以用函数isMockMode来分支。例如添加对象存储服务(OSS)支持，接口定义为：
-
-	getOssParam() -> {url, expire, dir, param={policy, OSSAccessKeyId, signature} }
-	模拟模式返回：
-	getOssParam() -> {url="mock"}
-
-在实现时，先在ext.php中定义外部依赖类型，如Ext_Oss，然后实现函数：
-
-	function api_getOssParam()
-	{
-		if (isMockMode(Ext_Oss)) {
-			return ["url"=>"mock"];
-		}
-		// 实际实现代码 ...
-	}
-
-添加一个复杂的（如支持多个函数调用的）支持模拟的外部依赖，也则可以定义接口，步骤如下，以添加短信支持(SmsSupport)为例：
-
-- 定义一个新的类型，如Ext_SmsSupport.
-- 定义接口，如 ISmsSupport.
-- 在ExtMock类中模拟实现接口ISmsSupport中所有函数, 一般是调用logext()写日志到ext.log, 可以在tool/log.php中查看最近的ext日志。
-- 定义一个类SmsSupport实现接口ISmsSupport，一般放在其它文件中实现(如sms.php)。
-- 在onCreateExt中处理新类型Ext_SmsSupport, 创建实际接口对象。
-
-使用举例：
-
-	$sms = getExt(Ext_SmsSupport);
-	$sms->sendSms(...);
-
-当在运行目录中放置了文件CFG_MOCK_MODE后，则不必依赖外部系统，也可模拟执行这些操作。
-
-@see getExt
-@see CFG_MOCK_MODE,CFG_MOCK_T_MODE,MOCK_MODE
+/*
+@see ext 集成外部系统
 */
 
 const Ext_Mock = 0;
@@ -118,93 +81,6 @@ function onCreateExt($extType)
 	}
 	return $obj;
 }
-
-// ======= 此部分APP不应修改 {{{
-/**
-@fn isMockMode($extType)
-
-判断是否模拟某外部扩展模块。如果$extType为null，则只要处于MOCK_MODE就返回true.
- */
-function isMockMode($extType)
-{
-	// TODO: check extType
-	return $GLOBALS["MOCK_MODE"];
-}
-
-class ExtFactory
-{
-	private $objs = []; // {$extType => $ext}
-
-/**
-@fn ExtFactory::instance()
-
-@see getExt
- */
-	static public function instance()
-	{
-		static $inst;
-		if (!isset($inst))
-			$inst = new ExtFactory();
-		return $inst;
-	}
-
-/**
-@fn ExtFactory::getObj($extType, $allowMock?=true)
-
-获取外部依赖对象。一般用getExt替代更简单。
-
-示例：
-
-	$sms = ExtFactory::instance()->getObj(Ext_SmsSupport);
-
-@see getExt
- */
-	public function getObj($extType, $allowMock=true)
-	{
-		if ($allowMock && isMockMode($extType)) {
-			return $this->getObj(Ext_Mock, false);
-		}
-
-		@$ext = $this->objs[$extType];
-		if (! isset($ext))
-		{
-			if ($extType == Ext_Mock)
-				$ext = new ExtMock();
-			else
-				$ext = onCreateExt($extType);
-			$this->objs[$extType] = $ext;
-		}
-		return $ext;
-	}
-}
-
-/**
-@fn getExt($extType, $allowMock = true)
-
-用于取外部接口对象，如：
-
-	$sms = getExt(Ext_SmsSupport);
-
-*/
-function getExt($extType, $allowMock = true)
-{
-	return ExtFactory::instance()->getObj($extType, $allowMock);
-}
-
-/**
-@fn logext($s, $addHeader?=true)
-
-写日志到ext.log中，可在线打开tool/init.php查看。
-(logit默认写日志到trace.log中)
-
-@see logit
-
- */
-function logext($s, $addHeader=true)
-{
-	logit($s, $addHeader, "ext");
-}
-//}}}
 
 // ====== ExtMock: 模拟实现 {{{
 class ExtMock implements ISmsSupport, IWxSupport, IPushMsg

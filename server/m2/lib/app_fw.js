@@ -42,7 +42,7 @@ var g_args = {}; // {_test, _debug, cordova}
 var g_cordova = 0; // the version for the android/ios native cient. 0 means web app.
 
 /**
-@var g_data = {userInfo?, serverRev?}
+@var g_data = {userInfo?, serverRev?, initClient?}
 
 应用全局共享数据。
 
@@ -52,10 +52,13 @@ serverRev用于标识服务端版本，如果服务端版本升级，则应用�
 
 @key g_data.userInfo
 @key g_data.serverRev
+@key g_data.initClient
+应用初始化时，调用initClient接口得到的返回值，通常为{plugins, ...}
+
 @key g_data.testMode,g_data.mockMode 测试模式和模拟模式
 
 */
-var g_data = {}; // {userInfo, serverRev?, testMode?, mockMode?}
+var g_data = {}; // {userInfo, serverRev?, initClient?, testMode?, mockMode?}
 
 /**
 @var g_cfg
@@ -757,6 +760,16 @@ var E_ABORT=-100;
 			}
 		}
 	}
+
+@key deviceready APP初始化后回调事件
+
+APP初始化成功后，回调该事件。如果deviceready事件未被回调，则出现启动页无法消失、插件调用无效、退出程序时无提示等异常。
+其可能的原因是：
+
+- m/cordova/cordova.js文件版本不兼容，如创建插件cordova平台是5.0版本，而相应的cordova.js文件或接口文件版本不同。
+- 在编译原生程序时未设置 <allow-navigation href="*">，或者html中CSP设置不正确。
+- 主页中有跨域的script js文件无法下载。如 <script type="text/javascript" src="http://3.3.3.3/1.js"></script>
+- 某插件的初始化过程失败（需要在原生环境下调试）
 
 ## 系统类标识
 
@@ -1898,13 +1911,16 @@ allow throw("abort") as abort behavior.
 	function setOnError()
 	{
 		var fn = window.onerror;
-		window.onerror = function (msg) {
+		window.onerror = function (msg, script, line, col, errObj) {
 			if (fn && fn.apply(this, arguments) === true)
 				return true;
 			if (/abort$/.test(msg))
 				return true;
 			debugger;
-			syslog("fw", "ERR", JSON.stringify(arguments));
+			var content = msg + " (" + script + ":" + line + ":" + col + ")";
+			if (errObj && errObj.stack)
+				content += "\n" + errObj.stack.toString();
+			syslog("fw", "ERR", content);
 		}
 	}
 	setOnError();
@@ -3055,13 +3071,14 @@ function handleLogin(data)
 
 // ------ plugins {{{
 /**
-@fn MUI.initClient()
+@fn MUI.initClient(param)
 */
 self.initClient = initClient;
 var plugins_ = {};
-function initClient()
+function initClient(param = null)
 {
-	callSvrSync('initClient', function (data) {
+	callSvrSync('initClient', param, function (data) {
+		g_data.initClient = data;
 		plugins_ = data.plugins || {};
 		$.each(plugins_, function (k, e) {
 			if (e.js) {
@@ -3754,9 +3771,16 @@ queryParam: {ac?, res?, cond?, ...}
 
 此外，框架将自动管理 queryParam._pagekey/_pagesz 参数。
 
-@param onAddItem (jlst, itemData)
+@param onAddItem (jlst, itemData, param)
+
+param={idx, arr, isFirstPage}
 
 框架调用callSvr之后，处理每条返回数据时，通过调用该函数将itemData转换为DOM item并添加到jlst中。
+判断首页首条记录，可以用
+
+	param.idx == 0 && param.isFirstPage
+
+这里无法判断是否最后一页（可在onLoad回调中判断），因为有可能最后一页为空，这时无法回调onAddItem.
 
 @param onNoItem (jlst)
 
@@ -4030,8 +4054,13 @@ function initPageList(jpage, opt)
 			if (loadMore_) {
 				joLoadMore_.remove();
 			}
-			$.each(rs2Array(data), function (i, itemData) {
-				opt_.onAddItem && opt_.onAddItem(jlst, itemData);
+			var arr = rs2Array(data);
+			var isFirstPage = (nextkey == null);
+			var isLastPage = (data.nextkey == null);
+			var param = {arr: arr, isFirstPage: isFirstPage};
+			$.each(arr, function (i, itemData) {
+				param.idx = i;
+				opt_.onAddItem && opt_.onAddItem(jlst, itemData, param);
 			});
 			if (data.nextkey)
 				jlst.data("nextkey_", data.nextkey);
@@ -4041,7 +4070,7 @@ function initPageList(jpage, opt)
 				}
 				jlst.data("nextkey_", -1);
 			}
-			opt.onLoad && opt.onLoad(jlst, data.nextkey == null);
+			opt.onLoad && opt.onLoad(jlst, isLastPage);
 		}
 	}
 

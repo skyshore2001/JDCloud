@@ -216,28 +216,28 @@ WebAPI的调用名和传入参数也采用驼峰式，由于目前实现时不�
 
 - 每个表均有整型字段id作为主键；关联表也不例外。
 - 外链一般以xxxId表示，除非特殊说明，一般该字段非空；
-- 字段类型通过名称隐式说明, 或通过声明后缀显示说明, 规则如下: 
-| end with "Id"                           | Integer            |
-| end with "Price"/"Total"/"Qty"/"Amount" | Currency           |
-| end with "Tm"/"Dt"/"Time"               | Datetime/Date/Time |
-| type=(n)                                | String             |
-| type=&                                  | Integer            |
-| type=@                                  | Currency           |
-| type=#                                  | Double             |
-| end with "Flag"                         | TinyInt(1B)        |
+- 字段类型通过名称主干隐式说明, 或通过声明后缀显示说明, 规则如下: 
+| 以"Id"结尾                           | Integer              |
+| 以"Price"/"Total"/"Qty"/"Amount"结尾 | Currency             |
+| 以"Tm"/"Dt"/"Time"结尾               | Datetime/Date/Time   |
+| type=(n)                             | String               |
+| type=&                               | Integer              |
+| type=@                               | Currency             |
+| type=#                               | Double               |
+| 以"Flag"结尾                         | TinyInt(1B) NOT NULL |
  此外, 如果无明确标识, 缺省为字符串类型. 
+ 例如，"total", "docTotal", "total2", "docTotal2"都被认为是Currency类型。
+ 
 - 字符串一般采用nvarchar支持unicode，描述如`name(s)`，字串长度以如下方式描述：
 | s | small=20            |
 | m | medium=50 (default) |
 | l | long=255            |
 | t | text                |
 
-下面描述中, "@"开头表示将被工具自动当作meta data处理.
-
 注意：
 - 一些名字由于与某些数据库系统关键字冲突应避免，如不使用"desc", 改用"dscr" (description).
 
-TODO: define unique-key, index
+TODO: define unique-key, index, not null, default value
 
 == 通讯协议设计 ==
 
