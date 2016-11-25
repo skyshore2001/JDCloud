@@ -517,6 +517,62 @@ class PluginBase
 {
 	use JDSingleton;
 	use JDEvent;
+
+/**
+@var PluginBase.$colMap
+
+%colMap = {tbl => [tblAlias, %cols]}
+cols = {col => colAlias}
+
+先在插件接口文档DESIGN.wiki中声明本插件的数据库依赖：
+
+	@see @Store: id, name, dscr
+	@see @Ordr: id
+
+在PluginCore::__construct中实现接口依赖，指定表名或列名对应（如果名称相同不必声明）
+
+	function __construct() {
+		$plugin1 = Plugins::getInstance('coupon');
+		$plugin1->colMap = [
+			"Store" => ["MyStore", [
+				"dscr" => "description"
+			]],
+			"Ordr" => ["MyOrder"]
+		];
+	}
+
+在plugin实现时，使用mapCol/mapSql来使表名、列名可配置：
+
+	$plugin = PluginCoupon::getInstance();
+	$tbl = $plugin->mapCol("Store"); // $tbl="MyStore"
+	$tbl = $plugin->mapCol("User"); // $tbl="User" 未定义时，直接取原值
+	$col = $plugin->mapCol("Store.dscr"); // $col="description"
+	$col = $plugin->mapCol("Store.name"); // $col="name" 未定义时，直接取原值
+
+	$sql = $plugin->mapSql("SELECT s.id, s.{Store.name}, s.{Store.dscr} FROM {Store} s INNER JOIN {Ordr} o ON o.id=s.{Store.storeId}");
+	// $sql = "SELECT s.id, s.name, s.description FROM MyStore s INNER JOIN MyOrder o ON o.id=s.storeId"
+
+@key PluginBase.mapCol($tbl, $col=null)
+@key PluginBase.mapSql($sql)
+ */
+	public $colMap;
+
+	function mapCol($tbl, $col=null)
+	{
+		if (isset($col))
+			$ret = @$this->colMap[$tbl][1][$col] ?: $col;
+		else
+			$ret = @$this->colMap[$tbl][0] ?: $tbl;
+		return $ret;
+	}
+
+	function mapSql($s)
+	{
+		$sql = preg_replace_callback('/\{(\w+)\.?(\w+)?\}/', function($ms) {
+			return $this->mapCol($ms[1], @$ms[2]);
+		}, $s);
+		return $sql;
+	}
 }
 
 /**

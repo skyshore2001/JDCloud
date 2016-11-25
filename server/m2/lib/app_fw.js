@@ -3771,9 +3771,16 @@ queryParam: {ac?, res?, cond?, ...}
 
 此外，框架将自动管理 queryParam._pagekey/_pagesz 参数。
 
-@param onAddItem (jlst, itemData)
+@param onAddItem (jlst, itemData, param)
+
+param={idx, arr, isFirstPage}
 
 框架调用callSvr之后，处理每条返回数据时，通过调用该函数将itemData转换为DOM item并添加到jlst中。
+判断首页首条记录，可以用
+
+	param.idx == 0 && param.isFirstPage
+
+这里无法判断是否最后一页（可在onLoad回调中判断），因为有可能最后一页为空，这时无法回调onAddItem.
 
 @param onNoItem (jlst)
 
@@ -4047,8 +4054,13 @@ function initPageList(jpage, opt)
 			if (loadMore_) {
 				joLoadMore_.remove();
 			}
-			$.each(rs2Array(data), function (i, itemData) {
-				opt_.onAddItem && opt_.onAddItem(jlst, itemData);
+			var arr = rs2Array(data);
+			var isFirstPage = (nextkey == null);
+			var isLastPage = (data.nextkey == null);
+			var param = {arr: arr, isFirstPage: isFirstPage};
+			$.each(arr, function (i, itemData) {
+				param.idx = i;
+				opt_.onAddItem && opt_.onAddItem(jlst, itemData, param);
 			});
 			if (data.nextkey)
 				jlst.data("nextkey_", data.nextkey);
@@ -4058,7 +4070,7 @@ function initPageList(jpage, opt)
 				}
 				jlst.data("nextkey_", -1);
 			}
-			opt.onLoad && opt.onLoad(jlst, data.nextkey == null);
+			opt.onLoad && opt.onLoad(jlst, isLastPage);
 		}
 	}
 
