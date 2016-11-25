@@ -550,6 +550,8 @@ class Plugins
 			$f = "$pdir/plugin.php";
 			if (is_file($f)) {
 				$p = require_once($f);
+				if ($p === true)
+					continue;
 				if ($p === 1)
 					$p = [];
 			}
