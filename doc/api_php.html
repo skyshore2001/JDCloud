@@ -33,10 +33,11 @@ code {
 </head>
 
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2016-09-21</div>
+<div>最后更新：2016-12-01</div>
 <h2>Modules</h2>
 <div class="toc">
 <p><a href="#app_fw">app_fw (module)</a></p>
+<p><a href="#ext">ext (module)</a></p>
 <p><a href="#api_fw">api_fw (module)</a></p>
 <p><a href="#AccessControl">AccessControl (module)</a></p>
 </div><hr>
@@ -77,8 +78,18 @@ code {
 <p><a href="#AppBase">AppBase (class)</a></p>
 <p><a href="#CFG_MOCK_MODE">CFG_MOCK_MODE (key)</a></p>
 <p><a href="#CFG_MOCK_T_MODE">CFG_MOCK_T_MODE (key)</a></p>
+<p><a href="#ConfBase">ConfBase (class)</a></p>
+<p><a href="#ConfBase::$enableApiLog">ConfBase::$enableApiLog (var)</a></p>
+<p><a href="#ConfBase::onApiInit">ConfBase::onApiInit (fn)</a></p>
+<p><a href="#ConfBase::onInitClient">ConfBase::onInitClient (fn)</a></p>
 <p><a href="#DBG_LEVEL">DBG_LEVEL (var)</a></p>
 <p><a href="#DirectReturn">DirectReturn (class)</a></p>
+<p><a href="#ExtFactory::getObj">ExtFactory::getObj (fn)</a></p>
+<p><a href="#ExtFactory::instance">ExtFactory::instance (fn)</a></p>
+<p><a href="#JDEvent">JDEvent (class)</a></p>
+<p><a href="#JDEvent.on">JDEvent.on (fn)</a></p>
+<p><a href="#JDEvent.trigger">JDEvent.trigger (fn)</a></p>
+<p><a href="#JDSingleton">JDSingleton (class)</a></p>
 <p><a href="#MOCK_MODE">MOCK_MODE (var)</a></p>
 <p><a href="#MyException">MyException (class)</a></p>
 <p><a href="#PAGE_SZ_LIMIT">PAGE_SZ_LIMIT (var)</a></p>
@@ -86,9 +97,15 @@ code {
 <p><a href="#P_DBCRED">P_DBCRED (key)</a></p>
 <p><a href="#P_SESSION_DIR">P_SESSION_DIR (key)</a></p>
 <p><a href="#P_URL_PATH">P_URL_PATH (key)</a></p>
+<p><a href="#PluginBase">PluginBase (class)</a></p>
+<p><a href="#PluginBase.$colMap">PluginBase.$colMap (var)</a></p>
+<p><a href="#PluginBase.mapCol">PluginBase.mapCol (key)</a></p>
+<p><a href="#PluginBase.mapSql">PluginBase.mapSql (key)</a></p>
+<p><a href="#Plugins">Plugins (class)</a></p>
 <p><a href="#Plugins::$map">Plugins::$map (var)</a></p>
 <p><a href="#Plugins::add">Plugins::add (fn)</a></p>
 <p><a href="#Plugins::exists">Plugins::exists (fn)</a></p>
+<p><a href="#Plugins::getInstance">Plugins::getInstance (fn)</a></p>
 <p><a href="#Q">Q (fn)</a></p>
 <p><a href="#TEST_MODE">TEST_MODE (var)</a></p>
 <p><a href="#addLog">addLog (fn)</a></p>
@@ -99,19 +116,25 @@ code {
 <p><a href="#dbconn">dbconn (fn)</a></p>
 <p><a href="#errQuit">errQuit (fn)</a></p>
 <p><a href="#execOne">execOne (fn)</a></p>
+<p><a href="#ext">ext (module)</a></p>
 <p><a href="#getAppType">getAppType (fn)</a></p>
 <p><a href="#getBaseUrl">getBaseUrl (fn)</a></p>
 <p><a href="#getCred">getCred (fn)</a></p>
+<p><a href="#getExt">getExt (fn)</a></p>
 <p><a href="#hasSignFile">hasSignFile (fn)</a></p>
 <p><a href="#isCLI">isCLI (fn)</a></p>
 <p><a href="#isCLIServer">isCLIServer (fn)</a></p>
 <p><a href="#isEqualCollection">isEqualCollection (fn)</a></p>
+<p><a href="#isMockMode">isMockMode (fn)</a></p>
+<p><a href="#logext">logext (fn)</a></p>
 <p><a href="#logit">logit (fn)</a></p>
 <p><a href="#mparam">mparam (fn)</a></p>
 <p><a href="#myEncrypt">myEncrypt (fn)</a></p>
 <p><a href="#objarr2table">objarr2table (fn)</a></p>
 <p><a href="#param">param (fn)</a></p>
 <p><a href="#param_varr">param_varr (fn)</a></p>
+<p><a href="#plugin.php">plugin.php (key)</a></p>
+<p><a href="#plugin/index.php">plugin/index.php (key)</a></p>
 <p><a href="#queryAll">queryAll (fn)</a></p>
 <p><a href="#queryOne">queryOne (fn)</a></p>
 <p><a href="#setParam">setParam (fn)</a></p>
@@ -460,14 +483,93 @@ throw new DirectReturn();</code></pre><hr>
 <h2 id="AppBase">@class AppBase</h2>
 <p>应用框架，用于提供符合BQP协议的接口。<br />
 在onExec中返回协议数据；在onAfter中建议及时关闭DB.</p><hr>
-<h2 id="Plugins::$map">@var Plugins::$map</h2><hr>
-<h2 id="Plugins::add">@fn Plugins::add($plugins)</h2>
-<p class="param"><strong>@param $plugins</strong>  ={ pluginName => {js, php} }</p><hr>
-<h2 id="Plugins::exists">@fn Plugins::exists($pluginName)</h2><hr>
+<h2 id="JDSingleton">@class JDSingleton (trait)</h2>
+<p>用于单件类，提供getInstance方法，例：</p>
+<pre><code>class PluginCore
+{
+    use JDSingleton;
+}</code></pre>
+<p>则可以调用</p>
+<pre><code>$pluginCore = PluginCore::getInstance();</code></pre><hr>
+<h2 id="JDEvent">@class JDEvent (trait)</h2>
+<p>提供事件监听(on)与触发(trigger)方法，例：</p>
+<pre><code>class PluginCore
+{
+    use JDEvent;
+
+    // 提供事件"event1", 注释如下：
+    /// @event PluginCore.event.event1($arg1, $arg2)
+}</code></pre>
+<p>则可以调用</p>
+<pre><code>$pluginCore-&gt;on('event1', 'onEvent1');
+$pluginCore-&gt;trigger('event1', [$arg1, $arg2]);
+
+function onEvent1($arg1, $arg2)
+{
+}</code></pre><hr>
+<h2 id="JDEvent.on">@fn JDEvent.on($ev, $fn)</h2><hr>
+<h2 id="JDEvent.trigger">@fn JDEvent.trigger($ev, $args)</h2>
+<p>返回最后次调用的返回值，false表示中止之后事件调用 </p>
+<p>如果想在事件处理函数中返回复杂值，可使用$args传递，如下面返回一个数组：</p>
+<pre><code>$obj-&gt;on('getResult', 'onGetResult');
+$out = new stdclass();
+$out-&gt;result = [];
+$obj-&gt;trigger('getArray', [$out]);
+
+function onGetResult($out)
+{
+    $out-&gt;result[] = 100;
+}</code></pre><hr>
+<h2 id="ext">@module ext 集成外部系统</h2>
+<p>调用外部系统（如短信集成、微信集成等）将引入依赖，给开发和测试带来复杂性。<br />
+筋斗云框架通过使用“模拟模式”(MOCK_MODE)，模拟这些外部功能，从而简化开发和测试。</p>
+<p>对于一个简单的外部依赖，可以用函数isMockMode来分支。例如添加对象存储服务(OSS)支持，接口定义为：</p>
+<pre><code>getOssParam() -&gt; {url, expire, dir, param={policy, OSSAccessKeyId, signature} }
+模拟模式返回：
+getOssParam() -&gt; {url="mock"}</code></pre>
+<p>在实现时，先在ext.php中定义外部依赖类型，如Ext_Oss，然后实现函数：</p>
+<pre><code>function api_getOssParam()
+{
+    if (isMockMode(Ext_Oss)) {
+        return ["url"=&gt;"mock"];
+    }
+    // 实际实现代码 ...
+}</code></pre>
+<p>添加一个复杂的（如支持多个函数调用的）支持模拟的外部依赖，也则可以定义接口，步骤如下，以添加短信支持(SmsSupport)为例：</p>
+<ul>
+<li>定义一个新的类型，如Ext_SmsSupport.</li>
+<li>定义接口，如 ISmsSupport.</li>
+<li>在ExtMock类中模拟实现接口ISmsSupport中所有函数, 一般是调用logext()写日志到ext.log, 可以在tool/log.php中查看最近的ext日志。</li>
+<li>定义一个类SmsSupport实现接口ISmsSupport，一般放在其它文件中实现(如sms.php)。</li>
+<li>在onCreateExt中处理新类型Ext_SmsSupport, 创建实际接口对象。</li>
+</ul>
+<p>使用举例：</p>
+<pre><code>$sms = getExt(Ext_SmsSupport);
+$sms-&gt;sendSms(...);</code></pre>
+<p>当在运行目录中放置了文件CFG_MOCK_MODE后，则不必依赖外部系统，也可模拟执行这些操作。</p>
+<p class="see"><strong>@see <a href="#getExt">getExt</a></strong> </p>
+<p class="see"><strong>@see <a href="#CFG_MOCK_MODE">CFG_MOCK_MODE</a> <a href="#CFG_MOCK_T_MODE">CFG_MOCK_T_MODE</a> <a href="#MOCK_MODE">MOCK_MODE</a></strong> </p><hr>
+<h2 id="isMockMode">@fn isMockMode($extType)</h2>
+<p>判断是否模拟某外部扩展模块。如果$extType为null，则只要处于MOCK_MODE就返回true.</p><hr>
+<h2 id="ExtFactory::instance">@fn ExtFactory::instance()</h2>
+<p class="see"><strong>@see <a href="#getExt">getExt</a></strong> </p><hr>
+<h2 id="ExtFactory::getObj">@fn ExtFactory::getObj($extType, $allowMock?=true)</h2>
+<p>获取外部依赖对象。一般用getExt替代更简单。</p>
+<p>示例：</p>
+<pre><code>$sms = ExtFactory::instance()-&gt;getObj(Ext_SmsSupport);</code></pre>
+<p class="see"><strong>@see <a href="#getExt">getExt</a></strong> </p><hr>
+<h2 id="getExt">@fn getExt($extType, $allowMock = true)</h2>
+<p>用于取外部接口对象，如：</p>
+<pre><code>$sms = getExt(Ext_SmsSupport);</code></pre><hr>
+<h2 id="logext">@fn logext($s, $addHeader?=true)</h2>
+<p>写日志到ext.log中，可在线打开tool/init.php查看。<br />
+(logit默认写日志到trace.log中)</p>
+<p class="see"><strong>@see <a href="#logit">logit</a></strong> </p><hr>
 <h2 id="api_fw">@module api_fw</h2><div class="toc"><p style="margin-left:0em"><a href="#api_fw-1 函数型接口">1 函数型接口</a></p>
 <p style="margin-left:0em"><a href="#api_fw-2 对象型接口">2 对象型接口</a></p>
 <p style="margin-left:0em"><a href="#api_fw-3 接口复用">3 接口复用</a></p>
 <p style="margin-left:0em"><a href="#api_fw-4 常用操作">4 常用操作</a></p>
+<p style="margin-left:0em"><a href="#api_fw-5 插件机制">5 插件机制</a></p>
 </div>
 <p>服务接口实现框架。</p>
 <p>服务接口包含：</p>
@@ -522,7 +624,75 @@ $ret = callSvc("genVoucher");
 <p>调试日志</p>
 <p>可使用addLog输出调试信息而不破坏协议输出格式。</p>
 <p class="see"><strong>@see <a href="#addLog">addLog</a></strong>  </p>
-<p class="see"><strong>@see <a href="#logit">logit</a></strong> </p><hr>
+<p class="see"><strong>@see <a href="#logit">logit</a></strong> </p>
+<h4 id="api_fw-5 插件机制">5 插件机制</h4>
+<p class="key"><strong>@key <a id="plugin/index.php">plugin/index.php</a></strong>  插件配置</p>
+<p>plugin/{pluginName}为插件目录。</p>
+<p>plugin/index.php是插件配置文件，在后端应用框架函数apiMain中引入，内容示例如下：</p>
+<pre><code>&lt;?php
+
+Plugins::add([ "plugin1", "plugin2" ]);</code></pre>
+<p>表示当前应用使用两个插件&quot;plugin1&quot;和&quot;plugin2&quot;, 分别对应目录 plugin/plugin1和plugin/plugin2.</p>
+<p class="see"><strong>@see <a href="#Plugins::add">Plugins::add</a></strong> </p>
+<p class="key"><strong>@key <a id="plugin.php">plugin.php</a></strong>  插件定义</p>
+<p>插件实现在文件plugin/{pluginName}/plugin.php中，包括交互接口，以及插件API（后端调用接口），以优惠券插件&quot;coupon&quot;为例:</p>
+<pre><code>&lt;?php
+
+// 可选：定义插件API, 必须继承 PluginBase类
+class PluginCoupon extends PluginBase
+{
+    // 声明插件API支持的事件, 如init, genCoupons事件：
+    // @event PluginCoupon.event.init()
+    // @event PluginCoupon.event.genCoupons($src)
+
+    // 插件API函数
+    // @fn PluginCoupon.func1($arg1)
+    function func1($arg1)
+    {
+    }
+}
+
+// 实现函数型交互接口takeCoupon
+function api_takeCoupon() {}
+
+// 实现对象型交互接口 Coupon.query/get/set/del/add
+class AC1_Coupon extends AccessControl {}
+
+// 可选：返回插件配置
+return [
+    "js" =&gt; "m2/plugin.js", // 如果前端需要包含文件
+    "class" =&gt; "PluginCoupon" // 如果提供插件内部接口
+];</code></pre>
+<p>注意：</p>
+<ul>
+<li>插件类必须继承PluginBase(包括单例、事件机制等方法)，它提供插件API，包括插件类提供的所有公共方法、属性和事件声明。<br />
+应通过格式化注释(@fn, @event等)标识这些API。</li>
+</ul>
+<p>在插件内部获取插件实例可以用：</p>
+<pre><code>    $plugin = PluginCoupon::getInstance();</code></pre>
+<p>如果在插件外部则需要用：</p>
+<pre><code>    $pluginCoupon = Plugins::getInstance('coupon');</code></pre>
+<p>调用插件API函数：</p>
+<pre><code>    $pluginCoupon-&gt;func1($arg1);</code></pre>
+<p>监听或触发插件事件：</p>
+<pre><code>    $pluginCoupon-&gt;on('init', 'onInit');
+    $pluginCoupon-&gt;trigger('genCoupons', [$src]);</code></pre>
+<p>事件命名规范与函数名相同，而事件处理函数的命名一般用&quot;on{事件名}&quot;.</p>
+<p class="see"><strong>@see <a href="#PluginBase">PluginBase</a></strong> </p>
+<ul>
+<li>
+<p>插件可以在构造函数__construct中初始化自身，例：</p>
+<pre><code>// 可选的初始化过程, 注意使用private，保持单例特性（Singleton）
+private function __construct()
+{
+    $this-&gt;trigger('init');
+}</code></pre>
+</li>
+</ul>
+<p>在应用初始化时（apiMain中），会创建所有插件类的实例（如果有的话）。</p>
+<ul>
+<li>交互接口应在插件设计文档(plugin/coupon/DESIGN.wiki)中定义原型。</li>
+</ul><hr>
 <h2 id="setRet">@fn setRet($code, $data?, $internalMsg?)</h2>
 <p class="param"><strong>@param $code</strong>  Integer. 返回码, 0表示成功, 否则表示操作失败。</p>
 <p class="param"><strong>@param $data</strong>  返回数据。</p>
@@ -545,6 +715,86 @@ throw new DirectReturn();
 <h2 id="setServerRev">@fn setServerRev()</h2>
 <p>根据全局变量&quot;SERVER_REV&quot;或应用根目录下的文件&quot;revision.txt&quot;， 来设置HTTP响应头&quot;X-Daca-Server-Rev&quot;表示服务端版本信息（最多6位）。</p>
 <p>客户端框架可本地缓存该版本信息，一旦发现不一致，可刷新应用。</p><hr>
+<h2 id="ConfBase">@class ConfBase</h2>
+<p>在conf.php中定义Conf类并继承ConfBase, 实现代码配置：</p>
+<pre><code>class Conf extends ConfBase
+{
+}</code></pre><hr>
+<h2 id="ConfBase::$enableApiLog">@var ConfBase::$enableApiLog?=true</h2>
+<p>设置为false可关闭ApiLog. 例：</p>
+<pre><code>static $enableApiLog = false;</code></pre><hr>
+<h2 id="ConfBase::onApiInit">@fn ConfBase::onApiInit()</h2>
+<p>所有API执行时都会先走这里。</p>
+<p>例：对所有API调用检查ios版本：</p>
+<pre><code>static function onApiInit()
+{
+    $iosVer = getIosVersion();
+    if ($iosVer !== false &amp;&amp; $iosVer&lt;=15) {
+        throw new MyException(E_FORBIDDEN, "unsupport ios client version", "您使用的版本太低，请升级后使用!");
+    }
+}</code></pre><hr>
+<h2 id="ConfBase::onInitClient">@fn ConfBase::onInitClient(&$ret)</h2>
+<p>客户端初始化应用时会调用initClient接口，返回plugins等信息。若要加上其它信息，可在这里扩展。</p>
+<p>例：假如定义应用初始化接口为(plugins是框架默认返回的)：</p>
+<pre><code>initClient(app) -&gt; {plugins, appName}</code></pre>
+<p>实现：</p>
+<pre><code>static function onInitClient(&amp;$ret)
+{
+    $app = mparam('app');
+    $ret['appName'] = 'my-app';
+}</code></pre><hr>
+<h2 id="PluginBase">@class PluginBase</h2>
+<p>插件内部接口应继承该类, 它具有以下方法：</p>
+<pre><code>static function getInstance();
+funcion on($eventName, $eventHandler);
+funcion trigger($eventName, array $args = []);</code></pre>
+<p class="see"><strong>@see <a href="#JDSingleton">JDSingleton</a> <a href="#JDEvent">JDEvent</a></strong> </p>
+<p class="see"><strong>@see <a href="#plugin/index.php">plugin/index.php</a></strong>  插件配置</p>
+<p class="see"><strong>@see <a href="#plugin.php">plugin.php</a></strong>  插件定义</p><hr>
+<h2 id="PluginBase.$colMap">@var PluginBase.$colMap</h2>
+<p>%colMap = {tbl =&gt; [tblAlias, %cols]}<br />
+cols = {col =&gt; colAlias}</p>
+<p>先在插件接口文档DESIGN.wiki中声明本插件的数据库依赖：</p>
+<pre><code>@see @Store: id, name, dscr
+@see @Ordr: id</code></pre>
+<p>在PluginCore::__construct中实现接口依赖，指定表名或列名对应（如果名称相同不必声明）</p>
+<pre><code>function __construct() {
+    $plugin1 = Plugins::getInstance('coupon');
+    $plugin1-&gt;colMap = [
+        "Store" =&gt; ["MyStore", [
+            "dscr" =&gt; "description"
+        ]],
+        "Ordr" =&gt; ["MyOrder"]
+    ];
+}</code></pre>
+<p>在plugin实现时，使用mapCol/mapSql来使表名、列名可配置：</p>
+<pre><code>$plugin = PluginCoupon::getInstance();
+$tbl = $plugin-&gt;mapCol("Store"); // $tbl="MyStore"
+$tbl = $plugin-&gt;mapCol("User"); // $tbl="User" 未定义时，直接取原值
+$col = $plugin-&gt;mapCol("Store.dscr"); // $col="description"
+$col = $plugin-&gt;mapCol("Store.name"); // $col="name" 未定义时，直接取原值
+
+$sql = $plugin-&gt;mapSql("SELECT s.id, s.{Store.name}, s.{Store.dscr} FROM {Store} s INNER JOIN {Ordr} o ON o.id=s.{Store.storeId}");
+// $sql = "SELECT s.id, s.name, s.description FROM MyStore s INNER JOIN MyOrder o ON o.id=s.storeId"</code></pre>
+<p class="key"><strong>@key <a id="PluginBase.mapCol">PluginBase.mapCol</a></strong> ($tbl, $col=null)</p>
+<p class="key"><strong>@key <a id="PluginBase.mapSql">PluginBase.mapSql</a></strong> ($sql)</p><hr>
+<h2 id="Plugins">@class Plugins</h2>
+<p class="see"><strong>@see <a href="#plugin/index.php">plugin/index.php</a></strong> </p><hr>
+<h2 id="Plugins::$map">@var Plugins::$map</h2><hr>
+<h2 id="Plugins::add">@fn Plugins::add($plugins)</h2>
+<p class="param"><strong>@param $plugins</strong>  ={ pluginName => {js, php, getInterface} }</p><hr>
+<h2 id="Plugins::exists">@fn Plugins::exists($pluginName)</h2><hr>
+<h2 id="Plugins::getInstance">@fn Plugins::getInstance($pluginName, $allowNull = false)</h2>
+<p>获取插件类的实例，用于调用插件API。</p>
+<p>假设有插件coupon, 一般可定义插件接口类 PluginCoupon如:</p>
+<pre><code>class PluginCoupon extends PluginBase
+{
+}</code></pre>
+<p>在插件内部，应直接调用 PluginCoupon::getInstance() 来获得插件实例。<br />
+在插件外部才调用本函数。</p>
+<p>注意：应通过在plugin.php最后返回的插件配置中指定插件类：</p>
+<pre><code>[ 'class' =&gt; 'PluginCoupon' ]</code></pre>
+<p>主应用作为特殊模块，名称为'core', 对应类为 PluginCore.</p><hr>
 <h2 id="tableCRUD">@fn tableCRUD($ac, $tbl, $asAdmin?=false)</h2>
 <p>对象型接口的入口。<br />
 也可直接被调用，常与setParam一起使用, 提供一些定制的操作。</p>
@@ -964,5 +1214,5 @@ q:: 查询条件，值为"paid"时，查询10天内已付款的订单。且结�
 <p>直接调用接口，返回数据。如果出错，将调用$GLOBALS['errorFn'] (缺省为errQuit).</p>
 <p class="param"><strong>@param $cleanCall</strong>  Boolean. 如果为true, 则不使用现有的$_GET, $_POST等变量中的值。</p>
 <p class="param"><strong>@param $hideResult</strong>  Boolean. 如果为true, 不输出结果。</p><hr>
-<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-09-21T17:33:33+08:00</div>
+<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-12-01T17:32:13+08:00</div>
 </html>

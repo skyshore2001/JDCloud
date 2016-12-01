@@ -234,7 +234,7 @@ CL:: Close (订单结算)
 </p>
 
 <p>
-@Attachment: id, path, orgPicId, exif(t)
+@Attachment: id, path, orgPicId, exif(t), tm
 </p>
 
 <dl>
@@ -244,6 +244,8 @@ CL:: Close (订单结算)
 <dd>Integer. 原图编号。对于缩略图片，链接到对应原始大图片的id.</dd>
 <dt>exif</dt>
 <dd>String. 图片或文件的扩展信息。以JSON字符串方式保存。典型的如时间和GPS信息，比如：<code>{"DateTime": "2015:10:08 11:03:02", "GPSLongtitude": [121,42,7.19], "GPSLatitude": [31,14,45.8]}</code></dd>
+<dt>tm</dt>
+<dd>DateTime. 上传时间。</dd>
 </dl>
 
 <p>
@@ -281,6 +283,14 @@ CL:: Close (订单结算)
 
 <p>
 @Pwd: id, pwd, cnt&amp;
+</p>
+
+<p>
+<strong>[插件相关]</strong>
+</p>
+
+<p>
+@include server/plugin/*/DESIGN.wiki
 </p>
 
 <h2 id="toc_1.3"><a name="交互接口设计">3 交互接口设计</a></h2>

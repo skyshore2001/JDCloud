@@ -33,7 +33,7 @@ code {
 </head>
 
 <h1>API参考 - 筋斗云前端（移动Web版）</h1>
-<div>最后更新：2016-09-21</div>
+<div>最后更新：2016-12-01</div>
 <h2>Modules</h2>
 <div class="toc">
 <p><a href="#common.js">common.js (module)</a></p>
@@ -79,6 +79,7 @@ code {
 <p><a href="#MUI.disableBatch">MUI.disableBatch (var)</a></p>
 <p><a href="#MUI.enhanceWithin">MUI.enhanceWithin (fn)</a></p>
 <p><a href="#MUI.enterWaiting">MUI.enterWaiting (fn)</a></p>
+<p><a href="#MUI.formatField">MUI.formatField (fn)</a></p>
 <p><a href="#MUI.getOptions">MUI.getOptions (fn)</a></p>
 <p><a href="#MUI.getToPageId">MUI.getToPageId (fn)</a></p>
 <p><a href="#MUI.handleLogin">MUI.handleLogin (fn)</a></p>
@@ -106,6 +107,7 @@ code {
 <p><a href="#MUI.showLogin">MUI.showLogin (fn)</a></p>
 <p><a href="#MUI.showPage">MUI.showPage (fn)</a></p>
 <p><a href="#MUI.showValidateErr">MUI.showValidateErr (fn)</a></p>
+<p><a href="#MUI.syslog">MUI.syslog (fn)</a></p>
 <p><a href="#MUI.tryAutoLogin">MUI.tryAutoLogin (fn)</a></p>
 <p><a href="#MUI.useBatchCall">MUI.useBatchCall (fn)</a></p>
 <p><a href="#Plugins">Plugins (class)</a></p>
@@ -114,6 +116,7 @@ code {
 <p><a href="#app_abort">app_abort (fn)</a></p>
 <p><a href="#app_alert">app_alert (alias)</a></p>
 <p><a href="#appendParam">appendParam (fn)</a></p>
+<p><a href="#applyTpl">applyTpl (fn)</a></p>
 <p><a href="#assert">assert (fn)</a></p>
 <p><a href="#basename">basename (fn)</a></p>
 <p><a href="#callSvr">callSvr (alias)</a></p>
@@ -122,8 +125,10 @@ code {
 <p><a href="#delCookie">delCookie (fn)</a></p>
 <p><a href="#delStorage">delStorage (fn)</a></p>
 <p><a href="#delayDo">delayDo (fn)</a></p>
+<p><a href="#deviceready">deviceready (key)</a></p>
 <p><a href="#enterWaiting">enterWaiting (alias)</a></p>
 <p><a href="#evalAttr">evalAttr (fn)</a></p>
+<p><a href="#example-list-choose">example-list-choose (key)</a></p>
 <p><a href="#example-upload">example-upload (key)</a></p>
 <p><a href="#filterCordovaModule">filterCordovaModule (fn)</a></p>
 <p><a href="#g_args">g_args (var)</a></p>
@@ -135,6 +140,7 @@ code {
 <p><a href="#g_cfg.manualSplash">g_cfg.manualSplash (key)</a></p>
 <p><a href="#g_cordova">g_cordova (var)</a></p>
 <p><a href="#g_data">g_data (var)</a></p>
+<p><a href="#g_data.initClient">g_data.initClient (key)</a></p>
 <p><a href="#g_data.serverRev">g_data.serverRev (key)</a></p>
 <p><a href="#g_data.testMode,g_data.mockMode">g_data.testMode,g_data.mockMode (key)</a></p>
 <p><a href="#g_data.userInfo">g_data.userInfo (key)</a></p>
@@ -369,12 +375,14 @@ g_args.dscr="上门洗车"; // 对字符串会自动进行URL解码。</code></p
         app_alert("您的版本太旧，XX功能无法使用，请升级到最新版本");
     }
 }</code></pre><hr>
-<h2 id="g_data">@var g_data = {userInfo?, serverRev?}</h2>
+<h2 id="g_data">@var g_data = {userInfo?, serverRev?, initClient?}</h2>
 <p>应用全局共享数据。</p>
 <p>在登录时，会自动设置userInfo属性为个人信息。所以可以通过 g_data.userInfo==null 来判断是否已登录。</p>
 <p>serverRev用于标识服务端版本，如果服务端版本升级，则应用可以实时刷新以更新到最新版本。</p>
 <p class="key"><strong>@key <a id="g_data.userInfo">g_data.userInfo</a></strong> </p>
 <p class="key"><strong>@key <a id="g_data.serverRev">g_data.serverRev</a></strong> </p>
+<p class="key"><strong>@key <a id="g_data.initClient">g_data.initClient</a></strong> </p>
+<p>应用初始化时，调用initClient接口得到的返回值，通常为{plugins, ...}</p>
 <p class="key"><strong>@key <a id="g_data.testMode,g_data.mockMode">g_data.testMode,g_data.mockMode</a></strong>  测试模式和模拟模式</p><hr>
 <h2 id="g_cfg">@var g_cfg</h2>
 <p>应用配置项。</p>
@@ -519,6 +527,12 @@ filterCordovaModule(module); // 过滤模块</code></pre>
 <p>filter格式: [ [app1, minVer?=1, maxVer?=9999], ...], 仅当app匹配且版本在minVer/maxVer之间才使用<br />
 如果未指定filter, 表示总是使用<br />
 app标识由应用定义，常用如: &quot;user&quot;-客户端;&quot;store&quot;-商户端</p><hr>
+<h2 id="applyTpl">@fn applyTpl(tpl, data)</h2>
+<p>对模板做字符串替换</p>
+<pre><code>var tpl = "&lt;li&gt;&lt;p&gt;{name}&lt;/p&gt;&lt;p&gt;{dscr}&lt;/p&gt;&lt;/li&gt;";
+var data = {name: 'richard', dscr: 'hello'};
+var html = applyTpl(tpl, data);
+// &lt;li&gt;&lt;p&gt;richard&lt;/p&gt;&lt;p&gt;hello&lt;/p&gt;&lt;/li&gt;</code></pre><hr>
 <h2 id="MUI">@module MUI</h2><div class="toc"><p style="margin-left:0em"><a href="#MUI-1 基于逻辑页面的单网页应用">1 基于逻辑页面的单网页应用</a></p>
 <p style="margin-left:2em"><a href="#MUI-1.1 应用容器">1.1 应用容器</a></p>
 <p style="margin-left:2em"><a href="#MUI-1.2 逻辑页面">1.2 逻辑页面</a></p>
@@ -679,6 +693,15 @@ background-color:black;<br />
         }
     }
 }</code></pre>
+<p class="key"><strong>@key <a id="deviceready">deviceready</a></strong>  APP初始化后回调事件</p>
+<p>APP初始化成功后，回调该事件。如果deviceready事件未被回调，则出现启动页无法消失、插件调用无效、退出程序时无提示等异常。<br />
+其可能的原因是：</p>
+<ul>
+<li>m/cordova/cordova.js文件版本不兼容，如创建插件cordova平台是5.0版本，而相应的cordova.js文件或接口文件版本不同。</li>
+<li>在编译原生程序时未设置 <allow-navigation href="*">，或者html中CSP设置不正确。</li>
+<li>主页中有跨域的script js文件无法下载。如 <script type="text/javascript" src="http://3.3.3.3/1.js"></script></li>
+<li>某插件的初始化过程失败（需要在原生环境下调试）</li>
+</ul>
 <h4 id="MUI-7 系统类标识">7 系统类标识</h4>
 <p>框架自动根据系统环境为应用容器(.mui-container类)增加以下常用类标识：</p>
 <p class="key"><strong>@key <a id=".mui-android">.mui-android</a></strong>  安卓系统</p>
@@ -877,6 +900,10 @@ app_alert("输入要查询的名字:", "p", function (text) {
 <p>当前batchCall对象，用于内部调试。</p><hr>
 <h2 id="app_abort">@fn app_abort()</h2>
 <p>中止之后的调用, 直接返回.</p><hr>
+<h2 id="MUI.syslog">@fn MUI.syslog(module, pri, content)</h2>
+<p>向后端发送日志。后台必须已添加syslog插件。<br />
+日志可在后台Syslog表中查看，客户端信息可查看ApiLog表。</p>
+<p>注意：如果操作失败，本函数不报错。</p><hr>
 <h2 id="MUI.setOnError">@fn MUI.setOnError()</h2>
 <p>一般框架自动设置onerror函数；如果onerror被其它库改写，应再次调用该函数。<br />
 allow throw(&quot;abort&quot;) as abort behavior.</p><hr>
@@ -1130,7 +1157,7 @@ function handleLogin(data)
 <h2 id="MUI.handleLogin">@fn MUI.handleLogin(data)</h2>
 <p class="param"><strong>@param data</strong>  调用API "login"成功后的返回数据.</p>
 <p>处理login相关的操作, 如设置g_data.userInfo, 保存自动登录的token等等.</p><hr>
-<h2 id="MUI.initClient">@fn MUI.initClient()</h2><hr>
+<h2 id="MUI.initClient">@fn MUI.initClient(param?)</h2><hr>
 <h2 id="Plugins">@class Plugins</h2><hr>
 <h2 id="Plugins.exists">@fn Plugins.exists(pluginName)</h2><hr>
 <h2 id="Plugins.list">@fn Plugins.list()</h2><hr>
@@ -1143,6 +1170,13 @@ function handleLogin(data)
 <li>homePage: 首页的地址, 默认为&quot;#home&quot;</li>
 <li>pageFolder: 页面文件(html及js)所在文件夹，默认为&quot;page&quot;</li>
 </ul><hr>
+<h2 id="MUI.formatField">@fn MUI.formatField(obj) -> obj</h2>
+<p>对obj中的以字符串表示的currency/date等类型进行转换。<br />
+判断类型的依据是属性名字，如以Tm结尾的属性（也允许带数字后缀）为日期属性，如&quot;tm&quot;, &quot;tm2&quot;, &quot;createTm&quot;都会被当作日期类型转换。</p>
+<p>注意：它将直接修改传入的obj，并最终返回该对象。</p>
+<pre><code>obj = {id: 1, amount: "15.0000", payAmount: "10.0000", createTm: "2016-01-11 11:00:00"}
+var order = MUI.formatField(obj); // obj会被修改，最终与order相同
+// order = {id: 1, amount: 15, payAmount: 10, createTm: (datetime类型)}</code></pre><hr>
 <h2 id="initPullList">@fn initPullList(container, opt)</h2>
 <p>为列表添加下拉刷新和上拉加载功能。</p>
 <p>例：页面元素如下：</p>
@@ -1214,6 +1248,7 @@ uptoThreshold:: Boolean. 是否达到阈值</code></pre><hr>
 <p style="margin-left:0em"><a href="#initPageList-4 框架基本原理">4 框架基本原理</a></p>
 <p style="margin-left:0em"><a href="#initPageList-5 参数说明">5 参数说明</a></p>
 <p style="margin-left:0em"><a href="#initPageList-6 css类">6 css类</a></p>
+<p style="margin-left:0em"><a href="#initPageList-7 列表页用于选择">7 列表页用于选择</a></p>
 </div>
 <p class="alias"><strong>@alias <a id="initNavbarAndList">initNavbarAndList</a></strong> </p>
 <p>列表页逻辑框架.</p>
@@ -1352,8 +1387,12 @@ callSvr(queryParam.ac, queryParam, function (data) {
 <pre><code>&lt;ul data-queryParam="{q: 'famous'}" data-ac="Person.query" data-res="*,familyName" data-cond="status='PA' and name like '王%'"&gt;
 &lt;/ul&gt;</code></pre>
 <p>此外，框架将自动管理 queryParam._pagekey/_pagesz 参数。</p>
-<p class="param"><strong>@param onAddItem</strong>  (jlst, itemData)</p>
-<p>框架调用callSvr之后，处理每条返回数据时，通过调用该函数将itemData转换为DOM item并添加到jlst中。</p>
+<p class="param"><strong>@param onAddItem</strong>  (jlst, itemData, param)</p>
+<p>param={idx, arr, isFirstPage}</p>
+<p>框架调用callSvr之后，处理每条返回数据时，通过调用该函数将itemData转换为DOM item并添加到jlst中。<br />
+判断首页首条记录，可以用</p>
+<pre><code>param.idx == 0 &amp;&amp; param.isFirstPage</code></pre>
+<p>这里无法判断是否最后一页（可在onLoad回调中判断），因为有可能最后一页为空，这时无法回调onAddItem.</p>
 <p class="param"><strong>@param onNoItem</strong>  (jlst)</p>
 <p>当没有任何数据时，可以插入提示信息。</p>
 <p class="param"><strong>@param pageItf</strong>  - page interface {refresh?/io}</p>
@@ -1368,7 +1407,57 @@ markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 
 <h4 id="initPageList-6 css类">6 css类</h4>
 <p>可以对以下两个CSS class指定样式：</p>
 <p class="key"><strong>@key <a id="mui-pullPrompt">mui-pullPrompt</a></strong>  CSS-class 下拉刷新提示块</p>
-<p class="key"><strong>@key <a id="mui-loadPrompt">mui-loadPrompt</a></strong>  CSS-class 自动加载提示块</p><hr>
+<p class="key"><strong>@key <a id="mui-loadPrompt">mui-loadPrompt</a></strong>  CSS-class 自动加载提示块</p>
+<h4 id="initPageList-7 列表页用于选择">7 列表页用于选择</h4>
+<p class="key"><strong>@key <a id="example-list-choose">example-list-choose</a></strong> </p>
+<p>常见需求：在一个页面上，希望进入另一个列表页，选择一项后返回。</p>
+<p>可定义页面接口如下（主要是choose方法和onChoose回调）：</p>
+<pre><code>var PageOrders = {
+    ...
+    // onChoose(order={id,dscr,...})
+    choose: function (onChoose) {
+        this.chooseOpt_ = {
+            onChoose: onChoose
+        }
+        MUI.showPage('orders');
+    },
+
+    chooseOpt_: null // {onChoose}
+};</code></pre>
+<p>在被调用页面上：</p>
+<ul>
+<li>点击一个列表项时，调用onChoose回调</li>
+<li>页面隐藏时，清空chooseOpt_参数。</li>
+</ul>
+<p>示例：</p>
+<pre><code>function initPageOrders()
+{
+    jpage.on("pagehide", onPageHide);
+
+    function li_click(ev)
+    {
+        var order = $(this).data('obj');
+        if (PageOrders.chooseOpt_) {
+            PageOrders.chooseOpt_.onChoose(order);
+            return false;
+        }
+
+        // 正常点击操作 ...
+    }
+
+    function onPageHide()
+    {
+        PageOrders.chooseOpt_ = null;
+    }
+}</code></pre>
+<p>在调用时：</p>
+<pre><code>PageOrders.choose(onChoose);
+
+function onChoose(order)
+{
+    // 处理order
+    history.back(); // 由于进入列表选择时会离开当前页面，这时应返回
+}</code></pre><hr>
 <h2 id="showByFormMode">@fn showByFormMode(jo, formMode)</h2>
 <p>根据当前formMode自动显示或隐藏jo下的DOM对象.</p>
 <p>示例: 对以下DOM对象</p>
@@ -1455,5 +1544,5 @@ PagePerson.showForSet({id: 3}); // 以id=3查询人物并显示，可更新。</
     ...
 &lt;/form&gt;</code></pre>
 <p>如果formData中有多个属性，则自动以formData的内容作为数据源显示页面，不再发起查询。</p><hr>
-<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-09-21T17:33:33+08:00</div>
+<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-12-01T17:32:13+08:00</div>
 </html>
