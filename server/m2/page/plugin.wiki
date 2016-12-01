@@ -1,0 +1,2 @@
+@Item: id, name, price, picId, dscr, labels, storeId, type
+
