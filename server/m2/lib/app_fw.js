@@ -553,6 +553,24 @@ function filterCordovaModule(module)
 		module.exports.metadata = plugins.metadata;
 }
 
+/**
+@fn applyTpl(tpl, data)
+
+对模板做字符串替换
+
+	var tpl = "<li><p>{name}</p><p>{dscr}</p></li>";
+	var data = {name: 'richard', dscr: 'hello'};
+	var html = applyTpl(tpl, data);
+	// <li><p>richard</p><p>hello</p></li>
+
+*/
+function applyTpl(tpl, data)
+{
+	return tpl.replace(/{(\w+)}/g, function(m0, m1) {
+		return data[m1];
+	});
+}
+
 // }}}
 
 // ====== app fw {{{
@@ -3071,11 +3089,11 @@ function handleLogin(data)
 
 // ------ plugins {{{
 /**
-@fn MUI.initClient(param)
+@fn MUI.initClient(param?)
 */
 self.initClient = initClient;
 var plugins_ = {};
-function initClient(param = null)
+function initClient(param)
 {
 	callSvrSync('initClient', param, function (data) {
 		g_data.initClient = data;
