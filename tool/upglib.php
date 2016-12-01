@@ -3,7 +3,9 @@
 require_once(dirname(__FILE__) . "/../server/app.php");
 
 ###### config {{{
-$METAFILE = getenv("P_METAFILE") ?: dirname(__FILE__) . '/../DESIGN.wiki';
+global $METAFILE, $LOGF, $CHAR_SZ, $SQLDIFF;
+
+$METAFILE = getenv("P_METAFILE") ?: __DIR__ . '/../DESIGN.wiki';
 $LOGF = "upgrade.log";
 
 $CHAR_SZ = [
@@ -42,6 +44,7 @@ function genColSql($fieldDef)
 {
 	global $CHAR_SZ, $SQLDIFF;
 	$f = $fieldDef;
+	$f1 = ucfirst(preg_replace('/(\d|\W)*$/', '', $f));
 	$def = '';
 	if ($f == 'id') {
 		$def = "INTEGER PRIMARY KEY " . $SQLDIFF['AUTO_INCREMENT'];
@@ -62,27 +65,25 @@ function genColSql($fieldDef)
 			die("unknown type of string fields");
 		}
 	}
-	elseif (preg_match('/@$/', $f, $ms)) {
+	elseif (preg_match('/(@|&|#)$/', $f, $ms)) {
 		$f = substr_replace($f, "", -1);
+		if ($ms[1] == '@')
+			$def = $SQLDIFF["MONEY"];
+		else if ($ms[1] == '&')
+			$def = "INTEGER";
+		else if ($ms[1] == '#')
+			$def = "REAL";
+	}
+	elseif (preg_match('/(Price|Qty|Total|Amount)$/', $f1)) {
 		$def = $SQLDIFF["MONEY"];
 	}
-	elseif (preg_match('/(Price|Qty|Total|Amount)$/', $f, $ms) || ($f == "price" || $f == "qty" || $f == "total" || $f == "amount")) {
-		$def = $SQLDIFF["MONEY"];
-	}
-	elseif (preg_match('/(&|Id)$/', $f, $ms)) {
-		if ($ms[1] == '&') {
-			$f = substr_replace($f, "", -1);
-		}
+	elseif (preg_match('/Id$/', $f1)) {
 		$def = "INTEGER";
 	}
-	elseif (preg_match('/#$/', $f)) {
-		$f = substr_replace($f, "", -1);
-		$def = "REAL";
-	}
-	elseif (preg_match('/Tm$/', $f) || $f == "tm") {
+	elseif (preg_match('/Tm$/', $f1)) {
 		$def = "DATETIME";
 	}
-	elseif (preg_match('/Flag$/', $f)) {
+	elseif (preg_match('/Flag$/', $f1)) {
 		$def = "TINYINT UNSIGNED NOT NULL DEFAULT 0";
 	}
 	elseif (preg_match('/^\w+$/', $f)) { # default
@@ -132,6 +133,8 @@ function sval($v)
 		return "null";
 	else if (is_bool($v))
 		return $v? "true": "false";
+	else if (is_string($v))
+		return '"'.$v.'"';
 	return $v;
 }
 
@@ -225,24 +228,44 @@ class UpgHelper
 	private function _initMeta()
 	{
 		global $METAFILE;
-		$file = $METAFILE;
-		//$file = iconv("utf-8", "gbk", $METAFILE); // for OS windows
-		$fd = fopen($file, "r");
-		if ($fd === false)
-			throw new Exception("*** cannot read meta file $METAFILE");
+		$baseDir = dirname($METAFILE);
+		$files = [$METAFILE];
+		while ($file = array_pop($files)) {
 
-		while (($s = fgets($fd)) !== false) {
-			if (preg_match('/^@(\w+):\s+(\w.*?)\s*$/', $s, $ms)) {
-				$this->tableMeta[] = ["name"=>$ms[1], "fields"=>preg_split('/\s*,\s*/', $ms[2])];
-	# 			print "-- $_";
-	# 			print genSql($tbl, $fields) . "\n";
+			//$file = iconv("utf-8", "gbk", $METAFILE); // for OS windows
+			$fd = fopen($file, "r");
+			if ($fd === false)
+				throw new Exception("*** cannot read meta file $file");
+
+			while (($s = fgets($fd)) !== false) {
+				if (preg_match('/^@(\w+):\s+(\w.*?)\s*$/', $s, $ms)) {
+					$this->tableMeta[] = ["name"=>$ms[1], "fields"=>preg_split('/\s*,\s*/', $ms[2])];
+		# 			print "-- $_";
+		# 			print genSql($tbl, $fields) . "\n";
+				}
+				elseif (preg_match('/^@include\s+(\S+)/', $s, $ms)) {
+					$f = $baseDir . '/' . $ms[1];
+					if (strpos($f, "*") === false) {
+						if (! file_exists($f))
+							throw new Exception("*** cannot read included file $f");
+						if (array_search($f, $files) === false)
+							$files[] = $f;
+					}
+					else {
+						foreach (glob($f) as $e) {
+							if (array_search($e, $files) === false)
+								$files[] = $e;
+						}
+					}
+				}
+				elseif (preg_match('/^@ver=(\d+)/', $s, $ms))
+				{
+					$this->ver = $ms[1];
+				}
 			}
-			elseif (preg_match('/^\@ver=(\d+)/', $s, $ms))
-			{
-				$this->ver = $ms[1];
-			}
+			fclose($fd);
+
 		}
-		fclose($fd);
 	}
 
 	private function _init()
@@ -295,17 +318,16 @@ class UpgHelper
 	}
 
 	/** @api */
-	function showTable($tbl)
+	function showTable($tbl = "*")
 	{
 		$found = false;
 		foreach ($this->tableMeta as $meta) {
-			if (strcasecmp($meta["name"], $tbl) != 0)
+			if (! fnmatch($tbl, $meta["name"], FNM_CASEFOLD))
 				continue;
 			echo("-- {$meta['name']}: " . join(',', $meta['fields']) . "\n");
 			$sql = genSql($meta);
 			echo("$sql\n");
 			$found = true;
-			break;
 		}
 		if (!$found) {
 			logstr("!!! cannot find table $tbl\n");
@@ -397,14 +419,6 @@ class UpgHelper
 	function quit()
 	{
 		exit;
-	}
-
-	/** @api */
-	function clearTimerDBCache()
-	{
-		$this->execSql("DELETE FROM CarBrand2");
-		$this->execSql("DELETE FROM CarSeries2");
-		$this->execSql("DELETE FROM CarModel2");
 	}
 
 	# check main or sub table, return the function to add data.

@@ -1,3 +1,9 @@
+## v3.1 - 2016/11
+
+- 后端：支持插件API，增加syslog插件
+- 前端：增加 MUI.formatField 等方法, initPageList增强
+- 工具：upgrade.php增强，支持文档包含，showtable支持模糊查询等。
+
 ## v3.0 - 2016/10
 
 - 插件机制

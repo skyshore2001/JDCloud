@@ -79,6 +79,93 @@ api.php可以单独执行，也可直接被调用，如
 
 @see addLog 
 @see logit
+
+## 插件机制
+
+@key plugin/index.php 插件配置
+
+plugin/{pluginName}为插件目录。
+
+plugin/index.php是插件配置文件，在后端应用框架函数apiMain中引入，内容示例如下：
+
+	<?php
+
+	Plugins::add([ "plugin1", "plugin2" ]);
+
+表示当前应用使用两个插件"plugin1"和"plugin2", 分别对应目录 plugin/plugin1和plugin/plugin2.
+
+@see Plugins::add
+
+@key plugin.php 插件定义
+
+插件实现在文件plugin/{pluginName}/plugin.php中，包括交互接口，以及插件API（后端调用接口），以优惠券插件"coupon"为例:
+
+	<?php
+
+	// 可选：定义插件API, 必须继承 PluginBase类
+	class PluginCoupon extends PluginBase
+	{
+		// 声明插件API支持的事件, 如init, genCoupons事件：
+		// @event PluginCoupon.event.init()
+		// @event PluginCoupon.event.genCoupons($src)
+
+		// 插件API函数
+		// @fn PluginCoupon.func1($arg1)
+		function func1($arg1)
+		{
+		}
+	}
+
+	// 实现函数型交互接口takeCoupon
+	function api_takeCoupon() {}
+
+	// 实现对象型交互接口 Coupon.query/get/set/del/add
+	class AC1_Coupon extends AccessControl {}
+
+	// 可选：返回插件配置
+	return [
+		"js" => "m2/plugin.js", // 如果前端需要包含文件
+		"class" => "PluginCoupon" // 如果提供插件内部接口
+	];
+
+注意：
+
+- 插件类必须继承PluginBase(包括单例、事件机制等方法)，它提供插件API，包括插件类提供的所有公共方法、属性和事件声明。
+应通过格式化注释(@fn, @event等)标识这些API。
+
+在插件内部获取插件实例可以用：
+
+		$plugin = PluginCoupon::getInstance();
+
+如果在插件外部则需要用：
+
+		$pluginCoupon = Plugins::getInstance('coupon');
+
+调用插件API函数：
+
+		$pluginCoupon->func1($arg1);
+
+监听或触发插件事件：
+
+		$pluginCoupon->on('init', 'onInit');
+		$pluginCoupon->trigger('genCoupons', [$src]);
+
+事件命名规范与函数名相同，而事件处理函数的命名一般用"on{事件名}".
+
+@see PluginBase
+
+- 插件可以在构造函数__construct中初始化自身，例：
+
+		// 可选的初始化过程, 注意使用private，保持单例特性（Singleton）
+		private function __construct()
+		{
+			$this->trigger('init');
+		}
+
+在应用初始化时（apiMain中），会创建所有插件类的实例（如果有的话）。
+
+- 交互接口应在插件设计文档(plugin/coupon/DESIGN.wiki)中定义原型。
+
 */
 
 // ====== config {{{
@@ -185,6 +272,67 @@ function setServerRev()
 // }}}
 
 // ====== classes {{{
+/**
+@class ConfBase
+
+在conf.php中定义Conf类并继承ConfBase, 实现代码配置：
+
+	class Conf extends ConfBase
+	{
+	}
+ */
+class ConfBase
+{
+/**
+@var ConfBase::$enableApiLog?=true
+
+设置为false可关闭ApiLog. 例：
+
+	static $enableApiLog = false;
+ */
+	static $enableApiLog = true;
+
+/**
+@fn ConfBase::onApiInit()
+
+所有API执行时都会先走这里。
+
+例：对所有API调用检查ios版本：
+
+	static function onApiInit()
+	{
+		$iosVer = getIosVersion();
+		if ($iosVer !== false && $iosVer<=15) {
+			throw new MyException(E_FORBIDDEN, "unsupport ios client version", "您使用的版本太低，请升级后使用!");
+		}
+	}
+ */
+	static function onApiInit()
+	{
+	}
+
+/**
+@fn ConfBase::onInitClient(&$ret)
+
+客户端初始化应用时会调用initClient接口，返回plugins等信息。若要加上其它信息，可在这里扩展。
+
+例：假如定义应用初始化接口为(plugins是框架默认返回的)：
+
+	initClient(app) -> {plugins, appName}
+
+实现：
+
+	static function onInitClient(&$ret)
+	{
+		$app = mparam('app');
+		$ret['appName'] = 'my-app';
+	}
+ */
+	static function onInitClient(&$ret)
+	{
+	}
+}
+
 class ApiLog
 {
 	private $startTm;
@@ -349,6 +497,176 @@ class ApiWatch
 	function postExecute()
 	{
 		$_SESSION["lastAccess"] = microtime(true);
+	}
+}
+
+/**
+@class PluginBase
+
+插件内部接口应继承该类, 它具有以下方法：
+
+	static function getInstance();
+	funcion on($eventName, $eventHandler);
+	funcion trigger($eventName, array $args = []);
+
+@see JDSingleton,JDEvent
+@see plugin/index.php 插件配置
+@see plugin.php 插件定义
+ */
+class PluginBase
+{
+	use JDSingleton;
+	use JDEvent;
+
+/**
+@var PluginBase.$colMap
+
+%colMap = {tbl => [tblAlias, %cols]}
+cols = {col => colAlias}
+
+先在插件接口文档DESIGN.wiki中声明本插件的数据库依赖：
+
+	@see @Store: id, name, dscr
+	@see @Ordr: id
+
+在PluginCore::__construct中实现接口依赖，指定表名或列名对应（如果名称相同不必声明）
+
+	function __construct() {
+		$plugin1 = Plugins::getInstance('coupon');
+		$plugin1->colMap = [
+			"Store" => ["MyStore", [
+				"dscr" => "description"
+			]],
+			"Ordr" => ["MyOrder"]
+		];
+	}
+
+在plugin实现时，使用mapCol/mapSql来使表名、列名可配置：
+
+	$plugin = PluginCoupon::getInstance();
+	$tbl = $plugin->mapCol("Store"); // $tbl="MyStore"
+	$tbl = $plugin->mapCol("User"); // $tbl="User" 未定义时，直接取原值
+	$col = $plugin->mapCol("Store.dscr"); // $col="description"
+	$col = $plugin->mapCol("Store.name"); // $col="name" 未定义时，直接取原值
+
+	$sql = $plugin->mapSql("SELECT s.id, s.{Store.name}, s.{Store.dscr} FROM {Store} s INNER JOIN {Ordr} o ON o.id=s.{Store.storeId}");
+	// $sql = "SELECT s.id, s.name, s.description FROM MyStore s INNER JOIN MyOrder o ON o.id=s.storeId"
+
+@key PluginBase.mapCol($tbl, $col=null)
+@key PluginBase.mapSql($sql)
+ */
+	public $colMap;
+
+	function mapCol($tbl, $col=null)
+	{
+		if (isset($col))
+			$ret = @$this->colMap[$tbl][1][$col] ?: $col;
+		else
+			$ret = @$this->colMap[$tbl][0] ?: $tbl;
+		return $ret;
+	}
+
+	function mapSql($s)
+	{
+		$sql = preg_replace_callback('/\{(\w+)\.?(\w+)?\}/', function($ms) {
+			return $this->mapCol($ms[1], @$ms[2]);
+		}, $s);
+		return $sql;
+	}
+}
+
+/**
+@class Plugins
+
+@see plugin/index.php 
+ */
+class Plugins
+{
+/**
+@var Plugins::$map
+*/
+	public static $map = [
+		'core' => ['class' => 'PluginCore']
+	];
+
+/**
+@fn Plugins::add($plugins)
+
+@param $plugins ={ pluginName => {js, php, getInterface} }
+
+*/
+	public static function add(array $ps) {
+		global $BASE_DIR;
+		foreach ($ps as $pname) {
+			$pdir = $BASE_DIR . '/plugin/' . $pname;
+			if (! is_dir($pdir))
+				throw new MyException(E_SERVER, "cannot find plugin: $pname");
+
+			// load plugin
+			$f = "$pdir/plugin.php";
+			if (is_file($f)) {
+				$p = require_once($f);
+				if ($p === true)
+					continue;
+				if ($p === 1)
+					$p = [];
+			}
+			else {
+				$p = [];
+			}
+			self::$map[$pname] = $p;
+		}
+	}
+
+/**
+@fn Plugins::exists($pluginName)
+*/
+	public static function exists($pname) {
+		return array_key_exists($pname, self::$map);
+	}
+
+/**
+@fn Plugins::getInstance($pluginName, $allowNull = false)
+
+获取插件类的实例，用于调用插件API。
+
+假设有插件coupon, 一般可定义插件接口类 PluginCoupon如:
+
+	class PluginCoupon extends PluginBase
+	{
+	}
+
+在插件内部，应直接调用 PluginCoupon::getInstance() 来获得插件实例。
+在插件外部才调用本函数。
+
+注意：应通过在plugin.php最后返回的插件配置中指定插件类：
+
+	[ 'class' => 'PluginCoupon' ]
+
+主应用作为特殊模块，名称为'core', 对应类为 PluginCore.
+*/
+	public static function getInstance($pname, $allowNull = false) {
+		static $list;
+		if (!isset($list[$pname]))
+		{
+			if (! self::exists($pname))
+				throw new MyException(E_SERVER, "cannot find plugin: $pname");
+			$clsName = @self::$map[$pname]['class'];
+			if (! isset($clsName)) {
+				if ($allowNull)
+					return null;
+				throw new MyException(E_SERVER, "plugin $pname has no instance");
+			}
+			$creator = "{$clsName}::getInstance";
+			if (! is_callable($creator))
+				throw new MyException(E_SERVER, "'$clsName' for plugin $pname MUST extend PluginBase");
+
+			$inst = call_user_func($creator);
+			if (! $inst instanceof PluginBase)
+				throw new MyException(E_SERVER, "'$clsName' for plugin $pname MUST extend PluginBase");
+			$list[$pname] = $inst;
+		}
+		return $list[$pname];
 	}
 }
 //}}}
@@ -901,12 +1219,28 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 	return $ret;
 }
 
+function filter_hash($arr, $keys)
+{
+	$ret = [];
+	foreach ($arr as $k=>$v) {
+		if (in_array($k, $keys)) {
+			$ret[$k] = $v;
+		}
+	}
+	return $ret;
+}
+
 function api_initClient()
 {
 	$ret = [];
 	if (! empty(Plugins::$map)) {
-		$ret['plugins'] = Plugins::$map;
+		$ret['plugins'] = [];
+		$keys = ["js"];
+		foreach (Plugins::$map as $p=>$cfg) {
+			$ret['plugins'][$p] = filter_hash($cfg, $keys);
+		}
 	}
+	Conf::onInitClient($ret);
 	return $ret;
 }
 //}}}
@@ -1918,6 +2252,18 @@ function apiMain()
 {
 	$script = basename($_SERVER["SCRIPT_NAME"]);
 	ApiFw_::$SOLO = ($script == API_ENTRY_PAGE || $script == 'index.php');
+
+	global $BASE_DIR;
+	require_once("{$BASE_DIR}/conf.php");
+
+	// optional plugins
+	if (file_exists('plugin/index.php'))
+		include_once('plugin/index.php');
+	foreach (array_keys(Plugins::$map) as $plugin) {
+		// init plugins
+		Plugins::getInstance($plugin, true);
+	}
+
 	if (ApiFw_::$SOLO) {
 		$api = new ApiApp();
 		$api->exec();
@@ -2029,16 +2375,18 @@ class ApiApp extends AppBase
 		}
 		setServerRev();
 
-		// 支持PATH_INFO模式。
-		@$path = $this->getPathInfo();
-		if ($path != null)
+		$ac = param('_ac', null, $_GET);
+		if (! isset($ac))
 		{
-			$ac = $this->parseRestfulUrl($path);
+			// 支持PATH_INFO模式。
+			@$path = $this->getPathInfo();
+			if ($path != null)
+			{
+				$ac = $this->parseRestfulUrl($path);
+			}
 		}
 		if (! isset($ac)) {
-			list($ac, $ac1) = mparam(['ac', '_ac'], $_GET);
-			if (is_null($ac))
-				$ac = $ac1;
+			$ac = mparam('ac', $_GET);
 		}
 
 		Conf::onApiInit();
@@ -2049,8 +2397,11 @@ class ApiApp extends AppBase
 		if (! isCLI())
 			session_start();
 
-		$this->apiLog = new ApiLog($ac);
-		$this->apiLog->logBefore();
+		if (Conf::$enableApiLog)
+		{
+			$this->apiLog = new ApiLog($ac);
+			$this->apiLog->logBefore();
+		}
 
 		// API调用监控
 		$this->apiWatch = new ApiWatch($ac);

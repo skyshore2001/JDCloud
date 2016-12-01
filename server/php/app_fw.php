@@ -159,8 +159,6 @@ global $g_dbgInfo;
 $g_dbgInfo = [];
 //}}}
 
-require_once("{$BASE_DIR}/conf.php");
-
 // load user config
 @include_once("{$BASE_DIR}/php/conf.user.php");
 
@@ -1341,45 +1339,101 @@ class AppBase
 	}
 }
 
-class Plugins
+/**
+@class JDSingleton (trait)
+
+用于单件类，提供getInstance方法，例：
+
+	class PluginCore
+	{
+		use JDSingleton;
+	}
+
+则可以调用
+
+	$pluginCore = PluginCore::getInstance();
+
+ */
+trait JDSingleton
 {
-/**
-@var Plugins::$map
-*/
-	public static $map = [];
-
-/**
-@fn Plugins::add($plugins)
-
-@param $plugins ={ pluginName => {js, php} }
-
-*/
-	public static function add($ps) {
-		global $BASE_DIR;
-		foreach ($ps as $pname) {
-			$pdir = $BASE_DIR . '/plugin/' . $pname;
-			if (! is_dir($pdir))
-				throw new MyException(E_SERVER, "cannot find plugin: $pname");
-
-			// load plugin
-			$f = "$pdir/plugin.php";
-			if (is_file($f)) {
-				$p = require_once($f);
-				if ($p === 1)
-					$p = [];
-			}
-			else {
-				$p = [];
-			}
-			self::$map[$pname] = $p;
+	private function __construct () {}
+	static function getInstance()
+	{
+		static $inst;
+		if (! isset($inst)) {
+			$inst = new static();
 		}
+		return $inst;
+	}
+}
+
+/**
+@class JDEvent (trait)
+
+提供事件监听(on)与触发(trigger)方法，例：
+
+	class PluginCore
+	{
+		use JDEvent;
+
+		// 提供事件"event1", 注释如下：
+		/// @event PluginCore.event.event1($arg1, $arg2)
+	}
+
+则可以调用
+
+	$pluginCore->on('event1', 'onEvent1');
+	$pluginCore->trigger('event1', [$arg1, $arg2]);
+
+	function onEvent1($arg1, $arg2)
+	{
+	}
+
+ */
+trait JDEvent
+{
+	protected $fns = [];
+
+/** 
+@fn JDEvent.on($ev, $fn) 
+*/
+	function on($ev, callable $fn)
+	{
+		if (array_key_exists($ev, $this->fns))
+			$this->fns[$ev][] = $fn;
+		else
+			$this->fns[$ev] = [$fn];
 	}
 
 /**
-@fn Plugins::exists($pluginName)
+@fn JDEvent.trigger($ev, $args)
+
+返回最后次调用的返回值，false表示中止之后事件调用 
+
+如果想在事件处理函数中返回复杂值，可使用$args传递，如下面返回一个数组：
+
+	$obj->on('getResult', 'onGetResult');
+	$out = new stdclass();
+	$out->result = [];
+	$obj->trigger('getArray', [$out]);
+
+	function onGetResult($out)
+	{
+		$out->result[] = 100;
+	}
+
 */
-	public static function exists($pname) {
-		return array_key_exists($pname, self::$map);
+	function trigger($ev, array $args=[])
+	{
+		if (! array_key_exists($ev, $this->fns))
+			return;
+		$fns = $this->fns[$ev];
+		foreach ($fns as $fn) {
+			$rv = call_user_func_array($fn, $args);
+			if ($rv === false)
+				break;
+		}
+		return $rv;
 	}
 }
 // }}}
@@ -1470,6 +1524,135 @@ class AppFw_
 		self::setupSession();
 	}
 }
+//}}}
+
+// ====== ext {{{
+/**
+@module ext 集成外部系统
+
+调用外部系统（如短信集成、微信集成等）将引入依赖，给开发和测试带来复杂性。
+筋斗云框架通过使用“模拟模式”(MOCK_MODE)，模拟这些外部功能，从而简化开发和测试。
+
+对于一个简单的外部依赖，可以用函数isMockMode来分支。例如添加对象存储服务(OSS)支持，接口定义为：
+
+	getOssParam() -> {url, expire, dir, param={policy, OSSAccessKeyId, signature} }
+	模拟模式返回：
+	getOssParam() -> {url="mock"}
+
+在实现时，先在ext.php中定义外部依赖类型，如Ext_Oss，然后实现函数：
+
+	function api_getOssParam()
+	{
+		if (isMockMode(Ext_Oss)) {
+			return ["url"=>"mock"];
+		}
+		// 实际实现代码 ...
+	}
+
+添加一个复杂的（如支持多个函数调用的）支持模拟的外部依赖，也则可以定义接口，步骤如下，以添加短信支持(SmsSupport)为例：
+
+- 定义一个新的类型，如Ext_SmsSupport.
+- 定义接口，如 ISmsSupport.
+- 在ExtMock类中模拟实现接口ISmsSupport中所有函数, 一般是调用logext()写日志到ext.log, 可以在tool/log.php中查看最近的ext日志。
+- 定义一个类SmsSupport实现接口ISmsSupport，一般放在其它文件中实现(如sms.php)。
+- 在onCreateExt中处理新类型Ext_SmsSupport, 创建实际接口对象。
+
+使用举例：
+
+	$sms = getExt(Ext_SmsSupport);
+	$sms->sendSms(...);
+
+当在运行目录中放置了文件CFG_MOCK_MODE后，则不必依赖外部系统，也可模拟执行这些操作。
+
+@see getExt
+@see CFG_MOCK_MODE,CFG_MOCK_T_MODE,MOCK_MODE
+*/
+
+/**
+@fn isMockMode($extType)
+
+判断是否模拟某外部扩展模块。如果$extType为null，则只要处于MOCK_MODE就返回true.
+ */
+function isMockMode($extType)
+{
+	// TODO: check extType
+	return $GLOBALS["MOCK_MODE"];
+}
+
+class ExtFactory
+{
+	private $objs = []; // {$extType => $ext}
+
+/**
+@fn ExtFactory::instance()
+
+@see getExt
+ */
+	static public function instance()
+	{
+		static $inst;
+		if (!isset($inst))
+			$inst = new ExtFactory();
+		return $inst;
+	}
+
+/**
+@fn ExtFactory::getObj($extType, $allowMock?=true)
+
+获取外部依赖对象。一般用getExt替代更简单。
+
+示例：
+
+	$sms = ExtFactory::instance()->getObj(Ext_SmsSupport);
+
+@see getExt
+ */
+	public function getObj($extType, $allowMock=true)
+	{
+		if ($allowMock && isMockMode($extType)) {
+			return $this->getObj(Ext_Mock, false);
+		}
+
+		@$ext = $this->objs[$extType];
+		if (! isset($ext))
+		{
+			if ($extType == Ext_Mock)
+				$ext = new ExtMock();
+			else
+				$ext = onCreateExt($extType);
+			$this->objs[$extType] = $ext;
+		}
+		return $ext;
+	}
+}
+
+/**
+@fn getExt($extType, $allowMock = true)
+
+用于取外部接口对象，如：
+
+	$sms = getExt(Ext_SmsSupport);
+
+*/
+function getExt($extType, $allowMock = true)
+{
+	return ExtFactory::instance()->getObj($extType, $allowMock);
+}
+
+/**
+@fn logext($s, $addHeader?=true)
+
+写日志到ext.log中，可在线打开tool/init.php查看。
+(logit默认写日志到trace.log中)
+
+@see logit
+
+ */
+function logext($s, $addHeader=true)
+{
+	logit($s, $addHeader, "ext");
+}
+
 //}}}
 
 // ====== main {{{

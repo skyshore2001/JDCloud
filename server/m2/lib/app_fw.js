@@ -42,7 +42,7 @@ var g_args = {}; // {_test, _debug, cordova}
 var g_cordova = 0; // the version for the android/ios native cient. 0 means web app.
 
 /**
-@var g_data = {userInfo?, serverRev?}
+@var g_data = {userInfo?, serverRev?, initClient?}
 
 应用全局共享数据。
 
@@ -52,10 +52,13 @@ serverRev用于标识服务端版本，如果服务端版本升级，则应用�
 
 @key g_data.userInfo
 @key g_data.serverRev
+@key g_data.initClient
+应用初始化时，调用initClient接口得到的返回值，通常为{plugins, ...}
+
 @key g_data.testMode,g_data.mockMode 测试模式和模拟模式
 
 */
-var g_data = {}; // {userInfo, serverRev?, testMode?, mockMode?}
+var g_data = {}; // {userInfo, serverRev?, initClient?, testMode?, mockMode?}
 
 /**
 @var g_cfg
@@ -550,6 +553,24 @@ function filterCordovaModule(module)
 		module.exports.metadata = plugins.metadata;
 }
 
+/**
+@fn applyTpl(tpl, data)
+
+对模板做字符串替换
+
+	var tpl = "<li><p>{name}</p><p>{dscr}</p></li>";
+	var data = {name: 'richard', dscr: 'hello'};
+	var html = applyTpl(tpl, data);
+	// <li><p>richard</p><p>hello</p></li>
+
+*/
+function applyTpl(tpl, data)
+{
+	return tpl.replace(/{(\w+)}/g, function(m0, m1) {
+		return data[m1];
+	});
+}
+
 // }}}
 
 // ====== app fw {{{
@@ -757,6 +778,16 @@ var E_ABORT=-100;
 			}
 		}
 	}
+
+@key deviceready APP初始化后回调事件
+
+APP初始化成功后，回调该事件。如果deviceready事件未被回调，则出现启动页无法消失、插件调用无效、退出程序时无提示等异常。
+其可能的原因是：
+
+- m/cordova/cordova.js文件版本不兼容，如创建插件cordova平台是5.0版本，而相应的cordova.js文件或接口文件版本不同。
+- 在编译原生程序时未设置 <allow-navigation href="*">，或者html中CSP设置不正确。
+- 主页中有跨域的script js文件无法下载。如 <script type="text/javascript" src="http://3.3.3.3/1.js"></script>
+- 某插件的初始化过程失败（需要在原生环境下调试）
 
 ## 系统类标识
 
@@ -1867,6 +1898,28 @@ ctx: {ac, tm, tv, ret}
 	}
 
 /**
+@fn MUI.syslog(module, pri, content)
+
+向后端发送日志。后台必须已添加syslog插件。
+日志可在后台Syslog表中查看，客户端信息可查看ApiLog表。
+
+注意：如果操作失败，本函数不报错。
+ */
+	self.syslog = syslog;
+	function syslog(module, pri, content)
+	{
+		if (! Plugins.exists("syslog"))
+			return;
+
+		try {
+			var postParam = {module: module, pri: pri, content: content};
+			callSvr("Syslog.add", $.noop, postParam, {noex:1, noLoadingImg:1});
+		} catch (e) {
+			console.log(e);
+		}
+	}
+
+/**
 @fn MUI.setOnError()
 
 一般框架自动设置onerror函数；如果onerror被其它库改写，应再次调用该函数。
@@ -1876,12 +1929,16 @@ allow throw("abort") as abort behavior.
 	function setOnError()
 	{
 		var fn = window.onerror;
-		window.onerror = function (msg) {
+		window.onerror = function (msg, script, line, col, errObj) {
 			if (fn && fn.apply(this, arguments) === true)
 				return true;
 			if (/abort$/.test(msg))
 				return true;
 			debugger;
+			var content = msg + " (" + script + ":" + line + ":" + col + ")";
+			if (errObj && errObj.stack)
+				content += "\n" + errObj.stack.toString();
+			syslog("fw", "ERR", content);
 		}
 	}
 	setOnError();
@@ -3032,13 +3089,14 @@ function handleLogin(data)
 
 // ------ plugins {{{
 /**
-@fn MUI.initClient()
+@fn MUI.initClient(param?)
 */
 self.initClient = initClient;
 var plugins_ = {};
-function initClient()
+function initClient(param)
 {
-	callSvrSync('initClient', function (data) {
+	callSvrSync('initClient', param, function (data) {
+		g_data.initClient = data;
 		plugins_ = data.plugins || {};
 		$.each(plugins_, function (k, e) {
 			if (e.js) {
@@ -3145,6 +3203,34 @@ function setApp(app)
 
 	if (app.allowedEntries)
 		validateEntry(app.allowedEntries);
+}
+
+/**
+@fn MUI.formatField(obj) -> obj
+
+对obj中的以字符串表示的currency/date等类型进行转换。
+判断类型的依据是属性名字，如以Tm结尾的属性（也允许带数字后缀）为日期属性，如"tm", "tm2", "createTm"都会被当作日期类型转换。
+
+注意：它将直接修改传入的obj，并最终返回该对象。
+
+	obj = {id: 1, amount: "15.0000", payAmount: "10.0000", createTm: "2016-01-11 11:00:00"}
+	var order = MUI.formatField(obj); // obj会被修改，最终与order相同
+	// order = {id: 1, amount: 15, payAmount: 10, createTm: (datetime类型)}
+*/
+var RE_CurrencyField = /(?:^(?:amount|price|total|qty)|(?:Amount|Price|Total|Qty))\d*$/;
+var RE_DateField = /(?:^(?:dt|tm)|(?:Dt|Tm))\d*$/;
+self.formatField = formatField;
+function formatField(obj)
+{
+	for (var k in obj) {
+		if (obj[k] == null || typeof obj[k] !== 'string')
+			continue;
+		if (RE_DateField.test(k))
+			obj[k] = parseDate(obj[k]);
+		else if (RE_CurrencyField.test(k))
+			obj[k] = parseFloat(obj[k]);
+	}
+	return obj;
 }
 
 }
@@ -3703,9 +3789,16 @@ queryParam: {ac?, res?, cond?, ...}
 
 此外，框架将自动管理 queryParam._pagekey/_pagesz 参数。
 
-@param onAddItem (jlst, itemData)
+@param onAddItem (jlst, itemData, param)
+
+param={idx, arr, isFirstPage}
 
 框架调用callSvr之后，处理每条返回数据时，通过调用该函数将itemData转换为DOM item并添加到jlst中。
+判断首页首条记录，可以用
+
+	param.idx == 0 && param.isFirstPage
+
+这里无法判断是否最后一页（可在onLoad回调中判断），因为有可能最后一页为空，这时无法回调onAddItem.
 
 @param onNoItem (jlst)
 
@@ -3732,6 +3825,65 @@ markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 
 
 @key mui-pullPrompt CSS-class 下拉刷新提示块
 @key mui-loadPrompt CSS-class 自动加载提示块
+
+## 列表页用于选择
+
+@key example-list-choose
+
+常见需求：在一个页面上，希望进入另一个列表页，选择一项后返回。
+
+可定义页面接口如下（主要是choose方法和onChoose回调）：
+
+	var PageOrders = {
+		...
+		// onChoose(order={id,dscr,...})
+		choose: function (onChoose) {
+			this.chooseOpt_ = {
+				onChoose: onChoose
+			}
+			MUI.showPage('orders');
+		},
+
+		chooseOpt_: null // {onChoose}
+	};
+
+在被调用页面上：
+
+- 点击一个列表项时，调用onChoose回调
+- 页面隐藏时，清空chooseOpt_参数。
+
+示例：
+
+	function initPageOrders()
+	{
+		jpage.on("pagehide", onPageHide);
+
+		function li_click(ev)
+		{
+			var order = $(this).data('obj');
+			if (PageOrders.chooseOpt_) {
+				PageOrders.chooseOpt_.onChoose(order);
+				return false;
+			}
+
+			// 正常点击操作 ...
+		}
+
+		function onPageHide()
+		{
+			PageOrders.chooseOpt_ = null;
+		}
+	}
+
+在调用时：
+
+	PageOrders.choose(onChoose);
+
+	function onChoose(order)
+	{
+		// 处理order
+		history.back(); // 由于进入列表选择时会离开当前页面，这时应返回
+	}
  */
 window.initNavbarAndList = initPageList;
 function initPageList(jpage, opt)
@@ -3920,8 +4072,13 @@ function initPageList(jpage, opt)
 			if (loadMore_) {
 				joLoadMore_.remove();
 			}
-			$.each(rs2Array(data), function (i, itemData) {
-				opt_.onAddItem && opt_.onAddItem(jlst, itemData);
+			var arr = rs2Array(data);
+			var isFirstPage = (nextkey == null);
+			var isLastPage = (data.nextkey == null);
+			var param = {arr: arr, isFirstPage: isFirstPage};
+			$.each(arr, function (i, itemData) {
+				param.idx = i;
+				opt_.onAddItem && opt_.onAddItem(jlst, itemData, param);
 			});
 			if (data.nextkey)
 				jlst.data("nextkey_", data.nextkey);
@@ -3931,7 +4088,7 @@ function initPageList(jpage, opt)
 				}
 				jlst.data("nextkey_", -1);
 			}
-			opt.onLoad && opt.onLoad(jlst, data.nextkey == null);
+			opt.onLoad && opt.onLoad(jlst, isLastPage);
 		}
 	}
 

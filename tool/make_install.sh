@@ -6,6 +6,7 @@
 # @var FTP_PATH
 # @var FTP_AUTH
 # @var CHECK_BRANCH? 如果指定，则要求OUT_DIR内必须为指定branch名。
+# @var CFG_PLUGINS?=plugin1,plugin2 如果指定，则plugin文件夹下只上传指定的插件，index.php和未指定的插件均不上传
 ####################
 
 # OUT_DIR=../product-online
@@ -94,7 +95,11 @@ if (( doUpload )) ; then
 		if [[ -z $ver ]]; then
 			cmd=$(git ls-files | $script getcmd) || exit
 		else
-			git diff $ver head --name-only --diff-filter=AM | $script filter > $tmpfile
+			if [[ -z $CFG_PLUGINS ]]; then
+				git diff $ver head --name-only --diff-filter=AM > $tmpfile
+			else
+				git diff $ver head --name-only --diff-filter=AM | $script filter > $tmpfile
+			fi
 			if (( $? != 0 )); then
 				unset ver
 				continue
@@ -204,7 +209,7 @@ elsif ($ARGV[0] eq 'abs_path') {
 	print abs_path($0);
 }
 elsif ($ARGV[0] eq 'filter') {
-	my @wants = ();
+	my @wants = ('.htaccess');
 	if ($ENV{CFG_PLUGINS}) {
 		for (split(',', $ENV{CFG_PLUGINS})) {
 			push @wants, 'plugin/' . $_ . '/';

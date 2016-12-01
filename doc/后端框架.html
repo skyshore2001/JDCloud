@@ -593,13 +593,13 @@ WebAPI的调用名和传入参数也采用驼峰式，由于目前实现时不�
 外链一般以xxxId表示，除非特殊说明，一般该字段非空；
 
 <li>
-字段类型通过名称隐式说明, 或通过声明后缀显示说明, 规则如下: 
+字段类型通过名称主干隐式说明, 或通过声明后缀显示说明, 规则如下: 
 
 </ul>
 <table>
 <tr>
 <td>
-end with "Id"
+以"Id"结尾
 </td>
 <td>
 Integer
@@ -607,7 +607,7 @@ Integer
 </tr>
 <tr>
 <td>
-end with "Price"/"Total"/"Qty"/"Amount"
+以"Price"/"Total"/"Qty"/"Amount"结尾
 </td>
 <td>
 Currency
@@ -615,7 +615,7 @@ Currency
 </tr>
 <tr>
 <td>
-end with "Tm"/"Dt"/"Time"
+以"Tm"/"Dt"/"Time"结尾
 </td>
 <td>
 Datetime/Date/Time
@@ -655,16 +655,18 @@ Double
 </tr>
 <tr>
 <td>
-end with "Flag"
+以"Flag"结尾
 </td>
 <td>
-TinyInt(1B)
+TinyInt(1B) NOT NULL
 </td>
 </tr>
 </table>
 <p>
  此外, 如果无明确标识, 缺省为字符串类型. 
+ 例如，"total", "docTotal", "total2", "docTotal2"都被认为是Currency类型。
 </p>
+ 
 <ul>
 <li>
 字符串一般采用nvarchar支持unicode，描述如<code>name(s)</code>，字串长度以如下方式描述：
@@ -706,10 +708,6 @@ text
 </table>
 
 <p>
-下面描述中, "@"开头表示将被工具自动当作meta data处理.
-</p>
-
-<p>
 注意：
 </p>
 <ul>
@@ -719,7 +717,7 @@ text
 </ul>
 
 <p>
-<span class="todo">TODO:</span> define unique-key, index
+<span class="todo">TODO:</span> define unique-key, index, not null, default value
 </p>
 
 <h2 id="toc_1.4"><a name="通讯协议设计">4 通讯协议设计</a></h2>
@@ -3455,6 +3453,22 @@ tool/upgrade.php - 升级管理
 </p>
 
 <p>
+注意：主设计文档中可以包含其它设计文档，指令如下：
+（支持版本: v3.1）
+</p>
+
+<pre>
+@include sub/mydesign.wiki
+</pre>
+
+<p>
+如果使用了插件，一般应包含所有插件文档，以便插件中的表也可被创建。在DESIGN.wiki中目前默认就有这样一行：
+</p>
+<pre>
+@include server/plugin/*/DESIGN.wiki
+</pre>
+
+<p>
 <strong>[数据库连接]</strong>
 </p>
 
@@ -3548,11 +3562,11 @@ upgrade.php
 </p>
 
 <p>
-参数: {table}
+参数: {table?="*"}
 </p>
 
 <p>
-查看某表的metadata以及SQL创建语句.
+查看某表的metadata以及SQL创建语句. 参数{table}中可以包含通配符。
 </p>
 
 <p>
@@ -3560,6 +3574,8 @@ upgrade.php
 </p>
 <pre>
 &gt; showtable("item")
+
+&gt; showtable("*log")
 </pre>
 
 <p>
@@ -4198,6 +4214,34 @@ TODO: plugin/{pluginName}/m2/plugin.css 可选，插件前端全局样式，文�
 </pre>
 
 <p>
+插件设计文档的结构可参考主设计文档，一般也包括 概要设计（需求），数据库设计，交互接口，前端应用接口这些部分。
+</p>
+
+<p>
+插件设计文档中的表应在升级时自动创建，主设计文档中有以下指定用于此目的：
+</p>
+<pre>
+@include server/plugin/*/DESIGN.wiki
+</pre>
+<p>
+插件中对外部表及字段的依赖，应使用@see指令标注：
+</p>
+
+<pre>
+依赖数据接口：
+
+@see @User: id, phone
+@see @Store: id, name, dscr
+@see @Ordr: id, storeId
+
+Ordr.storeId = Store.id
+</pre>
+
+<p>
+这些被依赖的字段，看似名字固定，其实是可配置的，详参后端接口文档，查询 PluginBase.$colMap 关键字。
+</p>
+
+<p>
 <strong>[插件配置文件 plugin/index.php]</strong>
 </p>
 
@@ -4234,6 +4278,10 @@ return [
 	"js" =&gt; "m2/plugin.js" // 前端需要包含的文件
 ];
 </pre>
+
+<p>
+详参后端接口文档 模块api_fw -&gt; 插件机制 章节。
+</p>
 
 <p>
 <strong>[插件移动WEB前端 plugin/{pluginName}/m2/page/]</strong>

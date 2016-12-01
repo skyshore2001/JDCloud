@@ -178,7 +178,7 @@ function tobool(v)
 */
 function reloadSite()
 {
-	var href = location.href.replace(/#\w+/, '#');
+	var href = location.href.replace(/#.+/, '#');
 	location.href = href;
 	location.reload();
 	throw "abort";
