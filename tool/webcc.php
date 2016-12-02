@@ -29,6 +29,7 @@ $DBG_LEVEL = (int)getenv("P_DEBUG") ?: 0;
 
 $g_changedFiles = [];
 $g_isRebuild = true;
+$g_fakeFiles = [];
 //}}}
 
 // ====== functions {{{
@@ -74,9 +75,15 @@ function getFileHash($basef, $f, $outDir, $relativeDir = null)
 	if ($f2 === false || !array_key_exists($f0, $g_handledFiles))
 		handleOne($f0, $outDir, true);
 	$f2 = realpath($f1);
-	if ($f2 === false)
-		die("*** fail to find file `$f` base on `$basef` ($f2)\n");
+	if ($f2 === false) {
+		global $g_fakeFiles;
+		if (! in_array($f0, $g_fakeFiles))
+			print("!!! warning: missing file `$f0` used by `$basef`\n");
+		$hash = '000000';
+	}
+	else {
 	@$hash = $g_hash[$f2];
+	}
 	if ($hash == null) {
 		$hash = sha1_file($f2);
 		$g_hash[$f2] = $hash;
@@ -136,6 +143,11 @@ function handleCopy($f, $outDir)
 	}
 }
 
+function handleFake($f, $outDir)
+{
+	global $g_fakeFiles;
+	$g_fakeFiles[] = $f;
+}
 // return: false - skipped
 function handleOne($f, $outDir, $force = false)
 {
@@ -178,6 +190,10 @@ function handleOne($f, $outDir, $force = false)
 				logit("=== hash $f\n");
 				handleHash($f, $outDir, $outf);
 			}
+			else if ($rule1 === "FAKE") {
+				logit("=== fake $f\n");
+				handleFake($f, $outDir);
+			}
 			else {
 				$outf = $outDir . "/" . $f;
 				@mkdir(dirname($outf), 0777, true);
@@ -204,6 +220,10 @@ function handleOne($f, $outDir, $force = false)
 	}
 	if ($noCopy)
 		return false;
+	if (! is_file($f)) {
+		print("!!! warning: missing file `$f`.\n");
+		return;
+	}
 	logit("=== copy $f\n");
 	handleCopy($f, $outDir);
 }

@@ -13,12 +13,14 @@ $FILES = [
 $RULES = [
 	'm2/*.html' => 'HASH',
 
-	'm/cordova/cordova.js' => '
-git ls-files m/cordova | grep -i "\.js$" | xargs cat | jsmin > $TARGET',
+# 	'm/cordova/cordova.js' => '
+# git ls-files m/cordova | grep -i "\.js$" | xargs cat | jsmin > $TARGET',
+# 
+# 	'm/cordova-ios/cordova.js' => '
+# git ls-files m/cordova-ios | grep -i "\.js$" | xargs cat | jsmin > $TARGET',
 
-	'm/cordova-ios/cordova.js' => '
-git ls-files m/cordova-ios | grep -i "\.js$" | xargs cat | jsmin > $TARGET',
-
+	'm/cordova/cordova.js' => 'FAKE',
+	'm/cordova-ios/cordova.js' => 'FAKE',
 	'm2/lib-app.min.js' => ['
 cd m2
 cat lib/common.js lib/app_fw.js app.js | jsmin > $TARGET
