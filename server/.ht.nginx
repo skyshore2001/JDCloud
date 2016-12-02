@@ -1,0 +1,17 @@
+# ngxin配置
+# 部署时将 "^/" 换成实际URL地址，如 "^/myapp/mobile/"
+# 然后在 ngxin.conf中合适位置包含本文件，注意不要覆盖其它配置，可以在 "location /" 中include
+
+location ~ ^/(\w+\.html)?$ {
+	add_header Cache-Control "no-cache";
+}
+
+location ~ ^/page/ {
+	add_header Cache-Control "no-cache";
+
+	location ~ \.html$ {
+		add_header Content-Type "text/html;charset=utf-8";
+	}
+}
+
+
