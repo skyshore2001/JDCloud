@@ -49,11 +49,12 @@ function addPath()
 }
 
 // "xx\yy" => "xx/yy"
+// "./xx" => "xx"
 // "xx/zz/../yy" => "xx/yy"
 function formatPath($f)
 {
 	$f = preg_replace('/[\\\\\/]+/', '/', $f);
-	$f = preg_replace('`[^/]+/\.\./`', '', $f);
+	$f = preg_replace('`^./+|[^/]+/\.\./`', '', $f);
 	return $f;
 }
 
