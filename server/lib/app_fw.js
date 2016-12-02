@@ -2939,14 +2939,14 @@ function parseArgs()
 			$(function () {
 				// to use cordova plugins like camera: require m2/cordova.js, cordova_plugins.js, plugins/...
 				var f = $("script[src*='/common.js']").attr("src");
-				var path = '../m/';
+				var path = '../';
 				if (f) // 根据common.js定位cordova目录位置
 					path = f.substr(0, f.lastIndexOf('/')) + "/../";
 				if (isIOS()) {
-					loadScript(path + "cordova-ios/cordova.js?__HASH__,m"); 
+					loadScript(path + "cordova-ios/cordova.js?__HASH__"); 
 				}
 				else {
-					loadScript(path + "cordova/cordova.js?__HASH__,m"); 
+					loadScript(path + "cordova/cordova.js?__HASH__"); 
 				}
 			});
 		}
