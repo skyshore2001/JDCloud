@@ -82,7 +82,7 @@ function getFileHash($basef, $f, $outDir, $relativeDir = null)
 		$hash = '000000';
 	}
 	else {
-	@$hash = $g_hash[$f2];
+		@$hash = $g_hash[$f2];
 	}
 	if ($hash == null) {
 		$hash = sha1_file($f2);
@@ -148,6 +148,7 @@ function handleFake($f, $outDir)
 	global $g_fakeFiles;
 	$g_fakeFiles[] = $f;
 }
+
 // return: false - skipped
 function handleOne($f, $outDir, $force = false)
 {
