@@ -2186,6 +2186,12 @@ allow throw("abort") as abort behavior.
 	var url = makeUrl("Ordr.set", params);
 
 注意：调用该函数生成的url在结尾有标志字符串"zz=1", 如"../api.php/login?_app=user&zz=1"
+
+支持callSvr扩展，这时action可以是一个数组，如：
+
+	var url = MUI.makeUrl(['login', 'zhanda']);
+
+@see MUI.callSvrExt
  */
 	window.makeUrl = self.makeUrl = makeUrl;
 	function makeUrl(action, params)
@@ -2201,7 +2207,22 @@ allow throw("abort") as abort behavior.
 		if (params == null)
 			params = {};
 		var url;
-		if (action.indexOf(".php") < 0)
+
+		// 扩展接口调用：callSvr(['login', 'zhanda'])，需定义 MUI.callSvrExt[ext]
+		if ($.isArray(action)) {
+			var ext = action[1];
+			var extMakeUrl = self.callSvrExt[ext] && self.callSvrExt[ext].makeUrl;
+			assert(extMakeUrl, "*** missing makeUrl for callSvrExt: " + ext);
+			url = extMakeUrl(action[0]);
+		}
+		// 自定义缺省接口调用：callSvr('login')，需定义 MUI.callSvrExt['default']
+		else if (self.callSvrExt['default']) {
+			var extMakeUrl = self.callSvrExt['default'].makeUrl;
+			assert(extMakeUrl, "*** missing makeUrl for callSvrExt['default'].");
+			url = extMakeUrl(action);
+		}
+		// 缺省接口调用：callSvr('login') 或 callSvr('php/login.php');
+		else if (action.indexOf(".php") < 0)
 		{
 			var usePathInfo = true;
 			if (usePathInfo) {
@@ -2344,7 +2365,7 @@ JS:
 	}
 
 注意：
-- 对方接口应允许JS跨域调用，或调用方支持跨域调用。
+对方接口应允许JS跨域调用，或调用方支持跨域调用。
 
 	MUI.callSvrExt['zhanda'] = {
 		makeUrl: function(ac) {
@@ -2368,6 +2389,68 @@ JS:
 		console.log(data);
 	});
 
+
+@key MUI.callSvrExt['default']
+
+(支持版本: v3.1)
+如果要修改callSvr缺省调用方法，可以改写 MUI.callSvrExt['default'].
+例如，定义以下callSvr扩展：
+
+	MUI.callSvrExt['default'] = {
+		makeUrl: function(ac) {
+			return '../api.php/' + ac;
+		},
+		dataFilter: function (data) {
+			var ctx = this.ctx_ || {};
+			if (data && $.isArray(data) && data.length >= 2 && typeof data[0] == "number") {
+				if (data[0] == 0)
+					return data[1];
+
+				if (this.noex)
+				{
+					MUI.lastError = ctx;
+					return false;
+				}
+
+				if (data[0] == E_NOAUTH) {
+					if (MUI.tryAutoLogin()) {
+						$.ajax(this);
+					}
+					return;
+				}
+				else if (data[0] == E_AUTHFAIL) {
+					app_alert("验证失败，请检查输入是否正确!", "e");
+					return;
+				}
+				else if (data[0] == E_ABORT) {
+					console.log("!!! abort call");
+					return;
+				}
+				logError();
+				app_alert("操作失败：" + data[1], "e");
+			}
+			else {
+				logError();
+				app_alert("服务器通讯协议异常!", "e"); // 格式不对
+			}
+
+			function logError()
+			{
+				MUI.lastError = ctx;
+				console.log("failed call");
+				console.log(ctx);
+			}
+		}
+	};
+
+这样，以下调用
+
+	callSvr(['login', 'default']);
+
+可以简写为：
+
+	callSvr('login');
+
 */
 	window.callSvr = self.callSvr = callSvr;
 	self.callSvrExt = {};
@@ -2382,11 +2465,13 @@ JS:
 		}
 
 		var ext = null;
+		var ac0 = ac;
 		if ($.isArray(ac)) {
+			ac0 = ac[1] + '.' + ac[0];
 			ext = ac[1];
-			var extMakeUrl = self.callSvrExt[ext] && self.callSvrExt[ext].makeUrl;
-			assert(extMakeUrl, "*** missing makeUrl for callSvrExt: " + ext);
-			ac = extMakeUrl(ac[0]);
+		}
+		else if (self.callSvrExt['default']) {
+			ext = 'default';
 		}
 
 		if (m_curBatch &&
@@ -2424,7 +2509,7 @@ JS:
 			opt.contentType = false;
 		}
 		$.extend(opt, userOptions);
-		console.log("call " + ac);
+		console.log("call " + ac0);
 		return $.ajax(opt);
 	}
 
