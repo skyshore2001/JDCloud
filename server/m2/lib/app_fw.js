@@ -2413,9 +2413,13 @@ JS:
 				}
 
 				if (data[0] == E_NOAUTH) {
-					if (MUI.tryAutoLogin()) {
-						$.ajax(this);
-					}
+					// 如果支持自动重登录
+					//if (MUI.tryAutoLogin()) {
+					//	$.ajax(this);
+					//}
+					// 不支持自动登录，则跳转登录页
+					MUI.popPageStack(0);
+					MUI.showLogin();
 					return;
 				}
 				else if (data[0] == E_AUTHFAIL) {
@@ -3022,16 +3026,12 @@ function parseArgs()
 			g_args.cordova = g_cordova;
 			setStorage("cordova", g_cordova);
 			$(function () {
-				// to use cordova plugins like camera: require m2/cordova.js, cordova_plugins.js, plugins/...
-				var f = $("script[src*='/common.js']").attr("src");
-				var path = '../m/';
-				if (f) // 根据common.js定位cordova目录位置
-					path = f.substr(0, f.lastIndexOf('/')) + "/../";
+				var path = './';
 				if (isIOS()) {
-					loadScript(path + "cordova-ios/cordova.js?__HASH__,m"); 
+					loadScript(path + "cordova-ios/cordova.js?__HASH__"); 
 				}
 				else {
-					loadScript(path + "cordova/cordova.js?__HASH__,m"); 
+					loadScript(path + "cordova/cordova.js?__HASH__"); 
 				}
 			});
 		}
