@@ -2,6 +2,7 @@
 
 $RULES = [
 	'*.html' => 'HASH',
+	'lib/app_fw.js' => 'HASH',
 
 # 如果支持App则使用这部分
 # 	'cordova/cordova.js' => '
@@ -12,10 +13,6 @@ $RULES = [
 
 	'cordova/cordova.js' => 'FAKE',
 	'cordova-ios/cordova.js' => 'FAKE',
-
-	'lib-app.min.js' => ['
-cat lib/common.js lib/app_fw.js app.js | jsmin > $TARGET
-', 'HASH'],
 
 ];
 

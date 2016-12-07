@@ -18,24 +18,51 @@
 	<!--link rel="shortcut icon" type="image/x-icon" href="favicon.ico"-->
 	<link rel="icon" href="logo.jpg"><!-- chrome use it -->
 
-	<script src="lib/jquery-1.11.1.min.js"></script>
-	<script src="lib/jquery.touchSwipe.min.js"></script>
+<!-- WEBCC_BEGIN 通用库：所有应用一致 {{{-->
+<!-- 通用css -->
 	<link rel="stylesheet" href="lib/weui.min.css" />
 	<link rel="stylesheet" href="lib/mui.css?__HASH__" />
 	<link rel="stylesheet" href="app.css?__HASH__" />
 	<link rel="stylesheet" href="icon.out.css?__HASH__" />
 	<!--link rel="stylesheet" href="icon.css" /-->
-	<link rel="stylesheet" href="index.css?__HASH__" />
 
-<!-- WEBCC_BEGIN {{{ - app framework -->
+<!-- 通用第三方js -->
+	<script src="lib/jquery-1.11.1.min.js"></script>
+	<script src="lib/jquery.touchSwipe.min.js"></script>
+
+<!-- 通用js -->
 	<script src="lib/common.js?__HASH__"></script>
 	<script src="lib/app_fw.js?__HASH__"></script>
 	<script src="app.js?__HASH__"></script>
-<!-- WEBCC_USE_THIS
-	<script src="lib-app.min.js?__HASH__"></script>
-WEBCC_END }}} -->
 
+<!-- WEBCC_USE_THIS
+// 通用css: lib-app.min.css
+WEBCC_CMD mergeCss -minify yes -o lib-app.min.css lib/weui.min.css lib/mui.css app.css icon.out.css
+
+// 第三方js: lib-jq.min.js
+WEBCC_CMD mergeJs -minify yes -o lib-jq.min.js lib/jquery-1.11.1.min.js lib/jquery.touchSwipe.min.js
+// 通用js: lib-app.min.js
+WEBCC_CMD mergeJs -minify yes -o lib-app.min.js lib/common.js lib/app_fw.js app.js
+WEBCC_END }}}-->
+
+<!-- WEBCC_BEGIN 应用专用 {{{-->
+<!-- 专用css -->
+	<link rel="stylesheet" href="index.css?__HASH__" />
+
+<!-- 专用js -->
 	<script src="index.js?__HASH__"></script>
+
+<!-- WEBCC_USE_THIS
+// 专用css
+<style>
+WEBCC_CMD mergeCss -minify yes index.css
+</style>
+
+// 专用js
+<script>
+WEBCC_CMD mergeJs -minify yes index.js
+</script>
+WEBCC_END }}}-->
 
 </head>
 
@@ -54,6 +81,11 @@ WEBCC_END }}} -->
 		<span>我</span>
 	</a>
 </div>
+
+<!-- WEBCC_BEGIN {{{ embeded pages -->
+<!-- WEBCC_USE_THIS
+WEBCC_CMD mergePage -minify yes page/home.html page/login.html page/login1.html page/me.html
+WEBCC_END }}} -->
 
 </body>
 </html>
