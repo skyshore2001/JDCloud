@@ -28,6 +28,7 @@ webcc命令可在html文件中使用，例如做JS合并压缩：
 		<script src="lib/app_fw.js?__HASH__"></script>
 		<script src="app.js?__HASH__"></script>
 	<!-- WEBCC_USE_THIS
+	// 除了//开头的注释和 WEBCC_CMD 开头的命令，其它部分均直接输出
 	WEBCC_CMD mergeJs -o lib-app.min.js -minify yes lib/common.js lib/app_fw.js app.js
 	WEBCC_END -->
 
@@ -175,24 +176,40 @@ class WebccCmd
 
 			// 如果指定-o, 则重定向输出到指定文件
 			@$outf0 = $cmdObj->opts['o']; // 相对路径
+			$fi = null;
+			$skipCall = false;
+			global $g_handledFiles, $g_hash;
 			if (isset($outf0)) {
-				ob_start();
+				if ($cmdObj->relDir)
+					$fi = formatPath($cmdObj->relDir . "/" . $outf0);
+				else
+					$fi = formatPath($outf0);
+				if (array_key_exists($fi, $g_handledFiles))
+					$skipCall = true;
+				else
+					ob_start();
 			}
-			echo $fn->invokeArgs($cmdObj, $cmdObj->opts['args']);
+			if (!$skipCall)
+				echo $fn->invokeArgs($cmdObj, $cmdObj->opts['args']);
 			if (isset($outf0)) {
-				$s = ob_get_contents();
-				ob_end_clean();
-
 				$outf = $outf0;
-				if ($isInternalCall && isset($g_opts['outDir'])) {
-					$outDir = $g_opts['outDir'];
-					if ($cmdObj->relDir)
-						$outDir .= "/" . $cmdObj->relDir;
-					$outf = $outDir . "/" . $outf0;
+				if ($isInternalCall) {
+					$outf = $g_opts['outDir'] . "/" . $fi;
 					@mkdir(dirname($outf), 0777, true);
 				}
-				file_put_contents($outf, $s);
-				$hash = substr(sha1_file($outf), -6);
+				if (! $skipCall) {
+					$s = ob_get_contents();
+					ob_end_clean();
+
+					file_put_contents($outf, $s);
+					$hash = fileHash($outf);
+					$g_handledFiles[$fi] = 1;
+					$g_hash[$fi] = $hash;
+					logit("=== generate $fi\n");
+				}
+				else {
+					$hash = @$g_hash[$fi] ?: fileHash($outf);
+				}
 
 				$outf1 = "$outf0?$hash"; // 相对路径
 				if ($cmd == 'mergeCss') {
@@ -301,7 +318,7 @@ CSS合并，以及对url相对路径进行修正。
 	<!-- WEBCC_BEGIN -->
 	<!-- WEBCC_USE_THIS
 	WEBCC_CMD mergePage page/home.html page/login.html page/login1.html page/me.html
-	WEBCC_END }}} -->
+	WEBCC_END -->
 
 注意：
 
@@ -348,20 +365,12 @@ CSS合并，以及对url相对路径进行修正。
 			// html因注释内容少，暂不做minify
 			$html = file_get_contents($outf);
 			//$html = $this->getFile($outf);
-			$jsContent = null;
-			$html = preg_replace_callback('/(<div.*?)mui-script=[\'"]?([^\'"]+)[\'"]?(.*?>)/', function($ms) use ($srcDir, &$jsContent, $me) {
+			$html = preg_replace_callback('/(<div.*?)mui-script=[\'"]?([^\'"]+)[\'"]?(.*?>)/', function($ms) use ($srcDir, $me) {
 				$js = $srcDir . '/' . $ms[2];
 				if (! is_file($js)) {
 					die("*** mergePage fails: cannot find js file $js\n");
 				}
-				if ($me->opts['usePageTemplate']) {
-					$ret = $ms[1] . $ms[3] . "\n<script>\n// webcc-js: {$ms[2]}\n" . $me->getFile($js) . "\n</script>\n";
-				}
-				else {
-					$ret = $ms[1] . $ms[3];
-					$jsContent = "<script>\n// webcc-js: {$ms[2]}\n" . $me->getFile($js) . "\n</script>\n\n";
-				}
-				return $ret;
+				return $ms[1] . $ms[3] . "\n<script>\n// webcc-js: {$ms[2]}\n" . $me->getFile($js) . "\n</script>\n";
 			}, $html);
 
 			$pageId = basename($f0, ".html");
@@ -374,11 +383,10 @@ CSS合并，以及对url相对路径进行修正。
 			}
 			else {
 				echo "<script type=\"text/html\" id=\"tpl_{$pageId}\">\n";
+				// 使用 __script__ 避免script标签嵌套，在app_fw.js中处理__script__并还原。
+				$html = preg_replace('`</?\K\s*script\s*(?=>)`', '__script__', $html);
 				echo $html;
 				echo "</script>\n\n";
-				if ($jsContent) {
-					echo $jsContent;
-				}
 			}
 		}
 	}
@@ -388,7 +396,15 @@ CSS合并，以及对url相对路径进行修正。
 		if (!$this->opts['minify'] || stripos($f, '.min.') !== false) {
 			return file_get_contents($f);
 		}
-		return $this->jsmin($f);
+		if (substr($f, -3) ==  '.js')
+			return $this->jsmin($f);
+		return $this->cssMin($f);
+	}
+
+	protected function cssMin($f)
+	{
+		// TODO: cssMin
+		return file_get_contents($f);
 	}
 
 	// return: min js
@@ -492,14 +508,14 @@ function getFileHash($basef, $f, $outDir, $relativeDir = null)
 		@$hash = $g_hash[$fi];
 	}
 	if ($hash == null) {
-		$hash = sha1_file($outf);
+		$hash = fileHash($outf);
 		$g_hash[$fi] = $hash;
 // 		echo("### hash {$fi}\n");
 	}
 	else {
 // 		echo("### reuse hash({$fi})\n");
 	}
-	return substr($hash, -6);
+	return $hash;
 }
 
 // <script src="main.js?__HASH__"></script>
@@ -523,7 +539,8 @@ function handleHash($f, $outDir, $inputFile = null)
 		/xm', 
 		function ($ms) use ($relDir) {
 			$ret = $ms[1] ?: "";
-			$ret = preg_replace_callback('/^.*WEBCC_CMD\s+(\w+)\s*(.*?)\s*$/', function ($ms1) use ($relDir) {
+			$ret = preg_replace('`\s*//.*$`m', '', $ret);
+			$ret = preg_replace_callback('/\bWEBCC_CMD\s+(\w+)\s*(.*?)\s*$/m', function ($ms1) use ($relDir) {
 				ob_start();
 				list($cmd, $args) = [$ms1[1], preg_split('/\s+/', $ms1[2])];
 				WebccCmd::exec($cmd, $args, true, $relDir);
@@ -680,6 +697,11 @@ function readOpts($args, $knownOpts, &$opts)
 		$opts["args"][] = $opt;
 	}
 	return $opts;
+}
+
+function fileHash($f)
+{
+	return substr(sha1_file($f), -6);
 }
 //}}}
 
