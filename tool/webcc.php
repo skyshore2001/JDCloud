@@ -553,11 +553,16 @@ function handleCopy($f, $outDir)
 	$outf = $outDir . "/" . $f;
 	@mkdir(dirname($outf), 0777, true);
 //	echo("=== copy $f\n");
-	copy($f, $outf);
+
 	// bugfix: 目标系统是linux, 复制时对shell文件（要求以.sh为扩展名）自动做转换
-	if (PHP_OS == "WINNT" && preg_match('/\.sh/', $f)) {
-		system('dos2unix "' . $outf . '"');
+	$dos2unix = (PHP_OS == "WINNT" && preg_match('/\.sh/', $f));
+	if ($dos2unix) {
+		$s = preg_replace('/\r/', '', file_get_contents($f));
+		file_put_contents($outf, $s);
+		return;
 	}
+
+	copy($f, $outf);
 }
 
 function handleFake($f, $outDir)
