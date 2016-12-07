@@ -1178,7 +1178,14 @@ function CPageManager(app)
 		var jtpl = pi.templateRef? $(pi.templateRef): null;
 		if (jtpl && jtpl.size() > 0) {
 			var html = jtpl.html();
-			loadPage(html, pageId);
+			// webcc内嵌页面时，默认使用script标签（因为template尚且普及），其中如果有script都被替换为__script__, 这里做还原。
+			if (jtpl[0].tagName == 'SCRIPT') {
+				html = html.replace(/__script__/g, 'script');
+			}
+			// bugfix: 用setTimeout解决微信浏览器切页动画显示异常
+			setTimeout(function () {
+				loadPage(html, pageId);
+			});
 		}
 		else {
 			enterWaiting(); // NOTE: leaveWaiting in initPage
