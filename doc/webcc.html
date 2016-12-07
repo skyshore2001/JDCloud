@@ -1,0 +1,178 @@
+<html>
+<head>
+<meta charset="utf-8">
+<title>Webcc - 站点发布优化工具</title>
+<style>
+h3,h4,h5,h6 {
+	font-size: 1em;
+}
+
+pre {
+	border-left: 1px solid #ccc;
+	margin: 0 1em;
+	padding: 0 0.5em;
+	tab-size:4;
+}
+
+code {
+	font-family: "Courier New";
+    padding: 0px 3px;
+    display: inline-block;
+}
+
+.toc {
+	margin: 2em;
+}
+
+.toc p {
+	margin: 0.3em 0;
+}
+
+</style>
+<link rel="stylesheet" href="style.css" />
+</head>
+
+<h1>Webcc - 站点发布优化工具</h1>
+<div>最后更新：2016-12-07</div>
+<h2>Modules</h2>
+<div class="toc">
+<p><a href="#webcc">webcc (module)</a></p>
+</div><hr>
+<h2>Keywords</h2>
+<div class="toc">
+<p><a href="#__HASH__">__HASH__ (key)</a></p>
+<p><a href="#webcc">webcc (module)</a></p>
+<p><a href="#webcc-mergeCss">webcc-mergeCss (fn)</a></p>
+<p><a href="#webcc-mergeJs">webcc-mergeJs (fn)</a></p>
+<p><a href="#webcc-mergePage">webcc-mergePage (fn)</a></p>
+<p><a href="#webcc.conf.php">webcc.conf.php (key)</a></p>
+</div><hr>
+<h2 id="webcc">@module webcc 站点发布优化工具</h2>
+<p>与build_web.sh配合使用。</p>
+<p>注意：</p>
+<ul>
+<li>修改webcc.conf.php会导致rebuild</li>
+<li>如果想强制rebuild, 可以删除输出文件夹下的revision.txt, 比如当修改webcc.php后。</li>
+<li>如果本地有未提交的内容，也会更新到输出文件夹。</li>
+<li>设置环境变量 DBG_LEVEL=1 显示调试信息</li>
+</ul>
+<p>Usage:</p>
+<pre><code>处理源目录，生成发布目录
+webcc {srcDir} [-o {outDir=output_web}]
+
+webcc单个命令调用
+webcc -cmd {cmd} [-o {outFile}] [-minify yes]</code></pre>
+<p>webcc命令可在html文件中使用，例如做JS合并压缩：</p>
+<pre><code>&lt;!-- WEBCC_BEGIN - lib-app.min.js --&gt;
+    &lt;script src="lib/common.js?__HASH__"&gt;&lt;/script&gt;
+    &lt;script src="lib/app_fw.js?__HASH__"&gt;&lt;/script&gt;
+    &lt;script src="app.js?__HASH__"&gt;&lt;/script&gt;
+&lt;!-- WEBCC_USE_THIS
+WEBCC_CMD mergeJs -o lib-app.min.js -minify yes lib/common.js lib/app_fw.js app.js
+WEBCC_END --&gt;</code></pre>
+<p>在发布时，WEBCC_BEGIN到WEBCC_USE_THIS下的内容将被移除，而 WEBCC_USE_THIS到 WEBCC_END间的内容被保留到发布版本中。<br />
+如果其中出现形如 <code>WEBCC_CMD {cmd} {args}</code> 的内容，则会调用webcc命令做处理。</p>
+<p>当在webcc.conf.php中指定HASH规则时，上述webcc命令将会执行。例：</p>
+<pre><code>$RULES = [
+    'm2/index.html' =&gt; 'HASH',
+]</code></pre>
+<p>注意：</p>
+<ul>
+<li>如果使用了-o选项，则将内容输出到指定文件，当前位置出现 <code>&lt;script src="lib-app.min.js?v=125432"&gt;</code> 之类的可嵌入标签。<br />
+如果不使用-o选项，则内容直接输出到当前位置。</li>
+<li>选项 -minify yes 会压缩 js/css内容（对文件名中含有 .min. 的文件不做压缩），默认不压缩。</li>
+</ul>
+<p class="see"><strong>@see <a href="#webcc-mergeJs">webcc-mergeJs</a></strong>  合并及压缩JS</p>
+<p class="see"><strong>@see <a href="#webcc-mergeCss">webcc-mergeCss</a></strong>  合并CSS</p>
+<p class="see"><strong>@see <a href="#webcc-mergePage">webcc-mergePage</a></strong>  合并逻辑页</p>
+<p class="key"><strong>@key <a id="webcc.conf.php">webcc.conf.php</a></strong>  webcc配置</p>
+<p>用法可参考文档：<a href="Web应用部署.html">Web应用部署</a></p>
+<p class="key"><strong>@key <a id="__HASH__">__HASH__</a></strong>   hash标识</p>
+<p>格式：</p>
+<pre><code>{file}?__HASH__</code></pre>
+<p>或可指定相对于当前文件的相对路径{relDir}，一般用于js文件中。</p>
+<pre><code>{file}?__HASH__,{relDir}</code></pre>
+<p>例如：</p>
+<pre><code>loadScript("cordova/cordova.js?__HASH__,.."); // 表示该文件相对当前文件的路径应该是 ../cordova/cordova.js 
+loadScript("cordova-ios/cordova.js?__HASH__,../m"); // 表示该文件相对当前文件的路径应该是 ../m/cordova-ios/cordova.js</code></pre><hr>
+<h2 id="webcc-mergeCss">@fn webcc-mergeCss CSS合并</h2>
+<pre><code>webcc -cmd mergeCss {cssFile1} ... [-o {outFile}]</code></pre>
+<p>CSS合并，以及对url相对路径进行修正。</p>
+<p>例：</p>
+<pre><code>webcc -cmd mergeCss lib/a.css b.css -o out.css</code></pre>
+<p>注意：只处理相对路径，带协议的情况不处理：</p>
+<pre><code>url(data:...)
+url(http:...)</code></pre>
+<p>路径处理示例：</p>
+<pre><code>// 处理 url(...) 中的路径
+eg.  srcDir='lib', outDir='.'
+curDir='.' (当前路径相对outDir的路径)
+prefix = {curDir}/{srcDir} = ./lib = lib
+url(1.png) =&gt; url(lib/1.png)
+url(../image/1.png) =&gt; url(lib/../image/1.png) =&gt; url(image/1.png)
+
+eg2. srcDir='lib', outDir='m2/css'
+curDir='../..' (当前路径相对outDir的路径)
+prefix = {curDir}/{srcDir} = ../../lib
+url(1.png) =&gt; url(../lib/1.png)
+url(../image/1.png) =&gt; url(../../lib/../image/1.png) =&gt; url(../../image/1.png) (lib/..被合并)
+
+TODO: 暂不支持eg3的情况，即outFile不允许以".."开头。
+eg3. srcDir='lib', outDir='../m2/css'
+curDir='../../html' (假设当前实际dir为'prj/html')
+prefix = {curDir}/{srcDir} = ../../html/lib
+url(1.png) =&gt; url(../../html/lib/1.png)
+url(../image/1.png) =&gt; url(../../html/lib/../image/1.png) =&gt; url(../../html/image/1.png)</code></pre><hr>
+<h2 id="webcc-mergePage">@fn webcc-mergePage 逻辑页合并</h2>
+<pre><code>webcc -cmd mergePage {page1} ... [-usePageTemplate yes]</code></pre>
+<p>将逻辑页的html文件及其链接的js文件，处理后嵌入主html。</p>
+<p>例：命令行</p>
+<pre><code>webcc -cmd mergePage ../server/m2/page/home.html</code></pre>
+<p>例：在html中隐式调用</p>
+<pre><code>&lt;!-- WEBCC_BEGIN --&gt;
+&lt;!-- WEBCC_USE_THIS
+WEBCC_CMD mergePage page/home.html page/login.html page/login1.html page/me.html
+WEBCC_END }}} --&gt;</code></pre>
+<p>注意：</p>
+<ul>
+<li>使用mergePage时，会将子页面html/js并入主页面，要求子页面js中不可出现script标签（因为嵌入主页时使用了script，而script不可嵌套）</li>
+<li>mergePage命令不应使用-o选项，因为html文件无法包含一个html片段。</li>
+</ul>
+<p>支持两种方式：(通过选项 &quot;-usePageTemplate 1&quot; 选择)</p>
+<p>例如，逻辑页order.html引用order.js，格式为：</p>
+<pre><code>&lt;div mui-initfn="initPageOrder" mui-script="order.js"&gt;
+&lt;/div&gt;</code></pre>
+<ol>
+<li>
+<p>使用script标签嵌入主页面（缺省）：</p>
+<pre><code>&lt;script type="text/html" id="tpl_order"&gt;
+    &lt;!-- order.html内容, 其mui-script属性被删除，代之以直接嵌入JS内容 --&gt;
+    &lt;div mui-initfn="initPageOrder" &gt;
+    &lt;/div&gt;
+&lt;/script&gt;
+
+&lt;script&gt;
+// order.js内容
+&lt;/script&gt;</code></pre>
+</li>
+<li>
+<p>使用template标签嵌入主页面（H5标准，目前兼容性还不够）：</p>
+<pre><code>&lt;template id="tpl_order"&gt;
+&lt;!-- order.html 内容 --&gt;
+&lt;div mui-initfn="initPageOrder" &gt;
+    &lt;script&gt;
+    // order.js内容
+    &lt;/script&gt;
+&lt;/div&gt;
+&lt;/template&gt;</code></pre>
+</li>
+</ol><hr>
+<h2 id="webcc-mergeJs">@fn webcc-mergeJs JS合并及压缩</h2>
+<pre><code>webcc -cmd mergeJs {jsFile1} ... [-o {outFile}]</code></pre>
+<p>将js文件合并生成一个文件，并做简单压缩处理（去注释、压缩空白）<br />
+如果源文件名含有.min.js(如jquery.min.js)，则认为已压缩，不重新压缩。</p>
+<p>例：</p>
+<pre><code>webcc -cmd mergeJs lib/jquery.min.js lib/app_fw.js app.js [-o lib_app.js]</code></pre>
+<p>在压缩时，需要用到外部jsmin工具，该工具在webcc相同目录下。</p><hr>
+<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-12-07T22:30:58+08:00</div>
+</html>

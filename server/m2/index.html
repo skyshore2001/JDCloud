@@ -18,21 +18,27 @@
 	<!--link rel="shortcut icon" type="image/x-icon" href="favicon.ico"-->
 	<link rel="icon" href="logo.jpg"><!-- chrome use it -->
 
-	<script src="../m/lib/jquery-1.11.1.min.js"></script>
+	<script src="lib/jquery-1.11.1.min.js"></script>
 	<script src="lib/jquery.touchSwipe.min.js"></script>
+
+<!-- WEBCC_BEGIN {{{ lib-app.min.css -->
 	<link rel="stylesheet" href="lib/weui.min.css" />
 	<link rel="stylesheet" href="lib/mui.css?__HASH__" />
 	<link rel="stylesheet" href="app.css?__HASH__" />
 	<link rel="stylesheet" href="icon.out.css?__HASH__" />
 	<!--link rel="stylesheet" href="icon.css" /-->
+
+<!-- WEBCC_USE_THIS
+WEBCC_CMD mergeCss -minify yes -o lib-app.min.css lib/weui.min.css lib/mui.css app.css icon.out.css
+WEBCC_END }}} -->
 	<link rel="stylesheet" href="index.css?__HASH__" />
 
-<!-- WEBCC_BEGIN {{{ - app framework -->
-	<script src="../m/lib/common.js?__HASH__"></script>
+<!-- WEBCC_BEGIN {{{ lib-app.min.js -->
+	<script src="lib/common.js?__HASH__"></script>
 	<script src="lib/app_fw.js?__HASH__"></script>
 	<script src="app.js?__HASH__"></script>
 <!-- WEBCC_USE_THIS
-	<script src="lib-app.min.js?__HASH__"></script>
+WEBCC_CMD mergeJs -minify yes -o lib-app.min.js lib/common.js lib/app_fw.js app.js
 WEBCC_END }}} -->
 
 	<script src="index.js?__HASH__"></script>
@@ -54,6 +60,11 @@ WEBCC_END }}} -->
 		<span>我</span>
 	</a>
 </div>
+
+<!-- WEBCC_BEGIN {{{ embeded pages -->
+<!-- WEBCC_USE_THIS
+WEBCC_CMD mergePage -minify yes page/home.html page/login.html page/login1.html page/me.html
+WEBCC_END }}} -->
 
 </body>
 </html>
