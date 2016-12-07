@@ -3028,10 +3028,10 @@ function parseArgs()
 			$(function () {
 				var path = './';
 				if (isIOS()) {
-					loadScript(path + "cordova-ios/cordova.js?__HASH__"); 
+					loadScript(path + "cordova-ios/cordova.js?__HASH__,.."); 
 				}
 				else {
-					loadScript(path + "cordova/cordova.js?__HASH__"); 
+					loadScript(path + "cordova/cordova.js?__HASH__,.."); 
 				}
 			});
 		}
