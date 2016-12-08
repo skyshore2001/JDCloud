@@ -2985,6 +2985,23 @@ function showLogin(jpage)
 }
 
 /**
+@fn MUI.showHome()
+
+显示主页。主页是通过 MUI.setApp({homePage: '#home'}); 来指定的，默认为"#home".
+
+要取主页名可以用：
+
+	var jpage = $(MUI.m_app.homePage);
+
+@see MUI.setApp
+*/
+self.showHome = showHome;
+function showHome()
+{
+	self.showPage(self.m_app.homePage);
+}
+
+/**
 @fn MUI.logout(dontReload?)
 @param dontReload 如果非0, 则注销后不刷新页面.
 
