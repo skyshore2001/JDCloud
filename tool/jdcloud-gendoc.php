@@ -12,7 +12,7 @@
 
 用法：
 
-	php gendoc.php mysrc.js -title "API-Reference" > doc.html
+	php jdcloud-gendoc.php mysrc.js -title "API-Reference" > doc.html
 
 文档于utf-8编码，引用css文件style.css。该文件可自行配置。
 

@@ -33,7 +33,7 @@ code {
 </head>
 
 <h1>API参考 - 筋斗云前端（移动Web版）</h1>
-<div>最后更新：2016-12-01</div>
+<div>最后更新：2016-12-14</div>
 <h2>Modules</h2>
 <div class="toc">
 <p><a href="#common.js">common.js (module)</a></p>
@@ -52,6 +52,7 @@ code {
 <p><a href="#.mui-navbar">.mui-navbar (key)</a></p>
 <p><a href="#.mui-navbar.noactive">.mui-navbar.noactive (key)</a></p>
 <p><a href="#.mui-page">.mui-page (key)</a></p>
+<p><a href="#.mui-pullHint">.mui-pullHint (key)</a></p>
 <p><a href="#.mui-weixin">.mui-weixin (key)</a></p>
 <p><a href="#.noSwipe">.noSwipe (key)</a></p>
 <p><a href="#BASE_URL">BASE_URL (var)</a></p>
@@ -71,6 +72,7 @@ code {
 <p><a href="#MUI.batchCall">MUI.batchCall (class)</a></p>
 <p><a href="#MUI.callSvr">MUI.callSvr (fn)</a></p>
 <p><a href="#MUI.callSvrExt">MUI.callSvrExt (key)</a></p>
+<p><a href="#MUI.callSvrExt['default']">MUI.callSvrExt['default'] (key)</a></p>
 <p><a href="#MUI.callSvrSync">MUI.callSvrSync (fn)</a></p>
 <p><a href="#MUI.callSvrSync">MUI.callSvrSync (fn)</a></p>
 <p><a href="#MUI.closeDialog">MUI.closeDialog (fn)</a></p>
@@ -103,6 +105,7 @@ code {
 <p><a href="#MUI.setupDialog">MUI.setupDialog (fn)</a></p>
 <p><a href="#MUI.showDialog">MUI.showDialog (fn)</a></p>
 <p><a href="#MUI.showFirstPage">MUI.showFirstPage (var)</a></p>
+<p><a href="#MUI.showHome">MUI.showHome (fn)</a></p>
 <p><a href="#MUI.showLoading">MUI.showLoading (fn)</a></p>
 <p><a href="#MUI.showLogin">MUI.showLogin (fn)</a></p>
 <p><a href="#MUI.showPage">MUI.showPage (fn)</a></p>
@@ -924,7 +927,10 @@ allow throw(&quot;abort&quot;) as abort behavior.</p><hr>
 <p>生成对后端调用的url. </p>
 <pre><code>var params = {id: 100};
 var url = makeUrl("Ordr.set", params);</code></pre>
-<p>注意：调用该函数生成的url在结尾有标志字符串&quot;zz=1&quot;, 如&quot;../api.php/login?_app=user&amp;zz=1&quot;</p><hr>
+<p>注意：调用该函数生成的url在结尾有标志字符串&quot;zz=1&quot;, 如&quot;../api.php/login?_app=user&amp;zz=1&quot;</p>
+<p>支持callSvr扩展，这时action可以是一个数组，如：</p>
+<pre><code>var url = MUI.makeUrl(['login', 'zhanda']);</code></pre>
+<p class="see"><strong>@see <a href="#MUI.callSvrExt">MUI.callSvrExt</a></strong> </p><hr>
 <h2 id="MUI.callSvr">@fn MUI.callSvr(ac, [param?], fn?, postParams?, userOptions?)</h2><div class="toc"><p style="margin-left:0em"><a href="#MUI.callSvr-1 调用监控">1 调用监控</a></p>
 <p style="margin-left:0em"><a href="#MUI.callSvr-2 文件上传支持(FormData)">2 文件上传支持(FormData)</a></p>
 <p style="margin-left:0em"><a href="#MUI.callSvr-3 callSvr扩展">3 callSvr扩展</a></p>
@@ -1005,31 +1011,85 @@ callSvr("User.get", function (data) {
     "msg":"invalid username or password",
     "data":[]
 }</code></pre>
-<p>注意：</p>
-<ul>
-<li>
-<p>对方接口应允许JS跨域调用，或调用方支持跨域调用。</p>
-<p>MUI.callSvrExt['zhanda'] = {<br />
-makeUrl: function(ac) {<br />
-return '<a href="http://hostname/lcapi/">http://hostname/lcapi/</a>' + ac;<br />
-}<br />
-dataFilter: function (data) {<br />
-if ($.isPlainObject(data) &amp;&amp; data.code !== undefined) {<br />
-if (data.code == 0)<br />
-return data.data;<br />
-app_alert(&quot;操作失败：&quot; + data.message, &quot;e&quot;);<br />
-}<br />
-else {<br />
-app_alert(&quot;服务器通讯协议异常!&quot;, &quot;e&quot;); // 格式不对<br />
-}<br />
-}<br />
-};</p>
-</li>
-</ul>
+<p>注意：<br />
+对方接口应允许JS跨域调用，或调用方支持跨域调用。</p>
+<pre><code>MUI.callSvrExt['zhanda'] = {
+    makeUrl: function(ac) {
+        return 'http://hostname/lcapi/' + ac;
+    }
+    dataFilter: function (data) {
+        if ($.isPlainObject(data) &amp;&amp; data.code !== undefined) {
+            if (data.code == 0)
+                return data.data;
+            app_alert("操作失败：" + data.message, "e");
+        }
+        else {
+            app_alert("服务器通讯协议异常!", "e"); // 格式不对
+        }
+    }
+};</code></pre>
 <p>在调用时，ac参数传入一个数组：</p>
 <pre><code>callSvr(['token/get-token', 'zhanda'], {user: 'test', password: 'test123'}, function (data) {
     console.log(data);
-});</code></pre><hr>
+});</code></pre>
+<p class="key"><strong>@key <a id="MUI.callSvrExt['default']">MUI.callSvrExt['default']</a></strong> </p>
+<p>(支持版本: v3.1)<br />
+如果要修改callSvr缺省调用方法，可以改写 MUI.callSvrExt['default'].<br />
+例如，定义以下callSvr扩展：</p>
+<pre><code>MUI.callSvrExt['default'] = {
+    makeUrl: function(ac) {
+        return '../api.php/' + ac;
+    },
+    dataFilter: function (data) {
+        var ctx = this.ctx_ || {};
+        if (data &amp;&amp; $.isArray(data) &amp;&amp; data.length &gt;= 2 &amp;&amp; typeof data[0] == "number") {
+            if (data[0] == 0)
+                return data[1];
+
+            if (this.noex)
+            {
+                MUI.lastError = ctx;
+                return false;
+            }
+
+            if (data[0] == E_NOAUTH) {
+                // 如果支持自动重登录
+                //if (MUI.tryAutoLogin()) {
+                //  $.ajax(this);
+                //}
+                // 不支持自动登录，则跳转登录页
+                MUI.popPageStack(0);
+                MUI.showLogin();
+                return;
+            }
+            else if (data[0] == E_AUTHFAIL) {
+                app_alert("验证失败，请检查输入是否正确!", "e");
+                return;
+            }
+            else if (data[0] == E_ABORT) {
+                console.log("!!! abort call");
+                return;
+            }
+            logError();
+            app_alert("操作失败：" + data[1], "e");
+        }
+        else {
+            logError();
+            app_alert("服务器通讯协议异常!", "e"); // 格式不对
+        }
+
+        function logError()
+        {
+            MUI.lastError = ctx;
+            console.log("failed call");
+            console.log(ctx);
+        }
+    }
+};</code></pre>
+<p>这样，以下调用</p>
+<pre><code>callSvr(['login', 'default']);</code></pre>
+<p>可以简写为：</p>
+<pre><code>callSvr('login');</code></pre><hr>
 <h2 id="MUI.callSvrSync">@fn MUI.callSvrSync(ac, params?, fn?, postParams?, userOptions?)</h2>
 <p class="fn"><strong>@fn <a id="MUI.callSvrSync">MUI.callSvrSync</a></strong> (ac, fn?, postParams?, userOptions?)</p>
 <p class="alias"><strong>@alias <a id="callSvrSync">callSvrSync</a></strong> </p>
@@ -1131,6 +1191,11 @@ show error using jquery validator's method by jo's name</p><hr>
 <li>如果有多个登录页（如动态验证码登录，用户名密码登录等），其它页的id起名时，应以app.loginPage指定内容作为前缀，<br />
 如loginPage=&quot;#login&quot;, 则登录页面名称可以为：#login(缺省登录页), #login1, #loginByPwd等；否则无法被识别为登录页，导致登录成功后按返回键仍会回到登录页</li>
 </ul><hr>
+<h2 id="MUI.showHome">@fn MUI.showHome()</h2>
+<p>显示主页。主页是通过 MUI.setApp({homePage: '#home'}); 来指定的，默认为&quot;#home&quot;.</p>
+<p>要取主页名可以用：</p>
+<pre><code>var jpage = $(MUI.m_app.homePage);</code></pre>
+<p class="see"><strong>@see <a href="#MUI.setApp">MUI.setApp</a></strong> </p><hr>
 <h2 id="MUI.logout">@fn MUI.logout(dontReload?)</h2>
 <p class="param"><strong>@param dontReload</strong>  如果非0, 则注销后不刷新页面.</p>
 <p>注销当前登录, 成功后刷新页面(除非指定dontReload=1)</p><hr>
@@ -1249,6 +1314,8 @@ uptoThreshold:: Boolean. 是否达到阈值</code></pre><hr>
 <p style="margin-left:0em"><a href="#initPageList-5 参数说明">5 参数说明</a></p>
 <p style="margin-left:0em"><a href="#initPageList-6 css类">6 css类</a></p>
 <p style="margin-left:0em"><a href="#initPageList-7 列表页用于选择">7 列表页用于选择</a></p>
+<p style="margin-left:0em"><a href="#initPageList-8 分页机制与后端接口适配">8 分页机制与后端接口适配</a></p>
+<p style="margin-left:0em"><a href="#initPageList-9 下拉刷新提示信息">9 下拉刷新提示信息</a></p>
 </div>
 <p class="alias"><strong>@alias <a id="initNavbarAndList">initNavbarAndList</a></strong> </p>
 <p>列表页逻辑框架.</p>
@@ -1379,7 +1446,8 @@ callSvr(queryParam.ac, queryParam, function (data) {
         opt.onNoItem(jlst);
 });</code></pre>
 <h4 id="initPageList-5 参数说明">5 参数说明</h4>
-<p class="param"><strong>@param opt</strong>  {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list", onBeforeLoad?, onLoad?}</p>
+<p class="param"><strong>@param opt</strong>  {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list", onBeforeLoad?, onLoad?, onGetData?}</p>
+<p class="param"><strong>@param opt</strong>  分页相关 { pageszName?="_pagesz", pagekeyName?="_pagekey" }</p>
 <p class="param"><strong>@param onGetQueryParam</strong>  Function(jlst, queryParam/o)</p>
 <p>queryParam: {ac?, res?, cond?, ...}</p>
 <p>框架在调用callSvr之前，先取列表对象jlst上的data-queryParam属性作为queryParam的缺省值，再尝试取data-ac, data-res, data-cond, data-orderby属性作为queryParam.ac等参数的缺省值，<br />
@@ -1401,6 +1469,7 @@ callSvr(queryParam.ac, queryParam, function (data) {
 <p class="param"><strong>@param navRef,listRef</strong>   指定navbar与list，可以是选择器，也可以是jQuery对象；或是一组button与一组div，一次显示一个div；或是navRef为空，而listRef为一个或多个不相关联的list.</p>
 <p class="param"><strong>@param onBeforeLoad</strong> (jlst, isFirstPage)->Boolean  如果返回false, 可取消load动作。参数isFirstPage=true表示是分页中的第一页，即刚刚加载数据。</p>
 <p class="param"><strong>@param onLoad</strong> (jlst, isLastPage)  参数isLastPage=true表示是分页中的最后一页, 即全部数据已加载完。</p>
+<p class="param"><strong>@param onGetData</strong> (data, pagesz, pagekey?) 每次请求获取到数据后回调。pagesz为请求时的页大小，pagekey为页码（首次为null）</p>
 <p class="return"><strong>@return PageListInterface=</strong> {refresh, markRefresh}</p>
 <p>refresh: Function(), 刷新当前列表<br />
 markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 下次浏览该列表时刷新。</p>
@@ -1457,7 +1526,78 @@ function onChoose(order)
 {
     // 处理order
     history.back(); // 由于进入列表选择时会离开当前页面，这时应返回
-}</code></pre><hr>
+}</code></pre>
+<h4 id="initPageList-8 分页机制与后端接口适配">8 分页机制与后端接口适配</h4>
+<p>默认按BQP协议的分页机制访问服务端，其规则是：</p>
+<ul>
+<li>请求通过 _pagesz 参数指定页大小</li>
+<li>
+<p>如果不是最后一页，服务端应返回nextkey字段；返回列表的格式可以是 table格式如 </p>
+<pre><code>{
+    h: [ "field1","field2" ],
+    d: [ ["val1","val2"], ["val3","val4"], ... ]
+    nextkey: 2
+}</code></pre>
+<p>也可以用list参数指定列表，如</p>
+<pre><code>{
+    list: [
+        {field1: "val1", field2: "val2"},
+        {field1: "val3", field2: "val4"},
+    ],
+    nextkey: 2
+}</code></pre>
+</li>
+<li>请求下一页时，设置参数_pagekey = nextkey，直到服务端不返回 nextkey 字段为止。</li>
+</ul>
+<p>例1：假定后端分页机制为(jquery-easyui datagrid分页机制):</p>
+<ul>
+<li>请求时通过参数page, rows分别表示页码，页大小，如 <code>page=1&amp;rows=20</code></li>
+<li>返回数据通过字段total表示总数, rows表示列表数据，如 <code>{ total: 83, rows: [ {...}, ... ] }</code></li>
+</ul>
+<p>适配方法为：</p>
+<pre><code>var lstIf = initPageList(jpage, {
+    ...
+
+    pageszName: 'rows',
+    pagekeyName: 'total',
+
+    // 设置 data.list, data.nextkey (如果是最后一页则不要设置); 注意pagekey可以为空
+    onGetData: function (data, pagesz, pagekey) {
+        data.list = data.rows;
+        if (pagekey == null)
+            pagekey = 1;
+        if (data.total &gt;  pagesz * pagekey)
+            data.nextkey = pagekey + 1;
+    }
+});</code></pre>
+<p>例2：假定后端分页机制为：</p>
+<ul>
+<li>请求时通过参数curPage, maxLine分别表示页码，页大小，如 <code>curPage=1&amp;maxLine=20</code></li>
+<li>
+<p>返回数据通过字段curPage, countPage, investList 分别表示当前页码, 总页数，列表数据，如 <code>{ curPage:1, countPage: 5, investList: [ {...}, ... ] }</code></p>
+<p>var lstIf = initPageList(jpage, {<br />
+...</p>
+<pre><code>pageszName: 'maxLine',
+pagekeyName: 'curPage',
+
+// 设置 data.list, data.nextkey (如果是最后一页则不要设置); 注意pagekey可以为空
+onGetData: function (data, pagesz, pagekey) {
+    data.list = data.investList;
+    if (data.curPage &lt; data.countPage)
+        data.nextkey = data.curPage + 1;
+}</code></pre>
+<p>});</p>
+</li>
+</ul>
+<h4 id="initPageList-9 下拉刷新提示信息">9 下拉刷新提示信息</h4>
+<p class="key"><strong>@key <a id=".mui-pullHint">.mui-pullHint</a></strong>  指定下拉提示显示位置</p>
+<p>显示下拉刷新提示时，默认是在列表所在容器的最上端位置显示的。如果需要指定显示位置，可使用css类&quot;mui-pullHint&quot;，示例如下：</p>
+<pre><code>&lt;div class="bd"&gt;
+    &lt;div&gt;下拉列表演示&lt;/div&gt;
+    &lt;div class="mui-pullHint"&gt;&lt;/div&gt; &lt;!-- 如果没有这行，则下拉提示会在容器最上方，即"下拉列表演示"这行文字的上方--&gt;
+    &lt;div id="lst1"&gt;&lt;/div&gt;
+    &lt;div id="lst2"&gt;&lt;/div&gt;
+&lt;/div&gt;</code></pre><hr>
 <h2 id="showByFormMode">@fn showByFormMode(jo, formMode)</h2>
 <p>根据当前formMode自动显示或隐藏jo下的DOM对象.</p>
 <p>示例: 对以下DOM对象</p>
@@ -1544,5 +1684,5 @@ PagePerson.showForSet({id: 3}); // 以id=3查询人物并显示，可更新。</
     ...
 &lt;/form&gt;</code></pre>
 <p>如果formData中有多个属性，则自动以formData的内容作为数据源显示页面，不再发起查询。</p><hr>
-<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-12-01T17:32:13+08:00</div>
+<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-12-14T17:10:12+08:00</div>
 </html>
