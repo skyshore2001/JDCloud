@@ -33,9 +33,10 @@ code {
 </head>
 
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2016-10-19</div>
+<div>最后更新：2016-12-14</div>
 <h2>Modules</h2>
 <div class="toc">
+<p><a href="#common.js">common.js (module)</a></p>
 <p><a href="#WUI">WUI (module)</a></p>
 </div><hr>
 <h2>Keywords</h2>
@@ -47,6 +48,13 @@ code {
 <p><a href="#.wui-dialog">.wui-dialog (key)</a></p>
 <p><a href="#.wui-page">.wui-page (key)</a></p>
 <p><a href="#BASE_URL">BASE_URL (var)</a></p>
+<p><a href="#Date.add">Date.add (fn)</a></p>
+<p><a href="#Date.addDay">Date.addDay (fn)</a></p>
+<p><a href="#Date.addHours">Date.addHours (fn)</a></p>
+<p><a href="#Date.addMin">Date.addMin (fn)</a></p>
+<p><a href="#Date.addMonth">Date.addMonth (fn)</a></p>
+<p><a href="#Date.diff">Date.diff (fn)</a></p>
+<p><a href="#Date.format">Date.format (fn)</a></p>
 <p><a href="#IsBusy">IsBusy (var)</a></p>
 <p><a href="#ListOptions">ListOptions (var)</a></p>
 <p><a href="#Plugins">Plugins (class)</a></p>
@@ -83,14 +91,19 @@ code {
 <p><a href="#app_alert">app_alert (alias)</a></p>
 <p><a href="#app_confirm">app_confirm (alias)</a></p>
 <p><a href="#app_show">app_show (alias)</a></p>
+<p><a href="#assert">assert (fn)</a></p>
+<p><a href="#basename">basename (fn)</a></p>
 <p><a href="#beforeshow">beforeshow (key)</a></p>
 <p><a href="#callSvr">callSvr (alias)</a></p>
 <p><a href="#callSvrSync">callSvrSync (alias)</a></p>
 <p><a href="#checkboxToHidden">checkboxToHidden (fn)</a></p>
+<p><a href="#common.js">common.js (module)</a></p>
 <p><a href="#datagrid.formatter">datagrid.formatter (key)</a></p>
 <p><a href="#datagrid.sortable">datagrid.sortable (key)</a></p>
 <p><a href="#datagrid.sorter">datagrid.sorter (key)</a></p>
 <p><a href="#datagrid.styler">datagrid.styler (key)</a></p>
+<p><a href="#delCookie">delCookie (fn)</a></p>
+<p><a href="#delStorage">delStorage (fn)</a></p>
 <p><a href="#enterWaiting">enterWaiting (alias)</a></p>
 <p><a href="#example-dialog">example-dialog (key)</a></p>
 <p><a href="#example-upload">example-upload (key)</a></p>
@@ -100,6 +113,8 @@ code {
 <p><a href="#g_data">g_data (var)</a></p>
 <p><a href="#g_data.userInfo">g_data.userInfo (key)</a></p>
 <p><a href="#getAncestor">getAncestor (fn)</a></p>
+<p><a href="#getCookie">getCookie (fn)</a></p>
+<p><a href="#getStorage">getStorage (fn)</a></p>
 <p><a href="#hiddenToCheckbox">hiddenToCheckbox (fn)</a></p>
 <p><a href="#hiddenToImg">hiddenToImg (fn)</a></p>
 <p><a href="#imgToHidden">imgToHidden (fn)</a></p>
@@ -117,15 +132,195 @@ code {
 <p><a href="#numberSort">numberSort (fn)</a></p>
 <p><a href="#onChooseFile">onChooseFile (fn)</a></p>
 <p><a href="#pagecreate,pageshow,pagedestroy">pagecreate,pageshow,pagedestroy (key)</a></p>
+<p><a href="#parseDate">parseDate (fn)</a></p>
+<p><a href="#parseQuery">parseQuery (fn)</a></p>
+<p><a href="#parseTime">parseTime (fn)</a></p>
+<p><a href="#randAlphanum">randAlphanum (fn)</a></p>
+<p><a href="#randInt">randInt (fn)</a></p>
+<p><a href="#reloadSite">reloadSite (fn)</a></p>
 <p><a href="#retdata">retdata (key)</a></p>
 <p><a href="#row2tr">row2tr (fn)</a></p>
+<p><a href="#rs2Array">rs2Array (fn)</a></p>
+<p><a href="#rs2Hash">rs2Hash (fn)</a></p>
+<p><a href="#rs2MultiHash">rs2MultiHash (fn)</a></p>
 <p><a href="#savedata">savedata (key)</a></p>
 <p><a href="#searchField">searchField (fn)</a></p>
+<p><a href="#setCookie">setCookie (fn)</a></p>
+<p><a href="#setStorage">setStorage (fn)</a></p>
 <p><a href="#show">show (key)</a></p>
+<p><a href="#tobool">tobool (fn)</a></p>
 <p><a href="#wui-nopic">wui-nopic (key)</a></p>
 <p><a href="#wui-nothumb">wui-nothumb (key)</a></p>
 <p><a href="#wui-pageName">wui-pageName (key)</a></p>
 </div><hr>
+<h2 id="common.js">@module common.js</h2>
+<p>JS通用函数库</p><hr>
+<h2 id="randInt">@fn randInt(from, to)</h2>
+<p>生成一个随机整数。如生成10到20间的随机整数：</p>
+<pre><code>var n = randInt(10, 20)</code></pre><hr>
+<h2 id="randAlphanum">@fn randAlphanum(cnt)</h2>
+<p>生成指定长度(cnt)的随机代码。不出现&quot;0&quot;,&quot;1&quot;,&quot;o&quot;,&quot;l&quot;这些易混淆字符。</p>
+<p>示例：生成8位随机密码</p>
+<pre><code>var dyn_pwd = randAlphanum(8);</code></pre><hr>
+<h2 id="basename">@fn basename(name, ext?)</h2>
+<p>取名字的基础部分，如</p>
+<pre><code>var name = basename("/cc/ttt.asp"); // "ttt.asp"
+var name2 = basename("c:\\aaa\\bbb/cc/ttt.asp", ".asp"); // "ttt"</code></pre><hr>
+<h2 id="assert">@fn assert(cond, dscr?)</h2><hr>
+<h2 id="parseQuery">@fn parseQuery(str)</h2>
+<p>解析url编码格式的查询字符串，返回对应的对象。</p>
+<pre><code>if (location.search) {
+    var queryStr = location.search.substr(1); // "?id=100&amp;name=abc&amp;val=3.14"去掉"?"号
+    var args = parseQuery(queryStr); // {id: 100, name: "abc", val: 3.14}
+}</code></pre>
+<p>注意：</p>
+<p>如果值为整数或小数，则会转成相应类型。如上例中 id为100,不是字符串&quot;100&quot;.</p><hr>
+<h2 id="tobool">@fn tobool(v)</h2>
+<p>将字符串转成boolean值。除&quot;0&quot;, &quot;1&quot;外，还可以支持字符串 &quot;on&quot;/&quot;off&quot;, &quot;true&quot;/&quot;false&quot;等。</p><hr>
+<h2 id="reloadSite">@fn reloadSite()</h2>
+<p>重新加载当前页面，但不要#hash部分。</p><hr>
+<h2 id="Date.format">@fn Date.format(fmt?=L)</h2>
+<p>日期对象格式化字符串。</p>
+<p class="param"><strong>@param fmt</strong>  格式字符串。由以下组成：</p>
+<pre><code>yyyy - 四位年，如2008, 1999
+yy - 两位年，如 08, 99
+mm - 两位月，如 02, 12
+dd - 两位日，如 01, 30
+HH - 两位小时，如 00, 23
+MM - 两位分钟，如 00, 59
+SS - 两位秒，如 00, 59
+
+支持这几种常用格式：
+L - 标准日期时间，相当于 "yyyy-mm-dd HH:MM:SS"
+D - 标准日期，相当于 "yyyy-mm-dd"
+T - 标准时间，相当于 "HH:MM:SS"</code></pre>
+<p>示例：</p>
+<pre><code>var dt = new Date();
+var dtStr1 = dt.format("D"); // "2009-10-20"
+var dtStr2 = dt.format("yyyymmdd-HHMM"); // "20091020-2038"</code></pre><hr>
+<h2 id="Date.addDay">@fn Date.addDay(n)</h2><hr>
+<h2 id="Date.addHours">@fn Date.addHours(n)</h2><hr>
+<h2 id="Date.addMin">@fn Date.addMin(n)</h2><hr>
+<h2 id="Date.addMonth">@fn Date.addMonth(n)</h2><hr>
+<h2 id="parseTime">@fn parseTime(s)</h2>
+<p>将纯时间字符串生成一个日期对象。</p>
+<pre><code>var dt1 = parseTime("10:10:00");
+var dt2 = parseTime("10:11");</code></pre><hr>
+<h2 id="parseDate">@fn parseDate(dateStr)</h2>
+<p>将日期字符串转为日期时间格式。其效果相当于<code>new Date(Date.parse(dateStr))</code>，但兼容性更好（例如在safari中很多常见的日期格式无法解析）</p>
+<p>示例：</p>
+<pre><code>var dt1 = parseDate("2012-01-01");
+var dt2 = parseDate("2012/01/01 20:00:09");
+var dt3 = parseDate("2012.1.1 20:00");</code></pre><hr>
+<h2 id="Date.add">@fn Date.add(sInterval, n)</h2>
+<p>为日期对象加几天/小时等。参数n为整数，可以为负数。</p>
+<p class="param"><strong>@param sInterval</strong>  Enum. 间隔单位. d-天; m-月; y-年; h-小时; n-分; s-秒</p>
+<p>示例：</p>
+<pre><code>var dt = new Date();
+dt.add("d", 1); // 1天后
+dt.add("m", 1); // 1个月后
+dt.add("y", -1); // 1年前
+dt.add("h", 3); // 3小时后
+dt.add("n", 30); // 30分钟后
+dt.add("s", 30); // 30秒后</code></pre>
+<p class="see"><strong>@see <a href="#Date.diff">Date.diff</a></strong> </p><hr>
+<h2 id="Date.diff">@fn Date.diff(sInterval, dtEnd)</h2>
+<p>计算日期到另一日期间的间隔，单位由sInterval指定(具体值列表参见Date.add).</p>
+<pre><code>var dt = new Date();
+...
+var dt2 = new Date();
+var days = dt.diff("d", dt2); // 相隔多少天</code></pre>
+<p class="see"><strong>@see <a href="#Date.add">Date.add</a></strong> </p><hr>
+<h2 id="setCookie">@fn setCookie(name, value, days?=30)</h2>
+<p>设置cookie值。如果只是为了客户端长时间保存值，一般建议使用 setStorage.</p>
+<p class="see"><strong>@see <a href="#getCookie">getCookie</a></strong> </p>
+<p class="see"><strong>@see <a href="#delCookie">delCookie</a></strong> </p>
+<p class="see"><strong>@see <a href="#setStorage">setStorage</a></strong> </p><hr>
+<h2 id="getCookie">@fn getCookie(name)</h2>
+<p>取cookie值。</p>
+<p class="see"><strong>@see <a href="#setCookie">setCookie</a></strong> </p>
+<p class="see"><strong>@see <a href="#delCookie">delCookie</a></strong> </p><hr>
+<h2 id="delCookie">@fn delCookie(name)</h2>
+<p>删除一个cookie项。</p>
+<p class="see"><strong>@see <a href="#getCookie">getCookie</a></strong> </p>
+<p class="see"><strong>@see <a href="#setCookie">setCookie</a></strong> </p><hr>
+<h2 id="setStorage">@fn setStorage(name, value, useSession?=false)</h2>
+<p>使用localStorage存储(或使用sessionStorage存储, 如果useSession=true)。<br />
+注意只能存储字符串，所以value不可以为数组，对象等，必须序列化后存储。 </p>
+<p>如果浏览器不支持Storage，则使用cookie实现.</p>
+<p>示例：</p>
+<pre><code>setStorage("id", "100");
+var id = getStorage("id");
+delStorage("id");</code></pre>
+<p>示例2：对象需要序列化后存储：</p>
+<pre><code>var obj = {id:10, name:"Jason"};
+setStorage("obj", JSON.stringify(obj));
+var obj2 = getStorage("obj");
+alert(obj2.name);</code></pre>
+<p class="see"><strong>@see <a href="#getStorage">getStorage</a></strong> </p>
+<p class="see"><strong>@see <a href="#delStorage">delStorage</a></strong> </p><hr>
+<h2 id="getStorage">@fn getStorage(name, useSession?=false)</h2>
+<p>取storage中的一项。<br />
+默认使用localStorage存储，如果useSession=true，则使用sessionStorage存储。</p>
+<p>如果浏览器不支持Storage，则使用cookie实现.</p>
+<p class="see"><strong>@see <a href="#setStorage">setStorage</a></strong> </p>
+<p class="see"><strong>@see <a href="#delStorage">delStorage</a></strong> </p><hr>
+<h2 id="delStorage">@fn delStorage(name)</h2>
+<p>删除storage中的一项。</p>
+<p class="see"><strong>@see <a href="#getStorage">getStorage</a></strong> </p>
+<p class="see"><strong>@see <a href="#setStorage">setStorage</a></strong> </p><hr>
+<h2 id="rs2Array">@fn rs2Array(rs)</h2>
+<p class="param"><strong>@param rs=</strong> {h=[header], d=[ @row ]} rs对象(RowSet)</p>
+<p class="return"><strong>@return arr=[</strong>  %obj ]</p>
+<p>rs对象用于传递表格，包含表头与表内容。<br />
+函数用于将服务器发来的rs对象转成数组。</p>
+<p>示例：</p>
+<pre><code>var rs = {
+    h: ["id", "name"], 
+    d: [ [100, "Tom"], [101, "Jane"] ] 
+};
+var arr = rs2Array(rs); 
+
+// 结果为
+arr = [
+    {id: 100, name: "Tom"},
+    {id: 101, name: "Jane"} 
+];</code></pre>
+<p class="see"><strong>@see <a href="#rs2Hash">rs2Hash</a></strong> </p>
+<p class="see"><strong>@see <a href="#rs2MultiHash">rs2MultiHash</a></strong> </p><hr>
+<h2 id="rs2Hash">@fn rs2Hash(rs, key)</h2>
+<p class="param"><strong>@param rs=</strong> {h, d}  rs对象(RowSet)</p>
+<p class="return"><strong>@return hash=</strong> {key => %obj}</p>
+<p>示例：</p>
+<pre><code>var rs = {
+    h: ["id", "name"], 
+    d: [ [100, "Tom"], [101, "Jane"] ] 
+};
+var hash = rs2Hash(rs, "id"); 
+
+// 结果为
+hash = {
+    100: {id: 100, name: "Tom"},
+    101: {id: 101, name: "Jane"}
+};</code></pre>
+<p class="see"><strong>@see <a href="#rs2Array">rs2Array</a></strong> </p><hr>
+<h2 id="rs2MultiHash">@fn rs2MultiHash(rs, key)</h2>
+<p class="param"><strong>@param rs=</strong> {h, d}  rs对象(RowSet)</p>
+<p class="return"><strong>@return hash=</strong> {key => [ %obj ]}</p>
+<p>示例：</p>
+<pre><code>var rs = {
+    h: ["id", "name"], 
+    d: [ [100, "Tom"], [101, "Jane"], [102, "Tom"] ] 
+};
+var hash = rs2Hash(rs, "name");  
+
+// 结果为
+hash = {
+    "Tom": [{id: 100, name: "Tom"}, {id: 102, name: "Tom"}],
+    "Jane": [{id: 101, name: "Jane"}]
+};</code></pre>
+<p class="see"><strong>@see <a href="#rs2Hash">rs2Hash</a></strong> </p>
+<p class="see"><strong>@see <a href="#rs2Array">rs2Array</a></strong> </p><hr>
 <h2 id="IsBusy">@var IsBusy</h2>
 <p>标识应用当前是否正在与服务端交互。一般用于自动化测试。</p><hr>
 <h2 id="g_args">@var g_args</h2>
@@ -1034,5 +1229,5 @@ pics:: List(Integer). 商户图片列表，格式如"101,102,103".</code></pre>
     &lt;/form&gt;
 &lt;/div&gt;</code></pre>
 <p class="see"><strong>@see <a href="#WUI.getQueryCond">WUI.getQueryCond</a></strong>  值支持比较运行符等多种格式，可参考这里定义。</p><hr>
-<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-10-19T12:00:50+08:00</div>
+<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-12-14T17:10:13+08:00</div>
 </html>
