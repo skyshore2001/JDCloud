@@ -3506,7 +3506,11 @@ function initPullList(container, opt)
 		jo_.height(height).css("lineHeight", height + "px");
 			
 		if (ac == "D") {
-			jo_.prependTo(cont_);
+			var c = cont_.getElementsByClassName("mui-pullHint")[0];
+			if (c)
+				jo_.appendTo(c);
+			else
+				jo_.prependTo(cont_);
 		}
 		else if (ac == "U") {
 			jo_.appendTo(cont_);
@@ -4063,6 +4067,18 @@ markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 
 				data.nextkey = data.curPage + 1;
 		}
 	});
+
+## 下拉刷新提示信息
+
+@key .mui-pullHint 指定下拉提示显示位置
+显示下拉刷新提示时，默认是在列表所在容器的最上端位置显示的。如果需要指定显示位置，可使用css类"mui-pullHint"，示例如下：
+
+	<div class="bd">
+		<div>下拉列表演示</div>
+		<div class="mui-pullHint"></div> <!-- 如果没有这行，则下拉提示会在容器最上方，即"下拉列表演示"这行文字的上方-->
+		<div id="lst1"></div>
+		<div id="lst2"></div>
+	</div>
 
  */
 window.initNavbarAndList = initPageList;
