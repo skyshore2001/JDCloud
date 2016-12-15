@@ -28,7 +28,7 @@ refdoc: $(refdoc_targets)
 ../doc/api_php.html: ../server/php/common.php ../server/php/app_fw.php ../server/php/api_fw.php
 	php jdcloud-gendoc.php $^ -title "API参考 - 筋斗云服务端" $(opt) > $@
 
-../doc/webcc.html: webcc.php
+../doc/webcc.html: webcc.php jdcloud-build.sh
 	php jdcloud-gendoc.php $^ -title "webcc - 站点发布优化工具" $(opt) > $@
 
 ../doc/jdcloud-sprite.html: jdcloud-sprite.php
