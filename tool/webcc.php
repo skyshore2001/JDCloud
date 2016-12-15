@@ -398,30 +398,36 @@ CSS合并，以及对url相对路径进行修正。
 		}
 		if (substr($f, -3) ==  '.js')
 			return $this->jsmin($f);
-		return $this->cssMin($f);
+		else if (substr($f, -4) == '.css')
+			return $this->cssmin($f);
+		return file_get_contents($f);
 	}
 
 	protected function cssMin($f)
 	{
-		// TODO: cssMin
-		return file_get_contents($f);
+		return $this->minify($f, 'cssmin');
 	}
 
 	// return: min js
 	protected function jsmin($f)
 	{
+		return $this->minify($f, 'jsmin');
+	}
+
+	protected function minify($f, $prog)
+	{
 		$fp = fopen($f, "r");
-		$jsminExe = __DIR__ . '/jsmin';
-		$h = proc_open($jsminExe, [ $fp, ["pipe", "w"], STDERR ], $pipes);
+		$minExe = __DIR__ . '/' . $prog;
+		$h = proc_open($minExe, [ $fp, ["pipe", "w"], STDERR ], $pipes);
 		if ($h === false) {
-			die("*** error: require tool `jsmin'\n");
+			die("*** error: require tool `$prog'\n");
 		}
 		fclose($fp);
 		$ret = stream_get_contents($pipes[1]);
 		fclose($pipes[1]);
 		$rv = proc_close($h);
 		if ($rv != 0) {
-			die("*** error: jsmin fails to run.\n");
+			die("*** error: $prog fails to run.\n");
 		}
 		return $ret;
 	}
