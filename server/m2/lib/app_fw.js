@@ -786,7 +786,7 @@ APP初始化成功后，回调该事件。如果deviceready事件未被回调，
 
 - m/cordova/cordova.js文件版本不兼容，如创建插件cordova平台是5.0版本，而相应的cordova.js文件或接口文件版本不同。
 - 在编译原生程序时未设置 <allow-navigation href="*">，或者html中CSP设置不正确。
-- 主页中有跨域的script js文件无法下载。如 <script type="text/javascript" src="http://3.3.3.3/1.js"></script>
+- 主页中有跨域的script js文件无法下载。如 `<script type="text/javascript" src="http://3.3.3.3/1.js"></script>`
 - 某插件的初始化过程失败（需要在原生环境下调试）
 
 ## 系统类标识
