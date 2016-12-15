@@ -786,7 +786,7 @@ APP初始化成功后，回调该事件。如果deviceready事件未被回调，
 
 - m/cordova/cordova.js文件版本不兼容，如创建插件cordova平台是5.0版本，而相应的cordova.js文件或接口文件版本不同。
 - 在编译原生程序时未设置 <allow-navigation href="*">，或者html中CSP设置不正确。
-- 主页中有跨域的script js文件无法下载。如 <script type="text/javascript" src="http://3.3.3.3/1.js"></script>
+- 主页中有跨域的script js文件无法下载。如 `<script type="text/javascript" src="http://3.3.3.3/1.js"></script>`
 - 某插件的初始化过程失败（需要在原生环境下调试）
 
 ## 系统类标识
@@ -2985,6 +2985,23 @@ function showLogin(jpage)
 }
 
 /**
+@fn MUI.showHome()
+
+显示主页。主页是通过 MUI.setApp({homePage: '#home'}); 来指定的，默认为"#home".
+
+要取主页名可以用：
+
+	var jpage = $(MUI.m_app.homePage);
+
+@see MUI.setApp
+*/
+self.showHome = showHome;
+function showHome()
+{
+	self.showPage(self.m_app.homePage);
+}
+
+/**
 @fn MUI.logout(dontReload?)
 @param dontReload 如果非0, 则注销后不刷新页面.
 
@@ -3489,7 +3506,11 @@ function initPullList(container, opt)
 		jo_.height(height).css("lineHeight", height + "px");
 			
 		if (ac == "D") {
-			jo_.prependTo(cont_);
+			var c = cont_.getElementsByClassName("mui-pullHint")[0];
+			if (c)
+				jo_.appendTo(c);
+			else
+				jo_.prependTo(cont_);
 		}
 		else if (ac == "U") {
 			jo_.appendTo(cont_);
@@ -3867,7 +3888,8 @@ navRef是否为空的区别是，如果非空，则表示listRef是一组互斥�
 
 ## 参数说明
 
-@param opt {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list", onBeforeLoad?, onLoad?}
+@param opt {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list", onBeforeLoad?, onLoad?, onGetData?}
+@param opt 分页相关 { pageszName?="_pagesz", pagekeyName?="_pagekey" }
 
 @param onGetQueryParam Function(jlst, queryParam/o)
 
@@ -3905,6 +3927,8 @@ param={idx, arr, isFirstPage}
 
 @param onBeforeLoad(jlst, isFirstPage)->Boolean  如果返回false, 可取消load动作。参数isFirstPage=true表示是分页中的第一页，即刚刚加载数据。
 @param onLoad(jlst, isLastPage)  参数isLastPage=true表示是分页中的最后一页, 即全部数据已加载完。
+
+@param onGetData(data, pagesz, pagekey?) 每次请求获取到数据后回调。pagesz为请求时的页大小，pagekey为页码（首次为null）
 
 @return PageListInterface={refresh, markRefresh}
 
@@ -3976,13 +4000,95 @@ markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 
 		// 处理order
 		history.back(); // 由于进入列表选择时会离开当前页面，这时应返回
 	}
+
+## 分页机制与后端接口适配
+
+默认按BQP协议的分页机制访问服务端，其规则是：
+
+- 请求通过 _pagesz 参数指定页大小
+- 如果不是最后一页，服务端应返回nextkey字段；返回列表的格式可以是 table格式如 
+
+		{
+			h: [ "field1","field2" ],
+			d: [ ["val1","val2"], ["val3","val4"], ... ]
+			nextkey: 2
+		}
+
+	也可以用list参数指定列表，如
+
+		{
+			list: [
+				{field1: "val1", field2: "val2"},
+				{field1: "val3", field2: "val4"},
+			],
+			nextkey: 2
+		}
+
+- 请求下一页时，设置参数_pagekey = nextkey，直到服务端不返回 nextkey 字段为止。
+
+例1：假定后端分页机制为(jquery-easyui datagrid分页机制):
+
+- 请求时通过参数page, rows分别表示页码，页大小，如 `page=1&rows=20`
+- 返回数据通过字段total表示总数, rows表示列表数据，如 `{ total: 83, rows: [ {...}, ... ] }`
+
+适配方法为：
+
+	var lstIf = initPageList(jpage, {
+		...
+
+		pageszName: 'rows',
+		pagekeyName: 'total',
+
+		// 设置 data.list, data.nextkey (如果是最后一页则不要设置); 注意pagekey可以为空
+		onGetData: function (data, pagesz, pagekey) {
+			data.list = data.rows;
+			if (pagekey == null)
+				pagekey = 1;
+			if (data.total >  pagesz * pagekey)
+				data.nextkey = pagekey + 1;
+		}
+	});
+
+例2：假定后端分页机制为：
+
+- 请求时通过参数curPage, maxLine分别表示页码，页大小，如 `curPage=1&maxLine=20`
+- 返回数据通过字段curPage, countPage, investList 分别表示当前页码, 总页数，列表数据，如 `{ curPage:1, countPage: 5, investList: [ {...}, ... ] }`
+
+	var lstIf = initPageList(jpage, {
+		...
+
+		pageszName: 'maxLine',
+		pagekeyName: 'curPage',
+
+		// 设置 data.list, data.nextkey (如果是最后一页则不要设置); 注意pagekey可以为空
+		onGetData: function (data, pagesz, pagekey) {
+			data.list = data.investList;
+			if (data.curPage < data.countPage)
+				data.nextkey = data.curPage + 1;
+		}
+	});
+
+## 下拉刷新提示信息
+
+@key .mui-pullHint 指定下拉提示显示位置
+显示下拉刷新提示时，默认是在列表所在容器的最上端位置显示的。如果需要指定显示位置，可使用css类"mui-pullHint"，示例如下：
+
+	<div class="bd">
+		<div>下拉列表演示</div>
+		<div class="mui-pullHint"></div> <!-- 如果没有这行，则下拉提示会在容器最上方，即"下拉列表演示"这行文字的上方-->
+		<div id="lst1"></div>
+		<div id="lst2"></div>
+	</div>
+
  */
 window.initNavbarAndList = initPageList;
 function initPageList(jpage, opt)
 {
 	var opt_ = $.extend({
 		navRef: ">.hd .mui-navbar",
-		listRef: ">.bd .p-list"
+		listRef: ">.bd .p-list",
+		pageszName: "_pagesz",
+		pagekeyName: "_pagekey",
 	}, opt);
 	var jallList_ = opt_.listRef instanceof jQuery? opt_.listRef: jpage.find(opt_.listRef);
 	var jbtns_ = opt_.navRef instanceof jQuery? opt_.navRef: jpage.find(opt_.navRef);
@@ -4124,8 +4230,8 @@ function initPageList(jpage, opt)
 				queryParam[this] = val;
 		});
 
-		if (opt.onBeforeLoad) {
-			var rv = opt.onBeforeLoad(jlst, nextkey == null);
+		if (opt_.onBeforeLoad) {
+			var rv = opt_.onBeforeLoad(jlst, nextkey == null);
 			if (rv === false)
 				return;
 		}
@@ -4134,11 +4240,10 @@ function initPageList(jpage, opt)
 			opt_.onGetQueryParam(jlst, queryParam);
 		}
 
-		if (!queryParam._pagesz)
-			queryParam._pagesz = g_cfg.PAGE_SZ; // for test, default 20.
-		if (nextkey) {
-			queryParam._pagekey = nextkey;
-		}
+		if (!queryParam[opt_.pageszName])
+			queryParam[opt_.pageszName] = g_cfg.PAGE_SZ; // for test, default 20.
+		if (nextkey)
+			queryParam[opt_.pagekeyName] = nextkey;
 
 		var loadMore_ = !!nextkey;
 		var joLoadMore_;
@@ -4164,7 +4269,20 @@ function initPageList(jpage, opt)
 			if (loadMore_) {
 				joLoadMore_.remove();
 			}
-			var arr = rs2Array(data);
+			if (opt_.onGetData) {
+				var pagesz = queryParam[opt_.pageszName];
+				var pagekey = queryParam[opt_.pagekeyName];
+				opt_.onGetData(data, pagesz, pagekey);
+			}
+			var arr = data;
+			if ($.isArray(data.h) && $.isArray(data.d)) {
+				arr = rs2Array(data);
+			}
+			else if ($.isArray(data.list)) {
+				arr = data.list;
+			}
+			assert($.isArray(arr), "*** initPageList error: no list!");
+
 			var isFirstPage = (nextkey == null);
 			var isLastPage = (data.nextkey == null);
 			var param = {arr: arr, isFirstPage: isFirstPage};
@@ -4172,7 +4290,7 @@ function initPageList(jpage, opt)
 				param.idx = i;
 				opt_.onAddItem && opt_.onAddItem(jlst, itemData, param);
 			});
-			if (data.nextkey)
+			if (! isLastPage)
 				jlst.data("nextkey_", data.nextkey);
 			else {
 				if (jlst[0].children.length == 0) {
@@ -4180,7 +4298,7 @@ function initPageList(jpage, opt)
 				}
 				jlst.data("nextkey_", -1);
 			}
-			opt.onLoad && opt.onLoad(jlst, isLastPage);
+			opt_.onLoad && opt_.onLoad(jlst, isLastPage);
 		}
 	}
 

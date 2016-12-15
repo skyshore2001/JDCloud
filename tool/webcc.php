@@ -2,86 +2,86 @@
 
 /**
 
-@module webcc Õ¾µã·¢²¼ÓÅ»¯¹¤¾ß
+@module webcc ç«™ç‚¹å‘å¸ƒä¼˜åŒ–å·¥å…·
 
-Óëbuild_web.shÅäºÏÊ¹ÓÃ¡£
+ä¸build_web.shé…åˆä½¿ç”¨ã€‚
 
-×¢Òâ£º
+æ³¨æ„ï¼š
 
-- ĞŞ¸Äwebcc.conf.php»áµ¼ÖÂrebuild
-- Èç¹ûÏëÇ¿ÖÆrebuild, ¿ÉÒÔÉ¾³ıÊä³öÎÄ¼ş¼ĞÏÂµÄrevision.txt, ±ÈÈçµ±ĞŞ¸Äwebcc.phpºó¡£
-- Èç¹û±¾µØÓĞÎ´Ìá½»µÄÄÚÈİ£¬Ò²»á¸üĞÂµ½Êä³öÎÄ¼ş¼Ğ¡£
-- ÉèÖÃ»·¾³±äÁ¿ DBG_LEVEL=1 ÏÔÊ¾µ÷ÊÔĞÅÏ¢
+- ä¿®æ”¹webcc.conf.phpä¼šå¯¼è‡´rebuild
+- å¦‚æœæƒ³å¼ºåˆ¶rebuild, å¯ä»¥åˆ é™¤è¾“å‡ºæ–‡ä»¶å¤¹ä¸‹çš„revision.txt, æ¯”å¦‚å½“ä¿®æ”¹webcc.phpåã€‚
+- å¦‚æœæœ¬åœ°æœ‰æœªæäº¤çš„å†…å®¹ï¼Œä¹Ÿä¼šæ›´æ–°åˆ°è¾“å‡ºæ–‡ä»¶å¤¹ã€‚
+- è®¾ç½®ç¯å¢ƒå˜é‡ DBG_LEVEL=1 æ˜¾ç¤ºè°ƒè¯•ä¿¡æ¯
 
 Usage:
 
-	´¦ÀíÔ´Ä¿Â¼£¬Éú³É·¢²¼Ä¿Â¼
+	å¤„ç†æºç›®å½•ï¼Œç”Ÿæˆå‘å¸ƒç›®å½•
 	webcc {srcDir} [-o {outDir=output_web}]
 
-	webccµ¥¸öÃüÁîµ÷ÓÃ
+	webccå•ä¸ªå‘½ä»¤è°ƒç”¨
 	webcc -cmd {cmd} [-o {outFile}] [-minify yes]
 
-webccÃüÁî¿ÉÔÚhtmlÎÄ¼şÖĞÊ¹ÓÃ£¬ÀıÈç×öJSºÏ²¢Ñ¹Ëõ£º
+webccå‘½ä»¤å¯åœ¨htmlæ–‡ä»¶ä¸­ä½¿ç”¨ï¼Œä¾‹å¦‚åšJSåˆå¹¶å‹ç¼©ï¼š
 
 	<!-- WEBCC_BEGIN - lib-app.min.js -->
 		<script src="lib/common.js?__HASH__"></script>
 		<script src="lib/app_fw.js?__HASH__"></script>
 		<script src="app.js?__HASH__"></script>
 	<!-- WEBCC_USE_THIS
-	// ³ıÁË//¿ªÍ·µÄ×¢ÊÍºÍ WEBCC_CMD ¿ªÍ·µÄÃüÁî£¬ÆäËü²¿·Ö¾ùÖ±½ÓÊä³ö
+	// é™¤äº†//å¼€å¤´çš„æ³¨é‡Šå’Œ WEBCC_CMD å¼€å¤´çš„å‘½ä»¤ï¼Œå…¶å®ƒéƒ¨åˆ†å‡ç›´æ¥è¾“å‡º
 	WEBCC_CMD mergeJs -o lib-app.min.js -minify yes lib/common.js lib/app_fw.js app.js
 	WEBCC_END -->
 
-ÔÚ·¢²¼Ê±£¬WEBCC_BEGINµ½WEBCC_USE_THISÏÂµÄÄÚÈİ½«±»ÒÆ³ı£¬¶ø WEBCC_USE_THISµ½ WEBCC_END¼äµÄÄÚÈİ±»±£Áôµ½·¢²¼°æ±¾ÖĞ¡£
-Èç¹ûÆäÖĞ³öÏÖĞÎÈç `WEBCC_CMD {cmd} {args}` µÄÄÚÈİ£¬Ôò»áµ÷ÓÃwebccÃüÁî×ö´¦Àí¡£
+åœ¨å‘å¸ƒæ—¶ï¼ŒWEBCC_BEGINåˆ°WEBCC_USE_THISä¸‹çš„å†…å®¹å°†è¢«ç§»é™¤ï¼Œè€Œ WEBCC_USE_THISåˆ° WEBCC_ENDé—´çš„å†…å®¹è¢«ä¿ç•™åˆ°å‘å¸ƒç‰ˆæœ¬ä¸­ã€‚
+å¦‚æœå…¶ä¸­å‡ºç°å½¢å¦‚ `WEBCC_CMD {cmd} {args}` çš„å†…å®¹ï¼Œåˆ™ä¼šè°ƒç”¨webccå‘½ä»¤åšå¤„ç†ã€‚
 
-µ±ÔÚwebcc.conf.phpÖĞÖ¸¶¨HASH¹æÔòÊ±£¬ÉÏÊöwebccÃüÁî½«»áÖ´ĞĞ¡£Àı£º
+å½“åœ¨webcc.conf.phpä¸­æŒ‡å®šHASHè§„åˆ™æ—¶ï¼Œä¸Šè¿°webccå‘½ä»¤å°†ä¼šæ‰§è¡Œã€‚ä¾‹ï¼š
 
 	$RULES = [
 		'm2/index.html' => 'HASH',
 	]
 
-×¢Òâ£º
+æ³¨æ„ï¼š
 
-- Èç¹ûÊ¹ÓÃÁË-oÑ¡Ïî£¬Ôò½«ÄÚÈİÊä³öµ½Ö¸¶¨ÎÄ¼ş£¬µ±Ç°Î»ÖÃ³öÏÖ `<script src="lib-app.min.js?v=125432">` Ö®ÀàµÄ¿ÉÇ¶Èë±êÇ©¡£
-  Èç¹û²»Ê¹ÓÃ-oÑ¡Ïî£¬ÔòÄÚÈİÖ±½ÓÊä³öµ½µ±Ç°Î»ÖÃ¡£
-- Ñ¡Ïî -minify yes »áÑ¹Ëõ js/cssÄÚÈİ£¨¶ÔÎÄ¼şÃûÖĞº¬ÓĞ .min. µÄÎÄ¼ş²»×öÑ¹Ëõ£©£¬Ä¬ÈÏ²»Ñ¹Ëõ¡£
+- å¦‚æœä½¿ç”¨äº†-oé€‰é¡¹ï¼Œåˆ™å°†å†…å®¹è¾“å‡ºåˆ°æŒ‡å®šæ–‡ä»¶ï¼Œå½“å‰ä½ç½®å‡ºç° `<script src="lib-app.min.js?v=125432">` ä¹‹ç±»çš„å¯åµŒå…¥æ ‡ç­¾ã€‚
+  å¦‚æœä¸ä½¿ç”¨-oé€‰é¡¹ï¼Œåˆ™å†…å®¹ç›´æ¥è¾“å‡ºåˆ°å½“å‰ä½ç½®ã€‚
+- é€‰é¡¹ -minify yes ä¼šå‹ç¼© js/csså†…å®¹ï¼ˆå¯¹æ–‡ä»¶åä¸­å«æœ‰ .min. çš„æ–‡ä»¶ä¸åšå‹ç¼©ï¼‰ï¼Œé»˜è®¤ä¸å‹ç¼©ã€‚
 
-@see webcc-mergeJs ºÏ²¢¼°Ñ¹ËõJS
-@see webcc-mergeCss ºÏ²¢CSS
-@see webcc-mergePage ºÏ²¢Âß¼­Ò³
+@see webcc-mergeJs åˆå¹¶åŠå‹ç¼©JS
+@see webcc-mergeCss åˆå¹¶CSS
+@see webcc-mergePage åˆå¹¶é€»è¾‘é¡µ
 
-@key webcc.conf.php webccÅäÖÃ
+@key webcc.conf.php webccé…ç½®
 
-ÓÃ·¨¿É²Î¿¼ÎÄµµ£º[WebÓ¦ÓÃ²¿Êğ](WebÓ¦ÓÃ²¿Êğ.html)
+ç”¨æ³•å¯å‚è€ƒæ–‡æ¡£ï¼š[Webåº”ç”¨éƒ¨ç½²](Webåº”ç”¨éƒ¨ç½².html)
 
 
-@key __HASH__  hash±êÊ¶
+@key __HASH__  hashæ ‡è¯†
 
-¸ñÊ½£º
+æ ¼å¼ï¼š
 
 	{file}?__HASH__
 
-»ò¿ÉÖ¸¶¨Ïà¶ÔÓÚµ±Ç°ÎÄ¼şµÄÏà¶ÔÂ·¾¶{relDir}£¬Ò»°ãÓÃÓÚjsÎÄ¼şÖĞ¡£
+æˆ–å¯æŒ‡å®šç›¸å¯¹äºå½“å‰æ–‡ä»¶çš„ç›¸å¯¹è·¯å¾„{relDir}ï¼Œä¸€èˆ¬ç”¨äºjsæ–‡ä»¶ä¸­ã€‚
 
 	{file}?__HASH__,{relDir}
 
-ÀıÈç£º
+ä¾‹å¦‚ï¼š
 
-	loadScript("cordova/cordova.js?__HASH__,.."); // ±íÊ¾¸ÃÎÄ¼şÏà¶Ôµ±Ç°ÎÄ¼şµÄÂ·¾¶Ó¦¸ÃÊÇ ../cordova/cordova.js 
-	loadScript("cordova-ios/cordova.js?__HASH__,../m"); // ±íÊ¾¸ÃÎÄ¼şÏà¶Ôµ±Ç°ÎÄ¼şµÄÂ·¾¶Ó¦¸ÃÊÇ ../m/cordova-ios/cordova.js
+	loadScript("cordova/cordova.js?__HASH__,.."); // è¡¨ç¤ºè¯¥æ–‡ä»¶ç›¸å¯¹å½“å‰æ–‡ä»¶çš„è·¯å¾„åº”è¯¥æ˜¯ ../cordova/cordova.js 
+	loadScript("cordova-ios/cordova.js?__HASH__,../m"); // è¡¨ç¤ºè¯¥æ–‡ä»¶ç›¸å¯¹å½“å‰æ–‡ä»¶çš„è·¯å¾„åº”è¯¥æ˜¯ ../m/cordova-ios/cordova.js
 
  */
 
 
 /*
-³ÌĞòÔËĞĞÊ±£¬µ±Ç°Ä¿Â¼ÎªÔ´Ä¿Â¼¡£´¦ÀíÎÄ¼şÊ±£¬Ò»°ãÃû³ÆÏà¶ÔÓÚÔ´Ä¿Â¼¡£
-ÖÆ¶¨ÃüÃû¹æ·¶ÈçÏÂ£º
+ç¨‹åºè¿è¡Œæ—¶ï¼Œå½“å‰ç›®å½•ä¸ºæºç›®å½•ã€‚å¤„ç†æ–‡ä»¶æ—¶ï¼Œä¸€èˆ¬åç§°ç›¸å¯¹äºæºç›®å½•ã€‚
+åˆ¶å®šå‘½åè§„èŒƒå¦‚ä¸‹ï¼š
 
-$fi - ¿É·ÃÎÊµÄÔ´ÎÄ¼ş£¬Ïà¶ÔÂ·¾¶£¬Èç "m2/index.html"
-$outf - ¿É·ÃÎÊµÄÄ¿±êÎÄ¼ş£¬¾ø¶ÔÂ·¾¶£¬$outf = $g_opts['outDir'] . '/' . $fi,  Èç "c:/myapp-online/m2/index.html"
-$outf0,$f/$f0 - Ô­Ê¼ÎÄ¼ş£¬¿ÉÄÜ²»ÄÜ·ÃÎÊ£¬ĞèÒª¼ÓÇ°×º¡£
-$outf1, $f1 - ¶Ôf0,f½øĞĞ¼Ó¹¤ºóµÄÁÙÊ±±äÁ¿
+$fi - å¯è®¿é—®çš„æºæ–‡ä»¶ï¼Œç›¸å¯¹è·¯å¾„ï¼Œå¦‚ "m2/index.html"
+$outf - å¯è®¿é—®çš„ç›®æ ‡æ–‡ä»¶ï¼Œç»å¯¹è·¯å¾„ï¼Œ$outf = $g_opts['outDir'] . '/' . $fi,  å¦‚ "c:/myapp-online/m2/index.html"
+$outf0,$f/$f0 - åŸå§‹æ–‡ä»¶ï¼Œå¯èƒ½ä¸èƒ½è®¿é—®ï¼Œéœ€è¦åŠ å‰ç¼€ã€‚
+$outf1, $f1 - å¯¹f0,fè¿›è¡ŒåŠ å·¥åçš„ä¸´æ—¶å˜é‡
  */
 
 //====== global {{{
@@ -91,7 +91,7 @@ $KNOWN_OPTS = array_merge(['o', 'cmd'], $KNOWN_OPTS_FOR_CMD);
 $DEF_OPTS_FOR_CMD = [
 	"args" => [],
 	"minify" => false,
-	"usePageTemplate" => false, // Ä¿Ç°"template"±êÇ©µÄ¼æÈİĞÔ»¹²»¹»£¬ÏÈÊ¹ÓÃscript±êÇ©
+	"usePageTemplate" => false, // ç›®å‰"template"æ ‡ç­¾çš„å…¼å®¹æ€§è¿˜ä¸å¤Ÿï¼Œå…ˆä½¿ç”¨scriptæ ‡ç­¾
 ];
 
 $g_opts = array_merge([
@@ -106,7 +106,7 @@ $g_hash = []; // elem: $file => $hash
 const CFG_FILE = "webcc.conf.php";
 $COPY_EXCLUDE = [];
 
-// ÉèÖÃ»·¾³±äÁ¿ DBG_LEVEL=1 ÏÔÊ¾µ÷ÊÔĞÅÏ¢
+// è®¾ç½®ç¯å¢ƒå˜é‡ DBG_LEVEL=1 æ˜¾ç¤ºè°ƒè¯•ä¿¡æ¯
 $DBG_LEVEL = (int)getenv("P_DEBUG") ?: 0;
 
 $g_changedFiles = [];
@@ -121,9 +121,9 @@ class WebccCmd
 	// "-o out.js lib/a.js b.js" => opts={o: "out.js", args: ["lib/a.js", "b.js"]}
 	protected $opts; // {args, ...}
 	protected $isInternalCall = false;
-	protected $relDir = ''; // Ïà¶ÔÂ·¾¶
+	protected $relDir = ''; // ç›¸å¯¹è·¯å¾„
 
-	// return: $fi: Ô´ÎÄ¼şÏà¶ÔÂ·¾¶£¨¿É·ÃÎÊ£©£»$outf: Ä¿±êÎÄ¼şÈ«Â·¾¶
+	// return: $fi: æºæ–‡ä»¶ç›¸å¯¹è·¯å¾„ï¼ˆå¯è®¿é—®ï¼‰ï¼›$outf: ç›®æ ‡æ–‡ä»¶å…¨è·¯å¾„
 	protected function checkSrc($f, $fnName, &$outf = null)
 	{
 		$fi = $f;
@@ -148,7 +148,7 @@ class WebccCmd
 		return $fi;
 	}
 
-	// relDir: Ïà¶ÔÂ·¾¶£¬¼´·ÃÎÊÎÄ¼şÊ±£¬Ó¦¸ÃÓÃ relDir + '/' + ÎÄ¼şÖĞµÄÂ·¾¶
+	// relDir: ç›¸å¯¹è·¯å¾„ï¼Œå³è®¿é—®æ–‡ä»¶æ—¶ï¼Œåº”è¯¥ç”¨ relDir + '/' + æ–‡ä»¶ä¸­çš„è·¯å¾„
 	static function exec($cmd, $args, $isInternalCall, $relDir = null)
 	{
 		try {
@@ -174,8 +174,8 @@ class WebccCmd
 				die("*** missing param for command: $cmd\n");
 			}
 
-			// Èç¹ûÖ¸¶¨-o, ÔòÖØ¶¨ÏòÊä³öµ½Ö¸¶¨ÎÄ¼ş
-			@$outf0 = $cmdObj->opts['o']; // Ïà¶ÔÂ·¾¶
+			// å¦‚æœæŒ‡å®š-o, åˆ™é‡å®šå‘è¾“å‡ºåˆ°æŒ‡å®šæ–‡ä»¶
+			@$outf0 = $cmdObj->opts['o']; // ç›¸å¯¹è·¯å¾„
 			$fi = null;
 			$skipCall = false;
 			global $g_handledFiles, $g_hash;
@@ -211,7 +211,7 @@ class WebccCmd
 					$hash = @$g_hash[$fi] ?: fileHash($outf);
 				}
 
-				$outf1 = "$outf0?$hash"; // Ïà¶ÔÂ·¾¶
+				$outf1 = "$outf0?$hash"; // ç›¸å¯¹è·¯å¾„
 				if ($cmd == 'mergeCss') {
 					echo "<link rel=\"stylesheet\" href=\"$outf1\" />\n";
 				}
@@ -229,39 +229,39 @@ class WebccCmd
 	}
 
 /**
-@fn webcc-mergeCss CSSºÏ²¢
+@fn webcc-mergeCss CSSåˆå¹¶
 
 	webcc -cmd mergeCss {cssFile1} ... [-o {outFile}]
 
-CSSºÏ²¢£¬ÒÔ¼°¶ÔurlÏà¶ÔÂ·¾¶½øĞĞĞŞÕı¡£
+CSSåˆå¹¶ï¼Œä»¥åŠå¯¹urlç›¸å¯¹è·¯å¾„è¿›è¡Œä¿®æ­£ã€‚
 
-Àı£º
+ä¾‹ï¼š
 
 	webcc -cmd mergeCss lib/a.css b.css -o out.css
 
-×¢Òâ£ºÖ»´¦ÀíÏà¶ÔÂ·¾¶£¬´øĞ­ÒéµÄÇé¿ö²»´¦Àí£º
+æ³¨æ„ï¼šåªå¤„ç†ç›¸å¯¹è·¯å¾„ï¼Œå¸¦åè®®çš„æƒ…å†µä¸å¤„ç†ï¼š
 
 	url(data:...)
 	url(http:...)
 
-Â·¾¶´¦ÀíÊ¾Àı£º
+è·¯å¾„å¤„ç†ç¤ºä¾‹ï¼š
 
-	// ´¦Àí url(...) ÖĞµÄÂ·¾¶
+	// å¤„ç† url(...) ä¸­çš„è·¯å¾„
 	eg.  srcDir='lib', outDir='.'
-	curDir='.' (µ±Ç°Â·¾¶Ïà¶ÔoutDirµÄÂ·¾¶)
+	curDir='.' (å½“å‰è·¯å¾„ç›¸å¯¹outDirçš„è·¯å¾„)
 	prefix = {curDir}/{srcDir} = ./lib = lib
 	url(1.png) => url(lib/1.png)
 	url(../image/1.png) => url(lib/../image/1.png) => url(image/1.png)
 
 	eg2. srcDir='lib', outDir='m2/css'
-	curDir='../..' (µ±Ç°Â·¾¶Ïà¶ÔoutDirµÄÂ·¾¶)
+	curDir='../..' (å½“å‰è·¯å¾„ç›¸å¯¹outDirçš„è·¯å¾„)
 	prefix = {curDir}/{srcDir} = ../../lib
 	url(1.png) => url(../lib/1.png)
-	url(../image/1.png) => url(../../lib/../image/1.png) => url(../../image/1.png) (lib/..±»ºÏ²¢)
+	url(../image/1.png) => url(../../lib/../image/1.png) => url(../../image/1.png) (lib/..è¢«åˆå¹¶)
 
-	TODO: Ôİ²»Ö§³Öeg3µÄÇé¿ö£¬¼´outFile²»ÔÊĞíÒÔ".."¿ªÍ·¡£
+	TODO: æš‚ä¸æ”¯æŒeg3çš„æƒ…å†µï¼Œå³outFileä¸å…è®¸ä»¥".."å¼€å¤´ã€‚
 	eg3. srcDir='lib', outDir='../m2/css'
-	curDir='../../html' (¼ÙÉèµ±Ç°Êµ¼ÊdirÎª'prj/html')
+	curDir='../../html' (å‡è®¾å½“å‰å®é™…dirä¸º'prj/html')
 	prefix = {curDir}/{srcDir} = ../../html/lib
 	url(1.png) => url(../../html/lib/1.png)
 	url(../image/1.png) => url(../../html/lib/../image/1.png) => url(../../html/image/1.png)
@@ -277,16 +277,16 @@ CSSºÏ²¢£¬ÒÔ¼°¶ÔurlÏà¶ÔÂ·¾¶½øĞĞĞŞÕı¡£
 			$srcDir = dirname($f0);
 			$s = $this->getFile($outf);
 			if ($outDir != $srcDir) {
-				// TODO: Ôİ²»Ö§³Öeg3µÄÇé¿ö£¬¼´outDir²»ÔÊĞíÒÔ".."¿ªÍ·¡£
+				// TODO: æš‚ä¸æ”¯æŒeg3çš„æƒ…å†µï¼Œå³outDirä¸å…è®¸ä»¥".."å¼€å¤´ã€‚
 				$prefix = preg_replace('/\w+/', '..', $outDir);
 			   	if ($srcDir != '.')
 					$prefix .= '/' . $srcDir;
 
-				// urlÄ£Ê½Æ¥Åä [^'":]+  ²»´øÃ°ºÅ±íÊ¾²»º¬ÓĞĞ­Òé
+				// urlæ¨¡å¼åŒ¹é… [^'":]+  ä¸å¸¦å†’å·è¡¨ç¤ºä¸å«æœ‰åè®®
 				$s = preg_replace_callback('/\burl\s*\(\s*[\'"]?\s*([^\'": ]+?)\s*[\'"]?\s*\)/', function ($ms) use ($prefix){
 					if ($prefix != '.') {
 						$url = $prefix . '/' . $ms[1];
-						// ¼òµ¥Ñ¹ËõÂ·¾¶£¬Èç "./aa/bb/../cc" => "aa/cc"
+						// ç®€å•å‹ç¼©è·¯å¾„ï¼Œå¦‚ "./aa/bb/../cc" => "aa/cc"
 						$url = preg_replace('`(^|/)\K\./`', '', $url); // "./xx" => "xx", "xx/./yy" => "xx/yy"
 						$url = preg_replace('`\w+/\.\./`', '', $url);
 					}
@@ -303,54 +303,54 @@ CSSºÏ²¢£¬ÒÔ¼°¶ÔurlÏà¶ÔÂ·¾¶½øĞĞĞŞÕı¡£
 	}
 
 /**
-@fn webcc-mergePage Âß¼­Ò³ºÏ²¢
+@fn webcc-mergePage é€»è¾‘é¡µåˆå¹¶
 
 	webcc -cmd mergePage {page1} ... [-usePageTemplate yes]
 
-½«Âß¼­Ò³µÄhtmlÎÄ¼ş¼°ÆäÁ´½ÓµÄjsÎÄ¼ş£¬´¦ÀíºóÇ¶ÈëÖ÷html¡£
+å°†é€»è¾‘é¡µçš„htmlæ–‡ä»¶åŠå…¶é“¾æ¥çš„jsæ–‡ä»¶ï¼Œå¤„ç†ååµŒå…¥ä¸»htmlã€‚
 
-Àı£ºÃüÁîĞĞ
+ä¾‹ï¼šå‘½ä»¤è¡Œ
 
 	webcc -cmd mergePage ../server/m2/page/home.html
 
-Àı£ºÔÚhtmlÖĞÒşÊ½µ÷ÓÃ
+ä¾‹ï¼šåœ¨htmlä¸­éšå¼è°ƒç”¨
 
 	<!-- WEBCC_BEGIN -->
 	<!-- WEBCC_USE_THIS
 	WEBCC_CMD mergePage page/home.html page/login.html page/login1.html page/me.html
 	WEBCC_END -->
 
-×¢Òâ£º
+æ³¨æ„ï¼š
 
-- Ê¹ÓÃmergePageÊ±£¬»á½«×ÓÒ³Ãæhtml/js²¢ÈëÖ÷Ò³Ãæ£¬ÒªÇó×ÓÒ³ÃæjsÖĞ²»¿É³öÏÖscript±êÇ©£¨ÒòÎªÇ¶ÈëÖ÷Ò³Ê±Ê¹ÓÃÁËscript£¬¶øscript²»¿ÉÇ¶Ì×£©
-- mergePageÃüÁî²»Ó¦Ê¹ÓÃ-oÑ¡Ïî£¬ÒòÎªhtmlÎÄ¼şÎŞ·¨°üº¬Ò»¸öhtmlÆ¬¶Î¡£
+- ä½¿ç”¨mergePageæ—¶ï¼Œä¼šå°†å­é¡µé¢html/jså¹¶å…¥ä¸»é¡µé¢ï¼Œè¦æ±‚å­é¡µé¢jsä¸­ä¸å¯å‡ºç°scriptæ ‡ç­¾ï¼ˆå› ä¸ºåµŒå…¥ä¸»é¡µæ—¶ä½¿ç”¨äº†scriptï¼Œè€Œscriptä¸å¯åµŒå¥—ï¼‰
+- mergePageå‘½ä»¤ä¸åº”ä½¿ç”¨-oé€‰é¡¹ï¼Œå› ä¸ºhtmlæ–‡ä»¶æ— æ³•åŒ…å«ä¸€ä¸ªhtmlç‰‡æ®µã€‚
 
-Ö§³ÖÁ½ÖÖ·½Ê½£º(Í¨¹ıÑ¡Ïî "-usePageTemplate 1" Ñ¡Ôñ)
+æ”¯æŒä¸¤ç§æ–¹å¼ï¼š(é€šè¿‡é€‰é¡¹ "-usePageTemplate 1" é€‰æ‹©)
 
-ÀıÈç£¬Âß¼­Ò³order.htmlÒıÓÃorder.js£¬¸ñÊ½Îª£º
+ä¾‹å¦‚ï¼Œé€»è¾‘é¡µorder.htmlå¼•ç”¨order.jsï¼Œæ ¼å¼ä¸ºï¼š
 
 	<div mui-initfn="initPageOrder" mui-script="order.js">
 	</div>
 
-1. Ê¹ÓÃscript±êÇ©Ç¶ÈëÖ÷Ò³Ãæ£¨È±Ê¡£©£º
+1. ä½¿ç”¨scriptæ ‡ç­¾åµŒå…¥ä¸»é¡µé¢ï¼ˆç¼ºçœï¼‰ï¼š
 
 		<script type="text/html" id="tpl_order">
-			<!-- order.htmlÄÚÈİ, Æämui-scriptÊôĞÔ±»É¾³ı£¬´úÖ®ÒÔÖ±½ÓÇ¶ÈëJSÄÚÈİ -->
+			<!-- order.htmlå†…å®¹, å…¶mui-scriptå±æ€§è¢«åˆ é™¤ï¼Œä»£ä¹‹ä»¥ç›´æ¥åµŒå…¥JSå†…å®¹ -->
 			<div mui-initfn="initPageOrder" >
 			</div>
 		</script>
 
 		<script>
-		// order.jsÄÚÈİ
+		// order.jså†…å®¹
 		</script>
 
-2. Ê¹ÓÃtemplate±êÇ©Ç¶ÈëÖ÷Ò³Ãæ£¨H5±ê×¼£¬Ä¿Ç°¼æÈİĞÔ»¹²»¹»£©£º
+2. ä½¿ç”¨templateæ ‡ç­¾åµŒå…¥ä¸»é¡µé¢ï¼ˆH5æ ‡å‡†ï¼Œç›®å‰å…¼å®¹æ€§è¿˜ä¸å¤Ÿï¼‰ï¼š
 
 		<template id="tpl_order">
-		<!-- order.html ÄÚÈİ -->
+		<!-- order.html å†…å®¹ -->
 		<div mui-initfn="initPageOrder" >
 			<script>
-			// order.jsÄÚÈİ
+			// order.jså†…å®¹
 			</script>
 		</div>
 		</template>
@@ -362,7 +362,7 @@ CSSºÏ²¢£¬ÒÔ¼°¶ÔurlÏà¶ÔÂ·¾¶½øĞĞĞŞÕı¡£
 		foreach (func_get_args() as $f0) {
 			$fi = $this->checkSrc($f0, "mergePage", $outf);
 			$srcDir = dirname($fi);
-			// htmlÒò×¢ÊÍÄÚÈİÉÙ£¬Ôİ²»×öminify
+			// htmlå› æ³¨é‡Šå†…å®¹å°‘ï¼Œæš‚ä¸åšminify
 			$html = file_get_contents($outf);
 			//$html = $this->getFile($outf);
 			$html = preg_replace_callback('/(<div.*?)mui-script=[\'"]?([^\'"]+)[\'"]?(.*?>)/', function($ms) use ($srcDir, $me) {
@@ -383,7 +383,7 @@ CSSºÏ²¢£¬ÒÔ¼°¶ÔurlÏà¶ÔÂ·¾¶½øĞĞĞŞÕı¡£
 			}
 			else {
 				echo "<script type=\"text/html\" id=\"tpl_{$pageId}\">\n";
-				// Ê¹ÓÃ __script__ ±ÜÃâscript±êÇ©Ç¶Ì×£¬ÔÚapp_fw.jsÖĞ´¦Àí__script__²¢»¹Ô­¡£
+				// ä½¿ç”¨ __script__ é¿å…scriptæ ‡ç­¾åµŒå¥—ï¼Œåœ¨app_fw.jsä¸­å¤„ç†__script__å¹¶è¿˜åŸã€‚
 				$html = preg_replace('`</?\K\s*script\s*(?=>)`', '__script__', $html);
 				echo $html;
 				echo "</script>\n\n";
@@ -398,47 +398,53 @@ CSSºÏ²¢£¬ÒÔ¼°¶ÔurlÏà¶ÔÂ·¾¶½øĞĞĞŞÕı¡£
 		}
 		if (substr($f, -3) ==  '.js')
 			return $this->jsmin($f);
-		return $this->cssMin($f);
+		else if (substr($f, -4) == '.css')
+			return $this->cssmin($f);
+		return file_get_contents($f);
 	}
 
 	protected function cssMin($f)
 	{
-		// TODO: cssMin
-		return file_get_contents($f);
+		return $this->minify($f, 'cssmin');
 	}
 
 	// return: min js
 	protected function jsmin($f)
 	{
+		return $this->minify($f, 'jsmin');
+	}
+
+	protected function minify($f, $prog)
+	{
 		$fp = fopen($f, "r");
-		$jsminExe = __DIR__ . '/jsmin';
-		$h = proc_open($jsminExe, [ $fp, ["pipe", "w"], STDERR ], $pipes);
+		$minExe = __DIR__ . '/' . $prog;
+		$h = proc_open($minExe, [ $fp, ["pipe", "w"], STDERR ], $pipes);
 		if ($h === false) {
-			die("*** error: require tool `jsmin'\n");
+			die("*** error: require tool `$prog'\n");
 		}
 		fclose($fp);
 		$ret = stream_get_contents($pipes[1]);
 		fclose($pipes[1]);
 		$rv = proc_close($h);
 		if ($rv != 0) {
-			die("*** error: jsmin fails to run.\n");
+			die("*** error: $prog fails to run.\n");
 		}
 		return $ret;
 	}
 
 /**
-@fn webcc-mergeJs JSºÏ²¢¼°Ñ¹Ëõ
+@fn webcc-mergeJs JSåˆå¹¶åŠå‹ç¼©
 
 	webcc -cmd mergeJs {jsFile1} ... [-o {outFile}]
 
-½«jsÎÄ¼şºÏ²¢Éú³ÉÒ»¸öÎÄ¼ş£¬²¢×ö¼òµ¥Ñ¹Ëõ´¦Àí£¨È¥×¢ÊÍ¡¢Ñ¹Ëõ¿Õ°×£©
-Èç¹ûÔ´ÎÄ¼şÃûº¬ÓĞ.min.js(Èçjquery.min.js)£¬ÔòÈÏÎªÒÑÑ¹Ëõ£¬²»ÖØĞÂÑ¹Ëõ¡£
+å°†jsæ–‡ä»¶åˆå¹¶ç”Ÿæˆä¸€ä¸ªæ–‡ä»¶ï¼Œå¹¶åšç®€å•å‹ç¼©å¤„ç†ï¼ˆå»æ³¨é‡Šã€å‹ç¼©ç©ºç™½ï¼‰
+å¦‚æœæºæ–‡ä»¶åå«æœ‰.min.js(å¦‚jquery.min.js)ï¼Œåˆ™è®¤ä¸ºå·²å‹ç¼©ï¼Œä¸é‡æ–°å‹ç¼©ã€‚
 
-Àı£º
+ä¾‹ï¼š
 
 	webcc -cmd mergeJs lib/jquery.min.js lib/app_fw.js app.js [-o lib_app.js]
 
-ÔÚÑ¹ËõÊ±£¬ĞèÒªÓÃµ½Íâ²¿jsmin¹¤¾ß£¬¸Ã¹¤¾ßÔÚwebccÏàÍ¬Ä¿Â¼ÏÂ¡£
+åœ¨å‹ç¼©æ—¶ï¼Œéœ€è¦ç”¨åˆ°å¤–éƒ¨jsminå·¥å…·ï¼Œè¯¥å·¥å…·åœ¨webccç›¸åŒç›®å½•ä¸‹ã€‚
  */
 	public function mergeJs($jsFile1)
 	{
@@ -460,7 +466,7 @@ function logit($s, $level=1)
 		fwrite(STDERR, $s);
 }
 
-// ½«µ±Ç°Â·¾¶¼ÓÈëPATH, ±ãÓÚÍâ²¿µ÷ÓÃÍ¬Ä¿Â¼µÄ³ÌĞòÈçjsmin
+// å°†å½“å‰è·¯å¾„åŠ å…¥PATH, ä¾¿äºå¤–éƒ¨è°ƒç”¨åŒç›®å½•çš„ç¨‹åºå¦‚jsmin
 function addPath()
 {
 	global $argv;
@@ -520,7 +526,7 @@ function getFileHash($basef, $f, $outDir, $relativeDir = null)
 
 // <script src="main.js?__HASH__"></script>
 // loadScript("cordova/cordova.js?__HASH__,m2)");  -> m2/cordova/cordova.js
-// Èç¹ûinputFile·Ç¿Õ£¬Ö±½Ó¶ÁÈ¡Ëü; Èç¹ûÎªnull, ÔòÓÃ$f×÷ÎªÊäÈë¡£
+// å¦‚æœinputFileéç©ºï¼Œç›´æ¥è¯»å–å®ƒ; å¦‚æœä¸ºnull, åˆ™ç”¨$fä½œä¸ºè¾“å…¥ã€‚
 function handleHash($f, $outDir, $inputFile = null)
 {
 	if ($inputFile == null)
@@ -571,7 +577,7 @@ function handleCopy($f, $outDir)
 	@mkdir(dirname($outf), 0777, true);
 //	echo("=== copy $f\n");
 
-	// bugfix: Ä¿±êÏµÍ³ÊÇlinux, ¸´ÖÆÊ±¶ÔshellÎÄ¼ş£¨ÒªÇóÒÔ.shÎªÀ©Õ¹Ãû£©×Ô¶¯×ö×ª»»
+	// bugfix: ç›®æ ‡ç³»ç»Ÿæ˜¯linux, å¤åˆ¶æ—¶å¯¹shellæ–‡ä»¶ï¼ˆè¦æ±‚ä»¥.shä¸ºæ‰©å±•åï¼‰è‡ªåŠ¨åšè½¬æ¢
 	$dos2unix = (PHP_OS == "WINNT" && preg_match('/\.sh/', $f));
 	if ($dos2unix) {
 		$s = preg_replace('/\r/', '', file_get_contents($f));
@@ -596,7 +602,7 @@ function handleOne($f, $outDir, $force = false)
 	global $COPY_EXCLUDE;
 	global $g_handledFiles;
 
-	// $FILESÉèÖÃÒ»°ãÓÃÓÚµ÷ÊÔ µ¥¸öÎÄ¼ş
+	// $FILESè®¾ç½®ä¸€èˆ¬ç”¨äºè°ƒè¯• å•ä¸ªæ–‡ä»¶
 	if (!$force && isset($FILES)) {
 		$skip = true;
 		foreach ($FILES as $re) {
@@ -672,7 +678,7 @@ function handleOne($f, $outDir, $force = false)
 	handleCopy($f, $outDir);
 }
 
-// Ö±½Ó¸ÄĞ´Êä³ö²ÎÊı $opts
+// ç›´æ¥æ”¹å†™è¾“å‡ºå‚æ•° $opts
 function readOpts($args, $knownOpts, &$opts)
 {
 	reset($args);
@@ -754,7 +760,7 @@ if (file_exists($verFile)) {
 chdir($g_opts["srcDir"]);
 if (isset($oldVer)) {
 	$g_isRebuild = false;
-	// NOTE: ½öÏŞµ±Ç°Ä¿Â¼(srcDir)¸Ä¶¯
+	// NOTE: ä»…é™å½“å‰ç›®å½•(srcDir)æ”¹åŠ¨
 	$cmd = "git diff $oldVer --name-only --diff-filter=AM --relative";
 	exec($cmd, $g_changedFiles, $rv);
 	if (count($g_changedFiles) == 0)

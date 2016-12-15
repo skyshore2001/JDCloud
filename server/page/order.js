@@ -7,6 +7,12 @@ function initPageOrder()
 	jpage.find("#mnuCancelOrder").click(mnuCancelOrder_click);
 	jpage.find("#mnuRefreshOrder").click(showOrder);
 
+	// 设置下拉刷新
+	var pullListOpt = {
+		onLoadItem: showOrder,
+	};
+	initPullList(jpage.find(".bd")[0], pullListOpt);
+
 	// ==== function {{{
 	function showOrder()
 	{
