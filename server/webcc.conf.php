@@ -1,26 +1,18 @@
 <?php
-/*
-$COPY_EXCLUDE = [
-	'm1/*',
-	'wap/*'
-];
-
-$FILES = [
-	'm2/index.html',
-	'm2/lib/app_fw.js'
-];
- */
 
 $RULES = [
-	'm2/*.html' => 'HASH',
-	'm2/lib/app_fw.js' => 'HASH',
+	'*.html' => 'HASH',
+	'lib/app_fw.js' => 'HASH',
 
-	'm2/cordova/cordova.js' => '
-git ls-files m2/cordova | grep -i "\.js$" | xargs cat | jsmin > $TARGET',
+# 如果支持App则使用这部分
+# 	'cordova/cordova.js' => '
+# git ls-files cordova | grep -i "\.js$" | xargs cat | jsmin > $TARGET',
+# 
+# 	'cordova-ios/cordova.js' => '
+# git ls-files cordova-ios | grep -i "\.js$" | xargs cat | jsmin > $TARGET',
 
-	'm2/cordova-ios/cordova.js' => '
-git ls-files m2/cordova-ios | grep -i "\.js$" | xargs cat | jsmin > $TARGET',
-
+	'cordova/cordova.js' => 'FAKE',
+	'cordova-ios/cordova.js' => 'FAKE',
 
 ];
 
