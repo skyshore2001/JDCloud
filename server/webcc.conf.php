@@ -4,7 +4,7 @@ $RULES = [
 	'*.html' => 'HASH',
 	'lib/app_fw.js' => 'HASH',
 
-# 濡傛灉鏀寔App鍒欎娇鐢ㄨ繖閮ㄥ垎
+# 如果支持App则使用这部分
 # 	'cordova/cordova.js' => '
 # git ls-files cordova | grep -i "\.js$" | xargs cat | jsmin > $TARGET',
 # 
@@ -16,4 +16,3 @@ $RULES = [
 
 ];
 
-?>

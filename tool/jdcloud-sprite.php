@@ -78,7 +78,7 @@ $maxWidth = 0;
 
 $options = mygetopt(["2x", "group", "out:", "sprite:", "ratio:"], $argv1);
 
-@$infile = $argv1[0] or die("*** require {src-css-file}\n");
+@$infile = $argv1[0] or die1("*** require {src-css-file}\n");
 
 if (! isset($options["out"])) {
 	$options["out"] = str_replace(".css", ".out.css", $infile);
@@ -102,6 +102,13 @@ if (!isset($options["group"])) {
 // }}}
 
 // ====== functions {{{
+// 注意：die返回0，请调用die1返回1标识出错。
+function die1($msg)
+{
+	fwrite(STDERR, $msg);
+	exit(1);
+}
+
 // return: {width, height}
 function getImageInfo($file)
 {
@@ -109,10 +116,10 @@ function getImageInfo($file)
 	$cmd = "identify \"$file\"";
 	$info = system($cmd, $rv); // NOTE: use exec to disable msg
 	if ($rv != 0) {
-		die("*** fail to get image info: `{$file}' - {$info}\n");
+		die1("*** fail to get image info: `{$file}' - {$info}\n");
 	}
 	if (! preg_match('/(\d+)x(\d+)/', $info, $ms)) {
-		die("*** unknown image info: {$info}\n");
+		die1("*** unknown image info: {$info}\n");
 	}
 	$ret = [
 		"width" => (int)$ms[0],
@@ -180,8 +187,8 @@ function handleOne($picName)
 // ====== main 
 //var_dump($options);
 
-@$content = file_get_contents($infile) or die("*** cannot open infile: `$infile'\n");
-@$fpout = fopen($options["out"], "w") or die ("*** cannot open out file: `{$options['out']}'\n");
+@$content = file_get_contents($infile) or die1("*** cannot open infile: `$infile'\n");
+@$fpout = fopen($options["out"], "w") or die1("*** cannot open out file: `{$options['out']}'\n");
 chdir(dirname($infile));
 
 // 第一遍扫描，去除注释，扫描图片并以 "{{n}}" 标记，下次扫描时将填上正确内容。
@@ -209,7 +216,7 @@ foreach ($inputInfo as $w => $e) {
 	$lines = null;
 	$info = exec($cmd, $lines, $rv);
 	if ($rv != 0) {
-		die("fail to generate sprite: {$info}\n");
+		die1("fail to generate sprite: {$info}\n");
 	}
 	echo "=== generate {$dst}\n";
 }
