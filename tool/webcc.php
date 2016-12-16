@@ -182,7 +182,7 @@ class WebccCmd
 			$fi = $this->relDir . '/' . $f;
 		$fi = formatPath($fi);
 		if (! is_file($fi)) {
-			die("*** $fnName fails: cannot find source file $fi\n");
+			die1("*** $fnName fails: cannot find source file $fi\n");
 		}
 
 		if ($this->isInternalCall) {
@@ -190,7 +190,7 @@ class WebccCmd
 			$outf = formatPath($g_opts['outDir'] . "/" . $fi);
 			handleOne($fi, $g_opts['outDir'], true);
 			if (! is_file($outf))
-				die("*** $fnName fails: cannot find handled file $fi: $outf\n");
+				die1("*** $fnName fails: cannot find handled file $fi: $outf\n");
 		}
 		else {
 			$outf = $fi;
@@ -232,7 +232,7 @@ class WebccCmd
 
 			$params = $fn->getParameters();
 			if (count($cmdObj->opts['args']) < count($params)) {
-				die("*** missing param for command: $cmd\n");
+				die1("*** missing param for command: $cmd\n");
 			}
 
 			// 如果指定-o, 则重定向输出到指定文件
@@ -251,7 +251,7 @@ class WebccCmd
 				if ($info) {
 					$argstr = formatArgs($args);
 					if ($info['argstr'] != $argstr) {
-						die("*** out file `$fi` mismatch:
+						die1("*** out file `$fi` mismatch:
   {$info['basef']} calls: `{$info['argstr']}`
   $basef calls: `$argstr`\n");
 					}
@@ -303,7 +303,7 @@ class WebccCmd
 			}
 		}
 		catch (ReflectionException $ex) {
-			die("*** unknown webcc command: $cmd\n");
+			die1("*** unknown webcc command: $cmd\n");
 		}
 	}
 
@@ -454,7 +454,7 @@ CSS合并，以及对url相对路径进行修正。
 			$html = preg_replace_callback('/(<div.*?)mui-script=[\'"]?([^\'"]+)[\'"]?(.*?>)/', function($ms) use ($srcDir, $me) {
 				$js = $srcDir . '/' . $ms[2];
 				if (! is_file($js)) {
-					die("*** mergePage fails: cannot find js file $js\n");
+					die1("*** mergePage fails: cannot find js file $js\n");
 				}
 				return $ms[1] . $ms[3] . "\n<script>\n// webcc-js: {$ms[2]}\n" . $me->getFile($js) . "\n</script>\n";
 			}, $html);
@@ -506,14 +506,14 @@ CSS合并，以及对url相对路径进行修正。
 		$minExe = __DIR__ . '/' . $prog;
 		$h = proc_open($minExe, [ $fp, ["pipe", "w"], STDERR ], $pipes);
 		if ($h === false) {
-			die("*** error: require tool `$prog'\n");
+			die1("*** error: require tool `$prog'\n");
 		}
 		fclose($fp);
 		$ret = stream_get_contents($pipes[1]);
 		fclose($pipes[1]);
 		$rv = proc_close($h);
 		if ($rv != 0) {
-			die("*** error: $prog fails to run.\n");
+			die1("*** error: $prog fails to run.\n");
 		}
 		return $ret;
 	}
@@ -545,6 +545,13 @@ CSS合并，以及对url相对路径进行修正。
 // }}}
 
 // ====== functions {{{
+// 注意：die返回0，请调用die1返回1标识出错。
+function die1($msg)
+{
+	fwrite(STDERR, $msg);
+	exit(1);
+}
+
 function logit($s, $level=1)
 {
 	global $DBG_LEVEL;
@@ -869,12 +876,12 @@ function readOpts($args, $knownOpts, &$opts)
 		if ($opt[0] === '-') {
 			$opt = substr($opt, 1);
 			if (! in_array($opt, $knownOpts)) {
-				die("*** unknonw option `$opt`.\n");
+				die1("*** unknonw option `$opt`.\n");
 			}
 
 			$v = next($args);
 			if ($v === false)
-				die("*** require value for option `$opt`\n");
+				die1("*** require value for option `$opt`\n");
 			if ($v == 'yes' || $v == 'true')
 				$v = true;
 			else if ($v == 'no' || $v == 'false')
@@ -916,9 +923,9 @@ if (isset($g_opts['o']))
 $g_opts["srcDir"] = $g_opts['args'][0];
 
 if (is_null($g_opts["srcDir"])) 
-	die("*** require param srcDir.");
+	die1("*** require param srcDir.");
 if (! is_dir($g_opts["srcDir"]))
-	die("*** not a folder: `{$g_opts["srcDir"]}`\n");
+	die1("*** not a folder: `{$g_opts["srcDir"]}`\n");
 
 addPath();
 // load config

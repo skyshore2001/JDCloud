@@ -40,6 +40,13 @@ $curBlockId = null;
 $subTitles = [];
 
 // ====== function
+// 注意：die返回0，请调用die1返回1标识出错。
+function die1($msg)
+{
+	fwrite(STDERR, $msg);
+	exit(1);
+}
+
 // key={type,name}
 function makeKeyword($key)
 {
@@ -216,7 +223,7 @@ $argv1 = null;
 $options = mygetopt(['title:', 'encoding:'], $argv1) + $defaultOptions;
 handleOptionEncoding();
 foreach ($argv1 as $f) {
-	@$str = file_get_contents($f) or die ("*** require input file.\n");
+	@$str = file_get_contents($f) or die1("*** require input file.\n");
 	$pd = new MyParsedown();
 
 	preg_replace_callback('/

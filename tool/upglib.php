@@ -23,6 +23,13 @@ $SQLDIFF = [
 #}}}
 
 ###### functions {{{
+// 注意：die返回0，请调用die1返回1标识出错。
+function die1($msg)
+{
+	fwrite(STDERR, $msg);
+	exit(1);
+}
+
 function tableExists($dbh, $tbl)
 {
 	global $USE_MYSQL;
@@ -62,7 +69,7 @@ function genColSql($fieldDef)
 			$def = "NVARCHAR($tag)";
 		}
 		else {
-			die("unknown type of string fields");
+			die1("unknown type of string fields");
 		}
 	}
 	elseif (preg_match('/(@|&|#)$/', $f, $ms)) {
@@ -90,7 +97,7 @@ function genColSql($fieldDef)
 		$def = "NVARCHAR(" . $CHAR_SZ['m'] . ")";
 	}
 	else {
-		die("unknown type of fields");
+		die1("unknown type of fields");
 	}
 
 # 		# !!! fix some name that conflicts with reserved words
