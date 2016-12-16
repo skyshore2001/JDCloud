@@ -451,12 +451,30 @@ CSS合并，以及对url相对路径进行修正。
 			// html因注释内容少，暂不做minify
 			$html = file_get_contents($outf);
 			//$html = $this->getFile($outf);
-			$html = preg_replace_callback('/(<div.*?)mui-script=[\'"]?([^\'"]+)[\'"]?(.*?>)/', function($ms) use ($srcDir, $me) {
-				$js = $srcDir . '/' . $ms[2];
-				if (! is_file($js)) {
-					die1("*** mergePage fails: cannot find js file $js\n");
+			$html = preg_replace_callback('`(<div.*?)mui-script=[\'"]?([^\'"]+)[\'"]?(.*?>) |
+				<style>\K(.+?)(?=</style>)
+			`sxi',
+			function($ms) use ($srcDir, $me) {
+				@list ($all, $divPart1, $jsFile, $divPart2, $css) = $ms;
+				$ret = null;
+				if ($divPart1) {
+					$js = $srcDir . '/' . $jsFile;
+					if (! is_file($js)) {
+						die1("*** mergePage fails: cannot find js file $js\n");
+					}
+					return $divPart1 . $divPart2 . "\n<script>\n// webcc-js: {$jsFile}\n" . $me->getFile($js) . "\n</script>\n";
 				}
-				return $ms[1] . $ms[3] . "\n<script>\n// webcc-js: {$ms[2]}\n" . $me->getFile($js) . "\n</script>\n";
+				else if ($css) {
+					if ($me->opts['minify']) {
+						$f = 'tmp.css';
+						file_put_contents($f, $css);
+						$ret = "\n" . $this->cssMin($f) . "\n";
+					}
+					else {
+						$ret = $all;
+					}
+				}
+				return $ret;
 			}, $html);
 
 			$pageId = basename($f0, ".html");
