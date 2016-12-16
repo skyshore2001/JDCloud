@@ -659,6 +659,58 @@ var E_ABORT=-100;
 @event pageshow()  DOM事件。this为当前页面jpage。
 @event pagehide() DOM事件。this为当前页面jpage。
 
+#### 逻辑页内嵌style
+
+逻辑页代码片段允许嵌入style，例如：
+
+	<div mui-initfn="initPageOrder" mui-script="order.js">
+	<style>
+	.p-list {
+		color: blue;
+	}
+	.p-list div {
+		color: red;
+	}
+	</style>
+	</div>
+
+（版本v3.2)
+框架在加载页面时，会将style中的内容自动添加逻辑页前缀，以便样式局限于当前页使用，相当于：
+
+	<style>
+	#order .p-list {
+		color: blue;
+	}
+	#order .p-list div {
+		color: red;
+	}
+	</style>
+
+为兼容旧版本，如果style中首项以"#{pageId}"开头，则不予处理。
+
+#### 逻辑页内嵌script
+
+逻辑页中允许但不建议内嵌script代码，js代码应在mui-script对应的脚本中。非要使用时，注意将script放到div标签内：
+
+	<div mui-initfn="initPageOrder" mui-script="order.js">
+	<script>
+	// js代码
+	</script>
+		...
+	</div>
+
+（版本v3.2)
+如果逻辑页嵌入在script模板中，这时要使用`script`, 应换用`__script__`标签，如：
+
+	<script type="text/html" id="tpl_order">
+		<div mui-initfn="initPageOrder" mui-script="order.js">
+			...
+		</div>
+		<__script__>
+		// js代码，将在逻辑页加载时执行
+		</__script__>
+	</script>
+
 ## 服务端交互API
 
 @see callSvr 系列调用服务端接口的方法。
@@ -1201,6 +1253,19 @@ function CPageManager(app)
 		// path?=m_app.pageFolder
 		function loadPage(html, pageId, path)
 		{
+			// 如果逻辑页中的css项没有以"#{pageId}"开头，则自动添加：
+			// ".aa { color: red} .bb p {color: blue}" => "#page1 .aa { color: red} #page1 .bb p {color: blue}"
+			var pageRefById = "#" + pageId;
+			html = html.replace(/<style>\s*((?:.|\s)*?)<\/style>/gi, function (ms, css) {
+				if (css.startsWith(pageRefById))
+					return ms;
+
+				var css = css.replace(/\S[^{}]+\{(?:.|\s)*?\}/g, function (ms) {
+					return pageRefById + " " + ms;
+				});
+				return "<style>\n" + css + "\n</style>";
+			});
+			
 			// 放入dom中，以便document可以收到pagecreate等事件。
 			if (m_jstash == null) {
 				m_jstash = $("<div id='muiStash' style='display:none'></div>").appendTo(self.container);
