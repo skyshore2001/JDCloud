@@ -6,8 +6,7 @@ $COPY_EXCLUDE = [
 ];
 
 $FILES = [
-	'm2/index.html',
-	'm2/lib/app_fw.js'
+	'm2/index.html'
 ];
  */
 
@@ -24,4 +23,3 @@ git ls-files m2/cordova-ios | grep -i "\.js$" | xargs cat | jsmin > $TARGET',
 
 ];
 
-?>

@@ -24,9 +24,9 @@ Usage:
 webcc命令可在html文件中使用，例如做JS合并压缩：
 
 	<!-- WEBCC_BEGIN - lib-app.min.js -->
-		<script src="lib/common.js?__HASH__"></script>
-		<script src="lib/app_fw.js?__HASH__"></script>
-		<script src="app.js?__HASH__"></script>
+		<script src="lib/common.js"></script>
+		<script src="lib/app_fw.js"></script>
+		<script src="app.js"></script>
 	<!-- WEBCC_USE_THIS
 	// 除了//开头的注释和 WEBCC_CMD 开头的命令，其它部分均直接输出
 	WEBCC_CMD mergeJs -o lib-app.min.js -minify yes lib/common.js lib/app_fw.js app.js
@@ -46,6 +46,15 @@ webcc命令可在html文件中使用，例如做JS合并压缩：
 - 如果使用了-o选项，则将内容输出到指定文件，当前位置出现 `<script src="lib-app.min.js?v=125432">` 之类的可嵌入标签。
   如果不使用-o选项，则内容直接输出到当前位置。
 - 选项 -minify yes 会压缩 js/css内容（对文件名中含有 .min. 的文件不做压缩），默认不压缩。
+- 允许多个页面执行相同的命令生成相同的文件（实际只会执行一次）
+	但如果命令不同而却指定相同的文件，例如以下两个命令都生成lib-app.min.js, 但参数不同，就会报错，以保证文件一致：
+
+		<!-- WEBCC_BEGIN -->
+		...
+		<!-- WEBCC_USE_THIS
+		WEBCC_CMD mergeJs -o lib-app.min.js -minify yes lib/common.js lib/app_fw.js app.js
+		WEBCC_CMD mergeJs -o lib-app.min.js -minify yes lib/common.js lib/app_fw.js app2.js
+		WEBCC_END -->
 
 @see webcc-mergeJs 合并及压缩JS
 @see webcc-mergeCss 合并CSS
@@ -122,6 +131,8 @@ class WebccCmd
 	protected $opts; // {args, ...}
 	protected $isInternalCall = false;
 	protected $relDir = ''; // 相对路径
+	protected $basef; // 调用webcc命令的文件
+	static protected $cmds = []; # 已生成的文件，用于检查命令冲突，elem: $outFile => {argstr=命令行参数, basef=出自哪个文件}
 
 	// return: $fi: 源文件相对路径（可访问）；$outf: 目标文件全路径
 	protected function checkSrc($f, $fnName, &$outf = null)
@@ -137,7 +148,7 @@ class WebccCmd
 		if ($this->isInternalCall) {
 			global $g_opts;
 			$outf = formatPath($g_opts['outDir'] . "/" . $fi);
-			handleOne($fi, $g_opts['outDir']);
+			handleOne($fi, $g_opts['outDir'], true);
 			if (! is_file($outf))
 				die("*** $fnName fails: cannot find handled file $fi: $outf\n");
 		}
@@ -149,11 +160,12 @@ class WebccCmd
 	}
 
 	// relDir: 相对路径，即访问文件时，应该用 relDir + '/' + 文件中的路径
-	static function exec($cmd, $args, $isInternalCall, $relDir = null)
+	static function exec($cmd, $args, $isInternalCall, $relDir = null, $basef = null)
 	{
 		try {
 			$fn = new ReflectionMethod('WebccCmd', $cmd);
 			$cmdObj = new WebccCmd();
+			$cmdObj->basef = $basef;
 
 			global $g_opts;
 			if (! $isInternalCall) {
@@ -184,6 +196,24 @@ class WebccCmd
 					$fi = formatPath($cmdObj->relDir . "/" . $outf0);
 				else
 					$fi = formatPath($outf0);
+
+				// 检查文件是否已生成过且命令行一致
+				@$info = self::$cmds[$fi];
+				if ($info) {
+					$argstr = formatArgs($args);
+					if ($info['argstr'] != $argstr) {
+						die("*** out file `$fi` mismatch:
+  {$info['basef']} calls: `{$info['argstr']}`
+  $basef calls: `$argstr`\n");
+					}
+				}
+				else {
+					self::$cmds[$fi] = [
+						'argstr' => formatArgs($args),
+						'basef' => $cmdObj->basef
+					];
+				}
+
 				if (array_key_exists($fi, $g_handledFiles))
 					$skipCall = true;
 				else
@@ -485,6 +515,11 @@ function formatPath($f)
 	return $f;
 }
 
+function formatArgs($arr)
+{
+	return join(' ', $arr);
+}
+
 function matchRule($rule, $file)
 {
 	return fnmatch($rule, $file, FNM_PATHNAME);
@@ -543,13 +578,13 @@ function handleHash($f, $outDir, $inputFile = null)
 			)?
 			^.*WEBCC_END.*$[\r\n]*
 		/xm', 
-		function ($ms) use ($relDir) {
+		function ($ms) use ($relDir, $f) {
 			$ret = $ms[1] ?: "";
 			$ret = preg_replace('`\s*//.*$`m', '', $ret);
-			$ret = preg_replace_callback('/\bWEBCC_CMD\s+(\w+)\s*(.*?)\s*$/m', function ($ms1) use ($relDir) {
+			$ret = preg_replace_callback('/\bWEBCC_CMD\s+(\w+)\s*(.*?)\s*$/m', function ($ms1) use ($relDir, $f) {
 				ob_start();
 				list($cmd, $args) = [$ms1[1], preg_split('/\s+/', $ms1[2])];
-				WebccCmd::exec($cmd, $args, true, $relDir);
+				WebccCmd::exec($cmd, $args, true, $relDir, $f);
 				$s = ob_get_contents();
 				ob_end_clean();
 				return $s;
@@ -595,6 +630,7 @@ function handleFake($f, $outDir)
 }
 
 // return: false - skipped
+// force=true: 即使在$FILES未指定也强制生成
 function handleOne($f, $outDir, $force = false)
 {
 	global $FILES;
@@ -616,7 +652,7 @@ function handleOne($f, $outDir, $force = false)
 	}
 
 	$fi = formatPath($f);
-	if (!$force && array_key_exists($fi, $g_handledFiles))
+	if (array_key_exists($fi, $g_handledFiles))
 		return;
 	$g_handledFiles[$fi] = 1;
 
