@@ -674,6 +674,10 @@ var E_ABORT=-100;
 	</style>
 	</div>
 
+@key mui-origin
+
+style将被插入到head标签中，并自动添加属性`mui-origin={pageId}`.
+
 （版本v3.2)
 框架在加载页面时，会将style中的内容自动添加逻辑页前缀，以便样式局限于当前页使用，相当于：
 
@@ -686,7 +690,13 @@ var E_ABORT=-100;
 	}
 	</style>
 
-为兼容旧版本，如果style中首项以"#{pageId}"开头，则不予处理。
+为兼容旧版本，如果css选择器以"#{pageId} "开头，则不予处理。
+
+@key mui-nofix
+如果不希望框架自动处理，可以为style添加属性`mui-nofix`:
+
+	<style mui-nofix>
+	</style>
 
 #### 逻辑页内嵌script
 
@@ -1250,22 +1260,32 @@ function CPageManager(app)
 			});
 		}
 
+		/*
+		如果逻辑页中的css项没有以"#{pageId}"开头，则自动添加：
+		.aa { color: red} .bb p {color: blue}
+		.aa, .bb { background-color: black }
+=> 
+		#page1 .aa { color: red} #page1 .bb p {color: blue}
+		#page1 .aa, #page1 .bb { background-color: black }
+
+		注意：逗号的情况；有注释的情况。不考虑出现"@media", "@import"等情况。
+		*/
+		function fixPageCss(css, pageId)
+		{
+			var prefix = "#" + pageId + " ";
+
+			var css1 = css.replace(/\/\*(.|\s)*?\*\//g, '')
+			.replace(/\S[^{}]+?(?:,|\{(?:.|\s)*?\})/g, function (ms) {
+				if (ms.startsWith(prefix))
+					return ms;
+				return prefix + ms;
+			});
+			return css1;
+		}
+
 		// path?=m_app.pageFolder
 		function loadPage(html, pageId, path)
 		{
-			// 如果逻辑页中的css项没有以"#{pageId}"开头，则自动添加：
-			// ".aa { color: red} .bb p {color: blue}" => "#page1 .aa { color: red} #page1 .bb p {color: blue}"
-			var pageRefById = "#" + pageId;
-			html = html.replace(/<style>\s*((?:.|\s)*?)<\/style>/gi, function (ms, css) {
-				if (css.startsWith(pageRefById))
-					return ms;
-
-				var css = css.replace(/\S[^{}]+\{(?:.|\s)*?\}/g, function (ms) {
-					return pageRefById + " " + ms;
-				});
-				return "<style>\n" + css + "\n</style>";
-			});
-			
 			// 放入dom中，以便document可以收到pagecreate等事件。
 			if (m_jstash == null) {
 				m_jstash = $("<div id='muiStash' style='display:none'></div>").appendTo(self.container);
@@ -1277,6 +1297,10 @@ function CPageManager(app)
 				jpage = jpage.filter(":first");
 			}
 
+			// 限制css只能在当前页使用
+			jpage.find("style:not([mui-nofix])").each(function () {
+				$(this).html( fixPageCss($(this).html(), pageId) );
+			});
 			// bugfix: 加载页面页背景图可能反复被加载
 			jpage.find("style").attr("mui-origin", pageId).appendTo(document.head);
 			jpage.attr("id", pageId).addClass("mui-page")
@@ -1390,6 +1414,18 @@ function CPageManager(app)
 			self.m_pageStack.push(pageRef);
 		}
 		showPage_(pageRef);
+	}
+
+/**
+@fn MUI.unloadPage(pageId)
+
+删除一个页面。
+*/
+	self.unloadPage = unloadPage;
+	function unloadPage(pageId)
+	{
+		$("#" + pageId).remove();
+		$("style[mui-origin=" + pageId + "]").remove();
 	}
 
 /**
@@ -4132,6 +4168,9 @@ markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 
 				data.nextkey = data.curPage + 1;
 		}
 	});
+
+例3：假定后端就返回一个列表如`[ {...}, {...} ]`，不支持分页。
+什么都不用设置，仍支持下拉刷新，因为刚好会当成最后一页处理，上拉不再加载。
 
 ## 下拉刷新提示信息
 
