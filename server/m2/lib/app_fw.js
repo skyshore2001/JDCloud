@@ -1264,25 +1264,50 @@ function CPageManager(app)
 			});
 		}
 
-		/*
-		如果逻辑页中的css项没有以"#{pageId}"开头，则自动添加：
-		.aa { color: red} .bb p {color: blue}
-		.aa, .bb { background-color: black }
-=> 
-		#page1 .aa { color: red} #page1 .bb p {color: blue}
-		#page1 .aa, #page1 .bb { background-color: black }
+/*
+如果逻辑页中的css项没有以"#{pageId}"开头，则自动添加：
 
-		注意：逗号的情况；有注释的情况。不考虑出现"@media", "@import"等情况。
-		*/
+	.aa { color: red} .bb p {color: blue}
+	.aa, .bb { background-color: black }
+
+=> 
+
+	#page1 .aa { color: red} #page1 .bb p {color: blue}
+	#page1 .aa, #page1 .bb { background-color: black }
+
+注意：
+
+- 逗号的情况；
+- 有注释的情况
+- 支持括号嵌套，如
+
+		@keyframes modalshow {
+			from { transform: translate(10%, 0); }
+			to { transform: translate(0,0); }
+		}
+		
+- 不处理"@"开头的选择器，如"media", "@keyframes"等。
+*/
 		function fixPageCss(css, pageId)
 		{
 			var prefix = "#" + pageId + " ";
 
+			var level = 1;
 			var css1 = css.replace(/\/\*(.|\s)*?\*\//g, '')
-			.replace(/\S[^{}]+?(?:,|\{(?:.|\s)*?\})/g, function (ms) {
-				if (ms.startsWith(prefix))
+			.replace(/([^{}]*)([{}])/g, function (ms, text, brace) {
+				if (brace == '}') {
+					-- level;
 					return ms;
-				return prefix + ms;
+				}
+				if (brace == '{' && level++ != 1)
+					return ms;
+
+				// level=1
+				return ms.replace(/((?:^|,)\s*)([^,{}]+)/g, function (ms, ms1, sel) { 
+					if (sel.startsWith(prefix) || sel[0] == '@')
+						return ms;
+					return ms1 + prefix + sel;
+				});
 			});
 			return css1;
 		}
