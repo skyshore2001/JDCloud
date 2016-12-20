@@ -171,7 +171,7 @@ class WebccCmd
 	protected $opts; // {args, ...}
 	protected $isInternalCall = false;
 	protected $relDir = ''; // 相对路径
-	protected $basef; // 调用webcc命令的文件
+	protected $basef = 'none'; // 调用webcc命令的文件
 	static protected $cmds = []; # 已生成的文件，用于检查命令冲突，elem: $outFile => {argstr=命令行参数, basef=出自哪个文件}
 
 	// return: $fi: 源文件相对路径（可访问）；$outf: 目标文件全路径
@@ -182,7 +182,7 @@ class WebccCmd
 			$fi = $this->relDir . '/' . $f;
 		$fi = formatPath($fi);
 		if (! is_file($fi)) {
-			die1("*** $fnName fails: cannot find source file $fi\n");
+			die1("*** $fnName fails: cannot find source file `$fi` used by `{$this->basef}`\n");
 		}
 
 		if ($this->isInternalCall) {
@@ -460,7 +460,7 @@ CSS合并，以及对url相对路径进行修正。
 				if ($divPart1) {
 					$js = $srcDir . '/' . $jsFile;
 					if (! is_file($js)) {
-						die1("*** mergePage fails: cannot find js file $js\n");
+						die1("*** mergePage fails: cannot find js file `$js` used by `{$me->basef}`\n");
 					}
 					return $divPart1 . $divPart2 . "\n<script>\n// webcc-js: {$jsFile}\n" . $me->getFile($js) . "\n</script>\n";
 				}
@@ -566,6 +566,7 @@ CSS合并，以及对url相对路径进行修正。
 // 注意：die返回0，请调用die1返回1标识出错。
 function die1($msg)
 {
+	ob_end_clean();
 	fwrite(STDERR, $msg);
 	exit(1);
 }
@@ -578,10 +579,11 @@ function logit($s, $level=1)
 }
 
 // 将当前路径加入PATH, 便于外部调用同目录的程序如jsmin
-function addPath()
+function addPath($prog)
 {
-	global $argv;
-	$path = realpath(dirname($argv[0]));
+	$path = realpath(dirname($prog));
+	if ($path === false)
+		return;
 	putenv("PATH=" . $path . PATH_SEPARATOR . getenv("PATH"));
 }
 
@@ -928,7 +930,9 @@ if (count($argv) < 2) {
 	exit(1);
 }
 
-array_shift($argv);
+$prog = array_shift($argv);
+addPath($prog);
+
 readOpts($argv, $KNOWN_OPTS, $g_opts);
 if (isset($g_opts['cmd'])) {
 	WebccCmd::exec($g_opts['cmd'], $g_opts['args'], false);
@@ -945,7 +949,6 @@ if (is_null($g_opts["srcDir"]))
 if (! is_dir($g_opts["srcDir"]))
 	die1("*** not a folder: `{$g_opts["srcDir"]}`\n");
 
-addPath();
 // load config
 $cfg = $g_opts["srcDir"] . "/" . CFG_FILE;
 if (is_file($cfg)) {

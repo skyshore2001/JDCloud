@@ -571,6 +571,10 @@ function applyTpl(tpl, data)
 	});
 }
 
+// bugfix: 浏览器兼容性问题
+if (String.prototype.startsWith == null) {
+	String.prototype.startsWith = function (s) { return this.substr(0, s.length) == s; }
+}
 // }}}
 
 // ====== app fw {{{
