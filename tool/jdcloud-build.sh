@@ -21,6 +21,7 @@
 		# 允许远端push并执行自动更新
 		git config receive.denyCurrentBranch ignore
 		echo "unset GIT_DIR; cd ..; git reset --hard" > .git/hooks/post-update
+		chmod a+x .git/hooks/post-update
 
 - 一般编写`build_web.sh`脚本，其中设置并调用jdcloud-build，上线时直接运行它即可：
 
