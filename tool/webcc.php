@@ -21,15 +21,55 @@ Usage:
 	webcc单个命令调用
 	webcc -cmd {cmd} [-o {outFile}] [-minify yes]
 
-webcc命令可在html文件中使用，例如做JS合并压缩：
+webcc命令可在html文件中使用，例如做JS/CSS合并压缩：
 
-	<!-- WEBCC_BEGIN - lib-app.min.js -->
-		<script src="lib/common.js?__HASH__"></script>
-		<script src="lib/app_fw.js?__HASH__"></script>
-		<script src="app.js?__HASH__"></script>
+	<!-- WEBCC_BEGIN MERGE=lib-app -->
+	<link rel="stylesheet" href="lib/mui.css" />
+	<link rel="stylesheet" href="app.css" />
+
+	<script src="lib/common.js"></script>
+	<script src="lib/app_fw.js"></script>
+	<script src="app.js"></script>
+	<!-- WEBCC_END -->
+
+WEBCC_BEGIN后面，用MERGE=输出文件基本名(basename)的格式(不要写全名如`lib-app.js`), `MERGE=lib-app`表示根据link及script标签自动合并生成 lib-app.min.js / lib-app.min.css。
+
+它等价于
+
+	<!-- WEBCC_BEGIN -->
+	<link rel="stylesheet" href="lib/mui.css" />
+	<link rel="stylesheet" href="app.css" />
+
+	<script src="lib/common.js"></script>
+	<script src="lib/app_fw.js"></script>
+	<script src="app.js"></script>
 	<!-- WEBCC_USE_THIS
 	// 除了//开头的注释和 WEBCC_CMD 开头的命令，其它部分均直接输出
+	WEBCC_CMD mergeCss -o lib-app.min.css -minify yes lib/mui.css app.css
 	WEBCC_CMD mergeJs -o lib-app.min.js -minify yes lib/common.js lib/app_fw.js app.js
+	WEBCC_END -->
+
+如果要内嵌JS/CSS，在MERGE后不指定名称即可：
+
+	<!-- WEBCC_BEGIN MERGE -->
+	<link rel="stylesheet" href="index.css" />
+	<link rel="stylesheet" href="icon.css" />
+	<script src="index.js"></script>
+	<!-- WEBCC_END -->
+
+它等价于
+
+	<!-- WEBCC_BEGIN -->
+	<link rel="stylesheet" href="index.css" />
+	<link rel="stylesheet" href="icon.css" />
+	<script src="index.js"></script>
+	<!-- WEBCC_USE_THIS
+	<style>
+	WEBCC_CMD mergeCss -minify yes index.css icon.css
+	</style>
+	<script>
+	WEBCC_CMD mergeJs -minify yes index.js
+	</script>
 	WEBCC_END -->
 
 在发布时，WEBCC_BEGIN到WEBCC_USE_THIS下的内容将被移除，而 WEBCC_USE_THIS到 WEBCC_END间的内容被保留到发布版本中。
@@ -45,7 +85,16 @@ webcc命令可在html文件中使用，例如做JS合并压缩：
 
 - 如果使用了-o选项，则将内容输出到指定文件，当前位置出现 `<script src="lib-app.min.js?v=125432">` 之类的可嵌入标签。
   如果不使用-o选项，则内容直接输出到当前位置。
-- 选项 -minify yes 会压缩 js/css内容（对文件名中含有 .min. 的文件不做压缩），默认不压缩。
+- 选项 -minify yes 会压缩 js/css内容（对文件名中含有min分词的文件如`jquery.min.js`, `juicer-min.js`不做压缩），默认不压缩。
+- 允许多个页面执行相同的命令生成相同的文件（实际只会执行一次）
+	但如果命令不同而却指定相同的文件，例如以下两个命令都生成lib-app.min.js, 但参数不同，就会报错，以保证文件一致：
+
+		<!-- WEBCC_BEGIN -->
+		...
+		<!-- WEBCC_USE_THIS
+		WEBCC_CMD mergeJs -o lib-app.min.js -minify yes lib/common.js lib/app_fw.js app.js
+		WEBCC_CMD mergeJs -o lib-app.min.js -minify yes lib/common.js lib/app_fw.js app2.js
+		WEBCC_END -->
 
 @see webcc-mergeJs 合并及压缩JS
 @see webcc-mergeCss 合并CSS
@@ -122,6 +171,8 @@ class WebccCmd
 	protected $opts; // {args, ...}
 	protected $isInternalCall = false;
 	protected $relDir = ''; // 相对路径
+	protected $basef = 'none'; // 调用webcc命令的文件
+	static protected $cmds = []; # 已生成的文件，用于检查命令冲突，elem: $outFile => {argstr=命令行参数, basef=出自哪个文件}
 
 	// return: $fi: 源文件相对路径（可访问）；$outf: 目标文件全路径
 	protected function checkSrc($f, $fnName, &$outf = null)
@@ -131,15 +182,15 @@ class WebccCmd
 			$fi = $this->relDir . '/' . $f;
 		$fi = formatPath($fi);
 		if (! is_file($fi)) {
-			die("*** $fnName fails: cannot find source file $fi\n");
+			die1("*** $fnName fails: cannot find source file `$fi` used by `{$this->basef}`\n");
 		}
 
 		if ($this->isInternalCall) {
 			global $g_opts;
 			$outf = formatPath($g_opts['outDir'] . "/" . $fi);
-			handleOne($fi, $g_opts['outDir']);
+			handleOne($fi, $g_opts['outDir'], true);
 			if (! is_file($outf))
-				die("*** $fnName fails: cannot find handled file $fi: $outf\n");
+				die1("*** $fnName fails: cannot find handled file $fi: $outf\n");
 		}
 		else {
 			$outf = $fi;
@@ -148,12 +199,22 @@ class WebccCmd
 		return $fi;
 	}
 
+	static function execAndGetStr($cmd, $args, $isInternalCall, $relDir = null, $basef = null)
+	{
+		ob_start();
+		self::exec($cmd, $args, $isInternalCall, $relDir, $basef);
+		$s = ob_get_contents();
+		ob_end_clean();
+		return $s;
+	}
+
 	// relDir: 相对路径，即访问文件时，应该用 relDir + '/' + 文件中的路径
-	static function exec($cmd, $args, $isInternalCall, $relDir = null)
+	static function exec($cmd, $args, $isInternalCall, $relDir = null, $basef = null)
 	{
 		try {
 			$fn = new ReflectionMethod('WebccCmd', $cmd);
 			$cmdObj = new WebccCmd();
+			$cmdObj->basef = $basef;
 
 			global $g_opts;
 			if (! $isInternalCall) {
@@ -171,7 +232,7 @@ class WebccCmd
 
 			$params = $fn->getParameters();
 			if (count($cmdObj->opts['args']) < count($params)) {
-				die("*** missing param for command: $cmd\n");
+				die1("*** missing param for command: $cmd\n");
 			}
 
 			// 如果指定-o, 则重定向输出到指定文件
@@ -184,6 +245,24 @@ class WebccCmd
 					$fi = formatPath($cmdObj->relDir . "/" . $outf0);
 				else
 					$fi = formatPath($outf0);
+
+				// 检查文件是否已生成过且命令行一致
+				@$info = self::$cmds[$fi];
+				if ($info) {
+					$argstr = formatArgs($args);
+					if ($info['argstr'] != $argstr) {
+						die1("*** out file `$fi` mismatch:
+  {$info['basef']} calls: `{$info['argstr']}`
+  $basef calls: `$argstr`\n");
+					}
+				}
+				else {
+					self::$cmds[$fi] = [
+						'argstr' => formatArgs($args),
+						'basef' => $cmdObj->basef
+					];
+				}
+
 				if (array_key_exists($fi, $g_handledFiles))
 					$skipCall = true;
 				else
@@ -211,7 +290,7 @@ class WebccCmd
 					$hash = @$g_hash[$fi] ?: fileHash($outf);
 				}
 
-				$outf1 = "$outf0?$hash"; // 相对路径
+				$outf1 = "$outf0?v=$hash"; // 相对路径
 				if ($cmd == 'mergeCss') {
 					echo "<link rel=\"stylesheet\" href=\"$outf1\" />\n";
 				}
@@ -224,7 +303,7 @@ class WebccCmd
 			}
 		}
 		catch (ReflectionException $ex) {
-			die("*** unknown webcc command: $cmd\n");
+			die1("*** unknown webcc command: $cmd\n");
 		}
 	}
 
@@ -316,6 +395,13 @@ CSS合并，以及对url相对路径进行修正。
 例：在html中隐式调用
 
 	<!-- WEBCC_BEGIN -->
+	page/home.html
+	page/login.html
+	page/login1.html
+	page/me.html
+	<!-- WEBCC_END -->
+
+	<!-- WEBCC_BEGIN -->
 	<!-- WEBCC_USE_THIS
 	WEBCC_CMD mergePage page/home.html page/login.html page/login1.html page/me.html
 	WEBCC_END -->
@@ -365,12 +451,30 @@ CSS合并，以及对url相对路径进行修正。
 			// html因注释内容少，暂不做minify
 			$html = file_get_contents($outf);
 			//$html = $this->getFile($outf);
-			$html = preg_replace_callback('/(<div.*?)mui-script=[\'"]?([^\'"]+)[\'"]?(.*?>)/', function($ms) use ($srcDir, $me) {
-				$js = $srcDir . '/' . $ms[2];
-				if (! is_file($js)) {
-					die("*** mergePage fails: cannot find js file $js\n");
+			$html = preg_replace_callback('`(<div.*?)mui-script=[\'"]?([^\'"]+)[\'"]?(.*?>) |
+				<style>\K(.+?)(?=</style>)
+			`sxi',
+			function($ms) use ($srcDir, $me) {
+				@list ($all, $divPart1, $jsFile, $divPart2, $css) = $ms;
+				$ret = null;
+				if ($divPart1) {
+					$js = $srcDir . '/' . $jsFile;
+					if (! is_file($js)) {
+						die1("*** mergePage fails: cannot find js file `$js` used by `{$me->basef}`\n");
+					}
+					return $divPart1 . $divPart2 . "\n<script>\n// webcc-js: {$jsFile}\n" . $me->getFile($js) . "\n</script>\n";
 				}
-				return $ms[1] . $ms[3] . "\n<script>\n// webcc-js: {$ms[2]}\n" . $me->getFile($js) . "\n</script>\n";
+				else if ($css) {
+					if ($me->opts['minify']) {
+						$f = 'tmp.css';
+						file_put_contents($f, $css);
+						$ret = "\n" . $this->cssMin($f) . "\n";
+					}
+					else {
+						$ret = $all;
+					}
+				}
+				return $ret;
 			}, $html);
 
 			$pageId = basename($f0, ".html");
@@ -393,35 +497,41 @@ CSS合并，以及对url相对路径进行修正。
 
 	protected function getFile($f)
 	{
-		if (!$this->opts['minify'] || stripos($f, '.min.') !== false) {
+		if (!$this->opts['minify'] || preg_match('/\bmin\b/', $f)) {
 			return file_get_contents($f);
 		}
 		if (substr($f, -3) ==  '.js')
 			return $this->jsmin($f);
-		return $this->cssMin($f);
+		else if (substr($f, -4) == '.css')
+			return $this->cssmin($f);
+		return file_get_contents($f);
 	}
 
 	protected function cssMin($f)
 	{
-		// TODO: cssMin
-		return file_get_contents($f);
+		return $this->minify($f, 'cssmin');
 	}
 
 	// return: min js
 	protected function jsmin($f)
 	{
+		return $this->minify($f, 'jsmin');
+	}
+
+	protected function minify($f, $prog)
+	{
 		$fp = fopen($f, "r");
-		$jsminExe = __DIR__ . '/jsmin';
-		$h = proc_open($jsminExe, [ $fp, ["pipe", "w"], STDERR ], $pipes);
+		$minExe = __DIR__ . '/' . $prog;
+		$h = proc_open($minExe, [ $fp, ["pipe", "w"], STDERR ], $pipes);
 		if ($h === false) {
-			die("*** error: require tool `jsmin'\n");
+			die1("*** error: require tool `$prog'\n");
 		}
 		fclose($fp);
 		$ret = stream_get_contents($pipes[1]);
 		fclose($pipes[1]);
 		$rv = proc_close($h);
 		if ($rv != 0) {
-			die("*** error: jsmin fails to run.\n");
+			die1("*** error: $prog fails to run.\n");
 		}
 		return $ret;
 	}
@@ -453,6 +563,14 @@ CSS合并，以及对url相对路径进行修正。
 // }}}
 
 // ====== functions {{{
+// 注意：die返回0，请调用die1返回1标识出错。
+function die1($msg)
+{
+	ob_end_clean();
+	fwrite(STDERR, $msg);
+	exit(1);
+}
+
 function logit($s, $level=1)
 {
 	global $DBG_LEVEL;
@@ -461,10 +579,11 @@ function logit($s, $level=1)
 }
 
 // 将当前路径加入PATH, 便于外部调用同目录的程序如jsmin
-function addPath()
+function addPath($prog)
 {
-	global $argv;
-	$path = realpath(dirname($argv[0]));
+	$path = realpath(dirname($prog));
+	if ($path === false)
+		return;
 	putenv("PATH=" . $path . PATH_SEPARATOR . getenv("PATH"));
 }
 
@@ -477,6 +596,11 @@ function formatPath($f)
 	$f = preg_replace('`[^/]+/\.\./`', '', $f);
 	$f = preg_replace('`(^|/)\K\./`', '', $f);
 	return $f;
+}
+
+function formatArgs($arr)
+{
+	return join(' ', $arr);
 }
 
 function matchRule($rule, $file)
@@ -518,6 +642,118 @@ function getFileHash($basef, $f, $outDir, $relativeDir = null)
 	return $hash;
 }
 
+/*
+return: [ @jsfiles, @cssfiles], 如果没有js文件则返回jsfiles空数组，cssfiles类似。
+例：
+
+	<link rel="stylesheet" href="lib/mui.css?v=1" />
+	<link rel="stylesheet" href="app.css" />
+	<!--link rel="stylesheet" href="app2.css" /-->
+
+	<script src="lib/common.js"></script>
+	<script src="lib/app_fw.js"></script>
+	<script src="app.js"></script>
+
+返回：
+
+	[
+		"cssfiles" => ["lib/mui.css", "app.css"],
+		"jsfiles" => ["lib/common.js", "lib/app_fw.js", "app.js"]
+	]
+
+注意：
+- 去除注释
+- 文件名含有"?v=1"应去除
+ */
+function parseJsCss($html)
+{
+	$ret = ['cssfiles'=>[], 'jsfiles'=>[]];
+	preg_replace_callback('`<!--.*?--> | 
+		<script\s+ [^>]*? \bsrc=[\'"]?([^\'">?]+) |
+		<link\s+ [^>]*? \bhref=[\'"]?([^\'">?]+)
+		`xsi',
+	function($ms) use (&$ret) {
+		@list($all, $js, $css) = $ms;
+		if ($js)
+			$ret['jsfiles'][] = $js;
+		if ($css)
+			$ret['cssfiles'][] = $css;
+	}, $html);
+
+	return $ret;
+}
+
+// return: handled content
+function handleWebccBlock($content, $basef)
+{
+	$relDir = dirname($basef);
+	$content = preg_replace_callback('/
+		^.*WEBCC_BEGIN(\s+MERGE(?:=(\S+))?)?.*$ 
+		((?:.|\n)*?)
+		(?:^.*WEBCC_USE_THIS.*$[\r\n]*
+			((?:.|\n)*?)
+		)?
+		^.*WEBCC_END.*$[\r\n]*
+	/xm', 
+	function ($ms) use ($relDir, $basef) {
+		@list($all, $doMerge, $outName, $content, $useContent) = $ms;
+		$ret = '';
+		if ($doMerge) {
+			$rv = parseJsCss($content);
+			$commonArgs = ['-minify', 'yes'];
+
+			if (!empty($rv['cssfiles'])) {
+				if ($outName) {
+					$args = array_merge($commonArgs, ['-o', "$outName.min.css"], $rv['cssfiles']);
+				}
+				else {
+					$args = array_merge($commonArgs, $rv['cssfiles']);
+				}
+				$s = WebccCmd::execAndGetStr('mergeCss', $args, true, $relDir, $basef);
+				if ($outName) {
+					$ret .= $s;
+				}
+				else {
+					$ret .= "<style>\n$s\n</style>\n";
+				}
+			}
+			if (!empty($rv['jsfiles'])) {
+				if ($outName) {
+					$args = array_merge($commonArgs, ['-o', "$outName.min.js"], $rv['jsfiles']);
+				}
+				else {
+					$args = array_merge($commonArgs, $rv['jsfiles']);
+				}
+				$s = WebccCmd::execAndGetStr('mergeJs', $args, true, $relDir, $basef);
+				if ($outName) {
+					$ret .= $s;
+				}
+				else {
+					$ret .= "<script>\n$s\n</script>\n";
+				}
+			}
+		}
+
+		if ($useContent) {
+			// 去除注释
+			$useStr = preg_replace('`\s*//.*$`m', '', $useContent);
+			$useStr = preg_replace_callback('/\bWEBCC_CMD\s+(\w+)\s*(.*?)\s*$/m', 
+			function ($ms1) use ($relDir, $basef) {
+				list($cmd, $args) = [$ms1[1], preg_split('/\s+/', $ms1[2])];
+				$s = WebccCmd::execAndGetStr($cmd, $args, true, $relDir, $basef);
+				return $s;
+			}, $useStr);
+			if ($ret != '')
+				$ret .= $useStr;
+			else
+				$ret = $useStr;
+		}
+		return $ret;
+	}, $content);
+
+	return $content;
+}
+
 // <script src="main.js?__HASH__"></script>
 // loadScript("cordova/cordova.js?__HASH__,m2)");  -> m2/cordova/cordova.js
 // 如果inputFile非空，直接读取它; 如果为null, 则用$f作为输入。
@@ -528,28 +764,7 @@ function handleHash($f, $outDir, $inputFile = null)
 	$s = file_get_contents($inputFile);
 
 	if (preg_match('/\.html/', $f)) {
-		$relDir = dirname($f);
-		$s = preg_replace_callback('/
-			^.*WEBCC_BEGIN.*$ 
-			(?:.|\n)*?
-			(?:^.*WEBCC_USE_THIS.*$[\r\n]*
-				((?:.|\n)*?)
-			)?
-			^.*WEBCC_END.*$[\r\n]*
-		/xm', 
-		function ($ms) use ($relDir) {
-			$ret = $ms[1] ?: "";
-			$ret = preg_replace('`\s*//.*$`m', '', $ret);
-			$ret = preg_replace_callback('/\bWEBCC_CMD\s+(\w+)\s*(.*?)\s*$/m', function ($ms1) use ($relDir) {
-				ob_start();
-				list($cmd, $args) = [$ms1[1], preg_split('/\s+/', $ms1[2])];
-				WebccCmd::exec($cmd, $args, true, $relDir);
-				$s = ob_get_contents();
-				ob_end_clean();
-				return $s;
-			}, $ret);
-			return $ret;
-		}, $s);
+		$s = handleWebccBlock($s, $f);
 	}
 
 	$s = preg_replace_callback('/"([^"]+)\?__HASH__(?:,([^"]+))?"/',
@@ -589,6 +804,7 @@ function handleFake($f, $outDir)
 }
 
 // return: false - skipped
+// force=true: 即使在$FILES未指定也强制生成
 function handleOne($f, $outDir, $force = false)
 {
 	global $FILES;
@@ -610,7 +826,7 @@ function handleOne($f, $outDir, $force = false)
 	}
 
 	$fi = formatPath($f);
-	if (!$force && array_key_exists($fi, $g_handledFiles))
+	if (array_key_exists($fi, $g_handledFiles))
 		return;
 	$g_handledFiles[$fi] = 1;
 
@@ -680,12 +896,12 @@ function readOpts($args, $knownOpts, &$opts)
 		if ($opt[0] === '-') {
 			$opt = substr($opt, 1);
 			if (! in_array($opt, $knownOpts)) {
-				die("*** unknonw option `$opt`.\n");
+				die1("*** unknonw option `$opt`.\n");
 			}
 
 			$v = next($args);
 			if ($v === false)
-				die("*** require value for option `$opt`\n");
+				die1("*** require value for option `$opt`\n");
 			if ($v == 'yes' || $v == 'true')
 				$v = true;
 			else if ($v == 'no' || $v == 'false')
@@ -714,7 +930,9 @@ if (count($argv) < 2) {
 	exit(1);
 }
 
-array_shift($argv);
+$prog = array_shift($argv);
+addPath($prog);
+
 readOpts($argv, $KNOWN_OPTS, $g_opts);
 if (isset($g_opts['cmd'])) {
 	WebccCmd::exec($g_opts['cmd'], $g_opts['args'], false);
@@ -727,11 +945,10 @@ if (isset($g_opts['o']))
 $g_opts["srcDir"] = $g_opts['args'][0];
 
 if (is_null($g_opts["srcDir"])) 
-	die("*** require param srcDir.");
+	die1("*** require param srcDir.");
 if (! is_dir($g_opts["srcDir"]))
-	die("*** not a folder: `{$g_opts["srcDir"]}`\n");
+	die1("*** not a folder: `{$g_opts["srcDir"]}`\n");
 
-addPath();
 // load config
 $cfg = $g_opts["srcDir"] . "/" . CFG_FILE;
 if (is_file($cfg)) {

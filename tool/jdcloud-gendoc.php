@@ -40,6 +40,13 @@ $curBlockId = null;
 $subTitles = [];
 
 // ====== function
+// 注意：die返回0，请调用die1返回1标识出错。
+function die1($msg)
+{
+	fwrite(STDERR, $msg);
+	exit(1);
+}
+
 // key={type,name}
 function makeKeyword($key)
 {
@@ -210,13 +217,27 @@ function handleSubToc($txt)
 	// NOTE: 在<h2>标签之后添加Toc
 	return preg_replace('/<\/h2>\K/', $ts, $txt, 1); // replace once.
 }
+
+function usage()
+{
+	echo 'Usage:
+  jdcloud-gendoc {source_file} -title {title} > {output_html}
+
+Example:
+  php jdcloud-gendoc.php mysrc.js -title "API-Reference" > doc.html
+';
+}
 // ====== main
 
 $argv1 = null;
 $options = mygetopt(['title:', 'encoding:'], $argv1) + $defaultOptions;
+if (count($argv1) == 0) {
+	usage();
+	return 1;
+}
 handleOptionEncoding();
 foreach ($argv1 as $f) {
-	@$str = file_get_contents($f) or die ("*** require input file.\n");
+	@$str = file_get_contents($f) or die1("*** require input file.\n");
 	$pd = new MyParsedown();
 
 	preg_replace_callback('/

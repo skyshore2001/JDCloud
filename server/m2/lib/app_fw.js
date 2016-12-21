@@ -571,6 +571,10 @@ function applyTpl(tpl, data)
 	});
 }
 
+// bugfix: 浏览器兼容性问题
+if (String.prototype.startsWith == null) {
+	String.prototype.startsWith = function (s) { return this.substr(0, s.length) == s; }
+}
 // }}}
 
 // ====== app fw {{{
@@ -658,6 +662,68 @@ var E_ABORT=-100;
 @event pagebeforeshow() DOM事件。this为当前页面jpage。
 @event pageshow()  DOM事件。this为当前页面jpage。
 @event pagehide() DOM事件。this为当前页面jpage。
+
+#### 逻辑页内嵌style
+
+逻辑页代码片段允许嵌入style，例如：
+
+	<div mui-initfn="initPageOrder" mui-script="order.js">
+	<style>
+	.p-list {
+		color: blue;
+	}
+	.p-list div {
+		color: red;
+	}
+	</style>
+	</div>
+
+@key mui-origin
+
+style将被插入到head标签中，并自动添加属性`mui-origin={pageId}`.
+
+（版本v3.2)
+框架在加载页面时，会将style中的内容自动添加逻辑页前缀，以便样式局限于当前页使用，相当于：
+
+	<style>
+	#order .p-list {
+		color: blue;
+	}
+	#order .p-list div {
+		color: red;
+	}
+	</style>
+
+为兼容旧版本，如果css选择器以"#{pageId} "开头，则不予处理。
+
+@key mui-nofix
+如果不希望框架自动处理，可以为style添加属性`mui-nofix`:
+
+	<style mui-nofix>
+	</style>
+
+#### 逻辑页内嵌script
+
+逻辑页中允许但不建议内嵌script代码，js代码应在mui-script对应的脚本中。非要使用时，注意将script放到div标签内：
+
+	<div mui-initfn="initPageOrder" mui-script="order.js">
+	<script>
+	// js代码
+	</script>
+		...
+	</div>
+
+（版本v3.2)
+如果逻辑页嵌入在script模板中，这时要使用`script`, 应换用`__script__`标签，如：
+
+	<script type="text/html" id="tpl_order">
+		<div mui-initfn="initPageOrder" mui-script="order.js">
+			...
+		</div>
+		<__script__>
+		// js代码，将在逻辑页加载时执行
+		</__script__>
+	</script>
 
 ## 服务端交互API
 
@@ -786,7 +852,7 @@ APP初始化成功后，回调该事件。如果deviceready事件未被回调，
 
 - m/cordova/cordova.js文件版本不兼容，如创建插件cordova平台是5.0版本，而相应的cordova.js文件或接口文件版本不同。
 - 在编译原生程序时未设置 <allow-navigation href="*">，或者html中CSP设置不正确。
-- 主页中有跨域的script js文件无法下载。如 <script type="text/javascript" src="http://3.3.3.3/1.js"></script>
+- 主页中有跨域的script js文件无法下载。如 `<script type="text/javascript" src="http://3.3.3.3/1.js"></script>`
 - 某插件的初始化过程失败（需要在原生环境下调试）
 
 ## 系统类标识
@@ -923,6 +989,7 @@ function CPageManager(app)
 
 	// 调用showPage_后，将要显示的页
 	var m_toPageId = null;
+	var m_lastPageRef = null;
 
 	// @class PageStack {{{
 	var m_fn_history_go = history.go;
@@ -1151,8 +1218,7 @@ function CPageManager(app)
 		}, opt);
 
 		// 避免hashchange重复调用
-		var fn = arguments.callee;
-		if (fn.lastPageRef == pageRef)
+		if (m_lastPageRef == pageRef)
 		{
 			m_isback = null; // reset!
 			return;
@@ -1161,7 +1227,7 @@ function CPageManager(app)
 		if (ret === false)
 			return;
 		location.hash = pageRef;
-		fn.lastPageRef = pageRef;
+		m_lastPageRef = pageRef;
 
 		// find in document
 		var pi = getPageInfo(pageRef);
@@ -1198,6 +1264,54 @@ function CPageManager(app)
 			});
 		}
 
+/*
+如果逻辑页中的css项没有以"#{pageId}"开头，则自动添加：
+
+	.aa { color: red} .bb p {color: blue}
+	.aa, .bb { background-color: black }
+
+=> 
+
+	#page1 .aa { color: red} #page1 .bb p {color: blue}
+	#page1 .aa, #page1 .bb { background-color: black }
+
+注意：
+
+- 逗号的情况；
+- 有注释的情况
+- 支持括号嵌套，如
+
+		@keyframes modalshow {
+			from { transform: translate(10%, 0); }
+			to { transform: translate(0,0); }
+		}
+		
+- 不处理"@"开头的选择器，如"media", "@keyframes"等。
+*/
+		function fixPageCss(css, pageId)
+		{
+			var prefix = "#" + pageId + " ";
+
+			var level = 1;
+			var css1 = css.replace(/\/\*(.|\s)*?\*\//g, '')
+			.replace(/([^{}]*)([{}])/g, function (ms, text, brace) {
+				if (brace == '}') {
+					-- level;
+					return ms;
+				}
+				if (brace == '{' && level++ != 1)
+					return ms;
+
+				// level=1
+				return ms.replace(/((?:^|,)\s*)([^,{}]+)/g, function (ms, ms1, sel) { 
+					if (sel.startsWith(prefix) || sel[0] == '@')
+						return ms;
+					return ms1 + prefix + sel;
+				});
+			});
+			return css1;
+		}
+
 		// path?=m_app.pageFolder
 		function loadPage(html, pageId, path)
 		{
@@ -1212,6 +1326,10 @@ function CPageManager(app)
 				jpage = jpage.filter(":first");
 			}
 
+			// 限制css只能在当前页使用
+			jpage.find("style:not([mui-nofix])").each(function () {
+				$(this).html( fixPageCss($(this).html(), pageId) );
+			});
 			// bugfix: 加载页面页背景图可能反复被加载
 			jpage.find("style").attr("mui-origin", pageId).appendTo(document.head);
 			jpage.attr("id", pageId).addClass("mui-page")
@@ -1325,6 +1443,45 @@ function CPageManager(app)
 			self.m_pageStack.push(pageRef);
 		}
 		showPage_(pageRef);
+	}
+
+/**
+@fn MUI.unloadPage(pageId?)
+
+@param pageId 如未指定，表示当前页。
+
+删除一个页面。
+*/
+	self.unloadPage = unloadPage;
+	function unloadPage(pageId)
+	{
+		var jo = null;
+		if (pageId == null) {
+			jo = self.activePage;
+			pageId = jo.attr("id");
+		}
+		else {
+			jo = $("#" + pageId);
+		}
+		jo.remove();
+		$("style[mui-origin=" + pageId + "]").remove();
+	}
+
+/**
+@fn MUI.reloadPage(pageId?)
+
+@param pageId 如未指定，表示当前页。
+
+重新加载指定页面。不指定pageId时，重加载当前页。
+*/
+	self.reloadPage = reloadPage;
+	function reloadPage(pageId)
+	{
+		if (pageId == null)
+			pageId = self.activePage.attr("id");
+		unloadPage(pageId);
+		m_lastPageRef = null; // 防止showPage_中阻止运行
+		showPage_("#"+pageId);
 	}
 
 /**
@@ -1865,12 +2022,14 @@ function CComManager(app)
 /**
 @var MUI.lastError = ctx
 
+出错时，取出错调用的上下文信息。
+
 ctx: {ac, tm, tv, ret}
 
-- ac: action
-- tm: start time
-- tv: time interval
-- ret: return value
+- ac: action 调用接口名
+- tm: start time 开始调用时间
+- tv: time interval 从调用到返回的耗时
+- ret: return value 调用返回的原始数据
 */
 	self.lastError = null;
 	var m_app = app;
@@ -2082,7 +2241,7 @@ allow throw("abort") as abort behavior.
 @fn MUI.defDataProc(rv)
 
 @param rv BQP协议原始数据，如 "[0, {id: 1}]"，一般是字符串，也可以是JSON对象。
-@return data 按接口定义返回的数据对象，如 {id: 1}. 如果返回==null，调用函数应直接返回。
+@return data 按接口定义返回的数据对象，如 {id: 1}. 如果返回==null，调用函数应直接返回，不回调应用层。
 
 注意：服务端不应返回null, 否则客户回调无法执行; 习惯上返回false表示让回调处理错误。
 
@@ -2138,7 +2297,10 @@ allow throw("abort") as abort behavior.
 		if (ext) {
 			var filter = self.callSvrExt[ext] && self.callSvrExt[ext].dataFilter;
 			assert(filter, "*** missing dataFilter for callSvrExt: " + ext);
-			return filter.call(this, rv);
+			var ret = filter.call(this, rv);
+			if (ret == null || ret === false)
+				self.lastError = ctx;
+			return ret;
 		}
 
 		if (rv && $.isArray(rv) && rv.length >= 2 && typeof rv[0] == "number") {
@@ -2286,8 +2448,12 @@ allow throw("abort") as abort behavior.
 
 常用userOptions: 
 - 指定{async:0}来做同步请求, 一般直接用callSvrSync调用来替代.
-- 指定{noex:1}用于忽略错误处理, 当后端返回错误时, 回调函数会被调用, 且参数data=false.
+- 指定{noex:1}用于忽略错误处理。
 - 指定{noLoadingImg:1}用于忽略loading图标.
+
+@key callSvr.noex 调用接口时忽略出错，可由回调函数fn自己处理错误。
+
+当后端返回错误时, 回调`fn(false)`（参数data=false）. 可通过 MUI.lastError.ret 取到返回的原始数据。
 
 例：
 
@@ -2302,10 +2468,13 @@ allow throw("abort") as abort behavior.
 
 	callSvr("User.get", function (data) {
 		if (data === false) { // 仅当设置noex且服务端返回错误时可返回false
+			// var originalData = MUI.lastError.ret;
 			return;
 		}
 		foo(data);
 	}, null, {noex:1});
+
+@see MUI.lastError 出错时的上下文信息
 
 ## 调用监控
 
@@ -2371,8 +2540,7 @@ JS:
 		"data":[]
 	}
 
-注意：
-对方接口应允许JS跨域调用，或调用方支持跨域调用。
+callSvr扩展示例：
 
 	MUI.callSvrExt['zhanda'] = {
 		makeUrl: function(ac) {
@@ -2382,6 +2550,8 @@ JS:
 			if ($.isPlainObject(data) && data.code !== undefined) {
 				if (data.code == 0)
 					return data.data;
+				if (this.noex)
+					return false;
 				app_alert("操作失败：" + data.message, "e");
 			}
 			else {
@@ -2396,6 +2566,26 @@ JS:
 		console.log(data);
 	});
 
+@key MUI.callSvrExt[].makeUrl(ac)
+
+根据调用名ac生成url.
+
+注意：
+对方接口应允许JS跨域调用，或调用方支持跨域调用。
+
+@key MUI.callSvrExt[].dataFilter(data) = null/false/data
+
+对调用返回数据进行通用处理。返回值决定是否调用callSvr的回调函数以及参数值。
+
+	callSvr(ac, callback);
+
+- 返回data: 回调应用层的实际有效数据: `callback(data)`.
+- 返回null: 一般用于报错后返回。不会回调`callback`.
+- 返回false: 一般与callSvr的noex选项合用，如`callSvr(ac, callback, postData, {noex:1})`，表示由应用层回调函数来处理出错: `callback(false)`。
+
+当返回false时，应用层可以通过`MUI.lastError.ret`来获取服务端返回数据。
+
+@see MUI.lastError 出错时的上下文信息
 
 @key MUI.callSvrExt['default']
 
@@ -2415,7 +2605,6 @@ JS:
 
 				if (this.noex)
 				{
-					MUI.lastError = ctx;
 					return false;
 				}
 
@@ -2447,7 +2636,6 @@ JS:
 
 			function logError()
 			{
-				MUI.lastError = ctx;
 				console.log("failed call");
 				console.log(ctx);
 			}
@@ -2531,6 +2719,8 @@ JS:
 @return data 原型规定的返回数据
 
 同步模式调用callSvr.
+
+@see callSvr
 */
 	window.callSvrSync = self.callSvrSync = callSvrSync;
 	function callSvrSync(ac, params, fn, postParams, userOptions)
@@ -4067,6 +4257,9 @@ markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 
 				data.nextkey = data.curPage + 1;
 		}
 	});
+
+例3：假定后端就返回一个列表如`[ {...}, {...} ]`，不支持分页。
+什么都不用设置，仍支持下拉刷新，因为刚好会当成最后一页处理，上拉不再加载。
 
 ## 下拉刷新提示信息
 

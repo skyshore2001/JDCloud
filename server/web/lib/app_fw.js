@@ -2069,6 +2069,8 @@ function checkFormFields(jfrm)
 function restoreFormFields(jfrm)
 {
 	var jd = jfrm.jdata();
+	if (jd.no_submit == null)
+		return;
 	$.each(jd.no_submit, function(i,jo) {
 		jo.prop("disabled", false);
 	})
