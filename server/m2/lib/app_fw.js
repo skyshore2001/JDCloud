@@ -989,6 +989,7 @@ function CPageManager(app)
 
 	// 调用showPage_后，将要显示的页
 	var m_toPageId = null;
+	var m_lastPageRef = null;
 
 	// @class PageStack {{{
 	var m_fn_history_go = history.go;
@@ -1217,8 +1218,7 @@ function CPageManager(app)
 		}, opt);
 
 		// 避免hashchange重复调用
-		var fn = arguments.callee;
-		if (fn.lastPageRef == pageRef)
+		if (m_lastPageRef == pageRef)
 		{
 			m_isback = null; // reset!
 			return;
@@ -1227,7 +1227,7 @@ function CPageManager(app)
 		if (ret === false)
 			return;
 		location.hash = pageRef;
-		fn.lastPageRef = pageRef;
+		m_lastPageRef = pageRef;
 
 		// find in document
 		var pi = getPageInfo(pageRef);
@@ -1446,15 +1446,42 @@ function CPageManager(app)
 	}
 
 /**
-@fn MUI.unloadPage(pageId)
+@fn MUI.unloadPage(pageId?)
+
+@param pageId 如未指定，表示当前页。
 
 删除一个页面。
 */
 	self.unloadPage = unloadPage;
 	function unloadPage(pageId)
 	{
-		$("#" + pageId).remove();
+		var jo = null;
+		if (pageId == null) {
+			jo = self.activePage;
+			pageId = jo.attr("id");
+		}
+		else {
+			jo = $("#" + pageId);
+		}
+		jo.remove();
 		$("style[mui-origin=" + pageId + "]").remove();
+	}
+
+/**
+@fn MUI.reloadPage(pageId?)
+
+@param pageId 如未指定，表示当前页。
+
+重新加载指定页面。不指定pageId时，重加载当前页。
+*/
+	self.reloadPage = reloadPage;
+	function reloadPage(pageId)
+	{
+		if (pageId == null)
+			pageId = self.activePage.attr("id");
+		unloadPage(pageId);
+		m_lastPageRef = null; // 防止showPage_中阻止运行
+		showPage_("#"+pageId);
 	}
 
 /**
