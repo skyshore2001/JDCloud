@@ -1995,12 +1995,14 @@ function CComManager(app)
 /**
 @var MUI.lastError = ctx
 
+出错时，取出错调用的上下文信息。
+
 ctx: {ac, tm, tv, ret}
 
-- ac: action
-- tm: start time
-- tv: time interval
-- ret: return value
+- ac: action 调用接口名
+- tm: start time 开始调用时间
+- tv: time interval 从调用到返回的耗时
+- ret: return value 调用返回的原始数据
 */
 	self.lastError = null;
 	var m_app = app;
@@ -2212,7 +2214,7 @@ allow throw("abort") as abort behavior.
 @fn MUI.defDataProc(rv)
 
 @param rv BQP协议原始数据，如 "[0, {id: 1}]"，一般是字符串，也可以是JSON对象。
-@return data 按接口定义返回的数据对象，如 {id: 1}. 如果返回==null，调用函数应直接返回。
+@return data 按接口定义返回的数据对象，如 {id: 1}. 如果返回==null，调用函数应直接返回，不回调应用层。
 
 注意：服务端不应返回null, 否则客户回调无法执行; 习惯上返回false表示让回调处理错误。
 
@@ -2268,7 +2270,10 @@ allow throw("abort") as abort behavior.
 		if (ext) {
 			var filter = self.callSvrExt[ext] && self.callSvrExt[ext].dataFilter;
 			assert(filter, "*** missing dataFilter for callSvrExt: " + ext);
-			return filter.call(this, rv);
+			var ret = filter.call(this, rv);
+			if (ret == null || ret === false)
+				self.lastError = ctx;
+			return ret;
 		}
 
 		if (rv && $.isArray(rv) && rv.length >= 2 && typeof rv[0] == "number") {
@@ -2416,8 +2421,12 @@ allow throw("abort") as abort behavior.
 
 常用userOptions: 
 - 指定{async:0}来做同步请求, 一般直接用callSvrSync调用来替代.
-- 指定{noex:1}用于忽略错误处理, 当后端返回错误时, 回调函数会被调用, 且参数data=false.
+- 指定{noex:1}用于忽略错误处理。
 - 指定{noLoadingImg:1}用于忽略loading图标.
+
+@key callSvr.noex 调用接口时忽略出错，可由回调函数fn自己处理错误。
+
+当后端返回错误时, 回调`fn(false)`（参数data=false）. 可通过 MUI.lastError.ret 取到返回的原始数据。
 
 例：
 
@@ -2432,10 +2441,13 @@ allow throw("abort") as abort behavior.
 
 	callSvr("User.get", function (data) {
 		if (data === false) { // 仅当设置noex且服务端返回错误时可返回false
+			// var originalData = MUI.lastError.ret;
 			return;
 		}
 		foo(data);
 	}, null, {noex:1});
+
+@see MUI.lastError 出错时的上下文信息
 
 ## 调用监控
 
@@ -2501,8 +2513,7 @@ JS:
 		"data":[]
 	}
 
-注意：
-对方接口应允许JS跨域调用，或调用方支持跨域调用。
+callSvr扩展示例：
 
 	MUI.callSvrExt['zhanda'] = {
 		makeUrl: function(ac) {
@@ -2512,6 +2523,8 @@ JS:
 			if ($.isPlainObject(data) && data.code !== undefined) {
 				if (data.code == 0)
 					return data.data;
+				if (this.noex)
+					return false;
 				app_alert("操作失败：" + data.message, "e");
 			}
 			else {
@@ -2526,6 +2539,26 @@ JS:
 		console.log(data);
 	});
 
+@key MUI.callSvrExt[].makeUrl(ac)
+
+根据调用名ac生成url.
+
+注意：
+对方接口应允许JS跨域调用，或调用方支持跨域调用。
+
+@key MUI.callSvrExt[].dataFilter(data) = null/false/data
+
+对调用返回数据进行通用处理。返回值决定是否调用callSvr的回调函数以及参数值。
+
+	callSvr(ac, callback);
+
+- 返回data: 回调应用层的实际有效数据: `callback(data)`.
+- 返回null: 一般用于报错后返回。不会回调`callback`.
+- 返回false: 一般与callSvr的noex选项合用，如`callSvr(ac, callback, postData, {noex:1})`，表示由应用层回调函数来处理出错: `callback(false)`。
+
+当返回false时，应用层可以通过`MUI.lastError.ret`来获取服务端返回数据。
+
+@see MUI.lastError 出错时的上下文信息
 
 @key MUI.callSvrExt['default']
 
@@ -2545,7 +2578,6 @@ JS:
 
 				if (this.noex)
 				{
-					MUI.lastError = ctx;
 					return false;
 				}
 
@@ -2577,7 +2609,6 @@ JS:
 
 			function logError()
 			{
-				MUI.lastError = ctx;
 				console.log("failed call");
 				console.log(ctx);
 			}
@@ -2661,6 +2692,8 @@ JS:
 @return data 原型规定的返回数据
 
 同步模式调用callSvr.
+
+@see callSvr
 */
 	window.callSvrSync = self.callSvrSync = callSvrSync;
 	function callSvrSync(ac, params, fn, postParams, userOptions)
