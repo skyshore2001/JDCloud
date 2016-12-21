@@ -571,6 +571,10 @@ function applyTpl(tpl, data)
 	});
 }
 
+// bugfix: 浏览器兼容性问题
+if (String.prototype.startsWith == null) {
+	String.prototype.startsWith = function (s) { return this.substr(0, s.length) == s; }
+}
 // }}}
 
 // ====== app fw {{{
@@ -658,6 +662,68 @@ var E_ABORT=-100;
 @event pagebeforeshow() DOM事件。this为当前页面jpage。
 @event pageshow()  DOM事件。this为当前页面jpage。
 @event pagehide() DOM事件。this为当前页面jpage。
+
+#### 逻辑页内嵌style
+
+逻辑页代码片段允许嵌入style，例如：
+
+	<div mui-initfn="initPageOrder" mui-script="order.js">
+	<style>
+	.p-list {
+		color: blue;
+	}
+	.p-list div {
+		color: red;
+	}
+	</style>
+	</div>
+
+@key mui-origin
+
+style将被插入到head标签中，并自动添加属性`mui-origin={pageId}`.
+
+（版本v3.2)
+框架在加载页面时，会将style中的内容自动添加逻辑页前缀，以便样式局限于当前页使用，相当于：
+
+	<style>
+	#order .p-list {
+		color: blue;
+	}
+	#order .p-list div {
+		color: red;
+	}
+	</style>
+
+为兼容旧版本，如果css选择器以"#{pageId} "开头，则不予处理。
+
+@key mui-nofix
+如果不希望框架自动处理，可以为style添加属性`mui-nofix`:
+
+	<style mui-nofix>
+	</style>
+
+#### 逻辑页内嵌script
+
+逻辑页中允许但不建议内嵌script代码，js代码应在mui-script对应的脚本中。非要使用时，注意将script放到div标签内：
+
+	<div mui-initfn="initPageOrder" mui-script="order.js">
+	<script>
+	// js代码
+	</script>
+		...
+	</div>
+
+（版本v3.2)
+如果逻辑页嵌入在script模板中，这时要使用`script`, 应换用`__script__`标签，如：
+
+	<script type="text/html" id="tpl_order">
+		<div mui-initfn="initPageOrder" mui-script="order.js">
+			...
+		</div>
+		<__script__>
+		// js代码，将在逻辑页加载时执行
+		</__script__>
+	</script>
 
 ## 服务端交互API
 
@@ -786,7 +852,7 @@ APP初始化成功后，回调该事件。如果deviceready事件未被回调，
 
 - m/cordova/cordova.js文件版本不兼容，如创建插件cordova平台是5.0版本，而相应的cordova.js文件或接口文件版本不同。
 - 在编译原生程序时未设置 <allow-navigation href="*">，或者html中CSP设置不正确。
-- 主页中有跨域的script js文件无法下载。如 <script type="text/javascript" src="http://3.3.3.3/1.js"></script>
+- 主页中有跨域的script js文件无法下载。如 `<script type="text/javascript" src="http://3.3.3.3/1.js"></script>`
 - 某插件的初始化过程失败（需要在原生环境下调试）
 
 ## 系统类标识
@@ -923,6 +989,7 @@ function CPageManager(app)
 
 	// 调用showPage_后，将要显示的页
 	var m_toPageId = null;
+	var m_lastPageRef = null;
 
 	// @class PageStack {{{
 	var m_fn_history_go = history.go;
@@ -1151,8 +1218,7 @@ function CPageManager(app)
 		}, opt);
 
 		// 避免hashchange重复调用
-		var fn = arguments.callee;
-		if (fn.lastPageRef == pageRef)
+		if (m_lastPageRef == pageRef)
 		{
 			m_isback = null; // reset!
 			return;
@@ -1161,7 +1227,7 @@ function CPageManager(app)
 		if (ret === false)
 			return;
 		location.hash = pageRef;
-		fn.lastPageRef = pageRef;
+		m_lastPageRef = pageRef;
 
 		// find in document
 		var pi = getPageInfo(pageRef);
@@ -1178,7 +1244,14 @@ function CPageManager(app)
 		var jtpl = pi.templateRef? $(pi.templateRef): null;
 		if (jtpl && jtpl.size() > 0) {
 			var html = jtpl.html();
-			loadPage(html, pageId);
+			// webcc内嵌页面时，默认使用script标签（因为template尚且普及），其中如果有script都被替换为__script__, 这里做还原。
+			if (jtpl[0].tagName == 'SCRIPT') {
+				html = html.replace(/__script__/g, 'script');
+			}
+			// bugfix: 用setTimeout解决微信浏览器切页动画显示异常
+			setTimeout(function () {
+				loadPage(html, pageId);
+			});
 		}
 		else {
 			enterWaiting(); // NOTE: leaveWaiting in initPage
@@ -1189,6 +1262,54 @@ function CPageManager(app)
 			}).fail(function () {
 				leaveWaiting();
 			});
+		}
+
+/*
+如果逻辑页中的css项没有以"#{pageId}"开头，则自动添加：
+
+	.aa { color: red} .bb p {color: blue}
+	.aa, .bb { background-color: black }
+
+=> 
+
+	#page1 .aa { color: red} #page1 .bb p {color: blue}
+	#page1 .aa, #page1 .bb { background-color: black }
+
+注意：
+
+- 逗号的情况；
+- 有注释的情况
+- 支持括号嵌套，如
+
+		@keyframes modalshow {
+			from { transform: translate(10%, 0); }
+			to { transform: translate(0,0); }
+		}
+		
+- 不处理"@"开头的选择器，如"media", "@keyframes"等。
+*/
+		function fixPageCss(css, pageId)
+		{
+			var prefix = "#" + pageId + " ";
+
+			var level = 1;
+			var css1 = css.replace(/\/\*(.|\s)*?\*\//g, '')
+			.replace(/([^{}]*)([{}])/g, function (ms, text, brace) {
+				if (brace == '}') {
+					-- level;
+					return ms;
+				}
+				if (brace == '{' && level++ != 1)
+					return ms;
+
+				// level=1
+				return ms.replace(/((?:^|,)\s*)([^,{}]+)/g, function (ms, ms1, sel) { 
+					if (sel.startsWith(prefix) || sel[0] == '@')
+						return ms;
+					return ms1 + prefix + sel;
+				});
+			});
+			return css1;
 		}
 
 		// path?=m_app.pageFolder
@@ -1205,6 +1326,10 @@ function CPageManager(app)
 				jpage = jpage.filter(":first");
 			}
 
+			// 限制css只能在当前页使用
+			jpage.find("style:not([mui-nofix])").each(function () {
+				$(this).html( fixPageCss($(this).html(), pageId) );
+			});
 			// bugfix: 加载页面页背景图可能反复被加载
 			jpage.find("style").attr("mui-origin", pageId).appendTo(document.head);
 			jpage.attr("id", pageId).addClass("mui-page")
@@ -1318,6 +1443,45 @@ function CPageManager(app)
 			self.m_pageStack.push(pageRef);
 		}
 		showPage_(pageRef);
+	}
+
+/**
+@fn MUI.unloadPage(pageId?)
+
+@param pageId 如未指定，表示当前页。
+
+删除一个页面。
+*/
+	self.unloadPage = unloadPage;
+	function unloadPage(pageId)
+	{
+		var jo = null;
+		if (pageId == null) {
+			jo = self.activePage;
+			pageId = jo.attr("id");
+		}
+		else {
+			jo = $("#" + pageId);
+		}
+		jo.remove();
+		$("style[mui-origin=" + pageId + "]").remove();
+	}
+
+/**
+@fn MUI.reloadPage(pageId?)
+
+@param pageId 如未指定，表示当前页。
+
+重新加载指定页面。不指定pageId时，重加载当前页。
+*/
+	self.reloadPage = reloadPage;
+	function reloadPage(pageId)
+	{
+		if (pageId == null)
+			pageId = self.activePage.attr("id");
+		unloadPage(pageId);
+		m_lastPageRef = null; // 防止showPage_中阻止运行
+		showPage_("#"+pageId);
 	}
 
 /**
@@ -1858,12 +2022,14 @@ function CComManager(app)
 /**
 @var MUI.lastError = ctx
 
+出错时，取出错调用的上下文信息。
+
 ctx: {ac, tm, tv, ret}
 
-- ac: action
-- tm: start time
-- tv: time interval
-- ret: return value
+- ac: action 调用接口名
+- tm: start time 开始调用时间
+- tv: time interval 从调用到返回的耗时
+- ret: return value 调用返回的原始数据
 */
 	self.lastError = null;
 	var m_app = app;
@@ -2075,7 +2241,7 @@ allow throw("abort") as abort behavior.
 @fn MUI.defDataProc(rv)
 
 @param rv BQP协议原始数据，如 "[0, {id: 1}]"，一般是字符串，也可以是JSON对象。
-@return data 按接口定义返回的数据对象，如 {id: 1}. 如果返回==null，调用函数应直接返回。
+@return data 按接口定义返回的数据对象，如 {id: 1}. 如果返回==null，调用函数应直接返回，不回调应用层。
 
 注意：服务端不应返回null, 否则客户回调无法执行; 习惯上返回false表示让回调处理错误。
 
@@ -2131,7 +2297,10 @@ allow throw("abort") as abort behavior.
 		if (ext) {
 			var filter = self.callSvrExt[ext] && self.callSvrExt[ext].dataFilter;
 			assert(filter, "*** missing dataFilter for callSvrExt: " + ext);
-			return filter.call(this, rv);
+			var ret = filter.call(this, rv);
+			if (ret == null || ret === false)
+				self.lastError = ctx;
+			return ret;
 		}
 
 		if (rv && $.isArray(rv) && rv.length >= 2 && typeof rv[0] == "number") {
@@ -2186,6 +2355,12 @@ allow throw("abort") as abort behavior.
 	var url = makeUrl("Ordr.set", params);
 
 注意：调用该函数生成的url在结尾有标志字符串"zz=1", 如"../api.php/login?_app=user&zz=1"
+
+支持callSvr扩展，这时action可以是一个数组，如：
+
+	var url = MUI.makeUrl(['login', 'zhanda']);
+
+@see MUI.callSvrExt
  */
 	window.makeUrl = self.makeUrl = makeUrl;
 	function makeUrl(action, params)
@@ -2201,7 +2376,22 @@ allow throw("abort") as abort behavior.
 		if (params == null)
 			params = {};
 		var url;
-		if (action.indexOf(".php") < 0)
+
+		// 扩展接口调用：callSvr(['login', 'zhanda'])，需定义 MUI.callSvrExt[ext]
+		if ($.isArray(action)) {
+			var ext = action[1];
+			var extMakeUrl = self.callSvrExt[ext] && self.callSvrExt[ext].makeUrl;
+			assert(extMakeUrl, "*** missing makeUrl for callSvrExt: " + ext);
+			url = extMakeUrl(action[0]);
+		}
+		// 自定义缺省接口调用：callSvr('login')，需定义 MUI.callSvrExt['default']
+		else if (self.callSvrExt['default']) {
+			var extMakeUrl = self.callSvrExt['default'].makeUrl;
+			assert(extMakeUrl, "*** missing makeUrl for callSvrExt['default'].");
+			url = extMakeUrl(action);
+		}
+		// 缺省接口调用：callSvr('login') 或 callSvr('php/login.php');
+		else if (action.indexOf(".php") < 0)
 		{
 			var usePathInfo = true;
 			if (usePathInfo) {
@@ -2258,8 +2448,12 @@ allow throw("abort") as abort behavior.
 
 常用userOptions: 
 - 指定{async:0}来做同步请求, 一般直接用callSvrSync调用来替代.
-- 指定{noex:1}用于忽略错误处理, 当后端返回错误时, 回调函数会被调用, 且参数data=false.
+- 指定{noex:1}用于忽略错误处理。
 - 指定{noLoadingImg:1}用于忽略loading图标.
+
+@key callSvr.noex 调用接口时忽略出错，可由回调函数fn自己处理错误。
+
+当后端返回错误时, 回调`fn(false)`（参数data=false）. 可通过 MUI.lastError.ret 取到返回的原始数据。
 
 例：
 
@@ -2274,10 +2468,13 @@ allow throw("abort") as abort behavior.
 
 	callSvr("User.get", function (data) {
 		if (data === false) { // 仅当设置noex且服务端返回错误时可返回false
+			// var originalData = MUI.lastError.ret;
 			return;
 		}
 		foo(data);
 	}, null, {noex:1});
+
+@see MUI.lastError 出错时的上下文信息
 
 ## 调用监控
 
@@ -2343,8 +2540,7 @@ JS:
 		"data":[]
 	}
 
-注意：
-- 对方接口应允许JS跨域调用，或调用方支持跨域调用。
+callSvr扩展示例：
 
 	MUI.callSvrExt['zhanda'] = {
 		makeUrl: function(ac) {
@@ -2354,6 +2550,8 @@ JS:
 			if ($.isPlainObject(data) && data.code !== undefined) {
 				if (data.code == 0)
 					return data.data;
+				if (this.noex)
+					return false;
 				app_alert("操作失败：" + data.message, "e");
 			}
 			else {
@@ -2367,6 +2565,90 @@ JS:
 	callSvr(['token/get-token', 'zhanda'], {user: 'test', password: 'test123'}, function (data) {
 		console.log(data);
 	});
+
+@key MUI.callSvrExt[].makeUrl(ac)
+
+根据调用名ac生成url.
+
+注意：
+对方接口应允许JS跨域调用，或调用方支持跨域调用。
+
+@key MUI.callSvrExt[].dataFilter(data) = null/false/data
+
+对调用返回数据进行通用处理。返回值决定是否调用callSvr的回调函数以及参数值。
+
+	callSvr(ac, callback);
+
+- 返回data: 回调应用层的实际有效数据: `callback(data)`.
+- 返回null: 一般用于报错后返回。不会回调`callback`.
+- 返回false: 一般与callSvr的noex选项合用，如`callSvr(ac, callback, postData, {noex:1})`，表示由应用层回调函数来处理出错: `callback(false)`。
+
+当返回false时，应用层可以通过`MUI.lastError.ret`来获取服务端返回数据。
+
+@see MUI.lastError 出错时的上下文信息
+
+@key MUI.callSvrExt['default']
+
+(支持版本: v3.1)
+如果要修改callSvr缺省调用方法，可以改写 MUI.callSvrExt['default'].
+例如，定义以下callSvr扩展：
+
+	MUI.callSvrExt['default'] = {
+		makeUrl: function(ac) {
+			return '../api.php/' + ac;
+		},
+		dataFilter: function (data) {
+			var ctx = this.ctx_ || {};
+			if (data && $.isArray(data) && data.length >= 2 && typeof data[0] == "number") {
+				if (data[0] == 0)
+					return data[1];
+
+				if (this.noex)
+				{
+					return false;
+				}
+
+				if (data[0] == E_NOAUTH) {
+					// 如果支持自动重登录
+					//if (MUI.tryAutoLogin()) {
+					//	$.ajax(this);
+					//}
+					// 不支持自动登录，则跳转登录页
+					MUI.popPageStack(0);
+					MUI.showLogin();
+					return;
+				}
+				else if (data[0] == E_AUTHFAIL) {
+					app_alert("验证失败，请检查输入是否正确!", "e");
+					return;
+				}
+				else if (data[0] == E_ABORT) {
+					console.log("!!! abort call");
+					return;
+				}
+				logError();
+				app_alert("操作失败：" + data[1], "e");
+			}
+			else {
+				logError();
+				app_alert("服务器通讯协议异常!", "e"); // 格式不对
+			}
+
+			function logError()
+			{
+				console.log("failed call");
+				console.log(ctx);
+			}
+		}
+	};
+
+这样，以下调用
+
+	callSvr(['login', 'default']);
+
+可以简写为：
+
+	callSvr('login');
 
 */
 	window.callSvr = self.callSvr = callSvr;
@@ -2382,11 +2664,13 @@ JS:
 		}
 
 		var ext = null;
+		var ac0 = ac;
 		if ($.isArray(ac)) {
+			ac0 = ac[1] + '.' + ac[0];
 			ext = ac[1];
-			var extMakeUrl = self.callSvrExt[ext] && self.callSvrExt[ext].makeUrl;
-			assert(extMakeUrl, "*** missing makeUrl for callSvrExt: " + ext);
-			ac = extMakeUrl(ac[0]);
+		}
+		else if (self.callSvrExt['default']) {
+			ext = 'default';
 		}
 
 		if (m_curBatch &&
@@ -2424,7 +2708,7 @@ JS:
 			opt.contentType = false;
 		}
 		$.extend(opt, userOptions);
-		console.log("call " + ac);
+		console.log("call " + ac0);
 		return $.ajax(opt);
 	}
 
@@ -2435,6 +2719,8 @@ JS:
 @return data 原型规定的返回数据
 
 同步模式调用callSvr.
+
+@see callSvr
 */
 	window.callSvrSync = self.callSvrSync = callSvrSync;
 	function callSvrSync(ac, params, fn, postParams, userOptions)
@@ -2889,6 +3175,23 @@ function showLogin(jpage)
 }
 
 /**
+@fn MUI.showHome()
+
+显示主页。主页是通过 MUI.setApp({homePage: '#home'}); 来指定的，默认为"#home".
+
+要取主页名可以用：
+
+	var jpage = $(MUI.m_app.homePage);
+
+@see MUI.setApp
+*/
+self.showHome = showHome;
+function showHome()
+{
+	self.showPage(self.m_app.homePage);
+}
+
+/**
 @fn MUI.logout(dontReload?)
 @param dontReload 如果非0, 则注销后不刷新页面.
 
@@ -2937,16 +3240,12 @@ function parseArgs()
 			g_args.cordova = g_cordova;
 			setStorage("cordova", g_cordova);
 			$(function () {
-				// to use cordova plugins like camera: require m2/cordova.js, cordova_plugins.js, plugins/...
-				var f = $("script[src*='/common.js']").attr("src");
-				var path = '../m/';
-				if (f) // 根据common.js定位cordova目录位置
-					path = f.substr(0, f.lastIndexOf('/')) + "/../";
+				var path = './';
 				if (isIOS()) {
-					loadScript(path + "cordova-ios/cordova.js?__HASH__,m"); 
+					loadScript(path + "cordova-ios/cordova.js?__HASH__,.."); 
 				}
 				else {
-					loadScript(path + "cordova/cordova.js?__HASH__,m"); 
+					loadScript(path + "cordova/cordova.js?__HASH__,.."); 
 				}
 			});
 		}
@@ -3397,7 +3696,11 @@ function initPullList(container, opt)
 		jo_.height(height).css("lineHeight", height + "px");
 			
 		if (ac == "D") {
-			jo_.prependTo(cont_);
+			var c = cont_.getElementsByClassName("mui-pullHint")[0];
+			if (c)
+				jo_.appendTo(c);
+			else
+				jo_.prependTo(cont_);
 		}
 		else if (ac == "U") {
 			jo_.appendTo(cont_);
@@ -3775,7 +4078,8 @@ navRef是否为空的区别是，如果非空，则表示listRef是一组互斥�
 
 ## 参数说明
 
-@param opt {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list", onBeforeLoad?, onLoad?}
+@param opt {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list", onBeforeLoad?, onLoad?, onGetData?}
+@param opt 分页相关 { pageszName?="_pagesz", pagekeyName?="_pagekey" }
 
 @param onGetQueryParam Function(jlst, queryParam/o)
 
@@ -3813,6 +4117,8 @@ param={idx, arr, isFirstPage}
 
 @param onBeforeLoad(jlst, isFirstPage)->Boolean  如果返回false, 可取消load动作。参数isFirstPage=true表示是分页中的第一页，即刚刚加载数据。
 @param onLoad(jlst, isLastPage)  参数isLastPage=true表示是分页中的最后一页, 即全部数据已加载完。
+
+@param onGetData(data, pagesz, pagekey?) 每次请求获取到数据后回调。pagesz为请求时的页大小，pagekey为页码（首次为null）
 
 @return PageListInterface={refresh, markRefresh}
 
@@ -3884,13 +4190,98 @@ markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 
 		// 处理order
 		history.back(); // 由于进入列表选择时会离开当前页面，这时应返回
 	}
+
+## 分页机制与后端接口适配
+
+默认按BQP协议的分页机制访问服务端，其规则是：
+
+- 请求通过 _pagesz 参数指定页大小
+- 如果不是最后一页，服务端应返回nextkey字段；返回列表的格式可以是 table格式如 
+
+		{
+			h: [ "field1","field2" ],
+			d: [ ["val1","val2"], ["val3","val4"], ... ]
+			nextkey: 2
+		}
+
+	也可以用list参数指定列表，如
+
+		{
+			list: [
+				{field1: "val1", field2: "val2"},
+				{field1: "val3", field2: "val4"},
+			],
+			nextkey: 2
+		}
+
+- 请求下一页时，设置参数_pagekey = nextkey，直到服务端不返回 nextkey 字段为止。
+
+例1：假定后端分页机制为(jquery-easyui datagrid分页机制):
+
+- 请求时通过参数page, rows分别表示页码，页大小，如 `page=1&rows=20`
+- 返回数据通过字段total表示总数, rows表示列表数据，如 `{ total: 83, rows: [ {...}, ... ] }`
+
+适配方法为：
+
+	var lstIf = initPageList(jpage, {
+		...
+
+		pageszName: 'rows',
+		pagekeyName: 'total',
+
+		// 设置 data.list, data.nextkey (如果是最后一页则不要设置); 注意pagekey可以为空
+		onGetData: function (data, pagesz, pagekey) {
+			data.list = data.rows;
+			if (pagekey == null)
+				pagekey = 1;
+			if (data.total >  pagesz * pagekey)
+				data.nextkey = pagekey + 1;
+		}
+	});
+
+例2：假定后端分页机制为：
+
+- 请求时通过参数curPage, maxLine分别表示页码，页大小，如 `curPage=1&maxLine=20`
+- 返回数据通过字段curPage, countPage, investList 分别表示当前页码, 总页数，列表数据，如 `{ curPage:1, countPage: 5, investList: [ {...}, ... ] }`
+
+	var lstIf = initPageList(jpage, {
+		...
+
+		pageszName: 'maxLine',
+		pagekeyName: 'curPage',
+
+		// 设置 data.list, data.nextkey (如果是最后一页则不要设置); 注意pagekey可以为空
+		onGetData: function (data, pagesz, pagekey) {
+			data.list = data.investList;
+			if (data.curPage < data.countPage)
+				data.nextkey = data.curPage + 1;
+		}
+	});
+
+例3：假定后端就返回一个列表如`[ {...}, {...} ]`，不支持分页。
+什么都不用设置，仍支持下拉刷新，因为刚好会当成最后一页处理，上拉不再加载。
+
+## 下拉刷新提示信息
+
+@key .mui-pullHint 指定下拉提示显示位置
+显示下拉刷新提示时，默认是在列表所在容器的最上端位置显示的。如果需要指定显示位置，可使用css类"mui-pullHint"，示例如下：
+
+	<div class="bd">
+		<div>下拉列表演示</div>
+		<div class="mui-pullHint"></div> <!-- 如果没有这行，则下拉提示会在容器最上方，即"下拉列表演示"这行文字的上方-->
+		<div id="lst1"></div>
+		<div id="lst2"></div>
+	</div>
+
  */
 window.initNavbarAndList = initPageList;
 function initPageList(jpage, opt)
 {
 	var opt_ = $.extend({
 		navRef: ">.hd .mui-navbar",
-		listRef: ">.bd .p-list"
+		listRef: ">.bd .p-list",
+		pageszName: "_pagesz",
+		pagekeyName: "_pagekey",
 	}, opt);
 	var jallList_ = opt_.listRef instanceof jQuery? opt_.listRef: jpage.find(opt_.listRef);
 	var jbtns_ = opt_.navRef instanceof jQuery? opt_.navRef: jpage.find(opt_.navRef);
@@ -4032,8 +4423,8 @@ function initPageList(jpage, opt)
 				queryParam[this] = val;
 		});
 
-		if (opt.onBeforeLoad) {
-			var rv = opt.onBeforeLoad(jlst, nextkey == null);
+		if (opt_.onBeforeLoad) {
+			var rv = opt_.onBeforeLoad(jlst, nextkey == null);
 			if (rv === false)
 				return;
 		}
@@ -4042,11 +4433,10 @@ function initPageList(jpage, opt)
 			opt_.onGetQueryParam(jlst, queryParam);
 		}
 
-		if (!queryParam._pagesz)
-			queryParam._pagesz = g_cfg.PAGE_SZ; // for test, default 20.
-		if (nextkey) {
-			queryParam._pagekey = nextkey;
-		}
+		if (!queryParam[opt_.pageszName])
+			queryParam[opt_.pageszName] = g_cfg.PAGE_SZ; // for test, default 20.
+		if (nextkey)
+			queryParam[opt_.pagekeyName] = nextkey;
 
 		var loadMore_ = !!nextkey;
 		var joLoadMore_;
@@ -4072,7 +4462,20 @@ function initPageList(jpage, opt)
 			if (loadMore_) {
 				joLoadMore_.remove();
 			}
-			var arr = rs2Array(data);
+			if (opt_.onGetData) {
+				var pagesz = queryParam[opt_.pageszName];
+				var pagekey = queryParam[opt_.pagekeyName];
+				opt_.onGetData(data, pagesz, pagekey);
+			}
+			var arr = data;
+			if ($.isArray(data.h) && $.isArray(data.d)) {
+				arr = rs2Array(data);
+			}
+			else if ($.isArray(data.list)) {
+				arr = data.list;
+			}
+			assert($.isArray(arr), "*** initPageList error: no list!");
+
 			var isFirstPage = (nextkey == null);
 			var isLastPage = (data.nextkey == null);
 			var param = {arr: arr, isFirstPage: isFirstPage};
@@ -4080,7 +4483,7 @@ function initPageList(jpage, opt)
 				param.idx = i;
 				opt_.onAddItem && opt_.onAddItem(jlst, itemData, param);
 			});
-			if (data.nextkey)
+			if (! isLastPage)
 				jlst.data("nextkey_", data.nextkey);
 			else {
 				if (jlst[0].children.length == 0) {
@@ -4088,7 +4491,7 @@ function initPageList(jpage, opt)
 				}
 				jlst.data("nextkey_", -1);
 			}
-			opt.onLoad && opt.onLoad(jlst, isLastPage);
+			opt_.onLoad && opt_.onLoad(jlst, isLastPage);
 		}
 	}
 

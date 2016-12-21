@@ -1,0 +1,295 @@
+<html>
+<head>
+<meta charset="utf-8">
+<title>webcc - 站点发布优化工具</title>
+<style>
+h3,h4,h5,h6 {
+	font-size: 1em;
+}
+
+pre {
+	border-left: 1px solid #ccc;
+	margin: 0 1em;
+	padding: 0 0.5em;
+	tab-size:4;
+}
+
+code {
+	font-family: "Courier New";
+    padding: 0px 3px;
+    display: inline-block;
+}
+
+.toc {
+	margin: 2em;
+}
+
+.toc p {
+	margin: 0.3em 0;
+}
+
+</style>
+<link rel="stylesheet" href="style.css" />
+</head>
+
+<h1>webcc - 站点发布优化工具</h1>
+<div>最后更新：2016-12-21</div>
+<h2>Modules</h2>
+<div class="toc">
+<p><a href="#webcc">webcc (module)</a></p>
+<p><a href="#jdcloud-build">jdcloud-build (module)</a></p>
+</div><hr>
+<h2>Keywords</h2>
+<div class="toc">
+<p><a href="#CFG_PLUGINS">CFG_PLUGINS (var)</a></p>
+<p><a href="#CHECK_BRANCH">CHECK_BRANCH (var)</a></p>
+<p><a href="#FTP_AUTH">FTP_AUTH (var)</a></p>
+<p><a href="#FTP_PATH">FTP_PATH (var)</a></p>
+<p><a href="#GIT_PATH">GIT_PATH (var)</a></p>
+<p><a href="#OUT_DIR">OUT_DIR (var)</a></p>
+<p><a href="#__HASH__">__HASH__ (key)</a></p>
+<p><a href="#jdcloud-build">jdcloud-build (module)</a></p>
+<p><a href="#webcc">webcc (module)</a></p>
+<p><a href="#webcc-mergeCss">webcc-mergeCss (fn)</a></p>
+<p><a href="#webcc-mergeJs">webcc-mergeJs (fn)</a></p>
+<p><a href="#webcc-mergePage">webcc-mergePage (fn)</a></p>
+<p><a href="#webcc.conf.php">webcc.conf.php (key)</a></p>
+</div><hr>
+<h2 id="webcc">@module webcc 站点发布优化工具</h2>
+<p>与build_web.sh配合使用。</p>
+<p>注意：</p>
+<ul>
+<li>修改webcc.conf.php会导致rebuild</li>
+<li>如果想强制rebuild, 可以删除输出文件夹下的revision.txt, 比如当修改webcc.php后。</li>
+<li>如果本地有未提交的内容，也会更新到输出文件夹。</li>
+<li>设置环境变量 DBG_LEVEL=1 显示调试信息</li>
+</ul>
+<p>Usage:</p>
+<pre><code>处理源目录，生成发布目录
+webcc {srcDir} [-o {outDir=output_web}]
+
+webcc单个命令调用
+webcc -cmd {cmd} [-o {outFile}] [-minify yes]</code></pre>
+<p>webcc命令可在html文件中使用，例如做JS/CSS合并压缩：</p>
+<pre><code>&lt;!-- WEBCC_BEGIN MERGE=lib-app --&gt;
+&lt;link rel="stylesheet" href="lib/mui.css" /&gt;
+&lt;link rel="stylesheet" href="app.css" /&gt;
+
+&lt;script src="lib/common.js"&gt;&lt;/script&gt;
+&lt;script src="lib/app_fw.js"&gt;&lt;/script&gt;
+&lt;script src="app.js"&gt;&lt;/script&gt;
+&lt;!-- WEBCC_END --&gt;</code></pre>
+<p>WEBCC_BEGIN后面，用MERGE=输出文件基本名(basename)的格式(不要写全名如<code>lib-app.js</code>), <code>MERGE=lib-app</code>表示根据link及script标签自动合并生成 lib-app.min.js / lib-app.min.css。</p>
+<p>它等价于</p>
+<pre><code>&lt;!-- WEBCC_BEGIN --&gt;
+&lt;link rel="stylesheet" href="lib/mui.css" /&gt;
+&lt;link rel="stylesheet" href="app.css" /&gt;
+
+&lt;script src="lib/common.js"&gt;&lt;/script&gt;
+&lt;script src="lib/app_fw.js"&gt;&lt;/script&gt;
+&lt;script src="app.js"&gt;&lt;/script&gt;
+&lt;!-- WEBCC_USE_THIS
+// 除了//开头的注释和 WEBCC_CMD 开头的命令，其它部分均直接输出
+WEBCC_CMD mergeCss -o lib-app.min.css -minify yes lib/mui.css app.css
+WEBCC_CMD mergeJs -o lib-app.min.js -minify yes lib/common.js lib/app_fw.js app.js
+WEBCC_END --&gt;</code></pre>
+<p>如果要内嵌JS/CSS，在MERGE后不指定名称即可：</p>
+<pre><code>&lt;!-- WEBCC_BEGIN MERGE --&gt;
+&lt;link rel="stylesheet" href="index.css" /&gt;
+&lt;link rel="stylesheet" href="icon.css" /&gt;
+&lt;script src="index.js"&gt;&lt;/script&gt;
+&lt;!-- WEBCC_END --&gt;</code></pre>
+<p>它等价于</p>
+<pre><code>&lt;!-- WEBCC_BEGIN --&gt;
+&lt;link rel="stylesheet" href="index.css" /&gt;
+&lt;link rel="stylesheet" href="icon.css" /&gt;
+&lt;script src="index.js"&gt;&lt;/script&gt;
+&lt;!-- WEBCC_USE_THIS
+&lt;style&gt;
+WEBCC_CMD mergeCss -minify yes index.css icon.css
+&lt;/style&gt;
+&lt;script&gt;
+WEBCC_CMD mergeJs -minify yes index.js
+&lt;/script&gt;
+WEBCC_END --&gt;</code></pre>
+<p>在发布时，WEBCC_BEGIN到WEBCC_USE_THIS下的内容将被移除，而 WEBCC_USE_THIS到 WEBCC_END间的内容被保留到发布版本中。<br />
+如果其中出现形如 <code>WEBCC_CMD {cmd} {args}</code> 的内容，则会调用webcc命令做处理。</p>
+<p>当在webcc.conf.php中指定HASH规则时，上述webcc命令将会执行。例：</p>
+<pre><code>$RULES = [
+    'm2/index.html' =&gt; 'HASH',
+]</code></pre>
+<p>注意：</p>
+<ul>
+<li>如果使用了-o选项，则将内容输出到指定文件，当前位置出现 <code>&lt;script src="lib-app.min.js?v=125432"&gt;</code> 之类的可嵌入标签。<br />
+如果不使用-o选项，则内容直接输出到当前位置。</li>
+<li>选项 -minify yes 会压缩 js/css内容（对文件名中含有min分词的文件如<code>jquery.min.js</code>, <code>juicer-min.js</code>不做压缩），默认不压缩。</li>
+<li>
+<p>允许多个页面执行相同的命令生成相同的文件（实际只会执行一次）<br />
+但如果命令不同而却指定相同的文件，例如以下两个命令都生成lib-app.min.js, 但参数不同，就会报错，以保证文件一致：</p>
+<pre><code>&lt;!-- WEBCC_BEGIN --&gt;
+...
+&lt;!-- WEBCC_USE_THIS
+WEBCC_CMD mergeJs -o lib-app.min.js -minify yes lib/common.js lib/app_fw.js app.js
+WEBCC_CMD mergeJs -o lib-app.min.js -minify yes lib/common.js lib/app_fw.js app2.js
+WEBCC_END --&gt;</code></pre>
+</li>
+</ul>
+<p class="see"><strong>@see <a href="#webcc-mergeJs">webcc-mergeJs</a></strong>  合并及压缩JS</p>
+<p class="see"><strong>@see <a href="#webcc-mergeCss">webcc-mergeCss</a></strong>  合并CSS</p>
+<p class="see"><strong>@see <a href="#webcc-mergePage">webcc-mergePage</a></strong>  合并逻辑页</p>
+<p class="key"><strong>@key <a id="webcc.conf.php">webcc.conf.php</a></strong>  webcc配置</p>
+<p>用法可参考文档：<a href="Web应用部署.html">Web应用部署</a></p>
+<p class="key"><strong>@key <a id="__HASH__">__HASH__</a></strong>   hash标识</p>
+<p>格式：</p>
+<pre><code>{file}?__HASH__</code></pre>
+<p>或可指定相对于当前文件的相对路径{relDir}，一般用于js文件中。</p>
+<pre><code>{file}?__HASH__,{relDir}</code></pre>
+<p>例如：</p>
+<pre><code>loadScript("cordova/cordova.js?__HASH__,.."); // 表示该文件相对当前文件的路径应该是 ../cordova/cordova.js 
+loadScript("cordova-ios/cordova.js?__HASH__,../m"); // 表示该文件相对当前文件的路径应该是 ../m/cordova-ios/cordova.js</code></pre><hr>
+<h2 id="webcc-mergeCss">@fn webcc-mergeCss CSS合并</h2>
+<pre><code>webcc -cmd mergeCss {cssFile1} ... [-o {outFile}]</code></pre>
+<p>CSS合并，以及对url相对路径进行修正。</p>
+<p>例：</p>
+<pre><code>webcc -cmd mergeCss lib/a.css b.css -o out.css</code></pre>
+<p>注意：只处理相对路径，带协议的情况不处理：</p>
+<pre><code>url(data:...)
+url(http:...)</code></pre>
+<p>路径处理示例：</p>
+<pre><code>// 处理 url(...) 中的路径
+eg.  srcDir='lib', outDir='.'
+curDir='.' (当前路径相对outDir的路径)
+prefix = {curDir}/{srcDir} = ./lib = lib
+url(1.png) =&gt; url(lib/1.png)
+url(../image/1.png) =&gt; url(lib/../image/1.png) =&gt; url(image/1.png)
+
+eg2. srcDir='lib', outDir='m2/css'
+curDir='../..' (当前路径相对outDir的路径)
+prefix = {curDir}/{srcDir} = ../../lib
+url(1.png) =&gt; url(../lib/1.png)
+url(../image/1.png) =&gt; url(../../lib/../image/1.png) =&gt; url(../../image/1.png) (lib/..被合并)
+
+TODO: 暂不支持eg3的情况，即outFile不允许以".."开头。
+eg3. srcDir='lib', outDir='../m2/css'
+curDir='../../html' (假设当前实际dir为'prj/html')
+prefix = {curDir}/{srcDir} = ../../html/lib
+url(1.png) =&gt; url(../../html/lib/1.png)
+url(../image/1.png) =&gt; url(../../html/lib/../image/1.png) =&gt; url(../../html/image/1.png)</code></pre><hr>
+<h2 id="webcc-mergePage">@fn webcc-mergePage 逻辑页合并</h2>
+<pre><code>webcc -cmd mergePage {page1} ... [-usePageTemplate yes]</code></pre>
+<p>将逻辑页的html文件及其链接的js文件，处理后嵌入主html。</p>
+<p>例：命令行</p>
+<pre><code>webcc -cmd mergePage ../server/m2/page/home.html</code></pre>
+<p>例：在html中隐式调用</p>
+<pre><code>&lt;!-- WEBCC_BEGIN --&gt;
+page/home.html
+page/login.html
+page/login1.html
+page/me.html
+&lt;!-- WEBCC_END --&gt;
+
+&lt;!-- WEBCC_BEGIN --&gt;
+&lt;!-- WEBCC_USE_THIS
+WEBCC_CMD mergePage page/home.html page/login.html page/login1.html page/me.html
+WEBCC_END --&gt;</code></pre>
+<p>注意：</p>
+<ul>
+<li>使用mergePage时，会将子页面html/js并入主页面，要求子页面js中不可出现script标签（因为嵌入主页时使用了script，而script不可嵌套）</li>
+<li>mergePage命令不应使用-o选项，因为html文件无法包含一个html片段。</li>
+</ul>
+<p>支持两种方式：(通过选项 &quot;-usePageTemplate 1&quot; 选择)</p>
+<p>例如，逻辑页order.html引用order.js，格式为：</p>
+<pre><code>&lt;div mui-initfn="initPageOrder" mui-script="order.js"&gt;
+&lt;/div&gt;</code></pre>
+<ol>
+<li>
+<p>使用script标签嵌入主页面（缺省）：</p>
+<pre><code>&lt;script type="text/html" id="tpl_order"&gt;
+    &lt;!-- order.html内容, 其mui-script属性被删除，代之以直接嵌入JS内容 --&gt;
+    &lt;div mui-initfn="initPageOrder" &gt;
+    &lt;/div&gt;
+&lt;/script&gt;
+
+&lt;script&gt;
+// order.js内容
+&lt;/script&gt;</code></pre>
+</li>
+<li>
+<p>使用template标签嵌入主页面（H5标准，目前兼容性还不够）：</p>
+<pre><code>&lt;template id="tpl_order"&gt;
+&lt;!-- order.html 内容 --&gt;
+&lt;div mui-initfn="initPageOrder" &gt;
+    &lt;script&gt;
+    // order.js内容
+    &lt;/script&gt;
+&lt;/div&gt;
+&lt;/template&gt;</code></pre>
+</li>
+</ol><hr>
+<h2 id="webcc-mergeJs">@fn webcc-mergeJs JS合并及压缩</h2>
+<pre><code>webcc -cmd mergeJs {jsFile1} ... [-o {outFile}]</code></pre>
+<p>将js文件合并生成一个文件，并做简单压缩处理（去注释、压缩空白）<br />
+如果源文件名含有.min.js(如jquery.min.js)，则认为已压缩，不重新压缩。</p>
+<p>例：</p>
+<pre><code>webcc -cmd mergeJs lib/jquery.min.js lib/app_fw.js app.js [-o lib_app.js]</code></pre>
+<p>在压缩时，需要用到外部jsmin工具，该工具在webcc相同目录下。</p><hr>
+<h2 id="jdcloud-build">@module jdcloud-build</h2>
+<p>筋斗云框架上线部署工具。支持ftp/git两种方式部署。</p>
+<p>使用本工具步骤：</p>
+<ul>
+<li>Web应用项目名为jdcloud，要求使用git进行版本控制。</li>
+<li>
+<p>创建发布版本库(又称online版本库), 使用git管理，定名称为 jdcloud-online:</p>
+<pre><code>git init jdcloud-online</code></pre>
+</li>
+<li>
+<p>在线上服务器上设置ftp帐号或git帐号。如果使用git发布，参考下面设置线上发布目录：</p>
+<pre><code>cd path/to
+# 创建应用目录为jdcloud, 同时也是online版本库的一个分支
+git init jdcloud  
+cd jdcloud
+# 允许远端push并执行自动更新
+git config receive.denyCurrentBranch ignore
+echo "unset GIT_DIR; cd ..; git reset --hard" &gt; .git/hooks/post-update
+chmod a+x .git/hooks/post-update</code></pre>
+</li>
+<li>
+<p>一般编写<code>build_web.sh</code>脚本，其中设置并调用jdcloud-build，上线时直接运行它即可：</p>
+<pre><code>build_web.sh</code></pre>
+<p>在Windows平台上，建议在git shell中运行，或已设置.sh文件使用git shell打开执行。</p>
+</li>
+</ul>
+<p>要求相关工具：</p>
+<ul>
+<li>git (版本管理)</li>
+<li>php/webcc (生成web发布目录)</li>
+<li>curl (ftp自动上传工具，一般在git工具包中已包含)</li>
+</ul>
+<p>使用FTP上线，编写build_web.sh如下：</p>
+<pre><code>export OUT_DIR=../product-online
+export FTP_PATH=ftp://server/path/
+export FTP_AUTH=www:hello
+tool/jdcloud-build.sh</code></pre>
+<p>使用git上线：</p>
+<pre><code>export OUT_DIR=../product-online
+export GIT_PATH=user@server:path/jdcloud
+tool/jdcloud-build.sh</code></pre>
+<p>在上线时要求输入密码，可以通过设置ssh证书签名方式免密登录。</p>
+<p>如果同时设置了GIT_PATH与FTP_PATH，会优先使用git方式上线。</p>
+<p>通过环境变量向jdcloud-build脚本传参数，可用变量如下所述。</p>
+<p class="var"><strong>@var <a id="OUT_DIR">OUT_DIR</a></strong> </p>
+<p>必须指定。<br />
+输出目录，即发布版本库的目录，一般起名为<code>{project}-online</code>.</p>
+<p class="var"><strong>@var <a id="FTP_PATH">FTP_PATH</a></strong> </p>
+<p class="var"><strong>@var <a id="FTP_AUTH">FTP_AUTH</a></strong> </p>
+<p>使用ftp上线时，指定线上地址，如<code>ftp://server/path</code>。FTP_AUTH格式为<code>{user}:{pwd}</code>.</p>
+<p class="var"><strong>@var <a id="GIT_PATH">GIT_PATH</a></strong> </p>
+<p>使用git上线时，指定线上版本库地址。如 <code>GIT_PATH=user@server:path/jdcloud</code></p>
+<p class="var"><strong>@var <a id="CHECK_BRANCH">CHECK_BRANCH</a></strong> </p>
+<p>online版本库可以使用多分支，每个分支对应一个线上地址。<br />
+如果指定分支，则要求在上线时online版本库分支与指定相同，否则出错。</p>
+<p class="var"><strong>@var <a id="CFG_PLUGINS">CFG_PLUGINS</a></strong> </p>
+<p>如果指定，则plugin文件夹下只上传指定的插件，plugin/index.php和未指定的插件均不上传，例：</p>
+<pre><code>CFG_PLUGINS=plugin1,plugin2</code></pre><hr>
+<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-12-21T11:43:39+08:00</div>
+</html>

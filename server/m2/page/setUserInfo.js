@@ -27,7 +27,7 @@ function initPageSetUserInfo()
 		});
 		jpage.find("#divPwd").hide();
 		jpage.find("#txtPwd").prop("disabled", true);
-		MUI.showPage("#home");
+		MUI.showHome();
 	}
 
 	function onPageBeforeShow(ev)

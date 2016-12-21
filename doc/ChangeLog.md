@@ -1,3 +1,12 @@
+## v3.2 - 2016/12
+
+- 删除server/m目录中旧的JQM框架部分。移动端只使用server/m2目录。
+- 工具：webcc增强，可合并压缩js/css/逻辑页。
+- 工具：jdcloud-build(原名make_install) 支持以git方式发布。
+- 前端：callSvr扩展机制增强，可设置默认适配非筋斗云后端。
+- 前端：initPageList支持适配非筋斗云后端接口
+- 前端：逻辑页内嵌style自动限制在当前页生效。
+
 ## v3.1 - 2016/11
 
 - 后端：支持插件API，增加syslog插件

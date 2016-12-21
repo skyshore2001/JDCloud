@@ -33,7 +33,7 @@ code {
 </head>
 
 <h1>API参考 - 筋斗云前端（移动Web版）</h1>
-<div>最后更新：2016-12-01</div>
+<div>最后更新：2016-12-21</div>
 <h2>Modules</h2>
 <div class="toc">
 <p><a href="#common.js">common.js (module)</a></p>
@@ -52,6 +52,7 @@ code {
 <p><a href="#.mui-navbar">.mui-navbar (key)</a></p>
 <p><a href="#.mui-navbar.noactive">.mui-navbar.noactive (key)</a></p>
 <p><a href="#.mui-page">.mui-page (key)</a></p>
+<p><a href="#.mui-pullHint">.mui-pullHint (key)</a></p>
 <p><a href="#.mui-weixin">.mui-weixin (key)</a></p>
 <p><a href="#.noSwipe">.noSwipe (key)</a></p>
 <p><a href="#BASE_URL">BASE_URL (var)</a></p>
@@ -71,6 +72,9 @@ code {
 <p><a href="#MUI.batchCall">MUI.batchCall (class)</a></p>
 <p><a href="#MUI.callSvr">MUI.callSvr (fn)</a></p>
 <p><a href="#MUI.callSvrExt">MUI.callSvrExt (key)</a></p>
+<p><a href="#MUI.callSvrExt['default']">MUI.callSvrExt['default'] (key)</a></p>
+<p><a href="#MUI.callSvrExt[].dataFilter">MUI.callSvrExt[].dataFilter (key)</a></p>
+<p><a href="#MUI.callSvrExt[].makeUrl">MUI.callSvrExt[].makeUrl (key)</a></p>
 <p><a href="#MUI.callSvrSync">MUI.callSvrSync (fn)</a></p>
 <p><a href="#MUI.callSvrSync">MUI.callSvrSync (fn)</a></p>
 <p><a href="#MUI.closeDialog">MUI.closeDialog (fn)</a></p>
@@ -96,6 +100,7 @@ code {
 <p><a href="#MUI.options">MUI.options (var)</a></p>
 <p><a href="#MUI.popPageStack">MUI.popPageStack (fn)</a></p>
 <p><a href="#MUI.prevPageId">MUI.prevPageId (var)</a></p>
+<p><a href="#MUI.reloadPage">MUI.reloadPage (fn)</a></p>
 <p><a href="#MUI.setApp">MUI.setApp (fn)</a></p>
 <p><a href="#MUI.setFormSubmit">MUI.setFormSubmit (fn)</a></p>
 <p><a href="#MUI.setOnError">MUI.setOnError (fn)</a></p>
@@ -103,12 +108,14 @@ code {
 <p><a href="#MUI.setupDialog">MUI.setupDialog (fn)</a></p>
 <p><a href="#MUI.showDialog">MUI.showDialog (fn)</a></p>
 <p><a href="#MUI.showFirstPage">MUI.showFirstPage (var)</a></p>
+<p><a href="#MUI.showHome">MUI.showHome (fn)</a></p>
 <p><a href="#MUI.showLoading">MUI.showLoading (fn)</a></p>
 <p><a href="#MUI.showLogin">MUI.showLogin (fn)</a></p>
 <p><a href="#MUI.showPage">MUI.showPage (fn)</a></p>
 <p><a href="#MUI.showValidateErr">MUI.showValidateErr (fn)</a></p>
 <p><a href="#MUI.syslog">MUI.syslog (fn)</a></p>
 <p><a href="#MUI.tryAutoLogin">MUI.tryAutoLogin (fn)</a></p>
+<p><a href="#MUI.unloadPage">MUI.unloadPage (fn)</a></p>
 <p><a href="#MUI.useBatchCall">MUI.useBatchCall (fn)</a></p>
 <p><a href="#Plugins">Plugins (class)</a></p>
 <p><a href="#Plugins.exists">Plugins.exists (fn)</a></p>
@@ -120,6 +127,7 @@ code {
 <p><a href="#assert">assert (fn)</a></p>
 <p><a href="#basename">basename (fn)</a></p>
 <p><a href="#callSvr">callSvr (alias)</a></p>
+<p><a href="#callSvr.noex">callSvr.noex (key)</a></p>
 <p><a href="#callSvrSync">callSvrSync (alias)</a></p>
 <p><a href="#common.js">common.js (module)</a></p>
 <p><a href="#delCookie">delCookie (fn)</a></p>
@@ -160,6 +168,8 @@ code {
 <p><a href="#makeUrl">makeUrl (alias)</a></p>
 <p><a href="#mui-initfn">mui-initfn (key)</a></p>
 <p><a href="#mui-loadPrompt">mui-loadPrompt (key)</a></p>
+<p><a href="#mui-nofix">mui-nofix (key)</a></p>
+<p><a href="#mui-origin">mui-origin (key)</a></p>
 <p><a href="#mui-pullPrompt">mui-pullPrompt (key)</a></p>
 <p><a href="#mui-script">mui-script (key)</a></p>
 <p><a href="#mui-swipenav">mui-swipenav (key)</a></p>
@@ -536,6 +546,8 @@ var html = applyTpl(tpl, data);
 <h2 id="MUI">@module MUI</h2><div class="toc"><p style="margin-left:0em"><a href="#MUI-1 基于逻辑页面的单网页应用">1 基于逻辑页面的单网页应用</a></p>
 <p style="margin-left:2em"><a href="#MUI-1.1 应用容器">1.1 应用容器</a></p>
 <p style="margin-left:2em"><a href="#MUI-1.2 逻辑页面">1.2 逻辑页面</a></p>
+<p style="margin-left:4em"><a href="#MUI-1.2.1 逻辑页内嵌style">1.2.1 逻辑页内嵌style</a></p>
+<p style="margin-left:4em"><a href="#MUI-1.2.2 逻辑页内嵌script">1.2.2 逻辑页内嵌script</a></p>
 <p style="margin-left:0em"><a href="#MUI-2 服务端交互API">2 服务端交互API</a></p>
 <p style="margin-left:0em"><a href="#MUI-3 登录与退出">3 登录与退出</a></p>
 <p style="margin-left:0em"><a href="#MUI-4 常用组件">4 常用组件</a></p>
@@ -608,6 +620,53 @@ var html = applyTpl(tpl, data);
 <p class="event"><strong>@event <a id="pagebeforeshow">pagebeforeshow</a></strong> () DOM事件。this为当前页面jpage。</p>
 <p class="event"><strong>@event <a id="pageshow">pageshow</a></strong> ()  DOM事件。this为当前页面jpage。</p>
 <p class="event"><strong>@event <a id="pagehide">pagehide</a></strong> () DOM事件。this为当前页面jpage。</p>
+<h6 id="MUI-1.2.1 逻辑页内嵌style">1.2.1 逻辑页内嵌style</h6>
+<p>逻辑页代码片段允许嵌入style，例如：</p>
+<pre><code>&lt;div mui-initfn="initPageOrder" mui-script="order.js"&gt;
+&lt;style&gt;
+.p-list {
+    color: blue;
+}
+.p-list div {
+    color: red;
+}
+&lt;/style&gt;
+&lt;/div&gt;</code></pre>
+<p class="key"><strong>@key <a id="mui-origin">mui-origin</a></strong> </p>
+<p>style将被插入到head标签中，并自动添加属性<code>mui-origin={pageId}</code>.</p>
+<p>（版本v3.2)<br />
+框架在加载页面时，会将style中的内容自动添加逻辑页前缀，以便样式局限于当前页使用，相当于：</p>
+<pre><code>&lt;style&gt;
+#order .p-list {
+    color: blue;
+}
+#order .p-list div {
+    color: red;
+}
+&lt;/style&gt;</code></pre>
+<p>为兼容旧版本，如果css选择器以&quot;#{pageId} &quot;开头，则不予处理。</p>
+<p class="key"><strong>@key <a id="mui-nofix">mui-nofix</a></strong> </p>
+<p>如果不希望框架自动处理，可以为style添加属性<code>mui-nofix</code>:</p>
+<pre><code>&lt;style mui-nofix&gt;
+&lt;/style&gt;</code></pre>
+<h6 id="MUI-1.2.2 逻辑页内嵌script">1.2.2 逻辑页内嵌script</h6>
+<p>逻辑页中允许但不建议内嵌script代码，js代码应在mui-script对应的脚本中。非要使用时，注意将script放到div标签内：</p>
+<pre><code>&lt;div mui-initfn="initPageOrder" mui-script="order.js"&gt;
+&lt;script&gt;
+// js代码
+&lt;/script&gt;
+    ...
+&lt;/div&gt;</code></pre>
+<p>（版本v3.2)<br />
+如果逻辑页嵌入在script模板中，这时要使用<code>script</code>, 应换用<code>__script__</code>标签，如：</p>
+<pre><code>&lt;script type="text/html" id="tpl_order"&gt;
+    &lt;div mui-initfn="initPageOrder" mui-script="order.js"&gt;
+        ...
+    &lt;/div&gt;
+    &lt;__script__&gt;
+    // js代码，将在逻辑页加载时执行
+    &lt;/__script__&gt;
+&lt;/script&gt;</code></pre>
 <h4 id="MUI-2 服务端交互API">2 服务端交互API</h4>
 <p class="see"><strong>@see <a href="#callSvr">callSvr</a></strong>  系列调用服务端接口的方法。</p>
 <p class="see"><strong>@see <a href="#CComManager">CComManager</a></strong> </p>
@@ -699,7 +758,7 @@ background-color:black;<br />
 <ul>
 <li>m/cordova/cordova.js文件版本不兼容，如创建插件cordova平台是5.0版本，而相应的cordova.js文件或接口文件版本不同。</li>
 <li>在编译原生程序时未设置 <allow-navigation href="*">，或者html中CSP设置不正确。</li>
-<li>主页中有跨域的script js文件无法下载。如 <script type="text/javascript" src="http://3.3.3.3/1.js"></script></li>
+<li>主页中有跨域的script js文件无法下载。如 <code>&lt;script type="text/javascript" src="http://3.3.3.3/1.js"&gt;&lt;/script&gt;</code></li>
 <li>某插件的初始化过程失败（需要在原生环境下调试）</li>
 </ul>
 <h4 id="MUI-7 系统类标识">7 系统类标识</h4>
@@ -766,6 +825,12 @@ Access-Control-Allow-Credentials: true</code></pre>
 <pre><code>{
     ani: 'auto' // 缺省切页动画效果. 'none'表示无动画。
 }</code></pre><hr>
+<h2 id="MUI.unloadPage">@fn MUI.unloadPage(pageId?)</h2>
+<p class="param"><strong>@param pageId</strong>  如未指定，表示当前页。</p>
+<p>删除一个页面。</p><hr>
+<h2 id="MUI.reloadPage">@fn MUI.reloadPage(pageId?)</h2>
+<p class="param"><strong>@param pageId</strong>  如未指定，表示当前页。</p>
+<p>重新加载指定页面。不指定pageId时，重加载当前页。</p><hr>
 <h2 id="MUI.m_pageStack">@var MUI.m_pageStack</h2>
 <p>页面栈，MUI.popPageStack对它操作</p><hr>
 <h2 id="MUI.popPageStack">@fn MUI.popPageStack(n?=1) </h2>
@@ -887,12 +952,13 @@ app_alert("输入要查询的名字:", "p", function (text) {
 <p class="see"><strong>@see <a href="#MUI.useBatchCall">MUI.useBatchCall</a></strong> </p>
 <p class="see"><strong>@see <a href="#MUI.setupCallSvrViaForm">MUI.setupCallSvrViaForm</a></strong> </p><hr>
 <h2 id="MUI.lastError">@var MUI.lastError = ctx</h2>
+<p>出错时，取出错调用的上下文信息。</p>
 <p>ctx: {ac, tm, tv, ret}</p>
 <ul>
-<li>ac: action</li>
-<li>tm: start time</li>
-<li>tv: time interval</li>
-<li>ret: return value</li>
+<li>ac: action 调用接口名</li>
+<li>tm: start time 开始调用时间</li>
+<li>tv: time interval 从调用到返回的耗时</li>
+<li>ret: return value 调用返回的原始数据</li>
 </ul><hr>
 <h2 id="MUI.disableBatch">@var MUI.disableBatch ?= false</h2>
 <p>设置为true禁用batchCall, 仅用于内部测试。</p><hr>
@@ -917,14 +983,17 @@ allow throw(&quot;abort&quot;) as abort behavior.</p><hr>
 <p class="alias"><strong>@alias <a id="leaveWaiting">leaveWaiting</a></strong> </p><hr>
 <h2 id="MUI.defDataProc">@fn MUI.defDataProc(rv)</h2>
 <p class="param"><strong>@param rv</strong>  BQP协议原始数据，如 "[0, {id: 1}]"，一般是字符串，也可以是JSON对象。</p>
-<p class="return"><strong>@return data</strong>  按接口定义返回的数据对象，如 {id: 1}. 如果返回==null，调用函数应直接返回。</p>
+<p class="return"><strong>@return data</strong>  按接口定义返回的数据对象，如 {id: 1}. 如果返回==null，调用函数应直接返回，不回调应用层。</p>
 <p>注意：服务端不应返回null, 否则客户回调无法执行; 习惯上返回false表示让回调处理错误。</p><hr>
 <h2 id="MUI.makeUrl">@fn MUI.makeUrl(action, params)</h2>
 <p class="alias"><strong>@alias <a id="makeUrl">makeUrl</a></strong> </p>
 <p>生成对后端调用的url. </p>
 <pre><code>var params = {id: 100};
 var url = makeUrl("Ordr.set", params);</code></pre>
-<p>注意：调用该函数生成的url在结尾有标志字符串&quot;zz=1&quot;, 如&quot;../api.php/login?_app=user&amp;zz=1&quot;</p><hr>
+<p>注意：调用该函数生成的url在结尾有标志字符串&quot;zz=1&quot;, 如&quot;../api.php/login?_app=user&amp;zz=1&quot;</p>
+<p>支持callSvr扩展，这时action可以是一个数组，如：</p>
+<pre><code>var url = MUI.makeUrl(['login', 'zhanda']);</code></pre>
+<p class="see"><strong>@see <a href="#MUI.callSvrExt">MUI.callSvrExt</a></strong> </p><hr>
 <h2 id="MUI.callSvr">@fn MUI.callSvr(ac, [param?], fn?, postParams?, userOptions?)</h2><div class="toc"><p style="margin-left:0em"><a href="#MUI.callSvr-1 调用监控">1 调用监控</a></p>
 <p style="margin-left:0em"><a href="#MUI.callSvr-2 文件上传支持(FormData)">2 文件上传支持(FormData)</a></p>
 <p style="margin-left:0em"><a href="#MUI.callSvr-3 callSvr扩展">3 callSvr扩展</a></p>
@@ -938,9 +1007,11 @@ var url = makeUrl("Ordr.set", params);</code></pre>
 <p>常用userOptions: </p>
 <ul>
 <li>指定{async:0}来做同步请求, 一般直接用callSvrSync调用来替代.</li>
-<li>指定{noex:1}用于忽略错误处理, 当后端返回错误时, 回调函数会被调用, 且参数data=false.</li>
+<li>指定{noex:1}用于忽略错误处理。</li>
 <li>指定{noLoadingImg:1}用于忽略loading图标.</li>
 </ul>
+<p class="key"><strong>@key <a id="callSvr.noex">callSvr.noex</a></strong>  调用接口时忽略出错，可由回调函数fn自己处理错误。</p>
+<p>当后端返回错误时, 回调<code>fn(false)</code>（参数data=false）. 可通过 MUI.lastError.ret 取到返回的原始数据。</p>
 <p>例：</p>
 <pre><code>callSvr("logout");
 callSvr("logout", api_logout);
@@ -953,10 +1024,12 @@ callSvr(makeUrl("logout", {a:1}), api_logout);
 
 callSvr("User.get", function (data) {
     if (data === false) { // 仅当设置noex且服务端返回错误时可返回false
+        // var originalData = MUI.lastError.ret;
         return;
     }
     foo(data);
 }, null, {noex:1});</code></pre>
+<p class="see"><strong>@see <a href="#MUI.lastError">MUI.lastError</a></strong>  出错时的上下文信息</p>
 <h4 id="MUI.callSvr-1 调用监控">1 调用监控</h4>
 <p class="var"><strong>@var <a id="g_cfg.logAction">g_cfg.logAction</a></strong> </p>
 <p>框架会自动在ajaxOption中增加ctx_属性，它包含 {ac, tm, tv, tv2, ret} 这些信息。<br />
@@ -1005,36 +1078,104 @@ callSvr("User.get", function (data) {
     "msg":"invalid username or password",
     "data":[]
 }</code></pre>
-<p>注意：</p>
-<ul>
-<li>
-<p>对方接口应允许JS跨域调用，或调用方支持跨域调用。</p>
-<p>MUI.callSvrExt['zhanda'] = {<br />
-makeUrl: function(ac) {<br />
-return '<a href="http://hostname/lcapi/">http://hostname/lcapi/</a>' + ac;<br />
-}<br />
-dataFilter: function (data) {<br />
-if ($.isPlainObject(data) &amp;&amp; data.code !== undefined) {<br />
-if (data.code == 0)<br />
-return data.data;<br />
-app_alert(&quot;操作失败：&quot; + data.message, &quot;e&quot;);<br />
-}<br />
-else {<br />
-app_alert(&quot;服务器通讯协议异常!&quot;, &quot;e&quot;); // 格式不对<br />
-}<br />
-}<br />
-};</p>
-</li>
-</ul>
+<p>callSvr扩展示例：</p>
+<pre><code>MUI.callSvrExt['zhanda'] = {
+    makeUrl: function(ac) {
+        return 'http://hostname/lcapi/' + ac;
+    }
+    dataFilter: function (data) {
+        if ($.isPlainObject(data) &amp;&amp; data.code !== undefined) {
+            if (data.code == 0)
+                return data.data;
+            if (this.noex)
+                return false;
+            app_alert("操作失败：" + data.message, "e");
+        }
+        else {
+            app_alert("服务器通讯协议异常!", "e"); // 格式不对
+        }
+    }
+};</code></pre>
 <p>在调用时，ac参数传入一个数组：</p>
 <pre><code>callSvr(['token/get-token', 'zhanda'], {user: 'test', password: 'test123'}, function (data) {
     console.log(data);
-});</code></pre><hr>
+});</code></pre>
+<p class="key"><strong>@key <a id="MUI.callSvrExt[].makeUrl">MUI.callSvrExt[].makeUrl</a></strong> (ac)</p>
+<p>根据调用名ac生成url.</p>
+<p>注意：<br />
+对方接口应允许JS跨域调用，或调用方支持跨域调用。</p>
+<p class="key"><strong>@key <a id="MUI.callSvrExt[].dataFilter">MUI.callSvrExt[].dataFilter</a></strong> (data) = null/false/data</p>
+<p>对调用返回数据进行通用处理。返回值决定是否调用callSvr的回调函数以及参数值。</p>
+<pre><code>callSvr(ac, callback);</code></pre>
+<ul>
+<li>返回data: 回调应用层的实际有效数据: <code>callback(data)</code>.</li>
+<li>返回null: 一般用于报错后返回。不会回调<code>callback</code>.</li>
+<li>返回false: 一般与callSvr的noex选项合用，如<code>callSvr(ac, callback, postData, {noex:1})</code>，表示由应用层回调函数来处理出错: <code>callback(false)</code>。</li>
+</ul>
+<p>当返回false时，应用层可以通过<code>MUI.lastError.ret</code>来获取服务端返回数据。</p>
+<p class="see"><strong>@see <a href="#MUI.lastError">MUI.lastError</a></strong>  出错时的上下文信息</p>
+<p class="key"><strong>@key <a id="MUI.callSvrExt['default']">MUI.callSvrExt['default']</a></strong> </p>
+<p>(支持版本: v3.1)<br />
+如果要修改callSvr缺省调用方法，可以改写 MUI.callSvrExt['default'].<br />
+例如，定义以下callSvr扩展：</p>
+<pre><code>MUI.callSvrExt['default'] = {
+    makeUrl: function(ac) {
+        return '../api.php/' + ac;
+    },
+    dataFilter: function (data) {
+        var ctx = this.ctx_ || {};
+        if (data &amp;&amp; $.isArray(data) &amp;&amp; data.length &gt;= 2 &amp;&amp; typeof data[0] == "number") {
+            if (data[0] == 0)
+                return data[1];
+
+            if (this.noex)
+            {
+                return false;
+            }
+
+            if (data[0] == E_NOAUTH) {
+                // 如果支持自动重登录
+                //if (MUI.tryAutoLogin()) {
+                //  $.ajax(this);
+                //}
+                // 不支持自动登录，则跳转登录页
+                MUI.popPageStack(0);
+                MUI.showLogin();
+                return;
+            }
+            else if (data[0] == E_AUTHFAIL) {
+                app_alert("验证失败，请检查输入是否正确!", "e");
+                return;
+            }
+            else if (data[0] == E_ABORT) {
+                console.log("!!! abort call");
+                return;
+            }
+            logError();
+            app_alert("操作失败：" + data[1], "e");
+        }
+        else {
+            logError();
+            app_alert("服务器通讯协议异常!", "e"); // 格式不对
+        }
+
+        function logError()
+        {
+            console.log("failed call");
+            console.log(ctx);
+        }
+    }
+};</code></pre>
+<p>这样，以下调用</p>
+<pre><code>callSvr(['login', 'default']);</code></pre>
+<p>可以简写为：</p>
+<pre><code>callSvr('login');</code></pre><hr>
 <h2 id="MUI.callSvrSync">@fn MUI.callSvrSync(ac, params?, fn?, postParams?, userOptions?)</h2>
 <p class="fn"><strong>@fn <a id="MUI.callSvrSync">MUI.callSvrSync</a></strong> (ac, fn?, postParams?, userOptions?)</p>
 <p class="alias"><strong>@alias <a id="callSvrSync">callSvrSync</a></strong> </p>
 <p class="return"><strong>@return data</strong>  原型规定的返回数据</p>
-<p>同步模式调用callSvr.</p><hr>
+<p>同步模式调用callSvr.</p>
+<p class="see"><strong>@see <a href="#callSvr">callSvr</a></strong> </p><hr>
 <h2 id="MUI.setupCallSvrViaForm">@fn MUI.setupCallSvrViaForm($form, $iframe, url, fn, callOpt)</h2>
 <p>该方法已不建议使用。上传文件请用FormData。</p>
 <p class="see"><strong>@see <a href="#example-upload">example-upload</a> <a href="#callSvr">callSvr</a></strong> </p>
@@ -1131,6 +1272,11 @@ show error using jquery validator's method by jo's name</p><hr>
 <li>如果有多个登录页（如动态验证码登录，用户名密码登录等），其它页的id起名时，应以app.loginPage指定内容作为前缀，<br />
 如loginPage=&quot;#login&quot;, 则登录页面名称可以为：#login(缺省登录页), #login1, #loginByPwd等；否则无法被识别为登录页，导致登录成功后按返回键仍会回到登录页</li>
 </ul><hr>
+<h2 id="MUI.showHome">@fn MUI.showHome()</h2>
+<p>显示主页。主页是通过 MUI.setApp({homePage: '#home'}); 来指定的，默认为&quot;#home&quot;.</p>
+<p>要取主页名可以用：</p>
+<pre><code>var jpage = $(MUI.m_app.homePage);</code></pre>
+<p class="see"><strong>@see <a href="#MUI.setApp">MUI.setApp</a></strong> </p><hr>
 <h2 id="MUI.logout">@fn MUI.logout(dontReload?)</h2>
 <p class="param"><strong>@param dontReload</strong>  如果非0, 则注销后不刷新页面.</p>
 <p>注销当前登录, 成功后刷新页面(除非指定dontReload=1)</p><hr>
@@ -1249,6 +1395,8 @@ uptoThreshold:: Boolean. 是否达到阈值</code></pre><hr>
 <p style="margin-left:0em"><a href="#initPageList-5 参数说明">5 参数说明</a></p>
 <p style="margin-left:0em"><a href="#initPageList-6 css类">6 css类</a></p>
 <p style="margin-left:0em"><a href="#initPageList-7 列表页用于选择">7 列表页用于选择</a></p>
+<p style="margin-left:0em"><a href="#initPageList-8 分页机制与后端接口适配">8 分页机制与后端接口适配</a></p>
+<p style="margin-left:0em"><a href="#initPageList-9 下拉刷新提示信息">9 下拉刷新提示信息</a></p>
 </div>
 <p class="alias"><strong>@alias <a id="initNavbarAndList">initNavbarAndList</a></strong> </p>
 <p>列表页逻辑框架.</p>
@@ -1379,7 +1527,8 @@ callSvr(queryParam.ac, queryParam, function (data) {
         opt.onNoItem(jlst);
 });</code></pre>
 <h4 id="initPageList-5 参数说明">5 参数说明</h4>
-<p class="param"><strong>@param opt</strong>  {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list", onBeforeLoad?, onLoad?}</p>
+<p class="param"><strong>@param opt</strong>  {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list", onBeforeLoad?, onLoad?, onGetData?}</p>
+<p class="param"><strong>@param opt</strong>  分页相关 { pageszName?="_pagesz", pagekeyName?="_pagekey" }</p>
 <p class="param"><strong>@param onGetQueryParam</strong>  Function(jlst, queryParam/o)</p>
 <p>queryParam: {ac?, res?, cond?, ...}</p>
 <p>框架在调用callSvr之前，先取列表对象jlst上的data-queryParam属性作为queryParam的缺省值，再尝试取data-ac, data-res, data-cond, data-orderby属性作为queryParam.ac等参数的缺省值，<br />
@@ -1401,6 +1550,7 @@ callSvr(queryParam.ac, queryParam, function (data) {
 <p class="param"><strong>@param navRef,listRef</strong>   指定navbar与list，可以是选择器，也可以是jQuery对象；或是一组button与一组div，一次显示一个div；或是navRef为空，而listRef为一个或多个不相关联的list.</p>
 <p class="param"><strong>@param onBeforeLoad</strong> (jlst, isFirstPage)->Boolean  如果返回false, 可取消load动作。参数isFirstPage=true表示是分页中的第一页，即刚刚加载数据。</p>
 <p class="param"><strong>@param onLoad</strong> (jlst, isLastPage)  参数isLastPage=true表示是分页中的最后一页, 即全部数据已加载完。</p>
+<p class="param"><strong>@param onGetData</strong> (data, pagesz, pagekey?) 每次请求获取到数据后回调。pagesz为请求时的页大小，pagekey为页码（首次为null）</p>
 <p class="return"><strong>@return PageListInterface=</strong> {refresh, markRefresh}</p>
 <p>refresh: Function(), 刷新当前列表<br />
 markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 下次浏览该列表时刷新。</p>
@@ -1457,7 +1607,80 @@ function onChoose(order)
 {
     // 处理order
     history.back(); // 由于进入列表选择时会离开当前页面，这时应返回
-}</code></pre><hr>
+}</code></pre>
+<h4 id="initPageList-8 分页机制与后端接口适配">8 分页机制与后端接口适配</h4>
+<p>默认按BQP协议的分页机制访问服务端，其规则是：</p>
+<ul>
+<li>请求通过 _pagesz 参数指定页大小</li>
+<li>
+<p>如果不是最后一页，服务端应返回nextkey字段；返回列表的格式可以是 table格式如 </p>
+<pre><code>{
+    h: [ "field1","field2" ],
+    d: [ ["val1","val2"], ["val3","val4"], ... ]
+    nextkey: 2
+}</code></pre>
+<p>也可以用list参数指定列表，如</p>
+<pre><code>{
+    list: [
+        {field1: "val1", field2: "val2"},
+        {field1: "val3", field2: "val4"},
+    ],
+    nextkey: 2
+}</code></pre>
+</li>
+<li>请求下一页时，设置参数_pagekey = nextkey，直到服务端不返回 nextkey 字段为止。</li>
+</ul>
+<p>例1：假定后端分页机制为(jquery-easyui datagrid分页机制):</p>
+<ul>
+<li>请求时通过参数page, rows分别表示页码，页大小，如 <code>page=1&amp;rows=20</code></li>
+<li>返回数据通过字段total表示总数, rows表示列表数据，如 <code>{ total: 83, rows: [ {...}, ... ] }</code></li>
+</ul>
+<p>适配方法为：</p>
+<pre><code>var lstIf = initPageList(jpage, {
+    ...
+
+    pageszName: 'rows',
+    pagekeyName: 'total',
+
+    // 设置 data.list, data.nextkey (如果是最后一页则不要设置); 注意pagekey可以为空
+    onGetData: function (data, pagesz, pagekey) {
+        data.list = data.rows;
+        if (pagekey == null)
+            pagekey = 1;
+        if (data.total &gt;  pagesz * pagekey)
+            data.nextkey = pagekey + 1;
+    }
+});</code></pre>
+<p>例2：假定后端分页机制为：</p>
+<ul>
+<li>请求时通过参数curPage, maxLine分别表示页码，页大小，如 <code>curPage=1&amp;maxLine=20</code></li>
+<li>
+<p>返回数据通过字段curPage, countPage, investList 分别表示当前页码, 总页数，列表数据，如 <code>{ curPage:1, countPage: 5, investList: [ {...}, ... ] }</code></p>
+<p>var lstIf = initPageList(jpage, {<br />
+...</p>
+<pre><code>pageszName: 'maxLine',
+pagekeyName: 'curPage',
+
+// 设置 data.list, data.nextkey (如果是最后一页则不要设置); 注意pagekey可以为空
+onGetData: function (data, pagesz, pagekey) {
+    data.list = data.investList;
+    if (data.curPage &lt; data.countPage)
+        data.nextkey = data.curPage + 1;
+}</code></pre>
+<p>});</p>
+</li>
+</ul>
+<p>例3：假定后端就返回一个列表如<code>[ {...}, {...} ]</code>，不支持分页。<br />
+什么都不用设置，仍支持下拉刷新，因为刚好会当成最后一页处理，上拉不再加载。</p>
+<h4 id="initPageList-9 下拉刷新提示信息">9 下拉刷新提示信息</h4>
+<p class="key"><strong>@key <a id=".mui-pullHint">.mui-pullHint</a></strong>  指定下拉提示显示位置</p>
+<p>显示下拉刷新提示时，默认是在列表所在容器的最上端位置显示的。如果需要指定显示位置，可使用css类&quot;mui-pullHint&quot;，示例如下：</p>
+<pre><code>&lt;div class="bd"&gt;
+    &lt;div&gt;下拉列表演示&lt;/div&gt;
+    &lt;div class="mui-pullHint"&gt;&lt;/div&gt; &lt;!-- 如果没有这行，则下拉提示会在容器最上方，即"下拉列表演示"这行文字的上方--&gt;
+    &lt;div id="lst1"&gt;&lt;/div&gt;
+    &lt;div id="lst2"&gt;&lt;/div&gt;
+&lt;/div&gt;</code></pre><hr>
 <h2 id="showByFormMode">@fn showByFormMode(jo, formMode)</h2>
 <p>根据当前formMode自动显示或隐藏jo下的DOM对象.</p>
 <p>示例: 对以下DOM对象</p>
@@ -1544,5 +1767,5 @@ PagePerson.showForSet({id: 3}); // 以id=3查询人物并显示，可更新。</
     ...
 &lt;/form&gt;</code></pre>
 <p>如果formData中有多个属性，则自动以formData的内容作为数据源显示页面，不再发起查询。</p><hr>
-<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-12-01T17:32:13+08:00</div>
+<div style="text-align:center">Generated by jdcloud-gendoc @ 2016-12-21T23:32:31+08:00</div>
 </html>

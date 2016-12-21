@@ -1,7 +1,7 @@
 #!/bin/sh
 
-# ×¢Òâ£º
-# ÓÃ»§±ØĞëÓĞÒÔÏÂÈ¨ÏŞ£º
+# æ³¨æ„ï¼š
+# ç”¨æˆ·å¿…é¡»æœ‰ä»¥ä¸‹æƒé™ï¼š
 # grant select, lock tables, show view on carsvc.* to xeycro;
 # grant select on mysql.* to xeycro;
 # grant reload, replication client, replication slave on *.* to xeycro;
