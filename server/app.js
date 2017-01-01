@@ -5,6 +5,8 @@
 */
 var BASE_URL = "../jdcloud/";
 
+// 模拟接口数据
+$.getScriptWithCache("mockdata.js", {async: false});
 //}}}
 
 // ====== app fw {{{

@@ -141,20 +141,25 @@ function isAndroid()
 	return /Android/i.test(navigator.userAgent);
 }
 /**
-@fn loadScript(url, fnOK, sync?=false)
+@fn loadScript(url, fnOK)
 
 动态加载一个script. 如果曾经加载过, 可以重用cache.
 
 注意: $.getScript一般不缓存(仅当跨域时才使用Script标签方法加载,这时可用缓存), 自定义方法$.getScriptWithCache与本方法类似.
 
+loadScript无法用于同步调用，如需要同步调用可以：
+
+	$.getScriptWithCache("1.js", {async: false});
+	// 这时可立即使用1.js中定义的内容
+
 @see $.getScriptWithCache
 */
-function loadScript(url, fnOK, sync)
+function loadScript(url, fnOK)
 {
 	var script= document.createElement('script');
 	script.type= 'text/javascript';
 	script.src= url;
-	script.async = !sync;
+	// script.async = !sync; // 不是同步调用的意思，参考script标签的async属性和defer属性。
 	if (fnOK)
 		script.onload = fnOK;
 	document.body.appendChild(script);
@@ -2123,7 +2128,7 @@ fn(param, postParam)->data
 	MUI.mockData["token/get-token"] = ...;
 
 */
-	self.mockData = [];
+	self.mockData = {};
 
 /**
 @fn app_abort()
