@@ -721,7 +721,7 @@ function dbconn($fnConfirm = null)
 		exit;
 	}
 	try {
-		$DBH = new MyPDO ($C[0], $C[1], $C[2]);
+		@$DBH = new MyPDO ($C[0], $C[1], $C[2]);
 	}
 	catch (PDOException $e) {
 		$msg = $GLOBALS["TEST_MODE"] ? $e->getMessage() : "dbconn fails";
