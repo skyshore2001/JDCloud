@@ -67,9 +67,20 @@ var g_data = {}; // {userInfo, serverRev?, initClient?, testMode?, mockMode?}
 
 @var g_cfg.logAction?=false  Boolean. 是否显示详细日志。
 @var g_cfg.PAGE_SZ?=20  分页大小，作为每次调用{obj}.query的缺省值。
+
+@var g_cfg.mockDelay? = 50  模拟调用后端接口的延迟时间，单位：毫秒。仅对异步调用有效。
+@see MUI.mockData 模拟调用后端接口
 */
 
-var g_cfg = { logAction: false };
+var DEF_CFG = {
+	logAction: false,
+	PAGE_SZ: 20,
+	manualSplash: false,
+	mockDelay: 50
+};
+setTimeout(function () {
+	window.g_cfg = $.extend({}, DEF_CFG, window.g_cfg);
+});
 
 var m_appVer;
 
@@ -2053,6 +2064,68 @@ ctx: {ac, tm, tv, ret}
 	self.m_curBatch = m_curBatch;
 
 /**
+@var MUI.mockData  模拟调用后端接口。
+
+在后端接口尚无法调用时，可以配置MUI.mockData做为模拟接口返回数据。
+调用callSvr时，会直接使用该数据，不会发起ajax请求。
+
+mockData={ac => data/fn}  
+fn(param, postParam)->data
+
+例：模拟"User.get(id)"和"User.set()(key=value)"接口：
+
+	var user = {
+		id: 1001,
+		name: "孙悟空",
+	};
+	g_cfg.mockData = {
+		// 方式1：直接指定返回数据
+		"User.get": [0, user],
+
+		// 方式2：通过函数返回模拟数据
+		"User.set": function (param, postParam) {
+			$.extend(user, postParam);
+			return [0, "OK"];
+		}
+	}
+
+	// 接口调用：
+	var user = callSvrSync("User.get");
+	callSvr("User.set", {id: user.id}, function () {
+		alert("修改成功！");
+	}, {name: "大圣"});
+
+实例详见文件 mockdata.js。
+
+可以通过g_cfg.mockDelay设置模拟调用接口的网络延时。
+@see g_cfg.mockDelay
+
+如果设置了MUI.callSvrExt，调用名(ac)中应包含扩展(ext)的名字，例：
+
+	MUI.callSvrExt['zhanda'] = {...};
+	callSvr(['token/get-token', 'zhanda'], ...);
+
+要模拟该接口，应设置
+
+	MUI.mockData["zhanda.token/get-token"] = ...;
+
+@see MUI.callSvrExt
+
+也支持"default"扩展，如：
+
+	MUI.callSvrExt['default'] = {...};
+	callSvr(['token/get-token', 'default'], ...);
+	或
+	callSvr('token/get-token', ...);
+
+要模拟该接口，可设置
+
+	MUI.mockData["token/get-token"] = ...;
+
+*/
+	self.mockData = [];
+
+/**
 @fn app_abort()
 
 中止之后的调用, 直接返回.
@@ -2451,6 +2524,17 @@ allow throw("abort") as abort behavior.
 - 指定{noex:1}用于忽略错误处理。
 - 指定{noLoadingImg:1}用于忽略loading图标.
 
+@return deferred对象，与$.ajax相同。
+例如，
+
+	var dfd = callSvr(ac, fn1);
+	dfd.then(fn2);
+
+	function fn1(data) {}
+	function fn2(data) {}
+
+在接口调用成功后，会依次回调fn1, fn2.
+
 @key callSvr.noex 调用接口时忽略出错，可由回调函数fn自己处理错误。
 
 当后端返回错误时, 回调`fn(false)`（参数data=false）. 可通过 MUI.lastError.ret 取到返回的原始数据。
@@ -2545,7 +2629,7 @@ callSvr扩展示例：
 	MUI.callSvrExt['zhanda'] = {
 		makeUrl: function(ac) {
 			return 'http://hostname/lcapi/' + ac;
-		}
+		},
 		dataFilter: function (data) {
 			if ($.isPlainObject(data) && data.code !== undefined) {
 				if (data.code == 0)
@@ -2666,15 +2750,19 @@ callSvr扩展示例：
 		var ext = null;
 		var ac0 = ac;
 		if ($.isArray(ac)) {
-			ac0 = ac[1] + '.' + ac[0];
+			assert(ac.length == 2, "*** bad ac format, require [ac, ext]");
 			ext = ac[1];
+			if (ext != 'default')
+				ac0 = ext + '.' + ac[0];
+			else
+				ac0 = ac[0];
 		}
 		else if (self.callSvrExt['default']) {
 			ext = 'default';
 		}
 
-		if (m_curBatch &&
-			!(userOptions && userOptions.async == false))
+		var isSyncCall = (userOptions && userOptions.async == false);
+		if (m_curBatch && !isSyncCall)
 		{
 			return m_curBatch.addCall({ac: ac, get: params, post: postParams}, fn, userOptions);
 		}
@@ -2687,6 +2775,23 @@ callSvr扩展示例：
 			ctx.ext = ext;
 		}
 		enterWaiting(ctx);
+
+		var callType = "call";
+		if (isSyncCall)
+			callType += "-sync";
+		if (self.mockData && self.mockData[ac0]) {
+			callType += "-mock";
+			console.log(callType + " " + ac0);
+			return callSvrMock({
+				data: self.mockData[ac0],
+				param: params,
+				postParam: postParams,
+				fn: fn,
+				ctx: ctx,
+				isSyncCall: isSyncCall
+			});
+		}
+
 		var method = (postParams == null? 'GET': 'POST');
 		var opt = {
 			dataType: 'text',
@@ -2708,8 +2813,37 @@ callSvr扩展示例：
 			opt.contentType = false;
 		}
 		$.extend(opt, userOptions);
-		console.log("call " + ac0);
+		console.log(callType + " " + ac0);
 		return $.ajax(opt);
+	}
+
+	// opt={data, isSyncCall, ctx, fn, param, postParam}
+	function callSvrMock(opt)
+	{
+		var dfd_ = $.Deferred();
+		if (opt.isSyncCall) {
+			callSvrMock1();
+		}
+		else {
+			setTimeout(callSvrMock1, g_cfg.mockDelay);
+		}
+		return dfd_;
+
+		function callSvrMock1() 
+		{
+			leaveWaiting();
+			if ($.isFunction(opt.data)) {
+				opt.data = opt.data(opt.param, opt.postParam);
+			}
+			var rv = defDataProc.call({ctx_: opt.ctx}, opt.data);
+			if (rv != null)
+			{
+				opt.fn && opt.fn(rv);
+				dfd_.resolve(rv);
+				return;
+			}
+			app_abort();
+		}
 	}
 
 /**
