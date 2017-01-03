@@ -2641,7 +2641,7 @@ callSvr扩展示例：
 					return data.data;
 				if (this.noex)
 					return false;
-				app_alert("操作失败：" + data.message, "e");
+				app_alert("操作失败：" + data.msg, "e");
 			}
 			else {
 				app_alert("服务器通讯协议异常!", "e"); // 格式不对
