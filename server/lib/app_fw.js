@@ -16,10 +16,6 @@ URL参数会自动加入该对象，例如URL为 `http://{server}/{app}/index.ht
 	g_args.orderId=10; // 注意：如果参数是个数值，则自动转为数值类型，不再是字符串。
 	g_args.dscr="上门洗车"; // 对字符串会自动进行URL解码。
 
-此外，框架会自动加一些参数：
-
-@var g_args._app?="user" 应用名称，由setApp({appName})指定。
-
 @see parseQuery URL参数通过该函数获取。
 */
 var g_args = {}; // {_test, _debug, cordova}
@@ -60,41 +56,6 @@ serverRev用于标识服务端版本，如果服务端版本升级，则应用�
 */
 var g_data = {}; // {userInfo, serverRev?, initClient?, testMode?, mockMode?}
 
-/**
-@var g_cfg
-
-应用配置项。
-
-@var g_cfg.logAction?=false  Boolean. 是否显示详细日志。
-@var g_cfg.PAGE_SZ?=20  分页大小，作为每次调用{obj}.query的缺省值。
-
-@var g_cfg.mockDelay? = 50  模拟调用后端接口的延迟时间，单位：毫秒。仅对异步调用有效。
-@see MUI.mockData 模拟调用后端接口
-*/
-
-var DEF_CFG = {
-	logAction: false,
-	PAGE_SZ: 20,
-	manualSplash: false,
-	mockDelay: 50
-};
-setTimeout(function () {
-	window.g_cfg = $.extend({}, DEF_CFG, window.g_cfg);
-});
-
-var m_appVer;
-
-/**
-@var BASE_URL
-
-设置应用的基本路径, 应以"/"结尾.
-
-当用于本地调试网页时, 可以临时修改它, 比如在app.js中临时设置:
-
-	var BASE_URL = "http://oliveche.com/jdcloud/";
-
-*/
-var BASE_URL = "../";
 //}}}
 
 // ====== app toolkit {{{
@@ -553,7 +514,7 @@ function filterCordovaModule(module)
 	var plugins = module.exports;
 	module.exports = [];
 
-	var app = (window.g_args && g_args._app) || 'user';
+	var app = (window.g_args && MUI.options.appName) || 'user';
 	var ver = (window.g_args && g_args.cordova) || 1;
 	plugins.forEach(function (e) {
 		var yes = 0;
@@ -621,7 +582,6 @@ var E_ABORT=-100;
 
 @see MUI.showPage
 @see MUI.popPageStack
-@see CPageManager
 
 ### 应用容器
 
@@ -673,7 +633,7 @@ var E_ABORT=-100;
 
 - 检查是否已加载该页面，如果已加载则显示该页并跳到"pagebeforeshow"事件这一步。
 - 检查内部模板页。如果内部页面模板中有名为"tpl_{页面名}"的对象，有则将其内容做为页面代码加载，然后跳到initPage步骤。
-- 加载外部模板页。加载 {pageFolder}/{页面名}.html 作为逻辑页面，如果加载失败则报错。页面所在文件夹可通过 MUI.setApp({pageFolder})指定。
+- 加载外部模板页。加载 {pageFolder}/{页面名}.html 作为逻辑页面，如果加载失败则报错。页面所在文件夹可通过`MUI.options.pageFolder`指定。
 - initPage页面初始化. 框架自动为页面添加.mui-page类。如果逻辑页面上指定了mui-script属性，则先加载该属性指定的JS文件。然后如果设置了mui-initfn属性，则将其作为页面初始化函数调用。
 - 发出pagecreate事件。
 - 发出pagebeforeshow事件。
@@ -750,19 +710,18 @@ style将被插入到head标签中，并自动添加属性`mui-origin={pageId}`.
 ## 服务端交互API
 
 @see callSvr 系列调用服务端接口的方法。
-@see CComManager
 
 ## 登录与退出
 
 框架提供MUI.showLogin/MUI.logout操作. 
 调用MUI.tryAutoLogin可以支持自动登录.
 
-登录后显示的主页，登录页，应用名称等均通过MUI.setApp设置。
+登录后显示的主页，登录页，应用名称等应通过MUI.options.homePage/loginPage/appName等选项设置。
 
 @see MUI.tryAutoLogin
 @see MUI.showLogin
 @see MUI.logout
-@see MUI.setApp
+@see MUI.options
 
 ## 常用组件
 
@@ -816,10 +775,10 @@ style将被插入到head标签中，并自动添加属性`mui-origin={pageId}`.
 
 设置说明：
 
-- 在Web应用中指定正确的应用程序名appName (参考MUI.setApp方法), 该名字将可在g_args._app变量中查看。
+- 在Web应用中指定正确的应用程序名(MUI.options.appName).
 - App加载Web应用时在URL中添加cordova={ver}参数，就可自动加载cordova插件(m/cordova或m/cordova-ios目录下的cordova.js文件)，从而可以调用原生APP功能。
 - 在App打包后，将apk包或ipa包其中的cordova.js/cordova_plugins.js/plugins文件或目录拷贝出来，合并到 cordova 或 cordova-ios目录下。
-  其中，cordova_plugins.js文件应手工添加所需的插件，并根据应用(g_args._app)及版本(g_args.cordova)设置filter. 可通过 cordova.require("cordova/plugin_list") 查看应用究竟使用了哪些插件。
+  其中，cordova_plugins.js文件应手工添加所需的插件，并根据应用名(MUI.options.appName)及版本(g_args.cordova)设置filter. 可通过 cordova.require("cordova/plugin_list") 查看应用究竟使用了哪些插件。
 - 在部署Web应用时，建议所有cordova相关的文件合并成一个文件（通过Webcc打包）
 
 不同的app大版本(通过URL参数cordova=?识别)或不同平台加载的插件是不一样的，要查看当前加载了哪些插件，可以在Web控制台中执行：
@@ -828,19 +787,20 @@ style将被插入到head标签中，并自动添加属性`mui-origin={pageId}`.
 
 对原生应用的额外增强包括：
 
-@key g_cfg.manualSplash
+@key topic-splashScreen
+@see MUI.options.manualSplash
 
 - 应用加载完成后，自动隐藏启动画面(SplashScreen)。如果需要自行隐藏启动画面，可以设置
 
-		var g_cfg = {
-			manualSplash: true
-			...
-		}
+		MUI.options.manualSplash = true; // 可以放在H5应用的主js文件中，如index.js
 
 	然后开发者自己加载完后隐藏SplashScreen:
 
 		if (navigator.splashscreen && navigator.splashscreen.hide)
 			navigator.splashscreen.hide();
+
+@key topic-iosStatusBar
+@see MUI.options.noHandleIosStatusBar
 
 - ios7以上, 框架自动为顶部状态栏留出20px高度的空间. 默认为白色，可以修改类mui-container的样式，如改为黑色：
 
@@ -849,9 +809,9 @@ style将被插入到head标签中，并自动添加属性`mui-origin={pageId}`.
 	}
 
 如果使用了StatusBar插件, 可以取消该行为. 
-先在setApp中设置, 如
+先设置选项：
 
-	MUI.setApp({noHandleIosStatusBar: true, ...});
+	MUI.options.noHandleIosStatusBar = true; // 可以放在H5应用的主js文件中，如index.js
 
 然后在deviceready事件中自行设置样式, 如
 
@@ -920,30 +880,33 @@ APP初始化成功后，回调该事件。如果deviceready事件未被回调，
 		Access-Control-Allow-Credentials: true
 
 - 打开chrome时设置参数 --allow-file-access-from-files 以允许ajax取本地文件.
-- 在app.js中修改BASE_URL:
+- 在app.js中正确设置接口URL，如
 
-	var BASE_URL = "http://oliveche.com/jdcloud/";
+		$.extend(MUI.options, {
+			serverUrl: "http://oliveche.com/jdcloud/api.php"
+			// serverUrlAc: "ac"
+		});
 
 这时直接在chrome中打开html文件即可连接远程接口运行起来.
  */
 
 
 // ------ CPageManager {{{
-/**
-@class CPageManager(app)
+/*
+@class CPageManager(opt)
 
 页面管理器。提供基于逻辑页面的单网页应用，亦称“变脸式应用”。
 
 该类作为MUI模块的基类，仅供内部使用，但它提供showPage等操作，以及pageshow等各类事件。
 
-@param app IApp={homePage?="#home", pageFolder?="page"}
+@param opt {homePage?="#home", pageFolder?="page"}
 
  */
-function CPageManager(app)
+function CPageManager(opt)
 {
 	var self = this;
 	
-	var m_app = app;
+	var m_opt = opt;
 /**
 @var MUI.activePage
 
@@ -983,20 +946,6 @@ function CPageManager(app)
 如果为false, 则必须手工执行 MUI.showPage 来显示第一个页面。
 */
 	self.showFirstPage = true;
-
-/**
-@var MUI.options
-
-缺省配置项：
-
-	{
-		ani: 'auto' // 缺省切页动画效果. 'none'表示无动画。
-	}
-
-*/
-	self.options = {
-		ani: 'auto',
-	};
 
 	var m_jstash; // 页面暂存区; 首次加载页面后可用
 
@@ -1230,13 +1179,13 @@ function CPageManager(app)
 			ret.pageId = pageId.match(/[^.\/]+(?=\.)/)[0];
 		}
 		if (ret.pageFile == null) 
-			ret.pageFile = m_app.pageFolder + '/' + pageId + ".html";
+			ret.pageFile = m_opt.pageFolder + '/' + pageId + ".html";
 		return ret;
 	}
 	function showPage_(pageRef, opt)
 	{
 		var showPageOpt_ = $.extend({
-			ani: self.options.ani
+			ani: m_opt.ani
 		}, opt);
 
 		// 避免hashchange重复调用
@@ -1334,7 +1283,7 @@ function CPageManager(app)
 			return css1;
 		}
 
-		// path?=m_app.pageFolder
+		// path?=m_opt.pageFolder
 		function loadPage(html, pageId, path)
 		{
 			// 放入dom中，以便document可以收到pagecreate等事件。
@@ -1360,7 +1309,7 @@ function CPageManager(app)
 			var val = jpage.attr("mui-script");
 			if (val != null) {
 				if (path == null)
-					path = m_app.pageFolder;
+					path = m_opt.pageFolder;
 				if (path != "")
 					val = path + "/" + val;
 				loadScript(val, initPage);
@@ -1457,7 +1406,7 @@ function CPageManager(app)
 	{
 		var pageRef = location.hash;
 		if (pageRef == "") {
-			pageRef = m_app.homePage;
+			pageRef = m_opt.homePage;
 			location.hash = pageRef;
 		}
 		if (history.state == null || history.state.appId != m_appId) {
@@ -1568,13 +1517,13 @@ ani:: String. 动画效果。设置为"none"禁用动画。
 	触发pagebeforeshow事件
 	触发pageshow事件
 
-动态加载页面时，缺省目录名为`page`，如需修改，应在初始化时设置app.pageFolder属性：
+动态加载页面时，缺省目录名为`page`，如需修改，应在初始化时设置pageFolder选项：
 
-	MUI.setApp({pageFolder: "mypage"}) 
+	MUI.options.pageFolder = "mypage";
 
 也可以显示一个指定路径的页面：
 
-	MUI.showPage("#page/order.html"); 
+	MUI.showPage("#page/order.html");
 
 由于它对应的id是order, 在显示时，先找id="order"的对象是否存在，如果不存在，则动态加载页面"page/order.html"并为该对象添加id="order".
 
@@ -1606,7 +1555,7 @@ ani:: String. 动画效果。设置为"none"禁用动画。
 		if (pageRef[0] !== '#')
 			pageRef = '#' + pageRef;
 		else if (pageRef === '#') 
-			pageRef = m_app.homePage;
+			pageRef = m_opt.homePage;
 		m_fromShowPage = true;
 		showPage_(pageRef, opt);
 	}
@@ -2027,17 +1976,17 @@ app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时�
 //}}}
 
 // ------ CComManager {{{
-/**
+/*
 @class CComManager
-@param app IApp={appName?=user}
+@param opt={appName?=user, serverUrl?="../api.php", serverUrlAc?=null}
 
-提供callSvr等与后台交互的API.
+提供callSvr等与后台交互的API. 仅内部使用。
 
 @see MUI.callSvr
 @see MUI.useBatchCall
 @see MUI.setupCallSvrViaForm
 */
-function CComManager(app)
+function CComManager(opt)
 {
 	var self = this;
 
@@ -2054,10 +2003,11 @@ ctx: {ac, tm, tv, ret}
 - ret: return value 调用返回的原始数据
 */
 	self.lastError = null;
-	var m_app = app;
+	var m_opt = opt;
 	var m_tmBusy;
 	var m_manualBusy = 0;
 	var m_jLoader;
+	var m_appVer;
 
 /**
 @var MUI.disableBatch ?= false
@@ -2089,7 +2039,7 @@ fn(param, postParam)->data
 		id: 1001,
 		name: "孙悟空",
 	};
-	g_cfg.mockData = {
+	MUI.mockData = {
 		// 方式1：直接指定返回数据
 		"User.get": [0, user],
 
@@ -2108,8 +2058,8 @@ fn(param, postParam)->data
 
 实例详见文件 mockdata.js。
 
-可以通过g_cfg.mockDelay设置模拟调用接口的网络延时。
-@see g_cfg.mockDelay
+可以通过MUI.options.mockDelay设置模拟调用接口的网络延时。
+@see MUI.options.mockDelay
 
 如果设置了MUI.callSvrExt，调用名(ac)中应包含扩展(ext)的名字，例：
 
@@ -2288,7 +2238,7 @@ allow throw("abort") as abort behavior.
 		}
 		// 当无远程API调用或js调用时, 设置IsBusy=0
 		delayDo(function () {
-			if (g_cfg.logAction && ctx && ctx.ac && ctx.tv) {
+			if (m_opt.logAction && ctx && ctx.ac && ctx.tv) {
 				var tv2 = (new Date() - ctx.tm) - ctx.tv;
 				ctx.tv2 = tv2;
 				console.log(ctx);
@@ -2430,6 +2380,23 @@ allow throw("abort") as abort behavior.
 	}
 
 /**
+@fn MUI.getBaseUrl()
+
+取服务端接口URL对应的目录。可用于拼接其它服务端资源。
+相当于dirname(MUI.options.serverUrl);
+
+例如：
+
+serverUrl为"../jdcloud/api.php" 或 "../jdcloud/"，则MUI.baseUrl返回 "../jdcloud/"
+serverUrl为"http://myserver/myapp/api.php" 或 "http://myserver/myapp/"，则MUI.baseUrl返回 "http://myserver/myapp/"
+ */
+	self.getBaseUrl = getBaseUrl;
+	function getBaseUrl()
+	{
+		return m_opt.serverUrl.replace(/\/[^\/]+$/, '/');
+	}
+
+/**
 @fn MUI.makeUrl(action, params)
 @alias makeUrl
 
@@ -2477,22 +2444,22 @@ allow throw("abort") as abort behavior.
 		// 缺省接口调用：callSvr('login') 或 callSvr('php/login.php');
 		else if (action.indexOf(".php") < 0)
 		{
-			var usePathInfo = true;
+			var usePathInfo = !m_opt.serverUrlAc;
 			if (usePathInfo) {
-				if (params.ac != null) {
-					action = params.ac;
-					delete(params.ac);
-				}
-				url = BASE_URL + "api.php/" + action;
+				if (m_opt.serverUrl.slice(-1) == '/')
+					url = m_opt.serverUrl + action;
+				else
+					url = m_opt.serverUrl + "/" + action;
 			}
 			else {
-				url = BASE_URL + "api.php";
-				params.ac = action;
+				url = m_opt.serverUrl;
+				params[m_opt.serverUrlAc] = action;
 			}
 		}
 		else {
-			if (location.protocol == "file:")
-				url = BASE_URL + "m2/" + action;
+			if (location.protocol == "file:") {
+				url = getBaseUrl() + action;
+			}
 			else
 				url = action;
 		}
@@ -2510,8 +2477,8 @@ allow throw("abort") as abort behavior.
 			}
 			params._ver = m_appVer;
 		}
-		if (m_app.appName)
-			params._app = m_app.appName;
+		if (m_opt.appName)
+			params._app = m_opt.appName;
 		if (g_args._test)
 			params._test = 1;
 		if (g_args._debug)
@@ -2836,7 +2803,7 @@ callSvr扩展示例：
 			callSvrMock1();
 		}
 		else {
-			setTimeout(callSvrMock1, g_cfg.mockDelay);
+			setTimeout(callSvrMock1, m_opt.mockDelay);
 		}
 		return dfd_;
 
@@ -3134,20 +3101,83 @@ function nsMUI()
 	var self = this;
 
 /**
-@var MUI.m_app
+@var MUI.options
 
-参考MUI.setApp
+可用的选项如下。
+
+@key MUI.options.appName?=user  应用名称
+
+用于与后端通讯时标识app.
+
+@key MUI.options.loginPage?="#login"  login逻辑页面的地址
+@key MUI.options.homePage?="#home"  首页地址
+@key MUI.options.pageFolder?="page" 逻辑页面文件(html及js)所在文件夹
+
+@key MUI.options.noHandleIosStatusBar?=false
+
+@see topic-iosStatusBar
+
+@key MUI.options.manualSplash?=false
+
+@see topic-splashScreen
+
+@var MUI.options.logAction?=false  Boolean. 是否显示详细日志。
+
+@var MUI.options.PAGE_SZ?=20  分页大小，下拉列表每次取数据的缺省条数。
+
+@var MUI.options.mockDelay?=50  模拟调用后端接口的延迟时间，单位：毫秒。仅对异步调用有效。
+
+@see MUI.mockData 模拟调用后端接口
+
+@var MUI.options.serverUrl  服务端接口地址设置。
+@var MUI.options.serverUrlAc  表示接口名称的URL参数。
+
+示例：
+
+	$.extend(MUI.options, {
+		serverUrl: "http://myserver/myapp/api.php",
+		serverUrlAc: "ac"
+	});
+
+接口"getuser(id=10)"的HTTP请求为：
+
+	http://myserver/myapp/api.php?ac=getuser&id=10
+	
+如果不设置serverUrlAc（默认为空），则HTTP请求为：
+
+	http://myserver/myapp/api.php/getuser?id=10
+
+支持上面这种URL的服务端，一般配置过pathinfo机制。
+再进一步，如果服务端设置了rewrite规则可以隐藏api.php，则可设置：
+
+	$.extend(MUI.options, {
+		serverUrl: "http://myserver/myapp/", // 最后加一个"/"
+	});
+
+这样发起的HTTP请求为：
+
+	http://myserver/myapp/getuser?id=10
+
+@var MUI.options.pluginFolder?="../plugin" 指定筋斗云插件目录
+
+筋斗云插件提供具有独立接口的应用功能模块，包括前端、后端实现。
 */
-	var m_app = self.m_app = {
+	var m_opt = self.options = {
 		appName: "user",
-		allowedEntries: [],
 		loginPage: "#login",
 		homePage: "#home",
 		pageFolder: "page",
+
+		logAction: false,
+		PAGE_SZ: 20,
+		manualSplash: false,
+		mockDelay: 50,
+
+		pluginFolder: "../plugin",
 	};
 
-	CPageManager.call(this, m_app);
-	CComManager.call(this, m_app);
+	CPageManager.call(this, m_opt);
+	CComManager.call(this, m_opt);
 
 	var m_onLoginOK;
 
@@ -3211,8 +3241,11 @@ function setFormSubmit(jf, fn, opt)
 				return false;
 		}
 		var postParam = getFormData(jf);
-		if (! $.isEmptyObject(postParam))
-			callSvr(queryParam.ac, queryParam, fn, postParam, {userPost: postParam});
+		if (! $.isEmptyObject(postParam)) {
+			var ac = queryParam.ac;
+			delete queryParam.ac;
+			callSvr(ac, queryParam, fn, postParam, {userPost: postParam});
+		}
 		else if (opt.onNoAction) {
 			opt.onNoAction(jf);
 		}
@@ -3239,7 +3272,7 @@ function showValidateErr(jvld, jo, msg)
 
 // ------ cordova setup {{{
 $(document).on("deviceready", function () {
-	var homePageId = m_app.homePage.substr(1); // "#home"
+	var homePageId = m_opt.homePage.substr(1); // "#home"
 	// 在home页按返回键退出应用。
 	$(document).on("backbutton", function () {
 		if (self.activePage.attr("id") == homePageId) {
@@ -3254,7 +3287,7 @@ $(document).on("deviceready", function () {
 	$(document).on("menubutton", function () {
 	});
 
-	if (!g_cfg.manualSplash && navigator.splashscreen && navigator.splashscreen.hide)
+	if (!m_opt.manualSplash && navigator.splashscreen && navigator.splashscreen.hide)
 	{
 		// 成功加载后稍等一会(避免闪烁)后隐藏启动图
 		$(function () {
@@ -3275,7 +3308,7 @@ function isLoginPage(pageRef)
 	if (/^\w/.test(pageRef)) {
 		pageRef = "#" + pageRef;
 	}
-	if (pageRef.indexOf(m_app.loginPage) != 0)
+	if (pageRef.indexOf(m_opt.loginPage) != 0)
 		return false;
 	return true;
 }
@@ -3284,7 +3317,7 @@ function isLoginPage(pageRef)
 @fn MUI.showLogin(jpage?)
 @param jpage 如果指定, 则登录成功后转向该页面; 否则转向登录前所在的页面.
 
-显示登录页. 注意: 登录页地址通过setApp({loginPage})指定, 缺省为"#login".
+显示登录页. 注意: 登录页地址通过MUI.options.loginPage指定, 缺省为"#login".
 
 	<div data-role="page" id="login">
 	...
@@ -3309,31 +3342,31 @@ function showLogin(jpage)
 	else {
 		// only before jquery mobile inits
 		// back to this page after login:
-		toPageHash = location.hash || m_app.homePage;
+		toPageHash = location.hash || m_opt.homePage;
 	}
 	m_onLoginOK = function () {
 		// 如果当前仍在login系列页面上，则跳到指定页面。这样可以在handleLogin中用MUI.showPage手工指定跳转页面。
 		if (MUI.activePage && isLoginPage(MUI.getToPageId()))
 			MUI.showPage(toPageHash);
 	}
-	MUI.showPage(m_app.loginPage);
+	MUI.showPage(m_opt.loginPage);
 }
 
 /**
 @fn MUI.showHome()
 
-显示主页。主页是通过 MUI.setApp({homePage: '#home'}); 来指定的，默认为"#home".
+显示主页。主页是通过 MUI.options.homePage 来指定的，默认为"#home".
 
 要取主页名可以用：
 
-	var jpage = $(MUI.m_app.homePage);
+	var jpage = $(MUI.options.homePage);
 
-@see MUI.setApp
+@see MUI.options.homePage
 */
 self.showHome = showHome;
 function showHome()
 {
-	self.showPage(self.m_app.homePage);
+	self.showPage(m_opt.homePage);
 }
 
 /**
@@ -3353,6 +3386,20 @@ function logout(dontReload)
 	});
 }
 
+/**
+@fn MUI.validateEntry(@allowedEntries) 入口页检查
+
+设置入口页，allowedEntries是一个数组, 如果初始页面不在该数组中, 则URL中输入该逻辑页时，会自动转向主页。
+
+示例：
+
+	MUI.validateEntry([
+		"#home",
+		"#me",
+	]);
+
+*/
+self.validateEntry = validateEntry;
 // check if the entry is in the entry list. if not, refresh the page without search query (?xx) or hash (#xx)
 function validateEntry(allowedEntries)
 {
@@ -3402,8 +3449,8 @@ parseArgs();
 function tokenName()
 {
 	var name = "token";
-	if (m_app.appName)
-		name += "_" + m_app.appName;
+	if (m_opt.appName)
+		name += "_" + m_opt.appName;
 	if (g_args._test)
 		name += "_test";
 	return name;
@@ -3544,8 +3591,8 @@ function initClient(param)
 		plugins_ = data.plugins || {};
 		$.each(plugins_, function (k, e) {
 			if (e.js) {
-				// plugin dir
-				var js = BASE_URL + 'plugin/' + k + '/' + e.js;
+				// "plugin/{pluginName}/{plugin}.js"
+				var js = m_opt.pluginFolder + '/' + k + '/' + e.js;
 				loadScript(js, null, true);
 			}
 		});
@@ -3621,33 +3668,12 @@ function main()
 	}
 	console.log(jc.attr("class"));
 
-	if (! self.m_app.noHandleIosStatusBar)
+	if (! m_opt.noHandleIosStatusBar)
 		handleIos7Statusbar();
 }
 
 $(main);
 //}}}
-
-/**
-@fn MUI.setApp(app)
-
-@param app={appName?=user, allowedEntries?, loginPage?="#login", homePage?="#home", pageFolder?="page", noHandleIosStatusBar?=false}
-
-- appName: 用于与后端通讯时标识app.
-- allowedEntries: 一个数组, 如果初始页面不在该数组中, 则自动转向主页.
-- loginPage: login页面的地址, 默认为"#login"
-- homePage: 首页的地址, 默认为"#home"
-- pageFolder: 页面文件(html及js)所在文件夹，默认为"page"
-*/
-self.setApp = setApp;
-function setApp(app)
-{
-	$.extend(m_app, app);
-	g_args._app = app.appName;
-
-	if (app.allowedEntries)
-		validateEntry(app.allowedEntries);
-}
 
 /**
 @fn MUI.formatField(obj) -> obj
@@ -4579,7 +4605,7 @@ function initPageList(jpage, opt)
 		}
 
 		if (!queryParam[opt_.pageszName])
-			queryParam[opt_.pageszName] = g_cfg.PAGE_SZ; // for test, default 20.
+			queryParam[opt_.pageszName] = MUI.options.PAGE_SZ; // for test, default 20.
 		if (nextkey)
 			queryParam[opt_.pagekeyName] = nextkey;
 
@@ -4598,7 +4624,9 @@ function initPageList(jpage, opt)
 			jlst.data("lastUpdateTm_", new Date());
 		}
 		busy_ = true;
-		callSvr(queryParam.ac, queryParam, api_OrdrQuery);
+		var ac = queryParam.ac;
+		delete queryParam.ac;
+		callSvr(ac, queryParam, api_OrdrQuery);
 
 		function api_OrdrQuery(data)
 		{
@@ -4886,7 +4914,9 @@ function initPageDetail(jpage, opt)
 				id: data.id
 			};
 			opt.onGetData && opt.onGetData(jf, queryParam);
-			callSvr(queryParam.ac, queryParam, onGet);
+			var ac = queryParam.ac;
+			delete queryParam.ac;
+			callSvr(ac, queryParam, onGet);
 		}
 
 		function onGet(data)

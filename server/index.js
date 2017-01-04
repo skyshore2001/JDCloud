@@ -1,14 +1,14 @@
 // ====== config {{{
-var MyApp = {
+$.extend(MUI.options, {
 	appName: "user",
 	homePage: "#home",
 	pageFolder: "page",
-	allowedEntries: [
-		"#home",
-		"#me"
-	]
-}
-MUI.setApp(MyApp);
+});
+
+MUI.validateEntry([
+	"#home",
+	"#me"
+]);
 
 var StatusStr = {
 	CR: "待服务",
@@ -95,7 +95,7 @@ function setupGenCodeButton(btnGenCode, txtPhone)
 function getDynCode(fn)
 {
 	MUI.enterWaiting();
-	var url = BASE_URL + "tool/log.php?f=ext&sz=500";
+	var url = MUI.getBaseUrl() + "tool/log.php?f=ext&sz=500";
 	$.get(url).then(function (data) {
 		MUI.leaveWaiting();
 		var m = data.match(/验证码(\d+)/);
