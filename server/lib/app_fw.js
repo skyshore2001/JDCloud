@@ -936,7 +936,9 @@ function CPageManager(opt)
 /**
 @var MUI.container
 
-现在为$(document.body)
+应用容器，一般就是`$(document.body)`
+
+@see .mui-container
 */
 	self.container = null;
 
@@ -1738,6 +1740,8 @@ ani:: String. 动画效果。设置为"none"禁用动画。
 			opt.onBeforeShow.call(jdlg);
 		jdlg.show();
 		jdlg.parent().show();
+		//bugfix: 如果首页未显示就出错，app_alert无法显示
+		self.container.show(); 
 	}
 
 /**
@@ -2317,7 +2321,7 @@ allow throw("abort") as abort behavior.
 		catch (e)
 		{
 			leaveWaiting(ctx);
-			app_alert("服务器通讯异常: " + e);
+			app_alert("服务器数据错误。");
 			return;
 		}
 
