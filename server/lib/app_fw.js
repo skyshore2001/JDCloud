@@ -1436,6 +1436,8 @@ function CPageManager(opt)
 		else {
 			jo = $("#" + pageId);
 		}
+		if (jo.find("#footer").size() > 0)
+			jo.find("#footer").appendTo(m_jstash);
 		jo.remove();
 		$("style[mui-origin=" + pageId + "]").remove();
 	}
