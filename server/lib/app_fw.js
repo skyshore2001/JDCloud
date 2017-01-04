@@ -140,30 +140,6 @@ function isAndroid()
 {
 	return /Android/i.test(navigator.userAgent);
 }
-/**
-@fn loadScript(url, fnOK)
-
-动态加载一个script. 如果曾经加载过, 可以重用cache.
-
-注意: $.getScript一般不缓存(仅当跨域时才使用Script标签方法加载,这时可用缓存), 自定义方法$.getScriptWithCache与本方法类似.
-
-loadScript无法用于同步调用，如需要同步调用可以：
-
-	$.getScriptWithCache("1.js", {async: false});
-	// 这时可立即使用1.js中定义的内容
-
-@see $.getScriptWithCache
-*/
-function loadScript(url, fnOK)
-{
-	var script= document.createElement('script');
-	script.type= 'text/javascript';
-	script.src= url;
-	// script.async = !sync; // 不是同步调用的意思，参考script标签的async属性和defer属性。
-	if (fnOK)
-		script.onload = fnOK;
-	document.body.appendChild(script);
-}
 
 // --------- jquery {{{
 /**
@@ -293,25 +269,55 @@ function setFormData(jo, data, opt)
 }
 
 /**
-@fn $.getScriptWithCache(url, options?)
+@fn loadScript(url, fnOK?, ajaxOpt?)
+@alias $.getScriptWithCache
 
-@param options? 传递给$.ajax的选项。
+@param fnOK 加载成功后的回调函数
+@param options 传递给$.ajax的额外选项。
+@return deferred 与$.ajax返回值相同。
 
-@see loadScript
+动态加载一个script. 如果曾经加载过, 可以重用cache.
+
+如果想禁用cache，可以用：
+
+	loadScript("1.js", {cache: false});
+
+loadScript可以用于同步调用：
+
+	loadScript("1.js", {async: false});
+	// 这时可立即使用1.js中定义的内容
+
+注意：
+
+- 在跨域调用时，同步调用无效，无法立即使用js中定义的内容。其内部机制是创建一个script标签来加载。
+- jQuery提供的$.getScript函数不做缓存(仅当跨域时才使用Script标签方法加载,这时可用缓存)。
+- $.getScriptWithCache仅用于兼容旧代码，不建议使用。
 */
-$.getScriptWithCache = function(url, options) 
+$.getScriptWithCache = loadScript;
+function loadScript(url, fnOK, options)
 {
-	// allow user to set any option except for dataType, cache, and url
-	options = $.extend(options || {}, {
+	if ($.isPlainObject(fnOK)) {
+		options = fnOK;
+		fnOK = null;
+	}
+	var ajaxOpt = $.extend({
 		dataType: "script",
 		cache: true,
+		success: fnOK,
 		url: url
-	});
+	}, options);
 
-	// Use $.ajax() since it is more flexible than $.getScript
-	// Return the jqXHR object so we can chain callbacks
-	return jQuery.ajax(options);
-};
+	return jQuery.ajax(ajaxOpt);
+	/*
+	var script= document.createElement('script');
+	script.type= 'text/javascript';
+	script.src= url;
+	// script.async = !sync; // 不是同步调用的意思，参考script标签的async属性和defer属性。
+	if (fnOK)
+		script.onload = fnOK;
+	document.body.appendChild(script);
+	*/
+}
 
 /**
 @fn setDateBox(jo, defDateFn?)
