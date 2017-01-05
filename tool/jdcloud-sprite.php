@@ -143,6 +143,7 @@ function handleOne($picName)
 	global $options;
 	global $inputInfo;
 	global $picArr;
+	global $maxWidth;
 
 	$imgInfo = getImageInfo($picName);
 	$ratio = $options["ratio"];
@@ -158,6 +159,9 @@ function handleOne($picName)
 		$key = 0;
 		if ($maxWidth < $w)
 			$maxWidth = $w;
+	}
+	if (!is_integer($key)) {
+		die1("*** bad @{$ratio}x image `$picName`: width={$imgInfo['width']}/$ratio=$key.\n");
 	}
 	if (! array_key_exists($key, $inputInfo)) {
 		$inputInfo[$key] = [
@@ -193,7 +197,7 @@ chdir(dirname($infile));
 
 // 第一遍扫描，去除注释，扫描图片并以 "{{n}}" 标记，下次扫描时将填上正确内容。
 $content = preg_replace_callback('/ \/\* (.|\n)*? \*\/\s* |
-	background.*? url\(\s*(.*?)\s*\).*?;
+	background.*? url\([ \'"]*(.*?)[ \'"]*\).*?;
 /x', function ($ms) {
 	if ($ms[1]) 
 		return "";

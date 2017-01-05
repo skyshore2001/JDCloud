@@ -12,11 +12,11 @@ clean:
 
 ###### sprite 
 
-sprite: ../server/m2/icon.out.css
+sprite: ../server/icon.out.css
 
-../server/m2/icon.out.css: ../server/m2/icon.css
+../server/icon.out.css: ../server/icon.css
 	php jdcloud-sprite.php $< -2x -group -sprite icon/icon@2x.png
 
 clean-sprite:
-	-rm -rf ../server/m2/icon.out.css ../server/m2/icon/icon@2x-*.png
+	-rm -rf ../server/icon.out.css ../server/icon/icon@2x-*.png
 
