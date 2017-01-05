@@ -231,53 +231,56 @@ function setFormData(jo, data, opt)
 
 /**
 @fn loadScript(url, fnOK?, ajaxOpt?)
-@alias $.getScriptWithCache
 
 @param fnOK 加载成功后的回调函数
-@param options 传递给$.ajax的额外选项。
-@return deferred 与$.ajax返回值相同。
+@param ajaxOpt 传递给$.ajax的额外选项。
 
-动态加载一个script. 如果曾经加载过, 可以重用cache.
+默认未指定ajaxOpt时，简单地使用添加script标签机制异步加载。如果曾经加载过，可以重用cache。
 
-如果想禁用cache，可以用：
+如果指定ajaxOpt，且非跨域，则通过ajax去加载，可以支持同步调用。如果是跨域，仍通过script标签方式加载，注意加载完成后会自动删除script标签。
+
+常见用法：
+
+- 动态加载一个script，异步执行其中内容：
+
+		loadScript("1.js", onload); // onload中可使用1.js中定义的内容
+		loadScript("http://otherserver/path/1.js"); // 跨域加载
+
+- 加载并立即执行一个script:
+
+		loadScript("1.js", {async: false});
+		// 可立即使用1.js中定义的内容
+
+如果要动态加载script，且使用后删除标签（里面定义的函数会仍然保留），建议直接使用`$.getScript`，它等同于：
 
 	loadScript("1.js", {cache: false});
 
-loadScript可以用于同步调用：
-
-	loadScript("1.js", {async: false});
-	// 这时可立即使用1.js中定义的内容
-
-注意：
-
-- 在跨域调用时，同步调用无效，无法立即使用js中定义的内容。其内部机制是创建一个script标签来加载。
-- jQuery提供的$.getScript函数不做缓存(仅当跨域时才使用Script标签方法加载,这时可用缓存)。
-- $.getScriptWithCache仅用于兼容旧代码，不建议使用。
 */
-$.getScriptWithCache = loadScript;
 function loadScript(url, fnOK, options)
 {
 	if ($.isPlainObject(fnOK)) {
 		options = fnOK;
 		fnOK = null;
 	}
-	var ajaxOpt = $.extend({
-		dataType: "script",
-		cache: true,
-		success: fnOK,
-		url: url
-	}, options);
+	if (options) {
+		var ajaxOpt = $.extend({
+			dataType: "script",
+			cache: true,
+			success: fnOK,
+			url: url
+		}, options);
 
-	return jQuery.ajax(ajaxOpt);
-	/*
+		jQuery.ajax(ajaxOpt);
+		return;
+	}
+
 	var script= document.createElement('script');
 	script.type= 'text/javascript';
 	script.src= url;
 	// script.async = !sync; // 不是同步调用的意思，参考script标签的async属性和defer属性。
 	if (fnOK)
 		script.onload = fnOK;
-	document.body.appendChild(script);
-	*/
+	document.head.appendChild(script);
 }
 
 /**
@@ -3599,7 +3602,7 @@ function initClient(param)
 			if (e.js) {
 				// "plugin/{pluginName}/{plugin}.js"
 				var js = m_opt.pluginFolder + '/' + k + '/' + e.js;
-				loadScript(js, null, true);
+				loadScript(js, {async: true});
 			}
 		});
 	});
