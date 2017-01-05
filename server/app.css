@@ -61,45 +61,30 @@ select.right {
 
 /* 适合 16x16 列表项或菜单项 */
 .mui-menu .icon {
-	width: 16px;
-	height: 16px;
 	margin: 2px 12px 0px -5px;
-	background-size: 16px;
 }
 
 .weui_cell .icon {
-	width: 16px;
-	height: 16px;
 	margin: 2px 12px 2px 5px;
-	background-size: 16px;
 }
 
 .mui-navbar .icon {
-	width: 16px;
-	height: 16px;
 	position: relative;
 	left: -5px;
 	top: 2px;
-	background-size: 16px;
 }
 
 /* 适合 24x24 底部导航 */
 #footer .icon {
-	width: 24px;
-	height: 24px;
 	position: relative;
 	left: -5px;
 	top: 5px;
-	background-size: 24px;
 }
 
-/* 标题栏左右侧两个图标，一般是返回和菜单。*/
+/* 标题栏左右侧两个图标，一般是返回和菜单。适合16x16 */
 .hd > .icon {
-	width: 16px;
-	height: 16px;
 	margin: 10px;
 	position: absolute;
-	background-size: 16px;
 }
 .hd > .icon:not(:first-of-type) {
 	right: 0;
