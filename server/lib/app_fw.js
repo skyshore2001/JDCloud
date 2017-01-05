@@ -1572,8 +1572,8 @@ ani:: String. 动画效果。设置为"none"禁用动画。
 		if (self.activePage) {
 			var jpage = self.activePage;
 			var H = self.container.height();
-			var hd = jpage.find(">.hd").height() || 0;
-			var ft = jpage.find(">.ft").height() || 0;
+			var hd = jpage.find(">.hd").css("display") != "none"? jpage.find(">.hd").height() : 0;
+			var ft = jpage.find(">.ft").css("display") != "none"? jpage.find(">.ft").height() : 0;
 			jpage.height(H);
 			jpage.find(">.bd").css({
 				top: hd,
