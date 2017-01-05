@@ -122,10 +122,22 @@ function getImageInfo($file)
 		die1("*** unknown image info: {$info}\n");
 	}
 	$ret = [
-		"width" => (int)$ms[0],
-		"height" => (int)$ms[1]
+		"width" => (int)$ms[1],
+		"height" => (int)$ms[2]
 	];
 	return $ret;
+}
+
+// return: new pic filename
+function fixImage($file, $w, $h)
+{
+	$file1 = preg_replace('/(?=\.\w+$)/', '-fix', $file);
+	# convert ./icon/16/icon-phone.png -extent 38x34 ./icon/16/icon-phone.png
+	$cmd = "convert $file -extent {$w}x{$h} $file1";
+	system($cmd, $rv);
+	if ($rv != 0)
+		die1("*** fail to fix image: $cmd\n");
+	return $file1;
 }
 
 function getSpriteFilename($width)
@@ -143,11 +155,18 @@ function handleOne($picName)
 	global $options;
 	global $inputInfo;
 	global $picArr;
+	global $maxWidth;
 
 	$imgInfo = getImageInfo($picName);
 	$ratio = $options["ratio"];
 	$w = $imgInfo["width"] / $ratio;
 	$h = $imgInfo["height"] / $ratio;
+	if (!is_integer($w) || !is_integer($h)) {
+		$w = ceil($w);
+		$h = ceil($h);
+		print("!!! fix @{$ratio}x image `$picName`: {$imgInfo['width']}x{$imgInfo['height']}, apply radio $ratio: {$w}x{$h}.\n");
+		$picName = fixImage($picName, $w*$ratio, $h*$ratio);
+	}
 
 	// 按宽度分组
 	$key = null;
@@ -171,13 +190,15 @@ function handleOne($picName)
 		"file" => $picName,
 		"width" => $w,
 		"height" => $h,
+		"orgW" => $imgInfo["width"],
+		"orgH" => $imgInfo["height"],
 		"x" => $e["x"],
 		"y" => $e["y"]
 	];
 	$e["pics"][] = $pic;
 	$picArr[] = $pic;
 
-	$e["x"] -= $w;
+	$e["x"] = 0;
 	$e["y"] -= $h;
 	unset($e);
 }
@@ -193,7 +214,7 @@ chdir(dirname($infile));
 
 // 第一遍扫描，去除注释，扫描图片并以 "{{n}}" 标记，下次扫描时将填上正确内容。
 $content = preg_replace_callback('/ \/\* (.|\n)*? \*\/\s* |
-	background.*? url\(\s*(.*?)\s*\).*?;
+	background.*? url\([ \'"]*(.*?)[ \'"]*\).*?;
 /x', function ($ms) {
 	if ($ms[1]) 
 		return "";
@@ -236,7 +257,11 @@ $content = preg_replace_callback('/{{(\d+)}}/', function ($ms) {
 		$w = $maxWidth;
 		$sprite = getSpriteFilename(0);
 	}
-	$outStr = "background-image: url({$sprite}); background-size: {$w}px !important; background-position: 0 {$pic['y']}px !important;";
+	$cmt = '';
+	if ($options["ratio"] != 1) {
+		$cmt = "/* {$pic['orgW']}x{$pic['orgH']} */";
+	}
+	$outStr = "background-image: url({$sprite}); background-size: {$w}px !important; background-position: {$pic['x']}px {$pic['y']}px !important; width: {$pic['width']}px; height: {$pic['height']}px; $cmt";
 	return $outStr;
 }, $content);
 
