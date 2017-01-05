@@ -1,10 +1,15 @@
 // ====== global and defines {{{
 /*
-如果服务端使用筋斗云框架，可定义 BASE_URL 指向 api.php所在URL目录
-否则应重写 MUI.callSvrExt
+如果服务端接口兼容业务查询协议(BQP)，可定义 MUI.options.serverUrl 指向服务端接口地址。
+否则应定义MUI.callSvrExt适配接口。
 */
-var BASE_URL = "../jdcloud/";
+$.extend(MUI.options, {
+	serverUrl: "../jdcloud/api.php"
+	// serverUrlAc: "ac"
+});
 
+// 模拟接口返回数据
+loadScript("mockdata.js", {async: false});
 //}}}
 
 // ====== app fw {{{
