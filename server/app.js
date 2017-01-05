@@ -4,12 +4,12 @@
 否则应定义MUI.callSvrExt适配接口。
 */
 $.extend(MUI.options, {
-	serverUrl: "../api.php"
+	serverUrl: "../jdcloud/api.php"
 	// serverUrlAc: "ac"
 });
 
 // 模拟接口返回数据
-// loadScript("mockdata.js", {async: false});
+loadScript("mockdata.js", {async: false});
 //}}}
 
 // ====== app fw {{{
