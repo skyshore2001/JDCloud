@@ -3778,32 +3778,36 @@ function formatField(obj)
 本函数参数如下：
 
 @param container 容器，它的高度应该是限定的，因而当内部内容过长时才可出现滚动条
-@param opt {onLoadItem, autoLoadMore?=true, threshold?=180, onHint?}
+@param opt {onLoadItem, autoLoadMore?=true, threshold?=180, onHint?, onPull?}
 
-@param onLoadItem function(isRefresh)
+@param opt.onLoadItem function(isRefresh)
 
 在合适的时机，它调用 onLoadItem(true) 来刷新列表，调用 onLoadItem(false) 来加载列表的下一页。在该回调中this为container对象（即容器）。实现该函数时应当自行管理当前的页号(pagekey)
 
-@param autoLoadMore 当滑动到页面下方时（距离底部TRIGGER_AUTOLOAD=30px以内）自动加载更多项目。
+@param opt.autoLoadMore 当滑动到页面下方时（距离底部TRIGGER_AUTOLOAD=30px以内）自动加载更多项目。
 
 @param threshold 像素值。
 
 手指最少下划或上划这些像素后才会触发实际加载动作。
 
-@param onHint function(ac, dy, threshold)
+@param opt.onHint function(ac, dy, threshold)
 
 	ac  动作。"D"表示下拉(down), "U"表示上拉(up), 为null时应清除提示效果.
 	dy,threshold  用户移动偏移及临界值。dy>threshold时，认为触发加载动作。
 
 提供提示用户刷新或加载的动画效果. 缺省实现是下拉或上拉时显示提示信息。
 
-@param onHintText function(ac, uptoThreshold)
+@param opt.onHintText function(ac, uptoThreshold)
 
 修改用户下拉/上拉时的提示信息。仅当未设置onHint时有效。onHint会生成默认提示，如果onHintText返回非空，则以返回内容替代默认内容。
 内容可以是一个html字符串，所以可以加各种格式。
 
 	ac:: String. 当前动作，"D"或"U".
 	uptoThreshold:: Boolean. 是否达到阈值
+
+@param opt.onPull function(ev)
+
+如果返回false，则取消上拉加载或下拉刷新行为，采用系统默认行为。
 
 */
 function initPullList(container, opt)
@@ -3904,6 +3908,11 @@ function initPullList(container, opt)
 
 	function touchStart(ev)
 	{
+		if (opt_.onPull && opt_.onPull(ev) === false) {
+			ev.cancelPull_ = true;
+			return;
+		}
+
 		var p = getPos(ev);
 		touchev_ = {
 			ac: null,
@@ -3930,6 +3939,8 @@ function initPullList(container, opt)
 	{
 		mouseMoved_ = false;
 		touchStart(ev);
+		if (ev.cancelPull_ === true)
+			return;
 		// setCapture
 		window.addEventListener("mousemove", mouseMove, true);
 		window.addEventListener("mouseup", mouseUp, true);
@@ -4261,10 +4272,10 @@ navRef是否为空的区别是，如果非空，则表示listRef是一组互斥�
 
 ## 参数说明
 
-@param opt {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list", onBeforeLoad?, onLoad?, onGetData?}
+@param opt {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list", onBeforeLoad?, onLoad?, onGetData?, canPullDown?=true}
 @param opt 分页相关 { pageszName?="_pagesz", pagekeyName?="_pagekey" }
 
-@param onGetQueryParam Function(jlst, queryParam/o)
+@param opt.onGetQueryParam Function(jlst, queryParam/o)
 
 queryParam: {ac?, res?, cond?, ...}
 
@@ -4276,7 +4287,7 @@ queryParam: {ac?, res?, cond?, ...}
 
 此外，框架将自动管理 queryParam._pagekey/_pagesz 参数。
 
-@param onAddItem (jlst, itemData, param)
+@param opt.onAddItem (jlst, itemData, param)
 
 param={idx, arr, isFirstPage}
 
@@ -4287,26 +4298,27 @@ param={idx, arr, isFirstPage}
 
 这里无法判断是否最后一页（可在onLoad回调中判断），因为有可能最后一页为空，这时无法回调onAddItem.
 
-@param onNoItem (jlst)
+@param opt.onNoItem (jlst)
 
 当没有任何数据时，可以插入提示信息。
 
-@param pageItf - page interface {refresh?/io}
+@param opt.pageItf - page interface {refresh?/io}
 
 在订单页面(PageOrder)修改订单后，如果想进入列表页面(PageOrders)时自动刷新所有列表，可以设置 PageOrders.refresh = true。
 设置opt.pageItf=PageOrders, 框架可自动检查和管理refresh变量。
 
-@param navRef,listRef  指定navbar与list，可以是选择器，也可以是jQuery对象；或是一组button与一组div，一次显示一个div；或是navRef为空，而listRef为一个或多个不相关联的list.
+@param opt.navRef,opt.listRef  指定navbar与list，可以是选择器，也可以是jQuery对象；或是一组button与一组div，一次显示一个div；或是navRef为空，而listRef为一个或多个不相关联的list.
 
-@param onBeforeLoad(jlst, isFirstPage)->Boolean  如果返回false, 可取消load动作。参数isFirstPage=true表示是分页中的第一页，即刚刚加载数据。
-@param onLoad(jlst, isLastPage)  参数isLastPage=true表示是分页中的最后一页, 即全部数据已加载完。
+@param opt.onBeforeLoad(jlst, isFirstPage)->Boolean  如果返回false, 可取消load动作。参数isFirstPage=true表示是分页中的第一页，即刚刚加载数据。
+@param opt.onLoad(jlst, isLastPage)  参数isLastPage=true表示是分页中的最后一页, 即全部数据已加载完。
 
-@param onGetData(data, pagesz, pagekey?) 每次请求获取到数据后回调。pagesz为请求时的页大小，pagekey为页码（首次为null）
+@param opt.onGetData(data, pagesz, pagekey?) 每次请求获取到数据后回调。pagesz为请求时的页大小，pagekey为页码（首次为null）
 
-@return PageListInterface={refresh, markRefresh}
+@return PageListInterface={refresh, markRefresh, loadMore}
 
-refresh: Function(), 刷新当前列表
-markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 下次浏览该列表时刷新。
+- refresh: Function(), 刷新当前列表
+- markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 下次浏览该列表时刷新。
+- loadMore: Function(), 加载下一页数据
 
 ## css类
 
@@ -4456,6 +4468,60 @@ markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 
 		<div id="lst2"></div>
 	</div>
 
+## 禁止下拉和上拉行为
+
+例：在多页列表中，有一些页只做静态展示使用，不需要上拉或下拉：
+
+	<div mui-initfn="initPageOrders" mui-script="orders.js">
+		<div class="hd">
+			<h2>订单列表</h2>
+			<div class="mui-navbar">
+				<a href="javascript:;" class="active" mui-linkto="#lst1">待服务</a>
+				<a href="javascript:;" mui-linkto="#lst2">已完成</a>
+				<a href="javascript:;" mui-linkto="#lst3">普通页</a>
+			</div>
+		</div>
+
+		<div class="bd">
+			<div id="lst1" class="p-list active" data-cond="status='PA'"></div>
+			<div id="lst2" class="p-list" data-cond="status='RE'"></div>
+			<div id="lst3" class="mui-noPull">
+				<p>本页面没有下拉加载或上拉刷新功能</p>
+			</div>
+		</div>
+	</div>
+
+例子中使用了类"mui-noPull"来标识一个TAB页不是列表页，无需分页操作。
+
+@key .mui-noPull 如果一个列表页项的class中指定了此项，则显示该列表页时，不允许下拉。
+
+还可以通过设置onPull选项来灵活设置，例：
+
+	var listItf = initPageList(jpage, ...,
+		onPull(ev, jlst) {
+			if (jlst.attr("id") == "lst3")
+				return false;
+		}
+	);
+
+@param opt.onPull function(ev, jlst)
+
+jlst:: 当前活动页。函数如果返回false，则取消所有上拉加载或下拉刷新行为，使用系统默认行为。
+
+## 仅自动加载，禁止下拉刷新行为
+
+有时不想为列表容器指定固定高度，而是随着列表增长而自动向下滚动，在滚动到底时自动加载下一页。
+这时可禁止下拉刷新行为：
+
+	var listItf = initPageList(jpage, 
+		...,
+		canPullDown: false,
+	);
+
+@param opt.canPullDown?=true  是否允许下拉刷新
+
+设置为false时，当列表到底部时，可以自动加载下一页，但没有下拉刷新行为，这时页面容器也不需要确定高度。
+
  */
 window.initNavbarAndList = initPageList;
 function initPageList(jpage, opt)
@@ -4465,6 +4531,7 @@ function initPageList(jpage, opt)
 		listRef: ">.bd .p-list",
 		pageszName: "_pagesz",
 		pagekeyName: "_pagekey",
+		canPullDown: true,
 	}, opt);
 	var jallList_ = opt_.listRef instanceof jQuery? opt_.listRef: jpage.find(opt_.listRef);
 	var jbtns_ = opt_.navRef instanceof jQuery? opt_.navRef: jpage.find(opt_.navRef);
@@ -4518,16 +4585,33 @@ function initPageList(jpage, opt)
 			});
 		});
 
-		var pullListOpt = {
-			onLoadItem: showOrderList,
-			//onHint: $.noop,
-			onHintText: onHintText,
-		};
+		if (opt_.canPullDown) {
+			var pullListOpt = {
+				onLoadItem: showOrderList,
+				//onHint: $.noop,
+				onHintText: onHintText,
+				onPull: function (ev) {
+					var jlst = getActiveList();
+					if (jlst.is(".mui-noPull") || 
+						(opt_.onPull && opt_.onPull(ev, jlst) === false)) {
+						return false;
+					}
+				}
+			};
 
-		jallList_.parent().each(function () {
-			var container = this;
-			initPullList(container, pullListOpt);
-		});
+			jallList_.parent().each(function () {
+				var container = this;
+				initPullList(container, pullListOpt);
+			});
+		}
+		else {
+			jallList_.parent().scroll(function () {
+				var container = this;
+				if (container.scroll / (container.scrollHeight - container.clientHeight) >= 0.95) {
+					loadMore();
+				}
+			});
+		}
 
 		// 如果调用init时页面已经显示，则补充调用一次。
 		if (MUI.activePage && MUI.activePage.attr("id") == jpage.attr("id")) {
@@ -4574,6 +4658,8 @@ function initPageList(jpage, opt)
 		// nextkey=null: 新开始或刷新
 		// nextkey=-1: 列表完成
 		var jlst = getActiveList();
+		if (jlst.is(".mui-noPull"))
+			return;
 		if (jlst.size() == 0)
 			return;
 		var nextkey = jlst.data("nextkey_");
@@ -4686,6 +4772,12 @@ function initPageList(jpage, opt)
 		showOrderList(true, false);
 	}
 
+	function loadMore()
+	{
+		// (isRefresh?=false, skipIfLoaded?=false)
+		showOrderList(false);
+	}
+
 	function markRefresh(jlst)
 	{
 		if (jlst)
@@ -4696,7 +4788,8 @@ function initPageList(jpage, opt)
 
 	var itf = {
 		refresh: refresh,
-		markRefresh: markRefresh
+		markRefresh: markRefresh,
+		loadMore: loadMore,
 	};
 	return itf;
 }
