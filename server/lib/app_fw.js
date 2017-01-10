@@ -2736,6 +2736,7 @@ callSvr扩展示例：
 			fn = params;
 			params = null;
 		}
+		assert(ac != null, "*** bad param `ac`");
 
 		var ext = null;
 		var ac0 = ac;
@@ -2774,8 +2775,8 @@ callSvr扩展示例：
 			console.log(callType + " " + ac0);
 			return callSvrMock({
 				data: self.mockData[ac0],
-				param: params,
-				postParam: postParams,
+				param: params || {},
+				postParam: postParams || {},
 				fn: fn,
 				ctx: ctx,
 				isSyncCall: isSyncCall
@@ -4096,7 +4097,7 @@ function initPullList(container, opt)
 				opt_.onLoadItem.call(cont_, true);
 			}
 			else if (ac == "U") {
-				console.log("loaditem");
+				console.log("load more");
 				opt_.onLoadItem.call(cont_, false);
 			}
 		}
@@ -4272,7 +4273,7 @@ navRef是否为空的区别是，如果非空，则表示listRef是一组互斥�
 
 ## 参数说明
 
-@param opt {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list", onBeforeLoad?, onLoad?, onGetData?, canPullDown?=true}
+@param opt {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list", onBeforeLoad?, onLoad?, onGetData?, canPullDown?=true, onRemoveAll?}
 @param opt 分页相关 { pageszName?="_pagesz", pagekeyName?="_pagekey" }
 
 @param opt.onGetQueryParam Function(jlst, queryParam/o)
@@ -4313,6 +4314,8 @@ param={idx, arr, isFirstPage}
 @param opt.onLoad(jlst, isLastPage)  参数isLastPage=true表示是分页中的最后一页, 即全部数据已加载完。
 
 @param opt.onGetData(data, pagesz, pagekey?) 每次请求获取到数据后回调。pagesz为请求时的页大小，pagekey为页码（首次为null）
+
+@param opt.onRemoveAll(jlst) 清空列表操作，默认为 jlst.empty()
 
 @return PageListInterface={refresh, markRefresh, loadMore}
 
@@ -4532,6 +4535,9 @@ function initPageList(jpage, opt)
 		pageszName: "_pagesz",
 		pagekeyName: "_pagekey",
 		canPullDown: true,
+		onRemoveAll: function (jlst) {
+			jlst.empty();
+		}
 	}, opt);
 	var jallList_ = opt_.listRef instanceof jQuery? opt_.listRef: jpage.find(opt_.listRef);
 	var jbtns_ = opt_.navRef instanceof jQuery? opt_.navRef: jpage.find(opt_.navRef);
@@ -4607,7 +4613,9 @@ function initPageList(jpage, opt)
 		else {
 			jallList_.parent().scroll(function () {
 				var container = this;
-				if (container.scroll / (container.scrollHeight - container.clientHeight) >= 0.95) {
+				//var distanceToBottom = cont_.scrollHeight - cont_.clientHeight - cont_.scrollTop;
+				if (! busy_ && container.scrollTop / (container.scrollHeight - container.clientHeight) >= 0.95) {
+					console.log("load more");
 					loadMore();
 				}
 			});
@@ -4667,7 +4675,7 @@ function initPageList(jpage, opt)
 			nextkey = null;
 		}
 		if (nextkey == null) {
-			jlst.empty();
+			opt_.onRemoveAll(jlst); // jlst.empty();
 		}
 		else if (nextkey === -1)
 			return;
@@ -4723,6 +4731,7 @@ function initPageList(jpage, opt)
 		}
 		busy_ = true;
 		var ac = queryParam.ac;
+		assert(ac != null, "*** queryParam `ac` is not defined");
 		delete queryParam.ac;
 		callSvr(ac, queryParam, api_OrdrQuery);
 
