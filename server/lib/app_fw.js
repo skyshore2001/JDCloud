@@ -1422,22 +1422,31 @@ function CPageManager(opt)
 	}
 
 /**
-@fn MUI.unloadPage(pageId?)
+@fn MUI.unloadPage(pageId/pageRef?)
 
 @param pageId 如未指定，表示当前页。
 
 删除一个页面。
 */
 	self.unloadPage = unloadPage;
-	function unloadPage(pageId)
+	function unloadPage(pageRef)
 	{
 		var jo = null;
-		if (pageId == null) {
+		var pageId = null;
+		if (pageRef == null) {
 			jo = self.activePage;
 			pageId = jo.attr("id");
+			pageRef = "#" + pageId;
 		}
 		else {
-			jo = $("#" + pageId);
+			if (pageRef[0] == "#") {
+				pageId = pageRef.substr(1);
+			}
+			else {
+				pageId = pageRef;
+				pageRef = "#" + pageId;
+			}
+			jo = $(pageRef);
 		}
 		if (jo.find("#footer").size() > 0)
 			jo.find("#footer").appendTo(m_jstash);
@@ -1446,7 +1455,7 @@ function CPageManager(opt)
 	}
 
 /**
-@fn MUI.reloadPage(pageId?)
+@fn MUI.reloadPage(pageId/pageRef?)
 
 @param pageId 如未指定，表示当前页。
 
@@ -1459,7 +1468,7 @@ function CPageManager(opt)
 			pageId = self.activePage.attr("id");
 		unloadPage(pageId);
 		m_lastPageRef = null; // 防止showPage_中阻止运行
-		showPage_("#"+pageId);
+		showPage_(pageId);
 	}
 
 /**
@@ -2220,7 +2229,7 @@ allow throw("abort") as abort behavior.
 			m_tmBusy = new Date();
 		}
 		IsBusy = 1;
-		if (ctx == null)
+		if (ctx == null || ctx.isMock)
 			++ m_manualBusy;
 		// 延迟执行以防止在page show时被自动隐藏
 		//delayDo(function () {
@@ -2243,7 +2252,7 @@ allow throw("abort") as abort behavior.
 	window.leaveWaiting = self.leaveWaiting = leaveWaiting;
 	function leaveWaiting(ctx)
 	{
-		if (ctx == null)
+		if (ctx == null || ctx.isMock)
 		{
 			if (-- m_manualBusy < 0)
 				m_manualBusy = 0;
@@ -2759,7 +2768,7 @@ callSvr扩展示例：
 		}
 
 		var url = makeUrl(ac, params);
-		var ctx = {ac: ac, tm: new Date()};
+		var ctx = {ac: ac, tm: new Date(), isMock: true};
 		if (userOptions && userOptions.noLoadingImg)
 			ctx.noLoadingImg = 1;
 		if (ext) {
@@ -4687,7 +4696,7 @@ function initPageList(jpage, opt)
 			var tm = jlst.data("lastUpdateTm_");
 			if (tm && new Date() - tm <= 5000)
 			{
-				console.log('!!! pulldown too fast');
+				console.log('!!! ignore duplicated call');
 				return;
 			}
 			// 5s后busy_标志还未清除，则可能是出问题了，允许不顾busy_标志直接进入。
