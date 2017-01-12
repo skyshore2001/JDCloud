@@ -267,7 +267,11 @@ function loadScript(url, fnOK, options)
 			dataType: "script",
 			cache: true,
 			success: fnOK,
-			url: url
+			url: url,
+			error: function (xhr, textStatus, err) {
+				console.log("loadScript fails for " + url);
+				console.log(err);
+			}
 		}, options);
 
 		jQuery.ajax(ajaxOpt);
