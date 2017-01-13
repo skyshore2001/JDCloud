@@ -239,6 +239,8 @@ function setFormData(jo, data, opt)
 
 如果指定ajaxOpt，且非跨域，则通过ajax去加载，可以支持同步调用。如果是跨域，仍通过script标签方式加载，注意加载完成后会自动删除script标签。
 
+返回defered对象(与$.ajax类似)，可以用 dfd.then() / dfd.fail() 异步处理。
+
 常见用法：
 
 - 动态加载一个script，异步执行其中内容：
@@ -269,22 +271,30 @@ function loadScript(url, fnOK, options)
 			success: fnOK,
 			url: url,
 			error: function (xhr, textStatus, err) {
-				console.log("loadScript fails for " + url);
+				console.log("*** loadScript fails for " + url);
 				console.log(err);
 			}
 		}, options);
 
-		jQuery.ajax(ajaxOpt);
-		return;
+		return jQuery.ajax(ajaxOpt);
 	}
 
+	var dfd_ = $.Deferred();
 	var script= document.createElement('script');
 	script.type= 'text/javascript';
 	script.src= url;
 	// script.async = !sync; // 不是同步调用的意思，参考script标签的async属性和defer属性。
-	if (fnOK)
-		script.onload = fnOK;
+	script.onload = function () {
+		if (fnOK)
+			fnOK();
+		dfd_.resolve();
+	}
+	script.onerror = function () {
+		dfd_.reject();
+		console.log("*** loadScript fails for " + url);
+	}
 	document.head.appendChild(script);
+	return dfd_;
 }
 
 /**
@@ -1321,7 +1331,12 @@ function CPageManager(opt)
 					path = m_opt.pageFolder;
 				if (path != "")
 					val = path + "/" + val;
-				loadScript(val, initPage);
+				var dfd = loadScript(val, initPage);
+				dfd.fail(function () {
+					app_alert("加载失败: " + val);
+					leaveWaiting();
+					history.back();
+				});
 			}
 			else {
 				initPage();
@@ -1329,6 +1344,24 @@ function CPageManager(opt)
 
 			function initPage()
 			{
+				// 检测运营商js劫持，并自动恢复。
+				var fname = jpage.attr("mui-initfn");
+				if (fname && window[fname] == null) {
+					// 10s内重试
+					var failTry_ = jpage.data("failTry_");
+					var dt = new Date();
+					if (failTry_ == null) {
+						app_alert("逻辑页错误，或页面被移动运营商劫持! 正在重试...");
+						failTry_ = dt;
+						jpage.data("failTry_", failTry_);
+					}
+					if (dt - failTry_ < 10000)
+						setTimeout(initPage, 200);
+					else
+						console.log("逻辑页加载失败: " + jpage.attr("id"));
+					return;
+				}
+
 				callInitfn(jpage);
 				jpage.trigger("pagecreate");
 				changePage(jpage);
