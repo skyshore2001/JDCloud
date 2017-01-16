@@ -1728,8 +1728,32 @@ ani:: String. 动画效果。设置为"none"禁用动画。
 		// 如果有ft类，则不自动点击后active (#footer是特例)
 		if (jo.hasClass("ft") || jo.hasClass("noactive"))
 			return;
+
+		// 确保有且只有一个active
+		var ja = jo.find(">.active");
+		if (ja.size() == 0) {
+			ja = jo.find(">:first").addClass("active");
+		}
+		else if (ja.size() > 1) {
+			ja.filter(":not(:first)").removeClass("active");
+			ja = ja.filter(":first");
+		}
+
+		var jpage_ = null;
 		jo.find(">*").on('click', function () {
 			activateElem($(this));
+		})
+		// 确保mui-linkto指向对象active状态与navbar一致
+		.each (function () {
+			var ref = $(this).attr("mui-linkto");
+			if (ref) {
+				if (jpage_ == null)
+					jpage = jo.closest(".mui-page");
+				var active = $(this).hasClass("active");
+				var jlink = jpage.find(ref);
+				jlink.toggle(active);
+				jlink.toggleClass("active", active);
+			}
 		});
 	}
 
@@ -2868,7 +2892,6 @@ callSvr扩展示例：
 
 		function callSvrMock1() 
 		{
-			leaveWaiting();
 			if ($.isFunction(opt.data)) {
 				opt.data = opt.data(opt.param, opt.postParam);
 			}
@@ -4191,7 +4214,7 @@ function initPullList(container, opt)
 
 		<div class="bd">
 			<div id="lst1" class="p-list active" data-cond="status='PA'"></div>
-			<div id="lst2" class="p-list" data-cond="status='RE'" style="display:none"></div>
+			<div id="lst2" class="p-list" data-cond="status='RE'"></div>
 		</div>
 	</div>
 
@@ -4199,7 +4222,7 @@ function initPullList(container, opt)
 
 - navbar在header中，不随着滚动条移动而改变位置
 - 默认要显示的list应加上active类，否则自动取第一个显示列表。
-- mui-navbar在点击一项时，会在对应的div组件（通过被点击的<a>按钮上mui-linkto属性指定链接到哪个div）添加class="active"。
+- mui-navbar在点击一项时，会在对应的div组件（通过被点击的<a>按钮上mui-linkto属性指定链接到哪个div）添加class="active"。非active项会自动隐藏。
 
 js调用逻辑示例：
 
@@ -4247,7 +4270,7 @@ js调用逻辑示例：
 
 			<div class="p-panelHd">已完成</div>
 			<div class="p-panel">
-				<div id="lst2" class="p-list" style="display:none"></div>
+				<div id="lst2" class="p-list"></div>
 			</div>
 		</div>
 	</div>
@@ -4716,6 +4739,17 @@ function initPageList(jpage, opt)
 			return;
 		if (jlst.size() == 0)
 			return;
+
+		if (busy_) {
+			var tm = jlst.data("lastCallTm_");
+			if (tm && new Date() - tm <= 5000)
+			{
+				console.log('!!! ignore duplicated call');
+				return;
+			}
+			// 5s后busy_标志还未清除，则可能是出问题了，允许不顾busy_标志直接进入。
+		}
+
 		var nextkey = jlst.data("nextkey_");
 		if (isRefresh) {
 			nextkey = null;
@@ -4728,16 +4762,6 @@ function initPageList(jpage, opt)
 
 		if (skipIfLoaded && nextkey != null)
 			return;
-
-		if (busy_) {
-			var tm = jlst.data("lastUpdateTm_");
-			if (tm && new Date() - tm <= 5000)
-			{
-				console.log('!!! ignore duplicated call');
-				return;
-			}
-			// 5s后busy_标志还未清除，则可能是出问题了，允许不顾busy_标志直接进入。
-		}
 
 		var queryParam = evalAttr(jlst, "data-queryParam") || {};
 		$.each(["ac", "res", "cond", "orderby"], function () {
@@ -4775,6 +4799,7 @@ function initPageList(jpage, opt)
 		else {
 			jlst.data("lastUpdateTm_", new Date());
 		}
+		jlst.data("lastCallTm_", new Date());
 		busy_ = true;
 		var ac = queryParam.ac;
 		assert(ac != null, "*** queryParam `ac` is not defined");
