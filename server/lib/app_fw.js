@@ -637,7 +637,7 @@ var E_ABORT=-100;
 
 	function initPageOrder() 
 	{
-		var jpage = $(this);
+		var jpage = this;
 		jpage.on("pagebeforeshow", onBeforeShow);
 		jpage.on("pageshow", onShow);
 		jpage.on("pagehide", onHide);
@@ -656,6 +656,23 @@ var E_ABORT=-100;
 - 发出pagebeforeshow事件。
 - 动画完成后，发出pageshow事件。
 - 如果之前有其它页面在显示，则触发之前页面的pagehide事件。
+
+（v3.3）页面初始化函数可返回一个新的jpage对象，从而便于与vue等库整合，如：
+
+	function initPageOrder() 
+	{
+		// vue将this当作模板，创建新的DOM对象vm.$el.
+		var vm = new Vue({
+			el: this[0],
+			data: {},
+			method: {}
+		});
+
+		var jpage = $(vm.$el);
+		jpage.on("pagebeforeshow", onBeforeShow);
+		...
+		return jpage;
+	}
 
 @event pagecreate() DOM事件。this为当前页面jpage。
 @event pagebeforeshow() DOM事件。this为当前页面jpage。
@@ -1362,7 +1379,9 @@ function CPageManager(opt)
 					return;
 				}
 
-				callInitfn(jpage);
+				var ret = callInitfn(jpage);
+				if (ret instanceof jQuery)
+					jpage = ret;
 				jpage.trigger("pagecreate");
 				changePage(jpage);
 				leaveWaiting();
