@@ -7,6 +7,7 @@
 	// id = index +100
 	// status=CR-created/RE-received/CA-cancelled
 
+	MUI.options.mockDelay = 500; // 模拟调用时间，毫秒
 	MUI.mockData = {
 		"login": [0, user],
 		"logout": [0, "OK"],
