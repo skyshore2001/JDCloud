@@ -3414,9 +3414,32 @@ function isLoginPage(pageRef)
 	return true;
 }
 
+// page: pageRef/jpage/null
+function getPageRef(page)
+{
+	var pageRef = page;
+	if (page == null) {
+		if (self.activePage) {
+			pageRef = "#" + self.activePage.attr("id");
+		}
+		else {
+			// only before jquery mobile inits
+			// back to this page after login:
+			pageRef = location.hash || m_opt.homePage;
+		}
+	}
+	else if (page instanceof jQuery) {
+		pageRef = "#" + page.attr("id");
+	}
+	else if (page === "#" || page === "") {
+		pageRef = m_opt.homePage;
+	}
+	return pageRef;
+}
+
 /**
-@fn MUI.showLogin(jpage?)
-@param jpage 如果指定, 则登录成功后转向该页面; 否则转向登录前所在的页面.
+@fn MUI.showLogin(page?)
+@param page=pageRef/jpage 如果指定, 则登录成功后转向该页面; 否则转向登录前所在的页面.
 
 显示登录页. 注意: 登录页地址通过MUI.options.loginPage指定, 缺省为"#login".
 
@@ -3432,23 +3455,13 @@ function isLoginPage(pageRef)
 
 */
 self.showLogin = showLogin;
-function showLogin(jpage)
+function showLogin(page)
 {
-	var jcurPage = jpage || MUI.activePage;
-	// back to this page after login
-	var toPageHash;
-	if (jcurPage) {
-		toPageHash = "#" + jcurPage.attr("id");
-	}
-	else {
-		// only before jquery mobile inits
-		// back to this page after login:
-		toPageHash = location.hash || m_opt.homePage;
-	}
+	var pageRef = getPageRef(page);
 	m_onLoginOK = function () {
 		// 如果当前仍在login系列页面上，则跳到指定页面。这样可以在handleLogin中用MUI.showPage手工指定跳转页面。
 		if (MUI.activePage && isLoginPage(MUI.getToPageId()))
-			MUI.showPage(toPageHash);
+			MUI.showPage(pageRef);
 	}
 	MUI.showPage(m_opt.loginPage);
 }
