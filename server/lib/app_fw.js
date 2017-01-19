@@ -1193,7 +1193,8 @@ function CPageManager(opt)
 
 	// "#aaa" => {pageId: "aaa", pageFile: "{pageFolder}/aaa.html", templateRef: "#tpl_aaa"}
 	// "#xx/aaa.html" => {pageId: "aaa", pageFile: "xx/aaa.html"}
-	// "#plugin1-page1" => {pageId: "plugin1-page1", pageFile: "../plugin/plugin1/m2/page/page1.html"}
+	// "#plugin1-page1" => 支持多级目录，如果plugin1不是一个插件：{pageId: "plugin1-page1", pageFile: "{pageFolder}/plugin1/page1.html"}
+	// "#plugin1-page1" => 如果plugin1是一个插件：{pageId: "plugin1-page1", pageFile: "{pluginFolder}/plugin1/m2/page/page1.html"}
 	function getPageInfo(pageRef)
 	{
 		var pageId = pageRef[0] == '#'? pageRef.substr(1): pageRef;
@@ -1205,7 +1206,7 @@ function CPageManager(opt)
 				var plugin = pageId.substr(0, p);
 				var pageId2 = pageId.substr(p+1);
 				if (Plugins.exists(plugin)) {
-					ret.pageFile = '../plugin/' + plugin + '/m2/page/' + pageId2 + '.html';
+					ret.pageFile = m_opt.pluginFolder + '/' + plugin + '/m2/page/' + pageId2 + '.html';
 				}
 			}
 			ret.templateRef = "#tpl_" + pageId;
@@ -1215,7 +1216,7 @@ function CPageManager(opt)
 			ret.pageId = pageId.match(/[^.\/]+(?=\.)/)[0];
 		}
 		if (ret.pageFile == null) 
-			ret.pageFile = m_opt.pageFolder + '/' + pageId + ".html";
+			ret.pageFile = m_opt.pageFolder + '/' + pageId.replace(/-/g, '/') + ".html";
 		return ret;
 	}
 	function showPage_(pageRef, opt)
