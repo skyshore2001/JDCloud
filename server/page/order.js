@@ -9,7 +9,10 @@ function initPageOrder()
 
 	// 设置下拉刷新
 	var pullListOpt = {
-		onLoadItem: showOrder,
+		onLoadItem: function (isRefresh) {
+			if (isRefresh)
+				showOrder();
+		}
 	};
 	initPullList(jpage.find(".bd")[0], pullListOpt);
 
@@ -19,7 +22,7 @@ function initPageOrder()
 		var jlstLog = $(".p-list-log", jpage);
 		jlstLog.empty();
 
-		callSvr("Ordr.get", {id: PageOrder.id}, api_OrdrGet);
+		callSvr("Ordr.get", {id: orderId_}, api_OrdrGet);
 
 		function api_OrdrGet(data)
 		{
@@ -55,9 +58,20 @@ function initPageOrder()
 
 	function onPageBeforeShow()
 	{
-		if (orderId_ == PageOrder.id)
+		var skip = false;
+		if (g_args.orderId) {
+			orderId_ = g_args.orderId;
+			delete g_args.orderId;
+		}
+		else if (PageOrder.id && orderId_ != PageOrder.id) {
+			orderId_ = PageOrder.id;
+		}
+		else {
+			skip = true;
+		}
+		if (skip)
 			return;
-		orderId_ = PageOrder.id;
+		MUI.setUrl("?orderId=" + orderId_);
 		showOrder();
 	}
 	//}}}
