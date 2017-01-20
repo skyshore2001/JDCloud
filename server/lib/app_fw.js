@@ -5392,4 +5392,29 @@ function initPageDetail(jpage, opt)
 }
 //}}}
 
+// ====== app fw toolkit {{{
+/**
+@fn hd_back(pageRef?)
+
+返回操作，类似history.back()，但当当前页是第一个页面（没有页面栈），则转向pageRef页。
+一般用于顶部返回按钮：
+
+	<div class="hd">
+		<a href="javascript:hd_back();" class="icon icon-back"></a>
+		<h2>个人信息</h2>
+	</div>
+
+如果该页当作入口页进入，则点击返回按钮可回首页。
+*/
+function hd_back(pageRef)
+{
+	if (MUI.m_pageStack.sp_ == 0) {
+		if (pageRef == null)
+			pageRef = MUI.options.homePage;
+		MUI.showPage(pageRef);
+		return;
+	}
+	history.back();
+}
+//}}}
 // vim: set foldmethod=marker:
