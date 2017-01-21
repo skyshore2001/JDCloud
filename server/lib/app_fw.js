@@ -239,6 +239,8 @@ function setFormData(jo, data, opt)
 
 如果指定ajaxOpt，且非跨域，则通过ajax去加载，可以支持同步调用。如果是跨域，仍通过script标签方式加载，注意加载完成后会自动删除script标签。
 
+返回defered对象(与$.ajax类似)，可以用 dfd.then() / dfd.fail() 异步处理。
+
 常见用法：
 
 - 动态加载一个script，异步执行其中内容：
@@ -267,20 +269,32 @@ function loadScript(url, fnOK, options)
 			dataType: "script",
 			cache: true,
 			success: fnOK,
-			url: url
+			url: url,
+			error: function (xhr, textStatus, err) {
+				console.log("*** loadScript fails for " + url);
+				console.log(err);
+			}
 		}, options);
 
-		jQuery.ajax(ajaxOpt);
-		return;
+		return jQuery.ajax(ajaxOpt);
 	}
 
+	var dfd_ = $.Deferred();
 	var script= document.createElement('script');
 	script.type= 'text/javascript';
 	script.src= url;
 	// script.async = !sync; // 不是同步调用的意思，参考script标签的async属性和defer属性。
-	if (fnOK)
-		script.onload = fnOK;
+	script.onload = function () {
+		if (fnOK)
+			fnOK();
+		dfd_.resolve();
+	}
+	script.onerror = function () {
+		dfd_.reject();
+		console.log("*** loadScript fails for " + url);
+	}
 	document.head.appendChild(script);
+	return dfd_;
 }
 
 /**
@@ -623,7 +637,7 @@ var E_ABORT=-100;
 
 	function initPageOrder() 
 	{
-		var jpage = $(this);
+		var jpage = this;
 		jpage.on("pagebeforeshow", onBeforeShow);
 		jpage.on("pageshow", onShow);
 		jpage.on("pagehide", onHide);
@@ -643,10 +657,27 @@ var E_ABORT=-100;
 - 动画完成后，发出pageshow事件。
 - 如果之前有其它页面在显示，则触发之前页面的pagehide事件。
 
-@event pagecreate() DOM事件。this为当前页面jpage。
-@event pagebeforeshow() DOM事件。this为当前页面jpage。
-@event pageshow()  DOM事件。this为当前页面jpage。
-@event pagehide() DOM事件。this为当前页面jpage。
+（v3.3）页面初始化函数可返回一个新的jpage对象，从而便于与vue等库整合，如：
+
+	function initPageOrder() 
+	{
+		// vue将this当作模板，创建新的DOM对象vm.$el.
+		var vm = new Vue({
+			el: this[0],
+			data: {},
+			method: {}
+		});
+
+		var jpage = $(vm.$el);
+		jpage.on("pagebeforeshow", onBeforeShow);
+		...
+		return jpage;
+	}
+
+@event pagecreate(ev) DOM事件。this为当前页面，习惯名为jpage。
+@event pagebeforeshow(ev, opt) DOM事件。this为当前页面。opt参数为`MUI.showPage(pageRef, opt?)`中的opt，如未指定则为`{}`
+@event pageshow(ev, opt)  DOM事件。this为当前页面。opt参数与pagebeforeshow事件的opt参数一样。
+@event pagehide(ev) DOM事件。this为当前页面。
 
 #### 逻辑页内嵌style
 
@@ -709,6 +740,61 @@ style将被插入到head标签中，并自动添加属性`mui-origin={pageId}`.
 		// js代码，将在逻辑页加载时执行
 		</__script__>
 	</script>
+
+#### 进入应用时动态显示初始逻辑页
+
+默认进入应用时的主页为 MUI.options.homePage. 如果要根据参数动态显示页面，应在muiInit事件中操作：
+
+	$(document).on("muiInit", myInit);
+
+	function myInit()
+	{
+		if (g_args.initPage) {
+			MUI.showPage(g_args.initPage);
+		}
+	}
+
+访问`http://server/app/?initPage=me`则默认访问页面"#me".
+
+@see muiInit
+
+#### 在showPage过程中再显示另一个逻辑页
+
+例如，进入页面后，发现如果未登录，则自动转向登录页：
+
+	function onPageBeforeShow(ev)
+	{
+		// 登录成功后一般会设置g_data.userInfo, 如果未设置，则当作未登录
+		if (g_data.userInfo == null) {
+			MUI.showLogin();
+			return;
+		}
+		// 显示该页面...
+	}
+
+在pagebeforeshow事件中做页面切换，框架保证不会产生闪烁，且在新页面上点返回按钮，不会返回到旧页面。
+
+除此之外如果多次调用showPage（包括在pageshow事件中调用），一般最终显示的是最后一次调用的页面，过程中可能产生闪烁，且可能会丢失一些pageshow/pagehide事件，应尽量避免。
+
+### 页面路由
+
+默认路由：
+
+- 一般只用一级目录：`http://server/app/index.html#order`对应`{pageFolder=page}/order.html`，一般为`page/order.html`
+- 也支持多级目录：`http://server/app/index.html#order-list`对应`page/order/list.html`
+- 与筋斗云后端框架一起使用时，支持插件目录：`http://server/app/index.html#order-list`在存在插件'order'时，对应`{pluginFolder=../plugin}/order/m2/page/list.html`，一般为`../plugin/order/m2/page/list.html`
+
+URL也可以显示为文件风格，比如在设置：
+
+	<base href="./" mui-showHash="no">
+
+之后，上面两个例子中，URL会显示为 `http://server/app/page/order.html` 和 `http://server/app/page/order/list.html`
+@see MUI.options.showHash
+
+特别地，还可以通过`MUI.setUrl(url)`或`MUI.showPage(pageRef, {url: url})`来定制URL，例如将订单id=100的逻辑页显示为RESTful风格：`http://server/app/order/100`
+@see MUI.setUrl
+
+为了刷新时仍能正常显示页面，应将页面设置为入口页，并在WEB服务器配置好URL重写规则。
 
 ## 服务端交互API
 
@@ -904,6 +990,14 @@ APP初始化成功后，回调该事件。如果deviceready事件未被回调，
 
 @param opt {homePage?="#home", pageFolder?="page"}
 
+页面跳转测试用例：
+
+- 使用MUI.showPage进行页面切换，如A->B->C，再通过浏览器返回、前进按钮查看跳转及切换动画是否正确
+- 在控制台调用history.back/forward/go是否能正常工作。或左右划动页面查看前进后退是否正确。
+- 在控制台调用location.hash="#xx"是否能正确切换页面。
+- MUI.popPageStack()是否能正常工作。
+- 在muiInit事件中调用MUI.showPage。
+- 在A页面的pagebeforeshow事件中调用MUI.showPage(B)，不会闪烁，且点返回时不应回到A页面
  */
 function CPageManager(opt)
 {
@@ -954,25 +1048,26 @@ function CPageManager(opt)
 
 	var m_jstash; // 页面暂存区; 首次加载页面后可用
 
-	// false: 来自浏览器前进后退操作，或直接输入hash值, 或调用history.back/forward/go操作
-	// true: 来自内部页面跳转(showPage)
-	var m_fromShowPage = false;
-
 	// null: 未知
 	// true: back操作;
 	// false: forward操作, 或进入新页面
 	var m_isback = null; // 在changePage之前设置，在changePage中清除为null
 
-	// 调用showPage_后，将要显示的页
+	// 调用showPage后，将要显示的页; 用于判断showPage过程中是否再次调用showPage.
 	var m_toPageId = null;
 	var m_lastPageRef = null;
+
+	var m_showHash = m_opt.showHash;
+	var m_curState = null; // 替代history.state, 因为有的浏览器不支持。
+
+	var m_pageUrlMap = null; // {pageRef => url}
 
 	// @class PageStack {{{
 	var m_fn_history_go = history.go;
 	var m_appId = Math.ceil(Math.random() *10000);
 	function PageStack()
 	{
-		// @var PageStack.stack_ - elem: {pageRef, isPoped?=0}
+		// @var PageStack.stack_ - elem: {pageRef, id, isPoped?=0}
 		this.stack_ = [];
 		// @var PageStack.sp_
 		this.sp_ = -1;
@@ -980,16 +1075,15 @@ function CPageManager(opt)
 		this.nextId_ = 1;
 	}
 	PageStack.prototype = {
-		// @fn PageStack.push(pageRef);
-		push: function (pageRef) {
+		// @fn PageStack.push(state={pageRef});
+		push: function (state) {
 			if (this.sp_ < this.stack_.length-1) {
 				this.stack_.splice(this.sp_+1);
 			}
-			var state = {pageRef: pageRef, id: this.nextId_, appId: m_appId};
+			state.id = this.nextId_;
 			++ this.nextId_;
 			this.stack_.push(state);
 			++ this.sp_;
-			history.replaceState(state, null);
 		},
 		// @fn PageStack.pop(n?=1); 
 		// n=0: 清除到首页; n>1: 清除指定页数
@@ -1044,7 +1138,7 @@ function CPageManager(opt)
 		findCurrentState: function () {
 			var found = false;
 			var sp = this.sp_;
-			var state = history.state;
+			var state = m_curState; //history.state;
 			for (var i=this.stack_.length-1; i>=0; --i) {
 				if (state.id == this.stack_[i].id)
 				{
@@ -1069,6 +1163,142 @@ function CPageManager(opt)
 	};
 	//}}}
 
+	function getHash()
+	{
+		//debugger;
+		if (m_curState)
+			return m_curState.pageRef;
+
+		if (location.hash == "")
+			return m_opt.homePage;
+		return location.hash;
+	}
+
+	// return pi=pageInfo={pageId, pageFile, templateRef?}
+	function setHash(pageRef, url)
+	{
+		/*
+m_curState.pageRef == pi.pageRef：history操作
+m_curState==null: 首次进入，或hash改变
+		 */
+		//debugger;
+		var pi = getPageInfo(pageRef);
+
+		// 首次进入使用location.search
+		if (m_pageUrlMap == null) {
+			m_pageUrlMap = {};
+			url = location.search;
+		}
+		if (url) {
+			m_pageUrlMap[pageRef] = url;
+		}
+		else {
+			url = m_pageUrlMap[pageRef];
+		}
+		if (m_showHash) {
+			if (url == null) {
+				url = pi.pageRef;
+			}
+			else if (url[0] == "?") {
+				url = url + pi.pageRef;
+			}
+		}
+		else {
+			if (url == null) {
+				url = pi.pageFile;
+			}
+			else if (url[0] == "?") {
+				url = pi.pageFile + url;
+			}
+		}
+
+		if (m_curState == null || m_curState.pageRef != pi.pageRef)
+		{
+			var newState = {pageRef: pi.pageRef, appId: m_appId, url: url};
+			self.m_pageStack.push(newState);
+			if (m_curState != null)
+				history.pushState(newState, null, url);
+			else
+				history.replaceState(newState, null, url);
+			m_curState = newState;
+		}
+		else if (m_curState.url != url) {
+			history.replaceState(m_curState, null, url);
+			m_curState.url = url;
+		}
+		return pi;
+	}
+
+/**
+@fn MUI.setUrl(url)
+
+设置当前地址栏显示的URL. 
+一般用于将应用程序内部参数显示到URL中，以便在刷新页面时仍然可显示相同的内容，或用于分享链接给别人。
+
+例如订单页的URL为`http://server/app/#order`，现在希望：
+
+- 要显示`id=100`的订单，在URL中显示`http://server/app/?orderId=100#order`
+- 刷新该URL或分享给别人，均能正确打开`id=100`的订单。
+
+示例：在逻辑页`order`的`pagebeforeshow`回调函数中，处理内部参数`opt`或URL参数`g_args`：
+
+	function initPageOrder()
+	{
+		var jpage = this;
+		var orderId_;
+		jpage.on("pagebeforeshow", onPageBeforeShow);
+
+		function onPageBeforeShow(ev, opt)
+		{
+			// 如果orderId_未变，不重新加载
+			var skip = false;
+			if (g_args.orderId) {
+				orderId_ = g_args.orderId;
+				// 只在初始进入时使用一次，用后即焚
+				delete g_args.orderId;
+			}
+			else if (opt.orderId) {
+				orderId_ = opt.orderId;
+			}
+			else {
+				skip = true;
+			}
+			if (! orderId_) { // 参数不合法时跳回主页。
+				MUI.showHome();
+				return;
+			}
+			if (skip)
+				return;
+			MUI.setUrl("?orderId=" + orderId_);
+			app_alert("show order " + orderId_);
+		}
+	}
+
+在例子中，`opt`为`MUI.showPage()`时指定的参数，如调用`MUI.showPage("#order", {orderId: 100});`时，`opt.orderId=100`.
+而`g_args`为全局URL参数，如打开 `http://server/app/index.html?orderId=100#order`时，`g_args.orderId=100`.
+
+注意逻辑页`#order`应允许作为入口页进入，否则刷新时会跳转回主页。可在index.js中的validateEntry参数中加上逻辑页：
+
+	MUI.validateEntry([
+		...,
+		"#order"
+	]);
+
+注意setUrl中以"?"开头，表示添加到URL参数中，保持URL主体部分不变。
+
+如果`MUI.options.showHash=false`，则`MUI.setUrl("?orderId=100")`会将URL设置为`http://server/app/page/order.html?orderId=100`.
+我们甚至可以设置RESTful风格的URL: `MUI.setUrl("order/100")` 会将URL设置为 `http://server/app/order/100`.
+
+在上面两个例子中，为了确保刷新URL时能正常显示，必须在Web服务器上配置URL重写规则，让它们都重定向到 `http://server/app/?orderId=100#order`.
+ */
+	self.setUrl = setUrl;
+	function setUrl(url)
+	{
+		if (m_curState == null)
+			return;
+		setHash(m_curState.pageRef, url);
+	}
+
 	function callInitfn(jo, paramArr)
 	{
 		var ret = jo.data("mui.init");
@@ -1091,11 +1321,6 @@ function CPageManager(opt)
 	// return: false表示忽略之后的处理
 	function handlePageStack(pageRef)
 	{
-		if (m_fromShowPage) {
-			m_fromShowPage = false;
-			return;
-		}
-
 		if (m_isback !== null)
 			return;
 
@@ -1108,7 +1333,7 @@ function CPageManager(opt)
 			});
 			return false;
 		}
-		m_isback = n <= 0;
+		m_isback = n < 0;
 	}
 
 	function initPageStack()
@@ -1160,13 +1385,17 @@ function CPageManager(opt)
 	initPageStack();
 	// }}}
 
-	// "#aaa" => {pageId: "aaa", pageFile: "{pageFolder}/aaa.html", templateRef: "#tpl_aaa"}
-	// "#xx/aaa.html" => {pageId: "aaa", pageFile: "xx/aaa.html"}
-	// "#plugin1-page1" => {pageId: "plugin1-page1", pageFile: "../plugin/plugin1/m2/page/page1.html"}
+	// "#"/"" => {pageId: "home", pageRef: "#home", pageFile: "{pageFolder}/home.html", templateRef: "#tpl_home"}
+	// "#aaa" => {pageId: "aaa", pageRef: "#aaa", pageFile: "{pageFolder}/aaa.html", templateRef: "#tpl_aaa"}
+	// "#xx/aaa.html" => {pageId: "aaa", pageRef: "#aaa", pageFile: "xx/aaa.html"}
+	// "#plugin1-page1" => 支持多级目录，如果plugin1不是一个插件：{pageId: "plugin1-page1", pageFile: "{pageFolder}/plugin1/page1.html"}
+	// "#plugin1-page1" => 如果plugin1是一个插件：{pageId: "plugin1-page1", pageFile: "{pluginFolder}/plugin1/m2/page/page1.html"}
 	function getPageInfo(pageRef)
 	{
+		if (pageRef == "#" || pageRef == "" || pageRef == null)
+			pageRef = m_opt.homePage;
 		var pageId = pageRef[0] == '#'? pageRef.substr(1): pageRef;
-		var ret = {pageId: pageId};
+		var ret = {pageId: pageId, pageRef: pageRef};
 		var p = pageId.lastIndexOf(".");
 		if (p == -1) {
 			p = pageId.lastIndexOf('-');
@@ -1174,7 +1403,7 @@ function CPageManager(opt)
 				var plugin = pageId.substr(0, p);
 				var pageId2 = pageId.substr(p+1);
 				if (Plugins.exists(plugin)) {
-					ret.pageFile = '../plugin/' + plugin + '/m2/page/' + pageId2 + '.html';
+					ret.pageFile = m_opt.pluginFolder + '/' + plugin + '/m2/page/' + pageId2 + '.html';
 				}
 			}
 			ret.templateRef = "#tpl_" + pageId;
@@ -1184,14 +1413,20 @@ function CPageManager(opt)
 			ret.pageId = pageId.match(/[^.\/]+(?=\.)/)[0];
 		}
 		if (ret.pageFile == null) 
-			ret.pageFile = m_opt.pageFolder + '/' + pageId + ".html";
+			ret.pageFile = m_opt.pageFolder + '/' + pageId.replace(/-/g, '/') + ".html";
 		return ret;
 	}
-	function showPage_(pageRef, opt)
+	function showPage(pageRef, opt)
 	{
-		var showPageOpt_ = $.extend({
-			ani: m_opt.ani
-		}, opt);
+		if (self.container == null)
+			return;
+
+		if (pageRef == null)
+			pageRef = getHash();
+		else if (pageRef == "#")
+			pageRef = m_opt.homePage;
+		else if (pageRef[0] != "#")
+			pageRef = "#" + pageRef; // 为了兼容showPage(pageId), 新代码不建议使用
 
 		// 避免hashchange重复调用
 		if (m_lastPageRef == pageRef)
@@ -1199,14 +1434,24 @@ function CPageManager(opt)
 			m_isback = null; // reset!
 			return;
 		}
+		if (m_curState == null || m_curState.appId != m_appId) {
+			m_isback = false; // 新页面
+			//self.m_pageStack.push(pageRef);
+		}
+
+		var showPageOpt_ = $.extend({
+			ani: m_opt.ani
+		}, opt);
+
 		var ret = handlePageStack(pageRef);
 		if (ret === false)
 			return;
-		location.hash = pageRef;
+
 		m_lastPageRef = pageRef;
 
+		var pi = setHash(pageRef, showPageOpt_.url);
+
 		// find in document
-		var pi = getPageInfo(pageRef);
 		var pageId = pi.pageId;
 		m_toPageId = pageId;
 		var jpage = self.container.find("#" + pageId + ".mui-page");
@@ -1317,7 +1562,12 @@ function CPageManager(opt)
 					path = m_opt.pageFolder;
 				if (path != "")
 					val = path + "/" + val;
-				loadScript(val, initPage);
+				var dfd = loadScript(val, initPage);
+				dfd.fail(function () {
+					app_alert("加载失败: " + val);
+					leaveWaiting();
+					history.back();
+				});
 			}
 			else {
 				initPage();
@@ -1325,7 +1575,27 @@ function CPageManager(opt)
 
 			function initPage()
 			{
-				callInitfn(jpage);
+				// 检测运营商js劫持，并自动恢复。
+				var fname = jpage.attr("mui-initfn");
+				if (fname && window[fname] == null) {
+					// 10s内重试
+					var failTry_ = jpage.data("failTry_");
+					var dt = new Date();
+					if (failTry_ == null) {
+						app_alert("逻辑页错误，或页面被移动运营商劫持! 正在重试...");
+						failTry_ = dt;
+						jpage.data("failTry_", failTry_);
+					}
+					if (dt - failTry_ < 10000)
+						setTimeout(initPage, 200);
+					else
+						console.log("逻辑页加载失败: " + jpage.attr("id"));
+					return;
+				}
+
+				var ret = callInitfn(jpage);
+				if (ret instanceof jQuery)
+					jpage = ret;
 				jpage.trigger("pagecreate");
 				changePage(jpage);
 				leaveWaiting();
@@ -1342,23 +1612,19 @@ function CPageManager(opt)
 			if (oldPage) {
 				self.prevPageId = oldPage.attr("id");
 			}
-			var toPageId = m_toPageId;
-			jpage.trigger("pagebeforeshow");
+			var toPageId = jpage.attr("id");
+			jpage.trigger("pagebeforeshow", [showPageOpt_]);
 			// 如果在pagebeforeshow中调用showPage显示其它页，则不显示当前页，避免页面闪烁。
 			if (toPageId != m_toPageId)
 			{
-				// NOTE: 如果toPageId与当前页面栈不一致，说明之前page还没入栈.
-				var doAdjustStack = self.m_pageStack.stack_[self.m_pageStack.sp_].pageRef != "#" + toPageId;
-				if (doAdjustStack) {
-					self.m_pageStack.push("#" + toPageId);
-				}
-				self.popPageStack(1);
-				// 调整栈后，新页面之后在hashchange中将无法入栈，故手工入栈。
-				// TODO: 如果在beforeShow中调用了多次showPage, 则仍有可能出故障。
-				if (doAdjustStack) {
-					self.m_pageStack.push("#" + m_toPageId);
-				}
-
+				// 类似于调用popPageStack(), 避免返回时再回到该页面
+				var pageRef = "#" + toPageId;
+				self.m_pageStack.walk(function (state) {
+					if (state.pageRef == pageRef) {
+						state.isPoped = true;
+						return false;
+					}
+				});
 				return;
 			}
 
@@ -1387,14 +1653,15 @@ function CPageManager(opt)
 			}
 			function onAnimationEnd()
 			{
-				jpage.trigger("pageshow");
-
 				if (enableAni) {
 					// NOTE: 如果不删除，动画效果将导致fixed position无效。
 					jpage.removeClass(slideInClass);
 // 					if (oldPage)
 // 						oldPage.removeClass("slideOut");
 				}
+				if (toPageId != m_toPageId)
+					return;
+				jpage.trigger("pageshow", [showPageOpt_]);
 				if (oldPage) {
 					oldPage.trigger("pagehide");
 					oldPage.hide();
@@ -1407,37 +1674,32 @@ function CPageManager(opt)
 		}
 	}
 
-	function applyHashChange()
-	{
-		var pageRef = location.hash;
-		if (pageRef == "") {
-			pageRef = m_opt.homePage;
-			location.hash = pageRef;
-		}
-		if (history.state == null || history.state.appId != m_appId) {
-			m_isback = false; // 新页面
-			self.m_pageStack.push(pageRef);
-		}
-		showPage_(pageRef);
-	}
-
 /**
-@fn MUI.unloadPage(pageId?)
+@fn MUI.unloadPage(pageRef?)
 
-@param pageId 如未指定，表示当前页。
+@param pageRef 如未指定，表示当前页。
 
 删除一个页面。
 */
 	self.unloadPage = unloadPage;
-	function unloadPage(pageId)
+	function unloadPage(pageRef)
 	{
 		var jo = null;
-		if (pageId == null) {
+		var pageId = null;
+		if (pageRef == null) {
 			jo = self.activePage;
 			pageId = jo.attr("id");
+			pageRef = "#" + pageId;
 		}
 		else {
-			jo = $("#" + pageId);
+			if (pageRef[0] == "#") {
+				pageId = pageRef.substr(1);
+			}
+			else {
+				pageId = pageRef;
+				pageRef = "#" + pageId;
+			}
+			jo = $(pageRef);
 		}
 		if (jo.find("#footer").size() > 0)
 			jo.find("#footer").appendTo(m_jstash);
@@ -1446,20 +1708,21 @@ function CPageManager(opt)
 	}
 
 /**
-@fn MUI.reloadPage(pageId?)
+@fn MUI.reloadPage(pageRef?, opt?)
 
-@param pageId 如未指定，表示当前页。
+@param pageRef 如未指定，表示当前页。
+@param opt 传递给MUI.showPage的opt参数。参考MUI.showPage.
 
-重新加载指定页面。不指定pageId时，重加载当前页。
+重新加载指定页面。不指定pageRef时，重加载当前页。
 */
 	self.reloadPage = reloadPage;
-	function reloadPage(pageId)
+	function reloadPage(pageRef, opt)
 	{
-		if (pageId == null)
-			pageId = self.activePage.attr("id");
-		unloadPage(pageId);
-		m_lastPageRef = null; // 防止showPage_中阻止运行
-		showPage_("#"+pageId);
+		if (pageRef == null)
+			pageRef = "#" + self.activePage.attr("id");
+		unloadPage(pageRef);
+		m_lastPageRef = null; // 防止showPage中阻止运行
+		showPage(pageRef, opt);
 	}
 
 /**
@@ -1474,17 +1737,26 @@ function CPageManager(opt)
 
 n=0: 退到首层, >0: 指定pop几层
 
-离开页面时, 如果不希望在点击后退按钮后回到该页面, 可以调用
+常用场景：
 
-	MUI.popPageStack()
+添加订单并进入下个页面后, 点击后退按钮时避免再回到添加订单页面, 应调用
 
-如果要在后退时忽略两个页面, 可以调用
+	MUI.popPageStack(); // 当前页（提交订单页）被标记poped
+	MUI.showPage("#xxx"); // 进入下一页。之后回退时，可跳过被标记的前一页
 
-	MUI.popPageStack(2)
+如果添加订单有两步（两个页面），希望在下个后面后退时跳过前两个页面, 可以调用
 
-如果要在后退时直接回到主页(忽略所有历史记录), 可以调用
+	MUI.popPageStack(2);
+	MUI.showPage("#xxx");
 
-	MUI.popPageStack(0)
+如果想在下个页面后退时直接回到初始进入应用的逻辑页（不一定是首页）, 可以调用：（注意顺序！）
+
+	MUI.showPage("#xxx");
+	MUI.popPageStack(0); // 标记除第一页外的所有页为poped, 所以之后回退时直接回到第一页。
+
+如果只是想立即跳回两页，不用调用popPageStack，而应调用：
+
+	history.go(-2);
 
 */
 	self.popPageStack = popPageStack;
@@ -1493,22 +1765,27 @@ n=0: 退到首层, >0: 指定pop几层
 		self.m_pageStack.pop(n);
 	}
 
-	$(window).on('hashchange', applyHashChange);
+	$(window).on('popstate', function (ev) {
+		m_curState = ev.originalEvent.state;
+		showPage();
+	});
 
 /**
-@fn MUI.showPage(pageId/pageRef, opt)
+@fn MUI.showPage(pageRef, opt)
 
 @param pageId String. 页面名字. 仅由字母、数字、"_"等字符组成。
 @param pageRef String. 页面引用（即location.hash），以"#"开头，后面可以是一个pageId（如"#home"）或一个相对页的地址（如"#info.html", "#emp/info.html"）。
-@param opt {ani?}
+@param opt {ani?, url?}  (v3.3) 该参数会传递给pagebeforeshow/pageshow回调函数。
 
-ani:: String. 动画效果。设置为"none"禁用动画。
+opt.ani:: String. 动画效果。设置为"none"禁用动画。
+
+opt.url:: String. 指定在地址栏显示的地址。如 `showPage("#order", {url: "?id=100"})` 可设置显示的URL为 `page/order.html?id=100`.
+@see MUI.setUrl
 
 在应用内无刷新地显示一个页面。
 
 例：
 
-	MUI.showPage("order");  // 或者
 	MUI.showPage("#order");
 	
 显示order页，先在已加载的DOM对象中找id="order"的对象，如果找不到，则尝试找名为"tpl_home"的模板DOM对象，如果找不到，则以ajax方式动态加载页面"page/order.html"。
@@ -1555,17 +1832,22 @@ ani:: String. 动画效果。设置为"none"禁用动画。
 
 	MUI.showDialog(MUI.activePage.find("#dlgSetUserInfo"));
 
+(v3.3) opt参数会传递到pagebeforeshow/pageshow参数中，如
+
+	MUI.showPage("order", {orderId: 100});
+
+	function initPageOrder()
+	{
+		var jpage = this;
+		jpage.on("pagebeforeshow", function (ev, opt) {
+			// opt={orderId: 100}
+		});
+		jpage.on("pageshow", function (ev, opt) {
+			// opt={orderId: 100}
+		});
+	}
 */
 	self.showPage = showPage;
-	function showPage(pageRef, opt)
-	{
-		if (pageRef[0] !== '#')
-			pageRef = '#' + pageRef;
-		else if (pageRef === '#') 
-			pageRef = m_opt.homePage;
-		m_fromShowPage = true;
-		showPage_(pageRef, opt);
-	}
 
 	$(window).on('orientationchange', fixPageSize);
 	$(window).on('resize'           , fixPageSize);
@@ -1682,8 +1964,32 @@ ani:: String. 动画效果。设置为"none"禁用动画。
 		// 如果有ft类，则不自动点击后active (#footer是特例)
 		if (jo.hasClass("ft") || jo.hasClass("noactive"))
 			return;
+
+		// 确保有且只有一个active
+		var ja = jo.find(">.active");
+		if (ja.size() == 0) {
+			ja = jo.find(">:first").addClass("active");
+		}
+		else if (ja.size() > 1) {
+			ja.filter(":not(:first)").removeClass("active");
+			ja = ja.filter(":first");
+		}
+
+		var jpage_ = null;
 		jo.find(">*").on('click', function () {
 			activateElem($(this));
+		})
+		// 确保mui-linkto指向对象active状态与navbar一致
+		.each (function () {
+			var ref = $(this).attr("mui-linkto");
+			if (ref) {
+				if (jpage_ == null)
+					jpage = jo.closest(".mui-page");
+				var active = $(this).hasClass("active");
+				var jlink = jpage.find(ref);
+				jlink.toggle(active);
+				jlink.toggleClass("active", active);
+			}
 		});
 	}
 
@@ -1702,6 +2008,8 @@ ani:: String. 动画效果。设置为"none"禁用动画。
 		$(document).on("pagebeforeshow", function (ev) {
 			var jpage = $(ev.target);
 			var pageId = jpage.attr("id");
+			if (m_toPageId != pageId)
+				return;
 			var e = id2nav[pageId];
 			if (e === undefined)
 			{
@@ -1980,7 +2288,7 @@ app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时�
 
 		// 根据hash进入首页
 		if (self.showFirstPage)
-			applyHashChange();
+			showPage();
 	}
 
 	$(main);
@@ -2220,7 +2528,7 @@ allow throw("abort") as abort behavior.
 			m_tmBusy = new Date();
 		}
 		IsBusy = 1;
-		if (ctx == null)
+		if (ctx == null || ctx.isMock)
 			++ m_manualBusy;
 		// 延迟执行以防止在page show时被自动隐藏
 		//delayDo(function () {
@@ -2243,7 +2551,7 @@ allow throw("abort") as abort behavior.
 	window.leaveWaiting = self.leaveWaiting = leaveWaiting;
 	function leaveWaiting(ctx)
 	{
-		if (ctx == null)
+		if (ctx == null || ctx.isMock)
 		{
 			if (-- m_manualBusy < 0)
 				m_manualBusy = 0;
@@ -2736,6 +3044,7 @@ callSvr扩展示例：
 			fn = params;
 			params = null;
 		}
+		assert(ac != null, "*** bad param `ac`");
 
 		var ext = null;
 		var ac0 = ac;
@@ -2758,7 +3067,7 @@ callSvr扩展示例：
 		}
 
 		var url = makeUrl(ac, params);
-		var ctx = {ac: ac, tm: new Date()};
+		var ctx = {ac: ac, tm: new Date(), isMock: true};
 		if (userOptions && userOptions.noLoadingImg)
 			ctx.noLoadingImg = 1;
 		if (ext) {
@@ -2774,8 +3083,8 @@ callSvr扩展示例：
 			console.log(callType + " " + ac0);
 			return callSvrMock({
 				data: self.mockData[ac0],
-				param: params,
-				postParam: postParams,
+				param: params || {},
+				postParam: postParams || {},
 				fn: fn,
 				ctx: ctx,
 				isSyncCall: isSyncCall
@@ -2821,7 +3130,6 @@ callSvr扩展示例：
 
 		function callSvrMock1() 
 		{
-			leaveWaiting();
 			if ($.isFunction(opt.data)) {
 				opt.data = opt.data(opt.param, opt.postParam);
 			}
@@ -3173,6 +3481,18 @@ function nsMUI()
 @var MUI.options.pluginFolder?="../plugin" 指定筋斗云插件目录
 
 筋斗云插件提供具有独立接口的应用功能模块，包括前端、后端实现。
+
+@var MUI.options.showHash?=true
+
+默认访问逻辑页面时，URL地址栏显示为: "index.html#me"
+
+只读，如果值为false, 则地址栏显示为: "index.html/page/me.html".
+
+注意：该选项不可通过js设置为false，而应在主页面中设置：
+
+	<base href="./" mui-showHash="no">
+
+在showHash=false时，必须设置base标签, 否则逻辑页将无法加载。
 */
 	var m_opt = self.options = {
 		appName: "user",
@@ -3186,6 +3506,7 @@ function nsMUI()
 		mockDelay: 50,
 
 		pluginFolder: "../plugin",
+		showHash: ($("base").attr("mui-showHash") != "no"),
 	};
 
 	CPageManager.call(this, m_opt);
@@ -3325,9 +3646,32 @@ function isLoginPage(pageRef)
 	return true;
 }
 
+// page: pageRef/jpage/null
+function getPageRef(page)
+{
+	var pageRef = page;
+	if (page == null) {
+		if (self.activePage) {
+			pageRef = "#" + self.activePage.attr("id");
+		}
+		else {
+			// only before jquery mobile inits
+			// back to this page after login:
+			pageRef = location.hash || m_opt.homePage;
+		}
+	}
+	else if (page instanceof jQuery) {
+		pageRef = "#" + page.attr("id");
+	}
+	else if (page === "#" || page === "") {
+		pageRef = m_opt.homePage;
+	}
+	return pageRef;
+}
+
 /**
-@fn MUI.showLogin(jpage?)
-@param jpage 如果指定, 则登录成功后转向该页面; 否则转向登录前所在的页面.
+@fn MUI.showLogin(page?)
+@param page=pageRef/jpage 如果指定, 则登录成功后转向该页面; 否则转向登录前所在的页面.
 
 显示登录页. 注意: 登录页地址通过MUI.options.loginPage指定, 缺省为"#login".
 
@@ -3343,23 +3687,13 @@ function isLoginPage(pageRef)
 
 */
 self.showLogin = showLogin;
-function showLogin(jpage)
+function showLogin(page)
 {
-	var jcurPage = jpage || MUI.activePage;
-	// back to this page after login
-	var toPageHash;
-	if (jcurPage) {
-		toPageHash = "#" + jcurPage.attr("id");
-	}
-	else {
-		// only before jquery mobile inits
-		// back to this page after login:
-		toPageHash = location.hash || m_opt.homePage;
-	}
+	var pageRef = getPageRef(page);
 	m_onLoginOK = function () {
 		// 如果当前仍在login系列页面上，则跳到指定页面。这样可以在handleLogin中用MUI.showPage手工指定跳转页面。
 		if (MUI.activePage && isLoginPage(MUI.getToPageId()))
-			MUI.showPage(toPageHash);
+			MUI.showPage(pageRef);
 	}
 	MUI.showPage(m_opt.loginPage);
 }
@@ -3778,32 +4112,36 @@ function formatField(obj)
 本函数参数如下：
 
 @param container 容器，它的高度应该是限定的，因而当内部内容过长时才可出现滚动条
-@param opt {onLoadItem, autoLoadMore?=true, threshold?=180, onHint?}
+@param opt {onLoadItem, autoLoadMore?=true, threshold?=180, onHint?, onPull?}
 
-@param onLoadItem function(isRefresh)
+@param opt.onLoadItem function(isRefresh)
 
 在合适的时机，它调用 onLoadItem(true) 来刷新列表，调用 onLoadItem(false) 来加载列表的下一页。在该回调中this为container对象（即容器）。实现该函数时应当自行管理当前的页号(pagekey)
 
-@param autoLoadMore 当滑动到页面下方时（距离底部TRIGGER_AUTOLOAD=30px以内）自动加载更多项目。
+@param opt.autoLoadMore 当滑动到页面下方时（距离底部TRIGGER_AUTOLOAD=30px以内）自动加载更多项目。
 
 @param threshold 像素值。
 
 手指最少下划或上划这些像素后才会触发实际加载动作。
 
-@param onHint function(ac, dy, threshold)
+@param opt.onHint function(ac, dy, threshold)
 
 	ac  动作。"D"表示下拉(down), "U"表示上拉(up), 为null时应清除提示效果.
 	dy,threshold  用户移动偏移及临界值。dy>threshold时，认为触发加载动作。
 
 提供提示用户刷新或加载的动画效果. 缺省实现是下拉或上拉时显示提示信息。
 
-@param onHintText function(ac, uptoThreshold)
+@param opt.onHintText function(ac, uptoThreshold)
 
 修改用户下拉/上拉时的提示信息。仅当未设置onHint时有效。onHint会生成默认提示，如果onHintText返回非空，则以返回内容替代默认内容。
 内容可以是一个html字符串，所以可以加各种格式。
 
 	ac:: String. 当前动作，"D"或"U".
 	uptoThreshold:: Boolean. 是否达到阈值
+
+@param opt.onPull function(ev)
+
+如果返回false，则取消上拉加载或下拉刷新行为，采用系统默认行为。
 
 */
 function initPullList(container, opt)
@@ -3904,6 +4242,11 @@ function initPullList(container, opt)
 
 	function touchStart(ev)
 	{
+		if (opt_.onPull && opt_.onPull(ev) === false) {
+			ev.cancelPull_ = true;
+			return;
+		}
+
 		var p = getPos(ev);
 		touchev_ = {
 			ac: null,
@@ -3930,6 +4273,8 @@ function initPullList(container, opt)
 	{
 		mouseMoved_ = false;
 		touchStart(ev);
+		if (ev.cancelPull_ === true)
+			return;
 		// setCapture
 		window.addEventListener("mousemove", mouseMove, true);
 		window.addEventListener("mouseup", mouseUp, true);
@@ -4085,7 +4430,7 @@ function initPullList(container, opt)
 				opt_.onLoadItem.call(cont_, true);
 			}
 			else if (ac == "U") {
-				console.log("loaditem");
+				console.log("load more");
 				opt_.onLoadItem.call(cont_, false);
 			}
 		}
@@ -4133,7 +4478,7 @@ function initPullList(container, opt)
 
 		<div class="bd">
 			<div id="lst1" class="p-list active" data-cond="status='PA'"></div>
-			<div id="lst2" class="p-list" data-cond="status='RE'" style="display:none"></div>
+			<div id="lst2" class="p-list" data-cond="status='RE'"></div>
 		</div>
 	</div>
 
@@ -4141,7 +4486,7 @@ function initPullList(container, opt)
 
 - navbar在header中，不随着滚动条移动而改变位置
 - 默认要显示的list应加上active类，否则自动取第一个显示列表。
-- mui-navbar在点击一项时，会在对应的div组件（通过被点击的<a>按钮上mui-linkto属性指定链接到哪个div）添加class="active"。
+- mui-navbar在点击一项时，会在对应的div组件（通过被点击的<a>按钮上mui-linkto属性指定链接到哪个div）添加class="active"。非active项会自动隐藏。
 
 js调用逻辑示例：
 
@@ -4189,7 +4534,7 @@ js调用逻辑示例：
 
 			<div class="p-panelHd">已完成</div>
 			<div class="p-panel">
-				<div id="lst2" class="p-list" style="display:none"></div>
+				<div id="lst2" class="p-list"></div>
 			</div>
 		</div>
 	</div>
@@ -4261,10 +4606,10 @@ navRef是否为空的区别是，如果非空，则表示listRef是一组互斥�
 
 ## 参数说明
 
-@param opt {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list", onBeforeLoad?, onLoad?, onGetData?}
+@param opt {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list", onBeforeLoad?, onLoad?, onGetData?, canPullDown?=true, onRemoveAll?}
 @param opt 分页相关 { pageszName?="_pagesz", pagekeyName?="_pagekey" }
 
-@param onGetQueryParam Function(jlst, queryParam/o)
+@param opt.onGetQueryParam Function(jlst, queryParam/o)
 
 queryParam: {ac?, res?, cond?, ...}
 
@@ -4276,7 +4621,7 @@ queryParam: {ac?, res?, cond?, ...}
 
 此外，框架将自动管理 queryParam._pagekey/_pagesz 参数。
 
-@param onAddItem (jlst, itemData, param)
+@param opt.onAddItem (jlst, itemData, param)
 
 param={idx, arr, isFirstPage}
 
@@ -4287,26 +4632,29 @@ param={idx, arr, isFirstPage}
 
 这里无法判断是否最后一页（可在onLoad回调中判断），因为有可能最后一页为空，这时无法回调onAddItem.
 
-@param onNoItem (jlst)
+@param opt.onNoItem (jlst)
 
 当没有任何数据时，可以插入提示信息。
 
-@param pageItf - page interface {refresh?/io}
+@param opt.pageItf - page interface {refresh?/io}
 
 在订单页面(PageOrder)修改订单后，如果想进入列表页面(PageOrders)时自动刷新所有列表，可以设置 PageOrders.refresh = true。
 设置opt.pageItf=PageOrders, 框架可自动检查和管理refresh变量。
 
-@param navRef,listRef  指定navbar与list，可以是选择器，也可以是jQuery对象；或是一组button与一组div，一次显示一个div；或是navRef为空，而listRef为一个或多个不相关联的list.
+@param opt.navRef,opt.listRef  指定navbar与list，可以是选择器，也可以是jQuery对象；或是一组button与一组div，一次显示一个div；或是navRef为空，而listRef为一个或多个不相关联的list.
 
-@param onBeforeLoad(jlst, isFirstPage)->Boolean  如果返回false, 可取消load动作。参数isFirstPage=true表示是分页中的第一页，即刚刚加载数据。
-@param onLoad(jlst, isLastPage)  参数isLastPage=true表示是分页中的最后一页, 即全部数据已加载完。
+@param opt.onBeforeLoad(jlst, isFirstPage)->Boolean  如果返回false, 可取消load动作。参数isFirstPage=true表示是分页中的第一页，即刚刚加载数据。
+@param opt.onLoad(jlst, isLastPage)  参数isLastPage=true表示是分页中的最后一页, 即全部数据已加载完。
 
-@param onGetData(data, pagesz, pagekey?) 每次请求获取到数据后回调。pagesz为请求时的页大小，pagekey为页码（首次为null）
+@param opt.onGetData(data, pagesz, pagekey?) 每次请求获取到数据后回调。pagesz为请求时的页大小，pagekey为页码（首次为null）
 
-@return PageListInterface={refresh, markRefresh}
+@param opt.onRemoveAll(jlst) 清空列表操作，默认为 jlst.empty()
 
-refresh: Function(), 刷新当前列表
-markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 下次浏览该列表时刷新。
+@return PageListInterface={refresh, markRefresh, loadMore}
+
+- refresh: Function(), 刷新当前列表
+- markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 下次浏览该列表时刷新。
+- loadMore: Function(), 加载下一页数据
 
 ## css类
 
@@ -4330,7 +4678,7 @@ markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 
 			this.chooseOpt_ = {
 				onChoose: onChoose
 			}
-			MUI.showPage('orders');
+			MUI.showPage('#orders');
 		},
 
 		chooseOpt_: null // {onChoose}
@@ -4456,6 +4804,60 @@ markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 
 		<div id="lst2"></div>
 	</div>
 
+## 禁止下拉和上拉行为
+
+例：在多页列表中，有一些页只做静态展示使用，不需要上拉或下拉：
+
+	<div mui-initfn="initPageOrders" mui-script="orders.js">
+		<div class="hd">
+			<h2>订单列表</h2>
+			<div class="mui-navbar">
+				<a href="javascript:;" class="active" mui-linkto="#lst1">待服务</a>
+				<a href="javascript:;" mui-linkto="#lst2">已完成</a>
+				<a href="javascript:;" mui-linkto="#lst3">普通页</a>
+			</div>
+		</div>
+
+		<div class="bd">
+			<div id="lst1" class="p-list active" data-cond="status='PA'"></div>
+			<div id="lst2" class="p-list" data-cond="status='RE'"></div>
+			<div id="lst3" class="mui-noPull">
+				<p>本页面没有下拉加载或上拉刷新功能</p>
+			</div>
+		</div>
+	</div>
+
+例子中使用了类"mui-noPull"来标识一个TAB页不是列表页，无需分页操作。
+
+@key .mui-noPull 如果一个列表页项的class中指定了此项，则显示该列表页时，不允许下拉。
+
+还可以通过设置onPull选项来灵活设置，例：
+
+	var listItf = initPageList(jpage, ...,
+		onPull(ev, jlst) {
+			if (jlst.attr("id") == "lst3")
+				return false;
+		}
+	);
+
+@param opt.onPull function(ev, jlst)
+
+jlst:: 当前活动页。函数如果返回false，则取消所有上拉加载或下拉刷新行为，使用系统默认行为。
+
+## 仅自动加载，禁止下拉刷新行为
+
+有时不想为列表容器指定固定高度，而是随着列表增长而自动向下滚动，在滚动到底时自动加载下一页。
+这时可禁止下拉刷新行为：
+
+	var listItf = initPageList(jpage, 
+		...,
+		canPullDown: false,
+	);
+
+@param opt.canPullDown?=true  是否允许下拉刷新
+
+设置为false时，当列表到底部时，可以自动加载下一页，但没有下拉刷新行为，这时页面容器也不需要确定高度。
+
  */
 window.initNavbarAndList = initPageList;
 function initPageList(jpage, opt)
@@ -4465,6 +4867,10 @@ function initPageList(jpage, opt)
 		listRef: ">.bd .p-list",
 		pageszName: "_pagesz",
 		pagekeyName: "_pagekey",
+		canPullDown: true,
+		onRemoveAll: function (jlst) {
+			jlst.empty();
+		}
 	}, opt);
 	var jallList_ = opt_.listRef instanceof jQuery? opt_.listRef: jpage.find(opt_.listRef);
 	var jbtns_ = opt_.navRef instanceof jQuery? opt_.navRef: jpage.find(opt_.navRef);
@@ -4518,16 +4924,35 @@ function initPageList(jpage, opt)
 			});
 		});
 
-		var pullListOpt = {
-			onLoadItem: showOrderList,
-			//onHint: $.noop,
-			onHintText: onHintText,
-		};
+		if (opt_.canPullDown) {
+			var pullListOpt = {
+				onLoadItem: showOrderList,
+				//onHint: $.noop,
+				onHintText: onHintText,
+				onPull: function (ev) {
+					var jlst = getActiveList();
+					if (jlst.is(".mui-noPull") || 
+						(opt_.onPull && opt_.onPull(ev, jlst) === false)) {
+						return false;
+					}
+				}
+			};
 
-		jallList_.parent().each(function () {
-			var container = this;
-			initPullList(container, pullListOpt);
-		});
+			jallList_.parent().each(function () {
+				var container = this;
+				initPullList(container, pullListOpt);
+			});
+		}
+		else {
+			jallList_.parent().scroll(function () {
+				var container = this;
+				//var distanceToBottom = cont_.scrollHeight - cont_.clientHeight - cont_.scrollTop;
+				if (! busy_ && container.scrollTop / (container.scrollHeight - container.clientHeight) >= 0.95) {
+					console.log("load more");
+					loadMore();
+				}
+			});
+		}
 
 		// 如果调用init时页面已经显示，则补充调用一次。
 		if (MUI.activePage && MUI.activePage.attr("id") == jpage.attr("id")) {
@@ -4574,30 +4999,33 @@ function initPageList(jpage, opt)
 		// nextkey=null: 新开始或刷新
 		// nextkey=-1: 列表完成
 		var jlst = getActiveList();
+		if (jlst.is(".mui-noPull"))
+			return;
 		if (jlst.size() == 0)
 			return;
+
+		if (busy_) {
+			var tm = jlst.data("lastCallTm_");
+			if (tm && new Date() - tm <= 5000)
+			{
+				console.log('!!! ignore duplicated call');
+				return;
+			}
+			// 5s后busy_标志还未清除，则可能是出问题了，允许不顾busy_标志直接进入。
+		}
+
 		var nextkey = jlst.data("nextkey_");
 		if (isRefresh) {
 			nextkey = null;
 		}
 		if (nextkey == null) {
-			jlst.empty();
+			opt_.onRemoveAll(jlst); // jlst.empty();
 		}
 		else if (nextkey === -1)
 			return;
 
 		if (skipIfLoaded && nextkey != null)
 			return;
-
-		if (busy_) {
-			var tm = jlst.data("lastUpdateTm_");
-			if (tm && new Date() - tm <= 5000)
-			{
-				console.log('!!! pulldown too fast');
-				return;
-			}
-			// 5s后busy_标志还未清除，则可能是出问题了，允许不顾busy_标志直接进入。
-		}
 
 		var queryParam = evalAttr(jlst, "data-queryParam") || {};
 		$.each(["ac", "res", "cond", "orderby"], function () {
@@ -4635,8 +5063,10 @@ function initPageList(jpage, opt)
 		else {
 			jlst.data("lastUpdateTm_", new Date());
 		}
+		jlst.data("lastCallTm_", new Date());
 		busy_ = true;
 		var ac = queryParam.ac;
+		assert(ac != null, "*** queryParam `ac` is not defined");
 		delete queryParam.ac;
 		callSvr(ac, queryParam, api_OrdrQuery);
 
@@ -4686,6 +5116,12 @@ function initPageList(jpage, opt)
 		showOrderList(true, false);
 	}
 
+	function loadMore()
+	{
+		// (isRefresh?=false, skipIfLoaded?=false)
+		showOrderList(false);
+	}
+
 	function markRefresh(jlst)
 	{
 		if (jlst)
@@ -4696,7 +5132,8 @@ function initPageList(jpage, opt)
 
 	var itf = {
 		refresh: refresh,
-		markRefresh: markRefresh
+		markRefresh: markRefresh,
+		loadMore: loadMore,
 	};
 	return itf;
 }
@@ -4959,4 +5396,29 @@ function initPageDetail(jpage, opt)
 }
 //}}}
 
+// ====== app fw toolkit {{{
+/**
+@fn hd_back(pageRef?)
+
+返回操作，类似history.back()，但当当前页是第一个页面（没有页面栈），则转向pageRef页。
+一般用于顶部返回按钮：
+
+	<div class="hd">
+		<a href="javascript:hd_back();" class="icon icon-back"></a>
+		<h2>个人信息</h2>
+	</div>
+
+如果该页当作入口页进入，则点击返回按钮可回首页。
+*/
+function hd_back(pageRef)
+{
+	if (MUI.m_pageStack.sp_ == 0) {
+		if (pageRef == null)
+			pageRef = MUI.options.homePage;
+		MUI.showPage(pageRef);
+		return;
+	}
+	history.back();
+}
+//}}}
 // vim: set foldmethod=marker:
