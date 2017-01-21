@@ -7,7 +7,8 @@ $.extend(MUI.options, {
 
 MUI.validateEntry([
 	"#home",
-	"#me"
+	"#me",
+	"#order"
 ]);
 
 var StatusStr = {
