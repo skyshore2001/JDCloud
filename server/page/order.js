@@ -58,7 +58,6 @@ function initPageOrder()
 
 	function onPageBeforeShow()
 	{
-		var skip = false;
 		if (g_args.orderId) {
 			orderId_ = g_args.orderId;
 			delete g_args.orderId;
@@ -67,10 +66,11 @@ function initPageOrder()
 			orderId_ = PageOrder.id;
 		}
 		else {
-			skip = true;
-		}
-		if (skip)
+			if (orderId_ == null)
+				MUI.showHome();
 			return;
+		}
+
 		MUI.setUrl("?orderId=" + orderId_);
 		showOrder();
 	}

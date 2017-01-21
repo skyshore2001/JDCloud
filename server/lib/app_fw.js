@@ -758,7 +758,7 @@ style将被插入到head标签中，并自动添加属性`mui-origin={pageId}`.
 
 @see muiInit
 
-#### 在pagebeforeshow事件中显示另一个逻辑页
+#### 在showPage过程中再显示另一个逻辑页
 
 例如，进入页面后，发现如果未登录，则自动转向登录页：
 
@@ -767,13 +767,14 @@ style将被插入到head标签中，并自动添加属性`mui-origin={pageId}`.
 		// 登录成功后一般会设置g_data.userInfo, 如果未设置，则当作未登录
 		if (g_data.userInfo == null) {
 			MUI.showLogin();
-			return false;
+			return;
 		}
 		// 显示该页面...
 	}
 
 在pagebeforeshow事件中做页面切换，框架保证不会产生闪烁，且在新页面上点返回按钮，不会返回到旧页面。
-在调用MUI.showPage或类似页面跳转函数后，最好调用return false返回，避免产生其它副作用。
+
+除此之外如果多次调用showPage（包括在pageshow事件中调用），一般最终显示的是最后一次调用的页面，过程中可能产生闪烁，且可能会丢失一些pageshow/pagehide事件，应尽量避免。
 
 ### 页面路由
 
@@ -1052,7 +1053,7 @@ function CPageManager(opt)
 	// false: forward操作, 或进入新页面
 	var m_isback = null; // 在changePage之前设置，在changePage中清除为null
 
-	// 调用showPage后，将要显示的页
+	// 调用showPage后，将要显示的页; 用于判断showPage过程中是否再次调用showPage.
 	var m_toPageId = null;
 	var m_lastPageRef = null;
 
@@ -1611,7 +1612,7 @@ m_curState==null: 首次进入，或hash改变
 			if (oldPage) {
 				self.prevPageId = oldPage.attr("id");
 			}
-			var toPageId = m_toPageId;
+			var toPageId = jpage.attr("id");
 			jpage.trigger("pagebeforeshow", [showPageOpt_]);
 			// 如果在pagebeforeshow中调用showPage显示其它页，则不显示当前页，避免页面闪烁。
 			if (toPageId != m_toPageId)
@@ -1652,14 +1653,15 @@ m_curState==null: 首次进入，或hash改变
 			}
 			function onAnimationEnd()
 			{
-				jpage.trigger("pageshow", [showPageOpt_]);
-
 				if (enableAni) {
 					// NOTE: 如果不删除，动画效果将导致fixed position无效。
 					jpage.removeClass(slideInClass);
 // 					if (oldPage)
 // 						oldPage.removeClass("slideOut");
 				}
+				if (toPageId != m_toPageId)
+					return;
+				jpage.trigger("pageshow", [showPageOpt_]);
 				if (oldPage) {
 					oldPage.trigger("pagehide");
 					oldPage.hide();
@@ -2006,6 +2008,8 @@ opt.url:: String. 指定在地址栏显示的地址。如 `showPage("#order", {u
 		$(document).on("pagebeforeshow", function (ev) {
 			var jpage = $(ev.target);
 			var pageId = jpage.attr("id");
+			if (m_toPageId != pageId)
+				return;
 			var e = id2nav[pageId];
 			if (e === undefined)
 			{
