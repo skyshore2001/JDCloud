@@ -1646,7 +1646,7 @@ m_curState==null: 首次进入，或hash改变
 			self.activePage = jpage;
 			fixPageSize();
 			var title = jpage.find(".hd h1, .hd h2").filter(":first").text() || self.title || jpage.attr("id");
-			document.title = title;
+			setDocTitle(title);
 
 			if (!enableAni) {
 				onAnimationEnd();
@@ -1671,6 +1671,26 @@ m_curState==null: 首次进入，或hash改变
 // 					oldPage.remove();
 // 				}
 			}
+		}
+	}
+
+/**
+@fn MUI.setDocTitle(title)
+
+设置文档标题。默认在切换页面时，会将文档标题设置为逻辑页的标题(`hd`块中的`h1`或`h2`标签)。
+*/
+	self.setDocTitle = setDocTitle;
+	function setDocTitle(newTitle)
+	{
+		document.title = newTitle;
+		if(isIOS() && isWeixin()) {
+			document.title = newTitle;
+			var $iframe = $('<iframe src="/favicon.ico"></iframe>');
+			$iframe.one('load',function() {
+				setTimeout(function() {
+					$iframe.remove();
+				}, 0);
+			}).appendTo(self.container);
 		}
 	}
 
