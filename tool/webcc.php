@@ -4,7 +4,17 @@
 
 @module webcc 站点发布优化工具
 
-与build_web.sh配合使用。
+Webcc用于Web站点优化，即生成用于发布的Web应用目录。
+一般要求源代码使用git管理，通过git命令查询源文件列表及版本差异，实现增量编译、自动化发布等功能。
+
+也可以脱离git独立使用，这时要求指定源文件列表，通过设置环境变量WEBCC_LS_CMD，例如：
+
+	export WEBCC_LS_CMD='find . -type f'
+	# export WEBCC_LS_CMD='find . -type f | grep -v .svn | grep -v .git'
+	# export WEBCC_LS_CMD='svn ls -R | egrep -v "/$"'
+	webcc {srcDir}
+
+webcc进入{srcDir}目录，执行`WEBCC_LS_CMD`命令得到源文件列表，分别进行处理，生成发布目录，默认为"output_web"目录。
 
 注意：
 
@@ -160,8 +170,10 @@ $DBG_LEVEL = (int)getenv("P_DEBUG") ?: 0;
 
 $g_changedFiles = [];
 $g_isRebuild = true;
+
 $g_fakeFiles = [];
 
+$g_useGit = true;
 //}}}
 
 // ====== external cmd {{{
@@ -566,7 +578,7 @@ CSS合并，以及对url相对路径进行修正。
 // 注意：die返回0，请调用die1返回1标识出错。
 function die1($msg)
 {
-	ob_end_clean();
+	@ob_end_clean();
 	fwrite(STDERR, $msg);
 	exit(1);
 }
@@ -812,11 +824,12 @@ function handleOne($f, $outDir, $force = false)
 	global $COPY_EXCLUDE;
 	global $g_handledFiles;
 
+	$fi = formatPath($f);
 	// $FILES设置一般用于调试 单个文件
 	if (!$force && isset($FILES)) {
 		$skip = true;
 		foreach ($FILES as $re) {
-			if (matchRule($re, $f)) {
+			if (matchRule($re, $fi)) {
 				$skip = false;
 				break;
 			}
@@ -825,14 +838,13 @@ function handleOne($f, $outDir, $force = false)
 			return false;
 	}
 
-	$fi = formatPath($f);
 	if (array_key_exists($fi, $g_handledFiles))
 		return;
 	$g_handledFiles[$fi] = 1;
 
 	$rule = null;
 	foreach ($RULES as $re => $v) {
-		if (matchRule($re, $f)) {
+		if (matchRule($re, $fi)) {
 			$rule = $v;
 			break;
 		}
@@ -847,15 +859,15 @@ function handleOne($f, $outDir, $force = false)
 		foreach ($rule as $rule1) {
 			if ($rule1 === "HASH") {
 				logit("=== hash $fi\n");
-				handleHash($f, $outDir, $outf);
+				handleHash($fi, $outDir, $outf);
 			}
 			else if ($rule1 === "FAKE") {
 				logit("=== fake $fi\n");
-				handleFake($f, $outDir);
+				handleFake($fi, $outDir);
 			}
 			else {
 				logit("=== run cmd for $fi\n");
-				$outf = $outDir . "/" . $f;
+				$outf = $outDir . "/" . $fi;
 				@mkdir(dirname($outf), 0777, true);
 				putenv("TARGET={$outf}");
 				// system($rule1);
@@ -885,7 +897,7 @@ function handleOne($f, $outDir, $force = false)
 		return;
 	}
 	logit("=== copy $fi\n", 5);
-	handleCopy($f, $outDir);
+	handleCopy($fi, $outDir);
 }
 
 // 直接改写输出参数 $opts
@@ -969,7 +981,7 @@ if (file_exists($verFile)) {
 }
 
 chdir($g_opts["srcDir"]);
-if (isset($oldVer)) {
+if ($g_useGit && isset($oldVer)) {
 	$g_isRebuild = false;
 	// NOTE: 仅限当前目录(srcDir)改动
 	$cmd = "git diff $oldVer --name-only --diff-filter=AM --relative";
@@ -982,18 +994,30 @@ else {
 }
 
 $allFiles = null;
-$cmd = "git ls-files";
+$cmd = getenv("WEBCC_LS_CMD");
+if ($cmd === false) {
+	$cmd = "git ls-files";
+	putenv("WEBCC_LS_CMD=$cmd");
+}
+else {
+	$g_useGit = false;
+}
 exec($cmd, $allFiles, $rv);
+if ($rv != 0) {
+	die1("*** fail to exec `$cmd`.\n");
+}
 
 $updateVer = false;
 foreach ($allFiles as $f) {
+	if (is_dir($f))
+		continue;
 	if (handleOne($f, $outDir) !== false)
 	{
 		$updateVer = true;
 	}
 }
 
-if ($updateVer) {
+if ($g_useGit && $updateVer) {
 	// update new version
 	system("git log -1 --format=%H > $verFile");
 }
