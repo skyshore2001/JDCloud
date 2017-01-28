@@ -32,7 +32,6 @@ var g_data = {
 };
 
 var g_cfg = {
-	PAGE_SZ: 20,
 	WAIT: 3000, // 3s
 };
 

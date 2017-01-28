@@ -2880,10 +2880,8 @@ serverUrl为"http://myserver/myapp/api.php" 或 "http://myserver/myapp/"，则MU
 
 ## 调用监控
 
-@var g_cfg.logAction
-
 框架会自动在ajaxOption中增加ctx_属性，它包含 {ac, tm, tv, tv2, ret} 这些信息。
-当设置g_cfg.logAction=1时，将输出这些信息。
+当设置MUI.options.logAction=1时，将输出这些信息。
 - ac: action
 - tm: start time
 - tv: time interval (从发起请求到服务器返回数据完成的时间, 单位是毫秒)
@@ -3458,10 +3456,10 @@ function nsMUI()
 @see topic-iosStatusBar
 
 @key MUI.options.manualSplash?=false
-
 @see topic-splashScreen
 
 @var MUI.options.logAction?=false  Boolean. 是否显示详细日志。
+可用于交互调用的监控。
 
 @var MUI.options.PAGE_SZ?=20  分页大小，下拉列表每次取数据的缺省条数。
 
@@ -3566,19 +3564,43 @@ function handleIos7Statusbar()
 }
 
 /**
-@fn MUI.setFormSubmit(jf, fn?, opt?={rules, validate?, onNoAction?})
+@fn MUI.setFormSubmit(jf, fn?, opt?={validate?, onNoAction?})
 
-@param fn? Function(data); 与callSvr时的回调相同，data为服务器返回的数据。
+@param fn Function(data); 与callSvr时的回调相同，data为服务器返回的数据。
 函数中可以使用this["userPost"] 来获取post参数。
 
-opt.rules: 参考jquery.validate文档
-opt.validate: Function(jf, queryParam={ac?,res?,...}). 如果返回false, 则取消submit. queryParam为调用参数，可以修改。
+@param opt.validate: Function(jf, queryParam={ac?,...}). 如果返回false, 则取消submit. queryParam为调用参数，可以修改。
 
 form提交时的调用参数, 如果不指定, 则以form的action属性作为queryParam.ac发起callSvr调用.
 form提交时的POST参数，由带name属性且不带disabled属性的组件决定, 可在validate回调中设置．
-如果之前调用过setFormData(jo, data, {setOrigin:true})来展示数据, 则提交时会只加上修改的字段．
 
-opt.onNoAction: Function(jf). 当form中数据没有变化时, 不做提交. 这时可调用该回调函数.
+设置POST参数时，固定参数可以用`<input type="hidden">`标签来设置，自动计算的参数可以先放置一个隐藏的input组件，然后在validate回调中来设置。
+示例：
+
+	<form action="fn1">
+		<input name="name" value="">
+		<input name="type" value="" style="display:none">
+		<input type="hidden" name="wantAll" value="1">
+	</form>
+
+	MUI.setFormSubmit(jf, api_fn1, {
+		validate: function(jf, queryParam) {
+			// 检查字段合法性
+			if (! isValidName(jf[0].name.value)) {
+				app_alert("bad name");
+				return false;
+			}
+			// 设置GET参数字段"cond"示例
+			queryParam.cond = "id=1";
+
+			// 设置POST参数字段"type"示例
+			jf[0].type.value = ...;
+		}
+	});
+
+如果之前调用过setFormData(jo, data, {setOrigin:true})来展示数据, 则提交时，只会提交被修改过的字段，否则提交所有字段。
+
+@param opt.onNoAction: Function(jf). 当form中数据没有变化时, 不做提交. 这时可调用该回调函数.
 
 */
 self.setFormSubmit = setFormSubmit;
@@ -3605,22 +3627,6 @@ function setFormSubmit(jf, fn, opt)
 		return false;
 	});
 }
-
-/**
-@fn MUI.showValidateErr(jvld, jo, msg)
-
-TODO: remove
-show error using jquery validator's method by jo's name
-*/
-self.showValidateErr = showValidateErr;
-function showValidateErr(jvld, jo, msg)
-{
-	var opt = {};
-	opt[jo.attr("name")] = msg;
-	jvld.showErrors(opt);
-	jo.focus();
-}
-
 //}}}
 
 // ------ cordova setup {{{
