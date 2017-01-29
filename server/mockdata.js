@@ -62,11 +62,16 @@
 	}
 
 	// 模拟订单
-	var INIT_CNT = 43;
+	var INIT_CNT = 48;
 	for (var i=0; i<INIT_CNT; ++i) {
-		MUI.mockData["Ordr.add"](null, {
+		var ret = MUI.mockData["Ordr.add"](null, {
 			dscr: i%4!=0? "基础套餐": "精英套餐",
 			amount: i%4!=0? 128: 228
 		});
+		var id = ret[1];
+		// 设置为已完成
+		if (i < 5) {
+			MUI.mockData["Ordr.set"]({id: id}, {status: 'RE'});
+		}
 	}
 })();
