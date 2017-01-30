@@ -29,10 +29,10 @@
 		},
 		"Ordr.query": function (param, postParam) {
 			var arr;
-			if (param.cond == "status in ('CR')") {
+			if (/CR/.test(param.cond)) {
 				arr = $.grep(orders, function (o) {return o.status == 'CR'});
 			}
-			else if (param.cond == "status in ('RE','CA')") {
+			else if (/RE|CA/.test(param.cond)) {
 				arr = $.grep(orders, function (o) {return o.status != 'CR'});
 			}
 			else {
