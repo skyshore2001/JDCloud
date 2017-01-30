@@ -4780,11 +4780,11 @@ param={idx, arr, isFirstPage}
 
 适配方法为：
 
-	var lstIf = initPageList(jpage, {
+	var listItf = initPageList(jpage, {
 		...
 
 		pageszName: 'rows',
-		pagekeyName: 'total',
+		pagekeyName: 'page',
 
 		// 设置 data.list, data.nextkey (如果是最后一页则不要设置); 注意pagekey可以为空
 		onGetData: function (data, pagesz, pagekey) {
@@ -4796,12 +4796,21 @@ param={idx, arr, isFirstPage}
 		}
 	});
 
+@key initPageList.options initPageList默认选项
+
+如果需要作为全局默认设置可以这样：
+
+	$.extend(initPageList.options, {
+		pageszName: 'rows', 
+		...
+	});
+
 例2：假定后端分页机制为：
 
 - 请求时通过参数curPage, maxLine分别表示页码，页大小，如 `curPage=1&maxLine=20`
 - 返回数据通过字段curPage, countPage, investList 分别表示当前页码, 总页数，列表数据，如 `{ curPage:1, countPage: 5, investList: [ {...}, ... ] }`
 
-	var lstIf = initPageList(jpage, {
+	var listItf = initPageList(jpage, {
 		...
 
 		pageszName: 'maxLine',
@@ -4888,16 +4897,7 @@ jlst:: 当前活动页。函数如果返回false，则取消所有上拉加载�
 window.initNavbarAndList = initPageList;
 function initPageList(jpage, opt)
 {
-	var opt_ = $.extend({
-		navRef: ">.hd .mui-navbar",
-		listRef: ">.bd .p-list",
-		pageszName: "_pagesz",
-		pagekeyName: "_pagekey",
-		canPullDown: true,
-		onRemoveAll: function (jlst) {
-			jlst.empty();
-		}
-	}, opt);
+	var opt_ = $.extend({}, initPageList.options, opt);
 	var jallList_ = opt_.listRef instanceof jQuery? opt_.listRef: jpage.find(opt_.listRef);
 	var jbtns_ = opt_.navRef instanceof jQuery? opt_.navRef: jpage.find(opt_.navRef);
 	var firstShow_ = true;
@@ -5163,6 +5163,17 @@ function initPageList(jpage, opt)
 	};
 	return itf;
 }
+
+initPageList.options = {
+	navRef: ">.hd .mui-navbar",
+	listRef: ">.bd .p-list",
+	pageszName: "_pagesz",
+	pagekeyName: "_pagekey",
+	canPullDown: true,
+	onRemoveAll: function (jlst) {
+		jlst.empty();
+	}
+};
 
 //}}}
 
