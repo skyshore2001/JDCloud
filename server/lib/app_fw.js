@@ -2606,7 +2606,7 @@ allow throw("abort") as abort behavior.
 			else {
 				app_alert("操作失败: 服务器错误. status=" + xhr.status + "-" + xhr.statusText, "e");
 			}
-			var ctx = this._ctx || {};
+			var ctx = this.ctx_ || {};
 			leaveWaiting(ctx);
 		}
 	}
@@ -2670,11 +2670,12 @@ allow throw("abort") as abort behavior.
 
 		if (ext) {
 			var filter = self.callSvrExt[ext] && self.callSvrExt[ext].dataFilter;
-			assert(filter, "*** missing dataFilter for callSvrExt: " + ext);
-			var ret = filter.call(this, rv);
-			if (ret == null || ret === false)
-				self.lastError = ctx;
-			return ret;
+			if (filter) {
+				var ret = filter.call(this, rv);
+				if (ret == null || ret === false)
+					self.lastError = ctx;
+				return ret;
+			}
 		}
 
 		if (rv && $.isArray(rv) && rv.length >= 2 && typeof rv[0] == "number") {
@@ -2756,6 +2757,15 @@ serverUrl为"http://myserver/myapp/api.php" 或 "http://myserver/myapp/"，则MU
 	window.makeUrl = self.makeUrl = makeUrl;
 	function makeUrl(action, params)
 	{
+		var ext;
+		if ($.isArray(action)) {
+			ext = action[1];
+			action = action[0];
+		}
+		else {
+			ext = "default";
+		}
+
 		if (/^http/.test(action)) {
 			return appendParam(action, $.param(params));
 		}
@@ -2766,19 +2776,10 @@ serverUrl为"http://myserver/myapp/api.php" 或 "http://myserver/myapp/"，则MU
 
 		if (params == null)
 			params = {};
-		var url;
 
-		// 扩展接口调用：callSvr(['login', 'zhanda'])，需定义 MUI.callSvrExt[ext]
-		if ($.isArray(action)) {
-			var ext = action[1];
-			var extMakeUrl = self.callSvrExt[ext] && self.callSvrExt[ext].makeUrl;
-			assert(extMakeUrl, "*** missing makeUrl for callSvrExt: " + ext);
-			url = extMakeUrl(action[0]);
-		}
-		// 自定义缺省接口调用：callSvr('login')，需定义 MUI.callSvrExt['default']
-		else if (self.callSvrExt['default']) {
-			var extMakeUrl = self.callSvrExt['default'].makeUrl;
-			assert(extMakeUrl, "*** missing makeUrl for callSvrExt['default'].");
+		var url;
+		var extMakeUrl = self.callSvrExt[ext] && self.callSvrExt[ext].makeUrl;
+		if (extMakeUrl) {
 			url = extMakeUrl(action);
 		}
 		// 缺省接口调用：callSvr('login') 或 callSvr('php/login.php');
@@ -2841,6 +2842,11 @@ serverUrl为"http://myserver/myapp/api.php" 或 "http://myserver/myapp/"，则MU
 - 指定{async:0}来做同步请求, 一般直接用callSvrSync调用来替代.
 - 指定{noex:1}用于忽略错误处理。
 - 指定{noLoadingImg:1}用于忽略loading图标.
+
+想为ajax选项设置缺省值，可以用callSvrExt中的beforeSend回调函数，也可以用$.ajaxSetup，
+但要注意：ajax的dataFilter/beforeSend选项由于框架已用，最好不要覆盖。
+
+@see MUI.callSvrExt[].beforeSend(opt) 为callSvr选项设置缺省值
 
 @return deferred对象，与$.ajax相同。
 例如，
@@ -3050,6 +3056,24 @@ callSvr扩展示例：
 
 	callSvr('login');
 
+@key MUI.callSvrExt[].beforeSend(opt) 为callSvr或$.ajax选项设置缺省值
+
+如果有ajax选项想设置，可以使用beforeSend回调，例如POST参数使用JSON格式：
+
+	MUI.callSvrExt['default'] = {
+		beforeSend: function (opt) {
+			if (opt.contentType == null) {
+				opt.contentType = "application/json;charset=utf-8";
+				if (opt.data) {
+					opt.data = JSON.stringify(opt.data);
+				}
+			}
+		}
+	}
+
+如果要设置请求的HTTP headers，可以用`opt.headers = {header1: "value1", header2: "value2"}`.
+更多选项参考jquery文档：jQuery.ajax的选项。
+
 */
 	window.callSvr = self.callSvr = callSvr;
 	self.callSvrExt = {};
@@ -3130,6 +3154,9 @@ callSvr扩展示例：
 			opt.contentType = false;
 		}
 		$.extend(opt, userOptions);
+		if (ext && self.callSvrExt[ext].beforeSend) {
+			self.callSvrExt[ext].beforeSend(opt);
+		}
 		console.log(callType + " " + ac0);
 		return $.ajax(opt);
 	}
@@ -3467,7 +3494,7 @@ function nsMUI()
 
 @see MUI.mockData 模拟调用后端接口
 
-@var MUI.options.serverUrl  服务端接口地址设置。
+@var MUI.options.serverUrl?="./"  服务端接口地址设置。
 @var MUI.options.serverUrlAc  表示接口名称的URL参数。
 
 示例：
@@ -3517,6 +3544,7 @@ function nsMUI()
 		loginPage: "#login",
 		homePage: "#home",
 		pageFolder: "page",
+		serverUrl: "./",
 
 		logAction: false,
 		PAGE_SZ: 20,
