@@ -839,18 +839,17 @@ URL也可以显示为文件风格，比如在设置：
 例: 在html中添加底部导航:
 
 	<div id="footer">
-		<a href="#home">订单</a></li>
+		<a href="#home">订单</a>
 		<a href="#me">我</a>
 	</div>
 
-如果要添加其它底部导航，可在page内放置如下部件：
+如果要添加其它底部导航，可以用ft类加mui-navbar类，例如下例显示一个底部工具栏：
 
-	<div class="ft mui-navbar">
-		<a href="#home" class="active">订单</a></li>
-		<a href="#me">我</a>
+	<div class="ft mui-navbar noactive">
+		<a href="javascript:;">添加</a>
+		<a href="javascript:;">更新</a>
+		<a href="javascript:;">删除</a>
 	</div>
-
-注意：mui-navbar与ft类并用后，在点击后不会自动设置active类，请自行添加。
 
 ## 图片按需加载
 
@@ -1981,8 +1980,8 @@ opt.url:: String. 指定在地址栏显示的地址。如 `showPage("#order", {u
 
 	function enhanceNavbar(jo)
 	{
-		// 如果有ft类，则不自动点击后active (#footer是特例)
-		if (jo.hasClass("ft") || jo.hasClass("noactive"))
+		// 如果有noactive类，则不自动点击后active
+		if (jo.hasClass("noactive"))
 			return;
 
 		// 确保有且只有一个active
