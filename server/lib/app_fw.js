@@ -3116,9 +3116,12 @@ callSvr扩展示例：
 		}
 		if (self.mockData && self.mockData[ac0]) {
 			ctx.isMock = true;
-			ctx.mockData = self.mockData[ac0];
-			if ($.isFunction(ctx.mockData)) {
-				ctx.mockData = ctx.mockData(params||{}, postParams||{});
+			ctx.getMockData = function () {
+				var d = self.mockData[ac0];
+				if ($.isFunction(d)) {
+					d = d(params||{}, postParams||{});
+				}
+				return d;
 			}
 		}
 		enterWaiting(ctx);
@@ -3160,7 +3163,7 @@ callSvr扩展示例：
 		return $.ajax(opt);
 	}
 
-	// opt = {success, .ctx_={isMock, mockData} }
+	// opt = {success, .ctx_={isMock, getMockData} }
 	function callSvrMock(opt, isSyncCall)
 	{
 		var dfd_ = $.Deferred();
@@ -3175,7 +3178,8 @@ callSvr扩展示例：
 
 		function callSvrMock1() 
 		{
-			var rv = defDataProc.call(opt_, opt_.ctx_.mockData);
+			var data = opt_.ctx_.getMockData();
+			var rv = defDataProc.call(opt_, data);
 			if (rv != null)
 			{
 				opt_.success && opt_.success(rv);
