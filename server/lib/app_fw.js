@@ -3560,6 +3560,7 @@ function nsMUI()
 	CComManager.call(this, m_opt);
 
 	var m_onLoginOK;
+	var m_allowedEntries;
 
 // ---- 通用事件 {{{
 function document_pageCreate(ev)
@@ -3806,6 +3807,7 @@ function validateEntry(allowedEntries)
 {
 	if (allowedEntries == null)
 		return;
+	m_allowedEntries = allowedEntries;
 
 	if (/*location.search != "" || */
 			(location.hash && location.hash != "#" && allowedEntries.indexOf(location.hash) < 0) ) {
@@ -4102,6 +4104,37 @@ function formatField(obj)
 			obj[k] = parseFloat(obj[k]);
 	}
 	return obj;
+}
+
+/**
+@fn hd_back(pageRef?)
+
+返回操作，类似history.back()，但如果当前页是入口页时，即使没有前一页，也可转向pageRef页（未指定时为首页）。
+一般用于顶部返回按钮：
+
+	<div class="hd">
+		<a href="javascript:hd_back();" class="icon icon-back"></a>
+		<h2>个人信息</h2>
+	</div>
+
+*/
+window.hd_back = hd_back;
+function hd_back(pageRef)
+{
+	var n = 0;
+	MUI.m_pageStack.walk(function (state) {
+		if (++ n > 1)
+			return false;
+	});
+	// 页面栈顶
+	if (n <= 1) {
+		if (pageRef == null)
+			pageRef = MUI.options.homePage;
+		if (m_allowedEntries==null || m_allowedEntries.indexOf("#" + MUI.activePage.attr("id")) >=0)
+			MUI.showPage(pageRef);
+		return;
+	}
+	history.back();
 }
 
 }
@@ -5463,28 +5496,5 @@ function initPageDetail(jpage, opt)
 //}}}
 
 // ====== app fw toolkit {{{
-/**
-@fn hd_back(pageRef?)
-
-返回操作，类似history.back()，但当当前页是第一个页面（没有页面栈），则转向pageRef页。
-一般用于顶部返回按钮：
-
-	<div class="hd">
-		<a href="javascript:hd_back();" class="icon icon-back"></a>
-		<h2>个人信息</h2>
-	</div>
-
-如果该页当作入口页进入，则点击返回按钮可回首页。
-*/
-function hd_back(pageRef)
-{
-	if (MUI.m_pageStack.sp_ == 0) {
-		if (pageRef == null)
-			pageRef = MUI.options.homePage;
-		MUI.showPage(pageRef);
-		return;
-	}
-	history.back();
-}
 //}}}
 // vim: set foldmethod=marker:
