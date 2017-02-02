@@ -3108,29 +3108,26 @@ callSvr扩展示例：
 		}
 
 		var url = makeUrl(ac, params);
-		var ctx = {ac: ac, tm: new Date(), isMock: true};
+		var ctx = {ac: ac, tm: new Date()};
 		if (userOptions && userOptions.noLoadingImg)
 			ctx.noLoadingImg = 1;
 		if (ext) {
 			ctx.ext = ext;
+		}
+		if (self.mockData && self.mockData[ac0]) {
+			ctx.isMock = true;
+			ctx.mockData = self.mockData[ac0];
+			if ($.isFunction(ctx.mockData)) {
+				ctx.mockData = ctx.mockData(params||{}, postParams||{});
+			}
 		}
 		enterWaiting(ctx);
 
 		var callType = "call";
 		if (isSyncCall)
 			callType += "-sync";
-		if (self.mockData && self.mockData[ac0]) {
+		if (ctx.isMock)
 			callType += "-mock";
-			console.log(callType + " " + ac0);
-			return callSvrMock({
-				data: self.mockData[ac0],
-				param: params || {},
-				postParam: postParams || {},
-				fn: fn,
-				ctx: ctx,
-				isSyncCall: isSyncCall
-			});
-		}
 
 		var method = (postParams == null? 'GET': 'POST');
 		var opt = {
@@ -3156,15 +3153,19 @@ callSvr扩展示例：
 		if (ext && self.callSvrExt[ext].beforeSend) {
 			self.callSvrExt[ext].beforeSend(opt);
 		}
+
 		console.log(callType + " " + ac0);
+		if (ctx.isMock)
+			return callSvrMock(opt, isSyncCall);
 		return $.ajax(opt);
 	}
 
-	// opt={data, isSyncCall, ctx, fn, param, postParam}
-	function callSvrMock(opt)
+	// opt = {success, .ctx_={isMock, mockData} }
+	function callSvrMock(opt, isSyncCall)
 	{
 		var dfd_ = $.Deferred();
-		if (opt.isSyncCall) {
+		var opt_ = opt;
+		if (isSyncCall) {
 			callSvrMock1();
 		}
 		else {
@@ -3174,13 +3175,10 @@ callSvr扩展示例：
 
 		function callSvrMock1() 
 		{
-			if ($.isFunction(opt.data)) {
-				opt.data = opt.data(opt.param, opt.postParam);
-			}
-			var rv = defDataProc.call({ctx_: opt.ctx}, opt.data);
+			var rv = defDataProc.call(opt_, opt_.ctx_.mockData);
 			if (rv != null)
 			{
-				opt.fn && opt.fn(rv);
+				opt_.success && opt_.success(rv);
 				dfd_.resolve(rv);
 				return;
 			}
