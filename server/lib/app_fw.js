@@ -1477,10 +1477,13 @@ m_curState==null: 首次进入，或hash改变
 			enterWaiting(); // NOTE: leaveWaiting in initPage
 			var m = pi.pageFile.match(/(.+)\//);
 			var path = m? m[1]: "";
-			$.ajax(pi.pageFile).then(function (html) {
+			$.ajax(pi.pageFile, {error: null}).then(function (html) {
 				loadPage(html, pageId, path);
 			}).fail(function () {
 				leaveWaiting();
+				app_alert("找不到页面: " + pageId, "e");
+				history.back();
+				return false;
 			});
 		}
 
@@ -2135,10 +2138,10 @@ onCancel: 用于"q", 点取消时回调.
 
 示例:
 
-	// 信息框
+	// 信息框，3s后自动点确定
 	app_alert("操作成功", function () {
-		MUI.showPage("#orderInfo");
-	}, {timeoutInterval: 3});
+		MUI.showPage("#orders");
+	}, {timeoutInterval: 3000});
 
 	// 错误框
 	app_alert("操作失败", "e");
@@ -2199,8 +2202,8 @@ app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时�
 		//var cls = {i: "mui-info", w: "mui-warning", e: "mui-error", q: "mui-question", p: "mui-prompt"}[type];
 		var s = {i: "提示", w: "警告", e: "出错了", q: "确认", p: "输入"}[type];
 
-		var jmsg = $("#muiAlert");
-		if (jmsg.size() == 0) {
+		var jdlg = self.container.find("#muiAlert");
+		if (jdlg.size() == 0) {
 			var html = '' + 
 	'<div id="muiAlert" class="mui-dialog">' + 
 	'	<h3 class="hd p-title"></h3>' + 
@@ -2211,60 +2214,68 @@ app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时�
 	'		<a href="javascript:;" id="btnCancel" class="mui-btn">取消</a>' +
 	'	</div>' +
 	'</div>'
-			jmsg = $(html);
-			self.enhanceWithin(jmsg);
-			jmsg.parent().appendTo(self.container);
+			jdlg = $(html);
+			self.enhanceWithin(jdlg);
+			jdlg.parent().appendTo(self.container);
 		}
 
 		var isClone = false;
 		// 如果正在显示，则使用clone
-		if (jmsg.parent().is(":visible")) {
-			var jo = jmsg.parent().clone().appendTo(self.container);
-			jmsg = jo.find(".mui-dialog");
+		if (jdlg.parent().is(":visible")) {
+			var jo = jdlg.parent().clone().appendTo(self.container);
+			jdlg = jo.find(".mui-dialog");
 			isClone = true;
 		}
-		var opt = self.getOptions(jmsg);
+		var opt = self.getOptions(jdlg);
+		if (opt.type == null) {
+			jdlg.find("#btnOK, #btnCancel").click(app_alert_click);
+		}
 		opt.type = type;
 		opt.fn = fn;
 		opt.alertOpt = alertOpt;
-		var rand = Math.random();
-		opt.rand_ = rand;
-		if (! opt.inited) {
-			jmsg.find("#btnOK, #btnCancel").click(function () {
-				if (opt.fn && this.id == "btnOK") {
-					var param;
-					if (opt.type == "p") {
-						param = jmsg.find("#txtInput").val();
-					}
-					opt.fn(param);
-				}
-				else if (this.id == "btnCancel" && opt.alertOpt.onCancel) {
-					opt.alertOpt.onCancel();
-				}
-				opt.rand_ = 0;
-				self.closeDialog(jmsg, isClone);
-			});
-			opt.inited = true;
-		}
+		opt.isClone = isClone;
 
-		jmsg.find("#btnCancel").toggle(type == "q" || type == "p");
-		var jtxt = jmsg.find("#txtInput");
+		jdlg.find("#btnCancel").toggle(type == "q" || type == "p");
+		var jtxt = jdlg.find("#txtInput");
 		jtxt.toggle(type == "p");
 		if (type == "p") {
 			jtxt.val(alertOpt.defValue);
 		}
 
-		jmsg.find(".p-title").html(s);
-		jmsg.find(".p-msg").html(msg);
-		self.showDialog(jmsg);
+		jdlg.find(".p-title").html(s);
+		jdlg.find(".p-msg").html(msg);
+		self.showDialog(jdlg);
 
 		if (alertOpt.timeoutInterval != null) {
-			setTimeout(function() {
+			opt.timer = setTimeout(function() {
 				// 表示上次显示已结束
-				if (rand == opt.rand_)
-					jmsg.find("#btnOK").click();
-			}, opt.timeoutInterval);
+				jdlg.find("#btnOK").click();
+			}, alertOpt.timeoutInterval);
 		}
+	}
+
+	// jdlg.opt: {fn, type, alertOpt, timer, isClone}
+	function app_alert_click(ev)
+	{
+		var jdlg = $(this).closest("#muiAlert");
+		assert(jdlg.size()>0);
+		var opt = self.getOptions(jdlg);
+		if (opt.timer) {
+			clearInterval(opt.timer);
+			opt.timer = null;
+		}
+		var btnId = this.id;
+		if (opt.fn && btnId == "btnOK") {
+			var param;
+			if (opt.type == "p") {
+				param = jdlg.find("#txtInput").val();
+			}
+			opt.fn(param);
+		}
+		else if (btnId == "btnCancel" && opt.alertOpt.onCancel) {
+			opt.alertOpt.onCancel();
+		}
+		self.closeDialog(jdlg, opt.isClone);
 	}
 
 //}}}
