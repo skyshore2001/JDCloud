@@ -2381,7 +2381,8 @@ ctx: {ac, tm, tv, ret}
 调用callSvr时，会直接使用该数据，不会发起ajax请求。
 
 mockData={ac => data/fn}  
-fn(param, postParam)->data
+
+mockData中每项可以直接是数据，也可以是一个函数：fn(param, postParam)->data
 
 例：模拟"User.get(id)"和"User.set()(key=value)"接口：
 
@@ -2408,6 +2409,9 @@ fn(param, postParam)->data
 
 实例详见文件 mockdata.js。
 
+在mockData的函数中，可以用this变量来取ajax调用参数。
+要取HTTP动词可以用`this.type`，值为GET/POST/PATCH/DELETE之一，从而可模拟RESTful API.
+
 可以通过MUI.options.mockDelay设置模拟调用接口的网络延时。
 @see MUI.options.mockDelay
 
@@ -2418,7 +2422,7 @@ fn(param, postParam)->data
 
 要模拟该接口，应设置
 
-	MUI.mockData["zhanda.token/get-token"] = ...;
+	MUI.mockData["zhanda:token/get-token"] = ...;
 
 @see MUI.callSvrExt
 
@@ -2609,16 +2613,27 @@ allow throw("abort") as abort behavior.
 
 	function defAjaxErrProc(xhr, textStatus, e)
 	{
-		if (xhr && xhr.status != 200) {
+		//if (xhr && xhr.status != 200) {
+			var ctx = this.ctx_ || {};
+			ctx.status = xhr.status;
+			ctx.statusText = xhr.statusText;
+
 			if (xhr.status == 0) {
 				app_alert("连不上服务器了，是不是网络连接不给力？", "e");
+			}
+			else if (this.handleHttpError) {
+				var data = xhr.responseText;
+				var rv = defDataProc.call(this, data);
+				if (rv != null)
+					this.success && this.success(rv);
+				return;
 			}
 			else {
 				app_alert("操作失败: 服务器错误. status=" + xhr.status + "-" + xhr.statusText, "e");
 			}
-			var ctx = this.ctx_ || {};
+
 			leaveWaiting(ctx);
-		}
+		//}
 	}
 
 /**
@@ -2661,7 +2676,7 @@ allow throw("abort") as abort behavior.
 		}
 
 		try {
-			if (typeof(rv) == "string")
+			if (rv !== "" && typeof(rv) == "string")
 				rv = $.parseJSON(rv);
 		}
 		catch (e)
@@ -2790,7 +2805,7 @@ serverUrl为"http://myserver/myapp/api.php" 或 "http://myserver/myapp/"，则MU
 		var url;
 		var extMakeUrl = self.callSvrExt[ext] && self.callSvrExt[ext].makeUrl;
 		if (extMakeUrl) {
-			url = extMakeUrl(action);
+			url = extMakeUrl(action, params);
 		}
 		// 缺省接口调用：callSvr('login') 或 callSvr('php/login.php');
 		else if (action.indexOf(".php") < 0)
@@ -2959,7 +2974,7 @@ JS:
 callSvr扩展示例：
 
 	MUI.callSvrExt['zhanda'] = {
-		makeUrl: function(ac) {
+		makeUrl: function(ac, param) {
 			return 'http://hostname/lcapi/' + ac;
 		},
 		dataFilter: function (data) {
@@ -2982,9 +2997,9 @@ callSvr扩展示例：
 		console.log(data);
 	});
 
-@key MUI.callSvrExt[].makeUrl(ac)
+@key MUI.callSvrExt[].makeUrl(ac, param)
 
-根据调用名ac生成url.
+根据调用名ac生成url, 注意无需将param放到url中。
 
 注意：
 对方接口应允许JS跨域调用，或调用方支持跨域调用。
@@ -3072,17 +3087,123 @@ callSvr扩展示例：
 
 	MUI.callSvrExt['default'] = {
 		beforeSend: function (opt) {
+			// 示例：设置contentType
 			if (opt.contentType == null) {
 				opt.contentType = "application/json;charset=utf-8";
 				if (opt.data) {
 					opt.data = JSON.stringify(opt.data);
 				}
 			}
+			// 示例：添加HTTP头用于认证
+			if (g_data.auth) {
+				if (opt.headers == null)
+					opt.headers = {};
+				opt.headers["Authorization"] = "Basic " + g_data.auth;
+			}
 		}
 	}
 
 如果要设置请求的HTTP headers，可以用`opt.headers = {header1: "value1", header2: "value2"}`.
 更多选项参考jquery文档：jQuery.ajax的选项。
+
+## 适配RESTful API
+
+接口示例：更新订单
+
+	PATCH /orders/{ORDER_ID}
+
+	调用成功仅返回HTTP状态，无其它内容："200 OK" 或 "204 No Content"
+	调用失败返回非2xx的HTTP状态及错误信息，无其它内容，如："400 bad id"
+
+为了处理HTTP错误码，应设置：
+
+	MUI.callSvrExt["default"] = {
+		beforeSend: function (opt) {
+			opt.handleHttpError = true;
+		},
+		dataFilter: function (data) {
+			var ctx = this.ctx_;
+			if (ctx && ctx.status) {
+				if (this.noex)
+					return false;
+				app_alert(ctx.statusText, "e");
+				return;
+			}
+			return data;
+		}
+	}
+
+- 在beforeSend回调中，设置handleHttpError为true，这样HTTP错误会由dataFilter处理，而非框架自动处理。
+- 在dataFilter回调中，如果this.ctx_.status非空表示是HTTP错误，this.ctx_.statusText为错误信息。
+- 如果操作成功但无任何返回数据，回调函数fn(data)中data值为undefined（当HTTP状态码为204）或空串（非204返回）
+- 不要设置ajax调用失败的回调，如`$.ajaxSetup({error: fn})`，`$.ajax({error: fn})`，它会覆盖框架的处理.
+
+如果接口在出错时，返回固定格式的错误对象如{code, message}，可以这样处理：
+
+	MUI.callSvrExt["default"] = {
+		beforeSend: function (opt) {
+			opt.handleHttpError = true;
+		},
+		dataFilter: function (data) {
+			var ctx = this.ctx_;
+			if (ctx && ctx.status) {
+				if (this.noex)
+					return false;
+				if (data && data.message) {
+					app_alert(data.message, "e");
+				}
+				else {
+					app_alert("操作失败: 服务器错误. status=" + ctx.status + "-" + ctx.statusText, "e");
+				}
+				return;
+			}
+			return data;
+		}
+	}
+
+调用接口时，HTTP谓词可以用callSvr的userOptions中给定，如：
+
+	callSvr("orders/" + orderId, fn, postParam, {type: "PATCH"});
+	
+这种方式简单，但因调用名ac是变化的，不易模拟接口。
+如果要模拟接口，可以保持调用名ac不变，像这样调用：
+
+	callSvr("orders/{id}", {id: orderId}, fn, postParam, {type: "PATCH"});
+
+于是可以这样做接口模拟：
+
+	MUI.mockData = {
+		"orders/{id}": function (param, postParam) {
+			var ret = "OK";
+			// 获取资源
+			if (this.type == "GET") {
+				ret = orders[param.id];
+			}
+			// 更新资源
+			else if (this.type == "PATCH") {
+				$.extend(orders[param.id], postParam);
+			}
+			// 删除资源
+			else if (this.type == "DELETE") {
+				delete orders[param.id];
+			}
+			return [0, ret];
+		}
+	};
+
+不过这种写法需要适配，以生成正确的URL，示例：
+
+	MUI.callSvrExt["default"] = {
+		makeUrl: function (ac, param) {
+			ac = ac.replace(/\{(\w+)\}/g, function (m, m1) {
+				var ret = param[m1];
+				assert(ret != null, "缺少参数");
+				delete param[m1];
+				return ret;
+			});
+			return "./api.php/" + ac;
+		}
+	}
 
 */
 	window.callSvr = self.callSvr = callSvr;
@@ -3104,7 +3225,7 @@ callSvr扩展示例：
 			assert(ac.length == 2, "*** bad ac format, require [ac, ext]");
 			ext = ac[1];
 			if (ext != 'default')
-				ac0 = ext + '.' + ac[0];
+				ac0 = ext + ':' + ac[0];
 			else
 				ac0 = ac[0];
 		}
@@ -3168,7 +3289,7 @@ callSvr扩展示例：
 			self.callSvrExt[ext].beforeSend(opt);
 		}
 
-		console.log(callType + " " + ac0);
+		console.log(callType + ": " + opt.type + " " + ac0);
 		if (ctx.isMock)
 			return callSvrMock(opt, isSyncCall);
 		return $.ajax(opt);
