@@ -17,9 +17,11 @@
 
 ## 初始化配置
 
-app_fw框架自动包含 $BASE_DIR/conf.php, $BASE_DIR/php/conf.user.php。
+app_fw框架自动包含 $BASE_DIR/php/conf.user.php。
 
-前者定义代码中易变的逻辑；后者为项目配置，一般用于定义环境变量、全局变量等。
+项目部署时的配置，一般用于定义环境变量、全局变量等，通常不添加入版本库，在项目实施时手工配置。
+
+对于不变的全局配置，应在app.php中定义。
 
 ### 数据库配置
 
@@ -721,7 +723,7 @@ function dbconn($fnConfirm = null)
 		exit;
 	}
 	try {
-		$DBH = new MyPDO ($C[0], $C[1], $C[2]);
+		@$DBH = new MyPDO ($C[0], $C[1], $C[2]);
 	}
 	catch (PDOException $e) {
 		$msg = $GLOBALS["TEST_MODE"] ? $e->getMessage() : "dbconn fails";

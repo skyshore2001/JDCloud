@@ -280,6 +280,13 @@ function setServerRev()
 	class Conf extends ConfBase
 	{
 	}
+
+@key Conf 项目易变逻辑
+@key conf.php 项目易变逻辑
+
+$BASE_DIR/conf.php中包含Conf类，用于定义易变的临时逻辑，例如数据库维护时报错提示，临时控制某个版本不能使用，遇到节假日休息提醒等等。
+
+不变的全局配置应在app.php中定义。
  */
 class ConfBase
 {
