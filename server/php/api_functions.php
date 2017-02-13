@@ -1,12 +1,5 @@
 <?php
 
-/* each api name begins with "api_", return the content according to protocol.
-三种返回方式：
-- 通过return obj; (obj根据文档定义，如果未定义，请返回字符串"OK")
-- 设置全局变量 $X_RET_STR, 用于已经是json格式的字符串返回。(参考 api_weather)
-- 直接输出, 然后调用throw new DirectReturn(); 仅针对特殊的api (不符合一般API调用规范, 如itt操作返回图片)
- */
-
 // ====== config {{{
 const HTTP_NOT_FOUND = "HTTP/1.1 404 Not Found";
 const AUTO_PWD_PREFIX = "AUTO";
@@ -34,6 +27,127 @@ $ALLOWED_MIME = [
 	//'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 	//'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 ];
+//}}}
+
+// ====== toolkit {{{
+
+function hashPwd($pwd)
+{
+	if (strlen($pwd) == 32 || $pwd === "")
+		return $pwd;
+	return md5($pwd);
+}
+
+function randChr($t)
+{
+	while (1) {
+		# all digits (no 0)
+		if ($t == 'd') {
+			$n = rand(ord('1'), ord('9'));
+			return chr($n);
+		}
+		
+		# A-Z (no O, I)
+		$n = rand(0, 25);
+		if ($n == ord('O')-ord('A') || $n == ord('I')-ord('A'))
+			continue;
+		return chr(ord('A') + $n);
+	}
+}
+
+# e.g. genDynCode("d4") - 4 digits
+# e.g. genDynCode("w4") - 4 chars (capital letters)
+function genDynCode($type)
+{
+	$t = substr($type, 0, 1);
+	$n = (int)substr($type, 1);
+	if ($n <= 0)
+		throw new MyException(E_PARAM, "Bad type '$type' for genCode");
+	$r = '';
+	for ($i=0; $i<$n; ++$i) {
+		$r .= randChr($t);
+	}
+	return $r;
+}
+
+function validateDynCode($code, $phone = null)
+{
+	$code1 = $_SESSION["code"];
+	$phone1 = $_SESSION["phone"];
+	$codetm = $_SESSION["codetm"];
+
+	// TODO: remove special code "080909"
+	
+	if (@$GLOBALS["TEST_MODE"] && $code == "080909")
+		goto nx;
+
+	//special number and code not verify
+	if ( !is_null($phone) && $phone == "12345678901" && $code == "080909")
+		goto nx;
+
+	if (is_null($code1) || is_null($phone1))
+		throw new MyException(E_FORBIDDEN, "gencode required", "请先发送验证码!");
+
+	
+	if (time() - $codetm > 60*5)
+		throw new MyException(E_FORBIDDEN, "code expires (max 60s)", "验证码已过期(有效期5分钟)");
+
+	if ($code != $code1)
+		throw new MyException(E_PARAM, "bad code", "验证码错误");
+
+	if ($phone != null && $phone != $phone1)
+		throw new MyException(E_PARAM, "bad phone number. expect for phone '$phone1'");
+
+nx:
+	unset($_SESSION["code"]);
+	unset($_SESSION["phone"]);
+	unset($_SESSION["codetm"]);
+}
+
+// return: {type, ver, str}
+// type: "web"-网页客户端; "wx"-微信客户端; "a"-安卓客户端; "ios"-苹果客户端
+// e.g. {type: "a", ver: 2, str: "a/2"}
+function getClientVersion()
+{
+	global $CLIENT_VER;
+	if (! isset($CLIENT_VER))
+	{
+		$ver = param("_ver");
+		if ($ver != null) {
+			$a = explode('/', $ver);
+			$CLIENT_VER = [
+				"type" => $a[0],
+				"ver" => $a[1],
+				"str" => $ver
+			];
+		}
+		// Mozilla/5.0 (Linux; U; Android 4.1.1; zh-cn; MI 2S Build/JRO03L) AppleWebKit/533.1 (KHTML, like Gecko)Version/4.0 MQQBrowser/5.4 TBS/025440 Mobile Safari/533.1 MicroMessenger/6.2.5.50_r0e62591.621 NetType/WIFI Language/zh_CN
+		else if (preg_match('/MicroMessenger\/([0-9.]+)/', $_SERVER["HTTP_USER_AGENT"], $ms)) {
+			$ver = $ms[1];
+			$CLIENT_VER = [
+				"type" => "wx",
+				"ver" => $ver,
+				"str" => "wx/{$ver}"
+			];
+		}
+		else {
+			$CLIENT_VER = [
+				"type" => "web",
+				"ver" => 0,
+				"str" => "web"
+			];
+		}
+	}
+	return $CLIENT_VER;
+}
+
+// return: false=不是ios客户端; 正常返回整数值如 15.
+function getIosVersion()
+{
+	$ver = getClientVersion();
+	return $ver["type"]=="ios"? (int)$ver["ver"]: false;
+}
+
 //}}}
 
 // ====== functions {{{

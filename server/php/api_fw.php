@@ -182,6 +182,7 @@ const PAGE_SZ_LIMIT = 10000;
 class ApiFw_
 {
 	static $SOLO;
+	static $perms;
 }
 //}}}
 
@@ -269,6 +270,59 @@ function setServerRev()
 	$ver = substr($ver, 0, 6);
 	header("X-Daca-Server-Rev: {$ver}");
 }
+
+/**
+@fn hasPerm($perm)
+
+检查权限。perm可以是单个权限或多个权限，例：
+
+	hasPerm(AUTH_USER); // 用户登录后可用
+	hasPerm(AUTH_USER | AUTH_EMP); // 用户或员工登录后可用
+
+@fn onGetPerms()
+
+开发者需要定义该函数，用于返回所有检测到的权限。hasPerm函数依赖该函数。
+
+@see checkAuth
+ */
+function hasPerm($perm)
+{
+	if (is_null(ApiFw_::$perms))
+		ApiFw_::$perms = onGetPerms();
+
+	return (ApiFw_::$perms & $perm) != 0;
+}
+
+/** 
+@fn checkAuth($perm)
+
+用法与hasPerm类似，检查权限，如果不正确，则抛出错误，返回错误对象。
+
+	checkPerm(AUTH_USER); // 必须用户登录后可用
+	checkPerm(AUTH_ADMIN | PERM_TEST_MODE); 要求必须管理员登录或测试模式才可用。
+
+@see hasPerm
+ */
+function checkAuth($perm)
+{
+	$ok = hasPerm($perm);
+	if (!$ok) {
+		$auth = [];
+		// TODO: AUTH_LOGIN
+		if (hasPerm(AUTH_LOGIN))
+			$errCode = E_FORBIDDEN;
+		else
+			$errCode = E_NOAUTH;
+
+		foreach ($GLOBALS["PERMS"] as $p=>$name) {
+			if (($perm & $p) != 0) {
+				$auth[] = $name;
+			}
+		}
+		throw new MyException($errCode, "require auth to " . join(" or ", $auth));
+	}
+}
+
 // }}}
 
 // ====== classes {{{
@@ -1317,7 +1371,11 @@ AccessControl简写为AC，同时AC也表示自动补全(AutoComplete).
 
 框架为AUTH_ADMIN权限自动选择AC0_类，其它类可以通过函数 onCreateAC 进行自定义，仍未定义的框架使用AC_类。
 
-@see onCreateAC
+@fn onCreateAC($obj)
+
+需开发者在api.php中定义。
+根据对象名，返回权限控制类名，如 AC1_{$obj}。
+如果返回null, 则默认为 AC_{obj}
 
 ## 基本权限控制
 
@@ -1760,7 +1818,7 @@ class AccessControl
 	static function create($tbl, $asAdmin = false) 
 	{
 		/*
-		if (!isUserLogin() && !isEmpLogin())
+		if (!hasPerm(AUTH_USER | AUTH_EMP))
 		{
 			$wx = getWeixinUser();
 			$wx->autoLogin();
@@ -1769,7 +1827,7 @@ class AccessControl
 		$cls = null;
 		$noauth = 0;
 		# note the order.
-		if ($asAdmin || isAdminLogin())
+		if ($asAdmin || hasPerm(AUTH_ADMIN))
 		{
 			$cls = "AC0_$tbl";
 			if (! class_exists($cls))
