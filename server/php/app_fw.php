@@ -51,30 +51,28 @@ P_DBCRED格式为`{用户名}:{密码}`，或其base64编码后的值，如
 
 ## 测试模式与调试等级
 
-@var TEST_MODE Integer/Boolean. 0-生产模式；1-测试模式；2-自动化回归测试模式(RTEST_MODE)
-@var DBG_LEVEL Integer. 调试等级。值范围0-9.
+@key P_TEST_MODE Integer。环境变量，允许测试模式。0-生产模式；1-测试模式；2-自动化回归测试模式(RTEST_MODE)
+@key P_DEBUG Integer。环境变量，设置调试等级，值范围0-9。仅在测试模式下有效。
 
 测试模式特点：
 
-- 通过在项目目录下放置文件 CFG_TEST_MODE，可强制使用测试模式。
-- 通过URL请求参数 "_test=1"可以测试模式打开应用。
-- 输出JSON内容更易读，且带调试信息。
-- 一般建议测试模式下连接不同的数据库。可在conf.user.php中指定。
+- 输出的HTTP头中包含：`X-Daca-Test-Mode: 1`
+- 输出的JSON格式经过美化更易读，且可以显示更多调试信息。前端可通过在接口中添加`_debug`参数设置调试等级。
+  如果想要查看本次调用涉及的SQL语句，可以用`_debug=9`。
+- 某些用于测试的接口可以调用，例如execSql。因而十分危险，生产模式下一定不可误设置为测试模式。
+- 可以使用模拟模式
 
-用于在测试模式下输出调试信息。
-
-- 可通过URL请求参数指定，如"_test=1&_debug=1"。
-- 值为9时，可输出所有SQL调试日志。
+注意：v3.4版本起不允许客户端设置_test参数，且用环境变量P_TEST_MODE替代符号文件CFG_TEST_MODE和设置全局变量TEST_MODE.
 
 @see addLog
 
 ## 模拟模式
 
-@var MOCK_MODE Boolean. 模拟模式. 值：0/1.
-@key CFG_MOCK_MODE  符号文件，如文件存在则应用运行于模拟模式。
-@key CFG_MOCK_T_MODE 符号文件，如文件存在且在测试模式下，应用运行于模拟模式。
+@key P_MOCK_MODE Integer. 模拟模式. 值：0/1.
 
 对第三方系统依赖（如微信认证、支付宝支付、发送短信等），可通过设计Mock接口来模拟。
+
+注意：v3.4版本起用环境变量P_MOCK_MODE替代符号文件CFG_MOCK_MODE/CFG_MOCK_T_MODE和设置全局变量MOCK_MODE，且模拟模式只允许在测试模式激活时才能使用。
 
 @see ExtMock
 
@@ -1061,14 +1059,14 @@ END;
 }
 
 /**
-@fn addLog($str, $logLevel=1)
+@fn addLog($str, $logLevel=0)
 
 输出调试信息到前端。调试信息将出现在最终的JSON返回串中。
 如果只想输出调试信息到文件，不想让前端看到，应使用logit.
 
 @see logit
  */
-function addLog($str, $logLevel=1)
+function addLog($str, $logLevel=0)
 {
 	global $DBG_LEVEL;
 	if ($DBG_LEVEL >= $logLevel)
@@ -1446,24 +1444,21 @@ class AppFw_
 {
 	private static function initGlobal()
 	{
-		global $DBG_LEVEL;
-		if (!isset($DBG_LEVEL)) {
-			$defaultDebugLevel = getenv("P_DEBUG")===false? 0 : intval(getenv("P_DEBUG"));
-			$DBG_LEVEL = param("_debug/i", $defaultDebugLevel, $_GET);
-		}
-
 		global $TEST_MODE;
-		if (!isset($TEST_MODE)) {
-			$TEST_MODE = param("_test/i", isCLIServer() || isCLI() || hasSignFile("CFG_TEST_MODE")?1:0);
-		}
+		$TEST_MODE = getenv("P_TEST_MODE")===false? 0: intval(getenv("P_TEST_MODE"));
 		if ($TEST_MODE) {
 			header("X-Daca-Test-Mode: $TEST_MODE");
 		}
 
+		global $DBG_LEVEL;
+		if ($TEST_MODE) {
+			$defaultDebugLevel = getenv("P_DEBUG")===false? 0 : intval(getenv("P_DEBUG"));
+			$DBG_LEVEL = param("_debug/i", $defaultDebugLevel, $_GET);
+		}
+
 		global $MOCK_MODE;
-		if (!isset($MOCK_MODE)) {
-			$MOCK_MODE = hasSignFile("CFG_MOCK_MODE")
-				|| ($TEST_MODE && hasSignFile("CFG_MOCK_T_MODE"));
+		if ($TEST_MODE) {
+			$MOCK_MODE = getenv("P_MOCK_MODE")===false? 0: intval(getenv("P_MOCK_MODE"));
 		}
 		if ($MOCK_MODE) {
 			header("X-Daca-Mock-Mode: $MOCK_MODE");
