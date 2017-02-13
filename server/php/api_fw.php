@@ -834,8 +834,9 @@ function outputCsvLine($row, $enc)
 			$firstCol = false;
 		else
 			echo ',';
-		if ($enc)
-			$e = iconv("UTF-8", "{$enc}//IGNORE" , $e);
+		if ($enc) {
+			$e = iconv("UTF-8", "{$enc}//IGNORE" , (string)$e);
+		}
 		echo '"', str_replace('"', '""', $e), '"';
 	}
 	echo "\n";
@@ -857,28 +858,29 @@ function table2txt($tbl)
 	}
 }
 
-function handleFormat($ret, $fname)
+function handleExportFormat($fmt, $ret, $fname)
 {
-	$fmt = param("_fmt");
-	if ($fmt == null)
-		return;
-
+	$handled = false;
 	if ($fmt === "csv") {
 		header("Content-Type: application/csv; charset=UTF-8");
 		header("Content-Disposition: attachment;filename={$fname}.csv");
 		table2csv($ret);
+		$handled = true;
 	}
 	else if ($fmt === "excel") {
 		header("Content-Type: application/csv; charset=gb2312");
 		header("Content-Disposition: attachment;filename={$fname}.csv");
 		table2csv($ret, "gb2312");
+		$handled = true;
 	}
 	else if ($fmt === "txt") {
 		header("Content-Type: text/plain; charset=UTF-8");
 		header("Content-Disposition: attachment;filename={$fname}.txt");
 		table2txt($ret);
+		$handled = true;
 	}
-	throw new DirectReturn();
+	if ($handled)
+		throw new DirectReturn();
 }
 
 /**
@@ -1200,15 +1202,26 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 						$nextkey = $pagekey + 1;
 					}
 				}
-				$ret = objarr2table($ret, $fixedColCnt);
+				foreach ($ret as &$mainObj) {
+					$id1 = $mainObj["id"];
+					if (isset($id1))
+						handleSubObj($sqlConf["subobj"], $id1, $mainObj);
+				}
+				$fmt = param("_fmt");
+				if ($fmt === "list") {
+					$ret = ["list" => $ret];
+				}
+				else {
+					$ret = objarr2table($ret, $fixedColCnt);
+				}
 				if (isset($nextkey)) {
 					$ret["nextkey"] = $nextkey;
 				}
 				if (isset($totalCnt)) {
 					$ret["total"] = $totalCnt;
 				}
-
-				handleFormat($ret, $tbl);
+				if (isset($fmt))
+					handleExportFormat($fmt, $ret, $tbl);
 			}
 		}
 	}
@@ -1553,6 +1566,8 @@ query接口的"..."之后就是虚拟字段。后缀"?"表示是非缺省字段�
 
 @var AccessControl::$subobj (for get/query) 定义子表
 
+subobj: { name => {sql, default, wantOne} }
+
 设计接口：
 
 	Ordr.get() -> {id, ..., @orderLog}
@@ -1563,13 +1578,13 @@ query接口的"..."之后就是虚拟字段。后缀"?"表示是非缺省字段�
 	class AC1_Ordr extends AccessControl
 	{
 		protected $subobj = [
-			"orderLog" => ["sql"=>"SELECT ol.*, e.name AS empName FROM OrderLog ol LEFT JOIN Employee e ON ol.empId=e.id WHERE orderId=%d", "wantOne"=>false],
+			"orderLog" => ["sql"=>"SELECT ol.*, e.name AS empName FROM OrderLog ol LEFT JOIN Employee e ON ol.empId=e.id WHERE orderId=%d", "default"=>false, "wantOne"=>false],
 		];
 	}
 
-子表一般通过get操作来获取，执行指定的SQL语句作为结果。结果以一个数组返回[{id, tm, ...}]，如果指定wantOne=>true, 则结果以一个对象返回即 {id, tm, ...}, 适用于主表与子表一对一的情况。
-
-通过在Query操作上指定参数{wantArray:1}也可以返回子表，但目前不支持分页等操作。
+子表和虚拟字段类似，支持get/query操作，执行指定的SQL语句作为结果。结果以一个数组返回[{id, tm, ...}]。
+"default"选项与虚拟字段(vcolDefs)上的"default"选项一样，表示当未指定"res"参数时，是否默认返回该字段。
+如果指定wantOne=>true, 则结果以一个对象返回即 {id, tm, ...}, 适用于主表与子表一对一的情况。
 
 ## 操作完成回调
 
@@ -1689,6 +1704,17 @@ PAGE_SZ_LIMIT目前定为10000条。如果还不够，一定是应用设计有�
 - 重写 AccessControl::$defaultRes
 - 用addCond添加缺省查询条件
 
+## query接口输出格式
+
+query接口支持_fmt参数：
+
+- list: 生成`{ @list, nextkey?, total? }`格式，而非缺省的 `{ @h, @d, nextkey?, total? }`格式
+- csv/txt/excel: 导出文件，注意为了避免分页，调用时可设置较大的_pagesz值。
+	- csv: 逗号分隔的文件，utf8编码。
+	- excel: 逗号分隔的文件，gb2312编码以便excel可直接打开不会显示中文乱码。
+	- txt: 制表分隔的文件, utf8编码。
+
+TODO: 可加一个系统参数`_enc`表示输出编码的格式。
 */
 
 # ====== functions {{{
@@ -1868,8 +1894,12 @@ class AccessControl
 			}
 			else {
 				$this->addDefaultVCols();
-				if (count($this->sqlConf["subobj"]) == 0)
-					$this->sqlConf["subobj"] = $this->subobj;
+				if (count($this->sqlConf["subobj"]) == 0) {
+					foreach ($this->subobj as $col => $def) {
+						if (@$def["default"])
+							$this->sqlConf["subobj"][$col] = $def;
+					}
+				}
 			}
 			if ($ac == "query")
 			{
