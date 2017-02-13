@@ -64,6 +64,9 @@ P_DBCRED格式为`{用户名}:{密码}`，或其base64编码后的值，如
 
 注意：v3.4版本起不允许客户端设置_test参数，且用环境变量P_TEST_MODE替代符号文件CFG_TEST_MODE和设置全局变量TEST_MODE.
 
+在过去测试模式用于：可直接对生产环境进行测试且不影响生产环境，即部署后，在前端指定以测试模式连接，在后端为测试模式连接专用的测试数据库，且使用专用的cookie，实现与生产模式共用代码但互不影响。
+现已废弃这种用法，应搭建专用的测试环境用于测试开发。
+
 @see addLog
 
 ## 模拟模式
@@ -79,8 +82,7 @@ P_DBCRED格式为`{用户名}:{密码}`，或其base64编码后的值，如
 ## session管理
 
 - 应用的session名称为 "{app}id", 如应用名为 "user", 则session名为"userid". 因而不同的应用同时调用服务端也不会冲突。
-- 保存session文件的目录为 $BASE_DIR/session, 可使用P_SESSION_DIR变量重定义。
-- 测试模式下session名称为 "t{app}id", 保存session文件的目录为 $BASE_DIR/session/t。如果定义了环境变量P_SESSION_DIR，则目录为 {P_SESSION_DIR}/t
+- 保存session文件的目录为 $BASE_DIR/session, 可使用环境变量P_SESSION_DIR重定义。
 - 同一主机，不同URL下的session即使APP名相同，也不会相互冲突，因为框架会根据当前URL，设置cookie的有效路径。
 
 @key P_SESSION_DIR ?= $BASE_DIR/session 环境变量，定义session文件存放路径。
@@ -1489,16 +1491,12 @@ class AppFw_
 	private static function setupSession()
 	{
 		global $APP;
-		global $TEST_MODE;
 
 		# normal: "userid"; testmode: "tuserid"
-		$name = ($TEST_MODE?"t":"") . $APP . "id";
+		$name = $APP . "id";
 		session_name($name);
 
-		// normal: "./session"; testmode: "./session/t";
 		$path = getenv("P_SESSION_DIR") ?: $GLOBALS["BASE_DIR"] . "/session";
-		if ($TEST_MODE)
-			$path .= "/t";
 		if (!  is_dir($path)) {
 			if (! mkdir($path, 0777, true))
 			   throw new MyException(E_SERVER, "fail to create session folder");
