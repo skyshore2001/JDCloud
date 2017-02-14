@@ -949,10 +949,10 @@ function callSvr(ac, params, fn, postParams, userOptions)
 		data: postParams,
 // 		dataType: "text",
 		type: method,
-		success: fn,
+		success: fn
 	};
 	// support FormData object.
-	if (postParams instanceof FormData) {
+	if (window.FormData && postParams instanceof FormData) {
 		opt.processData = false;
 		opt.contentType = false;
 	}
@@ -1105,7 +1105,7 @@ $.extend($.fn.datagrid.defaults, {
 	// bugfix: 有时无法显示横向滚动条
 	onLoadSuccess: function (data) {
 		$(this).datagrid("fitColumns");
-	},
+	}
 
 	// Decided in dgLoadFilter: 超过1页使用remoteSort, 否则使用localSort.
 	// remoteSort: false
@@ -1195,7 +1195,7 @@ var DefaultValidateRules = {
 			return v.length==0 || /^[a-zA-Z]/.test(v) || (v.length==11 && !/\D/.test(v)); 
 		},
 		message: "11位手机号或客户代码"
-	},
+	}
 };
 $.extend($.fn.validatebox.defaults.rules, DefaultValidateRules);
 
@@ -1627,7 +1627,7 @@ function callInitfn(jo, paramArr)
 
 	if (initfn)
 	{
-		initfn.apply(jo, paramArr);
+		initfn.apply(jo, paramArr || []);
 	}
 	jo.jdata().init = true;
 }

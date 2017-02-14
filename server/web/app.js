@@ -30,7 +30,7 @@ var Color = {
 	Info: "rgb(190, 247, 190)", // lightgreen,
 	Warning: "yellow",
 	Error: "rgb(253, 168, 172)", // red;
-	Disabled: "#cccccc", // grey
+	Disabled: "#cccccc" // grey
 }
 //}}}
 
