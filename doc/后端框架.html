@@ -2,20 +2,16 @@
 <html>
 <head>
 <link rel="Stylesheet" type="text/css" href="style.css">
-<title>通用Web产品后端框架设计</title>
+<title>Web接口服务框架设计</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 </head>
 <body>
 
-<h1 id="toc_1" class="justcenter"><a name="通用Web产品后端框架设计"> 通用Web产品后端框架设计</a></h1>
-
-<p>
-梁健 - 最近更新于2015/12
-</p>
+<h1 id="toc_1" class="justcenter"><a name="Web接口服务框架设计"> Web接口服务框架设计</a></h1>
 
 <div class="toc">
 <ul>
-<li><a href="#toc_1"> 通用Web产品后端框架设计</a>
+<li><a href="#toc_1"> Web接口服务框架设计</a>
 <ul>
 <li><a href="#toc_1.1">1 需求</a>
 <li><a href="#toc_1.2">2 概要设计</a>
@@ -23,9 +19,6 @@
 <li><a href="#toc_1.2.1">2.1 文件结构</a>
 <li><a href="#toc_1.2.2">2.2 运行环境</a>
 <li><a href="#toc_1.2.3">2.3 配置项</a>
-<ul>
-<li><a href="#toc_1.2.3.1">2.3.1 部署配置</a>
-</ul>
 <li><a href="#toc_1.2.4">2.4 命名规范</a>
 </ul>
 <li><a href="#toc_1.3">3 数据库设计</a>
@@ -39,10 +32,9 @@
 <li><a href="#toc_1.4.1.4">4.1.4 HTTPS服务</a>
 <li><a href="#toc_1.4.1.5">4.1.5 调试等级(_debug)</a>
 <li><a href="#toc_1.4.1.6">4.1.6 应用标识(_app)</a>
-<li><a href="#toc_1.4.1.7">4.1.7 测试模式(_test)</a>
-<li><a href="#toc_1.4.1.8">4.1.8 使用PATH_INFO模式的URL</a>
-<li><a href="#toc_1.4.1.9">4.1.9 客户端版本(_ver)</a>
-<li><a href="#toc_1.4.1.10">4.1.10 权限说明</a>
+<li><a href="#toc_1.4.1.7">4.1.7 使用PATH_INFO模式的URL</a>
+<li><a href="#toc_1.4.1.8">4.1.8 客户端版本(_ver)</a>
+<li><a href="#toc_1.4.1.9">4.1.9 权限说明</a>
 </ul>
 <li><a href="#toc_1.4.2">4.2 通用操作</a>
 <ul>
@@ -50,15 +42,12 @@
 <li><a href="#toc_1.4.2.2">4.2.2 通用表操作</a>
 <li><a href="#toc_1.4.2.3">4.2.3 附件上传</a>
 <li><a href="#toc_1.4.2.4">4.2.4 附件下载</a>
-<li><a href="#toc_1.4.2.5">4.2.5 上传工具</a>
-<li><a href="#toc_1.4.2.6">4.2.6 下载工具</a>
-<li><a href="#toc_1.4.2.7">4.2.7 生成签名</a>
-<li><a href="#toc_1.4.2.8">4.2.8 发短信</a>
-<li><a href="#toc_1.4.2.9">4.2.9 查询短信记录</a>
-<li><a href="#toc_1.4.2.10">4.2.10 代理</a>
+<li><a href="#toc_1.4.2.5">4.2.5 生成签名</a>
+<li><a href="#toc_1.4.2.6">4.2.6 代理</a>
 </ul>
 <li><a href="#toc_1.4.3">4.3 API调用监控</a>
 <li><a href="#toc_1.4.4">4.4 批量请求</a>
+<li><a href="#toc_1.4.5">4.5 服务端信息反馈/X-Daca头</a>
 </ul>
 <li><a href="#toc_1.5">5 前端应用接口</a>
 <ul>
@@ -86,10 +75,6 @@
 <li><a href="#toc_1.6.2.3">6.2.3 API测试和用例测试</a>
 </ul>
 <li><a href="#toc_1.6.3">6.3 单元测试</a>
-<li><a href="#toc_1.6.4">6.4 自动化测试</a>
-<ul>
-<li><a href="#toc_1.6.4.1">6.4.1 取短信日志最后一条</a>
-</ul>
 </ul>
 <li><a href="#toc_1.7">7 登录类型与权限管理</a>
 <li><a href="#toc_1.8">8 服务端部署与升级</a>
@@ -136,7 +121,7 @@
 
 <ul>
 <li>
-提供REST-ful风格的服务端接口API, 可方便的添加函数形式(如queryLog)和对象操作形式(如log.query)的API.
+提供REST-RPC风格的服务端接口API, 可方便的添加函数形式(如queryLog)和对象操作形式(如log.query)的API.
 
 <li>
 提供数据库设计、部署工具
@@ -175,7 +160,7 @@
 </ul>
 
 <p>
-注：以下标记*表示可变文件，根据实际应用添加内容。
+注：以下标记*表示不需要开发者修改的框架实现源文件或工具。
 </p>
 
 <p>
@@ -184,7 +169,7 @@
 
 <pre>
 
-DESIGN.wiki* -- 主设计文档。其它文档在doc目录下。
+DESIGN.wiki -- 主设计文档。其它文档在doc目录下。
 
 build_web.sh -- Web部署工具。
 
@@ -207,19 +192,15 @@ build_web.sh -- Web部署工具。
 </ul>
 
 <p>
-infrastructure; main app; incrementatal app;
-</p>
-
-<p>
 <strong>[后端应用 - server目录]</strong>
 </p>
 
 <dl>
-<dt>api.php* </dt>
-<dd> API接口应用。提供基于HTTP的访问接口，形式如：api.php/fn 或 api.php/obj.query；该文件包含其它实现文件，以及应用内共享的数据。其它应用可包含它从而直接以内部调用方式访问API接口。</dd>
-<dt>app.php* </dt>
+<dt>api.php </dt>
+<dd> API接口应用。提供基于HTTP的访问接口，形式如：api.php/fn 或 api.php/Obj.query；该文件包含其它实现文件，以及应用内共享的数据。其它应用可包含它从而直接以内部调用方式访问API接口。</dd>
+<dt>app.php </dt>
 <dd>应用共享库。存放被多个项目所使用的数据。所有应用一般都应包含它。它包含common.php,app_fw.php,conf.php,conf.user.php等。</dd>
-<dt>conf.php* </dt>
+<dt>conf.php </dt>
 <dd>适用于所有应用（被app.php包含），保存易变逻辑。</dd>
 </dl>
 
@@ -228,20 +209,20 @@ infrastructure; main app; incrementatal app;
 </p>
 
 <dl>
-<dt>php/common.php </dt>
+<dt>php/common.php* </dt>
 <dd>通用共享库。基础公共函数部分，可适用一切php项目。</dd>
-<dt>php/app_fw.php </dt>
+<dt>php/app_fw.php* </dt>
 <dd>应用框架库。为所有应用提供框架支持（以app_开头表示适用于所有应用，fw表示framework），被app.php包含。</dd>
-<dt>php/conf.user.php* </dt>
+<dt>php/conf.user.php </dt>
 <dd>可缺省，用于根据部署环境修改应用配置。被app.php包含。</dd>
 </dl>
 
 <dl>
-<dt>php/api_fw.php </dt>
+<dt>php/api_fw.php* </dt>
 <dd>API接口应用的框架实现（以api_开头表示属于API接口应用）。被api.php包含。</dd>
-<dt>php/api_functions.php* </dt>
+<dt>php/api_functions.php </dt>
 <dd>API接口应用中的函数实现部分。被api.php包含。</dd>
-<dt>php/api_objects.php* </dt>
+<dt>php/api_objects.php </dt>
 <dd>API接口应用中的对象访问实现部分。被api.php包含。</dd>
 </dl>
 
@@ -250,17 +231,17 @@ infrastructure; main app; incrementatal app;
 </p>
 
 <dl>
-<dt>rtest.php* </dt>
+<dt>rtest.php </dt>
 <dd>回归测试内容。（<span class="todo">TODO:</span> 类似api应用，可拆分为 rtest.php, php/rtest_fw.php, php/rtest_group1.php, php/rtest_group.php等)</dd>
 </dl>
 
 <dl>
-<dt>run_rtest.pl </dt>
+<dt>run_rtest.pl* </dt>
 <dd>回归测试执行工具。</dd>
 </dl>
 
 <dl>
-<dt>client.php </dt>
+<dt>client.php* </dt>
 <dd>手工测试工具。模拟前端调用API接口。</dd>
 </dl>
 
@@ -278,7 +259,7 @@ infrastructure; main app; incrementatal app;
 </p>
 
 <dl>
-<dt>index.html*</dt>
+<dt>index.html</dt>
 <dd>文档目录。修改它以增加文档。</dd>
 </dl>
 
@@ -306,12 +287,12 @@ infrastructure; main app; incrementatal app;
 </p>
 
 <dl>
-<dt>upgrade.php</dt>
+<dt>upgrade.php*</dt>
 <dd>数据部署工具。创建或更新数据库表，导入数据等。</dd>
 </dl>
 
 <dl>
-<dt>webcc.php</dt>
+<dt>webcc.php*</dt>
 <dd>Web部署工具。用户上传或更新线上Web产品目录。</dd>
 </dl>
 
@@ -331,10 +312,13 @@ infrastructure; main app; incrementatal app;
 Linux CentOS5 以上版本 x64，可使用阿里云平台
 
 <li>
-Apache2.4 + php5.4
+Apache 2.4+
 
 <li>
-Mysql5以上
+php 5.4+
+
+<li>
+Mysql 5+
 
 </ul>
 
@@ -350,7 +334,7 @@ Windows或Linux
 php5.4 (5.4.31)
 
 <li>
-Apache/IIS
+Apache/IIS/nginx
 
 <li>
 数据库mysql5
@@ -369,7 +353,7 @@ Apache/IIS
 Windows/Linux/Mac (一般在Windows环境开发，最终在Linux环境运行，支持在Mac上运行以便开发iphone应用时搭建本地环境)
 
 <li>
-php5.4.31
+php5.4
 
 <li>
 phpunit4.2用于回归测试。
@@ -385,136 +369,15 @@ phpunit4.2用于回归测试。
 <h3 id="toc_1.2.3"><a name="配置项">2.3 配置项</a></h3>
 
 <p>
-<strong>[运行环境]</strong>
-</p>
-
-<p>
-服务支持mysql和sqlite数据库，服务连接mysql数据库仅当
-</p>
-<ul>
-<li>
-运行在Linux环境下
-
-<li>
-应用目录下不存在文件 CFG_USE_SQLITE
-
-</ul>
-
-<p>
-<strong>[测试模式 - TEST_MODE]</strong>
-</p>
-
-<p>
-服务支持测试模式，它连接名为carsvc_test的数据库，并允许一些清除操作。仅当：
-</p>
-<ul>
-<li>
-调用api.php时指定参数_test非0 或
-
-<li>
-使用sqlite数据库 或
-
-<li>
-应用目录下存在文件 CFG_TEST_MODE
-
-</ul>
-
-<p>
-以上设置项意味着：
-</p>
-<ul>
-<li>
-当运行在Linux平台上，缺省连接mysql数据库并处于非测试模式下。
-
-<li>
-当运行在Windows/iOS平台上，缺省连接sqlite数据库并处于测试模式下。
-
-<li>
-对于Web页面，打开页面且URL中含有"?test"时，应用运行在测试模式。
-  设计web客户端应用时，连续5次点击用户信息页标头(一般dom元素为"#me div[data-role=header]")可在测试模式与生产模式间切换。
-  应用程序应从服务器取信息以确定是否运行在测试模式，如果是，应明确显示。（各Web客户端应遵循该设计原则）
-
-</ul>
-
-<p>
-<strong>[配置选项]</strong>
-</p>
-
-<p>
-此处列出用到的配置项, 具体用法请搜索本文档. server指服务端配置(包括upgrade.php工具), test指手工测试(如client.php), rtest指自动回归测试(run_rtest.pl).
-</p>
-<ul>
-<li>
-file CFG_USE_SQLITE (for server)
-
-<li>
-file CFG_TEST_MODE (for server)
-
-<li>
-envvar P_DB (for server)
-
-<li>
-envvar SVC_URL (for test and rtest)
-
-<li>
-envvar P_DEBUG (for server, test and rtest) and URL param _debug (for server)
-
-<li>
-envvar P_SHARE_COOKIE (for rtest)
-
-<li>
-envvar P_TEST (for test/rtest) 设置通用URL参数_test. WebAPI/client.php缺省运行于测试模式(即P_TEST=1)，run_rtest.pl运行于回归测试模式(P_TEST=2), 如果要用生产模式请手工设置该参数为P_TEST=0（生产模式或测试模式还决定于其它服务端配置，该参数不一定实际运行在生产模式）。
-
-<li>
-envvar P_DBCRED (for server) 指定数据库登录用户名及密码。格式为"{user}:{pwd}"，或其base64编码形式，一般使用base64编码。
-
-<li>
-file <code>php/conf.user.php</code> (for server), 该文件存在则自动加载，用于设置自定义配置选项，如定义数据库用户名密码: <code>putenv("P_DBCRED=...")</code>
-
-<li>
-envvar P_SESSION_DIR (for server) 指定session文件保存位置，缺省是应用目录下。注意：测试模式的session是分开保存的，在该目录下子目录"t"中。
-
-<li>
-envvar P_URL_PATH (for server) 指定应用的URL绝对路径(以"/"开头)。用于拼出正确的完整url路径。
-
-<li>
-envvar P_URL_PATH (for server) 指定应用的URL绝对路径(以"/"开头)。用于拼出正确的完整url路径。
-
-<li>
-envvar P_ADMIN_CRED 指定超级管理员帐号。格式与P_DBCRED相同。
-
-</ul>
-
-<p>
-<strong>[模拟模式 - MOCK_MODE]</strong>
-</p>
-
-<p>
-当应用目录下存在文件 CFG_MOCK_MODE 时，服务运行于模拟模式。
-或者，当应用处理测试模式下，且应用目录下有文件 CFG_MOCK_T_MODE, 服务运行于模拟模式。
-这时，对外部系统的依赖（如短信模块，微信接口，支付宝支付等）都将模拟运行，只生成日志到 ext.log 中。
-</p>
-
-<p>
-可通过工具 tool/log.php 查看日志。
-</p>
-
-<h4 id="toc_1.2.3.1"><a name="部署配置">2.3.1 部署配置</a></h4>
-
-<p>
 在应用设计时，一般使用前缀名为"P_"的环境变量供使用时扩展。
 </p>
 
 <p>
-根据不同的部署环境，可创建和配置文件<code>php/conf.user.php</code>。一般使用putenv设置环境变量或用ini_set设置参数。
+一般用在浏览器中打开tool/init.php进行配置。之后，可修改配置文件<code>php/conf.user.php</code>。一般使用putenv设置环境变量或用ini_set设置参数。
 </p>
 
 <p>
-例如：
-</p>
-
-<p>
-<strong>[数据库密码]</strong>
+<strong>[数据库连接]</strong>
 </p>
 
 <p>
@@ -559,6 +422,70 @@ putenv("P_URL_PATH=/cheguanjia");
 使用绝对路径，一定以要"/"开头；设置错误将因cookie权限导致应用无法使用。
 
 </ul>
+
+
+<p>
+常用环境变量如下：
+</p>
+
+<ul>
+<li>
+P_DB 指定数据库。MySQL数据库示例: "{主机名}/{数据库名}" 或 "{主机名}:{端口号}/{数据库名}"
+
+<li>
+P_DBCRED 指定数据库登录用户名及密码。格式为"{user}:{pwd}"，或其base64编码形式，一般使用base64编码。
+
+<li>
+P_URL_PATH 指定应用的URL绝对路径(以"/"开头)。用于拼出正确的完整url路径。
+
+<li>
+P_ADMIN_CRED 指定超级管理员帐号。格式与P_DBCRED相同。
+
+<li>
+P_TEST_MODE 值为1表示测试模式，2为回归测试模式
+
+<li>
+P_MOCK_MODE 值为1表示模拟模式
+
+<li>
+P_DEBUG 调试日志输出等级，0-9
+
+<li>
+P_SESSION_DIR 指定session文件保存位置，缺省是应用目录下。注意：测试模式的session是分开保存的，在该目录下子目录"t"中。
+
+</ul>
+
+<p>
+<strong>[测试模式 - TEST_MODE]</strong>
+</p>
+
+<ul>
+<li>
+输出的HTTP头中包含：<code>X-Daca-Test-Mode: 1</code>
+
+<li>
+输出的JSON格式经过美化更易读，且可以显示更多调试信息。前端可通过在接口中添加<code>_debug</code>参数设置调试等级。
+  如果想要查看本次调用涉及的SQL语句，可以用<code>_debug=9</code>。
+
+<li>
+某些用于测试的接口可以调用，例如execSql。因而十分危险，生产模式下一定不可误设置为测试模式。
+
+<li>
+可以使用模拟模式
+
+</ul>
+
+<p>
+<strong>[模拟模式 - MOCK_MODE]</strong>
+</p>
+
+<p>
+这时，对外部系统的依赖（如短信模块，微信接口，支付宝支付等）都将模拟运行，只生成日志到 ext.log 中。
+</p>
+
+<p>
+可通过工具 tool/log.php 查看日志。
+</p>
 
 <h3 id="toc_1.2.4"><a name="命名规范">2.4 命名规范</a></h3>
 
@@ -1332,7 +1259,7 @@ curl_setopt($h, CURLOPT_SSL_VERIFYHOST, 0);
 <h4 id="toc_1.4.1.5"><a name="调试等级(_debug)">4.1.5 调试等级(_debug)</a></h4>
 
 <p>
-特殊的URL参数"_debug"定义调试等级, 默认为0. 如果为1-9的数字, 将添加调试信息到结果数组中.
+在服务端配置为测试模式时，可用特殊的URL参数"_debug"定义调试等级, 默认为0. 如果为1-9的数字, 将添加调试信息到结果数组中.
 </p>
 
 <p>
@@ -1391,17 +1318,7 @@ GET /api.php?_app=emp
 SetCookie: empid=xxxxxx
 </pre>
 
-<h4 id="toc_1.4.1.7"><a name="测试模式(_test)">4.1.7 测试模式(_test)</a></h4>
-
-<p>
-URL参数"_test"值为非0时表示测试模式。参考章节"概要设计"-&gt;"配置项"-&gt;"测试模式".
-</p>
-
-<p>
-当_test值为2时，表示运行回归测试。
-</p>
-
-<h4 id="toc_1.4.1.8"><a name="使用PATH_INFO模式的URL">4.1.8 使用PATH_INFO模式的URL</a></h4>
+<h4 id="toc_1.4.1.7"><a name="使用PATH_INFO模式的URL">4.1.7 使用PATH_INFO模式的URL</a></h4>
 
 <p>
 通过在index.php中解析<code>$_SERVER["PATH_INFO"]</code>, 可以令URL更可读：
@@ -1424,16 +1341,16 @@ http://localhost/cheguanjia/api.php/Ordr/query?res=id,dscr
 即"Ordr/query"转化为"ac=Ordr.query".
 </p>
 
-<h4 id="toc_1.4.1.9"><a name="客户端版本(_ver)">4.1.9 客户端版本(_ver)</a></h4>
+<h4 id="toc_1.4.1.8"><a name="客户端版本(_ver)">4.1.8 客户端版本(_ver)</a></h4>
 
 <p>
 URL参数"_ver"值为客户端版本。取值参考表ApiLog.ver字段。目前只有安卓客户端设置该参数为"a/{ver}" (如"a/2"), 其它客户端版本根据userAgent自动获取。
 </p>
 
-<h4 id="toc_1.4.1.10"><a name="权限说明">4.1.10 权限说明</a></h4>
+<h4 id="toc_1.4.1.9"><a name="权限说明">4.1.9 权限说明</a></h4>
 
 <p>
-要访问每个API，必须拥有相应的权限。权限定义如下：
+要访问每个API，必须定义相应的权限。权限中包括登录类型一般用AUTH_XXX表示，一般权限用PERM_XXX表示。
 </p>
 
 <ul>
@@ -1443,26 +1360,23 @@ AUTH_GUEST: 任何人可用, 无权限限制。不用登录即可查看商户, �
 <li>
 AUTH_USER: 用户登录后可用. 可做下单, 查看订单等操作. 
 
+<li>
+AUTH_EMP: 员工登录后，查看订单以及操作自己的订单.
+
+<li>
+AUTH_ADMIN: 可操作一切对象. 一般由程序内部使用。
+
+<li>
+AUTH_PARTNER: 用于系统集成的权限验证。不用登录（相当于AUTH_GUEST），但调用每个API时必须提供_pwd/_sign参数之一供验证。
+
 </ul>
 
 <p>
-员工登录后可能获得以下一个或多个权限(由Employee.perms指定):
+员工登录后可能获得以下一个或多个权限：
 </p>
 <ul>
 <li>
-AUTH_ITEM: 管理商户的物料.
-
-<li>
-AUTH_EMP: 查看订单以及操作自己的订单.
-
-<li>
-AUTH_MGR: 操作商户的所有内容, 包括订单, 物料, 员工等(但不能设置员工权限). 
-
-<li>
-AUTH_MGR2: 管理所有商户, 设置员工权限, 商户结算等.
-
-<li>
-AUTH_STORE: 员工登录后的权限, 包含以上各类型.
+PERM_MGR: 操作商户的所有内容, 包括订单, 物料, 员工等(但不能设置员工权限). 
 
 </ul>
 
@@ -1471,42 +1385,10 @@ AUTH_STORE: 员工登录后的权限, 包含以上各类型.
 </p>
 <ul>
 <li>
-AUTH_TEST_MODE: 测试模式下可用。
+PERM_TEST_MODE: 测试模式下可用。
 
 <li>
-AUTH_MOCK_MODE: 模拟模式下可用。
-
-<li>
-AUTH_ADMIN: 可操作一切对象. 但没有自动完成功能. 由程序内部使用, 对外已废弃(原超级管理端已不再使用)
-
-<li>
-AUTH_ASTORE: 当前所属商户是自营商户且有权限AUTH_MGR/AUTH_MGR2时可用.
-
-<li>
-AUTH_PARTNER: 用于系统集成的权限验证。不用登录（相当于AUTH_GUEST），但调用每个API时必须提供_pwd/_sign参数之一供验证。
-
-</ul>
-
-<p>
-如果API未明确指定权限，则认为是AUTH_GUEST.
-按登录对象的不同, 权限又分为 用户类(AUTH_USER) 和 商户类(AUTH_STORE), 分别对应 AC1_xxx 和 AC2_xxx 系列原子权限. 这也使得同一个API在不同权限下的执行结果可能不同，如 <code>Ordr.query</code> 在AUTH_USER下(查该用户订单)或AUTH_STORE下（查该商户订单）是不同的。
-</p>
-
-<p>
-一个用户可以拥有多个权限, 但按data ownership范围的不同, 只会有一个ownership level. 定义如下:
-</p>
-<ul>
-<li>
-OWN_EMP(操作员工数据)
-
-<li>
-OWN_STORE(操作所在店数据)
-
-<li>
-OWN_ALL(操作所有店数据)
-
-<li>
-OWN_USER (操作用户自己数据, 目前与AUTH_USER一致, 暂未使用)
+PERM_MOCK_MODE: 模拟模式下可用。
 
 </ul>
 
@@ -1536,7 +1418,7 @@ execSql(sql, wantArray?, wantId?, fmt?) -&gt; rowSet or affectedRows or lastInse
 AUTH_ADMIN
 
 <li>
-AUTH_TEST_MODE
+PERM_TEST_MODE
 
 </ul>
 
@@ -2414,94 +2296,7 @@ Content-Type: text/plain; charset=UTF-8
 
 </pre>
 
-<h4 id="toc_1.4.2.5"><a name="上传工具">4.2.5 上传工具</a></h4>
-
-<p>
-upload_raw.php(f, d?=upload)(rawFileContent)
-</p>
-
-<p>
-<strong>[参数]</strong>
-</p>
-
-<dl>
-<dt>f</dt>
-<dd>上传文件名</dd>
-<dt>d</dt>
-<dd>上传到指定目录，默认是upload; 如果目录不存在可自动创建。</dd>
-<dt>rawFileContent</dt>
-<dd>HTTP请求的内容为文件内容。</dd>
-</dl>
-
-<p>
-可用于管理员上传文件。例如使用wget工具：
-</p>
-<pre>
-set PROG=wget -nv --user=lj --password=liang123 -t 1 --connect-timeout=6
-%PROG% --post-file=d:/test/1.jpg "http://localhost/upload_raw.php?f=1.jpg&amp;d=upload/test"
-</pre>
-
-<p>
-<span class="todo">TODO:</span> 验证管理员
-</p>
-
-<h4 id="toc_1.4.2.6"><a name="下载工具">4.2.6 下载工具</a></h4>
-
-<p>
-浏览：
-upload_list.php(d?=upload)
-</p>
-
-<p>
-文本模式浏览：
-upload_list.php(d?=upload, ac=list, f)
-</p>
-
-<p>
-删除文件:
-upload_list.php(d?=upload, ac=del, f[])
-</p>
-
-<p>
-可用于手工浏览服务器上的文件。方便下载或删除文件.
-</p>
-
-<p>
-注意：权限控制：只能浏览该工具所在目录及其子目录。
-</p>
-
-<p>
-<span class="todo">TODO:</span> 验证管理员
-</p>
-
-<p>
-<strong>[参数]</strong>
-</p>
-
-<dl>
-<dt>d</dt>
-<dd>文件夹</dd>
-<dt>ac</dt>
-<dd>操作名，支持"del", "list"</dd>
-<dt>f[]</dt>
-<dd>要删除的文件列表（如"f[]=1.jpg&amp;f[]=2.jpg"). 文件夹不可被删除。</dd>
-<dt>f</dt>
-<dd>文本模式浏览时, 用于过滤文件名.</dd>
-</dl>
-
-<p>
-<strong>[示例]</strong>
-</p>
-
-<pre>
-(list folder "upload"; admin user/pwd=liang/liang123)
-&gt; curl "http://localhost:8080/upload_list.php?ac=list" -u liang:liang123
-
-(list folder ".", filter file name by ".jpg")
-&gt; curl "http://localhost:8080/upload_list.php?ac=list&amp;d=.&amp;f=.jpg" -u liang:liang123
-</pre>
-
-<h4 id="toc_1.4.2.7"><a name="生成签名">4.2.7 生成签名</a></h4>
+<h4 id="toc_1.4.2.5"><a name="生成签名">4.2.5 生成签名</a></h4>
 <pre>
 genSign(_pwd, ...) -&gt; sign
 </pre>
@@ -2515,127 +2310,7 @@ genSign(_pwd, ...) -&gt; sign
 如果希望一个参数不参与签名，则设计它的名字以"_"开头，如"_ac".
 </p>
 
-<h4 id="toc_1.4.2.8"><a name="发短信">4.2.8 发短信</a></h4>
-<pre>
-sendSms(phone, content, channel?=0)
-</pre>
-
-<p>
-<strong>[权限]</strong>
-</p>
-
-<ul>
-<li>
-AUTH_ASTORE
-
-</ul>
-
-<p>
-<strong>[参数]</strong>
-</p>
-
-<dl>
-<dt>phone</dt>
-<dd>String. 一个手机号，或以英文逗号分隔的多个手机号.</dd>
-<dt>content</dt>
-<dd>String. 短信内容</dd>
-<dt>channel</dt>
-<dd>Integer. 0-验证码通道（速度快，可能被人工核查后阻止）；1-营销通道（速度慢，几分钟到达，一般不阻止）</dd>
-</dl>
-
-<p>
-对一个或多个手机群发短信。
-</p>
-
-<p>
-测试页面：tool/sms.html
-</p>
-
-<h4 id="toc_1.4.2.9"><a name="查询短信记录">4.2.9 查询短信记录</a></h4>
-
-<pre>
-SmsLog.query([cond], [_pagesz=20])
-</pre>
-
-<p>
-查询短消息发送记录. 默认按id倒序排列。
-</p>
-
-<p>
-<strong>[权限]</strong>
-</p>
-
-<ul>
-<li>
-AUTH_ASTORE
-
-</ul>
-
-<p>
-<strong>[参数]</strong>
-</p>
-
-<dl>
-<dt>cond</dt>
-<dd>查询条件，格式参考SQL语句的条件。如"id=1", "phone=12345678901"</dd>
-</dl>
-
-<p>
-<strong>[请求示例]</strong>
-查询手机号为123456678901的最近2条消息记录, 按照id降序排列
-</p>
-<pre>
-SmsLog.query(cond="phone=12345678901", _pagesz=2)
-</pre>
-
-<p>
-<strong>[返回示例]</strong>
-</p>
-
-<pre>
-{
-	"h": ["id", "phone", "content", "tm", "retval"],
-	"d": [
-			[18, "12345678901", "验证码123872，请在5分钟内使用。", "2015-09-20 22:21:16", 0],
-			[15, "12345678901", "验证码655288，请在5分钟内使用。", "2015-09-18 12:46:32", 0],
-		]
-]
-}}
-
-==== 给用户发消息 ====
-
-{{{
-notifyUser(orderId, content, noWeixin?)
-</pre>
-
-<p>
-给订单用户发消息，默认发微信和短信。
-</p>
-
-<p>
-<strong>[权限]</strong>
-</p>
-
-<ul>
-<li>
-AUTH_STORE
-
-</ul>
-
-<p>
-<strong>[参数]</strong>
-</p>
-
-<dl>
-<dt>orderId</dt>
-<dd>Integer. 订单编号.</dd>
-<dt>content</dt>
-<dd>String. 消息内容.</dd>
-<dt>noWeixin</dt>
-<dd>Boolean. 如果为1，则只发短信，不发微信消息。</dd>
-</dl>
-
-<h4 id="toc_1.4.2.10"><a name="代理">4.2.10 代理</a></h4>
+<h4 id="toc_1.4.2.6"><a name="代理">4.2.6 代理</a></h4>
 
 <pre>
 proxy(url)
@@ -2775,6 +2450,35 @@ batch的返回内容是多条调用返回内容组成的数组，样例如下：
 	[ 0, "OK" ]  // 调用ActionLog.add的返回结果
 ]]
 </pre>
+
+<h3 id="toc_1.4.5"><a name="服务端信息反馈/X-Daca头">4.5 服务端信息反馈/X-Daca头</a></h3>
+
+<p>
+BQP协议规定，以下服务端信息应通过HTTP头反馈给客户端。
+</p>
+
+<p>
+服务端API版本号如果可以获取，应发送给客户端:
+</p>
+<pre>
+X-Daca-Server-Rev: {value}
+</pre>
+<p>
+其中value为最多6位的字符串。
+</p>
+
+<p>
+如果服务运行于测试模式或模拟模式，应设置：
+</p>
+
+<pre>
+X-Daca-Test-Mode: {value}
+X-Daca-Mock-Mode: {value}
+</pre>
+
+<p>
+其中value为非0，一般为1.
+</p>
 
 <h2 id="toc_1.5"><a name="前端应用接口">5 前端应用接口</a></h2>
 
@@ -2993,8 +2697,6 @@ web/adm.html
 </p>
 
 <dl>
-<dt>test/_test?=0</dt>
-<dd>Integer. 设置后台使用测试模式。1表示测试模式.</dd>
 <dt>_debug?=0</dt>
 <dd>Integer. 设置本次调用的服务端调试等级. 调试信息可在调用交互接口的返回内容中查看(返回内容的第三项): [code, ret, debugInfo]. 常用值：0-无额外信息; 1-基本信息, 9-所有信息, 包含数据库查询语句.</dd>
 </dl>
@@ -3350,32 +3052,6 @@ private $isCritical = false;
 cd test
 phpunit xxxTest.php
 </pre>
-
-<h3 id="toc_1.6.4"><a name="自动化测试">6.4 自动化测试</a></h3>
-
-<h4 id="toc_1.6.4.1"><a name="取短信日志最后一条">6.4.1 取短信日志最后一条</a></h4>
-
-<pre>
-getLastLog(type)
-</pre>
-
-<p>
-<strong>[权限]</strong>
-</p>
-
-<ul>
-<li>
-AUTH_TEST_MODE
-
-</ul>
-
-<p>
-<strong>[参数]</strong>
-</p>
-
-<dl>
-<dt>f</dt>
-</dl>
 
 <h2 id="toc_1.7"><a name="登录类型与权限管理">7 登录类型与权限管理</a></h2>
 
