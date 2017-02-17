@@ -322,6 +322,51 @@ function checkAuth($perm)
 	}
 }
 
+/** 
+@fn getClientVersion()
+
+通过参数`_ver`或useragent字段获取客户端版本号。
+
+@return: {type, ver, str}
+
+- type: "web"-网页客户端; "wx"-微信客户端; "a"-安卓客户端; "ios"-苹果客户端
+
+e.g. {type: "a", ver: 2, str: "a/2"}
+
+ */
+function getClientVersion()
+{
+	global $CLIENT_VER;
+	if (! isset($CLIENT_VER))
+	{
+		$ver = param("_ver");
+		if ($ver != null) {
+			$a = explode('/', $ver);
+			$CLIENT_VER = [
+				"type" => $a[0],
+				"ver" => $a[1],
+				"str" => $ver
+			];
+		}
+		// Mozilla/5.0 (Linux; U; Android 4.1.1; zh-cn; MI 2S Build/JRO03L) AppleWebKit/533.1 (KHTML, like Gecko)Version/4.0 MQQBrowser/5.4 TBS/025440 Mobile Safari/533.1 MicroMessenger/6.2.5.50_r0e62591.621 NetType/WIFI Language/zh_CN
+		else if (preg_match('/MicroMessenger\/([0-9.]+)/', $_SERVER["HTTP_USER_AGENT"], $ms)) {
+			$ver = $ms[1];
+			$CLIENT_VER = [
+				"type" => "wx",
+				"ver" => $ver,
+				"str" => "wx/{$ver}"
+			];
+		}
+		else {
+			$CLIENT_VER = [
+				"type" => "web",
+				"ver" => 0,
+				"str" => "web"
+			];
+		}
+	}
+	return $CLIENT_VER;
+}
 // }}}
 
 // ====== classes {{{
@@ -361,8 +406,8 @@ class ConfBase
 
 	static function onApiInit()
 	{
-		$iosVer = getIosVersion();
-		if ($iosVer !== false && $iosVer<=15) {
+		$ver = getClientVersion();
+		if ($ver["type"] == "ios" && $ver["ver"]<=15) {
 			throw new MyException(E_FORBIDDEN, "unsupport ios client version", "您使用的版本太低，请升级后使用!");
 		}
 	}
