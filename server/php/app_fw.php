@@ -1447,15 +1447,21 @@ class AppFw_
 	private static function initGlobal()
 	{
 		global $TEST_MODE;
+		global $JSON_FLAG;
+		global $DBG_LEVEL;
 		$TEST_MODE = getenv("P_TEST_MODE")===false? 0: intval(getenv("P_TEST_MODE"));
 		if ($TEST_MODE) {
 			header("X-Daca-Test-Mode: $TEST_MODE");
-		}
-
-		global $DBG_LEVEL;
-		if ($TEST_MODE) {
+			$JSON_FLAG |= JSON_PRETTY_PRINT;
 			$defaultDebugLevel = getenv("P_DEBUG")===false? 0 : intval(getenv("P_DEBUG"));
 			$DBG_LEVEL = param("_debug/i", $defaultDebugLevel, $_GET);
+
+			// 允许跨域
+			@$origin = $_SERVER['HTTP_ORIGIN'];
+			if (isset($origin)) {
+				header('Access-Control-Allow-Origin: ' . $origin);
+				header('Access-Control-Allow-Credentials: true');
+			}
 		}
 
 		global $MOCK_MODE;
@@ -1466,18 +1472,9 @@ class AppFw_
 			header("X-Daca-Mock-Mode: $MOCK_MODE");
 		}
 
-		global $JSON_FLAG;
-		if ($TEST_MODE) {
-			$JSON_FLAG |= JSON_PRETTY_PRINT;
-		}
-
 		global $DB, $DBCRED, $USE_MYSQL;
 		$DB = getenv("P_DB") ?: $DB;
 		$DBCRED = getenv("P_DBCRED") ?: $DBCRED;
-		if ($TEST_MODE) {
-			$DB = getenv("P_DB_TEST") ?: $DB;
-			$DBCRED = getenv("P_DBCRED_TEST") ?: $DBCRED;
-		}
 
 		// e.g. P_DB="../carsvc.db"
 		if (preg_match('/\.db$/i', $DB)) {
