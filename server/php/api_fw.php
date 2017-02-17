@@ -264,7 +264,6 @@ function setRet($code, $data = null, $internalMsg = null)
 function setServerRev()
 {
 	$ver = $GLOBALS["SERVER_REV"] ?: @file_get_contents("{$GLOBALS['BASE_DIR']}/revision.txt");
-	addLog($ver);
 	if (! $ver)
 		return;
 	$ver = substr($ver, 0, 6);
@@ -736,7 +735,7 @@ class Plugins
 
 function api_execSql()
 {
-	checkAuth(AUTH_ADMIN | AUTH_TEST_MODE);
+	checkAuth(AUTH_ADMIN | PERM_TEST_MODE);
 
 	# TODO: limit the function
 	$sql = html_entity_decode(mparam("sql"));
