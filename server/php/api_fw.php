@@ -50,6 +50,16 @@ error_reporting(E_ALL & ~E_NOTICE);
 
 @see AccessControl 对象型接口框架。
 
+v3.4支持非标准对象接口。实现Ordr.cancel接口：
+
+	class AC2_Ordr extends AccessControl
+	{
+		function api_cancel() {
+		}
+	}
+
+非标准对象接口与与函数型接口写法类似，但AccessControl的众多回调函数对非标准对象接口无效。
+
 ## 接口复用
 
 api.php可以单独执行，也可直接被调用，如
@@ -2627,13 +2637,20 @@ class ApiApp extends AppBase
 		if ($useTrans && ! $DBH->inTransaction())
 			$DBH->beginTransaction();
 		$fn = "api_$ac";
-		if (preg_match('/^(\w+)\.(add|set|get|del|query)$/', $ac, $ms)) {
-			$tbl = $ms[1];
-			# TODO: check meta
-			if (! preg_match('/^\w+$/', $tbl))
-				throw new MyException(E_PARAM, "bad table {$tbl}");
-			$ac1 = $ms[2];
-			$ret = tableCRUD($ac1, $tbl);
+		if (preg_match('/^([A-Z]\w*)\.([a-z]\w*)$/', $ac, $ms)) {
+			list($tmp, $tbl, $ac1) = $ms;
+			// TODO: check meta
+			// throw new MyException(E_PARAM, "bad table {$tbl}");
+			if ($ac1 == "add" || $ac1 == "set" || $ac1 == "get" || $ac1 == "del" || $ac1 == "query") {
+				$ret = tableCRUD($ac1, $tbl);
+			}
+			else {
+				$accessCtl = AccessControl::create($tbl);
+				$fn = "api_" . $ac1;
+				if (! method_exists($accessCtl, $fn))
+					throw new MyException(E_PARAM, "Bad request - unknown $tbl method: {$ac1}");
+				$ret = $accessCtl->$fn();
+			}
 		}
 		elseif (function_exists($fn)) {
 			$ret = $fn();
