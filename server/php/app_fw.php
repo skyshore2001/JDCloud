@@ -1554,10 +1554,12 @@ class AppFw_
 	$sms = getExt(Ext_SmsSupport);
 	$sms->sendSms(...);
 
-当在运行目录中放置了文件CFG_MOCK_MODE后，则不必依赖外部系统，也可模拟执行这些操作。
+要激活模拟模式，应在conf.user.php中设置：
+
+	putenv("P_TEST_MODE=1");
+	putenv("P_MOCK_MODE=1");
 
 @see getExt
-@see CFG_MOCK_MODE,CFG_MOCK_T_MODE,MOCK_MODE
 */
 
 /**
