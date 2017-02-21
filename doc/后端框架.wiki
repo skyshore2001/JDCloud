@@ -218,18 +218,18 @@ TODO: define unique-key, index, not null, default value
 === 通用原则 ===
 
 客户端通过HTTP协议与服务端交互，调用服务端WebAPI。
-- Request一般使用HTTP GET/POST方法，如方法描述"fn(p1, p2)"可以用HTTP GET请求(通过URL传参)实现: `GET /api.php?ac=fn&p1=value1&p2=value2`,
+- Request一般使用HTTP GET/POST方法，如方法描述"fn(p1, p2)"可以用HTTP GET请求(通过URL传参)实现: `GET /api.php/fn?p1=value1&p2=value2`,
   也可以用POST请求实现:
   {{{
-POST /api.php?ac=fn
+POST /api.php/fn
 Content-Type: application/x-www-form-urlencoded
 
 p2=value2&p1=value1
   }}}
-  参数"ac"或"_ac"标识方法名, 必须使用URL参数传递, 其它参数未加说明的, 可以选择通过URL或POST传参.
+  参数未加说明的, 可以选择通过URL或POST传参.
 - 少数方法描述为"fn(p1)(p2,p3)", 它表示后一个括号中的参数表示必须通过POST传参, 而前一个括号的参数必须用URL传参数, 如:
   {{{
-POST /api.php?ac=fn&p1=value1
+POST /api.php/fn?p1=value1
 Content-Type: application/x-www-form-urlencoded
 
 p2=value2&p3=value3
@@ -249,9 +249,9 @@ getModel(id) -> {id, name, dscr}
 }}}
 
 它包含以下信息：
-- WebAPI名称是getModel，参数为id，对应的Request URL为 `GET /api.php?ac=getModel&id=100`
+- WebAPI名称是getModel，参数为id，对应的Request URL为 `GET /api.php/getModel?id=100`
   URL参数`ac`表示WebAPI名称，一般用全小写。
-  为防止服务端缓冲，一般请求时还应加上一个随机参数，如 `GET /api.php?ac=getModel&id=100&rnd=5234762234`.
+  为防止服务端缓冲，一般请求时还应加上一个随机参数，如 `GET /api.php/getModel?id=100&rnd=5234762234`.
   之后的请求示例中, HTTP请求将被简化描述为:
   {{{
 getModel(id=100)
@@ -630,20 +630,19 @@ SetCookie: empid=xxxxxx
 
 ==== 使用PATH_INFO模式的URL ====
 
-通过在index.php中解析`$_SERVER["PATH_INFO"]`, 可以令URL更可读：
+以下URL等价：
 {{{
-http://localhost/cheguanjia/api.php?ac=login&phone=137&pwd=1234
-->
 http://localhost/cheguanjia/api.php/login?phone=137&pwd=1234
+->
+http://localhost/cheguanjia/api.php?ac=login&phone=137&pwd=1234
 }}}
 
 对于对象的CRUD，URL像这样：
 {{{
-http://localhost/cheguanjia/api.php?ac=Ordr.query&res=id,dscr
+http://localhost/cheguanjia/api.php/Ordr.query?res=id,dscr
 ->
-http://localhost/cheguanjia/api.php/Ordr/query?res=id,dscr
+http://localhost/cheguanjia/api.php?ac=Ordr.query&res=id,dscr
 }}}
-即"Ordr/query"转化为"ac=Ordr.query".
 
 ==== 客户端版本(_ver) ====
 
@@ -963,7 +962,7 @@ Store.add()
 注: 
 - Store是商户表名, 通过POST字段传递各字段内容. HTTP POST请求如下所示(实际发送时, 每个字段的值应使用UTF8+URL编码, 示例中未进行编码):
  {{{
-POST /api.php?ac=Store.add
+POST /api.php/Store.add
 Content-Type: application/x-www-form-urlencoded
 
 name=华莹汽车(张江店)&addr=金科路88号&tel=021-12345678
@@ -1108,7 +1107,7 @@ thumbId: 如果参数设置了genThumb=1, 则会生成缩略图并返回该字�
 使用Content-Type为multipart/form-data可一次上传一个或多个文件。
 假如上传两个文件"file1.txt"和"file2.txt", HTTP请求如下：
 {{{
-POST api.php?ac=upload
+POST api.php/upload
 Content-Type:multipart/form-data; boundary=----WebKitFormBoundary6oVKiDmuQSPOtt2L
 Content-Length: ...
 
@@ -1131,7 +1130,7 @@ Content-Type: text/plain
 
 使用html自带的form和file组件可以自动生成这样的POST请求，如上传两个文件：
 {{{
-<form action="api.php?ac=upload" method=post enctype="multipart/form-data">
+<form action="api.php/upload" method=post enctype="multipart/form-data">
 	<input type=file name="file1" accept="image/*">
 	<input type=file name="file2" accept="image/*">
 	<input type=submit value="上传">
@@ -1140,7 +1139,7 @@ Content-Type: text/plain
 
 也可以只使用一个file组件，只要设置属性multiple以允许多选文件(以chrome为例，在文件选择框中可以按Ctrl键多选文件)，但注意此时name必须带中括号：
 {{{
-<form action="api.php?ac=upload" method=post enctype="multipart/form-data">
+<form action="api.php/upload" method=post enctype="multipart/form-data">
 	<input type=file name="file[]" multiple="multiple" accept="image/*">
 	<input type=submit value="上传">
 </form>
@@ -1148,7 +1147,7 @@ Content-Type: text/plain
 
 multiple属性是html5新增属性，如果浏览器不支持，也可以这样写两个文件上传框：
 {{{
-<form action="api.php?ac=upload" method=post enctype="multipart/form-data">
+<form action="api.php/upload" method=post enctype="multipart/form-data">
 	<input type=file name="file[]" multiple="multiple" accept="image/*">
 	<input type=file name="file[]" multiple="multiple" accept="image/*">
 	<input type=submit value="上传">
@@ -1166,7 +1165,7 @@ multiple属性是html5新增属性，如果浏览器不支持，也可以这样�
 使用fmt=raw上传：
 
 {{{
-POST api.php?ac=upload&fmt=raw&f=1.jpg
+POST api.php/upload&fmt=raw&f=1.jpg
 Content-Type: image/jpeg
 Content-Length: ...
 
@@ -1176,7 +1175,7 @@ Content-Length: ...
 使用fmt=raw_b64上传：
 
 {{{
-POST api.php?ac=upload&fmt=raw_b64&f=1.jpg
+POST api.php/upload&fmt=raw_b64&f=1.jpg
 Content-Type: text/plain
 Content-Length: ...
 
@@ -1214,17 +1213,15 @@ thumbId:: 缩略图id
 
 获取id=100的附件：
 {{{
-GET api.php?ac=att&id=100
+GET api.php/att?id=100
 }}}
 
 已知缩略图id=100, 获取它对应的原图：
 {{{
-GET api.php?ac=att&thumbId=100
+GET api.php/att?thumbId=100
 }}}
 
-返回
-
-找到图片：
+找到图片返回:
 
 {{{
 HTTP/1.1 200 OK
@@ -1233,7 +1230,10 @@ Content-Type: image/jpeg
 (图片内容)
 }}}
 
-一般浏览器可以正确直接显示该图片。
+一般浏览器可以正确直接显示该图片:
+{{{
+<img src="http://myserver/mysvc/api.php/att?id=100">
+}}}
 
 或找不到图片：
 
