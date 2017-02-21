@@ -18,7 +18,7 @@ URL参数会自动加入该对象，例如URL为 `http://{server}/{app}/index.ht
 
 @see parseQuery URL参数通过该函数获取。
 */
-var g_args = {}; // {_test, _debug, cordova}
+var g_args = {}; // {_debug, cordova}
 
 /**
 @var g_cordova
@@ -2845,8 +2845,6 @@ serverUrl为"http://myserver/myapp/api.php" 或 "http://myserver/myapp/"，则MU
 		}
 		if (m_opt.appName)
 			params._app = m_opt.appName;
-		if (g_args._test)
-			params._test = 1;
 		if (g_args._debug)
 			params._debug = g_args._debug;
 		params.zz = 1; // zz标记
@@ -3954,10 +3952,6 @@ function parseArgs()
 	if (location.search)
 		g_args = parseQuery(location.search.substr(1));
 
-	if (g_args.test || g_args._test) {
-		g_args._test = 1;
-	}
-
 	if (g_args.cordova || getStorage("cordova")) {
 		if (g_args.cordova === 0) {
 			delStorage("cordova");
@@ -3986,8 +3980,6 @@ function tokenName()
 	var name = "token";
 	if (m_opt.appName)
 		name += "_" + m_opt.appName;
-	if (g_args._test)
-		name += "_test";
 	return name;
 }
 
