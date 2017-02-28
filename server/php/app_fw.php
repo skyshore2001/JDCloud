@@ -275,7 +275,7 @@ function param_varr($str, $type, $name)
 	return $ret;
 }
 /**
-@fn param($name, $defVal?, $col?=$_REQUEST)
+@fn param($name, $defVal?, $col?=$_REQUEST, $doHtmlEscape=true)
 @param $col: key-value collection
 
 获取名为$name的参数。
@@ -283,10 +283,10 @@ $name中可以指定类型，返回值根据类型确定。如果该参数未定
 
 $name中指定类型的方式如下：
 - 名为"id", 或以"Id"或"/i"结尾: int
-- 以"/b"结尾: bool
+- 以"/b"结尾: bool. 可接受的字符串值为: "1"/"true"/"on"/"yes"=>true, "0"/"false"/"off"/"no" => false
 - 以"/dt"或"/tm"结尾: datetime
 - 以"/n"结尾: numeric/double
-- 以"/s"结尾（缺省）: string
+- 以"/s"结尾（缺省）: string. 缺省为防止XSS攻击会做html编码，如"a&b"处理成"a&amp;b"，设置参数doHtmlEscape可禁用这个功能。
 - 复杂类型：以"/i+"结尾: int array
 - 复杂类型：以"/js"结尾: json object
 - 复杂类型：List类型（以","分隔行，以":"分隔列），类型定义如"/i:n:b:dt:tm" （列只支持简单类型，不可为复杂类型）
@@ -322,7 +322,7 @@ TODO: 直接支持 param("items/(id,qty?/n,dscr?)"), 添加param_objarr函数，
 	]
 
 */
-function param($name, $defVal = null, $col = null)
+function param($name, $defVal = null, $col = null, $doHtmlEscape = true)
 {
 	if (!isset($col))
 		$col = $_REQUEST;
@@ -346,7 +346,7 @@ function param($name, $defVal = null, $col = null)
 	# check type
 	if (isset($ret) && is_string($ret)) {
 		// avoid XSS attack
-		if (! startsWith($name, "cond"))
+		if ($doHtmlEscape)
 			$ret = htmlEscape($ret);
 		if ($type === "s") {
 		}
@@ -807,10 +807,11 @@ function execOne($sql, $getInsertId = false)
 }
 
 /**
+@fn queryOne($sql, $assoc = false)
 @fn queryOne($sql, $fetchMode = PDO::FETCH_NUM)
 
 执行查询语句，只返回一行数据，如果行中只有一列，则直接返回该列数值。
-如果执行失败，返回false.
+如果查询不到，返回false.
 
 示例：查询用户姓名与电话，默认返回值数组：
 
@@ -826,7 +827,7 @@ function execOne($sql, $getInsertId = false)
 		throw new MyException(E_PARAM, "bad user id");
 	// $row = ["name"=>"John", "phone"=>"13712345678"]
 
-当查询结果只有一列时，直接返回该数值。
+当查询结果只有一列且assoc=false时，直接返回该数值。
 
 	$phone = queryOne("SELECT phone FROM User WHERE id={$id}");
 	if ($phone === false)
@@ -835,7 +836,7 @@ function execOne($sql, $getInsertId = false)
 
 @see queryAll
  */
-function queryOne($sql, $fetchMode = PDO::FETCH_NUM)
+function queryOne($sql, $assoc = false)
 {
 	global $DBH;
 	if (! isset($DBH))
@@ -843,9 +844,18 @@ function queryOne($sql, $fetchMode = PDO::FETCH_NUM)
 	$sth = $DBH->query($sql);
 	if ($sth === false)
 		return false;
+
+	// 兼容旧代码. TODO: remove
+	if ($assoc === PDO::FETCH_ASSOC)
+		$assoc = true;
+	else
+		$assoc = false;
+
+	$fetchMode = $assoc? PDO::FETCH_ASSOC: PDO::FETCH_NUM;
+
 	$row = $sth->fetch($fetchMode);
 	$sth->closeCursor();
-	if ($row !== false && count($row)===1 && $fetchMode === PDO::FETCH_NUM)
+	if ($row !== false && count($row)===1 && !$assoc)
 		return $row[0];
 	return $row;
 }

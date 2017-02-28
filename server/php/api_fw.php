@@ -1962,7 +1962,7 @@ class AccessControl
 			$this->sqlConf = [
 				"res" => [$res],
 				"gres" => $gres,
-				"cond" => [param("cond")],
+				"cond" => [param("cond", null, null, false)],
 				"join" => [],
 				"orderby" => param("orderby"),
 				"subobj" => [],
@@ -1982,7 +1982,7 @@ class AccessControl
 			if (($join=param("join")) != null) {
 				$this->addJoin($join);
 			}
-			if (($cond2 = param("cond2")) != null) {
+			if (($cond2 = param("cond2", null, null, false)) != null) {
 				if (! is_array($cond2))
 					throw new MyException(E_SERVER, "cond2 should be an array: `$cond2`");
 				foreach ($cond2 as $e)
