@@ -165,6 +165,8 @@ $g_dbgInfo = [];
 @include_once("{$BASE_DIR}/php/conf.user.php");
 
 // ====== functions {{{
+// assert失败中止运行
+assert_options(ASSERT_BAIL, 1);
 
 // ==== param {{{
 
@@ -235,6 +237,7 @@ function param_varr($str, $type, $name)
 			list($t, $optional) = $elemTypes[$i];
 			if ($e == null) {
 				if ($optional) {
+					++$i;
 					$row1[] = null;
 					continue;
 				}
@@ -252,7 +255,10 @@ function param_varr($str, $type, $name)
 				$row1[] = doubleval($e);
 			}
 			else if ($t === "b") {
-				$row1[] = tobool($e);
+				$val = null;
+				if (!tryParseBool($e, $val))
+					throw new MyException(E_PARAM, "Bad Request - param `$name`: list($type). require bool col: `$row0`[$i]=`$e`.");
+				$row1[] = $val;
 			}
 			else if ($t === "s") {
 				$row1[] = $e;
@@ -275,6 +281,12 @@ function param_varr($str, $type, $name)
 	return $ret;
 }
 /**
+@fn param($name, $defVal?, $col?, $doHtmlEscape=true)
+
+@param $col: 默认先取$_GET再取$_POST，"G" - 从$_GET中取; "P" - 从$_POST中取
+
+以下形式已不建议使用：
+
 @fn param($name, $defVal?, $col?=$_REQUEST, $doHtmlEscape=true)
 @param $col: key-value collection
 
@@ -324,8 +336,13 @@ TODO: 直接支持 param("items/(id,qty?/n,dscr?)"), 添加param_objarr函数，
 */
 function param($name, $defVal = null, $col = null, $doHtmlEscape = true)
 {
-	if (!isset($col))
+	if ($col === "G")
+		$col = $_GET;
+	else if ($col === "P")
+		$col = $_POST;
+	else if (!isset($col))
 		$col = $_REQUEST;
+
 	assert(is_array($col));
 
 	$ret = $defVal;
@@ -361,7 +378,10 @@ function param($name, $defVal = null, $col = null, $doHtmlEscape = true)
 			$ret = doubleval($ret);
 		}
 		elseif ($type === "b") {
-			$ret = tobool($ret);
+			$val = null;
+			if (!tryParseBool($ret, $val))
+				throw new MyException(E_PARAM, "Bad Request - bool param `$name`=`$val`.");
+			$ret = $val;
 		}
 		elseif ($type == "i+") {
 			$arr = [];
@@ -808,7 +828,6 @@ function execOne($sql, $getInsertId = false)
 
 /**
 @fn queryOne($sql, $assoc = false)
-@fn queryOne($sql, $fetchMode = PDO::FETCH_NUM)
 
 执行查询语句，只返回一行数据，如果行中只有一列，则直接返回该列数值。
 如果查询不到，返回false.
@@ -822,7 +841,7 @@ function execOne($sql, $getInsertId = false)
 
 也可返回关联数组:
 
-	$row = queryOne("SELECT name,phone FROM User WHERE id={$id}", PDO::FETCH_ASSOC);
+	$row = queryOne("SELECT name,phone FROM User WHERE id={$id}", true);
 	if ($row === false)
 		throw new MyException(E_PARAM, "bad user id");
 	// $row = ["name"=>"John", "phone"=>"13712345678"]
@@ -845,14 +864,7 @@ function queryOne($sql, $assoc = false)
 	if ($sth === false)
 		return false;
 
-	// 兼容旧代码. TODO: remove
-	if ($assoc === PDO::FETCH_ASSOC)
-		$assoc = true;
-	else
-		$assoc = false;
-
 	$fetchMode = $assoc? PDO::FETCH_ASSOC: PDO::FETCH_NUM;
-
 	$row = $sth->fetch($fetchMode);
 	$sth->closeCursor();
 	if ($row !== false && count($row)===1 && !$assoc)
@@ -861,7 +873,7 @@ function queryOne($sql, $assoc = false)
 }
 
 /**
-@fn queryAll($sql, $fetchMode = PDO::FETCH_NUM)
+@fn queryAll($sql, $assoc = false)
 
 执行查询语句，返回数组。
 如果查询失败，返回空数组。
@@ -883,7 +895,7 @@ function queryOne($sql, $assoc = false)
 
 也可以返回关联数组(objarr)，如：
 
-	$rows = queryAll("SELECT name, phone FROM User", PDO::FETCH_ASSOC);
+	$rows = queryAll("SELECT name, phone FROM User", true);
 	if (count($rows) > 0) {
 		...
 	}
@@ -898,7 +910,7 @@ function queryOne($sql, $assoc = false)
 
 @see objarr2table
  */
-function queryAll($sql, $fetchMode = PDO::FETCH_NUM)
+function queryAll($sql, $assoc)
 {
 	global $DBH;
 	if (! isset($DBH))
@@ -906,7 +918,9 @@ function queryAll($sql, $fetchMode = PDO::FETCH_NUM)
 	$sth = $DBH->query($sql);
 	if ($sth === false)
 		return false;
+	$fetchMode = $assoc? PDO::FETCH_ASSOC: PDO::FETCH_NUM;
 	$rows = $sth->fetchAll($fetchMode);
+	$sth->closeCursor();
 	return $rows;
 }
 
@@ -1301,12 +1315,18 @@ class AppBase
 		}
 		catch (MyException $e) {
 			list($code, $msg, $msg2) = [$e->getCode(), $e->getMessage(), $e->internalMsg];
+			if (isset($e->xdebug_message))
+				addLog($e->xdebug_message, 9);
 		}
 		catch (PDOException $e) {
 			list($code, $msg, $msg2) = [E_DB, $ERRINFO[E_DB], $e->getMessage()];
+			if (isset($e->xdebug_message))
+				addLog($e->xdebug_message, 9);
 		}
 		catch (Exception $e) {
 			list($code, $msg, $msg2) = [E_SERVER, $ERRINFO[E_SERVER], $e->getMessage()];
+			if (isset($e->xdebug_message))
+				addLog($e->xdebug_message, 9);
 		}
 
 		try {

@@ -179,8 +179,6 @@ plugin/index.php是插件配置文件，在后端应用框架函数apiMain中引
 */
 
 // ====== config {{{
-const API_ENTRY_PAGE = "api.php";
-
 global $X_RET; // maybe set by the caller
 global $X_RET_STR;
 
@@ -191,8 +189,8 @@ const PAGE_SZ_LIMIT = 10000;
 
 class ApiFw_
 {
-	static $SOLO;
-	static $perms;
+	static $SOLO = true;
+	static $perms = null;
 }
 //}}}
 
@@ -1903,6 +1901,7 @@ class AccessControl
 			throw new MyException($noauth? E_NOAUTH: E_FORBIDDEN, "Operation is not allowed for current user on object `$tbl`");
 		}
 		$x = new $cls;
+		$x->onInit();
 		if (is_null($x->table))
 			$x->table = $tbl;
 		return $x;
@@ -1924,7 +1923,7 @@ class AccessControl
 		}
 		if ($ac == "add" || $ac == "set") {
 			foreach ($this->readonlyFields as $field) {
-				if (array_key_exists($field, $_POST)) {
+				if (array_key_exists($field, $_POST) && !($this->ac == "add" && array_search($field, $this->requiredFields) !== false)) {
 					logit("!!! warn: attempt to change readonly field `$field`");
 					unset($_POST[$field]);
 				}
@@ -1999,10 +1998,10 @@ class AccessControl
 
 			// 确保res/gres参数符合安全限定
 			if (isset($gres)) {
-				$this->filterRes($gres);
+				$this->filterRes($gres, true);
 			}
 			if (isset($res)) {
-				$this->filterRes($res, true);
+				$this->filterRes($res);
 			}
 			else {
 				$this->addDefaultVCols();
@@ -2077,7 +2076,7 @@ class AccessControl
 	{
 		if (isset($this->sqlConf["cond"][0])) {
 			if (stripos($this->sqlConf["cond"][0], "select") !== false) {
-				throw new MyException(E_SERVER, "forbidden SELECT in param cond");
+				throw new MyException(E_FORBIDDEN, "forbidden SELECT in param cond");
 			}
 			# "aa = 100 and t1.bb>30 and cc IS null" -> "t0.aa = 100 and t1.bb>30 and t0.cc IS null" 
 			$this->sqlConf["cond"][0] = preg_replace_callback('/[\w|.]+(?=(\s*[=><]|(\s+(IS|LIKE))))/i', function ($ms) {
@@ -2105,9 +2104,10 @@ class AccessControl
 		}
 	}
 	// return: new field list
-	private function filterRes($res, $supportFn=false)
+	private function filterRes($res, $gres=false)
 	{
 		$firstCol = "";
+		$cols = [];
 		foreach (explode(',', $res) as $col) {
 			$col = trim($col);
 			$alias = null;
@@ -2120,7 +2120,7 @@ class AccessControl
 			if (! preg_match('/^\s*(\w+)(?:\s+(?:AS\s+)?(\S+))?\s*$/i', $col, $ms))
 			{
 				// 对于res, 还支持部分函数: "fn(col) as col1", 目前支持函数: count/sum
-				if ($supportFn && preg_match('/(\w+)\([a-z0-9_.\'*]+\)\s+(?:AS\s+)?(\S+)/i', $col, $ms)) {
+				if (!$gres && preg_match('/(\w+)\([a-z0-9_.\'*]+\)\s+(?:AS\s+)?(\S+)/i', $col, $ms)) {
 					list($fn, $alias) = [strtoupper($ms[1]), $ms[2]];
 					if ($fn != "COUNT" && $fn != "SUM")
 						throw new MyException(E_FORBIDDEN, "function not allowed: `$fn`");
@@ -2134,9 +2134,6 @@ class AccessControl
 					$alias = $ms[2];
 				}
 			}
-			if (isset($alias) && $alias[0] != '"') {
-				$alias = '"' . $alias . '"';
-			}
 			if (isset($fn)) {
 				$this->addRes($col);
 				continue;
@@ -2145,26 +2142,31 @@ class AccessControl
 // 			if (! ctype_alnum($col))
 // 				throw new MyException(E_PARAM, "bad property `$col`");
 			if ($this->addVCol($col, true, $alias) === false) {
-				if (array_key_exists($col, $this->subobj)) {
+				if (!$gres && array_key_exists($col, $this->subobj)) {
 					$this->sqlConf["subobj"][$alias ?: $col] = $this->subobj[$col];
 				}
 				else {
 					$col = "t0." . $col;
+					$col1 = $col;
 					if (isset($alias)) {
-						$col .= " AS {$alias}";
+						$col1 .= " AS {$alias}";
 					}
-					$this->addRes($col, false);
+					$this->addRes($col1, false);
 				}
 			}
+			$cols[] = $alias || $col;
 		}
-		$this->sqlConf["res"][0] = $firstCol;
+		if ($gres)
+			$this->sqlConf["gres"] = join(",", $cols);
+		else
+			$this->sqlConf["res"][0] = $firstCol;
 	}
 
 	private function filterOrderby($orderby)
 	{
 		$colArr = [];
 		foreach (explode(',', $orderby) as $col) {
-			if (! preg_match('/^\s*(\w+\.)?(\w+)(\s+(asc|desc))?$/i', $col, $ms))
+			if (! preg_match('/^\s*(\w+\.)?(\S+)(\s+(asc|desc))?$/i', $col, $ms))
 				throw new MyException(E_PARAM, "bad property `$col`");
 			if ($ms[1]) // e.g. "t0.id desc"
 			{
@@ -2270,7 +2272,7 @@ class AccessControl
 			$colName = $ms[2];
 			$def = $res;
 		}
-		else if (preg_match('/^(.*?)\s+(?:as\s+)?(\w+)\s*$/is', $res, $ms)) {
+		else if (preg_match('/^(.*?)\s+(?:as\s+)?(\S+)\s*$/is', $res, $ms)) {
 			$colName = $ms[2];
 			$def = $ms[1];
 		}
@@ -2293,6 +2295,8 @@ class AccessControl
 			$this->vcolMap = [];
 			$idx = 0;
 			foreach ($this->vcolDefs as $vcolDef) {
+				@$res = $vcolDef["res"];
+				assert(is_array($res), "res必须为数组");
 				foreach ($vcolDef["res"] as $e) {
 					$this->setColFromRes($e, false, $idx);
 				}
@@ -2321,7 +2325,7 @@ class AccessControl
 		}
 		if ($this->vcolMap[$col]["added"])
 			return true;
-		$this->addVColDef($this->vcolMap[$col]["vcolDefIdx"], true);
+		$this->addVColDef($this->vcolMap[$col]["vcolDefIdx"]);
 		if ($alias) {
 			if ($alias !== "-")
 				$this->addRes($this->vcolMap[$col]["def"] . " AS {$alias}", false);
@@ -2338,23 +2342,24 @@ class AccessControl
 		foreach ($this->vcolDefs as $vcolDef) {
 			if (@$vcolDef["default"]) {
 				$this->addVColDef($idx);
+				foreach ($vcolDef["res"] as $e) {
+					$this->addRes($e);
+				}
 			}
 			++ $idx;
 		}
 	}
 
-	private function addVColDef($idx, $dontAddRes = false)
+	/*
+	根据index找到vcolDef中的一项，添加join/cond到最终查询语句(但不包含res)。
+	 */
+	private function addVColDef($idx)
 	{
 		if ($idx < 0 || @$this->vcolDefs[$idx]["added"])
 			return;
 		$this->vcolDefs[$idx]["added"] = true;
 
 		$vcolDef = $this->vcolDefs[$idx];
-		if (! $dontAddRes) {
-			foreach ($vcolDef["res"] as $e) {
-				$this->addRes($e);
-			}
-		}
 		if (isset($vcolDef["require"]))
 		{
 			$requireCol = $vcolDef["require"];
@@ -2366,6 +2371,9 @@ class AccessControl
 			$this->addCond($vcolDef["cond"]);
 	}
 
+	protected function onInit()
+	{
+	}
 	protected function onValidate()
 	{
 	}
@@ -2399,8 +2407,9 @@ function issetval($k, $arr = null)
 // ====== main routine {{{
 function apiMain()
 {
-	$script = basename($_SERVER["SCRIPT_NAME"]);
-	ApiFw_::$SOLO = ($script == API_ENTRY_PAGE || $script == 'index.php');
+	// TODO: 如允许api.php被包含后直接调用api，应设置 ApiFw_::$SOLO=false
+	//$script = basename($_SERVER["SCRIPT_NAME"]);
+	//ApiFw_::$SOLO = ($script == API_ENTRY_PAGE || $script == 'index.php');
 
 	global $BASE_DIR;
 	require_once("{$BASE_DIR}/conf.php");
