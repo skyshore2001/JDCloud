@@ -737,7 +737,7 @@ function dbconn($fnConfirm = null)
 	global $DB, $DBCRED, $DBTYPE;
 
 	// 未指定驱动类型，则按 mysql或sqlite 连接
-	if (! preg_match('/^\w{1,10}:/', $DB)) {
+	if (! preg_match('/^\w{3,10}:/', $DB)) {
 		// e.g. P_DB="../carsvc.db"
 		if ($DBTYPE == "sqlite") {
 			$C = ["sqlite:" . $DB, '', ''];
@@ -1531,7 +1531,7 @@ class AppFw_
 		$DBCRED = getenv("P_DBCRED") ?: $DBCRED;
 
 		// e.g. P_DB="../carsvc.db"
-		if (is_null($DBTYPE)) {
+		if (! $DBTYPE) {
 			if (preg_match('/\.db$/i', $DB)) {
 				$DBTYPE = "sqlite";
 			}
