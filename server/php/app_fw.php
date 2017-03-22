@@ -136,7 +136,7 @@ $BASE_DIR = dirname(dirname(__FILE__));
 global $JSON_FLAG;
 $JSON_FLAG = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
 
-global $DB, $DBCRED, $USE_MYSQL;
+global $DB, $DBCRED, $DBTYPE;
 $DB = "localhost/jdcloud";
 $DBCRED = "ZGVtbzpkZW1vMTIz"; // base64({user}:{pwd}), default: demo:demo123
 
@@ -734,23 +734,30 @@ function dbconn($fnConfirm = null)
 		return $DBH;
 
 
-	global $DB, $DBCRED, $USE_MYSQL;
+	global $DB, $DBCRED, $DBTYPE;
 
-	// e.g. P_DB="../carsvc.db"
-	if (! $USE_MYSQL) {
-		$C = ["sqlite:" . $DB, '', ''];
+	// 未指定驱动类型，则按 mysql或sqlite 连接
+	if (! preg_match('/^\w{1,10}:/', $DB)) {
+		// e.g. P_DB="../carsvc.db"
+		if ($DBTYPE == "sqlite") {
+			$C = ["sqlite:" . $DB, '', ''];
+		}
+		else if ($DBTYPE == "mysql") {
+			// e.g. P_DB="115.29.199.210/carsvc"
+			// e.g. P_DB="115.29.199.210:3306/carsvc"
+			if (! preg_match('/^"?(.*?)(:(\d+))?\/(\w+)"?$/', $DB, $ms))
+				throw new MyException(E_SERVER, "bad db=`$DB`", "未知数据库");
+			$dbhost = $ms[1];
+			$dbport = $ms[3] ?: 3306;
+			$dbname = $ms[4];
+
+			list($dbuser, $dbpwd) = getCred($DBCRED); 
+			$C = ["mysql:host={$dbhost};dbname={$dbname};port={$dbport}", $dbuser, $dbpwd];
+		}
 	}
 	else {
-		// e.g. P_DB="115.29.199.210/carsvc"
-		// e.g. P_DB="115.29.199.210:3306/carsvc"
-		if (! preg_match('/^"?(.*?)(:(\d+))?\/(\w+)"?$/', $DB, $ms))
-			throw new MyException(E_SERVER, "bad db=`$DB`", "未知数据库");
-		$dbhost = $ms[1];
-		$dbport = $ms[3] ?: 3306;
-		$dbname = $ms[4];
-
 		list($dbuser, $dbpwd) = getCred($DBCRED); 
-		$C = ["mysql:host={$dbhost};dbname={$dbname};port={$dbport}", $dbuser, $dbpwd];
+		$C = [$DB, $dbuser, $dbpwd];
 	}
 
 	if ($fnConfirm == null)
@@ -766,7 +773,7 @@ function dbconn($fnConfirm = null)
 		throw new MyException(E_DB, $msg, "数据库连接失败");
 	}
 	
-	if ($USE_MYSQL) {
+	if ($DBTYPE == "mysql") {
 		$DBH->exec('set names utf8');
 	}
 	$DBH->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION); # by default use PDO::ERRMODE_SILENT
@@ -805,8 +812,8 @@ function Q($s, $dbh = null)
 
 function sql_concat()
 {
-	global $USE_MYSQL;
-	if ($USE_MYSQL)
+	global $DBTYPE;
+	if ($DBTYPE == "mysql")
 		return "CONCAT(" . join(", ", func_get_args()) . ")";
 
 	# sqlite3
@@ -1518,16 +1525,19 @@ class AppFw_
 			header("X-Daca-Mock-Mode: $MOCK_MODE");
 		}
 
-		global $DB, $DBCRED, $USE_MYSQL;
+		global $DB, $DBCRED, $DBTYPE;
+		$DBTYPE = getenv("P_DBTYPE");
 		$DB = getenv("P_DB") ?: $DB;
 		$DBCRED = getenv("P_DBCRED") ?: $DBCRED;
 
 		// e.g. P_DB="../carsvc.db"
-		if (preg_match('/\.db$/i', $DB)) {
-			$USE_MYSQL = 0;
-		}
-		else {
-			$USE_MYSQL = 1;
+		if (is_null($DBTYPE)) {
+			if (preg_match('/\.db$/i', $DB)) {
+				$DBTYPE = "sqlite";
+			}
+			else {
+				$DBTYPE = "mysql";
+			}
 		}
 	}
 
