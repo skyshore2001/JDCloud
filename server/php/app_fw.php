@@ -469,14 +469,30 @@ function mparam($name, $col = null)
 
 /**
 @fn setParam($k, $v)
+@fn setParam(@kv)
 
 设置参数，其实是模拟客户端传入的参数。以便供tableCRUD等函数使用。
 
+示例：
+
+	setParam("cond", "name LIKE " . Q("%$name%"));
+	setParam([
+		"_fmt" => "list",
+		"orderby" => "id DESC"
+	]);
+
 @see tableCRUD
  */
-function setParam($k, $v)
+function setParam($k, $v=null)
 {
-	$_GET[$k] = $_REQUEST[$k] = $v;
+	if (is_array($k)) {
+		foreach ($k as $k1 => $v1) {
+			$_GET[$k1] = $_REQUEST[$k1] = $v1;
+		}
+	}
+	else {
+		$_GET[$k] = $_REQUEST[$k] = $v;
+	}
 }
 /*
 # form/post param ($_POST)

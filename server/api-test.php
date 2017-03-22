@@ -228,6 +228,20 @@ WHERE userId={$this->uid} ORDER BY id DESC LIMIT 3) t
 		$this->addCond("userId=" . $this->uid);
 	}
 
+	public function api_listByAc()
+	{
+		$ac = mparam("ac");
+		$param = [
+			"_fmt" => "list",
+			"cond" => "ac=" . Q($ac)
+		];
+		/*
+		callSvc("UserApiLog.query", $param);
+		throw new DirectReturn();
+		*/
+		setParam($param);
+		return callSvcInt("UserApiLog.query");
+	}
 }
 
 

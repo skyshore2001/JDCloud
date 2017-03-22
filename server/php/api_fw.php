@@ -866,6 +866,8 @@ function api_execSql()
 - 以上示例中的设计不可取，应使用标准对象接口来实现这个需求。
 
 @see setParam
+@see callSvcInt
+@see callSvc
  */
 
 function tableCRUD($ac1, $tbl, $asAdmin = false)
@@ -877,6 +879,41 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 	$accessCtl->before($ac1);
 	$ret = $accessCtl->$fn();
 	$accessCtl->after($ret);
+	return $ret;
+}
+
+/**
+@fn callSvcInt($ac)
+
+内部调用另一接口，获得返回值。如果要设置GET, POST参数，分别用
+
+	setParam(key, value); // 设置get参数
+	// 或批量设置用 setParam({key => value});
+	$_POST[key] = value; // 设置post参数
+
+与callSvc不同的是，它不处理事务、不写ApiLog，不输出数据，更轻量；
+与tableCRUD不同的是，它支持函数型调用。
+
+@see setParam
+@see tableCRUD
+@see callSvc
+*/
+function callSvcInt($ac)
+{
+	$fn = "api_$ac";
+	if (preg_match('/^([A-Z]\w*)\.([a-z]\w*)$/', $ac, $ms)) {
+		list($tmp, $tbl, $ac1) = $ms;
+		// TODO: check meta
+		$ret = tableCRUD($ac1, $tbl);
+	}
+	elseif (function_exists($fn)) {
+		$ret = $fn();
+	}
+	else {
+		throw new MyException(E_PARAM, "Bad request - unknown ac: {$ac}");
+	}
+	if (!isset($ret))
+		$ret = "OK";
 	return $ret;
 }
 
@@ -1147,22 +1184,9 @@ class ApiApp extends AppBase
 		global $DBH;
 		if ($useTrans && ! $DBH->inTransaction())
 			$DBH->beginTransaction();
-		$fn = "api_$ac";
-		if (preg_match('/^([A-Z]\w*)\.([a-z]\w*)$/', $ac, $ms)) {
-			list($tmp, $tbl, $ac1) = $ms;
-			// TODO: check meta
-			$ret = tableCRUD($ac1, $tbl);
-		}
-		elseif (function_exists($fn)) {
-			$ret = $fn();
-		}
-		else {
-			throw new MyException(E_PARAM, "Bad request - unknown ac: {$ac}");
-		}
+		$ret = callSvcInt($ac);
 		if ($useTrans && $DBH && $DBH->inTransaction())
 			$DBH->commit();
-		if (!isset($ret))
-			$ret = "OK";
 		setRet(0, $ret);
 		return $ret;
 	}
