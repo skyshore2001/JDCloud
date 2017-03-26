@@ -1106,7 +1106,7 @@ class AccessControl
 
 	protected function genQuerySql(&$tblSql=null, &$condSql=null)
 	{
-		$sqlConf = $this->sqlConf;
+		$sqlConf = &$this->sqlConf;
 		if (! isset($sqlConf["res"][0]))
 			$sqlConf["res"][0] = "t0.*";
 		else if ($sqlConf["res"][0] === "")
@@ -1173,7 +1173,7 @@ class AccessControl
 	{
 		// TODO: remove wantArray
 		$wantArray = param("wantArray/b");
-		$sqlConf = $this->sqlConf;
+		$sqlConf = &$this->sqlConf;
 
 		$enablePaging = true;
 		if ($wantArray) {
