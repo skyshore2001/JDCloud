@@ -770,6 +770,79 @@ formatter用于控制Cell中的HTML标签，styler用于控制Cell自己的CSS s
 	<a href="?showDlgSendSms" class="easyui-linkbutton" icon="icon-ok">群发短信</a><br/><br/>
 
 点击该按钮，即调用了showDlgSendSms函数打开对话框。
+
+## 模块化开发
+
+@key wui-script
+@key WUI.options.pageFolder
+
+允许将逻辑页、对话框的html片段和js片段放在单独的文件中。以前面章节示例中订单对象的列表页（是一个逻辑页）与详情页（是一个对话框）为例：
+
+- 页面名(即class)为pageOrder，UI与js逻辑分别保存在pageOrder.html, pageOrder.js中。
+- 对话框id为dlgOrder, UI与js逻辑分别保存在dlgOrder.html, dlgOrder.js中。
+- 模块所在目录默认为"page", 可通过在h5应用开头设置 WUI.options.pageFolder 来修改。
+
+先在文件page/pageOrder.html中定义逻辑页
+
+	<div title="订单管理" wui-script="pageOrder.js" my-initfn="initPageOrder">
+		<table id="tblOrder" style="width:auto;height:auto">
+			...
+		</table>
+	</div>
+
+注意：
+
+- 在html文件中用 wui-script属性 来指定对应的js文件。
+- 无须像之前那样指定class="pageOrder" / id="dlgOrder" 这些属性，它们会根据页面文件名称由框架自动设置。
+
+在html文件的div中可以添加style样式标签：
+
+	<div>
+		<style>
+		table {
+			background-color: #ddd;
+		}
+		</style>
+		<table>...</table>
+	</div>
+
+注意：其中定义的样式（比如这里的table）只应用于当前页面或对话框，因为框架会在加载它时自动限定样式作用范围。
+
+在文件page/pageOrder.js中定义逻辑：
+
+	function initPageOrder() 
+	{
+		var jpage = $(this);
+		...
+	}
+
+这时，就可以用 WUI.showPage("#pageOrder")来显示逻辑页了。
+
+注意：逻辑页的title字段不能和其它页中title重复，否则这两页无法同时显示，因为显示tab页时是按照title来标识逻辑页的。
+
+在文件page/dlgOrder.html中定义对话框UI:
+
+	<div wui-script="dlgOrder.js" my-obj="Ordr" my-initfn="initDlgOrder" title="用户订单" style="width:520px;height:500px;">  
+		<form method="POST">
+			...
+		</form>
+	<div>
+
+注意：
+
+- 在html文件中用 wui-script属性 来指定对应的js文件。
+- 无须像之前那样指定id="dlgOrder" 这些属性，它们会根据页面文件名称由框架自动设置。
+- 和上面逻辑页定义一样，对话框专用的样式可以在主div标签内添加style标签来定义，在加载UI后样式作用域自动限定在当前对话框。
+
+在文件page/dlgOrder.js中定义js逻辑:
+
+	function initDlgOrder()
+	{
+		var jdlg = $(this);
+		...
+	}
+
+这时，就可以用 WUI.showObjDlg("#dlgOrder")来显示逻辑页了。
 */
 var WUI = new nsWUI();
 function nsWUI()
@@ -1346,7 +1419,7 @@ function makeLinkTo(dlg, id, text)
 {
 	if (text == null)
 		text = id;
-	return "<a href=\"" + dlg + "\" onclick='WUI.showObjDlg($(\"" + dlg + "\"),FormMode.forLink,{id:" + id + "});return false'>" + text + "</a>";
+	return "<a href=\"" + dlg + "\" onclick='WUI.showObjDlg(\"" + dlg + "\",FormMode.forLink,{id:" + id + "});return false'>" + text + "</a>";
 }
 
 // ====== jquery plugin: mycombobox {{{
@@ -1882,6 +1955,8 @@ $.fn.okCancel = function (fnOk, fnCancel) {
 
 /**
 @fn WUI.showDlg(jdlg, opt?)
+
+@param jdlg 可以是jquery对象，也可以是selector字符串或DOM对象，比如 "#dlgOrder". 注意：当对话框保存为单独模块时，jdlg=$("#dlgOrder") 一开始会为空数组，这时也可以调用该函数，且调用后jdlg会被修改为实际加载的对话框对象。
 @param opt?={url, buttons, noCancel=false, okLabel="确定", cancelLabel="取消", modal=true, reset=true, validate=true, data, onOk, onSubmit, onAfterSubmit}
 
 - url: 点击确定时的操作动作。
@@ -1913,6 +1988,8 @@ hidden上的特殊property noReset: (TODO)
 self.showDlg = showDlg;
 function showDlg(jdlg, opt) 
 {
+	if (jdlg.constructor != jQuery)
+		jdlg = $(jdlg);
 	if (loadDialog(jdlg, onLoad))
 		return;
 	function onLoad() {
@@ -2275,6 +2352,8 @@ function loadDialog(jdlg, onLoad)
 /**
 @fn WUI.showObjDlg(jdlg, mode, opt?={jtbl, id})
 
+@param jdlg 可以是jquery对象，也可以是selector字符串或DOM对象，比如 "#dlgOrder". 注意：当对话框保存为单独模块时，jdlg=$("#dlgOrder") 一开始会为空数组，这时也可以调用该函数，且调用后jdlg会被修改为实际加载的对话框对象。
+
 @param opt.id String. mode=link时必设，set/del如缺省则从关联的opt.jtbl中取, add/find时不需要
 @param opt.jdbl Datagrid. dialog/form关联的datagrid -- 如果dlg对应多个tbl, 必须每次打开都设置
 
@@ -2284,6 +2363,8 @@ function loadDialog(jdlg, onLoad)
 self.showObjDlg = showObjDlg;
 function showObjDlg(jdlg, mode, opt)
 {
+	if (jdlg.constructor != jQuery)
+		jdlg = $(jdlg);
 	if (loadDialog(jdlg, onLoad))
 		return;
 	function onLoad() {
@@ -2453,6 +2534,8 @@ function showObjDlg(jdlg, mode, opt)
 /**
 @fn WUI.dg_toolbar(jtbl, jdlg, button_lists...)
 
+@param jdlg 可以是对话框的jquery对象，或selector如"#dlgOrder".
+
 设置easyui-datagrid上toolbar上的按钮。缺省支持的按钮有r(refresh), f(find), a(add), s(set), d(del), 可通过以下设置方式修改：
 
 	// jtbl.jdata().toolbar 缺省值为 "rfasd"
@@ -2535,7 +2618,9 @@ function dg_toolbar(jtbl, jdlg)
 }
 
 /**
-@fn WUI.dg_dblclick
+@fn WUI.dg_dblclick(jtbl, jdlg)
+
+@param jdlg 可以是对话框的jquery对象，或selector如"#dlgOrder".
 
 设置双击datagrid行的回调，功能是打开相应的dialog
 */
