@@ -182,8 +182,8 @@ function row2tr(row)
 }
 
 /**
-@fn $.getScriptWithCache(url, options?)
-*/
+--@fn $.getScriptWithCache(url, options?)
+
 $.getScriptWithCache = function(url, options) 
 {
 	// allow user to set any option except for dataType, cache, and url
@@ -197,6 +197,46 @@ $.getScriptWithCache = function(url, options)
 	// Return the jqXHR object so we can chain callbacks
 	return jQuery.ajax(options);
 };
+*/
+
+function loadScript(url, fnOK, options)
+{
+	if ($.isPlainObject(fnOK)) {
+		options = fnOK;
+		fnOK = null;
+	}
+	if (options) {
+		var ajaxOpt = $.extend({
+			dataType: "script",
+			cache: true,
+			success: fnOK,
+			url: url,
+			error: function (xhr, textStatus, err) {
+				console.log("*** loadScript fails for " + url);
+				console.log(err);
+			}
+		}, options);
+
+		return jQuery.ajax(ajaxOpt);
+	}
+
+	var dfd_ = $.Deferred();
+	var script= document.createElement('script');
+	script.type= 'text/javascript';
+	script.src= url;
+	// script.async = !sync; // 不是同步调用的意思，参考script标签的async属性和defer属性。
+	script.onload = function () {
+		if (fnOK)
+			fnOK();
+		dfd_.resolve();
+	}
+	script.onerror = function () {
+		dfd_.reject();
+		console.log("*** loadScript fails for " + url);
+	}
+	document.head.appendChild(script);
+	return dfd_;
+}
 // }}}
 
 //}}}
@@ -853,9 +893,10 @@ function makeUrl(ac, params)
 }
 
 $.ajaxSetup({
-	dataType: "json",
+	//dataType: "json",
+	// ajaxOpt.jdFilter=false: disable the filter
 	dataFilter: function (data, type) {
-		if (type == "json" || type == "text") {
+		if (this.jdFilter !== false && (type == "json" || type == "text")) {
 			rv = defDataProc.call(this, data);
 			if (rv == null)
 			{
@@ -947,7 +988,7 @@ function callSvr(ac, params, fn, postParams, userOptions)
 	var opt = {
 		url: url,
 		data: postParams,
-// 		dataType: "text",
+ 		dataType: "text",
 		type: method,
 		success: fn
 	};
@@ -1659,30 +1700,47 @@ self.showPage = showPage;
 function showPage(pageName, title, paramArr)
 {
 	var sel = "#my-pages > div." + pageName;
-	if (title == null)
-		title = $(sel).attr("title") || "无标题";
-
-	var tt = $('#my-tabMain');   
-	if (tt.tabs('exists', title)) {
-		tt.tabs('select', title);
-		return;
-	}
-
-	var id = tabid(title);
-	var content = "<div id='" + id + "' title='" + title + "' />";
-	var closable = (pageName != self.m_app.pageHome);
-
-	tt.tabs('add',{
-// 		id: id,
-		title: title,
-		closable: closable,
-		fit: true,
-		content: content
-	});
-
-	var jtab = $("#" + id);
 	var jpage = $(sel);
 	if (jpage.length > 0) {
+		initPage();
+	}
+	else {
+		//jtab.append("开发中");
+
+		//enterWaiting(); // NOTE: leaveWaiting in initPage
+		var pageFile = "page/" + pageName + ".html";
+		$.ajax(pageFile).then(function (html) {
+			loadPage(html, pageName, "page");
+		}).fail(function () {
+			//leaveWaiting();
+		});
+	}
+
+	function initPage()
+	{
+		if (title == null)
+			title = $(sel).attr("title") || "无标题";
+
+		var tt = $('#my-tabMain');   
+		if (tt.tabs('exists', title)) {
+			tt.tabs('select', title);
+			return;
+		}
+
+		var id = tabid(title);
+		var content = "<div id='" + id + "' title='" + title + "' />";
+		var closable = (pageName != self.m_app.pageHome);
+
+		tt.tabs('add',{
+	// 		id: id,
+			title: title,
+			closable: closable,
+			fit: true,
+			content: content
+		});
+
+		var jtab = $("#" + id);
+
 		var jpageNew = jpage.clone().appendTo(jtab);
 		jpageNew.addClass('wui-page');
 		jpageNew.attr("wui-pageName", pageName);
@@ -1691,9 +1749,72 @@ function showPage(pageName, title, paramArr)
 		jpageNew.trigger('pagecreate');
 		jpageNew.trigger('pageshow');
 	}
-	else {
-		jtab.append("开发中");
+
+	// path?=m_opt.pageFolder
+	function loadPage(html, pageClass, path)
+	{
+		// 放入dom中，以便document可以收到pagecreate等事件。
+		var jcontainer = $("#my-pages");
+	// 	if (m_jstash == null) {
+	// 		m_jstash = $("<div id='muiStash' style='display:none'></div>").appendTo(self.container);
+	// 	}
+		// 注意：如果html片段中有script, 在append时会同步获取和执行(jquery功能)
+		jpage = $(html).filter("div");
+		if (jpage.size() > 1 || jpage.size() == 0) {
+			console.log("!!! Warning: bad format for page '" + pageClass + "'. Element count = " + jpage.size());
+			jpage = jpage.filter(":first");
+		}
+
+		// 限制css只能在当前页使用
+		jpage.find("style").each(function () {
+			$(this).html( fixPageCss($(this).html(), "." + pageClass) );
+		});
+		// bugfix: 加载页面页背景图可能反复被加载
+		jpage.find("style").attr("wui-origin", pageClass).appendTo(document.head);
+		//jpage.attr("id", pageClass).addClass("wui-page").appendTo(jcontainer);
+		jpage.addClass(pageClass).appendTo(jcontainer);
+
+		var val = jpage.attr("wui-script");
+		if (val != null) {
+			if (path == null)
+				path = m_opt.pageFolder; // TODO
+			if (path != "")
+				val = path + "/" + val;
+			var dfd = loadScript(val, initPage);
+			dfd.fail(function () {
+				app_alert("加载失败: " + val);
+				leaveWaiting();
+				//history.back();
+			});
+		}
+		else {
+			initPage();
+		}
 	}
+}
+
+function fixPageCss(css, selector)
+{
+	var prefix = selector + " ";
+
+	var level = 1;
+	var css1 = css.replace(/\/\*(.|\s)*?\*\//g, '')
+	.replace(/([^{}]*)([{}])/g, function (ms, text, brace) {
+		if (brace == '}') {
+			-- level;
+			return ms;
+		}
+		if (brace == '{' && level++ != 1)
+			return ms;
+
+		// level=1
+		return ms.replace(/((?:^|,)\s*)([^,{}]+)/g, function (ms, ms1, sel) { 
+			if (sel.startsWith(prefix) || sel[0] == '@')
+				return ms;
+			return ms1 + prefix + sel;
+		});
+	});
+	return css1;
 }
 
 /**
@@ -1782,6 +1903,20 @@ hidden上的特殊property noReset: (TODO)
 self.showDlg = showDlg;
 function showDlg(jdlg, opt) 
 {
+	// TODO
+	if (jdlg.size() == 0) {
+		var jo = $(jdlg.selector);
+		if (jo.size() > 0) {
+			jdlg = jo;
+		}
+		else {
+			loadDialog(jdlg.selector, function (jdlg) {
+				showDlg(jdlg, opt);
+			});
+			return;
+		}
+	}
+
 	opt = $.extend({
 		okLabel: "确定",
 		cancelLabel: "取消",
@@ -2077,8 +2212,62 @@ function restoreFormFields(jfrm)
 	delete jd.no_submit;
 }
 
+// cb(jdlg)
+function loadDialog(selector, cb)
+{
+	var dlgId = selector.substr(1);
+	var pageFile = "page/" + dlgId + ".html";
+	$.ajax(pageFile).then(function (html) {
+		var jcontainer = $("#my-pages");
+		// 注意：如果html片段中有script, 在append时会同步获取和执行(jquery功能)
+		jdlg = $(html).filter("div");
+		if (jdlg.size() > 1 || jdlg.size() == 0) {
+			console.log("!!! Warning: bad format for dialog '" + selector + "'. Element count = " + jdlg.size());
+			jdlg = jdlg.filter(":first");
+		}
+
+		// 限制css只能在当前页使用
+		jdlg.find("style").each(function () {
+			$(this).html( fixPageCss($(this).html(), selector) );
+		});
+		// bugfix: 加载页面页背景图可能反复被加载
+		jdlg.find("style").attr("wui-origin", dlgId).appendTo(document.head);
+		jdlg.attr("id", dlgId).appendTo(jcontainer);
+
+		var val = jdlg.attr("wui-script");
+		if (val != null) {
+			var path = "page";
+			val = path + "/" + val;
+		/*
+			if (path == null)
+				path = m_opt.pageFolder; // TODO
+			if (path != "")
+				val = path + "/" + val;
+				*/
+			var dfd = loadScript(val, onLoad);
+			dfd.fail(function () {
+				app_alert("加载失败: " + val);
+			});
+		}
+		else {
+			onLoad();
+		}
+	}).fail(function () {
+		//leaveWaiting();
+	});
+
+	function onLoad()
+	{
+		if (cb) {
+			cb(jdlg);
+		}
+	}
+}
+
 /**
 @fn WUI.showObjDlg(jdlg, mode, id?)
+@fn WUI.showObjDlg(jdlg, mode, opt={jtbl})
+
 @param id String. mode=link时必设，set/del如缺省则从关联的jtbl中取, add/find时不需要
 @param jdbl Datagrid. dialog/form关联的datagrid -- 如果dlg对应多个tbl, 必须每次打开都设置
 
@@ -2088,6 +2277,25 @@ function restoreFormFields(jfrm)
 self.showObjDlg = showObjDlg;
 function showObjDlg(jdlg, mode, id)
 {
+	// TODO
+	if (jdlg.size() == 0) {
+		var jo = $(jdlg.selector);
+		if (jo.size() > 0) {
+			jdlg = jo;
+		}
+		else {
+			loadDialog(jdlg.selector, function (jdlg) {
+				showObjDlg(jdlg, mode, id);
+			});
+			return;
+		}
+	}
+	// handle opt: {jtbl,...}
+	if ($.isPlainObject(id)) {
+		$.extend(jdlg.jdata(), id);
+		id =null;
+	}
+
 // 一些参数保存在jdlg.jdata(), 
 // mode: 上次的mode
 // 以下参数试图分别从jdlg.jdata()和jtbl.jdata()上取. 当一个dlg对应多个tbl时，应存储在jtbl上。
@@ -2303,20 +2511,16 @@ function dg_toolbar(jtbl, jdlg)
 	var tb = {
 		r: {text:'刷新', iconCls:'icon-reload', handler: function() { reload(jtbl); /* reload(jtbl, org_url, org_param) */ } },
 		f: {text:'查询', iconCls:'icon-search', handler: function () {
-			jdlg.jdata().jtbl = jtbl;
-			showObjDlg(jdlg, FormMode.forFind);
+			showObjDlg(jdlg, FormMode.forFind, {jtbl: jtbl});
 		}},
 		a: {text:'新增', iconCls:'icon-add', handler: function () {
-			jdlg.jdata().jtbl = jtbl;
-			showObjDlg(jdlg, FormMode.forAdd);
+			showObjDlg(jdlg, FormMode.forAdd, {jtbl: jtbl});
 		}},
 		s: {text:'修改', iconCls:'icon-edit', handler: function () {
-			jdlg.jdata().jtbl = jtbl;
-			showObjDlg(jdlg, FormMode.forSet);
+			showObjDlg(jdlg, FormMode.forSet, {jtbl: jtbl});
 		}}, 
 		d: {text:'删除', iconCls:'icon-remove', handler: function () { 
-			jdlg.jdata().jtbl = jtbl;
-			showObjDlg(jdlg, FormMode.forDel);
+			showObjDlg(jdlg, FormMode.forDel, {jtbl: jtbl});
 		}}
 	};
 	$.each(toolbar.split(""), function(i, e) {
@@ -2340,8 +2544,7 @@ self.dg_dblclick = function (jtbl, jdlg)
 {
 	return function (idx, data) {
 		jtbl.datagrid("selectRow", idx);
-		jdlg.jdata().jtbl = jtbl;
-		showObjDlg(jdlg, FormMode.forSet);
+		showObjDlg(jdlg, FormMode.forSet, {jtbl: jtbl});
 	}
 }
 
