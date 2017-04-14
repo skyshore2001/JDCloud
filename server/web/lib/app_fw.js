@@ -18,7 +18,7 @@ URL参数会自动加入该对象，例如URL为 `http://{server}/{app}/index.ht
 
 此外，框架会自动加一些参数：
 
-@var g_args._app?="user" 应用名称，由setApp({appName})指定。
+@var g_args._app?="user" 应用名称，由 WUI.options.appName 指定。
 
 @see parseQuery URL参数通过该函数获取。
 */
@@ -777,13 +777,20 @@ function nsWUI()
 var self = this;
 
 /**
-@var WUI.m_app
+@var WUI.options
+
+{appName=user, title="客户端", onShowLogin, pageHome="pageHome", pageFolder="page"}
+
+- appName: 用于与后端通讯时标识app.
+- pageHome: 首页的id, 默认为"pageHome"
+- pageFolder: 子页面或对话框所在文件夹, 默认为"page"
 */
-self.m_app = {
+self.options = {
 	title: "客户端",
 	appName: "user",
 	onShowLogin: function () { throw "NotImplemented"; },
-	pageHome: "pageHome"
+	pageHome: "pageHome",
+	pageFolder: "page"
 };
 
 // set g_args
@@ -881,8 +888,8 @@ function makeUrl(ac, params)
 		url = BASE_URL + "api.php?ac=" + ac;
 	}
 
-	if (self.m_app.appName)
-		params._app = self.m_app.appName;
+	if (self.options.appName)
+		params._app = self.options.appName;
 	if (g_args._test)
 		params._test = 1;
 	if (g_args._debug)
@@ -1288,7 +1295,7 @@ function app_alert(msg, type, fn)
 	var icon = {i: "info", w: "warning", e: "error"}[type];
 	var s = {i: "提示", w: "警告", e: "出错"}[type];
 	var s1 = "<b>[" + s + "]</b>";
-	$.messager.alert(self.m_app.title + " - " + s, s1 + " " + msg, icon, fn);
+	$.messager.alert(self.options.title + " - " + s, s1 + " " + msg, icon, fn);
 
 	// 查看jquery-easyui对象，发现OK按钮的class=1-btn
 	setTimeout(function() {
@@ -1307,7 +1314,7 @@ window.app_confirm = self.app_confirm = app_confirm;
 function app_confirm(msg, fn)
 {
 	var s = "<div style='font-size:10pt'>" + msg.replace(/\n/g, "<br/>") + "</div>";
-	$.messager.confirm(self.m_app.title + " - " + "确认", s, fn);
+	$.messager.confirm(self.options.title + " - " + "确认", s, fn);
 }
 
 /**
@@ -1319,7 +1326,7 @@ function app_confirm(msg, fn)
 window.app_show = self.app_show = app_show;
 function app_show(msg)
 {
-	$.messager.show({title: self.m_app.title, msg: msg});
+	$.messager.show({title: self.options.title, msg: msg});
 }
 
 /**
@@ -1673,6 +1680,11 @@ function callInitfn(jo, paramArr)
 	jo.jdata().init = true;
 }
 
+function getModulePath(file)
+{
+	return self.options.pageFolder + "/" + file;
+}
+
 /** 
 @fn WUI.showPage(pageName, title?, paramArr?)
 @param pageName 由page上的class指定。
@@ -1708,9 +1720,9 @@ function showPage(pageName, title, paramArr)
 		//jtab.append("开发中");
 
 		//enterWaiting(); // NOTE: leaveWaiting in initPage
-		var pageFile = "page/" + pageName + ".html";
+		var pageFile = getModulePath(pageName + ".html");
 		$.ajax(pageFile).then(function (html) {
-			loadPage(html, pageName, "page");
+			loadPage(html, pageName);
 		}).fail(function () {
 			//leaveWaiting();
 		});
@@ -1729,7 +1741,7 @@ function showPage(pageName, title, paramArr)
 
 		var id = tabid(title);
 		var content = "<div id='" + id + "' title='" + title + "' />";
-		var closable = (pageName != self.m_app.pageHome);
+		var closable = (pageName != self.options.pageHome);
 
 		tt.tabs('add',{
 	// 		id: id,
@@ -1750,8 +1762,7 @@ function showPage(pageName, title, paramArr)
 		jpageNew.trigger('pageshow');
 	}
 
-	// path?=m_opt.pageFolder
-	function loadPage(html, pageClass, path)
+	function loadPage(html, pageClass)
 	{
 		// 放入dom中，以便document可以收到pagecreate等事件。
 		var jcontainer = $("#my-pages");
@@ -1776,11 +1787,8 @@ function showPage(pageName, title, paramArr)
 
 		var val = jpage.attr("wui-script");
 		if (val != null) {
-			if (path == null)
-				path = m_opt.pageFolder; // TODO
-			if (path != "")
-				val = path + "/" + val;
-			var dfd = loadScript(val, initPage);
+			var path = getModulePath(val);
+			var dfd = loadScript(path, initPage);
 			dfd.fail(function () {
 				app_alert("加载失败: " + val);
 				leaveWaiting();
@@ -2236,15 +2244,8 @@ function loadDialog(selector, cb)
 
 		var val = jdlg.attr("wui-script");
 		if (val != null) {
-			var path = "page";
-			val = path + "/" + val;
-		/*
-			if (path == null)
-				path = m_opt.pageFolder; // TODO
-			if (path != "")
-				val = path + "/" + val;
-				*/
-			var dfd = loadScript(val, onLoad);
+			var path = getModulePath(val);
+			var dfd = loadScript(path, onLoad);
 			dfd.fail(function () {
 				app_alert("加载失败: " + val);
 			});
@@ -2595,8 +2596,8 @@ $(function () {
 function tokenName()
 {
 	var name = "token";
-	if (self.m_app.appName)
-		name += "_" + self.m_app.appName;
+	if (self.options.appName)
+		name += "_" + self.options.appName;
 	if (g_args._test)
 		name += "_test";
 	return name;
@@ -2629,7 +2630,7 @@ function deleteLoginToken()
 
 	function main()
 	{
-		WUI.setApp({
+		$.extend(WUI.options, {
 			appName: APP_NAME,
 			title: APP_TITLE,
 			onShowLogin: showDlgLogin
@@ -2674,7 +2675,7 @@ function tryAutoLogin(onHandleLogin, reuseCmd)
 	if (ok)
 		return ok;
 
-	self.m_app.onShowLogin();
+	self.options.onShowLogin();
 	return ok;
 }
 
@@ -2693,7 +2694,7 @@ function handleLogin(data)
 	if (g_args.autoLogin || /android|ipad|iphone/i.test(navigator.userAgent))
 		saveLoginToken(data);
 
-	showPage(self.m_app.pageHome);
+	showPage(self.options.pageHome);
 }
 //}}}
 
@@ -2738,17 +2739,16 @@ window.Plugins = {
 //}}}
 
 /**
-@fn WUI.setApp(app)
+@fn WUI.setApp(opt)
 
-@param app={appName?=user, title?="客户端", onShowLogin, pageHome?="pageHome"}
+@see WUI.options
 
-- appName: 用于与后端通讯时标识app.
-- pageHome: 首页的id, 默认为"pageHome"
+TODO: remove. use $.extend instead.
 */
 self.setApp = setApp;
 function setApp(app)
 {
-	$.extend(self.m_app, app);
+	$.extend(self.options, app);
 }
 
 /**
