@@ -275,7 +275,7 @@ var APP_NAME = "admin";
 
 function main()
 {
-	WUI.setApp({
+	$.extend(WUI.options, {
 		appName: APP_NAME,
 		title: APP_TITLE,
 		onShowLogin: showDlgLogin
