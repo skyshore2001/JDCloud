@@ -1797,7 +1797,7 @@ function showPage(pageName, title, paramArr)
 		//enterWaiting(); // NOTE: leaveWaiting in initPage
 		var pageFile = getModulePath(pageName + ".html");
 		$.ajax(pageFile).then(function (html) {
-			loadPage(html, pageName);
+			loadPage(html, pageName, pageFile);
 		}).fail(function () {
 			//leaveWaiting();
 		});
@@ -1808,7 +1808,7 @@ function showPage(pageName, title, paramArr)
 		if (title == null)
 			title = $(sel).attr("title") || "无标题";
 
-		var tt = $('#my-tabMain');   
+		var tt = self.tabMain;
 		if (tt.tabs('exists', title)) {
 			tt.tabs('select', title);
 			return;
@@ -1837,7 +1837,7 @@ function showPage(pageName, title, paramArr)
 		jpageNew.trigger('pageshow');
 	}
 
-	function loadPage(html, pageClass)
+	function loadPage(html, pageClass, pageFile)
 	{
 		// 放入dom中，以便document可以收到pagecreate等事件。
 		var jcontainer = $("#my-pages");
@@ -1857,7 +1857,13 @@ function showPage(pageName, title, paramArr)
 		});
 		// bugfix: 加载页面页背景图可能反复被加载
 		jpage.find("style").attr("wui-origin", pageClass).appendTo(document.head);
-		//jpage.attr("id", pageClass).addClass("wui-page").appendTo(jcontainer);
+
+/**
+@key wui-pageFile
+
+动态加载的逻辑页(或对话框)具有该属性，值为源文件名。
+*/
+		jpage.attr("wui-pageFile", pageFile);
 		jpage.addClass(pageClass).appendTo(jcontainer);
 
 		var val = jpage.attr("wui-script");
@@ -2107,6 +2113,93 @@ function showDlg(jdlg, opt)
 	}
 }
 
+/**
+@fn WUI.getTopDialog()
+
+取处于最上层的对话框。如果没有，返回jo.size() == 0
+*/
+self.getTopDialog = getTopDialog;
+function getTopDialog()
+{
+	var val = 0;
+	var jo = $();
+	$(".window:visible").each(function (i, e) {
+		var z = parseInt(this.style.zIndex);
+		if (z > val) {
+			val = z;
+			jo = $(this).find(".wui-dialog");
+		}
+	});
+	return jo;
+}
+
+/**
+@fn WUI.unloadPage(pageName?)
+
+@param pageName 如未指定，表示当前页。
+
+删除一个页面。一般用于开发过程，在修改外部逻辑页后，调用该函数删除页面。此后载入页面，可以看到更新的内容。
+
+注意：对于内部逻辑页无意义。
+*/
+self.unloadPage = unloadPage;
+function unloadPage(pageName)
+{
+	if (pageName == null) {
+		pageName = self.getActivePage().attr("wui-pageName");
+		if (pageName == null)
+			return;
+		self.tabClose();
+	}
+	// 不要删除内部页面
+	var jo = $("."+pageName);
+	if (jo.attr("wui-pageFile") == null)
+		return;
+	jo.remove();
+	$("style[wui-origin=" + pageName + "]").remove();
+}
+
+/**
+@fn WUI.reloadPage()
+
+重新加载当前页面。一般用于开发过程，在修改外部逻辑页后，调用该函数可刷新页面。
+*/
+self.reloadPage = reloadPage;
+function reloadPage()
+{
+	var pageName = self.getActivePage().attr("wui-pageName");
+	self.unloadPage();
+	self.showPage(pageName);
+}
+
+/**
+@fn WUI.unloadDialog()
+@alias WUI.reloadDialog
+
+删除当前激活的对话框。一般用于开发过程，在修改外部对话框后，调用该函数清除以便此后再载入页面，可以看到更新的内容。
+
+注意：
+
+- 对于内部对话框调用本函数无意义。直接关闭对话框即可。
+- 由于不知道打开对话框的参数，reloadDialog无法重新打开对话框，因而它的行为与unloadDialog一样。
+*/
+self.unloadDialog = unloadDialog;
+self.reloadDialog = unloadDialog;
+function unloadDialog()
+{
+	var jdlg = getTopDialog();
+	if (jdlg.size() == 0)
+		return;
+	closeDlg(jdlg);
+
+	// 是内部对话框，不做删除处理
+	if (jdlg.attr("wui-pageFile") == null)
+		return;
+	var dlgId = jdlg.attr("id");
+	jdlg.dialog("destroy");
+	$("style[wui-origin=" + dlgId + "]").remove();
+}
+
 // ---- object CRUD {{{
 var BTN_TEXT = ["添加", "保存", "保存", "查找", "删除"];
 // e.g. var text = BTN_TEXT[mode];
@@ -2304,12 +2397,18 @@ function restoreFormFields(jfrm)
 */
 function loadDialog(jdlg, onLoad)
 {
-	if (jdlg.size() > 0)
+	// 判断dialog未被移除
+	if (jdlg.size() > 0 && jdlg[0].parentElement != null && jdlg[0].parentElement.parentElement != null)
 		return;
 	var jo = $(jdlg.selector);
 	if (jo.size() > 0) {
-		jdlg.push(jo[0]);
+		fixJdlg(jo);
 		return;
+	}
+
+	function fixJdlg(jo)
+	{
+		jdlg.splice(0, jdlg.size(), jo[0]);
 	}
 
 	var dlgId = jdlg.selector.substr(1);
@@ -2323,7 +2422,7 @@ function loadDialog(jdlg, onLoad)
 			jo = jo.filter(":first");
 		}
 
-		jdlg.push(jo[0]);
+		fixJdlg(jo);
 		// 限制css只能在当前页使用
 		jdlg.find("style").each(function () {
 			$(this).html( fixPageCss($(this).html(), selector) );
@@ -2331,6 +2430,7 @@ function loadDialog(jdlg, onLoad)
 		// bugfix: 加载页面页背景图可能反复被加载
 		jdlg.find("style").attr("wui-origin", dlgId).appendTo(document.head);
 		jdlg.attr("id", dlgId).appendTo(jcontainer);
+		jdlg.attr("wui-pageFile", pageFile);
 
 		var val = jdlg.attr("wui-script");
 		if (val != null) {
@@ -2851,27 +2951,59 @@ function logout(dontReload)
 	});
 }
 
+/**
+@fn WUI.tabClose(idx?)
+
+关闭指定idx的标签页。如果未指定idx，则关闭当前标签页.
+*/
+self.tabClose = tabClose;
+function tabClose(idx)
+{
+	if (idx == null) {
+		var jtab = WUI.tabMain.tabs("getSelected");
+		idx = WUI.tabMain.tabs("getTabIndex", jtab);
+	}
+	WUI.tabMain.tabs("close", idx);
+}
+
+/**
+@fn WUI.getActivePage()
+
+返回当前激活的逻辑页jpage，注意可能为空: jpage.size()==0。
+*/
+self.getActivePage = getActivePage;
+function getActivePage()
+{
+	var pp = self.tabMain.tabs('getSelected');   
+	var jpage = pp.find(".wui-page");
+	return jpage;
+}
+
 function mainInit()
 {
-	var tt_ = $('#my-tabMain');   
+/**
+@var WUI.tabMain
 
-	function getCurrentPage()
-	{
-		var pp = tt_.tabs('getSelected');   
-		var jpage = pp.find(".wui-page");
-		return jpage;
-	}
+标签页组件。为jquery-easyui的tabs插件，可以参考easyui文档调用相关命令进行操作，如关闭当前Tab：
 
-	var opt = tt_.tabs('options');
+	var jtab = WUI.tabMain.tabs("getSelected");
+	var idx = WUI.tabMain.tabs("getTabIndex", jtab);
+	WUI.tabMain.tabs("close", idx);
+
+注：要关闭当前Tab，可以直接用WUI.tabClose().
+*/
+	self.tabMain = $('#my-tabMain');   
+
+	var opt = self.tabMain.tabs('options');
 	$.extend(opt, {
 		onSelect: function (title) {
-			var jpage = getCurrentPage();
+			var jpage = getActivePage();
 			if (jpage.size() == 0)
 				return;
 			jpage.trigger('pageshow');
 		},
 		onBeforeClose: function (title) {
-			var jpage = getCurrentPage();
+			var jpage = getActivePage();
 			if (jpage.size() == 0)
 				return;
 			jpage.trigger('pagedestroy');
