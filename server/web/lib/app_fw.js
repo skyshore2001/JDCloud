@@ -1330,7 +1330,7 @@ function app_show(msg)
 }
 
 /**
-@fn WUI.makeLinkTo(dlg, id, text)
+@fn WUI.makeLinkTo(dlg, id, text?=id)
 @alias makeLinkTo
 
 生成一个链接的html代码，点击该链接可以打开指定对象的对话框。
@@ -1344,7 +1344,9 @@ function app_show(msg)
 window.makeLinkTo = self.makeLinkTo = makeLinkTo;
 function makeLinkTo(dlg, id, text)
 {
-	return "<a href=\"" + dlg + "\" onclick='WUI.showObjDlg($(\"" + dlg + "\"),FormMode.forLink," + id + ");return false'>" + text + "</a>";
+	if (text == null)
+		text = id;
+	return "<a href=\"" + dlg + "\" onclick='WUI.showObjDlg($(\"" + dlg + "\"),FormMode.forLink,{id:" + id + "});return false'>" + text + "</a>";
 }
 
 // ====== jquery plugin: mycombobox {{{
@@ -1911,18 +1913,10 @@ hidden上的特殊property noReset: (TODO)
 self.showDlg = showDlg;
 function showDlg(jdlg, opt) 
 {
-	// TODO
-	if (jdlg.size() == 0) {
-		var jo = $(jdlg.selector);
-		if (jo.size() > 0) {
-			jdlg = jo;
-		}
-		else {
-			loadDialog(jdlg.selector, function (jdlg) {
-				showDlg(jdlg, opt);
-			});
-			return;
-		}
+	if (loadDialog(jdlg, onLoad))
+		return;
+	function onLoad() {
+		showDlg(jdlg, opt);
 	}
 
 	opt = $.extend({
@@ -2220,20 +2214,39 @@ function restoreFormFields(jfrm)
 	delete jd.no_submit;
 }
 
-// cb(jdlg)
-function loadDialog(selector, cb)
+/*
+加载jdlg(当它的size为0时)，注意加载成功后会添加到jdlg对象中。
+返回true表示将动态加载对话框，调用者应立即返回，后续逻辑在onLoad回调中操作。
+
+	if (loadDialog(jdlg, onLoad))
+		return;
+
+	function onLoad() {
+		showDlg(jdlg...);
+	}
+*/
+function loadDialog(jdlg, onLoad)
 {
-	var dlgId = selector.substr(1);
+	if (jdlg.size() > 0)
+		return;
+	var jo = $(jdlg.selector);
+	if (jo.size() > 0) {
+		jdlg.push(jo[0]);
+		return;
+	}
+
+	var dlgId = jdlg.selector.substr(1);
 	var pageFile = "page/" + dlgId + ".html";
 	$.ajax(pageFile).then(function (html) {
 		var jcontainer = $("#my-pages");
 		// 注意：如果html片段中有script, 在append时会同步获取和执行(jquery功能)
-		jdlg = $(html).filter("div");
-		if (jdlg.size() > 1 || jdlg.size() == 0) {
-			console.log("!!! Warning: bad format for dialog '" + selector + "'. Element count = " + jdlg.size());
-			jdlg = jdlg.filter(":first");
+		var jo = $(html).filter("div");
+		if (jo.size() > 1 || jo.size() == 0) {
+			console.log("!!! Warning: bad format for dialog '" + selector + "'. Element count = " + jo.size());
+			jo = jo.filter(":first");
 		}
 
+		jdlg.push(jo[0]);
 		// 限制css只能在当前页使用
 		jdlg.find("style").each(function () {
 			$(this).html( fixPageCss($(this).html(), selector) );
@@ -2256,46 +2269,31 @@ function loadDialog(selector, cb)
 	}).fail(function () {
 		//leaveWaiting();
 	});
-
-	function onLoad()
-	{
-		if (cb) {
-			cb(jdlg);
-		}
-	}
+	return true;
 }
 
 /**
-@fn WUI.showObjDlg(jdlg, mode, id?)
-@fn WUI.showObjDlg(jdlg, mode, opt={jtbl})
+@fn WUI.showObjDlg(jdlg, mode, opt?={jtbl, id})
 
-@param id String. mode=link时必设，set/del如缺省则从关联的jtbl中取, add/find时不需要
-@param jdbl Datagrid. dialog/form关联的datagrid -- 如果dlg对应多个tbl, 必须每次打开都设置
+@param opt.id String. mode=link时必设，set/del如缺省则从关联的opt.jtbl中取, add/find时不需要
+@param opt.jdbl Datagrid. dialog/form关联的datagrid -- 如果dlg对应多个tbl, 必须每次打开都设置
 
 事件参考：
 @see WUI.showDlg
 */
 self.showObjDlg = showObjDlg;
-function showObjDlg(jdlg, mode, id)
+function showObjDlg(jdlg, mode, opt)
 {
-	// TODO
-	if (jdlg.size() == 0) {
-		var jo = $(jdlg.selector);
-		if (jo.size() > 0) {
-			jdlg = jo;
-		}
-		else {
-			loadDialog(jdlg.selector, function (jdlg) {
-				showObjDlg(jdlg, mode, id);
-			});
-			return;
-		}
+	if (loadDialog(jdlg, onLoad))
+		return;
+	function onLoad() {
+		showObjDlg(jdlg, mode, opt);
 	}
-	// handle opt: {jtbl,...}
-	if ($.isPlainObject(id)) {
-		$.extend(jdlg.jdata(), id);
-		id =null;
+
+	if (opt.jtbl) {
+		jdlg.jdata().jtbl = opt.jtbl;
 	}
+	var id = opt.id;
 
 // 一些参数保存在jdlg.jdata(), 
 // mode: 上次的mode

@@ -27,6 +27,12 @@ var g_data = {}; // { userInfo={id,uname} }
 //}}}
 
 // ====== data-options {{{
+var Formatter = {
+	userId: function (value, row) {
+		return makeLinkTo("#dlgUser", value);
+	}
+};
+
 var OrderColumns = {
 	statusStr: function (value, row) {
 		return OrderStatusStr[row.status] || row.status;
@@ -356,7 +362,7 @@ $(main);
 		<table id="tblOrder" style="width:auto;height:auto">
 			<thead><tr>
 				<th data-options="field:'id', sortable:true, sorter:intSort">编号</th>
-				<th data-options="field:'userId'">用户编号</th>
+				<th data-options="field:'userId', formatter:Formatter.userId">用户编号</th>
 				<th data-options="field:'status', formatter:OrderColumns.statusStr, styler:OrderColumns.statusStyler">状态</th>
 				<th data-options="field:'dscr'">描述</th>
 				<th data-options="field:'cmt'">用户备注</th>
