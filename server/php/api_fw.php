@@ -950,6 +950,18 @@ function apiMain()
 	//$script = basename($_SERVER["SCRIPT_NAME"]);
 	//ApiFw_::$SOLO = ($script == API_ENTRY_PAGE || $script == 'index.php');
 
+	$supportJson = function () {
+		// 支持POST为json格式
+		if (strstr(@$_SERVER["HTTP_CONTENT_TYPE"], "/json") !== false) {
+			$content = file_get_contents("php://input");
+			@$arr = json_decode($content, true);
+			if (!is_array($arr))
+				throw new MyException(E_PARAM, "bad json-format body");
+			$_POST = $arr;
+			$_REQUEST += $arr;
+		}
+	};
+
 	global $BASE_DIR;
 	require_once("{$BASE_DIR}/conf.php");
 
@@ -963,6 +975,7 @@ function apiMain()
 
 	if (ApiFw_::$SOLO) {
 		$api = new ApiApp();
+		$api->onBeforeExec[] = $supportJson;
 		$api->exec();
 	}
 }

@@ -1323,6 +1323,8 @@ class Coord
  */
 class AppBase
 {
+	public $onBeforeExec = [];
+	public $onAfterExec = [];
 	public function exec($handleTrans=true)
 	{
 		global $DBH;
@@ -1330,7 +1332,13 @@ class AppBase
 		$ok = false;
 		$ret = false;
 		try {
+			foreach ($this->onBeforeExec as $fn) {
+				$fn();
+			}
 			$ret = $this->onExec();
+			foreach ($this->onAfterExec as $fn) {
+				$fn();
+			}
 			$ok = true;
 		}
 		catch (DirectReturn $e) {
