@@ -471,7 +471,7 @@ class AccessControl
 	# for get/query
 	protected $hiddenFields = [];
 	# for query
-	protected $defaultRes; // 缺省为 "t0.*" 加  default=true的虚拟字段
+	protected $defaultRes = "t0.*"; // 缺省为 "t0.*" 加  default=true的虚拟字段
 	protected $defaultSort = "t0.id";
 	# for query
 	protected $maxPageSz = 100;
@@ -584,9 +584,9 @@ class AccessControl
 		}
 		elseif ($ac == "get" || $ac == "query") {
 			$gres = param("gres");
-			$res = param("res") ?: $this->defaultRes;
+			$res = param("res");
 			$this->sqlConf = [
-				"res" => [$res],
+				"res" => [],
 				"gres" => $gres,
 				"cond" => [param("cond", null, null, false)],
 				"join" => [],
@@ -627,10 +627,16 @@ class AccessControl
 			if (isset($gres)) {
 				$this->filterRes($gres, true);
 			}
+			// 设置gres时，不使用defaultRes
+			else if (!isset($res)) {
+				$res = $this->defaultRes;
+			}
+
 			if (isset($res)) {
 				$this->filterRes($res);
 			}
-			else {
+			// 设置gres时，不使用default vcols/subobj
+			else if (!isset($gres)) {
 				$this->addDefaultVCols();
 				if (count($this->sqlConf["subobj"]) == 0) {
 					foreach ($this->subobj as $col => $def) {
@@ -733,14 +739,13 @@ class AccessControl
 	// return: new field list
 	private function filterRes($res, $gres=false)
 	{
-		$firstCol = "";
 		$cols = [];
 		foreach (explode(',', $res) as $col) {
 			$col = trim($col);
 			$alias = null;
 			$fn = null;
 			if ($col === "*" || $col === "t0.*") {
-				$firstCol = "t0.*";
+				$this->addRes("t0.*", false);
 				continue;
 			}
 			// 适用于res/gres, 支持格式："col" / "col col1" / "col as col1"
@@ -781,12 +786,10 @@ class AccessControl
 					$this->addRes($col1, false);
 				}
 			}
-			$cols[] = $alias || $col;
+			$cols[] = $alias ?: $col;
 		}
 		if ($gres)
 			$this->sqlConf["gres"] = join(",", $cols);
-		else
-			$this->sqlConf["res"][0] = $firstCol;
 	}
 
 	private function filterOrderby($orderby)
@@ -811,10 +814,6 @@ class AccessControl
 		return join(",", $colArr);
 	}
 
-	final public function issetRes()
-	{
-		return isset($this->sqlConf["res"][0]);
-	}
 	final public function issetCond()
 	{
 		return isset($this->sqlConf["cond"][0]);
@@ -1107,10 +1106,6 @@ class AccessControl
 	protected function genQuerySql(&$tblSql=null, &$condSql=null)
 	{
 		$sqlConf = &$this->sqlConf;
-		if (! isset($sqlConf["res"][0]))
-			$sqlConf["res"][0] = "t0.*";
-		else if ($sqlConf["res"][0] === "")
-			array_shift($sqlConf["res"]);
 		$resSql = join(",", $sqlConf["res"]);
 		if ($resSql == "") {
 			$resSql = "t0.id";
@@ -1245,11 +1240,14 @@ class AccessControl
 		$condSql = null;
 		$sql = $this->genQuerySql($tblSql, $condSql);
 
+		$complexCntSql = false;
 		if (isset($sqlConf["union"])) {
 			$sql .= "\nUNION\n" . $sqlConf["union"];
+			$complexCntSql = true;
 		}
 		if ($sqlConf["gres"]) {
 			$sql .= "\nGROUP BY {$sqlConf['gres']}";
+			$complexCntSql = true;
 		}
 
 		if ($orderSql)
@@ -1257,9 +1255,14 @@ class AccessControl
 
 		if ($enablePaging) {
 			if ($enableTotalCnt) {
-				$cntSql = "SELECT COUNT(*) FROM $tblSql";
-				if ($condSql)
-					$cntSql .= "\nWHERE $condSql";
+				if (!$complexCntSql) {
+					$cntSql = "SELECT COUNT(*) FROM $tblSql";
+					if ($condSql)
+						$cntSql .= "\nWHERE $condSql";
+				}
+				else {
+					$cntSql = "SELECT COUNT(*) FROM ($sql) t0";
+				}
 				$totalCnt = queryOne($cntSql);
 			}
 
