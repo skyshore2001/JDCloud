@@ -19,7 +19,7 @@ function initPageCreateOrder()
 			MUI.popPageStack();
 			PageOrders.refresh = true;
 			MUI.showPage("#orders");
-		}, g_cfg.WAIT);
+		});
 	}
 
 	function onPageBeforeShow()
