@@ -10,8 +10,8 @@
 <script language="javascript" src="lib/easyui/jquery.easyui.min.js" type="text/javascript" charset="utf-8"></script>
 <script language="javascript" src="lib/easyui/locale/easyui-lang-zh_CN.js" type="text/javascript" charset="utf-8"></script>
 
-<script language="javascript" src="lib/common.js"type="text/javascript" charset="utf-8"></script>
-<script language="javascript" src="lib/app_fw.js"type="text/javascript" charset="utf-8"></script>
+<script language="javascript" src="lib/jdcloud-wui.js" charset="utf-8"></script>
+<!--script language="javascript" src="lib/jdcloud-wui-compatible.js" charset="utf-8"></script-->
 <script language="javascript" src="app.js"type="text/javascript" charset="utf-8"></script>
 
 <style type="text/css">
@@ -29,7 +29,7 @@ var g_data = {}; // { userInfo={id,uname} }
 // ====== data-options {{{
 var Formatter = {
 	userId: function (value, row) {
-		return makeLinkTo("#dlgUser", value);
+		return WUI.makeLinkTo("#dlgUser", value);
 	}
 };
 
@@ -56,7 +56,7 @@ function showDlgLogin()
 {
 		var jdlg = $("#dlgLogin");
 		WUI.showDlg(jdlg, {
-			url: makeUrl("login"),
+			url: WUI.makeUrl("login"),
 			noCancel: true,
 			okLabel: '登录',
 
@@ -92,7 +92,7 @@ function initPageEmployee()
 	var jdlg = $("#dlgEmployee");
 
 	jtbl.datagrid({
-		url: makeUrl(["Employee", "query"]),
+		url: WUI.makeUrl(["Employee", "query"]),
 		toolbar: WUI.dg_toolbar(jtbl, jdlg),
 		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
 	});
@@ -117,7 +117,7 @@ function initPageUser()
 	var jdlg = $("#dlgUser");
 
 	jtbl.datagrid({
-		url: makeUrl(["User", "query"]),
+		url: WUI.makeUrl(["User", "query"]),
 		toolbar: WUI.dg_toolbar(jtbl, jdlg),
 		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
 	});
@@ -130,7 +130,7 @@ function initPageOrder()
 	var jdlg = $("#dlgOrder");
 
 	jtbl.datagrid({
-		url: makeUrl(["Ordr", "query"]),
+		url: WUI.makeUrl(["Ordr", "query"]),
 		toolbar: WUI.dg_toolbar(jtbl, jdlg),
 		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg),
 		sortName:'id',

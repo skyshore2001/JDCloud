@@ -3,6 +3,10 @@
 var DEFAULT_SEP = ',';
 var g_data = {}; // {userInfo={id,...} }
 
+$.extend(WUI.options, {
+	serverUrl: "../api.php"
+});
+
 // ==== defines {{{
 var OrderStatusStr = {
 	CR: "未付款", 
@@ -125,8 +129,8 @@ function arrayToImg(jp, arr)
 	$.each (arr, function (i, attId) {
 		if (attId == "")
 			return;
-		var url = makeUrl("att", {id: attId});
-		var linkUrl = (nothumb||nopic) ? url: makeUrl("att", {thumbId: attId});
+		var url = WUI.makeUrl("att", {id: attId});
+		var linkUrl = (nothumb||nopic) ? url: WUI.makeUrl("att", {thumbId: attId});
 		var ja = $("<a target='_black'>").attr("href", linkUrl).appendTo(jImgContainer);
 		if (!nopic) {
 			$("<img>").attr("src", url)
@@ -358,7 +362,7 @@ function onChooseFile()
 
 	var nothumb = jp.attr('wui-nothumb') !== undefined;
 
-	var dfd = $.getScriptWithCache("lib/lrz.mobile.min.js");
+	var dfd = WUI.loadScript("lib/lrz.mobile.min.js");
 	var picFiles = this.files;
 	var compress = !nothumb;
 
@@ -418,7 +422,7 @@ function onChooseFile()
 */
 function searchField(o, param)
 {
-	var jdlg = $(o).getAncestor(".window-body");
+	var jdlg = $(o).closest(".window-body");
 	var jtbl = jdlg.jdata().jtbl;
 	if (jtbl.size() == 0) {
 		app_alert("请先打开列表再查询", "w");
