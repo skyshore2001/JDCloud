@@ -2,6 +2,7 @@
 	var user = {
 		id: 1001,
 		name: "孙悟空",
+		phone: "18912345678"
 	};
 	var orders = []; // @order={id, status, dscr, @orderLog={action, tm} }
 	// id = index +100
