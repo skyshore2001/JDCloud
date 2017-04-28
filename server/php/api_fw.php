@@ -946,6 +946,9 @@ function api_initClient()
 // ====== main routine {{{
 function apiMain()
 {
+	if ($_SERVER["REQUEST_METHOD"] == "OPTIONS")
+		return;
+
 	// TODO: 如允许api.php被包含后直接调用api，应设置 ApiFw_::$SOLO=false
 	//$script = basename($_SERVER["SCRIPT_NAME"]);
 	//ApiFw_::$SOLO = ($script == API_ENTRY_PAGE || $script == 'index.php');
