@@ -376,7 +376,7 @@ subobj: { name => {sql, default, wantOne} }
 @fn AccessControl::getMaxPageSz()  (for query) 取最大每页数据条数。为非负整数。
 @var AccessControl::$maxPageSz ?= 100 (for query) 指定最大每页数据条数。值为负数表示取PAGE_SZ_LIMIT值.
 
-前端通过 {obj}.query(_pagesz)来指定每页返回多少条数据，缺省是20条，最高不可超过100条。当指定为负数时，表示按最大允许值=min($maxPageSz, PAGE_SZ_LIMIT)返回。
+前端通过 {obj}.query(pagesz)来指定每页返回多少条数据，缺省是20条，最高不可超过100条。当指定为负数时，表示按最大允许值=min($maxPageSz, PAGE_SZ_LIMIT)返回。
 PAGE_SZ_LIMIT目前定为10000条。如果还不够，一定是应用设计有问题。
 
 如果想返回每页超过100条数据，必须在后端设置，如：
@@ -442,10 +442,10 @@ PAGE_SZ_LIMIT目前定为10000条。如果还不够，一定是应用设计有�
 
 ## query接口输出格式
 
-query接口支持_fmt参数：
+query接口支持fmt参数：
 
 - list: 生成`{ @list, nextkey?, total? }`格式，而非缺省的 `{ @h, @d, nextkey?, total? }`格式
-- csv/txt/excel: 导出文件，注意为了避免分页，调用时可设置较大的_pagesz值。
+- csv/txt/excel: 导出文件，注意为了避免分页，调用时可设置较大的pagesz值。
 	- csv: 逗号分隔的文件，utf8编码。
 	- excel: 逗号分隔的文件，gb2312编码以便excel可直接打开不会显示中文乱码。
 	- txt: 制表分隔的文件, utf8编码。
@@ -623,6 +623,7 @@ class AccessControl
 
 			$this->onQuery();
 
+			$addDefaultCol = false;
 			// 确保res/gres参数符合安全限定
 			if (isset($gres)) {
 				$this->filterRes($gres, true);
@@ -630,13 +631,14 @@ class AccessControl
 			// 设置gres时，不使用defaultRes
 			else if (!isset($res)) {
 				$res = $this->defaultRes;
+				$addDefaultCol = true;
 			}
 
 			if (isset($res)) {
 				$this->filterRes($res);
 			}
 			// 设置gres时，不使用default vcols/subobj
-			else if (!isset($gres)) {
+			if ($addDefaultCol) {
 				$this->addDefaultVCols();
 				if (count($this->sqlConf["subobj"]) == 0) {
 					foreach ($this->subobj as $col => $def) {
@@ -647,7 +649,7 @@ class AccessControl
 			}
 			if ($ac == "query")
 			{
-				$rv = $this->supportEasyuiSort();
+				$rv = $this->supportEasyui();
 				if (isset($this->sqlConf["orderby"]) && !isset($this->sqlConf["union"]))
 					$this->sqlConf["orderby"] = $this->filterOrderby($this->sqlConf["orderby"]);
 			}
@@ -725,8 +727,11 @@ class AccessControl
 			}, $this->sqlConf["cond"][0]);
 		}
 	}
-	private function supportEasyuiSort()
+	private function supportEasyui()
 	{
+		if (isset($_REQUEST["rows"])) {
+			setParam("pagesz", $_REQUEST["rows"]);
+		}
 		// support easyui: sort/order
 		if (isset($_REQUEST["sort"]))
 		{
@@ -734,6 +739,12 @@ class AccessControl
 			if (isset($_REQUEST["order"]))
 				$orderby .= " " . $_REQUEST["order"];
 			$this->sqlConf["orderby"] = $orderby;
+		}
+		// 兼容旧代码: 支持 _pagesz等参数，新代码应使用pagesz
+		foreach (["_pagesz", "_pagekey", "_fmt"] as $e) {
+			if (isset($_REQUEST[$e])) {
+				setParam(substr($e, 1), $_REQUEST[$e]);
+			}
 		}
 	}
 	// return: new field list
@@ -1175,11 +1186,9 @@ class AccessControl
 			$enablePaging = false;
 		}
 
-		$pagesz = param("_pagesz/i");
-		$pagekey = param("_pagekey/i");
-		// support jquery-easyui
-		if (!isset($pagesz) && !isset($pagekey)) {
-			$pagesz = param("rows/i");
+		$pagesz = param("pagesz/i");
+		$pagekey = param("pagekey/i");
+		if (! isset($pagekey)) {
 			$pagekey = param("page/i");
 			if (isset($pagekey))
 			{
@@ -1212,7 +1221,7 @@ class AccessControl
 					$enableTotalCnt = true;
 			}
 
-			// 如果未指定orderby或只用了id(以后可放宽到唯一性字段), 则可以用partialQuery机制(性能更好更精准), _pagekey表示该字段的最后值；否则_pagekey表示下一页页码。
+			// 如果未指定orderby或只用了id(以后可放宽到唯一性字段), 则可以用partialQuery机制(性能更好更精准), pagekey表示该字段的最后值；否则pagekey表示下一页页码。
 			if (!isset($enablePartialQuery)) {
 				$enablePartialQuery = false;
 				if (preg_match('/^(t0\.)?id\b/', $orderSql)) {
@@ -1309,7 +1318,7 @@ class AccessControl
 				if (isset($id1))
 					$this->handleSubObj($id1, $mainObj);
 			}
-			$fmt = param("_fmt");
+			$fmt = param("fmt");
 			if ($fmt === "list") {
 				$ret = ["list" => $ret];
 			}

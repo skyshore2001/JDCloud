@@ -232,7 +232,7 @@ WHERE userId={$this->uid} ORDER BY id DESC LIMIT 3) t
 	{
 		$ac = mparam("ac");
 		$param = [
-			"_fmt" => "list",
+			"fmt" => "list",
 			"cond" => "ac=" . Q($ac)
 		];
 		/*
