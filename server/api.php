@@ -1,6 +1,8 @@
 <?php
 
 require_once('php/jdcloud-php/api_fw.php');
+require_once('php/api_functions.php');
+require_once('php/api_objects.php');
 
 // ====== config {{{
 const AUTH_GUEST = 0;
