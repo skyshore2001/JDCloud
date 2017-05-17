@@ -2,7 +2,7 @@ function initPageOrders()
 {
 	var jpage = $(this);
 
-	var lstIf = initPageList(jpage, {
+	var lstIf = MUI.initPageList(jpage, {
 		pageItf: PageOrders,
 		navRef: ">.hd .mui-navbar",
 		listRef: ">.bd .p-list",

@@ -10,9 +10,9 @@
 <script language="javascript" src="lib/easyui/jquery.easyui.min.js" type="text/javascript" charset="utf-8"></script>
 <script language="javascript" src="lib/easyui/locale/easyui-lang-zh_CN.js" type="text/javascript" charset="utf-8"></script>
 
-<script language="javascript" src="lib/common.js"type="text/javascript" charset="utf-8"></script>
-<script language="javascript" src="lib/app_fw.js"type="text/javascript" charset="utf-8"></script>
-<script language="javascript" src="app.js"type="text/javascript" charset="utf-8"></script>
+<script language="javascript" src="lib/jdcloud-wui.js" charset="utf-8"></script>
+<!--script language="javascript" src="lib/jdcloud-wui-compatible.js" charset="utf-8"></script-->
+<script language="javascript" src="app.js" charset="utf-8"></script>
 
 <style type="text/css">
 /* css {{{ */
@@ -35,7 +35,7 @@ var ListOptions = {
 		var opts = {
 			valueField: "id",
 			textField: "name",
-			url: makeUrl('Employee.query', {
+			url: WUI.makeUrl('Employee.query', {
 		res: 'id,name,uname',
 		cond: 'storeId=' + g_data.userInfo.storeId,
 		wantArray:1
@@ -50,7 +50,7 @@ var ListOptions = {
 		var opts = {
 			valueField: "id",
 			textField: "name",
-			url: makeUrl('Store.query', {
+			url: WUI.makeUrl('Store.query', {
 				res: 'id,name',
 				wantArray:1
 			}),
@@ -69,7 +69,7 @@ var Formatter = {
 		if (value == null)
 			return "(无图)";
 		return value.replace(/(\d+),?/g, function (ms, picId) {
-			var url = makeUrl("att", {thumbId: picId});
+			var url = WUI.makeUrl("att", {thumbId: picId});
 			return "<a target='_black' href='" + url + "'>" + picId + "</a>&nbsp;";
 		});
 	},
@@ -90,7 +90,7 @@ var Formatter = {
 		if (value == null)
 			return "";
 		return makeLinkTo("#dlgStore", row.storeId, value);
-	},
+	}
 };
 //}}}
 
@@ -131,7 +131,7 @@ var OrderColumns = {
 	flagStyler: function (value, row) {
 			if (value)
 				return "background-color:" + Color.Info;
-	},
+	}
 };
 
 function flagFormatter(flag)
@@ -167,7 +167,7 @@ function initPageHome()
 	var jdlg = $("#dlgEmployee");
 
 	jtbl.datagrid({
-		url: makeUrl(["Employee", "query"], {cond: "id=" + g_data.userInfo.id}),
+		url: WUI.makeUrl(["Employee", "query"], {cond: "id=" + g_data.userInfo.id}),
 		onLoadSuccess: function(data) {
 			applyPermission(data.rows[0].perms);
 		}
@@ -234,7 +234,7 @@ function initPageOrder()
 	var btn2 = {text: "所有未完成", iconCls:'icon-search', handler: getTodoOrders};
 
 	var dgOpt = {
-		url: makeUrl(["Ordr", "query"], {res:"*,createTm,userPhone"}),
+		url: WUI.makeUrl(["Ordr", "query"], {res:"*,createTm,userPhone"}),
 		queryParams: query1,
 		toolbar: WUI.dg_toolbar(jtbl, jdlg, "-", btn1, btn2),
 		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
@@ -273,7 +273,7 @@ function showDlgLogin()
 {
 	var jdlg = $("#dlgLogin");
 	WUI.showDlg(jdlg, {
-		url: makeUrl("login"),
+		url: WUI.makeUrl("login"),
 		noCancel: true,
 		okLabel: '登录',
 
@@ -288,7 +288,7 @@ function showDlgChpwd()
 {
 	var jdlg = $("#dlgChpwd");
 	WUI.showDlg(jdlg, {
-		url: makeUrl("chpwd"),
+		url: WUI.makeUrl("chpwd"),
 
 		onOk: function (data) {
 			WUI.closeDlg(jdlg);
@@ -301,7 +301,7 @@ function showDlgSendSms()
 {
 	var jdlg = $("#dlgSendSms");
 	WUI.showDlg(jdlg, {
-		url: makeUrl("sendSms"),
+		url: WUI.makeUrl("sendSms"),
 		reset: false,
 		onOk: function (data) {
 			WUI.closeDlg(jdlg);
@@ -521,7 +521,7 @@ $(main);
 			</tr>
 
 		</table>  
-		<input id="btnOrderMore" class="notForFind" type=button onClick="WUI.showObjDlg($('#dlgOrder'), FormMode.forLink, this.form.id.value); return false;" value="查看明细">
+		<input id="btnOrderMore" class="notForFind" type=button onClick="WUI.showObjDlg('#dlgOrder', FormMode.forLink, {id: this.form.id.value}); return false;" value="查看明细">
 	</form>
 
 	<div id="divOrderMore" class="notForFind">

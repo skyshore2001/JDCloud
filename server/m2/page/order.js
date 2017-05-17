@@ -14,7 +14,7 @@ function initPageOrder()
 				showOrder();
 		}
 	};
-	initPullList(jpage.find(".bd")[0], pullListOpt);
+	MUI.initPullList(jpage.find(".bd")[0], pullListOpt);
 
 	// ==== function {{{
 	function showOrder()
@@ -28,7 +28,7 @@ function initPageOrder()
 		{
 			data.amountStr_ = parseFloat(data.amount) + "元";
 			data.statusStr_ = StatusStr[data.status];
-			setFormData(jpage, data);
+			MUI.setFormData(jpage, data);
 
 			jpage.find("#divCmt").toggle(!!data.cmt);
 
@@ -37,7 +37,7 @@ function initPageOrder()
 				var cell = {
 					hd: '<i class="icon icon-dscr"></i>',
 					bd: ActionStr[e.action],
-					ft: parseDate(e.tm).format("yyyy-mm-dd HH:MM")
+					ft: MUI.parseDate(e.tm).format("yyyy-mm-dd HH:MM")
 				};
 				var ji = createCell(cell);
 				ji.appendTo(jlstLog);

@@ -10,8 +10,8 @@
 <script language="javascript" src="lib/easyui/jquery.easyui.min.js" type="text/javascript" charset="utf-8"></script>
 <script language="javascript" src="lib/easyui/locale/easyui-lang-zh_CN.js" type="text/javascript" charset="utf-8"></script>
 
-<script language="javascript" src="../m/lib/common.js"type="text/javascript" charset="utf-8"></script>
-<script language="javascript" src="lib/app_fw.js"type="text/javascript" charset="utf-8"></script>
+<script language="javascript" src="lib/jdcloud-wui.js" charset="utf-8"></script>
+<!--script language="javascript" src="lib/jdcloud-wui-compatible.js" charset="utf-8"></script-->
 <script language="javascript" src="app.js"type="text/javascript" charset="utf-8"></script>
 
 <style type="text/css">
@@ -27,6 +27,12 @@ var g_data = {}; // { userInfo={id,uname} }
 //}}}
 
 // ====== data-options {{{
+var Formatter = {
+	userId: function (value, row) {
+		return WUI.makeLinkTo("#dlgUser", value);
+	}
+};
+
 var OrderColumns = {
 	statusStr: function (value, row) {
 		return OrderStatusStr[row.status] || row.status;
@@ -41,7 +47,7 @@ var OrderColumns = {
 			color = Color.Info;
 		if (color)
 			return "background-color: " + color;
-	},
+	}
 };
 //}}}
 
@@ -50,7 +56,7 @@ function showDlgLogin()
 {
 		var jdlg = $("#dlgLogin");
 		WUI.showDlg(jdlg, {
-			url: makeUrl("login"),
+			url: WUI.makeUrl("login"),
 			noCancel: true,
 			okLabel: '登录',
 
@@ -86,7 +92,7 @@ function initPageEmployee()
 	var jdlg = $("#dlgEmployee");
 
 	jtbl.datagrid({
-		url: makeUrl(["Employee", "query"]),
+		url: WUI.makeUrl(["Employee", "query"]),
 		toolbar: WUI.dg_toolbar(jtbl, jdlg),
 		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
 	});
@@ -111,7 +117,7 @@ function initPageUser()
 	var jdlg = $("#dlgUser");
 
 	jtbl.datagrid({
-		url: makeUrl(["User", "query"]),
+		url: WUI.makeUrl(["User", "query"]),
 		toolbar: WUI.dg_toolbar(jtbl, jdlg),
 		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
 	});
@@ -124,7 +130,7 @@ function initPageOrder()
 	var jdlg = $("#dlgOrder");
 
 	jtbl.datagrid({
-		url: makeUrl(["Ordr", "query"]),
+		url: WUI.makeUrl(["Ordr", "query"]),
 		toolbar: WUI.dg_toolbar(jtbl, jdlg),
 		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg),
 		sortName:'id',
@@ -269,7 +275,7 @@ var APP_NAME = "admin";
 
 function main()
 {
-	WUI.setApp({
+	$.extend(WUI.options, {
 		appName: APP_NAME,
 		title: APP_TITLE,
 		onShowLogin: showDlgLogin
@@ -356,7 +362,7 @@ $(main);
 		<table id="tblOrder" style="width:auto;height:auto">
 			<thead><tr>
 				<th data-options="field:'id', sortable:true, sorter:intSort">编号</th>
-				<th data-options="field:'userId'">用户编号</th>
+				<th data-options="field:'userId', formatter:Formatter.userId">用户编号</th>
 				<th data-options="field:'status', formatter:OrderColumns.statusStr, styler:OrderColumns.statusStyler">状态</th>
 				<th data-options="field:'dscr'">描述</th>
 				<th data-options="field:'cmt'">用户备注</th>

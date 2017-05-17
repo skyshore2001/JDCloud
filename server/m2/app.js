@@ -9,7 +9,7 @@ $.extend(MUI.options, {
 });
 
 // 模拟接口返回数据
-// loadScript("mockdata.js", {async: false, cache: false});
+// MUI.loadScript("mockdata.js", {async: false, cache: false});
 //}}}
 
 // ====== app fw {{{
