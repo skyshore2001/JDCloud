@@ -97,6 +97,8 @@ P_DBCRED格式为`{用户名}:{密码}`，或其base64编码后的值，如
 
 **********************************************************/
 
+require_once("common.php");
+
 // ====== defines {{{
 # error code definition:
 const E_ABORT = -100; // 客户端不报错
@@ -131,7 +133,7 @@ const RTEST_MODE=2;
 最后不带"/".
 */
 global $BASE_DIR;
-$BASE_DIR = dirname(dirname(__FILE__));
+$BASE_DIR = dirname(dirname(__DIR__));
 
 global $JSON_FLAG;
 $JSON_FLAG = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;

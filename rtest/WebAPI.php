@@ -121,10 +121,10 @@ function makeUrl($ac, $param=null)
 			$url .= "?";
 	}
 	else {
-		$url = "$SVC_URL/api.php/$ac";
+		$url = "$SVC_URL/$ac";
 		if ($param)
 			$url .= "?";
-// 		$url = "$SVC_URL/api.php?ac=$ac";
+// 		$url = "$SVC_URL?ac=$ac";
 // 		if ($param)
 // 			$url .= "&";
 	}

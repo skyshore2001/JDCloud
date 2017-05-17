@@ -178,6 +178,7 @@ plugin/index.php是插件配置文件，在后端应用框架函数apiMain中引
 
 */
 
+require_once("app_fw.php");
 require_once("AccessControl.php");
 
 // ====== config {{{
@@ -786,45 +787,6 @@ class Plugins
 }
 //}}}
 
-// ====== general API functions: execsql, CRUD {{{
-
-function api_execSql()
-{
-	checkAuth(AUTH_ADMIN | PERM_TEST_MODE);
-
-	# TODO: limit the function
-	$sql = html_entity_decode(mparam("sql"));
-	if (preg_match('/^\s*select/i', $sql)) {
-		global $DBH;
-		$sth = $DBH->query($sql);
-		$fmt = param("fmt");
-		$wantArray = param("wantArray/b", false);
-		if ($wantArray)
-			$fmt = "array";
-
-		if ($fmt == "array")
-			return $sth->fetchAll(PDO::FETCH_NUM);
-		if ($fmt == "table") {
-			$h = getRsHeader($sth);
-			$d = $sth->fetchAll(PDO::FETCH_NUM);
-			return ["h"=>$h, "d"=>$d];
-		}
-		if ($fmt == "one") {
-			$row = $sth->fetch(PDO::FETCH_NUM);
-			$sth->closeCursor();
-			if ($row !== false && count($row)===1)
-				return $row[0];
-			return $row;
-		}
-		return $sth->fetchAll(PDO::FETCH_ASSOC);
-	}
-	else {
-		$wantId = param("wantId/b");
-		$ret = execOne($sql, $wantId);
-	}
-	return $ret;
-}
-
 /**
 @fn tableCRUD($ac, $tbl, $asAdmin?=false)
 
@@ -941,7 +903,6 @@ function api_initClient()
 	Conf::onInitClient($ret);
 	return $ret;
 }
-//}}}
 
 // ====== main routine {{{
 function apiMain()
