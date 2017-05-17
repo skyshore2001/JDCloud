@@ -1,0 +1,24 @@
+<div my-obj="User" title="用户" style="padding:20px 40px 20px 40px;width:520px;height:450px;">
+	<form method="POST">
+		<table>
+			<tr>
+				<td>编号</td>
+				<td><input name="id" disabled></td>
+			</tr>
+			<tr>
+				<td>手机号</td>
+				<td><input name="phone" class="easyui-validatebox" data-options="required:true, validType:'cellphone'"></td>  
+			</tr>
+			<tr>
+				<td>姓名</td>
+				<td><input name="name" class="easyui-validatebox" data-options="required:true"></td>  
+			</tr>
+			<tr>
+				<td>登录密码</td>
+				<td><input notForFind=1 type="password" name="pwd" class="easyui-validatebox" data-options="required:true, validType:'pwd'">
+				</td>
+			</tr> 
+		</table>  
+	</form>  
+</div>
+

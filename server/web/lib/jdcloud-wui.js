@@ -1,4 +1,5 @@
-// ====== BEGIN_FILE doc.js {{{
+// jdcloud-wui version 1.0
+// ====== WEBCC_BEGIN_FILE doc.js {{{
 /**
 @module WUI
 
@@ -552,9 +553,9 @@ formatter用于控制Cell中的HTML标签，styler用于控制Cell自己的CSS s
 
 这时，就可以用 WUI.showObjDlg("#dlgOrder")来显示逻辑页了。
 */
-// ====== END_FILE doc.js }}}
+// ====== WEBCC_END_FILE doc.js }}}
 
-// ====== BEGIN_FILE common.js {{{
+// ====== WEBCC_BEGIN_FILE common.js {{{
 jdModule("jdcloud.common", JdcloudCommon);
 function JdcloudCommon()
 {
@@ -1462,9 +1463,9 @@ function jdModule(name, fn, overrideCtor)
 }
 
 // vi: foldmethod=marker 
-// ====== END_FILE common.js }}}
+// ====== WEBCC_END_FILE common.js }}}
 
-// ====== BEGIN_FILE commonjq.js {{{
+// ====== WEBCC_BEGIN_FILE commonjq.js {{{
 jdModule("jdcloud.common", JdcloudCommonJq);
 function JdcloudCommonJq()
 {
@@ -1778,9 +1779,9 @@ $.fn.jdata = function (val) {
 }
 
 }
-// ====== END_FILE commonjq.js }}}
+// ====== WEBCC_END_FILE commonjq.js }}}
 
-// ====== BEGIN_FILE app.js {{{
+// ====== WEBCC_BEGIN_FILE app.js {{{
 function JdcloudApp()
 {
 var self = this;
@@ -1936,11 +1937,60 @@ function setOnError()
 }
 setOnError();
 
+// ------ enhanceWithin {{{
+/**
+@var MUI.m_enhanceFn
+*/
+self.m_enhanceFn = {}; // selector => enhanceFn
+
+/**
+@fn MUI.enhanceWithin(jparent)
+*/
+self.enhanceWithin = enhanceWithin;
+function enhanceWithin(jp)
+{
+	$.each(self.m_enhanceFn, function (sel, fn) {
+		var jo = jp.find(sel);
+		if (jp.is(sel))
+			jo = jo.add(jp);
+		if (jo.size() == 0)
+			return;
+		jo.each(function (i, e) {
+			var je = $(e);
+			var opt = getOptions(je);
+			if (opt.enhanced)
+				return;
+			opt.enhanced = true;
+			fn(je);
+		});
+	});
+}
+
+/**
+@fn MUI.getOptions(jo)
+*/
+self.getOptions = getOptions;
+function getOptions(jo)
+{
+	var opt = jo.data("muiOptions");
+	if (opt === undefined) {
+		opt = {};
+		jo.data("muiOptions", opt);
+	}
+	return opt;
+}
+
+$(document).on("pagecreate", function (ev) {
+	var jpage = $(ev.target);
+	enhanceWithin(jpage);
+});
+//}}}
+
 }
 // vi: foldmethod=marker
-// ====== END_FILE app.js }}}
+// ====== WEBCC_END_FILE app.js }}}
 
-// ====== BEGIN_FILE callSvr.js {{{
+// ====== WEBCC_BEGIN_FILE callSvr.js {{{
 function JdcloudCall()
 {
 var self = this;
@@ -1961,7 +2011,6 @@ ctx: {ac, tm, tv, ret}
 self.lastError = null;
 var m_tmBusy;
 var m_manualBusy = 0;
-var m_jLoader;
 var m_appVer;
 
 /**
@@ -3144,9 +3193,9 @@ function useBatchCall(opt, tv)
 }
 
 }
-// ====== END_FILE callSvr.js }}}
+// ====== WEBCC_END_FILE callSvr.js }}}
 
-// ====== BEGIN_FILE wui-showPage.js {{{
+// ====== WEBCC_BEGIN_FILE wui-showPage.js {{{
 function JdcloudPage()
 {
 var self = this;
@@ -3484,6 +3533,9 @@ function showPage(pageName, title, paramArr)
 */
 		jpage.attr("wui-pageFile", pageFile);
 		jpage.addClass(pageClass).appendTo(jcontainer);
+
+		self.enhanceWithin(jpage);
+		$.parser.parse(jpage);
 
 		var val = jpage.attr("wui-script");
 		if (val != null) {
@@ -4006,7 +4058,7 @@ function loadDialog(jdlg, onLoad)
 	}
 
 	var dlgId = jdlg.selector.substr(1);
-	var pageFile = "page/" + dlgId + ".html";
+	var pageFile = getModulePath(dlgId + ".html");
 	$.ajax(pageFile).then(function (html) {
 		var jcontainer = $("#my-pages");
 		// 注意：如果html片段中有script, 在append时会同步获取和执行(jquery功能)
@@ -4025,6 +4077,9 @@ function loadDialog(jdlg, onLoad)
 		jdlg.find("style").attr("wui-origin", dlgId).appendTo(document.head);
 		jdlg.attr("id", dlgId).appendTo(jcontainer);
 		jdlg.attr("wui-pageFile", pageFile);
+
+		self.enhanceWithin(jdlg);
+		$.parser.parse(jdlg);
 
 		var val = jdlg.attr("wui-script");
 		if (val != null) {
@@ -4330,37 +4385,38 @@ self.dg_dblclick = function (jtbl, jdlg)
 //}}}
 
 /**
-@key .easyui-linkbutton
+@key a[href=#page]
+@key a[href=?fn]
 
-使用.easyui-linkbutton时，其中的a[href]字段会被框架特殊处理：
+页面中的a[href]字段会被框架特殊处理：
 
-	<a href="#pageHome" class="easyui-linkbutton" icon="icon-ok">首页</a>
-	<a href="?showDlgSendSms" class="easyui-linkbutton" icon="icon-ok">群发短信</a>
+	<a href="#pageHome">首页</a>
+	<a href="?logout">退出登录</a>
 
-- href="#pageXXX"开头的，会调用 WUI.showPage("#pageXXX");
+- href="#pageXXX"开头的，点击时会调用 WUI.showPage("#pageXXX");
 - href="?fn"，会直接调用函数 fn();
-
-也可以使用 data-type="easyui-linkbutton", 如
-
-	<a href="#pageHome" data-type="easyui-linkbutton" icon="icon-ok">首页</a>
-
 */
-function link_onclick()
+self.m_enhanceFn["a[href^=#]"] = enhanceAnchor;
+function enhanceAnchor(jo)
 {
-	var href = $(this).attr("href");
-	if (href.search(/^#(page\w+)$/) >= 0) {
-		var pageName = RegExp.$1;
-		WUI.showPage.call(this, pageName);
-		return false;
-	}
-	else if (href.search(/^\?(\w+)$/) >= 0) {
-		var fn = RegExp.$1;
-		fn = eval(fn);
-		if (fn)
-			fn.call(this);
-		return false;
-	}
-	return true;
+	if (jo.attr("onclick"))
+		return;
+
+	jo.click(function (ev) {
+		var href = $(this).attr("href");
+		if (href.search(/^#(page\w+)$/) >= 0) {
+			var pageName = RegExp.$1;
+			WUI.showPage.call(this, pageName);
+			return false;
+		}
+		else if (href.search(/^\?(\w+)$/) >= 0) {
+			var fn = RegExp.$1;
+			fn = eval(fn);
+			if (fn)
+				fn.call(this);
+			return false;
+		}
+	});
 }
 
 // ---- easyui setup {{{
@@ -4576,15 +4632,28 @@ $.extend($.fn.tabs.defaults, {
 */
 // }}}
 
-$(function () {
-	$('.easyui-linkbutton').click(link_onclick);
-	$('[data-type="easyui-linkbutton"]').click(link_onclick);
-});
+function main()
+{
+	self.title = document.title;
+	self.container = $(".wui-container");
+	if (self.container.size() == 0)
+		self.container = $(document.body);
+	self.enhanceWithin(self.container);
+
+	// 在muiInit事件中可以调用showPage.
+	self.container.trigger("wuiInit");
+
+// 	// 根据hash进入首页
+// 	if (self.showFirstPage)
+// 		showPage();
+}
+
+$(main);
 
 }
-// ====== END_FILE wui-showPage.js }}}
+// ====== WEBCC_END_FILE wui-showPage.js }}}
 
-// ====== BEGIN_FILE wui.js {{{
+// ====== WEBCC_BEGIN_FILE wui.js {{{
 jdModule("jdcloud.wui", JdcloudWui);
 function JdcloudWui()
 {
@@ -5022,9 +5091,9 @@ $(mainInit);
 }
 
 // vi: foldmethod=marker
-// ====== END_FILE wui.js }}}
+// ====== WEBCC_END_FILE wui.js }}}
 
-// ====== BEGIN_FILE wui-name.js {{{
+// ====== WEBCC_BEGIN_FILE wui-name.js {{{
 jdModule("jdcloud.wui.name", JdcloudWuiName);
 function JdcloudWuiName()
 {
@@ -5051,9 +5120,9 @@ $.each([
 });
 
 }
-// ====== END_FILE wui-name.js }}}
+// ====== WEBCC_END_FILE wui-name.js }}}
 
-// ====== BEGIN_FILE jquery-mycombobox.js {{{
+// ====== WEBCC_BEGIN_FILE jquery-mycombobox.js {{{
 // ====== jquery plugin: mycombobox {{{
 /**
 @fn jQuery.fn.mycombobox(force?=false)
@@ -5228,6 +5297,7 @@ $.fn.mycombobox = function (force)
 };
 //}}}
 
-// ====== END_FILE jquery-mycombobox.js }}}
+// ====== WEBCC_END_FILE jquery-mycombobox.js }}}
 
+// Generated by webcc_merge
 // vi: foldmethod=marker

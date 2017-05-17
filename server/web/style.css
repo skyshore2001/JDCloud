@@ -11,13 +11,17 @@ form table {
 	width: 100%;
 }
 
+a {
+	cursor: pointer;
+}
+
 .block {
 	position:absolute;
 	top:0px;
 	left:0px;
 	width:100px;
 	height:100px;
-	cursor: wait; 
+	cursor: wait;
 	filter: alpha(opacity=10);
 	-moz-opacity: 0.1;
 	opacity: 0.1;
@@ -27,7 +31,7 @@ form table {
 }
 
 .fieldsp {
-	font-weight: bold; 
+	font-weight: bold;
 	color: red;
 	padding: 20px 10px 10px 0px;
 	min-width: 150px;
@@ -66,5 +70,61 @@ form table {
 
 .perm-mgr2, .perm-mgr, .perm-emp, .perm-item, .perm-astore {
 	display: none
+}
+
+/* customize menu */
+#menu {
+	background: #1d2127;
+	box-shadow: -5px 0 0 #2f3139 inset;
+}
+
+#menu .my-menu-item {
+	display: flex;
+	height: 47px;
+	padding-left: 25px;
+	align-items: center;
+	justify-content: space-between;
+	color: #abb4be;
+	font-size: 13px;
+	text-decoration: none;
+}
+
+#menu .my-menu-item > span {
+	height: 20px;
+	display: flex;
+	align-items: center;
+}
+
+#menu .my-menu-item > span > i {
+	font-size: 18px;
+	margin-right: 12px;
+}
+
+#menu .menu-item-head.expanded, #menu .my-menu-item:hover {
+	background: #32373d;
+}
+
+#menu .menu-item-head > i {
+	width: 60px;
+	text-align: center;
+	font-size: 1.5em;
+	transition: 0.35s cubic-bezier(0.35, 0, 0.25, 1);
+	transition-property: transform;
+}
+
+#menu .menu-item-head.expanded > i {
+	transform: rotate(180deg);
+}
+
+#menu .menu-expandable {
+	height: 0;
+	overflow: hidden;
+	transition: 0.35s cubic-bezier(0.35, 0, 0.25, 1);
+	transition-property: height;
+	background: #171717;
+}
+
+#menu .menu-expandable .my-menu-item {
+	padding-left: 55px;
 }
 

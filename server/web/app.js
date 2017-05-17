@@ -39,6 +39,49 @@ var Color = {
 //}}}
 
 // ==== app toolkit {{{
+// 生成"年-月-日"格式日期
+function dateStr(s)
+{
+	var dt = WUI.parseDate(s);
+	if (dt == null)
+		return "";
+	return dt.format("D");
+}
+
+// 生成"年-月-日 时：分"格式日期
+function dtStr(s)
+{
+	var dt = WUI.parseDate(s);
+	if (dt == null)
+		return "";
+	return dt.format("yyyy-mm-dd HH:MM");
+}
+
+/**
+@fn row2tr(row)
+@return jquery tr对象
+@param row {\@cols}, col: {useTh?=false, html?, \%css?, \%attr?, \%on?}
+
+根据row结构构造jQuery tr对象。
+*/
+function row2tr(row)
+{
+	var jtr = $("<tr></tr>");
+	$.each(row.cols, function (i, col) {
+		var jtd = $(col.useTh? "<th></th>": "<td></td>");
+		jtd.appendTo(jtr);
+		if (col.html != null)
+			jtd.html(col.html);
+		if (col.css != null)
+			jtd.css(col.css);
+		if (col.attr != null)
+			jtd.attr(col.attr);
+		if (col.on != null)
+			jtd.on(col.on);
+	});
+	return jtr;
+}
+
 /**
 @fn checkboxToHidden(jp, sep?=',')
 
@@ -433,6 +476,37 @@ function searchField(o, param)
 		return;
 	WUI.reload(jtbl, null, queryParams);
 }
+
+function enhanceMenu()
+{
+	var MENU_ITEM_HEIGHT = 47;
+
+	var jo = $('#menu');
+	jo.find("a").addClass("my-menu-item");
+	jo.find(".menu-expand-group").each(function () {
+		$(this).find("a:first")
+			.addClass("menu-item-head")
+			.click(menu_onexpand)
+			.append('<i class="fa fa-angle-down" aria-hidden="true"></i>')
+			.each(function () {
+				if ($(this).hasClass("expanded")) {
+					$(this).removeClass("expanded");
+					menu_onexpand.call(this);
+				}
+			});
+	});
+
+	// add event handler to menu items
+	function menu_onexpand(ev) {
+		$(this).toggleClass('expanded');
+		var $expandContainer = $(this).next();
+		var containerHeight = !$expandContainer.height() && $expandContainer.children().length * MENU_ITEM_HEIGHT || 0;
+		$expandContainer.css({
+			height: containerHeight + 'px'
+		});
+	}
+}
+$(enhanceMenu);
 
 //}}}
 
