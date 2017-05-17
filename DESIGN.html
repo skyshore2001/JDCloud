@@ -1,902 +1,258 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE html>
 <html>
 <head>
-<link rel="Stylesheet" type="text/css" href="style.css">
-<title>筋斗云产品设计</title>
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <title>筋斗云产品设计</title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-
-<h1 id="toc_1" class="justcenter"><a name="筋斗云产品设计"> 筋斗云产品设计</a></h1>
-
-<p>
-本文档分 <strong>主体设计</strong> 与 <strong>专题设计</strong> 两大部分.
-每块设计一般包括以下部分:
+<h1 id="筋斗云产品设计">筋斗云产品设计</h1>
+<p>本文档分 <strong>主体设计</strong> 与 <strong>专题设计</strong> 两大部分. 每块设计一般包括以下部分:</p>
 <dl>
 <dt>概要设计</dt>
-<dd>简述需求, 定义概念/术语, 简述实现方式.</dd>
+<dd>简述需求, 定义概念/术语, 简述实现方式.
+</dd>
 <dt>数据库设计</dt>
-<dd>定义数据库表及字段</dd>
+<dd>定义数据库表及字段
+</dd>
 <dt>交互接口</dt>
-<dd>定义前端访问后端的API接口</dd>
+<dd>定义前端访问后端的API接口
+</dd>
 <dt>前端应用接口</dt>
-<dd>定义前端应用接口或应用内的页面.</dd>
+<dd>定义前端应用接口或应用内的页面.
+</dd>
 </dl>
-</p>
-
-<p>
-参考文档：
-</p>
+<p>参考文档：</p>
 <ul>
-<li>
-<a href="doc/后端框架.html">后端框架：关于数据库设计、通讯协议设计、测试设计的惯例</a>
-
-<li>
-<a href="doc/index.html">技术文档目录</a>
-
+<li><a href="doc/后端框架.html">后端框架：关于数据库设计、通讯协议设计、测试设计的惯例</a></li>
+<li><a href="doc/index.html">技术文档目录</a></li>
 </ul>
 
-<div class="toc">
+<div id="TOC" class="toc">
 <ul>
-<li><a href="#toc_1"> 筋斗云产品设计</a>
-<ul>
-<li><a href="#toc_1.1">1 概要设计</a>
-<ul>
-<li><a href="#toc_1.1.1">1.1 主要用例</a>
-<li><a href="#toc_1.1.2">1.2 系统建模</a>
-</ul>
-<li><a href="#toc_1.2">2 数据库设计</a>
-<li><a href="#toc_1.3">3 交互接口设计</a>
-<ul>
-<li><a href="#toc_1.3.1">3.1 注册与登录</a>
-<ul>
-<li><a href="#toc_1.3.1.1">3.1.1 生成验证码</a>
-<li><a href="#toc_1.3.1.2">3.1.2 新用户注册</a>
-<li><a href="#toc_1.3.1.3">3.1.3 登录</a>
-<li><a href="#toc_1.3.1.4">3.1.4 用户注销</a>
-<li><a href="#toc_1.3.1.5">3.1.5 修改密码</a>
-<li><a href="#toc_1.3.1.6">3.1.6 用户信息修改</a>
-</ul>
-<li><a href="#toc_1.3.2">3.2 客户端</a>
-<ul>
-<li><a href="#toc_1.3.2.1">3.2.1 订单管理</a>
-<ul>
-<li><a href="#toc_1.3.2.1.1">3.2.1.1 添加订单</a>
-<li><a href="#toc_1.3.2.1.2">3.2.1.2 查看订单</a>
-</ul>
-</ul>
-<li><a href="#toc_1.3.3">3.3 员工端/后台管理端</a>
-<ul>
-<li><a href="#toc_1.3.3.1">3.3.1 员工管理</a>
-<li><a href="#toc_1.3.3.2">3.3.2 订单管理</a>
-</ul>
-<li><a href="#toc_1.3.4">3.4 超级管理端</a>
-</ul>
-<li><a href="#toc_1.4">4 前端应用接口</a>
-<ul>
-<li><a href="#toc_1.4.1">4.1 移动客户端(app=user)</a>
-<li><a href="#toc_1.4.2">4.2 管理端(app=store)</a>
-<li><a href="#toc_1.4.3">4.3 超级管理端(app=admin)</a>
-</ul>
-</ul>
-<li><a href="#toc_2"> 专题设计</a>
-<ul>
-<li><a href="#toc_2.5">5 运营统计</a>
-</ul>
-</ul>
-</div>
+<li><a href="#筋斗云产品设计">筋斗云产品设计</a><ul>
+<li><a href="#概要设计"><span class="toc-section-number">1</span> 概要设计</a><ul>
+<li><a href="#主要用例"><span class="toc-section-number">1.1</span> 主要用例</a></li>
+<li><a href="#系统建模"><span class="toc-section-number">1.2</span> 系统建模</a></li>
+</ul></li>
+<li><a href="#数据库设计"><span class="toc-section-number">2</span> 数据库设计</a></li>
+<li><a href="#交互接口设计"><span class="toc-section-number">3</span> 交互接口设计</a><ul>
+<li><a href="#客户端"><span class="toc-section-number">3.1</span> 客户端</a><ul>
+<li><a href="#用户信息修改"><span class="toc-section-number">3.1.1</span> 用户信息修改</a></li>
+<li><a href="#订单管理"><span class="toc-section-number">3.1.2</span> 订单管理</a><ul>
+<li><a href="#添加订单"><span class="toc-section-number">3.1.2.1</span> 添加订单</a></li>
+<li><a href="#查看订单"><span class="toc-section-number">3.1.2.2</span> 查看订单</a></li>
+</ul></li>
+</ul></li>
+<li><a href="#员工端后台管理端"><span class="toc-section-number">3.2</span> 员工端/后台管理端</a><ul>
+<li><a href="#员工管理"><span class="toc-section-number">3.2.1</span> 员工管理</a></li>
+<li><a href="#订单管理-1"><span class="toc-section-number">3.2.2</span> 订单管理</a></li>
+</ul></li>
+<li><a href="#超级管理端"><span class="toc-section-number">3.3</span> 超级管理端</a></li>
+</ul></li>
+<li><a href="#前端应用接口"><span class="toc-section-number">4</span> 前端应用接口</a><ul>
+<li><a href="#移动客户端appuser"><span class="toc-section-number">4.1</span> 移动客户端(app=user)</a></li>
+<li><a href="#管理端appstore"><span class="toc-section-number">4.2</span> 管理端(app=store)</a></li>
+<li><a href="#超级管理端appadmin"><span class="toc-section-number">4.3</span> 超级管理端(app=admin)</a></li>
+</ul></li>
+</ul></li>
+<li><a href="#专题设计">专题设计</a><ul>
+<li><a href="#用户登录"><span class="toc-section-number">1</span> 用户登录</a></li>
+<li><a href="#附件与上传"><span class="toc-section-number">2</span> 附件与上传</a></li>
+<li><a href="#运营统计"><span class="toc-section-number">3</span> 运营统计</a></li>
+</ul></li>
+</ul></div>
 
-<h2 id="toc_1.1"><a name="概要设计">1 概要设计</a></h2>
-
-<h3 id="toc_1.1.1"><a name="主要用例">1.1 主要用例</a></h3>
-
-<p>
-定义用户使用本系统的主要场景。用于指导[系统建模]和[通讯协议设计]。
-</p>
-
-<p>
-系统用例图.
-</p>
-
-<h3 id="toc_1.1.2"><a name="系统建模">1.2 系统建模</a></h3>
-
-<p>
-定义系统数据模型，描述基本概念。用于指导[数据库设计]。
-</p>
-
-<p>
-系统类图或ER图.
-</p>
-
-<h2 id="toc_1.2"><a name="数据库设计">2 数据库设计</a></h2>
-
-<p>
-根据[系统建模]设计数据库表结构。
-</p>
-
-<p>
-参考<a href="doc/后端框架.html">doc/后端框架</a>文档的"数据库设计"部分查看定义表及字段类型的基本规则.
-</p>
-
-<p>
-<strong>[数据库信息]</strong>
-</p>
-
-<p>
-@Cinf: version, createTm, upgradeTm
-</p>
-
-<p>
-产品配置信息表.
-</p>
-
-<p>
-<strong>[员工]</strong>
-</p>
-
-<p>
-@Employee: id, uname, phone(s), pwd, name(s), perms
-</p>
-
-<p>
-雇员表, 登录后可用于查看和处理业务数据。
-</p>
-
+<h2 id="概要设计"><span class="header-section-number">1</span> 概要设计</h2>
+<h3 id="主要用例"><span class="header-section-number">1.1</span> 主要用例</h3>
+<p>定义用户使用本系统的主要场景。用于指导<a href="#系统建模">系统建模</a>和[通讯协议设计]。</p>
+<p>系统用例图.</p>
+<h3 id="系统建模"><span class="header-section-number">1.2</span> 系统建模</h3>
+<p>定义系统数据模型，描述基本概念。用于指导<a href="#数据库设计">数据库设计</a>。</p>
+<p>系统类图或ER图.</p>
+<h2 id="数据库设计"><span class="header-section-number">2</span> 数据库设计</h2>
+<p>根据<a href="#系统建模">系统建模</a>设计数据库表结构。</p>
+<p>参考<a href="">doc/后端框架</a>文档的&quot;数据库设计&quot;部分查看定义表及字段类型的基本规则.</p>
+<p><strong>[数据库信息]</strong></p>
+<p><span class="citation">@Cinf</span>: version, createTm, upgradeTm</p>
+<p>产品配置信息表.</p>
+<p><strong>[员工]</strong></p>
+<p><span class="citation">@Employee</span>: id, uname, phone(s), pwd, name(s), perms</p>
+<p>雇员表, 登录后可用于查看和处理业务数据。</p>
 <dl>
 <dt>phone/pwd</dt>
-<dd>员工登录用的用户名（一般用手机号）和密码.</dd>
+<dd>String. 员工登录用的用户名（一般用手机号）和密码. 密码采用md5加密。
+</dd>
 <dt>perms</dt>
-<dd>List(perm/String). 权限表. 可用值: emp,mgr, 对应权限AUTH_EMP, AUTH_MGR. 参考章节[权限说明].</dd>
+<dd>List(perm/String). 逗号分隔的权限列表，如&quot;emp,mgr&quot;. 可用值: emp,mgr, 对应权限AUTH_EMP, PERM_MGR。
+</dd>
 </dl>
-
-<p>
-<strong>[用户]</strong>
-</p>
-
-<p>
-@User: id, uname, phone(s), pwd, name(s), createTm
-</p>
-
+<p><strong>[用户]</strong></p>
+<p><span class="citation">@User</span>: id, uname, phone(s), pwd, name(s), createTm</p>
 <dl>
 <dt>phone/pwd</dt>
-<dd>登录用的用户名和密码。</dd>
+<dd>登录用的用户名和密码。密码采用md5加密。
+</dd>
 <dt>createTm</dt>
-<dd>DateTime. 注册日期. 可用于分析用户数增长。</dd>
+<dd>DateTime. 注册日期. 可用于分析用户数增长。
+</dd>
 </dl>
-
-<p>
-<strong>[订单]</strong>
-</p>
-
-<p>
-@Ordr: id, userId, status(2), amount, dscr(l), cmt(l)
-</p>
-
+<p><strong>[订单]</strong></p>
+<p><span class="citation">@Ordr</span>: id, userId, status(2), amount, dscr(l), cmt(l)</p>
 <dl>
 <dt>status</dt>
-<dd>Enum. 订单状态。CR-新创建,RE-已服务,CA-已取消. 其它备用值: PA-已付款(待服务), ST-开始服务, CL-已结算.</dd>
+<dd>Enum. 订单状态。CR-新创建,RE-已服务,CA-已取消. 其它备用值: PA-已付款(待服务), ST-开始服务, CL-已结算.
+</dd>
 </dl>
-
-<p>
-注意:
-</p>
-
+<p>注意:</p>
 <ul>
-<li>
-使用ordr而不是order是为了避免与sql关键字order冲突
-
+<li>使用ordr而不是order是为了避免与sql关键字order冲突</li>
 </ul>
-
-<p>
-<strong>[订单日志]</strong>
-</p>
-
-<p>
-@OrderLog: id, orderId, action, tm, dscr, empId
-</p>
-
-<p>
-例如：某时创建订单，某时付款等。
-</p>
-
+<p><strong>[订单日志]</strong></p>
+<p><span class="citation">@OrderLog</span>: id, orderId, action, tm, dscr, empId</p>
+<p>例如：某时创建订单，某时付款等。</p>
 <dl>
 <dt>action</dt>
-<dd>参考Action定义:</dd>
-</dl>
-<pre>
-CR:: Create (订单创建，待付款)
-PA:: Pay (付款，待服务)
-RE:: Receive (服务完成, 待评价)
-CA:: Cancel (取消订单)
-RA:: Rate (评价)
-ST:: StartOrder (开始服务)
-CT:: ChangeOrderTime (修改预约时间)
-AS:: Assign (分派订单给员工)
-AC:: Accept (员工接单)
-CL:: Close (订单结算)
-</pre>
-
-<dl>
+<dd><p>参考Action定义:</p>
+<p>CR:: Create (订单创建，待付款) PA:: Pay (付款，待服务) RE:: Receive (服务完成, 待评价) CA:: Cancel (取消订单) RA:: Rate (评价) ST:: StartOrder (开始服务) CT:: ChangeOrderTime (修改预约时间) AS:: Assign (分派订单给员工) AC:: Accept (员工接单) CL:: Close (订单结算)</p>
+</dd>
 <dt>empId</dt>
-<dd>操作该订单的员工号</dd>
+<dd>操作该订单的员工号
+</dd>
 </dl>
-
-<p>
-<strong>[订单-图片关联]</strong>
-</p>
-
-<p>
-@OrderAtt: id, orderId, attId
-</p>
-
-<p>
-<strong>[附件]</strong>
-</p>
-
-<p>
-@Attachment: id, path, orgPicId, exif(t), tm
-</p>
-
-<dl>
-<dt>path</dt>
-<dd>String. 文件在服务器上的相对路径, 可方便的转成绝对路径或URL</dd>
-<dt>orgPicId</dt>
-<dd>Integer. 原图编号。对于缩略图片，链接到对应原始大图片的id.</dd>
-<dt>exif</dt>
-<dd>String. 图片或文件的扩展信息。以JSON字符串方式保存。典型的如时间和GPS信息，比如：<code>{"DateTime": "2015:10:08 11:03:02", "GPSLongtitude": [121,42,7.19], "GPSLatitude": [31,14,45.8]}</code></dd>
-<dt>tm</dt>
-<dd>DateTime. 上传时间。</dd>
-</dl>
-
-<p>
-路径使用以下规则: upload/{type}/{date:YYYYMM}/{randnum}.{ext}
-</p>
-
-<p>
-例如, 商家图片路径可以为 upload_store/201501/101.jpg. 用户上传的某图片路径可能为 upload/201501/102.jpg
-</p>
-
-<p>
-<strong>[API调用日志]</strong>
-</p>
-
-<p>
-@ApiLog: id, tm, addr, ua(l), app, ses, userId, ac, t&amp;, retval&amp;, req(t), res(t), reqsz&amp;, ressz&amp;, ver
-</p>
-
+<p><strong>[订单-图片关联]</strong></p>
+<p><span class="citation">@OrderAtt</span>: id, orderId, attId</p>
+<p><strong>[API调用日志]</strong></p>
+<p><span class="citation">@ApiLog</span>: id, tm, addr, ua(l), app, ses, userId, ac, t&amp;, retval&amp;, req(t), res(t), reqsz&amp;, ressz&amp;, ver</p>
 <dl>
 <dt>app</dt>
-<dd>"user"|"emp"|"store"...</dd>
+<dd>&quot;user&quot;|&quot;emp&quot;|&quot;store&quot;...
+</dd>
 <dt>ua</dt>
-<dd>userAgent</dd>
+<dd>userAgent
+</dd>
 <dt>ses</dt>
-<dd>the php session id.</dd>
+<dd>the php session id.
+</dd>
 <dt>t</dt>
-<dd>执行时间(单位：ms)</dd>
+<dd>执行时间(单位：ms)
+</dd>
 <dt>ver</dt>
-<dd>客户端版本。格式为："web"表示通用网页(通过ua可查看明细浏览器)，"wx/{ver}"表示微信版本如"wx/6.2.5", "a/{ver}"表示安卓客户端及版本如"a/1", "ios/{ver}"表示苹果客户端版本如"ios/15".</dd>
+<dd>客户端版本。格式为：&quot;web&quot;表示通用网页(通过ua可查看明细浏览器)，&quot;wx/{ver}&quot;表示微信版本如&quot;wx/6.2.5&quot;, &quot;a/{ver}&quot;表示安卓客户端及版本如&quot;a/1&quot;, &quot;ios/{ver}&quot;表示苹果客户端版本如&quot;ios/15&quot;.
+</dd>
 </dl>
-
-<p>
-<strong>[密码字典]</strong>
-</p>
-
-<p>
-@Pwd: id, pwd, cnt&amp;
-</p>
-
-<p>
-<strong>[插件相关]</strong>
-</p>
-
-<p>
-@include server/plugin/*/DESIGN.wiki
-</p>
-
-<h2 id="toc_1.3"><a name="交互接口设计">3 交互接口设计</a></h2>
-
-<p>
-本章根据[主要用例]定义应用客户端与服务端的交互接口。关于通讯协议基本规则，可参考文档<a href="doc/后端框架.html#通讯协议设计">后端框架 -&gt; 通讯协议设计</a>章节。
-</p>
-
-<h3 id="toc_1.3.1"><a name="注册与登录">3.1 注册与登录</a></h3>
-
-<p>
-注意：对于注册、登录、修改密码这些操作，客户端应使用HTTPS协议与服务端通信以确保安全。参考[<a href="#HTTPS服务">HTTPS服务</a>]章节。
-</p>
-
-<h4 id="toc_1.3.1.1"><a name="生成验证码">3.1.1 生成验证码</a></h4>
-
-<pre>
-genCode(phone, type?="d6", debug?) -&gt; {code?}
-</pre>
-
-<p>
-根据手机号后台生成验证码。1分钟内不允许重复发送(除非设置了debug参数)。
-手机号要求11位数字.
-</p>
-
-<p>
-<strong>[权限]</strong>
-</p>
-
+<p><strong>[插件相关]</strong></p>
+<p><span class="citation">@include</span> server/plugin/*/DESIGN.md</p>
+<h2 id="交互接口设计"><span class="header-section-number">3</span> 交互接口设计</h2>
+<p>本章根据<a href="#主要用例">主要用例</a>定义应用客户端与服务端的交互接口。关于通讯协议基本规则，可参考文档[[doc/后端框架.html#通讯协议设计|后端框架 -&gt; 通讯协议设计]]章节。</p>
+<h3 id="客户端"><span class="header-section-number">3.1</span> 客户端</h3>
+<p>app类型为&quot;user&quot;.</p>
+<h4 id="用户信息修改"><span class="header-section-number">3.1.1</span> 用户信息修改</h4>
+<pre><code>User.set([id])(fields...)</code></pre>
+<p>字段fields请参考&quot;User&quot;表定义. 原理请参考&quot;通用表操作&quot;章节。</p>
+<p>应用逻辑： - 用户id可缺省，一般不用赋值 - 以下字段不允许修改：phone, pwd - 不允许User.add/del操作</p>
+<p><strong>[应用逻辑]</strong></p>
 <ul>
-<li>
-AUTH_GUEST
-
+<li>AUTH_USER</li>
 </ul>
-
-<p>
-<strong>[参数]</strong>
-</p>
-
-<dl>
-<dt>type</dt>
-<dd>String. 验证码类型, 如"d6"表示6位数字，"w4"表示4位字符(不含数字)</dd>
-</dl>
-
-<dl>
-<dt>debug</dt>
-<dd>Boolean. 仅用于调试目的（仅测试模式有效），如果非0，则返回生成的code，否则本调用无返回内容。</dd>
-</dl>
-
-<p>
-<strong>[返回]</strong>
-</p>
-
-<dl>
-<dt>code</dt>
-<dd>验证码。仅当参数debug=1时返回。</dd>
-</dl>
-
-<p>
-<strong>[示例]</strong>
-</p>
-
-<p>
-请求
-</p>
-<pre>
-genCode(phone=13712345678)
-</pre>
-
-<p>
-成功时无返回内容。
-</p>
-
-<p>
-<strong>[示例]</strong>
-</p>
-
-<p>
-请求
-</p>
-<pre>
-genCode(phone=13712345678, debug=1)
-</pre>
-
-<p>
-返回
-</p>
-<pre>
-{code: 123456}
-</pre>
-
-<h4 id="toc_1.3.1.2"><a name="新用户注册">3.1.2 新用户注册</a></h4>
-
-<p>
-用户注册与登录共享同一个API. 请参考“登录”章节。
-</p>
-
-<pre>
-login(uname, code)
-</pre>
-
-<h4 id="toc_1.3.1.3"><a name="登录">3.1.3 登录</a></h4>
-
-<pre>
-login(uname, pwd/code, wantAll?) -&gt; {id, _token, _expire, _isNew?}
-
-login(token, wantAll?) -&gt; (与得到该token的登录返回相同内容, 但不包括_token, _expire, _isNew字段).
-</pre>
-
-<p>
-该API根据当前app类型确定是用户或雇员或管理员登录（apptype分别为user, emp, admin）。支持用户名密码、用户名动态口令、token三种登录方式。
-</p>
-
-<p>
-对于用户登录，如果code验证成功, 但手机号不存在, 就以该手机号自动注册用户, 密码为空（由于登录时密码不允许空，所以空密码意味着无法用密码登录）。
-</p>
-
-<p>
-客户端登录页建议逻辑如下:
-</p>
-<ul>
-<li>
-先用API <code>User.get</code>查看是否已登录，是则直接进入主页；否则如果有token，则尝试用<code>login(token)</code>登录。
-
-<li>
-如果登录失败，则显示登录界面：默认为手机号/动态密码登录，可切换为用户名、密码登录。
-
-<li>
-登录或注册成功后, 可记录返回的token到本地, 下次系统使用login(token)实现自动登录.
-
-<li>
-如果是新注册用户，可显示设置信息页（设置昵称、密码等），分别调用<code>User.set</code>或<code>chpwd(oldpwd=_none,pwd)</code>, 注意：pwd字段在新注册后1小时内可免认证修改。
-
-<li>
-用户在选择注销/退出后, 客户端应清除之前记录的token.
-
-</ul>
-
-<p>
-后端逻辑：
-</p>
-<ul>
-<li>
-超级管理端登录时，应检查环境变量 P_ADMIN_CRED, 格式为"{user}:{pwd}"，如果设置，则必须以指定用户名、密码登录。如果未设置，则不允许登录。
-
-</ul>
-
-<p>
-<strong>[参数]</strong>
-</p>
-
-<dl>
-<dt>uname</dt>
-<dd>String. 可以为用户手机号（11位数字）或用户名（字母开头）</dd>
-<dt>code</dt>
-<dd>String. 动态验证码.</dd>
-<dt>pwd</dt>
-<dd>String. 登录密码. 支持明文密码或md5后的密码.</dd>
-<dt>wantAll</dt>
-<dd>Boolean. 如果为1，则返回登录对象的详细内容，格式与User.get/Employee.get返回相同。</dd>
-</dl>
-
-<p>
-<strong>[返回]</strong>
-</p>
-
-<dl>
-<dt>id</dt>
-<dd>Integer. 用户编号</dd>
-<dt>_isNew</dt>
-<dd>Boolean. 如果是新注册时则返回该字段为1（客户端可用于判断是否弹出设置初始信息页面）. </dd>
-</dl>
-
-<p>
-其它User表字段。
-</p>
-
-<p>
-为支持自动重登录, 以上除login(token)外所有login接口都返回以下字段:
-</p>
-
-<dl>
-<dt>_token</dt>
-<dd>String. 用于通过login(token)登录.</dd>
-<dt>_expire</dt>
-<dd>Integer. 过期时间, 以秒数表示.</dd>
-</dl>
-
-<p>
-<strong>[示例]</strong>
-</p>
-
-<p>
-用户登录
-</p>
-<pre>
-login(uname=13012345678, pwd=1234)
-</pre>
-
-<p>
-管理员登录
-</p>
-<pre>
-login(uname=liang, pwd=liang123, _app=admin)
-</pre>
-
-<h4 id="toc_1.3.1.4"><a name="用户注销">3.1.4 用户注销</a></h4>
-
-<pre>
-logout(_app?, force?)
-</pre>
-
-<p>
-删除session, 注销当前登录的用户。如果未登录过会报错.
-</p>
-
-<p>
-<strong>[权限]</strong>
-</p>
-
-<ul>
-<li>
-AUTH_USER
-
-<li>
-AUTH_EMP
-
-<li>
-AUTH_ADMIN
-
-</ul>
-
-<p>
-<strong>[参数]</strong>
-</p>
-
-<dl>
-<dt>_app</dt>
-<dd>String. 应用名称, 一般由客户端框架自动添加. 缺省为"user", 商户登录用"store", 管理员登录用"admin", 参考[<a href="#登录类型与权限管理">登录类型与权限管理</a>]章节.</dd>
-<dt>force</dt>
-<dd>Boolean. 强制删除session. 仅用于调试目的. 一般服务端会自动判断, 如果session中只有一个应用, 就会删除session, 否则只清楚该app相关的session字段.</dd>
-</dl>
-
-<h4 id="toc_1.3.1.5"><a name="修改密码">3.1.5 修改密码</a></h4>
-
-<pre>
-chpwd(oldpwd|code?, pwd, _app?) -&gt; {_token, _expire}
-</pre>
-
-<p>
-服务端需要先验证当前密码(oldpwd)或动态验证码正确, 然后才能修改为新密码; 
-</p>
-
-<p>
-仅当新注册时1小时内，可以免认证直接修改密码。
-</p>
-
-<p>
-建议使用HTTPS通讯以保证安全.
-</p>
-
-<p>
-<strong>[权限]</strong>
-</p>
-
-<ul>
-<li>
-AUTH_USER
-
-<li>
-AUTH_EMP
-
-</ul>
-
-<p>
-<strong>[参数]</strong>
-</p>
-
-<dl>
-<dt>oldpwd</dt>
-<dd>String. 旧密码. 特殊值"_none"表示不检查oldpwd而直接设置密码，这仅可用于新用户注册一小时内。</dd>
-<dt>code</dt>
-<dd>String. 之前先由gencode生成动态验证码, 需验证code通过方可允许修改为新密码; 或者使用特别码"080909"跳过对验证码检查.</dd>
-<dt>_app</dt>
-<dd>String. 应用名称. 一般由客户端框架自动添加. 缺省为"user", 商户登录用"store", 管理员登录用"admin", 参考[<a href="#登录类型与权限管理">登录类型与权限管理</a>]章节.</dd>
-</dl>
-
-<p>
-<strong>[返回]</strong>
-</p>
-
-<dl>
-<dt>_token/_expire</dt>
-<dd>String/Integer. 用于自动登录的token. 参考"<a href="#login">login</a>"调用。</dd>
-</dl>
-
-<p>
-<strong>[示例]</strong>
-</p>
-
-<p>
-请求
-</p>
-<pre>
-chpwd(oldpwd=1234, pwd=12345678)
-
-或
-
-chpwd(code=533114, pwd=12345678)
-(之前生成了动态验证码为533114)
-</pre>
-
-<h4 id="toc_1.3.1.6"><a name="用户信息修改">3.1.6 用户信息修改</a></h4>
-
-<pre>
-User.set([id])(fields...)
-</pre>
-
-<p>
-字段fields请参考"<a href="#User">User</a>"表定义. 原理请参考"<a href="#通用表操作">通用表操作</a>"章节。
-</p>
-
-<p>
-应用逻辑：
-</p>
-<ul>
-<li>
-用户id可缺省，一般不用赋值
-
-<li>
-以下字段不允许修改：phone, pwd
-
-<li>
-不允许User.add/del操作
-
-</ul>
-
-<p>
-<strong>[权限]</strong>
-</p>
-
-<ul>
-<li>
-AUTH_USER
-
-</ul>
-
-<p>
-<strong>[示例]</strong>
-</p>
-
-<p>
-上传一个头像并设置到该用户：
-</p>
-<pre>
-upload(type=user, genThumb=1)(content of picture)
+<p><strong>[示例]</strong></p>
+<p>上传一个头像并设置到该用户：</p>
+<pre><code>upload(type=user, genThumb=1)(content of picture)
 (得到thumbId)
 
-User.set()(pidId={thumbId})
-</pre>
-
-<p>
-更新用户手机号：
-</p>
-<pre>
-User.set()(phone=18912345678)
-</pre>
-
-<h3 id="toc_1.3.2"><a name="客户端">3.2 客户端</a></h3>
-
-<p>
-app类型为"user".
-</p>
-
-<h4 id="toc_1.3.2.1"><a name="订单管理">3.2.1 订单管理</a></h4>
-
-<p>
-使用Ordr.add/set/query/get方法添加、修改、查询和查看订单。
-不允许删除订单（可以取消）。
-</p>
-
-<p>
-注: 订单状态定义请在本文档内搜索OrderStatus.
-</p>
-
-<h5 id="toc_1.3.2.1.1"><a name="添加订单">3.2.1.1 添加订单</a></h5>
-
-<pre>
-Ordr.add()(Ordr表字段) -&gt; id
-</pre>
-
-<p>
-应用逻辑：
-</p>
-
+User.set()(pidId={thumbId})</code></pre>
+<p>更新用户手机号：</p>
+<pre><code>User.set()(phone=18912345678)</code></pre>
+<h4 id="订单管理"><span class="header-section-number">3.1.2</span> 订单管理</h4>
+<p>使用Ordr.add/set/query/get方法添加、修改、查询和查看订单。 不允许删除订单（可以取消）。</p>
+<p>注: 订单状态定义请在本文档内搜索OrderStatus.</p>
+<h5 id="添加订单"><span class="header-section-number">3.1.2.1</span> 添加订单</h5>
+<pre><code>Ordr.add()(Ordr表字段) -&gt; id</code></pre>
+<p>应用逻辑：</p>
 <ul>
-<li>
-权限: AUTH_USER
-
-<li>
-添加订单后, 订单状态为"CR"; 且在OrderLog中添加一条创建记录(action=CR)
-
+<li>权限: AUTH_USER</li>
+<li>添加订单后, 订单状态为&quot;CR&quot;; 且在OrderLog中添加一条创建记录(action=CR)</li>
 </ul>
-
-<p>
-<strong>[参数]</strong>
-</p>
-
-<p>
-<strong>[返回]</strong>
-</p>
-
-<p>
-操作成功时返回新添加的订单id.
-</p>
-
-<p>
-<strong>[示例]</strong>
-</p>
-
-<h5 id="toc_1.3.2.1.2"><a name="查看订单">3.2.1.2 查看订单</a></h5>
-
-<pre>
-Ordr.query() -&gt; tbl(id, status, ...)
-Ordr.get(id) -&gt; {id, status, ..., @orderLog, @atts}
-</pre>
-
-<p>
-用<code>Ordr.query</code>取用户所有订单概要;
-用<code>Ordr.get</code>取订单主表字段及其相关子表. 
-</p>
-
-<p>
-<strong>[权限]</strong>
-</p>
-
+<p><strong>[参数]</strong></p>
+<p><strong>[返回]</strong></p>
+<p>操作成功时返回新添加的订单id.</p>
+<p><strong>[示例]</strong></p>
+<h5 id="查看订单"><span class="header-section-number">3.1.2.2</span> 查看订单</h5>
+<pre><code>Ordr.query() -&gt; tbl(id, status, ...)
+Ordr.get(id) -&gt; {id, status, ..., @orderLog, @atts}</code></pre>
+<p>用<code>Ordr.query</code>取用户所有订单概要; 用<code>Ordr.get</code>取订单主表字段及其相关子表.</p>
+<p><strong>[应用逻辑]</strong></p>
 <ul>
-<li>
-AUTH_USER
-
+<li>AUTH_USER</li>
 </ul>
-
-<p>
-<strong>[参数]</strong>
-</p>
-
+<p><strong>[参数]</strong></p>
 <dl>
 <dt>id</dt>
-<dd>Integer. 订单编号</dd>
+<dd>Integer. 订单编号
+</dd>
 </dl>
-
-<p>
-<strong>[返回]</strong>
-</p>
-
-<p>
-主表返回字段请查询表定义"@Ordr"。
-</p>
-
+<p><strong>[返回]</strong></p>
+<p>主表返回字段请查询表定义&quot;<span class="citation">@Ordr</span>&quot;。</p>
 <dl>
-<dt>@orderLog</dt>
-<dd>Array(OrderLog). 日志子表, 包含订单创建时间等内容, 字段详细请查询表定义"@OrderLog".</dd>
-<dt>@atts</dt>
-<dd>Array(Att). 订单关联图片的子表. 字段为 {id, attId}. 根据attId取图片.</dd>
+<dt><span class="citation">@orderLog</span></dt>
+<dd>Array(OrderLog). 日志子表, 包含订单创建时间等内容, 字段详细请查询表定义&quot;<span class="citation">@OrderLog</span>&quot;.
+</dd>
+<dt><span class="citation">@atts</span></dt>
+<dd>Array(Att). 订单关联图片的子表. 字段为 {id, attId}. 根据attId取图片.
+</dd>
 </dl>
-
-<h3 id="toc_1.3.3"><a name="员工端/后台管理端">3.3 员工端/后台管理端</a></h3>
-
-<p>
-本节API需要员工登录权限。
-app类型为"emp".
-</p>
-
-<h4 id="toc_1.3.3.1"><a name="员工管理">3.3.1 员工管理</a></h4>
-
-<pre>
-Employee.get(id?)
-Employee.set(id?)(POST fields)
-</pre>
-
-<p>
-如果不指定id, 则操作当前登录的员工.
-如果指定id:
-</p>
+<h3 id="员工端后台管理端"><span class="header-section-number">3.2</span> 员工端/后台管理端</h3>
+<p>本节API需要员工登录权限。 app类型为&quot;emp&quot;.</p>
+<h4 id="员工管理"><span class="header-section-number">3.2.1</span> 员工管理</h4>
+<pre><code>Employee.get(id?)
+Employee.set(id?)(POST fields)</code></pre>
+<p>如果不指定id, 则操作当前登录的员工. 如果指定id:</p>
 <ul>
-<li>
-如果是 AUTH_EMP 权限, 则id必须与当前登录的empId一致(否则应报错);
-
-<li>
-如果是 AUTH_MGR 权限, 则不限id.
-
+<li>如果是 AUTH_EMP 权限, 则id必须与当前登录的empId一致(否则应报错);</li>
+<li><p>如果是 PERM_MGR 权限, 则不限id.</p>
+<p>Employee.query()</p></li>
+<li>AUTH_EMP权限只能获取当前登录的员工;</li>
+<li><p>PERM_MGR权限可获取所有的员工;</p>
+<p>Employee.add()(POST fields) Employee.del(id?)</p></li>
+<li>仅PERM_MGR权限可用.</li>
+<li><p>当Employee被其它对象（如Ordr）引用时，不允许删除，只能做禁用等其它处理。</p></li>
 </ul>
-
-<pre>
-Employee.query(cond?)
-</pre>
-
+<h4 id="订单管理-1"><span class="header-section-number">3.2.2</span> 订单管理</h4>
+<p>查看订单</p>
+<pre><code>Ordr.query() -&gt; tbl(id, status, 参考Ordr表字段...)
+Ordr.get(id) -&gt; { 同query字段 }</code></pre>
+<p>完成订单或取消订单</p>
+<pre><code>Ordr.set(id)(status=RE)
+Ordr.set(id)(status=CA)</code></pre>
 <ul>
-<li>
-AUTH_EMP权限只能获取当前登录的员工; 
-
-<li>
-AUTH_MGR权限可获取所有的员工; 
-
+<li>订单状态必须为&quot;CR&quot;才能完成或取消.</li>
+<li>应生成相应订单日志(OrderLog).</li>
 </ul>
-
-<pre>
-Employee.add()(POST fields)
-Employee.del(id?)
-</pre>
-
+<p><strong>[应用逻辑]</strong></p>
 <ul>
-<li>
-仅AUTH_MGR权限可用.
-
-<li>
-当Employee被其它对象（如Ordr）引用时，不允许删除，只能做禁用等其它处理。
-
+<li>AUTH_EMP</li>
 </ul>
-
-<h4 id="toc_1.3.3.2"><a name="订单管理">3.3.2 订单管理</a></h4>
-
-<p>
-查看订单
-</p>
-<pre>
-Ordr.query() -&gt; tbl(id, status, 参考Ordr表字段...)
-Ordr.get(id) -&gt; { 同query字段 }
-</pre>
-
-<p>
-完成订单或取消订单
-</p>
-<pre>
-Ordr.set(id)(status=RE)
-Ordr.set(id)(status=CA)
-</pre>
-
-<ul>
-<li>
-订单状态必须为"CR"才能完成或取消.
-
-<li>
-应生成相应订单日志(OrderLog).
-
-</ul>
-
-<p>
-<strong>[权限]</strong>
-</p>
-
-<ul>
-<li>
-AUTH_EMP
-
-</ul>
-
-<h3 id="toc_1.3.4"><a name="超级管理端">3.4 超级管理端</a></h3>
-
-<p>
-本节API需要超级管理员权限.
-</p>
-
-<p>
-app类型为adm.
-</p>
-
-<h2 id="toc_1.4"><a name="前端应用接口">4 前端应用接口</a></h2>
-
-<p>
-定义应用入口及调用参数。每一个应用均应明确定义一个惟一的app代码。
-</p>
-
-<h3 id="toc_1.4.1"><a name="移动客户端(app=user)">4.1 移动客户端(app=user)</a></h3>
-
-<pre>
-m2/index.html
-</pre>
-
-<p>
-用户登录, 可以创建和查看订单等.
-</p>
-
-<h3 id="toc_1.4.2"><a name="管理端(app=store)">4.2 管理端(app=store)</a></h3>
-
-<pre>
-web/store.html
-</pre>
-
-<p>
-员工登录, 可以查看和管理订单等.
-</p>
-
-<h3 id="toc_1.4.3"><a name="超级管理端(app=admin)">4.3 超级管理端(app=admin)</a></h3>
-
-<pre>
-web/adm.html
-</pre>
-
-<p>
-使用超级管理员帐号登录.
-</p>
-
-<h1 id="toc_2" class="justcenter"><a name="专题设计"> 专题设计</a></h1>
-
-<h2 id="toc_2.5"><a name="运营统计">5 运营统计</a></h2>
+<h3 id="超级管理端"><span class="header-section-number">3.3</span> 超级管理端</h3>
+<p>本节API需要超级管理员权限.</p>
+<p>app类型为adm.</p>
+<h2 id="前端应用接口"><span class="header-section-number">4</span> 前端应用接口</h2>
+<p>定义应用入口及调用参数。每一个应用均应明确定义一个惟一的app代码。</p>
+<h3 id="移动客户端appuser"><span class="header-section-number">4.1</span> 移动客户端(app=user)</h3>
+<pre><code>m2/index.html</code></pre>
+<p>用户登录, 可以创建和查看订单等.</p>
+<h3 id="管理端appstore"><span class="header-section-number">4.2</span> 管理端(app=store)</h3>
+<pre><code>web/store.html</code></pre>
+<p>员工登录, 可以查看和管理订单等.</p>
+<h3 id="超级管理端appadmin"><span class="header-section-number">4.3</span> 超级管理端(app=admin)</h3>
+<pre><code>web/adm.html</code></pre>
+<p>使用超级管理员帐号登录.</p>
+<h1 id="专题设计">专题设计</h1>
+<h2 id="用户登录"><span class="header-section-number">1</span> 用户登录</h2>
+<p>参考插件login <span class="citation">@include</span> server.md</p>
+<h2 id="附件与上传"><span class="header-section-number">2</span> 附件与上传</h2>
+<p>参考插件upload <span class="citation">@include</span> server.md</p>
+<h2 id="运营统计"><span class="header-section-number">3</span> 运营统计</h2>
 
 </body>
 </html>
