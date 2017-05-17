@@ -33,7 +33,7 @@ code {
 </head>
 
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2017-03-22</div>
+<div>最后更新：2017-05-17</div>
 <h2>Modules</h2>
 <div class="toc">
 <p><a href="#app_fw">app_fw (module)</a></p>
@@ -1187,7 +1187,7 @@ orderLog:: {id, tm, dscr, ..., empName} 订单日志子表。</code></pre>
 <h5 id="AccessControl-5.4 最大每页数据条数">5.4 最大每页数据条数</h5>
 <p class="fn"><strong>@fn <a id="AccessControl::getMaxPageSz">AccessControl::getMaxPageSz</a></strong> ()  (for query) 取最大每页数据条数。为非负整数。</p>
 <p class="var"><strong>@var <a id="AccessControl::$maxPageSz">AccessControl::$maxPageSz</a></strong>  ?= 100 (for query) 指定最大每页数据条数。值为负数表示取PAGE_SZ_LIMIT值.</p>
-<p>前端通过 {obj}.query(_pagesz)来指定每页返回多少条数据，缺省是20条，最高不可超过100条。当指定为负数时，表示按最大允许值=min($maxPageSz, PAGE_SZ_LIMIT)返回。<br />
+<p>前端通过 {obj}.query(pagesz)来指定每页返回多少条数据，缺省是20条，最高不可超过100条。当指定为负数时，表示按最大允许值=min($maxPageSz, PAGE_SZ_LIMIT)返回。<br />
 PAGE_SZ_LIMIT目前定为10000条。如果还不够，一定是应用设计有问题。</p>
 <p>如果想返回每页超过100条数据，必须在后端设置，如：</p>
 <pre><code>class MyObj extends AccessControl
@@ -1238,10 +1238,10 @@ ORDER BY t0.id DESC</code></pre>
 <li>用addCond添加缺省查询条件</li>
 </ul>
 <h4 id="AccessControl-6 query接口输出格式">6 query接口输出格式</h4>
-<p>query接口支持_fmt参数：</p>
+<p>query接口支持fmt参数：</p>
 <ul>
 <li>list: 生成<code>{ @list, nextkey?, total? }</code>格式，而非缺省的 <code>{ @h, @d, nextkey?, total? }</code>格式</li>
-<li>csv/txt/excel: 导出文件，注意为了避免分页，调用时可设置较大的_pagesz值。
+<li>csv/txt/excel: 导出文件，注意为了避免分页，调用时可设置较大的pagesz值。
 <ul>
 <li>csv: 逗号分隔的文件，utf8编码。</li>
 <li>excel: 逗号分隔的文件，gb2312编码以便excel可直接打开不会显示中文乱码。</li>
