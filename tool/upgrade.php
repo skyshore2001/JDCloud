@@ -1,5 +1,38 @@
 <?php
 
+/**
+@module jdcloud-upgrade
+
+筋斗云一站式数据模型部署工具。
+
+支持维护mysql, sqlite, mssql三种类型数据库。
+
+## 环境变量
+
+可设置环境变量来定制参数。
+
+- P_METAFILE: 指定主设计文档，根据其中定义的数据模型生成数据库。默认为项目根目录下的"DESIGN.md"
+- P_DBTYPE,P_DB,P_DBCRED: 设置数据库连接，参考下节。
+
+## 连接数据库
+
+连接mysql示例(注意在php.ini中打开php_pdo_mysql扩展)：
+
+	putenv("P_DB=172.12.77.221/jdcloud");
+	putenv("P_DBCRED=ganlan:ganlan123");
+
+连接sqlite示例(注意打开php_pdo_sqlite扩展)：
+
+	putenv("P_DB=d:/db/jdcloud.db");
+
+连接mssql示例(通过odbc连接，注意打开php_pdo_odbc扩展)
+
+	putenv("P_DBTYPE=mssql");
+	putenv("P_DB=odbc:DRIVER=SQL Server Native Client 10.0; DATABASE=carsvc; Trusted_Connection=Yes; SERVER=.\MSSQL2008;");
+	//putenv("P_DBCRED=sa:ganlan123");
+	
+*/
+
 require_once('upglib.php');
 
 $h = new UpgHelper();

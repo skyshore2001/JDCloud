@@ -15,7 +15,8 @@ all: refdoc
 
 ###### refdoc
 
-refdoc_targets=../doc/api_m2.html ../doc/api_php.html ../doc/api_web.html ../doc/webcc.html ../doc/jdcloud-sprite.html ../doc/jdcloud-gendoc.html
+#refdoc_targets=../doc/api_m2.html ../doc/api_php.html ../doc/api_web.html ../doc/webcc.html ../doc/jdcloud-sprite.html ../doc/jdcloud-gendoc.html
+refdoc_targets=../doc/api_php.html
 
 refdoc: $(refdoc_targets)
 
@@ -25,7 +26,7 @@ refdoc: $(refdoc_targets)
 ../doc/api_web.html: ../server/web/lib/common.js ../server/web/lib/app_fw.js ../server/web/app.js 
 	php jdcloud-gendoc.php $^ -title "API²Î¿¼ - ½î¶·ÔÆÇ°¶Ë£¨×ÀÃæWeb°æ£©" $(opt) > $@
 
-../doc/api_php.html: ../server/php/common.php ../server/php/app_fw.php ../server/php/api_fw.php
+../doc/api_php.html: ../server/php/common.php ../server/php/app_fw.php ../server/php/api_fw.php ../server/php/AccessControl.php
 	php jdcloud-gendoc.php $^ -title "API²Î¿¼ - ½î¶·ÔÆ·þÎñ¶Ë" $(opt) > $@
 
 ../doc/webcc.html: webcc.php jdcloud-build.sh

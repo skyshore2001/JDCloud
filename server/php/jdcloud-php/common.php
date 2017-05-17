@@ -10,9 +10,32 @@ define("FMT_DT", "Y-m-d H:i:s");
 /** @fn tobool($s) */
 function tobool($s)
 {
-	if (is_string($s) && ($s === "0" || strcasecmp($s, "false") == 0))
+	$val = null;
+	if (! tryParseBool($s, $val))
+		throw new MyException(E_SERVER, "not bool var");
+	return $val;
+}
+
+/**
+@fn tryParseBool($s, &$val)
+
+字符串转bool，支持"0/1", "true/false", "yes/no", "on/off".
+*/
+function tryParseBool($s, &$val)
+{
+	$val = false;
+	if (! isset($s))
+	{
+		return true;
+	}
+	$s = strtolower($s);
+	if ($s=="0" || $s=="false" || $s=="off" || $s == "no")
+		$val = false;
+	else if ($s=="1" || $s=="true" || $s=="on" || $s =="yes")
+		$val = true;
+	else
 		return false;
-	return (bool)$s;
+	return true;
 }
 
 /** @fn startsWith($s, $pat) */
