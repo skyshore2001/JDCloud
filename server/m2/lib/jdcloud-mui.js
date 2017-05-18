@@ -3589,7 +3589,7 @@ function showPage(pageRef, opt)
 
 		// 限制css只能在当前页使用
 		jpage.find("style:not([mui-nofix])").each(function () {
-			$(this).html( selfCtx.fixPageCss($(this).html(), "#" + pageId) );
+			$(this).html( self.ctx.fixPageCss($(this).html(), "#" + pageId) );
 		});
 		// bugfix: 加载页面页背景图可能反复被加载
 		jpage.find("style").attr("mui-origin", pageId).appendTo(document.head);
