@@ -1722,4 +1722,6 @@ AppFw_::init();
 
 #}}}
 
+require_once("ext.php");
+
 // vim: set foldmethod=marker :
