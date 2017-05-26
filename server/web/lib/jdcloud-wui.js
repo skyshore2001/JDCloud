@@ -4071,7 +4071,7 @@ function loadDialog(jdlg, onLoad)
 		fixJdlg(jo);
 		// 限制css只能在当前页使用
 		jdlg.find("style").each(function () {
-			$(this).html( self.ctx.fixPageCss($(this).html(), selector) );
+			$(this).html( self.ctx.fixPageCss($(this).html(), jdlg.selector) );
 		});
 		// bugfix: 加载页面页背景图可能反复被加载
 		jdlg.find("style").attr("wui-origin", dlgId).appendTo(document.head);
@@ -4540,7 +4540,32 @@ function checkIdCard(idcard)
 	return x == a[17].toLowerCase();
 }
 */
+/**
+@key .easyui-validatebox
 
+为form中的组件加上该类，可以限制输入类型，如：
+
+	<input name="amount" class="easyui-validatebox" data-options="required:true,validType:'number'" >
+
+validType还支持：
+
+- number: 数字
+- uname: 4-16位用户名，字母开头
+- cellphone: 11位手机号
+- datetime: 格式为"年-月-日 时:分:秒"，时间部分可忽略
+
+其它自定义规则(或改写上面规则)，可通过下列方式扩展：
+
+	$.extend($.fn.validatebox.defaults.rules, {
+		workday: {
+			validator: function(value) {
+				return value.match(/^[1-7,abc]+$/);
+			},
+			message: '格式例："1,3a,5b"表示周一,周三上午,周五下午.'
+		}
+	});
+
+*/
 var DefaultValidateRules = {
 	number: {
 		validator: function(v) {
@@ -5142,9 +5167,14 @@ $.each([
 
 初始化：
 
-	$(".my-combobox").mycombobox();
+	var jo = $(".my-combobox").mycombobox();
 
 注意：使用WUI.showDlg显示的对话框中如果有.my-combobox组件，会在调用WUI.showDlg时自动初始化，无须再调用上述代码。
+
+操作：
+
+- 刷新列表： jo.trigger("refresh");
+- 标记刷新（下次打开时刷新）： jo.trigger("markRefresh");
 
 特性：
 
@@ -5221,21 +5251,25 @@ $.fn.mycombobox = function (force)
 	function initCombobox(i, o)
 	{
 		var jo = $(o);
-		if (!force && jo.prop("inited_"))
+		var opts = jo.prop("opts_");
+		if (!force && opts && !opts.dirty)
 			return;
-		jo.prop("inited_", true);
 
-		var opts = {};
 		var optStr = jo.data("options");
 		try {
-			if (optStr != null)
-			{
-				if (optStr.indexOf(":") > 0) {
-					opts = eval("({" + optStr + "})");
+			if (opts == null) {
+				if (optStr != null) {
+					if (optStr.indexOf(":") > 0) {
+						opts = eval("({" + optStr + "})");
+					}
+					else {
+						opts = eval("(" + optStr + ")");
+					}
 				}
 				else {
-					opts = eval("(" + optStr + ")");
+					opts = {};
 				}
+				jo.prop("opts_", opts);
 			}
 		}catch (e) {
 			alert("bad options for mycombobox: " + optStr);
@@ -5243,55 +5277,69 @@ $.fn.mycombobox = function (force)
 		if (opts.url) {
 			loadOptions();
 
-			function loadOptions()
-			{
-				jo.empty();
-				// 如果设置了name属性, 一般关联字段(故可以为空), 添加空值到首行
-				if (jo.attr("name"))
-					$("<option value=''></option>").appendTo(jo);
-
-				if (m_dataCache[opts.url] === undefined) {
-					self.callSvrSync(opts.url, applyData);
-				}
-				else {
-					applyData(m_dataCache[opts.url]);
-				}
-
-				function applyData(data) 
-				{
-					m_dataCache[opts.url] = data;
-					function getText(row)
-					{
-						if (opts.formatter) {
-							return opts.formatter(row);
-						}
-						else if (opts.textField) {
-							return row[opts.textField];
-						}
-						return row.id;
-					}
-					if (opts.loadFilter) {
-						data = opts.loadFilter.call(this, data);
-					}
-					$.each(data, function (i, row) {
-						var jopt = $("<option></option>")
-							.attr("value", row[opts.valueField])
-							.text(getText(row))
-							.appendTo(jo);
-					});
-				}
-			}
-
 			if (!jo.attr("ondblclick"))
 			{
 				jo.off("dblclick").dblclick(function () {
 					if (! confirm("刷新数据?"))
 						return false;
-					var val = jo.val();
-					loadOptions();
-					jo.val(val);
+					refresh();
 				});
 			}
+			jo.on("refresh", refresh);
+			jo.on("markRefresh", markRefresh);
+		}
+
+		function loadOptions()
+		{
+			jo.empty();
+			// 如果设置了name属性, 一般关联字段(故可以为空), 添加空值到首行
+			if (jo.attr("name"))
+				$("<option value=''></option>").appendTo(jo);
+
+			if (opts.dirty || m_dataCache[opts.url] === undefined) {
+				self.callSvrSync(opts.url, applyData);
+			}
+			else {
+				applyData(m_dataCache[opts.url]);
+			}
+		}
+
+		function applyData(data) 
+		{
+			m_dataCache[opts.url] = data;
+			opts.dirty = false;
+			function getText(row)
+			{
+				if (opts.formatter) {
+					return opts.formatter(row);
+				}
+				else if (opts.textField) {
+					return row[opts.textField];
+				}
+				return row.id;
+			}
+			if (opts.loadFilter) {
+				data = opts.loadFilter.call(this, data);
+			}
+			$.each(data, function (i, row) {
+				var jopt = $("<option></option>")
+					.attr("value", row[opts.valueField])
+					.text(getText(row))
+					.appendTo(jo);
+			});
+		}
+
+		function refresh()
+		{
+			var val = jo.val();
+			markRefresh();
+			loadOptions();
+			jo.val(val);
+		}
+
+		function markRefresh()
+		{
+			opts.dirty = true;
 		}
 	}
 };
