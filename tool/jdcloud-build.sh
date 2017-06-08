@@ -82,7 +82,7 @@ online版本库可以使用多分支，每个分支对应一个线上地址。
 */
 
 #### global
-CURL_CMD="curl -s -S -u $FTP_AUTH"
+CURL_CMD="curl -s -S -u $FTP_AUTH -k "
 
 # e.g. "dir1\dir2\name" => "dir1/dir2/name" on windows.
 PROG=`perl -x $0 abs_path`
