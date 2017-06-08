@@ -1718,7 +1718,18 @@ function logext($s, $addHeader=true)
 
 // ====== main {{{
 
-AppFw_::init();
+try {
+	AppFw_::init();
+}
+catch (MyException $ex) {
+	echo $ex;
+	exit;
+}
+catch (Exception $ex) {
+	echo "*** Exception";
+	logit($ex);
+	exit;
+}
 
 #}}}
 
