@@ -180,6 +180,11 @@ function deployViaFtp
 	rm $tmpfile
 }
 
+function getCurBranch
+{
+	git branch | grep '*' | awk '{print $2}'
+}
+
 function deployWeb
 {
 	echo
@@ -191,7 +196,8 @@ function deployWeb
 
 	if (( doUpload )) ; then
 		if [[ -n $GIT_PATH ]]; then
-			git push $GIT_PATH
+			branch=`getCurBranch`
+			git push $GIT_PATH $branch
 		else
 			deployViaFtp
 		fi
@@ -203,7 +209,15 @@ function pushGit
 	echo
 	read -p '=== 推送到代码库? (y/n) ' a
 	if [[ $a == 'y' || $a == 'Y' ]]; then
-		git push -u origin master
+		if ( git remote | grep 'origin' >/dev/null ); then
+			:  # same as 'true'
+		else
+			url=''
+			read -p "!!! 尚未关联代码库。请指定origin对应的url (例如 builder@server:myproject.git): " url
+			git remote add origin $url
+		fi
+		branch=`getCurBranch`
+		git push -u origin $branch
 	fi
 }
 
