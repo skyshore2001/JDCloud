@@ -197,7 +197,13 @@ function deployWeb
 	if (( doUpload )) ; then
 		if [[ -n $GIT_PATH ]]; then
 			branch=`getCurBranch`
-			git push $GIT_PATH $branch
+			git push -u $GIT_PATH $branch
+			# 如果未设置remote online，则自动设置
+			if ( git remote | grep 'online' >/dev/null ); then
+				:  # same as 'true'
+			else
+				git remote add online $GIT_PATH
+			fi
 		else
 			deployViaFtp
 		fi
