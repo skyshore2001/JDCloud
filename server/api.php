@@ -54,7 +54,7 @@ function onGetPerms()
 
 		$p = @$_SESSION["perms"];
 		if (is_array($p)) {
-			if (array_search($p, "mgr") !== false)
+			if (array_search("mgr", $p) !== false)
 				$perms |= PERM_MGR;
 		}
 	}
