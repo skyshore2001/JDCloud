@@ -96,13 +96,6 @@ function onCreateAC($tbl)
 
 //}}}
 
-// ====== plugin integration {{{
-class PluginCore extends PluginBase
-{
-}
-
-// }}}
-
 // ====== main {{{
 
 // 确保在api.php的最后
