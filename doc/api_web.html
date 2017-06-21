@@ -33,7 +33,7 @@ code {
 </head>
 
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2017-05-17</div>
+<div>最后更新：2017-06-21</div>
 <h2>Modules</h2>
 <div class="toc">
 <p><a href="#WUI">WUI (module)</a></p>
@@ -41,7 +41,7 @@ code {
 <h2>Keywords</h2>
 <div class="toc">
 <p><a href="##my-pages">#my-pages (key)</a></p>
-<p><a href="#.easyui-linkbutton">.easyui-linkbutton (key)</a></p>
+<p><a href="#.easyui-validatebox">.easyui-validatebox (key)</a></p>
 <p><a href="#.my-combobox">.my-combobox (key)</a></p>
 <p><a href="#.wui-dialog">.wui-dialog (key)</a></p>
 <p><a href="#.wui-page">.wui-page (key)</a></p>
@@ -66,12 +66,15 @@ code {
 <p><a href="#MUI.callSvrSync">MUI.callSvrSync (fn)</a></p>
 <p><a href="#MUI.defDataProc">MUI.defDataProc (fn)</a></p>
 <p><a href="#MUI.disableBatch">MUI.disableBatch (var)</a></p>
+<p><a href="#MUI.enhanceWithin">MUI.enhanceWithin (fn)</a></p>
 <p><a href="#MUI.enterWaiting">MUI.enterWaiting (fn)</a></p>
 <p><a href="#MUI.getBaseUrl">MUI.getBaseUrl (fn)</a></p>
+<p><a href="#MUI.getOptions">MUI.getOptions (fn)</a></p>
 <p><a href="#MUI.hideLoading">MUI.hideLoading (fn)</a></p>
 <p><a href="#MUI.lastError">MUI.lastError (var)</a></p>
 <p><a href="#MUI.leaveWaiting">MUI.leaveWaiting (fn)</a></p>
 <p><a href="#MUI.m_curBatch">MUI.m_curBatch (var)</a></p>
+<p><a href="#MUI.m_enhanceFn">MUI.m_enhanceFn (var)</a></p>
 <p><a href="#MUI.makeUrl">MUI.makeUrl (fn)</a></p>
 <p><a href="#MUI.mockData">MUI.mockData (var)</a></p>
 <p><a href="#MUI.setOnError">MUI.setOnError (fn)</a></p>
@@ -108,6 +111,8 @@ code {
 <p><a href="#WUI.tryAutoLogin">WUI.tryAutoLogin (fn)</a></p>
 <p><a href="#WUI.unloadDialog">WUI.unloadDialog (fn)</a></p>
 <p><a href="#WUI.unloadPage">WUI.unloadPage (fn)</a></p>
+<p><a href="#a[href=">a[href= (key)</a></p>
+<p><a href="#a[href=#page]">a[href=#page] (key)</a></p>
 <p><a href="#app_abort">app_abort (fn)</a></p>
 <p><a href="#app_alert">app_alert (fn)</a></p>
 <p><a href="#app_confirm">app_confirm (fn)</a></p>
@@ -958,6 +963,9 @@ $(o).jdata({hello:100, world:200});</code></pre><hr>
 <h2 id="MUI.setOnError">@fn MUI.setOnError()</h2>
 <p>一般框架自动设置onerror函数；如果onerror被其它库改写，应再次调用该函数。<br />
 allow throw(&quot;abort&quot;) as abort behavior.</p><hr>
+<h2 id="MUI.m_enhanceFn">@var MUI.m_enhanceFn</h2><hr>
+<h2 id="MUI.enhanceWithin">@fn MUI.enhanceWithin(jparent)</h2><hr>
+<h2 id="MUI.getOptions">@fn MUI.getOptions(jo)</h2><hr>
 <h2 id="MUI.lastError">@var MUI.lastError = ctx</h2>
 <p>出错时，取出错调用的上下文信息。</p>
 <p>ctx: {ac, tm, tv, ret}</p>
@@ -1549,16 +1557,34 @@ jtbl.datagrid(dgOpt);</code></pre><hr>
 <h2 id="WUI.dg_dblclick">@fn WUI.dg_dblclick(jtbl, jdlg)</h2>
 <p class="param"><strong>@param jdlg</strong>  可以是对话框的jquery对象，或selector如"#dlgOrder".</p>
 <p>设置双击datagrid行的回调，功能是打开相应的dialog</p><hr>
-<h2 id=".easyui-linkbutton">@key .easyui-linkbutton</h2>
-<p>使用.easyui-linkbutton时，其中的a[href]字段会被框架特殊处理：</p>
-<pre><code>&lt;a href="#pageHome" class="easyui-linkbutton" icon="icon-ok"&gt;首页&lt;/a&gt;
-&lt;a href="?showDlgSendSms" class="easyui-linkbutton" icon="icon-ok"&gt;群发短信&lt;/a&gt;</code></pre>
+<h2 id="a[href=#page]">@key a[href=#page]</h2>
+<p class="key"><strong>@key <a id="a[href=">a[href=</a></strong> ?fn]</p>
+<p>页面中的a[href]字段会被框架特殊处理：</p>
+<pre><code>&lt;a href="#pageHome"&gt;首页&lt;/a&gt;
+&lt;a href="?logout"&gt;退出登录&lt;/a&gt;</code></pre>
 <ul>
-<li>href=&quot;#pageXXX&quot;开头的，会调用 WUI.showPage(&quot;#pageXXX&quot;);</li>
+<li>href=&quot;#pageXXX&quot;开头的，点击时会调用 WUI.showPage(&quot;#pageXXX&quot;);</li>
 <li>href=&quot;?fn&quot;，会直接调用函数 fn();</li>
+</ul><hr>
+<h2 id=".easyui-validatebox">@key .easyui-validatebox</h2>
+<p>为form中的组件加上该类，可以限制输入类型，如：</p>
+<pre><code>&lt;input name="amount" class="easyui-validatebox" data-options="required:true,validType:'number'" &gt;</code></pre>
+<p>validType还支持：</p>
+<ul>
+<li>number: 数字</li>
+<li>uname: 4-16位用户名，字母开头</li>
+<li>cellphone: 11位手机号</li>
+<li>datetime: 格式为&quot;年-月-日 时:分:秒&quot;，时间部分可忽略</li>
 </ul>
-<p>也可以使用 data-type=&quot;easyui-linkbutton&quot;, 如</p>
-<pre><code>&lt;a href="#pageHome" data-type="easyui-linkbutton" icon="icon-ok"&gt;首页&lt;/a&gt;</code></pre><hr>
+<p>其它自定义规则(或改写上面规则)，可通过下列方式扩展：</p>
+<pre><code>$.extend($.fn.validatebox.defaults.rules, {
+    workday: {
+        validator: function(value) {
+            return value.match(/^[1-7,abc]+$/);
+        },
+        message: '格式例："1,3a,5b"表示周一,周三上午,周五下午.'
+    }
+});</code></pre><hr>
 <h2 id="isBusy">@var isBusy</h2>
 <p>标识应用当前是否正在与服务端交互。一般用于自动化测试。</p><hr>
 <h2 id="g_args">@var g_args</h2>
@@ -1648,8 +1674,13 @@ WUI.tabMain.tabs("close", idx);</code></pre>
 <pre><code>&lt;select name="empId" class="my-combobox" data-options="valueField: 'id', ..."&gt;&lt;/select&gt;</code></pre>
 <p>通过data-options可设置选项: { valueField, textField, url, formatter(row), loadFilter(data) }</p>
 <p>初始化：</p>
-<pre><code>$(".my-combobox").mycombobox();</code></pre>
+<pre><code>var jo = $(".my-combobox").mycombobox();</code></pre>
 <p>注意：使用WUI.showDlg显示的对话框中如果有.my-combobox组件，会在调用WUI.showDlg时自动初始化，无须再调用上述代码。</p>
+<p>操作：</p>
+<ul>
+<li>刷新列表： jo.trigger(&quot;refresh&quot;);</li>
+<li>标记刷新（下次打开时刷新）： jo.trigger(&quot;markRefresh&quot;);</li>
+</ul>
 <p>特性：</p>
 <ul>
 <li>初始化时调用url指定接口取数据并生成下拉选项。</li>
