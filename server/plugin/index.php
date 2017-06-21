@@ -1,3 +1,4 @@
 <?php
 
-Plugins::add(["login", "test"]);
+Plugins::add("login");
+Plugins::add("test");
