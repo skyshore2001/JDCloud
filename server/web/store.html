@@ -7,354 +7,52 @@
 <link rel="stylesheet" type="text/css" href="lib/easyui/themes/default/easyui.css">
 <link rel="stylesheet" type="text/css" href="lib/easyui/themes/icon.css">
 <link rel="stylesheet" type="text/css" href="style.css">
+<link rel="stylesheet" type="text/css" href="font-icon/css/font-awesome.css">
+
 <script language="javascript" src="lib/easyui/jquery.easyui.min.js" type="text/javascript" charset="utf-8"></script>
 <script language="javascript" src="lib/easyui/locale/easyui-lang-zh_CN.js" type="text/javascript" charset="utf-8"></script>
 
-<script language="javascript" src="lib/common.js"type="text/javascript" charset="utf-8"></script>
-<script language="javascript" src="lib/app_fw.js"type="text/javascript" charset="utf-8"></script>
-<script language="javascript" src="app.js"type="text/javascript" charset="utf-8"></script>
+<script src="lib/jdcloud-wui.js"></script>
 
-<style type="text/css">
-/* css {{{ */
+<script src="app.js"></script>
+<script src="store.js"></script>
 
-/* css }}} */
-</style>
-
-<script language="javascript">
-
-// ====== global {{{
-var g_data = {}; // {userInfo={id, storeId, perms,...}, hasPerm(perm)}
-//}}}
-
-// ====== functions {{{
-
-// ==== data-options {{{
-var ListOptions = {
-	// ListOptions.Emp()
-	Emp: function () {
-		var opts = {
-			valueField: "id",
-			textField: "name",
-			url: makeUrl('Employee.query', {
-		res: 'id,name,uname',
-		cond: 'storeId=' + g_data.userInfo.storeId,
-		wantArray:1
-					}),
-			formatter: function (row) { return row.name + '(' + row.uname + ')'; }
-		};
-		return opts;
-	},
-
-	// ListOptions.Store()
-	Store: function () {
-		var opts = {
-			valueField: "id",
-			textField: "name",
-			url: makeUrl('Store.query', {
-				res: 'id,name',
-				wantArray:1
-			}),
-			formatter: function (row) { return row.id + "-" + row.name; }
-		};
-		return opts;
-	}
-};
-
-var Formatter = {
-	number: function (value)
-	{
-		return parseFloat(value);
-	},
-	pics: function (value) {
-		if (value == null)
-			return "(无图)";
-		return value.replace(/(\d+),?/g, function (ms, picId) {
-			var url = makeUrl("att", {thumbId: picId});
-			return "<a target='_black' href='" + url + "'>" + picId + "</a>&nbsp;";
-		});
-	},
-	orderId: function (value) {
-		if (value != null)
-		{
-			return makeLinkTo("#dlgOrder", value, value);
-		}
-	},
-	// 必须有row.empId
-	empName: function (value, row) {
-		if (value == null)
-			return "";
-		return makeLinkTo("#dlgEmployee", row.empId, value);
-	},
-	// 必须有row.storeId
-	storeName: function (value, row) {
-		if (value == null)
-			return "";
-		return makeLinkTo("#dlgStore", row.storeId, value);
-	},
-};
-//}}}
-
-// ==== column settings {{{
-var EmpSigninColumns = {
-	type: function (value, row) {
-		if (value == 'CM')
-			return "签到";
-		return value;
-	}
-};
-
-// formatters and styler. Note: for one cell, styler executes prior to formatter
-var OrderColumns = {
-	statusStr: function (value, row) {
-		return OrderStatusStr[row.status] || row.status;
-	},
-	statusStyler: function (value, row) {
-		var color;
-		if (value == "CR")
-			color = Color.Warning;
-		else if (value == "ST")
-			color = Color.Error;
-		else if (value == "RE")
-			color = Color.Info;
-		if (color)
-			return "background-color: " + color;
-	},
-
-	empName: function (value, row) {
-		if (value == null)
-			return "";
-
-		value = addTooltip(value, row.__tooltip);
-		return makeLinkTo("#dlgEmployee", row.empId, value);
-	},
-
-	flagStyler: function (value, row) {
-			if (value)
-				return "background-color:" + Color.Info;
-	},
-};
-
-function flagFormatter(flag)
-{
-	return function (value, row) {
-		if (value) {
-			return '是';
-		}
-		else {
-			row[flag] = 0;
-			return '否';
-		}
-	}
-}
-
-var OrderLogColumns = {
-	actionStr: function (value, row) {
-		return ActionStrs[value] || value;
-	}
-};
-// }}}
-
-// ==== init page and dialog {{{
-function handleLogin(data)
-{
-	WUI.handleLogin(data);
-}
-
-function initPageHome()
-{
-	var jpage = $(this);
-	var jtbl = jpage.find("#tblMe");
-	var jdlg = $("#dlgEmployee");
-
-	jtbl.datagrid({
-		url: makeUrl(["Employee", "query"], {cond: "id=" + g_data.userInfo.id}),
-		onLoadSuccess: function(data) {
-			applyPermission(data.rows[0].perms);
-		}
-	});
-}
-
-function applyPermission(perms)
-{
-	// e.g. "item,mgr" - ".perm-item, .perm-mgr"
-	if (perms == null)
-		perms = "emp";
-	var sel = perms.replace(/(\w+)/g, '.perm-$1');
-	var arr = perms.split(/,/);
-	if (sel) {
-		$(sel).show();
-	}
-
-	g_data.hasPerm = function (perm) {
-		var found = false;
-		$.each(arr, function (i, e) {
-				if (e == perm) {
-					found = true;
-					return false;
-				}
-		});
-		return found;
-	}
-}
-
-function initDlgEmployee()
-{
-	var jdlg = $(this);
-	var jfrm = jdlg.find("form");
-	jfrm.on("loaddata", function (ev, data) {
-		hiddenToCheckbox(jfrm.find("#divPerms"));
-	})
-	.on("savedata", function (ev) {
-		checkboxToHidden(jfrm.find("#divPerms"));
-	});
-}
-
-function initPageOrder() 
-{
-	var jpage = $(this);
-	var jtbl = jpage.find("#tblOrder");
-	var jdlg = $("#dlgOrder");
-
-	jtbl.jdata().toolbar = "rfs";
-
-  // 当天订单
-	var query1 = {cond: "createTm between '" + new Date().format("D") + "' and '" + new Date().addDay(1).format("D") + "'"};
-  // 显示待服务/正在服务订单
-	var query2 = {cond: "status='CR' OR status='PA' OR status='ST'"};
-
-	function getTodoOrders()
-	{
-		WUI.reload(jtbl, null, query2);
-	}
-	function getTodayOrders()
-	{
-		WUI.reload(jtbl, null, query1);
-	}
-	var btn1 = {text: "今天订单", iconCls:'icon-search', handler: getTodayOrders};
-	var btn2 = {text: "所有未完成", iconCls:'icon-search', handler: getTodoOrders};
-
-	var dgOpt = {
-		url: makeUrl(["Ordr", "query"], {res:"*,createTm,userPhone"}),
-		queryParams: query1,
-		toolbar: WUI.dg_toolbar(jtbl, jdlg, "-", btn1, btn2),
-		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
-	};
-	jtbl.datagrid(dgOpt);
-}
-
-function initDlgOrder()
-{
-	var jdlg = $(this);
-	var jfrm = jdlg.find("form");
-	jfrm.on("beforeshow", function(ev, mode) {
-		jdlg.find(".forFind").toggle(mode == FormMode.forFind);
-		jdlg.find(".notForFind").toggle(mode != FormMode.forFind);
-	})
-	.on("loaddata", function (ev, data) {
-		var showMore = (data.orderLog !== undefined);
-		var divOrderMore = jdlg.find("#divOrderMore");
-		if (! showMore) {
-			divOrderMore.hide();
-			jdlg.find("#btnOrderMore").show();
-			return;
-		}
-		jdlg.find("#btnOrderMore").hide();
-		divOrderMore.show();
-
-		jdlg.find("#tblOrderLog").datagrid({
-			data: data.orderLog
-		});
-	});
-}
-// init functions }}}
-
-// ==== show dialog {{{
-function showDlgLogin()
-{
-	var jdlg = $("#dlgLogin");
-	WUI.showDlg(jdlg, {
-		url: makeUrl("login"),
-		noCancel: true,
-		okLabel: '登录',
-
-		onOk: function (data) {
-			WUI.closeDlg(jdlg);
-			handleLogin(data);
-		}
-	});
-}
-
-function showDlgChpwd()
-{
-	var jdlg = $("#dlgChpwd");
-	WUI.showDlg(jdlg, {
-		url: makeUrl("chpwd"),
-
-		onOk: function (data) {
-			WUI.closeDlg(jdlg);
-			app_show('密码修改成功!');
-		}
-	});
-}
-
-function showDlgSendSms()
-{
-	var jdlg = $("#dlgSendSms");
-	WUI.showDlg(jdlg, {
-		url: makeUrl("sendSms"),
-		reset: false,
-		onOk: function (data) {
-			WUI.closeDlg(jdlg);
-			app_show('操作成功!');
-		}
-	});
-}
-// show dialog }}}
-
-//}}}
-
-// ====== main {{{
-var APP_TITLE = "商户管理端";
-var APP_NAME = "emp-adm";
-
-function main()
-{
-	WUI.setApp({
-		appName: APP_NAME,
-		title: APP_TITLE,
-		onShowLogin: showDlgLogin
-	});
-	setAppTitle(APP_TITLE);
-
-	//WUI.initClient();
-	WUI.tryAutoLogin(handleLogin, "Employee.get");
-}
-
-$(main);
-//}}}
-
-</script>
+<!-- 模拟接口数据 -->
+<!-- script src="mocktable.js"></script>
+<script src="mockdata.js"></script-->
 </head>
 
 <body class="easyui-layout">
 <div id="divNoScript"><font color=red>您的浏览器禁用了脚本，不能使用本系统!</font></div>
 
-<div id="menu" region="west" split="true" title="选择操作" style="width:150px;padding:10px;">
-	<!--a href="#pageHome" class="easyui-linkbutton" icon="icon-ok">首页</a><br/><br/-->
-	<a href="?showDlgChpwd" class="easyui-linkbutton" icon="icon-ok">修改密码</a><br/><br/>
-	<a href="?logout" class="easyui-linkbutton" icon="icon-ok">退出系统</a><br/><br/>
+<div id="menu" region="west" split="true" title="选择操作" style="width:200px;">
+<!--
+如果为菜单加图标，将图标和文字放到span中如：
+	<a href="?chpwd"><span><i class="fa fa-pencil-square-o"></i>修改密码</span></a>
 
-	<div class="perm-mgr perm-emp">
-		<hr>
-		<p>订单</p>
-		<a href="#pageOrder" class="easyui-linkbutton" icon="icon-ok">订单管理</a><br/><br/>
+menu-expand-group下第一个a为菜单组标题，可加"expanded"类使其默认展开。
+-->
+	<a href="javascript:logout()"><span><i class="fa fa-user-times"></i>退出系统</span></a>
+
+	<div class="perm-mgr perm-emp" style="display:none">
+		<div class="menu-expand-group">
+			<a class="expanded"><span><i class="fa fa-pencil-square-o"></i>运营管理</span></a>
+			<div class="menu-expandable">
+				<a href="#pageOrder">订单管理</a>
+			</div>
+		</div>
 	</div>
 
-	<div class="perm-mgr">
-		<hr>
-		<p>工具</p>
-		<a href="?showDlgSendSms" class="easyui-linkbutton" icon="icon-ok">群发短信</a><br/><br/>
+	<div class="perm-mgr" style="display:none">
+		<div class="menu-expand-group">
+			<a><span><i class="fa fa-pencil-square-o"></i>工具</span></a>
+			<div class="menu-expandable">
+				<a href="javascript:showDlgSendSms()">群发短信</a>
+			</div>
+		</div>
 	</div>
+
+	<a href="javascript:showDlgChpwd()"><span><i class="fa fa-user-times"></i>修改密码</span></a>
 </div>
 
 <div region="center" title="管理端">
@@ -378,34 +76,6 @@ $(main);
 			<th data-options="field:'perms'">权限</th>
 		</tr></thead>
 	</table>
-</div>
-
-<div class="pageOrder" title="订单管理" my-initfn="initPageOrder">
-	<table id="tblOrder" style="width:auto;height:auto">
-		<thead><tr>
-			<th data-options="field:'id', sortable:true, sorter:intSort">订单号</th>
-			<th data-options="field:'userPhone', sortable:true">用户联系方式</th>
-			<th data-options="field:'createTm', sortable:true">创建时间</th>
-			<th data-options="field:'status', formatter:OrderColumns.statusStr, styler:OrderColumns.statusStyler, sortable:true">状态</th>
-			<th data-options="field:'dscr', sortable:true">描述</th>
-			<th data-options="field:'cmt'">用户备注</th>
-		</tr></thead>
-	</table>
-
-	<div style="font-size:0.6em; margin:10px">
-		<p><b>各列颜色说明</b></p>
-		<table class="x-grid" style="font-size:0.6em;">
-			<tr>
-				<th>状态</th>
-			<tr>
-				<td>
-					<li><span class="status-warning">待服务</span></li>
-					<li><span class="status-error">正在服务</span></li>
-					<li><span class="status-info">已服务/已评价</span></li>
-				</td>
-			</tr>
-		</table>
-	</div>
 </div>
 
 <!-- pages }}} -->
@@ -478,100 +148,6 @@ $(main);
 			</tr>
 		</table>  
 	</form>  
-</div>
-
-<div id="dlgOrder" my-obj="Ordr" my-initfn="initDlgOrder" title="用户订单" style="padding:20px 40px 20px 40px;width:520px;height:500px;">  
-	<form method="POST">
-		<table>
-			<tr>
-				<td>订单号</td>
-				<td><input name="id" disabled></td>
-			</tr>
-			<tr>
-				<td>订单状态</td>
-				<td>
-					<select name="status" style="width:150px">
-						<option value="">&nbsp;</option>
-						<option value="CR">未付款</option>
-						<option value="PA">待服务(已付款)</option>
-						<option value="ST">正在服务</option>
-						<option value="RE">已服务(待评价)</option>
-						<option value="RA">已评价</option>
-						<option value="CA">已取消</option>
-					</select>
-				</td>
-			</tr>
-			<tr>
-				<td>用户编号</td>
-				<td>
-					<input name="userId" disabled>
-					<input class="notForFind" type=button onClick="searchField(this, {userId: this.form.userId.value});" value="查询该用户所有订单">
-				</td>
-			</tr>
-			<tr>
-				<td>用户联系方式</td>
-				<td>
-					<input name="userPhone" class="easyui-validatebox" data-options="validType:'usercode'">
-					<input class="notForFind" type=button onClick="searchField(this, {userPhone: this.form.userPhone.value});" value="查询该手机所有订单">
-				</td>
-			</tr>
-			<tr>
-				<td>用户备注</td>
-				<td><textarea name="cmt" rows=3 cols=30></textarea></td>  
-			</tr>
-
-		</table>  
-		<input id="btnOrderMore" class="notForFind" type=button onClick="WUI.showObjDlg($('#dlgOrder'), FormMode.forLink, this.form.id.value); return false;" value="查看明细">
-	</form>
-
-	<div id="divOrderMore" class="notForFind">
-		<p><b>明细</b></p>
-
-		<p><b>订单日志</b></p>
-		<table id="tblOrderLog" style="width:auto;height:auto">
-			<thead><tr>
-				<th data-options="field:'action', formatter:OrderLogColumns.actionStr">操作</th>
-				<th data-options="field:'empName'">员工</th>
-				<th data-options="field:'dscr'">描述</th>
-				<th data-options="field:'tm'">时间</th>
-			</tr></thead>
-		</table>
-
-	</div>
-</div>
-
-<div id="dlgSendSms" title="群发短信" style="padding:20px 40px 20px 40px;width:500px;height:300px;">  
-	<form method="POST">
-		<table>
-			<tr>
-				<td>通道</td>
-				<td>
-					<label><input type="checkbox" name="channel" value="1" checked>使用营销通道</label>
-					<p class=hint>营销通道速度慢，不会被人工阻止，适合营销信息</p>
-				</td>
-			</tr>
-			<tr>
-				<td></td>
-				<td>
-					<label><input type="checkbox" name="toAll" value="0">发送给所有用户</label>
-				</td>
-			</tr>
-			<tr>
-				<td width=100px>手机号</td>
-				<td>
-					<textarea name="phone" rows=1 cols=30 class="easyui-validatebox" data-options="required:true"></textarea>
-					<p class=hint>多个手机号使用逗号分隔</p>
-				</td>
-			</tr>
-			<tr>
-				<td>发送内容</td>
-				<td>
-					<textarea rows=5 cols=30 name="content"></textarea>
-					<p class=hint>注意：可以换行输入多行</p>
-				</td>
-			</tr>
-		</table>
-	</form>
 </div>
 <!-- dialogs }}} -->
 

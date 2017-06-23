@@ -2,6 +2,7 @@
 	var user = {
 		id: 1001,
 		name: "孙悟空",
+		phone: "18912345678"
 	};
 	var orders = []; // @order={id, status, dscr, @orderLog={action, tm} }
 	// id = index +100
@@ -29,10 +30,10 @@
 		},
 		"Ordr.query": function (param, postParam) {
 			var arr;
-			if (param.cond == "status in ('CR')") {
+			if (/CR/.test(param.cond)) {
 				arr = $.grep(orders, function (o) {return o.status == 'CR'});
 			}
-			else if (param.cond == "status in ('RE','CA')") {
+			else if (/RE|CA/.test(param.cond)) {
 				arr = $.grep(orders, function (o) {return o.status != 'CR'});
 			}
 			else {
@@ -62,11 +63,16 @@
 	}
 
 	// 模拟订单
-	var INIT_CNT = 43;
+	var INIT_CNT = 48;
 	for (var i=0; i<INIT_CNT; ++i) {
-		MUI.mockData["Ordr.add"](null, {
+		var ret = MUI.mockData["Ordr.add"](null, {
 			dscr: i%4!=0? "基础套餐": "精英套餐",
 			amount: i%4!=0? 128: 228
 		});
+		var id = ret[1];
+		// 设置为已完成
+		if (i < 5) {
+			MUI.mockData["Ordr.set"]({id: id}, {status: 'RE'});
+		}
 	}
 })();

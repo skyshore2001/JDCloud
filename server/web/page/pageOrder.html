@@ -1,0 +1,27 @@
+<div wui-script="pageOrder.js" title="订单管理" my-initfn="initPageOrder">
+	<table id="tblOrder" style="width:auto;height:auto">
+		<thead><tr>
+			<th data-options="field:'id', sortable:true, sorter:intSort">订单号</th>
+			<th data-options="field:'userPhone', sortable:true">用户联系方式</th>
+			<th data-options="field:'createTm', sortable:true">创建时间</th>
+			<th data-options="field:'status', formatter:OrderColumns.statusStr, styler:OrderColumns.statusStyler, sortable:true">状态</th>
+			<th data-options="field:'dscr', sortable:true">描述</th>
+			<th data-options="field:'cmt'">用户备注</th>
+		</tr></thead>
+	</table>
+
+	<div style="font-size:0.6em; margin:10px">
+		<p><b>各列颜色说明</b></p>
+		<table class="x-grid" style="font-size:0.6em;">
+			<tr>
+				<th>状态</th>
+			<tr>
+				<td>
+					<li><span class="status-warning">待服务</span></li>
+					<li><span class="status-error">正在服务</span></li>
+					<li><span class="status-info">已服务/已评价</span></li>
+				</td>
+			</tr>
+		</table>
+	</div>
+</div>

@@ -33,7 +33,7 @@ code {
 </head>
 
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2017-02-05</div>
+<div>最后更新：2017-06-21</div>
 <h2>Modules</h2>
 <div class="toc">
 <p><a href="#app_fw">app_fw (module)</a></p>
@@ -67,7 +67,6 @@ code {
 <p><a href="#AccessControl::addJoin">AccessControl::addJoin (fn)</a></p>
 <p><a href="#AccessControl::addRes">AccessControl::addRes (fn)</a></p>
 <p><a href="#AccessControl::addVCol">AccessControl::addVCol (fn)</a></p>
-<p><a href="#AccessControl::getDefaultSort">AccessControl::getDefaultSort (fn)</a></p>
 <p><a href="#AccessControl::getMaxPageSz">AccessControl::getMaxPageSz (fn)</a></p>
 <p><a href="#AccessControl::onAfter">AccessControl::onAfter (fn)</a></p>
 <p><a href="#AccessControl::onGenId">AccessControl::onGenId (fn)</a></p>
@@ -76,43 +75,42 @@ code {
 <p><a href="#AccessControl::onValidate">AccessControl::onValidate (fn)</a></p>
 <p><a href="#AccessControl::onValidateId">AccessControl::onValidateId (fn)</a></p>
 <p><a href="#AppBase">AppBase (class)</a></p>
-<p><a href="#CFG_MOCK_MODE">CFG_MOCK_MODE (key)</a></p>
-<p><a href="#CFG_MOCK_T_MODE">CFG_MOCK_T_MODE (key)</a></p>
 <p><a href="#Conf">Conf (key)</a></p>
 <p><a href="#ConfBase">ConfBase (class)</a></p>
 <p><a href="#ConfBase::$enableApiLog">ConfBase::$enableApiLog (var)</a></p>
 <p><a href="#ConfBase::onApiInit">ConfBase::onApiInit (fn)</a></p>
 <p><a href="#ConfBase::onInitClient">ConfBase::onInitClient (fn)</a></p>
-<p><a href="#DBG_LEVEL">DBG_LEVEL (var)</a></p>
 <p><a href="#DirectReturn">DirectReturn (class)</a></p>
+<p><a href="#ExtFactory::getInstance">ExtFactory::getInstance (fn)</a></p>
 <p><a href="#ExtFactory::getObj">ExtFactory::getObj (fn)</a></p>
-<p><a href="#ExtFactory::instance">ExtFactory::instance (fn)</a></p>
 <p><a href="#JDEvent">JDEvent (class)</a></p>
 <p><a href="#JDEvent.on">JDEvent.on (fn)</a></p>
 <p><a href="#JDEvent.trigger">JDEvent.trigger (fn)</a></p>
 <p><a href="#JDSingleton">JDSingleton (class)</a></p>
-<p><a href="#MOCK_MODE">MOCK_MODE (var)</a></p>
+<p><a href="#JDSingletonImp">JDSingletonImp (class)</a></p>
+<p><a href="#MapCol.$colMap">MapCol.$colMap (var)</a></p>
+<p><a href="#MapCol.mapCol">MapCol.mapCol (key)</a></p>
+<p><a href="#MapCol.mapSql">MapCol.mapSql (key)</a></p>
 <p><a href="#MyException">MyException (class)</a></p>
 <p><a href="#PAGE_SZ_LIMIT">PAGE_SZ_LIMIT (var)</a></p>
 <p><a href="#P_DB">P_DB (key)</a></p>
 <p><a href="#P_DBCRED">P_DBCRED (key)</a></p>
+<p><a href="#P_DEBUG">P_DEBUG (key)</a></p>
+<p><a href="#P_MOCK_MODE">P_MOCK_MODE (key)</a></p>
 <p><a href="#P_SESSION_DIR">P_SESSION_DIR (key)</a></p>
+<p><a href="#P_TEST_MODE">P_TEST_MODE (key)</a></p>
 <p><a href="#P_URL_PATH">P_URL_PATH (key)</a></p>
-<p><a href="#PluginBase">PluginBase (class)</a></p>
-<p><a href="#PluginBase.$colMap">PluginBase.$colMap (var)</a></p>
-<p><a href="#PluginBase.mapCol">PluginBase.mapCol (key)</a></p>
-<p><a href="#PluginBase.mapSql">PluginBase.mapSql (key)</a></p>
 <p><a href="#Plugins">Plugins (class)</a></p>
 <p><a href="#Plugins::$map">Plugins::$map (var)</a></p>
 <p><a href="#Plugins::add">Plugins::add (fn)</a></p>
 <p><a href="#Plugins::exists">Plugins::exists (fn)</a></p>
-<p><a href="#Plugins::getInstance">Plugins::getInstance (fn)</a></p>
 <p><a href="#Q">Q (fn)</a></p>
-<p><a href="#TEST_MODE">TEST_MODE (var)</a></p>
 <p><a href="#addLog">addLog (fn)</a></p>
 <p><a href="#api_fw">api_fw (module)</a></p>
 <p><a href="#app_fw">app_fw (module)</a></p>
 <p><a href="#callSvc">callSvc (fn)</a></p>
+<p><a href="#callSvcInt">callSvcInt (fn)</a></p>
+<p><a href="#checkAuth">checkAuth (fn)</a></p>
 <p><a href="#conf.php">conf.php (key)</a></p>
 <p><a href="#dbConfirmFn">dbConfirmFn (key)</a></p>
 <p><a href="#dbconn">dbconn (fn)</a></p>
@@ -121,24 +119,32 @@ code {
 <p><a href="#ext">ext (module)</a></p>
 <p><a href="#getAppType">getAppType (fn)</a></p>
 <p><a href="#getBaseUrl">getBaseUrl (fn)</a></p>
+<p><a href="#getClientVersion">getClientVersion (fn)</a></p>
 <p><a href="#getCred">getCred (fn)</a></p>
 <p><a href="#getExt">getExt (fn)</a></p>
+<p><a href="#hasPerm">hasPerm (fn)</a></p>
 <p><a href="#hasSignFile">hasSignFile (fn)</a></p>
+<p><a href="#httpCall">httpCall (fn)</a></p>
 <p><a href="#isCLI">isCLI (fn)</a></p>
 <p><a href="#isCLIServer">isCLIServer (fn)</a></p>
 <p><a href="#isEqualCollection">isEqualCollection (fn)</a></p>
 <p><a href="#isMockMode">isMockMode (fn)</a></p>
 <p><a href="#logext">logext (fn)</a></p>
 <p><a href="#logit">logit (fn)</a></p>
+<p><a href="#makeUrl">makeUrl (fn)</a></p>
 <p><a href="#mparam">mparam (fn)</a></p>
 <p><a href="#myEncrypt">myEncrypt (fn)</a></p>
 <p><a href="#objarr2table">objarr2table (fn)</a></p>
+<p><a href="#onCreateAC">onCreateAC (fn)</a></p>
+<p><a href="#onGetPerms">onGetPerms (fn)</a></p>
+<p><a href="#param">param (fn)</a></p>
 <p><a href="#param">param (fn)</a></p>
 <p><a href="#param_varr">param_varr (fn)</a></p>
-<p><a href="#plugin.php">plugin.php (key)</a></p>
+<p><a href="#plugin">plugin (key)</a></p>
 <p><a href="#plugin/index.php">plugin/index.php (key)</a></p>
 <p><a href="#queryAll">queryAll (fn)</a></p>
 <p><a href="#queryOne">queryOne (fn)</a></p>
+<p><a href="#setParam">setParam (fn)</a></p>
 <p><a href="#setParam">setParam (fn)</a></p>
 <p><a href="#setRet">setRet (fn)</a></p>
 <p><a href="#setServerRev">setServerRev (fn)</a></p>
@@ -146,15 +152,29 @@ code {
 <p><a href="#table2objarr">table2objarr (fn)</a></p>
 <p><a href="#tableCRUD">tableCRUD (fn)</a></p>
 <p><a href="#tobool">tobool (fn)</a></p>
+<p><a href="#tryParseBool">tryParseBool (fn)</a></p>
+<p><a href="#urlEncodeArr">urlEncodeArr (fn)</a></p>
 <p><a href="#varr2objarr">varr2objarr (fn)</a></p>
 </div><hr>
 <h2 id="tobool">@fn tobool($s)</h2><hr>
+<h2 id="tryParseBool">@fn tryParseBool($s, &$val)</h2>
+<p>字符串转bool，支持&quot;0/1&quot;, &quot;true/false&quot;, &quot;yes/no&quot;, &quot;on/off&quot;.</p><hr>
 <h2 id="startsWith">@fn startsWith($s, $pat)</h2><hr>
 <h2 id="isCLI">@fn isCLI() </h2>
 <p>command-line interface. e.g. run &quot;php x.php&quot;</p><hr>
 <h2 id="isCLIServer">@fn isCLIServer() </h2>
 <p>php built-in web server e.g. run &quot;php -S 0.0.0.0:8080&quot;</p><hr>
 <h2 id="isEqualCollection">@fn isEqualCollection($col1, $col2)</h2><hr>
+<h2 id="urlEncodeArr">@fn urlEncodeArr($params)</h2>
+<p>e.g.</p>
+<pre><code>urlEncodeArr(["a"=&gt;1, "b"=&gt;"hello"]) -&gt; a=1&amp;b=hello</code></pre><hr>
+<h2 id="makeUrl">@fn makeUrl($ac, $params, $hash)</h2><hr>
+<h2 id="httpCall">@fn httpCall($url, $postParams =null, $opt={timeout?=5, @headers} )</h2>
+<p>请求URL，返回内容。<br />
+默认使用GET请求，如果给定postParams，则使用POST请求。<br />
+postParams可以是一个kv数组或字符串，也可以是一个文件名(以&quot;@&quot;开头，如&quot;@1.jpg&quot;)</p>
+<p>如果请求失败，抛出E_SERVER异常。<br />
+不检查http返回码。</p><hr>
 <h2 id="app_fw">@module app_fw</h2><div class="toc"><p style="margin-left:0em"><a href="#app_fw-1 通用函数">1 通用函数</a></p>
 <p style="margin-left:0em"><a href="#app_fw-2 初始化配置">2 初始化配置</a></p>
 <p style="margin-left:2em"><a href="#app_fw-2.1 数据库配置">2.1 数据库配置</a></p>
@@ -198,32 +218,29 @@ P_DBCRED=Z2FubGFuOjEyMzQ=</code></pre>
 <p>此外，P_DB还支持SQLite数据库，直接指定以&quot;.db&quot;为扩展名的文件即可。例如：</p>
 <pre><code>P_DB=../myorder.db</code></pre>
 <h4 id="app_fw-3 测试模式与调试等级">3 测试模式与调试等级</h4>
-<p class="var"><strong>@var <a id="TEST_MODE">TEST_MODE</a></strong>  Integer/Boolean. 0-生产模式；1-测试模式；2-自动化回归测试模式(RTEST_MODE)</p>
-<p class="var"><strong>@var <a id="DBG_LEVEL">DBG_LEVEL</a></strong>  Integer. 调试等级。值范围0-9.</p>
+<p class="key"><strong>@key <a id="P_TEST_MODE">P_TEST_MODE</a></strong>  Integer。环境变量，允许测试模式。0-生产模式；1-测试模式；2-自动化回归测试模式(RTEST_MODE)</p>
+<p class="key"><strong>@key <a id="P_DEBUG">P_DEBUG</a></strong>  Integer。环境变量，设置调试等级，值范围0-9。仅在测试模式下有效。</p>
 <p>测试模式特点：</p>
 <ul>
-<li>通过在项目目录下放置文件 CFG_TEST_MODE，可强制使用测试模式。</li>
-<li>通过URL请求参数 &quot;_test=1&quot;可以测试模式打开应用。</li>
-<li>输出JSON内容更易读，且带调试信息。</li>
-<li>一般建议测试模式下连接不同的数据库。可在conf.user.php中指定。</li>
+<li>输出的HTTP头中包含：<code>X-Daca-Test-Mode: 1</code></li>
+<li>输出的JSON格式经过美化更易读，且可以显示更多调试信息。前端可通过在接口中添加<code>_debug</code>参数设置调试等级。<br />
+如果想要查看本次调用涉及的SQL语句，可以用<code>_debug=9</code>。</li>
+<li>某些用于测试的接口可以调用，例如execSql。因而十分危险，生产模式下一定不可误设置为测试模式。</li>
+<li>可以使用模拟模式</li>
 </ul>
-<p>用于在测试模式下输出调试信息。</p>
-<ul>
-<li>可通过URL请求参数指定，如&quot;_test=1&amp;_debug=1&quot;。</li>
-<li>值为9时，可输出所有SQL调试日志。</li>
-</ul>
+<p>注意：v3.4版本起不允许客户端设置_test参数，且用环境变量P_TEST_MODE替代符号文件CFG_TEST_MODE和设置全局变量TEST_MODE.</p>
+<p>在过去测试模式用于：可直接对生产环境进行测试且不影响生产环境，即部署后，在前端指定以测试模式连接，在后端为测试模式连接专用的测试数据库，且使用专用的cookie，实现与生产模式共用代码但互不影响。<br />
+现已废弃这种用法，应搭建专用的测试环境用于测试开发。</p>
 <p class="see"><strong>@see <a href="#addLog">addLog</a></strong> </p>
 <h4 id="app_fw-4 模拟模式">4 模拟模式</h4>
-<p class="var"><strong>@var <a id="MOCK_MODE">MOCK_MODE</a></strong>  Boolean. 模拟模式. 值：0/1.</p>
-<p class="key"><strong>@key <a id="CFG_MOCK_MODE">CFG_MOCK_MODE</a></strong>   符号文件，如文件存在则应用运行于模拟模式。</p>
-<p class="key"><strong>@key <a id="CFG_MOCK_T_MODE">CFG_MOCK_T_MODE</a></strong>  符号文件，如文件存在且在测试模式下，应用运行于模拟模式。</p>
+<p class="key"><strong>@key <a id="P_MOCK_MODE">P_MOCK_MODE</a></strong>  Integer. 模拟模式. 值：0/1，或部分模拟，值为模块列表，如"wx,sms"，外部模块名称定义见ext.php.</p>
 <p>对第三方系统依赖（如微信认证、支付宝支付、发送短信等），可通过设计Mock接口来模拟。</p>
+<p>注意：v3.4版本起用环境变量P_MOCK_MODE替代符号文件CFG_MOCK_MODE/CFG_MOCK_T_MODE和设置全局变量MOCK_MODE，且模拟模式只允许在测试模式激活时才能使用。</p>
 <p class="see"><strong>@see <a href="#ExtMock">ExtMock</a></strong> </p>
 <h4 id="app_fw-5 session管理">5 session管理</h4>
 <ul>
 <li>应用的session名称为 &quot;{app}id&quot;, 如应用名为 &quot;user&quot;, 则session名为&quot;userid&quot;. 因而不同的应用同时调用服务端也不会冲突。</li>
-<li>保存session文件的目录为 $BASE_DIR/session, 可使用P_SESSION_DIR变量重定义。</li>
-<li>测试模式下session名称为 &quot;t{app}id&quot;, 保存session文件的目录为 $BASE_DIR/session/t。如果定义了环境变量P_SESSION_DIR，则目录为 {P_SESSION_DIR}/t</li>
+<li>保存session文件的目录为 $BASE_DIR/session, 可使用环境变量P_SESSION_DIR重定义。</li>
 <li>同一主机，不同URL下的session即使APP名相同，也不会相互冲突，因为框架会根据当前URL，设置cookie的有效路径。</li>
 </ul>
 <p class="key"><strong>@key <a id="P_SESSION_DIR">P_SESSION_DIR</a></strong>  ?= $BASE_DIR/session 环境变量，定义session文件存放路径。</p>
@@ -245,17 +262,20 @@ P_DBCRED=Z2FubGFuOjEyMzQ=</code></pre>
 类型标识：i-Integer; n-Number/Double; b-Boolean(0/1); dt/tm-DateTime</li>
 <li>后置&quot;?&quot;表示该参数可缺省。</li>
 </ul><hr>
-<h2 id="param">@fn param($name, $defVal?, $col?=$_REQUEST)</h2>
+<h2 id="param">@fn param($name, $defVal?, $col?, $doHtmlEscape=true)</h2>
+<p class="param"><strong>@param $col:</strong>  默认先取$_GET再取$_POST，"G" - 从$_GET中取; "P" - 从$_POST中取</p>
+<p>以下形式已不建议使用：</p>
+<p class="fn"><strong>@fn <a id="param">param</a></strong> ($name, $defVal?, $col?=$_REQUEST, $doHtmlEscape=true)</p>
 <p class="param"><strong>@param $col:</strong>  key-value collection</p>
 <p>获取名为$name的参数。<br />
 $name中可以指定类型，返回值根据类型确定。如果该参数未定义或是空串，直接返回缺省值$defVal。</p>
 <p>$name中指定类型的方式如下：</p>
 <ul>
 <li>名为&quot;id&quot;, 或以&quot;Id&quot;或&quot;/i&quot;结尾: int</li>
-<li>以&quot;/b&quot;结尾: bool</li>
+<li>以&quot;/b&quot;结尾: bool. 可接受的字符串值为: &quot;1&quot;/&quot;true&quot;/&quot;on&quot;/&quot;yes&quot;=&gt;true, &quot;0&quot;/&quot;false&quot;/&quot;off&quot;/&quot;no&quot; =&gt; false</li>
 <li>以&quot;/dt&quot;或&quot;/tm&quot;结尾: datetime</li>
 <li>以&quot;/n&quot;结尾: numeric/double</li>
-<li>以&quot;/s&quot;结尾（缺省）: string</li>
+<li>以&quot;/s&quot;结尾（缺省）: string. 缺省为防止XSS攻击会做html编码，如&quot;a&amp;b&quot;处理成&quot;a&amp;b&quot;，设置参数doHtmlEscape可禁用这个功能。</li>
 <li>复杂类型：以&quot;/i+&quot;结尾: int array</li>
 <li>复杂类型：以&quot;/js&quot;结尾: json object</li>
 <li>复杂类型：List类型（以&quot;,&quot;分隔行，以&quot;:&quot;分隔列），类型定义如&quot;/i:n:b:dt:tm&quot; （列只支持简单类型，不可为复杂类型）</li>
@@ -288,7 +308,14 @@ $svcId = mparam("svcId/i");
 $itts = mparam("itts/i+")
 list($svcId, $itts) = mparam(["svcId", "itts/i+"]); # require one of the 2 params</code></pre><hr>
 <h2 id="setParam">@fn setParam($k, $v)</h2>
+<p class="fn"><strong>@fn <a id="setParam">setParam</a></strong> (@kv)</p>
 <p>设置参数，其实是模拟客户端传入的参数。以便供tableCRUD等函数使用。</p>
+<p>示例：</p>
+<pre><code>setParam("cond", "name LIKE " . Q("%$name%"));
+setParam([
+    "_fmt" =&gt; "list",
+    "orderby" =&gt; "id DESC"
+]);</code></pre>
 <p class="see"><strong>@see <a href="#tableCRUD">tableCRUD</a></strong> </p><hr>
 <h2 id="objarr2table">@fn objarr2table ($objarr, $fixedColCnt=null)</h2>
 <p>将objarr格式转为table格式, 如：</p>
@@ -377,26 +404,26 @@ execOne("UPDATE cinf SET appleDeviceToken=" . Q($token));</code></pre>
 <p>对于INSERT语句，设置参数$getInsertId=true, 可取新加入数据行的id. 例：</p>
 <pre><code>$sql = sprintf("INSERT INTO Hongbao (userId, createTm, src, expireTm, vdays) VALUES ({$uid}, '%s', '{$src}', '%s', {$vdays})", date('c', $createTm), date('c', $expireTm));
 $hongbaoId = execOne($sql, true);</code></pre><hr>
-<h2 id="queryOne">@fn queryOne($sql, $fetchMode = PDO::FETCH_NUM)</h2>
+<h2 id="queryOne">@fn queryOne($sql, $assoc = false)</h2>
 <p>执行查询语句，只返回一行数据，如果行中只有一列，则直接返回该列数值。<br />
-如果执行失败，返回false.</p>
+如果查询不到，返回false.</p>
 <p>示例：查询用户姓名与电话，默认返回值数组：</p>
 <pre><code>$row = queryOne("SELECT name,phone FROM User WHERE id={$id}");
 if ($row === false)
     throw new MyException(E_PARAM, "bad user id");
 // $row = ["John", "13712345678"]</code></pre>
 <p>也可返回关联数组:</p>
-<pre><code>$row = queryOne("SELECT name,phone FROM User WHERE id={$id}", PDO::FETCH_ASSOC);
+<pre><code>$row = queryOne("SELECT name,phone FROM User WHERE id={$id}", true);
 if ($row === false)
     throw new MyException(E_PARAM, "bad user id");
 // $row = ["name"=&gt;"John", "phone"=&gt;"13712345678"]</code></pre>
-<p>当查询结果只有一列时，直接返回该数值。</p>
+<p>当查询结果只有一列且assoc=false时，直接返回该数值。</p>
 <pre><code>$phone = queryOne("SELECT phone FROM User WHERE id={$id}");
 if ($phone === false)
     throw new MyException(E_PARAM, "bad user id");
 // $phone = "13712345678"</code></pre>
 <p class="see"><strong>@see <a href="#queryAll">queryAll</a></strong> </p><hr>
-<h2 id="queryAll">@fn queryAll($sql, $fetchMode = PDO::FETCH_NUM)</h2>
+<h2 id="queryAll">@fn queryAll($sql, $assoc = false)</h2>
 <p>执行查询语句，返回数组。<br />
 如果查询失败，返回空数组。</p>
 <p>默认返回值数组(varr):</p>
@@ -413,7 +440,7 @@ $rows = [
 // 可转成table格式返回
 return ["h"=&gt;["name", "phone"], "d"=&gt;$rows];</code></pre>
 <p>也可以返回关联数组(objarr)，如：</p>
-<pre><code>$rows = queryAll("SELECT name, phone FROM User", PDO::FETCH_ASSOC);
+<pre><code>$rows = queryAll("SELECT name, phone FROM User", true);
 if (count($rows) &gt; 0) {
     ...
 }
@@ -430,10 +457,15 @@ return objarr2table($rows);</code></pre>
 <p>返回 $BASE_DIR 对应的网络路径（最后以&quot;/&quot;结尾）。<br />
 如果指定了环境变量 P_URL_PATH（可在conf.user.php中设置）, 则根据该变量计算；否则自动判断（如果有符号链接可能不准）</p>
 <p>例：</p>
-<pre><code>P_URL_PATH = "/cheguanjia/" 或 P_URL_PATH = "/cheguanjia"</code></pre>
+<pre><code>P_URL_PATH = "/myapp/" 或 P_URL_PATH = "/myapp"</code></pre>
 <p>则</p>
-<pre><code>getBaseUrl() -&gt; "http://host/cheguanjia/"
-getBaseUrl(false) -&gt; "/cheguanjia/"</code></pre>
+<pre><code>getBaseUrl() -&gt; "http://myserver.com/myapp/"
+getBaseUrl(false) -&gt; "/myapp/"</code></pre>
+<p>注意：如果使用了反向代理等机制，该函数往往无法返回正确的值。</p>
+<p>例如 <a href="http://myserver.com/8081/myapp/api.php">http://myserver.com/8081/myapp/api.php</a> 被代理到 <a href="http://localhost:8081/myapp/api.php">http://localhost:8081/myapp/api.php</a><br />
+getBaseUrl()默认返回 &quot;<a href="http://myserver.com/myapp/">http://myserver.com/myapp/</a>&quot; 是错误的，可以设置P_BASE_URL解决：</p>
+<pre><code>putenv("P_URL_PATH=http://myserver.com/8081/myapp/");</code></pre>
+<p>这样getBaseUrl()可返回该值。</p>
 <p class="see"><strong>@see <a href="#$BASE_DIR">$BASE_DIR</a></strong> </p><hr>
 <h2 id="logit">@fn logit($s, $addHeader=true, $type="trace")</h2>
 <p>记录日志。</p>
@@ -458,7 +490,7 @@ $key      :加密的钥匙(密匙);</p>
 默认地，只显示中文错误，双击可显示详细信息。<br />
 例：</p>
 <pre><code>errQuit(E_PARAM, "接口错误", "Unknown ac=`$ac`");</code></pre><hr>
-<h2 id="addLog">@fn addLog($str, $logLevel=1)</h2>
+<h2 id="addLog">@fn addLog($str, $logLevel=0)</h2>
 <p>输出调试信息到前端。调试信息将出现在最终的JSON返回串中。<br />
 如果只想输出调试信息到文件，不想让前端看到，应使用logit.</p>
 <p class="see"><strong>@see <a href="#logit">logit</a></strong> </p><hr>
@@ -494,6 +526,21 @@ throw new DirectReturn();</code></pre><hr>
 }</code></pre>
 <p>则可以调用</p>
 <pre><code>$pluginCore = PluginCore::getInstance();</code></pre><hr>
+<h2 id="JDSingletonImp">@class JDSingletonImp (trait)</h2>
+<p>用于单件基类，提供getInstance方法。<br />
+使用时类名应以Base结尾，使用者可以重写该类，一般用于接口实现。例：</p>
+<pre><code>class PayImpBase
+{
+    use JDSingletonImp;
+}
+
+// 使用者重写Base类的某些方法
+class PayImp extends PayImpBase
+{
+}</code></pre>
+<p>则可以调用</p>
+<pre><code>$pay = PayImpBase::getInstance();
+// 创建的是PayImp类。如果未定义PayImp类，则创建PayImpBase类，或是当Base类是abstract类时将抛出错误。</code></pre><hr>
 <h2 id="JDEvent">@class JDEvent (trait)</h2>
 <p>提供事件监听(on)与触发(trigger)方法，例：</p>
 <pre><code>class PluginCore
@@ -549,17 +596,21 @@ getOssParam() -&gt; {url="mock"}</code></pre>
 <p>使用举例：</p>
 <pre><code>$sms = getExt(Ext_SmsSupport);
 $sms-&gt;sendSms(...);</code></pre>
-<p>当在运行目录中放置了文件CFG_MOCK_MODE后，则不必依赖外部系统，也可模拟执行这些操作。</p>
-<p class="see"><strong>@see <a href="#getExt">getExt</a></strong> </p>
-<p class="see"><strong>@see <a href="#CFG_MOCK_MODE">CFG_MOCK_MODE</a> <a href="#CFG_MOCK_T_MODE">CFG_MOCK_T_MODE</a> <a href="#MOCK_MODE">MOCK_MODE</a></strong> </p><hr>
+<p>要激活模拟模式，应在conf.user.php中设置：</p>
+<pre><code>putenv("P_TEST_MODE=1");
+putenv("P_MOCK_MODE=1");
+
+// 或者只开启部分模块的模拟：
+// putenv("P_MOCK_MODE=sms,wx");</code></pre>
+<p class="see"><strong>@see <a href="#getExt">getExt</a></strong> </p><hr>
 <h2 id="isMockMode">@fn isMockMode($extType)</h2>
 <p>判断是否模拟某外部扩展模块。如果$extType为null，则只要处于MOCK_MODE就返回true.</p><hr>
-<h2 id="ExtFactory::instance">@fn ExtFactory::instance()</h2>
+<h2 id="ExtFactory::getInstance">@fn ExtFactory::getInstance()</h2>
 <p class="see"><strong>@see <a href="#getExt">getExt</a></strong> </p><hr>
 <h2 id="ExtFactory::getObj">@fn ExtFactory::getObj($extType, $allowMock?=true)</h2>
 <p>获取外部依赖对象。一般用getExt替代更简单。</p>
 <p>示例：</p>
-<pre><code>$sms = ExtFactory::instance()-&gt;getObj(Ext_SmsSupport);</code></pre>
+<pre><code>$sms = ExtFactory::getInstance()-&gt;getObj(Ext_SmsSupport);</code></pre>
 <p class="see"><strong>@see <a href="#getExt">getExt</a></strong> </p><hr>
 <h2 id="getExt">@fn getExt($extType, $allowMock = true)</h2>
 <p>用于取外部接口对象，如：</p>
@@ -610,6 +661,13 @@ chpwd(oldpwd, pwd) -&gt; {_token, _expire}
 <p class="see"><strong>@see <a href="#param">param</a></strong>  取可选参数，可指定缺省值。</p>
 <h4 id="api_fw-2 对象型接口">2 对象型接口</h4>
 <p class="see"><strong>@see <a href="#AccessControl">AccessControl</a></strong>  对象型接口框架。</p>
+<p>v3.4支持非标准对象接口。实现Ordr.cancel接口：</p>
+<pre><code>class AC2_Ordr extends AccessControl
+{
+    function api_cancel() {
+    }
+}</code></pre>
+<p>非标准对象接口与与函数型接口写法类似，但AccessControl的众多回调函数对非标准对象接口无效。</p>
 <h4 id="api_fw-3 接口复用">3 接口复用</h4>
 <p>api.php可以单独执行，也可直接被调用，如</p>
 <pre><code>// set_include_path(get_include_path() . PATH_SEPARATOR . "..");
@@ -629,30 +687,41 @@ $ret = callSvc("genVoucher");
 <p class="see"><strong>@see <a href="#addLog">addLog</a></strong>  </p>
 <p class="see"><strong>@see <a href="#logit">logit</a></strong> </p>
 <h4 id="api_fw-5 插件机制">5 插件机制</h4>
+<p>插件是包含数据库/接口/前端逻辑页设计、后端实现、前端逻辑页实现的模块。</p>
+<p>其设计由插件目录/DESIGN.md定义，可由upgrade工具自动部署。</p>
 <p class="key"><strong>@key <a id="plugin/index.php">plugin/index.php</a></strong>  插件配置</p>
 <p>plugin/{pluginName}为插件目录。</p>
 <p>plugin/index.php是插件配置文件，在后端应用框架函数apiMain中引入，内容示例如下：</p>
 <pre><code>&lt;?php
 
-Plugins::add([ "plugin1", "plugin2" ]);</code></pre>
+Plugins::add("plugin1");
+Plugins::add("plugin2", "plugin2/index.php"); // 指定插件主文件，如不指定，默认为"plugin2/plugin.php"</code></pre>
 <p>表示当前应用使用两个插件&quot;plugin1&quot;和&quot;plugin2&quot;, 分别对应目录 plugin/plugin1和plugin/plugin2.</p>
 <p class="see"><strong>@see <a href="#Plugins::add">Plugins::add</a></strong> </p>
-<p class="key"><strong>@key <a id="plugin.php">plugin.php</a></strong>  插件定义</p>
-<p>插件实现在文件plugin/{pluginName}/plugin.php中，包括交互接口，以及插件API（后端调用接口），以优惠券插件&quot;coupon&quot;为例:</p>
+<p class="key"><strong>@key <a id="plugin">plugin</a></strong>  插件定义</p>
+<p>插件实现包括交互接口，以及插件API（后端调用接口），以优惠券插件&quot;coupon&quot;为例: (plugin/coupon/plugin.php)</p>
 <pre><code>&lt;?php
 
-// 可选：定义插件API, 必须继承 PluginBase类
-class PluginCoupon extends PluginBase
+// 可选：定义模块API，均使用静态变量或函数
+class Coupon
 {
-    // 声明插件API支持的事件, 如init, genCoupons事件：
-    // @event PluginCoupon.event.init()
-    // @event PluginCoupon.event.genCoupons($src)
+    // use MapCol; // 如果要用mapCol/mapSql函数，则打开该trait.
 
-    // 插件API函数
-    // @fn PluginCoupon.func1($arg1)
-    function func1($arg1)
+    static $conf1; // 模块配置
+    static function func1($arg1) // 模块公共接口
     {
+        // 调用实现部分
+        $imp = CouponImpBase::getInstance();
+        $imp-&gt;genCoupons($src);
     }
+}
+
+// 模块实现依赖的接口。如果必须由外部实现，则使用abstract类及函数
+abstract class CouponImpBase
+{
+    use JDSingletonImp;
+
+    abstract function genCoupons($src);
 }
 
 // 实现函数型交互接口takeCoupon
@@ -661,41 +730,15 @@ function api_takeCoupon() {}
 // 实现对象型交互接口 Coupon.query/get/set/del/add
 class AC1_Coupon extends AccessControl {}
 
-// 可选：返回插件配置
+// 可选：返回前端配置
 return [
     "js" =&gt; "m2/plugin.js", // 如果前端需要包含文件
-    "class" =&gt; "PluginCoupon" // 如果提供插件内部接口
 ];</code></pre>
 <p>注意：</p>
-<ul>
-<li>插件类必须继承PluginBase(包括单例、事件机制等方法)，它提供插件API，包括插件类提供的所有公共方法、属性和事件声明。<br />
-应通过格式化注释(@fn, @event等)标识这些API。</li>
-</ul>
-<p>在插件内部获取插件实例可以用：</p>
-<pre><code>    $plugin = PluginCoupon::getInstance();</code></pre>
-<p>如果在插件外部则需要用：</p>
-<pre><code>    $pluginCoupon = Plugins::getInstance('coupon');</code></pre>
 <p>调用插件API函数：</p>
-<pre><code>    $pluginCoupon-&gt;func1($arg1);</code></pre>
-<p>监听或触发插件事件：</p>
-<pre><code>    $pluginCoupon-&gt;on('init', 'onInit');
-    $pluginCoupon-&gt;trigger('genCoupons', [$src]);</code></pre>
-<p>事件命名规范与函数名相同，而事件处理函数的命名一般用&quot;on{事件名}&quot;.</p>
-<p class="see"><strong>@see <a href="#PluginBase">PluginBase</a></strong> </p>
-<ul>
-<li>
-<p>插件可以在构造函数__construct中初始化自身，例：</p>
-<pre><code>// 可选的初始化过程, 注意使用private，保持单例特性（Singleton）
-private function __construct()
-{
-    $this-&gt;trigger('init');
-}</code></pre>
-</li>
-</ul>
-<p>在应用初始化时（apiMain中），会创建所有插件类的实例（如果有的话）。</p>
-<ul>
-<li>交互接口应在插件设计文档(plugin/coupon/DESIGN.wiki)中定义原型。</li>
-</ul><hr>
+<pre><code>    Coupon::func1($arg1);</code></pre>
+<p>交互接口应在插件设计文档(plugin/coupon/DESIGN.md)中定义原型。</p>
+<p>插件依赖的接口应定义CouponImp类来实现，一般放在文件 php/class/CouponImp.php中自动加载。</p><hr>
 <h2 id="setRet">@fn setRet($code, $data?, $internalMsg?)</h2>
 <p class="param"><strong>@param $code</strong>  Integer. 返回码, 0表示成功, 否则表示操作失败。</p>
 <p class="param"><strong>@param $data</strong>  返回数据。</p>
@@ -718,6 +761,25 @@ throw new DirectReturn();
 <h2 id="setServerRev">@fn setServerRev()</h2>
 <p>根据全局变量&quot;SERVER_REV&quot;或应用根目录下的文件&quot;revision.txt&quot;， 来设置HTTP响应头&quot;X-Daca-Server-Rev&quot;表示服务端版本信息（最多6位）。</p>
 <p>客户端框架可本地缓存该版本信息，一旦发现不一致，可刷新应用。</p><hr>
+<h2 id="hasPerm">@fn hasPerm($perm)</h2>
+<p>检查权限。perm可以是单个权限或多个权限，例：</p>
+<pre><code>hasPerm(AUTH_USER); // 用户登录后可用
+hasPerm(AUTH_USER | AUTH_EMP); // 用户或员工登录后可用</code></pre>
+<p class="fn"><strong>@fn <a id="onGetPerms">onGetPerms</a></strong> ()</p>
+<p>开发者需要定义该函数，用于返回所有检测到的权限。hasPerm函数依赖该函数。</p>
+<p class="see"><strong>@see <a href="#checkAuth">checkAuth</a></strong> </p><hr>
+<h2 id="checkAuth">@fn checkAuth($perm)</h2>
+<p>用法与hasPerm类似，检查权限，如果不正确，则抛出错误，返回错误对象。</p>
+<pre><code>checkPerm(AUTH_USER); // 必须用户登录后可用
+checkPerm(AUTH_ADMIN | PERM_TEST_MODE); 要求必须管理员登录或测试模式才可用。</code></pre>
+<p class="see"><strong>@see <a href="#hasPerm">hasPerm</a></strong> </p><hr>
+<h2 id="getClientVersion">@fn getClientVersion()</h2>
+<p>通过参数<code>_ver</code>或useragent字段获取客户端版本号。</p>
+<p>@return: {type, ver, str}</p>
+<ul>
+<li>type: &quot;web&quot;-网页客户端; &quot;wx&quot;-微信客户端; &quot;a&quot;-安卓客户端; &quot;ios&quot;-苹果客户端</li>
+</ul>
+<p>e.g. {type: &quot;a&quot;, ver: 2, str: &quot;a/2&quot;}</p><hr>
 <h2 id="ConfBase">@class ConfBase</h2>
 <p>在conf.php中定义Conf类并继承ConfBase, 实现代码配置：</p>
 <pre><code>class Conf extends ConfBase
@@ -735,8 +797,8 @@ throw new DirectReturn();
 <p>例：对所有API调用检查ios版本：</p>
 <pre><code>static function onApiInit()
 {
-    $iosVer = getIosVersion();
-    if ($iosVer !== false &amp;&amp; $iosVer&lt;=15) {
+    $ver = getClientVersion();
+    if ($ver["type"] == "ios" &amp;&amp; $ver["ver"]&lt;=15) {
         throw new MyException(E_FORBIDDEN, "unsupport ios client version", "您使用的版本太低，请升级后使用!");
     }
 }</code></pre><hr>
@@ -750,58 +812,43 @@ throw new DirectReturn();
     $app = mparam('app');
     $ret['appName'] = 'my-app';
 }</code></pre><hr>
-<h2 id="PluginBase">@class PluginBase</h2>
-<p>插件内部接口应继承该类, 它具有以下方法：</p>
-<pre><code>static function getInstance();
-funcion on($eventName, $eventHandler);
-funcion trigger($eventName, array $args = []);</code></pre>
-<p class="see"><strong>@see <a href="#JDSingleton">JDSingleton</a> <a href="#JDEvent">JDEvent</a></strong> </p>
-<p class="see"><strong>@see <a href="#plugin/index.php">plugin/index.php</a></strong>  插件配置</p>
-<p class="see"><strong>@see <a href="#plugin.php">plugin.php</a></strong>  插件定义</p><hr>
-<h2 id="PluginBase.$colMap">@var PluginBase.$colMap</h2>
+<h2 id="MapCol.$colMap">@var MapCol.$colMap</h2>
 <p>%colMap = {tbl =&gt; [tblAlias, %cols]}<br />
 cols = {col =&gt; colAlias}</p>
-<p>先在插件接口文档DESIGN.wiki中声明本插件的数据库依赖：</p>
+<p>先在插件接口文档DESIGN.md中声明本插件的数据库依赖：</p>
 <pre><code>@see @Store: id, name, dscr
 @see @Ordr: id</code></pre>
-<p>在PluginCore::__construct中实现接口依赖，指定表名或列名对应（如果名称相同不必声明）</p>
-<pre><code>function __construct() {
-    $plugin1 = Plugins::getInstance('coupon');
-    $plugin1-&gt;colMap = [
-        "Store" =&gt; ["MyStore", [
-            "dscr" =&gt; "description"
-        ]],
-        "Ordr" =&gt; ["MyOrder"]
-    ];
-}</code></pre>
+<p>配置定表名或列名对应（如果名称相同不必声明）</p>
+<pre><code>Coupon::$colMap = [
+    "Store" =&gt; ["MyStore", [
+        "dscr" =&gt; "description"
+    ]],
+    "Ordr" =&gt; ["MyOrder"]
+];</code></pre>
 <p>在plugin实现时，使用mapCol/mapSql来使表名、列名可配置：</p>
-<pre><code>$plugin = PluginCoupon::getInstance();
-$tbl = $plugin-&gt;mapCol("Store"); // $tbl="MyStore"
-$tbl = $plugin-&gt;mapCol("User"); // $tbl="User" 未定义时，直接取原值
-$col = $plugin-&gt;mapCol("Store.dscr"); // $col="description"
-$col = $plugin-&gt;mapCol("Store.name"); // $col="name" 未定义时，直接取原值
+<pre><code>class Coupon
+{
+    use MapCol;
+}
+$tbl = Coupon::mapCol("Store"); // $tbl="MyStore"
+$tbl = Coupon::mapCol("User"); // $tbl="User" 未定义时，直接取原值
+$col = Coupon::mapCol("Store.dscr"); // $col="description"
+$col = Coupon::mapCol("Store.name"); // $col="name" 未定义时，直接取原值
 
 $sql = $plugin-&gt;mapSql("SELECT s.id, s.{Store.name}, s.{Store.dscr} FROM {Store} s INNER JOIN {Ordr} o ON o.id=s.{Store.storeId}");
 // $sql = "SELECT s.id, s.name, s.description FROM MyStore s INNER JOIN MyOrder o ON o.id=s.storeId"</code></pre>
-<p class="key"><strong>@key <a id="PluginBase.mapCol">PluginBase.mapCol</a></strong> ($tbl, $col=null)</p>
-<p class="key"><strong>@key <a id="PluginBase.mapSql">PluginBase.mapSql</a></strong> ($sql)</p><hr>
+<p class="key"><strong>@key <a id="MapCol.mapCol">MapCol.mapCol</a></strong> ($tbl, $col=null)</p>
+<p class="key"><strong>@key <a id="MapCol.mapSql">MapCol.mapSql</a></strong> ($sql)</p><hr>
 <h2 id="Plugins">@class Plugins</h2>
 <p class="see"><strong>@see <a href="#plugin/index.php">plugin/index.php</a></strong> </p><hr>
-<h2 id="Plugins::$map">@var Plugins::$map</h2><hr>
-<h2 id="Plugins::add">@fn Plugins::add($plugins)</h2>
-<p class="param"><strong>@param $plugins</strong>  ={ pluginName => {js, php, getInterface} }</p><hr>
+<h2 id="Plugins::$map">@var Plugins::$map</h2>
+<p>{ pluginName =&gt; %pluginCfg={js} }</p><hr>
+<h2 id="Plugins::add">@fn Plugins::add($pluginName, $file?="{pluginName}/plugin.php")</h2>
+<p>添加模块或插件。$file为插件主文件，可返回一个插件配置.</p>
+<p>以下旧的格式也兼容，现已不建议使用：</p>
+<pre><code>Plugins::add($pluginNameArray)</code></pre>
+<p class="see"><strong>@see <a href="#Plugins.$map">Plugins.$map</a></strong> </p><hr>
 <h2 id="Plugins::exists">@fn Plugins::exists($pluginName)</h2><hr>
-<h2 id="Plugins::getInstance">@fn Plugins::getInstance($pluginName, $allowNull = false)</h2>
-<p>获取插件类的实例，用于调用插件API。</p>
-<p>假设有插件coupon, 一般可定义插件接口类 PluginCoupon如:</p>
-<pre><code>class PluginCoupon extends PluginBase
-{
-}</code></pre>
-<p>在插件内部，应直接调用 PluginCoupon::getInstance() 来获得插件实例。<br />
-在插件外部才调用本函数。</p>
-<p>注意：应通过在plugin.php最后返回的插件配置中指定插件类：</p>
-<pre><code>[ 'class' =&gt; 'PluginCoupon' ]</code></pre>
-<p>主应用作为特殊模块，名称为'core', 对应类为 PluginCore.</p><hr>
 <h2 id="tableCRUD">@fn tableCRUD($ac, $tbl, $asAdmin?=false)</h2>
 <p>对象型接口的入口。<br />
 也可直接被调用，常与setParam一起使用, 提供一些定制的操作。</p>
@@ -835,7 +882,23 @@ $sql = $plugin-&gt;mapSql("SELECT s.id, s.{Store.name}, s.{Store.dscr} FROM {Sto
 <ul>
 <li>以上示例中的设计不可取，应使用标准对象接口来实现这个需求。</li>
 </ul>
-<p class="see"><strong>@see <a href="#setParam">setParam</a></strong> </p><hr>
+<p class="see"><strong>@see <a href="#setParam">setParam</a></strong> </p>
+<p class="see"><strong>@see <a href="#callSvcInt">callSvcInt</a></strong> </p>
+<p class="see"><strong>@see <a href="#callSvc">callSvc</a></strong> </p><hr>
+<h2 id="callSvcInt">@fn callSvcInt($ac)</h2>
+<p>内部调用另一接口，获得返回值。如果要设置GET, POST参数，分别用</p>
+<pre><code>setParam(key, value); // 设置get参数
+// 或批量设置用 setParam({key =&gt; value});
+$_POST[key] = value; // 设置post参数</code></pre>
+<p>与callSvc不同的是，它不处理事务、不写ApiLog，不输出数据，更轻量；<br />
+与tableCRUD不同的是，它支持函数型调用。</p>
+<p class="see"><strong>@see <a href="#setParam">setParam</a></strong> </p>
+<p class="see"><strong>@see <a href="#tableCRUD">tableCRUD</a></strong> </p>
+<p class="see"><strong>@see <a href="#callSvc">callSvc</a></strong> </p><hr>
+<h2 id="callSvc">@fn callSvc($ac?, $urlParam?, $postParam?, $cleanCall?=false, $hideResult?=false)</h2>
+<p>直接调用接口，返回数据。如果出错，将调用$GLOBALS['errorFn'] (缺省为errQuit).</p>
+<p class="param"><strong>@param $cleanCall</strong>  Boolean. 如果为true, 则不使用现有的$_GET, $_POST等变量中的值。</p>
+<p class="param"><strong>@param $hideResult</strong>  Boolean. 如果为true, 不输出结果。</p><hr>
 <h2 id="AccessControl">@module AccessControl</h2><div class="toc"><p style="margin-left:0em"><a href="#AccessControl-1 基本权限控制">1 基本权限控制</a></p>
 <p style="margin-left:0em"><a href="#AccessControl-2 虚拟字段">2 虚拟字段</a></p>
 <p style="margin-left:2em"><a href="#AccessControl-2.1 关联字段">2.1 关联字段</a></p>
@@ -851,6 +914,7 @@ $sql = $plugin-&gt;mapSql("SELECT s.id, s.{Store.name}, s.{Store.dscr} FROM {Sto
 <p style="margin-left:2em"><a href="#AccessControl-5.3 缺省输出字段列表">5.3 缺省输出字段列表</a></p>
 <p style="margin-left:2em"><a href="#AccessControl-5.4 最大每页数据条数">5.4 最大每页数据条数</a></p>
 <p style="margin-left:2em"><a href="#AccessControl-5.5 虚拟表和视图">5.5 虚拟表和视图</a></p>
+<p style="margin-left:0em"><a href="#AccessControl-6 query接口输出格式">6 query接口输出格式</a></p>
 </div>
 <p>对象型接口框架。<br />
 AccessControl简写为AC，同时AC也表示自动补全(AutoComplete).</p>
@@ -884,7 +948,10 @@ Ordr.del(id=1)</code></pre>
 <p class="key"><strong>@key <a id="AC2_">AC2_</a></strong>   员工权限(AUTH_EMP/AUTH_MGR), 如未定义，报权限不足错误。</p>
 <p>因而上例中命名为 &quot;AC1_Ordr&quot; 就表示用户登录后调用Ordr对象接口，将受该类控制。而这是个空的类，所以拥有一切操作权限。</p>
 <p>框架为AUTH_ADMIN权限自动选择AC0_类，其它类可以通过函数 onCreateAC 进行自定义，仍未定义的框架使用AC_类。</p>
-<p class="see"><strong>@see <a href="#onCreateAC">onCreateAC</a></strong> </p>
+<p class="fn"><strong>@fn <a id="onCreateAC">onCreateAC</a></strong> ($obj)</p>
+<p>需开发者在api.php中定义。<br />
+根据对象名，返回权限控制类名，如 AC1<em>{$obj}。<br />
+如果返回null, 则默认为 AC</em>{obj}</p>
 <h4 id="AccessControl-1 基本权限控制">1 基本权限控制</h4>
 <p class="var"><strong>@var <a id="AccessControl::$allowedAc">AccessControl::$allowedAc</a></strong> ?=["add", "get", "set", "del", "query"] 设定允许的操作，如不指定，则允许所有操作。</p>
 <p class="var"><strong>@var <a id="AccessControl::$readonlyFields">AccessControl::$readonlyFields</a></strong>  ?=[]  (影响add/set) 字段列表，添加/更新时为这些字段填值无效（但不报错）。</p>
@@ -1075,6 +1142,7 @@ class AC1_UserTaskLog extends AccessControl
 </ul>
 <h4 id="AccessControl-3 子表">3 子表</h4>
 <p class="var"><strong>@var <a id="AccessControl::$subobj">AccessControl::$subobj</a></strong>  (for get/query) 定义子表</p>
+<p>subobj: { name =&gt; {sql, default, wantOne} }</p>
 <p>设计接口：</p>
 <pre><code>Ordr.get() -&gt; {id, ..., @orderLog}
 orderLog:: {id, tm, dscr, ..., empName} 订单日志子表。</code></pre>
@@ -1082,11 +1150,12 @@ orderLog:: {id, tm, dscr, ..., empName} 订单日志子表。</code></pre>
 <pre><code>class AC1_Ordr extends AccessControl
 {
     protected $subobj = [
-        "orderLog" =&gt; ["sql"=&gt;"SELECT ol.*, e.name AS empName FROM OrderLog ol LEFT JOIN Employee e ON ol.empId=e.id WHERE orderId=%d", "wantOne"=&gt;false],
+        "orderLog" =&gt; ["sql"=&gt;"SELECT ol.*, e.name AS empName FROM OrderLog ol LEFT JOIN Employee e ON ol.empId=e.id WHERE orderId=%d", "default"=&gt;false, "wantOne"=&gt;false],
     ];
 }</code></pre>
-<p>子表一般通过get操作来获取，执行指定的SQL语句作为结果。结果以一个数组返回[{id, tm, ...}]，如果指定wantOne=&gt;true, 则结果以一个对象返回即 {id, tm, ...}, 适用于主表与子表一对一的情况。</p>
-<p>通过在Query操作上指定参数{wantArray:1}也可以返回子表，但目前不支持分页等操作。</p>
+<p>子表和虚拟字段类似，支持get/query操作，执行指定的SQL语句作为结果。结果以一个数组返回[{id, tm, ...}]。<br />
+&quot;default&quot;选项与虚拟字段(vcolDefs)上的&quot;default&quot;选项一样，表示当未指定&quot;res&quot;参数时，是否默认返回该字段。<br />
+如果指定wantOne=&gt;true, 则结果以一个对象返回即 {id, tm, ...}, 适用于主表与子表一对一的情况。</p>
 <h4 id="AccessControl-4 操作完成回调">4 操作完成回调</h4>
 <p class="fn"><strong>@fn <a id="AccessControl::onAfter">AccessControl::onAfter</a></strong> (&$ret)  (for all) 操作完成时的回调。可修改操作结果ret。</p>
 <p>如果要对get/query结果中的每行字段进行设置，应重写回调 onHandleRow.<br />
@@ -1111,7 +1180,6 @@ orderLog:: {id, tm, dscr, ..., empName} 订单日志子表。</code></pre>
 <h5 id="AccessControl-5.1 编号自定义生成">5.1 编号自定义生成</h5>
 <p class="fn"><strong>@fn <a id="AccessControl::onGenId">AccessControl::onGenId</a></strong> () (for add) 指定添加对象时生成的id. 缺省返回0表示自动生成.</p>
 <h5 id="AccessControl-5.2 缺省排序">5.2 缺省排序</h5>
-<p class="fn"><strong>@fn <a id="AccessControl::getDefaultSort">AccessControl::getDefaultSort</a></strong> ()  (for query)取缺省排序.</p>
 <p class="var"><strong>@var <a id="AccessControl::$defaultSort">AccessControl::$defaultSort</a></strong>  ?= "t0.id" (for query)指定缺省排序.</p>
 <p>示例：Video对象默认按id倒序排列：</p>
 <pre><code>class AC_Video extends AccessControl 
@@ -1124,7 +1192,7 @@ orderLog:: {id, tm, dscr, ..., empName} 订单日志子表。</code></pre>
 <h5 id="AccessControl-5.4 最大每页数据条数">5.4 最大每页数据条数</h5>
 <p class="fn"><strong>@fn <a id="AccessControl::getMaxPageSz">AccessControl::getMaxPageSz</a></strong> ()  (for query) 取最大每页数据条数。为非负整数。</p>
 <p class="var"><strong>@var <a id="AccessControl::$maxPageSz">AccessControl::$maxPageSz</a></strong>  ?= 100 (for query) 指定最大每页数据条数。值为负数表示取PAGE_SZ_LIMIT值.</p>
-<p>前端通过 {obj}.query(_pagesz)来指定每页返回多少条数据，缺省是20条，最高不可超过100条。当指定为负数时，表示按最大允许值=min($maxPageSz, PAGE_SZ_LIMIT)返回。<br />
+<p>前端通过 {obj}.query(pagesz)来指定每页返回多少条数据，缺省是20条，最高不可超过100条。当指定为负数时，表示按最大允许值=min($maxPageSz, PAGE_SZ_LIMIT)返回。<br />
 PAGE_SZ_LIMIT目前定为10000条。如果还不够，一定是应用设计有问题。</p>
 <p>如果想返回每页超过100条数据，必须在后端设置，如：</p>
 <pre><code>class MyObj extends AccessControl
@@ -1173,7 +1241,19 @@ ORDER BY t0.id DESC</code></pre>
 <li>重写 AccessControl::$table</li>
 <li>重写 AccessControl::$defaultRes</li>
 <li>用addCond添加缺省查询条件</li>
-</ul><hr>
+</ul>
+<h4 id="AccessControl-6 query接口输出格式">6 query接口输出格式</h4>
+<p>query接口支持fmt参数：</p>
+<ul>
+<li>list: 生成<code>{ @list, nextkey?, total? }</code>格式，而非缺省的 <code>{ @h, @d, nextkey?, total? }</code>格式</li>
+<li>csv/txt/excel: 导出文件，注意为了避免分页，调用时可设置较大的pagesz值。
+<ul>
+<li>csv: 逗号分隔的文件，utf8编码。</li>
+<li>excel: 逗号分隔的文件，gb2312编码以便excel可直接打开不会显示中文乱码。</li>
+<li>txt: 制表分隔的文件, utf8编码。</li>
+</ul></li>
+</ul>
+<p>TODO: 可加一个系统参数<code>_enc</code>表示输出编码的格式。</p><hr>
 <h2 id="AccessControl::addRes">@fn AccessControl::addRes($res, $analyzeCol=true)</h2>
 <p>添加列或计算列. </p>
 <p>注意: </p>
@@ -1217,9 +1297,5 @@ q:: 查询条件，值为"paid"时，查询10天内已付款的订单。且结�
 <p class="return"><strong>@return Boolean</strong>  T/F</p>
 <p>用于AccessControl子类添加已在vcolDefs中定义的vcol. 一般应先考虑调用addRes(col)函数.</p>
 <p class="see"><strong>@see <a href="#AccessControl::addRes">AccessControl::addRes</a></strong> </p><hr>
-<h2 id="callSvc">@fn callSvc($ac?, $urlParam?, $postParam?, $cleanCall?=false, $hideResult?=false)</h2>
-<p>直接调用接口，返回数据。如果出错，将调用$GLOBALS['errorFn'] (缺省为errQuit).</p>
-<p class="param"><strong>@param $cleanCall</strong>  Boolean. 如果为true, 则不使用现有的$_GET, $_POST等变量中的值。</p>
-<p class="param"><strong>@param $hideResult</strong>  Boolean. 如果为true, 不输出结果。</p><hr>
 <div style="text-align:center">Generated by jdcloud-gendoc</div>
 </html>

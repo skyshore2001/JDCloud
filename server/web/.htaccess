@@ -1,0 +1,3 @@
+<FilesMatch "(\.html|\.js|\.css)$">
+Header set Cache-Control "no-cache"
+</FilesMatch>

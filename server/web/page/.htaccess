@@ -1,0 +1,8 @@
+<FilesMatch "(\.html|\.js)$">
+Header set Cache-Control "no-cache"
+</FilesMatch>
+
+<FilesMatch "(\.html)$">
+Header set Content-Type "text/html;charset=utf-8"
+</FilesMatch>
+

@@ -1,0 +1,33 @@
+<div title="群发短信" style="padding:20px 40px 20px 40px;width:500px;height:300px;">  
+	<form method="POST">
+		<table>
+			<tr>
+				<td>通道</td>
+				<td>
+					<label><input type="checkbox" name="channel" value="1" checked>使用营销通道</label>
+					<p class=hint>营销通道速度慢，不会被人工阻止，适合营销信息</p>
+				</td>
+			</tr>
+			<tr>
+				<td></td>
+				<td>
+					<label><input type="checkbox" name="toAll" value="0">发送给所有用户</label>
+				</td>
+			</tr>
+			<tr>
+				<td width=100px>手机号</td>
+				<td>
+					<textarea name="phone" rows=1 cols=30 class="easyui-validatebox" data-options="required:true"></textarea>
+					<p class=hint>多个手机号使用逗号分隔</p>
+				</td>
+			</tr>
+			<tr>
+				<td>发送内容</td>
+				<td>
+					<textarea rows=5 cols=30 name="content"></textarea>
+					<p class=hint>注意：可以换行输入多行</p>
+				</td>
+			</tr>
+		</table>
+	</form>
+</div>

@@ -1,3 +1,31 @@
+## v4.0 - 2017/6
+
+重构项：
+
+- 基于本项目分离出以下可独立应用的筋斗云家族项目：
+	- jdcloud-php 筋斗云后端框架
+	- jdcloud-m 筋斗云前端框架
+	- jdcloud-mui 筋斗云前端单页应用框架
+	- jdcloud-wui 筋斗云移动端单页应用框架
+	- jdcloud-cs 筋斗云后端框架(.NET版)
+	- jdcloud-java 筋斗云后端框架(java版)
+	- jdcloud-rtest 筋斗云后端接口测试框架
+	- jdcloud-gendoc 筋斗云文档工具
+
+- 移动前端: 使用分离出的jdcloud-mui库。
+- 管理端: 使用分离出的jdcloud-wui库，支持逻辑页模块化开发。将缺省主题由蓝色改为黑白风格。
+- 设计文档使用更通用的markdown(md)格式替代小众的vimwiki(wiki)。
+- 插件重构: 将原先示例功能插件化，重新定义模块编码规范，引入JDSingletonImp模式替换原有的PluginBase及其事件机制。
+- 后端: 框架文件重构到server/php/jdcloud-php目录下。
+- 后端: 引入autoload机制（默认未开启）。包含php/autoload.php可使得php/class目录下的类文件按需加载。
+
+改进项：
+
+- 后端: 测试模式只能通过后端配置；模拟模式以及调试日志等级只在测试模式下有效。
+- 后端: 支持对象型接口使用非标准接口，如Ordr.cancel。
+- 部署工具: 支持MSSQL
+- 上线工具: 支持sftp; 更智能可自动关联线上代码库和online代码库
+
 ## v3.3 - 2017/1
 
 - 前端: 支持模拟接口(MUI.mockData)

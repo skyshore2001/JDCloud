@@ -5,7 +5,7 @@ require_once(dirname(__FILE__) . "/../server/app.php");
 ###### config {{{
 global $METAFILE, $LOGF, $CHAR_SZ, $SQLDIFF;
 
-$METAFILE = getenv("P_METAFILE") ?: __DIR__ . '/../DESIGN.wiki';
+$METAFILE = getenv("P_METAFILE") ?: __DIR__ . '/../DESIGN.md';
 $LOGF = "upgrade.log";
 
 $CHAR_SZ = [
@@ -13,13 +13,80 @@ $CHAR_SZ = [
 	'm' => 50,
 	'l' => 255 
 ];
+#}}}
 
-$SQLDIFF = [
-	"NTEXT" => $USE_MYSQL? "TEXT CHARACTER SET utf8": "NTEXT",
-	"AUTO_INCREMENT" => $USE_MYSQL? 'AUTO_INCREMENT': 'AUTOINCREMENT',
-	"MONEY" => $USE_MYSQL? "DECIMAL(19,4)": "MONEY",
-	"CREATE_OPT" => $USE_MYSQL? "DEFAULT CHARSET=utf8": ""
-];
+###### db adapter {{{
+class SqlDiff
+{
+	protected $dbh;
+
+	public $ntext = "NTEXT";
+	public $autoInc = 'AUTOINCREMENT';
+	public $money = "MONEY";
+	public $createOpt = "";
+
+	public static function create($dbh) {
+		global $DBTYPE;
+		$cls = "SqlDiff_{$DBTYPE}";
+		if (! class_exists($cls))
+			throw new Exception("*** unsupported dbtype=`$DBTYPE`");
+		$inst = new $cls;
+		$inst->dbh = $dbh;
+		return $inst;
+	}
+
+	public function tableExists($tbl) {
+		return false;
+	}
+
+	public function safeName($name) {
+		return $name;
+	}
+}
+
+class SqlDiff_sqlite extends SqlDiff
+{
+	public function tableExists($tbl) {
+		$sth = $this->dbh->query("select count(*) from sqlite_master where type='table' and name like '$tbl'"); # use "like" rather than "=" to ignore case
+		$n = $sth->fetchColumn();
+		return $n > 0;
+	}
+}
+
+class SqlDiff_mysql extends SqlDiff
+{
+	public $ntext = "TEXT CHARACTER SET utf8";
+	public $autoInc = 'AUTO_INCREMENT';
+	public $money = "DECIMAL(19,4)";
+	public $createOpt = "DEFAULT CHARSET=utf8";
+
+	public function tableExists($tbl) {
+		$sth = $this->dbh->query("show tables like '$tbl'");
+		return $sth->fetch() !== false;
+	}
+}
+
+class SqlDiff_mssql extends SqlDiff
+{
+	public $ntext = "NTEXT";
+	public $autoInc = 'IDENTITY(1,1)';
+	public $money = "DECIMAL(19,4)";
+	public $createOpt = ""; // "DEFAULT CHARSET=utf8";
+
+	public function tableExists($tbl) {
+		$sth = $this->dbh->query("select object_id('$tbl')");
+		$val = $sth->fetchColumn();
+		return !is_null($val);
+	}
+
+	public function safeName($name) {
+		if (preg_match('/^(user|order)$/i', $name));
+			return "\"$name\"";
+		return $name;
+	}
+}
+
+$SQLDIFF = null;
 #}}}
 
 ###### functions {{{
@@ -30,23 +97,6 @@ function die1($msg)
 	exit(1);
 }
 
-function tableExists($dbh, $tbl)
-{
-	global $USE_MYSQL;
-	# SQLITE: select count(*) from sqlite_master where type='table' and name=?
-	# MYSQL: show tables like '{name}'
-	if ($USE_MYSQL) {
-		$sth = $dbh->query("show tables like '$tbl'");
-		return $sth->fetch() !== false;
-	}
-	else {
-		$sth = $dbh->query("select count(*) from sqlite_master where type='table' and name like '$tbl'"); # use "like" rather than "=" to ignore case
-		$n = $sth->fetchColumn();
-		return $n > 0;
-	}
-	return false;
-}
-
 function genColSql($fieldDef)
 {
 	global $CHAR_SZ, $SQLDIFF;
@@ -54,13 +104,13 @@ function genColSql($fieldDef)
 	$f1 = ucfirst(preg_replace('/(\d|\W)*$/', '', $f));
 	$def = '';
 	if ($f == 'id') {
-		$def = "INTEGER PRIMARY KEY " . $SQLDIFF['AUTO_INCREMENT'];
+		$def = "INTEGER PRIMARY KEY " . $SQLDIFF->autoInc;
 	}
 	elseif (preg_match('/\((\w+)\)$/', $f, $ms)) {
 		$tag = $ms[1];
 		$f = preg_replace('/\((\w+)\)$/', '', $f);
 		if ($tag == 't') {
-			$def = $SQLDIFF["NTEXT"];
+			$def = $SQLDIFF->ntext;
 		}
 		elseif ($tag == 's' || $tag == 'm' || $tag == 'l') {
 			$def = "NVARCHAR(" . $CHAR_SZ[$tag] . ")";
@@ -75,14 +125,14 @@ function genColSql($fieldDef)
 	elseif (preg_match('/(@|&|#)$/', $f, $ms)) {
 		$f = substr_replace($f, "", -1);
 		if ($ms[1] == '@')
-			$def = $SQLDIFF["MONEY"];
+			$def = $SQLDIFF->money;
 		else if ($ms[1] == '&')
 			$def = "INTEGER";
 		else if ($ms[1] == '#')
 			$def = "REAL";
 	}
 	elseif (preg_match('/(Price|Qty|Total|Amount)$/', $f1)) {
-		$def = $SQLDIFF["MONEY"];
+		$def = $SQLDIFF->money;
 	}
 	elseif (preg_match('/Id$/', $f1)) {
 		$def = "INTEGER";
@@ -111,7 +161,8 @@ function genColSql($fieldDef)
 function genSql($meta)
 {
 	global $SQLDIFF;
-	$sql = "CREATE TABLE {$meta['name']} (";
+	$table = $SQLDIFF->safeName($meta['name']);
+	$sql = "CREATE TABLE $table (";
 	$n = 0;
 	foreach ($meta["fields"] as $f) {
 		if (++$n > 1) {
@@ -119,7 +170,7 @@ function genSql($meta)
 		}
 		$sql .= genColSql($f);
 	}
-	$sql .= ") " . $SQLDIFF["CREATE_OPT"] . ";\n";
+	$sql .= ") " . $SQLDIFF->createOpt . ";\n";
 	return $sql;
 }
 
@@ -288,6 +339,8 @@ class UpgHelper
 			};
 		}
 		$this->dbh = dbconn($fnConfirm);
+		global $SQLDIFF;
+		$SQLDIFF = SqlDiff::create($this->dbh);
 		try {
 			$sth = $this->dbh->query('SELECT ver FROM cinf');
 			$this->dbver = $sth->fetchColumn();
@@ -343,6 +396,8 @@ class UpgHelper
 
 	private function _addColByMeta($tableName, $fieldMeta)
 	{
+		global $SQLDIFF;
+		$tableName = $SQLDIFF->safeName($tableName);
 		$sql = "ALTER TABLE $tableName ADD " . genColSql($fieldMeta);
 		logstr("-- $sql\n");
 		$rv = $this->dbh->exec($sql);
@@ -351,12 +406,14 @@ class UpgHelper
 	private function _addTableByMeta($tableMeta, $force = false)
 	{
 		$tbl = $tableMeta['name'];
-		if (tableExists($this->dbh, $tbl))
+		global $SQLDIFF;
+		$tbl1 = $SQLDIFF->safeName($tbl);
+		if ($SQLDIFF->tableExists($tbl))
 		{
 			if (!$force)
 			{
 				# check whether to add missing fields
-				$rs = $this->execSql("SELECT * FROM (SELECT 1 AS id) t0 LEFT JOIN $tbl ON 1<>1", true);
+				$rs = $this->execSql("SELECT * FROM (SELECT 1 AS id) t0 LEFT JOIN $tbl1 ON 1<>1", true);
 				$row = $rs[0];
 				$found = false;
 
@@ -371,7 +428,7 @@ class UpgHelper
 				}
 				return $found;
 			}
-			$this->execSql("DROP TABLE $tbl");
+			$this->execSql("DROP TABLE $tbl1");
 		}
 		logstr("-- {$tbl}: " . join(',', $tableMeta['fields']) . "\n");
 		$sql = genSql($tableMeta);

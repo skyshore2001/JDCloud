@@ -158,4 +158,4 @@ class AC2_Ordr extends AC0_Ordr
 }
 // }}}
 
-// vim: set foldmethod=marker :
+// vi: foldmethod=marker
