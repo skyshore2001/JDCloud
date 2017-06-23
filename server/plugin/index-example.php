@@ -1,3 +1,8 @@
 <?php
 
-Plugins::add(["login", "test", "upload", "syslog", "plugin1"]);
+Plugins::add("login");
+Plugins::add("test");
+Plugins::add("upload");
+Plugins::add("syslog");
+Plugins::add("plugin1");
+
