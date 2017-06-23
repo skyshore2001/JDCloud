@@ -7,302 +7,51 @@
 <link rel="stylesheet" type="text/css" href="lib/easyui/themes/default/easyui.css">
 <link rel="stylesheet" type="text/css" href="lib/easyui/themes/icon.css">
 <link rel="stylesheet" type="text/css" href="style.css">
+<link rel="stylesheet" type="text/css" href="font-icon/css/font-awesome.css">
+
 <script language="javascript" src="lib/easyui/jquery.easyui.min.js" type="text/javascript" charset="utf-8"></script>
 <script language="javascript" src="lib/easyui/locale/easyui-lang-zh_CN.js" type="text/javascript" charset="utf-8"></script>
 
-<script language="javascript" src="../m/lib/common.js"type="text/javascript" charset="utf-8"></script>
-<script language="javascript" src="lib/app_fw.js"type="text/javascript" charset="utf-8"></script>
-<script language="javascript" src="app.js"type="text/javascript" charset="utf-8"></script>
+<script src="lib/jdcloud-wui.js"></script>
 
-<style type="text/css">
-/* css {{{ */
+<script src="app.js"></script>
+<script src="adm.js"></script>
 
-/* css }}} */
-</style>
-
-<script language="javascript">
-
-// ====== globals {{{
-var g_data = {}; // { userInfo={id,uname} }
-//}}}
-
-// ====== data-options {{{
-var OrderColumns = {
-	statusStr: function (value, row) {
-		return OrderStatusStr[row.status] || row.status;
-	},
-	statusStyler: function (value, row) {
-		var color;
-		if (value == "CR")
-			color = Color.Warning;
-		else if (value == "ST")
-			color = Color.Error;
-		else if (value == "RE")
-			color = Color.Info;
-		if (color)
-			return "background-color: " + color;
-	},
-};
-//}}}
-
-// ====== functions {{{
-function showDlgLogin()
-{
-		var jdlg = $("#dlgLogin");
-		WUI.showDlg(jdlg, {
-			url: makeUrl("login"),
-			noCancel: true,
-			okLabel: '登录',
-
-			onOk: function (data) {
-				WUI.closeDlg(jdlg);
-				handleLogin(data);
-			}
-		});
-}
-
-function handleLogin(data)
-{
-	WUI.handleLogin(data);
-}
-
-function initPageHome()
-{
-	var jpage = $(this);
-
-	var jtbl = jpage.find("#tblAdmin");
-	jtbl.datagrid({
-		data: [g_data.userInfo]
-	});
-
-	// apply permission
-	$(".perm-admin").show();
-}
-
-function initPageEmployee() 
-{
-	var jpage = $(this);
-	var jtbl = jpage.find("#tblEmployee");
-	var jdlg = $("#dlgEmployee");
-
-	jtbl.datagrid({
-		url: makeUrl(["Employee", "query"]),
-		toolbar: WUI.dg_toolbar(jtbl, jdlg),
-		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
-	});
-}
-
-function initDlgEmployee()
-{
-	var jdlg = $(this);
-	var jfrm = jdlg.find("form");
-	jfrm.on("loaddata", function (ev, data) {
-		hiddenToCheckbox(jfrm.find("#divPerms"));
-	})
-	.on("savedata", function (ev) {
-		checkboxToHidden(jfrm.find("#divPerms"));
-	});
-}
-
-function initPageUser() 
-{
-	var jpage = $(this);
-	var jtbl = jpage.find("#tblUser");
-	var jdlg = $("#dlgUser");
-
-	jtbl.datagrid({
-		url: makeUrl(["User", "query"]),
-		toolbar: WUI.dg_toolbar(jtbl, jdlg),
-		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
-	});
-}
-
-function initPageOrder() 
-{
-	var jpage = $(this);
-	var jtbl = jpage.find("#tblOrder");
-	var jdlg = $("#dlgOrder");
-
-	jtbl.datagrid({
-		url: makeUrl(["Ordr", "query"]),
-		toolbar: WUI.dg_toolbar(jtbl, jdlg),
-		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg),
-		sortName:'id',
-		sortOrder:'desc'
-	});
-}
-
-function initPageQuery() 
-{
-	var jpage = $(this);
-
-	jpage.find("#btnQuery").click(btnQuery_click);
-
-	var jdivInfo = jpage.find("#divInfo");
-	function addDynInfo(html)
-	{
-		var jo = $("<div class=\"dyninfo\">" + html + "</div>");
-		jo.appendTo(jdivInfo);
-		jdivInfo.show();
-		return jo;
-	}
-
-	function cleanDynInfo()
-	{
-		jdivInfo.find(".dyninfo").remove();
-		jdivInfo.hide();
-	}
-
-	// 只允许SELECT语句, 缺省禁用其它语句; 如果要用, 必须在语句前加"!".
-	function btnQuery_click(ev)
-	{
-		var query = jpage.find("#txtQuery").val();
-		cleanDynInfo();
-
-		var ms = query.match(/select\s+.*?from\s+(\S+)/);
-		if (ms) {
-			addDynInfo("主表: <span id=\"txtMainTable\">" + ms[1] + "</span>");
-			if (query.search(/limit/i) < 0) {
-				addDynInfo("<span class=\"status-warning\">只返回前20行.</span>");
-				query += " LIMIT 20";
-			}
-		}
-		else {
-			if (query[0] != "!") {
-				app_alert("不允许SELECT之外的语句.", "w");
-				return;
-			}
-			query = query.substr(1);
-		}
-
-		callSvr("execSql", {fmt: "table"}, api_execSql, {sql: query}, {noex: 1});
-
-		function api_execSql(data)
-		{
-			var jtbl = jpage.find("#tblQueryResult");
-			jtbl.empty();
-
-			if (data === false) {
-				if (this.lastError) {
-					data = "Error " + this.lastError[0] + ": " + this.lastError[1];
-					if (this.lastError[2]) {
-						data += "\n" + this.lastError[2];
-					}
-				}
-			}
-
-			// 不是table格式, 转成table格式
-			if (data.h === undefined) {
-				data = {h: ["Result"], d: [ [ "<xmp>" + data + "</xmp>"] ] };
-			}
-
-			// to html table
-			var jhead = $("<thead></thead>").appendTo(jtbl);
-			var cols = [];
-			$.each (data.h, function (i, e) {
-					cols.push({useTh: true, html: e});
-			});
-			jhead.append(row2tr({cols: cols}));
-
-			$.each(data.d, function (i, row) {
-				cols = [];
-				$.each (row, function (i, e) {
-					if (e === null)
-						e = "null";
-					var col = {
-						html: e,
-						on: {dblclick: td_dblclick_updateOneField}
-					};
-					cols.push(col);
-				});
-				jtbl.append(row2tr({cols: cols}));
-			});
-		}
-
-		function td_dblclick_updateOneField(ev)
-		{
-			var jtd = $(this);
-			var jtbl = jtd.closest("table");
-
-			var tbl = jdivInfo.find("#txtMainTable").text();
-			if (tbl == "")
-				return;
-
-			var idCol = jtbl.find("th").filter(function () { return $(this).text() == "id"; }).prop("cellIndex");
-			if (idCol === undefined) {
-				app_alert("没有id字段, 无法更新!", "e");
-				return;
-			}
-			var idVal = jtd.closest("tr").find("td:eq(" + idCol + ")").text();
-
-			var oldVal = jtd.text();
-			var newVal = prompt("将值 \"" + oldVal + "\" 更新为: (可以填写null或empty)", oldVal);
-			if (newVal == null)
-				return;
-
-			newVal1 = newVal;
-			if (newVal == "null") {
-			}
-			else if (newVal == "empty" || newVal == "''") {
-				newVal1 = "''";
-			}
-			else {
-				newVal1 = "'" + newVal.replace(/'/g, "\\'") + "'";
-			}
-
-			var colName = jtbl.find("th:eq(" + jtd[0].cellIndex + ")").text();
-			var sql = "UPDATE " + tbl + " SET " + colName + "=" + newVal1 + " WHERE id=" + idVal;
-			addDynInfo("更新语句: <span class=\"status-warning\">" + sql + "<span>");
-			callSvr("execSql", {sql: sql}, function (data) {
-					jtd.text(newVal).css({backgroundColor: "yellow"});
-					app_show("执行成功, 更新记录数: " + data);
-			});
-		}
-
-	}
-}
-// }}}
-
-// ====== main {{{
-var APP_TITLE = "超级管理端";
-var APP_NAME = "admin";
-
-function main()
-{
-	WUI.setApp({
-		appName: APP_NAME,
-		title: APP_TITLE,
-		onShowLogin: showDlgLogin
-	});
-	setAppTitle(APP_TITLE);
-
-	WUI.tryAutoLogin(handleLogin);
-}
-
-$(main);
-
-//}}}
-
-</script>
+<!-- 模拟接口数据 -->
+<!-- script src="mocktable.js"></script>
+<script src="mockdata.js"></script-->
 </head>
 
 <body class="easyui-layout">
 <div id="divNoScript"><font color=red>您的浏览器禁用了脚本，不能使用本系统!</font></div>
 <script language="javascript">$("#divNoScript").hide();</script>
 
-<div id="menu" region="west" split="true" title="选择操作" style="width:150px;padding:10px;">
-	<!--a href="#pageHome" class="easyui-linkbutton" icon="icon-ok">首页</a><br/><br/-->
-	<!--a href="?logout" class="easyui-linkbutton" icon="icon-ok">修改密码</a><br/><br/-->
-	<a href="?logout" class="easyui-linkbutton" icon="icon-ok">退出系统</a><br/><br/>
+<div id="menu" region="west" split="true" title="选择操作" style="width:200px;">
+<!--
+如果为菜单加图标，将图标和文字放到span中如：
+	<a href="?chpwd"><span><i class="fa fa-pencil-square-o"></i>修改密码</span></a>
+
+menu-expand-group下第一个a为菜单组标题，可加"expanded"类使其默认展开。
+-->
+	<a href="javascript:logout()"><span><i class="fa fa-user-times"></i>退出系统</span></a>
 
 	<div class="perm-admin" style="display:none">
-		<hr>
-		<a href="#pageEmployee" class="easyui-linkbutton" icon="icon-ok">员工管理</a><br/><br/>
-		<a href="#pageUser" class="easyui-linkbutton" icon="icon-ok">用户管理</a><br/><br/>
-		<a href="#pageOrder" class="easyui-linkbutton" icon="icon-ok">订单管理</a><br/><br/>
 
-		<hr>
-		<a href="#pageQuery" class="easyui-linkbutton" icon="icon-ok">查询语句</a><br/><br/>
+		<div class="menu-expand-group">
+			<a class="expanded"><span><i class="fa fa-pencil-square-o"></i>运营管理</span></a>
+			<div class="menu-expandable">
+				<a href="#pageEmployee">员工管理</a>
+				<a href="#pageUser">用户管理</a>
+				<a href="#pageOrder">订单管理</a>
+			</div>
+		</div>
+
+		<div class="menu-expand-group">
+			<a><span><i class="fa fa-pencil-square-o"></i>工具</span></a>
+			<div class="menu-expandable">
+				<a href="#pageQuery">查询语句</a>
+			</div>
+		</div>
 
 	</div>
 </div>
@@ -313,7 +62,6 @@ $(main);
 </div>
 
 <div id="my-pages" style="display:none">
-	<!-- page {{{ -->
 
 	<div class="pageHome" title="首页" style="padding:5px" my-initfn="initPageHome">
 		<h2 class="my-title">管理端</h2>
@@ -328,54 +76,6 @@ $(main);
 			</thead>
 		</table>
 	</div>
-
-	<div class="pageEmployee" title="员工管理" my-initfn="initPageEmployee">
-		<table id="tblEmployee" style="width:auto;height:auto">
-			<thead><tr>
-				<th data-options="field:'id'">编号</th>
-				<th data-options="field:'uname'">登录名</th>
-				<th data-options="field:'phone'">手机号</th>
-				<th data-options="field:'name'">姓名</th>
-				<th data-options="field:'perms'">权限</th>
-			</tr></thead>
-		</table>
-	</div>
-	
-	<div class="pageUser" title="用户管理" my-initfn="initPageUser">
-		<table id="tblUser" style="width:auto;height:auto">
-			<thead><tr>
-				<th data-options="field:'id'">编号</th>
-				<th data-options="field:'phone'">手机号</th>
-				<th data-options="field:'name'">姓名</th>
-				<th data-options="field:'createTm'">注册时间</th>
-			</tr></thead>
-		</table>
-	</div>
-
-	<div class="pageOrder" title="订单管理" my-initfn="initPageOrder">
-		<table id="tblOrder" style="width:auto;height:auto">
-			<thead><tr>
-				<th data-options="field:'id', sortable:true, sorter:intSort">编号</th>
-				<th data-options="field:'userId'">用户编号</th>
-				<th data-options="field:'status', formatter:OrderColumns.statusStr, styler:OrderColumns.statusStyler">状态</th>
-				<th data-options="field:'dscr'">描述</th>
-				<th data-options="field:'cmt'">用户备注</th>
-			</tr></thead>
-		</table>
-	</div>
-
-	<div class="pageQuery" title="查询语句" my-initfn="initPageQuery">
-		<textarea id="txtQuery" rows=5 cols=80>select * from User limit 10</textarea>
-		<button id="btnQuery" style="vertical-align:top">执行</button>
-		<table id="tblQueryResult" style="width:auto;height:auto" class="x-grid">
-		</table>
-		<div id="divInfo" style="display:none; margin-top:5px">
-			<div><span class="status-info">提示: 双击单元格可更新. </span></div>
-		</div>
-	</div>
-	<!-- page }}} -->
-
-	<!-- dialog {{{ -->
 
 	<div id="dlgLogin" title="超级管理员登录" style="padding:20px 40px 20px 40px;width:350px;height:200px;">  
 		<form method="POST">
@@ -392,95 +92,6 @@ $(main);
 		</form>
 	</div>
 
-	<div id="dlgEmployee" my-obj="Employee" my-initfn="initDlgEmployee" title="员工" style="padding:20px 40px 20px 40px;width:520px;height:450px;">
-		<form method="POST">
-			<table>
-				<tr>
-					<td>编号</td>
-					<td><input name="id" disabled></td>
-				</tr>
-				<tr>
-					<td>手机号</td>
-					<td><input name="phone" class="easyui-validatebox" data-options="required:true, validType:'cellphone'"></td>  
-				</tr>
-				<tr>
-					<td>姓名</td>
-					<td><input name="name" class="easyui-validatebox" data-options="required:true"></td>  
-				</tr>
-				<tr>
-					<td>登录密码</td>
-					<td><input notForFind=1 type="password" name="pwd" class="easyui-validatebox" data-options="required:true, validType:'pwd'">
-					</td>
-				</tr> 
-				<tr>
-					<td>权限</td>
-					<td id=divPerms>
-						<input type="hidden" name="perms">
-						<label><input type="checkbox" value="emp" checked>员工:查看,操作订单(默认)</label><br>
-						<label><input type="checkbox" value="mgr">经理</label><br>
-					</td>
-				</tr>
-			</table>  
-		</form>  
-	</div>
-
-	<div id="dlgUser" my-obj="User" title="用户" style="padding:20px 40px 20px 40px;width:520px;height:450px;">
-		<form method="POST">
-			<table>
-				<tr>
-					<td>编号</td>
-					<td><input name="id" disabled></td>
-				</tr>
-				<tr>
-					<td>手机号</td>
-					<td><input name="phone" class="easyui-validatebox" data-options="required:true, validType:'cellphone'"></td>  
-				</tr>
-				<tr>
-					<td>姓名</td>
-					<td><input name="name" class="easyui-validatebox" data-options="required:true"></td>  
-				</tr>
-				<tr>
-					<td>登录密码</td>
-					<td><input notForFind=1 type="password" name="pwd" class="easyui-validatebox" data-options="required:true, validType:'pwd'">
-					</td>
-				</tr> 
-			</table>  
-		</form>  
-	</div>
-
-	<div id="dlgOrder" my-obj="Ordr" title="订单" style="padding:20px 40px 20px 40px;width:520px;height:450px;">
-		<form method="POST">
-			<table>
-				<tr>
-					<td>编号</td>
-					<td><input name="id" disabled></td>
-				</tr>
-				<tr>
-					<td>用户编号</td>
-					<td><input name="userId" disabled></td>
-				</tr>
-				<tr>
-					<td>订单状态</td>
-					<td>
-						<select name="status" style="width:150px">
-							<option value="">&nbsp;</option>
-							<option value="CR">未付款</option>
-							<option value="PA">待服务(已付款)</option>
-							<option value="ST">正在服务</option>
-							<option value="RE">已服务(待评价)</option>
-							<option value="RA">已评价</option>
-							<option value="CA">已取消</option>
-						</select>
-					</td>
-				</tr>
-				<tr>
-					<td>用户备注</td>
-					<td><textarea name="cmt" rows=3 cols=30></textarea></td>  
-				</tr>
-			</table>
-		</form>  
-	</div>
-	<!-- page and dialog }}} -->
 </div>
 
 <div id=block class=block></div>

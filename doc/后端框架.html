@@ -1,831 +1,409 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE html>
 <html>
 <head>
-<link rel="Stylesheet" type="text/css" href="style.css">
-<title>通用Web产品后端框架设计</title>
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <title>Web接口服务框架设计</title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-
-<h1 id="toc_1" class="justcenter"><a name="通用Web产品后端框架设计"> 通用Web产品后端框架设计</a></h1>
-
-<p>
-梁健 - 最近更新于2015/12
-</p>
-
-<div class="toc">
+<h1 id="web接口服务框架设计">Web接口服务框架设计</h1>
+<p>需求和设计目标：</p>
 <ul>
-<li><a href="#toc_1"> 通用Web产品后端框架设计</a>
-<ul>
-<li><a href="#toc_1.1">1 需求</a>
-<li><a href="#toc_1.2">2 概要设计</a>
-<ul>
-<li><a href="#toc_1.2.1">2.1 文件结构</a>
-<li><a href="#toc_1.2.2">2.2 运行环境</a>
-<li><a href="#toc_1.2.3">2.3 配置项</a>
-<ul>
-<li><a href="#toc_1.2.3.1">2.3.1 部署配置</a>
-</ul>
-<li><a href="#toc_1.2.4">2.4 命名规范</a>
-</ul>
-<li><a href="#toc_1.3">3 数据库设计</a>
-<li><a href="#toc_1.4">4 通讯协议设计</a>
-<ul>
-<li><a href="#toc_1.4.1">4.1 通用原则</a>
-<ul>
-<li><a href="#toc_1.4.1.1">4.1.1 常用返回类型描述</a>
-<li><a href="#toc_1.4.1.2">4.1.2 分页机制</a>
-<li><a href="#toc_1.4.1.3">4.1.3 分页机制实现原理</a>
-<li><a href="#toc_1.4.1.4">4.1.4 HTTPS服务</a>
-<li><a href="#toc_1.4.1.5">4.1.5 调试等级(_debug)</a>
-<li><a href="#toc_1.4.1.6">4.1.6 应用标识(_app)</a>
-<li><a href="#toc_1.4.1.7">4.1.7 测试模式(_test)</a>
-<li><a href="#toc_1.4.1.8">4.1.8 使用PATH_INFO模式的URL</a>
-<li><a href="#toc_1.4.1.9">4.1.9 客户端版本(_ver)</a>
-<li><a href="#toc_1.4.1.10">4.1.10 权限说明</a>
-</ul>
-<li><a href="#toc_1.4.2">4.2 通用操作</a>
-<ul>
-<li><a href="#toc_1.4.2.1">4.2.1 执行sql语句</a>
-<li><a href="#toc_1.4.2.2">4.2.2 通用表操作</a>
-<li><a href="#toc_1.4.2.3">4.2.3 附件上传</a>
-<li><a href="#toc_1.4.2.4">4.2.4 附件下载</a>
-<li><a href="#toc_1.4.2.5">4.2.5 上传工具</a>
-<li><a href="#toc_1.4.2.6">4.2.6 下载工具</a>
-<li><a href="#toc_1.4.2.7">4.2.7 生成签名</a>
-<li><a href="#toc_1.4.2.8">4.2.8 发短信</a>
-<li><a href="#toc_1.4.2.9">4.2.9 查询短信记录</a>
-<li><a href="#toc_1.4.2.10">4.2.10 代理</a>
-</ul>
-<li><a href="#toc_1.4.3">4.3 API调用监控</a>
-<li><a href="#toc_1.4.4">4.4 批量请求</a>
-</ul>
-<li><a href="#toc_1.5">5 前端应用接口</a>
-<ul>
-<li><a href="#toc_1.5.1">5.1 移动应用</a>
-<ul>
-<li><a href="#toc_1.5.1.1">5.1.1 客户端(app=user)</a>
-<li><a href="#toc_1.5.1.2">5.1.2 员工端(app=emp-store)</a>
-</ul>
-<li><a href="#toc_1.5.2">5.2 桌面应用</a>
-<ul>
-<li><a href="#toc_1.5.2.1">5.2.1 管理端应用(app=emp-adm)</a>
-<li><a href="#toc_1.5.2.2">5.2.2 超级管理端应用(app=admin)</a>
-<li><a href="#toc_1.5.2.3">5.2.3 桌面应用查询用法</a>
-<li><a href="#toc_1.5.2.4">5.2.4 通用参数</a>
-<li><a href="#toc_1.5.2.5">5.2.5 全局变量</a>
-</ul>
-</ul>
-<li><a href="#toc_1.6">6 测试设计</a>
-<ul>
-<li><a href="#toc_1.6.1">6.1 手工测试</a>
-<li><a href="#toc_1.6.2">6.2 回归测试</a>
-<ul>
-<li><a href="#toc_1.6.2.1">6.2.1 使用方法</a>
-<li><a href="#toc_1.6.2.2">6.2.2 测试模式设计</a>
-<li><a href="#toc_1.6.2.3">6.2.3 API测试和用例测试</a>
-</ul>
-<li><a href="#toc_1.6.3">6.3 单元测试</a>
-<li><a href="#toc_1.6.4">6.4 自动化测试</a>
-<ul>
-<li><a href="#toc_1.6.4.1">6.4.1 取短信日志最后一条</a>
-</ul>
-</ul>
-<li><a href="#toc_1.7">7 登录类型与权限管理</a>
-<li><a href="#toc_1.8">8 服务端部署与升级</a>
-<ul>
-<li><a href="#toc_1.8.1">8.1 初始化配置</a>
-<li><a href="#toc_1.8.2">8.2 升级管理</a>
-<ul>
-<li><a href="#toc_1.8.2.1">8.2.1 用法</a>
-<ul>
-<li><a href="#toc_1.8.2.1.1">8.2.1.1 交互命令</a>
-<li><a href="#toc_1.8.2.1.2">8.2.1.2 非交互命令</a>
-</ul>
-<li><a href="#toc_1.8.2.2">8.2.2 写升级脚本</a>
-</ul>
-<li><a href="#toc_1.8.3">8.3 版本发布</a>
-<li><a href="#toc_1.8.4">8.4 客户端自动升级</a>
-</ul>
-<li><a href="#toc_1.9">9 工具接口</a>
-<ul>
-<li><a href="#toc_1.9.1">9.1 tool/log.php</a>
-<li><a href="#toc_1.9.2">9.2 tool/init.php</a>
-<li><a href="#toc_1.9.3">9.3 tool/tool.php</a>
-</ul>
-<li><a href="#toc_1.10">10 定期任务</a>
-<li><a href="#toc_1.11">11 数据安全</a>
-<li><a href="#toc_1.12">12 插件机制</a>
-<ul>
-<li><a href="#toc_1.12.1">12.1 需求</a>
-<li><a href="#toc_1.12.2">12.2 插件目录结构</a>
-<li><a href="#toc_1.12.3">12.3 插件安装</a>
-<li><a href="#toc_1.12.4">12.4 接口</a>
-<ul>
-<li><a href="#toc_1.12.4.1">12.4.1 后端PHP API</a>
-<li><a href="#toc_1.12.4.2">12.4.2 前端JS API</a>
-<li><a href="#toc_1.12.4.3">12.4.3 交互接口</a>
-</ul>
-<li><a href="#toc_1.12.5">12.5 发布与上线</a>
-</ul>
-</ul>
-</ul>
-</div>
-
-<h2 id="toc_1.1"><a name="需求">1 需求</a></h2>
-
-<ul>
-<li>
-提供REST-ful风格的服务端接口API, 可方便的添加函数形式(如queryLog)和对象操作形式(如log.query)的API.
-
-<li>
-提供数据库设计、部署工具
-
-<li>
-提供手工测试及回归测试工具
-
-<li>
-提供Web部署工具
-
+<li>提供REST-RPC风格的服务端接口API, 可方便的添加函数形式(如queryLog)和对象操作形式(如log.query)的API.</li>
+<li>提供数据库设计、部署工具</li>
+<li>提供手工测试及回归测试工具</li>
+<li>提供Web部署工具</li>
 </ul>
 
-<h2 id="toc_1.2"><a name="概要设计">2 概要设计</a></h2>
-
-<h3 id="toc_1.2.1"><a name="文件结构">2.1 文件结构</a></h3>
-
-<p>
-概念：
-</p>
+<div id="TOC" class="toc">
 <ul>
-<li>
-产品：如“小鳄养车”，包括前端、后端等子系统，每个子系统包括多个应用，如前端包括客户端、管理端等应用，后端包括API接口、某工具、定时任务等应用。
+<li><a href="#web接口服务框架设计">Web接口服务框架设计</a><ul>
+<li><a href="#概要设计"><span class="toc-section-number">1</span> 概要设计</a><ul>
+<li><a href="#文件结构"><span class="toc-section-number">1.1</span> 文件结构</a></li>
+<li><a href="#运行环境"><span class="toc-section-number">1.2</span> 运行环境</a></li>
+<li><a href="#配置项"><span class="toc-section-number">1.3</span> 配置项</a></li>
+<li><a href="#命名规范"><span class="toc-section-number">1.4</span> 命名规范</a></li>
+</ul></li>
+<li><a href="#数据库设计"><span class="toc-section-number">2</span> 数据库设计</a></li>
+<li><a href="#通讯协议设计"><span class="toc-section-number">3</span> 通讯协议设计</a><ul>
+<li><a href="#通用原则"><span class="toc-section-number">3.1</span> 通用原则</a><ul>
+<li><a href="#常用返回类型描述"><span class="toc-section-number">3.1.1</span> 常用返回类型描述</a></li>
+<li><a href="#分页机制"><span class="toc-section-number">3.1.2</span> 分页机制</a></li>
+<li><a href="#分页机制实现原理"><span class="toc-section-number">3.1.3</span> 分页机制实现原理</a></li>
+<li><a href="#https服务"><span class="toc-section-number">3.1.4</span> HTTPS服务</a></li>
+<li><a href="#调试等级_debug"><span class="toc-section-number">3.1.5</span> 调试等级(_debug)</a></li>
+<li><a href="#应用标识_app"><span class="toc-section-number">3.1.6</span> 应用标识(_app)</a></li>
+<li><a href="#使用path_info模式的url"><span class="toc-section-number">3.1.7</span> 使用PATH_INFO模式的URL</a></li>
+<li><a href="#客户端版本_ver"><span class="toc-section-number">3.1.8</span> 客户端版本(_ver)</a></li>
+<li><a href="#权限说明"><span class="toc-section-number">3.1.9</span> 权限说明</a></li>
+</ul></li>
+<li><a href="#通用操作"><span class="toc-section-number">3.2</span> 通用操作</a><ul>
+<li><a href="#通用表操作"><span class="toc-section-number">3.2.1</span> 通用表操作</a></li>
+<li><a href="#附件上传"><span class="toc-section-number">3.2.2</span> 附件上传</a></li>
+<li><a href="#附件下载"><span class="toc-section-number">3.2.3</span> 附件下载</a></li>
+<li><a href="#生成签名"><span class="toc-section-number">3.2.4</span> 生成签名</a></li>
+<li><a href="#代理"><span class="toc-section-number">3.2.5</span> 代理</a></li>
+<li><a href="#执行sql语句"><span class="toc-section-number">3.2.6</span> 执行sql语句</a></li>
+</ul></li>
+<li><a href="#api调用监控"><span class="toc-section-number">3.3</span> API调用监控</a></li>
+<li><a href="#批量请求"><span class="toc-section-number">3.4</span> 批量请求</a></li>
+<li><a href="#服务端信息反馈x-daca头"><span class="toc-section-number">3.5</span> 服务端信息反馈/X-Daca头</a></li>
+</ul></li>
+<li><a href="#前端应用接口"><span class="toc-section-number">4</span> 前端应用接口</a><ul>
+<li><a href="#移动端应用"><span class="toc-section-number">4.1</span> 移动端应用</a><ul>
+<li><a href="#客户端appuser"><span class="toc-section-number">4.1.1</span> 客户端(app=user)</a></li>
+</ul></li>
+<li><a href="#桌面应用"><span class="toc-section-number">4.2</span> 桌面应用</a><ul>
+<li><a href="#管理端应用appemp-adm"><span class="toc-section-number">4.2.1</span> 管理端应用(app=emp-adm)</a></li>
+<li><a href="#超级管理端应用appadmin"><span class="toc-section-number">4.2.2</span> 超级管理端应用(app=admin)</a></li>
+<li><a href="#桌面应用查询用法"><span class="toc-section-number">4.2.3</span> 桌面应用查询用法</a></li>
+<li><a href="#通用参数"><span class="toc-section-number">4.2.4</span> 通用参数</a></li>
+<li><a href="#全局变量"><span class="toc-section-number">4.2.5</span> 全局变量</a></li>
+</ul></li>
+</ul></li>
+<li><a href="#测试设计"><span class="toc-section-number">5</span> 测试设计</a><ul>
+<li><a href="#手工测试"><span class="toc-section-number">5.1</span> 手工测试</a></li>
+<li><a href="#回归测试"><span class="toc-section-number">5.2</span> 回归测试</a><ul>
+<li><a href="#使用方法"><span class="toc-section-number">5.2.1</span> 使用方法</a></li>
+<li><a href="#api测试和用例测试"><span class="toc-section-number">5.2.2</span> API测试和用例测试</a></li>
+</ul></li>
+<li><a href="#单元测试"><span class="toc-section-number">5.3</span> 单元测试</a></li>
+</ul></li>
+<li><a href="#登录类型与权限管理"><span class="toc-section-number">6</span> 登录类型与权限管理</a></li>
+<li><a href="#服务端部署与升级"><span class="toc-section-number">7</span> 服务端部署与升级</a><ul>
+<li><a href="#初始化配置"><span class="toc-section-number">7.1</span> 初始化配置</a></li>
+<li><a href="#升级管理"><span class="toc-section-number">7.2</span> 升级管理</a><ul>
+<li><a href="#用法"><span class="toc-section-number">7.2.1</span> 用法</a><ul>
+<li><a href="#交互命令"><span class="toc-section-number">7.2.1.1</span> 交互命令</a></li>
+<li><a href="#非交互命令"><span class="toc-section-number">7.2.1.2</span> 非交互命令</a></li>
+</ul></li>
+<li><a href="#todo-写升级脚本"><span class="toc-section-number">7.2.2</span> TODO: 写升级脚本</a></li>
+</ul></li>
+<li><a href="#版本发布"><span class="toc-section-number">7.3</span> 版本发布</a></li>
+<li><a href="#客户端自动升级"><span class="toc-section-number">7.4</span> 客户端自动升级</a></li>
+</ul></li>
+<li><a href="#工具接口"><span class="toc-section-number">8</span> 工具接口</a><ul>
+<li><a href="#toollog.php"><span class="toc-section-number">8.1</span> tool/log.php</a></li>
+<li><a href="#toolinit.php"><span class="toc-section-number">8.2</span> tool/init.php</a></li>
+<li><a href="#tooltool.php"><span class="toc-section-number">8.3</span> tool/tool.php</a></li>
+</ul></li>
+<li><a href="#定期任务"><span class="toc-section-number">9</span> 定期任务</a></li>
+<li><a href="#数据安全"><span class="toc-section-number">10</span> 数据安全</a></li>
+<li><a href="#插件机制"><span class="toc-section-number">11</span> 插件机制</a><ul>
+<li><a href="#需求"><span class="toc-section-number">11.1</span> 需求</a></li>
+<li><a href="#插件目录结构"><span class="toc-section-number">11.2</span> 插件目录结构</a></li>
+<li><a href="#插件安装"><span class="toc-section-number">11.3</span> 插件安装</a></li>
+<li><a href="#接口"><span class="toc-section-number">11.4</span> 接口</a><ul>
+<li><a href="#后端php-api"><span class="toc-section-number">11.4.1</span> 后端PHP API</a></li>
+<li><a href="#前端js-api"><span class="toc-section-number">11.4.2</span> 前端JS API</a></li>
+<li><a href="#交互接口"><span class="toc-section-number">11.4.3</span> 交互接口</a></li>
+</ul></li>
+<li><a href="#发布与上线"><span class="toc-section-number">11.5</span> 发布与上线</a></li>
+</ul></li>
+</ul></li>
+</ul></div>
 
-<li>
-应用：一个可独立执行的应用程序（或网页入口）。
-
-<li>
-工具：应用的一种，有的不发布（只用于开发过程），有的发布但做内部使用或被其它应用调用。
-
-<li>
-库：被应用包含，提供共享数据和操作。
-
-<li>
-框架：库的一种，一般成型后很少修改。被应用或其它库包含使用。
-
-</ul>
-
-<p>
-注：以下标记*表示可变文件，根据实际应用添加内容。
-</p>
-
-<p>
-<strong>[根目录]</strong>
-</p>
-
-<pre>
-
-DESIGN.wiki* -- 主设计文档。其它文档在doc目录下。
-
-build_web.sh -- Web部署工具。
-
-</pre>
-
-<p>
-产品设计文档包括：
-</p>
+<h2 id="概要设计"><span class="header-section-number">1</span> 概要设计</h2>
+<h3 id="文件结构"><span class="header-section-number">1.1</span> 文件结构</h3>
+<p>概念：</p>
 <ul>
-<li>
-框架设计文档：含后台框架文档（框架提供功能的说明，后台函数接口等）及前台框架文档（前台框架的基本使用方法与接口描述）。
-
-<li>
-主设计文档: 包括产品的需求、概要设计（运行环境、系统建模、主要用例）、详细设计。
- 其中详细设计包括：数据库表设计（表、字段类型），通讯协议设计（函数、对象或页面调用），客户端接口设计（页面、参数等）
-
-<li>
-专题设计文档，与详细设计内容类似，但将数据库、通讯协议及客户端接口放在一个专题中描述。
-
+<li>产品：如“小鳄养车”，包括前端、后端等子系统，每个子系统包括多个应用，如前端包括客户端、管理端等应用，后端包括API接口、某工具、定时任务等应用。</li>
+<li>应用：一个可独立执行的应用程序（或网页入口）。</li>
+<li>工具：应用的一种，有的不发布（只用于开发过程），有的发布但做内部使用或被其它应用调用。</li>
+<li>库：被应用包含，提供共享数据和操作。</li>
+<li>框架：库的一种，一般成型后很少修改。被应用或其它库包含使用。</li>
 </ul>
-
-<p>
-infrastructure; main app; incrementatal app;
-</p>
-
-<p>
-<strong>[后端应用 - server目录]</strong>
-</p>
-
+<p>注：以下标记<code>*</code>表示不需要开发者修改的框架实现源文件或工具。</p>
+<p><strong>[根目录]</strong></p>
 <dl>
-<dt>api.php* </dt>
-<dd> API接口应用。提供基于HTTP的访问接口，形式如：api.php/fn 或 api.php/obj.query；该文件包含其它实现文件，以及应用内共享的数据。其它应用可包含它从而直接以内部调用方式访问API接口。</dd>
-<dt>app.php* </dt>
-<dd>应用共享库。存放被多个项目所使用的数据。所有应用一般都应包含它。它包含common.php,app_fw.php,conf.php,conf.user.php等。</dd>
-<dt>conf.php* </dt>
-<dd>适用于所有应用（被app.php包含），保存易变逻辑。</dd>
+<dt>DESIGN.wiki</dt>
+<dd>主设计文档。其它文档在doc目录下。
+</dd>
+<dt>build_web.sh</dt>
+<dd>Web部署工具。
+</dd>
 </dl>
-
-<p>
-内部实现部分：
-</p>
-
+<p>产品设计文档包括：</p>
+<ul>
+<li>框架设计文档：含后台框架文档（框架提供功能的说明，后台函数接口等）及前台框架文档（前台框架的基本使用方法与接口描述）。</li>
+<li>主设计文档: 包括产品的需求、概要设计（运行环境、系统建模、主要用例）、详细设计。 其中详细设计包括：数据库表设计（表、字段类型），通讯协议设计（函数、对象或页面调用），客户端接口设计（页面、参数等）</li>
+<li>专题设计文档，与详细设计内容类似，但将数据库、通讯协议及客户端接口放在一个专题中描述。</li>
+</ul>
+<p><strong>[后端应用 - server目录]</strong></p>
 <dl>
-<dt>php/common.php </dt>
-<dd>通用共享库。基础公共函数部分，可适用一切php项目。</dd>
-<dt>php/app_fw.php </dt>
-<dd>应用框架库。为所有应用提供框架支持（以app_开头表示适用于所有应用，fw表示framework），被app.php包含。</dd>
-<dt>php/conf.user.php* </dt>
-<dd>可缺省，用于根据部署环境修改应用配置。被app.php包含。</dd>
+<dt>api.php</dt>
+<dd>接口应用程序，提供Web服务接口。例如调用接口<code>Ordr.query</code>可访问<code>http://myserver/mysvc/api.php/Ordr.query</code>；该文件包含其它实现文件，以及应用内共享的数据。其它应用可包含它从而直接以内部调用方式访问API接口。
+</dd>
+<dt>app.php</dt>
+<dd>应用共享库。存放所有应用或工具共享的数据和函数。所有应用一般都应包含它。它包含common.php,app_fw.php,conf.php,conf.user.php等。
+</dd>
+<dt>php/conf.user.php</dt>
+<dd>产品配置文件，一般不加入代码库（指git等版本控制系统），在部署时根据实际环境配置。被app.php包含，因而所有应用或工具都间接包含它。
+</dd>
+<dt>conf.php</dt>
+<dd>被api.php包含，保存易变的程序逻辑。
+</dd>
+<dt>php/api_functions.php</dt>
+<dd>API接口应用中的函数实现部分。被api.php包含。
+</dd>
+<dt>php/api_objects.php</dt>
+<dd>API接口应用中的对象访问实现部分。被api.php包含。
+</dd>
 </dl>
-
+<p>框架实现部分：</p>
 <dl>
-<dt>php/api_fw.php </dt>
-<dd>API接口应用的框架实现（以api_开头表示属于API接口应用）。被api.php包含。</dd>
-<dt>php/api_functions.php* </dt>
-<dd>API接口应用中的函数实现部分。被api.php包含。</dd>
-<dt>php/api_objects.php* </dt>
-<dd>API接口应用中的对象访问实现部分。被api.php包含。</dd>
+<dt>php/common.php*</dt>
+<dd>通用共享库。基础公共函数部分，可适用一切php项目。
+</dd>
+<dt>php/app_fw.php*</dt>
+<dd>应用框架库。为所有应用提供框架支持（以app_开头表示适用于所有应用，fw表示framework），被app.php包含。
+</dd>
+<dt>php/api_fw.php*</dt>
+<dd>API接口应用的框架实现（以api_开头表示属于API接口应用）。被api.php包含。
+</dd>
 </dl>
-
-<p>
-<strong>[回归测试 - rtest目录]</strong>
-</p>
-
+<p><strong>[工具 - tool目录]</strong></p>
 <dl>
-<dt>rtest.php* </dt>
-<dd>回归测试内容。（<span class="todo">TODO:</span> 类似api应用，可拆分为 rtest.php, php/rtest_fw.php, php/rtest_group1.php, php/rtest_group.php等)</dd>
-</dl>
-
-<dl>
-<dt>run_rtest.pl </dt>
-<dd>回归测试执行工具。</dd>
-</dl>
-
-<dl>
-<dt>client.php </dt>
-<dd>手工测试工具。模拟前端调用API接口。</dd>
-</dl>
-
-<p>
-内部实现部分：
-</p>
-
-<dl>
-<dt>WebAPI.php </dt>
-<dd>测试应用框架库。</dd>
-</dl>
-
-<p>
-<strong>[文档 - doc目录]</strong>
-</p>
-
-<dl>
-<dt>index.html*</dt>
-<dd>文档目录。修改它以增加文档。</dd>
-</dl>
-
-<dl>
-<dt>__README.html</dt>
-<dd>介绍文档管理。</dd>
-</dl>
-
-<dl>
-<dt>后台框架.wiki</dt>
-<dd>即本文，介绍通用产品框架设计。</dd>
-</dl>
-
-<dl>
-<dt>Web应用部署</dt>
-<dd>部署工具文档。</dd>
-</dl>
-
-<dl>
-<dt>编码规范.wiki</dt>
-</dl>
-
-<p>
-<strong>[工具 - tool目录]</strong>
-</p>
-
-<dl>
-<dt>upgrade.php</dt>
-<dd>数据部署工具。创建或更新数据库表，导入数据等。</dd>
-</dl>
-
-<dl>
-<dt>webcc.php</dt>
-<dd>Web部署工具。用户上传或更新线上Web产品目录。</dd>
-</dl>
-
-<dl>
+<dt>upgrade.php*</dt>
+<dd>数据部署工具。创建或更新数据库表，导入数据等。
+</dd>
+<dt>webcc.php*</dt>
+<dd>Web部署工具。用户上传或更新线上Web产品目录。
+</dd>
 <dt>cmdtool.template.php</dt>
-<dd>使用app.php创建数据操作工具的示例，如用于特殊数据导入等。</dd>
+<dd>使用app.php创建数据操作工具的示例，如用于特殊数据导入等。
+</dd>
 </dl>
-
-<h3 id="toc_1.2.2"><a name="运行环境">2.2 运行环境</a></h3>
-
-<p>
-<strong>[部署环境]</strong>
-</p>
-
+<p><strong>[回归测试 - rtest目录]</strong></p>
+<dl>
+<dt>rtest.php</dt>
+<dd>回归测试内容。（TODO: 类似api应用，可拆分为 rtest.php, php/rtest_fw.php, php/rtest_group1.php, php/rtest_group.php等)
+</dd>
+<dt>run_rtest.pl*</dt>
+<dd>回归测试执行工具。
+</dd>
+<dt>client.php*</dt>
+<dd>手工测试工具。模拟前端调用API接口。
+</dd>
+</dl>
+<p>内部实现部分：</p>
+<dl>
+<dt>WebAPI.php</dt>
+<dd>测试应用框架库。
+</dd>
+</dl>
+<p><strong>[前端应用]</strong></p>
+<p>如果有筋斗云前端应用，一般放置在以下目录：</p>
+<dl>
+<dt>m2/</dt>
+<dd>移动端H5应用，如用户端、员工端应用。
+</dd>
+<dt>web/</dt>
+<dd>桌面版H5应用，如后台管理端应用。
+</dd>
+</dl>
+<h3 id="运行环境"><span class="header-section-number">1.2</span> 运行环境</h3>
+<p><strong>[部署环境]</strong></p>
 <ul>
-<li>
-Linux CentOS5 以上版本 x64，可使用阿里云平台
-
-<li>
-Apache2.4 + php5.4
-
-<li>
-Mysql5以上
-
+<li>Linux CentOS5 以上版本 x64，可使用阿里云平台</li>
+<li>Apache 2.4+</li>
+<li>php 5.4+</li>
+<li>Mysql 5+</li>
 </ul>
-
-<p>
-<strong>[开发环境]</strong>
-</p>
-
+<p><strong>[开发环境]</strong></p>
 <ul>
-<li>
-Windows或Linux
-
-<li>
-php5.4 (5.4.31)
-
-<li>
-Apache/IIS
-
-<li>
-数据库mysql5
-
+<li>Windows或Linux</li>
+<li>php5.4 (5.4.31)</li>
+<li>Apache/IIS/nginx</li>
+<li>数据库mysql5</li>
 </ul>
-
-<p>
-<strong>[演示版]</strong>
-</p>
-
-<p>
-演示版用于快速开发原型及测试演示，对运行环境低要求，部署极其简单。
-</p>
+<p><strong>[演示版]</strong></p>
+<p>演示版用于快速开发原型及测试演示，对运行环境低要求，部署极其简单。</p>
 <ul>
-<li>
-Windows/Linux/Mac (一般在Windows环境开发，最终在Linux环境运行，支持在Mac上运行以便开发iphone应用时搭建本地环境)
-
-<li>
-php5.4.31
-
-<li>
-phpunit4.2用于回归测试。
-
-<li>
-无需mysql等数据库服务。（使用内置sqlite3以方便测试或演示。）
-
-<li>
-无需Apache等web服务器。(直接用php开服务以方便测试或演示。）
-
+<li>Windows/Linux/Mac (一般在Windows环境开发，最终在Linux环境运行，支持在Mac上运行以便开发iphone应用时搭建本地环境)</li>
+<li>php5.4+</li>
+<li>phpunit4.2+用于回归测试。</li>
+<li>无需mysql等数据库服务。（使用内置sqlite3以方便测试或演示。）</li>
+<li>无需Apache等web服务器。(直接用php开服务以方便测试或演示。）</li>
 </ul>
-
-<h3 id="toc_1.2.3"><a name="配置项">2.3 配置项</a></h3>
-
-<p>
-<strong>[运行环境]</strong>
-</p>
-
-<p>
-服务支持mysql和sqlite数据库，服务连接mysql数据库仅当
-</p>
+<h3 id="配置项"><span class="header-section-number">1.3</span> 配置项</h3>
+<p>在应用设计时，一般使用前缀名为&quot;P_&quot;的环境变量供使用时扩展。</p>
+<p>一般用在浏览器中打开URL <code>tool/init.php</code>进行配置。之后，可手工修改配置文件<code>php/conf.user.php</code>。一般使用putenv设置环境变量。</p>
+<p><strong>[数据库连接]</strong></p>
+<p>例：</p>
+<pre><code>putenv(&quot;P_DB=localhost/mysvc&quot;);
+putenv(&quot;P_DBCRED=bGo6aWhxZ19VR0xH&quot;);</code></pre>
+<p><strong>[URL路径]</strong></p>
+<p>如部署路径为 http://myserver.com/mysvc/ ，则应设置</p>
+<pre><code>putenv(&quot;P_URL_PATH=/mysvc&quot;);</code></pre>
+<p>如果不设置，应用将自动判断（但如果服务器上使用了符号链接，则会判断失误）。</p>
+<p>注意：</p>
 <ul>
-<li>
-运行在Linux环境下
-
-<li>
-应用目录下不存在文件 CFG_USE_SQLITE
-
+<li>使用绝对路径，一定以要&quot;/&quot;开头；设置错误将导致cookie及会话无法使用，出现登录后仍当作未登录等异常。</li>
 </ul>
-
-<p>
-<strong>[测试模式 - TEST_MODE]</strong>
-</p>
-
-<p>
-服务支持测试模式，它连接名为carsvc_test的数据库，并允许一些清除操作。仅当：
-</p>
+<p>常用环境变量如下：</p>
 <ul>
-<li>
-调用api.php时指定参数_test非0 或
-
-<li>
-使用sqlite数据库 或
-
-<li>
-应用目录下存在文件 CFG_TEST_MODE
-
+<li>P_DB 指定数据库。MySQL数据库示例: &quot;{主机名}/{数据库名}&quot; 或 &quot;{主机名}:{端口号}/{数据库名}&quot;</li>
+<li>P_DBCRED 指定数据库登录用户名及密码。格式为&quot;{user}:{pwd}&quot;，或其base64编码形式，一般使用base64编码。</li>
+<li>P_URL_PATH 指定应用的URL绝对路径(以&quot;/&quot;开头)。用于拼出正确的完整url路径。</li>
+<li>P_ADMIN_CRED 指定超级管理员帐号。格式与P_DBCRED相同。</li>
+<li>P_TEST_MODE 值为1表示测试模式，2为回归测试模式</li>
+<li>P_MOCK_MODE 值为1表示模拟模式</li>
+<li>P_DEBUG 调试日志输出等级，0-9</li>
+<li>P_SESSION_DIR 指定session文件保存位置，缺省是应用目录下。注意：测试模式的session是分开保存的，在该目录下子目录&quot;t&quot;中。</li>
 </ul>
-
-<p>
-以上设置项意味着：
-</p>
+<p><strong>[测试模式 - TEST_MODE]</strong></p>
 <ul>
-<li>
-当运行在Linux平台上，缺省连接mysql数据库并处于非测试模式下。
-
-<li>
-当运行在Windows/iOS平台上，缺省连接sqlite数据库并处于测试模式下。
-
-<li>
-对于Web页面，打开页面且URL中含有"?test"时，应用运行在测试模式。
-  设计web客户端应用时，连续5次点击用户信息页标头(一般dom元素为"#me div[data-role=header]")可在测试模式与生产模式间切换。
-  应用程序应从服务器取信息以确定是否运行在测试模式，如果是，应明确显示。（各Web客户端应遵循该设计原则）
-
+<li>输出的HTTP头中包含：<code>X-Daca-Test-Mode: 1</code></li>
+<li>输出的JSON格式经过美化更易读，且可以显示更多调试信息。前端可通过在接口中添加<code>_debug</code>参数设置调试等级。 如果想要查看本次调用涉及的SQL语句，可以用<code>_debug=9</code>。</li>
+<li>某些用于测试的接口可以调用，例如execSql。因而十分危险，生产模式下一定不可误设置为测试模式。</li>
+<li>支持跨域</li>
+<li>可以使用模拟模式</li>
 </ul>
-
-<p>
-<strong>[配置选项]</strong>
-</p>
-
-<p>
-此处列出用到的配置项, 具体用法请搜索本文档. server指服务端配置(包括upgrade.php工具), test指手工测试(如client.php), rtest指自动回归测试(run_rtest.pl).
-</p>
+<p><strong>[模拟模式 - MOCK_MODE]</strong></p>
+<p>这时，对外部系统的依赖（如短信模块，微信接口，支付宝支付等）都将模拟运行，只生成日志到 ext.log 中。</p>
+<p>可通过工具 tool/log.php 查看日志。</p>
+<h3 id="命名规范"><span class="header-section-number">1.4</span> 命名规范</h3>
+<p>变量/函数名/数据库表的字段名使用驼峰式(首个单词小写，其余单词首字母大写)，如getCarModel, svcId。</p>
+<p>WebAPI的调用名和传入参数也采用驼峰式，由于目前实现时不区分大小写, 所以调用时也可以用全部小写（习惯上，url里常常只用小写字母，且不带下划线。) 例如，调用接口名queryOrder，传入参数为modelId, storeId等。</p>
+<p>类名，或数据库表名，用大驼峰式（或叫Pascal命名，所有单词首字母大写）, 如OrderStatus.</p>
+<h2 id="数据库设计"><span class="header-section-number">2</span> 数据库设计</h2>
+<p>根据[系统建模]设计数据库表结构。</p>
+<p><strong>[通用规则]</strong></p>
 <ul>
-<li>
-file CFG_USE_SQLITE (for server)
-
-<li>
-file CFG_TEST_MODE (for server)
-
-<li>
-envvar P_DB (for server)
-
-<li>
-envvar SVC_URL (for test and rtest)
-
-<li>
-envvar P_DEBUG (for server, test and rtest) and URL param _debug (for server)
-
-<li>
-envvar P_SHARE_COOKIE (for rtest)
-
-<li>
-envvar P_TEST (for test/rtest) 设置通用URL参数_test. WebAPI/client.php缺省运行于测试模式(即P_TEST=1)，run_rtest.pl运行于回归测试模式(P_TEST=2), 如果要用生产模式请手工设置该参数为P_TEST=0（生产模式或测试模式还决定于其它服务端配置，该参数不一定实际运行在生产模式）。
-
-<li>
-envvar P_DBCRED (for server) 指定数据库登录用户名及密码。格式为"{user}:{pwd}"，或其base64编码形式，一般使用base64编码。
-
-<li>
-file <code>php/conf.user.php</code> (for server), 该文件存在则自动加载，用于设置自定义配置选项，如定义数据库用户名密码: <code>putenv("P_DBCRED=...")</code>
-
-<li>
-envvar P_SESSION_DIR (for server) 指定session文件保存位置，缺省是应用目录下。注意：测试模式的session是分开保存的，在该目录下子目录"t"中。
-
-<li>
-envvar P_URL_PATH (for server) 指定应用的URL绝对路径(以"/"开头)。用于拼出正确的完整url路径。
-
-<li>
-envvar P_URL_PATH (for server) 指定应用的URL绝对路径(以"/"开头)。用于拼出正确的完整url路径。
-
-<li>
-envvar P_ADMIN_CRED 指定超级管理员帐号。格式与P_DBCRED相同。
-
+<li>每个表均有整型字段id作为主键；关联表也不例外。</li>
+<li>外键一般以xxxId表示，除非特殊说明，一般该字段非空；</li>
 </ul>
-
-<p>
-<strong>[模拟模式 - MOCK_MODE]</strong>
-</p>
-
-<p>
-当应用目录下存在文件 CFG_MOCK_MODE 时，服务运行于模拟模式。
-或者，当应用处理测试模式下，且应用目录下有文件 CFG_MOCK_T_MODE, 服务运行于模拟模式。
-这时，对外部系统的依赖（如短信模块，微信接口，支付宝支付等）都将模拟运行，只生成日志到 ext.log 中。
-</p>
-
-<p>
-可通过工具 tool/log.php 查看日志。
-</p>
-
-<h4 id="toc_1.2.3.1"><a name="部署配置">2.3.1 部署配置</a></h4>
-
-<p>
-在应用设计时，一般使用前缀名为"P_"的环境变量供使用时扩展。
-</p>
-
-<p>
-根据不同的部署环境，可创建和配置文件<code>php/conf.user.php</code>。一般使用putenv设置环境变量或用ini_set设置参数。
-</p>
-
-<p>
-例如：
-</p>
-
-<p>
-<strong>[数据库密码]</strong>
-</p>
-
-<p>
-例：
-</p>
-<pre>
-putenv("P_DB=localhost/carsvc");
-putenv("P_DBCRED=bGo6aWhxZ19VR0xH");
-</pre>
-
-<p>
-在线上，如果同时支持测试模式(TEST_MODE)和生产模式，则测试模式应使用专门的DB, 可以用变量P_DB_TEST设置：
-</p>
-<pre>
-putenv("P_DB=localhost/carsvc");
-putenv("P_DBCRED=bGo6aWhxZ19VR0xH");
-
-putenv("P_DB_TEST=localhost/carsvc_test");
-// putenv("P_DBCRED_TEST=bGo6aWhxZ19VR0xH"); // 可设置登录用户及密码，不设置则使用P_DBCRED
-</pre>
-
-<p>
-<strong>[URL路径]</strong>
-</p>
-
-<p>
-如部署路径为 <a href="http://oliveche.com/cheguanjia/">http://oliveche.com/cheguanjia/</a> ，则设置
-</p>
-<pre>
-putenv("P_URL_PATH=/cheguanjia");
-</pre>
-
-<p>
-如果不设置，应用将自动判断（但如果服务器上使用了符号链接，则会判断失误）。
-</p>
-
-<p>
-注意：
-</p>
-<ul>
-<li>
-使用绝对路径，一定以要"/"开头；设置错误将因cookie权限导致应用无法使用。
-
-</ul>
-
-<h3 id="toc_1.2.4"><a name="命名规范">2.4 命名规范</a></h3>
-
-<p>
-变量/函数名/数据库表的字段名使用驼峰式(首个单词小写，其余单词首字母大写)，如getCarModel, svcId。
-</p>
-
-<p>
-WebAPI的调用名和传入参数也采用驼峰式，由于目前实现时不区分大小写, 所以调用时也可以用全部小写（习惯上，url里常常只用小写字母，且不带下划线。)
-例如，调用接口名queryOrder，传入参数为modelId, storeId等。
-</p>
-
-<p>
-类名，或数据库表名，用大驼峰式（或叫Pascal命名，所有单词首字母大写）, 如OrderStatus.
-</p>
-
-<h2 id="toc_1.3"><a name="数据库设计">3 数据库设计</a></h2>
-
-<p>
-根据[系统建模]设计数据库表结构。
-</p>
-
-<p>
-<strong>[通用规则]</strong>
-</p>
-
-<ul>
-<li>
-每个表均有整型字段id作为主键；关联表也不例外。
-
-<li>
-外链一般以xxxId表示，除非特殊说明，一般该字段非空；
-
-<li>
-字段类型通过名称主干隐式说明, 或通过声明后缀显示说明, 规则如下: 
-
-</ul>
+<p>字段名的类型根据命名规范自动判断，比如以id结尾的字段会被自动作为整型创建，以tm结尾会被当作日期时间类型创建，其它默认是字符串，规则如下：</p>
 <table>
-<tr>
-<td>
-以"Id"结尾
-</td>
-<td>
-Integer
-</td>
+<thead>
+<tr class="header">
+<th align="left">规则</th>
+<th align="left">类型</th>
 </tr>
-<tr>
-<td>
-以"Price"/"Total"/"Qty"/"Amount"结尾
-</td>
-<td>
-Currency
-</td>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">以&quot;Id&quot;结尾</td>
+<td align="left">Integer</td>
 </tr>
-<tr>
-<td>
-以"Tm"/"Dt"/"Time"结尾
-</td>
-<td>
-Datetime/Date/Time
-</td>
+<tr class="even">
+<td align="left">以&quot;Price&quot;/&quot;Total&quot;/&quot;Qty&quot;/&quot;Amount&quot;结尾</td>
+<td align="left">Currency</td>
 </tr>
-<tr>
-<td>
-type=(n)
-</td>
-<td>
-String
-</td>
+<tr class="odd">
+<td align="left">以&quot;Tm&quot;/&quot;Dt&quot;/&quot;Time&quot;结尾</td>
+<td align="left">Datetime/Date/Time</td>
 </tr>
-<tr>
-<td>
-type=&amp;
-</td>
-<td>
-Integer
-</td>
+<tr class="even">
+<td align="left">以&quot;Flag&quot;结尾</td>
+<td align="left">TinyInt(1B) NOT NULL</td>
 </tr>
-<tr>
-<td>
-type=@
-</td>
-<td>
-Currency
-</td>
-</tr>
-<tr>
-<td>
-type=#
-</td>
-<td>
-Double
-</td>
-</tr>
-<tr>
-<td>
-以"Flag"结尾
-</td>
-<td>
-TinyInt(1B) NOT NULL
-</td>
-</tr>
+</tbody>
 </table>
-<p>
- 此外, 如果无明确标识, 缺省为字符串类型. 
- 例如，"total", "docTotal", "total2", "docTotal2"都被认为是Currency类型。
-</p>
- 
-<ul>
-<li>
-字符串一般采用nvarchar支持unicode，描述如<code>name(s)</code>，字串长度以如下方式描述：
-
-</ul>
+<p>例如，&quot;total&quot;, &quot;docTotal&quot;, &quot;total2&quot;, &quot;docTotal2&quot;都被认为是Currency类型（字段名后面有数字的，判断类型时数字会被忽略）。</p>
+<p>也可以用一个类型后缀表示，如 <code>retval&amp;</code>表示整型，规则如下：</p>
 <table>
-<tr>
-<td>
-s
-</td>
-<td>
-small=20
-</td>
+<thead>
+<tr class="header">
+<th align="left">后缀</th>
+<th align="left">类型</th>
 </tr>
-<tr>
-<td>
-m
-</td>
-<td>
-medium=50 (default)
-</td>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">&amp;</td>
+<td align="left">Integer</td>
 </tr>
-<tr>
-<td>
-l
-</td>
-<td>
-long=255
-</td>
+<tr class="even">
+<td align="left">@</td>
+<td align="left">Currency</td>
 </tr>
-<tr>
-<td>
-t
-</td>
-<td>
-text
-</td>
+<tr class="odd">
+<td align="left">#</td>
+<td align="left">Double</td>
 </tr>
+</tbody>
 </table>
-
-<p>
-注意：
-</p>
+<p>字符串可以指定长度如<code>status(2)</code>，<code>name(s)</code>，字串长度以如下方式描述：</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">标记</th>
+<th align="left">长度</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">s</td>
+<td align="left">small=20</td>
+</tr>
+<tr class="even">
+<td align="left">m</td>
+<td align="left">medium=50 (default)</td>
+</tr>
+<tr class="odd">
+<td align="left">l</td>
+<td align="left">long=255</td>
+</tr>
+<tr class="even">
+<td align="left">t</td>
+<td align="left">text</td>
+</tr>
+</tbody>
+</table>
+<p>注意： - 一些名字由于与某些数据库系统关键字冲突应避免，如不使用&quot;desc&quot;, 改用&quot;dscr&quot; (description).</p>
+<p class="todo">TODO: define unique-key, index, not null, default value</p>
+<h2 id="通讯协议设计"><span class="header-section-number">3</span> 通讯协议设计</h2>
+<h3 id="通用原则"><span class="header-section-number">3.1</span> 通用原则</h3>
+<p>客户端通过HTTP协议与服务端交互，调用服务端WebAPI。</p>
 <ul>
-<li>
-一些名字由于与某些数据库系统关键字冲突应避免，如不使用"desc", 改用"dscr" (description).
-
-</ul>
-
-<p>
-<span class="todo">TODO:</span> define unique-key, index, not null, default value
-</p>
-
-<h2 id="toc_1.4"><a name="通讯协议设计">4 通讯协议设计</a></h2>
-
-<h3 id="toc_1.4.1"><a name="通用原则">4.1 通用原则</a></h3>
-
-<p>
-客户端通过HTTP协议与服务端交互，调用服务端WebAPI。
-</p>
-<ul>
-<li>
-Request一般使用HTTP GET/POST方法，如方法描述"fn(p1, p2)"可以用HTTP GET请求(通过URL传参)实现: <code>GET /api.php?ac=fn&amp;p1=value1&amp;p2=value2</code>,
-  也可以用POST请求实现:
-<pre>
-POST /api.php?ac=fn
+<li><p>Request一般使用HTTP GET/POST方法，如方法描述&quot;fn(p1, p2)&quot;可以用HTTP GET请求(通过URL传参)实现: <code>GET /api.php/fn?p1=value1&amp;p2=value2</code>, 也可以用POST请求实现:</p>
+<pre><code>POST /api.php/fn
 Content-Type: application/x-www-form-urlencoded
 
-p2=value2&amp;p1=value1
-</pre>
-  参数"ac"或"_ac"标识方法名, 必须使用URL参数传递, 其它参数未加说明的, 可以选择通过URL或POST传参.
-
-<li>
-少数方法描述为"fn(p1)(p2,p3)", 它表示后一个括号中的参数表示必须通过POST传参, 而前一个括号的参数必须用URL传参数, 如:
-<pre>
-POST /api.php?ac=fn&amp;p1=value1
+p2=value2&amp;p1=value1</code></pre></li>
+</ul>
+<p>参数未加说明的, 可以选择通过URL或POST传参.</p>
+<ul>
+<li><p>少数方法描述为&quot;fn(p1)(p2,p3)&quot;, 它表示后一个括号中的参数表示必须通过POST传参, 而前一个括号的参数必须用URL传参数, 如:</p>
+<pre><code>POST /api.php/fn?p1=value1
 Content-Type: application/x-www-form-urlencoded
 
-p2=value2&amp;p3=value3
-</pre>
-  注意Content-Type需要设置正确, 少数例外情况会特别指出，比如upload方法，它使用"Content-type: multipart/form-data"。
-
+p2=value2&amp;p3=value3</code></pre></li>
 </ul>
-  
+<p>注意Content-Type需要设置正确, 少数例外情况会特别指出，比如upload方法，它使用&quot;Content-type: multipart/form-data&quot;。</p>
 <ul>
-<li>
-只要服务端正确收到请求并处理，均返回code为HTTP 200的Response，其内容使用json格式，为一个至少含有2元素的数组。
-
+<li>只要服务端正确收到请求并处理，均返回code为HTTP 200的Response，其内容使用json格式，为一个至少含有2元素的数组。</li>
+<li>在WebAPI请求成功时返回内容为 <code>[0, data]</code>，其中<code>data</code>的类型由WebAPI返回类型所定义。</li>
+<li>在请求失败时返回内容为 <code>[非0错误码, 错误信息]</code>.</li>
+<li><p>从返回数组的第3个元素起, 为调试信息, 仅用于问题诊断, 不适合显示给用户看.</p></li>
+<li><p>所有交互内容采用UTF-8编码。</p></li>
+</ul>
+<p>以下面的WebAPI描述为例：</p>
+<pre><code>根据id取车型信息：
+getModel(id) -&gt; {id, name, dscr}</code></pre>
+<p>它包含以下信息：</p>
 <ul>
-<li>
-在WebAPI请求成功时返回内容为 <code>[0, data]</code>，其中<code>data</code>的类型由WebAPI返回类型所定义。
+<li><p>WebAPI名称是getModel，参数为id，对应的Request URL为 <code>GET /api.php/getModel?id=100</code> URL参数<code>ac</code>表示WebAPI名称，一般用全小写。 为防止服务端缓冲，一般请求时还应加上一个随机参数，如 <code>GET /api.php/getModel?id=100&amp;rnd=5234762234</code>. 之后的请求示例中, HTTP请求将被简化描述为:</p>
+<pre><code>getModel(id=100)</code></pre></li>
+<li><p>处理成功返回类型为<code>{id, name, dscr}</code>，例如<code>{id: 100, name: &quot;myname&quot;, dscr:&quot;mydscr&quot;}</code>，关于返回类型表述方式详见下节描述。完整的返回内容为</p>
+<pre><code>HTTP/1.1 200 OK
 
-<li>
-在请求失败时返回内容为 `[非0错误码, 错误信息].
-
-<li>
-从返回数组的第3个元素起, 为调试信息, 仅用于问题诊断, 不适合显示给用户看.
-
+[0, {id: 100, name: &quot;myname&quot;, dscr:&quot;mydscr&quot;}]</code></pre></li>
 </ul>
-<li>
-所有交互内容采用UTF-8编码。
-
-</ul>
-
-<p>
-以下面的WebAPI描述为例：
-</p>
-<pre>
-根据id取车型信息：
-getModel(id) -&gt; {id, name, dscr}
-</pre>
-
-<p>
-它包含以下信息：
-</p>
+<p>之后的示例中，返回内容将被简化描述为：</p>
+<pre><code>    {id: 100, name: &quot;myname&quot;, dscr:&quot;mydscr&quot;}</code></pre>
 <ul>
-<li>
-WebAPI名称是getModel，参数为id，对应的Request URL为 <code>GET /api.php?ac=getModel&amp;id=100</code>
-  URL参数<code>ac</code>表示WebAPI名称，一般用全小写。
-  为防止服务端缓冲，一般请求时还应加上一个随机参数，如 <code>GET /api.php?ac=getModel&amp;id=100&amp;rnd=5234762234</code>.
-  之后的请求示例中, HTTP请求将被简化描述为:
-<pre>
-getModel(id=100)
-</pre>
+<li><p>处理失败时返回信息如</p>
+<pre><code>HTTP/1.1 200 OK
 
+[1, &quot;未认证&quot;]</code></pre></li>
 </ul>
-  
-<ul>
-<li>
-处理成功返回类型为<code>{id, name, dscr}</code>，例如<code>{id: 100, name: "myname", dscr:"mydscr"}</code>，关于返回类型表述方式详见下节描述。完整的返回内容为
-<pre>
-HTTP/1.1 200 OK
-
-[0, {id: 100, name: "myname", dscr:"mydscr"}]
-</pre>
-  之后的示例中，返回内容将被简化描述为：
-<pre>
-{id: 100, name: "myname", dscr:"mydscr"}
-</pre>
-
-</ul>
-
-<ul>
-<li>
-处理失败时返回信息如
-<pre>
-HTTP/1.1 200 OK
-
-[1, "未认证"]
-</pre>
-
-</ul>
-
-<p>
-<strong>[错误码定义]</strong>
-</p>
-
-<pre>
-const E_OK=0;
+<p><strong>[错误码定义]</strong></p>
+<p>常用错误码如下：</p>
+<pre><code>const E_OK=0;
 const E_PARAM=1;
 const E_AUTH=2;
 const E_DB=3;
@@ -833,2319 +411,836 @@ const E_SERVER=4;
 const E_FORBIDDEN=5;
 
 $ERRINFO = [
-	E_PARAM =&gt; "参数不正确",
-	E_AUTH =&gt; "未认证",
-	E_DB =&gt; "数据库错误",
-	E_SERVER =&gt; "服务器错误",
-	E_FORBIDDEN =&gt; "禁止操作"
-];
-</pre>
-
-<p>
-<span class="todo">TODO:</span> 审查每项错误信息.
-</p>
-
-<p>
-<strong>[关于空值]</strong>
-</p>
-
-<p>
-假如有参数"a=1&amp;b=&amp;c=hello", 其中参数"b"值为空串。
-一般情况下，被当作未赋值处理，即与"a=1&amp;c=hello"意义相同。
-</p>
-
-<p>
-只有在对象保存上下文中（典型的是通用表操作的{tblname}.set操作），且出现中POST内容的"a="表示将该字段置null(与"a=null"语义相同), 注意：不是置空字符串。
-</p>
-
-<h4 id="toc_1.4.1.1"><a name="常用返回类型描述">4.1.1 常用返回类型描述</a></h4>
-
-<p>
-<strong>{id, name}</strong>
-</p>
-
-<p>
-一个简单对象，有两个字段id和name。e.g. <code>{id: 100, name: "name1"}</code>
-</p>
-
-<p>
-<strong>[id...] or [id]</strong>
-</p>
-
-<p>
-一个简单数组，元素为id。e.g. <code>[100, 200, 400]</code>, 每项为一个id
-</p>
-
-<p>
-<strong>[id, name]</strong>
-</p>
-
-<p>
-一个简单数组，e.g.  <code>[100, "liang"]</code>，第一项为id,  第二项为name
-</p>
-
-<p>
-<strong>[ [id, name] ] 或 varr(id, name)</strong>
-</p>
-
-<p>
-简单二维数组，又称varr, 如 <code>[ [100, "liang"], [101, "wang"] ]</code>.
-</p>
-
-<p>
-<strong>[{id, name}] 或 objarr(id, name)</strong>
-</p>
-
-<p>
-一个数组，每项为一个对象，又称objarr。e.g. <code>[{id: 100, name: "name1"}, {id: 101, name: "name2"}]</code>
-</p>
-
-<p>
-<strong>tbl(id, name)</strong>
-</p>
-
-<p>
-table对象。其详细格式为 <code>{h: [header1, header2, ...], d:[row1, row2, ...]}</code>，例如
-</p>
-<pre>
-{
-  h: ["id", "name"],
-  d: [[100, "myname1"], [200, "myname2"]]
-}
-</pre>
-
-<p>
-table对象支持分页机制(paging)，返回字段中包含"nextkey"等。
-详情请参考下一章节"分页机制".
-</p>
-
-<p>
-注意：
-</p>
+    E_PARAM =&gt; &quot;参数不正确&quot;,
+    E_AUTH =&gt; &quot;未认证&quot;,
+    E_DB =&gt; &quot;数据库错误&quot;,
+    E_SERVER =&gt; &quot;服务器错误&quot;,
+    E_FORBIDDEN =&gt; &quot;禁止操作&quot;
+];</code></pre>
+<p><strong>[关于空值]</strong></p>
+<p>假如有参数&quot;a=1&amp;b=&amp;c=hello&quot;, 其中参数&quot;b&quot;值为空串。 一般情况下，被当作未赋值处理，即与&quot;a=1&amp;c=hello&quot;意义相同。</p>
+<p>只有在对象保存上下文中（典型的是通用表操作的{tblname}.set操作），且出现中POST内容的&quot;a=&quot;表示将该字段置null(与&quot;a=null&quot;语义相同), 注意：不是置空字符串。</p>
+<h4 id="常用返回类型描述"><span class="header-section-number">3.1.1</span> 常用返回类型描述</h4>
+<p><strong>{id, name}</strong></p>
+<p>一个简单对象，有两个字段id和name。e.g. <code>{id: 100, name: &quot;name1&quot;}</code></p>
+<p><strong>[id...] or [id]</strong></p>
+<p>一个简单数组，元素为id。e.g. <code>[100, 200, 400]</code>, 每项为一个id</p>
+<p><strong>[id, name]</strong></p>
+<p>一个简单数组，e.g. <code>[100, &quot;liang&quot;]</code>，第一项为id, 第二项为name</p>
+<p><strong>[ [id, name] ] 或 varr(id, name)</strong></p>
+<p>简单二维数组，又称varr, 如 <code>[ [100, &quot;liang&quot;], [101, &quot;wang&quot;] ]</code>.</p>
+<p><strong>[{id, name}] 或 objarr(id, name)</strong></p>
+<p>一个数组，每项为一个对象，又称objarr。e.g. <code>[{id: 100, name: &quot;name1&quot;}, {id: 101, name: &quot;name2&quot;}]</code></p>
+<p><strong>tbl(id, name)</strong></p>
+<p>table对象。其详细格式为 <code>{h: [header1, header2, ...], d:[row1, row2, ...]}</code>，例如</p>
+<pre><code>{
+  h: [&quot;id&quot;, &quot;name&quot;],
+  d: [[100, &quot;myname1&quot;], [200, &quot;myname2&quot;]]
+}</code></pre>
+<p>table对象支持分页机制(paging)，返回字段中包含&quot;nextkey&quot;等。 详情请参考下一章节&quot;分页机制&quot;.</p>
+<p>注意：</p>
 <ul>
-<li>
-目前的json返回内容不区分整形或字符串型, 大多都用引号括起来
-
-<li>
-不论哪种类型，都可能返回null。客户端必须能够处理null，将其转为相应类型正确的值。
-
+<li>目前的json返回内容不区分整形或字符串型, 大多都用引号括起来</li>
+<li>不论哪种类型，都可能返回null。客户端必须能够处理null，将其转为相应类型正确的值。</li>
 </ul>
-
-<p>
-<strong>[可选参数]</strong>
-</p>
-
-<p>
-如果API的参数表示为:
-</p>
-<pre>
-fn(p1, p2?, p3?=1
-</pre>
-
-<p>
-它表示：
-</p>
+<p><strong>[可选参数]</strong></p>
+<p>如果API的参数表示为:</p>
+<pre><code>fn(p1, p2?, p3?=1)</code></pre>
+<p>它表示：</p>
 <ul>
-<li>
-p1是必选参数
-
-<li>
-p2,p3是可选参数，p3的缺省值是1，p2缺省值是0/""/null(取决于它的类型)
-
+<li>p1是必选参数</li>
+<li>p2,p3是可选参数，p3的缺省值是1，p2缺省值是0/&quot;&quot;/null(取决于它的类型)</li>
 </ul>
-
-<p>
-<strong>[复杂类型序列化为字符串描述]</strong>
-</p>
-
-<p>
-有时用一个字符串字段表示复杂的结构，这时常以下类型描述方式：
-</p>
-
+<p><strong>[复杂类型序列化为字符串描述]</strong></p>
+<p>有时用一个字符串字段表示复杂的结构，这时常以下类型描述方式：</p>
 <ul>
-<li>
-逗号分隔的简单字符串序列，如
-<pre>
-"经度,纬度"
+<li><p>逗号分隔的简单字符串序列，如</p>
+<pre><code>&quot;经度,纬度&quot;
 或
-"经度/Double,纬度/Double"
-</pre>
-
-</ul>
-<p>
-可表示
-<code>121.233543,31.345457</code>
-</p>
-
-<ul>
-<li>
-Coord类型
-
-</ul>
-
-<p>
-Coord="经度/Double,纬度/Double".
-</p>
-
-<ul>
-<li>
-逗号分隔行，冒号分隔列的表，简称list，如
-<pre>
-"id:name?,"
-参数后加"?"表示是可选参数(逗号不可少，表示数组，即后面可有多个重复项)
+&quot;经度/Double,纬度/Double&quot;</code></pre>
+<p>可表示<code>121.233543,31.345457</code><br />
+特别地，Coord类型: Coord=&quot;经度/Double,纬度/Double&quot;.</p></li>
+<li><p>逗号分隔行，冒号分隔列的表，简称list，如</p>
+<pre><code>&quot;id:name?,&quot;
+参数后加&quot;?&quot;表示是可选参数(逗号不可少，表示数组，即后面可有多个重复项)
 或
 list(id, name?)
 或指定类型 
-list(id/Integer, name?/String)
-</pre>
-
+list(id/Integer, name?/String)</code></pre>
+<p>每个元组用&quot;,&quot;分隔, 元组内每个字段用&quot;:&quot;分隔。每个字段内不能有这两个特殊符号(如果是日期，中间不可以有&quot;:&quot;, 如&quot;2015/11/20 1030&quot;或&quot;20151120 1030&quot;)。 例如</p>
+<pre><code>10:liang,11:wang</code></pre>
+<p>如果name字段省略，则可简化为<code>10,11</code>.</p>
+<p class="todo">TODO: 也可以带表头信息（首字符&quot;@&quot;标明有表头），如 <code>@id:name,10:liang,11:wang</code> 或 <code>@id,10,11</code>.</p>
+<p>这种格式一般用于传递简单的表。更加复杂的类型可使用json格式传递。</p></li>
 </ul>
-
-<p>
-每个元组用","分隔, 元组内每个字段用":"分隔。每个字段内不能有这两个特殊符号(如果是日期，中间不可以有":", 如"2015/11/20 1030"或"20151120 1030")。
-例如
-</p>
-<pre>
-10:liang,11:wang
-</pre>
-<p>
-如果name字段省略，则可简化为<code>10,11</code>.
-</p>
-
-<p>
-<span class="todo">TODO:</span> 也可以带表头信息（首字符"@"标明有表头），如 <code>@id:name,10:liang,11:wang</code> 或 <code>@id,10,11</code>.
-</p>
-
-<p>
-这种格式一般用于server/cient间传递简单的表。
-</p>
-
-<ul>
-<li>
-json序列化及其Table格式。
-
-</ul>
-
-<pre>
-json.tbl(id, name) 或 json({h:["id","name"],d:[row1,row2...]})
-</pre>
-
-<p>
-适合传递普通的表。
-</p>
-
-<ul>
-<li>
-php序列化:
-
-</ul>
-
-<pre>
-php([{id,name}]) 或 php.objarr(id, name)
-</pre>
-
-<p>
-适合存储复杂数据到一个简单字段，但不用于server/client间数据交互。
-它使用php的serialize/unserialize生成，格式如：
-</p>
-<pre>
-a:2:{i:0;a:2:{s:2:"id";i:10;s:4:"name";s:5:"liang";}i:1;a:2:{s:2:"id";i:11;s:4:"name";s:4:"wang";}}
-</pre>
-
-<p>
-上述字段在server/client交互时应使用等价的json.objarr(id,name) 如
-</p>
-<pre>
-[
-	{id: 10, name: "liang"},
-	{id: 11, name: "wang"},
-]
-</pre>
-<p>
-或 list(id,name) 如
-</p>
-<pre>
-@id:name,10:liang,11:wang
-</pre>
-
-<ul>
-<li>
-csv序列（行间用回车分隔，每个字段用","分隔）
-
-</ul>
-<p>
-适合客户端向服务端通过http content传大表。如 <code>csv(id,name,dscr)</code>
-</p>
-
-<ul>
-<li>
-url序列化
-
-</ul>
-<p>
-如
-</p>
-<pre>
-urlist(id, qty)
-</pre>
-
-<p>
-可表示
-</p>
-<pre>
-items[0][id]=101&amp;item[0][qty]=2&amp;items[1][id]=102&amp;item[1][qty]=4
-</pre>
-
-<h4 id="toc_1.4.1.2"><a name="分页机制">4.1.2 分页机制</a></h4>
-
-<p>
-如果一个查询支持分页(paging), 则一般调用形式为
-</p>
-
-<pre>
-Ordr.query(_pagekey?, _pagesz?=20) -&gt; {nextkey, total?, @h, @d}
+<h4 id="分页机制"><span class="header-section-number">3.1.2</span> 分页机制</h4>
+<p>如果一个查询支持分页(paging), 则一般调用形式为</p>
+<pre><code>Ordr.query(_pagekey?, _pagesz?=20) -&gt; {nextkey, total?, @h, @d}
 或
-Ordr.query(page, rows?=20) -&gt; {nextkey, total, @h, @d}
-</pre>
-
-<p>
-<strong>[参数]</strong>
-</p>
-
+Ordr.query(page, rows?=20) -&gt; {nextkey, total, @h, @d}</code></pre>
+<p><strong>[参数]</strong></p>
 <dl>
 <dt>_pagesz</dt>
-<dd>Integer. 页大小，默认为20条数据。</dd>
+<dd>Integer. 页大小，默认为20条数据。
+</dd>
 <dt>_pagekey</dt>
-<dd>String (目前是数值). 一般某次查询不填写（如需要返回总记录数即total字段，则应填写为0），而下次查询时应根据上次调用时返回数据的"nextkey"字段来填写。</dd>
-</dl>
-
-<dl>
+<dd>String (目前是数值). 一般某次查询不填写（如需要返回总记录数即total字段，则应填写为0），而下次查询时应根据上次调用时返回数据的&quot;nextkey&quot;字段来填写。
+</dd>
 <dt>page/rows</dt>
-<dd>为支持jquery-easyui而设置, 与_pagekey/_pagesz类似, 区别在于: 每次均返回total字段; 强制采用"limit"算法(默认如果没有用非主键排序,会采用"部分查询"算法), 意味着nextkey即下一页页码.</dd>
+<dd>为支持jquery-easyui而设置, 与_pagekey/_pagesz类似, 区别在于: 每次均返回total字段; 强制采用&quot;limit&quot;算法(默认如果没有用非主键排序,会采用&quot;部分查询&quot;算法), 意味着nextkey即下一页页码.
+</dd>
 </dl>
-
-<p>
-<strong>[返回值]</strong>
-</p>
-
+<p><strong>[返回值]</strong></p>
 <dl>
 <dt>nextkey</dt>
-<dd>String. 一个字符串, 供取下一页时填写参数"_pagekey". 如果不存在该字段，则说明已经是最后一批数据。</dd>
+<dd>String. 一个字符串, 供取下一页时填写参数&quot;_pagekey&quot;. 如果不存在该字段，则说明已经是最后一批数据。
+</dd>
 <dt>total</dt>
-<dd>Integer. 返回总记录数，仅当_pagekey指定为0时返回。</dd>
+<dd>Integer. 返回总记录数，仅当_pagekey指定为0时返回。
+</dd>
 <dt>h/d</dt>
-<dd>实际数据表的头信息(header)和数据行(data)，符合table对象的格式，参考上一章节tbl(id,name)介绍。</dd>
+<dd>实际数据表的头信息(header)和数据行(data)，符合table对象的格式，参考上一章节tbl(id,name)介绍。
+</dd>
 </dl>
-
-<p>
-<strong>[示例]</strong>
-</p>
-
-<p>
-第一次查询
-</p>
-<pre>
-Ordr.query()
-</pre>
-
-<p>
-返回
-</p>
-<pre>
-{nextkey: 10800910, h: [id, ...], data: [...]}
-</pre>
-
-<p>
-其中的nextkey将供下次查询时填写_pagekey字段；首次查询还会返回total字段。由于缺省页大小为20，所以可估计总共有51/20=3页。
-</p>
-
-<p>
-要在首次查询时返回总记录数，则用_pagekey=0：
-</p>
-<pre>
-Ordr.query(_pagekey=0)
-</pre>
-
-<p>
-这时返回
-</p>
-<pre>
-{nextkey: 10800910, total: 51, h: [id, ...], data: [...]}
-</pre>
-
-<p>
-第二次查询(下一页)
-</p>
-<pre>
-Ordr.query(_pagekey=10800910)
-</pre>
-
-<p>
-返回
-</p>
-<pre>
-{nextkey: 10800931, h: [...], d: [...]}
-</pre>
-
-<p>
-仍返回nextkey字段说明还可以继续查询，
-</p>
-
-<p>
-再查询下一页
-</p>
-<pre>
-Ordr.query(_pagekey=10800931)
-</pre>
-
-<p>
-返回
-</p>
-<pre>
-{h: [...], d: [...]}
-</pre>
-
-<p>
-返回数据中不带"nextkey"属性，表示所有数据获取完毕。
-</p>
-
-<h4 id="toc_1.4.1.3"><a name="分页机制实现原理">4.1.3 分页机制实现原理</a></h4>
-
-<p>
-分页有两种实现方式：分段查询和传统分页。
-</p>
-
-<p>
-分段查询性能高，更精确，不会丢失数据。但它仅适用于未指定排序字段（无orderby参数）或排序字段是id的情况（例如：orderby="id DESC"）。
-系统将根据orderby参数自动选择分段查询或传统分页。
-</p>
-
-<p>
-<strong>[分段查询]</strong>
-</p>
-
-<p>
-分段查询的原理是利用主键id进行查询条件控制（自动修改WHERE语句），pagekey字段实际是上次数据的最后一个id.
-</p>
-
-<p>
-首次查询：
-</p>
-<pre>
-Ordr.query()
-</pre>
-
-<p>
-SQL样例如下：
-</p>
-<pre>
-SELECT * FROM Ordr t0
+<p><strong>[示例]</strong></p>
+<p>第一次查询</p>
+<pre><code>Ordr.query()</code></pre>
+<p>返回</p>
+<pre><code>{nextkey: 10800910, h: [id, ...], data: [...]}</code></pre>
+<p>其中的nextkey将供下次查询时填写_pagekey字段；首次查询还会返回total字段。由于缺省页大小为20，所以可估计总共有51/20=3页。</p>
+<p>要在首次查询时返回总记录数，则用_pagekey=0：</p>
+<pre><code>Ordr.query(_pagekey=0)</code></pre>
+<p>这时返回</p>
+<pre><code>{nextkey: 10800910, total: 51, h: [id, ...], data: [...]}</code></pre>
+<p>第二次查询(下一页)</p>
+<pre><code>Ordr.query(_pagekey=10800910)</code></pre>
+<p>返回</p>
+<pre><code>{nextkey: 10800931, h: [...], d: [...]}</code></pre>
+<p>仍返回nextkey字段说明还可以继续查询，</p>
+<p>再查询下一页</p>
+<pre><code>Ordr.query(_pagekey=10800931)</code></pre>
+<p>返回</p>
+<pre><code>{h: [...], d: [...]}</code></pre>
+<p>返回数据中不带&quot;nextkey&quot;属性，表示所有数据获取完毕。</p>
+<h4 id="分页机制实现原理"><span class="header-section-number">3.1.3</span> 分页机制实现原理</h4>
+<p>分页有两种实现方式：分段查询和传统分页。</p>
+<p>分段查询性能高，更精确，不会丢失数据。但它仅适用于未指定排序字段（无orderby参数）或排序字段是id的情况（例如：orderby=&quot;id DESC&quot;）。 系统将根据orderby参数自动选择分段查询或传统分页。</p>
+<p><strong>[分段查询]</strong></p>
+<p>分段查询的原理是利用主键id进行查询条件控制（自动修改WHERE语句），pagekey字段实际是上次数据的最后一个id.</p>
+<p>首次查询：</p>
+<pre><code>Ordr.query()</code></pre>
+<p>SQL样例如下：</p>
+<pre><code>SELECT * FROM Ordr t0
 ...
 ORDER BY t0.id
-LIMIT {pagesz}
-</pre>
-
-<p>
-再次查询
-</p>
-<pre>
-Ordr.query(_pagekey=10800910)
-</pre>
-
-<p>
-SQL样例如下：
-</p>
-<pre>
-SELECT * FROM Ordr t0
+LIMIT {pagesz}</code></pre>
+<p>再次查询</p>
+<pre><code>Ordr.query(_pagekey=10800910)</code></pre>
+<p>SQL样例如下：</p>
+<pre><code>SELECT * FROM Ordr t0
 ...
 WHERE t0.id&gt;10800910
 ORDER BY t0.id
-LIMIT {pagesz}
-</pre>
-
-<p>
-<strong>[传统分页]</strong>
-</p>
-
-<p>
-传统分页只需要通过SQL语句的LIMIT关键字来实现。pagekey字段实际是页码。其原理是：
-</p>
-
-<p>
-首次查询
-</p>
-<pre>
-Ordr.query(orderby="comeTm DESC")
-</pre>
-<p>
-（以comeTm作为排序字段，无法应用分段查询机制，只能使用传统分页。）
-</p>
-
-<p>
-SQL样例如下：
-</p>
-<pre>
-SELECT * FROM Ordr t0
+LIMIT {pagesz}</code></pre>
+<p><strong>[传统分页]</strong></p>
+<p>传统分页只需要通过SQL语句的LIMIT关键字来实现。pagekey字段实际是页码。其原理是：</p>
+<p>首次查询</p>
+<pre><code>Ordr.query(orderby=&quot;comeTm DESC&quot;)</code></pre>
+<p>（以comeTm作为排序字段，无法应用分段查询机制，只能使用传统分页。）</p>
+<p>SQL样例如下：</p>
+<pre><code>SELECT * FROM Ordr t0
 ...
 ORDER BY comeTm DESC, t0.id
-LIMIT 0,{pagesz}
-</pre>
-
-<p>
-再次查询
-</p>
-<pre>
-Ordr.query(_pagekey=2)
-</pre>
-
-<p>
-SQL样例如下：
-</p>
-<pre>
-SELECT * FROM Ordr t0
+LIMIT 0,{pagesz}</code></pre>
+<p>再次查询</p>
+<pre><code>Ordr.query(_pagekey=2)</code></pre>
+<p>SQL样例如下：</p>
+<pre><code>SELECT * FROM Ordr t0
 ...
 ORDER BY comeTm DESC, t0.id
-LIMIT ({pagekey}-1)*{pagesz}, {pagesz}
-</pre>
-
-<h4 id="toc_1.4.1.4"><a name="HTTPS服务">4.1.4 HTTPS服务</a></h4>
-
-<p>
-服务端支持HTTPS服务。客户端默认应使用HTTP协议与服务器通信；对于个别敏感的API，如涉及用户密码的登录、注册、修改密码等操作，应使用HTTPS协议进行通信。
-</p>
-
-<p>
-注意：
-</p>
+LIMIT ({pagekey}-1)*{pagesz}, {pagesz}</code></pre>
+<h4 id="https服务"><span class="header-section-number">3.1.4</span> HTTPS服务</h4>
+<p>服务端支持HTTPS服务。客户端默认应使用HTTP协议与服务器通信；对于个别敏感的API，如涉及用户密码的登录、注册、修改密码等操作，应使用HTTPS协议进行通信。</p>
+<p>注意：</p>
 <ul>
-<li>
-服务器很可能采用自签证书，且证书中CN名称(CommonName字段)与网站实际名称可能不符.
-  这种情况下一般的SSL库在连接时会验证服务端证书并报错，客户端应设置连接选择忽略这些错误。例如，对于CURL库，可设置：
-<pre>
-# for https, ignore cert errors (e.g. for self-signed cert)
-curl_setopt($h, CURLOPT_SSL_VERIFYPEER, false);
-curl_setopt($h, CURLOPT_SSL_VERIFYHOST, 0);
-</pre>
-
+<li>服务器ssl证书如果采用自签证书，在浏览器中基本无法直接访问。必须使用经过认证的ssl证书。</li>
 </ul>
-
-<h4 id="toc_1.4.1.5"><a name="调试等级(_debug)">4.1.5 调试等级(_debug)</a></h4>
-
-<p>
-特殊的URL参数"_debug"定义调试等级, 默认为0. 如果为1-9的数字, 将添加调试信息到结果数组中.
-</p>
-
-<p>
-_debug=9: 输出SQL
-</p>
-
-<p>
-通过设置环境变量P_DEBUG, 可以让本系统使用的测试工具(如client.php及rtest.php)请求时指定调试等级. 如:
-</p>
-<pre>
-set P_DEBUG=9
-client.php callsvr usercar.query
-</pre>
-
-<h4 id="toc_1.4.1.6"><a name="应用标识(_app)">4.1.6 应用标识(_app)</a></h4>
-
-<p>
-特殊的URL参数"_app"用于定义当前应用. 缺省值为"user"(对应客户端应用). 
-注意: 每个请求都必须带此标识, 它决定session对应的cookie项的名字. 如果不加该参数, 则可能出现未预料的错误.
-</p>
-
-<p>
-当前可用应用名称定义如下:
+<h4 id="调试等级_debug"><span class="header-section-number">3.1.5</span> 调试等级(_debug)</h4>
+<p>在服务端配置为测试模式时，可用特殊的URL参数&quot;_debug&quot;定义调试等级, 默认为0. 如果为1-9的数字, 将添加调试信息到结果数组中.</p>
+<p>_debug=9: 输出SQL</p>
+<p>通过设置环境变量P_DEBUG, 可以让本系统使用的测试工具(如client.php及rtest.php)请求时指定调试等级. 如:</p>
+<pre><code>set P_DEBUG=9
+client.php callsvr usercar.query</code></pre>
+<h4 id="应用标识_app"><span class="header-section-number">3.1.6</span> 应用标识(_app)</h4>
+<p>特殊的URL参数&quot;_app&quot;用于定义当前应用. 缺省值为&quot;user&quot;(对应客户端应用). 注意: 每个请求都必须带此标识, 它决定session对应的cookie项的名字. 如果不加该参数, 则可能出现未预料的错误.</p>
+<p>常用应用标识如下:</p>
 <dl>
 <dt>user</dt>
-<dd>缺省值. web移动应用, 用户使用的客户端.</dd>
-<dt>admin</dt>
-<dd>web桌面应用, 管理端.</dd>
-<dt>store</dt>
-<dd>web桌面应用, 商户管理端.</dd>
+<dd>缺省值. 一般为用户端。
+</dd>
 <dt>emp</dt>
-<dd>web移动应用, 商户雇员端.</dd>
+<dd>员工端。
+</dd>
+<dt>admin</dt>
+<dd>超级管理端。开发者或IT管理员使用。
+</dd>
 </dl>
-</p>
-
-<p>
-由于不同应用(如客户端, 商户端与管理端)共用一个api.php页面, 当在同一浏览器中打开多个应用时可能相互影响, 比如商户端与管理端同时使用时, 商户端会自动以管理端的权限操作.
-</p>
-
-<p>
-解决方法是, 为不同应用使用不同的sessionId以区分. 实现时有两种方式, 一是访问不同的服务端页面, 如商户端访问api.php, 管理端访问api0.php(其中指定一个不同的sessionId); 另一种是商户端所有的请求都带一个参数指定sessionId. 
-我们将采用后一种解决方法.
-</p>
-
-<p>
-URL参数_app可用于指定所属应用, 如不指定默认值为"carsvc". 它隐含着session的名称为"{_app}id"如请求
-</p>
-<pre>
-GET /api.php?_app=emp
-</pre>
-
-<p>
-第一次访问将返回
-</p>
-<pre>
-SetCookie: empid=xxxxxx
-</pre>
-
-<h4 id="toc_1.4.1.7"><a name="测试模式(_test)">4.1.7 测试模式(_test)</a></h4>
-
-<p>
-URL参数"_test"值为非0时表示测试模式。参考章节"概要设计"-&gt;"配置项"-&gt;"测试模式".
-</p>
-
-<p>
-当_test值为2时，表示运行回归测试。
-</p>
-
-<h4 id="toc_1.4.1.8"><a name="使用PATH_INFO模式的URL">4.1.8 使用PATH_INFO模式的URL</a></h4>
-
-<p>
-通过在index.php中解析<code>$_SERVER["PATH_INFO"]</code>, 可以令URL更可读：
-</p>
-<pre>
-http://localhost/cheguanjia/api.php?ac=login&amp;phone=137&amp;pwd=1234
+<p>由于不同应用(如客户端, 商户端与管理端)共用一个api.php页面, 当在同一浏览器中打开多个应用时可能相互影响, 比如商户端与管理端同时使用时, 商户端会自动以管理端的权限操作.</p>
+<p>解决方法是, 为不同应用使用不同的sessionId以区分. 实现时有两种方式, 一是访问不同的服务端页面, 如商户端访问api.php, 管理端访问api0.php(其中指定一个不同的sessionId); 另一种是商户端所有的请求都带一个参数指定sessionId. 我们将采用后一种解决方法.</p>
+<p>URL参数_app可用于指定所属应用, 如不指定默认值为&quot;user&quot;. 它隐含着session的名称为&quot;{_app}id&quot;如请求</p>
+<pre><code>GET /api.php?_app=emp</code></pre>
+<p>第一次访问将返回</p>
+<pre><code>SetCookie: empid=xxxxxx</code></pre>
+<h4 id="使用path_info模式的url"><span class="header-section-number">3.1.7</span> 使用PATH_INFO模式的URL</h4>
+<p>以下URL等价：</p>
+<pre><code>http://localhost/mysvc/api.php/login?phone=137&amp;pwd=1234
 -&gt;
-http://localhost/cheguanjia/api.php/login?phone=137&amp;pwd=1234
-</pre>
-
-<p>
-对于对象的CRUD，URL像这样：
-</p>
-<pre>
-http://localhost/cheguanjia/api.php?ac=Ordr.query&amp;res=id,dscr
+http://localhost/mysvc/api.php?ac=login&amp;phone=137&amp;pwd=1234</code></pre>
+<p>对于对象的CRUD，URL像这样：</p>
+<pre><code>http://localhost/mysvc/api.php/Ordr.query?res=id,dscr
 -&gt;
-http://localhost/cheguanjia/api.php/Ordr/query?res=id,dscr
-</pre>
-<p>
-即"Ordr/query"转化为"ac=Ordr.query".
-</p>
-
-<h4 id="toc_1.4.1.9"><a name="客户端版本(_ver)">4.1.9 客户端版本(_ver)</a></h4>
-
-<p>
-URL参数"_ver"值为客户端版本。取值参考表ApiLog.ver字段。目前只有安卓客户端设置该参数为"a/{ver}" (如"a/2"), 其它客户端版本根据userAgent自动获取。
-</p>
-
-<h4 id="toc_1.4.1.10"><a name="权限说明">4.1.10 权限说明</a></h4>
-
-<p>
-要访问每个API，必须拥有相应的权限。权限定义如下：
-</p>
-
+http://localhost/mysvc/api.php?ac=Ordr.query&amp;res=id,dscr</code></pre>
+<h4 id="客户端版本_ver"><span class="header-section-number">3.1.8</span> 客户端版本(_ver)</h4>
+<p>URL参数&quot;_ver&quot;值为客户端版本。取值参考表ApiLog.ver字段。目前只有安卓客户端设置该参数为&quot;a/{ver}&quot; (如&quot;a/2&quot;), 其它客户端版本根据userAgent自动获取。</p>
+<h4 id="权限说明"><span class="header-section-number">3.1.9</span> 权限说明</h4>
+<p>要访问每个API，必须定义相应的权限。权限中包括登录类型一般用AUTH_XXX表示，一般权限用PERM_XXX表示。</p>
 <ul>
-<li>
-AUTH_GUEST: 任何人可用, 无权限限制。不用登录即可查看商户, 天气等. 
-
-<li>
-AUTH_USER: 用户登录后可用. 可做下单, 查看订单等操作. 
-
+<li>AUTH_GUEST: 任何人可用, 无权限限制。不用登录即可查看商户, 天气等.</li>
+<li>AUTH_USER: 用户登录后可用. 可做下单, 查看订单等操作.</li>
+<li>AUTH_EMP: 员工登录后，查看订单以及操作自己的订单.</li>
+<li>AUTH_ADMIN: 可操作一切对象. 一般由程序内部使用。</li>
+<li>AUTH_PARTNER: 用于系统集成的权限验证。不用登录（相当于AUTH_GUEST），但调用每个API时必须提供_pwd/_sign参数之一供验证。</li>
 </ul>
+<p>员工登录后可能获得以下一个或多个权限： - PERM_MGR: 操作商户的所有内容, 包括订单, 物料, 员工等(但不能设置员工权限).</p>
+<p>其它权限: - PERM_TEST_MODE: 测试模式下可用。 - PERM_MOCK_MODE: 模拟模式下可用。</p>
+<h3 id="通用操作"><span class="header-section-number">3.2</span> 通用操作</h3>
+<h4 id="通用表操作"><span class="header-section-number">3.2.1</span> 通用表操作</h4>
+<p>以下4条API完成对表的增删改查(CRUD)动作. 服务端可根据当前用户所拥有权限进行检查. 下面用Obj即对应表名。</p>
+<pre><code>Obj.add(res?)(POST fields...) -&gt; {id} 
 
-<p>
-员工登录后可能获得以下一个或多个权限(由Employee.perms指定):
-</p>
-<ul>
-<li>
-AUTH_ITEM: 管理商户的物料.
+Obj.set(id)(POST fields...)
 
-<li>
-AUTH_EMP: 查看订单以及操作自己的订单.
+Obj.get(id, res?) -&gt; {fields...}
 
-<li>
-AUTH_MGR: 操作商户的所有内容, 包括订单, 物料, 员工等(但不能设置员工权限). 
+Obj.del(id)
 
-<li>
-AUTH_MGR2: 管理所有商户, 设置员工权限, 商户结算等.
-
-<li>
-AUTH_STORE: 员工登录后的权限, 包含以上各类型.
-
-</ul>
-
-<p>
-其它权限:
-</p>
-<ul>
-<li>
-AUTH_TEST_MODE: 测试模式下可用。
-
-<li>
-AUTH_MOCK_MODE: 模拟模式下可用。
-
-<li>
-AUTH_ADMIN: 可操作一切对象. 但没有自动完成功能. 由程序内部使用, 对外已废弃(原超级管理端已不再使用)
-
-<li>
-AUTH_ASTORE: 当前所属商户是自营商户且有权限AUTH_MGR/AUTH_MGR2时可用.
-
-<li>
-AUTH_PARTNER: 用于系统集成的权限验证。不用登录（相当于AUTH_GUEST），但调用每个API时必须提供_pwd/_sign参数之一供验证。
-
-</ul>
-
-<p>
-如果API未明确指定权限，则认为是AUTH_GUEST.
-按登录对象的不同, 权限又分为 用户类(AUTH_USER) 和 商户类(AUTH_STORE), 分别对应 AC1_xxx 和 AC2_xxx 系列原子权限. 这也使得同一个API在不同权限下的执行结果可能不同，如 <code>Ordr.query</code> 在AUTH_USER下(查该用户订单)或AUTH_STORE下（查该商户订单）是不同的。
-</p>
-
-<p>
-一个用户可以拥有多个权限, 但按data ownership范围的不同, 只会有一个ownership level. 定义如下:
-</p>
-<ul>
-<li>
-OWN_EMP(操作员工数据)
-
-<li>
-OWN_STORE(操作所在店数据)
-
-<li>
-OWN_ALL(操作所有店数据)
-
-<li>
-OWN_USER (操作用户自己数据, 目前与AUTH_USER一致, 暂未使用)
-
-</ul>
-
-<h3 id="toc_1.4.2"><a name="通用操作">4.2 通用操作</a></h3>
-
-<h4 id="toc_1.4.2.1"><a name="执行sql语句">4.2.1 执行sql语句</a></h4>
-
-<pre>
-execSql(sql, wantArray?, wantId?, fmt?) -&gt; rowSet or affectedRows or lastInsertedId
-</pre>
-
-
-<p>
-只有管理员登录后才能使用, 或是测试模式下才能使用. 生产模式下客户端和商户端禁止使用. 
-</p>
-
-<p>
-如果是SELECT语句, 返回结果集, 否则返回affectedRows.
-</p>
-
-<p>
-<strong>[权限]</strong>
-</p>
-
-<ul>
-<li>
-AUTH_ADMIN
-
-<li>
-AUTH_TEST_MODE
-
-</ul>
-
-<p>
-<strong>[参数]</strong>
-</p>
-
-<dl>
-<dt>sql</dt>
-<dd>String. SQL语句。</dd>
-<dt>wantArray</dt>
-<dd>Boolean. 如果非空,则对select语句的结果返回数组而非关联表. 由fmt=array替代, 已不建议使用.</dd>
-<dt>wantId</dt>
-<dd>Boolean. 如果非空，则对insert语句的结果返回最后插入的id而非记录数。</dd>
-</dl>
-
-<dl>
-<dt>fmt</dt>
-<dd>String. 指定select查询的结果返回格式: "table"-table格式({h,d}), "array"-array格式 (相当于wantArray=1), "one"-如果查询有多列,则只取首行, 如果查询只有一列, 则只取首行首列数据(相当于框架中的queryOne函数), 缺省: object aray / rowset</dd>
-</dl>
-
-<p>
-<strong>[示例]</strong>
-</p>
-
-<p>
-请求
-</p>
-<pre>
-execSql(sql="SELECT COUNT(*) AS N FROM User")
-</pre>
-
-<p>
-返回
-</p>
-<pre>
-[
-	{N: 3}
-]
-</pre>
-
-<p>
-注:
-</p>
-<ul>
-<li>
-实际发送请求时, 注意别忘记对内容进行url编码, 内容不含引号.
-
-<li>
-对select语句返回rowSet, 一定是一个数组, 每一项的字段名由select的字段决定.
-
-</ul>
-
-<p>
-<strong>[示例]</strong>
-</p>
-
-<p>
-请求
-</p>
-<pre>
-execSql(sql="SELECT COUNT(*) AS N FROM User", fmt=one)
-</pre>
-
-<p>
-返回
-</p>
-<pre>
-3
-</pre>
-
-<p>
-<strong>[示例]</strong>
-</p>
-
-<p>
-请求
-</p>
-<pre>
-execSql(sql="SELECT COUNT(*) AS N, MIN(createTm) AS createTm FROM User", fmt=one)
-</pre>
-
-<p>
-返回
-</p>
-<pre>
-[3, '2015-1-1']
-</pre>
-
-<p>
-<strong>[示例]</strong>
-</p>
-
-<p>
-请求
-</p>
-<pre>
-execSql(sql="SELECT COUNT(*) AS N FROM User", wantArray=1)
-或
-execSql(sql="SELECT COUNT(*) AS N FROM User", fmt=array)
-</pre>
-
-<p>
-返回
-</p>
-<pre>
-[
-	[3]
-]
-
-</pre>
-
-<p>
-<strong>[示例]</strong>
-</p>
-
-<p>
-请求
-</p>
-<pre>
-execSql(sql="SELECT id FROM User")
-</pre>
-
-<p>
-返回
-</p>
-<pre>
-[
-	{id: 1},
-	{id: 2},
-	{id: 3}
-]
-</pre>
-
-<p>
-<strong>[示例]</strong>
-</p>
-
-<p>
-请求
-</p>
-<pre>
-execSql(sql="SELECT id FROM User", fmt=array)
-</pre>
-
-<p>
-返回
-</p>
-<pre>
-[ [1], [2], [3] ]
-</pre>
-
-<p>
-<strong>[示例]</strong>
-</p>
-
-<p>
-请求
-</p>
-<pre>
-execSql(sql="SELECT id FROM User", fmt=table)
-</pre>
-
-<p>
-返回
-</p>
-<pre>
-{
-	h: ["id"],
-	d: [ [1], [2], [3] ]
-}
-</pre>
-
-<p>
-<strong>[示例]</strong>
-</p>
-
-<p>
-请求
-</p>
-<pre>
-execsql(sql="DELETE User WHERE id=1 or id=2")
-</pre>
-
-<p>
-返回
-</p>
-<pre>
-2
-</pre>
-
-<p>
-注: 对于非SELECT语句, 返回affectedRows
-</p>
-
-<h4 id="toc_1.4.2.2"><a name="通用表操作">4.2.2 通用表操作</a></h4>
-
-<p>
-以下4条API完成对表的增删改查(CRUD)动作. 服务端可根据当前用户所拥有权限进行检查. 
-</p>
-
-<pre>
-{tblname}.add(res?)(POST fields...) -&gt; {id} 
-
-{tblname}.set(id)(POST fields...)
-
-{tblname}.get(id, res?) -&gt; {fields...}
-
-{tblname}.del(id)
-
-{tblname}.query(res?, cond?, @res2?, join?, @cond2?, union?, distinct?=0, _pagesz?=20, _pagekey?, _fmt?) -&gt; tbl(fields...)
+Obj.query(res?, cond?, @res2?, join?, @cond2?, union?, distinct?=0, _pagesz?=20, _pagekey?, _fmt?) -&gt; tbl(fields...) = {nextkey?, total?, @h, @d}
 
 取对象数组：
-{tblname}.query(wantArray=1, @subobj?, res?, ...) -&gt; [obj1, obj2...]
+Obj.query(_fmt=list, @subobj?, res?, ...) -&gt; {nextkey?, total?, @list=[obj1, obj2...]}
+
+该接口不建议使用，它不支持分页，将废弃：
+Obj.query(wantArray=1, ...) -&gt; [obj1, obj2...]
 
 分组统计：
-{tblname}.query(gres, res, cond) -&gt; tbl(fields...)
-</pre>
-
-<p>
-缺省这些操作只对管理员登录后开放, 用户或商家登录后无权操作. 管理员可对所有表的所有字段进行CRUD操作.
-</p>
-
-<p>
-部分对象对用户或商家登录后开放, 如用户登录后可操作User,UserCar等对象, 这些操作会在相应章节单独列出来说明, 如"用户车辆信息"章节.
-在这些章节中会对操作限制(如只能get/set,不能add/del), 只读字段(即使请求中给出,服务端也会忽略这些字段), 可缺省字段(服务端会自动补全)做出说明.
-</p>
-
-<p>
-系统中的表设计(表名, 字段等)参见"数据库设计"章节. 一般表都设计为使用整形字段id作为主键. 该字段创建后变只读, 不允许被修改.
-</p>
-
-<p>
-对于add操作，默认返回{id}, 如果想多返回其它字段，可设置res，如 
-</p>
-<pre>
-Ordr.add(res="id,status,total")(POST fields...) -&gt; {id, status, total}
-</pre>
-
-<p>
-<strong>[query]</strong>
-</p>
-
-<p>
-query可以用参数cond指定查询条件, 如
-</p>
-<pre>
-cond="type='A' and name like '%hello%'" 
+Obj.query(gres, res, cond, ...) -&gt; tbl(fields...)</code></pre>
+<p>缺省这些操作只对管理员登录后开放, 用户或商家登录后无权操作. 管理员可对所有表的所有字段进行CRUD操作.</p>
+<p>部分对象对用户或商家登录后开放, 如用户登录后可操作User,UserCar等对象, 这些操作会在相应章节单独列出来说明, 如&quot;用户车辆信息&quot;章节. 在这些章节中会对操作限制(如只能get/set,不能add/del), 只读字段(即使请求中给出,服务端也会忽略这些字段), 可缺省字段(服务端会自动补全)做出说明.</p>
+<p>系统中的表设计(表名, 字段等)参见&quot;数据库设计&quot;章节. 一般表都设计为使用整形字段id作为主键. 该字段创建后变只读, 不允许被修改.</p>
+<p>对于add操作，默认返回{id}, 如果想多返回其它字段，可设置res，如</p>
+<pre><code>Ordr.add(res=&quot;id,status,total&quot;)(POST fields...) -&gt; {id, status, total}</code></pre>
+<p><strong>[query]</strong></p>
+<p>query可以用参数cond指定查询条件, 如</p>
+<pre><code>cond=&quot;type=&#39;A&#39; and name like &#39;%hello%&#39;&quot; 
 
 URL编码后为
 
-cond=type%3d%27A%27+and+name+like+%27%25hello%25%27
-</pre>
-
-<p>
-query返回有两种形式, 缺省返回table类型便于支持分页, 但不支持查询子对象(subobj参数). 如果指定wantArray=1, 可以返回子对象, 但则不支持分页. 例如, 
-query缺省返回:
-</p>
-<pre>
-{
-	"h": ["id", "name"],
-	"d": [[1, "liang"], [2, "wang"]]
-}
-</pre>
-<p>
-如果指定wantArray=1则返回:
-</p>
-<pre>
-{
-	[["id": 1, "name": "liang"], ["id": 2, "name": "wang"]]
-}
-</pre>
-
-<p>
-注意:
-</p>
+cond=type%3d%27A%27+and+name+like+%27%25hello%25%27</code></pre>
+<p>query返回支持多种形式, 缺省返回压缩表类型如：</p>
+<pre><code>{
+    &quot;h&quot;: [&quot;id&quot;, &quot;name&quot;],
+    &quot;d&quot;: [[1, &quot;liang&quot;], [2, &quot;wang&quot;]]
+}</code></pre>
+<p>如果指定<code>_fmt=list</code>则返回:</p>
+<pre><code>{
+    list: [[&quot;id&quot;: 1, &quot;name&quot;: &quot;liang&quot;], [&quot;id&quot;: 2, &quot;name&quot;: &quot;wang&quot;]]
+}</code></pre>
+<p>注意:</p>
 <ul>
-<li>
-对于add/set方法, 使用HTTP POST请求; fields表示表中每个字段的key-value值, 通过POST字段传递(使用URL编码). set方法中的id字段通过URL传递.
-
-<li>
-对于set操作, 如果要将某字段置空, 可以用空串或"null" (小写). 如"picId="或"picId=null"; 除了用在set操作的POST内容中，其它情况下字段设置为空串相当于没有设置该字段。
-
-<li>
-对于set操作，如果要将某字符串类型字段置空串(不建议使用)，可以用"empty", 如"sn=empty"。但如果对数值等其它类型设置，会导致其值为0或0.0。
-
-<li>
-权限管理. 客户端或商户端可读写哪些对象详见其它章节. 管理员登录可操作所有表. 不同类型的登录进行的访问控制和返回结果是不一样的, 比如管理端登录没有任何限制和自动补全. 
-  如果管理端, 客户端和商户端同时登录(使用同一session), 则管理端逻辑优先, 其次是客户端, 最后是商户端. (<span class="todo">TODO:</span> 商户端和客户端共用session可能会有冲突)
-
-<li>
-<span class="todo">TODO:</span> 如果有metadata, 后台可检查字段是否存在, 是否只读等. 
-
+<li>对于add/set方法, 使用HTTP POST请求; fields表示表中每个字段的key-value值, 通过POST字段传递(使用URL编码). set方法中的id字段通过URL传递.</li>
+<li>对于set操作, 如果要将某字段置空, 可以用空串或&quot;null&quot; (小写). 如&quot;picId=&quot;或&quot;picId=null&quot;; 除了用在set操作的POST内容中，其它情况下字段设置为空串相当于没有设置该字段。</li>
+<li>对于set操作，如果要将某字符串类型字段置空串(不建议使用)，可以用&quot;empty&quot;, 如&quot;sn=empty&quot;。但如果对数值等其它类型设置，会导致其值为0或0.0。</li>
+<li>权限管理. 客户端或商户端可读写哪些对象详见其它章节. 管理员登录可操作所有表. 不同类型的登录进行的访问控制和返回结果是不一样的, 比如管理端登录没有任何限制和自动补全. 如果管理端, 客户端和商户端同时登录(使用同一session), 则管理端逻辑优先, 其次是客户端, 最后是商户端. (TODO: 商户端和客户端共用session可能会有冲突)</li>
+<li>TODO: 如果有metadata, 后台可检查字段是否存在, 是否只读等.</li>
 </ul>
-
-<p>
-<strong>[分页]</strong>
-</p>
-
+<p><strong>[分页]</strong></p>
 <dl>
 <dt>_pagesz</dt>
-<dd>Integer. 指定页大小, 默认一次返回20条数据。</dd>
+<dd>Integer. 指定页大小, 默认一次返回20条数据。
+</dd>
 <dt>_pagekey</dt>
-<dd>String. 指定从哪条数据开始，应根据上次调用时返回数据的"nextkey"字段来填写。</dd>
+<dd>String. 指定从哪条数据开始，应根据上次调用时返回数据的&quot;nextkey&quot;字段来填写。
+</dd>
 </dl>
-
-<p>
-注意：
-</p>
-<ul>
-<li>
-分页只适用于query, 且wantArray=0的情况。
-
-</ul>
-
-<p>
-详细请参考章节"分页机制".
-</p>
-
-<p>
-<strong>[参数]</strong>
-</p>
-
+<p>分页只适用于query接口，详细请参考章节&quot;分页机制&quot;.</p>
+<p><strong>[参数]</strong></p>
 <dl>
 <dt>fields</dt>
-<dd>每个字段及其值.</dd>
+<dd>每个字段及其值.
+</dd>
 <dt>res, cond (get/query方法), orderby(query方法)</dt>
-<dd>String. 指定返回字段及查询条件, 例如, res="field1,field2", cond="field1&gt;100 AND field2='hello'", orderby="id desc", 注意使用UTF8+URL编码, 目前格式参照SQL语法, 字符串值应加上单引号.</dd>
+<dd>String. 指定返回字段及查询条件, 例如, res=&quot;field1,field2&quot;, cond=&quot;field1&gt;100 AND field2='hello'&quot;, orderby=&quot;id desc&quot;, 注意使用UTF8+URL编码, 目前格式参照SQL语法, 字符串值应加上单引号.
+</dd>
 <dt>distinct</dt>
-<dd>Boolean. 如果为1, 生成"SELECT DISTINCT ..."查询.</dd>
+<dd>Boolean. 如果为1, 生成&quot;SELECT DISTINCT ...&quot;查询.
+</dd>
 <dt>res2, join, cond2 (get/query方法)</dt>
-<dd>这几个字段只由内部使用，没有安全限制. res2, cond2为额外的字段及条件, 必须为数组; join可以为字符串或字符串数组.注意增加join表后, 指定主表字段时最好加上主表的固定别名"t0". 例如 res2=["b.name AS brandName", "s.name as storeName"], join="INNER JOIN CarBrand b ON b.id=t0.brandId", cond2=["t0.field1=100 and b.id IN (1,2,3)"]</dd>
+<dd>这几个字段只由内部使用，没有安全限制. res2, cond2为额外的字段及条件, 必须为数组; join可以为字符串或字符串数组.注意增加join表后, 指定主表字段时最好加上主表的固定别名&quot;t0&quot;. 例如 res2=[&quot;b.name AS brandName&quot;, &quot;s.name as storeName&quot;], join=&quot;INNER JOIN CarBrand b ON b.id=t0.brandId&quot;, cond2=[&quot;t0.field1=100 and b.id IN (1,2,3)&quot;]
+</dd>
 <dt>subobj</dt>
-<dd>目前仅限server内部使用, 要求主对象必须有id字段(未指定res/res2参数或其中有id字段). 格式为数组, 每行指定一个子对象的查询, 每行格式为: {sql, wantOne?}. "sql"指定查询语句, 其中用"%d"表示主表id; "wantOne"表示返回对象而非对象集合(数组), 缺少是对象集合. 例: </dd>
-</dl>
-<pre>
-		$_REQUEST["subobj"] = [
-			"items" =&gt; ["sql"=&gt;"SELECT * FROM OrderItem WHERE orderId=%d", "wantOne"=&gt;false]
-		];
-</pre>
-<dl>
+<dd><p>目前仅限后端内部使用, 要求主对象必须有id字段(未指定res/res2参数或其中有id字段). 格式为数组, 每行指定一个子对象的查询, 每行格式为: {sql, wantOne?}. &quot;sql&quot;指定查询语句, 其中用&quot;%d&quot;表示主表id; &quot;wantOne&quot;表示返回对象而非对象集合(数组), 缺少是对象集合. 例:</p>
+<p>$_REQUEST[&quot;subobj&quot;] = [ &quot;items&quot; =&gt; [&quot;sql&quot;=&gt;&quot;SELECT * FROM OrderItem WHERE orderId=%d&quot;, &quot;wantOne&quot;=&gt;false]];</p>
+</dd>
 <dt>union</dt>
-<dd>仅限server内部使用. 指定union查询内容, 该内容将会在以下位置影响SQL查询: "SELECT ... FROM .. WHERE ... { UNION ... } ORDER BY ...". 注意: union的结果与res参数中字段指定必须匹配; where条件必须在union中自行指定, 不可通过cond/cond2参数; orderby参数可应用到union后的最终结果.</dd>
+<dd>仅限后端内部使用. 指定union查询内容, 该内容将会在以下位置影响SQL查询: &quot;SELECT ... FROM .. WHERE ... { UNION ... } ORDER BY ...&quot;. 注意: union的结果与res参数中字段指定必须匹配; where条件必须在union中自行指定, 不可通过cond/cond2参数; orderby参数可应用到union后的最终结果.
+</dd>
 </dl>
-
-<p>
-对res, cond, orderby的安全限制：
-</p>
+<p>对res, cond, orderby的安全限制：</p>
 <ul>
-<li>
-res, orderby只能是字段（或虚拟字段）列表，不能出现函数、子查询等。
-
-<li>
-cond不允许子查询（不可以有select等关键字）。
-
+<li>res, orderby只能是字段（或虚拟字段）列表，不能出现函数、子查询等。</li>
+<li>cond不允许子查询（不可以有select等关键字）。</li>
 </ul>
-
-<p>
-<strong>[导出文件]</strong>
-</p>
-
+<p><strong>[导出文件]</strong></p>
 <dl>
 <dt>_fmt</dt>
-<dd>Enum(csv,txt,excel). 导出Query的内容为指定格式。其中，csv为逗号分隔UTF8编码文本；txt为制表分隔的UTF8文本；excel为逗号分隔的gb2312编码文本（因为默认excel打开Csv文件时不支持utf8编码）。注意，由于默认会有分页，要想导出所有数据，一般可指定_pagesz=9999。</dd>
+<dd>Enum(csv,txt,excel). 导出Query的内容为指定格式。其中，csv为逗号分隔UTF8编码文本；txt为制表分隔的UTF8文本；excel为逗号分隔的gb2312编码文本（因为默认excel打开Csv文件时不支持utf8编码）。注意，由于默认会有分页，要想导出所有数据，一般可指定_pagesz=9999。
+</dd>
 </dl>
-
-<p>
-<strong>[分组统计]</strong>
-</p>
-
+<p><strong>[分组统计]</strong></p>
 <dl>
 <dt>gres</dt>
-<dd>String. 用于groupby的字段列表。如果使用了gres字段，则res参数中每项应该带统计函数，如"sum(cnt) sum, count(id) userCnt". 最终返回列数=gres参数指定的列+res参数指定的列; 如果res参数未指定，则默认值不再是"*", 而是空（即只返回gres字段指定内容）。</dd>
+<dd>String. 用于groupby的字段列表。如果使用了gres字段，则res参数中每项应该带统计函数，如&quot;sum(cnt) sum, count(id) userCnt&quot;. 最终返回列数=gres参数指定的列+res参数指定的列; 如果res参数未指定，则默认值不再是&quot;*&quot;, 而是空（即只返回gres字段指定内容）。
+</dd>
 </dl>
-
-<p>
-例：统计2015年2月，按状态分类（如已付款、已评价、已取消等）的各类订单的总数和总金额。
-</p>
-<pre>
-Ordr.query(gres="status", res="count('A') totalCnt, sum(amount) totalAmount", cond="tm&gt;='2016-1-1' and tm&lt;'2016-2-1'")
-</pre>
-
-<p>
-返回内容示例：
-</p>
-<pre>
-[
-	h: ["status", "totalCnt", "totalAmount"],
-	d: [
-		[ "PA", 130, 1420 ],  // 已付款，共130单，1420元
-		[ "CA", 29, 310 ], // 取消的订单
-		[ "RA", 1530, 15580 ], // 已评价的订单
-	]
-]
-</pre>
-
-
-<p>
-<strong>[操作特殊属性flags和props]</strong>
-</p>
-
-<p>
-flags为单字母表示的标志位集合，如"vg"；props可以以多字母表示标志位，中间以空格分隔，如"suv mpv".
-一般flags由应用内部定义；而props扩展性更强。
-</p>
-
-<p>
-query操作支持形如<code>flag_{flag}</code>或<code>prop_{prog}</code>的虚拟属性。
-</p>
+<p>例：统计2015年2月，按状态分类（如已付款、已评价、已取消等）的各类订单的总数和总金额。</p>
+<pre><code>Ordr.query(gres=&quot;status&quot;, res=&quot;count(&#39;A&#39;) totalCnt, sum(amount) totalAmount&quot;, cond=&quot;tm&gt;=&#39;2016-1-1&#39; and tm&lt;&#39;2016-2-1&#39;&quot;)</code></pre>
+<p>返回内容示例：</p>
+<pre><code>[
+    h: [&quot;status&quot;, &quot;totalCnt&quot;, &quot;totalAmount&quot;],
+    d: [
+        [ &quot;PA&quot;, 130, 1420 ],  // 已付款，共130单，1420元
+        [ &quot;CA&quot;, 29, 310 ], // 取消的订单
+        [ &quot;RA&quot;, 1530, 15580 ], // 已评价的订单
+    ]
+]</code></pre>
+<p><strong>[操作特殊属性flags和props]</strong></p>
+<p>flags为单字母表示的标志位集合，如&quot;vg&quot;；props可以以多字母表示标志位，中间以空格分隔，如&quot;suv mpv&quot;. 一般flags由应用内部定义；而props扩展性更强。</p>
+<p>query操作支持形如<code>flag_{flag}</code>或<code>prop_{prog}</code>的虚拟属性。</p>
 <ul>
-<li>
-<code>flag_f=1</code> 相当于 <code>flags LIKE '%f%'</code>
-
-<li>
-<code>flag_f=0</code> 相当于 <code>flags IS NULL OR flags NOT LIKE '%f%'</code>
-
+<li><code>flag_f=1</code> 相当于 <code>flags LIKE '%f%'</code></li>
+<li><code>flag_f=0</code> 相当于 <code>flags IS NULL OR flags NOT LIKE '%f%'</code></li>
 </ul>
-
-<p>
-get/query操作中如果返回了flags/props，还会返回相应的虚拟属性；例如flags值为"vg"，则多返回虚拟属性<code>flag_v=1</code>及<code>flag_g=1</code>
-</p>
-
-<p>
-set操作支持以下方式设置flags/props属性：
-</p>
+<p>get/query操作中如果返回了flags/props，还会返回相应的虚拟属性；例如flags值为&quot;vg&quot;，则多返回虚拟属性<code>flag_v=1</code>及<code>flag_g=1</code></p>
+<p>set操作支持以下方式设置flags/props属性：</p>
 <ul>
-<li>
-flag_f=1 相当于 <code>set flags=concat(ifnull(flags, ''), 'f')</code>
-
-<li>
-flag_f=0 相当于 <code>set flags=replace(flags, 'f', '')</code>
-
+<li><code>flag_f=1</code> 相当于 <code>set flags=concat(ifnull(flags, ''), 'f')</code></li>
+<li><code>flag_f=0</code> 相当于 <code>set flags=replace(flags, 'f', '')</code></li>
 </ul>
-
-<p>
-注意：
-</p>
+<p>注意：</p>
 <ul>
-<li>
-flag/prop的值只能为0/1
-
-<li>
-(TODO) props属性类似。
-
-<li>
-(TODO) flags/props应区分大小写(设置属性collation: utf8_bin)
-
+<li>flag/prop的值只能为0/1</li>
+<li>(TODO) props属性类似。</li>
+<li>(TODO) flags/props应区分大小写(设置属性collation: utf8_bin)</li>
 </ul>
-
-<p>
-<strong>[例: 添加商户]</strong>
-</p>
-
-<p>
-添加商户, 指定一些字段:
-</p>
-<pre>
-Store.add()
-	name=华莹汽车(张江店)
-	addr=金科路88号
-	tel=021-12345678
-</pre>
-
-<p>
-注: 
-</p>
+<p><strong>[例: 添加商户]</strong></p>
+<p>添加商户, 指定一些字段:</p>
+<pre><code>Store.add()
+    name=华莹汽车(张江店)
+    addr=金科路88号
+    tel=021-12345678</code></pre>
+<p>注:</p>
 <ul>
-<li>
-Store是商户表名, 通过POST字段传递各字段内容. HTTP POST请求如下所示(实际发送时, 每个字段的值应使用UTF8+URL编码, 示例中未进行编码):
-<pre>
-POST /api.php?ac=Store.add
+<li><p>Store是商户表名, 通过POST字段传递各字段内容. HTTP POST请求如下所示(实际发送时, 每个字段的值应使用UTF8+URL编码, 示例中未进行编码):</p>
+<pre><code>POST /api.php/Store.add
 Content-Type: application/x-www-form-urlencoded
 
-name=华莹汽车(张江店)&amp;addr=金科路88号&amp;tel=021-12345678
-</pre>
-
-<li>
-id这种主键或只读字段无须设置. 即使设置也应被忽略. 
-
+name=华莹汽车(张江店)&amp;addr=金科路88号&amp;tel=021-12345678</code></pre></li>
+<li><p>id这种主键或只读字段无须设置. 即使设置也应被忽略.</p></li>
 </ul>
-
-<p>
-操作成功时返回id值:
-</p>
-
-<pre>
-8
-</pre>
-
-<p>
-<strong>[例: 获取商户]</strong>
-</p>
-
-<p>
-取刚添加的商户(id=8):
-</p>
-<pre>
-Store.get(id=8)
-</pre>
-
-<p>
-操作成功时返回该行内容:
-</p>
-<pre>
-{id: 8, name: "华莹汽车(张江店)", addr: "金科路88号", tel: "021-12345678", opentime: null, dscr: null}
-</pre>
-
-<p>
-可以像query方法一样用POST参数res指定返回值, 如
-</p>
-
-<pre>
-Store.get(id=8)
-	res=id,name as storeName,addr
-</pre>
-
-<p>
-操作成功时返回该行内容:
-</p>
-<pre>
-{id: 8, storeName: "华莹汽车(张江店)", addr: "金科路88号"}
-</pre>
-
-<p>
-<strong>[例: 查询商户]</strong>
-</p>
-
-<p>
-查询"华胜汽车"在"浦东"的门店, 即查询名称含有"华胜汽车"且地址中含有"浦东"的商户, 只返回id, name, addr字段:
-</p>
-<pre>
-Store.query()
-	res=id,name,addr
-	cond=name like '%华胜%' and addr like '%浦东%'
-</pre>
-
-<p>
-注意: 内容经UTF8+URL编码, 测试时大致是这个样子:
-测试: <code>client.php callsvr store.query null "res=id,name,addr&amp;cond=name like '%25%E5%8D%8E%E8%83%9C%25' and addr like '%25%E6%B5%A6%E4%B8%9C%25'"</code>
-或
-<code>client.php callsvr store.query null "['res'=&gt;'id,name,addr', 'cond'=&gt;'name like \'%华胜%\' and addr like \'%浦东%\'']"</code> (必须在UTF8 shell中运行, 否则编码不对)
-</p>
-
-<p>
-操作成功时返回内容如下:
-</p>
-<pre>
-{
-	"h": [
-		"id",
-		"name",
-		"addr"
-	],
-	"d": [
-		[
-			"100064",
-			"华胜汽车（金桥店）",
-			"上海市浦东区金桥路2622弄59号3号门"
-		]
-	]
-}
-</pre>
-
-<p>
-<strong>[导出商户]</strong>
-</p>
-
-<pre>
-Store.query()
-	res=id,name,addr
-	_fmt=excel
-	_pagesz=9999
-</pre>
-
-<p>
-可导出gb2312编码的csv文件。使用较大的_pagesz以尽量返回所有数据。
-</p>
-
-<p>
-<strong>[例: 更新商户]</strong>
-</p>
-
-<p>
-为商户设置描述信息等:
-</p>
-<pre>
-Store.set(id=8)
-	opentime=8:00-18:00
-	dscr=描述信息.
-</pre>
-
-<p>
-操作成功时无返回内容.
-</p>
-
-<p>
-<strong>[例: 删除商户]</strong>
-</p>
-
-<pre>
-Store.del(id=8)
-</pre>
-
-<p>
-操作成功时无返回内容.
-</p>
-
-<h4 id="toc_1.4.2.3"><a name="附件上传">4.2.3 附件上传</a></h4>
-
-<pre>
-使用multipart/form-data格式上传（标准html支持，可一次传多个文件）:
-upload(type?=default, genThumb?=0, autoResize?=1)(POST content:multipart/form-data) -&gt; [{id, thumbId?}]
-
-直接传文件内容，一次只能传一个文件:
-upload(fmt=raw|raw_b64, f, exif?, ...)(POST content:raw) -&gt; [{id, thumbId?}]
-
-TODO: 如果使用微信的上传接口, 可以调用:
-upload(..., weixinServerIds) -&gt; [{id, thumbId?}]
-</pre>
-
-<p>
-上传照片等内容. 返回附件id. 因为允许一次上传多个文件，返回的是一个数组，每项对应上传的一个文件。
-</p>
-
-<p>
-员工端上传图片时应传图片扩展信息（exif信息），包括时间、GPS信息，以便后期（通过工具校验数据）验证员工是否在指定的时间地点去洗车。
-注意：exif信息只在上传单图时有意义。
-</p>
-
-<p>
-<span class="todo">TODO:</span>将限制只支持jpg等几种指定格式; 以及限制最大可传文件的size
-</p>
-
-<p>
-<strong>[参数]</strong>
-</p>
-
+<p>操作成功时返回id值:</p>
+<pre><code>8</code></pre>
+<p><strong>[例: 获取商户]</strong></p>
+<p>取刚添加的商户(id=8):</p>
+<pre><code>Store.get(id=8)</code></pre>
+<p>操作成功时返回该行内容:</p>
+<pre><code>{id: 8, name: &quot;华莹汽车(张江店)&quot;, addr: &quot;金科路88号&quot;, tel: &quot;021-12345678&quot;, opentime: null, dscr: null}</code></pre>
+<p>可以像query方法一样用POST参数res指定返回值, 如</p>
+<pre><code>Store.get(id=8
+    res=id,name as storeName,addr
+)</code></pre>
+<p>操作成功时返回该行内容:</p>
+<pre><code>{id: 8, storeName: &quot;华莹汽车(张江店)&quot;, addr: &quot;金科路88号&quot;}</code></pre>
+<p><strong>[例: 查询商户]</strong></p>
+<p>查询&quot;华胜汽车&quot;在&quot;浦东&quot;的门店, 即查询名称含有&quot;华胜汽车&quot;且地址中含有&quot;浦东&quot;的商户, 只返回id, name, addr字段:</p>
+<pre><code>Store.query()
+    res=id,name,addr
+    cond=name like &#39;%华胜%&#39; and addr like &#39;%浦东%&#39;</code></pre>
+<p>操作成功时返回内容如下:</p>
+<pre><code>{
+    &quot;h&quot;: [
+        &quot;id&quot;,
+        &quot;name&quot;,
+        &quot;addr&quot;
+    ],
+    &quot;d&quot;: [
+        [
+            &quot;100064&quot;,
+            &quot;华胜汽车（金桥店）&quot;,
+            &quot;上海市浦东区金桥路2622弄59号3号门&quot;
+        ]
+    ]
+}</code></pre>
+<p><strong>[导出商户]</strong></p>
+<pre><code>Store.query()
+    res=id,name,addr
+    _fmt=excel
+    _pagesz=9999</code></pre>
+<p>可导出gb2312编码的csv文件。使用较大的_pagesz以尽量返回所有数据。</p>
+<p><strong>[例: 更新商户]</strong></p>
+<p>为商户设置描述信息等:</p>
+<pre><code>Store.set(id=8)
+    opentime=8:00-18:00
+    dscr=描述信息.</code></pre>
+<p>操作成功时无返回内容.</p>
+<p><strong>[例: 删除商户]</strong></p>
+<pre><code>Store.del(id=8)</code></pre>
+<p>操作成功时无返回内容.</p>
+<h4 id="附件上传"><span class="header-section-number">3.2.2</span> 附件上传</h4>
+<p>使用multipart/form-data格式上传（标准html支持，可一次传多个文件）:</p>
+<pre><code>upload(type?=default, genThumb?=0, autoResize?=1)(POST content:multipart/form-data) -&gt; [{id, thumbId?}]</code></pre>
+<p>直接传文件内容，一次只能传一个文件:</p>
+<pre><code>upload(fmt=raw|raw_b64, f, exif?, ...)(POST content:raw) -&gt; [{id, thumbId?}]</code></pre>
+<p class="todo">TODO: 如果使用微信的上传接口, 可以调用:</p>
+<pre><code>upload(..., weixinServerIds) -&gt; [{id, thumbId?}]</code></pre>
+<p>上传照片等内容. 返回附件id. 因为允许一次上传多个文件，返回的是一个数组，每项对应上传的一个文件。</p>
+<p>员工端上传图片时应传图片扩展信息（exif信息），包括时间、GPS信息，以便后期（通过工具校验数据）验证员工是否在指定的时间地点去洗车。 注意：exif信息只在上传单图时有意义。</p>
+<p class="todo">TODO:将限制只支持jpg等几种指定格式; 以及限制最大可传文件的size</p>
+<p><strong>[参数]</strong></p>
 <dl>
 <dt>genThumb</dt>
-<dd>Boolean. 为1时生成缩略图。如果未指定type, 则按type=default设置缩略图大小.</dd>
+<dd>Boolean. 为1时生成缩略图。如果未指定type, 则按type=default设置缩略图大小.
+</dd>
 <dt>type</dt>
-<dd>String. 商家图片上传使用"store", 用户头像上传使用"user", 其它情况不赋值. 不同的type在生成缩略图时尺寸不同。</dd>
+<dd>String. 商家图片上传使用&quot;store&quot;, 用户头像上传使用&quot;user&quot;, 其它情况不赋值. 不同的type在生成缩略图时尺寸不同。
+</dd>
 <dt>content</dt>
-<dd>文件内容。默认使用multipart/form-data格式，详见请求示例。如果fmt为"raw"或"raw_b64"，则直接为文件内容（或其base64编码）</dd>
+<dd>文件内容。默认使用multipart/form-data格式，详见请求示例。如果fmt为&quot;raw&quot;或&quot;raw_b64&quot;，则直接为文件内容（或其base64编码）
+</dd>
 <dt>autoResize</dt>
-<dd>Boolean. 缺省为1，即当图片大小超过500K, 自动缩小图片到最大像素1920x1080.</dd>
+<dd>Boolean. 缺省为1，即当图片大小超过500K, 自动缩小图片到最大像素1920x1080.
+</dd>
 <dt>exif</dt>
-<dd>Object. 扩展信息。JSON格式，如上传时间及GPS信息：<code>{"DateTime": "2015:10:08 11:03:02", "GPSLongtitude": [121,42,7.19], "GPSLatitude": [31,14,45.8]}</code></dd>
-</dl>
-
-<dl>
+<dd>Object. 扩展信息。JSON格式，如上传时间及GPS信息：<code>{&quot;DateTime&quot;: &quot;2015:10:08 11:03:02&quot;, &quot;GPSLongtitude&quot;: [121,42,7.19], &quot;GPSLatitude&quot;: [31,14,45.8]}</code>
+</dd>
 <dt>fmt</dt>
-<dd>指定格式，可为"raw"或"raw_b64"。这时必须用参数"f"指定文件名; 且POST content为文件内容(fmt=raw)或文件经base64编码后(fmt=raw_b64)的内容。</dd>
+<dd>指定格式，可为&quot;raw&quot;或&quot;raw_b64&quot;。这时必须用参数&quot;f&quot;指定文件名; 且POST content为文件内容(fmt=raw)或文件经base64编码后(fmt=raw_b64)的内容。
+</dd>
 <dt>f</dt>
-<dd>指定文件名，后台将检查其扩展名。且在fmt="raw"/"raw_b64"时使用。</dd>
+<dd>指定文件名，后台将检查其扩展名。且在fmt=&quot;raw&quot;/&quot;raw_b64&quot;时使用。
+</dd>
 </dl>
-
-<p>
-type决定生成缩略图的大小：
-</p>
+<p>TODO type决定生成缩略图的大小：</p>
 <ul>
-<li>
-type=user: 128x128
-
-<li>
-type=store: 200x150
-
-<li>
-type=default: 100x100
-
+<li>type=user: 128x128</li>
+<li>type=store: 200x150</li>
+<li>type=default: 100x100</li>
 </ul>
-
-<p>
-<strong>[返回]</strong>
-</p>
-
+<p><strong>[返回]</strong></p>
 <dl>
 <dt>id</dt>
-<dd>附件id. 可根据att(id)接口获取该文件。</dd>
+<dd>附件id. 可根据att(id)接口获取该文件。
+</dd>
+<dt>thumbId</dt>
+<dd>如果参数设置了genThumb=1, 则会生成缩略图并返回该字段为生成的缩略图id.
+</dd>
 </dl>
-<p>
-thumbId: 如果参数设置了genThumb=1, 则会生成缩略图并返回该字段为生成的缩略图id.
-</p>
-
-<p>
-<strong>[示例1]</strong>
-</p>
-
-<p>
-使用Content-Type为multipart/form-data可一次上传一个或多个文件。
-假如上传两个文件"file1.txt"和"file2.txt", HTTP请求如下：
-</p>
-<pre>
-POST api.php?ac=upload
+<p><strong>[示例1]</strong></p>
+<p>使用Content-Type为multipart/form-data可一次上传一个或多个文件。 假如上传两个文件&quot;file1.txt&quot;和&quot;file2.txt&quot;, HTTP请求如下：</p>
+<pre><code>POST api.php/upload
 Content-Type:multipart/form-data; boundary=----WebKitFormBoundary6oVKiDmuQSPOtt2L
 Content-Length: ...
 
 ------WebKitFormBoundary6oVKiDmuQSPOtt2L
-Content-Disposition: form-data; name="file1"; filename="file1.txt"
+Content-Disposition: form-data; name=&quot;file1&quot;; filename=&quot;file1.txt&quot;
 Content-Type: text/plain
 
 (content of file1)
 ------WebKitFormBoundary6oVKiDmuQSPOtt2L
-Content-Disposition: form-data; name="file2"; filename="file2.txt"
+Content-Disposition: form-data; name=&quot;file2&quot;; filename=&quot;file2.txt&quot;
 Content-Type: text/plain
 
 (content of file2)
-------WebKitFormBoundary6oVKiDmuQSPOtt2L--
-</pre>
-
-<p>
-注意：
-</p>
+------WebKitFormBoundary6oVKiDmuQSPOtt2L--</code></pre>
+<p>注意：</p>
 <ul>
-<li>
-"Content-Type"必须为"multipart/form-data"并指定boundary. 欲了解详细格式请百度.
-
-<li>
-服务端处理时，会根据filename生成一个新名字（会使用同样的扩展名, 如本例中的".txt"），然后将文件内容保存到该文件中。
-
+<li>&quot;Content-Type&quot;必须为&quot;multipart/form-data&quot;并指定boundary. 欲了解详细格式请百度.</li>
+<li>服务端处理时，会根据filename生成一个新名字（会使用同样的扩展名, 如本例中的&quot;.txt&quot;），然后将文件内容保存到该文件中。</li>
 </ul>
-
-<p>
-使用html自带的form和file组件可以自动生成这样的POST请求，如上传两个文件：
-</p>
-<pre>
-&lt;form action="api.php?ac=upload" method=post enctype="multipart/form-data"&gt;
-	&lt;input type=file name="file1" accept="image/*"&gt;
-	&lt;input type=file name="file2" accept="image/*"&gt;
-	&lt;input type=submit value="上传"&gt;
-&lt;/form&gt;
-</pre>
-
-<p>
-也可以只使用一个file组件，只要设置属性multiple以允许多选文件(以chrome为例，在文件选择框中可以按Ctrl键多选文件)，但注意此时name必须带中括号：
-</p>
-<pre>
-&lt;form action="api.php?ac=upload" method=post enctype="multipart/form-data"&gt;
-	&lt;input type=file name="file[]" multiple="multiple" accept="image/*"&gt;
-	&lt;input type=submit value="上传"&gt;
-&lt;/form&gt;
-</pre>
-
-<p>
-multiple属性是html5新增属性，如果浏览器不支持，也可以这样写两个文件上传框：
-</p>
-<pre>
-&lt;form action="api.php?ac=upload" method=post enctype="multipart/form-data"&gt;
-	&lt;input type=file name="file[]" multiple="multiple" accept="image/*"&gt;
-	&lt;input type=file name="file[]" multiple="multiple" accept="image/*"&gt;
-	&lt;input type=submit value="上传"&gt;
-&lt;/form&gt;
-</pre>
-
-<p>
-返回示例如下：
-</p>
-
-<pre>
-[ {id:1, thumbId:2}, {id:3, thumbId:4} ]
-</pre>
-
-<p>
-<strong>[示例2]</strong>
-</p>
-
-<p>
-使用fmt=raw上传：
-</p>
-
-<pre>
-POST api.php?ac=upload&amp;fmt=raw&amp;f=1.jpg
+<p>使用html自带的form和file组件可以自动生成这样的POST请求，如上传两个文件：</p>
+<pre><code>&lt;form action=&quot;api.php/upload&quot; method=post enctype=&quot;multipart/form-data&quot;&gt;
+    &lt;input type=file name=&quot;file1&quot; accept=&quot;image/*&quot;&gt;
+    &lt;input type=file name=&quot;file2&quot; accept=&quot;image/*&quot;&gt;
+    &lt;input type=submit value=&quot;上传&quot;&gt;
+&lt;/form&gt;</code></pre>
+<p>也可以只使用一个file组件，只要设置属性multiple以允许多选文件(以chrome为例，在文件选择框中可以按Ctrl键多选文件)，但注意此时name必须带中括号：</p>
+<pre><code>&lt;form action=&quot;api.php/upload&quot; method=post enctype=&quot;multipart/form-data&quot;&gt;
+    &lt;input type=file name=&quot;file[]&quot; multiple=&quot;multiple&quot; accept=&quot;image/*&quot;&gt;
+    &lt;input type=submit value=&quot;上传&quot;&gt;
+&lt;/form&gt;</code></pre>
+<p>multiple属性是html5新增属性，如果浏览器不支持，也可以这样写两个文件上传框：</p>
+<pre><code>&lt;form action=&quot;api.php/upload&quot; method=post enctype=&quot;multipart/form-data&quot;&gt;
+    &lt;input type=file name=&quot;file[]&quot; multiple=&quot;multiple&quot; accept=&quot;image/*&quot;&gt;
+    &lt;input type=file name=&quot;file[]&quot; multiple=&quot;multiple&quot; accept=&quot;image/*&quot;&gt;
+    &lt;input type=submit value=&quot;上传&quot;&gt;
+&lt;/form&gt;</code></pre>
+<p>返回示例如下：</p>
+<pre><code>[ {id:1, thumbId:2}, {id:3, thumbId:4} ]</code></pre>
+<p><strong>[示例2]</strong></p>
+<p>使用fmt=raw上传：</p>
+<pre><code>POST api.php/upload&amp;fmt=raw&amp;f=1.jpg
 Content-Type: image/jpeg
 Content-Length: ...
 
-(jpg文件内容)
-</pre>
-
-<p>
-使用fmt=raw_b64上传：
-</p>
-
-<pre>
-POST api.php?ac=upload&amp;fmt=raw_b64&amp;f=1.jpg
+(jpg文件内容)</code></pre>
+<p>使用fmt=raw_b64上传：</p>
+<pre><code>POST api.php/upload&amp;fmt=raw_b64&amp;f=1.jpg
 Content-Type: text/plain
 Content-Length: ...
 
-/9j/4AAQSkZJRgABAQEASABIAAD/4QC+RXhpZgAATU0AKgAAAAgABgE...
-</pre>
-
-<p>
-返回示例：
-</p>
-<pre>
-[ {id:1, thumbId:2} ]
-</pre>
-
-<h4 id="toc_1.4.2.4"><a name="附件下载">4.2.4 附件下载</a></h4>
-
-<pre>
-att(id)
+/9j/4AAQSkZJRgABAQEASABIAAD/4QC+RXhpZgAATU0AKgAAAAgABgE...</code></pre>
+<p>返回示例：</p>
+<pre><code>[ {id:1, thumbId:2} ]</code></pre>
+<h4 id="附件下载"><span class="header-section-number">3.2.3</span> 附件下载</h4>
+<pre><code>att(id)
 
 根据id下载附件.
 
 att(thumbId)
 
-使用缩略图id获取原图. 
-</pre>
-
-<p>
-注意: 该调用不符合接口规范, 它不返回格式为"[code, data]"的json串, 而是直接返回文件内容.
-</p>
-
-<p>
-HTTP header "Content-Type"将标识正确的文件MIME类型，如jpg类型为"image/jpeg".
-</p>
-
-<p>
-如果找不到附件，将返回HTTP状态码"404 Not Found"。
-</p>
-
-<p>
-<strong>[参数]</strong>
-</p>
-
+使用缩略图id获取原图. </code></pre>
+<p>注意: 该调用不符合接口规范, 它不返回格式为&quot;[code, data]&quot;的json串, 而是直接返回文件内容.</p>
+<p>HTTP header &quot;Content-Type&quot;将标识正确的文件MIME类型，如jpg类型为&quot;image/jpeg&quot;.</p>
+<p>如果找不到附件，将返回HTTP状态码&quot;404 Not Found&quot;。</p>
+<p><strong>[参数]</strong></p>
 <dl>
 <dt>thumbId</dt>
-<dd>缩略图id</dd>
+<dd>缩略图id
+</dd>
 </dl>
-
-<p>
-<strong>[示例]</strong>
-</p>
-
-<p>
-获取id=100的附件：
-</p>
-<pre>
-GET api.php?ac=att&amp;id=100
-</pre>
-
-<p>
-已知缩略图id=100, 获取它对应的原图：
-</p>
-<pre>
-GET api.php?ac=att&amp;thumbId=100
-</pre>
-
-<p>
-返回
-</p>
-
-<p>
-找到图片：
-</p>
-
-<pre>
-HTTP/1.1 200 OK
+<p><strong>[示例]</strong></p>
+<p>获取id=100的附件：</p>
+<pre><code>GET api.php/att?id=100</code></pre>
+<p>已知缩略图id=100, 获取它对应的原图：</p>
+<pre><code>GET api.php/att?thumbId=100</code></pre>
+<p>找到图片返回:</p>
+<pre><code>HTTP/1.1 200 OK
 Content-Type: image/jpeg
 
-(图片内容)
-</pre>
-
-<p>
-一般浏览器可以正确直接显示该图片。
-</p>
-
-<p>
-或找不到图片：
-</p>
-
-<pre>
-HTTP/1.1 404 Not Found
-Content-Type: text/plain; charset=UTF-8
-
-</pre>
-
-<h4 id="toc_1.4.2.5"><a name="上传工具">4.2.5 上传工具</a></h4>
-
-<p>
-upload_raw.php(f, d?=upload)(rawFileContent)
-</p>
-
-<p>
-<strong>[参数]</strong>
-</p>
-
-<dl>
-<dt>f</dt>
-<dd>上传文件名</dd>
-<dt>d</dt>
-<dd>上传到指定目录，默认是upload; 如果目录不存在可自动创建。</dd>
-<dt>rawFileContent</dt>
-<dd>HTTP请求的内容为文件内容。</dd>
-</dl>
-
-<p>
-可用于管理员上传文件。例如使用wget工具：
-</p>
-<pre>
-set PROG=wget -nv --user=lj --password=liang123 -t 1 --connect-timeout=6
-%PROG% --post-file=d:/test/1.jpg "http://localhost/upload_raw.php?f=1.jpg&amp;d=upload/test"
-</pre>
-
-<p>
-<span class="todo">TODO:</span> 验证管理员
-</p>
-
-<h4 id="toc_1.4.2.6"><a name="下载工具">4.2.6 下载工具</a></h4>
-
-<p>
-浏览：
-upload_list.php(d?=upload)
-</p>
-
-<p>
-文本模式浏览：
-upload_list.php(d?=upload, ac=list, f)
-</p>
-
-<p>
-删除文件:
-upload_list.php(d?=upload, ac=del, f[])
-</p>
-
-<p>
-可用于手工浏览服务器上的文件。方便下载或删除文件.
-</p>
-
-<p>
-注意：权限控制：只能浏览该工具所在目录及其子目录。
-</p>
-
-<p>
-<span class="todo">TODO:</span> 验证管理员
-</p>
-
-<p>
-<strong>[参数]</strong>
-</p>
-
-<dl>
-<dt>d</dt>
-<dd>文件夹</dd>
-<dt>ac</dt>
-<dd>操作名，支持"del", "list"</dd>
-<dt>f[]</dt>
-<dd>要删除的文件列表（如"f[]=1.jpg&amp;f[]=2.jpg"). 文件夹不可被删除。</dd>
-<dt>f</dt>
-<dd>文本模式浏览时, 用于过滤文件名.</dd>
-</dl>
-
-<p>
-<strong>[示例]</strong>
-</p>
-
-<pre>
-(list folder "upload"; admin user/pwd=liang/liang123)
-&gt; curl "http://localhost:8080/upload_list.php?ac=list" -u liang:liang123
-
-(list folder ".", filter file name by ".jpg")
-&gt; curl "http://localhost:8080/upload_list.php?ac=list&amp;d=.&amp;f=.jpg" -u liang:liang123
-</pre>
-
-<h4 id="toc_1.4.2.7"><a name="生成签名">4.2.7 生成签名</a></h4>
-<pre>
-genSign(_pwd, ...) -&gt; sign
-</pre>
-
-<p>
-根据密码对所有待签名字段进行签名。一般地，非下划线开头的字段都是待签名字段(例如_pwd, _sign这些都不参与签名)，特别的会专门说明。
-该API一般仅用于测试。页面 <code>partner/voucher.html</code> 使用了这个API。
-</p>
-
-<p>
-如果希望一个参数不参与签名，则设计它的名字以"_"开头，如"_ac".
-</p>
-
-<h4 id="toc_1.4.2.8"><a name="发短信">4.2.8 发短信</a></h4>
-<pre>
-sendSms(phone, content, channel?=0)
-</pre>
-
-<p>
-<strong>[权限]</strong>
-</p>
-
+(图片内容)</code></pre>
+<p>一般浏览器可以正确直接显示该图片:</p>
+<pre><code>&lt;img src=&quot;http://myserver/mysvc/api.php/att?id=100&quot;&gt;</code></pre>
+<p>或找不到图片：</p>
+<pre><code>HTTP/1.1 404 Not Found
+Content-Type: text/plain; charset=UTF-8</code></pre>
+<h4 id="生成签名"><span class="header-section-number">3.2.4</span> 生成签名</h4>
+<pre><code>genSign(_pwd, ...) -&gt; sign</code></pre>
+<p>根据密码对所有待签名字段进行签名。一般地，非下划线开头的字段都是待签名字段(例如_pwd, _sign这些都不参与签名)，特别的会专门说明。 该API一般仅用于测试。（参考：页面 <code>partner/voucher.html</code> 使用了这个API）。</p>
+<p>如果希望一个参数不参与签名，则设计它的名字以&quot;_&quot;开头，如&quot;_ac&quot;.</p>
+<h4 id="代理"><span class="header-section-number">3.2.5</span> 代理</h4>
+<pre><code>proxy(url)</code></pre>
+<p>代理访问url。</p>
+<h4 id="执行sql语句"><span class="header-section-number">3.2.6</span> 执行sql语句</h4>
+<p>用于自动化测试</p>
+<pre><code>execSql(sql, wantArray?, wantId?, fmt?) -&gt; rowSet or affectedRows or lastInsertedId</code></pre>
+<p>只有管理员登录后才能使用, 或是测试模式下才能使用. 生产模式下客户端和商户端禁止使用.</p>
+<p>如果是SELECT语句, 返回结果集, 否则返回affectedRows.</p>
+<p><strong>[权限]</strong></p>
 <ul>
-<li>
-AUTH_ASTORE
-
+<li>AUTH_ADMIN</li>
+<li>PERM_TEST_MODE</li>
 </ul>
-
-<p>
-<strong>[参数]</strong>
-</p>
-
+<p><strong>[参数]</strong></p>
 <dl>
-<dt>phone</dt>
-<dd>String. 一个手机号，或以英文逗号分隔的多个手机号.</dd>
-<dt>content</dt>
-<dd>String. 短信内容</dd>
-<dt>channel</dt>
-<dd>Integer. 0-验证码通道（速度快，可能被人工核查后阻止）；1-营销通道（速度慢，几分钟到达，一般不阻止）</dd>
+<dt>sql</dt>
+<dd>String. SQL语句。
+</dd>
+<dt>wantArray</dt>
+<dd>Boolean. 如果非空,则对select语句的结果返回数组而非关联表. 由fmt=array替代, 已不建议使用.
+</dd>
+<dt>wantId</dt>
+<dd>Boolean. 如果非空，则对insert语句的结果返回最后插入的id而非记录数。
+</dd>
+<dt>fmt</dt>
+<dd>String. 指定select查询的结果返回格式: &quot;table&quot;-table格式({h,d}), &quot;array&quot;-array格式 (相当于wantArray=1), &quot;one&quot;-如果查询有多列,则只取首行, 如果查询只有一列, 则只取首行首列数据(相当于框架中的queryOne函数), 缺省: object aray / rowset
+</dd>
 </dl>
-
-<p>
-对一个或多个手机群发短信。
-</p>
-
-<p>
-测试页面：tool/sms.html
-</p>
-
-<h4 id="toc_1.4.2.9"><a name="查询短信记录">4.2.9 查询短信记录</a></h4>
-
-<pre>
-SmsLog.query([cond], [_pagesz=20])
-</pre>
-
-<p>
-查询短消息发送记录. 默认按id倒序排列。
-</p>
-
-<p>
-<strong>[权限]</strong>
-</p>
-
+<p><strong>[示例]</strong></p>
+<p>请求</p>
+<pre><code>execSql(sql=&quot;SELECT COUNT(*) AS N FROM User&quot;)</code></pre>
+<p>返回</p>
+<pre><code>[
+    {N: 3}
+]</code></pre>
 <ul>
-<li>
-AUTH_ASTORE
-
+<li>实际发送请求时, 注意别忘记对内容进行url编码, 内容不含引号.</li>
+<li>对select语句返回rowSet, 一定是一个数组, 每一项的字段名由select的字段决定.</li>
 </ul>
-
-<p>
-<strong>[参数]</strong>
-</p>
-
-<dl>
-<dt>cond</dt>
-<dd>查询条件，格式参考SQL语句的条件。如"id=1", "phone=12345678901"</dd>
-</dl>
-
-<p>
-<strong>[请求示例]</strong>
-查询手机号为123456678901的最近2条消息记录, 按照id降序排列
-</p>
-<pre>
-SmsLog.query(cond="phone=12345678901", _pagesz=2)
-</pre>
-
-<p>
-<strong>[返回示例]</strong>
-</p>
-
-<pre>
-{
-	"h": ["id", "phone", "content", "tm", "retval"],
-	"d": [
-			[18, "12345678901", "验证码123872，请在5分钟内使用。", "2015-09-20 22:21:16", 0],
-			[15, "12345678901", "验证码655288，请在5分钟内使用。", "2015-09-18 12:46:32", 0],
-		]
-]
-}}
-
-==== 给用户发消息 ====
-
-{{{
-notifyUser(orderId, content, noWeixin?)
-</pre>
-
-<p>
-给订单用户发消息，默认发微信和短信。
-</p>
-
-<p>
-<strong>[权限]</strong>
-</p>
-
-<ul>
-<li>
-AUTH_STORE
-
-</ul>
-
-<p>
-<strong>[参数]</strong>
-</p>
-
-<dl>
-<dt>orderId</dt>
-<dd>Integer. 订单编号.</dd>
-<dt>content</dt>
-<dd>String. 消息内容.</dd>
-<dt>noWeixin</dt>
-<dd>Boolean. 如果为1，则只发短信，不发微信消息。</dd>
-</dl>
-
-<h4 id="toc_1.4.2.10"><a name="代理">4.2.10 代理</a></h4>
-
-<pre>
-proxy(url)
-</pre>
-
-<p>
-代理访问url。
-</p>
-
-<h3 id="toc_1.4.3"><a name="API调用监控">4.3 API调用监控</a></h3>
-
-<p>
-所有对API的调用（请求与响应）均记录到表ApiLog中供分析。
-</p>
-
-<p>
-对一个session, 监控其API调用是否有异常，避免自动化操作行为，这时将返回 E_FORBIDDEN 错误。安全类异常将记录到日志文件 secure.log
-</p>
-
-<p>
-注意：
-</p>
-<ul>
-<li>
-自动化测试时，API监控不工作（这时_test参数值为2）。
-
-<li>
-应避免客户端一次取多张图片时有问题
-
-</ul>
-
-<h3 id="toc_1.4.4"><a name="批量请求">4.4 批量请求</a></h3>
-
-<p>
-BQP协议支持批量请求，即在一次请求中，包含多条调用。
-在创建批量请求时，可以指定这些调用是否在一个事务(transaction)中，一起成功提交或失败回滚。
-</p>
-
-<p>
-前端接口示例：
-</p>
-
-<pre>
-var batch = new MUI.batchCall();
+<p><strong>[示例]</strong></p>
+<p>请求</p>
+<pre><code>execSql(sql=&quot;SELECT COUNT(*) AS N FROM User&quot;, fmt=one)</code></pre>
+<p>返回</p>
+<pre><code>3</code></pre>
+<p><strong>[示例]</strong></p>
+<p>请求</p>
+<pre><code>execSql(sql=&quot;SELECT COUNT(*) AS N, MIN(createTm) AS createTm FROM User&quot;, fmt=one)</code></pre>
+<p>返回</p>
+<pre><code>[3, &#39;2015-1-1&#39;]</code></pre>
+<p><strong>[示例]</strong></p>
+<p>请求</p>
+<pre><code>execSql(sql=&quot;SELECT COUNT(*) AS N FROM User&quot;, wantArray=1)
+或
+execSql(sql=&quot;SELECT COUNT(*) AS N FROM User&quot;, fmt=array)</code></pre>
+<p>返回</p>
+<pre><code>[
+    [3]
+]</code></pre>
+<p><strong>[示例]</strong></p>
+<p>请求</p>
+<pre><code>execSql(sql=&quot;SELECT id FROM User&quot;)</code></pre>
+<p>返回</p>
+<pre><code>[
+    {id: 1},
+    {id: 2},
+    {id: 3}
+]</code></pre>
+<p><strong>[示例]</strong></p>
+<p>请求</p>
+<pre><code>execSql(sql=&quot;SELECT id FROM User&quot;, fmt=array)</code></pre>
+<p>返回</p>
+<pre><code>[ [1], [2], [3] ]</code></pre>
+<p><strong>[示例]</strong></p>
+<p>请求</p>
+<pre><code>execSql(sql=&quot;SELECT id FROM User&quot;, fmt=table)</code></pre>
+<p>返回</p>
+<pre><code>{
+    h: [&quot;id&quot;],
+    d: [ [1], [2], [3] ]
+}</code></pre>
+<p><strong>[示例]</strong></p>
+<p>请求</p>
+<pre><code>execsql(sql=&quot;DELETE User WHERE id=1 or id=2&quot;)</code></pre>
+<p>返回</p>
+<pre><code>2</code></pre>
+<p>注: 对于非SELECT语句, 返回affectedRows</p>
+<h3 id="api调用监控"><span class="header-section-number">3.3</span> API调用监控</h3>
+<p>所有对API的调用（请求与响应）均记录到表ApiLog中供分析。</p>
+<p>对一个session, 监控其API调用是否有异常，避免自动化操作行为，这时将返回 E_FORBIDDEN 错误。安全类异常将记录到日志文件 secure.log</p>
+<p>注意： - 自动化测试时，API监控不工作（这时_test参数值为2）。 - 应避免客户端一次取多张图片时有问题</p>
+<h3 id="批量请求"><span class="header-section-number">3.4</span> 批量请求</h3>
+<p>BQP协议支持批量请求，即在一次请求中，包含多条调用。 在创建批量请求时，可以指定这些调用是否在一个事务(transaction)中，一起成功提交或失败回滚。</p>
+<p>前端接口示例：</p>
+<pre><code>var batch = new MUI.batchCall();
 // var batch = new MUI.batchCall({useTrans: true}); // 使用同一事务时，可指定useTrans=true
 
 // 调用一
-var param = {res: "id,name,phone"};
-callSvr("User.get", param, function(data) {} )
+var param = {res: &quot;id,name,phone&quot;};
+callSvr(&quot;User.get&quot;, param, function(data) {} )
 
 // 调用二
-var postParam = {page: "home", ver: "android", userId: "{$1.id}"};
-callSvr("ActionLog.add", function(data) {}, postParam, {ref: ["userId"]} );
+var postParam = {page: &quot;home&quot;, ver: &quot;android&quot;, userId: &quot;{$1.id}&quot;};
+callSvr(&quot;ActionLog.add&quot;, function(data) {}, postParam, {ref: [&quot;userId&quot;]} );
 
 batch-&gt;commit();
-// batch-&gt;cancel();
-</pre>
-
-<p>
-还有一种方式更简单：
-</p>
-
-<pre>
-MUI.useBatchCall(); // 在本次消息循环中执行所有的callSvr都加入批处理。
+// batch-&gt;cancel();</code></pre>
+<p>还有一种方式更简单：</p>
+<pre><code>MUI.useBatchCall(); // 在本次消息循环中执行所有的callSvr都加入批处理。
 // MUI.useBatchCall({useTrans:1}, 20); // 表示20ms内所有callSvr都加入批处理, 且启用事务。
 callSvr(...);
 callSvr(...);
-callSvr(..., {noBatch: 1}); // TODO:使用noBatch参数可以强制单独执行，不加入批处理。
-</pre>
-
-<p>
-其中，调用二中参数userId引用了调用一的返回结果，通过在callSvr后指定参数ref标明。userId的值"{$1.id}"表示取第一次调用值的id属性。
-注意：引用表达式应以"{}"包起来，"$n"中n可以为正数或负数（但不能为0），表示对第n次或前n次调用结果的引用，以下为可能的格式：
-</p>
-<pre>
-	"{$1}"
-	"id={$1.id}"
-	"{$-1.d[0][0]}"
-	"id in ({$1}, {$2})"
-	"diff={$-2 - $-1}"
-</pre>
-
-<p>
-花括号中的内容将用计算后的结果替换。如果表达式非法，将使用"null"值替代。
-</p>
-
-<p>
-数据传输格式: 
-</p>
-
-<p>
-提交使用JSON格式，示例如下
-</p>
-
-<pre>
-POST api/batch
+callSvr(..., {noBatch: 1}); // TODO:使用noBatch参数可以强制单独执行，不加入批处理。</code></pre>
+<p>其中，调用二中参数userId引用了调用一的返回结果，通过在callSvr后指定参数ref标明。userId的值&quot;{<span class="math inline">$1.id}&quot;表示取第一次调用值的id属性。 注意：引用表达式应以&quot;{}&quot;包起来，&quot;$</span>n&quot;中n可以为正数或负数（但不能为0），表示对第n次或前n次调用结果的引用，以下为可能的格式：</p>
+<pre><code>    &quot;{$1}&quot;
+    &quot;id={$1.id}&quot;
+    &quot;{$-1.d[0][0]}&quot;
+    &quot;id in ({$1}, {$2})&quot;
+    &quot;diff={$-2 - $-1}&quot;</code></pre>
+<p>花括号中的内容将用计算后的结果替换。如果表达式非法，将使用&quot;null&quot;值替代。</p>
+<p>数据传输格式:</p>
+<p>提交使用JSON格式，示例如下</p>
+<pre><code>POST api/batch
 
 [
-	{
-		"ac": "User.get",
-		"get": {"res": "name,phone"}
-	},
-	{
-		"ac": "ActionLog.add",
-		"post": {"page": "home", "ver": "android", "userId": "{$-1.id}"},
-		"ref": ["userId"]
-	}
-]
-</pre>
-
-<p>
-数组中每一项为一个调用，其格式为: {ac, %get?, %post?, @ref?}, 只有ac参数必须，其它均可省略。
-</p>
-
+    {
+        &quot;ac&quot;: &quot;User.get&quot;,
+        &quot;get&quot;: {&quot;res&quot;: &quot;name,phone&quot;}
+    },
+    {
+        &quot;ac&quot;: &quot;ActionLog.add&quot;,
+        &quot;post&quot;: {&quot;page&quot;: &quot;home&quot;, &quot;ver&quot;: &quot;android&quot;, &quot;userId&quot;: &quot;{$-1.id}&quot;},
+        &quot;ref&quot;: [&quot;userId&quot;]
+    }
+]</code></pre>
+<p>数组中每一项为一个调用，其格式为: {ac, %get?, %post?, <span class="citation">@ref</span>?}, 只有ac参数必须，其它均可省略。</p>
 <dl>
 <dt>get</dt>
-<dd>URL请求参数。</dd>
+<dd>URL请求参数。
+</dd>
 <dt>post</dt>
-<dd>POST请求参数。</dd>
+<dd>POST请求参数。
+</dd>
 <dt>ref</dt>
-<dd>使用了batch引用的参数列表。</dd>
+<dd>使用了batch引用的参数列表。
+</dd>
 </dl>
-
-<p>
-如果使用事务，只是URL上加个参数：
-</p>
-<pre>
-POST api/batch?useTrans=1
-</pre>
-
-<p>
-batch的返回内容是多条调用返回内容组成的数组，样例如下：
-</p>
-<pre>
-[0, [
-	[ 0, {id: 1, name: "用户1", phone: "13712345678"} ],  // 调用User.get的返回结果
-	[ 0, "OK" ]  // 调用ActionLog.add的返回结果
-]]
-</pre>
-
-<h2 id="toc_1.5"><a name="前端应用接口">5 前端应用接口</a></h2>
-
-<p>
-定义前端应用入口及调用参数。
-</p>
-
-<p>
-每一个应用均应定义一个唯一的应用标识(app)，如"emp", "emp-store"等。在调用交互接口时，框架会自动将应用标识作为参数传给后端。
-应用标识中字符"-"之前的部分称为应用类型(app type)，如果应用标识里没有"-"，则应用类型与应用标识相同。应用类型常用于登录类型与权限控制。
-</p>
-
-<p>
-例如，定义客户端应用标识app=user，其应用类型也是"user"，在login交互接口中，对应用类型"user"将作用户登录处理（如查询用户表），登录成功后赋予其用户权限。
-定义员工端应用标识为app=emp-store，它的应用类型是"emp"，在后端将作员工登录处理（比如查询的是员工表），登录成功后赋予其员工权限。
-定义管理端应用app=emp-adm，它与应用emp-store是相同类型，因而登录方式和权限是相同的，即应使用员工信息登录。
-</p>
-
-<p>
-可见，不同的应用可以是相同的应用类型。在实现交互接口时，不同的应用标识也会使用不同的cookie名称，以避免多个应用同时使用时相互干扰。
-</p>
-
-<h3 id="toc_1.5.1"><a name="移动应用">5.1 移动应用</a></h3>
-
-<p>
-筋斗云的移动应用可做为Web应用在浏览器中运行, 也可以接入微信公众号或支付宝服务窗, 也可以通过cordova框架包装在应用容器中提供android/ios应用程序.
-</p>
-
-<p>
-移动应用按惯例放在m2目录下。以常用的客户端、员工端两个移动应用为例，其相关文件有：
-</p>
-
-<p>
-客户端：
-</p>
+<p>如果使用事务，只是URL上加个参数：</p>
+<pre><code>POST api/batch?useTrans=1</code></pre>
+<p>batch的返回内容是多条调用返回内容组成的数组，样例如下：</p>
+<pre><code>[0, [
+    [ 0, {id: 1, name: &quot;用户1&quot;, phone: &quot;13712345678&quot;} ],  // 调用User.get的返回结果
+    [ 0, &quot;OK&quot; ]  // 调用ActionLog.add的返回结果
+]]</code></pre>
+<h3 id="服务端信息反馈x-daca头"><span class="header-section-number">3.5</span> 服务端信息反馈/X-Daca头</h3>
+<p>BQP协议规定，以下服务端信息应通过HTTP头反馈给客户端。</p>
+<p>服务端API版本号如果可以获取，应发送给客户端:</p>
+<pre><code>X-Daca-Server-Rev: {value}</code></pre>
+<p>其中value为最多6位的字符串。</p>
+<p>如果服务运行于测试模式或模拟模式，应设置：</p>
+<pre><code>X-Daca-Test-Mode: {value}
+X-Daca-Mock-Mode: {value}</code></pre>
+<p>其中value为非0，一般为1.</p>
+<h2 id="前端应用接口"><span class="header-section-number">4</span> 前端应用接口</h2>
+<p>在完整的APP设计文档中，应包括对前端应用接口的描述。</p>
+<p>每一个筋斗云前端应用均应定义一个唯一的应用标识(app)，如&quot;emp&quot;, &quot;emp-store&quot;等。在调用交互接口时，框架会自动将应用标识作为参数传给后端。 应用标识中的主干部分称为应用类型(app type)，例如应用&quot;emp&quot;, &quot;emp-store&quot;, &quot;emp2&quot;的主干（字符&quot;-&quot;之前的部分，不包括尾部数字），都是相同的应用类型&quot;emp&quot;。 应用类型常用于登录类型与权限控制。</p>
+<p>例如，定义客户端应用标识app=user，其应用类型也是&quot;user&quot;，在login交互接口中，对应用类型&quot;user&quot;将作用户登录处理（如查询用户表），登录成功后赋予其用户权限。 定义员工端应用标识为app=emp，它的应用类型是&quot;emp&quot;，在后端将作员工登录处理（比如查询的是员工表），登录成功后赋予其员工权限。 定义管理端应用app=emp-adm，它与应用emp-store是相同类型，因而登录方式和权限是相同的，即应使用员工信息登录。</p>
+<p>可见，不同的应用可以是相同的应用类型。在实现交互接口时，不同的应用标识也会使用不同的cookie名称，以避免多个应用同时使用时相互干扰。</p>
+<p>下面以筋斗云前端示例应用为例，介绍常见的前端应用接口描述方式。</p>
+<h3 id="移动端应用"><span class="header-section-number">4.1</span> 移动端应用</h3>
+<p>筋斗云的移动应用可做为Web应用在浏览器中运行, 也可以接入微信公众号或支付宝服务窗, 也可以通过cordova框架包装在应用容器中提供android/ios应用程序.</p>
+<p>移动端应用按惯例放在m2目录下。以用户端为例，其相关文件有：</p>
+<p>客户端：</p>
 <ul>
-<li>
-index.html/index.js 客户端应用的UI框架及通用逻辑，js文件中包含多个页面共享的全局函数、全局变量等。
-
-<li>
-index.css 客户端应用全局样式。
-
-<li>
-page/{xx}.html, page/{xx}.js 每个逻辑页面的UI和逻辑。页面私有的样式可以内嵌在html页面中。
-
+<li>index.html/index.js 客户端应用的UI框架及通用逻辑，js文件中包含多个页面共享的全局函数、全局变量等。</li>
+<li>index.css 客户端应用全局样式。</li>
+<li>page/{xx}.html, page/{xx}.js 每个逻辑页面的UI和逻辑。页面私有的样式可以内嵌在html页面中。</li>
 </ul>
-
-<p>
-商户端：
-</p>
+<p>此外还有文件：</p>
 <ul>
-<li>
-store.html/store.js 商户端应用的UI框架及通用逻辑
-
-<li>
-store.css 商户端应用的全局样式。
-
-<li>
-store/{xx}.html, store/{xx}.js 商户端中每个逻辑页面的UI和逻辑。
-
+<li>app.js 所有移动应用共享的全局对象</li>
+<li>app.css 所有移动应用共享的全局样式</li>
 </ul>
-
-<p>
-此外还有文件：
-</p>
+<p>移动应用的对外接口包括页面URL，允许的入口页面(entry)，URL参数等。下面举例说明前端应用接口的描述方式：</p>
+<h4 id="客户端appuser"><span class="header-section-number">4.1.1</span> 客户端(app=user)</h4>
+<p>URL地址：</p>
+<pre><code>m2/index.html</code></pre>
+<p>应用标识为&quot;user&quot;。</p>
+<p><strong>[进入移动客户端并显示指定订单]</strong></p>
+<pre><code>m2/index.html#order(orderId)</code></pre>
+<p>这表示可以请求这样的URL:</p>
+<pre><code>m2/index.html?orderId=32#order</code></pre>
+<p>其中: m2/index.html是页面地址, &quot;?&quot;后为参数(使用URL编码方式), &quot;#&quot;后为入口点, 表示允许进入的逻辑页面.</p>
+<p>上例中的访问表示: 打开移动客户端的订单页面, 参数为orderId=32, 即显示32号订单.</p>
+<h3 id="桌面应用"><span class="header-section-number">4.2</span> 桌面应用</h3>
+<p>桌面应用按惯例放在web目录下。其常用文件与移动应用类似，以管理端应用为例：</p>
 <ul>
-<li>
-app.js 所有移动应用共享的全局对象
-
-<li>
-app.css 所有移动应用共享的全局样式
-
+<li>store.html 管理端应用。按需可拆分出 store.js, store.css等文件。</li>
+<li>app.js / style.css 所有桌面应用共享的逻辑与全局样式。</li>
 </ul>
-
-<p>
-移动应用的对外接口包括页面URL，允许的入口页面(entry)，URL参数等。下面举例描述这些接口。
-</p>
-
-<h4 id="toc_1.5.1.1"><a name="客户端(app=user)">5.1.1 客户端(app=user)</a></h4>
-
-<pre>
-m2/index.html
-</pre>
-
-<p>
-这表示打开这个URL，就进入移动客户端应用。
-</p>
-
-<p>
-该应用的应用标识定义为"user"，表示用户登录。
-</p>
-
-<p>
-<strong>[进入移动客户端并显示指定订单]</strong>
-</p>
-
-<pre>
-m2/index.html#order(orderId)
-</pre>
-
-<p>
-这表示可以请求这样的URL:
-</p>
-<pre>
-m2/index.html?orderId=32#order
-</pre>
-
-<p>
-其中: m2/index.html是页面地址, "?"后为参数(使用URL编码方式), "#"后为入口点, 表示允许进入的逻辑页面.
-</p>
-
-<p>
-上例中的访问表示: 打开移动客户端的订单页面, 参数为orderId=32, 即显示32号订单.
-</p>
-
-<h4 id="toc_1.5.1.2"><a name="员工端(app=emp-store)">5.1.2 员工端(app=emp-store)</a></h4>
-
-<pre>
-m2/store.html
-</pre>
-
-<p>
-该应用的应用标识定义为"emp-store"，表示员工登录（应用类型为emp）。
-</p>
-
-<h3 id="toc_1.5.2"><a name="桌面应用">5.2 桌面应用</a></h3>
-
-<p>
-桌面应用按惯例放在web目录下。其常用文件与移动应用类似，以管理端应用为例：
-</p>
-
+<p>常见的桌面应用示例如下。</p>
+<h4 id="管理端应用appemp-adm"><span class="header-section-number">4.2.1</span> 管理端应用(app=emp-adm)</h4>
+<p>一般由商户员工使用，管理员工、订单等：</p>
+<pre><code>web/store.html</code></pre>
+<p>该应用的应用标识定义为&quot;emp-adm&quot;，它与员工端(emp-store)的应用类型是相同的，都是&quot;emp&quot;, 因而都用员工信息进行登录。</p>
+<h4 id="超级管理端应用appadmin"><span class="header-section-number">4.2.2</span> 超级管理端应用(app=admin)</h4>
+<p>一般由超级管理员使用，甚至可执行SQL语句：</p>
+<pre><code>web/adm.html</code></pre>
+<p>该应用的应用标识定义为&quot;admin&quot;，使用超级管理员帐号登录。注意：超级管理员帐号在用户配置文件<code>conf.user.php</code>中由<code>P_ADMIN_CRED</code>环境变量设定。</p>
+<h4 id="桌面应用查询用法"><span class="header-section-number">4.2.3</span> 桌面应用查询用法</h4>
+<p>在查找对象的对话框中，可支持多种灵活的匹配方式：</p>
+<p>例如对字段a, 填写以下值：</p>
 <ul>
-<li>
-store.html 管理端应用。按需可拆分出 store.js, store.css等文件。
-
-<li>
-app.js / style.css 所有桌面应用共享的逻辑与全局样式。
-
+<li><code>hello</code> (匹配) - 生成查询条件 <code>a='hello'</code></li>
+<li><code>100</code> (纯数字匹配) - 生成 <code>a=100</code></li>
+<li><code>*28*</code> 或 <code>%28%</code> (部分匹配) - 生成<code>a like '%28%'</code></li>
+<li><code>&gt;100</code> / <code>&gt;=100</code> / <code>&lt;100</code> / <code>&lt;=100</code> / <code>&lt;&gt;100</code> - 生成 <code>a&gt;100</code>等</li>
+<li><code>null</code> / <code>&lt;&gt;null</code> - 生成 <code>a is null</code> / <code>a is not null</code></li>
+<li><code>empty</code> / <code>&lt;&gt;empty</code> - 生成 <code>a=''</code> / <code>a&lt;&gt;''</code></li>
+<li>支持简单的and/or查询，如 <code>&gt;=100 and &lt;200</code>, <code>null or 0 or 1</code>，不支持用括号组合条件。</li>
 </ul>
-
-<p>
-常见的桌面应用示例如下。
-</p>
-
-<h4 id="toc_1.5.2.1"><a name="管理端应用(app=emp-adm)">5.2.1 管理端应用(app=emp-adm)</a></h4>
-
-<p>
-一般由商户员工使用，管理员工、订单等：
-</p>
-<pre>
-web/store.html
-</pre>
-
-<p>
-该应用的应用标识定义为"emp-adm"，它与员工端(emp-store)的应用类型是相同的，都是"emp", 因而都用员工信息进行登录。
-</p>
-
-<h4 id="toc_1.5.2.2"><a name="超级管理端应用(app=admin)">5.2.2 超级管理端应用(app=admin)</a></h4>
-
-<p>
-一般由超级管理员使用，甚至可执行SQL语句：
-</p>
-<pre>
-web/adm.html
-</pre>
-
-<p>
-该应用的应用标识定义为"admin"，使用超级管理员帐号登录。注意：超级管理员帐号在用户配置文件<code>conf.user.php</code>中由<code>P_ADMIN_CRED</code>环境变量设定。
-</p>
-
-<h4 id="toc_1.5.2.3"><a name="桌面应用查询用法">5.2.3 桌面应用查询用法</a></h4>
-
-<p>
-在查找对象的对话框中，可支持多种灵活的匹配方式：
-</p>
-
-<p>
-例如对字段a, 填写以下值：
-</p>
-<ul>
-<li>
-<code>hello</code> (匹配) -  生成查询条件 <code>a='hello'</code>
-
-<li>
-<code>100</code> (纯数字匹配) - 生成 <code>a=100</code>
-
-<li>
-<code>*28*</code> 或 <code>%28%</code> (部分匹配) - 生成<code>a like '%28%'</code>
-
-<li>
-<code>&gt;100</code> / <code>&gt;=100</code> / <code>&lt;100</code> / <code>&lt;=100</code> / <code>&lt;&gt;100</code> - 生成 <code>a&gt;100</code>等
-
-<li>
-<code>null</code> / <code>&lt;&gt;null</code> - 生成 <code>a is null</code> / <code>a is not null</code>
-
-<li>
-<code>empty</code> / <code>&lt;&gt;empty</code> - 生成 <code>a=''</code> / <code>a&lt;&gt;''</code>
-
-<li>
-支持简单的and/or查询，如 <code>&gt;=100 and &lt;200</code>, <code>null or 0 or 1</code>，不支持用括号组合条件。
-
-</ul>
-
-<p>
-如果同时对多个字段填写了搜索值，则表示这些条件需要同时满足，即<code>AND</code>关系。
-</p>
-
-<p>
-详细可参考文档 <a href="api_web.html#WUI.getQueryCond">API参考 -&gt; 筋斗云前端(桌面Web版) -&gt; WUI.getQueryCond</a>
-</p>
-
-<h4 id="toc_1.5.2.4"><a name="通用参数">5.2.4 通用参数</a></h4>
-
-<p>
-移动应用和桌面应用的框架支持以下通用参数：
-</p>
-
+<p>如果同时对多个字段填写了搜索值，则表示这些条件需要同时满足，即<code>AND</code>关系。</p>
+<p>详细可参考文档 [[api_web.html#WUI.getQueryCond|API参考 -&gt; 筋斗云前端(桌面Web版) -&gt; WUI.getQueryCond]]</p>
+<h4 id="通用参数"><span class="header-section-number">4.2.4</span> 通用参数</h4>
+<p>移动应用和桌面应用的框架支持以下通用参数：</p>
 <dl>
-<dt>test/_test?=0</dt>
-<dd>Integer. 设置后台使用测试模式。1表示测试模式.</dd>
 <dt>_debug?=0</dt>
-<dd>Integer. 设置本次调用的服务端调试等级. 调试信息可在调用交互接口的返回内容中查看(返回内容的第三项): [code, ret, debugInfo]. 常用值：0-无额外信息; 1-基本信息, 9-所有信息, 包含数据库查询语句.</dd>
+<dd>Integer. 设置本次调用的服务端调试等级. 调试信息可在调用交互接口的返回内容中查看(返回内容的第三项): [code, ret, debugInfo]. 常用值：0-无额外信息; 1-基本信息, 9-所有信息, 包含数据库查询语句.
+</dd>
 </dl>
-
-<p>
-以下参数适用于移动应用：
-</p>
-
+<p>以下参数适用于移动应用：</p>
 <dl>
 <dt>cordova?=0</dt>
-<dd>Integer. 0表示普通Web应用. 当网页通过[应用容器]以原生android/ios应用方式运行时, 值为非0, 表示容器的版本号. </dd>
+<dd>Integer. 0表示普通Web应用. 当网页通过[应用容器]以原生android/ios应用方式运行时, 值为非0, 表示容器的版本号.
+</dd>
 </dl>
-
-<p>
-注意: 一旦设置为非0, 则该值会被记住, 下次打开时即使未指定也会有值, 必须重新设置cordova=0清除(或在控制台中调用delStorage("cordova")).
-</p>
-
-<p>
-以下参数适用于桌面应用：
-</p>
-
+<p>注意: 一旦设置为非0, 则该值会被记住, 下次打开时即使未指定也会有值, 必须重新设置cordova=0清除(或在控制台中调用delStorage(&quot;cordova&quot;)).</p>
+<p>以下参数适用于桌面应用：</p>
 <dl>
 <dt>autoLogin</dt>
-<dd>Boolean. 如果为1, 则记住登录token, 下次打开时可以自动登录.</dd>
+<dd>Boolean. 如果为1, 则记住登录token, 下次打开时可以自动登录.
+</dd>
 </dl>
-
-<h4 id="toc_1.5.2.5"><a name="全局变量">5.2.5 全局变量</a></h4>
-
-<p>
-移动应用和桌面应用使用以下JS全局变量：
-</p>
-
+<h4 id="全局变量"><span class="header-section-number">4.2.5</span> 全局变量</h4>
+<p>移动应用和桌面应用使用以下JS全局变量：</p>
 <dl>
 <dt>g_args</dt>
-<dd>Object. 应用打开时的URL参数. 由框架自动设置.</dd>
+<dd>Object. 应用打开时的URL参数. 由框架自动设置.
+</dd>
 <dt>g_data</dt>
-<dd>Object. 通用全局变量, 存储各项配置或应用数据. 常用项为userInfo, 表示登录后获取的用户信息.</dd>
+<dd>Object. 通用全局变量, 存储各项配置或应用数据. 常用项为userInfo, 表示登录后获取的用户信息.
+</dd>
 <dt>g_cfg</dt>
-<dd>Object. 全局配置。</dd>
+<dd>Object. 全局配置。
+</dd>
 </dl>
-
-<p>
-以上变量可通过控制台手工调节部分参数.
-</p>
-
-<h2 id="toc_1.6"><a name="测试设计">6 测试设计</a></h2>
-
-<p>
-<strong>[测试需求]</strong>
-</p>
-
+<p>以上变量可通过控制台手工调节部分参数.</p>
+<h2 id="测试设计"><span class="header-section-number">5</span> 测试设计</h2>
+<p><strong>[测试需求]</strong></p>
 <ul>
-<li>
-对每个WebAPI及其集成业务场景有自动化回归测试(rtest - regression test)
-
-<li>
-提供工具可对每个API进行手工测试(test tool)
-
-<li>
-部分类提供单元测试(UT - unit test)
-
-<li>
-服务器提供测试模式，支持数据库清除等特殊操作。
-
+<li>对每个WebAPI及其集成业务场景有自动化回归测试(rtest - regression test)</li>
+<li>提供工具可对每个API进行手工测试(test tool)</li>
+<li>部分类提供单元测试(UT - unit test)</li>
+<li>服务器提供测试模式，支持数据库清除等特殊操作。</li>
 </ul>
-
-<p>
-所有测试内容存放在<code>rtest</code>目录下。
-</p>
-
-<p>
-注:
-</p>
-<ul>
-<li>
-环境变量"SVC_URL"可设置使用的URL, 如
-<pre>
-&gt; set SVC_URL=http://115.29.199.210/cheguanjia
-&gt; run_rtest.pl all
-</pre>
-
-</ul>
-
-<h3 id="toc_1.6.1"><a name="手工测试">6.1 手工测试</a></h3>
-
-<p>
-除可通过浏览器(如Chrome插件Postman)等工具进行测试外，还提供client.php工具，可分别测试每个API，如
-</p>
-<pre>
-&gt; client.php queryseries 100
-</pre>
-
-<p>
-也可直接调用callsvr方法调用任意api, 例如以下调用等价于前面例子:
-</p>
-<pre>
-&gt; client.php callsvr queryseries brandId=100
-</pre>
-
-<p>
-再如通用的对表的查询: 格式<code>callsvr command [paramstr] [poststr]</code>, 其中<code>paramstr</code>和<code>poststr</code>应使用URL编码.
-</p>
-<pre>
-(get item with id)
+<p>所有测试内容存放在<code>rtest</code>目录下。</p>
+<p>环境变量&quot;SVC_URL&quot;可设置使用的URL, 如</p>
+<pre><code>&gt; set SVC_URL=http://115.29.199.210/mysvc
+&gt; run_rtest.pl all</code></pre>
+<h3 id="手工测试"><span class="header-section-number">5.1</span> 手工测试</h3>
+<p>除可通过浏览器(如Chrome插件Postman)等工具进行测试外，还提供client.php工具，可分别测试每个API，如</p>
+<pre><code>&gt; client.php queryseries 100</code></pre>
+<p>也可直接调用callsvr方法调用任意api, 例如以下调用等价于前面例子:</p>
+<pre><code>&gt; client.php callsvr queryseries brandId=100</code></pre>
+<p>再如通用的对表的查询: 格式<code>callsvr command [paramstr] [poststr]</code>, 其中<code>paramstr</code>和<code>poststr</code>应使用URL编码.</p>
+<pre><code>(get item with id)
 &gt; client.php callsvr item.get id=1 
 
 (set item with id)
-&gt; client.php callsvr item.set id=1 "price=434&amp;dscr=hehe"
-</pre>
-
-<p>
-注:
-</p>
+&gt; client.php callsvr item.set id=1 &quot;price=434&amp;dscr=hehe&quot;</code></pre>
+<p>注意:</p>
 <ul>
-<li>
-直接运行<code>client.php</code>可查看支持的API.
-
-<li>
-任一参数设置为"?"表示查看帮助, 如<code>client.php api1 ?</code>表示显示api1的帮助.
-
-<li>
-用null表示该参数不赋值, 如<code>client.php api1 param1 null param3</code>.
-
-<li>
-该工具为回归测试的副产品。
-
+<li>直接运行<code>client.php</code>可查看支持的API.</li>
+<li>任一参数设置为&quot;?&quot;表示查看帮助, 如<code>client.php api1 ?</code>表示显示api1的帮助.</li>
+<li>用null表示该参数不赋值, 如<code>client.php api1 param1 null param3</code>.</li>
+<li>该工具为回归测试的副产品。</li>
 </ul>
-
-<h3 id="toc_1.6.2"><a name="回归测试">6.2 回归测试</a></h3>
-
-<h4 id="toc_1.6.2.1"><a name="使用方法">6.2.1 使用方法</a></h4>
-
-<p>
-<strong>[前提条件]</strong>
-</p>
-
+<h3 id="回归测试"><span class="header-section-number">5.2</span> 回归测试</h3>
+<h4 id="使用方法"><span class="header-section-number">5.2.1</span> 使用方法</h4>
+<p><strong>[前提条件]</strong></p>
 <ul>
-<li>
-php version &gt;= 5.3.3 (required by phpunit 4.2)
-
-<li>
-配置php和phpunit使其可直接运行如 "./php" 和 "./phpunit"
-
+<li>php version &gt;= 5.3.3 (required by phpunit 4.2)</li>
+<li>配置php和phpunit使其可直接运行如 &quot;./php&quot; 和 &quot;./phpunit&quot;</li>
 </ul>
-
-
-<p>
-运行服务端和回归测试：
-</p>
-<pre>
-&gt; cd rtest
+<p>运行服务端和回归测试：</p>
+<pre><code>&gt; cd rtest
 &gt; run_server.bat
 
 (设置服务URL，也可以手工设置)
@@ -3156,81 +1251,38 @@ php version &gt;= 5.3.3 (required by phpunit 4.2)
 &gt; run_rtest.pl all
 
 (运行一个case)
-&gt; run_rtest.pl testcase1
-</pre>
-
-<p>
-日志"rtest.log"记录所有HTTP request和response，用于分析业务逻辑失败的原因。
-</p>
-
-<p>
-run_rtest是对phpunit进行了封装的工具，下面介绍。
-</p>
-
-<p>
-<strong>[run_rtest.pl]</strong>
-</p>
-
-<p>
-phpunit可以执行多个case, 不能自动分析依赖关系. run_rtest.pl工具就是用于简化对个别Case的测试, 它可运行一个多个或全部测试用例。
-</p>
-
-<pre>
-(执行所有用例)
+&gt; run_rtest.pl testcase1</code></pre>
+<p>日志&quot;rtest.log&quot;记录所有HTTP request和response，用于分析业务逻辑失败的原因。</p>
+<p>run_rtest是对phpunit进行了封装的工具，下面介绍。</p>
+<p><strong>[run_rtest.pl]</strong></p>
+<p>phpunit可以执行多个case, 不能自动分析依赖关系. run_rtest.pl工具就是用于简化对个别Case的测试, 它可运行一个多个或全部测试用例。</p>
+<pre><code>(执行所有用例)
 &gt; run_rtest.pl all
 
 (执行一个用例, 用例名参考rtest.php中的test系列函数, 名称可忽略大小写; 工具将自动先执行依赖的用例)
 &gt; run_rtest.pl testupload
 
 (执行多个用例，工具将自动调整各用例执行顺序)
-&gt; run_rtest.pl testatt testupload
-</pre>
-
-<p>
-下面是一些特殊配置:
-</p>
-
-<p>
-&gt; P_DEBUG
-</p>
-
-<p>
-通过设置环境变量P_DEBUG, 可以让本系统使用的测试工具(如client.php及rtest.php)请求时指定调试等级. 如:
-</p>
-<pre>
-set P_DEBUG=9
-client.php callsvr usercar.query
-</pre>
-
-<p>
-等级9将打出服务端SQL语句，并且通过自动设置URL参数"XDEBUG_SESSION_START=netbeans-xdebug"触发服务端php调试器(必须安装php-xdebug).
-</p>
-
-<p>
-&gt; P_APP
-</p>
-
-<p>
-指定app名称(间接指定session名). 对应系统URL参数"_app" (参考章节"应用标识(_app)). 在多种客户端同时登录时用于区分每个会话.
-</p>
-
-<p>
-&gt; P_SHARE_COOKIE
-</p>
-
-<p>
-rtest缺省会在测试前后创建和删除cookie, 测试时会自动找一个用户测试, 测试用例中也包括创建新用户. 
-</p>
-
-<p>
-如果设置了环境变量P_SHARE_COOKIE, 则不会创建和删除新cookie, 而是用当前已登录的用户测试(其中会用到API whoami来确定当前用户). 
-</p>
-
-<p>
-例如, 你想借助rtest为特定的用户创建订单, 可以这样:
-</p>
-<pre>
-&gt; set P_SHARE_COOKIE=1
+&gt; run_rtest.pl testatt testupload</code></pre>
+<p>下面是一些特殊配置:</p>
+<ul>
+<li>P_DEBUG</li>
+</ul>
+<p>通过设置环境变量P_DEBUG, 可以让本系统使用的测试工具(如client.php及rtest.php)请求时指定调试等级. 如:</p>
+<pre><code>set P_DEBUG=9
+client.php callsvr usercar.query</code></pre>
+<p>等级9将打出服务端SQL语句，并且通过自动设置URL参数&quot;XDEBUG_SESSION_START=netbeans-xdebug&quot;触发服务端php调试器(必须安装php-xdebug).</p>
+<ul>
+<li>P_APP</li>
+</ul>
+<p>指定app名称(间接指定session名). 对应系统URL参数&quot;_app&quot; (参考章节&quot;应用标识(_app)). 在多种客户端同时登录时用于区分每个会话.</p>
+<ul>
+<li>P_SHARE_COOKIE</li>
+</ul>
+<p>rtest缺省会在测试前后创建和删除cookie, 测试时会自动找一个用户测试, 测试用例中也包括创建新用户.</p>
+<p>如果设置了环境变量P_SHARE_COOKIE, 则不会创建和删除新cookie, 而是用当前已登录的用户测试(其中会用到API whoami来确定当前用户).</p>
+<p>例如, 你想借助rtest为特定的用户创建订单, 可以这样:</p>
+<pre><code>&gt; set P_SHARE_COOKIE=1
 &gt; client.php login 13712345678 1234
 (登录用户为13712345678)
 
@@ -3238,281 +1290,86 @@ rtest缺省会在测试前后创建和删除cookie, 测试时会自动找一个�
 &gt; run_rtest.pl testaddorder
 
 (用当前登录用户运行所有测试, 将忽略注册, 登录等接口测试)
-run_rtest.pl all
-</pre>
-
-<p>
-<strong>[phpunit用法]</strong>
-</p>
-
-<p>
-运行所有回归测试：
-</p>
-<pre>
-phpunit rtest.php
-</pre>
-
-<p>
-phpunit其它常用参数如下：
-</p>
-
-<p>
-运行一个或多个Case(注意：名称大小写必须正确，被依赖的case必须先执行)
-</p>
-<pre>
-	run_rtest --filter testGeneralQuery
-	run_rtest --filter testUpload|testAtt
-</pre>
-
-<p>
-just scenario test:
-</p>
-<pre>
-	run_rtest --group scenario
-</pre>
-
-<p>
-just sanity test:
-</p>
-<pre>
-	run_rtest --exclude-group scenario
-</pre>
-
-<h4 id="toc_1.6.2.2"><a name="测试模式设计">6.2.2 测试模式设计</a></h4>
-
+run_rtest.pl all</code></pre>
+<p><strong>[phpunit用法]</strong></p>
+<p>运行所有回归测试：</p>
+<pre><code>phpunit rtest.php</code></pre>
+<p>phpunit其它常用参数如下：</p>
+<p>运行一个或多个Case(注意：名称大小写必须正确，被依赖的case必须先执行)</p>
+<pre><code>    run_rtest --filter testGeneralQuery
+    run_rtest --filter testUpload|testAtt</code></pre>
+<p>just scenario test:</p>
+<pre><code>    run_rtest --group scenario</code></pre>
+<p>just sanity test:</p>
+<pre><code>    run_rtest --exclude-group scenario</code></pre>
+<h4 id="api测试和用例测试"><span class="header-section-number">5.2.2</span> API测试和用例测试</h4>
+<p><strong>[原则]</strong></p>
 <ul>
-<li>
-以"php -S"模式启动时，Server自动切换到测试模式下，这时使用单机DB: "carsvc_test.db".
-
-<li>
-如果设置了环境参数"initdb" (在指请求包的HTTP header中设置了"bc-initdb")，Server可自动初始化数据库。
-
-<li>
-测试模式下会在返回包的HTTP status行有" - FOR TEST!"字样。
-
+<li>API测试(sanity test): 对每个WEB API进行测试，注重每个API的各种成功和出错处理。</li>
+<li><p>用例测试或场景测试(usecase/scenraio): 通过调用若干API完成一个有意义的场景。</p></li>
+<li>API test and scenario cases in one file: rtest.php</li>
+<li>if sanity test fails, ignore scenario tests</li>
+<li><p>if any critical case fails, ignore the rest.</p></li>
 </ul>
-
-<p>
-<strong>[实现]</strong>
-</p>
-
-<p>
-rtest实现参见<code>rtest/rtest.php</code>，服务端实现请在<code>server/api.php</code>中搜索"CARSVC_TEST".
-</p>
-
-<h4 id="toc_1.6.2.3"><a name="API测试和用例测试">6.2.3 API测试和用例测试</a></h4>
-
-<p>
-<strong>[原则]</strong>
-</p>
-
-<ul>
-<li>
-API测试(sanity test): 对每个WEB API进行测试，注重每个API的各种成功和出错处理。
-
-<li>
-用例测试或场景测试(usecase/scenraio): 通过调用若干API完成一个有意义的场景。
-
-</ul>
-
-<ul>
-<li>
-API test and scenario cases in one file: rtest.php
-
-<li>
-if sanity test fails, ignore scenario tests
-
-<li>
-if any critical case fails, ignore the rest.
-
-</ul>
-
-<p>
-<strong>[实现]</strong>
-</p>
-
-<p>
-参考file rtest.php:
-</p>
-<pre>
-static private $isIT =false;
+<p><strong>[实现]</strong></p>
+<p>参考file rtest.php:</p>
+<pre><code>static private $isIT =false;
 static private $skipIT = false;
 static private $skipAll = false;
-private $isCritical = false; 
-</pre>
-
-<h3 id="toc_1.6.3"><a name="单元测试">6.3 单元测试</a></h3>
-
-<p>
-必要时对某些类进行专门测试，存放在"rtest/test"目录，手工运行它们：
-</p>
-<pre>
-cd test
-phpunit xxxTest.php
-</pre>
-
-<h3 id="toc_1.6.4"><a name="自动化测试">6.4 自动化测试</a></h3>
-
-<h4 id="toc_1.6.4.1"><a name="取短信日志最后一条">6.4.1 取短信日志最后一条</a></h4>
-
-<pre>
-getLastLog(type)
-</pre>
-
-<p>
-<strong>[权限]</strong>
-</p>
-
+private $isCritical = false; </code></pre>
+<h3 id="单元测试"><span class="header-section-number">5.3</span> 单元测试</h3>
+<p>必要时对某些类进行专门测试，存放在&quot;rtest/test&quot;目录，手工运行它们：</p>
+<pre><code>cd test
+phpunit xxxTest.php</code></pre>
+<h2 id="登录类型与权限管理"><span class="header-section-number">6</span> 登录类型与权限管理</h2>
+<p>我们使用的权限控制模型为: &quot;用户-权限(即角色/原子权限组)-原子权限(基本权限)&quot;. (注:权限组也称&quot;角色&quot;, 所以某些系统中也称为&quot;用户-角色-权限&quot;模型.)</p>
+<p>在我们系统中, 用户主要有User和Employee两类.</p>
+<p>权限有两类: authorization(或称permission), 以及data ownership. - 前者控制用户可以访问的表及列, 以及对该对象(甚至粒度到字段)可以有哪些操作(读/写). 例如, 在我们系统中, User登录后可以添加订单(Ordr.add, 且只允许设置指定的字段), 不可以删除订单. 实现时, 通过AC1_Ordr类控制了操作类型, 字段等. - 后者控制用户可以访问的行, 例如, 虽然用户可以访问订单对象, 但只能操作自己的订单, 但不能操作别人的订单. 实现时, 在AC1_Ordr类的onValidateId(检查set/del/get操作)/onQuery(检查query操作)中, 均做了控制.</p>
+<p>在后台系统中, 对象操作类的原子权限定义是通过AccessControl类簇实现的, 每一个类(如AC1_Ordr)即是一个权限定义(包括了对象权限, 列权限及行权限). 而对于函数操作类权限是通过checkAuth(角色)显示定义: 只有指定角色的用户才能调用.</p>
+<p>权限定义参考章节<a href="#权限说明">权限说明</a>.</p>
+<h2 id="服务端部署与升级"><span class="header-section-number">7</span> 服务端部署与升级</h2>
+<h3 id="初始化配置"><span class="header-section-number">7.1</span> 初始化配置</h3>
+<p>项目初始化步骤：</p>
 <ul>
-<li>
-AUTH_TEST_MODE
-
+<li>访问URL: <code>http://{server}/{app}/tool/init.php</code> 检查php环境是否满足需求。</li>
+<li>为应用创建数据库和专用用户，进行初始化，生成指定数据库和配置文件 php/conf.user.php.</li>
+<li>使用命令行工具 tool/upgrade.php 连接数据库进行表创建或更新。(详见下面章节)</li>
+<li>如果有initdata目录，查看该目录下相关文档，确定是否需要导入表内容或创建视图、函数等。</li>
 </ul>
-
-<p>
-<strong>[参数]</strong>
-</p>
-
-<dl>
-<dt>f</dt>
-</dl>
-
-<h2 id="toc_1.7"><a name="登录类型与权限管理">7 登录类型与权限管理</a></h2>
-
-<p>
-我们使用的权限控制模型为: "用户-权限(即角色/原子权限组)-原子权限(基本权限)".
-(注:权限组也称"角色", 所以某些系统中也称为"用户-角色-权限"模型.)
-</p>
-
-<p>
-在我们系统中, 用户主要有User和Employee两类. 
-</p>
-
-<p>
-权限有两类: authorization(或称permission), 以及data ownership. 
-</p>
+<p>如果需要重新配置，可删除配置文件 php/conf.user.php后再运行本工具。</p>
+<p>在配置文件中，很多帐户口令、密码采用base64等方式保存，可以用在线工具 <code>http://{server}/{app}/tool/tool.php</code>进行编解码。</p>
+<h3 id="升级管理"><span class="header-section-number">7.2</span> 升级管理</h3>
+<p>tool/upgrade.php - 升级管理</p>
+<p><strong>[原理]</strong></p>
+<p>它根据主设计文档中（DESIGN.wiki）中的数据模型定义，创建或更新数据库表，定义数据模型示例：</p>
+<pre><code>@ApiLog: id, tm, addr</code></pre>
+<p>主设计文档中可以包含其它设计文档，指令如下： （支持版本: v3.1）</p>
+<pre><code>@include sub/mydesign.wiki</code></pre>
+<p>如果使用了插件，一般应包含所有插件文档，以便插件中的表也可被创建。在DESIGN.wiki中目前默认就有这样一行：</p>
+<pre><code>@include server/plugin/*/DESIGN.wiki</code></pre>
+<p>注意：</p>
 <ul>
-<li>
-前者控制用户可以访问的表及列, 以及对该对象(甚至粒度到字段)可以有哪些操作(读/写). 例如, 在我们系统中, User登录后可以添加订单(Ordr.add, 且只允许设置指定的字段), 不可以删除订单. 实现时, 通过AC1_Ordr类控制了操作类型, 字段等.
-
-<li>
-后者控制用户可以访问的行, 例如, 虽然用户可以访问订单对象, 但只能操作自己的订单, 但不能操作别人的订单. 实现时, 在AC1_Ordr类的onValidateId(检查set/del/get操作)/onQuery(检查query操作)中, 均做了控制.
-
+<li>对于MYSQL数据库, 升级工具只创建表, 不创建数据库本身。创建数据库以及设置权限可在线访问tool/init.php。</li>
+<li>不会删除表或字段。如有需要请手工操作。</li>
+<li>对已有的字段，不能修改字段类型。需要手工操作。</li>
 </ul>
-
-<p>
-在后台系统中, 对象操作类的原子权限定义是通过AccessControl类簇实现的, 每一个类(如AC1_Ordr)即是一个权限定义(包括了对象权限, 列权限及行权限). 而对于函数操作类权限是通过checkAuth(角色)显示定义: 只有指定角色的用户才能调用.
-</p>
-
-<p>
-权限定义参考章节[权限说明].
-</p>
-
-<h2 id="toc_1.8"><a name="服务端部署与升级">8 服务端部署与升级</a></h2>
-
-<h3 id="toc_1.8.1"><a name="初始化配置">8.1 初始化配置</a></h3>
-
-<p>
-项目初始化步骤：
-</p>
+<p><strong>[数据库连接]</strong></p>
+<p>upgrade.php与api.php配置方式相同，都是通过环境变量来指定，可以使用conf.user.php中的配置，数据库支持mysql和sqlite.</p>
+<p>环境变量P_DB可为升级工具指定数据库. 如</p>
 <ul>
-<li>
-访问URL: <code>http://{server}/{app}/tool/init.php</code> 检查php环境是否满足需求。
-
-<li>
-为应用创建数据库和专用用户，进行初始化，生成指定数据库和配置文件 php/conf.user.php.
-
-<li>
-使用命令行工具 tool/upgrade.php 连接数据库进行表创建或更新。(详见下面章节)
-
-<li>
-如果有initdata目录，查看该目录下相关文档，确定是否需要导入表内容或创建视图、函数等。
-
+<li>P_DB=&quot;carsvc.db&quot;表示本地的sqlite db (以.db结尾)</li>
+<li>P_DB=&quot;../carsvc.db&quot;表示本地的sqlite db, 指定了准确的位置.</li>
+<li>P_DB=&quot;carsvc&quot; 表示本地的的mysql db, 相当于&quot;localhost/carsvc&quot;.</li>
+<li>P_DB=&quot;115.29.199.210/carsvc_test&quot; 表示位于IP=115.29.199.210的远程mysql db.</li>
 </ul>
-
-<p>
-如果需要重新配置，可删除配置文件 php/conf.user.php后再运行本工具。
-</p>
-
-<p>
-在配置文件中，很多帐户口令、密码采用base64等方式保存，可以用在线工具 <code>http://{server}/{app}/tool/tool.php</code>进行编解码。
-</p>
-
-<h3 id="toc_1.8.2"><a name="升级管理">8.2 升级管理</a></h3>
-
-<p>
-tool/upgrade.php - 升级管理
-</p>
-
-<p>
-<strong>[原理]</strong>
-</p>
-
-<p>
-它以DESIGN.wiki中的[数据库设计]章节内容生成table meta data (@table)及meta version (@ver), 比照真正数据库中字段的cinf.version, 然后根据差异更新表设计及表内容.
-</p>
-
-<p>
-注意：主设计文档中可以包含其它设计文档，指令如下：
-（支持版本: v3.1）
-</p>
-
-<pre>
-@include sub/mydesign.wiki
-</pre>
-
-<p>
-如果使用了插件，一般应包含所有插件文档，以便插件中的表也可被创建。在DESIGN.wiki中目前默认就有这样一行：
-</p>
-<pre>
-@include server/plugin/*/DESIGN.wiki
-</pre>
-
-<p>
-<strong>[数据库连接]</strong>
-</p>
-
-<p>
-缺省地, upgrade.php与api.php连接相同的数据库. 支持mysql和sqlite.
-环境变量P_DB可为升级工具指定数据库. 如
-</p>
-<ul>
-<li>
-P_DB="carsvc.db"表示本地的sqlite db (以.db结尾)
-
-<li>
-P_DB="../carsvc.db"表示本地的sqlite db, 指定了准确的位置.
-
-<li>
-P_DB="carsvc" 表示本地的的mysql db, 相当于"localhost/carsvc".
-
-<li>
-P_DB="115.29.199.210/carsvc_test" 表示位于IP=115.29.199.210的远程mysql db.
-
-</ul>
-
-<p>
-环境变量P_DBCRED指定连接数据库的用户名密码。如未指定，则使用php/dbcred.php中的设定。
-</p>
-
-<h4 id="toc_1.8.2.1"><a name="用法">8.2.1 用法</a></h4>
-
-<p>
-upgrade.php
-</p>
-
-<p>
-缺省进入命令行交互.
-</p>
-
-<h5 id="toc_1.8.2.1.1"><a name="交互命令">8.2.1.1 交互命令</a></h5>
-
-<p>
-一般命令格式与函数调用类似, 也支持直接的sql语句, 如
-</p>
-<pre>
-&gt; addtable("item")
-&gt; addtable("item", true)
+<p>环境变量P_DBCRED指定连接数据库的用户名密码。</p>
+<h4 id="用法"><span class="header-section-number">7.2.1</span> 用法</h4>
+<p>upgrade.php</p>
+<p>缺省进入命令行交互.</p>
+<h5 id="交互命令"><span class="header-section-number">7.2.1.1</span> 交互命令</h5>
+<p>一般命令格式与函数调用类似, 也支持直接的sql语句, 如</p>
+<pre><code>&gt; addtable(&quot;item&quot;)
+&gt; addtable(&quot;item&quot;, true)
 &gt; quit()
 
 对于无参数命令可不加括号
@@ -3520,688 +1377,258 @@ upgrade.php
 
 支持直接的sql语句
 &gt; select * from item limit 10
-&gt; update item set price=333 where id=8
-</pre>
-
-<p>
-<strong>[help]</strong>
-</p>
-
-<p>
-参数: [command]
-</p>
-
-<p>
-显示帮助. 可以指定command名称, 全部或部分均可.
-</p>
-
-<p>
-例:
-</p>
-<pre>
-&gt; help
-&gt; help("addtable")
-&gt; help("table")
-</pre>
-
-<p>
-<strong>[upgrade]</strong>
-</p>
-
-<p>
-自动根据版本差异升级数据库. 如果字段cinf.ver不存在, 则重建DB(但会忽略已有的表, 不会删除它再重新创建). 升级完成后设置cinf.ver字段.
-<span class="todo">TODO:</span> WebAPI "upgrade"可做同样的事情, 以便于通过web请求远程升级.
-</p>
-
-<p>
-注意: 对于MYSQL数据库, 升级工具只创建表, 不创建数据库本身(以及权限设置). 
-</p>
-
-<p>
-<strong>[showtable]</strong>
-</p>
-
-<p>
-参数: {table?="*"}
-</p>
-
-<p>
-查看某表的metadata以及SQL创建语句. 参数{table}中可以包含通配符。
-</p>
-
-<p>
-例: 
-</p>
-<pre>
-&gt; showtable("item")
-
-&gt; showtable("*log")
-</pre>
-
-<p>
-<strong>[addtable]</strong>
-</p>
-
-<p>
-参数: {table} [force=false]
-</p>
-
-<p>
-根据metadata添加指定的表{table}. 未指定force参数时, 如果表已存在且未指定force=true, 则检查和添加缺失的字段; 如果指定了force=true, 则会删除表重建.
-</p>
-
-<p>
-例:
-</p>
-<pre>
-&gt; addtable("item")
+&gt; update item set price=333 where id=8</code></pre>
+<p><strong>[help]</strong></p>
+<p>参数: [command]</p>
+<p>显示帮助. 可以指定command名称, 全部或部分均可.</p>
+<p>例:</p>
+<pre><code>&gt; help
+&gt; help(&quot;addtable&quot;)
+&gt; help(&quot;table&quot;)</code></pre>
+<p><strong>[initdb]</strong></p>
+<p>自动添加所有表. 等同于updatedb命令.</p>
+<p><strong>[updatedb]</strong></p>
+<p>自动添加或更新所有表. 相当于对所有表调用addtable命令. 如果某张表已存在, 则检查是否有缺失的字段(注意: 只检查缺失, 不检查字段类型是否变化), 有则添加, 否则对该表不做更改.</p>
+<p><strong>[execsql]</strong></p>
+<p>参数: {sql} [silent=false]</p>
+<p>对于select语句, 返回结果集内容; 对于其它语句, 返回affectedRows.</p>
+<p>例:</p>
+<pre><code>&gt; execsql(&quot;select * from item limit 10&quot;)
+&gt; execsql(&quot;update item set price=10 where id=3&quot;)</code></pre>
+<p>注: - 支持直接输入SQL语句, 会自动调用execsql()执行. 程序通过以select等关键字识别SQL, 如</p>
+<pre><code>&gt; select * from item limit 10
+&gt; update item set price=10 where id=3</code></pre>
+<p><strong>[quit]</strong></p>
+<p>退出交互. 可简写为&quot;q&quot;.</p>
+<p>例:</p>
+<pre><code>&gt; quit
+或
+&gt; q</code></pre>
+<p><strong>[TODO: upgrade]</strong></p>
+<p>TODO 自动根据版本差异，执行升级脚本，升级数据库. 如果字段cinf.ver不存在, 则重建DB(但会忽略已有的表, 不会删除它再重新创建). 升级完成后设置cinf.ver字段.</p>
+<p><strong>[showtable]</strong></p>
+<p>参数: {table?=&quot;*&quot;}</p>
+<p>查看某表的metadata以及SQL创建语句. 参数{table}中可以包含通配符。</p>
+<p>例:</p>
+<pre><code>&gt; showtable(&quot;item&quot;)
+&gt; showtable(&quot;*log&quot;)</code></pre>
+<p><strong>[addtable]</strong></p>
+<p>参数: {table} [force=false]</p>
+<p>根据metadata添加指定的表{table}. 未指定force参数时, 如果表已存在且未指定force=true, 则检查和添加缺失的字段; 如果指定了force=true, 则会删除表重建.</p>
+<p>例:</p>
+<pre><code>&gt; addtable(&quot;item&quot;)
 
 (删除表item并重建)
-&gt; addtable("item", true)
-</pre>
-
-<p>
-<strong>[initdb]</strong>
-</p>
-
-<p>
-自动添加所有表. 等同于updatedb命令.
-</p>
-
-<p>
-<strong>[updatedb]</strong>
-</p>
-
-<p>
-自动添加或更新所有表. 相当于对所有表调用addtable命令.
-如果某张表已存在, 则检查是否有缺失的字段(注意: 只检查缺失, 不检查字段类型是否变化), 有则添加, 否则对该表不做更改.
-</p>
-
-<p>
-<strong>[execsql]</strong>
-</p>
-
-<p>
-参数: {sql} [silent=false]
-</p>
-
-<p>
-对于select语句, 返回结果集内容; 对于其它语句, 返回affectedRows.
-</p>
-
-<p>
-例:
-</p>
-<pre>
-&gt; execsql("select * from item limit 10")
-&gt; execsql("update item set price=10 where id=3")
-</pre>
-
-<p>
-注:
-</p>
-<ul>
-<li>
-支持直接输入SQL语句, 会自动调用execsql()执行. 程序通过以select等关键字识别SQL, 如
-<pre>
-&gt; select * from item limit 10
-&gt; update item set price=10 where id=3
-</pre>
-
-</ul>
-
-<p>
-<strong>[quit]</strong>
-</p>
-
-<p>
-退出交互. 可简写为"q".
-</p>
-
-<p>
-例:
-</p>
-<pre>
-&gt; quit
-或
-&gt; q
-</pre>
-
-<p>
-<strong>[<span class="todo">TODO:</span> reload]</strong>
-</p>
-
-<p>
-重新加载metadata. 当修改了DESIGN.wiki中的表结构定义时, 应调用该命令刷新metadata, 以便showtable/addtable等命令使用最新的metadata.
-</p>
-
-<p>
-<strong>[addcol]</strong>
-</p>
-
-<p>
-addcol {table} {col}
-</p>
-
-<p>
-添加字段{table}.{col}
-</p>
-
-<p>
-<strong>[getver]</strong>
-</p>
-
-<p>
-取表定义的version.
-</p>
-
-<p>
-<strong>[getdbver]</strong>
-</p>
-
-<p>
-取数据库的version. 
-</p>
-
-<p>
-<strong>[import]</strong>
-</p>
-
-<p>
-参数: {filename} {noPrompt=false} [encoding=utf8]
-</p>
-
-<p>
-将文件内容导入表，如果表不存在，会自动创建表（根据metadata），如果表已存在，会删除重建。文件编码默认为utf8. (<span class="todo">TODO:</span> 支持指定编码）
-</p>
-
+&gt; addtable(&quot;item&quot;, true)</code></pre>
+<p><strong>[TODO: reload]</strong></p>
+<p>重新加载metadata. 当修改了DESIGN.wiki中的表结构定义时, 应调用该命令刷新metadata, 以便showtable/addtable等命令使用最新的metadata.</p>
+<p><strong>[addcol]</strong></p>
+<p>addcol {table} {col}</p>
+<p>添加字段{table}.{col}</p>
+<p><strong>[getver]</strong></p>
+<p>取表定义的version.</p>
+<p><strong>[getdbver]</strong></p>
+<p>取数据库的version.</p>
+<p><strong>[import]</strong></p>
+<p>参数: {filename} {noPrompt=false} [encoding=utf8]</p>
+<p>将文件内容导入表，如果表不存在，会自动创建表（根据metadata），如果表已存在，会删除重建。文件编码默认为utf8. (TODO: 支持指定编码）</p>
 <dl>
 <dt>noPrompt</dt>
-<dd>默认导入表之前要求确认，如果指定该项为true，则不需要提示，直接导入。</dd>
+<dd>默认导入表之前要求确认，如果指定该项为true，则不需要提示，直接导入。
+</dd>
 </dl>
-
-<p>
-一个文件可以包含多个表，每张表的数据格式如下：
-</p>
-<pre>
-# table [CarBrand]
-id	name	shortcut
-110	奥迪	A
-116	宝骏	B
-103	宝马	B
-...
-</pre>
-
-<p>
-"#"开头为注释，一般被忽略；特别地，"table [表名]"会标识开始一个新表，然后接下去一行是header定义，以tab分隔，再下面是数据定义，以tab分隔。
-</p>
-
-<p>
-这种文件一般可以在excel中直接编辑（但注意：excel默认用本地编码，也支持unicode即ucs-2le编码，但不直接支持utf-8编码）
-</p>
-
-<p>
-注意:
-</p>
-<ul>
-<li>
-如果字段值为空, 直接写null.
-
-</ul>
-
-<p>
-例：导入车型测试数据
-先生成测试数据：
-</p>
-<pre>
-initdata\create_testdata.pl
-(生成到文件brands.txt)
-</pre>
-
-<p>
-再在upgrade.php中用import导入：
-</p>
-<pre>
-&gt; import("../initdata/brands.txt")
-</pre>
-
-<p>
-注意：如果列名以"-"开头，则忽略此列数据，如
-</p>
-<pre>
-# table [CarBrand]
-id	name	-shortcut
-110	奥迪	A
-...
-</pre>
-<p>
-将不会导入shortcut列。
-</p>
-
-<p>
-<span class="todo">TODO:</span> 带关联字段导入：
-</p>
-<pre>
-# table [Figure]
-name	bookId(Book.name)	ref
-黄帝	史记	本纪-五帝
-</pre>
-
-<p>
-上例数据中，表示根据Book.name查找Book.id，然后填入Figure.bookId。如果Book中找不到相应项，会自动添加一项。
-</p>
-
-<p>
-关联表导入：
-</p>
-<pre>
-# table [Svc]
-id	name	Svc_ItemType(ittId,svcId)
-1	小保养	1,2,6
-2	大保养	1,2,3,4,7
-</pre>
-
-<p>
-上例有个字段表述为"Svc_ItemType(ittId,svcId)", 它表示该字段关联到表 Svc_ItemType.ittId字段，而本表的id对应关联表字段svcId。其内容为以逗号分隔的一串值。以上描述相当于：
-</p>
-<pre>
-# table [Svc]
-id	name
-1	小保养
-2	大保养
+<p>一个文件可以包含多个表，每张表的数据格式如下：</p>
+<pre><code># table [CarBrand]
+id  name    shortcut
+110 奥迪  A
+116 宝骏  B
+103 宝马  B
+...</code></pre>
+<p>&quot;#&quot;开头为注释，一般被忽略；特别地，&quot;table [表名]&quot;会标识开始一个新表，然后接下去一行是header定义，以tab分隔，再下面是数据定义，以tab分隔。</p>
+<p>这种文件一般可以在excel中直接编辑（但注意：excel默认用本地编码，也支持unicode即ucs-2le编码，但不直接支持utf-8编码）</p>
+<p>注意: - 如果字段值为空, 直接写null.</p>
+<p>例：导入车型测试数据 先生成测试数据：</p>
+<pre><code>initdata\create_testdata.pl
+(生成到文件brands.txt)</code></pre>
+<p>再在upgrade.php中用import导入：</p>
+<pre><code>&gt; import(&quot;../initdata/brands.txt&quot;)</code></pre>
+<p>注意：如果列名以&quot;-&quot;开头，则忽略此列数据，如</p>
+<pre><code># table [CarBrand]
+id  name    -shortcut
+110 奥迪  A
+...</code></pre>
+<p>将不会导入shortcut列。</p>
+<p class="todo">TODO: 带关联字段导入：</p>
+<pre><code># table [Figure]
+name    bookId(Book.name)   ref
+黄帝  史记  本纪-五帝</code></pre>
+<p>上例数据中，表示根据Book.name查找Book.id，然后填入Figure.bookId。如果Book中找不到相应项，会自动添加一项。</p>
+<p>关联表导入：</p>
+<pre><code># table [Svc]
+id  name    Svc_ItemType(ittId,svcId)
+1   小保养 1,2,6
+2   大保养 1,2,3,4,7</code></pre>
+<p>上例有个字段表述为&quot;Svc_ItemType(ittId,svcId)&quot;, 它表示该字段关联到表 Svc_ItemType.ittId字段，而本表的id对应关联表字段svcId。其内容为以逗号分隔的一串值。以上描述相当于：</p>
+<pre><code># table [Svc]
+id  name
+1   小保养
+2   大保养
 
 # table [Svc_ItemType]
-ittId	svcId
-1	1
-2	1
-6	1
-...
-</pre>
-
-<p>
-还可以这样设置：
-</p>
-<pre>
-# table [Svc]
-id	name	Svc_ItemType(ittId,svcId,ItemType.name)
-1	小保养	机油;机油滤清器
-</pre>
-
-<p>
-上例中"Svc_ItemType"多了一个参数"ItemType.name", 它表示下面内容是关联到ItemType.name字段，即需要先用"SELECT id FROM ItemType WHERE name=?"查询出Svc_ItemType.ittId(第一个参数)，再同上例进行添加。
-<img src="" />
-</p>
-<h5 id="toc_1.8.2.1.2"><a name="非交互命令">8.2.1.2 非交互命令</a></h5>
-
-<p>
-例:
-</p>
-
-<pre>
-upgrade.php car_brand car_series car_model
-
-upgrade.php all
-
-upgrade.php upgrade
-</pre>
-
-<h4 id="toc_1.8.2.2"><a name="写升级脚本">8.2.2 写升级脚本</a></h4>
-
-<p>
-当表结构变化时, 
-</p>
-
+ittId   svcId
+1   1
+2   1
+6   1
+...</code></pre>
+<p>还可以这样设置：</p>
+<pre><code># table [Svc]
+id  name    Svc_ItemType(ittId,svcId,ItemType.name)
+1   小保养 机油;机油滤清器</code></pre>
+<p>上例中&quot;Svc_ItemType&quot;多了一个参数&quot;ItemType.name&quot;, 它表示下面内容是关联到ItemType.name字段，即需要先用&quot;SELECT id FROM ItemType WHERE name=?&quot;查询出Svc_ItemType.ittId(第一个参数)，再同上例进行添加。</p>
+<h5 id="非交互命令"><span class="header-section-number">7.2.1.2</span> 非交互命令</h5>
+<p>更新指定表（addtable命令）：</p>
+<pre><code>upgrade.php car_brand car_series car_model</code></pre>
+<p>更新所有表（initdb命令）：</p>
+<pre><code>upgrade.php all</code></pre>
+<p>版本差量升级（TODO：upgrade命令）：</p>
+<pre><code>upgrade.php upgrade</code></pre>
+<h4 id="todo-写升级脚本"><span class="header-section-number">7.2.2</span> TODO: 写升级脚本</h4>
+<p>当表结构变化时,</p>
 <ul>
-<li>
-更新设计文档中的表设计(相当于更改meta data)
-
-<li>
-增加设计文档中的设计版本号(@ver)
-
-<li>
-在升级脚本中添加升级逻辑, 如添加字段(及设置默认值), 添加表, 修改字段等.
-
-<li>
-测试升级脚本后, 上传设计文档及升级脚本, 再通过API或登录服务器执行远程升级; 或直接在本地通过设置P_DB环境变量直接用升级工具连接远端数据库.
-
+<li>更新设计文档中的表设计(相当于更改meta data)</li>
+<li>增加设计文档中的设计版本号(<span class="citation">@ver</span>)</li>
+<li>在升级脚本中添加升级逻辑, 如添加字段(及设置默认值), 添加表, 修改字段等.</li>
+<li>测试升级脚本后, 上传设计文档及升级脚本, 再通过API或登录服务器执行远程升级; 或直接在本地通过设置P_DB环境变量直接用升级工具连接远端数据库.</li>
 </ul>
-
-<p>
-upgrade.php
-</p>
-<pre>
-ver = getver();
+<p>upgrade.php</p>
+<pre><code>ver = getver();
 dbver = getdbver();
 if (ver &lt;= dbver)
-	return;
+    return;
 
 if (dbver == 0) {
-	initdb();
-	return;
+    initdb();
+    return;
 }
 
 if (dbver &lt; 1) {
-	addcol(table, col);
-	execsql('update table set col=col1+1');
+    addcol(table, col);
+    execsql(&#39;update table set col=col1+1&#39;);
 }
 if (dbver &lt; 2) {
-	addtable(table);
-	importdata('data.txt');
+    addtable(table);
+    importdata(&#39;data.txt&#39;);
 }
 if (dbver &lt; 3) {
-	addkey(key);
+    addkey(key);
 }
 if (dbver &lt; 4) {
-	altercol(table, col);
+    altercol(table, col);
 }
 
-update cinf set ver, update_tm
-</pre>
-
-<h3 id="toc_1.8.3"><a name="版本发布">8.3 版本发布</a></h3>
-
-<p>
-版本发布又称“部署”或“版本上线”，是将开发版本进行构建和优化后，上传线上服务器的过程。
-</p>
-
-<p>
-筋斗云框架使用webcc组件进行版本发布，对构建后的版本，也要求git进行代码库管理。
-webcc提供的功能主要有：
-</p>
+update cinf set ver, update_tm</code></pre>
+<h3 id="版本发布"><span class="header-section-number">7.3</span> 版本发布</h3>
+<p>版本发布又称“部署”或“版本上线”，是将开发版本进行构建和优化后，上传线上服务器的过程。</p>
+<p>筋斗云框架使用webcc组件进行版本发布，对构建后的版本，也要求git进行代码库管理。</p>
+<p>webcc提供的功能主要有：</p>
 <ul>
-<li>
-快速的差量热更新。只上传版本间有差异的文件到服务器。
-
-<li>
-构建优化。通过文件合并、最小化压缩等手段提高应用性能，通过文件指纹利用浏览器缓存等。
-
+<li>快速的差量热更新。只上传版本间有差异的文件到服务器。</li>
+<li>构建优化。通过文件合并、最小化压缩等手段提高应用性能，通过文件指纹利用浏览器缓存等。</li>
 </ul>
-
-<p>
-版本发布的配置包括：
-</p>
+<p>版本发布的配置包括：</p>
 <ul>
-<li>
-配置构建过程：编写webcc的配置文件：server/webcc.conf.php，详见文档 <a href="Web应用部署.html">Web应用部署</a>
-
-<li>
-创建发布代码库：创建一个新文件夹并用git进行项目初始化。习惯上该库命名为"{project}-online"，如项目名为"jdcloud"，则发布库的名称为"jdcloud-online"。
-
-<li>
-配置服务器上的ftp帐号，然后配置项目根目录下的 build_web.sh。其中"OUT_DIR"为发布代码库的路径。
-
+<li>配置构建过程：编写webcc的配置文件：server/webcc.conf.php，详见webcc文档。</li>
+<li>创建发布代码库：创建一个新文件夹并用git进行项目初始化。习惯上该库命名为&quot;{project}-online&quot;，如项目名为&quot;jdcloud&quot;，则发布库的名称为&quot;jdcloud-online&quot;。</li>
+<li>配置服务器上的ftp帐号或git帐号，然后配置项目根目录下的 build_web.sh。其中&quot;OUT_DIR&quot;为发布代码库的路径。</li>
 </ul>
-
-<p>
-发布或上线过程很简单，直接在git bash中运行 build_web.sh 即可。
-（注意：它会用到curl, bash等工具，好在git工具包中已包含这些。）
-</p>
-
-<p>
-<strong>[开发版本号与发布版本号]</strong>
-</p>
-
-<p>
-在构建后，online文件夹中会自动生成文件<code>revision.txt</code>，代表当前开发版本号。下次构建时通过检查该版本与最新开发版本间的差异，可实现差量构建（注意：其中还包含依赖文件管理）。
-</p>
-
-<p>
-在上传服务器后，会自动在服务器上生成文件<code>revision_rel.txt</code>, 代表当前发布版本号。下次上传时，只会进行差量上传。
-</p>
-
-<h3 id="toc_1.8.4"><a name="客户端自动升级">8.4 客户端自动升级</a></h3>
-
-<p>
-对于Web应用，每次浏览器打开时均已是最新版本；但是如果浏览器一直未关闭，则需要手工刷新页面才能更新。
-</p>
-
-<p>
-在手机上，特别是将Web应用打包为手机原生应用后，当服务器升级后，用户必须将应用重新打开才能获得最新版本，这相当于在浏览器中刷新。
-如果用户一直不退出应用（这在手机上很常见，应用会在后台一直缓存着），必须有机制能保证版本更新后可自动刷新。
-</p>
-
-<p>
-筋斗云框架支持客户端自动升级，原理如下：
-</p>
-<ul>
-<li>
-服务端API自动将版本号通过HTTP头<code>X-Daca-Server-Rev</code>发送给客户端。版本号通过全局变量<code>API_VER</code>设定，或从文件<code>revision.txt</code>读取（注意该文件由webcc发布时自动生成），版本号最多为6位。
-
-<li>
-客户端在访问API时，检查版本号是否与本地之前缓存的版本号一致，如果不一致则自动刷新回首页。
-
-</ul>
-
-<p>
-通过以上过程，用户不必退出应用再重新打开，就能实现版本自动升级。
-</p>
-
-<h2 id="toc_1.9"><a name="工具接口">9 工具接口</a></h2>
-
-<p>
-本节介绍目录 server/tool/ 下的工具。
-</p>
-
-<p>
-注意：<code>server/tool/</code>目录下的工具随项目一起发布，一般通过网络访问。而<code>tool/</code>目录下的工具一般是命令行工具，不发布。
-</p>
-
-<h3 id="toc_1.9.1"><a name="tool/log.php">9.1 tool/log.php</a></h3>
-
-<pre>
-log.php(f?=ext, sz?=2500)
-</pre>
-
-<p>
-查看日志（只显示最新的若干条，倒序排列）。
-</p>
-
-<p>
-<strong>[参数]</strong>
-</p>
-
+<p>发布或上线过程很简单，直接在git bash中运行 build_web.sh 即可。 （注意：它会用到curl, bash等工具，好在git工具包中已包含这些。）</p>
+<p><strong>[开发版本号与发布版本号]</strong></p>
+<p>在构建后，online文件夹中会自动生成文件<code>revision.txt</code>，代表当前开发版本号。下次构建时通过检查该版本与最新开发版本间的差异，可实现差量构建（注意：其中还包含依赖文件管理）。</p>
+<p>在上传服务器后，会自动在服务器上生成文件<code>revision_rel.txt</code>, 代表当前发布版本号。下次上传时，只会进行差量上传。</p>
+<h3 id="客户端自动升级"><span class="header-section-number">7.4</span> 客户端自动升级</h3>
+<p>对于Web应用，每次浏览器打开时均已是最新版本；但是如果浏览器一直未关闭，则需要手工刷新页面才能更新。</p>
+<p>在手机上，特别是将Web应用打包为手机原生应用后，当服务器升级后，用户必须将应用重新打开才能获得最新版本，这相当于在浏览器中刷新。 如果用户一直不退出应用（这在手机上很常见，应用会在后台一直缓存着），必须有机制能保证版本更新后可自动刷新。</p>
+<p>筋斗云框架支持客户端自动升级，原理如下： - 服务端API自动将版本号通过HTTP头<code>X-Daca-Server-Rev</code>发送给客户端。版本号通过全局变量<code>API_VER</code>设定，或从文件<code>revision.txt</code>读取（注意该文件由webcc发布时自动生成），版本号最多为6位。 - 客户端在访问API时，检查版本号是否与本地之前缓存的版本号一致，如果不一致则自动刷新回首页。</p>
+<p>通过以上过程，用户不必退出应用再重新打开，就能实现版本自动升级。</p>
+<h2 id="工具接口"><span class="header-section-number">8</span> 工具接口</h2>
+<p>本节介绍目录 server/tool/ 下的工具。</p>
+<p>注意：<code>server/tool/</code>目录下的工具随项目一起发布，一般通过网络访问。而<code>tool/</code>目录下的工具一般是命令行工具，不发布。</p>
+<h3 id="toollog.php"><span class="header-section-number">8.1</span> tool/log.php</h3>
+<pre><code>log.php(f?=ext, sz?=2500)</code></pre>
+<p>查看日志（只显示最新的若干条，倒序排列）。</p>
+<p><strong>[参数]</strong></p>
 <dl>
 <dt>f</dt>
-<dd>String. 指定日志类型，缺省查看模拟接口的日志(ext.log), 还可以为"trace".</dd>
+<dd>String. 指定日志类型，缺省查看模拟接口的日志(ext.log), 还可以为&quot;trace&quot;.
+</dd>
 <dt>sz</dt>
-<dd>Integer. 最多读取文件大小。log.php从文件结尾处读缺省3k字节，可以用sz来修改，单位为B.</dd>
+<dd>Integer. 最多读取文件大小。log.php从文件结尾处读缺省3k字节，可以用sz来修改，单位为B.
+</dd>
 </dl>
-
-<p>
-<strong>[示例]</strong>
-</p>
-
-<pre>
-log.php
+<p><strong>[示例]</strong></p>
+<pre><code>log.php
 
 log.php?f=trace
-(查看trace log)
-</pre>
-
-<h3 id="toc_1.9.2"><a name="tool/init.php">9.2 tool/init.php</a></h3>
-
-<pre>
-init.php(ac?)
-</pre>
-
-<p>
-数据库初始化或配置文件初始化。可用的ac参数见源文件内部文档。
-</p>
-
-<p>
-项目初始化方法参考前面章节"服务端部署与升级"-&gt;"初始化配置".
-</p>
-
-<h3 id="toc_1.9.3"><a name="tool/tool.php">9.3 tool/tool.php</a></h3>
-
-<pre>
-tool.php(ac?)
-</pre>
-
-<p>
-具体参数见源程序内部文档。
-</p>
-
-<p>
-工具包。目前支持base64编码、解码，md5编码等。
-</p>
-
-<h2 id="toc_1.10"><a name="定期任务">10 定期任务</a></h2>
-<pre>
-tool/task.php(ac)
-</pre>
-
-<p>
-它作为命令行工具执行。通过crontab设置定期执行该命令。
-</p>
-
-<p>
-<strong>[安装]</strong>
-</p>
-
-<p>
-进入tool目录执行<code>php task.crontab.php</code>生成一串文本，再运行<code>crontab -e</code>编辑计划任务，将刚刚生成的文本复制过来即安装好。
-屏幕输出到日志文件 <code>tool/task.log</code>.
-</p>
-
-<p>
-<strong>[参数]</strong>
-</p>
-
+(查看trace log)</code></pre>
+<h3 id="toolinit.php"><span class="header-section-number">8.2</span> tool/init.php</h3>
+<pre><code>init.php(ac?)</code></pre>
+<p>数据库初始化或配置文件初始化。可用的ac参数见源文件内部文档。</p>
+<p>项目初始化方法参考前面章节&quot;服务端部署与升级&quot;-&gt;&quot;初始化配置&quot;.</p>
+<h3 id="tooltool.php"><span class="header-section-number">8.3</span> tool/tool.php</h3>
+<pre><code>tool.php(ac?)</code></pre>
+<p>具体参数见源程序内部文档。</p>
+<p>工具包。目前支持base64编码、解码，md5编码等。</p>
+<h2 id="定期任务"><span class="header-section-number">9</span> 定期任务</h2>
+<pre><code>tool/task.php(ac)</code></pre>
+<p>它作为命令行工具执行。通过crontab设置定期执行该命令。</p>
+<p><strong>[安装]</strong></p>
+<p>进入tool目录执行<code>php task.crontab.php</code>生成一串文本，再运行<code>crontab -e</code>编辑计划任务，将刚刚生成的文本复制过来即安装好。 屏幕输出到日志文件 <code>tool/task.log</code>.</p>
+<p><strong>[参数]</strong></p>
 <dl>
 <dt>ac</dt>
-<dd>String. 指定具体任务。定义如下。</dd>
+<dd>String. 指定具体任务。定义如下。
+</dd>
 </dl>
-
-<p>
-<strong>[ac=voucher]</strong>
-</p>
-
-<p>
-建议每天执行一两次。
-如果优惠券已过期，设置状态Voucher.status。发现优惠券的过期日期在3天内，发短信提醒用户。
-</p>
-
-<p>
-<strong>[ac=order]</strong>
-</p>
-
-<p>
-建议每小时执行一次。
-隔天的订单，提前2小时通知用户。
-</p>
-
-<p>
-<strong>[ac=db]</strong>
-</p>
-
-<p>
-每天执行一次。
-备份数据库。
-</p>
-
-<h2 id="toc_1.11"><a name="数据安全">11 数据安全</a></h2>
-
-<p>
-<strong>[需求]</strong>
-</p>
-
-<p>
-考虑以下灾难场景及恢复方式：
-</p>
+<p><strong>[ac=db]</strong></p>
+<p>每天执行一次。 备份数据库。</p>
+<h2 id="数据安全"><span class="header-section-number">10</span> 数据安全</h2>
+<p><strong><a href="#需求">需求</a></strong></p>
+<p>考虑以下灾难场景及恢复方式：</p>
 <ul>
-<li>
-服务器不正常关机，重启后数据有损失 -- 通过数据库自带的工具修复，不做数据恢复
-
-<li>
-遭受病毒等破坏，数据无法读取；或服务器硬盘损坏 -- 使用备机(slave)数据进行恢复；或采用每日备份+delta binlog的方式恢复（如果binlog可用）
-
-<li>
-人为不当操作导致数据损坏 -- 采用每日备份+delta binlog的方式恢复（跳过不当操作部分）
-
+<li>服务器不正常关机，重启后数据有损失 -- 通过数据库自带的工具修复，不做数据恢复</li>
+<li>遭受病毒等破坏，数据无法读取；或服务器硬盘损坏 -- 使用备机(slave)数据进行恢复；或采用每日备份+delta binlog的方式恢复（如果binlog可用）</li>
+<li>人为不当操作导致数据损坏 -- 采用每日备份+delta binlog的方式恢复（跳过不当操作部分）</li>
 </ul>
-
-<p>
-<strong>[备份建议]</strong>
-</p>
-
+<p><strong>[备份建议]</strong></p>
 <ul>
-<li>
-每日数据全备份。重要数据应保留7到10天内的每日备份（以备长假等特殊情况导致发现问题较晚）。非重要数据可定期备份（如ApiLog，SmsLog等非业务数据, 但量很大）
-
-<li>
-异步复制方案(Async Replication)。让从机(slave)与主机基本保持一致。
-
-<li>
-备份数据至少应放在两个服务器上，以备一台机器数据损坏。可以使用主从机同时备份的方式，也可以主机备份到复制到其它机器。
-
+<li>每日数据全备份。重要数据应保留7到10天内的每日备份（以备长假等特殊情况导致发现问题较晚）。非重要数据可定期备份（如ApiLog，SmsLog等非业务数据, 但量很大）</li>
+<li>异步复制方案(Async Replication)。让从机(slave)与主机基本保持一致。</li>
+<li>备份数据至少应放在两个服务器上，以备一台机器数据损坏。可以使用主从机同时备份的方式，也可以主机备份到复制到其它机器。</li>
 </ul>
-
-<p>
-<strong>[目前方案]</strong>
-</p>
-
+<p><strong>[目前方案]</strong></p>
 <ul>
-<li>
-主机oliveche.com, 从机server-pc (内网机器), 对数据库carsvc异步全复制(从机数据库名为carsvc_online)。
-
-<li>
-主机设置每日备份重要数据到 tool/bak/db_{yyyymmdd_hhmmss}.gz (不含ApiLog等非业务数据), 保留7-10天内的每日备份。
-
+<li>主机myserver.com, 从机server-pc (内网机器), 对数据库carsvc异步全复制(从机数据库名为carsvc_online)。</li>
+<li>主机设置每日备份重要数据到 tool/bak/db_{yyyymmdd_hhmmss}.gz (不含ApiLog等非业务数据), 保留7-10天内的每日备份。</li>
 </ul>
-
-<p>
-<strong>[注意]</strong>
-</p>
-
+<p><strong>[注意]</strong></p>
 <ul>
-<li>
-目前备份只使用全备份；如果备份文件增长到过大，可增加增量备份(mysqlbinlog --start-position/--start-date --stop-position/--stop-date).
-
-<li>
-目前将备机置于内网节省成本（机器，网络流量等）。
-
-<li>
-随着访问量增大，可将备机置于公网，做只读/报表分析等服务器。（仍然用异步复制机制）
-
-<li>
-如果事务增长至单一主机无法解决，则应组件集群。
-
+<li>目前备份只使用全备份；如果备份文件增长到过大，可增加增量备份(mysqlbinlog --start-position/--start-date --stop-position/--stop-date).</li>
+<li>目前将备机置于内网节省成本（机器，网络流量等）。</li>
+<li>随着访问量增大，可将备机置于公网，做只读/报表分析等服务器。（仍然用异步复制机制）</li>
+<li>如果事务增长至单一主机无法解决，则应组件集群。</li>
 </ul>
-
-<h2 id="toc_1.12"><a name="插件机制">12 插件机制</a></h2>
-
-<p>
-支持版本: v3.0
-</p>
-
-<h3 id="toc_1.12.1"><a name="需求">12.1 需求</a></h3>
-
+<h2 id="插件机制"><span class="header-section-number">11</span> 插件机制</h2>
+<p>支持版本: v3.0</p>
+<h3 id="需求"><span class="header-section-number">11.1</span> 需求</h3>
 <ul>
-<li>
-插件是一块独立的功能，可以被单独安装或删除。
-
-<li>
-插件有版本管理，可以升级。
-
-<li>
-插件开发的内容中包括数据模型定义、前端页面及后端接口。
-
-<li>
-插件间可以有依赖关系。还可能依赖原生cordova插件。
-
+<li>插件是一块独立的功能，可以被单独安装或删除。</li>
+<li>插件有版本管理，可以升级。</li>
+<li>插件开发的内容中包括数据模型定义、前端页面及后端接口。</li>
+<li><p>插件间可以有依赖关系。还可能依赖原生cordova插件。</p></li>
+<li><p>插件可以是通用于所有应用的，也可以是专用于某一应用的。</p></li>
 </ul>
-
-<ul>
-<li>
-插件可以是通用于所有应用的，也可以是专用于某一应用的。
-
-</ul>
-
-<h3 id="toc_1.12.2"><a name="插件目录结构">12.2 插件目录结构</a></h3>
-
-<pre>
-plugin/  - 插件总目录
+<h3 id="插件目录结构"><span class="header-section-number">11.2</span> 插件目录结构</h3>
+<pre><code>plugin/  - 插件总目录
 
 plugin/index.php - 插件配置文件，指定应用使用哪些插件
 
@@ -4210,64 +1637,28 @@ plugin/{pluginName}/DESIGN.wiki 插件设计文档
 plugin/{pluginName}/plugin.php 插件配置及服务端接口
 plugin/{pluginName}/m2/page/{page}.[html|js] 插件前端逻辑页面，可直接在应用程序中使用
 plugin/{pluginName}/m2/plugin.js 可选，插件前端全局逻辑，文件名字任意，在plugin.php中通过return语句指定使用。
-TODO: plugin/{pluginName}/m2/plugin.css 可选，插件前端全局样式，文件名字任意，在plugin.php中通过return语句指定使用。
-</pre>
-
-<p>
-插件设计文档的结构可参考主设计文档，一般也包括 概要设计（需求），数据库设计，交互接口，前端应用接口这些部分。
-</p>
-
-<p>
-插件设计文档中的表应在升级时自动创建，主设计文档中有以下指定用于此目的：
-</p>
-<pre>
-@include server/plugin/*/DESIGN.wiki
-</pre>
-<p>
-插件中对外部表及字段的依赖，应使用@see指令标注：
-</p>
-
-<pre>
-依赖数据接口：
+TODO: plugin/{pluginName}/m2/plugin.css 可选，插件前端全局样式，文件名字任意，在plugin.php中通过return语句指定使用。</code></pre>
+<p>插件设计文档的结构可参考主设计文档，一般也包括 概要设计（需求），数据库设计，交互接口，前端应用接口这些部分。</p>
+<p>插件设计文档中的表应在升级时自动创建，主设计文档中有以下指定用于此目的：</p>
+<pre><code>@include server/plugin/*/DESIGN.wiki</code></pre>
+<p>插件中对外部表及字段的依赖，应使用@see指令标注：</p>
+<pre><code>依赖数据接口：
 
 @see @User: id, phone
 @see @Store: id, name, dscr
 @see @Ordr: id, storeId
 
-Ordr.storeId = Store.id
-</pre>
+Ordr.storeId = Store.id</code></pre>
+<p>这些被依赖的字段，看似名字固定，其实是可配置的，详参后端接口文档，查询 PluginBase.$colMap 关键字。</p>
+<p><strong>[插件配置文件 plugin/index.php]</strong></p>
+<p>该文件被后端应用框架自动包含，其内容示例如下：</p>
+<pre><code>&lt;?php
 
-<p>
-这些被依赖的字段，看似名字固定，其实是可配置的，详参后端接口文档，查询 PluginBase.$colMap 关键字。
-</p>
-
-<p>
-<strong>[插件配置文件 plugin/index.php]</strong>
-</p>
-
-<p>
-该文件被后端应用框架自动包含，其内容示例如下：
-</p>
-<pre>
-&lt;?php
-
-Plugins::add([ "plugin1", "plugin2" ]);
-</pre>
-
-<p>
-表示当前应用使用两个插件"plugin1"和"plugin2", 分别对应目录 plugin/plugin1和plugin/plugin2.
-如果该文件不存在，则后端应用不加载任何插件。
-</p>
-
-<p>
-<strong>[插件后端 plugin/{pluginName}/plugin.php]</strong>
-</p>
-
-<p>
-文件会被自动包含到应用api.php中。在这里实现插件的交互接口，在文件的最后可以返回插件的配置，如
-</p>
-<pre>
-&lt;?php
+Plugins::add([ &quot;plugin1&quot;, &quot;plugin2&quot; ]);</code></pre>
+<p>表示当前应用使用两个插件&quot;plugin1&quot;和&quot;plugin2&quot;, 分别对应目录 plugin/plugin1和plugin/plugin2. 如果该文件不存在，则后端应用不加载任何插件。</p>
+<p><strong>[插件后端 plugin/{pluginName}/plugin.php]</strong></p>
+<p>文件会被自动包含到应用api.php中。在这里实现插件的交互接口，在文件的最后可以返回插件的配置，如</p>
+<pre><code>&lt;?php
 
 // 实现交互接口 svcinfo
 function api_svrinfo()
@@ -4275,134 +1666,58 @@ function api_svrinfo()
 
 // 返回插件配置
 return [
-	"js" =&gt; "m2/plugin.js" // 前端需要包含的文件
-];
-</pre>
-
-<p>
-详参后端接口文档 模块api_fw -&gt; 插件机制 章节。
-</p>
-
-<p>
-<strong>[插件移动WEB前端 plugin/{pluginName}/m2/page/]</strong>
-</p>
-
-<p>
-和应用的 m2/page/ 目录一样，包含插件的每个逻辑页面。
-</p>
-
-<h3 id="toc_1.12.3"><a name="插件安装">12.3 插件安装</a></h3>
-
-<p>
-将插件直接复制到plugin目录下，在plugin/index.php中添加该插件名即可。
-</p>
-
-<p>
-<span class="todo">TODO:</span> 安装相关API和交互接口
-</p>
-
-<p>
-<span class="todo">TODO:</span> 相关表更新
-用upgrade.php
-</p>
-
-<h3 id="toc_1.12.4"><a name="接口">12.4 接口</a></h3>
-
-<h4 id="toc_1.12.4.1"><a name="后端PHP API">12.4.1 后端PHP API</a></h4>
-
-<pre>
-Plugins.add($pluginList);  // 添加插件
-Plugins.exists($pluginName); // 判断插件是否存在
-</pre>
-
-<p>
-<span class="todo">TODO:</span>
-服务端安装插件：
-</p>
-<pre>
-Plugins.install('plugin1@1.1'); -- 注册的插件, 下载到本地，解压到plugin目录下，再自动更新plugin/index.php文件。
-Plugins.uninstall('plugin1'); -- 删除插件目录，再更新plugin/index.php。
-</pre>
-
-<h4 id="toc_1.12.4.2"><a name="前端JS API">12.4.2 前端JS API</a></h4>
-
-<pre>
-MUI.initClient(); // 前端初始化，如需调用以下接口，须在muiInit事件中调用。
+    &quot;js&quot; =&gt; &quot;m2/plugin.js&quot; // 前端需要包含的文件
+];</code></pre>
+<p>详参后端接口文档 模块api_fw -&gt; 插件机制 章节。</p>
+<p><strong>[插件移动WEB前端 plugin/{pluginName}/m2/page/]</strong></p>
+<p>和应用的 m2/page/ 目录一样，包含插件的每个逻辑页面。</p>
+<h3 id="插件安装"><span class="header-section-number">11.3</span> 插件安装</h3>
+<p>将插件直接复制到plugin目录下，在plugin/index.php中添加该插件名即可。</p>
+<p class="todo">TODO: 安装相关API和交互接口</p>
+<p class="todo">TODO: 相关表更新 用upgrade.php</p>
+<h3 id="接口"><span class="header-section-number">11.4</span> 接口</h3>
+<h4 id="后端php-api"><span class="header-section-number">11.4.1</span> 后端PHP API</h4>
+<pre><code>Plugins.add($pluginList);  // 添加插件
+Plugins.exists($pluginName); // 判断插件是否存在</code></pre>
+<p class="todo">TODO: 服务端安装插件：</p>
+<pre><code>Plugins.install(&#39;plugin1@1.1&#39;); -- 注册的插件, 下载到本地，解压到plugin目录下，再自动更新plugin/index.php文件。
+Plugins.uninstall(&#39;plugin1&#39;); -- 删除插件目录，再更新plugin/index.php。</code></pre>
+<h4 id="前端js-api"><span class="header-section-number">11.4.2</span> 前端JS API</h4>
+<pre><code>MUI.initClient(); // 前端初始化，如需调用以下接口，须在muiInit事件中调用。
 
 Plugins.exists(pluginName); // 判断插件是否存在
-Plugins.list(); // 返回当前应用的插件列表
-</pre>
-
-<p>
-示例：
-</p>
-<pre>
-$(document).on("muiInit", myInit);
+Plugins.list(); // 返回当前应用的插件列表</code></pre>
+<p>示例：</p>
+<pre><code>$(document).on(&quot;muiInit&quot;, myInit);
 function myInit()
 {
-	MUI.initClient(); // 初始化客户端环境，包括插件
-	...
+    MUI.initClient(); // 初始化客户端环境，包括插件
+    ...
 }
 
 // 判断和使用插件前端页面
-if (Plugins.exists('plugin1')) {
-	MUI.showPage('#plugin1-page1');
-}
-</pre>
+if (Plugins.exists(&#39;plugin1&#39;)) {
+    MUI.showPage(&#39;#plugin1-page1&#39;);
+}</code></pre>
+<h4 id="交互接口"><span class="header-section-number">11.4.3</span> 交互接口</h4>
+<p>返回插件列表：</p>
+<pre><code>initClient() -&gt; { @plugins? }
 
-<h4 id="toc_1.12.4.3"><a name="交互接口">12.4.3 交互接口</a></h4>
-
-<p>
-返回插件列表：
-</p>
-<pre>
-initClient() -&gt; { @plugins? }
-
-plugins:: { name =&gt; {js?} }
-</pre>
-
-<p>
-<span class="todo">TODO:</span> 安装与卸载
-</p>
-<pre>
-addPlugin(name)
-delPlugin(name)
-</pre>
-
-<h3 id="toc_1.12.5"><a name="发布与上线">12.5 发布与上线</a></h3>
-
-<p>
-应用专属插件可直接存放在plugin目录下，使用与主应用相同的代码库。
-</p>
-
-<p>
-在上线时，不同的项目分别创建一个build_web.sh，根据配置不同选择不同的插件更新到服务器。
-文件plugin/index.php不上线，必须手工上传服务器。
-</p>
-
-<p>
-build_web.sh
-</p>
-<pre>
-export CFG_PLUGINS=plugin1,plugin2
-tool/make_install.sh
-</pre>
-
-<p>
-通用插件使用专门的代码库维护版本。如果要加到工程中，也可以放到plugin目录下作为子模块加到应用代码库中。
-</p>
-
-<p>
-注意：
-</p>
-
+plugins:: { name =&gt; {js?} }</code></pre>
+<p class="todo">TODO: 安装与卸载</p>
+<pre><code>addPlugin(name)
+delPlugin(name)</code></pre>
+<h3 id="发布与上线"><span class="header-section-number">11.5</span> 发布与上线</h3>
+<p>应用专属插件可直接存放在plugin目录下，使用与主应用相同的代码库。</p>
+<p>在上线时，不同的项目分别创建一个build_web.sh，根据配置不同选择不同的插件更新到服务器。 文件plugin/index.php不上线，必须手工上传服务器。</p>
+<p>build_web.sh</p>
+<pre><code>export CFG_PLUGINS=plugin1,plugin2
+tool/make_install.sh</code></pre>
+<p>通用插件使用专门的代码库维护版本。如果要加到工程中，也可以放到plugin目录下作为子模块加到应用代码库中。</p>
+<p>注意：</p>
 <ul>
-<li>
-首次上线时，必须配置build_web.sh中的CFG_PLUGINS变量，上线后，在服务器上手工配置 php/index.php 文件。
-
-<li>
-上线后如果插件有增减，应先修改build_web.sh中的CFG_PLUGINS变量，再手工上传（或删除）相应插件文件夹，再到服务器上手工配置 php/index.php 文件。
-
+<li>首次上线时，必须配置build_web.sh中的CFG_PLUGINS变量，上线后，在服务器上手工配置 php/index.php 文件。</li>
+<li>上线后如果插件有增减，应先修改build_web.sh中的CFG_PLUGINS变量，再手工上传（或删除）相应插件文件夹，再到服务器上手工配置 php/index.php 文件。</li>
 </ul>
 
 </body>

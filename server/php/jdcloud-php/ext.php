@@ -4,11 +4,11 @@
 @see ext 集成外部系统
 */
 
-const Ext_Mock = 0;
-const Ext_SmsSupport = 1;
-const Ext_WxSupport = 2;
-const Ext_PushMsg = 3;
-const Ext_Oss = 4;
+const Ext_Mock = "mock";
+const Ext_SmsSupport = "sms";
+const Ext_WxSupport = "wx";
+const Ext_PushMsg = "push";
+const Ext_Oss = "oss";
 
 const E_SMS = 1001;
 const E_WX = 1002;
@@ -96,20 +96,7 @@ class ExtMock implements ISmsSupport, IWxSupport, IPushMsg
 		$log = "[微信支付] forJS=`{$forJS}`, outTradeNo=`{$outTradeNo}`, amount=`{$amount}`, dscr=`{$dscr}`";
 		logext($log);
 
-		if ($forJS)
-		{
-			return [
-				"appId" => "test",
-				"timeStamp" => "1234",
-				"nonceStr" => "test",
-				"package" => "test",
-				"signType" => "test",
-				"paySign" => "test",
-			];
-		}
-		else {
-			return [ "prepayId" => "test" ];
-		}
+		return ["err" => "mock"];
 	}
 
 	// 向企业号成员推送消息
@@ -125,7 +112,7 @@ class ExtMock implements ISmsSupport, IWxSupport, IPushMsg
 	// throw exception for error
 	function sendUserNotification($wxOpenId, $msg, $linkUrl)
 	{
-		$str = msgStructToStr($msg);
+		$str = PayImpBase::msgStructToStr($msg);
 
 		$log = "[微信用户推送] wxOpenId=`{$wxOpenId}`, linkUrl=`{$linkUrl}`, msg=\n`$str`\n";
 		logext($log);

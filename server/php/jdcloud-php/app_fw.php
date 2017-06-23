@@ -51,38 +51,38 @@ P_DBCRED格式为`{用户名}:{密码}`，或其base64编码后的值，如
 
 ## 测试模式与调试等级
 
-@var TEST_MODE Integer/Boolean. 0-生产模式；1-测试模式；2-自动化回归测试模式(RTEST_MODE)
-@var DBG_LEVEL Integer. 调试等级。值范围0-9.
+@key P_TEST_MODE Integer。环境变量，允许测试模式。0-生产模式；1-测试模式；2-自动化回归测试模式(RTEST_MODE)
+@key P_DEBUG Integer。环境变量，设置调试等级，值范围0-9。仅在测试模式下有效。
 
 测试模式特点：
 
-- 通过在项目目录下放置文件 CFG_TEST_MODE，可强制使用测试模式。
-- 通过URL请求参数 "_test=1"可以测试模式打开应用。
-- 输出JSON内容更易读，且带调试信息。
-- 一般建议测试模式下连接不同的数据库。可在conf.user.php中指定。
+- 输出的HTTP头中包含：`X-Daca-Test-Mode: 1`
+- 输出的JSON格式经过美化更易读，且可以显示更多调试信息。前端可通过在接口中添加`_debug`参数设置调试等级。
+  如果想要查看本次调用涉及的SQL语句，可以用`_debug=9`。
+- 某些用于测试的接口可以调用，例如execSql。因而十分危险，生产模式下一定不可误设置为测试模式。
+- 可以使用模拟模式
 
-用于在测试模式下输出调试信息。
+注意：v3.4版本起不允许客户端设置_test参数，且用环境变量P_TEST_MODE替代符号文件CFG_TEST_MODE和设置全局变量TEST_MODE.
 
-- 可通过URL请求参数指定，如"_test=1&_debug=1"。
-- 值为9时，可输出所有SQL调试日志。
+在过去测试模式用于：可直接对生产环境进行测试且不影响生产环境，即部署后，在前端指定以测试模式连接，在后端为测试模式连接专用的测试数据库，且使用专用的cookie，实现与生产模式共用代码但互不影响。
+现已废弃这种用法，应搭建专用的测试环境用于测试开发。
 
 @see addLog
 
 ## 模拟模式
 
-@var MOCK_MODE Boolean. 模拟模式. 值：0/1.
-@key CFG_MOCK_MODE  符号文件，如文件存在则应用运行于模拟模式。
-@key CFG_MOCK_T_MODE 符号文件，如文件存在且在测试模式下，应用运行于模拟模式。
+@key P_MOCK_MODE Integer. 模拟模式. 值：0/1，或部分模拟，值为模块列表，如"wx,sms"，外部模块名称定义见ext.php.
 
 对第三方系统依赖（如微信认证、支付宝支付、发送短信等），可通过设计Mock接口来模拟。
+
+注意：v3.4版本起用环境变量P_MOCK_MODE替代符号文件CFG_MOCK_MODE/CFG_MOCK_T_MODE和设置全局变量MOCK_MODE，且模拟模式只允许在测试模式激活时才能使用。
 
 @see ExtMock
 
 ## session管理
 
 - 应用的session名称为 "{app}id", 如应用名为 "user", 则session名为"userid". 因而不同的应用同时调用服务端也不会冲突。
-- 保存session文件的目录为 $BASE_DIR/session, 可使用P_SESSION_DIR变量重定义。
-- 测试模式下session名称为 "t{app}id", 保存session文件的目录为 $BASE_DIR/session/t。如果定义了环境变量P_SESSION_DIR，则目录为 {P_SESSION_DIR}/t
+- 保存session文件的目录为 $BASE_DIR/session, 可使用环境变量P_SESSION_DIR重定义。
 - 同一主机，不同URL下的session即使APP名相同，也不会相互冲突，因为框架会根据当前URL，设置cookie的有效路径。
 
 @key P_SESSION_DIR ?= $BASE_DIR/session 环境变量，定义session文件存放路径。
@@ -96,6 +96,8 @@ P_DBCRED格式为`{用户名}:{密码}`，或其base64编码后的值，如
 @see AppBase
 
 **********************************************************/
+
+require_once("common.php");
 
 // ====== defines {{{
 # error code definition:
@@ -131,12 +133,12 @@ const RTEST_MODE=2;
 最后不带"/".
 */
 global $BASE_DIR;
-$BASE_DIR = dirname(dirname(__FILE__));
+$BASE_DIR = dirname(dirname(__DIR__));
 
 global $JSON_FLAG;
 $JSON_FLAG = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
 
-global $DB, $DBCRED, $USE_MYSQL;
+global $DB, $DBCRED, $DBTYPE;
 $DB = "localhost/jdcloud";
 $DBCRED = "ZGVtbzpkZW1vMTIz"; // base64({user}:{pwd}), default: demo:demo123
 
@@ -165,6 +167,8 @@ $g_dbgInfo = [];
 @include_once("{$BASE_DIR}/php/conf.user.php");
 
 // ====== functions {{{
+// assert失败中止运行
+assert_options(ASSERT_BAIL, 1);
 
 // ==== param {{{
 
@@ -235,6 +239,7 @@ function param_varr($str, $type, $name)
 			list($t, $optional) = $elemTypes[$i];
 			if ($e == null) {
 				if ($optional) {
+					++$i;
 					$row1[] = null;
 					continue;
 				}
@@ -252,7 +257,10 @@ function param_varr($str, $type, $name)
 				$row1[] = doubleval($e);
 			}
 			else if ($t === "b") {
-				$row1[] = tobool($e);
+				$val = null;
+				if (!tryParseBool($e, $val))
+					throw new MyException(E_PARAM, "Bad Request - param `$name`: list($type). require bool col: `$row0`[$i]=`$e`.");
+				$row1[] = $val;
 			}
 			else if ($t === "s") {
 				$row1[] = $e;
@@ -275,7 +283,13 @@ function param_varr($str, $type, $name)
 	return $ret;
 }
 /**
-@fn param($name, $defVal?, $col?=$_REQUEST)
+@fn param($name, $defVal?, $col?, $doHtmlEscape=true)
+
+@param $col: 默认先取$_GET再取$_POST，"G" - 从$_GET中取; "P" - 从$_POST中取
+
+以下形式已不建议使用：
+
+@fn param($name, $defVal?, $col?=$_REQUEST, $doHtmlEscape=true)
 @param $col: key-value collection
 
 获取名为$name的参数。
@@ -283,10 +297,10 @@ $name中可以指定类型，返回值根据类型确定。如果该参数未定
 
 $name中指定类型的方式如下：
 - 名为"id", 或以"Id"或"/i"结尾: int
-- 以"/b"结尾: bool
+- 以"/b"结尾: bool. 可接受的字符串值为: "1"/"true"/"on"/"yes"=>true, "0"/"false"/"off"/"no" => false
 - 以"/dt"或"/tm"结尾: datetime
 - 以"/n"结尾: numeric/double
-- 以"/s"结尾（缺省）: string
+- 以"/s"结尾（缺省）: string. 缺省为防止XSS攻击会做html编码，如"a&b"处理成"a&amp;b"，设置参数doHtmlEscape可禁用这个功能。
 - 复杂类型：以"/i+"结尾: int array
 - 复杂类型：以"/js"结尾: json object
 - 复杂类型：List类型（以","分隔行，以":"分隔列），类型定义如"/i:n:b:dt:tm" （列只支持简单类型，不可为复杂类型）
@@ -322,10 +336,15 @@ TODO: 直接支持 param("items/(id,qty?/n,dscr?)"), 添加param_objarr函数，
 	]
 
 */
-function param($name, $defVal = null, $col = null)
+function param($name, $defVal = null, $col = null, $doHtmlEscape = true)
 {
-	if (!isset($col))
+	if ($col === "G")
+		$col = $_GET;
+	else if ($col === "P")
+		$col = $_POST;
+	else if (!isset($col))
 		$col = $_REQUEST;
+
 	assert(is_array($col));
 
 	$ret = $defVal;
@@ -346,7 +365,7 @@ function param($name, $defVal = null, $col = null)
 	# check type
 	if (isset($ret) && is_string($ret)) {
 		// avoid XSS attack
-		if (! startsWith($name, "cond"))
+		if ($doHtmlEscape)
 			$ret = htmlEscape($ret);
 		if ($type === "s") {
 		}
@@ -361,7 +380,10 @@ function param($name, $defVal = null, $col = null)
 			$ret = doubleval($ret);
 		}
 		elseif ($type === "b") {
-			$ret = tobool($ret);
+			$val = null;
+			if (!tryParseBool($ret, $val))
+				throw new MyException(E_PARAM, "Bad Request - bool param `$name`=`$val`.");
+			$ret = $val;
 		}
 		elseif ($type == "i+") {
 			$arr = [];
@@ -449,14 +471,30 @@ function mparam($name, $col = null)
 
 /**
 @fn setParam($k, $v)
+@fn setParam(@kv)
 
 设置参数，其实是模拟客户端传入的参数。以便供tableCRUD等函数使用。
 
+示例：
+
+	setParam("cond", "name LIKE " . Q("%$name%"));
+	setParam([
+		"_fmt" => "list",
+		"orderby" => "id DESC"
+	]);
+
 @see tableCRUD
  */
-function setParam($k, $v)
+function setParam($k, $v=null)
 {
-	$_GET[$k] = $_REQUEST[$k] = $v;
+	if (is_array($k)) {
+		foreach ($k as $k1 => $v1) {
+			$_GET[$k1] = $_REQUEST[$k1] = $v1;
+		}
+	}
+	else {
+		$_GET[$k] = $_REQUEST[$k] = $v;
+	}
 }
 /*
 # form/post param ($_POST)
@@ -698,23 +736,30 @@ function dbconn($fnConfirm = null)
 		return $DBH;
 
 
-	global $DB, $DBCRED, $USE_MYSQL;
+	global $DB, $DBCRED, $DBTYPE;
 
-	// e.g. P_DB="../carsvc.db"
-	if (! $USE_MYSQL) {
-		$C = ["sqlite:" . $DB, '', ''];
+	// 未指定驱动类型，则按 mysql或sqlite 连接
+	if (! preg_match('/^\w{3,10}:/', $DB)) {
+		// e.g. P_DB="../carsvc.db"
+		if ($DBTYPE == "sqlite") {
+			$C = ["sqlite:" . $DB, '', ''];
+		}
+		else if ($DBTYPE == "mysql") {
+			// e.g. P_DB="115.29.199.210/carsvc"
+			// e.g. P_DB="115.29.199.210:3306/carsvc"
+			if (! preg_match('/^"?(.*?)(:(\d+))?\/(\w+)"?$/', $DB, $ms))
+				throw new MyException(E_SERVER, "bad db=`$DB`", "未知数据库");
+			$dbhost = $ms[1];
+			$dbport = $ms[3] ?: 3306;
+			$dbname = $ms[4];
+
+			list($dbuser, $dbpwd) = getCred($DBCRED); 
+			$C = ["mysql:host={$dbhost};dbname={$dbname};port={$dbport}", $dbuser, $dbpwd];
+		}
 	}
 	else {
-		// e.g. P_DB="115.29.199.210/carsvc"
-		// e.g. P_DB="115.29.199.210:3306/carsvc"
-		if (! preg_match('/^"?(.*?)(:(\d+))?\/(\w+)"?$/', $DB, $ms))
-			throw new MyException(E_SERVER, "bad db=`$DB`", "未知数据库");
-		$dbhost = $ms[1];
-		$dbport = $ms[3] ?: 3306;
-		$dbname = $ms[4];
-
 		list($dbuser, $dbpwd) = getCred($DBCRED); 
-		$C = ["mysql:host={$dbhost};dbname={$dbname};port={$dbport}", $dbuser, $dbpwd];
+		$C = [$DB, $dbuser, $dbpwd];
 	}
 
 	if ($fnConfirm == null)
@@ -730,7 +775,7 @@ function dbconn($fnConfirm = null)
 		throw new MyException(E_DB, $msg, "数据库连接失败");
 	}
 	
-	if ($USE_MYSQL) {
+	if ($DBTYPE == "mysql") {
 		$DBH->exec('set names utf8');
 	}
 	$DBH->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION); # by default use PDO::ERRMODE_SILENT
@@ -769,8 +814,8 @@ function Q($s, $dbh = null)
 
 function sql_concat()
 {
-	global $USE_MYSQL;
-	if ($USE_MYSQL)
+	global $DBTYPE;
+	if ($DBTYPE == "mysql")
 		return "CONCAT(" . join(", ", func_get_args()) . ")";
 
 	# sqlite3
@@ -807,10 +852,10 @@ function execOne($sql, $getInsertId = false)
 }
 
 /**
-@fn queryOne($sql, $fetchMode = PDO::FETCH_NUM)
+@fn queryOne($sql, $assoc = false)
 
 执行查询语句，只返回一行数据，如果行中只有一列，则直接返回该列数值。
-如果执行失败，返回false.
+如果查询不到，返回false.
 
 示例：查询用户姓名与电话，默认返回值数组：
 
@@ -821,12 +866,12 @@ function execOne($sql, $getInsertId = false)
 
 也可返回关联数组:
 
-	$row = queryOne("SELECT name,phone FROM User WHERE id={$id}", PDO::FETCH_ASSOC);
+	$row = queryOne("SELECT name,phone FROM User WHERE id={$id}", true);
 	if ($row === false)
 		throw new MyException(E_PARAM, "bad user id");
 	// $row = ["name"=>"John", "phone"=>"13712345678"]
 
-当查询结果只有一列时，直接返回该数值。
+当查询结果只有一列且assoc=false时，直接返回该数值。
 
 	$phone = queryOne("SELECT phone FROM User WHERE id={$id}");
 	if ($phone === false)
@@ -835,7 +880,7 @@ function execOne($sql, $getInsertId = false)
 
 @see queryAll
  */
-function queryOne($sql, $fetchMode = PDO::FETCH_NUM)
+function queryOne($sql, $assoc = false)
 {
 	global $DBH;
 	if (! isset($DBH))
@@ -843,15 +888,17 @@ function queryOne($sql, $fetchMode = PDO::FETCH_NUM)
 	$sth = $DBH->query($sql);
 	if ($sth === false)
 		return false;
+
+	$fetchMode = $assoc? PDO::FETCH_ASSOC: PDO::FETCH_NUM;
 	$row = $sth->fetch($fetchMode);
 	$sth->closeCursor();
-	if ($row !== false && count($row)===1 && $fetchMode === PDO::FETCH_NUM)
+	if ($row !== false && count($row)===1 && !$assoc)
 		return $row[0];
 	return $row;
 }
 
 /**
-@fn queryAll($sql, $fetchMode = PDO::FETCH_NUM)
+@fn queryAll($sql, $assoc = false)
 
 执行查询语句，返回数组。
 如果查询失败，返回空数组。
@@ -873,7 +920,7 @@ function queryOne($sql, $fetchMode = PDO::FETCH_NUM)
 
 也可以返回关联数组(objarr)，如：
 
-	$rows = queryAll("SELECT name, phone FROM User", PDO::FETCH_ASSOC);
+	$rows = queryAll("SELECT name, phone FROM User", true);
 	if (count($rows) > 0) {
 		...
 	}
@@ -888,7 +935,7 @@ function queryOne($sql, $fetchMode = PDO::FETCH_NUM)
 
 @see objarr2table
  */
-function queryAll($sql, $fetchMode = PDO::FETCH_NUM)
+function queryAll($sql, $assoc)
 {
 	global $DBH;
 	if (! isset($DBH))
@@ -896,11 +943,25 @@ function queryAll($sql, $fetchMode = PDO::FETCH_NUM)
 	$sth = $DBH->query($sql);
 	if ($sth === false)
 		return false;
+	$fetchMode = $assoc? PDO::FETCH_ASSOC: PDO::FETCH_NUM;
 	$rows = $sth->fetchAll($fetchMode);
+	$sth->closeCursor();
 	return $rows;
 }
 
 //}}}
+
+function isHttps()
+{
+	if (!isset($_SERVER['HTTPS']))
+		return false;  
+	if ($_SERVER['HTTPS'] === 1 //Apache  
+		|| $_SERVER['HTTPS'] === 'on' //IIS  
+		|| $_SERVER['SERVER_PORT'] == 443) { //其他  
+		return true;  
+	}
+	return false;  
+}
 
 /**
 @fn getBaseUrl($wantHost = true)
@@ -910,17 +971,33 @@ function queryAll($sql, $fetchMode = PDO::FETCH_NUM)
 
 例：
 
-	P_URL_PATH = "/cheguanjia/" 或 P_URL_PATH = "/cheguanjia"
+	P_URL_PATH = "/myapp/" 或 P_URL_PATH = "/myapp"
 
 则
 
-	getBaseUrl() -> "http://host/cheguanjia/"
-	getBaseUrl(false) -> "/cheguanjia/"
+	getBaseUrl() -> "http://myserver.com/myapp/"
+	getBaseUrl(false) -> "/myapp/"
+
+注意：如果使用了反向代理等机制，该函数往往无法返回正确的值。
+
+例如 http://myserver.com/8081/myapp/api.php 被代理到 http://localhost:8081/myapp/api.php
+getBaseUrl()默认返回 "http://myserver.com/myapp/" 是错误的，可以设置P_BASE_URL解决：
+
+	putenv("P_URL_PATH=http://myserver.com/8081/myapp/");
+
+这样getBaseUrl()可返回该值。
 
 @see $BASE_DIR
  */
 function getBaseUrl($wantHost = true)
 {
+	if ($wantHost && getenv("P_BASE_URL")) {
+		$baseUrl = getenv("P_BASE_URL");
+		if (substr($baseUrl, -1, 1) != "/")
+			$baseUrl .= "/";
+		return $baseUrl;
+	}
+
 	$baseUrl = getenv("P_URL_PATH");
 	if ($baseUrl === false)
 	{
@@ -939,7 +1016,7 @@ function getBaseUrl($wantHost = true)
 
 	if ($wantHost)
 	{
-		$host = (isset($_SERVER["HTTPS"]) ? "https://" : "http://") . $_SERVER["HTTP_HOST"];
+		$host = (isHttps() ? "https://" : "http://") . $_SERVER["HTTP_HOST"]; // $_SERVER["HTTP_X_FORWARDED_HOST"]
 		$baseUrl = $host . $baseUrl;
 	}
 	return $baseUrl;
@@ -1061,14 +1138,14 @@ END;
 }
 
 /**
-@fn addLog($str, $logLevel=1)
+@fn addLog($str, $logLevel=0)
 
 输出调试信息到前端。调试信息将出现在最终的JSON返回串中。
 如果只想输出调试信息到文件，不想让前端看到，应使用logit.
 
 @see logit
  */
-function addLog($str, $logLevel=1)
+function addLog($str, $logLevel=0)
 {
 	global $DBG_LEVEL;
 	if ($DBG_LEVEL >= $logLevel)
@@ -1276,6 +1353,8 @@ class Coord
  */
 class AppBase
 {
+	public $onBeforeExec = [];
+	public $onAfterExec = [];
 	public function exec($handleTrans=true)
 	{
 		global $DBH;
@@ -1283,7 +1362,13 @@ class AppBase
 		$ok = false;
 		$ret = false;
 		try {
+			foreach ($this->onBeforeExec as $fn) {
+				$fn();
+			}
 			$ret = $this->onExec();
+			foreach ($this->onAfterExec as $fn) {
+				$fn();
+			}
 			$ok = true;
 		}
 		catch (DirectReturn $e) {
@@ -1291,12 +1376,18 @@ class AppBase
 		}
 		catch (MyException $e) {
 			list($code, $msg, $msg2) = [$e->getCode(), $e->getMessage(), $e->internalMsg];
+			if (isset($e->xdebug_message))
+				addLog($e->xdebug_message, 9);
 		}
 		catch (PDOException $e) {
 			list($code, $msg, $msg2) = [E_DB, $ERRINFO[E_DB], $e->getMessage()];
+			if (isset($e->xdebug_message))
+				addLog($e->xdebug_message, 9);
 		}
 		catch (Exception $e) {
 			list($code, $msg, $msg2) = [E_SERVER, $ERRINFO[E_SERVER], $e->getMessage()];
+			if (isset($e->xdebug_message))
+				addLog($e->xdebug_message, 9);
 		}
 
 		try {
@@ -1364,6 +1455,55 @@ trait JDSingleton
 		static $inst;
 		if (! isset($inst)) {
 			$inst = new static();
+		}
+		return $inst;
+	}
+}
+
+/**
+@class JDSingletonImp (trait)
+
+用于单件基类，提供getInstance方法。
+使用时类名应以Base结尾，使用者可以重写该类，一般用于接口实现。例：
+
+	class PayImpBase
+	{
+		use JDSingletonImp;
+	}
+
+	// 使用者重写Base类的某些方法
+	class PayImp extends PayImpBase
+	{
+	}
+
+则可以调用
+
+	$pay = PayImpBase::getInstance();
+	// 创建的是PayImp类。如果未定义PayImp类，则创建PayImpBase类，或是当Base类是abstract类时将抛出错误。
+
+ */
+trait JDSingletonImp
+{
+	private function __construct () {}
+	static function getInstance()
+	{
+		static $inst;
+		if (! isset($inst)) {
+			$name = substr(__class__, 0, stripos(__class__, "Base"));
+			if (! class_exists($name)) {
+				$cls = new ReflectionClass(__class__);
+				if ($cls->isAbstract()) {
+					throw new MyException(E_SERVER, "Singleton class NOT defined: $name");
+				}
+				$inst = new static();
+				// $inst = $cls->newInstance();
+			}
+			else if (! is_subclass_of($name, __class__)) {
+				throw new MyException(E_SERVER, "$name MUST extends " . __class__);
+			}
+			else {
+				$inst = new $name;
+			}
 		}
 		return $inst;
 	}
@@ -1446,68 +1586,64 @@ class AppFw_
 {
 	private static function initGlobal()
 	{
-		global $DBG_LEVEL;
-		if (!isset($DBG_LEVEL)) {
-			$defaultDebugLevel = getenv("P_DEBUG")===false? 0 : intval(getenv("P_DEBUG"));
-			$DBG_LEVEL = param("_debug/i", $defaultDebugLevel, $_GET);
-		}
-
 		global $TEST_MODE;
-		if (!isset($TEST_MODE)) {
-			$TEST_MODE = param("_test/i", isCLIServer() || isCLI() || hasSignFile("CFG_TEST_MODE")?1:0);
-		}
+		global $JSON_FLAG;
+		global $DBG_LEVEL;
+		$TEST_MODE = getenv("P_TEST_MODE")===false? 0: intval(getenv("P_TEST_MODE"));
 		if ($TEST_MODE) {
 			header("X-Daca-Test-Mode: $TEST_MODE");
+			$JSON_FLAG |= JSON_PRETTY_PRINT;
+			$defaultDebugLevel = getenv("P_DEBUG")===false? 0 : intval(getenv("P_DEBUG"));
+			$DBG_LEVEL = param("_debug/i", $defaultDebugLevel, $_GET);
+
+			// 允许跨域
+			@$origin = $_SERVER['HTTP_ORIGIN'];
+			if (isset($origin)) {
+				header('Access-Control-Allow-Origin: ' . $origin);
+				header('Access-Control-Allow-Credentials: true');
+				header('Access-Control-Allow-Headers: Content-Type');
+			}
 		}
 
 		global $MOCK_MODE;
-		if (!isset($MOCK_MODE)) {
-			$MOCK_MODE = hasSignFile("CFG_MOCK_MODE")
-				|| ($TEST_MODE && hasSignFile("CFG_MOCK_T_MODE"));
+		if ($TEST_MODE) {
+			$MOCK_MODE = getenv("P_MOCK_MODE") ?: 0;
 		}
 		if ($MOCK_MODE) {
 			header("X-Daca-Mock-Mode: $MOCK_MODE");
 		}
 
-		global $JSON_FLAG;
-		if ($TEST_MODE) {
-			$JSON_FLAG |= JSON_PRETTY_PRINT;
-		}
-
-		global $DB, $DBCRED, $USE_MYSQL;
+		global $DB, $DBCRED, $DBTYPE;
+		$DBTYPE = getenv("P_DBTYPE");
 		$DB = getenv("P_DB") ?: $DB;
 		$DBCRED = getenv("P_DBCRED") ?: $DBCRED;
-		if ($TEST_MODE) {
-			$DB = getenv("P_DB_TEST") ?: $DB;
-			$DBCRED = getenv("P_DBCRED_TEST") ?: $DBCRED;
-		}
 
 		// e.g. P_DB="../carsvc.db"
-		if (preg_match('/\.db$/i', $DB)) {
-			$USE_MYSQL = 0;
-		}
-		else {
-			$USE_MYSQL = 1;
+		if (! $DBTYPE) {
+			if (preg_match('/\.db$/i', $DB)) {
+				$DBTYPE = "sqlite";
+			}
+			else {
+				$DBTYPE = "mysql";
+			}
 		}
 	}
 
 	private static function setupSession()
 	{
 		global $APP;
-		global $TEST_MODE;
 
 		# normal: "userid"; testmode: "tuserid"
-		$name = ($TEST_MODE?"t":"") . $APP . "id";
+		$name = $APP . "id";
 		session_name($name);
 
-		// normal: "./session"; testmode: "./session/t";
 		$path = getenv("P_SESSION_DIR") ?: $GLOBALS["BASE_DIR"] . "/session";
-		if ($TEST_MODE)
-			$path .= "/t";
 		if (!  is_dir($path)) {
 			if (! mkdir($path, 0777, true))
-			   throw new MyException(E_SERVER, "fail to create session folder");
+				throw new MyException(E_SERVER, "fail to create session folder.");
 		}
+		if (! is_writeable($path))
+			throw new MyException(E_SERVER, "session folder is NOT writeable.");
 		session_save_path ($path);
 
 		ini_set("session.cookie_httponly", 1);
@@ -1564,10 +1700,15 @@ class AppFw_
 	$sms = getExt(Ext_SmsSupport);
 	$sms->sendSms(...);
 
-当在运行目录中放置了文件CFG_MOCK_MODE后，则不必依赖外部系统，也可模拟执行这些操作。
+要激活模拟模式，应在conf.user.php中设置：
+
+	putenv("P_TEST_MODE=1");
+	putenv("P_MOCK_MODE=1");
+
+	// 或者只开启部分模块的模拟：
+	// putenv("P_MOCK_MODE=sms,wx");
 
 @see getExt
-@see CFG_MOCK_MODE,CFG_MOCK_T_MODE,MOCK_MODE
 */
 
 /**
@@ -1577,8 +1718,11 @@ class AppFw_
  */
 function isMockMode($extType)
 {
-	// TODO: check extType
-	return $GLOBALS["MOCK_MODE"];
+	if (intval($GLOBALS["MOCK_MODE"]) === 1)
+		return true;
+
+	$mocks = explode(',', $GLOBALS["MOCK_MODE"]);
+	return in_array($extType, $mocks);
 }
 
 class ExtFactory
@@ -1586,17 +1730,11 @@ class ExtFactory
 	private $objs = []; // {$extType => $ext}
 
 /**
-@fn ExtFactory::instance()
+@fn ExtFactory::getInstance()
 
 @see getExt
  */
-	static public function instance()
-	{
-		static $inst;
-		if (!isset($inst))
-			$inst = new ExtFactory();
-		return $inst;
-	}
+	use JDSingleton;
 
 /**
 @fn ExtFactory::getObj($extType, $allowMock?=true)
@@ -1605,7 +1743,7 @@ class ExtFactory
 
 示例：
 
-	$sms = ExtFactory::instance()->getObj(Ext_SmsSupport);
+	$sms = ExtFactory::getInstance()->getObj(Ext_SmsSupport);
 
 @see getExt
  */
@@ -1638,7 +1776,7 @@ class ExtFactory
 */
 function getExt($extType, $allowMock = true)
 {
-	return ExtFactory::instance()->getObj($extType, $allowMock);
+	return ExtFactory::getInstance()->getObj($extType, $allowMock);
 }
 
 /**
@@ -1659,8 +1797,21 @@ function logext($s, $addHeader=true)
 
 // ====== main {{{
 
-AppFw_::init();
+try {
+	AppFw_::init();
+}
+catch (MyException $ex) {
+	echo $ex;
+	exit;
+}
+catch (Exception $ex) {
+	echo "*** Exception";
+	logit($ex);
+	exit;
+}
 
 #}}}
+
+require_once("ext.php");
 
 // vim: set foldmethod=marker :

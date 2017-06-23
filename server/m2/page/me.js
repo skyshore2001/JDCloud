@@ -7,6 +7,6 @@ function initPageMe()
 
 	function onPageBeforeShow()
 	{
-		setFormData(jpage, g_data.userInfo);
+		MUI.setFormData(jpage, g_data.userInfo);
 	}
 }

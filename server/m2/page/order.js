@@ -14,7 +14,7 @@ function initPageOrder()
 				showOrder();
 		}
 	};
-	initPullList(jpage.find(".bd")[0], pullListOpt);
+	MUI.initPullList(jpage.find(".bd")[0], pullListOpt);
 
 	// ==== function {{{
 	function showOrder()
@@ -22,13 +22,13 @@ function initPageOrder()
 		var jlstLog = $(".p-list-log", jpage);
 		jlstLog.empty();
 
-		callSvr("Ordr.get", {id: orderId_}, api_OrdrGet);
+		callSvr("Ordr.get", {id: orderId_, res: "*,orderLog"}, api_OrdrGet);
 
 		function api_OrdrGet(data)
 		{
 			data.amountStr_ = parseFloat(data.amount) + "元";
 			data.statusStr_ = StatusStr[data.status];
-			setFormData(jpage, data);
+			MUI.setFormData(jpage, data);
 
 			jpage.find("#divCmt").toggle(!!data.cmt);
 
@@ -37,7 +37,7 @@ function initPageOrder()
 				var cell = {
 					hd: '<i class="icon icon-dscr"></i>',
 					bd: ActionStr[e.action],
-					ft: parseDate(e.tm).format("yyyy-mm-dd HH:MM")
+					ft: MUI.parseDate(e.tm).format("yyyy-mm-dd HH:MM")
 				};
 				var ji = createCell(cell);
 				ji.appendTo(jlstLog);
