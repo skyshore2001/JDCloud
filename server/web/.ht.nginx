@@ -1,0 +1,11 @@
+# ngxin配置
+# TODO: 部署时将 "^/jdcloud/" 换成所在目录的实际URL路径，如 "^/myapp/mobile/"
+# 然后在 ngxin.conf中合适位置包含本文件，注意不要覆盖其它配置，可以在 "location /" 中include
+
+#gzip on;
+#gzip_types text/plain text/xml text/css text/javascript application/javascript application/x-javascript "text/html;charset=utf-8";
+
+location ~ ^/jdcloud/web/.*(\.html|\.js|\.css) {
+	add_header Cache-Control "no-cache";
+}
+

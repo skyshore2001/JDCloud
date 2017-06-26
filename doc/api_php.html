@@ -33,7 +33,7 @@ code {
 </head>
 
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2017-05-17</div>
+<div>最后更新：2017-06-21</div>
 <h2>Modules</h2>
 <div class="toc">
 <p><a href="#app_fw">app_fw (module)</a></p>
@@ -81,12 +81,16 @@ code {
 <p><a href="#ConfBase::onApiInit">ConfBase::onApiInit (fn)</a></p>
 <p><a href="#ConfBase::onInitClient">ConfBase::onInitClient (fn)</a></p>
 <p><a href="#DirectReturn">DirectReturn (class)</a></p>
+<p><a href="#ExtFactory::getInstance">ExtFactory::getInstance (fn)</a></p>
 <p><a href="#ExtFactory::getObj">ExtFactory::getObj (fn)</a></p>
-<p><a href="#ExtFactory::instance">ExtFactory::instance (fn)</a></p>
 <p><a href="#JDEvent">JDEvent (class)</a></p>
 <p><a href="#JDEvent.on">JDEvent.on (fn)</a></p>
 <p><a href="#JDEvent.trigger">JDEvent.trigger (fn)</a></p>
 <p><a href="#JDSingleton">JDSingleton (class)</a></p>
+<p><a href="#JDSingletonImp">JDSingletonImp (class)</a></p>
+<p><a href="#MapCol.$colMap">MapCol.$colMap (var)</a></p>
+<p><a href="#MapCol.mapCol">MapCol.mapCol (key)</a></p>
+<p><a href="#MapCol.mapSql">MapCol.mapSql (key)</a></p>
 <p><a href="#MyException">MyException (class)</a></p>
 <p><a href="#PAGE_SZ_LIMIT">PAGE_SZ_LIMIT (var)</a></p>
 <p><a href="#P_DB">P_DB (key)</a></p>
@@ -96,15 +100,10 @@ code {
 <p><a href="#P_SESSION_DIR">P_SESSION_DIR (key)</a></p>
 <p><a href="#P_TEST_MODE">P_TEST_MODE (key)</a></p>
 <p><a href="#P_URL_PATH">P_URL_PATH (key)</a></p>
-<p><a href="#PluginBase">PluginBase (class)</a></p>
-<p><a href="#PluginBase.$colMap">PluginBase.$colMap (var)</a></p>
-<p><a href="#PluginBase.mapCol">PluginBase.mapCol (key)</a></p>
-<p><a href="#PluginBase.mapSql">PluginBase.mapSql (key)</a></p>
 <p><a href="#Plugins">Plugins (class)</a></p>
 <p><a href="#Plugins::$map">Plugins::$map (var)</a></p>
 <p><a href="#Plugins::add">Plugins::add (fn)</a></p>
 <p><a href="#Plugins::exists">Plugins::exists (fn)</a></p>
-<p><a href="#Plugins::getInstance">Plugins::getInstance (fn)</a></p>
 <p><a href="#Q">Q (fn)</a></p>
 <p><a href="#addLog">addLog (fn)</a></p>
 <p><a href="#api_fw">api_fw (module)</a></p>
@@ -125,12 +124,14 @@ code {
 <p><a href="#getExt">getExt (fn)</a></p>
 <p><a href="#hasPerm">hasPerm (fn)</a></p>
 <p><a href="#hasSignFile">hasSignFile (fn)</a></p>
+<p><a href="#httpCall">httpCall (fn)</a></p>
 <p><a href="#isCLI">isCLI (fn)</a></p>
 <p><a href="#isCLIServer">isCLIServer (fn)</a></p>
 <p><a href="#isEqualCollection">isEqualCollection (fn)</a></p>
 <p><a href="#isMockMode">isMockMode (fn)</a></p>
 <p><a href="#logext">logext (fn)</a></p>
 <p><a href="#logit">logit (fn)</a></p>
+<p><a href="#makeUrl">makeUrl (fn)</a></p>
 <p><a href="#mparam">mparam (fn)</a></p>
 <p><a href="#myEncrypt">myEncrypt (fn)</a></p>
 <p><a href="#objarr2table">objarr2table (fn)</a></p>
@@ -139,7 +140,7 @@ code {
 <p><a href="#param">param (fn)</a></p>
 <p><a href="#param">param (fn)</a></p>
 <p><a href="#param_varr">param_varr (fn)</a></p>
-<p><a href="#plugin.php">plugin.php (key)</a></p>
+<p><a href="#plugin">plugin (key)</a></p>
 <p><a href="#plugin/index.php">plugin/index.php (key)</a></p>
 <p><a href="#queryAll">queryAll (fn)</a></p>
 <p><a href="#queryOne">queryOne (fn)</a></p>
@@ -152,6 +153,7 @@ code {
 <p><a href="#tableCRUD">tableCRUD (fn)</a></p>
 <p><a href="#tobool">tobool (fn)</a></p>
 <p><a href="#tryParseBool">tryParseBool (fn)</a></p>
+<p><a href="#urlEncodeArr">urlEncodeArr (fn)</a></p>
 <p><a href="#varr2objarr">varr2objarr (fn)</a></p>
 </div><hr>
 <h2 id="tobool">@fn tobool($s)</h2><hr>
@@ -163,6 +165,16 @@ code {
 <h2 id="isCLIServer">@fn isCLIServer() </h2>
 <p>php built-in web server e.g. run &quot;php -S 0.0.0.0:8080&quot;</p><hr>
 <h2 id="isEqualCollection">@fn isEqualCollection($col1, $col2)</h2><hr>
+<h2 id="urlEncodeArr">@fn urlEncodeArr($params)</h2>
+<p>e.g.</p>
+<pre><code>urlEncodeArr(["a"=&gt;1, "b"=&gt;"hello"]) -&gt; a=1&amp;b=hello</code></pre><hr>
+<h2 id="makeUrl">@fn makeUrl($ac, $params, $hash)</h2><hr>
+<h2 id="httpCall">@fn httpCall($url, $postParams =null, $opt={timeout?=5, @headers} )</h2>
+<p>请求URL，返回内容。<br />
+默认使用GET请求，如果给定postParams，则使用POST请求。<br />
+postParams可以是一个kv数组或字符串，也可以是一个文件名(以&quot;@&quot;开头，如&quot;@1.jpg&quot;)</p>
+<p>如果请求失败，抛出E_SERVER异常。<br />
+不检查http返回码。</p><hr>
 <h2 id="app_fw">@module app_fw</h2><div class="toc"><p style="margin-left:0em"><a href="#app_fw-1 通用函数">1 通用函数</a></p>
 <p style="margin-left:0em"><a href="#app_fw-2 初始化配置">2 初始化配置</a></p>
 <p style="margin-left:2em"><a href="#app_fw-2.1 数据库配置">2.1 数据库配置</a></p>
@@ -221,7 +233,7 @@ P_DBCRED=Z2FubGFuOjEyMzQ=</code></pre>
 现已废弃这种用法，应搭建专用的测试环境用于测试开发。</p>
 <p class="see"><strong>@see <a href="#addLog">addLog</a></strong> </p>
 <h4 id="app_fw-4 模拟模式">4 模拟模式</h4>
-<p class="key"><strong>@key <a id="P_MOCK_MODE">P_MOCK_MODE</a></strong>  Integer. 模拟模式. 值：0/1.</p>
+<p class="key"><strong>@key <a id="P_MOCK_MODE">P_MOCK_MODE</a></strong>  Integer. 模拟模式. 值：0/1，或部分模拟，值为模块列表，如"wx,sms"，外部模块名称定义见ext.php.</p>
 <p>对第三方系统依赖（如微信认证、支付宝支付、发送短信等），可通过设计Mock接口来模拟。</p>
 <p>注意：v3.4版本起用环境变量P_MOCK_MODE替代符号文件CFG_MOCK_MODE/CFG_MOCK_T_MODE和设置全局变量MOCK_MODE，且模拟模式只允许在测试模式激活时才能使用。</p>
 <p class="see"><strong>@see <a href="#ExtMock">ExtMock</a></strong> </p>
@@ -445,10 +457,15 @@ return objarr2table($rows);</code></pre>
 <p>返回 $BASE_DIR 对应的网络路径（最后以&quot;/&quot;结尾）。<br />
 如果指定了环境变量 P_URL_PATH（可在conf.user.php中设置）, 则根据该变量计算；否则自动判断（如果有符号链接可能不准）</p>
 <p>例：</p>
-<pre><code>P_URL_PATH = "/cheguanjia/" 或 P_URL_PATH = "/cheguanjia"</code></pre>
+<pre><code>P_URL_PATH = "/myapp/" 或 P_URL_PATH = "/myapp"</code></pre>
 <p>则</p>
-<pre><code>getBaseUrl() -&gt; "http://host/cheguanjia/"
-getBaseUrl(false) -&gt; "/cheguanjia/"</code></pre>
+<pre><code>getBaseUrl() -&gt; "http://myserver.com/myapp/"
+getBaseUrl(false) -&gt; "/myapp/"</code></pre>
+<p>注意：如果使用了反向代理等机制，该函数往往无法返回正确的值。</p>
+<p>例如 <a href="http://myserver.com/8081/myapp/api.php">http://myserver.com/8081/myapp/api.php</a> 被代理到 <a href="http://localhost:8081/myapp/api.php">http://localhost:8081/myapp/api.php</a><br />
+getBaseUrl()默认返回 &quot;<a href="http://myserver.com/myapp/">http://myserver.com/myapp/</a>&quot; 是错误的，可以设置P_BASE_URL解决：</p>
+<pre><code>putenv("P_URL_PATH=http://myserver.com/8081/myapp/");</code></pre>
+<p>这样getBaseUrl()可返回该值。</p>
 <p class="see"><strong>@see <a href="#$BASE_DIR">$BASE_DIR</a></strong> </p><hr>
 <h2 id="logit">@fn logit($s, $addHeader=true, $type="trace")</h2>
 <p>记录日志。</p>
@@ -509,6 +526,21 @@ throw new DirectReturn();</code></pre><hr>
 }</code></pre>
 <p>则可以调用</p>
 <pre><code>$pluginCore = PluginCore::getInstance();</code></pre><hr>
+<h2 id="JDSingletonImp">@class JDSingletonImp (trait)</h2>
+<p>用于单件基类，提供getInstance方法。<br />
+使用时类名应以Base结尾，使用者可以重写该类，一般用于接口实现。例：</p>
+<pre><code>class PayImpBase
+{
+    use JDSingletonImp;
+}
+
+// 使用者重写Base类的某些方法
+class PayImp extends PayImpBase
+{
+}</code></pre>
+<p>则可以调用</p>
+<pre><code>$pay = PayImpBase::getInstance();
+// 创建的是PayImp类。如果未定义PayImp类，则创建PayImpBase类，或是当Base类是abstract类时将抛出错误。</code></pre><hr>
 <h2 id="JDEvent">@class JDEvent (trait)</h2>
 <p>提供事件监听(on)与触发(trigger)方法，例：</p>
 <pre><code>class PluginCore
@@ -566,16 +598,19 @@ getOssParam() -&gt; {url="mock"}</code></pre>
 $sms-&gt;sendSms(...);</code></pre>
 <p>要激活模拟模式，应在conf.user.php中设置：</p>
 <pre><code>putenv("P_TEST_MODE=1");
-putenv("P_MOCK_MODE=1");</code></pre>
+putenv("P_MOCK_MODE=1");
+
+// 或者只开启部分模块的模拟：
+// putenv("P_MOCK_MODE=sms,wx");</code></pre>
 <p class="see"><strong>@see <a href="#getExt">getExt</a></strong> </p><hr>
 <h2 id="isMockMode">@fn isMockMode($extType)</h2>
 <p>判断是否模拟某外部扩展模块。如果$extType为null，则只要处于MOCK_MODE就返回true.</p><hr>
-<h2 id="ExtFactory::instance">@fn ExtFactory::instance()</h2>
+<h2 id="ExtFactory::getInstance">@fn ExtFactory::getInstance()</h2>
 <p class="see"><strong>@see <a href="#getExt">getExt</a></strong> </p><hr>
 <h2 id="ExtFactory::getObj">@fn ExtFactory::getObj($extType, $allowMock?=true)</h2>
 <p>获取外部依赖对象。一般用getExt替代更简单。</p>
 <p>示例：</p>
-<pre><code>$sms = ExtFactory::instance()-&gt;getObj(Ext_SmsSupport);</code></pre>
+<pre><code>$sms = ExtFactory::getInstance()-&gt;getObj(Ext_SmsSupport);</code></pre>
 <p class="see"><strong>@see <a href="#getExt">getExt</a></strong> </p><hr>
 <h2 id="getExt">@fn getExt($extType, $allowMock = true)</h2>
 <p>用于取外部接口对象，如：</p>
@@ -652,30 +687,41 @@ $ret = callSvc("genVoucher");
 <p class="see"><strong>@see <a href="#addLog">addLog</a></strong>  </p>
 <p class="see"><strong>@see <a href="#logit">logit</a></strong> </p>
 <h4 id="api_fw-5 插件机制">5 插件机制</h4>
+<p>插件是包含数据库/接口/前端逻辑页设计、后端实现、前端逻辑页实现的模块。</p>
+<p>其设计由插件目录/DESIGN.md定义，可由upgrade工具自动部署。</p>
 <p class="key"><strong>@key <a id="plugin/index.php">plugin/index.php</a></strong>  插件配置</p>
 <p>plugin/{pluginName}为插件目录。</p>
 <p>plugin/index.php是插件配置文件，在后端应用框架函数apiMain中引入，内容示例如下：</p>
 <pre><code>&lt;?php
 
-Plugins::add([ "plugin1", "plugin2" ]);</code></pre>
+Plugins::add("plugin1");
+Plugins::add("plugin2", "plugin2/index.php"); // 指定插件主文件，如不指定，默认为"plugin2/plugin.php"</code></pre>
 <p>表示当前应用使用两个插件&quot;plugin1&quot;和&quot;plugin2&quot;, 分别对应目录 plugin/plugin1和plugin/plugin2.</p>
 <p class="see"><strong>@see <a href="#Plugins::add">Plugins::add</a></strong> </p>
-<p class="key"><strong>@key <a id="plugin.php">plugin.php</a></strong>  插件定义</p>
-<p>插件实现在文件plugin/{pluginName}/plugin.php中，包括交互接口，以及插件API（后端调用接口），以优惠券插件&quot;coupon&quot;为例:</p>
+<p class="key"><strong>@key <a id="plugin">plugin</a></strong>  插件定义</p>
+<p>插件实现包括交互接口，以及插件API（后端调用接口），以优惠券插件&quot;coupon&quot;为例: (plugin/coupon/plugin.php)</p>
 <pre><code>&lt;?php
 
-// 可选：定义插件API, 必须继承 PluginBase类
-class PluginCoupon extends PluginBase
+// 可选：定义模块API，均使用静态变量或函数
+class Coupon
 {
-    // 声明插件API支持的事件, 如init, genCoupons事件：
-    // @event PluginCoupon.event.init()
-    // @event PluginCoupon.event.genCoupons($src)
+    // use MapCol; // 如果要用mapCol/mapSql函数，则打开该trait.
 
-    // 插件API函数
-    // @fn PluginCoupon.func1($arg1)
-    function func1($arg1)
+    static $conf1; // 模块配置
+    static function func1($arg1) // 模块公共接口
     {
+        // 调用实现部分
+        $imp = CouponImpBase::getInstance();
+        $imp-&gt;genCoupons($src);
     }
+}
+
+// 模块实现依赖的接口。如果必须由外部实现，则使用abstract类及函数
+abstract class CouponImpBase
+{
+    use JDSingletonImp;
+
+    abstract function genCoupons($src);
 }
 
 // 实现函数型交互接口takeCoupon
@@ -684,41 +730,15 @@ function api_takeCoupon() {}
 // 实现对象型交互接口 Coupon.query/get/set/del/add
 class AC1_Coupon extends AccessControl {}
 
-// 可选：返回插件配置
+// 可选：返回前端配置
 return [
     "js" =&gt; "m2/plugin.js", // 如果前端需要包含文件
-    "class" =&gt; "PluginCoupon" // 如果提供插件内部接口
 ];</code></pre>
 <p>注意：</p>
-<ul>
-<li>插件类必须继承PluginBase(包括单例、事件机制等方法)，它提供插件API，包括插件类提供的所有公共方法、属性和事件声明。<br />
-应通过格式化注释(@fn, @event等)标识这些API。</li>
-</ul>
-<p>在插件内部获取插件实例可以用：</p>
-<pre><code>    $plugin = PluginCoupon::getInstance();</code></pre>
-<p>如果在插件外部则需要用：</p>
-<pre><code>    $pluginCoupon = Plugins::getInstance('coupon');</code></pre>
 <p>调用插件API函数：</p>
-<pre><code>    $pluginCoupon-&gt;func1($arg1);</code></pre>
-<p>监听或触发插件事件：</p>
-<pre><code>    $pluginCoupon-&gt;on('init', 'onInit');
-    $pluginCoupon-&gt;trigger('genCoupons', [$src]);</code></pre>
-<p>事件命名规范与函数名相同，而事件处理函数的命名一般用&quot;on{事件名}&quot;.</p>
-<p class="see"><strong>@see <a href="#PluginBase">PluginBase</a></strong> </p>
-<ul>
-<li>
-<p>插件可以在构造函数__construct中初始化自身，例：</p>
-<pre><code>// 可选的初始化过程, 注意使用private，保持单例特性（Singleton）
-private function __construct()
-{
-    $this-&gt;trigger('init');
-}</code></pre>
-</li>
-</ul>
-<p>在应用初始化时（apiMain中），会创建所有插件类的实例（如果有的话）。</p>
-<ul>
-<li>交互接口应在插件设计文档(plugin/coupon/DESIGN.wiki)中定义原型。</li>
-</ul><hr>
+<pre><code>    Coupon::func1($arg1);</code></pre>
+<p>交互接口应在插件设计文档(plugin/coupon/DESIGN.md)中定义原型。</p>
+<p>插件依赖的接口应定义CouponImp类来实现，一般放在文件 php/class/CouponImp.php中自动加载。</p><hr>
 <h2 id="setRet">@fn setRet($code, $data?, $internalMsg?)</h2>
 <p class="param"><strong>@param $code</strong>  Integer. 返回码, 0表示成功, 否则表示操作失败。</p>
 <p class="param"><strong>@param $data</strong>  返回数据。</p>
@@ -792,58 +812,43 @@ checkPerm(AUTH_ADMIN | PERM_TEST_MODE); 要求必须管理员登录或测试模�
     $app = mparam('app');
     $ret['appName'] = 'my-app';
 }</code></pre><hr>
-<h2 id="PluginBase">@class PluginBase</h2>
-<p>插件内部接口应继承该类, 它具有以下方法：</p>
-<pre><code>static function getInstance();
-funcion on($eventName, $eventHandler);
-funcion trigger($eventName, array $args = []);</code></pre>
-<p class="see"><strong>@see <a href="#JDSingleton">JDSingleton</a> <a href="#JDEvent">JDEvent</a></strong> </p>
-<p class="see"><strong>@see <a href="#plugin/index.php">plugin/index.php</a></strong>  插件配置</p>
-<p class="see"><strong>@see <a href="#plugin.php">plugin.php</a></strong>  插件定义</p><hr>
-<h2 id="PluginBase.$colMap">@var PluginBase.$colMap</h2>
+<h2 id="MapCol.$colMap">@var MapCol.$colMap</h2>
 <p>%colMap = {tbl =&gt; [tblAlias, %cols]}<br />
 cols = {col =&gt; colAlias}</p>
-<p>先在插件接口文档DESIGN.wiki中声明本插件的数据库依赖：</p>
+<p>先在插件接口文档DESIGN.md中声明本插件的数据库依赖：</p>
 <pre><code>@see @Store: id, name, dscr
 @see @Ordr: id</code></pre>
-<p>在PluginCore::__construct中实现接口依赖，指定表名或列名对应（如果名称相同不必声明）</p>
-<pre><code>function __construct() {
-    $plugin1 = Plugins::getInstance('coupon');
-    $plugin1-&gt;colMap = [
-        "Store" =&gt; ["MyStore", [
-            "dscr" =&gt; "description"
-        ]],
-        "Ordr" =&gt; ["MyOrder"]
-    ];
-}</code></pre>
+<p>配置定表名或列名对应（如果名称相同不必声明）</p>
+<pre><code>Coupon::$colMap = [
+    "Store" =&gt; ["MyStore", [
+        "dscr" =&gt; "description"
+    ]],
+    "Ordr" =&gt; ["MyOrder"]
+];</code></pre>
 <p>在plugin实现时，使用mapCol/mapSql来使表名、列名可配置：</p>
-<pre><code>$plugin = PluginCoupon::getInstance();
-$tbl = $plugin-&gt;mapCol("Store"); // $tbl="MyStore"
-$tbl = $plugin-&gt;mapCol("User"); // $tbl="User" 未定义时，直接取原值
-$col = $plugin-&gt;mapCol("Store.dscr"); // $col="description"
-$col = $plugin-&gt;mapCol("Store.name"); // $col="name" 未定义时，直接取原值
+<pre><code>class Coupon
+{
+    use MapCol;
+}
+$tbl = Coupon::mapCol("Store"); // $tbl="MyStore"
+$tbl = Coupon::mapCol("User"); // $tbl="User" 未定义时，直接取原值
+$col = Coupon::mapCol("Store.dscr"); // $col="description"
+$col = Coupon::mapCol("Store.name"); // $col="name" 未定义时，直接取原值
 
 $sql = $plugin-&gt;mapSql("SELECT s.id, s.{Store.name}, s.{Store.dscr} FROM {Store} s INNER JOIN {Ordr} o ON o.id=s.{Store.storeId}");
 // $sql = "SELECT s.id, s.name, s.description FROM MyStore s INNER JOIN MyOrder o ON o.id=s.storeId"</code></pre>
-<p class="key"><strong>@key <a id="PluginBase.mapCol">PluginBase.mapCol</a></strong> ($tbl, $col=null)</p>
-<p class="key"><strong>@key <a id="PluginBase.mapSql">PluginBase.mapSql</a></strong> ($sql)</p><hr>
+<p class="key"><strong>@key <a id="MapCol.mapCol">MapCol.mapCol</a></strong> ($tbl, $col=null)</p>
+<p class="key"><strong>@key <a id="MapCol.mapSql">MapCol.mapSql</a></strong> ($sql)</p><hr>
 <h2 id="Plugins">@class Plugins</h2>
 <p class="see"><strong>@see <a href="#plugin/index.php">plugin/index.php</a></strong> </p><hr>
-<h2 id="Plugins::$map">@var Plugins::$map</h2><hr>
-<h2 id="Plugins::add">@fn Plugins::add($plugins)</h2>
-<p class="param"><strong>@param $plugins</strong>  ={ pluginName => {js, php, getInterface} }</p><hr>
+<h2 id="Plugins::$map">@var Plugins::$map</h2>
+<p>{ pluginName =&gt; %pluginCfg={js} }</p><hr>
+<h2 id="Plugins::add">@fn Plugins::add($pluginName, $file?="{pluginName}/plugin.php")</h2>
+<p>添加模块或插件。$file为插件主文件，可返回一个插件配置.</p>
+<p>以下旧的格式也兼容，现已不建议使用：</p>
+<pre><code>Plugins::add($pluginNameArray)</code></pre>
+<p class="see"><strong>@see <a href="#Plugins.$map">Plugins.$map</a></strong> </p><hr>
 <h2 id="Plugins::exists">@fn Plugins::exists($pluginName)</h2><hr>
-<h2 id="Plugins::getInstance">@fn Plugins::getInstance($pluginName, $allowNull = false)</h2>
-<p>获取插件类的实例，用于调用插件API。</p>
-<p>假设有插件coupon, 一般可定义插件接口类 PluginCoupon如:</p>
-<pre><code>class PluginCoupon extends PluginBase
-{
-}</code></pre>
-<p>在插件内部，应直接调用 PluginCoupon::getInstance() 来获得插件实例。<br />
-在插件外部才调用本函数。</p>
-<p>注意：应通过在plugin.php最后返回的插件配置中指定插件类：</p>
-<pre><code>[ 'class' =&gt; 'PluginCoupon' ]</code></pre>
-<p>主应用作为特殊模块，名称为'core', 对应类为 PluginCore.</p><hr>
 <h2 id="tableCRUD">@fn tableCRUD($ac, $tbl, $asAdmin?=false)</h2>
 <p>对象型接口的入口。<br />
 也可直接被调用，常与setParam一起使用, 提供一些定制的操作。</p>

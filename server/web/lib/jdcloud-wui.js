@@ -1,4 +1,5 @@
-// ====== BEGIN_FILE doc.js {{{
+// jdcloud-wui version 1.0
+// ====== WEBCC_BEGIN_FILE doc.js {{{
 /**
 @module WUI
 
@@ -552,9 +553,9 @@ formatter用于控制Cell中的HTML标签，styler用于控制Cell自己的CSS s
 
 这时，就可以用 WUI.showObjDlg("#dlgOrder")来显示逻辑页了。
 */
-// ====== END_FILE doc.js }}}
+// ====== WEBCC_END_FILE doc.js }}}
 
-// ====== BEGIN_FILE common.js {{{
+// ====== WEBCC_BEGIN_FILE common.js {{{
 jdModule("jdcloud.common", JdcloudCommon);
 function JdcloudCommon()
 {
@@ -1462,9 +1463,9 @@ function jdModule(name, fn, overrideCtor)
 }
 
 // vi: foldmethod=marker 
-// ====== END_FILE common.js }}}
+// ====== WEBCC_END_FILE common.js }}}
 
-// ====== BEGIN_FILE commonjq.js {{{
+// ====== WEBCC_BEGIN_FILE commonjq.js {{{
 jdModule("jdcloud.common", JdcloudCommonJq);
 function JdcloudCommonJq()
 {
@@ -1778,9 +1779,9 @@ $.fn.jdata = function (val) {
 }
 
 }
-// ====== END_FILE commonjq.js }}}
+// ====== WEBCC_END_FILE commonjq.js }}}
 
-// ====== BEGIN_FILE app.js {{{
+// ====== WEBCC_BEGIN_FILE app.js {{{
 function JdcloudApp()
 {
 var self = this;
@@ -1936,11 +1937,60 @@ function setOnError()
 }
 setOnError();
 
+// ------ enhanceWithin {{{
+/**
+@var MUI.m_enhanceFn
+*/
+self.m_enhanceFn = {}; // selector => enhanceFn
+
+/**
+@fn MUI.enhanceWithin(jparent)
+*/
+self.enhanceWithin = enhanceWithin;
+function enhanceWithin(jp)
+{
+	$.each(self.m_enhanceFn, function (sel, fn) {
+		var jo = jp.find(sel);
+		if (jp.is(sel))
+			jo = jo.add(jp);
+		if (jo.size() == 0)
+			return;
+		jo.each(function (i, e) {
+			var je = $(e);
+			var opt = getOptions(je);
+			if (opt.enhanced)
+				return;
+			opt.enhanced = true;
+			fn(je);
+		});
+	});
+}
+
+/**
+@fn MUI.getOptions(jo)
+*/
+self.getOptions = getOptions;
+function getOptions(jo)
+{
+	var opt = jo.data("muiOptions");
+	if (opt === undefined) {
+		opt = {};
+		jo.data("muiOptions", opt);
+	}
+	return opt;
+}
+
+$(document).on("pagecreate", function (ev) {
+	var jpage = $(ev.target);
+	enhanceWithin(jpage);
+});
+//}}}
+
 }
 // vi: foldmethod=marker
-// ====== END_FILE app.js }}}
+// ====== WEBCC_END_FILE app.js }}}
 
-// ====== BEGIN_FILE callSvr.js {{{
+// ====== WEBCC_BEGIN_FILE callSvr.js {{{
 function JdcloudCall()
 {
 var self = this;
@@ -1961,7 +2011,6 @@ ctx: {ac, tm, tv, ret}
 self.lastError = null;
 var m_tmBusy;
 var m_manualBusy = 0;
-var m_jLoader;
 var m_appVer;
 
 /**
@@ -3144,9 +3193,9 @@ function useBatchCall(opt, tv)
 }
 
 }
-// ====== END_FILE callSvr.js }}}
+// ====== WEBCC_END_FILE callSvr.js }}}
 
-// ====== BEGIN_FILE wui-showPage.js {{{
+// ====== WEBCC_BEGIN_FILE wui-showPage.js {{{
 function JdcloudPage()
 {
 var self = this;
@@ -3484,6 +3533,9 @@ function showPage(pageName, title, paramArr)
 */
 		jpage.attr("wui-pageFile", pageFile);
 		jpage.addClass(pageClass).appendTo(jcontainer);
+
+		self.enhanceWithin(jpage);
+		$.parser.parse(jpage);
 
 		var val = jpage.attr("wui-script");
 		if (val != null) {
@@ -4006,7 +4058,7 @@ function loadDialog(jdlg, onLoad)
 	}
 
 	var dlgId = jdlg.selector.substr(1);
-	var pageFile = "page/" + dlgId + ".html";
+	var pageFile = getModulePath(dlgId + ".html");
 	$.ajax(pageFile).then(function (html) {
 		var jcontainer = $("#my-pages");
 		// 注意：如果html片段中有script, 在append时会同步获取和执行(jquery功能)
@@ -4019,12 +4071,15 @@ function loadDialog(jdlg, onLoad)
 		fixJdlg(jo);
 		// 限制css只能在当前页使用
 		jdlg.find("style").each(function () {
-			$(this).html( self.ctx.fixPageCss($(this).html(), selector) );
+			$(this).html( self.ctx.fixPageCss($(this).html(), jdlg.selector) );
 		});
 		// bugfix: 加载页面页背景图可能反复被加载
 		jdlg.find("style").attr("wui-origin", dlgId).appendTo(document.head);
 		jdlg.attr("id", dlgId).appendTo(jcontainer);
 		jdlg.attr("wui-pageFile", pageFile);
+
+		self.enhanceWithin(jdlg);
+		$.parser.parse(jdlg);
 
 		var val = jdlg.attr("wui-script");
 		if (val != null) {
@@ -4330,37 +4385,38 @@ self.dg_dblclick = function (jtbl, jdlg)
 //}}}
 
 /**
-@key .easyui-linkbutton
+@key a[href=#page]
+@key a[href=?fn]
 
-使用.easyui-linkbutton时，其中的a[href]字段会被框架特殊处理：
+页面中的a[href]字段会被框架特殊处理：
 
-	<a href="#pageHome" class="easyui-linkbutton" icon="icon-ok">首页</a>
-	<a href="?showDlgSendSms" class="easyui-linkbutton" icon="icon-ok">群发短信</a>
+	<a href="#pageHome">首页</a>
+	<a href="?logout">退出登录</a>
 
-- href="#pageXXX"开头的，会调用 WUI.showPage("#pageXXX");
+- href="#pageXXX"开头的，点击时会调用 WUI.showPage("#pageXXX");
 - href="?fn"，会直接调用函数 fn();
-
-也可以使用 data-type="easyui-linkbutton", 如
-
-	<a href="#pageHome" data-type="easyui-linkbutton" icon="icon-ok">首页</a>
-
 */
-function link_onclick()
+self.m_enhanceFn["a[href^=#]"] = enhanceAnchor;
+function enhanceAnchor(jo)
 {
-	var href = $(this).attr("href");
-	if (href.search(/^#(page\w+)$/) >= 0) {
-		var pageName = RegExp.$1;
-		WUI.showPage.call(this, pageName);
-		return false;
-	}
-	else if (href.search(/^\?(\w+)$/) >= 0) {
-		var fn = RegExp.$1;
-		fn = eval(fn);
-		if (fn)
-			fn.call(this);
-		return false;
-	}
-	return true;
+	if (jo.attr("onclick"))
+		return;
+
+	jo.click(function (ev) {
+		var href = $(this).attr("href");
+		if (href.search(/^#(page\w+)$/) >= 0) {
+			var pageName = RegExp.$1;
+			WUI.showPage.call(this, pageName);
+			return false;
+		}
+		else if (href.search(/^\?(\w+)$/) >= 0) {
+			var fn = RegExp.$1;
+			fn = eval(fn);
+			if (fn)
+				fn.call(this);
+			return false;
+		}
+	});
 }
 
 // ---- easyui setup {{{
@@ -4484,7 +4540,32 @@ function checkIdCard(idcard)
 	return x == a[17].toLowerCase();
 }
 */
+/**
+@key .easyui-validatebox
 
+为form中的组件加上该类，可以限制输入类型，如：
+
+	<input name="amount" class="easyui-validatebox" data-options="required:true,validType:'number'" >
+
+validType还支持：
+
+- number: 数字
+- uname: 4-16位用户名，字母开头
+- cellphone: 11位手机号
+- datetime: 格式为"年-月-日 时:分:秒"，时间部分可忽略
+
+其它自定义规则(或改写上面规则)，可通过下列方式扩展：
+
+	$.extend($.fn.validatebox.defaults.rules, {
+		workday: {
+			validator: function(value) {
+				return value.match(/^[1-7,abc]+$/);
+			},
+			message: '格式例："1,3a,5b"表示周一,周三上午,周五下午.'
+		}
+	});
+
+*/
 var DefaultValidateRules = {
 	number: {
 		validator: function(v) {
@@ -4576,15 +4657,28 @@ $.extend($.fn.tabs.defaults, {
 */
 // }}}
 
-$(function () {
-	$('.easyui-linkbutton').click(link_onclick);
-	$('[data-type="easyui-linkbutton"]').click(link_onclick);
-});
+function main()
+{
+	self.title = document.title;
+	self.container = $(".wui-container");
+	if (self.container.size() == 0)
+		self.container = $(document.body);
+	self.enhanceWithin(self.container);
+
+	// 在muiInit事件中可以调用showPage.
+	self.container.trigger("wuiInit");
+
+// 	// 根据hash进入首页
+// 	if (self.showFirstPage)
+// 		showPage();
+}
+
+$(main);
 
 }
-// ====== END_FILE wui-showPage.js }}}
+// ====== WEBCC_END_FILE wui-showPage.js }}}
 
-// ====== BEGIN_FILE wui.js {{{
+// ====== WEBCC_BEGIN_FILE wui.js {{{
 jdModule("jdcloud.wui", JdcloudWui);
 function JdcloudWui()
 {
@@ -5022,9 +5116,9 @@ $(mainInit);
 }
 
 // vi: foldmethod=marker
-// ====== END_FILE wui.js }}}
+// ====== WEBCC_END_FILE wui.js }}}
 
-// ====== BEGIN_FILE wui-name.js {{{
+// ====== WEBCC_BEGIN_FILE wui-name.js {{{
 jdModule("jdcloud.wui.name", JdcloudWuiName);
 function JdcloudWuiName()
 {
@@ -5051,9 +5145,9 @@ $.each([
 });
 
 }
-// ====== END_FILE wui-name.js }}}
+// ====== WEBCC_END_FILE wui-name.js }}}
 
-// ====== BEGIN_FILE jquery-mycombobox.js {{{
+// ====== WEBCC_BEGIN_FILE jquery-mycombobox.js {{{
 // ====== jquery plugin: mycombobox {{{
 /**
 @fn jQuery.fn.mycombobox(force?=false)
@@ -5073,9 +5167,14 @@ $.each([
 
 初始化：
 
-	$(".my-combobox").mycombobox();
+	var jo = $(".my-combobox").mycombobox();
 
 注意：使用WUI.showDlg显示的对话框中如果有.my-combobox组件，会在调用WUI.showDlg时自动初始化，无须再调用上述代码。
+
+操作：
+
+- 刷新列表： jo.trigger("refresh");
+- 标记刷新（下次打开时刷新）： jo.trigger("markRefresh");
 
 特性：
 
@@ -5152,21 +5251,25 @@ $.fn.mycombobox = function (force)
 	function initCombobox(i, o)
 	{
 		var jo = $(o);
-		if (!force && jo.prop("inited_"))
+		var opts = jo.prop("opts_");
+		if (!force && opts && !opts.dirty)
 			return;
-		jo.prop("inited_", true);
 
-		var opts = {};
 		var optStr = jo.data("options");
 		try {
-			if (optStr != null)
-			{
-				if (optStr.indexOf(":") > 0) {
-					opts = eval("({" + optStr + "})");
+			if (opts == null) {
+				if (optStr != null) {
+					if (optStr.indexOf(":") > 0) {
+						opts = eval("({" + optStr + "})");
+					}
+					else {
+						opts = eval("(" + optStr + ")");
+					}
 				}
 				else {
-					opts = eval("(" + optStr + ")");
+					opts = {};
 				}
+				jo.prop("opts_", opts);
 			}
 		}catch (e) {
 			alert("bad options for mycombobox: " + optStr);
@@ -5174,60 +5277,75 @@ $.fn.mycombobox = function (force)
 		if (opts.url) {
 			loadOptions();
 
-			function loadOptions()
-			{
-				jo.empty();
-				// 如果设置了name属性, 一般关联字段(故可以为空), 添加空值到首行
-				if (jo.attr("name"))
-					$("<option value=''></option>").appendTo(jo);
-
-				if (m_dataCache[opts.url] === undefined) {
-					self.callSvrSync(opts.url, applyData);
-				}
-				else {
-					applyData(m_dataCache[opts.url]);
-				}
-
-				function applyData(data) 
-				{
-					m_dataCache[opts.url] = data;
-					function getText(row)
-					{
-						if (opts.formatter) {
-							return opts.formatter(row);
-						}
-						else if (opts.textField) {
-							return row[opts.textField];
-						}
-						return row.id;
-					}
-					if (opts.loadFilter) {
-						data = opts.loadFilter.call(this, data);
-					}
-					$.each(data, function (i, row) {
-						var jopt = $("<option></option>")
-							.attr("value", row[opts.valueField])
-							.text(getText(row))
-							.appendTo(jo);
-					});
-				}
-			}
-
 			if (!jo.attr("ondblclick"))
 			{
 				jo.off("dblclick").dblclick(function () {
 					if (! confirm("刷新数据?"))
 						return false;
-					var val = jo.val();
-					loadOptions();
-					jo.val(val);
+					refresh();
 				});
 			}
+			jo.on("refresh", refresh);
+			jo.on("markRefresh", markRefresh);
+		}
+
+		function loadOptions()
+		{
+			jo.empty();
+			// 如果设置了name属性, 一般关联字段(故可以为空), 添加空值到首行
+			if (jo.attr("name"))
+				$("<option value=''></option>").appendTo(jo);
+
+			if (opts.dirty || m_dataCache[opts.url] === undefined) {
+				self.callSvrSync(opts.url, applyData);
+			}
+			else {
+				applyData(m_dataCache[opts.url]);
+			}
+		}
+
+		function applyData(data) 
+		{
+			m_dataCache[opts.url] = data;
+			opts.dirty = false;
+			function getText(row)
+			{
+				if (opts.formatter) {
+					return opts.formatter(row);
+				}
+				else if (opts.textField) {
+					return row[opts.textField];
+				}
+				return row.id;
+			}
+			if (opts.loadFilter) {
+				data = opts.loadFilter.call(this, data);
+			}
+			$.each(data, function (i, row) {
+				var jopt = $("<option></option>")
+					.attr("value", row[opts.valueField])
+					.text(getText(row))
+					.appendTo(jo);
+			});
+		}
+
+		function refresh()
+		{
+			var val = jo.val();
+			markRefresh();
+			loadOptions();
+			jo.val(val);
+		}
+
+		function markRefresh()
+		{
+			opts.dirty = true;
 		}
 	}
 };
 //}}}
 
-// ====== END_FILE jquery-mycombobox.js }}}
+// ====== WEBCC_END_FILE jquery-mycombobox.js }}}
 
+// Generated by webcc_merge
 // vi: foldmethod=marker

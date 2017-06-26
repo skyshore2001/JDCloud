@@ -33,7 +33,7 @@ code {
 </head>
 
 <h1>API参考 - 筋斗云前端（移动Web版）</h1>
-<div>最后更新：2017-05-17</div>
+<div>最后更新：2017-06-21</div>
 <h2>Modules</h2>
 <div class="toc">
 <p><a href="#MUI">MUI (module)</a></p>
@@ -78,6 +78,7 @@ code {
 <p><a href="#MUI.closeDialog">MUI.closeDialog (fn)</a></p>
 <p><a href="#MUI.container">MUI.container (var)</a></p>
 <p><a href="#MUI.defDataProc">MUI.defDataProc (fn)</a></p>
+<p><a href="#MUI.deleteUrlParam">MUI.deleteUrlParam (fn)</a></p>
 <p><a href="#MUI.disableBatch">MUI.disableBatch (var)</a></p>
 <p><a href="#MUI.enhanceWithin">MUI.enhanceWithin (fn)</a></p>
 <p><a href="#MUI.enterWaiting">MUI.enterWaiting (fn)</a></p>
@@ -144,6 +145,7 @@ code {
 <p><a href="#delCookie">delCookie (fn)</a></p>
 <p><a href="#delStorage">delStorage (fn)</a></p>
 <p><a href="#delayDo">delayDo (fn)</a></p>
+<p><a href="#deleteParam">deleteParam (fn)</a></p>
 <p><a href="#deviceready">deviceready (key)</a></p>
 <p><a href="#enterWaiting">enterWaiting (alias)</a></p>
 <p><a href="#evalAttr">evalAttr (fn)</a></p>
@@ -701,7 +703,16 @@ hash = {
 if (a)
     url = appendParam(url, "a=" + a);
 if (b)
-    url = appendParam(url, "b=" + b);</code></pre><hr>
+    url = appendParam(url, "b=" + b);
+
+appendParam(url, $.param({a:1, b:3}));</code></pre>
+<p>支持url中带有&quot;?&quot;或&quot;#&quot;，如</p>
+<pre><code>var url = "http://xxx/api.php?id=1#order";
+appendParam(url, "pay=1"); // "http://xxx/api.php?id=1&amp;pay=1#order";</code></pre><hr>
+<h2 id="deleteParam">@fn deleteParam(url, paramName)</h2>
+<p>示例:</p>
+<pre><code>var url = "http://xxx/api.php?a=1&amp;b=3&amp;c=2";
+var url1 = deleteParam(url, "b"); // "http://xxx/api.php?a=1&amp;c=2";</code></pre><hr>
 <h2 id="isWeixin">@fn isWeixin()</h2>
 <p>当前应用运行在微信中。</p><hr>
 <h2 id="isIOS">@fn isIOS()</h2>
@@ -951,7 +962,8 @@ var url = makeUrl("Ordr.set", params);</code></pre>
 <ul>
 <li>指定{async:0}来做同步请求, 一般直接用callSvrSync调用来替代.</li>
 <li>指定{noex:1}用于忽略错误处理。</li>
-<li>指定{noLoadingImg:1}用于忽略loading图标.</li>
+<li>指定{noLoadingImg:1}用于忽略loading图标. 要注意如果之前已经调用callSvr显示了图标且图标尚未消失，则该选项无效，图标会在所有调用完成之后才消失(leaveWaiting)。<br />
+要使隐藏图标不受本次调用影响，可在callSvr后手工调用<code>--$.active</code>。</li>
 </ul>
 <p>想为ajax选项设置缺省值，可以用callSvrExt中的beforeSend回调函数，也可以用$.ajaxSetup，<br />
 但要注意：ajax的dataFilter/beforeSend选项由于框架已用，最好不要覆盖。</p>
@@ -1373,6 +1385,11 @@ callSvr("User.get", {res: "id,phone"}, api_UserGet);</code></pre>
 <p>如果<code>MUI.options.showHash=false</code>，则<code>MUI.setUrl("?orderId=100")</code>会将URL设置为<code>http://server/app/page/order.html?orderId=100</code>.<br />
 我们甚至可以设置RESTful风格的URL: <code>MUI.setUrl("order/100")</code> 会将URL设置为 <code>http://server/app/order/100</code>.</p>
 <p>在上面两个例子中，为了确保刷新URL时能正常显示，必须在Web服务器上配置URL重写规则，让它们都重定向到 <code>http://server/app/?orderId=100#order</code>.</p><hr>
+<h2 id="MUI.deleteUrlParam">@fn MUI.deleteUrlParam(param)</h2>
+<p>自动修改g_args全局变量和当前url（会调用MUI.setUrl方法）。</p>
+<pre><code>MUI.deleteUrlParam("wxpay");
+// 原先url为 http://myserver/myapp/index.html?wxpay=ORDR-11&amp;storeId=1
+// 调用后为 http://myserver/myapp/index.html?storeId=1</code></pre><hr>
 <h2 id="MUI.showPage">@fn MUI.showPage(pageRef, opt)</h2>
 <p class="param"><strong>@param pageId</strong>  String. 页面名字. 仅由字母、数字、"_"等字符组成。</p>
 <p class="param"><strong>@param pageRef</strong>  String. 页面引用（即location.hash），以"#"开头，后面可以是一个pageId（如"#home"）或一个相对页的地址（如"#info.html", "#emp/info.html"）。</p>

@@ -10,7 +10,6 @@
 		"enterWaiting",
 		"leaveWaiting",
 		"makeUrl",
-		"makeLinkTo",
 		"initPullList",
 		"initPageList",
 		"initPageDetail",

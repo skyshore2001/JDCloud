@@ -1,6 +1,8 @@
 <?php
 
 require_once('php/jdcloud-php/api_fw.php');
+require_once('php/api_functions.php');
+require_once('php/api_objects.php');
 
 // ====== config {{{
 const AUTH_GUEST = 0;
@@ -52,7 +54,7 @@ function onGetPerms()
 
 		$p = @$_SESSION["perms"];
 		if (is_array($p)) {
-			if (array_search($p, "mgr") !== false)
+			if (array_search("mgr", $p) !== false)
 				$perms |= PERM_MGR;
 		}
 	}
@@ -93,13 +95,6 @@ function onCreateAC($tbl)
 }
 
 //}}}
-
-// ====== plugin integration {{{
-class PluginCore extends PluginBase
-{
-}
-
-// }}}
 
 // ====== main {{{
 

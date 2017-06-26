@@ -1,17 +1,17 @@
 # ngxin配置
-# TODO: 部署时将 "^/" 换成所在目录的实际URL路径，如 "^/myapp/mobile/"
+# TODO: 部署时将 "^/jdcloud/" 换成所在目录的实际URL路径，如 "^/myapp/mobile/"
 # 然后在 ngxin.conf中合适位置包含本文件，注意不要覆盖其它配置，可以在 "location /" 中include
 
 #gzip on;
 #gzip_types text/plain text/xml text/css text/javascript application/javascript application/x-javascript "text/html;charset=utf-8";
 
 # 移动应用根目录下的html为应用入口，不允许cache
-location ~ ^/(\w+\.html)?$ {
+location ~ ^/jdcloud/m2/(\w+\.html)?$ {
 	add_header Cache-Control "no-cache";
 }
 
 # page下为逻辑页，html/js不允许cache
-location ~ ^/page/ {
+location ~ ^/jdcloud/m2/page/ {
 	add_header Cache-Control "no-cache";
 	# 添加版本便于对比线上是否最新
 	add_header X-Conf-Ver "1";

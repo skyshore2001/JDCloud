@@ -1,0 +1,60 @@
+<div my-obj="Ordr" wui-script="dlgOrder.js" my-initfn="initDlgOrder" title="用户订单" style="padding:20px 40px 20px 40px;width:520px;height:500px;">  
+	<form method="POST">
+		<table>
+			<tr>
+				<td>订单号</td>
+				<td><input name="id" disabled></td>
+			</tr>
+			<tr>
+				<td>订单状态</td>
+				<td>
+					<select name="status" style="width:150px">
+						<option value="">&nbsp;</option>
+						<option value="CR">未付款</option>
+						<option value="PA">待服务(已付款)</option>
+						<option value="ST">正在服务</option>
+						<option value="RE">已服务(待评价)</option>
+						<option value="RA">已评价</option>
+						<option value="CA">已取消</option>
+					</select>
+				</td>
+			</tr>
+			<tr>
+				<td>用户编号</td>
+				<td>
+					<input name="userId" disabled>
+					<input class="notForFind" type=button onClick="searchField(this, {userId: this.form.userId.value});" value="查询该用户所有订单">
+				</td>
+			</tr>
+			<tr>
+				<td>用户联系方式</td>
+				<td>
+					<input name="userPhone" class="easyui-validatebox" data-options="validType:'usercode'">
+					<input class="notForFind" type=button onClick="searchField(this, {userPhone: this.form.userPhone.value});" value="查询该手机所有订单">
+				</td>
+			</tr>
+			<tr>
+				<td>用户备注</td>
+				<td><textarea name="cmt" rows=3 cols=30></textarea></td>  
+			</tr>
+
+		</table>  
+		<input id="btnOrderMore" class="notForFind" type=button onClick="WUI.showObjDlg('#dlgOrder', FormMode.forLink, {id: this.form.id.value}); return false;" value="查看明细">
+	</form>
+
+	<div id="divOrderMore" class="notForFind">
+		<p><b>明细</b></p>
+
+		<p><b>订单日志</b></p>
+		<table id="tblOrderLog" style="width:auto;height:auto">
+			<thead><tr>
+				<th data-options="field:'action', formatter:OrderLogColumns.actionStr">操作</th>
+				<th data-options="field:'empName'">员工</th>
+				<th data-options="field:'dscr'">描述</th>
+				<th data-options="field:'tm'">时间</th>
+			</tr></thead>
+		</table>
+
+	</div>
+</div>
+

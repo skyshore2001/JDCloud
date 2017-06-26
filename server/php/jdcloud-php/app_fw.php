@@ -71,7 +71,7 @@ P_DBCRED格式为`{用户名}:{密码}`，或其base64编码后的值，如
 
 ## 模拟模式
 
-@key P_MOCK_MODE Integer. 模拟模式. 值：0/1.
+@key P_MOCK_MODE Integer. 模拟模式. 值：0/1，或部分模拟，值为模块列表，如"wx,sms"，外部模块名称定义见ext.php.
 
 对第三方系统依赖（如微信认证、支付宝支付、发送短信等），可通过设计Mock接口来模拟。
 
@@ -951,6 +951,18 @@ function queryAll($sql, $assoc)
 
 //}}}
 
+function isHttps()
+{
+	if (!isset($_SERVER['HTTPS']))
+		return false;  
+	if ($_SERVER['HTTPS'] === 1 //Apache  
+		|| $_SERVER['HTTPS'] === 'on' //IIS  
+		|| $_SERVER['SERVER_PORT'] == 443) { //其他  
+		return true;  
+	}
+	return false;  
+}
+
 /**
 @fn getBaseUrl($wantHost = true)
 
@@ -959,17 +971,33 @@ function queryAll($sql, $assoc)
 
 例：
 
-	P_URL_PATH = "/cheguanjia/" 或 P_URL_PATH = "/cheguanjia"
+	P_URL_PATH = "/myapp/" 或 P_URL_PATH = "/myapp"
 
 则
 
-	getBaseUrl() -> "http://host/cheguanjia/"
-	getBaseUrl(false) -> "/cheguanjia/"
+	getBaseUrl() -> "http://myserver.com/myapp/"
+	getBaseUrl(false) -> "/myapp/"
+
+注意：如果使用了反向代理等机制，该函数往往无法返回正确的值。
+
+例如 http://myserver.com/8081/myapp/api.php 被代理到 http://localhost:8081/myapp/api.php
+getBaseUrl()默认返回 "http://myserver.com/myapp/" 是错误的，可以设置P_BASE_URL解决：
+
+	putenv("P_URL_PATH=http://myserver.com/8081/myapp/");
+
+这样getBaseUrl()可返回该值。
 
 @see $BASE_DIR
  */
 function getBaseUrl($wantHost = true)
 {
+	if ($wantHost && getenv("P_BASE_URL")) {
+		$baseUrl = getenv("P_BASE_URL");
+		if (substr($baseUrl, -1, 1) != "/")
+			$baseUrl .= "/";
+		return $baseUrl;
+	}
+
 	$baseUrl = getenv("P_URL_PATH");
 	if ($baseUrl === false)
 	{
@@ -988,7 +1016,7 @@ function getBaseUrl($wantHost = true)
 
 	if ($wantHost)
 	{
-		$host = (isset($_SERVER["HTTPS"]) ? "https://" : "http://") . $_SERVER["HTTP_HOST"];
+		$host = (isHttps() ? "https://" : "http://") . $_SERVER["HTTP_HOST"]; // $_SERVER["HTTP_X_FORWARDED_HOST"]
 		$baseUrl = $host . $baseUrl;
 	}
 	return $baseUrl;
@@ -1433,6 +1461,55 @@ trait JDSingleton
 }
 
 /**
+@class JDSingletonImp (trait)
+
+用于单件基类，提供getInstance方法。
+使用时类名应以Base结尾，使用者可以重写该类，一般用于接口实现。例：
+
+	class PayImpBase
+	{
+		use JDSingletonImp;
+	}
+
+	// 使用者重写Base类的某些方法
+	class PayImp extends PayImpBase
+	{
+	}
+
+则可以调用
+
+	$pay = PayImpBase::getInstance();
+	// 创建的是PayImp类。如果未定义PayImp类，则创建PayImpBase类，或是当Base类是abstract类时将抛出错误。
+
+ */
+trait JDSingletonImp
+{
+	private function __construct () {}
+	static function getInstance()
+	{
+		static $inst;
+		if (! isset($inst)) {
+			$name = substr(__class__, 0, stripos(__class__, "Base"));
+			if (! class_exists($name)) {
+				$cls = new ReflectionClass(__class__);
+				if ($cls->isAbstract()) {
+					throw new MyException(E_SERVER, "Singleton class NOT defined: $name");
+				}
+				$inst = new static();
+				// $inst = $cls->newInstance();
+			}
+			else if (! is_subclass_of($name, __class__)) {
+				throw new MyException(E_SERVER, "$name MUST extends " . __class__);
+			}
+			else {
+				$inst = new $name;
+			}
+		}
+		return $inst;
+	}
+}
+
+/**
 @class JDEvent (trait)
 
 提供事件监听(on)与触发(trigger)方法，例：
@@ -1530,7 +1607,7 @@ class AppFw_
 
 		global $MOCK_MODE;
 		if ($TEST_MODE) {
-			$MOCK_MODE = getenv("P_MOCK_MODE")===false? 0: intval(getenv("P_MOCK_MODE"));
+			$MOCK_MODE = getenv("P_MOCK_MODE") ?: 0;
 		}
 		if ($MOCK_MODE) {
 			header("X-Daca-Mock-Mode: $MOCK_MODE");
@@ -1563,8 +1640,10 @@ class AppFw_
 		$path = getenv("P_SESSION_DIR") ?: $GLOBALS["BASE_DIR"] . "/session";
 		if (!  is_dir($path)) {
 			if (! mkdir($path, 0777, true))
-			   throw new MyException(E_SERVER, "fail to create session folder");
+				throw new MyException(E_SERVER, "fail to create session folder.");
 		}
+		if (! is_writeable($path))
+			throw new MyException(E_SERVER, "session folder is NOT writeable.");
 		session_save_path ($path);
 
 		ini_set("session.cookie_httponly", 1);
@@ -1626,6 +1705,9 @@ class AppFw_
 	putenv("P_TEST_MODE=1");
 	putenv("P_MOCK_MODE=1");
 
+	// 或者只开启部分模块的模拟：
+	// putenv("P_MOCK_MODE=sms,wx");
+
 @see getExt
 */
 
@@ -1636,8 +1718,11 @@ class AppFw_
  */
 function isMockMode($extType)
 {
-	// TODO: check extType
-	return $GLOBALS["MOCK_MODE"];
+	if (intval($GLOBALS["MOCK_MODE"]) === 1)
+		return true;
+
+	$mocks = explode(',', $GLOBALS["MOCK_MODE"]);
+	return in_array($extType, $mocks);
 }
 
 class ExtFactory
@@ -1645,17 +1730,11 @@ class ExtFactory
 	private $objs = []; // {$extType => $ext}
 
 /**
-@fn ExtFactory::instance()
+@fn ExtFactory::getInstance()
 
 @see getExt
  */
-	static public function instance()
-	{
-		static $inst;
-		if (!isset($inst))
-			$inst = new ExtFactory();
-		return $inst;
-	}
+	use JDSingleton;
 
 /**
 @fn ExtFactory::getObj($extType, $allowMock?=true)
@@ -1664,7 +1743,7 @@ class ExtFactory
 
 示例：
 
-	$sms = ExtFactory::instance()->getObj(Ext_SmsSupport);
+	$sms = ExtFactory::getInstance()->getObj(Ext_SmsSupport);
 
 @see getExt
  */
@@ -1697,7 +1776,7 @@ class ExtFactory
 */
 function getExt($extType, $allowMock = true)
 {
-	return ExtFactory::instance()->getObj($extType, $allowMock);
+	return ExtFactory::getInstance()->getObj($extType, $allowMock);
 }
 
 /**
@@ -1718,8 +1797,21 @@ function logext($s, $addHeader=true)
 
 // ====== main {{{
 
-AppFw_::init();
+try {
+	AppFw_::init();
+}
+catch (MyException $ex) {
+	echo $ex;
+	exit;
+}
+catch (Exception $ex) {
+	echo "*** Exception";
+	logit($ex);
+	exit;
+}
 
 #}}}
+
+require_once("ext.php");
 
 // vim: set foldmethod=marker :
