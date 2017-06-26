@@ -697,8 +697,9 @@ class Plugins
 		$f = $BASE_DIR . '/plugin/' . $file;
 		if (is_file($f)) {
 			$p = require_once($f);
-			if ($p === true)
-				continue;
+			if ($p === true) { // 重复包含
+				throw new MyException(E_SERVER, "duplicated plugin `$pname': $file");
+			}
 			if ($p === 1)
 				$p = [];
 		}
