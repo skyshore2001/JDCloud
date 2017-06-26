@@ -17,16 +17,17 @@ all: refdoc
 
 #refdoc_targets=../doc/api_m2.html ../doc/api_php.html ../doc/api_web.html ../doc/webcc.html ../doc/jdcloud-sprite.html ../doc/jdcloud-gendoc.html
 refdoc_targets=../doc/api_php.html
+#refdoc_targets=../doc/api_php.html
 
 refdoc: $(refdoc_targets)
 
-../doc/api_m2.html: ../server/m2/lib/common.js ../server/m2/lib/app_fw.js 
+../doc/api_m2.html: ../server/m2/lib/jdcloud-mui.js
 	php jdcloud-gendoc.php $^ -title "API²Î¿¼ - ½î¶·ÔÆÇ°¶Ë£¨ÒÆ¶¯Web°æ£©" $(opt) > $@
 
-../doc/api_web.html: ../server/web/lib/common.js ../server/web/lib/app_fw.js ../server/web/app.js 
+../doc/api_web.html: ../server/web/lib/jdcloud-wui.js
 	php jdcloud-gendoc.php $^ -title "API²Î¿¼ - ½î¶·ÔÆÇ°¶Ë£¨×ÀÃæWeb°æ£©" $(opt) > $@
 
-../doc/api_php.html: ../server/php/common.php ../server/php/app_fw.php ../server/php/api_fw.php ../server/php/AccessControl.php
+../doc/api_php.html: ../server/php/jdcloud-php/common.php ../server/php/jdcloud-php/app_fw.php ../server/php/jdcloud-php/api_fw.php ../server/php/jdcloud-php/AccessControl.php ../server/php/jdcloud-php/ext.php
 	php jdcloud-gendoc.php $^ -title "API²Î¿¼ - ½î¶·ÔÆ·þÎñ¶Ë" $(opt) > $@
 
 ../doc/webcc.html: webcc.php jdcloud-build.sh
