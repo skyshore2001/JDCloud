@@ -1,21 +1,16 @@
 <?php
 
-require_once('app.php');
-require_once('php/api_fw.php');
-
-require_once('php/api_functions.php');
-require_once('php/api_objects.php');
-
+require_once('php/jdcloud-php/api_fw.php');
 // ====== config {{{
 const AUTH_GUEST = 0;
 // 登陆类型
 const AUTH_USER = 0x01;
 const AUTH_EMP = 0x02;
 const AUTH_ADMIN = 0x04;
-define("AUTH_LOGIN", AUTH_USER | AUTH_EMP | AUTH_ADMIN);
+const AUTH_LOGIN = 0xff;
 
 // 权限类型
-const PERM_MGR = 0x08;
+const PERM_MGR = 0x100;
 const PERM_TEST_MODE = 0x1000;
 const PERM_MOCK_MODE = 0x2000;
 
@@ -56,7 +51,7 @@ function onGetPerms()
 
 		$p = @$_SESSION["perms"];
 		if (is_array($p)) {
-			if (array_search($p, "mgr") !== false)
+			if (array_search("mgr", $p) !== false)
 				$perms |= PERM_MGR;
 		}
 	}
@@ -97,13 +92,6 @@ function onCreateAC($tbl)
 }
 
 //}}}
-
-// ====== plugin integration {{{
-class PluginCore extends PluginBase
-{
-}
-
-// }}}
 
 // ====== main {{{
 

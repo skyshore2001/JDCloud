@@ -1,86 +1,5 @@
 <?php
 
-require_once('app.php');
-require_once('php/api_fw.php');
-
-// ====== config {{{
-const AUTH_GUEST = 0;
-// 登陆类型
-const AUTH_USER = 0x01;
-const AUTH_EMP = 0x02;
-const AUTH_ADMIN = 0x04;
-const AUTH_LOGIN = 0xff;
-
-// 权限类型
-const PERM_MGR = 0x100;
-const PERM_TEST_MODE = 0x1000;
-const PERM_MOCK_MODE = 0x2000;
-
-$PERMS = [
-	AUTH_GUEST => "guest",
-	AUTH_USER => "user",
-	AUTH_EMP => "employee",
-	AUTH_ADMIN => "admin",
-
-	PERM_MGR => "manager",
-
-	PERM_TEST_MODE => "testmode",
-	PERM_MOCK_MODE => "mockmode",
-];
-//}}}
-
-// ====== global {{{
-
-//}}}
-
-//====== function {{{
-/*
-@fn onGetPerms()
-
-生成权限，由框架调用。
- */
-function onGetPerms()
-{
-	$perms = 0;
-	if (isset($_SESSION["uid"])) {
-		$perms |= AUTH_USER;
-	}
-	if (@$GLOBALS["TEST_MODE"]) {
-		$perms |= PERM_TEST_MODE;
-	}
-	return $perms;
-}
-
-/*
-@fn onCreateAC($obj)
-
-@param $obj 对象名或主表名
-
-根据对象名，返回权限控制类名，如 AC1_{$obj}。
-如果返回null, 则默认为 AC_{obj}
-
- */
-function onCreateAC($tbl)
-{
-	$cls = null;
-	if (hasPerm(AUTH_USER))
-	{
-		$cls = "AC1_$tbl";
-		if (! class_exists($cls))
-			$cls = "AC_$tbl";
-	}
-	return $cls;
-}
-
-//}}}
-
-// ====== plugin integration {{{
-class PluginCore extends PluginBase
-{
-}
-
-// }}}
-
 function api_fn()
 {
 	$ret = null;
@@ -244,12 +163,3 @@ WHERE userId={$this->uid} ORDER BY id DESC LIMIT 3) t
 	}
 }
 
-
-// ====== main {{{
-
-// 确保在api.php的最后
-apiMain();
-
-//}}}
-
-// vi: foldmethod=marker
