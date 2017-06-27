@@ -92,6 +92,10 @@ api.php可以单独执行，也可直接被调用，如
 
 ## 插件机制
 
+插件是包含数据库/接口/前端逻辑页设计、后端实现、前端逻辑页实现的模块。
+
+其设计由插件目录/DESIGN.md定义，可由upgrade工具自动部署。
+
 @key plugin/index.php 插件配置
 
 plugin/{pluginName}为插件目录。
@@ -100,30 +104,39 @@ plugin/index.php是插件配置文件，在后端应用框架函数apiMain中引
 
 	<?php
 
-	Plugins::add([ "plugin1", "plugin2" ]);
+	Plugins::add("plugin1");
+	Plugins::add("plugin2", "plugin2/index.php"); // 指定插件主文件，如不指定，默认为"plugin2/plugin.php"
 
 表示当前应用使用两个插件"plugin1"和"plugin2", 分别对应目录 plugin/plugin1和plugin/plugin2.
 
 @see Plugins::add
 
-@key plugin.php 插件定义
+@key plugin 插件定义
 
-插件实现在文件plugin/{pluginName}/plugin.php中，包括交互接口，以及插件API（后端调用接口），以优惠券插件"coupon"为例:
+插件实现包括交互接口，以及插件API（后端调用接口），以优惠券插件"coupon"为例: (plugin/coupon/plugin.php)
 
 	<?php
 
-	// 可选：定义插件API, 必须继承 PluginBase类
-	class PluginCoupon extends PluginBase
+	// 可选：定义模块API，均使用静态变量或函数
+	class Coupon
 	{
-		// 声明插件API支持的事件, 如init, genCoupons事件：
-		// @event PluginCoupon.event.init()
-		// @event PluginCoupon.event.genCoupons($src)
+		// use MapCol; // 如果要用mapCol/mapSql函数，则打开该trait.
 
-		// 插件API函数
-		// @fn PluginCoupon.func1($arg1)
-		function func1($arg1)
+		static $conf1; // 模块配置
+		static function func1($arg1) // 模块公共接口
 		{
+			// 调用实现部分
+			$imp = CouponImpBase::getInstance();
+			$imp->genCoupons($src);
 		}
+	}
+
+	// 模块实现依赖的接口。如果必须由外部实现，则使用abstract类及函数
+	abstract class CouponImpBase
+	{
+		use JDSingletonImp;
+
+		abstract function genCoupons($src);
 	}
 
 	// 实现函数型交互接口takeCoupon
@@ -132,50 +145,20 @@ plugin/index.php是插件配置文件，在后端应用框架函数apiMain中引
 	// 实现对象型交互接口 Coupon.query/get/set/del/add
 	class AC1_Coupon extends AccessControl {}
 
-	// 可选：返回插件配置
+	// 可选：返回前端配置
 	return [
 		"js" => "m2/plugin.js", // 如果前端需要包含文件
-		"class" => "PluginCoupon" // 如果提供插件内部接口
 	];
 
 注意：
 
-- 插件类必须继承PluginBase(包括单例、事件机制等方法)，它提供插件API，包括插件类提供的所有公共方法、属性和事件声明。
-应通过格式化注释(@fn, @event等)标识这些API。
-
-在插件内部获取插件实例可以用：
-
-		$plugin = PluginCoupon::getInstance();
-
-如果在插件外部则需要用：
-
-		$pluginCoupon = Plugins::getInstance('coupon');
-
 调用插件API函数：
 
-		$pluginCoupon->func1($arg1);
+		Coupon::func1($arg1);
 
-监听或触发插件事件：
+交互接口应在插件设计文档(plugin/coupon/DESIGN.md)中定义原型。
 
-		$pluginCoupon->on('init', 'onInit');
-		$pluginCoupon->trigger('genCoupons', [$src]);
-
-事件命名规范与函数名相同，而事件处理函数的命名一般用"on{事件名}".
-
-@see PluginBase
-
-- 插件可以在构造函数__construct中初始化自身，例：
-
-		// 可选的初始化过程, 注意使用private，保持单例特性（Singleton）
-		private function __construct()
-		{
-			$this->trigger('init');
-		}
-
-在应用初始化时（apiMain中），会创建所有插件类的实例（如果有的话）。
-
-- 交互接口应在插件设计文档(plugin/coupon/DESIGN.wiki)中定义原型。
-
+插件依赖的接口应定义CouponImp类来实现，一般放在文件 php/class/CouponImp.php中自动加载。
 */
 
 require_once("app_fw.php");
@@ -616,76 +599,60 @@ class ApiWatch
 	}
 }
 
-/**
-@class PluginBase
-
-插件内部接口应继承该类, 它具有以下方法：
-
-	static function getInstance();
-	funcion on($eventName, $eventHandler);
-	funcion trigger($eventName, array $args = []);
-
-@see JDSingleton,JDEvent
-@see plugin/index.php 插件配置
-@see plugin.php 插件定义
- */
-class PluginBase
+trait MapCol
 {
-	use JDSingleton;
-	use JDEvent;
-
 /**
-@var PluginBase.$colMap
+@var MapCol.$colMap
 
 %colMap = {tbl => [tblAlias, %cols]}
 cols = {col => colAlias}
 
-先在插件接口文档DESIGN.wiki中声明本插件的数据库依赖：
+先在插件接口文档DESIGN.md中声明本插件的数据库依赖：
 
 	@see @Store: id, name, dscr
 	@see @Ordr: id
 
-在PluginCore::__construct中实现接口依赖，指定表名或列名对应（如果名称相同不必声明）
+配置定表名或列名对应（如果名称相同不必声明）
 
-	function __construct() {
-		$plugin1 = Plugins::getInstance('coupon');
-		$plugin1->colMap = [
-			"Store" => ["MyStore", [
-				"dscr" => "description"
-			]],
-			"Ordr" => ["MyOrder"]
-		];
-	}
+	Coupon::$colMap = [
+		"Store" => ["MyStore", [
+			"dscr" => "description"
+		]],
+		"Ordr" => ["MyOrder"]
+	];
 
 在plugin实现时，使用mapCol/mapSql来使表名、列名可配置：
 
-	$plugin = PluginCoupon::getInstance();
-	$tbl = $plugin->mapCol("Store"); // $tbl="MyStore"
-	$tbl = $plugin->mapCol("User"); // $tbl="User" 未定义时，直接取原值
-	$col = $plugin->mapCol("Store.dscr"); // $col="description"
-	$col = $plugin->mapCol("Store.name"); // $col="name" 未定义时，直接取原值
+	class Coupon
+	{
+		use MapCol;
+	}
+	$tbl = Coupon::mapCol("Store"); // $tbl="MyStore"
+	$tbl = Coupon::mapCol("User"); // $tbl="User" 未定义时，直接取原值
+	$col = Coupon::mapCol("Store.dscr"); // $col="description"
+	$col = Coupon::mapCol("Store.name"); // $col="name" 未定义时，直接取原值
 
 	$sql = $plugin->mapSql("SELECT s.id, s.{Store.name}, s.{Store.dscr} FROM {Store} s INNER JOIN {Ordr} o ON o.id=s.{Store.storeId}");
 	// $sql = "SELECT s.id, s.name, s.description FROM MyStore s INNER JOIN MyOrder o ON o.id=s.storeId"
 
-@key PluginBase.mapCol($tbl, $col=null)
-@key PluginBase.mapSql($sql)
+@key MapCol.mapCol($tbl, $col=null)
+@key MapCol.mapSql($sql)
  */
-	public $colMap;
+	static $colMap;
 
-	function mapCol($tbl, $col=null)
+	static function mapCol($tbl, $col=null)
 	{
 		if (isset($col))
-			$ret = @$this->colMap[$tbl][1][$col] ?: $col;
+			$ret = @self::$colMap[$tbl][1][$col] ?: $col;
 		else
-			$ret = @$this->colMap[$tbl][0] ?: $tbl;
+			$ret = @self::$colMap[$tbl][0] ?: $tbl;
 		return $ret;
 	}
 
-	function mapSql($s)
+	static function mapSql($s)
 	{
 		$sql = preg_replace_callback('/\{(\w+)\.?(\w+)?\}/', function($ms) {
-			return $this->mapCol($ms[1], @$ms[2]);
+			return self::mapCol($ms[1], @$ms[2]);
 		}, $s);
 		return $sql;
 	}
@@ -700,38 +667,46 @@ class Plugins
 {
 /**
 @var Plugins::$map
+
+{ pluginName => %pluginCfg={js} }
 */
 	public static $map = [
-		'core' => ['class' => 'PluginCore']
 	];
 
 /**
-@fn Plugins::add($plugins)
+@fn Plugins::add($pluginName, $file?="{pluginName}/plugin.php")
 
-@param $plugins ={ pluginName => {js, php, getInterface} }
+添加模块或插件。$file为插件主文件，可返回一个插件配置.
 
+以下旧的格式也兼容，现已不建议使用：
+
+	Plugins::add($pluginNameArray)
+
+@see Plugins.$map
 */
-	public static function add(array $ps) {
-		global $BASE_DIR;
-		foreach ($ps as $pname) {
-			$pdir = $BASE_DIR . '/plugin/' . $pname;
-			if (! is_dir($pdir))
-				throw new MyException(E_SERVER, "cannot find plugin: $pname");
-
-			// load plugin
-			$f = "$pdir/plugin.php";
-			if (is_file($f)) {
-				$p = require_once($f);
-				if ($p === true)
-					continue;
-				if ($p === 1)
-					$p = [];
+	public static function add($pname, $file=null) {
+		if (is_array($pname)) {
+			foreach ($pname as $e) {
+				self::add($e);
 			}
-			else {
-				$p = [];
-			}
-			self::$map[$pname] = $p;
+			return;
 		}
+		global $BASE_DIR;
+		if (!isset($file))
+			$file = "{$pname}/plugin.php";
+		$f = $BASE_DIR . '/plugin/' . $file;
+		if (is_file($f)) {
+			$p = require_once($f);
+			if ($p === true) { // 重复包含
+				throw new MyException(E_SERVER, "duplicated plugin `$pname': $file");
+			}
+			if ($p === 1)
+				$p = [];
+		}
+		else {
+			throw new MyException(E_SERVER, "cannot find plugin `$pname': $file");
+		}
+		self::$map[$pname] = $p;
 	}
 
 /**
@@ -739,50 +714,6 @@ class Plugins
 */
 	public static function exists($pname) {
 		return array_key_exists($pname, self::$map);
-	}
-
-/**
-@fn Plugins::getInstance($pluginName, $allowNull = false)
-
-获取插件类的实例，用于调用插件API。
-
-假设有插件coupon, 一般可定义插件接口类 PluginCoupon如:
-
-	class PluginCoupon extends PluginBase
-	{
-	}
-
-在插件内部，应直接调用 PluginCoupon::getInstance() 来获得插件实例。
-在插件外部才调用本函数。
-
-注意：应通过在plugin.php最后返回的插件配置中指定插件类：
-
-	[ 'class' => 'PluginCoupon' ]
-
-主应用作为特殊模块，名称为'core', 对应类为 PluginCore.
-*/
-	public static function getInstance($pname, $allowNull = false) {
-		static $list;
-		if (!isset($list[$pname]))
-		{
-			if (! self::exists($pname))
-				throw new MyException(E_SERVER, "cannot find plugin: $pname");
-			$clsName = @self::$map[$pname]['class'];
-			if (! isset($clsName)) {
-				if ($allowNull)
-					return null;
-				throw new MyException(E_SERVER, "plugin $pname has no instance");
-			}
-			$creator = "{$clsName}::getInstance";
-			if (! is_callable($creator))
-				throw new MyException(E_SERVER, "'$clsName' for plugin $pname MUST extend PluginBase");
-
-			$inst = call_user_func($creator);
-			if (! $inst instanceof PluginBase)
-				throw new MyException(E_SERVER, "'$clsName' for plugin $pname MUST extend PluginBase");
-			$list[$pname] = $inst;
-		}
-		return $list[$pname];
 	}
 }
 //}}}
@@ -927,17 +858,14 @@ function apiMain()
 	};
 
 	global $BASE_DIR;
+	// optional plugins
+	$plugins = "$BASE_DIR/plugin/index.php";
+	if (file_exists($plugins))
+		include_once($plugins);
+
 	require_once("{$BASE_DIR}/conf.php");
 
-	// optional plugins
-	if (file_exists('plugin/index.php'))
-		include_once('plugin/index.php');
-	foreach (array_keys(Plugins::$map) as $plugin) {
-		// init plugins
-		Plugins::getInstance($plugin, true);
-	}
-
-	if (ApiFw_::$SOLO) {
+	if (ApiFw_::$SOLO && !@$GLOBALS["noExecApi"]) {
 		$api = new ApiApp();
 		$api->onBeforeExec[] = $supportJson;
 		$api->exec();

@@ -227,7 +227,11 @@ putenv("P_URL_PATH={$urlPath}");
 putenv("P_ADMIN_CRED={$adminCred}");
 EOL;
 
-	file_put_contents(CONF_FILE, $str);
+	$rv = file_put_contents(CONF_FILE, $str);
+	if ($rv === false) {
+		echo "*** 写配置文件失败! 请检查写权限。\n";
+		exit;
+	}
 
 	echo("=== 完成! 请使用upgrade命令行工具更新数据库。\n");
 }
