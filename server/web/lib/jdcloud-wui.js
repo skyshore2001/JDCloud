@@ -1204,7 +1204,7 @@ function rs2Hash(rs, key)
 		h: ["id", "name"], 
 		d: [ [100, "Tom"], [101, "Jane"], [102, "Tom"] ] 
 	};
-	var hash = rs2Hash(rs, "name");  
+	var hash = rs2MultiHash(rs, "name");  
 
 	// 结果为
 	hash = {
@@ -2339,13 +2339,12 @@ function getBaseUrl()
 }
 
 /**
-@fn MUI.makeUrl(action, params)
-@alias makeUrl
+@fn MUI.makeUrl(action, params?)
 
 生成对后端调用的url. 
 
 	var params = {id: 100};
-	var url = makeUrl("Ordr.set", params);
+	var url = MUI.makeUrl("Ordr.set", params);
 
 注意：函数返回的url是字符串包装对象，可能含有这些属性：{makeUrl=true, action?, params?}
 这样可通过url.action得到原始的参数。
@@ -2466,16 +2465,17 @@ function makeUrl(action, params)
 }
 
 /**
-@fn MUI.callSvr(ac, [param?], fn?, postParams?, userOptions?)
+@fn MUI.callSvr(ac, [params?], fn?, postParams?, userOptions?) -> deferredObject
 @alias callSvr
 
 @param ac String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)
-@param param Object. URL参数（或称HTTP GET参数）
+@param params Object. URL参数（或称HTTP GET参数）
 @param postParams Object. POST参数. 如果有该参数, 则自动使用HTTP POST请求(postParams作为POST内容), 否则使用HTTP GET请求.
 @param fn Function(data). 回调函数, data参考该接口的返回值定义。
 @param userOptions 用户自定义参数, 会合并到$.ajax调用的options参数中.可在回调函数中用"this.参数名"引用. 
 
 常用userOptions: 
+
 - 指定{async:0}来做同步请求, 一般直接用callSvrSync调用来替代.
 - 指定{noex:1}用于忽略错误处理。
 - 指定{noLoadingImg:1}用于忽略loading图标.
@@ -2500,16 +2500,21 @@ function makeUrl(action, params)
 
 当后端返回错误时, 回调`fn(false)`（参数data=false）. 可通过 MUI.lastError.ret 或 this.lastError 取到返回的原始数据。
 
-例：
+示例：
 
 	callSvr("logout");
 	callSvr("logout", api_logout);
-	callSvr("login", {wantAll:1}, api_login);
-	callSvr("info/hotline.php", {q: '大众'}, api_hotline);
+	function api_logout(data) {}
 
-	// 也兼容使用makeUrl的旧格式如:
-	callSvr(makeUrl("logout"), api_logout);
-	callSvr(makeUrl("logout", {a:1}), api_logout);
+	callSvr("login", {wantAll:1}, api_login);
+	function api_login(data) {}
+
+	callSvr("info/hotline.php", {q: '大众'}, api_hotline);
+	function api_hotline(data) {}
+
+	// 也可使用makeUrl生成的URL如:
+	callSvr(MUI.makeUrl("logout"), api_logout);
+	callSvr(MUI.makeUrl("logout", {a:1}), api_logout);
 
 	callSvr("User.get", function (data) {
 		if (data === false) { // 仅当设置noex且服务端返回错误时可返回false
@@ -2948,8 +2953,7 @@ function callSvrMock(opt, isSyncCall)
 }
 
 /**
-@fn MUI.callSvrSync(ac, params?, fn?, postParams?, userOptions?)
-@fn MUI.callSvrSync(ac, fn?, postParams?, userOptions?)
+@fn MUI.callSvrSync(ac, [params?], fn?, postParams?, userOptions?)
 @alias callSvrSync
 @return data 原型规定的返回数据
 
@@ -2997,7 +3001,7 @@ function callSvrSync(ac, params, fn, postParams, userOptions)
 
 然后就像调用callSvr函数一样调用setupCallSvrViaForm:
 
-	var url = makeUrl("upload", {genThumb: 1});
+	var url = MUI.makeUrl("upload", {genThumb: 1});
 	MUI.setupCallSvrViaForm($frm, $frm.find("iframe"), url, onUploadComplete);
 	function onUploadComplete(data) 
 	{
@@ -4182,9 +4186,10 @@ function showObjDlg(jdlg, mode, opt)
 	if (mode == FormMode.forFind && jd.mode != FormMode.forFind) {
 		jfrm.find(":input[name]").each (function (i,e) {
 			var je = $(e);
-			je.jdata().bak = {
+			var bak = je.jdata().bak = {
 				bgcolor: je.css("backgroundColor"),
-				disabled: je.prop("disabled")
+				disabled: je.prop("disabled"),
+				type: null
 			}
 			if (je.attr("notforFind")) {
 				je.prop("disabled", true);
@@ -4193,8 +4198,14 @@ function showObjDlg(jdlg, mode, opt)
 			else {
 				je.prop("disabled", false);
 				je.css("backgroundColor", "#ffff00"); // "yellow";
+				var type = je.attr("type");
+				if (type && ["number", "date", "time", "datetime"].indexOf(type) >= 0) {
+					bak.type = type;
+					je.attr("type", "text");
+				}
 			}
-		})
+		});
+		jfrm.find(".easyui-validatebox").validatebox("disableValidation");
 	}
 	else if (jd.mode == FormMode.forFind && mode != FormMode.forFind) {
 		jfrm.find(":input[name]").each (function (i,e) {
@@ -4202,7 +4213,11 @@ function showObjDlg(jdlg, mode, opt)
 			var bak = je.jdata().bak;
 			je.prop("disabled", bak.disabled);
 			je.css("backgroundColor", bak.bgcolor);
+			if (bak.type) {
+				je.attr("type", bak.type);
+			}
 		})
+		jfrm.find(".easyui-validatebox").validatebox("enableValidation");
 	}
 
 	jd.mode = mode;
@@ -4417,6 +4432,80 @@ function enhanceAnchor(jo)
 			return false;
 		}
 	});
+}
+
+/**
+@fn WUI.getExportHandler(jtbl, ac, param?={})
+
+为数据表添加导出Excel菜单，如：
+
+	jtbl.datagrid({
+		url: WUI.makeUrl("User.query"),
+		toolbar: WUI.dg_toolbar(jtbl, jdlg, {text:'导出', iconCls:'icon-save', handler: getExportHandler(jtbl, "User.query") }),
+		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
+	});
+
+默认是导出数据表中直接来自于服务端的字段，并应用表上的查询条件及排序。
+也可以通过设置param参数手工指定，如：
+
+	handler: getExportHandler(jtbl, "User.query", {res: "id 编号, name 姓名, createTm 注册时间", orderby: "createTm DESC"})
+
+注意：由于分页机制影响，会设置参数{pagesz: 9999}以便在一页中返回所有数据，而实际一页能导出的最大数据条数取决于后端设置（默认1000，参考后端文档 AccessControl::$maxPageSz）。
+
+@see WUI.getParamFromTable
+*/
+self.getExportHandler = getExportHandler;
+function getExportHandler(jtbl, ac, param)
+{
+	if (param == null)
+		param = {};
+
+	if (param.fmt === undefined)
+		param.fmt = "excel";
+	if (param.pagesz === undefined)
+		param.pagesz = 9999;
+
+	return function () {
+		var url = WUI.makeUrl(ac, getParamFromTable(jtbl, param));
+		window.open(url);
+	}
+}
+
+/**
+@fn WUI.getParamFromTable(jtbl, param?)
+
+根据数据表当前设置，获取查询参数。
+可能会设置{cond, orderby, res}参数。
+
+res参数从列设置中获取，如"id 编号,name 姓名", 特别地，如果列对应字段以"_"结尾，不会加入res参数。
+
+@see WUI.getExportHandler 导出Excel
+*/
+self.getParamFromTable = getParamFromTable;
+function getParamFromTable(jtbl, param)
+{
+	if (param == null)
+		param = {};
+
+	var opt = jtbl.datagrid("options");
+	$.extend(param, opt.queryParams);
+	if (param.orderby === undefined && opt.sortName) {
+		param.orderby = opt.sortName;
+		if (opt.sortOrder && opt.sortOrder.toLowerCase() != "asc")
+			param.orderby += " " + opt.sortOrder;
+	}
+	if (param.res === undefined) {
+		var res = '';
+		$.each(opt.columns[0], function (i, e) {
+			if (! e.field || e.field.substr(-1) == "_")
+				return;
+			if (res.length > 0)
+				res += ',';
+			res += e.field + " " + e.title;
+		});
+		param.res = res;
+	}
+	return param;
 }
 
 // ---- easyui setup {{{
