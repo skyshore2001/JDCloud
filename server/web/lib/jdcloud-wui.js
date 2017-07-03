@@ -866,7 +866,7 @@ function parseDate(str)
  */
 Date.prototype.add = function (sInterval, n)
 {
-    switch (sInterval) {
+	switch (sInterval) {
 	case 'd':
 		this.setDate(this.getDate()+n);
 		break;
@@ -874,7 +874,7 @@ Date.prototype.add = function (sInterval, n)
 		this.setMonth(this.getMonth()+n);
 		break;
 	case 'y':
-		this.setYear(this.getYear()+n);
+		this.setFullYear(this.getFullYear()+n);
 		break;
 	case 'h':
 		this.setHours(this.getHours()+n);

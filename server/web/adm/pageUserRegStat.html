@@ -1,0 +1,77 @@
+<div wui-script="pageUserRegStat.js" title="用户注册统计" style="padding-left:5px" my-initfn="initPageUserRegStat" data-ac="User.query">
+<style>
+.btnStat2.active{
+	background-color: #ffe48d;
+}
+table td {
+	padding: 5px 15px;
+}
+</style>
+
+<table style="margin:10px; border-bottom: 1px solid gray">
+	<tr>
+		<td>开始时间</td>
+		<td><input type="text" name="createTm" data-op=">=" class="txtTm1"/></td>
+		<td>结束时间</td>
+		<td><input type="text" name="createTm" data-op="<" class="txtTm2"/></td>
+		<td>快捷选项</td>
+		<td>
+			<select class="txtTmRange">
+				<option value ="近12小时">近12小时</option>
+				<option value ="近3天">近3天</option>
+				<option value ="近1周">近1周</option>
+				<option value ="近3月">近3月</option>
+				<option value ="近1年">近1年</option>
+				<option value ="前2周">前2周</option>
+				<option value ="前3月">前3月</option>
+				<option value ="前2年">前2年</option>
+			</select>
+		</td>
+	</tr>
+
+	<tr>
+		<td>性别</td>
+		<td>
+			<select name="sex">
+				<option value ="">全部</option>
+				<option value ="M">男</option>
+				<option value ="F">女</option>
+			</select>
+		</td>
+
+		<td>地域</td>
+		<td>
+			<select name="region">
+				<option value ="">全部</option>
+				<option value ="北京">北京市</option>
+				<option value ="上海">上海市</option>
+			</select>
+		</td>
+	</tr>
+
+	<tr>
+		<td>分类汇总</td>
+		<td>
+			<select name="g">
+				<option value ="">无</option>
+				<option value ="sex">性别</option>
+				<option value="region">地域</option>
+			</select>
+		</td>
+		<td>
+			<input type="button" value="生成" class="btnStat"/>
+		</td>
+	</tr>
+</table>
+
+<div>
+	<div class="divChart" style="width:700px; height:400px;"></div>
+	<div style="margin-left: 600px">
+		<input type="button" value="时" class="btnStat2"/>
+		<input type="button" value="天" class="btnStat2 active"/>
+		<input type="button" value="周" class="btnStat2"/>
+		<input type="button" value="月" class="btnStat2" />
+	</div>
+</div>
+
+</div>
