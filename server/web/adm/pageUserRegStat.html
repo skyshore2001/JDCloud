@@ -5,6 +5,7 @@
 }
 table td {
 	padding: 5px 15px;
+	min-width: 100px;
 }
 </style>
 
@@ -17,11 +18,11 @@ table td {
 		<td>快捷选项</td>
 		<td>
 			<select class="txtTmRange">
-				<option value ="近12小时">近12小时</option>
-				<option value ="近3天">近3天</option>
-				<option value ="近1周">近1周</option>
-				<option value ="近3月">近3月</option>
 				<option value ="近1年">近1年</option>
+				<option value ="近3月">近3月</option>
+				<option value ="近1周">近1周</option>
+				<option value ="近3天">近3天</option>
+				<option value ="近12小时">近12小时</option>
 				<option value ="前2周">前2周</option>
 				<option value ="前3月">前3月</option>
 				<option value ="前2年">前2年</option>
@@ -68,9 +69,9 @@ table td {
 	<div class="divChart" style="width:700px; height:400px;"></div>
 	<div style="margin-left: 600px">
 		<input type="button" value="时" class="btnStat2"/>
-		<input type="button" value="天" class="btnStat2 active"/>
+		<input type="button" value="天" class="btnStat2"/>
 		<input type="button" value="周" class="btnStat2"/>
-		<input type="button" value="月" class="btnStat2" />
+		<input type="button" value="月" class="btnStat2 active" />
 	</div>
 </div>
 
