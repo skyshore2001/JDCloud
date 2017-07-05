@@ -1,0 +1,72 @@
+<div wui-script="pageApiLogStat.js" title="接口日志统计" style="padding-left:5px" my-initfn="initPageApiLogStat" data-ac="ApiLog.query">
+<style>
+.btnStat2.active{
+	background-color: #ffe48d;
+}
+table td {
+	padding: 5px 15px;
+	min-width: 100px;
+}
+</style>
+
+<table style="margin:10px; border-bottom: 1px solid gray">
+	<tr>
+		<td>开始时间</td>
+		<td><input type="text" name="tm" data-op=">=" class="txtTm1"/></td>
+		<td>结束时间</td>
+		<td><input type="text" name="tm" data-op="<" class="txtTm2"/></td>
+		<td>快捷选项</td>
+		<td>
+			<select class="txtTmRange">
+				<option value ="近3月">近3月</option>
+				<option value ="近1年">近1年</option>
+				<option value ="近1周">近1周</option>
+			</select>
+		</td>
+	</tr>
+
+	<tr>
+		<td>应用程序</td>
+		<td>
+			<select name="app">
+				<option value ="">全部</option>
+				<option value ="user">用户端</option>
+				<option value ="emp">商户端</option>
+				<option value ="admin">超级管理端</option>
+			</select>
+		</td>
+
+		<td>接口名</td>
+		<td>
+			<select name="ac" class="my-combobox" data-options="ListOptions.Ac()">
+			</select>
+		</td>
+	</tr>
+
+	<tr>
+		<td>分类汇总</td>
+		<td>
+			<select name="g">
+				<option value ="">无</option>
+				<option value ="app">应用程序</option>
+				<option value="ac">接口名</option>
+				<option value="userId">用户编号</option>
+			</select>
+		</td>
+		<td>
+			<input type="button" value="生成" class="btnStat"/>
+		</td>
+	</tr>
+</table>
+
+<div>
+	<div class="divChart" style="width:1000px; height:600px;"></div>
+	<div style="margin-left: 600px">
+		<input type="button" value="时" class="btnStat2"/>
+		<input type="button" value="天" class="btnStat2"/>
+		<input type="button" value="周" class="btnStat2 active"/>
+		<input type="button" value="月" class="btnStat2" />
+	</div>
+</div>
+
+</div>

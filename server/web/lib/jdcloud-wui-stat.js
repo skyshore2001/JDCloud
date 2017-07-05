@@ -120,7 +120,7 @@ function nextTm(tmUnit, tmArr)
 @fn rs2Stat(rs, opt?) -> statData
 
 @param rs {@h, @d} RowSet数据。
-@param opt {formatter?=WUI.options.statFormatter[groupKey]}  可对汇总数据进行格式化。参考示例四。
+@param opt {formatter?=WUI.options.statFormatter[groupKey], maxSeriesCnt}  可对汇总数据进行格式化。参考示例四。
 
 将按日期统计返回的数据，生成统计图需要的统计数据。
 
@@ -137,6 +137,10 @@ function nextTm(tmUnit, tmArr)
 	sum为累计值字段的名字，暂定死为"sum".
 
 - rs.d中的数据已按时间排序。
+
+@param opt.maxSeriesCnt?=10
+
+指定此选项，则按sum倒排序，取前面的maxSeriesCnt项seriesName用于展示，剩余的项归并到“其它”中。
 
 @return statData { @xData, %yData={seriesName => @seriesData }  }
 
@@ -296,7 +300,9 @@ function rs2Stat(rs, opt)
 		return ret;
 	}
 
-	opt = $.extend({}, opt);
+	opt = $.extend({
+		maxSeriesCnt: 10
+	}, opt);
 	var tmCnt = 0; // 时间字段数，e.g. y,m,d => 3; y,w=>2
 	var tmUnits = ['y','m','d','h','w'];
 	$.each(rs.h, function (i, e) {
@@ -323,6 +329,38 @@ function rs2Stat(rs, opt)
 	if (opt.formatter == null && self.options.statFormatter) {
 		var groupField = groupIdx<0? 'sum': rs.h[groupIdx];
 		opt.formatter = self.options.statFormatter[groupField];
+	}
+
+	var doMergeOthers = false;
+	var othersName = "其它";
+	// 如果是分组统计，则按sum倒序排序，且只列出rs.d中最多的opt.maxSeriesCnt项，其它项归并到“其它”中。
+	if (groupIdx >= 0) {
+		var tmpData = {}; // {groupName => sum}
+		$.each(rs.d, function (i, e) {
+			var k = e[groupIdx];
+			var v = e[sumIdx];
+			if (tmpData[k] === undefined)
+				tmpData[k] = v;
+			else
+				tmpData[k] += v;
+		});
+		var keyArr = [];
+		for (var k in tmpData) {
+			keyArr.push(k);
+		}
+		// 由大到小排序，取前maxSeriesCnt项
+		keyArr.sort(function (a, b) {
+			return tmpData[b] - tmpData[a];
+		});
+		if (keyArr.length > opt.maxSeriesCnt) {
+			keyArr.length = opt.maxSeriesCnt;
+			keyArr.push(othersName);
+			doMergeOthers = true;
+		}
+		$.each (keyArr, function (i, e) {
+			e = num2str(e);
+			yData[e] = [];
+		});
 	}
 
 	var tmUnit = rs.h.slice(0, tmCnt).join('');
@@ -355,10 +393,15 @@ function rs2Stat(rs, opt)
 			if (val !== undefined)
 				groupKey = val;
 		}
+		if (groupIdx >= 0)
+			groupKey = num2str(groupKey);
 		var groupVal = e[sumIdx];
 		var y = yData[groupKey];
 		if (!y) {
-			y = yData[groupKey] = [];
+			if (! doMergeOthers)
+				y = yData[groupKey] = [];
+			else
+				y = yData[othersName];
 		}
 		y[xData.length-1] = parseFloat(groupVal);
 	});
@@ -374,6 +417,14 @@ function rs2Stat(rs, opt)
 	}
 
 	return ret;
+
+	// 修改纯数字属性, 避免影响字典内排序。
+	function num2str(k)
+	{
+		if (k == null || /\D/.test(k))
+			return k;
+		return k + '.';
+	}
 }
 
 /*

@@ -178,4 +178,11 @@ class AC2_Ordr extends AC0_Ordr
 }
 // }}}
 
+class AC0_ApiLog extends AccessControl
+{
+	function __construct() {
+		array_push($this->vcolDefs, getTmVcol());
+	}
+}
+
 // vi: foldmethod=marker

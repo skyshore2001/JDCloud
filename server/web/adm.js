@@ -29,6 +29,9 @@ var OrderColumns = {
 			return "background-color: " + color;
 	}
 };
+
+var ListOptions = {
+};
 //}}}
 
 // ====== functions {{{
