@@ -12,7 +12,6 @@ function initPageApiLogStat()
 	};
 
 	WUI.initPageStat(jpage, {
-		groupNameMap: {
-		}
+		maxSeriesCnt: 5
 	});
 }

@@ -428,7 +428,7 @@ function rs2Stat(rs, opt)
 }
 
 /*
-@fn runStat(jo, jchart, dtType, opt={onGetQueryParam?, groupNameMap?})
+@fn runStat(jo, jchart, dtType, opt?)
 
 根据页面中带name属性的各控制设置情况，生成统计请求的参数，发起统计请求，显示统计图表。
 
@@ -517,40 +517,33 @@ function runStat(jo, jchart, dtType, opt)
 	self.assert(param.ac, '*** no ac specified');
 
 	callSvr(param.ac, function(data){
-		var statData = rs2Stat(data);
-		initChart(jchart[0], statData);
+		var statData = rs2Stat(data, opt);
+		initChart(jchart[0], statData, opt.seriesOpt, opt.chartOpt);
 	}, param);
 }
 
 /*
 @fn initChart
  */
-function initChart(chartTable, statData)
+function initChart(chartTable, statData, seriesOpt, chartOpt)
 {
 	var myChart = echarts.init(chartTable);
 	var legendAry = [];
 	var seriesAry = [];
+
+	var seriesOpt1 = $.extend(true, {
+		type: 'line',
+	}, seriesOpt);
+
 	$.each (statData.yData, function (key, e) {
 		legendAry.push(key);
-		seriesAry.push({
-					name: key,
-					type:'line',
-					data: e,
-					markPoint: {
-						data: [
-							{type: 'max', name: '最大值'},
-							{type: 'min', name: '最小值'}
-						]
-					},
-					markLine: {
-						data: [
-							{type: 'average', name: '平均值'}
-						]
-					}
-				});
+		seriesAry.push($.extend({
+			name: key,
+			data: e,
+		}, seriesOpt1));
 	});
 
-	option = {
+	var chartOpt1 = $.extend(true, {
 		title: {
 			text: statData.xData.length==0? '暂无数据': '',
 			left: 60
@@ -583,13 +576,17 @@ function initChart(chartTable, statData)
 			}
 		},
 		series: seriesAry
-	};
+	}, chartOpt);
 
-	myChart.setOption(option);
+	myChart.setOption(chartOpt1);
 }
 
 /**
-@fn initPageStat(jpage, opt?={onGetQueryParam?, groupNameMap?, initTmRange?})
+@fn initPageStat(jpage, opt?)
+
+@param opt={onGetQueryParam?, groupNameMap?, initTmRange?, seriesOpt?, chartOpt?}
+
+@param opt.chartOpt,opt.seriesOpt 参考百度echarts全局参数以及series参数。http://echarts.baidu.com/echarts2/doc/doc.html
 
 通用统计页模式
 
