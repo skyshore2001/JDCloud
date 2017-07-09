@@ -425,7 +425,7 @@ function param($name, $defVal = null, $col = null, $doHtmlEscape = true)
 }
 
 /** 
-@fn mparam($name, $col = $_REQUEST)
+@fn mparam($name, $col = null)
 @brief mandatory param
 
 $name可以是一个数组，表示至少有一个参数有值，这时返回每个参数的值。
