@@ -935,7 +935,7 @@ function queryOne($sql, $assoc = false)
 
 @see objarr2table
  */
-function queryAll($sql, $assoc)
+function queryAll($sql, $assoc = false)
 {
 	global $DBH;
 	if (! isset($DBH))
