@@ -21,6 +21,12 @@ if (self.options == null)
 self.options.statFormatter = {
 	sum: function (value, arr, i) {
 		return '累计';
+	},
+	wd: function (value, arr, i) {
+		return '周' + value;
+	},
+	h: function (value, arr, i) {
+		return value + "时";
 	}
 };
 
@@ -126,14 +132,16 @@ function nextTm(tmUnit, tmArr)
 
 对输入数据rs的要求：
 
-- rs.h为表头，格式为 [ 时间字段, sum ] 或 [ 时间字段, 汇总字段, 汇总字段显示值?, sum, ... ]
+- rs.h为表头，格式为 [ 时间字段?, 汇总字段?, 汇总显示字段?, sum, ... ]
 
 	时间字段可以是以下一到多个："y"(年),"m"(月),"d"(日),"h"(小时),"w"(周), 目前支持以下时间序列字段：
 
+	 - y,m - 年月
 	 - y,m,d - 年月日
 	 - y,m,d,h - 年月日时
 	 - y,w - 年周
 
+	汇总字段0到1个，汇总显示字段0到1个。当有时间字段时，汇总字段以“系列”方式显示，否则显示在x轴上。
 	sum为累计值字段的名字，暂定死为"sum".
 
 - rs.d中的数据已按时间排序。
@@ -266,6 +274,31 @@ function nextTm(tmUnit, tmArr)
 		return arr[i+1];
 	}
 
+示例五：无时间字段，使用汇总字段显示为x轴数据：
+
+	var rs = {
+		h: ["wd", "sum"], // 查看星期几的注册人数
+		d: [
+			[1, 201],
+			[2, 180],
+			[3, 206],
+			[4, 322],
+			[5, 208],
+			[6, 435],
+			[0, 478],
+		]
+	}
+	var statData = rs2Stat(rs);
+
+	// 结果：
+	statData = {
+		xData: [
+			'1', '2', '3', '4', '5', '6', '0'
+		],
+		yData: {
+			'sum': [201, 180, 206, 322, 208, 435, 478], // 分别对应xData中每个值
+		}
+	}
 
 与echart结合使用示例可参考 initChart. 原理如下：
 
@@ -304,19 +337,25 @@ function rs2Stat(rs, opt)
 		maxSeriesCnt: 10
 	}, opt);
 	var tmCnt = 0; // 时间字段数，e.g. y,m,d => 3; y,w=>2
-	var tmUnits = ['y','m','d','h','w'];
-	$.each(rs.h, function (i, e) {
-		if (tmUnits.indexOf(e) == -1)
-			return false;
-		++ tmCnt;
-	});
+	var tmUnit = '';
+	if (rs.h[0] == 'y') {
+		var tmUnits = ['ym', 'ymd', 'ymdh', 'yw'];
+		for (var cnt = rs.h.length -1; cnt >=2; -- cnt) {
+			tmUnit = rs.h.slice(0, cnt).join('');
+			if (tmUnits.indexOf(tmUnit) >= 0)
+				break;
+		}
+		tmCnt = tmUnit.length;
+	}
 
 	var sumIdx = tmCnt;
 	var groupIdx = -1;
+	// 有汇总字段, groupIdx有值
 	if (rs.h[sumIdx] != 'sum') {
 		groupIdx = sumIdx;
 		++ sumIdx;
 	}
+	// 有汇总显示字段
 	if (rs.h[sumIdx] != 'sum') {
 		opt.formatter = function (value, arr, i) {
 			return arr[i+1];
@@ -329,6 +368,22 @@ function rs2Stat(rs, opt)
 	if (opt.formatter == null && self.options.statFormatter) {
 		var groupField = groupIdx<0? 'sum': rs.h[groupIdx];
 		opt.formatter = self.options.statFormatter[groupField];
+	}
+
+	if (tmCnt == 0) {
+		var yArr = yData['累计'] = [];
+		$.each(rs.d, function (i, e) {
+			var y = parseFloat(e[sumIdx]);
+			var x = e[0];
+			if (opt.formatter) {
+				var val = opt.formatter(e[0], e, 0);
+				if (val !== undefined)
+					x = val;
+			}
+			xData.push(x);
+			yArr.push(y);
+		});
+		return ret;
 	}
 
 	var doMergeOthers = false;
@@ -363,10 +418,10 @@ function rs2Stat(rs, opt)
 		});
 	}
 
-	var tmUnit = rs.h.slice(0, tmCnt).join('');
 	var lastX = null;
 	var lastTmArr = null;
 	$.each (rs.d, function (i, e) {
+		// 自动补全日期
 		var tmArr = e.slice(0, tmCnt);
 		if (tmArr[0] == null)
 			return;
@@ -488,22 +543,25 @@ function runStat(jo, jchart, dtType, opt)
 		param.gres = "y,m,d,h";
 		param.orderby = 'y,m,d,h';
 	}
-	if (dtType == 'd') {
+	else if (dtType == 'd') {
 		param.gres = "y,m,d";
 		param.orderby = 'y,m,d';
 	}
-	if (dtType == 'w') {
+	else if (dtType == 'w') {
 		param.gres = "y,w";
 		param.orderby = 'y,w';
 	}
-	if (dtType == 'm') {
+	else if (dtType == 'm') {
 		param.gres = "y,m";
 		param.orderby = 'y,m';
 	}
 	param.cond = WUI.getQueryCond(cond);
 	if (groupKey) {
 		param.g = groupKey;
-		param.gres += ',' + groupKey;
+		if (param.gres)
+			param.gres += ',' + groupKey;
+		else
+			param.gres = groupKey;
 
 		var groupName = opt && opt.groupNameMap && opt.groupNameMap[groupKey];
 		if (groupName) {
@@ -678,34 +736,31 @@ function initPageStat(jpage, opt)
 	}
 	function btnStat_Click()
 	{
-		jpage.find(".btnStat2.active").click();
-	}
-
-	function btnStat2_Click()
-	{
-		jpage.find(".btnStat2").removeClass("active");
-		var type = this.value;
-		var dtType;
-
-		if(type == '时'){
-			$(".btnStat2[value='时']").addClass("active");
+		var type = jpage.find(".btnStat2.active:visible").val();
+		var dtType = null;
+		if (type == '时'){
 			dtType = 'h';
 		}
-		else if(type == '月'){
-			$(".btnStat2[value='月']").addClass("active");
+		else if (type == '月'){
 			dtType = 'm';
 		}
-		else if(type == '周'){
-			$(".btnStat2[value='周']").addClass("active");
+		else if (type == '周'){
 			dtType = 'w';
 		}
-		else {
-			$(".btnStat2[value='天']").addClass("active");
+		else if (type == '天') {
 			dtType = 'd';
 		}
 
 		var jchart = jpage.find(".divChart");
 		runStat(jpage, jchart, dtType, opt);
+	}
+
+	function btnStat2_Click()
+	{
+		var type = this.value;
+		jpage.find(".btnStat2").removeClass("active");
+		jpage.find(".btnStat2[value='" + type + "']").addClass("active");
+		btnStat_Click();
 	}
 }
 
