@@ -545,7 +545,7 @@ function runStat(jo, jchart, opt)
 
 	var param = {
 		res: "count(*) sum",
-		_pagesz: -1
+		pagesz: -1
 	};
 	if (opt.tmUnit) {
 		param.orderby = param.gres = opt.tmUnit;
@@ -571,7 +571,15 @@ function runStat(jo, jchart, opt)
 
 	callSvr(param.ac, function(data){
 		var statData = rs2Stat(data, opt);
-		initChart(jchart[0], statData, opt.seriesOpt, opt.chartOpt);
+
+		var seriesOpt = opt.seriesOpt, chartOpt = opt.chartOpt;
+		if ($.isFunction(seriesOpt)) {
+			seriesOpt = seriesOpt(param, statData);
+		}
+		if ($.isFunction(chartOpt)) {
+			chartOpt = chartOpt(param, statData);
+		}
+		initChart(jchart[0], statData, seriesOpt, chartOpt);
 	}, param);
 }
 
@@ -629,6 +637,7 @@ function initChart(chartTable, statData, seriesOpt, chartOpt)
 	}, chartOpt);
 
 	myChart.setOption(chartOpt1);
+	chartTable.echart = myChart;
 }
 
 /**
@@ -637,11 +646,12 @@ function initChart(chartTable, statData, seriesOpt, chartOpt)
 @param opt={onGetQueryParam?, groupNameMap?, initTmRange?, seriesOpt?, chartOpt?}
 
 @param opt.chartOpt,opt.seriesOpt 参考百度echarts全局参数以及series参数。http://echarts.baidu.com/echarts2/doc/doc.html
+这两个参数也可以是回调函数: chartOpt(param, statData); 函数返回值做为选项。seriesOpt类似。
 
 通用统计页模式
 
 - 日期段为 .txtTm1, .txtTm2
-- 图表为 .divChart
+- 图表为 .divChart (可以用 jpage.find(".divChart")[0].echart 来取 echart对象)
 - 按钮 .btnStat, .btnStat2 用于生成图线，其中btnStat2用于“按时间分析”，即横轴以天或周等时间类型组织数据。
  如果没有具有".btnStat2.active"类的对象（或该对象未显示），则数据不会按时间分析。
 

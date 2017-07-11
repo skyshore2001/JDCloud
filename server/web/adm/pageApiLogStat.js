@@ -12,6 +12,22 @@ function initPageApiLogStat()
 	};
 
 	WUI.initPageStat(jpage, {
-		maxSeriesCnt: 5
+		maxSeriesCnt: 5,
+		onGetQueryParam: function (jo, param) {
+			if (param.orderby == null) {
+				param.orderby = "sum DESC";
+				param.pagesz = 10;
+			}
+		},
+		chartOpt: function (param, statData) {
+			var opt = {};
+			// x轴数据不多时全部显示
+			if (statData.xData.length <= 20) {
+				opt.xAxis = {
+					axisLabel: { interval: 0, rotate: 30 }
+				}
+			}
+			return opt;
+		}
 	});
 }
