@@ -158,7 +158,7 @@ function nextTm(tmUnit, tmArr)
 
 指定此选项，则按sum倒排序，取前面的maxSeriesCnt项seriesName用于展示，剩余的项归并到“其它”中。
 
-@return statData { @xData, %yData={seriesName => @seriesData }  }
+@return statData { @xData, @yData=[{name=seriesName, data=@seriesData}]  }
 
 生成数据时要求：
 
@@ -191,9 +191,9 @@ function nextTm(tmUnit, tmArr)
 		xData: [
 			'2016-6-29', '2016-6-30', '2016-7-1', '2016-7-2' // 2016-6-30为自动补上的日期
 		],
-		yData: {
-			'sum': [13, 0, 2, 9], // 分别对应xData中每个日期，其中'2016-6-30'没有数据自动补0
-		}
+		yData: [
+			{name: 'sum', data: [13, 0, 2, 9]} // 分别对应xData中每个日期，其中'2016-6-30'没有数据自动补0
+		]
 	}
 
 示例二： 有汇总字段
@@ -215,10 +215,10 @@ function nextTm(tmUnit, tmArr)
 		xData: [
 			'2016-6-29', '2016-6-30', '2016-7-1', '2016-7-2' // 2016-6-30为自动补上的日期
 		],
-		yData: {
-			'男': [10, 0, 2, 8], // 分别对应xData中每个日期，其中'2016-6-30'没有数据自动补0
-			'女': [3, 0, 0, 1] // '2016-6-30'与'2016-7-1'没有数据自动补0.
-		}
+		yData: [
+			{name: '男', data: [10, 0, 2, 8]}, // 分别对应xData中每个日期，其中'2016-6-30'没有数据自动补0
+			{name: '女', data: [3, 0, 0, 1]} // '2016-6-30'与'2016-7-1'没有数据自动补0.
+		]
 	}
 
 默认yData中的系列名(seriesName)直接使用汇总字段，但如果汇总字段后还有一列，则以该列作为显示名称。
@@ -304,9 +304,9 @@ function nextTm(tmUnit, tmArr)
 		xData: [
 			'1', '2', '3', '4', '5', '6', '0'
 		],
-		yData: {
-			'sum': [201, 180, 206, 322, 208, 435, 478], // 分别对应xData中每个值
-		}
+		yData: [
+			{name: 'sum', data: [201, 180, 206, 322, 208, 435, 478]} // 分别对应xData中每个值
+		]
 	}
 
 与echart结合使用示例可参考 initChart. 原理如下：
@@ -314,7 +314,7 @@ function nextTm(tmUnit, tmArr)
 	var option = {
 		...
 		legend: {
-			data: keys(statData.yData)
+			data: getSeriesNames(statData.yData) // 取yData中每项的name
 		},
 		xAxis:  {
 			type: 'category',
@@ -327,7 +327,7 @@ function nextTm(tmUnit, tmArr)
 				formatter: '{value}'
 			}
 		},
-		series: createSeries(statData.yData) // 再次转换下格式
+		series: statData.yData
 	};
 	myChart.setOption(option);
 
@@ -335,7 +335,7 @@ function nextTm(tmUnit, tmArr)
 self.rs2Stat = rs2Stat;
 function rs2Stat(rs, opt)
 {
-	var xData = [], yData = {};
+	var xData = [], yData = [];
 	var ret = {xData: xData, yData: yData};
 
 	if (rs.d.length == 0) {
@@ -374,19 +374,20 @@ function rs2Stat(rs, opt)
 	}
 
 	if (tmCnt == 0) {
-		var yArr = yData['累计'] = [];
+		var yArr = [];
+		yData.push({name: '累计', data: yArr});
 		$.each(rs.d, function (i, e) {
-			var y = parseFloat(e[sumIdx]);
 			var x0 = e[0];
 			var x = getGroupName(e[0], e, 0);
+			var y = parseFloat(e[sumIdx]);
 			xData.push(x);
 			yArr.push(y);
 		});
 		return ret;
 	}
 
-	var doMergeOthers = false;
 	var othersName = "其它";
+	var othersIdx = -1; // <0表示不归并数据到系列"其它"
 	// 如果是分组统计，则按sum倒序排序，且只列出rs.d中最多的opt.maxSeriesCnt项，其它项归并到“其它”中。
 	if (groupIdx >= 0) {
 		var tmpData = {}; // {groupName => sum}
@@ -398,23 +399,24 @@ function rs2Stat(rs, opt)
 			else
 				tmpData[k] += v;
 		});
-		var keyArr = [];
 		for (var k in tmpData) {
-			keyArr.push(k);
+			yData.push({
+				name: k, 
+				data: []
+			});
 		}
 		// 由大到小排序，取前maxSeriesCnt项
-		keyArr.sort(function (a, b) {
-			return tmpData[b] - tmpData[a];
+		yData.sort(function (a, b) {
+			return tmpData[b.name] - tmpData[a.name];
 		});
-		if (keyArr.length > opt.maxSeriesCnt) {
-			keyArr.length = opt.maxSeriesCnt;
-			keyArr.push(othersName);
-			doMergeOthers = true;
+		if (yData.length > opt.maxSeriesCnt) {
+			yData.length = opt.maxSeriesCnt;
+			yData.push({
+				name: othersName,
+				data: []
+			});
+			othersIdx = yData.length-1;
 		}
-		$.each (keyArr, function (i, e) {
-			e = num2str(e);
-			yData[e] = [];
-		});
 	}
 
 	var lastX = null;
@@ -443,26 +445,30 @@ function rs2Stat(rs, opt)
 		}
 		var groupKey = groupIdx<0? 'sum': e[groupIdx];
 		var groupName = getGroupName(groupKey, e, groupIdx);
-		var groupVal = e[sumIdx];
-		var y = yData[groupName];
-		if (!y) {
-			if (! doMergeOthers)
-				y = yData[groupName] = [];
-			else
-				y = yData[othersName];
-		}
-		y[xData.length-1] = parseFloat(groupVal);
-	});
+		var groupVal = parseFloat(e[sumIdx]);
 
-	// 遍历数据，将undefined 改为 0
-	var n = xData.length;
-	for (var k in yData) {
-		var y= yData[k];
-		for (var i=0; i<n; ++i) {
-			if (y[i] === undefined)
-				y[i] = 0;
+		var rv = $.grep(yData, function (a, i) { return a.name == groupName; });
+		var y;
+		if (rv.length > 0) { // 系列已存在
+			y = rv[0].data;
 		}
-	}
+		else if (othersIdx < 0) { // 增加新系列
+			y = [];
+			yData.push({
+				name: groupName,
+				data: y
+			});
+		}
+		else { // 使用"其它"系列
+			y = yData[othersIdx].data;
+		}
+		var padCnt = xData.length-y.length-1;
+		while (padCnt -- > 0) {
+			// 按时间分析时，补上的日期处填0 (use '-'?)
+			y.push(0);
+		}
+		y.push(groupVal);
+	});
 
 	return ret;
 
@@ -582,12 +588,9 @@ function initChart(chartTable, statData, seriesOpt, chartOpt)
 		type: 'line',
 	}, seriesOpt);
 
-	$.each (statData.yData, function (key, e) {
-		legendAry.push(key);
-		seriesAry.push($.extend({
-			name: key,
-			data: e,
-		}, seriesOpt1));
+	$.each (statData.yData, function (i, e) {
+		legendAry.push(e.name);
+		seriesAry.push($.extend(e, seriesOpt1));
 	});
 
 	var chartOpt1 = $.extend(true, {
