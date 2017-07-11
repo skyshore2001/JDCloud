@@ -30,32 +30,44 @@ self.options.statFormatter = {
 	}
 };
 
+/**
+@key JdcloudStat.tmUnit 按时间维度分析
+
+tmUnit指定时间维度分析的类型，目前支持以下维度：
+
+	"y,m"     年月
+	"y,m,d"   年月日
+	"y,m,d,h" 年月日时
+	"y,w"     年周
+
+ */
+
 /*
 @fn makeTm(tmUnit, tmArr) -> tmStr
 
 示例：
 
 	var tmArr = [2016, 6, 1];
-	var tmStr = makeTm('ymd', tmArr); // '2016-6-1'
+	var tmStr = makeTm('y,m,d', tmArr); // '2016-6-1'
 
 	var tmArr = [2016, 6, 1, 11];
-	var tmStr = makeTm('ymdh', tmArr); // '6-1 11:00'
+	var tmStr = makeTm('y,m,d,h', tmArr); // '6-1 11:00'
 
 	// 年/周，换算时，用 当年第一个周日 + 7 * 周数
 	var tmArr = [2016, 23];
-	var tmStr = makeTm('yw', tmArr); // '2016-6-12'
+	var tmStr = makeTm('y,w', tmArr); // '2016-6-12'
 
  */
 function makeTm(tmUnit, tmArr)
 {
 	var ret;
-	if (tmUnit == 'ymd' || tmUnit == 'ym') {
+	if (tmUnit == 'y,m,d' || tmUnit == 'y,m') {
 		ret = tmArr.join('-');
 	}
-	else if (tmUnit == 'ymdh') {
+	else if (tmUnit == 'y,m,d,h') {
 		ret = tmArr[1] + "-" + tmArr[2] + " " + tmArr[3] + ":00";
 	}
-	else if (tmUnit == 'yw') {
+	else if (tmUnit == 'y,w') {
 		// 当年第一个周日 + 7 * 周数
 		var dt = new Date(tmArr[0], 0, 1);
 		while (dt.getDay() != 0) {
@@ -73,46 +85,46 @@ function makeTm(tmUnit, tmArr)
 /*
 @fn nextTm(tmUnit, tmArr) -> nextTmArr
 
-@param tmUnit Enum('ymd'|'ymdh'|'yw')
+@param tmUnit Enum('y,m,d'|'y,m,d,h'|'y,w')
 @param tmArr  与tmUnit对应的时间数组。
 
 示例：
 
 	// 年月日
 	var tmArr = [2016, 6, 1];
-	var tmArr2 = nextTm('ymd', tmArr);
+	var tmArr2 = nextTm('y,m,d', tmArr);
 	// tmArr2 = [2016, 6, 2];
 
 	var tmArr = [2016, 6, 30];
-	var tmArr2 = nextTm('ymd', tmArr);
+	var tmArr2 = nextTm('y,m,d', tmArr);
 	// tmArr2 = [2016, 7, 1];
 
 	// 年月日时
 	var tmArr = [2016, 6, 30, 23];
-	var tmArr2 = nextTm('ymdh', tmArr);
+	var tmArr2 = nextTm('y,m,d,h', tmArr);
 	// tmArr2 = [2016, 7, 1, 0];
 
 	// 年周
 	var tmArr = [2016, 10];
-	var tmArr2 = nextTm('yw', tmArr);
+	var tmArr2 = nextTm('y,w', tmArr);
 	// tmArr2 = [2016, 11];
 */
 function nextTm(tmUnit, tmArr)
 {
 	var tmArr2;
-	if (tmUnit == 'ymd') {
+	if (tmUnit == 'y,m,d') {
 		var dt = new Date(tmArr[0], tmArr[1]-1, tmArr[2] +1);
 		tmArr2 = [ dt.getFullYear(), dt.getMonth()+1, dt.getDate() ];
 	}
-	else if (tmUnit == 'ymdh') {
+	else if (tmUnit == 'y,m,d,h') {
 		var dt = new Date(tmArr[0], tmArr[1]-1, tmArr[2], tmArr[3] +1);
 		tmArr2 = [ dt.getFullYear(), dt.getMonth()+1, dt.getDate(), dt.getHours() ];
 	}
-	else if (tmUnit == 'yw') {
+	else if (tmUnit == 'y,w') {
 		// NOTE: 在makeTm中有换算，会自动计年，这时不做处理。
 		tmArr2 = [ tmArr[0], tmArr[1]+1 ];
 	}
-	else if (tmUnit == 'ym') {
+	else if (tmUnit == 'y,m') {
 		var dt = new Date(tmArr[0], tmArr[1]-1+1);
 		tmArr2 = [ dt.getFullYear(), dt.getMonth()+1 ];
 	}
@@ -126,7 +138,8 @@ function nextTm(tmUnit, tmArr)
 @fn rs2Stat(rs, opt?) -> statData
 
 @param rs {@h, @d} RowSet数据。
-@param opt {formatter?=WUI.options.statFormatter[groupKey], maxSeriesCnt}  可对汇总数据进行格式化。参考示例四。
+@param opt {formatter?=WUI.options.statFormatter[groupKey], maxSeriesCnt, tmUnit}  可对汇总数据进行格式化。参考示例四。
+@param opt.tmUnit 如果非空，表示按指定时间维度分析。参考[JdcloudStat.tmUnit]().
 
 将按日期统计返回的数据，生成统计图需要的统计数据。
 
@@ -134,12 +147,7 @@ function nextTm(tmUnit, tmArr)
 
 - rs.h为表头，格式为 [ 时间字段?, 汇总字段?, 汇总显示字段?, sum, ... ]
 
-	时间字段可以是以下一到多个："y"(年),"m"(月),"d"(日),"h"(小时),"w"(周), 目前支持以下时间序列字段：
-
-	 - y,m - 年月
-	 - y,m,d - 年月日
-	 - y,m,d,h - 年月日时
-	 - y,w - 年周
+	如果指定opt.tmUnit，则rs.h前面几个为与opt.tmUnit指定相符的时间字段，一般是以下字段组合："y"(年),"m"(月),"d"(日),"h"(小时),"w"(周)。
 
 	汇总字段0到1个，汇总显示字段0到1个。当有时间字段时，汇总字段以“系列”方式显示，否则显示在x轴上。
 	sum为累计值字段的名字，暂定死为"sum".
@@ -169,14 +177,14 @@ function nextTm(tmUnit, tmArr)
 示例一：
 
 	var rs = {
-		h: ["y", "m", "d", "sum"], // 时间序列为 y,m,d; sum为统计值
+		h: ["y", "m", "d", "sum"], // 时间维度为 y,m,d; sum为统计值
 		d: [
 			[2016, 6, 29, 13],
 			[2016, 7, 1, 2],
 			[2016, 7, 2, 9],
 		]
 	}
-	var statData = rs2Stat(rs);
+	var statData = rs2Stat(rs, {tmUnit: "y,m,d"});
 
 	// 结果：
 	statData = {
@@ -191,7 +199,7 @@ function nextTm(tmUnit, tmArr)
 示例二： 有汇总字段
 
 	var rs = {
-		h: ["y", "m", "d", "sex", "sum"], // 时间序列为 y,m,d; sex为汇总字段, sum为累计值
+		h: ["y", "m", "d", "sex", "sum"], // 时间维度为 y,m,d; sex为汇总字段, sum为累计值
 		d: [
 			[2016, 6, 29, '男', 10],
 			[2016, 6, 29, '女', 3],
@@ -200,7 +208,7 @@ function nextTm(tmUnit, tmArr)
 			[2016, 7, 2, '女', 1],
 		]
 	}
-	var statData = rs2Stat(rs);
+	var statData = rs2Stat(rs, {tmUnit: "y,m,d"});
 
 	// 结果：
 	statData = {
@@ -217,7 +225,7 @@ function nextTm(tmUnit, tmArr)
 示例三： 汇总字段"sex"后面还有一列"sexName", 因而使用sexName作为图表系列名用于显示. 而"sex"以"M","F"分别表示男女，仅做内部使用：
 
 	var rs = {
-		h: ["y", "m", "d", "sex", "sexName", "sum"], // 时间序列为 y,m,d; sex为汇总字段, sexName为汇总显示字段, sum为累计值
+		h: ["y", "m", "d", "sex", "sexName", "sum"], // 时间维度为 y,m,d; sex为汇总字段, sexName为汇总显示字段, sum为累计值
 		d: [
 			[2016, 6, 29, 'M', '男', 10],
 			[2016, 6, 29, 'F', '女', 3],
@@ -226,13 +234,13 @@ function nextTm(tmUnit, tmArr)
 			[2016, 7, 2, 'F', '女', 1],
 		]
 	}
-	var statData = rs2Stat(rs);
+	var statData = rs2Stat(rs, {tmUnit: "y,m,d"});
 	// 结果：与示例二相同。
 
 示例四： 汇总字段支持格式化，假设性别字段以'M','F'分别表示'男', '女':
 
 	var rs = {
-		h: ["y", "m", "d", "sex", "sum"], // 时间序列为 y,m,d; sex为汇总字段, sum为累计值
+		h: ["y", "m", "d", "sex", "sum"], // 时间维度为 y,m,d; sex为汇总字段, sum为累计值
 		d: [
 			[2016, 6, 29, 'M', 10],
 			[2016, 6, 29, 'F', 3],
@@ -242,6 +250,7 @@ function nextTm(tmUnit, tmArr)
 		]
 	}
 	var opt = {
+		tmUnit: "y,m,d",
 		// arr为当前行数组, i为统计字段在数组中的index, 即 arr[i] = value.
 		formatter: function (value, arr, i) {
 			return value=='M'?'男':'女';
@@ -257,7 +266,7 @@ function nextTm(tmUnit, tmArr)
 			return value=='M'?'男':'女';
 		}
 	}
-	var statData = rs2Stat(rs);
+	var statData = rs2Stat(rs, {tmUnit: "y,m,d"});
 
 在无汇总时，默认汇总显示为"sum"，也可以通过formatter修改，例如
 
@@ -277,7 +286,7 @@ function nextTm(tmUnit, tmArr)
 示例五：无时间字段，使用汇总字段显示为x轴数据：
 
 	var rs = {
-		h: ["wd", "sum"], // 查看星期几的注册人数
+		h: ["wd", "sum"], // 查看每周几的注册人数
 		d: [
 			[1, 201],
 			[2, 180],
@@ -337,15 +346,10 @@ function rs2Stat(rs, opt)
 		maxSeriesCnt: 10
 	}, opt);
 	var tmCnt = 0; // 时间字段数，e.g. y,m,d => 3; y,w=>2
-	var tmUnit = '';
-	if (rs.h[0] == 'y') {
-		var tmUnits = ['ym', 'ymd', 'ymdh', 'yw'];
-		for (var cnt = rs.h.length -1; cnt >=2; -- cnt) {
-			tmUnit = rs.h.slice(0, cnt).join('');
-			if (tmUnits.indexOf(tmUnit) >= 0)
-				break;
-		}
-		tmCnt = tmUnit.length;
+	var tmUnit = opt.tmUnit;
+	if (tmUnit) {
+		tmCnt = tmUnit.split(',').length;
+		self.assert(tmUnit == rs.h.slice(0, tmCnt).join(','), "*** time fields does not match. expect " + tmUnit);
 	}
 
 	var sumIdx = tmCnt;
@@ -362,8 +366,7 @@ function rs2Stat(rs, opt)
 		};
 		++ sumIdx;
 	}
-	if (rs.h[sumIdx] != 'sum')
-		throw "*** cannot find sum column";
+	self.assert(rs.h[sumIdx] == 'sum', "*** cannot find sum column");
 
 	if (opt.formatter == null && self.options.statFormatter) {
 		var groupField = groupIdx<0? 'sum': rs.h[groupIdx];
@@ -482,12 +485,12 @@ function rs2Stat(rs, opt)
 }
 
 /*
-@fn runStat(jo, jchart, dtType, opt?)
+@fn runStat(jo, jchart, opt?)
 
 根据页面中带name属性的各控制设置情况，生成统计请求的参数，发起统计请求，显示统计图表。
 
-@param dtType Enum. 按指定时间类型组织横轴数据，d-日，h-时，w-周，m-月，null-禁用“按时间分析”，即不补全时间。
 @param opt 参考initPageStat中的opt参数。
+@param opt.tmUnit Enum. 如果非空，则按时间维度分析，即按指定时间类型组织横轴数据，会补全时间。参考[JdcloudStat.tmUnit]()
 
 注意：
 
@@ -505,7 +508,7 @@ function rs2Stat(rs, opt)
 	{cond: "tm>='2016-6-20' and actId=3", g: "dramaId", ...}
 
 */
-function runStat(jo, jchart, dtType, opt)
+function runStat(jo, jchart, opt)
 {
 	var cond = [];
 	var groupKey = null;
@@ -538,21 +541,8 @@ function runStat(jo, jchart, dtType, opt)
 		res: "count(*) sum",
 		_pagesz: -1
 	};
-	if (dtType == 'h') {
-		param.gres = "y,m,d,h";
-		param.orderby = 'y,m,d,h';
-	}
-	else if (dtType == 'd') {
-		param.gres = "y,m,d";
-		param.orderby = 'y,m,d';
-	}
-	else if (dtType == 'w') {
-		param.gres = "y,w";
-		param.orderby = 'y,w';
-	}
-	else if (dtType == 'm') {
-		param.gres = "y,m";
-		param.orderby = 'y,m';
+	if (opt.tmUnit) {
+		param.orderby = param.gres = opt.tmUnit;
 	}
 	param.cond = WUI.getQueryCond(cond);
 	if (groupKey) {
@@ -737,22 +727,20 @@ function initPageStat(jpage, opt)
 	function btnStat_Click()
 	{
 		var type = jpage.find(".btnStat2.active:visible").val();
-		var dtType = null;
-		if (type == '时'){
-			dtType = 'h';
-		}
-		else if (type == '月'){
-			dtType = 'm';
-		}
-		else if (type == '周'){
-			dtType = 'w';
-		}
-		else if (type == '天') {
-			dtType = 'd';
+		var opt1 = $.extend({}, opt);
+		if (type) {
+			var tmUnitMapping = {
+				"时": "y,m,d,h",
+				"天": "y,m,d",
+				"周": "y,w",
+				"月": "y,m"
+			};
+			opt1.tmUnit = tmUnitMapping[type];
+			self.assert(!opt.tmUnit, "*** unknown time dimension `" + type + "'");
 		}
 
 		var jchart = jpage.find(".divChart");
-		runStat(jpage, jchart, dtType, opt);
+		runStat(jpage, jchart, opt1);
 	}
 
 	function btnStat2_Click()
