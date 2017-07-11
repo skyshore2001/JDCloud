@@ -374,12 +374,8 @@ function rs2Stat(rs, opt)
 		var yArr = yData['累计'] = [];
 		$.each(rs.d, function (i, e) {
 			var y = parseFloat(e[sumIdx]);
-			var x = e[0];
-			if (opt.formatter) {
-				var val = opt.formatter(e[0], e, 0);
-				if (val !== undefined)
-					x = val;
-			}
+			var x0 = e[0];
+			var x = getGroupName(e[0], e, 0);
 			xData.push(x);
 			yArr.push(y);
 		});
@@ -392,7 +388,7 @@ function rs2Stat(rs, opt)
 	if (groupIdx >= 0) {
 		var tmpData = {}; // {groupName => sum}
 		$.each(rs.d, function (i, e) {
-			var k = e[groupIdx];
+			var k = getGroupName(e[groupIdx], e, groupIdx);
 			var v = e[sumIdx];
 			if (tmpData[k] === undefined)
 				tmpData[k] = v;
@@ -443,18 +439,12 @@ function rs2Stat(rs, opt)
 			lastX = x;
 		}
 		var groupKey = groupIdx<0? 'sum': e[groupIdx];
-		if (opt.formatter) {
-			var val = opt.formatter(groupKey, e, groupIdx);
-			if (val !== undefined)
-				groupKey = val;
-		}
-		if (groupIdx >= 0)
-			groupKey = num2str(groupKey);
+		var groupName = getGroupName(groupKey, e, groupIdx);
 		var groupVal = e[sumIdx];
-		var y = yData[groupKey];
+		var y = yData[groupName];
 		if (!y) {
 			if (! doMergeOthers)
-				y = yData[groupKey] = [];
+				y = yData[groupName] = [];
 			else
 				y = yData[othersName];
 		}
@@ -473,6 +463,15 @@ function rs2Stat(rs, opt)
 
 	return ret;
 
+	function getGroupName(groupKey, lineArr, groupIdx)
+	{
+		if (opt.formatter) {
+			var val = opt.formatter(groupKey, lineArr, groupIdx);
+			if (val !== undefined)
+				groupKey = val;
+		}
+		return num2str(groupKey);
+	}
 	// 修改纯数字属性, 避免影响字典内排序。
 	function num2str(k)
 	{
@@ -487,7 +486,7 @@ function rs2Stat(rs, opt)
 
 根据页面中带name属性的各控制设置情况，生成统计请求的参数，发起统计请求，显示统计图表。
 
-@param dtType Enum. d-日，h-时，w-周，m-月。
+@param dtType Enum. 按指定时间类型组织横轴数据，d-日，h-时，w-周，m-月，null-禁用“按时间分析”，即不补全时间。
 @param opt 参考initPageStat中的opt参数。
 
 注意：
@@ -650,7 +649,8 @@ function initChart(chartTable, statData, seriesOpt, chartOpt)
 
 - 日期段为 .txtTm1, .txtTm2
 - 图表为 .divChart
-- 按钮 .btnStat, .btnStat2 用于生成图线。
+- 按钮 .btnStat, .btnStat2 用于生成图线，其中btnStat2用于“按时间分析”，即横轴以天或周等时间类型组织数据。
+ 如果没有具有".btnStat2.active"类的对象（或该对象未显示），则数据不会按时间分析。
 
 html示例:
 

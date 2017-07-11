@@ -7,6 +7,9 @@ table td {
 	padding: 5px 15px;
 	min-width: 100px;
 }
+table select, .btnStat {
+	min-width: 100px;
+}
 </style>
 
 <table style="margin:10px; border-bottom: 1px solid gray">
@@ -57,17 +60,25 @@ table td {
 				<option value ="">无</option>
 				<option value ="sex">性别</option>
 				<option value="region">地域</option>
+				<option value="wd">每周几</option>
+				<option value="h">每小时</option>
 			</select>
 		</td>
 		<td>
 			<input type="button" value="生成" class="btnStat"/>
 		</td>
+		<td>
+			<label>
+				<input type="checkbox" checked onclick="$(this).closest('.wui-page').find('.divDtType').toggle('fast')"/>
+				<span>按时间分析</span>
+			</label>
+		</td>
 	</tr>
 </table>
 
 <div>
-	<div class="divChart" style="width:700px; height:400px;"></div>
-	<div style="margin-left: 600px">
+	<div class="divChart" style="width:800px; height:600px;"></div>
+	<div style="margin-left: 600px" class="divDtType">
 		<input type="button" value="时" class="btnStat2"/>
 		<input type="button" value="天" class="btnStat2"/>
 		<input type="button" value="周" class="btnStat2"/>
