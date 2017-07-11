@@ -117,6 +117,33 @@ postParams可以是一个kv数组或字符串，也可以是一个文件名(以"
 
 如果请求失败，抛出E_SERVER异常。
 不检查http返回码。
+
+示例：指定postParams, 默认以application/x-www-form-urlencoded格式提交。
+
+	$data = [
+		"name" => "xiaoming",
+		"classId" => 100
+	];
+	// 注意headers的格式
+	$headers = [
+		"Authorization: Basic dGVzdDp0ZXN0MTIz"
+	];
+	$rv = httpCall($url, $data, ["headers" => $headers]);
+
+示例：提交application/json格式的内容
+
+	// 用json_encode将数组变成字符串。避免被httpCall转成urlencoded格式。
+	$data = json_encode([
+		"name" => "xiaoming",
+		"classId" => 100
+	]);
+	$headers = [
+		"Content-type: application/json",
+		"Authorization: Basic dGVzdDp0ZXN0MTIz"
+	];
+	$GLOBALS["X_RET_STR"] = httpCall($url, $data, ["headers" => $headers]);
+	// 筋斗云：设置全局变量X_RET_STR可直接设置返回内容，避免再次被json编码。
+
 */
 function httpCall($url, $postParams=null, $opt=[])
 {
@@ -141,7 +168,7 @@ function httpCall($url, $postParams=null, $opt=[])
 
 	if (isset($postParams)) {
 		if (is_array($postParams)) {
-			$data = urlEncodeArr(postParams);
+			$data = urlEncodeArr($postParams);
 		}
 		else {
 			$data = $postParams;
