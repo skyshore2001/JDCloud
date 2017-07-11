@@ -7,6 +7,9 @@ table td {
 	padding: 5px 15px;
 	min-width: 100px;
 }
+table select, .btnStat {
+	min-width: 100px;
+}
 </style>
 
 <table style="margin:10px; border-bottom: 1px solid gray">
@@ -56,12 +59,18 @@ table td {
 		<td>
 			<input type="button" value="生成" class="btnStat"/>
 		</td>
+		<td>
+			<label>
+				<input type="checkbox" checked onclick="$(this).closest('.wui-page').find('.divTmType').toggle('fast')"/>
+				<span>按时间维度分析</span>
+			</label>
+		</td>
 	</tr>
 </table>
 
 <div>
 	<div class="divChart" style="width:1000px; height:600px;"></div>
-	<div style="margin-left: 600px">
+	<div style="margin-left: 700px" class="divTmType">
 		<input type="button" value="时" class="btnStat2"/>
 		<input type="button" value="天" class="btnStat2"/>
 		<input type="button" value="周" class="btnStat2 active"/>
