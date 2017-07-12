@@ -2260,10 +2260,10 @@ function makeUrl(action, params)
 		if (m_appVer === undefined)
 		{
 			var platform = "n";
-			if (isAndroid()) {
+			if (mCommon.isAndroid()) {
 				platform = "a";
 			}
-			else if (isIOS()) {
+			else if (mCommon.isIOS()) {
 				platform = "i";
 			}
 			m_appVer = platform + "/" + g_cordova;
