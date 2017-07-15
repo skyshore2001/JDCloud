@@ -1,4 +1,4 @@
-<div wui-script="pageUserRegStat.js" title="用户注册统计" style="padding-left:5px" my-initfn="initPageUserRegStat" data-ac="User.query">
+<div wui-script="pageUserRegStat.js" title="用户注册统计" style="padding-left:5px" my-initfn="initPageUserRegStat">
 <style>
 .btnStat2.active{
 	background-color: #ffe48d;
@@ -15,19 +15,21 @@ table select, .btnStat {
 <table style="margin:10px; border-bottom: 1px solid gray">
 	<tr>
 		<td>开始时间</td>
-		<td><input type="text" name="createTm" data-op=">=" class="txtTm1"/></td>
+		<td>
+			<input type="text" name="createTm" data-op=">=" data-options="showSeconds:false" class="easyui-datetimebox txtTm1">
+		</td>
 		<td>结束时间</td>
-		<td><input type="text" name="createTm" data-op="<" class="txtTm2"/></td>
+		<td>
+			<input type="text" name="createTm" data-op="<" data-options="showSeconds:false" class="easyui-datetimebox txtTm2">
+		</td>
 		<td>快捷选项</td>
 		<td>
 			<select class="txtTmRange">
+				<option value ="近8周">近8周</option>
+				<option value ="近6月">近6月</option>
 				<option value ="近1年">近1年</option>
-				<option value ="近3月">近3月</option>
-				<option value ="近1周">近1周</option>
-				<option value ="近3天">近3天</option>
-				<option value ="近12小时">近12小时</option>
-				<option value ="前2周">前2周</option>
-				<option value ="前3月">前3月</option>
+				<option value ="前2周">前8周</option>
+				<option value ="前3月">前6月</option>
 				<option value ="前2年">前2年</option>
 			</select>
 		</td>
@@ -77,12 +79,12 @@ table select, .btnStat {
 </table>
 
 <div>
-	<div class="divChart" style="width:800px; height:600px;"></div>
+	<div class="divChart" data-ac="User.query" style="width:800px; height:600px;"></div>
 	<div style="margin-left: 600px" class="divTmType">
-		<input type="button" value="时" class="btnStat2"/>
-		<input type="button" value="天" class="btnStat2"/>
-		<input type="button" value="周" class="btnStat2"/>
-		<input type="button" value="月" class="btnStat2 active" />
+		<input type="button" value="时" class="btnStat2" data-tmUnit="y,m,d,h">
+		<input type="button" value="天" class="btnStat2" data-tmUnit="y,m,d">
+		<input type="button" value="周" class="btnStat2 active" data-tmUnit="y,w">
+		<input type="button" value="月" class="btnStat2" data-tmUnit="y,m">
 	</div>
 </div>
 

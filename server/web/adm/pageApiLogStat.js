@@ -2,32 +2,35 @@ function initPageApiLogStat()
 {
 	var jpage = $(this);
 
-	ListOptions.Ac = function () {
-		var opt = {
-			valueField: 'ac',
-			textField:'ac',
-			url:WUI.makeUrl('ApiLog.query', {res: "ac", distinct: 1, wantArray:1}),
-		};
-		return opt;
-	};
+	jpage.find(".btnStat2").click(btnStat2_Click);
 
-	WUI.initPageStat(jpage, {
+	var statItf_ = WUI.initPageStat(jpage, {
 		maxSeriesCnt: 5,
-		onGetQueryParam: function (jo, param) {
+		onInitChart: function (param, initChartOpt) {
 			if (param.orderby == null) {
 				param.orderby = "sum DESC";
 				param.pagesz = 10;
 			}
 		},
-		chartOpt: function (param, statData) {
-			var opt = {};
-			// x轴数据不多时全部显示
-			if (statData.xData.length <= 20) {
-				opt.xAxis = {
-					axisLabel: { interval: 0, rotate: 30 }
-				}
-			}
-			return opt;
+		onGetTmUnit: function () {
+			return jpage.find(".btnStat2.active:visible").attr("data-tmUnit");
 		}
 	});
+
+	function btnStat2_Click()
+	{
+		var type = this.value;
+		jpage.find(".btnStat2").removeClass("active");
+		$(this).addClass("active");
+		statItf_.refreshStat();
+	}
 }
+
+ListOptions.Ac = function () {
+	var opt = {
+		valueField: 'ac',
+		textField:'ac',
+		url:WUI.makeUrl('ApiLog.query', {res: "ac", distinct: 1, wantArray:1}),
+	};
+	return opt;
+};

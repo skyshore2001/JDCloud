@@ -74,7 +74,7 @@ function makeTm(tmUnit, tmArr)
 			dt.setDate(dt.getDate() +1);
 		}
 		dt.setDate(dt.getDate() + 7 * parseInt(tmArr[1]));
-		ret = dt.getFullYear() + "-" + (dt.getMonth()+1) + "-" + dt.getDate();
+		ret = dt.getFullYear() + "-" + (dt.getMonth()+1) + "-" + dt.getDate() + "/" + tmArr[1];
 	}
 	else {
 		throw "*** unknown tmUnit=" + tmUnit;
@@ -491,17 +491,12 @@ function rs2Stat(rs, opt)
 }
 
 /*
-@fn runStat(jo, jchart, opt?)
+@fn runStat(jo, jcharts, opt?)
 
-根据页面中带name属性的各控制设置情况，生成统计请求的参数，发起统计请求，显示统计图表。
+遍历jo对象中带name属性的各控件，生成统计请求的参数，发起统计请求(callSvr)，显示统计图表(rs2Stat, initChart)。
+initPageStat函数是对本函数的包装。
 
 @param opt 参考initPageStat中的opt参数。
-@param opt.tmUnit Enum. 如果非空，则按时间维度分析，即按指定时间类型组织横轴数据，会补全时间。参考[JdcloudStat.tmUnit]()
-
-注意：
-
-- jo属性data-op可表示操作符
-- 名称"g"表示汇总字段(groupKey)。
 
 示例：
 
@@ -513,79 +508,110 @@ function rs2Stat(rs, opt)
 
 	{cond: "tm>='2016-6-20' and actId=3", g: "dramaId", ...}
 
+- 属性data-op可表示操作符
+- 名称"g"表示汇总字段(groupKey)。
+
+TODO: disabled属性, 未选中的单选框, datetimebox控件
 */
-function runStat(jo, jchart, opt)
+function runStat(jo, jcharts, opt)
 {
-	var cond = [];
-	var groupKey = null;
+	opt = $.extend({}, opt);
+	var condArr = [];
 	jo.find('[name]').each(function (i, e) {
 		var name = e.name;
+		if (!name)
+			return;
+
 		var jo = $(e);
 		var val = null;
 
 		if (jo.is(".textbox-value")) {
 			jo = jo.parent().prev();
-			val = jo.datetimebox('getValue') || jo.datetimebox('getText');
+			val = jo.datetimebox('getValue');
 		}
 		else
 			val = jo.val();
 
 		if (val == null || val == "" || val == "无" || val == "全部")
 			return;
-		if (name == 'g')
-			groupKey = val;
+		if (name == 'g') {
+			opt.g = val;
+		}
+		else if (name == 'tmUnit') {
+			opt.tmUnit = val;
+		}
 		else  {
 			var op = jo.attr('data-op');
 			if (op) {
 				val = op + ' ' + val;
 			}
-			cond.push([name, val]);
+			condArr.push([name, val]);
 		}
 	});
 
-	var param = {
-		res: "count(*) sum",
-		pagesz: -1
-	};
-	if (opt.tmUnit) {
-		param.orderby = param.gres = opt.tmUnit;
-	}
-	param.cond = WUI.getQueryCond(cond);
-	if (groupKey) {
-		param.g = groupKey;
-		if (param.gres)
-			param.gres += ',' + groupKey;
-		else
-			param.gres = groupKey;
+	var condStr = WUI.getQueryCond(condArr);
+	jcharts.each(function (i, chart) {
+		var jchart = $(chart);
 
-		var groupName = opt && opt.groupNameMap && opt.groupNameMap[groupKey];
-		if (groupName) {
-			param.res = groupName + ',' + param.res;
-		}
-	}
-	param.ac = jo.attr('data-ac');
-	if (opt && opt.onGetQueryParam) {
-		opt.onGetQueryParam(jo, param);
-	}
-	self.assert(param.ac, '*** no ac specified');
+		var param = {
+			res: "COUNT(*) sum",
+			cond: condStr,
+			pagesz: -1
+		};
+		var tmUnit = (opt.onGetTmUnit && opt.onGetTmUnit.call(jchart) || opt.tmUnit);
+		if (tmUnit)
+			param.orderby = param.gres = tmUnit;
 
-	callSvr(param.ac, function(data){
-		var statData = rs2Stat(data, opt);
+		if (opt.g) {
+			param.g = opt.g;
+			if (param.gres)
+				param.gres += ',' + opt.g;
+			else
+				param.gres = opt.g;
 
-		var seriesOpt = opt.seriesOpt, chartOpt = opt.chartOpt;
-		if ($.isFunction(seriesOpt)) {
-			seriesOpt = seriesOpt(param, statData);
+			var groupName = opt.groupNameMap && opt.groupNameMap[opt.g];
+			if (groupName) {
+				param.res = groupName + ',' + param.res;
+			}
 		}
-		if ($.isFunction(chartOpt)) {
-			chartOpt = chartOpt(param, statData);
+
+		$.each(["ac", "res"], function () {
+			var val = jchart.attr("data-" + this);
+			if (val)
+				param[this] = val;
+		});
+
+		var initChartOpt = {
+			chartOpt: {},
+			seriesOpt: {}
+		};
+		opt.onInitChart && opt.onInitChart.call(jchart, param, initChartOpt);
+		self.assert(param.ac, '*** no ac specified');
+
+		callSvr(param.ac, api_stat, param);
+
+		function api_stat(data)
+		{
+			var rs2StatOpt = {
+				maxSeriesCnt: opt.maxSeriesCnt,
+				tmUnit: tmUnit,
+				formatter: opt.formatter
+			};
+			var statData = rs2Stat(data, rs2StatOpt);
+			opt.onLoadData && opt.onLoadData.call(jchart, statData, initChartOpt);
+			initChart(chart, statData, initChartOpt.seriesOpt, initChartOpt.chartOpt);
 		}
-		initChart(jchart[0], statData, seriesOpt, chartOpt);
-	}, param);
+	});
 }
 
-/*
-@fn initChart
+/**
+@fn WUI.initChart(chartTable, statData, seriesOpt, chartOpt)
+
+初始化报表
+
+@see WUI.rs2Stat, WUI.initPageStat
  */
+self.initChart = initChart;
 function initChart(chartTable, statData, seriesOpt, chartOpt)
 {
 	var myChart = echarts.init(chartTable);
@@ -641,25 +667,26 @@ function initChart(chartTable, statData, seriesOpt, chartOpt)
 }
 
 /**
-@fn initPageStat(jpage, opt?)
-
-@param opt={onGetQueryParam?, groupNameMap?, initTmRange?, seriesOpt?, chartOpt?}
-
-@param opt.chartOpt,opt.seriesOpt 参考百度echarts全局参数以及series参数。http://echarts.baidu.com/echarts2/doc/doc.html
-这两个参数也可以是回调函数: chartOpt(param, statData); 函数返回值做为选项。seriesOpt类似。
+@fn WUI.initPageStat(jpage, opt?) -> statItf
 
 通用统计页模式
 
-- 日期段为 .txtTm1, .txtTm2
-- 图表为 .divChart (可以用 jpage.find(".divChart")[0].echart 来取 echart对象)
-- 按钮 .btnStat, .btnStat2 用于生成图线，其中btnStat2用于“按时间分析”，即横轴以天或周等时间类型组织数据。
- 如果没有具有".btnStat2.active"类的对象（或该对象未显示），则数据不会按时间分析。
+- 条件区，包括查询条件(如起止时间为 .txtTm1, .txtTm2)，分组条件([name=g])，时间维度类型([name=tmUnit])
+- 生成统计图按钮(.btnStat)
+- 一个或多个图表(.divChart)，每个图表可设置不同的查询条件、时间维度等。
 
 html示例:
 
-	<div wui-script="pageUserRegStat.js" title="用户注册统计" my-initfn="initPageUserRegStat" data-ac="User.query">
-		开始时间 <input type="text" name="tm" data-op=">=" class="txtTm1"/>
-		结束时间 <input type="text" name="tm" data-op="<" class="txtTm2"/>
+	<div wui-script="pageUserRegStat.js" title="用户注册统计" my-initfn="initPageUserRegStat">
+		开始时间 
+		<input type="text" name="tm" data-op=">=" data-options="showSeconds:false" class="easyui-datetimebox txtTm1">
+		结束时间
+		<input type="text" name="tm" data-op="<" data-options="showSeconds:false" class="easyui-datetimebox txtTm2">
+		快捷时间选择
+		<select class="txtTmRange">
+			<option value ="近8周">近8周</option>
+			<option value ="近6月">近6月</option>
+		</select>
 
 		各种过滤条件：
 		性别:
@@ -680,20 +707,53 @@ html示例:
 
 		<input type="button" value="生成" class="btnStat"/>
 
-		统计图：
-		<div class="divChart"></div>
+		时间维度类型：
+		<select name="tmUnit">
+			<option value="y,w">周报表</option>
+			<option value="y,m">月报表</option>
+		</select>
 
-		<div style="text-align: right">
-			<input type="button" value="时" class="btnStat2"/>
-			<input type="button" value="天" class="btnStat2 active"/>
-			<input type="button" value="周" class="btnStat2"/>
-			<input type="button" value="月" class="btnStat2" />
-		</div>
+		统计图：
+		<div class="divChart" data-ac="User.query"></div>
 	</div>
 
-- 调用参数ac可通过jpage上的data-ac属性指定，其它参数自动生成，也可通过opt.onGetQueryParam动态设置。
+- 报表对象.divChart上，可以用data-ac属性指定调用名，用data-res属性指定调用的res参数(默认为"COUNT(*) sum")，其它参数自动生成，也可通过opt.onInitChart回调函数动态设置queryParam参数。
+ 可以用 jpage.find(".divChart")[0].echart 来取 echart对象.
+- 生成按钮对象 .btnStat
+- 带name属性（且没有disabled属性）的控件，会自动生成查询条件(根据name, data-op, value生成表达式)
+- 控件.txtTm1, .txtTm2识别为起止时间，可以用过 statItf.setTmRange()去重设置它们，或放置名为 .txtTmRange下拉框自动设置
 
-@param opt.onGetQueryParam: Function(jo, param).
+初始化示例：
+
+	var statItf_ = WUI.initPageStat(jpage, {
+		maxSeriesCnt: 5,
+		onInitChart: function (param, initChartOpt) {
+			// this是当前chart的jquery对象，且针对每个chart分别设置参数
+			// 设置查询参数param.ac/param.res/param.cond等
+			// 设置initChartOpt.seriesOpt, initChartOpt.chartOpt等
+		},
+		onGetTmUnit: function () {
+			// this是当前chart
+		},
+		onLoadData: function (statData, initChartOpt) {
+			// this是当前chart
+		}
+	});
+
+@param opt={g?, tmUnit?, onGetTmUnit?, onInitChart?, groupNameMap?, onLoadData?}
+
+@param opt.g 分组字段名。也可以用jpage中的某个[name=g]的组件指定。
+
+@param maxSeriesCnt 最多显示多少图表系列（其它系列自动归并到“其它”中）。如果不指定，则显示所有系列。
+
+@param opt.tmUnit Enum. 如果非空，则按时间维度分析，即按指定时间类型组织横轴数据，会补全时间。也可以用jpage中某个[name=tmUnit]的组件指定。参考[JdcloudStat.tmUnit]()
+@param opt.onGetTmUnit Function(this为当前chart) 回调函数，返回tmUnit值。
+
+@param opt.onInitChart: Function(queryParam, initChartOpt={seriesOpt, chartOpt}), 其中this表示当前图表jchart对象。
+
+其中chartOpt和seriesOpt 参考百度echarts全局参数以及series参数。http://echarts.baidu.com/echarts2/doc/doc.html
+
+@param opt.onLoadData Function(statData, initChartOpt), 其中this表示当前图表jchart对象。获取数据后回调，initChartOpt与onInitChart中的选项相同，此处可修改它。
 
 @param opt.groupNameMap
 
@@ -709,63 +769,85 @@ html示例:
 
 这意味着，当选择按剧目名分组显示日报表时，g="dramaId", gres="y,m,d,dramaId", res="dramaName,y,m,d"。
 
-@param opt.initTmRange 描述字段，如"近7天","前1月"等，参考getTmRange.
+@return statItf={refreshStat(), setTmRange(desc)}
+
+@see WUI.initChart, WUI.rs2Stat
+
+也可以调用WUI.initChart及WUI.rs2Stat自行设置报表，示例如下：
+
+	var jcharts = jpage.find(".divChart");
+	var tmUnit = "y,m"; // 按时间维度分析，按“年月”展开数据
+	var cond = "tm>='2016-1-1' and tm<'2017-1-1'";
+	// WUI.useBatchCall(); // 如果有多个报表，可以批量调用后端接口
+	// 会话访问量
+	callSvr("ApiLog.query", function (data) {
+		var jchart = jcharts[0];
+		var opt = { tmUnit: tmUnit };
+		var statData = WUI.rs2Stat(data, opt);
+		var seriesOpt = {};
+		var chartOpt = {
+			title: {
+				text: "访问量（会话数）"
+			},
+			legend: null
+		};
+
+		WUI.initChart(jchart, statData, seriesOpt, chartOpt);
+	}, {res: "COUNT(distinct ses) sum", gres: tmUnit, orderby: tmUnit, cond: cond });
+
 */
 self.initPageStat = initPageStat;
 function initPageStat(jpage, opt)
 {
-	jpage.find(".my-combobox").mycombobox();
-
-	jpage.find(".txtTm1, .txtTm2").datetimebox();
-
-	var txtTmRange = jpage.find(".txtTmRange").change(function () {
-		setTmRange(this.value);
-	});
-	var rangeDesc = opt.initTmRange || (txtTmRange.size() >0 && txtTmRange.val());
-	if (! rangeDesc)
-		rangeDesc = "近7天";
-	setTmRange(rangeDesc);
-
-	jpage.find(".btnStat2").click(btnStat2_Click);
-	jpage.find(".btnStat").click(btnStat_Click).click();
+	var txtTmRange = jpage.find(".txtTmRange");
+	if (txtTmRange.size() > 0) {
+		txtTmRange.change(function () {
+			setTmRange(this.value);
+		});
+		txtTmRange.change();
+	}
+	var btnStat = jpage.find(".btnStat");
+	if (btnStat.size() > 0) {
+		setTimeout(function () {
+			btnStat.click(refreshStat).click();
+		});
+	}
 
 	function setTmRange(dscr)
 	{
-		var range = getTmRange(dscr);
+		var tm2 = jpage.find(".txtTm2").datetimebox("getValue");
+		var range = self.getTmRange(dscr, tm2);
 		if (range) {
-			jpage.find(".txtTm1").datetimebox("setText",range[0]);
-			jpage.find(".txtTm2").datetimebox("setText",range[1]);
+			jpage.find(".txtTm1").datetimebox("setValue",range[0]);
+			jpage.find(".txtTm2").datetimebox("setValue",range[1]);
 		}
 	}
-	function btnStat_Click()
-	{
-		var type = jpage.find(".btnStat2.active:visible").val();
-		var opt1 = $.extend({}, opt);
-		if (type) {
-			var tmUnitMapping = {
-				"时": "y,m,d,h",
-				"天": "y,m,d",
-				"周": "y,w",
-				"月": "y,m"
-			};
-			opt1.tmUnit = tmUnitMapping[type];
-			self.assert(!opt.tmUnit, "*** unknown time dimension `" + type + "'");
-		}
 
-		var jchart = jpage.find(".divChart");
-		runStat(jpage, jchart, opt1);
+	// 防止连续调用
+	var busy_ = false;
+	function refreshStat()
+	{
+		if (busy_)
+			return;
+		busy_ = true;
+
+		var jcharts = jpage.find(".divChart");
+		runStat(jpage, jcharts, opt);
+
+		setTimeout(function () {
+			busy_ = false;
+		}, 10);
 	}
-
-	function btnStat2_Click()
-	{
-		var type = this.value;
-		jpage.find(".btnStat2").removeClass("active");
-		jpage.find(".btnStat2[value='" + type + "']").addClass("active");
-		btnStat_Click();
+	return {
+		refreshStat: refreshStat,
+		setTmRange: setTmRange
 	}
 }
 
 /**
+
+@fn getTmRange(dscr, now?)
+
 假设今天是2015-9-9 周三：
 
 	getTmRange("近1周") -> ["2015-9-2"，""]
@@ -775,19 +857,23 @@ function initPageStat(jpage, opt)
 
 dscr可以是 
 
-	"近|前" N "小时|日|周|月|年"
+	"近|前" N "个"? "小时|日|周|月|年"
 
  */
 self.getTmRange = getTmRange;
-function getTmRange(dscr)
+function getTmRange(dscr, now)
 {
-	var re = /(近|前)(\d+)(小时|日|天|月|周|年)/;
+	var re = /(近|前)(\d+).*?(小时|日|天|月|周|年)/;
 	var m = dscr.match(re);
 	if (! m)
 		return;
 	
-	var now = new Date();
-	var dt1, dt2;
+	if (! now)
+		now = new Date();
+	else if (! (now instanceof Date)) {
+		now = self.parseDate(now);
+	}
+	var dt1, dt2, dt;
 	var type = m[1];
 	var n = parseInt(m[2]);
 	var u = m[3];
@@ -807,7 +893,9 @@ function getTmRange(dscr)
 	else if (u == "月") {
 		if (type == "近") {
 			dt2 = now.format(fmt_d);
-			dt1 = now.add("m", -n).format(fmt_d);
+			//dt1 = now.add("m", -n).format(fmt_d);
+			now = self.parseDate(now.format(fmt_m)); // 回到1号
+			dt1 = now.add("m", -n).format(fmt_m);
 		}
 		else if (type == "前") {
 			dt2 = now.format(fmt_m);
@@ -817,6 +905,7 @@ function getTmRange(dscr)
 	else if (u == "周") {
 		if (type == "近") {
 			dt2 = now.format(fmt_d);
+			now.add("d", -now.getDay()+1); // 回到周1
 			dt1 = now.add("d", -n*7).format(fmt_d);
 		}
 		else if (type == "前") {
@@ -827,6 +916,7 @@ function getTmRange(dscr)
 	else if (u == "年") {
 		if (type == "近") {
 			dt2 = now.format(fmt_d);
+			now = self.parseDate(now.format(fmt_y)); // 回到1/1
 			dt1 = now.add("y", -n).format(fmt_d);
 		}
 		else if (type == "前") {

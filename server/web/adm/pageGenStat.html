@@ -1,0 +1,51 @@
+<div wui-script="pageGenStat.js" title="运营统计" style="padding-left:5px" my-initfn="initPageGenStat">
+<style>
+table td {
+	padding: 5px 15px;
+	min-width: 100px;
+}
+table select, .btnStat {
+	min-width: 100px;
+}
+</style>
+
+<table style="margin:10px; border-bottom: 1px solid gray">
+	<tr>
+		<td>时间范围</td>
+		<td><input type="text" name="{tm}" data-op=">=" data-options="showSeconds:false" class="easyui-datetimebox txtTm1"></td>
+		<td><input type="text" name="{tm}" data-op="<" data-options="showSeconds:false" class="easyui-datetimebox txtTm2"></td>
+		<td>
+			<input type="button" value="生成" class="btnStat"/>
+		</td>
+		<td>
+			<select name="tmUnit">
+				<option value="y,w" data-tmType="周" data-range="近12周">周报表</option>
+				<option value="y,m" data-tmType="月" data-range="近6个月">月报表</option>
+			</select>
+		</td>
+	</tr>
+</table>
+
+<table>
+<tr>
+<td>
+	<div class="divChart" id="c1" data-ac="ApiLog.query" data-res="COUNT(DISTINCT ses) sum" style="width:400px; height:300px;"></div>
+</td>
+
+<td>
+	<div class="divChart" id="c2" data-ac="ApiLog.query" data-res="COUNT(DISTINCT userId) sum" style="width:400px; height:300px;"></div>
+</td>
+</tr>
+
+<tr>
+<td>
+	<div class="divChart" id="c3" data-ac="User.query" style="width:400px; height:300px;"></div>
+</td>
+
+<td>
+	<div class="divChart" id="c4" data-ac="Ordr.query" style="width:400px; height:300px;"></div>
+</td>
+</tr>
+</table>
+
+</div>

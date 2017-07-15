@@ -108,6 +108,12 @@ class AC0_Ordr extends AccessControl
 			"join" => "LEFT JOIN OrderLog log_cr ON log_cr.action='CR' AND log_cr.orderId=t0.id",
 		]
 	];
+
+	function __construct() {
+		$vcol = getTmVcol("log_cr.tm");
+		$vcol["require"] = "createTm";
+		array_push($this->vcolDefs, $vcol);
+	}
 }
 
 class AC1_Ordr extends AC0_Ordr

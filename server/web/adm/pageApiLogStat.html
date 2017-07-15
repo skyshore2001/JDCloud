@@ -1,4 +1,4 @@
-<div wui-script="pageApiLogStat.js" title="接口日志统计" style="padding-left:5px" my-initfn="initPageApiLogStat" data-ac="ApiLog.query">
+<div wui-script="pageApiLogStat.js" title="接口日志统计" style="padding-left:5px" my-initfn="initPageApiLogStat">
 <style>
 .btnStat2.active{
 	background-color: #ffe48d;
@@ -15,15 +15,20 @@ table select, .btnStat {
 <table style="margin:10px; border-bottom: 1px solid gray">
 	<tr>
 		<td>开始时间</td>
-		<td><input type="text" name="tm" data-op=">=" class="txtTm1"/></td>
+		<td>
+			<input type="text" name="tm" data-op=">=" data-options="showSeconds:false" class="easyui-datetimebox txtTm1">
+		</td>
 		<td>结束时间</td>
-		<td><input type="text" name="tm" data-op="<" class="txtTm2"/></td>
+		<td>
+			<input type="text" name="tm" data-op="<" data-options="showSeconds:false" class="easyui-datetimebox txtTm2">
+		</td>
 		<td>快捷选项</td>
 		<td>
 			<select class="txtTmRange">
+				<option value ="近1周">近1周</option>
 				<option value ="近3月">近3月</option>
 				<option value ="近1年">近1年</option>
-				<option value ="近1周">近1周</option>
+				<option value ="近12小时">近12小时</option>
 			</select>
 		</td>
 	</tr>
@@ -69,12 +74,12 @@ table select, .btnStat {
 </table>
 
 <div>
-	<div class="divChart" style="width:1000px; height:600px;"></div>
+	<div class="divChart" data-ac="ApiLog.query" style="width:1000px; height:600px;"></div>
 	<div style="margin-left: 700px" class="divTmType">
-		<input type="button" value="时" class="btnStat2"/>
-		<input type="button" value="天" class="btnStat2"/>
-		<input type="button" value="周" class="btnStat2 active"/>
-		<input type="button" value="月" class="btnStat2" />
+		<input type="button" value="时" class="btnStat2" data-tmUnit="y,m,d,h">
+		<input type="button" value="天" class="btnStat2" data-tmUnit="y,m,d">
+		<input type="button" value="周" class="btnStat2 active" data-tmUnit="y,w">
+		<input type="button" value="月" class="btnStat2" data-tmUnit="y,m">
 	</div>
 </div>
 
