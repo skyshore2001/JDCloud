@@ -1980,10 +1980,6 @@ function getOptions(jo)
 	return opt;
 }
 
-$(document).on("pagecreate", function (ev) {
-	var jpage = $(ev.target);
-	enhanceWithin(jpage);
-});
 //}}}
 
 }
@@ -3190,7 +3186,7 @@ function useBatchCall(opt, tv)
 	if (m_curBatch != null)
 		return;
 	tv = tv || 0;
-	var batch = new MUI.batchCall(opt);
+	var batch = new self.batchCall(opt);
 	setTimeout(function () {
 		batch.commit();
 	}, tv);
@@ -3503,6 +3499,9 @@ function showPage(pageName, title, paramArr)
 		var jpageNew = jpage.clone().appendTo(jtab);
 		jpageNew.addClass('wui-page');
 		jpageNew.attr("wui-pageName", pageName);
+
+		$.parser.parse(jpageNew); // easyui enhancement
+		self.enhanceWithin(jpageNew);
 		callInitfn(jpageNew, paramArr);
 
 		jpageNew.trigger('pagecreate');
@@ -3537,9 +3536,6 @@ function showPage(pageName, title, paramArr)
 */
 		jpage.attr("wui-pageFile", pageFile);
 		jpage.addClass(pageClass).appendTo(jcontainer);
-
-		self.enhanceWithin(jpage);
-		$.parser.parse(jpage);
 
 		var val = jpage.attr("wui-script");
 		if (val != null) {
@@ -3697,9 +3693,6 @@ function showDlg(jdlg, opt)
 		});
 	}
 	jdlg.dialog(dlgOpt);
-
-	// !!! init combobox on necessary
-	jdlg.find(".my-combobox").mycombobox();
 
 	jdlg.okCancel(fnOk, opt.noCancel? undefined: fnCancel);
 
@@ -4082,8 +4075,8 @@ function loadDialog(jdlg, onLoad)
 		jdlg.attr("id", dlgId).appendTo(jcontainer);
 		jdlg.attr("wui-pageFile", pageFile);
 
+		$.parser.parse(jdlg); // easyui enhancement
 		self.enhanceWithin(jdlg);
-		$.parser.parse(jdlg);
 
 		var val = jdlg.attr("wui-script");
 		if (val != null) {
@@ -4745,6 +4738,11 @@ $.extend($.fn.tabs.defaults, {
 });
 */
 // }}}
+
+// 支持自动初始化mycombobox
+self.m_enhanceFn[".my-combobox"] = function (jo) {
+	jo.mycombobox();
+};
 
 function main()
 {
