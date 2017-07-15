@@ -196,12 +196,13 @@ class ApiFw_
 如果参数$data未指定，则操作成功时值为null（按BQP协议返回null表示客户端应忽略处理，一般无特定返回应指定$data="OK"）；操作失败时使用默认错误信息。
 
 调用完后，要返回的数据存储在全局数组 $X_RET 中，以JSON字符串形式存储在全局字符串 $X_RET_STR 中。
-注意：$X_RET_STR也可以在调用setRet前设置为要返回的字符串，从而避免setRet函数对返回对象进行JSON序列化，如
+注意：也可以直接设置$X_RET_STR为要返回的字符串，从而避免setRet函数对返回对象进行JSON序列化，如
 
-	$GLOBALS["X_RET_STR"] = "{id:100, name:'aaa'}";
+	$GLOBALS["X_RET_STR"] = '{"id":100, "name":"aaa"}';
+	// 如果不想继续执行后面代码，可以自行调用：
 	setRet(0, "OK");
 	throw new DirectReturn();
-	// 最终返回字符串为 "[0, {id:100, name:'aaa'}]"
+	// 最终返回字符串为 [0, {"id":100, "name":"aaa"}]
 
 @see $X_RET
 @see $X_RET_STR

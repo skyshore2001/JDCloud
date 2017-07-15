@@ -33,7 +33,7 @@ code {
 </head>
 
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2017-06-21</div>
+<div>最后更新：2017-07-10</div>
 <h2>Modules</h2>
 <div class="toc">
 <p><a href="#WUI">WUI (module)</a></p>
@@ -63,7 +63,6 @@ code {
 <p><a href="#MUI.callSvrExt[].dataFilter">MUI.callSvrExt[].dataFilter (key)</a></p>
 <p><a href="#MUI.callSvrExt[].makeUrl">MUI.callSvrExt[].makeUrl (key)</a></p>
 <p><a href="#MUI.callSvrSync">MUI.callSvrSync (fn)</a></p>
-<p><a href="#MUI.callSvrSync">MUI.callSvrSync (fn)</a></p>
 <p><a href="#MUI.defDataProc">MUI.defDataProc (fn)</a></p>
 <p><a href="#MUI.disableBatch">MUI.disableBatch (var)</a></p>
 <p><a href="#MUI.enhanceWithin">MUI.enhanceWithin (fn)</a></p>
@@ -89,6 +88,8 @@ code {
 <p><a href="#WUI.dg_dblclick">WUI.dg_dblclick (fn)</a></p>
 <p><a href="#WUI.dg_toolbar">WUI.dg_toolbar (fn)</a></p>
 <p><a href="#WUI.getActivePage">WUI.getActivePage (fn)</a></p>
+<p><a href="#WUI.getExportHandler">WUI.getExportHandler (fn)</a></p>
+<p><a href="#WUI.getParamFromTable">WUI.getParamFromTable (fn)</a></p>
 <p><a href="#WUI.getQueryCond">WUI.getQueryCond (fn)</a></p>
 <p><a href="#WUI.getQueryParam">WUI.getQueryParam (fn)</a></p>
 <p><a href="#WUI.getTopDialog">WUI.getTopDialog (fn)</a></p>
@@ -159,7 +160,6 @@ code {
 <p><a href="#loadScript">loadScript (fn)</a></p>
 <p><a href="#loaddata">loaddata (key)</a></p>
 <p><a href="#makeLinkTo">makeLinkTo (fn)</a></p>
-<p><a href="#makeUrl">makeUrl (alias)</a></p>
 <p><a href="#my-initfn">my-initfn (key)</a></p>
 <p><a href="#my-obj">my-obj (key)</a></p>
 <p><a href="#numberSort">numberSort (fn)</a></p>
@@ -793,7 +793,7 @@ hash = {
     h: ["id", "name"], 
     d: [ [100, "Tom"], [101, "Jane"], [102, "Tom"] ] 
 };
-var hash = rs2Hash(rs, "name");  
+var hash = rs2MultiHash(rs, "name");  
 
 // 结果为
 hash = {
@@ -1040,11 +1040,10 @@ callSvr('token/get-token', ...);</code></pre>
 <p>例如：</p>
 <p>serverUrl为&quot;../jdcloud/api.php&quot; 或 &quot;../jdcloud/&quot;，则MUI.baseUrl返回 &quot;../jdcloud/&quot;<br />
 serverUrl为&quot;<a href="http://myserver/myapp/api.php">http://myserver/myapp/api.php</a>&quot; 或 &quot;<a href="http://myserver/myapp/"，则MUI.baseUrl返回">http://myserver/myapp/"，则MUI.baseUrl返回</a> &quot;<a href="http://myserver/myapp/">http://myserver/myapp/</a>&quot;</p><hr>
-<h2 id="MUI.makeUrl">@fn MUI.makeUrl(action, params)</h2>
-<p class="alias"><strong>@alias <a id="makeUrl">makeUrl</a></strong> </p>
+<h2 id="MUI.makeUrl">@fn MUI.makeUrl(action, params?)</h2>
 <p>生成对后端调用的url. </p>
 <pre><code>var params = {id: 100};
-var url = makeUrl("Ordr.set", params);</code></pre>
+var url = MUI.makeUrl("Ordr.set", params);</code></pre>
 <p>注意：函数返回的url是字符串包装对象，可能含有这些属性：{makeUrl=true, action?, params?}<br />
 这样可通过url.action得到原始的参数。</p>
 <p>支持callSvr扩展，如：</p>
@@ -1054,14 +1053,14 @@ var url = makeUrl("Ordr.set", params);</code></pre>
 <p>在MUI环境下表示callSvr扩展调用:</p>
 <pre><code>MUI.makeUrl(['login', 'zhanda']) 等价于 MUI.makeUrl('zhanda:login');</code></pre>
 <p class="see"><strong>@see <a href="#MUI.callSvrExt">MUI.callSvrExt</a></strong> </p><hr>
-<h2 id="MUI.callSvr">@fn MUI.callSvr(ac, [param?], fn?, postParams?, userOptions?)</h2><div class="toc"><p style="margin-left:0em"><a href="#MUI.callSvr-1 调用监控">1 调用监控</a></p>
+<h2 id="MUI.callSvr">@fn MUI.callSvr(ac, [params?], fn?, postParams?, userOptions?) -> deferredObject</h2><div class="toc"><p style="margin-left:0em"><a href="#MUI.callSvr-1 调用监控">1 调用监控</a></p>
 <p style="margin-left:0em"><a href="#MUI.callSvr-2 文件上传支持(FormData)">2 文件上传支持(FormData)</a></p>
 <p style="margin-left:0em"><a href="#MUI.callSvr-3 callSvr扩展">3 callSvr扩展</a></p>
 <p style="margin-left:0em"><a href="#MUI.callSvr-4 适配RESTful API">4 适配RESTful API</a></p>
 </div>
 <p class="alias"><strong>@alias <a id="callSvr">callSvr</a></strong> </p>
 <p class="param"><strong>@param ac</strong>  String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)</p>
-<p class="param"><strong>@param param</strong>  Object. URL参数（或称HTTP GET参数）</p>
+<p class="param"><strong>@param params</strong>  Object. URL参数（或称HTTP GET参数）</p>
 <p class="param"><strong>@param postParams</strong>  Object. POST参数. 如果有该参数, 则自动使用HTTP POST请求(postParams作为POST内容), 否则使用HTTP GET请求.</p>
 <p class="param"><strong>@param fn</strong>  Function(data). 回调函数, data参考该接口的返回值定义。</p>
 <p class="param"><strong>@param userOptions</strong>  用户自定义参数, 会合并到$.ajax调用的options参数中.可在回调函数中用"this.参数名"引用. </p>
@@ -1084,15 +1083,20 @@ function fn2(data) {}</code></pre>
 <p>在接口调用成功后，会依次回调fn1, fn2.</p>
 <p class="key"><strong>@key <a id="callSvr.noex">callSvr.noex</a></strong>  调用接口时忽略出错，可由回调函数fn自己处理错误。</p>
 <p>当后端返回错误时, 回调<code>fn(false)</code>（参数data=false）. 可通过 MUI.lastError.ret 或 this.lastError 取到返回的原始数据。</p>
-<p>例：</p>
+<p>示例：</p>
 <pre><code>callSvr("logout");
 callSvr("logout", api_logout);
-callSvr("login", {wantAll:1}, api_login);
-callSvr("info/hotline.php", {q: '大众'}, api_hotline);
+function api_logout(data) {}
 
-// 也兼容使用makeUrl的旧格式如:
-callSvr(makeUrl("logout"), api_logout);
-callSvr(makeUrl("logout", {a:1}), api_logout);
+callSvr("login", {wantAll:1}, api_login);
+function api_login(data) {}
+
+callSvr("info/hotline.php", {q: '大众'}, api_hotline);
+function api_hotline(data) {}
+
+// 也可使用makeUrl生成的URL如:
+callSvr(MUI.makeUrl("logout"), api_logout);
+callSvr(MUI.makeUrl("logout", {a:1}), api_logout);
 
 callSvr("User.get", function (data) {
     if (data === false) { // 仅当设置noex且服务端返回错误时可返回false
@@ -1348,8 +1352,7 @@ callSvr("User.get", function (data) {
         return "./api.php/" + ac;
     }
 }</code></pre><hr>
-<h2 id="MUI.callSvrSync">@fn MUI.callSvrSync(ac, params?, fn?, postParams?, userOptions?)</h2>
-<p class="fn"><strong>@fn <a id="MUI.callSvrSync">MUI.callSvrSync</a></strong> (ac, fn?, postParams?, userOptions?)</p>
+<h2 id="MUI.callSvrSync">@fn MUI.callSvrSync(ac, [params?], fn?, postParams?, userOptions?)</h2>
 <p class="alias"><strong>@alias <a id="callSvrSync">callSvrSync</a></strong> </p>
 <p class="return"><strong>@return data</strong>  原型规定的返回数据</p>
 <p>同步模式调用callSvr.</p>
@@ -1368,7 +1371,7 @@ callSvr("User.get", function (data) {
     &lt;iframe id='ifrUpload' name='ifrUpload' style="display:none"&gt;&lt;/iframe&gt;
 &lt;/form&gt;</code></pre>
 <p>然后就像调用callSvr函数一样调用setupCallSvrViaForm:</p>
-<pre><code>var url = makeUrl("upload", {genThumb: 1});
+<pre><code>var url = MUI.makeUrl("upload", {genThumb: 1});
 MUI.setupCallSvrViaForm($frm, $frm.find("iframe"), url, onUploadComplete);
 function onUploadComplete(data) 
 {
@@ -1566,6 +1569,23 @@ jtbl.datagrid(dgOpt);</code></pre><hr>
 <li>href=&quot;#pageXXX&quot;开头的，点击时会调用 WUI.showPage(&quot;#pageXXX&quot;);</li>
 <li>href=&quot;?fn&quot;，会直接调用函数 fn();</li>
 </ul><hr>
+<h2 id="WUI.getExportHandler">@fn WUI.getExportHandler(jtbl, ac, param?={})</h2>
+<p>为数据表添加导出Excel菜单，如：</p>
+<pre><code>jtbl.datagrid({
+    url: WUI.makeUrl("User.query"),
+    toolbar: WUI.dg_toolbar(jtbl, jdlg, {text:'导出', iconCls:'icon-save', handler: getExportHandler(jtbl, "User.query") }),
+    onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
+});</code></pre>
+<p>默认是导出数据表中直接来自于服务端的字段，并应用表上的查询条件及排序。<br />
+也可以通过设置param参数手工指定，如：</p>
+<pre><code>handler: getExportHandler(jtbl, "User.query", {res: "id 编号, name 姓名, createTm 注册时间", orderby: "createTm DESC"})</code></pre>
+<p>注意：由于分页机制影响，会设置参数{pagesz: 9999}以便在一页中返回所有数据，而实际一页能导出的最大数据条数取决于后端设置（默认1000，参考后端文档 AccessControl::$maxPageSz）。</p>
+<p class="see"><strong>@see <a href="#WUI.getParamFromTable">WUI.getParamFromTable</a></strong> </p><hr>
+<h2 id="WUI.getParamFromTable">@fn WUI.getParamFromTable(jtbl, param?)</h2>
+<p>根据数据表当前设置，获取查询参数。<br />
+可能会设置{cond, orderby, res}参数。</p>
+<p>res参数从列设置中获取，如&quot;id 编号,name 姓名&quot;, 特别地，如果列对应字段以&quot;_&quot;结尾，不会加入res参数。</p>
+<p class="see"><strong>@see <a href="#WUI.getExportHandler">WUI.getExportHandler</a></strong>  导出Excel</p><hr>
 <h2 id=".easyui-validatebox">@key .easyui-validatebox</h2>
 <p>为form中的组件加上该类，可以限制输入类型，如：</p>
 <pre><code>&lt;input name="amount" class="easyui-validatebox" data-options="required:true,validType:'number'" &gt;</code></pre>

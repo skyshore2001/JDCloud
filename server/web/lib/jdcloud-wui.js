@@ -4896,8 +4896,8 @@ function app_alert(msg, type, fn)
 }
 
 /**
-@fn app_confirm(msg, type?=i, fn?)
-@param fn Function(). 用户点击确定后的回调。
+@fn app_confirm(msg, fn?)
+@param fn Function(isOk). 用户点击确定或取消后的回调。
 
 使用jQuery easyui弹出确认对话框.
 */
