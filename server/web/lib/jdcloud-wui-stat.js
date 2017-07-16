@@ -6,7 +6,7 @@
 @see initPageStat
  */
 
-JdcloudStat.call(WUI);
+JdcloudStat.call(window.WUI || window.MUI);
 function JdcloudStat()
 {
 var self = this;

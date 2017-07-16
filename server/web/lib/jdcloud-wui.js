@@ -2043,6 +2043,133 @@ function getOptions(jo)
 
 //}}}
 
+// 参考 getQueryCond中对v各种值的定义
+function getop(v)
+{
+	if (typeof(v) == "number")
+		return "=" + v;
+	var op = "=";
+	var is_like=false;
+	if (v.match(/^(<>|>=?|<=?)/)) {
+		op = RegExp.$1;
+		v = v.substr(op.length);
+	}
+	else if (v.indexOf("*") >= 0 || v.indexOf("%") >= 0) {
+		v = v.replace(/[*]/g, "%");
+		op = " like ";
+	}
+	v = $.trim(v);
+
+	if (v === "null")
+	{
+		if (op == "<>")
+			return " is not null";
+		return " is null";
+	}
+	if (v === "empty")
+		v = "";
+	if (v.length == 0 || v.match(/\D/) || v[0] == '0') {
+		v = v.replace(/'/g, "\\'");
+// 		// ???? 只对access数据库: 支持 yyyy-mm-dd, mm-dd, hh:nn, hh:nn:ss
+// 		if (!is_like && v.match(/^((19|20)\d{2}[\/.-])?\d{1,2}[\/.-]\d{1,2}$/) || v.match(/^\d{1,2}:\d{1,2}(:\d{1,2})?$/))
+// 			return op + "#" + v + "#";
+		return op + "'" + v + "'";
+	}
+	return op + v;
+}
+
+/**
+@fn WUI.getQueryCond(kvList)
+
+@param kvList {key=>value}, 键值对，值中支持操作符及通配符。也支持格式 [ [key, value] ], 这时允许key有重复。
+
+根据kvList生成BPQ协议定义的{obj}.query的cond参数。
+
+例如:
+
+	var kvList = {phone: "13712345678", id: ">100", addr: "上海*", picId: "null"};
+	WUI.getQueryCond(kvList);
+
+有多项时，每项之间以"AND"相连，以上定义将返回如下内容：
+
+	"phone='13712345678' AND id>100 AND addr LIKE '上海*' AND picId IS NULL"
+
+示例二：
+
+	var kvList = [ ["phone", "13712345678"], ["id", ">100"], ["addr", "上海*"], ["picId", "null"] ];
+	WUI.getQueryCond(kvList); // 结果同上。
+
+
+设置值时，支持以下格式：
+
+- {key: "value"} - 表示"key=value"
+- {key: ">value"} - 表示"key>value", 类似地，可以用 >=, <, <=, <> 这些操作符。
+- {key: "value*"} - 值中带通配符，表示"key like 'value%'" (以value开头), 类似地，可以用 "*value", "*value*", "*val*ue"等。
+- {key: "null" } - 表示 "key is null"。要表示"key is not null"，可以用 "<>null".
+- {key: "empty" } - 表示 "key=''".
+
+支持简单的and/or查询，但不支持在其中使用括号:
+
+- {key: ">value and <=value"}  - 表示"key>'value' and key<='value'"
+- {key: "null or 0 or 1"}  - 表示"key is null or key=0 or key=1"
+
+在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。
+*/
+self.getQueryCond = getQueryCond;
+function getQueryCond(kvList)
+{
+	var condArr = [];
+	if ($.isPlainObject(kvList)) {
+		$.each(kvList, handleOne);
+	}
+	else if ($.isArray(kvList)) {
+		$.each(kvList, function (i, e) {
+			handleOne(e[0], e[1]);
+		});
+	}
+
+	function handleOne(k,v) {
+		if (v == null || v === "")
+			return;
+		var arr = v.split(/\s+(and|or)\s+/i);
+		var str = '';
+		var bracket = false;
+		$.each(arr, function (i, v1) {
+			if ( (i % 2) == 1) {
+				str += ' ' + v1.toUpperCase() + ' ';
+				bracket = true;
+				return;
+			}
+			str += k + getop(v1);
+		});
+		if (bracket)
+			str = '(' + str + ')';
+		condArr.push(str);
+		//val[e.name] = escape(v);
+		//val[e.name] = v;
+	}
+	return condArr.join(' AND ');
+}
+
+/**
+@fn WUI.getQueryParam(kvList)
+
+根据键值对生成BQP协议中{obj}.query接口需要的cond参数.
+
+示例：
+
+	WUI.getQueryParam({phone: '13712345678', id: '>100'})
+	返回
+	{cond: "phone='13712345678' AND id>100"}
+
+@see WUI.getQueryCond
+*/
+self.getQueryParam = getQueryParam;
+function getQueryParam(kvList)
+{
+	return {cond: getQueryCond(kvList)};
+}
+
 }
 // vi: foldmethod=marker
 // ====== WEBCC_END_FILE app.js }}}
@@ -3908,133 +4035,6 @@ function unloadDialog()
 var BTN_TEXT = ["添加", "保存", "保存", "查找", "删除"];
 // e.g. var text = BTN_TEXT[mode];
 
-// 参考 getQueryCond中对v各种值的定义
-function getop(v)
-{
-	if (typeof(v) == "number")
-		return "=" + v;
-	var op = "=";
-	var is_like=false;
-	if (v.match(/^(<>|>=?|<=?)/)) {
-		op = RegExp.$1;
-		v = v.substr(op.length);
-	}
-	else if (v.indexOf("*") >= 0 || v.indexOf("%") >= 0) {
-		v = v.replace(/[*]/g, "%");
-		op = " like ";
-	}
-	v = $.trim(v);
-
-	if (v === "null")
-	{
-		if (op == "<>")
-			return " is not null";
-		return " is null";
-	}
-	if (v === "empty")
-		v = "";
-	if (v.length == 0 || v.match(/\D/) || v[0] == '0') {
-		v = v.replace(/'/g, "\\'");
-// 		// ???? 只对access数据库: 支持 yyyy-mm-dd, mm-dd, hh:nn, hh:nn:ss
-// 		if (!is_like && v.match(/^((19|20)\d{2}[\/.-])?\d{1,2}[\/.-]\d{1,2}$/) || v.match(/^\d{1,2}:\d{1,2}(:\d{1,2})?$/))
-// 			return op + "#" + v + "#";
-		return op + "'" + v + "'";
-	}
-	return op + v;
-}
-
-/**
-@fn WUI.getQueryCond(kvList)
-
-@param kvList {key=>value}, 键值对，值中支持操作符及通配符。也支持格式 [ [key, value] ], 这时允许key有重复。
-
-根据kvList生成BPQ协议定义的{obj}.query的cond参数。
-
-例如:
-
-	var kvList = {phone: "13712345678", id: ">100", addr: "上海*", picId: "null"};
-	WUI.getQueryCond(kvList);
-
-有多项时，每项之间以"AND"相连，以上定义将返回如下内容：
-
-	"phone='13712345678' AND id>100 AND addr LIKE '上海*' AND picId IS NULL"
-
-示例二：
-
-	var kvList = [ ["phone", "13712345678"], ["id", ">100"], ["addr", "上海*"], ["picId", "null"] ];
-	WUI.getQueryCond(kvList); // 结果同上。
-
-
-设置值时，支持以下格式：
-
-- {key: "value"} - 表示"key=value"
-- {key: ">value"} - 表示"key>value", 类似地，可以用 >=, <, <=, <> 这些操作符。
-- {key: "value*"} - 值中带通配符，表示"key like 'value%'" (以value开头), 类似地，可以用 "*value", "*value*", "*val*ue"等。
-- {key: "null" } - 表示 "key is null"。要表示"key is not null"，可以用 "<>null".
-- {key: "empty" } - 表示 "key=''".
-
-支持简单的and/or查询，但不支持在其中使用括号:
-
-- {key: ">value and <=value"}  - 表示"key>'value' and key<='value'"
-- {key: "null or 0 or 1"}  - 表示"key is null or key=0 or key=1"
-
-在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。
-*/
-self.getQueryCond = getQueryCond;
-function getQueryCond(kvList)
-{
-	var condArr = [];
-	if ($.isPlainObject(kvList)) {
-		$.each(kvList, handleOne);
-	}
-	else if ($.isArray(kvList)) {
-		$.each(kvList, function (i, e) {
-			handleOne(e[0], e[1]);
-		});
-	}
-
-	function handleOne(k,v) {
-		if (v == null || v === "")
-			return;
-		var arr = v.split(/\s+(and|or)\s+/i);
-		var str = '';
-		var bracket = false;
-		$.each(arr, function (i, v1) {
-			if ( (i % 2) == 1) {
-				str += ' ' + v1.toUpperCase() + ' ';
-				bracket = true;
-				return;
-			}
-			str += k + getop(v1);
-		});
-		if (bracket)
-			str = '(' + str + ')';
-		condArr.push(str);
-		//val[e.name] = escape(v);
-		//val[e.name] = v;
-	}
-	return condArr.join(' AND ');
-}
-
-/**
-@fn WUI.getQueryParam(kvList)
-
-根据键值对生成BQP协议中{obj}.query接口需要的cond参数.
-
-示例：
-
-	WUI.getQueryParam({phone: '13712345678', id: '>100'})
-	返回
-	{cond: "phone='13712345678' AND id>100"}
-
-@see WUI.getQueryCond
-*/
-self.getQueryParam = getQueryParam;
-function getQueryParam(kvList)
-{
-	return {cond: getQueryCond(kvList)};
-}
-
 function getFindData(jfrm)
 {
 	var kvList = {};
@@ -4050,7 +4050,7 @@ function getFindData(jfrm)
 		else
 			kvList[e.name] = v;
 	})
-	var cond = getQueryParam(kvList);
+	var cond = self.getQueryParam(kvList);
 	if (kvList2) 
 		$.extend(cond, kvList2);
 	return cond;
