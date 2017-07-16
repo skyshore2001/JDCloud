@@ -11,24 +11,43 @@ function initPageUserRegStat()
 			return jpage.find(".btnStat2.active:visible").attr("data-tmUnit");
 		},
 		onInitChart: function (param, initChartOpt) {
-			initChartOpt.seriesOpt = {
-				// type:'line',
-				markPoint: {
-					data: [
-						{type: 'max', name: '最大值'},
-						{type: 'min', name: '最小值'}
-					]
-				},
-				markLine: {
-					data: [
-						{type: 'average', name: '平均值'}
-					]
+			var useTmUnit = jpage.find(".btnStat2.active:visible").size() > 0;
+			if (! useTmUnit) {
+				initChartOpt.seriesOpt = {
+					type: 'pie',
+				}
+			}
+			else {
+				// 如果有分组，显示柱状图，否则折线图
+				initChartOpt.seriesOpt = {
+					type: param.g? 'bar': 'line',
+					//顶部数字
+					itemStyle: {
+						normal: {
+							label: {  show: true }
+						}
+					}
+				}
+				if (! param.g) {
+					$.extend(initChartOpt.seriesOpt, {
+						markPoint: {
+							data: [
+								{type: 'max', name: '最大值'},
+								{type: 'min', name: '最小值'}
+							]
+						},
+						markLine: {
+							data: [
+								{type: 'average', name: '平均值'}
+							]
+						}
+					});
 				}
 			};
 		},
 		onLoadData: function (statData, initChartOpt) {
 			// x轴数据不多时全部显示
-			if (statData.xData.length <= 20) {
+			if (initChartOpt.seriesOpt.type != 'pie' && statData.xData.length <= 20) {
 				var chartOpt = {
 					xAxis: {
 						axisLabel: { interval: 0, rotate: 30 }

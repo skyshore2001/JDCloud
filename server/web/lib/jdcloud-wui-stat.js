@@ -145,42 +145,30 @@ function nextTm(tmUnit, tmArr)
 /**
 @fn rs2Stat(rs, opt?) -> statData
 
-@param rs {@h, @d} RowSet数据。
-@param opt {formatter?=WUI.options.statFormatter[groupKey], maxSeriesCnt, tmUnit}  可对汇总数据进行格式化。参考示例四。
-@param opt.tmUnit 如果非空，表示按指定时间维度分析。参考[JdcloudStat.tmUnit]().
+将table格式数据({h,d})，转换成显示统计图需要的格式。尤其是支持按时间维度组织数据，生成折线图/柱状图。
 
-将按日期统计返回的数据，生成统计图需要的统计数据。
+@param rs {@h, @d} RowSet数据。筋斗云框架标准数据表格式。
+@param opt {formatter?=WUI.options.statFormatter[groupKey], maxSeriesCnt?, tmUnit?}  
 
-对输入数据rs的要求：
+## 有时间维度的统计数据
 
-- rs.h为表头，格式为 [ 时间字段?, 汇总字段?, 汇总显示字段?, sum, ... ]
+对于折线图/柱状图，支持由opt.tmUnit指定时间维度来组织数据，这时需要对所给数据中缺失的时间自动补全。
 
-	如果指定opt.tmUnit，则rs.h前面几个为与opt.tmUnit指定相符的时间字段，一般是以下字段组合："y"(年),"m"(月),"d"(日),"h"(小时),"w"(周)。
+对输入数据rs的要求为，rs.h表头格式为 [ 时间字段, 汇总字段?, 汇总显示字段?, sum, ... ]
 
-	汇总字段0到1个，汇总显示字段0到1个。当有时间字段时，汇总字段以“系列”方式显示，否则显示在x轴上。
-	sum为累计值字段的名字，暂定死为"sum".
+rs.h中前面几个为时间字段，必须与opt.tmUnit指定相符，一般是以下字段组合："y"(年),"m"(月),"d"(日),"h"(小时),"w"(周)。
+例如opt.tmUnit值为"y,m,d"，则rs.h中前几个字段必须为["y","m","d"]
 
-- rs.d中的数据已按时间排序。
+汇总字段0到1个，汇总显示字段0到1个。如果有汇总字段，则以“系列”的方式显示。
+例如rs.h中有汇总字段和汇总显示字段["cityId", "cityName"], 则会将"北京"，"上海"这些"cityName"作为图表“系列”展示。
 
-@param opt.maxSeriesCnt?=10
+sum为累计值字段的名字，必须名为"sum".
+sum之后字段暂不使用。
 
-指定此选项，则按sum倒排序，取前面的maxSeriesCnt项seriesName用于展示，剩余的项归并到“其它”中。
+注意：rs.d中的数据必须已按时间排序，否则无法补齐缺失的时间维度。
 
-@return statData { @xData, @yData=[{name=seriesName, data=@seriesData}]  }
-
-生成数据时要求：
-
-- xData一般为日期数据；yData为一个或多个统计系列。
-- 对rs.d中缺失日期的数据需要补0.
-- 如果有汇总字段，则最终返回的yData中的seriesName的值为汇总字段值（或者如果有“汇总字段显示名”这列，则使用这列值），否则yData中只有一个系列，且seriesName固定使用'SUM'.
-- 如果在汇总字段后sum字段前还有一列，则以该列作为汇总系列的名称(seriesName). 参考示例三。
-
-- 可通过opt.formatter对汇总字段进行格式化。参考示例四。
-
-	opt.formatter: Function(value, arr, i). 
-	- value: 当前汇总字段的值
-	- arr: 当前行数组
-	- i: 汇总字段的数组index, 即 arr[i]=value
+返回数据格式为 {@xData, @yData=[{name, @data}]}, 其中xData来自时间字段;
+如果有汇总，则yData包含多个系列{name, data}，否则只有一个系列且name固定为"累计". data来源于sum字段。
 
 示例一：
 
@@ -230,6 +218,7 @@ function nextTm(tmUnit, tmArr)
 	}
 
 默认yData中的系列名(seriesName)直接使用汇总字段，但如果汇总字段后还有一列，则以该列作为显示名称。
+
 示例三： 汇总字段"sex"后面还有一列"sexName", 因而使用sexName作为图表系列名用于显示. 而"sex"以"M","F"分别表示男女，仅做内部使用：
 
 	var rs = {
@@ -291,7 +280,11 @@ function nextTm(tmUnit, tmArr)
 		return arr[i+1];
 	}
 
-示例五：无时间字段，使用汇总字段显示为x轴数据：
+## 简单汇总数据
+
+rs.h表头格式为 [汇总字段, 汇总显示字段?, sum]，表示简单汇总数据，可用于显示折线图/柱状图/饼图等。
+
+示例：无时间字段，使用汇总字段显示为x轴数据：
 
 	var rs = {
 		h: ["wd", "sum"], // 查看每周几的注册人数
@@ -316,6 +309,39 @@ function nextTm(tmUnit, tmArr)
 			{name: 'sum', data: [201, 180, 206, 322, 208, 435, 478]} // 分别对应xData中每个值
 		]
 	}
+
+注意：
+
+- 显示饼图时，echart要求data的格式为{name, value}，这将在WUI.initChart中特殊处理。
+
+## 指定类型数据 TODO
+
+根据opt.cols指定列类型，并转换数据。opt.cols是字符串，每个字符表示列的类型，列分为"x"列（生成x轴数据，归入xData中），"g"列（分组列，生成图表系列，yData中每项的name），"y"列（数据列，可以有多个，yData中每项的data）。
+对于其它列rs2Stat不做处理，一般用字符"."表示。
+
+示例：
+
+- opt.cols="yy" 例如散点图原始数据格式 table("身高","体重")，将数据全部放在yData的默认系列中。
+- opt.cols="gyy" 例如多系列散点图原始数据为 table("性别","身高","体重")，将性别作为系列，其它作为数据。
+- opt.cols=".gyy" 例如多系列散点图原始数据为 table("cityId", "cityName","身高","体重")，第一列被忽略，第二列cityName作为系列。
+- opt.cols="xyyyy" 例如k线图数据 table("日期", "开","收","低","高")
+- opt.cols=".xy" 例如饼图数据 table("cityId", "cityName", "sum")
+
+## 参数说明
+
+@param opt.formatter 可对汇总数据进行格式化。Function(value, arr, i). 
+
+- value: 当前汇总字段的值
+- arr: 当前行数组
+- i: 汇总字段的数组index, 即 arr[i]=value
+
+@param opt.tmUnit 如果非空，表示按指定时间维度分析。参考[JdcloudStat.tmUnit]().
+
+@param opt.maxSeriesCnt?=10
+
+指定此选项，则按sum倒排序，取前面的maxSeriesCnt项seriesName用于展示，剩余的项归并到“其它”中。
+
+@return statData { @xData, @yData=[{name=seriesName, data=@seriesData}]  }
 
 与echart结合使用示例可参考 initChart. 原理如下：
 
@@ -385,10 +411,9 @@ function rs2Stat(rs, opt)
 		var yArr = [];
 		yData.push({name: sumName_, data: yArr});
 		$.each(rs.d, function (i, e) {
-			var x0 = e[0];
-			var x = getGroupName(e[0], e, 0);
+			var g = getGroupName(e[0], e, 0);
 			var y = parseFloat(e[sumIdx]);
-			xData.push(x);
+			xData.push(g);
 			yArr.push(y);
 		});
 		return ret;
@@ -623,52 +648,77 @@ self.initChart = initChart;
 function initChart(chartTable, statData, seriesOpt, chartOpt)
 {
 	var myChart = echarts.init(chartTable);
-	var legendAry = [];
-	var seriesAry = [];
+	var legendAry;
+	var seriesAry;
 
 	var seriesOpt1 = $.extend(true, {
 		type: 'line',
 	}, seriesOpt);
 
-	var showLegend = ! (statData.yData.length == 1 && statData.yData[0].name == sumName_);
-	$.each (statData.yData, function (i, e) {
-		if (showLegend)
-			legendAry.push(e.name);
-		seriesAry.push($.extend(e, seriesOpt1));
-	});
+	var chartOpt0;
+	if (seriesOpt1.type == 'line' || seriesOpt1.type == 'bar') {
+		// 如果没有系列则不显示系列
+		if (! (statData.yData.length == 1 && statData.yData[0].name == sumName_)) {
+			legendAry = $.map (statData.yData, function (e, i) {
+				return e.name;
+			});
+		}
+
+		seriesAry = $.map (statData.yData, function (e, i) {
+			return $.extend(e, seriesOpt1);
+		});
+
+		chartOpt0 = {
+			tooltip: {
+				trigger: 'axis'
+			},
+			toolbox: {
+				show: true,
+				feature: {
+					dataView: {},
+					magicType: {type: ['line', 'bar']},
+					restore: {},
+				}
+			},
+			xAxis:  {
+				type: 'category',
+				data: statData.xData
+			},
+			yAxis: {
+				type: 'value',
+				axisLabel: {
+					formatter: '{value}'
+				}
+			},
+		};
+	}
+	else if (seriesOpt1.type == 'pie') {
+		self.assert(statData.yData.length == 1, "*** 饼图应只有一个系列");
+		legendAry = statData.xData;
+		seriesAry = [
+			$.extend(statData.yData[0], seriesOpt1)
+		];
+		// data格式 [value] 转为 [{name, value}], 同时设置legendAry
+		seriesAry[0].data = $.map(seriesAry[0].data, function (e, i) {
+			var g = statData.xData[i];
+			return {name: g, value: e};
+		});
+		chartOpt0 = {
+			tooltip : {
+				trigger: 'item',
+				formatter: "{b}: {c} ({d}%)"
+			},
+		};
+	}
 
 	var chartOpt1 = $.extend(true, {
-		title: {
-			text: statData.xData.length==0? '暂无数据': '',
-		},
-		tooltip: {
-			trigger: 'axis'
-		},
 		legend: {
 			data: legendAry
 		},
-		toolbox: {
-			show: true,
-			feature: {
-				dataView: {},
-				magicType: {type: ['line', 'bar']},
-				restore: {},
-			}
-		},
-		xAxis:  {
-			type: 'category',
-			data: statData.xData
-		},
-		yAxis: {
-			type: 'value',
-			axisLabel: {
-				formatter: '{value}'
-			}
-		},
 		series: seriesAry
-	}, chartOpt);
+	}, chartOpt0, chartOpt);
 
-	myChart.setOption(chartOpt1);
+	myChart.setOption(chartOpt1, true); // true: 清除之前设置过的选项
 	chartTable.echart = myChart;
 }
 

@@ -11,6 +11,23 @@ function initPageApiLogStat()
 				param.orderby = "sum DESC";
 				param.pagesz = 10;
 			}
+
+			var useTmUnit = jpage.find(".btnStat2.active:visible").size() > 0;
+			if (! useTmUnit) {
+				initChartOpt.seriesOpt = {
+					type: 'pie',
+				}
+			}
+			else {
+				initChartOpt.seriesOpt = {
+					//顶部数字
+					itemStyle: {
+						normal: {
+							label: {  show: true }
+						}
+					}
+				}
+			}
 		},
 		onGetTmUnit: function () {
 			return jpage.find(".btnStat2.active:visible").attr("data-tmUnit");
