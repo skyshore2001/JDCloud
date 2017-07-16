@@ -1,14 +1,5 @@
 <?php
 
-// ====== globals {{{
-function getTmVcol($fieldName = "t0.tm")
-{
-	return [
-		"res" => ["year({$fieldName}) y", "month({$fieldName}) m", "week({$fieldName}) w", "day({$fieldName}) d", "weekday({$fieldName})+1 wd", "hour({$fieldName}) h"],
-	];
-}
-//}}}
-
 // ====== User {{{
 class AC0_User extends AccessControl
 {
@@ -20,7 +11,7 @@ class AC0_User extends AccessControl
 	];
 
 	function __construct() {
-		array_push($this->vcolDefs, getTmVcol("t0.createTm"));
+		$this->vcolDefs[] = [ "res" => tmCols("t0.createTm") ];
 	}
 
 	protected function onValidate()
@@ -110,9 +101,7 @@ class AC0_Ordr extends AccessControl
 	];
 
 	function __construct() {
-		$vcol = getTmVcol("log_cr.tm");
-		$vcol["require"] = "createTm";
-		array_push($this->vcolDefs, $vcol);
+		$this->vcolDefs[] = [ "res" => tmCols("log_cr.tm"), "require" => "createTm" ];
 	}
 }
 
@@ -187,7 +176,7 @@ class AC2_Ordr extends AC0_Ordr
 class AC0_ApiLog extends AccessControl
 {
 	function __construct() {
-		array_push($this->vcolDefs, getTmVcol());
+		$this->vcolDefs[] = [ "res" => tmCols() ];
 	}
 }
 

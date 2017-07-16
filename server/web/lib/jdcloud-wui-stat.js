@@ -18,12 +18,13 @@ if (self.options == null)
 /**
 @var WUI.options.statFormatter
  */
+var weekdayNames_ = "日一二三四五六日";
 self.options.statFormatter = {
 	sum: function (value, arr, i) {
 		return '累计';
 	},
 	wd: function (value, arr, i) {
-		return '周' + value;
+		return '周' + weekdayNames_[value];
 	},
 	h: function (value, arr, i) {
 		return value + "时";
@@ -68,18 +69,24 @@ function makeTm(tmUnit, tmArr)
 		ret = tmArr[1] + "-" + tmArr[2] + " " + tmArr[3] + ":00";
 	}
 	else if (tmUnit == 'y,w') {
-		// 当年第一个周日 + 7 * 周数
-		var dt = new Date(tmArr[0], 0, 1);
-		while (dt.getDay() != 0) {
-			dt.setDate(dt.getDate() +1);
-		}
-		dt.setDate(dt.getDate() + 7 * parseInt(tmArr[1]));
-		ret = dt.getFullYear() + "-" + (dt.getMonth()+1) + "-" + dt.getDate() + "/" + tmArr[1];
+		// 当年第一个周一 + 7 * (周数-1), 对应mysql week()函数模式7
+		var dt = firstWeek(tmArr[0]);
+		var days = 7 * (parseInt(tmArr[1])-1);
+		dt.addDay(days);
+		ret = dt.getFullYear() + "-" + (dt.getMonth()+1) + "-" + dt.getDate();
 	}
 	else {
 		throw "*** unknown tmUnit=" + tmUnit;
 	}
 	return ret;
+}
+
+// 返回该年第一个周一的日期
+function firstWeek(year)
+{
+	var dt = new Date(year, 0, 1);
+	dt.addDay(8-dt.getDay())%7; // 至下周1
+	return dt;
 }
 
 /*
