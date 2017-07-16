@@ -10,6 +10,7 @@ JdcloudStat.call(WUI);
 function JdcloudStat()
 {
 var self = this;
+var WUI = self;
 
 // 用于统计汇总字段显示
 if (self.options == null)
@@ -383,7 +384,7 @@ function rs2Stat(rs, opt)
 	var tmUnit = opt.tmUnit;
 	if (tmUnit) {
 		tmCnt = tmUnit.split(',').length;
-		self.assert(tmUnit == rs.h.slice(0, tmCnt).join(','), "*** time fields does not match. expect " + tmUnit);
+		WUI.assert(tmUnit == rs.h.slice(0, tmCnt).join(','), "*** time fields does not match. expect " + tmUnit);
 	}
 
 	var sumIdx = tmCnt;
@@ -400,7 +401,7 @@ function rs2Stat(rs, opt)
 		};
 		++ sumIdx;
 	}
-	self.assert(rs.h[sumIdx] == 'sum', "*** cannot find sum column");
+	WUI.assert(rs.h[sumIdx] == 'sum', "*** cannot find sum column");
 
 	if (opt.formatter == null && self.options.statFormatter) {
 		var groupField = groupIdx<0? 'sum': rs.h[groupIdx];
@@ -550,20 +551,8 @@ function runStat(jo, jcharts, opt)
 {
 	opt = $.extend({}, opt);
 	var condArr = [];
-	jo.find('[name]').each(function (i, e) {
-		var name = e.name;
-		if (!name)
-			return;
-
-		var jo = $(e);
-		var val = null;
-
-		if (jo.is(".textbox-value")) {
-			jo = jo.parent().prev();
-			val = jo.datetimebox('getValue');
-		}
-		else
-			val = jo.val();
+	WUI.formItems(jo, function (name, val) {
+		var ji = this;
 
 		if (val == null || val == "" || val == "无" || val == "全部")
 			return;
@@ -574,7 +563,11 @@ function runStat(jo, jcharts, opt)
 			opt.tmUnit = val;
 		}
 		else  {
-			var op = jo.attr('data-op');
+			// fix for easyui-datetimebox
+			if (ji.is(".textbox-value")) {
+				ji = ji.parent().prev(".textbox-f");
+			}
+			var op = ji.attr('data-op');
 			if (op) {
 				val = op + ' ' + val;
 			}
@@ -619,7 +612,7 @@ function runStat(jo, jcharts, opt)
 			seriesOpt: {}
 		};
 		opt.onInitChart && opt.onInitChart.call(jchart, param, initChartOpt);
-		self.assert(param.ac, '*** no ac specified');
+		WUI.assert(param.ac, '*** no ac specified');
 
 		callSvr(param.ac, api_stat, param);
 
@@ -693,7 +686,7 @@ function initChart(chartTable, statData, seriesOpt, chartOpt)
 		};
 	}
 	else if (seriesOpt1.type == 'pie') {
-		self.assert(statData.yData.length == 1, "*** 饼图应只有一个系列");
+		WUI.assert(statData.yData.length == 1, "*** 饼图应只有一个系列");
 		legendAry = statData.xData;
 		seriesAry = [
 			$.extend(statData.yData[0], seriesOpt1)
@@ -872,7 +865,7 @@ function initPageStat(jpage, opt)
 	function setTmRange(dscr)
 	{
 		var tm2 = jpage.find(".txtTm2").datetimebox("getValue");
-		var range = self.getTmRange(dscr, tm2);
+		var range = getTmRange(dscr, tm2);
 		if (range) {
 			jpage.find(".txtTm1").datetimebox("setValue",range[0]);
 			jpage.find(".txtTm2").datetimebox("setValue",range[1]);
@@ -927,7 +920,7 @@ function getTmRange(dscr, now)
 	if (! now)
 		now = new Date();
 	else if (! (now instanceof Date)) {
-		now = self.parseDate(now);
+		now = WUI.parseDate(now);
 	}
 	var dt1, dt2, dt;
 	var type = m[1];
@@ -950,12 +943,12 @@ function getTmRange(dscr, now)
 		if (type == "近") {
 			dt2 = now.format(fmt_d);
 			//dt1 = now.add("m", -n).format(fmt_d);
-			now = self.parseDate(now.format(fmt_m)); // 回到1号
+			now = WUI.parseDate(now.format(fmt_m)); // 回到1号
 			dt1 = now.add("m", -n).format(fmt_m);
 		}
 		else if (type == "前") {
 			dt2 = now.format(fmt_m);
-			dt1 = self.parseDate(dt2).add("m", -n).format(fmt_m);
+			dt1 = WUI.parseDate(dt2).add("m", -n).format(fmt_m);
 		}
 	}
 	else if (u == "周") {
@@ -972,12 +965,12 @@ function getTmRange(dscr, now)
 	else if (u == "年") {
 		if (type == "近") {
 			dt2 = now.format(fmt_d);
-			now = self.parseDate(now.format(fmt_y)); // 回到1/1
+			now = WUI.parseDate(now.format(fmt_y)); // 回到1/1
 			dt1 = now.add("y", -n).format(fmt_d);
 		}
 		else if (type == "前") {
 			dt2 = now.format(fmt_y);
-			dt1 = self.parseDate(dt2).add("y", -n).format(fmt_y);
+			dt1 = WUI.parseDate(dt2).add("y", -n).format(fmt_y);
 		}
 	}
 

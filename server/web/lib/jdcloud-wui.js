@@ -1510,15 +1510,8 @@ function getFormData(jo)
 		data = new FormData();
 	}
 	var orgData = jo.data("origin_") || {};
-	jo.find("[name]:not([disabled])").each (function () {
-		var ji = $(this);
-		var name = ji.attr("name");
-		var content;
-		if (ji.is(":input"))
-			content = ji.val();
-		else
-			content = ji.html();
-
+	formItems(jo, function (name, content) {
+		var ji = this;
 		var orgContent = orgData[name];
 		if (orgContent == null)
 			orgContent = "";
@@ -1543,6 +1536,45 @@ function getFormData(jo)
 		}
 	});
 	return data;
+}
+
+/**
+@fn formItems(jo, cb)
+
+遍历jo下带name属性的有效控件，回调cb函数。
+
+注意:
+
+- 忽略有disabled属性的控件
+- 忽略未选中的checkbox/radiobutton
+
+@param cb(name, val) this=ji=当前jquery对象
+当cb返回false时可中断遍历。
+
+ */
+self.formItems = formItems;
+function formItems(jo, cb)
+{
+	jo.find("[name]:not([disabled])").each (function () {
+		var name = this.name;
+		if (! name)
+			return;
+
+		var ji = $(this);
+		var val;
+		if (ji.is(":input")) {
+			if (this.type == "checkbox" && !this.checked)
+				return;
+			if (this.type == "radio" && !this.checked)
+				return;
+			val = ji.val();
+		}
+		else {
+			val = ji.html();
+		}
+		if (cb.call(ji, name,  val) === false)
+			return false;
+	});
 }
 
 /**
