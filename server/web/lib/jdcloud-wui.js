@@ -1489,12 +1489,26 @@ self.assert(window.jQuery, "require jquery lib.");
 		callSvr(ac, fn, getFormData(jf));
 	});
 
+如果在jo对象上指定了属性enctype="multipart/form-data"，则调用getFormData会返回FormData对象而非js对象，
+再调用callSvr时，会以"multipart/form-data"格式提交数据。
+示例：
+
+	<form method="POST" enctype='multipart/form-data'>
+		课程文档
+		<input name="pdf" type="file" accept="application/pdf">
+	</form>
+
 @see setFormData
  */
 self.getFormData = getFormData;
 function getFormData(jo)
 {
 	var data = {};
+	var isFormData = false;
+	if (jo.attr("enctype") == "multipart/form-data") {
+		isFormData = true;
+		data = new FormData();
+	}
 	var orgData = jo.data("origin_") || {};
 	jo.find("[name]:not([disabled])").each (function () {
 		var ji = $(this);
@@ -1511,7 +1525,22 @@ function getFormData(jo)
 		if (content == null)
 			content = "";
 		if (content !== String(orgContent)) // 避免 "" == 0 或 "" == false
-			data[name] = content;
+		{
+			if (! isFormData) {
+				data[name] = content;
+			}
+			else {
+				if (ji.is(":file")) {
+					// 支持指定multiple，如  <input name="pdf" type="file" multiple accept="application/pdf">
+					$.each(ji.prop("files"), function (i, e) {
+						data.append(name, e);
+					});
+				}
+				else {
+					data.append(name, content);
+				}
+			}
+		}
 	});
 	return data;
 }
