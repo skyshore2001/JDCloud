@@ -19,9 +19,10 @@ if (self.options == null)
 @var WUI.options.statFormatter
  */
 var weekdayNames_ = "日一二三四五六日";
+var sumName_ = "累计";
 self.options.statFormatter = {
 	sum: function (value, arr, i) {
-		return '累计';
+		return sumName_;
 	},
 	wd: function (value, arr, i) {
 		return '周' + weekdayNames_[value];
@@ -382,7 +383,7 @@ function rs2Stat(rs, opt)
 
 	if (tmCnt == 0) {
 		var yArr = [];
-		yData.push({name: '累计', data: yArr});
+		yData.push({name: sumName_, data: yArr});
 		$.each(rs.d, function (i, e) {
 			var x0 = e[0];
 			var x = getGroupName(e[0], e, 0);
@@ -629,15 +630,16 @@ function initChart(chartTable, statData, seriesOpt, chartOpt)
 		type: 'line',
 	}, seriesOpt);
 
+	var showLegend = ! (statData.yData.length == 1 && statData.yData[0].name == sumName_);
 	$.each (statData.yData, function (i, e) {
-		legendAry.push(e.name);
+		if (showLegend)
+			legendAry.push(e.name);
 		seriesAry.push($.extend(e, seriesOpt1));
 	});
 
 	var chartOpt1 = $.extend(true, {
 		title: {
 			text: statData.xData.length==0? '暂无数据': '',
-			left: 60
 		},
 		tooltip: {
 			trigger: 'axis'
@@ -648,16 +650,13 @@ function initChart(chartTable, statData, seriesOpt, chartOpt)
 		toolbox: {
 			show: true,
 			feature: {
-				dataZoom: {},
-				dataView: {readOnly: false},
+				dataView: {},
 				magicType: {type: ['line', 'bar']},
 				restore: {},
-				saveAsImage: {}
 			}
 		},
 		xAxis:  {
 			type: 'category',
-			boundaryGap: false,
 			data: statData.xData
 		},
 		yAxis: {

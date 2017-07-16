@@ -21,6 +21,7 @@ function initPageGenStat()
 
 			var chartOpt, seriesOpt;
 			if (id == "c1") {
+				param.cond += " and app='user'";
 				chartOpt = {
 					title: {
 						text: tmType_ + "访问量（会话数）"
