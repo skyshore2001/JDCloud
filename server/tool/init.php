@@ -100,8 +100,16 @@ function checkEnv()
 	];
 
 	$val = function_exists('gd_info');
+	$txt = $val? "支持": "不支持(图像上传将受影响)";
+	if ($val) {
+		$rv = gd_info();
+		if (! $rv["JPEG Support"]) {
+			$txt = "不完整(不能上传JPEG图片/--with-jpeg-dir)";
+			$val = 0;
+		}
+	}
 	$check["gd"] = [
-		"value"=>$val? "支持": "不支持(图像上传将受影响)",
+		"value"=>$txt,
 		"result" => $val
 	];
 
