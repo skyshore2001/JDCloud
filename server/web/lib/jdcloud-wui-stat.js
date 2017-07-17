@@ -669,7 +669,7 @@ function initChart(chartTable, statData, seriesOpt, chartOpt)
 		};
 	}
 	else if (seriesOpt1.type == 'pie') {
-		WUI.assert(statData.yData.length == 1, "*** 饼图应只有一个系列");
+		WUI.assert(statData.yData.length <= 1, "*** 饼图应只有一个系列");
 		legendAry = statData.xData;
 		seriesAry = [
 			$.extend(statData.yData[0], seriesOpt1)
