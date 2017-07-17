@@ -665,14 +665,6 @@ function initChart(chartTable, statData, seriesOpt, chartOpt)
 			tooltip: {
 				trigger: 'axis'
 			},
-			toolbox: {
-				show: true,
-				feature: {
-					dataView: {},
-					magicType: {type: ['line', 'bar']},
-					restore: {},
-				}
-			},
 			xAxis:  {
 				type: 'category',
 				data: statData.xData

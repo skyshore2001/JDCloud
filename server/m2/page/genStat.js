@@ -21,7 +21,10 @@ function initPageGenStat()
 						//顶部数字
 						itemStyle: {
 							normal: {
-								label: {  show: true }
+								label: {
+									show: true,
+									formatter: "{c}元"
+								}
 							}
 						}
 					};

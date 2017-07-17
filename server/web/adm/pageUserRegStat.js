@@ -13,11 +13,30 @@ function initPageUserRegStat()
 		onInitChart: function (param, initChartOpt) {
 			var useTmUnit = jpage.find(".btnStat2.active:visible").size() > 0;
 			if (! useTmUnit) {
+				// 不按时间展现时，显示饼图
 				initChartOpt.seriesOpt = {
 					type: 'pie',
+					itemStyle: {
+						normal: {
+							label: {
+								show: true,
+								formatter: '{b}: {d}%'
+							}
+						}
+					}
 				}
 			}
 			else {
+				initChartOpt.chartOpt = {
+					toolbox: {
+						show: true,
+						feature: {
+							dataView: {},
+							magicType: {type: ['line', 'bar']},
+							restore: {},
+						}
+					}
+				};
 				// 如果有分组，显示柱状图，否则折线图
 				initChartOpt.seriesOpt = {
 					type: param.g? 'bar': 'line',

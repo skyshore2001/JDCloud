@@ -14,11 +14,30 @@ function initPageApiLogStat()
 
 			var useTmUnit = jpage.find(".btnStat2.active:visible").size() > 0;
 			if (! useTmUnit) {
+				// 不按时间展现时，显示饼图
 				initChartOpt.seriesOpt = {
 					type: 'pie',
+					itemStyle: {
+						normal: {
+							label: {
+								show: true,
+								formatter: '{b}: {d}%'
+							}
+						}
+					}
 				}
 			}
 			else {
+				initChartOpt.chartOpt = {
+					toolbox: {
+						show: true,
+						feature: {
+							dataView: {},
+							magicType: {type: ['line', 'bar']},
+							restore: {},
+						}
+					}
+				};
 				initChartOpt.seriesOpt = {
 					//顶部数字
 					itemStyle: {
