@@ -7,7 +7,7 @@ function initPageGenStat()
 	{
 		var tm1 = new Date().add("m", -6).format("yyyy-mm-01"); // 近6个月
 		var tm2 = new Date().format("yyyy-mm-01"); // 当前月
-		var statItf = MUI.initPageStat(jpage, {
+		var statItf_ = MUI.initPageStat(jpage, {
 			onGetTmUnit: function () {
 				var id = this.attr("id");
 				if (id == "c1")
@@ -37,6 +37,15 @@ function initPageGenStat()
 				
 			}
 		});
-		statItf.refreshStat();
+		statItf_.refreshStat();
+
+		// 下拉刷新
+		var pullListOpt = {
+			onLoadItem: function (isRefresh) {
+				if (isRefresh)
+					statItf_.refreshStat();
+			}
+		};
+		MUI.initPullList(jpage.find(".bd")[0], pullListOpt);
 	}
 }
