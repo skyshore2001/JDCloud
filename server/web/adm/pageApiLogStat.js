@@ -4,54 +4,60 @@ function initPageApiLogStat()
 
 	jpage.find(".btnStat2").click(btnStat2_Click);
 
-	var statItf_ = WUI.initPageStat(jpage, {
-		maxSeriesCnt: 5,
-		onInitChart: function (param, initChartOpt) {
-			if (param.orderby == null) {
-				param.orderby = "sum DESC";
-				param.pagesz = 10;
-			}
+	var statItf_ = WUI.initPageStat(jpage, setStatOpt);
 
-			var useTmUnit = jpage.find(".btnStat2.active:visible").size() > 0;
-			if (! useTmUnit) {
-				// 不按时间展现时，显示饼图
-				initChartOpt.seriesOpt = {
-					type: 'pie',
-					itemStyle: {
-						normal: {
-							label: {
-								show: true,
-								formatter: '{b}: {d}%'
-							}
-						}
-					}
-				}
-			}
-			else {
-				initChartOpt.chartOpt = {
-					toolbox: {
-						show: true,
-						feature: {
-							dataView: {},
-							magicType: {type: ['line', 'bar']},
-							restore: {},
-						}
-					}
-				};
-				initChartOpt.seriesOpt = {
-					//顶部数字
-					itemStyle: {
-						normal: {
-							label: {  show: true }
-						}
-					}
-				}
-			}
-		},
-		onGetTmUnit: function () {
-			return jpage.find(".btnStat2.active:visible").attr("data-tmUnit");
+	function setStatOpt(chartIdx, opt) 
+	{
+		opt.g = jpage.find("#g").val();
+		opt.tmUnit = jpage.find(".btnStat2.active:visible").attr("data-tmUnit");
+		opt.maxSeriesCnt = 5;
+
+		var param = opt.queryParam;
+		if (opt.tmUnit == null) {
+			param.orderby = "sum DESC";
+			param.pagesz = 10;
 		}
-	});
+
+		var chartOpt, seriesOpt;
+		if (! opt.tmUnit) {
+			// 不按时间展现时，显示饼图
+			seriesOpt = {
+				type: 'pie',
+				itemStyle: {
+					normal: {
+						label: {
+							show: true,
+							formatter: '{b}: {d}%'
+						}
+					}
+				}
+			}
+		}
+		else {
+			chartOpt = {
+				toolbox: {
+					show: true,
+					feature: {
+						dataView: {},
+						magicType: {type: ['line', 'bar']},
+						restore: {},
+					}
+				}
+			};
+			seriesOpt = {
+				//顶部数字
+				itemStyle: {
+					normal: {
+						label: {  show: true }
+					}
+				}
+			}
+		}
+		$.extend(true, opt, {
+			chartOpt: chartOpt,
+			seriesOpt: seriesOpt
+		});
+	}
 
 	function btnStat2_Click()
 	{

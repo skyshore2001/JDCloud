@@ -18,7 +18,7 @@ table select, .btnStat {
 			<input type="button" value="生成" class="btnStat"/>
 		</td>
 		<td>
-			<select name="tmUnit">
+			<select id="tmUnit">
 				<option value="y,w" data-tmType="周" data-range="近12周">周报表</option>
 				<option value="y,m" data-tmType="月" data-range="近6个月">月报表</option>
 			</select>
@@ -29,21 +29,21 @@ table select, .btnStat {
 <table>
 <tr>
 <td>
-	<div class="divChart" id="c1" data-ac="ApiLog.query" data-res="COUNT(DISTINCT ses) sum" style="width:400px; height:300px;"></div>
+	<div class="divChart" data-ac="ApiLog.query" data-res="COUNT(DISTINCT ses) sum" style="width:400px; height:300px;"></div>
 </td>
 
 <td>
-	<div class="divChart" id="c2" data-ac="ApiLog.query" data-res="COUNT(DISTINCT userId) sum" style="width:400px; height:300px;"></div>
+	<div class="divChart" data-ac="ApiLog.query" data-res="COUNT(DISTINCT userId) sum" style="width:400px; height:300px;"></div>
 </td>
 </tr>
 
 <tr>
 <td>
-	<div class="divChart" id="c3" data-ac="User.query" style="width:400px; height:300px;"></div>
+	<div class="divChart" data-ac="User.query" style="width:400px; height:300px;"></div>
 </td>
 
 <td>
-	<div class="divChart" id="c4" data-ac="Ordr.query" style="width:400px; height:300px;"></div>
+	<div class="divChart" data-ac="Ordr.query" style="width:400px; height:300px;"></div>
 </td>
 </tr>
 </table>

@@ -144,7 +144,7 @@ function nextTm(tmUnit, tmArr)
 }
 
 /**
-@fn rs2Stat(rs, opt?) -> statData
+@fn WUI.rs2Stat(rs, opt?) -> statData
 
 将table格式数据({h,d})，转换成显示统计图需要的格式。尤其是支持按时间维度组织数据，生成折线图/柱状图。
 
@@ -525,54 +525,39 @@ function rs2Stat(rs, opt)
 }
 
 /*
-@fn runStat(jo, jcharts, opt?)
+遍历jo对象中带name属性的各组件，生成统计请求的参数，发起统计请求(callSvr)，显示统计图表(rs2Stat, initChart)。
 
-遍历jo对象中带name属性的各控件，生成统计请求的参数，发起统计请求(callSvr)，显示统计图表(rs2Stat, initChart)。
-initPageStat函数是对本函数的包装。
-
-@param opt 参考initPageStat中的opt参数。
+initPageStat函数是对本函数的包装。参数可参考initPageStat函数。
 
 示例：
 
 	<input name="tm" data-op=">=" value="2016-6-20">
 	<input name="actId" value="3">
-	<input name="g" value="dramaId">
 
 代表查询条件：
 
-	{cond: "tm>='2016-6-20' and actId=3", g: "dramaId", ...}
+	{cond: "tm>='2016-6-20' and actId=3", ...}
 
 - 属性data-op可表示操作符
-- 名称"g"表示汇总字段(groupKey)。
-
-TODO: disabled属性, 未选中的单选框, datetimebox控件
 */
-function runStat(jo, jcharts, opt)
+function runStat(jo, jcharts, setStatOpt)
 {
-	opt = $.extend({}, opt);
 	var condArr = [];
 	WUI.formItems(jo, function (name, val) {
 		var ji = this;
 
 		if (val == null || val == "" || val == "无" || val == "全部")
 			return;
-		if (name == 'g') {
-			opt.g = val;
+
+		// fix for easyui-datetimebox
+		if (ji.is(".textbox-value")) {
+			ji = ji.parent().prev(".textbox-f");
 		}
-		else if (name == 'tmUnit') {
-			opt.tmUnit = val;
+		var op = ji.attr('data-op');
+		if (op) {
+			val = op + ' ' + val;
 		}
-		else  {
-			// fix for easyui-datetimebox
-			if (ji.is(".textbox-value")) {
-				ji = ji.parent().prev(".textbox-f");
-			}
-			var op = ji.attr('data-op');
-			if (op) {
-				val = op + ' ' + val;
-			}
-			condArr.push([name, val]);
-		}
+		condArr.push([name, val]);
 	});
 
 	var condStr = WUI.getQueryCond(condArr);
@@ -580,7 +565,7 @@ function runStat(jo, jcharts, opt)
 	if (jcharts.size() > 1) {
 		WUI.useBatchCall();
 	}
-	jcharts.each(function (i, chart) {
+	jcharts.each(function (chartIdx, chart) {
 		var jchart = $(chart);
 
 		var param = {
@@ -588,22 +573,6 @@ function runStat(jo, jcharts, opt)
 			cond: condStr,
 			pagesz: -1
 		};
-		var tmUnit = (opt.onGetTmUnit && opt.onGetTmUnit.call(jchart) || opt.tmUnit);
-		if (tmUnit)
-			param.orderby = param.gres = tmUnit;
-
-		if (opt.g) {
-			param.g = opt.g;
-			if (param.gres)
-				param.gres += ',' + opt.g;
-			else
-				param.gres = opt.g;
-
-			var groupName = opt.groupNameMap && opt.groupNameMap[opt.g];
-			if (groupName) {
-				param.res = groupName + ',' + param.res;
-			}
-		}
 
 		$.each(["ac", "res"], function () {
 			var val = jchart.attr("data-" + this);
@@ -611,12 +580,30 @@ function runStat(jo, jcharts, opt)
 				param[this] = val;
 		});
 
-		var initChartOpt = {
+		var opt = {
 			chartOpt: {},
-			seriesOpt: {}
+			seriesOpt: {},
+			queryParam: param,
+			tmUnit: null,
+			g: null,
+			gname: null
 		};
-		opt.onInitChart && opt.onInitChart.call(jchart, param, initChartOpt);
+		setStatOpt.call(jchart, chartIdx, opt);
 		WUI.assert(param.ac, '*** no ac specified');
+
+		if (opt.tmUnit)
+			param.orderby = param.gres = opt.tmUnit;
+
+		if (opt.g) {
+			if (param.gres)
+				param.gres += ',' + opt.g;
+			else
+				param.gres = opt.g;
+
+			if (opt.gname) {
+				param.res = opt.gname + ',' + param.res;
+			}
+		}
 
 		WUI.callSvr(param.ac, api_stat, param);
 
@@ -624,12 +611,12 @@ function runStat(jo, jcharts, opt)
 		{
 			var rs2StatOpt = {
 				maxSeriesCnt: opt.maxSeriesCnt,
-				tmUnit: tmUnit,
+				tmUnit: opt.tmUnit,
 				formatter: opt.formatter
 			};
 			var statData = rs2Stat(data, rs2StatOpt);
-			opt.onLoadData && opt.onLoadData.call(jchart, statData, initChartOpt);
-			initChart(chart, statData, initChartOpt.seriesOpt, initChartOpt.chartOpt);
+			opt.onLoadData && opt.onLoadData.call(jchart, chartIdx, statData, opt);
+			initChart(chart, statData, opt.seriesOpt, opt.chartOpt);
 		}
 	});
 }
@@ -712,21 +699,21 @@ function initChart(chartTable, statData, seriesOpt, chartOpt)
 }
 
 /**
-@fn WUI.initPageStat(jpage, opt?) -> statItf
+@fn WUI.initPageStat(jpage, setStatOpt) -> statItf
 
 通用统计页模式
 
-- 条件区，包括查询条件(如起止时间为 .txtTm1, .txtTm2)，分组条件([name=g])，时间维度类型([name=tmUnit])
-- 生成统计图按钮(.btnStat)
-- 一个或多个图表(.divChart)，每个图表可设置不同的查询条件、时间维度等。
+- 查询条件区，如起止时间
+- 生成统计图按钮
+- 一个或多个图表，每个图表可设置不同的查询条件、时间维度等。
 
 html示例:
 
 	<div wui-script="pageUserRegStat.js" title="用户注册统计" my-initfn="initPageUserRegStat">
 		开始时间 
-		<input type="text" name="tm" data-op=">=" data-options="showSeconds:false" class="easyui-datetimebox txtTm1">
+		<input type="text" name="createTm" data-op=">=" data-options="showSeconds:false" class="easyui-datetimebox txtTm1">
 		结束时间
-		<input type="text" name="tm" data-op="<" data-options="showSeconds:false" class="easyui-datetimebox txtTm2">
+		<input type="text" name="createTm" data-op="<" data-options="showSeconds:false" class="easyui-datetimebox txtTm2">
 		快捷时间选择
 		<select class="txtTmRange">
 			<option value ="近8周">近8周</option>
@@ -744,7 +731,7 @@ html示例:
 		<select name="region" class="my-combobox" data-options="valueField:'id',textField:'name',url:WUI.makeUrl(...)"></select>
 
 		汇总字段:
-		<select name="g">
+		<select id="g">
 			<option value ="">无</option>
 			<option value ="sex">性别</option>
 			<option value="region">地域</option>
@@ -753,7 +740,7 @@ html示例:
 		<input type="button" value="生成" class="btnStat"/>
 
 		时间维度类型：
-		<select name="tmUnit">
+		<select id="tmUnit">
 			<option value="y,w">周报表</option>
 			<option value="y,m">月报表</option>
 		</select>
@@ -762,61 +749,106 @@ html示例:
 		<div class="divChart" data-ac="User.query"></div>
 	</div>
 
-- 报表对象.divChart上，可以用data-ac属性指定调用名，用data-res属性指定调用的res参数(默认为"COUNT(*) sum")，其它参数自动生成，也可通过opt.onInitChart回调函数动态设置queryParam参数。
+遍历jpage中带name属性的各组件，生成统计请求的参数，调用接口获取统计数据并显示统计图表.
+
+- 报表组件.divChart上，可以用data-ac属性指定调用名，用data-res属性指定调用的res参数(默认为"COUNT(*) sum")，更多参数可通过setStatOpt(...opt)回调函数动态设置opt.queryParam参数。
  可以用 jpage.find(".divChart")[0].echart 来取 echart对象.
-- 生成按钮对象 .btnStat
-- 带name属性（且没有disabled属性）的控件，会自动生成查询条件(根据name, data-op, value生成表达式)
-- 控件.txtTm1, .txtTm2识别为起止时间，可以用过 statItf.setTmRange()去重设置它们，或放置名为 .txtTmRange下拉框自动设置
+- 生成图表的按钮组件 .btnStat
+- 带name属性（且没有disabled属性）的组件，会自动生成查询条件(根据name, data-op, value生成表达式)
+- 组件.txtTm1, .txtTm2识别为起止时间，可以用过 statItf.setTmRange()去重设置它们，或放置.txtTmRange下拉框组件自动设置
 
 初始化示例：
 
-	var statItf_ = WUI.initPageStat(jpage, {
-		maxSeriesCnt: 5,
-		onInitChart: function (param, initChartOpt) {
-			// this是当前chart的jquery对象，且针对每个chart分别设置参数
-			// 设置查询参数param.ac/param.res/param.cond等
-			// 设置initChartOpt.seriesOpt, initChartOpt.chartOpt等
-		},
-		onGetTmUnit: function () {
-			// this是当前chart
-		},
-		onLoadData: function (statData, initChartOpt) {
-			// this是当前chart
+	var statItf_ = WUI.initPageStat(jpage, setStatOpt);
+	
+	function setStatOpt(chartIdx, opt) 
+	{
+		// this是当前chart的jquery对象，chartIdx为序号，依此可针对每个chart分别设置参数
+
+		// 设置查询参数param.ac/param.res/param.cond等
+		var param = opt.queryParam;
+		param.cond += ...;
+
+		// 设置时间维度，汇总字段
+		opt.tmUnit = jpage.find("#tmUnit").val();
+		opt.g = jpage.find("#g").val();
+
+		// 设置echarts参数
+		var chartOpt, seriesOpt;
+		if (chartIdx == 0) {
+			chartOpt = { ... };
+			seriesOpt = { ... };
 		}
-	});
-
-@param opt={g?, tmUnit?, onGetTmUnit?, onInitChart?, groupNameMap?, onLoadData?}
-
-@param opt.g 分组字段名。也可以用jpage中的某个[name=g]的组件指定。
-
-@param maxSeriesCnt 最多显示多少图表系列（其它系列自动归并到“其它”中）。如果不指定，则显示所有系列。
-
-@param opt.tmUnit Enum. 如果非空，则按时间维度分析，即按指定时间类型组织横轴数据，会补全时间。也可以用jpage中某个[name=tmUnit]的组件指定。参考[JdcloudStat.tmUnit]()
-@param opt.onGetTmUnit Function(this为当前chart) 回调函数，返回tmUnit值。
-
-@param opt.onInitChart: Function(queryParam, initChartOpt={seriesOpt, chartOpt}), 其中this表示当前图表jchart对象。
-
-其中chartOpt和seriesOpt 参考百度echarts全局参数以及series参数。http://echarts.baidu.com/echarts2/doc/doc.html
-
-@param opt.onLoadData Function(statData, initChartOpt), 其中this表示当前图表jchart对象。获取数据后回调，initChartOpt与onInitChart中的选项相同，此处可修改它。
-
-@param opt.groupNameMap
-
-如果有分组字段，一般按xxxId字段进行分组，但显示时应显示名字，需要给groupNameMap参数，如：
-
-	initPageStat(jpage, {
-		groupNameMap: {
-			dramaId: 'dramaName',
-			actId: 'actName',
-			sceneId: 'sceneName'
+		else if (chartIdx == 1) {
+			chartOpt = { ... };
+			seriesOpt = { ... };
 		}
-	});
 
-这意味着，当选择按剧目名分组显示日报表时，g="dramaId", gres="y,m,d,dramaId", res="dramaName,y,m,d"。
+		$.extend(true, opt, {
+			chartOpt: chartOpt,
+			seriesOpt: seriesOpt,
+		});
+	}
 
-@return statItf={refreshStat(), setTmRange(desc)}
+@param setStatOpt(chartIdx, opt) 回调设置每个chart. this为当前chart组件，chartIdx为当前chart的序号，从0开始。
 
-@see WUI.initChart, WUI.rs2Stat
+@param opt={tmUnit?, g?, gname?, queryParam, chartOpt, seriesOpt, onLoadData?, maxSeriesCnt?, formatter?}
+
+@param opt.tmUnit Enum. 时间维度
+如果非空，则按时间维度分析，即按指定时间类型组织横轴数据，会补全时间。参考[JdcloudStat.tmUnit]()
+如果设置，它会自动设置 opt.queryParam 中的gres/orderby参数。
+
+@param opt.g 分组字段名
+会影响opt.queryParam中的gres选项。
+
+@param opt.gname 分组字段显示名。
+有时分组字段使用xxxId字段，但希望显示时用xxxName字段，这时可以设置gname选项，它会影响opt.queryParam中的res选项。
+
+示例，按场景分组显示日报表：
+
+	opt.tmUnit = "y,m,d"; // 日报表
+	opt.g = "sceneId";
+	opt.gname = "sceneName";
+	
+这样生成的opt.queryParam中: 
+
+	gres="y,m,d,dramaId";
+	orderby="y,m,d";
+	res="dramaName,COUNT(*) sum";
+
+@param opt.queryParam 接口查询参数
+可以设置ac, res, gres, cond, orderby, pagesz等筋斗云框架通用查询参数，或依照接口文档设置。
+设置opt.tmUnit/opt.g/opt.gname会自动设置其中部分参数。
+
+此外 ac, res参数也可通过在.divChart组件上设置data-ac, data-res属性，如
+
+	<div class="divChart" data-ac="Ordr.query" data-res="SUM(amount) sum"></div>
+
+关于接口返回数据到图表数据转换，参考rs2Stat函数：
+@see WUI.rs2Stat 
+
+@param opt.chartOpt, opt.seriesOpt 
+参考百度echarts全局参数以及series参数: http://echarts.baidu.com/echarts2/doc/doc.html
+
+@param opt.onLoadData(statData, opt) 处理统计数据后、显示图表前回调。
+
+this为当前图表组件(jchart对象)。常用于根据统计数据调整图表显示，修改opt中的chartOpt, seriesOpt选项即可。
+
+@param opt.maxSeriesCnt?=10 
+最多显示多少图表系列（其它系列自动归并到“其它”中）。参考rs2Stat函数同名选项。
+
+@param opt.formatter 
+对汇总数据进行格式化显示。参考 rs2Stat函数同名选项。
+@see WUI.rs2Stat
+
+@return statItf={refreshStat(), setTmRange(desc)} 统计页接口
+
+refreshStat()用于显示或刷新统计图。当调用initPageStat(jpage)且jpage中有.btnStat组件时，会自动点击该按钮以显示统计图。
+setTmRange(desc)用于设置jpage中的.txtTm1, .txtTm2两个文本框，作为起止时间。
+
+@see WUI.getTmRange
+
+@see WUI.initChart　显示图表
 
 也可以调用WUI.initChart及WUI.rs2Stat自行设置报表，示例如下：
 
@@ -842,7 +874,7 @@ html示例:
 
 */
 self.initPageStat = initPageStat;
-function initPageStat(jpage, opt)
+function initPageStat(jpage, setStatOpt)
 {
 	var txtTmRange = jpage.find(".txtTmRange");
 	if (txtTmRange.size() > 0) {
@@ -877,7 +909,7 @@ function initPageStat(jpage, opt)
 		busy_ = true;
 
 		var jcharts = jpage.find(".divChart");
-		runStat(jpage, jcharts, opt);
+		runStat(jpage, jcharts, setStatOpt);
 
 		setTimeout(function () {
 			busy_ = false;
@@ -890,8 +922,7 @@ function initPageStat(jpage, opt)
 }
 
 /**
-
-@fn getTmRange(dscr, now?)
+@fn WUI.getTmRange(dscr, now?)
 
 假设今天是2015-9-9 周三：
 
