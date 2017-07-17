@@ -3,6 +3,17 @@
 // ====== User {{{
 class AC0_User extends AccessControl
 {
+	// 为演示统计表，增加两个虚拟字段sex,addr
+	protected $vcolDefs = [
+		[
+			"res" => ["if(t0.id mod 3=1, 'F', 'M') sex", "if(t0.id mod 3=1, '女', '男') sexName", "if(t0.id mod 3=2, '北京', '上海') region"],
+		],
+	];
+
+	function __construct() {
+		$this->vcolDefs[] = [ "res" => tmCols("t0.createTm") ];
+	}
+
 	protected function onValidate()
 	{
 		if (issetval("pwd")) {
@@ -88,6 +99,10 @@ class AC0_Ordr extends AccessControl
 			"join" => "LEFT JOIN OrderLog log_cr ON log_cr.action='CR' AND log_cr.orderId=t0.id",
 		]
 	];
+
+	function __construct() {
+		$this->vcolDefs[] = [ "res" => tmCols("log_cr.tm"), "require" => "createTm" ];
+	}
 }
 
 class AC1_Ordr extends AC0_Ordr
@@ -157,5 +172,12 @@ class AC2_Ordr extends AC0_Ordr
 	}
 }
 // }}}
+
+class AC0_ApiLog extends AccessControl
+{
+	function __construct() {
+		$this->vcolDefs[] = [ "res" => tmCols() ];
+	}
+}
 
 // vi: foldmethod=marker

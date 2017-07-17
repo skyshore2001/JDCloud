@@ -1,0 +1,91 @@
+<div wui-script="pageUserRegStat.js" title="用户注册统计" style="padding-left:5px" my-initfn="initPageUserRegStat">
+<style>
+.btnStat2.active{
+	background-color: #ffe48d;
+}
+table td {
+	padding: 5px 15px;
+	min-width: 100px;
+}
+table select, .btnStat {
+	min-width: 100px;
+}
+</style>
+
+<table style="margin:10px; border-bottom: 1px solid gray">
+	<tr>
+		<td>开始时间</td>
+		<td>
+			<input type="text" name="createTm" data-op=">=" data-options="showSeconds:false" class="easyui-datetimebox txtTm1">
+		</td>
+		<td>结束时间</td>
+		<td>
+			<input type="text" name="createTm" data-op="<" data-options="showSeconds:false" class="easyui-datetimebox txtTm2">
+		</td>
+		<td>快捷选项</td>
+		<td>
+			<select class="txtTmRange">
+				<option value ="近8周">近8周</option>
+				<option value ="近6月">近6月</option>
+				<option value ="近1年">近1年</option>
+				<option value ="前2周">前8周</option>
+				<option value ="前3月">前6月</option>
+				<option value ="前2年">前2年</option>
+			</select>
+		</td>
+	</tr>
+
+	<tr>
+		<td>性别</td>
+		<td>
+			<select name="sex">
+				<option value ="">全部</option>
+				<option value ="M">男</option>
+				<option value ="F">女</option>
+			</select>
+		</td>
+
+		<td>地域</td>
+		<td>
+			<select name="region">
+				<option value ="">全部</option>
+				<option value ="北京">北京市</option>
+				<option value ="上海">上海市</option>
+			</select>
+		</td>
+	</tr>
+
+	<tr>
+		<td>分类汇总</td>
+		<td>
+			<select id="g">
+				<option value ="">无</option>
+				<option value ="sex">性别</option>
+				<option value="region">地域</option>
+				<option value="wd">每周几</option>
+				<option value="h">每小时</option>
+			</select>
+		</td>
+		<td>
+			<input type="button" value="生成" class="btnStat"/>
+		</td>
+		<td>
+			<label>
+				<input type="checkbox" checked onclick="$(this).closest('.wui-page').find('.divTmType').toggle('fast')"/>
+				<span>按时间维度分析</span>
+			</label>
+		</td>
+	</tr>
+</table>
+
+<div>
+	<div class="divChart" data-ac="User.query" style="width:800px; height:600px;"></div>
+	<div style="margin-left: 600px" class="divTmType">
+		<input type="button" value="时" class="btnStat2" data-tmUnit="y,m,d,h">
+		<input type="button" value="天" class="btnStat2" data-tmUnit="y,m,d">
+		<input type="button" value="周" class="btnStat2 active" data-tmUnit="y,w">
+		<input type="button" value="月" class="btnStat2" data-tmUnit="y,m">
+	</div>
+</div>
+
+</div>
