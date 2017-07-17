@@ -576,6 +576,10 @@ function runStat(jo, jcharts, opt)
 	});
 
 	var condStr = WUI.getQueryCond(condArr);
+	// 多个请求时自动批量发送
+	if (jcharts.size() > 1) {
+		WUI.useBatchCall();
+	}
 	jcharts.each(function (i, chart) {
 		var jchart = $(chart);
 
@@ -614,7 +618,7 @@ function runStat(jo, jcharts, opt)
 		opt.onInitChart && opt.onInitChart.call(jchart, param, initChartOpt);
 		WUI.assert(param.ac, '*** no ac specified');
 
-		callSvr(param.ac, api_stat, param);
+		WUI.callSvr(param.ac, api_stat, param);
 
 		function api_stat(data)
 		{

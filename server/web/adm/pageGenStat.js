@@ -6,8 +6,6 @@ function initPageGenStat()
 
 	var statItf_ = WUI.initPageStat(jpage, {
 		onInitChart: function (param, initChartOpt) {
-			WUI.useBatchCall(); // 多个请求批量发送
-
 			var id = this.attr("id");
 			var tm = 'tm';
 			if (param.ac == "User.query") {
