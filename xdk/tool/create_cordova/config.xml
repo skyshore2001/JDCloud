@@ -1,0 +1,125 @@
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="com.daca.jdcloud" version="0.0.1" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+    <name>筋斗云</name>
+    <description>
+		筋斗云演示应用
+    </description>
+		<author>
+		答咖网络
+		</author>
+    <plugin name="cordova-plugin-whitelist" spec="1" />
+    <access origin="*" />
+    <allow-intent href="http://*/*" />
+    <allow-intent href="https://*/*" />
+    <allow-intent href="tel:*" />
+    <allow-intent href="sms:*" />
+    <allow-intent href="mailto:*" />
+    <allow-intent href="geo:*" />
+    <platform name="android">
+        <allow-intent href="market:*" />
+    </platform>
+    <platform name="ios">
+        <allow-intent href="itms:*" />
+        <allow-intent href="itms-apps:*" />
+    </platform>
+
+<allow-navigation href="*" />
+<preference name="debuggable" value="true" />
+<preference name="SplashScreen" value="screen" />
+<!--preference name="SplashScreenDelay" value="10000" /-->
+<preference name="AutoHideSplashScreen" value="false" />
+<preference name="SplashShowOnlyFirstTime" value="false" />
+<preference name="FadeSplashScreen" value="false"/>
+<preference name="ShowSplashScreenSpinner" value="false"/>
+
+<platform name="ios">
+    <!-- below requires the status bar plugin -->
+    <!-- docs: https://github.com/apache/cordova-plugin-statusbar -->
+    <!--preference name="StatusBarOverlaysWebView" value="false" /-->
+    <!--preference name="StatusBarBackgroundColor" value="#000000" /-->
+    <!--preference name="StatusBarStyle" value="lightcontent" /-->
+
+    <!-- jdcloud -->
+    <preference name="ErrorUrl" value="error.html"/>
+    <preference name="WebViewBounce" value="false"/>
+    <preference name="DisallowOverscroll" value="true"/>
+</platform>
+
+<platform name="android">
+    <preference name="SplashMaintainAspectRatio" value="false" />
+
+    <!-- jdcloud -->
+    <preference name="ErrorUrl" value="file:///android_asset/www/error.html"/>
+</platform>
+
+<!-- jdcloud -->
+<preference name="LoadingPageDialog" value="加载,正在加载..."/>
+<preference name="LoadUrlTimeoutValue" value="20000"/>
+<content src="http://dacatec.com/jdcloud/m2/index.html?cordova=1" />
+
+<platform name="android">
+
+    <icon density="ldpi" src="icon/icon36.png" />
+    <icon density="mdpi" src="icon/icon48.png" />
+    <icon density="hdpi" src="icon/icon72.png" />
+    <icon density="xhdpi" src="icon/icon96.png" />
+    <!--icon density="xxhdpi" src="icon/android/drawable-xxhdpi/icon.png" /-->
+    <!-- 以下是欢迎页面，可根据需要进行添加
+    <splash density="land-hdpi" src="screen/android/splash-land-hdpi.png" />  
+    <splash density="land-ldpi" src="screen/android/splash-land-ldpi.png" />  
+    <splash density="land-mdpi" src="screen/android/splash-land-mdpi.png" />  
+    <splash density="land-xhdpi" src="screen/android/splash-land-xhdpi.png" />  
+    <splash density="port-hdpi" src="screen/android/splash-port-hdpi.png" />  
+    <splash density="port-ldpi" src="screen/android/splash-port-ldpi.png" />  
+    <splash density="port-mdpi" src="screen/android/splash-port-mdpi.png" />  
+ -->
+    <splash density="port-xhdpi" src="icon/splash.png" /> 
+</platform>
+<platform name="ios">  
+    <!-- iOS 8.0+ -->  
+    <!-- iPhone 6 Plus  -->  
+    <icon src="icon/ios/icon180.png" width="180" height="180" />  
+    <!-- iOS 7.0+ -->  
+    <!-- iPhone / iPod Touch  -->  
+    <icon src="icon/ios/icon60.png" width="60" height="60" />  
+    <icon src="icon/ios/icon120.png" width="120" height="120" />  
+    <!-- iPad -->  
+    <icon src="icon/ios/icon76.png" width="76" height="76" />  
+    <icon src="icon/ios/icon152.png" width="152" height="152" />  
+    <!-- iOS 6.1 -->  
+    <!-- Spotlight Icon -->  
+    <icon src="icon/ios/icon40.png" width="40" height="40" />  
+    <icon src="icon/ios/icon80.png" width="80" height="80" />  
+    <!-- iPhone / iPod Touch -->  
+    <icon src="icon/ios/icon57.png" width="57" height="57" />  
+    <icon src="icon/ios/icon114.png" width="114" height="114" />  
+    <!-- iPad -->  
+    <!--icon src="icon/ios/icon72.png" width="72" height="72" /-->  
+    <icon src="icon/ios/icon144.png" width="144" height="144" />  
+    <!-- iPhone Spotlight and Settings Icon -->  
+    <icon src="icon/ios/icon29.png" width="29" height="29" />  
+    <icon src="icon/ios/icon58.png" width="58" height="58" />  
+    <!-- iPad Spotlight and Settings Icon -->  
+    <icon src="icon/ios/icon50.png" width="50" height="50" />  
+    <icon src="icon/ios/icon100.png" width="100" height="100" />  
+
+    <icon src="icon/ios/icon87.png" width="87" height="87" />  
+
+    <!-- 以下是欢迎页面，可根据需要进行添加 -->
+    <splash src="icon/ios/splash320x480.png" width="320" height="480"/>  
+    <splash src="icon/ios/splash640x960.png" width="640" height="960"/>  
+    <splash src="icon/ios/splash768x1024.png" width="768" height="1024"/>  
+    <splash src="icon/ios/splash1536x2048.png" width="1536" height="2048"/>  
+
+    <splash src="icon/ios/splash640x1136.png" width="640" height="1136"/>  
+    <splash src="icon/ios/splash750x1334.png" width="750" height="1334"/>  
+    <splash src="icon/ios/splash1242x2208.png" width="1242" height="2208"/>  
+
+<!--
+    <splash src="screen/ios/Default-Landscape~ipad.png" width="1024" height="768"/>  
+    <splash src="screen/ios/Default-Landscape@2x~ipad.png" width="2048" height="1536"/>  
+    <splash src="screen/ios/Default-Landscape-736h.png" width="2208" height="1242"/>  
+		-->
+</platform>
+
+</widget>
