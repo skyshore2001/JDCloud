@@ -166,6 +166,13 @@ function httpCall($url, $postParams=null, $opt=[])
 	//curl_setopt($h, CURLOPT_PROXY, '8.8.8.8');
 	//curl_setopt($h, CURLOPT_PROXYPORT, 8080);
 
+	//cookie设置
+	//curl_setopt($h, CURLOPT_COOKIEFILE, $this->cookieFile);
+	//curl_setopt($h, CURLOPT_COOKIEJAR, $this->cookieFile);
+
+	// 伪装ua
+	//curl_setopt($h, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.110 Safari/537.36');
+
 	if (isset($postParams)) {
 		if (is_array($postParams)) {
 			$data = urlEncodeArr($postParams);
