@@ -10,11 +10,20 @@ function initPageUserRegStat()
 		opt.g = jpage.find("#g").val();
 		opt.tmUnit = jpage.find(".btnStat2.active:visible").attr("data-tmUnit");
 
-		var groupNameMap = {
-			"sex": "sexName"
-		};
-		opt.gname = groupNameMap[g];
+		// 设置图表系列的显示名，如性别sex须将M/F转换为男/女。
+		// 如果转换简单，一般放前端做。如果放后端做，前端只要赋值opt.gname，后端需支持sexName字段
+// 		var groupNameMap = {
+// 			"sex": "sexName"
+// 		};
+// 		opt.gname = groupNameMap[g];
+
+		// 前端使用opt.formatter来定制系列名称。
 		opt.onLoadData = onLoadData;
+		if (opt.g == "sex") {
+			opt.formatter = function (value, arr, i) {
+				return value=='M'?'男':'女';
+			}
+		}
 
 		var chartOpt, seriesOpt;
 		if (! opt.tmUnit) {
