@@ -87,7 +87,7 @@ function makeTm(tmUnit, tmArr)
 function firstWeek(year)
 {
 	var dt = new Date(year, 0, 1);
-	dt.addDay(8-dt.getDay())%7; // 至下周1
+	dt.addDay( (8-dt.getDay())%7 ); // 至下周1
 	return dt;
 }
 
