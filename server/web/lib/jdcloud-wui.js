@@ -2517,7 +2517,8 @@ function defDataProc(rv)
 			return;
 		}
 		else if (rv[0] == E_AUTHFAIL) {
-			self.app_alert("验证失败，请检查输入是否正确!", "e");
+			var errmsg = rv[1] || "验证失败，请检查输入是否正确!";
+			self.app_alert(errmsg, "e");
 			return;
 		}
 		else if (rv[0] == E_ABORT) {
