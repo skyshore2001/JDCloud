@@ -5414,7 +5414,7 @@ var mCommon = jdModule("jdcloud.common");
 			isRefresh = true;
 		if (isRefresh)
 			jlst.empty();
-		param._pagekey = nextkey;
+		param.pagekey = nextkey;
 
 		callSvr("Ordr.query", param, function (data) {
 			// create items and append to jlst
@@ -5937,7 +5937,7 @@ navRef是否为空的区别是，如果非空，则表示listRef是一组互斥�
 ## 参数说明
 
 @param opt {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list", onBeforeLoad?, onLoad?, onGetData?, canPullDown?=true, onRemoveAll?}
-@param opt 分页相关 { pageszName?="_pagesz", pagekeyName?="_pagekey" }
+@param opt 分页相关 { pageszName?="pagesz", pagekeyName?="pagekey" }
 
 @param opt.onGetQueryParam Function(jlst, queryParam/o)
 
@@ -5949,7 +5949,7 @@ queryParam: {ac?, res?, cond?, ...}
 	<ul data-queryParam="{q: 'famous'}" data-ac="Person.query" data-res="*,familyName" data-cond="status='PA' and name like '王%'">
 	</ul>
 
-此外，框架将自动管理 queryParam._pagekey/_pagesz 参数。
+此外，框架将自动管理 queryParam.pagekey/pagesz 参数。
 
 @param opt.onAddItem (jlst, itemData, param)
 
@@ -6056,7 +6056,7 @@ param={idx, arr, isFirstPage}
 
 默认按BQP协议的分页机制访问服务端，其规则是：
 
-- 请求通过 _pagesz 参数指定页大小
+- 请求通过 pagesz 参数指定页大小
 - 如果不是最后一页，服务端应返回nextkey字段；返回列表的格式可以是 table格式如 
 
 		{
@@ -6075,7 +6075,7 @@ param={idx, arr, isFirstPage}
 			nextkey: 2
 		}
 
-- 请求下一页时，设置参数_pagekey = nextkey，直到服务端不返回 nextkey 字段为止。
+- 请求下一页时，设置参数pagekey = nextkey，直到服务端不返回 nextkey 字段为止。
 
 例1：假定后端分页机制为(jquery-easyui datagrid分页机制):
 
@@ -6471,8 +6471,8 @@ function initPageList(jpage, opt)
 initPageList.options = {
 	navRef: ">.hd .mui-navbar",
 	listRef: ">.bd .p-list",
-	pageszName: "_pagesz",
-	pagekeyName: "_pagekey",
+	pageszName: "pagesz",
+	pagekeyName: "pagekey",
 	canPullDown: true,
 	onRemoveAll: function (jlst) {
 		jlst.empty();
@@ -6613,6 +6613,28 @@ onDel: Function(); 删除对象后回调.
 	PagePerson.showForAdd({familyId: 1}); // 添加人物，已设置familyId为1
 	PagePerson.showForSet(person); // 以person对象内容显示人物，可更新。
 	PagePerson.showForSet({id: 3}); // 以id=3查询人物并显示，可更新。
+
+页面接口常常实现如下：
+
+	var PagePerson = {
+		// @fn PagePerson.showForAdd(formData?)
+		// formData={familyId, parentId?, parentOf?}
+		showForAdd: function(formData) {
+			this.formMode = FormMode.forAdd;
+			this.formData = formData;
+			MUI.showPage("#person");
+		},
+		// @fn PagePerson.showForSet(formData)
+		// formData={id,...}
+		showForSet: function (formData) {
+			this.formMode = FormMode.forSet;
+			this.formData = formData;
+			MUI.showPage("#person");
+		},
+
+		formMode: null,
+		formData: null,
+	};
 
 对于forSet模式，框架先检查formData中是否只有id属性，如果是，则在进入页面时会自动调用{obj}.get获取数据.
 

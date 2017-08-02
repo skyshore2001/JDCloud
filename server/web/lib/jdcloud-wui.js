@@ -342,7 +342,7 @@ formatter用于控制Cell中的HTML标签，styler用于控制Cell自己的CSS s
 如果需要禁用分页，可以设置：
 
 	jtbl.datagrid({
-		url: WUI.makeUrl("Ordr.query", {"_pagesz": 9999}), // 定义很大的pagesz, 一次取出所有
+		url: WUI.makeUrl("Ordr.query", {"pagesz": -1}), // -1表示取后端允许的最大数量
 		pagination: false, // 禁用分页组件
 		...
 	});
@@ -4615,12 +4615,12 @@ function dgLoader(param, success, error)
 	}
 	var param1 = {};
 	for (var k in param) {
-	/* TODO: enable _page param in interface obj.query, disable rows/page
+	/* TODO: enable page param in interface obj.query, disable rows/page
 		if (k === "rows") {
-			param1._pagesz = param[k];
+			param1.pagesz = param[k];
 		}
 		else if (k === "page") {
-			param1._page = param[k];
+			param1.page = param[k];
 		}
 	*/
 		if (k === "sort") {
