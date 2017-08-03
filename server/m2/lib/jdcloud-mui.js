@@ -5489,7 +5489,7 @@ function initPullList(container, opt)
 	var TRIGGER_AUTOLOAD = 30; // px
 
 	var lastUpdateTm_ = new Date();
-	var dy_; // 纵向移动。<0为上拉，>0为下拉
+	var dy_ = 0; // 纵向移动。<0为上拉，>0为下拉
 
 	window.requestAnimationFrame = window.requestAnimationFrame || function (fn) {
 		setTimeout(fn, 1000/60);
@@ -5750,6 +5750,7 @@ function initPullList(container, opt)
 		}
 		console.log(touchev_);
 		doAction(touchev_.ac);
+		dy_ = 0;
 		touchev_ = null;
 
 		function doAction(ac)
@@ -5773,6 +5774,7 @@ function initPullList(container, opt)
 					doAction("U");
 				}
 			}
+			dy_ = 0;
 		}
 	}
 }
