@@ -670,15 +670,22 @@ function initChart(chartTable, statData, seriesOpt, chartOpt)
 	}
 	else if (seriesOpt1.type == 'pie') {
 		WUI.assert(statData.yData.length <= 1, "*** 饼图应只有一个系列");
-		legendAry = statData.xData;
-		seriesAry = [
-			$.extend(statData.yData[0], seriesOpt1)
-		];
-		// data格式 [value] 转为 [{name, value}], 同时设置legendAry
-		seriesAry[0].data = $.map(seriesAry[0].data, function (e, i) {
-			var g = statData.xData[i];
-			return {name: g, value: e};
-		});
+		if (statData.yData.length == 0) {
+			var item = { name: "", value: 0 };
+			seriesAry = [
+				$.extend( {data: [ item ] }, seriesOpt1 )
+			];
+		}
+		else {
+			seriesAry = [
+				$.extend(statData.yData[0], seriesOpt1)
+			];
+			// data格式 [value] 转为 [{name, value}], 同时设置legendAry
+			seriesAry[0].data = $.map(seriesAry[0].data, function (e, i) {
+				var g = statData.xData[i];
+				return {name: g, value: e};
+			});
+		}
 		chartOpt0 = {
 			tooltip : {
 				trigger: 'item',
