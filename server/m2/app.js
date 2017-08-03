@@ -16,6 +16,17 @@ $.extend(MUI.options, {
 //}}}
 
 // ====== app shared function {{{
+var dfdStatLib_;
+function loadStatLib()
+{
+	if (dfdStatLib_ == null) {
+		dfdStatLib_ = $.when(
+			MUI.loadScript("../web/lib/echarts.min.js"),
+			MUI.loadScript("../web/lib/jdcloud-wui-stat.js")
+		);
+	}
+	return dfdStatLib_;
+}
 //}}}
 
 // vim: set foldmethod=marker:

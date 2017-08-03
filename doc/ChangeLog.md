@@ -1,3 +1,10 @@
+# 筋斗云框架版本日志
+
+## v4.1 - 2017/8
+
+- 前端：统计分析页支持。initPageStat(web/lib/jdcloud-wui-stat.js)
+- 去除xdk支持(Intel已停止XDK项目). 换用Cordova直接编译手机应用。参考jdcloud-app项目。
+
 ## v4.0 - 2017/6
 
 重构项：

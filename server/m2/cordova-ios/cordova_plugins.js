@@ -10,7 +10,7 @@ module.exports = [
     }
 ];
 
-filterCordovaModule(module);
+MUI.filterCordovaModule(module);
 
 module.exports.metadata = 
 // TOP OF METADATA

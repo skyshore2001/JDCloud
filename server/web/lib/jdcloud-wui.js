@@ -342,7 +342,7 @@ formatter用于控制Cell中的HTML标签，styler用于控制Cell自己的CSS s
 如果需要禁用分页，可以设置：
 
 	jtbl.datagrid({
-		url: WUI.makeUrl("Ordr.query", {"_pagesz": 9999}), // 定义很大的pagesz, 一次取出所有
+		url: WUI.makeUrl("Ordr.query", {"pagesz": -1}), // -1表示取后端允许的最大数量
 		pagination: false, // 禁用分页组件
 		...
 	});
@@ -866,7 +866,7 @@ function parseDate(str)
  */
 Date.prototype.add = function (sInterval, n)
 {
-    switch (sInterval) {
+	switch (sInterval) {
 	case 'd':
 		this.setDate(this.getDate()+n);
 		break;
@@ -874,7 +874,7 @@ Date.prototype.add = function (sInterval, n)
 		this.setMonth(this.getMonth()+n);
 		break;
 	case 'y':
-		this.setYear(this.getYear()+n);
+		this.setFullYear(this.getFullYear()+n);
 		break;
 	case 'h':
 		this.setHours(this.getHours()+n);
@@ -1204,7 +1204,7 @@ function rs2Hash(rs, key)
 		h: ["id", "name"], 
 		d: [ [100, "Tom"], [101, "Jane"], [102, "Tom"] ] 
 	};
-	var hash = rs2Hash(rs, "name");  
+	var hash = rs2MultiHash(rs, "name");  
 
 	// 结果为
 	hash = {
@@ -1289,13 +1289,47 @@ function getAncestor(o, fn)
 	if (b)
 		url = appendParam(url, "b=" + b);
 
+	appendParam(url, $.param({a:1, b:3}));
+
+支持url中带有"?"或"#"，如
+
+	var url = "http://xxx/api.php?id=1#order";
+	appendParam(url, "pay=1"); // "http://xxx/api.php?id=1&pay=1#order";
+
 */
 self.appendParam = appendParam;
 function appendParam(url, param)
 {
 	if (param == null)
 		return url;
-	return url + (url.indexOf('?')>0? "&": "?") + param;
+	var ret;
+	var a = url.split("#");
+	if (a.length > 1) {
+		ret = a[0] + (url.indexOf('?')>0? "&": "?") + param + "#" + a[1];
+	}
+	else {
+		ret = url + (url.indexOf('?')>0? "&": "?") + param;
+	}
+	return ret;
+}
+
+/**
+@fn deleteParam(url, paramName)
+
+示例:
+
+	var url = "http://xxx/api.php?a=1&b=3&c=2";
+	var url1 = deleteParam(url, "b"); // "http://xxx/api.php?a=1&c=2";
+
+*/
+self.deleteParam = deleteParam;
+function deleteParam(url, paramName)
+{
+	var ret = url.replace(new RegExp('&?' + paramName + "=[^&#]+"), '');
+	if (ret.indexOf('?&') >=0) {
+		ret = ret.replace('?&', '?');
+	}
+	return ret;
 }
 
 /** @fn isWeixin()
@@ -1489,31 +1523,92 @@ self.assert(window.jQuery, "require jquery lib.");
 		callSvr(ac, fn, getFormData(jf));
 	});
 
+如果在jo对象上指定了属性enctype="multipart/form-data"，则调用getFormData会返回FormData对象而非js对象，
+再调用callSvr时，会以"multipart/form-data"格式提交数据。
+示例：
+
+	<form method="POST" enctype='multipart/form-data'>
+		课程文档
+		<input name="pdf" type="file" accept="application/pdf">
+	</form>
+
 @see setFormData
  */
 self.getFormData = getFormData;
 function getFormData(jo)
 {
 	var data = {};
+	var isFormData = false;
+	if (jo.attr("enctype") == "multipart/form-data") {
+		isFormData = true;
+		data = new FormData();
+	}
 	var orgData = jo.data("origin_") || {};
-	jo.find("[name]:not([disabled])").each (function () {
-		var ji = $(this);
-		var name = ji.attr("name");
-		var content;
-		if (ji.is(":input"))
-			content = ji.val();
-		else
-			content = ji.html();
-
+	formItems(jo, function (name, content) {
+		var ji = this;
 		var orgContent = orgData[name];
 		if (orgContent == null)
 			orgContent = "";
 		if (content == null)
 			content = "";
 		if (content !== String(orgContent)) // 避免 "" == 0 或 "" == false
-			data[name] = content;
+		{
+			if (! isFormData) {
+				data[name] = content;
+			}
+			else {
+				if (ji.is(":file")) {
+					// 支持指定multiple，如  <input name="pdf" type="file" multiple accept="application/pdf">
+					$.each(ji.prop("files"), function (i, e) {
+						data.append(name, e);
+					});
+				}
+				else {
+					data.append(name, content);
+				}
+			}
+		}
 	});
 	return data;
+}
+
+/**
+@fn formItems(jo, cb)
+
+遍历jo下带name属性的有效控件，回调cb函数。
+
+注意:
+
+- 忽略有disabled属性的控件
+- 忽略未选中的checkbox/radiobutton
+
+@param cb(name, val) this=ji=当前jquery对象
+当cb返回false时可中断遍历。
+
+ */
+self.formItems = formItems;
+function formItems(jo, cb)
+{
+	jo.find("[name]:not([disabled])").each (function () {
+		var name = this.name;
+		if (! name)
+			return;
+
+		var ji = $(this);
+		var val;
+		if (ji.is(":input")) {
+			if (this.type == "checkbox" && !this.checked)
+				return;
+			if (this.type == "radio" && !this.checked)
+				return;
+			val = ji.val();
+		}
+		else {
+			val = ji.html();
+		}
+		if (cb.call(ji, name,  val) === false)
+			return false;
+	});
 }
 
 /**
@@ -1980,11 +2075,134 @@ function getOptions(jo)
 	return opt;
 }
 
-$(document).on("pagecreate", function (ev) {
-	var jpage = $(ev.target);
-	enhanceWithin(jpage);
-});
 //}}}
+
+// 参考 getQueryCond中对v各种值的定义
+function getop(v)
+{
+	if (typeof(v) == "number")
+		return "=" + v;
+	var op = "=";
+	var is_like=false;
+	if (v.match(/^(<>|>=?|<=?)/)) {
+		op = RegExp.$1;
+		v = v.substr(op.length);
+	}
+	else if (v.indexOf("*") >= 0 || v.indexOf("%") >= 0) {
+		v = v.replace(/[*]/g, "%");
+		op = " like ";
+	}
+	v = $.trim(v);
+
+	if (v === "null")
+	{
+		if (op == "<>")
+			return " is not null";
+		return " is null";
+	}
+	if (v === "empty")
+		v = "";
+	if (v.length == 0 || v.match(/\D/) || v[0] == '0') {
+		v = v.replace(/'/g, "\\'");
+// 		// ???? 只对access数据库: 支持 yyyy-mm-dd, mm-dd, hh:nn, hh:nn:ss
+// 		if (!is_like && v.match(/^((19|20)\d{2}[\/.-])?\d{1,2}[\/.-]\d{1,2}$/) || v.match(/^\d{1,2}:\d{1,2}(:\d{1,2})?$/))
+// 			return op + "#" + v + "#";
+		return op + "'" + v + "'";
+	}
+	return op + v;
+}
+
+/**
+@fn WUI.getQueryCond(kvList)
+
+@param kvList {key=>value}, 键值对，值中支持操作符及通配符。也支持格式 [ [key, value] ], 这时允许key有重复。
+
+根据kvList生成BPQ协议定义的{obj}.query的cond参数。
+
+例如:
+
+	var kvList = {phone: "13712345678", id: ">100", addr: "上海*", picId: "null"};
+	WUI.getQueryCond(kvList);
+
+有多项时，每项之间以"AND"相连，以上定义将返回如下内容：
+
+	"phone='13712345678' AND id>100 AND addr LIKE '上海*' AND picId IS NULL"
+
+示例二：
+
+	var kvList = [ ["phone", "13712345678"], ["id", ">100"], ["addr", "上海*"], ["picId", "null"] ];
+	WUI.getQueryCond(kvList); // 结果同上。
+
+
+设置值时，支持以下格式：
+
+- {key: "value"} - 表示"key=value"
+- {key: ">value"} - 表示"key>value", 类似地，可以用 >=, <, <=, <> 这些操作符。
+- {key: "value*"} - 值中带通配符，表示"key like 'value%'" (以value开头), 类似地，可以用 "*value", "*value*", "*val*ue"等。
+- {key: "null" } - 表示 "key is null"。要表示"key is not null"，可以用 "<>null".
+- {key: "empty" } - 表示 "key=''".
+
+支持简单的and/or查询，但不支持在其中使用括号:
+
+- {key: ">value and <=value"}  - 表示"key>'value' and key<='value'"
+- {key: "null or 0 or 1"}  - 表示"key is null or key=0 or key=1"
+
+在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。
+*/
+self.getQueryCond = getQueryCond;
+function getQueryCond(kvList)
+{
+	var condArr = [];
+	if ($.isPlainObject(kvList)) {
+		$.each(kvList, handleOne);
+	}
+	else if ($.isArray(kvList)) {
+		$.each(kvList, function (i, e) {
+			handleOne(e[0], e[1]);
+		});
+	}
+
+	function handleOne(k,v) {
+		if (v == null || v === "")
+			return;
+		var arr = v.split(/\s+(and|or)\s+/i);
+		var str = '';
+		var bracket = false;
+		$.each(arr, function (i, v1) {
+			if ( (i % 2) == 1) {
+				str += ' ' + v1.toUpperCase() + ' ';
+				bracket = true;
+				return;
+			}
+			str += k + getop(v1);
+		});
+		if (bracket)
+			str = '(' + str + ')';
+		condArr.push(str);
+		//val[e.name] = escape(v);
+		//val[e.name] = v;
+	}
+	return condArr.join(' AND ');
+}
+
+/**
+@fn WUI.getQueryParam(kvList)
+
+根据键值对生成BQP协议中{obj}.query接口需要的cond参数.
+
+示例：
+
+	WUI.getQueryParam({phone: '13712345678', id: '>100'})
+	返回
+	{cond: "phone='13712345678' AND id>100"}
+
+@see WUI.getQueryCond
+*/
+self.getQueryParam = getQueryParam;
+function getQueryParam(kvList)
+{
+	return {cond: getQueryCond(kvList)};
+}
 
 }
 // vi: foldmethod=marker
@@ -2172,7 +2390,8 @@ function leaveWaiting(ctx)
 			ctx.tv2 = tv2;
 			console.log(ctx);
 		}
-		if ($.active == 0 && self.isBusy && m_manualBusy == 0) {
+		if ($.active <= 0 && self.isBusy && m_manualBusy == 0) {
+			$.active = 0;
 			self.isBusy = 0;
 			var tv = new Date() - m_tmBusy;
 			m_tmBusy = 0;
@@ -2298,7 +2517,8 @@ function defDataProc(rv)
 			return;
 		}
 		else if (rv[0] == E_AUTHFAIL) {
-			self.app_alert("验证失败，请检查输入是否正确!", "e");
+			var errmsg = rv[1] || "验证失败，请检查输入是否正确!";
+			self.app_alert(errmsg, "e");
 			return;
 		}
 		else if (rv[0] == E_ABORT) {
@@ -2339,13 +2559,12 @@ function getBaseUrl()
 }
 
 /**
-@fn MUI.makeUrl(action, params)
-@alias makeUrl
+@fn MUI.makeUrl(action, params?)
 
 生成对后端调用的url. 
 
 	var params = {id: 100};
-	var url = makeUrl("Ordr.set", params);
+	var url = MUI.makeUrl("Ordr.set", params);
 
 注意：函数返回的url是字符串包装对象，可能含有这些属性：{makeUrl=true, action?, params?}
 这样可通过url.action得到原始的参数。
@@ -2466,19 +2685,21 @@ function makeUrl(action, params)
 }
 
 /**
-@fn MUI.callSvr(ac, [param?], fn?, postParams?, userOptions?)
+@fn MUI.callSvr(ac, [params?], fn?, postParams?, userOptions?) -> deferredObject
 @alias callSvr
 
 @param ac String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)
-@param param Object. URL参数（或称HTTP GET参数）
+@param params Object. URL参数（或称HTTP GET参数）
 @param postParams Object. POST参数. 如果有该参数, 则自动使用HTTP POST请求(postParams作为POST内容), 否则使用HTTP GET请求.
 @param fn Function(data). 回调函数, data参考该接口的返回值定义。
 @param userOptions 用户自定义参数, 会合并到$.ajax调用的options参数中.可在回调函数中用"this.参数名"引用. 
 
 常用userOptions: 
+
 - 指定{async:0}来做同步请求, 一般直接用callSvrSync调用来替代.
 - 指定{noex:1}用于忽略错误处理。
-- 指定{noLoadingImg:1}用于忽略loading图标.
+- 指定{noLoadingImg:1}用于忽略loading图标. 要注意如果之前已经调用callSvr显示了图标且图标尚未消失，则该选项无效，图标会在所有调用完成之后才消失(leaveWaiting)。
+ 要使隐藏图标不受本次调用影响，可在callSvr后手工调用`--$.active`。
 
 想为ajax选项设置缺省值，可以用callSvrExt中的beforeSend回调函数，也可以用$.ajaxSetup，
 但要注意：ajax的dataFilter/beforeSend选项由于框架已用，最好不要覆盖。
@@ -2500,16 +2721,21 @@ function makeUrl(action, params)
 
 当后端返回错误时, 回调`fn(false)`（参数data=false）. 可通过 MUI.lastError.ret 或 this.lastError 取到返回的原始数据。
 
-例：
+示例：
 
 	callSvr("logout");
 	callSvr("logout", api_logout);
-	callSvr("login", {wantAll:1}, api_login);
-	callSvr("info/hotline.php", {q: '大众'}, api_hotline);
+	function api_logout(data) {}
 
-	// 也兼容使用makeUrl的旧格式如:
-	callSvr(makeUrl("logout"), api_logout);
-	callSvr(makeUrl("logout", {a:1}), api_logout);
+	callSvr("login", {wantAll:1}, api_login);
+	function api_login(data) {}
+
+	callSvr("info/hotline.php", {q: '大众'}, api_hotline);
+	function api_hotline(data) {}
+
+	// 也可使用makeUrl生成的URL如:
+	callSvr(MUI.makeUrl("logout"), api_logout);
+	callSvr(MUI.makeUrl("logout", {a:1}), api_logout);
 
 	callSvr("User.get", function (data) {
 		if (data === false) { // 仅当设置noex且服务端返回错误时可返回false
@@ -2948,8 +3174,7 @@ function callSvrMock(opt, isSyncCall)
 }
 
 /**
-@fn MUI.callSvrSync(ac, params?, fn?, postParams?, userOptions?)
-@fn MUI.callSvrSync(ac, fn?, postParams?, userOptions?)
+@fn MUI.callSvrSync(ac, [params?], fn?, postParams?, userOptions?)
 @alias callSvrSync
 @return data 原型规定的返回数据
 
@@ -2997,7 +3222,7 @@ function callSvrSync(ac, params, fn, postParams, userOptions)
 
 然后就像调用callSvr函数一样调用setupCallSvrViaForm:
 
-	var url = makeUrl("upload", {genThumb: 1});
+	var url = MUI.makeUrl("upload", {genThumb: 1});
 	MUI.setupCallSvrViaForm($frm, $frm.find("iframe"), url, onUploadComplete);
 	function onUploadComplete(data) 
 	{
@@ -3186,7 +3411,7 @@ function useBatchCall(opt, tv)
 	if (m_curBatch != null)
 		return;
 	tv = tv || 0;
-	var batch = new MUI.batchCall(opt);
+	var batch = new self.batchCall(opt);
 	setTimeout(function () {
 		batch.commit();
 	}, tv);
@@ -3499,6 +3724,9 @@ function showPage(pageName, title, paramArr)
 		var jpageNew = jpage.clone().appendTo(jtab);
 		jpageNew.addClass('wui-page');
 		jpageNew.attr("wui-pageName", pageName);
+
+		$.parser.parse(jpageNew); // easyui enhancement
+		self.enhanceWithin(jpageNew);
 		callInitfn(jpageNew, paramArr);
 
 		jpageNew.trigger('pagecreate');
@@ -3533,9 +3761,6 @@ function showPage(pageName, title, paramArr)
 */
 		jpage.attr("wui-pageFile", pageFile);
 		jpage.addClass(pageClass).appendTo(jcontainer);
-
-		self.enhanceWithin(jpage);
-		$.parser.parse(jpage);
 
 		var val = jpage.attr("wui-script");
 		if (val != null) {
@@ -3694,9 +3919,6 @@ function showDlg(jdlg, opt)
 	}
 	jdlg.dialog(dlgOpt);
 
-	// !!! init combobox on necessary
-	jdlg.find(".my-combobox").mycombobox();
-
 	jdlg.okCancel(fnOk, opt.noCancel? undefined: fnCancel);
 
 	if (opt.reset)
@@ -3850,133 +4072,6 @@ function unloadDialog()
 var BTN_TEXT = ["添加", "保存", "保存", "查找", "删除"];
 // e.g. var text = BTN_TEXT[mode];
 
-// 参考 getQueryCond中对v各种值的定义
-function getop(v)
-{
-	if (typeof(v) == "number")
-		return "=" + v;
-	var op = "=";
-	var is_like=false;
-	if (v.match(/^(<>|>=?|<=?)/)) {
-		op = RegExp.$1;
-		v = v.substr(op.length);
-	}
-	else if (v.indexOf("*") >= 0 || v.indexOf("%") >= 0) {
-		v = v.replace(/[*]/g, "%");
-		op = " like ";
-	}
-	v = $.trim(v);
-
-	if (v === "null")
-	{
-		if (op == "<>")
-			return " is not null";
-		return " is null";
-	}
-	if (v === "empty")
-		v = "";
-	if (v.length == 0 || v.match(/\D/) || v[0] == '0') {
-		v = v.replace(/'/g, "\\'");
-// 		// ???? 只对access数据库: 支持 yyyy-mm-dd, mm-dd, hh:nn, hh:nn:ss
-// 		if (!is_like && v.match(/^((19|20)\d{2}[\/.-])?\d{1,2}[\/.-]\d{1,2}$/) || v.match(/^\d{1,2}:\d{1,2}(:\d{1,2})?$/))
-// 			return op + "#" + v + "#";
-		return op + "'" + v + "'";
-	}
-	return op + v;
-}
-
-/**
-@fn WUI.getQueryCond(kvList)
-
-@param kvList {key=>value}, 键值对，值中支持操作符及通配符。也支持格式 [ [key, value] ], 这时允许key有重复。
-
-根据kvList生成BPQ协议定义的{obj}.query的cond参数。
-
-例如:
-
-	var kvList = {phone: "13712345678", id: ">100", addr: "上海*", picId: "null"};
-	WUI.getQueryCond(kvList);
-
-有多项时，每项之间以"AND"相连，以上定义将返回如下内容：
-
-	"phone='13712345678' AND id>100 AND addr LIKE '上海*' AND picId IS NULL"
-
-示例二：
-
-	var kvList = [ ["phone", "13712345678"], ["id", ">100"], ["addr", "上海*"], ["picId", "null"] ];
-	WUI.getQueryCond(kvList); // 结果同上。
-
-
-设置值时，支持以下格式：
-
-- {key: "value"} - 表示"key=value"
-- {key: ">value"} - 表示"key>value", 类似地，可以用 >=, <, <=, <> 这些操作符。
-- {key: "value*"} - 值中带通配符，表示"key like 'value%'" (以value开头), 类似地，可以用 "*value", "*value*", "*val*ue"等。
-- {key: "null" } - 表示 "key is null"。要表示"key is not null"，可以用 "<>null".
-- {key: "empty" } - 表示 "key=''".
-
-支持简单的and/or查询，但不支持在其中使用括号:
-
-- {key: ">value and <=value"}  - 表示"key>'value' and key<='value'"
-- {key: "null or 0 or 1"}  - 表示"key is null or key=0 or key=1"
-
-在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。
-*/
-self.getQueryCond = getQueryCond;
-function getQueryCond(kvList)
-{
-	var condArr = [];
-	if ($.isPlainObject(kvList)) {
-		$.each(kvList, handleOne);
-	}
-	else if ($.isArray(kvList)) {
-		$.each(kvList, function (i, e) {
-			handleOne(e[0], e[1]);
-		});
-	}
-
-	function handleOne(k,v) {
-		if (v == null || v === "")
-			return;
-		var arr = v.split(/\s+(and|or)\s+/i);
-		var str = '';
-		var bracket = false;
-		$.each(arr, function (i, v1) {
-			if ( (i % 2) == 1) {
-				str += ' ' + v1.toUpperCase() + ' ';
-				bracket = true;
-				return;
-			}
-			str += k + getop(v1);
-		});
-		if (bracket)
-			str = '(' + str + ')';
-		condArr.push(str);
-		//val[e.name] = escape(v);
-		//val[e.name] = v;
-	}
-	return condArr.join(' AND ');
-}
-
-/**
-@fn WUI.getQueryParam(kvList)
-
-根据键值对生成BQP协议中{obj}.query接口需要的cond参数.
-
-示例：
-
-	WUI.getQueryParam({phone: '13712345678', id: '>100'})
-	返回
-	{cond: "phone='13712345678' AND id>100"}
-
-@see WUI.getQueryCond
-*/
-self.getQueryParam = getQueryParam;
-function getQueryParam(kvList)
-{
-	return {cond: getQueryCond(kvList)};
-}
-
 function getFindData(jfrm)
 {
 	var kvList = {};
@@ -3992,7 +4087,7 @@ function getFindData(jfrm)
 		else
 			kvList[e.name] = v;
 	})
-	var cond = getQueryParam(kvList);
+	var cond = self.getQueryParam(kvList);
 	if (kvList2) 
 		$.extend(cond, kvList2);
 	return cond;
@@ -4078,8 +4173,8 @@ function loadDialog(jdlg, onLoad)
 		jdlg.attr("id", dlgId).appendTo(jcontainer);
 		jdlg.attr("wui-pageFile", pageFile);
 
+		$.parser.parse(jdlg); // easyui enhancement
 		self.enhanceWithin(jdlg);
-		$.parser.parse(jdlg);
 
 		var val = jdlg.attr("wui-script");
 		if (val != null) {
@@ -4182,9 +4277,10 @@ function showObjDlg(jdlg, mode, opt)
 	if (mode == FormMode.forFind && jd.mode != FormMode.forFind) {
 		jfrm.find(":input[name]").each (function (i,e) {
 			var je = $(e);
-			je.jdata().bak = {
+			var bak = je.jdata().bak = {
 				bgcolor: je.css("backgroundColor"),
-				disabled: je.prop("disabled")
+				disabled: je.prop("disabled"),
+				type: null
 			}
 			if (je.attr("notforFind")) {
 				je.prop("disabled", true);
@@ -4193,8 +4289,14 @@ function showObjDlg(jdlg, mode, opt)
 			else {
 				je.prop("disabled", false);
 				je.css("backgroundColor", "#ffff00"); // "yellow";
+				var type = je.attr("type");
+				if (type && ["number", "date", "time", "datetime"].indexOf(type) >= 0) {
+					bak.type = type;
+					je.attr("type", "text");
+				}
 			}
-		})
+		});
+		jfrm.find(".easyui-validatebox").validatebox("disableValidation");
 	}
 	else if (jd.mode == FormMode.forFind && mode != FormMode.forFind) {
 		jfrm.find(":input[name]").each (function (i,e) {
@@ -4202,7 +4304,11 @@ function showObjDlg(jdlg, mode, opt)
 			var bak = je.jdata().bak;
 			je.prop("disabled", bak.disabled);
 			je.css("backgroundColor", bak.bgcolor);
+			if (bak.type) {
+				je.attr("type", bak.type);
+			}
 		})
+		jfrm.find(".easyui-validatebox").validatebox("enableValidation");
 	}
 
 	jd.mode = mode;
@@ -4419,6 +4525,80 @@ function enhanceAnchor(jo)
 	});
 }
 
+/**
+@fn WUI.getExportHandler(jtbl, ac, param?={})
+
+为数据表添加导出Excel菜单，如：
+
+	jtbl.datagrid({
+		url: WUI.makeUrl("User.query"),
+		toolbar: WUI.dg_toolbar(jtbl, jdlg, {text:'导出', iconCls:'icon-save', handler: getExportHandler(jtbl, "User.query") }),
+		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
+	});
+
+默认是导出数据表中直接来自于服务端的字段，并应用表上的查询条件及排序。
+也可以通过设置param参数手工指定，如：
+
+	handler: getExportHandler(jtbl, "User.query", {res: "id 编号, name 姓名, createTm 注册时间", orderby: "createTm DESC"})
+
+注意：由于分页机制影响，会设置参数{pagesz: 9999}以便在一页中返回所有数据，而实际一页能导出的最大数据条数取决于后端设置（默认1000，参考后端文档 AccessControl::$maxPageSz）。
+
+@see WUI.getParamFromTable
+*/
+self.getExportHandler = getExportHandler;
+function getExportHandler(jtbl, ac, param)
+{
+	if (param == null)
+		param = {};
+
+	if (param.fmt === undefined)
+		param.fmt = "excel";
+	if (param.pagesz === undefined)
+		param.pagesz = 9999;
+
+	return function () {
+		var url = WUI.makeUrl(ac, getParamFromTable(jtbl, param));
+		window.open(url);
+	}
+}
+
+/**
+@fn WUI.getParamFromTable(jtbl, param?)
+
+根据数据表当前设置，获取查询参数。
+可能会设置{cond, orderby, res}参数。
+
+res参数从列设置中获取，如"id 编号,name 姓名", 特别地，如果列对应字段以"_"结尾，不会加入res参数。
+
+@see WUI.getExportHandler 导出Excel
+*/
+self.getParamFromTable = getParamFromTable;
+function getParamFromTable(jtbl, param)
+{
+	if (param == null)
+		param = {};
+
+	var opt = jtbl.datagrid("options");
+	$.extend(param, opt.queryParams);
+	if (param.orderby === undefined && opt.sortName) {
+		param.orderby = opt.sortName;
+		if (opt.sortOrder && opt.sortOrder.toLowerCase() != "asc")
+			param.orderby += " " + opt.sortOrder;
+	}
+	if (param.res === undefined) {
+		var res = '';
+		$.each(opt.columns[0], function (i, e) {
+			if (! e.field || e.field.substr(-1) == "_")
+				return;
+			if (res.length > 0)
+				res += ',';
+			res += e.field + " " + e.title;
+		});
+		param.res = res;
+	}
+	return param;
+}
+
 // ---- easyui setup {{{
 
 $.extend($.fn.combobox.defaults, {
@@ -4435,12 +4615,12 @@ function dgLoader(param, success, error)
 	}
 	var param1 = {};
 	for (var k in param) {
-	/* TODO: enable _page param in interface obj.query, disable rows/page
+	/* TODO: enable page param in interface obj.query, disable rows/page
 		if (k === "rows") {
-			param1._pagesz = param[k];
+			param1.pagesz = param[k];
 		}
 		else if (k === "page") {
-			param1._page = param[k];
+			param1.page = param[k];
 		}
 	*/
 		if (k === "sort") {
@@ -4657,6 +4837,11 @@ $.extend($.fn.tabs.defaults, {
 */
 // }}}
 
+// 支持自动初始化mycombobox
+self.m_enhanceFn[".my-combobox"] = function (jo) {
+	jo.mycombobox();
+};
+
 function main()
 {
 	self.title = document.title;
@@ -4809,8 +4994,8 @@ function app_alert(msg, type, fn)
 }
 
 /**
-@fn app_confirm(msg, type?=i, fn?)
-@param fn Function(). 用户点击确定后的回调。
+@fn app_confirm(msg, fn?)
+@param fn Function(isOk). 用户点击确定或取消后的回调。
 
 使用jQuery easyui弹出确认对话框.
 */

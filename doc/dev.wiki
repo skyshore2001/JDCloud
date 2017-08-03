@@ -61,7 +61,7 @@ C:\Program Files (x86)\Git\bin\ssh.exe
 
 === 编辑器 ===
 
-建议安装上gvim编辑器。很多代码和文档(使用vimwiki格式)都使用gvim编写.
+建议安装上gvim编辑器。项目文档使用markdown或vimwiki格式，一般使用gvim编写.
 
 {{{
 {SHARE_SVR}\vim\gvim74.exe
@@ -70,7 +70,9 @@ C:\Program Files (x86)\Git\bin\ssh.exe
 建议安装到 `c:\vim`
 安装完成后将 `{SHARE_SVR}\vim\_vimrc` 拷贝到安装目录， 如`c:\vim`
 
-安装vimwiki, 用于查看和书写文档.
+支持markdown格式文档编辑，参考 https://github.com/skyshore2001/vim-markdown
+
+支持vimwiki格式文档编辑：
 - 将{SHARE_SVR}\vim\vimwiki-lj-1.vmb拷贝到本地, 右键用gvim打开
 - 运行安装命令
 {{{
@@ -78,6 +80,7 @@ C:\Program Files (x86)\Git\bin\ssh.exe
 }}}
 
 安装后查看文档(如doc/*.wiki文件)就有颜色、折叠、生成html网页文档等功能。
+使用vimwiki写文档，可参考[[writedoc_vimwiki]].
 
 == 测试环境 ==
 
@@ -112,157 +115,71 @@ phpunit
 
 === 安装前端自动化测试环境 ===
 
-TODO: 主要软件：nunit, selenium, firefox浏览器, VS.net (C#)
+主要软件：nunit, selenium, VS.net (C#)
 
-参考文档[[测试设计]]。
+参考文档[[后端框架]]中的“回归测试”章节。
 
 == 运行环境 ==
 
 === 下载代码 ===
 
-主要代码库：
-xeyc-sys:: 小鳄养车网上业务系统（含后台/前台），其中子目录`server`对应线上路径 http://xiaoeyangche.com/sys/
-xeyc-xdk:: 小鳄养车Android平台（使用xdk直接包装网页）
-xeyc-ios: 小鳄养车iOS客户端
-xeyc-site: 小鳄养车网站主页, 对应线上 http://xiaoeyangche.com/site/ 
-xeyc-test: 小鳄养车测试用例及回归测试代码
+项目中的代码库命名规则一般如下：
 
+{project}:: H5手机应用、H5管理端应用以及服务端接口，其中子目录`server`包含发布到线上的内容的源码。一般克隆自筋斗云应用框架项目(jdcloud)。
+{project}-online:: 发布版本库。由{project}下的server目录下内容经webcc编译系统优化生成。
+{project}-app:: 原生手机应用程序（应用壳）的工程。基于Cordova框架，一般包含安卓及苹果两个应用程序的工程。一般克隆自jdcloud-app项目。
+{project}-test:: 自动化回归测试代码
+
+不再使用的：
+{project}-xdk:: 原生手机应用程序（应用壳）的工程，使用Intel XDK工具生成应用程序，现已不使用，由{project}-app工程取代。
+{project}-ios:: 原生iOS应用程序工程。
+{project}-site:: 站点主页。
+
+下载应用代码示例：
 {{{
-git clone builder@server-pc:xeyc-sys
+git clone builder@server-pc:xeyc
 }}}
-可以在浏览器中右键选择Git Clone, 然后输入地址：`builder@server-pc:xeyc-sys`
-
-密码: builder
-
-注意: 
-- 如果要在办公室外访问代码库，可以用 `ssh://builder@oliveche.com:10022/home/builder/xeyc-sys`
+可以在浏览器中右键选择Git Clone, 然后输入地址：`builder@server-pc:xey`
 
 === 运行服务 ===
 
+参考筋斗云教程。一般开发端配置使用IIS+php 5.4+。最简单可以直接这样将应用跑起来：
 {{{
-cd {cheguanjia}\server
+cd {project}\server
 set P_DB=server-pc/carsvc_test
 php -S 0.0.0.0:8080
 }}}
 
+访问：`http://localhost:8080/`
+
 如果`server-pc`访问慢，请换成IP地址或在/etc/hosts/文件中指定地址-机器名映射。
 
-文件C:\Windows\System32\drivers\etc\hosts，添加
+文件C:\Windows\System32\drivers\etc\hosts，示例：
 {{{
 192.168.3.135	server-pc
 }}}
 
-=== 主要页面 ===
+=== H5应用惯例 ===
 
-*[网页客户端]*
+*[用户端 - 手机H5应用]*
 
 http://localhost:8080/
 或
 http://localhost:8080/m2/index.html
 
-*[员工端]*
+*[员工端 - 手机H5应用]*
 
-（自营商户员工接单）：
-http://localhost:8080/m2/index.html
+http://localhost:8080/m2/emp.html
 
-*[商户端]*
+*[商户端 - 手机H5应用]*
 
 http://localhost:8080/m2/store.html
 
-*[商户管理端]*
+*[运营管理端 - 桌面H5应用]*
 
 http://localhost:8080/web/store.html
 
-*[超级管理端]*
+*[超级管理端 - 桌面H5应用]*
 
 http://localhost:8080/web/adm.html
 
-== 开发流程 ==
-
-*[概念]*
-
-开发周期:: 从开发部门确定下个版本开发计划到提交该版本产品截止。代码从主分支合并到发布分支意味着上一周期结束和下一周期开始。
-产品周期（版本周期）:: 某产品版本上线，意味着上一周期结束和下一周期开始。
-
-*[人员分工]*
-
-- 开发
-- 测试
-- 发布
-
-*[开发流程]*
-
-[[开发流程.xlsx]]
-
-- 开发截止日
-- 版本发布日
-
-== 测试与部署环境 ==
-
-*[内部服务器-测试服务]*
-
-数据库
-{{{
-server-pc/carsvc_test
-}}}
-
-对应的服务基址是
-
-{{{
-SVC_URL=http://server-pc:8080/cheguanjia
-}}}
-
-- 开发人员应使用该数据库进行开发；
-- 测试人员在开发周期截止前使用该服务地址。
-
-*[内部服务器-正式服务]*
-
-数据库
-{{{
-server-pc/carsvc
-}}}
-
-对应的服务基址是
-
-{{{
-SVC_URL=http://server-pc/cheguanjia
-}}}
-
-- 上线前（开发周期截止后）测试人员使用该服务地址进行测试。
-
-*[线上服务器-测试服务]*
-
-数据库
-{{{
-oliveche.com/carsvc_test
-}}}
-
-对应的服务基址和正式服务相同，但需要在URL最后加参数"?test"，如
-
-{{{
-SVC_URL=http://oliveche.com/cheguanjia/m2/index.html?test
-}}}
-
-- 上线后（产品周期开始后）测试人员使用该服务地址进行自动化回归测试。
-
-*[线上服务器-正式服务]*
-
-数据库
-{{{
-oliveche.com/carsvc
-}}}
-
-对应的服务基址是
-
-{{{
-SVC_URL=http://oliveche.com/cheguanjia
-}}}
-
-
-== 附注 ==
-
-*1. 添加新目录到PATH环境变量*
-
-按windows-break键 -> 打开"高级系统设置" -> 选择"高级"选项卡 -> 点击按钮"环境变量" -> 在用户变量中找"PATH"变量（如果不存在则新建一个），在变量值的最后添加该目录. 注意多个目录使用分号";"间隔。
-
-如仍不清楚请上网查询。
