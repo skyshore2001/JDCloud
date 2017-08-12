@@ -1,4 +1,4 @@
-// jdcloud-mui version 1.0
+// jdcloud-mui version 1.1
 // ====== WEBCC_BEGIN_FILE doc.js {{{
 /**
 @module MUI
@@ -625,6 +625,11 @@ function parseTime(s)
 	var dt2 = parseDate("2012/01/01 20:00:09");
 	var dt3 = parseDate("2012.1.1 20:00");
 
+支持时区，时区格式可以是"+8", "+08", "+0800", "Z"这些，如
+
+	parseDate("2012-01-01T09:10:20.328+0800");
+	parseDate("2012-01-01T09:10:20Z");
+
  */
 self.parseDate = parseDate;
 function parseDate(str)
@@ -670,8 +675,8 @@ function parseDate(str)
 	var dt = new Date(y, m, d, h, n, s);
 	if (isNaN(dt.getYear()))
 		return null;
-	// 时区
-	ms = str.match(/([+-])(\d{1,4})$/);
+	// 时区(前面必须是时间如 00:00:00.328-02 避免误匹配 2017-08-11 当成-11时区
+	ms = str.match(/:[0-9.T]+([+-])(\d{1,4})$/);
 	if (ms != null) {
 		var sign = (ms[1] == "-"? -1: 1);
 		var cnt = ms[2].length;
@@ -1146,11 +1151,9 @@ function appendParam(url, param)
 		return url;
 	var ret;
 	var a = url.split("#");
+	ret = a[0] + (url.indexOf('?')>=0? "&": "?") + param;
 	if (a.length > 1) {
-		ret = a[0] + (url.indexOf('?')>0? "&": "?") + param + "#" + a[1];
-	}
-	else {
-		ret = url + (url.indexOf('?')>0? "&": "?") + param;
+		ret += "#" + a[1];
 	}
 	return ret;
 }
@@ -2301,13 +2304,13 @@ function defDataProc(rv)
 		if (g_data.testMode != val) {
 			g_data.testMode = val;
 			if (g_data.testMode)
-				alert("测试模式!");
+				self.app_alert("测试模式!", {timeoutInterval:2000});
 		}
 		val = mCommon.parseValue(this.xhr_.getResponseHeader("X-Daca-Mock-Mode"));
 		if (g_data.mockMode != val) {
 			g_data.mockMode = val;
 			if (g_data.mockMode)
-				alert("模拟模式!");
+				self.app_alert("模拟模式!", {timeoutInterval:2000});
 		}
 	}
 
@@ -2359,7 +2362,8 @@ function defDataProc(rv)
 			return;
 		}
 		else if (rv[0] == E_AUTHFAIL) {
-			self.app_alert("验证失败，请检查输入是否正确!", "e");
+			var errmsg = rv[1] || "验证失败，请检查输入是否正确!";
+			self.app_alert(errmsg, "e");
 			return;
 		}
 		else if (rv[0] == E_ABORT) {
@@ -3511,7 +3515,17 @@ m_curState==null: 首次进入，或hash改变
 /**
 @fn MUI.setUrl(url)
 
-设置当前地址栏显示的URL. 
+设置当前地址栏显示的URL. 如果url中不带hash部分，会自动加上当前的hash.
+
+	MUI.setUrl("page/home.html"); // 设置url
+	MUI.setUrl("?a=1&b=2"); // 设置url参数
+	MUI.setUrl("?"); // 清除url参数部分。
+
+如果要设置或删除参数，建议使用：
+
+	MUI.setUrlParam("a", 1); // 如果参数存在，则会自动覆盖。
+	MUI.deleteUrlParam("a"); // 从url中删除参数a部分，如果g_args中有参数a，也同时删除。
+
 一般用于将应用程序内部参数显示到URL中，以便在刷新页面时仍然可显示相同的内容，或用于分享链接给别人。
 
 例如订单页的URL为`http://server/app/#order`，现在希望：
@@ -3574,7 +3588,12 @@ self.setUrl = setUrl;
 function setUrl(url)
 {
 	if (m_curState == null)
+	{
+		if (url.indexOf("#") < 0 && location.hash)
+			url += location.hash;
+		history.replaceState(null, null, url);
 		return;
+	}
 	setHash(m_curState.pageRef, url);
 }
 
@@ -3592,7 +3611,31 @@ self.deleteUrlParam = deleteUrlParam;
 function deleteUrlParam(param)
 {
 	delete g_args[param];
-	var search = MUI.deleteParam(location.search, param);
+	var search = mCommon.deleteParam(location.search, param);
+	MUI.setUrl(search);
+}
+
+/**
+@fn MUI.setUrlParam(param, val)
+
+修改当前url，添加指定参数。
+e.g. 
+
+	MUI.setUrlParam("wxauth", 1);
+
+@see MUI.deleteUrlParam,MUI.appendParam
+ */
+self.setUrlParam = setUrlParam;
+function setUrlParam(param, val)
+{
+	var search = location.search;
+	if (search.indexOf(param + "=") >= 0) {
+		search = mCommon.deleteParam(search, param);
+	}
+	search = mCommon.appendParam(search, param + "=" + val);
+	if (search.indexOf('?&') >=0) {
+		search = search.replace('?&', '?');
+	}
 	MUI.setUrl(search);
 }
 
@@ -4177,7 +4220,7 @@ function activateElem(jo)
 	{
 		var ref = jo.attr("mui-linkto");
 		if (ref) {
-			var jlink = self.activePage.find(ref);
+			var jlink = jo.closest(".mui-page").find(ref); // DONT use self.activePage that may be wrong on pagebeforeshow
 			jlink.toggle(active);
 			jlink.toggleClass("active", active);
 		}
@@ -4432,6 +4475,7 @@ function app_alert(msg)
 	var opt = self.getOptions(jdlg);
 	if (opt.type == null) {
 		jdlg.find("#btnOK, #btnCancel").click(app_alert_click);
+		jdlg.keydown(app_alert_keydown);
 	}
 	opt.type = type;
 	opt.fn = fn;
@@ -4443,6 +4487,9 @@ function app_alert(msg)
 	jtxt.toggle(type == "p");
 	if (type == "p") {
 		jtxt.val(alertOpt.defValue);
+		setTimeout(function () {
+			jtxt.focus();
+		});
 	}
 
 	jdlg.find(".p-title").html(s);
@@ -4469,16 +4516,33 @@ function app_alert_click(ev)
 	}
 	var btnId = this.id;
 	if (opt.fn && btnId == "btnOK") {
-		var param;
 		if (opt.type == "p") {
-			param = jdlg.find("#txtInput").val();
+			var text = jdlg.find("#txtInput").val();
+			if (text != "") {
+				opt.fn(text);
+			}
+			else if (opt.alertOpt.onCancel) {
+				opt.alertOpt.onCancel();
+			}
 		}
-		opt.fn(param);
+		else {
+			opt.fn();
+		}
 	}
 	else if (btnId == "btnCancel" && opt.alertOpt.onCancel) {
 		opt.alertOpt.onCancel();
 	}
 	self.closeDialog(jdlg, opt.isClone);
+}
+
+function app_alert_keydown(ev)
+{
+	if (ev.keyCode == 13) {
+		return $(this).find("#btnOK").click();
+	}
+	else if (ev.keyCode == 27) {
+		return $(this).find("#btnCancel").click();
+	}
 }
 
 /**
@@ -5413,7 +5477,7 @@ var mCommon = jdModule("jdcloud.common");
 			isRefresh = true;
 		if (isRefresh)
 			jlst.empty();
-		param._pagekey = nextkey;
+		param.pagekey = nextkey;
 
 		callSvr("Ordr.query", param, function (data) {
 			// create items and append to jlst
@@ -5488,7 +5552,7 @@ function initPullList(container, opt)
 	var TRIGGER_AUTOLOAD = 30; // px
 
 	var lastUpdateTm_ = new Date();
-	var dy_; // 纵向移动。<0为上拉，>0为下拉
+	var dy_ = 0; // 纵向移动。<0为上拉，>0为下拉
 
 	window.requestAnimationFrame = window.requestAnimationFrame || function (fn) {
 		setTimeout(fn, 1000/60);
@@ -5749,6 +5813,7 @@ function initPullList(container, opt)
 		}
 		console.log(touchev_);
 		doAction(touchev_.ac);
+		dy_ = 0;
 		touchev_ = null;
 
 		function doAction(ac)
@@ -5772,6 +5837,7 @@ function initPullList(container, opt)
 					doAction("U");
 				}
 			}
+			dy_ = 0;
 		}
 	}
 }
@@ -5936,7 +6002,7 @@ navRef是否为空的区别是，如果非空，则表示listRef是一组互斥�
 ## 参数说明
 
 @param opt {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list", onBeforeLoad?, onLoad?, onGetData?, canPullDown?=true, onRemoveAll?}
-@param opt 分页相关 { pageszName?="_pagesz", pagekeyName?="_pagekey" }
+@param opt 分页相关 { pageszName?="pagesz", pagekeyName?="pagekey" }
 
 @param opt.onGetQueryParam Function(jlst, queryParam/o)
 
@@ -5948,7 +6014,7 @@ queryParam: {ac?, res?, cond?, ...}
 	<ul data-queryParam="{q: 'famous'}" data-ac="Person.query" data-res="*,familyName" data-cond="status='PA' and name like '王%'">
 	</ul>
 
-此外，框架将自动管理 queryParam._pagekey/_pagesz 参数。
+此外，框架将自动管理 queryParam.pagekey/pagesz 参数。
 
 @param opt.onAddItem (jlst, itemData, param)
 
@@ -6055,7 +6121,7 @@ param={idx, arr, isFirstPage}
 
 默认按BQP协议的分页机制访问服务端，其规则是：
 
-- 请求通过 _pagesz 参数指定页大小
+- 请求通过 pagesz 参数指定页大小
 - 如果不是最后一页，服务端应返回nextkey字段；返回列表的格式可以是 table格式如 
 
 		{
@@ -6074,7 +6140,7 @@ param={idx, arr, isFirstPage}
 			nextkey: 2
 		}
 
-- 请求下一页时，设置参数_pagekey = nextkey，直到服务端不返回 nextkey 字段为止。
+- 请求下一页时，设置参数pagekey = nextkey，直到服务端不返回 nextkey 字段为止。
 
 例1：假定后端分页机制为(jquery-easyui datagrid分页机制):
 
@@ -6242,7 +6308,10 @@ function initPageList(jpage, opt)
 				firstShow_ = true;
 			}
 			if (firstShow_ ) {
-				showOrderList(false, false);
+				// 以便用户代码可以通过click方法调整显示哪个tab页
+				setTimeout(function () {
+					showOrderList(false, false);
+				});
 			}
 		}
 
@@ -6470,8 +6539,8 @@ function initPageList(jpage, opt)
 initPageList.options = {
 	navRef: ">.hd .mui-navbar",
 	listRef: ">.bd .p-list",
-	pageszName: "_pagesz",
-	pagekeyName: "_pagekey",
+	pageszName: "pagesz",
+	pagekeyName: "pagekey",
 	canPullDown: true,
 	onRemoveAll: function (jlst) {
 		jlst.empty();
@@ -6612,6 +6681,28 @@ onDel: Function(); 删除对象后回调.
 	PagePerson.showForAdd({familyId: 1}); // 添加人物，已设置familyId为1
 	PagePerson.showForSet(person); // 以person对象内容显示人物，可更新。
 	PagePerson.showForSet({id: 3}); // 以id=3查询人物并显示，可更新。
+
+页面接口常常实现如下：
+
+	var PagePerson = {
+		// @fn PagePerson.showForAdd(formData?)
+		// formData={familyId, parentId?, parentOf?}
+		showForAdd: function(formData) {
+			this.formMode = FormMode.forAdd;
+			this.formData = formData;
+			MUI.showPage("#person");
+		},
+		// @fn PagePerson.showForSet(formData)
+		// formData={id,...}
+		showForSet: function (formData) {
+			this.formMode = FormMode.forSet;
+			this.formData = formData;
+			MUI.showPage("#person");
+		},
+
+		formMode: null,
+		formData: null,
+	};
 
 对于forSet模式，框架先检查formData中是否只有id属性，如果是，则在进入页面时会自动调用{obj}.get获取数据.
 

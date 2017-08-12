@@ -534,126 +534,126 @@ class AccessControl
 		return $x;
 	}
 
+	// for get/query
+	protected function initQuery()
+	{
+		$gres = param("gres");
+		$res = param("res");
+		$this->sqlConf = [
+			"res" => [],
+			"gres" => $gres,
+			"cond" => [param("cond", null, null, false)],
+			"join" => [],
+			"orderby" => param("orderby"),
+			"subobj" => [],
+			"union" => param("union"),
+			"distinct" => param("distinct")
+		];
+
+		$this->initVColMap();
+
+		# support internal param res2/join/cond2
+		if (($res2 = param("res2")) != null) {
+			if (! is_array($res2))
+				throw new MyException(E_SERVER, "res2 should be an array: `$res2`");
+			foreach ($res2 as $e)
+				$this->addRes($e);
+		}
+		if (($join=param("join")) != null) {
+			$this->addJoin($join);
+		}
+		if (($cond2 = param("cond2", null, null, false)) != null) {
+			if (! is_array($cond2))
+				throw new MyException(E_SERVER, "cond2 should be an array: `$cond2`");
+			foreach ($cond2 as $e)
+				$this->addCond($e);
+		}
+		if (($subobj = param("subobj")) != null) {
+			if (! is_array($subobj))
+				throw new MyException(E_SERVER, "subobj should be an array");
+			$this->sqlConf["subobj"] = $subobj;
+		}
+		$this->fixUserQuery();
+
+		$this->onQuery();
+
+		$addDefaultCol = false;
+		// 确保res/gres参数符合安全限定
+		if (isset($gres)) {
+			$this->filterRes($gres, true);
+		}
+		// 设置gres时，不使用defaultRes
+		else if (!isset($res)) {
+			$res = $this->defaultRes;
+			$addDefaultCol = true;
+		}
+
+		if (isset($res)) {
+			$this->filterRes($res);
+		}
+		// 设置gres时，不使用default vcols/subobj
+		if ($addDefaultCol) {
+			$this->addDefaultVCols();
+			if (count($this->sqlConf["subobj"]) == 0) {
+				foreach ($this->subobj as $col => $def) {
+					if (@$def["default"])
+						$this->sqlConf["subobj"][$col] = $def;
+				}
+			}
+		}
+		if ($this->ac == "query")
+		{
+			$rv = $this->supportEasyui();
+			if (isset($this->sqlConf["orderby"]) && !isset($this->sqlConf["union"]))
+				$this->sqlConf["orderby"] = $this->filterOrderby($this->sqlConf["orderby"]);
+		}
+	}
+	// for add/set
+	protected function validate()
+	{
+		# TODO: check fields in metadata
+		# foreach ($_POST as ($field, $val))
+
+		foreach ($this->readonlyFields as $field) {
+			if (array_key_exists($field, $_POST) && !($this->ac == "add" && array_search($field, $this->requiredFields) !== false)) {
+				logit("!!! warn: attempt to change readonly field `$field`");
+				unset($_POST[$field]);
+			}
+		}
+		if ($this->ac == "set") {
+			foreach ($this->readonlyFields2 as $field) {
+				if (array_key_exists($field, $_POST)) {
+					logit("!!! warn: attempt to change readonly field `$field`");
+					unset($_POST[$field]);
+				}
+			}
+		}
+		if ($this->ac == "add") {
+			foreach ($this->requiredFields as $field) {
+// 					if (! issetval($field, $_POST))
+// 						throw new MyException(E_PARAM, "missing field `{$field}`", "参数`{$field}`未填写");
+				mparam($field, $_POST); // validate field and type; refer to field/type format for mparam.
+			}
+		}
+		else { # for set, the fields can not be set null
+			$fs = array_merge($this->requiredFields, $this->requiredFields2);
+			foreach ($fs as $field) {
+				if (is_array($field)) // TODO
+					continue;
+				if (array_key_exists($field, $_POST) && ( ($v=$_POST[$field]) === "null" || $v === "" || $v==="empty" )) {
+					throw new MyException(E_PARAM, "{$this->table}.set: cannot set field `$field` to null.", "字段`$field`不允许置空");
+				}
+			}
+		}
+		$this->onValidate();
+	}
+
 	final function before($ac)
 	{
 		if ($this->allowedAc && in_array($ac, self::$stdAc) && !in_array($ac, $this->allowedAc)) {
 			throw new MyException(E_FORBIDDEN, "Operation `$ac` is not allowed on object `$this->table`");
 		}
 		$this->ac = $ac;
-
-		# TODO: check fields in metadata
-		# foreach ($_POST as ($field, $val))
-
-		if ($ac == "get" || $ac == "set" || $ac == "del") {
-			$this->onValidateId();
-			$this->id = mparam("id");
-		}
-		if ($ac == "add" || $ac == "set") {
-			foreach ($this->readonlyFields as $field) {
-				if (array_key_exists($field, $_POST) && !($this->ac == "add" && array_search($field, $this->requiredFields) !== false)) {
-					logit("!!! warn: attempt to change readonly field `$field`");
-					unset($_POST[$field]);
-				}
-			}
-			if ($ac == "set") {
-				foreach ($this->readonlyFields2 as $field) {
-					if (array_key_exists($field, $_POST)) {
-						logit("!!! warn: attempt to change readonly field `$field`");
-						unset($_POST[$field]);
-					}
-				}
-			}
-			if ($ac == "add") {
-				foreach ($this->requiredFields as $field) {
-// 					if (! issetval($field, $_POST))
-// 						throw new MyException(E_PARAM, "missing field `{$field}`", "参数`{$field}`未填写");
-					mparam($field, $_POST); // validate field and type; refer to field/type format for mparam.
-				}
-			}
-			else { # for set, the fields can not be set null
-				$fs = array_merge($this->requiredFields, $this->requiredFields2);
-				foreach ($fs as $field) {
-					if (is_array($field)) // TODO
-						continue;
-					if (array_key_exists($field, $_POST) && ( ($v=$_POST[$field]) === "null" || $v === "" || $v==="empty" )) {
-						throw new MyException(E_PARAM, "{$this->table}.set: cannot set field `$field` to null.", "字段`$field`不允许置空");
-					}
-				}
-			}
-			$this->onValidate();
-		}
-		elseif ($ac == "get" || $ac == "query") {
-			$gres = param("gres");
-			$res = param("res");
-			$this->sqlConf = [
-				"res" => [],
-				"gres" => $gres,
-				"cond" => [param("cond", null, null, false)],
-				"join" => [],
-				"orderby" => param("orderby"),
-				"subobj" => [],
-				"union" => param("union"),
-				"distinct" => param("distinct")
-			];
-
-			$this->initVColMap();
-
-			# support internal param res2/join/cond2
-			if (($res2 = param("res2")) != null) {
-				if (! is_array($res2))
-					throw new MyException(E_SERVER, "res2 should be an array: `$res2`");
-				foreach ($res2 as $e)
-					$this->addRes($e);
-			}
-			if (($join=param("join")) != null) {
-				$this->addJoin($join);
-			}
-			if (($cond2 = param("cond2", null, null, false)) != null) {
-				if (! is_array($cond2))
-					throw new MyException(E_SERVER, "cond2 should be an array: `$cond2`");
-				foreach ($cond2 as $e)
-					$this->addCond($e);
-			}
-			if (($subobj = param("subobj")) != null) {
-				if (! is_array($subobj))
-					throw new MyException(E_SERVER, "subobj should be an array");
-				$this->sqlConf["subobj"] = $subobj;
-			}
-			$this->fixUserQuery();
-
-			$this->onQuery();
-
-			$addDefaultCol = false;
-			// 确保res/gres参数符合安全限定
-			if (isset($gres)) {
-				$this->filterRes($gres, true);
-			}
-			// 设置gres时，不使用defaultRes
-			else if (!isset($res)) {
-				$res = $this->defaultRes;
-				$addDefaultCol = true;
-			}
-
-			if (isset($res)) {
-				$this->filterRes($res);
-			}
-			// 设置gres时，不使用default vcols/subobj
-			if ($addDefaultCol) {
-				$this->addDefaultVCols();
-				if (count($this->sqlConf["subobj"]) == 0) {
-					foreach ($this->subobj as $col => $def) {
-						if (@$def["default"])
-							$this->sqlConf["subobj"][$col] = $def;
-					}
-				}
-			}
-			if ($ac == "query")
-			{
-				$rv = $this->supportEasyui();
-				if (isset($this->sqlConf["orderby"]) && !isset($this->sqlConf["union"]))
-					$this->sqlConf["orderby"] = $this->filterOrderby($this->sqlConf["orderby"]);
-			}
-		}
 	}
 
 	private $afterIsCalled = false;
@@ -664,19 +664,6 @@ class AccessControl
 			return;
 		$this->afterIsCalled = true;
 
-		$ac = $this->ac;
-		if ($ac === "get") {
-			$this->handleRow($ret);
-		}
-		else if ($ac === "query") {
-			foreach ($ret as &$ret1) {
-				$this->handleRow($ret1);
-			}
-		}
-		//TODO: move to api_add
-		else if ($ac === "add") {
-			$this->id = $ret;
-		}
 		$this->onAfter($ret);
 
 		foreach ($this->onAfterActions as $fn)
@@ -1033,6 +1020,8 @@ class AccessControl
 
 	function api_add()
 	{
+		$this->validate();
+
 		$keys = '';
 		$values = '';
 #			var_dump($_POST);
@@ -1079,6 +1068,10 @@ class AccessControl
 
 	function api_set()
 	{
+		$this->onValidateId();
+		$this->id = mparam("id");
+		$this->validate();
+
 		$kv = "";
 		foreach ($_POST as $k=>$v) {
 			if ($k === 'id')
@@ -1166,17 +1159,24 @@ class AccessControl
 
 	function api_get()
 	{
+		$this->onValidateId();
+		$this->id = mparam("id");
+		$this->initQuery();
+
 		$this->addCond("t0.id={$this->id}", true);
 		$sql = $this->genQuerySql();
 		$ret = queryOne($sql, true);
 		if ($ret === false) 
 			throw new MyException(E_PARAM, "not found `{$this->table}.id`=`{$this->id}`");
 		$this->handleSubObj($this->id, $ret);
+		$this->handleRow($ret);
 		return $ret;
 	}
 
 	function api_query()
 	{
+		$this->initQuery();
+
 		// TODO: remove wantArray
 		$wantArray = param("wantArray/b");
 		$sqlConf = &$this->sqlConf;
@@ -1298,11 +1298,15 @@ class AccessControl
 			foreach ($ret as &$mainObj) {
 				$id1 = $mainObj["id"];
 				$this->handleSubObj($id1, $mainObj);
+				$this->handleRow($mainObj);
 			}
 		}
 		else {
 			// Note: colCnt may be changed in after().
 			$fixedColCnt = count($ret)==0? 0: count($ret[0]);
+			foreach ($ret as &$ret1) {
+				$this->handleRow($ret1);
+			}
 			$this->after($ret);
 
 			if ($enablePaging && $pagesz == count($ret)) { // 还有下一页数据, 添加nextkey
@@ -1334,11 +1338,14 @@ class AccessControl
 			if (isset($fmt))
 				$this->handleExportFormat($fmt, $ret, $this->table);
 		}
+
 		return $ret;
 	}
 
 	function api_del()
 	{
+		$this->onValidateId();
+		$this->id = mparam("id");
 		$sql = sprintf("DELETE FROM %s WHERE id=%d", $this->table, $this->id);
 		$cnt = execOne($sql);
 		if ($cnt != 1)

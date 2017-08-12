@@ -33,7 +33,7 @@ code {
 </head>
 
 <h1>API参考 - 筋斗云前端（移动Web版）</h1>
-<div>最后更新：2017-06-21</div>
+<div>最后更新：2017-08-12</div>
 <h2>Modules</h2>
 <div class="toc">
 <p><a href="#MUI">MUI (module)</a></p>
@@ -73,7 +73,6 @@ code {
 <p><a href="#MUI.callSvrExt[].beforeSend">MUI.callSvrExt[].beforeSend (key)</a></p>
 <p><a href="#MUI.callSvrExt[].dataFilter">MUI.callSvrExt[].dataFilter (key)</a></p>
 <p><a href="#MUI.callSvrExt[].makeUrl">MUI.callSvrExt[].makeUrl (key)</a></p>
-<p><a href="#MUI.callSvrSync">MUI.callSvrSync (fn)</a></p>
 <p><a href="#MUI.callSvrSync">MUI.callSvrSync (fn)</a></p>
 <p><a href="#MUI.closeDialog">MUI.closeDialog (fn)</a></p>
 <p><a href="#MUI.container">MUI.container (var)</a></p>
@@ -118,6 +117,7 @@ code {
 <p><a href="#MUI.setFormSubmit">MUI.setFormSubmit (fn)</a></p>
 <p><a href="#MUI.setOnError">MUI.setOnError (fn)</a></p>
 <p><a href="#MUI.setUrl">MUI.setUrl (fn)</a></p>
+<p><a href="#MUI.setUrlParam">MUI.setUrlParam (fn)</a></p>
 <p><a href="#MUI.setupCallSvrViaForm">MUI.setupCallSvrViaForm (fn)</a></p>
 <p><a href="#MUI.setupDialog">MUI.setupDialog (fn)</a></p>
 <p><a href="#MUI.showDialog">MUI.showDialog (fn)</a></p>
@@ -134,6 +134,8 @@ code {
 <p><a href="#Plugins">Plugins (class)</a></p>
 <p><a href="#Plugins.exists">Plugins.exists (fn)</a></p>
 <p><a href="#Plugins.list">Plugins.list (fn)</a></p>
+<p><a href="#WUI.getQueryCond">WUI.getQueryCond (fn)</a></p>
+<p><a href="#WUI.getQueryParam">WUI.getQueryParam (fn)</a></p>
 <p><a href="#app_abort">app_abort (fn)</a></p>
 <p><a href="#app_alert">app_alert (alias)</a></p>
 <p><a href="#appendParam">appendParam (fn)</a></p>
@@ -152,6 +154,7 @@ code {
 <p><a href="#example-list-choose">example-list-choose (key)</a></p>
 <p><a href="#example-upload">example-upload (key)</a></p>
 <p><a href="#filterCordovaModule">filterCordovaModule (fn)</a></p>
+<p><a href="#formItems">formItems (fn)</a></p>
 <p><a href="#g_args">g_args (var)</a></p>
 <p><a href="#g_args._app">g_args._app (var)</a></p>
 <p><a href="#g_cordova">g_cordova (var)</a></p>
@@ -182,7 +185,6 @@ code {
 <p><a href="#jdModule">jdModule (fn)</a></p>
 <p><a href="#leaveWaiting">leaveWaiting (alias)</a></p>
 <p><a href="#loadScript">loadScript (fn)</a></p>
-<p><a href="#makeUrl">makeUrl (alias)</a></p>
 <p><a href="#mui-initfn">mui-initfn (key)</a></p>
 <p><a href="#mui-loadPrompt">mui-loadPrompt (key)</a></p>
 <p><a href="#mui-nofix">mui-nofix (key)</a></p>
@@ -576,7 +578,10 @@ var dt2 = parseTime("10:11");</code></pre><hr>
 <p>示例：</p>
 <pre><code>var dt1 = parseDate("2012-01-01");
 var dt2 = parseDate("2012/01/01 20:00:09");
-var dt3 = parseDate("2012.1.1 20:00");</code></pre><hr>
+var dt3 = parseDate("2012.1.1 20:00");</code></pre>
+<p>支持时区，时区格式可以是&quot;+8&quot;, &quot;+08&quot;, &quot;+0800&quot;, &quot;Z&quot;这些，如</p>
+<pre><code>parseDate("2012-01-01T09:10:20.328+0800");
+parseDate("2012-01-01T09:10:20Z");</code></pre><hr>
 <h2 id="Date.add">@fn Date.add(sInterval, n)</h2>
 <p>为日期对象加几天/小时等。参数n为整数，可以为负数。</p>
 <p class="param"><strong>@param sInterval</strong>  Enum. 间隔单位. d-天; m-月; y-年; h-小时; n-分; s-秒</p>
@@ -680,7 +685,7 @@ hash = {
     h: ["id", "name"], 
     d: [ [100, "Tom"], [101, "Jane"], [102, "Tom"] ] 
 };
-var hash = rs2Hash(rs, "name");  
+var hash = rs2MultiHash(rs, "name");  
 
 // 结果为
 hash = {
@@ -748,7 +753,23 @@ var html = applyTpl(tpl, data);
     var ac = jf.attr("action");
     callSvr(ac, fn, getFormData(jf));
 });</code></pre>
+<p>如果在jo对象上指定了属性enctype=&quot;multipart/form-data&quot;，则调用getFormData会返回FormData对象而非js对象，<br />
+再调用callSvr时，会以&quot;multipart/form-data&quot;格式提交数据。<br />
+示例：</p>
+<pre><code>&lt;form method="POST" enctype='multipart/form-data'&gt;
+    课程文档
+    &lt;input name="pdf" type="file" accept="application/pdf"&gt;
+&lt;/form&gt;</code></pre>
 <p class="see"><strong>@see <a href="#setFormData">setFormData</a></strong> </p><hr>
+<h2 id="formItems">@fn formItems(jo, cb)</h2>
+<p>遍历jo下带name属性的有效控件，回调cb函数。</p>
+<p>注意:</p>
+<ul>
+<li>忽略有disabled属性的控件</li>
+<li>忽略未选中的checkbox/radiobutton</li>
+</ul>
+<p class="param"><strong>@param cb</strong> (name, val) this=ji=当前jquery对象</p>
+<p>当cb返回false时可中断遍历。</p><hr>
 <h2 id="setFormData">@fn setFormData(jo, data?, opt?)</h2>
 <p>用于为带name属性的DOM对象设置内容为data[name].<br />
 要清空所有内容, 可以用 setFormData(jo), 相当于增强版的 form.reset().</p>
@@ -859,6 +880,41 @@ $(o).jdata({hello:100, world:200});</code></pre><hr>
 <h2 id="MUI.setOnError">@fn MUI.setOnError()</h2>
 <p>一般框架自动设置onerror函数；如果onerror被其它库改写，应再次调用该函数。<br />
 allow throw(&quot;abort&quot;) as abort behavior.</p><hr>
+<h2 id="MUI.m_enhanceFn">@var MUI.m_enhanceFn</h2><hr>
+<h2 id="MUI.enhanceWithin">@fn MUI.enhanceWithin(jparent)</h2><hr>
+<h2 id="MUI.getOptions">@fn MUI.getOptions(jo)</h2><hr>
+<h2 id="WUI.getQueryCond">@fn WUI.getQueryCond(kvList)</h2>
+<p class="param"><strong>@param kvList</strong>  {key=>value}, 键值对，值中支持操作符及通配符。也支持格式 [ [key, value] ], 这时允许key有重复。</p>
+<p>根据kvList生成BPQ协议定义的{obj}.query的cond参数。</p>
+<p>例如:</p>
+<pre><code>var kvList = {phone: "13712345678", id: "&gt;100", addr: "上海*", picId: "null"};
+WUI.getQueryCond(kvList);</code></pre>
+<p>有多项时，每项之间以&quot;AND&quot;相连，以上定义将返回如下内容：</p>
+<pre><code>"phone='13712345678' AND id&gt;100 AND addr LIKE '上海*' AND picId IS NULL"</code></pre>
+<p>示例二：</p>
+<pre><code>var kvList = [ ["phone", "13712345678"], ["id", "&gt;100"], ["addr", "上海*"], ["picId", "null"] ];
+WUI.getQueryCond(kvList); // 结果同上。</code></pre>
+<p>设置值时，支持以下格式：</p>
+<ul>
+<li>{key: &quot;value&quot;} - 表示&quot;key=value&quot;</li>
+<li>{key: &quot;&gt;value&quot;} - 表示&quot;key&gt;value&quot;, 类似地，可以用 &gt;=, &lt;, &lt;=, <> 这些操作符。</li>
+<li>{key: &quot;value<em>&quot;} - 值中带通配符，表示&quot;key like 'value%'&quot; (以value开头), 类似地，可以用 &quot;</em>value&quot;, &quot;<em>value</em>&quot;, &quot;<em>val</em>ue&quot;等。</li>
+<li>{key: &quot;null&quot; } - 表示 &quot;key is null&quot;。要表示&quot;key is not null&quot;，可以用 &quot;<>null&quot;.</li>
+<li>{key: &quot;empty&quot; } - 表示 &quot;key=''&quot;.</li>
+</ul>
+<p>支持简单的and/or查询，但不支持在其中使用括号:</p>
+<ul>
+<li>{key: &quot;&gt;value and &lt;=value&quot;}  - 表示&quot;key&gt;'value' and key&lt;='value'&quot;</li>
+<li>{key: &quot;null or 0 or 1&quot;}  - 表示&quot;key is null or key=0 or key=1&quot;</li>
+</ul>
+<p>在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。</p><hr>
+<h2 id="WUI.getQueryParam">@fn WUI.getQueryParam(kvList)</h2>
+<p>根据键值对生成BQP协议中{obj}.query接口需要的cond参数.</p>
+<p>示例：</p>
+<pre><code>WUI.getQueryParam({phone: '13712345678', id: '&gt;100'})
+返回
+{cond: "phone='13712345678' AND id&gt;100"}</code></pre>
+<p class="see"><strong>@see <a href="#WUI.getQueryCond">WUI.getQueryCond</a></strong> </p><hr>
 <h2 id="MUI.lastError">@var MUI.lastError = ctx</h2>
 <p>出错时，取出错调用的上下文信息。</p>
 <p>ctx: {ac, tm, tv, ret}</p>
@@ -933,11 +989,10 @@ callSvr('token/get-token', ...);</code></pre>
 <p>例如：</p>
 <p>serverUrl为&quot;../jdcloud/api.php&quot; 或 &quot;../jdcloud/&quot;，则MUI.baseUrl返回 &quot;../jdcloud/&quot;<br />
 serverUrl为&quot;<a href="http://myserver/myapp/api.php">http://myserver/myapp/api.php</a>&quot; 或 &quot;<a href="http://myserver/myapp/"，则MUI.baseUrl返回">http://myserver/myapp/"，则MUI.baseUrl返回</a> &quot;<a href="http://myserver/myapp/">http://myserver/myapp/</a>&quot;</p><hr>
-<h2 id="MUI.makeUrl">@fn MUI.makeUrl(action, params)</h2>
-<p class="alias"><strong>@alias <a id="makeUrl">makeUrl</a></strong> </p>
+<h2 id="MUI.makeUrl">@fn MUI.makeUrl(action, params?)</h2>
 <p>生成对后端调用的url. </p>
 <pre><code>var params = {id: 100};
-var url = makeUrl("Ordr.set", params);</code></pre>
+var url = MUI.makeUrl("Ordr.set", params);</code></pre>
 <p>注意：函数返回的url是字符串包装对象，可能含有这些属性：{makeUrl=true, action?, params?}<br />
 这样可通过url.action得到原始的参数。</p>
 <p>支持callSvr扩展，如：</p>
@@ -947,14 +1002,14 @@ var url = makeUrl("Ordr.set", params);</code></pre>
 <p>在MUI环境下表示callSvr扩展调用:</p>
 <pre><code>MUI.makeUrl(['login', 'zhanda']) 等价于 MUI.makeUrl('zhanda:login');</code></pre>
 <p class="see"><strong>@see <a href="#MUI.callSvrExt">MUI.callSvrExt</a></strong> </p><hr>
-<h2 id="MUI.callSvr">@fn MUI.callSvr(ac, [param?], fn?, postParams?, userOptions?)</h2><div class="toc"><p style="margin-left:0em"><a href="#MUI.callSvr-1 调用监控">1 调用监控</a></p>
+<h2 id="MUI.callSvr">@fn MUI.callSvr(ac, [params?], fn?, postParams?, userOptions?) -> deferredObject</h2><div class="toc"><p style="margin-left:0em"><a href="#MUI.callSvr-1 调用监控">1 调用监控</a></p>
 <p style="margin-left:0em"><a href="#MUI.callSvr-2 文件上传支持(FormData)">2 文件上传支持(FormData)</a></p>
 <p style="margin-left:0em"><a href="#MUI.callSvr-3 callSvr扩展">3 callSvr扩展</a></p>
 <p style="margin-left:0em"><a href="#MUI.callSvr-4 适配RESTful API">4 适配RESTful API</a></p>
 </div>
 <p class="alias"><strong>@alias <a id="callSvr">callSvr</a></strong> </p>
 <p class="param"><strong>@param ac</strong>  String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)</p>
-<p class="param"><strong>@param param</strong>  Object. URL参数（或称HTTP GET参数）</p>
+<p class="param"><strong>@param params</strong>  Object. URL参数（或称HTTP GET参数）</p>
 <p class="param"><strong>@param postParams</strong>  Object. POST参数. 如果有该参数, 则自动使用HTTP POST请求(postParams作为POST内容), 否则使用HTTP GET请求.</p>
 <p class="param"><strong>@param fn</strong>  Function(data). 回调函数, data参考该接口的返回值定义。</p>
 <p class="param"><strong>@param userOptions</strong>  用户自定义参数, 会合并到$.ajax调用的options参数中.可在回调函数中用"this.参数名"引用. </p>
@@ -978,15 +1033,20 @@ function fn2(data) {}</code></pre>
 <p>在接口调用成功后，会依次回调fn1, fn2.</p>
 <p class="key"><strong>@key <a id="callSvr.noex">callSvr.noex</a></strong>  调用接口时忽略出错，可由回调函数fn自己处理错误。</p>
 <p>当后端返回错误时, 回调<code>fn(false)</code>（参数data=false）. 可通过 MUI.lastError.ret 或 this.lastError 取到返回的原始数据。</p>
-<p>例：</p>
+<p>示例：</p>
 <pre><code>callSvr("logout");
 callSvr("logout", api_logout);
-callSvr("login", {wantAll:1}, api_login);
-callSvr("info/hotline.php", {q: '大众'}, api_hotline);
+function api_logout(data) {}
 
-// 也兼容使用makeUrl的旧格式如:
-callSvr(makeUrl("logout"), api_logout);
-callSvr(makeUrl("logout", {a:1}), api_logout);
+callSvr("login", {wantAll:1}, api_login);
+function api_login(data) {}
+
+callSvr("info/hotline.php", {q: '大众'}, api_hotline);
+function api_hotline(data) {}
+
+// 也可使用makeUrl生成的URL如:
+callSvr(MUI.makeUrl("logout"), api_logout);
+callSvr(MUI.makeUrl("logout", {a:1}), api_logout);
 
 callSvr("User.get", function (data) {
     if (data === false) { // 仅当设置noex且服务端返回错误时可返回false
@@ -1242,8 +1302,7 @@ callSvr("User.get", function (data) {
         return "./api.php/" + ac;
     }
 }</code></pre><hr>
-<h2 id="MUI.callSvrSync">@fn MUI.callSvrSync(ac, params?, fn?, postParams?, userOptions?)</h2>
-<p class="fn"><strong>@fn <a id="MUI.callSvrSync">MUI.callSvrSync</a></strong> (ac, fn?, postParams?, userOptions?)</p>
+<h2 id="MUI.callSvrSync">@fn MUI.callSvrSync(ac, [params?], fn?, postParams?, userOptions?)</h2>
 <p class="alias"><strong>@alias <a id="callSvrSync">callSvrSync</a></strong> </p>
 <p class="return"><strong>@return data</strong>  原型规定的返回数据</p>
 <p>同步模式调用callSvr.</p>
@@ -1262,7 +1321,7 @@ callSvr("User.get", function (data) {
     &lt;iframe id='ifrUpload' name='ifrUpload' style="display:none"&gt;&lt;/iframe&gt;
 &lt;/form&gt;</code></pre>
 <p>然后就像调用callSvr函数一样调用setupCallSvrViaForm:</p>
-<pre><code>var url = makeUrl("upload", {genThumb: 1});
+<pre><code>var url = MUI.makeUrl("upload", {genThumb: 1});
 MUI.setupCallSvrViaForm($frm, $frm.find("iframe"), url, onUploadComplete);
 function onUploadComplete(data) 
 {
@@ -1335,8 +1394,14 @@ callSvr("User.get", {res: "id,phone"}, api_UserGet);</code></pre>
 <h2 id="MUI.showFirstPage">@var MUI.showFirstPage?=true</h2>
 <p>如果为false, 则必须手工执行 MUI.showPage 来显示第一个页面。</p><hr>
 <h2 id="MUI.setUrl">@fn MUI.setUrl(url)</h2>
-<p>设置当前地址栏显示的URL.<br />
-一般用于将应用程序内部参数显示到URL中，以便在刷新页面时仍然可显示相同的内容，或用于分享链接给别人。</p>
+<p>设置当前地址栏显示的URL. 如果url中不带hash部分，会自动加上当前的hash.</p>
+<pre><code>MUI.setUrl("page/home.html"); // 设置url
+MUI.setUrl("?a=1&amp;b=2"); // 设置url参数
+MUI.setUrl("?"); // 清除url参数部分。</code></pre>
+<p>如果要设置或删除参数，建议使用：</p>
+<pre><code>MUI.setUrlParam("a", 1); // 如果参数存在，则会自动覆盖。
+MUI.deleteUrlParam("a"); // 从url中删除参数a部分，如果g_args中有参数a，也同时删除。</code></pre>
+<p>一般用于将应用程序内部参数显示到URL中，以便在刷新页面时仍然可显示相同的内容，或用于分享链接给别人。</p>
 <p>例如订单页的URL为<code>http://server/app/#order</code>，现在希望：</p>
 <ul>
 <li>要显示<code>id=100</code>的订单，在URL中显示<code>http://server/app/?orderId=100#order</code></li>
@@ -1390,6 +1455,11 @@ callSvr("User.get", {res: "id,phone"}, api_UserGet);</code></pre>
 <pre><code>MUI.deleteUrlParam("wxpay");
 // 原先url为 http://myserver/myapp/index.html?wxpay=ORDR-11&amp;storeId=1
 // 调用后为 http://myserver/myapp/index.html?storeId=1</code></pre><hr>
+<h2 id="MUI.setUrlParam">@fn MUI.setUrlParam(param, val)</h2>
+<p>修改当前url，添加指定参数。<br />
+e.g. </p>
+<pre><code>MUI.setUrlParam("wxauth", 1);</code></pre>
+<p class="see"><strong>@see <a href="#MUI.deleteUrlParam">MUI.deleteUrlParam</a> <a href="#MUI.appendParam">MUI.appendParam</a></strong> </p><hr>
 <h2 id="MUI.showPage">@fn MUI.showPage(pageRef, opt)</h2>
 <p class="param"><strong>@param pageId</strong>  String. 页面名字. 仅由字母、数字、"_"等字符组成。</p>
 <p class="param"><strong>@param pageRef</strong>  String. 页面引用（即location.hash），以"#"开头，后面可以是一个pageId（如"#home"）或一个相对页的地址（如"#info.html", "#emp/info.html"）。</p>
@@ -1467,9 +1537,6 @@ MUI.popPageStack(0); // 标记除第一页外的所有页为poped, 所以之后�
 <h2 id="MUI.getToPageId">@fn MUI.getToPageId()</h2>
 <p>返回最近一次调用MUI.showPage时转向页面的Id.</p>
 <p class="see"><strong>@see <a href="#MUI.prevPageId">MUI.prevPageId</a></strong> </p><hr>
-<h2 id="MUI.m_enhanceFn">@var MUI.m_enhanceFn</h2><hr>
-<h2 id="MUI.enhanceWithin">@fn MUI.enhanceWithin(jparent)</h2><hr>
-<h2 id="MUI.getOptions">@fn MUI.getOptions(jo)</h2><hr>
 <h2 id="MUI.showDialog">@fn MUI.showDialog(jdlg)</h2><hr>
 <h2 id="MUI.closeDialog">@fn MUI.closeDialog(jdlg, remove=false)</h2><hr>
 <h2 id="MUI.setupDialog">@fn MUI.setupDialog(jdlg, initfn)</h2>
@@ -1755,7 +1822,7 @@ function showOrderList(isRefresh)
         isRefresh = true;
     if (isRefresh)
         jlst.empty();
-    param._pagekey = nextkey;
+    param.pagekey = nextkey;
 
     callSvr("Ordr.query", param, function (data) {
         // create items and append to jlst
@@ -1940,14 +2007,14 @@ callSvr(queryParam.ac, queryParam, function (data) {
 });</code></pre>
 <h4 id="initPageList-5 参数说明">5 参数说明</h4>
 <p class="param"><strong>@param opt</strong>  {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list", onBeforeLoad?, onLoad?, onGetData?, canPullDown?=true, onRemoveAll?}</p>
-<p class="param"><strong>@param opt</strong>  分页相关 { pageszName?="_pagesz", pagekeyName?="_pagekey" }</p>
+<p class="param"><strong>@param opt</strong>  分页相关 { pageszName?="pagesz", pagekeyName?="pagekey" }</p>
 <p class="param"><strong>@param opt.onGetQueryParam</strong>  Function(jlst, queryParam/o)</p>
 <p>queryParam: {ac?, res?, cond?, ...}</p>
 <p>框架在调用callSvr之前，先取列表对象jlst上的data-queryParam属性作为queryParam的缺省值，再尝试取data-ac, data-res, data-cond, data-orderby属性作为queryParam.ac等参数的缺省值，<br />
 最后再回调 onGetQueryParam。</p>
 <pre><code>&lt;ul data-queryParam="{q: 'famous'}" data-ac="Person.query" data-res="*,familyName" data-cond="status='PA' and name like '王%'"&gt;
 &lt;/ul&gt;</code></pre>
-<p>此外，框架将自动管理 queryParam._pagekey/_pagesz 参数。</p>
+<p>此外，框架将自动管理 queryParam.pagekey/pagesz 参数。</p>
 <p class="param"><strong>@param opt.onAddItem</strong>  (jlst, itemData, param)</p>
 <p>param={idx, arr, isFirstPage}</p>
 <p>框架调用callSvr之后，处理每条返回数据时，通过调用该函数将itemData转换为DOM item并添加到jlst中。<br />
@@ -2027,7 +2094,7 @@ function onChoose(order)
 <h4 id="initPageList-8 分页机制与后端接口适配">8 分页机制与后端接口适配</h4>
 <p>默认按BQP协议的分页机制访问服务端，其规则是：</p>
 <ul>
-<li>请求通过 _pagesz 参数指定页大小</li>
+<li>请求通过 pagesz 参数指定页大小</li>
 <li>
 <p>如果不是最后一页，服务端应返回nextkey字段；返回列表的格式可以是 table格式如 </p>
 <pre><code>{
@@ -2044,7 +2111,7 @@ function onChoose(order)
     nextkey: 2
 }</code></pre>
 </li>
-<li>请求下一页时，设置参数_pagekey = nextkey，直到服务端不返回 nextkey 字段为止。</li>
+<li>请求下一页时，设置参数pagekey = nextkey，直到服务端不返回 nextkey 字段为止。</li>
 </ul>
 <p>例1：假定后端分页机制为(jquery-easyui datagrid分页机制):</p>
 <ul>
@@ -2226,6 +2293,26 @@ function initPagePerson()
 PagePerson.showForAdd({familyId: 1}); // 添加人物，已设置familyId为1
 PagePerson.showForSet(person); // 以person对象内容显示人物，可更新。
 PagePerson.showForSet({id: 3}); // 以id=3查询人物并显示，可更新。</code></pre>
+<p>页面接口常常实现如下：</p>
+<pre><code>var PagePerson = {
+    // @fn PagePerson.showForAdd(formData?)
+    // formData={familyId, parentId?, parentOf?}
+    showForAdd: function(formData) {
+        this.formMode = FormMode.forAdd;
+        this.formData = formData;
+        MUI.showPage("#person");
+    },
+    // @fn PagePerson.showForSet(formData)
+    // formData={id,...}
+    showForSet: function (formData) {
+        this.formMode = FormMode.forSet;
+        this.formData = formData;
+        MUI.showPage("#person");
+    },
+
+    formMode: null,
+    formData: null,
+};</code></pre>
 <p>对于forSet模式，框架先检查formData中是否只有id属性，如果是，则在进入页面时会自动调用{obj}.get获取数据.</p>
 <pre><code>&lt;form action="Person"&gt;
     &lt;div name=familyName&gt;&lt;/div&gt;
