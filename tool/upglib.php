@@ -3,9 +3,8 @@
 require_once(dirname(__FILE__) . "/../server/app.php");
 
 ###### config {{{
-global $METAFILE, $LOGF, $CHAR_SZ, $SQLDIFF;
+global $LOGF, $CHAR_SZ, $SQLDIFF;
 
-$METAFILE = getenv("P_METAFILE") ?: __DIR__ . '/../DESIGN.md';
 $LOGF = "upgrade.log";
 
 $CHAR_SZ = [
@@ -140,6 +139,9 @@ function genColSql($fieldDef)
 	elseif (preg_match('/Tm$/', $f1)) {
 		$def = "DATETIME";
 	}
+	elseif (preg_match('/Dt$/', $f1)) {
+		$def = "DATE";
+	}
 	elseif (preg_match('/Flag$/', $f1)) {
 		$def = "TINYINT UNSIGNED NOT NULL DEFAULT 0";
 	}
@@ -261,6 +263,16 @@ function print_rs($rs)
 		echo("\n");
 	}
 }
+
+function getMetaFile()
+{
+	if ($a = getenv("P_METAFILE"))
+		return $a;
+	if (($a=__DIR__ . '/../DESIGN.md') && is_file($a))
+		return $a;
+	if (($a=__DIR__ . '/../DESIGN.wiki') && is_file($a))
+		return $a;
+}
 #}}}
 
 class UpgHelper
@@ -285,9 +297,14 @@ class UpgHelper
 	# init meta and DB conn
 	private function _initMeta()
 	{
-		global $METAFILE;
-		$baseDir = dirname($METAFILE);
-		$files = [$METAFILE];
+		$meta = getMetaFile();
+		if (!$meta || !is_file($meta)) {
+			throw new Exception("*** bad main meta file $meta");
+		}
+		echo "=== load metafile: $meta\n";
+
+		$baseDir = dirname($meta);
+		$files = [$meta];
 		while ($file = array_pop($files)) {
 
 			//$file = iconv("utf-8", "gbk", $METAFILE); // for OS windows
