@@ -33,7 +33,7 @@ code {
 </head>
 
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2017-07-10</div>
+<div>最后更新：2017-08-12</div>
 <h2>Modules</h2>
 <div class="toc">
 <p><a href="#WUI">WUI (module)</a></p>
@@ -132,10 +132,12 @@ code {
 <p><a href="#delCookie">delCookie (fn)</a></p>
 <p><a href="#delStorage">delStorage (fn)</a></p>
 <p><a href="#delayDo">delayDo (fn)</a></p>
+<p><a href="#deleteParam">deleteParam (fn)</a></p>
 <p><a href="#enterWaiting">enterWaiting (alias)</a></p>
 <p><a href="#evalAttr">evalAttr (fn)</a></p>
 <p><a href="#example-dialog">example-dialog (key)</a></p>
 <p><a href="#example-upload">example-upload (key)</a></p>
+<p><a href="#formItems">formItems (fn)</a></p>
 <p><a href="#g_args">g_args (var)</a></p>
 <p><a href="#g_args._app">g_args._app (var)</a></p>
 <p><a href="#g_data">g_data (var)</a></p>
@@ -487,7 +489,7 @@ code {
 </ul>
 <p>如果需要禁用分页，可以设置：</p>
 <pre><code>jtbl.datagrid({
-    url: WUI.makeUrl("Ordr.query", {"_pagesz": 9999}), // 定义很大的pagesz, 一次取出所有
+    url: WUI.makeUrl("Ordr.query", {"pagesz": -1}), // -1表示取后端允许的最大数量
     pagination: false, // 禁用分页组件
     ...
 });</code></pre>
@@ -689,7 +691,10 @@ var dt2 = parseTime("10:11");</code></pre><hr>
 <p>示例：</p>
 <pre><code>var dt1 = parseDate("2012-01-01");
 var dt2 = parseDate("2012/01/01 20:00:09");
-var dt3 = parseDate("2012.1.1 20:00");</code></pre><hr>
+var dt3 = parseDate("2012.1.1 20:00");</code></pre>
+<p>支持时区，时区格式可以是&quot;+8&quot;, &quot;+08&quot;, &quot;+0800&quot;, &quot;Z&quot;这些，如</p>
+<pre><code>parseDate("2012-01-01T09:10:20.328+0800");
+parseDate("2012-01-01T09:10:20Z");</code></pre><hr>
 <h2 id="Date.add">@fn Date.add(sInterval, n)</h2>
 <p>为日期对象加几天/小时等。参数n为整数，可以为负数。</p>
 <p class="param"><strong>@param sInterval</strong>  Enum. 间隔单位. d-天; m-月; y-年; h-小时; n-分; s-秒</p>
@@ -816,7 +821,16 @@ hash = {
 if (a)
     url = appendParam(url, "a=" + a);
 if (b)
-    url = appendParam(url, "b=" + b);</code></pre><hr>
+    url = appendParam(url, "b=" + b);
+
+appendParam(url, $.param({a:1, b:3}));</code></pre>
+<p>支持url中带有&quot;?&quot;或&quot;#&quot;，如</p>
+<pre><code>var url = "http://xxx/api.php?id=1#order";
+appendParam(url, "pay=1"); // "http://xxx/api.php?id=1&amp;pay=1#order";</code></pre><hr>
+<h2 id="deleteParam">@fn deleteParam(url, paramName)</h2>
+<p>示例:</p>
+<pre><code>var url = "http://xxx/api.php?a=1&amp;b=3&amp;c=2";
+var url1 = deleteParam(url, "b"); // "http://xxx/api.php?a=1&amp;c=2";</code></pre><hr>
 <h2 id="isWeixin">@fn isWeixin()</h2>
 <p>当前应用运行在微信中。</p><hr>
 <h2 id="isIOS">@fn isIOS()</h2>
@@ -852,7 +866,23 @@ var html = applyTpl(tpl, data);
     var ac = jf.attr("action");
     callSvr(ac, fn, getFormData(jf));
 });</code></pre>
+<p>如果在jo对象上指定了属性enctype=&quot;multipart/form-data&quot;，则调用getFormData会返回FormData对象而非js对象，<br />
+再调用callSvr时，会以&quot;multipart/form-data&quot;格式提交数据。<br />
+示例：</p>
+<pre><code>&lt;form method="POST" enctype='multipart/form-data'&gt;
+    课程文档
+    &lt;input name="pdf" type="file" accept="application/pdf"&gt;
+&lt;/form&gt;</code></pre>
 <p class="see"><strong>@see <a href="#setFormData">setFormData</a></strong> </p><hr>
+<h2 id="formItems">@fn formItems(jo, cb)</h2>
+<p>遍历jo下带name属性的有效控件，回调cb函数。</p>
+<p>注意:</p>
+<ul>
+<li>忽略有disabled属性的控件</li>
+<li>忽略未选中的checkbox/radiobutton</li>
+</ul>
+<p class="param"><strong>@param cb</strong> (name, val) this=ji=当前jquery对象</p>
+<p>当cb返回false时可中断遍历。</p><hr>
 <h2 id="setFormData">@fn setFormData(jo, data?, opt?)</h2>
 <p>用于为带name属性的DOM对象设置内容为data[name].<br />
 要清空所有内容, 可以用 setFormData(jo), 相当于增强版的 form.reset().</p>
@@ -966,6 +996,38 @@ allow throw(&quot;abort&quot;) as abort behavior.</p><hr>
 <h2 id="MUI.m_enhanceFn">@var MUI.m_enhanceFn</h2><hr>
 <h2 id="MUI.enhanceWithin">@fn MUI.enhanceWithin(jparent)</h2><hr>
 <h2 id="MUI.getOptions">@fn MUI.getOptions(jo)</h2><hr>
+<h2 id="WUI.getQueryCond">@fn WUI.getQueryCond(kvList)</h2>
+<p class="param"><strong>@param kvList</strong>  {key=>value}, 键值对，值中支持操作符及通配符。也支持格式 [ [key, value] ], 这时允许key有重复。</p>
+<p>根据kvList生成BPQ协议定义的{obj}.query的cond参数。</p>
+<p>例如:</p>
+<pre><code>var kvList = {phone: "13712345678", id: "&gt;100", addr: "上海*", picId: "null"};
+WUI.getQueryCond(kvList);</code></pre>
+<p>有多项时，每项之间以&quot;AND&quot;相连，以上定义将返回如下内容：</p>
+<pre><code>"phone='13712345678' AND id&gt;100 AND addr LIKE '上海*' AND picId IS NULL"</code></pre>
+<p>示例二：</p>
+<pre><code>var kvList = [ ["phone", "13712345678"], ["id", "&gt;100"], ["addr", "上海*"], ["picId", "null"] ];
+WUI.getQueryCond(kvList); // 结果同上。</code></pre>
+<p>设置值时，支持以下格式：</p>
+<ul>
+<li>{key: &quot;value&quot;} - 表示&quot;key=value&quot;</li>
+<li>{key: &quot;&gt;value&quot;} - 表示&quot;key&gt;value&quot;, 类似地，可以用 &gt;=, &lt;, &lt;=, <> 这些操作符。</li>
+<li>{key: &quot;value<em>&quot;} - 值中带通配符，表示&quot;key like 'value%'&quot; (以value开头), 类似地，可以用 &quot;</em>value&quot;, &quot;<em>value</em>&quot;, &quot;<em>val</em>ue&quot;等。</li>
+<li>{key: &quot;null&quot; } - 表示 &quot;key is null&quot;。要表示&quot;key is not null&quot;，可以用 &quot;<>null&quot;.</li>
+<li>{key: &quot;empty&quot; } - 表示 &quot;key=''&quot;.</li>
+</ul>
+<p>支持简单的and/or查询，但不支持在其中使用括号:</p>
+<ul>
+<li>{key: &quot;&gt;value and &lt;=value&quot;}  - 表示&quot;key&gt;'value' and key&lt;='value'&quot;</li>
+<li>{key: &quot;null or 0 or 1&quot;}  - 表示&quot;key is null or key=0 or key=1&quot;</li>
+</ul>
+<p>在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。</p><hr>
+<h2 id="WUI.getQueryParam">@fn WUI.getQueryParam(kvList)</h2>
+<p>根据键值对生成BQP协议中{obj}.query接口需要的cond参数.</p>
+<p>示例：</p>
+<pre><code>WUI.getQueryParam({phone: '13712345678', id: '&gt;100'})
+返回
+{cond: "phone='13712345678' AND id&gt;100"}</code></pre>
+<p class="see"><strong>@see <a href="#WUI.getQueryCond">WUI.getQueryCond</a></strong> </p><hr>
 <h2 id="MUI.lastError">@var MUI.lastError = ctx</h2>
 <p>出错时，取出错调用的上下文信息。</p>
 <p>ctx: {ac, tm, tv, ret}</p>
@@ -1068,7 +1130,8 @@ var url = MUI.makeUrl("Ordr.set", params);</code></pre>
 <ul>
 <li>指定{async:0}来做同步请求, 一般直接用callSvrSync调用来替代.</li>
 <li>指定{noex:1}用于忽略错误处理。</li>
-<li>指定{noLoadingImg:1}用于忽略loading图标.</li>
+<li>指定{noLoadingImg:1}用于忽略loading图标. 要注意如果之前已经调用callSvr显示了图标且图标尚未消失，则该选项无效，图标会在所有调用完成之后才消失(leaveWaiting)。<br />
+要使隐藏图标不受本次调用影响，可在callSvr后手工调用<code>--$.active</code>。</li>
 </ul>
 <p>想为ajax选项设置缺省值，可以用callSvrExt中的beforeSend回调函数，也可以用$.ajaxSetup，<br />
 但要注意：ajax的dataFilter/beforeSend选项由于框架已用，最好不要覆盖。</p>
@@ -1485,38 +1548,6 @@ WUI.showPage("pageHome", "首页2");</code></pre><hr>
 <li>对于内部对话框调用本函数无意义。直接关闭对话框即可。</li>
 <li>由于不知道打开对话框的参数，reloadDialog无法重新打开对话框，因而它的行为与unloadDialog一样。</li>
 </ul><hr>
-<h2 id="WUI.getQueryCond">@fn WUI.getQueryCond(kvList)</h2>
-<p class="param"><strong>@param kvList</strong>  {key=>value}, 键值对，值中支持操作符及通配符。也支持格式 [ [key, value] ], 这时允许key有重复。</p>
-<p>根据kvList生成BPQ协议定义的{obj}.query的cond参数。</p>
-<p>例如:</p>
-<pre><code>var kvList = {phone: "13712345678", id: "&gt;100", addr: "上海*", picId: "null"};
-WUI.getQueryCond(kvList);</code></pre>
-<p>有多项时，每项之间以&quot;AND&quot;相连，以上定义将返回如下内容：</p>
-<pre><code>"phone='13712345678' AND id&gt;100 AND addr LIKE '上海*' AND picId IS NULL"</code></pre>
-<p>示例二：</p>
-<pre><code>var kvList = [ ["phone", "13712345678"], ["id", "&gt;100"], ["addr", "上海*"], ["picId", "null"] ];
-WUI.getQueryCond(kvList); // 结果同上。</code></pre>
-<p>设置值时，支持以下格式：</p>
-<ul>
-<li>{key: &quot;value&quot;} - 表示&quot;key=value&quot;</li>
-<li>{key: &quot;&gt;value&quot;} - 表示&quot;key&gt;value&quot;, 类似地，可以用 &gt;=, &lt;, &lt;=, <> 这些操作符。</li>
-<li>{key: &quot;value<em>&quot;} - 值中带通配符，表示&quot;key like 'value%'&quot; (以value开头), 类似地，可以用 &quot;</em>value&quot;, &quot;<em>value</em>&quot;, &quot;<em>val</em>ue&quot;等。</li>
-<li>{key: &quot;null&quot; } - 表示 &quot;key is null&quot;。要表示&quot;key is not null&quot;，可以用 &quot;<>null&quot;.</li>
-<li>{key: &quot;empty&quot; } - 表示 &quot;key=''&quot;.</li>
-</ul>
-<p>支持简单的and/or查询，但不支持在其中使用括号:</p>
-<ul>
-<li>{key: &quot;&gt;value and &lt;=value&quot;}  - 表示&quot;key&gt;'value' and key&lt;='value'&quot;</li>
-<li>{key: &quot;null or 0 or 1&quot;}  - 表示&quot;key is null or key=0 or key=1&quot;</li>
-</ul>
-<p>在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。</p><hr>
-<h2 id="WUI.getQueryParam">@fn WUI.getQueryParam(kvList)</h2>
-<p>根据键值对生成BQP协议中{obj}.query接口需要的cond参数.</p>
-<p>示例：</p>
-<pre><code>WUI.getQueryParam({phone: '13712345678', id: '&gt;100'})
-返回
-{cond: "phone='13712345678' AND id&gt;100"}</code></pre>
-<p class="see"><strong>@see <a href="#WUI.getQueryCond">WUI.getQueryCond</a></strong> </p><hr>
 <h2 id="WUI.showObjDlg">@fn WUI.showObjDlg(jdlg, mode, opt?={jtbl, id})</h2>
 <p class="param"><strong>@param jdlg</strong>  可以是jquery对象，也可以是selector字符串或DOM对象，比如 "#dlgOrder". 注意：当对话框保存为单独模块时，jdlg=$("#dlgOrder") 一开始会为空数组，这时也可以调用该函数，且调用后jdlg会被修改为实际加载的对话框对象。</p>
 <p class="param"><strong>@param opt.id</strong>  String. mode=link时必设，set/del如缺省则从关联的opt.jtbl中取, add/find时不需要</p>
@@ -1633,8 +1664,8 @@ g_args.dscr="上门洗车"; // 对字符串会自动进行URL解码。</code></p
 <p class="param"><strong>@param type</strong>  String. "i"|"e"|"w"</p>
 <p class="param"><strong>@param fn</strong>  Function(). 用户点击确定后的回调。</p>
 <p>使用jQuery easyui弹出提示对话框.</p><hr>
-<h2 id="app_confirm">@fn app_confirm(msg, type?=i, fn?)</h2>
-<p class="param"><strong>@param fn</strong>  Function(). 用户点击确定后的回调。</p>
+<h2 id="app_confirm">@fn app_confirm(msg, fn?)</h2>
+<p class="param"><strong>@param fn</strong>  Function(isOk). 用户点击确定或取消后的回调。</p>
 <p>使用jQuery easyui弹出确认对话框.</p><hr>
 <h2 id="app_show">@fn app_show(msg)</h2>
 <p>使用jQuery easyui弹出对话框.</p><hr>

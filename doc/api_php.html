@@ -33,7 +33,7 @@ code {
 </head>
 
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2017-06-21</div>
+<div>最后更新：2017-08-12</div>
 <h2>Modules</h2>
 <div class="toc">
 <p><a href="#app_fw">app_fw (module)</a></p>
@@ -151,6 +151,7 @@ code {
 <p><a href="#startsWith">startsWith (fn)</a></p>
 <p><a href="#table2objarr">table2objarr (fn)</a></p>
 <p><a href="#tableCRUD">tableCRUD (fn)</a></p>
+<p><a href="#tmCols">tmCols (fn)</a></p>
 <p><a href="#tobool">tobool (fn)</a></p>
 <p><a href="#tryParseBool">tryParseBool (fn)</a></p>
 <p><a href="#urlEncodeArr">urlEncodeArr (fn)</a></p>
@@ -174,7 +175,29 @@ code {
 默认使用GET请求，如果给定postParams，则使用POST请求。<br />
 postParams可以是一个kv数组或字符串，也可以是一个文件名(以&quot;@&quot;开头，如&quot;@1.jpg&quot;)</p>
 <p>如果请求失败，抛出E_SERVER异常。<br />
-不检查http返回码。</p><hr>
+不检查http返回码。</p>
+<p>示例：指定postParams, 默认以application/x-www-form-urlencoded格式提交。</p>
+<pre><code>$data = [
+    "name" =&gt; "xiaoming",
+    "classId" =&gt; 100
+];
+// 注意headers的格式
+$headers = [
+    "Authorization: Basic dGVzdDp0ZXN0MTIz"
+];
+$rv = httpCall($url, $data, ["headers" =&gt; $headers]);</code></pre>
+<p>示例：提交application/json格式的内容</p>
+<pre><code>// 用json_encode将数组变成字符串。避免被httpCall转成urlencoded格式。
+$data = json_encode([
+    "name" =&gt; "xiaoming",
+    "classId" =&gt; 100
+]);
+$headers = [
+    "Content-type: application/json",
+    "Authorization: Basic dGVzdDp0ZXN0MTIz"
+];
+$GLOBALS["X_RET_STR"] = httpCall($url, $data, ["headers" =&gt; $headers]);
+// 筋斗云：设置全局变量X_RET_STR可直接设置返回内容，避免再次被json编码。</code></pre><hr>
 <h2 id="app_fw">@module app_fw</h2><div class="toc"><p style="margin-left:0em"><a href="#app_fw-1 通用函数">1 通用函数</a></p>
 <p style="margin-left:0em"><a href="#app_fw-2 初始化配置">2 初始化配置</a></p>
 <p style="margin-left:2em"><a href="#app_fw-2.1 数据库配置">2.1 数据库配置</a></p>
@@ -298,7 +321,7 @@ $startTm = param("startTm/dt", time());</code></pre>
     [ "id"=&gt;100, "qty"=&gt;1.0, dscr=&gt;null],
     [ "id"=&gt;101, "qty"=&gt;null, dscr=&gt;"打蜡"]
 ]</code></pre><hr>
-<h2 id="mparam">@fn mparam($name, $col = $_REQUEST)</h2>
+<h2 id="mparam">@fn mparam($name, $col = null)</h2>
 <p class="brief"><strong>@brief mandatory</strong>  param</p>
 <p>$name可以是一个数组，表示至少有一个参数有值，这时返回每个参数的值。<br />
 参考param函数，查看$name如何支持各种类型。</p>
@@ -749,11 +772,12 @@ return [
 当失败时，为String类型错误信息。<br />
 如果参数$data未指定，则操作成功时值为null（按BQP协议返回null表示客户端应忽略处理，一般无特定返回应指定$data=&quot;OK&quot;）；操作失败时使用默认错误信息。</p>
 <p>调用完后，要返回的数据存储在全局数组 $X_RET 中，以JSON字符串形式存储在全局字符串 $X_RET_STR 中。<br />
-注意：$X_RET_STR也可以在调用setRet前设置为要返回的字符串，从而避免setRet函数对返回对象进行JSON序列化，如</p>
-<pre><code>$GLOBALS["X_RET_STR"] = "{id:100, name:'aaa'}";
+注意：也可以直接设置$X_RET_STR为要返回的字符串，从而避免setRet函数对返回对象进行JSON序列化，如</p>
+<pre><code>$GLOBALS["X_RET_STR"] = '{"id":100, "name":"aaa"}';
+// 如果不想继续执行后面代码，可以自行调用：
 setRet(0, "OK");
 throw new DirectReturn();
-// 最终返回字符串为 "[0, {id:100, name:'aaa'}]"</code></pre>
+// 最终返回字符串为 [0, {"id":100, "name":"aaa"}]</code></pre>
 <p class="see"><strong>@see <a href="#$X_RET">$X_RET</a></strong> </p>
 <p class="see"><strong>@see <a href="#$X_RET_STR">$X_RET_STR</a></strong> </p>
 <p class="see"><strong>@see <a href="#$errorFn">$errorFn</a></strong> </p>
@@ -780,6 +804,16 @@ checkPerm(AUTH_ADMIN | PERM_TEST_MODE); 要求必须管理员登录或测试模�
 <li>type: &quot;web&quot;-网页客户端; &quot;wx&quot;-微信客户端; &quot;a&quot;-安卓客户端; &quot;ios&quot;-苹果客户端</li>
 </ul>
 <p>e.g. {type: &quot;a&quot;, ver: 2, str: &quot;a/2&quot;}</p><hr>
+<h2 id="tmCols">@fn tmCols($fieldName = "t0.tm")</h2>
+<p>为查询添加时间维度单位: y,m,w,d,wd,h (年，月，周，日，周几，时)。</p>
+<ul>
+<li>wd: 1-7表示周一到周日</li>
+<li>w: 一年中第一周，从该年第一个周一开始(mysql week函数模式7).</li>
+</ul>
+<p>示例：</p>
+<pre><code>    $this-&gt;vcolDefs[] = [ "res" =&gt; tmCols() ];
+    $this-&gt;vcolDefs[] = [ "res" =&gt; tmCols("t0.createTm") ];
+    $this-&gt;vcolDefs[] = [ "res" =&gt; tmCols("log_cr.tm"), "require" =&gt; "createTm" ];</code></pre><hr>
 <h2 id="ConfBase">@class ConfBase</h2>
 <p>在conf.php中定义Conf类并继承ConfBase, 实现代码配置：</p>
 <pre><code>class Conf extends ConfBase
