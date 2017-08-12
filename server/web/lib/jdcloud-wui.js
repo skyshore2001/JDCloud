@@ -1,4 +1,4 @@
-// jdcloud-wui version 1.0
+// jdcloud-wui version 1.1
 // ====== WEBCC_BEGIN_FILE doc.js {{{
 /**
 @module WUI
@@ -783,6 +783,11 @@ function parseTime(s)
 	var dt2 = parseDate("2012/01/01 20:00:09");
 	var dt3 = parseDate("2012.1.1 20:00");
 
+支持时区，时区格式可以是"+8", "+08", "+0800", "Z"这些，如
+
+	parseDate("2012-01-01T09:10:20.328+0800");
+	parseDate("2012-01-01T09:10:20Z");
+
  */
 self.parseDate = parseDate;
 function parseDate(str)
@@ -828,8 +833,8 @@ function parseDate(str)
 	var dt = new Date(y, m, d, h, n, s);
 	if (isNaN(dt.getYear()))
 		return null;
-	// 时区
-	ms = str.match(/([+-])(\d{1,4})$/);
+	// 时区(前面必须是时间如 00:00:00.328-02 避免误匹配 2017-08-11 当成-11时区
+	ms = str.match(/:[0-9.T]+([+-])(\d{1,4})$/);
 	if (ms != null) {
 		var sign = (ms[1] == "-"? -1: 1);
 		var cnt = ms[2].length;
@@ -1304,11 +1309,9 @@ function appendParam(url, param)
 		return url;
 	var ret;
 	var a = url.split("#");
+	ret = a[0] + (url.indexOf('?')>=0? "&": "?") + param;
 	if (a.length > 1) {
-		ret = a[0] + (url.indexOf('?')>0? "&": "?") + param + "#" + a[1];
-	}
-	else {
-		ret = url + (url.indexOf('?')>0? "&": "?") + param;
+		ret += "#" + a[1];
 	}
 	return ret;
 }
@@ -2459,13 +2462,13 @@ function defDataProc(rv)
 		if (g_data.testMode != val) {
 			g_data.testMode = val;
 			if (g_data.testMode)
-				alert("测试模式!");
+				self.app_alert("测试模式!", {timeoutInterval:2000});
 		}
 		val = mCommon.parseValue(this.xhr_.getResponseHeader("X-Daca-Mock-Mode"));
 		if (g_data.mockMode != val) {
 			g_data.mockMode = val;
 			if (g_data.mockMode)
-				alert("模拟模式!");
+				self.app_alert("模拟模式!", {timeoutInterval:2000});
 		}
 	}
 
@@ -2651,10 +2654,10 @@ function makeUrl(action, params)
 		if (m_appVer === undefined)
 		{
 			var platform = "n";
-			if (isAndroid()) {
+			if (mCommon.isAndroid()) {
 				platform = "a";
 			}
-			else if (isIOS()) {
+			else if (mCommon.isIOS()) {
 				platform = "i";
 			}
 			m_appVer = platform + "/" + g_cordova;
