@@ -487,6 +487,7 @@ class AccessControl
 	# for get/query
 	# 注意：sqlConf["res"/"cond"][0]分别是传入的res/cond参数, sqlConf["orderby"]是传入的orderby参数, 为空(注意用isset/is_null判断)均表示未传值。
 	public $sqlConf; // {@cond, @res, @join, orderby, @subobj, gres}
+	private $isAggregatinQuery; // 是聚合查询，如带group by或res中有聚合函数
 
 	// virtual columns
 	private $vcolMap; # elem: $vcol => {def, def0, added?, vcolDefIdx?=-1}
@@ -542,6 +543,7 @@ class AccessControl
 		$this->sqlConf = [
 			"res" => [],
 			"gres" => $gres,
+			"gcond" => param("gcond", null, null, false),
 			"cond" => [param("cond", null, null, false)],
 			"join" => [],
 			"orderby" => param("orderby"),
@@ -549,6 +551,7 @@ class AccessControl
 			"union" => param("union"),
 			"distinct" => param("distinct")
 		];
+		$this->isAggregatinQuery = isset($this->sqlConf["gres"]);
 
 		$this->initVColMap();
 
@@ -573,7 +576,6 @@ class AccessControl
 				throw new MyException(E_SERVER, "subobj should be an array");
 			$this->sqlConf["subobj"] = $subobj;
 		}
-		$this->fixUserQuery();
 
 		$this->onQuery();
 
@@ -607,6 +609,13 @@ class AccessControl
 			if (isset($this->sqlConf["orderby"]) && !isset($this->sqlConf["union"]))
 				$this->sqlConf["orderby"] = $this->filterOrderby($this->sqlConf["orderby"]);
 		}
+
+		// fixUserQuery
+		$cond = $this->sqlConf["cond"][0];
+		if (isset($cond))
+			$this->sqlConf["cond"][0] = $this->fixUserQuery($cond);
+		if (isset($this->sqlConf["gcond"]))
+			$this->sqlConf["gcond"] = $this->fixUserQuery($this->sqlConf["gcond"]);
 	}
 	// for add/set
 	protected function validate()
@@ -694,25 +703,24 @@ class AccessControl
 	}
 
 	# for query. "field1"=>"t0.field1"
-	private function fixUserQuery()
+	private function fixUserQuery($q)
 	{
-		if (isset($this->sqlConf["cond"][0])) {
-			if (stripos($this->sqlConf["cond"][0], "select") !== false) {
-				throw new MyException(E_FORBIDDEN, "forbidden SELECT in param cond");
-			}
-			# "aa = 100 and t1.bb>30 and cc IS null" -> "t0.aa = 100 and t1.bb>30 and t0.cc IS null" 
-			$this->sqlConf["cond"][0] = preg_replace_callback('/[\w|.]+(?=(\s*[=><]|(\s+(IS|LIKE))))/i', function ($ms) {
-				// 't0.$0' for col, or 'voldef' for vcol
-				$col = $ms[0];
-				if (strpos($col, '.') !== false)
-					return $col;
-				if (isset($this->vcolMap[$col])) {
-					$this->addVCol($col, false, "-");
-					return $this->vcolMap[$col]["def"];
-				}
-				return "t0." . $col;
-			}, $this->sqlConf["cond"][0]);
+		if (stripos($q, "select") !== false) {
+			throw new MyException(E_FORBIDDEN, "forbidden SELECT in param cond");
 		}
+		# "aa = 100 and t1.bb>30 and cc IS null" -> "t0.aa = 100 and t1.bb>30 and t0.cc IS null" 
+		$ret = preg_replace_callback('/[\w.\x{4E00}-\x{9FA5}]+(?=(\s*[=><]|(\s+(IS|LIKE))))/iu', function ($ms) {
+			// 't0.$0' for col, or 'voldef' for vcol
+			$col = $ms[0];
+			if (strpos($col, '.') !== false)
+				return $col;
+			if (isset($this->vcolMap[$col])) {
+				$this->addVCol($col, false, "-");
+				return $this->vcolMap[$col]["def"];
+			}
+			return "t0." . $col;
+		}, $q);
+		return $ret;
 	}
 	private function supportEasyui()
 	{
@@ -754,6 +762,7 @@ class AccessControl
 					list($fn, $alias) = [strtoupper($ms[1]), $ms[2]];
 					if ($fn != "COUNT" && $fn != "SUM")
 						throw new MyException(E_FORBIDDEN, "function not allowed: `$fn`");
+					$this->isAggregatinQuery = true;
 				}
 				else 
 					throw new MyException(E_PARAM, "bad property `$col`");
@@ -781,7 +790,7 @@ class AccessControl
 					if (isset($alias)) {
 						$col1 .= " AS {$alias}";
 					}
-					$this->addRes($col1, false);
+					$this->addRes($col1);
 				}
 			}
 			$cols[] = $alias ?: $col;
@@ -1203,7 +1212,7 @@ class AccessControl
 		if ($pagesz < 0 || $pagesz > $maxPageSz)
 			$pagesz = $maxPageSz;
 
-		if (isset($sqlConf["gres"])) {
+		if ($this->isAggregatinQuery) {
 			$enablePartialQuery = false;
 		}
 
@@ -1211,7 +1220,7 @@ class AccessControl
 
 		// setup cond for partialQuery
 		if ($enablePaging) {
-			if ($orderSql == null)
+			if ($orderSql == null && !$this->isAggregatinQuery)
 				$orderSql = $this->defaultSort;
 
 			if (!isset($enableTotalCnt))
@@ -1256,11 +1265,10 @@ class AccessControl
 		}
 		if ($sqlConf["gres"]) {
 			$sql .= "\nGROUP BY {$sqlConf['gres']}";
+			if ($sqlConf["gcond"])
+				$sql .= "\nHAVING {$sqlConf['gcond']}";
 			$complexCntSql = true;
 		}
-
-		if ($orderSql)
-			$sql .= "\nORDER BY " . $orderSql;
 
 		if ($enablePaging) {
 			if ($enableTotalCnt) {
@@ -1274,6 +1282,8 @@ class AccessControl
 				}
 				$totalCnt = queryOne($cntSql);
 			}
+			if ($orderSql)
+				$sql .= "\nORDER BY " . $orderSql;
 
 			if ($enablePartialQuery) {
 				$sql .= "\nLIMIT " . $pagesz;
@@ -1285,6 +1295,8 @@ class AccessControl
 			}
 		}
 		else {
+			if ($orderSql)
+				$sql .= "\nORDER BY " . $orderSql;
 			if ($pagesz) {
 				$sql .= "\nLIMIT " . $pagesz;
 			}
