@@ -4975,25 +4975,95 @@ function parseArgs()
 parseArgs();
 
 /**
-@fn app_alert(msg, type?=i, fn?)
-@param type String. "i"|"e"|"w"
-@param fn Function(). 用户点击确定后的回调。
+@fn WUI.app_alert(msg, [type?=i], [fn?], opt?={timeoutInterval?, defValue?, onCancel()?})
+@param type 对话框类型: "i": info, 信息提示框; "e": error, 错误框; "w": warning, 警告框; "q"(与app_confirm一样): question, 确认框(会有"确定"和"取消"两个按钮); "p": prompt, 输入框
+@param fn Function(text?) 回调函数，当点击确定按钮时调用。当type="p" (prompt)时参数text为用户输入的内容。
+@param opt Object. 可选项。 timeoutInterval表示几秒后自动关闭对话框。defValue用于输入框(type=p)的缺省值.
 
 使用jQuery easyui弹出提示对话框.
+
+示例:
+
+	// 信息框，3s后自动点确定
+	app_alert("操作成功", function () {
+		WUI.showPage("pageGenStat");
+	}, {timeoutInterval: 3000});
+
+	// 错误框
+	app_alert("操作失败", "e");
+
+	// 确认框(确定/取消)
+	app_alert("立即付款?", "q", function () {
+		WUI.showPage("#pay");
+	});
+
+	// 输入框
+	app_alert("输入要查询的名字:", "p", function (text) {
+		callSvr("Book.query", {cond: "name like '%" + text + "%'"});
+	});
+
 */
 self.app_alert = app_alert;
-function app_alert(msg, type, fn)
+function app_alert(msg)
 {
-	type = type || "i";
+	var type = "i";
+	var fn = undefined;
+	var alertOpt = {};
+
+	for (var i=1; i<arguments.length; ++i) {
+		var arg = arguments[i];
+		if ($.isFunction(arg)) {
+			fn = arg;
+		}
+		else if ($.isPlainObject(arg)) {
+			alertOpt = arg;
+		}
+		else if (typeof(arg) === "string") {
+			type = arg;
+		}
+	}
+	if (type == "q") {
+		app_confirm(msg, function (isOk) {
+			if (isOk) {
+				fn && fn();
+			}
+			else if (alertOpt.onCancel) {
+				alertOpt.onCancel();
+			}
+		});
+		return;
+	}
+	else if (type == "p") {
+		$.messager.prompt(self.options.title, msg, function(text) {
+			if (text && fn) {
+				fn(text);
+			}
+		});
+		setTimeout(function () {
+			var ji = $(".messager-window .messager-input");
+			ji.focus();
+			if (alertOpt.defValue) {
+				ji.val(alertOpt.defValue);
+			}
+		});
+		return;
+	}
+
 	var icon = {i: "info", w: "warning", e: "error"}[type];
-	var s = {i: "提示", w: "警告", e: "出错"}[type];
+	var s = {i: "提示", w: "警告", e: "出错"}[type] || "";
 	var s1 = "<b>[" + s + "]</b>";
 	$.messager.alert(self.options.title + " - " + s, s1 + " " + msg, icon, fn);
 
 	// 查看jquery-easyui对象，发现OK按钮的class=1-btn
 	setTimeout(function() {
-		$(".l-btn").focus();
-	}, 50);
+		var jbtn = $(".messager-window .l-btn");
+		jbtn.focus();
+		if (alertOpt.timeoutInterval) {
+			setTimeout(function() {
+				jbtn.click();
+			}, alertOpt.timeoutInterval);
+		}
+	});
 }
 
 /**
