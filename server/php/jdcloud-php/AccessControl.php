@@ -1186,14 +1186,7 @@ class AccessControl
 	{
 		$this->initQuery();
 
-		// TODO: remove wantArray
-		$wantArray = param("wantArray/b");
 		$sqlConf = &$this->sqlConf;
-
-		$enablePaging = true;
-		if ($wantArray) {
-			$enablePaging = false;
-		}
 
 		$pagesz = param("pagesz/i");
 		$pagekey = param("pagekey/i");
@@ -1219,36 +1212,34 @@ class AccessControl
 		$orderSql = $sqlConf["orderby"];
 
 		// setup cond for partialQuery
-		if ($enablePaging) {
-			if ($orderSql == null && !$this->isAggregatinQuery)
-				$orderSql = $this->defaultSort;
+		if ($orderSql == null && !$this->isAggregatinQuery)
+			$orderSql = $this->defaultSort;
 
-			if (!isset($enableTotalCnt))
-			{
-				$enableTotalCnt = false;
-				if ($pagekey === 0)
-					$enableTotalCnt = true;
-			}
+		if (!isset($enableTotalCnt))
+		{
+			$enableTotalCnt = false;
+			if ($pagekey === 0)
+				$enableTotalCnt = true;
+		}
 
-			// 如果未指定orderby或只用了id(以后可放宽到唯一性字段), 则可以用partialQuery机制(性能更好更精准), pagekey表示该字段的最后值；否则pagekey表示下一页页码。
-			if (!isset($enablePartialQuery)) {
-				$enablePartialQuery = false;
-				if (preg_match('/^(t0\.)?id\b/', $orderSql)) {
-					$enablePartialQuery = true;
-					if ($pagekey) {
-						if (preg_match('/\bid DESC/i', $orderSql)) {
-							$partialQueryCond = "t0.id<$pagekey";
-						}
-						else {
-							$partialQueryCond = "t0.id>$pagekey";
-						}
-						// setup res for partialQuery
-						if ($partialQueryCond) {
+		// 如果未指定orderby或只用了id(以后可放宽到唯一性字段), 则可以用partialQuery机制(性能更好更精准), pagekey表示该字段的最后值；否则pagekey表示下一页页码。
+		if (!isset($enablePartialQuery)) {
+			$enablePartialQuery = false;
+			if (preg_match('/^(t0\.)?id\b/', $orderSql)) {
+				$enablePartialQuery = true;
+				if ($pagekey) {
+					if (preg_match('/\bid DESC/i', $orderSql)) {
+						$partialQueryCond = "t0.id<$pagekey";
+					}
+					else {
+						$partialQueryCond = "t0.id>$pagekey";
+					}
+					// setup res for partialQuery
+					if ($partialQueryCond) {
 // 							if (isset($sqlConf["res"][0]) && !preg_match('/\bid\b/',$sqlConf["res"][0])) {
 // 								array_unshift($sqlConf["res"], "t0.id");
 // 							}
-							array_unshift($sqlConf["cond"], $partialQueryCond);
-						}
+						array_unshift($sqlConf["cond"], $partialQueryCond);
 					}
 				}
 			}
@@ -1270,86 +1261,68 @@ class AccessControl
 			$complexCntSql = true;
 		}
 
-		if ($enablePaging) {
-			if ($enableTotalCnt) {
-				if (!$complexCntSql) {
-					$cntSql = "SELECT COUNT(*) FROM $tblSql";
-					if ($condSql)
-						$cntSql .= "\nWHERE $condSql";
-				}
-				else {
-					$cntSql = "SELECT COUNT(*) FROM ($sql) t0";
-				}
-				$totalCnt = queryOne($cntSql);
-			}
-			if ($orderSql)
-				$sql .= "\nORDER BY " . $orderSql;
-
-			if ($enablePartialQuery) {
-				$sql .= "\nLIMIT " . $pagesz;
+		if ($enableTotalCnt) {
+			if (!$complexCntSql) {
+				$cntSql = "SELECT COUNT(*) FROM $tblSql";
+				if ($condSql)
+					$cntSql .= "\nWHERE $condSql";
 			}
 			else {
-				if (! $pagekey)
-					$pagekey = 1;
-				$sql .= "\nLIMIT " . ($pagekey-1)*$pagesz . "," . $pagesz;
+				$cntSql = "SELECT COUNT(*) FROM ($sql) t0";
 			}
+			$totalCnt = queryOne($cntSql);
+		}
+		if ($orderSql)
+			$sql .= "\nORDER BY " . $orderSql;
+
+		if ($enablePartialQuery) {
+			$sql .= "\nLIMIT " . $pagesz;
 		}
 		else {
-			if ($orderSql)
-				$sql .= "\nORDER BY " . $orderSql;
-			if ($pagesz) {
-				$sql .= "\nLIMIT " . $pagesz;
-			}
+			if (! $pagekey)
+				$pagekey = 1;
+			$sql .= "\nLIMIT " . ($pagekey-1)*$pagesz . "," . $pagesz;
 		}
 
 		$ret = queryAll($sql, true);
 		if ($ret === false)
 			$ret = [];
 
-		if ($wantArray) {
-			foreach ($ret as &$mainObj) {
-				$id1 = $mainObj["id"];
-				$this->handleSubObj($id1, $mainObj);
-				$this->handleRow($mainObj);
-			}
+		// Note: colCnt may be changed in after().
+		$fixedColCnt = count($ret)==0? 0: count($ret[0]);
+		foreach ($ret as &$ret1) {
+			$this->handleRow($ret1);
 		}
-		else {
-			// Note: colCnt may be changed in after().
-			$fixedColCnt = count($ret)==0? 0: count($ret[0]);
-			foreach ($ret as &$ret1) {
-				$this->handleRow($ret1);
-			}
-			$this->after($ret);
+		$this->after($ret);
 
-			if ($enablePaging && $pagesz == count($ret)) { // 还有下一页数据, 添加nextkey
-				if ($enablePartialQuery) {
-					$nextkey = $ret[count($ret)-1]["id"];
-				}
-				else {
-					$nextkey = $pagekey + 1;
-				}
-			}
-			foreach ($ret as &$mainObj) {
-				$id1 = $mainObj["id"];
-				if (isset($id1))
-					$this->handleSubObj($id1, $mainObj);
-			}
-			$fmt = param("fmt");
-			if ($fmt === "list") {
-				$ret = ["list" => $ret];
+		if ($pagesz == count($ret)) { // 还有下一页数据, 添加nextkey
+			if ($enablePartialQuery) {
+				$nextkey = $ret[count($ret)-1]["id"];
 			}
 			else {
-				$ret = objarr2table($ret, $fixedColCnt);
+				$nextkey = $pagekey + 1;
 			}
-			if (isset($nextkey)) {
-				$ret["nextkey"] = $nextkey;
-			}
-			if (isset($totalCnt)) {
-				$ret["total"] = $totalCnt;
-			}
-			if (isset($fmt))
-				$this->handleExportFormat($fmt, $ret, $this->table);
 		}
+		foreach ($ret as &$mainObj) {
+			$id1 = $mainObj["id"];
+			if (isset($id1))
+				$this->handleSubObj($id1, $mainObj);
+		}
+		$fmt = param("fmt");
+		if ($fmt === "list") {
+			$ret = ["list" => $ret];
+		}
+		else {
+			$ret = objarr2table($ret, $fixedColCnt);
+		}
+		if (isset($nextkey)) {
+			$ret["nextkey"] = $nextkey;
+		}
+		if (isset($totalCnt)) {
+			$ret["total"] = $totalCnt;
+		}
+		if (isset($fmt))
+			$this->handleExportFormat($fmt, $ret, $this->table);
 
 		return $ret;
 	}

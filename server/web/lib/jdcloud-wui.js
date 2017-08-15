@@ -5450,9 +5450,10 @@ $.each([
 
 	<tr>
 		<td>分派给</td>
-		<td><select name="empId" class="my-combobox" data-options="valueField:'id',textField:'name',url:WUI.makeUrl('Employee.query', {wantArray:1})"></select></td>  
+		<td><select name="empId" class="my-combobox" data-options="valueField:'id',textField:'name',url:WUI.makeUrl('Employee.query', {res:'id,name',pagesz:-1})"></select></td>  
 	</tr>
 
+注意查询默认是有分页的（页大小一般为20条），用参数`{pagesz:-1}`使用服务器设置的最大的页大小（后端最大pagesz默认100，可使用maxPageSz参数调节）。
 为了精确控制返回字段与显示格式，data-options可能更加复杂，一般建议写一个返回这些属性的函数，像这样：
 
 		<td><select name="empId" class="my-combobox" data-options="ListOptions.Emp()"></select></td>  
@@ -5468,7 +5469,7 @@ $.each([
 				url: WUI.makeUrl('Employee.query', {
 					res: 'id,name,uname',
 					cond: 'storeId=' + g_data.userInfo.storeId,
-					wantArray:1
+					pagesz:-1
 				}),
 				formatter: function (row) { return row.name + '(' + row.uname + ')'; }
 			};
@@ -5490,7 +5491,7 @@ JS代码ListOptions.Brand:
 			var opts = {
 				valueField: 'id',
 				textField:'name',
-				url:WUI.makeUrl('queryBrand', {wantArray:1}),
+				url:WUI.makeUrl('queryBrand', {pagesz:-1}),
 				loadFilter: function(data) {
 					data.unshift({id:'0', name:'所有品牌'});
 					return data;
@@ -5504,6 +5505,7 @@ JS代码ListOptions.Brand:
 var m_dataCache = {}; // url => data
 $.fn.mycombobox = function (force) 
 {
+	var mCommon = jdModule("jdcloud.common");
 	this.each(initCombobox);
 
 	function initCombobox(i, o)
@@ -5579,7 +5581,11 @@ $.fn.mycombobox = function (force)
 			if (opts.loadFilter) {
 				data = opts.loadFilter.call(this, data);
 			}
-			$.each(data, function (i, row) {
+			var arr = $.isArray(data.d)? mCommon.rs2Array(data)
+				: $.isArray(data)? data
+				: data.list;
+			mCommon.assert($.isArray(arr), "bad data format for combobox");
+			$.each(arr, function (i, row) {
 				var jopt = $("<option></option>")
 					.attr("value", row[opts.valueField])
 					.text(getText(row))
