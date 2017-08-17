@@ -33,8 +33,7 @@ code {
 }
 
 </style>
-<link rel="stylesheet" href="style.css" />
-<script src="doc.js"></script>
+<?php Doc::outputLinkFiles(); ?>
 </head>
 
 <body>

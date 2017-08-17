@@ -14,10 +14,13 @@
 
 	php jdcloud-gendoc.php mysrc.js -title "API-Reference" > doc.html
 
-文档使用utf-8编码。输出模板默认为refdoc-template.php，其中引用css文件style.css。
-如果要指定模板，可以用`-template`参数。
+文档使用utf-8编码。输出模板默认为refdoc-template.php，如果要指定模板，可以用`-template`参数。
 
 	php jdcloud-gendoc.php mysrc.js -title "API-Reference" -template refdoc-template-jdcloud.php > doc.html
+
+默认会引用css文件style.css，如果要自行指定额外js/css文件，可以用-linkFiles参数，多个文件用逗号分隔，如
+
+	php jdcloud-gendoc.php mysrc.js -title "API-Reference" -linkFiles "doc.js,doc.css" > doc.html
 
 */
 
@@ -28,6 +31,7 @@ require("lib/Parsedown.php");
 $defaultOptions = [
 	"subtoc" => 1,
 	"template" => __DIR__ . "/refdoc-template.php",
+	"linkFiles" => "style.css"
 ];
 
 // ====== global
@@ -238,7 +242,7 @@ Example:
 // ====== main
 
 $argv1 = null;
-$options = mygetopt(['title:', 'encoding:', 'template:'], $argv1) + $defaultOptions;
+$options = mygetopt(['title:', 'encoding:', 'template:', 'linkFiles:'], $argv1) + $defaultOptions;
 if (count($argv1) == 0) {
 	usage();
 	return 1;
@@ -275,6 +279,26 @@ class Doc
 {
 	static $title;
 	static $docDate;
+
+	static function outputLinkFiles()
+	{
+		global $options;
+		$fs = explode(',', $options["linkFiles"]);
+		foreach ($fs as $f) {
+			if (stripos($f, ".css") !== false) {
+				echo <<<EOL
+<link rel="stylesheet" href="$f" />
+
+EOL;
+			}
+			else if (stripos($f, ".js") !== false) {
+				echo <<<EOL
+<script src="$f"></script>
+
+EOL;
+			}
+		}
+	}
 
 # ---------- module list
 	static function outputModules()
