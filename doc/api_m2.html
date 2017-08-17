@@ -28,12 +28,20 @@ code {
 	margin: 0.3em 0;
 }
 
+.block {
+	border-bottom: 1px solid #ccc;
+}
+
 </style>
 <link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="doc.css" />
+<script src="refdoc.js"></script>
 </head>
 
+<body>
 <h1>API参考 - 筋斗云前端（移动Web版）</h1>
-<div>最后更新：2017-08-12</div>
+<div>最后更新：2017-08-17</div>
+<div id="menu">
 <h2>Modules</h2>
 <div class="toc">
 <p><a href="#MUI">MUI (module)</a></p>
@@ -217,6 +225,8 @@ code {
 <p><a href="#topic-splashScreen">topic-splashScreen (key)</a></p>
 <p><a href="#waitFor">waitFor (fn)</a></p>
 </div><hr>
+</div>
+<div class="block">
 <h2 id="MUI">@module MUI</h2><div class="toc"><p style="margin-left:0em"><a href="#MUI-1 基于逻辑页面的单网页应用">1 基于逻辑页面的单网页应用</a></p>
 <p style="margin-left:2em"><a href="#MUI-1.1 应用容器">1.1 应用容器</a></p>
 <p style="margin-left:2em"><a href="#MUI-1.2 逻辑页面">1.2 逻辑页面</a></p>
@@ -532,8 +542,10 @@ Access-Control-Allow-Credentials: true</code></pre>
 });</code></pre>
 </li>
 </ul>
-<p>这时直接在chrome中打开html文件即可连接远程接口运行起来.</p><hr>
-<h2 id="assert">@fn assert(cond, dscr?)</h2><hr>
+<p>这时直接在chrome中打开html文件即可连接远程接口运行起来.</p></div>
+<div class="block">
+<h2 id="assert">@fn assert(cond, dscr?)</h2></div>
+<div class="block">
 <h2 id="parseQuery">@fn parseQuery(str)</h2>
 <p>解析url编码格式的查询字符串，返回对应的对象。</p>
 <pre><code>if (location.search) {
@@ -541,11 +553,14 @@ Access-Control-Allow-Credentials: true</code></pre>
     var args = parseQuery(queryStr); // {id: 100, name: "abc", val: 3.14}
 }</code></pre>
 <p>注意：</p>
-<p>如果值为整数或小数，则会转成相应类型。如上例中 id为100,不是字符串&quot;100&quot;.</p><hr>
+<p>如果值为整数或小数，则会转成相应类型。如上例中 id为100,不是字符串&quot;100&quot;.</p></div>
+<div class="block">
 <h2 id="tobool">@fn tobool(v)</h2>
-<p>将字符串转成boolean值。除&quot;0&quot;, &quot;1&quot;外，还可以支持字符串 &quot;on&quot;/&quot;off&quot;, &quot;true&quot;/&quot;false&quot;等。</p><hr>
+<p>将字符串转成boolean值。除&quot;0&quot;, &quot;1&quot;外，还可以支持字符串 &quot;on&quot;/&quot;off&quot;, &quot;true&quot;/&quot;false&quot;等。</p></div>
+<div class="block">
 <h2 id="reloadSite">@fn reloadSite()</h2>
-<p>重新加载当前页面，但不要#hash部分。</p><hr>
+<p>重新加载当前页面，但不要#hash部分。</p></div>
+<div class="block">
 <h2 id="Date.format">@fn Date.format(fmt?=L)</h2>
 <p>日期对象格式化字符串。</p>
 <p class="param"><strong>@param fmt</strong>  格式字符串。由以下组成：</p>
@@ -564,15 +579,21 @@ T - 标准时间，相当于 "HH:MM:SS"</code></pre>
 <p>示例：</p>
 <pre><code>var dt = new Date();
 var dtStr1 = dt.format("D"); // "2009-10-20"
-var dtStr2 = dt.format("yyyymmdd-HHMM"); // "20091020-2038"</code></pre><hr>
-<h2 id="Date.addDay">@fn Date.addDay(n)</h2><hr>
-<h2 id="Date.addHours">@fn Date.addHours(n)</h2><hr>
-<h2 id="Date.addMin">@fn Date.addMin(n)</h2><hr>
-<h2 id="Date.addMonth">@fn Date.addMonth(n)</h2><hr>
+var dtStr2 = dt.format("yyyymmdd-HHMM"); // "20091020-2038"</code></pre></div>
+<div class="block">
+<h2 id="Date.addDay">@fn Date.addDay(n)</h2></div>
+<div class="block">
+<h2 id="Date.addHours">@fn Date.addHours(n)</h2></div>
+<div class="block">
+<h2 id="Date.addMin">@fn Date.addMin(n)</h2></div>
+<div class="block">
+<h2 id="Date.addMonth">@fn Date.addMonth(n)</h2></div>
+<div class="block">
 <h2 id="parseTime">@fn parseTime(s)</h2>
 <p>将纯时间字符串生成一个日期对象。</p>
 <pre><code>var dt1 = parseTime("10:10:00");
-var dt2 = parseTime("10:11");</code></pre><hr>
+var dt2 = parseTime("10:11");</code></pre></div>
+<div class="block">
 <h2 id="parseDate">@fn parseDate(dateStr)</h2>
 <p>将日期字符串转为日期时间格式。其效果相当于<code>new Date(Date.parse(dateStr))</code>，但兼容性更好（例如在safari中很多常见的日期格式无法解析）</p>
 <p>示例：</p>
@@ -581,7 +602,8 @@ var dt2 = parseDate("2012/01/01 20:00:09");
 var dt3 = parseDate("2012.1.1 20:00");</code></pre>
 <p>支持时区，时区格式可以是&quot;+8&quot;, &quot;+08&quot;, &quot;+0800&quot;, &quot;Z&quot;这些，如</p>
 <pre><code>parseDate("2012-01-01T09:10:20.328+0800");
-parseDate("2012-01-01T09:10:20Z");</code></pre><hr>
+parseDate("2012-01-01T09:10:20Z");</code></pre></div>
+<div class="block">
 <h2 id="Date.add">@fn Date.add(sInterval, n)</h2>
 <p>为日期对象加几天/小时等。参数n为整数，可以为负数。</p>
 <p class="param"><strong>@param sInterval</strong>  Enum. 间隔单位. d-天; m-月; y-年; h-小时; n-分; s-秒</p>
@@ -593,30 +615,36 @@ dt.add("y", -1); // 1年前
 dt.add("h", 3); // 3小时后
 dt.add("n", 30); // 30分钟后
 dt.add("s", 30); // 30秒后</code></pre>
-<p class="see"><strong>@see <a href="#Date.diff">Date.diff</a></strong> </p><hr>
+<p class="see"><strong>@see <a href="#Date.diff">Date.diff</a></strong> </p></div>
+<div class="block">
 <h2 id="Date.diff">@fn Date.diff(sInterval, dtEnd)</h2>
 <p>计算日期到另一日期间的间隔，单位由sInterval指定(具体值列表参见Date.add).</p>
 <pre><code>var dt = new Date();
 ...
 var dt2 = new Date();
 var days = dt.diff("d", dt2); // 相隔多少天</code></pre>
-<p class="see"><strong>@see <a href="#Date.add">Date.add</a></strong> </p><hr>
+<p class="see"><strong>@see <a href="#Date.add">Date.add</a></strong> </p></div>
+<div class="block">
 <h2 id="getTimeDiffDscr">@fn getTimeDiffDscr(tm, tm1)</h2>
 <p>从tm到tm1的时间差描述，如&quot;2分钟前&quot;, &quot;3天前&quot;等。</p>
-<p>tm和tm1可以为时间对象或时间字符串</p><hr>
+<p>tm和tm1可以为时间对象或时间字符串</p></div>
+<div class="block">
 <h2 id="setCookie">@fn setCookie(name, value, days?=30)</h2>
 <p>设置cookie值。如果只是为了客户端长时间保存值，一般建议使用 setStorage.</p>
 <p class="see"><strong>@see <a href="#getCookie">getCookie</a></strong> </p>
 <p class="see"><strong>@see <a href="#delCookie">delCookie</a></strong> </p>
-<p class="see"><strong>@see <a href="#setStorage">setStorage</a></strong> </p><hr>
+<p class="see"><strong>@see <a href="#setStorage">setStorage</a></strong> </p></div>
+<div class="block">
 <h2 id="getCookie">@fn getCookie(name)</h2>
 <p>取cookie值。</p>
 <p class="see"><strong>@see <a href="#setCookie">setCookie</a></strong> </p>
-<p class="see"><strong>@see <a href="#delCookie">delCookie</a></strong> </p><hr>
+<p class="see"><strong>@see <a href="#delCookie">delCookie</a></strong> </p></div>
+<div class="block">
 <h2 id="delCookie">@fn delCookie(name)</h2>
 <p>删除一个cookie项。</p>
 <p class="see"><strong>@see <a href="#getCookie">getCookie</a></strong> </p>
-<p class="see"><strong>@see <a href="#setCookie">setCookie</a></strong> </p><hr>
+<p class="see"><strong>@see <a href="#setCookie">setCookie</a></strong> </p></div>
+<div class="block">
 <h2 id="setStorage">@fn setStorage(name, value, useSession?=false)</h2>
 <p>使用localStorage存储(或使用sessionStorage存储, 如果useSession=true)。<br />
 注意只能存储字符串，所以value不可以为数组，对象等，必须序列化后存储。 </p>
@@ -631,17 +659,20 @@ setStorage("obj", JSON.stringify(obj));
 var obj2 = getStorage("obj");
 alert(obj2.name);</code></pre>
 <p class="see"><strong>@see <a href="#getStorage">getStorage</a></strong> </p>
-<p class="see"><strong>@see <a href="#delStorage">delStorage</a></strong> </p><hr>
+<p class="see"><strong>@see <a href="#delStorage">delStorage</a></strong> </p></div>
+<div class="block">
 <h2 id="getStorage">@fn getStorage(name, useSession?=false)</h2>
 <p>取storage中的一项。<br />
 默认使用localStorage存储，如果useSession=true，则使用sessionStorage存储。</p>
 <p>如果浏览器不支持Storage，则使用cookie实现.</p>
 <p class="see"><strong>@see <a href="#setStorage">setStorage</a></strong> </p>
-<p class="see"><strong>@see <a href="#delStorage">delStorage</a></strong> </p><hr>
+<p class="see"><strong>@see <a href="#delStorage">delStorage</a></strong> </p></div>
+<div class="block">
 <h2 id="delStorage">@fn delStorage(name)</h2>
 <p>删除storage中的一项。</p>
 <p class="see"><strong>@see <a href="#getStorage">getStorage</a></strong> </p>
-<p class="see"><strong>@see <a href="#setStorage">setStorage</a></strong> </p><hr>
+<p class="see"><strong>@see <a href="#setStorage">setStorage</a></strong> </p></div>
+<div class="block">
 <h2 id="rs2Array">@fn rs2Array(rs)</h2>
 <p class="param"><strong>@param rs=</strong> {h=[header], d=[ @row ]} rs对象(RowSet)</p>
 <p class="return"><strong>@return arr=[</strong>  %obj ]</p>
@@ -660,7 +691,8 @@ arr = [
     {id: 101, name: "Jane"} 
 ];</code></pre>
 <p class="see"><strong>@see <a href="#rs2Hash">rs2Hash</a></strong> </p>
-<p class="see"><strong>@see <a href="#rs2MultiHash">rs2MultiHash</a></strong> </p><hr>
+<p class="see"><strong>@see <a href="#rs2MultiHash">rs2MultiHash</a></strong> </p></div>
+<div class="block">
 <h2 id="rs2Hash">@fn rs2Hash(rs, key)</h2>
 <p class="param"><strong>@param rs=</strong> {h, d}  rs对象(RowSet)</p>
 <p class="return"><strong>@return hash=</strong> {key => %obj}</p>
@@ -676,7 +708,8 @@ hash = {
     100: {id: 100, name: "Tom"},
     101: {id: 101, name: "Jane"}
 };</code></pre>
-<p class="see"><strong>@see <a href="#rs2Array">rs2Array</a></strong> </p><hr>
+<p class="see"><strong>@see <a href="#rs2Array">rs2Array</a></strong> </p></div>
+<div class="block">
 <h2 id="rs2MultiHash">@fn rs2MultiHash(rs, key)</h2>
 <p class="param"><strong>@param rs=</strong> {h, d}  rs对象(RowSet)</p>
 <p class="return"><strong>@return hash=</strong> {key => [ %obj ]}</p>
@@ -693,15 +726,19 @@ hash = {
     "Jane": [{id: 101, name: "Jane"}]
 };</code></pre>
 <p class="see"><strong>@see <a href="#rs2Hash">rs2Hash</a></strong> </p>
-<p class="see"><strong>@see <a href="#rs2Array">rs2Array</a></strong> </p><hr>
+<p class="see"><strong>@see <a href="#rs2Array">rs2Array</a></strong> </p></div>
+<div class="block">
 <h2 id="intSort">@fn intSort(a, b)</h2>
 <p>整数排序. 用于datagrid column sorter:</p>
-<pre><code>&lt;th data-options="field:'id', sortable:true, sorter:intSort"&gt;编号&lt;/th&gt;</code></pre><hr>
+<pre><code>&lt;th data-options="field:'id', sortable:true, sorter:intSort"&gt;编号&lt;/th&gt;</code></pre></div>
+<div class="block">
 <h2 id="numberSort">@fn numberSort(a, b)</h2>
 <p>小数排序. 用于datagrid column sorter:</p>
-<pre><code>&lt;th data-options="field:'score', sortable:true, sorter:numberSort"&gt;评分&lt;/th&gt;</code></pre><hr>
+<pre><code>&lt;th data-options="field:'score', sortable:true, sorter:numberSort"&gt;评分&lt;/th&gt;</code></pre></div>
+<div class="block">
 <h2 id="getAncestor">@fn getAncestor(o, fn)</h2>
-<p>取符合条件(fn)的对象，一般可使用$.closest替代</p><hr>
+<p>取符合条件(fn)的对象，一般可使用$.closest替代</p></div>
+<div class="block">
 <h2 id="appendParam">@fn appendParam(url, param)</h2>
 <p>示例:</p>
 <pre><code>var url = "http://xxx/api.php";
@@ -713,34 +750,43 @@ if (b)
 appendParam(url, $.param({a:1, b:3}));</code></pre>
 <p>支持url中带有&quot;?&quot;或&quot;#&quot;，如</p>
 <pre><code>var url = "http://xxx/api.php?id=1#order";
-appendParam(url, "pay=1"); // "http://xxx/api.php?id=1&amp;pay=1#order";</code></pre><hr>
+appendParam(url, "pay=1"); // "http://xxx/api.php?id=1&amp;pay=1#order";</code></pre></div>
+<div class="block">
 <h2 id="deleteParam">@fn deleteParam(url, paramName)</h2>
 <p>示例:</p>
 <pre><code>var url = "http://xxx/api.php?a=1&amp;b=3&amp;c=2";
-var url1 = deleteParam(url, "b"); // "http://xxx/api.php?a=1&amp;c=2";</code></pre><hr>
+var url1 = deleteParam(url, "b"); // "http://xxx/api.php?a=1&amp;c=2";</code></pre></div>
+<div class="block">
 <h2 id="isWeixin">@fn isWeixin()</h2>
-<p>当前应用运行在微信中。</p><hr>
+<p>当前应用运行在微信中。</p></div>
+<div class="block">
 <h2 id="isIOS">@fn isIOS()</h2>
-<p>当前应用运行在IOS平台，如iphone或ipad中。</p><hr>
+<p>当前应用运行在IOS平台，如iphone或ipad中。</p></div>
+<div class="block">
 <h2 id="isAndroid">@fn isAndroid()</h2>
-<p>当前应用运行在安卓平台。</p><hr>
+<p>当前应用运行在安卓平台。</p></div>
+<div class="block">
 <h2 id="parseValue">@fn parseValue(str)</h2>
-<p>如果str符合整数或小数，则返回相应类型。</p><hr>
+<p>如果str符合整数或小数，则返回相应类型。</p></div>
+<div class="block">
 <h2 id="applyTpl">@fn applyTpl(tpl, data)</h2>
 <p>对模板做字符串替换</p>
 <pre><code>var tpl = "&lt;li&gt;&lt;p&gt;{name}&lt;/p&gt;&lt;p&gt;{dscr}&lt;/p&gt;&lt;/li&gt;";
 var data = {name: 'richard', dscr: 'hello'};
 var html = applyTpl(tpl, data);
-// &lt;li&gt;&lt;p&gt;richard&lt;/p&gt;&lt;p&gt;hello&lt;/p&gt;&lt;/li&gt;</code></pre><hr>
+// &lt;li&gt;&lt;p&gt;richard&lt;/p&gt;&lt;p&gt;hello&lt;/p&gt;&lt;/li&gt;</code></pre></div>
+<div class="block">
 <h2 id="delayDo">@fn delayDo(fn, delayCnt?=3)</h2>
 <p>设置延迟执行。当delayCnt=1时与setTimeout效果相同。<br />
-多次置于事件队列最后，一般3次后其它js均已执行完毕，为idle状态</p><hr>
+多次置于事件队列最后，一般3次后其它js均已执行完毕，为idle状态</p></div>
+<div class="block">
 <h2 id="jdModule">@fn jdModule(name, fn)</h2>
 <p>定义一个模块，返回该模块对象。</p>
 <p class="fn"><strong>@fn <a id="jdModule">jdModule</a></strong> (name)</p>
 <p>获取模块对象。</p>
 <p class="fn"><strong>@fn <a id="jdModule">jdModule</a></strong> ()</p>
-<p>返回模块映射表。</p><hr>
+<p>返回模块映射表。</p></div>
+<div class="block">
 <h2 id="getFormData">@fn getFormData(jo)</h2>
 <p>取DOM对象中带name属性的子对象的内容, 放入一个JS对象中, 以便手工调用callSvr.</p>
 <p>注意: </p>
@@ -760,7 +806,8 @@ var html = applyTpl(tpl, data);
     课程文档
     &lt;input name="pdf" type="file" accept="application/pdf"&gt;
 &lt;/form&gt;</code></pre>
-<p class="see"><strong>@see <a href="#setFormData">setFormData</a></strong> </p><hr>
+<p class="see"><strong>@see <a href="#setFormData">setFormData</a></strong> </p></div>
+<div class="block">
 <h2 id="formItems">@fn formItems(jo, cb)</h2>
 <p>遍历jo下带name属性的有效控件，回调cb函数。</p>
 <p>注意:</p>
@@ -769,7 +816,8 @@ var html = applyTpl(tpl, data);
 <li>忽略未选中的checkbox/radiobutton</li>
 </ul>
 <p class="param"><strong>@param cb</strong> (name, val) this=ji=当前jquery对象</p>
-<p>当cb返回false时可中断遍历。</p><hr>
+<p>当cb返回false时可中断遍历。</p></div>
+<div class="block">
 <h2 id="setFormData">@fn setFormData(jo, data?, opt?)</h2>
 <p>用于为带name属性的DOM对象设置内容为data[name].<br />
 要清空所有内容, 可以用 setFormData(jo), 相当于增强版的 form.reset().</p>
@@ -806,7 +854,8 @@ var data = setFormData(jo, data, {setOrigin: true});
 $("[name=status]").html("已完成");
 var changedData = getFormData(jo); // 返回 { status: "已完成" }
 $.extend(jo.data("origin_"), changedData); // 合并变化的部分到数据源.</code></pre>
-<p class="see"><strong>@see <a href="#getFormData">getFormData</a></strong> </p><hr>
+<p class="see"><strong>@see <a href="#getFormData">getFormData</a></strong> </p></div>
+<div class="block">
 <h2 id="loadScript">@fn loadScript(url, fnOK?, ajaxOpt?)</h2>
 <p class="param"><strong>@param fnOK</strong>  加载成功后的回调函数</p>
 <p class="param"><strong>@param ajaxOpt</strong>  传递给$.ajax的额外选项。</p>
@@ -827,13 +876,16 @@ loadScript("http://otherserver/path/1.js"); // 跨域加载</code></pre>
 </li>
 </ul>
 <p>如果要动态加载script，且使用后删除标签（里面定义的函数会仍然保留），建议直接使用<code>$.getScript</code>，它等同于：</p>
-<pre><code>loadScript("1.js", {cache: false});</code></pre><hr>
+<pre><code>loadScript("1.js", {cache: false});</code></pre></div>
+<div class="block">
 <h2 id="setDateBox">@fn setDateBox(jo, defDateFn?)</h2>
 <p>设置日期框, 如果输入了非法日期, 自动以指定日期(如未指定, 用当前日期)填充.</p>
-<pre><code>setDateBox($("#txtComeDt"), function () { return genDefVal()[0]; });</code></pre><hr>
+<pre><code>setDateBox($("#txtComeDt"), function () { return genDefVal()[0]; });</code></pre></div>
+<div class="block">
 <h2 id="setTimeBox">@fn setTimeBox(jo, defTimeFn?)</h2>
 <p>设置时间框, 如果输入了非法时间, 自动以指定时间(如未指定, 用当前时间)填充.</p>
-<pre><code>setTimeBox($("#txtComeTime"), function () { return genDefVal()[1]; });</code></pre><hr>
+<pre><code>setTimeBox($("#txtComeTime"), function () { return genDefVal()[1]; });</code></pre></div>
+<div class="block">
 <h2 id="waitFor">@fn waitFor(deferredObj)</h2>
 <p>用于简化异步编程. 可将不易读的回调方式改写为易读的顺序执行方式.</p>
 <pre><code>var dfd = $.getScript("http://...");
@@ -850,11 +902,13 @@ function onSubmit()
     if (waitFor(dfd)) return;
     foo();
     bar();
-}</code></pre><hr>
+}</code></pre></div>
+<div class="block">
 <h2 id="jQuery.fn.jdata">@fn jQuery.fn.jdata(val?)</h2>
 <p>和使用$.data()差不多，更好用一些. 例：</p>
 <pre><code>$(o).jdata().hello = 100;
-$(o).jdata({hello:100, world:200});</code></pre><hr>
+$(o).jdata({hello:100, world:200});</code></pre></div>
+<div class="block">
 <h2 id="evalAttr">@fn evalAttr(jo, name)</h2>
 <p>返回一个属性做eval后的js值。</p>
 <p>示例：读取一个对象值：</p>
@@ -870,19 +924,26 @@ $(o).jdata({hello:100, world:200});</code></pre><hr>
 <p>读取一个函数名（或变量）:</p>
 <pre><code>var fn = evalAttr(jo, "mui-initfn");
 
-&lt;div mui-initfn="initMyPage"&gt;&lt;div&gt;</code></pre><hr>
+&lt;div mui-initfn="initMyPage"&gt;&lt;div&gt;</code></pre></div>
+<div class="block">
 <h2 id="app_abort">@fn app_abort()</h2>
-<p>中止之后的调用, 直接返回.</p><hr>
+<p>中止之后的调用, 直接返回.</p></div>
+<div class="block">
 <h2 id="DirectReturn">@class DirectReturn</h2>
 <p>直接返回. 用法:</p>
 <pre><code>throw new DirectReturn();</code></pre>
-<p>可直接调用app_abort();</p><hr>
+<p>可直接调用app_abort();</p></div>
+<div class="block">
 <h2 id="MUI.setOnError">@fn MUI.setOnError()</h2>
 <p>一般框架自动设置onerror函数；如果onerror被其它库改写，应再次调用该函数。<br />
-allow throw(&quot;abort&quot;) as abort behavior.</p><hr>
-<h2 id="MUI.m_enhanceFn">@var MUI.m_enhanceFn</h2><hr>
-<h2 id="MUI.enhanceWithin">@fn MUI.enhanceWithin(jparent)</h2><hr>
-<h2 id="MUI.getOptions">@fn MUI.getOptions(jo)</h2><hr>
+allow throw(&quot;abort&quot;) as abort behavior.</p></div>
+<div class="block">
+<h2 id="MUI.m_enhanceFn">@var MUI.m_enhanceFn</h2></div>
+<div class="block">
+<h2 id="MUI.enhanceWithin">@fn MUI.enhanceWithin(jparent)</h2></div>
+<div class="block">
+<h2 id="MUI.getOptions">@fn MUI.getOptions(jo)</h2></div>
+<div class="block">
 <h2 id="WUI.getQueryCond">@fn WUI.getQueryCond(kvList)</h2>
 <p class="param"><strong>@param kvList</strong>  {key=>value}, 键值对，值中支持操作符及通配符。也支持格式 [ [key, value] ], 这时允许key有重复。</p>
 <p>根据kvList生成BPQ协议定义的{obj}.query的cond参数。</p>
@@ -907,14 +968,16 @@ WUI.getQueryCond(kvList); // 结果同上。</code></pre>
 <li>{key: &quot;&gt;value and &lt;=value&quot;}  - 表示&quot;key&gt;'value' and key&lt;='value'&quot;</li>
 <li>{key: &quot;null or 0 or 1&quot;}  - 表示&quot;key is null or key=0 or key=1&quot;</li>
 </ul>
-<p>在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。</p><hr>
+<p>在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。</p></div>
+<div class="block">
 <h2 id="WUI.getQueryParam">@fn WUI.getQueryParam(kvList)</h2>
 <p>根据键值对生成BQP协议中{obj}.query接口需要的cond参数.</p>
 <p>示例：</p>
 <pre><code>WUI.getQueryParam({phone: '13712345678', id: '&gt;100'})
 返回
 {cond: "phone='13712345678' AND id&gt;100"}</code></pre>
-<p class="see"><strong>@see <a href="#WUI.getQueryCond">WUI.getQueryCond</a></strong> </p><hr>
+<p class="see"><strong>@see <a href="#WUI.getQueryCond">WUI.getQueryCond</a></strong> </p></div>
+<div class="block">
 <h2 id="MUI.lastError">@var MUI.lastError = ctx</h2>
 <p>出错时，取出错调用的上下文信息。</p>
 <p>ctx: {ac, tm, tv, ret}</p>
@@ -923,11 +986,14 @@ WUI.getQueryCond(kvList); // 结果同上。</code></pre>
 <li>tm: start time 开始调用时间</li>
 <li>tv: time interval 从调用到返回的耗时</li>
 <li>ret: return value 调用返回的原始数据</li>
-</ul><hr>
+</ul></div>
+<div class="block">
 <h2 id="MUI.disableBatch">@var MUI.disableBatch ?= false</h2>
-<p>设置为true禁用batchCall, 仅用于内部测试。</p><hr>
+<p>设置为true禁用batchCall, 仅用于内部测试。</p></div>
+<div class="block">
 <h2 id="MUI.m_curBatch">@var MUI.m_curBatch</h2>
-<p>当前batchCall对象，用于内部调试。</p><hr>
+<p>当前batchCall对象，用于内部调试。</p></div>
+<div class="block">
 <h2 id="MUI.mockData">@var MUI.mockData  模拟调用后端接口。</h2>
 <p>在后端接口尚无法调用时，可以配置MUI.mockData做为模拟接口返回数据。<br />
 调用callSvr时，会直接使用该数据，不会发起ajax请求。</p>
@@ -973,22 +1039,27 @@ callSvr(['token/get-token', 'default'], ...);
 或
 callSvr('token/get-token', ...);</code></pre>
 <p>要模拟该接口，可设置</p>
-<pre><code>MUI.mockData["token/get-token"] = ...;</code></pre><hr>
+<pre><code>MUI.mockData["token/get-token"] = ...;</code></pre></div>
+<div class="block">
 <h2 id="MUI.enterWaiting">@fn MUI.enterWaiting(ctx?)</h2>
 <p class="param"><strong>@param ctx</strong>  {ac, tm, tv?, tv2?, noLoadingImg?}</p>
-<p class="alias"><strong>@alias <a id="enterWaiting">enterWaiting</a></strong> ()</p><hr>
+<p class="alias"><strong>@alias <a id="enterWaiting">enterWaiting</a></strong> ()</p></div>
+<div class="block">
 <h2 id="MUI.leaveWaiting">@fn MUI.leaveWaiting(ctx?)</h2>
-<p class="alias"><strong>@alias <a id="leaveWaiting">leaveWaiting</a></strong> </p><hr>
+<p class="alias"><strong>@alias <a id="leaveWaiting">leaveWaiting</a></strong> </p></div>
+<div class="block">
 <h2 id="MUI.defDataProc">@fn MUI.defDataProc(rv)</h2>
 <p class="param"><strong>@param rv</strong>  BQP协议原始数据，如 "[0, {id: 1}]"，一般是字符串，也可以是JSON对象。</p>
 <p class="return"><strong>@return data</strong>  按接口定义返回的数据对象，如 {id: 1}. 如果返回==null，调用函数应直接返回，不回调应用层。</p>
-<p>注意：服务端不应返回null, 否则客户回调无法执行; 习惯上返回false表示让回调处理错误。</p><hr>
+<p>注意：服务端不应返回null, 否则客户回调无法执行; 习惯上返回false表示让回调处理错误。</p></div>
+<div class="block">
 <h2 id="MUI.getBaseUrl">@fn MUI.getBaseUrl()</h2>
 <p>取服务端接口URL对应的目录。可用于拼接其它服务端资源。<br />
 相当于dirname(MUI.options.serverUrl);</p>
 <p>例如：</p>
 <p>serverUrl为&quot;../jdcloud/api.php&quot; 或 &quot;../jdcloud/&quot;，则MUI.baseUrl返回 &quot;../jdcloud/&quot;<br />
-serverUrl为&quot;<a href="http://myserver/myapp/api.php">http://myserver/myapp/api.php</a>&quot; 或 &quot;<a href="http://myserver/myapp/"，则MUI.baseUrl返回">http://myserver/myapp/"，则MUI.baseUrl返回</a> &quot;<a href="http://myserver/myapp/">http://myserver/myapp/</a>&quot;</p><hr>
+serverUrl为&quot;<a href="http://myserver/myapp/api.php">http://myserver/myapp/api.php</a>&quot; 或 &quot;<a href="http://myserver/myapp/"，则MUI.baseUrl返回">http://myserver/myapp/"，则MUI.baseUrl返回</a> &quot;<a href="http://myserver/myapp/">http://myserver/myapp/</a>&quot;</p></div>
+<div class="block">
 <h2 id="MUI.makeUrl">@fn MUI.makeUrl(action, params?)</h2>
 <p>生成对后端调用的url. </p>
 <pre><code>var params = {id: 100};
@@ -1001,7 +1072,8 @@ var url = MUI.makeUrl("Ordr.set", params);</code></pre>
 <pre><code>WUI.makeUrl(['Ordr', 'query']) 等价于 WUI.makeUrl('Ordr.query');</code></pre>
 <p>在MUI环境下表示callSvr扩展调用:</p>
 <pre><code>MUI.makeUrl(['login', 'zhanda']) 等价于 MUI.makeUrl('zhanda:login');</code></pre>
-<p class="see"><strong>@see <a href="#MUI.callSvrExt">MUI.callSvrExt</a></strong> </p><hr>
+<p class="see"><strong>@see <a href="#MUI.callSvrExt">MUI.callSvrExt</a></strong> </p></div>
+<div class="block">
 <h2 id="MUI.callSvr">@fn MUI.callSvr(ac, [params?], fn?, postParams?, userOptions?) -> deferredObject</h2><div class="toc"><p style="margin-left:0em"><a href="#MUI.callSvr-1 调用监控">1 调用监控</a></p>
 <p style="margin-left:0em"><a href="#MUI.callSvr-2 文件上传支持(FormData)">2 文件上传支持(FormData)</a></p>
 <p style="margin-left:0em"><a href="#MUI.callSvr-3 callSvr扩展">3 callSvr扩展</a></p>
@@ -1301,12 +1373,14 @@ callSvr("User.get", function (data) {
         });
         return "./api.php/" + ac;
     }
-}</code></pre><hr>
+}</code></pre></div>
+<div class="block">
 <h2 id="MUI.callSvrSync">@fn MUI.callSvrSync(ac, [params?], fn?, postParams?, userOptions?)</h2>
 <p class="alias"><strong>@alias <a id="callSvrSync">callSvrSync</a></strong> </p>
 <p class="return"><strong>@return data</strong>  原型规定的返回数据</p>
 <p>同步模式调用callSvr.</p>
-<p class="see"><strong>@see <a href="#callSvr">callSvr</a></strong> </p><hr>
+<p class="see"><strong>@see <a href="#callSvr">callSvr</a></strong> </p></div>
+<div class="block">
 <h2 id="MUI.setupCallSvrViaForm">@fn MUI.setupCallSvrViaForm($form, $iframe, url, fn, callOpt)</h2>
 <p>该方法已不建议使用。上传文件请用FormData。</p>
 <p class="see"><strong>@see <a href="#example-upload">example-upload</a> <a href="#callSvr">callSvr</a></strong> </p>
@@ -1326,7 +1400,8 @@ MUI.setupCallSvrViaForm($frm, $frm.find("iframe"), url, onUploadComplete);
 function onUploadComplete(data) 
 {
     alert("上传成功");
-}</code></pre><hr>
+}</code></pre></div>
+<div class="block">
 <h2 id="MUI.batchCall">@class MUI.batchCall(opt?={useTrans?=0})</h2>
 <p>批量调用。将若干个调用打包成一个特殊的batch调用发给服务端。<br />
 注意：</p>
@@ -1364,7 +1439,8 @@ batch.commit();</code></pre>
 <p>如果值计算失败，则当作&quot;null&quot;填充。</p>
 <p class="see"><strong>@see <a href="#MUI.useBatchCall">MUI.useBatchCall</a></strong> </p>
 <p class="see"><strong>@see <a href="#MUI.disableBatch">MUI.disableBatch</a></strong> </p>
-<p class="see"><strong>@see <a href="#MUI.m_curBatch">MUI.m_curBatch</a></strong> </p><hr>
+<p class="see"><strong>@see <a href="#MUI.m_curBatch">MUI.m_curBatch</a></strong> </p></div>
+<div class="block">
 <h2 id="MUI.useBatchCall">@fn MUI.useBatchCall(opt?={useTrans?=0}, tv?=0)</h2>
 <p>之后的callSvr调用都加入批量操作。例：</p>
 <pre><code>MUI.useBatchCall();
@@ -1374,7 +1450,8 @@ callSvr("User.get", {res: "id,phone"}, api_UserGet);</code></pre>
 <pre><code>MUI.useBatchCall(null, 10);</code></pre>
 <p>如果MUI.disableBatch=true, 该函数不起作用。</p>
 <p class="see"><strong>@see <a href="#MUI.batchCall">MUI.batchCall</a></strong> </p>
-<p class="see"><strong>@see <a href="#MUI.disableBatch">MUI.disableBatch</a></strong> </p><hr>
+<p class="see"><strong>@see <a href="#MUI.disableBatch">MUI.disableBatch</a></strong> </p></div>
+<div class="block">
 <h2 id="MUI.activePage">@var MUI.activePage</h2>
 <p>当前页面。</p>
 <p>注意：</p>
@@ -1385,14 +1462,18 @@ callSvr("User.get", {res: "id,phone"}, api_UserGet);</code></pre>
 <p>要查看从哪个页面来，可以用 MUI.prevPageId。<br />
 要查看最近一次调用MUI.showPage转向的页面，可以用 MUI.getToPageId().</p>
 <p class="see"><strong>@see <a href="#MUI.prevPageId">MUI.prevPageId</a></strong> </p>
-<p class="see"><strong>@see <a href="#MUI.getToPageId">MUI.getToPageId</a></strong> ()</p><hr>
+<p class="see"><strong>@see <a href="#MUI.getToPageId">MUI.getToPageId</a></strong> ()</p></div>
+<div class="block">
 <h2 id="MUI.prevPageId">@var MUI.prevPageId</h2>
-<p>上一个页面的id, 首次进入时为空.</p><hr>
+<p>上一个页面的id, 首次进入时为空.</p></div>
+<div class="block">
 <h2 id="MUI.container">@var MUI.container</h2>
 <p>应用容器，一般就是<code>$(document.body)</code></p>
-<p class="see"><strong>@see <a href="#.mui-container">.mui-container</a></strong> </p><hr>
+<p class="see"><strong>@see <a href="#.mui-container">.mui-container</a></strong> </p></div>
+<div class="block">
 <h2 id="MUI.showFirstPage">@var MUI.showFirstPage?=true</h2>
-<p>如果为false, 则必须手工执行 MUI.showPage 来显示第一个页面。</p><hr>
+<p>如果为false, 则必须手工执行 MUI.showPage 来显示第一个页面。</p></div>
+<div class="block">
 <h2 id="MUI.setUrl">@fn MUI.setUrl(url)</h2>
 <p>设置当前地址栏显示的URL. 如果url中不带hash部分，会自动加上当前的hash.</p>
 <pre><code>MUI.setUrl("page/home.html"); // 设置url
@@ -1449,17 +1530,20 @@ MUI.deleteUrlParam("a"); // 从url中删除参数a部分，如果g_args中有参
 <p>注意setUrl中以&quot;?&quot;开头，表示添加到URL参数中，保持URL主体部分不变。</p>
 <p>如果<code>MUI.options.showHash=false</code>，则<code>MUI.setUrl("?orderId=100")</code>会将URL设置为<code>http://server/app/page/order.html?orderId=100</code>.<br />
 我们甚至可以设置RESTful风格的URL: <code>MUI.setUrl("order/100")</code> 会将URL设置为 <code>http://server/app/order/100</code>.</p>
-<p>在上面两个例子中，为了确保刷新URL时能正常显示，必须在Web服务器上配置URL重写规则，让它们都重定向到 <code>http://server/app/?orderId=100#order</code>.</p><hr>
+<p>在上面两个例子中，为了确保刷新URL时能正常显示，必须在Web服务器上配置URL重写规则，让它们都重定向到 <code>http://server/app/?orderId=100#order</code>.</p></div>
+<div class="block">
 <h2 id="MUI.deleteUrlParam">@fn MUI.deleteUrlParam(param)</h2>
 <p>自动修改g_args全局变量和当前url（会调用MUI.setUrl方法）。</p>
 <pre><code>MUI.deleteUrlParam("wxpay");
 // 原先url为 http://myserver/myapp/index.html?wxpay=ORDR-11&amp;storeId=1
-// 调用后为 http://myserver/myapp/index.html?storeId=1</code></pre><hr>
+// 调用后为 http://myserver/myapp/index.html?storeId=1</code></pre></div>
+<div class="block">
 <h2 id="MUI.setUrlParam">@fn MUI.setUrlParam(param, val)</h2>
 <p>修改当前url，添加指定参数。<br />
 e.g. </p>
 <pre><code>MUI.setUrlParam("wxauth", 1);</code></pre>
-<p class="see"><strong>@see <a href="#MUI.deleteUrlParam">MUI.deleteUrlParam</a> <a href="#MUI.appendParam">MUI.appendParam</a></strong> </p><hr>
+<p class="see"><strong>@see <a href="#MUI.deleteUrlParam">MUI.deleteUrlParam</a> <a href="#MUI.appendParam">MUI.appendParam</a></strong> </p></div>
+<div class="block">
 <h2 id="MUI.showPage">@fn MUI.showPage(pageRef, opt)</h2>
 <p class="param"><strong>@param pageId</strong>  String. 页面名字. 仅由字母、数字、"_"等字符组成。</p>
 <p class="param"><strong>@param pageRef</strong>  String. 页面引用（即location.hash），以"#"开头，后面可以是一个pageId（如"#home"）或一个相对页的地址（如"#info.html", "#emp/info.html"）。</p>
@@ -1508,18 +1592,23 @@ function initPageOrder()
     jpage.on("pageshow", function (ev, opt) {
         // opt={orderId: 100}
     });
-}</code></pre><hr>
+}</code></pre></div>
+<div class="block">
 <h2 id="MUI.setDocTitle">@fn MUI.setDocTitle(title)</h2>
-<p>设置文档标题。默认在切换页面时，会将文档标题设置为逻辑页的标题(<code>hd</code>块中的<code>h1</code>或<code>h2</code>标签)。</p><hr>
+<p>设置文档标题。默认在切换页面时，会将文档标题设置为逻辑页的标题(<code>hd</code>块中的<code>h1</code>或<code>h2</code>标签)。</p></div>
+<div class="block">
 <h2 id="MUI.unloadPage">@fn MUI.unloadPage(pageRef?)</h2>
 <p class="param"><strong>@param pageRef</strong>  如未指定，表示当前页。</p>
-<p>删除一个页面。</p><hr>
+<p>删除一个页面。</p></div>
+<div class="block">
 <h2 id="MUI.reloadPage">@fn MUI.reloadPage(pageRef?, opt?)</h2>
 <p class="param"><strong>@param pageRef</strong>  如未指定，表示当前页。</p>
 <p class="param"><strong>@param opt</strong>  传递给MUI.showPage的opt参数。参考MUI.showPage.</p>
-<p>重新加载指定页面。不指定pageRef时，重加载当前页。</p><hr>
+<p>重新加载指定页面。不指定pageRef时，重加载当前页。</p></div>
+<div class="block">
 <h2 id="MUI.m_pageStack">@var MUI.m_pageStack</h2>
-<p>页面栈，MUI.popPageStack对它操作</p><hr>
+<p>页面栈，MUI.popPageStack对它操作</p></div>
+<div class="block">
 <h2 id="MUI.popPageStack">@fn MUI.popPageStack(n?=1) </h2>
 <p>n=0: 退到首层, &gt;0: 指定pop几层</p>
 <p>常用场景：</p>
@@ -1533,12 +1622,16 @@ MUI.showPage("#xxx");</code></pre>
 <pre><code>MUI.showPage("#xxx");
 MUI.popPageStack(0); // 标记除第一页外的所有页为poped, 所以之后回退时直接回到第一页。</code></pre>
 <p>如果只是想立即跳回两页，不用调用popPageStack，而应调用：</p>
-<pre><code>history.go(-2);</code></pre><hr>
+<pre><code>history.go(-2);</code></pre></div>
+<div class="block">
 <h2 id="MUI.getToPageId">@fn MUI.getToPageId()</h2>
 <p>返回最近一次调用MUI.showPage时转向页面的Id.</p>
-<p class="see"><strong>@see <a href="#MUI.prevPageId">MUI.prevPageId</a></strong> </p><hr>
-<h2 id="MUI.showDialog">@fn MUI.showDialog(jdlg)</h2><hr>
-<h2 id="MUI.closeDialog">@fn MUI.closeDialog(jdlg, remove=false)</h2><hr>
+<p class="see"><strong>@see <a href="#MUI.prevPageId">MUI.prevPageId</a></strong> </p></div>
+<div class="block">
+<h2 id="MUI.showDialog">@fn MUI.showDialog(jdlg)</h2></div>
+<div class="block">
+<h2 id="MUI.closeDialog">@fn MUI.closeDialog(jdlg, remove=false)</h2></div>
+<div class="block">
 <h2 id="MUI.setupDialog">@fn MUI.setupDialog(jdlg, initfn)</h2>
 <p class="return"><strong>@return 可以不返回,</strong>  或返回一个回调函数beforeShow, 在每次Dialog显示前调用.</p>
 <p>使用该函数可设置dialog的初始化回调函数和beforeShow回调.</p>
@@ -1557,7 +1650,8 @@ MUI.popPageStack(0); // 标记除第一页外的所有页为poped, 所以之后�
         });
     }
     return beforeShow;
-});</code></pre><hr>
+});</code></pre></div>
+<div class="block">
 <h2 id="MUI.app_alert">@fn MUI.app_alert(msg, [type?=i], [fn?], opt?={timeoutInterval?, defValue?, onCancel()?})</h2>
 <p class="alias"><strong>@alias <a id="app_alert">app_alert</a></strong> </p>
 <p class="param"><strong>@param type</strong>  对话框类型: "i": info, 信息提示框; "e": error, 错误框; "w": warning, 警告框; "q": question, 确认框(会有"确定"和"取消"两个按钮); "p": prompt, 输入框</p>
@@ -1599,11 +1693,15 @@ app_alert("输入要查询的名字:", "p", function (text) {
         &lt;a href="javascript:;" id="btnCancel" class="mui-btn"&gt;取消&lt;/a&gt;
     &lt;/div&gt;
 &lt;/div&gt;</code></pre>
-<p>app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时将clone一份用于显示并在关闭后删除。</p><hr>
-<h2 id="MUI.showLoading">@fn MUI.showLoading()</h2><hr>
-<h2 id="MUI.hideLoading">@fn MUI.hideLoading()</h2><hr>
+<p>app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时将clone一份用于显示并在关闭后删除。</p></div>
+<div class="block">
+<h2 id="MUI.showLoading">@fn MUI.showLoading()</h2></div>
+<div class="block">
+<h2 id="MUI.hideLoading">@fn MUI.hideLoading()</h2></div>
+<div class="block">
 <h2 id="isBusy">@var isBusy</h2>
-<p>标识应用当前是否正在与服务端交互。一般用于自动化测试。</p><hr>
+<p>标识应用当前是否正在与服务端交互。一般用于自动化测试。</p></div>
+<div class="block">
 <h2 id="g_args">@var g_args</h2>
 <p>应用参数。</p>
 <p>URL参数会自动加入该对象，例如URL为 <code>http://{server}/{app}/index.html?orderId=10&amp;dscr=上门洗车</code>，则该对象有以下值：</p>
@@ -1611,7 +1709,8 @@ app_alert("输入要查询的名字:", "p", function (text) {
 g_args.dscr="上门洗车"; // 对字符串会自动进行URL解码。</code></pre>
 <p>此外，框架会自动加一些参数：</p>
 <p class="var"><strong>@var <a id="g_args._app">g_args._app</a></strong> ?="user" 应用名称，由 WUI.options.appName 指定。</p>
-<p class="see"><strong>@see <a href="#parseQuery">parseQuery</a></strong>  URL参数通过该函数获取。</p><hr>
+<p class="see"><strong>@see <a href="#parseQuery">parseQuery</a></strong>  URL参数通过该函数获取。</p></div>
+<div class="block">
 <h2 id="g_cordova">@var g_cordova</h2>
 <p>值是一个整数，默认为0.<br />
 如果非0，表示WEB应用在苹果或安卓APP中运行，且数值代表原生应用容器的大版本号。</p>
@@ -1622,7 +1721,8 @@ g_args.dscr="上门洗车"; // 对字符串会自动进行URL解码。</code></p
         app_alert("您的版本太旧，XX功能无法使用，请升级到最新版本");
     }
 }</code></pre>
-<p>TODO: MUI.cordova</p><hr>
+<p>TODO: MUI.cordova</p></div>
+<div class="block">
 <h2 id="g_data">@var g_data = {userInfo?, serverRev?, initClient?}</h2>
 <p>应用全局共享数据。</p>
 <p>在登录时，会自动设置userInfo属性为个人信息。所以可以通过 g_data.userInfo==null 来判断是否已登录。</p>
@@ -1632,7 +1732,8 @@ g_args.dscr="上门洗车"; // 对字符串会自动进行URL解码。</code></p
 <p class="key"><strong>@key <a id="g_data.initClient">g_data.initClient</a></strong> </p>
 <p>应用初始化时，调用initClient接口得到的返回值，通常为{plugins, ...}</p>
 <p class="key"><strong>@key <a id="g_data.testMode,g_data.mockMode">g_data.testMode,g_data.mockMode</a></strong>  测试模式和模拟模式</p>
-<p>TODO: MUI.data</p><hr>
+<p>TODO: MUI.data</p></div>
+<div class="block">
 <h2 id="MUI.options">@var MUI.options</h2>
 <p>可用的选项如下。</p>
 <p class="key"><strong>@key <a id="MUI.options.appName">MUI.options.appName</a></strong> ?=user  应用名称</p>
@@ -1674,7 +1775,8 @@ g_args.dscr="上门洗车"; // 对字符串会自动进行URL解码。</code></p
 <p>只读，如果值为false, 则地址栏显示为: &quot;index.html/page/me.html&quot;.</p>
 <p>注意：该选项不可通过js设置为false，而应在主页面中设置：</p>
 <pre><code>&lt;base href="./" mui-showHash="no"&gt;</code></pre>
-<p>在showHash=false时，必须设置base标签, 否则逻辑页将无法加载。</p><hr>
+<p>在showHash=false时，必须设置base标签, 否则逻辑页将无法加载。</p></div>
+<div class="block">
 <h2 id="MUI.setFormSubmit">@fn MUI.setFormSubmit(jf, fn?, opt?={validate?, onNoAction?})</h2>
 <p class="param"><strong>@param fn</strong>  Function(data); 与callSvr时的回调相同，data为服务器返回的数据。</p>
 <p>函数中可以使用this[&quot;userPost&quot;] 来获取post参数。</p>
@@ -1704,7 +1806,8 @@ MUI.setFormSubmit(jf, api_fn1, {
     }
 });</code></pre>
 <p>如果之前调用过setFormData(jo, data, {setOrigin:true})来展示数据, 则提交时，只会提交被修改过的字段，否则提交所有字段。</p>
-<p class="param"><strong>@param opt.onNoAction:</strong>  Function(jf). 当form中数据没有变化时, 不做提交. 这时可调用该回调函数.</p><hr>
+<p class="param"><strong>@param opt.onNoAction:</strong>  Function(jf). 当form中数据没有变化时, 不做提交. 这时可调用该回调函数.</p></div>
+<div class="block">
 <h2 id="MUI.showLogin">@fn MUI.showLogin(page?)</h2>
 <p class="param"><strong>@param page=pageRef/jpage</strong>  如果指定, 则登录成功后转向该页面; 否则转向登录前所在的页面.</p>
 <p>显示登录页. 注意: 登录页地址通过MUI.options.loginPage指定, 缺省为&quot;#login&quot;.</p>
@@ -1716,22 +1819,26 @@ MUI.setFormSubmit(jf, api_fn1, {
 <li>登录成功后，会自动将login页面清除出页面栈，所以登录成功后，点返回键，不会回到登录页。</li>
 <li>如果有多个登录页（如动态验证码登录，用户名密码登录等），其它页的id起名时，应以app.loginPage指定内容作为前缀，<br />
 如loginPage=&quot;#login&quot;, 则登录页面名称可以为：#login(缺省登录页), #login1, #loginByPwd等；否则无法被识别为登录页，导致登录成功后按返回键仍会回到登录页</li>
-</ul><hr>
+</ul></div>
+<div class="block">
 <h2 id="MUI.showHome">@fn MUI.showHome()</h2>
 <p>显示主页。主页是通过 MUI.options.homePage 来指定的，默认为&quot;#home&quot;.</p>
 <p>要取主页名可以用：</p>
 <pre><code>var jpage = $(MUI.options.homePage);</code></pre>
-<p class="see"><strong>@see <a href="#MUI.options.homePage">MUI.options.homePage</a></strong> </p><hr>
+<p class="see"><strong>@see <a href="#MUI.options.homePage">MUI.options.homePage</a></strong> </p></div>
+<div class="block">
 <h2 id="MUI.logout">@fn MUI.logout(dontReload?)</h2>
 <p class="param"><strong>@param dontReload</strong>  如果非0, 则注销后不刷新页面.</p>
-<p>注销当前登录, 成功后刷新页面(除非指定dontReload=1)</p><hr>
+<p>注销当前登录, 成功后刷新页面(除非指定dontReload=1)</p></div>
+<div class="block">
 <h2 id="MUI.validateEntry">@fn MUI.validateEntry(@allowedEntries) 入口页检查</h2>
 <p>设置入口页，allowedEntries是一个数组, 如果初始页面不在该数组中, 则URL中输入该逻辑页时，会自动转向主页。</p>
 <p>示例：</p>
 <pre><code>MUI.validateEntry([
     "#home",
     "#me",
-]);</code></pre><hr>
+]);</code></pre></div>
+<div class="block">
 <h2 id="MUI.tryAutoLogin">@fn MUI.tryAutoLogin(onHandleLogin, reuseCmd?, allowNoLogin?=false)</h2>
 <p>尝试自动登录，如果失败则转到登录页（除非allowNoLogin=true）。</p>
 <p class="param"><strong>@param onHandleLogin</strong>  Function(data). 调用后台login()成功后的回调函数(里面使用this为ajax options); 可以直接使用MUI.handleLogin</p>
@@ -1751,14 +1858,20 @@ function handleLogin(data)
 {
     MUI.handleLogin(data);
     // g_data.userInfo已赋值
-}</code></pre><hr>
+}</code></pre></div>
+<div class="block">
 <h2 id="MUI.handleLogin">@fn MUI.handleLogin(data)</h2>
 <p class="param"><strong>@param data</strong>  调用API "login"成功后的返回数据.</p>
-<p>处理login相关的操作, 如设置g_data.userInfo, 保存自动登录的token等等.</p><hr>
-<h2 id="MUI.initClient">@fn MUI.initClient(param?)</h2><hr>
-<h2 id="Plugins">@class Plugins</h2><hr>
-<h2 id="Plugins.exists">@fn Plugins.exists(pluginName)</h2><hr>
-<h2 id="Plugins.list">@fn Plugins.list()</h2><hr>
+<p>处理login相关的操作, 如设置g_data.userInfo, 保存自动登录的token等等.</p></div>
+<div class="block">
+<h2 id="MUI.initClient">@fn MUI.initClient(param?)</h2></div>
+<div class="block">
+<h2 id="Plugins">@class Plugins</h2></div>
+<div class="block">
+<h2 id="Plugins.exists">@fn Plugins.exists(pluginName)</h2></div>
+<div class="block">
+<h2 id="Plugins.list">@fn Plugins.list()</h2></div>
+<div class="block">
 <h2 id="filterCordovaModule">@fn filterCordovaModule(module)</h2>
 <p>原生插件与WEB接口版本匹配。<br />
 在cordova_plugins.js中使用，用于根据APP版本与当前应用标识，过滤当前Web可用的插件。</p>
@@ -1779,25 +1892,29 @@ filterCordovaModule(module); // 过滤模块</code></pre>
 <p>配置后，尽管WEB已更新，但旧版本应用程序不会具有该接口。</p>
 <p>filter格式: [ [app1, minVer?=1, maxVer?=9999], ...], 仅当app匹配且版本在minVer/maxVer之间才使用<br />
 如果未指定filter, 表示总是使用<br />
-app标识由应用定义，常用如: &quot;user&quot;-客户端;&quot;store&quot;-商户端</p><hr>
+app标识由应用定义，常用如: &quot;user&quot;-客户端;&quot;store&quot;-商户端</p></div>
+<div class="block">
 <h2 id="MUI.formatField">@fn MUI.formatField(obj) -> obj</h2>
 <p>对obj中的以字符串表示的currency/date等类型进行转换。<br />
 判断类型的依据是属性名字，如以Tm结尾的属性（也允许带数字后缀）为日期属性，如&quot;tm&quot;, &quot;tm2&quot;, &quot;createTm&quot;都会被当作日期类型转换。</p>
 <p>注意：它将直接修改传入的obj，并最终返回该对象。</p>
 <pre><code>obj = {id: 1, amount: "15.0000", payAmount: "10.0000", createTm: "2016-01-11 11:00:00"}
 var order = MUI.formatField(obj); // obj会被修改，最终与order相同
-// order = {id: 1, amount: 15, payAmount: 10, createTm: (datetime类型)}</code></pre><hr>
+// order = {id: 1, amount: 15, payAmount: 10, createTm: (datetime类型)}</code></pre></div>
+<div class="block">
 <h2 id="hd_back">@fn hd_back(pageRef?)</h2>
 <p>返回操作，类似history.back()，但如果当前页是入口页时，即使没有前一页，也可转向pageRef页（未指定时为首页）。<br />
 一般用于顶部返回按钮：</p>
 <pre><code>&lt;div class="hd"&gt;
     &lt;a href="javascript:hd_back();" class="icon icon-back"&gt;&lt;/a&gt;
     &lt;h2&gt;个人信息&lt;/h2&gt;
-&lt;/div&gt;</code></pre><hr>
+&lt;/div&gt;</code></pre></div>
+<div class="block">
 <h2 id="MUI.syslog">@fn MUI.syslog(module, pri, content)</h2>
 <p>向后端发送日志。后台必须已添加syslog插件。<br />
 日志可在后台Syslog表中查看，客户端信息可查看ApiLog表。</p>
-<p>注意：如果操作失败，本函数不报错。</p><hr>
+<p>注意：如果操作失败，本函数不报错。</p></div>
+<div class="block">
 <h2 id="initPullList">@fn initPullList(container, opt)</h2>
 <p>为列表添加下拉刷新和上拉加载功能。</p>
 <p>例：页面元素如下：</p>
@@ -1864,7 +1981,8 @@ dy,threshold  用户移动偏移及临界值。dy&gt;threshold时，认为触发
 <pre><code>ac:: String. 当前动作，"D"或"U".
 uptoThreshold:: Boolean. 是否达到阈值</code></pre>
 <p class="param"><strong>@param opt.onPull</strong>  function(ev)</p>
-<p>如果返回false，则取消上拉加载或下拉刷新行为，采用系统默认行为。</p><hr>
+<p>如果返回false，则取消上拉加载或下拉刷新行为，采用系统默认行为。</p></div>
+<div class="block">
 <h2 id="initPageList">@fn initPageList(jpage, opt) -> PageListInterface</h2><div class="toc"><p style="margin-left:0em"><a href="#initPageList-1 例：一个navbar与若干list的组合">1 例：一个navbar与若干list的组合</a></p>
 <p style="margin-left:0em"><a href="#initPageList-2 例：若干button与若干list的组合">2 例：若干button与若干list的组合</a></p>
 <p style="margin-left:0em"><a href="#initPageList-3 例：只有一个list">3 例：只有一个list</a></p>
@@ -2209,10 +2327,12 @@ onGetData: function (data, pagesz, pagekey) {
     canPullDown: false,
 );</code></pre>
 <p class="param"><strong>@param opt.canPullDown</strong> ?=true  是否允许下拉刷新</p>
-<p>设置为false时，当列表到底部时，可以自动加载下一页，但没有下拉刷新行为，这时页面容器也不需要确定高度。</p><hr>
+<p>设置为false时，当列表到底部时，可以自动加载下一页，但没有下拉刷新行为，这时页面容器也不需要确定高度。</p></div>
+<div class="block">
 <h2 id="FormMode">@var FormMode</h2>
 <p>FormMode.forAdd/forSet/forFind.</p>
-<p>TODO: example</p><hr>
+<p>TODO: example</p></div>
+<div class="block">
 <h2 id="showByFormMode">@fn showByFormMode(jo, formMode)</h2>
 <p>根据当前formMode自动显示或隐藏jo下的DOM对象.</p>
 <p>示例: 对以下DOM对象</p>
@@ -2223,7 +2343,8 @@ onGetData: function (data, pagesz, pagekey) {
     &lt;div id="div5" class="forSet forAdd"&gt;&lt;/div&gt;
 &lt;/div&gt;</code></pre>
 <p>调用showByFormMode(jo, FormMode.forAdd)时, 显示 div2, div3, div5;<br />
-调用showByFormMode(jo, FormMode.forSet)时, 显示 div2, div4, div5;</p><hr>
+调用showByFormMode(jo, FormMode.forSet)时, 显示 div2, div4, div5;</p></div>
+<div class="block">
 <h2 id="initPageDetail">@fn initPageDetail(jpage, opt) -> PageDetailInterface={refresh(), del()}</h2>
 <p>详情页框架. 用于对象的添加/查看/更新多合一页面.<br />
 form.action为对象名.</p>
@@ -2318,6 +2439,8 @@ PagePerson.showForSet({id: 3}); // 以id=3查询人物并显示，可更新。</
     &lt;div name=familyName&gt;&lt;/div&gt;
     ...
 &lt;/form&gt;</code></pre>
-<p>如果formData中有多个属性，则自动以formData的内容作为数据源显示页面，不再发起查询。</p><hr>
+<p>如果formData中有多个属性，则自动以formData的内容作为数据源显示页面，不再发起查询。</p></div>
 <div style="text-align:center">Generated by jdcloud-gendoc</div>
+</body>
+
 </html>
