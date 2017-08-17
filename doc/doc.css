@@ -1,0 +1,56 @@
+html {
+	height: 100%;
+}
+body {
+	margin: 0;
+}
+#layout {
+	display: -webkit-box;
+	display: -webkit-flex;
+	display: flex;
+	height: 100%;
+    /* Prevents distributing space between rows */
+    -webkit-align-content: flex-start;
+        -ms-flex-line-pack: start;
+            align-content: flex-start;
+}
+#menu {
+	width: 25%;
+	max-width: 300px;
+	overflow: auto;
+	background-color: #111;
+	color: #aaa;
+	padding: 1em;
+}
+#main {
+	width: 100%;
+	overflow: auto;
+	padding: 1em;
+}
+@media (max-width: 48em) {
+#layout {
+	flex-wrap: wrap;
+}
+#menu {
+	width: 100%;
+	max-width: initial;
+}
+#main {
+	width: 100%;
+}
+}
+
+#menu h2 {
+color: #aaa;
+}
+#menu a {
+color: #aaa;
+text-decoration: none;
+}
+#menu ul {
+margin:10px 0;
+}
+#menu .toc {
+margin: 0.5em;
+min-width: 200px;
+}
