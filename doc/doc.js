@@ -32,6 +32,11 @@ function initLayout()
 
 	document.body.appendChild(menu);
 	document.body.appendChild(main);
+	if (location.hash) {
+		var h = location.hash;
+		location.hash = "";
+		location.hash = h; // 强制跳转下
+	}
 }
 
 function applyLayout()
