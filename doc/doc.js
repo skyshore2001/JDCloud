@@ -18,6 +18,9 @@ function initLayout()
 	main.id = "main";
 
 	document.body.id="layout";
+	var html = document.body.parentElement;
+	html.style.height ="100%";
+	html.style.overflow ="hidden"; //html
 
 	var arr = [];
 	each(document.body.children, function (i, e) {
