@@ -678,7 +678,7 @@ class AccessControl
 		foreach ($this->onAfterActions as $fn)
 		{
 			# NOTE: php does not allow call $this->onAfterActions();
-			$fn();
+			$fn($ret);
 		}
 	}
 
