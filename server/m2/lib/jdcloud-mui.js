@@ -236,18 +236,84 @@ URL也可以显示为文件风格，比如在设置：
 
 ### 导航栏
 
-@key .mui-navbar 导航栏
+@key .mui-navbar 导航栏，Tab页
 @key .mui-navbar.noactive
 
 默认行为是点击后添加active类（比如字体发生变化），如果不需要此行为，可再添加noactive类。
+示例：
+
+	<div class="mui-navbar">
+		<a mui-linkto="#lst1">待服务</a>
+		<a mui-linkto="#lst2">已完成</a>
+	</div>
 
 ### 对话框
 
 @key .mui-dialog 对话框
 
+对话框与页面(.mui-page)类似，可以包含hd, bd等部分。
+它一般包含在一个页面中，id以"dlg"开头。示例：
+
+	<div id="dlgAddPerson" class="mui-dialog">
+		<div class="hd">
+			<h2>添加人物</h2>
+		</div>
+
+		<div class="bd weui_cells weui_cells_access">
+			<div class="weui_cell">
+				<label class="weui_cell_hd weui_label" style="min-width:7em">为<span class="p-name"></span>添加:</label>
+				<select id="cboRelation" class="weui_cell_primary weui_select right" style="min-width:90px">
+					<option value="parent">父亲</option>
+					<option value="child">子女</option>
+				</select>
+				<div class="weui_cell_ft"></div>
+			</div>
+			<div class="weui_cell nowrap" style="display:block;">
+				<a id="btnOK" class="mui-btn primary">确定</a>
+				<a id="btnCancel" class="mui-btn">取消</a>
+			</div>
+		</div>
+
+	</div>
+
+要弹出这个对话框：
+
+	MUI.showDialog(jpage.find("#dlgAddPerson"));
+
+或者用a标签链接打开：
+
+	<a href="#dlgAddPerson">添加人物</a>
+
+@see MUI.showDialog 弹出对话框
+@see #muiAlert,MUI.app_alert 提示框(app_alert)是一个id为`muiAlert`的特别对话框。
+@see .mui-menu 弹出菜单，也是一类特别的对话框。
+
 ### 弹出菜单
 
+菜单是特殊的一类对话框。因而id以"dlg"开头，以便a标签通过href链接时，可直接弹出菜单（即打开对话框）。
+
 @key .mui-menu 菜单
+
+示例：添加右上角菜单（习惯上左上角为返回按钮，右上角为菜单按钮）
+
+	<div class="hd">
+		<a href="javascript:hd_back();" class="icon icon-back"></a>
+		<a href="#dlgMenu" class="icon icon-menu"></a>
+		<h2>谱系图</h2>
+	</div>
+
+	<!-- 左上角弹出菜单，用top类标识 -->
+	<ul id="dlgMenu" class="mui-menu top">
+		<a href="javascript:PagePerson.showForAdd();"><li><i class="icon icon-add"></i>添加人物</li></a>
+		<li id="mnuQueryPerson"><i class="icon icon-search"></i>查找人物</li>
+		<a href="#dlgMenuShare"><li><i class="icon icon-viewfav"></i>分享到</li></a>
+	</ul>
+
+	<!-- 弹出菜单 -->
+	<ul id="dlgMenuShare" class="mui-menu">
+		<li id="li1">微信好友</li>
+		<li id="li2">微信朋友圈</li>
+	</ul>
 
 ### 底部导航
 
@@ -4376,6 +4442,7 @@ function setupDialog(jdlg, initfn)
 /**
 @fn MUI.app_alert(msg, [type?=i], [fn?], opt?={timeoutInterval?, defValue?, onCancel()?})
 @alias app_alert
+@alias #muiAlert
 @param type 对话框类型: "i": info, 信息提示框; "e": error, 错误框; "w": warning, 警告框; "q": question, 确认框(会有"确定"和"取消"两个按钮); "p": prompt, 输入框
 @param fn Function(text?) 回调函数，当点击确定按钮时调用。当type="p" (prompt)时参数text为用户输入的内容。
 @param opt Object. 可选项。 timeoutInterval表示几秒后自动关闭对话框。defValue用于输入框(type=p)的缺省值.
