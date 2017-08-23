@@ -176,10 +176,15 @@ function genSql($meta)
 	return $sql;
 }
 
+function prompt($s)
+{
+	fprintf(STDERR, "%s", $s);
+}
+
 function logstr($s, $show=true)
 {
 	if ($show) {
-		echo $s;
+		prompt($s);
 	}
 	global $LOGF;
 	$fp = fopen($LOGF, "a");
@@ -291,7 +296,7 @@ class UpgHelper
 		global $LOGF;
 		logstr("=== [" . date('c') . "] done\n", false);
 		if (! $this->forRtest)
-			echo "=== Done! Find log in $LOGF\n";
+			prompt("=== Done! Find log in $LOGF\n");
 	}
 
 	# init meta and DB conn
@@ -301,7 +306,7 @@ class UpgHelper
 		if (!$meta || !is_file($meta)) {
 			throw new Exception("*** bad main meta file $meta");
 		}
-		echo "=== load metafile: $meta\n";
+		prompt("=== load metafile: $meta\n");
 
 		$baseDir = dirname($meta);
 		$files = [$meta];
@@ -349,7 +354,7 @@ class UpgHelper
 		$fnConfirm = null;
 		if (!$this->forRtest) {
 			$fnConfirm = function ($connstr) {
-				echo "=== connect to $connstr (enter to cont, ctrl-c to break) ";
+				prompt("=== connect to $connstr (enter to cont, ctrl-c to break) ");
 				fgets(STDIN);
 				logstr("=== [" . date('c') . "] connect to $connstr\n", false);
 				return true;
