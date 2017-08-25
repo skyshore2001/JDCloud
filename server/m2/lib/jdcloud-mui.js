@@ -194,6 +194,63 @@ style将被插入到head标签中，并自动添加属性`mui-origin={pageId}`.
 
 除此之外如果多次调用showPage（包括在pageshow事件中调用），一般最终显示的是最后一次调用的页面，过程中可能产生闪烁，且可能会丢失一些pageshow/pagehide事件，应尽量避免。
 
+#### 逻辑页声明依赖库
+
+@key mui-deferred
+
+（版本v4.2）
+如果逻辑页依赖某一个或多个库，这些库不想在主页面中用script默认加载，这时可以使用`mui-deferred`属性。
+逻辑页初始化函数mui-initfn将在该deferred对象操作成功后执行。
+
+示例：某逻辑页依赖百度地图的js库，该js库使用动态加载：
+
+	// 主逻辑中定义返回Deferred对象
+	window.dfdBaiduMap = MUI.loadScript("http://api.map.baidu.com/getscript?v=2.0&ak=YOUR-APP-KEY");
+
+	// map.html 逻辑页中声明依赖该对象
+	<div mui-initfn="initPageMap" mui-script="map.js" mui-deferred="dfdBaiduMap">
+		...
+	</div>
+
+	// map.js
+	function initPageMap()
+	{
+		var jpage = this;
+		// 这时可以安全依赖库的对象，如BMap对象
+	}
+
+如果不使用mui-deferred属性，则需要在initPageMap中小心的来写异步逻辑，比如：
+
+	// map.js
+	function initPageMap()
+	{
+		var jpage = this;
+		// 可以安全使用BMap对象
+		dfdBaiduMap.then(init);
+
+		function init() { ... }
+	}
+
+一般会将加载依赖库包装成一个函数，比如要使用百度echarts显示统计图的页面，可定义函数：
+
+	var dfdStatLib_;
+	function loadStatLib()
+	{
+		if (dfdStatLib_ == null) {
+			dfdStatLib_ = $.when(
+				MUI.loadScript("../web/lib/echarts.min.js"),
+				MUI.loadScript("../web/lib/jdcloud-wui-stat.js")
+			);
+		}
+		return dfdStatLib_;
+	}
+
+依赖echarts的页面，可以设置：
+
+	<div mui-deferred="loadStatLib()">
+		...
+	</div>
+
 ### 页面路由
 
 默认路由：
@@ -1629,6 +1686,11 @@ function setFormData(jo, data, opt)
 
 		loadScript("1.js", {async: false});
 		// 可立即使用1.js中定义的内容
+	
+	注意：如果是跨域加载，不支持同步调用（$.ajax的限制），如：
+
+		loadScript("http://oliveche.com/1.js", {async: false});
+		// 一旦跨域，选项{async:false}指定无效，不可立即使用1.js中定义的内容。
 
 如果要动态加载script，且使用后删除标签（里面定义的函数会仍然保留），建议直接使用`$.getScript`，它等同于：
 
@@ -4015,6 +4077,14 @@ function showPage(pageRef, opt)
 
 		function initPage()
 		{
+			var dep = self.evalAttr(jpage, "mui-deferred");
+			if (dep) {
+				self.assert(dep.then, "*** mui-deferred attribute DOES NOT return a deferred object");
+				jpage.removeAttr("mui-deferred");
+				dep.then(initPage);
+				return;
+			}
+
 			// 检测运营商js劫持，并自动恢复。
 			var fname = jpage.attr("mui-initfn");
 			if (fname && window[fname] == null) {
