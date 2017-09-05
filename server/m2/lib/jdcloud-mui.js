@@ -4298,7 +4298,8 @@ function popPageStack(n)
 
 $(window).on('popstate', function (ev) {
 	m_curState = ev.originalEvent.state;
-	showPage();
+	if (m_curState) // bugfix: 红米等某些手机在MUI.options.showHash=false模式下，且在安卓APP中，进入非主页的入口页，会自动跳转回主页。
+		showPage();
 });
 
 
