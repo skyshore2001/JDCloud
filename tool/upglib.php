@@ -79,7 +79,7 @@ class SqlDiff_mssql extends SqlDiff
 	}
 
 	public function safeName($name) {
-		if (preg_match('/^(user|order)$/i', $name));
+		if (preg_match('/^(user|order)$/i', $name))
 			return "\"$name\"";
 		return $name;
 	}
@@ -455,7 +455,13 @@ class UpgHelper
 		logstr("-- {$tbl}: " . join(',', $tableMeta['fields']) . "\n");
 		$sql = genSql($tableMeta);
 		logstr("$sql\n");
-		$this->dbh->exec($sql);
+		try {
+			$this->dbh->exec($sql);
+		}
+		catch (Exception $e) {
+			echo "*** Fail to create table `$tbl`. DO NOT use SQL keyword as the name of table or column.\n";
+			throw $e;
+		}
 		return true;
 	}
 
