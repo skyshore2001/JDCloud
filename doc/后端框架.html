@@ -468,6 +468,7 @@ list(id/Integer, name?/String)</code></pre>
 <p>如果name字段省略，则可简化为<code>10,11</code>.</p>
 <p class="todo">TODO: 也可以带表头信息（首字符&quot;@&quot;标明有表头），如 <code>@id:name,10:liang,11:wang</code> 或 <code>@id,10,11</code>.</p>
 <p>这种格式一般用于传递简单的表。更加复杂的类型可使用json格式传递。</p></li>
+<li><p>换行符&quot;&quot;分隔行, 制表符&quot;&quot;分隔列的表, 称为table，可表示为 <code>&quot;id \t name \n&quot;</code> 或 <code>table(id, name)</code></p></li>
 </ul>
 <h4 id="分页机制"><span class="header-section-number">3.1.2</span> 分页机制</h4>
 <p>如果一个查询支持分页(paging), 则一般调用形式为</p>

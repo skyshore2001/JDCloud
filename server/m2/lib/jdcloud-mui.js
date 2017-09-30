@@ -1202,6 +1202,40 @@ function rs2MultiHash(rs, key)
 	}
 	return ret;
 }
+
+/**
+@fn list2varr(ls, sep=':', sep2=',')
+
+将字符串代表的压缩表("v1:v2:v3,...")转成对象数组。
+
+e.g.
+
+	var users = "101:andy,102:beddy";
+	var varr = list2varr(users);
+	// varr = [["101", "andy"], ["102", "beddy"]];
+	var arr = rs2Array({h: ["id", "name"], d: varr});
+	// arr = [ {id: 101, name: "andy"}, {id: 102, name: "beddy"} ];
+	
+	var cmts = "101\thello\n102\tgood";
+	var varr = list2varr(cmts, "\t", "\n");
+	// varr=[["101", "hello"], ["102", "good"]]
+ */
+self.list2varr = list2varr;
+function list2varr(ls, sep, sep2)
+{
+	if (sep == null)
+		sep = ':';
+	if (sep2 == null)
+		sep2 = ',';
+	var ret = [];
+	$.each(ls.split(sep2), function () {
+		if (this.length == 0)
+			return;
+		ret.push(this.split(sep));
+	});
+	return ret;
+}
+
 //}}}
 
 /**
