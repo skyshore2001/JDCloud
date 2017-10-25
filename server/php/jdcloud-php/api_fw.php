@@ -62,9 +62,15 @@ v3.4支持非标准对象接口。实现Ordr.cancel接口：
 
 ## 接口复用
 
-api.php可以单独执行，也可直接被调用，如
+@key apiMain() 服务入口函数
+@key noExecApi 全局变量，禁止apiMain执行服务
+
+一般在接口服务文件api.php中定义公共变量和函数，包含所有接口，在其最后调用服务入口函数apiMain()。
+
+如果某应用想包含api.php，以便使用其中的接口实现，可以用callSvc:
 
 	// set_include_path(get_include_path() . PATH_SEPARATOR . "..");
+	$GLOBALS["noExecApi"] = true; // 在包含api.php前设置该变量，可禁止apiMain函数自动解析请求（CLI方式调用时默认就不解析请求，故也可以不设置该变量）。
 	require_once("api.php");
 	...
 	$GLOBALS["errorFn"] = function($code, $msg, $msg2=null) {...}
@@ -865,6 +871,8 @@ function apiMain()
 	// TODO: 如允许api.php被包含后直接调用api，应设置 ApiFw_::$SOLO=false
 	//$script = basename($_SERVER["SCRIPT_NAME"]);
 	//ApiFw_::$SOLO = ($script == API_ENTRY_PAGE || $script == 'index.php');
+	if (@$GLOBALS["noExecApi"] || isCLI())
+		ApiFw_::$SOLO = false;
 
 	$supportJson = function () {
 		// 支持POST为json格式
@@ -886,7 +894,7 @@ function apiMain()
 
 	require_once("{$BASE_DIR}/conf.php");
 
-	if (ApiFw_::$SOLO && !@$GLOBALS["noExecApi"]) {
+	if (ApiFw_::$SOLO) {
 		$api = new ApiApp();
 		$api->onBeforeExec[] = $supportJson;
 		$api->exec();
