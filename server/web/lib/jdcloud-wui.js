@@ -4975,25 +4975,95 @@ function parseArgs()
 parseArgs();
 
 /**
-@fn app_alert(msg, type?=i, fn?)
-@param type String. "i"|"e"|"w"
-@param fn Function(). 用户点击确定后的回调。
+@fn WUI.app_alert(msg, [type?=i], [fn?], opt?={timeoutInterval?, defValue?, onCancel()?})
+@param type 对话框类型: "i": info, 信息提示框; "e": error, 错误框; "w": warning, 警告框; "q"(与app_confirm一样): question, 确认框(会有"确定"和"取消"两个按钮); "p": prompt, 输入框
+@param fn Function(text?) 回调函数，当点击确定按钮时调用。当type="p" (prompt)时参数text为用户输入的内容。
+@param opt Object. 可选项。 timeoutInterval表示几秒后自动关闭对话框。defValue用于输入框(type=p)的缺省值.
 
 使用jQuery easyui弹出提示对话框.
+
+示例:
+
+	// 信息框，3s后自动点确定
+	app_alert("操作成功", function () {
+		WUI.showPage("pageGenStat");
+	}, {timeoutInterval: 3000});
+
+	// 错误框
+	app_alert("操作失败", "e");
+
+	// 确认框(确定/取消)
+	app_alert("立即付款?", "q", function () {
+		WUI.showPage("#pay");
+	});
+
+	// 输入框
+	app_alert("输入要查询的名字:", "p", function (text) {
+		callSvr("Book.query", {cond: "name like '%" + text + "%'"});
+	});
+
 */
 self.app_alert = app_alert;
-function app_alert(msg, type, fn)
+function app_alert(msg)
 {
-	type = type || "i";
+	var type = "i";
+	var fn = undefined;
+	var alertOpt = {};
+
+	for (var i=1; i<arguments.length; ++i) {
+		var arg = arguments[i];
+		if ($.isFunction(arg)) {
+			fn = arg;
+		}
+		else if ($.isPlainObject(arg)) {
+			alertOpt = arg;
+		}
+		else if (typeof(arg) === "string") {
+			type = arg;
+		}
+	}
+	if (type == "q") {
+		app_confirm(msg, function (isOk) {
+			if (isOk) {
+				fn && fn();
+			}
+			else if (alertOpt.onCancel) {
+				alertOpt.onCancel();
+			}
+		});
+		return;
+	}
+	else if (type == "p") {
+		$.messager.prompt(self.options.title, msg, function(text) {
+			if (text && fn) {
+				fn(text);
+			}
+		});
+		setTimeout(function () {
+			var ji = $(".messager-window .messager-input");
+			ji.focus();
+			if (alertOpt.defValue) {
+				ji.val(alertOpt.defValue);
+			}
+		});
+		return;
+	}
+
 	var icon = {i: "info", w: "warning", e: "error"}[type];
-	var s = {i: "提示", w: "警告", e: "出错"}[type];
+	var s = {i: "提示", w: "警告", e: "出错"}[type] || "";
 	var s1 = "<b>[" + s + "]</b>";
 	$.messager.alert(self.options.title + " - " + s, s1 + " " + msg, icon, fn);
 
 	// 查看jquery-easyui对象，发现OK按钮的class=1-btn
 	setTimeout(function() {
-		$(".l-btn").focus();
-	}, 50);
+		var jbtn = $(".messager-window .l-btn");
+		jbtn.focus();
+		if (alertOpt.timeoutInterval) {
+			setTimeout(function() {
+				jbtn.click();
+			}, alertOpt.timeoutInterval);
+		}
+	});
 }
 
 /**
@@ -5380,9 +5450,10 @@ $.each([
 
 	<tr>
 		<td>分派给</td>
-		<td><select name="empId" class="my-combobox" data-options="valueField:'id',textField:'name',url:WUI.makeUrl('Employee.query', {wantArray:1})"></select></td>  
+		<td><select name="empId" class="my-combobox" data-options="valueField:'id',textField:'name',url:WUI.makeUrl('Employee.query', {res:'id,name',pagesz:-1})"></select></td>  
 	</tr>
 
+注意查询默认是有分页的（页大小一般为20条），用参数`{pagesz:-1}`使用服务器设置的最大的页大小（后端最大pagesz默认100，可使用maxPageSz参数调节）。
 为了精确控制返回字段与显示格式，data-options可能更加复杂，一般建议写一个返回这些属性的函数，像这样：
 
 		<td><select name="empId" class="my-combobox" data-options="ListOptions.Emp()"></select></td>  
@@ -5398,7 +5469,7 @@ $.each([
 				url: WUI.makeUrl('Employee.query', {
 					res: 'id,name,uname',
 					cond: 'storeId=' + g_data.userInfo.storeId,
-					wantArray:1
+					pagesz:-1
 				}),
 				formatter: function (row) { return row.name + '(' + row.uname + ')'; }
 			};
@@ -5420,7 +5491,7 @@ JS代码ListOptions.Brand:
 			var opts = {
 				valueField: 'id',
 				textField:'name',
-				url:WUI.makeUrl('queryBrand', {wantArray:1}),
+				url:WUI.makeUrl('queryBrand', {pagesz:-1}),
 				loadFilter: function(data) {
 					data.unshift({id:'0', name:'所有品牌'});
 					return data;
@@ -5434,6 +5505,7 @@ JS代码ListOptions.Brand:
 var m_dataCache = {}; // url => data
 $.fn.mycombobox = function (force) 
 {
+	var mCommon = jdModule("jdcloud.common");
 	this.each(initCombobox);
 
 	function initCombobox(i, o)
@@ -5509,7 +5581,11 @@ $.fn.mycombobox = function (force)
 			if (opts.loadFilter) {
 				data = opts.loadFilter.call(this, data);
 			}
-			$.each(data, function (i, row) {
+			var arr = $.isArray(data.d)? mCommon.rs2Array(data)
+				: $.isArray(data)? data
+				: data.list;
+			mCommon.assert($.isArray(arr), "bad data format for combobox");
+			$.each(arr, function (i, row) {
 				var jopt = $("<option></option>")
 					.attr("value", row[opts.valueField])
 					.text(getText(row))

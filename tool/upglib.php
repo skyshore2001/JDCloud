@@ -79,7 +79,7 @@ class SqlDiff_mssql extends SqlDiff
 	}
 
 	public function safeName($name) {
-		if (preg_match('/^(user|order)$/i', $name));
+		if (preg_match('/^(user|order)$/i', $name))
 			return "\"$name\"";
 		return $name;
 	}
@@ -176,10 +176,15 @@ function genSql($meta)
 	return $sql;
 }
 
+function prompt($s)
+{
+	fprintf(STDERR, "%s", $s);
+}
+
 function logstr($s, $show=true)
 {
 	if ($show) {
-		echo $s;
+		prompt($s);
 	}
 	global $LOGF;
 	$fp = fopen($LOGF, "a");
@@ -291,7 +296,7 @@ class UpgHelper
 		global $LOGF;
 		logstr("=== [" . date('c') . "] done\n", false);
 		if (! $this->forRtest)
-			echo "=== Done! Find log in $LOGF\n";
+			prompt("=== Done! Find log in $LOGF\n");
 	}
 
 	# init meta and DB conn
@@ -301,7 +306,7 @@ class UpgHelper
 		if (!$meta || !is_file($meta)) {
 			throw new Exception("*** bad main meta file $meta");
 		}
-		echo "=== load metafile: $meta\n";
+		prompt("=== load metafile: $meta\n");
 
 		$baseDir = dirname($meta);
 		$files = [$meta];
@@ -349,7 +354,7 @@ class UpgHelper
 		$fnConfirm = null;
 		if (!$this->forRtest) {
 			$fnConfirm = function ($connstr) {
-				echo "=== connect to $connstr (enter to cont, ctrl-c to break) ";
+				prompt("=== connect to $connstr (enter to cont, ctrl-c to break) ");
 				fgets(STDIN);
 				logstr("=== [" . date('c') . "] connect to $connstr\n", false);
 				return true;
@@ -450,7 +455,13 @@ class UpgHelper
 		logstr("-- {$tbl}: " . join(',', $tableMeta['fields']) . "\n");
 		$sql = genSql($tableMeta);
 		logstr("$sql\n");
-		$this->dbh->exec($sql);
+		try {
+			$this->dbh->exec($sql);
+		}
+		catch (Exception $e) {
+			echo "*** Fail to create table `$tbl`. DO NOT use SQL keyword as the name of table or column.\n";
+			throw $e;
+		}
 		return true;
 	}
 
