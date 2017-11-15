@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2017-08-17</div>
+<div>最后更新：2017-11-15</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -114,6 +114,7 @@ code {
 <p><a href="#Plugins::exists">Plugins::exists (fn)</a></p>
 <p><a href="#Q">Q (fn)</a></p>
 <p><a href="#addLog">addLog (fn)</a></p>
+<p><a href="#apiMain">apiMain (key)</a></p>
 <p><a href="#api_fw">api_fw (module)</a></p>
 <p><a href="#app_fw">app_fw (module)</a></p>
 <p><a href="#callSvc">callSvc (fn)</a></p>
@@ -142,6 +143,7 @@ code {
 <p><a href="#makeUrl">makeUrl (fn)</a></p>
 <p><a href="#mparam">mparam (fn)</a></p>
 <p><a href="#myEncrypt">myEncrypt (fn)</a></p>
+<p><a href="#noExecApi">noExecApi (key)</a></p>
 <p><a href="#objarr2table">objarr2table (fn)</a></p>
 <p><a href="#onCreateAC">onCreateAC (fn)</a></p>
 <p><a href="#onGetPerms">onGetPerms (fn)</a></p>
@@ -748,8 +750,12 @@ chpwd(oldpwd, pwd) -&gt; {_token, _expire}
 }</code></pre>
 <p>非标准对象接口与与函数型接口写法类似，但AccessControl的众多回调函数对非标准对象接口无效。</p>
 <h4 id="api_fw-3 接口复用">3 接口复用</h4>
-<p>api.php可以单独执行，也可直接被调用，如</p>
+<p class="key"><strong>@key <a id="apiMain">apiMain</a></strong> () 服务入口函数</p>
+<p class="key"><strong>@key <a id="noExecApi">noExecApi</a></strong>  全局变量，禁止apiMain执行服务</p>
+<p>一般在接口服务文件api.php中定义公共变量和函数，包含所有接口，在其最后调用服务入口函数apiMain()。</p>
+<p>如果某应用想包含api.php，以便使用其中的接口实现，可以用callSvc:</p>
 <pre><code>// set_include_path(get_include_path() . PATH_SEPARATOR . "..");
+$GLOBALS["noExecApi"] = true; // 在包含api.php前设置该变量，可禁止apiMain函数自动解析请求（CLI方式调用时默认就不解析请求，故也可以不设置该变量）。
 require_once("api.php");
 ...
 $GLOBALS["errorFn"] = function($code, $msg, $msg2=null) {...}
@@ -1023,7 +1029,8 @@ $_POST[key] = value; // 设置post参数</code></pre>
 <p style="margin-left:2em"><a href="#AccessControl-5.3 缺省输出字段列表">5.3 缺省输出字段列表</a></p>
 <p style="margin-left:2em"><a href="#AccessControl-5.4 最大每页数据条数">5.4 最大每页数据条数</a></p>
 <p style="margin-left:2em"><a href="#AccessControl-5.5 虚拟表和视图">5.5 虚拟表和视图</a></p>
-<p style="margin-left:0em"><a href="#AccessControl-6 query接口输出格式">6 query接口输出格式</a></p>
+<p style="margin-left:2em"><a href="#AccessControl-5.6 query接口输出格式">5.6 query接口输出格式</a></p>
+<p style="margin-left:2em"><a href="#AccessControl-5.7 distinct查询">5.7 distinct查询</a></p>
 </div>
 <p>对象型接口框架。<br />
 AccessControl简写为AC，同时AC也表示自动补全(AutoComplete).</p>
@@ -1351,7 +1358,7 @@ ORDER BY t0.id DESC</code></pre>
 <li>重写 AccessControl::$defaultRes</li>
 <li>用addCond添加缺省查询条件</li>
 </ul>
-<h4 id="AccessControl-6 query接口输出格式">6 query接口输出格式</h4>
+<h5 id="AccessControl-5.6 query接口输出格式">5.6 query接口输出格式</h5>
 <p>query接口支持fmt参数：</p>
 <ul>
 <li>list: 生成<code>{ @list, nextkey?, total? }</code>格式，而非缺省的 <code>{ @h, @d, nextkey?, total? }</code>格式</li>
@@ -1362,7 +1369,13 @@ ORDER BY t0.id DESC</code></pre>
 <li>txt: 制表分隔的文件, utf8编码。</li>
 </ul></li>
 </ul>
-<p>TODO: 可加一个系统参数<code>_enc</code>表示输出编码的格式。</p></div>
+<p>TODO: 可加一个系统参数<code>_enc</code>表示输出编码的格式。</p>
+<h5 id="AccessControl-5.7 distinct查询">5.7 distinct查询</h5>
+<p>如果想生成<code>SELECT DISTINCT t0.a, ...</code>查询，<br />
+当在AccessControl外部时，可以设置</p>
+<pre><code>setParam("distinct", 1);</code></pre>
+<p>如果是在AccessControl子类中，可以设置</p>
+<pre><code>$this-&gt;sqlConf["distinct"] =1;</code></pre></div>
 <div class="block">
 <h2 id="AccessControl::addRes">@fn AccessControl::addRes($res, $analyzeCol=true)</h2>
 <p>添加列或计算列. </p>

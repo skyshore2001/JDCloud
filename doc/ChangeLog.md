@@ -1,5 +1,14 @@
 # 筋斗云框架版本日志
 
+## v4.2 - 2017/9
+
+- 后端：通过query操作增加gcond参数，废弃wantArray参数，代之以`pagesz:-1`.
+- 前端：逻辑页可声明依赖库，支持mui-deferred属性
+- 前端：添加list2varr函数处理后台压缩表格式
+- 工具：jdcloud-gendoc增强，支持模板输出，支持指定js/css。
+- 工具：upgrade工具增强，命令行可直接执行内部命令
+- 文档美化，增加左侧目录。
+
 ## v4.1 - 2017/8
 
 - 前端：统计分析页支持。initPageStat(web/lib/jdcloud-wui-stat.js)

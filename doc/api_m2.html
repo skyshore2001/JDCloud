@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（移动Web版）</h1>
-<div>最后更新：2017-08-17</div>
+<div>最后更新：2017-11-15</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -49,6 +49,7 @@ code {
 <h2>Keywords</h2>
 <div class="toc">
 <p><a href="##footer">#footer (key)</a></p>
+<p><a href="##muiAlert">#muiAlert (alias)</a></p>
 <p><a href="#.mui-android">.mui-android (key)</a></p>
 <p><a href="#.mui-container">.mui-container (key)</a></p>
 <p><a href="#.mui-cordova">.mui-cordova (key)</a></p>
@@ -192,7 +193,9 @@ code {
 <p><a href="#jdModule">jdModule (fn)</a></p>
 <p><a href="#jdModule">jdModule (fn)</a></p>
 <p><a href="#leaveWaiting">leaveWaiting (alias)</a></p>
+<p><a href="#list2varr">list2varr (fn)</a></p>
 <p><a href="#loadScript">loadScript (fn)</a></p>
+<p><a href="#mui-deferred">mui-deferred (key)</a></p>
 <p><a href="#mui-initfn">mui-initfn (key)</a></p>
 <p><a href="#mui-loadPrompt">mui-loadPrompt (key)</a></p>
 <p><a href="#mui-nofix">mui-nofix (key)</a></p>
@@ -234,6 +237,7 @@ code {
 <p style="margin-left:4em"><a href="#MUI-1.2.2 逻辑页内嵌script">1.2.2 逻辑页内嵌script</a></p>
 <p style="margin-left:4em"><a href="#MUI-1.2.3 进入应用时动态显示初始逻辑页">1.2.3 进入应用时动态显示初始逻辑页</a></p>
 <p style="margin-left:4em"><a href="#MUI-1.2.4 在showPage过程中再显示另一个逻辑页">1.2.4 在showPage过程中再显示另一个逻辑页</a></p>
+<p style="margin-left:4em"><a href="#MUI-1.2.5 逻辑页声明依赖库">1.2.5 逻辑页声明依赖库</a></p>
 <p style="margin-left:2em"><a href="#MUI-1.3 页面路由">1.3 页面路由</a></p>
 <p style="margin-left:0em"><a href="#MUI-2 服务端交互API">2 服务端交互API</a></p>
 <p style="margin-left:0em"><a href="#MUI-3 登录与退出">3 登录与退出</a></p>
@@ -393,6 +397,52 @@ function myInit()
 }</code></pre>
 <p>在pagebeforeshow事件中做页面切换，框架保证不会产生闪烁，且在新页面上点返回按钮，不会返回到旧页面。</p>
 <p>除此之外如果多次调用showPage（包括在pageshow事件中调用），一般最终显示的是最后一次调用的页面，过程中可能产生闪烁，且可能会丢失一些pageshow/pagehide事件，应尽量避免。</p>
+<h6 id="MUI-1.2.5 逻辑页声明依赖库">1.2.5 逻辑页声明依赖库</h6>
+<p class="key"><strong>@key <a id="mui-deferred">mui-deferred</a></strong> </p>
+<p>（版本v4.2）<br />
+如果逻辑页依赖某一个或多个库，这些库不想在主页面中用script默认加载，这时可以使用<code>mui-deferred</code>属性。<br />
+逻辑页初始化函数mui-initfn将在该deferred对象操作成功后执行。</p>
+<p>示例：某逻辑页依赖百度地图的js库，该js库使用动态加载：</p>
+<pre><code>// 主逻辑中定义返回Deferred对象
+window.dfdBaiduMap = MUI.loadScript("http://api.map.baidu.com/getscript?v=2.0&amp;ak=YOUR-APP-KEY");
+
+// map.html 逻辑页中声明依赖该对象
+&lt;div mui-initfn="initPageMap" mui-script="map.js" mui-deferred="dfdBaiduMap"&gt;
+    ...
+&lt;/div&gt;
+
+// map.js
+function initPageMap()
+{
+    var jpage = this;
+    // 这时可以安全依赖库的对象，如BMap对象
+}</code></pre>
+<p>如果不使用mui-deferred属性，则需要在initPageMap中小心的来写异步逻辑，比如：</p>
+<pre><code>// map.js
+function initPageMap()
+{
+    var jpage = this;
+    // 可以安全使用BMap对象
+    dfdBaiduMap.then(init);
+
+    function init() { ... }
+}</code></pre>
+<p>一般会将加载依赖库包装成一个函数，比如要使用百度echarts显示统计图的页面，可定义函数：</p>
+<pre><code>var dfdStatLib_;
+function loadStatLib()
+{
+    if (dfdStatLib_ == null) {
+        dfdStatLib_ = $.when(
+            MUI.loadScript("../web/lib/echarts.min.js"),
+            MUI.loadScript("../web/lib/jdcloud-wui-stat.js")
+        );
+    }
+    return dfdStatLib_;
+}</code></pre>
+<p>依赖echarts的页面，可以设置：</p>
+<pre><code>&lt;div mui-deferred="loadStatLib()"&gt;
+    ...
+&lt;/div&gt;</code></pre>
 <h5 id="MUI-1.3 页面路由">1.3 页面路由</h5>
 <p>默认路由：</p>
 <ul>
@@ -420,13 +470,68 @@ function myInit()
 <h4 id="MUI-4 常用组件">4 常用组件</h4>
 <p>框架提供导航栏、对话框、弹出框、弹出菜单等常用组件。</p>
 <h5 id="MUI-4.1 导航栏">4.1 导航栏</h5>
-<p class="key"><strong>@key <a id=".mui-navbar">.mui-navbar</a></strong>  导航栏</p>
+<p class="key"><strong>@key <a id=".mui-navbar">.mui-navbar</a></strong>  导航栏，Tab页</p>
 <p class="key"><strong>@key <a id=".mui-navbar.noactive">.mui-navbar.noactive</a></strong> </p>
-<p>默认行为是点击后添加active类（比如字体发生变化），如果不需要此行为，可再添加noactive类。</p>
+<p>默认行为是点击后添加active类（比如字体发生变化），如果不需要此行为，可再添加noactive类。<br />
+示例：</p>
+<pre><code>&lt;div class="mui-navbar"&gt;
+    &lt;a mui-linkto="#lst1"&gt;待服务&lt;/a&gt;
+    &lt;a mui-linkto="#lst2"&gt;已完成&lt;/a&gt;
+&lt;/div&gt;</code></pre>
 <h5 id="MUI-4.2 对话框">4.2 对话框</h5>
 <p class="key"><strong>@key <a id=".mui-dialog">.mui-dialog</a></strong>  对话框</p>
+<p>对话框与页面(.mui-page)类似，可以包含hd, bd等部分。<br />
+它一般包含在一个页面中，id以&quot;dlg&quot;开头。示例：</p>
+<pre><code>&lt;div id="dlgAddPerson" class="mui-dialog"&gt;
+    &lt;div class="hd"&gt;
+        &lt;h2&gt;添加人物&lt;/h2&gt;
+    &lt;/div&gt;
+
+    &lt;div class="bd weui_cells weui_cells_access"&gt;
+        &lt;div class="weui_cell"&gt;
+            &lt;label class="weui_cell_hd weui_label" style="min-width:7em"&gt;为&lt;span class="p-name"&gt;&lt;/span&gt;添加:&lt;/label&gt;
+            &lt;select id="cboRelation" class="weui_cell_primary weui_select right" style="min-width:90px"&gt;
+                &lt;option value="parent"&gt;父亲&lt;/option&gt;
+                &lt;option value="child"&gt;子女&lt;/option&gt;
+            &lt;/select&gt;
+            &lt;div class="weui_cell_ft"&gt;&lt;/div&gt;
+        &lt;/div&gt;
+        &lt;div class="weui_cell nowrap" style="display:block;"&gt;
+            &lt;a id="btnOK" class="mui-btn primary"&gt;确定&lt;/a&gt;
+            &lt;a id="btnCancel" class="mui-btn"&gt;取消&lt;/a&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+
+&lt;/div&gt;</code></pre>
+<p>要弹出这个对话框：</p>
+<pre><code>MUI.showDialog(jpage.find("#dlgAddPerson"));</code></pre>
+<p>或者用a标签链接打开：</p>
+<pre><code>&lt;a href="#dlgAddPerson"&gt;添加人物&lt;/a&gt;</code></pre>
+<p class="see"><strong>@see <a href="#MUI.showDialog">MUI.showDialog</a></strong>  弹出对话框</p>
+<p class="see"><strong>@see <a href="##muiAlert">#muiAlert</a> <a href="#MUI.app_alert">MUI.app_alert</a></strong>  提示框(app_alert)是一个id为`muiAlert`的特别对话框。</p>
+<p class="see"><strong>@see <a href="#.mui-menu">.mui-menu</a></strong>  弹出菜单，也是一类特别的对话框。</p>
 <h5 id="MUI-4.3 弹出菜单">4.3 弹出菜单</h5>
+<p>菜单是特殊的一类对话框。因而id以&quot;dlg&quot;开头，以便a标签通过href链接时，可直接弹出菜单（即打开对话框）。</p>
 <p class="key"><strong>@key <a id=".mui-menu">.mui-menu</a></strong>  菜单</p>
+<p>示例：添加右上角菜单（习惯上左上角为返回按钮，右上角为菜单按钮）</p>
+<pre><code>&lt;div class="hd"&gt;
+    &lt;a href="javascript:hd_back();" class="icon icon-back"&gt;&lt;/a&gt;
+    &lt;a href="#dlgMenu" class="icon icon-menu"&gt;&lt;/a&gt;
+    &lt;h2&gt;谱系图&lt;/h2&gt;
+&lt;/div&gt;
+
+&lt;!-- 左上角弹出菜单，用top类标识 --&gt;
+&lt;ul id="dlgMenu" class="mui-menu top"&gt;
+    &lt;a href="javascript:PagePerson.showForAdd();"&gt;&lt;li&gt;&lt;i class="icon icon-add"&gt;&lt;/i&gt;添加人物&lt;/li&gt;&lt;/a&gt;
+    &lt;li id="mnuQueryPerson"&gt;&lt;i class="icon icon-search"&gt;&lt;/i&gt;查找人物&lt;/li&gt;
+    &lt;a href="#dlgMenuShare"&gt;&lt;li&gt;&lt;i class="icon icon-viewfav"&gt;&lt;/i&gt;分享到&lt;/li&gt;&lt;/a&gt;
+&lt;/ul&gt;
+
+&lt;!-- 弹出菜单 --&gt;
+&lt;ul id="dlgMenuShare" class="mui-menu"&gt;
+    &lt;li id="li1"&gt;微信好友&lt;/li&gt;
+    &lt;li id="li2"&gt;微信朋友圈&lt;/li&gt;
+&lt;/ul&gt;</code></pre>
 <h5 id="MUI-4.4 底部导航">4.4 底部导航</h5>
 <p class="key"><strong>@key <a id="#footer">#footer</a></strong>  底部导航栏</p>
 <p>设置id为&quot;footer&quot;的导航, 框架会对此做些设置: 如果当前页面为导航栏中的一项时, 就会自动显示导航栏.<br />
@@ -728,6 +833,19 @@ hash = {
 <p class="see"><strong>@see <a href="#rs2Hash">rs2Hash</a></strong> </p>
 <p class="see"><strong>@see <a href="#rs2Array">rs2Array</a></strong> </p></div>
 <div class="block">
+<h2 id="list2varr">@fn list2varr(ls, sep=':', sep2=',')</h2>
+<p>将字符串代表的压缩表(&quot;v1:v2:v3,...&quot;)转成对象数组。</p>
+<p>e.g.</p>
+<pre><code>var users = "101:andy,102:beddy";
+var varr = list2varr(users);
+// varr = [["101", "andy"], ["102", "beddy"]];
+var arr = rs2Array({h: ["id", "name"], d: varr});
+// arr = [ {id: 101, name: "andy"}, {id: 102, name: "beddy"} ];
+
+var cmts = "101\thello\n102\tgood";
+var varr = list2varr(cmts, "\t", "\n");
+// varr=[["101", "hello"], ["102", "good"]]</code></pre></div>
+<div class="block">
 <h2 id="intSort">@fn intSort(a, b)</h2>
 <p>整数排序. 用于datagrid column sorter:</p>
 <pre><code>&lt;th data-options="field:'id', sortable:true, sorter:intSort"&gt;编号&lt;/th&gt;</code></pre></div>
@@ -873,6 +991,9 @@ loadScript("http://otherserver/path/1.js"); // 跨域加载</code></pre>
 <p>加载并立即执行一个script:</p>
 <pre><code>loadScript("1.js", {async: false});
 // 可立即使用1.js中定义的内容</code></pre>
+<p>注意：如果是跨域加载，不支持同步调用（$.ajax的限制），如：</p>
+<pre><code>loadScript("http://oliveche.com/1.js", {async: false});
+// 一旦跨域，选项{async:false}指定无效，不可立即使用1.js中定义的内容。</code></pre>
 </li>
 </ul>
 <p>如果要动态加载script，且使用后删除标签（里面定义的函数会仍然保留），建议直接使用<code>$.getScript</code>，它等同于：</p>
@@ -1654,6 +1775,7 @@ MUI.popPageStack(0); // 标记除第一页外的所有页为poped, 所以之后�
 <div class="block">
 <h2 id="MUI.app_alert">@fn MUI.app_alert(msg, [type?=i], [fn?], opt?={timeoutInterval?, defValue?, onCancel()?})</h2>
 <p class="alias"><strong>@alias <a id="app_alert">app_alert</a></strong> </p>
+<p class="alias"><strong>@alias <a id="#muiAlert">#muiAlert</a></strong> </p>
 <p class="param"><strong>@param type</strong>  对话框类型: "i": info, 信息提示框; "e": error, 错误框; "w": warning, 警告框; "q": question, 确认框(会有"确定"和"取消"两个按钮); "p": prompt, 输入框</p>
 <p class="param"><strong>@param fn</strong>  Function(text?) 回调函数，当点击确定按钮时调用。当type="p" (prompt)时参数text为用户输入的内容。</p>
 <p class="param"><strong>@param opt</strong>  Object. 可选项。 timeoutInterval表示几秒后自动关闭对话框。defValue用于输入框(type=p)的缺省值.</p>
