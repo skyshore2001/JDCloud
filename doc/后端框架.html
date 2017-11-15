@@ -4,7 +4,10 @@
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   <title>Web接口服务框架设计</title>
   <style type="text/css">code{white-space: pre;}</style>
-  <link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="doc.css" />
+<script src="doc.js"></script>
+
 </head>
 <body>
 <h1 id="web接口服务框架设计">Web接口服务框架设计</h1>
@@ -38,14 +41,7 @@
 <li><a href="#客户端版本_ver"><span class="toc-section-number">3.1.8</span> 客户端版本(_ver)</a></li>
 <li><a href="#权限说明"><span class="toc-section-number">3.1.9</span> 权限说明</a></li>
 </ul></li>
-<li><a href="#通用操作"><span class="toc-section-number">3.2</span> 通用操作</a><ul>
-<li><a href="#通用表操作"><span class="toc-section-number">3.2.1</span> 通用表操作</a></li>
-<li><a href="#附件上传"><span class="toc-section-number">3.2.2</span> 附件上传</a></li>
-<li><a href="#附件下载"><span class="toc-section-number">3.2.3</span> 附件下载</a></li>
-<li><a href="#生成签名"><span class="toc-section-number">3.2.4</span> 生成签名</a></li>
-<li><a href="#代理"><span class="toc-section-number">3.2.5</span> 代理</a></li>
-<li><a href="#执行sql语句"><span class="toc-section-number">3.2.6</span> 执行sql语句</a></li>
-</ul></li>
+<li><a href="#通用对象接口"><span class="toc-section-number">3.2</span> 通用对象接口</a></li>
 <li><a href="#api调用监控"><span class="toc-section-number">3.3</span> API调用监控</a></li>
 <li><a href="#批量请求"><span class="toc-section-number">3.4</span> 批量请求</a></li>
 <li><a href="#服务端信息反馈x-daca头"><span class="toc-section-number">3.5</span> 服务端信息反馈/X-Daca头</a></li>
@@ -419,7 +415,7 @@ $ERRINFO = [
 ];</code></pre>
 <p><strong>[关于空值]</strong></p>
 <p>假如有参数&quot;a=1&amp;b=&amp;c=hello&quot;, 其中参数&quot;b&quot;值为空串。 一般情况下，被当作未赋值处理，即与&quot;a=1&amp;c=hello&quot;意义相同。</p>
-<p>只有在对象保存上下文中（典型的是通用表操作的{tblname}.set操作），且出现中POST内容的&quot;a=&quot;表示将该字段置null(与&quot;a=null&quot;语义相同), 注意：不是置空字符串。</p>
+<p>只有在对象保存上下文中（典型的是通用对象接口的set操作），且出现中POST内容的&quot;a=&quot;表示将该字段置null(与&quot;a=null&quot;语义相同), 注意：不是置空字符串。</p>
 <h4 id="常用返回类型描述"><span class="header-section-number">3.1.1</span> 常用返回类型描述</h4>
 <p><strong>{id, name}</strong></p>
 <p>一个简单对象，有两个字段id和name。e.g. <code>{id: 100, name: &quot;name1&quot;}</code></p>
@@ -472,31 +468,32 @@ list(id/Integer, name?/String)</code></pre>
 <p>如果name字段省略，则可简化为<code>10,11</code>.</p>
 <p class="todo">TODO: 也可以带表头信息（首字符&quot;@&quot;标明有表头），如 <code>@id:name,10:liang,11:wang</code> 或 <code>@id,10,11</code>.</p>
 <p>这种格式一般用于传递简单的表。更加复杂的类型可使用json格式传递。</p></li>
+<li><p>换行符&quot;&quot;分隔行, 制表符&quot;&quot;分隔列的表, 称为table，可表示为 <code>&quot;id \t name \n&quot;</code> 或 <code>table(id, name)</code></p></li>
 </ul>
 <h4 id="分页机制"><span class="header-section-number">3.1.2</span> 分页机制</h4>
 <p>如果一个查询支持分页(paging), 则一般调用形式为</p>
-<pre><code>Ordr.query(_pagekey?, _pagesz?=20) -&gt; {nextkey, total?, @h, @d}
+<pre><code>Ordr.query(pagekey?, pagesz?=20) -&gt; {nextkey, total?, @h, @d}
 或
 Ordr.query(page, rows?=20) -&gt; {nextkey, total, @h, @d}</code></pre>
 <p><strong>[参数]</strong></p>
 <dl>
-<dt>_pagesz</dt>
+<dt>pagesz</dt>
 <dd>Integer. 页大小，默认为20条数据。
 </dd>
-<dt>_pagekey</dt>
+<dt>pagekey</dt>
 <dd>String (目前是数值). 一般某次查询不填写（如需要返回总记录数即total字段，则应填写为0），而下次查询时应根据上次调用时返回数据的&quot;nextkey&quot;字段来填写。
 </dd>
 <dt>page/rows</dt>
-<dd>为支持jquery-easyui而设置, 与_pagekey/_pagesz类似, 区别在于: 每次均返回total字段; 强制采用&quot;limit&quot;算法(默认如果没有用非主键排序,会采用&quot;部分查询&quot;算法), 意味着nextkey即下一页页码.
+<dd>为支持jquery-easyui而设置, 与pagekey/pagesz类似, 区别在于: 每次均返回total字段; 强制采用&quot;limit&quot;算法(默认如果没有用非主键排序,会采用&quot;部分查询&quot;算法), 意味着nextkey即下一页页码.
 </dd>
 </dl>
 <p><strong>[返回值]</strong></p>
 <dl>
 <dt>nextkey</dt>
-<dd>String. 一个字符串, 供取下一页时填写参数&quot;_pagekey&quot;. 如果不存在该字段，则说明已经是最后一批数据。
+<dd>String. 一个字符串, 供取下一页时填写参数&quot;pagekey&quot;. 如果不存在该字段，则说明已经是最后一批数据。
 </dd>
 <dt>total</dt>
-<dd>Integer. 返回总记录数，仅当_pagekey指定为0时返回。
+<dd>Integer. 返回总记录数，仅当pagekey指定为0时返回。
 </dd>
 <dt>h/d</dt>
 <dd>实际数据表的头信息(header)和数据行(data)，符合table对象的格式，参考上一章节tbl(id,name)介绍。
@@ -507,18 +504,18 @@ Ordr.query(page, rows?=20) -&gt; {nextkey, total, @h, @d}</code></pre>
 <pre><code>Ordr.query()</code></pre>
 <p>返回</p>
 <pre><code>{nextkey: 10800910, h: [id, ...], data: [...]}</code></pre>
-<p>其中的nextkey将供下次查询时填写_pagekey字段；首次查询还会返回total字段。由于缺省页大小为20，所以可估计总共有51/20=3页。</p>
-<p>要在首次查询时返回总记录数，则用_pagekey=0：</p>
-<pre><code>Ordr.query(_pagekey=0)</code></pre>
+<p>其中的nextkey将供下次查询时填写pagekey字段；首次查询还会返回total字段。由于缺省页大小为20，所以可估计总共有51/20=3页。</p>
+<p>要在首次查询时返回总记录数，则用pagekey=0：</p>
+<pre><code>Ordr.query(pagekey=0)</code></pre>
 <p>这时返回</p>
 <pre><code>{nextkey: 10800910, total: 51, h: [id, ...], data: [...]}</code></pre>
 <p>第二次查询(下一页)</p>
-<pre><code>Ordr.query(_pagekey=10800910)</code></pre>
+<pre><code>Ordr.query(pagekey=10800910)</code></pre>
 <p>返回</p>
 <pre><code>{nextkey: 10800931, h: [...], d: [...]}</code></pre>
 <p>仍返回nextkey字段说明还可以继续查询，</p>
 <p>再查询下一页</p>
-<pre><code>Ordr.query(_pagekey=10800931)</code></pre>
+<pre><code>Ordr.query(pagekey=10800931)</code></pre>
 <p>返回</p>
 <pre><code>{h: [...], d: [...]}</code></pre>
 <p>返回数据中不带&quot;nextkey&quot;属性，表示所有数据获取完毕。</p>
@@ -535,7 +532,7 @@ Ordr.query(page, rows?=20) -&gt; {nextkey, total, @h, @d}</code></pre>
 ORDER BY t0.id
 LIMIT {pagesz}</code></pre>
 <p>再次查询</p>
-<pre><code>Ordr.query(_pagekey=10800910)</code></pre>
+<pre><code>Ordr.query(pagekey=10800910)</code></pre>
 <p>SQL样例如下：</p>
 <pre><code>SELECT * FROM Ordr t0
 ...
@@ -553,7 +550,7 @@ LIMIT {pagesz}</code></pre>
 ORDER BY comeTm DESC, t0.id
 LIMIT 0,{pagesz}</code></pre>
 <p>再次查询</p>
-<pre><code>Ordr.query(_pagekey=2)</code></pre>
+<pre><code>Ordr.query(pagekey=2)</code></pre>
 <p>SQL样例如下：</p>
 <pre><code>SELECT * FROM Ordr t0
 ...
@@ -613,32 +610,43 @@ http://localhost/mysvc/api.php?ac=Ordr.query&amp;res=id,dscr</code></pre>
 </ul>
 <p>员工登录后可能获得以下一个或多个权限： - PERM_MGR: 操作商户的所有内容, 包括订单, 物料, 员工等(但不能设置员工权限).</p>
 <p>其它权限: - PERM_TEST_MODE: 测试模式下可用。 - PERM_MOCK_MODE: 模拟模式下可用。</p>
-<h3 id="通用操作"><span class="header-section-number">3.2</span> 通用操作</h3>
-<h4 id="通用表操作"><span class="header-section-number">3.2.1</span> 通用表操作</h4>
-<p>以下4条API完成对表的增删改查(CRUD)动作. 服务端可根据当前用户所拥有权限进行检查. 下面用Obj即对应表名。</p>
-<pre><code>Obj.add(res?)(POST fields...) -&gt; {id} 
+<h3 id="通用对象接口"><span class="header-section-number">3.2</span> 通用对象接口</h3>
+<p>以下接口提供对象的基本增删改查(CRUD)以及列表查询、统计分析、导出等服务，为通用对象接口原型，在设计时应以此为基础形式，再按业务逻辑定义专用接口，描述权限和业务逻辑等。 下面用Obj代指对象实际名称。</p>
+<pre><code>添加：
+Obj.add()(POST fields...) -&gt; id
+Obj.add(res?)(POST fields...) -&gt; {fields...} (由res指定)
 
+更新：
 Obj.set(id)(POST fields...)
 
+获取：
 Obj.get(id, res?) -&gt; {fields...}
 
+删除：
 Obj.del(id)
 
-Obj.query(res?, cond?, @res2?, join?, @cond2?, union?, distinct?=0, _pagesz?=20, _pagekey?, _fmt?) -&gt; tbl(fields...) = {nextkey?, total?, @h, @d}
+查询列表(默认压缩表格式)：
+Obj.query(res?, cond?, distinct?=0, pagesz?=20, pagekey?, fmt?) -&gt; tbl(fields...) = {nextkey?, total?, @h, @d}
 
-取对象数组：
-Obj.query(_fmt=list, @subobj?, res?, ...) -&gt; {nextkey?, total?, @list=[obj1, obj2...]}
+查询列表 - 对象列表格式：
+Obj.query(fmt=list, ...) -&gt; {nextkey?, total?, @list=[obj1, obj2...]}
+
+后端内部查询支持以下额外参数：@res2?, join?, @cond2?, union?, subobj
 
 该接口不建议使用，它不支持分页，将废弃：
 Obj.query(wantArray=1, ...) -&gt; [obj1, obj2...]
 
 分组统计：
-Obj.query(gres, res, cond, ...) -&gt; tbl(fields...)</code></pre>
-<p>缺省这些操作只对管理员登录后开放, 用户或商家登录后无权操作. 管理员可对所有表的所有字段进行CRUD操作.</p>
-<p>部分对象对用户或商家登录后开放, 如用户登录后可操作User,UserCar等对象, 这些操作会在相应章节单独列出来说明, 如&quot;用户车辆信息&quot;章节. 在这些章节中会对操作限制(如只能get/set,不能add/del), 只读字段(即使请求中给出,服务端也会忽略这些字段), 可缺省字段(服务端会自动补全)做出说明.</p>
+Obj.query(gres, ...) -&gt; tbl(fields...)
+
+导出文件：
+Obj.query(fmt=csv/txt/excel, ...) -&gt; 文件内容</code></pre>
+<p>缺省这些操作只对超级管理员角色开放，其他角色默认无权操作。超级管理员可对所有对象的所有字段操作。</p>
+<p>对象是否开放出来，或是开放哪些操作及字段，一般按用户角色进行权限控制，如用户登录后可操作某些对象，或员工登录后可操作另一些对象，请查阅设计文档中相应的专用接口定义。 在专用接口定义中应描述允许的角色、允许的操作类型(如只能get/set,不能add/del)、只读字段、隐藏字段等，以及应实现的业务逻辑。</p>
 <p>系统中的表设计(表名, 字段等)参见&quot;数据库设计&quot;章节. 一般表都设计为使用整形字段id作为主键. 该字段创建后变只读, 不允许被修改.</p>
-<p>对于add操作，默认返回{id}, 如果想多返回其它字段，可设置res，如</p>
-<pre><code>Ordr.add(res=&quot;id,status,total&quot;)(POST fields...) -&gt; {id, status, total}</code></pre>
+<p>对于add操作，默认返回id, 如果想多返回其它字段，可设置res参数，如</p>
+<pre><code>Ordr.add()(status=&quot;CR&quot;, total=100) -&gt; 809
+Ordr.add(res=&quot;id,status,total&quot;)(status=&quot;CR&quot;, total=100) -&gt; {id: 810, status:&quot;CR&quot;, total: 100}</code></pre>
 <p><strong>[query]</strong></p>
 <p>query可以用参数cond指定查询条件, 如</p>
 <pre><code>cond=&quot;type=&#39;A&#39; and name like &#39;%hello%&#39;&quot; 
@@ -651,9 +659,9 @@ cond=type%3d%27A%27+and+name+like+%27%25hello%25%27</code></pre>
     &quot;h&quot;: [&quot;id&quot;, &quot;name&quot;],
     &quot;d&quot;: [[1, &quot;liang&quot;], [2, &quot;wang&quot;]]
 }</code></pre>
-<p>如果指定<code>_fmt=list</code>则返回:</p>
+<p>如果指定<code>fmt=list</code>则返回:</p>
 <pre><code>{
-    list: [[&quot;id&quot;: 1, &quot;name&quot;: &quot;liang&quot;], [&quot;id&quot;: 2, &quot;name&quot;: &quot;wang&quot;]]
+    &quot;list&quot;: [{&quot;id&quot;: 1, &quot;name&quot;: &quot;liang&quot;}, {&quot;id&quot;: 2, &quot;name&quot;: &quot;wang&quot;}]
 }</code></pre>
 <p>注意:</p>
 <ul>
@@ -661,14 +669,14 @@ cond=type%3d%27A%27+and+name+like+%27%25hello%25%27</code></pre>
 <li>对于set操作, 如果要将某字段置空, 可以用空串或&quot;null&quot; (小写). 如&quot;picId=&quot;或&quot;picId=null&quot;; 除了用在set操作的POST内容中，其它情况下字段设置为空串相当于没有设置该字段。</li>
 <li>对于set操作，如果要将某字符串类型字段置空串(不建议使用)，可以用&quot;empty&quot;, 如&quot;sn=empty&quot;。但如果对数值等其它类型设置，会导致其值为0或0.0。</li>
 <li>权限管理. 客户端或商户端可读写哪些对象详见其它章节. 管理员登录可操作所有表. 不同类型的登录进行的访问控制和返回结果是不一样的, 比如管理端登录没有任何限制和自动补全. 如果管理端, 客户端和商户端同时登录(使用同一session), 则管理端逻辑优先, 其次是客户端, 最后是商户端. (TODO: 商户端和客户端共用session可能会有冲突)</li>
-<li>TODO: 如果有metadata, 后台可检查字段是否存在, 是否只读等.</li>
+<li class="todo">TODO: 如果有metadata, 后台可检查字段是否存在, 是否只读等.</li>
 </ul>
 <p><strong>[分页]</strong></p>
 <dl>
-<dt>_pagesz</dt>
+<dt>pagesz</dt>
 <dd>Integer. 指定页大小, 默认一次返回20条数据。
 </dd>
-<dt>_pagekey</dt>
+<dt>pagekey</dt>
 <dd>String. 指定从哪条数据开始，应根据上次调用时返回数据的&quot;nextkey&quot;字段来填写。
 </dd>
 </dl>
@@ -679,11 +687,14 @@ cond=type%3d%27A%27+and+name+like+%27%25hello%25%27</code></pre>
 <dd>每个字段及其值.
 </dd>
 <dt>res, cond (get/query方法), orderby(query方法)</dt>
-<dd>String. 指定返回字段及查询条件, 例如, res=&quot;field1,field2&quot;, cond=&quot;field1&gt;100 AND field2='hello'&quot;, orderby=&quot;id desc&quot;, 注意使用UTF8+URL编码, 目前格式参照SQL语法, 字符串值应加上单引号.
+<dd>String. 指定返回字段及查询条件, 例如, res=&quot;field1,field2&quot;, cond=&quot;field1&gt;100 AND field2='hello'&quot;, orderby=&quot;id desc&quot;, 注意使用UTF8+URL编码, 目前格式参照SQL语法, 字符串值应加上单引号. 字段前不可加表名或别名(alias)，如&quot;t0.id&quot;; 在res中允许使用函数&quot;sum&quot;与&quot;count&quot;, 这时必须指定字段别名, 如&quot;count(id) cnt&quot;
 </dd>
 <dt>distinct</dt>
 <dd>Boolean. 如果为1, 生成&quot;SELECT DISTINCT ...&quot;查询.
 </dd>
+</dl>
+<p><strong>[限程序内使用的参数]</strong></p>
+<dl>
 <dt>res2, join, cond2 (get/query方法)</dt>
 <dd>这几个字段只由内部使用，没有安全限制. res2, cond2为额外的字段及条件, 必须为数组; join可以为字符串或字符串数组.注意增加join表后, 指定主表字段时最好加上主表的固定别名&quot;t0&quot;. 例如 res2=[&quot;b.name AS brandName&quot;, &quot;s.name as storeName&quot;], join=&quot;INNER JOIN CarBrand b ON b.id=t0.brandId&quot;, cond2=[&quot;t0.field1=100 and b.id IN (1,2,3)&quot;]
 </dd>
@@ -702,8 +713,8 @@ cond=type%3d%27A%27+and+name+like+%27%25hello%25%27</code></pre>
 </ul>
 <p><strong>[导出文件]</strong></p>
 <dl>
-<dt>_fmt</dt>
-<dd>Enum(csv,txt,excel). 导出Query的内容为指定格式。其中，csv为逗号分隔UTF8编码文本；txt为制表分隔的UTF8文本；excel为逗号分隔的gb2312编码文本（因为默认excel打开Csv文件时不支持utf8编码）。注意，由于默认会有分页，要想导出所有数据，一般可指定_pagesz=9999。
+<dt>fmt</dt>
+<dd>Enum(csv,txt,excel). 导出Query的内容为指定格式。其中，csv为逗号分隔UTF8编码文本；txt为制表分隔的UTF8文本；excel为逗号分隔的gb2312编码文本（因为默认excel打开Csv文件时不支持utf8编码）。注意，由于默认会有分页，要想导出所有数据，一般可指定pagesz=9999。
 </dd>
 </dl>
 <p><strong>[分组统计]</strong></p>
@@ -739,8 +750,8 @@ cond=type%3d%27A%27+and+name+like+%27%25hello%25%27</code></pre>
 <p>注意：</p>
 <ul>
 <li>flag/prop的值只能为0/1</li>
-<li>(TODO) props属性类似。</li>
-<li>(TODO) flags/props应区分大小写(设置属性collation: utf8_bin)</li>
+<li class="todo">TODO: props属性类似。</li>
+<li class="todo">TODO: flags/props应区分大小写(设置属性collation: utf8_bin)</li>
 </ul>
 <p><strong>[例: 添加商户]</strong></p>
 <p>添加商户, 指定一些字段:</p>
@@ -793,9 +804,9 @@ name=华莹汽车(张江店)&amp;addr=金科路88号&amp;tel=021-12345678</code>
 <p><strong>[导出商户]</strong></p>
 <pre><code>Store.query()
     res=id,name,addr
-    _fmt=excel
-    _pagesz=9999</code></pre>
-<p>可导出gb2312编码的csv文件。使用较大的_pagesz以尽量返回所有数据。</p>
+    fmt=excel
+    pagesz=9999</code></pre>
+<p>可导出gb2312编码的csv文件。使用较大的pagesz以尽量返回所有数据。</p>
 <p><strong>[例: 更新商户]</strong></p>
 <p>为商户设置描述信息等:</p>
 <pre><code>Store.set(id=8)
@@ -805,233 +816,6 @@ name=华莹汽车(张江店)&amp;addr=金科路88号&amp;tel=021-12345678</code>
 <p><strong>[例: 删除商户]</strong></p>
 <pre><code>Store.del(id=8)</code></pre>
 <p>操作成功时无返回内容.</p>
-<h4 id="附件上传"><span class="header-section-number">3.2.2</span> 附件上传</h4>
-<p>使用multipart/form-data格式上传（标准html支持，可一次传多个文件）:</p>
-<pre><code>upload(type?=default, genThumb?=0, autoResize?=1)(POST content:multipart/form-data) -&gt; [{id, thumbId?}]</code></pre>
-<p>直接传文件内容，一次只能传一个文件:</p>
-<pre><code>upload(fmt=raw|raw_b64, f, exif?, ...)(POST content:raw) -&gt; [{id, thumbId?}]</code></pre>
-<p class="todo">TODO: 如果使用微信的上传接口, 可以调用:</p>
-<pre><code>upload(..., weixinServerIds) -&gt; [{id, thumbId?}]</code></pre>
-<p>上传照片等内容. 返回附件id. 因为允许一次上传多个文件，返回的是一个数组，每项对应上传的一个文件。</p>
-<p>员工端上传图片时应传图片扩展信息（exif信息），包括时间、GPS信息，以便后期（通过工具校验数据）验证员工是否在指定的时间地点去洗车。 注意：exif信息只在上传单图时有意义。</p>
-<p class="todo">TODO:将限制只支持jpg等几种指定格式; 以及限制最大可传文件的size</p>
-<p><strong>[参数]</strong></p>
-<dl>
-<dt>genThumb</dt>
-<dd>Boolean. 为1时生成缩略图。如果未指定type, 则按type=default设置缩略图大小.
-</dd>
-<dt>type</dt>
-<dd>String. 商家图片上传使用&quot;store&quot;, 用户头像上传使用&quot;user&quot;, 其它情况不赋值. 不同的type在生成缩略图时尺寸不同。
-</dd>
-<dt>content</dt>
-<dd>文件内容。默认使用multipart/form-data格式，详见请求示例。如果fmt为&quot;raw&quot;或&quot;raw_b64&quot;，则直接为文件内容（或其base64编码）
-</dd>
-<dt>autoResize</dt>
-<dd>Boolean. 缺省为1，即当图片大小超过500K, 自动缩小图片到最大像素1920x1080.
-</dd>
-<dt>exif</dt>
-<dd>Object. 扩展信息。JSON格式，如上传时间及GPS信息：<code>{&quot;DateTime&quot;: &quot;2015:10:08 11:03:02&quot;, &quot;GPSLongtitude&quot;: [121,42,7.19], &quot;GPSLatitude&quot;: [31,14,45.8]}</code>
-</dd>
-<dt>fmt</dt>
-<dd>指定格式，可为&quot;raw&quot;或&quot;raw_b64&quot;。这时必须用参数&quot;f&quot;指定文件名; 且POST content为文件内容(fmt=raw)或文件经base64编码后(fmt=raw_b64)的内容。
-</dd>
-<dt>f</dt>
-<dd>指定文件名，后台将检查其扩展名。且在fmt=&quot;raw&quot;/&quot;raw_b64&quot;时使用。
-</dd>
-</dl>
-<p>TODO type决定生成缩略图的大小：</p>
-<ul>
-<li>type=user: 128x128</li>
-<li>type=store: 200x150</li>
-<li>type=default: 100x100</li>
-</ul>
-<p><strong>[返回]</strong></p>
-<dl>
-<dt>id</dt>
-<dd>附件id. 可根据att(id)接口获取该文件。
-</dd>
-<dt>thumbId</dt>
-<dd>如果参数设置了genThumb=1, 则会生成缩略图并返回该字段为生成的缩略图id.
-</dd>
-</dl>
-<p><strong>[示例1]</strong></p>
-<p>使用Content-Type为multipart/form-data可一次上传一个或多个文件。 假如上传两个文件&quot;file1.txt&quot;和&quot;file2.txt&quot;, HTTP请求如下：</p>
-<pre><code>POST api.php/upload
-Content-Type:multipart/form-data; boundary=----WebKitFormBoundary6oVKiDmuQSPOtt2L
-Content-Length: ...
-
-------WebKitFormBoundary6oVKiDmuQSPOtt2L
-Content-Disposition: form-data; name=&quot;file1&quot;; filename=&quot;file1.txt&quot;
-Content-Type: text/plain
-
-(content of file1)
-------WebKitFormBoundary6oVKiDmuQSPOtt2L
-Content-Disposition: form-data; name=&quot;file2&quot;; filename=&quot;file2.txt&quot;
-Content-Type: text/plain
-
-(content of file2)
-------WebKitFormBoundary6oVKiDmuQSPOtt2L--</code></pre>
-<p>注意：</p>
-<ul>
-<li>&quot;Content-Type&quot;必须为&quot;multipart/form-data&quot;并指定boundary. 欲了解详细格式请百度.</li>
-<li>服务端处理时，会根据filename生成一个新名字（会使用同样的扩展名, 如本例中的&quot;.txt&quot;），然后将文件内容保存到该文件中。</li>
-</ul>
-<p>使用html自带的form和file组件可以自动生成这样的POST请求，如上传两个文件：</p>
-<pre><code>&lt;form action=&quot;api.php/upload&quot; method=post enctype=&quot;multipart/form-data&quot;&gt;
-    &lt;input type=file name=&quot;file1&quot; accept=&quot;image/*&quot;&gt;
-    &lt;input type=file name=&quot;file2&quot; accept=&quot;image/*&quot;&gt;
-    &lt;input type=submit value=&quot;上传&quot;&gt;
-&lt;/form&gt;</code></pre>
-<p>也可以只使用一个file组件，只要设置属性multiple以允许多选文件(以chrome为例，在文件选择框中可以按Ctrl键多选文件)，但注意此时name必须带中括号：</p>
-<pre><code>&lt;form action=&quot;api.php/upload&quot; method=post enctype=&quot;multipart/form-data&quot;&gt;
-    &lt;input type=file name=&quot;file[]&quot; multiple=&quot;multiple&quot; accept=&quot;image/*&quot;&gt;
-    &lt;input type=submit value=&quot;上传&quot;&gt;
-&lt;/form&gt;</code></pre>
-<p>multiple属性是html5新增属性，如果浏览器不支持，也可以这样写两个文件上传框：</p>
-<pre><code>&lt;form action=&quot;api.php/upload&quot; method=post enctype=&quot;multipart/form-data&quot;&gt;
-    &lt;input type=file name=&quot;file[]&quot; multiple=&quot;multiple&quot; accept=&quot;image/*&quot;&gt;
-    &lt;input type=file name=&quot;file[]&quot; multiple=&quot;multiple&quot; accept=&quot;image/*&quot;&gt;
-    &lt;input type=submit value=&quot;上传&quot;&gt;
-&lt;/form&gt;</code></pre>
-<p>返回示例如下：</p>
-<pre><code>[ {id:1, thumbId:2}, {id:3, thumbId:4} ]</code></pre>
-<p><strong>[示例2]</strong></p>
-<p>使用fmt=raw上传：</p>
-<pre><code>POST api.php/upload&amp;fmt=raw&amp;f=1.jpg
-Content-Type: image/jpeg
-Content-Length: ...
-
-(jpg文件内容)</code></pre>
-<p>使用fmt=raw_b64上传：</p>
-<pre><code>POST api.php/upload&amp;fmt=raw_b64&amp;f=1.jpg
-Content-Type: text/plain
-Content-Length: ...
-
-/9j/4AAQSkZJRgABAQEASABIAAD/4QC+RXhpZgAATU0AKgAAAAgABgE...</code></pre>
-<p>返回示例：</p>
-<pre><code>[ {id:1, thumbId:2} ]</code></pre>
-<h4 id="附件下载"><span class="header-section-number">3.2.3</span> 附件下载</h4>
-<pre><code>att(id)
-
-根据id下载附件.
-
-att(thumbId)
-
-使用缩略图id获取原图. </code></pre>
-<p>注意: 该调用不符合接口规范, 它不返回格式为&quot;[code, data]&quot;的json串, 而是直接返回文件内容.</p>
-<p>HTTP header &quot;Content-Type&quot;将标识正确的文件MIME类型，如jpg类型为&quot;image/jpeg&quot;.</p>
-<p>如果找不到附件，将返回HTTP状态码&quot;404 Not Found&quot;。</p>
-<p><strong>[参数]</strong></p>
-<dl>
-<dt>thumbId</dt>
-<dd>缩略图id
-</dd>
-</dl>
-<p><strong>[示例]</strong></p>
-<p>获取id=100的附件：</p>
-<pre><code>GET api.php/att?id=100</code></pre>
-<p>已知缩略图id=100, 获取它对应的原图：</p>
-<pre><code>GET api.php/att?thumbId=100</code></pre>
-<p>找到图片返回:</p>
-<pre><code>HTTP/1.1 200 OK
-Content-Type: image/jpeg
-
-(图片内容)</code></pre>
-<p>一般浏览器可以正确直接显示该图片:</p>
-<pre><code>&lt;img src=&quot;http://myserver/mysvc/api.php/att?id=100&quot;&gt;</code></pre>
-<p>或找不到图片：</p>
-<pre><code>HTTP/1.1 404 Not Found
-Content-Type: text/plain; charset=UTF-8</code></pre>
-<h4 id="生成签名"><span class="header-section-number">3.2.4</span> 生成签名</h4>
-<pre><code>genSign(_pwd, ...) -&gt; sign</code></pre>
-<p>根据密码对所有待签名字段进行签名。一般地，非下划线开头的字段都是待签名字段(例如_pwd, _sign这些都不参与签名)，特别的会专门说明。 该API一般仅用于测试。（参考：页面 <code>partner/voucher.html</code> 使用了这个API）。</p>
-<p>如果希望一个参数不参与签名，则设计它的名字以&quot;_&quot;开头，如&quot;_ac&quot;.</p>
-<h4 id="代理"><span class="header-section-number">3.2.5</span> 代理</h4>
-<pre><code>proxy(url)</code></pre>
-<p>代理访问url。</p>
-<h4 id="执行sql语句"><span class="header-section-number">3.2.6</span> 执行sql语句</h4>
-<p>用于自动化测试</p>
-<pre><code>execSql(sql, wantArray?, wantId?, fmt?) -&gt; rowSet or affectedRows or lastInsertedId</code></pre>
-<p>只有管理员登录后才能使用, 或是测试模式下才能使用. 生产模式下客户端和商户端禁止使用.</p>
-<p>如果是SELECT语句, 返回结果集, 否则返回affectedRows.</p>
-<p><strong>[权限]</strong></p>
-<ul>
-<li>AUTH_ADMIN</li>
-<li>PERM_TEST_MODE</li>
-</ul>
-<p><strong>[参数]</strong></p>
-<dl>
-<dt>sql</dt>
-<dd>String. SQL语句。
-</dd>
-<dt>wantArray</dt>
-<dd>Boolean. 如果非空,则对select语句的结果返回数组而非关联表. 由fmt=array替代, 已不建议使用.
-</dd>
-<dt>wantId</dt>
-<dd>Boolean. 如果非空，则对insert语句的结果返回最后插入的id而非记录数。
-</dd>
-<dt>fmt</dt>
-<dd>String. 指定select查询的结果返回格式: &quot;table&quot;-table格式({h,d}), &quot;array&quot;-array格式 (相当于wantArray=1), &quot;one&quot;-如果查询有多列,则只取首行, 如果查询只有一列, 则只取首行首列数据(相当于框架中的queryOne函数), 缺省: object aray / rowset
-</dd>
-</dl>
-<p><strong>[示例]</strong></p>
-<p>请求</p>
-<pre><code>execSql(sql=&quot;SELECT COUNT(*) AS N FROM User&quot;)</code></pre>
-<p>返回</p>
-<pre><code>[
-    {N: 3}
-]</code></pre>
-<ul>
-<li>实际发送请求时, 注意别忘记对内容进行url编码, 内容不含引号.</li>
-<li>对select语句返回rowSet, 一定是一个数组, 每一项的字段名由select的字段决定.</li>
-</ul>
-<p><strong>[示例]</strong></p>
-<p>请求</p>
-<pre><code>execSql(sql=&quot;SELECT COUNT(*) AS N FROM User&quot;, fmt=one)</code></pre>
-<p>返回</p>
-<pre><code>3</code></pre>
-<p><strong>[示例]</strong></p>
-<p>请求</p>
-<pre><code>execSql(sql=&quot;SELECT COUNT(*) AS N, MIN(createTm) AS createTm FROM User&quot;, fmt=one)</code></pre>
-<p>返回</p>
-<pre><code>[3, &#39;2015-1-1&#39;]</code></pre>
-<p><strong>[示例]</strong></p>
-<p>请求</p>
-<pre><code>execSql(sql=&quot;SELECT COUNT(*) AS N FROM User&quot;, wantArray=1)
-或
-execSql(sql=&quot;SELECT COUNT(*) AS N FROM User&quot;, fmt=array)</code></pre>
-<p>返回</p>
-<pre><code>[
-    [3]
-]</code></pre>
-<p><strong>[示例]</strong></p>
-<p>请求</p>
-<pre><code>execSql(sql=&quot;SELECT id FROM User&quot;)</code></pre>
-<p>返回</p>
-<pre><code>[
-    {id: 1},
-    {id: 2},
-    {id: 3}
-]</code></pre>
-<p><strong>[示例]</strong></p>
-<p>请求</p>
-<pre><code>execSql(sql=&quot;SELECT id FROM User&quot;, fmt=array)</code></pre>
-<p>返回</p>
-<pre><code>[ [1], [2], [3] ]</code></pre>
-<p><strong>[示例]</strong></p>
-<p>请求</p>
-<pre><code>execSql(sql=&quot;SELECT id FROM User&quot;, fmt=table)</code></pre>
-<p>返回</p>
-<pre><code>{
-    h: [&quot;id&quot;],
-    d: [ [1], [2], [3] ]
-}</code></pre>
-<p><strong>[示例]</strong></p>
-<p>请求</p>
-<pre><code>execsql(sql=&quot;DELETE User WHERE id=1 or id=2&quot;)</code></pre>
-<p>返回</p>
-<pre><code>2</code></pre>
-<p>注: 对于非SELECT语句, 返回affectedRows</p>
 <h3 id="api调用监控"><span class="header-section-number">3.3</span> API调用监控</h3>
 <p>所有对API的调用（请求与响应）均记录到表ApiLog中供分析。</p>
 <p>对一个session, 监控其API调用是否有异常，避免自动化操作行为，这时将返回 E_FORBIDDEN 错误。安全类异常将记录到日志文件 secure.log</p>
@@ -1640,7 +1424,7 @@ plugin/{pluginName}/m2/plugin.js 可选，插件前端全局逻辑，文件名�
 TODO: plugin/{pluginName}/m2/plugin.css 可选，插件前端全局样式，文件名字任意，在plugin.php中通过return语句指定使用。</code></pre>
 <p>插件设计文档的结构可参考主设计文档，一般也包括 概要设计（需求），数据库设计，交互接口，前端应用接口这些部分。</p>
 <p>插件设计文档中的表应在升级时自动创建，主设计文档中有以下指定用于此目的：</p>
-<pre><code>@include server/plugin/*/DESIGN.wiki</code></pre>
+<pre><code>@include server/plugin/*/DESIGN.md</code></pre>
 <p>插件中对外部表及字段的依赖，应使用@see指令标注：</p>
 <pre><code>依赖数据接口：
 

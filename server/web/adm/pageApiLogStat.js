@@ -72,7 +72,7 @@ ListOptions.Ac = function () {
 	var opt = {
 		valueField: 'ac',
 		textField:'ac',
-		url:WUI.makeUrl('ApiLog.query', {res: "ac", distinct: 1, wantArray:1}),
+		url:WUI.makeUrl('ApiLog.query', {res: "ac", distinct: 1, pagesz:-1}),
 	};
 	return opt;
 };
