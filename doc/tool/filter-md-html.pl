@@ -25,13 +25,14 @@ use warnings;
 		<h3 id="title-1.2">title 1.2</h3>
 
 - 生成目录，目录放置在正文之前，即第1个h2之前。（pandoc生成的目录位置不可调。pandoc --toc）
-- 引用style.css
+- 引用style.css (可通过 -linkFiles 重新指定，如 `-linkFiles "style.css,doc/doc.css,doc/doc.js"`)
 - 添加todo类
 
 =cut
 
 my %g_opt = (
-	titleNoFrom => 2
+	titleNoFrom => 2,
+	linkFiles => 'style.css'
 );
 
 my $g_docTitle;
@@ -41,8 +42,23 @@ my ($body1, $tocContent, $body2);
 # generate title no
 my @stack = (); # {level,no}
 
+sub parseArgs()
+{
+	my $ref;
+	for (@ARGV) {
+		if (/^-(\w+)$/) {
+			$ref = \$g_opt{$1};
+		}
+		elsif ($ref) {
+			$$ref = $_;
+			undef $ref;
+		}
+	}
+}
+&parseArgs();
+
 my $flag = 0;
-while (<>) {
+while (<STDIN>) {
 	s/^<h(\d+) id="(.*?)">\K(?=(.*?)<)/genNo($1, $3, $2)/e;
 	if ($flag == 0 && $1 == 2) {
 		$flag = 1;
@@ -57,6 +73,20 @@ while (<>) {
 	}
 }
 
+my $linkFiles = '';
+foreach (split(',', $g_opt{linkFiles})) {
+	if (index($_, ".css") >= 0) {
+		$linkFiles .= <<EOL;
+<link rel="stylesheet" href="$_" />
+EOL
+	}
+	elsif (index($_, ".js") >= 0) {
+		$linkFiles .= <<EOL;
+<script src="$_"></script>
+EOL
+	}
+}
+
 print <<EOL;
 <!DOCTYPE html>
 <html>
@@ -64,7 +94,7 @@ print <<EOL;
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   <title>$g_docTitle</title>
   <style type="text/css">code{white-space: pre;}</style>
-  <link rel="stylesheet" href="style.css" />
+$linkFiles
 </head>
 <body>
 $body1
