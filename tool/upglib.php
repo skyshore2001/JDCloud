@@ -3,9 +3,8 @@
 require_once(dirname(__FILE__) . "/../server/app.php");
 
 ###### config {{{
-global $METAFILE, $LOGF, $CHAR_SZ, $SQLDIFF;
+global $LOGF, $CHAR_SZ, $SQLDIFF;
 
-$METAFILE = getenv("P_METAFILE") ?: __DIR__ . '/../DESIGN.md';
 $LOGF = "upgrade.log";
 
 $CHAR_SZ = [
@@ -80,7 +79,7 @@ class SqlDiff_mssql extends SqlDiff
 	}
 
 	public function safeName($name) {
-		if (preg_match('/^(user|order)$/i', $name));
+		if (preg_match('/^(user|order)$/i', $name))
 			return "\"$name\"";
 		return $name;
 	}
@@ -140,6 +139,9 @@ function genColSql($fieldDef)
 	elseif (preg_match('/Tm$/', $f1)) {
 		$def = "DATETIME";
 	}
+	elseif (preg_match('/Dt$/', $f1)) {
+		$def = "DATE";
+	}
 	elseif (preg_match('/Flag$/', $f1)) {
 		$def = "TINYINT UNSIGNED NOT NULL DEFAULT 0";
 	}
@@ -174,10 +176,15 @@ function genSql($meta)
 	return $sql;
 }
 
+function prompt($s)
+{
+	fprintf(STDERR, "%s", $s);
+}
+
 function logstr($s, $show=true)
 {
 	if ($show) {
-		echo $s;
+		prompt($s);
 	}
 	global $LOGF;
 	$fp = fopen($LOGF, "a");
@@ -261,6 +268,16 @@ function print_rs($rs)
 		echo("\n");
 	}
 }
+
+function getMetaFile()
+{
+	if ($a = getenv("P_METAFILE"))
+		return $a;
+	if (($a=__DIR__ . '/../DESIGN.md') && is_file($a))
+		return $a;
+	if (($a=__DIR__ . '/../DESIGN.wiki') && is_file($a))
+		return $a;
+}
 #}}}
 
 class UpgHelper
@@ -279,15 +296,20 @@ class UpgHelper
 		global $LOGF;
 		logstr("=== [" . date('c') . "] done\n", false);
 		if (! $this->forRtest)
-			echo "=== Done! Find log in $LOGF\n";
+			prompt("=== Done! Find log in $LOGF\n");
 	}
 
 	# init meta and DB conn
 	private function _initMeta()
 	{
-		global $METAFILE;
-		$baseDir = dirname($METAFILE);
-		$files = [$METAFILE];
+		$meta = getMetaFile();
+		if (!$meta || !is_file($meta)) {
+			throw new Exception("*** bad main meta file $meta");
+		}
+		prompt("=== load metafile: $meta\n");
+
+		$baseDir = dirname($meta);
+		$files = [$meta];
 		while ($file = array_pop($files)) {
 
 			//$file = iconv("utf-8", "gbk", $METAFILE); // for OS windows
@@ -332,7 +354,7 @@ class UpgHelper
 		$fnConfirm = null;
 		if (!$this->forRtest) {
 			$fnConfirm = function ($connstr) {
-				echo "=== connect to $connstr (enter to cont, ctrl-c to break) ";
+				prompt("=== connect to $connstr (enter to cont, ctrl-c to break) ");
 				fgets(STDIN);
 				logstr("=== [" . date('c') . "] connect to $connstr\n", false);
 				return true;
@@ -433,7 +455,13 @@ class UpgHelper
 		logstr("-- {$tbl}: " . join(',', $tableMeta['fields']) . "\n");
 		$sql = genSql($tableMeta);
 		logstr("$sql\n");
-		$this->dbh->exec($sql);
+		try {
+			$this->dbh->exec($sql);
+		}
+		catch (Exception $e) {
+			echo "*** Fail to create table `$tbl`. DO NOT use SQL keyword as the name of table or column.\n";
+			throw $e;
+		}
 		return true;
 	}
 

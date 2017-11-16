@@ -10,6 +10,7 @@
 ##############################
 
 opt=-encoding gb2312
+gendoc=php jdcloud-gendoc.php -template refdoc-template.php -linkFiles "style.css,doc.css,refdoc.js"
 
 all: refdoc
 
@@ -22,22 +23,22 @@ refdoc_targets=../doc/api_php.html
 refdoc: $(refdoc_targets)
 
 ../doc/api_m2.html: ../server/m2/lib/jdcloud-mui.js
-	php jdcloud-gendoc.php $^ -title "API参考 - 筋斗云前端（移动Web版）" $(opt) > $@
+	$(gendoc) $^ -title "API参考 - 筋斗云前端（移动Web版）" $(opt) > $@
 
 ../doc/api_web.html: ../server/web/lib/jdcloud-wui.js
-	php jdcloud-gendoc.php $^ -title "API参考 - 筋斗云前端（桌面Web版）" $(opt) > $@
+	$(gendoc) $^ -title "API参考 - 筋斗云前端（桌面Web版）" $(opt) > $@
 
 ../doc/api_php.html: ../server/php/jdcloud-php/common.php ../server/php/jdcloud-php/app_fw.php ../server/php/jdcloud-php/api_fw.php ../server/php/jdcloud-php/AccessControl.php ../server/php/jdcloud-php/ext.php
-	php jdcloud-gendoc.php $^ -title "API参考 - 筋斗云服务端" $(opt) > $@
+	$(gendoc) $^ -title "API参考 - 筋斗云服务端" $(opt) > $@
 
 ../doc/webcc.html: webcc.php jdcloud-build.sh
-	php jdcloud-gendoc.php $^ -title "webcc - 站点发布优化工具" $(opt) > $@
+	$(gendoc) $^ -title "webcc - 站点发布优化工具" $(opt) > $@
 
 ../doc/jdcloud-sprite.html: jdcloud-sprite.php
-	php jdcloud-gendoc.php $^ -title "jdcloud-sprite - 图片合并（精灵图制作）工具" $(opt) > $@
+	$(gendoc) $^ -title "jdcloud-sprite - 图片合并（精灵图制作）工具" $(opt) > $@
 
 ../doc/jdcloud-gendoc.html: jdcloud-gendoc.php
-	php jdcloud-gendoc.php $^ -title "jdcloud-gendoc - 文档生成工具" $(opt) > $@
+	$(gendoc) $^ -title "jdcloud-gendoc - 文档生成工具" $(opt) > $@
 
 clean: clean-refdoc
 

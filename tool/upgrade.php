@@ -38,39 +38,34 @@ require_once('upglib.php');
 $h = new UpgHelper();
 
 if (count($argv) > 1) {
-	for ($i=1; $i<count($argv); $i++) {
-		switch ($argv[$i]) {
-		case "upgrade":
-			upgradeAuto();
-			break;
-		case "all":
-			$h->initDB();
-			break;
-		default:
-			$h->addTable($argv[$i]);
-			break;
-		}
-	}
+	$cmd = join(' ', array_slice($argv, 1));
+	execCmd($cmd);
 	return;
 }
 
 while (true) {
-	try {
-		echo "> ";
-		$s = fgets(STDIN);
-		if ($s === false)
-			break;
-		$s = chop($s);
-		if (! $s)
-			continue;
+	echo "> ";
+	$s = fgets(STDIN);
+	if ($s === false)
+		break;
+	$s = chop($s);
+	if (! $s)
+		continue;
 
-		if ($s == "q") {
+	execCmd($s);
+}
+
+function execCmd($cmd)
+{
+	global $h;
+	try {
+		if ($cmd == "q") {
 			$h->quit();
 		}
-		else if (preg_match('/^\s*(select|update|delete|insert|drop|create)\s+/i', $s)) {
-			$h->execSql($s);
+		else if (preg_match('/^\s*(select|update|delete|insert|drop|create)\s+/i', $cmd)) {
+			$h->execSql($cmd);
 		}
-		else if (preg_match('/^(\w+)\s*\((.*)\)/', $s, $ms) || preg_match('/^(\w+)\s*$/', $s, $ms)) {
+		else if (preg_match('/^(\w+)\s*\((.*)\)/', $cmd, $ms) || preg_match('/^(\w+)\s*$/', $cmd, $ms)) {
 			try {
 				$fn = $ms[1];
 				@$param = $ms[2] ?: '';

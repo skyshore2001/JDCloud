@@ -425,7 +425,7 @@ function param($name, $defVal = null, $col = null, $doHtmlEscape = true)
 }
 
 /** 
-@fn mparam($name, $col = $_REQUEST)
+@fn mparam($name, $col = null)
 @brief mandatory param
 
 $name可以是一个数组，表示至少有一个参数有值，这时返回每个参数的值。
@@ -457,7 +457,7 @@ function mparam($name, $col = null)
 		}
 		if (!$found) {
 			$s = join($name, " or ");
-			throw new MyException(E_PARAM, "Bad Request - require param $s", "缺少参数`{$s}`");
+			throw new MyException(E_PARAM, "Bad Request - require param $s");
 		}
 		return $arr;
 	}
@@ -466,7 +466,7 @@ function mparam($name, $col = null)
 	if (isset($rv))
 		return $rv;
 	parseType_($name); // remove the type tag.
-	throw new MyException(E_PARAM, "Bad Request - param `$name` is missing", "缺少参数`{$name}`");
+	throw new MyException(E_PARAM, "Bad Request - param `$name` is missing");
 }
 
 /**
@@ -935,7 +935,7 @@ function queryOne($sql, $assoc = false)
 
 @see objarr2table
  */
-function queryAll($sql, $assoc)
+function queryAll($sql, $assoc = false)
 {
 	global $DBH;
 	if (! isset($DBH))
