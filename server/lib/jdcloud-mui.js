@@ -1,4 +1,4 @@
-// jdcloud-mui version 1.0
+// jdcloud-mui version 1.1
 // ====== WEBCC_BEGIN_FILE doc.js {{{
 /**
 @module MUI
@@ -194,6 +194,63 @@ style将被插入到head标签中，并自动添加属性`mui-origin={pageId}`.
 
 除此之外如果多次调用showPage（包括在pageshow事件中调用），一般最终显示的是最后一次调用的页面，过程中可能产生闪烁，且可能会丢失一些pageshow/pagehide事件，应尽量避免。
 
+#### 逻辑页声明依赖库
+
+@key mui-deferred
+
+（版本v4.2）
+如果逻辑页依赖某一个或多个库，这些库不想在主页面中用script默认加载，这时可以使用`mui-deferred`属性。
+逻辑页初始化函数mui-initfn将在该deferred对象操作成功后执行。
+
+示例：某逻辑页依赖百度地图的js库，该js库使用动态加载：
+
+	// 主逻辑中定义返回Deferred对象
+	window.dfdBaiduMap = MUI.loadScript("http://api.map.baidu.com/getscript?v=2.0&ak=YOUR-APP-KEY");
+
+	// map.html 逻辑页中声明依赖该对象
+	<div mui-initfn="initPageMap" mui-script="map.js" mui-deferred="dfdBaiduMap">
+		...
+	</div>
+
+	// map.js
+	function initPageMap()
+	{
+		var jpage = this;
+		// 这时可以安全依赖库的对象，如BMap对象
+	}
+
+如果不使用mui-deferred属性，则需要在initPageMap中小心的来写异步逻辑，比如：
+
+	// map.js
+	function initPageMap()
+	{
+		var jpage = this;
+		// 可以安全使用BMap对象
+		dfdBaiduMap.then(init);
+
+		function init() { ... }
+	}
+
+一般会将加载依赖库包装成一个函数，比如要使用百度echarts显示统计图的页面，可定义函数：
+
+	var dfdStatLib_;
+	function loadStatLib()
+	{
+		if (dfdStatLib_ == null) {
+			dfdStatLib_ = $.when(
+				MUI.loadScript("../web/lib/echarts.min.js"),
+				MUI.loadScript("../web/lib/jdcloud-wui-stat.js")
+			);
+		}
+		return dfdStatLib_;
+	}
+
+依赖echarts的页面，可以设置：
+
+	<div mui-deferred="loadStatLib()">
+		...
+	</div>
+
 ### 页面路由
 
 默认路由：
@@ -236,18 +293,84 @@ URL也可以显示为文件风格，比如在设置：
 
 ### 导航栏
 
-@key .mui-navbar 导航栏
+@key .mui-navbar 导航栏，Tab页
 @key .mui-navbar.noactive
 
 默认行为是点击后添加active类（比如字体发生变化），如果不需要此行为，可再添加noactive类。
+示例：
+
+	<div class="mui-navbar">
+		<a mui-linkto="#lst1">待服务</a>
+		<a mui-linkto="#lst2">已完成</a>
+	</div>
 
 ### 对话框
 
 @key .mui-dialog 对话框
 
+对话框与页面(.mui-page)类似，可以包含hd, bd等部分。
+它一般包含在一个页面中，id以"dlg"开头。示例：
+
+	<div id="dlgAddPerson" class="mui-dialog">
+		<div class="hd">
+			<h2>添加人物</h2>
+		</div>
+
+		<div class="bd weui_cells weui_cells_access">
+			<div class="weui_cell">
+				<label class="weui_cell_hd weui_label" style="min-width:7em">为<span class="p-name"></span>添加:</label>
+				<select id="cboRelation" class="weui_cell_primary weui_select right" style="min-width:90px">
+					<option value="parent">父亲</option>
+					<option value="child">子女</option>
+				</select>
+				<div class="weui_cell_ft"></div>
+			</div>
+			<div class="weui_cell nowrap" style="display:block;">
+				<a id="btnOK" class="mui-btn primary">确定</a>
+				<a id="btnCancel" class="mui-btn">取消</a>
+			</div>
+		</div>
+
+	</div>
+
+要弹出这个对话框：
+
+	MUI.showDialog(jpage.find("#dlgAddPerson"));
+
+或者用a标签链接打开：
+
+	<a href="#dlgAddPerson">添加人物</a>
+
+@see MUI.showDialog 弹出对话框
+@see #muiAlert,MUI.app_alert 提示框(app_alert)是一个id为`muiAlert`的特别对话框。
+@see .mui-menu 弹出菜单，也是一类特别的对话框。
+
 ### 弹出菜单
 
+菜单是特殊的一类对话框。因而id以"dlg"开头，以便a标签通过href链接时，可直接弹出菜单（即打开对话框）。
+
 @key .mui-menu 菜单
+
+示例：添加右上角菜单（习惯上左上角为返回按钮，右上角为菜单按钮）
+
+	<div class="hd">
+		<a href="javascript:hd_back();" class="icon icon-back"></a>
+		<a href="#dlgMenu" class="icon icon-menu"></a>
+		<h2>谱系图</h2>
+	</div>
+
+	<!-- 左上角弹出菜单，用top类标识 -->
+	<ul id="dlgMenu" class="mui-menu top">
+		<a href="javascript:PagePerson.showForAdd();"><li><i class="icon icon-add"></i>添加人物</li></a>
+		<li id="mnuQueryPerson"><i class="icon icon-search"></i>查找人物</li>
+		<a href="#dlgMenuShare"><li><i class="icon icon-viewfav"></i>分享到</li></a>
+	</ul>
+
+	<!-- 弹出菜单 -->
+	<ul id="dlgMenuShare" class="mui-menu">
+		<li id="li1">微信好友</li>
+		<li id="li2">微信朋友圈</li>
+	</ul>
 
 ### 底部导航
 
@@ -625,6 +748,11 @@ function parseTime(s)
 	var dt2 = parseDate("2012/01/01 20:00:09");
 	var dt3 = parseDate("2012.1.1 20:00");
 
+支持时区，时区格式可以是"+8", "+08", "+0800", "Z"这些，如
+
+	parseDate("2012-01-01T09:10:20.328+0800");
+	parseDate("2012-01-01T09:10:20Z");
+
  */
 self.parseDate = parseDate;
 function parseDate(str)
@@ -670,8 +798,8 @@ function parseDate(str)
 	var dt = new Date(y, m, d, h, n, s);
 	if (isNaN(dt.getYear()))
 		return null;
-	// 时区
-	ms = str.match(/([+-])(\d{1,4})$/);
+	// 时区(前面必须是时间如 00:00:00.328-02 避免误匹配 2017-08-11 当成-11时区
+	ms = str.match(/:[0-9.T]+([+-])(\d{1,4})$/);
 	if (ms != null) {
 		var sign = (ms[1] == "-"? -1: 1);
 		var cnt = ms[2].length;
@@ -708,7 +836,7 @@ function parseDate(str)
  */
 Date.prototype.add = function (sInterval, n)
 {
-    switch (sInterval) {
+	switch (sInterval) {
 	case 'd':
 		this.setDate(this.getDate()+n);
 		break;
@@ -716,7 +844,7 @@ Date.prototype.add = function (sInterval, n)
 		this.setMonth(this.getMonth()+n);
 		break;
 	case 'y':
-		this.setYear(this.getYear()+n);
+		this.setFullYear(this.getFullYear()+n);
 		break;
 	case 'h':
 		this.setHours(this.getHours()+n);
@@ -1046,7 +1174,7 @@ function rs2Hash(rs, key)
 		h: ["id", "name"], 
 		d: [ [100, "Tom"], [101, "Jane"], [102, "Tom"] ] 
 	};
-	var hash = rs2Hash(rs, "name");  
+	var hash = rs2MultiHash(rs, "name");  
 
 	// 结果为
 	hash = {
@@ -1074,6 +1202,40 @@ function rs2MultiHash(rs, key)
 	}
 	return ret;
 }
+
+/**
+@fn list2varr(ls, sep=':', sep2=',')
+
+将字符串代表的压缩表("v1:v2:v3,...")转成对象数组。
+
+e.g.
+
+	var users = "101:andy,102:beddy";
+	var varr = list2varr(users);
+	// varr = [["101", "andy"], ["102", "beddy"]];
+	var arr = rs2Array({h: ["id", "name"], d: varr});
+	// arr = [ {id: 101, name: "andy"}, {id: 102, name: "beddy"} ];
+	
+	var cmts = "101\thello\n102\tgood";
+	var varr = list2varr(cmts, "\t", "\n");
+	// varr=[["101", "hello"], ["102", "good"]]
+ */
+self.list2varr = list2varr;
+function list2varr(ls, sep, sep2)
+{
+	if (sep == null)
+		sep = ':';
+	if (sep2 == null)
+		sep2 = ',';
+	var ret = [];
+	$.each(ls.split(sep2), function () {
+		if (this.length == 0)
+			return;
+		ret.push(this.split(sep));
+	});
+	return ret;
+}
+
 //}}}
 
 /**
@@ -1131,13 +1293,45 @@ function getAncestor(o, fn)
 	if (b)
 		url = appendParam(url, "b=" + b);
 
+	appendParam(url, $.param({a:1, b:3}));
+
+支持url中带有"?"或"#"，如
+
+	var url = "http://xxx/api.php?id=1#order";
+	appendParam(url, "pay=1"); // "http://xxx/api.php?id=1&pay=1#order";
+
 */
 self.appendParam = appendParam;
 function appendParam(url, param)
 {
 	if (param == null)
 		return url;
-	return url + (url.indexOf('?')>0? "&": "?") + param;
+	var ret;
+	var a = url.split("#");
+	ret = a[0] + (url.indexOf('?')>=0? "&": "?") + param;
+	if (a.length > 1) {
+		ret += "#" + a[1];
+	}
+	return ret;
+}
+
+/**
+@fn deleteParam(url, paramName)
+
+示例:
+
+	var url = "http://xxx/api.php?a=1&b=3&c=2";
+	var url1 = deleteParam(url, "b"); // "http://xxx/api.php?a=1&c=2";
+
+*/
+self.deleteParam = deleteParam;
+function deleteParam(url, paramName)
+{
+	var ret = url.replace(new RegExp('&?' + paramName + "=[^&#]+"), '');
+	if (ret.indexOf('?&') >=0) {
+		ret = ret.replace('?&', '?');
+	}
+	return ret;
 }
 
 /** @fn isWeixin()
@@ -1331,31 +1525,92 @@ self.assert(window.jQuery, "require jquery lib.");
 		callSvr(ac, fn, getFormData(jf));
 	});
 
+如果在jo对象上指定了属性enctype="multipart/form-data"，则调用getFormData会返回FormData对象而非js对象，
+再调用callSvr时，会以"multipart/form-data"格式提交数据。
+示例：
+
+	<form method="POST" enctype='multipart/form-data'>
+		课程文档
+		<input name="pdf" type="file" accept="application/pdf">
+	</form>
+
 @see setFormData
  */
 self.getFormData = getFormData;
 function getFormData(jo)
 {
 	var data = {};
+	var isFormData = false;
+	if (jo.attr("enctype") == "multipart/form-data") {
+		isFormData = true;
+		data = new FormData();
+	}
 	var orgData = jo.data("origin_") || {};
-	jo.find("[name]:not([disabled])").each (function () {
-		var ji = $(this);
-		var name = ji.attr("name");
-		var content;
-		if (ji.is(":input"))
-			content = ji.val();
-		else
-			content = ji.html();
-
+	formItems(jo, function (name, content) {
+		var ji = this;
 		var orgContent = orgData[name];
 		if (orgContent == null)
 			orgContent = "";
 		if (content == null)
 			content = "";
 		if (content !== String(orgContent)) // 避免 "" == 0 或 "" == false
-			data[name] = content;
+		{
+			if (! isFormData) {
+				data[name] = content;
+			}
+			else {
+				if (ji.is(":file")) {
+					// 支持指定multiple，如  <input name="pdf" type="file" multiple accept="application/pdf">
+					$.each(ji.prop("files"), function (i, e) {
+						data.append(name, e);
+					});
+				}
+				else {
+					data.append(name, content);
+				}
+			}
+		}
 	});
 	return data;
+}
+
+/**
+@fn formItems(jo, cb)
+
+遍历jo下带name属性的有效控件，回调cb函数。
+
+注意:
+
+- 忽略有disabled属性的控件
+- 忽略未选中的checkbox/radiobutton
+
+@param cb(name, val) this=ji=当前jquery对象
+当cb返回false时可中断遍历。
+
+ */
+self.formItems = formItems;
+function formItems(jo, cb)
+{
+	jo.find("[name]:not([disabled])").each (function () {
+		var name = this.name;
+		if (! name)
+			return;
+
+		var ji = $(this);
+		var val;
+		if (ji.is(":input")) {
+			if (this.type == "checkbox" && !this.checked)
+				return;
+			if (this.type == "radio" && !this.checked)
+				return;
+			val = ji.val();
+		}
+		else {
+			val = ji.html();
+		}
+		if (cb.call(ji, name,  val) === false)
+			return false;
+	});
 }
 
 /**
@@ -1465,6 +1720,11 @@ function setFormData(jo, data, opt)
 
 		loadScript("1.js", {async: false});
 		// 可立即使用1.js中定义的内容
+	
+	注意：如果是跨域加载，不支持同步调用（$.ajax的限制），如：
+
+		loadScript("http://oliveche.com/1.js", {async: false});
+		// 一旦跨域，选项{async:false}指定无效，不可立即使用1.js中定义的内容。
 
 如果要动态加载script，且使用后删除标签（里面定义的函数会仍然保留），建议直接使用`$.getScript`，它等同于：
 
@@ -1779,6 +2039,178 @@ function setOnError()
 }
 setOnError();
 
+// ------ enhanceWithin {{{
+/**
+@var MUI.m_enhanceFn
+*/
+self.m_enhanceFn = {}; // selector => enhanceFn
+
+/**
+@fn MUI.enhanceWithin(jparent)
+*/
+self.enhanceWithin = enhanceWithin;
+function enhanceWithin(jp)
+{
+	$.each(self.m_enhanceFn, function (sel, fn) {
+		var jo = jp.find(sel);
+		if (jp.is(sel))
+			jo = jo.add(jp);
+		if (jo.size() == 0)
+			return;
+		jo.each(function (i, e) {
+			var je = $(e);
+			var opt = getOptions(je);
+			if (opt.enhanced)
+				return;
+			opt.enhanced = true;
+			fn(je);
+		});
+	});
+}
+
+/**
+@fn MUI.getOptions(jo)
+*/
+self.getOptions = getOptions;
+function getOptions(jo)
+{
+	var opt = jo.data("muiOptions");
+	if (opt === undefined) {
+		opt = {};
+		jo.data("muiOptions", opt);
+	}
+	return opt;
+}
+
+//}}}
+
+// 参考 getQueryCond中对v各种值的定义
+function getop(v)
+{
+	if (typeof(v) == "number")
+		return "=" + v;
+	var op = "=";
+	var is_like=false;
+	if (v.match(/^(<>|>=?|<=?)/)) {
+		op = RegExp.$1;
+		v = v.substr(op.length);
+	}
+	else if (v.indexOf("*") >= 0 || v.indexOf("%") >= 0) {
+		v = v.replace(/[*]/g, "%");
+		op = " like ";
+	}
+	v = $.trim(v);
+
+	if (v === "null")
+	{
+		if (op == "<>")
+			return " is not null";
+		return " is null";
+	}
+	if (v === "empty")
+		v = "";
+	if (v.length == 0 || v.match(/\D/) || v[0] == '0') {
+		v = v.replace(/'/g, "\\'");
+// 		// ???? 只对access数据库: 支持 yyyy-mm-dd, mm-dd, hh:nn, hh:nn:ss
+// 		if (!is_like && v.match(/^((19|20)\d{2}[\/.-])?\d{1,2}[\/.-]\d{1,2}$/) || v.match(/^\d{1,2}:\d{1,2}(:\d{1,2})?$/))
+// 			return op + "#" + v + "#";
+		return op + "'" + v + "'";
+	}
+	return op + v;
+}
+
+/**
+@fn WUI.getQueryCond(kvList)
+
+@param kvList {key=>value}, 键值对，值中支持操作符及通配符。也支持格式 [ [key, value] ], 这时允许key有重复。
+
+根据kvList生成BPQ协议定义的{obj}.query的cond参数。
+
+例如:
+
+	var kvList = {phone: "13712345678", id: ">100", addr: "上海*", picId: "null"};
+	WUI.getQueryCond(kvList);
+
+有多项时，每项之间以"AND"相连，以上定义将返回如下内容：
+
+	"phone='13712345678' AND id>100 AND addr LIKE '上海*' AND picId IS NULL"
+
+示例二：
+
+	var kvList = [ ["phone", "13712345678"], ["id", ">100"], ["addr", "上海*"], ["picId", "null"] ];
+	WUI.getQueryCond(kvList); // 结果同上。
+
+
+设置值时，支持以下格式：
+
+- {key: "value"} - 表示"key=value"
+- {key: ">value"} - 表示"key>value", 类似地，可以用 >=, <, <=, <> 这些操作符。
+- {key: "value*"} - 值中带通配符，表示"key like 'value%'" (以value开头), 类似地，可以用 "*value", "*value*", "*val*ue"等。
+- {key: "null" } - 表示 "key is null"。要表示"key is not null"，可以用 "<>null".
+- {key: "empty" } - 表示 "key=''".
+
+支持简单的and/or查询，但不支持在其中使用括号:
+
+- {key: ">value and <=value"}  - 表示"key>'value' and key<='value'"
+- {key: "null or 0 or 1"}  - 表示"key is null or key=0 or key=1"
+
+在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。
+*/
+self.getQueryCond = getQueryCond;
+function getQueryCond(kvList)
+{
+	var condArr = [];
+	if ($.isPlainObject(kvList)) {
+		$.each(kvList, handleOne);
+	}
+	else if ($.isArray(kvList)) {
+		$.each(kvList, function (i, e) {
+			handleOne(e[0], e[1]);
+		});
+	}
+
+	function handleOne(k,v) {
+		if (v == null || v === "")
+			return;
+		var arr = v.split(/\s+(and|or)\s+/i);
+		var str = '';
+		var bracket = false;
+		$.each(arr, function (i, v1) {
+			if ( (i % 2) == 1) {
+				str += ' ' + v1.toUpperCase() + ' ';
+				bracket = true;
+				return;
+			}
+			str += k + getop(v1);
+		});
+		if (bracket)
+			str = '(' + str + ')';
+		condArr.push(str);
+		//val[e.name] = escape(v);
+		//val[e.name] = v;
+	}
+	return condArr.join(' AND ');
+}
+
+/**
+@fn WUI.getQueryParam(kvList)
+
+根据键值对生成BQP协议中{obj}.query接口需要的cond参数.
+
+示例：
+
+	WUI.getQueryParam({phone: '13712345678', id: '>100'})
+	返回
+	{cond: "phone='13712345678' AND id>100"}
+
+@see WUI.getQueryCond
+*/
+self.getQueryParam = getQueryParam;
+function getQueryParam(kvList)
+{
+	return {cond: getQueryCond(kvList)};
+}
+
 }
 // vi: foldmethod=marker
 // ====== WEBCC_END_FILE app.js }}}
@@ -1965,7 +2397,8 @@ function leaveWaiting(ctx)
 			ctx.tv2 = tv2;
 			console.log(ctx);
 		}
-		if ($.active == 0 && self.isBusy && m_manualBusy == 0) {
+		if ($.active <= 0 && self.isBusy && m_manualBusy == 0) {
+			$.active = 0;
 			self.isBusy = 0;
 			var tv = new Date() - m_tmBusy;
 			m_tmBusy = 0;
@@ -2033,13 +2466,13 @@ function defDataProc(rv)
 		if (g_data.testMode != val) {
 			g_data.testMode = val;
 			if (g_data.testMode)
-				alert("测试模式!");
+				self.app_alert("测试模式!", {timeoutInterval:2000});
 		}
 		val = mCommon.parseValue(this.xhr_.getResponseHeader("X-Daca-Mock-Mode"));
 		if (g_data.mockMode != val) {
 			g_data.mockMode = val;
 			if (g_data.mockMode)
-				alert("模拟模式!");
+				self.app_alert("模拟模式!", {timeoutInterval:2000});
 		}
 	}
 
@@ -2091,7 +2524,8 @@ function defDataProc(rv)
 			return;
 		}
 		else if (rv[0] == E_AUTHFAIL) {
-			self.app_alert("验证失败，请检查输入是否正确!", "e");
+			var errmsg = rv[1] || "验证失败，请检查输入是否正确!";
+			self.app_alert(errmsg, "e");
 			return;
 		}
 		else if (rv[0] == E_ABORT) {
@@ -2132,13 +2566,12 @@ function getBaseUrl()
 }
 
 /**
-@fn MUI.makeUrl(action, params)
-@alias makeUrl
+@fn MUI.makeUrl(action, params?)
 
 生成对后端调用的url. 
 
 	var params = {id: 100};
-	var url = makeUrl("Ordr.set", params);
+	var url = MUI.makeUrl("Ordr.set", params);
 
 注意：函数返回的url是字符串包装对象，可能含有这些属性：{makeUrl=true, action?, params?}
 这样可通过url.action得到原始的参数。
@@ -2225,10 +2658,10 @@ function makeUrl(action, params)
 		if (m_appVer === undefined)
 		{
 			var platform = "n";
-			if (isAndroid()) {
+			if (mCommon.isAndroid()) {
 				platform = "a";
 			}
-			else if (isIOS()) {
+			else if (mCommon.isIOS()) {
 				platform = "i";
 			}
 			m_appVer = platform + "/" + g_cordova;
@@ -2259,19 +2692,21 @@ function makeUrl(action, params)
 }
 
 /**
-@fn MUI.callSvr(ac, [param?], fn?, postParams?, userOptions?)
+@fn MUI.callSvr(ac, [params?], fn?, postParams?, userOptions?) -> deferredObject
 @alias callSvr
 
 @param ac String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)
-@param param Object. URL参数（或称HTTP GET参数）
+@param params Object. URL参数（或称HTTP GET参数）
 @param postParams Object. POST参数. 如果有该参数, 则自动使用HTTP POST请求(postParams作为POST内容), 否则使用HTTP GET请求.
 @param fn Function(data). 回调函数, data参考该接口的返回值定义。
 @param userOptions 用户自定义参数, 会合并到$.ajax调用的options参数中.可在回调函数中用"this.参数名"引用. 
 
 常用userOptions: 
+
 - 指定{async:0}来做同步请求, 一般直接用callSvrSync调用来替代.
 - 指定{noex:1}用于忽略错误处理。
-- 指定{noLoadingImg:1}用于忽略loading图标.
+- 指定{noLoadingImg:1}用于忽略loading图标. 要注意如果之前已经调用callSvr显示了图标且图标尚未消失，则该选项无效，图标会在所有调用完成之后才消失(leaveWaiting)。
+ 要使隐藏图标不受本次调用影响，可在callSvr后手工调用`--$.active`。
 
 想为ajax选项设置缺省值，可以用callSvrExt中的beforeSend回调函数，也可以用$.ajaxSetup，
 但要注意：ajax的dataFilter/beforeSend选项由于框架已用，最好不要覆盖。
@@ -2293,16 +2728,21 @@ function makeUrl(action, params)
 
 当后端返回错误时, 回调`fn(false)`（参数data=false）. 可通过 MUI.lastError.ret 或 this.lastError 取到返回的原始数据。
 
-例：
+示例：
 
 	callSvr("logout");
 	callSvr("logout", api_logout);
-	callSvr("login", {wantAll:1}, api_login);
-	callSvr("info/hotline.php", {q: '大众'}, api_hotline);
+	function api_logout(data) {}
 
-	// 也兼容使用makeUrl的旧格式如:
-	callSvr(makeUrl("logout"), api_logout);
-	callSvr(makeUrl("logout", {a:1}), api_logout);
+	callSvr("login", {wantAll:1}, api_login);
+	function api_login(data) {}
+
+	callSvr("info/hotline.php", {q: '大众'}, api_hotline);
+	function api_hotline(data) {}
+
+	// 也可使用makeUrl生成的URL如:
+	callSvr(MUI.makeUrl("logout"), api_logout);
+	callSvr(MUI.makeUrl("logout", {a:1}), api_logout);
 
 	callSvr("User.get", function (data) {
 		if (data === false) { // 仅当设置noex且服务端返回错误时可返回false
@@ -2741,8 +3181,7 @@ function callSvrMock(opt, isSyncCall)
 }
 
 /**
-@fn MUI.callSvrSync(ac, params?, fn?, postParams?, userOptions?)
-@fn MUI.callSvrSync(ac, fn?, postParams?, userOptions?)
+@fn MUI.callSvrSync(ac, [params?], fn?, postParams?, userOptions?)
 @alias callSvrSync
 @return data 原型规定的返回数据
 
@@ -2790,7 +3229,7 @@ function callSvrSync(ac, params, fn, postParams, userOptions)
 
 然后就像调用callSvr函数一样调用setupCallSvrViaForm:
 
-	var url = makeUrl("upload", {genThumb: 1});
+	var url = MUI.makeUrl("upload", {genThumb: 1});
 	MUI.setupCallSvrViaForm($frm, $frm.find("iframe"), url, onUploadComplete);
 	function onUploadComplete(data) 
 	{
@@ -2979,7 +3418,7 @@ function useBatchCall(opt, tv)
 	if (m_curBatch != null)
 		return;
 	tv = tv || 0;
-	var batch = new MUI.batchCall(opt);
+	var batch = new self.batchCall(opt);
 	setTimeout(function () {
 		batch.commit();
 	}, tv);
@@ -3238,7 +3677,17 @@ m_curState==null: 首次进入，或hash改变
 /**
 @fn MUI.setUrl(url)
 
-设置当前地址栏显示的URL. 
+设置当前地址栏显示的URL. 如果url中不带hash部分，会自动加上当前的hash.
+
+	MUI.setUrl("page/home.html"); // 设置url
+	MUI.setUrl("?a=1&b=2"); // 设置url参数
+	MUI.setUrl("?"); // 清除url参数部分。
+
+如果要设置或删除参数，建议使用：
+
+	MUI.setUrlParam("a", 1); // 如果参数存在，则会自动覆盖。
+	MUI.deleteUrlParam("a"); // 从url中删除参数a部分，如果g_args中有参数a，也同时删除。
+
 一般用于将应用程序内部参数显示到URL中，以便在刷新页面时仍然可显示相同的内容，或用于分享链接给别人。
 
 例如订单页的URL为`http://server/app/#order`，现在希望：
@@ -3301,8 +3750,55 @@ self.setUrl = setUrl;
 function setUrl(url)
 {
 	if (m_curState == null)
+	{
+		if (url.indexOf("#") < 0 && location.hash)
+			url += location.hash;
+		history.replaceState(null, null, url);
 		return;
+	}
 	setHash(m_curState.pageRef, url);
+}
+
+/**
+@fn MUI.deleteUrlParam(param)
+
+自动修改g_args全局变量和当前url（会调用MUI.setUrl方法）。
+
+	MUI.deleteUrlParam("wxpay");
+	// 原先url为 http://myserver/myapp/index.html?wxpay=ORDR-11&storeId=1
+	// 调用后为 http://myserver/myapp/index.html?storeId=1
+
+ */
+self.deleteUrlParam = deleteUrlParam;
+function deleteUrlParam(param)
+{
+	delete g_args[param];
+	var search = mCommon.deleteParam(location.search, param);
+	MUI.setUrl(search);
+}
+
+/**
+@fn MUI.setUrlParam(param, val)
+
+修改当前url，添加指定参数。
+e.g. 
+
+	MUI.setUrlParam("wxauth", 1);
+
+@see MUI.deleteUrlParam,MUI.appendParam
+ */
+self.setUrlParam = setUrlParam;
+function setUrlParam(param, val)
+{
+	var search = location.search;
+	if (search.indexOf(param + "=") >= 0) {
+		search = mCommon.deleteParam(search, param);
+	}
+	search = mCommon.appendParam(search, param + "=" + val);
+	if (search.indexOf('?&') >=0) {
+		search = search.replace('?&', '?');
+	}
+	MUI.setUrl(search);
 }
 
 function callInitfn(jo, paramArr)
@@ -3615,6 +4111,14 @@ function showPage(pageRef, opt)
 
 		function initPage()
 		{
+			var dep = self.evalAttr(jpage, "mui-deferred");
+			if (dep) {
+				self.assert(dep.then, "*** mui-deferred attribute DOES NOT return a deferred object");
+				jpage.removeAttr("mui-deferred");
+				dep.then(initPage);
+				return;
+			}
+
 			// 检测运营商js劫持，并自动恢复。
 			var fname = jpage.attr("mui-initfn");
 			if (fname && window[fname] == null) {
@@ -3633,6 +4137,7 @@ function showPage(pageRef, opt)
 				return;
 			}
 
+			self.enhanceWithin(jpage);
 			var ret = callInitfn(jpage);
 			if (ret instanceof jQuery)
 				jpage = ret;
@@ -3827,7 +4332,8 @@ function popPageStack(n)
 
 $(window).on('popstate', function (ev) {
 	m_curState = ev.originalEvent.state;
-	showPage();
+	if (m_curState) // bugfix: 红米等某些手机在MUI.options.showHash=false模式下，且在安卓APP中，进入非主页的入口页，会自动跳转回主页。
+		showPage();
 });
 
 
@@ -3865,55 +4371,6 @@ function getToPageId()
 	return m_toPageId;
 }
 
-// ------ enhanceWithin {{{
-/**
-@var MUI.m_enhanceFn
-*/
-self.m_enhanceFn = {}; // selector => enhanceFn
-
-/**
-@fn MUI.enhanceWithin(jparent)
-*/
-self.enhanceWithin = enhanceWithin;
-function enhanceWithin(jp)
-{
-	$.each(self.m_enhanceFn, function (sel, fn) {
-		var jo = jp.find(sel);
-		if (jp.is(sel))
-			jo = jo.add(jp);
-		if (jo.size() == 0)
-			return;
-		jo.each(function (i, e) {
-			var je = $(e);
-			var opt = getOptions(je);
-			if (opt.enhanced)
-				return;
-			opt.enhanced = true;
-			fn(je);
-		});
-	});
-}
-
-/**
-@fn MUI.getOptions(jo)
-*/
-self.getOptions = getOptions;
-function getOptions(jo)
-{
-	var opt = jo.data("muiOptions");
-	if (opt === undefined) {
-		opt = {};
-		jo.data("muiOptions", opt);
-	}
-	return opt;
-}
-
-$(document).on("pagecreate", function (ev) {
-	var jpage = $(ev.target);
-	enhanceWithin(jpage);
-});
-//}}}
-
 // ------- ui: navbar and footer {{{
 
 self.m_enhanceFn["#footer"] = enhanceFooter;
@@ -3934,7 +4391,7 @@ function activateElem(jo)
 	{
 		var ref = jo.attr("mui-linkto");
 		if (ref) {
-			var jlink = self.activePage.find(ref);
+			var jlink = jo.closest(".mui-page").find(ref); // DONT use self.activePage that may be wrong on pagebeforeshow
 			jlink.toggle(active);
 			jlink.toggleClass("active", active);
 		}
@@ -4090,6 +4547,7 @@ function setupDialog(jdlg, initfn)
 /**
 @fn MUI.app_alert(msg, [type?=i], [fn?], opt?={timeoutInterval?, defValue?, onCancel()?})
 @alias app_alert
+@alias #muiAlert
 @param type 对话框类型: "i": info, 信息提示框; "e": error, 错误框; "w": warning, 警告框; "q": question, 确认框(会有"确定"和"取消"两个按钮); "p": prompt, 输入框
 @param fn Function(text?) 回调函数，当点击确定按钮时调用。当type="p" (prompt)时参数text为用户输入的内容。
 @param opt Object. 可选项。 timeoutInterval表示几秒后自动关闭对话框。defValue用于输入框(type=p)的缺省值.
@@ -4189,6 +4647,7 @@ function app_alert(msg)
 	var opt = self.getOptions(jdlg);
 	if (opt.type == null) {
 		jdlg.find("#btnOK, #btnCancel").click(app_alert_click);
+		jdlg.keydown(app_alert_keydown);
 	}
 	opt.type = type;
 	opt.fn = fn;
@@ -4200,6 +4659,9 @@ function app_alert(msg)
 	jtxt.toggle(type == "p");
 	if (type == "p") {
 		jtxt.val(alertOpt.defValue);
+		setTimeout(function () {
+			jtxt.focus();
+		});
 	}
 
 	jdlg.find(".p-title").html(s);
@@ -4226,16 +4688,33 @@ function app_alert_click(ev)
 	}
 	var btnId = this.id;
 	if (opt.fn && btnId == "btnOK") {
-		var param;
 		if (opt.type == "p") {
-			param = jdlg.find("#txtInput").val();
+			var text = jdlg.find("#txtInput").val();
+			if (text != "") {
+				opt.fn(text);
+			}
+			else if (opt.alertOpt.onCancel) {
+				opt.alertOpt.onCancel();
+			}
 		}
-		opt.fn(param);
+		else {
+			opt.fn();
+		}
 	}
 	else if (btnId == "btnCancel" && opt.alertOpt.onCancel) {
 		opt.alertOpt.onCancel();
 	}
 	self.closeDialog(jdlg, opt.isClone);
+}
+
+function app_alert_keydown(ev)
+{
+	if (ev.keyCode == 13) {
+		return $(this).find("#btnOK").click();
+	}
+	else if (ev.keyCode == 27) {
+		return $(this).find("#btnCancel").click();
+	}
 }
 
 /**
@@ -4293,7 +4772,7 @@ function main()
 	self.container = $(".mui-container");
 	if (self.container.size() == 0)
 		self.container = $(document.body);
-	enhanceWithin(self.container);
+	self.enhanceWithin(self.container);
 
 	// 在muiInit事件中可以调用showPage.
 	self.container.trigger("muiInit");
@@ -5099,7 +5578,8 @@ function hd_back(pageRef)
 	if (n <= 1) {
 		if (pageRef == null)
 			pageRef = MUI.options.homePage;
-		if (m_allowedEntries==null || m_allowedEntries.indexOf("#" + MUI.activePage.attr("id")) >=0)
+		//if (m_allowedEntries==null || m_allowedEntries.indexOf("#" + MUI.activePage.attr("id")) >=0)
+		if (! isLoginPage(MUI.activePage.attr("id")))
 			MUI.showPage(pageRef);
 		return;
 	}
@@ -5169,7 +5649,7 @@ var mCommon = jdModule("jdcloud.common");
 			isRefresh = true;
 		if (isRefresh)
 			jlst.empty();
-		param._pagekey = nextkey;
+		param.pagekey = nextkey;
 
 		callSvr("Ordr.query", param, function (data) {
 			// create items and append to jlst
@@ -5244,7 +5724,7 @@ function initPullList(container, opt)
 	var TRIGGER_AUTOLOAD = 30; // px
 
 	var lastUpdateTm_ = new Date();
-	var dy_; // 纵向移动。<0为上拉，>0为下拉
+	var dy_ = 0; // 纵向移动。<0为上拉，>0为下拉
 
 	window.requestAnimationFrame = window.requestAnimationFrame || function (fn) {
 		setTimeout(fn, 1000/60);
@@ -5505,6 +5985,7 @@ function initPullList(container, opt)
 		}
 		console.log(touchev_);
 		doAction(touchev_.ac);
+		dy_ = 0;
 		touchev_ = null;
 
 		function doAction(ac)
@@ -5528,6 +6009,7 @@ function initPullList(container, opt)
 					doAction("U");
 				}
 			}
+			dy_ = 0;
 		}
 	}
 }
@@ -5692,7 +6174,7 @@ navRef是否为空的区别是，如果非空，则表示listRef是一组互斥�
 ## 参数说明
 
 @param opt {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list", onBeforeLoad?, onLoad?, onGetData?, canPullDown?=true, onRemoveAll?}
-@param opt 分页相关 { pageszName?="_pagesz", pagekeyName?="_pagekey" }
+@param opt 分页相关 { pageszName?="pagesz", pagekeyName?="pagekey" }
 
 @param opt.onGetQueryParam Function(jlst, queryParam/o)
 
@@ -5704,7 +6186,7 @@ queryParam: {ac?, res?, cond?, ...}
 	<ul data-queryParam="{q: 'famous'}" data-ac="Person.query" data-res="*,familyName" data-cond="status='PA' and name like '王%'">
 	</ul>
 
-此外，框架将自动管理 queryParam._pagekey/_pagesz 参数。
+此外，框架将自动管理 queryParam.pagekey/pagesz 参数。
 
 @param opt.onAddItem (jlst, itemData, param)
 
@@ -5811,7 +6293,7 @@ param={idx, arr, isFirstPage}
 
 默认按BQP协议的分页机制访问服务端，其规则是：
 
-- 请求通过 _pagesz 参数指定页大小
+- 请求通过 pagesz 参数指定页大小
 - 如果不是最后一页，服务端应返回nextkey字段；返回列表的格式可以是 table格式如 
 
 		{
@@ -5830,7 +6312,7 @@ param={idx, arr, isFirstPage}
 			nextkey: 2
 		}
 
-- 请求下一页时，设置参数_pagekey = nextkey，直到服务端不返回 nextkey 字段为止。
+- 请求下一页时，设置参数pagekey = nextkey，直到服务端不返回 nextkey 字段为止。
 
 例1：假定后端分页机制为(jquery-easyui datagrid分页机制):
 
@@ -5998,7 +6480,10 @@ function initPageList(jpage, opt)
 				firstShow_ = true;
 			}
 			if (firstShow_ ) {
-				showOrderList(false, false);
+				// 以便用户代码可以通过click方法调整显示哪个tab页
+				setTimeout(function () {
+					showOrderList(false, false);
+				});
 			}
 		}
 
@@ -6226,8 +6711,8 @@ function initPageList(jpage, opt)
 initPageList.options = {
 	navRef: ">.hd .mui-navbar",
 	listRef: ">.bd .p-list",
-	pageszName: "_pagesz",
-	pagekeyName: "_pagekey",
+	pageszName: "pagesz",
+	pagekeyName: "pagekey",
 	canPullDown: true,
 	onRemoveAll: function (jlst) {
 		jlst.empty();
@@ -6368,6 +6853,28 @@ onDel: Function(); 删除对象后回调.
 	PagePerson.showForAdd({familyId: 1}); // 添加人物，已设置familyId为1
 	PagePerson.showForSet(person); // 以person对象内容显示人物，可更新。
 	PagePerson.showForSet({id: 3}); // 以id=3查询人物并显示，可更新。
+
+页面接口常常实现如下：
+
+	var PagePerson = {
+		// @fn PagePerson.showForAdd(formData?)
+		// formData={familyId, parentId?, parentOf?}
+		showForAdd: function(formData) {
+			this.formMode = FormMode.forAdd;
+			this.formData = formData;
+			MUI.showPage("#person");
+		},
+		// @fn PagePerson.showForSet(formData)
+		// formData={id,...}
+		showForSet: function (formData) {
+			this.formMode = FormMode.forSet;
+			this.formData = formData;
+			MUI.showPage("#person");
+		},
+
+		formMode: null,
+		formData: null,
+	};
 
 对于forSet模式，框架先检查formData中是否只有id属性，如果是，则在进入页面时会自动调用{obj}.get获取数据.
 

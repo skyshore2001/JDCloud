@@ -41,8 +41,8 @@
 			}
 			// 分页模拟, 倒序排列
 			var ret = {list: []};
-			var pagesz = param._pagesz || 20;
-			var pagekey = param._pagekey || 0;
+			var pagesz = param.pagesz || 20;
+			var pagekey = param.pagekey || 0;
 
 			for (var n=0, i=pagekey; n<pagesz && i<arr.length; ++n, ++i) {
 				ret.list.push(arr[arr.length-i-1]);

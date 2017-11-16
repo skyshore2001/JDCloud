@@ -22,7 +22,7 @@ function initPageOrder()
 		var jlstLog = $(".p-list-log", jpage);
 		jlstLog.empty();
 
-		callSvr("Ordr.get", {id: orderId_}, api_OrdrGet);
+		callSvr("Ordr.get", {id: orderId_, res: "*,orderLog"}, api_OrdrGet);
 
 		function api_OrdrGet(data)
 		{
