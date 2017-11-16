@@ -21,8 +21,8 @@ function loadStatLib()
 {
 	if (dfdStatLib_ == null) {
 		dfdStatLib_ = $.when(
-			MUI.loadScript("../web/lib/echarts.min.js"),
-			MUI.loadScript("../web/lib/jdcloud-wui-stat.js")
+			MUI.loadScript("lib/echarts.min.js"),
+			MUI.loadScript("lib/jdcloud-wui-stat.js")
 		);
 	}
 	return dfdStatLib_;
