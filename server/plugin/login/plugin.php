@@ -312,11 +312,11 @@ function api_chpwd()
 	$type = getAppType();
 
 	if ($type == "user") {
-		checkAuth(AUTH_USER, true);
+		checkAuth(AUTH_USER);
 		$uid = $_SESSION["uid"];
 	}
 	elseif($type == "emp") {
-		checkAuth(AUTH_EMP, true);
+		checkAuth(AUTH_EMP);
 		$uid = $_SESSION["empId"];
 	}
 	$pwd = mparam("pwd");
