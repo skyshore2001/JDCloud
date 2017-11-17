@@ -33,6 +33,10 @@
 
 每个逻辑页面(page)以及它对应的脚本(js)均可以独立出一个文件开发，也可以直接嵌在主页面的应用容器中。
 
+@key .mui-page 逻辑页面。
+@key mui-script DOM属性。逻辑页面对应的JS文件。
+@key mui-initfn DOM属性。逻辑页面对应的初始化函数，一般包含在mui-script指定的JS文件中。
+
 如添加一个订单页，使用外部页面，可以添加一个order.html (html片段):
 
 	<div mui-initfn="initPageOrder" mui-script="order.js">
@@ -47,9 +51,29 @@
 		</div>
 	</script>
 
-@key .mui-page 逻辑页面。
-@key mui-script DOM属性。逻辑页面对应的JS文件。
-@key mui-initfn DOM属性。逻辑页面对应的初始化函数，一般包含在mui-script指定的JS文件中。
+@key .hd 页面顶栏
+@key .bd 页面主体
+@key .ft 页面底栏
+@key .btn-icon 顶栏图标按钮
+
+页面中常常包含hd, bd等结构，如
+
+	<div mui-initfn="initPageMe">
+		<div class="hd">
+			<a href="javascript:hd_back();" class="btn-icon"><i class="icon icon-back"></i></a>
+			<h2>个人信息</h2>
+		</div>
+
+		<div class="bd">
+		this is the body
+		</div>
+
+		<div class="ft">
+		this is the footer
+		</div>
+	</div>
+
+app.css中定义了`btn-icon`为顶栏图标按钮类，如果在`hd`中有多个`btn-icon`，则依次为左一，右一，左二，右二按钮。
 
 该页面代码模块（即初始化函数）可以放在一个单独的文件order.js:
 
@@ -353,9 +377,10 @@ URL也可以显示为文件风格，比如在设置：
 
 示例：添加右上角菜单（习惯上左上角为返回按钮，右上角为菜单按钮）
 
+	<!-- btn-icon依次标识左一，右一，左二，右二图标按钮 -->
 	<div class="hd">
-		<a href="javascript:hd_back();" class="icon icon-back"></a>
-		<a href="#dlgMenu" class="icon icon-menu"></a>
+		<a href="javascript:hd_back();" class="btn-icon"><i class="icon icon-back"></i></a>
+		<a href="#dlgMenu" class="btn-icon"><i class="icon icon-menu"></i></a>
 		<h2>谱系图</h2>
 	</div>
 
@@ -5563,7 +5588,7 @@ function formatField(obj)
 一般用于顶部返回按钮：
 
 	<div class="hd">
-		<a href="javascript:hd_back();" class="icon icon-back"></a>
+		<a href="javascript:hd_back();" class="btn-icon"><i class="icon icon-back"></i></a>
 		<h2>个人信息</h2>
 	</div>
 
