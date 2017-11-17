@@ -4975,6 +4975,10 @@ window.g_data = {}; // {userInfo, serverRev?, initClient?, testMode?, mockMode?}
 	<base href="./" mui-showHash="no">
 
 在showHash=false时，必须设置base标签, 否则逻辑页将无法加载。
+
+@var MUI.options.disableFastClick?=false
+
+在IOS+cordova环境下，点击事件会有300ms延迟，默认会加载lib/fastclick.min.js解决。
 */
 	var m_opt = self.options = {
 		appName: "user",
@@ -5267,6 +5271,13 @@ function parseArgs()
 				var path = './';
 				if (mCommon.isIOS()) {
 					mCommon.loadScript(path + "cordova-ios/cordova.js?__HASH__,.."); 
+
+					if (! m_opt.disableFastClick) {
+						// introduce fastclick for IOS webview: https://github.com/ftlabs/fastclick
+						mCommon.loadScript(path + "lib/fastclick.min.js").then(function () {
+							Origami.fastclick(document.body);
+						});
+					}
 				}
 				else {
 					mCommon.loadScript(path + "cordova/cordova.js?__HASH__,.."); 
