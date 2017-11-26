@@ -454,20 +454,16 @@ URL也可以显示为文件风格，比如在设置：
 			navigator.splashscreen.hide();
 
 @key topic-iosStatusBar
-@see MUI.options.noHandleIosStatusBar
+@see MUI.options.statusBarColor
 
-- ios7以上, 框架自动为顶部状态栏留出20px高度的空间. 默认为白色，可以修改类mui-container的样式，如改为黑色：
+可通过MUI.options.statusBarColor设置状态栏前景和背景色。
 
-	.mui-container {
-		background-color:black;
-	}
+	statusBarColor: "#000000,light" // 默认，黑底白字。
+	statusBarColor: "#ffffff,dark" // 白底黑字
+	statusBarColor: "#,light" // 白字，背景与.mui-container一致。
+	statusBarColor: "none" // 不显示状态栏。
 
-如果使用了StatusBar插件, 可以取消该行为. 
-先设置选项：
-
-	MUI.options.noHandleIosStatusBar = true; // 可以放在H5应用的主js文件中，如index.js
-
-然后在deviceready事件中自行设置样式, 如
+也可以通过代码设置，如
 
 	function muiInit() {
 		$(document).on("deviceready", onSetStatusBar);
@@ -1883,6 +1879,35 @@ function waitFor(dfd)
 		dfd.then(function () { caller.apply(this, args); });
 	}
 	return true;
+}
+
+/**
+@fn rgb2hex(rgb)
+
+将jquery取到的颜色转成16进制形式，如："rgb(4, 190, 2)" -> "#04be02"
+
+示例：
+
+	var color = rgb2hex( $(".mui-container").css("backgroundColor") );
+
+ */
+self.rgb2hex = rgb2hex;
+function rgb2hex(rgb)
+{
+	var ms = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+	if (ms == null)
+		return;
+	var hex = "#";
+	for (var i = 1; i <= 3; ++i) {
+		var s = parseInt(ms[i]).toString(16);
+		if (s.length == 1) {
+			hex += "0" + s;
+		}
+		else {
+			hex += s;
+		}
+	}
+	return hex;
 }
 
 /**
@@ -4915,9 +4940,14 @@ window.g_data = {}; // {userInfo, serverRev?, initClient?, testMode?, mockMode?}
 @key MUI.options.homePage?="#home"  首页地址
 @key MUI.options.pageFolder?="page" 逻辑页面文件(html及js)所在文件夹
 
-@key MUI.options.noHandleIosStatusBar?=false
-
+@key MUI.options.statusBarColor?="#000,light" 设置状态栏颜色，默认为黑底白字。
 @see topic-iosStatusBar
+（版本v5.0）
+
+利用statusbar插件设置标题栏。
+其中背景设置使用"#000"或"#000000"这种形式，特别地，只用"#"可表示使用当前应用程序的背景色（.mui-container背景颜色）。
+前景设置使用"light"(白色)或"dark"(黑色)。
+设置为"none"表示隐藏标题栏。
 
 @key MUI.options.manualSplash?=false
 @see topic-splashScreen
@@ -4994,6 +5024,7 @@ window.g_data = {}; // {userInfo, serverRev?, initClient?, testMode?, mockMode?}
 
 		pluginFolder: "../plugin",
 		showHash: ($("base").attr("mui-showHash") != "no"),
+		statusBarColor: "#000000,light"
 	};
 
 	var m_onLoginOK;
@@ -5014,21 +5045,6 @@ function document_pageCreate(ev)
 }
 
 $(document).on("pagecreate", document_pageCreate);
-
-// ---- 处理ios7以上标题栏问题(应下移以空出状态栏)
-// 需要定义css: #ios7statusbar
-function handleIos7Statusbar()
-{
-	if(g_cordova){
-		var ms = navigator.userAgent.match(/(iPad.*|iPhone.*|iPod.*);.*CPU.*OS (\d+)_\d/i);
-		if(ms) {
-			var ver = ms[2];
-			if (ver >= 7) {
-				self.container.css("margin-top", "20px");
-			}
-		}	
-	}
-}
 
 /**
 @fn MUI.setFormSubmit(jf, fn?, opt?={validate?, onNoAction?})
@@ -5121,6 +5137,30 @@ $(document).on("deviceready", function () {
 				navigator.splashscreen.hide();
 			}, 500);
 		});
+	}
+
+	if (m_opt.statusBarColor && window.StatusBar) {
+		var bar = window.StatusBar;
+		var str = m_opt.statusBarColor;
+		if (str == "none") {
+			bar.hide();
+		}
+		else {
+			var ms = str.match(/(#\w*)/);
+			if (ms) {
+				var color = ms[1];
+				if (color == '#')
+					color = mCommon.rgb2hex( $(".mui-container").css("backgroundColor") );
+				bar.backgroundColorByHexString(color);
+			}
+			ms = str.match(/\b(dark|light)\b/);
+			if (ms) {
+				if (ms[1] == 'dark')
+					bar.styleDefault();
+				else
+					bar.styleLightContent();
+			}
+		}
 	}
 });
 
@@ -5508,9 +5548,6 @@ function main()
 		jc.addClass("mui-weixin");
 	}
 	console.log(jc.attr("class"));
-
-	if (! m_opt.noHandleIosStatusBar)
-		handleIos7Statusbar();
 }
 
 $(main);
