@@ -463,7 +463,11 @@ URL也可以显示为文件风格，比如在设置：
 	statusBarColor: "#,light" // 白字，背景与.mui-container一致。
 	statusBarColor: "none" // 不显示状态栏。
 
-也可以通过代码设置，如
+如果希望自行设置状态栏，可以设置statusBarColor为null:
+
+	MUI.options.statusBarColor = null;
+
+然后在deviceready事件中自行设置样式, 如
 
 	function muiInit() {
 		$(document).on("deviceready", onSetStatusBar);
@@ -4948,6 +4952,7 @@ window.g_data = {}; // {userInfo, serverRev?, initClient?, testMode?, mockMode?}
 其中背景设置使用"#000"或"#000000"这种形式，特别地，只用"#"可表示使用当前应用程序的背景色（.mui-container背景颜色）。
 前景设置使用"light"(白色)或"dark"(黑色)。
 设置为"none"表示隐藏标题栏。
+设置为空("")表示禁止框架设置状态栏。
 
 @key MUI.options.manualSplash?=false
 @see topic-splashScreen
