@@ -23,18 +23,29 @@
 ### 原生应用框架Corodva由5.4版本升级到7.1
 
 server目录下的cordova及cordova-ios目录为原生接口。
-如果暂不升级原生程序，请确保更新代码时不要更新这两个目录下的文件，否则可能造成原生功能无法调用。
+如果决定暂不升级原生程序，请确保：
 
-注意：新框架要求原生程序中有splashscreen及statusbar插件。
-如果之前的包中有缺失，请升级原生程序。
+- 更新代码时不要更新这两个目录下的文件，否则可能造成原生功能无法调用。
 
-升级原生程序应增加URL参数中cordova参数代表的版本，如`http://myserver/myapp/m2/index.html?cordova=2`。并要求老版本强制升级。
+- 如果在IOS上顶部状态栏与应用重合，可在初始化时加上如下兼容性代码（假设应用当前URL参数cordova=1）：
+
+		if (window.g_cordova && g_cordova < 2) {
+			// 如果今后APP升级，这里应改为强制升级提示。
+			if (MUI.isIOS()) {
+				MUI.container.css("margin-top", "20px");
+			}
+		}
+
+关于升级原生程序：
+
+应增加URL参数中cordova参数代表的版本，如`http://myserver/myapp/m2/index.html?cordova=2`。并要求老版本强制升级。
 然后用cordova 7.1的jdcloud-app模板重建应用程序。
 
 注意：
 
 - IOS顶部状态栏不再自动留20px高度，而是放置了真正的状态栏。
 - MUI选项noHandleIosStatusBar被废弃。可用设置 statusBarColor为null替代。
+- 要求原生程序中有splashscreen及statusbar插件。
 
 ### 新引入fastclick可能造成冲突 
 

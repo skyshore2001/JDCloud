@@ -458,9 +458,9 @@ URL也可以显示为文件风格，比如在设置：
 
 可通过MUI.options.statusBarColor设置状态栏前景和背景色。
 
-	statusBarColor: "#000000,light" // 默认，黑底白字。
+	statusBarColor: "#,light" // 默认，背景与MUI.container（即.mui-container类）背景一致，白字。
+	statusBarColor: "#000000,light" // 黑底白字。
 	statusBarColor: "#ffffff,dark" // 白底黑字
-	statusBarColor: "#,light" // 白字，背景与.mui-container一致。
 	statusBarColor: "none" // 不显示状态栏。
 
 如果希望自行设置状态栏，可以设置statusBarColor为null:
@@ -4944,7 +4944,7 @@ window.g_data = {}; // {userInfo, serverRev?, initClient?, testMode?, mockMode?}
 @key MUI.options.homePage?="#home"  首页地址
 @key MUI.options.pageFolder?="page" 逻辑页面文件(html及js)所在文件夹
 
-@key MUI.options.statusBarColor?="#000,light" 设置状态栏颜色，默认为黑底白字。
+@key MUI.options.statusBarColor?="#,light" 设置状态栏颜色，默认为应用程序背景色和白字。
 @see topic-iosStatusBar
 （版本v5.0）
 
@@ -5029,7 +5029,7 @@ window.g_data = {}; // {userInfo, serverRev?, initClient?, testMode?, mockMode?}
 
 		pluginFolder: "../plugin",
 		showHash: ($("base").attr("mui-showHash") != "no"),
-		statusBarColor: "#000000,light"
+		statusBarColor: "#,light"
 	};
 
 	var m_onLoginOK;
