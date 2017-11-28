@@ -14,7 +14,7 @@
 
 	<div class="hd">
 		<a href="javascript:hd_back();" class="btn-icon"><i class="icon icon-back"></i></a>
-		<a href="javascript:;" class="btn-icon"><i class="icon icon-menu" id="btnSearch"></i></a>
+		<a href="javascript:;" class="btn-icon" id="btnSearch"><i class="icon icon-menu"></i></a>
 		<h2>百家姓</h2>
 	</div>
 
