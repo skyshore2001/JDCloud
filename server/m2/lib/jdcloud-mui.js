@@ -73,7 +73,19 @@
 		</div>
 	</div>
 
-app.css中定义了`btn-icon`为顶栏图标按钮类，如果在`hd`中有多个`btn-icon`，则依次为左一，右一，左二，右二按钮。
+app.css中定义了`btn-icon`为顶栏图标按钮类，如果在`hd`中有多个`btn-icon`，则依次为左一，右一，左二，右二按钮，例如：
+
+	<div class="hd">
+		<!-- 左一: 返回按钮 -->
+		<a href="javascript:hd_back();" class="btn-icon"><i class="icon icon-back"></i></a>
+		<!-- 右一: 更多选项按钮 -->
+		<a href="#dlgMenu" class="btn-icon"><i class="icon icon-menu"></i></a>
+		<!-- 左二: 无 -->
+		<a />
+		<!-- 右二: 编辑按钮 -->
+		<a class="btn-icon"><i class="icon icon-edit"></i></a>
+		<h2>标题</h2>
+	</div>
 
 该页面代码模块（即初始化函数）可以放在一个单独的文件order.js:
 

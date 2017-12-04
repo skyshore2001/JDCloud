@@ -81,21 +81,3 @@ select.right {
 	top: 5px;
 }
 
-/* 标题栏左右侧两个图标，一般是返回和菜单。适合16x16 */
-.hd >.btn-icon {
-	width: 16px;
-	height: 16px;
-	padding: 10px;
-	position: absolute;
-}
-.hd >.btn-icon:nth-child(2) {
-	right: 0;
-}
-/* 左二 */
-.hd >.btn-icon:nth-child(3) {
-	left: 32px;
-}
-/* 右二 */
-.hd >.btn-icon:nth-child(4) {
-	right: 32px;
-}
