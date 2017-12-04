@@ -46,13 +46,10 @@ html, body {
 
 .hd h1, .hd h2, .hd h3 {
 	text-align: center;
-	font-size: 1.3em;
+	font-size: 1.1em;
 	font-weight: normal;
 	margin: 0.1em auto;
-}
-
-.hd h3 {
-	font-size: 1.1em;
+	line-height: 2.0;
 }
 
 .ft {
@@ -320,6 +317,7 @@ html, body {
 	height: 16px;
 	padding: 10px;
 	position: absolute;
+	line-height: 0;
 	top: 0;
 }
 .hd >a.btn-icon:nth-of-type(2) {
