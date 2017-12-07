@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# 创建一个代码库，允许被远程push，且被push后更新文件夹中内容。
+
 name=$1
 
 if [[ -z $name ]]; then
