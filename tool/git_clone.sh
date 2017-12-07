@@ -17,7 +17,7 @@ if [[ -z $from || -z $to ]]; then
 fi
 
 if [[ -z $tob ]]; then
-	tob=merge
+	tob=master0
 fi
 
 git init $to
