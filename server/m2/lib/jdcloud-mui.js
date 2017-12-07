@@ -5178,6 +5178,13 @@ $(document).on("deviceready", function () {
 					bar.styleLightContent();
 			}
 		}
+		if (mCommon.isIOS()) {
+			// bugfix: IOS上显示statusbar时可能窗口大小不正确
+			bar.overlaysWebView(false);
+			setTimeout(function () {
+				$(window).trigger("resize");
+			});
+		}
 	}
 });
 
