@@ -12,6 +12,11 @@ fi
 git init $name
 cd $name
 git config receive.denyCurrentBranch ignore
-echo "unset GIT_DIR; cd ..; git reset --hard" > .git/hooks/post-update
+cat <<.  > .git/hooks/post-update
+#!/bin/sh
+unset GIT_DIR
+cd ..
+git reset --hard
+.
 chmod a+x .git/hooks/post-update
 

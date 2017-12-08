@@ -6,6 +6,10 @@
 # master -> master0: merge
 # origin -> master0: pull
 
+# 如果想使用git_init.sh创建代码库，可以先设置环境变量：
+# export GIT_INIT=git_init.sh 
+# git_clone.sh jdcloud myprj1
+
 from=$1
 to=$2
 fromb=$3
@@ -28,7 +32,11 @@ if [[ $gitver -ge 209 ]]; then
 	mergeOpt=--allow-unrelated-histories
 fi
 
-git init $to
+if [[ -z $GIT_INIT ]]; then
+	GIT_INIT='git init'
+fi
+
+$GIT_INIT $to
 cd $to
 git checkout -b $tob
 git pull ../$from $fromb
