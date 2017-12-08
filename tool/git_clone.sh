@@ -20,6 +20,14 @@ if [[ -z $tob ]]; then
 	tob=master0
 fi
 
+# e.g. 1.8 => 180, 2.11 => 211
+gitver=$(git --version | perl -ne '/(\d+\.\d+)/ && print $1*100 + $2;')
+mergeOpt=
+if [[ $gitver -ge 209 ]]; then
+	# 该选项于git 2.9及以后要求
+	mergeOpt=--allow-unrelated-histories
+fi
+
 git init $to
 cd $to
 git checkout -b $tob
@@ -28,7 +36,7 @@ git checkout --orphan master
 git add .
 git commit -m 'init'
 git checkout $tob
-git merge master --allow-unrelated-histories -m 'merge init'
+git merge master $mergeOpt -m 'merge init'
 git checkout master
 
 echo "=== Repo '$to' is created. Branch '$tob' is for merging origin."
