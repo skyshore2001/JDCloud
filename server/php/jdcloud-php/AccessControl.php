@@ -708,8 +708,7 @@ class AccessControl
 		foreach ($this->hiddenFields as $field) {
 			unset($rowData[$field]);
 		}
-		if (isset($rowData["pwd"]))
-			$rowData["pwd"] = "****";
+		unset($rowData["pwd"]);
 		$this->flag_handleResult($rowData);
 		$this->onHandleRow($rowData);
 	}
