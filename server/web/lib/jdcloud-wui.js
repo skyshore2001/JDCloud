@@ -3161,15 +3161,13 @@ function callSvr(ac, params, fn, postParams, userOptions)
 		url: url,
 		data: postParams,
 		type: method,
+		// 允许跨域使用cookie/session/authorization header
+		xhrFields: {
+			withCredentials: true
+		},
 		success: fn,
 		ctx_: ctx
 	};
-	if (ext) {
-		// 允许跨域
-		opt.xhrFields = {
-			withCredentials: true
-		};
-	}
 	// support FormData object.
 	if (window.FormData && postParams instanceof FormData) {
 		opt.processData = false;
