@@ -83,7 +83,7 @@ function getUploadTypeInfo($type)
 
 function api_upload()
 {
-	checkAuth(AUTH_USER | AUTH_EMP);
+	checkAuth(AUTH_LOGIN);
 	#$uid = $_SESSION["uid"];
 	$fmt = param("fmt");
 	if ($fmt === 'raw' || $fmt === 'raw_b64')
@@ -208,7 +208,7 @@ function api_upload()
 			}
 			file_put_contents($fname, $s);
 		}
-		if ($autoSize && filesize($fname) > 500*1024) {
+		if ($autoResize && filesize($fname) > 500*1024) {
 			resizeImage($fname, 1920, 1080, $fname);
 		}
 
@@ -238,7 +238,7 @@ function api_att()
 	//header("Cache-Control: private");
 	header("Pragma: "); // session_start() set this one to "no-cache"
 
-	#checkAuth(AUTH_USER | AUTH_EMP);
+	#checkAuth(AUTH_LOGIN);
 	#$uid = $_SESSION["uid"];
 	$id = param("id");
 	$thumbId = param("thumbId");
