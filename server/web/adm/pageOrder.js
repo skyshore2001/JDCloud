@@ -5,7 +5,7 @@ function initPageOrder()
 	var jdlg = $("#dlgOrder");
 
 	jtbl.datagrid({
-		url: WUI.makeUrl("Ordr.query"),
+		url: WUI.makeUrl("Ordr.query", {res:"*,userName"}),
 		toolbar: WUI.dg_toolbar(jtbl, jdlg, "export"),
 		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg),
 		sortName:'id',

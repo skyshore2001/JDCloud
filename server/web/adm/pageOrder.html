@@ -2,8 +2,8 @@
 	<table id="tblOrder" style="width:auto;height:auto" title="订单列表">
 		<thead><tr>
 			<th data-options="field:'id', sortable:true, sorter:intSort">编号</th>
-			<th data-options="field:'userId', sortable:true, formatter:Formatter.userId">用户编号</th>
-			<th data-options="field:'userName', sortable:true, formatter:Formatter.userId">用户名</th>
+			<th data-options="field:'userId', sortable:true, formatter:Formatter.userId, hidden:true">用户编号</th>
+			<th data-options="field:'userName', sortable:true, formatter:Formatter.userId">用户</th>
 			<th data-options="field:'status', sortable:true, jdEnumMap: OrderStatusMap, formatter: WUI.enumFormatter(OrderStatusMap), styler:OrderColumns.statusStyler">状态</th>
 			<th data-options="field:'dscr'">描述</th>
 			<th data-options="field:'cmt'">用户备注</th>

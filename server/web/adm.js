@@ -8,8 +8,8 @@ var Formatter = {
 		return dtStr(value);
 	},
 	userId: function (value, row) {
-		if (value)
-			return WUI.makeLinkTo("#dlgUser", value);
+		if (row.userId)
+			return WUI.makeLinkTo("#dlgUser", row.userId, value);
 	}
 };
 

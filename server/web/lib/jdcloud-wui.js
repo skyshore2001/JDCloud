@@ -46,6 +46,7 @@
 - 逻辑页面div.pageOrder，属性class="pageOrder"定义了该逻辑页面的名字。它将作为页面模板，在WUI.showPage("pageOrder")时复制一份显示出来。
 - 属性my-initfn定义了该页面的初始化函数. 在初次调用WUI.showPage时，会执行该初始化函数，用于初始化列表，设定事件处理等。
 - 逻辑页面下包含了一个table，用于显示订单列表。里面每列对应订单的相关属性。
+- table由jquery-easyui的datagrid组件实现，文档参考：http://www.jeasyui.com/documentation/datagrid.php 此外，data-options中的以jd开头的字段为jdcloud框架定义。
 
 详情页展示为一个对话框，也将它也放在 div#my-pages 下。定义如下（此处为展示原理已简化）：
 
@@ -367,8 +368,11 @@ styler用于控制Cell自己的CSS style.
 	</table>
 
 它生成的res参数为"id 编号, status 状态"。
-在导出Excel时，table上的title属性可用于控制列表导出时的默认文件名，如本例导出文件名为"订单列表.xls"。
-th上的jdEnumMap属性用于控制导出枚举字段时显示可读的名字。
+
+table上的title属性可用于控制列表导出时的默认文件名，如本例导出文件名为"订单列表.xls"。
+如果想导出表中没有显示的列，可以设置该列为隐藏，如：
+
+		<th data-options="field:'userId', hidden:true">用户编号</th>
 
 特别地，对于枚举字段，可在th的data-options用`formatter:WUI.enumFormatter(map)`来显示描述，在导出Excel时，需要设置`jdEnumMap:map`属性来显示描述，如
 
@@ -385,6 +389,7 @@ OrderStatusMap在代码中定义如下
 
 @see WUI.dg_toolbar 指定列表上的操作按钮
 @see WUI.getExportHandler 自定义导出Excel功能
+@see WUI.getParamFromTable 根据当前datagrid状态取query接口参数
 
 ### 详情页对话框的常见需求
 
