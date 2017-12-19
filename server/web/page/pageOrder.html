@@ -4,7 +4,7 @@
 			<th data-options="field:'id', sortable:true, sorter:intSort">订单号</th>
 			<th data-options="field:'userPhone', sortable:true">用户联系方式</th>
 			<th data-options="field:'createTm', sortable:true">创建时间</th>
-			<th data-options="field:'status', formatter:OrderColumns.statusStr, styler:OrderColumns.statusStyler, sortable:true">状态</th>
+			<th data-options="field:'status', jdEnumMap: OrderStatusMap, formatter:WUI.enumFormatter(OrderStatusMap), styler:OrderColumns.statusStyler, sortable:true">状态</th>
 			<th data-options="field:'dscr', sortable:true">描述</th>
 			<th data-options="field:'cmt'">用户备注</th>
 		</tr></thead>

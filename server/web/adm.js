@@ -14,9 +14,6 @@ var Formatter = {
 };
 
 var OrderColumns = {
-	statusStr: function (value, row) {
-		return OrderStatusStr[row.status] || row.status;
-	},
 	statusStyler: function (value, row) {
 		var color;
 		if (value == "CR")

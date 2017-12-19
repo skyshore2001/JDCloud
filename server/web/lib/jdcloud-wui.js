@@ -33,7 +33,7 @@
 					<th data-options="field:'id', sortable:true, sorter:intSort">订单号</th>
 					<th data-options="field:'userPhone', sortable:true">用户联系方式</th>
 					<th data-options="field:'createTm', sortable:true">创建时间</th>
-					<th data-options="field:'status', formatter:OrderColumns.statusStr, styler:OrderColumns.statusStyler, sortable:true">状态</th>
+					<th data-options="field:'status', jdEnumMap: OrderStatusMap, formatter:WUI.enumFormatter(OrderStatusMap), styler:OrderColumns.statusStyler, sortable:true">状态</th>
 					<th data-options="field:'dscr', sortable:true">描述</th>
 					<th data-options="field:'cmt'">用户备注</th>
 				</tr></thead>
@@ -135,8 +135,8 @@
 			url: WUI.makeUrl(["Ordr", "query"], {res:"*,createTm,userPhone"}),
 			// 设置缺省查询条件
 			queryParams: query1,
-			// 设置工具栏上的按钮，并与对话框jdlg关联。
-			toolbar: WUI.dg_toolbar(jtbl, jdlg, "-", btn1, btn2),
+			// 设置工具栏上的按钮，默认有增删改查按钮，"export"表示"导出到Excel"的按钮，btn1, btn2是自定义按钮，"-"表示按钮分隔符。
+			toolbar: WUI.dg_toolbar(jtbl, jdlg, "export", "-", btn1, btn2),
 			// 双击一行，应展示详情页对话框
 			onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
 		};
@@ -222,27 +222,25 @@
 在table中设置formatter与styler选项：
 
 	<div class="pageOrder" title="订单管理" my-initfn="initPageOrder">
-		<table id="tblOrder" style="width:auto;height:auto">
+		<table id="tblOrder" style="width:auto;height:auto" title="订单列表">
 			<thead><tr>
 				<th data-options="field:'id', sortable:true, sorter:intSort">订单号</th>
 				...
-				<th data-options="field:'status', formatter:OrderColumns.statusStr, styler:OrderColumns.statusStyler, sortable:true">状态</th>
+				<th data-options="field:'status', jdEnumMap: OrderStatusMap, formatter:WUI.enumFormatter(OrderStatusMap), styler:OrderColumns.statusStyler, sortable:true">状态</th>
 			</tr></thead>
 		</table>
 	</div>
 
-formatter用于控制Cell中的HTML标签，styler用于控制Cell自己的CSS style.
-在JS中定义函数：
+formatter用于控制Cell中的HTML标签，对于枚举值常常用WUI.enumFormatter(map)来赋值，它相当于`return map[value] || value`；同时枚举值常常用jdEnumMap属性定义名字和描述，便于导出Excel时显示描述。
+styler用于控制Cell自己的CSS style.
+在JS中定义：
 
+	var OrderStatusMap = {
+		CR: "未付款", 
+		RE: "已服务", 
+		CA: "已取消"
+	};
 	var OrderColumns = {
-		statusStr: function (value, row) {
-			var OrderStatusStr = {
-				CR: "未付款", 
-				RE: "已服务", 
-				CA: "已取消"
-			};
-			return OrderStatusStr[value] || value;
-		},
 		statusStyler: function (value, row) {
 			var colors = {
 				CR: "#000",
@@ -346,6 +344,47 @@ formatter用于控制Cell中的HTML标签，styler用于控制Cell自己的CSS s
 		pagination: false, // 禁用分页组件
 		...
 	});
+
+#### 列表导出Excel文件
+
+(支持版本5.0)
+
+除了默认地增删改查，还可为数据表添加标准的“导出Excel”操作，可自动按表格当前的显示字段、搜索条件、排序条件等，导出表格。
+只需在dg_toolbar函数的参数中加上"export"（表示导出按钮），如：
+
+	jtbl.datagrid({
+		url: WUI.makeUrl("User.query"),
+		toolbar: WUI.dg_toolbar(jtbl, jdlg, "export"),
+		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
+	});
+
+导出字段由jtbl对应的表格的表头定义，如下面表格定义：
+
+	<table id="tblOrder" style="width:auto;height:auto" title="订单列表">
+		...
+		<th data-options="field:'id'">编号</th>
+		<th data-options="field:'status'">状态</th>
+	</table>
+
+它生成的res参数为"id 编号, status 状态"。
+在导出Excel时，table上的title属性可用于控制列表导出时的默认文件名，如本例导出文件名为"订单列表.xls"。
+th上的jdEnumMap属性用于控制导出枚举字段时显示可读的名字。
+
+特别地，对于枚举字段，可在th的data-options用`formatter:WUI.enumFormatter(map)`来显示描述，在导出Excel时，需要设置`jdEnumMap:map`属性来显示描述，如
+
+		<th data-options="field:'status', jdEnumMap: OrderStatusMap, formatter: WUI.enumFormatter(OrderStatusMap)">状态</th>
+
+OrderStatusMap在代码中定义如下
+
+	var OrderStatusMap = {
+		CR: "未付款", 
+		PA: "待服务"
+	}
+
+它生成的res参数为"id 编号, status 状态=CR:未付款;PA:待服务"。筋斗云后端支持这种res定义方式将枚举值显示为描述。
+
+@see WUI.dg_toolbar 指定列表上的操作按钮
+@see WUI.getExportHandler 自定义导出Excel功能
 
 ### 详情页对话框的常见需求
 
@@ -4493,6 +4532,15 @@ function showObjDlg(jdlg, mode, opt)
 	};
 	jtbl.datagrid(dgOpt);
 
+特别地，要添加导出数据到Excel文件的功能按钮，可以增加参数"export"作为按钮定义：
+
+	var dgOpt = {
+		...
+		toolbar: WUI.dg_toolbar(jtbl, jdlg, "export", "-", btn1),
+	}
+
+如果想自行定义导出行为参数，可以参考WUI.getExportHandler
+@see WUI.getExportHandler 导出按钮设置
 */
 self.dg_toolbar = dg_toolbar;
 function dg_toolbar(jtbl, jdlg)
@@ -4613,7 +4661,7 @@ function enhanceAnchor(jo)
 
 	handler: getExportHandler(jtbl, "User.query", {res: "id 编号, name 姓名, createTm 注册时间", orderby: "createTm DESC"})
 
-注意：由于分页机制影响，会设置参数{pagesz: 9999}以便在一页中返回所有数据，而实际一页能导出的最大数据条数取决于后端设置（默认1000，参考后端文档 AccessControl::$maxPageSz）。
+注意：由于分页机制影响，会设置参数{pagesz: -1}以便在一页中返回所有数据，而实际一页能导出的最大数据条数取决于后端设置（默认1000，参考后端文档 AccessControl::$maxPageSz）。
 
 @see WUI.getParamFromTable
 */
@@ -4626,7 +4674,7 @@ function getExportHandler(jtbl, ac, param)
 	if (param.fmt === undefined)
 		param.fmt = "excel";
 	if (param.pagesz === undefined)
-		param.pagesz = 9999;
+		param.pagesz = -1;
 	if (ac == null) {
 		setTimeout(function () {
 			ac = jtbl.datagrid("options").url;

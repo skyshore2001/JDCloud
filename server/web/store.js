@@ -79,9 +79,6 @@ var EmpSigninColumns = {
 
 // formatters and styler. Note: for one cell, styler executes prior to formatter
 var OrderColumns = {
-	statusStr: function (value, row) {
-		return OrderStatusStr[row.status] || row.status;
-	},
 	statusStyler: function (value, row) {
 		var color;
 		if (value == "CR")
