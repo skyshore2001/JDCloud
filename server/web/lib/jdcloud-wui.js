@@ -1459,6 +1459,29 @@ function delayDo(fn, delayCnt)
 	}
 }
 
+/**
+@fn kvList2Str(kv, sep, sep2)
+
+e.g.
+
+	var str = kvList2Str({"CR":"Created", "PA":"Paid"}, ';', ':');
+	// str="CR:Created;PA:Paid"
+
+ */
+self.kvList2Str = kvList2Str;
+function kvList2Str(kv, sep, sep2)
+{
+	var ret = '';
+	$.each(kv, function (k, v) {
+		if (typeof(v) != "function") {
+			if (ret)
+				ret += sep;
+			ret += k  + sep2 + v;
+		}
+	});
+	return ret;
+}
+
 function initModule()
 {
 	// bugfix: 浏览器兼容性问题
@@ -2654,6 +2677,8 @@ function makeUrl(action, params)
 	if (action.makeUrl || /^http/.test(action)) {
 		if (params == null)
 			return action;
+		if (action.makeUrl)
+			return makeUrl(action.action, $.extend({}, action.params, params));
 		var url = mCommon.appendParam(action, $.param(params));
 		return makeUrlObj(url);
 	}
@@ -4499,7 +4524,8 @@ function dg_toolbar(jtbl, jdlg)
 		}}, 
 		d: {text:'删除', iconCls:'icon-remove', handler: function () { 
 			showObjDlg(jdlg, FormMode.forDel, {jtbl: jtbl});
-		}}
+		}},
+		'export': {text: '导出', iconCls: 'icon-save', handler: getExportHandler(jtbl)}
 	};
 	$.each(toolbar.split(""), function(i, e) {
 		if (tb[e]) {
@@ -4507,8 +4533,14 @@ function dg_toolbar(jtbl, jdlg)
 			btns.push("-");
 		}
 	});
-	for (var i=2; i<arguments.length; ++i)
-		btns.push(arguments[i]);
+	for (var i=2; i<arguments.length; ++i) {
+		var btn = arguments[i];
+		if (btn !== '-' && typeof(btn) == "string") {
+			btn = tb[btn];
+			mCommon.assert(btn, "toolbar button name does not support");
+		}
+		btns.push(btn);
+	}
 
 	return btns;
 }
@@ -4566,13 +4598,13 @@ function enhanceAnchor(jo)
 }
 
 /**
-@fn WUI.getExportHandler(jtbl, ac, param?={})
+@fn WUI.getExportHandler(jtbl, ac?, param?={})
 
 为数据表添加导出Excel菜单，如：
 
 	jtbl.datagrid({
 		url: WUI.makeUrl("User.query"),
-		toolbar: WUI.dg_toolbar(jtbl, jdlg, {text:'导出', iconCls:'icon-save', handler: getExportHandler(jtbl, "User.query") }),
+		toolbar: WUI.dg_toolbar(jtbl, jdlg, {text:'导出', iconCls:'icon-save', handler: getExportHandler(jtbl) }),
 		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
 	});
 
@@ -4595,6 +4627,11 @@ function getExportHandler(jtbl, ac, param)
 		param.fmt = "excel";
 	if (param.pagesz === undefined)
 		param.pagesz = 9999;
+	if (ac == null) {
+		setTimeout(function () {
+			ac = jtbl.datagrid("options").url;
+		});
+	}
 
 	return function () {
 		var url = WUI.makeUrl(ac, getParamFromTable(jtbl, param));
@@ -4615,11 +4652,8 @@ res参数从列设置中获取，如"id 编号,name 姓名", 特别地，如果�
 self.getParamFromTable = getParamFromTable;
 function getParamFromTable(jtbl, param)
 {
-	if (param == null)
-		param = {};
-
 	var opt = jtbl.datagrid("options");
-	$.extend(param, opt.queryParams);
+	param = $.extend({}, opt.queryParams, param);
 	if (param.orderby === undefined && opt.sortName) {
 		param.orderby = opt.sortName;
 		if (opt.sortOrder && opt.sortOrder.toLowerCase() != "asc")
@@ -4633,10 +4667,31 @@ function getParamFromTable(jtbl, param)
 			if (res.length > 0)
 				res += ',';
 			res += e.field + " " + e.title;
+			if (e.jdEnumMap) {
+				res += '=' + mCommon.kvList2Str(e.jdEnumMap, ';', ':');
+			}
 		});
 		param.res = res;
 	}
+	if (param.fname === undefined) {
+		if (jtbl.attr("title")) {
+			param.fname = jtbl.attr("title");
+		}
+	}
 	return param;
+}
+
+self.enumFormatter = enumFormatter;
+function enumFormatter(enumMap)
+{
+	return function (key) {
+		if (key == null)
+			return null;
+		var val = enumMap[key];
+		if (val == null)
+			val = key;
+		return val;
+	}
 }
 
 // ---- easyui setup {{{

@@ -6,7 +6,7 @@ function initPageUser()
 
 	jtbl.datagrid({
 		url: WUI.makeUrl("User.query"),
-		toolbar: WUI.dg_toolbar(jtbl, jdlg, {text:'导出', iconCls:'icon-save', handler: WUI.getExportHandler(jtbl, "User.query") }),
+		toolbar: WUI.dg_toolbar(jtbl, jdlg, "export"),
 		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
 	});
 }

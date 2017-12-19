@@ -482,6 +482,7 @@ class AccessControl
 	protected $requiredFields2 = [];
 	# for get/query
 	protected $hiddenFields = [];
+	protected $enumFields = []; // elem: {field => {key=>val}}
 	# for query
 	protected $defaultRes = "t0.*"; // 缺省为 "t0.*" 加  default=true的虚拟字段
 	protected $defaultSort = "t0.id";
@@ -711,6 +712,14 @@ class AccessControl
 		unset($rowData["pwd"]);
 		$this->flag_handleResult($rowData);
 		$this->onHandleRow($rowData);
+
+		foreach ($this->enumFields as $field=>$map) {
+			if (isset($rowData[$field])) {
+				$v = $map[$rowData[$field]];
+				if (isset($v))
+					$rowData[$field] = $v;
+			}
+		}
 	}
 
 	# for query. "field1"=>"t0.field1"
@@ -753,6 +762,18 @@ class AccessControl
 			}
 		}
 	}
+
+	protected function handleAlias($col, &$alias)
+	{
+		// support enum
+		$a = explode('=', $alias, 2);
+		if (count($a) != 2)
+			return;
+
+		$alias = $a[0] ?: null;
+		$this->enumFields[$alias ?: $col] = parseKvList($a[1], ";", ":");
+	}
+
 	// return: new field list
 	private function filterRes($res, $gres=false)
 	{
@@ -788,6 +809,9 @@ class AccessControl
 				$this->addRes($col);
 				continue;
 			}
+
+			if ($alias)
+				$this->handleAlias($col, $alias);
 
 // 			if (! ctype_alnum($col))
 // 				throw new MyException(E_PARAM, "bad property `$col`");
@@ -1333,7 +1357,7 @@ class AccessControl
 			$ret["total"] = $totalCnt;
 		}
 		if (isset($fmt))
-			$this->handleExportFormat($fmt, $ret, $this->table);
+			$this->handleExportFormat($fmt, $ret, param("fname", $this->table));
 
 		return $ret;
 	}

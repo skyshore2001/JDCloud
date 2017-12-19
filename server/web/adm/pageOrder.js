@@ -6,7 +6,7 @@ function initPageOrder()
 
 	jtbl.datagrid({
 		url: WUI.makeUrl("Ordr.query"),
-		toolbar: WUI.dg_toolbar(jtbl, jdlg),
+		toolbar: WUI.dg_toolbar(jtbl, jdlg, "export"),
 		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg),
 		sortName:'id',
 		sortOrder:'desc'
