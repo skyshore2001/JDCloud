@@ -447,7 +447,7 @@ query接口支持fmt参数：
 - list: 生成`{ @list, nextkey?, total? }`格式，而非缺省的 `{ @h, @d, nextkey?, total? }`格式
 - csv/txt/excel: 导出文件，注意为了避免分页，调用时可设置较大的pagesz值。
 	- csv: 逗号分隔的文件，utf8编码。
-	- excel: 逗号分隔的文件，gb2312编码以便excel可直接打开不会显示中文乱码。
+	- excel: 逗号分隔的文件，gb18030编码以便excel可直接打开不会显示中文乱码。
 	- txt: 制表分隔的文件, utf8编码。
 
 TODO: 可加一个系统参数`_enc`表示输出编码的格式。
@@ -1553,9 +1553,9 @@ function KVtoCond($k, $v)
 			$handled = true;
 		}
 		else if ($fmt === "excel") {
-			header("Content-Type: application/csv; charset=gb2312");
+			header("Content-Type: application/csv; charset=gb18030");
 			header("Content-Disposition: attachment;filename={$fname}.csv");
-			$this->table2csv($ret, "gb2312");
+			$this->table2csv($ret, "gb18030");
 			$handled = true;
 		}
 		else if ($fmt === "txt") {
