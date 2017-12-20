@@ -35,48 +35,15 @@ var ListOptions = {
 };
 
 var Formatter = {
-	number: function (value)
-	{
-		return parseFloat(value);
-	},
-	pics: function (value) {
-		if (value == null)
-			return "(无图)";
-		return value.replace(/(\d+),?/g, function (ms, picId) {
-			var url = WUI.makeUrl("att", {thumbId: picId});
-			return "<a target='_black' href='" + url + "'>" + picId + "</a>&nbsp;";
-		});
-	},
-	orderId: function (value) {
-		if (value != null)
-		{
-			return makeLinkTo("#dlgOrder", value, value);
-		}
-	},
-	// 必须有row.empId
-	empName: function (value, row) {
-		if (value == null)
-			return "";
-		return makeLinkTo("#dlgEmployee", row.empId, value);
-	},
-	// 必须有row.storeId
-	storeName: function (value, row) {
-		if (value == null)
-			return "";
-		return makeLinkTo("#dlgStore", row.storeId, value);
-	}
+	orderStatus: WUI.formatter.enum(OrderStatusMap),
+	userId: WUI.formatter.linkTo("userId", "#dlgUser"),
+	empId: WUI.formatter.linkTo("empId", "#dlgEmployee"),
+	orderId: WUI.formatter.linkTo("orderId", "#dlgOrder")
 };
+Formatter = $.extend(WUI.formatter, Formatter);
 //}}}
 
 // ==== column settings {{{
-var EmpSigninColumns = {
-	type: function (value, row) {
-		if (value == 'CM')
-			return "签到";
-		return value;
-	}
-};
-
 // formatters and styler. Note: for one cell, styler executes prior to formatter
 var OrderColumns = {
 	statusStyler: function (value, row) {
@@ -93,30 +60,17 @@ var OrderColumns = {
 
 	empName: function (value, row) {
 		if (value == null)
-			return "";
-
-		value = addTooltip(value, row.__tooltip);
+			return;
+		value = addTooltip(value, row.tooltip_);
 		return makeLinkTo("#dlgEmployee", row.empId, value);
 	},
 
 	flagStyler: function (value, row) {
-			if (value)
-				return "background-color:" + Color.Info;
+		if (value)
+			return "background-color:" + Color.Info;
 	}
 };
 
-function flagFormatter(flag)
-{
-	return function (value, row) {
-		if (value) {
-			return '是';
-		}
-		else {
-			row[flag] = 0;
-			return '否';
-		}
-	}
-}
 // }}}
 
 // ==== init page and dialog {{{

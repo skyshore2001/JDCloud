@@ -33,7 +33,7 @@
 					<th data-options="field:'id', sortable:true, sorter:intSort">订单号</th>
 					<th data-options="field:'userPhone', sortable:true">用户联系方式</th>
 					<th data-options="field:'createTm', sortable:true">创建时间</th>
-					<th data-options="field:'status', jdEnumMap: OrderStatusMap, formatter:WUI.enumFormatter(OrderStatusMap), styler:OrderColumns.statusStyler, sortable:true">状态</th>
+					<th data-options="field:'status', jdEnumMap: OrderStatusMap, formatter:Formatter.orderStatus, styler:OrderColumns.statusStyler, sortable:true">状态</th>
 					<th data-options="field:'dscr', sortable:true">描述</th>
 					<th data-options="field:'cmt'">用户备注</th>
 				</tr></thead>
@@ -227,13 +227,12 @@
 			<thead><tr>
 				<th data-options="field:'id', sortable:true, sorter:intSort">订单号</th>
 				...
-				<th data-options="field:'status', jdEnumMap: OrderStatusMap, formatter:WUI.enumFormatter(OrderStatusMap), styler:OrderColumns.statusStyler, sortable:true">状态</th>
+				<th data-options="field:'status', jdEnumMap: OrderStatusMap, formatter:Formatter.orderStatus, styler:OrderColumns.statusStyler, sortable:true">状态</th>
 			</tr></thead>
 		</table>
 	</div>
 
-formatter用于控制Cell中的HTML标签，对于枚举值常常用WUI.enumFormatter(map)来赋值，它相当于`return map[value] || value`；同时枚举值常常用jdEnumMap属性定义名字和描述，便于导出Excel时显示描述。
-styler用于控制Cell自己的CSS style.
+formatter用于控制Cell中的HTML标签，styler用于控制Cell自己的CSS style.
 在JS中定义：
 
 	var OrderStatusMap = {
@@ -241,6 +240,14 @@ styler用于控制Cell自己的CSS style.
 		RE: "已服务", 
 		CA: "已取消"
 	};
+	var Formatter = {
+		// 显示枚举值的描述，相当于`return map[value] || value`；
+		orderStatus: WUI.formatter.enum(OrderStatusMap),
+		// 显示链接，点击打开用户详情对话框
+		userId: WUI.formatter.linkTo("userId", "#dlgUser")
+	};
+	Formatter = $.extend(WUI.formatter, Formatter);
+
 	var OrderColumns = {
 		statusStyler: function (value, row) {
 			var colors = {
@@ -257,31 +264,32 @@ styler用于控制Cell自己的CSS style.
 
 注意：
 
+- WUI.formatter已经定义了常用的formatter. 通常定义一个全局Formatter继承WUI.formatter，用于各页面共享的字段设定.
 - 习惯上，对同一个对象的字段的设定，都放到一个名为　{Obj}Columns 的变量中一起定义。
-- 对于通用的或多处共享的字段设定，放到变量 Formatter 中.
 
-示例二：下面是一些通用的例子，特别是生成对象链接经常会用到。
+@see WUI.formatter 通用格式化函数
+
+一些其它示例：
 
 	var Formatter = {
 		// 显示数值
-		number: function (value)
-		{
+		number: function (value, row) {
 			return parseFloat(value);
 		},
-		// 显示一张或一组图片链接，点一个链接可以在新页面上显示原图片
-		pics: function (value) {
-			if (value == null)
-				return "(无图)";
-			return value.replace(/(\d+),?/g, function (ms, picId) {
-				var url = WUI.makeUrl("att", {thumbId: picId});
-				return "<a target='_black' href='" + url + "'>" + picId + "</a>&nbsp;";
-			});
-		},
 		// 订单编号，显示为一个链接，点击就打开订单对话框该订单。
-		orderId: function (value) {
-			if (value != null)
-			{
-				return makeLinkTo("#dlgOrder", value, value);
+		orderId: function (value, row) {
+			if (value) {
+				return WUI.makeLinkTo("#dlgOrder", row.orderId, value);
+			}
+		},
+		// 显示状态的同时，设置另一个本地字段，这种字段一般以"_"结尾，表示不是服务器传来的字段，例如
+		// <th data-options="field:'hint_'">提醒事项</th>
+		status: function (value, row) {
+			if (value) {
+				if (value == "PA") {
+					row.hint_ = "请于2小时内联系";
+				}
+				return StatusMap[value] || value;
 			}
 		}
 	};
@@ -365,18 +373,21 @@ styler用于控制Cell自己的CSS style.
 		...
 		<th data-options="field:'id'">编号</th>
 		<th data-options="field:'status'">状态</th>
+		<th data-options="field:'hint_'">友情提示</th>
 	</table>
 
-它生成的res参数为"id 编号, status 状态"。
+它生成的res参数为"id 编号, status 状态"。"hint_"字段以下划线结尾，它会被当作是本地虚拟字段，不会被导出。
 
 table上的title属性可用于控制列表导出时的默认文件名，如本例导出文件名为"订单列表.xls"。
 如果想导出表中没有显示的列，可以设置该列为隐藏，如：
 
 		<th data-options="field:'userId', hidden:true">用户编号</th>
 
-特别地，对于枚举字段，可在th的data-options用`formatter:WUI.enumFormatter(map)`来显示描述，在导出Excel时，需要设置`jdEnumMap:map`属性来显示描述，如
+@key jdEnumMap datagrid中th选项, 在导出文件时，枚举变量可显示描述
 
-		<th data-options="field:'status', jdEnumMap: OrderStatusMap, formatter: WUI.enumFormatter(OrderStatusMap)">状态</th>
+对于枚举字段，可在th的data-options用`formatter:WUI.formatter.enum(map)`来显示描述，在导出Excel时，需要设置`jdEnumMap:map`属性来显示描述，如
+
+		<th data-options="field:'status', jdEnumMap: OrderStatusMap, formatter: WUI.formatter.enum(OrderStatusMap)">状态</th>
 
 OrderStatusMap在代码中定义如下
 
@@ -3991,6 +4002,13 @@ $.fn.okCancel = function (fnOk, fnCancel) {
 			showObjDlg($(this), FormMode.forFind, null);
 			return false;
 		}
+/* // Ctrl-A: add mode
+		else if (e.ctrlKey && e.which == 65)
+		{
+			showObjDlg($(this), FormMode.forAdd, null);
+			return false;
+		}
+*/
 	});
 }
 
@@ -4788,18 +4806,79 @@ function getParamFromTable(jtbl, param)
 	return param;
 }
 
-self.enumFormatter = enumFormatter;
-function enumFormatter(enumMap)
-{
-	return function (key) {
-		if (key == null)
-			return null;
-		var val = enumMap[key];
-		if (val == null)
-			val = key;
-		return val;
+var Formatter = {
+	dt: function (value, row) {
+		var dt = WUI.parseDate(value);
+		if (dt == null)
+			return value;
+		return dt.format("L");
+	},
+	number: function (value, row) {
+		return parseFloat(value);
+	},
+	pics: function (value, row) {
+		if (value == null)
+			return "(无图)";
+		return value.replace(/(\d+),?/g, function (ms, picId) {
+			var url = WUI.makeUrl("att", {thumbId: picId});
+			return "<a target='_black' href='" + url + "'>" + picId + "</a>&nbsp;";
+		});
+	},
+	flag: function (yes, no) {
+		if (yes == null)
+			yes = "是";
+		if (no == null)
+			no = "否";
+		return function (value, row) {
+			if (value == null)
+				return;
+			return value? yes: no;
+		}
+	},
+	enum: function (enumMap) {
+		return function (value, row) {
+			if (value == null)
+				return;
+			return enumMap[value] || value;
+		}
+	},
+	linkTo: function (field, dlgRef) {
+		return function (value, row) {
+			if (value == null)
+				return;
+			return self.makeLinkTo(dlgRef, row[field], value);
+		}
 	}
-}
+};
+
+/**
+@var WUI.formatter = {dt, number, pics, flag(yes?=是,no?=否), enum(enumMap), linkTo(field, dlgRef) }
+
+常常应用定义Formatter变量来扩展WUI.formatter，如
+
+	var Formatter = {
+		userId: WUI.formatter.linkTo("userId", "#dlgUser"),
+		orderStatus: WUI.formatter.enum({CR: "新创建", CA: "已取消"})
+	};
+	Formatter = $.extend(WUI.formatter, Formatter);
+
+可用值：
+
+- dt/number: 显示日期、数值
+- pics: 显示一张或一组图片链接，点一个链接可以在新页面上显示原图片
+- enum(enumMap): 根据一个map为枚举值显示描述信息，如 `enum({CR:"创建", CA:"取消"})`
+- flag(yes?, no?): 显示yes-no字段，如 `flag("禁用","启用")`，也可以用enum，如`enum({0:"启用",1:"禁用"})`
+- linkTo: 生成链接，点击打开对象详情对话框
+
+在datagrid中使用：
+
+	<th data-options="field:'createTm', sortable:true, formatter:Formatter.dt">创建时间</th>
+	<th data-options="field:'amount', sortable:true, sorter: numberSort, formatter:Formatter.number">金额</th>
+	<th data-options="field:'userName', sortable:true, formatter:Formatter.userId">用户</th>
+	<th data-options="field:'status', sortable:true, jdEnumMap: OrderStatusMap, formatter: Formatter.orderStatus">状态</th>
+	<th data-options="field:'done', sortable:true, formatter: Formatter.flag()">已处理</th>
+*/
+self.formatter = Formatter;
 
 // ---- easyui setup {{{
 

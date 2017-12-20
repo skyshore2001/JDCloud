@@ -4,14 +4,13 @@ var g_data = {}; // { userInfo={id,uname} }
 
 // ====== data-options {{{
 var Formatter = {
-	dt: function (value, row) {
-		return dtStr(value);
-	},
-	userId: function (value, row) {
-		if (row.userId)
-			return WUI.makeLinkTo("#dlgUser", row.userId, value);
-	}
+	orderStatus: WUI.formatter.enum(OrderStatusMap),
+	orderAction: WUI.formatter.enum(ActionMap),
+	userId: WUI.formatter.linkTo("userId", "#dlgUser"),
+	empId: WUI.formatter.linkTo("empId", "#dlgEmployee"),
+	orderId: WUI.formatter.linkTo("orderId", "#dlgOrder")
 };
+Formatter = $.extend(WUI.formatter, Formatter);
 
 var OrderColumns = {
 	statusStyler: function (value, row) {
