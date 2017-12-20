@@ -393,6 +393,34 @@ OrderStatusMap在代码中定义如下
 
 ### 详情页对话框的常见需求
 
+#### 通用查询
+
+在对话框中按快捷键"Ctrl-F"可进入查询模式。
+详情页提供通用查询，如：
+
+	手机号: <input name="phone">  
+	注册时间: <input name="createTm">
+
+可在手机号中输入"137*"，在注册时间中输入">=2017-1-1 and <2018-1-1"，这样生成的查询参数为：
+
+	{ cond: "phone like '137%' and (createTm>='2017-1-1' and createTm<'2018-1-1')" }
+
+@see getQueryCond 查询条件支持
+@see getQueryParam 生成查询条件
+
+@key notForFind 指定非查询条件
+不参与查询的字段，可以用notForFind属性标识，如：
+
+	登录密码: <input notForFind type="password" name="pwd">
+
+@key my-cond 指定独立查询条件
+
+如果查询时不想将条件放在cond参数中，可以设置my-cond属性标识，如：
+
+	状态: <select name="status" my-cond class="my-combobox" data-options="jdEnumList:'0:可用;1:禁用'"></select>
+
+如果不加my-cond属性，生成的查询参数为：`{cond: "status=0"}`；加上my-cond属性后，生成查询参数如：`{status: 0}`.
+
 #### 设计模式：关联选择框
 
 示例：下拉框中显示员工列表 (Choose-from-list / 关联选择框)
@@ -1524,6 +1552,27 @@ function kvList2Str(kv, sep, sep2)
 		}
 	});
 	return ret;
+}
+
+/**
+@fn parseKvList(kvListStr, sep, sep2) -> kvMap
+
+解析key-value列表字符串，返回kvMap。
+示例：
+
+	var map = parseKvList("CR:新创建;PA:已付款", ";", ":");
+	// map: {"CR": "新创建", "PA":"已付款"}
+*/
+self.parseKvList = parseKvList;
+function parseKvList(str, sep, sep2)
+{
+	var map = {};
+	$.each(str.split(sep), function (i, e) {
+		var kv = e.split(sep2, 2);
+		assert(kv.length == 2, "bad kvList: " + str);
+		map[kv[0]] = kv[1];
+	});
+	return map;
 }
 
 function initModule()
@@ -5570,7 +5619,7 @@ $.each([
 
 	<select name="empId" class="my-combobox" data-options="valueField: 'id', ..."></select>
 
-通过data-options可设置选项: { valueField, textField, url, formatter(row), loadFilter(data) }
+通过data-options可设置选项: { valueField, textField, url, formatter(row), loadFilter(data), jdEnumMap/jdEnumList }
 
 初始化：
 
@@ -5588,6 +5637,7 @@ $.each([
 - 初始化时调用url指定接口取数据并生成下拉选项。
 - 双击可刷新列表。
 - 支持数据缓存，不必每次打开都刷新。
+- 也支持通过key-value列表初始化(jdEnumMap/jdEnumList选项)
 
 例如，在订单上设计有empId字段：
 
@@ -5627,6 +5677,19 @@ $.each([
 		...
 	};
 
+也支持通过key-value列表用jdEnumMap选项或jdEnumList选项来初始化下拉框，如：
+
+	订单状态： <select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap" style="width:150px"></select>
+	或者：
+	订单状态： <select name="status" class="my-combobox" data-options="jdEnumList:'CR:未付款;CA:已取消'" style="width:150px"></select>
+
+其中OrderStatusMap定义如下：
+
+	var OrderStatusMap = {
+		"CR": "未付款",
+		"CA": "已取消"
+	};
+
 另一个例子：在返回列表后，可通过loadFilter修改列表，例如添加一项：
 
 	<select name="brandId" class="my-combobox" data-options="ListOptions.Brand()" ></select>
@@ -5652,7 +5715,8 @@ JS代码ListOptions.Brand:
 
  */
 var m_dataCache = {}; // url => data
-$.fn.mycombobox = function (force) 
+$.fn.mycombobox = mycombobox;
+function mycombobox(force) 
 {
 	var mCommon = jdModule("jdcloud.common");
 	this.each(initCombobox);
@@ -5683,7 +5747,10 @@ $.fn.mycombobox = function (force)
 		}catch (e) {
 			alert("bad options for mycombobox: " + optStr);
 		}
-		if (opts.url) {
+		if (opts.jdEnumMap || opts.jdEnumList) {
+			loadOptions();
+		}
+		else if (opts.url) {
 			loadOptions();
 
 			if (!jo.attr("ondblclick"))
@@ -5704,6 +5771,19 @@ $.fn.mycombobox = function (force)
 			// 如果设置了name属性, 一般关联字段(故可以为空), 添加空值到首行
 			if (jo.attr("name"))
 				$("<option value=''></option>").appendTo(jo);
+
+			if (opts.jdEnumList) {
+				opts.jdEnumMap = mCommon.parseKvList(opts.jdEnumList, ';', ':');
+			}
+			if (opts.jdEnumMap) {
+				$.each(opts.jdEnumMap, function (k, v) {
+					var jopt = $("<option></option>")
+						.attr("value", k)
+						.text(v)
+						.appendTo(jo);
+				});
+				return;
+			}
 
 			if (opts.dirty || m_dataCache[opts.url] === undefined) {
 				self.callSvrSync(opts.url, applyData);
