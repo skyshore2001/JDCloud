@@ -408,18 +408,19 @@ OrderStatusMap在代码中定义如下
 @see getQueryCond 查询条件支持
 @see getQueryParam 生成查询条件
 
-@key notForFind 指定非查询条件
-不参与查询的字段，可以用notForFind属性标识，如：
+@key .notForFind 指定非查询条件
+不参与查询的字段，可以用notForFind类标识(为兼容，也支持属性notForFind)，如：
 
-	登录密码: <input notForFind type="password" name="pwd">
+	登录密码: <input class="notForFind" type="password" name="pwd">
+	或者: <input notForFind type="password" name="pwd">
 
-@key my-cond 指定独立查询条件
+@key .wui-notCond 指定独立查询条件
 
-如果查询时不想将条件放在cond参数中，可以设置my-cond属性标识，如：
+如果查询时不想将条件放在cond参数中，可以设置wui-notCond类标识，如：
 
-	状态: <select name="status" my-cond class="my-combobox" data-options="jdEnumList:'0:可用;1:禁用'"></select>
+	状态: <select name="status" class="my-combobox wui-notCond" data-options="jdEnumList:'0:可用;1:禁用'"></select>
 
-如果不加my-cond属性，生成的查询参数为：`{cond: "status=0"}`；加上my-cond属性后，生成查询参数如：`{status: 0}`.
+如果不加wui-notCond类，生成的查询参数为：`{cond: "status=0"}`；加上后，生成查询参数如：`{status: 0}`.
 
 #### 设计模式：关联选择框
 
@@ -4239,12 +4240,12 @@ function getFindData(jfrm)
 	var kvList = {};
 	var kvList2 = {};
 	jfrm.find(":input[name]").each(function(i,e) {
-		if ($(e).attr("notForFind"))
+		if ($(e).hasClass("notForFind"))
 			return;
 		var v = $(e).val();
 		if (v == null || v === "")
 			return;
-		if ($(e).attr("my-cond"))
+		if ($(e).hasClass("wui-notCond"))
 			kvList2[e.name] = v;
 		else
 			kvList[e.name] = v;
@@ -4444,7 +4445,7 @@ function showObjDlg(jdlg, mode, opt)
 				disabled: je.prop("disabled"),
 				type: null
 			}
-			if (je.attr("notforFind")) {
+			if (je.hasClass("notForFind") || je.attr("notForFind") != null) {
 				je.prop("disabled", true);
 				je.css("backgroundColor", "");
 			}
