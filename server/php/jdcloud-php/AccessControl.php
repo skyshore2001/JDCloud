@@ -463,6 +463,30 @@ TODO: 可加一个系统参数`_enc`表示输出编码的格式。
 
 	$this->sqlConf["distinct"] =1;
 
+### 枚举支持及自定义字段处理
+
+(版本5.0)
+@var AccessControl::$enumFields {field => map/fn($val) }支持处理枚举字段，或自定义处理。
+
+作为比onHandleRow/onAfterActions等更易用的工具，enumFields可对返回字段做修正。例如，想要对返回的status字段做修正，如"CR"显示为"Created"，可设置：
+
+	$enumFields["status"] = ["CR"=>"Created", "CA"=>"Cancelled"];
+
+也可以设置为自定义函数，如：
+
+	$map = ["CR"=>"Created", "CA"=>"Cancelled"];
+	$enumFields["status"] = function($v) use ($map) {
+		if (array_key_exists($v, $map))
+			return $v . "-" . $map[$v];
+		return $v;
+	};
+
+此外，枚举字段可直接由请求方通过res参数指定描述值，如：
+
+	Ordr.query(res="id, status =CR:Created;CA:Cancelled")
+	或指定alias:
+	Ordr.query(res="id 编号, status 状态=CR:Created;CA:Cancelled")
+
 */
 
 # ====== functions {{{
@@ -482,7 +506,7 @@ class AccessControl
 	protected $requiredFields2 = [];
 	# for get/query
 	protected $hiddenFields = [];
-	protected $enumFields = []; // elem: {field => {key=>val}}
+	protected $enumFields = []; // elem: {field => {key=>val}} 或 {field => fn(val)}，与onHandleRow类似地去修改数据。
 	# for query
 	protected $defaultRes = "t0.*"; // 缺省为 "t0.*" 加  default=true的虚拟字段
 	protected $defaultSort = "t0.id";
@@ -714,10 +738,15 @@ class AccessControl
 		$this->onHandleRow($rowData);
 
 		foreach ($this->enumFields as $field=>$map) {
-			if (isset($rowData[$field])) {
-				$v = $map[$rowData[$field]];
-				if (isset($v))
-					$rowData[$field] = $v;
+			if (array_key_exists($field, $rowData)) {
+				$v = $rowData[$field];
+				if (is_callable($map)) {
+					$v = $map($v);
+				}
+				else if (array_key_exists($v, $map)) {
+					$v = $map[$v];
+				}
+				$rowData[$field] = $v;
 			}
 		}
 	}
