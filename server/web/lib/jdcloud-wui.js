@@ -4196,10 +4196,10 @@ function getFindData(jfrm)
 		else
 			kvList[e.name] = v;
 	})
-	var cond = self.getQueryParam(kvList);
+	var param = self.getQueryParam(kvList);
 	if (kvList2) 
-		$.extend(cond, kvList2);
-	return cond;
+		$.extend(param, kvList2);
+	return param;
 }
 
 function saveFormFields(jfrm, data)
@@ -4466,6 +4466,11 @@ function showObjDlg(jdlg, mode, opt)
 			var param = getFindData(jfrm);
 			if (! $.isEmptyObject(param)) {
 				mCommon.assert(jd.jtbl); // 查询结果显示到jtbl中
+				// 归并table上的cond条件. dgOpt.url是makeUrl生成的，保存了原始的params
+				var dgOpt = jd.jtbl.datagrid("options");
+				if (param.cond && dgOpt && dgOpt.url && dgOpt.url.params && dgOpt.url.params.cond) {
+					param.cond = dgOpt.url.params.cond + " AND (" + param.cond + ")";
+				}
 				reload(jd.jtbl, undefined, param);
 			}
 			else {
