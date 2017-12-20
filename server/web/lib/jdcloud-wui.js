@@ -2310,7 +2310,11 @@ function getQueryCond(kvList)
 self.getQueryParam = getQueryParam;
 function getQueryParam(kvList)
 {
-	return {cond: getQueryCond(kvList)};
+	var ret = {};
+	var cond = getQueryCond(kvList);
+	if (cond)
+		ret.cond = cond;
+	return ret;
 }
 
 }
@@ -4464,18 +4468,13 @@ function showObjDlg(jdlg, mode, opt)
 	function onOk (retData) {
 		if (mode==FormMode.forFind) {
 			var param = getFindData(jfrm);
-			if (! $.isEmptyObject(param)) {
-				mCommon.assert(jd.jtbl); // 查询结果显示到jtbl中
-				// 归并table上的cond条件. dgOpt.url是makeUrl生成的，保存了原始的params
-				var dgOpt = jd.jtbl.datagrid("options");
-				if (param.cond && dgOpt && dgOpt.url && dgOpt.url.params && dgOpt.url.params.cond) {
-					param.cond = dgOpt.url.params.cond + " AND (" + param.cond + ")";
-				}
-				reload(jd.jtbl, undefined, param);
+			mCommon.assert(jd.jtbl); // 查询结果显示到jtbl中
+			// 归并table上的cond条件. dgOpt.url是makeUrl生成的，保存了原始的params
+			var dgOpt = jd.jtbl.datagrid("options");
+			if (param.cond && dgOpt && dgOpt.url && dgOpt.url.params && dgOpt.url.params.cond) {
+				param.cond = dgOpt.url.params.cond + " AND (" + param.cond + ")";
 			}
-			else {
-				self.app_alert("请输入查询条件!", "w");
-			}
+			reload(jd.jtbl, undefined, param);
 			return;
 		}
 		// add/set/link
