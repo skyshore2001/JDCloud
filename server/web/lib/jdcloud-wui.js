@@ -400,7 +400,7 @@ OrderStatusMap在代码中定义如下
 
 @see WUI.dg_toolbar 指定列表上的操作按钮
 @see WUI.getExportHandler 自定义导出Excel功能
-@see WUI.getParamFromTable 根据当前datagrid状态取query接口参数
+@see WUI.getQueryParamFromTable 根据当前datagrid状态取query接口参数
 
 ### 详情页对话框的常见需求
 
@@ -2318,6 +2318,9 @@ function getop(v)
 - {key: "null or 0 or 1"}  - 表示"key is null or key=0 or key=1"
 
 在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。
+
+@see WUI.getQueryParam
+@see WUI.getQueryParamFromTable 获取datagrid的当前查询参数
 */
 self.getQueryCond = getQueryCond;
 function getQueryCond(kvList)
@@ -2359,6 +2362,7 @@ function getQueryCond(kvList)
 @fn WUI.getQueryParam(kvList)
 
 根据键值对生成BQP协议中{obj}.query接口需要的cond参数.
+即 `{cond: WUI.getQueryCond(kvList) }`
 
 示例：
 
@@ -2367,6 +2371,7 @@ function getQueryCond(kvList)
 	{cond: "phone='13712345678' AND id>100"}
 
 @see WUI.getQueryCond
+@see WUI.getQueryParamFromTable 获取datagrid的当前查询参数
 */
 self.getQueryParam = getQueryParam;
 function getQueryParam(kvList)
@@ -4740,7 +4745,7 @@ function enhanceAnchor(jo)
 
 注意：由于分页机制影响，会设置参数{pagesz: -1}以便在一页中返回所有数据，而实际一页能导出的最大数据条数取决于后端设置（默认1000，参考后端文档 AccessControl::$maxPageSz）。
 
-@see WUI.getParamFromTable
+@see WUI.getQueryParamFromTable 获取datagrid的当前查询参数
 */
 self.getExportHandler = getExportHandler;
 function getExportHandler(jtbl, ac, param)
@@ -4759,13 +4764,14 @@ function getExportHandler(jtbl, ac, param)
 	}
 
 	return function () {
-		var url = WUI.makeUrl(ac, getParamFromTable(jtbl, param));
+		var url = WUI.makeUrl(ac, getQueryParamFromTable(jtbl, param));
 		window.open(url);
 	}
 }
 
 /**
-@fn WUI.getParamFromTable(jtbl, param?)
+@fn WUI.getQueryParamFromTable(jtbl, param?)
+@alias WUI.getParamFromTable
 
 根据数据表当前设置，获取查询参数。
 可能会设置{cond, orderby, res}参数。
@@ -4774,8 +4780,8 @@ res参数从列设置中获取，如"id 编号,name 姓名", 特别地，如果�
 
 @see WUI.getExportHandler 导出Excel
 */
-self.getParamFromTable = getParamFromTable;
-function getParamFromTable(jtbl, param)
+self.getQueryParamFromTable = self.getParamFromTable = getQueryParamFromTable;
+function getQueryParamFromTable(jtbl, param)
 {
 	var opt = jtbl.datagrid("options");
 	param = $.extend({}, opt.queryParams, param);
