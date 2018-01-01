@@ -1,6 +1,7 @@
 <?php
 
-require_once(dirname(__FILE__) . "/../server/app.php");
+// 自动加载conf.user.php中的配置。
+@include_once(__DIR__ . "/../server/php/conf.user.php");
 
 ###### config {{{
 global $LOGF, $CHAR_SZ, $SQLDIFF;
@@ -278,6 +279,75 @@ function getMetaFile()
 	if (($a=__DIR__ . '/../DESIGN.wiki') && is_file($a))
 		return $a;
 }
+
+function getCred($cred)
+{
+	if (! $cred)
+		return null;
+	if (stripos($cred, ":") === false) {
+		$cred = base64_decode($cred);
+	}
+	return explode(":", $cred, 2);
+}
+
+function dbconn($fnConfirm = null)
+{
+	global $DBH;
+	if (isset($DBH))
+		return $DBH;
+
+	global $DB, $DBCRED, $DBTYPE;
+	$DB = getenv("P_DB");
+	$DBCRED = getenv("P_DBCRED");
+	$DBTYPE = getenv("P_DBTYPE");
+	if ($DBTYPE === false)
+		$DBTYPE = "mysql";
+
+	// 未指定驱动类型，则按 mysql或sqlite 连接
+	if (! preg_match('/^\w{3,10}:/', $DB)) {
+		// e.g. P_DB="../carsvc.db"
+		if ($DBTYPE == "sqlite") {
+			$C = ["sqlite:" . $DB, '', ''];
+		}
+		else if ($DBTYPE == "mysql") {
+			// e.g. P_DB="115.29.199.210/carsvc"
+			// e.g. P_DB="115.29.199.210:3306/carsvc"
+			if (! preg_match('/^"?(.*?)(:(\d+))?\/(\w+)"?$/', $DB, $ms))
+				throw new Exception("bad db=`$DB`");
+			$dbhost = $ms[1];
+			$dbport = $ms[3] ?: 3306;
+			$dbname = $ms[4];
+
+			list($dbuser, $dbpwd) = getCred($DBCRED); 
+			$C = ["mysql:host={$dbhost};dbname={$dbname};port={$dbport}", $dbuser, $dbpwd];
+		}
+	}
+	else {
+		list($dbuser, $dbpwd) = getCred($DBCRED); 
+		$C = [$DB, $dbuser, $dbpwd];
+	}
+
+	if ($fnConfirm && $fnConfirm($C[0]) === false) {
+		exit;
+	}
+	try {
+		@$DBH = new PDO ($C[0], $C[1], $C[2]);
+	}
+	catch (PDOException $e) {
+		throw new Exception("dbconn fails: " . $e->getMessage());
+	}
+	
+	if ($DBTYPE == "mysql") {
+		$DBH->exec('set names utf8');
+	}
+	$DBH->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION); # by default use PDO::ERRMODE_SILENT
+
+	# enable real types (works on mysql after php5.4)
+	# require driver mysqlnd (view "PDO driver" by "php -i")
+	$DBH->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+	$DBH->setAttribute(PDO::ATTR_STRINGIFY_FETCHES, false);
+	return $DBH;
+}
 #}}}
 
 class UpgHelper
@@ -360,7 +430,12 @@ class UpgHelper
 				return true;
 			};
 		}
+		try {
 		$this->dbh = dbconn($fnConfirm);
+		} catch (Exception $e) {
+			echo $e->getMessage() . "\n";
+			exit;
+		}
 		global $SQLDIFF;
 		$SQLDIFF = SqlDiff::create($this->dbh);
 		try {
