@@ -16,21 +16,24 @@
 
 ## 连接数据库
 
-连接mysql示例(注意在php.ini中打开php_pdo_mysql扩展)：
+连接mysql示例(注意在php.ini中打开php_pdo_mysql扩展)，设置以下环境变量：
 
-	putenv("P_DB=172.12.77.221/jdcloud");
-	putenv("P_DBCRED=ganlan:ganlan123");
+	P_DBTYPE=mysql
+	P_DB=172.12.77.221/jdcloud
+	P_DBCRED=demo:demo123
 
 连接sqlite示例(注意打开php_pdo_sqlite扩展)：
 
-	putenv("P_DB=d:/db/jdcloud.db");
+	P_DBTYPE=sqlite
+	P_DB=d:/db/jdcloud.db
 
 连接mssql示例(通过odbc连接，注意打开php_pdo_odbc扩展)
 
-	putenv("P_DBTYPE=mssql");
-	putenv("P_DB=odbc:DRIVER=SQL Server Native Client 10.0; DATABASE=carsvc; Trusted_Connection=Yes; SERVER=.\MSSQL2008;");
-	//putenv("P_DBCRED=sa:ganlan123");
-	
+	P_DBTYPE=mssql
+	P_DB=odbc:DRIVER=SQL Server Native Client 10.0; DATABASE=jdcloud; Trusted_Connection=Yes; SERVER=.\MSSQL2008;
+	# P_DBCRED=sa:demo123
+
+一般创建或修改upgrade.sh指定这些变量后调用upgrade.php
 */
 
 require_once('upglib.php');

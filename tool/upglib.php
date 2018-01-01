@@ -1,7 +1,9 @@
 <?php
 
 // 自动加载conf.user.php中的配置。
-@include_once(__DIR__ . "/../server/php/conf.user.php");
+if (getenv("P_DB") === false) {
+	@include_once(__DIR__ . "/../server/php/conf.user.php");
+}
 
 ###### config {{{
 global $LOGF, $CHAR_SZ, $SQLDIFF;
@@ -296,12 +298,10 @@ function dbconn($fnConfirm = null)
 	if (isset($DBH))
 		return $DBH;
 
-	global $DB, $DBCRED, $DBTYPE;
+	global $DB, $DBTYPE;
 	$DB = getenv("P_DB");
 	$DBCRED = getenv("P_DBCRED");
-	$DBTYPE = getenv("P_DBTYPE");
-	if ($DBTYPE === false)
-		$DBTYPE = "mysql";
+	$DBTYPE = getenv("P_DBTYPE") ?: "mysql";
 
 	// 未指定驱动类型，则按 mysql或sqlite 连接
 	if (! preg_match('/^\w{3,10}:/', $DB)) {
