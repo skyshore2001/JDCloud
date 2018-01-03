@@ -5693,6 +5693,20 @@ function mainInit()
 			jpage.trigger('pagedestroy');
 		}
 	});
+
+	// bugfix for datagrid size after resizing
+	var tmr;
+	$(window).on("resize", function () {
+		if (tmr)
+			clearTimeout(tmr);
+		tmr = setTimeout(function () {
+			tmr = null;
+			console.log("panel resize");
+			var jpage = getActivePage();
+			// 强制datagrid重排
+			jpage.closest(".panel-body").panel("doLayout", true);
+		}, 200);
+	});
 }
 
 $(mainInit);
