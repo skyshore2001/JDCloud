@@ -2312,10 +2312,17 @@ function getop(v)
 - {key: "null" } - 表示 "key is null"。要表示"key is not null"，可以用 "<>null".
 - {key: "empty" } - 表示 "key=''".
 
-支持简单的and/or查询，但不支持在其中使用括号:
+支持and/or查询，但不支持在其中使用括号:
 
 - {key: ">value and <=value"}  - 表示"key>'value' and key<='value'"
 - {key: "null or 0 or 1"}  - 表示"key is null or key=0 or key=1"
+- {key: "null,0,1,9-100"} - 表示"key is null or key=0 or key=1 or (key>=9 and key<=100)"，即逗号表示or，a-b的形式只支持数值。
+
+以下表示的范围相同：
+
+	{k1:'1-5,7-10', k2:'1-10 and <>6'}
+
+符号优先级依次为：-(and) ,(or) and or
 
 在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。
 
@@ -2347,7 +2354,26 @@ function getQueryCond(kvList)
 				bracket = true;
 				return;
 			}
-			str += k + getop(v1);
+			// a-b,c-d,e
+			var str1 = '';
+			var bracket2 = false;
+			$.each(v1.split(/\s*,\s*/), function (j, v2) {
+				if (str1.length > 0) {
+					str1 += " OR ";
+					bracket2 = true;
+				}
+				var m = v2.match(/^(\d+)-(\d+)$/);
+				if (m) {
+					str1 += "(" + k + ">=" + m[1] + " AND " + k + "<=" + m[2] + ")";
+				}
+				else {
+					str1 += k + getop(v2);
+				}
+			});
+			if (bracket2)
+				str += "(" + str1 + ")";
+			else
+				str += str1;
 		});
 		if (bracket)
 			str = '(' + str + ')';
