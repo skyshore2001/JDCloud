@@ -613,6 +613,16 @@ OrderStatusMap在代码中定义如下
 
 注意：逻辑页的title字段不能和其它页中title重复，否则这两页无法同时显示，因为显示tab页时是按照title来标识逻辑页的。
 
+动态加载页面时，先加载逻辑页html和js文件，再将逻辑页插入应用程序并做系统初始化（如增强mui组件或easyui组件等），然后调用页面的用户初始化函数。
+若希望在系统初始化之前做一些操作，应放在用户初始化函数之外。
+例如，初始化过程中的服务调用使用批处理：
+
+	functio initPageOrder() 
+	{
+		...
+	}
+	WUI.useBatchCall();
+
 在文件page/dlgOrder.html中定义对话框UI:
 
 	<div wui-script="dlgOrder.js" my-obj="Ordr" my-initfn="initDlgOrder" title="用户订单" style="width:520px;height:500px;">  
