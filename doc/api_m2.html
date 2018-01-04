@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（移动Web版）</h1>
-<div>最后更新：2017-11-15</div>
+<div>最后更新：2018-01-04</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -49,7 +49,11 @@ code {
 <h2>Keywords</h2>
 <div class="toc">
 <p><a href="##footer">#footer (key)</a></p>
-<p><a href="##muiAlert">#muiAlert (alias)</a></p>
+<p><a href="##muiAlert">#muiAlert (key)</a></p>
+<p><a href="#.bd">.bd (key)</a></p>
+<p><a href="#.btn-icon">.btn-icon (key)</a></p>
+<p><a href="#.ft">.ft (key)</a></p>
+<p><a href="#.hd">.hd (key)</a></p>
 <p><a href="#.mui-android">.mui-android (key)</a></p>
 <p><a href="#.mui-container">.mui-container (key)</a></p>
 <p><a href="#.mui-cordova">.mui-cordova (key)</a></p>
@@ -73,97 +77,42 @@ code {
 <p><a href="#DirectReturn">DirectReturn (class)</a></p>
 <p><a href="#FormMode">FormMode (var)</a></p>
 <p><a href="#MUI">MUI (module)</a></p>
-<p><a href="#MUI.activePage">MUI.activePage (var)</a></p>
-<p><a href="#MUI.app_alert">MUI.app_alert (fn)</a></p>
-<p><a href="#MUI.batchCall">MUI.batchCall (class)</a></p>
-<p><a href="#MUI.callSvr">MUI.callSvr (fn)</a></p>
-<p><a href="#MUI.callSvrExt">MUI.callSvrExt (key)</a></p>
-<p><a href="#MUI.callSvrExt['default']">MUI.callSvrExt['default'] (key)</a></p>
-<p><a href="#MUI.callSvrExt[].beforeSend">MUI.callSvrExt[].beforeSend (key)</a></p>
-<p><a href="#MUI.callSvrExt[].dataFilter">MUI.callSvrExt[].dataFilter (key)</a></p>
-<p><a href="#MUI.callSvrExt[].makeUrl">MUI.callSvrExt[].makeUrl (key)</a></p>
-<p><a href="#MUI.callSvrSync">MUI.callSvrSync (fn)</a></p>
-<p><a href="#MUI.closeDialog">MUI.closeDialog (fn)</a></p>
-<p><a href="#MUI.container">MUI.container (var)</a></p>
-<p><a href="#MUI.defDataProc">MUI.defDataProc (fn)</a></p>
-<p><a href="#MUI.deleteUrlParam">MUI.deleteUrlParam (fn)</a></p>
-<p><a href="#MUI.disableBatch">MUI.disableBatch (var)</a></p>
-<p><a href="#MUI.enhanceWithin">MUI.enhanceWithin (fn)</a></p>
-<p><a href="#MUI.enterWaiting">MUI.enterWaiting (fn)</a></p>
-<p><a href="#MUI.formatField">MUI.formatField (fn)</a></p>
-<p><a href="#MUI.getBaseUrl">MUI.getBaseUrl (fn)</a></p>
-<p><a href="#MUI.getOptions">MUI.getOptions (fn)</a></p>
-<p><a href="#MUI.getToPageId">MUI.getToPageId (fn)</a></p>
-<p><a href="#MUI.handleLogin">MUI.handleLogin (fn)</a></p>
-<p><a href="#MUI.hideLoading">MUI.hideLoading (fn)</a></p>
-<p><a href="#MUI.initClient">MUI.initClient (fn)</a></p>
-<p><a href="#MUI.lastError">MUI.lastError (var)</a></p>
-<p><a href="#MUI.leaveWaiting">MUI.leaveWaiting (fn)</a></p>
-<p><a href="#MUI.logout">MUI.logout (fn)</a></p>
-<p><a href="#MUI.m_curBatch">MUI.m_curBatch (var)</a></p>
-<p><a href="#MUI.m_enhanceFn">MUI.m_enhanceFn (var)</a></p>
-<p><a href="#MUI.m_pageStack">MUI.m_pageStack (var)</a></p>
-<p><a href="#MUI.makeUrl">MUI.makeUrl (fn)</a></p>
-<p><a href="#MUI.mockData">MUI.mockData (var)</a></p>
-<p><a href="#MUI.options">MUI.options (var)</a></p>
-<p><a href="#MUI.options.PAGE_SZ">MUI.options.PAGE_SZ (var)</a></p>
-<p><a href="#MUI.options.appName">MUI.options.appName (key)</a></p>
-<p><a href="#MUI.options.homePage">MUI.options.homePage (key)</a></p>
-<p><a href="#MUI.options.logAction">MUI.options.logAction (var)</a></p>
-<p><a href="#MUI.options.loginPage">MUI.options.loginPage (key)</a></p>
-<p><a href="#MUI.options.manualSplash">MUI.options.manualSplash (key)</a></p>
-<p><a href="#MUI.options.mockDelay">MUI.options.mockDelay (var)</a></p>
-<p><a href="#MUI.options.noHandleIosStatusBar">MUI.options.noHandleIosStatusBar (key)</a></p>
-<p><a href="#MUI.options.pageFolder">MUI.options.pageFolder (key)</a></p>
-<p><a href="#MUI.options.pluginFolder">MUI.options.pluginFolder (var)</a></p>
-<p><a href="#MUI.options.serverUrl">MUI.options.serverUrl (var)</a></p>
-<p><a href="#MUI.options.serverUrlAc">MUI.options.serverUrlAc (var)</a></p>
-<p><a href="#MUI.options.showHash">MUI.options.showHash (var)</a></p>
-<p><a href="#MUI.popPageStack">MUI.popPageStack (fn)</a></p>
-<p><a href="#MUI.prevPageId">MUI.prevPageId (var)</a></p>
-<p><a href="#MUI.reloadPage">MUI.reloadPage (fn)</a></p>
-<p><a href="#MUI.setDocTitle">MUI.setDocTitle (fn)</a></p>
-<p><a href="#MUI.setFormSubmit">MUI.setFormSubmit (fn)</a></p>
-<p><a href="#MUI.setOnError">MUI.setOnError (fn)</a></p>
-<p><a href="#MUI.setUrl">MUI.setUrl (fn)</a></p>
-<p><a href="#MUI.setUrlParam">MUI.setUrlParam (fn)</a></p>
-<p><a href="#MUI.setupCallSvrViaForm">MUI.setupCallSvrViaForm (fn)</a></p>
-<p><a href="#MUI.setupDialog">MUI.setupDialog (fn)</a></p>
-<p><a href="#MUI.showDialog">MUI.showDialog (fn)</a></p>
-<p><a href="#MUI.showFirstPage">MUI.showFirstPage (var)</a></p>
-<p><a href="#MUI.showHome">MUI.showHome (fn)</a></p>
-<p><a href="#MUI.showLoading">MUI.showLoading (fn)</a></p>
-<p><a href="#MUI.showLogin">MUI.showLogin (fn)</a></p>
-<p><a href="#MUI.showPage">MUI.showPage (fn)</a></p>
-<p><a href="#MUI.syslog">MUI.syslog (fn)</a></p>
-<p><a href="#MUI.tryAutoLogin">MUI.tryAutoLogin (fn)</a></p>
-<p><a href="#MUI.unloadPage">MUI.unloadPage (fn)</a></p>
-<p><a href="#MUI.useBatchCall">MUI.useBatchCall (fn)</a></p>
-<p><a href="#MUI.validateEntry">MUI.validateEntry (fn)</a></p>
 <p><a href="#Plugins">Plugins (class)</a></p>
 <p><a href="#Plugins.exists">Plugins.exists (fn)</a></p>
 <p><a href="#Plugins.list">Plugins.list (fn)</a></p>
-<p><a href="#WUI.getQueryCond">WUI.getQueryCond (fn)</a></p>
-<p><a href="#WUI.getQueryParam">WUI.getQueryParam (fn)</a></p>
+<p><a href="#activePage">activePage (var)</a></p>
 <p><a href="#app_abort">app_abort (fn)</a></p>
-<p><a href="#app_alert">app_alert (alias)</a></p>
+<p><a href="#app_alert">app_alert (fn)</a></p>
 <p><a href="#appendParam">appendParam (fn)</a></p>
 <p><a href="#applyTpl">applyTpl (fn)</a></p>
 <p><a href="#assert">assert (fn)</a></p>
-<p><a href="#callSvr">callSvr (alias)</a></p>
+<p><a href="#batchCall">batchCall (class)</a></p>
+<p><a href="#callSvr">callSvr (fn)</a></p>
 <p><a href="#callSvr.noex">callSvr.noex (key)</a></p>
-<p><a href="#callSvrSync">callSvrSync (alias)</a></p>
+<p><a href="#callSvrExt">callSvrExt (key)</a></p>
+<p><a href="#callSvrExt['default']">callSvrExt['default'] (key)</a></p>
+<p><a href="#callSvrExt[].beforeSend">callSvrExt[].beforeSend (key)</a></p>
+<p><a href="#callSvrExt[].dataFilter">callSvrExt[].dataFilter (key)</a></p>
+<p><a href="#callSvrExt[].makeUrl">callSvrExt[].makeUrl (key)</a></p>
+<p><a href="#callSvrSync">callSvrSync (fn)</a></p>
+<p><a href="#closeDialog">closeDialog (fn)</a></p>
+<p><a href="#container">container (var)</a></p>
+<p><a href="#defDataProc">defDataProc (fn)</a></p>
 <p><a href="#delCookie">delCookie (fn)</a></p>
 <p><a href="#delStorage">delStorage (fn)</a></p>
 <p><a href="#delayDo">delayDo (fn)</a></p>
 <p><a href="#deleteParam">deleteParam (fn)</a></p>
+<p><a href="#deleteUrlParam">deleteUrlParam (fn)</a></p>
 <p><a href="#deviceready">deviceready (key)</a></p>
-<p><a href="#enterWaiting">enterWaiting (alias)</a></p>
+<p><a href="#disableBatch">disableBatch (var)</a></p>
+<p><a href="#enhanceWithin">enhanceWithin (fn)</a></p>
+<p><a href="#enterWaiting">enterWaiting (fn)</a></p>
 <p><a href="#evalAttr">evalAttr (fn)</a></p>
 <p><a href="#example-list-choose">example-list-choose (key)</a></p>
 <p><a href="#example-upload">example-upload (key)</a></p>
 <p><a href="#filterCordovaModule">filterCordovaModule (fn)</a></p>
 <p><a href="#formItems">formItems (fn)</a></p>
+<p><a href="#formatField">formatField (fn)</a></p>
 <p><a href="#g_args">g_args (var)</a></p>
 <p><a href="#g_args._app">g_args._app (var)</a></p>
 <p><a href="#g_cordova">g_cordova (var)</a></p>
@@ -173,11 +122,19 @@ code {
 <p><a href="#g_data.testMode,g_data.mockMode">g_data.testMode,g_data.mockMode (key)</a></p>
 <p><a href="#g_data.userInfo">g_data.userInfo (key)</a></p>
 <p><a href="#getAncestor">getAncestor (fn)</a></p>
+<p><a href="#getBaseUrl">getBaseUrl (fn)</a></p>
 <p><a href="#getCookie">getCookie (fn)</a></p>
 <p><a href="#getFormData">getFormData (fn)</a></p>
+<p><a href="#getOptions">getOptions (fn)</a></p>
+<p><a href="#getQueryCond">getQueryCond (fn)</a></p>
+<p><a href="#getQueryParam">getQueryParam (fn)</a></p>
 <p><a href="#getStorage">getStorage (fn)</a></p>
 <p><a href="#getTimeDiffDscr">getTimeDiffDscr (fn)</a></p>
+<p><a href="#getToPageId">getToPageId (fn)</a></p>
+<p><a href="#handleLogin">handleLogin (fn)</a></p>
 <p><a href="#hd_back">hd_back (fn)</a></p>
+<p><a href="#hideLoading">hideLoading (fn)</a></p>
+<p><a href="#initClient">initClient (fn)</a></p>
 <p><a href="#initNavbarAndList">initNavbarAndList (alias)</a></p>
 <p><a href="#initPageDetail">initPageDetail (fn)</a></p>
 <p><a href="#initPageList">initPageList (fn)</a></p>
@@ -190,11 +147,17 @@ code {
 <p><a href="#isWeixin">isWeixin (fn)</a></p>
 <p><a href="#jQuery.fn.jdata">jQuery.fn.jdata (fn)</a></p>
 <p><a href="#jdModule">jdModule (fn)</a></p>
-<p><a href="#jdModule">jdModule (fn)</a></p>
-<p><a href="#jdModule">jdModule (fn)</a></p>
-<p><a href="#leaveWaiting">leaveWaiting (alias)</a></p>
+<p><a href="#kvList2Str">kvList2Str (fn)</a></p>
+<p><a href="#lastError">lastError (var)</a></p>
+<p><a href="#leaveWaiting">leaveWaiting (fn)</a></p>
 <p><a href="#list2varr">list2varr (fn)</a></p>
 <p><a href="#loadScript">loadScript (fn)</a></p>
+<p><a href="#logout">logout (fn)</a></p>
+<p><a href="#m_curBatch">m_curBatch (var)</a></p>
+<p><a href="#m_enhanceFn">m_enhanceFn (var)</a></p>
+<p><a href="#m_pageStack">m_pageStack (var)</a></p>
+<p><a href="#makeUrl">makeUrl (fn)</a></p>
+<p><a href="#mockData">mockData (var)</a></p>
 <p><a href="#mui-deferred">mui-deferred (key)</a></p>
 <p><a href="#mui-initfn">mui-initfn (key)</a></p>
 <p><a href="#mui-loadPrompt">mui-loadPrompt (key)</a></p>
@@ -205,27 +168,65 @@ code {
 <p><a href="#mui-swipenav">mui-swipenav (key)</a></p>
 <p><a href="#muiInit">muiInit (event)</a></p>
 <p><a href="#numberSort">numberSort (fn)</a></p>
+<p><a href="#options">options (var)</a></p>
+<p><a href="#options.PAGE_SZ">options.PAGE_SZ (var)</a></p>
+<p><a href="#options.appName">options.appName (var)</a></p>
+<p><a href="#options.disableFastClick">options.disableFastClick (var)</a></p>
+<p><a href="#options.homePage">options.homePage (var)</a></p>
+<p><a href="#options.logAction">options.logAction (var)</a></p>
+<p><a href="#options.loginPage">options.loginPage (var)</a></p>
+<p><a href="#options.manualSplash">options.manualSplash (var)</a></p>
+<p><a href="#options.mockDelay">options.mockDelay (var)</a></p>
+<p><a href="#options.pageFolder">options.pageFolder (var)</a></p>
+<p><a href="#options.pluginFolder">options.pluginFolder (var)</a></p>
+<p><a href="#options.serverUrl">options.serverUrl (var)</a></p>
+<p><a href="#options.serverUrlAc">options.serverUrlAc (var)</a></p>
+<p><a href="#options.showHash">options.showHash (var)</a></p>
+<p><a href="#options.statusBarColor">options.statusBarColor (var)</a></p>
 <p><a href="#pagebeforeshow">pagebeforeshow (event)</a></p>
 <p><a href="#pagecreate">pagecreate (event)</a></p>
 <p><a href="#pagehide">pagehide (event)</a></p>
 <p><a href="#pageshow">pageshow (event)</a></p>
 <p><a href="#parseDate">parseDate (fn)</a></p>
+<p><a href="#parseKvList">parseKvList (fn)</a></p>
 <p><a href="#parseQuery">parseQuery (fn)</a></p>
 <p><a href="#parseTime">parseTime (fn)</a></p>
 <p><a href="#parseValue">parseValue (fn)</a></p>
+<p><a href="#popPageStack">popPageStack (fn)</a></p>
+<p><a href="#prevPageId">prevPageId (var)</a></p>
+<p><a href="#reloadPage">reloadPage (fn)</a></p>
 <p><a href="#reloadSite">reloadSite (fn)</a></p>
+<p><a href="#rgb2hex">rgb2hex (fn)</a></p>
 <p><a href="#rs2Array">rs2Array (fn)</a></p>
 <p><a href="#rs2Hash">rs2Hash (fn)</a></p>
 <p><a href="#rs2MultiHash">rs2MultiHash (fn)</a></p>
 <p><a href="#setCookie">setCookie (fn)</a></p>
 <p><a href="#setDateBox">setDateBox (fn)</a></p>
+<p><a href="#setDocTitle">setDocTitle (fn)</a></p>
 <p><a href="#setFormData">setFormData (fn)</a></p>
+<p><a href="#setFormSubmit">setFormSubmit (fn)</a></p>
+<p><a href="#setOnError">setOnError (fn)</a></p>
 <p><a href="#setStorage">setStorage (fn)</a></p>
 <p><a href="#setTimeBox">setTimeBox (fn)</a></p>
+<p><a href="#setUrl">setUrl (fn)</a></p>
+<p><a href="#setUrlParam">setUrlParam (fn)</a></p>
+<p><a href="#setupCallSvrViaForm">setupCallSvrViaForm (fn)</a></p>
+<p><a href="#setupDialog">setupDialog (fn)</a></p>
 <p><a href="#showByFormMode">showByFormMode (fn)</a></p>
+<p><a href="#showDialog">showDialog (fn)</a></p>
+<p><a href="#showFirstPage">showFirstPage (var)</a></p>
+<p><a href="#showHome">showHome (fn)</a></p>
+<p><a href="#showLoading">showLoading (fn)</a></p>
+<p><a href="#showLogin">showLogin (fn)</a></p>
+<p><a href="#showPage">showPage (fn)</a></p>
+<p><a href="#syslog">syslog (fn)</a></p>
 <p><a href="#tobool">tobool (fn)</a></p>
 <p><a href="#topic-iosStatusBar">topic-iosStatusBar (key)</a></p>
 <p><a href="#topic-splashScreen">topic-splashScreen (key)</a></p>
+<p><a href="#tryAutoLogin">tryAutoLogin (fn)</a></p>
+<p><a href="#unloadPage">unloadPage (fn)</a></p>
+<p><a href="#useBatchCall">useBatchCall (fn)</a></p>
+<p><a href="#validateEntry">validateEntry (fn)</a></p>
 <p><a href="#waitFor">waitFor (fn)</a></p>
 </div><hr>
 </div>
@@ -251,6 +252,7 @@ code {
 <p style="margin-left:0em"><a href="#MUI-7 系统类标识">7 系统类标识</a></p>
 <p style="margin-left:0em"><a href="#MUI-8 手势支持">8 手势支持</a></p>
 <p style="margin-left:0em"><a href="#MUI-9 跨域前端开发支持">9 跨域前端开发支持</a></p>
+<p style="margin-left:0em"><a href="#MUI-10 参考文档说明">10 参考文档说明</a></p>
 </div>
 <p>筋斗云移动UI框架 - JDCloud Mobile UI framework</p>
 <h4 id="MUI-1 基于逻辑页面的单网页应用">1 基于逻辑页面的单网页应用</h4>
@@ -262,8 +264,8 @@ code {
 访问任何页面都是index.html#page1的方式，如果page1已存在则使用（内部页面），不存在则动态加载（如找到fragment/page1.html）</li>
 <li>页面栈管理。可自行pop掉一些页面控制返回行为。</li>
 </ul>
-<p class="see"><strong>@see <a href="#MUI.showPage">MUI.showPage</a></strong> </p>
-<p class="see"><strong>@see <a href="#MUI.popPageStack">MUI.popPageStack</a></strong> </p>
+<p class="see"><strong>@see <a href="#showPage">showPage</a></strong> </p>
+<p class="see"><strong>@see <a href="#popPageStack">popPageStack</a></strong> </p>
 <h5 id="MUI-1.1 应用容器">1.1 应用容器</h5>
 <p class="key"><strong>@key <a id=".mui-container">.mui-container</a></strong>  应用容器。</p>
 <p class="event"><strong>@event <a id="muiInit">muiInit</a></strong> () DOM事件。this为当前应用容器。</p>
@@ -272,6 +274,9 @@ code {
 <p>应用初始化时会发出muiInit事件，该事件在页面加载完成($.ready)后，显示首页前调用。在这里调用MUI.showPage可动态显示首页。</p>
 <h5 id="MUI-1.2 逻辑页面">1.2 逻辑页面</h5>
 <p>每个逻辑页面(page)以及它对应的脚本(js)均可以独立出一个文件开发，也可以直接嵌在主页面的应用容器中。</p>
+<p class="key"><strong>@key <a id=".mui-page">.mui-page</a></strong>  逻辑页面。</p>
+<p class="key"><strong>@key <a id="mui-script">mui-script</a></strong>  DOM属性。逻辑页面对应的JS文件。</p>
+<p class="key"><strong>@key <a id="mui-initfn">mui-initfn</a></strong>  DOM属性。逻辑页面对应的初始化函数，一般包含在mui-script指定的JS文件中。</p>
 <p>如添加一个订单页，使用外部页面，可以添加一个order.html (html片段):</p>
 <pre><code>&lt;div mui-initfn="initPageOrder" mui-script="order.js"&gt;
     ...
@@ -282,9 +287,37 @@ code {
         ...
     &lt;/div&gt;
 &lt;/script&gt;</code></pre>
-<p class="key"><strong>@key <a id=".mui-page">.mui-page</a></strong>  逻辑页面。</p>
-<p class="key"><strong>@key <a id="mui-script">mui-script</a></strong>  DOM属性。逻辑页面对应的JS文件。</p>
-<p class="key"><strong>@key <a id="mui-initfn">mui-initfn</a></strong>  DOM属性。逻辑页面对应的初始化函数，一般包含在mui-script指定的JS文件中。</p>
+<p class="key"><strong>@key <a id=".hd">.hd</a></strong>  页面顶栏</p>
+<p class="key"><strong>@key <a id=".bd">.bd</a></strong>  页面主体</p>
+<p class="key"><strong>@key <a id=".ft">.ft</a></strong>  页面底栏</p>
+<p class="key"><strong>@key <a id=".btn-icon">.btn-icon</a></strong>  顶栏图标按钮</p>
+<p>页面中常常包含hd, bd等结构，如</p>
+<pre><code>&lt;div mui-initfn="initPageMe"&gt;
+    &lt;div class="hd"&gt;
+        &lt;a href="javascript:hd_back();" class="btn-icon"&gt;&lt;i class="icon icon-back"&gt;&lt;/i&gt;&lt;/a&gt;
+        &lt;h2&gt;个人信息&lt;/h2&gt;
+    &lt;/div&gt;
+
+    &lt;div class="bd"&gt;
+    this is the body
+    &lt;/div&gt;
+
+    &lt;div class="ft"&gt;
+    this is the footer
+    &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+<p>app.css中定义了<code>btn-icon</code>为顶栏图标按钮类，如果在<code>hd</code>中有多个<code>btn-icon</code>，则依次为左一，右一，左二，右二按钮，例如：</p>
+<pre><code>&lt;div class="hd"&gt;
+    &lt;!-- 左一: 返回按钮 --&gt;
+    &lt;a href="javascript:hd_back();" class="btn-icon"&gt;&lt;i class="icon icon-back"&gt;&lt;/i&gt;&lt;/a&gt;
+    &lt;!-- 右一: 更多选项按钮 --&gt;
+    &lt;a href="#dlgMenu" class="btn-icon"&gt;&lt;i class="icon icon-menu"&gt;&lt;/i&gt;&lt;/a&gt;
+    &lt;!-- 左二: 无 --&gt;
+    &lt;a /&gt;
+    &lt;!-- 右二: 编辑按钮 --&gt;
+    &lt;a class="btn-icon"&gt;&lt;i class="icon icon-edit"&gt;&lt;/i&gt;&lt;/a&gt;
+    &lt;h2&gt;标题&lt;/h2&gt;
+&lt;/div&gt;</code></pre>
 <p>该页面代码模块（即初始化函数）可以放在一个单独的文件order.js:</p>
 <pre><code>function initPageOrder() 
 {
@@ -453,9 +486,9 @@ function loadStatLib()
 <p>URL也可以显示为文件风格，比如在设置：</p>
 <pre><code>&lt;base href="./" mui-showHash="no"&gt;</code></pre>
 <p>之后，上面两个例子中，URL会显示为 <code>http://server/app/page/order.html</code> 和 <code>http://server/app/page/order/list.html</code></p>
-<p class="see"><strong>@see <a href="#MUI.options.showHash">MUI.options.showHash</a></strong> </p>
+<p class="see"><strong>@see <a href="#options.showHash">options.showHash</a></strong> </p>
 <p>特别地，还可以通过<code>MUI.setUrl(url)</code>或<code>MUI.showPage(pageRef, {url: url})</code>来定制URL，例如将订单id=100的逻辑页显示为RESTful风格：<code>http://server/app/order/100</code></p>
-<p class="see"><strong>@see <a href="#MUI.setUrl">MUI.setUrl</a></strong> </p>
+<p class="see"><strong>@see <a href="#setUrl">setUrl</a></strong> </p>
 <p>为了刷新时仍能正常显示页面，应将页面设置为入口页，并在WEB服务器配置好URL重写规则。</p>
 <h4 id="MUI-2 服务端交互API">2 服务端交互API</h4>
 <p class="see"><strong>@see <a href="#callSvr">callSvr</a></strong>  系列调用服务端接口的方法。</p>
@@ -463,10 +496,10 @@ function loadStatLib()
 <p>框架提供MUI.showLogin/MUI.logout操作.<br />
 调用MUI.tryAutoLogin可以支持自动登录.</p>
 <p>登录后显示的主页，登录页，应用名称等应通过MUI.options.homePage/loginPage/appName等选项设置。</p>
-<p class="see"><strong>@see <a href="#MUI.tryAutoLogin">MUI.tryAutoLogin</a></strong> </p>
-<p class="see"><strong>@see <a href="#MUI.showLogin">MUI.showLogin</a></strong> </p>
-<p class="see"><strong>@see <a href="#MUI.logout">MUI.logout</a></strong> </p>
-<p class="see"><strong>@see <a href="#MUI.options">MUI.options</a></strong> </p>
+<p class="see"><strong>@see <a href="#tryAutoLogin">tryAutoLogin</a></strong> </p>
+<p class="see"><strong>@see <a href="#showLogin">showLogin</a></strong> </p>
+<p class="see"><strong>@see <a href="#logout">logout</a></strong> </p>
+<p class="see"><strong>@see <a href="#options">options</a></strong> </p>
 <h4 id="MUI-4 常用组件">4 常用组件</h4>
 <p>框架提供导航栏、对话框、弹出框、弹出菜单等常用组件。</p>
 <h5 id="MUI-4.1 导航栏">4.1 导航栏</h5>
@@ -507,16 +540,17 @@ function loadStatLib()
 <pre><code>MUI.showDialog(jpage.find("#dlgAddPerson"));</code></pre>
 <p>或者用a标签链接打开：</p>
 <pre><code>&lt;a href="#dlgAddPerson"&gt;添加人物&lt;/a&gt;</code></pre>
-<p class="see"><strong>@see <a href="#MUI.showDialog">MUI.showDialog</a></strong>  弹出对话框</p>
+<p class="see"><strong>@see <a href="#showDialog">showDialog</a></strong>  弹出对话框</p>
 <p class="see"><strong>@see <a href="##muiAlert">#muiAlert</a> <a href="#MUI.app_alert">MUI.app_alert</a></strong>  提示框(app_alert)是一个id为`muiAlert`的特别对话框。</p>
 <p class="see"><strong>@see <a href="#.mui-menu">.mui-menu</a></strong>  弹出菜单，也是一类特别的对话框。</p>
 <h5 id="MUI-4.3 弹出菜单">4.3 弹出菜单</h5>
 <p>菜单是特殊的一类对话框。因而id以&quot;dlg&quot;开头，以便a标签通过href链接时，可直接弹出菜单（即打开对话框）。</p>
 <p class="key"><strong>@key <a id=".mui-menu">.mui-menu</a></strong>  菜单</p>
 <p>示例：添加右上角菜单（习惯上左上角为返回按钮，右上角为菜单按钮）</p>
-<pre><code>&lt;div class="hd"&gt;
-    &lt;a href="javascript:hd_back();" class="icon icon-back"&gt;&lt;/a&gt;
-    &lt;a href="#dlgMenu" class="icon icon-menu"&gt;&lt;/a&gt;
+<pre><code>&lt;!-- btn-icon依次标识左一，右一，左二，右二图标按钮 --&gt;
+&lt;div class="hd"&gt;
+    &lt;a href="javascript:hd_back();" class="btn-icon"&gt;&lt;i class="icon icon-back"&gt;&lt;/i&gt;&lt;/a&gt;
+    &lt;a href="#dlgMenu" class="btn-icon"&gt;&lt;i class="icon icon-menu"&gt;&lt;/i&gt;&lt;/a&gt;
     &lt;h2&gt;谱系图&lt;/h2&gt;
 &lt;/div&gt;
 
@@ -563,7 +597,7 @@ function loadStatLib()
 <pre><code>cordova.require('cordova/plugin_list')</code></pre>
 <p>对原生应用的额外增强包括：</p>
 <p class="key"><strong>@key <a id="topic-splashScreen">topic-splashScreen</a></strong> </p>
-<p class="see"><strong>@see <a href="#MUI.options.manualSplash">MUI.options.manualSplash</a></strong> </p>
+<p class="see"><strong>@see <a href="#options.manualSplash">options.manualSplash</a></strong> </p>
 <ul>
 <li>
 <p>应用加载完成后，自动隐藏启动画面(SplashScreen)。如果需要自行隐藏启动画面，可以设置</p>
@@ -574,18 +608,14 @@ function loadStatLib()
 </li>
 </ul>
 <p class="key"><strong>@key <a id="topic-iosStatusBar">topic-iosStatusBar</a></strong> </p>
-<p class="see"><strong>@see <a href="#MUI.options.noHandleIosStatusBar">MUI.options.noHandleIosStatusBar</a></strong> </p>
-<ul>
-<li>
-<p>ios7以上, 框架自动为顶部状态栏留出20px高度的空间. 默认为白色，可以修改类mui-container的样式，如改为黑色：</p>
-<p>.mui-container {<br />
-background-color:black;<br />
-}</p>
-</li>
-</ul>
-<p>如果使用了StatusBar插件, 可以取消该行为.<br />
-先设置选项：</p>
-<pre><code>MUI.options.noHandleIosStatusBar = true; // 可以放在H5应用的主js文件中，如index.js</code></pre>
+<p class="see"><strong>@see <a href="#options.statusBarColor">options.statusBarColor</a></strong> </p>
+<p>可通过MUI.options.statusBarColor设置状态栏前景和背景色。</p>
+<pre><code>statusBarColor: "#,light" // 默认，背景与MUI.container（即.mui-container类）背景一致，白字。
+statusBarColor: "#000000,light" // 黑底白字。
+statusBarColor: "#ffffff,dark" // 白底黑字
+statusBarColor: "none" // 不显示状态栏。</code></pre>
+<p>如果希望自行设置状态栏，可以设置statusBarColor为null:</p>
+<pre><code>MUI.options.statusBarColor = null;</code></pre>
 <p>然后在deviceready事件中自行设置样式, 如</p>
 <pre><code>function muiInit() {
     $(document).on("deviceready", onSetStatusBar);
@@ -647,7 +677,27 @@ Access-Control-Allow-Credentials: true</code></pre>
 });</code></pre>
 </li>
 </ul>
-<p>这时直接在chrome中打开html文件即可连接远程接口运行起来.</p></div>
+<p>这时直接在chrome中打开html文件即可连接远程接口运行起来.</p>
+<h4 id="MUI-10 参考文档说明">10 参考文档说明</h4>
+<p>以下参考文档介绍MUI模块提供的方法/函数(fn)、属性/变量(var)等，示例如下：</p>
+<pre><code>@fn showPage(pageName, title?, paramArr?)  一个函数。参数说明中问号表示参数可缺省。
+@var options 一个属性。
+@class batchCall(opt?={useTrans?=0}) 一个JS类。
+@key topic-splashScreen key表示一般关键字。前缀为"topic-"用于某专题
+@key .wui-page 一个CSS类名"wui-page"，关键字以"."开头。
+@key #wui-pages 一个DOM对象，id为"wui-pages"，关键字以"#"开头。</code></pre>
+<p>对于模块下的fn,var,class这些类别，如非特别说明，调用时应加MUI前缀，如</p>
+<pre><code>MUI.showPage("#order");
+var opts = MUI.options;
+var batch = new MUI.batchCall();
+batch.commit();</code></pre>
+<p>以下函数可不加MUI前缀：</p>
+<pre><code>intSort
+numberSort
+callSvr
+callSvrSync
+app_alert</code></pre>
+<p>参考mui-name.js模块。</p></div>
 <div class="block">
 <h2 id="assert">@fn assert(cond, dscr?)</h2></div>
 <div class="block">
@@ -898,12 +948,36 @@ var html = applyTpl(tpl, data);
 <p>设置延迟执行。当delayCnt=1时与setTimeout效果相同。<br />
 多次置于事件队列最后，一般3次后其它js均已执行完毕，为idle状态</p></div>
 <div class="block">
-<h2 id="jdModule">@fn jdModule(name, fn)</h2>
-<p>定义一个模块，返回该模块对象。</p>
-<p class="fn"><strong>@fn <a id="jdModule">jdModule</a></strong> (name)</p>
-<p>获取模块对象。</p>
-<p class="fn"><strong>@fn <a id="jdModule">jdModule</a></strong> ()</p>
-<p>返回模块映射表。</p></div>
+<h2 id="kvList2Str">@fn kvList2Str(kv, sep, sep2)</h2>
+<p>e.g.</p>
+<pre><code>var str = kvList2Str({"CR":"Created", "PA":"Paid"}, ';', ':');
+// str="CR:Created;PA:Paid"</code></pre></div>
+<div class="block">
+<h2 id="parseKvList">@fn parseKvList(kvListStr, sep, sep2) -> kvMap</h2>
+<p>解析key-value列表字符串，返回kvMap。<br />
+示例：</p>
+<pre><code>var map = parseKvList("CR:新创建;PA:已付款", ";", ":");
+// map: {"CR": "新创建", "PA":"已付款"}</code></pre></div>
+<div class="block">
+<h2 id="jdModule">@fn jdModule(name?, fn?)</h2>
+<p>定义JS模块。这是一个全局函数。</p>
+<p>定义一个模块:</p>
+<pre><code>jdModule("jdcloud.common", JdcloudCommon);
+function JdcloudCommon() {
+    var self = this;
+
+    // 对外提供一个方法
+    self.rs2Array = rs2Array;
+    function rs2Array(rs)
+    {
+        return ...;
+    }
+}</code></pre>
+<p>获取模块对象:</p>
+<pre><code>var mCommon = jdModule("jdcloud.common");
+var arr = mCommon.rs2Array(rs);</code></pre>
+<p>返回模块映射列表。</p>
+<pre><code>var moduleMap = jdModule(); // 返回 { "jdcloud.common": JdcloudCommon, ... }</code></pre></div>
 <div class="block">
 <h2 id="getFormData">@fn getFormData(jo)</h2>
 <p>取DOM对象中带name属性的子对象的内容, 放入一个JS对象中, 以便手工调用callSvr.</p>
@@ -1025,6 +1099,11 @@ function onSubmit()
     bar();
 }</code></pre></div>
 <div class="block">
+<h2 id="rgb2hex">@fn rgb2hex(rgb)</h2>
+<p>将jquery取到的颜色转成16进制形式，如：&quot;rgb(4, 190, 2)&quot; -&gt; &quot;#04be02&quot;</p>
+<p>示例：</p>
+<pre><code>var color = rgb2hex( $(".mui-container").css("backgroundColor") );</code></pre></div>
+<div class="block">
 <h2 id="jQuery.fn.jdata">@fn jQuery.fn.jdata(val?)</h2>
 <p>和使用$.data()差不多，更好用一些. 例：</p>
 <pre><code>$(o).jdata().hello = 100;
@@ -1055,17 +1134,17 @@ $(o).jdata({hello:100, world:200});</code></pre></div>
 <pre><code>throw new DirectReturn();</code></pre>
 <p>可直接调用app_abort();</p></div>
 <div class="block">
-<h2 id="MUI.setOnError">@fn MUI.setOnError()</h2>
+<h2 id="setOnError">@fn setOnError()</h2>
 <p>一般框架自动设置onerror函数；如果onerror被其它库改写，应再次调用该函数。<br />
 allow throw(&quot;abort&quot;) as abort behavior.</p></div>
 <div class="block">
-<h2 id="MUI.m_enhanceFn">@var MUI.m_enhanceFn</h2></div>
+<h2 id="m_enhanceFn">@var m_enhanceFn</h2></div>
 <div class="block">
-<h2 id="MUI.enhanceWithin">@fn MUI.enhanceWithin(jparent)</h2></div>
+<h2 id="enhanceWithin">@fn enhanceWithin(jparent)</h2></div>
 <div class="block">
-<h2 id="MUI.getOptions">@fn MUI.getOptions(jo)</h2></div>
+<h2 id="getOptions">@fn getOptions(jo)</h2></div>
 <div class="block">
-<h2 id="WUI.getQueryCond">@fn WUI.getQueryCond(kvList)</h2>
+<h2 id="getQueryCond">@fn getQueryCond(kvList)</h2>
 <p class="param"><strong>@param kvList</strong>  {key=>value}, 键值对，值中支持操作符及通配符。也支持格式 [ [key, value] ], 这时允许key有重复。</p>
 <p>根据kvList生成BPQ协议定义的{obj}.query的cond参数。</p>
 <p>例如:</p>
@@ -1084,22 +1163,30 @@ WUI.getQueryCond(kvList); // 结果同上。</code></pre>
 <li>{key: &quot;null&quot; } - 表示 &quot;key is null&quot;。要表示&quot;key is not null&quot;，可以用 &quot;<>null&quot;.</li>
 <li>{key: &quot;empty&quot; } - 表示 &quot;key=''&quot;.</li>
 </ul>
-<p>支持简单的and/or查询，但不支持在其中使用括号:</p>
+<p>支持and/or查询，但不支持在其中使用括号:</p>
 <ul>
 <li>{key: &quot;&gt;value and &lt;=value&quot;}  - 表示&quot;key&gt;'value' and key&lt;='value'&quot;</li>
 <li>{key: &quot;null or 0 or 1&quot;}  - 表示&quot;key is null or key=0 or key=1&quot;</li>
+<li>{key: &quot;null,0,1,9-100&quot;} - 表示&quot;key is null or key=0 or key=1 or (key&gt;=9 and key&lt;=100)&quot;，即逗号表示or，a-b的形式只支持数值。</li>
 </ul>
-<p>在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。</p></div>
+<p>以下表示的范围相同：</p>
+<pre><code>{k1:'1-5,7-10', k2:'1-10 and &lt;&gt;6'}</code></pre>
+<p>符号优先级依次为：-(and) ,(or) and or</p>
+<p>在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。</p>
+<p class="see"><strong>@see <a href="#getQueryParam">getQueryParam</a></strong> </p>
+<p class="see"><strong>@see <a href="#getQueryParamFromTable">getQueryParamFromTable</a></strong>  获取datagrid的当前查询参数</p></div>
 <div class="block">
-<h2 id="WUI.getQueryParam">@fn WUI.getQueryParam(kvList)</h2>
-<p>根据键值对生成BQP协议中{obj}.query接口需要的cond参数.</p>
+<h2 id="getQueryParam">@fn getQueryParam(kvList)</h2>
+<p>根据键值对生成BQP协议中{obj}.query接口需要的cond参数.<br />
+即 <code>{cond: WUI.getQueryCond(kvList) }</code></p>
 <p>示例：</p>
 <pre><code>WUI.getQueryParam({phone: '13712345678', id: '&gt;100'})
 返回
 {cond: "phone='13712345678' AND id&gt;100"}</code></pre>
-<p class="see"><strong>@see <a href="#WUI.getQueryCond">WUI.getQueryCond</a></strong> </p></div>
+<p class="see"><strong>@see <a href="#getQueryCond">getQueryCond</a></strong> </p>
+<p class="see"><strong>@see <a href="#getQueryParamFromTable">getQueryParamFromTable</a></strong>  获取datagrid的当前查询参数</p></div>
 <div class="block">
-<h2 id="MUI.lastError">@var MUI.lastError = ctx</h2>
+<h2 id="lastError">@var lastError = ctx</h2>
 <p>出错时，取出错调用的上下文信息。</p>
 <p>ctx: {ac, tm, tv, ret}</p>
 <ul>
@@ -1109,13 +1196,13 @@ WUI.getQueryCond(kvList); // 结果同上。</code></pre>
 <li>ret: return value 调用返回的原始数据</li>
 </ul></div>
 <div class="block">
-<h2 id="MUI.disableBatch">@var MUI.disableBatch ?= false</h2>
+<h2 id="disableBatch">@var disableBatch ?= false</h2>
 <p>设置为true禁用batchCall, 仅用于内部测试。</p></div>
 <div class="block">
-<h2 id="MUI.m_curBatch">@var MUI.m_curBatch</h2>
+<h2 id="m_curBatch">@var m_curBatch</h2>
 <p>当前batchCall对象，用于内部调试。</p></div>
 <div class="block">
-<h2 id="MUI.mockData">@var MUI.mockData  模拟调用后端接口。</h2>
+<h2 id="mockData">@var mockData  模拟调用后端接口。</h2>
 <p>在后端接口尚无法调用时，可以配置MUI.mockData做为模拟接口返回数据。<br />
 调用callSvr时，会直接使用该数据，不会发起ajax请求。</p>
 <p>mockData={ac =&gt; data/fn}  </p>
@@ -1145,7 +1232,7 @@ callSvr("User.set", {id: user.id}, function () {
 <p>在mockData的函数中，可以用this变量来取ajax调用参数。<br />
 要取HTTP动词可以用<code>this.type</code>，值为GET/POST/PATCH/DELETE之一，从而可模拟RESTful API.</p>
 <p>可以通过MUI.options.mockDelay设置模拟调用接口的网络延时。</p>
-<p class="see"><strong>@see <a href="#MUI.options.mockDelay">MUI.options.mockDelay</a></strong> </p>
+<p class="see"><strong>@see <a href="#options.mockDelay">options.mockDelay</a></strong> </p>
 <p>模拟数据可直接返回[code, data]格式的JSON数组，框架会将其序列化成JSON字符串，以模拟实际场景。<br />
 如果要查看调用与返回数据日志，可在浏览器控制台中设置 MUI.options.logAction=true，在控制台中查看日志。</p>
 <p>如果设置了MUI.callSvrExt，调用名(ac)中应包含扩展(ext)的名字，例：</p>
@@ -1153,7 +1240,7 @@ callSvr("User.set", {id: user.id}, function () {
 callSvr(['token/get-token', 'zhanda'], ...);</code></pre>
 <p>要模拟该接口，应设置</p>
 <pre><code>MUI.mockData["zhanda:token/get-token"] = ...;</code></pre>
-<p class="see"><strong>@see <a href="#MUI.callSvrExt">MUI.callSvrExt</a></strong> </p>
+<p class="see"><strong>@see <a href="#callSvrExt">callSvrExt</a></strong> </p>
 <p>也支持&quot;default&quot;扩展，如：</p>
 <pre><code>MUI.callSvrExt['default'] = {...};
 callSvr(['token/get-token', 'default'], ...);
@@ -1162,26 +1249,24 @@ callSvr('token/get-token', ...);</code></pre>
 <p>要模拟该接口，可设置</p>
 <pre><code>MUI.mockData["token/get-token"] = ...;</code></pre></div>
 <div class="block">
-<h2 id="MUI.enterWaiting">@fn MUI.enterWaiting(ctx?)</h2>
-<p class="param"><strong>@param ctx</strong>  {ac, tm, tv?, tv2?, noLoadingImg?}</p>
-<p class="alias"><strong>@alias <a id="enterWaiting">enterWaiting</a></strong> ()</p></div>
+<h2 id="enterWaiting">@fn enterWaiting(ctx?)</h2>
+<p class="param"><strong>@param ctx</strong>  {ac, tm, tv?, tv2?, noLoadingImg?}</p></div>
 <div class="block">
-<h2 id="MUI.leaveWaiting">@fn MUI.leaveWaiting(ctx?)</h2>
-<p class="alias"><strong>@alias <a id="leaveWaiting">leaveWaiting</a></strong> </p></div>
+<h2 id="leaveWaiting">@fn leaveWaiting(ctx?)</h2></div>
 <div class="block">
-<h2 id="MUI.defDataProc">@fn MUI.defDataProc(rv)</h2>
+<h2 id="defDataProc">@fn defDataProc(rv)</h2>
 <p class="param"><strong>@param rv</strong>  BQP协议原始数据，如 "[0, {id: 1}]"，一般是字符串，也可以是JSON对象。</p>
 <p class="return"><strong>@return data</strong>  按接口定义返回的数据对象，如 {id: 1}. 如果返回==null，调用函数应直接返回，不回调应用层。</p>
 <p>注意：服务端不应返回null, 否则客户回调无法执行; 习惯上返回false表示让回调处理错误。</p></div>
 <div class="block">
-<h2 id="MUI.getBaseUrl">@fn MUI.getBaseUrl()</h2>
+<h2 id="getBaseUrl">@fn getBaseUrl()</h2>
 <p>取服务端接口URL对应的目录。可用于拼接其它服务端资源。<br />
 相当于dirname(MUI.options.serverUrl);</p>
 <p>例如：</p>
 <p>serverUrl为&quot;../jdcloud/api.php&quot; 或 &quot;../jdcloud/&quot;，则MUI.baseUrl返回 &quot;../jdcloud/&quot;<br />
 serverUrl为&quot;<a href="http://myserver/myapp/api.php">http://myserver/myapp/api.php</a>&quot; 或 &quot;<a href="http://myserver/myapp/"，则MUI.baseUrl返回">http://myserver/myapp/"，则MUI.baseUrl返回</a> &quot;<a href="http://myserver/myapp/">http://myserver/myapp/</a>&quot;</p></div>
 <div class="block">
-<h2 id="MUI.makeUrl">@fn MUI.makeUrl(action, params?)</h2>
+<h2 id="makeUrl">@fn makeUrl(action, params?)</h2>
 <p>生成对后端调用的url. </p>
 <pre><code>var params = {id: 100};
 var url = MUI.makeUrl("Ordr.set", params);</code></pre>
@@ -1193,14 +1278,13 @@ var url = MUI.makeUrl("Ordr.set", params);</code></pre>
 <pre><code>WUI.makeUrl(['Ordr', 'query']) 等价于 WUI.makeUrl('Ordr.query');</code></pre>
 <p>在MUI环境下表示callSvr扩展调用:</p>
 <pre><code>MUI.makeUrl(['login', 'zhanda']) 等价于 MUI.makeUrl('zhanda:login');</code></pre>
-<p class="see"><strong>@see <a href="#MUI.callSvrExt">MUI.callSvrExt</a></strong> </p></div>
+<p class="see"><strong>@see <a href="#callSvrExt">callSvrExt</a></strong> </p></div>
 <div class="block">
-<h2 id="MUI.callSvr">@fn MUI.callSvr(ac, [params?], fn?, postParams?, userOptions?) -> deferredObject</h2><div class="toc"><p style="margin-left:0em"><a href="#MUI.callSvr-1 调用监控">1 调用监控</a></p>
-<p style="margin-left:0em"><a href="#MUI.callSvr-2 文件上传支持(FormData)">2 文件上传支持(FormData)</a></p>
-<p style="margin-left:0em"><a href="#MUI.callSvr-3 callSvr扩展">3 callSvr扩展</a></p>
-<p style="margin-left:0em"><a href="#MUI.callSvr-4 适配RESTful API">4 适配RESTful API</a></p>
+<h2 id="callSvr">@fn callSvr(ac, [params?], fn?, postParams?, userOptions?) -> deferredObject</h2><div class="toc"><p style="margin-left:0em"><a href="#callSvr-1 调用监控">1 调用监控</a></p>
+<p style="margin-left:0em"><a href="#callSvr-2 文件上传支持(FormData)">2 文件上传支持(FormData)</a></p>
+<p style="margin-left:0em"><a href="#callSvr-3 callSvr扩展">3 callSvr扩展</a></p>
+<p style="margin-left:0em"><a href="#callSvr-4 适配RESTful API">4 适配RESTful API</a></p>
 </div>
-<p class="alias"><strong>@alias <a id="callSvr">callSvr</a></strong> </p>
 <p class="param"><strong>@param ac</strong>  String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)</p>
 <p class="param"><strong>@param params</strong>  Object. URL参数（或称HTTP GET参数）</p>
 <p class="param"><strong>@param postParams</strong>  Object. POST参数. 如果有该参数, 则自动使用HTTP POST请求(postParams作为POST内容), 否则使用HTTP GET请求.</p>
@@ -1215,7 +1299,7 @@ var url = MUI.makeUrl("Ordr.set", params);</code></pre>
 </ul>
 <p>想为ajax选项设置缺省值，可以用callSvrExt中的beforeSend回调函数，也可以用$.ajaxSetup，<br />
 但要注意：ajax的dataFilter/beforeSend选项由于框架已用，最好不要覆盖。</p>
-<p class="see"><strong>@see <a href="#MUI.callSvrExt[].beforeSend">MUI.callSvrExt[].beforeSend</a></strong> (opt) 为callSvr选项设置缺省值</p>
+<p class="see"><strong>@see <a href="#callSvrExt[].beforeSend">callSvrExt[].beforeSend</a></strong> (opt) 为callSvr选项设置缺省值</p>
 <p class="return"><strong>@return deferred对象，与$.ajax相同。</strong> </p>
 <p>例如，</p>
 <pre><code>var dfd = callSvr(ac, fn1);
@@ -1249,8 +1333,8 @@ callSvr("User.get", function (data) {
     }
     foo(data);
 }, null, {noex:1});</code></pre>
-<p class="see"><strong>@see <a href="#MUI.lastError">MUI.lastError</a></strong>  出错时的上下文信息</p>
-<h4 id="MUI.callSvr-1 调用监控">1 调用监控</h4>
+<p class="see"><strong>@see <a href="#lastError">lastError</a></strong>  出错时的上下文信息</p>
+<h4 id="callSvr-1 调用监控">1 调用监控</h4>
 <p>框架会自动在ajaxOption中增加ctx_属性，它包含 {ac, tm, tv, tv2, ret} 这些信息。<br />
 当设置MUI.options.logAction=1时，将输出这些信息。</p>
 <ul>
@@ -1259,7 +1343,7 @@ callSvr("User.get", function (data) {
 <li>tv: time interval (从发起请求到服务器返回数据完成的时间, 单位是毫秒)</li>
 <li>tv2: 从接到数据到完成处理的时间，毫秒(当并发处理多个调用时可能不精确)</li>
 </ul>
-<h4 id="MUI.callSvr-2 文件上传支持(FormData)">2 文件上传支持(FormData)</h4>
+<h4 id="callSvr-2 文件上传支持(FormData)">2 文件上传支持(FormData)</h4>
 <p>callSvr支持FormData对象，可用于上传文件等场景。示例如下：</p>
 <p class="key"><strong>@key <a id="example-upload">example-upload</a></strong> </p>
 <p>HTML:</p>
@@ -1275,8 +1359,8 @@ callSvr("User.get", function (data) {
 
     function api_upload(data) { ... }
 });</code></pre>
-<h4 id="MUI.callSvr-3 callSvr扩展">3 callSvr扩展</h4>
-<p class="key"><strong>@key <a id="MUI.callSvrExt">MUI.callSvrExt</a></strong> </p>
+<h4 id="callSvr-3 callSvr扩展">3 callSvr扩展</h4>
+<p class="key"><strong>@key <a id="callSvrExt">callSvrExt</a></strong> </p>
 <p>当调用第三方API时，也可以使用callSvr扩展来代替$.ajax调用以实现：</p>
 <ul>
 <li>调用成功时直接可操作数据，不用每次检查返回码；</li>
@@ -1319,11 +1403,11 @@ callSvr("User.get", function (data) {
 <pre><code>callSvr(['token/get-token', 'zhanda'], {user: 'test', password: 'test123'}, function (data) {
     console.log(data);
 });</code></pre>
-<p class="key"><strong>@key <a id="MUI.callSvrExt[].makeUrl">MUI.callSvrExt[].makeUrl</a></strong> (ac, param)</p>
+<p class="key"><strong>@key <a id="callSvrExt[].makeUrl">callSvrExt[].makeUrl</a></strong> (ac, param)</p>
 <p>根据调用名ac生成url, 注意无需将param放到url中。</p>
 <p>注意：<br />
 对方接口应允许JS跨域调用，或调用方支持跨域调用。</p>
-<p class="key"><strong>@key <a id="MUI.callSvrExt[].dataFilter">MUI.callSvrExt[].dataFilter</a></strong> (data) = null/false/data</p>
+<p class="key"><strong>@key <a id="callSvrExt[].dataFilter">callSvrExt[].dataFilter</a></strong> (data) = null/false/data</p>
 <p>对调用返回数据进行通用处理。返回值决定是否调用callSvr的回调函数以及参数值。</p>
 <pre><code>callSvr(ac, callback);</code></pre>
 <ul>
@@ -1332,8 +1416,8 @@ callSvr("User.get", function (data) {
 <li>返回false: 一般与callSvr的noex选项合用，如<code>callSvr(ac, callback, postData, {noex:1})</code>，表示由应用层回调函数来处理出错: <code>callback(false)</code>。</li>
 </ul>
 <p>当返回false时，应用层可以通过<code>MUI.lastError.ret</code>来获取服务端返回数据。</p>
-<p class="see"><strong>@see <a href="#MUI.lastError">MUI.lastError</a></strong>  出错时的上下文信息</p>
-<p class="key"><strong>@key <a id="MUI.callSvrExt['default']">MUI.callSvrExt['default']</a></strong> </p>
+<p class="see"><strong>@see <a href="#lastError">lastError</a></strong>  出错时的上下文信息</p>
+<p class="key"><strong>@key <a id="callSvrExt['default']">callSvrExt['default']</a></strong> </p>
 <p>(支持版本: v3.1)<br />
 如果要修改callSvr缺省调用方法，可以改写 MUI.callSvrExt['default'].<br />
 例如，定义以下callSvr扩展：</p>
@@ -1389,7 +1473,7 @@ callSvr("User.get", function (data) {
 <pre><code>callSvr(['login', 'default']);</code></pre>
 <p>可以简写为：</p>
 <pre><code>callSvr('login');</code></pre>
-<p class="key"><strong>@key <a id="MUI.callSvrExt[].beforeSend">MUI.callSvrExt[].beforeSend</a></strong> (opt) 为callSvr或$.ajax选项设置缺省值</p>
+<p class="key"><strong>@key <a id="callSvrExt[].beforeSend">callSvrExt[].beforeSend</a></strong> (opt) 为callSvr或$.ajax选项设置缺省值</p>
 <p>如果有ajax选项想设置，可以使用beforeSend回调，例如POST参数使用JSON格式：</p>
 <pre><code>MUI.callSvrExt['default'] = {
     beforeSend: function (opt) {
@@ -1410,7 +1494,7 @@ callSvr("User.get", function (data) {
 }</code></pre>
 <p>如果要设置请求的HTTP headers，可以用<code>opt.headers = {header1: "value1", header2: "value2"}</code>.<br />
 更多选项参考jquery文档：jQuery.ajax的选项。</p>
-<h4 id="MUI.callSvr-4 适配RESTful API">4 适配RESTful API</h4>
+<h4 id="callSvr-4 适配RESTful API">4 适配RESTful API</h4>
 <p>接口示例：更新订单</p>
 <pre><code>PATCH /orders/{ORDER_ID}
 
@@ -1496,13 +1580,12 @@ callSvr("User.get", function (data) {
     }
 }</code></pre></div>
 <div class="block">
-<h2 id="MUI.callSvrSync">@fn MUI.callSvrSync(ac, [params?], fn?, postParams?, userOptions?)</h2>
-<p class="alias"><strong>@alias <a id="callSvrSync">callSvrSync</a></strong> </p>
+<h2 id="callSvrSync">@fn callSvrSync(ac, [params?], fn?, postParams?, userOptions?)</h2>
 <p class="return"><strong>@return data</strong>  原型规定的返回数据</p>
 <p>同步模式调用callSvr.</p>
 <p class="see"><strong>@see <a href="#callSvr">callSvr</a></strong> </p></div>
 <div class="block">
-<h2 id="MUI.setupCallSvrViaForm">@fn MUI.setupCallSvrViaForm($form, $iframe, url, fn, callOpt)</h2>
+<h2 id="setupCallSvrViaForm">@fn setupCallSvrViaForm($form, $iframe, url, fn, callOpt)</h2>
 <p>该方法已不建议使用。上传文件请用FormData。</p>
 <p class="see"><strong>@see <a href="#example-upload">example-upload</a> <a href="#callSvr">callSvr</a></strong> </p>
 <p class="param"><strong>@param $iframe</strong>  一个隐藏的iframe组件.</p>
@@ -1523,7 +1606,7 @@ function onUploadComplete(data)
     alert("上传成功");
 }</code></pre></div>
 <div class="block">
-<h2 id="MUI.batchCall">@class MUI.batchCall(opt?={useTrans?=0})</h2>
+<h2 id="batchCall">@class batchCall(opt?={useTrans?=0})</h2>
 <p>批量调用。将若干个调用打包成一个特殊的batch调用发给服务端。<br />
 注意：</p>
 <ul>
@@ -1558,11 +1641,11 @@ batch.commit();</code></pre>
 {$-1.path} // 取前一次结果的path属性
 {$2 -1}  // 可以做简单的计算</code></pre>
 <p>如果值计算失败，则当作&quot;null&quot;填充。</p>
-<p class="see"><strong>@see <a href="#MUI.useBatchCall">MUI.useBatchCall</a></strong> </p>
-<p class="see"><strong>@see <a href="#MUI.disableBatch">MUI.disableBatch</a></strong> </p>
-<p class="see"><strong>@see <a href="#MUI.m_curBatch">MUI.m_curBatch</a></strong> </p></div>
+<p class="see"><strong>@see <a href="#useBatchCall">useBatchCall</a></strong> </p>
+<p class="see"><strong>@see <a href="#disableBatch">disableBatch</a></strong> </p>
+<p class="see"><strong>@see <a href="#m_curBatch">m_curBatch</a></strong> </p></div>
 <div class="block">
-<h2 id="MUI.useBatchCall">@fn MUI.useBatchCall(opt?={useTrans?=0}, tv?=0)</h2>
+<h2 id="useBatchCall">@fn useBatchCall(opt?={useTrans?=0}, tv?=0)</h2>
 <p>之后的callSvr调用都加入批量操作。例：</p>
 <pre><code>MUI.useBatchCall();
 callSvr("Family.query", {res: "id,name"}, api_FamilyQuery);
@@ -1570,10 +1653,10 @@ callSvr("User.get", {res: "id,phone"}, api_UserGet);</code></pre>
 <p>可指定多少毫秒以内的操作都使用批处理，如10ms内：</p>
 <pre><code>MUI.useBatchCall(null, 10);</code></pre>
 <p>如果MUI.disableBatch=true, 该函数不起作用。</p>
-<p class="see"><strong>@see <a href="#MUI.batchCall">MUI.batchCall</a></strong> </p>
-<p class="see"><strong>@see <a href="#MUI.disableBatch">MUI.disableBatch</a></strong> </p></div>
+<p class="see"><strong>@see <a href="#batchCall">batchCall</a></strong> </p>
+<p class="see"><strong>@see <a href="#disableBatch">disableBatch</a></strong> </p></div>
 <div class="block">
-<h2 id="MUI.activePage">@var MUI.activePage</h2>
+<h2 id="activePage">@var activePage</h2>
 <p>当前页面。</p>
 <p>注意：</p>
 <ul>
@@ -1582,20 +1665,20 @@ callSvr("User.get", {res: "id,phone"}, api_UserGet);</code></pre>
 </ul>
 <p>要查看从哪个页面来，可以用 MUI.prevPageId。<br />
 要查看最近一次调用MUI.showPage转向的页面，可以用 MUI.getToPageId().</p>
-<p class="see"><strong>@see <a href="#MUI.prevPageId">MUI.prevPageId</a></strong> </p>
-<p class="see"><strong>@see <a href="#MUI.getToPageId">MUI.getToPageId</a></strong> ()</p></div>
+<p class="see"><strong>@see <a href="#prevPageId">prevPageId</a></strong> </p>
+<p class="see"><strong>@see <a href="#getToPageId">getToPageId</a></strong> ()</p></div>
 <div class="block">
-<h2 id="MUI.prevPageId">@var MUI.prevPageId</h2>
+<h2 id="prevPageId">@var prevPageId</h2>
 <p>上一个页面的id, 首次进入时为空.</p></div>
 <div class="block">
-<h2 id="MUI.container">@var MUI.container</h2>
+<h2 id="container">@var container</h2>
 <p>应用容器，一般就是<code>$(document.body)</code></p>
 <p class="see"><strong>@see <a href="#.mui-container">.mui-container</a></strong> </p></div>
 <div class="block">
-<h2 id="MUI.showFirstPage">@var MUI.showFirstPage?=true</h2>
+<h2 id="showFirstPage">@var showFirstPage?=true</h2>
 <p>如果为false, 则必须手工执行 MUI.showPage 来显示第一个页面。</p></div>
 <div class="block">
-<h2 id="MUI.setUrl">@fn MUI.setUrl(url)</h2>
+<h2 id="setUrl">@fn setUrl(url)</h2>
 <p>设置当前地址栏显示的URL. 如果url中不带hash部分，会自动加上当前的hash.</p>
 <pre><code>MUI.setUrl("page/home.html"); // 设置url
 MUI.setUrl("?a=1&amp;b=2"); // 设置url参数
@@ -1653,25 +1736,25 @@ MUI.deleteUrlParam("a"); // 从url中删除参数a部分，如果g_args中有参
 我们甚至可以设置RESTful风格的URL: <code>MUI.setUrl("order/100")</code> 会将URL设置为 <code>http://server/app/order/100</code>.</p>
 <p>在上面两个例子中，为了确保刷新URL时能正常显示，必须在Web服务器上配置URL重写规则，让它们都重定向到 <code>http://server/app/?orderId=100#order</code>.</p></div>
 <div class="block">
-<h2 id="MUI.deleteUrlParam">@fn MUI.deleteUrlParam(param)</h2>
+<h2 id="deleteUrlParam">@fn deleteUrlParam(param)</h2>
 <p>自动修改g_args全局变量和当前url（会调用MUI.setUrl方法）。</p>
 <pre><code>MUI.deleteUrlParam("wxpay");
 // 原先url为 http://myserver/myapp/index.html?wxpay=ORDR-11&amp;storeId=1
 // 调用后为 http://myserver/myapp/index.html?storeId=1</code></pre></div>
 <div class="block">
-<h2 id="MUI.setUrlParam">@fn MUI.setUrlParam(param, val)</h2>
+<h2 id="setUrlParam">@fn setUrlParam(param, val)</h2>
 <p>修改当前url，添加指定参数。<br />
 e.g. </p>
 <pre><code>MUI.setUrlParam("wxauth", 1);</code></pre>
-<p class="see"><strong>@see <a href="#MUI.deleteUrlParam">MUI.deleteUrlParam</a> <a href="#MUI.appendParam">MUI.appendParam</a></strong> </p></div>
+<p class="see"><strong>@see <a href="#deleteUrlParam">deleteUrlParam</a> <a href="#MUI.appendParam">MUI.appendParam</a></strong> </p></div>
 <div class="block">
-<h2 id="MUI.showPage">@fn MUI.showPage(pageRef, opt)</h2>
+<h2 id="showPage">@fn showPage(pageRef, opt)</h2>
 <p class="param"><strong>@param pageId</strong>  String. 页面名字. 仅由字母、数字、"_"等字符组成。</p>
 <p class="param"><strong>@param pageRef</strong>  String. 页面引用（即location.hash），以"#"开头，后面可以是一个pageId（如"#home"）或一个相对页的地址（如"#info.html", "#emp/info.html"）。</p>
 <p class="param"><strong>@param opt</strong>  {ani?, url?}  (v3.3) 该参数会传递给pagebeforeshow/pageshow回调函数。</p>
 <p>opt.ani:: String. 动画效果。设置为&quot;none&quot;禁用动画。</p>
 <p>opt.url:: String. 指定在地址栏显示的地址。如 <code>showPage("#order", {url: "?id=100"})</code> 可设置显示的URL为 <code>page/order.html?id=100</code>.</p>
-<p class="see"><strong>@see <a href="#MUI.setUrl">MUI.setUrl</a></strong> </p>
+<p class="see"><strong>@see <a href="#setUrl">setUrl</a></strong> </p>
 <p>在应用内无刷新地显示一个页面。</p>
 <p>例：</p>
 <pre><code>MUI.showPage("#order");</code></pre>
@@ -1715,22 +1798,22 @@ function initPageOrder()
     });
 }</code></pre></div>
 <div class="block">
-<h2 id="MUI.setDocTitle">@fn MUI.setDocTitle(title)</h2>
+<h2 id="setDocTitle">@fn setDocTitle(title)</h2>
 <p>设置文档标题。默认在切换页面时，会将文档标题设置为逻辑页的标题(<code>hd</code>块中的<code>h1</code>或<code>h2</code>标签)。</p></div>
 <div class="block">
-<h2 id="MUI.unloadPage">@fn MUI.unloadPage(pageRef?)</h2>
+<h2 id="unloadPage">@fn unloadPage(pageRef?)</h2>
 <p class="param"><strong>@param pageRef</strong>  如未指定，表示当前页。</p>
 <p>删除一个页面。</p></div>
 <div class="block">
-<h2 id="MUI.reloadPage">@fn MUI.reloadPage(pageRef?, opt?)</h2>
+<h2 id="reloadPage">@fn reloadPage(pageRef?, opt?)</h2>
 <p class="param"><strong>@param pageRef</strong>  如未指定，表示当前页。</p>
 <p class="param"><strong>@param opt</strong>  传递给MUI.showPage的opt参数。参考MUI.showPage.</p>
 <p>重新加载指定页面。不指定pageRef时，重加载当前页。</p></div>
 <div class="block">
-<h2 id="MUI.m_pageStack">@var MUI.m_pageStack</h2>
+<h2 id="m_pageStack">@var m_pageStack</h2>
 <p>页面栈，MUI.popPageStack对它操作</p></div>
 <div class="block">
-<h2 id="MUI.popPageStack">@fn MUI.popPageStack(n?=1) </h2>
+<h2 id="popPageStack">@fn popPageStack(n?=1) </h2>
 <p>n=0: 退到首层, &gt;0: 指定pop几层</p>
 <p>常用场景：</p>
 <p>添加订单并进入下个页面后, 点击后退按钮时避免再回到添加订单页面, 应调用</p>
@@ -1745,15 +1828,15 @@ MUI.popPageStack(0); // 标记除第一页外的所有页为poped, 所以之后�
 <p>如果只是想立即跳回两页，不用调用popPageStack，而应调用：</p>
 <pre><code>history.go(-2);</code></pre></div>
 <div class="block">
-<h2 id="MUI.getToPageId">@fn MUI.getToPageId()</h2>
+<h2 id="getToPageId">@fn getToPageId()</h2>
 <p>返回最近一次调用MUI.showPage时转向页面的Id.</p>
-<p class="see"><strong>@see <a href="#MUI.prevPageId">MUI.prevPageId</a></strong> </p></div>
+<p class="see"><strong>@see <a href="#prevPageId">prevPageId</a></strong> </p></div>
 <div class="block">
-<h2 id="MUI.showDialog">@fn MUI.showDialog(jdlg)</h2></div>
+<h2 id="showDialog">@fn showDialog(jdlg)</h2></div>
 <div class="block">
-<h2 id="MUI.closeDialog">@fn MUI.closeDialog(jdlg, remove=false)</h2></div>
+<h2 id="closeDialog">@fn closeDialog(jdlg, remove=false)</h2></div>
 <div class="block">
-<h2 id="MUI.setupDialog">@fn MUI.setupDialog(jdlg, initfn)</h2>
+<h2 id="setupDialog">@fn setupDialog(jdlg, initfn)</h2>
 <p class="return"><strong>@return 可以不返回,</strong>  或返回一个回调函数beforeShow, 在每次Dialog显示前调用.</p>
 <p>使用该函数可设置dialog的初始化回调函数和beforeShow回调.</p>
 <p>使用方法:</p>
@@ -1773,9 +1856,8 @@ MUI.popPageStack(0); // 标记除第一页外的所有页为poped, 所以之后�
     return beforeShow;
 });</code></pre></div>
 <div class="block">
-<h2 id="MUI.app_alert">@fn MUI.app_alert(msg, [type?=i], [fn?], opt?={timeoutInterval?, defValue?, onCancel()?})</h2>
-<p class="alias"><strong>@alias <a id="app_alert">app_alert</a></strong> </p>
-<p class="alias"><strong>@alias <a id="#muiAlert">#muiAlert</a></strong> </p>
+<h2 id="app_alert">@fn app_alert(msg, [type?=i], [fn?], opt?={timeoutInterval?, defValue?, onCancel()?})</h2>
+<p class="key"><strong>@key <a id="#muiAlert">#muiAlert</a></strong> </p>
 <p class="param"><strong>@param type</strong>  对话框类型: "i": info, 信息提示框; "e": error, 错误框; "w": warning, 警告框; "q": question, 确认框(会有"确定"和"取消"两个按钮); "p": prompt, 输入框</p>
 <p class="param"><strong>@param fn</strong>  Function(text?) 回调函数，当点击确定按钮时调用。当type="p" (prompt)时参数text为用户输入的内容。</p>
 <p class="param"><strong>@param opt</strong>  Object. 可选项。 timeoutInterval表示几秒后自动关闭对话框。defValue用于输入框(type=p)的缺省值.</p>
@@ -1817,9 +1899,9 @@ app_alert("输入要查询的名字:", "p", function (text) {
 &lt;/div&gt;</code></pre>
 <p>app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时将clone一份用于显示并在关闭后删除。</p></div>
 <div class="block">
-<h2 id="MUI.showLoading">@fn MUI.showLoading()</h2></div>
+<h2 id="showLoading">@fn showLoading()</h2></div>
 <div class="block">
-<h2 id="MUI.hideLoading">@fn MUI.hideLoading()</h2></div>
+<h2 id="hideLoading">@fn hideLoading()</h2></div>
 <div class="block">
 <h2 id="isBusy">@var isBusy</h2>
 <p>标识应用当前是否正在与服务端交互。一般用于自动化测试。</p></div>
@@ -1856,24 +1938,30 @@ g_args.dscr="上门洗车"; // 对字符串会自动进行URL解码。</code></p
 <p class="key"><strong>@key <a id="g_data.testMode,g_data.mockMode">g_data.testMode,g_data.mockMode</a></strong>  测试模式和模拟模式</p>
 <p>TODO: MUI.data</p></div>
 <div class="block">
-<h2 id="MUI.options">@var MUI.options</h2>
+<h2 id="options">@var options</h2>
 <p>可用的选项如下。</p>
-<p class="key"><strong>@key <a id="MUI.options.appName">MUI.options.appName</a></strong> ?=user  应用名称</p>
+<p class="var"><strong>@var <a id="options.appName">options.appName</a></strong> ?=user  应用名称</p>
 <p>用于与后端通讯时标识app.</p>
-<p class="key"><strong>@key <a id="MUI.options.loginPage">MUI.options.loginPage</a></strong> ?="#login"  login逻辑页面的地址</p>
-<p class="key"><strong>@key <a id="MUI.options.homePage">MUI.options.homePage</a></strong> ?="#home"  首页地址</p>
-<p class="key"><strong>@key <a id="MUI.options.pageFolder">MUI.options.pageFolder</a></strong> ?="page" 逻辑页面文件(html及js)所在文件夹</p>
-<p class="key"><strong>@key <a id="MUI.options.noHandleIosStatusBar">MUI.options.noHandleIosStatusBar</a></strong> ?=false</p>
+<p class="var"><strong>@var <a id="options.loginPage">options.loginPage</a></strong> ?="#login"  login逻辑页面的地址</p>
+<p class="var"><strong>@var <a id="options.homePage">options.homePage</a></strong> ?="#home"  首页地址</p>
+<p class="var"><strong>@var <a id="options.pageFolder">options.pageFolder</a></strong> ?="page" 逻辑页面文件(html及js)所在文件夹</p>
+<p class="var"><strong>@var <a id="options.statusBarColor">options.statusBarColor</a></strong> ?="#,light" 设置状态栏颜色，默认为应用程序背景色和白字。</p>
 <p class="see"><strong>@see <a href="#topic-iosStatusBar">topic-iosStatusBar</a></strong> </p>
-<p class="key"><strong>@key <a id="MUI.options.manualSplash">MUI.options.manualSplash</a></strong> ?=false</p>
+<p>（版本v5.0）</p>
+<p>利用statusbar插件设置标题栏。<br />
+其中背景设置使用&quot;#000&quot;或&quot;#000000&quot;这种形式，特别地，只用&quot;#&quot;可表示使用当前应用程序的背景色（.mui-container背景颜色）。<br />
+前景设置使用&quot;light&quot;(白色)或&quot;dark&quot;(黑色)。<br />
+设置为&quot;none&quot;表示隐藏标题栏。<br />
+设置为空(&quot;&quot;)表示禁止框架设置状态栏。</p>
+<p class="var"><strong>@var <a id="options.manualSplash">options.manualSplash</a></strong> ?=false</p>
 <p class="see"><strong>@see <a href="#topic-splashScreen">topic-splashScreen</a></strong> </p>
-<p class="var"><strong>@var <a id="MUI.options.logAction">MUI.options.logAction</a></strong> ?=false  Boolean. 是否显示详细日志。</p>
+<p class="var"><strong>@var <a id="options.logAction">options.logAction</a></strong> ?=false  Boolean. 是否显示详细日志。</p>
 <p>可用于交互调用的监控。</p>
-<p class="var"><strong>@var <a id="MUI.options.PAGE_SZ">MUI.options.PAGE_SZ</a></strong> ?=20  分页大小，下拉列表每次取数据的缺省条数。</p>
-<p class="var"><strong>@var <a id="MUI.options.mockDelay">MUI.options.mockDelay</a></strong> ?=50  模拟调用后端接口的延迟时间，单位：毫秒。仅对异步调用有效。</p>
-<p class="see"><strong>@see <a href="#MUI.mockData">MUI.mockData</a></strong>  模拟调用后端接口</p>
-<p class="var"><strong>@var <a id="MUI.options.serverUrl">MUI.options.serverUrl</a></strong> ?="./"  服务端接口地址设置。</p>
-<p class="var"><strong>@var <a id="MUI.options.serverUrlAc">MUI.options.serverUrlAc</a></strong>   表示接口名称的URL参数。</p>
+<p class="var"><strong>@var <a id="options.PAGE_SZ">options.PAGE_SZ</a></strong> ?=20  分页大小，下拉列表每次取数据的缺省条数。</p>
+<p class="var"><strong>@var <a id="options.mockDelay">options.mockDelay</a></strong> ?=50  模拟调用后端接口的延迟时间，单位：毫秒。仅对异步调用有效。</p>
+<p class="see"><strong>@see <a href="#mockData">mockData</a></strong>  模拟调用后端接口</p>
+<p class="var"><strong>@var <a id="options.serverUrl">options.serverUrl</a></strong> ?="./"  服务端接口地址设置。</p>
+<p class="var"><strong>@var <a id="options.serverUrlAc">options.serverUrlAc</a></strong>   表示接口名称的URL参数。</p>
 <p>示例：</p>
 <pre><code>$.extend(MUI.options, {
     serverUrl: "http://myserver/myapp/api.php",
@@ -1890,16 +1978,18 @@ g_args.dscr="上门洗车"; // 对字符串会自动进行URL解码。</code></p
 });</code></pre>
 <p>这样发起的HTTP请求为：</p>
 <pre><code>http://myserver/myapp/getuser?id=10</code></pre>
-<p class="var"><strong>@var <a id="MUI.options.pluginFolder">MUI.options.pluginFolder</a></strong> ?="../plugin" 指定筋斗云插件目录</p>
+<p class="var"><strong>@var <a id="options.pluginFolder">options.pluginFolder</a></strong> ?="../plugin" 指定筋斗云插件目录</p>
 <p>筋斗云插件提供具有独立接口的应用功能模块，包括前端、后端实现。</p>
-<p class="var"><strong>@var <a id="MUI.options.showHash">MUI.options.showHash</a></strong> ?=true</p>
+<p class="var"><strong>@var <a id="options.showHash">options.showHash</a></strong> ?=true</p>
 <p>默认访问逻辑页面时，URL地址栏显示为: &quot;index.html#me&quot;</p>
 <p>只读，如果值为false, 则地址栏显示为: &quot;index.html/page/me.html&quot;.</p>
 <p>注意：该选项不可通过js设置为false，而应在主页面中设置：</p>
 <pre><code>&lt;base href="./" mui-showHash="no"&gt;</code></pre>
-<p>在showHash=false时，必须设置base标签, 否则逻辑页将无法加载。</p></div>
+<p>在showHash=false时，必须设置base标签, 否则逻辑页将无法加载。</p>
+<p class="var"><strong>@var <a id="options.disableFastClick">options.disableFastClick</a></strong> ?=false</p>
+<p>在IOS+cordova环境下，点击事件会有300ms延迟，默认会加载lib/fastclick.min.js解决。</p></div>
 <div class="block">
-<h2 id="MUI.setFormSubmit">@fn MUI.setFormSubmit(jf, fn?, opt?={validate?, onNoAction?})</h2>
+<h2 id="setFormSubmit">@fn setFormSubmit(jf, fn?, opt?={validate?, onNoAction?})</h2>
 <p class="param"><strong>@param fn</strong>  Function(data); 与callSvr时的回调相同，data为服务器返回的数据。</p>
 <p>函数中可以使用this[&quot;userPost&quot;] 来获取post参数。</p>
 <p class="param"><strong>@param opt.validate:</strong>  Function(jf, queryParam={ac?,...}). 如果返回false, 则取消submit. queryParam为调用参数，可以修改。</p>
@@ -1930,7 +2020,7 @@ MUI.setFormSubmit(jf, api_fn1, {
 <p>如果之前调用过setFormData(jo, data, {setOrigin:true})来展示数据, 则提交时，只会提交被修改过的字段，否则提交所有字段。</p>
 <p class="param"><strong>@param opt.onNoAction:</strong>  Function(jf). 当form中数据没有变化时, 不做提交. 这时可调用该回调函数.</p></div>
 <div class="block">
-<h2 id="MUI.showLogin">@fn MUI.showLogin(page?)</h2>
+<h2 id="showLogin">@fn showLogin(page?)</h2>
 <p class="param"><strong>@param page=pageRef/jpage</strong>  如果指定, 则登录成功后转向该页面; 否则转向登录前所在的页面.</p>
 <p>显示登录页. 注意: 登录页地址通过MUI.options.loginPage指定, 缺省为&quot;#login&quot;.</p>
 <pre><code>&lt;div data-role="page" id="login"&gt;
@@ -1943,17 +2033,17 @@ MUI.setFormSubmit(jf, api_fn1, {
 如loginPage=&quot;#login&quot;, 则登录页面名称可以为：#login(缺省登录页), #login1, #loginByPwd等；否则无法被识别为登录页，导致登录成功后按返回键仍会回到登录页</li>
 </ul></div>
 <div class="block">
-<h2 id="MUI.showHome">@fn MUI.showHome()</h2>
+<h2 id="showHome">@fn showHome()</h2>
 <p>显示主页。主页是通过 MUI.options.homePage 来指定的，默认为&quot;#home&quot;.</p>
 <p>要取主页名可以用：</p>
 <pre><code>var jpage = $(MUI.options.homePage);</code></pre>
-<p class="see"><strong>@see <a href="#MUI.options.homePage">MUI.options.homePage</a></strong> </p></div>
+<p class="see"><strong>@see <a href="#options.homePage">options.homePage</a></strong> </p></div>
 <div class="block">
-<h2 id="MUI.logout">@fn MUI.logout(dontReload?)</h2>
+<h2 id="logout">@fn logout(dontReload?)</h2>
 <p class="param"><strong>@param dontReload</strong>  如果非0, 则注销后不刷新页面.</p>
 <p>注销当前登录, 成功后刷新页面(除非指定dontReload=1)</p></div>
 <div class="block">
-<h2 id="MUI.validateEntry">@fn MUI.validateEntry(@allowedEntries) 入口页检查</h2>
+<h2 id="validateEntry">@fn validateEntry(@allowedEntries) 入口页检查</h2>
 <p>设置入口页，allowedEntries是一个数组, 如果初始页面不在该数组中, 则URL中输入该逻辑页时，会自动转向主页。</p>
 <p>示例：</p>
 <pre><code>MUI.validateEntry([
@@ -1961,7 +2051,7 @@ MUI.setFormSubmit(jf, api_fn1, {
     "#me",
 ]);</code></pre></div>
 <div class="block">
-<h2 id="MUI.tryAutoLogin">@fn MUI.tryAutoLogin(onHandleLogin, reuseCmd?, allowNoLogin?=false)</h2>
+<h2 id="tryAutoLogin">@fn tryAutoLogin(onHandleLogin, reuseCmd?, allowNoLogin?=false)</h2>
 <p>尝试自动登录，如果失败则转到登录页（除非allowNoLogin=true）。</p>
 <p class="param"><strong>@param onHandleLogin</strong>  Function(data). 调用后台login()成功后的回调函数(里面使用this为ajax options); 可以直接使用MUI.handleLogin</p>
 <p class="param"><strong>@param reuseCmd</strong>  String. 当session存在时替代后台login()操作的API, 如"User.get", "Employee.get"等, 它们在已登录时返回与login相兼容的数据. 因为login操作比较重, 使用它们可减轻服务器压力. </p>
@@ -1982,11 +2072,11 @@ function handleLogin(data)
     // g_data.userInfo已赋值
 }</code></pre></div>
 <div class="block">
-<h2 id="MUI.handleLogin">@fn MUI.handleLogin(data)</h2>
+<h2 id="handleLogin">@fn handleLogin(data)</h2>
 <p class="param"><strong>@param data</strong>  调用API "login"成功后的返回数据.</p>
 <p>处理login相关的操作, 如设置g_data.userInfo, 保存自动登录的token等等.</p></div>
 <div class="block">
-<h2 id="MUI.initClient">@fn MUI.initClient(param?)</h2></div>
+<h2 id="initClient">@fn initClient(param?)</h2></div>
 <div class="block">
 <h2 id="Plugins">@class Plugins</h2></div>
 <div class="block">
@@ -2016,7 +2106,7 @@ filterCordovaModule(module); // 过滤模块</code></pre>
 如果未指定filter, 表示总是使用<br />
 app标识由应用定义，常用如: &quot;user&quot;-客户端;&quot;store&quot;-商户端</p></div>
 <div class="block">
-<h2 id="MUI.formatField">@fn MUI.formatField(obj) -> obj</h2>
+<h2 id="formatField">@fn formatField(obj) -> obj</h2>
 <p>对obj中的以字符串表示的currency/date等类型进行转换。<br />
 判断类型的依据是属性名字，如以Tm结尾的属性（也允许带数字后缀）为日期属性，如&quot;tm&quot;, &quot;tm2&quot;, &quot;createTm&quot;都会被当作日期类型转换。</p>
 <p>注意：它将直接修改传入的obj，并最终返回该对象。</p>
@@ -2028,11 +2118,11 @@ var order = MUI.formatField(obj); // obj会被修改，最终与order相同
 <p>返回操作，类似history.back()，但如果当前页是入口页时，即使没有前一页，也可转向pageRef页（未指定时为首页）。<br />
 一般用于顶部返回按钮：</p>
 <pre><code>&lt;div class="hd"&gt;
-    &lt;a href="javascript:hd_back();" class="icon icon-back"&gt;&lt;/a&gt;
+    &lt;a href="javascript:hd_back();" class="btn-icon"&gt;&lt;i class="icon icon-back"&gt;&lt;/i&gt;&lt;/a&gt;
     &lt;h2&gt;个人信息&lt;/h2&gt;
 &lt;/div&gt;</code></pre></div>
 <div class="block">
-<h2 id="MUI.syslog">@fn MUI.syslog(module, pri, content)</h2>
+<h2 id="syslog">@fn syslog(module, pri, content)</h2>
 <p>向后端发送日志。后台必须已添加syslog插件。<br />
 日志可在后台Syslog表中查看，客户端信息可查看ApiLog表。</p>
 <p>注意：如果操作失败，本函数不报错。</p></div>
