@@ -76,8 +76,8 @@
 - 对话框中包含一个form用于向服务端发起请求。form中每个带name属性的对象，都对应订单对象的一个属性，在添加、查找、显示或更新时都将用到，除非它上面加了disabled属性（这样就不会提交该字段）
 - 对话框一般不用加“提交”按钮，框架会自动为它添加“确定”、“取消”按钮。
 
-@see WUI.showObjDlg
-@see WUI.showDlg
+@see showObjDlg
+@see showDlg
 
 以上定义了订单对象的列表页和详情页，围绕对象"Order", 按规范，我们定义了以下名字：
 
@@ -144,10 +144,10 @@
 		jtbl.datagrid(dgOpt);
 	}
 
-@see WUI.showPage
-@see WUI.dg_toolbar
-@see WUI.dg_dblclick
-@see WUI.makeUrl
+@see showPage
+@see dg_toolbar
+@see dg_dblclick
+@see makeUrl
 
 ### 定义对话框的初始化函数
 
@@ -267,7 +267,7 @@ formatter用于控制Cell中的HTML标签，styler用于控制Cell自己的CSS s
 - WUI.formatter已经定义了常用的formatter. 通常定义一个全局Formatter继承WUI.formatter，用于各页面共享的字段设定.
 - 习惯上，对同一个对象的字段的设定，都放到一个名为　{Obj}Columns 的变量中一起定义。
 
-@see WUI.formatter 通用格式化函数
+@see formatter 通用格式化函数
 
 一些其它示例：
 
@@ -398,9 +398,9 @@ OrderStatusMap在代码中定义如下
 
 它生成的res参数为"id 编号, status 状态=CR:未付款;PA:待服务"。筋斗云后端支持这种res定义方式将枚举值显示为描述。
 
-@see WUI.dg_toolbar 指定列表上的操作按钮
-@see WUI.getExportHandler 自定义导出Excel功能
-@see WUI.getQueryParamFromTable 根据当前datagrid状态取query接口参数
+@see dg_toolbar 指定列表上的操作按钮
+@see getExportHandler 自定义导出Excel功能
+@see getQueryParamFromTable 根据当前datagrid状态取query接口参数
 
 ### 详情页对话框的常见需求
 
@@ -514,7 +514,7 @@ OrderStatusMap在代码中定义如下
 
 	function initPageItem(storeId) // storeId=row.id
 
-@see WUI.showPage
+@see showPage
 
 ## 对话框功能
 
@@ -555,7 +555,7 @@ OrderStatusMap在代码中定义如下
 
 在showDlg的选项url中指定了接口为"sendSms"。操作成功后，显示一个消息。
 
-@see WUI.showDlg
+@see showDlg
 @see app_show
 
 除了直接调用该函数显示对话框外，还有一种更简单的通过a标签href属性指定打开对话框的做法，如：
@@ -567,7 +567,7 @@ OrderStatusMap在代码中定义如下
 ## 模块化开发
 
 @key wui-script
-@key WUI.options.pageFolder
+@key options.pageFolder
 
 允许将逻辑页、对话框的html片段和js片段放在单独的文件中。以前面章节示例中订单对象的列表页（是一个逻辑页）与详情页（是一个对话框）为例：
 
@@ -646,6 +646,37 @@ OrderStatusMap在代码中定义如下
 	}
 
 这时，就可以用 WUI.showObjDlg("#dlgOrder")来显示逻辑页了。
+
+## 参考文档说明
+
+以下参考文档介绍WUI模块提供的方法/函数(fn)、属性/变量(var)等，示例如下：
+
+	@fn showPage(pageName, title?, paramArr?)  一个函数。参数说明中问号表示参数可缺省。
+	@var options 一个属性。
+	@class batchCall(opt?={useTrans?=0}) 一个JS类。
+	@key example-dialog key表示一般关键字。前缀为"example-"用于示例讲解。
+	@key .wui-page 一个CSS类名"wui-page"，关键字以"."开头。
+	@key #wui-pages 一个DOM对象，id为"wui-pages"，关键字以"#"开头。
+
+对于模块下的fn,var,class这些类别，如非特别说明，调用时应加WUI前缀，如
+
+	WUI.showPage("#pageOrder");
+	var opts = WUI.options;
+	var batch = new WUI.batchCall();
+	batch.commit();
+
+以下函数可不加WUI前缀：
+
+	intSort
+	numberSort
+	callSvr
+	callSvrSync
+	app_alert
+	app_confirm
+	app_show
+
+参考wui-name.js模块。
+
 */
 // ====== WEBCC_END_FILE doc.js }}}
 
@@ -1615,14 +1646,32 @@ initModule();
 }/*jdcloud common*/
 
 /**
-@fn jdModule(name, fn)
-定义一个模块，返回该模块对象。
+@fn jdModule(name?, fn?)
 
-@fn jdModule(name)
-获取模块对象。
+定义JS模块。这是一个全局函数。
 
-@fn jdModule()
-返回模块映射表。
+定义一个模块:
+
+	jdModule("jdcloud.common", JdcloudCommon);
+	function JdcloudCommon() {
+		var self = this;
+		
+		// 对外提供一个方法
+		self.rs2Array = rs2Array;
+		function rs2Array(rs)
+		{
+			return ...;
+		}
+	}
+
+获取模块对象:
+
+	var mCommon = jdModule("jdcloud.common");
+	var arr = mCommon.rs2Array(rs);
+
+返回模块映射列表。
+
+	var moduleMap = jdModule(); // 返回 { "jdcloud.common": JdcloudCommon, ... }
 
 */
 function jdModule(name, fn, overrideCtor)
@@ -2034,6 +2083,35 @@ function waitFor(dfd)
 }
 
 /**
+@fn rgb2hex(rgb)
+
+将jquery取到的颜色转成16进制形式，如："rgb(4, 190, 2)" -> "#04be02"
+
+示例：
+
+	var color = rgb2hex( $(".mui-container").css("backgroundColor") );
+
+ */
+self.rgb2hex = rgb2hex;
+function rgb2hex(rgb)
+{
+	var ms = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+	if (ms == null)
+		return;
+	var hex = "#";
+	for (var i = 1; i <= 3; ++i) {
+		var s = parseInt(ms[i]).toString(16);
+		if (s.length == 1) {
+			hex += "0" + s;
+		}
+		else {
+			hex += s;
+		}
+	}
+	return hex;
+}
+
+/**
 @fn jQuery.fn.jdata(val?)
 
 和使用$.data()差不多，更好用一些. 例：
@@ -2188,7 +2266,7 @@ function app_abort()
 window.DirectReturn = function () {}
 
 /**
-@fn MUI.setOnError()
+@fn setOnError()
 
 一般框架自动设置onerror函数；如果onerror被其它库改写，应再次调用该函数。
 allow throw("abort") as abort behavior.
@@ -2214,12 +2292,12 @@ setOnError();
 
 // ------ enhanceWithin {{{
 /**
-@var MUI.m_enhanceFn
+@var m_enhanceFn
 */
 self.m_enhanceFn = {}; // selector => enhanceFn
 
 /**
-@fn MUI.enhanceWithin(jparent)
+@fn enhanceWithin(jparent)
 */
 self.enhanceWithin = enhanceWithin;
 function enhanceWithin(jp)
@@ -2242,7 +2320,7 @@ function enhanceWithin(jp)
 }
 
 /**
-@fn MUI.getOptions(jo)
+@fn getOptions(jo)
 */
 self.getOptions = getOptions;
 function getOptions(jo)
@@ -2293,7 +2371,7 @@ function getop(v)
 }
 
 /**
-@fn WUI.getQueryCond(kvList)
+@fn getQueryCond(kvList)
 
 @param kvList {key=>value}, 键值对，值中支持操作符及通配符。也支持格式 [ [key, value] ], 这时允许key有重复。
 
@@ -2336,8 +2414,8 @@ function getop(v)
 
 在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。
 
-@see WUI.getQueryParam
-@see WUI.getQueryParamFromTable 获取datagrid的当前查询参数
+@see getQueryParam
+@see getQueryParamFromTable 获取datagrid的当前查询参数
 */
 self.getQueryCond = getQueryCond;
 function getQueryCond(kvList)
@@ -2395,7 +2473,7 @@ function getQueryCond(kvList)
 }
 
 /**
-@fn WUI.getQueryParam(kvList)
+@fn getQueryParam(kvList)
 
 根据键值对生成BQP协议中{obj}.query接口需要的cond参数.
 即 `{cond: WUI.getQueryCond(kvList) }`
@@ -2406,8 +2484,8 @@ function getQueryCond(kvList)
 	返回
 	{cond: "phone='13712345678' AND id>100"}
 
-@see WUI.getQueryCond
-@see WUI.getQueryParamFromTable 获取datagrid的当前查询参数
+@see getQueryCond
+@see getQueryParamFromTable 获取datagrid的当前查询参数
 */
 self.getQueryParam = getQueryParam;
 function getQueryParam(kvList)
@@ -2430,7 +2508,7 @@ var self = this;
 var mCommon = jdModule("jdcloud.common");
 
 /**
-@var MUI.lastError = ctx
+@var lastError = ctx
 
 出错时，取出错调用的上下文信息。
 
@@ -2447,14 +2525,14 @@ var m_manualBusy = 0;
 var m_appVer;
 
 /**
-@var MUI.disableBatch ?= false
+@var disableBatch ?= false
 
 设置为true禁用batchCall, 仅用于内部测试。
 */
 self.disableBatch = false;
 
 /**
-@var MUI.m_curBatch
+@var m_curBatch
 
 当前batchCall对象，用于内部调试。
 */
@@ -2462,7 +2540,7 @@ var m_curBatch = null;
 self.m_curBatch = m_curBatch;
 
 /**
-@var MUI.mockData  模拟调用后端接口。
+@var mockData  模拟调用后端接口。
 
 在后端接口尚无法调用时，可以配置MUI.mockData做为模拟接口返回数据。
 调用callSvr时，会直接使用该数据，不会发起ajax请求。
@@ -2500,7 +2578,7 @@ mockData中每项可以直接是数据，也可以是一个函数：fn(param, po
 要取HTTP动词可以用`this.type`，值为GET/POST/PATCH/DELETE之一，从而可模拟RESTful API.
 
 可以通过MUI.options.mockDelay设置模拟调用接口的网络延时。
-@see MUI.options.mockDelay
+@see options.mockDelay
 
 模拟数据可直接返回[code, data]格式的JSON数组，框架会将其序列化成JSON字符串，以模拟实际场景。
 如果要查看调用与返回数据日志，可在浏览器控制台中设置 MUI.options.logAction=true，在控制台中查看日志。
@@ -2514,7 +2592,7 @@ mockData中每项可以直接是数据，也可以是一个函数：fn(param, po
 
 	MUI.mockData["zhanda:token/get-token"] = ...;
 
-@see MUI.callSvrExt
+@see callSvrExt
 
 也支持"default"扩展，如：
 
@@ -2559,9 +2637,8 @@ if (location.protocol == "file:") {
 $.ajaxSetup(ajaxOpt);
 
 /**
-@fn MUI.enterWaiting(ctx?)
+@fn enterWaiting(ctx?)
 @param ctx {ac, tm, tv?, tv2?, noLoadingImg?}
-@alias enterWaiting()
 */
 self.enterWaiting = enterWaiting;
 function enterWaiting(ctx)
@@ -2587,8 +2664,7 @@ function enterWaiting(ctx)
 }
 
 /**
-@fn MUI.leaveWaiting(ctx?)
-@alias leaveWaiting
+@fn leaveWaiting(ctx?)
 */
 self.leaveWaiting = leaveWaiting;
 function leaveWaiting(ctx)
@@ -2646,7 +2722,7 @@ function defAjaxErrProc(xhr, textStatus, e)
 }
 
 /**
-@fn MUI.defDataProc(rv)
+@fn defDataProc(rv)
 
 @param rv BQP协议原始数据，如 "[0, {id: 1}]"，一般是字符串，也可以是JSON对象。
 @return data 按接口定义返回的数据对象，如 {id: 1}. 如果返回==null，调用函数应直接返回，不回调应用层。
@@ -2757,7 +2833,7 @@ function defDataProc(rv)
 }
 
 /**
-@fn MUI.getBaseUrl()
+@fn getBaseUrl()
 
 取服务端接口URL对应的目录。可用于拼接其它服务端资源。
 相当于dirname(MUI.options.serverUrl);
@@ -2774,7 +2850,7 @@ function getBaseUrl()
 }
 
 /**
-@fn MUI.makeUrl(action, params?)
+@fn makeUrl(action, params?)
 
 生成对后端调用的url. 
 
@@ -2796,7 +2872,7 @@ function getBaseUrl()
 
 	MUI.makeUrl(['login', 'zhanda']) 等价于 MUI.makeUrl('zhanda:login');
 
-@see MUI.callSvrExt
+@see callSvrExt
  */
 self.makeUrl = makeUrl;
 function makeUrl(action, params)
@@ -2902,8 +2978,7 @@ function makeUrl(action, params)
 }
 
 /**
-@fn MUI.callSvr(ac, [params?], fn?, postParams?, userOptions?) -> deferredObject
-@alias callSvr
+@fn callSvr(ac, [params?], fn?, postParams?, userOptions?) -> deferredObject
 
 @param ac String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)
 @param params Object. URL参数（或称HTTP GET参数）
@@ -2921,7 +2996,7 @@ function makeUrl(action, params)
 想为ajax选项设置缺省值，可以用callSvrExt中的beforeSend回调函数，也可以用$.ajaxSetup，
 但要注意：ajax的dataFilter/beforeSend选项由于框架已用，最好不要覆盖。
 
-@see MUI.callSvrExt[].beforeSend(opt) 为callSvr选项设置缺省值
+@see callSvrExt[].beforeSend(opt) 为callSvr选项设置缺省值
 
 @return deferred对象，与$.ajax相同。
 例如，
@@ -2963,7 +3038,7 @@ function makeUrl(action, params)
 		foo(data);
 	}, null, {noex:1});
 
-@see MUI.lastError 出错时的上下文信息
+@see lastError 出错时的上下文信息
 
 ## 调用监控
 
@@ -2999,7 +3074,7 @@ JS:
 
 ## callSvr扩展
 
-@key MUI.callSvrExt
+@key callSvrExt
 
 当调用第三方API时，也可以使用callSvr扩展来代替$.ajax调用以实现：
 - 调用成功时直接可操作数据，不用每次检查返回码；
@@ -3053,14 +3128,14 @@ callSvr扩展示例：
 		console.log(data);
 	});
 
-@key MUI.callSvrExt[].makeUrl(ac, param)
+@key callSvrExt[].makeUrl(ac, param)
 
 根据调用名ac生成url, 注意无需将param放到url中。
 
 注意：
 对方接口应允许JS跨域调用，或调用方支持跨域调用。
 
-@key MUI.callSvrExt[].dataFilter(data) = null/false/data
+@key callSvrExt[].dataFilter(data) = null/false/data
 
 对调用返回数据进行通用处理。返回值决定是否调用callSvr的回调函数以及参数值。
 
@@ -3072,9 +3147,9 @@ callSvr扩展示例：
 
 当返回false时，应用层可以通过`MUI.lastError.ret`来获取服务端返回数据。
 
-@see MUI.lastError 出错时的上下文信息
+@see lastError 出错时的上下文信息
 
-@key MUI.callSvrExt['default']
+@key callSvrExt['default']
 
 (支持版本: v3.1)
 如果要修改callSvr缺省调用方法，可以改写 MUI.callSvrExt['default'].
@@ -3137,7 +3212,7 @@ callSvr扩展示例：
 
 	callSvr('login');
 
-@key MUI.callSvrExt[].beforeSend(opt) 为callSvr或$.ajax选项设置缺省值
+@key callSvrExt[].beforeSend(opt) 为callSvr或$.ajax选项设置缺省值
 
 如果有ajax选项想设置，可以使用beforeSend回调，例如POST参数使用JSON格式：
 
@@ -3313,7 +3388,9 @@ function callSvr(ac, params, fn, postParams, userOptions)
 		ctx.getMockData = function () {
 			var d = self.mockData[ac0];
 			var param1 = $.extend({}, url.params);
-			var postParam1 = $.extend({}, postParams);
+			var postParam1 = ( ac0=="batch"
+				? eval("(" + postParams + ")")
+				: $.extend({}, postParams));
 			if ($.isFunction(d)) {
 				d = d(param1, postParam1);
 			}
@@ -3336,11 +3413,11 @@ function callSvr(ac, params, fn, postParams, userOptions)
 		url: url,
 		data: postParams,
 		type: method,
+		success: fn,
 		// 允许跨域使用cookie/session/authorization header
 		xhrFields: {
 			withCredentials: true
 		},
-		success: fn,
 		ctx_: ctx
 	};
 	// support FormData object.
@@ -3389,8 +3466,7 @@ function callSvrMock(opt, isSyncCall)
 }
 
 /**
-@fn MUI.callSvrSync(ac, [params?], fn?, postParams?, userOptions?)
-@alias callSvrSync
+@fn callSvrSync(ac, [params?], fn?, postParams?, userOptions?)
 @return data 原型规定的返回数据
 
 同步模式调用callSvr.
@@ -3416,7 +3492,7 @@ function callSvrSync(ac, params, fn, postParams, userOptions)
 }
 
 /**
-@fn MUI.setupCallSvrViaForm($form, $iframe, url, fn, callOpt)
+@fn setupCallSvrViaForm($form, $iframe, url, fn, callOpt)
 
 该方法已不建议使用。上传文件请用FormData。
 @see example-upload,callSvr
@@ -3462,7 +3538,7 @@ function setupCallSvrViaForm($form, $iframe, url, fn, callOpt)
 }
 
 /**
-@class MUI.batchCall(opt?={useTrans?=0})
+@class batchCall(opt?={useTrans?=0})
 
 批量调用。将若干个调用打包成一个特殊的batch调用发给服务端。
 注意：
@@ -3508,9 +3584,9 @@ function setupCallSvrViaForm($form, $iframe, url, fn, callOpt)
 
 如果值计算失败，则当作"null"填充。
 
-@see MUI.useBatchCall
-@see MUI.disableBatch
-@see MUI.m_curBatch
+@see useBatchCall
+@see disableBatch
+@see m_curBatch
 
 */
 self.batchCall = batchCall;
@@ -3616,7 +3692,7 @@ batchCall.prototype = {
 }
 
 /**
-@fn MUI.useBatchCall(opt?={useTrans?=0}, tv?=0)
+@fn useBatchCall(opt?={useTrans?=0}, tv?=0)
 
 之后的callSvr调用都加入批量操作。例：
 
@@ -3630,8 +3706,8 @@ batchCall.prototype = {
 
 如果MUI.disableBatch=true, 该函数不起作用。
 
-@see MUI.batchCall
-@see MUI.disableBatch
+@see batchCall
+@see disableBatch
 */
 self.useBatchCall = useBatchCall;
 function useBatchCall(opt, tv)
@@ -3685,7 +3761,7 @@ function getRow(jtbl)
 }
 
 /** 
-@fn WUI.reload(jtbl, url?, queryParams?) 
+@fn reload(jtbl, url?, queryParams?) 
 */
 self.reload = reload;
 function reload(jtbl, url, queryParams)
@@ -3713,7 +3789,7 @@ function reload(jtbl, url, queryParams)
 }
 
 /** 
-@fn WUI.reloadTmp(jtbl, url?, queryParams?) 
+@fn reloadTmp(jtbl, url?, queryParams?) 
 临时reload一下，完事后恢复原url
 */
 self.reloadTmp = reloadTmp;
@@ -3780,7 +3856,7 @@ function jdListToArray(data)
 }
 
 /** 
-@fn WUI.reloadRow(jtbl, rowData)
+@fn reloadRow(jtbl, rowData)
 @param rowData must be the original data from table row
  */
 self.reloadRow = reloadRow;
@@ -3885,7 +3961,7 @@ function getModulePath(file)
 }
 
 /** 
-@fn WUI.showPage(pageName, title?, paramArr?)
+@fn showPage(pageName, title?, paramArr?)
 @param pageName 由page上的class指定。
 @param title? 如果未指定，则使用page上的title属性.
 @param paramArr? 调用initfn时使用的参数，是一个数组。
@@ -4010,7 +4086,7 @@ function showPage(pageName, title, paramArr)
 }
 
 /**
-@fn WUI.closeDlg(jdlg) 
+@fn closeDlg(jdlg) 
 */
 self.closeDlg = closeDlg;
 function closeDlg(jdlg)
@@ -4070,7 +4146,7 @@ $.fn.okCancel = function (fnOk, fnCancel) {
 }
 
 /**
-@fn WUI.showDlg(jdlg, opt?)
+@fn showDlg(jdlg, opt?)
 
 @param jdlg 可以是jquery对象，也可以是selector字符串或DOM对象，比如 "#dlgOrder". 注意：当对话框保存为单独模块时，jdlg=$("#dlgOrder") 一开始会为空数组，这时也可以调用该函数，且调用后jdlg会被修改为实际加载的对话框对象。
 @param opt?={url, buttons, noCancel=false, okLabel="确定", cancelLabel="取消", modal=true, reset=true, validate=true, data, onOk, onSubmit, onAfterSubmit}
@@ -4220,7 +4296,7 @@ function showDlg(jdlg, opt)
 }
 
 /**
-@fn WUI.getTopDialog()
+@fn getTopDialog()
 
 取处于最上层的对话框。如果没有，返回jo.size() == 0
 */
@@ -4240,7 +4316,7 @@ function getTopDialog()
 }
 
 /**
-@fn WUI.unloadPage(pageName?)
+@fn unloadPage(pageName?)
 
 @param pageName 如未指定，表示当前页。
 
@@ -4266,7 +4342,7 @@ function unloadPage(pageName)
 }
 
 /**
-@fn WUI.reloadPage()
+@fn reloadPage()
 
 重新加载当前页面。一般用于开发过程，在修改外部逻辑页后，调用该函数可刷新页面。
 */
@@ -4279,8 +4355,8 @@ function reloadPage()
 }
 
 /**
-@fn WUI.unloadDialog()
-@alias WUI.reloadDialog
+@fn unloadDialog()
+@alias reloadDialog
 
 删除当前激活的对话框。一般用于开发过程，在修改外部对话框后，调用该函数清除以便此后再载入页面，可以看到更新的内容。
 
@@ -4432,7 +4508,7 @@ function loadDialog(jdlg, onLoad)
 }
 
 /**
-@fn WUI.showObjDlg(jdlg, mode, opt?={jtbl, id})
+@fn showObjDlg(jdlg, mode, opt?={jtbl, id})
 
 @param jdlg 可以是jquery对象，也可以是selector字符串或DOM对象，比如 "#dlgOrder". 注意：当对话框保存为单独模块时，jdlg=$("#dlgOrder") 一开始会为空数组，这时也可以调用该函数，且调用后jdlg会被修改为实际加载的对话框对象。
 
@@ -4440,7 +4516,7 @@ function loadDialog(jdlg, onLoad)
 @param opt.jdbl Datagrid. dialog/form关联的datagrid -- 如果dlg对应多个tbl, 必须每次打开都设置
 
 事件参考：
-@see WUI.showDlg
+@see showDlg
 */
 self.showObjDlg = showObjDlg;
 function showObjDlg(jdlg, mode, opt)
@@ -4626,7 +4702,7 @@ function showObjDlg(jdlg, mode, opt)
 }
 
 /**
-@fn WUI.dg_toolbar(jtbl, jdlg, button_lists...)
+@fn dg_toolbar(jtbl, jdlg, button_lists...)
 
 @param jdlg 可以是对话框的jquery对象，或selector如"#dlgOrder".
 
@@ -4674,7 +4750,7 @@ function showObjDlg(jdlg, mode, opt)
 	}
 
 如果想自行定义导出行为参数，可以参考WUI.getExportHandler
-@see WUI.getExportHandler 导出按钮设置
+@see getExportHandler 导出按钮设置
 */
 self.dg_toolbar = dg_toolbar;
 function dg_toolbar(jtbl, jdlg)
@@ -4728,7 +4804,7 @@ function dg_toolbar(jtbl, jdlg)
 }
 
 /**
-@fn WUI.dg_dblclick(jtbl, jdlg)
+@fn dg_dblclick(jtbl, jdlg)
 
 @param jdlg 可以是对话框的jquery对象，或selector如"#dlgOrder".
 
@@ -4780,7 +4856,7 @@ function enhanceAnchor(jo)
 }
 
 /**
-@fn WUI.getExportHandler(jtbl, ac?, param?={})
+@fn getExportHandler(jtbl, ac?, param?={})
 
 为数据表添加导出Excel菜单，如：
 
@@ -4797,7 +4873,7 @@ function enhanceAnchor(jo)
 
 注意：由于分页机制影响，会设置参数{pagesz: -1}以便在一页中返回所有数据，而实际一页能导出的最大数据条数取决于后端设置（默认1000，参考后端文档 AccessControl::$maxPageSz）。
 
-@see WUI.getQueryParamFromTable 获取datagrid的当前查询参数
+@see getQueryParamFromTable 获取datagrid的当前查询参数
 */
 self.getExportHandler = getExportHandler;
 function getExportHandler(jtbl, ac, param)
@@ -4822,15 +4898,15 @@ function getExportHandler(jtbl, ac, param)
 }
 
 /**
-@fn WUI.getQueryParamFromTable(jtbl, param?)
-@alias WUI.getParamFromTable
+@fn getQueryParamFromTable(jtbl, param?)
+@alias getParamFromTable
 
 根据数据表当前设置，获取查询参数。
 可能会设置{cond, orderby, res}参数。
 
 res参数从列设置中获取，如"id 编号,name 姓名", 特别地，如果列对应字段以"_"结尾，不会加入res参数。
 
-@see WUI.getExportHandler 导出Excel
+@see getExportHandler 导出Excel
 */
 self.getQueryParamFromTable = self.getParamFromTable = getQueryParamFromTable;
 function getQueryParamFromTable(jtbl, param)
@@ -4910,7 +4986,7 @@ var Formatter = {
 };
 
 /**
-@var WUI.formatter = {dt, number, pics, flag(yes?=是,no?=否), enum(enumMap), linkTo(field, dlgRef) }
+@var formatter = {dt, number, pics, flag(yes?=是,no?=否), enum(enumMap), linkTo(field, dlgRef) }
 
 常常应用定义Formatter变量来扩展WUI.formatter，如
 
@@ -5271,7 +5347,7 @@ window.FormMode = {
 };
 
 /**
-@var WUI.options
+@var options
 
 {appName=user, title="客户端", onShowLogin, pageHome="pageHome", pageFolder="page"}
 
@@ -5311,7 +5387,7 @@ function parseArgs()
 parseArgs();
 
 /**
-@fn WUI.app_alert(msg, [type?=i], [fn?], opt?={timeoutInterval?, defValue?, onCancel()?})
+@fn app_alert(msg, [type?=i], [fn?], opt?={timeoutInterval?, defValue?, onCancel()?})
 @param type 对话框类型: "i": info, 信息提示框; "e": error, 错误框; "w": warning, 警告框; "q"(与app_confirm一样): question, 确认框(会有"确定"和"取消"两个按钮); "p": prompt, 输入框
 @param fn Function(text?) 回调函数，当点击确定按钮时调用。当type="p" (prompt)时参数text为用户输入的内容。
 @param opt Object. 可选项。 timeoutInterval表示几秒后自动关闭对话框。defValue用于输入框(type=p)的缺省值.
@@ -5473,7 +5549,7 @@ function deleteLoginToken()
 }
 
 /**
-@fn WUI.tryAutoLogin(onHandleLogin, reuseCmd?)
+@fn tryAutoLogin(onHandleLogin, reuseCmd?)
 
 @param onHandleLogin Function(data). 调用后台login()成功后的回调函数(里面使用this为ajax options); 可以直接使用WUI.handleLogin
 @param reuseCmd String. 当session存在时替代后台login()操作的API, 如"User.get", "Employee.get"等, 它们在已登录时返回与login相兼容的数据. 因为login操作比较重, 使用它们可减轻服务器压力. 
@@ -5533,7 +5609,7 @@ function tryAutoLogin(onHandleLogin, reuseCmd)
 }
 
 /**
-@fn WUI.handleLogin(data)
+@fn handleLogin(data)
 @param data 调用API "login"成功后的返回数据.
 
 处理login相关的操作, 如设置g_data.userInfo, 保存自动登录的token等等.
@@ -5553,7 +5629,7 @@ function handleLogin(data)
 
 // ------ plugins {{{
 /**
-@fn WUI.initClient()
+@fn initClient()
 */
 self.initClient = initClient;
 var plugins_ = {};
@@ -5592,9 +5668,9 @@ window.Plugins = {
 //}}}
 
 /**
-@fn WUI.setApp(opt)
+@fn setApp(opt)
 
-@see WUI.options
+@see options
 
 TODO: remove. use $.extend instead.
 */
@@ -5605,7 +5681,7 @@ function setApp(app)
 }
 
 /**
-@fn WUI.logout(dontReload?=0)
+@fn logout(dontReload?=0)
 @param dontReload 如果非0, 则注销后不刷新页面.
 
 注销当前登录, 成功后刷新页面(除非指定dontReload=1)
@@ -5622,7 +5698,7 @@ function logout(dontReload)
 }
 
 /**
-@fn WUI.tabClose(idx?)
+@fn tabClose(idx?)
 
 关闭指定idx的标签页。如果未指定idx，则关闭当前标签页.
 */
@@ -5637,7 +5713,7 @@ function tabClose(idx)
 }
 
 /**
-@fn WUI.getActivePage()
+@fn getActivePage()
 
 返回当前激活的逻辑页jpage，注意可能为空: jpage.size()==0。
 */
@@ -5650,7 +5726,7 @@ function getActivePage()
 }
 
 /**
-@fn MUI.showLoading()
+@fn showLoading()
 */
 self.showLoading = showLoading;
 function showLoading()
@@ -5663,7 +5739,7 @@ function showLoading()
 }
 
 /**
-@fn MUI.hideLoading()
+@fn hideLoading()
 */
 self.hideLoading = hideLoading;
 function hideLoading()
@@ -5674,7 +5750,7 @@ function hideLoading()
 function mainInit()
 {
 /**
-@var WUI.tabMain
+@var tabMain
 
 标签页组件。为jquery-easyui的tabs插件，可以参考easyui文档调用相关命令进行操作，如关闭当前Tab：
 
@@ -5758,8 +5834,9 @@ $.each([
 // ====== WEBCC_BEGIN_FILE jquery-mycombobox.js {{{
 // ====== jquery plugin: mycombobox {{{
 /**
-@fn jQuery.fn.mycombobox(force?=false)
+@module jquery-mycombobox
 
+@fn jQuery.fn.mycombobox(force?=false)
 @key .my-combobox 关联选择框
 @var ListOptions 定义关联选择框的数据源
 
@@ -5978,6 +6055,8 @@ function mycombobox(force)
 				});
 			}
 
+			if (opts.url == null)
+				return;
 			if (opts.dirty || m_dataCache[opts.url] === undefined) {
 				self.callSvr(opts.url, onLoadOptions);
 			}
