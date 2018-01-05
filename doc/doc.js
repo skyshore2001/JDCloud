@@ -1,61 +1,34 @@
-function each(a, fn)
+function addClass(o, c)
 {
-	for (var i=0; i<a.length; ++i) {
-		if (fn(i, a[i]) === false)
-			return;
+	if (o.classList) {
+		o.classList.add(c);
+	}
+	else {
+		var c0 = o.getAttribute("class");
+		if (c0)
+			o.setAttribute("class", c0 + " " + c);
+		else
+			o.setAttribute("class", c);
 	}
 }
 
 function initLayout() 
 {
-	var menu = document.getElementsByClassName("toc")[0];
-	if (menu == null || menu.querySelectorAll("ul li").length == 0)
+	// for pandoc(markdown) or vimwiki
+	var menu = document.querySelector(".toc");
+	if (menu == null || menu.querySelector("ul li") == null)
 		return;
-	menu.id = "menu";
-	menu.remove();
 
-	var main = document.createElement("div");
-	main.id = "main";
-
-	document.body.id="layout";
-	var html = document.body.parentElement;
-	html.style.height ="100%";
-	html.style.overflow ="hidden"; //html
-
-	var arr = [];
-	each(document.body.children, function (i, e) {
-		arr.push(e);
-	});
-	each(arr, function (i, e) {
-		main.appendChild(e);
-	});
-
-	document.body.appendChild(menu);
-	document.body.appendChild(main);
-	window.onhashchange = onHashChange;
-	if (location.hash) {
-		onHashChange();
+	if (document.querySelector("meta[name=viewport]") == null) {
+		var o = document.createElement("meta");
+		o.setAttribute("name", "viewport");
+		o.setAttribute("content", "width=device-width, initial-scale=1");
+		var head = document.querySelector("head");
+		head.appendChild(o);
 	}
-
-	function onHashChange() {
-		var y = 0;
-		var hash = decodeURIComponent(location.hash);
-		if (hash.length > 1) {
-			var o = document.getElementById(hash.substr(1));
-			if (o != null)
-				y = o.offsetTop;
-		}
-		main.scrollTo(0, y);
-	}
+	addClass(menu, "jd-menu");
+	addClass(document.body, "jd-layout");
 }
 
-function applyLayout()
-{
-	if (! document.head)
-		return;
-	if (! document.head.style.hasOwnProperty("flex"))
-		return;
+window.onload = initLayout;
 
-	window.onload = initLayout;
-}
-applyLayout();

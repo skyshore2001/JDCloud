@@ -1,59 +1,33 @@
-function each(a, fn)
+function addClass(o, c)
 {
-	for (var i=0; i<a.length; ++i) {
-		if (fn(i, a[i]) === false)
-			return;
+	if (o.classList) {
+		o.classList.add(c);
+	}
+	else {
+		var c0 = o.getAttribute("class");
+		if (c0)
+			o.setAttribute("class", c0 + " " + c);
+		else
+			o.setAttribute("class", c);
 	}
 }
 
 // for jdcloud-gendoc
 function initLayout() 
 {
-	document.body.id="layout";
-	var html = document.body.parentElement;
-	html.style.height ="100%";
-	html.style.overflow ="hidden";
-
-	var main = document.createElement("div");
-	main.id = "main";
-
 	var menu = document.getElementById("menu");
-
-	var arr = [];
-	each(document.body.children, function (i, e) {
-		if (e.id == "menu")
-			return;
-		arr.push(e);
-	});
-	each(arr, function (i, e) {
-		main.appendChild(e);
-	});
-
-	document.body.appendChild(main);
-	window.onhashchange = onHashChange;
-	if (location.hash) {
-		onHashChange();
-	}
-
-	function onHashChange() {
-		var y = 0;
-		var hash = decodeURIComponent(location.hash);
-		if (hash.length > 1) {
-			var o = document.getElementById(hash.substr(1));
-			if (o != null)
-				y = o.offsetTop;
-		}
-		main.scrollTo(0, y);
-	}
-}
-
-function applyLayout()
-{
-	if (! document.head)
-		return;
-	if (! document.head.style.hasOwnProperty("flex"))
+	if (menu == null || menu.querySelector("p") == null)
 		return;
 
-	window.onload = initLayout;
+	if (document.querySelector("meta[name=viewport]") == null) {
+		var o = document.createElement("meta");
+		o.setAttribute("name", "viewport");
+		o.setAttribute("content", "width=device-width, initial-scale=1");
+		var head = document.querySelector("head");
+		head.appendChild(o);
+	}
+	addClass(menu, "jd-menu");
+	addClass(document.body, "jd-layout");
 }
-applyLayout();
+
+window.onload = initLayout;
