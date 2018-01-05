@@ -43,10 +43,7 @@
 <li><a href="#交互接口设计"><span class="toc-section-number">3</span> 交互接口设计</a><ul>
 <li><a href="#客户端"><span class="toc-section-number">3.1</span> 客户端</a><ul>
 <li><a href="#用户信息修改"><span class="toc-section-number">3.1.1</span> 用户信息修改</a></li>
-<li><a href="#订单管理"><span class="toc-section-number">3.1.2</span> 订单管理</a><ul>
-<li><a href="#添加订单"><span class="toc-section-number">3.1.2.1</span> 添加订单</a></li>
-<li><a href="#查看订单"><span class="toc-section-number">3.1.2.2</span> 查看订单</a></li>
-</ul></li>
+<li><a href="#订单管理"><span class="toc-section-number">3.1.2</span> 订单管理</a></li>
 </ul></li>
 <li><a href="#员工端后台管理端"><span class="toc-section-number">3.2</span> 员工端/后台管理端</a><ul>
 <li><a href="#员工管理"><span class="toc-section-number">3.2.1</span> 员工管理</a></li>
@@ -161,12 +158,10 @@ CL:: Close (订单结算)</code></pre>
 <h3 id="客户端"><span class="header-section-number">3.1</span> 客户端</h3>
 <p>app类型为&quot;user&quot;.</p>
 <h4 id="用户信息修改"><span class="header-section-number">3.1.1</span> 用户信息修改</h4>
-<pre><code>User.set([id])(fields...)</code></pre>
-<p>字段fields请参考&quot;User&quot;表定义. 原理请参考<a href="doc/后端框架.html#通用对象接口">后端框架-通用对象接口</a>。</p>
-<p>应用逻辑： - 用户id可缺省，一般不用赋值 - 以下字段不允许修改：phone, pwd - 不允许User.add/del操作</p>
-<p><strong>[应用逻辑]</strong></p>
+<pre><code>User.set()(name, ...)</code></pre>
 <ul>
-<li>AUTH_USER</li>
+<li>权限: AUTH_USER</li>
+<li>可修改字段参考User表。注意不可修改字段: uname, phone, pwd, createTm.</li>
 </ul>
 <p><strong>[示例]</strong></p>
 <p>上传一个头像并设置到该用户：</p>
@@ -174,76 +169,53 @@ CL:: Close (订单结算)</code></pre>
 (得到thumbId)
 
 User.set()(pidId={thumbId})</code></pre>
-<p>更新用户手机号：</p>
-<pre><code>User.set()(phone=18912345678)</code></pre>
 <h4 id="订单管理"><span class="header-section-number">3.1.2</span> 订单管理</h4>
-<p>使用Ordr.add/set/query/get方法添加、修改、查询和查看订单。 不允许删除订单（可以取消）。</p>
-<p>注: 订单状态定义请在本文档内搜索OrderStatus.</p>
-<h5 id="添加订单"><span class="header-section-number">3.1.2.1</span> 添加订单</h5>
-<pre><code>Ordr.add()(Ordr表字段) -&gt; id</code></pre>
-<p>应用逻辑：</p>
+<pre><code>添加订单
+Ordr.add()(Ordr表字段) -&gt; id
+
+查看订单
+Ordr.query/get() -&gt; tbl(id, status, ..., @orderLog?)</code></pre>
 <ul>
 <li>权限: AUTH_USER</li>
 <li>添加订单后, 订单状态为&quot;CR&quot;; 且在OrderLog中添加一条创建记录(action=CR)</li>
+<li>不允许删除订单（可以取消）。</li>
 </ul>
-<p><strong>[参数]</strong></p>
-<p><strong>[返回]</strong></p>
-<p>操作成功时返回新添加的订单id.</p>
-<p><strong>[示例]</strong></p>
-<h5 id="查看订单"><span class="header-section-number">3.1.2.2</span> 查看订单</h5>
-<pre><code>Ordr.query() -&gt; tbl(id, status, ...)
-Ordr.get(id) -&gt; {id, status, ..., @orderLog, @atts}</code></pre>
-<p>用<code>Ordr.query</code>取用户所有订单概要; 用<code>Ordr.get</code>取订单主表字段及其相关子表.</p>
-<p><strong>[应用逻辑]</strong></p>
-<ul>
-<li>AUTH_USER</li>
-</ul>
-<p><strong>[参数]</strong></p>
 <dl>
 <dt>id</dt>
 <dd>Integer. 订单编号
 </dd>
-</dl>
-<p><strong>[返回]</strong></p>
-<p>主表返回字段请查询表定义&quot;<span class="citation">@Ordr</span>&quot;。</p>
-<dl>
 <dt><span class="citation">@orderLog</span></dt>
-<dd>Array(OrderLog). 日志子表, 包含订单创建时间等内容, 字段详细请查询表定义&quot;<span class="citation">@OrderLog</span>&quot;.
-</dd>
-<dt><span class="citation">@atts</span></dt>
-<dd>Array(Att). 订单关联图片的子表. 字段为 {id, attId}. 根据attId取图片.
+<dd>[{id, action, dscr, ...}]. 日志子表, 详见表定义&quot;<span class="citation">@OrderLog</span>&quot;.
 </dd>
 </dl>
 <h3 id="员工端后台管理端"><span class="header-section-number">3.2</span> 员工端/后台管理端</h3>
 <p>本节API需要员工登录权限。 app类型为&quot;emp&quot;.</p>
 <h4 id="员工管理"><span class="header-section-number">3.2.1</span> 员工管理</h4>
-<pre><code>Employee.get(id?)
+<pre><code>Employee.query()
+Employee.get(id?)
 Employee.set(id?)(POST fields)</code></pre>
-<p>如果不指定id, 则操作当前登录的员工. 如果指定id:</p>
 <ul>
-<li>如果是 AUTH_EMP 权限, 则id必须与当前登录的empId一致(否则应报错);</li>
-<li><p>如果是 PERM_MGR 权限, 则不限id.</p>
-<p>Employee.query()</p></li>
-<li>AUTH_EMP权限只能获取当前登录的员工;</li>
-<li><p>PERM_MGR权限可获取所有的员工;</p>
-<p>Employee.add()(POST fields) Employee.del(id?)</p></li>
-<li>仅PERM_MGR权限可用.</li>
-<li><p>当Employee被其它对象（如Ordr）引用时，不允许删除，只能做禁用等其它处理。</p></li>
+<li>权限: AUTH_EMP</li>
+<li>get/set操作如果不指定id, 则操作当前登录的员工。仅当具有 PERM_MGR 权限时, 可任意指定id.</li>
+<li>query操作：如果没有PERM_MGR权限只能获取当前登录的员工，否则可获取所有的员工。</li>
+</ul>
+<p>以下仅当PERM_MGR权限可用：</p>
+<pre><code>Employee.add()(POST fields)
+Employee.del(id?)</code></pre>
+<ul>
+<li>当Employee被其它对象（如Ordr）引用时，不允许删除，只能做禁用等其它处理。</li>
 </ul>
 <h4 id="订单管理-1"><span class="header-section-number">3.2.2</span> 订单管理</h4>
 <p>查看订单</p>
-<pre><code>Ordr.query() -&gt; tbl(id, status, 参考Ordr表字段...)
-Ordr.get(id) -&gt; { 同query字段 }</code></pre>
+<pre><code>Ordr.query() -&gt; tbl(id, status, ..., @orderLog?)
+Ordr.get(id) -&gt; { 同上字段 }</code></pre>
 <p>完成订单或取消订单</p>
 <pre><code>Ordr.set(id)(status=RE)
 Ordr.set(id)(status=CA)</code></pre>
 <ul>
+<li>权限：AUTH_EMP</li>
 <li>订单状态必须为&quot;CR&quot;才能完成或取消.</li>
-<li>应生成相应订单日志(OrderLog).</li>
-</ul>
-<p><strong>[应用逻辑]</strong></p>
-<ul>
-<li>AUTH_EMP</li>
+<li>更新操作应生成相应订单日志(OrderLog).</li>
 </ul>
 <h3 id="超级管理端"><span class="header-section-number">3.3</span> 超级管理端</h3>
 <p>本节API需要超级管理员权限.</p>
