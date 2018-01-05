@@ -32,10 +32,20 @@ function initLayout()
 
 	document.body.appendChild(menu);
 	document.body.appendChild(main);
+	window.onhashchange = onHashChange;
 	if (location.hash) {
-		var h = location.hash;
-		location.hash = "";
-		location.hash = h; // 强制跳转下
+		onHashChange();
+	}
+
+	function onHashChange() {
+		var y = 0;
+		var hash = decodeURIComponent(location.hash);
+		if (hash.length > 1) {
+			var o = document.getElementById(hash.substr(1));
+			if (o != null)
+				y = o.offsetTop;
+		}
+		main.scrollTo(0, y);
 	}
 }
 

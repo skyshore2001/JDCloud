@@ -37,7 +37,7 @@ function initLayout()
 
 	function onHashChange() {
 		var y = 0;
-		var hash = location.hash;
+		var hash = decodeURIComponent(location.hash);
 		if (hash.length > 1) {
 			var o = document.getElementById(hash.substr(1));
 			if (o != null)
