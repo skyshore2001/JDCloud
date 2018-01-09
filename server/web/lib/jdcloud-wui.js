@@ -3737,10 +3737,12 @@ var mCommon = jdModule("jdcloud.common");
 
 mCommon.assert($.fn.combobox, "require jquery-easyui lib.");
 
+// TODO: remove.
 // dlg中与数据库表关联的字段的name应以_开头，故调用add_转换；
 // 但如果字段名中间有"__"表示非关联到表的字段，不做转换，这之后该字段不影响数据保存。
 function add_(o)
 {
+	// return $.extend(true, {}, o);
 	var ret = {};
 	for (var k in o) {
 		if (k.indexOf("__") < 0)
@@ -4165,7 +4167,10 @@ hidden上的特殊property noReset: (TODO)
 
 @key beforeshow Function(ev, formMode)  form显示前事件.
 @key show Function(ev, formMode)  form显示事件.
-@key initdata Function(ev, data, formMode) form加载数据前，可修改要加载的数据即data
+
+以下formMode可能为FormMode.forAdd/forSet/forLink; 查找/删除模式不触发:
+
+@key initdata Function(ev, data, formMode) form加载数据前，可修改要加载的数据即data.
 @key loaddata Function(ev, data, formMode) form加载数据后，一般用于将服务端数据转为界面显示数据
 @key savedata Function(ev, formMode, initData) form提交前事件，用于将界面数据转为提交数据. 返回false或调用ev.preventDefault()可阻止form提交。
 @key retdata Function(ev, data, formMode) form提交后事件，用于处理返回数据
@@ -4245,7 +4250,8 @@ function showDlg(jdlg, opt)
 	if (opt.data)
 	{
 		jfrm.trigger("initdata", [opt.data, formMode]);
-		jfrm.form("load", opt.data);
+		//jfrm.form("load", opt.data);
+		mCommon.setFormData(jfrm, opt.data, {setOrigin:true});
 		jfrm.trigger("loaddata", [opt.data, formMode]);
 // 		// load for jquery-easyui combobox
 // 		// NOTE: depend on jeasyui implementation. for ver 1.4.2.
@@ -4405,38 +4411,6 @@ function getFindData(jfrm)
 	if (kvList2) 
 		$.extend(param, kvList2);
 	return param;
-}
-
-function saveFormFields(jfrm, data)
-{
-	jfrm.jdata().init_data = $.extend(true, {}, data); // clone(data);
-}
-
-function checkFormFields(jfrm)
-{
-	var jd = jfrm.jdata();
-	jd.no_submit = [];
-	jfrm.find(":input[name]").each(function (i,o) {
-		var jo = $(o);
-		var initval = jd.init_data[o.name];
-		if (initval === undefined || initval === null)
-			initval = "";
-		if (jo.prop("disabled") || jo.val() !== String(initval))
-			return;
-		jo.prop("disabled", true);
-		jd.no_submit.push(jo);
-	});
-}
-
-function restoreFormFields(jfrm)
-{
-	var jd = jfrm.jdata();
-	if (jd.no_submit == null)
-		return;
-	$.each(jd.no_submit, function(i,jo) {
-		jo.prop("disabled", false);
-	})
-	delete jd.no_submit;
 }
 
 /*
@@ -4638,8 +4612,6 @@ function showObjDlg(jdlg, mode, opt)
 	}
 	else if (mode == FormMode.forSet && rowData) {
 		load_data = add_(rowData);
-		
-		saveFormFields(jfrm, load_data);
 	}
 	else if (mode == FormMode.forLink || mode == FormMode.forSet) {
 		var load_url = self.makeUrl([obj, 'get'], {id: id});
@@ -4647,7 +4619,6 @@ function showObjDlg(jdlg, mode, opt)
 		if (data == null)
 			return;
 		load_data = add_(data);
-		saveFormFields(jfrm, load_data);
 	}
 	// open the dialog
 	showDlg(jdlg, {
@@ -4657,10 +4628,7 @@ function showObjDlg(jdlg, mode, opt)
 		modal: false,  // mode == FormMode.forAdd || mode == FormMode.forSet
 		reset: doReset,
 		data: load_data,
-		onOk: onOk,
-
-		onSubmit: (mode == FormMode.forSet || mode == FormMode.forLink) && checkFormFields,
-		onAfterSubmit: (mode == FormMode.forSet || mode == FormMode.forLink) && restoreFormFields
+		onOk: onOk
 	});
 
 	if (mode == FormMode.forSet || mode == FormMode.forLink)
