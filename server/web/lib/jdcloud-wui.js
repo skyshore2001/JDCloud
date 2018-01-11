@@ -2405,14 +2405,20 @@ function getop(v)
 - {key: ">value and <=value"}  - 表示"key>'value' and key<='value'"
 - {key: "null or 0 or 1"}  - 表示"key is null or key=0 or key=1"
 - {key: "null,0,1,9-100"} - 表示"key is null or key=0 or key=1 or (key>=9 and key<=100)"，即逗号表示or，a-b的形式只支持数值。
+- {key: "2017-9-1~2017-10-1"} 条件等价于 ">=2017-9-1 and <2017-10-1"
+  若指定时间应加"T"，如条件"2017-9-1T10:00~2017-10-1"等价于">=2017-9-1 10:00 and <2017-10-1"
 
 以下表示的范围相同：
 
 	{k1:'1-5,7-10', k2:'1-10 and <>6'}
 
-符号优先级依次为：-(and) ,(or) and or
+符号优先级依次为："-"(类似and) ","(类似or) and or
 
 在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。
+
+其它：
+
+- 支持中文逗号
 
 @see getQueryParam
 @see getQueryParamFromTable 获取datagrid的当前查询参数
@@ -2442,7 +2448,9 @@ function getQueryCond(kvList)
 				bracket = true;
 				return;
 			}
+			v1 = v1.replace(/，/g, ',');
 			// a-b,c-d,e
+			// dt1~dt2
 			var str1 = '';
 			var bracket2 = false;
 			$.each(v1.split(/\s*,\s*/), function (j, v2) {
@@ -2450,9 +2458,14 @@ function getQueryCond(kvList)
 					str1 += " OR ";
 					bracket2 = true;
 				}
-				var m = v2.match(/^(\d+)-(\d+)$/);
+				var m = v2.match(/^(?:(\d+)-(\d+)|(\d{4}-\d+-\d+(?:T.*)?)~(\d{4}-\d+-\d+(?:T.*)?))$/i);
 				if (m) {
-					str1 += "(" + k + ">=" + m[1] + " AND " + k + "<=" + m[2] + ")";
+					if (m[1]) {
+						str1 += "(" + k + ">=" + m[1] + " AND " + k + "<=" + m[2] + ")";
+					}
+					else {
+						str1 += "(" + k + ">='" + m[3] + "' AND " + k + "<'" + m[4] + "')";
+					}
 				}
 				else {
 					str1 += k + getop(v2);
