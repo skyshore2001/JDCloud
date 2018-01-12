@@ -2342,9 +2342,12 @@ function getop(v)
 		return "=" + v;
 	var op = "=";
 	var is_like=false;
-	if (v.match(/^(<>|>=?|<=?)/)) {
-		op = RegExp.$1;
+	var ms;
+	if (ms=v.match(/^(<>|>=?|<=?|!=?)/)) {
+		op = ms[1];
 		v = v.substr(op.length);
+		if (op == "!" || op == "!=")
+			op = "<>";
 	}
 	else if (v.indexOf("*") >= 0 || v.indexOf("%") >= 0) {
 		v = v.replace(/[*]/g, "%");
@@ -2372,6 +2375,7 @@ function getop(v)
 
 /**
 @fn getQueryCond(kvList)
+@var queryHint 查询用法提示
 
 @param kvList {key=>value}, 键值对，值中支持操作符及通配符。也支持格式 [ [key, value] ], 这时允许key有重复。
 
@@ -2395,7 +2399,7 @@ function getop(v)
 设置值时，支持以下格式：
 
 - {key: "value"} - 表示"key=value"
-- {key: ">value"} - 表示"key>value", 类似地，可以用 >=, <, <=, <> 这些操作符。
+- {key: ">value"} - 表示"key>value", 类似地，可以用 >=, <, <=, <>(或! / != 都是不等于) 这些操作符。
 - {key: "value*"} - 值中带通配符，表示"key like 'value%'" (以value开头), 类似地，可以用 "*value", "*value*", "*val*ue"等。
 - {key: "null" } - 表示 "key is null"。要表示"key is not null"，可以用 "<>null".
 - {key: "empty" } - 表示 "key=''".
@@ -2406,7 +2410,9 @@ function getop(v)
 - {key: "null or 0 or 1"}  - 表示"key is null or key=0 or key=1"
 - {key: "null,0,1,9-100"} - 表示"key is null or key=0 or key=1 or (key>=9 and key<=100)"，即逗号表示or，a-b的形式只支持数值。
 - {key: "2017-9-1~2017-10-1"} 条件等价于 ">=2017-9-1 and <2017-10-1"
-  若指定时间应加"T"，如条件"2017-9-1T10:00~2017-10-1"等价于">=2017-9-1 10:00 and <2017-10-1"
+  可指定时间，如条件"2017-9-1 10:00~2017-10-1"等价于">=2017-9-1 10:00 and <2017-10-1"
+- 符号","及"~"前后允许有空格，如"已付款, 已完成", "2017-1-1 ~ 2018-1-1"
+- 可以使用中文逗号
 
 以下表示的范围相同：
 
@@ -2416,13 +2422,15 @@ function getop(v)
 
 在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。
 
-其它：
-
-- 支持中文逗号
-
 @see getQueryParam
 @see getQueryParamFromTable 获取datagrid的当前查询参数
 */
+self.queryHint = "查询示例\n" +
+	"文本：\"王小明\", \"王*\"(匹配开头), \"*上海*\"(匹配部分)\n" +
+	"数字：\"5\", \">5\", \"5-10\", \"5-10,12,18\"\n" +
+	"日期：\">=2017-10-1\", \"<2017-10-1 18:00\",\"2017-10-1~2017-11-1\"\n" +
+	"高级：\"!5\"(排除5),\"1-10 and !5\", \"王*,张*\"(王某或张某), \"empty\"(为空), \"0,null\"(0或未设置)\n";
+
 self.getQueryCond = getQueryCond;
 function getQueryCond(kvList)
 {
@@ -2458,7 +2466,7 @@ function getQueryCond(kvList)
 					str1 += " OR ";
 					bracket2 = true;
 				}
-				var m = v2.match(/^(?:(\d+)-(\d+)|(\d{4}-\d+-\d+(?:T.*)?)~(\d{4}-\d+-\d+(?:T.*)?))$/i);
+				var m = v2.match(/^(?:(\d+)-(\d+)|(\d{4}-\d+-\d+.*?)\s*~\s*(\d{4}-\d+-\d+.*))$/);
 				if (m) {
 					if (m[1]) {
 						str1 += "(" + k + ">=" + m[1] + " AND " + k + "<=" + m[2] + ")";
@@ -4581,6 +4589,7 @@ function showObjDlg(jdlg, mode, opt)
 			var bak = je.jdata().bak = {
 				bgcolor: je.css("backgroundColor"),
 				disabled: je.prop("disabled"),
+				title: je.prop("title"),
 				type: null
 			}
 			if (je.hasClass("notForFind") || je.attr("notForFind") != null) {
@@ -4590,6 +4599,7 @@ function showObjDlg(jdlg, mode, opt)
 			else {
 				je.prop("disabled", false);
 				je.css("backgroundColor", "#ffff00"); // "yellow";
+				je.prop("title", self.queryHint);
 				var type = je.attr("type");
 				if (type && ["number", "date", "time", "datetime"].indexOf(type) >= 0) {
 					bak.type = type;
@@ -4605,6 +4615,7 @@ function showObjDlg(jdlg, mode, opt)
 			var bak = je.jdata().bak;
 			je.prop("disabled", bak.disabled);
 			je.css("backgroundColor", bak.bgcolor);
+			je.prop("hint", bak.hint);
 			if (bak.type) {
 				je.attr("type", bak.type);
 			}
