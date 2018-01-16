@@ -4273,7 +4273,8 @@ function showDlg(jdlg, opt)
 	{
 		jfrm.trigger("initdata", [opt.data, formMode]);
 		//jfrm.form("load", opt.data);
-		mCommon.setFormData(jfrm, opt.data, {setOrigin:true});
+		var setOrigin = (formMode == FormMode.forSet || formMode == FormMode.forLink);
+		mCommon.setFormData(jfrm, opt.data, {setOrigin: setOrigin});
 		jfrm.trigger("loaddata", [opt.data, formMode]);
 // 		// load for jquery-easyui combobox
 // 		// NOTE: depend on jeasyui implementation. for ver 1.4.2.
