@@ -1519,7 +1519,11 @@ function KVtoCond($k, $v)
 				$firstCol = false;
 			else
 				echo ',';
-			if ($enc) {
+			// 大数字，避免excel用科学计数法显示
+			if (preg_match('/^[\d\.]{5,}$/', $e)) {
+				$e .= "\t";
+			}
+			else if ($enc) {
 				$e = iconv("UTF-8", "{$enc}//IGNORE" , (string)$e);
 			}
 			echo '"', str_replace('"', '""', $e), '"';
