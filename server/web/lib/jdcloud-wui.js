@@ -5715,6 +5715,8 @@ self.getActivePage = getActivePage;
 function getActivePage()
 {
 	var pp = self.tabMain.tabs('getSelected');   
+	if (pp == null)
+		return $();
 	var jpage = pp.find(".wui-page");
 	return jpage;
 }
