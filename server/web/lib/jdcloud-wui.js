@@ -647,6 +647,38 @@ OrderStatusMap在代码中定义如下
 
 这时，就可以用 WUI.showObjDlg("#dlgOrder")来显示逻辑页了。
 
+### 页面模板支持
+
+定义一个逻辑页面，可以在#my-pages下直接定义，也可以在单独的文件中定义，还可以在一个模板中定义，如：
+
+	<script type="text/html" id="tpl_pageOrder">
+	<div class="pageOrder" title="订单管理" my-initfn="initPageOrder">
+	...
+	</div>
+	</script>
+
+模板用script标签定义，其id属性必须命名为`tpl_{逻辑页面名}`。
+这样就定义了逻辑页pageOrder，且在用到时才加载。与从外部文件加载类似，可以不设置class="pageOrder"，框架会自动处理。
+
+定义对话框也类似：
+
+	<script type="text/html" id="tpl_dlgOrder">
+	<div id="dlgOrder" my-obj="Ordr" my-initfn="initDlgOrder" title="用户订单" style="width:520px;height:500px;">  
+	...
+	</div>
+	</script>
+
+定义了对话框dlgOrder，这个id属性也可以不设置。
+模板用script标签定义，其id属性必须命名为`tpl_{对话框名}`。
+
+注意：
+
+如果将script标签制作的页面模板内嵌在主页中，可能会造成加载时闪烁。
+在chrome中，在easyui-layout之后定义任意script标签（哪怕是空内容），会导致加载首页时闪烁，标题栏是黑色尤其明显。
+测试发现，将这些个script模板放在head标签中不会闪烁。
+
+这个特性可用于未来WEB应用编译打包。
+
 ## 参考文档说明
 
 以下参考文档介绍WUI模块提供的方法/函数(fn)、属性/变量(var)等，示例如下：
@@ -4016,6 +4048,13 @@ function showPage(pageName, title, paramArr)
 		initPage();
 	}
 	else {
+		sel = "#tpl_" + pageName;
+		var html = $(sel).html();
+		if (html) {
+			loadPage(html, pageName, null);
+			return;
+		}
+
 		//jtab.append("开发中");
 
 		//self.enterWaiting(); // NOTE: leaveWaiting in initPage
@@ -4030,7 +4069,7 @@ function showPage(pageName, title, paramArr)
 	function initPage()
 	{
 		if (title == null)
-			title = $(sel).attr("title") || "无标题";
+			title = jpage.attr("title") || "无标题";
 
 		var tt = self.tabMain;
 		if (tt.tabs('exists', title)) {
@@ -4172,36 +4211,108 @@ $.fn.okCancel = function (fnOk, fnCancel) {
 /**
 @fn showDlg(jdlg, opt?)
 
-@param jdlg 可以是jquery对象，也可以是selector字符串或DOM对象，比如 "#dlgOrder". 注意：当对话框保存为单独模块时，jdlg=$("#dlgOrder") 一开始会为空数组，这时也可以调用该函数，且调用后jdlg会被修改为实际加载的对话框对象。
-@param opt?={url, buttons, noCancel=false, okLabel="确定", cancelLabel="取消", modal=true, reset=true, validate=true, data, onOk, onSubmit, onAfterSubmit}
+@param jdlg 可以是jquery对象，也可以是selector字符串或DOM对象，比如 "#dlgOrder".
+注意：当对话框动态从外部加载时，jdlg=$("#dlgOrder") 一开始会为空数组，这时也可以调用该函数，且调用后jdlg会被修改为实际加载的对话框对象。
 
-- url: 点击确定时的操作动作。
-- data: 如果是object, 则为form自动加载的数据；如果是string, 则认为是一个url, 将自动获取数据。(form的load方法一致)
-- reset: 在加载数据前清空form
+@param opt?={url, buttons, noCancel=false, okLabel="确定", cancelLabel="取消", modal=true, reset=true, validate=true, data, onOk, onSubmit}
 
-特殊class my-reset: 当执行form reset时会将内容清除. (适用于在forSet/forLink模式下添加显示内容, 而在forFind/forAdd模式下时清除内容)
+- opt.url: String. 点击确定后，提交到后台的URL。如果设置则自动提交数据，否则应在opt.onOk回调或validate事件中手动提交。
+- opt.buttons: Object数组。用于添加“确定”、“取消”按钮以外的其它按钮，如`[{text: '下一步', iconCls:'icon-ok', handler: btnNext_click}]`。
+ 用opt.okLabel/cancelLabel可修改“确定”、“取消”按钮的名字，用opt.noCancel=true可不要“取消”按钮。
+- opt.model: Boolean.模态对话框，这时不可操作对话框外其它部分，如登录框等。设置为false改为非模态对话框。
+- opt.data: Object. 自动加载的数据, 将自动填充到对话框上带name属性的DOM上。在修改对象时，仅当与opt.data有差异的数据才会传到服务端。
+- opt.reset: Boolean. 显示对话框前先清空。
+- opt.validate: Boolean. 是否提交前用easyui-form组件验证数据。内部使用。
+- opt.onSubmit: Function(jfrm) 自动提交前回调。用于验证或补齐提交数据，返回false可取消提交。opt.url为空时不回调。
+- opt.onOk: Function(jdlg, data?) 如果自动提交(opt.url非空)，则服务端接口返回数据后回调，data为返回数据。如果是手动提交，则点确定按钮时回调，没有data参数。
+
+对话框有两种编程模式，一是通过opt参数在启动对话框时设置属性及回调函数(如onOk)，另一种是在dialog初始化函数中处理事件(如validate事件)实现逻辑，有利于独立模块化。
+
+对于自动提交数据的对话框(设置了opt.url)，提交数据过程中回调函数及事件执行顺序为：
+
+	事件validate; // 提交前，用于验证或设置提交数据。返回false或ev.preventDefault()可取消提交，中止以下代码执行。
+	opt.onSubmit(); // 提交前，验证或设置提交数据，返回false将阻止提交。
+	... 框架通过callSvr自动提交数据，如添加、更新对象等。
+	opt.onOk(jdlg, data); // 提交且服务端返回数据后。data是服务端返回数据。
+	事件retdata; // 与onOk类似。
+
+对于手动提交数据的对话框(opt.url为空)，执行顺序为：
+
+	事件validate; // 用于验证、设置提交数据、提交数据。
+	opt.onOk(jdlg); // 同上
+
+注意：
+
+- 参数opt可在beforeshow事件中设置，这样便于在对话框模块中自行设置选项，包括okLabel, onOk回调等等。
+- 旧版本中的回调 opt.onAfterSubmit() 回调已删除，请用opt.onOk()替代。
+
+调用此函数后，对话框将加上以下CSS Class:
+@key .wui-dialog 标识WUI对话框的类名。
+
+**对象型对话框与formMode**
+
+函数showObjDlg()会调用本函数显示对话框，称为对象型对话框，用于对象增删改查，它将以下操作集中在一起，并设置相应的formMode：
+
+- 查询(FormMode.forFind)
+- 显示及更新(FormMode.forSet)
+- 添加(FormMode.forAdd)
+- 链接显示及更新(FormMode.forLink)
+- 删除(FormMode.forDel)，但实际上不会打开对话框
+
+注意：
+
+- 可通过`var formMode = jdlg.jdata().mode;`来获取当前对话框模式。
+- 非对象型对话框的formMode为空。
+- 对象型对话框由框架自动设置各opt选项，一般不应自行修改opt，而是通过处理对话框事件实现逻辑。
+
+对象型对话框事件：
+
+	beforeshow(formMode, opt)事件。显示对话框前触发。可以通过设置opt参数定制对话框，与调用showDlg时传入opt参数相同效果。通过修改opt.data可为字段设置缺省值。
+	show(formMode, opt.data)事件。显示对话框后触发。这时opt.data已经设置到对话框上带name属性的DOM组件中，一些不能直接显示的字段，可在此时设置到DOM组件上，比如图片等。
+	validate(formMode, opt.data)事件。用于提交前验证、补齐数据等。返回false可取消提交。
+	retdata(data, formMode)事件。服务端返回结果时触发。注意forFind模式不会触发。
+
+初始数据与对话框中带name属性的对象相关联，详见
+@see setFormData,getFormData
+
+注意：
+
+- 旧版本中的initdata, loaddata, savedata将废弃，应分别改用beforeshow, show, validate事件替代，注意事件参数及检查对话框模式。
+
+**对话框事件**
+
+@key beforeshow Function(ev, formMode, opt)  对话框显示前事件
+opt参数即showDlg的opt参数，可在此处修改.
+
+注意：每次调用showDlg()都会回调，可能这时对话框已经在显示。
+
+@key show Function(ev, formMode, initData)  对话框显示后事件.
+用于设置DOM组件。
+注意如果在beforeshow事件中设置DOM，对于带name属性的组件会在加载数据时值被覆盖回去，对它们在beforeshow中只能通过设置opt.data来指定缺省值。
+
+@key retdata Function(ev, data, formMode) form提交后事件，用于处理返回数据
+
+以下事件将废弃：
+@key initdata Function(ev, initData, formMode) 加载数据前触发。可修改要加载的数据initData, 用于为字段设置缺省值。将废弃，改用beforeshow事件。
+@key loaddata Function(ev, initData, formMode) form加载数据后，一般用于将服务端数据转为界面显示数据。将废弃，改用show事件。
+@key savedata Function(ev, formMode, initData) 对于设置了opt.url的窗口，将向后台提交数据，提交前将触发该事件，用于验证或补足数据（修正某个）将界面数据转为提交数据. 返回false或调用ev.preventDefault()可阻止form提交。将废弃，改用validate事件。
+
+@see example-dialog 在对话框中使用事件
+
+**reset控制**
+
+对话框上有name属性的组件在显示对话框时会自动清除（除非设置opt.reset=false或组件设置有noReset属性）。
+
+@key .my-reset 标识在显示对话框时应清除
+对于没有name属性（不与数据关联）的组件，可加该CSS类标识要求清除。
+例如，想在forSet/forLink模式下添加显示内容, 而在forFind/forAdd模式下时清除内容这样的需求。
 
 	<div class="my-reset">...</div>
 
-hidden上的特殊property noReset: (TODO)
+@key [noReset]
+某些字段希望设置后一直保留，不要被清空，可以设置noReset属性，例如：
 
-在dialog的form中将触发以下事件：
-
-@key beforeshow Function(ev, formMode)  form显示前事件.
-@key show Function(ev, formMode)  form显示事件.
-
-以下formMode可能为FormMode.forAdd/forSet/forLink; 查找/删除模式不触发:
-
-@key initdata Function(ev, data, formMode) form加载数据前，可修改要加载的数据即data.
-@key loaddata Function(ev, data, formMode) form加载数据后，一般用于将服务端数据转为界面显示数据
-@key savedata Function(ev, formMode, initData) form提交前事件，用于将界面数据转为提交数据. 返回false或调用ev.preventDefault()可阻止form提交。
-@key retdata Function(ev, data, formMode) form提交后事件，用于处理返回数据
-
-调用此函数后，对话框将加上以下CSS Class:
-
-@key .wui-dialog 标识WUI对话框的类名。
-
-@see example-dialog 在对话框中使用事件
+	<input type="hidden" name="status" value="PA" noReset>
 
  */
 self.showDlg = showDlg;
@@ -4224,18 +4335,19 @@ function showDlg(jdlg, opt)
 		validate: true
 	}, opt);
 
+	jdlg.addClass('wui-dialog');
+	callInitfn(jdlg);
+
+	// TODO: 事件换成jdlg触发，不用jfrm
+	var jfrm = jdlg.find("form:first");
+	var formMode = jdlg.jdata().mode;
+	jfrm.trigger("beforeshow", [formMode, opt]);
+
 	var btns = [{text: opt.okLabel, iconCls:'icon-ok', handler: fnOk}];
 	if (! opt.noCancel) 
 		btns.push({text: opt.cancelLabel, iconCls:'icon-cancel', handler: fnCancel})
 	if ($.isArray(opt.buttons))
 		btns.push.apply(btns, opt.buttons);
-
-	jdlg.addClass('wui-dialog');
-	callInitfn(jdlg);
-
-	var jfrm = jdlg.find("Form");
-	var formMode = jdlg.jdata().mode;
-	jfrm.trigger("beforeshow", [formMode]);
 
 	var dlgOpt = {
 //		minimizable: true,
@@ -4264,18 +4376,21 @@ function showDlg(jdlg, opt)
 
 	if (opt.reset)
 	{
+		/*
 		jfrm.form("reset");
 		// !!! NOTE: form.reset does not reset hidden items, which causes data is not cleared for find mode !!!
 		jfrm.find("[type=hidden]:not([noReset])").val("");
-		jfrm.find(".my-reset").empty();
+		*/
+		mCommon.setFormData(jdlg); // reset
+		jdlg.find(".my-reset").empty();
 	}
 	if (opt.data)
 	{
-		jfrm.trigger("initdata", [opt.data, formMode]);
+		jfrm.trigger("initdata", [opt.data, formMode]); // TODO: remove. 用beforeshow替代。
 		//jfrm.form("load", opt.data);
 		var setOrigin = (formMode == FormMode.forSet || formMode == FormMode.forLink);
-		mCommon.setFormData(jfrm, opt.data, {setOrigin: setOrigin});
-		jfrm.trigger("loaddata", [opt.data, formMode]);
+		mCommon.setFormData(jdlg, opt.data, {setOrigin: setOrigin});
+		jfrm.trigger("loaddata", [opt.data, formMode]); // TODO: remove。用show替代。
 // 		// load for jquery-easyui combobox
 // 		// NOTE: depend on jeasyui implementation. for ver 1.4.2.
 // 		jfrm.find("[comboname]").each (function (i, e) {
@@ -4285,42 +4400,45 @@ function showDlg(jdlg, opt)
 
 // 	openDlg(jdlg);
 	focusDlg(jdlg);
-	jfrm.trigger("show", [formMode]);
+	jfrm.trigger("show", [formMode, opt.data]);
 
 	function fnCancel() {closeDlg(jdlg)}
 	function fnOk()
 	{
+		var ret = opt.validate? jfrm.form("validate"): true;
+		if (! ret)
+			return false;
+
+		var ev = $.Event("validate");
+		jfrm.trigger(ev, [formMode, opt.data]);
+		if (ev.isDefaultPrevented())
+			return false;
+
+		// TODO: remove. 用validate事件替代。
+		var ev = $.Event("savedata");
+		jfrm.trigger(ev, [formMode, opt.data]);
+		if (ev.isDefaultPrevented())
+			return false;
+
 		if (opt.url) {
-			submitForm();
-			opt.onAfterSubmit && opt.onAfterSubmit(jfrm);
+			if (opt.onSubmit && opt.onSubmit(jfrm) === false)
+				return false;
 
-			function submitForm() 
-			{
-				var ret = opt.validate? jfrm.form("validate"): true;
-				if (! ret)
-					return false;
+			var data = mCommon.getFormData(jdlg);
+			self.callSvr(opt.url, success, data);
+		}
+		else {
+			opt.onOk && opt.onOk.call(jdlg);
+		}
+		// opt.onAfterSubmit && opt.onAfterSubmit(jfrm); // REMOVED
 
-				var ev = $.Event("savedata");
-				jfrm.trigger(ev, [formMode, opt.data]);
-				if (ev.isDefaultPrevented())
-					return false;
-
-				if (opt.onSubmit && opt.onSubmit(jfrm) === false)
-					return false;
-
-				var data = mCommon.getFormData(jfrm);
-				self.callSvr(opt.url, success, data);
-			}
-			function success (data)
-			{
-				if (data != null && opt.onOk) {
-					opt.onOk.call(jdlg, data);
-					jfrm.trigger('retdata', [data, formMode]);
-				}
+		function success (data)
+		{
+			if (data != null && opt.onOk) {
+				opt.onOk.call(jdlg, data);
+				jfrm.trigger('retdata', [data, formMode]);
 			}
 		}
-		else
-			opt.onOk && opt.onOk.call(jdlg);
 	}
 }
 
@@ -4464,8 +4582,23 @@ function loadDialog(jdlg, onLoad)
 	}
 
 	var dlgId = jdlg.selector.substr(1);
+	var sel = "#tpl_" + dlgId;
+	var html = $(sel).html();
+	if (html) {
+		loadDialogTpl(html, dlgId, pageFile);
+		return;
+	}
+
 	var pageFile = getModulePath(dlgId + ".html");
 	$.ajax(pageFile).then(function (html) {
+		loadDialogTpl(html, dlgId, pageFile);
+	})
+	.fail(function () {
+		//self.leaveWaiting();
+	});
+
+	function loadDialogTpl(html, dlgId, pageFile)
+	{
 		var jcontainer = $("#my-pages");
 		// 注意：如果html片段中有script, 在append时会同步获取和执行(jquery功能)
 		var jo = $(html).filter("div");
@@ -4498,9 +4631,7 @@ function loadDialog(jdlg, onLoad)
 		else {
 			onLoad();
 		}
-	}).fail(function () {
-		//self.leaveWaiting();
-	});
+	}
 	return true;
 }
 
