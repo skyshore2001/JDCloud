@@ -4223,7 +4223,7 @@ $.fn.okCancel = function (fnOk, fnCancel) {
 - opt.data: Object. 自动加载的数据, 将自动填充到对话框上带name属性的DOM上。在修改对象时，仅当与opt.data有差异的数据才会传到服务端。
 - opt.reset: Boolean. 显示对话框前先清空。
 - opt.validate: Boolean. 是否提交前用easyui-form组件验证数据。内部使用。
-- opt.onSubmit: Function(jfrm) 自动提交前回调。用于验证或补齐提交数据，返回false可取消提交。opt.url为空时不回调。
+- opt.onSubmit: Function(data) 自动提交前回调。用于验证或补齐提交数据，返回false可取消提交。opt.url为空时不回调。
 - opt.onOk: Function(jdlg, data?) 如果自动提交(opt.url非空)，则服务端接口返回数据后回调，data为返回数据。如果是手动提交，则点确定按钮时回调，没有data参数。
 
 对话框有两种编程模式，一是通过opt参数在启动对话框时设置属性及回调函数(如onOk)，另一种是在dialog初始化函数中处理事件(如validate事件)实现逻辑，有利于独立模块化。
@@ -4256,7 +4256,6 @@ $.fn.okCancel = function (fnOk, fnCancel) {
 - 查询(FormMode.forFind)
 - 显示及更新(FormMode.forSet)
 - 添加(FormMode.forAdd)
-- 链接显示及更新(FormMode.forLink)
 - 删除(FormMode.forDel)，但实际上不会打开对话框
 
 注意：
@@ -4305,7 +4304,7 @@ opt参数即showDlg的opt参数，可在此处修改.
 
 @key .my-reset 标识在显示对话框时应清除
 对于没有name属性（不与数据关联）的组件，可加该CSS类标识要求清除。
-例如，想在forSet/forLink模式下添加显示内容, 而在forFind/forAdd模式下时清除内容这样的需求。
+例如，想在forSet模式下添加显示内容, 而在forFind/forAdd模式下时清除内容这样的需求。
 
 	<div class="my-reset">...</div>
 
@@ -4388,7 +4387,7 @@ function showDlg(jdlg, opt)
 	{
 		jfrm.trigger("initdata", [opt.data, formMode]); // TODO: remove. 用beforeshow替代。
 		//jfrm.form("load", opt.data);
-		var setOrigin = (formMode == FormMode.forSet || formMode == FormMode.forLink);
+		var setOrigin = (formMode == FormMode.forSet);
 		mCommon.setFormData(jdlg, opt.data, {setOrigin: setOrigin});
 		jfrm.trigger("loaddata", [opt.data, formMode]); // TODO: remove。用show替代。
 // 		// load for jquery-easyui combobox
@@ -4421,10 +4420,10 @@ function showDlg(jdlg, opt)
 			return false;
 
 		if (opt.url) {
-			if (opt.onSubmit && opt.onSubmit(jfrm) === false)
+			var data = mCommon.getFormData(jdlg);
+			if (opt.onSubmit && opt.onSubmit(data) === false)
 				return false;
 
-			var data = mCommon.getFormData(jdlg);
 			self.callSvr(opt.url, success, data);
 		}
 		else {
@@ -4676,7 +4675,6 @@ function showObjDlg(jdlg, mode, opt)
 	// get id
 	var rowData;
 	if (id == null) {
-		mCommon.assert(mode != FormMode.forLink);
 		if (mode == FormMode.forSet || mode == FormMode.forDel) // get dialog data from jtbl row, 必须关联jtbl
 		{
 			mCommon.assert(jd.jtbl);
@@ -4693,7 +4691,7 @@ function showObjDlg(jdlg, mode, opt)
 		if (jd.jtbl) 
 			jd.jtbl.datagrid("clearSelections");
 	}
-	else if (mode == FormMode.forSet || mode == FormMode.forLink) {
+	else if (mode == FormMode.forSet) {
 		url = self.makeUrl([obj, "set"], {id: id});
 	}
 	else if (mode == FormMode.forDel) {
@@ -4767,15 +4765,17 @@ function showObjDlg(jdlg, mode, opt)
 		else
 			load_data = {};
 	}
-	else if (mode == FormMode.forSet && rowData) {
-		load_data = add_(rowData);
-	}
-	else if (mode == FormMode.forLink || mode == FormMode.forSet) {
-		var load_url = self.makeUrl([obj, 'get'], {id: id});
-		var data = self.callSvrSync(load_url);
-		if (data == null)
-			return;
-		load_data = add_(data);
+	else if (mode == FormMode.forSet) {
+		if (rowData) {
+			load_data = add_(rowData);
+		}
+		else {
+			var load_url = self.makeUrl([obj, 'get'], {id: id});
+			var data = self.callSvrSync(load_url);
+			if (data == null)
+				return;
+			load_data = add_(data);
+		}
 	}
 	// open the dialog
 	showDlg(jdlg, {
@@ -4785,12 +4785,22 @@ function showObjDlg(jdlg, mode, opt)
 		modal: false,  // mode == FormMode.forAdd || mode == FormMode.forSet
 		reset: doReset,
 		data: load_data,
+		onSubmit: onSubmit,
 		onOk: onOk
 	});
 
-	if (mode == FormMode.forSet || mode == FormMode.forLink)
+	if (mode == FormMode.forSet)
 		jfrm.form("validate");
 
+	function onSubmit(data) {
+		// 没有更新时直接关闭对话框
+		if (mode == FormMode.forSet) {
+			if ($.isEmptyObject(data)) {
+				closeDlg(jdlg);
+				return false;
+			}
+		}
+	}
 	function onOk (retData) {
 		if (mode==FormMode.forFind) {
 			var param = getFindData(jfrm);
@@ -4805,7 +4815,7 @@ function showObjDlg(jdlg, mode, opt)
 		}
 		// add/set/link
 		// TODO: add option to force reload all (for set/add)
-		if (mode != FormMode.forLink && jd.jtbl) {
+		if (jd.jtbl) {
 			if (mode == FormMode.forSet && rowData)
 				reloadRow(jd.jtbl, rowData);
 			else if (mode == FormMode.forAdd) {
@@ -5464,11 +5474,11 @@ TODO: remove
 window.BASE_URL = "../";
 
 window.FormMode = {
-	forAdd: 0,
-	forSet: 1,
-	forLink: 2,
-	forFind: 3,
-	forDel: 4  // 该模式实际上不会打开dlg
+	forAdd: 'A',
+	forSet: 'S',
+	forLink: 'S', // 与forSet合并，此处为兼容旧版。
+	forFind: 'F',
+	forDel: 'D'  // 该模式实际上不会打开dlg
 };
 
 /**
@@ -5643,7 +5653,7 @@ function makeLinkTo(dlg, id, text)
 {
 	if (text == null)
 		text = id;
-	return "<a href=\"" + dlg + "\" onclick='WUI.showObjDlg(\"" + dlg + "\",FormMode.forLink,{id:" + id + "});return false'>" + text + "</a>";
+	return "<a href=\"" + dlg + "\" onclick='WUI.showObjDlg(\"" + dlg + "\",FormMode.forSet,{id:" + id + "});return false'>" + text + "</a>";
 }
 
 // ====== login token for auto login {{{
