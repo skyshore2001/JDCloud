@@ -52,6 +52,47 @@ server目录下的cordova及cordova-ios目录为原生接口。
 fastclick库的引入，让IOS上点击事件响应更迅速，去除200ms延迟。
 如果它与应用功能冲突（如某些事件的响应出问题），可通过设置MUI选项`disableFastClick`为`true`来禁用。
 
+### WUI库中对话框事件变化
+
+原先的initdata, loaddata, savedata事件将废弃，应分别改用beforeshow, show, validate事件替代，注意事件参数及检查对话框模式。
+并且，原先使用dialog中的form来监听事件，现在建议直接用dialog来监听，如：
+
+	function initDlgEmployee()
+	{
+		var jdlg = $(this);
+		var jfrm = jdlg.find("form");
+		jfrm.on("initdata", function (ev, data, formMode) {
+			if (formMode != FormMode.forAdd)
+				data.pwd = "****";
+		})
+		.on("loaddata", function (ev, data, formMode) {
+			hiddenToCheckbox(jfrm.find("#divPerms"));
+		})
+		.on("savedata", function (ev, formMode, initData) {
+			checkboxToHidden(jfrm.find("#divPerms"));
+		});
+	}
+
+建议修改为：
+
+	function initDlgEmployee()
+	{
+		var jdlg = $(this);
+		jdlg.on("beforeshow", function (ev, formMode, opt) {
+			if (formMode == FormMode.forSet)
+				opt.data.pwd = "****";
+		})
+		.on("show", function (ev, formMode, initData) {
+			hiddenToCheckbox(jdlg.find("#divPerms"));
+		})
+		.on("validate", function (ev, formMode, initData) {
+			checkboxToHidden(jdlg.find("#divPerms"));
+		});
+	}
+
+注意：
+对话框的forLink模式已废弃，在上面回调中只需检查forAdd, forSet, forFind模式。
+
 ## 升级到v4.2
 
 ### 交互接口query中的wantArray参数被废弃
