@@ -30,5 +30,19 @@ function initLayout()
 	addClass(document.body, "jd-layout");
 }
 
-window.onload = initLayout;
+function onReady(fn)
+{
+	if (document.addEventListener) {
+		document.addEventListener( "DOMContentLoaded", fn);
+	}
+	else if (document.attachEvent) {
+		document.attachEvent('onreadystatechange', function () {
+			if (document.readyState=='complete') {
+				fn();
+			}
+		});
+	}
+}
+
+onReady(initLayout);
 
