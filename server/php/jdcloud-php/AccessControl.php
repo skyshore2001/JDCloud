@@ -725,7 +725,7 @@ class AccessControl
 	}
 	final public function getMaxPageSz()
 	{
-		return $this->maxPageSz <0? PAGE_SZ_LIMIT: $this->maxPageSz;
+		return $this->maxPageSz <0? PAGE_SZ_LIMIT: min($this->maxPageSz, PAGE_SZ_LIMIT);
 	}
 
 	private function handleRow(&$rowData)
@@ -1265,7 +1265,7 @@ class AccessControl
 		if ($pagesz == 0)
 			$pagesz = 20;
 
-		$maxPageSz = min($this->getMaxPageSz(), PAGE_SZ_LIMIT);
+		$maxPageSz = $this->getMaxPageSz();
 		if ($pagesz < 0 || $pagesz > $maxPageSz)
 			$pagesz = $maxPageSz;
 
