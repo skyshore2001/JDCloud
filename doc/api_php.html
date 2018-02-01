@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2017-11-15</div>
+<div>最后更新：2018-01-04</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -61,6 +61,7 @@ code {
 <p><a href="#AccessControl::$allowedAc">AccessControl::$allowedAc (var)</a></p>
 <p><a href="#AccessControl::$defaultRes">AccessControl::$defaultRes (var)</a></p>
 <p><a href="#AccessControl::$defaultSort">AccessControl::$defaultSort (var)</a></p>
+<p><a href="#AccessControl::$enumFields">AccessControl::$enumFields (var)</a></p>
 <p><a href="#AccessControl::$hiddenFields">AccessControl::$hiddenFields (var)</a></p>
 <p><a href="#AccessControl::$id">AccessControl::$id (var)</a></p>
 <p><a href="#AccessControl::$maxPageSz">AccessControl::$maxPageSz (var)</a></p>
@@ -150,6 +151,7 @@ code {
 <p><a href="#param">param (fn)</a></p>
 <p><a href="#param">param (fn)</a></p>
 <p><a href="#param_varr">param_varr (fn)</a></p>
+<p><a href="#parseKvList">parseKvList (fn)</a></p>
 <p><a href="#plugin">plugin (key)</a></p>
 <p><a href="#plugin/index.php">plugin/index.php (key)</a></p>
 <p><a href="#queryAll">queryAll (fn)</a></p>
@@ -218,6 +220,12 @@ $headers = [
 ];
 $GLOBALS["X_RET_STR"] = httpCall($url, $data, ["headers" =&gt; $headers]);
 // 筋斗云：设置全局变量X_RET_STR可直接设置返回内容，避免再次被json编码。</code></pre></div>
+<div class="block">
+<h2 id="parseKvList">@fn parseKvList($kvListStr, $sep, $sep2)</h2>
+<p>解析key-value列表字符串。如果出错抛出异常。<br />
+示例：</p>
+<pre><code>$map = parseKvList("CR:新创建;PA:已付款", ";", ":");
+// map: {"CR": "新创建", "PA":"已付款"}</code></pre></div>
 <div class="block">
 <h2 id="app_fw">@module app_fw</h2><div class="toc"><p style="margin-left:0em"><a href="#app_fw-1 通用函数">1 通用函数</a></p>
 <p style="margin-left:0em"><a href="#app_fw-2 初始化配置">2 初始化配置</a></p>
@@ -1031,6 +1039,7 @@ $_POST[key] = value; // 设置post参数</code></pre>
 <p style="margin-left:2em"><a href="#AccessControl-5.5 虚拟表和视图">5.5 虚拟表和视图</a></p>
 <p style="margin-left:2em"><a href="#AccessControl-5.6 query接口输出格式">5.6 query接口输出格式</a></p>
 <p style="margin-left:2em"><a href="#AccessControl-5.7 distinct查询">5.7 distinct查询</a></p>
+<p style="margin-left:2em"><a href="#AccessControl-5.8 枚举支持及自定义字段处理">5.8 枚举支持及自定义字段处理</a></p>
 </div>
 <p>对象型接口框架。<br />
 AccessControl简写为AC，同时AC也表示自动补全(AutoComplete).</p>
@@ -1365,7 +1374,7 @@ ORDER BY t0.id DESC</code></pre>
 <li>csv/txt/excel: 导出文件，注意为了避免分页，调用时可设置较大的pagesz值。
 <ul>
 <li>csv: 逗号分隔的文件，utf8编码。</li>
-<li>excel: 逗号分隔的文件，gb2312编码以便excel可直接打开不会显示中文乱码。</li>
+<li>excel: 逗号分隔的文件，gb18030编码以便excel可直接打开不会显示中文乱码。</li>
 <li>txt: 制表分隔的文件, utf8编码。</li>
 </ul></li>
 </ul>
@@ -1375,7 +1384,23 @@ ORDER BY t0.id DESC</code></pre>
 当在AccessControl外部时，可以设置</p>
 <pre><code>setParam("distinct", 1);</code></pre>
 <p>如果是在AccessControl子类中，可以设置</p>
-<pre><code>$this-&gt;sqlConf["distinct"] =1;</code></pre></div>
+<pre><code>$this-&gt;sqlConf["distinct"] =1;</code></pre>
+<h5 id="AccessControl-5.8 枚举支持及自定义字段处理">5.8 枚举支持及自定义字段处理</h5>
+<p>(版本5.0)</p>
+<p class="var"><strong>@var <a id="AccessControl::$enumFields">AccessControl::$enumFields</a></strong>  {field => map/fn($val) }支持处理枚举字段，或自定义处理。</p>
+<p>作为比onHandleRow/onAfterActions等更易用的工具，enumFields可对返回字段做修正。例如，想要对返回的status字段做修正，如&quot;CR&quot;显示为&quot;Created&quot;，可设置：</p>
+<pre><code>$enumFields["status"] = ["CR"=&gt;"Created", "CA"=&gt;"Cancelled"];</code></pre>
+<p>也可以设置为自定义函数，如：</p>
+<pre><code>$map = ["CR"=&gt;"Created", "CA"=&gt;"Cancelled"];
+$enumFields["status"] = function($v) use ($map) {
+    if (array_key_exists($v, $map))
+        return $v . "-" . $map[$v];
+    return $v;
+};</code></pre>
+<p>此外，枚举字段可直接由请求方通过res参数指定描述值，如：</p>
+<pre><code>Ordr.query(res="id, status =CR:Created;CA:Cancelled")
+或指定alias:
+Ordr.query(res="id 编号, status 状态=CR:Created;CA:Cancelled")</code></pre></div>
 <div class="block">
 <h2 id="AccessControl::addRes">@fn AccessControl::addRes($res, $analyzeCol=true)</h2>
 <p>添加列或计算列. </p>

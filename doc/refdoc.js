@@ -1,49 +1,33 @@
-function each(a, fn)
+function addClass(o, c)
 {
-	for (var i=0; i<a.length; ++i) {
-		if (fn(i, a[i]) === false)
-			return;
+	if (o.classList) {
+		o.classList.add(c);
+	}
+	else {
+		var c0 = o.getAttribute("class");
+		if (c0)
+			o.setAttribute("class", c0 + " " + c);
+		else
+			o.setAttribute("class", c);
 	}
 }
 
 // for jdcloud-gendoc
 function initLayout() 
 {
-	document.body.id="layout";
-	var html = document.body.parentElement;
-	html.style.height ="100%";
-	html.style.overflow ="hidden";
-
-	var main = document.createElement("div");
-	main.id = "main";
-
 	var menu = document.getElementById("menu");
+	if (menu == null || menu.querySelector("p") == null)
+		return;
 
-	var arr = [];
-	each(document.body.children, function (i, e) {
-		if (e.id == "menu")
-			return;
-		arr.push(e);
-	});
-	each(arr, function (i, e) {
-		main.appendChild(e);
-	});
-
-	document.body.appendChild(main);
-	if (location.hash) {
-		var h = location.hash;
-		location.hash = "";
-		location.hash = h; // 强制跳转下
+	if (document.querySelector("meta[name=viewport]") == null) {
+		var o = document.createElement("meta");
+		o.setAttribute("name", "viewport");
+		o.setAttribute("content", "width=device-width, initial-scale=1");
+		var head = document.querySelector("head");
+		head.appendChild(o);
 	}
+	addClass(menu, "jd-menu");
+	addClass(document.body, "jd-layout");
 }
 
-function applyLayout()
-{
-	if (! document.head)
-		return;
-	if (! document.head.style.hasOwnProperty("flex"))
-		return;
-
-	window.onload = initLayout;
-}
-applyLayout();
+window.onload = initLayout;

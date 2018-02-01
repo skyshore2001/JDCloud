@@ -198,4 +198,25 @@ function httpCall($url, $postParams=null, $opt=[])
 	return $content;
 }
 
+/**
+@fn parseKvList($kvListStr, $sep, $sep2)
+
+解析key-value列表字符串。如果出错抛出异常。
+示例：
+
+	$map = parseKvList("CR:新创建;PA:已付款", ";", ":");
+	// map: {"CR": "新创建", "PA":"已付款"}
+*/
+function parseKvList($str, $sep, $sep2)
+{
+	$map = [];
+	foreach (explode($sep, $str) as $e) {
+		$kv = explode($sep2, $e, 2);
+		if (count($kv) != 2)
+			throw new MyException(E_PARAM, "bad kvList: `$str'");
+		$map[$kv[0]] = $kv[1];
+	}
+	return $map;
+}
+
 // vi: foldmethod=marker

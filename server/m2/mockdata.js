@@ -59,6 +59,13 @@
 			}
 			$.extend(o, postParam);
 			return [0, "OK"];
+		},
+		"batch": function (param, postParam) {
+			var ac = postParam[0].ac; // Ordr.query
+			return [0, [
+				[0,{"h":["y","m","sum"],"d":[[2017,7,"228.0000"],[2017,8,"918.0000"],[2017,9,"356.0000"]]}],
+				[0,{"h":["dscr","sum"],"d":[["基础套餐","128.0000"],["精英套餐","228.0000"]]}]
+			]];
 		}
 	}
 

@@ -15,6 +15,17 @@ a {
 	cursor: pointer;
 }
 
+.wui-dialog input, .wui-dialog select, .wui-dialog textarea {
+	padding: 2px;
+}
+.wui-page input, .wui-page select, .wui-page textarea {
+	padding: 2px;
+}
+
+.mui-find-field {
+	background-color: #fffbce;
+}
+
 .block {
 	position:absolute;
 	top:0px;
@@ -128,3 +139,13 @@ a {
 	padding-left: 55px;
 }
 
+/* customize easyui */
+.datagrid-cell, .datagrid-cell-group {
+	padding: 7px 10px;
+}
+.datagrid-header-rownumber, .datagrid-cell-rownumber {
+	padding: 7px 2px;
+}
+.pagination td {
+	vertical-align: middle;
+}

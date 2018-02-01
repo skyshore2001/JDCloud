@@ -63,7 +63,7 @@ function validateDynCode($code, $phone = null)
 
 	
 	if (time() - $codetm > 60*5)
-		throw new MyException(E_FORBIDDEN, "code expires (max 60s)", "验证码已过期(有效期5分钟)");
+		throw new MyException(E_FORBIDDEN, "code expires (max 5min)", "验证码已过期(有效期5分钟)");
 
 	if ($code != $code1)
 		throw new MyException(E_PARAM, "bad code", "验证码错误");
@@ -192,7 +192,7 @@ function api_login()
 	if ($type == "user") {
 		$obj = "User";
 		$sql = sprintf("SELECT id,pwd FROM User WHERE {$key}=%s", Q($uname));
-		$row = queryOne($sql, PDO::FETCH_ASSOC);
+		$row = queryOne($sql, true);
 
 		$ret = null;
 		if ($row === false) {
@@ -220,7 +220,7 @@ function api_login()
 	else if ($type == "emp") {
 		$obj = "Employee";
 		$sql = sprintf("SELECT id,pwd FROM Employee WHERE {$key}=%s", Q($uname));
-		$row = queryOne($sql, PDO::FETCH_ASSOC);
+		$row = queryOne($sql, true);
 		if ($row === false || (isset($pwd) && hashPwd($pwd) != $row["pwd"]) )
 			throw new MyException(E_AUTHFAIL, "bad uname or password", "用户名或密码错误");
 
@@ -312,11 +312,11 @@ function api_chpwd()
 	$type = getAppType();
 
 	if ($type == "user") {
-		checkAuth(AUTH_USER, true);
+		checkAuth(AUTH_USER);
 		$uid = $_SESSION["uid"];
 	}
 	elseif($type == "emp") {
-		checkAuth(AUTH_EMP, true);
+		checkAuth(AUTH_EMP);
 		$uid = $_SESSION["empId"];
 	}
 	$pwd = mparam("pwd");

@@ -8,7 +8,7 @@
 
 **[附件]**
 
-@Attachment: id, path, orgPicId, exif(t), tm
+@Attachment: id, path, orgPicId, exif(t), tm, orgName(l)
 
 path
 : String. 文件在服务器上的相对路径, 可方便的转成绝对路径或URL
@@ -22,33 +22,19 @@ exif
 tm
 : DateTime. 上传时间。
 
-
-路径使用以下规则: upload/{type}/{date:YYYYMM}/{randnum}.{ext}
-
-例如, 商家图片路径可以为 upload_store/201501/101.jpg. 用户上传的某图片路径可能为 upload/201501/102.jpg
-
 ## 交互接口
 
 ### 附件上传
 
 使用multipart/form-data格式上传（标准html支持，可一次传多个文件）:
 
-	upload(type?=default, genThumb?=0, autoResize?=1)(POST content:multipart/form-data) -> [{id, thumbId?}]
+	upload(type?=default, genThumb?=0, autoResize?=1)(POST content:multipart/form-data) -> [{id, orgName, thumbId?}]
 	
 直接传文件内容，一次只能传一个文件:
 
-	upload(fmt=raw|raw_b64, f, exif?, ...)(POST content:raw) -> [{id, thumbId?}]
+	upload(fmt=raw|raw_b64, f, exif?, ...)(POST content:raw) -> [{id, orgName, thumbId?}]
 	
-TODO: 如果使用微信的上传接口, 可以调用:
-
-	upload(..., weixinServerIds) -> [{id, thumbId?}]
-
 上传照片等内容. 返回附件id. 因为允许一次上传多个文件，返回的是一个数组，每项对应上传的一个文件。
-
-员工端上传图片时应传图片扩展信息（exif信息），包括时间、GPS信息，以便后期（通过工具校验数据）验证员工是否在指定的时间地点去洗车。
-注意：exif信息只在上传单图时有意义。
-
-TODO:将限制只支持jpg等几种指定格式; 以及限制最大可传文件的size
 
 **[参数]**
 
@@ -56,16 +42,22 @@ genThumb
 : Boolean. 为1时生成缩略图。如果未指定type, 则按type=default设置缩略图大小.
 
 type
-: String. 商家图片上传使用"store", 用户头像上传使用"user", 其它情况不赋值. 不同的type在生成缩略图时尺寸不同。
+: String. 图片类别，用于图片自动裁切缩略图到指定大小。
+ 例如，商家图片上传使用"store", 用户头像上传使用"user", 其它情况不赋值. 不同的type在生成缩略图时尺寸不同。可在源码中配置变量`$UploadType`，缺省为：
+
+		type=user: 128x128
+		type=store: 200x150
+		type=default: 100x100
 
 content
 : 文件内容。默认使用multipart/form-data格式，详见请求示例。如果fmt为"raw"或"raw_b64"，则直接为文件内容（或其base64编码）
 
 autoResize
-: Boolean. 缺省为1，即当图片大小超过500K, 自动缩小图片到最大像素1920x1080.
+: Boolean. 缺省为1，即如果上传的是图片，且当图片大小超过500K, 自动缩小图片到最大像素1920x1080.
 
 exif
 : Object. 扩展信息。JSON格式，如上传时间及GPS信息：`{"DateTime": "2015:10:08 11:03:02", "GPSLongtitude": [121,42,7.19], "GPSLatitude": [31,14,45.8]}`
+ 上传图片时可传图片扩展信息（exif信息），包括时间、GPS信息，注意：exif信息只在上传单图时有意义。
 
 fmt
 : 指定格式，可为"raw"或"raw_b64"。这时必须用参数"f"指定文件名; 且POST content为文件内容(fmt=raw)或文件经base64编码后(fmt=raw_b64)的内容。
@@ -73,12 +65,12 @@ fmt
 f
 : 指定文件名，后台将检查其扩展名。且在fmt="raw"/"raw_b64"时使用。
 
-TODO
-type决定生成缩略图的大小：
+注意：
 
-- type=user: 128x128
-- type=store: 200x150
-- type=default: 100x100
+- 仅支持上传指定的文件扩展名，可在源码中配置`$ALLOWED_MIME`。
+- 文件最大可上传的大小，可在php.ini中修改配置upload_max_filesize, post_max_size, max_execution_time等相关选项。
+- 在保存文件时，文件路径使用以下规则: upload/{type}/{date:YYYYMM}/{6位随机数}.{原扩展名}
+ 例如, 商家图片(type=store)路径为 upload/store/201501/123456.jpg. 用户上传的某图片(type为空)路径可能为 upload/201501/123456.jpg
 
 **[返回]**
 
@@ -87,6 +79,9 @@ id
 
 thumbId
 : 如果参数设置了genThumb=1, 则会生成缩略图并返回该字段为生成的缩略图id.
+
+orgName
+: 原文件名。可在form-data中获取，或从参数f中获取。在下载(att接口)时会使用到。
 
 **[示例1]**
 

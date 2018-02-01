@@ -4,19 +4,15 @@ var g_data = {}; // { userInfo={id,uname} }
 
 // ====== data-options {{{
 var Formatter = {
-	dt: function (value, row) {
-		return dtStr(value);
-	},
-	userId: function (value, row) {
-		if (value)
-			return WUI.makeLinkTo("#dlgUser", value);
-	}
+	orderStatus: WUI.formatter.enum(OrderStatusMap),
+	orderAction: WUI.formatter.enum(ActionMap),
+	userId: WUI.formatter.linkTo("userId", "#dlgUser"),
+	empId: WUI.formatter.linkTo("empId", "#dlgEmployee"),
+	orderId: WUI.formatter.linkTo("orderId", "#dlgOrder")
 };
+Formatter = $.extend(WUI.formatter, Formatter);
 
 var OrderColumns = {
-	statusStr: function (value, row) {
-		return OrderStatusStr[row.status] || row.status;
-	},
 	statusStyler: function (value, row) {
 		var color;
 		if (value == "CR")
