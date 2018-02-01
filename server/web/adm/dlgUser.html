@@ -1,4 +1,4 @@
-<div my-obj="User" title="用户" style="padding:20px 40px 20px 40px;width:520px;height:450px;">
+<div my-obj="User" wui-script="dlgUser.js" my-initfn="initDlgUser" title="用户" style="padding:20px 40px 20px 40px;width:520px;height:450px;">
 	<form method="POST">
 		<table>
 			<tr>
@@ -19,7 +19,7 @@
 			</tr>
 			<tr>
 				<td>登录密码</td>
-				<td><input notForFind type="password" name="pwd" class="easyui-validatebox" data-options="required:true, validType:'pwd'">
+				<td><input type="password" name="pwd" class="easyui-validatebox notForFind" data-options="required:true, validType:'pwd'">
 				</td>
 			</tr> 
 		</table>  

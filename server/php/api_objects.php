@@ -26,7 +26,6 @@ class AC1_User extends AccessControl
 {
 	protected $allowedAc = ["get", "set"];
 	protected $readonlyFields = ["pwd"];
-	protected $hiddenFields = ["pwd"];
 
 	protected function onValidateId()
 	{

@@ -33,7 +33,7 @@
 					<th data-options="field:'id', sortable:true, sorter:intSort">订单号</th>
 					<th data-options="field:'userPhone', sortable:true">用户联系方式</th>
 					<th data-options="field:'createTm', sortable:true">创建时间</th>
-					<th data-options="field:'status', formatter:OrderColumns.statusStr, styler:OrderColumns.statusStyler, sortable:true">状态</th>
+					<th data-options="field:'status', jdEnumMap: OrderStatusMap, formatter:Formatter.orderStatus, styler:OrderColumns.statusStyler, sortable:true">状态</th>
 					<th data-options="field:'dscr', sortable:true">描述</th>
 					<th data-options="field:'cmt'">用户备注</th>
 				</tr></thead>
@@ -46,6 +46,7 @@
 - 逻辑页面div.pageOrder，属性class="pageOrder"定义了该逻辑页面的名字。它将作为页面模板，在WUI.showPage("pageOrder")时复制一份显示出来。
 - 属性my-initfn定义了该页面的初始化函数. 在初次调用WUI.showPage时，会执行该初始化函数，用于初始化列表，设定事件处理等。
 - 逻辑页面下包含了一个table，用于显示订单列表。里面每列对应订单的相关属性。
+- table由jquery-easyui的datagrid组件实现，文档参考：http://www.jeasyui.com/documentation/datagrid.php 此外，data-options中的以jd开头的字段为jdcloud框架定义。
 
 详情页展示为一个对话框，也将它也放在 div#my-pages 下。定义如下（此处为展示原理已简化）：
 
@@ -75,8 +76,8 @@
 - 对话框中包含一个form用于向服务端发起请求。form中每个带name属性的对象，都对应订单对象的一个属性，在添加、查找、显示或更新时都将用到，除非它上面加了disabled属性（这样就不会提交该字段）
 - 对话框一般不用加“提交”按钮，框架会自动为它添加“确定”、“取消”按钮。
 
-@see WUI.showObjDlg
-@see WUI.showDlg
+@see showObjDlg
+@see showDlg
 
 以上定义了订单对象的列表页和详情页，围绕对象"Order", 按规范，我们定义了以下名字：
 
@@ -135,18 +136,18 @@
 			url: WUI.makeUrl(["Ordr", "query"], {res:"*,createTm,userPhone"}),
 			// 设置缺省查询条件
 			queryParams: query1,
-			// 设置工具栏上的按钮，并与对话框jdlg关联。
-			toolbar: WUI.dg_toolbar(jtbl, jdlg, "-", btn1, btn2),
+			// 设置工具栏上的按钮，默认有增删改查按钮，"export"表示"导出到Excel"的按钮，btn1, btn2是自定义按钮，"-"表示按钮分隔符。
+			toolbar: WUI.dg_toolbar(jtbl, jdlg, "export", "-", btn1, btn2),
 			// 双击一行，应展示详情页对话框
 			onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
 		};
 		jtbl.datagrid(dgOpt);
 	}
 
-@see WUI.showPage
-@see WUI.dg_toolbar
-@see WUI.dg_dblclick
-@see WUI.makeUrl
+@see showPage
+@see dg_toolbar
+@see dg_dblclick
+@see makeUrl
 
 ### 定义对话框的初始化函数
 
@@ -222,27 +223,32 @@
 在table中设置formatter与styler选项：
 
 	<div class="pageOrder" title="订单管理" my-initfn="initPageOrder">
-		<table id="tblOrder" style="width:auto;height:auto">
+		<table id="tblOrder" style="width:auto;height:auto" title="订单列表">
 			<thead><tr>
 				<th data-options="field:'id', sortable:true, sorter:intSort">订单号</th>
 				...
-				<th data-options="field:'status', formatter:OrderColumns.statusStr, styler:OrderColumns.statusStyler, sortable:true">状态</th>
+				<th data-options="field:'status', jdEnumMap: OrderStatusMap, formatter:Formatter.orderStatus, styler:OrderColumns.statusStyler, sortable:true">状态</th>
 			</tr></thead>
 		</table>
 	</div>
 
 formatter用于控制Cell中的HTML标签，styler用于控制Cell自己的CSS style.
-在JS中定义函数：
+在JS中定义：
+
+	var OrderStatusMap = {
+		CR: "未付款", 
+		RE: "已服务", 
+		CA: "已取消"
+	};
+	var Formatter = {
+		// 显示枚举值的描述，相当于`return map[value] || value`；
+		orderStatus: WUI.formatter.enum(OrderStatusMap),
+		// 显示链接，点击打开用户详情对话框
+		userId: WUI.formatter.linkTo("userId", "#dlgUser")
+	};
+	Formatter = $.extend(WUI.formatter, Formatter);
 
 	var OrderColumns = {
-		statusStr: function (value, row) {
-			var OrderStatusStr = {
-				CR: "未付款", 
-				RE: "已服务", 
-				CA: "已取消"
-			};
-			return OrderStatusStr[value] || value;
-		},
 		statusStyler: function (value, row) {
 			var colors = {
 				CR: "#000",
@@ -258,31 +264,32 @@ formatter用于控制Cell中的HTML标签，styler用于控制Cell自己的CSS s
 
 注意：
 
+- WUI.formatter已经定义了常用的formatter. 通常定义一个全局Formatter继承WUI.formatter，用于各页面共享的字段设定.
 - 习惯上，对同一个对象的字段的设定，都放到一个名为　{Obj}Columns 的变量中一起定义。
-- 对于通用的或多处共享的字段设定，放到变量 Formatter 中.
 
-示例二：下面是一些通用的例子，特别是生成对象链接经常会用到。
+@see formatter 通用格式化函数
+
+一些其它示例：
 
 	var Formatter = {
 		// 显示数值
-		number: function (value)
-		{
+		number: function (value, row) {
 			return parseFloat(value);
 		},
-		// 显示一张或一组图片链接，点一个链接可以在新页面上显示原图片
-		pics: function (value) {
-			if (value == null)
-				return "(无图)";
-			return value.replace(/(\d+),?/g, function (ms, picId) {
-				var url = WUI.makeUrl("att", {thumbId: picId});
-				return "<a target='_black' href='" + url + "'>" + picId + "</a>&nbsp;";
-			});
-		},
 		// 订单编号，显示为一个链接，点击就打开订单对话框该订单。
-		orderId: function (value) {
-			if (value != null)
-			{
-				return makeLinkTo("#dlgOrder", value, value);
+		orderId: function (value, row) {
+			if (value) {
+				return WUI.makeLinkTo("#dlgOrder", row.orderId, value);
+			}
+		},
+		// 显示状态的同时，设置另一个本地字段，这种字段一般以"_"结尾，表示不是服务器传来的字段，例如
+		// <th data-options="field:'hint_'">提醒事项</th>
+		status: function (value, row) {
+			if (value) {
+				if (value == "PA") {
+					row.hint_ = "请于2小时内联系";
+				}
+				return StatusMap[value] || value;
 			}
 		}
 	};
@@ -347,7 +354,87 @@ formatter用于控制Cell中的HTML标签，styler用于控制Cell自己的CSS s
 		...
 	});
 
+#### 列表导出Excel文件
+
+(支持版本5.0)
+
+除了默认地增删改查，还可为数据表添加标准的“导出Excel”操作，可自动按表格当前的显示字段、搜索条件、排序条件等，导出表格。
+只需在dg_toolbar函数的参数中加上"export"（表示导出按钮），如：
+
+	jtbl.datagrid({
+		url: WUI.makeUrl("User.query"),
+		toolbar: WUI.dg_toolbar(jtbl, jdlg, "export"),
+		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
+	});
+
+导出字段由jtbl对应的表格的表头定义，如下面表格定义：
+
+	<table id="tblOrder" style="width:auto;height:auto" title="订单列表">
+		...
+		<th data-options="field:'id'">编号</th>
+		<th data-options="field:'status'">状态</th>
+		<th data-options="field:'hint_'">友情提示</th>
+	</table>
+
+它生成的res参数为"id 编号, status 状态"。"hint_"字段以下划线结尾，它会被当作是本地虚拟字段，不会被导出。
+
+table上的title属性可用于控制列表导出时的默认文件名，如本例导出文件名为"订单列表.xls"。
+如果想导出表中没有显示的列，可以设置该列为隐藏，如：
+
+		<th data-options="field:'userId', hidden:true">用户编号</th>
+
+@key jdEnumMap datagrid中th选项, 在导出文件时，枚举变量可显示描述
+
+对于枚举字段，可在th的data-options用`formatter:WUI.formatter.enum(map)`来显示描述，在导出Excel时，需要设置`jdEnumMap:map`属性来显示描述，如
+
+		<th data-options="field:'status', jdEnumMap: OrderStatusMap, formatter: WUI.formatter.enum(OrderStatusMap)">状态</th>
+
+OrderStatusMap在代码中定义如下
+
+	var OrderStatusMap = {
+		CR: "未付款", 
+		PA: "待服务"
+	}
+
+它生成的res参数为"id 编号, status 状态=CR:未付款;PA:待服务"。筋斗云后端支持这种res定义方式将枚举值显示为描述。
+
+@see dg_toolbar 指定列表上的操作按钮
+@see getExportHandler 自定义导出Excel功能
+@see getQueryParamFromTable 根据当前datagrid状态取query接口参数
+
 ### 详情页对话框的常见需求
+
+#### 通用查询
+
+在对话框中按快捷键"Ctrl-F"可进入查询模式。
+详情页提供通用查询，如：
+
+	手机号: <input name="phone">  
+	注册时间: <input name="createTm">
+
+可在手机号中输入"137*"，在注册时间中输入">=2017-1-1 and <2018-1-1" (或用 "2017-1-1~2018-1-1")，这样生成的查询参数为：
+
+	{ cond: "phone like '137%' and (createTm>='2017-1-1' and createTm<'2018-1-1')" }
+
+@see getQueryCond 查询条件支持
+@see getQueryParam 生成查询条件
+
+@key .mui-find-field 用于查找的字段样式
+可设置该样式来标识哪些字段可以查找。一般设置为黄色。
+
+@key .notForFind 指定非查询条件
+不参与查询的字段，可以用notForFind类标识(为兼容，也支持属性notForFind)，如：
+
+	登录密码: <input class="notForFind" type="password" name="pwd">
+	或者: <input notForFind type="password" name="pwd">
+
+@key .wui-notCond 指定独立查询条件
+
+如果查询时不想将条件放在cond参数中，可以设置wui-notCond类标识，如：
+
+	状态: <select name="status" class="my-combobox wui-notCond" data-options="jdEnumList:'0:可用;1:禁用'"></select>
+
+如果不加wui-notCond类，生成的查询参数为：`{cond: "status=0"}`；加上后，生成查询参数如：`{status: 0}`.
 
 #### 设计模式：关联选择框
 
@@ -430,7 +517,7 @@ formatter用于控制Cell中的HTML标签，styler用于控制Cell自己的CSS s
 
 	function initPageItem(storeId) // storeId=row.id
 
-@see WUI.showPage
+@see showPage
 
 ## 对话框功能
 
@@ -471,7 +558,7 @@ formatter用于控制Cell中的HTML标签，styler用于控制Cell自己的CSS s
 
 在showDlg的选项url中指定了接口为"sendSms"。操作成功后，显示一个消息。
 
-@see WUI.showDlg
+@see showDlg
 @see app_show
 
 除了直接调用该函数显示对话框外，还有一种更简单的通过a标签href属性指定打开对话框的做法，如：
@@ -483,7 +570,7 @@ formatter用于控制Cell中的HTML标签，styler用于控制Cell自己的CSS s
 ## 模块化开发
 
 @key wui-script
-@key WUI.options.pageFolder
+@key options.pageFolder
 
 允许将逻辑页、对话框的html片段和js片段放在单独的文件中。以前面章节示例中订单对象的列表页（是一个逻辑页）与详情页（是一个对话框）为例：
 
@@ -529,6 +616,16 @@ formatter用于控制Cell中的HTML标签，styler用于控制Cell自己的CSS s
 
 注意：逻辑页的title字段不能和其它页中title重复，否则这两页无法同时显示，因为显示tab页时是按照title来标识逻辑页的。
 
+动态加载页面时，先加载逻辑页html和js文件，再将逻辑页插入应用程序并做系统初始化（如增强mui组件或easyui组件等），然后调用页面的用户初始化函数。
+若希望在系统初始化之前做一些操作，应放在用户初始化函数之外。
+例如，初始化过程中的服务调用使用批处理：
+
+	functio initPageOrder() 
+	{
+		...
+	}
+	WUI.useBatchCall();
+
 在文件page/dlgOrder.html中定义对话框UI:
 
 	<div wui-script="dlgOrder.js" my-obj="Ordr" my-initfn="initDlgOrder" title="用户订单" style="width:520px;height:500px;">  
@@ -552,6 +649,69 @@ formatter用于控制Cell中的HTML标签，styler用于控制Cell自己的CSS s
 	}
 
 这时，就可以用 WUI.showObjDlg("#dlgOrder")来显示逻辑页了。
+
+### 页面模板支持
+
+定义一个逻辑页面，可以在#my-pages下直接定义，也可以在单独的文件中定义，还可以在一个模板中定义，如：
+
+	<script type="text/html" id="tpl_pageOrder">
+	<div class="pageOrder" title="订单管理" my-initfn="initPageOrder">
+	...
+	</div>
+	</script>
+
+模板用script标签定义，其id属性必须命名为`tpl_{逻辑页面名}`。
+这样就定义了逻辑页pageOrder，且在用到时才加载。与从外部文件加载类似，可以不设置class="pageOrder"，框架会自动处理。
+
+定义对话框也类似：
+
+	<script type="text/html" id="tpl_dlgOrder">
+	<div id="dlgOrder" my-obj="Ordr" my-initfn="initDlgOrder" title="用户订单" style="width:520px;height:500px;">  
+	...
+	</div>
+	</script>
+
+定义了对话框dlgOrder，这个id属性也可以不设置。
+模板用script标签定义，其id属性必须命名为`tpl_{对话框名}`。
+
+注意：
+
+如果将script标签制作的页面模板内嵌在主页中，可能会造成加载时闪烁。
+在chrome中，在easyui-layout之后定义任意script标签（哪怕是空内容），会导致加载首页时闪烁，标题栏是黑色尤其明显。
+测试发现，将这些个script模板放在head标签中不会闪烁。
+
+这个特性可用于未来WEB应用编译打包。
+
+## 参考文档说明
+
+以下参考文档介绍WUI模块提供的方法/函数(fn)、属性/变量(var)等，示例如下：
+
+	@fn showPage(pageName, title?, paramArr?)  一个函数。参数说明中问号表示参数可缺省。
+	@var options 一个属性。
+	@class batchCall(opt?={useTrans?=0}) 一个JS类。
+	@key example-dialog key表示一般关键字。前缀为"example-"用于示例讲解。
+	@key .wui-page 一个CSS类名"wui-page"，关键字以"."开头。
+	@key #wui-pages 一个DOM对象，id为"wui-pages"，关键字以"#"开头。
+
+对于模块下的fn,var,class这些类别，如非特别说明，调用时应加WUI前缀，如
+
+	WUI.showPage("#pageOrder");
+	var opts = WUI.options;
+	var batch = new WUI.batchCall();
+	batch.commit();
+
+以下函数可不加WUI前缀：
+
+	intSort
+	numberSort
+	callSvr
+	callSvrSync
+	app_alert
+	app_confirm
+	app_show
+
+参考wui-name.js模块。
+
 */
 // ====== WEBCC_END_FILE doc.js }}}
 
@@ -1482,6 +1642,27 @@ function kvList2Str(kv, sep, sep2)
 	return ret;
 }
 
+/**
+@fn parseKvList(kvListStr, sep, sep2) -> kvMap
+
+解析key-value列表字符串，返回kvMap。
+示例：
+
+	var map = parseKvList("CR:新创建;PA:已付款", ";", ":");
+	// map: {"CR": "新创建", "PA":"已付款"}
+*/
+self.parseKvList = parseKvList;
+function parseKvList(str, sep, sep2)
+{
+	var map = {};
+	$.each(str.split(sep), function (i, e) {
+		var kv = e.split(sep2, 2);
+		assert(kv.length == 2, "bad kvList: " + str);
+		map[kv[0]] = kv[1];
+	});
+	return map;
+}
+
 function initModule()
 {
 	// bugfix: 浏览器兼容性问题
@@ -1500,14 +1681,32 @@ initModule();
 }/*jdcloud common*/
 
 /**
-@fn jdModule(name, fn)
-定义一个模块，返回该模块对象。
+@fn jdModule(name?, fn?)
 
-@fn jdModule(name)
-获取模块对象。
+定义JS模块。这是一个全局函数。
 
-@fn jdModule()
-返回模块映射表。
+定义一个模块:
+
+	jdModule("jdcloud.common", JdcloudCommon);
+	function JdcloudCommon() {
+		var self = this;
+		
+		// 对外提供一个方法
+		self.rs2Array = rs2Array;
+		function rs2Array(rs)
+		{
+			return ...;
+		}
+	}
+
+获取模块对象:
+
+	var mCommon = jdModule("jdcloud.common");
+	var arr = mCommon.rs2Array(rs);
+
+返回模块映射列表。
+
+	var moduleMap = jdModule(); // 返回 { "jdcloud.common": JdcloudCommon, ... }
 
 */
 function jdModule(name, fn, overrideCtor)
@@ -1919,6 +2118,35 @@ function waitFor(dfd)
 }
 
 /**
+@fn rgb2hex(rgb)
+
+将jquery取到的颜色转成16进制形式，如："rgb(4, 190, 2)" -> "#04be02"
+
+示例：
+
+	var color = rgb2hex( $(".mui-container").css("backgroundColor") );
+
+ */
+self.rgb2hex = rgb2hex;
+function rgb2hex(rgb)
+{
+	var ms = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+	if (ms == null)
+		return;
+	var hex = "#";
+	for (var i = 1; i <= 3; ++i) {
+		var s = parseInt(ms[i]).toString(16);
+		if (s.length == 1) {
+			hex += "0" + s;
+		}
+		else {
+			hex += s;
+		}
+	}
+	return hex;
+}
+
+/**
 @fn jQuery.fn.jdata(val?)
 
 和使用$.data()差不多，更好用一些. 例：
@@ -2073,7 +2301,7 @@ function app_abort()
 window.DirectReturn = function () {}
 
 /**
-@fn MUI.setOnError()
+@fn setOnError()
 
 一般框架自动设置onerror函数；如果onerror被其它库改写，应再次调用该函数。
 allow throw("abort") as abort behavior.
@@ -2099,12 +2327,12 @@ setOnError();
 
 // ------ enhanceWithin {{{
 /**
-@var MUI.m_enhanceFn
+@var m_enhanceFn
 */
 self.m_enhanceFn = {}; // selector => enhanceFn
 
 /**
-@fn MUI.enhanceWithin(jparent)
+@fn enhanceWithin(jparent)
 */
 self.enhanceWithin = enhanceWithin;
 function enhanceWithin(jp)
@@ -2127,7 +2355,7 @@ function enhanceWithin(jp)
 }
 
 /**
-@fn MUI.getOptions(jo)
+@fn getOptions(jo)
 */
 self.getOptions = getOptions;
 function getOptions(jo)
@@ -2149,9 +2377,12 @@ function getop(v)
 		return "=" + v;
 	var op = "=";
 	var is_like=false;
-	if (v.match(/^(<>|>=?|<=?)/)) {
-		op = RegExp.$1;
+	var ms;
+	if (ms=v.match(/^(<>|>=?|<=?|!=?)/)) {
+		op = ms[1];
 		v = v.substr(op.length);
+		if (op == "!" || op == "!=")
+			op = "<>";
 	}
 	else if (v.indexOf("*") >= 0 || v.indexOf("%") >= 0) {
 		v = v.replace(/[*]/g, "%");
@@ -2178,7 +2409,8 @@ function getop(v)
 }
 
 /**
-@fn WUI.getQueryCond(kvList)
+@fn getQueryCond(kvList)
+@var queryHint 查询用法提示
 
 @param kvList {key=>value}, 键值对，值中支持操作符及通配符。也支持格式 [ [key, value] ], 这时允许key有重复。
 
@@ -2202,18 +2434,39 @@ function getop(v)
 设置值时，支持以下格式：
 
 - {key: "value"} - 表示"key=value"
-- {key: ">value"} - 表示"key>value", 类似地，可以用 >=, <, <=, <> 这些操作符。
+- {key: ">value"} - 表示"key>value", 类似地，可以用 >=, <, <=, <>(或! / != 都是不等于) 这些操作符。
 - {key: "value*"} - 值中带通配符，表示"key like 'value%'" (以value开头), 类似地，可以用 "*value", "*value*", "*val*ue"等。
 - {key: "null" } - 表示 "key is null"。要表示"key is not null"，可以用 "<>null".
 - {key: "empty" } - 表示 "key=''".
 
-支持简单的and/or查询，但不支持在其中使用括号:
+支持and/or查询，但不支持在其中使用括号:
 
 - {key: ">value and <=value"}  - 表示"key>'value' and key<='value'"
 - {key: "null or 0 or 1"}  - 表示"key is null or key=0 or key=1"
+- {key: "null,0,1,9-100"} - 表示"key is null or key=0 or key=1 or (key>=9 and key<=100)"，即逗号表示or，a-b的形式只支持数值。
+- {key: "2017-9-1~2017-10-1"} 条件等价于 ">=2017-9-1 and <2017-10-1"
+  可指定时间，如条件"2017-9-1 10:00~2017-10-1"等价于">=2017-9-1 10:00 and <2017-10-1"
+- 符号","及"~"前后允许有空格，如"已付款, 已完成", "2017-1-1 ~ 2018-1-1"
+- 可以使用中文逗号
+- 日期区间也可以用"2017/10/01"或"2017.10.01"这些格式，仅用于字段是文本类型，这时输入格式必须与保存的日期格式一致，并且"2017/10/1"应输入"2017/10/01"才能正确比较字符串大小。
+
+以下表示的范围相同：
+
+	{k1:'1-5,7-10', k2:'1-10 and <>6'}
+
+符号优先级依次为："-"(类似and) ","(类似or) and or
 
 在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。
+
+@see getQueryParam
+@see getQueryParamFromTable 获取datagrid的当前查询参数
 */
+self.queryHint = "查询示例\n" +
+	"文本：\"王小明\", \"王*\"(匹配开头), \"*上海*\"(匹配部分)\n" +
+	"数字：\"5\", \">5\", \"5-10\", \"5-10,12,18\"\n" +
+	"日期：\">=2017-10-01\", \"<2017-10-01 18:00\",\"2017-10-01~2017-11-01\"(区间)\n" +
+	"高级：\"!5\"(排除5),\"1-10 and !5\", \"王*,张*\"(王某或张某), \"empty\"(为空), \"0,null\"(0或未设置)\n";
+
 self.getQueryCond = getQueryCond;
 function getQueryCond(kvList)
 {
@@ -2239,7 +2492,33 @@ function getQueryCond(kvList)
 				bracket = true;
 				return;
 			}
-			str += k + getop(v1);
+			v1 = v1.replace(/，/g, ',');
+			// a-b,c-d,e
+			// dt1~dt2
+			var str1 = '';
+			var bracket2 = false;
+			$.each(v1.split(/\s*,\s*/), function (j, v2) {
+				if (str1.length > 0) {
+					str1 += " OR ";
+					bracket2 = true;
+				}
+				var m = v2.match(/^(?:(\d+)-(\d+)|(\d{4}[-\/.]\d+[-\/.]\d+.*?)\s*~\s*(\d{4}[-\/.]\d+[-\/.]\d+.*))$/);
+				if (m) {
+					if (m[1]) {
+						str1 += "(" + k + ">=" + m[1] + " AND " + k + "<=" + m[2] + ")";
+					}
+					else {
+						str1 += "(" + k + ">='" + m[3] + "' AND " + k + "<'" + m[4] + "')";
+					}
+				}
+				else {
+					str1 += k + getop(v2);
+				}
+			});
+			if (bracket2)
+				str += "(" + str1 + ")";
+			else
+				str += str1;
 		});
 		if (bracket)
 			str = '(' + str + ')';
@@ -2251,9 +2530,10 @@ function getQueryCond(kvList)
 }
 
 /**
-@fn WUI.getQueryParam(kvList)
+@fn getQueryParam(kvList)
 
 根据键值对生成BQP协议中{obj}.query接口需要的cond参数.
+即 `{cond: WUI.getQueryCond(kvList) }`
 
 示例：
 
@@ -2261,12 +2541,17 @@ function getQueryCond(kvList)
 	返回
 	{cond: "phone='13712345678' AND id>100"}
 
-@see WUI.getQueryCond
+@see getQueryCond
+@see getQueryParamFromTable 获取datagrid的当前查询参数
 */
 self.getQueryParam = getQueryParam;
 function getQueryParam(kvList)
 {
-	return {cond: getQueryCond(kvList)};
+	var ret = {};
+	var cond = getQueryCond(kvList);
+	if (cond)
+		ret.cond = cond;
+	return ret;
 }
 
 }
@@ -2280,7 +2565,7 @@ var self = this;
 var mCommon = jdModule("jdcloud.common");
 
 /**
-@var MUI.lastError = ctx
+@var lastError = ctx
 
 出错时，取出错调用的上下文信息。
 
@@ -2297,14 +2582,14 @@ var m_manualBusy = 0;
 var m_appVer;
 
 /**
-@var MUI.disableBatch ?= false
+@var disableBatch ?= false
 
 设置为true禁用batchCall, 仅用于内部测试。
 */
 self.disableBatch = false;
 
 /**
-@var MUI.m_curBatch
+@var m_curBatch
 
 当前batchCall对象，用于内部调试。
 */
@@ -2312,7 +2597,7 @@ var m_curBatch = null;
 self.m_curBatch = m_curBatch;
 
 /**
-@var MUI.mockData  模拟调用后端接口。
+@var mockData  模拟调用后端接口。
 
 在后端接口尚无法调用时，可以配置MUI.mockData做为模拟接口返回数据。
 调用callSvr时，会直接使用该数据，不会发起ajax请求。
@@ -2350,7 +2635,7 @@ mockData中每项可以直接是数据，也可以是一个函数：fn(param, po
 要取HTTP动词可以用`this.type`，值为GET/POST/PATCH/DELETE之一，从而可模拟RESTful API.
 
 可以通过MUI.options.mockDelay设置模拟调用接口的网络延时。
-@see MUI.options.mockDelay
+@see options.mockDelay
 
 模拟数据可直接返回[code, data]格式的JSON数组，框架会将其序列化成JSON字符串，以模拟实际场景。
 如果要查看调用与返回数据日志，可在浏览器控制台中设置 MUI.options.logAction=true，在控制台中查看日志。
@@ -2364,7 +2649,7 @@ mockData中每项可以直接是数据，也可以是一个函数：fn(param, po
 
 	MUI.mockData["zhanda:token/get-token"] = ...;
 
-@see MUI.callSvrExt
+@see callSvrExt
 
 也支持"default"扩展，如：
 
@@ -2409,9 +2694,8 @@ if (location.protocol == "file:") {
 $.ajaxSetup(ajaxOpt);
 
 /**
-@fn MUI.enterWaiting(ctx?)
+@fn enterWaiting(ctx?)
 @param ctx {ac, tm, tv?, tv2?, noLoadingImg?}
-@alias enterWaiting()
 */
 self.enterWaiting = enterWaiting;
 function enterWaiting(ctx)
@@ -2437,8 +2721,7 @@ function enterWaiting(ctx)
 }
 
 /**
-@fn MUI.leaveWaiting(ctx?)
-@alias leaveWaiting
+@fn leaveWaiting(ctx?)
 */
 self.leaveWaiting = leaveWaiting;
 function leaveWaiting(ctx)
@@ -2496,7 +2779,7 @@ function defAjaxErrProc(xhr, textStatus, e)
 }
 
 /**
-@fn MUI.defDataProc(rv)
+@fn defDataProc(rv)
 
 @param rv BQP协议原始数据，如 "[0, {id: 1}]"，一般是字符串，也可以是JSON对象。
 @return data 按接口定义返回的数据对象，如 {id: 1}. 如果返回==null，调用函数应直接返回，不回调应用层。
@@ -2607,7 +2890,7 @@ function defDataProc(rv)
 }
 
 /**
-@fn MUI.getBaseUrl()
+@fn getBaseUrl()
 
 取服务端接口URL对应的目录。可用于拼接其它服务端资源。
 相当于dirname(MUI.options.serverUrl);
@@ -2624,7 +2907,7 @@ function getBaseUrl()
 }
 
 /**
-@fn MUI.makeUrl(action, params?)
+@fn makeUrl(action, params?)
 
 生成对后端调用的url. 
 
@@ -2646,7 +2929,7 @@ function getBaseUrl()
 
 	MUI.makeUrl(['login', 'zhanda']) 等价于 MUI.makeUrl('zhanda:login');
 
-@see MUI.callSvrExt
+@see callSvrExt
  */
 self.makeUrl = makeUrl;
 function makeUrl(action, params)
@@ -2752,8 +3035,7 @@ function makeUrl(action, params)
 }
 
 /**
-@fn MUI.callSvr(ac, [params?], fn?, postParams?, userOptions?) -> deferredObject
-@alias callSvr
+@fn callSvr(ac, [params?], fn?, postParams?, userOptions?) -> deferredObject
 
 @param ac String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)
 @param params Object. URL参数（或称HTTP GET参数）
@@ -2771,7 +3053,7 @@ function makeUrl(action, params)
 想为ajax选项设置缺省值，可以用callSvrExt中的beforeSend回调函数，也可以用$.ajaxSetup，
 但要注意：ajax的dataFilter/beforeSend选项由于框架已用，最好不要覆盖。
 
-@see MUI.callSvrExt[].beforeSend(opt) 为callSvr选项设置缺省值
+@see callSvrExt[].beforeSend(opt) 为callSvr选项设置缺省值
 
 @return deferred对象，与$.ajax相同。
 例如，
@@ -2813,7 +3095,7 @@ function makeUrl(action, params)
 		foo(data);
 	}, null, {noex:1});
 
-@see MUI.lastError 出错时的上下文信息
+@see lastError 出错时的上下文信息
 
 ## 调用监控
 
@@ -2849,7 +3131,7 @@ JS:
 
 ## callSvr扩展
 
-@key MUI.callSvrExt
+@key callSvrExt
 
 当调用第三方API时，也可以使用callSvr扩展来代替$.ajax调用以实现：
 - 调用成功时直接可操作数据，不用每次检查返回码；
@@ -2903,14 +3185,14 @@ callSvr扩展示例：
 		console.log(data);
 	});
 
-@key MUI.callSvrExt[].makeUrl(ac, param)
+@key callSvrExt[].makeUrl(ac, param)
 
 根据调用名ac生成url, 注意无需将param放到url中。
 
 注意：
 对方接口应允许JS跨域调用，或调用方支持跨域调用。
 
-@key MUI.callSvrExt[].dataFilter(data) = null/false/data
+@key callSvrExt[].dataFilter(data) = null/false/data
 
 对调用返回数据进行通用处理。返回值决定是否调用callSvr的回调函数以及参数值。
 
@@ -2922,9 +3204,9 @@ callSvr扩展示例：
 
 当返回false时，应用层可以通过`MUI.lastError.ret`来获取服务端返回数据。
 
-@see MUI.lastError 出错时的上下文信息
+@see lastError 出错时的上下文信息
 
-@key MUI.callSvrExt['default']
+@key callSvrExt['default']
 
 (支持版本: v3.1)
 如果要修改callSvr缺省调用方法，可以改写 MUI.callSvrExt['default'].
@@ -2987,7 +3269,7 @@ callSvr扩展示例：
 
 	callSvr('login');
 
-@key MUI.callSvrExt[].beforeSend(opt) 为callSvr或$.ajax选项设置缺省值
+@key callSvrExt[].beforeSend(opt) 为callSvr或$.ajax选项设置缺省值
 
 如果有ajax选项想设置，可以使用beforeSend回调，例如POST参数使用JSON格式：
 
@@ -3163,7 +3445,9 @@ function callSvr(ac, params, fn, postParams, userOptions)
 		ctx.getMockData = function () {
 			var d = self.mockData[ac0];
 			var param1 = $.extend({}, url.params);
-			var postParam1 = $.extend({}, postParams);
+			var postParam1 = ( ac0=="batch"
+				? eval("(" + postParams + ")")
+				: $.extend({}, postParams));
 			if ($.isFunction(d)) {
 				d = d(param1, postParam1);
 			}
@@ -3186,11 +3470,11 @@ function callSvr(ac, params, fn, postParams, userOptions)
 		url: url,
 		data: postParams,
 		type: method,
+		success: fn,
 		// 允许跨域使用cookie/session/authorization header
 		xhrFields: {
 			withCredentials: true
 		},
-		success: fn,
 		ctx_: ctx
 	};
 	// support FormData object.
@@ -3239,8 +3523,7 @@ function callSvrMock(opt, isSyncCall)
 }
 
 /**
-@fn MUI.callSvrSync(ac, [params?], fn?, postParams?, userOptions?)
-@alias callSvrSync
+@fn callSvrSync(ac, [params?], fn?, postParams?, userOptions?)
 @return data 原型规定的返回数据
 
 同步模式调用callSvr.
@@ -3266,7 +3549,7 @@ function callSvrSync(ac, params, fn, postParams, userOptions)
 }
 
 /**
-@fn MUI.setupCallSvrViaForm($form, $iframe, url, fn, callOpt)
+@fn setupCallSvrViaForm($form, $iframe, url, fn, callOpt)
 
 该方法已不建议使用。上传文件请用FormData。
 @see example-upload,callSvr
@@ -3312,7 +3595,7 @@ function setupCallSvrViaForm($form, $iframe, url, fn, callOpt)
 }
 
 /**
-@class MUI.batchCall(opt?={useTrans?=0})
+@class batchCall(opt?={useTrans?=0})
 
 批量调用。将若干个调用打包成一个特殊的batch调用发给服务端。
 注意：
@@ -3358,9 +3641,9 @@ function setupCallSvrViaForm($form, $iframe, url, fn, callOpt)
 
 如果值计算失败，则当作"null"填充。
 
-@see MUI.useBatchCall
-@see MUI.disableBatch
-@see MUI.m_curBatch
+@see useBatchCall
+@see disableBatch
+@see m_curBatch
 
 */
 self.batchCall = batchCall;
@@ -3386,6 +3669,10 @@ batchCall.prototype = {
 		if (opt.ref) {
 			call.ref = opt.ref;
 		}
+		if (call.ac && call.ac.makeUrl) {
+			call.get = $.extend({}, call.ac.params, call.get);
+			call.ac = call.ac.action;
+		}
 		this.calls_.push(call);
 
 		var callOpt = {
@@ -3406,8 +3693,19 @@ batchCall.prototype = {
 			return;
 		m_curBatch = null;
 
-		if (this.calls_.length <= 1) {
+		if (this.calls_.length < 1) {
 			console.log("!!! warning: batch has " + this.calls_.length + " calls!");
+			return;
+		}
+		if (this.calls_.length == 1) {
+			// 只有一个调用，不使用batch
+			var call = this.calls_[0];
+			var callOpt = this.callOpts_[0];
+			var dfd = callSvr(call.ac, call.get, callOpt.fn, call.post, callOpt.opt);
+			dfd.then(function (data) {
+				callOpt.dfd.resolve(data);
+			});
+			return;
 		}
 		var batch_ = this;
 		var postData = JSON.stringify(this.calls_);
@@ -3451,7 +3749,7 @@ batchCall.prototype = {
 }
 
 /**
-@fn MUI.useBatchCall(opt?={useTrans?=0}, tv?=0)
+@fn useBatchCall(opt?={useTrans?=0}, tv?=0)
 
 之后的callSvr调用都加入批量操作。例：
 
@@ -3465,8 +3763,8 @@ batchCall.prototype = {
 
 如果MUI.disableBatch=true, 该函数不起作用。
 
-@see MUI.batchCall
-@see MUI.disableBatch
+@see batchCall
+@see disableBatch
 */
 self.useBatchCall = useBatchCall;
 function useBatchCall(opt, tv)
@@ -3496,10 +3794,12 @@ var mCommon = jdModule("jdcloud.common");
 
 mCommon.assert($.fn.combobox, "require jquery-easyui lib.");
 
+// TODO: remove.
 // dlg中与数据库表关联的字段的name应以_开头，故调用add_转换；
 // 但如果字段名中间有"__"表示非关联到表的字段，不做转换，这之后该字段不影响数据保存。
 function add_(o)
 {
+	// return $.extend(true, {}, o);
 	var ret = {};
 	for (var k in o) {
 		if (k.indexOf("__") < 0)
@@ -3520,7 +3820,7 @@ function getRow(jtbl)
 }
 
 /** 
-@fn WUI.reload(jtbl, url?, queryParams?) 
+@fn reload(jtbl, url?, queryParams?) 
 */
 self.reload = reload;
 function reload(jtbl, url, queryParams)
@@ -3548,7 +3848,7 @@ function reload(jtbl, url, queryParams)
 }
 
 /** 
-@fn WUI.reloadTmp(jtbl, url?, queryParams?) 
+@fn reloadTmp(jtbl, url?, queryParams?) 
 临时reload一下，完事后恢复原url
 */
 self.reloadTmp = reloadTmp;
@@ -3615,7 +3915,7 @@ function jdListToArray(data)
 }
 
 /** 
-@fn WUI.reloadRow(jtbl, rowData)
+@fn reloadRow(jtbl, rowData)
 @param rowData must be the original data from table row
  */
 self.reloadRow = reloadRow;
@@ -3708,6 +4008,7 @@ function callInitfn(jo, paramArr)
 
 	if (initfn)
 	{
+		console.log("### initfn: " + attr);
 		initfn.apply(jo, paramArr || []);
 	}
 	jo.jdata().init = true;
@@ -3719,7 +4020,7 @@ function getModulePath(file)
 }
 
 /** 
-@fn WUI.showPage(pageName, title?, paramArr?)
+@fn showPage(pageName, title?, paramArr?)
 @param pageName 由page上的class指定。
 @param title? 如果未指定，则使用page上的title属性.
 @param paramArr? 调用initfn时使用的参数，是一个数组。
@@ -3750,6 +4051,13 @@ function showPage(pageName, title, paramArr)
 		initPage();
 	}
 	else {
+		sel = "#tpl_" + pageName;
+		var html = $(sel).html();
+		if (html) {
+			loadPage(html, pageName, null);
+			return;
+		}
+
 		//jtab.append("开发中");
 
 		//self.enterWaiting(); // NOTE: leaveWaiting in initPage
@@ -3764,7 +4072,7 @@ function showPage(pageName, title, paramArr)
 	function initPage()
 	{
 		if (title == null)
-			title = $(sel).attr("title") || "无标题";
+			title = jpage.attr("title") || "无标题";
 
 		var tt = self.tabMain;
 		if (tt.tabs('exists', title)) {
@@ -3844,7 +4152,7 @@ function showPage(pageName, title, paramArr)
 }
 
 /**
-@fn WUI.closeDlg(jdlg) 
+@fn closeDlg(jdlg) 
 */
 self.closeDlg = closeDlg;
 function closeDlg(jdlg)
@@ -3893,39 +4201,120 @@ $.fn.okCancel = function (fnOk, fnCancel) {
 			showObjDlg($(this), FormMode.forFind, null);
 			return false;
 		}
+/* // Ctrl-A: add mode
+		else if (e.ctrlKey && e.which == 65)
+		{
+			showObjDlg($(this), FormMode.forAdd, null);
+			return false;
+		}
+*/
 	});
 }
 
 /**
-@fn WUI.showDlg(jdlg, opt?)
+@fn showDlg(jdlg, opt?)
 
-@param jdlg 可以是jquery对象，也可以是selector字符串或DOM对象，比如 "#dlgOrder". 注意：当对话框保存为单独模块时，jdlg=$("#dlgOrder") 一开始会为空数组，这时也可以调用该函数，且调用后jdlg会被修改为实际加载的对话框对象。
-@param opt?={url, buttons, noCancel=false, okLabel="确定", cancelLabel="取消", modal=true, reset=true, validate=true, data, onOk, onSubmit, onAfterSubmit}
+@param jdlg 可以是jquery对象，也可以是selector字符串或DOM对象，比如 "#dlgOrder".
+注意：当对话框动态从外部加载时，jdlg=$("#dlgOrder") 一开始会为空数组，这时也可以调用该函数，且调用后jdlg会被修改为实际加载的对话框对象。
 
-- url: 点击确定时的操作动作。
-- data: 如果是object, 则为form自动加载的数据；如果是string, 则认为是一个url, 将自动获取数据。(form的load方法一致)
-- reset: 在加载数据前清空form
+@param opt?={url, buttons, noCancel=false, okLabel="确定", cancelLabel="取消", modal=true, reset=true, validate=true, data, onOk, onSubmit}
 
-特殊class my-reset: 当执行form reset时会将内容清除. (适用于在forSet/forLink模式下添加显示内容, 而在forFind/forAdd模式下时清除内容)
+- opt.url: String. 点击确定后，提交到后台的URL。如果设置则自动提交数据，否则应在opt.onOk回调或validate事件中手动提交。
+- opt.buttons: Object数组。用于添加“确定”、“取消”按钮以外的其它按钮，如`[{text: '下一步', iconCls:'icon-ok', handler: btnNext_click}]`。
+ 用opt.okLabel/cancelLabel可修改“确定”、“取消”按钮的名字，用opt.noCancel=true可不要“取消”按钮。
+- opt.model: Boolean.模态对话框，这时不可操作对话框外其它部分，如登录框等。设置为false改为非模态对话框。
+- opt.data: Object. 自动加载的数据, 将自动填充到对话框上带name属性的DOM上。在修改对象时，仅当与opt.data有差异的数据才会传到服务端。
+- opt.reset: Boolean. 显示对话框前先清空。
+- opt.validate: Boolean. 是否提交前用easyui-form组件验证数据。内部使用。
+- opt.onSubmit: Function(data) 自动提交前回调。用于验证或补齐提交数据，返回false可取消提交。opt.url为空时不回调。
+- opt.onOk: Function(jdlg, data?) 如果自动提交(opt.url非空)，则服务端接口返回数据后回调，data为返回数据。如果是手动提交，则点确定按钮时回调，没有data参数。
+
+对话框有两种编程模式，一是通过opt参数在启动对话框时设置属性及回调函数(如onOk)，另一种是在dialog初始化函数中处理事件(如validate事件)实现逻辑，有利于独立模块化。
+
+对于自动提交数据的对话框(设置了opt.url)，提交数据过程中回调函数及事件执行顺序为：
+
+	事件validate; // 提交前，用于验证或设置提交数据。返回false或ev.preventDefault()可取消提交，中止以下代码执行。
+	opt.onSubmit(); // 提交前，验证或设置提交数据，返回false将阻止提交。
+	... 框架通过callSvr自动提交数据，如添加、更新对象等。
+	opt.onOk(jdlg, data); // 提交且服务端返回数据后。data是服务端返回数据。
+	事件retdata; // 与onOk类似。
+
+对于手动提交数据的对话框(opt.url为空)，执行顺序为：
+
+	事件validate; // 用于验证、设置提交数据、提交数据。
+	opt.onOk(jdlg); // 同上
+
+注意：
+
+- 参数opt可在beforeshow事件中设置，这样便于在对话框模块中自行设置选项，包括okLabel, onOk回调等等。
+- 旧版本中的回调 opt.onAfterSubmit() 回调已删除，请用opt.onOk()替代。
+
+调用此函数后，对话框将加上以下CSS Class:
+@key .wui-dialog 标识WUI对话框的类名。
+
+**对象型对话框与formMode**
+
+函数showObjDlg()会调用本函数显示对话框，称为对象型对话框，用于对象增删改查，它将以下操作集中在一起，并设置相应的formMode：
+
+- 查询(FormMode.forFind)
+- 显示及更新(FormMode.forSet)
+- 添加(FormMode.forAdd)
+- 删除(FormMode.forDel)，但实际上不会打开对话框
+
+注意：
+
+- 可通过`var formMode = jdlg.jdata().mode;`来获取当前对话框模式。
+- 非对象型对话框的formMode为空。
+- 对象型对话框由框架自动设置各opt选项，一般不应自行修改opt，而是通过处理对话框事件实现逻辑。
+
+对象型对话框事件：
+
+	beforeshow(formMode, opt)事件。显示对话框前触发。可以通过设置opt参数定制对话框，与调用showDlg时传入opt参数相同效果。通过修改opt.data可为字段设置缺省值。
+	show(formMode, opt.data)事件。显示对话框后触发。这时opt.data已经设置到对话框上带name属性的DOM组件中，一些不能直接显示的字段，可在此时设置到DOM组件上，比如图片等。
+	validate(formMode, opt.data)事件。用于提交前验证、补齐数据等。返回false可取消提交。
+	retdata(data, formMode)事件。服务端返回结果时触发。注意forFind模式不会触发。
+
+初始数据与对话框中带name属性的对象相关联，详见
+@see setFormData,getFormData
+
+注意：
+
+- 旧版本中的initdata, loaddata, savedata将废弃，应分别改用beforeshow, show, validate事件替代，注意事件参数及检查对话框模式。
+
+**对话框事件**
+
+@key beforeshow Function(ev, formMode, opt)  对话框显示前事件
+opt参数即showDlg的opt参数，可在此处修改.
+
+注意：每次调用showDlg()都会回调，可能这时对话框已经在显示。
+
+@key show Function(ev, formMode, initData)  对话框显示后事件.
+用于设置DOM组件。
+注意如果在beforeshow事件中设置DOM，对于带name属性的组件会在加载数据时值被覆盖回去，对它们在beforeshow中只能通过设置opt.data来指定缺省值。
+
+@key retdata Function(ev, data, formMode) form提交后事件，用于处理返回数据
+
+以下事件将废弃：
+@key initdata Function(ev, initData, formMode) 加载数据前触发。可修改要加载的数据initData, 用于为字段设置缺省值。将废弃，改用beforeshow事件。
+@key loaddata Function(ev, initData, formMode) form加载数据后，一般用于将服务端数据转为界面显示数据。将废弃，改用show事件。
+@key savedata Function(ev, formMode, initData) 对于设置了opt.url的窗口，将向后台提交数据，提交前将触发该事件，用于验证或补足数据（修正某个）将界面数据转为提交数据. 返回false或调用ev.preventDefault()可阻止form提交。将废弃，改用validate事件。
+
+@see example-dialog 在对话框中使用事件
+
+**reset控制**
+
+对话框上有name属性的组件在显示对话框时会自动清除（除非设置opt.reset=false或组件设置有noReset属性）。
+
+@key .my-reset 标识在显示对话框时应清除
+对于没有name属性（不与数据关联）的组件，可加该CSS类标识要求清除。
+例如，想在forSet模式下添加显示内容, 而在forFind/forAdd模式下时清除内容这样的需求。
 
 	<div class="my-reset">...</div>
 
-hidden上的特殊property noReset: (TODO)
+@key [noReset]
+某些字段希望设置后一直保留，不要被清空，可以设置noReset属性，例如：
 
-在dialog的form中将触发以下事件：
-
-@key beforeshow Function(ev, formMode)  form显示前事件.
-@key show Function(ev, formMode)  form显示事件.
-@key initdata Function(ev, data, formMode) form加载数据前，可修改要加载的数据即data
-@key loaddata Function(ev, data, formMode) form加载数据后，一般用于将服务端数据转为界面显示数据
-@key savedata Function(ev, formMode, initData) form提交前事件，用于将界面数据转为提交数据. 返回false或调用ev.preventDefault()可阻止form提交。
-@key retdata Function(ev, data, formMode) form提交后事件，用于处理返回数据
-
-调用此函数后，对话框将加上以下CSS Class:
-
-@key .wui-dialog 标识WUI对话框的类名。
-
-@see example-dialog 在对话框中使用事件
+	<input type="hidden" name="status" value="PA" noReset>
 
  */
 self.showDlg = showDlg;
@@ -3948,18 +4337,19 @@ function showDlg(jdlg, opt)
 		validate: true
 	}, opt);
 
+	jdlg.addClass('wui-dialog');
+	callInitfn(jdlg);
+
+	// TODO: 事件换成jdlg触发，不用jfrm
+	var jfrm = jdlg.find("form:first");
+	var formMode = jdlg.jdata().mode;
+	jfrm.trigger("beforeshow", [formMode, opt]);
+
 	var btns = [{text: opt.okLabel, iconCls:'icon-ok', handler: fnOk}];
 	if (! opt.noCancel) 
 		btns.push({text: opt.cancelLabel, iconCls:'icon-cancel', handler: fnCancel})
 	if ($.isArray(opt.buttons))
 		btns.push.apply(btns, opt.buttons);
-
-	jdlg.addClass('wui-dialog');
-	callInitfn(jdlg);
-
-	var jfrm = jdlg.find("Form");
-	var formMode = jdlg.jdata().mode;
-	jfrm.trigger("beforeshow", [formMode]);
 
 	var dlgOpt = {
 //		minimizable: true,
@@ -3988,16 +4378,21 @@ function showDlg(jdlg, opt)
 
 	if (opt.reset)
 	{
+		/*
 		jfrm.form("reset");
 		// !!! NOTE: form.reset does not reset hidden items, which causes data is not cleared for find mode !!!
 		jfrm.find("[type=hidden]:not([noReset])").val("");
-		jfrm.find(".my-reset").empty();
+		*/
+		mCommon.setFormData(jdlg); // reset
+		jdlg.find(".my-reset").empty();
 	}
 	if (opt.data)
 	{
-		jfrm.trigger("initdata", [opt.data, formMode]);
-		jfrm.form("load", opt.data);
-		jfrm.trigger("loaddata", [opt.data, formMode]);
+		jfrm.trigger("initdata", [opt.data, formMode]); // TODO: remove. 用beforeshow替代。
+		//jfrm.form("load", opt.data);
+		var setOrigin = (formMode == FormMode.forSet);
+		mCommon.setFormData(jdlg, opt.data, {setOrigin: setOrigin});
+		jfrm.trigger("loaddata", [opt.data, formMode]); // TODO: remove。用show替代。
 // 		// load for jquery-easyui combobox
 // 		// NOTE: depend on jeasyui implementation. for ver 1.4.2.
 // 		jfrm.find("[comboname]").each (function (i, e) {
@@ -4007,47 +4402,50 @@ function showDlg(jdlg, opt)
 
 // 	openDlg(jdlg);
 	focusDlg(jdlg);
-	jfrm.trigger("show", [formMode]);
+	jfrm.trigger("show", [formMode, opt.data]);
 
 	function fnCancel() {closeDlg(jdlg)}
 	function fnOk()
 	{
+		var ret = opt.validate? jfrm.form("validate"): true;
+		if (! ret)
+			return false;
+
+		var ev = $.Event("validate");
+		jfrm.trigger(ev, [formMode, opt.data]);
+		if (ev.isDefaultPrevented())
+			return false;
+
+		// TODO: remove. 用validate事件替代。
+		var ev = $.Event("savedata");
+		jfrm.trigger(ev, [formMode, opt.data]);
+		if (ev.isDefaultPrevented())
+			return false;
+
 		if (opt.url) {
-			submitForm();
-			opt.onAfterSubmit && opt.onAfterSubmit(jfrm);
+			var data = mCommon.getFormData(jdlg);
+			if (opt.onSubmit && opt.onSubmit(data) === false)
+				return false;
 
-			function submitForm() 
-			{
-				var ret = opt.validate? jfrm.form("validate"): true;
-				if (! ret)
-					return false;
+			self.callSvr(opt.url, success, data);
+		}
+		else {
+			opt.onOk && opt.onOk.call(jdlg);
+		}
+		// opt.onAfterSubmit && opt.onAfterSubmit(jfrm); // REMOVED
 
-				var ev = $.Event("savedata");
-				jfrm.trigger(ev, [formMode, opt.data]);
-				if (ev.isDefaultPrevented())
-					return false;
-
-				if (opt.onSubmit && opt.onSubmit(jfrm) === false)
-					return false;
-
-				var data = mCommon.getFormData(jfrm);
-				self.callSvr(opt.url, success, data);
-			}
-			function success (data)
-			{
-				if (data != null && opt.onOk) {
-					opt.onOk.call(jdlg, data);
-					jfrm.trigger('retdata', [data, formMode]);
-				}
+		function success (data)
+		{
+			if (data != null && opt.onOk) {
+				opt.onOk.call(jdlg, data);
+				jfrm.trigger('retdata', [data, formMode]);
 			}
 		}
-		else
-			opt.onOk && opt.onOk.call(jdlg);
 	}
 }
 
 /**
-@fn WUI.getTopDialog()
+@fn getTopDialog()
 
 取处于最上层的对话框。如果没有，返回jo.size() == 0
 */
@@ -4067,7 +4465,7 @@ function getTopDialog()
 }
 
 /**
-@fn WUI.unloadPage(pageName?)
+@fn unloadPage(pageName?)
 
 @param pageName 如未指定，表示当前页。
 
@@ -4093,7 +4491,7 @@ function unloadPage(pageName)
 }
 
 /**
-@fn WUI.reloadPage()
+@fn reloadPage()
 
 重新加载当前页面。一般用于开发过程，在修改外部逻辑页后，调用该函数可刷新页面。
 */
@@ -4106,8 +4504,8 @@ function reloadPage()
 }
 
 /**
-@fn WUI.unloadDialog()
-@alias WUI.reloadDialog
+@fn unloadDialog()
+@alias reloadDialog
 
 删除当前激活的对话框。一般用于开发过程，在修改外部对话框后，调用该函数清除以便此后再载入页面，可以看到更新的内容。
 
@@ -4142,52 +4540,20 @@ function getFindData(jfrm)
 	var kvList = {};
 	var kvList2 = {};
 	jfrm.find(":input[name]").each(function(i,e) {
-		if ($(e).attr("notForFind"))
+		if ($(e).hasClass("notForFind"))
 			return;
 		var v = $(e).val();
 		if (v == null || v === "")
 			return;
-		if ($(e).attr("my-cond"))
+		if ($(e).hasClass("wui-notCond"))
 			kvList2[e.name] = v;
 		else
 			kvList[e.name] = v;
 	})
-	var cond = self.getQueryParam(kvList);
+	var param = self.getQueryParam(kvList);
 	if (kvList2) 
-		$.extend(cond, kvList2);
-	return cond;
-}
-
-function saveFormFields(jfrm, data)
-{
-	jfrm.jdata().init_data = $.extend(true, {}, data); // clone(data);
-}
-
-function checkFormFields(jfrm)
-{
-	var jd = jfrm.jdata();
-	jd.no_submit = [];
-	jfrm.find(":input[name]").each(function (i,o) {
-		var jo = $(o);
-		var initval = jd.init_data[o.name];
-		if (initval === undefined || initval === null)
-			initval = "";
-		if (jo.prop("disabled") || jo.val() !== String(initval))
-			return;
-		jo.prop("disabled", true);
-		jd.no_submit.push(jo);
-	});
-}
-
-function restoreFormFields(jfrm)
-{
-	var jd = jfrm.jdata();
-	if (jd.no_submit == null)
-		return;
-	$.each(jd.no_submit, function(i,jo) {
-		jo.prop("disabled", false);
-	})
-	delete jd.no_submit;
+		$.extend(param, kvList2);
+	return param;
 }
 
 /*
@@ -4218,8 +4584,23 @@ function loadDialog(jdlg, onLoad)
 	}
 
 	var dlgId = jdlg.selector.substr(1);
+	var sel = "#tpl_" + dlgId;
+	var html = $(sel).html();
+	if (html) {
+		loadDialogTpl(html, dlgId, pageFile);
+		return;
+	}
+
 	var pageFile = getModulePath(dlgId + ".html");
 	$.ajax(pageFile).then(function (html) {
+		loadDialogTpl(html, dlgId, pageFile);
+	})
+	.fail(function () {
+		//self.leaveWaiting();
+	});
+
+	function loadDialogTpl(html, dlgId, pageFile)
+	{
 		var jcontainer = $("#my-pages");
 		// 注意：如果html片段中有script, 在append时会同步获取和执行(jquery功能)
 		var jo = $(html).filter("div");
@@ -4252,14 +4633,12 @@ function loadDialog(jdlg, onLoad)
 		else {
 			onLoad();
 		}
-	}).fail(function () {
-		//self.leaveWaiting();
-	});
+	}
 	return true;
 }
 
 /**
-@fn WUI.showObjDlg(jdlg, mode, opt?={jtbl, id})
+@fn showObjDlg(jdlg, mode, opt?={jtbl, id})
 
 @param jdlg 可以是jquery对象，也可以是selector字符串或DOM对象，比如 "#dlgOrder". 注意：当对话框保存为单独模块时，jdlg=$("#dlgOrder") 一开始会为空数组，这时也可以调用该函数，且调用后jdlg会被修改为实际加载的对话框对象。
 
@@ -4267,7 +4646,7 @@ function loadDialog(jdlg, onLoad)
 @param opt.jdbl Datagrid. dialog/form关联的datagrid -- 如果dlg对应多个tbl, 必须每次打开都设置
 
 事件参考：
-@see WUI.showDlg
+@see showDlg
 */
 self.showObjDlg = showObjDlg;
 function showObjDlg(jdlg, mode, opt)
@@ -4299,7 +4678,6 @@ function showObjDlg(jdlg, mode, opt)
 	// get id
 	var rowData;
 	if (id == null) {
-		mCommon.assert(mode != FormMode.forLink);
 		if (mode == FormMode.forSet || mode == FormMode.forDel) // get dialog data from jtbl row, 必须关联jtbl
 		{
 			mCommon.assert(jd.jtbl);
@@ -4316,7 +4694,7 @@ function showObjDlg(jdlg, mode, opt)
 		if (jd.jtbl) 
 			jd.jtbl.datagrid("clearSelections");
 	}
-	else if (mode == FormMode.forSet || mode == FormMode.forLink) {
+	else if (mode == FormMode.forSet) {
 		url = self.makeUrl([obj, "set"], {id: id});
 	}
 	else if (mode == FormMode.forDel) {
@@ -4343,17 +4721,18 @@ function showObjDlg(jdlg, mode, opt)
 		jfrm.find(":input[name]").each (function (i,e) {
 			var je = $(e);
 			var bak = je.jdata().bak = {
-				bgcolor: je.css("backgroundColor"),
 				disabled: je.prop("disabled"),
+				title: je.prop("title"),
 				type: null
 			}
-			if (je.attr("notforFind")) {
+			if (je.hasClass("notForFind") || je.attr("notForFind") != null) {
 				je.prop("disabled", true);
 				je.css("backgroundColor", "");
 			}
 			else {
 				je.prop("disabled", false);
-				je.css("backgroundColor", "#ffff00"); // "yellow";
+				je.addClass("mui-find-field");
+				je.prop("title", self.queryHint);
 				var type = je.attr("type");
 				if (type && ["number", "date", "time", "datetime"].indexOf(type) >= 0) {
 					bak.type = type;
@@ -4368,7 +4747,8 @@ function showObjDlg(jdlg, mode, opt)
 			var je = $(e);
 			var bak = je.jdata().bak;
 			je.prop("disabled", bak.disabled);
-			je.css("backgroundColor", bak.bgcolor);
+			je.removeClass("mui-find-field");
+			je.prop("title", bak.title);
 			if (bak.type) {
 				je.attr("type", bak.type);
 			}
@@ -4387,18 +4767,17 @@ function showObjDlg(jdlg, mode, opt)
 		else
 			load_data = {};
 	}
-	else if (mode == FormMode.forSet && rowData) {
-		load_data = add_(rowData);
-		
-		saveFormFields(jfrm, load_data);
-	}
-	else if (mode == FormMode.forLink || mode == FormMode.forSet) {
-		var load_url = self.makeUrl([obj, 'get'], {id: id});
-		var data = self.callSvrSync(load_url);
-		if (data == null)
-			return;
-		load_data = add_(data);
-		saveFormFields(jfrm, load_data);
+	else if (mode == FormMode.forSet) {
+		if (rowData) {
+			load_data = add_(rowData);
+		}
+		else {
+			var load_url = self.makeUrl([obj, 'get'], {id: id});
+			var data = self.callSvrSync(load_url);
+			if (data == null)
+				return;
+			load_data = add_(data);
+		}
 	}
 	// open the dialog
 	showDlg(jdlg, {
@@ -4408,30 +4787,37 @@ function showObjDlg(jdlg, mode, opt)
 		modal: false,  // mode == FormMode.forAdd || mode == FormMode.forSet
 		reset: doReset,
 		data: load_data,
-		onOk: onOk,
-
-		onSubmit: (mode == FormMode.forSet || mode == FormMode.forLink) && checkFormFields,
-		onAfterSubmit: (mode == FormMode.forSet || mode == FormMode.forLink) && restoreFormFields
+		onSubmit: onSubmit,
+		onOk: onOk
 	});
 
-	if (mode == FormMode.forSet || mode == FormMode.forLink)
+	if (mode == FormMode.forSet)
 		jfrm.form("validate");
 
+	function onSubmit(data) {
+		// 没有更新时直接关闭对话框
+		if (mode == FormMode.forSet) {
+			if ($.isEmptyObject(data)) {
+				closeDlg(jdlg);
+				return false;
+			}
+		}
+	}
 	function onOk (retData) {
 		if (mode==FormMode.forFind) {
 			var param = getFindData(jfrm);
-			if (! $.isEmptyObject(param)) {
-				mCommon.assert(jd.jtbl); // 查询结果显示到jtbl中
-				reload(jd.jtbl, undefined, param);
+			mCommon.assert(jd.jtbl); // 查询结果显示到jtbl中
+			// 归并table上的cond条件. dgOpt.url是makeUrl生成的，保存了原始的params
+			var dgOpt = jd.jtbl.datagrid("options");
+			if (param.cond && dgOpt && dgOpt.url && dgOpt.url.params && dgOpt.url.params.cond) {
+				param.cond = dgOpt.url.params.cond + " AND (" + param.cond + ")";
 			}
-			else {
-				self.app_alert("请输入查询条件!", "w");
-			}
+			reload(jd.jtbl, undefined, param);
 			return;
 		}
 		// add/set/link
 		// TODO: add option to force reload all (for set/add)
-		if (mode != FormMode.forLink && jd.jtbl) {
+		if (jd.jtbl) {
 			if (mode == FormMode.forSet && rowData)
 				reloadRow(jd.jtbl, rowData);
 			else if (mode == FormMode.forAdd) {
@@ -4453,7 +4839,7 @@ function showObjDlg(jdlg, mode, opt)
 }
 
 /**
-@fn WUI.dg_toolbar(jtbl, jdlg, button_lists...)
+@fn dg_toolbar(jtbl, jdlg, button_lists...)
 
 @param jdlg 可以是对话框的jquery对象，或selector如"#dlgOrder".
 
@@ -4493,6 +4879,15 @@ function showObjDlg(jdlg, mode, opt)
 	};
 	jtbl.datagrid(dgOpt);
 
+特别地，要添加导出数据到Excel文件的功能按钮，可以增加参数"export"作为按钮定义：
+
+	var dgOpt = {
+		...
+		toolbar: WUI.dg_toolbar(jtbl, jdlg, "export", "-", btn1),
+	}
+
+如果想自行定义导出行为参数，可以参考WUI.getExportHandler
+@see getExportHandler 导出按钮设置
 */
 self.dg_toolbar = dg_toolbar;
 function dg_toolbar(jtbl, jdlg)
@@ -4546,7 +4941,7 @@ function dg_toolbar(jtbl, jdlg)
 }
 
 /**
-@fn WUI.dg_dblclick(jtbl, jdlg)
+@fn dg_dblclick(jtbl, jdlg)
 
 @param jdlg 可以是对话框的jquery对象，或selector如"#dlgOrder".
 
@@ -4598,7 +4993,7 @@ function enhanceAnchor(jo)
 }
 
 /**
-@fn WUI.getExportHandler(jtbl, ac?, param?={})
+@fn getExportHandler(jtbl, ac?, param?={})
 
 为数据表添加导出Excel菜单，如：
 
@@ -4613,9 +5008,9 @@ function enhanceAnchor(jo)
 
 	handler: getExportHandler(jtbl, "User.query", {res: "id 编号, name 姓名, createTm 注册时间", orderby: "createTm DESC"})
 
-注意：由于分页机制影响，会设置参数{pagesz: 9999}以便在一页中返回所有数据，而实际一页能导出的最大数据条数取决于后端设置（默认1000，参考后端文档 AccessControl::$maxPageSz）。
+注意：由于分页机制影响，会设置参数{pagesz: -1}以便在一页中返回所有数据，而实际一页能导出的最大数据条数取决于后端设置（默认1000，参考后端文档 AccessControl::$maxPageSz）。
 
-@see WUI.getParamFromTable
+@see getQueryParamFromTable 获取datagrid的当前查询参数
 */
 self.getExportHandler = getExportHandler;
 function getExportHandler(jtbl, ac, param)
@@ -4626,7 +5021,7 @@ function getExportHandler(jtbl, ac, param)
 	if (param.fmt === undefined)
 		param.fmt = "excel";
 	if (param.pagesz === undefined)
-		param.pagesz = 9999;
+		param.pagesz = -1;
 	if (ac == null) {
 		setTimeout(function () {
 			ac = jtbl.datagrid("options").url;
@@ -4634,23 +5029,24 @@ function getExportHandler(jtbl, ac, param)
 	}
 
 	return function () {
-		var url = WUI.makeUrl(ac, getParamFromTable(jtbl, param));
+		var url = WUI.makeUrl(ac, getQueryParamFromTable(jtbl, param));
 		window.open(url);
 	}
 }
 
 /**
-@fn WUI.getParamFromTable(jtbl, param?)
+@fn getQueryParamFromTable(jtbl, param?)
+@alias getParamFromTable
 
 根据数据表当前设置，获取查询参数。
 可能会设置{cond, orderby, res}参数。
 
 res参数从列设置中获取，如"id 编号,name 姓名", 特别地，如果列对应字段以"_"结尾，不会加入res参数。
 
-@see WUI.getExportHandler 导出Excel
+@see getExportHandler 导出Excel
 */
-self.getParamFromTable = getParamFromTable;
-function getParamFromTable(jtbl, param)
+self.getQueryParamFromTable = self.getParamFromTable = getQueryParamFromTable;
+function getQueryParamFromTable(jtbl, param)
 {
 	var opt = jtbl.datagrid("options");
 	param = $.extend({}, opt.queryParams, param);
@@ -4681,18 +5077,79 @@ function getParamFromTable(jtbl, param)
 	return param;
 }
 
-self.enumFormatter = enumFormatter;
-function enumFormatter(enumMap)
-{
-	return function (key) {
-		if (key == null)
-			return null;
-		var val = enumMap[key];
-		if (val == null)
-			val = key;
-		return val;
+var Formatter = {
+	dt: function (value, row) {
+		var dt = WUI.parseDate(value);
+		if (dt == null)
+			return value;
+		return dt.format("L");
+	},
+	number: function (value, row) {
+		return parseFloat(value);
+	},
+	pics: function (value, row) {
+		if (value == null)
+			return "(无图)";
+		return value.replace(/(\d+),?/g, function (ms, picId) {
+			var url = WUI.makeUrl("att", {thumbId: picId});
+			return "<a target='_black' href='" + url + "'>" + picId + "</a>&nbsp;";
+		});
+	},
+	flag: function (yes, no) {
+		if (yes == null)
+			yes = "是";
+		if (no == null)
+			no = "否";
+		return function (value, row) {
+			if (value == null)
+				return;
+			return value? yes: no;
+		}
+	},
+	enum: function (enumMap) {
+		return function (value, row) {
+			if (value == null)
+				return;
+			return enumMap[value] || value;
+		}
+	},
+	linkTo: function (field, dlgRef) {
+		return function (value, row) {
+			if (value == null)
+				return;
+			return self.makeLinkTo(dlgRef, row[field], value);
+		}
 	}
-}
+};
+
+/**
+@var formatter = {dt, number, pics, flag(yes?=是,no?=否), enum(enumMap), linkTo(field, dlgRef) }
+
+常常应用定义Formatter变量来扩展WUI.formatter，如
+
+	var Formatter = {
+		userId: WUI.formatter.linkTo("userId", "#dlgUser"),
+		orderStatus: WUI.formatter.enum({CR: "新创建", CA: "已取消"})
+	};
+	Formatter = $.extend(WUI.formatter, Formatter);
+
+可用值：
+
+- dt/number: 显示日期、数值
+- pics: 显示一张或一组图片链接，点一个链接可以在新页面上显示原图片
+- enum(enumMap): 根据一个map为枚举值显示描述信息，如 `enum({CR:"创建", CA:"取消"})`
+- flag(yes?, no?): 显示yes-no字段，如 `flag("禁用","启用")`，也可以用enum，如`enum({0:"启用",1:"禁用"})`
+- linkTo: 生成链接，点击打开对象详情对话框
+
+在datagrid中使用：
+
+	<th data-options="field:'createTm', sortable:true, formatter:Formatter.dt">创建时间</th>
+	<th data-options="field:'amount', sortable:true, sorter: numberSort, formatter:Formatter.number">金额</th>
+	<th data-options="field:'userName', sortable:true, formatter:Formatter.userId">用户</th>
+	<th data-options="field:'status', sortable:true, jdEnumMap: OrderStatusMap, formatter: Formatter.orderStatus">状态</th>
+	<th data-options="field:'done', sortable:true, formatter: Formatter.flag()">已处理</th>
+*/
+self.formatter = Formatter;
 
 // ---- easyui setup {{{
 
@@ -5019,15 +5476,15 @@ TODO: remove
 window.BASE_URL = "../";
 
 window.FormMode = {
-	forAdd: 0,
-	forSet: 1,
-	forLink: 2,
-	forFind: 3,
-	forDel: 4  // 该模式实际上不会打开dlg
+	forAdd: 'A',
+	forSet: 'S',
+	forLink: 'S', // 与forSet合并，此处为兼容旧版。
+	forFind: 'F',
+	forDel: 'D'  // 该模式实际上不会打开dlg
 };
 
 /**
-@var WUI.options
+@var options
 
 {appName=user, title="客户端", onShowLogin, pageHome="pageHome", pageFolder="page"}
 
@@ -5067,7 +5524,7 @@ function parseArgs()
 parseArgs();
 
 /**
-@fn WUI.app_alert(msg, [type?=i], [fn?], opt?={timeoutInterval?, defValue?, onCancel()?})
+@fn app_alert(msg, [type?=i], [fn?], opt?={timeoutInterval?, defValue?, onCancel()?})
 @param type 对话框类型: "i": info, 信息提示框; "e": error, 错误框; "w": warning, 警告框; "q"(与app_confirm一样): question, 确认框(会有"确定"和"取消"两个按钮); "p": prompt, 输入框
 @param fn Function(text?) 回调函数，当点击确定按钮时调用。当type="p" (prompt)时参数text为用户输入的内容。
 @param opt Object. 可选项。 timeoutInterval表示几秒后自动关闭对话框。defValue用于输入框(type=p)的缺省值.
@@ -5198,7 +5655,7 @@ function makeLinkTo(dlg, id, text)
 {
 	if (text == null)
 		text = id;
-	return "<a href=\"" + dlg + "\" onclick='WUI.showObjDlg(\"" + dlg + "\",FormMode.forLink,{id:" + id + "});return false'>" + text + "</a>";
+	return "<a href=\"" + dlg + "\" onclick='WUI.showObjDlg(\"" + dlg + "\",FormMode.forSet,{id:" + id + "});return false'>" + text + "</a>";
 }
 
 // ====== login token for auto login {{{
@@ -5229,7 +5686,7 @@ function deleteLoginToken()
 }
 
 /**
-@fn WUI.tryAutoLogin(onHandleLogin, reuseCmd?)
+@fn tryAutoLogin(onHandleLogin, reuseCmd?)
 
 @param onHandleLogin Function(data). 调用后台login()成功后的回调函数(里面使用this为ajax options); 可以直接使用WUI.handleLogin
 @param reuseCmd String. 当session存在时替代后台login()操作的API, 如"User.get", "Employee.get"等, 它们在已登录时返回与login相兼容的数据. 因为login操作比较重, 使用它们可减轻服务器压力. 
@@ -5289,7 +5746,7 @@ function tryAutoLogin(onHandleLogin, reuseCmd)
 }
 
 /**
-@fn WUI.handleLogin(data)
+@fn handleLogin(data)
 @param data 调用API "login"成功后的返回数据.
 
 处理login相关的操作, 如设置g_data.userInfo, 保存自动登录的token等等.
@@ -5309,7 +5766,7 @@ function handleLogin(data)
 
 // ------ plugins {{{
 /**
-@fn WUI.initClient()
+@fn initClient()
 */
 self.initClient = initClient;
 var plugins_ = {};
@@ -5348,9 +5805,9 @@ window.Plugins = {
 //}}}
 
 /**
-@fn WUI.setApp(opt)
+@fn setApp(opt)
 
-@see WUI.options
+@see options
 
 TODO: remove. use $.extend instead.
 */
@@ -5361,7 +5818,7 @@ function setApp(app)
 }
 
 /**
-@fn WUI.logout(dontReload?=0)
+@fn logout(dontReload?=0)
 @param dontReload 如果非0, 则注销后不刷新页面.
 
 注销当前登录, 成功后刷新页面(除非指定dontReload=1)
@@ -5378,7 +5835,7 @@ function logout(dontReload)
 }
 
 /**
-@fn WUI.tabClose(idx?)
+@fn tabClose(idx?)
 
 关闭指定idx的标签页。如果未指定idx，则关闭当前标签页.
 */
@@ -5393,7 +5850,7 @@ function tabClose(idx)
 }
 
 /**
-@fn WUI.getActivePage()
+@fn getActivePage()
 
 返回当前激活的逻辑页jpage，注意可能为空: jpage.size()==0。
 */
@@ -5401,12 +5858,14 @@ self.getActivePage = getActivePage;
 function getActivePage()
 {
 	var pp = self.tabMain.tabs('getSelected');   
+	if (pp == null)
+		return $();
 	var jpage = pp.find(".wui-page");
 	return jpage;
 }
 
 /**
-@fn MUI.showLoading()
+@fn showLoading()
 */
 self.showLoading = showLoading;
 function showLoading()
@@ -5419,7 +5878,7 @@ function showLoading()
 }
 
 /**
-@fn MUI.hideLoading()
+@fn hideLoading()
 */
 self.hideLoading = hideLoading;
 function hideLoading()
@@ -5430,7 +5889,7 @@ function hideLoading()
 function mainInit()
 {
 /**
-@var WUI.tabMain
+@var tabMain
 
 标签页组件。为jquery-easyui的tabs插件，可以参考easyui文档调用相关命令进行操作，如关闭当前Tab：
 
@@ -5458,6 +5917,20 @@ function mainInit()
 				return;
 			jpage.trigger('pagedestroy');
 		}
+	});
+
+	// bugfix for datagrid size after resizing
+	var tmr;
+	$(window).on("resize", function () {
+		if (tmr)
+			clearTimeout(tmr);
+		tmr = setTimeout(function () {
+			tmr = null;
+			console.log("panel resize");
+			var jpage = getActivePage();
+			// 强制datagrid重排
+			jpage.closest(".panel-body").panel("doLayout", true);
+		}, 200);
 	});
 }
 
@@ -5500,8 +5973,9 @@ $.each([
 // ====== WEBCC_BEGIN_FILE jquery-mycombobox.js {{{
 // ====== jquery plugin: mycombobox {{{
 /**
-@fn jQuery.fn.mycombobox(force?=false)
+@module jquery-mycombobox
 
+@fn jQuery.fn.mycombobox(force?=false)
 @key .my-combobox 关联选择框
 @var ListOptions 定义关联选择框的数据源
 
@@ -5513,13 +5987,13 @@ $.each([
 
 	<select name="empId" class="my-combobox" data-options="valueField: 'id', ..."></select>
 
-通过data-options可设置选项: { valueField, textField, url, formatter(row), loadFilter(data) }
+通过data-options可设置选项: { url, formatter(row), loadFilter(data), valueField, textField, jdEnumMap/jdEnumList }
 
 初始化：
 
 	var jo = $(".my-combobox").mycombobox();
 
-注意：使用WUI.showDlg显示的对话框中如果有.my-combobox组件，会在调用WUI.showDlg时自动初始化，无须再调用上述代码。
+注意：使用WUI.showPage或WUI.showDlg显示的逻辑页或对话框中如果有my-combobox组件，会自动初始化，无须再调用上述代码。
 
 操作：
 
@@ -5531,33 +6005,28 @@ $.each([
 - 初始化时调用url指定接口取数据并生成下拉选项。
 - 双击可刷新列表。
 - 支持数据缓存，不必每次打开都刷新。
+- 也支持通过key-value列表初始化(jdEnumMap/jdEnumList选项)
+- 自动添加一个空行
 
-例如，在订单上设计有empId字段：
+注意：
 
-	@Ordr: id, ... empId
+- (v5.0) 接口调用由同步改为异步，以便提高性能并支持batch操作。同步(callSvrSync)便于加载下拉列表后立即为它赋值，改成异步请求(callSvr)后仍支持立即设置值。
 
-	empId:: Integer. 员工编号，关联Employee.id字段。
+## 用url选项加载下拉列表
 
-在显示订单详情对话框时，这列显示为“分派给员工”，是一个列出所有员工的下拉列表框，可以这样写：
+例如，想显示所有员工(Employee)的下拉列表，绑定员工编号字段(id)，显示是员工姓名(name):
 
-	<tr>
-		<td>分派给</td>
-		<td><select name="empId" class="my-combobox" data-options="valueField:'id',textField:'name',url:WUI.makeUrl('Employee.query', {res:'id,name',pagesz:-1})"></select></td>  
-	</tr>
+	分派给 <select name="empId" class="my-combobox" data-options="url:WUI.makeUrl('Employee.query', {res:'id,name',pagesz:-1})"></select>
 
 注意查询默认是有分页的（页大小一般为20条），用参数`{pagesz:-1}`使用服务器设置的最大的页大小（后端最大pagesz默认100，可使用maxPageSz参数调节）。
-为了精确控制返回字段与显示格式，data-options可能更加复杂，一般建议写一个返回这些属性的函数，像这样：
+为了精确控制返回字段与显示格式，data-options可能更加复杂，习惯上定义一个ListOptions变量包含各种下拉框的数据获取方式，便于多个页面上共享，像这样：
 
-		<td><select name="empId" class="my-combobox" data-options="ListOptions.Emp()"></select></td>  
-
-习惯上，可以把函数统一放在ListOptions变量中：
+	<select name="empId" class="my-combobox" data-options="ListOptions.Emp()"></select>
 
 	var ListOptions = {
 		// ListOptions.Emp()
 		Emp: function () {
 			var opts = {
-				valueField: "id",
-				textField: "name",
 				url: WUI.makeUrl('Employee.query', {
 					res: 'id,name,uname',
 					cond: 'storeId=' + g_data.userInfo.storeId,
@@ -5570,7 +6039,55 @@ $.each([
 		...
 	};
 
-另一个例子：在返回列表后，可通过loadFilter修改列表，例如添加一项：
+返回对象的前两个字段被当作值字段(valueField)和显示字段(textField)，上例中分别是id和name字段。
+如果返回对象只有一个字段，则valueField与textField相同，都是这个字段。
+如果指定了formatter，则显示内容由它决定，textField此时无意义。
+
+可以显式指定这两个字段，如：
+
+	var opts = {
+		valueField: "id",
+		textField: "name",
+		url: ...
+	}
+
+示例2：下拉框绑定User.city字段，可选项为该列已有的值：
+
+	<select name="city" class="my-combobox" data-options="ListOptions.City()"></select>
+
+	var ListOptions = {
+		City: function () {
+			var opts = {
+				url: WUI.makeUrl('User.query', {
+					res: 'city',
+					cond: 'city IS NOT NULL'
+					distinct: 1,
+					pagesz:-1
+				})
+			};
+			return opts;
+		},
+		...
+	};
+
+## 用jdEnumMap选项指定下拉列表
+
+也支持通过key-value列表用jdEnumMap选项或jdEnumList选项来初始化下拉框，如：
+
+	订单状态： <select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap" style="width:150px"></select>
+	或者：
+	订单状态： <select name="status" class="my-combobox" data-options="jdEnumList:'CR:未付款;CA:已取消'" style="width:150px"></select>
+
+其中OrderStatusMap定义如下：
+
+	var OrderStatusMap = {
+		"CR": "未付款",
+		"CA": "已取消"
+	};
+
+## 用loadFilter调整返回数据
+
+另一个例子：在返回列表后，可通过loadFilter修改列表，例如添加或删除项：
 
 	<select name="brandId" class="my-combobox" data-options="ListOptions.Brand()" ></select>
 
@@ -5581,9 +6098,7 @@ JS代码ListOptions.Brand:
 		// ListOptions.Brand()
 		Brand: function () {
 			var opts = {
-				valueField: 'id',
-				textField:'name',
-				url:WUI.makeUrl('queryBrand', {pagesz:-1}),
+				url:WUI.makeUrl('queryBrand', {res: "id,name", pagesz:-1}),
 				loadFilter: function(data) {
 					data.unshift({id:'0', name:'所有品牌'});
 					return data;
@@ -5593,9 +6108,25 @@ JS代码ListOptions.Brand:
 		}
 	};
 
+更简单地，这个需求还可以通过同时使用jdEnumMap和url来实现：
+
+	var ListOptions = {
+		...
+		// ListOptions.Brand()
+		Brand: function () {
+			var opts = {
+				url:WUI.makeUrl('queryBrand', {res: "id,name", pagesz:-1}),
+				jdEnumMap: {0: '所有品牌'}
+			};
+			return opts;
+		}
+	};
+
+注意：jdEnumMap指定的固定选项会先出现。
  */
 var m_dataCache = {}; // url => data
-$.fn.mycombobox = function (force) 
+$.fn.mycombobox = mycombobox;
+function mycombobox(force) 
 {
 	var mCommon = jdModule("jdcloud.common");
 	this.each(initCombobox);
@@ -5626,7 +6157,10 @@ $.fn.mycombobox = function (force)
 		}catch (e) {
 			alert("bad options for mycombobox: " + optStr);
 		}
-		if (opts.url) {
+		if (opts.jdEnumMap || opts.jdEnumList) {
+			loadOptions();
+		}
+		else if (opts.url) {
 			loadOptions();
 
 			if (!jo.attr("ondblclick"))
@@ -5643,16 +6177,36 @@ $.fn.mycombobox = function (force)
 
 		function loadOptions()
 		{
+			jo.prop("value_", jo.val()); // 备份val到value_
 			jo.empty();
-			// 如果设置了name属性, 一般关联字段(故可以为空), 添加空值到首行
-			if (jo.attr("name"))
-				$("<option value=''></option>").appendTo(jo);
+			// 添加空值到首行
+			$("<option value=''></option>").appendTo(jo);
 
+			if (opts.jdEnumList) {
+				opts.jdEnumMap = mCommon.parseKvList(opts.jdEnumList, ';', ':');
+			}
+			if (opts.jdEnumMap) {
+				$.each(opts.jdEnumMap, function (k, v) {
+					var jopt = $("<option></option>")
+						.attr("value", k)
+						.text(v)
+						.appendTo(jo);
+				});
+			}
+
+			if (opts.url == null)
+				return;
 			if (opts.dirty || m_dataCache[opts.url] === undefined) {
-				self.callSvrSync(opts.url, applyData);
+				self.callSvr(opts.url, onLoadOptions);
 			}
 			else {
-				applyData(m_dataCache[opts.url]);
+				onLoadOptions(m_dataCache[opts.url]);
+			}
+
+			function onLoadOptions(data) {
+				applyData(data);
+				// 恢复value; 期间也可能被外部修改。
+				jo.val(jo.prop("value_"));
 			}
 		}
 
@@ -5677,6 +6231,15 @@ $.fn.mycombobox = function (force)
 				: $.isArray(data)? data
 				: data.list;
 			mCommon.assert($.isArray(arr), "bad data format for combobox");
+			if (arr.length == 0)
+				return;
+			var names = Object.getOwnPropertyNames(arr[0]);
+			if (opts.valueField == null) {
+				opts.valueField = names[0];
+			}
+			if (opts.formatter == null && opts.textField == null) {
+				opts.textField = names[1] || names[0];
+			}
 			$.each(arr, function (i, row) {
 				var jopt = $("<option></option>")
 					.attr("value", row[opts.valueField])
@@ -5687,10 +6250,8 @@ $.fn.mycombobox = function (force)
 
 		function refresh()
 		{
-			var val = jo.val();
 			markRefresh();
 			loadOptions();
-			jo.val(val);
 		}
 
 		function markRefresh()
@@ -5698,7 +6259,23 @@ $.fn.mycombobox = function (force)
 			opts.dirty = true;
 		}
 	}
-};
+}
+
+// 问题：在my-combobox获取下拉选项调用尚未返回时，调用val()为其设置值无效。
+// 解决：改为设置value_属性，在下拉选项加载完后再调用val().
+// 注意：此处基于jQuery.fn.val源码(v1.11)实现，有兼容性风险!!!
+function mycombobox_fixAsyncSetValue()
+{
+	var hook = $.valHooks["select"];
+	$.valHooks["select"] = {
+		set: function (elem, value) {
+			elem.value_ = value;
+			return hook.set.apply(this, arguments);
+		},
+		get: hook.get
+	}
+}
+mycombobox_fixAsyncSetValue();
 //}}}
 
 // ====== WEBCC_END_FILE jquery-mycombobox.js }}}

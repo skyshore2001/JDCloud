@@ -8,7 +8,7 @@ $.extend(WUI.options, {
 });
 
 // ==== defines {{{
-var OrderStatusStr = {
+var OrderStatusMap = {
 	CR: "未付款", 
 	PA: "待服务", 
 	RE: "已服务", 
@@ -17,7 +17,7 @@ var OrderStatusStr = {
 	ST: "正在服务"
 };
 
-var ActionStrs = {
+var ActionMap = {
 	CR: "创建",
 	PA: "付款",
 	RE: "服务完成",

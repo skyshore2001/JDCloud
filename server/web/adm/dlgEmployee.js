@@ -1,12 +1,15 @@
 function initDlgEmployee()
 {
 	var jdlg = $(this);
-	var jfrm = jdlg.find("form");
-	jfrm.on("loaddata", function (ev, data) {
-		hiddenToCheckbox(jfrm.find("#divPerms"));
+	jdlg.on("beforeshow", function (ev, formMode, opt) {
+		if (formMode == FormMode.forSet)
+			opt.data.pwd = "****";
 	})
-	.on("savedata", function (ev) {
-		checkboxToHidden(jfrm.find("#divPerms"));
+	.on("show", function (ev, formMode, initData) {
+		hiddenToCheckbox(jdlg.find("#divPerms"));
+	})
+	.on("validate", function (ev, formMode, initData) {
+		checkboxToHidden(jdlg.find("#divPerms"));
 	});
 }
 
