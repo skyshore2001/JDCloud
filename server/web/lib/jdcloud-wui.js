@@ -412,12 +412,15 @@ OrderStatusMap在代码中定义如下
 	手机号: <input name="phone">  
 	注册时间: <input name="createTm">
 
-可在手机号中输入"137*"，在注册时间中输入">=2017-1-1 and <2018-1-1"，这样生成的查询参数为：
+可在手机号中输入"137*"，在注册时间中输入">=2017-1-1 and <2018-1-1" (或用 "2017-1-1~2018-1-1")，这样生成的查询参数为：
 
 	{ cond: "phone like '137%' and (createTm>='2017-1-1' and createTm<'2018-1-1')" }
 
 @see getQueryCond 查询条件支持
 @see getQueryParam 生成查询条件
+
+@key .mui-find-field 用于查找的字段样式
+可设置该样式来标识哪些字段可以查找。一般设置为黄色。
 
 @key .notForFind 指定非查询条件
 不参与查询的字段，可以用notForFind类标识(为兼容，也支持属性notForFind)，如：
@@ -4718,7 +4721,6 @@ function showObjDlg(jdlg, mode, opt)
 		jfrm.find(":input[name]").each (function (i,e) {
 			var je = $(e);
 			var bak = je.jdata().bak = {
-				bgcolor: je.css("backgroundColor"),
 				disabled: je.prop("disabled"),
 				title: je.prop("title"),
 				type: null
@@ -4729,7 +4731,7 @@ function showObjDlg(jdlg, mode, opt)
 			}
 			else {
 				je.prop("disabled", false);
-				je.css("backgroundColor", "#ffff00"); // "yellow";
+				je.addClass("mui-find-field");
 				je.prop("title", self.queryHint);
 				var type = je.attr("type");
 				if (type && ["number", "date", "time", "datetime"].indexOf(type) >= 0) {
@@ -4745,8 +4747,8 @@ function showObjDlg(jdlg, mode, opt)
 			var je = $(e);
 			var bak = je.jdata().bak;
 			je.prop("disabled", bak.disabled);
-			je.css("backgroundColor", bak.bgcolor);
-			je.prop("hint", bak.hint);
+			je.removeClass("mui-find-field");
+			je.prop("title", bak.title);
 			if (bak.type) {
 				je.attr("type", bak.type);
 			}
