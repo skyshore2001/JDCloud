@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2018-01-04</div>
+<div>最后更新：2018-02-01</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -51,7 +51,9 @@ code {
 <div class="toc">
 <p><a href="##my-pages">#my-pages (key)</a></p>
 <p><a href="#.easyui-validatebox">.easyui-validatebox (key)</a></p>
+<p><a href="#.mui-find-field">.mui-find-field (key)</a></p>
 <p><a href="#.my-combobox">.my-combobox (key)</a></p>
+<p><a href="#.my-reset">.my-reset (key)</a></p>
 <p><a href="#.notForFind">.notForFind (key)</a></p>
 <p><a href="#.wui-dialog">.wui-dialog (key)</a></p>
 <p><a href="#.wui-notCond">.wui-notCond (key)</a></p>
@@ -70,6 +72,7 @@ code {
 <p><a href="#Plugins.exists">Plugins.exists (fn)</a></p>
 <p><a href="#Plugins.list">Plugins.list (fn)</a></p>
 <p><a href="#WUI">WUI (module)</a></p>
+<p><a href="#[noReset]">[noReset] (key)</a></p>
 <p><a href="#a[href=">a[href= (key)</a></p>
 <p><a href="#a[href=#page]">a[href=#page] (key)</a></p>
 <p><a href="#app_abort">app_abort (fn)</a></p>
@@ -164,6 +167,7 @@ code {
 <p><a href="#parseQuery">parseQuery (fn)</a></p>
 <p><a href="#parseTime">parseTime (fn)</a></p>
 <p><a href="#parseValue">parseValue (fn)</a></p>
+<p><a href="#queryHint">queryHint (var)</a></p>
 <p><a href="#reload">reload (fn)</a></p>
 <p><a href="#reloadDialog">reloadDialog (alias)</a></p>
 <p><a href="#reloadPage">reloadPage (fn)</a></p>
@@ -222,6 +226,7 @@ code {
 <p style="margin-left:2em"><a href="#WUI-2.1 定义对话框">2.1 定义对话框</a></p>
 <p style="margin-left:2em"><a href="#WUI-2.2 显示对话框">2.2 显示对话框</a></p>
 <p style="margin-left:0em"><a href="#WUI-3 模块化开发">3 模块化开发</a></p>
+<p style="margin-left:2em"><a href="#WUI-3.1 页面模板支持">3.1 页面模板支持</a></p>
 <p style="margin-left:0em"><a href="#WUI-4 参考文档说明">4 参考文档说明</a></p>
 </div>
 <p>筋斗云前端框架-Web应用桌面版</p>
@@ -555,10 +560,12 @@ var OrderColumns = {
 详情页提供通用查询，如：</p>
 <pre><code>手机号: &lt;input name="phone"&gt;  
 注册时间: &lt;input name="createTm"&gt;</code></pre>
-<p>可在手机号中输入&quot;137*&quot;，在注册时间中输入&quot;&gt;=2017-1-1 and &lt;2018-1-1&quot;，这样生成的查询参数为：</p>
+<p>可在手机号中输入&quot;137*&quot;，在注册时间中输入&quot;&gt;=2017-1-1 and &lt;2018-1-1&quot; (或用 &quot;2017-1-1~2018-1-1&quot;)，这样生成的查询参数为：</p>
 <pre><code>{ cond: "phone like '137%' and (createTm&gt;='2017-1-1' and createTm&lt;'2018-1-1')" }</code></pre>
 <p class="see"><strong>@see <a href="#getQueryCond">getQueryCond</a></strong>  查询条件支持</p>
 <p class="see"><strong>@see <a href="#getQueryParam">getQueryParam</a></strong>  生成查询条件</p>
+<p class="key"><strong>@key <a id=".mui-find-field">.mui-find-field</a></strong>  用于查找的字段样式</p>
+<p>可设置该样式来标识哪些字段可以查找。一般设置为黄色。</p>
 <p class="key"><strong>@key <a id=".notForFind">.notForFind</a></strong>  指定非查询条件</p>
 <p>不参与查询的字段，可以用notForFind类标识(为兼容，也支持属性notForFind)，如：</p>
 <pre><code>登录密码: &lt;input class="notForFind" type="password" name="pwd"&gt;
@@ -727,6 +734,28 @@ WUI.useBatchCall();</code></pre>
     ...
 }</code></pre>
 <p>这时，就可以用 WUI.showObjDlg(&quot;#dlgOrder&quot;)来显示逻辑页了。</p>
+<h5 id="WUI-3.1 页面模板支持">3.1 页面模板支持</h5>
+<p>定义一个逻辑页面，可以在#my-pages下直接定义，也可以在单独的文件中定义，还可以在一个模板中定义，如：</p>
+<pre><code>&lt;script type="text/html" id="tpl_pageOrder"&gt;
+&lt;div class="pageOrder" title="订单管理" my-initfn="initPageOrder"&gt;
+...
+&lt;/div&gt;
+&lt;/script&gt;</code></pre>
+<p>模板用script标签定义，其id属性必须命名为<code>tpl_{逻辑页面名}</code>。<br />
+这样就定义了逻辑页pageOrder，且在用到时才加载。与从外部文件加载类似，可以不设置class=&quot;pageOrder&quot;，框架会自动处理。</p>
+<p>定义对话框也类似：</p>
+<pre><code>&lt;script type="text/html" id="tpl_dlgOrder"&gt;
+&lt;div id="dlgOrder" my-obj="Ordr" my-initfn="initDlgOrder" title="用户订单" style="width:520px;height:500px;"&gt;  
+...
+&lt;/div&gt;
+&lt;/script&gt;</code></pre>
+<p>定义了对话框dlgOrder，这个id属性也可以不设置。<br />
+模板用script标签定义，其id属性必须命名为<code>tpl_{对话框名}</code>。</p>
+<p>注意：</p>
+<p>如果将script标签制作的页面模板内嵌在主页中，可能会造成加载时闪烁。<br />
+在chrome中，在easyui-layout之后定义任意script标签（哪怕是空内容），会导致加载首页时闪烁，标题栏是黑色尤其明显。<br />
+测试发现，将这些个script模板放在head标签中不会闪烁。</p>
+<p>这个特性可用于未来WEB应用编译打包。</p>
 <h4 id="WUI-4 参考文档说明">4 参考文档说明</h4>
 <p>以下参考文档介绍WUI模块提供的方法/函数(fn)、属性/变量(var)等，示例如下：</p>
 <pre><code>@fn showPage(pageName, title?, paramArr?)  一个函数。参数说明中问号表示参数可缺省。
@@ -1196,6 +1225,7 @@ allow throw(&quot;abort&quot;) as abort behavior.</p></div>
 <h2 id="getOptions">@fn getOptions(jo)</h2></div>
 <div class="block">
 <h2 id="getQueryCond">@fn getQueryCond(kvList)</h2>
+<p class="var"><strong>@var <a id="queryHint">queryHint</a></strong>  查询用法提示</p>
 <p class="param"><strong>@param kvList</strong>  {key=>value}, 键值对，值中支持操作符及通配符。也支持格式 [ [key, value] ], 这时允许key有重复。</p>
 <p>根据kvList生成BPQ协议定义的{obj}.query的cond参数。</p>
 <p>例如:</p>
@@ -1209,7 +1239,7 @@ WUI.getQueryCond(kvList); // 结果同上。</code></pre>
 <p>设置值时，支持以下格式：</p>
 <ul>
 <li>{key: &quot;value&quot;} - 表示&quot;key=value&quot;</li>
-<li>{key: &quot;&gt;value&quot;} - 表示&quot;key&gt;value&quot;, 类似地，可以用 &gt;=, &lt;, &lt;=, <> 这些操作符。</li>
+<li>{key: &quot;&gt;value&quot;} - 表示&quot;key&gt;value&quot;, 类似地，可以用 &gt;=, &lt;, &lt;=, <>(或! / != 都是不等于) 这些操作符。</li>
 <li>{key: &quot;value<em>&quot;} - 值中带通配符，表示&quot;key like 'value%'&quot; (以value开头), 类似地，可以用 &quot;</em>value&quot;, &quot;<em>value</em>&quot;, &quot;<em>val</em>ue&quot;等。</li>
 <li>{key: &quot;null&quot; } - 表示 &quot;key is null&quot;。要表示&quot;key is not null&quot;，可以用 &quot;<>null&quot;.</li>
 <li>{key: &quot;empty&quot; } - 表示 &quot;key=''&quot;.</li>
@@ -1219,10 +1249,15 @@ WUI.getQueryCond(kvList); // 结果同上。</code></pre>
 <li>{key: &quot;&gt;value and &lt;=value&quot;}  - 表示&quot;key&gt;'value' and key&lt;='value'&quot;</li>
 <li>{key: &quot;null or 0 or 1&quot;}  - 表示&quot;key is null or key=0 or key=1&quot;</li>
 <li>{key: &quot;null,0,1,9-100&quot;} - 表示&quot;key is null or key=0 or key=1 or (key&gt;=9 and key&lt;=100)&quot;，即逗号表示or，a-b的形式只支持数值。</li>
+<li>{key: &quot;2017-9-1~2017-10-1&quot;} 条件等价于 &quot;&gt;=2017-9-1 and &lt;2017-10-1&quot;<br />
+可指定时间，如条件&quot;2017-9-1 10:00~2017-10-1&quot;等价于&quot;&gt;=2017-9-1 10:00 and &lt;2017-10-1&quot;</li>
+<li>符号&quot;,&quot;及&quot;~&quot;前后允许有空格，如&quot;已付款, 已完成&quot;, &quot;2017-1-1 ~ 2018-1-1&quot;</li>
+<li>可以使用中文逗号</li>
+<li>日期区间也可以用&quot;2017/10/01&quot;或&quot;2017.10.01&quot;这些格式，仅用于字段是文本类型，这时输入格式必须与保存的日期格式一致，并且&quot;2017/10/1&quot;应输入&quot;2017/10/01&quot;才能正确比较字符串大小。</li>
 </ul>
 <p>以下表示的范围相同：</p>
 <pre><code>{k1:'1-5,7-10', k2:'1-10 and &lt;&gt;6'}</code></pre>
-<p>符号优先级依次为：-(and) ,(or) and or</p>
+<p>符号优先级依次为：&quot;-&quot;(类似and) &quot;,&quot;(类似or) and or</p>
 <p>在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。</p>
 <p class="see"><strong>@see <a href="#getQueryParam">getQueryParam</a></strong> </p>
 <p class="see"><strong>@see <a href="#getQueryParamFromTable">getQueryParamFromTable</a></strong>  获取datagrid的当前查询参数</p></div>
@@ -1737,26 +1772,84 @@ WUI.showPage("pageHome", "首页2");</code></pre></div>
 <h2 id="closeDlg">@fn closeDlg(jdlg)</h2></div>
 <div class="block">
 <h2 id="showDlg">@fn showDlg(jdlg, opt?)</h2>
-<p class="param"><strong>@param jdlg</strong>  可以是jquery对象，也可以是selector字符串或DOM对象，比如 "#dlgOrder". 注意：当对话框保存为单独模块时，jdlg=$("#dlgOrder") 一开始会为空数组，这时也可以调用该函数，且调用后jdlg会被修改为实际加载的对话框对象。</p>
-<p class="param"><strong>@param opt</strong> ?={url, buttons, noCancel=false, okLabel="确定", cancelLabel="取消", modal=true, reset=true, validate=true, data, onOk, onSubmit, onAfterSubmit}</p>
+<p class="param"><strong>@param jdlg</strong>  可以是jquery对象，也可以是selector字符串或DOM对象，比如 "#dlgOrder".</p>
+<p>注意：当对话框动态从外部加载时，jdlg=$(&quot;#dlgOrder&quot;) 一开始会为空数组，这时也可以调用该函数，且调用后jdlg会被修改为实际加载的对话框对象。</p>
+<p class="param"><strong>@param opt</strong> ?={url, buttons, noCancel=false, okLabel="确定", cancelLabel="取消", modal=true, reset=true, validate=true, data, onOk, onSubmit}</p>
 <ul>
-<li>url: 点击确定时的操作动作。</li>
-<li>data: 如果是object, 则为form自动加载的数据；如果是string, 则认为是一个url, 将自动获取数据。(form的load方法一致)</li>
-<li>reset: 在加载数据前清空form</li>
+<li>opt.url: String. 点击确定后，提交到后台的URL。如果设置则自动提交数据，否则应在opt.onOk回调或validate事件中手动提交。</li>
+<li>opt.buttons: Object数组。用于添加“确定”、“取消”按钮以外的其它按钮，如<code>[{text: '下一步', iconCls:'icon-ok', handler: btnNext_click}]</code>。<br />
+用opt.okLabel/cancelLabel可修改“确定”、“取消”按钮的名字，用opt.noCancel=true可不要“取消”按钮。</li>
+<li>opt.model: Boolean.模态对话框，这时不可操作对话框外其它部分，如登录框等。设置为false改为非模态对话框。</li>
+<li>opt.data: Object. 自动加载的数据, 将自动填充到对话框上带name属性的DOM上。在修改对象时，仅当与opt.data有差异的数据才会传到服务端。</li>
+<li>opt.reset: Boolean. 显示对话框前先清空。</li>
+<li>opt.validate: Boolean. 是否提交前用easyui-form组件验证数据。内部使用。</li>
+<li>opt.onSubmit: Function(data) 自动提交前回调。用于验证或补齐提交数据，返回false可取消提交。opt.url为空时不回调。</li>
+<li>opt.onOk: Function(jdlg, data?) 如果自动提交(opt.url非空)，则服务端接口返回数据后回调，data为返回数据。如果是手动提交，则点确定按钮时回调，没有data参数。</li>
 </ul>
-<p>特殊class my-reset: 当执行form reset时会将内容清除. (适用于在forSet/forLink模式下添加显示内容, 而在forFind/forAdd模式下时清除内容)</p>
-<pre><code>&lt;div class="my-reset"&gt;...&lt;/div&gt;</code></pre>
-<p>hidden上的特殊property noReset: (TODO)</p>
-<p>在dialog的form中将触发以下事件：</p>
-<p class="key"><strong>@key <a id="beforeshow">beforeshow</a></strong>  Function(ev, formMode)  form显示前事件.</p>
-<p class="key"><strong>@key <a id="show">show</a></strong>  Function(ev, formMode)  form显示事件.</p>
-<p class="key"><strong>@key <a id="initdata">initdata</a></strong>  Function(ev, data, formMode) form加载数据前，可修改要加载的数据即data</p>
-<p class="key"><strong>@key <a id="loaddata">loaddata</a></strong>  Function(ev, data, formMode) form加载数据后，一般用于将服务端数据转为界面显示数据</p>
-<p class="key"><strong>@key <a id="savedata">savedata</a></strong>  Function(ev, formMode, initData) form提交前事件，用于将界面数据转为提交数据. 返回false或调用ev.preventDefault()可阻止form提交。</p>
-<p class="key"><strong>@key <a id="retdata">retdata</a></strong>  Function(ev, data, formMode) form提交后事件，用于处理返回数据</p>
+<p>对话框有两种编程模式，一是通过opt参数在启动对话框时设置属性及回调函数(如onOk)，另一种是在dialog初始化函数中处理事件(如validate事件)实现逻辑，有利于独立模块化。</p>
+<p>对于自动提交数据的对话框(设置了opt.url)，提交数据过程中回调函数及事件执行顺序为：</p>
+<pre><code>事件validate; // 提交前，用于验证或设置提交数据。返回false或ev.preventDefault()可取消提交，中止以下代码执行。
+opt.onSubmit(); // 提交前，验证或设置提交数据，返回false将阻止提交。
+... 框架通过callSvr自动提交数据，如添加、更新对象等。
+opt.onOk(jdlg, data); // 提交且服务端返回数据后。data是服务端返回数据。
+事件retdata; // 与onOk类似。</code></pre>
+<p>对于手动提交数据的对话框(opt.url为空)，执行顺序为：</p>
+<pre><code>事件validate; // 用于验证、设置提交数据、提交数据。
+opt.onOk(jdlg); // 同上</code></pre>
+<p>注意：</p>
+<ul>
+<li>参数opt可在beforeshow事件中设置，这样便于在对话框模块中自行设置选项，包括okLabel, onOk回调等等。</li>
+<li>旧版本中的回调 opt.onAfterSubmit() 回调已删除，请用opt.onOk()替代。</li>
+</ul>
 <p>调用此函数后，对话框将加上以下CSS Class:</p>
 <p class="key"><strong>@key <a id=".wui-dialog">.wui-dialog</a></strong>  标识WUI对话框的类名。</p>
-<p class="see"><strong>@see <a href="#example-dialog">example-dialog</a></strong>  在对话框中使用事件</p></div>
+<p><strong>对象型对话框与formMode</strong></p>
+<p>函数showObjDlg()会调用本函数显示对话框，称为对象型对话框，用于对象增删改查，它将以下操作集中在一起，并设置相应的formMode：</p>
+<ul>
+<li>查询(FormMode.forFind)</li>
+<li>显示及更新(FormMode.forSet)</li>
+<li>添加(FormMode.forAdd)</li>
+<li>删除(FormMode.forDel)，但实际上不会打开对话框</li>
+</ul>
+<p>注意：</p>
+<ul>
+<li>可通过<code>var formMode = jdlg.jdata().mode;</code>来获取当前对话框模式。</li>
+<li>非对象型对话框的formMode为空。</li>
+<li>对象型对话框由框架自动设置各opt选项，一般不应自行修改opt，而是通过处理对话框事件实现逻辑。</li>
+</ul>
+<p>对象型对话框事件：</p>
+<pre><code>beforeshow(formMode, opt)事件。显示对话框前触发。可以通过设置opt参数定制对话框，与调用showDlg时传入opt参数相同效果。通过修改opt.data可为字段设置缺省值。
+show(formMode, opt.data)事件。显示对话框后触发。这时opt.data已经设置到对话框上带name属性的DOM组件中，一些不能直接显示的字段，可在此时设置到DOM组件上，比如图片等。
+validate(formMode, opt.data)事件。用于提交前验证、补齐数据等。返回false可取消提交。
+retdata(data, formMode)事件。服务端返回结果时触发。注意forFind模式不会触发。</code></pre>
+<p>初始数据与对话框中带name属性的对象相关联，详见</p>
+<p class="see"><strong>@see <a href="#setFormData">setFormData</a> <a href="#getFormData">getFormData</a></strong> </p>
+<p>注意：</p>
+<ul>
+<li>旧版本中的initdata, loaddata, savedata将废弃，应分别改用beforeshow, show, validate事件替代，注意事件参数及检查对话框模式。</li>
+</ul>
+<p><strong>对话框事件</strong></p>
+<p class="key"><strong>@key <a id="beforeshow">beforeshow</a></strong>  Function(ev, formMode, opt)  对话框显示前事件</p>
+<p>opt参数即showDlg的opt参数，可在此处修改.</p>
+<p>注意：每次调用showDlg()都会回调，可能这时对话框已经在显示。</p>
+<p class="key"><strong>@key <a id="show">show</a></strong>  Function(ev, formMode, initData)  对话框显示后事件.</p>
+<p>用于设置DOM组件。<br />
+注意如果在beforeshow事件中设置DOM，对于带name属性的组件会在加载数据时值被覆盖回去，对它们在beforeshow中只能通过设置opt.data来指定缺省值。</p>
+<p class="key"><strong>@key <a id="retdata">retdata</a></strong>  Function(ev, data, formMode) form提交后事件，用于处理返回数据</p>
+<p>以下事件将废弃：</p>
+<p class="key"><strong>@key <a id="initdata">initdata</a></strong>  Function(ev, initData, formMode) 加载数据前触发。可修改要加载的数据initData, 用于为字段设置缺省值。将废弃，改用beforeshow事件。</p>
+<p class="key"><strong>@key <a id="loaddata">loaddata</a></strong>  Function(ev, initData, formMode) form加载数据后，一般用于将服务端数据转为界面显示数据。将废弃，改用show事件。</p>
+<p class="key"><strong>@key <a id="savedata">savedata</a></strong>  Function(ev, formMode, initData) 对于设置了opt.url的窗口，将向后台提交数据，提交前将触发该事件，用于验证或补足数据（修正某个）将界面数据转为提交数据. 返回false或调用ev.preventDefault()可阻止form提交。将废弃，改用validate事件。</p>
+<p class="see"><strong>@see <a href="#example-dialog">example-dialog</a></strong>  在对话框中使用事件</p>
+<p><strong>reset控制</strong></p>
+<p>对话框上有name属性的组件在显示对话框时会自动清除（除非设置opt.reset=false或组件设置有noReset属性）。</p>
+<p class="key"><strong>@key <a id=".my-reset">.my-reset</a></strong>  标识在显示对话框时应清除</p>
+<p>对于没有name属性（不与数据关联）的组件，可加该CSS类标识要求清除。<br />
+例如，想在forSet模式下添加显示内容, 而在forFind/forAdd模式下时清除内容这样的需求。</p>
+<pre><code>&lt;div class="my-reset"&gt;...&lt;/div&gt;</code></pre>
+<p class="key"><strong>@key <a id="[noReset]">[noReset]</a></strong> </p>
+<p>某些字段希望设置后一直保留，不要被清空，可以设置noReset属性，例如：</p>
+<pre><code>&lt;input type="hidden" name="status" value="PA" noReset&gt;</code></pre></div>
 <div class="block">
 <h2 id="getTopDialog">@fn getTopDialog()</h2>
 <p>取处于最上层的对话框。如果没有，返回jo.size() == 0</p></div>
