@@ -4378,12 +4378,9 @@ function showDlg(jdlg, opt)
 
 	if (opt.reset)
 	{
-		/*
-		jfrm.form("reset");
-		// !!! NOTE: form.reset does not reset hidden items, which causes data is not cleared for find mode !!!
-		jfrm.find("[type=hidden]:not([noReset])").val("");
-		*/
 		mCommon.setFormData(jdlg); // reset
+		// !!! NOTE: setFormData or form.reset does not reset hidden items, which causes data is not cleared for find mode !!!
+		jdlg.find("[type=hidden]:not([noReset])").val("");
 		jdlg.find(".my-reset").empty();
 	}
 	if (opt.data)
