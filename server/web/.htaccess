@@ -1,3 +1,5 @@
 <FilesMatch "(\.html|\.js|\.css)$">
 Header set Cache-Control "no-cache"
+# bugfix for apache gzip-304-bug: https://bz.apache.org/bugzilla/show_bug.cgi?id=45023
+Header edit ETag "(.*)-gzip" "$1"
 </FilesMatch>
