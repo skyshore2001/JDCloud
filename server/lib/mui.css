@@ -46,13 +46,10 @@ html, body {
 
 .hd h1, .hd h2, .hd h3 {
 	text-align: center;
-	font-size: 1.3em;
+	font-size: 1.1em;
 	font-weight: normal;
 	margin: 0.1em auto;
-}
-
-.hd h3 {
-	font-size: 1.1em;
+	line-height: 2.0;
 }
 
 .ft {
@@ -313,3 +310,25 @@ html, body {
 .hidden {
 	display: none;
 }
+
+/* 标题栏左右侧两个图标，一般是返回和菜单。适合16x16 */
+.hd >.btn-icon {
+	width: 16px;
+	height: 16px;
+	padding: 10px;
+	position: absolute;
+	line-height: 0;
+	top: 0;
+}
+.hd >a.btn-icon:nth-of-type(2) {
+	right: 0;
+}
+/* 左二 */
+.hd >a.btn-icon:nth-of-type(3) {
+	left: 32px;
+}
+/* 右二 */
+.hd >a.btn-icon:nth-of-type(4) {
+	right: 32px;
+}
+

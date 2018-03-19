@@ -15,8 +15,8 @@
   访问任何页面都是index.html#page1的方式，如果page1已存在则使用（内部页面），不存在则动态加载（如找到fragment/page1.html）
 - 页面栈管理。可自行pop掉一些页面控制返回行为。
 
-@see MUI.showPage
-@see MUI.popPageStack
+@see showPage
+@see popPageStack
 
 ### 应用容器
 
@@ -33,6 +33,10 @@
 
 每个逻辑页面(page)以及它对应的脚本(js)均可以独立出一个文件开发，也可以直接嵌在主页面的应用容器中。
 
+@key .mui-page 逻辑页面。
+@key mui-script DOM属性。逻辑页面对应的JS文件。
+@key mui-initfn DOM属性。逻辑页面对应的初始化函数，一般包含在mui-script指定的JS文件中。
+
 如添加一个订单页，使用外部页面，可以添加一个order.html (html片段):
 
 	<div mui-initfn="initPageOrder" mui-script="order.js">
@@ -47,9 +51,41 @@
 		</div>
 	</script>
 
-@key .mui-page 逻辑页面。
-@key mui-script DOM属性。逻辑页面对应的JS文件。
-@key mui-initfn DOM属性。逻辑页面对应的初始化函数，一般包含在mui-script指定的JS文件中。
+@key .hd 页面顶栏
+@key .bd 页面主体
+@key .ft 页面底栏
+@key .btn-icon 顶栏图标按钮
+
+页面中常常包含hd, bd等结构，如
+
+	<div mui-initfn="initPageMe">
+		<div class="hd">
+			<a href="javascript:hd_back();" class="btn-icon"><i class="icon icon-back"></i></a>
+			<h2>个人信息</h2>
+		</div>
+
+		<div class="bd">
+		this is the body
+		</div>
+
+		<div class="ft">
+		this is the footer
+		</div>
+	</div>
+
+app.css中定义了`btn-icon`为顶栏图标按钮类，如果在`hd`中有多个`btn-icon`，则依次为左一，右一，左二，右二按钮，例如：
+
+	<div class="hd">
+		<!-- 左一: 返回按钮 -->
+		<a href="javascript:hd_back();" class="btn-icon"><i class="icon icon-back"></i></a>
+		<!-- 右一: 更多选项按钮 -->
+		<a href="#dlgMenu" class="btn-icon"><i class="icon icon-menu"></i></a>
+		<!-- 左二: 无 -->
+		<a />
+		<!-- 右二: 编辑按钮 -->
+		<a class="btn-icon"><i class="icon icon-edit"></i></a>
+		<h2>标题</h2>
+	</div>
 
 该页面代码模块（即初始化函数）可以放在一个单独的文件order.js:
 
@@ -264,10 +300,10 @@ URL也可以显示为文件风格，比如在设置：
 	<base href="./" mui-showHash="no">
 
 之后，上面两个例子中，URL会显示为 `http://server/app/page/order.html` 和 `http://server/app/page/order/list.html`
-@see MUI.options.showHash
+@see options.showHash
 
 特别地，还可以通过`MUI.setUrl(url)`或`MUI.showPage(pageRef, {url: url})`来定制URL，例如将订单id=100的逻辑页显示为RESTful风格：`http://server/app/order/100`
-@see MUI.setUrl
+@see setUrl
 
 为了刷新时仍能正常显示页面，应将页面设置为入口页，并在WEB服务器配置好URL重写规则。
 
@@ -282,10 +318,10 @@ URL也可以显示为文件风格，比如在设置：
 
 登录后显示的主页，登录页，应用名称等应通过MUI.options.homePage/loginPage/appName等选项设置。
 
-@see MUI.tryAutoLogin
-@see MUI.showLogin
-@see MUI.logout
-@see MUI.options
+@see tryAutoLogin
+@see showLogin
+@see logout
+@see options
 
 ## 常用组件
 
@@ -341,7 +377,7 @@ URL也可以显示为文件风格，比如在设置：
 
 	<a href="#dlgAddPerson">添加人物</a>
 
-@see MUI.showDialog 弹出对话框
+@see showDialog 弹出对话框
 @see #muiAlert,MUI.app_alert 提示框(app_alert)是一个id为`muiAlert`的特别对话框。
 @see .mui-menu 弹出菜单，也是一类特别的对话框。
 
@@ -353,9 +389,10 @@ URL也可以显示为文件风格，比如在设置：
 
 示例：添加右上角菜单（习惯上左上角为返回按钮，右上角为菜单按钮）
 
+	<!-- btn-icon依次标识左一，右一，左二，右二图标按钮 -->
 	<div class="hd">
-		<a href="javascript:hd_back();" class="icon icon-back"></a>
-		<a href="#dlgMenu" class="icon icon-menu"></a>
+		<a href="javascript:hd_back();" class="btn-icon"><i class="icon icon-back"></i></a>
+		<a href="#dlgMenu" class="btn-icon"><i class="icon icon-menu"></i></a>
 		<h2>谱系图</h2>
 	</div>
 
@@ -417,7 +454,7 @@ URL也可以显示为文件风格，比如在设置：
 对原生应用的额外增强包括：
 
 @key topic-splashScreen
-@see MUI.options.manualSplash
+@see options.manualSplash
 
 - 应用加载完成后，自动隐藏启动画面(SplashScreen)。如果需要自行隐藏启动画面，可以设置
 
@@ -429,18 +466,18 @@ URL也可以显示为文件风格，比如在设置：
 			navigator.splashscreen.hide();
 
 @key topic-iosStatusBar
-@see MUI.options.noHandleIosStatusBar
+@see options.statusBarColor
 
-- ios7以上, 框架自动为顶部状态栏留出20px高度的空间. 默认为白色，可以修改类mui-container的样式，如改为黑色：
+可通过MUI.options.statusBarColor设置状态栏前景和背景色。
 
-	.mui-container {
-		background-color:black;
-	}
+	statusBarColor: "#,light" // 默认，背景与MUI.container（即.mui-container类）背景一致，白字。
+	statusBarColor: "#000000,light" // 黑底白字。
+	statusBarColor: "#ffffff,dark" // 白底黑字
+	statusBarColor: "none" // 不显示状态栏。
 
-如果使用了StatusBar插件, 可以取消该行为. 
-先设置选项：
+如果希望自行设置状态栏，可以设置statusBarColor为null:
 
-	MUI.options.noHandleIosStatusBar = true; // 可以放在H5应用的主js文件中，如index.js
+	MUI.options.statusBarColor = null;
 
 然后在deviceready事件中自行设置样式, 如
 
@@ -517,6 +554,35 @@ APP初始化成功后，回调该事件。如果deviceready事件未被回调，
 		});
 
 这时直接在chrome中打开html文件即可连接远程接口运行起来.
+
+## 参考文档说明
+
+以下参考文档介绍MUI模块提供的方法/函数(fn)、属性/变量(var)等，示例如下：
+
+	@fn showPage(pageName, title?, paramArr?)  一个函数。参数说明中问号表示参数可缺省。
+	@var options 一个属性。
+	@class batchCall(opt?={useTrans?=0}) 一个JS类。
+	@key topic-splashScreen key表示一般关键字。前缀为"topic-"用于某专题
+	@key .wui-page 一个CSS类名"wui-page"，关键字以"."开头。
+	@key #wui-pages 一个DOM对象，id为"wui-pages"，关键字以"#"开头。
+
+对于模块下的fn,var,class这些类别，如非特别说明，调用时应加MUI前缀，如
+
+	MUI.showPage("#order");
+	var opts = MUI.options;
+	var batch = new MUI.batchCall();
+	batch.commit();
+
+以下函数可不加MUI前缀：
+
+	intSort
+	numberSort
+	callSvr
+	callSvrSync
+	app_alert
+
+参考mui-name.js模块。
+
  */
 // ====== WEBCC_END_FILE doc.js }}}
 
@@ -1424,6 +1490,50 @@ function delayDo(fn, delayCnt)
 	}
 }
 
+/**
+@fn kvList2Str(kv, sep, sep2)
+
+e.g.
+
+	var str = kvList2Str({"CR":"Created", "PA":"Paid"}, ';', ':');
+	// str="CR:Created;PA:Paid"
+
+ */
+self.kvList2Str = kvList2Str;
+function kvList2Str(kv, sep, sep2)
+{
+	var ret = '';
+	$.each(kv, function (k, v) {
+		if (typeof(v) != "function") {
+			if (ret)
+				ret += sep;
+			ret += k  + sep2 + v;
+		}
+	});
+	return ret;
+}
+
+/**
+@fn parseKvList(kvListStr, sep, sep2) -> kvMap
+
+解析key-value列表字符串，返回kvMap。
+示例：
+
+	var map = parseKvList("CR:新创建;PA:已付款", ";", ":");
+	// map: {"CR": "新创建", "PA":"已付款"}
+*/
+self.parseKvList = parseKvList;
+function parseKvList(str, sep, sep2)
+{
+	var map = {};
+	$.each(str.split(sep), function (i, e) {
+		var kv = e.split(sep2, 2);
+		assert(kv.length == 2, "bad kvList: " + str);
+		map[kv[0]] = kv[1];
+	});
+	return map;
+}
+
 function initModule()
 {
 	// bugfix: 浏览器兼容性问题
@@ -1442,14 +1552,32 @@ initModule();
 }/*jdcloud common*/
 
 /**
-@fn jdModule(name, fn)
-定义一个模块，返回该模块对象。
+@fn jdModule(name?, fn?)
 
-@fn jdModule(name)
-获取模块对象。
+定义JS模块。这是一个全局函数。
 
-@fn jdModule()
-返回模块映射表。
+定义一个模块:
+
+	jdModule("jdcloud.common", JdcloudCommon);
+	function JdcloudCommon() {
+		var self = this;
+		
+		// 对外提供一个方法
+		self.rs2Array = rs2Array;
+		function rs2Array(rs)
+		{
+			return ...;
+		}
+	}
+
+获取模块对象:
+
+	var mCommon = jdModule("jdcloud.common");
+	var arr = mCommon.rs2Array(rs);
+
+返回模块映射列表。
+
+	var moduleMap = jdModule(); // 返回 { "jdcloud.common": JdcloudCommon, ... }
 
 */
 function jdModule(name, fn, overrideCtor)
@@ -1861,6 +1989,35 @@ function waitFor(dfd)
 }
 
 /**
+@fn rgb2hex(rgb)
+
+将jquery取到的颜色转成16进制形式，如："rgb(4, 190, 2)" -> "#04be02"
+
+示例：
+
+	var color = rgb2hex( $(".mui-container").css("backgroundColor") );
+
+ */
+self.rgb2hex = rgb2hex;
+function rgb2hex(rgb)
+{
+	var ms = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+	if (ms == null)
+		return;
+	var hex = "#";
+	for (var i = 1; i <= 3; ++i) {
+		var s = parseInt(ms[i]).toString(16);
+		if (s.length == 1) {
+			hex += "0" + s;
+		}
+		else {
+			hex += s;
+		}
+	}
+	return hex;
+}
+
+/**
 @fn jQuery.fn.jdata(val?)
 
 和使用$.data()差不多，更好用一些. 例：
@@ -2015,7 +2172,7 @@ function app_abort()
 window.DirectReturn = function () {}
 
 /**
-@fn MUI.setOnError()
+@fn setOnError()
 
 一般框架自动设置onerror函数；如果onerror被其它库改写，应再次调用该函数。
 allow throw("abort") as abort behavior.
@@ -2041,12 +2198,12 @@ setOnError();
 
 // ------ enhanceWithin {{{
 /**
-@var MUI.m_enhanceFn
+@var m_enhanceFn
 */
 self.m_enhanceFn = {}; // selector => enhanceFn
 
 /**
-@fn MUI.enhanceWithin(jparent)
+@fn enhanceWithin(jparent)
 */
 self.enhanceWithin = enhanceWithin;
 function enhanceWithin(jp)
@@ -2069,7 +2226,7 @@ function enhanceWithin(jp)
 }
 
 /**
-@fn MUI.getOptions(jo)
+@fn getOptions(jo)
 */
 self.getOptions = getOptions;
 function getOptions(jo)
@@ -2120,7 +2277,7 @@ function getop(v)
 }
 
 /**
-@fn WUI.getQueryCond(kvList)
+@fn getQueryCond(kvList)
 
 @param kvList {key=>value}, 键值对，值中支持操作符及通配符。也支持格式 [ [key, value] ], 这时允许key有重复。
 
@@ -2149,12 +2306,22 @@ function getop(v)
 - {key: "null" } - 表示 "key is null"。要表示"key is not null"，可以用 "<>null".
 - {key: "empty" } - 表示 "key=''".
 
-支持简单的and/or查询，但不支持在其中使用括号:
+支持and/or查询，但不支持在其中使用括号:
 
 - {key: ">value and <=value"}  - 表示"key>'value' and key<='value'"
 - {key: "null or 0 or 1"}  - 表示"key is null or key=0 or key=1"
+- {key: "null,0,1,9-100"} - 表示"key is null or key=0 or key=1 or (key>=9 and key<=100)"，即逗号表示or，a-b的形式只支持数值。
+
+以下表示的范围相同：
+
+	{k1:'1-5,7-10', k2:'1-10 and <>6'}
+
+符号优先级依次为：-(and) ,(or) and or
 
 在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。
+
+@see getQueryParam
+@see getQueryParamFromTable 获取datagrid的当前查询参数
 */
 self.getQueryCond = getQueryCond;
 function getQueryCond(kvList)
@@ -2181,7 +2348,26 @@ function getQueryCond(kvList)
 				bracket = true;
 				return;
 			}
-			str += k + getop(v1);
+			// a-b,c-d,e
+			var str1 = '';
+			var bracket2 = false;
+			$.each(v1.split(/\s*,\s*/), function (j, v2) {
+				if (str1.length > 0) {
+					str1 += " OR ";
+					bracket2 = true;
+				}
+				var m = v2.match(/^(\d+)-(\d+)$/);
+				if (m) {
+					str1 += "(" + k + ">=" + m[1] + " AND " + k + "<=" + m[2] + ")";
+				}
+				else {
+					str1 += k + getop(v2);
+				}
+			});
+			if (bracket2)
+				str += "(" + str1 + ")";
+			else
+				str += str1;
 		});
 		if (bracket)
 			str = '(' + str + ')';
@@ -2193,9 +2379,10 @@ function getQueryCond(kvList)
 }
 
 /**
-@fn WUI.getQueryParam(kvList)
+@fn getQueryParam(kvList)
 
 根据键值对生成BQP协议中{obj}.query接口需要的cond参数.
+即 `{cond: WUI.getQueryCond(kvList) }`
 
 示例：
 
@@ -2203,12 +2390,17 @@ function getQueryCond(kvList)
 	返回
 	{cond: "phone='13712345678' AND id>100"}
 
-@see WUI.getQueryCond
+@see getQueryCond
+@see getQueryParamFromTable 获取datagrid的当前查询参数
 */
 self.getQueryParam = getQueryParam;
 function getQueryParam(kvList)
 {
-	return {cond: getQueryCond(kvList)};
+	var ret = {};
+	var cond = getQueryCond(kvList);
+	if (cond)
+		ret.cond = cond;
+	return ret;
 }
 
 }
@@ -2222,7 +2414,7 @@ var self = this;
 var mCommon = jdModule("jdcloud.common");
 
 /**
-@var MUI.lastError = ctx
+@var lastError = ctx
 
 出错时，取出错调用的上下文信息。
 
@@ -2237,16 +2429,17 @@ self.lastError = null;
 var m_tmBusy;
 var m_manualBusy = 0;
 var m_appVer;
+var m_silentCall = 0;
 
 /**
-@var MUI.disableBatch ?= false
+@var disableBatch ?= false
 
 设置为true禁用batchCall, 仅用于内部测试。
 */
 self.disableBatch = false;
 
 /**
-@var MUI.m_curBatch
+@var m_curBatch
 
 当前batchCall对象，用于内部调试。
 */
@@ -2254,7 +2447,7 @@ var m_curBatch = null;
 self.m_curBatch = m_curBatch;
 
 /**
-@var MUI.mockData  模拟调用后端接口。
+@var mockData  模拟调用后端接口。
 
 在后端接口尚无法调用时，可以配置MUI.mockData做为模拟接口返回数据。
 调用callSvr时，会直接使用该数据，不会发起ajax请求。
@@ -2292,7 +2485,7 @@ mockData中每项可以直接是数据，也可以是一个函数：fn(param, po
 要取HTTP动词可以用`this.type`，值为GET/POST/PATCH/DELETE之一，从而可模拟RESTful API.
 
 可以通过MUI.options.mockDelay设置模拟调用接口的网络延时。
-@see MUI.options.mockDelay
+@see options.mockDelay
 
 模拟数据可直接返回[code, data]格式的JSON数组，框架会将其序列化成JSON字符串，以模拟实际场景。
 如果要查看调用与返回数据日志，可在浏览器控制台中设置 MUI.options.logAction=true，在控制台中查看日志。
@@ -2306,7 +2499,7 @@ mockData中每项可以直接是数据，也可以是一个函数：fn(param, po
 
 	MUI.mockData["zhanda:token/get-token"] = ...;
 
-@see MUI.callSvrExt
+@see callSvrExt
 
 也支持"default"扩展，如：
 
@@ -2351,36 +2544,36 @@ if (location.protocol == "file:") {
 $.ajaxSetup(ajaxOpt);
 
 /**
-@fn MUI.enterWaiting(ctx?)
+@fn enterWaiting(ctx?)
 @param ctx {ac, tm, tv?, tv2?, noLoadingImg?}
-@alias enterWaiting()
 */
 self.enterWaiting = enterWaiting;
 function enterWaiting(ctx)
 {
+	if (ctx && ctx.noLoadingImg) {
+		++ m_silentCall;
+		return;
+	}
 	if (self.isBusy == 0) {
 		m_tmBusy = new Date();
 	}
 	self.isBusy = 1;
 	if (ctx == null || ctx.isMock)
 		++ m_manualBusy;
+
 	// 延迟执行以防止在page show时被自动隐藏
 	//mCommon.delayDo(function () {
-	if (!(ctx && ctx.noLoadingImg))
-	{
-		setTimeout(function () {
-			if (self.isBusy)
-				self.showLoading();
-		}, 200);
-	}
+	setTimeout(function () {
+		if (self.isBusy)
+			self.showLoading();
+	}, 200);
 // 		if ($.mobile && !(ctx && ctx.noLoadingImg))
 // 			$.mobile.loading("show");
 	//},1);
 }
 
 /**
-@fn MUI.leaveWaiting(ctx?)
-@alias leaveWaiting
+@fn leaveWaiting(ctx?)
 */
 self.leaveWaiting = leaveWaiting;
 function leaveWaiting(ctx)
@@ -2397,8 +2590,11 @@ function leaveWaiting(ctx)
 			ctx.tv2 = tv2;
 			console.log(ctx);
 		}
-		if ($.active <= 0 && self.isBusy && m_manualBusy == 0) {
+		if (ctx && ctx.noLoadingImg)
+			-- m_silentCall;
+		if ($.active < 0)
 			$.active = 0;
+		if ($.active-m_silentCall <= 0 && self.isBusy && m_manualBusy == 0) {
 			self.isBusy = 0;
 			var tv = new Date() - m_tmBusy;
 			m_tmBusy = 0;
@@ -2438,7 +2634,7 @@ function defAjaxErrProc(xhr, textStatus, e)
 }
 
 /**
-@fn MUI.defDataProc(rv)
+@fn defDataProc(rv)
 
 @param rv BQP协议原始数据，如 "[0, {id: 1}]"，一般是字符串，也可以是JSON对象。
 @return data 按接口定义返回的数据对象，如 {id: 1}. 如果返回==null，调用函数应直接返回，不回调应用层。
@@ -2549,7 +2745,7 @@ function defDataProc(rv)
 }
 
 /**
-@fn MUI.getBaseUrl()
+@fn getBaseUrl()
 
 取服务端接口URL对应的目录。可用于拼接其它服务端资源。
 相当于dirname(MUI.options.serverUrl);
@@ -2566,7 +2762,7 @@ function getBaseUrl()
 }
 
 /**
-@fn MUI.makeUrl(action, params?)
+@fn makeUrl(action, params?)
 
 生成对后端调用的url. 
 
@@ -2588,7 +2784,7 @@ function getBaseUrl()
 
 	MUI.makeUrl(['login', 'zhanda']) 等价于 MUI.makeUrl('zhanda:login');
 
-@see MUI.callSvrExt
+@see callSvrExt
  */
 self.makeUrl = makeUrl;
 function makeUrl(action, params)
@@ -2619,6 +2815,8 @@ function makeUrl(action, params)
 	if (action.makeUrl || /^http/.test(action)) {
 		if (params == null)
 			return action;
+		if (action.makeUrl)
+			return makeUrl(action.action, $.extend({}, action.params, params));
 		var url = mCommon.appendParam(action, $.param(params));
 		return makeUrlObj(url);
 	}
@@ -2692,8 +2890,7 @@ function makeUrl(action, params)
 }
 
 /**
-@fn MUI.callSvr(ac, [params?], fn?, postParams?, userOptions?) -> deferredObject
-@alias callSvr
+@fn callSvr(ac, [params?], fn?, postParams?, userOptions?) -> deferredObject
 
 @param ac String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)
 @param params Object. URL参数（或称HTTP GET参数）
@@ -2705,13 +2902,12 @@ function makeUrl(action, params)
 
 - 指定{async:0}来做同步请求, 一般直接用callSvrSync调用来替代.
 - 指定{noex:1}用于忽略错误处理。
-- 指定{noLoadingImg:1}用于忽略loading图标. 要注意如果之前已经调用callSvr显示了图标且图标尚未消失，则该选项无效，图标会在所有调用完成之后才消失(leaveWaiting)。
- 要使隐藏图标不受本次调用影响，可在callSvr后手工调用`--$.active`。
+- 指定{noLoadingImg:1} 静默调用，忽略loading图标，不设置busy状态。
 
 想为ajax选项设置缺省值，可以用callSvrExt中的beforeSend回调函数，也可以用$.ajaxSetup，
 但要注意：ajax的dataFilter/beforeSend选项由于框架已用，最好不要覆盖。
 
-@see MUI.callSvrExt[].beforeSend(opt) 为callSvr选项设置缺省值
+@see callSvrExt[].beforeSend(opt) 为callSvr选项设置缺省值
 
 @return deferred对象，与$.ajax相同。
 例如，
@@ -2753,7 +2949,7 @@ function makeUrl(action, params)
 		foo(data);
 	}, null, {noex:1});
 
-@see MUI.lastError 出错时的上下文信息
+@see lastError 出错时的上下文信息
 
 ## 调用监控
 
@@ -2789,7 +2985,7 @@ JS:
 
 ## callSvr扩展
 
-@key MUI.callSvrExt
+@key callSvrExt
 
 当调用第三方API时，也可以使用callSvr扩展来代替$.ajax调用以实现：
 - 调用成功时直接可操作数据，不用每次检查返回码；
@@ -2843,14 +3039,14 @@ callSvr扩展示例：
 		console.log(data);
 	});
 
-@key MUI.callSvrExt[].makeUrl(ac, param)
+@key callSvrExt[].makeUrl(ac, param)
 
 根据调用名ac生成url, 注意无需将param放到url中。
 
 注意：
 对方接口应允许JS跨域调用，或调用方支持跨域调用。
 
-@key MUI.callSvrExt[].dataFilter(data) = null/false/data
+@key callSvrExt[].dataFilter(data) = null/false/data
 
 对调用返回数据进行通用处理。返回值决定是否调用callSvr的回调函数以及参数值。
 
@@ -2862,9 +3058,9 @@ callSvr扩展示例：
 
 当返回false时，应用层可以通过`MUI.lastError.ret`来获取服务端返回数据。
 
-@see MUI.lastError 出错时的上下文信息
+@see lastError 出错时的上下文信息
 
-@key MUI.callSvrExt['default']
+@key callSvrExt['default']
 
 (支持版本: v3.1)
 如果要修改callSvr缺省调用方法，可以改写 MUI.callSvrExt['default'].
@@ -2927,7 +3123,7 @@ callSvr扩展示例：
 
 	callSvr('login');
 
-@key MUI.callSvrExt[].beforeSend(opt) 为callSvr或$.ajax选项设置缺省值
+@key callSvrExt[].beforeSend(opt) 为callSvr或$.ajax选项设置缺省值
 
 如果有ajax选项想设置，可以使用beforeSend回调，例如POST参数使用JSON格式：
 
@@ -3129,14 +3325,12 @@ function callSvr(ac, params, fn, postParams, userOptions)
 		data: postParams,
 		type: method,
 		success: fn,
+		// 允许跨域使用cookie/session/authorization header
+		xhrFields: {
+			withCredentials: true
+		},
 		ctx_: ctx
 	};
-	if (ext) {
-		// 允许跨域
-		opt.xhrFields = {
-			withCredentials: true
-		};
-	}
 	// support FormData object.
 	if (window.FormData && postParams instanceof FormData) {
 		opt.processData = false;
@@ -3183,8 +3377,7 @@ function callSvrMock(opt, isSyncCall)
 }
 
 /**
-@fn MUI.callSvrSync(ac, [params?], fn?, postParams?, userOptions?)
-@alias callSvrSync
+@fn callSvrSync(ac, [params?], fn?, postParams?, userOptions?)
 @return data 原型规定的返回数据
 
 同步模式调用callSvr.
@@ -3210,7 +3403,7 @@ function callSvrSync(ac, params, fn, postParams, userOptions)
 }
 
 /**
-@fn MUI.setupCallSvrViaForm($form, $iframe, url, fn, callOpt)
+@fn setupCallSvrViaForm($form, $iframe, url, fn, callOpt)
 
 该方法已不建议使用。上传文件请用FormData。
 @see example-upload,callSvr
@@ -3256,7 +3449,7 @@ function setupCallSvrViaForm($form, $iframe, url, fn, callOpt)
 }
 
 /**
-@class MUI.batchCall(opt?={useTrans?=0})
+@class batchCall(opt?={useTrans?=0})
 
 批量调用。将若干个调用打包成一个特殊的batch调用发给服务端。
 注意：
@@ -3302,9 +3495,9 @@ function setupCallSvrViaForm($form, $iframe, url, fn, callOpt)
 
 如果值计算失败，则当作"null"填充。
 
-@see MUI.useBatchCall
-@see MUI.disableBatch
-@see MUI.m_curBatch
+@see useBatchCall
+@see disableBatch
+@see m_curBatch
 
 */
 self.batchCall = batchCall;
@@ -3330,6 +3523,10 @@ batchCall.prototype = {
 		if (opt.ref) {
 			call.ref = opt.ref;
 		}
+		if (call.ac && call.ac.makeUrl) {
+			call.get = $.extend({}, call.ac.params, call.get);
+			call.ac = call.ac.action;
+		}
 		this.calls_.push(call);
 
 		var callOpt = {
@@ -3350,8 +3547,19 @@ batchCall.prototype = {
 			return;
 		m_curBatch = null;
 
-		if (this.calls_.length <= 1) {
+		if (this.calls_.length < 1) {
 			console.log("!!! warning: batch has " + this.calls_.length + " calls!");
+			return;
+		}
+		if (this.calls_.length == 1) {
+			// 只有一个调用，不使用batch
+			var call = this.calls_[0];
+			var callOpt = this.callOpts_[0];
+			var dfd = callSvr(call.ac, call.get, callOpt.fn, call.post, callOpt.opt);
+			dfd.then(function (data) {
+				callOpt.dfd.resolve(data);
+			});
+			return;
 		}
 		var batch_ = this;
 		var postData = JSON.stringify(this.calls_);
@@ -3395,7 +3603,7 @@ batchCall.prototype = {
 }
 
 /**
-@fn MUI.useBatchCall(opt?={useTrans?=0}, tv?=0)
+@fn useBatchCall(opt?={useTrans?=0}, tv?=0)
 
 之后的callSvr调用都加入批量操作。例：
 
@@ -3409,8 +3617,8 @@ batchCall.prototype = {
 
 如果MUI.disableBatch=true, 该函数不起作用。
 
-@see MUI.batchCall
-@see MUI.disableBatch
+@see batchCall
+@see disableBatch
 */
 self.useBatchCall = useBatchCall;
 function useBatchCall(opt, tv)
@@ -3452,7 +3660,7 @@ var self = this;
 var mCommon = jdModule("jdcloud.common");
 	
 /**
-@var MUI.activePage
+@var activePage
 
 当前页面。
 
@@ -3464,21 +3672,21 @@ var mCommon = jdModule("jdcloud.common");
 要查看从哪个页面来，可以用 MUI.prevPageId。
 要查看最近一次调用MUI.showPage转向的页面，可以用 MUI.getToPageId().
 
-@see MUI.prevPageId
-@see MUI.getToPageId()
+@see prevPageId
+@see getToPageId()
 
 */
 self.activePage = null;
 
 /**
-@var MUI.prevPageId
+@var prevPageId
 
 上一个页面的id, 首次进入时为空.
 */
 self.prevPageId = null;
 
 /**
-@var MUI.container
+@var container
 
 应用容器，一般就是`$(document.body)`
 
@@ -3487,7 +3695,7 @@ self.prevPageId = null;
 self.container = null;
 
 /**
-@var MUI.showFirstPage?=true
+@var showFirstPage?=true
 
 如果为false, 则必须手工执行 MUI.showPage 来显示第一个页面。
 */
@@ -3677,7 +3885,7 @@ m_curState==null: 首次进入，或hash改变
 }
 
 /**
-@fn MUI.setUrl(url)
+@fn setUrl(url)
 
 设置当前地址栏显示的URL. 如果url中不带hash部分，会自动加上当前的hash.
 
@@ -3762,7 +3970,7 @@ function setUrl(url)
 }
 
 /**
-@fn MUI.deleteUrlParam(param)
+@fn deleteUrlParam(param)
 
 自动修改g_args全局变量和当前url（会调用MUI.setUrl方法）。
 
@@ -3780,14 +3988,14 @@ function deleteUrlParam(param)
 }
 
 /**
-@fn MUI.setUrlParam(param, val)
+@fn setUrlParam(param, val)
 
 修改当前url，添加指定参数。
 e.g. 
 
 	MUI.setUrlParam("wxauth", 1);
 
-@see MUI.deleteUrlParam,MUI.appendParam
+@see deleteUrlParam,MUI.appendParam
  */
 self.setUrlParam = setUrlParam;
 function setUrlParam(param, val)
@@ -3922,7 +4130,7 @@ function getPageInfo(pageRef)
 }
 
 /**
-@fn MUI.showPage(pageRef, opt)
+@fn showPage(pageRef, opt)
 
 @param pageId String. 页面名字. 仅由字母、数字、"_"等字符组成。
 @param pageRef String. 页面引用（即location.hash），以"#"开头，后面可以是一个pageId（如"#home"）或一个相对页的地址（如"#info.html", "#emp/info.html"）。
@@ -3931,7 +4139,7 @@ function getPageInfo(pageRef)
 opt.ani:: String. 动画效果。设置为"none"禁用动画。
 
 opt.url:: String. 指定在地址栏显示的地址。如 `showPage("#order", {url: "?id=100"})` 可设置显示的URL为 `page/order.html?id=100`.
-@see MUI.setUrl
+@see setUrl
 
 在应用内无刷新地显示一个页面。
 
@@ -4222,7 +4430,7 @@ function showPage(pageRef, opt)
 }
 
 /**
-@fn MUI.setDocTitle(title)
+@fn setDocTitle(title)
 
 设置文档标题。默认在切换页面时，会将文档标题设置为逻辑页的标题(`hd`块中的`h1`或`h2`标签)。
 */
@@ -4242,7 +4450,7 @@ function setDocTitle(newTitle)
 }
 
 /**
-@fn MUI.unloadPage(pageRef?)
+@fn unloadPage(pageRef?)
 
 @param pageRef 如未指定，表示当前页。
 
@@ -4275,7 +4483,7 @@ function unloadPage(pageRef)
 }
 
 /**
-@fn MUI.reloadPage(pageRef?, opt?)
+@fn reloadPage(pageRef?, opt?)
 
 @param pageRef 如未指定，表示当前页。
 @param opt 传递给MUI.showPage的opt参数。参考MUI.showPage.
@@ -4293,14 +4501,14 @@ function reloadPage(pageRef, opt)
 }
 
 /**
-@var MUI.m_pageStack
+@var m_pageStack
 
 页面栈，MUI.popPageStack对它操作
 */
 self.m_pageStack = new PageStack();
 
 /** 
-@fn MUI.popPageStack(n?=1) 
+@fn popPageStack(n?=1) 
 
 n=0: 退到首层, >0: 指定pop几层
 
@@ -4350,8 +4558,11 @@ function fixPageSize()
 		var jo, hd, ft;
 		jo= jpage.find(">.hd");
 		hd = (jo.size() > 0 && jo.css("display") != "none")? jo.height() : 0;
-		jo = jpage.find(">.ft");
-		ft = (jo.size() > 0 && jo.css("display") != "none")? jo.height() : 0;
+		ft = 0;
+		jpage.find(">.ft").each(function () {
+			if ($(this).is(":visible"))
+				ft += $(this).height();
+		});
 		jpage.height(H);
 		jpage.find(">.bd").css({
 			top: hd,
@@ -4361,11 +4572,11 @@ function fixPageSize()
 }
 
 /**
-@fn MUI.getToPageId()
+@fn getToPageId()
 
 返回最近一次调用MUI.showPage时转向页面的Id.
 
-@see MUI.prevPageId
+@see prevPageId
  */
 self.getToPageId = getToPageId;
 function getToPageId()
@@ -4458,6 +4669,12 @@ function enhanceFooter(jfooter)
 				jfooter.appendTo(m_jstash);
 			return;
 		}
+		var jft = jpage.find(".ft");
+		if (jft.size() > 0) {
+			setTimeout(function () {
+				jft.css("bottom", jfooter.height());
+			});
+		}
 		jfooter.appendTo(jpage);
 		activateElem($(e));
 	});
@@ -4480,7 +4697,7 @@ function enhanceDialog(jo)
 }
 
 /**
-@fn MUI.showDialog(jdlg)
+@fn showDialog(jdlg)
 */
 self.showDialog = showDialog;
 function showDialog(jdlg)
@@ -4502,7 +4719,7 @@ function showDialog(jdlg)
 }
 
 /**
-@fn MUI.closeDialog(jdlg, remove=false)
+@fn closeDialog(jdlg, remove=false)
 */
 self.closeDialog = closeDialog;
 function closeDialog(jdlg, remove)
@@ -4515,7 +4732,7 @@ function closeDialog(jdlg, remove)
 }
 
 /**
-@fn MUI.setupDialog(jdlg, initfn)
+@fn setupDialog(jdlg, initfn)
 
 @return 可以不返回, 或返回一个回调函数beforeShow, 在每次Dialog显示前调用.
 
@@ -4547,9 +4764,8 @@ function setupDialog(jdlg, initfn)
 }
 
 /**
-@fn MUI.app_alert(msg, [type?=i], [fn?], opt?={timeoutInterval?, defValue?, onCancel()?})
-@alias app_alert
-@alias #muiAlert
+@fn app_alert(msg, [type?=i], [fn?], opt?={timeoutInterval?, defValue?, onCancel()?})
+@key #muiAlert
 @param type 对话框类型: "i": info, 信息提示框; "e": error, 错误框; "w": warning, 警告框; "q": question, 确认框(会有"确定"和"取消"两个按钮); "p": prompt, 输入框
 @param fn Function(text?) 回调函数，当点击确定按钮时调用。当type="p" (prompt)时参数text为用户输入的内容。
 @param opt Object. 可选项。 timeoutInterval表示几秒后自动关闭对话框。defValue用于输入框(type=p)的缺省值.
@@ -4720,7 +4936,7 @@ function app_alert_keydown(ev)
 }
 
 /**
-@fn MUI.showLoading()
+@fn showLoading()
 */
 self.showLoading = showLoading;
 function showLoading()
@@ -4732,7 +4948,7 @@ function showLoading()
 }
 	
 /**
-@fn MUI.hideLoading()
+@fn hideLoading()
 */
 self.hideLoading = hideLoading;
 function hideLoading()
@@ -4869,36 +5085,42 @@ window.g_data = {}; // {userInfo, serverRev?, initClient?, testMode?, mockMode?}
 //}}}
 
 /**
-@var MUI.options
+@var options
 
 可用的选项如下。
 
-@key MUI.options.appName?=user  应用名称
+@var options.appName?=user  应用名称
 
 用于与后端通讯时标识app.
 
-@key MUI.options.loginPage?="#login"  login逻辑页面的地址
-@key MUI.options.homePage?="#home"  首页地址
-@key MUI.options.pageFolder?="page" 逻辑页面文件(html及js)所在文件夹
+@var options.loginPage?="#login"  login逻辑页面的地址
+@var options.homePage?="#home"  首页地址
+@var options.pageFolder?="page" 逻辑页面文件(html及js)所在文件夹
 
-@key MUI.options.noHandleIosStatusBar?=false
-
+@var options.statusBarColor?="#,light" 设置状态栏颜色，默认为应用程序背景色和白字。
 @see topic-iosStatusBar
+（版本v5.0）
 
-@key MUI.options.manualSplash?=false
+利用statusbar插件设置标题栏。
+其中背景设置使用"#000"或"#000000"这种形式，特别地，只用"#"可表示使用当前应用程序的背景色（.mui-container背景颜色）。
+前景设置使用"light"(白色)或"dark"(黑色)。
+设置为"none"表示隐藏标题栏。
+设置为空("")表示禁止框架设置状态栏。
+
+@var options.manualSplash?=false
 @see topic-splashScreen
 
-@var MUI.options.logAction?=false  Boolean. 是否显示详细日志。
+@var options.logAction?=false  Boolean. 是否显示详细日志。
 可用于交互调用的监控。
 
-@var MUI.options.PAGE_SZ?=20  分页大小，下拉列表每次取数据的缺省条数。
+@var options.PAGE_SZ?=20  分页大小，下拉列表每次取数据的缺省条数。
 
-@var MUI.options.mockDelay?=50  模拟调用后端接口的延迟时间，单位：毫秒。仅对异步调用有效。
+@var options.mockDelay?=50  模拟调用后端接口的延迟时间，单位：毫秒。仅对异步调用有效。
 
-@see MUI.mockData 模拟调用后端接口
+@see mockData 模拟调用后端接口
 
-@var MUI.options.serverUrl?="./"  服务端接口地址设置。
-@var MUI.options.serverUrlAc  表示接口名称的URL参数。
+@var options.serverUrl?="./"  服务端接口地址设置。
+@var options.serverUrlAc  表示接口名称的URL参数。
 
 示例：
 
@@ -4926,11 +5148,11 @@ window.g_data = {}; // {userInfo, serverRev?, initClient?, testMode?, mockMode?}
 
 	http://myserver/myapp/getuser?id=10
 
-@var MUI.options.pluginFolder?="../plugin" 指定筋斗云插件目录
+@var options.pluginFolder?="../plugin" 指定筋斗云插件目录
 
 筋斗云插件提供具有独立接口的应用功能模块，包括前端、后端实现。
 
-@var MUI.options.showHash?=true
+@var options.showHash?=true
 
 默认访问逻辑页面时，URL地址栏显示为: "index.html#me"
 
@@ -4941,6 +5163,10 @@ window.g_data = {}; // {userInfo, serverRev?, initClient?, testMode?, mockMode?}
 	<base href="./" mui-showHash="no">
 
 在showHash=false时，必须设置base标签, 否则逻辑页将无法加载。
+
+@var options.disableFastClick?=false
+
+在IOS+cordova环境下，点击事件会有300ms延迟，默认会加载lib/fastclick.min.js解决。
 */
 	var m_opt = self.options = {
 		appName: "user",
@@ -4956,6 +5182,7 @@ window.g_data = {}; // {userInfo, serverRev?, initClient?, testMode?, mockMode?}
 
 		pluginFolder: "../plugin",
 		showHash: ($("base").attr("mui-showHash") != "no"),
+		statusBarColor: "#,light"
 	};
 
 	var m_onLoginOK;
@@ -4977,23 +5204,8 @@ function document_pageCreate(ev)
 
 $(document).on("pagecreate", document_pageCreate);
 
-// ---- 处理ios7以上标题栏问题(应下移以空出状态栏)
-// 需要定义css: #ios7statusbar
-function handleIos7Statusbar()
-{
-	if(g_cordova){
-		var ms = navigator.userAgent.match(/(iPad.*|iPhone.*|iPod.*);.*CPU.*OS (\d+)_\d/i);
-		if(ms) {
-			var ver = ms[2];
-			if (ver >= 7) {
-				self.container.css("margin-top", "20px");
-			}
-		}	
-	}
-}
-
 /**
-@fn MUI.setFormSubmit(jf, fn?, opt?={validate?, onNoAction?})
+@fn setFormSubmit(jf, fn?, opt?={validate?, onNoAction?})
 
 @param fn Function(data); 与callSvr时的回调相同，data为服务器返回的数据。
 函数中可以使用this["userPost"] 来获取post参数。
@@ -5084,6 +5296,37 @@ $(document).on("deviceready", function () {
 			}, 500);
 		});
 	}
+
+	if (m_opt.statusBarColor && window.StatusBar) {
+		var bar = window.StatusBar;
+		var str = m_opt.statusBarColor;
+		if (str == "none") {
+			bar.hide();
+		}
+		else {
+			var ms = str.match(/(#\w*)/);
+			if (ms) {
+				var color = ms[1];
+				if (color == '#')
+					color = mCommon.rgb2hex( $(".mui-container").css("backgroundColor") );
+				bar.backgroundColorByHexString(color);
+			}
+			ms = str.match(/\b(dark|light)\b/);
+			if (ms) {
+				if (ms[1] == 'dark')
+					bar.styleDefault();
+				else
+					bar.styleLightContent();
+			}
+		}
+		if (mCommon.isIOS()) {
+			// bugfix: IOS上显示statusbar时可能窗口大小不正确
+			bar.overlaysWebView(false);
+			setTimeout(function () {
+				$(window).trigger("resize");
+			});
+		}
+	}
 });
 
 //}}}
@@ -5125,7 +5368,7 @@ function getPageRef(page)
 }
 
 /**
-@fn MUI.showLogin(page?)
+@fn showLogin(page?)
 @param page=pageRef/jpage 如果指定, 则登录成功后转向该页面; 否则转向登录前所在的页面.
 
 显示登录页. 注意: 登录页地址通过MUI.options.loginPage指定, 缺省为"#login".
@@ -5154,7 +5397,7 @@ function showLogin(page)
 }
 
 /**
-@fn MUI.showHome()
+@fn showHome()
 
 显示主页。主页是通过 MUI.options.homePage 来指定的，默认为"#home".
 
@@ -5162,7 +5405,7 @@ function showLogin(page)
 
 	var jpage = $(MUI.options.homePage);
 
-@see MUI.options.homePage
+@see options.homePage
 */
 self.showHome = showHome;
 function showHome()
@@ -5171,7 +5414,7 @@ function showHome()
 }
 
 /**
-@fn MUI.logout(dontReload?)
+@fn logout(dontReload?)
 @param dontReload 如果非0, 则注销后不刷新页面.
 
 注销当前登录, 成功后刷新页面(除非指定dontReload=1)
@@ -5188,7 +5431,7 @@ function logout(dontReload)
 }
 
 /**
-@fn MUI.validateEntry(@allowedEntries) 入口页检查
+@fn validateEntry(@allowedEntries) 入口页检查
 
 设置入口页，allowedEntries是一个数组, 如果初始页面不在该数组中, 则URL中输入该逻辑页时，会自动转向主页。
 
@@ -5233,6 +5476,13 @@ function parseArgs()
 				var path = './';
 				if (mCommon.isIOS()) {
 					mCommon.loadScript(path + "cordova-ios/cordova.js?__HASH__,.."); 
+
+					if (! m_opt.disableFastClick) {
+						// introduce fastclick for IOS webview: https://github.com/ftlabs/fastclick
+						mCommon.loadScript(path + "lib/fastclick.min.js").then(function () {
+							Origami.fastclick(document.body);
+						});
+					}
 				}
 				else {
 					mCommon.loadScript(path + "cordova/cordova.js?__HASH__,.."); 
@@ -5271,7 +5521,7 @@ function deleteLoginToken()
 }
 
 /**
-@fn MUI.tryAutoLogin(onHandleLogin, reuseCmd?, allowNoLogin?=false)
+@fn tryAutoLogin(onHandleLogin, reuseCmd?, allowNoLogin?=false)
 
 尝试自动登录，如果失败则转到登录页（除非allowNoLogin=true）。
 
@@ -5341,7 +5591,7 @@ function tryAutoLogin(onHandleLogin, reuseCmd, allowNoLogin)
 }
 
 /**
-@fn MUI.handleLogin(data)
+@fn handleLogin(data)
 @param data 调用API "login"成功后的返回数据.
 
 处理login相关的操作, 如设置g_data.userInfo, 保存自动登录的token等等.
@@ -5376,7 +5626,7 @@ function handleLogin(data)
 
 // ------ plugins {{{
 /**
-@fn MUI.initClient(param?)
+@fn initClient(param?)
 */
 self.initClient = initClient;
 var plugins_ = {};
@@ -5463,9 +5713,6 @@ function main()
 		jc.addClass("mui-weixin");
 	}
 	console.log(jc.attr("class"));
-
-	if (! m_opt.noHandleIosStatusBar)
-		handleIos7Statusbar();
 }
 
 $(main);
@@ -5529,7 +5776,7 @@ function filterCordovaModule(module)
 }
 
 /**
-@fn MUI.formatField(obj) -> obj
+@fn formatField(obj) -> obj
 
 对obj中的以字符串表示的currency/date等类型进行转换。
 判断类型的依据是属性名字，如以Tm结尾的属性（也允许带数字后缀）为日期属性，如"tm", "tm2", "createTm"都会被当作日期类型转换。
@@ -5563,7 +5810,7 @@ function formatField(obj)
 一般用于顶部返回按钮：
 
 	<div class="hd">
-		<a href="javascript:hd_back();" class="icon icon-back"></a>
+		<a href="javascript:hd_back();" class="btn-icon"><i class="icon icon-back"></i></a>
 		<h2>个人信息</h2>
 	</div>
 
@@ -5589,7 +5836,7 @@ function hd_back(pageRef)
 }
 
 /**
-@fn MUI.syslog(module, pri, content)
+@fn syslog(module, pri, content)
 
 向后端发送日志。后台必须已添加syslog插件。
 日志可在后台Syslog表中查看，客户端信息可查看ApiLog表。
