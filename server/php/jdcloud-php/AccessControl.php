@@ -816,10 +816,11 @@ class AccessControl
 				continue;
 			}
 			// 适用于res/gres, 支持格式："col" / "col col1" / "col as col1"
-			if (! preg_match('/^\s*(\w+)(?:\s+(?:AS\s+)?(\S+))?\s*$/i', $col, $ms))
+			// 支持alias中有特殊字符（除逗号外），且不必加引号，如"amount 金额(元)", "v 速率 m/s"等
+			if (! preg_match('/^\s*(\w+)(?:\s+(?:AS\s+)?([^,]+))?\s*$/i', $col, $ms))
 			{
 				// 对于res, 还支持部分函数: "fn(col) as col1", 目前支持函数: count/sum，如"count(distinct ac) cnt", "sum(qty*price) docTotal"
-				if (!$gres && preg_match('/(\w+)\([a-z0-9_.\'* ,+\/]+\)\s+(?:AS\s+)?(\S+)/i', $col, $ms)) {
+				if (!$gres && preg_match('/(\w+)\([a-z0-9_.\'* ,+\/]+\)\s+(?:AS\s+)?([^,]+)/i', $col, $ms)) {
 					list($fn, $alias) = [strtoupper($ms[1]), $ms[2]];
 					if ($fn != "COUNT" && $fn != "SUM")
 						throw new MyException(E_FORBIDDEN, "function not allowed: `$fn`");
@@ -852,7 +853,10 @@ class AccessControl
 					$col = "t0." . $col;
 					$col1 = $col;
 					if (isset($alias)) {
-						$col1 .= " AS {$alias}";
+						if (preg_match('/\W/', $alias)) {
+							$alias = '"' . $alias . '"';
+						}
+						$col1 .= " {$alias}";
 					}
 					$this->addRes($col1);
 				}
