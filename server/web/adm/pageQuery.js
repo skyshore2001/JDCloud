@@ -25,7 +25,7 @@ function initPageQuery()
 		var query = jpage.find("#txtQuery").val();
 		cleanDynInfo();
 
-		var ms = query.match(/select\s+.*?from\s+(\S+)/);
+		var ms = query.match(/select\s+.*?from\s+(\S+)/is);
 		if (ms) {
 			addDynInfo("主表: <span id=\"txtMainTable\">" + ms[1] + "</span>");
 			if (query.search(/limit/i) < 0) {
