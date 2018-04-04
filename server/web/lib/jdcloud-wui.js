@@ -2580,6 +2580,7 @@ self.lastError = null;
 var m_tmBusy;
 var m_manualBusy = 0;
 var m_appVer;
+var m_silentCall = 0;
 
 /**
 @var disableBatch ?= false
@@ -2700,21 +2701,23 @@ $.ajaxSetup(ajaxOpt);
 self.enterWaiting = enterWaiting;
 function enterWaiting(ctx)
 {
+	if (ctx && ctx.noLoadingImg) {
+		++ m_silentCall;
+		return;
+	}
 	if (self.isBusy == 0) {
 		m_tmBusy = new Date();
 	}
 	self.isBusy = 1;
 	if (ctx == null || ctx.isMock)
 		++ m_manualBusy;
+
 	// 延迟执行以防止在page show时被自动隐藏
 	//mCommon.delayDo(function () {
-	if (!(ctx && ctx.noLoadingImg))
-	{
-		setTimeout(function () {
-			if (self.isBusy)
-				self.showLoading();
-		}, 200);
-	}
+	setTimeout(function () {
+		if (self.isBusy)
+			self.showLoading();
+	}, 200);
 // 		if ($.mobile && !(ctx && ctx.noLoadingImg))
 // 			$.mobile.loading("show");
 	//},1);
@@ -2738,8 +2741,11 @@ function leaveWaiting(ctx)
 			ctx.tv2 = tv2;
 			console.log(ctx);
 		}
-		if ($.active <= 0 && self.isBusy && m_manualBusy == 0) {
+		if (ctx && ctx.noLoadingImg)
+			-- m_silentCall;
+		if ($.active < 0)
 			$.active = 0;
+		if ($.active-m_silentCall <= 0 && self.isBusy && m_manualBusy == 0) {
 			self.isBusy = 0;
 			var tv = new Date() - m_tmBusy;
 			m_tmBusy = 0;
@@ -3047,8 +3053,7 @@ function makeUrl(action, params)
 
 - 指定{async:0}来做同步请求, 一般直接用callSvrSync调用来替代.
 - 指定{noex:1}用于忽略错误处理。
-- 指定{noLoadingImg:1}用于忽略loading图标. 要注意如果之前已经调用callSvr显示了图标且图标尚未消失，则该选项无效，图标会在所有调用完成之后才消失(leaveWaiting)。
- 要使隐藏图标不受本次调用影响，可在callSvr后手工调用`--$.active`。
+- 指定{noLoadingImg:1} 静默调用，忽略loading图标，不设置busy状态。
 
 想为ajax选项设置缺省值，可以用callSvrExt中的beforeSend回调函数，也可以用$.ajaxSetup，
 但要注意：ajax的dataFilter/beforeSend选项由于框架已用，最好不要覆盖。

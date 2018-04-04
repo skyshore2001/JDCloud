@@ -4,7 +4,7 @@ var userTable = new MockTable("User", {
 	before: function () {
 		if (this.ac == "add") {
 			if (this.postParam.createTm == null)
-				this.postParam.createTm = new Date();
+				this.postParam.createTm = new Date().format("L");
 		}
 	}
 });
@@ -21,7 +21,11 @@ var ordrTable = new MockTable("Ordr");
 // 模拟数据
 var INIT_CNT = 48;
 for (var i=1; i<=INIT_CNT; ++i) {
-	var userId = userTable.add({name: "用户"+i, phone: "" + (13700000000 + i)});
+	var userId = userTable.add({
+		name: "用户"+i,
+		phone: "" + (13700000000 + i),
+		createTm: new Date().addDay(i-INIT_CNT).addHours(i).addMin(-i).format("L")
+	});
 	empTable.add({
 		name: "员工"+i,
 		uname: "emp"+i,
