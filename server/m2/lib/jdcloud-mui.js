@@ -4369,11 +4369,11 @@ function showPage(pageRef, opt)
 				return;
 			}
 
-			self.enhanceWithin(jpage);
 			var ret = callInitfn(jpage);
 			if (ret instanceof jQuery)
 				jpage = ret;
 			jpage.trigger("pagecreate");
+			self.enhanceWithin(jpage);
 			changePage(jpage);
 			self.leaveWaiting();
 		}
