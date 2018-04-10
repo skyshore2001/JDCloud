@@ -60,6 +60,39 @@ v3.4支持非标准对象接口。实现Ordr.cancel接口：
 
 非标准对象接口与与函数型接口写法类似，但AccessControl的众多回调函数对非标准对象接口无效。
 
+### RESTful风格接口
+
+对象型接口支持仿RESTful风格的调用。
+标准CRUD操作：
+
+	POST /Ordr
+	等价于Ordr.add
+
+	GET /Ordr
+	等价于Ordr.query
+
+	GET /Ordr/123
+	等价于Ordr.get?id=123
+
+	PATCH /Ordr/123
+	等价于Ordr.set?id=123
+
+	DELETE /Ordr/123
+	等价于Ordr.del?id=123
+
+非标准操作：(v5.1新增) 谓词使用GET或POST都可以
+
+	POST /Ordr/123/cancel
+	等价于Ordr.cancel?id=123
+
+- URL中id位置可在action后面，也可没有，如 `/Ordr/cancel/123`, `/Ordr/cancel?id=123`均可。
+- 也允许以此方式调用标准CRUD操作，如`GET /Ordr/get/123`即`Ordr.get?id=123` , `POST /Ordr/123/set`即`Ordr.set?id=123`等.
+
+注意以下与RESTful惯例不一致：
+
+- 对象（或称实体，Entity）首字母应大写。
+- 返回数据与对象型调用完全一样，HTTP总返回200成功，不会通过HTTP状态码表示调用返回值。
+
 ## 接口复用
 
 @key apiMain() 服务入口函数
@@ -1168,6 +1201,11 @@ class ApiApp extends AppBase
 		}
 		return $pi;
 	}
+
+	static function isId($val) {
+		return isset($val) && ctype_digit($val);
+	}
+
 	// return: $ac
 	private function parseRestfulUrl($pathInfo)
 	{
@@ -1183,14 +1221,23 @@ class ApiApp extends AppBase
 		}
 
 		// {obj}/{id}
-		@list ($obj, $id) = explode('/', $ac, 2);
+		// {obj}/{id}/{action}
+		@list($obj, $id, $ac) = explode('/', $ac, 3);
 		if ($id === "")
 			$id = null;
+		if ($ac === "")
+			$ac = null;
 
-		if (isset($id)) {
-			if (! ctype_digit($id))
-				throw new MyException(E_PARAM, "bad id: $id");
+		if (!self::isId($id))
+			list($id,$ac) = [$ac,$id];
+		if (self::isId($id))
 			setParam('id', $id);
+
+		// 非标准CRUD操作，如：GET|POST /Store/123/close 或 /Store/close/123 或 /Store/closeAll
+		if (isset($ac)) {
+			if ($method !== 'GET' && $method !== 'POST')
+				throw new MyException(E_PARAM, "bad verb '$method' for user function. use 'GET' or 'POST'");
+			return "{$obj}.{$ac}";
 		}
 
 		switch ($method) {
@@ -1216,6 +1263,7 @@ class ApiApp extends AppBase
 			if (! isset($id))
 				throw new MyException(E_PARAM, "missing id");
 			$ac = 'set';
+			parse_str(file_get_contents("php://input"), $_POST);
 			break;
 
 		// DELETE /Store/123
