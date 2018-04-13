@@ -136,7 +136,8 @@ function dbconn($dbhost, $dbname, $dbuser, $dbpwd)
 		}
 		$dbh = new PDO($connstr, $dbuser, $dbpwd);
 	} catch (Exception $e) {
-		die("连接数据库失败.");
+		$msg = $e->getMessage();
+		die("连接数据库失败: {$msg}");
 	}
 
 	$dbh->exec('set names utf8');
@@ -191,7 +192,8 @@ function api_initDb()
 				$dbh->exec("create database {$dbname}");
 			}
 			catch (Exception $e) {
-				die("*** 用户`{$dbuser0}`无法创建数据库!\n");
+				$msg = $e->getMessage();
+				die("*** 用户`{$dbuser0}`无法创建数据库: {$msg}\n");
 			}
 			$dbh->exec("use {$dbname}");
 		}
@@ -204,7 +206,8 @@ function api_initDb()
 			$sql = "grant all on {$dbname}.* to {$dbuser}@'%' {$str}";
 			$dbh->exec($sql);
 		}catch (Exception $e) {
-			die("*** 用户`{$dbuser0}`无法设置用户权限!\n");
+			$msg = $e->getMessage();
+			die("*** 用户`{$dbuser0}`无法设置用户权限: {$msg}\n");
 		}
 
 		if ($dbcred_ro) {
