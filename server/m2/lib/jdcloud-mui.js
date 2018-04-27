@@ -4674,7 +4674,7 @@ function enhanceFooter(jfooter)
 	var jnavs = jfooter.find(">a");
 	var id2nav = {};
 	jnavs.each(function(i, e) {
-		var m = e.href.match(/#(\w+)/);
+		var m = e.href.match(/#([\w-]+)/);
 		if (m) {
 			id2nav[m[1]] = e;
 		}

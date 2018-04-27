@@ -696,7 +696,7 @@ class AccessControl
 
 	final function before($ac)
 	{
-		if ($this->allowedAc && in_array($ac, self::$stdAc) && !in_array($ac, $this->allowedAc)) {
+		if (isset($this->allowedAc) && in_array($ac, self::$stdAc) && !in_array($ac, $this->allowedAc)) {
 			throw new MyException(E_FORBIDDEN, "Operation `$ac` is not allowed on object `$this->table`");
 		}
 		$this->ac = $ac;

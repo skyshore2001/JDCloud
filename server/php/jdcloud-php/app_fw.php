@@ -269,6 +269,8 @@ function param_varr($str, $type, $name)
 				$v = strtotime($e);
 				if ($v === false)
 					throw new MyException(E_PARAM, "Bad Request - param `$name`: list($type). require datetime col: `$row0`[$i]=`$e`.");
+				if ($t === "dt")
+					$v = strtotime(date("Y-m-d", $v));
 				$row1[] = $v;
 			}
 			else {
@@ -298,7 +300,8 @@ $name中可以指定类型，返回值根据类型确定。如果该参数未定
 $name中指定类型的方式如下：
 - 名为"id", 或以"Id"或"/i"结尾: int
 - 以"/b"结尾: bool. 可接受的字符串值为: "1"/"true"/"on"/"yes"=>true, "0"/"false"/"off"/"no" => false
-- 以"/dt"或"/tm"结尾: datetime
+- 以"/dt": datetime, 仅有日期部分
+- 以"/tm"结尾: datetime
 - 以"/n"结尾: numeric/double
 - 以"/s"结尾（缺省）: string. 缺省为防止XSS攻击会做html编码，如"a&b"处理成"a&amp;b"，设置参数doHtmlEscape可禁用这个功能。
 - 复杂类型：以"/i+"结尾: int array
@@ -400,6 +403,8 @@ function param($name, $defVal = null, $col = null, $doHtmlEscape = true)
 			$ret1 = strtotime($ret);
 			if ($ret1 === false)
 				throw new MyException(E_PARAM, "Bad Request - invalid datetime param `$name`=`$ret`.");
+			if ($type === "dt")
+				$ret1 = strtotime(date("Y-m-d", $ret1));
 			$ret = $ret1;
 		}
 		elseif ($type === "js" || $type === "tbl") {
