@@ -1241,10 +1241,17 @@ class AccessControl
 		$this->initQuery();
 
 		$this->addCond("t0.id={$this->id}", true);
-		$sql = $this->genQuerySql();
-		$ret = queryOne($sql, true);
-		if ($ret === false) 
-			throw new MyException(E_PARAM, "not found `{$this->table}.id`=`{$this->id}`");
+		$hasFields = (count($this->sqlConf["res"]) > 0);
+		if ($hasFields) {
+			$sql = $this->genQuerySql();
+			$ret = queryOne($sql, true);
+			if ($ret === false) 
+				throw new MyException(E_PARAM, "not found `{$this->table}.id`=`{$this->id}`");
+		}
+		else {
+			// 如果get用res字段指定只取子对象，则不必多次查询。e.g. callSvr('Ordr.get', {res: orderLog});
+			$ret = ["id" => $this->id];
+		}
 		$this->handleSubObj($this->id, $ret);
 		$this->handleRow($ret);
 		return $ret;
