@@ -59,7 +59,7 @@ class SqlDiff_mysql extends SqlDiff
 {
 	public $ntext = "TEXT CHARACTER SET utf8";
 	public $autoInc = 'AUTO_INCREMENT';
-	public $money = "DECIMAL(19,4)";
+	public $money = "DECIMAL(19,2)";
 	public $createOpt = "DEFAULT CHARSET=utf8";
 
 	public function tableExists($tbl) {
@@ -72,7 +72,7 @@ class SqlDiff_mssql extends SqlDiff
 {
 	public $ntext = "NTEXT";
 	public $autoInc = 'IDENTITY(1,1)';
-	public $money = "DECIMAL(19,4)";
+	public $money = "DECIMAL(19,2)";
 	public $createOpt = ""; // "DEFAULT CHARSET=utf8";
 
 	public function tableExists($tbl) {
