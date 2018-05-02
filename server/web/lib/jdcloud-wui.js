@@ -5264,11 +5264,24 @@ var Formatter = {
 			return value? yes: no;
 		}
 	},
-	enum: function (enumMap) {
+	enum: function (enumMap, sep) {
+		sep = sep || ',';
 		return function (value, row) {
 			if (value == null)
 				return;
-			return enumMap[value] || value;
+			var v = enumMap[value];
+			if (v != null)
+				return v;
+			if (value.indexOf(sep) > 0) {
+				var v1 = $.map(value.split(sep), function(e) {
+					return enumMap[e] || e;
+				});
+				v = v1.join(sep);
+			}
+			else {
+				v = value;
+			}
+			return v;
 		}
 	},
 	linkTo: function (field, dlgRef) {
@@ -5295,7 +5308,8 @@ var Formatter = {
 
 - dt/number: 显示日期、数值
 - pics: 显示一张或一组图片链接，点一个链接可以在新页面上显示原图片
-- enum(enumMap): 根据一个map为枚举值显示描述信息，如 `enum({CR:"创建", CA:"取消"})`
+- enum(enumMap): 根据一个map为枚举值显示描述信息，如 `enum({CR:"创建", CA:"取消"})`。
+ (v5.1) 也支持枚举值列表，如设置为 `enumList({emp:"员工", mgr:"经理"})`，则会将"emp"和"emp,mgr"分别解析为"员工", "员工,经理"
 - flag(yes?, no?): 显示yes-no字段，如 `flag("禁用","启用")`，也可以用enum，如`enum({0:"启用",1:"禁用"})`
 - linkTo: 生成链接，点击打开对象详情对话框
 

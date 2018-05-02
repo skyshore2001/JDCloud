@@ -5,7 +5,7 @@
 			<th data-options="field:'uname', sortable:true">登录名</th>
 			<th data-options="field:'phone', sortable:true">手机号</th>
 			<th data-options="field:'name', sortable:true">姓名</th>
-			<th data-options="field:'perms', sortable:true">权限</th>
+			<th data-options="field:'perms', jdEnumMap:PermMap, formatter:Formatter.enum(PermMap), sortable:true">权限</th>
 		</tr></thead>
 	</table>
 </div>

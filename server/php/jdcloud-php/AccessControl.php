@@ -487,6 +487,8 @@ TODO: 可加一个系统参数`_enc`表示输出编码的格式。
 	或指定alias:
 	Ordr.query(res="id 编号, status 状态=CR:Created;CA:Cancelled")
 
+(版本5.1)
+设置enumFields也支持逗号分隔的枚举列表，比如字段值为"CR,CA"，实际可返回"Created,Cancelled"。
 */
 
 # ====== functions {{{
@@ -737,6 +739,7 @@ class AccessControl
 		$this->flag_handleResult($rowData);
 		$this->onHandleRow($rowData);
 
+		$SEP = ',';
 		foreach ($this->enumFields as $field=>$map) {
 			if (array_key_exists($field, $rowData)) {
 				$v = $rowData[$field];
@@ -745,6 +748,13 @@ class AccessControl
 				}
 				else if (array_key_exists($v, $map)) {
 					$v = $map[$v];
+				}
+				else if (strpos($v, $SEP) !== false) {
+					$v1 = [];
+					foreach(explode($SEP, $v) as $e) {
+						$v1[] = $map[$e] ?: $e;
+					}
+					$v = join($SEP, $v1);
 				}
 				$rowData[$field] = $v;
 			}
