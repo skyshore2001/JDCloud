@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2018-01-04</div>
+<div>最后更新：2018-05-05</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -123,6 +123,8 @@ code {
 <p><a href="#checkAuth">checkAuth (fn)</a></p>
 <p><a href="#conf.php">conf.php (key)</a></p>
 <p><a href="#dbConfirmFn">dbConfirmFn (key)</a></p>
+<p><a href="#dbInsert">dbInsert (fn)</a></p>
+<p><a href="#dbUpdate">dbUpdate (fn)</a></p>
 <p><a href="#dbconn">dbconn (fn)</a></p>
 <p><a href="#errQuit">errQuit (fn)</a></p>
 <p><a href="#execOne">execOne (fn)</a></p>
@@ -244,7 +246,7 @@ $GLOBALS["X_RET_STR"] = httpCall($url, $data, ["headers" =&gt; $headers]);
 </li>
 <li>
 <p>数据库连接及操作</p>
-<p class="see"><strong>@see <a href="#dbconn">dbconn</a> <a href="#execOne">execOne</a> <a href="#queryOne">queryOne</a> <a href="#queryAll">queryAll</a></strong> </p>
+<p class="see"><strong>@see <a href="#dbconn">dbconn</a> <a href="#execOne">execOne</a> <a href="#queryOne">queryOne</a> <a href="#queryAll">queryAll</a> <a href="#dbInsert">dbInsert</a> <a href="#dbUpdate">dbUpdate</a></strong> </p>
 </li>
 <li>错误处理设施
 <p class="see"><strong>@see <a href="#MyException">MyException</a> <a href="#errQuit">errQuit</a></strong> </p></li>
@@ -329,7 +331,8 @@ $name中可以指定类型，返回值根据类型确定。如果该参数未定
 <ul>
 <li>名为&quot;id&quot;, 或以&quot;Id&quot;或&quot;/i&quot;结尾: int</li>
 <li>以&quot;/b&quot;结尾: bool. 可接受的字符串值为: &quot;1&quot;/&quot;true&quot;/&quot;on&quot;/&quot;yes&quot;=&gt;true, &quot;0&quot;/&quot;false&quot;/&quot;off&quot;/&quot;no&quot; =&gt; false</li>
-<li>以&quot;/dt&quot;或&quot;/tm&quot;结尾: datetime</li>
+<li>以&quot;/dt&quot;: datetime, 仅有日期部分</li>
+<li>以&quot;/tm&quot;结尾: datetime</li>
 <li>以&quot;/n&quot;结尾: numeric/double</li>
 <li>以&quot;/s&quot;结尾（缺省）: string. 缺省为防止XSS攻击会做html编码，如&quot;a&amp;b&quot;处理成&quot;a&amp;b&quot;，设置参数doHtmlEscape可禁用这个功能。</li>
 <li>复杂类型：以&quot;/i+&quot;结尾: int array</li>
@@ -468,7 +471,19 @@ execOne("UPDATE cinf SET appleDeviceToken=" . Q($token));</code></pre>
 <p>注意：在拼接SQL语句时，对于传入的string类型参数，应使用Q函数进行转义，避免SQL注入攻击。</p>
 <p>对于INSERT语句，设置参数$getInsertId=true, 可取新加入数据行的id. 例：</p>
 <pre><code>$sql = sprintf("INSERT INTO Hongbao (userId, createTm, src, expireTm, vdays) VALUES ({$uid}, '%s', '{$src}', '%s', {$vdays})", date('c', $createTm), date('c', $expireTm));
-$hongbaoId = execOne($sql, true);</code></pre></div>
+$hongbaoId = execOne($sql, true);</code></pre>
+<p>(v5.1) 简单的单表添加和更新记录建议优先使用dbInsert和dbUpdate函数，更易使用。<br />
+上面两个例子，用dbInsert/dbUpdate函数，无须使用Q函数防注入，也无须考虑字段值是否要加引号：</p>
+<pre><code>// 更新操作示例
+$cnt = dbUpdate("Cinf", ["appleDeviceToken" =&gt; $token]);
+
+// 插入操作示例
+$hongbaoId = dbInsert("Hongbao", [
+    "userId"=&gt;$uid,
+    "createTm"=&gt;date(FMT_DT, $createTm),
+    "src" =&gt; $src, ...
+]);</code></pre>
+<p class="see"><strong>@see <a href="#dbInsert">dbInsert</a> <a href="#dbUpdate">dbUpdate</a> <a href="#queryOne">queryOne</a></strong> </p></div>
 <div class="block">
 <h2 id="queryOne">@fn queryOne($sql, $assoc = false)</h2>
 <p>执行查询语句，只返回一行数据，如果行中只有一列，则直接返回该列数值。<br />
@@ -520,6 +535,31 @@ $rows = [
 // 可转成table格式返回
 return objarr2table($rows);</code></pre>
 <p class="see"><strong>@see <a href="#objarr2table">objarr2table</a></strong> </p></div>
+<div class="block">
+<h2 id="dbInsert">@fn dbInsert(table, kv) -> newId</h2>
+<p>e.g. </p>
+<pre><code>$orderId = dbInsert("Ordr", [
+    "tm" =&gt; date(FMT_DT),
+    "tm1" =&gt; "=now()", // "="开头，表示是SQL表达式
+    "amount" =&gt; 100,
+    "dscr" =&gt; null // null字段会被忽略
+]);</code></pre></div>
+<div class="block">
+<h2 id="dbUpdate">@fn dbUpdate(table, kv, id_or_cond?) -> cnt</h2>
+<p class="param"><strong>@param id_or_cond</strong>  查询条件，如果是数值比如100或"100"，则当作条件"id=100"处理；否则直接作为查询表达式，比如"qty<0"；如果未指定则无查询条件。</p>
+<p>e.g.</p>
+<pre><code>// UPDATE Ordr SET ... WHERE id=100
+$cnt = dbUpdate("Ordr", [
+    "amount" =&gt; 30,
+    "dscr" =&gt; "test dscr",
+    "tm" =&gt; "null", // 用""或"null"对字段置空；用"empty"对字段置空串。
+    "tm1" =&gt; null // null会被忽略
+], 100);
+
+// UPDATE Ordr SET tm=now() WHERE tm IS NULL
+$cnt = dbUpdate("Ordr", [
+    "tm" =&gt; "=now()"  // "="开头，表示是SQL表达式
+], "tm IS NULL);</code></pre></div>
 <div class="block">
 <h2 id="getBaseUrl">@fn getBaseUrl($wantHost = true)</h2>
 <p>返回 $BASE_DIR 对应的网络路径（最后以&quot;/&quot;结尾）。<br />
@@ -710,6 +750,9 @@ putenv("P_MOCK_MODE=1");
 <div class="block">
 <h2 id="api_fw">@module api_fw</h2><div class="toc"><p style="margin-left:0em"><a href="#api_fw-1 函数型接口">1 函数型接口</a></p>
 <p style="margin-left:0em"><a href="#api_fw-2 对象型接口">2 对象型接口</a></p>
+<p style="margin-left:2em"><a href="#api_fw-2.1 标准对象接口">2.1 标准对象接口</a></p>
+<p style="margin-left:2em"><a href="#api_fw-2.2 非标准对象接口">2.2 非标准对象接口</a></p>
+<p style="margin-left:2em"><a href="#api_fw-2.3 RESTful风格接口">2.3 RESTful风格接口</a></p>
 <p style="margin-left:0em"><a href="#api_fw-3 接口复用">3 接口复用</a></p>
 <p style="margin-left:0em"><a href="#api_fw-4 常用操作">4 常用操作</a></p>
 <p style="margin-left:0em"><a href="#api_fw-5 插件机制">5 插件机制</a></p>
@@ -750,6 +793,99 @@ chpwd(oldpwd, pwd) -&gt; {_token, _expire}
 <p class="see"><strong>@see <a href="#param">param</a></strong>  取可选参数，可指定缺省值。</p>
 <h4 id="api_fw-2 对象型接口">2 对象型接口</h4>
 <p class="see"><strong>@see <a href="#AccessControl">AccessControl</a></strong>  对象型接口框架。</p>
+<h5 id="api_fw-2.1 标准对象接口">2.1 标准对象接口</h5>
+<p>5个标准对象操作为：add, set, query, get, del。<br />
+这些操作提供对象的基本增删改查(CRUD)以及列表查询、统计分析、导出等服务，称为通用对象接口。<br />
+详细可参考BQP协议文档中的 <strong><a href="BQP.html#通用对象操作接口">通用对象操作接口</a></strong> 部分。</p>
+<p>以下代码即为Ordr对象创建所有这些接口:</p>
+<pre><code>class AC_Ordr extends AccessControl
+{
+}</code></pre>
+<p><strong>[添加操作]</strong></p>
+<pre><code>Obj.add()(POST fields...) -&gt; id
+Obj.add(res)(POST fields...) -&gt; {fields...} (返回的字段由res参数指定)</code></pre>
+<p>对象的属性通过POST请求内容给出，为一个个键值对。<br />
+添加完成后，默认返回新对象的id, 如果想多返回其它字段，可设置res参数，如 </p>
+<pre><code>Ordr.add()(status="CR", total=100) -&gt; 809
+Ordr.add(res="id,status,total")(status="CR", total=100) -&gt; {id: 810, status:"CR", total: 100}</code></pre>
+<p><strong>[更新操作]</strong></p>
+<pre><code>Obj.set(id)(POST fields...)</code></pre>
+<p>与add操作类似，对象属性的修改通过POST请求传递，而在URL参数中需要有id标识哪个对象。</p>
+<p>示例：</p>
+<pre><code>Obj.set(809)(status="PA", empId=10)</code></pre>
+<p>如果要将某字段置空, 可以用空串或&quot;null&quot; (小写)。例如：</p>
+<pre><code>Obj.set(809)(picId="", empId=null)
+（实际传递参数的形式为 "picId=&amp;empId=null"）</code></pre>
+<p>这两种方式都是将字段置NULL。<br />
+如果要将字符串置空串(一般不建议使用)，可以用&quot;empty&quot;, 例如：</p>
+<pre><code>Obj.set(809)(sn=empty)</code></pre>
+<p>假如sn是数值类型，会导致其值为0或0.0。</p>
+<p><strong>[获取对象操作]</strong></p>
+<p>接口原型：</p>
+<pre><code>Obj.get(id, res?) -&gt; {fields...}</code></pre>
+<p>默认返回所有暴露的属性，通过res参数可以指定需要返回的字段。</p>
+<p><strong>[删除操作]</strong></p>
+<pre><code>Obj.del(id)</code></pre>
+<p>根据id删除一个对象。</p>
+<p><strong>[查询操作]</strong></p>
+<pre><code>查询列表(默认压缩表格式)：
+Obj.query(res?, cond?, distinct?=0) -&gt; tbl(fields...) = {nextkey?, total?, @h, @d}
+
+查询列表 - 对象列表格式：
+Obj.query(fmt=list, ...) -&gt; {nextkey?, total?, @list=[obj1, obj2...]}</code></pre>
+<ul>
+<li>
+<p>res: String. 指定返回字段, 多个字段以逗号分隔，例如, res=&quot;field1,field2&quot;。<br />
+在res中允许使用部分统计函数&quot;sum&quot;与&quot;count&quot;, 这时必须指定字段别名, 如&quot;count(id) cnt&quot;, &quot;sum(qty*price) total&quot;, &quot;count(distinct addr) addrCnt&quot;.</p>
+</li>
+<li>
+<p>cond: String. 指定查询条件，语法可参照SQL语句的&quot;WHERE&quot;子句。例如：cond=&quot;field1&gt;100 AND field2='hello'&quot;, 注意使用UTF8+URL编码, 字符串值应加上单引号.</p>
+</li>
+<li>
+<p>orderby: String. 指定排序条件，语法可参照SQL语句的&quot;ORDER BY&quot;子句，例如：orderby=&quot;id desc&quot;，也可以多个排序：&quot;tm desc,status&quot; (按时间倒排，再按状态正排)</p>
+</li>
+<li>distinct: Boolean. 如果为1, 生成&quot;SELECT DISTINCT ...&quot;查询.</li>
+</ul>
+<p>返回字段:</p>
+<ul>
+<li>h/d: 两个数组。实际数据表的头信息(header)和数据行(data)，符合压缩表对象的格式。</li>
+</ul>
+<p>压缩表格式示例:</p>
+<pre><code>{
+    h: ["id", "name"],
+    d: [[100, "myname1"], [200, "myname2"]]
+}</code></pre>
+<p>如果使用参数fmt=list, 则返回格式示例如下: </p>
+<pre><code>{
+    list: [{id: 100, name: "name1"}, {id: 101, name: "name2"}]
+    nextkey: ...
+}</code></pre>
+<p><strong>[分页查询]</strong></p>
+<pre><code>Obj.query(pagesz?=20, pagekey?) -&gt; {nextkey?, total?, @h, @d}
+或
+Obj.query(rows?=20, page?) -&gt; 同上</code></pre>
+<ul>
+<li>pagesz/rows: Integer. 这两个参数含义相同，均表示页大小，默认为20条数据。</li>
+<li>pagekey: Integer. 一般首次查询时不填写（或填写0，表示需要返回总记录数即total字段），而下次查询时应根据上次调用时返回数据的&quot;nextkey&quot;字段来填写。</li>
+<li>page: Integer. 指定页数, 从1开始. 用于兼容传统指定页数式的分页查询, 效率较低. 这时返回的nextkey一定为page+1或为空(表示没有下页), 且必返回total字段.</li>
+</ul>
+<p>返回字段:</p>
+<ul>
+<li>nextkey: Integer. 一个字符串, 供取下一页时填写参数&quot;pagekey&quot;。如果不存在该字段，则说明已经是最后一批数据。</li>
+<li>total: Integer. 返回总记录数，仅当&quot;pagekey&quot;指定为0时返回; 或是使用&quot;page&quot;参数时也会返回该属性。</li>
+</ul>
+<p><strong>[分组统计]</strong></p>
+<pre><code>Obj.query(gres, gcond?, ...) -&gt; tbl(fields...)</code></pre>
+<ul>
+<li>
+<p>gres: String. 分组字段。如果设置了gres字段，则res参数中每项应该带统计函数，如&quot;sum(cnt) sum, count(id) userCnt&quot;.<br />
+最终返回列为gres参数指定的列加上res参数指定的列; 如果res参数未指定，则只返回gres参数列。</p>
+</li>
+<li>gcond: String. (jdcloud-php扩展) 分组过滤条件(对照SQL HAVING子句).</li>
+</ul>
+<p><strong>[导出报表]</strong></p>
+<pre><code>Obj.query(fmt=csv/txt/excel, ...) -&gt; 文件内容</code></pre>
+<h5 id="api_fw-2.2 非标准对象接口">2.2 非标准对象接口</h5>
 <p>v3.4支持非标准对象接口。实现Ordr.cancel接口：</p>
 <pre><code>class AC2_Ordr extends AccessControl
 {
@@ -757,6 +893,35 @@ chpwd(oldpwd, pwd) -&gt; {_token, _expire}
     }
 }</code></pre>
 <p>非标准对象接口与与函数型接口写法类似，但AccessControl的众多回调函数对非标准对象接口无效。</p>
+<h5 id="api_fw-2.3 RESTful风格接口">2.3 RESTful风格接口</h5>
+<p>对象型接口支持仿RESTful风格的调用。<br />
+标准CRUD操作：</p>
+<pre><code>POST /Ordr
+等价于Ordr.add
+
+GET /Ordr
+等价于Ordr.query
+
+GET /Ordr/123
+等价于Ordr.get?id=123
+
+PATCH /Ordr/123
+等价于Ordr.set?id=123
+
+DELETE /Ordr/123
+等价于Ordr.del?id=123</code></pre>
+<p>非标准操作：(v5.1新增) 谓词使用GET或POST都可以</p>
+<pre><code>POST /Ordr/123/cancel
+等价于Ordr.cancel?id=123</code></pre>
+<ul>
+<li>URL中id位置可在action后面，也可没有，如 <code>/Ordr/cancel/123</code>, <code>/Ordr/cancel?id=123</code>均可。</li>
+<li>也允许以此方式调用标准CRUD操作，如<code>GET /Ordr/get/123</code>即<code>Ordr.get?id=123</code> , <code>POST /Ordr/123/set</code>即<code>Ordr.set?id=123</code>等.</li>
+</ul>
+<p>注意以下与RESTful惯例不一致：</p>
+<ul>
+<li>对象（或称实体，Entity）首字母应大写。</li>
+<li>返回数据与对象型调用完全一样，HTTP总返回200成功，不会通过HTTP状态码表示调用返回值。</li>
+</ul>
 <h4 id="api_fw-3 接口复用">3 接口复用</h4>
 <p class="key"><strong>@key <a id="apiMain">apiMain</a></strong> () 服务入口函数</p>
 <p class="key"><strong>@key <a id="noExecApi">noExecApi</a></strong>  全局变量，禁止apiMain执行服务</p>
@@ -1029,6 +1194,7 @@ $_POST[key] = value; // 设置post参数</code></pre>
 <p style="margin-left:2em"><a href="#AccessControl-2.3 计算字段">2.3 计算字段</a></p>
 <p style="margin-left:2em"><a href="#AccessControl-2.4 子表压缩字段">2.4 子表压缩字段</a></p>
 <p style="margin-left:2em"><a href="#AccessControl-2.5 自定义字段">2.5 自定义字段</a></p>
+<p style="margin-left:2em"><a href="#AccessControl-2.6 flags和props字段">2.6 flags和props字段</a></p>
 <p style="margin-left:0em"><a href="#AccessControl-3 子表">3 子表</a></p>
 <p style="margin-left:0em"><a href="#AccessControl-4 操作完成回调">4 操作完成回调</a></p>
 <p style="margin-left:0em"><a href="#AccessControl-5 其它">5 其它</a></p>
@@ -1265,6 +1431,23 @@ class AC1_UserTaskLog extends AccessControl
 <li>自定义字段只限于对query/get的最终结果集进行操作</li>
 <li>自定义字段不能用于设置cond条件.</li>
 </ul>
+<h5 id="AccessControl-2.6 flags和props字段">2.6 flags和props字段</h5>
+<p>（试验功能）<br />
+框架支持两个特别的数据库字段flags和props，并可将它们拆解为flag_xxx或prop_xxx格式。<br />
+例如，在订单表上定义：</p>
+<pre><code>@Ordr: id, flags
+
+- flags: EnumList(g-go-员工已出发, v-visited-已回访, r-reviewed-已人工校验过, i-imported-是自动导入的订单)。例如, 值"gv"表示有"g"标志和"v"标志。</code></pre>
+<p>要查询已回访或未回访的订单，可以用：</p>
+<pre><code>Ordr.query(cond="flag_v=1/0", res="id,flags") -&gt; tbl(id, flags, ..., flag_g?, flag_v?, ...)</code></pre>
+<p>注意：返回字段将自动根据flags的值增加诸如flag_g这样的字段，值为0或1；但res参数中不可指定flag_v这样的虚拟字段。</p>
+<p>要设置或清除已回访标志&quot;g&quot;，可以用：</p>
+<pre><code>Ordr.set(id=1)(flag_g=1/0)</code></pre>
+<p>注意：不可一次设置多个flag。如果需要这样，则应直接设置flags字段。</p>
+<p>props字段与之类似，flags字段中一个标志是一个字母，而props字段的标志以一个词，因而多个标志以空格隔开。<br />
+假设Ordr表中定义了props字段，且某条记录的值为&quot;go visited&quot;，则该记录返回字段会有 <code>{ prop_go:1, prop_visited:1 }</code></p>
+<p>也可以进行设置和清除，并可与flags一起用，如：</p>
+<pre><code>Ordr.set(id=1)(prop_go=1/0, flag_v=1/0)</code></pre>
 <h4 id="AccessControl-3 子表">3 子表</h4>
 <p class="var"><strong>@var <a id="AccessControl::$subobj">AccessControl::$subobj</a></strong>  (for get/query) 定义子表</p>
 <p>subobj: { name =&gt; {sql, default, wantOne} }</p>
@@ -1295,8 +1478,11 @@ orderLog:: {id, tm, dscr, ..., empName} 订单日志子表。</code></pre>
 
         $this-&gt;onAfterActions[] = function () use ($logAction) {
             $orderId = $this-&gt;id;
-            $sql = sprintf("INSERT INTO OrderLog (orderId, action, tm) VALUES ({$orderId},'CR','%s')", date('c'));
-            execOne($sql);
+            dbInsert("OrderLog", [
+                "orderId" =&gt; $orderId,
+                "action" =&gt; "CR",
+                "tm" =&gt; date(FMT_DT)  // 或用mysql表达式"=now()"
+            ]);
         };
     }
 }</code></pre>
@@ -1400,7 +1586,9 @@ $enumFields["status"] = function($v) use ($map) {
 <p>此外，枚举字段可直接由请求方通过res参数指定描述值，如：</p>
 <pre><code>Ordr.query(res="id, status =CR:Created;CA:Cancelled")
 或指定alias:
-Ordr.query(res="id 编号, status 状态=CR:Created;CA:Cancelled")</code></pre></div>
+Ordr.query(res="id 编号, status 状态=CR:Created;CA:Cancelled")</code></pre>
+<p>(版本5.1)<br />
+设置enumFields也支持逗号分隔的枚举列表，比如字段值为&quot;CR,CA&quot;，实际可返回&quot;Created,Cancelled&quot;。</p></div>
 <div class="block">
 <h2 id="AccessControl::addRes">@fn AccessControl::addRes($res, $analyzeCol=true)</h2>
 <p>添加列或计算列. </p>

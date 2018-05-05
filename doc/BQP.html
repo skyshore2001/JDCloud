@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <title>BQP - 业务查询协议</title>
+  <style type="text/css">code{white-space: pre;}</style>
+<link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="doc.css" />
+<script src="doc.js"></script>
+
+</head>
+<body>
+<h1 id="bqp---业务查询协议">BQP - 业务查询协议</h1>
+<p>业务查询协议，简称BQP(Business Query Protocol)，它是一种远程过程调用(RPC)协议。 本文档定义业务接口如何调用及返回，如何规范描述接口，以及定义通用对象操作接口。</p>
+<p>请求由接口名（action），参数（param），数据（data）三部分构成，表示为<code>action(param)(data)</code>，其中参数或数据可以缺省，如<code>action(param)</code>或<code>action()(data)</code>。 参数一般是键值对，而数据的内容和形式则由具体接口定义。</p>
+<p>接口返回形式为<code>[code, retData, ...]</code>的JSON数组，至少为两个元素。当调用成功时，code为0，返回数据retData由接口原型定义。 调用失败时（也称为异常），code为非0错误码，retData为错误信息。 返回数组中其它内容一般为调试信息。</p>
+<p>假如接口原型如下：</p>
+<pre><code>fn(p1, p2?)(data) -&gt; {field1, field2}</code></pre>
+<p>其中<code>fn</code>为接口名，<code>p1</code>, <code>p2</code>是两个参数，且<code>p2</code>可以缺省。第二个括号表示需要传输数据（数据格式会特别说明）。 箭头后面部分是调用成功时的返回值，如果没有箭头后面部分，则表示不关心返回值，默认返回字符串&quot;OK&quot;。 调用成功后返回JSON数组示例: <code>[0, {&quot;field1&quot;: &quot;value1&quot;, &quot;field2&quot;: &quot;value2&quot;}]</code>。</p>
+
+<div id="TOC" class="toc">
+<ul>
+<li><a href="#bqp---业务查询协议">BQP - 业务查询协议</a><ul>
+<li><a href="#接口通讯协议"><span class="toc-section-number">1</span> 接口通讯协议</a><ul>
+<li><a href="#关于空值"><span class="toc-section-number">1.1</span> 关于空值</a></li>
+<li><a href="#多应用支持与应用标识"><span class="toc-section-number">1.2</span> 多应用支持与应用标识</a></li>
+<li><a href="#测试模式及调试等级"><span class="toc-section-number">1.3</span> 测试模式及调试等级</a></li>
+</ul></li>
+<li><a href="#接口描述"><span class="toc-section-number">2</span> 接口描述</a><ul>
+<li><a href="#接口原型描述"><span class="toc-section-number">2.1</span> 接口原型描述</a></li>
+<li><a href="#应用逻辑描述"><span class="toc-section-number">2.2</span> 应用逻辑描述</a></li>
+</ul></li>
+<li><a href="#通用对象操作接口"><span class="toc-section-number">3</span> 通用对象操作接口</a><ul>
+<li><a href="#基本增删改查操作"><span class="toc-section-number">3.1</span> 基本增删改查操作</a></li>
+<li><a href="#查询操作"><span class="toc-section-number">3.2</span> 查询操作</a></li>
+<li><a href="#查询分页机制"><span class="toc-section-number">3.3</span> 查询分页机制</a></li>
+</ul></li>
+<li><a href="#批请求"><span class="toc-section-number">4</span> 批请求</a></li>
+<li><a href="#服务端信息反馈x-daca头"><span class="toc-section-number">5</span> 服务端信息反馈/X-Daca头</a></li>
+</ul></li>
+</ul></div>
+
+<h2 id="接口通讯协议"><span class="header-section-number">1</span> 接口通讯协议</h2>
+<p>本章定义业务查询协议的实现方式，如何表示请求（调用名、参数、数据）和返回。</p>
+<p>业务查询协议基于HTTP协议实现，以下列接口为例：</p>
+<pre><code>fn(p1, p2) -&gt; {field1, field2}</code></pre>
+<p>以下假定接口服务的URL基地址(BASE_URL)为<code>/api</code>。 该接口可以使用HTTP GET请求实现：</p>
+<pre><code>GET /api/fn?p1=value1&amp;p2=value2</code></pre>
+<p>也可以使用HTTP POST请求实现：</p>
+<pre><code>POST /api/fn
+Content-Type: application/x-www-form-urlencoded;charset=utf-8
+
+p1=value1&amp;p2=value2</code></pre>
+<p>POST内容也可以使用json格式，如：</p>
+<pre><code>POST /api/fn
+Content-Type: application/json;charset=utf-8
+
+{&quot;p1&quot;:&quot;value1&quot;,&quot;p2&quot;:&quot;value2&quot;}</code></pre>
+<p>参数允许部分出现在URL中，部分出现在POST内容中，如</p>
+<pre><code>POST /api/fn?p1=value1
+Content-Type: application/x-www-form-urlencoded;charset=utf-8
+
+p2=value2</code></pre>
+<p>如果URL与POST内容中出现同名参数，最终以URL参数为准。</p>
+<p>接口名为URL基地址后一个词（常称为PATH_INFO），如URL<code>/api/fn</code>中接口名为&quot;fn&quot;。 如果难以实现，也可以使用URL参数ac表示接口名，即URL中<code>/api?ac=fn&amp;p1=value1&amp;p2=value2</code>中接口名也是&quot;fn&quot;。</p>
+<p><strong>[必须使用HTTP POST的情形]</strong></p>
+<p>如果接口定义中有请求数据（即在接口原型中用两个括号），如：</p>
+<pre><code>fn(p1,p2)(p3,p4) -&gt; {field1, field2}</code></pre>
+<p>这时必须使用HTTP POST请求，参数只能通过URL传递，数据通过POST内容传递：</p>
+<pre><code>POST /api/fn?p1=value1&amp;p2=value2
+Content-Type: application/x-www-form-urlencoded;charset=utf-8
+
+p3=value3&amp;p4=value4</code></pre>
+<p>注意数据的格式应通过HTTP头Content-Type正确设置，一般应支持&quot;application/x-www-form-urlencoded&quot;或&quot;application/json&quot;格式。 少数例外情况应特别指出，比如上传文件接口upload一般设计为使用HTTP头&quot;Content-type: multipart/form-data&quot;，应在接口文档中明确说明。</p>
+<p>协议规定：</p>
+<ul>
+<li>只要服务端正确收到请求并处理，均返回HTTP Code 200，返回内容使用JSON格式，为一个至少含有2元素的数组。</li>
+<li>在请求成功时返回内容格式为 <code>[0, retData]</code>，其中<code>retData</code>的类型由接口描述定义。</li>
+<li>在请求失败时返回内容格式为 <code>[非0错误码, 错误信息]</code>.</li>
+<li>从返回数组的第3个元素起, 为调试信息, 仅用于问题诊断, 一般不应显示出来给最终用户。</li>
+<li>所有交互内容采用UTF-8编码。</li>
+</ul>
+<p>服务端在返回JSON格式数据时应如下设置HTTP头属性：</p>
+<pre><code>Content-Type: text/plain; charset=UTF-8</code></pre>
+<p>注意：不采用&quot;application/json&quot;类型是考虑客户端可以更自由的处理返回结果。</p>
+<p>服务端应避免客户端对返回结果缓冲，一般应在HTTP响应中加上</p>
+<pre><code>Cache-Control: no-cache</code></pre>
+<p>以下面的接口描述为例：</p>
+<pre><code>获取订单：
+getOrder(id) -&gt; {id, dscr, total}</code></pre>
+<p>一次成功调用可描述为：</p>
+<pre><code>getOrder(id=101) -&gt; {id: 101, dscr: &quot;套餐1&quot;, total: 38.0}</code></pre>
+<p>它表示：发起HTTP请求为 <code>GET /api/getOrder?id=101</code>（当然也可以用POST请求），服务端处理成功时返回类型为<code>{id, dscr, total}</code>：</p>
+<pre><code>HTTP/1.1 200 OK
+
+[0, {&quot;id&quot;: 101, &quot;dscr&quot;: &quot;套餐1&quot;, &quot;total&quot;: 38.0}]</code></pre>
+<p>关于返回类型表述方式详见后面章节描述。</p>
+<p>服务端处理失败时返回示例：</p>
+<pre><code>HTTP/1.1 200 OK
+
+[1, &quot;未认证&quot;]</code></pre>
+<p>错误码及错误信息在应用中应明确定义，协议规定以下错误码：</p>
+<pre><code>enum {
+    E_ABORT=-100; // &quot;取消操作&quot;。要求客户端不报错，不处理。
+    E_AUTHFAIL=-1; // &quot;认证失败&quot;
+    E_OK=0;
+    E_PARAM=1; // &quot;参数不正确&quot;
+    E_NOAUTH=2; // &quot;未认证&quot;, 一般要求客户端引导用户到登录页，或尝试自动登录
+    E_DB=3;　// &quot;数据库错误&quot;
+    E_SERVER=4; // &quot;服务器错误&quot;
+    E_FORBIDDEN=5; // &quot;禁止操作&quot;，用户没有权限调用接口或操作数据
+}</code></pre>
+<h3 id="关于空值"><span class="header-section-number">1.1</span> 关于空值</h3>
+<p>假如传递参数<code>a=1&amp;b=&amp;c=hello</code>，或JSON格式的<code>{a:1, b:null, c:&quot;hello&quot;}</code>，其中参数&quot;b&quot;值为空串。 一般情况下，参数&quot;b&quot;没有意义，即与<code>a=1&amp;c=hello</code>意义相同。</p>
+<p>在某些场合，如通用对象保存接口<code>{Obj}.set</code>，在POST内容中如果出现&quot;b=&quot;, 则表示将该字段置null。在这些场合下将单独说明。</p>
+<h3 id="多应用支持与应用标识"><span class="header-section-number">1.2</span> 多应用支持与应用标识</h3>
+<p>接口应支持多个应用同时访问，例如按登录角色划分，常见有用户端应用、员工端应用等。</p>
+<p>每个客户端应用要求有唯一应用标识（如果没有，缺省为&quot;user&quot;，表示用户端应用），以URL参数&quot;_app&quot;指定。 在每次接口请求时，客户端框架应自动添加该参数。</p>
+<p>应用标识（称为app或appName）对应一个应用类型（称为appType），如应用标识&quot;user&quot;, &quot;user2&quot;, &quot;user-keyacct&quot;对应同一应用类型&quot;user&quot;，即应用标识的第一个词（不含结尾数字）作为应用类型。</p>
+<p>使用同一接口服务的不同应用类型的应用，如果在浏览器的两个Tab页中分别打开，两者不应相互影响，如用户端的退出登录不会导致员工端的应用也退出登录。 而同一应用类型和不同应用如果在浏览器中同时打开，其会话状态可以共享，比如当一个应用登录后，另一个应用也处于登录状态。</p>
+<p>习惯上常用以下应用类型：</p>
+<ul>
+<li>user: 用户端应用</li>
+<li>emp: 员工端应用，如平台员工使用手机应用程序处理客户订单等。而应用标识&quot;emp-admin&quot;常用于表示运营管理端应用。</li>
+<li>admin: 超级管理端应用，一般由IT人员做初始化配置。</li>
+</ul>
+<p>一般建议使用标准的HTTP Cookie来实现会话，且以应用类型决定HTTP会话中的Cookie项的名字：</p>
+<pre><code>用于HTTP会话的Cookie名={应用类型}id</code></pre>
+<p>例如，应用标识为&quot;emp&quot;(表示员工端), 当第一次接口请求时：</p>
+<pre><code>GET /api/fn?_app=emp</code></pre>
+<p>服务端应通过HTTP头指定会话标识，如：</p>
+<pre><code>SetCookie: empid=xxxxxx</code></pre>
+<h3 id="测试模式及调试等级"><span class="header-section-number">1.3</span> 测试模式及调试等级</h3>
+<p>接口服务可配置为“测试模式”（TEST_MODE），这种模式用于开发和自动化测试，建议的功能有：</p>
+<ul>
+<li>输出美化的JSON数据</li>
+<li>允许输出额外调试信息</li>
+<li>允许跨域调用</li>
+<li>允许一些测试接口（比如执行SQL语句，常用于自动化测试）。</li>
+<li>允许一些第三方服务以模拟方式执行（模拟模式 - MOCK_MODE）</li>
+</ul>
+<p>接口服务可配置调试等级为0到9，向前端输出不同级别的调试信息。一般设置为9（最高）时，可以查看SQL调用日志，便于调试SQL语句。 调试信息仅在测试模式下生效。</p>
+<p><strong>线上生产环境不可设置为测试模式。</strong> 当前端发现服务处于测试模式，应给予明确提示。</p>
+<h2 id="接口描述"><span class="header-section-number">2</span> 接口描述</h2>
+<p>接口描述应包括接口原型和应用逻辑的说明。</p>
+<p>接口原型包括接口名、参数、请求数据、返回值的声明。应用逻辑常包括接口权限、字段自动完成逻辑、字段检查逻辑、关联数据添加或更新逻辑等。</p>
+<p>示例：</p>
+<pre><code>获取订单
+Ordr.get(id) -&gt; {id, status, storePos, @orderLog}
+
+参数：
+
+- id: Integer.
+
+返回：
+
+- id: Integer.
+- status: enum(CR-创建,PA-已付款,CA-已取消,RE-已完成)。订单状态。
+- storePos: Coord=&quot;经度, 纬度&quot;. 商户坐标.
+- orderLog: [{id, tm, ac, dscr}]. 订单日志。
+
+- ac: enum(CR-创建,PA-已付款,CA-已取消,RE-已完成). 操作类型.
+
+应用逻辑：
+
+- 权限：AUTH_USER</code></pre>
+<p>上例参数或返回中的<code>id</code>, <code>status</code>等字段如果含义及类型明确，或是在对象对应的数据模型设计文档中已提及，这里也可省略不做介绍。 <code>storePos</code>是一个序列化类型（以字符串表示的复杂类型），称为<code>Coord</code>类型，特别标明。 而<code>orderLog</code>是一个复杂结构，应分解介绍其内部属性，其中<code>id</code>, <code>tm</code>等属性因含义明确省略了介绍。</p>
+<h3 id="接口原型描述"><span class="header-section-number">2.1</span> 接口原型描述</h3>
+<p>接口名使用驼峰式命名规则，一般有两种形式，1）函数调用型，以小写字母开头，如<code>getOrder</code>；2）对象调用型，对象名首字母为大写，后跟调用名，中间以&quot;.&quot;分隔，如<code>Order.get</code>。</p>
+<p>在接口原型中，以&quot;?&quot;结尾的参数字段、数据字段或返回字段表示该字段可能缺省，如</p>
+<pre><code>fn(p1, p2?, p3?=1) -&gt; {attr1, attr2?}</code></pre>
+<p>其中，参数p3的缺省值是1，p2缺省值是0或空串&quot;&quot;或null(取决于基本类型是数值型，字符串还是对象等)。 返回对象中，attr1是必出现的属性，而attr2可能没有（接口说明中应描述何时没有）。</p>
+<p>接口原型中应描述参数或返回的类型。类型可能是数值、字符串这些基本类型，也可能是对象、数组、字典及其相互组合而成的复杂类型，或虽然是一个字符串但表示某个复杂类型的序列化。</p>
+<p>基本类型不可再细分，其类型一般通过名称暗示，如：</p>
+<ul>
+<li>Integer: 后缀标识符为&quot;&amp;&quot;, 或以&quot;Id&quot;, &quot;Cnt&quot;等结尾, 如 customerId, age&amp;</li>
+<li>Number: 后缀标识符为&quot;#&quot;, 如 avgValue#</li>
+<li>Currency: 后缀标识符为&quot;@&quot;, 或以&quot;Price&quot;, &quot;Total&quot;, &quot;Qty&quot;, &quot;Amount&quot;结尾, 如 unitPrice, price2@。</li>
+<li>Datetime/Date/Time: 分别以&quot;Tm&quot;/&quot;Dt&quot;/&quot;Time&quot;结尾，如 tm 可表示日期时间如&quot;2010-1-1 9:00&quot;，comeDt 只表示日期如&quot;2010-1-1&quot;，而 comeTime只表示时间如&quot;9:00&quot;</li>
+<li>Boolean/TinyInt(1-byte): 以Flag结尾, 或以is开头.</li>
+<li>String: 未显示指明的一般都作为字符串类型。</li>
+</ul>
+<p>对于复杂类型，其描述方法用类似JSON格式来解析其中对象、数组、字典这些结构的组合，举例列举如下：</p>
+<p><strong>{id, name}</strong></p>
+<p>一个简单对象，有两个字段id和name。例：<code>{id: 100, name: &quot;name1&quot;}</code></p>
+<p><strong>[id...]</strong> 或 <strong>[id]</strong></p>
+<p>一个简单数组，每个元素表示id。例：<code>[100, 200, 400]</code>, 每项为一个id</p>
+<p><strong>[id, name]</strong></p>
+<p>一个简单数组，例：<code>[100, &quot;liang&quot;]</code>，第一项为id, 第二项为name</p>
+<p><strong>[ [id, name] ]</strong> 或 <strong>varr(id, name)</strong></p>
+<p>简单二维数组，又称varr(value array), 如 <code>[ [100, &quot;liang&quot;], [101, &quot;wang&quot;] ]</code>.</p>
+<p><strong>[{id, name}]</strong> 或 <strong>objarr(id, name)</strong></p>
+<p>一个数组，每项为一个对象，又称objarr。例：<code>[{id: 100, name: &quot;name1&quot;}, {id: 101, name: &quot;name2&quot;}]</code></p>
+<p><strong>tbl(id, name)</strong></p>
+<p>压缩表对象，常用于返回分页列表。其详细格式为 <code>{h: [header1, header2, ...], d:[row1, row2, ...], nextkey?, total?}</code>，例如</p>
+<pre><code>{
+  h: [&quot;id&quot;, &quot;name&quot;],
+  d: [[100, &quot;myname1&quot;], [200, &quot;myname2&quot;]]
+}</code></pre>
+<p>压缩对象支持分页机制(paging)，返回字段中可能包含&quot;nextkey&quot;，&quot;total&quot;等字段。 详情请参考后面章节&quot;分页机制&quot;.</p>
+<p>在类型描述时，可以用&quot;@&quot;符号表示一个数组属性，而对象或字典一般用&quot;%&quot;表示，如：</p>
+<pre><code>获取订单接口：
+Ordr.get(id) -&gt; { id, dscr, %addr, @items }
+
+返回
+
+- addr: {country, city}. 收货地址
+- items: [{id, name, qty}]. 订单中的物品。</code></pre>
+<p>注意：</p>
+<ul>
+<li>在使用JSON传输数据时，字段可以不区分类型，即使是整形也<strong>可能</strong>用引号括起来当作字符串传输，客户端在对JSON数据反序列化时应自行考虑类型转换。</li>
+<li>不论哪种类型，都可能返回null。客户端必须能够处理null，将其转为相应类型正确的值。</li>
+</ul>
+<p>以上对类型的描述，使用的是一种层层剖析的形式化表达方法，请参考<a href="https://github.com/skyshore2001/cocoon-notation">蚕茧表示法</a>。</p>
+<p>除了基本类型和复杂类型，有时传递参数还会使用一个字符串来代表复杂结构，称为序列化类型。 常用的有：</p>
+<ul>
+<li><p>逗号分隔的简单字符串序列(数组序列化)，如</p>
+<pre><code>&quot;经度,纬度&quot;</code></pre>
+<p>或带上类型描述：</p>
+<pre><code>&quot;经度/Double,纬度/Double&quot;</code></pre>
+<p>它可表示 <code>121.233543,31.345457</code>。</p></li>
+<li><p>List表，以逗号分隔行，以冒号分隔列的表，如定义：</p>
+<pre><code>List(id, name?)</code></pre>
+<p>或指定每列的类型，如</p>
+<pre><code>List(id/Integer, name?/String)</code></pre>
+<p>参数后加&quot;?&quot;表示是可选参数, 该项可以为空。 它可以表示这样的数据：</p>
+<pre><code>10:liang,11:wang</code></pre>
+<p>因为name字段可省略，它也可以表示：</p>
+<pre><code>10,11</code></pre>
+<p>这种格式一般用于前后端间传递简单的表，尤其是一组数字如<code>10,11</code>常定义类型为<code>List(id)</code>。</p>
+<p>注意：由于使用分隔符&quot;,&quot;和&quot;:&quot;，每个字段内不能有这两个特殊符号(例如假如有日期字段，中间不可以有&quot;:&quot;, 如&quot;2015/11/20 1030&quot;或&quot;20151120 1030&quot;)。</p>
+<p>在传输数据时，也允许带表头信息，这时用首字符&quot;@&quot;标明表头行，如</p>
+<pre><code>@id:name,10:liang,11:wang</code></pre></li>
+<li><p>JSON序列化。将一个复杂结构以JSON格式序列化后的字符串，如定义：</p>
+<pre><code>Json({id, name})</code></pre>
+<p>括号内描述实际数据结构。它可以表示这样格式的字符串：</p>
+<pre><code>&quot;{\&quot;id\&quot;: 100, \&quot;name\&quot;: \&quot;liang\&quot;}&quot;</code></pre>
+<p>又比如，要将一个普通的表用一个字段传递，可以描述为：</p>
+<pre><code>Json(tbl(id, name))</code></pre></li>
+</ul>
+<h3 id="应用逻辑描述"><span class="header-section-number">2.2</span> 应用逻辑描述</h3>
+<p>在接口描述的应用逻辑说明中应包括接口权限说明。</p>
+<p>权限在设计接口时定义，常用的定义示例如下：</p>
+<ul>
+<li>AUTH_GUEST: 任何人可用, 无权限限制。如不用登录即可查看商户, 天气等.</li>
+<li>AUTH_USER: 用户登录后可用. 可做下单, 查看订单等操作.</li>
+<li>AUTH_EMP: 员工操作，如查看和操作订单等。</li>
+<li>PERM_TEST_MODE: 测试模式下可用。</li>
+</ul>
+<p>权限一般名为<code>PERM_XXX</code>，特别地，登录类型是一种特殊的权限，一般定义名称为<code>AUTH_XXX</code>。</p>
+<p>如果接口未明确指定权限，则认为是AUTH_GUEST.</p>
+<h2 id="通用对象操作接口"><span class="header-section-number">3</span> 通用对象操作接口</h2>
+<p>业务接口包括函数调用型接口和对象调用型接口。</p>
+<p>函数型接口名称一般为动词或动词开头，如queryOrder, getOrder等。对象型接口的格式为<code>{对象名}.{动作}</code>, 如 &quot;Order.get&quot;, &quot;Order.query&quot;等。</p>
+<p>接口服务框架应支持对象型接口的以下标准操作：add, set, query, get, del。 这些操作提供对象的基本增删改查(CRUD)以及列表查询、统计分析、导出等服务，称为通用对象接口。</p>
+<p>在做接口设计时，应以通用对象接口为基础，按业务逻辑需要进行定制形成专用接口，如进行权限限制、指定允许的操作类型(如只能get/set,不能add/del)、只读字段、隐藏字段等。</p>
+<p>下面将分别定义这些操作，其中用Obj代指对象实际名称。</p>
+<h3 id="基本增删改查操作"><span class="header-section-number">3.1</span> 基本增删改查操作</h3>
+<p><strong>[添加操作]</strong></p>
+<p>接口原型：</p>
+<pre><code>Obj.add()(POST fields...) -&gt; id
+Obj.add(res)(POST fields...) -&gt; {fields...} (返回的字段由res参数指定)</code></pre>
+<p>对象的属性通过POST请求内容给出，为一个个键值对。 添加完成后，默认返回新对象的id, 如果想多返回其它字段，可设置res参数，如</p>
+<pre><code>Ordr.add()(status=&quot;CR&quot;, total=100) -&gt; 809
+
+Ordr.add(res=&quot;id,status,total&quot;)(status=&quot;CR&quot;, total=100) -&gt; {id: 810, status:&quot;CR&quot;, total: 100}</code></pre>
+<p>对象id支持自动生成。</p>
+<p><strong>[更新操作]</strong></p>
+<p>接口原型：</p>
+<pre><code>Obj.set(id)(POST fields...)</code></pre>
+<p>与add操作类似，对象属性的修改通过POST请求传递，而在URL参数中需要有id标识哪个对象。</p>
+<p>示例：</p>
+<pre><code>Obj.set(809)(status=&quot;PA&quot;, empId=10) -&gt; &quot;OK&quot;</code></pre>
+<p>如果未指定返回值，一般默认返回&quot;OK&quot;。下面示例也将省略返回值。</p>
+<p>如果要将某字段置空, 可以用空串或&quot;null&quot; (小写)。例如：</p>
+<pre><code>Obj.set(809)(picId=&quot;&quot;, empId=null)
+（实际传递参数的形式为 &quot;picId=&amp;empId=null&quot;）</code></pre>
+<p>这两种方式都是将字段置空。 注意：一般情况下，接口传参数&quot;picId=&quot;这样的，参数会被忽略，相当于没有设置该字段。</p>
+<p>另外注意，上例是设置字段为null，而不是设置成空串&quot;&quot;。 如果要将字符串置空串(一般不建议使用)，可以用&quot;empty&quot;, 例如：</p>
+<pre><code>Obj.set(809)(sn=empty)</code></pre>
+<p>假如sn是数值类型，会导致其值为0或0.0。</p>
+<p><strong>[获取对象操作]</strong></p>
+<p>接口原型：</p>
+<pre><code>Obj.get(id, res?) -&gt; {fields...}</code></pre>
+<p>默认返回所有暴露的属性，通过res参数可以指定需要返回的字段。</p>
+<p><strong>[删除操作]</strong></p>
+<p>接口原型：</p>
+<pre><code>Obj.del(id)</code></pre>
+<p>根据id删除一个对象，例如：</p>
+<pre><code>Obj.del(809)</code></pre>
+<h3 id="查询操作"><span class="header-section-number">3.2</span> 查询操作</h3>
+<p>接口原型：</p>
+<pre><code>查询列表(默认压缩表格式)：
+Obj.query(res?, cond?, distinct?=0, pagesz?=20, pagekey/page?) -&gt; tbl(fields...) = {nextkey?, total?, @h, @d}
+
+查询列表 - 对象列表格式：
+Obj.query(fmt=list, ...) -&gt; {nextkey?, total?, @list=[obj1, obj2...]}
+
+分组统计：
+Obj.query(gres, ...) -&gt; tbl(fields...)
+
+导出查询列表到文件：
+Obj.query(fmt=csv/txt/excel, ...) -&gt; 文件内容</code></pre>
+<p>查询接口非常灵活，不仅支持条件组合查询、排序、指定输出字段等，还支持分页列表、分组统计、导出文件等。</p>
+<p>查询操作的参数可参照SQL语句来理解：</p>
+<dl>
+<dt>res</dt>
+<dd>String. 指定返回字段, 多个字段以逗号分隔，例如, res=&quot;field1,field2&quot;。字段前不可加表名或别名(alias)，如&quot;t0.id&quot;或&quot;id as userId&quot;不合法。 在res中允许使用部分统计函数如&quot;sum&quot;与&quot;count&quot;, 这时必须指定字段别名, 如&quot;count(id) cnt&quot;, &quot;sum(qty*price) total&quot;, &quot;count(distinct addr) addrCnt&quot;.
+</dd>
+<dt>cond</dt>
+<dd>String. 指定查询条件，语法可参照SQL语句的&quot;WHERE&quot;子句。例如：cond=&quot;field1&gt;100 AND field2='hello'&quot;, 注意使用UTF8+URL编码, 字符串值应加上单引号.
+</dd>
+<dt>orderby</dt>
+<dd>String. 指定排序条件，语法可参照SQL语句的&quot;ORDER BY&quot;子句，例如：orderby=&quot;id desc&quot;，也可以多个排序：&quot;tm desc,status&quot; (按时间倒排，再按状态正排)
+</dd>
+<dt>distinct</dt>
+<dd>Boolean. 如果为1, 生成&quot;SELECT DISTINCT ...&quot;查询.
+</dd>
+</dl>
+<p>尽管类似SQL语句，但对参数值有一些安全限制：</p>
+<ul>
+<li>res, orderby只能是字段（或虚拟字段）列表，不能出现表达式、函数、子查询等。特别地，res参数允许部分统计函数，见上面示例。</li>
+<li>cond可以由多个条件通过and或or组合而成，而每个条件的左边是字段名，右边是常量。不允许对字段运算，不允许子查询（不可以有select等关键字）。</li>
+</ul>
+<p>用参数<code>cond</code>指定查询条件, 如：</p>
+<pre><code>cond=&quot;type=&#39;A&#39; and name like &#39;%hello%&#39;&quot; </code></pre>
+<p>以下情况都不允许：</p>
+<pre><code>left(type, 1)=&#39;A&#39;  -- 条件左边只能是字段，不允许计算或函数
+type=type2  -- 字段与字段比较不允许
+type in (select type from table2) -- 子查询不允许</code></pre>
+<p>查询结果有两种返回形式, 缺省返回压缩表类型即&quot;h/d&quot;格式，例如：</p>
+<pre><code>{
+    &quot;h&quot;: [&quot;id&quot;, &quot;name&quot;],
+    &quot;d&quot;: [[1, &quot;jerry&quot;], [2, &quot;tom&quot;]]
+}</code></pre>
+<p>如果指定<code>fmt=list</code>则返回对象列表格式:</p>
+<pre><code>{
+    &quot;list&quot;: [{&quot;id&quot;: 1, &quot;name&quot;: &quot;jerry&quot;}, {&quot;id&quot;: 2, &quot;name&quot;: &quot;tom&quot;}]
+}</code></pre>
+<p>压缩表类型一般传输效率更高。</p>
+<p><strong>查询结果支持分页</strong></p>
+<p>参数pagesz/pagekey等与返回分页列表有关，详细介绍请参考“<a href="#查询分页机制">查询分页机制</a>”章节。</p>
+<p><strong>查询结果支持导出到文件</strong></p>
+<p>在对象查询接口中添加参数&quot;fmt&quot;，可以输出指定格式，一般用于列表导出。参数：</p>
+<dl>
+<dt>fmt</dt>
+<dd>Enum(csv,txt,excel). 导出Query的内容为指定格式。其中，csv为逗号分隔UTF8编码文本；txt为制表分隔的UTF8文本；excel为逗号分隔的使用本地编码如gb2312编码文本（因为默认excel打开Csv文件时不支持utf8编码）。
+</dd>
+</dl>
+<p>在实现时，注意设置正确的HTTP头，如csv文件：</p>
+<pre><code>Content-Type: application/csv; charset=UTF-8
+Content-Disposition: attachment;filename=1.csv</code></pre>
+<p>导出txt文件设置HTTP头的例子：</p>
+<pre><code>Content-Type: text/plain; charset=UTF-8
+Content-Disposition: attachment;filename=1.txt</code></pre>
+<p>示例：导出以逗号分隔的表格文本</p>
+<pre><code>Store.query(
+    res=id,name,addr
+    fmt=csv
+    pagesz=9999
+)</code></pre>
+<p>注意，由于默认会有分页，要想导出所有数据，一般可指定较大的分页大小，如<code>pagesz=9999</code>。</p>
+<p><strong>查询操作应支持分组统计</strong></p>
+<p>主要通过gres参数实现查询结果分组：</p>
+<dl>
+<dt>gres</dt>
+<dd>String. 分组字段。如果设置了gres字段，则res参数中每项应该带统计函数，如&quot;sum(cnt) sum, count(id) userCnt&quot;. 最终返回列为gres参数指定的列加上res参数指定的列; 如果res参数未指定，则只返回gres参数列。
+</dd>
+</dl>
+<p>例：统计2015年2月，按状态分类（如已付款、已评价、已取消等）的各类订单的总数和总金额。</p>
+<pre><code>Ordr.query(gres=&quot;status&quot;, res=&quot;count(&#39;A&#39;) totalCnt, sum(amount) totalAmount&quot;, cond=&quot;tm&gt;=&#39;2016-1-1&#39; and tm&lt;&#39;2016-2-1&#39;&quot;)</code></pre>
+<p>返回内容示例：</p>
+<pre><code>[
+    h: [&quot;status&quot;, &quot;totalCnt&quot;, &quot;totalAmount&quot;],
+    d: [
+        [ &quot;PA&quot;, 130, 1420 ],  // 已付款，共130单，1420元
+        [ &quot;CA&quot;, 29, 310 ], // 取消的订单
+        [ &quot;RA&quot;, 1530, 15580 ], // 已评价的订单
+    ]
+]</code></pre>
+<h3 id="查询分页机制"><span class="header-section-number">3.3</span> 查询分页机制</h3>
+<p>如果一个查询支持分页(paging), 则一般调用形式为</p>
+<pre><code>Ordr.query(pagekey?, pagesz/rows?=20) -&gt; {nextkey, total?, @h, @d}</code></pre>
+<p><strong>[参数]</strong></p>
+<dl>
+<dt>pagesz或rows</dt>
+<dd>Integer. 这两个参数含义相同，均表示页大小，默认为20条数据。
+</dd>
+<dt>pagekey</dt>
+<dd>Integer. 一般首次查询时不填写（或填写0，表示需要返回总记录数即total字段），而下次查询时应根据上次调用时返回数据的&quot;nextkey&quot;字段来填写。
+</dd>
+</dl>
+<p><strong>[查询返回字段]</strong></p>
+<dl>
+<dt>nextkey</dt>
+<dd>Integer. 一个字符串, 供取下一页时填写参数&quot;pagekey&quot;。如果不存在该字段，则说明已经是最后一批数据。
+</dd>
+<dt>total</dt>
+<dd>Integer. 返回总记录数，仅当&quot;pagekey&quot;指定为0时返回。（注：后面还会讲到如果有&quot;page&quot;参数时也会返回该属性。）
+</dd>
+<dt>h/d</dt>
+<dd>两个数组。实际数据表的头信息(header)和数据行(data)，符合压缩表对象的格式。
+</dd>
+</dl>
+<p><strong>[示例]</strong></p>
+<p>第一次查询</p>
+<pre><code>Ordr.query()</code></pre>
+<p>返回</p>
+<pre><code>{nextkey: 10800910, h: [&quot;id&quot;, &quot;desc&quot;, ...], d: [...]}</code></pre>
+<p>其中的nextkey将供下次查询时填写pagekey字段；</p>
+<p>要在首次查询时返回总记录数，可以设置用pagekey=0：</p>
+<pre><code>Ordr.query(pagekey=0)</code></pre>
+<p>这时返回</p>
+<pre><code>{nextkey: 10800910, total: 51, h: [&quot;id&quot;, ...], d: [...]}</code></pre>
+<p>total字段表示总记录数。由于缺省页大小为20，所以可估计总共有51/20=3页。</p>
+<p>第二次查询(下一页)</p>
+<pre><code>Ordr.query(pagekey=10800910)</code></pre>
+<p>返回</p>
+<pre><code>{nextkey: 10800931, h: [...], d: [...]}</code></pre>
+<p>仍返回nextkey字段说明还可以继续查询，</p>
+<p>再查询下一页</p>
+<pre><code>Ordr.query(pagekey=10800931)</code></pre>
+<p>返回</p>
+<pre><code>{h: [...], d: [...]}</code></pre>
+<p>返回数据中不带&quot;nextkey&quot;属性，表示所有数据获取完毕。</p>
+<p><strong>[分页实现]</strong></p>
+<p>分页有两种实现方式：按主键字段的分段查询式分页，以及使用LIMIT操作为核心的传统分页。</p>
+<p>分段查询的原理是利用主键id进行查询条件控制（自动修改WHERE语句），每次返回的pagekey字段实际是上次数据的最后一个id.</p>
+<p>首次查询：</p>
+<pre><code>Ordr.query()</code></pre>
+<p>SQL样例如下：</p>
+<pre><code>SELECT * FROM Ordr t0
+...
+ORDER BY t0.id
+LIMIT {pagesz}</code></pre>
+<p>再次查询</p>
+<pre><code>Ordr.query(pagekey=10800910)</code></pre>
+<p>SQL样例如下：</p>
+<pre><code>SELECT * FROM Ordr t0
+...
+WHERE t0.id&gt;10800910
+ORDER BY t0.id
+LIMIT {pagesz}</code></pre>
+<p>分段查询性能高，更精确，不会丢失数据。但它仅适用于未指定排序字段（无orderby参数）或排序字段是id的情况（例如：orderby=&quot;id DESC&quot;）。 查询引擎应根据orderby参数自动选择分段查询或传统分页。</p>
+<p>传统分页常通过SQL语句的LIMIT关键字来实现。pagekey字段实际是页码。其原理是：</p>
+<p>首次查询</p>
+<pre><code>Ordr.query(orderby=&quot;comeTm DESC&quot;)</code></pre>
+<p>（以comeTm作为排序字段，无法应用分段查询机制，只能使用传统分页。）</p>
+<p>SQL样例如下：</p>
+<pre><code>SELECT * FROM Ordr t0
+...
+ORDER BY comeTm DESC, t0.id
+LIMIT 0,{pagesz}</code></pre>
+<p>再次查询</p>
+<pre><code>Ordr.query(pagekey=2)</code></pre>
+<p>SQL样例如下：</p>
+<pre><code>SELECT * FROM Ordr t0
+...
+ORDER BY comeTm DESC, t0.id
+LIMIT ({pagekey}-1)*{pagesz}, {pagesz}</code></pre>
+<p><strong>查询引擎应支持强制使用传统分页</strong></p>
+<p>如果在对象query接口中指定了page参数，则强制查询引擎使用传统分页方法，即page表示第几页，而返回字段nextkey一定等于page+1或空(当没有更多数据)。 而且，返回字段中应包含total字段。</p>
+<p>接口原型：</p>
+<pre><code>Ordr.query(page, pagesz/rows?=20) -&gt; {nextkey, total, @h, @d}</code></pre>
+<p>例如：</p>
+<pre><code>Ordr.query(orderby=&quot;id desc&quot;, page=1) -&gt; {h=[&quot;id&quot;,...], d=[...], total=180, nextkey=2}</code></pre>
+<p>本来因为按主键id排序，查询引擎应使用分段查询，但由于指定了page字段，改为使用传统分页。</p>
+<h2 id="批请求"><span class="header-section-number">4</span> 批请求</h2>
+<p>BQP协议支持批请求，即在一次请求中，包含多条接口调用。 而且支持向前引用，即后面的调用可以引用前面调用的返回值。 而且在创建批请求时，可以指定这些调用是否在一个事务(transaction)中，一起成功提交或失败回滚。</p>
+<p>假如某场景需要两个请求，先获取用户信息(User.get接口)，然后上传页面名、用户编号等信息到服务器(ActionLog.add接口)供统计分析，调用示意如下：</p>
+<pre><code>User.get(res=&quot;id,name,phone&quot;) -&gt; {id, name, phone}
+ActionLog.add()(page=home, ver=android, userId={上一调用User.get返回的id}) -&gt; logId</code></pre>
+<p>其中，调用二中参数userId需要引用调用一的返回结果。 如果想通过减少调用次数优化性能，可通过批请求，一次性提交两个调用，以及获得每个调用的返回值。</p>
+<p>批请求使用接口名&quot;batch&quot;，通过JSON格式传递数据，请求示例如下：</p>
+<pre><code>POST /api/batch
+Content-Type: application/json;charset=utf-8
+
+[
+    {
+        &quot;ac&quot;: &quot;User.get&quot;,
+        &quot;get&quot;: {&quot;res&quot;: &quot;id,name,phone&quot;}
+    },
+    {
+        &quot;ac&quot;: &quot;ActionLog.add&quot;,
+        &quot;post&quot;: {&quot;page&quot;: &quot;home&quot;, &quot;ver&quot;: &quot;android&quot;, &quot;userId&quot;: &quot;{$-1.id}&quot;},
+        &quot;ref&quot;: [&quot;userId&quot;]
+    }
+]</code></pre>
+<p>请求数据是一个数组，数组中每一项为一个调用，其格式为: {ac, %get?, %post?, <span class="citation">@ref</span>?}, 只有ac参数必须，其它均可省略。</p>
+<ul>
+<li>get: URL请求参数。</li>
+<li>post: POST请求参数。</li>
+<li>ref: 使用了batch引用的参数列表。</li>
+</ul>
+<p>POST参数userId的值&quot;{$-1.id}&quot;表示取上一次调用值的id属性。使用向前引用的参数，必须在&quot;ref&quot;参数中指定。</p>
+<p>注意：引用表达式应以&quot;{}&quot;包起来，&quot;$n&quot;中n可以为正数或负数（但不能为0），表示对第n次或前n次调用结果的引用，以下为允许的格式：</p>
+<pre><code>&quot;{$1}&quot;  -- 第一个调用的返回值
+&quot;{$-1}&quot;  -- 前一个调用的返回值
+&quot;id={$1.id}&quot;
+&quot;{$-1.d[0][0]}&quot;
+&quot;id in ({$1}, {$2})&quot;
+&quot;diff={$-2 - $-1}&quot;</code></pre>
+<p>花括号中的内容将用计算后的结果替换。如果表达式非法，将使用&quot;null&quot;值替代。</p>
+<p>batch的返回内容是多条调用返回内容组成的数组，样例如下：</p>
+<pre><code>[0, [
+    [ 0, {&quot;id&quot;: 1, &quot;name&quot;: &quot;用户1&quot;, &quot;phone&quot;: &quot;13712345678&quot;} ],  // 调用User.get的返回结果
+    [ 0, 99 ]  // 调用ActionLog.add的返回结果logId
+]]</code></pre>
+<p><strong>批量请求支持事务(transaction)。</strong></p>
+<p>如果批量请求在一个事务中，则最终所有调用会一起成功提交或失败回滚。 要使用事务，只需要请求加个URL参数<code>useTrans=1</code>：</p>
+<pre><code>POST /api/batch?useTrans=1</code></pre>
+<h2 id="服务端信息反馈x-daca头"><span class="header-section-number">5</span> 服务端信息反馈/X-Daca头</h2>
+<p>BQP协议规定，以下服务端信息应通过HTTP头反馈给客户端。</p>
+<p><strong>[接口服务版本号与前端应用热更新]</strong></p>
+<p>服务端接口的版本号如果可以获取，应发送给客户端:</p>
+<pre><code>X-Daca-Server-Rev: {value}</code></pre>
+<p>其中value为最多6位的字符串。</p>
+<p>前端应用程序可依据此信息实现热更新： 假如某前端H5应用（或以H5应用为内核的手机原生应用）操作期间，后端接口服务刚好升级过，应用程序再请求时，可以依据版本号变更发现升级行为，从而自动刷新到新版本。</p>
+<p><strong>[测试模式和模拟模式]</strong></p>
+<p>如果服务运行于测试模式或模拟模式，应设置：</p>
+<pre><code>X-Daca-Test-Mode: {value}
+X-Daca-Mock-Mode: {value}</code></pre>
+<p>其中value为非0值，一般设置为1.</p>
+<p>前端应用程序在发现接口服务运行在测试模式时，应予以提示。</p>
+
+</body>
+</html>
