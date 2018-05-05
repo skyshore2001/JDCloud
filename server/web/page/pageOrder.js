@@ -26,7 +26,9 @@ function initPageOrder()
 		url: WUI.makeUrl("Ordr.query", {res:"*,createTm,userPhone,orderLog"}),
 		queryParams: query2,
 		toolbar: WUI.dg_toolbar(jtbl, jdlg, btn1, "-", btn2),
-		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
+		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg),
+		sortName: "id",
+		sortOrder: "desc"
 	};
 	jtbl.datagrid(dgOpt);
 }
