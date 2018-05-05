@@ -10,7 +10,7 @@
 @see param,mparam
 
 - 数据库连接及操作
-@see dbconn,execOne,queryOne,queryAll
+@see dbconn,execOne,queryOne,queryAll,dbInsert,dbUpdate
 
 - 错误处理设施
 @see MyException,errQuit
@@ -843,7 +843,21 @@ function sql_concat()
 
 	$sql = sprintf("INSERT INTO Hongbao (userId, createTm, src, expireTm, vdays) VALUES ({$uid}, '%s', '{$src}', '%s', {$vdays})", date('c', $createTm), date('c', $expireTm));
 	$hongbaoId = execOne($sql, true);
-	
+
+(v5.1) 简单的单表添加和更新记录建议优先使用dbInsert和dbUpdate函数，更易使用。
+上面两个例子，用dbInsert/dbUpdate函数，无须使用Q函数防注入，也无须考虑字段值是否要加引号：
+
+	// 更新操作示例
+	$cnt = dbUpdate("Cinf", ["appleDeviceToken" => $token]);
+
+	// 插入操作示例
+	$hongbaoId = dbInsert("Hongbao", [
+		"userId"=>$uid,
+		"createTm"=>date(FMT_DT, $createTm),
+		"src" => $src, ...
+	]);
+
+@see dbInsert,dbUpdate,queryOne
  */
 function execOne($sql, $getInsertId = false)
 {
@@ -1025,7 +1039,9 @@ function flag_getExpForSet($k, $v)
 }
 
 /**
-@fn dbUpdate(table, kv, id/cond) -> cnt
+@fn dbUpdate(table, kv, id_or_cond?) -> cnt
+
+@param id_or_cond 查询条件，如果是数值比如100或"100"，则当作条件"id=100"处理；否则直接作为查询表达式，比如"qty<0"；如果未指定则无查询条件。
 
 e.g.
 
@@ -1043,9 +1059,9 @@ e.g.
 	], "tm IS NULL);
 
 */
-function dbUpdate($table, $kv, $cond)
+function dbUpdate($table, $kv, $cond=null)
 {
-	if (is_numeric($cond)) {
+	if (isset($cond) && is_numeric($cond)) {
 		$cond = "id=$cond";
 	}
 	$kvstr = "";
@@ -1083,7 +1099,10 @@ function dbUpdate($table, $kv, $cond)
 		addLog("no field found to be set");
 	}
 	else {
-		$sql = sprintf("UPDATE %s SET %s WHERE $cond", $table, $kvstr);
+		if (isset($cond))
+			$sql = sprintf("UPDATE %s SET %s WHERE $cond", $table, $kvstr);
+		else
+			$sql = sprintf("UPDATE %s SET %s", $table, $kvstr);
 		$cnt = execOne($sql);
 	}
 	return $cnt;
