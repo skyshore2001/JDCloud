@@ -5266,7 +5266,7 @@ function getQueryParamFromTable(jtbl, param)
 				return;
 			if (res.length > 0)
 				res += ',';
-			res += e.field + " " + e.title;
+			res += e.field + " \"" + e.title + "\"";
 			if (e.jdEnumMap) {
 				res += '=' + mCommon.kvList2Str(e.jdEnumMap, ';', ':');
 			}
@@ -5274,9 +5274,7 @@ function getQueryParamFromTable(jtbl, param)
 		param.res = res;
 	}
 	if (param.fname === undefined) {
-		if (jtbl.attr("title")) {
-			param.fname = jtbl.attr("title");
-		}
+		param.fname = jtbl.prop("title") || jtbl.closest(".wui-page").prop("title");
 	}
 	return param;
 }

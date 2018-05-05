@@ -856,8 +856,8 @@ class AccessControl
 				$this->addRes("t0.*", false);
 				continue;
 			}
-			// 适用于res/gres, 支持格式："col" / "col col1" / "col as col1"
-			// 支持alias中有特殊字符（除逗号外），且不必加引号，如"amount 金额(元)", "v 速率 m/s"等
+			// 适用于res/gres, 支持格式："col" / "col col1" / "col as col1", alias可以为中文，如"col 某列"
+			// 如果alias中有特殊字符（逗号不支持），则应加引号，如"amount \"金额(元)\"", "v \"速率 m/s\""等。
 			if (! preg_match('/^\s*(\w+)(?:\s+(?:AS\s+)?([^,]+))?\s*$/i', $col, $ms))
 			{
 				// 对于res, 还支持部分函数: "fn(col) as col1", 目前支持函数: count/sum，如"count(distinct ac) cnt", "sum(qty*price) docTotal"
@@ -894,9 +894,6 @@ class AccessControl
 					$col = "t0." . $col;
 					$col1 = $col;
 					if (isset($alias)) {
-						if (preg_match('/\W/', $alias)) {
-							$alias = '"' . $alias . '"';
-						}
 						$col1 .= " {$alias}";
 					}
 					$this->addRes($col1);
