@@ -168,27 +168,50 @@
 	function initDlgOrder()
 	{
 		var jdlg = $(this);
-		jdlg.on("beforeshow", function(ev, formMode, opt) {
+		jdlg.on("beforeshow", onBeforeShow)
+			.on("show", onShow)
+			.on("validate", onValidate)
+			.on("retdata", onRetData);
+		
+		function onBeforeShow(ev, formMode, opt) {
 			jdlg.find(".forFind").toggle(formMode == FormMode.forFind);
 			jdlg.find(".notForFind").toggle(formMode != FormMode.forFind);
-		})
-		.on("show", function (ev, formMode, initData) {
+		}
+		function onShow(ev, formMode, initData) {
 			// data是列表页中一行对应的数据，框架自动根据此数据将对应属性填上值。
 			// 如果界面上展示的字段无法与属性直接对应，可以在该事件回调中设置。
 			// hiddenToCheckbox(jdlg.find("#divPerms"));
-		})
-		.on("validate", function (ev, formMode, initData) {
+		}
+		function onValidate(ev, formMode, initData, newData) {
 			// 在form提交时，所有带name属性且不带disabled属性的对象值会被发往服务端。
 			// 此事件回调可以设置一些界面上无法与属性直接对应的内容。
+			// 额外要提交的数据可放在隐藏的input组件中，或(v5.1)这里直接设置到newData对象中。
 			// checkboxToHidden(jdlg.find("#divPerms"));
-		})
-		.on("retdata", function (ev, data, formMode) {
+		}
+		function onRetData(ev, data, formMode) {
 			var formMode = jdlg.jdata().mode;
 			if (formMode == FormMode.forAdd) {
 				alert('返回ID: ' + data);
 			}
-		};
+		}
 	}
+
+在onBeforeShow中一般设置字段是否显示(show/hide/toggle)或只读(disabled)，以及在forAdd/forFind模式时为opt.data设置初始值(forSet模式下opt.data已填上业务数据)；
+之后框架用opt.data数据填充相应字段，如需要补填或修改些字段（比如显示图片），可在onShow中处理，也可以直接在onBeforeShow中用setTimeout来指定，如：
+
+	function onBeforeShow(ev, formMode, opt) {
+		// ... 根据formMode等参数控制某些字段显示隐藏、启用禁用等...
+		var frm = jdlg.find("form")[0];
+		var isFind = formMode == FormMode.forFind;
+		frm.type.disabled = !isFind;
+		// 这里可以对opt.data赋值，但不要直接为组件设置值，因为接下来组件值会被opt.data中的值覆盖。
+
+		setTimeout(onShow);
+		function onShow() {
+			// 这里可根据opt.data直接为input等组件设置值。便于使用onBeforeShow中的变量
+		}
+	}
+
 
 @see checkboxToHidden (有示例)
 @see hiddenToCheckbox 
@@ -602,16 +625,18 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 	function initPageBizPartner() {
 		var jdlg = $("#dlgSupplier");
 		// 设置objParam参数供对话框使用。
-		jdlg.objParam = {type: "C", obj: "Customer"};
+		jdlg.objParam = {type: "C", obj: "Customer", title: "客户"}; // opt.title参数可直接设置对话框的标题。参考showObjDlg.
 		jtbl.datagrid(toolbar: dg_toolbar(jtbl, jdlg, ...));
 		// 点表格上的菜单或双击行时会调用 WUI.showObjDlg
 	}
 
 	function initDlgBizPartner() {
 		// ...
-		jdlg.on("beforeshow", function (ev, formMode, opt) {
+		jdlg.on("beforeshow", onBeforeShow);
+		
+		function onBeforeShow(ev, formMode, opt) {
 			// opt.objParam 中包含前面定义的type, obj, 以及id, mode等参数。
-		});
+		}
 	}
 
 ### 示例：页面与对话框复用 (v5.1)
@@ -637,6 +662,17 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 	jdlg.on("beforeshow", function (ev, formMode, opt) {
 		opt.title = opt.objParam.type == "C"? "客户": "供应商";
 	});
+
+### 只读对话框
+
+(v5.1)
+@key .wui-readonly 只读对话框类名
+
+设置是否为只读对话框只要加上该类：
+
+	jdlg.toggleClass("wui-readonly", isReadonly);
+
+只读对话框不可输入(在style.css中设定pointer-events为none)，点击确定按钮后直接关闭。
 
 ## 模块化开发
 
@@ -1892,9 +1928,16 @@ self.assert(window.jQuery, "require jquery lib.");
 		callSvr(ac, fn, getFormData(jf));
 	});
 
-如果在jo对象上指定了属性enctype="multipart/form-data"，则调用getFormData会返回FormData对象而非js对象，
-再调用callSvr时，会以"multipart/form-data"格式提交数据。
+如果在jo对象中存在有name属性的file组件(input[type=file][name])，或指定了属性enctype="multipart/form-data"，则调用getFormData会返回FormData对象而非js对象，
+再调用callSvr时，会以"multipart/form-data"格式提交数据。一般用于上传文件。
 示例：
+
+	<div>
+		课程文档
+		<input name="pdf" type="file" accept="application/pdf">
+	</div>
+
+或传统地：
 
 	<form method="POST" enctype='multipart/form-data'>
 		课程文档
@@ -1908,7 +1951,8 @@ function getFormData(jo)
 {
 	var data = {};
 	var isFormData = false;
-	if (jo.attr("enctype") == "multipart/form-data") {
+	var enctype = jo.attr("enctype");
+	if ( (enctype && enctype.toLowerCase() == "multipart/form-data") || jo.has("[name]:file").size() >0) {
 		isFormData = true;
 		data = new FormData();
 	}
@@ -4382,7 +4426,7 @@ $.fn.okCancel = function (fnOk, fnCancel) {
 
 	beforeshow(formMode, opt)事件。显示对话框前触发。可以通过设置opt参数定制对话框，与调用showDlg时传入opt参数相同效果
 	show(formMode, opt.data)事件。显示对话框后触发。这时opt.data已经设置到对话框上带name属性的DOM组件中，一些不能直接显示的字段，可在此时设置到DOM组件上，比如图片等。
-	validate(formMode, opt.data)事件。用于提交前验证、补齐数据等。返回false可取消提交。
+	validate(formMode, opt.data, newData)事件。用于提交前验证、补齐数据等。返回false可取消提交。(v5.1)在newData中设置参数，会增加到POST请求中。
 	retdata(data, formMode)事件。服务端返回结果时触发。注意forFind模式不会触发。
 
 初始数据与对话框中带name属性的对象相关联，详见
@@ -4454,8 +4498,8 @@ function showDlg(jdlg, opt)
 	jdlg.addClass('wui-dialog');
 	callInitfn(jdlg);
 
-	// TODO: 事件换成jdlg触发，不用jfrm
-	var jfrm = jdlg.find("form:first");
+	// TODO: 事件换成jdlg触发，不用jfrm。目前旧应用仍使用jfrm监听事件，暂应保持兼容。
+	var jfrm = jdlg.is("form")? jdlg: jdlg.find("form:first");
 	var formMode = jdlg.jdata().mode;
 	jfrm.trigger("beforeshow", [formMode, opt]);
 
@@ -4628,7 +4672,7 @@ function reloadPage()
 删除当前激活的对话框。一般用于开发过程，在修改外部对话框后，调用该函数清除以便此后再载入页面，可以看到更新的内容。
 
 	WUI.reloadDialog();
-	WUI.reloadDialog(true); // 重置所有外部加载的对话框
+	WUI.reloadDialog(true); // 重置所有外部加载的对话框(v5.1)
 
 注意：
 
@@ -4726,9 +4770,9 @@ function loadDialog(jdlg, onLoad)
 	{
 		var jcontainer = $("#my-pages");
 		// 注意：如果html片段中有script, 在append时会同步获取和执行(jquery功能)
-		var jo = $(html).filter("div");
+		var jo = $(html).filter("div,form");
 		if (jo.size() > 1 || jo.size() == 0) {
-			console.log("!!! Warning: bad format for dialog '" + selector + "'. Element count = " + jo.size());
+			console.log("!!! Warning: bad format for dialog '" + dlgId + "'. Element count = " + jo.size());
 			jo = jo.filter(":first");
 		}
 
@@ -4769,6 +4813,7 @@ function loadDialog(jdlg, onLoad)
 @param opt.jdbl Datagrid. dialog/form关联的datagrid -- 如果dlg对应多个tbl, 必须每次打开都设置
 @param opt.obj String. (v5.1) 对象对话框的对象名，如果未指定，则从my-obj属性获取。通过该参数可动态指定对象名。
 @param opt.offline Boolean. (v5.1) 不与后台交互。
+@param opt.title String. (v5.1) 指定对话框标题。
 
 (v5.1)
 此外，通过设置jdlg.objParam，具有和设置opt参数一样的功能，常在initPageXXX中使用，因为在page中不直接调用showObjDlg.
@@ -4925,6 +4970,7 @@ function showObjDlg(jdlg, mode, opt)
 	// open the dialog
 	showDlg(jdlg, {
 		url: url,
+		title: opt.title,
 		okLabel: BTN_TEXT[mode],
 		validate: mode!=FormMode.forFind,
 		modal: false,  // mode == FormMode.forAdd || mode == FormMode.forSet

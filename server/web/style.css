@@ -7,7 +7,7 @@ td {
 	vertical-align: top;
 }
 
-form table {
+form>table {
 	width: 100%;
 }
 

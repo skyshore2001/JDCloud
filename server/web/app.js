@@ -513,6 +513,10 @@ function enhanceMenu()
 }
 $(enhanceMenu);
 
+function toggleCol(jtbl, col, show)
+{
+	jtbl.datagrid(show?"showColumn":"hideColumn", col);
+}
 //}}}
 
 // ==== functions {{{
