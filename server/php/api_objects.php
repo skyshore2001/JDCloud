@@ -133,9 +133,11 @@ class AC1_Ordr extends AC0_Ordr
 
 		if ($logAction) {
 			$this->onAfterActions[] = function () use ($logAction) {
-				$orderId = $this->id;
-				$sql = sprintf("INSERT INTO OrderLog (orderId, action, tm) VALUES ({$orderId},%s,'%s')", Q($logAction), date(FMT_DT));
-				execOne($sql);
+				dbInsert("OrderLog", [
+					"orderId" => $this->id,
+					"action" => $logAction,
+					"tm" => date(FMT_DT)
+				]);
 			};
 		}
 	}
@@ -157,10 +159,12 @@ class AC2_Ordr extends AC0_Ordr
 						throw new MyException(E_FORBIDDEN, "forbidden to change status to $status");
 					}
 					$this->onAfterActions[] = function () use ($status) {
-						$orderId = $this->id;
-						$empId = $_SESSION["empId"];
-						$sql = sprintf("INSERT INTO OrderLog (orderId, action, tm, empId) VALUES ($orderId,'$status','%s', $empId)", date(FMT_DT));
-						execOne($sql);
+						dbInsert("OrderLog", [
+							"orderId" => $this->id,
+							"action" => $status,
+							"tm" => date(FMT_DT),
+							"empId" => $_SESSION["empId"]
+						]);
 					};
 				}
 				else {
