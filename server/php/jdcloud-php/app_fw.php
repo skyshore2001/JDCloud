@@ -954,6 +954,140 @@ function queryAll($sql, $assoc = false)
 	return $rows;
 }
 
+/**
+@fn dbInsert(table, kv) -> newId
+
+e.g. 
+
+	$orderId = dbInsert("Ordr", [
+		"tm" => date(FMT_DT),
+		"tm1" => "=now()", // "="开头，表示是SQL表达式
+		"amount" => 100,
+		"dscr" => null // null字段会被忽略
+	]);
+
+*/
+function dbInsert($table, $kv)
+{
+	$keys = '';
+	$values = '';
+	foreach ($kv as $k=>$v) {
+		if (is_null($v))
+			continue;
+		// ignore non-field param
+		if (substr($k,0,2) === "p_")
+			continue;
+		if ($v === "")
+			continue;
+		# TODO: check meta
+		if (! preg_match('/^\w+$/', $k))
+			throw new MyException(E_PARAM, "bad key $k");
+
+		if ($keys !== '') {
+			$keys .= ", ";
+			$values .= ", ";
+		}
+		$keys .= $k;
+		if (is_int($v) || is_float($v))
+			$values .= $v;
+		else if (is_string($v) && $v[0] === '=') {
+			$values .= substr($v, 1);
+		}
+		else {
+			$values .= Q(htmlEscape($v));
+		}
+	}
+	if (strlen($keys) == 0) 
+		throw new MyException(E_PARAM, "no field found to be added");
+	$sql = sprintf("INSERT INTO %s (%s) VALUES (%s)", $table, $keys, $values);
+#			var_dump($sql);
+	return execOne($sql, true);
+}
+
+// 由虚拟字段 flag_x=0/1 来设置flags字段；或prop_x=0/1来设置props字段。
+function flag_getExpForSet($k, $v)
+{
+	$v1 = substr($k, 5); // flag_xxx -> xxx
+	$k1 = substr($k, 0, 4) . "s"; // flag_xxx -> flags
+	if ($v == 1) {
+		if (strlen($v1) > 1) {
+			$v1 = " " . $v1;
+		}
+		$v = "concat(ifnull($k1, ''), " . Q($v1) . ")";
+	}
+	else if ($v == 0) {
+		$v = "trim(replace($k1, " . Q($v1) . ", ''))";
+	}
+	else {
+		throw new MyException(E_PARAM, "bad value for flag/prop `$k`=`$v`");
+	}
+	return "$k1=" . $v;
+}
+
+/**
+@fn dbUpdate(table, kv, id/cond) -> cnt
+
+e.g.
+
+	// UPDATE Ordr SET ... WHERE id=100
+	$cnt = dbUpdate("Ordr", [
+		"amount" => 30,
+		"dscr" => "test dscr",
+		"tm" => "null", // 用""或"null"对字段置空；用"empty"对字段置空串。
+		"tm1" => null // null会被忽略
+	], 100);
+
+	// UPDATE Ordr SET tm=now() WHERE tm IS NULL
+	$cnt = dbUpdate("Ordr", [
+		"tm" => "=now()"  // "="开头，表示是SQL表达式
+	], "tm IS NULL);
+
+*/
+function dbUpdate($table, $kv, $cond)
+{
+	if (is_numeric($cond)) {
+		$cond = "id=$cond";
+	}
+	$kvstr = "";
+	foreach ($kv as $k=>$v) {
+		if ($k === 'id' || is_null($v))
+			continue;
+		// ignore non-field param
+		if (substr($k,0,2) === "p_")
+			continue;
+		# TODO: check meta
+		if (! preg_match('/^\w+$/', $k))
+			throw new MyException(E_PARAM, "bad key $k");
+
+		if ($kvstr !== '')
+			$kvstr .= ", ";
+
+		// 空串或null置空；empty设置空字符串
+		if ($v === "" || $v === "null")
+			$kvstr .= "$k=null";
+		else if (is_int($v) || is_float($v))
+			$kvstr .= "$k=$v";
+		else if (is_string($v) && $v[0] === '=')
+			$kvstr .= $k . $v;
+		else if ($v === "empty")
+			$kvstr .= "$k=''";
+		else if (startsWith($k, "flag_") || startsWith($k, "prop_"))
+		{
+			$kvstr .= flag_getExpForSet($k, $v);
+		}
+		else
+			$kvstr .= "$k=" . Q(htmlEscape($v));
+	}
+	$cnt = 0;
+	if (strlen($kvstr) == 0) {
+		addLog("no field found to be set");
+	}
+	else {
+		$sql = sprintf("UPDATE %s SET %s WHERE $cond", $table, $kvstr);
+		$cnt = execOne($sql);
+	}
+	return $cnt;
+}
 //}}}
 
 function isHttps()
