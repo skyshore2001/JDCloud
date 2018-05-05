@@ -12,6 +12,15 @@
 
 筋斗云对测试和持续更新（CI）非常重视，也提供了诸多支持，包括手工测试工具，测试流程管理，基于phpunit的服务端业务接口自动化测试框架，以及基于NUnit+.Net开发的业务流程自动化测试框架等。
 
+## 框架功能回归测试
+
+使用项目 [jdcloud-rtest](https://github.com/skyshore2001/jdcloud-rtest) 对框架进行功能测试。
+回归测试时，应在plugin/index.php中设置只加载rtest插件：
+
+	Plugins::add("rtest");
+
+然后在chrome中运行jdcloud-rtest项目下的rtest.html。
+
 # 版本日志
 
 ## v5.0 - 2018/1
