@@ -1002,7 +1002,7 @@ function dbInsert($table, $kv)
 			$values .= ", ";
 		}
 		$keys .= $k;
-		if (is_int($v) || is_float($v))
+		if (is_numeric($v))
 			$values .= $v;
 		else if (is_string($v) && $v[0] === '=') {
 			$values .= substr($v, 1);
@@ -1081,7 +1081,7 @@ function dbUpdate($table, $kv, $cond=null)
 		// 空串或null置空；empty设置空字符串
 		if ($v === "" || $v === "null")
 			$kvstr .= "$k=null";
-		else if (is_int($v) || is_float($v))
+		else if (is_numeric($v))
 			$kvstr .= "$k=$v";
 		else if (is_string($v) && $v[0] === '=')
 			$kvstr .= $k . $v;
