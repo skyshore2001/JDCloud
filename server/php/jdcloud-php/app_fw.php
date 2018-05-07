@@ -45,9 +45,12 @@ P_DBCRED格式为`{用户名}:{密码}`，或其base64编码后的值，如
 	或
 	P_DBCRED=Z2FubGFuOjEyMzQ=
 
-此外，P_DB还支持SQLite数据库，直接指定以".db"为扩展名的文件即可。例如：
+此外，P_DB还试验性地支持SQLite数据库，直接指定以".db"为扩展名的文件，以及P_DBTYPE即可，不需要P_DBCRED。例如：
 
+	P_DBTYPE=sqlite
 	P_DB=../myorder.db
+
+连接SQLite数据库未做严格测试，不建议使用。
 
 ## 测试模式与调试等级
 
