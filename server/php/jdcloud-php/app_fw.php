@@ -978,6 +978,9 @@ e.g.
 		"dscr" => null // null字段会被忽略
 	]);
 
+如需高性能大批量插入数据，可以用BatchInsert
+
+@see BatchInsert
 */
 function dbInsert($table, $kv)
 {
@@ -1014,6 +1017,62 @@ function dbInsert($table, $kv)
 	$sql = sprintf("INSERT INTO %s (%s) VALUES (%s)", $table, $keys, $values);
 #			var_dump($sql);
 	return execOne($sql, true);
+}
+
+/**
+@class BatchInsert
+
+大批量为某表添加记录，一次性提交。
+
+示例：
+
+	$bi = new BatchInsert("Syslog", "module,tm,content");
+	for ($i=0; $i<10000; ++$i)
+		$bi->add([$m, $tm, $content]);
+	$n = $bi->exec();
+
+如果担心一次请求数量过多，也可以指定批大小，如1000行提交一次：
+
+	$bi = new BatchInsert("Syslog", "module,tm,content", 1000);
+
+*/
+class BatchInsert
+{
+	private $sql0;
+	private $batchSize;
+
+	private $sql;
+	private $n = 0;
+	private $retn = 0;
+	function __construct($table, $headers, $batchSize=0) {
+		$this->sql0 = "INSERT INTO $table ($headers) VALUES ";
+		$this->batchSize = $batchSize;
+	}
+	function add($row) {
+		$values = '';
+		foreach ($row as $v) {
+			$v =  Q($v);
+			if ($values !== '')
+				$values .= ",";
+			$values .= $v;
+		}
+		if ($this->sql === null)
+			$this->sql = $this->sql0 . "($values)";
+		else
+			$this->sql .= ",($values)";
+
+		++$this->n;
+		if ($this->batchSize > 0 && $this->n >= $this->batchSize)
+			$this->exec();
+	}
+	function exec() {
+		if ($this->n > 0) {
+			$this->retn += execOne($this->sql);
+			$this->sql = null;
+			$this->n = 0;
+		}
+		return $this->retn;
+	}
 }
 
 // 由虚拟字段 flag_x=0/1 来设置flags字段；或prop_x=0/1来设置props字段。
