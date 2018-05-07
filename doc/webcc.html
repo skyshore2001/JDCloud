@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>webcc - 站点发布优化工具</h1>
-<div>最后更新：2017-08-17</div>
+<div>最后更新：2018-05-05</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -110,6 +110,24 @@ webcc -cmd {cmd} [-o {outFile}] [-minify yes]</code></pre>
 WEBCC_CMD mergeCss -o lib-app.min.css -minify yes lib/mui.css app.css
 WEBCC_CMD mergeJs -o lib-app.min.js -minify yes lib/common.js lib/app_fw.js app.js
 WEBCC_END --&gt;</code></pre>
+<p>WEBCC_USE_THIS标识可区分开发时用的内容和发布时用的内容，例如开发时和发布后使用两套JS，可以这样设置：</p>
+<pre><code>&lt;!-- WEBCC_BEGIN --&gt;
+    &lt;script src="lib/react/react.development.js"&gt;&lt;/script&gt;
+    &lt;script src="lib/react/react-dom.development.js"&gt;&lt;/script&gt;
+&lt;!-- WEBCC_USE_THIS
+    &lt;script src="lib/react/react.production.min.js"&gt;&lt;/script&gt;
+    &lt;script src="lib/react/react-dom.production.min.js"&gt;&lt;/script&gt;
+WEBCC_END --&gt;</code></pre>
+<p>这就支持开发时使用development版本的库，而发布时使用production版本的库。<br />
+用多个库时常常通过设置MERGE来合并，比如</p>
+<pre><code>&lt;!-- WEBCC_BEGIN MERGE=react --&gt;
+    &lt;script src="lib/react/react.development.js"&gt;&lt;/script&gt;
+    &lt;script src="lib/react/react-dom.development.js"&gt;&lt;/script&gt;
+&lt;!-- WEBCC_USE_THIS
+    &lt;script src="lib/react/react.production.min.js"&gt;&lt;/script&gt;
+    &lt;script src="lib/react/react-dom.production.min.js"&gt;&lt;/script&gt;
+WEBCC_END --&gt;</code></pre>
+<p>发布时可将两个production的库合并成一个react.min.js文件。</p>
 <p>如果要内嵌JS/CSS，在MERGE后不指定名称即可：</p>
 <pre><code>&lt;!-- WEBCC_BEGIN MERGE --&gt;
 &lt;link rel="stylesheet" href="index.css" /&gt;

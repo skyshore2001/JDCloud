@@ -16,7 +16,7 @@ before, after回调中可以使用this变量 = {ac, param, postParam}
 		before: function () {
 			if (this.ac == "add") {
 				if (this.postParam.createTm == null)
-					this.postParam.createTm = new Date();
+					this.postParam.createTm = new Date().format("L");
 			}
 		}
 	});
@@ -154,13 +154,16 @@ function MockTable_query(param)
 	if (cond) {
 		// id>=10 and name like '%xx%' and addr='shanghai'
 		// => id>=10 && /.*xx.*/.test(name) && addr=='shanghai'
-		cond = cond.replace(/((\S\s*)=(\s*\S))|(\w+)\s+like\s+'([^']+)'|(and)|(or)/ig, function (m,m1, m11,m12, m21, m22,m3,m4) {
+		cond = cond.replace(/((\w\s*)(=|<>)(\s*\S))|(\w+)\s+like\s+'([^']+)'|(and)|(or)/ig, function (m,m1, m11,m12,m13, m21, m22,m3,m4) {
 			if (m3)
 				return "&&";
 			if (m4)
 				return "||";
 			if (m1) {
-				return m11 + "==" + m12;
+				if (m12 == "=")
+					return m11 + "==" + m13;
+				else
+					return m11 + "!=" + m13;
 			}
 			if (m21) {
 				return "/^" + m22.replace(/%/g, '.*') + "$/.test(" + m21 + ")";

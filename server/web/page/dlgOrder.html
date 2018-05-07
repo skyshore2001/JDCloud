@@ -24,14 +24,14 @@
 				<td>用户编号</td>
 				<td>
 					<input name="userId" disabled>
-					<input class="notForFind" type=button onClick="searchField(this, {userId: this.form.userId.value});" value="查询该用户所有订单">
+					<input class="forSet" type=button onClick="searchField(this, {userId: this.form.userId.value});" value="查询该用户所有订单">
 				</td>
 			</tr>
 			<tr>
 				<td>用户联系方式</td>
 				<td>
 					<input name="userPhone" class="easyui-validatebox" data-options="validType:'usercode'">
-					<input class="notForFind" type=button onClick="searchField(this, {userPhone: this.form.userPhone.value});" value="查询该手机所有订单">
+					<input class="forSet" type=button onClick="searchField(this, {userPhone: this.form.userPhone.value});" value="查询该手机所有订单">
 				</td>
 			</tr>
 			<tr>
@@ -42,7 +42,7 @@
 		</table>  
 	</form>
 
-	<div id="divOrder1" class="notForFind">
+	<div id="divOrderLog" class="forSet">
 		<p><b>订单日志</b></p>
 		<table id="tblOrderLog" style="width:auto;height:auto">
 			<thead><tr>

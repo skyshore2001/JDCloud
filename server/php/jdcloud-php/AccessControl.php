@@ -298,7 +298,35 @@ query接口的"..."之后就是虚拟字段。后缀"?"表示是非缺省字段�
 - 自定义字段只限于对query/get的最终结果集进行操作
 - 自定义字段不能用于设置cond条件.
 
+### flags和props字段
+
+（试验功能）
+框架支持两个特别的数据库字段flags和props，并可将它们拆解为flag_xxx或prop_xxx格式。
+例如，在订单表上定义：
+
+	@Ordr: id, flags
+
+	- flags: EnumList(g-go-员工已出发, v-visited-已回访, r-reviewed-已人工校验过, i-imported-是自动导入的订单)。例如, 值"gv"表示有"g"标志和"v"标志。
  
+要查询已回访或未回访的订单，可以用：
+
+	Ordr.query(cond="flag_v=1/0", res="id,flags") -> tbl(id, flags, ..., flag_g?, flag_v?, ...)
+
+注意：返回字段将自动根据flags的值增加诸如flag_g这样的字段，值为0或1；但res参数中不可指定flag_v这样的虚拟字段。
+
+要设置或清除已回访标志"g"，可以用：
+
+	Ordr.set(id=1)(flag_g=1/0)
+
+注意：不可一次设置多个flag。如果需要这样，则应直接设置flags字段。
+
+props字段与之类似，flags字段中一个标志是一个字母，而props字段的标志以一个词，因而多个标志以空格隔开。
+假设Ordr表中定义了props字段，且某条记录的值为"go visited"，则该记录返回字段会有 `{ prop_go:1, prop_visited:1 }`
+
+也可以进行设置和清除，并可与flags一起用，如：
+
+	Ordr.set(id=1)(prop_go=1/0, flag_v=1/0)
+
 ## 子表
 
 @var AccessControl::$subobj (for get/query) 定义子表
@@ -341,8 +369,11 @@ subobj: { name => {sql, default, wantOne} }
 
 			$this->onAfterActions[] = function () use ($logAction) {
 				$orderId = $this->id;
-				$sql = sprintf("INSERT INTO OrderLog (orderId, action, tm) VALUES ({$orderId},'CR','%s')", date('c'));
-				execOne($sql);
+				dbInsert("OrderLog", [
+					"orderId" => $orderId,
+					"action" => "CR",
+					"tm" => date(FMT_DT)  // 或用mysql表达式"=now()"
+				]);
 			};
 		}
 	}
@@ -487,6 +518,8 @@ TODO: 可加一个系统参数`_enc`表示输出编码的格式。
 	或指定alias:
 	Ordr.query(res="id 编号, status 状态=CR:Created;CA:Cancelled")
 
+(版本5.1)
+设置enumFields也支持逗号分隔的枚举列表，比如字段值为"CR,CA"，实际可返回"Created,Cancelled"。
 */
 
 # ====== functions {{{
@@ -696,7 +729,7 @@ class AccessControl
 
 	final function before($ac)
 	{
-		if ($this->allowedAc && in_array($ac, self::$stdAc) && !in_array($ac, $this->allowedAc)) {
+		if (isset($this->allowedAc) && in_array($ac, self::$stdAc) && !in_array($ac, $this->allowedAc)) {
 			throw new MyException(E_FORBIDDEN, "Operation `$ac` is not allowed on object `$this->table`");
 		}
 		$this->ac = $ac;
@@ -737,6 +770,7 @@ class AccessControl
 		$this->flag_handleResult($rowData);
 		$this->onHandleRow($rowData);
 
+		$SEP = ',';
 		foreach ($this->enumFields as $field=>$map) {
 			if (array_key_exists($field, $rowData)) {
 				$v = $rowData[$field];
@@ -745,6 +779,13 @@ class AccessControl
 				}
 				else if (array_key_exists($v, $map)) {
 					$v = $map[$v];
+				}
+				else if (strpos($v, $SEP) !== false) {
+					$v1 = [];
+					foreach(explode($SEP, $v) as $e) {
+						$v1[] = $map[$e] ?: $e;
+					}
+					$v = join($SEP, $v1);
 				}
 				$rowData[$field] = $v;
 			}
@@ -800,7 +841,10 @@ class AccessControl
 			return;
 
 		$alias = $a[0] ?: null;
-		$this->enumFields[$alias ?: $col] = parseKvList($a[1], ";", ":");
+		$k = $alias ?: $col;
+		if ($k[0] == '"')
+			$k = substr($k, 1, strlen($k)-2);
+		$this->enumFields[$k] = parseKvList($a[1], ";", ":");
 	}
 
 	// return: new field list
@@ -815,11 +859,12 @@ class AccessControl
 				$this->addRes("t0.*", false);
 				continue;
 			}
-			// 适用于res/gres, 支持格式："col" / "col col1" / "col as col1"
-			if (! preg_match('/^\s*(\w+)(?:\s+(?:AS\s+)?(\S+))?\s*$/i', $col, $ms))
+			// 适用于res/gres, 支持格式："col" / "col col1" / "col as col1", alias可以为中文，如"col 某列"
+			// 如果alias中有特殊字符（逗号不支持），则应加引号，如"amount \"金额(元)\"", "v \"速率 m/s\""等。
+			if (! preg_match('/^\s*(\w+)(?:\s+(?:AS\s+)?([^,]+))?\s*$/i', $col, $ms))
 			{
 				// 对于res, 还支持部分函数: "fn(col) as col1", 目前支持函数: count/sum，如"count(distinct ac) cnt", "sum(qty*price) docTotal"
-				if (!$gres && preg_match('/(\w+)\([a-z0-9_.\'* ,+\/]+\)\s+(?:AS\s+)?(\S+)/i', $col, $ms)) {
+				if (!$gres && preg_match('/(\w+)\([a-z0-9_.\'* ,+\/]+\)\s+(?:AS\s+)?([^,]+)/i', $col, $ms)) {
 					list($fn, $alias) = [strtoupper($ms[1]), $ms[2]];
 					if ($fn != "COUNT" && $fn != "SUM")
 						throw new MyException(E_FORBIDDEN, "function not allowed: `$fn`");
@@ -852,7 +897,7 @@ class AccessControl
 					$col = "t0." . $col;
 					$col1 = $col;
 					if (isset($alias)) {
-						$col1 .= " AS {$alias}";
+						$col1 .= " {$alias}";
 					}
 					$this->addRes($col1);
 				}
@@ -1095,38 +1140,15 @@ class AccessControl
 	{
 		$this->validate();
 
-		$keys = '';
-		$values = '';
-#			var_dump($_POST);
 		$id = $this->onGenId();
 		if ($id != 0) {
-			$keys = "id";
-			$values = (string)$id;
+			$_POST["id"] = $id;
 		}
-		foreach ($_POST as $k=>$v) {
-			if ($k === "id")
-				continue;
-			// ignore non-field param
-			if (substr($k,0,2) === "p_")
-				continue;
-			if ($v === "")
-				continue;
-			# TODO: check meta
-			if (! preg_match('/^\w+$/', $k))
-				throw new MyException(E_PARAM, "bad key $k");
+		else if (array_key_exists("id", $_POST)) {
+			unset($_POST["id"]);
+		}
 
-			if ($keys !== '') {
-				$keys .= ", ";
-				$values .= ", ";
-			}
-			$keys .= $k;
-			$values .= Q(htmlEscape($v));
-		}
-		if (strlen($keys) == 0) 
-			throw new MyException(E_PARAM, "no field found to be added");
-		$sql = sprintf("INSERT INTO %s (%s) VALUES (%s)", $this->table, $keys, $values);
-#			var_dump($sql);
-		$this->id = execOne($sql, true);
+		$this->id = dbInsert($this->table, $_POST);
 
 		$res = param("res");
 		if (isset($res)) {
@@ -1145,39 +1167,7 @@ class AccessControl
 		$this->id = mparam("id");
 		$this->validate();
 
-		$kv = "";
-		foreach ($_POST as $k=>$v) {
-			if ($k === 'id')
-				continue;
-			// ignore non-field param
-			if (substr($k,0,2) === "p_")
-				continue;
-			# TODO: check meta
-			if (! preg_match('/^\w+$/', $k))
-				throw new MyException(E_PARAM, "bad key $k");
-
-			if ($kv !== '')
-				$kv .= ", ";
-
-			// 空串或null置空；empty设置空字符串
-			if ($v === "" || $v === "null")
-				$kv .= "$k=null";
-			else if ($v === "empty")
-				$kv .= "$k=''";
-			else if (startsWith($k, "flag_") || startsWith($k, "prop_"))
-			{
-				$kv .= $this->flag_getExpForSet($k, $v);
-			}
-			else
-				$kv .= "$k=" . Q(htmlEscape($v));
-		}
-		if (strlen($kv) == 0) {
-			addLog("no field found to be set");
-		}
-		else {
-			$sql = sprintf("UPDATE %s SET %s WHERE id=%d", $this->table, $kv, $this->id);
-			$cnt = execOne($sql);
-		}
+		$cnt = dbUpdate($this->table, $_POST, $this->id);
 	}
 
 	protected function genQuerySql(&$tblSql=null, &$condSql=null)
@@ -1237,10 +1227,17 @@ class AccessControl
 		$this->initQuery();
 
 		$this->addCond("t0.id={$this->id}", true);
-		$sql = $this->genQuerySql();
-		$ret = queryOne($sql, true);
-		if ($ret === false) 
-			throw new MyException(E_PARAM, "not found `{$this->table}.id`=`{$this->id}`");
+		$hasFields = (count($this->sqlConf["res"]) > 0);
+		if ($hasFields) {
+			$sql = $this->genQuerySql();
+			$ret = queryOne($sql, true);
+			if ($ret === false) 
+				throw new MyException(E_PARAM, "not found `{$this->table}.id`=`{$this->id}`");
+		}
+		else {
+			// 如果get用res字段指定只取子对象，则不必多次查询。e.g. callSvr('Ordr.get', {res: orderLog});
+			$ret = ["id" => $this->id];
+		}
 		$this->handleSubObj($this->id, $ret);
 		$this->handleRow($ret);
 		return $ret;
@@ -1459,25 +1456,7 @@ function KVtoCond($k, $v)
 }
  */
 
-	private function flag_getExpForSet($k, $v)
-	{
-		$v1 = substr($k, 5); // flag_xxx -> xxx
-		$k1 = substr($k, 0, 4) . "s"; // flag_xxx -> flags
-		if ($v == 1) {
-			if (strlen($v1) > 1) {
-				$v1 = " " . $v1;
-			}
-			$v = "concat(ifnull($k1, ''), " . Q($v1) . ")";
-		}
-		else if ($v == 0) {
-			$v = "trim(replace($k1, " . Q($v1) . ", ''))";
-		}
-		else {
-			throw new MyException(E_PARAM, "bad value for flag/prop `$k`=`$v`");
-		}
-		return "$k1=" . $v;
-	}
-
+	// 处理flags/props字段。设置字段参考flag_getExpForSet函数和dbUpdate
 	private function flag_handleResult(&$rowData)
 	{
 		@$flags = $rowData["flags"];

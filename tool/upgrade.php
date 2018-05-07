@@ -31,7 +31,13 @@
 
 	P_DBTYPE=mssql
 	P_DB=odbc:DRIVER=SQL Server Native Client 10.0; DATABASE=jdcloud; Trusted_Connection=Yes; SERVER=.\MSSQL2008;
-	# P_DBCRED=sa:demo123
+	P_DBCRED=sa:demo123
+
+也常用文件DSN（用通过odbcad32工具创建），如：
+
+	P_DBTYPE=mssql
+	P_DB=odbc:FILEDSN=d:\db\jdcloud-mssql.dsn;
+	P_DBCRED=sa:demo123
 
 一般创建或修改upgrade.sh指定这些变量后调用upgrade.php
 */

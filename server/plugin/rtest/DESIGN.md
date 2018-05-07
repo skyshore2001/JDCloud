@@ -4,6 +4,12 @@
 
 自动化测试可参考项目 [jdcloud-rtest](https://github.com/skyshore2001/jdcloud-rtest)
 
+对框架功能进行回归测试时，应在plugin/index.php中设置只加载本插件：
+
+	Plugins::add("rtest");
+
+在chrome中运行rtest.html即可。
+
 ## 测试工具函数
 
 测试接口：

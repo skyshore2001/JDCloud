@@ -2248,9 +2248,12 @@ function getop(v)
 		return "=" + v;
 	var op = "=";
 	var is_like=false;
-	if (v.match(/^(<>|>=?|<=?)/)) {
-		op = RegExp.$1;
+	var ms;
+	if (ms=v.match(/^(<>|>=?|<=?|!=?)/)) {
+		op = ms[1];
 		v = v.substr(op.length);
+		if (op == "!" || op == "!=")
+			op = "<>";
 	}
 	else if (v.indexOf("*") >= 0 || v.indexOf("%") >= 0) {
 		v = v.replace(/[*]/g, "%");
@@ -2278,6 +2281,7 @@ function getop(v)
 
 /**
 @fn getQueryCond(kvList)
+@var queryHint 查询用法提示
 
 @param kvList {key=>value}, 键值对，值中支持操作符及通配符。也支持格式 [ [key, value] ], 这时允许key有重复。
 
@@ -2301,7 +2305,7 @@ function getop(v)
 设置值时，支持以下格式：
 
 - {key: "value"} - 表示"key=value"
-- {key: ">value"} - 表示"key>value", 类似地，可以用 >=, <, <=, <> 这些操作符。
+- {key: ">value"} - 表示"key>value", 类似地，可以用 >=, <, <=, <>(或! / != 都是不等于) 这些操作符。
 - {key: "value*"} - 值中带通配符，表示"key like 'value%'" (以value开头), 类似地，可以用 "*value", "*value*", "*val*ue"等。
 - {key: "null" } - 表示 "key is null"。要表示"key is not null"，可以用 "<>null".
 - {key: "empty" } - 表示 "key=''".
@@ -2311,18 +2315,29 @@ function getop(v)
 - {key: ">value and <=value"}  - 表示"key>'value' and key<='value'"
 - {key: "null or 0 or 1"}  - 表示"key is null or key=0 or key=1"
 - {key: "null,0,1,9-100"} - 表示"key is null or key=0 or key=1 or (key>=9 and key<=100)"，即逗号表示or，a-b的形式只支持数值。
+- {key: "2017-9-1~2017-10-1"} 条件等价于 ">=2017-9-1 and <2017-10-1"
+  可指定时间，如条件"2017-9-1 10:00~2017-10-1"等价于">=2017-9-1 10:00 and <2017-10-1"
+- 符号","及"~"前后允许有空格，如"已付款, 已完成", "2017-1-1 ~ 2018-1-1"
+- 可以使用中文逗号
+- 日期区间也可以用"2017/10/01"或"2017.10.01"这些格式，仅用于字段是文本类型，这时输入格式必须与保存的日期格式一致，并且"2017/10/1"应输入"2017/10/01"才能正确比较字符串大小。
 
 以下表示的范围相同：
 
 	{k1:'1-5,7-10', k2:'1-10 and <>6'}
 
-符号优先级依次为：-(and) ,(or) and or
+符号优先级依次为："-"(类似and) ","(类似or) and or
 
 在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。
 
 @see getQueryParam
 @see getQueryParamFromTable 获取datagrid的当前查询参数
 */
+self.queryHint = "查询示例\n" +
+	"文本：\"王小明\", \"王*\"(匹配开头), \"*上海*\"(匹配部分)\n" +
+	"数字：\"5\", \">5\", \"5-10\", \"5-10,12,18\"\n" +
+	"日期：\">=2017-10-01\", \"<2017-10-01 18:00\",\"2017-10-01~2017-11-01\"(区间)\n" +
+	"高级：\"!5\"(排除5),\"1-10 and !5\", \"王*,张*\"(王某或张某), \"empty\"(为空), \"0,null\"(0或未设置)\n";
+
 self.getQueryCond = getQueryCond;
 function getQueryCond(kvList)
 {
@@ -2348,7 +2363,9 @@ function getQueryCond(kvList)
 				bracket = true;
 				return;
 			}
+			v1 = v1.replace(/，/g, ',');
 			// a-b,c-d,e
+			// dt1~dt2
 			var str1 = '';
 			var bracket2 = false;
 			$.each(v1.split(/\s*,\s*/), function (j, v2) {
@@ -2356,9 +2373,14 @@ function getQueryCond(kvList)
 					str1 += " OR ";
 					bracket2 = true;
 				}
-				var m = v2.match(/^(\d+)-(\d+)$/);
+				var m = v2.match(/^(?:(\d+)-(\d+)|(\d{4}[-\/.]\d+[-\/.]\d+.*?)\s*~\s*(\d{4}[-\/.]\d+[-\/.]\d+.*))$/);
 				if (m) {
-					str1 += "(" + k + ">=" + m[1] + " AND " + k + "<=" + m[2] + ")";
+					if (m[1]) {
+						str1 += "(" + k + ">=" + m[1] + " AND " + k + "<=" + m[2] + ")";
+					}
+					else {
+						str1 += "(" + k + ">='" + m[3] + "' AND " + k + "<'" + m[4] + "')";
+					}
 				}
 				else {
 					str1 += k + getop(v2);
@@ -2429,6 +2451,7 @@ self.lastError = null;
 var m_tmBusy;
 var m_manualBusy = 0;
 var m_appVer;
+var m_silentCall = 0;
 
 /**
 @var disableBatch ?= false
@@ -2549,21 +2572,23 @@ $.ajaxSetup(ajaxOpt);
 self.enterWaiting = enterWaiting;
 function enterWaiting(ctx)
 {
+	if (ctx && ctx.noLoadingImg) {
+		++ m_silentCall;
+		return;
+	}
 	if (self.isBusy == 0) {
 		m_tmBusy = new Date();
 	}
 	self.isBusy = 1;
 	if (ctx == null || ctx.isMock)
 		++ m_manualBusy;
+
 	// 延迟执行以防止在page show时被自动隐藏
 	//mCommon.delayDo(function () {
-	if (!(ctx && ctx.noLoadingImg))
-	{
-		setTimeout(function () {
-			if (self.isBusy)
-				self.showLoading();
-		}, 200);
-	}
+	setTimeout(function () {
+		if (self.isBusy)
+			self.showLoading();
+	}, 200);
 // 		if ($.mobile && !(ctx && ctx.noLoadingImg))
 // 			$.mobile.loading("show");
 	//},1);
@@ -2587,8 +2612,11 @@ function leaveWaiting(ctx)
 			ctx.tv2 = tv2;
 			console.log(ctx);
 		}
-		if ($.active <= 0 && self.isBusy && m_manualBusy == 0) {
+		if (ctx && ctx.noLoadingImg)
+			-- m_silentCall;
+		if ($.active < 0)
 			$.active = 0;
+		if ($.active-m_silentCall <= 0 && self.isBusy && m_manualBusy == 0) {
 			self.isBusy = 0;
 			var tv = new Date() - m_tmBusy;
 			m_tmBusy = 0;
@@ -2896,8 +2924,7 @@ function makeUrl(action, params)
 
 - 指定{async:0}来做同步请求, 一般直接用callSvrSync调用来替代.
 - 指定{noex:1}用于忽略错误处理。
-- 指定{noLoadingImg:1}用于忽略loading图标. 要注意如果之前已经调用callSvr显示了图标且图标尚未消失，则该选项无效，图标会在所有调用完成之后才消失(leaveWaiting)。
- 要使隐藏图标不受本次调用影响，可在callSvr后手工调用`--$.active`。
+- 指定{noLoadingImg:1} 静默调用，忽略loading图标，不设置busy状态。
 
 想为ajax选项设置缺省值，可以用callSvrExt中的beforeSend回调函数，也可以用$.ajaxSetup，
 但要注意：ajax的dataFilter/beforeSend选项由于框架已用，最好不要覆盖。
@@ -4342,11 +4369,11 @@ function showPage(pageRef, opt)
 				return;
 			}
 
-			self.enhanceWithin(jpage);
 			var ret = callInitfn(jpage);
 			if (ret instanceof jQuery)
 				jpage = ret;
 			jpage.trigger("pagecreate");
+			self.enhanceWithin(jpage);
 			changePage(jpage);
 			self.leaveWaiting();
 		}
@@ -4647,7 +4674,7 @@ function enhanceFooter(jfooter)
 	var jnavs = jfooter.find(">a");
 	var id2nav = {};
 	jnavs.each(function(i, e) {
-		var m = e.href.match(/#(\w+)/);
+		var m = e.href.match(/#([\w-]+)/);
 		if (m) {
 			id2nav[m[1]] = e;
 		}

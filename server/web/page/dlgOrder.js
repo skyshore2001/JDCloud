@@ -1,23 +1,23 @@
 function initDlgOrder()
 {
 	var jdlg = $(this);
-	jdlg.on("beforeshow", function(ev, mode, opt) {
-		jdlg.find(".forFind").toggle(mode == FormMode.forFind);
-		jdlg.find(".notForFind").toggle(mode != FormMode.forFind);
+	jdlg.on("beforeshow", onBeforeShow)
+	
+	function onBeforeShow(ev, formMode, opt)
+	{
+		var forFind = formMode == FormMode.forFind;
+		var forSet = formMode == FormMode.forSet;
+		jdlg.find(".forFind").toggle(forFind);
+		jdlg.find(".forSet").toggle(forSet);
 
-		var divOrder1 = jdlg.find("#divOrder1");
-		var orderLog = opt.data && opt.data.orderLog;
-		if (orderLog) {
-			divOrder1.show();
-			setTimeout(function () {
-				// 可写在show事件中，或用setTimeout推迟执行。
+		setTimeout(onShow);
+		function onShow() {
+			// 对字段或表格的设置应放在onShow里
+			if (forSet) {
 				jdlg.find("#tblOrderLog").datagrid({
-					data: orderLog
+					data: opt.data.orderLog || []
 				});
-			});
+			}
 		}
-		else {
-			divOrder1.hide();
-		}
-	});
+	}
 }

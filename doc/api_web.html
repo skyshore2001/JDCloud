@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2018-02-01</div>
+<div>最后更新：2018-05-05</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -51,13 +51,14 @@ code {
 <div class="toc">
 <p><a href="##my-pages">#my-pages (key)</a></p>
 <p><a href="#.easyui-validatebox">.easyui-validatebox (key)</a></p>
-<p><a href="#.mui-find-field">.mui-find-field (key)</a></p>
 <p><a href="#.my-combobox">.my-combobox (key)</a></p>
 <p><a href="#.my-reset">.my-reset (key)</a></p>
 <p><a href="#.notForFind">.notForFind (key)</a></p>
 <p><a href="#.wui-dialog">.wui-dialog (key)</a></p>
+<p><a href="#.wui-find-field">.wui-find-field (key)</a></p>
 <p><a href="#.wui-notCond">.wui-notCond (key)</a></p>
 <p><a href="#.wui-page">.wui-page (key)</a></p>
+<p><a href="#.wui-readonly">.wui-readonly (key)</a></p>
 <p><a href="#BASE_URL">BASE_URL (var)</a></p>
 <p><a href="#Date.add">Date.add (fn)</a></p>
 <p><a href="#Date.addDay">Date.addDay (fn)</a></p>
@@ -159,6 +160,7 @@ code {
 <p><a href="#my-initfn">my-initfn (key)</a></p>
 <p><a href="#my-obj">my-obj (key)</a></p>
 <p><a href="#numberSort">numberSort (fn)</a></p>
+<p><a href="#objarr2list">objarr2list (fn)</a></p>
 <p><a href="#options">options (var)</a></p>
 <p><a href="#options.pageFolder">options.pageFolder (key)</a></p>
 <p><a href="#pagecreate,pageshow,pagedestroy">pagecreate,pageshow,pagedestroy (key)</a></p>
@@ -216,6 +218,7 @@ code {
 <p style="margin-left:4em"><a href="#WUI-1.5.1 列表页中的列，以特定格式展现">1.5.1 列表页中的列，以特定格式展现</a></p>
 <p style="margin-left:4em"><a href="#WUI-1.5.2 排序与分页">1.5.2 排序与分页</a></p>
 <p style="margin-left:4em"><a href="#WUI-1.5.3 列表导出Excel文件">1.5.3 列表导出Excel文件</a></p>
+<p style="margin-left:4em"><a href="#WUI-1.5.4 datagrid增强项">1.5.4 datagrid增强项</a></p>
 <p style="margin-left:2em"><a href="#WUI-1.6 详情页对话框的常见需求">1.6 详情页对话框的常见需求</a></p>
 <p style="margin-left:4em"><a href="#WUI-1.6.1 通用查询">1.6.1 通用查询</a></p>
 <p style="margin-left:4em"><a href="#WUI-1.6.2 设计模式：关联选择框">1.6.2 设计模式：关联选择框</a></p>
@@ -225,6 +228,9 @@ code {
 <p style="margin-left:0em"><a href="#WUI-2 对话框功能">2 对话框功能</a></p>
 <p style="margin-left:2em"><a href="#WUI-2.1 定义对话框">2.1 定义对话框</a></p>
 <p style="margin-left:2em"><a href="#WUI-2.2 显示对话框">2.2 显示对话框</a></p>
+<p style="margin-left:2em"><a href="#WUI-2.3 页面传参数给对话框">2.3 页面传参数给对话框</a></p>
+<p style="margin-left:2em"><a href="#WUI-2.4 示例：页面与对话框复用 (v5.1)">2.4 示例：页面与对话框复用 (v5.1)</a></p>
+<p style="margin-left:2em"><a href="#WUI-2.5 只读对话框">2.5 只读对话框</a></p>
 <p style="margin-left:0em"><a href="#WUI-3 模块化开发">3 模块化开发</a></p>
 <p style="margin-left:2em"><a href="#WUI-3.1 页面模板支持">3.1 页面模板支持</a></p>
 <p style="margin-left:0em"><a href="#WUI-4 参考文档说明">4 参考文档说明</a></p>
@@ -363,34 +369,51 @@ code {
 这类需求就需要编码控制。</p>
 <p>相关事件：</p>
 <p class="see"><strong>@see <a href="#beforeshow">beforeshow</a> <a href="#show">show</a></strong>  对话框中form显示前后</p>
-<p class="see"><strong>@see <a href="#initdata">initdata</a> <a href="#loaddata">loaddata</a></strong>  对话框中form加载数据前后</p>
-<p class="see"><strong>@see <a href="#savedata">savedata</a> <a href="#retdata">retdata</a></strong>  对话框中form保存数据前后</p>
 <p>对话框类名：</p>
 <p class="see"><strong>@see <a href="#.wui-dialog">.wui-dialog</a></strong> </p>
 <pre><code>function initDlgOrder()
 {
     var jdlg = $(this);
-    var jfrm = jdlg.find("form");
-    jfrm.on("beforeshow", function(ev, formMode) {
+    jdlg.on("beforeshow", onBeforeShow)
+        .on("show", onShow)
+        .on("validate", onValidate)
+        .on("retdata", onRetData);
+
+    function onBeforeShow(ev, formMode, opt) {
         jdlg.find(".forFind").toggle(formMode == FormMode.forFind);
         jdlg.find(".notForFind").toggle(formMode != FormMode.forFind);
-    })
-    .on("loaddata", function (ev, data, formMode) {
+    }
+    function onShow(ev, formMode, initData) {
         // data是列表页中一行对应的数据，框架自动根据此数据将对应属性填上值。
         // 如果界面上展示的字段无法与属性直接对应，可以在该事件回调中设置。
-        // hiddenToCheckbox(jfrm.find("#divPerms"));
-    })
-    .on("savedata", function (ev, formMode, initData) {
+        // hiddenToCheckbox(jdlg.find("#divPerms"));
+    }
+    function onValidate(ev, formMode, initData, newData) {
         // 在form提交时，所有带name属性且不带disabled属性的对象值会被发往服务端。
         // 此事件回调可以设置一些界面上无法与属性直接对应的内容。
-        // checkboxToHidden(jfrm.find("#divPerms"));
-    })
-    .on("retdata", function (ev, data, formMode) {
+        // 额外要提交的数据可放在隐藏的input组件中，或(v5.1)这里直接设置到newData对象中。
+        // checkboxToHidden(jdlg.find("#divPerms"));
+    }
+    function onRetData(ev, data, formMode) {
         var formMode = jdlg.jdata().mode;
         if (formMode == FormMode.forAdd) {
             alert('返回ID: ' + data);
         }
-    };
+    }
+}</code></pre>
+<p>在onBeforeShow中一般设置字段是否显示(show/hide/toggle)或只读(disabled)，以及在forAdd/forFind模式时为opt.data设置初始值(forSet模式下opt.data已填上业务数据)；<br />
+之后框架用opt.data数据填充相应字段，如需要补填或修改些字段（比如显示图片），可在onShow中处理，也可以直接在onBeforeShow中用setTimeout来指定，如：</p>
+<pre><code>function onBeforeShow(ev, formMode, opt) {
+    // ... 根据formMode等参数控制某些字段显示隐藏、启用禁用等...
+    var frm = jdlg.find("form")[0];
+    var isFind = formMode == FormMode.forFind;
+    frm.type.disabled = !isFind;
+    // 这里可以对opt.data赋值，但不要直接为组件设置值，因为接下来组件值会被opt.data中的值覆盖。
+
+    setTimeout(onShow);
+    function onShow() {
+        // 这里可根据opt.data直接为input等组件设置值。便于使用onBeforeShow中的变量
+    }
 }</code></pre>
 <p class="see"><strong>@see <a href="#checkboxToHidden">checkboxToHidden</a></strong>  (有示例)</p>
 <p class="see"><strong>@see <a href="#hiddenToCheckbox">hiddenToCheckbox</a></strong>  </p>
@@ -554,6 +577,28 @@ var OrderColumns = {
 <p class="see"><strong>@see <a href="#dg_toolbar">dg_toolbar</a></strong>  指定列表上的操作按钮</p>
 <p class="see"><strong>@see <a href="#getExportHandler">getExportHandler</a></strong>  自定义导出Excel功能</p>
 <p class="see"><strong>@see <a href="#getQueryParamFromTable">getQueryParamFromTable</a></strong>  根据当前datagrid状态取query接口参数</p>
+<h6 id="WUI-1.5.4 datagrid增强项">1.5.4 datagrid增强项</h6>
+<p>easyui-datagrid已适配筋斗云协议调用，底层将发起callSvr调用请求（参考dgLoader）。<br />
+此外，增加支持<code>url_</code>属性，以便初始化时不发起调用，直到调用&quot;load&quot;/&quot;reload&quot;方法时才发起调用：</p>
+<pre><code>jtbl.datagrid({
+    url_: WUI.makeUrl("Item.query", {res:"id,name"}), // 如果用url则会立即用callSvr发起请求。
+    ...
+});
+// ...
+jtbl.datagrid("load", {cond: "itemId=" + itemId});
+jtbl.datagrid("reload");</code></pre>
+<p>如果接口返回格式不符合，则可以使用loadData方法：</p>
+<pre><code>// 接口 Item.get() -&gt; {item1=[{srcItemId, qty}]}
+callSvr("Item.get", {res:"item1"}, function (data) {
+    jtbl.datagrid("loadData", data.item1); // 是一个对象数组
+});</code></pre>
+<p>datagrid默认加载数据要求格式为<code>{total, rows}</code>，框架已对返回数据格式进行了默认处理，兼容筋斗云协议格式（参考dgLoadFilter）。</p>
+<pre><code>var rows = [ {id:1, name:"name1"}, {id:2, name:"name2"} ];
+jtbl.datagrid("loadData", {tota:2, rows: rows});
+// 还支持以下三种格式
+jtbl.datagrid("loadData", rows);
+jtbl.datagrid("loadData", {h: ["id","name"], d: [ [1, "name1"], [2, "name2"]}); // 筋斗云query接口默认返回格式。
+jtbl.datagrid("loadData", {list: rows}); // 筋斗云query接口指定fmt=list参数时，返回这种格式</code></pre>
 <h5 id="WUI-1.6 详情页对话框的常见需求">1.6 详情页对话框的常见需求</h5>
 <h6 id="WUI-1.6.1 通用查询">1.6.1 通用查询</h6>
 <p>在对话框中按快捷键&quot;Ctrl-F&quot;可进入查询模式。<br />
@@ -564,7 +609,7 @@ var OrderColumns = {
 <pre><code>{ cond: "phone like '137%' and (createTm&gt;='2017-1-1' and createTm&lt;'2018-1-1')" }</code></pre>
 <p class="see"><strong>@see <a href="#getQueryCond">getQueryCond</a></strong>  查询条件支持</p>
 <p class="see"><strong>@see <a href="#getQueryParam">getQueryParam</a></strong>  生成查询条件</p>
-<p class="key"><strong>@key <a id=".mui-find-field">.mui-find-field</a></strong>  用于查找的字段样式</p>
+<p class="key"><strong>@key <a id=".wui-find-field">.wui-find-field</a></strong>  用于查找的字段样式</p>
 <p>可设置该样式来标识哪些字段可以查找。一般设置为黄色。</p>
 <p class="key"><strong>@key <a id=".notForFind">.notForFind</a></strong>  指定非查询条件</p>
 <p>不参与查询的字段，可以用notForFind类标识(为兼容，也支持属性notForFind)，如：</p>
@@ -669,6 +714,48 @@ content:: 发送内容</code></pre>
 <p>除了直接调用该函数显示对话框外，还有一种更简单的通过a标签href属性指定打开对话框的做法，如：</p>
 <pre><code>&lt;a href="?showDlgSendSms" class="easyui-linkbutton" icon="icon-ok"&gt;群发短信&lt;/a&gt;&lt;br/&gt;&lt;br/&gt;</code></pre>
 <p>点击该按钮，即调用了showDlgSendSms函数打开对话框。</p>
+<h5 id="WUI-2.3 页面传参数给对话框">2.3 页面传参数给对话框</h5>
+<p>(v5.1)<br />
+可以通过showObjDlg(jdlg, mode, opt)中的opt参数，或jdlg.objParam来给对话框传参。<br />
+在对话框的beforeshow事件处理中，可通过opt.objParam拿到参数，如：</p>
+<pre><code>function initPageBizPartner() {
+    var jdlg = $("#dlgSupplier");
+    // 设置objParam参数供对话框使用。
+    jdlg.objParam = {type: "C", obj: "Customer", title: "客户"}; // opt.title参数可直接设置对话框的标题。参考showObjDlg.
+    jtbl.datagrid(toolbar: dg_toolbar(jtbl, jdlg, ...));
+    // 点表格上的菜单或双击行时会调用 WUI.showObjDlg
+}
+
+function initDlgBizPartner() {
+    // ...
+    jdlg.on("beforeshow", onBeforeShow);
+
+    function onBeforeShow(ev, formMode, opt) {
+        // opt.objParam 中包含前面定义的type, obj, 以及id, mode等参数。
+    }
+}</code></pre>
+<h5 id="WUI-2.4 示例：页面与对话框复用 (v5.1)">2.4 示例：页面与对话框复用 (v5.1)</h5>
+<p>设计有客户(Customer)和供应商(Supplier)两个虚拟的逻辑对象，它们物理底层都是业务伙伴对象(BizPartner)。<br />
+现在只设计一个页面pageBizPartner和一个对话框dlgBizPartner。</p>
+<p>菜单中两项：<br />
+默认pageBizPartner是供应商，如果要显示为&quot;客户&quot;页，需要明确调用showPage。</p>
+<pre><code>&lt;a href="#pageBizPartner"&gt;供应商&lt;/a&gt;
+&lt;a href="javascript:WUI.showPage('pageBizPartner', '客户', ['C']);"&gt;客户&lt;/a&gt;</code></pre>
+<p>在initPageBizPartner函数中，为对话框传递参数objParam：</p>
+<pre><code>type = type || "S";
+var obj = "type=="S"? "Supplier": "Customer";
+jdlg.objParam = {type: type, obj: obj};
+// ...</code></pre>
+<p>在对话框的beforeshow事件处理中，根据opt.objParam.type确定标题栏:</p>
+<pre><code>jdlg.on("beforeshow", function (ev, formMode, opt) {
+    opt.title = opt.objParam.type == "C"? "客户": "供应商";
+});</code></pre>
+<h5 id="WUI-2.5 只读对话框">2.5 只读对话框</h5>
+<p>(v5.1)</p>
+<p class="key"><strong>@key <a id=".wui-readonly">.wui-readonly</a></strong>  只读对话框类名</p>
+<p>设置是否为只读对话框只要加上该类：</p>
+<pre><code>jdlg.toggleClass("wui-readonly", isReadonly);</code></pre>
+<p>只读对话框不可输入(在style.css中设定pointer-events为none)，点击确定按钮后直接关闭。</p>
 <h4 id="WUI-3 模块化开发">3 模块化开发</h4>
 <p class="key"><strong>@key <a id="wui-script">wui-script</a></strong> </p>
 <p class="key"><strong>@key <a id="options.pageFolder">options.pageFolder</a></strong> </p>
@@ -976,6 +1063,19 @@ var cmts = "101\thello\n102\tgood";
 var varr = list2varr(cmts, "\t", "\n");
 // varr=[["101", "hello"], ["102", "good"]]</code></pre></div>
 <div class="block">
+<h2 id="objarr2list">@fn objarr2list(objarr, fields, sep=':', sep2=',')</h2>
+<p>将对象数组转成字符串代表的压缩表(&quot;v1:v2:v3,...&quot;)。</p>
+<p>示例：</p>
+<pre><code>var objarr = [
+    {id:100, name:'name1', qty:2},
+    {id:101, name:'name2', qty:3}
+];
+var list = objarr2list(objarr, ["id","qty"]);
+// 返回"100:2,101:3"
+
+var list2 = objarr2list(objarr, function (e, i) { return e.id + ":" + e.qty; });
+// 结果同上</code></pre></div>
+<div class="block">
 <h2 id="intSort">@fn intSort(a, b)</h2>
 <p>整数排序. 用于datagrid column sorter:</p>
 <pre><code>&lt;th data-options="field:'id', sortable:true, sorter:intSort"&gt;编号&lt;/th&gt;</code></pre></div>
@@ -1071,9 +1171,14 @@ var arr = mCommon.rs2Array(rs);</code></pre>
     var ac = jf.attr("action");
     callSvr(ac, fn, getFormData(jf));
 });</code></pre>
-<p>如果在jo对象上指定了属性enctype=&quot;multipart/form-data&quot;，则调用getFormData会返回FormData对象而非js对象，<br />
-再调用callSvr时，会以&quot;multipart/form-data&quot;格式提交数据。<br />
+<p>如果在jo对象中存在有name属性的file组件(input[type=file][name])，或指定了属性enctype=&quot;multipart/form-data&quot;，则调用getFormData会返回FormData对象而非js对象，<br />
+再调用callSvr时，会以&quot;multipart/form-data&quot;格式提交数据。一般用于上传文件。<br />
 示例：</p>
+<pre><code>&lt;div&gt;
+    课程文档
+    &lt;input name="pdf" type="file" accept="application/pdf"&gt;
+&lt;/div&gt;</code></pre>
+<p>或传统地：</p>
 <pre><code>&lt;form method="POST" enctype='multipart/form-data'&gt;
     课程文档
     &lt;input name="pdf" type="file" accept="application/pdf"&gt;
@@ -1380,8 +1485,7 @@ var url = MUI.makeUrl("Ordr.set", params);</code></pre>
 <ul>
 <li>指定{async:0}来做同步请求, 一般直接用callSvrSync调用来替代.</li>
 <li>指定{noex:1}用于忽略错误处理。</li>
-<li>指定{noLoadingImg:1}用于忽略loading图标. 要注意如果之前已经调用callSvr显示了图标且图标尚未消失，则该选项无效，图标会在所有调用完成之后才消失(leaveWaiting)。<br />
-要使隐藏图标不受本次调用影响，可在callSvr后手工调用<code>--$.active</code>。</li>
+<li>指定{noLoadingImg:1} 静默调用，忽略loading图标，不设置busy状态。</li>
 </ul>
 <p>想为ajax选项设置缺省值，可以用callSvrExt中的beforeSend回调函数，也可以用$.ajaxSetup，<br />
 但要注意：ajax的dataFilter/beforeSend选项由于框架已用，最好不要覆盖。</p>
@@ -1774,7 +1878,7 @@ WUI.showPage("pageHome", "首页2");</code></pre></div>
 <h2 id="showDlg">@fn showDlg(jdlg, opt?)</h2>
 <p class="param"><strong>@param jdlg</strong>  可以是jquery对象，也可以是selector字符串或DOM对象，比如 "#dlgOrder".</p>
 <p>注意：当对话框动态从外部加载时，jdlg=$(&quot;#dlgOrder&quot;) 一开始会为空数组，这时也可以调用该函数，且调用后jdlg会被修改为实际加载的对话框对象。</p>
-<p class="param"><strong>@param opt</strong> ?={url, buttons, noCancel=false, okLabel="确定", cancelLabel="取消", modal=true, reset=true, validate=true, data, onOk, onSubmit}</p>
+<p class="param"><strong>@param opt</strong> ?={url, buttons, noCancel=false, okLabel="确定", cancelLabel="取消", modal=true, reset=true, validate=true, data, onOk, onSubmit, title}</p>
 <ul>
 <li>opt.url: String. 点击确定后，提交到后台的URL。如果设置则自动提交数据，否则应在opt.onOk回调或validate事件中手动提交。</li>
 <li>opt.buttons: Object数组。用于添加“确定”、“取消”按钮以外的其它按钮，如<code>[{text: '下一步', iconCls:'icon-ok', handler: btnNext_click}]</code>。<br />
@@ -1785,6 +1889,7 @@ WUI.showPage("pageHome", "首页2");</code></pre></div>
 <li>opt.validate: Boolean. 是否提交前用easyui-form组件验证数据。内部使用。</li>
 <li>opt.onSubmit: Function(data) 自动提交前回调。用于验证或补齐提交数据，返回false可取消提交。opt.url为空时不回调。</li>
 <li>opt.onOk: Function(jdlg, data?) 如果自动提交(opt.url非空)，则服务端接口返回数据后回调，data为返回数据。如果是手动提交，则点确定按钮时回调，没有data参数。</li>
+<li>opt.title: String. 如果指定，则更新对话框标题。</li>
 </ul>
 <p>对话框有两种编程模式，一是通过opt参数在启动对话框时设置属性及回调函数(如onOk)，另一种是在dialog初始化函数中处理事件(如validate事件)实现逻辑，有利于独立模块化。</p>
 <p>对于自动提交数据的对话框(设置了opt.url)，提交数据过程中回调函数及事件执行顺序为：</p>
@@ -1818,9 +1923,9 @@ opt.onOk(jdlg); // 同上</code></pre>
 <li>对象型对话框由框架自动设置各opt选项，一般不应自行修改opt，而是通过处理对话框事件实现逻辑。</li>
 </ul>
 <p>对象型对话框事件：</p>
-<pre><code>beforeshow(formMode, opt)事件。显示对话框前触发。可以通过设置opt参数定制对话框，与调用showDlg时传入opt参数相同效果。通过修改opt.data可为字段设置缺省值。
+<pre><code>beforeshow(formMode, opt)事件。显示对话框前触发。可以通过设置opt参数定制对话框，与调用showDlg时传入opt参数相同效果
 show(formMode, opt.data)事件。显示对话框后触发。这时opt.data已经设置到对话框上带name属性的DOM组件中，一些不能直接显示的字段，可在此时设置到DOM组件上，比如图片等。
-validate(formMode, opt.data)事件。用于提交前验证、补齐数据等。返回false可取消提交。
+validate(formMode, opt.data, newData)事件。用于提交前验证、补齐数据等。返回false可取消提交。(v5.1)在newData中设置参数，会增加到POST请求中。
 retdata(data, formMode)事件。服务端返回结果时触发。注意forFind模式不会触发。</code></pre>
 <p>初始数据与对话框中带name属性的对象相关联，详见</p>
 <p class="see"><strong>@see <a href="#setFormData">setFormData</a> <a href="#getFormData">getFormData</a></strong> </p>
@@ -1830,7 +1935,10 @@ retdata(data, formMode)事件。服务端返回结果时触发。注意forFind�
 </ul>
 <p><strong>对话框事件</strong></p>
 <p class="key"><strong>@key <a id="beforeshow">beforeshow</a></strong>  Function(ev, formMode, opt)  对话框显示前事件</p>
-<p>opt参数即showDlg的opt参数，可在此处修改.</p>
+<p>opt参数即showDlg的opt参数，可在此处修改，例如修改opt.title可以设置对话框标题。<br />
+opt.objParam参数是由showObjDlg传入给dialog的参数，比如opt.objParam.obj, opt.objParam.formMode等。<br />
+通过修改opt.data可为字段设置缺省值。注意forFind模式下opt.data为空。<br />
+可以通过在beforeshow中用setTimeout延迟执行某些动作，这与在show事件中回调操作效果基本一样。</p>
 <p>注意：每次调用showDlg()都会回调，可能这时对话框已经在显示。</p>
 <p class="key"><strong>@key <a id="show">show</a></strong>  Function(ev, formMode, initData)  对话框显示后事件.</p>
 <p>用于设置DOM组件。<br />
@@ -1862,19 +1970,32 @@ retdata(data, formMode)事件。服务端返回结果时触发。注意forFind�
 <h2 id="reloadPage">@fn reloadPage()</h2>
 <p>重新加载当前页面。一般用于开发过程，在修改外部逻辑页后，调用该函数可刷新页面。</p></div>
 <div class="block">
-<h2 id="unloadDialog">@fn unloadDialog()</h2>
+<h2 id="unloadDialog">@fn unloadDialog(all?=false)</h2>
 <p class="alias"><strong>@alias <a id="reloadDialog">reloadDialog</a></strong> </p>
 <p>删除当前激活的对话框。一般用于开发过程，在修改外部对话框后，调用该函数清除以便此后再载入页面，可以看到更新的内容。</p>
+<pre><code>WUI.reloadDialog();
+WUI.reloadDialog(true); // 重置所有外部加载的对话框(v5.1)</code></pre>
 <p>注意：</p>
 <ul>
 <li>对于内部对话框调用本函数无意义。直接关闭对话框即可。</li>
 <li>由于不知道打开对话框的参数，reloadDialog无法重新打开对话框，因而它的行为与unloadDialog一样。</li>
 </ul></div>
 <div class="block">
-<h2 id="showObjDlg">@fn showObjDlg(jdlg, mode, opt?={jtbl, id})</h2>
+<h2 id="showObjDlg">@fn showObjDlg(jdlg, mode, opt?={jtbl, id, obj})</h2>
 <p class="param"><strong>@param jdlg</strong>  可以是jquery对象，也可以是selector字符串或DOM对象，比如 "#dlgOrder". 注意：当对话框保存为单独模块时，jdlg=$("#dlgOrder") 一开始会为空数组，这时也可以调用该函数，且调用后jdlg会被修改为实际加载的对话框对象。</p>
 <p class="param"><strong>@param opt.id</strong>  String. mode=link时必设，set/del如缺省则从关联的opt.jtbl中取, add/find时不需要</p>
 <p class="param"><strong>@param opt.jdbl</strong>  Datagrid. dialog/form关联的datagrid -- 如果dlg对应多个tbl, 必须每次打开都设置</p>
+<p class="param"><strong>@param opt.obj</strong>  String. (v5.1) 对象对话框的对象名，如果未指定，则从my-obj属性获取。通过该参数可动态指定对象名。</p>
+<p class="param"><strong>@param opt.offline</strong>  Boolean. (v5.1) 不与后台交互。</p>
+<p class="param"><strong>@param opt.title</strong>  String. (v5.1) 指定对话框标题。</p>
+<p>(v5.1)<br />
+此外，通过设置jdlg.objParam，具有和设置opt参数一样的功能，常在initPageXXX中使用，因为在page中不直接调用showObjDlg.<br />
+示例：</p>
+<pre><code>var jdlg = $("#dlgSupplier");
+jdlg.objParam = {type: "C", obj: "Customer"};
+showObjDlg(jdlg, FormMode.forSet, {id:101});
+// 等价于 showObjDlg(jdlg, FormMode.forSet, {id:101, obj: "Customer", type: "C"});</code></pre>
+<p>在dialog的事件beforeshow(ev, formMode, opt)中，可以通过opt.objParam取出showObjDlg传入的所有参数opt。</p>
 <p>事件参考：</p>
 <p class="see"><strong>@see <a href="#showDlg">showDlg</a></strong> </p></div>
 <div class="block">
@@ -1965,7 +2086,8 @@ Formatter = $.extend(WUI.formatter, Formatter);</code></pre>
 <ul>
 <li>dt/number: 显示日期、数值</li>
 <li>pics: 显示一张或一组图片链接，点一个链接可以在新页面上显示原图片</li>
-<li>enum(enumMap): 根据一个map为枚举值显示描述信息，如 <code>enum({CR:"创建", CA:"取消"})</code></li>
+<li>enum(enumMap): 根据一个map为枚举值显示描述信息，如 <code>enum({CR:"创建", CA:"取消"})</code>。<br />
+(v5.1) 也支持枚举值列表，如设置为 <code>enumList({emp:"员工", mgr:"经理"})</code>，则会将&quot;emp&quot;和&quot;emp,mgr&quot;分别解析为&quot;员工&quot;, &quot;员工,经理&quot;</li>
 <li>flag(yes?, no?): 显示yes-no字段，如 <code>flag("禁用","启用")</code>，也可以用enum，如<code>enum({0:"启用",1:"禁用"})</code></li>
 <li>linkTo: 生成链接，点击打开对象详情对话框</li>
 </ul>
@@ -2056,11 +2178,16 @@ app_alert("输入要查询的名字:", "p", function (text) {
 <h2 id="app_show">@fn app_show(msg)</h2>
 <p>使用jQuery easyui弹出对话框.</p></div>
 <div class="block">
-<h2 id="makeLinkTo">@fn makeLinkTo(dlg, id, text?=id)</h2>
+<h2 id="makeLinkTo">@fn makeLinkTo(dlg, id, text?=id, obj?)</h2>
 <p>生成一个链接的html代码，点击该链接可以打开指定对象的对话框。</p>
 <p>示例：根据订单号，生成一个链接，点击链接打开订单详情对话框。</p>
 <pre><code>var orderId = 101;
-var html = makeLinkTo("#dlgOrder", orderId, "订单" + orderId);</code></pre></div>
+var html = makeLinkTo("#dlgOrder", orderId, "订单" + orderId);</code></pre>
+<p>(v5.1)<br />
+示例：如果供应商(obj=Supplier)和客户(obj=Customer)共用一个对话框BizPartner，要显示一个id=101的客户，必须指定obj参数：</p>
+<pre><code>var html = makeLinkTo("#dlgBizPartner", 101, "客户-101", "Customer");</code></pre>
+<p>点击链接将调用</p>
+<pre><code>WUI.showObjDlg("#dlgBizPartner", FormMode.forSet, {id: 101, obj: "Customer"};</code></pre></div>
 <div class="block">
 <h2 id="tryAutoLogin">@fn tryAutoLogin(onHandleLogin, reuseCmd?)</h2>
 <p class="param"><strong>@param onHandleLogin</strong>  Function(data). 调用后台login()成功后的回调函数(里面使用this为ajax options); 可以直接使用WUI.handleLogin</p>
@@ -2201,7 +2328,9 @@ var ListOptions = {
 <p>也支持通过key-value列表用jdEnumMap选项或jdEnumList选项来初始化下拉框，如：</p>
 <pre><code>订单状态： &lt;select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap" style="width:150px"&gt;&lt;/select&gt;
 或者：
-订单状态： &lt;select name="status" class="my-combobox" data-options="jdEnumList:'CR:未付款;CA:已取消'" style="width:150px"&gt;&lt;/select&gt;</code></pre>
+订单状态： &lt;select name="status" class="my-combobox" data-options="jdEnumList:'CR:未付款;CA:已取消'" style="width:150px"&gt;&lt;/select&gt;
+或者：(key-value相同时, 只用';'间隔)
+订单状态： &lt;select name="status" class="my-combobox" data-options="jdEnumList:'未付款;已取消'" style="width:150px"&gt;&lt;/select&gt;</code></pre>
 <p>其中OrderStatusMap定义如下：</p>
 <pre><code>var OrderStatusMap = {
     "CR": "未付款",

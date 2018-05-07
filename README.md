@@ -12,6 +12,15 @@
 
 筋斗云对测试和持续更新（CI）非常重视，也提供了诸多支持，包括手工测试工具，测试流程管理，基于phpunit的服务端业务接口自动化测试框架，以及基于NUnit+.Net开发的业务流程自动化测试框架等。
 
+## 框架功能回归测试
+
+使用项目 [jdcloud-rtest](https://github.com/skyshore2001/jdcloud-rtest) 对框架进行功能测试。
+回归测试时，应在plugin/index.php中设置只加载rtest插件：
+
+	Plugins::add("rtest");
+
+然后在chrome中运行jdcloud-rtest项目下的rtest.html。
+
 # 版本日志
 
 ## v5.0 - 2018/1
@@ -22,10 +31,13 @@
 - 前端：batch优化，只有一个调用不使用batch调用
 - 前端：默认允许跨域调用
 - 管理端：my-combobox增强，支持指定列表，支持异步调用，支持batch调用。
-- 管理端：导出Excel功能增强
+- 管理端：导出Excel功能增强，支持枚举字段。
+- 管理端：查询条件支持数字或日期区间
+- 管理端：WUI对话框事件优化。去除formLink窗口模式。
 - 后端：get/query接口支持返回枚举描述及自定义字段处理
 - 工具：增加git_clone.sh工具，解决应用提交日志和库更新日志混杂在一起的问题
 - 工具：upgrade工具可独立于jdcloud-php库运行，并增加upgrade.sh。
+- 工具：文档显示样式增强
 
 ## v4.2 - 2017/9
 
