@@ -841,7 +841,10 @@ class AccessControl
 			return;
 
 		$alias = $a[0] ?: null;
-		$this->enumFields[$alias ?: $col] = parseKvList($a[1], ";", ":");
+		$k = $alias ?: $col;
+		if ($k[0] == '"')
+			$k = substr($k, 1, strlen($k)-2);
+		$this->enumFields[$k] = parseKvList($a[1], ";", ":");
 	}
 
 	// return: new field list
