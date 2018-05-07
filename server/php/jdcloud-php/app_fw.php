@@ -811,13 +811,8 @@ function Q($s, $dbh = null)
 {
 	if ($s === null)
 		return "null";
-	if ($dbh == null) {
-		global $DBH;
-		if (!isset($DBH))
-			dbconn();
-		$dbh = $DBH;
-	}
-	return $dbh->quote($s);
+	return "'" . str_replace("'", "\\'", $s) . "'";
+	//return $dbh->quote($s);
 }
 
 function sql_concat()
