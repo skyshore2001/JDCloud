@@ -74,7 +74,7 @@ menu-expand-group下第一个a为菜单组标题，可加"expanded"类使其默�
 			<th data-options="field:'id'">编号</th>
 			<th data-options="field:'phone'">手机号</th>
 			<th data-options="field:'name'">姓名</th>
-			<th data-options="field:'perms'">权限</th>
+			<th data-options="field:'perms', formatter:Formatter.enum(PermMap)">权限</th>
 		</tr></thead>
 	</table>
 </div>
