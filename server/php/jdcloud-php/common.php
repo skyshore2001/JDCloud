@@ -219,4 +219,69 @@ function parseKvList($str, $sep, $sep2)
 	return $map;
 }
 
+/**
+@fn arrayCmp($arr1, $arr2, $fnEq, $callback)
+
+比较两个数组的差异，常用于数据同步。
+两个数组中的数据应一一对应。
+比较的结果会回调 `$callback($e1, $e2)`，如果数据在两边都有，则e1, e2均非空，否则其中一个为空。
+
+下面是一个示例，metaFields是设计字段列表，dbFields是实际数据库中的字段列表，现在要对比差异，
+
+- 如果字段在设计和实际表中都有，不做处理（或更新字段）
+- 如果字段在设计中有，在实际表中没有，则添加字段
+- 如果字段在设计中没有，而在实际表中有，则删除字段
+
+数据示例如下：
+
+	$metaFields = [
+		["name"=>"id", "type"=>"int"],
+		["name"=>"amount", "type"=>"decimal"],
+		["name"=>"dscr", "type"=>"nvarchar"]
+	];
+	$dbFields = [
+		["Field"=>"id", "Type"=>"int(11)"],
+		["Field"=>"total", "Type"=>"decimal(19,2)"],
+		["Field"=>"dscr", "Type"=>"varchar(255)"]
+	];
+
+两边字段名相同可通过 `$meta["name"] === $dbField["Field"];`来判断。
+
+	arrayCmp($metaFields, $dbFields, function ($meta, $dbField) {
+		// 定义两边对应关系
+		return $meta["name"] === $dbField["Field"];
+	}, function ($meta, $dbField) { // meta: {type, len, ...} 参考 FIELD_META_TYPE
+		if ($meta === null) { // 在meta中没有，在dbField中有，则删除字段
+			echo "DROP " . $dbField["Field"] . "\n";
+		}
+		else if ($dbField === null) { // 在meta中有，在dbField中没有，则添加字段
+			echo "ADD " . $meta["name"] . "\n";
+		}
+		else {
+			// 字段在两边都有
+		}
+	});
+*/
+function arrayCmp($a1, $a2, $fnEq, $cb)
+{
+	$mark = []; // index_of_a2 => true
+	foreach ($a1 as $e1) {
+		$found = null;
+		for ($i=0; $i<count($a2); ++$i) {
+			$e2 = $a2[$i];
+			if ($fnEq($e1, $e2)) {
+				$found = $e2;
+				$mark[$i] = true;
+				break;
+			}
+		}
+		$cb($e1, $found);
+	}
+	for ($i=0; $i<count($a2); ++$i) {
+		if (! array_key_exists($i, $mark)) {
+			$cb(null, $a2[$i]);
+		}
+	}
+}
+
 // vi: foldmethod=marker
