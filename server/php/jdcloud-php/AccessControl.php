@@ -357,6 +357,10 @@ subobj: { name => {sql, default, wantOne} }
 如果要对get/query结果中的每行字段进行设置，应重写回调 onHandleRow. 
 有时使用 onAfterActions 就近添加逻辑更加方便。
 
+注意：对于query接口，无论返回哪种格式（如默认的压缩表、或用fmt参数指定list/csv/txt/excel等格式），在onAfter或onAfterActions中都是对象数组的格式，如：
+
+	[ [ "id"=>100, "name"=>"name1"], ["id"=>101", "name"=>"name2"], ... ]
+
 @var AccessControl::$onAfterActions =[].  onAfter的替代方案，更易使用，便于与接近的逻辑写在一起。
 @var AccessControl::$id  get/set/del时指定的id, 或add后返回的id.
 
@@ -366,8 +370,8 @@ subobj: { name => {sql, default, wantOne} }
 	{
 		if ($this->ac == "add") {
 			... 
-
-			$this->onAfterActions[] = function () use ($logAction) {
+			// 可修改$ret
+			$this->onAfterActions[] = function (&$ret) use ($logAction) {
 				$orderId = $this->id;
 				dbInsert("OrderLog", [
 					"orderId" => $orderId,
@@ -377,6 +381,8 @@ subobj: { name => {sql, default, wantOne} }
 			};
 		}
 	}
+
+与onAfter类似，加到onAfterActions集合中的函数，如果要修改返回数据，只要在函数参数中声明`&$ret`就可以修改它了。
 
 @fn AccessControl::onHandleRow(&$rowData) (for get/query) 在onAfter之前运行，用于修改行中字段。
 
@@ -1352,6 +1358,9 @@ class AccessControl
 		// Note: colCnt may be changed in after().
 		$fixedColCnt = count($ret)==0? 0: count($ret[0]);
 		foreach ($ret as &$ret1) {
+			$id1 = $ret1["id"];
+			if (isset($id1))
+				$this->handleSubObj($id1, $ret1);
 			$this->handleRow($ret1);
 		}
 		$this->after($ret);
@@ -1363,11 +1372,6 @@ class AccessControl
 			else {
 				$nextkey = $pagekey + 1;
 			}
-		}
-		foreach ($ret as &$mainObj) {
-			$id1 = $mainObj["id"];
-			if (isset($id1))
-				$this->handleSubObj($id1, $mainObj);
 		}
 		$fmt = param("fmt");
 		if ($fmt === "list") {
