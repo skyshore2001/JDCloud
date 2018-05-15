@@ -23,6 +23,28 @@
 
 # 版本日志
 
+## v5.1a - 2018/5
+
+- 前端
+ - 支持静默调用，callSvr的noLoadingImg选项增强。
+ - 允许在handleLogin中定制首页。
+
+- 管理端
+ - 页面传参数给对话框机制(jdlg.objParam)；
+ - 支持页面及对话框为不同对象所复用；
+ - 添加对象时可设置子表不立即写数据库（showObjDialog支持offline模式）
+ - 导出excel增强。支持导出枚举字段。
+ - getFormData支持上传文件；
+ - 外部对话框支持顶级form标签。
+
+- 后端
+ - RESTful风格增强，且支持非标准CRUD接口。
+ - 新增dbUpdate/dbInsert函数。增加BatchInsert，用于大批量导入数据。
+ - 增加arrayCmp工具函数，用于数据同步。
+ 
+- 工具
+ - 部署工具支持导出更新表结构的SQL。小数字段默认保留小数后2位（原来是4位）。
+
 ## v5.0 - 2018/1
 
 - 前端：升级原生APP接口，框架由cordova 5.4升级到cordova 7.1.
