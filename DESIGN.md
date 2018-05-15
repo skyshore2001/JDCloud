@@ -130,7 +130,8 @@ ver
 
 **[插件相关]**
 
-@include server/plugin/*/DESIGN.md
+@include server\plugin\login\DESIGN.md
+@include server\plugin\upload\DESIGN.md
 
 ## 交互接口设计
 

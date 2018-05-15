@@ -4,7 +4,9 @@
  */
 chdir(dirname(__FILE__));
 
-require_once("../app.php");
+$GLOBALS["noExecApi"] = true;
+require_once("../api.php");
+//require_once("../app.php");
 
 $GLOBALS["dbConfirmFn"] = function ($connstr) {
 	echo "=== connect to $connstr\n";
