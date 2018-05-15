@@ -1,0 +1,406 @@
+<html>
+<head>
+<meta charset="utf-8">
+<title>jdcloud-upgrade</title>
+<style>
+h3,h4,h5,h6 {
+	font-size: 1em;
+}
+
+pre {
+	border-left: 1px solid #ccc;
+	margin: 0 1em;
+	padding: 0 0.5em;
+	tab-size:4;
+}
+
+code {
+	font-family: "Courier New";
+    padding: 0px 3px;
+    display: inline-block;
+}
+
+.toc {
+	margin: 2em;
+}
+
+.toc p {
+	margin: 0.3em 0;
+}
+
+.block {
+	border-bottom: 1px solid #ccc;
+}
+
+</style>
+<link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+<h1>jdcloud-upgrade</h1>
+<div>最后更新：2018-05-15</div>
+<div id="menu">
+<h2>Modules</h2>
+<div class="toc">
+<p><a href="#jdcloud-upgrade">jdcloud-upgrade (module)</a></p>
+</div><hr>
+<h2>Keywords</h2>
+<div class="toc">
+<p><a href="#jdcloud-upgrade">jdcloud-upgrade (module)</a></p>
+</div><hr>
+</div>
+<div class="block">
+<h2 id="jdcloud-upgrade">@module jdcloud-upgrade</h2><div class="toc"><p style="margin-left:0em"><a href="#jdcloud-upgrade-1 快速上手">1 快速上手</a></p>
+<p style="margin-left:0em"><a href="#jdcloud-upgrade-2 定义数据模型">2 定义数据模型</a></p>
+<p style="margin-left:2em"><a href="#jdcloud-upgrade-2.1 include指令">2.1 include指令</a></p>
+<p style="margin-left:0em"><a href="#jdcloud-upgrade-3 配置环境变量">3 配置环境变量</a></p>
+<p style="margin-left:2em"><a href="#jdcloud-upgrade-3.1 连接数据库">3.1 连接数据库</a></p>
+<p style="margin-left:2em"><a href="#jdcloud-upgrade-3.2 筋斗云框架支持">3.2 筋斗云框架支持</a></p>
+<p style="margin-left:0em"><a href="#jdcloud-upgrade-4 用法">4 用法</a></p>
+<p style="margin-left:2em"><a href="#jdcloud-upgrade-4.1 交互命令">4.1 交互命令</a></p>
+<p style="margin-left:2em"><a href="#jdcloud-upgrade-4.2 非交互命令">4.2 非交互命令</a></p>
+<p style="margin-left:0em"><a href="#jdcloud-upgrade-5 导入数据表">5 导入数据表</a></p>
+<p style="margin-left:2em"><a href="#jdcloud-upgrade-5.1 TODO: 带关联字段导入：">5.1 TODO: 带关联字段导入：</a></p>
+<p style="margin-left:2em"><a href="#jdcloud-upgrade-5.2 关联表导入">5.2 关联表导入</a></p>
+<p style="margin-left:0em"><a href="#jdcloud-upgrade-6 TODO: 写升级脚本">6 TODO: 写升级脚本</a></p>
+</div>
+<p>筋斗云一站式数据模型部署工具。</p>
+<ul>
+<li>根据设计文档中的数据模型定义，创建或更新数据库表。</li>
+<li>数据库支持mysql，此外，对mssql(microsoft sqlserver)与sqlite提供基本功能支持。</li>
+</ul>
+<p>工具要求php5.4以上版本环境。</p>
+<h4 id="jdcloud-upgrade-1 快速上手">1 快速上手</h4>
+<p>参照META.md，在文本文件中定义数据库表和字段，比如：</p>
+<pre><code>@ApiLog: id, tm, addr</code></pre>
+<p>这样就定义了表ApiLog以及它的字段。</p>
+<p>在mysql中创建一个新的数据库，名为jdcloud。</p>
+<p>参照upgrade.sh，配置数据库连接参数，如：</p>
+<pre><code>export P_DB=localhost/jdcloud
+export P_DBCRED=demo:demo123</code></pre>
+<p>然后运行它（一般在git-bash中运行）：</p>
+<pre><code>./upgrade.sh</code></pre>
+<p>回车确认连接后，输入命令<code>initdb</code>，即可创建数据库表。<br />
+也可以直接用一个非交互的命令：</p>
+<pre><code>./upgrade.sh initdb</code></pre>
+<p>当在META.md中修改了数据库设计，比如添加了表或字段，再重新运行升级脚本时，可刷新数据库表。</p>
+<p>要查看所有建表的SQL语句，可以用：</p>
+<pre><code>./upgrade.sh showtable</code></pre>
+<p>要查看指定的表:</p>
+<pre><code>./upgrade.sh 'showtable("ordr")'</code></pre>
+<p>默认升级时(initdb)只会添加缺失的表和字段, 不会更新已有的表和字段, 但可以用</p>
+<pre><code>./upgrade.sh 'showtable("*", true)' | tee 1.sql</code></pre>
+<p>导出SQL后, 手工编辑并执行, 以避免误修改或删除字段.</p>
+<h4 id="jdcloud-upgrade-2 定义数据模型">2 定义数据模型</h4>
+<p>数据模型主要为表和字段，一般在设计文档中定义，最常见的形式如：</p>
+<pre><code>@ApiLog: id, tm, addr</code></pre>
+<p>这样就定义了表ApiLog以及它的字段。<br />
+字段类型根据命名规范自动判断，比如以id结尾的字段会被自动作为整型创建，以tm结尾会被当作日期时间类型创建，其它默认是字符串，规则如下：</p>
+<table>
+<thead>
+<tr>
+<th>规则</th>
+<th>类型</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>以&quot;Id&quot;结尾</td>
+<td>Integer</td>
+</tr>
+<tr>
+<td>以&quot;Price&quot;/&quot;Total&quot;/&quot;Qty&quot;/&quot;Amount&quot;结尾</td>
+<td>Currency</td>
+</tr>
+<tr>
+<td>以&quot;Tm&quot;/&quot;Dt&quot;/&quot;Time&quot;结尾</td>
+<td>Datetime/Date/Time</td>
+</tr>
+<tr>
+<td>以&quot;Flag&quot;结尾</td>
+<td>TinyInt(1B) NOT NULL</td>
+</tr>
+</tbody>
+</table>
+<p>例如，&quot;total&quot;, &quot;docTotal&quot;, &quot;total2&quot;, &quot;docTotal2&quot;都被认为是Currency类型（字段名后面有数字的，判断类型时数字会被忽略）。</p>
+<p>也可以用一个类型后缀表示，如 <code>retVal&amp;</code>表示整型，类型后缀规则如下：</p>
+<table>
+<thead>
+<tr>
+<th>后缀</th>
+<th>类型</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&amp;</td>
+<td>Integer</td>
+</tr>
+<tr>
+<td>@</td>
+<td>Currency</td>
+</tr>
+<tr>
+<td>#</td>
+<td>Double</td>
+</tr>
+</tbody>
+</table>
+<p>字符串可以指定长度如<code>status(2)</code>，<code>name(s)</code>，字串长度以如下方式描述：</p>
+<table>
+<thead>
+<tr>
+<th>标记</th>
+<th>长度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>s</td>
+<td>small=20</td>
+</tr>
+<tr>
+<td>m</td>
+<td>medium=50 (default)</td>
+</tr>
+<tr>
+<td>l</td>
+<td>long=255</td>
+</tr>
+<tr>
+<td>t</td>
+<td>text</td>
+</tr>
+</tbody>
+</table>
+<h5 id="jdcloud-upgrade-2.1 include指令">2.1 include指令</h5>
+<p>主设计文档中可以包含其它设计文档，指令如下：</p>
+<pre><code>@include sub/mydesign.md</code></pre>
+<p>允许使用通配符，例如在筋斗云框架应用的主设计文档DESIGN.md中默认会包含各插件的设计文档：</p>
+<pre><code>@include server/plugin/ * /DESIGN.md</code></pre>
+<h4 id="jdcloud-upgrade-3 配置环境变量">3 配置环境变量</h4>
+<p>可设置环境变量来定制运行参数。</p>
+<ul>
+<li>P_METAFILE: 指定META文件，一般即主设计文档，根据其中定义的数据模型生成数据库。默认为项目根目录下的&quot;DESIGN.md&quot;</li>
+<li>P_DBTYPE,P_DB,P_DBCRED: 设置数据库连接，参考下节。</li>
+</ul>
+<h5 id="jdcloud-upgrade-3.1 连接数据库">3.1 连接数据库</h5>
+<p>连接mysql示例(注意在php.ini中打开php_pdo_mysql扩展)，设置以下环境变量：</p>
+<pre><code>P_DBTYPE=mysql
+P_DB=172.12.77.221/jdcloud
+P_DBCRED=demo:demo123</code></pre>
+<p>P_DBTYPE参数可以不设置，它默认值就是mysql。<br />
+它还支持设置为mssql(microsoft sqlserver)与sqlite，工具对这两具数据库也提供基本功能支持。</p>
+<p>连接sqlite示例(注意打开php_pdo_sqlite扩展)：</p>
+<pre><code>P_DBTYPE=sqlite
+P_DB=d:/db/jdcloud.db</code></pre>
+<p>连接mssql示例(通过odbc连接，注意打开php_pdo_odbc扩展)</p>
+<pre><code>P_DBTYPE=mssql
+P_DB=odbc:DRIVER=SQL Server Native Client 10.0; DATABASE=jdcloud; Trusted_Connection=Yes; SERVER=.\MSSQL2008;
+P_DBCRED=sa:demo123</code></pre>
+<p>或使用odbc的文件DSN（可通过系统自带的odbcad32工具创建），如：</p>
+<pre><code>P_DBTYPE=mssql
+P_DB=odbc:FILEDSN=d:\db\jdcloud-mssql.dsn;
+P_DBCRED=sa:demo123</code></pre>
+<p>一般创建脚本文件upgrade.sh来指定这些变量，以方便执行。</p>
+<p>环境变量P_DBCRED指定连接数据库的用户名密码，格式为<code>{用户名}:{密码}</code>或其base64编码的形式，如：</p>
+<pre><code>P_DBCRED=ZGVtbzpkZW1vMTIzCg==
+(即demo:demo123)</code></pre>
+<p>注意：</p>
+<ul>
+<li>升级工具只创建表, 不创建数据库本身。</li>
+<li>默认不会删除表或字段, 不会更新类型与定义不一致的字段。如有需要可用<code>showtable("*", true)</code>命令导出SQL并手工操作。</li>
+</ul>
+<h5 id="jdcloud-upgrade-3.2 筋斗云框架支持">3.2 筋斗云框架支持</h5>
+<p>本工具原为筋斗云框架的升级工具(tool/upgrade.php)，后独立出来。对筋斗云框架有以下支持：</p>
+<ul>
+<li>未指定P_METAFILE时，默认加载筋斗云应用的主设计文档(DESIGN.md或DESIGN.wiki)作为META文件。</li>
+<li>如果存在筋斗云应用配置文件server/php/conf.user.php，会自动包含进来，一般可复用里面的数据库连接配置。<br />
+工具与筋斗云框架的数据库连接配置方式兼容，都通过同名环境变量来指定数据库连接参数。</li>
+</ul>
+<h4 id="jdcloud-upgrade-4 用法">4 用法</h4>
+<p>运行<code>php upgrade.php</code>，进入命令行交互。</p>
+<h5 id="jdcloud-upgrade-4.1 交互命令">4.1 交互命令</h5>
+<p>一般命令格式与函数调用类似, 也支持直接输入常用的sql语句，示例：</p>
+<pre><code>&gt; addtable("item")
+&gt; addtable("item", true)
+&gt; quit()
+
+对于无参数命令可不加括号
+&gt; initdb
+&gt; quit
+
+支持直接的sql语句, 限"select|update|delete|insert|drop|create"这些语句。
+&gt; select * from item limit 10
+&gt; update item set price=333 where id=8</code></pre>
+<p>支持的交互命令如下：</p>
+<p><strong>[help]</strong></p>
+<p>参数: [command]</p>
+<p>显示帮助. 可以指定command名称, 全部或部分均可.</p>
+<p>例:</p>
+<pre><code>&gt; help
+&gt; help("addtable")
+&gt; help("table")</code></pre>
+<p><strong>[initdb]</strong></p>
+<p>自动添加所有表. 等同于updatedb命令.</p>
+<p><strong>[updatedb]</strong></p>
+<p>自动添加或更新所有表. 相当于对所有表调用addtable命令.<br />
+如果某张表已存在, 则检查是否有缺失的字段(注意: 只检查缺失, 不检查字段类型是否变化), 有则添加, 否则对该表不做更改.</p>
+<p><strong>[execsql]</strong></p>
+<p>参数: {sql} [silent=false]</p>
+<p>对于select语句, 返回结果集内容; 对于其它语句, 返回affectedRows.</p>
+<p>例:</p>
+<pre><code>&gt; execsql("select * from item limit 10")
+&gt; execsql("update item set price=10 where id=3")</code></pre>
+<p>注:</p>
+<ul>
+<li>
+<p>支持直接输入SQL语句, 会自动调用execsql()执行. 程序通过以select等关键字识别SQL, 如</p>
+<blockquote>
+<p>select * from item limit 10<br />
+update item set price=10 where id=3</p>
+</blockquote>
+</li>
+</ul>
+<p><strong>[quit]</strong></p>
+<p>退出交互. 可简写为&quot;q&quot;.</p>
+<p>例:</p>
+<pre><code>&gt; quit
+或
+&gt; q</code></pre>
+<p><strong>[TODO: upgrade]</strong></p>
+<p>TODO<br />
+自动根据版本差异，执行升级脚本，升级数据库.<br />
+如果字段cinf.ver不存在, 则重建DB(但会忽略已有的表, 不会删除它再重新创建). 升级完成后设置cinf.ver字段.</p>
+<p><strong>[showtable]</strong></p>
+<p>参数: {table?=&quot;*&quot;, checkDb=false}</p>
+<p>查看某表的metadata以及SQL创建语句. 参数{table}中可以包含通配符。<br />
+如果参数{checkDb}=true, 则以SQL命令(如ALTER TABLE语句)方式输出数据模型定义与实际数据库表的差异, 它不会自动执行, 以避免误修改或删除字段, 可由用户导出SQL编辑后手工执行.</p>
+<p>例: </p>
+<pre><code>&gt; showtable("item")
+&gt; showtable("*log")
+
+&gt; showtable("*", true)</code></pre>
+<p><strong>[addtable]</strong></p>
+<p>参数: {table} [force=false]</p>
+<p>根据metadata添加指定的表{table}. 未指定force参数时, 如果表已存在且未指定force=true, 则检查和添加缺失的字段; 如果指定了force=true, 则会删除表重建.</p>
+<p>例:</p>
+<pre><code>&gt; addtable("item")
+
+(删除表item并重建)
+&gt; addtable("item", true)</code></pre>
+<p><strong>[TODO: reload]</strong></p>
+<p>重新加载metadata. 当修改了DESIGN.wiki中的表结构定义时, 应调用该命令刷新metadata, 以便showtable/addtable等命令使用最新的metadata.</p>
+<p><strong>[addcol]</strong></p>
+<p>addcol {table} {col}</p>
+<p>添加字段{table}.{col}</p>
+<p><strong>[getver]</strong></p>
+<p>取表定义的version.</p>
+<p><strong>[getdbver]</strong></p>
+<p>取数据库的version. </p>
+<p><strong>[import]</strong></p>
+<p>参数: {filename} {noPrompt=false} [encoding=utf8]</p>
+<p>将文本文件内容导入表中，支持定义关联表数据，如果表不存在，会自动创建表（根据metadata），如果表已存在，会删除重建。文件编码默认为utf8. (TODO: 支持指定编码）</p>
+<p>参考<a href="#导入数据表">导入数据表</a>章节。</p>
+<p>noPrompt<br />
+: 默认导入表之前要求确认，如果指定该项为true，则不需要提示，直接导入。</p>
+<h5 id="jdcloud-upgrade-4.2 非交互命令">4.2 非交互命令</h5>
+<p>更新指定表（addtable命令）：</p>
+<pre><code>upgrade.php car_brand car_series car_model</code></pre>
+<p>更新所有表（initdb命令）：</p>
+<pre><code>upgrade.php all</code></pre>
+<p>版本差量升级（TODO：upgrade命令）：</p>
+<pre><code>upgrade.php upgrade</code></pre>
+<h4 id="jdcloud-upgrade-5 导入数据表">5 导入数据表</h4>
+<p>一个文件可以包含多个表，每张表的数据格式如下：</p>
+<pre><code># table [CarBrand]
+id  name    shortcut
+110 奥迪  A
+116 宝骏  B
+103 宝马  B
+...</code></pre>
+<p>&quot;#&quot;开头为注释，一般被忽略；特别地，&quot;table [表名]&quot;会标识开始一个新表，然后接下去一行是header定义，以tab分隔，再下面是数据定义，以tab分隔。</p>
+<p>这种文件一般可以在excel中直接编辑（但注意：excel默认用本地编码，也支持unicode即ucs-2le编码，但不直接支持utf-8编码）</p>
+<p>注意:</p>
+<ul>
+<li>如果字段值为空, 直接写null.</li>
+</ul>
+<p>例：导入车型测试数据<br />
+先生成测试数据：</p>
+<pre><code>initdata\create_testdata.pl
+(生成到文件brands.txt)</code></pre>
+<p>再在upgrade.php中用import导入：</p>
+<pre><code>&gt; import("../initdata/brands.txt")</code></pre>
+<p>注意：如果列名以&quot;-&quot;开头，则忽略此列数据，如</p>
+<pre><code># table [CarBrand]
+id  name    -shortcut
+110 奥迪  A
+...</code></pre>
+<p>将不会导入shortcut列。</p>
+<h5 id="jdcloud-upgrade-5.1 TODO: 带关联字段导入：">5.1 TODO: 带关联字段导入：</h5>
+<pre><code># table [Figure]
+name    bookId(Book.name)   ref
+黄帝  史记  本纪-五帝</code></pre>
+<p>上例数据中，表示根据Book.name查找Book.id，然后填入Figure.bookId。如果Book中找不到相应项，会自动添加一项。</p>
+<h5 id="jdcloud-upgrade-5.2 关联表导入">5.2 关联表导入</h5>
+<p>示例：</p>
+<pre><code># table [Svc]
+id  name    Svc_ItemType(ittId,svcId)
+1   小保养 1,2,6
+2   大保养 1,2,3,4,7</code></pre>
+<p>上例有个字段表述为&quot;Svc_ItemType(ittId,svcId)&quot;, 它表示该字段关联到表 Svc_ItemType.ittId字段，而本表的id对应关联表字段svcId。其内容为以逗号分隔的一串值。以上描述相当于：</p>
+<pre><code># table [Svc]
+id  name
+1   小保养
+2   大保养
+
+# table [Svc_ItemType]
+ittId   svcId
+1   1
+2   1
+6   1
+...</code></pre>
+<p>还可以这样设置：</p>
+<pre><code># table [Svc]
+id  name    Svc_ItemType(ittId,svcId,ItemType.name)
+1   小保养 机油;机油滤清器</code></pre>
+<p>上例中&quot;Svc_ItemType&quot;多了一个参数&quot;ItemType.name&quot;, 它表示下面内容是关联到ItemType.name字段，即需要先用&quot;SELECT id FROM ItemType WHERE name=?&quot;查询出Svc_ItemType.ittId(第一个参数)，再同上例进行添加。</p>
+<h4 id="jdcloud-upgrade-6 TODO: 写升级脚本">6 TODO: 写升级脚本</h4>
+<p>当表结构变化时, </p>
+<ul>
+<li>更新设计文档中的表设计(相当于更改meta data)</li>
+<li>增加设计文档中的设计版本号(@ver)</li>
+<li>在升级脚本中添加升级逻辑, 如添加字段(及设置默认值), 添加表, 修改字段等.</li>
+<li>测试升级脚本后, 上传设计文档及升级脚本, 再通过API或登录服务器执行远程升级; 或直接在本地通过设置P_DB环境变量直接用升级工具连接远端数据库.</li>
+</ul>
+<p>upgrade.php</p>
+<pre><code>ver = getver();
+dbver = getdbver();
+if (ver &lt;= dbver)
+    return;
+
+if (dbver == 0) {
+    initdb();
+    return;
+}
+
+if (dbver &lt; 1) {
+    addcol(table, col);
+    execsql('update table set col=col1+1');
+}
+if (dbver &lt; 2) {
+    addtable(table);
+    importdata('data.txt');
+}
+if (dbver &lt; 3) {
+    addkey(key);
+}
+if (dbver &lt; 4) {
+    altercol(table, col);
+}
+
+update cinf set ver, update_tm</code></pre></div>
+<div style="text-align:center">Generated by jdcloud-gendoc</div>
+</body>
+
+</html>
