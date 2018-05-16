@@ -640,7 +640,7 @@ function formatArgs($arr)
 
 function matchRule($rule, $file)
 {
-	return fnmatch($rule, $file, FNM_PATHNAME);
+	return fnmatch($rule, $file);
 }
 
 function getFileHash($basef, $f, $outDir, $relativeDir = null)
@@ -866,10 +866,12 @@ function handleOne($f, $outDir, $force = false)
 	$g_handledFiles[$fi] = 1;
 
 	$rule = null;
-	foreach ($RULES as $re => $v) {
-		if (matchRule($re, $fi)) {
-			$rule = $v;
-			break;
+	if (isset($RULES)) {
+		foreach ($RULES as $re => $v) {
+			if (matchRule($re, $fi)) {
+				$rule = $v;
+				break;
+			}
 		}
 	}
 	if (isset($rule))
