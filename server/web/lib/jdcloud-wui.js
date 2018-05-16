@@ -2644,7 +2644,8 @@ function getQueryCond(kvList)
 	function handleOne(k,v) {
 		if (v == null || v === "")
 			return;
-		var arr = v.split(/\s+(and|or)\s+/i);
+
+		var arr = v.toString().split(/\s+(and|or)\s+/i);
 		var str = '';
 		var bracket = false;
 		$.each(arr, function (i, v1) {
@@ -4250,6 +4251,7 @@ function showPage(pageName, title, paramArr)
 		var jpageNew = jpage.clone().appendTo(jtab);
 		jpageNew.addClass('wui-page');
 		jpageNew.attr("wui-pageName", pageName);
+		jpageNew.attr("title", title);
 
 		$.parser.parse(jpageNew); // easyui enhancement
 		self.enhanceWithin(jpageNew);
@@ -4904,8 +4906,9 @@ function showObjDlg(jdlg, mode, opt)
 		return;
 	}
 
-	var jfrm = jdlg.find("Form");
-
+	// TODO: 直接用jdlg
+	var jfrm = jdlg.is("form")? jdlg: jdlg.find("form:first");
+	
 	// 设置find模式
 	var doReset = ! (jd.mode == FormMode.forFind && mode == FormMode.forFind) // 一直是find, 则不清除
 	if (mode == FormMode.forFind && jd.mode != FormMode.forFind) {

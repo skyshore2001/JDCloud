@@ -145,9 +145,6 @@ global $DB, $DBCRED, $DBTYPE;
 $DB = "localhost/jdcloud";
 $DBCRED = "ZGVtbzpkZW1vMTIz"; // base64({user}:{pwd}), default: demo:demo123
 
-global $ALLOW_LCASE_PARAM;
-$ALLOW_LCASE_PARAM = true;
-
 global $TEST_MODE, $MOCK_MODE, $DBG_LEVEL;
 
 global $DBH;
@@ -291,11 +288,9 @@ function param_varr($str, $type, $name)
 @fn param($name, $defVal?, $col?, $doHtmlEscape=true)
 
 @param $col: 默认先取$_GET再取$_POST，"G" - 从$_GET中取; "P" - 从$_POST中取
+$col也可以直接指定一个集合，如
 
-以下形式已不建议使用：
-
-@fn param($name, $defVal?, $col?=$_REQUEST, $doHtmlEscape=true)
-@param $col: key-value collection
+	param($name, $defVal, $_REQUEST)
 
 获取名为$name的参数。
 $name中可以指定类型，返回值根据类型确定。如果该参数未定义或是空串，直接返回缺省值$defVal。
@@ -344,30 +339,32 @@ TODO: 直接支持 param("items/(id,qty?/n,dscr?)"), 添加param_objarr函数，
 */
 function param($name, $defVal = null, $col = null, $doHtmlEscape = true)
 {
-	if ($col === "G")
-		$col = $_GET;
-	else if ($col === "P")
-		$col = $_POST;
-	else if (!isset($col))
-		$col = $_REQUEST;
-
-	assert(is_array($col));
-
+	$type = parseType_($name); // NOTE: $name will change.
 	$ret = $defVal;
-	$type = parseType_($name);
-	if (isset($col[$name])) {
-		$ret = $col[$name];
+	if ($col === "G") {
+		if (isset($_GET[$name]))
+			$ret = $_GET[$name];
+	}
+	else if ($col === "P") {
+		if (isset($_POST[$name]))
+			$ret = $_POST[$name];
+	}
+	// 兼容旧式直接指定col=$_GET这样参数
+	else if (is_array($col)) {
+		if (isset($col[$name]))
+			$ret = $col[$name];
 	}
 	else {
-		global $ALLOW_LCASE_PARAM;
-		if ($ALLOW_LCASE_PARAM) {
-			$name1 = strtolower($name);
-			if (isset($col[$name1]))
-				$ret = $col[$name1];
-		}
+		if (isset($_GET[$name]))
+			$ret = $_GET[$name];
+		else if (isset($_POST[$name]))
+			$ret = $_POST[$name];
 	}
+
+	// e.g. "a=1&b=&c=3", b当成未设置，取缺省值。
 	if ($ret === "")
 		return $defVal;
+
 	# check type
 	if (isset($ret) && is_string($ret)) {
 		// avoid XSS attack
@@ -436,6 +433,8 @@ function param($name, $defVal = null, $col = null, $doHtmlEscape = true)
 @fn mparam($name, $col = null)
 @brief mandatory param
 
+@param col 'G'-从URL参数即$_GET获取，'P'-从POST参数即$_POST获取。参见param函数同名参数。
+
 $name可以是一个数组，表示至少有一个参数有值，这时返回每个参数的值。
 参考param函数，查看$name如何支持各种类型。
 
@@ -483,11 +482,13 @@ function mparam($name, $col = null)
 
 设置参数，其实是模拟客户端传入的参数。以便供tableCRUD等函数使用。
 
+(v5.1)不建议使用，param函数已更新，现在直接设置$_GET,$_POST即可。
+
 示例：
 
 	setParam("cond", "name LIKE " . Q("%$name%"));
 	setParam([
-		"_fmt" => "list",
+		"fmt" => "list",
 		"orderby" => "id DESC"
 	]);
 

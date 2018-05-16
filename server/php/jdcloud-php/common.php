@@ -96,6 +96,10 @@ function urlEncodeArr($params)
 
 /**
 @fn makeUrl($ac, $params, $hash)
+
+e.g.
+
+	$url = makeUrl("http://oliveche.com/jdcloud/api.php", ["p1"=>"abc", "p2"=>"333"])
 */
 function makeUrl($ac, $params, $hash = null)
 {
@@ -109,7 +113,7 @@ function makeUrl($ac, $params, $hash = null)
 }
 
 /**
-@fn httpCall($url, $postParams =null, $opt={timeout?=5, @headers} )
+@fn httpCall($url, $postParams =null, $opt={timeout?=5, @headers, %curlOpt={optName=>val} )
 
 请求URL，返回内容。
 默认使用GET请求，如果给定postParams，则使用POST请求。
@@ -126,9 +130,37 @@ postParams可以是一个kv数组或字符串，也可以是一个文件名(以"
 	];
 	// 注意headers的格式
 	$headers = [
-		"Authorization: Basic dGVzdDp0ZXN0MTIz"
+		"Authorization: Basic dGVzdDp0ZXN0MTIz",
+		"Cookie: extid=" . session_id()
 	];
+	$url = makeUrl("$baseUrl/$ac", $param);
 	$rv = httpCall($url, $data, ["headers" => $headers]);
+
+上例中在headers中用Authorization指定了登录信息，适合服务器需要登录的场景；
+同时主动指定了Cookie（Cookie名称需按服务端要求设置），以便与通过Session保持信息的服务器持续交互。
+（有的服务器不使用Cookie，而是在登录后通过返回token来标识，需要额外处理）
+
+示例：调用第三方服务，登录并调用筋斗云后端
+
+	function jdcloudCall($ac, $param=null, $postParam=null)
+	{
+		$baseUrl = "http://localhost/jdcloud/api.php";
+		$url = makeUrl("$baseUrl/$ac", $param);
+		$rv = httpCall($url, $postParam, ["headers" => [
+			// 模拟筋斗云用户端cookie
+			"Cookie: userid=" . session_id()
+		]]);
+		// 筋斗云协议格式：成功为[0, obj] 或 失败为[errCode, userMessage, internalMessage?]
+		$ret = json_decode($rv);
+		if ( $ret[0] !== 0 ) {
+			throw new MyException(E_PARAM, $ret[2], $ret[1]);
+		}
+		return $ret[1];
+	}
+	// 如果是首次则登录
+	jdcloudCall("login", ["uname"=>"12345678901", "pwd"=>"1234"]);
+	// 保持会话，获取订单列表
+	$orders = jdcloudCall("Ordr.query");
 
 示例：提交application/json格式的内容
 
@@ -144,6 +176,25 @@ postParams可以是一个kv数组或字符串，也可以是一个文件名(以"
 	$GLOBALS["X_RET_STR"] = httpCall($url, $data, ["headers" => $headers]);
 	// 筋斗云：设置全局变量X_RET_STR可直接设置返回内容，避免再次被json编码。
 
+函数通过CURL实现，若需扩展功能，可以直接设置curlOpt选项（具体选项可查阅curl_setopt文档），如：
+
+	$curlOpt = [
+		// 设置代理
+		CURLOPT_PROXY => '8.8.8.8',
+		CURLOPT_PROXYPORT => 8080,
+
+		// 通过UserAgent伪装其它浏览器
+		CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.110 Safari/537.36',
+
+		// 返回结果包含HTTP HEADER部分。TODO: 提供简单的解析，如HTTP返回码、Response HTTP Header等。
+		CURLOPT_HEADER => true
+	];
+	$rv = httpCall($url, $data, ["curlOpt" => $curlOpt]);
+
+如果CURL返回错误，可在此查阅错误码：
+http://curl.haxx.se/libcurl/c/libcurl-errors.html
+
+@see makeUrl
 */
 function httpCall($url, $postParams=null, $opt=[])
 {
@@ -162,6 +213,9 @@ function httpCall($url, $postParams=null, $opt=[])
 	if (@$opt["headers"])
 		curl_setopt($h, CURLOPT_HTTPHEADER, $opt["headers"]);
 
+	if (@$opt["curlOpt"])
+		curl_setopt_array($h, $opt["curlOpt"]);
+		
 	//这里设置代理，如果有的话
 	//curl_setopt($h, CURLOPT_PROXY, '8.8.8.8');
 	//curl_setopt($h, CURLOPT_PROXYPORT, 8080);
