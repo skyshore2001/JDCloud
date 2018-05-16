@@ -6,7 +6,7 @@ init.php(ac?)
 
 当ac为空时，显示环境检查等html页面。否则返回相应文本信息。
 
-init.php(ac="initdb")(db, dbcred0, dbcred, dbcred_ro?, urlPath, adminCred?, cfgonly?=0)
+init.php(ac="initdb")(db, dbcred0, dbcred, dbcred_ro?, urlPath?, adminCred?, cfgonly?=0)
 
 初始化数据库及配置文件：
 - 如果数据库不存在，创建它并指定用户。
@@ -24,6 +24,8 @@ $INFO = []; // { @check, allowInit }
 
 $INFO["check"] = checkEnv();
 $INFO["allowInit"] = !file_exists(CONF_FILE);
+
+$INFO["allowUpgrade"] = file_exists("upgrade/META") && @( (filemtime("upgrade/upgrade.log")?:0) < filemtime("upgrade/META"));
 
 $ac = param("ac");
 if ($ac) {
@@ -160,7 +162,7 @@ function api_initDb()
 		$dbcred0 = mparam("dbcred0");
 		$dbcred_ro = param("dbcred_ro");
 	}
-	$urlPath = mparam("urlPath");
+	$urlPath = param("urlPath");
 
 	if (! preg_match('/^(.*?)\/(\w+)$/', $db, $ms))
 		die("数据库指定错误: `$db`");
@@ -244,7 +246,7 @@ EOL;
 		exit;
 	}
 
-	echo("=== 完成! 请使用upgrade命令行工具更新数据库。\n");
+	echo("=== 完成! 请使用升级工具更新数据库。\n");
 }
 ?>
 <html>
@@ -287,6 +289,10 @@ td {
 p.hint {
 	margin: 1px;
 }
+
+#divUpgrade form {
+	display: inline-block;
+}
 </style>
 
 <h2>环境检查</h2>
@@ -321,34 +327,35 @@ p.hint {
 	<h2>初始化数据库和配置文件</h2>
 	<div class="disallowInit">配置文件php/conf.user.php已存在。如需要重新配置，请删除该文件.</div>
 	<form action="?ac=initdb" method="POST" target="ifrInitDb" class="allowInit">
+		<div class="hint">(标记*为必填项)</div>
 		<table border=1 style="border-spacing: 0" >
 		<tr>
 			<td>MYSQL数据库<p class="hint">P_DB, 格式为"机器名/数据库名"</p></td>
-			<td><input type="text" name="db" placeholder="localhost/jdcloud" required></td>
+			<td nowrap><input type="text" name="db" placeholder="localhost/jdcloud" required>*</td>
 		</tr>
 		<tr>
 			<td colspan=2>
-				<label><input type="checkbox" name="cfgonly" value=1 id="chkCfgOnly">只写配置文件，不检查数据库</label>
+				<label><input type="checkbox" name="cfgonly" value=1 id="chkCfgOnly">数据库已存在，不用创建</label>
 			</td>
 		</tr>
 		<tr class="cfgonly">
-			<td>数据库管理员帐号<p class="hint">P_DBCRED, 格式为"用户名:密码"，用于创建数据库、用户，设置权限等</p></td>
-			<td><input type="text" name="dbcred0" autocomplete="off" placeholder="root:123456" required></td>
+			<td>数据库管理员帐号<p class="hint">格式为"用户名:密码"，用于创建数据库、用户，设置权限等</p></td>
+			<td><input type="text" name="dbcred0" autocomplete="off" placeholder="root:123456" required>*</td>
 		</tr>
 		<tr>
-			<td>创建应用专属的数据库帐号<p class="hint">格式为"用户名:密码", 该帐号将获得当前数据库操作的所有权限，并将写入配置文件。</span></td>
-			<td><input type="text" name="dbcred" autocomplete="off" placeholder="jdcloud:FuZaMiMa" required></td>
+			<td>应用程序数据库帐号<p class="hint">P_DBCRED, 格式为"用户名:密码", 该帐号将获得当前数据库操作的所有权限，并将写入配置文件。</span></td>
+			<td><input type="text" name="dbcred" autocomplete="off" placeholder="jdcloud:FuZaMiMa" required>*</td>
 		</tr>
-		<tr class="cfgonly">
-			<td>创建只读权限的数据库帐号<p class="hint">格式为"用户名:密码", 该帐号获得当前数据库只读权限及数据库备份、主从复制等权限，可不填。</p></td>
+		<!--tr class="cfgonly">
+			<td>只读权限的数据库帐号<p class="hint">格式为"用户名:密码", 该帐号获得当前数据库只读权限及数据库备份、主从复制等权限，可不填。</p></td>
 			<td><input type="text" name="dbcred_ro" autocomplete="off" placeholder="jdcloudro:readonlypwd"></td>
-		</tr>
+		</tr-->
+		<!--tr>
+			<td>应用程序URL根路径<p class="hint">P_URL_PATH, 以"/"开头，不包括主机名。如果配置错误则session无法工作。可不填。</p></td>
+			<td><input type="text" name="urlPath" placeholder="/jdcloud"></td>
+		</tr-->
 		<tr>
-			<td>应用程序URL根路径<p class="hint">P_URL_PATH, 以"/"开头，不包括主机名。如果配置错误则session无法工作。</p></td>
-			<td><input type="text" name="urlPath" placeholder="/jdcloud" required></td>
-		</tr>
-		<tr>
-			<td>创建超级管理端登录帐号<p class="hint">P_ADMIN_CRED, 格式为"用户名:密码", 如不填写则无法登录超级管理端。</p></td>
+			<td>超级管理端登录帐号<p class="hint">P_ADMIN_CRED, 格式为"用户名:密码", 如不填写则无法登录超级管理端。</p></td>
 			<td><input type="text" name="adminCred" autocomplete="off" placeholder="admin:admin123"></td>
 		</tr>
 		<tr>
@@ -358,10 +365,20 @@ p.hint {
 		</tr>
 		</table>
 	</form>
-	<div class="allowInit">
-		<h3>结果</h3>
-		<iframe id="ifrInitDb" name="ifrInitDb"></iframe>
-	</div>
+</div>
+
+<div id="divUpgrade" style="margin-top:20px;">
+	<form action="upgrade/index.php" method="POST" target="ifrInitDb">
+		<button>数据库升级</button>
+	</form>
+	<form action="upgrade/index.php?diff=1" method="POST" target="ifrInitDb">
+		<button>数据库比较</button>
+	</form>
+</div>
+
+<div id="divResult">
+	<h3>结果</h3>
+	<iframe id="ifrInitDb" name="ifrInitDb"></iframe>
 </div>
 
 </body>
@@ -386,6 +403,9 @@ if (info.allowInit) {
 else {
 	$("#divInitDb .disallowInit").show();
 }
+
+$("#divUpgrade").toggle(info.allowUpgrade);
+$("#divResult").toggle(info.allowUpgrade || info.allowInit);
 
 $("#chkCfgOnly").change(function () {
 	if (this.checked) {

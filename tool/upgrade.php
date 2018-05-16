@@ -38,15 +38,11 @@
 
 要查看所有建表的SQL语句，可以用：
 
-	./upgrade.sh showtable
-
-要查看指定的表:
-
-	./upgrade.sh 'showtable("ordr")'
+	./upgrade.sh 'export(1)'
 
 默认升级时(initdb)只会添加缺失的表和字段, 不会更新已有的表和字段, 但可以用
 
-	./upgrade.sh 'showtable("*", true)' | tee 1.sql
+	./upgrade.sh 'export(2)' | tee 1.sql
 
 导出SQL后, 手工编辑并执行, 以避免误修改或删除字段.
 
@@ -140,7 +136,7 @@ P_DBTYPE参数可以不设置，它默认值就是mysql。
 注意：
 
 - 升级工具只创建表, 不创建数据库本身。
-- 默认不会删除表或字段, 不会更新类型与定义不一致的字段。如有需要可用`showtable("*", true)`命令导出SQL并手工操作。
+- 默认不会删除表或字段, 不会更新类型与定义不一致的字段。如有需要可用`export(2)`命令导出SQL并手工操作。
 
 ### 筋斗云框架支持
 
@@ -281,6 +277,15 @@ addcol {table} {col}
 
 noPrompt
 : 默认导入表之前要求确认，如果指定该项为true，则不需要提示，直接导入。
+
+**[export]**
+
+参数: {type=0}
+
+导出META文件或SQL语句。
+
+type
+: 0-meta, 1-所有表的SQL(相当于`showtable`指令), 2-与当前数据库比较后的差异SQL(相当于`showtable(null,true)`)
 
 ### 非交互命令
 

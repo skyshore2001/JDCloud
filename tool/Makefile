@@ -54,3 +54,6 @@ sprite: ../server/m2/icon.out.css
 clean-sprite:
 	-rm -rf ../server/m2/icon.out.css ../server/m2/icon/icon@2x-*.png
 
+meta:
+	php upgrade.php export | tee ../server/tool/upgrade/META
+
