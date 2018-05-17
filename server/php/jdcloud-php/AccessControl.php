@@ -611,6 +611,35 @@ class AccessControl
 		return $x;
 	}
 
+	/*
+	支持get/post参数中同时有cond参数，且cond参数允许为数组，比如传
+		URL中：cond[]=a=1&cond[]=b=2
+		POST中：cond=c=3
+	后端处理成 "a=1 AND b=2 AND c=3"
+	*/
+	static function getCondStr($condArr)
+	{
+		$condSql = null;
+		foreach ($condArr as $cond) {
+			if ($cond === null)
+				continue;
+			if (is_array($cond))
+				$cond = getCondStr($cond);
+
+			if ($condSql === null)
+				$condSql = $cond;
+			else if (stripos($cond, " and ") !== false || stripos($cond, " or ") !== false)
+				$condSql .= " AND ({$cond})";
+			else 
+				$condSql .= " AND " . $cond;
+		}
+		return $condSql;
+	}
+
+	private function getCondParam($name) {
+		return self::getCondStr([$_GET[$name], $_POST[$name]]);
+	}
+
 	// for get/query
 	protected function initQuery()
 	{
@@ -619,8 +648,8 @@ class AccessControl
 		$this->sqlConf = [
 			"res" => [],
 			"gres" => $gres,
-			"gcond" => param("gcond", null, null, false),
-			"cond" => [param("cond", null, null, false)],
+			"gcond" => $this->getCondParam("gcond"),
+			"cond" => [$this->getCondParam("cond")],
 			"join" => [],
 			"orderby" => param("orderby"),
 			"subobj" => [],
@@ -1190,17 +1219,7 @@ class AccessControl
 		$tblSql = "{$this->table} t0";
 		if (count($sqlConf["join"]) > 0)
 			$tblSql .= "\n" . join("\n", $sqlConf["join"]);
-		$condSql = "";
-		foreach ($sqlConf["cond"] as $cond) {
-			if ($cond == null)
-				continue;
-			if (strlen($condSql) > 0)
-				$condSql .= " AND ";
-			if (stripos($cond, " and ") !== false || stripos($cond, " or ") !== false)
-				$condSql .= "({$cond})";
-			else 
-				$condSql .= $cond;
-		}
+		$condSql = self::getCondStr($sqlConf["cond"]);
 /*
 			foreach ($_POST as $k=>$v) {
 				# skip sys param which generally starts with "_"
@@ -1502,12 +1521,15 @@ function KVtoCond($k, $v)
 				$firstCol = false;
 			else
 				echo ',';
-			// 大数字，避免excel用科学计数法显示
-			if (preg_match('/^[\d\.]{5,}$/', $e)) {
-				$e .= "\t";
-			}
-			else if ($enc) {
+			if ($enc) {
 				$e = iconv("UTF-8", "{$enc}//IGNORE" , (string)$e);
+
+				// Excel使用本地编码(gb18030)
+				// 大数字，避免excel用科学计数法显示（从11位手机号开始）。
+				// 5位-10位数字时，Excel会根据列宽显示科学计数法或完整数字，11位以上数字总显示科学计数法。
+				if (preg_match('/^\d{11,}$/', $e)) {
+					$e .= "\t";
+				}
 			}
 			echo '"', str_replace('"', '""', $e), '"';
 		}

@@ -121,6 +121,7 @@ error_reporting(E_ALL & ~E_NOTICE);
  在res中允许使用部分统计函数"sum"与"count", 这时必须指定字段别名, 如"count(id) cnt", "sum(qty*price) total", "count(distinct addr) addrCnt".
 
 - cond: String. 指定查询条件，语法可参照SQL语句的"WHERE"子句。例如：cond="field1>100 AND field2='hello'", 注意使用UTF8+URL编码, 字符串值应加上单引号.
+ (v5.1) 支持在GET/POST中同时传cond参数，且允许cond参数为数组。比如URL中：`cond[]=a=1&cond[]=b=2`，在POST中：`cond=c=3`，则后端识别为 cond="a=1 AND b=2 AND c=3". 参数gcond也是一样。
 
 - orderby: String. 指定排序条件，语法可参照SQL语句的"ORDER BY"子句，例如：orderby="id desc"，也可以多个排序："tm desc,status" (按时间倒排，再按状态正排)
 
