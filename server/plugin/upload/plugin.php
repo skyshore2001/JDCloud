@@ -8,7 +8,7 @@ global $UploadType;
 $UploadType = [
 	"user" => ["w"=>128, "h"=>128],
 	"store" => ["w"=>200, "h"=>150],
-	"default" => ["w"=>100, "h"=>100],
+	"default" => ["w"=>360, "h"=>360],
 ];
 
 // 如果扩展名未知，则使用MIME类型限制上传：
