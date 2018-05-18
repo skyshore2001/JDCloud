@@ -100,6 +100,11 @@ function buildWeb
 
 	# !!! 切换到OUT_DIR
 	cd $OUT_DIR
+	if ( git remote | grep 'origin' >/dev/null ); then
+		git pull origin
+	else
+		outdirNoOrigin=1
+	fi
 
 	change=`git status -s`
 	if [[ -z $change ]]; then
@@ -215,11 +220,10 @@ function pushGit
 	echo
 	read -p '=== 推送到代码库? (y/n) ' a
 	if [[ $a == 'y' || $a == 'Y' ]]; then
-		if ( git remote | grep 'origin' >/dev/null ); then
-			:  # same as 'true'
-		else
+		if [[ $outdirNoOrigin ]]; then
+#			:  # same as 'true'
 			url=''
-			read -p "!!! 尚未关联代码库。请指定origin对应的url (例如 builder@server:myproject.git): " url
+			read -p "!!! 尚未关联代码库。请指定origin对应的url (例如 builder@server:myproject-online.git): " url
 			git remote add origin $url
 		fi
 		branch=`getCurBranch`
