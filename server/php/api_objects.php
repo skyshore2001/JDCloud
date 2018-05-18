@@ -64,7 +64,7 @@ class AC2_Employee extends AC0_Employee
 
 	function __construct()
 	{
-		if (hasPerm(AUTH_MGR)) {
+		if (hasPerm(PERM_MGR)) {
 			$this->allowedAc = $this->allowedAc2;
 		}
 	}
@@ -72,7 +72,7 @@ class AC2_Employee extends AC0_Employee
 	protected function onValidateId()
 	{
 		$id = param("id");
-		if (!hasPerm(AUTH_MGR) || is_null(param("id"))) {
+		if (!hasPerm(PERM_MGR) || is_null($id)) {
 			setParam("id", $_SESSION["empId"]);
 		}
 	}
