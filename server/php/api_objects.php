@@ -58,7 +58,7 @@ class AC0_Employee extends AccessControl
 
 class AC2_Employee extends AC0_Employee
 {
-	protected $requiredFields = ["uname", "pwd"];
+	protected $requiredFields = [["phone", "uname"], "pwd"];
 	protected $allowedAc = ["query", "get", "set"];
 	protected $allowedAc2 = ["query", "get", "set", "add", "del"];
 
