@@ -640,6 +640,10 @@ class AccessControl
 		return self::getCondStr([$_GET[$name], $_POST[$name]]);
 	}
 
+	static function removeQuote($k) {
+		return preg_replace('/^"(.*)"$/', '$1', $k);
+	}
+
 	// for get/query
 	protected function initQuery()
 	{
@@ -926,7 +930,8 @@ class AccessControl
 // 				throw new MyException(E_PARAM, "bad property `$col`");
 			if ($this->addVCol($col, true, $alias) === false) {
 				if (!$gres && array_key_exists($col, $this->subobj)) {
-					$this->sqlConf["subobj"][$alias ?: $col] = $this->subobj[$col];
+					$key = self::removeQuote($alias ?: $col);
+					$this->sqlConf["subobj"][$key] = $this->subobj[$col];
 				}
 				else {
 					$col = "t0." . $col;
@@ -1376,12 +1381,15 @@ class AccessControl
 
 		// Note: colCnt may be changed in after().
 		$fixedColCnt = count($ret)==0? 0: count($ret[0]);
+		$this->handleSubObjForList($ret); // 优化: 总共只用一次查询, 替代每个主表查询一次
+		/*
 		foreach ($ret as &$ret1) {
 			$id1 = $ret1["id"];
 			if (isset($id1))
 				$this->handleSubObj($id1, $ret1);
 			$this->handleRow($ret1);
 		}
+		 */
 		$this->after($ret);
 
 		if ($pagesz == count($ret)) { // 还有下一页数据, 添加nextkey
@@ -1441,6 +1449,68 @@ class AccessControl
 				else {
 					$mainObj[$k] = $ret1;
 				}
+			}
+		}
+	}
+
+	// 优化的子表查询. 对列表使用一次`IN (id,...)`查询出子表, 然后使用程序自行join
+	// 临时添加了"id_"作为辅助字段.
+	protected function handleSubObjForList(&$ret)
+	{
+		$subobj = $this->sqlConf["subobj"];
+		if (! is_array($subobj) || count($subobj)==0)
+			return;
+
+		$idArr = [];
+		foreach ($ret as $row) {
+			$key = $row["id"] ?: $row["编号"]; // TODO: use id
+			if ($key === null)
+				continue;
+			$idArr[] = $key;
+		}
+		if (count($idArr) == 0)
+			return;
+		$idList = join(',', $idArr);
+
+		# $opt: {sql, wantOne=false}
+		foreach ($subobj as $k => $opt) {
+			if (! @$opt["sql"])
+				continue;
+			$joinField = null;
+
+			# e.g. "select * from OrderItem where orderId=%d" => (添加主表关联字段id_) "select *, orderId id_ from OrderItem where orderId=%d"
+			$sql = preg_replace_callback('/(\S+)=%d/', function ($ms) use (&$joinField, $idList){
+				$joinField = $ms[1];
+				return $ms[1] . " IN ($idList)";
+			}, $opt["sql"]); 
+			if ($joinField === null)
+				throw new MyException(E_SERVER, "bad subobj def: `" . $opt["sql"] . "'. require `field=%d`");
+			$sql = preg_replace('/ from/i', ", $joinField id_$0", $sql);
+
+			$ret1 = queryAll($sql, true);
+			$subMap = []; // {id_=>[subobj]}
+			foreach ($ret1 as $e) {
+				$key = $e["id_"];
+				unset($e["id_"]);
+				if (! array_key_exists($key, $subMap)) {
+					$subMap[$key] = [$e];
+				}
+				else {
+					$subMap[$key][] = $e;
+				}
+			}
+			foreach ($ret as &$row) {
+				$key = $row["id"] ?: $row["编号"]; // TODO: use id
+				$val = @$subMap[$key];
+				if (@$opt["wantOne"]) {
+					if ($val !== null)
+						$val = $val[0];
+				}
+				else {
+					if ($val === null)
+						$val = [];
+				}
+				$row[$k] = $val;
 			}
 		}
 	}
@@ -1513,6 +1583,16 @@ function KVtoCond($k, $v)
 		}, $cond);
 	}
 
+	// 对象或对象数组转成 list string
+	static function array2Str($arr)
+	{
+		if (count($arr) == 0)
+			return "";
+		if (! isset($arr[0]))
+			return join(':', $arr);
+		return join(',', array_map("self::array2Str", $arr));
+	}
+
 	function outputCsvLine($row, $enc)
 	{
 		$firstCol = true;
@@ -1521,6 +1601,8 @@ function KVtoCond($k, $v)
 				$firstCol = false;
 			else
 				echo ',';
+			if (is_array($e))
+				$e = self::array2Str($e);
 			if ($enc) {
 				$e = iconv("UTF-8", "{$enc}//IGNORE" , (string)$e);
 
@@ -1531,7 +1613,10 @@ function KVtoCond($k, $v)
 					$e .= "\t";
 				}
 			}
-			echo '"', str_replace('"', '""', $e), '"';
+			if (strpos($e, '"') !== false)
+				echo '"', str_replace('"', '""', $e), '"';
+			else
+				echo $e;
 		}
 		echo "\n";
 	}

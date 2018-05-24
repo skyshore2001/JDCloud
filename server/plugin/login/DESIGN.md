@@ -95,13 +95,15 @@ code
 
 ### 登录
 
-	login(uname, pwd/code, wantAll?) -> {id, _token, _expire, _isNew?}
+	login(uname, pwd/code) -> {id, _token, _expire, _isNew?, ...}
 	
-	login(token, wantAll?) -> (与得到该token的登录返回相同内容, 但不包括_token, _expire, _isNew字段).
+	login(token) -> (与得到该token的登录返回相同内容, 但不包括_token, _expire, _isNew字段).
 
 该API根据当前app类型确定是用户或雇员或管理员登录（apptype分别为user, emp, admin）。支持用户名密码、用户名动态口令、token三种登录方式。
 
 对于用户登录，如果code验证成功, 但手机号不存在, 就以该手机号自动注册用户, 密码为空（由于登录时密码不允许空，所以空密码意味着无法用密码登录）。
+
+登录成功后返回用户信息，格式与User.get/Employee.get返回相同。
 
 **[应用逻辑]**
 
@@ -128,9 +130,6 @@ code
 
 pwd
 : String. 登录密码. 支持明文密码或md5后的密码.
-
-wantAll
-: Boolean. 如果为1，则返回登录对象的详细内容，格式与User.get/Employee.get返回相同。
 
 **[返回]**
 

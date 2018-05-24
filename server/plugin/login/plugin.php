@@ -333,7 +333,7 @@ function api_login()
 		$uname = mparam("uname");
 		list($pwd, $code) = mparam(["pwd", "code"]);
 	}
-	$wantAll = param("wantAll/b", 0);
+	//$wantAll = param("wantAll/b", 0);
 
 	if (isset($code) && $code != "")
 	{
@@ -411,14 +411,14 @@ function api_login()
 		$_SESSION["adminId"] = $adminId;
 		$ret = ["id" => $adminId, "uname" => $uname1];
 	}
-	$imp = LoginImpBase::getInstance();
-	$imp->onLogin($type, $ret["id"], $ret);
-
-	if ($wantAll && $obj)
+	if ($obj)
 	{
 		$rv = tableCRUD("get", $obj);
 		$ret += $rv;
 	}
+
+	$imp = LoginImpBase::getInstance();
+	$imp->onLogin($type, $ret["id"], $ret);
 
 	if (! isset($token)) {
 		genLoginToken($ret, $uname, $pwd);

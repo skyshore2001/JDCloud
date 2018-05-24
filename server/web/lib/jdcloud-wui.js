@@ -4865,6 +4865,25 @@ function loadDialog(jdlg, onLoad)
 
 在dialog的事件beforeshow(ev, formMode, opt)中，可以通过opt.objParam取出showObjDlg传入的所有参数opt。
 
+@param opt.onCrud Function(). (v5.1) 对话框操作完成时回调。
+一般用于点击表格上的增删改查工具按钮完成操作时插入逻辑。
+在回调函数中this对象为optParam，且可通过this.mode获取操作类型。示例：
+
+	jdlg1.objParam = {
+		offline: true,
+		onCrud: function () {
+			if (this.mode == FormMode.forDel) {
+				// after delete row
+			}
+			// ... 重新计算金额
+		}
+	};
+	jtbl.datagrid({
+		toolbar: WUI.dg_toolbar(jtbl, jdlg1), // 添加增删改查工具按钮，点击则调用showObjDlg，这时objParam生效。
+		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg1),
+		...
+	});
+
 事件参考：
 @see showDlg
 */
@@ -4925,6 +4944,7 @@ function showObjDlg(jdlg, mode, opt)
 			if (jd.jtbl) {
 				var rowIndex = jd.jtbl.datagrid("getRowIndex", rowData);
 				jd.jtbl.datagrid("deleteRow", rowIndex);
+				opt.onCrud && opt.onCrud();
 			}
 			return;
 		}
@@ -4938,6 +4958,7 @@ function showObjDlg(jdlg, mode, opt)
 				if (jd.jtbl)
 					reload(jd.jtbl);
 				self.app_show('删除成功!');
+				opt.onCrud && opt.onCrud();
 			});
 		});
 		return;
@@ -5044,6 +5065,7 @@ function showObjDlg(jdlg, mode, opt)
 				param.cond = dgOpt.url.params.cond + " AND (" + param.cond + ")";
 			}
 			reload(jtbl, undefined, param);
+			opt.onCrud && opt.onCrud();
 			return;
 		}
 		// add/set/link
@@ -5079,6 +5101,7 @@ function showObjDlg(jdlg, mode, opt)
 		}
 		if (!opt.offline)
 			self.app_show('操作成功!');
+		opt.onCrud && opt.onCrud();
 	}
 }
 
@@ -5243,14 +5266,14 @@ function enhanceAnchor(jo)
 
 	jtbl.datagrid({
 		url: WUI.makeUrl("User.query"),
-		toolbar: WUI.dg_toolbar(jtbl, jdlg, {text:'导出', iconCls:'icon-save', handler: getExportHandler(jtbl) }),
+		toolbar: WUI.dg_toolbar(jtbl, jdlg, {text:'导出', iconCls:'icon-save', handler: WUI.getExportHandler(jtbl) }),
 		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
 	});
 
 默认是导出数据表中直接来自于服务端的字段，并应用表上的查询条件及排序。
 也可以通过设置param参数手工指定，如：
 
-	handler: getExportHandler(jtbl, "User.query", {res: "id 编号, name 姓名, createTm 注册时间", orderby: "createTm DESC"})
+	handler: WUI.getExportHandler(jtbl, "User.query", {res: "id 编号, name 姓名, createTm 注册时间", orderby: "createTm DESC"})
 
 注意：由于分页机制影响，会设置参数{pagesz: -1}以便在一页中返回所有数据，而实际一页能导出的最大数据条数取决于后端设置（默认1000，参考后端文档 AccessControl::$maxPageSz）。
 

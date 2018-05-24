@@ -1034,8 +1034,12 @@ function dbInsert($table, $kv)
 
 如果担心一次请求数量过多，也可以指定批大小，如1000行提交一次：
 
-	$bi = new BatchInsert("Syslog", "module,tm,content", 1000);
+	$opt = [
+		"batchSize" =>1000
+	]
+	$bi = new BatchInsert("Syslog", "module,tm,content", $opt);
 
+- opt: {batchSize/i, useReplace/b}
 */
 class BatchInsert
 {
@@ -1045,14 +1049,18 @@ class BatchInsert
 	private $sql;
 	private $n = 0;
 	private $retn = 0;
-	function __construct($table, $headers, $batchSize=0) {
-		$this->sql0 = "INSERT INTO $table ($headers) VALUES ";
-		$this->batchSize = $batchSize;
+	function __construct($table, $headers, $opt=null) {
+		$verb = @$opt["useReplace"]? "REPLACE": "INSERT";
+		$this->sql0 = "$verb INTO $table ($headers) VALUES ";
+		$this->batchSize = @$opt["batchSize"]?:0;
 	}
 	function add($row) {
 		$values = '';
 		foreach ($row as $v) {
-			$v =  Q($v);
+			if ($v === '')
+				$v = "NULL";
+			else
+				$v =  Q($v);
 			if ($values !== '')
 				$values .= ",";
 			$values .= $v;
