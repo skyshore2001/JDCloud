@@ -217,7 +217,7 @@ app类型为"emp".
 
 本节API需要超级管理员权限.
 
-app类型为adm.
+app类型为"admin".
 
 ## 前端应用接口
 
@@ -229,7 +229,7 @@ app类型为adm.
 
 用户登录, 可以创建和查看订单等.
 
-### 管理端(app=store)
+### 管理端(app=emp-adm)
 
 	web/store.html
 

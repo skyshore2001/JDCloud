@@ -2716,6 +2716,43 @@ function getQueryParam(kvList)
 	return ret;
 }
 
+/**
+@fn doSpecial(jo, filter, fn)
+
+连续5次点击某处，执行隐藏动作。
+
+例：
+	// 连续5次点击当前tab标题，重新加载页面
+	var self = WUI;
+	self.doSpecial(self.tabMain.find(".tabs-header"), ".tabs-selected", function () {
+		self.reloadPage();
+		self.reloadDialog(true);
+	});
+
+*/
+self.doSpecial = doSpecial;
+function doSpecial(jo, filter, fn)
+{
+	jo.on("click", filter, function (ev) {
+		var INTERVAL = 4; // 4s
+		var MAX_CNT = 5;
+		var tm = new Date();
+		var obj = this;
+		// init, or reset if interval 
+		if (fn.cnt == null || fn.lastTm == null || tm - fn.lastTm > INTERVAL*1000 || fn.lastObj != obj)
+		{
+			fn.cnt = 0;
+			fn.lastTm = tm;
+			fn.lastObj = obj;
+		}
+		if (++ fn.cnt < MAX_CNT)
+			return;
+		fn.cnt = 0;
+		fn.lastTm = tm;
+
+		fn();
+	});
+}
 }
 // vi: foldmethod=marker
 // ====== WEBCC_END_FILE app.js }}}
@@ -6148,6 +6185,12 @@ function mainInit()
 				return;
 			jpage.trigger('pagedestroy');
 		}
+	});
+
+	// 连续5次点击当前tab标题，重新加载页面
+	self.doSpecial(self.tabMain.find(".tabs-header"), ".tabs-selected", function () {
+		self.reloadPage();
+		self.reloadDialog(true);
 	});
 
 	// bugfix for datagrid size after resizing
