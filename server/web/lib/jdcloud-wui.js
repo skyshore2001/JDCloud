@@ -2625,7 +2625,7 @@ function getop(v)
 self.queryHint = "查询示例\n" +
 	"文本：\"王小明\", \"王*\"(匹配开头), \"*上海*\"(匹配部分)\n" +
 	"数字：\"5\", \">5\", \"5-10\", \"5-10,12,18\"\n" +
-	"日期：\">=2017-10-01\", \"<2017-10-01 18:00\",\"2017-10-01~2017-11-01\"(区间)\n" +
+	"时间：\">=2017-10-1\", \"<2017-10-1 18:00\", \"2017-10\"(10月份区间), \"2017-10-01~2017-11-01\"(10月份区间)\n" +
 	"高级：\"!5\"(排除5),\"1-10 and !5\", \"王*,张*\"(王某或张某), \"empty\"(为空), \"0,null\"(0或未设置)\n";
 
 self.getQueryCond = getQueryCond;
@@ -2648,6 +2648,9 @@ function getQueryCond(kvList)
 		var arr = v.toString().split(/\s+(and|or)\s+/i);
 		var str = '';
 		var bracket = false;
+		// NOTE: 根据字段名判断时间类型
+		var isTm = /(Tm|^tm)\d*$/.test(k);
+		var isDt = /(Dt|^dt)\d*$/.test(k);
 		$.each(arr, function (i, v1) {
 			if ( (i % 2) == 1) {
 				str += ' ' + v1.toUpperCase() + ' ';
@@ -2664,16 +2667,48 @@ function getQueryCond(kvList)
 					str1 += " OR ";
 					bracket2 = true;
 				}
-				var m = v2.match(/^(?:(\d+)-(\d+)|(\d{4}[-\/.]\d+[-\/.]\d+.*?)\s*~\s*(\d{4}[-\/.]\d+[-\/.]\d+.*))$/);
-				if (m) {
-					if (m[1]) {
-						str1 += "(" + k + ">=" + m[1] + " AND " + k + "<=" + m[2] + ")";
-					}
-					else {
-						str1 += "(" + k + ">='" + m[3] + "' AND " + k + "<'" + m[4] + "')";
+				var mt; // match
+				var isHandled = false; 
+				if (isTm | isDt) {
+					// "2018-5" => ">=2018-5-1 and <2018-6-1"
+					// "2018-5-1" => ">=2018-5-1 and <2018-5-2" (仅限Tm类型; Dt类型不处理)
+					if (mt=v2.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?$/)) {
+						var y = parseInt(mt[1]), m = parseInt(mt[2]), d=mt[3]!=null? parseInt(mt[3]): null;
+						if ( (y>1900 && y<2100) && (m>=1 && m<=12) && (d==null || (d>=1 && d<=31 && isTm)) ) {
+							isHandled = true;
+							var dt1, dt2;
+							if (d) {
+								var dt = new Date(y,m-1,d);
+								dt1 = dt.format("D");
+								dt2 = dt.addDay(1).format("D");
+							}
+							else {
+								var dt = new Date(y,m-1,1);
+								dt1 = dt.format("D");
+								dt2 = dt.addMonth(1).format("D");
+							}
+							str1 += "(" + k + ">='" + dt1 + "' AND " + k + "<'" + dt2 + "')";
+						}
 					}
 				}
-				else {
+				if (!isHandled) {
+					// "2018-5-1~2018-10-1"
+					// "2018-5-1 8:00 ~ 2018-10-1 18:00"
+					if (mt=v2.match(/^(\d{4}-\d{1,2}.*?)\s*~\s*(\d{4}-\d{1,2}.*?)$/)) {
+						var dt1 = mt[1], dt2 = mt[2];
+						str1 += "(" + k + ">='" + dt1 + "' AND " + k + "<'" + dt2 + "')";
+						isHandled = true;
+					}
+					// "1-99"
+					else if (mt=v2.match(/^(\d+)-(\d+)$/)) {
+						var a = parseInt(mt[1]), b = parseInt(mt[2]);
+						if (a < b) {
+							str1 += "(" + k + ">=" + mt[1] + " AND " + k + "<=" + mt[2] + ")";
+							isHandled = true;
+						}
+					}
+				}
+				if (!isHandled) {
 					str1 += k + getop(v2);
 				}
 			});
