@@ -2952,7 +2952,7 @@ function makeUrl(action, params)
 	callSvr("logout", api_logout);
 	function api_logout(data) {}
 
-	callSvr("login", {wantAll:1}, api_login);
+	callSvr("login", api_login);
 	function api_login(data) {}
 
 	callSvr("info/hotline.php", {q: '大众'}, api_hotline);
@@ -5611,7 +5611,7 @@ function tryAutoLogin(onHandleLogin, reuseCmd, allowNoLogin)
 	var token = loadLoginToken();
 	if (token != null)
 	{
-		var param = {wantAll:1};
+		var param = {};
 		var postData = {token: token};
 		self.callSvr("login", param, handleAutoLogin, postData, ajaxOpt);
 	}

@@ -331,7 +331,7 @@ props字段与之类似，flags字段中一个标志是一个字母，而props�
 
 @var AccessControl::$subobj (for get/query) 定义子表
 
-subobj: { name => {sql, default, wantOne} }
+subobj: { name => {sql, default?=false, wantOne?=false, force?=false} }
 
 设计接口：
 
@@ -348,8 +348,12 @@ subobj: { name => {sql, default, wantOne} }
 	}
 
 子表和虚拟字段类似，支持get/query操作，执行指定的SQL语句作为结果。结果以一个数组返回[{id, tm, ...}]。
-"default"选项与虚拟字段(vcolDefs)上的"default"选项一样，表示当未指定"res"参数时，是否默认返回该字段。
-如果指定wantOne=>true, 则结果以一个对象返回即 {id, tm, ...}, 适用于主表与子表一对一的情况。
+
+- sql: 子表查询语句，其中应包含用"field=%d"这样语句来定义与主表id字段的关系。
+ (v5.1)为了优化query接口，避免每一行分别查一次子表，查询语句会被改为"field IN (...)"的形式。
+- default: 虚拟字段(vcolDefs)上的"default"选项一样，表示当未指定"res"参数时，是否默认返回该字段。
+- wantOne: 如果为true, 则结果以一个对象返回即 {id, tm, ...}, 适用于主表与子表一对一的情况。
+- force: (v5.1) 如果sql中没有与主表的关联即没有包含"field=%d"，应指定force=true，否则在query接口中会当作语句错误。
 
 ## 操作完成回调
 
@@ -880,9 +884,7 @@ class AccessControl
 			return;
 
 		$alias = $a[0] ?: null;
-		$k = $alias ?: $col;
-		if ($k[0] == '"')
-			$k = substr($k, 1, strlen($k)-2);
+		$k = self::removeQuote($alias ?: $col);
 		$this->enumFields[$k] = parseKvList($a[1], ";", ":");
 	}
 
@@ -1061,6 +1063,7 @@ class AccessControl
 		else
 			throw new MyException(E_SERVER, "bad res definition: `$res`");
 
+		$colName = self::removeQuote($colName);
 		if (array_key_exists($colName, $this->vcolMap)) {
 			if ($added && $this->vcolMap[ $colName ]["added"])
 				throw new MyException(E_SERVER, "res for col `$colName` has added: `$res`");
@@ -1381,15 +1384,22 @@ class AccessControl
 
 		// Note: colCnt may be changed in after().
 		$fixedColCnt = count($ret)==0? 0: count($ret[0]);
-		$this->handleSubObjForList($ret); // 优化: 总共只用一次查询, 替代每个主表查询一次
-		/*
-		foreach ($ret as &$ret1) {
-			$id1 = $ret1["id"];
-			if (isset($id1))
-				$this->handleSubObj($id1, $ret1);
-			$this->handleRow($ret1);
+
+		$SUBOBJ_OPTIMIZE = true;
+		if ($SUBOBJ_OPTIMIZE) {
+			$this->handleSubObjForList($ret); // 优化: 总共只用一次查询, 替代每个主表查询一次
+			foreach ($ret as &$ret1) {
+				$this->handleRow($ret1);
+			}
 		}
-		 */
+		else {
+			foreach ($ret as &$ret1) {
+				$id1 = $ret1["id"];
+				if (isset($id1))
+					$this->handleSubObj($id1, $ret1);
+				$this->handleRow($ret1);
+			}
+		}
 		$this->after($ret);
 
 		if ($pagesz == count($ret)) { // 还有下一页数据, 添加nextkey
@@ -1483,8 +1493,23 @@ class AccessControl
 				$joinField = $ms[1];
 				return $ms[1] . " IN ($idList)";
 			}, $opt["sql"]); 
-			if ($joinField === null)
-				throw new MyException(E_SERVER, "bad subobj def: `" . $opt["sql"] . "'. require `field=%d`");
+			if ($joinField === null) {
+				if (! @$opt["force"])
+					throw new MyException(E_SERVER, "bad subobj def: `" . $opt["sql"] . "'. require `field=%d`");
+
+				$ret1 = queryAll($sql, true);
+				if (@$opt["wantOne"]) {
+					if (count($ret1) == 0)
+						$ret1 = null;
+					else
+						$ret1 = $ret1[0];
+				}
+				foreach ($ret as &$row) {
+					$row[$k] = $ret1;
+				}
+				continue;
+			}
+
 			$sql = preg_replace('/ from/i', ", $joinField id_$0", $sql);
 
 			$ret1 = queryAll($sql, true);
@@ -1613,7 +1638,7 @@ function KVtoCond($k, $v)
 					$e .= "\t";
 				}
 			}
-			if (strpos($e, '"') !== false)
+			if (strpos($e, '"') !== false || strpos($e, "\n") !== false)
 				echo '"', str_replace('"', '""', $e), '"';
 			else
 				echo $e;

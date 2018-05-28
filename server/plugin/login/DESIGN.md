@@ -93,6 +93,16 @@ code
 
 	login(uname, code)
 
+也提供传统注册：(需配置 Login::$allowManualReg = true;)
+
+	reg()(uname/phone, pwd, name?, ...) -> 与login一致，包括_token等便于自动登录。
+
+- 通过POST传参数。
+- uname/phone: 用户名或手机号
+- pwd: 登录密码
+- 其它字段与User表一致即可。
+- 注册后自动已登录。
+
 ### 登录
 
 	login(uname, pwd/code) -> {id, _token, _expire, _isNew?, ...}

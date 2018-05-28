@@ -245,6 +245,55 @@ function api_genCode()
 	return $ret;
 }
 
+function api_reg()
+{
+	if (! Login::$allowManualReg)
+		throw new MyException(E_FORBIDDEN, "manual reg is disabled.", "系统未开放用户注册。");
+
+	list($uname, $phone) = mparam(["uname", "phone"], "P");
+	$pwd = mparam("pwd", "P");
+
+	if (isset($uname)) {
+		$rv = queryOne("SELECT 1 FROM User WHERE uname=" . Q($uname));
+		if ($rv !== false)
+			throw new MyException(E_PARAM, "duplicate uname", "用户名已存在");
+	}
+	else if (isset($phone)) {
+		$rv = queryOne("SELECT 1 FROM User WHERE phone=" . Q($phone));
+		if ($rv !== false)
+			throw new MyException(E_PARAM, "duplicate phone", "手机号已存在");
+	}
+
+	addToPwdTable($pwd);
+	$_POST["pwd"] = hashPwd($pwd);
+	$_POST["createTm"] = date(FMT_DT);
+	if (!isset($_POST["name"])) {
+		if ($phone !== null) {
+			$phone1 = preg_replace('/^\d{3}\K(\d{4})/', '****', $phone);
+			$_POST["name"] = "用户" . $phone1;
+		}
+		else {
+			$_POST["name"] = $uname;
+		}
+	}
+
+	$id = dbInsert("User", $_POST);
+	$ret = ["id"=>$id];
+
+	$imp = LoginImpBase::getInstance();
+	$imp->onRegNewUser($id, $uname ?: $phone);
+
+	$_SESSION["uid"] = $id;
+	$imp->onLogin($type, $id, $ret);
+
+	//$wantAll = param("wantAll/b", 0);
+	$rv = callSvcInt("User.get");
+	$ret += $rv;
+
+	genLoginToken($ret, $uname?:$phone, $pwd);
+	return $ret;
+}
+
 function regUser($phone, $pwd)
 {
 	$phone1 = preg_replace('/^\d{3}\K(\d{4})/', '****', $phone);
