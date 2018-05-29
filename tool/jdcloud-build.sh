@@ -89,8 +89,21 @@ PROG=`perl -x $0 abs_path`
 TOOL="perl -x -f $PROG"
 
 #### functions
+function pullOnlineLib()
+{
+	if ( git remote | grep 'origin' >/dev/null ); then
+		git pull origin
+	else
+		outdirNoOrigin=1
+	fi
+}
+
 function buildWeb
 {
+	# 先更新OUT_DIR
+	( cd $OUT_DIR; pullOnlineLib )
+
+	# 编译输出
 	webcc_cmd="php `dirname $PROG`/webcc.php"
 	# !!! CALL WEBCC
 	$webcc_cmd server -o $OUT_DIR || exit
@@ -100,12 +113,6 @@ function buildWeb
 
 	# !!! 切换到OUT_DIR
 	cd $OUT_DIR
-	if ( git remote | grep 'origin' >/dev/null ); then
-		git pull origin
-	else
-		outdirNoOrigin=1
-	fi
-
 	change=`git status -s`
 	if [[ -z $change ]]; then
 		echo "=== 没有文件变动!"
