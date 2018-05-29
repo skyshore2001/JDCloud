@@ -633,6 +633,8 @@ class UpgHelper
 			return $dbType == "tinyint";
 		case "decimal":
 			return $dbType == "decimal" && $len == $meta["len"];
+		case "real":
+			return $dbType == "double";
 		default:
 			return $meta["type"] == $dbType;
 		}
