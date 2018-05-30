@@ -422,7 +422,8 @@ require_once('upglib.php');
 
 global $h;
 try {
-	$h = new UpgHelper();
+	$noDb = @($argv[1] === "export");
+	$h = new UpgHelper(false, $noDb);
 
 	if (count($argv) > 1) {
 		$cmd = join(' ', array_slice($argv, 1));

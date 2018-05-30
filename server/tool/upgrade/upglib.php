@@ -435,9 +435,10 @@ class UpgHelper
 			}, $e["fields"]);
 			$e["fieldsMeta"] = $fieldsMeta;
 		}
+		unset($e);
 
 		try {
-			$sth = $this->dbh->query('SELECT ver FROM cinf');
+			$sth = $this->dbh->query('SELECT version FROM Cinf');
 			$this->dbver = $sth->fetchColumn();
 		}
 		catch (PDOException $e) {

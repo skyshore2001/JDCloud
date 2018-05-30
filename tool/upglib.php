@@ -438,9 +438,12 @@ class UpgHelper
 	private $dbh = null;
 	private $forRtest = null;
 
-	function __construct ($forRtest=false) {
+	function __construct ($forRtest=false, $noDb=false) {
 		$this->forRtest = $forRtest;
-		$this->_init();
+		if (! $noDb)
+			$this->_init();
+		else
+			$this->_initMeta();
 	}
 	function __destruct () {
 		global $LOGF;
@@ -543,9 +546,10 @@ class UpgHelper
 			}, $e["fields"]);
 			$e["fieldsMeta"] = $fieldsMeta;
 		}
+		unset($e);
 
 		try {
-			$sth = $this->dbh->query('SELECT ver FROM cinf');
+			$sth = $this->dbh->query('SELECT version FROM Cinf');
 			$this->dbver = $sth->fetchColumn();
 		}
 		catch (PDOException $e) {
