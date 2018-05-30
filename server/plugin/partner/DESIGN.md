@@ -56,7 +56,7 @@ OpenApi请求可以不需要Session（通过Cookie机制），但服务端会支
 - partnerId: 调用者编号。
 - timestamp: 时间戳。格式为精确到秒(或毫秒)的Unix纪元时间（从1970/1/1至现在的秒数或毫秒数），一般可通过C/PHP的time()函数，或JS/Java的new Date().getTime()获得。
  (如果系统配置了Partner::$replayCheck=false，则无须此参数)
-- _sign/_pwd: 签名或密码。HTTPS协议，或partnerId=0，或测试模式下可以使用_pwd，否则应使用_sign。关于_sign如何生成请参考附录-签名算法。
+- _sign/_pwd: 签名或密码。HTTPS协议，或测试模式下可以使用_pwd，否则应使用_sign。关于_sign如何生成请参考附录-签名算法。
 
 注意：如果参数名以下划线开头，则它不参与签名，例如_pwd, _sign这些参数都不参与签名。
 
@@ -143,3 +143,27 @@ OpenApi请求可以不需要Session（通过Cookie机制），但服务端会支
 		...
 	}
 
+### 发送请求时添加签名
+
+示例：
+
+	// 调用会员系统开放接口
+	function callCardSystem($ac, $param, $postData=null) {
+		$url = "http://localhost/card/api.php";
+		if ($param === null)
+			$param = [];
+		list($partnerId, $partnerPwd) = [1, "1234"];
+		$param["partnerId"] = $partnerId;
+		$param["timestamp"] = time();
+		// 添加签名
+		$param["_sign"] = Partner::genSign($partnerPwd, $param+$postData);
+
+		$url = makeUrl("$url/$ac",$param);
+		$ret = httpCall($url,$postData, ["headers" => [
+			"Cookie: extid=" . session_id()
+		]]);
+		$ret = json_decode($ret);
+		if ( $ret[0] !== 0 ) {
+			throw new MyException(E_PARAM, $ret[2], $ret[1]);
+		}
+	}

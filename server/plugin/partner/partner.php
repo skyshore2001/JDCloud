@@ -76,7 +76,7 @@ class Partner
 			throw new MyException(E_FORBIDDEN, "unknown partnerId=$partnerId");
 
 		if ($pwd !== null) {
-			if (! (self::isHttps() || $partnerId == 0 || hasPerm(PERM_TEST_MODE)))
+			if (! (self::isHttps() || hasPerm(PERM_TEST_MODE)))
 				throw new MyException(E_FORBIDDEN, "use param `_sign` instead of `_pwd`");
 			if ($pwd != $pwd1)
 				throw new MyException(E_AUTHFAIL, "bad pwd for partnerId=$partnerId");
