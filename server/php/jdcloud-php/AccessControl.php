@@ -396,6 +396,16 @@ subobj: { name => {sql, default?=false, wantOne?=false, force?=false} }
 
 @fn AccessControl::onGenId() (for add) 指定添加对象时生成的id. 缺省返回0表示自动生成.
 
+示例：为避免ID暴露业务数据，可跳号生成ID，比如造成单量放大5-20倍的假象:
+
+	protected function onGenId()
+	{
+		$id = queryOne("SELECT MAX(id) FROM Ordr");
+		return $id + rand(5, 20);
+	}
+
+这个示例在超大并发时可能会有ID重复的风险且性能不高，更好的方法是向一个ID生成器服务发起请求。
+
 ### 缺省排序
 
 @var AccessControl::$defaultSort ?= "t0.id" (for query)指定缺省排序.

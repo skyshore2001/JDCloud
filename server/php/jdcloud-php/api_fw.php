@@ -623,6 +623,13 @@ class ApiLog
 	private $ac;
 	private $id;
 
+/**
+@var ApiLog::$lastId
+
+取当前调用的ApiLog编号。
+*/
+	static $lastId;
+
 	function __construct($ac) 
 	{
 		$this->ac = $ac;
@@ -706,6 +713,7 @@ class ApiLog
 			date(FMT_DT), Q($remoteAddr), Q($ua), Q($APP), Q(session_id()), Q($this->ac), Q($content), Q($ver["str"])
 		);
 		$this->id = execOne($sql, true);
+		self::$lastId = $this->id;
 // 		$logStr = "=== [" . date("Y-m-d H:i:s") . "] id={$this->logId} from=$remoteAddr ses=" . session_id() . " app=$APP user=$userId ac=$ac >>>$content<<<\n";
 	}
 
@@ -859,9 +867,10 @@ class Plugins
 	];
 
 /**
-@fn Plugins::add($pluginName, $file?="{pluginName}/plugin.php")
+@fn Plugins::add($pluginName, $file?)
 
-添加模块或插件。$file为插件主文件，可返回一个插件配置.
+添加模块或插件。
+$file为插件主文件，可返回一个插件配置。如果未指定，则自动找"{pluginName}/{pluginName}.php") 或 "{pluginName}/plugin.php"文件。
 
 以下旧的格式也兼容，现已不建议使用：
 
@@ -877,20 +886,23 @@ class Plugins
 			return;
 		}
 		global $BASE_DIR;
-		if (!isset($file))
-			$file = "{$pname}/plugin.php";
-		$f = $BASE_DIR . '/plugin/' . $file;
-		if (is_file($f)) {
-			$p = require_once($f);
-			if ($p === true) { // 重复包含
-				throw new MyException(E_SERVER, "duplicated plugin `$pname': $file");
+		if (!isset($file)) {
+			$file = "{$pname}/{$pname}.php";
+			$f = $BASE_DIR . '/plugin/' . $file;
+			if (! is_file($f)) {
+				$file = "{$pname}/plugin.php";
 			}
-			if ($p === 1)
-				$p = [];
 		}
-		else {
+		$f = $BASE_DIR . '/plugin/' . $file;
+		if (! is_file($f))
 			throw new MyException(E_SERVER, "cannot find plugin `$pname': $file");
+
+		$p = require_once($f);
+		if ($p === true) { // 重复包含
+			throw new MyException(E_SERVER, "duplicated plugin `$pname': $file");
 		}
+		if ($p === 1)
+			$p = [];
 		self::$map[$pname] = $p;
 	}
 
