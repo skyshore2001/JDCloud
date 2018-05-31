@@ -121,11 +121,11 @@ function row2tr(row)
 	{
 		var jdlg = $(this);
 		var jfrm = jdlg.find("form");
-		jfrm.on("loaddata", function (ev, data) {
+		jfrm.on("show", function (ev, data) {
 			// 显示时perms字段自动存在hidden对象中，通过调用 hiddenToCheckbox将相应的checkbox选中
 			hiddenToCheckbox(jfrm.find("#divPerms"));
 		})
-		.on("savedata", function (ev) {
+		.on("validate", function (ev) {
 			// 保存时收集checkbox选中的内容，存储到hidden对象中。
 			checkboxToHidden(jfrm.find("#divPerms"));
 		});
@@ -181,9 +181,11 @@ function arrayToImg(jp, arr)
 		var linkUrl = (nothumb||nopic) ? url: WUI.makeUrl("att", {thumbId: attId});
 		var ja = $("<a target='_black'>").attr("href", linkUrl).appendTo(jImgContainer);
 		if (!nopic) {
-			$("<img>").attr("src", url)
-				.attr("picId", attId)
-				.css("max-width", "100px")
+			$("<img>").attr({
+					'src': url,
+					'picId':attId
+				})
+				.css("max-width", "150px")
 				.appendTo(ja);
 		}
 		else {
@@ -191,6 +193,9 @@ function arrayToImg(jp, arr)
 			jImgContainer.append($("<span> </span>"));
 		}
 	});
+	// 图片浏览器升级显示
+	if (!nopic && jQuery.fn.jqPhotoSwipe)
+		jImgContainer.find(">a").jqPhotoSwipe();
 }
 
 /**
@@ -266,12 +271,12 @@ JS逻辑如下：
 		var jmenu = jdlg.find("#mnuPics");
 		
 		var jfrm = jdlg.find("form");
-		jfrm.on("loaddata", function (ev, data) {
+		jfrm.on("show", function (ev, data) {
 			// 加载图片
 			hiddenToImg(jfrm.find("#divStorePics"));
 			hiddenToImg(jfrm.find("#divStorePicId"));
 		})
-		.on("savedata", function (ev) {
+		.on("validate", function (ev) {
 			// 保存图片
 			imgToHidden(jfrm.find("#divStorePics"));
 			imgToHidden(jfrm.find("#divStorePicId"));
@@ -318,8 +323,9 @@ function hiddenToImg(jp, sep)
 {
 	if (sep == null)
 		sep = DEFAULT_SEP;
-	var val = jp.find("input:hidden:first").val().split(sep);
-	arrayToImg(jp, val);
+	var val = jp.find("input[name]:first").val();
+	var arr = val? val.split(sep) : [];
+	arrayToImg(jp, arr);
 }
 
 /**
@@ -435,7 +441,7 @@ function onChooseFile()
 							jimg = $("<img>");
 						}
 						jimg.attr("src", results.base64)
-							.css("max-width", "100px")
+							.css("max-width", "150px")
 							.appendTo(jdiv);
 					}
 				});
