@@ -215,7 +215,7 @@ function api_upload()
 			file_put_contents($fname, $s);
 		}
 		if ($autoResize && preg_match('/\.(jpg|jpeg|png)$/', $fname) && filesize($fname) > 500*1024) {
-			resizeImage($fname, 1920, 1080, $fname);
+			resizeImage($fname, 1280, 1280, $fname);
 		}
 
 		$sth->execute([$fname, null, null, $orgName]);
