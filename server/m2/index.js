@@ -108,15 +108,15 @@ function getDynCode(fn)
 // return: jcell
 function createCell(o)
 {
-	var html = "<li class=\"weui_cell\">";
+	var html = "<li class=\"weui-cell\">";
 	if (o.hd != null) {
-		html += "<div class=\"weui_cell_hd\">" + o.hd + "</div>";
+		html += "<div class=\"weui-cell__hd\">" + o.hd + "</div>";
 	}
 	if (o.bd != null) {
-		html += "<div class=\"weui_cell_bd weui_cell_primary\">" + o.bd + "</div>";
+		html += "<div class=\"weui-cell__bd weui_cell_primary\">" + o.bd + "</div>";
 	}
 	if (o.ft != null) {
-		html += "<div class=\"weui_cell_ft\">" + o.ft + "</div>";
+		html += "<div class=\"weui-cell__ft\">" + o.ft + "</div>";
 	}
 	html += "</li>";
 	return $(html);
