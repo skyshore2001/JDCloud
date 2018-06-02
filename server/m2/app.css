@@ -6,11 +6,6 @@
 	margin-top: 0;
 }
 
-.weui-cell {
-	-webkit-align-items: initial;
-	align-items: initial;
-}
-
 .weui-btn {
 	cursor: pointer;
 }
