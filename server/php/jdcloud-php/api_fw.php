@@ -964,7 +964,8 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 {
 	$accessCtl = AccessControl::create($tbl, $asAdmin);
 	$fn = "api_" . $ac1;
-	if (! method_exists($accessCtl, $fn))
+	//if (! method_exists($accessCtl, $fn))
+	if (! is_callable([$accessCtl, $fn]))
 		throw new MyException(E_PARAM, "Bad request - unknown `$tbl` method: `$ac1`");
 	$accessCtl->before($ac1);
 	$ret = $accessCtl->$fn();

@@ -540,6 +540,33 @@ TODO: 可加一个系统参数`_enc`表示输出编码的格式。
 
 (版本5.1)
 设置enumFields也支持逗号分隔的枚举列表，比如字段值为"CR,CA"，实际可返回"Created,Cancelled"。
+
+## 批量更新(setIf)和批量删除(delIf)
+
+(v5.1) 以Ordr对象为例，要支持根据条件批量更新或删除：
+
+	Ordr.setIf(cond)(field1=value1, field2=value2, ...)
+	Ordr.delIf(cond)
+
+在cond中，除了使用基本字段，还可以像query接口一样使用虚拟字段来查询，框架自动join相关表。
+
+示例：对具有PERM_MGR权限的员工，登录后允许批量更新和批量删除：
+
+	class AC2_Ordr extends AccessControl
+	{
+		function api_delIf() {
+			checkAuth(PERM_MGR);
+			return parent::api_delIf();
+		}
+		function api_setIf() {
+			checkAuth(PERM_MGR);
+			$this->checkSetFields(["status", "cmt"]);
+			return parent::api_setIf();
+		}
+	}
+
+setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更新。
+也可以直接用checkSetFields指定哪些字段允许更新。
 */
 
 # ====== functions {{{
@@ -1447,6 +1474,93 @@ class AccessControl
 		$cnt = execOne($sql);
 		if ($cnt != 1)
 			throw new MyException(E_PARAM, "not found id=$id");
+	}
+
+/**
+@fn AccessControl::checkSetFields($allowedFields)
+
+e.g.
+	function onValidate()
+	{
+		if ($this->ac == "set")
+			$this->checkSetFields(["status", "cmt"]);
+	}
+*/
+	protected function checkSetFields($allowedFields)
+	{
+		foreach (array_keys($_POST) as $k) {
+			if (! in_array($k, $allowedFields))
+				throw new MyException(E_FORBIDDEN, "forbidden to set field `$k`");
+		}
+	}
+
+/**
+@fn AccessControl::api_setIf()
+
+批量更新。
+
+setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更新。
+也可以直接用checkSetFields指定哪些字段允许更新。
+返回更新记录数。
+示例：
+
+	class AC2_Ordr extends AccessControl {
+		function api_setIf() {
+			checkAuth(PERM_MGR);
+			$this->checkSetFields(["status", "cmt"]);
+			return parent::api_setIf();
+		}
+	}
+ */
+	protected function api_setIf()
+	{
+		$cond = $this->getCondParam("cond");
+		if ($cond === null)
+			throw new MyException(E_PARAM, "setIf requires param `cond`");
+		$this->initVColMap();
+		$condSql = $this->fixUserQuery($cond);
+
+		$roFields = $this->readonlyFields + $this->readonlyFields2;
+		foreach ($roFields as $field) {
+			if (array_key_exists($field, $_POST))
+				throw new MyException(E_FORBIDDEN, "forbidden to set field `$field`");
+		}
+
+		$sqlConf = $this->sqlConf;
+		$tblSql = "{$this->table} t0";
+		if (count($sqlConf["join"]) > 0)
+			$tblSql .= "\n" . join("\n", $sqlConf["join"]);
+		$cnt = dbUpdate($tblSql, $_POST, $condSql);
+		return $cnt;
+	}
+/**
+@fn AccessControl::api_delIf()
+
+批量删除。返回删除记录数。
+示例：
+
+	class AC2_Ordr extends AccessControl {
+		function api_delIf() {
+			checkAuth(PERM_MGR);
+			return parent::api_delIf();
+		}
+	}
+ */
+	protected function api_delIf()
+	{
+		$cond = $this->getCondParam("cond");
+		if ($cond === null)
+			throw new MyException(E_PARAM, "delIf requires param `cond`");
+		$this->initVColMap();
+		$condSql = $this->fixUserQuery($cond);
+
+		$sqlConf = $this->sqlConf;
+		$tblSql = "{$this->table} t0";
+		if (count($sqlConf["join"]) > 0)
+			$tblSql .= "\n" . join("\n", $sqlConf["join"]);
+		$sql = "DELETE t0 FROM $tblSql WHERE $condSql";
+		$cnt = execOne($sql);
+		return $cnt;
 	}
 
 	// query sub table for mainObj(id), and add result to mainObj as obj or obj collection (opt["wantOne"])
