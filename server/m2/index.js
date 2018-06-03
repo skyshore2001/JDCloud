@@ -113,7 +113,7 @@ function createCell(o)
 		html += "<div class=\"weui-cell__hd\">" + o.hd + "</div>";
 	}
 	if (o.bd != null) {
-		html += "<div class=\"weui-cell__bd weui-cell_primary\">" + o.bd + "</div>";
+		html += "<div class=\"weui-cell__bd\">" + o.bd + "</div>";
 	}
 	if (o.ft != null) {
 		html += "<div class=\"weui-cell__ft\">" + o.ft + "</div>";

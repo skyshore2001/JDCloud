@@ -352,16 +352,16 @@ URL也可以显示为文件风格，比如在设置：
 			<h2>添加人物</h2>
 		</div>
 
-		<div class="bd weui_cells weui_cells_access">
-			<div class="weui_cell">
-				<label class="weui_cell_hd weui_label" style="min-width:7em">为<span class="p-name"></span>添加:</label>
-				<select id="cboRelation" class="weui_cell_primary weui_select right" style="min-width:90px">
+		<div class="bd weui-cells">
+			<div class="weui-cell weui-cell_access">
+				<label class="weui-cell_hd weui-label" style="min-width:7em">为<span class="p-name"></span>添加:</label>
+				<select id="cboRelation" class="weui-cell__bd weui-select right" style="min-width:90px">
 					<option value="parent">父亲</option>
 					<option value="child">子女</option>
 				</select>
-				<div class="weui_cell_ft"></div>
+				<div class="weui-cell__ft"></div>
 			</div>
-			<div class="weui_cell nowrap" style="display:block;">
+			<div class="weui-cell nowrap" style="display:block;">
 				<a id="btnOK" class="mui-btn primary">确定</a>
 				<a id="btnCancel" class="mui-btn">取消</a>
 			</div>
