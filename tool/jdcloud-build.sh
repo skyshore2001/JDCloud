@@ -32,8 +32,8 @@
 要求相关工具：
 
 - git (版本管理)
-- php/webcc (生成web发布目录)
-- curl (ftp自动上传工具，一般在git工具包中已包含)
+- php/webcc (生成web发布目录) 如果未设置 COMPILE_CMD 环境变量，则默认使用webcc来编译。
+- curl (ftp自动上传工具，一般在git工具包中已包含) 使用ftp上传方式时需要该工具。
 
 使用FTP上线，编写build_web.sh如下：
 
@@ -79,6 +79,15 @@ online版本库可以使用多分支，每个分支对应一个线上地址。
 
 	CFG_PLUGINS=plugin1,plugin2
 
+@var COMPILE_CMD
+
+如果指定，则不再调用webcc来编译站点，而是直接运行COMPILE_CMD指定的命令。示例，要编译java后端接口：
+
+	export OUT_DIR=../pdi-online
+	export GIT_PATH=server-pc:pdi-online
+	COMPILE_CMD=make ./tool/jdcloud-build.sh
+
+表示使用`make`命令来做编译。然后通过git上传服务器。
 */
 
 #### global
@@ -103,10 +112,15 @@ function buildWeb
 	# 先更新OUT_DIR
 	( cd $OUT_DIR; pullOnlineLib )
 
-	# 编译输出
-	webcc_cmd="php `dirname $PROG`/webcc.php"
-	# !!! CALL WEBCC
-	$webcc_cmd server -o $OUT_DIR || exit
+	if [[ -z $COMPILE_CMD ]]; then
+		# 编译输出
+		webcc_cmd="php `dirname $PROG`/webcc.php"
+		# !!! CALL WEBCC
+		$webcc_cmd server -o $OUT_DIR || exit
+	else
+		echo "=== 编译..."
+		$COMPILE_CMD || exit
+	fi
 
 	lastlog=`git log -1 --oneline | tr \" \'`
 	echo "=== 最后日志: $lastlog"
