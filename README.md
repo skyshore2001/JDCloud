@@ -28,6 +28,7 @@
 - 前端
  - 支持静默调用，callSvr的noLoadingImg选项增强。
  - 允许在handleLogin中定制首页。
+ - 移动端示例程序WeUI库升级到1.x，与之前不兼容。
 
 - 管理端
  - 页面传参数给对话框机制(jdlg.objParam)；
@@ -36,14 +37,31 @@
  - 导出excel增强。支持导出枚举字段。
  - getFormData支持上传文件；
  - 外部对话框支持顶级form标签。
+ - 增加create-wui-page工具，可创建管理端页面、对话框模板。
+ - 调试增强：连续5次点击当前tab标题，重新加载页面和对话框，便于立即刷新逻辑页。
+ - 查询模式增强：支持日期类型字段直接查询某日、某月，如"2018-5"相当于原先的"2018-5-1~2018-6-1"
+ - 示例增加登录帐户管理。
+ - 统计页时间段增强。
+ - showObjDlg增加opt.onCrud回调, 用于点击表格上的增删改查工具按钮完成操作时插入逻辑
 
 - 后端
  - RESTful风格增强，且支持非标准CRUD接口。
  - 新增dbUpdate/dbInsert函数。增加BatchInsert，用于大批量导入数据。
+ - 批量更新与批量删除接口，支持使用虚拟字段查询。
  - 增加arrayCmp工具函数，用于数据同步。
+ - 添加partner插件，提供开放API验证机制。
+ - query接口cond参数允许同时出现在GET/POST中，且允许为数组。
+ - excel导出优化
+ - 子表查询优化：原先query接口查子对象要做N次查询，现在只做1次查询，然后后端实现与主表join。
+ - httpCall增强。
+ - (plugin login) login接口废弃wantAll参数，默认返回用户信息; 添加reg接口。
+ - (plugin upload) 缩略图默认大小360px；图片压缩后大小不超过1280x1280.
  
 - 工具
- - 部署工具支持导出更新表结构的SQL。小数字段默认保留小数后2位（原来是4位）。
+ - (jd-upgrade) 部署工具支持导出更新表结构的SQL。小数字段默认保留小数后2位（原来是4位）。
+ - (jd-build) 自动先从online库更新。
+ - (tool/init.php) 初始化时P_URL_PATH参数默认为空，不再强制验证cookie。
+ - (tool/upgrade/) 支持在线升级数据库。
 
 ## v5.0 - 2018/1
 
