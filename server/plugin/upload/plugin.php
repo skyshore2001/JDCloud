@@ -180,6 +180,7 @@ function api_upload()
 		if ($fp === false)
 			return;
 		$data = fread($fp, 8);
+		fclose($fp);
 		if ($data === false || strlen($data) < 8)
 			return;
 		foreach ($FILE_TAG as $ftag=>$ext) {
