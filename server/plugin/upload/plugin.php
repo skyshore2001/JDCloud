@@ -28,6 +28,16 @@ $ALLOWED_MIME = [
 	'rar' => 'application/x-rar-compressed'
 ];
 
+global $FILE_TAG; // tag => ext
+$FILE_TAG = [
+	// JPEG文件头: FFD8FF
+	"\xff\xd8\xff" => "jpg",
+	// PNG文件头: 89504E47
+	"\x89PNG" => "png",
+	// GIF文件头
+	"GIF8" => "gif"
+];
+
 // 设置允许上传的文件类型。设置为空表示允许所有。
 global $ALLOWED_EXTS;
 $ALLOWED_EXTS = array_keys($ALLOWED_MIME);
@@ -129,8 +139,12 @@ function api_upload()
 			global $ALLOWED_MIME, $ALLOWED_EXTS;
 			if ($ext == "" && $mtype) {
 				$ext = array_search($mtype, $ALLOWED_MIME);
-				if ($ext === false)
-					throw new MyException(E_PARAM, "MIME type not supported: `$mtype`", "文件类型`$mtype`不支持.");
+				if ($ext === false) {
+					// 猜测文件类型
+					$ext = guessFileType($f["tmp_name"]);
+					if ($ext === null)
+						throw new MyException(E_PARAM, "MIME type not supported: `$mtype`", "文件类型`$mtype`不支持.");
+				}
 			}
 			if (count($ALLOWED_EXTS) > 0 && ($ext == "" || !in_array($ext, $ALLOWED_EXTS))) {
 				throw new MyException(E_PARAM, "bad extention file name: `$orgName`", "文件扩展名`$ext`不支持");
@@ -156,6 +170,22 @@ function api_upload()
 			if ($genThumb)
 				$rec[] = $thumbName;
 			$files[] = $rec;
+		}
+	}
+
+	function guessFileType($f)
+	{
+		global $FILE_TAG;
+		@$fp = fopen($f, "rb");
+		if ($fp === false)
+			return;
+		$data = fread($fp, 8);
+		if ($data === false || strlen($data) < 8)
+			return;
+		foreach ($FILE_TAG as $ftag=>$ext) {
+			if (strncmp($data, $ftag, strlen($ftag)) == 0) {
+				return $ext;
+			}
 		}
 	}
 
