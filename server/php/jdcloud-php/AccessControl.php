@@ -1494,6 +1494,24 @@ e.g.
 		}
 	}
 
+	// return {tblSql, condSql}
+	protected function genCondSql()
+	{
+		$cond = $this->getCondParam("cond");
+		if ($cond === null)
+			throw new MyException(E_PARAM, "setIf requires param `cond`");
+		$this->initVColMap();
+		$this->addCond($this->fixUserQuery($cond));
+
+		$sqlConf = $this->sqlConf;
+		$tblSql = "{$this->table} t0";
+		if (count($sqlConf["join"]) > 0)
+			$tblSql .= "\n" . join("\n", $sqlConf["join"]);
+		$condSql = self::getCondStr($sqlConf["cond"]);
+
+		return ["tblSql"=>$tblSql, "condSql"=>$condSql];
+	}
+	
 /**
 @fn AccessControl::api_setIf()
 
@@ -1508,29 +1526,33 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		function api_setIf() {
 			checkAuth(PERM_MGR);
 			$this->checkSetFields(["status", "cmt"]);
+			$empId = $_SESSION["empId"];
+			$this->addCond("t0.empId=$empId");
+			// $this->addJoin(...);
 			return parent::api_setIf();
 		}
 	}
  */
 	protected function api_setIf()
 	{
-		$cond = $this->getCondParam("cond");
-		if ($cond === null)
-			throw new MyException(E_PARAM, "setIf requires param `cond`");
-		$this->initVColMap();
-		$condSql = $this->fixUserQuery($cond);
-
 		$roFields = $this->readonlyFields + $this->readonlyFields2;
 		foreach ($roFields as $field) {
 			if (array_key_exists($field, $_POST))
 				throw new MyException(E_FORBIDDEN, "forbidden to set field `$field`");
 		}
 
+		$rv = $this->genCondSql();
+
+		// 有join时，防止字段重名。统一加"t0."
+		$kv = $_POST;
 		$sqlConf = $this->sqlConf;
-		$tblSql = "{$this->table} t0";
-		if (count($sqlConf["join"]) > 0)
-			$tblSql .= "\n" . join("\n", $sqlConf["join"]);
-		$cnt = dbUpdate($tblSql, $_POST, $condSql);
+		if (count($sqlConf["join"]) > 0) {
+			$kv = [];
+			foreach ($_POST as $k=>$v) {
+				$kv["t0.$k"] = $v;
+			}
+		}
+		$cnt = dbUpdate($rv["tblSql"], $kv, $rv["condSql"]);
 		return $cnt;
 	}
 /**
@@ -1542,23 +1564,16 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 	class AC2_Ordr extends AccessControl {
 		function api_delIf() {
 			checkAuth(PERM_MGR);
+			// $this->addCond(...);
+			// $this->addJoin(...);
 			return parent::api_delIf();
 		}
 	}
  */
 	protected function api_delIf()
 	{
-		$cond = $this->getCondParam("cond");
-		if ($cond === null)
-			throw new MyException(E_PARAM, "delIf requires param `cond`");
-		$this->initVColMap();
-		$condSql = $this->fixUserQuery($cond);
-
-		$sqlConf = $this->sqlConf;
-		$tblSql = "{$this->table} t0";
-		if (count($sqlConf["join"]) > 0)
-			$tblSql .= "\n" . join("\n", $sqlConf["join"]);
-		$sql = "DELETE t0 FROM $tblSql WHERE $condSql";
+		$rv = $this->genCondSql();
+		$sql = sprintf("DELETE t0 FROM %s WHERE %s", $rv["tblSql"], $rv["condSql"]);
 		$cnt = execOne($sql);
 		return $cnt;
 	}

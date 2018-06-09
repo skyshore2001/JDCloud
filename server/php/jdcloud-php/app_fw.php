@@ -1138,7 +1138,7 @@ function dbUpdate($table, $kv, $cond=null)
 		if (substr($k,0,2) === "p_")
 			continue;
 		# TODO: check meta
-		if (! preg_match('/^\w+$/', $k))
+		if (! preg_match('/^(\w+\.)?\w+$/', $k))
 			throw new MyException(E_PARAM, "bad key $k");
 
 		if ($kvstr !== '')

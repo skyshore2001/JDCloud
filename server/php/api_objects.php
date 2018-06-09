@@ -173,6 +173,23 @@ class AC2_Ordr extends AC0_Ordr
 			}
 		}
 	}
+
+/* 批量更新/批量删除接口示例
+
+	function api_setIf()
+	{
+		checkAuth(PERM_MGR);
+		$this->checkSetFields(["dscr", "cmt"]);
+		return parent::api_setIf();
+	}
+
+	function api_delIf()
+	{
+		checkAuth(PERM_MGR);
+		$empId = $_SESSION["empId"];
+		return parent::api_delIf();
+	}
+*/
 }
 // }}}
 
