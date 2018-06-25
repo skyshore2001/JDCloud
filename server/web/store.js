@@ -1,4 +1,13 @@
 // ====== global {{{
+var APP_TITLE = "商户管理端";
+var APP_NAME = "emp-adm";
+
+$.extend(WUI.options, {
+	appName: APP_NAME,
+	title: APP_TITLE,
+	onShowLogin: showDlgLogin
+});
+
 var g_data = {}; // {userInfo={id, storeId, perms,...}, hasPerm(perm)}
 //}}}
 
@@ -164,16 +173,8 @@ function showDlgSendSms()
 //}}}
 
 // ====== main {{{
-var APP_TITLE = "商户管理端";
-var APP_NAME = "emp-adm";
-
 function main()
 {
-	WUI.setApp({
-		appName: APP_NAME,
-		title: APP_TITLE,
-		onShowLogin: showDlgLogin
-	});
 	setAppTitle(APP_TITLE);
 
 	//WUI.initClient();
