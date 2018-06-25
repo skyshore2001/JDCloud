@@ -174,6 +174,7 @@ function arrayToImg(jp, arr)
 	var jImgContainer = jp.find("div.imgs");
 	jImgContainer.empty();
 	jImgContainer.addClass("my-reset"); // 用于在 查找/添加 模式时清除内容.
+	
 	$.each (arr, function (i, attId) {
 		if (attId == "")
 			return;
@@ -351,12 +352,13 @@ function imgToHidden(jp, sep)
 			doUpdate = true;
 			// e.g. "data:image/jpeg;base64,..."
 			if (this.src.substr(0, 4) === "data") {
+				// TODO: upload all file once
 				var b64data = this.src.substr(this.src.indexOf(",")+1);
 				var params = {fmt: "raw_b64", genThumb: 1, f: "1.jpg", autoResize: 0};
 				var ids;
 				callSvrSync("upload", params, function (data) {
 					val.push(data[0].thumbId);
-				}, b64data);
+				}, b64data, {contentType: "application/raw_b64"});
 			}
 			else {
 				var picId = $(this).attr("picId");
@@ -416,7 +418,7 @@ function onChooseFile()
 
 	var nothumb = jp.attr('wui-nothumb') !== undefined;
 
-	var dfd = WUI.loadScript("lib/lrz.mobile.min.js");
+	var dfd = WUI.loadScript("lib/lrz.all.bundle.js");
 	var picFiles = this.files;
 	var compress = !nothumb;
 
@@ -428,22 +430,26 @@ function onChooseFile()
 				lrz(file, {
 					width: 1280,
 					height: 1280,
-					done: function (results) {
-						//results.base64
-						var jimg;
-						if (onlyOne) {
-							jimg = jdiv.find("img:first");
-							if (jimg.size() == 0) {
-								jimg = $("<img>");
-							}
-						}
-						else {
+					quality: 80,
+					fieldName: "file"
+				}).then(function (results) {
+					console.log(results);
+					//results.base64
+					var jimg;
+					if (onlyOne) {
+						jimg = jdiv.find("img:first");
+						if (jimg.size() == 0) {
 							jimg = $("<img>");
 						}
-						jimg.attr("src", results.base64)
-							.css("max-width", "150px")
-							.appendTo(jdiv);
 					}
+					else {
+						jimg = $("<img>");
+					}
+					jimg.attr("src", results.base64)
+						.css("max-width", "150px")
+						.appendTo(jdiv);
+					// TODO: upload file
+					// jimg[0].file_ = results.file;
 				});
 			}
 			else {
