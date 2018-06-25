@@ -4080,10 +4080,13 @@ function initPageStack()
 		return history.go(1);
 	};
 	history.go = function (n) {
-		var n = self.m_pageStack.go(n);
-		if (n == 0)
-			return false;
-		m_isback = n < 0;
+		// history.state.pageRef非空表示是框架做的页面处理。避免与第三方组件调用pushState冲突。
+		if (history.state && history.state.pageRef) {
+			var n = self.m_pageStack.go(n);
+			if (n == 0)
+				return false;
+			m_isback = n < 0;
+		}
 		// history.go原函数
 		return m_fn_history_go.call(this, n);
 	};
