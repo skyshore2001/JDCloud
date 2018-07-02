@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2018-05-05</div>
+<div>最后更新：2018-07-02</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -106,6 +106,7 @@ code {
 <p><a href="#dg_dblclick">dg_dblclick (fn)</a></p>
 <p><a href="#dg_toolbar">dg_toolbar (fn)</a></p>
 <p><a href="#disableBatch">disableBatch (var)</a></p>
+<p><a href="#doSpecial">doSpecial (fn)</a></p>
 <p><a href="#enhanceWithin">enhanceWithin (fn)</a></p>
 <p><a href="#enterWaiting">enterWaiting (fn)</a></p>
 <p><a href="#evalAttr">evalAttr (fn)</a></p>
@@ -1377,6 +1378,16 @@ WUI.getQueryCond(kvList); // 结果同上。</code></pre>
 <p class="see"><strong>@see <a href="#getQueryCond">getQueryCond</a></strong> </p>
 <p class="see"><strong>@see <a href="#getQueryParamFromTable">getQueryParamFromTable</a></strong>  获取datagrid的当前查询参数</p></div>
 <div class="block">
+<h2 id="doSpecial">@fn doSpecial(jo, filter, fn)</h2>
+<p>连续5次点击某处，执行隐藏动作。</p>
+<p>例：<br />
+// 连续5次点击当前tab标题，重新加载页面<br />
+var self = WUI;<br />
+self.doSpecial(self.tabMain.find(&quot;.tabs-header&quot;), &quot;.tabs-selected&quot;, function () {<br />
+self.reloadPage();<br />
+self.reloadDialog(true);<br />
+});</p></div>
+<div class="block">
 <h2 id="lastError">@var lastError = ctx</h2>
 <p>出错时，取出错调用的上下文信息。</p>
 <p>ctx: {ac, tm, tv, ret}</p>
@@ -1505,7 +1516,7 @@ function fn2(data) {}</code></pre>
 callSvr("logout", api_logout);
 function api_logout(data) {}
 
-callSvr("login", {wantAll:1}, api_login);
+callSvr("login", api_login);
 function api_login(data) {}
 
 callSvr("info/hotline.php", {q: '大众'}, api_hotline);
@@ -1996,6 +2007,23 @@ jdlg.objParam = {type: "C", obj: "Customer"};
 showObjDlg(jdlg, FormMode.forSet, {id:101});
 // 等价于 showObjDlg(jdlg, FormMode.forSet, {id:101, obj: "Customer", type: "C"});</code></pre>
 <p>在dialog的事件beforeshow(ev, formMode, opt)中，可以通过opt.objParam取出showObjDlg传入的所有参数opt。</p>
+<p class="param"><strong>@param opt.onCrud</strong>  Function(). (v5.1) 对话框操作完成时回调。</p>
+<p>一般用于点击表格上的增删改查工具按钮完成操作时插入逻辑。<br />
+在回调函数中this对象为optParam，且可通过this.mode获取操作类型。示例：</p>
+<pre><code>jdlg1.objParam = {
+    offline: true,
+    onCrud: function () {
+        if (this.mode == FormMode.forDel) {
+            // after delete row
+        }
+        // ... 重新计算金额
+    }
+};
+jtbl.datagrid({
+    toolbar: WUI.dg_toolbar(jtbl, jdlg1), // 添加增删改查工具按钮，点击则调用showObjDlg，这时objParam生效。
+    onDblClickRow: WUI.dg_dblclick(jtbl, jdlg1),
+    ...
+});</code></pre>
 <p>事件参考：</p>
 <p class="see"><strong>@see <a href="#showDlg">showDlg</a></strong> </p></div>
 <div class="block">
@@ -2059,12 +2087,12 @@ jtbl.datagrid(dgOpt);</code></pre>
 <p>为数据表添加导出Excel菜单，如：</p>
 <pre><code>jtbl.datagrid({
     url: WUI.makeUrl("User.query"),
-    toolbar: WUI.dg_toolbar(jtbl, jdlg, {text:'导出', iconCls:'icon-save', handler: getExportHandler(jtbl) }),
+    toolbar: WUI.dg_toolbar(jtbl, jdlg, {text:'导出', iconCls:'icon-save', handler: WUI.getExportHandler(jtbl) }),
     onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
 });</code></pre>
 <p>默认是导出数据表中直接来自于服务端的字段，并应用表上的查询条件及排序。<br />
 也可以通过设置param参数手工指定，如：</p>
-<pre><code>handler: getExportHandler(jtbl, "User.query", {res: "id 编号, name 姓名, createTm 注册时间", orderby: "createTm DESC"})</code></pre>
+<pre><code>handler: WUI.getExportHandler(jtbl, "User.query", {res: "id 编号, name 姓名, createTm 注册时间", orderby: "createTm DESC"})</code></pre>
 <p>注意：由于分页机制影响，会设置参数{pagesz: -1}以便在一页中返回所有数据，而实际一页能导出的最大数据条数取决于后端设置（默认1000，参考后端文档 AccessControl::$maxPageSz）。</p>
 <p class="see"><strong>@see <a href="#getQueryParamFromTable">getQueryParamFromTable</a></strong>  获取datagrid的当前查询参数</p></div>
 <div class="block">
