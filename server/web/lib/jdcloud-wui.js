@@ -3949,7 +3949,7 @@ batchCall.prototype = {
 		var batch_ = this;
 		var postData = JSON.stringify(this.calls_);
 		callSvr("batch", this.opt_, api_batch, postData, {
-			contentType: "application/json"
+			contentType: "application/json; charset=utf-8"
 		});
 
 		function api_batch(data)
