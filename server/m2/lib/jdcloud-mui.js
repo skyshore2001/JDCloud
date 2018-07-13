@@ -3281,9 +3281,6 @@ callSvr扩展示例：
 			// 示例：设置contentType
 			if (opt.contentType == null) {
 				opt.contentType = "application/json;charset=utf-8";
-				if (opt.data) {
-					opt.data = JSON.stringify(opt.data);
-				}
 			}
 			// 示例：添加HTTP头用于认证
 			if (g_data.auth) {
@@ -3489,6 +3486,11 @@ function callSvr(ac, params, fn, postParams, userOptions)
 	if (ext && self.callSvrExt[ext].beforeSend) {
 		self.callSvrExt[ext].beforeSend(opt);
 	}
+
+	// post json content
+	var isJson = opt.contentType && opt.contentType.indexOf("/json")>0;
+	if (isJson && opt.data instanceof Object)
+		opt.data = JSON.stringify(opt.data);
 
 	console.log(callType + ": " + opt.type + " " + ac0);
 	if (ctx.isMock)
@@ -3711,7 +3713,7 @@ batchCall.prototype = {
 			return;
 		}
 		var batch_ = this;
-		var postData = JSON.stringify(this.calls_);
+		var postData = this.calls_;
 		callSvr("batch", this.opt_, api_batch, postData, {
 			contentType: "application/json; charset=utf-8"
 		});
