@@ -197,8 +197,8 @@ function MockTable_query(param)
 
 	// 分页模拟
 	var ret = {list: []};
-	var pagesz = param._pagesz || param.rows || 20;
-	var pagekey = param._pagekey || param.page || 1;
+	var pagesz = param.pagesz || param.rows || 20;
+	var pagekey = param.pagekey || param.page || 1;
 	if (pagekey == 1 || param.page)
 		ret.total = arr.length;
 

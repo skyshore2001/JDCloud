@@ -22,7 +22,8 @@ var ListOptions = {
 			textField: "name",
 			url: WUI.makeUrl('Employee.query', {
 				res: 'id,name,uname',
-				cond: 'storeId=' + g_data.userInfo.storeId
+				cond: 'storeId=' + g_data.userInfo.storeId,
+				pagesz: -1
 			}),
 			formatter: function (row) { return row.name + '(' + row.uname + ')'; }
 		};
@@ -35,7 +36,8 @@ var ListOptions = {
 			valueField: "id",
 			textField: "name",
 			url: WUI.makeUrl('Store.query', {
-				res: 'id,name'
+				res: 'id,name',
+				pagesz: -1
 			}),
 			formatter: function (row) { return row.id + "-" + row.name; }
 		};

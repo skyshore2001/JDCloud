@@ -79,8 +79,8 @@
 	ApiLog.query(res, cond, orderby) -> tbl(id,...) ={h, d, nextkey?}
 
 	分页
-	ApiLog.query(_pagesz, _pagekey?) -> {h, d, nextkey?}
-	ApiLog.query(_pagesz, _pagekey=0) -> {h, d, nextkey?, total}
+	ApiLog.query(pagesz, pagekey?) -> {h, d, nextkey?}
+	ApiLog.query(pagesz, pagekey=0) -> {h, d, nextkey?, total}
 
 	统计
 	ApiLog.query(gres, cond) -> {h, d, nextkey?}
@@ -134,7 +134,7 @@
 
 ### 非标准方法
 
-	UserApiLog.listByAc(ac, _pagesz?, _pagekey?) -> [{id, ...}]
+	UserApiLog.listByAc(ac, pagesz?, pagekey?) -> [{id, ...}]
 
 - 权限: AUTH_USER
 - 相当于调用 UserApiLog.query(cond="ac={ac}", fmt=list), 支持分页。
