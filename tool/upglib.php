@@ -455,6 +455,7 @@ class UpgHelper
 	// 添加文件到$files集合。
 	private function includeFile($f, &$files) {
 		if (strpos($f, "*") === false) {
+			$f = str_replace("\\", "/", $f);
 			if (! file_exists($f)) {
 				logstr("!!! cannot read included file $f\n");
 				return;
