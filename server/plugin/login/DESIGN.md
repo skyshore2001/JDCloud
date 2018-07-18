@@ -28,11 +28,20 @@ perms
 
 @see @User: id, uname, phone(s), pwd, name(s), createTm
 
+如果要支持微信认证，需要字段：weixinKey, weixinData, pic
+
 phone/pwd
 : 登录用的用户名和密码。密码采用md5加密。
 
 createTm
 : DateTime. 注册日期. 可用于分析用户数增长。
+
+weixinKey
+: String. 微信的openid.
+
+weixinData
+: String. 从微信中取得的原始数据。一般为JSON格式: userInfo={openid, nickname, sex=1-男/2-女, province, city, country, headimgurl, privilege, unionid?}
+ 字段与User表的对应关系：User.weixinKey=openid, User.name=userInfo.nickname, User.pic=headimgurl
 
 ## 交互接口
 
@@ -84,15 +93,27 @@ code
 
 	login(uname, code)
 
+也提供传统注册：(需配置 Login::$allowManualReg = true;)
+
+	reg()(uname/phone, pwd, name?, ...) -> 与login一致，包括_token等便于自动登录。
+
+- 通过POST传参数。
+- uname/phone: 用户名或手机号
+- pwd: 登录密码
+- 其它字段与User表一致即可。
+- 注册后自动已登录。
+
 ### 登录
 
-	login(uname, pwd/code, wantAll?) -> {id, _token, _expire, _isNew?}
+	login(uname, pwd/code) -> {id, _token, _expire, _isNew?, ...}
 	
-	login(token, wantAll?) -> (与得到该token的登录返回相同内容, 但不包括_token, _expire, _isNew字段).
+	login(token) -> (与得到该token的登录返回相同内容, 但不包括_token, _expire, _isNew字段).
 
 该API根据当前app类型确定是用户或雇员或管理员登录（apptype分别为user, emp, admin）。支持用户名密码、用户名动态口令、token三种登录方式。
 
 对于用户登录，如果code验证成功, 但手机号不存在, 就以该手机号自动注册用户, 密码为空（由于登录时密码不允许空，所以空密码意味着无法用密码登录）。
+
+登录成功后返回用户信息，格式与User.get/Employee.get返回相同。
 
 **[应用逻辑]**
 
@@ -119,9 +140,6 @@ code
 
 pwd
 : String. 登录密码. 支持明文密码或md5后的密码.
-
-wantAll
-: Boolean. 如果为1，则返回登录对象的详细内容，格式与User.get/Employee.get返回相同。
 
 **[返回]**
 
@@ -206,6 +224,52 @@ _token/_expire
 	
 	chpwd(code=533114, pwd=12345678)
 	(之前生成了动态验证码为533114)
+
+### 微信认证
+
+微信认证：
+
+	$BASE_URL/weixin/auth.php
+	
+	发起认证：
+	auth.php(state)
+
+	该页面同时供微信回调：
+	auth.php(code, state)
+
+- state: 认证成功后转向的页面。一般即前端当前页面(location.href)。
+- 如果是发起认证，则直接重定向到微信认证的地址(即https://open.weixin.qq.com/connect/oauth2/authorize加appId,state等参数的地址)
+- 如果是微信回调（这时有code参数），则获取openid, userInfo并处理微信登录成功的逻辑(`LoginImpBase::onWeixinLogin`)。
+
+模拟发起微信认证：
+
+	auth.php(state, mock=1)
+
+- 必须后端启用了模拟模式才可以
+- 使用固定身份模拟登录，然后转向state中的URL地址。
+- 固定身份使用 Login::mockWeixinUser 配置，默认值如 {openid="test_openid", nickname="测试用户", headimgurl="...", sex=1}
+
+前端发起微信认证示例：
+
+	var param = {state: location.href};
+	if (g_args.mock) {
+		param.mock = 1;
+	}
+	location.href = "../weixin/auth.php?" + $.param(param);
+	MUI.app_abort();
+
+### 绑定手机
+
+微信登录的用户绑定手机号到当前登录帐号：
+
+	bindUser(phone, code)
+
+- code: 手机验证码。通过genCode调用获得，也可用测试模式下的特别码080909.
+- 如果手机号尚未被其他用户占用，则只要设置手机号到该微信用户即可。
+- 如果手机号已被占用：
+ - 当该手机号已绑定其他微信帐户时，不允许再绑定。
+ - 当手机号存在且未绑定微信时：合并微信用户到手机号用户，然后将微信用户禁用（在字段User.weixinKey中设置特别标识`merged-{openId}`，使该用户失效，今后无法登录）。
+  合并逻辑可通过`LoginImpBase::onBindUser(phone)`回调来扩展，如考虑合并相应的个人信息、操作记录、订单等。
 
 ## 后端接口
 

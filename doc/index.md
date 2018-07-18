@@ -30,6 +30,7 @@
 	- [后端API参考手册（php版）](api_php.html)
 
 - [H5应用上线优化教程](http://dacatec.com/jdcloud-site/jdcloud-tool.html)
+	- [jdcloud-upgrade](jdcloud-upgrade.html) 筋斗云一站式部署工具，根据数据模型设计文档维护数据库
 	- [webcc](webcc.html) H5应用上线优化工具
 	- [jdcloud-sprite](jdcloud-sprite.html) 图片合并（精灵图制作）工具
 	- [Web应用部署](Web应用部署.html) H5应用上线优化的原理与实践。

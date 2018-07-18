@@ -58,13 +58,13 @@ class AC0_Employee extends AccessControl
 
 class AC2_Employee extends AC0_Employee
 {
-	protected $requiredFields = ["uname", "pwd"];
+	protected $requiredFields = [["phone", "uname"], "pwd"];
 	protected $allowedAc = ["query", "get", "set"];
 	protected $allowedAc2 = ["query", "get", "set", "add", "del"];
 
 	function __construct()
 	{
-		if (hasPerm(AUTH_MGR)) {
+		if (hasPerm(PERM_MGR)) {
 			$this->allowedAc = $this->allowedAc2;
 		}
 	}
@@ -72,7 +72,7 @@ class AC2_Employee extends AC0_Employee
 	protected function onValidateId()
 	{
 		$id = param("id");
-		if (!hasPerm(AUTH_MGR) || is_null(param("id"))) {
+		if (!hasPerm(PERM_MGR) || is_null($id)) {
 			setParam("id", $_SESSION["empId"]);
 		}
 	}
@@ -133,9 +133,11 @@ class AC1_Ordr extends AC0_Ordr
 
 		if ($logAction) {
 			$this->onAfterActions[] = function () use ($logAction) {
-				$orderId = $this->id;
-				$sql = sprintf("INSERT INTO OrderLog (orderId, action, tm) VALUES ({$orderId},%s,'%s')", Q($logAction), date(FMT_DT));
-				execOne($sql);
+				dbInsert("OrderLog", [
+					"orderId" => $this->id,
+					"action" => $logAction,
+					"tm" => date(FMT_DT)
+				]);
 			};
 		}
 	}
@@ -157,10 +159,12 @@ class AC2_Ordr extends AC0_Ordr
 						throw new MyException(E_FORBIDDEN, "forbidden to change status to $status");
 					}
 					$this->onAfterActions[] = function () use ($status) {
-						$orderId = $this->id;
-						$empId = $_SESSION["empId"];
-						$sql = sprintf("INSERT INTO OrderLog (orderId, action, tm, empId) VALUES ($orderId,'$status','%s', $empId)", date(FMT_DT));
-						execOne($sql);
+						dbInsert("OrderLog", [
+							"orderId" => $this->id,
+							"action" => $status,
+							"tm" => date(FMT_DT),
+							"empId" => $_SESSION["empId"]
+						]);
 					};
 				}
 				else {
@@ -169,6 +173,23 @@ class AC2_Ordr extends AC0_Ordr
 			}
 		}
 	}
+
+/* 批量更新/批量删除接口示例
+
+	function api_setIf()
+	{
+		checkAuth(PERM_MGR);
+		$this->checkSetFields(["dscr", "cmt"]);
+		return parent::api_setIf();
+	}
+
+	function api_delIf()
+	{
+		checkAuth(PERM_MGR);
+		$empId = $_SESSION["empId"];
+		return parent::api_delIf();
+	}
+*/
 }
 // }}}
 

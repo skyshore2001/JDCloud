@@ -352,16 +352,16 @@ URL也可以显示为文件风格，比如在设置：
 			<h2>添加人物</h2>
 		</div>
 
-		<div class="bd weui_cells weui_cells_access">
-			<div class="weui_cell">
-				<label class="weui_cell_hd weui_label" style="min-width:7em">为<span class="p-name"></span>添加:</label>
-				<select id="cboRelation" class="weui_cell_primary weui_select right" style="min-width:90px">
+		<div class="bd weui-cells">
+			<div class="weui-cell weui-cell_access">
+				<label class="weui-cell_hd weui-label" style="min-width:7em">为<span class="p-name"></span>添加:</label>
+				<select id="cboRelation" class="weui-cell__bd weui-select right" style="min-width:90px">
 					<option value="parent">父亲</option>
 					<option value="child">子女</option>
 				</select>
-				<div class="weui_cell_ft"></div>
+				<div class="weui-cell__ft"></div>
 			</div>
-			<div class="weui_cell nowrap" style="display:block;">
+			<div class="weui-cell nowrap" style="display:block;">
 				<a id="btnOK" class="mui-btn primary">确定</a>
 				<a id="btnCancel" class="mui-btn">取消</a>
 			</div>
@@ -1302,6 +1302,42 @@ function list2varr(ls, sep, sep2)
 	return ret;
 }
 
+/**
+@fn objarr2list(objarr, fields, sep=':', sep2=',')
+
+将对象数组转成字符串代表的压缩表("v1:v2:v3,...")。
+
+示例：
+
+	var objarr = [
+		{id:100, name:'name1', qty:2},
+		{id:101, name:'name2', qty:3}
+	];
+	var list = objarr2list(objarr, ["id","qty"]);
+	// 返回"100:2,101:3"
+
+	var list2 = objarr2list(objarr, function (e, i) { return e.id + ":" + e.qty; });
+	// 结果同上
+ */
+self.objarr2list = objarr2list;
+function objarr2list(objarr, fields, sep, sep2)
+{
+	sep = sep || ':';
+	sep2 = sep2 || ',';
+
+	var fn = $.isFunction(fields) ? fields : function (e, i) {
+		var row = '';
+		$.each(fields, function (j, e1) {
+			if (row.length > 0)
+				row += sep;
+			row += e[e1];
+		});
+		return row;
+	};
+	return $.map(objarr, fn).join(sep2);
+}
+
+
 //}}}
 
 /**
@@ -1528,7 +1564,10 @@ function parseKvList(str, sep, sep2)
 	var map = {};
 	$.each(str.split(sep), function (i, e) {
 		var kv = e.split(sep2, 2);
-		assert(kv.length == 2, "bad kvList: " + str);
+		//assert(kv.length == 2, "bad kvList: " + str);
+		if (kv.length < 2) {
+			kv[1] = kv[0];
+		}
 		map[kv[0]] = kv[1];
 	});
 	return map;
@@ -1653,9 +1692,16 @@ self.assert(window.jQuery, "require jquery lib.");
 		callSvr(ac, fn, getFormData(jf));
 	});
 
-如果在jo对象上指定了属性enctype="multipart/form-data"，则调用getFormData会返回FormData对象而非js对象，
-再调用callSvr时，会以"multipart/form-data"格式提交数据。
+如果在jo对象中存在有name属性的file组件(input[type=file][name])，或指定了属性enctype="multipart/form-data"，则调用getFormData会返回FormData对象而非js对象，
+再调用callSvr时，会以"multipart/form-data"格式提交数据。一般用于上传文件。
 示例：
+
+	<div>
+		课程文档
+		<input name="pdf" type="file" accept="application/pdf">
+	</div>
+
+或传统地：
 
 	<form method="POST" enctype='multipart/form-data'>
 		课程文档
@@ -1669,7 +1715,8 @@ function getFormData(jo)
 {
 	var data = {};
 	var isFormData = false;
-	if (jo.attr("enctype") == "multipart/form-data") {
+	var enctype = jo.attr("enctype");
+	if ( (enctype && enctype.toLowerCase() == "multipart/form-data") || jo.has("[name]:file").size() >0) {
 		isFormData = true;
 		data = new FormData();
 	}
@@ -2192,6 +2239,13 @@ function setOnError()
 			content += "\n" + errObj.stack.toString();
 		if (self.syslog)
 			self.syslog("fw", "ERR", content);
+		app_alert(msg, "e");
+		// 出错后尝试恢复callSvr变量
+		setTimeout(function () {
+			$.active = 0;
+			self.isBusy = 0;
+			self.hideLoading();
+		}, 1000);
 	}
 }
 setOnError();
@@ -2248,9 +2302,12 @@ function getop(v)
 		return "=" + v;
 	var op = "=";
 	var is_like=false;
-	if (v.match(/^(<>|>=?|<=?)/)) {
-		op = RegExp.$1;
+	var ms;
+	if (ms=v.match(/^(<>|>=?|<=?|!=?)/)) {
+		op = ms[1];
 		v = v.substr(op.length);
+		if (op == "!" || op == "!=")
+			op = "<>";
 	}
 	else if (v.indexOf("*") >= 0 || v.indexOf("%") >= 0) {
 		v = v.replace(/[*]/g, "%");
@@ -2278,6 +2335,7 @@ function getop(v)
 
 /**
 @fn getQueryCond(kvList)
+@var queryHint 查询用法提示
 
 @param kvList {key=>value}, 键值对，值中支持操作符及通配符。也支持格式 [ [key, value] ], 这时允许key有重复。
 
@@ -2301,7 +2359,7 @@ function getop(v)
 设置值时，支持以下格式：
 
 - {key: "value"} - 表示"key=value"
-- {key: ">value"} - 表示"key>value", 类似地，可以用 >=, <, <=, <> 这些操作符。
+- {key: ">value"} - 表示"key>value", 类似地，可以用 >=, <, <=, <>(或! / != 都是不等于) 这些操作符。
 - {key: "value*"} - 值中带通配符，表示"key like 'value%'" (以value开头), 类似地，可以用 "*value", "*value*", "*val*ue"等。
 - {key: "null" } - 表示 "key is null"。要表示"key is not null"，可以用 "<>null".
 - {key: "empty" } - 表示 "key=''".
@@ -2311,18 +2369,29 @@ function getop(v)
 - {key: ">value and <=value"}  - 表示"key>'value' and key<='value'"
 - {key: "null or 0 or 1"}  - 表示"key is null or key=0 or key=1"
 - {key: "null,0,1,9-100"} - 表示"key is null or key=0 or key=1 or (key>=9 and key<=100)"，即逗号表示or，a-b的形式只支持数值。
+- {key: "2017-9-1~2017-10-1"} 条件等价于 ">=2017-9-1 and <2017-10-1"
+  可指定时间，如条件"2017-9-1 10:00~2017-10-1"等价于">=2017-9-1 10:00 and <2017-10-1"
+- 符号","及"~"前后允许有空格，如"已付款, 已完成", "2017-1-1 ~ 2018-1-1"
+- 可以使用中文逗号
+- 日期区间也可以用"2017/10/01"或"2017.10.01"这些格式，仅用于字段是文本类型，这时输入格式必须与保存的日期格式一致，并且"2017/10/1"应输入"2017/10/01"才能正确比较字符串大小。
 
 以下表示的范围相同：
 
 	{k1:'1-5,7-10', k2:'1-10 and <>6'}
 
-符号优先级依次为：-(and) ,(or) and or
+符号优先级依次为："-"(类似and) ","(类似or) and or
 
 在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。
 
 @see getQueryParam
 @see getQueryParamFromTable 获取datagrid的当前查询参数
 */
+self.queryHint = "查询示例\n" +
+	"文本：\"王小明\", \"王*\"(匹配开头), \"*上海*\"(匹配部分)\n" +
+	"数字：\"5\", \">5\", \"5-10\", \"5-10,12,18\"\n" +
+	"时间：\">=2017-10-1\", \"<2017-10-1 18:00\", \"2017-10\"(10月份区间), \"2017-10-01~2017-11-01\"(10月份区间)\n" +
+	"高级：\"!5\"(排除5),\"1-10 and !5\", \"王*,张*\"(王某或张某), \"empty\"(为空), \"0,null\"(0或未设置)\n";
+
 self.getQueryCond = getQueryCond;
 function getQueryCond(kvList)
 {
@@ -2339,16 +2408,22 @@ function getQueryCond(kvList)
 	function handleOne(k,v) {
 		if (v == null || v === "")
 			return;
-		var arr = v.split(/\s+(and|or)\s+/i);
+
+		var arr = v.toString().split(/\s+(and|or)\s+/i);
 		var str = '';
 		var bracket = false;
+		// NOTE: 根据字段名判断时间类型
+		var isTm = /(Tm|^tm)\d*$/.test(k);
+		var isDt = /(Dt|^dt)\d*$/.test(k);
 		$.each(arr, function (i, v1) {
 			if ( (i % 2) == 1) {
 				str += ' ' + v1.toUpperCase() + ' ';
 				bracket = true;
 				return;
 			}
+			v1 = v1.replace(/，/g, ',');
 			// a-b,c-d,e
+			// dt1~dt2
 			var str1 = '';
 			var bracket2 = false;
 			$.each(v1.split(/\s*,\s*/), function (j, v2) {
@@ -2356,11 +2431,48 @@ function getQueryCond(kvList)
 					str1 += " OR ";
 					bracket2 = true;
 				}
-				var m = v2.match(/^(\d+)-(\d+)$/);
-				if (m) {
-					str1 += "(" + k + ">=" + m[1] + " AND " + k + "<=" + m[2] + ")";
+				var mt; // match
+				var isHandled = false; 
+				if (isTm | isDt) {
+					// "2018-5" => ">=2018-5-1 and <2018-6-1"
+					// "2018-5-1" => ">=2018-5-1 and <2018-5-2" (仅限Tm类型; Dt类型不处理)
+					if (mt=v2.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?$/)) {
+						var y = parseInt(mt[1]), m = parseInt(mt[2]), d=mt[3]!=null? parseInt(mt[3]): null;
+						if ( (y>1900 && y<2100) && (m>=1 && m<=12) && (d==null || (d>=1 && d<=31 && isTm)) ) {
+							isHandled = true;
+							var dt1, dt2;
+							if (d) {
+								var dt = new Date(y,m-1,d);
+								dt1 = dt.format("D");
+								dt2 = dt.addDay(1).format("D");
+							}
+							else {
+								var dt = new Date(y,m-1,1);
+								dt1 = dt.format("D");
+								dt2 = dt.addMonth(1).format("D");
+							}
+							str1 += "(" + k + ">='" + dt1 + "' AND " + k + "<'" + dt2 + "')";
+						}
+					}
 				}
-				else {
+				if (!isHandled) {
+					// "2018-5-1~2018-10-1"
+					// "2018-5-1 8:00 ~ 2018-10-1 18:00"
+					if (mt=v2.match(/^(\d{4}-\d{1,2}.*?)\s*~\s*(\d{4}-\d{1,2}.*?)$/)) {
+						var dt1 = mt[1], dt2 = mt[2];
+						str1 += "(" + k + ">='" + dt1 + "' AND " + k + "<'" + dt2 + "')";
+						isHandled = true;
+					}
+					// "1-99"
+					else if (mt=v2.match(/^(\d+)-(\d+)$/)) {
+						var a = parseInt(mt[1]), b = parseInt(mt[2]);
+						if (a < b) {
+							str1 += "(" + k + ">=" + mt[1] + " AND " + k + "<=" + mt[2] + ")";
+							isHandled = true;
+						}
+					}
+				}
+				if (!isHandled) {
 					str1 += k + getop(v2);
 				}
 			});
@@ -2403,6 +2515,43 @@ function getQueryParam(kvList)
 	return ret;
 }
 
+/**
+@fn doSpecial(jo, filter, fn)
+
+连续5次点击某处，执行隐藏动作。
+
+例：
+	// 连续5次点击当前tab标题，重新加载页面
+	var self = WUI;
+	self.doSpecial(self.tabMain.find(".tabs-header"), ".tabs-selected", function () {
+		self.reloadPage();
+		self.reloadDialog(true);
+	});
+
+*/
+self.doSpecial = doSpecial;
+function doSpecial(jo, filter, fn)
+{
+	jo.on("click", filter, function (ev) {
+		var INTERVAL = 4; // 4s
+		var MAX_CNT = 5;
+		var tm = new Date();
+		var obj = this;
+		// init, or reset if interval 
+		if (fn.cnt == null || fn.lastTm == null || tm - fn.lastTm > INTERVAL*1000 || fn.lastObj != obj)
+		{
+			fn.cnt = 0;
+			fn.lastTm = tm;
+			fn.lastObj = obj;
+		}
+		if (++ fn.cnt < MAX_CNT)
+			return;
+		fn.cnt = 0;
+		fn.lastTm = tm;
+
+		fn();
+	});
+}
 }
 // vi: foldmethod=marker
 // ====== WEBCC_END_FILE app.js }}}
@@ -2429,6 +2578,7 @@ self.lastError = null;
 var m_tmBusy;
 var m_manualBusy = 0;
 var m_appVer;
+var m_silentCall = 0;
 
 /**
 @var disableBatch ?= false
@@ -2549,21 +2699,23 @@ $.ajaxSetup(ajaxOpt);
 self.enterWaiting = enterWaiting;
 function enterWaiting(ctx)
 {
+	if (ctx && ctx.noLoadingImg) {
+		++ m_silentCall;
+		return;
+	}
 	if (self.isBusy == 0) {
 		m_tmBusy = new Date();
 	}
 	self.isBusy = 1;
 	if (ctx == null || ctx.isMock)
 		++ m_manualBusy;
+
 	// 延迟执行以防止在page show时被自动隐藏
 	//mCommon.delayDo(function () {
-	if (!(ctx && ctx.noLoadingImg))
-	{
-		setTimeout(function () {
-			if (self.isBusy)
-				self.showLoading();
-		}, 200);
-	}
+	setTimeout(function () {
+		if (self.isBusy)
+			self.showLoading();
+	}, 200);
 // 		if ($.mobile && !(ctx && ctx.noLoadingImg))
 // 			$.mobile.loading("show");
 	//},1);
@@ -2587,8 +2739,11 @@ function leaveWaiting(ctx)
 			ctx.tv2 = tv2;
 			console.log(ctx);
 		}
-		if ($.active <= 0 && self.isBusy && m_manualBusy == 0) {
+		if (ctx && ctx.noLoadingImg)
+			-- m_silentCall;
+		if ($.active < 0)
 			$.active = 0;
+		if ($.active-m_silentCall <= 0 && self.isBusy && m_manualBusy == 0) {
 			self.isBusy = 0;
 			var tv = new Date() - m_tmBusy;
 			m_tmBusy = 0;
@@ -2896,8 +3051,7 @@ function makeUrl(action, params)
 
 - 指定{async:0}来做同步请求, 一般直接用callSvrSync调用来替代.
 - 指定{noex:1}用于忽略错误处理。
-- 指定{noLoadingImg:1}用于忽略loading图标. 要注意如果之前已经调用callSvr显示了图标且图标尚未消失，则该选项无效，图标会在所有调用完成之后才消失(leaveWaiting)。
- 要使隐藏图标不受本次调用影响，可在callSvr后手工调用`--$.active`。
+- 指定{noLoadingImg:1} 静默调用，忽略loading图标，不设置busy状态。
 
 想为ajax选项设置缺省值，可以用callSvrExt中的beforeSend回调函数，也可以用$.ajaxSetup，
 但要注意：ajax的dataFilter/beforeSend选项由于框架已用，最好不要覆盖。
@@ -2925,7 +3079,7 @@ function makeUrl(action, params)
 	callSvr("logout", api_logout);
 	function api_logout(data) {}
 
-	callSvr("login", {wantAll:1}, api_login);
+	callSvr("login", api_login);
 	function api_login(data) {}
 
 	callSvr("info/hotline.php", {q: '大众'}, api_hotline);
@@ -3127,9 +3281,6 @@ callSvr扩展示例：
 			// 示例：设置contentType
 			if (opt.contentType == null) {
 				opt.contentType = "application/json;charset=utf-8";
-				if (opt.data) {
-					opt.data = JSON.stringify(opt.data);
-				}
 			}
 			// 示例：添加HTTP头用于认证
 			if (g_data.auth) {
@@ -3335,6 +3486,11 @@ function callSvr(ac, params, fn, postParams, userOptions)
 	if (ext && self.callSvrExt[ext].beforeSend) {
 		self.callSvrExt[ext].beforeSend(opt);
 	}
+
+	// post json content
+	var isJson = opt.contentType && opt.contentType.indexOf("/json")>0;
+	if (isJson && opt.data instanceof Object)
+		opt.data = JSON.stringify(opt.data);
 
 	console.log(callType + ": " + opt.type + " " + ac0);
 	if (ctx.isMock)
@@ -3557,9 +3713,9 @@ batchCall.prototype = {
 			return;
 		}
 		var batch_ = this;
-		var postData = JSON.stringify(this.calls_);
+		var postData = this.calls_;
 		callSvr("batch", this.opt_, api_batch, postData, {
-			contentType: "application/json"
+			contentType: "application/json; charset=utf-8"
 		});
 
 		function api_batch(data)
@@ -4053,10 +4209,13 @@ function initPageStack()
 		return history.go(1);
 	};
 	history.go = function (n) {
-		var n = self.m_pageStack.go(n);
-		if (n == 0)
-			return false;
-		m_isback = n < 0;
+		// history.state.pageRef非空表示是框架做的页面处理。避免与第三方组件调用pushState冲突。
+		if (history.state && history.state.pageRef) {
+			var n = self.m_pageStack.go(n);
+			if (n == 0)
+				return false;
+			m_isback = n < 0;
+		}
 		// history.go原函数
 		return m_fn_history_go.call(this, n);
 	};
@@ -4342,11 +4501,11 @@ function showPage(pageRef, opt)
 				return;
 			}
 
-			self.enhanceWithin(jpage);
 			var ret = callInitfn(jpage);
 			if (ret instanceof jQuery)
 				jpage = ret;
 			jpage.trigger("pagecreate");
+			self.enhanceWithin(jpage);
 			changePage(jpage);
 			self.leaveWaiting();
 		}
@@ -4645,19 +4804,29 @@ function enhanceFooter(jfooter)
 	enhanceNavbar(jfooter);
 	jfooter.addClass("ft").addClass("mui-navbar");
 	var jnavs = jfooter.find(">a");
-	var id2nav = {};
-	jnavs.each(function(i, e) {
-		var m = e.href.match(/#(\w+)/);
-		if (m) {
-			id2nav[m[1]] = e;
+	var id2nav = null;
+
+	function getNav(pageId) {
+		if (id2nav == null) {
+			id2nav = {};
+			jnavs.each(function(i, e) {
+				if (e.style.display == "none")
+					return;
+				var m = e.href.match(/#([\w-]+)/);
+				if (m) {
+					id2nav[m[1]] = e;
+				}
+			});
 		}
-	});
+		return id2nav[pageId];
+	}
+
 	$(document).on("pagebeforeshow", function (ev) {
 		var jpage = $(ev.target);
 		var pageId = jpage.attr("id");
 		if (m_toPageId != pageId)
 			return;
-		var e = id2nav[pageId];
+		var e = getNav(pageId);
 		if (e === undefined)
 		{
 			if (jfooter.parent()[0] !== m_jstash[0])
@@ -5340,6 +5509,7 @@ function isLoginPage(pageRef)
 }
 
 // page: pageRef/jpage/null
+// return: page对应的pageRef, null表示home页面, 
 function getPageRef(page)
 {
 	var pageRef = page;
@@ -5350,14 +5520,14 @@ function getPageRef(page)
 		else {
 			// only before jquery mobile inits
 			// back to this page after login:
-			pageRef = location.hash || m_opt.homePage;
+			pageRef = location.hash || null;
 		}
 	}
 	else if (page instanceof jQuery) {
 		pageRef = "#" + page.attr("id");
 	}
 	else if (page === "#" || page === "") {
-		pageRef = m_opt.homePage;
+		pageRef = null;
 	}
 	return pageRef;
 }
@@ -5385,8 +5555,11 @@ function showLogin(page)
 	var pageRef = getPageRef(page);
 	m_onLoginOK = function () {
 		// 如果当前仍在login系列页面上，则跳到指定页面。这样可以在handleLogin中用MUI.showPage手工指定跳转页面。
-		if (MUI.activePage && isLoginPage(MUI.getToPageId()))
+		if (MUI.activePage && isLoginPage(MUI.getToPageId())) {
+			if (pageRef == null)
+				pageRef = m_opt.homePage;
 			MUI.showPage(pageRef);
+		}
 	}
 	MUI.showPage(m_opt.loginPage);
 }
@@ -5570,7 +5743,7 @@ function tryAutoLogin(onHandleLogin, reuseCmd, allowNoLogin)
 	var token = loadLoginToken();
 	if (token != null)
 	{
-		var param = {wantAll:1};
+		var param = {};
 		var postData = {token: token};
 		self.callSvr("login", param, handleAutoLogin, postData, ajaxOpt);
 	}
@@ -5590,6 +5763,15 @@ function tryAutoLogin(onHandleLogin, reuseCmd, allowNoLogin)
 @param data 调用API "login"成功后的返回数据.
 
 处理login相关的操作, 如设置g_data.userInfo, 保存自动登录的token等等.
+可以根据用户属性在此处定制home页，例如：
+
+	if(role == "SA"){
+		MUI.options.homePage: "#sa-home";
+	}
+	else if (role == "MA") {
+		MUI.options.homePage: "#ma-home";
+	}
+
 
 */
 self.handleLogin = handleLogin;

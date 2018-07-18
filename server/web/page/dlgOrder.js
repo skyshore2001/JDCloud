@@ -1,24 +1,23 @@
 function initDlgOrder()
 {
 	var jdlg = $(this);
-	var jfrm = jdlg.find("form");
-	jfrm.on("beforeshow", function(ev, mode) {
-		jdlg.find(".forFind").toggle(mode == FormMode.forFind);
-		jdlg.find(".notForFind").toggle(mode != FormMode.forFind);
-	})
-	.on("loaddata", function (ev, data) {
-		var showMore = (data.orderLog !== undefined);
-		var divOrderMore = jdlg.find("#divOrderMore");
-		if (! showMore) {
-			divOrderMore.hide();
-			jdlg.find("#btnOrderMore").show();
-			return;
-		}
-		jdlg.find("#btnOrderMore").hide();
-		divOrderMore.show();
+	jdlg.on("beforeshow", onBeforeShow)
+	
+	function onBeforeShow(ev, formMode, opt)
+	{
+		var forFind = formMode == FormMode.forFind;
+		var forSet = formMode == FormMode.forSet;
+		jdlg.find(".forFind").toggle(forFind);
+		jdlg.find(".forSet").toggle(forSet);
 
-		jdlg.find("#tblOrderLog").datagrid({
-			data: data.orderLog
-		});
-	});
+		setTimeout(onShow);
+		function onShow() {
+			// 对字段或表格的设置应放在onShow里
+			if (forSet) {
+				jdlg.find("#tblOrderLog").datagrid({
+					data: opt.data.orderLog || []
+				});
+			}
+		}
+	}
 }

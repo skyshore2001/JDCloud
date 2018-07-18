@@ -33,7 +33,15 @@
 
 menu-expand-group下第一个a为菜单组标题，可加"expanded"类使其默认展开。
 -->
-	<a href="javascript:logout()"><span><i class="fa fa-user-times"></i>退出系统</span></a>
+
+	<div class="perm-mgr" style="display:none">
+		<div class="menu-expand-group">
+			<a><span><i class="fa fa-pencil-square-o"></i>系统设置</span></a>
+			<div class="menu-expandable">
+				<a href="#pageEmployee">登录帐户管理</a>
+			</div>
+		</div>
+	</div>
 
 	<div class="perm-mgr perm-emp" style="display:none">
 		<div class="menu-expand-group">
@@ -44,15 +52,16 @@ menu-expand-group下第一个a为菜单组标题，可加"expanded"类使其默�
 		</div>
 	</div>
 
-	<div class="perm-mgr" style="display:none">
+	<!--div class="perm-mgr" style="display:none">
 		<div class="menu-expand-group">
 			<a><span><i class="fa fa-pencil-square-o"></i>工具</span></a>
 			<div class="menu-expandable">
 				<a href="javascript:showDlgSendSms()">群发短信</a>
 			</div>
 		</div>
-	</div>
+	</div-->
 
+	<a href="javascript:logout()"><span><i class="fa fa-user-times"></i>退出系统</span></a>
 	<a href="javascript:showDlgChpwd()"><span><i class="fa fa-user-times"></i>修改密码</span></a>
 </div>
 
@@ -74,7 +83,7 @@ menu-expand-group下第一个a为菜单组标题，可加"expanded"类使其默�
 			<th data-options="field:'id'">编号</th>
 			<th data-options="field:'phone'">手机号</th>
 			<th data-options="field:'name'">姓名</th>
-			<th data-options="field:'perms'">权限</th>
+			<th data-options="field:'perms', formatter:Formatter.enum(PermMap)">权限</th>
 		</tr></thead>
 	</table>
 </div>
@@ -98,7 +107,7 @@ menu-expand-group下第一个a为菜单组标题，可加"expanded"类使其默�
 	</form>
 </div>
 
-<div id="dlgChpwd" title="修改密码" style="padding:20px 40px 20px 40px;width:350px;height:200px;">  
+<div id="dlgChpwd" title="修改密码" style="padding:20px 40px 20px 40px;width:350px;height:230px;">  
 	<form method="POST">
 		<table>
 			<tr>

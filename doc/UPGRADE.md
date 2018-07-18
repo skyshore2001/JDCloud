@@ -1,3 +1,18 @@
+## 升级到v5.1
+
+### WeUI库升级到1.x
+
+- 类名命令变化：
+
+		weui_cells -> weui-cells
+		weui_cell_bd -> weui-cell__bd
+		weui_btn_primary -> weui-btn_primary
+
+- 撑满cell: 此前用weui_cell_primary，现在用weui-cell__bd, 一般不需要weui-cell_primary.
+- 带箭头的列表，由之前的weui_cells_access改为单独控制的weui-cell_access
+
+参考：http://www.phpos.net/weixinkaifa/weui/700.html
+
 ## 升级到v5.0
 
 ### 顶部图标按钮的表示不兼容

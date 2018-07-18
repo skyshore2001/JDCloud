@@ -298,12 +298,40 @@ query接口的"..."之后就是虚拟字段。后缀"?"表示是非缺省字段�
 - 自定义字段只限于对query/get的最终结果集进行操作
 - 自定义字段不能用于设置cond条件.
 
+### flags和props字段
+
+（试验功能）
+框架支持两个特别的数据库字段flags和props，并可将它们拆解为flag_xxx或prop_xxx格式。
+例如，在订单表上定义：
+
+	@Ordr: id, flags
+
+	- flags: EnumList(g-go-员工已出发, v-visited-已回访, r-reviewed-已人工校验过, i-imported-是自动导入的订单)。例如, 值"gv"表示有"g"标志和"v"标志。
  
+要查询已回访或未回访的订单，可以用：
+
+	Ordr.query(cond="flag_v=1/0", res="id,flags") -> tbl(id, flags, ..., flag_g?, flag_v?, ...)
+
+注意：返回字段将自动根据flags的值增加诸如flag_g这样的字段，值为0或1；但res参数中不可指定flag_v这样的虚拟字段。
+
+要设置或清除已回访标志"g"，可以用：
+
+	Ordr.set(id=1)(flag_g=1/0)
+
+注意：不可一次设置多个flag。如果需要这样，则应直接设置flags字段。
+
+props字段与之类似，flags字段中一个标志是一个字母，而props字段的标志以一个词，因而多个标志以空格隔开。
+假设Ordr表中定义了props字段，且某条记录的值为"go visited"，则该记录返回字段会有 `{ prop_go:1, prop_visited:1 }`
+
+也可以进行设置和清除，并可与flags一起用，如：
+
+	Ordr.set(id=1)(prop_go=1/0, flag_v=1/0)
+
 ## 子表
 
 @var AccessControl::$subobj (for get/query) 定义子表
 
-subobj: { name => {sql, default, wantOne} }
+subobj: { name => {sql, default?=false, wantOne?=false, force?=false} }
 
 设计接口：
 
@@ -320,14 +348,22 @@ subobj: { name => {sql, default, wantOne} }
 	}
 
 子表和虚拟字段类似，支持get/query操作，执行指定的SQL语句作为结果。结果以一个数组返回[{id, tm, ...}]。
-"default"选项与虚拟字段(vcolDefs)上的"default"选项一样，表示当未指定"res"参数时，是否默认返回该字段。
-如果指定wantOne=>true, 则结果以一个对象返回即 {id, tm, ...}, 适用于主表与子表一对一的情况。
+
+- sql: 子表查询语句，其中应包含用"field=%d"这样语句来定义与主表id字段的关系。
+ (v5.1)为了优化query接口，避免每一行分别查一次子表，查询语句会被改为"field IN (...)"的形式。
+- default: 虚拟字段(vcolDefs)上的"default"选项一样，表示当未指定"res"参数时，是否默认返回该字段。
+- wantOne: 如果为true, 则结果以一个对象返回即 {id, tm, ...}, 适用于主表与子表一对一的情况。
+- force: (v5.1) 如果sql中没有与主表的关联即没有包含"field=%d"，应指定force=true，否则在query接口中会当作语句错误。
 
 ## 操作完成回调
 
 @fn AccessControl::onAfter(&$ret)  (for all) 操作完成时的回调。可修改操作结果ret。
 如果要对get/query结果中的每行字段进行设置，应重写回调 onHandleRow. 
 有时使用 onAfterActions 就近添加逻辑更加方便。
+
+注意：对于query接口，无论返回哪种格式（如默认的压缩表、或用fmt参数指定list/csv/txt/excel等格式），在onAfter或onAfterActions中都是对象数组的格式，如：
+
+	[ [ "id"=>100, "name"=>"name1"], ["id"=>101", "name"=>"name2"], ... ]
 
 @var AccessControl::$onAfterActions =[].  onAfter的替代方案，更易使用，便于与接近的逻辑写在一起。
 @var AccessControl::$id  get/set/del时指定的id, 或add后返回的id.
@@ -338,14 +374,19 @@ subobj: { name => {sql, default, wantOne} }
 	{
 		if ($this->ac == "add") {
 			... 
-
-			$this->onAfterActions[] = function () use ($logAction) {
+			// 可修改$ret
+			$this->onAfterActions[] = function (&$ret) use ($logAction) {
 				$orderId = $this->id;
-				$sql = sprintf("INSERT INTO OrderLog (orderId, action, tm) VALUES ({$orderId},'CR','%s')", date('c'));
-				execOne($sql);
+				dbInsert("OrderLog", [
+					"orderId" => $orderId,
+					"action" => "CR",
+					"tm" => date(FMT_DT)  // 或用mysql表达式"=now()"
+				]);
 			};
 		}
 	}
+
+与onAfter类似，加到onAfterActions集合中的函数，如果要修改返回数据，只要在函数参数中声明`&$ret`就可以修改它了。
 
 @fn AccessControl::onHandleRow(&$rowData) (for get/query) 在onAfter之前运行，用于修改行中字段。
 
@@ -354,6 +395,16 @@ subobj: { name => {sql, default, wantOne} }
 ### 编号自定义生成
 
 @fn AccessControl::onGenId() (for add) 指定添加对象时生成的id. 缺省返回0表示自动生成.
+
+示例：为避免ID暴露业务数据，可跳号生成ID，比如造成单量放大5-20倍的假象:
+
+	protected function onGenId()
+	{
+		$id = queryOne("SELECT MAX(id) FROM Ordr");
+		return $id + rand(5, 20);
+	}
+
+这个示例在超大并发时可能会有ID重复的风险且性能不高，更好的方法是向一个ID生成器服务发起请求。
 
 ### 缺省排序
 
@@ -487,6 +538,35 @@ TODO: 可加一个系统参数`_enc`表示输出编码的格式。
 	或指定alias:
 	Ordr.query(res="id 编号, status 状态=CR:Created;CA:Cancelled")
 
+(版本5.1)
+设置enumFields也支持逗号分隔的枚举列表，比如字段值为"CR,CA"，实际可返回"Created,Cancelled"。
+
+## 批量更新(setIf)和批量删除(delIf)
+
+(v5.1) 以Ordr对象为例，要支持根据条件批量更新或删除：
+
+	Ordr.setIf(cond)(field1=value1, field2=value2, ...)
+	Ordr.delIf(cond)
+
+在cond中，除了使用基本字段，还可以像query接口一样使用虚拟字段来查询，框架自动join相关表。
+
+示例：对具有PERM_MGR权限的员工，登录后允许批量更新和批量删除：
+
+	class AC2_Ordr extends AccessControl
+	{
+		function api_delIf() {
+			checkAuth(PERM_MGR);
+			return parent::api_delIf();
+		}
+		function api_setIf() {
+			checkAuth(PERM_MGR);
+			$this->checkSetFields(["status", "cmt"]);
+			return parent::api_setIf();
+		}
+	}
+
+setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更新。
+也可以直接用checkSetFields指定哪些字段允许更新。
 */
 
 # ====== functions {{{
@@ -572,6 +652,39 @@ class AccessControl
 		return $x;
 	}
 
+	/*
+	支持get/post参数中同时有cond参数，且cond参数允许为数组，比如传
+		URL中：cond[]=a=1&cond[]=b=2
+		POST中：cond=c=3
+	后端处理成 "a=1 AND b=2 AND c=3"
+	*/
+	static function getCondStr($condArr)
+	{
+		$condSql = null;
+		foreach ($condArr as $cond) {
+			if ($cond === null)
+				continue;
+			if (is_array($cond))
+				$cond = getCondStr($cond);
+
+			if ($condSql === null)
+				$condSql = $cond;
+			else if (stripos($cond, " and ") !== false || stripos($cond, " or ") !== false)
+				$condSql .= " AND ({$cond})";
+			else 
+				$condSql .= " AND " . $cond;
+		}
+		return $condSql;
+	}
+
+	private function getCondParam($name) {
+		return self::getCondStr([$_GET[$name], $_POST[$name]]);
+	}
+
+	static function removeQuote($k) {
+		return preg_replace('/^"(.*)"$/', '$1', $k);
+	}
+
 	// for get/query
 	protected function initQuery()
 	{
@@ -580,8 +693,8 @@ class AccessControl
 		$this->sqlConf = [
 			"res" => [],
 			"gres" => $gres,
-			"gcond" => param("gcond", null, null, false),
-			"cond" => [param("cond", null, null, false)],
+			"gcond" => $this->getCondParam("gcond"),
+			"cond" => [$this->getCondParam("cond")],
 			"join" => [],
 			"orderby" => param("orderby"),
 			"subobj" => [],
@@ -696,7 +809,7 @@ class AccessControl
 
 	final function before($ac)
 	{
-		if ($this->allowedAc && in_array($ac, self::$stdAc) && !in_array($ac, $this->allowedAc)) {
+		if (isset($this->allowedAc) && in_array($ac, self::$stdAc) && !in_array($ac, $this->allowedAc)) {
 			throw new MyException(E_FORBIDDEN, "Operation `$ac` is not allowed on object `$this->table`");
 		}
 		$this->ac = $ac;
@@ -737,6 +850,7 @@ class AccessControl
 		$this->flag_handleResult($rowData);
 		$this->onHandleRow($rowData);
 
+		$SEP = ',';
 		foreach ($this->enumFields as $field=>$map) {
 			if (array_key_exists($field, $rowData)) {
 				$v = $rowData[$field];
@@ -745,6 +859,13 @@ class AccessControl
 				}
 				else if (array_key_exists($v, $map)) {
 					$v = $map[$v];
+				}
+				else if (strpos($v, $SEP) !== false) {
+					$v1 = [];
+					foreach(explode($SEP, $v) as $e) {
+						$v1[] = $map[$e] ?: $e;
+					}
+					$v = join($SEP, $v1);
 				}
 				$rowData[$field] = $v;
 			}
@@ -800,7 +921,8 @@ class AccessControl
 			return;
 
 		$alias = $a[0] ?: null;
-		$this->enumFields[$alias ?: $col] = parseKvList($a[1], ";", ":");
+		$k = self::removeQuote($alias ?: $col);
+		$this->enumFields[$k] = parseKvList($a[1], ";", ":");
 	}
 
 	// return: new field list
@@ -815,11 +937,12 @@ class AccessControl
 				$this->addRes("t0.*", false);
 				continue;
 			}
-			// 适用于res/gres, 支持格式："col" / "col col1" / "col as col1"
-			if (! preg_match('/^\s*(\w+)(?:\s+(?:AS\s+)?(\S+))?\s*$/i', $col, $ms))
+			// 适用于res/gres, 支持格式："col" / "col col1" / "col as col1", alias可以为中文，如"col 某列"
+			// 如果alias中有特殊字符（逗号不支持），则应加引号，如"amount \"金额(元)\"", "v \"速率 m/s\""等。
+			if (! preg_match('/^\s*(\w+)(?:\s+(?:AS\s+)?([^,]+))?\s*$/i', $col, $ms))
 			{
 				// 对于res, 还支持部分函数: "fn(col) as col1", 目前支持函数: count/sum，如"count(distinct ac) cnt", "sum(qty*price) docTotal"
-				if (!$gres && preg_match('/(\w+)\([a-z0-9_.\'* ,+\/]+\)\s+(?:AS\s+)?(\S+)/i', $col, $ms)) {
+				if (!$gres && preg_match('/(\w+)\([a-z0-9_.\'* ,+\/]+\)\s+(?:AS\s+)?([^,]+)/i', $col, $ms)) {
 					list($fn, $alias) = [strtoupper($ms[1]), $ms[2]];
 					if ($fn != "COUNT" && $fn != "SUM")
 						throw new MyException(E_FORBIDDEN, "function not allowed: `$fn`");
@@ -846,13 +969,14 @@ class AccessControl
 // 				throw new MyException(E_PARAM, "bad property `$col`");
 			if ($this->addVCol($col, true, $alias) === false) {
 				if (!$gres && array_key_exists($col, $this->subobj)) {
-					$this->sqlConf["subobj"][$alias ?: $col] = $this->subobj[$col];
+					$key = self::removeQuote($alias ?: $col);
+					$this->sqlConf["subobj"][$key] = $this->subobj[$col];
 				}
 				else {
 					$col = "t0." . $col;
 					$col1 = $col;
 					if (isset($alias)) {
-						$col1 .= " AS {$alias}";
+						$col1 .= " {$alias}";
 					}
 					$this->addRes($col1);
 				}
@@ -976,6 +1100,7 @@ class AccessControl
 		else
 			throw new MyException(E_SERVER, "bad res definition: `$res`");
 
+		$colName = self::removeQuote($colName);
 		if (array_key_exists($colName, $this->vcolMap)) {
 			if ($added && $this->vcolMap[ $colName ]["added"])
 				throw new MyException(E_SERVER, "res for col `$colName` has added: `$res`");
@@ -1095,38 +1220,15 @@ class AccessControl
 	{
 		$this->validate();
 
-		$keys = '';
-		$values = '';
-#			var_dump($_POST);
 		$id = $this->onGenId();
 		if ($id != 0) {
-			$keys = "id";
-			$values = (string)$id;
+			$_POST["id"] = $id;
 		}
-		foreach ($_POST as $k=>$v) {
-			if ($k === "id")
-				continue;
-			// ignore non-field param
-			if (substr($k,0,2) === "p_")
-				continue;
-			if ($v === "")
-				continue;
-			# TODO: check meta
-			if (! preg_match('/^\w+$/', $k))
-				throw new MyException(E_PARAM, "bad key $k");
+		else if (array_key_exists("id", $_POST)) {
+			unset($_POST["id"]);
+		}
 
-			if ($keys !== '') {
-				$keys .= ", ";
-				$values .= ", ";
-			}
-			$keys .= $k;
-			$values .= Q(htmlEscape($v));
-		}
-		if (strlen($keys) == 0) 
-			throw new MyException(E_PARAM, "no field found to be added");
-		$sql = sprintf("INSERT INTO %s (%s) VALUES (%s)", $this->table, $keys, $values);
-#			var_dump($sql);
-		$this->id = execOne($sql, true);
+		$this->id = dbInsert($this->table, $_POST);
 
 		$res = param("res");
 		if (isset($res)) {
@@ -1145,39 +1247,7 @@ class AccessControl
 		$this->id = mparam("id");
 		$this->validate();
 
-		$kv = "";
-		foreach ($_POST as $k=>$v) {
-			if ($k === 'id')
-				continue;
-			// ignore non-field param
-			if (substr($k,0,2) === "p_")
-				continue;
-			# TODO: check meta
-			if (! preg_match('/^\w+$/', $k))
-				throw new MyException(E_PARAM, "bad key $k");
-
-			if ($kv !== '')
-				$kv .= ", ";
-
-			// 空串或null置空；empty设置空字符串
-			if ($v === "" || $v === "null")
-				$kv .= "$k=null";
-			else if ($v === "empty")
-				$kv .= "$k=''";
-			else if (startsWith($k, "flag_") || startsWith($k, "prop_"))
-			{
-				$kv .= $this->flag_getExpForSet($k, $v);
-			}
-			else
-				$kv .= "$k=" . Q(htmlEscape($v));
-		}
-		if (strlen($kv) == 0) {
-			addLog("no field found to be set");
-		}
-		else {
-			$sql = sprintf("UPDATE %s SET %s WHERE id=%d", $this->table, $kv, $this->id);
-			$cnt = execOne($sql);
-		}
+		$cnt = dbUpdate($this->table, $_POST, $this->id);
 	}
 
 	protected function genQuerySql(&$tblSql=null, &$condSql=null)
@@ -1194,17 +1264,7 @@ class AccessControl
 		$tblSql = "{$this->table} t0";
 		if (count($sqlConf["join"]) > 0)
 			$tblSql .= "\n" . join("\n", $sqlConf["join"]);
-		$condSql = "";
-		foreach ($sqlConf["cond"] as $cond) {
-			if ($cond == null)
-				continue;
-			if (strlen($condSql) > 0)
-				$condSql .= " AND ";
-			if (stripos($cond, " and ") !== false || stripos($cond, " or ") !== false)
-				$condSql .= "({$cond})";
-			else 
-				$condSql .= $cond;
-		}
+		$condSql = self::getCondStr($sqlConf["cond"]);
 /*
 			foreach ($_POST as $k=>$v) {
 				# skip sys param which generally starts with "_"
@@ -1237,10 +1297,17 @@ class AccessControl
 		$this->initQuery();
 
 		$this->addCond("t0.id={$this->id}", true);
-		$sql = $this->genQuerySql();
-		$ret = queryOne($sql, true);
-		if ($ret === false) 
-			throw new MyException(E_PARAM, "not found `{$this->table}.id`=`{$this->id}`");
+		$hasFields = (count($this->sqlConf["res"]) > 0);
+		if ($hasFields) {
+			$sql = $this->genQuerySql();
+			$ret = queryOne($sql, true);
+			if ($ret === false) 
+				throw new MyException(E_PARAM, "not found `{$this->table}.id`=`{$this->id}`");
+		}
+		else {
+			// 如果get用res字段指定只取子对象，则不必多次查询。e.g. callSvr('Ordr.get', {res: orderLog});
+			$ret = ["id" => $this->id];
+		}
 		$this->handleSubObj($this->id, $ret);
 		$this->handleRow($ret);
 		return $ret;
@@ -1354,8 +1421,21 @@ class AccessControl
 
 		// Note: colCnt may be changed in after().
 		$fixedColCnt = count($ret)==0? 0: count($ret[0]);
-		foreach ($ret as &$ret1) {
-			$this->handleRow($ret1);
+
+		$SUBOBJ_OPTIMIZE = true;
+		if ($SUBOBJ_OPTIMIZE) {
+			$this->handleSubObjForList($ret); // 优化: 总共只用一次查询, 替代每个主表查询一次
+			foreach ($ret as &$ret1) {
+				$this->handleRow($ret1);
+			}
+		}
+		else {
+			foreach ($ret as &$ret1) {
+				$id1 = $ret1["id"];
+				if (isset($id1))
+					$this->handleSubObj($id1, $ret1);
+				$this->handleRow($ret1);
+			}
 		}
 		$this->after($ret);
 
@@ -1366,11 +1446,6 @@ class AccessControl
 			else {
 				$nextkey = $pagekey + 1;
 			}
-		}
-		foreach ($ret as &$mainObj) {
-			$id1 = $mainObj["id"];
-			if (isset($id1))
-				$this->handleSubObj($id1, $mainObj);
 		}
 		$fmt = param("fmt");
 		if ($fmt === "list") {
@@ -1401,6 +1476,108 @@ class AccessControl
 			throw new MyException(E_PARAM, "not found id=$id");
 	}
 
+/**
+@fn AccessControl::checkSetFields($allowedFields)
+
+e.g.
+	function onValidate()
+	{
+		if ($this->ac == "set")
+			$this->checkSetFields(["status", "cmt"]);
+	}
+*/
+	protected function checkSetFields($allowedFields)
+	{
+		foreach (array_keys($_POST) as $k) {
+			if (! in_array($k, $allowedFields))
+				throw new MyException(E_FORBIDDEN, "forbidden to set field `$k`");
+		}
+	}
+
+	// return {tblSql, condSql}
+	protected function genCondSql()
+	{
+		$cond = $this->getCondParam("cond");
+		if ($cond === null)
+			throw new MyException(E_PARAM, "setIf requires param `cond`");
+		$this->initVColMap();
+		$this->addCond($this->fixUserQuery($cond));
+
+		$sqlConf = $this->sqlConf;
+		$tblSql = "{$this->table} t0";
+		if (count($sqlConf["join"]) > 0)
+			$tblSql .= "\n" . join("\n", $sqlConf["join"]);
+		$condSql = self::getCondStr($sqlConf["cond"]);
+
+		return ["tblSql"=>$tblSql, "condSql"=>$condSql];
+	}
+	
+/**
+@fn AccessControl::api_setIf()
+
+批量更新。
+
+setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更新。
+也可以直接用checkSetFields指定哪些字段允许更新。
+返回更新记录数。
+示例：
+
+	class AC2_Ordr extends AccessControl {
+		function api_setIf() {
+			checkAuth(PERM_MGR);
+			$this->checkSetFields(["status", "cmt"]);
+			$empId = $_SESSION["empId"];
+			$this->addCond("t0.empId=$empId");
+			// $this->addJoin(...);
+			return parent::api_setIf();
+		}
+	}
+ */
+	protected function api_setIf()
+	{
+		$roFields = $this->readonlyFields + $this->readonlyFields2;
+		foreach ($roFields as $field) {
+			if (array_key_exists($field, $_POST))
+				throw new MyException(E_FORBIDDEN, "forbidden to set field `$field`");
+		}
+
+		$rv = $this->genCondSql();
+
+		// 有join时，防止字段重名。统一加"t0."
+		$kv = $_POST;
+		$sqlConf = $this->sqlConf;
+		if (count($sqlConf["join"]) > 0) {
+			$kv = [];
+			foreach ($_POST as $k=>$v) {
+				$kv["t0.$k"] = $v;
+			}
+		}
+		$cnt = dbUpdate($rv["tblSql"], $kv, $rv["condSql"]);
+		return $cnt;
+	}
+/**
+@fn AccessControl::api_delIf()
+
+批量删除。返回删除记录数。
+示例：
+
+	class AC2_Ordr extends AccessControl {
+		function api_delIf() {
+			checkAuth(PERM_MGR);
+			// $this->addCond(...);
+			// $this->addJoin(...);
+			return parent::api_delIf();
+		}
+	}
+ */
+	protected function api_delIf()
+	{
+		$rv = $this->genCondSql();
+		$sql = sprintf("DELETE t0 FROM %s WHERE %s", $rv["tblSql"], $rv["condSql"]);
+		$cnt = execOne($sql);
+		return $cnt;
+	}
+
 	// query sub table for mainObj(id), and add result to mainObj as obj or obj collection (opt["wantOne"])
 	protected function handleSubObj($id, &$mainObj)
 	{
@@ -1421,6 +1598,83 @@ class AccessControl
 				else {
 					$mainObj[$k] = $ret1;
 				}
+			}
+		}
+	}
+
+	// 优化的子表查询. 对列表使用一次`IN (id,...)`查询出子表, 然后使用程序自行join
+	// 临时添加了"id_"作为辅助字段.
+	protected function handleSubObjForList(&$ret)
+	{
+		$subobj = $this->sqlConf["subobj"];
+		if (! is_array($subobj) || count($subobj)==0)
+			return;
+
+		$idArr = [];
+		foreach ($ret as $row) {
+			$key = $row["id"] ?: $row["编号"]; // TODO: use id
+			if ($key === null)
+				continue;
+			$idArr[] = $key;
+		}
+		if (count($idArr) == 0)
+			return;
+		$idList = join(',', $idArr);
+
+		# $opt: {sql, wantOne=false}
+		foreach ($subobj as $k => $opt) {
+			if (! @$opt["sql"])
+				continue;
+			$joinField = null;
+
+			# e.g. "select * from OrderItem where orderId=%d" => (添加主表关联字段id_) "select *, orderId id_ from OrderItem where orderId=%d"
+			$sql = preg_replace_callback('/(\S+)=%d/', function ($ms) use (&$joinField, $idList){
+				$joinField = $ms[1];
+				return $ms[1] . " IN ($idList)";
+			}, $opt["sql"]); 
+			if ($joinField === null) {
+				if (! @$opt["force"])
+					throw new MyException(E_SERVER, "bad subobj def: `" . $opt["sql"] . "'. require `field=%d`");
+
+				$ret1 = queryAll($sql, true);
+				if (@$opt["wantOne"]) {
+					if (count($ret1) == 0)
+						$ret1 = null;
+					else
+						$ret1 = $ret1[0];
+				}
+				foreach ($ret as &$row) {
+					$row[$k] = $ret1;
+				}
+				continue;
+			}
+
+			$sql = preg_replace('/ from/i', ", $joinField id_$0", $sql);
+
+			$ret1 = queryAll($sql, true);
+			$subMap = []; // {id_=>[subobj]}
+			foreach ($ret1 as $e) {
+				$key = $e["id_"];
+				unset($e["id_"]);
+				if (! array_key_exists($key, $subMap)) {
+					$subMap[$key] = [$e];
+				}
+				else {
+					$subMap[$key][] = $e;
+				}
+			}
+			foreach ($ret as &$row) {
+				$key = $row["id"] ?: $row["编号"]; // TODO: use id
+				$val = @$subMap[$key];
+				if (@$opt["wantOne"]) {
+					if ($val !== null)
+						$val = $val[0];
+				}
+				else {
+					if ($val === null)
+						$val = [];
+				}
+				$row[$k] = $val;
 			}
 		}
 	}
@@ -1459,25 +1713,7 @@ function KVtoCond($k, $v)
 }
  */
 
-	private function flag_getExpForSet($k, $v)
-	{
-		$v1 = substr($k, 5); // flag_xxx -> xxx
-		$k1 = substr($k, 0, 4) . "s"; // flag_xxx -> flags
-		if ($v == 1) {
-			if (strlen($v1) > 1) {
-				$v1 = " " . $v1;
-			}
-			$v = "concat(ifnull($k1, ''), " . Q($v1) . ")";
-		}
-		else if ($v == 0) {
-			$v = "trim(replace($k1, " . Q($v1) . ", ''))";
-		}
-		else {
-			throw new MyException(E_PARAM, "bad value for flag/prop `$k`=`$v`");
-		}
-		return "$k1=" . $v;
-	}
-
+	// 处理flags/props字段。设置字段参考flag_getExpForSet函数和dbUpdate
 	private function flag_handleResult(&$rowData)
 	{
 		@$flags = $rowData["flags"];
@@ -1511,6 +1747,16 @@ function KVtoCond($k, $v)
 		}, $cond);
 	}
 
+	// 对象或对象数组转成 list string
+	static function array2Str($arr)
+	{
+		if (count($arr) == 0)
+			return "";
+		if (! isset($arr[0]))
+			return join(':', $arr);
+		return join(',', array_map("self::array2Str", $arr));
+	}
+
 	function outputCsvLine($row, $enc)
 	{
 		$firstCol = true;
@@ -1519,14 +1765,22 @@ function KVtoCond($k, $v)
 				$firstCol = false;
 			else
 				echo ',';
-			// 大数字，避免excel用科学计数法显示
-			if (preg_match('/^[\d\.]{5,}$/', $e)) {
-				$e .= "\t";
-			}
-			else if ($enc) {
+			if (is_array($e))
+				$e = self::array2Str($e);
+			if ($enc) {
 				$e = iconv("UTF-8", "{$enc}//IGNORE" , (string)$e);
+
+				// Excel使用本地编码(gb18030)
+				// 大数字，避免excel用科学计数法显示（从11位手机号开始）。
+				// 5位-10位数字时，Excel会根据列宽显示科学计数法或完整数字，11位以上数字总显示科学计数法。
+				if (preg_match('/^\d{11,}$/', $e)) {
+					$e .= "\t";
+				}
 			}
-			echo '"', str_replace('"', '""', $e), '"';
+			if (strpos($e, '"') !== false || strpos($e, "\n") !== false)
+				echo '"', str_replace('"', '""', $e), '"';
+			else
+				echo $e;
 		}
 		echo "\n";
 	}

@@ -17,6 +17,8 @@ cat <<.  > .git/hooks/post-update
 unset GIT_DIR
 cd ..
 git reset --hard
+# reload tomcat app, for jd-java project
+touch -c WEB-INF/web.xml
 .
 chmod a+x .git/hooks/post-update
 

@@ -1,4 +1,14 @@
 // ====== globals {{{
+var APP_TITLE = "超级管理端";
+var APP_NAME = "admin";
+
+$.extend(WUI.options, {
+	appName: APP_NAME,
+	pageFolder: "adm",
+	title: APP_TITLE,
+	onShowLogin: showDlgLogin
+});
+
 var g_data = {}; // { userInfo={id,uname} }
 //}}}
 
@@ -67,17 +77,8 @@ function initPageHome()
 // }}}
 
 // ====== main {{{
-var APP_TITLE = "超级管理端";
-var APP_NAME = "admin";
-
 function main()
 {
-	$.extend(WUI.options, {
-		appName: APP_NAME,
-		pageFolder: "adm",
-		title: APP_TITLE,
-		onShowLogin: showDlgLogin
-	});
 	setAppTitle(APP_TITLE);
 
 	WUI.tryAutoLogin(handleLogin);

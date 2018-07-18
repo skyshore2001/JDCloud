@@ -1,4 +1,13 @@
 // ====== global {{{
+var APP_TITLE = "商户管理端";
+var APP_NAME = "emp-adm";
+
+$.extend(WUI.options, {
+	appName: APP_NAME,
+	title: APP_TITLE,
+	onShowLogin: showDlgLogin
+});
+
 var g_data = {}; // {userInfo={id, storeId, perms,...}, hasPerm(perm)}
 //}}}
 
@@ -13,7 +22,8 @@ var ListOptions = {
 			textField: "name",
 			url: WUI.makeUrl('Employee.query', {
 				res: 'id,name,uname',
-				cond: 'storeId=' + g_data.userInfo.storeId
+				cond: 'storeId=' + g_data.userInfo.storeId,
+				pagesz: -1
 			}),
 			formatter: function (row) { return row.name + '(' + row.uname + ')'; }
 		};
@@ -26,7 +36,8 @@ var ListOptions = {
 			valueField: "id",
 			textField: "name",
 			url: WUI.makeUrl('Store.query', {
-				res: 'id,name'
+				res: 'id,name',
+				pagesz: -1
 			}),
 			formatter: function (row) { return row.id + "-" + row.name; }
 		};
@@ -164,16 +175,8 @@ function showDlgSendSms()
 //}}}
 
 // ====== main {{{
-var APP_TITLE = "商户管理端";
-var APP_NAME = "emp-adm";
-
 function main()
 {
-	WUI.setApp({
-		appName: APP_NAME,
-		title: APP_TITLE,
-		onShowLogin: showDlgLogin
-	});
 	setAppTitle(APP_TITLE);
 
 	//WUI.initClient();

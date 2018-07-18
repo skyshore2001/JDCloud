@@ -17,6 +17,7 @@ function initPageApiLogStat()
 			param.orderby = "sum DESC";
 			param.pagesz = 10;
 		}
+		param.res = jpage.find("#cboRes").val() + " sum";
 
 		var chartOpt, seriesOpt;
 		if (! opt.tmUnit) {

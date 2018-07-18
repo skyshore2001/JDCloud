@@ -11,7 +11,7 @@ if (getenv("P_DB") === false) {
 }
 
 // Set the base URL, it affect session security, etc.
-putenv("P_URL_PATH=/jdcloud");
+// putenv("P_URL_PATH=/jdcloud");
 
 // test mode: default value=0
 // putenv("P_TEST_MODE=1");

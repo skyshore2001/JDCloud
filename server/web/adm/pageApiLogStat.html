@@ -26,14 +26,31 @@ table select, .btnStat {
 		<td>
 			<select class="txtTmRange">
 				<option value ="近1周">近1周</option>
-				<option value ="近3月">近3月</option>
-				<option value ="近1年">近1年</option>
+				<option value ="本周">本周</option>
+				<option value ="前1周">上周</option>
+				<option value ="本月">本月</option>
+				<option value ="前1月">上月</option>
+				<option value ="近1个月">近1个月</option>
+				<option value ="近3个月">近3个月</option>
+				<option value ="今天">今天</option>
+				<option value ="前1天">昨天</option>
 				<option value ="近12小时">近12小时</option>
+				<option value ="近1年">近1年</option>
 			</select>
 		</td>
 	</tr>
 
 	<tr>
+		<td>统计项</td>
+		<td>
+			<select id="cboRes">
+				<option value ="COUNT(*)">数量</option>
+				<option value="SUM(t)">调用时间(毫秒)</option>
+				<option value="SUM(reqsz)">请求字节数</option>
+				<option value="SUM(ressz)">返回字节数</option>
+			</select>
+		</td>
+
 		<td>应用程序</td>
 		<td>
 			<select name="app">

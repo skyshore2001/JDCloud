@@ -8,7 +8,7 @@ global $UploadType;
 $UploadType = [
 	"user" => ["w"=>128, "h"=>128],
 	"store" => ["w"=>200, "h"=>150],
-	"default" => ["w"=>100, "h"=>100],
+	"default" => ["w"=>360, "h"=>360],
 ];
 
 // 如果扩展名未知，则使用MIME类型限制上传：
@@ -26,6 +26,16 @@ $ALLOWED_MIME = [
 	'xls' => 'application/vnd.ms-excel',
 	'zip' => 'application/zip',
 	'rar' => 'application/x-rar-compressed'
+];
+
+global $FILE_TAG; // tag => ext
+$FILE_TAG = [
+	// JPEG文件头: FFD8FF
+	"\xff\xd8\xff" => "jpg",
+	// PNG文件头: 89504E47
+	"\x89PNG" => "png",
+	// GIF文件头
+	"GIF8" => "gif"
 ];
 
 // 设置允许上传的文件类型。设置为空表示允许所有。
@@ -129,8 +139,12 @@ function api_upload()
 			global $ALLOWED_MIME, $ALLOWED_EXTS;
 			if ($ext == "" && $mtype) {
 				$ext = array_search($mtype, $ALLOWED_MIME);
-				if ($ext === false)
-					throw new MyException(E_PARAM, "MIME type not supported: `$mtype`", "文件类型`$mtype`不支持.");
+				if ($ext === false) {
+					// 猜测文件类型
+					$ext = guessFileType($f["tmp_name"]);
+					if ($ext === null)
+						throw new MyException(E_PARAM, "MIME type not supported: `$mtype`", "文件类型`$mtype`不支持.");
+				}
 			}
 			if (count($ALLOWED_EXTS) > 0 && ($ext == "" || !in_array($ext, $ALLOWED_EXTS))) {
 				throw new MyException(E_PARAM, "bad extention file name: `$orgName`", "文件扩展名`$ext`不支持");
@@ -156,6 +170,23 @@ function api_upload()
 			if ($genThumb)
 				$rec[] = $thumbName;
 			$files[] = $rec;
+		}
+	}
+
+	function guessFileType($f)
+	{
+		global $FILE_TAG;
+		@$fp = fopen($f, "rb");
+		if ($fp === false)
+			return;
+		$data = fread($fp, 8);
+		fclose($fp);
+		if ($data === false || strlen($data) < 8)
+			return;
+		foreach ($FILE_TAG as $ftag=>$ext) {
+			if (strncmp($data, $ftag, strlen($ftag)) == 0) {
+				return $ext;
+			}
 		}
 	}
 
@@ -215,7 +246,7 @@ function api_upload()
 			file_put_contents($fname, $s);
 		}
 		if ($autoResize && preg_match('/\.(jpg|jpeg|png)$/', $fname) && filesize($fname) > 500*1024) {
-			resizeImage($fname, 1920, 1080, $fname);
+			resizeImage($fname, 1280, 1280, $fname);
 		}
 
 		$sth->execute([$fname, null, null, $orgName]);

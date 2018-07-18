@@ -7,7 +7,7 @@ td {
 	vertical-align: top;
 }
 
-form table {
+form>table {
 	width: 100%;
 }
 
@@ -22,8 +22,16 @@ a {
 	padding: 2px;
 }
 
-.mui-find-field {
+.wui-find-field {
 	background-color: #fffbce;
+}
+
+.wui-readonly {
+	pointer-events: none;
+	background-color: #fff3f3;
+}
+input[disabled],select[disabled] {
+	color: #000;
 }
 
 .block {
