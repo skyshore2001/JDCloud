@@ -23,7 +23,7 @@
 
 # 版本日志
 
-## v5.1 - 2018/6
+## v5.1 - 2018/7
 
 - 前端
  - 支持静默调用，callSvr的noLoadingImg选项增强。
@@ -54,6 +54,7 @@
  - excel导出优化
  - 子表查询优化：原先query接口查子对象要做N次查询，现在只做1次查询，然后后端实现与主表join。
  - httpCall增强。
+ - 添加php/class目录，默认做为按需加载的类目录。
  - (plugin login) login接口废弃wantAll参数，默认返回用户信息; 添加reg接口。
  - (plugin upload) 缩略图默认大小360px；图片压缩后大小不超过1280x1280.
  

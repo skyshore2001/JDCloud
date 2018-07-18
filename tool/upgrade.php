@@ -146,6 +146,12 @@ P_DBTYPE参数可以不设置，它默认值就是mysql。
 - 如果存在筋斗云应用配置文件server/php/conf.user.php，会自动包含进来，一般可复用里面的数据库连接配置。
  工具与筋斗云框架的数据库连接配置方式兼容，都通过同名环境变量来指定数据库连接参数。
 
+在筋斗云框架中，v5.1版本集成了线上自动升级。在tool目录下运行
+
+	make meta
+
+将更新数据库设计到server/tool/upgrade/META文件中。将它部署到线上，通过在线访问tool/init.php或tool/upgrade/即可刷新数据库。
+
 ## 用法
 
 运行`php upgrade.php`，进入命令行交互。
@@ -340,13 +346,15 @@ type
 
 将不会导入shortcut列。
 
-### TODO: 带关联字段导入：
+### TODO: 带关联字段导入
 
 	# table [Figure]
 	name	bookId(Book.name)	ref
 	黄帝	史记	本纪-五帝
 
 上例数据中，表示根据Book.name查找Book.id，然后填入Figure.bookId。如果Book中找不到相应项，会自动添加一项。
+
+TODO: 今后版本将集成专用的导入工具。
 
 ### 关联表导入
 

@@ -1,7 +1,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>jdcloud-upgrade</title>
+<title>jdcloud-upgrade - 筋斗云升级工具</title>
 <style>
 h3,h4,h5,h6 {
 	font-size: 1em;
@@ -34,11 +34,13 @@ code {
 
 </style>
 <link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="doc.css" />
+<script src="refdoc.js"></script>
 </head>
 
 <body>
-<h1>jdcloud-upgrade</h1>
-<div>最后更新：2018-05-15</div>
+<h1>jdcloud-upgrade - 筋斗云升级工具</h1>
+<div>最后更新：2018-07-19</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -60,7 +62,7 @@ code {
 <p style="margin-left:2em"><a href="#jdcloud-upgrade-4.1 交互命令">4.1 交互命令</a></p>
 <p style="margin-left:2em"><a href="#jdcloud-upgrade-4.2 非交互命令">4.2 非交互命令</a></p>
 <p style="margin-left:0em"><a href="#jdcloud-upgrade-5 导入数据表">5 导入数据表</a></p>
-<p style="margin-left:2em"><a href="#jdcloud-upgrade-5.1 TODO: 带关联字段导入：">5.1 TODO: 带关联字段导入：</a></p>
+<p style="margin-left:2em"><a href="#jdcloud-upgrade-5.1 TODO: 带关联字段导入">5.1 TODO: 带关联字段导入</a></p>
 <p style="margin-left:2em"><a href="#jdcloud-upgrade-5.2 关联表导入">5.2 关联表导入</a></p>
 <p style="margin-left:0em"><a href="#jdcloud-upgrade-6 TODO: 写升级脚本">6 TODO: 写升级脚本</a></p>
 </div>
@@ -85,11 +87,9 @@ export P_DBCRED=demo:demo123</code></pre>
 <pre><code>./upgrade.sh initdb</code></pre>
 <p>当在META.md中修改了数据库设计，比如添加了表或字段，再重新运行升级脚本时，可刷新数据库表。</p>
 <p>要查看所有建表的SQL语句，可以用：</p>
-<pre><code>./upgrade.sh showtable</code></pre>
-<p>要查看指定的表:</p>
-<pre><code>./upgrade.sh 'showtable("ordr")'</code></pre>
+<pre><code>./upgrade.sh 'export(1)'</code></pre>
 <p>默认升级时(initdb)只会添加缺失的表和字段, 不会更新已有的表和字段, 但可以用</p>
-<pre><code>./upgrade.sh 'showtable("*", true)' | tee 1.sql</code></pre>
+<pre><code>./upgrade.sh 'export(2)' | tee 1.sql</code></pre>
 <p>导出SQL后, 手工编辑并执行, 以避免误修改或删除字段.</p>
 <h4 id="jdcloud-upgrade-2 定义数据模型">2 定义数据模型</h4>
 <p>数据模型主要为表和字段，一般在设计文档中定义，最常见的形式如：</p>
@@ -209,7 +209,7 @@ P_DBCRED=sa:demo123</code></pre>
 <p>注意：</p>
 <ul>
 <li>升级工具只创建表, 不创建数据库本身。</li>
-<li>默认不会删除表或字段, 不会更新类型与定义不一致的字段。如有需要可用<code>showtable("*", true)</code>命令导出SQL并手工操作。</li>
+<li>默认不会删除表或字段, 不会更新类型与定义不一致的字段。如有需要可用<code>export(2)</code>命令导出SQL并手工操作。</li>
 </ul>
 <h5 id="jdcloud-upgrade-3.2 筋斗云框架支持">3.2 筋斗云框架支持</h5>
 <p>本工具原为筋斗云框架的升级工具(tool/upgrade.php)，后独立出来。对筋斗云框架有以下支持：</p>
@@ -218,6 +218,9 @@ P_DBCRED=sa:demo123</code></pre>
 <li>如果存在筋斗云应用配置文件server/php/conf.user.php，会自动包含进来，一般可复用里面的数据库连接配置。<br />
 工具与筋斗云框架的数据库连接配置方式兼容，都通过同名环境变量来指定数据库连接参数。</li>
 </ul>
+<p>在筋斗云框架中，v5.1版本集成了线上自动升级。在tool目录下运行</p>
+<pre><code>make meta</code></pre>
+<p>将更新数据库设计到server/tool/upgrade/META文件中。将它部署到线上，通过在线访问tool/init.php或tool/upgrade/即可刷新数据库。</p>
 <h4 id="jdcloud-upgrade-4 用法">4 用法</h4>
 <p>运行<code>php upgrade.php</code>，进入命令行交互。</p>
 <h5 id="jdcloud-upgrade-4.1 交互命令">4.1 交互命令</h5>
@@ -304,6 +307,11 @@ update item set price=10 where id=3</p>
 <p>参考<a href="#导入数据表">导入数据表</a>章节。</p>
 <p>noPrompt<br />
 : 默认导入表之前要求确认，如果指定该项为true，则不需要提示，直接导入。</p>
+<p><strong>[export]</strong></p>
+<p>参数: {type=0}</p>
+<p>导出META文件或SQL语句。</p>
+<p>type<br />
+: 0-meta, 1-所有表的SQL(相当于<code>showtable</code>指令), 2-与当前数据库比较后的差异SQL(相当于<code>showtable(null,true)</code>)</p>
 <h5 id="jdcloud-upgrade-4.2 非交互命令">4.2 非交互命令</h5>
 <p>更新指定表（addtable命令）：</p>
 <pre><code>upgrade.php car_brand car_series car_model</code></pre>
@@ -337,11 +345,12 @@ id  name    -shortcut
 110 奥迪  A
 ...</code></pre>
 <p>将不会导入shortcut列。</p>
-<h5 id="jdcloud-upgrade-5.1 TODO: 带关联字段导入：">5.1 TODO: 带关联字段导入：</h5>
+<h5 id="jdcloud-upgrade-5.1 TODO: 带关联字段导入">5.1 TODO: 带关联字段导入</h5>
 <pre><code># table [Figure]
 name    bookId(Book.name)   ref
 黄帝  史记  本纪-五帝</code></pre>
 <p>上例数据中，表示根据Book.name查找Book.id，然后填入Figure.bookId。如果Book中找不到相应项，会自动添加一项。</p>
+<p>TODO: 今后版本将集成专用的导入工具。</p>
 <h5 id="jdcloud-upgrade-5.2 关联表导入">5.2 关联表导入</h5>
 <p>示例：</p>
 <pre><code># table [Svc]

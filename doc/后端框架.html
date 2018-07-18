@@ -83,6 +83,7 @@
 <li><a href="#toollog.php"><span class="toc-section-number">8.1</span> tool/log.php</a></li>
 <li><a href="#toolinit.php"><span class="toc-section-number">8.2</span> tool/init.php</a></li>
 <li><a href="#tooltool.php"><span class="toc-section-number">8.3</span> tool/tool.php</a></li>
+<li><a href="#toolupgrade"><span class="toc-section-number">8.4</span> tool/upgrade/</a></li>
 </ul></li>
 <li><a href="#定期任务"><span class="toc-section-number">9</span> 定期任务</a></li>
 <li><a href="#数据安全"><span class="toc-section-number">10</span> 数据安全</a></li>
@@ -633,9 +634,6 @@ Obj.query(fmt=list, ...) -&gt; {nextkey?, total?, @list=[obj1, obj2...]}
 
 后端内部查询支持以下额外参数：@res2?, join?, @cond2?, union?, subobj
 
-该接口不建议使用，它不支持分页，将废弃：
-Obj.query(wantArray=1, ...) -&gt; [obj1, obj2...]
-
 分组统计：
 Obj.query(gres, ...) -&gt; tbl(fields...)
 
@@ -1125,7 +1123,7 @@ phpunit xxxTest.php</code></pre>
 <ul>
 <li>访问URL: <code>http://{server}/{app}/tool/init.php</code> 检查php环境是否满足需求。</li>
 <li>为应用创建数据库和专用用户，进行初始化，生成指定数据库和配置文件 php/conf.user.php.</li>
-<li>使用命令行工具 tool/upgrade.php 连接数据库进行表创建或更新。(详见下面章节)</li>
+<li>使用命令行工具 tool/upgrade.php 连接数据库进行表创建或更新。(详见下面章节) (v5.1: 可通过tool/init.php线上自动升级)</li>
 <li>如果有initdata目录，查看该目录下相关文档，确定是否需要导入表内容或创建视图、函数等。</li>
 </ul>
 <p>如果需要重新配置，可删除配置文件 php/conf.user.php后再运行本工具。</p>
@@ -1142,8 +1140,10 @@ phpunit xxxTest.php</code></pre>
 <p>注意：</p>
 <ul>
 <li>对于MYSQL数据库, 升级工具只创建表, 不创建数据库本身。创建数据库以及设置权限可在线访问tool/init.php。</li>
-<li>不会删除表或字段。如有需要请手工操作。</li>
-<li>对已有的字段，不能修改字段类型。需要手工操作。</li>
+<li><p>不会删除表或字段。如有需要请手工操作。通过</p>
+<pre><code>upgrade.sh &#39;export(2)&#39;</code></pre>
+<p>导出用于升级的SQL语句，然后使用SQL工具运行即可。或通过登录超级管理端，在其中运行SQL语句（注意非SELECT语句前面要加&quot;!&quot;强制执行）。</p></li>
+<li><p>对已有的字段，不能修改字段类型。需要手工操作。</p></li>
 </ul>
 <p><strong>[数据库连接]</strong></p>
 <p>upgrade.php与api.php配置方式相同，都是通过环境变量来指定，可以使用conf.user.php中的配置，数据库支持mysql和sqlite.</p>
@@ -1196,14 +1196,25 @@ phpunit xxxTest.php</code></pre>
 <pre><code>&gt; quit
 或
 &gt; q</code></pre>
+<p><strong>[export]</strong></p>
+<p>v5.1新增. 参数: {type?=0}</p>
+<ul>
+<li>type: 0-导出META；1-根据META导出SQL语句；2-检查META与数据库的实际差异，以SQL语句方式给出差异结果。</li>
+</ul>
 <p><strong>[TODO: upgrade]</strong></p>
 <p>TODO 自动根据版本差异，执行升级脚本，升级数据库. 如果字段cinf.ver不存在, 则重建DB(但会忽略已有的表, 不会删除它再重新创建). 升级完成后设置cinf.ver字段.</p>
 <p><strong>[showtable]</strong></p>
-<p>参数: {table?=&quot;*&quot;}</p>
+<p>参数: {table?=&quot;*&quot;, checkDb=false}</p>
 <p>查看某表的metadata以及SQL创建语句. 参数{table}中可以包含通配符。</p>
 <p>例:</p>
 <pre><code>&gt; showtable(&quot;item&quot;)
 &gt; showtable(&quot;*log&quot;)</code></pre>
+<ul>
+<li><p>checkDb: 根据META与数据库差异，显示用于升级的SQL语句。</p>
+<blockquote>
+<p>showtable(null, true)</p>
+</blockquote></li>
+</ul>
 <p><strong>[addtable]</strong></p>
 <p>参数: {table} [force=false]</p>
 <p>根据metadata添加指定的表{table}. 未指定force参数时, 如果表已存在且未指定force=true, 则检查和添加缺失的字段; 如果指定了force=true, 则会删除表重建.</p>
@@ -1370,6 +1381,17 @@ log.php?f=trace
 <pre><code>tool.php(ac?)</code></pre>
 <p>具体参数见源程序内部文档。</p>
 <p>工具包。目前支持base64编码、解码，md5编码等。</p>
+<h3 id="toolupgrade"><span class="header-section-number">8.4</span> tool/upgrade/</h3>
+<pre><code>tool/upgrade/index.php(diff?=0)</code></pre>
+<p>访问该链接，将根据server/tool/upgrade/META文件自动创建或升级数据库。</p>
+<ul>
+<li>diff: 如果为1，以SQL语句方式显示数据库表与设计的实际差异。可在SQL工具中运行这些语句修改数据库使其与设计一致。</li>
+</ul>
+<p>META文件可在tool目录下运行:</p>
+<pre><code>make meta</code></pre>
+<p>获得更新。其实质是通过upgrade.php工具解析设计文档(DESIGN.md)生成META文件。</p>
+<pre><code>php upgrade.php export </code></pre>
+<p>该工具已集成到tool/init.php中，用于线上自动升级数据库。</p>
 <h2 id="定期任务"><span class="header-section-number">9</span> 定期任务</h2>
 <pre><code>tool/task.php(ac)</code></pre>
 <p>它作为命令行工具执行。通过crontab设置定期执行该命令。</p>

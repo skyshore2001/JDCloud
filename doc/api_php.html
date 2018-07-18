@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2018-07-02</div>
+<div>最后更新：2018-07-19</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -1180,11 +1180,18 @@ checkPerm(AUTH_ADMIN | PERM_TEST_MODE); 要求必须管理员登录或测试模�
 <h2 id="ConfBase::onApiInit">@fn ConfBase::onApiInit()</h2>
 <p>所有API执行时都会先走这里。</p>
 <p>例：对所有API调用检查ios版本：</p>
-<pre><code>static function onApiInit()
+<pre><code>static function onApiInit(&amp;$ac)
 {
     $ver = getClientVersion();
     if ($ver["type"] == "ios" &amp;&amp; $ver["ver"]&lt;=15) {
         throw new MyException(E_FORBIDDEN, "unsupport ios client version", "您使用的版本太低，请升级后使用!");
+    }
+}</code></pre>
+<p>例：ac换名字：</p>
+<pre><code>static function onApiInit(&amp;$ac)
+{
+    if ($ac == "DFIS-BK_S001") {
+        $ac = "DMS.workGroup";
     }
 }</code></pre></div>
 <div class="block">
