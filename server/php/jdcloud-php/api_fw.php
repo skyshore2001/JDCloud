@@ -583,15 +583,25 @@ class ConfBase
 
 例：对所有API调用检查ios版本：
 
-	static function onApiInit()
+	static function onApiInit(&$ac)
 	{
 		$ver = getClientVersion();
 		if ($ver["type"] == "ios" && $ver["ver"]<=15) {
 			throw new MyException(E_FORBIDDEN, "unsupport ios client version", "您使用的版本太低，请升级后使用!");
 		}
 	}
+
+例：ac换名字：
+
+	static function onApiInit(&$ac)
+	{
+		if ($ac == "DFIS-BK_S001") {
+			$ac = "DMS.workGroup";
+		}
+	}
+
  */
-	static function onApiInit()
+	static function onApiInit(&$ac)
 	{
 	}
 
@@ -1047,7 +1057,8 @@ function apiMain()
 
 	$supportJson = function () {
 		// 支持POST为json格式
-		if (strstr(@$_SERVER["HTTP_CONTENT_TYPE"], "/json") !== false) {
+		$ct = @$_SERVER["HTTP_CONTENT_TYPE"] ?: $_SERVER["CONTENT_TYPE"];
+		if (strstr($ct, "/json") !== false) {
 			$content = file_get_contents("php://input");
 			@$arr = json_decode($content, true);
 			if (!is_array($arr))
@@ -1191,7 +1202,7 @@ class ApiApp extends AppBase
 			$ac = mparam('ac', $_GET);
 		}
 
-		Conf::onApiInit();
+		Conf::onApiInit($ac);
 
 		dbconn();
 
@@ -1351,7 +1362,7 @@ class ApiApp extends AppBase
 		$ac = htmlEscape(substr($pathInfo,1));
 		// POST /login  (小写开头)
 		// GET/POST /Store.add (含.)
-		if (ctype_lower($ac[0]) || strpos($ac, '.') !== false)
+		if (!preg_match('/^[A-Z][\w\/]+$/', $ac))
 		{
 			if ($method !== 'GET' && $method !== 'POST')
 				throw new MyException(E_PARAM, "bad verb '$method'. use 'GET' or 'POST'");
