@@ -1,4 +1,142 @@
 <?php
+/**
+
+@module Login
+
+## 概述
+
+后端服务接口参考DESIGN.md文档。主要包括genCode, login, logout, chpwd等。
+
+类Login为模块对外接口，包括配置项和公共方法。
+类LoginImp为模块内部扩展接口，通过回调实现应用专用逻辑，应继承类LoginImpBase。
+
+## 模块外部接口
+
+**配置项**
+
+- 允许用户自动注册
+
+	Login::$autoRegUser = true;
+
+- 允许员工自动注册
+
+	Login::$autoRegEmp = false;
+
+## 模块内部接口
+
+若要对模块缺省逻辑进行配置或扩展，应实现LoginImp类，它继承LoginImpBase。
+
+**LoginImp实现示例**
+
+文件LoginImp.php, 放在php/class路径下供调用时加载。（注意在api.php中需包含php/autoload.php）
+
+	Login::$autoRegEmp = true; // 修改配置项，可以与LoginImp实现放在一起。
+	class LoginImp extends LoginImpBase
+	{
+		// 注册新用户时回调
+		function onRegNewUser($userId, $phone)
+		{
+			Coupon::onRegNewUser($userId, $phone);
+		}
+
+		// 登录成功时回调
+		function onLogin($type, $id, &$ret)
+		{
+			if ($type == "user") {
+				@$orderIds = $_SESSION['orderIds'];
+				if (isset($orderIds)) {
+					execOne("UPDATE Ordr SET userId={$id} WHERE id IN ($orderIds) AND userId IS NULL");
+					unset($_SESSION['orderIds']);
+				}
+			}
+			else if ($type == "emp") {
+				$storeId = queryOne("SELECT storeId FROM Employee WHERE id={$id}");
+				$_SESSION["storeId"] = $storeId ?: 0;
+			}
+		}
+	}
+
+*/
+
+class Login
+{
+	static $autoRegUser = true;
+	static $autoRegEmp = false;
+	static $mockWeixinUser = ['openid'=>"test_openid", 'nickname'=>"测试用户", 'headimgurl'=>"...", 'sex'=>1];
+}
+
+class LoginImpBase
+{
+	use JDSingletonImp;
+
+/**
+@fn LoginImpBase.onLogin($type, $id, &$ret)
+
+@param type="user"|"emp"|"admin"
+@param ret={id, _isNew?}
+*/
+	function onLogin($type, $id, &$ret)
+	{
+	}
+
+/**
+@fn LoginImpBase.onRegNewUser($userId, $phone)
+*/
+	function onRegNewUser($userId, $phone)
+	{
+	}
+
+	function onWeixinLogin($userInfo, $rawData){
+		dbconn();
+		$sql = sprintf("SELECT id FROM User WHERE weixinKey=%s", Q($userInfo["openid"]));
+		$id = queryOne($sql);
+		if ($id === false) {
+			$sql = sprintf("INSERT INTO User (weixinKey, pic, createTm, weixinData, uname) VALUES (%s, %s, '%s', %s, %s)",
+				Q($userInfo["openid"]),
+				Q($userInfo["headimgurl"]),
+				date("c"),
+				Q($rawData),
+				Q($userInfo["nickname"])
+			);
+			$id = execOne($sql, true);
+		}
+		else {
+			$sql = sprintf("UPDATE User SET pic=%s, weixinData=%s, uname=%s WHERE weixinKey=%s",
+				Q($userInfo["headimgurl"]),
+				Q($rawData),
+				Q($userInfo["nickname"]),
+				Q($userInfo["openid"])
+			);
+			execOne($sql);
+		}
+
+		$_SESSION["uid"] = $id;
+	}
+
+	function onBindUser($phone){
+		$userId = $_SESSION["uid"];
+		//查询是否绑定微信用户
+		$row = queryOne("SELECT id, weixinKey FROM User WHERE phone=$phone", PDO::FETCH_ASSOC);
+		if(!is_null($row["weixinKey"])){ //绑定过
+			throw new MyException(E_AUTHFAIL, "phone had binding", "该手机已经被绑定");
+		}
+		if(!is_null($row["id"])){ //将微信用户merge过来
+			//取出weixinKey
+			$weixinKey = queryOne("SELECT weixinKey FROM User WHERE id=$userId");
+			//将微信key与手机用户绑定
+			$sql = sprintf("UPDATE User SET weixinKey=%s WHERE id=%d", Q($weixinKey), $row['id']);
+			execOne($sql);
+			//微信用户失效，今后无法登录
+			$key = 'merge-'.$weixinKey;
+			$sql = sprintf("UPDATE User SET weixinKey=%s WHERE id=$userId", Q($key));
+			execOne($sql);
+		}else{
+			//将手机号与微信用户绑定
+			$sql = sprintf("UPDATE User SET phone=%s WHERE id=$userId", Q($phone));
+			execOne($sql);
+		}
+	}
+}
 
 const AUTO_PWD_PREFIX = "AUTO";
 
@@ -63,7 +201,7 @@ function validateDynCode($code, $phone = null)
 
 	
 	if (time() - $codetm > 60*5)
-		throw new MyException(E_FORBIDDEN, "code expires (max 60s)", "验证码已过期(有效期5分钟)");
+		throw new MyException(E_FORBIDDEN, "code expires (max 5min)", "验证码已过期(有效期5分钟)");
 
 	if ($code != $code1)
 		throw new MyException(E_PARAM, "bad code", "验证码错误");
@@ -107,12 +245,81 @@ function api_genCode()
 	return $ret;
 }
 
+function api_reg()
+{
+	if (! Login::$allowManualReg)
+		throw new MyException(E_FORBIDDEN, "manual reg is disabled.", "系统未开放用户注册。");
+
+	list($uname, $phone) = mparam(["uname", "phone"], "P");
+	$pwd = mparam("pwd", "P");
+
+	if (isset($uname)) {
+		$rv = queryOne("SELECT 1 FROM User WHERE uname=" . Q($uname));
+		if ($rv !== false)
+			throw new MyException(E_PARAM, "duplicate uname", "用户名已存在");
+	}
+	else if (isset($phone)) {
+		$rv = queryOne("SELECT 1 FROM User WHERE phone=" . Q($phone));
+		if ($rv !== false)
+			throw new MyException(E_PARAM, "duplicate phone", "手机号已存在");
+	}
+
+	addToPwdTable($pwd);
+	$_POST["pwd"] = hashPwd($pwd);
+	$_POST["createTm"] = date(FMT_DT);
+	if (!isset($_POST["name"])) {
+		if ($phone !== null) {
+			$phone1 = preg_replace('/^\d{3}\K(\d{4})/', '****', $phone);
+			$_POST["name"] = "用户" . $phone1;
+		}
+		else {
+			$_POST["name"] = $uname;
+		}
+	}
+
+	$id = dbInsert("User", $_POST);
+	$ret = ["id"=>$id];
+
+	$imp = LoginImpBase::getInstance();
+	$imp->onRegNewUser($id, $uname ?: $phone);
+
+	$_SESSION["uid"] = $id;
+	$imp->onLogin($type, $id, $ret);
+
+	//$wantAll = param("wantAll/b", 0);
+	$rv = callSvcInt("User.get");
+	$ret += $rv;
+
+	genLoginToken($ret, $uname?:$phone, $pwd);
+	return $ret;
+}
+
 function regUser($phone, $pwd)
 {
 	$phone1 = preg_replace('/^\d{3}\K(\d{4})/', '****', $phone);
 	$name = "用户" . $phone1;
 
 	$sql = sprintf("INSERT INTO User (phone, pwd, name, createTm) VALUES (%s, %s, %s, '%s')",
+		Q($phone),
+		Q(hashPwd($pwd)),
+		Q($name),
+		date(FMT_DT)
+	);
+	$id = execOne($sql, true);
+	addToPwdTable($pwd);
+	$ret = ["id"=>$id];
+
+	$imp = LoginImpBase::getInstance();
+	$imp->onRegNewUser($id, $phone);
+	return $ret;
+}
+
+function regEmp($phone, $pwd)
+{
+	$phone1 = preg_replace('/^\d{3}\K(\d{4})/', '****', $phone);
+	$name = "员工" . $phone1;
+
+	$sql = sprintf("INSERT INTO Employee (phone, pwd, name, createTm) VALUES (%s, %s, %s, '%s')",
 		Q($phone),
 		Q(hashPwd($pwd)),
 		Q($name),
@@ -175,7 +382,7 @@ function api_login()
 		$uname = mparam("uname");
 		list($pwd, $code) = mparam(["pwd", "code"]);
 	}
-	$wantAll = param("wantAll/b", 0);
+	//$wantAll = param("wantAll/b", 0);
 
 	if (isset($code) && $code != "")
 	{
@@ -192,12 +399,12 @@ function api_login()
 	if ($type == "user") {
 		$obj = "User";
 		$sql = sprintf("SELECT id,pwd FROM User WHERE {$key}=%s", Q($uname));
-		$row = queryOne($sql, PDO::FETCH_ASSOC);
+		$row = queryOne($sql, true);
 
 		$ret = null;
 		if ($row === false) {
 			// code通过验证，直接注册新用户
-			if (isset($code))
+			if (isset($code) && Login::$autoRegUser)
 			{
 				$pwd = AUTO_PWD_PREFIX . genDynCode("d4");
 				$ret = regUser($uname, $pwd);
@@ -219,13 +426,28 @@ function api_login()
 	}
 	else if ($type == "emp") {
 		$obj = "Employee";
-		$sql = sprintf("SELECT id,pwd FROM Employee WHERE {$key}=%s", Q($uname));
-		$row = queryOne($sql, PDO::FETCH_ASSOC);
-		if ($row === false || (isset($pwd) && hashPwd($pwd) != $row["pwd"]) )
+		$sql = sprintf("SELECT id,pwd,perms FROM Employee WHERE {$key}=%s", Q($uname));
+		$row = queryOne($sql, true);
+		if ($row === false) {
+			if (isset($code) && Login::$autoRegEmp) {
+				$pwd = AUTO_PWD_PREFIX . genDynCode('d4');
+				$ret = regEmp($uname, $pwd);
+				$ret['_isNew'] = 1;
+			}
+		}
+		else if (isset($code) || (isset($pwd) && hashPwd($pwd) == $row["pwd"])) {
+			if (!isset($pwd))
+				$pwd = $row['pwd'];
+			$ret = ['id' => $row['id']];
+		}
+		if (!isset($ret))
 			throw new MyException(E_AUTHFAIL, "bad uname or password", "用户名或密码错误");
-
-		$_SESSION["empId"] = $row["id"];
-		$ret = ["id" => $row["id"] ];
+		
+		$_SESSION["empId"] = $ret["id"];
+		if ($row && $row["perms"]) {
+			$perms = explode(',', $row["perms"]);
+			$_SESSION['perms'] = $perms;
+		}
 	}
 	// admin login
 	else if ($type == "admin") {
@@ -238,12 +460,14 @@ function api_login()
 		$_SESSION["adminId"] = $adminId;
 		$ret = ["id" => $adminId, "uname" => $uname1];
 	}
-
-	if ($wantAll && $obj)
+	if ($obj)
 	{
 		$rv = tableCRUD("get", $obj);
 		$ret += $rv;
 	}
+
+	$imp = LoginImpBase::getInstance();
+	$imp->onLogin($type, $ret["id"], $ret);
 
 	if (! isset($token)) {
 		genLoginToken($ret, $uname, $pwd);
@@ -349,3 +573,11 @@ function api_chpwd()
 	return $rv;
 }
 
+function api_bindUser()
+{	
+	$phone = mparam("phone");
+	$code = mparam("code");
+	validateDynCode($code, $phone);
+	$imp = LoginImpBase::getInstance();
+	$imp->onBindUser($phone);
+}

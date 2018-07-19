@@ -1,10 +1,5 @@
 <?php
 
-// 自动加载conf.user.php中的配置。
-if (getenv("P_DB") === false) {
-	@include_once(__DIR__ . "/../server/php/conf.user.php");
-}
-
 ###### config {{{
 global $LOGF, $CHAR_SZ, $SQLDIFF;
 
@@ -95,32 +90,10 @@ $SQLDIFF = null;
 // 注意：die返回0，请调用die1返回1标识出错。
 function die1($msg)
 {
-	fwrite(STDERR, $msg);
+	echo($msg);
 	exit(1);
 }
 
-function arrayCmp($a1, $a2, $fnEq, $cb)
-{
-	$mark = []; // index_of_a2 => true
-	foreach ($a1 as $e1) {
-		$found = null;
-		for ($i=0; $i<count($a2); ++$i) {
-			$e2 = $a2[$i];
-			if ($fnEq($e1, $e2)) {
-				$found = $e2;
-				$mark[$i] = true;
-				break;
-			}
-		}
-		$cb($e1, $found);
-	}
-	for ($i=0; $i<count($a2); ++$i) {
-		if (! array_key_exists($i, $mark)) {
-			$cb(null, $a2[$i]);
-		}
-	}
-}
- 
 /*
 
 @return: ["name", "dscr", "def", "type", "len"]
@@ -253,7 +226,7 @@ function genSql($meta)
 
 function prompt($s)
 {
-	fprintf(STDERR, "%s", $s);
+	echo sprintf("%s", $s);
 }
 
 function logstr($s, $show=true)
@@ -348,81 +321,8 @@ function getMetaFile()
 {
 	if ($a = getenv("P_METAFILE"))
 		return $a;
-	if (($a=__DIR__ . '/../DESIGN.md') && is_file($a))
-		return $a;
-	if (($a=__DIR__ . '/../DESIGN.wiki') && is_file($a))
-		return $a;
 }
 
-function getCred($cred)
-{
-	if (! $cred)
-		return null;
-	if (stripos($cred, ":") === false) {
-		$cred = base64_decode($cred);
-	}
-	return explode(":", $cred, 2);
-}
-
-function dbconn($fnConfirm = null)
-{
-	global $DBH;
-	if (isset($DBH))
-		return $DBH;
-
-	global $DB, $DBTYPE;
-	$DB = getenv("P_DB");
-	$DBCRED = getenv("P_DBCRED");
-	$DBTYPE = getenv("P_DBTYPE") ?: "mysql";
-
-	// 未指定驱动类型，则按 mysql或sqlite 连接
-	if (! preg_match('/^\w{3,10}:/', $DB)) {
-		// e.g. P_DB="../carsvc.db"
-		if ($DBTYPE == "sqlite") {
-			$C = ["sqlite:" . $DB, '', ''];
-		}
-		else if ($DBTYPE == "mysql") {
-			// e.g. P_DB="115.29.199.210/carsvc"
-			// e.g. P_DB="115.29.199.210:3306/carsvc"
-			if (! preg_match('/^"?(.*?)(:(\d+))?\/(\w+)"?$/', $DB, $ms))
-				throw new Exception("bad db=`$DB`");
-			$dbhost = $ms[1];
-			$dbport = $ms[3] ?: 3306;
-			$dbname = $ms[4];
-
-			list($dbuser, $dbpwd) = getCred($DBCRED); 
-			$C = ["mysql:host={$dbhost};dbname={$dbname};port={$dbport}", $dbuser, $dbpwd];
-		}
-		else {
-			throw new Exception("bad DB spec for dbtype=$DBTYPE");
-		}
-	}
-	else {
-		list($dbuser, $dbpwd) = getCred($DBCRED); 
-		$C = [$DB, $dbuser, $dbpwd];
-	}
-
-	if ($fnConfirm && $fnConfirm($C[0]) === false) {
-		exit;
-	}
-	try {
-		@$DBH = new PDO ($C[0], $C[1], $C[2]);
-	}
-	catch (PDOException $e) {
-		throw new Exception("dbconn fails: " . $e->getMessage());
-	}
-	
-	if ($DBTYPE == "mysql") {
-		$DBH->exec('set names utf8');
-	}
-	$DBH->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION); # by default use PDO::ERRMODE_SILENT
-
-	# enable real types (works on mysql after php5.4)
-	# require driver mysqlnd (view "PDO driver" by "php -i")
-	$DBH->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
-	$DBH->setAttribute(PDO::ATTR_STRINGIFY_FETCHES, false);
-	return $DBH;
-}
 #}}}
 
 class UpgHelper
@@ -438,24 +338,20 @@ class UpgHelper
 	private $dbh = null;
 	private $forRtest = null;
 
-	function __construct ($forRtest=false, $noDb=false) {
+	function __construct ($forRtest=false) {
 		$this->forRtest = $forRtest;
-		if (! $noDb)
-			$this->_init();
-		else
-			$this->_initMeta();
+		$this->_init();
 	}
 	function __destruct () {
 		global $LOGF;
 		logstr("=== [" . date('c') . "] done\n", false);
 		if (! $this->forRtest)
-			prompt("=== Done! Find log in $LOGF\n");
+			prompt("=== Done!\n");
 	}
 
 	// 添加文件到$files集合。
 	private function includeFile($f, &$files) {
 		if (strpos($f, "*") === false) {
-			$f = str_replace("\\", "/", $f);
 			if (! file_exists($f)) {
 				logstr("!!! cannot read included file $f\n");
 				return;
@@ -479,7 +375,7 @@ class UpgHelper
 		if (!$meta || !is_file($meta)) {
 			throw new Exception("*** bad main meta file $meta");
 		}
-		prompt("=== load metafile: $meta\n");
+		prompt("=== load metafile\n");
 
 		$baseDir = dirname($meta);
 		$files = [$meta];
@@ -524,17 +420,9 @@ class UpgHelper
 	private function _init()
 	{
 		$this->_initMeta();
-		$fnConfirm = null;
-		if (!$this->forRtest) {
-			$fnConfirm = function ($connstr) {
-				prompt("=== connect to $connstr (enter to cont, ctrl-c to break) ");
-				fgets(STDIN);
-				logstr("=== [" . date('c') . "] connect to $connstr\n", false);
-				return true;
-			};
-		}
+		logstr("=== [" . date('c') . "] connect to $connstr\n", false);
 		try {
-		$this->dbh = dbconn($fnConfirm);
+		$this->dbh = dbconn();
 		} catch (Exception $e) {
 			echo $e->getMessage() . "\n";
 			exit;
@@ -749,304 +637,4 @@ class UpgHelper
 		}
 		return $rv;
 	}
-
-	/** @api */
-	function help($name = "")
-	{
-		showMethods(__CLASS__, $name);
-	}
-
-	/** @api */
-	function quit()
-	{
-		exit;
-	}
-
-	# check main or sub table, return the function to add data.
-	# return @fnAddData(arr)
-	/*
-	data like these:
-	1. simple (main table)
-		id	name
-		1	小保养
-	2. complex (with related table, but use ID)
-		id	name	Svc_ItemType(ittId,svcId)
-		1	小保养	1,2,6
-	3. complex+ (with related table, but use non-ID)
-		id	name	Svc_ItemType(ittId,svcId,ItemType.name)
-		1	小保养	机油,机滤,小保养工时
-	 */
-	# extOpt: {curFieldIndex, extTable, extField, justCheck}
-	private function checkTableByMeta ($table, $fields, $opt = null)
-	{
-		$justCheck = @$opt->justCheck;
-		if (! preg_match('/^[a-z]\w*$/i', $fields[0])) {
-			print("*** unknown fields `$fields[0]` for table `$table`!\n");
-			return false;
-		}
-		# check table
-		$foundTable = false;
-		foreach ($this->tableMeta as $meta) {
-			if ($meta["name"] == $table)
-			{
-				$foundTable = true;
-				break;
-			}
-		}
-		if (! $foundTable) {
-			print("*** unknown table $table\n");
-			return false;
-		}
-
-		if (! $justCheck)
-		{
-			# force to create table
-			$this->addTable($table, true);
-		}
-
-		$fnList = [];
-		# check fields in meta
-		$mainFields = [];
-		$fieldList = "";
-		$ques = ""; # ?,?,?
-		$N = -1;
-		$hasExtField = false;
-		foreach ($fields as $f) {
-			++ $N;
-			#e.g. "Svc_ItemType(ittId,svcId)" or "Svc_ItemType(ittId,svcId,ItemType.name)"
-			if (is_null($opt) && preg_match('/^(\w+)\((\w+),(\w+)(?:,(\w+)\.(\w+))?\)$/', $f, $ms)) {
-				array_shift($ms);
-				@list($relTable, $relF1, $relF2, $extTable, $extField) = $ms;
-				$hasExtField = true;
-				$opt1 = new stdClass;
-				$opt1->curFieldIndex = $N;
-				if (isset($extTable)) {
-					$opt1->extTable = $extTable;
-					$opt1->extField = $extField;
-
-					# check "ItemType.name"
-					$opt2 = new stdClass;
-					$opt2->justCheck = true;
-					if ($this->checkTableByMeta($extTable, [$extField], $opt2) === false)
-						return false;
-				}
-				# check "Svc_ItemType(ittId,svcId)"
-				$fn = $this->checkTableByMeta($relTable, [$relF1, $relF2], $opt1);
-				if ($fn === false)
-					return false;
-				$fnList[] = $fn;
-				continue;
-			}
-			# skip fields that begin with "-". e.g. "-picId"
-			if (preg_match('/^-/', $f))
-				continue;
-			$foundField = false;
-			foreach ($meta['fields'] as $f1) {
-				if (preg_match("/^$f(\W.*)?$/", $f1)) {
-					$foundField = true;
-					break;
-				}
-			}
-			if (! $foundField) {
-				print("*** unknown field `$f` for table `$table`\n");
-				return false;
-			}
-			if (strlen($fieldList) == 0) {
-				$fieldList = $f;
-				$ques = "?";
-			}
-			else {
-				$ques .= ",?";
-				$fieldList .= ",$f";
-			}
-			$mainFields[] = $N;
-		}
-		if ($justCheck)
-			return true;
-
-		# generate insert SQL
-		$sth = $this->dbh->prepare("INSERT INTO $table ($fieldList) VALUES ($ques)");
-
-		# for main table, add using "$id=$fn($arr)"
-		# for sub table, add using "$fn($arr, $id)"
-		if (is_null($opt)) {
-			return function ($arr) use ($hasExtField, $sth, $fnList, &$mainFields) {
-				if (!$hasExtField) {
-					$sth->execute($arr);
-					return;
-				}
-				$dataArr = [];
-				foreach ($mainFields as $i) {
-					$dataArr[] = $arr[$i];
-				}
-				$sth->execute($dataArr);
-				$mainTableId = $this->dbh->lastInsertId();
-				foreach ($fnList as $fn) {
-					$fn($arr, $mainTableId);
-				}
-			};
-		}
-		# for related sub table
-		else {
-			$sth2 = null;
-			if (@$opt->extField)
-				$sth2 = $this->dbh->prepare("SELECT id FROM $opt->extTable WHERE $opt->extField=?");
-			return function ($arr, $mainTableId) use ($opt, $sth, $sth2) {
-				if ($arr[$opt->curFieldIndex] == null)
-					return;
-				$valList = explode(',', $arr[$opt->curFieldIndex]);
-				foreach ($valList as $val) {
-					if (strlen($val) == 0)
-						continue;
-					if (@$opt->extField) {
-						$sth2->execute([$val]);
-						$r = $sth2->fetchColumn();
-						if ($r === false) {
-							echo ("!!! warning: cannot find {$opt->extTable}.id for `$val`\n");
-						}
-						$val = $r;
-					}
-					$sth->execute([$val, $mainTableId]);
-				}
-			};
-		}
-	}
-
-	/** @api */
-	function import($file, $noPrompt = false, $enc = 'utf8')
-	{
-		$fd = @fopen($file, "r");
-		if ($fd === false) {
-			echo("*** cannot open file $file\n");
-			return;
-		}
-
-		$table = null;
-		$fields = [];
-		$step = 0; # 1: table line; 2: hdr line; 3: data line; 0: none
-		$n = 0;
-		$recCnt = 0;
-		$fn = null;
-		$tmStart = null;
-		while (($ln = fgets($fd)) !== false) {
-			++ $n;
-			$ln = preg_replace('/[ \r\n]+/', '', $ln);
-			if (strlen($ln) == 0)
-				continue;
-			if ($ln[0] == "#") {
-				if (preg_match('/table\s*\[(\w+)\]/i', $ln, $ms)) {
-					# show last table
-					if ($table && $recCnt>0) {
-						$iv = time() - $tmStart;
-						echo("=== import $recCnt records to table `$table` in {$iv} sec!\n\n");
-						$recCnt = 0;
-					}
-
-					$table = $ms[1];
-					if (! $noPrompt) {
-						while (true) {
-							print("import table `$table`? (y/n)");
-							$s = fgets(STDIN);
-							$s = strtolower(trim($s));
-							if ($s == "y") {
-								$step = 1;
-								break;
-							}
-							else if ($s == "n") {
-								$step = 0;
-								break;
-							}
-						}
-					}
-					else {
-						$step = 1;
-					}
-					$tmStart = time();
-				}
-				continue;
-			}
-
-			if ($step == 1) { # read header line
-				$fields = explode("\t", $ln);
-				$fn = $this->checkTableByMeta($table, $fields);
-				if ($fn === false)
-					return;
-				$step = 2;
-				continue;
-			}
-			if ($step == 2) {
-				$data = explode("\t", $ln);
-				if (count($data) != count($fields)) {
-					echo("*** Line $n: expect " . count($fields) . " records for table `$table`, actual " . count($data). " fields!\n");
-					echo(">>>$ln<<<\n");
-					break;
-				}
-				# change "null" to null
-				foreach ($data as &$one) {
-					if ($one === '' || strcasecmp($one, "null") == 0) {
-						$one = null;
-					}
-				}
-				try {
-					$fn($data);
-					++$recCnt;
-				}
-				catch (Exception $e) {
-					echo("*** Error on line $n, insert data: \n");
-					print_r($data);
-					throw $e;
-				}
-			}
-		}
-		if ($table && $recCnt>0) {
-			$iv = time() - $tmStart;
-			echo("=== import $recCnt records to table `$table` in {$iv} sec!\n\n");
-			$recCnt = 0;
-		}
-		fclose($fd);
-	}
-
-	/** @api */
-	function addCol($table, $col)
-	{
-		$found = false;
-		foreach ($this->tableMeta as $e) {
-			if (strcasecmp($e["name"], $table) != 0)
-				continue;
-			$n = strlen($col);
-			foreach ($e["fieldsMeta"] as $fieldMeta) {
-				$f = $fieldMeta["name"];
-				if (strncasecmp($f, $col, $n) != 0)
-					continue;
-				$this->_addColByMeta($e["name"], $fieldMeta);
-				$found = true;
-				break;
-			}
-		}
-		if (!$found) {
-			logstr("!!! cannot find table and col: `{$table}.$col`\n");
-		}
-		else {
-			logstr("=== done\n");
-		}
-	}
-
-	/** @api */
-	function export($type=0)
-	{
-		if ($type == 0) {
-			foreach ($this->tableMeta as $e) {
-				echo $e["tableDef"];
-			}
-		}
-		else if ($type == 1) {
-			$this->showTable(null);
-		}
-		else if ($type == 2) {
-			$this->showTable(null, true);
-		}
-	}
 }
-
-# vim: set foldmethod=marker :
-?>

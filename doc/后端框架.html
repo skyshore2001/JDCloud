@@ -83,6 +83,7 @@
 <li><a href="#toollog.php"><span class="toc-section-number">8.1</span> tool/log.php</a></li>
 <li><a href="#toolinit.php"><span class="toc-section-number">8.2</span> tool/init.php</a></li>
 <li><a href="#tooltool.php"><span class="toc-section-number">8.3</span> tool/tool.php</a></li>
+<li><a href="#toolupgrade"><span class="toc-section-number">8.4</span> tool/upgrade/</a></li>
 </ul></li>
 <li><a href="#定期任务"><span class="toc-section-number">9</span> 定期任务</a></li>
 <li><a href="#数据安全"><span class="toc-section-number">10</span> 数据安全</a></li>
@@ -289,8 +290,8 @@ putenv(&quot;P_DBCRED=bGo6aWhxZ19VR0xH&quot;);</code></pre>
 <td align="left">Currency</td>
 </tr>
 <tr class="odd">
-<td align="left">以&quot;Tm&quot;/&quot;Dt&quot;/&quot;Time&quot;结尾</td>
-<td align="left">Datetime/Date/Time</td>
+<td align="left">以&quot;Tm&quot;/&quot;Dt&quot;结尾</td>
+<td align="left">Datetime/Date</td>
 </tr>
 <tr class="even">
 <td align="left">以&quot;Flag&quot;结尾</td>
@@ -633,14 +634,11 @@ Obj.query(fmt=list, ...) -&gt; {nextkey?, total?, @list=[obj1, obj2...]}
 
 后端内部查询支持以下额外参数：@res2?, join?, @cond2?, union?, subobj
 
-该接口不建议使用，它不支持分页，将废弃：
-Obj.query(wantArray=1, ...) -&gt; [obj1, obj2...]
-
 分组统计：
 Obj.query(gres, ...) -&gt; tbl(fields...)
 
 导出文件：
-Obj.query(fmt=csv/txt/excel, ...) -&gt; 文件内容</code></pre>
+Obj.query(fmt=csv/txt/excel, fname?...) -&gt; 文件内容</code></pre>
 <p>缺省这些操作只对超级管理员角色开放，其他角色默认无权操作。超级管理员可对所有对象的所有字段操作。</p>
 <p>对象是否开放出来，或是开放哪些操作及字段，一般按用户角色进行权限控制，如用户登录后可操作某些对象，或员工登录后可操作另一些对象，请查阅设计文档中相应的专用接口定义。 在专用接口定义中应描述允许的角色、允许的操作类型(如只能get/set,不能add/del)、只读字段、隐藏字段等，以及应实现的业务逻辑。</p>
 <p>系统中的表设计(表名, 字段等)参见&quot;数据库设计&quot;章节. 一般表都设计为使用整形字段id作为主键. 该字段创建后变只读, 不允许被修改.</p>
@@ -689,6 +687,9 @@ cond=type%3d%27A%27+and+name+like+%27%25hello%25%27</code></pre>
 <dt>res, cond (get/query方法), orderby(query方法)</dt>
 <dd>String. 指定返回字段及查询条件, 例如, res=&quot;field1,field2&quot;, cond=&quot;field1&gt;100 AND field2='hello'&quot;, orderby=&quot;id desc&quot;, 注意使用UTF8+URL编码, 目前格式参照SQL语法, 字符串值应加上单引号. 字段前不可加表名或别名(alias)，如&quot;t0.id&quot;; 在res中允许使用函数&quot;sum&quot;与&quot;count&quot;, 这时必须指定字段别名, 如&quot;count(id) cnt&quot;
 </dd>
+</dl>
+<p>特别地，res支持枚举列表，即自动将枚举值转化为可读字符串，例如<code>res=id 编号,status 状态=CR:创建;PA:已付款</code>，这样返回的status字段会自动转换成相应的值。</p>
+<dl>
 <dt>distinct</dt>
 <dd>Boolean. 如果为1, 生成&quot;SELECT DISTINCT ...&quot;查询.
 </dd>
@@ -708,13 +709,16 @@ cond=type%3d%27A%27+and+name+like+%27%25hello%25%27</code></pre>
 </dl>
 <p>对res, cond, orderby的安全限制：</p>
 <ul>
-<li>res, orderby只能是字段（或虚拟字段）列表，不能出现函数、子查询等。</li>
+<li>res, orderby只能是字段（或虚拟字段）列表，不能出现函数、子查询等，作为例外，res中可以用sum/count函数，如&quot;count(*) cnt&quot;。</li>
 <li>cond不允许子查询（不可以有select等关键字）。</li>
 </ul>
 <p><strong>[导出文件]</strong></p>
 <dl>
 <dt>fmt</dt>
 <dd>Enum(csv,txt,excel). 导出Query的内容为指定格式。其中，csv为逗号分隔UTF8编码文本；txt为制表分隔的UTF8文本；excel为逗号分隔的gb2312编码文本（因为默认excel打开Csv文件时不支持utf8编码）。注意，由于默认会有分页，要想导出所有数据，一般可指定pagesz=9999。
+</dd>
+<dt>fname</dt>
+<dd>String. 导出文件名。默认为对象名。
 </dd>
 </dl>
 <p><strong>[分组统计]</strong></p>
@@ -948,7 +952,9 @@ X-Daca-Mock-Mode: {value}</code></pre>
 <li><code>&gt;100</code> / <code>&gt;=100</code> / <code>&lt;100</code> / <code>&lt;=100</code> / <code>&lt;&gt;100</code> - 生成 <code>a&gt;100</code>等</li>
 <li><code>null</code> / <code>&lt;&gt;null</code> - 生成 <code>a is null</code> / <code>a is not null</code></li>
 <li><code>empty</code> / <code>&lt;&gt;empty</code> - 生成 <code>a=''</code> / <code>a&lt;&gt;''</code></li>
-<li>支持简单的and/or查询，如 <code>&gt;=100 and &lt;200</code>, <code>null or 0 or 1</code>，不支持用括号组合条件。</li>
+<li>逗号表示or查询，如 <code>null,0,1</code>表示<code>a is null or a=0 or a=1</code></li>
+<li>数值支持<code>a-b</code>方式指定范围，如<code>1-10,20-30,40</code>, 表示<code>(a&gt;=1 and a&lt;=10) or (a&gt;=20 and a&lt;=30) or a=40</code></li>
+<li>支持and/or查询，如 <code>&gt;=100 and &lt;200</code>, <code>null or 0 or 1</code>, <code>1-100 and &lt;&gt;50</code>，不支持用括号组合条件。</li>
 </ul>
 <p>如果同时对多个字段填写了搜索值，则表示这些条件需要同时满足，即<code>AND</code>关系。</p>
 <p>详细可参考文档 [[api_web.html#WUI.getQueryCond|API参考 -&gt; 筋斗云前端(桌面Web版) -&gt; WUI.getQueryCond]]</p>
@@ -1117,7 +1123,7 @@ phpunit xxxTest.php</code></pre>
 <ul>
 <li>访问URL: <code>http://{server}/{app}/tool/init.php</code> 检查php环境是否满足需求。</li>
 <li>为应用创建数据库和专用用户，进行初始化，生成指定数据库和配置文件 php/conf.user.php.</li>
-<li>使用命令行工具 tool/upgrade.php 连接数据库进行表创建或更新。(详见下面章节)</li>
+<li>使用命令行工具 tool/upgrade.php 连接数据库进行表创建或更新。(详见下面章节) (v5.1: 可通过tool/init.php线上自动升级)</li>
 <li>如果有initdata目录，查看该目录下相关文档，确定是否需要导入表内容或创建视图、函数等。</li>
 </ul>
 <p>如果需要重新配置，可删除配置文件 php/conf.user.php后再运行本工具。</p>
@@ -1134,8 +1140,10 @@ phpunit xxxTest.php</code></pre>
 <p>注意：</p>
 <ul>
 <li>对于MYSQL数据库, 升级工具只创建表, 不创建数据库本身。创建数据库以及设置权限可在线访问tool/init.php。</li>
-<li>不会删除表或字段。如有需要请手工操作。</li>
-<li>对已有的字段，不能修改字段类型。需要手工操作。</li>
+<li><p>不会删除表或字段。如有需要请手工操作。通过</p>
+<pre><code>upgrade.sh &#39;export(2)&#39;</code></pre>
+<p>导出用于升级的SQL语句，然后使用SQL工具运行即可。或通过登录超级管理端，在其中运行SQL语句（注意非SELECT语句前面要加&quot;!&quot;强制执行）。</p></li>
+<li><p>对已有的字段，不能修改字段类型。需要手工操作。</p></li>
 </ul>
 <p><strong>[数据库连接]</strong></p>
 <p>upgrade.php与api.php配置方式相同，都是通过环境变量来指定，可以使用conf.user.php中的配置，数据库支持mysql和sqlite.</p>
@@ -1188,14 +1196,25 @@ phpunit xxxTest.php</code></pre>
 <pre><code>&gt; quit
 或
 &gt; q</code></pre>
+<p><strong>[export]</strong></p>
+<p>v5.1新增. 参数: {type?=0}</p>
+<ul>
+<li>type: 0-导出META；1-根据META导出SQL语句；2-检查META与数据库的实际差异，以SQL语句方式给出差异结果。</li>
+</ul>
 <p><strong>[TODO: upgrade]</strong></p>
 <p>TODO 自动根据版本差异，执行升级脚本，升级数据库. 如果字段cinf.ver不存在, 则重建DB(但会忽略已有的表, 不会删除它再重新创建). 升级完成后设置cinf.ver字段.</p>
 <p><strong>[showtable]</strong></p>
-<p>参数: {table?=&quot;*&quot;}</p>
+<p>参数: {table?=&quot;*&quot;, checkDb=false}</p>
 <p>查看某表的metadata以及SQL创建语句. 参数{table}中可以包含通配符。</p>
 <p>例:</p>
 <pre><code>&gt; showtable(&quot;item&quot;)
 &gt; showtable(&quot;*log&quot;)</code></pre>
+<ul>
+<li><p>checkDb: 根据META与数据库差异，显示用于升级的SQL语句。</p>
+<blockquote>
+<p>showtable(null, true)</p>
+</blockquote></li>
+</ul>
 <p><strong>[addtable]</strong></p>
 <p>参数: {table} [force=false]</p>
 <p>根据metadata添加指定的表{table}. 未指定force参数时, 如果表已存在且未指定force=true, 则检查和添加缺失的字段; 如果指定了force=true, 则会删除表重建.</p>
@@ -1362,6 +1381,17 @@ log.php?f=trace
 <pre><code>tool.php(ac?)</code></pre>
 <p>具体参数见源程序内部文档。</p>
 <p>工具包。目前支持base64编码、解码，md5编码等。</p>
+<h3 id="toolupgrade"><span class="header-section-number">8.4</span> tool/upgrade/</h3>
+<pre><code>tool/upgrade/index.php(diff?=0)</code></pre>
+<p>访问该链接，将根据server/tool/upgrade/META文件自动创建或升级数据库。</p>
+<ul>
+<li>diff: 如果为1，以SQL语句方式显示数据库表与设计的实际差异。可在SQL工具中运行这些语句修改数据库使其与设计一致。</li>
+</ul>
+<p>META文件可在tool目录下运行:</p>
+<pre><code>make meta</code></pre>
+<p>获得更新。其实质是通过upgrade.php工具解析设计文档(DESIGN.md)生成META文件。</p>
+<pre><code>php upgrade.php export </code></pre>
+<p>该工具已集成到tool/init.php中，用于线上自动升级数据库。</p>
 <h2 id="定期任务"><span class="header-section-number">9</span> 定期任务</h2>
 <pre><code>tool/task.php(ac)</code></pre>
 <p>它作为命令行工具执行。通过crontab设置定期执行该命令。</p>
