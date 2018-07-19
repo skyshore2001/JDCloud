@@ -3445,9 +3445,7 @@ function callSvr(ac, params, fn, postParams, userOptions)
 		ctx.getMockData = function () {
 			var d = self.mockData[ac0];
 			var param1 = $.extend({}, url.params);
-			var postParam1 = ( ac0=="batch"
-				? eval("(" + postParams + ")")
-				: $.extend({}, postParams));
+			var postParam1 = $.extend({}, postParams);
 			if ($.isFunction(d)) {
 				d = d(param1, postParam1);
 			}
