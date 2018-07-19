@@ -9,7 +9,7 @@ class Conf extends ConfBase
 {
 /*
 	static $enableApiLog = true;
-	static function onApiInit()
+	static function onApiInit(&$ac)
 	{
 	}
 	static function onInitClient(&$ret)

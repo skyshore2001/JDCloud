@@ -25,21 +25,23 @@
 
 ### 主要用例
 
-定义用户使用本系统的主要场景。用于指导[系统建模]和[通讯协议设计]。
+定义用户使用本系统的主要场景。用于指导[系统建模]和[交互接口设计]。
 
 系统用例图.
+![](doc/pic/usecase.png)
 
 ### 系统建模
 
 定义系统数据模型，描述基本概念。用于指导[数据库设计]。
 
 系统类图或ER图.
+![](doc/pic/datamodel.png)
 
 ## 数据库设计
 
 根据[系统建模]设计数据库表结构。
 
-参考[doc/后端框架]()文档的"数据库设计"部分查看定义表及字段类型的基本规则.
+参考[后端框架-数据库设计](doc/后端框架.html#数据库设计)查看定义表及字段类型的基本规则.
 
 **[数据库信息]**
 
@@ -89,16 +91,16 @@ status
 action
 : 参考Action定义:
 
-	CR:: Create (订单创建，待付款)
-	PA:: Pay (付款，待服务)
-	RE:: Receive (服务完成, 待评价)
-	CA:: Cancel (取消订单)
-	RA:: Rate (评价)
-	ST:: StartOrder (开始服务)
-	CT:: ChangeOrderTime (修改预约时间)
-	AS:: Assign (分派订单给员工)
-	AC:: Accept (员工接单)
-	CL:: Close (订单结算)
+		CR:: Create (订单创建，待付款)
+		PA:: Pay (付款，待服务)
+		RE:: Receive (服务完成, 待评价)
+		CA:: Cancel (取消订单)
+		RA:: Rate (评价)
+		ST:: StartOrder (开始服务)
+		CT:: ChangeOrderTime (修改预约时间)
+		AS:: Assign (分派订单给员工)
+		AC:: Accept (员工接单)
+		CL:: Close (订单结算)
 
 empId
 : 操作该订单的员工号
@@ -128,11 +130,12 @@ ver
 
 **[插件相关]**
 
-@include server/plugin/*/DESIGN.md
+@include server\plugin\login\DESIGN.md
+@include server\plugin\upload\DESIGN.md
 
 ## 交互接口设计
 
-本章根据[主要用例]定义应用客户端与服务端的交互接口。关于通讯协议基本规则，可参考文档[[doc/后端框架.html#通讯协议设计|后端框架 -> 通讯协议设计]]章节。
+本章根据[主要用例]定义应用客户端与服务端的交互接口。关于通讯协议基本规则，可参考[后端框架-通讯协议设计](doc/后端框架.html#通讯协议设计)。
 
 ### 客户端
 
@@ -140,18 +143,10 @@ app类型为"user".
 
 #### 用户信息修改
 
-	User.set([id])(fields...)
+	User.set()(name, ...)
 
-字段fields请参考"User"表定义. 原理请参考"通用表操作"章节。
-
-应用逻辑：
-- 用户id可缺省，一般不用赋值
-- 以下字段不允许修改：phone, pwd
-- 不允许User.add/del操作
-
-**[应用逻辑]**
-
-- AUTH_USER
+- 权限: AUTH_USER
+- 可修改字段参考User表。注意不可修改字段: uname, phone, pwd, createTm.
 
 **[示例]**
 
@@ -162,67 +157,23 @@ app类型为"user".
 	
 	User.set()(pidId={thumbId})
 
-
-更新用户手机号：
-
-	User.set()(phone=18912345678)
-
 #### 订单管理
 
-使用Ordr.add/set/query/get方法添加、修改、查询和查看订单。
-不允许删除订单（可以取消）。
-
-注: 订单状态定义请在本文档内搜索OrderStatus.
-
-##### 添加订单
-
-
+	添加订单
 	Ordr.add()(Ordr表字段) -> id
 
-
-应用逻辑：
+	查看订单
+	Ordr.query/get() -> tbl(id, status, ..., @orderLog?)
 
 - 权限: AUTH_USER
 - 添加订单后, 订单状态为"CR"; 且在OrderLog中添加一条创建记录(action=CR)
-
-**[参数]**
-
-**[返回]**
-
-操作成功时返回新添加的订单id.
-
-**[示例]**
-
-##### 查看订单
-
-
-	Ordr.query() -> tbl(id, status, ...)
-	Ordr.get(id) -> {id, status, ..., @orderLog, @atts}
-
-
-用`Ordr.query`取用户所有订单概要;
-用`Ordr.get`取订单主表字段及其相关子表. 
-
-**[应用逻辑]**
-
-- AUTH_USER
-
-**[参数]**
+- 不允许删除订单（可以取消）。
 
 id
 : Integer. 订单编号
 
-
-**[返回]**
-
-主表返回字段请查询表定义"@Ordr"。
-
 @orderLog
-: Array(OrderLog). 日志子表, 包含订单创建时间等内容, 字段详细请查询表定义"@OrderLog".
-
-@atts
-: Array(Att). 订单关联图片的子表. 字段为 {id, attId}. 根据attId取图片.
-
+: [{id, action, dscr, ...}]. 日志子表, 详见表定义"@OrderLog".
 
 ### 员工端/后台管理端
 
@@ -231,51 +182,42 @@ app类型为"emp".
 
 #### 员工管理
 
+	Employee.query()
 	Employee.get(id?)
 	Employee.set(id?)(POST fields)
 
-如果不指定id, 则操作当前登录的员工.
-如果指定id:
+- 权限: AUTH_EMP
+- get/set操作如果不指定id, 则操作当前登录的员工。仅当具有 PERM_MGR 权限时, 可任意指定id.
+- query操作：如果没有PERM_MGR权限只能获取当前登录的员工，否则可获取所有的员工。
 
-- 如果是 AUTH_EMP 权限, 则id必须与当前登录的empId一致(否则应报错);
-- 如果是 PERM_MGR 权限, 则不限id.
-
-	Employee.query()
-
-- AUTH_EMP权限只能获取当前登录的员工; 
-- PERM_MGR权限可获取所有的员工; 
+以下仅当PERM_MGR权限可用：
 
 	Employee.add()(POST fields)
 	Employee.del(id?)
 
-- 仅PERM_MGR权限可用.
 - 当Employee被其它对象（如Ordr）引用时，不允许删除，只能做禁用等其它处理。
 
 #### 订单管理
 
 查看订单
 
-	Ordr.query() -> tbl(id, status, 参考Ordr表字段...)
-	Ordr.get(id) -> { 同query字段 }
+	Ordr.query() -> tbl(id, status, ..., @orderLog?)
+	Ordr.get(id) -> { 同上字段 }
 
 完成订单或取消订单
 
 	Ordr.set(id)(status=RE)
 	Ordr.set(id)(status=CA)
 
-
+- 权限：AUTH_EMP
 - 订单状态必须为"CR"才能完成或取消.
-- 应生成相应订单日志(OrderLog).
-
-**[应用逻辑]**
-
-- AUTH_EMP
+- 更新操作应生成相应订单日志(OrderLog).
 
 ### 超级管理端
 
 本节API需要超级管理员权限.
 
-app类型为adm.
+app类型为"admin".
 
 ## 前端应用接口
 
@@ -287,7 +229,7 @@ app类型为adm.
 
 用户登录, 可以创建和查看订单等.
 
-### 管理端(app=store)
+### 管理端(app=emp-adm)
 
 	web/store.html
 

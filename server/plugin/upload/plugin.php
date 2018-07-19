@@ -8,24 +8,40 @@ global $UploadType;
 $UploadType = [
 	"user" => ["w"=>128, "h"=>128],
 	"store" => ["w"=>200, "h"=>150],
-	"default" => ["w"=>100, "h"=>100],
+	"default" => ["w"=>360, "h"=>360],
 ];
-
-// 设置允许上传的文件类型。设置为空表示允许所有。
-global $ALLOWED_EXTS;
-$ALLOWED_EXTS = ["jpeg", "jpg", "gif", "png", "txt"]; // ["pdf", "doc", "docx"];
 
 // 如果扩展名未知，则使用MIME类型限制上传：
 global $ALLOWED_MIME;
 $ALLOWED_MIME = [
 	'jpg'=>'image/jpeg',
+	'jpeg'=>'image/jpeg',
 	'png'=>'image/png',
 	'gif'=>'image/gif',
 	'txt'=>'text/plain',
 	'pdf' => 'application/pdf',
-	//'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-	//'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+	'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+	'doc' => 'application/msword',
+	'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+	'xls' => 'application/vnd.ms-excel',
+	'zip' => 'application/zip',
+	'rar' => 'application/x-rar-compressed'
 ];
+
+global $FILE_TAG; // tag => ext
+$FILE_TAG = [
+	// JPEG文件头: FFD8FF
+	"\xff\xd8\xff" => "jpg",
+	// PNG文件头: 89504E47
+	"\x89PNG" => "png",
+	// GIF文件头
+	"GIF8" => "gif"
+];
+
+// 设置允许上传的文件类型。设置为空表示允许所有。
+global $ALLOWED_EXTS;
+$ALLOWED_EXTS = array_keys($ALLOWED_MIME);
+
 //}}}
 
 # generate image/jpeg output. if $out=null, output to stdout
@@ -83,7 +99,7 @@ function getUploadTypeInfo($type)
 
 function api_upload()
 {
-	checkAuth(AUTH_USER | AUTH_EMP);
+	checkAuth(AUTH_LOGIN);
 	#$uid = $_SESSION["uid"];
 	$fmt = param("fmt");
 	if ($fmt === 'raw' || $fmt === 'raw_b64')
@@ -119,15 +135,19 @@ function api_upload()
 			// 检查文件类型
 			$mtype = $f["type"];
 			$ext = strtolower(pathinfo($f["name"], PATHINFO_EXTENSION));
+			$orgName = basename($f["name"]);
 			global $ALLOWED_MIME, $ALLOWED_EXTS;
 			if ($ext == "" && $mtype) {
 				$ext = array_search($mtype, $ALLOWED_MIME);
-				if ($ext === false)
-					throw new MyException(E_PARAM, "MIME type not supported: `$mtype`", "文件类型`$mtype`不支持.");
+				if ($ext === false) {
+					// 猜测文件类型
+					$ext = guessFileType($f["tmp_name"]);
+					if ($ext === null)
+						throw new MyException(E_PARAM, "MIME type not supported: `$mtype`", "文件类型`$mtype`不支持.");
+				}
 			}
 			if (count($ALLOWED_EXTS) > 0 && ($ext == "" || !in_array($ext, $ALLOWED_EXTS))) {
-				$name = basename($f["name"]);
-				throw new MyException(E_PARAM, "bad extention file name: `$name`", "文件扩展名`$ext`不支持");
+				throw new MyException(E_PARAM, "bad extention file name: `$orgName`", "文件扩展名`$ext`不支持");
 			}
 
 			if ($type) {
@@ -146,10 +166,27 @@ function api_upload()
 				if ($genThumb)
 					$thumbName = "$dir/t$base.$ext";
 			} while(is_file($fname));
-			$rec = [$f["tmp_name"], $fname];
+			$rec = [$f["tmp_name"], $fname, $orgName];
 			if ($genThumb)
 				$rec[] = $thumbName;
 			$files[] = $rec;
+		}
+	}
+
+	function guessFileType($f)
+	{
+		global $FILE_TAG;
+		@$fp = fopen($f, "rb");
+		if ($fp === false)
+			return;
+		$data = fread($fp, 8);
+		fclose($fp);
+		if ($data === false || strlen($data) < 8)
+			return;
+		foreach ($FILE_TAG as $ftag=>$ext) {
+			if (strncmp($data, $ftag, strlen($ftag)) == 0) {
+				return $ext;
+			}
 		}
 	}
 
@@ -192,11 +229,11 @@ function api_upload()
 
 	# 2nd round: save file and add to DB
 	global $DBH;
-	$sql = "INSERT INTO Attachment (path, orgPicId, exif, tm) VALUES (?, ?, ?, now())";
+	$sql = "INSERT INTO Attachment (path, orgPicId, exif, tm, orgName) VALUES (?, ?, ?, now(), ?)";
 	$sth = $DBH->prepare($sql);
 	foreach ($files as $f) {
-		# 0: tmpname; 1: fname; 2: thumbName
-		list($tmpname, $fname, $thumbName) = $f;
+		# 0: tmpname; 1: fname; 2: orgName; 3: thumbName(optional)
+		list($tmpname, $fname, $orgName, $thumbName) = $f;
 		if (isset($tmpname)) {
 			move_uploaded_file($tmpname, $fname);
 		}
@@ -208,19 +245,19 @@ function api_upload()
 			}
 			file_put_contents($fname, $s);
 		}
-		if ($autoSize && filesize($fname) > 500*1024) {
-			resizeImage($fname, 1920, 1080, $fname);
+		if ($autoResize && preg_match('/\.(jpg|jpeg|png)$/', $fname) && filesize($fname) > 500*1024) {
+			resizeImage($fname, 1280, 1280, $fname);
 		}
 
-		$sth->execute([$fname, null, null]);
+		$sth->execute([$fname, null, null, $orgName]);
 		$id = (int)$DBH->lastInsertId();
-		$r = ["id"=>$id];
+		$r = ["id"=>$id, "orgName"=>$orgName];
 
 		if ($genThumb) {
 			$info = getUploadTypeInfo($type);
 			resizeImage($fname, $info["w"], $info["h"], $thumbName);
 			#file_put_contents($thumbName, "THUMB");
-			$sth->execute([$thumbName, $id, $exif]);
+			$sth->execute([$thumbName, $id, $exif, $orgName]);
 			$thumbId = (int)$DBH->lastInsertId();
 			$r["thumbId"] = $thumbId;
 		}
@@ -238,7 +275,7 @@ function api_att()
 	//header("Cache-Control: private");
 	header("Pragma: "); // session_start() set this one to "no-cache"
 
-	#checkAuth(AUTH_USER | AUTH_EMP);
+	#checkAuth(AUTH_LOGIN);
 	#$uid = $_SESSION["uid"];
 	$id = param("id");
 	$thumbId = param("thumbId");
@@ -262,17 +299,18 @@ function api_att()
 		exit();
 	}
 	if ($id !== null)
-		$sql = "SELECT path FROM Attachment WHERE id=$id";
+		$sql = "SELECT path, orgName FROM Attachment WHERE id=$id";
 	else {
-		# a1: original, a2: thumb
-		$sql = "SELECT a1.path FROM Attachment a1 INNER JOIN Attachment a2 ON a1.id=a2.orgPicId WHERE a2.id=$thumbId";
+		# t0: original, a2: thumb
+		$sql = "SELECT t0.path, t0.orgName FROM Attachment t0 INNER JOIN Attachment a2 ON t0.id=a2.orgPicId WHERE a2.id=$thumbId";
 	}
-	$file = queryOne($sql);
-	if ($file === false)
+	$row = queryOne($sql);
+	if ($row === false)
 	{
 		header(HTTP_NOT_FOUND);
 		exit;
 	}
+	list($file, $orgName) = $row;
 	if (preg_match('/http:/', $file)) {
 		header('Location: ' . $file);
 		throw new DirectReturn();
@@ -295,7 +333,14 @@ function api_att()
 		header("Etag: $etag");
 		#header("Expires: Thu, 3 Sep 2020 08:52:00 GMT");
 		#header("Content-length: " . filesize($file));
-		#header('Content-Disposition: attachment; filename='.basename($file));
+		if (! isset($orgName))
+			$orgName = basename($file);
+		if ($ext == "jpg" || $ext == "png" || $ext == "gif") {
+			header('Content-Disposition: filename='. $orgName);
+		}
+		else {
+			header('Content-Disposition: attachment; filename='. $orgName);
+		}
 		readfile($file);
 	}
 	else {

@@ -96,6 +96,10 @@ function urlEncodeArr($params)
 
 /**
 @fn makeUrl($ac, $params, $hash)
+
+e.g.
+
+	$url = makeUrl("http://oliveche.com/jdcloud/api.php", ["p1"=>"abc", "p2"=>"333"])
 */
 function makeUrl($ac, $params, $hash = null)
 {
@@ -109,7 +113,7 @@ function makeUrl($ac, $params, $hash = null)
 }
 
 /**
-@fn httpCall($url, $postParams =null, $opt={timeout?=5, @headers} )
+@fn httpCall($url, $postParams =null, $opt={timeout?=5, @headers, %curlOpt={optName=>val} )
 
 请求URL，返回内容。
 默认使用GET请求，如果给定postParams，则使用POST请求。
@@ -126,9 +130,37 @@ postParams可以是一个kv数组或字符串，也可以是一个文件名(以"
 	];
 	// 注意headers的格式
 	$headers = [
-		"Authorization: Basic dGVzdDp0ZXN0MTIz"
+		"Authorization: Basic dGVzdDp0ZXN0MTIz",
+		"Cookie: extid=" . session_id()
 	];
+	$url = makeUrl("$baseUrl/$ac", $param);
 	$rv = httpCall($url, $data, ["headers" => $headers]);
+
+上例中在headers中用Authorization指定了登录信息，适合服务器需要登录的场景；
+同时主动指定了Cookie（Cookie名称需按服务端要求设置），以便与通过Session保持信息的服务器持续交互。
+（有的服务器不使用Cookie，而是在登录后通过返回token来标识，需要额外处理）
+
+示例：调用第三方服务，登录并调用筋斗云后端
+
+	function jdcloudCall($ac, $param=null, $postParam=null)
+	{
+		$baseUrl = "http://localhost/jdcloud/api.php";
+		$url = makeUrl("$baseUrl/$ac", $param);
+		$rv = httpCall($url, $postParam, ["headers" => [
+			// 模拟筋斗云用户端cookie
+			"Cookie: userid=" . session_id()
+		]]);
+		// 筋斗云协议格式：成功为[0, obj] 或 失败为[errCode, userMessage, internalMessage?]
+		$ret = json_decode($rv);
+		if ( $ret[0] !== 0 ) {
+			throw new MyException(E_PARAM, $ret[2], $ret[1]);
+		}
+		return $ret[1];
+	}
+	// 如果是首次则登录
+	jdcloudCall("login", ["uname"=>"12345678901", "pwd"=>"1234"]);
+	// 保持会话，获取订单列表
+	$orders = jdcloudCall("Ordr.query");
 
 示例：提交application/json格式的内容
 
@@ -144,6 +176,25 @@ postParams可以是一个kv数组或字符串，也可以是一个文件名(以"
 	$GLOBALS["X_RET_STR"] = httpCall($url, $data, ["headers" => $headers]);
 	// 筋斗云：设置全局变量X_RET_STR可直接设置返回内容，避免再次被json编码。
 
+函数通过CURL实现，若需扩展功能，可以直接设置curlOpt选项（具体选项可查阅curl_setopt文档），如：
+
+	$curlOpt = [
+		// 设置代理
+		CURLOPT_PROXY => '8.8.8.8',
+		CURLOPT_PROXYPORT => 8080,
+
+		// 通过UserAgent伪装其它浏览器
+		CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.110 Safari/537.36',
+
+		// 返回结果包含HTTP HEADER部分。TODO: 提供简单的解析，如HTTP返回码、Response HTTP Header等。
+		CURLOPT_HEADER => true
+	];
+	$rv = httpCall($url, $data, ["curlOpt" => $curlOpt]);
+
+如果CURL返回错误，可在此查阅错误码：
+http://curl.haxx.se/libcurl/c/libcurl-errors.html
+
+@see makeUrl
 */
 function httpCall($url, $postParams=null, $opt=[])
 {
@@ -162,6 +213,9 @@ function httpCall($url, $postParams=null, $opt=[])
 	if (@$opt["headers"])
 		curl_setopt($h, CURLOPT_HTTPHEADER, $opt["headers"]);
 
+	if (@$opt["curlOpt"])
+		curl_setopt_array($h, $opt["curlOpt"]);
+		
 	//这里设置代理，如果有的话
 	//curl_setopt($h, CURLOPT_PROXY, '8.8.8.8');
 	//curl_setopt($h, CURLOPT_PROXYPORT, 8080);
@@ -196,6 +250,92 @@ function httpCall($url, $postParams=null, $opt=[])
 	}
 	curl_close($h);
 	return $content;
+}
+
+/**
+@fn parseKvList($kvListStr, $sep, $sep2)
+
+解析key-value列表字符串。如果出错抛出异常。
+示例：
+
+	$map = parseKvList("CR:新创建;PA:已付款", ";", ":");
+	// map: {"CR": "新创建", "PA":"已付款"}
+*/
+function parseKvList($str, $sep, $sep2)
+{
+	$map = [];
+	foreach (explode($sep, $str) as $e) {
+		$kv = explode($sep2, $e, 2);
+		if (count($kv) != 2)
+			throw new MyException(E_PARAM, "bad kvList: `$str'");
+		$map[$kv[0]] = $kv[1];
+	}
+	return $map;
+}
+
+/**
+@fn arrayCmp($arr1, $arr2, $fnEq, $callback)
+
+比较两个数组的差异，常用于数据同步。
+两个数组中的数据应一一对应。
+比较的结果会回调 `$callback($e1, $e2)`，如果数据在两边都有，则e1, e2均非空，否则其中一个为空。
+
+下面是一个示例，metaFields是设计字段列表，dbFields是实际数据库中的字段列表，现在要对比差异，
+
+- 如果字段在设计和实际表中都有，不做处理（或更新字段）
+- 如果字段在设计中有，在实际表中没有，则添加字段
+- 如果字段在设计中没有，而在实际表中有，则删除字段
+
+数据示例如下：
+
+	$metaFields = [
+		["name"=>"id", "type"=>"int"],
+		["name"=>"amount", "type"=>"decimal"],
+		["name"=>"dscr", "type"=>"nvarchar"]
+	];
+	$dbFields = [
+		["Field"=>"id", "Type"=>"int(11)"],
+		["Field"=>"total", "Type"=>"decimal(19,2)"],
+		["Field"=>"dscr", "Type"=>"varchar(255)"]
+	];
+
+两边字段名相同可通过 `$meta["name"] === $dbField["Field"];`来判断。
+
+	arrayCmp($metaFields, $dbFields, function ($meta, $dbField) {
+		// 定义两边对应关系
+		return $meta["name"] === $dbField["Field"];
+	}, function ($meta, $dbField) { // meta: {type, len, ...} 参考 FIELD_META_TYPE
+		if ($meta === null) { // 在meta中没有，在dbField中有，则删除字段
+			echo "DROP " . $dbField["Field"] . "\n";
+		}
+		else if ($dbField === null) { // 在meta中有，在dbField中没有，则添加字段
+			echo "ADD " . $meta["name"] . "\n";
+		}
+		else {
+			// 字段在两边都有
+		}
+	});
+*/
+function arrayCmp($a1, $a2, $fnEq, $cb)
+{
+	$mark = []; // index_of_a2 => true
+	foreach ($a1 as $e1) {
+		$found = null;
+		for ($i=0; $i<count($a2); ++$i) {
+			$e2 = $a2[$i];
+			if ($fnEq($e1, $e2)) {
+				$found = $e2;
+				$mark[$i] = true;
+				break;
+			}
+		}
+		$cb($e1, $found);
+	}
+	for ($i=0; $i<count($a2); ++$i) {
+		if (! array_key_exists($i, $mark)) {
+			$cb(null, $a2[$i]);
+		}
+	}
 }
 
 // vi: foldmethod=marker

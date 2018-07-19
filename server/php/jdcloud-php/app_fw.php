@@ -10,7 +10,7 @@
 @see param,mparam
 
 - 数据库连接及操作
-@see dbconn,execOne,queryOne,queryAll
+@see dbconn,execOne,queryOne,queryAll,dbInsert,dbUpdate
 
 - 错误处理设施
 @see MyException,errQuit
@@ -45,9 +45,12 @@ P_DBCRED格式为`{用户名}:{密码}`，或其base64编码后的值，如
 	或
 	P_DBCRED=Z2FubGFuOjEyMzQ=
 
-此外，P_DB还支持SQLite数据库，直接指定以".db"为扩展名的文件即可。例如：
+此外，P_DB还试验性地支持SQLite数据库，直接指定以".db"为扩展名的文件，以及P_DBTYPE即可，不需要P_DBCRED。例如：
 
+	P_DBTYPE=sqlite
 	P_DB=../myorder.db
+
+连接SQLite数据库未做严格测试，不建议使用。
 
 ## 测试模式与调试等级
 
@@ -141,9 +144,6 @@ $JSON_FLAG = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
 global $DB, $DBCRED, $DBTYPE;
 $DB = "localhost/jdcloud";
 $DBCRED = "ZGVtbzpkZW1vMTIz"; // base64({user}:{pwd}), default: demo:demo123
-
-global $ALLOW_LCASE_PARAM;
-$ALLOW_LCASE_PARAM = true;
 
 global $TEST_MODE, $MOCK_MODE, $DBG_LEVEL;
 
@@ -269,6 +269,8 @@ function param_varr($str, $type, $name)
 				$v = strtotime($e);
 				if ($v === false)
 					throw new MyException(E_PARAM, "Bad Request - param `$name`: list($type). require datetime col: `$row0`[$i]=`$e`.");
+				if ($t === "dt")
+					$v = strtotime(date("Y-m-d", $v));
 				$row1[] = $v;
 			}
 			else {
@@ -286,11 +288,9 @@ function param_varr($str, $type, $name)
 @fn param($name, $defVal?, $col?, $doHtmlEscape=true)
 
 @param $col: 默认先取$_GET再取$_POST，"G" - 从$_GET中取; "P" - 从$_POST中取
+$col也可以直接指定一个集合，如
 
-以下形式已不建议使用：
-
-@fn param($name, $defVal?, $col?=$_REQUEST, $doHtmlEscape=true)
-@param $col: key-value collection
+	param($name, $defVal, $_REQUEST)
 
 获取名为$name的参数。
 $name中可以指定类型，返回值根据类型确定。如果该参数未定义或是空串，直接返回缺省值$defVal。
@@ -298,7 +298,8 @@ $name中可以指定类型，返回值根据类型确定。如果该参数未定
 $name中指定类型的方式如下：
 - 名为"id", 或以"Id"或"/i"结尾: int
 - 以"/b"结尾: bool. 可接受的字符串值为: "1"/"true"/"on"/"yes"=>true, "0"/"false"/"off"/"no" => false
-- 以"/dt"或"/tm"结尾: datetime
+- 以"/dt": datetime, 仅有日期部分
+- 以"/tm"结尾: datetime
 - 以"/n"结尾: numeric/double
 - 以"/s"结尾（缺省）: string. 缺省为防止XSS攻击会做html编码，如"a&b"处理成"a&amp;b"，设置参数doHtmlEscape可禁用这个功能。
 - 复杂类型：以"/i+"结尾: int array
@@ -338,30 +339,32 @@ TODO: 直接支持 param("items/(id,qty?/n,dscr?)"), 添加param_objarr函数，
 */
 function param($name, $defVal = null, $col = null, $doHtmlEscape = true)
 {
-	if ($col === "G")
-		$col = $_GET;
-	else if ($col === "P")
-		$col = $_POST;
-	else if (!isset($col))
-		$col = $_REQUEST;
-
-	assert(is_array($col));
-
+	$type = parseType_($name); // NOTE: $name will change.
 	$ret = $defVal;
-	$type = parseType_($name);
-	if (isset($col[$name])) {
-		$ret = $col[$name];
+	if ($col === "G") {
+		if (isset($_GET[$name]))
+			$ret = $_GET[$name];
+	}
+	else if ($col === "P") {
+		if (isset($_POST[$name]))
+			$ret = $_POST[$name];
+	}
+	// 兼容旧式直接指定col=$_GET这样参数
+	else if (is_array($col)) {
+		if (isset($col[$name]))
+			$ret = $col[$name];
 	}
 	else {
-		global $ALLOW_LCASE_PARAM;
-		if ($ALLOW_LCASE_PARAM) {
-			$name1 = strtolower($name);
-			if (isset($col[$name1]))
-				$ret = $col[$name1];
-		}
+		if (isset($_GET[$name]))
+			$ret = $_GET[$name];
+		else if (isset($_POST[$name]))
+			$ret = $_POST[$name];
 	}
+
+	// e.g. "a=1&b=&c=3", b当成未设置，取缺省值。
 	if ($ret === "")
 		return $defVal;
+
 	# check type
 	if (isset($ret) && is_string($ret)) {
 		// avoid XSS attack
@@ -400,6 +403,8 @@ function param($name, $defVal = null, $col = null, $doHtmlEscape = true)
 			$ret1 = strtotime($ret);
 			if ($ret1 === false)
 				throw new MyException(E_PARAM, "Bad Request - invalid datetime param `$name`=`$ret`.");
+			if ($type === "dt")
+				$ret1 = strtotime(date("Y-m-d", $ret1));
 			$ret = $ret1;
 		}
 		elseif ($type === "js" || $type === "tbl") {
@@ -427,6 +432,8 @@ function param($name, $defVal = null, $col = null, $doHtmlEscape = true)
 /** 
 @fn mparam($name, $col = null)
 @brief mandatory param
+
+@param col 'G'-从URL参数即$_GET获取，'P'-从POST参数即$_POST获取。参见param函数同名参数。
 
 $name可以是一个数组，表示至少有一个参数有值，这时返回每个参数的值。
 参考param函数，查看$name如何支持各种类型。
@@ -475,11 +482,13 @@ function mparam($name, $col = null)
 
 设置参数，其实是模拟客户端传入的参数。以便供tableCRUD等函数使用。
 
+(v5.1)不建议使用，param函数已更新，现在直接设置$_GET,$_POST即可。
+
 示例：
 
 	setParam("cond", "name LIKE " . Q("%$name%"));
 	setParam([
-		"_fmt" => "list",
+		"fmt" => "list",
 		"orderby" => "id DESC"
 	]);
 
@@ -803,13 +812,8 @@ function Q($s, $dbh = null)
 {
 	if ($s === null)
 		return "null";
-	if ($dbh == null) {
-		global $DBH;
-		if (!isset($DBH))
-			dbconn();
-		$dbh = $DBH;
-	}
-	return $dbh->quote($s);
+	return "'" . str_replace("'", "\\'", $s) . "'";
+	//return $dbh->quote($s);
 }
 
 function sql_concat()
@@ -838,7 +842,21 @@ function sql_concat()
 
 	$sql = sprintf("INSERT INTO Hongbao (userId, createTm, src, expireTm, vdays) VALUES ({$uid}, '%s', '{$src}', '%s', {$vdays})", date('c', $createTm), date('c', $expireTm));
 	$hongbaoId = execOne($sql, true);
-	
+
+(v5.1) 简单的单表添加和更新记录建议优先使用dbInsert和dbUpdate函数，更易使用。
+上面两个例子，用dbInsert/dbUpdate函数，无须使用Q函数防注入，也无须考虑字段值是否要加引号：
+
+	// 更新操作示例
+	$cnt = dbUpdate("Cinf", ["appleDeviceToken" => $token]);
+
+	// 插入操作示例
+	$hongbaoId = dbInsert("Hongbao", [
+		"userId"=>$uid,
+		"createTm"=>date(FMT_DT, $createTm),
+		"src" => $src, ...
+	]);
+
+@see dbInsert,dbUpdate,queryOne
  */
 function execOne($sql, $getInsertId = false)
 {
@@ -949,6 +967,212 @@ function queryAll($sql, $assoc = false)
 	return $rows;
 }
 
+/**
+@fn dbInsert(table, kv) -> newId
+
+e.g. 
+
+	$orderId = dbInsert("Ordr", [
+		"tm" => date(FMT_DT),
+		"tm1" => "=now()", // "="开头，表示是SQL表达式
+		"amount" => 100,
+		"dscr" => null // null字段会被忽略
+	]);
+
+如需高性能大批量插入数据，可以用BatchInsert
+
+@see BatchInsert
+*/
+function dbInsert($table, $kv)
+{
+	$keys = '';
+	$values = '';
+	foreach ($kv as $k=>$v) {
+		if (is_null($v))
+			continue;
+		// ignore non-field param
+		if (substr($k,0,2) === "p_")
+			continue;
+		if ($v === "")
+			continue;
+		# TODO: check meta
+		if (! preg_match('/^\w+$/', $k))
+			throw new MyException(E_PARAM, "bad key $k");
+
+		if ($keys !== '') {
+			$keys .= ", ";
+			$values .= ", ";
+		}
+		$keys .= $k;
+		if (is_numeric($v))
+			$values .= $v;
+		else if (is_string($v) && $v[0] === '=') {
+			$values .= substr($v, 1);
+		}
+		else {
+			$values .= Q(htmlEscape($v));
+		}
+	}
+	if (strlen($keys) == 0) 
+		throw new MyException(E_PARAM, "no field found to be added");
+	$sql = sprintf("INSERT INTO %s (%s) VALUES (%s)", $table, $keys, $values);
+#			var_dump($sql);
+	return execOne($sql, true);
+}
+
+/**
+@class BatchInsert
+
+大批量为某表添加记录，一次性提交。
+
+示例：
+
+	$bi = new BatchInsert("Syslog", "module,tm,content");
+	for ($i=0; $i<10000; ++$i)
+		$bi->add([$m, $tm, $content]);
+	$n = $bi->exec();
+
+如果担心一次请求数量过多，也可以指定批大小，如1000行提交一次：
+
+	$opt = [
+		"batchSize" =>1000
+	]
+	$bi = new BatchInsert("Syslog", "module,tm,content", $opt);
+
+- opt: {batchSize/i, useReplace/b}
+*/
+class BatchInsert
+{
+	private $sql0;
+	private $batchSize;
+
+	private $sql;
+	private $n = 0;
+	private $retn = 0;
+	function __construct($table, $headers, $opt=null) {
+		$verb = @$opt["useReplace"]? "REPLACE": "INSERT";
+		$this->sql0 = "$verb INTO $table ($headers) VALUES ";
+		$this->batchSize = @$opt["batchSize"]?:0;
+	}
+	function add($row) {
+		$values = '';
+		foreach ($row as $v) {
+			if ($v === '')
+				$v = "NULL";
+			else
+				$v =  Q($v);
+			if ($values !== '')
+				$values .= ",";
+			$values .= $v;
+		}
+		if ($this->sql === null)
+			$this->sql = $this->sql0 . "($values)";
+		else
+			$this->sql .= ",($values)";
+
+		++$this->n;
+		if ($this->batchSize > 0 && $this->n >= $this->batchSize)
+			$this->exec();
+	}
+	function exec() {
+		if ($this->n > 0) {
+			$this->retn += execOne($this->sql);
+			$this->sql = null;
+			$this->n = 0;
+		}
+		return $this->retn;
+	}
+}
+
+// 由虚拟字段 flag_x=0/1 来设置flags字段；或prop_x=0/1来设置props字段。
+function flag_getExpForSet($k, $v)
+{
+	$v1 = substr($k, 5); // flag_xxx -> xxx
+	$k1 = substr($k, 0, 4) . "s"; // flag_xxx -> flags
+	if ($v == 1) {
+		if (strlen($v1) > 1) {
+			$v1 = " " . $v1;
+		}
+		$v = "concat(ifnull($k1, ''), " . Q($v1) . ")";
+	}
+	else if ($v == 0) {
+		$v = "trim(replace($k1, " . Q($v1) . ", ''))";
+	}
+	else {
+		throw new MyException(E_PARAM, "bad value for flag/prop `$k`=`$v`");
+	}
+	return "$k1=" . $v;
+}
+
+/**
+@fn dbUpdate(table, kv, id_or_cond?) -> cnt
+
+@param id_or_cond 查询条件，如果是数值比如100或"100"，则当作条件"id=100"处理；否则直接作为查询表达式，比如"qty<0"；如果未指定则无查询条件。
+
+e.g.
+
+	// UPDATE Ordr SET ... WHERE id=100
+	$cnt = dbUpdate("Ordr", [
+		"amount" => 30,
+		"dscr" => "test dscr",
+		"tm" => "null", // 用""或"null"对字段置空；用"empty"对字段置空串。
+		"tm1" => null // null会被忽略
+	], 100);
+
+	// UPDATE Ordr SET tm=now() WHERE tm IS NULL
+	$cnt = dbUpdate("Ordr", [
+		"tm" => "=now()"  // "="开头，表示是SQL表达式
+	], "tm IS NULL);
+
+*/
+function dbUpdate($table, $kv, $cond=null)
+{
+	if (isset($cond) && is_numeric($cond)) {
+		$cond = "id=$cond";
+	}
+	$kvstr = "";
+	foreach ($kv as $k=>$v) {
+		if ($k === 'id' || is_null($v))
+			continue;
+		// ignore non-field param
+		if (substr($k,0,2) === "p_")
+			continue;
+		# TODO: check meta
+		if (! preg_match('/^(\w+\.)?\w+$/', $k))
+			throw new MyException(E_PARAM, "bad key $k");
+
+		if ($kvstr !== '')
+			$kvstr .= ", ";
+
+		// 空串或null置空；empty设置空字符串
+		if ($v === "" || $v === "null")
+			$kvstr .= "$k=null";
+		else if (is_numeric($v))
+			$kvstr .= "$k=$v";
+		else if (is_string($v) && $v[0] === '=')
+			$kvstr .= $k . $v;
+		else if ($v === "empty")
+			$kvstr .= "$k=''";
+		else if (startsWith($k, "flag_") || startsWith($k, "prop_"))
+		{
+			$kvstr .= flag_getExpForSet($k, $v);
+		}
+		else
+			$kvstr .= "$k=" . Q(htmlEscape($v));
+	}
+	$cnt = 0;
+	if (strlen($kvstr) == 0) {
+		addLog("no field found to be set");
+	}
+	else {
+		if (isset($cond))
+			$sql = sprintf("UPDATE %s SET %s WHERE $cond", $table, $kvstr);
+		else
+			$sql = sprintf("UPDATE %s SET %s", $table, $kvstr);
+		$cnt = execOne($sql);
+	}
+	return $cnt;
+}
 //}}}
 
 function isHttps()
