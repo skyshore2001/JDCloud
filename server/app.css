@@ -2,34 +2,29 @@
 /* 所有应用共享部分 */
 
 /* overwrite weui */
-.weui_cells {
+.weui-cells {
 	margin-top: 0;
 }
 
-.weui_cell {
-	-webkit-align-items: initial;
-	align-items: initial;
-}
-
-.weui_btn {
+.weui-btn {
 	cursor: pointer;
 }
 
-.weui_btn_mini {
+.weui-btn_mini {
 	min-width: 80px;
 }
 
-.weui_label {
+.weui-label {
 	min-width: 4em;
 	margin-right: 0.2em;
 	width: 20%;
 }
-.weui_cell:before {
+.weui-cell:before {
 	right: 15px;
 	width: auto;
 }
 
-.weui_select {
+.weui-select {
 	height: auto;
 	-webkit-appearance: menulist;
 }
@@ -61,11 +56,11 @@ select.right {
 
 /* 适合 16x16 列表项或菜单项 */
 .mui-menu .icon {
-	margin: 2px 12px 0px -5px;
+	margin: 5px 12px 0px -5px;
 }
 
-.weui_cell .icon {
-	margin: 2px 12px 2px 5px;
+.weui-cell .icon {
+	margin: 5px 12px 2px 5px;
 }
 
 .mui-navbar .icon {

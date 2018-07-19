@@ -59,6 +59,29 @@ WEBCC_BEGIN后面，用MERGE=输出文件基本名(basename)的格式(不要写�
 	WEBCC_CMD mergeJs -o lib-app.min.js -minify yes lib/common.js lib/app_fw.js app.js
 	WEBCC_END -->
 
+WEBCC_USE_THIS标识可区分开发时用的内容和发布时用的内容，例如开发时和发布后使用两套JS，可以这样设置：
+
+	<!-- WEBCC_BEGIN -->
+		<script src="lib/react/react.development.js"></script>
+		<script src="lib/react/react-dom.development.js"></script>
+	<!-- WEBCC_USE_THIS
+		<script src="lib/react/react.production.min.js"></script>
+		<script src="lib/react/react-dom.production.min.js"></script>
+	WEBCC_END -->
+
+这就支持开发时使用development版本的库，而发布时使用production版本的库。
+用多个库时常常通过设置MERGE来合并，比如
+
+	<!-- WEBCC_BEGIN MERGE=react -->
+		<script src="lib/react/react.development.js"></script>
+		<script src="lib/react/react-dom.development.js"></script>
+	<!-- WEBCC_USE_THIS
+		<script src="lib/react/react.production.min.js"></script>
+		<script src="lib/react/react-dom.production.min.js"></script>
+	WEBCC_END -->
+
+发布时可将两个production的库合并成一个react.min.js文件。
+
 如果要内嵌JS/CSS，在MERGE后不指定名称即可：
 
 	<!-- WEBCC_BEGIN MERGE -->
@@ -617,7 +640,7 @@ function formatArgs($arr)
 
 function matchRule($rule, $file)
 {
-	return fnmatch($rule, $file, FNM_PATHNAME);
+	return fnmatch($rule, $file);
 }
 
 function getFileHash($basef, $f, $outDir, $relativeDir = null)
@@ -711,7 +734,7 @@ function handleWebccBlock($content, $basef)
 		@list($all, $doMerge, $outName, $content, $useContent) = $ms;
 		$ret = '';
 		if ($doMerge) {
-			$rv = parseJsCss($content);
+			$rv = parseJsCss($useContent ?: $content);
 			$commonArgs = ['-minify', 'yes'];
 
 			if (!empty($rv['cssfiles'])) {
@@ -746,7 +769,7 @@ function handleWebccBlock($content, $basef)
 			}
 		}
 
-		if ($useContent) {
+		if ($useContent && !$doMerge) {
 			// 去除注释
 			$useStr = preg_replace('`\s*//.*$`m', '', $useContent);
 			$useStr = preg_replace_callback('/\bWEBCC_CMD\s+(\w+)\s*(.*?)\s*$/m', 
@@ -843,10 +866,12 @@ function handleOne($f, $outDir, $force = false)
 	$g_handledFiles[$fi] = 1;
 
 	$rule = null;
-	foreach ($RULES as $re => $v) {
-		if (matchRule($re, $fi)) {
-			$rule = $v;
-			break;
+	if (isset($RULES)) {
+		foreach ($RULES as $re => $v) {
+			if (matchRule($re, $fi)) {
+				$rule = $v;
+				break;
+			}
 		}
 	}
 	if (isset($rule))

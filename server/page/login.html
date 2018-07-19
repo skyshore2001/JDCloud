@@ -4,31 +4,29 @@
 		<h1>登录</h1>
 	</div>
 
-	<form action="login" class="bd weui_cells weui_cells_form">
-		<div class="weui_cell">
+	<form action="login" class="bd weui-cells weui-cells_form">
+		<div class="weui-cell">
 			<i class="icon icon-phone"></i>
-			<label class="weui_cell_hd weui_label">手机号</label>
-			<div class="weui_cell_bd weui_cell_primary">
-				<input id="txtPhone" type="number" name="uname" placeholder="11位手机号" required class="weui_input">
+			<label class="weui-cell__hd weui-label">手机号</label>
+			<div class="weui-cell__bd">
+				<input id="txtPhone" type="number" name="uname" placeholder="11位手机号" required class="weui-input">
 			</div>
 			<button id="btnGenCode" type="button" class="mui-btn">发送验证码</button>
 		</div>
 
-		<div class="weui_cell">
+		<div class="weui-cell">
 			<i class="icon icon-code"></i>
-			<label class="weui_cell_hd weui_label">验证码</label>
-			<div class="weui_cell_bd weui_cell_primary">
-				<input name="code" type="number" placeholder="至少4位数" required minlength=4 class="weui_input">
+			<label class="weui-cell__hd weui-label">验证码</label>
+			<div class="weui-cell__bd">
+				<input name="code" type="number" placeholder="至少4位数" required minlength=4 class="weui-input">
 			</div>
 			<button id="btnShowCode" type="button" class="mui-btn hidden">查看验证码</button>
 		</div>
 
-		<input type="hidden" name="wantAll" value="1">
-
-		<div class="weui_cell">
-			<div class="weui_cell_primary weui_btn_area">
-				<button type="submit" class="weui_btn weui_btn_primary">进入</button>
-				<a href="#login1" class="weui_btn weui_btn_default">用户名密码登录</a>
+		<div class="weui-cell">
+			<div class="weui-cell__bd weui-btn_area">
+				<button type="submit" class="weui-btn weui-btn_primary">进入</button>
+				<a href="#login1" class="weui-btn weui-btn_default">用户名密码登录</a>
 			</div>
 		</div>
 
