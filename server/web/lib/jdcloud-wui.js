@@ -4863,6 +4863,7 @@ function loadDialog(jdlg, onLoad)
 		jdlg.attr("wui-pageFile", pageFile);
 
 		$.parser.parse(jdlg); // easyui enhancement
+		jdlg.find(">table, form>table").addClass("wui-form-table");
 		self.enhanceWithin(jdlg);
 
 		var val = jdlg.attr("wui-script");
@@ -5711,8 +5712,16 @@ $.extend($.fn.tabs.defaults, {
 self.m_enhanceFn[".my-combobox"] = function (jo) {
 	jo.mycombobox();
 };
-// wui-dialog布局排列
-self.m_enhanceFn["form>table"] = function (jo) {
+/**
+@key .wui-form-table
+
+在wui-dialog上，对于form下直接放置的table，一般用于字段列表排列，框架对它添加类wui-form-table并自动对列设置百分比宽度，以自适应显示。
+
+在非对话框上，也可手工添加此类来应用该功能。
+
+ */
+self.m_enhanceFn[".wui-form-table"] = enhanceTableLayout;
+function enhanceTableLayout(jo) {
 	var tbl = jo[0];
 	var tr;
 	// 取第一个没有colspan的行

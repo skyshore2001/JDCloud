@@ -12,7 +12,7 @@ td {
 	vertical-align: top;
 }
 
-form>table {
+form>table, .wui-form-table {
 	width: 100%;
 	white-space: nowrap;
 	border-spacing: 5px 2px;
