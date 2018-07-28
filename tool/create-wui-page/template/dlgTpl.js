@@ -11,6 +11,10 @@ function initDlg<?=$obj?>()
 	{
 		var objParam = opt.objParam;
 		var forAdd = formMode == FormMode.forAdd;
+		setTimeout(onShow);
+
+		function onShow() {
+		}
 	}
 
 	function onValidate(ev, mode, oriData, newData) 

@@ -5711,6 +5711,39 @@ $.extend($.fn.tabs.defaults, {
 self.m_enhanceFn[".my-combobox"] = function (jo) {
 	jo.mycombobox();
 };
+// wui-dialog布局排列
+self.m_enhanceFn["form>table"] = function (jo) {
+	var tbl = jo[0];
+	var tr;
+	// 取第一个没有colspan的行
+	for (var i=0; i<tbl.rows.length; ++i) {
+		tr = tbl.rows[i];
+		for (var j=0; j<tr.cells.length; ++j) {
+			var td = tr.cells[j];
+			if (td.getAttribute("colspan") != null) {
+				tr = null;
+				break;
+			}
+		}
+		if (tr)
+			break;
+	}
+	if (tr == null)
+		return;
+	var colCnt = tr.cells.length;
+	var rates = {
+		2: ["10%", "90%"],
+		4: ["10%", "40%", "10%", "40%"],
+		6: ["5%", "25%", "5%", "25%", "5%", "25%"]
+	};
+	if (!rates[colCnt])
+		return;
+	for (var i=0; i<colCnt; ++i) {
+		var je = $(tr.cells[i]);
+		if (je.attr("width") == null)
+			je.attr("width", rates[colCnt][i]);
+	}
+};
 
 function main()
 {

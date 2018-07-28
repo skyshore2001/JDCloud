@@ -28,8 +28,9 @@ $title = null;
 
 @$obj = $argv[1];
 if (! $obj) {
-	echo "Usage: create-wui-page {obj} [baseObj=obj] [title=obj]\n";
+	echo "Usage: create-wui-page {obj} [title=obj] [baseObj=obj]\n";
 	echo "   eg: create-wui-page Item\n";
+	echo "   eg: create-wui-page Item 商品\n";
 	exit;
 }
 if (!ctype_upper($obj[0])) {
