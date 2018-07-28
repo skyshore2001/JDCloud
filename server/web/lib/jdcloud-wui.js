@@ -4639,7 +4639,7 @@ function showDlg(jdlg, opt)
 	function fnCancel() {closeDlg(jdlg)}
 	function fnOk()
 	{
-		if (jdlg.hasClass("wui-readonly")) { // css("pointer-events") == "none"
+		if (jdlg.hasClass("wui-readonly") && formMode!=FormMode.forFind) { // css("pointer-events") == "none"
 			closeDlg(jdlg);
 			return;
 		}
@@ -5235,6 +5235,8 @@ function dg_toolbar(jtbl, jdlg)
 	});
 	for (var i=2; i<arguments.length; ++i) {
 		var btn = arguments[i];
+		if (! btn)
+			continue;
 		if (btn !== '-' && typeof(btn) == "string") {
 			btn = tb[btn];
 			mCommon.assert(btn, "toolbar button name does not support");
