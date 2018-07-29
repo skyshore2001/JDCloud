@@ -5748,7 +5748,7 @@ function enhanceTableLayout(jo) {
 	// 如果首行有colspan，则添加隐藏行定宽
 	if (doAddTr) {
 		var td = dup("<td></td>", colCnt);
-		$('<tr style="display:none">' + td + '</tr>').prependTo(jo);
+		$('<tr class="wui-form-table-tr-width" style="visibility:hidden">' + td + '</tr>').prependTo(jo);
 		tr = tbl.rows[0];
 	}
 	for (var i=0; i<colCnt; ++i) {
