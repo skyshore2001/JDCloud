@@ -104,6 +104,19 @@ function initPageHome()
 	});
 }
 
+/*
+根据用户权限，如"item,mgr"等，菜单中有perm-xxx类的元素会显示，有nperm-xxx类的元素会隐藏
+
+示例：只有mgr权限显示
+
+	<div class="perm-mgr" style="display:none"></div>
+
+示例：bx权限不显示（其它权限可显示）
+
+	<a href="#pageItem" class="nperm-bx">商品管理</a>
+
+可通过 g_data.hasPerm(perm) 查询是否有某项权限。
+ */
 function applyPermission(perms)
 {
 	// e.g. "item,mgr" - ".perm-item, .perm-mgr"
@@ -113,6 +126,8 @@ function applyPermission(perms)
 	var arr = perms.split(/,/);
 	if (sel) {
 		$(sel).show();
+		var sel2 = sel.replace(/perm/g, 'nperm');
+		$(sel2).hide();
 	}
 
 	g_data.hasPerm = function (perm) {

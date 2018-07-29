@@ -5725,23 +5725,19 @@ self.m_enhanceFn[".my-combobox"] = function (jo) {
 self.m_enhanceFn[".wui-form-table"] = enhanceTableLayout;
 function enhanceTableLayout(jo) {
 	var tbl = jo[0];
-	var tr;
-	// 取第一个没有colspan的行
-	for (var i=0; i<tbl.rows.length; ++i) {
-		tr = tbl.rows[i];
-		for (var j=0; j<tr.cells.length; ++j) {
-			var td = tr.cells[j];
-			if (td.getAttribute("colspan") != null) {
-				tr = null;
-				break;
-			}
-		}
-		if (tr)
-			break;
-	}
-	if (tr == null)
+	if (tbl.rows.length == 0)
 		return;
+	var tr = tbl.rows[0];
 	var colCnt = tr.cells.length;
+	var doAddTr = false;
+	// 考虑有colspan的情况
+	for (var j=0; j<tr.cells.length; ++j) {
+		var td = tr.cells[j];
+		if (td.getAttribute("colspan") != null) {
+			colCnt += parseInt(td.getAttribute("colspan"))-1;
+			doAddTr = true;
+		}
+	}
 	var rates = {
 		2: ["10%", "90%"],
 		4: ["10%", "40%", "10%", "40%"],
@@ -5749,10 +5745,24 @@ function enhanceTableLayout(jo) {
 	};
 	if (!rates[colCnt])
 		return;
+	// 如果首行有colspan，则添加隐藏行定宽
+	if (doAddTr) {
+		var td = dup("<td></td>", colCnt);
+		$('<tr style="display:none">' + td + '</tr>').prependTo(jo);
+		tr = tbl.rows[0];
+	}
 	for (var i=0; i<colCnt; ++i) {
 		var je = $(tr.cells[i]);
 		if (je.attr("width") == null)
 			je.attr("width", rates[colCnt][i]);
+	}
+
+	function dup(s, n) {
+		var ret = '';
+		for (var i=0; i<n; ++i) {
+			ret += s;
+		}
+		return ret;
 	}
 };
 

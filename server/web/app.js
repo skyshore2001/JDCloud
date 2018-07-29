@@ -496,10 +496,9 @@ function searchField(o, param)
 
 function enhanceMenu()
 {
-	var MENU_ITEM_HEIGHT = 47;
-
 	var jo = $('#menu');
 	jo.find("a").addClass("my-menu-item");
+	jo.find(".menu-expandable").hide();
 	jo.find(".menu-expand-group").each(function () {
 		$(this).find("a:first")
 			.addClass("menu-item-head")
@@ -516,11 +515,9 @@ function enhanceMenu()
 	// add event handler to menu items
 	function menu_onexpand(ev) {
 		$(this).toggleClass('expanded');
+		var show = $(this).hasClass('expanded');
 		var $expandContainer = $(this).next();
-		var containerHeight = !$expandContainer.height() && $expandContainer.children().length * MENU_ITEM_HEIGHT || 0;
-		$expandContainer.css({
-			height: containerHeight + 'px'
-		});
+		$expandContainer.toggle(show);
 	}
 }
 $(enhanceMenu);

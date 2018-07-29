@@ -15,7 +15,7 @@ td {
 form>table, .wui-form-table {
 	width: 100%;
 	white-space: nowrap;
-	border-spacing: 5px 2px;
+	border-spacing: 10px 2px;
 }
 
 a {
@@ -31,6 +31,7 @@ input:not([type=button]), select, textarea {
 	border-color: rgb(169, 169, 169);
 	border-radius: 4px;
 	outline: none;
+	margin: 0 2px;
 }
 .wui-dialog td input:not([type=checkbox]):not([type=radio]):not([type=button]), .wui-dialog td select {
 	height:30px;
@@ -155,8 +156,6 @@ input:disabled,select:disabled,textarea:disabled {
 	width: 60px;
 	text-align: center;
 	font-size: 1.5em;
-	transition: 0.35s cubic-bezier(0.35, 0, 0.25, 1);
-	transition-property: transform;
 }
 
 #menu .menu-item-head.expanded > i {
@@ -164,10 +163,6 @@ input:disabled,select:disabled,textarea:disabled {
 }
 
 #menu .menu-expandable {
-	height: 0;
-	overflow: hidden;
-	transition: 0.35s cubic-bezier(0.35, 0, 0.25, 1);
-	transition-property: height;
 	background: #171717;
 }
 
