@@ -425,7 +425,7 @@ subobj: { name => {sql, default?=false, wantOne?=false, force?=false} }
 ### 最大每页数据条数
 
 @fn AccessControl::getMaxPageSz()  (for query) 取最大每页数据条数。为非负整数。
-@var AccessControl::$maxPageSz ?= 100 (for query) 指定最大每页数据条数。值为负数表示取PAGE_SZ_LIMIT值.
+@var AccessControl::$maxPageSz ?= 1000 (for query) 指定最大每页数据条数。值为负数表示取PAGE_SZ_LIMIT值.
 
 前端通过 {obj}.query(pagesz)来指定每页返回多少条数据，缺省是20条，最高不可超过100条。当指定为负数时，表示按最大允许值=min($maxPageSz, PAGE_SZ_LIMIT)返回。
 PAGE_SZ_LIMIT目前定为10000条。如果还不够，一定是应用设计有问题。
@@ -434,7 +434,7 @@ PAGE_SZ_LIMIT目前定为10000条。如果还不够，一定是应用设计有�
 
 	class MyObj extends AccessControl
 	{
-		protected $maxPageSz = 1000; // 最大允许返回1000条
+		protected $maxPageSz = 2000; // 最大允许返回2000条
 		// protected $maxPageSz = -1; // 最大允许返回 PAGE_SZ_LIMIT 条
 	}
 
@@ -591,7 +591,7 @@ class AccessControl
 	protected $defaultRes = "t0.*"; // 缺省为 "t0.*" 加  default=true的虚拟字段
 	protected $defaultSort = "t0.id";
 	# for query
-	protected $maxPageSz = 100;
+	protected $maxPageSz = 1000;
 
 	# for get/query
 	# virtual columns
