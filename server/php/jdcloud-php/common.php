@@ -338,4 +338,25 @@ function arrayCmp($a1, $a2, $fnEq, $cb)
 	}
 }
 
+/**
+@fn addToStr(&$str, $str1, $sep=',')
+
+添加字符串到str. str开始必须为null。
+
+	$atts = null;
+	addToStr($atts, "100");
+	addToStr($atts, "200");
+	// $atts = "100,200"
+
+*/
+function addToStr(&$str, $str1, $sep=',')
+{
+	if (! $str1)
+		return;
+	if ($str === null)
+		$str = $str1;
+	else
+		$str .= $sep . $str1;
+}
+
 // vi: foldmethod=marker
