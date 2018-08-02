@@ -1873,7 +1873,7 @@ class AppFw_
 		ini_set("session.cookie_httponly", 1);
 
 		$path = getenv("P_URL_PATH");
-		if ($path !== false)
+		if ($path)
 		{
 			// e.g. path=/cheguanjia
 			ini_set("session.cookie_path", $path);
