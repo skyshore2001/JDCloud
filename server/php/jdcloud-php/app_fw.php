@@ -92,6 +92,15 @@ P_DBCRED格式为`{用户名}:{密码}`，或其base64编码后的值，如
 @key P_URL_PATH 环境变量。项目的URL路径，如"/jdcloud", 用于定义cookie生效的作用域，也用于拼接相对URL路径。
 @see getBaseUrl
 
+PHP默认的session过期时间为1440s(24分钟)，每次在使用session时，以1/1000的概率检查过期。
+要配置它，可以应用程序的conf.user.php中设置，如：
+
+	ini_set("session.gc_maxlifetime", "2592000"); // 30天过期
+
+测试时，想要到时间立即清除session，可以设置：
+
+	ini_set("session.gc_probability", "1000"); // 1000/1000概率做回收。每次访问都回收，性能差，仅用于测试。
+
 ## 应用框架
 
 继承AppBase类，可实现提供符合BQP协议接口的模块。[api_fw](#api_fw)框架就是使用它的一个典型例子。
