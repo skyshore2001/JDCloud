@@ -95,7 +95,7 @@ $SQLDIFF = null;
 // 注意：die返回0，请调用die1返回1标识出错。
 function die1($msg)
 {
-	fwrite(STDERR, $msg);
+	fwrite(STDERR, $msg . "\n");
 	exit(1);
 }
 
@@ -137,7 +137,7 @@ e.g.
 
 	"cmt(l)" => ["name"=>"cmt", "def"=>"cmt(l)", "type=>"nvarchar", "len"=>250];
 */
-function parseFieldDef($fieldDef)
+function parseFieldDef($fieldDef, $tableName)
 {
 	global $CHAR_SZ, $SQLDIFF;
 	$f = $fieldDef;
@@ -170,7 +170,7 @@ function parseFieldDef($fieldDef)
 			$def = "NVARCHAR($tag)";
 		}
 		else {
-			die1("unknown type of string fields");
+			die1("unknown type of string fields: @{$tableName}.$f");
 		}
 	}
 	elseif (preg_match('/(@|&|#)$/', $f, $ms)) {
@@ -215,7 +215,7 @@ function parseFieldDef($fieldDef)
 		$def = "NVARCHAR(" . $CHAR_SZ['m'] . ")";
 	}
 	else {
-		die1("unknown type of fields");
+		die1("unknown type of fields: @{$tableName}.$f");
 	}
 
 # 		# !!! fix some name that conflicts with reserved words
@@ -542,8 +542,9 @@ class UpgHelper
 		global $SQLDIFF;
 		$SQLDIFF = SqlDiff::create($this->dbh);
 		foreach ($this->tableMeta as &$e) {
-			$fieldsMeta = array_map(function ($e) {
-				return parseFieldDef($e);
+			$tableName = $e["name"];
+			$fieldsMeta = array_map(function ($e) use ($tableName){
+				return parseFieldDef($e, $tableName);
 			}, $e["fields"]);
 			$e["fieldsMeta"] = $fieldsMeta;
 		}

@@ -422,6 +422,8 @@ OrderStatusMap在代码中定义如下
 @see getExportHandler 自定义导出Excel功能
 @see getQueryParamFromTable 根据当前datagrid状态取query接口参数
 
+HINT: 点“导出”时会直接下载文件，看不到请求和调用过程，如果需要调试导出功能，可在控制台中设置  window.open=$.get 即可在chrome中查看请求响应过程。
+
 #### datagrid增强项
 
 easyui-datagrid已适配筋斗云协议调用，底层将发起callSvr调用请求（参考dgLoader）。
@@ -5337,6 +5339,9 @@ function getExportHandler(jtbl, ac, param)
 
 	return function () {
 		var url = WUI.makeUrl(ac, getQueryParamFromTable(jtbl, param));
+		// !!! 调试导出的方法：在控制台中设置  window.open=$.get 即可查看请求响应过程。
+		console.log("export: " + url);
+		console.log("(HINT: debug via window.open=$.get)");
 		window.open(url);
 	}
 }
@@ -6395,6 +6400,7 @@ $.each([
 
 - 刷新列表： jo.trigger("refresh");
 - 标记刷新（下次打开时刷新）： jo.trigger("markRefresh");
+- (v5.2)加载列表：jo.trigger("loadOptions", param);  一般用于级联列表，即url带参数的情况。
 
 特性：
 
@@ -6407,6 +6413,8 @@ $.each([
 注意：
 
 - (v5.0) 接口调用由同步改为异步，以便提高性能并支持batch操作。同步(callSvrSync)便于加载下拉列表后立即为它赋值，改成异步请求(callSvr)后仍支持立即设置值。
+- (v5.0) HTML select组件的jQuery.val()方法被改写。当设置不在范围内的值时，虽然下拉框显示为空，其实际值存储在 value_ 字段中，(v5.2) 通过jQuery.val()方法仍可获取到。
+ 用原生JS可以分别取 this.value 和 this.value_ 字段。
 
 ## 用url选项加载下拉列表
 
@@ -6466,6 +6474,8 @@ $.each([
 		...
 	};
 
+(v5.2) url还可以是一个函数。如果带一个参数，一般用于级联列表。参考**级联列表支持**节.
+
 ## 用jdEnumMap选项指定下拉列表
 
 也支持通过key-value列表用jdEnumMap选项或jdEnumList选项来初始化下拉框，如：
@@ -6521,6 +6531,70 @@ JS代码ListOptions.Brand:
 	};
 
 注意：jdEnumMap指定的固定选项会先出现。
+
+## 级联列表支持
+
+(v5.2)
+
+缺陷类型(defectTypeId)与缺陷代码(defectId)二级关系：选一个缺陷类型，缺陷代码自动刷新为该类型下的代码。
+在初始化时，如果字段有值，下拉框应分别正确显示。
+
+在一级内容切换时，二级列表自动从后台查询获取。同时如果是已经获取过的，缓存可以生效不必反复获取。
+双击仍支持刷新。
+
+对话框上HTML如下：（defectId是用于提交的字段，所以用name属性；defectTypeId不用提交，所以用了id属性；后端接口最好两个值都返回）
+
+	<select id="defectTypeId" class="my-combobox" data-options="ListOptions.DefectType()" style="width:45%"></select>
+	<select name="defectId" class="my-combobox" data-options="ListOptions.Defect()" style="width:45%"></select>
+
+其中，DefectType()与传统设置无区别，在Defect()函数中，应设置url为一个带参函数：
+
+	var ListOptions = {
+		DefectType: function () {
+			var opts = {
+				valueField: "id",
+				textField: "code",
+				url: WUI.makeUrl('Defect.query', {
+					res: 'id,code,name',
+					cond: 'typeId is null',
+					pagesz: -1
+				}),
+				formatter: function (row) { return row.code + "-" + row.name; }
+			};
+			return opts;
+		},
+		// ListOptions.Defect
+		Defect: function () {
+			var opts = {
+				valueField: "id",
+				textField: "code",
+				url: function (typeId) {
+					return WUI.makeUrl('Defect.query', {
+						res: 'id,code,name',
+						cond: "typeId=" + typeId,
+						pagesz: -1
+					})
+				},
+				formatter: function (row) { return row.code + "-" + row.name; }
+			};
+			return opts;
+		}
+	}
+
+在对话框上设置关联动作，调用loadOptions方法：
+
+	$(frm.defectTypeId).on("change", function () {
+		var typeId = $(this).val();
+		if (typeId)
+			$(frm.defectId).trigger("loadOptions", typeId);
+	});
+	
+对话框加载时，手工设置defectTypeId的值：
+
+	function onShow() {
+		$(frm.defectTypeId).val(defectTypeId).trigger("change");
+	}
+
  */
 var m_dataCache = {}; // url => data
 $.fn.mycombobox = mycombobox;
@@ -6571,9 +6645,12 @@ function mycombobox(force)
 			}
 			jo.on("refresh", refresh);
 			jo.on("markRefresh", markRefresh);
+			jo.on("loadOptions", function (ev, param) {
+				loadOptions(param);
+			});
 		}
 
-		function loadOptions()
+		function loadOptions(param)
 		{
 			jo.prop("value_", jo.val()); // 备份val到value_
 			jo.empty();
@@ -6594,14 +6671,32 @@ function mycombobox(force)
 
 			if (opts.url == null)
 				return;
-			if (opts.dirty || m_dataCache[opts.url] === undefined) {
-				self.callSvr(opts.url, onLoadOptions);
+			var url = opts.url;
+			if (url instanceof Function) {
+				if (url.length == 0) { // 无参数直接调用
+					url = url();
+				}
+				else if (param != null) {
+					url = url(param);
+				}
+				else if (opts.url_) {
+					url = opts.url_;
+				}
+				else {
+					return;
+				}
+				// 在url为function时，实际url保存在opts.url_中。确保可刷新。
+				opts.url_ = url;
+			}
+			if (opts.dirty || m_dataCache[url] === undefined) {
+				self.callSvr(url, onLoadOptions);
 			}
 			else {
-				onLoadOptions(m_dataCache[opts.url]);
+				onLoadOptions(m_dataCache[url]);
 			}
 
 			function onLoadOptions(data) {
+				m_dataCache[url] = data;
 				applyData(data);
 				// 恢复value; 期间也可能被外部修改。
 				jo.val(jo.prop("value_"));
@@ -6610,7 +6705,6 @@ function mycombobox(force)
 
 		function applyData(data) 
 		{
-			m_dataCache[opts.url] = data;
 			opts.dirty = false;
 			function getText(row)
 			{
@@ -6670,7 +6764,9 @@ function mycombobox_fixAsyncSetValue()
 			elem.value_ = value;
 			return hook.set.apply(this, arguments);
 		},
-		get: hook.get
+		get: function (elem) {
+			return hook.get.apply(this, arguments) || elem.value_;
+		}
 	}
 }
 mycombobox_fixAsyncSetValue();
