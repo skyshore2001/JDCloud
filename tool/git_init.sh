@@ -16,6 +16,7 @@ cat <<.  > .git/hooks/post-update
 #!/bin/sh
 unset GIT_DIR
 cd ..
+umask 002
 git reset --hard
 # reload tomcat app, for jd-java project
 touch -c WEB-INF/web.xml
