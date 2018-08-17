@@ -331,6 +331,39 @@ require_once("AccessControl.php");
 // ====== config {{{
 global $X_RET; // maybe set by the caller
 global $X_RET_STR;
+/**
+@var $X_RET_FN
+
+默认接口调用后输出筋斗云的`[0, data]`格式。
+若想修改返回格式，可设置该回调函数。
+
+- 如果返回对象，则输出json格式。
+- 如果返回false，应自行用echo输出。注意API日志中仍记录筋斗云返回数据格式。
+
+示例：返回 `{code, data}`格式：
+
+	global $X_RET_FN;
+	$X_RET_FN = function ($X_RET) {
+		$ret = [
+			"code" => $X_RET[0],
+			"data" => $X_RET[1]
+		];
+		if ($GLOBALS["TEST_MODE"])
+			$ret["jdData"] = $X_RET;
+		return $ret;
+	};
+
+示例：返回xml格式：
+
+	global $X_RET_FN;
+	$X_RET_FN = function ($X_RET) {
+		header("Content-Type: application/xml");
+		echo "<xml><code>$X_RET[0]</code><data>$_RET[1]</data></xml>";
+		return false;
+	};
+	
+*/
+global $X_RET_FN;
 
 const PAGE_SZ_LIMIT = 10000;
 // }}}
@@ -370,6 +403,7 @@ class ApiFw_
 
 @see $X_RET
 @see $X_RET_STR
+@see $X_RET_FN
 @see $errorFn
 @see errQuit()
 */
@@ -397,7 +431,19 @@ function setRet($code, $data = null, $internalMsg = null)
 
 	if (ApiFw_::$SOLO) {
 		global $X_RET_STR;
+		global $X_RET_FN;
 		if (! isset($X_RET_STR)) {
+			if (is_callable(@$X_RET_FN)) {
+				$ret1 = $X_RET_FN($X_RET);
+				if ($ret1 === false)
+					return;
+				if (is_string($ret1)) {
+					$X_RET_STR = $ret1;
+					echo $X_RET_STR . "\n";
+					return;
+				}
+				$X_RET = $ret1;
+			}
 			$X_RET_STR = json_encode($X_RET, $JSON_FLAG);
 		}
 		else {
@@ -1060,6 +1106,14 @@ function apiMain()
 		$ct = @$_SERVER["HTTP_CONTENT_TYPE"] ?: $_SERVER["CONTENT_TYPE"];
 		if (strstr($ct, "/json") !== false) {
 			$content = file_get_contents("php://input");
+			if (preg_match('/charset=([\w-]+)/i', $ct, $ms)) {
+				$charset = strtolower($ms[1]);
+				if ($charset != "utf-8") {
+					@$content = iconv($charset, "utf-8", $content);
+				}
+				if ($content === false)
+					throw new MyException(E_PARAM, "unknown encoding $charset");
+			}
 			@$arr = json_decode($content, true);
 			if (!is_array($arr))
 				throw new MyException(E_PARAM, "bad json-format body");

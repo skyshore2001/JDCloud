@@ -69,7 +69,7 @@ AccessControl简写为AC，同时AC也表示自动补全(AutoComplete).
 
 @fn AccessControl::onQuery() (for get/query)  用于对查询条件进行设定。
 @fn AccessControl::onValidate()  (for add/set). 验证添加和更新时的字段，或做自动补全(AutoComplete)工作。
-@fn	AccessControl::onValidateId() (for get/set/del) 用于对id字段进行检查。比如在del时检查用户是否有权操作该记录。
+@fn	AccessControl::onValidateId() (for get/set/del) 用于对id字段进行检查。比如在del时检查用户是否有权操作该记录。可在其中设置$this->id。
 
 上节例子中，用户可以操作系统的所有订单。
 
@@ -1000,7 +1000,9 @@ class AccessControl
 			}
 			$col = preg_replace_callback('/^\s*(\w+)/', function ($ms) {
 				$col1 = $ms[1];
-				if ($this->addVCol($col1, true, '-') !== false)
+				// 注意：与cond不同，orderby使用了虚拟字段，应在res中添加。而cond中是直接展开了虚拟字段。因为where条件不支持虚拟字段。
+				// 故不用：$this->addVCol($col1, true, '-');
+				if ($this->addVCol($col1, true) !== false)
 					return $col1;
 				return "t0." . $col1;
 			}, $col);
@@ -1034,9 +1036,10 @@ class AccessControl
 	}
 
 /**
-@fn AccessControl::addCond($cond, $prepend=false)
+@fn AccessControl::addCond($cond, $prepend=false, $fixUserQuery=false)
 
 @param $prepend 为true时将条件排到前面。
+@param $fixUserQuery 设置为true，用于自动处理虚拟字段，这时不允许复杂查询。
 
 调用多次addCond时，多个条件会依次用"AND"连接起来。
 
@@ -1067,8 +1070,10 @@ class AccessControl
 @see AccessControl::addRes
 @see AccessControl::addJoin
  */
-	final public function addCond($cond, $prepend=false)
+	final public function addCond($cond, $prepend=false, $fixUserQuery=false)
 	{
+		if ($fixUserQuery)
+			$cond = $this->fixUserQuery($cond);
 		if ($prepend)
 			array_unshift($this->sqlConf["cond"], $cond);
 		else
@@ -1244,7 +1249,8 @@ class AccessControl
 	function api_set()
 	{
 		$this->onValidateId();
-		$this->id = mparam("id");
+		if ($this->id === null)
+			$this->id = mparam("id");
 		$this->validate();
 
 		$cnt = dbUpdate($this->table, $_POST, $this->id);
@@ -1293,7 +1299,8 @@ class AccessControl
 	function api_get()
 	{
 		$this->onValidateId();
-		$this->id = mparam("id");
+		if ($this->id === null)
+			$this->id = mparam("id");
 		$this->initQuery();
 
 		$this->addCond("t0.id={$this->id}", true);
@@ -1469,7 +1476,8 @@ class AccessControl
 	function api_del()
 	{
 		$this->onValidateId();
-		$this->id = mparam("id");
+		if ($this->id === null)
+			$this->id = mparam("id");
 		$sql = sprintf("DELETE FROM %s WHERE id=%d", $this->table, $this->id);
 		$cnt = execOne($sql);
 		if ($cnt != 1)
@@ -1501,7 +1509,7 @@ e.g.
 		if ($cond === null)
 			throw new MyException(E_PARAM, "setIf requires param `cond`");
 		$this->initVColMap();
-		$this->addCond($this->fixUserQuery($cond));
+		$this->addCond($cond, false, true);
 
 		$sqlConf = $this->sqlConf;
 		$tblSql = "{$this->table} t0";

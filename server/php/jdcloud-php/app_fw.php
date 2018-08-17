@@ -1257,6 +1257,7 @@ function getBaseUrl($wantHost = true)
 
 /**
 @fn logit($s, $addHeader=true, $type="trace")
+@alias logit($s, $type)
 
 记录日志。
 
@@ -1266,6 +1267,10 @@ function getBaseUrl($wantHost = true)
  */
 function logit($s, $addHeader=true, $type="trace")
 {
+	if (is_string($addHeader)) {
+		$type = $addHeader;
+		$addHeader = true;
+	}
 	if ($addHeader) {
 		$remoteAddr = @$_SERVER['REMOTE_ADDR'] ?: 'unknown';
 		$s = "=== REQ from [$remoteAddr] at [".strftime("%Y/%m/%d %H:%M:%S",time())."]\n" . $s . "\n";

@@ -54,7 +54,7 @@ function onCreateExt($extType)
 	switch ($extType) {
 	case Ext_WxSupport:
 		/* TODO
-		require_once(__DIR__ . "/../weixin/WxSupport.php");
+		require_once(__DIR__ . "/../../weixin/WxSupport.php");
 		$obj = new WxSupport();
 		 */
 		$obj = new ExtMock();
