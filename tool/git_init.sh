@@ -18,8 +18,12 @@ unset GIT_DIR
 cd ..
 umask 002
 git reset --hard
-# reload tomcat app, for jd-java project
-touch -c WEB-INF/web.xml
+
+### reload tomcat app, for jd-java project
+# touch -c WEB-INF/web.xml
+
+### for dev release (no build_web): generate revision file for auto refresh
+# git log -1 --format=%H > server/revision.txt
 .
 chmod a+x .git/hooks/post-update
 
