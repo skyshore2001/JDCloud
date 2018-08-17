@@ -86,28 +86,24 @@ class LoginImpBase
 	{
 	}
 
-	function onWeixinLogin($userInfo, $rawData){
+	function onWeixinLogin($userInfo, $rawData)
+	{
+		$userData = [
+			"pic" => $userInfo["headimgurl"],
+			"name" => $userInfo["nickname"],
+			"uname" => $userInfo["nickname"],
+			"weixinData" => $rawData
+		];
 		dbconn();
 		$sql = sprintf("SELECT id FROM User WHERE weixinKey=%s", Q($userInfo["openid"]));
 		$id = queryOne($sql);
 		if ($id === false) {
-			$sql = sprintf("INSERT INTO User (weixinKey, pic, createTm, weixinData, uname) VALUES (%s, %s, '%s', %s, %s)",
-				Q($userInfo["openid"]),
-				Q($userInfo["headimgurl"]),
-				date("c"),
-				Q($rawData),
-				Q($userInfo["nickname"])
-			);
-			$id = execOne($sql, true);
+			$userData["createTm"] = date(FMT_DT);
+			$userData["weixinKey"] = $userInfo["openid"];
+			$id = dbInsert("User", $userData);
 		}
 		else {
-			$sql = sprintf("UPDATE User SET pic=%s, weixinData=%s, uname=%s WHERE weixinKey=%s",
-				Q($userInfo["headimgurl"]),
-				Q($rawData),
-				Q($userInfo["nickname"]),
-				Q($userInfo["openid"])
-			);
-			execOne($sql);
+			dbUpdate("User", $userData, $id);
 		}
 
 		$_SESSION["uid"] = $id;
@@ -116,24 +112,22 @@ class LoginImpBase
 	function onBindUser($phone){
 		$userId = $_SESSION["uid"];
 		//查询是否绑定微信用户
-		$row = queryOne("SELECT id, weixinKey FROM User WHERE phone=$phone", PDO::FETCH_ASSOC);
-		if(!is_null($row["weixinKey"])){ //绑定过
+		$row = queryOne("SELECT id, weixinKey FROM User WHERE phone=$phone", true);
+		if(isset($row["weixinKey"])){ //绑定过
 			throw new MyException(E_AUTHFAIL, "phone had binding", "该手机已经被绑定");
 		}
-		if(!is_null($row["id"])){ //将微信用户merge过来
+		if(isset($row["id"])){ //将微信用户merge过来
 			//取出weixinKey
 			$weixinKey = queryOne("SELECT weixinKey FROM User WHERE id=$userId");
 			//将微信key与手机用户绑定
-			$sql = sprintf("UPDATE User SET weixinKey=%s WHERE id=%d", Q($weixinKey), $row['id']);
-			execOne($sql);
+			dbUpdate("User", ["weixinKey"=>$weixinKey], $row["id"]);
 			//微信用户失效，今后无法登录
 			$key = 'merge-'.$weixinKey;
-			$sql = sprintf("UPDATE User SET weixinKey=%s WHERE id=$userId", Q($key));
-			execOne($sql);
+			dbUpdate("User", ["weixinKey"=>$key], $userId);
+			$_SESSION["uid"] = $row["id"];
 		}else{
 			//将手机号与微信用户绑定
-			$sql = sprintf("UPDATE User SET phone=%s WHERE id=$userId", Q($phone));
-			execOne($sql);
+			dbUpdate("User", ["phone"=>$phone], $userId);
 		}
 	}
 }
@@ -299,13 +293,12 @@ function regUser($phone, $pwd)
 	$phone1 = preg_replace('/^\d{3}\K(\d{4})/', '****', $phone);
 	$name = "用户" . $phone1;
 
-	$sql = sprintf("INSERT INTO User (phone, pwd, name, createTm) VALUES (%s, %s, %s, '%s')",
-		Q($phone),
-		Q(hashPwd($pwd)),
-		Q($name),
-		date(FMT_DT)
-	);
-	$id = execOne($sql, true);
+	$id = dbInsert("User", [
+		"phone" => $phone,
+		"pwd" => hashPwd($pwd),
+		"name" => $name,
+		"createTm" => date(FMT_DT)
+	]);
 	addToPwdTable($pwd);
 	$ret = ["id"=>$id];
 
@@ -319,13 +312,12 @@ function regEmp($phone, $pwd)
 	$phone1 = preg_replace('/^\d{3}\K(\d{4})/', '****', $phone);
 	$name = "员工" . $phone1;
 
-	$sql = sprintf("INSERT INTO Employee (phone, pwd, name, createTm) VALUES (%s, %s, %s, '%s')",
-		Q($phone),
-		Q(hashPwd($pwd)),
-		Q($name),
-		date(FMT_DT)
-	);
-	$id = execOne($sql, true);
+	$id = dbInsert("Employee", [
+		"phone" => $phone,
+		"pwd" => hashPwd($pwd),
+		"name" => $name,
+		"createTm" => date(FMT_DT)
+	]);
 	addToPwdTable($pwd);
 	$ret = ["id"=>$id];
 
@@ -484,10 +476,7 @@ function api_logout()
 function setUserPwd($userId, $pwd, $genToken)
 {
 	# change password
-	$sql = sprintf("UPDATE User SET pwd=%s WHERE id=%d", 
-		Q(hashPwd($pwd)),
-		$userId);
-	execOne($sql);
+	dbUpdate("User", ["pwd"=>hashPwd($pwd)], $userId);
 
 	if ($genToken) {
 		list($uname, $pwd) = queryOne("SELECT phone, pwd FROM User WHERE id={$userId}");
@@ -501,10 +490,7 @@ function setUserPwd($userId, $pwd, $genToken)
 function setEmployeePwd($empId, $pwd, $genToken)
 {
 	# change password
-	$sql = sprintf("UPDATE Employee SET pwd=%s WHERE id=%d", 
-		Q(hashPwd($pwd)),
-		$empId);
-	execOne($sql);
+	dbUpdate("Employee", ["pwd"=>hashPwd($pwd)], $empId);
 
 	if ($genToken) {
 		list($uname, $pwd) = queryOne("SELECT phone, pwd FROM Employee WHERE id={$empId}");
@@ -522,12 +508,10 @@ function addToPwdTable($pwd)
 		return;
 	$id = queryOne("SELECT id FROM Pwd WHERE pwd=" . Q($pwd));
 	if ($id === false) {
-		$sql = sprintf("INSERT INTO Pwd (pwd, cnt) VALUES (%s, 1)", Q($pwd));
-		execOne($sql);
+		$id = dbInsert("Pwd", ["pwd"=>$pwd, "cnt"=>1]);
 	}
 	else {
-		$sql = "UPDATE Pwd SET cnt=cnt+1 WHERE id={$id}";
-		execOne($sql);
+		dbUpdate("Pwd", ["cnt"=>"=cnt+1"], $id);
 	}
 }
 

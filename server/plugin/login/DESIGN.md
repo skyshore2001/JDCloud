@@ -258,6 +258,33 @@ _token/_expire
 	location.href = "../weixin/auth.php?" + $.param(param);
 	MUI.app_abort();
 
+#### 本地调试微信认证
+
+本插件结合weixin/auth.php处理微信认证。
+由于必须在微信中设置过“网页授权域名”的域名才可以认证，本地调试时，必须映射到实际服务器上。
+
+建议方法如下：比如线上URL为 http://oliveche.com/mall/m2/index.html，本地实际URL为http://localhost/p/mall/m2/index.html
+调试时应把服务器 localhost 换成 oliveche.com/8081 即访问URL: http://oliveche.com/8081/p/mall/m2/index.html
+
+配置方法：
+
+- 配置apache: 线上/8081开头的地址用代理转到8081端口:
+
+		ProxyPass /8081/ http://localhost:8081/
+		ProxyPassReverse /8081/ http://localhost:8081/
+		ProxyPass /8082/ http://localhost:8082/
+		ProxyPassReverse /8082/ http://localhost:8082/
+		# 可以加8081,8082等多个，以便多人分别调试
+		<LocationMatch ^/80 >
+		ProxyPassReverseCookiePath / /
+		</LocationMatch>
+
+- 本地映射到线上：即访问8081实际访问本地
+
+		ssh -R 8081:localhost:80 oliveche.com
+
+在weixin/auth.php中会自动拼接正确的redirect_uri（访问后可在trace.log中查看），如仍不正确，可临时手工修改为正确值。
+
 ### 绑定手机
 
 微信登录的用户绑定手机号到当前登录帐号：

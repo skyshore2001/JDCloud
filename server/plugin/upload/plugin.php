@@ -100,7 +100,8 @@ function getUploadTypeInfo($type)
 function api_upload()
 {
 	checkAuth(AUTH_LOGIN);
-	#$uid = $_SESSION["uid"];
+	session_commit(); // !!!释放session锁避免阻塞其它调用。注意此后要修改session应先调用session_start
+
 	$fmt = param("fmt");
 	if ($fmt === 'raw' || $fmt === 'raw_b64')
 	{
@@ -271,12 +272,15 @@ function api_upload()
 function api_att()
 {
 	// overwritten the default
-	header("Cache-Control: private, max-age=99999999");
+	header("Cache-Control: max-age=99999999");
 	//header("Cache-Control: private");
-	header("Pragma: "); // session_start() set this one to "no-cache"
+	header_remove("Pragma");
+	header_remove("Expires");
 
 	#checkAuth(AUTH_LOGIN);
 	#$uid = $_SESSION["uid"];
+	session_commit(); // !!!释放session锁避免阻塞其它调用。注意此后要修改session应先调用session_start
+
 	$id = param("id");
 	$thumbId = param("thumbId");
 
