@@ -4289,10 +4289,11 @@ function getPageInfo(pageRef)
 }
 
 /**
-@fn showPage(pageRef, opt)
+@fn showPage(pageId/pageRef?, opt?)
 
 @param pageId String. 页面名字. 仅由字母、数字、"_"等字符组成。
 @param pageRef String. 页面引用（即location.hash），以"#"开头，后面可以是一个pageId（如"#home"）或一个相对页的地址（如"#info.html", "#emp/info.html"）。
+  如果未指定，则使用当前URL的hash或指定的主页(MUI.options.homePage). "#"表示主页。
 @param opt {ani?, url?}  (v3.3) 该参数会传递给pagebeforeshow/pageshow回调函数。
 
 opt.ani:: String. 动画效果。设置为"none"禁用动画。
@@ -4699,9 +4700,11 @@ function popPageStack(n)
 	self.m_pageStack.pop(n);
 }
 
+// 前进后退时触发(m_curState非空); 或直接在地址栏修改hash触发(m_curState为空)
+// 某些手机首次进入时也触发
 $(window).on('popstate', function (ev) {
 	m_curState = ev.originalEvent.state;
-	if (m_curState) // bugfix: 红米等某些手机在MUI.options.showHash=false模式下，且在安卓APP中，进入非主页的入口页，会自动跳转回主页。
+	if (m_curState || self.options.showHash) // bugfix: 红米等某些手机在MUI.options.showHash=false模式下，且在安卓APP中，进入非主页的入口页，会自动跳转回主页。
 		showPage();
 });
 
