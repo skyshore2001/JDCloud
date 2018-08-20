@@ -289,18 +289,25 @@ style将被插入到head标签中，并自动添加属性`mui-origin={pageId}`.
 
 ### 页面路由
 
-默认路由：
+框架支持hash路由（默认方式）和文件路由（逻辑页面文件）两种方式。
+
+- hash路由URL示例: http://server/app/index.html#home 切换页面后为 http://server/app/index.html#order 
+- 文件路由URL示例: http://server/app/page/home.html 切换页面后为 http://server/app/page/order.html
+
+默认hash路由：
 
 - 一般只用一级目录：`http://server/app/index.html#order`对应`{pageFolder=page}/order.html`，一般为`page/order.html`
 - 也支持多级目录：`http://server/app/index.html#order-list`对应`page/order/list.html`
 - 与筋斗云后端框架一起使用时，支持插件目录：`http://server/app/index.html#order-list`在存在插件'order'时，对应`{pluginFolder=../plugin}/order/m2/page/list.html`，一般为`../plugin/order/m2/page/list.html`
 
-URL也可以显示为文件风格，比如在设置：
+文件路由：在主页面中head标签中应添加：
 
 	<base href="./" mui-showHash="no">
 
 之后，上面两个例子中，URL会显示为 `http://server/app/page/order.html` 和 `http://server/app/page/order/list.html`
 @see options.showHash
+
+注意：使用文件路由时，如果刷新页面将无法显示。必须在web服务器中设置URL重写规则来解决。apache请参考和修改m2/page/.htaccess文件，nginx请参考和修改m2/.ht.nginx文件。
 
 特别地，还可以通过`MUI.setUrl(url)`或`MUI.showPage(pageRef, {url: url})`来定制URL，例如将订单id=100的逻辑页显示为RESTful风格：`http://server/app/order/100`
 @see setUrl
