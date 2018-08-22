@@ -117,8 +117,10 @@
 
 		// 当天订单
 		var query1 = {cond: "createTm between '" + new Date().format("D") + "' and '" + new Date().addDay(1).format("D") + "'"};
+		// var query1 = WUI.getQueryParam({createTm: new Date().format("D") + "~" + new Date().addDay(1).format("D")});
 		// 显示待服务/正在服务订单
 		var query2 = {cond: "status='CR' OR status='PA' OR status='ST'"};
+		// var query2 = WUI.getQueryParam({status: "CR,PA,ST"});
 
 		function getTodoOrders()
 		{
@@ -538,7 +540,7 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 			// 要使每个商户都打开一个商品页面而不是共享一个页面，必须保证第二个参数（页面标题）根据商户不同而不一样。
 			// 第三个参数是传给该页面初始化函数的参数列表，是一个数组。
 		}
-		var btn1 = {text: "查看商品", iconCls: "icon-search", handler: showPageCloseOrder};
+		var btn1 = {text: "查看商品", iconCls: "icon-search", handler: showItemPage};
 
 		...
 		jtbl.datagrid({
@@ -569,6 +571,79 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 	function initPageItem(storeId) // storeId=row.id
 
 @see showPage
+
+### 设计模式：页面间调用
+
+仍以上节数据结构为例，上节是在每个商品行上点“查看商品”，就打开一个新的该商户下的商品列表页，
+现在我们换一种操作方法，改成只用一个商品列表页（默认打开时显示所有商户的商品，可以手工查找过滤），在商户页中点“查看商品”，就自动打开商品列表页并做条件过滤。
+
+先在主页面逻辑中为商品页定义一个接口：（比如在store.js中）
+
+	var PageItem = {
+		// param?: {storeId}
+		show: function (param) {
+			this.filterParam_ = param;
+			WUI.showPage("pageItem");
+		},
+		filterParam_: null
+	};
+
+在商户页中，点击“查看商品”按钮时做过滤：
+
+	function initPageStore()
+	{
+		function showItemPage()
+		{
+			var row = jtbl.datagrid('getSelected');
+			...
+			PageItem.show({storeId: row.id});
+		}
+		var btn1 = {text: "查看商品", iconCls: "icon-search", handler: showPageCloseOrder};
+
+		...
+		jtbl.datagrid({
+			...
+			toolbar: WUI.dg_toolbar(jtbl, jdlg, btn1),
+		});
+	}
+
+在商品页中，处理PageItem.filterParam_参数，实现过滤，我们在pageshow回调中处理它，同时把初始化datagrid也移到pageshow中：
+
+	function initPageItem()
+	{
+		var isInit = true;
+		jpage.on("pageshow", pageShow);
+
+		function pageShow() {
+			// 接口变量PageItem.filterParam_用后即焚
+			var param = null;
+			if (PageItem.filterParam_) {
+				param = WUI.getQueryParam(PageItem.filterParam_);
+				PageItem.filterParam_ = null;
+			}
+			// 保证表格初始化只调用一次
+			if (isInit) {
+				jtbl.datagrid({
+					url: WUI.makeUrl("Item.query"),
+					queryParams: param,
+					toolbar: WUI.dg_toolbar(jtbl, jdlg, "export"),
+					onDblClickRow: WUI.dg_dblclick(jtbl, jdlg),
+					sortName: "id",
+					sortOrder: "desc"
+				});
+				isInit = false;
+			}
+			else if (param) {
+				WUI.reload(jtbl, null, param);
+			}
+		}
+	}
+
+注意：
+
+- 例子中通过页面接口，实现页面间的调用请求。
+- 上面用了WUI.reload，在点击列表上的“刷新”时，只会按当前条件刷新，不会刷新出所有数据来，必须点“查找”，清除所有条件后查找，才可以看到所有数据；
+ 若想点“刷新”时显示所有数据，则可以将WUI.reload换成调用WUI.reloadTmp。
 
 ## 对话框功能
 
