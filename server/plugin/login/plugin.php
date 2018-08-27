@@ -550,6 +550,9 @@ function api_chpwd()
 		if ($row === false)
 			throw new MyException(E_AUTHFAIL, "bad password", "密码验证失败");
 	}
+	else { // 使用验证码
+		validateDynCode($code);
+	}
 	# change password
 	if($type == "user"){
 		$rv = setUserPwd($uid, $pwd, true);
