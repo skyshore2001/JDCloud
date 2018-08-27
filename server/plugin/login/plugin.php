@@ -12,15 +12,19 @@
 
 ## 模块外部接口
 
-**配置项**
+各配置项及默认值如下。
 
 - 允许用户自动注册
 
-	Login::$autoRegUser = true;
+	Login::$autoRegUser ?= true;
+
+- 允许传统注册（即无需验证手机号）
+
+	Login::$allowManualReg ?= false;
 
 - 允许员工自动注册
 
-	Login::$autoRegEmp = false;
+	Login::$autoRegEmp ?= false;
 
 ## 模块内部接口
 
@@ -62,6 +66,7 @@ class Login
 {
 	static $autoRegUser = true;
 	static $autoRegEmp = false;
+	static $allowManualReg = false;
 	static $mockWeixinUser = ['openid'=>"test_openid", 'nickname'=>"测试用户", 'headimgurl'=>"...", 'sex'=>1];
 }
 
