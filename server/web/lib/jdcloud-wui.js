@@ -4940,7 +4940,7 @@ function loadDialog(jdlg, onLoad)
 		jdlg.attr("wui-pageFile", pageFile);
 
 		$.parser.parse(jdlg); // easyui enhancement
-		jdlg.find(">table, form>table").addClass("wui-form-table");
+		jdlg.find(">table:first, form>table:first").addClass("wui-form-table");
 		self.enhanceWithin(jdlg);
 
 		var val = jdlg.attr("wui-script");
