@@ -834,6 +834,17 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 
 这时，就可以用 WUI.showObjDlg("#dlgOrder")来显示逻辑页了。
 
+#### 批量更新、批量删除
+
+(v5.2) 按住Ctrl键进行批量处理模式。
+
+先搜索出要更新或删除的记录：
+
+- 批量更新：双击任意一行打开对话框，修改后按住Ctrl点击确定按钮，批量更新所有表中的内容。
+- 批量删除：按住Ctrl键点数据表上面的“删除”按钮，即是批量删除所有表中的内容。
+
+服务端应支持`{obj}.setIf(cond)`及`{obj}.delIf(cond)`接口。
+
 ### 页面模板支持
 
 定义一个逻辑页面，可以在#my-pages下直接定义，也可以在单独的文件中定义，还可以在一个模板中定义，如：
@@ -4109,6 +4120,7 @@ var self = this;
 self.ctx = self.ctx || {};
 
 var mCommon = jdModule("jdcloud.common");
+var m_batchMode = false; // 批量操作模式, 按住Ctrl键。
 
 mCommon.assert($.fn.combobox, "require jquery-easyui lib.");
 
@@ -4742,6 +4754,15 @@ function showDlg(jdlg, opt)
 			if (opt.onSubmit && opt.onSubmit(data) === false)
 				return false;
 
+			// 批量更新
+			if (m_batchMode && formMode==FormMode.forSet && opt.url.action && /.set$/.test(opt.url.action)) {
+				var jtbl = jdlg.jdata().jtbl;
+				var obj = opt.url.action.replace(".set", "");
+				batchOp(obj, "setIf", jtbl, data, function () {
+					closeDlg(jdlg);
+				});
+				return;
+			}
 			self.callSvr(opt.url, success, data);
 		}
 		else {
@@ -4757,6 +4778,51 @@ function showDlg(jdlg, opt)
 			}
 		}
 	}
+}
+
+// 按住Ctrl键进入批量模式。
+$(document).keydown(function (e) {
+	if (e.ctrlKey && ! m_batchMode) {
+		m_batchMode = true;
+		setTimeout(function () {
+			m_batchMode = false;
+		},2000);
+	}
+});
+
+
+// ac: "setIf"/"delIf"
+function batchOp(obj, ac, jtbl, data, fn)
+{
+	if (obj == null || jtbl == null)
+		return;
+	var acName;
+	if (ac == "setIf") {
+		acName = "批量更新";
+	}
+	else if (ac == "delIf") {
+		acName = "批量删除";
+	}
+	else {
+		return;
+	}
+	var cond = getQueryParamFromTable(jtbl).cond;
+	if (! cond) {
+		cond = "id>0";
+	}
+	self.callSvr(obj + ".query", {cond: cond, res: "count(*) cnt"}, function (data1) {
+		console.log(obj + "." + ac + ": " + cond);
+		app_confirm(acName + data1.d[0][0] + "条记录？", function (b) {
+			if (!b)
+				return;
+			self.callSvr(obj+"."+ac, {cond: cond}, function (cnt) {
+				fn && fn();
+				reload(jtbl);
+				app_alert(acName + cnt + "条记录");
+			}, data);
+		});
+	});
+	return;
 }
 
 /**
@@ -5036,6 +5102,13 @@ function showObjDlg(jdlg, mode, opt)
 		if (mode == FormMode.forSet || mode == FormMode.forDel) // get dialog data from jtbl row, 必须关联jtbl
 		{
 			mCommon.assert(jd.jtbl);
+
+			// 批量删除
+			if (mode == FormMode.forDel && m_batchMode) {
+				batchOp(obj, "delIf", jd.jtbl);
+				return;
+			}
+
 			rowData = getRow(jd.jtbl);
 			if (rowData == null)
 				return;

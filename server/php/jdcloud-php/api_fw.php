@@ -1022,7 +1022,7 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 	$fn = "api_" . $ac1;
 	//if (! method_exists($accessCtl, $fn))
 	if (! is_callable([$accessCtl, $fn]))
-		throw new MyException(E_PARAM, "Bad request - unknown `$tbl` method: `$ac1`");
+		throw new MyException(E_PARAM, "Bad request - unknown `$tbl` method: `$ac1`", "接口不支持");
 	$accessCtl->before($ac1);
 	$ret = $accessCtl->$fn();
 	$accessCtl->after($ret);
@@ -1057,7 +1057,7 @@ function callSvcInt($ac)
 		$ret = $fn();
 	}
 	else {
-		throw new MyException(E_PARAM, "Bad request - unknown ac: {$ac}");
+		throw new MyException(E_PARAM, "Bad request - unknown ac: {$ac}", "接口不支持");
 	}
 	if (!isset($ret))
 		$ret = "OK";
