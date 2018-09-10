@@ -687,7 +687,8 @@ class UpgHelper
 			if (!$force)
 			{
 				# check whether to add missing fields
-				$rs = $this->execSql("SELECT * FROM (SELECT 1 AS id) t0 LEFT JOIN $tbl1 ON 1<>1", true);
+				# todo: get columns: mysql uses `desc {table}`, mssql uses `sp_help {table}`
+				$rs = $this->execSql("SELECT * FROM (SELECT 1 AS id) t0 LEFT JOIN (SELECT * FROM $tbl1 LIMIT 0) t1 ON 1<>1", true);
 				$row = $rs[0];
 				$found = false;
 
