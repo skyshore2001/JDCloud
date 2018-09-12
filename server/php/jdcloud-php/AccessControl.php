@@ -574,7 +574,7 @@ class AccessControl
 {
 	protected $table;
 	protected $ac;
-	protected static $stdAc = ["add", "get", "set", "del", "query"];
+	protected static $stdAc = ["add", "get", "set", "del", "query", "setIf", "delIf"];
 	protected $allowedAc;
 	# for add/set
 	protected $readonlyFields = [];
@@ -1541,7 +1541,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		}
 	}
  */
-	protected function api_setIf()
+	function api_setIf()
 	{
 		$roFields = $this->readonlyFields + $this->readonlyFields2;
 		foreach ($roFields as $field) {
@@ -1578,7 +1578,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		}
 	}
  */
-	protected function api_delIf()
+	function api_delIf()
 	{
 		$rv = $this->genCondSql();
 		$sql = sprintf("DELETE t0 FROM %s WHERE %s", $rv["tblSql"], $rv["condSql"]);
