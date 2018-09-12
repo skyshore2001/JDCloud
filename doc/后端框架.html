@@ -638,7 +638,13 @@ Obj.query(fmt=list, ...) -&gt; {nextkey?, total?, @list=[obj1, obj2...]}
 Obj.query(gres, ...) -&gt; tbl(fields...)
 
 导出文件：
-Obj.query(fmt=csv/txt/excel, fname?...) -&gt; 文件内容</code></pre>
+Obj.query(fmt=csv/txt/excel, fname?...) -&gt; 文件内容
+
+批量更新：
+Obj.setIf(cond)(POST fields...)
+
+批量删除：
+Obj.delIf(cond)</code></pre>
 <p>缺省这些操作只对超级管理员角色开放，其他角色默认无权操作。超级管理员可对所有对象的所有字段操作。</p>
 <p>对象是否开放出来，或是开放哪些操作及字段，一般按用户角色进行权限控制，如用户登录后可操作某些对象，或员工登录后可操作另一些对象，请查阅设计文档中相应的专用接口定义。 在专用接口定义中应描述允许的角色、允许的操作类型(如只能get/set,不能add/del)、只读字段、隐藏字段等，以及应实现的业务逻辑。</p>
 <p>系统中的表设计(表名, 字段等)参见&quot;数据库设计&quot;章节. 一般表都设计为使用整形字段id作为主键. 该字段创建后变只读, 不允许被修改.</p>
