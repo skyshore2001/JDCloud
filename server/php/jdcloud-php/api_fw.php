@@ -696,7 +696,7 @@ class ApiLog
 		if (is_string($var)) {
 			$var = preg_replace('/\s+/', " ", $var);
 			if (strlen($var) > $maxLength)
-				$var = substr($var, 0, $maxLength) . "...";
+				$var = mb_substr($var, 0, $maxLength) . "...";
 			return $var;
 		}
 		if (is_scalar($var)) {
@@ -709,7 +709,7 @@ class ApiLog
 			$klen = strlen($k);
 			// 注意：有时raw http内容被误当作url-encoded编码，会导致所有内容成为key. 例如API upload.
 			if ($klen > $maxKeyLen)
-				return substr($k, 0, $maxKeyLen) . "...";
+				return mb_substr($k, 0, $maxKeyLen) . "...";
 			$len = strlen($s);
 			if ($len >= $maxLength) {
 				$s .= "$k=...";

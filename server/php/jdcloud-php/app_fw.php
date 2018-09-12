@@ -1896,6 +1896,7 @@ class AppFw_
 
 	static function init()
 	{
+		mb_internal_encoding("UTF-8");
 		self::initGlobal();
 		self::setupSession();
 	}
