@@ -1454,7 +1454,7 @@ class MyException extends LogicException
 	{
 		$str = "MyException({$this->code}): {$this->internalMsg}";
 		if ($this->getMessage() != null)
-			$str .= $this->getMessage();
+			$str = "Error: " . $this->getMessage() . " - " . $str;
 		return $str;
 	}
 }
