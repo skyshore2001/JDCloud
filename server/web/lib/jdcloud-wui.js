@@ -4124,6 +4124,7 @@ var m_batchMode = false; // 批量操作模式, 按住Ctrl键。
 
 mCommon.assert($.fn.combobox, "require jquery-easyui lib.");
 
+self.getRow = getRow;
 function getRow(jtbl)
 {
 	var row = jtbl.datagrid('getSelected');   
