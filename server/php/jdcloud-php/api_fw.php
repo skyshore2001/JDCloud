@@ -750,9 +750,9 @@ class ApiLog
 		if (! (is_int($userId) || ctype_digit($userId)))
 			$userId = 'NULL';
 		$content = $this->myVarExport($_GET, 2000);
-		$ct = $_SERVER["HTTP_CONTENT_TYPE"];
+		$ct = getContentType();
 		if (! preg_match('/x-www-form-urlencoded|form-data/i', $ct)) {
-			$post = file_get_contents("php://input");
+			$post = getHttpInput();
 			$content2 = $this->myVarExport($post, 2000);
 		}
 		else {
@@ -1089,6 +1089,33 @@ function api_initClient()
 	return $ret;
 }
 
+function getContentType()
+{
+	static $ct;
+	if ($ct == null) {
+		$ct = @$_SERVER["HTTP_CONTENT_TYPE"] ?: $_SERVER["CONTENT_TYPE"];
+	}
+	return $ct;
+}
+
+function getHttpInput()
+{
+	static $content;
+	if ($content == null) {
+		$ct = getContentType();
+		$content = file_get_contents("php://input");
+		if (preg_match('/charset=([\w-]+)/i', $ct, $ms)) {
+			$charset = strtolower($ms[1]);
+			if ($charset != "utf-8") {
+				@$content = iconv($charset, "utf-8", $content);
+			}
+			if ($content === false)
+				throw new MyException(E_PARAM, "unknown encoding $charset");
+		}
+	}
+	return $content;
+}
+
 // ====== main routine {{{
 function apiMain()
 {
@@ -1103,9 +1130,9 @@ function apiMain()
 
 	$supportJson = function () {
 		// 支持POST为json格式
-		$ct = @$_SERVER["HTTP_CONTENT_TYPE"] ?: $_SERVER["CONTENT_TYPE"];
+		$ct = getContentType();
 		if (strstr($ct, "/json") !== false) {
-			$content = file_get_contents("php://input");
+			$content = getHttpInput();
 			if (preg_match('/charset=([\w-]+)/i', $ct, $ms)) {
 				$charset = strtolower($ms[1]);
 				if ($charset != "utf-8") {
