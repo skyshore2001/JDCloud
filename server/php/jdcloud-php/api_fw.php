@@ -1133,14 +1133,6 @@ function apiMain()
 		$ct = getContentType();
 		if (strstr($ct, "/json") !== false) {
 			$content = getHttpInput();
-			if (preg_match('/charset=([\w-]+)/i', $ct, $ms)) {
-				$charset = strtolower($ms[1]);
-				if ($charset != "utf-8") {
-					@$content = iconv($charset, "utf-8", $content);
-				}
-				if ($content === false)
-					throw new MyException(E_PARAM, "unknown encoding $charset");
-			}
 			@$arr = json_decode($content, true);
 			if (!is_array($arr))
 				throw new MyException(E_PARAM, "bad json-format body");
