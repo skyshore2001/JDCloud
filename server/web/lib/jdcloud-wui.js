@@ -4787,7 +4787,7 @@ $(document).keydown(function (e) {
 		m_batchMode = true;
 		setTimeout(function () {
 			m_batchMode = false;
-		},2000);
+		},200);
 	}
 });
 
