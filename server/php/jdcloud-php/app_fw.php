@@ -821,6 +821,7 @@ function Q($s, $dbh = null)
 {
 	if ($s === null)
 		return "null";
+	$s = str_replace("\\", "\\\\", $s);
 	return "'" . str_replace("'", "\\'", $s) . "'";
 	//return $dbh->quote($s);
 }
