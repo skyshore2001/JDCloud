@@ -1,3 +1,13 @@
+## 升级到v5.2
+
+要求开启php_mbstring模块:
+
+	yum install php-mbstring
+
+php-for-windows版本请检查php.ini中开启了该模块：
+
+	extension=php_mbstring.dll
+
 ## 升级到v5.1
 
 ### WeUI库升级到1.x
