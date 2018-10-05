@@ -5380,6 +5380,28 @@ window.g_data = {}; // {userInfo, serverRev?, initClient?, testMode?, mockMode?}
 @var options.disableFastClick?=false
 
 在IOS+cordova环境下，点击事件会有300ms延迟，默认会加载lib/fastclick.min.js解决。
+
+@var options.onAutoLogin 自动登录
+
+设置如何自动登录系统，进入应用后，一般会调用tryAutoLogin，其中会先尝试重用已有会话，如果当前没有会话则回调onAutoLogin自动登录系统。
+返回true则跳过后面系统默认的登录过程，包括使用本地保存的token自动登录以及调用login接口。
+
+一般用于微信认证后绑定用户身份，示例：
+
+	$.extend(MUI.options, {
+		...
+		onAutoLogin: onAutoLogin
+	});
+
+	function onAutoLogin()
+	{
+		// 发起微信认证
+		var param = {state: location.href};
+		location.href = "../weixin/auth.php?" + $.param(param);
+		// 修改了URL后直接跳出即可。不用返回true
+		MUI.app_abort();
+	}
+
 */
 	var m_opt = self.options = {
 		appName: "user",
@@ -5787,6 +5809,10 @@ function tryAutoLogin(onHandleLogin, reuseCmd, allowNoLogin)
 	}
 	if (ok)
 		return ok;
+	if ($.isFunction(self.options.onAutoLogin)) {
+		if (self.options.onAutoLogin() === true)
+			return true;
+	}
 
 	// then use "login(token)"
 	var token = loadLoginToken();
