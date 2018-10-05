@@ -1107,7 +1107,7 @@ function getHttpInput()
 		if (preg_match('/charset=([\w-]+)/i', $ct, $ms)) {
 			$charset = strtolower($ms[1]);
 			if ($charset != "utf-8") {
-				@$content = iconv($charset, "utf-8", $content);
+				@$content = iconv($charset, "utf-8//TRANSLIT", $content);
 			}
 			if ($content === false)
 				throw new MyException(E_PARAM, "unknown encoding $charset");

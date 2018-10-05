@@ -487,7 +487,7 @@ class UpgHelper
 			$fi = new SplFileInfo($files[$i]);
 			$file = $fi->getRealPath();
 
-			//$file = iconv("utf-8", "gbk", $METAFILE); // for OS windows
+			//$file = iconv("utf-8", "gbk//TRANSLIT", $METAFILE); // for OS windows
 			$fd = fopen($file, "r");
 			if ($fd === false)
 				throw new Exception("*** cannot read meta file $file");

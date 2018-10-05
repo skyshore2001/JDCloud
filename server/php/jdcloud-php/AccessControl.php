@@ -1776,7 +1776,7 @@ function KVtoCond($k, $v)
 			if (is_array($e))
 				$e = self::array2Str($e);
 			if ($enc) {
-				$e = iconv("UTF-8", "{$enc}//IGNORE" , (string)$e);
+				$e = iconv("UTF-8", "{$enc}//TRANSLIT" , (string)$e);
 
 				// Excel使用本地编码(gb18030)
 				// 大数字，避免excel用科学计数法显示（从11位手机号开始）。
