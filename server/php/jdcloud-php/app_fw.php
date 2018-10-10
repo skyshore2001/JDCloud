@@ -1217,7 +1217,7 @@ function isHttps()
 例如 http://myserver.com/8081/myapp/api.php 被代理到 http://localhost:8081/myapp/api.php
 getBaseUrl()默认返回 "http://myserver.com/myapp/" 是错误的，可以设置P_BASE_URL解决：
 
-	putenv("P_URL_PATH=http://myserver.com/8081/myapp/");
+	putenv("P_BASE_URL=http://myserver.com/8081/myapp/");
 
 这样getBaseUrl()可返回该值。
 
@@ -1841,6 +1841,7 @@ class AppFw_
 				header('Access-Control-Allow-Origin: ' . $origin);
 				header('Access-Control-Allow-Credentials: true');
 				header('Access-Control-Allow-Headers: Content-Type');
+				header('Access-Control-Expose-Headers: X-Daca-Server-Rev, X-Daca-Test-Mode, X-Daca-Mock-Mode');
 			}
 		}
 

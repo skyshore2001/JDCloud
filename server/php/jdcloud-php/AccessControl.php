@@ -1067,6 +1067,12 @@ class AccessControl
 		}
 	}
 
+关于fixUserQuery=true:
+
+默认后端可以添加任何形式的SQL条件，但是如果其中含有虚拟字段，如果它尚未加到res查询结果中时，查询就会出错（无法识别这个字段）。
+设置fixUserQuery=true后，就会将该条件当作用户查询(UserQuery)来处理，即相当于query接口传入的cond字段，其中的虚拟字段会自动处理避免出错。
+但用户查询条件是受限的，比如不允许各种子查询，也不允许使用各种SQL函数（count/sum等少量聚合函数除外）。
+
 @see AccessControl::addRes
 @see AccessControl::addJoin
  */

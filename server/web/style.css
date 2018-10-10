@@ -58,6 +58,10 @@ input:disabled,select:disabled,textarea:disabled {
 	background-color: #fff3f3;
 	color: #000;
 }
+.validatebox-invalid {
+	border-color: #ffa8a8 !important;
+}
+
 .window .window-header {
 	padding:6px 0;
 }
