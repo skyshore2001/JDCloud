@@ -465,6 +465,7 @@ function setRet($code, $data = null, $internalMsg = null)
 根据全局变量"SERVER_REV"或应用根目录下的文件"revision.txt"， 来设置HTTP响应头"X-Daca-Server-Rev"表示服务端版本信息（最多6位）。
 
 客户端框架可本地缓存该版本信息，一旦发现不一致，可刷新应用。
+服务器可使用$GLOBALS["SERVER_REV"]来取服务端版本号（6位）。
  */
 function setServerRev()
 {
@@ -472,6 +473,7 @@ function setServerRev()
 	if (! $ver)
 		return;
 	$ver = substr($ver, 0, 6);
+	$GLOBALS["SERVER_REV"] = $ver;
 	header("X-Daca-Server-Rev: {$ver}");
 }
 
@@ -765,10 +767,19 @@ class ApiLog
 		$ua = $_SERVER["HTTP_USER_AGENT"];
 		$ver = getClientVersion();
 
-		$sql = sprintf("INSERT INTO ApiLog (tm, addr, ua, app, ses, userId, ac, req, reqsz, ver) VALUES ('%s', %s, %s, %s, %s, $userId, %s, %s, $reqsz, %s)", 
-			date(FMT_DT), Q($remoteAddr), Q($ua), Q($APP), Q(session_id()), Q($this->ac), Q($content), Q($ver["str"])
-		);
-		$this->id = execOne($sql, true);
+		$this->id = dbInsert("ApiLog", [
+			"tm" => date(FMT_DT),
+			"addr" => $remoteAddr,
+			"ua" => $ua,
+			"app" => $APP,
+			"ses" => session_id(),
+			"userId" => $userId,
+			"ac" => $this->ac,
+			"req" => $content,
+			"reqsz" => $reqsz,
+			"ver" => $ver["str"],
+			"serverRev" => $GLOBALS["SERVER_REV"]
+		]);
 		self::$lastId = $this->id;
 // 		$logStr = "=== [" . date("Y-m-d H:i:s") . "] id={$this->logId} from=$remoteAddr ses=" . session_id() . " app=$APP user=$userId ac=$ac >>>$content<<<\n";
 	}
@@ -785,12 +796,17 @@ class ApiLog
 			$X_RET_STR = json_encode($X_RET, $GLOBALS["JSON_FLAG"]);
 		$content = $this->myVarExport($X_RET_STR);
 
-		$userIdStr = "";
+		$userId = null;
 		if ($this->ac == 'login' && is_array($X_RET[1]) && @$X_RET[1]['id']) {
-			$userIdStr = ", userId={$X_RET[1]['id']}";
+			$userId = $X_RET[1]['id'];
 		}
-		$sql = sprintf("UPDATE ApiLog SET t=$iv, retval=%d, ressz=%d, res=%s {$userIdStr} WHERE id={$this->id}", $X_RET[0], strlen($X_RET_STR), Q($content));
-		$rv = execOne($sql);
+		$rv = dbUpdate("ApiLog", [
+			"t" => $iv,
+			"retval" => $X_RET[0],
+			"ressz" => strlen($X_RET_STR),
+			"res" => $content,
+			"userId" => $userId
+		], $this->id);
 // 		$logStr = "=== id={$this->logId} t={$iv} >>>$content<<<\n";
 	}
 }

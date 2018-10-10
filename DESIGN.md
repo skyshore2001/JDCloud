@@ -111,7 +111,7 @@ empId
 
 **[API调用日志]**
 
-@ApiLog: id, tm, addr, ua(l), app, ses, userId, ac, t&, retval&, req(t), res(t), reqsz&, ressz&, ver
+@ApiLog: id, tm, addr, ua(l), app, ses, userId, ac, t&, retval&, req(t), res(t), reqsz&, ressz&, ver, serverRev(10)
 
 app
 : "user"|"emp"|"store"...
