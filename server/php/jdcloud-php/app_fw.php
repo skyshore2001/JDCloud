@@ -1274,7 +1274,7 @@ function logit($s, $addHeader=true, $type="trace")
 	}
 	if ($addHeader) {
 		$remoteAddr = @$_SERVER['REMOTE_ADDR'] ?: 'unknown';
-		$s = "=== REQ from [$remoteAddr] at [".strftime("%Y/%m/%d %H:%M:%S",time())."]\n" . $s . "\n";
+		$s = "=== REQ from [$remoteAddr] at [".strftime("%Y/%m/%d %H:%M:%S",time())."] " . $s . "\n";
 	}
 	else {
 		$s .= "\n";

@@ -2,8 +2,8 @@
 header("Cache-Control: no-cache");
 header("Content-Type: text/html; charset=UTF-8");
 
-$F = @$_GET["f"] ?: "ext";
-$F = "../{$F}.log";
+$F0 = @$_GET["f"] ?: "ext";
+$F = "../{$F0}.log";
 $MAX_READ_SZ = @intval($_GET["sz"])?:5000;
 
 $msgs = [];
@@ -45,6 +45,9 @@ loadMsgs();
 <html>
 <body>
 <style>
+xmp {
+  overflow: auto;
+}
 </style>
 
 <h2>查看日志</h2>
