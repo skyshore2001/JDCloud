@@ -194,6 +194,12 @@ postParams可以是一个kv数组或字符串，也可以是一个文件名(以"
 如果CURL返回错误，可在此查阅错误码：
 http://curl.haxx.se/libcurl/c/libcurl-errors.html
 
+出错及慢调用会记录到日志中，以下环境变量可控制日志记录：
+
+	# 默认情况下：日志记录到trace.log中，记录超过1s的慢调用
+	P_SLOW_CALL_LOG=trace
+	P_SLOW_CALL_VAL=1
+
 @see makeUrl
 */
 function httpCall($url, $postParams=null, $opt=[])
@@ -237,16 +243,25 @@ function httpCall($url, $postParams=null, $opt=[])
 		curl_setopt($h, CURLOPT_POST, true);
 		curl_setopt($h, CURLOPT_POSTFIELDS, $data);
 	}
+	$t0 = microtime(true);
 	$content = curl_exec($h);
+	$tv = round(microtime(true) - $t0, 2);
 // 	$status = curl_getinfo($h);
 // 	if (intval($status["http_code"]) != 200)
 // 		return false;
+	$slowLogFile = getenv("P_SLOW_CALL_LOG") ?: "trace";
 	if (! $content)
 	{
 		$errno = curl_errno($h);
 		curl_close($h);
-		throw new MyException(E_SERVER, "curl fail to connect $url, errcode=$errno");
+		logit("httpCall error $errno: time={$tv}s, url=$url", true, $slowLogFile);
+		throw new MyException(E_SERVER, "curl fail to connect $url, errcode=$errno, time={$tv}s");
 		// echo "<a href='http://curl.haxx.se/libcurl/c/libcurl-errors.html'>错误原因查询</a></br>";
+	}
+	// slow log
+	$slowVal = getenv("P_SLOW_CALL_VAL") ?: 1;
+	if ($tv > $slowVal) {
+		logit("httpCall slow call: time={$tv}s, url=$url", true, $slowLogFile);
 	}
 	curl_close($h);
 	return $content;
