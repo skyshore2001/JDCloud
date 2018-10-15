@@ -1,12 +1,26 @@
 ## 升级到v5.2
 
-要求开启php_mbstring模块:
+### 要求开启php_mbstring模块
 
 	yum install php-mbstring
 
 php-for-windows版本请检查php.ini中开启了该模块：
 
 	extension=php_mbstring.dll
+
+### dbInsert/dbUpdate中支持SQL表达式的写法调整
+
+原写法：
+
+	dbInsert("MyLog", [ "tm"=>"=NOW()" ]);
+	dbUpdate("MyLog", [ "tm"=>"=NOW()" ], 1001);
+
+新写法：
+
+	dbInsert("MyLog", [ "tm"=>["NOW()"] ]);
+	dbUpdate("MyLog", [ "tm"=>["NOW()"] ], 1001);
+
+这是为了避免用户输入等号造成错误处理。
 
 ## 升级到v5.1
 

@@ -984,7 +984,7 @@ e.g.
 
 	$orderId = dbInsert("Ordr", [
 		"tm" => date(FMT_DT),
-		"tm1" => "=now()", // "="开头，表示是SQL表达式
+		"tm1" => ["now()"], // 使用数组，表示是SQL表达式
 		"amount" => 100,
 		"dscr" => null // null字段会被忽略
 	]);
@@ -1014,8 +1014,9 @@ function dbInsert($table, $kv)
 			$values .= ", ";
 		}
 		$keys .= $k;
-		if (is_string($v) && $v[0] === '=') {
-			$values .= substr($v, 1);
+		if (is_array($v)) { // 直接传SQL表达式
+			assert(count($v)>0);
+			$values .= $v[0];
 		}
 		else {
 			$values .= Q(htmlEscape($v));
@@ -1129,7 +1130,7 @@ e.g.
 
 	// UPDATE Ordr SET tm=now() WHERE tm IS NULL
 	$cnt = dbUpdate("Ordr", [
-		"tm" => "=now()"  // "="开头，表示是SQL表达式
+		"tm" => ["now()"]  // 使用数组，表示是SQL表达式
 	], "tm IS NULL);
 
 */
@@ -1155,10 +1156,12 @@ function dbUpdate($table, $kv, $cond=null)
 		// 空串或null置空；empty设置空字符串
 		if ($v === "" || $v === "null")
 			$kvstr .= "$k=null";
-		else if (is_string($v) && $v[0] === '=')
-			$kvstr .= $k . $v;
 		else if ($v === "empty")
 			$kvstr .= "$k=''";
+		else if (is_array($v)) { // 直接传SQL表达式
+			assert(count($v)>0);
+			$kvstr .= $k . '=' . $v[0];
+		}
 		else if (startsWith($k, "flag_") || startsWith($k, "prop_"))
 		{
 			$kvstr .= flag_getExpForSet($k, $v);

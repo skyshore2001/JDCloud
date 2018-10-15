@@ -380,7 +380,7 @@ subobj: { name => {sql, default?=false, wantOne?=false, force?=false} }
 				dbInsert("OrderLog", [
 					"orderId" => $orderId,
 					"action" => "CR",
-					"tm" => date(FMT_DT)  // 或用mysql表达式"=now()"
+					"tm" => date(FMT_DT)  // 或用mysql表达式 ["now()"]
 				]);
 			};
 		}
