@@ -1034,12 +1034,12 @@ $file为插件主文件，可返回一个插件配置。如果未指定，则自
 
 function tableCRUD($ac1, $tbl, $asAdmin = false)
 {
-	$accessCtl = AccessControl::create($tbl, $asAdmin);
+	$accessCtl = AccessControl::create($tbl, $ac1, $asAdmin);
 	$fn = "api_" . $ac1;
 	//if (! method_exists($accessCtl, $fn))
 	if (! is_callable([$accessCtl, $fn]))
 		throw new MyException(E_PARAM, "Bad request - unknown `$tbl` method: `$ac1`", "接口不支持");
-	$accessCtl->before($ac1);
+	$accessCtl->before();
 	$ret = $accessCtl->$fn();
 	$accessCtl->after($ret);
 	return $ret;

@@ -521,12 +521,12 @@ TODO: 可加一个系统参数`_enc`表示输出编码的格式。
 
 作为比onHandleRow/onAfterActions等更易用的工具，enumFields可对返回字段做修正。例如，想要对返回的status字段做修正，如"CR"显示为"Created"，可设置：
 
-	$enumFields["status"] = ["CR"=>"Created", "CA"=>"Cancelled"];
+	$this->enumFields["status"] = ["CR"=>"Created", "CA"=>"Cancelled"];
 
 也可以设置为自定义函数，如：
 
 	$map = ["CR"=>"Created", "CA"=>"Cancelled"];
-	$enumFields["status"] = function($v) use ($map) {
+	$this->enumFields["status"] = function($v) use ($map) {
 		if (array_key_exists($v, $map))
 			return $v . "-" . $map[$v];
 		return $v;
@@ -540,6 +540,33 @@ TODO: 可加一个系统参数`_enc`表示输出编码的格式。
 
 (版本5.1)
 设置enumFields也支持逗号分隔的枚举列表，比如字段值为"CR,CA"，实际可返回"Created,Cancelled"。
+
+(v5.2) 导出文件时，处理字段格式
+
+在导出报表时，常常需要处理字段格式，例如，虚拟子表字段inv定义为：`[{itemId,qty,itemName}]`
+
+	protected $subobj = [
+		"inv" => ["sql"=>"SELECT itemId,qty,i.name itemName FROM Inv LEFT JOIN Item i ON i.id=Inv.itemId WHERE couponId=%d"]
+	];
+
+默认导出文件时值会处理成 "1000:1.00:商品1,1001:2.00:商品2" 这种格式，现在希望导出格式如"商品1,商品2(2件)"，可处理该字段如下：
+(写在onQuery或onInit回调中均可)
+
+	protected function onQuery() {
+		if ($this->isFileExport()) {
+			$this->enumFields["inv"] = function($v) {
+				if (is_array($v)) {
+					$v = join(',', array_map(function ($e) {
+						if ($e['qty'] != 1.0)
+							return $e['itemName'] . '(' . doubleval($e['qty']) . '件)';
+						else
+							return $e['itemName'];
+					}, $v));
+				}
+				return $v;
+			};
+		}
+	}
 
 ## 批量更新(setIf)和批量删除(delIf)
 
@@ -587,6 +614,7 @@ class AccessControl
 	# for get/query
 	protected $hiddenFields = [];
 	protected $enumFields = []; // elem: {field => {key=>val}} 或 {field => fn(val)}，与onHandleRow类似地去修改数据。
+	protected $aliasMap = []; // { col => alias}
 	# for query
 	protected $defaultRes = "t0.*"; // 缺省为 "t0.*" 加  default=true的虚拟字段
 	protected $defaultSort = "t0.id";
@@ -612,7 +640,7 @@ class AccessControl
 	// 在add后自动设置; 在get/set/del操作调用onValidateId后设置。
 	protected $id;
 
-	static function create($tbl, $asAdmin = false) 
+	static function create($tbl, $ac, $asAdmin = false) 
 	{
 		/*
 		if (!hasPerm(AUTH_USER | AUTH_EMP))
@@ -646,10 +674,16 @@ class AccessControl
 			throw new MyException($noauth? E_NOAUTH: E_FORBIDDEN, "Operation is not allowed for current user on object `$tbl`");
 		}
 		$x = new $cls;
-		$x->onInit();
-		if (is_null($x->table))
-			$x->table = $tbl;
+		$x->init($tbl, $ac);
 		return $x;
+	}
+
+	function init($tbl, $ac)
+	{
+		if (is_null($this->table))
+			$this->table = $tbl;
+		$this->ac = $ac;
+		$this->onInit();
 	}
 
 	/*
@@ -807,12 +841,12 @@ class AccessControl
 		$this->onValidate();
 	}
 
-	final function before($ac)
+	final function before()
 	{
+		$ac = $this->ac;
 		if (isset($this->allowedAc) && in_array($ac, self::$stdAc) && !in_array($ac, $this->allowedAc)) {
 			throw new MyException(E_FORBIDDEN, "Operation `$ac` is not allowed on object `$this->table`");
 		}
-		$this->ac = $ac;
 	}
 
 	private $afterIsCalled = false;
@@ -852,6 +886,9 @@ class AccessControl
 
 		$SEP = ',';
 		foreach ($this->enumFields as $field=>$map) {
+			if (array_key_exists($field, $this->aliasMap)) {
+				$field = $this->aliasMap[$field];
+			}
 			if (array_key_exists($field, $rowData)) {
 				$v = $rowData[$field];
 				if (is_callable($map)) {
@@ -917,12 +954,12 @@ class AccessControl
 	{
 		// support enum
 		$a = explode('=', $alias, 2);
-		if (count($a) != 2)
-			return;
-
-		$alias = $a[0] ?: null;
-		$k = self::removeQuote($alias ?: $col);
-		$this->enumFields[$k] = parseKvList($a[1], ";", ":");
+		if (count($a) == 2) {
+			$this->enumFields[$col] = parseKvList($a[1], ";", ":");
+			$alias = $a[0] ?: null;
+		}
+		if ($alias)
+			$this->aliasMap[self::removeQuote($col)] = self::removeQuote($alias);
 	}
 
 	// return: new field list
@@ -1791,7 +1828,7 @@ function KVtoCond($k, $v)
 					$e .= "\t";
 				}
 			}
-			if (strpos($e, '"') !== false || strpos($e, "\n") !== false)
+			if (strpos($e, '"') !== false || strpos($e, "\n") !== false || strpos($e, ",") !== false)
 				echo '"', str_replace('"', '""', $e), '"';
 			else
 				echo $e;
@@ -1838,6 +1875,19 @@ function KVtoCond($k, $v)
 		}
 		if ($handled)
 			throw new DirectReturn();
+	}
+
+/**
+@fn AccessControl::isFileExport()
+
+返回是否为导出文件请求。
+*/
+	function isFileExport()
+	{
+		if ($this->ac != "query")
+			return false;
+		$fmt = param("fmt");
+		return $fmt != null && $fmt != 'list';
 	}
 }
 
