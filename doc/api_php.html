@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2018-07-19</div>
+<div>最后更新：2018-10-16</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -53,6 +53,7 @@ code {
 <div class="toc">
 <p><a href="#$APP">$APP (var)</a></p>
 <p><a href="#$BASE_DIR">$BASE_DIR (var)</a></p>
+<p><a href="#$X_RET_FN">$X_RET_FN (var)</a></p>
 <p><a href="#AC0_">AC0_ (key)</a></p>
 <p><a href="#AC1_">AC1_ (key)</a></p>
 <p><a href="#AC2_">AC2_ (key)</a></p>
@@ -80,6 +81,7 @@ code {
 <p><a href="#AccessControl::api_setIf">AccessControl::api_setIf (fn)</a></p>
 <p><a href="#AccessControl::checkSetFields">AccessControl::checkSetFields (fn)</a></p>
 <p><a href="#AccessControl::getMaxPageSz">AccessControl::getMaxPageSz (fn)</a></p>
+<p><a href="#AccessControl::isFileExport">AccessControl::isFileExport (fn)</a></p>
 <p><a href="#AccessControl::onAfter">AccessControl::onAfter (fn)</a></p>
 <p><a href="#AccessControl::onGenId">AccessControl::onGenId (fn)</a></p>
 <p><a href="#AccessControl::onHandleRow">AccessControl::onHandleRow (fn)</a></p>
@@ -120,6 +122,7 @@ code {
 <p><a href="#Plugins::exists">Plugins::exists (fn)</a></p>
 <p><a href="#Q">Q (fn)</a></p>
 <p><a href="#addLog">addLog (fn)</a></p>
+<p><a href="#addToStr">addToStr (fn)</a></p>
 <p><a href="#apiMain">apiMain (key)</a></p>
 <p><a href="#api_fw">api_fw (module)</a></p>
 <p><a href="#app_fw">app_fw (module)</a></p>
@@ -149,6 +152,7 @@ code {
 <p><a href="#isMockMode">isMockMode (fn)</a></p>
 <p><a href="#logext">logext (fn)</a></p>
 <p><a href="#logit">logit (fn)</a></p>
+<p><a href="#logit">logit (alias)</a></p>
 <p><a href="#makeUrl">makeUrl (fn)</a></p>
 <p><a href="#mparam">mparam (fn)</a></p>
 <p><a href="#myEncrypt">myEncrypt (fn)</a></p>
@@ -269,6 +273,10 @@ $GLOBALS["X_RET_STR"] = httpCall($url, $data, ["headers" =&gt; $headers]);
 $rv = httpCall($url, $data, ["curlOpt" =&gt; $curlOpt]);</code></pre>
 <p>如果CURL返回错误，可在此查阅错误码：<br />
 <a href="http://curl.haxx.se/libcurl/c/libcurl-errors.html">http://curl.haxx.se/libcurl/c/libcurl-errors.html</a></p>
+<p>出错及慢调用会记录到日志中，以下环境变量可控制日志记录：</p>
+<pre><code># 默认情况下：日志记录到trace.log中，记录超过1s的慢调用
+P_SLOW_CALL_LOG=trace
+P_SLOW_CALL_VAL=1</code></pre>
 <p class="see"><strong>@see <a href="#makeUrl">makeUrl</a></strong> </p></div>
 <div class="block">
 <h2 id="parseKvList">@fn parseKvList($kvListStr, $sep, $sep2)</h2>
@@ -313,6 +321,13 @@ $dbFields = [
         // 字段在两边都有
     }
 });</code></pre></div>
+<div class="block">
+<h2 id="addToStr">@fn addToStr(&$str, $str1, $sep=',')</h2>
+<p>添加字符串到str. str开始必须为null。</p>
+<pre><code>$atts = null;
+addToStr($atts, "100");
+addToStr($atts, "200");
+// $atts = "100,200"</code></pre></div>
 <div class="block">
 <h2 id="app_fw">@module app_fw</h2><div class="toc"><p style="margin-left:0em"><a href="#app_fw-1 通用函数">1 通用函数</a></p>
 <p style="margin-left:0em"><a href="#app_fw-2 初始化配置">2 初始化配置</a></p>
@@ -387,6 +402,11 @@ P_DB=../myorder.db</code></pre>
 <p class="key"><strong>@key <a id="P_SESSION_DIR">P_SESSION_DIR</a></strong>  ?= $BASE_DIR/session 环境变量，定义session文件存放路径。</p>
 <p class="key"><strong>@key <a id="P_URL_PATH">P_URL_PATH</a></strong>  环境变量。项目的URL路径，如"/jdcloud", 用于定义cookie生效的作用域，也用于拼接相对URL路径。</p>
 <p class="see"><strong>@see <a href="#getBaseUrl">getBaseUrl</a></strong> </p>
+<p>PHP默认的session过期时间为1440s(24分钟)，每次在使用session时，以1/1000的概率检查过期。<br />
+要配置它，可以应用程序的conf.user.php中设置，如：</p>
+<pre><code>ini_set("session.gc_maxlifetime", "2592000"); // 30天过期</code></pre>
+<p>测试时，想要到时间立即清除session，可以设置：</p>
+<pre><code>ini_set("session.gc_probability", "1000"); // 1000/1000概率做回收。每次访问都回收，性能差，仅用于测试。</code></pre>
 <h4 id="app_fw-6 应用框架">6 应用框架</h4>
 <p>继承AppBase类，可实现提供符合BQP协议接口的模块。<a href="#api_fw">api_fw</a>框架就是使用它的一个典型例子。</p>
 <p class="see"><strong>@see <a href="#AppBase">AppBase</a></strong> </p></div>
@@ -628,7 +648,7 @@ return objarr2table($rows);</code></pre>
 <p>e.g. </p>
 <pre><code>$orderId = dbInsert("Ordr", [
     "tm" =&gt; date(FMT_DT),
-    "tm1" =&gt; "=now()", // "="开头，表示是SQL表达式
+    "tm1" =&gt; ["now()"], // 使用数组，表示是SQL表达式
     "amount" =&gt; 100,
     "dscr" =&gt; null // null字段会被忽略
 ]);</code></pre>
@@ -664,7 +684,7 @@ $cnt = dbUpdate("Ordr", [
 
 // UPDATE Ordr SET tm=now() WHERE tm IS NULL
 $cnt = dbUpdate("Ordr", [
-    "tm" =&gt; "=now()"  // "="开头，表示是SQL表达式
+    "tm" =&gt; ["now()"]  // 使用数组，表示是SQL表达式
 ], "tm IS NULL);</code></pre></div>
 <div class="block">
 <h2 id="getBaseUrl">@fn getBaseUrl($wantHost = true)</h2>
@@ -678,11 +698,12 @@ getBaseUrl(false) -&gt; "/myapp/"</code></pre>
 <p>注意：如果使用了反向代理等机制，该函数往往无法返回正确的值。</p>
 <p>例如 <a href="http://myserver.com/8081/myapp/api.php">http://myserver.com/8081/myapp/api.php</a> 被代理到 <a href="http://localhost:8081/myapp/api.php">http://localhost:8081/myapp/api.php</a><br />
 getBaseUrl()默认返回 &quot;<a href="http://myserver.com/myapp/">http://myserver.com/myapp/</a>&quot; 是错误的，可以设置P_BASE_URL解决：</p>
-<pre><code>putenv("P_URL_PATH=http://myserver.com/8081/myapp/");</code></pre>
+<pre><code>putenv("P_BASE_URL=http://myserver.com/8081/myapp/");</code></pre>
 <p>这样getBaseUrl()可返回该值。</p>
 <p class="see"><strong>@see <a href="#$BASE_DIR">$BASE_DIR</a></strong> </p></div>
 <div class="block">
 <h2 id="logit">@fn logit($s, $addHeader=true, $type="trace")</h2>
+<p class="alias"><strong>@alias <a id="logit">logit</a></strong> ($s, $type)</p>
 <p>记录日志。</p>
 <p>默认到日志文件 $BASE_DIR/trace.log. 如果指定type=secure, 则写到 $BASE_DIR/secure.log.</p>
 <p>可通过在线日志工具 tool/log.php 来查看日志。也可直接打开日志文件查看。</p></div>
@@ -1105,6 +1126,32 @@ return [
 <p>交互接口应在插件设计文档(plugin/coupon/DESIGN.md)中定义原型。</p>
 <p>插件依赖的接口应定义CouponImp类来实现，一般放在文件 php/class/CouponImp.php中自动加载。</p></div>
 <div class="block">
+<h2 id="$X_RET_FN">@var $X_RET_FN</h2>
+<p>默认接口调用后输出筋斗云的<code>[0, data]</code>格式。<br />
+若想修改返回格式，可设置该回调函数。</p>
+<ul>
+<li>如果返回对象，则输出json格式。</li>
+<li>如果返回false，应自行用echo输出。注意API日志中仍记录筋斗云返回数据格式。</li>
+</ul>
+<p>示例：返回 <code>{code, data}</code>格式：</p>
+<pre><code>global $X_RET_FN;
+$X_RET_FN = function ($X_RET) {
+    $ret = [
+        "code" =&gt; $X_RET[0],
+        "data" =&gt; $X_RET[1]
+    ];
+    if ($GLOBALS["TEST_MODE"])
+        $ret["jdData"] = $X_RET;
+    return $ret;
+};</code></pre>
+<p>示例：返回xml格式：</p>
+<pre><code>global $X_RET_FN;
+$X_RET_FN = function ($X_RET) {
+    header("Content-Type: application/xml");
+    echo "&lt;xml&gt;&lt;code&gt;$X_RET[0]&lt;/code&gt;&lt;data&gt;$_RET[1]&lt;/data&gt;&lt;/xml&gt;";
+    return false;
+};</code></pre></div>
+<div class="block">
 <h2 id="setRet">@fn setRet($code, $data?, $internalMsg?)</h2>
 <p class="param"><strong>@param $code</strong>  Integer. 返回码, 0表示成功, 否则表示操作失败。</p>
 <p class="param"><strong>@param $data</strong>  返回数据。</p>
@@ -1123,12 +1170,14 @@ throw new DirectReturn();
 // 最终返回字符串为 [0, {"id":100, "name":"aaa"}]</code></pre>
 <p class="see"><strong>@see <a href="#$X_RET">$X_RET</a></strong> </p>
 <p class="see"><strong>@see <a href="#$X_RET_STR">$X_RET_STR</a></strong> </p>
+<p class="see"><strong>@see <a href="#$X_RET_FN">$X_RET_FN</a></strong> </p>
 <p class="see"><strong>@see <a href="#$errorFn">$errorFn</a></strong> </p>
 <p class="see"><strong>@see <a href="#errQuit">errQuit</a></strong> ()</p></div>
 <div class="block">
 <h2 id="setServerRev">@fn setServerRev()</h2>
 <p>根据全局变量&quot;SERVER_REV&quot;或应用根目录下的文件&quot;revision.txt&quot;， 来设置HTTP响应头&quot;X-Daca-Server-Rev&quot;表示服务端版本信息（最多6位）。</p>
-<p>客户端框架可本地缓存该版本信息，一旦发现不一致，可刷新应用。</p></div>
+<p>客户端框架可本地缓存该版本信息，一旦发现不一致，可刷新应用。<br />
+服务器可使用$GLOBALS[&quot;SERVER_REV&quot;]来取服务端版本号（6位）。</p></div>
 <div class="block">
 <h2 id="hasPerm">@fn hasPerm($perm)</h2>
 <p>检查权限。perm可以是单个权限或多个权限，例：</p>
@@ -1371,7 +1420,7 @@ Ordr.del(id=1)</code></pre>
 <p class="var"><strong>@var <a id="AccessControl::$requiredFields2">AccessControl::$requiredFields2</a></strong>  ?=[] (for set) 字段列表。更新时不允许设置空。</p>
 <p class="fn"><strong>@fn <a id="AccessControl::onQuery">AccessControl::onQuery</a></strong> () (for get/query)  用于对查询条件进行设定。</p>
 <p class="fn"><strong>@fn <a id="AccessControl::onValidate">AccessControl::onValidate</a></strong> ()  (for add/set). 验证添加和更新时的字段，或做自动补全(AutoComplete)工作。</p>
-<p class="fn"><strong>@fn <a id="AccessControl::onValidateId">AccessControl::onValidateId</a></strong> () (for get/set/del) 用于对id字段进行检查。比如在del时检查用户是否有权操作该记录。</p>
+<p class="fn"><strong>@fn <a id="AccessControl::onValidateId">AccessControl::onValidateId</a></strong> () (for get/set/del) 用于对id字段进行检查。比如在del时检查用户是否有权操作该记录。可在其中设置$this->id。</p>
 <p>上节例子中，用户可以操作系统的所有订单。</p>
 <p>现在我们到设计文档中，将接口API设计如下：</p>
 <pre><code>== 订单接口 ==
@@ -1607,7 +1656,7 @@ orderLog:: {id, tm, dscr, ..., empName} 订单日志子表。</code></pre>
             dbInsert("OrderLog", [
                 "orderId" =&gt; $orderId,
                 "action" =&gt; "CR",
-                "tm" =&gt; date(FMT_DT)  // 或用mysql表达式"=now()"
+                "tm" =&gt; date(FMT_DT)  // 或用mysql表达式 ["now()"]
             ]);
         };
     }
@@ -1636,13 +1685,13 @@ orderLog:: {id, tm, dscr, ..., empName} 订单日志子表。</code></pre>
 <p class="var"><strong>@var <a id="AccessControl::$defaultRes">AccessControl::$defaultRes</a></strong>  (for query)指定缺省输出字段列表. 如果不指定，则为 "t0.*" 加  default=true的虚拟字段</p>
 <h5 id="AccessControl-5.4 最大每页数据条数">5.4 最大每页数据条数</h5>
 <p class="fn"><strong>@fn <a id="AccessControl::getMaxPageSz">AccessControl::getMaxPageSz</a></strong> ()  (for query) 取最大每页数据条数。为非负整数。</p>
-<p class="var"><strong>@var <a id="AccessControl::$maxPageSz">AccessControl::$maxPageSz</a></strong>  ?= 100 (for query) 指定最大每页数据条数。值为负数表示取PAGE_SZ_LIMIT值.</p>
+<p class="var"><strong>@var <a id="AccessControl::$maxPageSz">AccessControl::$maxPageSz</a></strong>  ?= 1000 (for query) 指定最大每页数据条数。值为负数表示取PAGE_SZ_LIMIT值.</p>
 <p>前端通过 {obj}.query(pagesz)来指定每页返回多少条数据，缺省是20条，最高不可超过100条。当指定为负数时，表示按最大允许值=min($maxPageSz, PAGE_SZ_LIMIT)返回。<br />
 PAGE_SZ_LIMIT目前定为10000条。如果还不够，一定是应用设计有问题。</p>
 <p>如果想返回每页超过100条数据，必须在后端设置，如：</p>
 <pre><code>class MyObj extends AccessControl
 {
-    protected $maxPageSz = 1000; // 最大允许返回1000条
+    protected $maxPageSz = 2000; // 最大允许返回2000条
     // protected $maxPageSz = -1; // 最大允许返回 PAGE_SZ_LIMIT 条
 }</code></pre>
 <p class="var"><strong>@var <a id="PAGE_SZ_LIMIT">PAGE_SZ_LIMIT</a></strong>  =10000</p>
@@ -1709,10 +1758,10 @@ ORDER BY t0.id DESC</code></pre>
 <p>(版本5.0)</p>
 <p class="var"><strong>@var <a id="AccessControl::$enumFields">AccessControl::$enumFields</a></strong>  {field => map/fn($val) }支持处理枚举字段，或自定义处理。</p>
 <p>作为比onHandleRow/onAfterActions等更易用的工具，enumFields可对返回字段做修正。例如，想要对返回的status字段做修正，如&quot;CR&quot;显示为&quot;Created&quot;，可设置：</p>
-<pre><code>$enumFields["status"] = ["CR"=&gt;"Created", "CA"=&gt;"Cancelled"];</code></pre>
+<pre><code>$this-&gt;enumFields["status"] = ["CR"=&gt;"Created", "CA"=&gt;"Cancelled"];</code></pre>
 <p>也可以设置为自定义函数，如：</p>
 <pre><code>$map = ["CR"=&gt;"Created", "CA"=&gt;"Cancelled"];
-$enumFields["status"] = function($v) use ($map) {
+$this-&gt;enumFields["status"] = function($v) use ($map) {
     if (array_key_exists($v, $map))
         return $v . "-" . $map[$v];
     return $v;
@@ -1723,6 +1772,28 @@ $enumFields["status"] = function($v) use ($map) {
 Ordr.query(res="id 编号, status 状态=CR:Created;CA:Cancelled")</code></pre>
 <p>(版本5.1)<br />
 设置enumFields也支持逗号分隔的枚举列表，比如字段值为&quot;CR,CA&quot;，实际可返回&quot;Created,Cancelled&quot;。</p>
+<p>(v5.2) 导出文件时，处理字段格式</p>
+<p>在导出报表时，常常需要处理字段格式，例如，虚拟子表字段inv定义为：<code>[{itemId,qty,itemName}]</code></p>
+<pre><code>protected $subobj = [
+    "inv" =&gt; ["sql"=&gt;"SELECT itemId,qty,i.name itemName FROM Inv LEFT JOIN Item i ON i.id=Inv.itemId WHERE couponId=%d"]
+];</code></pre>
+<p>默认导出文件时值会处理成 &quot;1000:1.00:商品1,1001:2.00:商品2&quot; 这种格式，现在希望导出格式如&quot;商品1,商品2(2件)&quot;，可处理该字段如下：<br />
+(写在onQuery或onInit回调中均可)</p>
+<pre><code>protected function onQuery() {
+    if ($this-&gt;isFileExport()) {
+        $this-&gt;enumFields["inv"] = function($v) {
+            if (is_array($v)) {
+                $v = join(',', array_map(function ($e) {
+                    if ($e['qty'] != 1.0)
+                        return $e['itemName'] . '(' . doubleval($e['qty']) . '件)';
+                    else
+                        return $e['itemName'];
+                }, $v));
+            }
+            return $v;
+        };
+    }
+}</code></pre>
 <h4 id="AccessControl-6 批量更新(setIf)和批量删除(delIf)">6 批量更新(setIf)和批量删除(delIf)</h4>
 <p>(v5.1) 以Ordr对象为例，要支持根据条件批量更新或删除：</p>
 <pre><code>Ordr.setIf(cond)(field1=value1, field2=value2, ...)
@@ -1754,8 +1825,9 @@ Ordr.delIf(cond)</code></pre>
 <p class="see"><strong>@see <a href="#AccessControl::addCond">AccessControl::addCond</a></strong>  其中有示例</p>
 <p class="see"><strong>@see <a href="#AccessControl::addVCol">AccessControl::addVCol</a></strong>  添加已定义的虚拟列。</p></div>
 <div class="block">
-<h2 id="AccessControl::addCond">@fn AccessControl::addCond($cond, $prepend=false)</h2>
+<h2 id="AccessControl::addCond">@fn AccessControl::addCond($cond, $prepend=false, $fixUserQuery=false)</h2>
 <p class="param"><strong>@param $prepend</strong>  为true时将条件排到前面。</p>
+<p class="param"><strong>@param $fixUserQuery</strong>  设置为true，用于自动处理虚拟字段，这时不允许复杂查询。</p>
 <p>调用多次addCond时，多个条件会依次用&quot;AND&quot;连接起来。</p>
 <p>添加查询条件。<br />
 示例：假如设计有接口：</p>
@@ -1777,6 +1849,10 @@ q:: 查询条件，值为"paid"时，查询10天内已付款的订单。且结�
         $this-&gt;addCond("olpay.action='PA' AND olpay.tm&gt;'$validDate'");
     }
 }</code></pre>
+<p>关于fixUserQuery=true:</p>
+<p>默认后端可以添加任何形式的SQL条件，但是如果其中含有虚拟字段，如果它尚未加到res查询结果中时，查询就会出错（无法识别这个字段）。<br />
+设置fixUserQuery=true后，就会将该条件当作用户查询(UserQuery)来处理，即相当于query接口传入的cond字段，其中的虚拟字段会自动处理避免出错。<br />
+但用户查询条件是受限的，比如不允许各种子查询，也不允许使用各种SQL函数（count/sum等少量聚合函数除外）。</p>
 <p class="see"><strong>@see <a href="#AccessControl::addRes">AccessControl::addRes</a></strong> </p>
 <p class="see"><strong>@see <a href="#AccessControl::addJoin">AccessControl::addJoin</a></strong> </p></div>
 <div class="block">
@@ -1827,6 +1903,9 @@ $this-&gt;checkSetFields([&quot;status&quot;, &quot;cmt&quot;]);<br />
         return parent::api_delIf();
     }
 }</code></pre></div>
+<div class="block">
+<h2 id="AccessControl::isFileExport">@fn AccessControl::isFileExport()</h2>
+<p>返回是否为导出文件请求。</p></div>
 <div style="text-align:center">Generated by jdcloud-gendoc</div>
 </body>
 

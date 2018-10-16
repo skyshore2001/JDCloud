@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2018-07-02</div>
+<div>最后更新：2018-10-16</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -56,6 +56,7 @@ code {
 <p><a href="#.notForFind">.notForFind (key)</a></p>
 <p><a href="#.wui-dialog">.wui-dialog (key)</a></p>
 <p><a href="#.wui-find-field">.wui-find-field (key)</a></p>
+<p><a href="#.wui-form-table">.wui-form-table (key)</a></p>
 <p><a href="#.wui-notCond">.wui-notCond (key)</a></p>
 <p><a href="#.wui-page">.wui-page (key)</a></p>
 <p><a href="#.wui-readonly">.wui-readonly (key)</a></p>
@@ -226,6 +227,7 @@ code {
 <p style="margin-left:4em"><a href="#WUI-1.6.3 picId字段显示图片">1.6.3 picId字段显示图片</a></p>
 <p style="margin-left:4em"><a href="#WUI-1.6.4 List字段显示为多个选项框">1.6.4 List字段显示为多个选项框</a></p>
 <p style="margin-left:2em"><a href="#WUI-1.7 设计模式：展示层次对象">1.7 设计模式：展示层次对象</a></p>
+<p style="margin-left:2em"><a href="#WUI-1.8 设计模式：页面间调用">1.8 设计模式：页面间调用</a></p>
 <p style="margin-left:0em"><a href="#WUI-2 对话框功能">2 对话框功能</a></p>
 <p style="margin-left:2em"><a href="#WUI-2.1 定义对话框">2.1 定义对话框</a></p>
 <p style="margin-left:2em"><a href="#WUI-2.2 显示对话框">2.2 显示对话框</a></p>
@@ -233,6 +235,7 @@ code {
 <p style="margin-left:2em"><a href="#WUI-2.4 示例：页面与对话框复用 (v5.1)">2.4 示例：页面与对话框复用 (v5.1)</a></p>
 <p style="margin-left:2em"><a href="#WUI-2.5 只读对话框">2.5 只读对话框</a></p>
 <p style="margin-left:0em"><a href="#WUI-3 模块化开发">3 模块化开发</a></p>
+<p style="margin-left:2em"><a href="#WUI-3.1 批量更新、批量删除">3.1 批量更新、批量删除</a></p>
 <p style="margin-left:2em"><a href="#WUI-3.1 页面模板支持">3.1 页面模板支持</a></p>
 <p style="margin-left:0em"><a href="#WUI-4 参考文档说明">4 参考文档说明</a></p>
 </div>
@@ -332,8 +335,10 @@ code {
 
     // 当天订单
     var query1 = {cond: "createTm between '" + new Date().format("D") + "' and '" + new Date().addDay(1).format("D") + "'"};
+    // var query1 = WUI.getQueryParam({createTm: new Date().format("D") + "~" + new Date().addDay(1).format("D")});
     // 显示待服务/正在服务订单
     var query2 = {cond: "status='CR' OR status='PA' OR status='ST'"};
+    // var query2 = WUI.getQueryParam({status: "CR,PA,ST"});
 
     function getTodoOrders()
     {
@@ -578,6 +583,7 @@ var OrderColumns = {
 <p class="see"><strong>@see <a href="#dg_toolbar">dg_toolbar</a></strong>  指定列表上的操作按钮</p>
 <p class="see"><strong>@see <a href="#getExportHandler">getExportHandler</a></strong>  自定义导出Excel功能</p>
 <p class="see"><strong>@see <a href="#getQueryParamFromTable">getQueryParamFromTable</a></strong>  根据当前datagrid状态取query接口参数</p>
+<p>HINT: 点“导出”时会直接下载文件，看不到请求和调用过程，如果需要调试导出功能，可在控制台中设置  window.open=$.get 即可在chrome中查看请求响应过程。</p>
 <h6 id="WUI-1.5.4 datagrid增强项">1.5.4 datagrid增强项</h6>
 <p>easyui-datagrid已适配筋斗云协议调用，底层将发起callSvr调用请求（参考dgLoader）。<br />
 此外，增加支持<code>url_</code>属性，以便初始化时不发起调用，直到调用&quot;load&quot;/&quot;reload&quot;方法时才发起调用：</p>
@@ -657,7 +663,7 @@ function initPageStore()
         // 要使每个商户都打开一个商品页面而不是共享一个页面，必须保证第二个参数（页面标题）根据商户不同而不一样。
         // 第三个参数是传给该页面初始化函数的参数列表，是一个数组。
     }
-    var btn1 = {text: "查看商品", iconCls: "icon-search", handler: showPageCloseOrder};
+    var btn1 = {text: "查看商品", iconCls: "icon-search", handler: showItemPage};
 
     ...
     jtbl.datagrid({
@@ -682,6 +688,71 @@ function initPageItem(storeId)
 在商品页面初始化时，第三参数将传递给初始化函数：</p>
 <pre><code>function initPageItem(storeId) // storeId=row.id</code></pre>
 <p class="see"><strong>@see <a href="#showPage">showPage</a></strong> </p>
+<h5 id="WUI-1.8 设计模式：页面间调用">1.8 设计模式：页面间调用</h5>
+<p>仍以上节数据结构为例，上节是在每个商品行上点“查看商品”，就打开一个新的该商户下的商品列表页，<br />
+现在我们换一种操作方法，改成只用一个商品列表页（默认打开时显示所有商户的商品，可以手工查找过滤），在商户页中点“查看商品”，就自动打开商品列表页并做条件过滤。</p>
+<p>先在主页面逻辑中为商品页定义一个接口：（比如在store.js中）</p>
+<pre><code>var PageItem = {
+    // param?: {storeId}
+    show: function (param) {
+        this.filterParam_ = param;
+        WUI.showPage("pageItem");
+    },
+    filterParam_: null
+};</code></pre>
+<p>在商户页中，点击“查看商品”按钮时做过滤：</p>
+<pre><code>function initPageStore()
+{
+    function showItemPage()
+    {
+        var row = jtbl.datagrid('getSelected');
+        ...
+        PageItem.show({storeId: row.id});
+    }
+    var btn1 = {text: "查看商品", iconCls: "icon-search", handler: showPageCloseOrder};
+
+    ...
+    jtbl.datagrid({
+        ...
+        toolbar: WUI.dg_toolbar(jtbl, jdlg, btn1),
+    });
+}</code></pre>
+<p>在商品页中，处理PageItem.filterParam_参数，实现过滤，我们在pageshow回调中处理它，同时把初始化datagrid也移到pageshow中：</p>
+<pre><code>function initPageItem()
+{
+    var isInit = true;
+    jpage.on("pageshow", pageShow);
+
+    function pageShow() {
+        // 接口变量PageItem.filterParam_用后即焚
+        var param = null;
+        if (PageItem.filterParam_) {
+            param = WUI.getQueryParam(PageItem.filterParam_);
+            PageItem.filterParam_ = null;
+        }
+        // 保证表格初始化只调用一次
+        if (isInit) {
+            jtbl.datagrid({
+                url: WUI.makeUrl("Item.query"),
+                queryParams: param,
+                toolbar: WUI.dg_toolbar(jtbl, jdlg, "export"),
+                onDblClickRow: WUI.dg_dblclick(jtbl, jdlg),
+                sortName: "id",
+                sortOrder: "desc"
+            });
+            isInit = false;
+        }
+        else if (param) {
+            WUI.reload(jtbl, null, param);
+        }
+    }
+}</code></pre>
+<p>注意：</p>
+<ul>
+<li>例子中通过页面接口，实现页面间的调用请求。</li>
+<li>上面用了WUI.reload，在点击列表上的“刷新”时，只会按当前条件刷新，不会刷新出所有数据来，必须点“查找”，清除所有条件后查找，才可以看到所有数据；<br />
+若想点“刷新”时显示所有数据，则可以将WUI.reload换成调用WUI.reloadTmp。</li>
+</ul>
 <h4 id="WUI-2 对话框功能">2 对话框功能</h4>
 <p>以群发短信功能为例。</p>
 <p>假定服务端已有以下接口：</p>
@@ -822,6 +893,14 @@ WUI.useBatchCall();</code></pre>
     ...
 }</code></pre>
 <p>这时，就可以用 WUI.showObjDlg(&quot;#dlgOrder&quot;)来显示逻辑页了。</p>
+<h6 id="WUI-3.1 批量更新、批量删除">3.1 批量更新、批量删除</h6>
+<p>(v5.2) 按住Ctrl键进行批量处理模式。</p>
+<p>先搜索出要更新或删除的记录：</p>
+<ul>
+<li>批量更新：双击任意一行打开对话框，修改后按住Ctrl点击确定按钮，批量更新所有表中的内容。</li>
+<li>批量删除：按住Ctrl键点数据表上面的“删除”按钮，即是批量删除所有表中的内容。</li>
+</ul>
+<p>服务端应支持<code>{obj}.setIf(cond)</code>及<code>{obj}.delIf(cond)</code>接口。</p>
 <h5 id="WUI-3.1 页面模板支持">3.1 页面模板支持</h5>
 <p>定义一个逻辑页面，可以在#my-pages下直接定义，也可以在单独的文件中定义，还可以在一个模板中定义，如：</p>
 <pre><code>&lt;script type="text/html" id="tpl_pageOrder"&gt;
@@ -1031,9 +1110,20 @@ hash = {
     100: {id: 100, name: "Tom"},
     101: {id: 101, name: "Jane"}
 };</code></pre>
+<p>key可以为一个函数，返回实际key值，示例：</p>
+<pre><code>var hash = rs2Hash(rs, function (o) {
+    return "USER-" + o.id;
+}); 
+
+// 结果为
+hash = {
+    "USER-100": {id: 100, name: "Tom"},
+    "USER-101": {id: 101, name: "Jane"}
+};</code></pre>
 <p class="see"><strong>@see <a href="#rs2Array">rs2Array</a></strong> </p></div>
 <div class="block">
 <h2 id="rs2MultiHash">@fn rs2MultiHash(rs, key)</h2>
+<p>数据分组(group by).</p>
 <p class="param"><strong>@param rs=</strong> {h, d}  rs对象(RowSet)</p>
 <p class="return"><strong>@return hash=</strong> {key => [ %obj ]}</p>
 <p>示例：</p>
@@ -1047,6 +1137,22 @@ var hash = rs2MultiHash(rs, "name");
 hash = {
     "Tom": [{id: 100, name: "Tom"}, {id: 102, name: "Tom"}],
     "Jane": [{id: 101, name: "Jane"}]
+};</code></pre>
+<p>key也可以是一个函数，返回实际的key值，示例，按生日年份分组：</p>
+<pre><code>var rs = {
+    h: ["id", "name", "birthday"], 
+    d: [ [100, "Tom", "1998-10-1"], [101, "Jane", "1999-1-10"], [102, "Tom", "1998-3-8"] ] 
+};
+// 按生日年份分组
+var hash = rs2MultiHash(rs, function (o) {
+    var m = o.birthday.match(/^\d+/);
+    return m &amp;&amp; m[0];
+});
+
+// 结果为
+hash = {
+    "1998": [{id: 100, name: "Tom", birthday: "1998-10-1"}, {id: 102, name: "Tom", birthday:"1998-3-8"}],
+    "1999": [{id: 101, name: "Jane", birthday: "1999-1-10"}]
 };</code></pre>
 <p class="see"><strong>@see <a href="#rs2Hash">rs2Hash</a></strong> </p>
 <p class="see"><strong>@see <a href="#rs2Array">rs2Array</a></strong> </p></div>
@@ -1681,9 +1787,6 @@ callSvr("User.get", function (data) {
         // 示例：设置contentType
         if (opt.contentType == null) {
             opt.contentType = "application/json;charset=utf-8";
-            if (opt.data) {
-                opt.data = JSON.stringify(opt.data);
-            }
         }
         // 示例：添加HTTP头用于认证
         if (g_data.auth) {
@@ -2146,6 +2249,10 @@ Formatter = $.extend(WUI.formatter, Formatter);</code></pre>
     }
 });</code></pre></div>
 <div class="block">
+<h2 id=".wui-form-table">@key .wui-form-table</h2>
+<p>在wui-dialog上，对于form下直接放置的table，一般用于字段列表排列，框架对它添加类wui-form-table并自动对列设置百分比宽度，以自适应显示。</p>
+<p>在非对话框上，也可手工添加此类来应用该功能。</p></div>
+<div class="block">
 <h2 id="isBusy">@var isBusy</h2>
 <p>标识应用当前是否正在与服务端交互。一般用于自动化测试。</p></div>
 <div class="block">
@@ -2275,6 +2382,7 @@ WUI.tabMain.tabs("close", idx);</code></pre>
 <h2 id="jquery-mycombobox">@module jquery-mycombobox</h2><div class="toc"><p style="margin-left:0em"><a href="#jquery-mycombobox-1 用url选项加载下拉列表">1 用url选项加载下拉列表</a></p>
 <p style="margin-left:0em"><a href="#jquery-mycombobox-2 用jdEnumMap选项指定下拉列表">2 用jdEnumMap选项指定下拉列表</a></p>
 <p style="margin-left:0em"><a href="#jquery-mycombobox-3 用loadFilter调整返回数据">3 用loadFilter调整返回数据</a></p>
+<p style="margin-left:0em"><a href="#jquery-mycombobox-4 级联列表支持">4 级联列表支持</a></p>
 </div>
 <p class="fn"><strong>@fn <a id="jQuery.fn.mycombobox">jQuery.fn.mycombobox</a></strong> (force?=false)</p>
 <p class="key"><strong>@key <a id=".my-combobox">.my-combobox</a></strong>  关联选择框</p>
@@ -2291,6 +2399,7 @@ WUI.tabMain.tabs("close", idx);</code></pre>
 <ul>
 <li>刷新列表： jo.trigger(&quot;refresh&quot;);</li>
 <li>标记刷新（下次打开时刷新）： jo.trigger(&quot;markRefresh&quot;);</li>
+<li>(v5.2)加载列表：jo.trigger(&quot;loadOptions&quot;, param);  一般用于级联列表，即url带参数的情况。</li>
 </ul>
 <p>特性：</p>
 <ul>
@@ -2303,6 +2412,8 @@ WUI.tabMain.tabs("close", idx);</code></pre>
 <p>注意：</p>
 <ul>
 <li>(v5.0) 接口调用由同步改为异步，以便提高性能并支持batch操作。同步(callSvrSync)便于加载下拉列表后立即为它赋值，改成异步请求(callSvr)后仍支持立即设置值。</li>
+<li>(v5.0) HTML select组件的jQuery.val()方法被改写。当设置不在范围内的值时，虽然下拉框显示为空，其实际值存储在 value<em> 字段中，(v5.2) 通过jQuery.val()方法仍可获取到。<br />
+用原生JS可以分别取 this.value 和 this.value</em> 字段。</li>
 </ul>
 <h4 id="jquery-mycombobox-1 用url选项加载下拉列表">1 用url选项加载下拉列表</h4>
 <p>例如，想显示所有员工(Employee)的下拉列表，绑定员工编号字段(id)，显示是员工姓名(name):</p>
@@ -2352,6 +2463,7 @@ var ListOptions = {
     },
     ...
 };</code></pre>
+<p>(v5.2) url还可以是一个函数。如果带一个参数，一般用于级联列表。参考<strong>级联列表支持</strong>节.</p>
 <h4 id="jquery-mycombobox-2 用jdEnumMap选项指定下拉列表">2 用jdEnumMap选项指定下拉列表</h4>
 <p>也支持通过key-value列表用jdEnumMap选项或jdEnumList选项来初始化下拉框，如：</p>
 <pre><code>订单状态： &lt;select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap" style="width:150px"&gt;&lt;/select&gt;
@@ -2394,7 +2506,58 @@ var ListOptions = {
         return opts;
     }
 };</code></pre>
-<p>注意：jdEnumMap指定的固定选项会先出现。</p></div>
+<p>注意：jdEnumMap指定的固定选项会先出现。</p>
+<h4 id="jquery-mycombobox-4 级联列表支持">4 级联列表支持</h4>
+<p>(v5.2)</p>
+<p>缺陷类型(defectTypeId)与缺陷代码(defectId)二级关系：选一个缺陷类型，缺陷代码自动刷新为该类型下的代码。<br />
+在初始化时，如果字段有值，下拉框应分别正确显示。</p>
+<p>在一级内容切换时，二级列表自动从后台查询获取。同时如果是已经获取过的，缓存可以生效不必反复获取。<br />
+双击仍支持刷新。</p>
+<p>对话框上HTML如下：（defectId是用于提交的字段，所以用name属性；defectTypeId不用提交，所以用了id属性；后端接口最好两个值都返回）</p>
+<pre><code>&lt;select id="defectTypeId" class="my-combobox" data-options="ListOptions.DefectType()" style="width:45%"&gt;&lt;/select&gt;
+&lt;select name="defectId" class="my-combobox" data-options="ListOptions.Defect()" style="width:45%"&gt;&lt;/select&gt;</code></pre>
+<p>其中，DefectType()与传统设置无区别，在Defect()函数中，应设置url为一个带参函数：</p>
+<pre><code>var ListOptions = {
+    DefectType: function () {
+        var opts = {
+            valueField: "id",
+            textField: "code",
+            url: WUI.makeUrl('Defect.query', {
+                res: 'id,code,name',
+                cond: 'typeId is null',
+                pagesz: -1
+            }),
+            formatter: function (row) { return row.code + "-" + row.name; }
+        };
+        return opts;
+    },
+    // ListOptions.Defect
+    Defect: function () {
+        var opts = {
+            valueField: "id",
+            textField: "code",
+            url: function (typeId) {
+                return WUI.makeUrl('Defect.query', {
+                    res: 'id,code,name',
+                    cond: "typeId=" + typeId,
+                    pagesz: -1
+                })
+            },
+            formatter: function (row) { return row.code + "-" + row.name; }
+        };
+        return opts;
+    }
+}</code></pre>
+<p>在对话框上设置关联动作，调用loadOptions方法：</p>
+<pre><code>$(frm.defectTypeId).on("change", function () {
+    var typeId = $(this).val();
+    if (typeId)
+        $(frm.defectId).trigger("loadOptions", typeId);
+});</code></pre>
+<p>对话框加载时，手工设置defectTypeId的值：</p>
+<pre><code>function onShow() {
+    $(frm.defectTypeId).val(defectTypeId).trigger("change");
+}</code></pre></div>
 <div style="text-align:center">Generated by jdcloud-gendoc</div>
 </body>
 

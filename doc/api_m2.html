@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（移动Web版）</h1>
-<div>最后更新：2018-07-19</div>
+<div>最后更新：2018-10-16</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -179,6 +179,7 @@ code {
 <p><a href="#options.loginPage">options.loginPage (var)</a></p>
 <p><a href="#options.manualSplash">options.manualSplash (var)</a></p>
 <p><a href="#options.mockDelay">options.mockDelay (var)</a></p>
+<p><a href="#options.onAutoLogin">options.onAutoLogin (var)</a></p>
 <p><a href="#options.pageFolder">options.pageFolder (var)</a></p>
 <p><a href="#options.pluginFolder">options.pluginFolder (var)</a></p>
 <p><a href="#options.serverUrl">options.serverUrl (var)</a></p>
@@ -480,16 +481,22 @@ function loadStatLib()
     ...
 &lt;/div&gt;</code></pre>
 <h5 id="MUI-1.3 页面路由">1.3 页面路由</h5>
-<p>默认路由：</p>
+<p>框架支持hash路由（默认方式）和文件路由（逻辑页面文件）两种方式。</p>
+<ul>
+<li>hash路由URL示例: <a href="http://server/app/index.html#home">http://server/app/index.html#home</a> 切换页面后为 <a href="http://server/app/index.html#order">http://server/app/index.html#order</a> </li>
+<li>文件路由URL示例: <a href="http://server/app/page/home.html">http://server/app/page/home.html</a> 切换页面后为 <a href="http://server/app/page/order.html">http://server/app/page/order.html</a></li>
+</ul>
+<p>默认hash路由：</p>
 <ul>
 <li>一般只用一级目录：<code>http://server/app/index.html#order</code>对应<code>{pageFolder=page}/order.html</code>，一般为<code>page/order.html</code></li>
 <li>也支持多级目录：<code>http://server/app/index.html#order-list</code>对应<code>page/order/list.html</code></li>
 <li>与筋斗云后端框架一起使用时，支持插件目录：<code>http://server/app/index.html#order-list</code>在存在插件'order'时，对应<code>{pluginFolder=../plugin}/order/m2/page/list.html</code>，一般为<code>../plugin/order/m2/page/list.html</code></li>
 </ul>
-<p>URL也可以显示为文件风格，比如在设置：</p>
+<p>文件路由：在主页面中head标签中应添加：</p>
 <pre><code>&lt;base href="./" mui-showHash="no"&gt;</code></pre>
 <p>之后，上面两个例子中，URL会显示为 <code>http://server/app/page/order.html</code> 和 <code>http://server/app/page/order/list.html</code></p>
 <p class="see"><strong>@see <a href="#options.showHash">options.showHash</a></strong> </p>
+<p>注意：使用文件路由时，如果刷新页面将无法显示。必须在web服务器中设置URL重写规则来解决。apache请参考和修改m2/page/.htaccess文件，nginx请参考和修改m2/.ht.nginx文件。</p>
 <p>特别地，还可以通过<code>MUI.setUrl(url)</code>或<code>MUI.showPage(pageRef, {url: url})</code>来定制URL，例如将订单id=100的逻辑页显示为RESTful风格：<code>http://server/app/order/100</code></p>
 <p class="see"><strong>@see <a href="#setUrl">setUrl</a></strong> </p>
 <p>为了刷新时仍能正常显示页面，应将页面设置为入口页，并在WEB服务器配置好URL重写规则。</p>
@@ -866,9 +873,20 @@ hash = {
     100: {id: 100, name: "Tom"},
     101: {id: 101, name: "Jane"}
 };</code></pre>
+<p>key可以为一个函数，返回实际key值，示例：</p>
+<pre><code>var hash = rs2Hash(rs, function (o) {
+    return "USER-" + o.id;
+}); 
+
+// 结果为
+hash = {
+    "USER-100": {id: 100, name: "Tom"},
+    "USER-101": {id: 101, name: "Jane"}
+};</code></pre>
 <p class="see"><strong>@see <a href="#rs2Array">rs2Array</a></strong> </p></div>
 <div class="block">
 <h2 id="rs2MultiHash">@fn rs2MultiHash(rs, key)</h2>
+<p>数据分组(group by).</p>
 <p class="param"><strong>@param rs=</strong> {h, d}  rs对象(RowSet)</p>
 <p class="return"><strong>@return hash=</strong> {key => [ %obj ]}</p>
 <p>示例：</p>
@@ -882,6 +900,22 @@ var hash = rs2MultiHash(rs, "name");
 hash = {
     "Tom": [{id: 100, name: "Tom"}, {id: 102, name: "Tom"}],
     "Jane": [{id: 101, name: "Jane"}]
+};</code></pre>
+<p>key也可以是一个函数，返回实际的key值，示例，按生日年份分组：</p>
+<pre><code>var rs = {
+    h: ["id", "name", "birthday"], 
+    d: [ [100, "Tom", "1998-10-1"], [101, "Jane", "1999-1-10"], [102, "Tom", "1998-3-8"] ] 
+};
+// 按生日年份分组
+var hash = rs2MultiHash(rs, function (o) {
+    var m = o.birthday.match(/^\d+/);
+    return m &amp;&amp; m[0];
+});
+
+// 结果为
+hash = {
+    "1998": [{id: 100, name: "Tom", birthday: "1998-10-1"}, {id: 102, name: "Tom", birthday:"1998-3-8"}],
+    "1999": [{id: 101, name: "Jane", birthday: "1999-1-10"}]
 };</code></pre>
 <p class="see"><strong>@see <a href="#rs2Hash">rs2Hash</a></strong> </p>
 <p class="see"><strong>@see <a href="#rs2Array">rs2Array</a></strong> </p></div>
@@ -1781,9 +1815,10 @@ e.g. </p>
 <pre><code>MUI.setUrlParam("wxauth", 1);</code></pre>
 <p class="see"><strong>@see <a href="#deleteUrlParam">deleteUrlParam</a> <a href="#MUI.appendParam">MUI.appendParam</a></strong> </p></div>
 <div class="block">
-<h2 id="showPage">@fn showPage(pageRef, opt)</h2>
+<h2 id="showPage">@fn showPage(pageId/pageRef?, opt?)</h2>
 <p class="param"><strong>@param pageId</strong>  String. 页面名字. 仅由字母、数字、"_"等字符组成。</p>
 <p class="param"><strong>@param pageRef</strong>  String. 页面引用（即location.hash），以"#"开头，后面可以是一个pageId（如"#home"）或一个相对页的地址（如"#info.html", "#emp/info.html"）。</p>
+<p>如果未指定，则使用当前URL的hash或指定的主页(MUI.options.homePage). &quot;#&quot;表示主页。</p>
 <p class="param"><strong>@param opt</strong>  {ani?, url?}  (v3.3) 该参数会传递给pagebeforeshow/pageshow回调函数。</p>
 <p>opt.ani:: String. 动画效果。设置为&quot;none&quot;禁用动画。</p>
 <p>opt.url:: String. 指定在地址栏显示的地址。如 <code>showPage("#order", {url: "?id=100"})</code> 可设置显示的URL为 <code>page/order.html?id=100</code>.</p>
@@ -2020,7 +2055,24 @@ g_args.dscr="上门洗车"; // 对字符串会自动进行URL解码。</code></p
 <pre><code>&lt;base href="./" mui-showHash="no"&gt;</code></pre>
 <p>在showHash=false时，必须设置base标签, 否则逻辑页将无法加载。</p>
 <p class="var"><strong>@var <a id="options.disableFastClick">options.disableFastClick</a></strong> ?=false</p>
-<p>在IOS+cordova环境下，点击事件会有300ms延迟，默认会加载lib/fastclick.min.js解决。</p></div>
+<p>在IOS+cordova环境下，点击事件会有300ms延迟，默认会加载lib/fastclick.min.js解决。</p>
+<p class="var"><strong>@var <a id="options.onAutoLogin">options.onAutoLogin</a></strong>  自动登录</p>
+<p>设置如何自动登录系统，进入应用后，一般会调用tryAutoLogin，其中会先尝试重用已有会话，如果当前没有会话则回调onAutoLogin自动登录系统。<br />
+返回true则跳过后面系统默认的登录过程，包括使用本地保存的token自动登录以及调用login接口。</p>
+<p>一般用于微信认证后绑定用户身份，示例：</p>
+<pre><code>$.extend(MUI.options, {
+    ...
+    onAutoLogin: onAutoLogin
+});
+
+function onAutoLogin()
+{
+    // 发起微信认证
+    var param = {state: location.href};
+    location.href = "../weixin/auth.php?" + $.param(param);
+    // 修改了URL后直接跳出即可。不用返回true
+    MUI.app_abort();
+}</code></pre></div>
 <div class="block">
 <h2 id="setFormSubmit">@fn setFormSubmit(jf, fn?, opt?={validate?, onNoAction?})</h2>
 <p class="param"><strong>@param fn</strong>  Function(data); 与callSvr时的回调相同，data为服务器返回的数据。</p>
