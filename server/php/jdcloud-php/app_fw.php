@@ -844,7 +844,7 @@ function sql_concat()
 执行SQL语句，如INSERT, UPDATE等。执行SELECT语句请使用queryOne/queryAll.
 
 	$token = mparam("token");
-	execOne("UPDATE cinf SET appleDeviceToken=" . Q($token));
+	execOne("UPDATE Cinf SET appleDeviceToken=" . Q($token));
 
 注意：在拼接SQL语句时，对于传入的string类型参数，应使用Q函数进行转义，避免SQL注入攻击。
 
@@ -857,7 +857,7 @@ function sql_concat()
 上面两个例子，用dbInsert/dbUpdate函数，无须使用Q函数防注入，也无须考虑字段值是否要加引号：
 
 	// 更新操作示例
-	$cnt = dbUpdate("Cinf", ["appleDeviceToken" => $token]);
+	$cnt = dbUpdate("Cinf", ["appleDeviceToken" => $token], "ALL");
 
 	// 插入操作示例
 	$hongbaoId = dbInsert("Hongbao", [
@@ -1034,6 +1034,18 @@ function dbInsert($table, $kv)
 
 大批量为某表添加记录，一次性提交。
 
+	$bi = new BatchInsert($table, $headers, $opt=null);
+
+- headers: 列名数组(如["name","dscr"])，或逗号分隔的字符串(如"name,dscr")
+- opt.batchSize/i?=0: 指定批大小。0表示不限大小。
+- opt.useReplace/b?=false: 默认用"INSERT INTO"语句，设置为true则用"REPLACE INFO"语句。一般用于根据某unique index列添加或更新行。
+- opt.debug/b?=false: 如果设置为true, 只输出SQL语句，不插入数据库。
+
+	$bi->add($row);
+
+- row: 可以是值数组或关联数组。如果是值数组，必须与headers一一对应，比如["name1", "dscr1"]；
+ 如果是关联数组，按headers中字段自动取出值数组，这样关联数组中即使多一些字段也无影响，比如["name"=>"name1", "dscr"=>"dscr1", "notUsedCol"=100]。
+
 示例：
 
 	$bi = new BatchInsert("Syslog", "module,tm,content");
@@ -1054,17 +1066,36 @@ class BatchInsert
 {
 	private $sql0;
 	private $batchSize;
+	private $headers;
+	private $debug;
 
 	private $sql;
 	private $n = 0;
 	private $retn = 0;
 	function __construct($table, $headers, $opt=null) {
 		$verb = @$opt["useReplace"]? "REPLACE": "INSERT";
-		$this->sql0 = "$verb INTO $table ($headers) VALUES ";
+		if (is_string($headers)) {
+			$headerStr = $headers;
+			$headers = preg_split('/\s*,/\s*/', $headerStr);
+		}
+		else {
+			$headerStr = join(',', $headers);
+		}
+		$this->headers = $headers;
+		$this->sql0 = "$verb INTO $table ($headerStr) VALUES ";
 		$this->batchSize = @$opt["batchSize"]?:0;
+		$this->debug = @$opt["debug"]?:false;
 	}
 	function add($row) {
 		$values = '';
+		// 如果是关联数组，转成值数组
+		if (! isset($row[0])) {
+			$row0 = [];
+			foreach ($this->headers as $hdr) {
+				$row0[] = $row[$hdr];
+			}
+			$row = $row0;
+		}
 		foreach ($row as $v) {
 			if ($v === '')
 				$v = "NULL";
@@ -1085,7 +1116,13 @@ class BatchInsert
 	}
 	function exec() {
 		if ($this->n > 0) {
-			$this->retn += execOne($this->sql);
+			if (! $this->debug) {
+				$this->retn += execOne($this->sql);
+			}
+			else {
+				echo($this->sql);
+				$this->retn += $this->n;
+			}
 			$this->sql = null;
 			$this->n = 0;
 		}
@@ -1116,7 +1153,8 @@ function flag_getExpForSet($k, $v)
 /**
 @fn dbUpdate(table, kv, id_or_cond?) -> cnt
 
-@param id_or_cond 查询条件，如果是数值比如100或"100"，则当作条件"id=100"处理；否则直接作为查询表达式，比如"qty<0"；如果未指定则无查询条件。
+@param id_or_cond 查询条件，如果是数值比如100或"100"，则当作条件"id=100"处理；否则直接作为查询表达式，比如"qty<0"；
+为了安全，cond必须指定值，不可为空（避免因第三参数为空导致误更新全表!）。如果要对全表更新，可传递特殊值"ALL"，或用"1=1"之类条件。
 
 e.g.
 
@@ -1133,11 +1171,20 @@ e.g.
 		"tm" => ["now()"]  // 使用数组，表示是SQL表达式
 	], "tm IS NULL);
 
+	// 全表更新，没有条件。UPDATE Cinf SET appleDeviceToken={token}
+	$cnt = dbUpdate("Cinf", ["appleDeviceToken" => $token], "ALL");
+
 */
-function dbUpdate($table, $kv, $cond=null)
+function dbUpdate($table, $kv, $cond)
 {
-	if (isset($cond) && is_numeric($cond)) {
+	if ($cond === null)
+		throw new MyException(E_SERVER, "bad cond");
+
+	if (is_numeric($cond)) {
 		$cond = "id=$cond";
+	}
+	else if ($cond === "ALL") {
+		$cond = null;
 	}
 	$kvstr = "";
 	foreach ($kv as $k=>$v) {
