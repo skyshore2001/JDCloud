@@ -163,6 +163,12 @@ query接口的"..."之后就是虚拟字段。后缀"?"表示是非缺省字段�
 		]
 	}
 
+注意：如果需要在程序中引入某个关联表定义，可以调用addVCol显式指定，例如：
+
+	$this->addVcol("userName"); // 在SQL语句中添加SELECT userName ... JOIN User
+	// 如果不想影响SELECT字段:
+	$this->addVcol("userName", false, "-"); // 只在SQL语句中添加 JOIN User
+
 ### 关联字段依赖
 
 假设设计有“订单评价”对象，它会与“订单对象”相关联：
@@ -1056,10 +1062,11 @@ class AccessControl
 /**
 @fn AccessControl::addRes($res, $analyzeCol=true)
 
-添加列或计算列. 
+定义新的虚拟字段，并添加到get/query接口的返回字段中。
+如果要引入已有的虚拟字段，应调用addVCol。
 
 注意: 
-- analyzeCol=true时, addRes("col"); -- (analyzeCol=true) 添加一列, 注意:如果列是一个虚拟列(在vcolDefs中有定义), 不能指定alias, 且vcolDefs中同一组Res中所有定义的列都会加入查询; 如果希望只加一列且能定义alias, 可调用addVCol函数.
+- analyzeCol=true时, 注册到对象的虚拟字段中。
 - addRes("col+1 as col1", false); -- 简单地新定义一个计算列, as可省略
 
 @see AccessControl::addCond 其中有示例
@@ -1104,11 +1111,41 @@ class AccessControl
 		}
 	}
 
+上例在处理"q"参数时，临时引入了关联表。如果关联表已在vcolDefs中定义过，可以用addVCol直接引入：
+
+	protected $vcolDefs = [
+		[
+			"res" => ["olpay.tm payTm"],
+			"join" => "INNER JOIN OrderLog olpay ON olpay.orderId=t0.id"
+		]
+	];
+	protected function onQuery()
+	{
+		$q = param("q");
+		if (isset($q) && $q == "paid") {
+			$validDate = date("Y-m-d", strtotime("-9 day"));
+			// 注意：要添加虚拟字段用addVCol，不是addRes
+			$this->addVCol("payTm");
+			// 注意：addCond中不可直接使用payTm，要用原始定义olpay.tm。(下面会讲怎样直接在cond中用payTm)
+			$this->addCond("olpay.action='PA' AND olpay.tm>'$validDate'");
+		}
+	}
+
 关于fixUserQuery=true:
 
 默认后端可以添加任何形式的SQL条件，但是如果其中含有虚拟字段，如果它尚未加到res查询结果中时，查询就会出错（无法识别这个字段）。
 设置fixUserQuery=true后，就会将该条件当作用户查询(UserQuery)来处理，即相当于query接口传入的cond字段，其中的虚拟字段会自动处理避免出错。
 但用户查询条件是受限的，比如不允许各种子查询，也不允许使用各种SQL函数（count/sum等少量聚合函数除外）。
+
+仍用上面示例：
+
+	// 在cond中使用payTm虚拟字段，可自动解析和引入它的定义
+	$this->addCond("olpay.action='PA' AND payTm>'$validDate'", false, true);
+
+这相当于调用：
+
+	$this->addVCol("payTm", false, "-"); // 引入定义但并不加到SELECT字段中
+	$this->addCond("olpay.action='PA' AND olpay.tm>'$validDate'");
 
 @see AccessControl::addRes
 @see AccessControl::addJoin
@@ -1179,10 +1216,16 @@ class AccessControl
 @fn AccessControl::addVCol($col, $ignoreError=false, $alias=null)
 
 @param $col 必须是一个英文词, 不允许"col as col1"形式; 该列必须在 vcolDefs 中已定义.
-@param $alias 列的别名。可以中文. 特殊字符"-"表示不加到最终res中(只添加join/cond等定义), 由addVColDef内部调用时使用.
+@param $alias 列的别名。可以中文. 特殊字符"-"表示只添加join/cond等定义，并不将该字段加到输出字段中。
 @return Boolean T/F
 
-用于AccessControl子类添加已在vcolDefs中定义的vcol. 一般应先考虑调用addRes(col)函数.
+引入一个已有的虚拟字段及其相应关联表，例如之前在vcolDefs中定义过虚拟字段`createTm`:
+
+	// 引入createTm定义及关联表，且在最终输出中添加createTm列
+	$this->addVCol("createTm"); 
+
+	// 只引入createTm字段的关联表，不影响最终输出字段
+	$this->addVCol("createTm", false, "-");
 
 @see AccessControl::addRes
  */
