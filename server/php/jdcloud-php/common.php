@@ -374,4 +374,35 @@ function addToStr(&$str, $str1, $sep=',')
 		$str .= $sep . $str1;
 }
 
+/**
+@fn arrCopy(&$dst, $src, $fields)
+
+将数组$src中指定字段复制到$dst中。
+数组$fields指定字段列表。如果字段复制后需要改名，可以以[$dstName, $srcName]这样的数组来表示。
+
+示例：将workItem提取指定字段后插入数据库中：
+
+	$workItem = ["repairWiId"=>$id, "wiName"=>$name, ...];
+	$wiData = ["orderId" => $orderId];
+	arrCopy($wiData, $workItem, [
+		["code", "repairWiId"], // 复制后改名，即 $wiData["code"] = $workItem["repairWiId"]
+		"name",
+		"saleWorkQty",
+		["addFlag", "isAdd"]
+	]);
+	dbInsert("WorkItem", $wiData);
+
+*/
+function arrCopy(&$ret, $arr, $fields)
+{
+	if ($ret == null)
+		$ret = [];
+	foreach ($fields as $f) {
+		if (is_array($f))
+			@$ret[$f[0]] = $arr[$f[1]];
+		else
+			@$ret[$f] = $arr[$f];
+	}
+}
+
 // vi: foldmethod=marker
