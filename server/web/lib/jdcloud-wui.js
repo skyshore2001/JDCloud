@@ -6123,6 +6123,7 @@ function app_alert(msg)
 	var type = "i";
 	var fn = undefined;
 	var alertOpt = {};
+	var jmsg;
 
 	for (var i=1; i<arguments.length; ++i) {
 		var arg = arguments[i];
@@ -6148,13 +6149,13 @@ function app_alert(msg)
 		return;
 	}
 	else if (type == "p") {
-		$.messager.prompt(self.options.title, msg, function(text) {
+		jmsg = $.messager.prompt(self.options.title, msg, function(text) {
 			if (text && fn) {
 				fn(text);
 			}
 		});
 		setTimeout(function () {
-			var ji = $(".messager-window .messager-input");
+			var ji = jmsg.find(".messager-input");
 			ji.focus();
 			if (alertOpt.defValue) {
 				ji.val(alertOpt.defValue);
@@ -6166,11 +6167,11 @@ function app_alert(msg)
 	var icon = {i: "info", w: "warning", e: "error"}[type];
 	var s = {i: "提示", w: "警告", e: "出错"}[type] || "";
 	var s1 = "<b>[" + s + "]</b>";
-	$.messager.alert(self.options.title + " - " + s, s1 + " " + msg, icon, fn);
+	jmsg = $.messager.alert(self.options.title + " - " + s, s1 + " " + msg, icon, fn);
 
 	// 查看jquery-easyui对象，发现OK按钮的class=1-btn
 	setTimeout(function() {
-		var jbtn = $(".messager-window .l-btn");
+		var jbtn = jmsg.find(".l-btn");
 		jbtn.focus();
 		if (alertOpt.timeoutInterval) {
 			setTimeout(function() {
