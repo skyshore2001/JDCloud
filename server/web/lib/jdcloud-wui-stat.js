@@ -937,8 +937,8 @@ function initPageStat(jpage, setStatOpt)
 	getTmRange("前1周") -> ["2015-8-31"(上周一)，"2015-9-7"(本周一)]
 	getTmRange("前3月") -> ["2015-6-1", "2015-9-1"]
 
-	getTmRange("近1周") -> ["2015-9-2"，"2015-9-9"]
-	getTmRange("近3月") -> ["2015-6-9", "2015-9-9"]
+	getTmRange("近1周") -> ["2015-9-3"，"2015-9-10"]
+	getTmRange("近3月") -> ["2015-6-10", "2015-9-10"]
 
 	getTmRange("本日") -> ["2015-9-9", "2015-9-10"]
 	getTmRange("本月"") -> ["2015-9-1", "2015-10-1"]
@@ -948,6 +948,8 @@ dscr可以是
 
 	"近|前" N "个"? "小时|日|周|月|年"
 	"本|今" "小时|日/天|周|月|年"
+
+注意："近X周"包括今天（即使尚未过完）。
 
  */
 self.getTmRange = getTmRange;
@@ -981,6 +983,9 @@ function getTmRange(dscr, now)
 			now.add("h",1);
 			n = 1;
 		}
+		if (type == "近") {
+			now.add("h",1);
+		}
 		dt2 = now.format(fmt_h);
 		dt1 = now.add("h", -n).format(fmt_h);
 	}
@@ -998,6 +1003,7 @@ function getTmRange(dscr, now)
 			n = 1;
 		}
 		if (type == "近") {
+			now.addDay(1);
 			var d2 = now.getDate();
 			dt2 = now.format(fmt_d);
 			now.add("m", -n);
@@ -1024,6 +1030,7 @@ function getTmRange(dscr, now)
 			n = 1;
 		}
 		if (type == "近") {
+			now.addDay(1);
 			dt2 = now.format(fmt_d);
 			//now.add("d", -now.getDay()+1); // 回到周1
 			dt1 = now.add("d", -n*7).format(fmt_d);
@@ -1039,6 +1046,7 @@ function getTmRange(dscr, now)
 			n = 1;
 		}
 		if (type == "近") {
+			now.addDay(1);
 			dt2 = now.format(fmt_d);
 			//now = WUI.parseDate(now.format(fmt_y)); // 回到1/1
 			dt1 = now.add("y", -n).format(fmt_d);
