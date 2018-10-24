@@ -497,6 +497,35 @@ PAGE_SZ_LIMIT目前定为10000条。如果还不够，一定是应用设计有�
 - 重写 AccessControl::$defaultRes
 - 用addCond添加缺省查询条件
 
+table也可以指定为子表(即视图)，例如上例也可以这样实现，省去onQuery中的实现：
+
+	class AC2_EmpLog extends AccessControl 
+	{
+		protected $allowedAc = ["query"];
+		// 注意：子查询要加括号括起来
+		protected $table = "(SELECT * FROM ApiLog t0 WHERE t0.app='emp-adm' and t0.userId IS NOT NULL)";
+		protected $defaultSort = "t0.id DESC";
+		protected $defaultRes = "id, tm, userId, ac, req, res, reqsz, ressz, empName, empPhone";
+		protected $vcolDefs = [
+			[
+				"res" => ["e.name AS empName", "e.phone AS empPhone"],
+				"join" => "LEFT JOIN Employee e ON e.id=t0.userId"
+			]
+		];
+	}
+
+甚至可将整个SQL子查询封在table中：
+
+	class AC2_EmpLog extends AccessControl 
+	{
+		protected $allowedAc = ["query"];
+		protected $table = "(SELECT t0.id, tm, userId, ac, req, res, reqsz, ressz, e.name AS empName, e.phone AS empPhone 
+FROM ApiLog t0 
+LEFT JOIN Employee e ON e.id=t0.userId
+WHERE t0.app='user' and t0.userId IS NOT NULL
+ORDER BY t0.id DESC)";
+	}
+
 ### query接口输出格式
 
 query接口支持fmt参数：
