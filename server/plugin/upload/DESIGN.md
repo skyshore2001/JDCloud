@@ -206,6 +206,18 @@ thumbId
 	HTTP/1.1 404 Not Found
 	Content-Type: text/plain; charset=UTF-8
 
+### 查看图片
+
+该接口生成一个图片列表网页。
+
+	pic(id)
+
+- id: 缩略图编号，或编号列表(以逗号分隔)。
+
+示例：
+
+	<a target="_black" href="http://myserver/mysvc/api.php/pic?id=10,12,14">查看图片</a>
+
 ## 前端应用接口
 
 （无）

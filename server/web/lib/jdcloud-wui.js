@@ -5588,10 +5588,13 @@ var Formatter = {
 	pics: function (value, row) {
 		if (value == null)
 			return "(无图)";
+		return '<a target="_black" href="' + WUI.makeUrl("pic", {id:value}) + '">' + value + '</a>';
+		/*
 		return value.replace(/(\d+),?/g, function (ms, picId) {
 			var url = WUI.makeUrl("att", {thumbId: picId});
 			return "<a target='_black' href='" + url + "'>" + picId + "</a>&nbsp;";
 		});
+		*/
 	},
 	flag: function (yes, no) {
 		if (yes == null)

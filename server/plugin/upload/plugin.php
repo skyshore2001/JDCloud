@@ -355,3 +355,17 @@ function api_att()
 	throw new DirectReturn();
 }
 
+function api_pic()
+{
+	session_commit();
+	header("Content-Type: text/html");
+	$pics = param("id/s");
+	$baseUrl = getBaseUrl();
+	foreach (explode(',', $pics) as $id) {
+		$id = trim($id);
+		if ($id)
+			echo("<img src='{$baseUrl}api.php/att?thumbId=$id'>\n");
+	}
+	throw new DirectReturn();
+}
+
