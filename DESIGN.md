@@ -128,6 +128,10 @@ t
 ver
 : 客户端版本。格式为："web"表示通用网页(通过ua可查看明细浏览器)，"wx/{ver}"表示微信版本如"wx/6.2.5", "a/{ver}"表示安卓客户端及版本如"a/1", "ios/{ver}"表示苹果客户端版本如"ios/15".
 
+@ApiLog1: id, apiLogId, ac, t&, retval&, req(t), res(t)
+
+batch操作的明细表。
+
 **[插件相关]**
 
 @include server\plugin\login\DESIGN.md

@@ -681,6 +681,9 @@ class ApiLog
 	private $ac;
 	private $id;
 
+	// for batch detail (ApiLog1)
+	private $ac1, $req1, $startTm1;
+
 /**
 @var ApiLog::$lastId
 
@@ -808,6 +811,36 @@ class ApiLog
 			"userId" => $userId
 		], $this->id);
 // 		$logStr = "=== id={$this->logId} t={$iv} >>>$content<<<\n";
+	}
+
+	function logBefore1($ac1)
+	{
+		$this->ac1 = $ac1;
+		$this->startTm1 = microtime(true);
+		$this->req1 = $this->myVarExport($_GET, 2000);
+		$content2 = $this->myVarExport($_POST, 2000);
+		if ($content2 != "")
+			$this->req1 .= ";\n" . $content2;
+	}
+
+	function logAfter1()
+	{
+		global $DBH;
+		global $X_RET;
+		if ($DBH == null)
+			return;
+		$iv = sprintf("%.0f", (microtime(true) - $this->startTm1) * 1000); // ms
+		$res = json_encode($X_RET, $GLOBALS["JSON_FLAG"]);
+		$content = $this->myVarExport($res);
+
+		dbInsert("ApiLog1", [
+			"apiLogId" => $this->id,
+			"ac" => $this->ac1,
+			"t" => $iv,
+			"retval" => $X_RET[0],
+			"req" => $this->req1,
+			"res" => $content
+		]);
 	}
 }
 
@@ -1362,6 +1395,9 @@ class ApiApp extends AppBase
 				BatchApiApp::handleBatchRef($call["ref"], $retVal);
 			}
 			$_REQUEST = array_merge($_GET, $_POST);
+			if ($this->apiLog) {
+				$this->apiLog->logBefore1($call["ac"]);
+			}
 
 			$batchApiApp->ac = $call["ac"];
 			// 如果batch使用trans, 则单次调用不用trans
@@ -1375,6 +1411,9 @@ class ApiApp extends AppBase
 				}
 			}
 			$retVal[] = $X_RET;
+			if ($this->apiLog) {
+				$this->apiLog->logAfter1();
+			}
 		}
 		if ($useTrans && $DBH && $DBH->inTransaction())
 			$DBH->commit();
