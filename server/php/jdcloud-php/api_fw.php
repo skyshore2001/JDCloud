@@ -750,7 +750,7 @@ class ApiLog
 			$userId = $_SESSION["adminId"];
 		}
 		if (! (is_int($userId) || ctype_digit($userId)))
-			$userId = 'NULL';
+			$userId = null;
 		$content = $this->myVarExport($_GET, 2000);
 		$ct = getContentType();
 		if (! preg_match('/x-www-form-urlencoded|form-data/i', $ct)) {
