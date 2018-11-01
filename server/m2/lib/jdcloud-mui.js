@@ -4533,7 +4533,12 @@ function showPage(pageRef, opt)
 			// 检测运营商js劫持，并自动恢复。
 			var fname = jpage.attr("mui-initfn");
 			if (fname && window[fname] == null) {
-				// 10s内重试
+				if (location.protocol == "https:") {
+					var err = "逻辑页加载失败: " + jpage.attr("id");
+					self.app_alert(err);
+					return;
+				}
+				// 如果不是https协议，则可能是页面html/js被运营商劫持，在10s内反复重试
 				var failTry_ = jpage.data("failTry_");
 				var dt = new Date();
 				if (failTry_ == null) {
