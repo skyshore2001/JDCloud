@@ -794,6 +794,7 @@ function dbconn($fnConfirm = null)
 	}
 	
 	if ($DBTYPE == "mysql") {
+		++ $DBH->skipLogCnt;
 		$DBH->exec('set names utf8');
 	}
 	$DBH->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION); # by default use PDO::ERRMODE_SILENT
