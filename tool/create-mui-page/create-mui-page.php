@@ -17,9 +17,8 @@
 
 示例：
 
-	create-wui-page Category 商品类别
-	echo "   eg: create-mui-page Item 商品列表 items orders\n";
-	echo "   eg: create-mui-page Item 商品明细 item order\n";
+	create-mui-page Item 商品明细 order
+	create-mui-page Items 商品列表 orders Item
 
 */
 
@@ -61,7 +60,7 @@ foreach (["$file.html", "$file.js"] as $e) {
 function genFile($f, $tpl)
 {
 // 模板中可用这些变量：
-global $obj,$title,$baseObj;
+global $obj,$title,$baseObj,$file;
 	redirect($f);
 	include($tpl);
 	redirect(null);

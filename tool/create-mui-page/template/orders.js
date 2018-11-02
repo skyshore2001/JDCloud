@@ -45,3 +45,8 @@ function initPage<?=$obj?>()
 	}
 }
 
+/* example: page interface (move to index.js)
+var Page<?=$obj?> = {
+	refresh: null
+};
+*/
