@@ -73,7 +73,7 @@ createTm
 
 **[订单]**
 
-@Ordr: id, userId, status(2), amount, dscr(l), cmt(l)
+@Ordr: id, userId, createTm, status(2), amount, dscr(l), cmt(l)
 
 status
 : Enum. 订单状态。CR-新创建,RE-已服务,CA-已取消. 其它备用值: PA-已付款(待服务), ST-开始服务, CL-已结算.

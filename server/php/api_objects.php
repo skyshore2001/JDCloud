@@ -91,16 +91,12 @@ class AC0_Ordr extends AccessControl
 	protected $vcolDefs = [
 		[
 			"res" => ["u.name AS userName", "u.phone AS userPhone"],
-			"join" => "INNER JOIN User u ON u.id=t0.userId",
-		],
-		[
-			"res" => ["log_cr.tm AS createTm"],
-			"join" => "LEFT JOIN OrderLog log_cr ON log_cr.action='CR' AND log_cr.orderId=t0.id",
+			"join" => "INNER JOIN User u ON u.id=t0.userId"
 		]
 	];
 
 	function __construct() {
-		$this->vcolDefs[] = [ "res" => tmCols("log_cr.tm"), "require" => "createTm" ];
+		$this->vcolDefs[] = [ "res" => tmCols("t0.createTm") ];
 	}
 }
 
@@ -122,6 +118,7 @@ class AC1_Ordr extends AC0_Ordr
 			$userId = $_SESSION["uid"];
 			$_POST["userId"] = $userId;
 			$_POST["status"] = "CR";
+			$_POST["createTm"] = date(FMT_DT);
 			$logAction = "CR";
 		}
 		else {
