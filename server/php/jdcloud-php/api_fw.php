@@ -770,6 +770,8 @@ class ApiLog
 		$ua = $_SERVER["HTTP_USER_AGENT"];
 		$ver = getClientVersion();
 
+		global $DBH;
+		++ $DBH->skipLogCnt;
 		$this->id = dbInsert("ApiLog", [
 			"tm" => date(FMT_DT),
 			"addr" => $remoteAddr,
@@ -803,6 +805,7 @@ class ApiLog
 		if ($this->ac == 'login' && is_array($X_RET[1]) && @$X_RET[1]['id']) {
 			$userId = $X_RET[1]['id'];
 		}
+		++ $DBH->skipLogCnt;
 		$rv = dbUpdate("ApiLog", [
 			"t" => $iv,
 			"retval" => $X_RET[0],
@@ -833,6 +836,7 @@ class ApiLog
 		$res = json_encode($X_RET, $GLOBALS["JSON_FLAG"]);
 		$content = $this->myVarExport($res);
 
+		++ $DBH->skipLogCnt;
 		dbInsert("ApiLog1", [
 			"apiLogId" => $this->id,
 			"ac" => $this->ac1,

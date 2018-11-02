@@ -1528,6 +1528,7 @@ class DirectReturn extends LogicException
 
 class MyPDO extends PDO
 {
+	public $skipLogCnt = 0;
 	function __construct($dsn, $user = null, $pwd = null)
 	{
 		$opts = [];
@@ -1538,6 +1539,10 @@ class MyPDO extends PDO
 	}
 	private function addLog($str)
 	{
+		if ($this->skipLogCnt > 0) {
+			-- $this->skipLogCnt;
+			return;
+		}
 		addLog($str, 9);
 	}
 	function query($sql)
