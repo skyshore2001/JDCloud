@@ -1,9 +1,10 @@
 @Cinf: version, createTm, upgradeTm
 @Employee: id, uname, phone(s), pwd, name(s), perms
 @User: id, uname, phone(s), pwd, name(s), createTm
-@Ordr: id, userId, status(2), amount, dscr(l), cmt(l)
+@Ordr: id, userId, createTm, status(2), amount, dscr(l), cmt(l)
 @OrderLog: id, orderId, action, tm, dscr, empId
 @OrderAtt: id, orderId, attId
 @ApiLog: id, tm, addr, ua(l), app, ses, userId, ac, t&, retval&, req(t), res(t), reqsz&, ressz&, ver, serverRev(10)
+@ApiLog1: id, apiLogId, ac, t&, retval&, req(t), res(t)
 @Pwd: id, pwd, cnt&
 @Attachment: id, path, orgPicId, exif(t), tm, orgName(l)
