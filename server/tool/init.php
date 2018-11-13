@@ -242,8 +242,10 @@ if (getenv("P_DB") === false) {
 	putenv("P_DB={$db}");
 	putenv("P_DBCRED={$dbcred_b64}");
 }
-putenv("P_URL_PATH={$urlPath}");
 putenv("P_ADMIN_CRED={$adminCred}");
+// putenv("P_TEST_MODE=1");
+// putenv("P_DEBUG=9");
+// putenv("P_URL_PATH={$urlPath}");
 EOL;
 
 	$rv = file_put_contents(CONF_FILE, $str);
