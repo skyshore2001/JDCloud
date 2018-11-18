@@ -528,6 +528,14 @@ function mfparam($name)
 }
 */
 
+/**
+@fn getBcParam($name, $defVal=null)
+@fn setBcParam($name, $value)
+
+TODO: BC是什么？改名？
+
+获取或设置特别的HTTP头部参数。
+ */
 function getBcParam($name, $defVal = null)
 {
 	$name1 = "HTTP_BC_" . strtoupper($name);
@@ -571,19 +579,61 @@ function getRsHeader($sth)
 	return $h;
 }
 
-function getRsAsTable($sql)
+/**
+@fn queryAllWithHeader($sql, $wantArray=false)
+@alias getRsAsTable($sql)
+
+查询SQL，返回筋斗云table格式：{@h, @d} 
+h是标题字段数组，d是数据行。
+即queryAll函数的带表格标题版本。
+
+	$tbl = queryAllWithHeader("SELECT id, name FROM User");
+
+返回示例：
+
+	[
+		"h"=>["id","name"],
+		"d"=>[ [1,"name1"], [2, "name2"]]
+	]
+
+如果查询结果为空，则返回：
+
+	[ "h" => [], "d" => [] ];
+
+如果指定了参数$wantArray=true, 则返回二维数组，其中首行为标题行：
+
+	$tbl = queryAllWithHeader("SELECT id, name FROM User", true);
+
+返回：
+
+	[ ["id", "name"], [1, "name1"], [2, "name2"] ]
+
+如果查询结果为空，则返回:
+
+	[ [], [] ]
+
+@see queryAll
+ */
+function queryAllWithHeader($sql, $wantArray=false)
 {
 	global $DBH;
 	$sth = $DBH->query($sql);
-	$wantArray = param("wantArray/b", false);
-	if ($wantArray) {
-		return $sth->fetchAll(PDO::FETCH_ASSOC);
-	}
 
 	$h = getRsHeader($sth);
 	$d = $sth->fetchAll(PDO::FETCH_NUM);
 
-	return ["h"=>$h, "d"=>$d];
+	if ($wantArray) {
+		$ret = array_merge([$h], $d);
+	}
+	else {
+		$ret = ["h"=>$h, "d"=>$d];
+	}
+	return $ret;
+}
+
+function getRsAsTable($sql)
+{
+	return queryAllWithHeader($sql);
 }
 
 /**

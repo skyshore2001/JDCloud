@@ -1910,7 +1910,8 @@ function KVtoCond($k, $v)
 
 	function table2csv($tbl, $enc = null)
 	{
-		$this->outputCsvLine($tbl["h"], $enc);
+		if (isset($tbl["h"]))
+			$this->outputCsvLine($tbl["h"], $enc);
 		foreach ($tbl["d"] as $row) {
 			$this->outputCsvLine($row, $enc);
 		}
@@ -1918,14 +1919,69 @@ function KVtoCond($k, $v)
 
 	function table2txt($tbl)
 	{
-		echo join("\t", $tbl["h"]), "\n";
+		if (isset($tbl["h"]))
+			echo join("\t", $tbl["h"]), "\n";
 		foreach ($tbl["d"] as $row) {
 			echo join("\t", $row), "\n";
 		}
 	}
 
+/**
+@fn handleExportFormat($fmt, $arr, $fname)
+
+导出表到文件。
+
+- fmt: csv-逗号分隔的文本; excel-使用gb18030编码的csv文本(excel可直接打开); txt-制表符分隔的文本。 
+- arr: 筋斗云表格格式({@h, @d}), 或二维数组表格格式。
+- fname: 导出的文件名
+
+示例：导出订单行及其明细等表，将多个查询结果拼成一个数组，导出excel-csv文件。
+
+	class AC2_Ordr 
+	{
+		function api_export()
+		{
+			$id = mparam("id");
+			$tbl = queryAllWithHeader("SELECT t0.id 订单号, u.name 用户, u.phone 联系方式, t0.createTm 创建时间, t0.amount 金额
+	FROM Ordr t0
+	LEFT JOIN User u ON u.id=t0.userId
+	WHERE t0.id=$id", true);
+			$tbl2 = queryAllWithHeader("SELECT name 商品, price 单价, qty 数量, spec 规格 FROM OrderItem WHERE orderId=$id", true);
+			$tbl3 = queryAllWithHeader("SELECT name 名称, amount 金额 FROM OrderAmount WHERE orderId=$id", true);
+
+			$arr = array_merge($tbl, [[], ["订单明细:"]], $tbl2, [[], ["金额调整:"]], $tbl3);
+
+			$this->handleExportFormat("excel", $arr, "订单明细-$id");
+		}
+	}
+
+注意：`[[], ["订单明细"]`表示插入两行，一个空行，另一个只有一列"订单明细"。
+
+前端JS示例:
+
+	var url = WUI.makeUrl("Ordr.export", {id: orderId});
+	window.open(url);
+
+导出示例：
+
+	订单号	用户	联系方式	创建时间	金额
+	51343	王五555	"12345678901	"	2018/11/16 15:38	135
+					
+	订单明细:				
+	商品	单价	数量	规格	
+	高压氧气管三胶二线	115	1	8MM	
+					
+	金额调整:				
+	名称	金额			
+	运费	20			
+
+*/
 	function handleExportFormat($fmt, $ret, $fname)
 	{
+		// 若二维数组转成{h,d}格式
+		if (!isset($ret["d"])) {
+			$ret = ["d"=>$ret];
+		}
 		$handled = false;
 		if ($fmt === "csv") {
 			header("Content-Type: application/csv; charset=UTF-8");
