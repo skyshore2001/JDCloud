@@ -25,20 +25,22 @@ function initPageQuery()
 		var query = jpage.find("#txtQuery").val();
 		cleanDynInfo();
 
-		var ms = query.match(/select\s+.*?from\s+(\S+)/is);
-		if (ms) {
-			addDynInfo("主表: <span id=\"txtMainTable\">" + ms[1] + "</span>");
-			if (query.search(/limit/i) < 0) {
-				addDynInfo("<span class=\"status-warning\">只返回前20行.</span>");
-				query += " LIMIT 20";
-			}
+		if (query[0] == "!") {
+			query = query.substr(1);
 		}
 		else {
-			if (query[0] != "!") {
+			var ms = query.match(/select\s+.*?from\s+(\S+)/is);
+			if (ms) {
+				addDynInfo("主表: <span id=\"txtMainTable\">" + ms[1] + "</span>");
+				if (query.search(/limit/i) < 0) {
+					addDynInfo("<span class=\"status-warning\">只返回前20行.</span>");
+					query += " LIMIT 20";
+				}
+			}
+			else {
 				app_alert("不允许SELECT之外的语句.", "w");
 				return;
 			}
-			query = query.substr(1);
 		}
 
 		callSvr("execSql", {fmt: "table"}, api_execSql, {sql: query}, {noex: 1});
