@@ -1684,18 +1684,15 @@ class AppBase
 		}
 		catch (MyException $e) {
 			list($code, $msg, $msg2) = [$e->getCode(), $e->getMessage(), $e->internalMsg];
-			if (isset($e->xdebug_message))
-				addLog($e->xdebug_message, 9);
+			addLog((string)$e, 9);
 		}
 		catch (PDOException $e) {
 			list($code, $msg, $msg2) = [E_DB, $ERRINFO[E_DB], $e->getMessage()];
-			if (isset($e->xdebug_message))
-				addLog($e->xdebug_message, 9);
+			addLog((string)$e, 9);
 		}
 		catch (Exception $e) {
 			list($code, $msg, $msg2) = [E_SERVER, $ERRINFO[E_SERVER], $e->getMessage()];
-			if (isset($e->xdebug_message))
-				addLog($e->xdebug_message, 9);
+			addLog((string)$e, 9);
 		}
 
 		try {

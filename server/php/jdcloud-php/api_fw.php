@@ -1160,7 +1160,7 @@ function getHttpInput()
 		if (preg_match('/charset=([\w-]+)/i', $ct, $ms)) {
 			$charset = strtolower($ms[1]);
 			if ($charset != "utf-8") {
-				@$content = iconv($charset, "utf-8//TRANSLIT", $content);
+				@$content = iconv($charset, "utf-8//IGNORE", $content);
 			}
 			if ($content === false)
 				throw new MyException(E_PARAM, "unknown encoding $charset");
@@ -1363,14 +1363,17 @@ class ApiApp extends AppBase
 		if ($method !== "POST")
 			throw new MyException(E_PARAM, "batch MUST use `POST' method");
 
-		$s = file_get_contents("php://input");
+		$s = getHttpInput();
 		$calls = json_decode($s, true);
 		if (! is_array($calls))
 			throw new MyException(E_PARAM, "bad batch request");
 
 		global $DBH;
 		global $X_RET;
-		// 以下过程不允许抛出异常
+
+		// 以下过程不允许抛出异常, 一旦有异常, 返回将不符合batch协议
+		try {
+
 		$batchApiApp = new BatchApiApp($this, $useTrans);
 		if ($useTrans && !$DBH->inTransaction())
 			$DBH->beginTransaction();
@@ -1423,6 +1426,14 @@ class ApiApp extends AppBase
 			$DBH->commit();
 		ApiFw_::$SOLO = $solo;
 		setRet(0, $retVal);
+
+		} /* try */
+		catch (Exception $ex) {
+			ApiFw_::$SOLO = $solo;
+			logit($ex);
+			throw $ex;
+		}
+
 		return $retVal;
 	}
 
