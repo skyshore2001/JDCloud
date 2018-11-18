@@ -786,7 +786,7 @@ function dbconn($fnConfirm = null)
 		exit;
 	}
 	try {
-		@$DBH = new MyPDO ($C[0], $C[1], $C[2]);
+		@$DBH = new JDPDO ($C[0], $C[1], $C[2]);
 	}
 	catch (PDOException $e) {
 		$msg = $GLOBALS["TEST_MODE"] ? $e->getMessage() : "dbconn fails";
@@ -1527,7 +1527,24 @@ class DirectReturn extends LogicException
 {
 }
 
-class MyPDO extends PDO
+/**
+@class JDPDO
+@var $DBH
+
+数据库类PDO增强。全局变量$DBH为默认数据库连接，dbconn,queryAll,execOne等数据库函数都使用它。
+
+- 在调试等级P_DEBUG=9时，将SQL日志输出到前端，即`addLog(sqlStr, DEBUG=9)`。
+- 如果有符号文件CFG_CONN_POOL，则使用连接池（缺省不用）
+
+如果想忽略输出一条SQL日志，可以在调用SQL查询前设置skipLogCnt，如：
+
+	global $DBH;
+	++ $DBH->skipLogCnt;  // 若要忽略两条就用 $DBH->skipLogCnt+=2
+	$DBH->exec('set names utf8'); // 也可以是queryOne/execOne等函数。
+
+@see queryAll,execOne,dbconn
+ */
+class JDPDO extends PDO
 {
 	public $skipLogCnt = 0;
 	function __construct($dsn, $user = null, $pwd = null)
