@@ -246,7 +246,7 @@ function param_varr($str, $type, $name)
 		$row1 = [];
 		foreach ($row as $e) {
 			list($t, $optional) = $elemTypes[$i];
-			if ($e == null) {
+			if ($e == null || $e === "null") {
 				if ($optional) {
 					++$i;
 					$row1[] = null;
