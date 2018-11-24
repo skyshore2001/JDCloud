@@ -121,11 +121,11 @@ function row2tr(row)
 	{
 		var jdlg = $(this);
 		var jfrm = jdlg.find("form");
-		jfrm.on("show", function (ev, data) {
+		jfrm.on("show", function (ev, formMode, initData) {
 			// 显示时perms字段自动存在hidden对象中，通过调用 hiddenToCheckbox将相应的checkbox选中
 			hiddenToCheckbox(jfrm.find("#divPerms"));
 		})
-		.on("validate", function (ev) {
+		.on("validate", function (ev, formMode, initData, newData) {
 			// 保存时收集checkbox选中的内容，存储到hidden对象中。
 			checkboxToHidden(jfrm.find("#divPerms"));
 		});
@@ -272,12 +272,12 @@ JS逻辑如下：
 		var jmenu = jdlg.find("#mnuPics");
 		
 		var jfrm = jdlg.find("form");
-		jfrm.on("show", function (ev, data) {
+		jfrm.on("show", function (ev, formMode, initData) {
 			// 加载图片
 			hiddenToImg(jfrm.find("#divStorePics"));
 			hiddenToImg(jfrm.find("#divStorePicId"));
 		})
-		.on("validate", function (ev) {
+		.on("validate", function (ev, formMode, initData, newData) {
 			// 保存图片
 			imgToHidden(jfrm.find("#divStorePics"));
 			imgToHidden(jfrm.find("#divStorePicId"));
