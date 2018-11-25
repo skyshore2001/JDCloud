@@ -83,7 +83,8 @@ function resizeImage($in, $w, $h, $out=null)
 	$thumb = imageCreateTrueColor($w, $h);
 	
 	// Resize
-	imageCopyResized($thumb, $source, 0, 0, 0, 0, $w, $h, $srcw, $srch);
+	// imageCopyResized($thumb, $source, 0, 0, 0, 0, $w, $h, $srcw, $srch);
+	imageCopyResampled($thumb, $source, 0, 0, 0, 0, $w, $h, $srcw, $srch);
 
 	// Output
 	imageJpeg($thumb, $out);
