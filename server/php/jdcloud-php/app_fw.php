@@ -1012,6 +1012,10 @@ function queryOne($sql, $assoc = false)
 	// 可转成table格式返回
 	return objarr2table($rows);
 
+queryAll支持执行返回多结果集的存储过程，这时返回的不是单一结果集，而是结果集的数组：
+
+	$allRows = queryAll("call syncAll()");
+
 @see objarr2table
  */
 function queryAll($sql, $assoc = false)
@@ -1023,9 +1027,14 @@ function queryAll($sql, $assoc = false)
 	if ($sth === false)
 		return false;
 	$fetchMode = $assoc? PDO::FETCH_ASSOC: PDO::FETCH_NUM;
-	$rows = $sth->fetchAll($fetchMode);
-	$sth->closeCursor();
-	return $rows;
+	$allRows = [];
+	do {
+		$rows = $sth->fetchAll($fetchMode);
+		$allRows[] = $rows;
+	}
+	while ($sth->nextRowSet());
+	// $sth->closeCursor();
+	return count($allRows)>1? $allRows: $allRows[0];
 }
 
 /**
