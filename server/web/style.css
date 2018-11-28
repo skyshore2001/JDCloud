@@ -122,6 +122,7 @@ input:disabled,select:disabled,textarea:disabled {
 	font-size: 0.6em;
 	margin-top: 0;
 	color: blue;
+	white-space: normal;
 }
 
 /* customize menu */
