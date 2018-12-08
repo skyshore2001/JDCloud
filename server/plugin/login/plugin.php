@@ -106,11 +106,15 @@ class LoginImpBase
 			$userData["createTm"] = date(FMT_DT);
 			$userData["weixinKey"] = $userInfo["openid"];
 			$id = dbInsert("User", $userData);
+			$imp = LoginImpBase::getInstance();
+			$imp->onRegNewUser($id, $userData['uname']);
 		}
 		else {
 			dbUpdate("User", $userData, $id);
 		}
 
+		$ret = ["id"=>$id];
+		$this->onLogin("user", $id, $ret);
 		$_SESSION["uid"] = $id;
 	}
 
