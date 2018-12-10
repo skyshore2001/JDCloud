@@ -42,6 +42,11 @@
 	/*-webkit-overflow-scrolling: touch;*/
 }
 
+/* 微信中不显示hd */
+.mui-weixin .mui-page > .hd {
+	display:none;
+}
+
 .right {
 	text-align: right;
 }
