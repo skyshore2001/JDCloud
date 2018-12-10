@@ -23,6 +23,33 @@
 
 # 版本日志
 
+## v5.2 - 2018/12
+
+- 前端(jd-m2)
+ - 脚本错误可上传到syslog表
+ - UploadPic插件，用于上传图片（压缩、预览、上传）
+ - 支持设置从某些页面返回时，不刷新当前页(backNoRefresh)
+
+- 后端(jd-php)
+ - 批量更新、批量删除、批量导入（添加）功能: setIf, delIf, batchAdd
+ - 导出文件增强：queryAllWithHeader, handleExportFormat
+ - ApiLog1: 记录batch操作明细
+ - queryAll支持返回多结果集
+ - upload与login插件增强
+ - httpCall记录慢查询到日志
+ - 缺省查询最大返回数据条数由100条改为1000条。
+ - 在conf.user.php中设置session超时时间
+
+- 管理端(jd-web)
+ - 详情对话框样式调整，输入框自动占满宽度
+ - my-combobox: 支持级联下拉列表
+ - 菜单中设置"nperm-xxx"类表示无xxx权限则显示。
+ - 统计页支持直接显示未汇总数据的图表
+
+- 工具(jd-tool)
+ - create-mui-page.sh，生成移动页面模板。
+ - tool/genDbDoc.pl 生成数据库表文档工具
+
 ## v5.1 - 2018/7
 
 - 前端
