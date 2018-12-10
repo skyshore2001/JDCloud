@@ -5561,7 +5561,7 @@ $(document).on("deviceready", function () {
 		if (self.activePage.attr("id") == homePageId) {
 			self.app_alert("退出应用?", 'q', function () {
 				navigator.app.exitApp();
-			});
+			}, {keep:true});
 			return;
 		}
 		history.back();
