@@ -1289,6 +1289,51 @@ function dbUpdate($table, $kv, $cond)
 	}
 	return $cnt;
 }
+/**
+translateKey(&$params, $fromCol, $toCol, $sqlQuery, $sqlInsert=null, &$cache=null)
+
+将fromCol转换为toCol，通过sqlQuery来查询，查不到则用sqlInsert来插入。
+如果未指定sqlInsert，则查阅不到字段时报错退出。
+
+在sqlQuery和sqlInsert中，用"%s"代替参数。
+示例：
+
+	// vendorName -> vendorId
+	$params = ["vendorName" => "v1"];
+	translateKey("vendorName", "vendorId", "SELECT id FROM Vendor WHERE name=%s", "INSERT INTO Vendor (name) VALUES (%s)");
+	// $params = ["vendorId" => "101"];
+
+如果导入字段有很多重复，可以传入cache数组以提高效率，如：
+
+	$vendorCache = []; // {vendorName=>vendorId}
+	$params = ["vendorName" => "v1", "storeName" => "store1"];
+	translateKey("vendorName", "vendorId", "SELECT id FROM Vendor WHERE name=%s", "INSERT INTO Vendor (name) VALUES (%s)", $vendorCache);
+	$storeCache = []; // {storeName=>storeId}
+	translateKey("storeName", "storeId", "SELECT id FROM Store WHERE name=%s", "INSERT INTO Store (name) VALUES (%s)", $storeCache);
+
+在translateKey中会将映射表存储在$cache中供下次查阅使用，这样不用每次都查数据库。
+*/
+function translateKey(&$params, $fromCol, $toCol, $sqlQuery, $sqlInsert=null, &$cache=null)
+{
+	$val = $params[$fromCol];
+	$rv = null;
+	if (is_array($cache)) {
+		$rv = $cache[$val];
+	}
+	if ($rv === null) {
+		$qval = Q($val);
+		$rv = queryOne(sprintf($sqlQuery, $qval));
+		if ($rv === false) {
+			if ($sqlInsert == null)
+				throw new MyException(E_PARAM, "bad ref key", "在关联表中找不到\"$val\"");
+			$rv = execOne(sprintf($sqlInsert, $qval), true);
+		}
+		if (is_array($cache))
+			$cache[$val] = $rv;
+	}
+	$params[$toCol] = $rv;
+	unset($params[$fromCol]);
+}
 //}}}
 
 function isHttps()
@@ -1306,58 +1351,42 @@ function isHttps()
 /**
 @fn getBaseUrl($wantHost = true)
 
-返回 $BASE_DIR 对应的网络路径（最后以"/"结尾）。
-如果指定了环境变量 P_URL_PATH（可在conf.user.php中设置）, 则根据该变量计算；否则自动判断（如果有符号链接可能不准）
+返回 $BASE_DIR 对应的网络路径（最后以"/"结尾），一般指api.php所在路径。
+如果指定了环境变量 P_BASE_URL(可在conf.user.php中设置), 则使用该变量。
+否则自动判断（如果有代理转发则可能不准）
 
 例：
-
-	P_URL_PATH = "/myapp/" 或 P_URL_PATH = "/myapp"
-
-则
 
 	getBaseUrl() -> "http://myserver.com/myapp/"
 	getBaseUrl(false) -> "/myapp/"
 
-注意：如果使用了反向代理等机制，该函数往往无法返回正确的值。
-
+注意：如果使用了反向代理等机制，该函数往往无法返回正确的值，
 例如 http://myserver.com/8081/myapp/api.php 被代理到 http://localhost:8081/myapp/api.php
-getBaseUrl()默认返回 "http://myserver.com/myapp/" 是错误的，可以设置P_BASE_URL解决：
+getBaseUrl()默认返回 "http://localhost:8081/myapp/" 是错误的，可以设置P_BASE_URL解决：
 
 	putenv("P_BASE_URL=http://myserver.com/8081/myapp/");
-
-这样getBaseUrl()可返回该值。
 
 @see $BASE_DIR
  */
 function getBaseUrl($wantHost = true)
 {
-	if ($wantHost && getenv("P_BASE_URL")) {
-		$baseUrl = getenv("P_BASE_URL");
-		if (substr($baseUrl, -1, 1) != "/")
+	$baseUrl = getenv("P_BASE_URL");
+	if ($baseUrl) {
+		if (!$wantHost) {
+			$baseUrl = preg_replace('/^[^\/]+/', '', $baseUrl);
+		}
+		if (strlen($baseUrl) == 0 || substr($baseUrl, -1, 1) != "/")
 			$baseUrl .= "/";
-		return $baseUrl;
-	}
-
-	$baseUrl = getenv("P_URL_PATH");
-	if ($baseUrl === false)
-	{
-		// 自动判断
-		global $BASE_DIR;
-		$pat = "/" . basename($BASE_DIR) . "/";
-		if (($i = strrpos($_SERVER["SCRIPT_NAME"], $pat)) !== false)
-			$baseUrl = substr($_SERVER["SCRIPT_NAME"], 0, $i+strlen($pat));
-		else
-			$baseUrl = "/";
 	}
 	else {
-		if (substr($baseUrl, -1, 1) != "/")
-			$baseUrl .= "/";
-	}
+		// 自动判断
+		$baseUrl = dirname($_SERVER["SCRIPT_NAME"]) . "/";
 
-	if ($wantHost)
-	{
-		$host = (isHttps() ? "https://" : "http://") . $_SERVER["HTTP_HOST"]; // $_SERVER["HTTP_X_FORWARDED_HOST"]
-		$baseUrl = $host . $baseUrl;
+		if ($wantHost)
+		{
+			$host = (isHttps() ? "https://" : "http://") . $_SERVER["HTTP_HOST"]; // $_SERVER["HTTP_X_FORWARDED_HOST"]
+			$baseUrl = $host . $baseUrl;
+		}
 	}
 	return $baseUrl;
 }
@@ -1534,6 +1563,16 @@ function htmlEscape($s)
 // 		return $s;
 	return htmlentities($s, ENT_NOQUOTES);
 }
+// 取部分内容判断编码, 如果是gbk则自动透明转码为utf-8
+function utf8InputFilter($fp)
+{
+	$str = fread($fp, 1000);
+	$enc = strtolower(mb_detect_encoding($str, ["gbk","utf-8"]));
+	if ($enc && $enc != "utf-8") {
+		stream_filter_append($fp, "convert.iconv.$enc.utf-8");
+	}
+	rewind($fp);
+}
 //}}}
 
 // ====== classes {{{
@@ -1554,6 +1593,11 @@ class MyException extends LogicException
 	function __construct($code, $internalMsg = null, $outMsg = null) {
 		parent::__construct($outMsg, $code);
 		$this->internalMsg = $internalMsg;
+		if ($code && !$outMsg) {
+			global $ERRINFO;
+			assert(array_key_exists($code, $ERRINFO));
+			$this->message = $ERRINFO[$code];
+		}
 	}
 	public $internalMsg;
 

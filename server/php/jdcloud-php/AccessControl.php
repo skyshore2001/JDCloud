@@ -675,6 +675,9 @@ class AccessControl
 	// 在add后自动设置; 在get/set/del操作调用onValidateId后设置。
 	protected $id;
 
+	// for batchAdd
+	protected $batchAddLogic;
+
 	static function create($tbl, $ac, $asAdmin = false) 
 	{
 		/*
@@ -736,8 +739,14 @@ class AccessControl
 			if (is_array($cond))
 				$cond = getCondStr($cond);
 
-			if ($condSql === null)
-				$condSql = $cond;
+			if ($condSql === null) {
+				if (stripos($cond, " or ") !== false && substr($cond,0,1) != '(') {
+					$condSql = "($cond)";
+				}
+				else {
+					$condSql = $cond;
+				}
+			}
 			else if (stripos($cond, " and ") !== false || stripos($cond, " or ") !== false)
 				$condSql .= " AND ({$cond})";
 			else 
@@ -1701,6 +1710,110 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		return $cnt;
 	}
 
+/**
+@fn AccessControl::api_batchAdd()
+
+批量添加（导入）。返回导入记录数及编号: {cnt, @idList}。
+在一个事务中执行，一行出错后立即失败返回，该行前面已导入的内容也会被取消（回滚）。
+
+支持两种方式上传：
+
+1. 直接在HTTP POST中传输内容，数据格式为：首行为字段名列表，次行为显示名列表，之后为实际数据。
+接口为：
+
+	{Obj}.batchAdd()(标题行，显示标题行，数据行)
+	(Content-Type=text/plain)
+
+每行数据中，以"\t"分隔列。
+前端JS调用示例：
+
+	var data = "name\taddr\n" + "门店名\t地址\n" + "门店1\t地址1\n门店2\t地址2\n";
+	callSvr("Store.batchAdd", function (ret) {
+		app_alert("成功导入" + ret.cnt + "条数据！");
+	}, data, {contentType:"text/plain"});
+
+2. 标准csv/txt文件上传：
+
+上传的文件首行当作标题列，如果这一行不是后台要求的标题名称，可通过URL参数title重新定义。
+一般使用excel csv文件（编码为gbk的csv文件），或txt文件（以"\t"分隔列，utf-8编码）。
+接口为：
+
+	{Obj}.batchAdd(title?)(csv/txt文件)
+	(Content-Type=multipart/form-data, 即html form默认传文件的格式)
+
+前端HTML:
+
+	<input type="file" name="f" accept=".csv,.txt">
+
+前端JS示例：
+
+	var fd = new FormData();
+	fd.append("file", frm.f.files[0]);
+	callSvr("Store.batchAdd", {title: "name,addr"}, function (ret) {
+		app_alert("成功导入" + ret.cnt + "条数据！");
+	}, fd);
+
+*/
+	function api_batchAdd()
+	{
+		$st = BatchAddStrategy::create($this->batchAddLogic);
+		$n = 1;
+		$titleRow = null;
+		$ret = [
+			"cnt" => 0,
+			"idList" => []
+		];
+		$tmp = $_POST;
+		$this->ac = "add";
+		$bak = [];
+		foreach ($this as $k=>$v) {
+			$bak[$k] = $v;
+		}
+		while (($row = $st->getRow()) != null) {
+			if ($n == 1) {
+				$titleRow = $row;
+			}
+			else if (($cnt = count($row)) > 0) {
+				// $_POST = array_combine($titleRow, $row);
+				$i = 0;
+				$_POST = [];
+				foreach ($titleRow as $e) {
+					if ($i >= $cnt)
+						break;
+					if ($e === '-') {
+						++ $i;
+						continue;
+					}
+					$_POST[$e] = $row[$i++];
+					if ($_POST[$e] === '') {
+						$_POST[$e] = null;
+					}
+				}
+				try {
+					$st->beforeAdd($_POST, $row);
+					$id = $this->api_add();
+					$this->after($id);
+					// restore fields
+					foreach ($bak as $k=>$v) {
+						$this->$k = $v;
+					}
+				}
+				catch (Exception $ex) {
+					$msg = $ex->getMessage();
+					if ( ($ex instanceof MyException) && $ex->internalMsg != null)
+						$msg .= "-" .$ex->internalMsg;
+					throw new MyException(E_PARAM, (string)$ex, "第{$n}行出错(\"" . join(',', $row) . "\"): " . $msg);
+				}
+				++ $ret["cnt"];
+				$ret["idList"][] = $id;
+			}
+			++ $n;
+		}
+		$this->ac = "batchAdd";
+		$_POST = $tmp;
+		return $ret;
+	}
+
 	// query sub table for mainObj(id), and add result to mainObj as obj or obj collection (opt["wantOne"])
 	protected function handleSubObj($id, &$mainObj)
 	{
@@ -2025,6 +2138,174 @@ function issetval($k, $arr = null)
 		$arr = $_POST;
 	return isset($arr[$k]) && $arr[$k] !== "";
 }
+/**
+@class BatchAddLogic
+
+用于定制批量导入行为。
+示例，实现接口：
+
+	Task.batchAdd(orderId, task1)(city, brand, vendorName, storeName)
+
+其中vendorName和storeName字段需要通过查阅修正为vendorId和storeId字段。
+
+	class TaskBatchAddLogic extends BatchAddLogic
+	{
+		protected $vendorCache = [];
+		function __construct () {
+			// 每个对象添加时都会用的字段，加在$this->params数组中
+			$this->params["orderId"] = mparam("orderId", "G"); // mparam要求必须指定该字段
+			$this->params["task1"] = param("task1", null, "G");
+		}
+		// $params为待添加数据，可在此修改，如用`$params["k1"]=val1`添加或更新字段，用unset($params["k1"])删除字段。
+		// $row为原始行数据数组。
+		function beforeAdd(&$params, $row) {
+			// vendorName -> vendorId 将params数组中的venderName字段查阅Vendor表改成vendorId字段。如果查不到则报错。传入vendorCache数组来优化查询。
+			translateKey($params, "vendorName", "vendorId", "SELECT id FROM Vendor WHERE name=%s", null, $this->vendorCache);
+			// storeName -> storeId 将params数组中的storeName字段查阅Store表改成storeId字段。如果查不到则自动以指定insert语句创建。
+			translateKey($params, "storeName", "storeId", "SELECT id FROM Store WHERE name=%s", "INSERT INTO Store (name) VALUES (%s)");
+		}
+		// 处理原始标题行数据, $row1是通过title参数传入的标题数组，可能为空
+		function onGetTitleRow($row, $row1) {
+		}
+	}
+
+	class AC2_Task extends AC0_Task
+	{
+		function api_batchAdd() {
+			$this->batchAddLogic = new TaskBatchAddLogic();
+			return parent::api_batchAdd();
+		}
+	}
+
+@see api_batchAdd
+*/
+class BatchAddLogic
+{
+	public $params = [];
+	function beforeAdd(&$paramArr, $row) {
+	}
+	function onGetTitleRow($row, $row1) {
+	}
+}
+
+/*
+分析符合下列格式的HTTP POST内容：
+
+- 以"\n"为行分隔，以"\t"为列分隔的文本数据表。
+- 第1行: 标题(如果有URL参数title，则忽略该行)，第2行开始为数据
+
+若需要定制其它导入方式，可继承和改写该类，如CsvBatchAddStrategy，改写以下方法
+
+	onInit
+	onGetRow
+
+通过BatchAddLogic::create来创建合适的类。
+*/
+class BatchAddStrategy
+{
+	protected $rowIdx;
+	protected $logic; // BatchAddLogic
+	private $rows;
+
+	static function create($logic=null) {
+		$st = null;
+		if (empty($_FILES)) {
+			$st = new BatchAddStrategy();
+		}
+		else {
+			$st = new CsvBatchAddStrategy();
+		}
+		if ($logic == null)
+			$st->logic = new BatchAddLogic();
+		else
+			$st->logic = $logic;
+		return $st;
+	}
+
+	final function beforeAdd(&$paramArr, $row) {
+		foreach ($this->logic->params as $k=>$v) {
+			$paramArr[$k] = $v;
+		}
+		$this->logic->beforeAdd($paramArr, $row);
+	}
+
+	protected function onInit() {
+		$content = getHttpInput();
+		$this->rows = preg_split('/\s*\n/', $content);
+	}
+	protected function onGetRow() {
+		if ($this->rowIdx >= count($this->rows))
+			return null;
+		$rowStr = $this->rows[$this->rowIdx];
+		if ($rowStr == "") {
+			$row = [];
+		}
+		else {
+			$row = preg_split('/[ ]*\t[ ]*/', $rowStr);
+		}
+		return $row;
+	}
+
+	function getRow() {
+		if ($this->rowIdx == null) {
+			$this->rowIdx = 0;
+			$this->onInit();
+		}
+		$row = $this->onGetRow();
+		if ($row == null)
+			return null;
+		if (++ $this->rowIdx == 1) {
+			$title = param("title", null, "G");
+			$row1 = null;
+			if ($title) {
+				$row1 = explode(',', $title);
+			}
+			$this->logic->onGetTitleRow($row, $row1);
+			if ($row1 != null)
+				$row = $row1;
+		}
+		return $row;
+	}
+}
+
+/*
+支持csv, txt两种文件，分别以","和"\t"分隔。
+标题栏为数据第一行，也可通过title参数来覆盖。
+*/
+class CsvBatchAddStrategy extends BatchAddStrategy
+{
+	protected $fp;
+	protected $delim;
+
+	protected function onInit() {
+		if (empty($_FILES))
+			throw new MyException(E_PARAM, "no file", "没有文件上传");
+		$f = current($_FILES);
+		if ($f["size"] <= 0 || $f["error"] != 0)
+			throw new MyException(E_PARAM, "error file: code={$f['error']}", "文件数据出错");
+
+		$orgName = $f["name"];
+		$file = $f["tmp_name"];
+		$this->fp = fopen($file, "rb");
+		utf8InputFilter($this->fp);
+
+		if (substr($orgName, 4) == ".txt") {
+			$this->delim = "\t";
+		}
+		else {
+			$this->delim = ",";
+		}
+	}
+	protected function onGetRow() {
+		$row = fgetcsv($this->fp, 0, $this->delim);
+		if ($row === false) {
+			fclose($this->fp);
+			$row = null;
+		}
+		return $row;
+	}
+}
+
 # }}}
 
 // vi: foldmethod=marker
