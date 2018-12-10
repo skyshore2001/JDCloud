@@ -1,0 +1,66 @@
+<div title="批量导入" style="padding:20px 40px;width:600px;height:500px;" wui-script="dlgImport.js" my-initfn="initDlgImport">
+<style>
+#btnExport {
+	color: red;
+}
+</style>
+<form>
+	<table style="height:95%">
+		<tr>
+			<td>导入类型</td>
+			<td>
+				<select name="obj">
+					<option value="Employee">员工</option>
+					<option value="User">用户</option>
+					<!--option value="Ordr">订单</option-->
+				</select>
+			</td>
+		</tr>
+		<!--tr class="optional forOrdr">
+			<td>订单属性1*</td>
+			<td>
+				<input name="task1" placeholder="示例：安装位1,安装位2,安装位3" required>
+			</td>
+		</tr-->
+		<tr>
+			<td>选择文件</td>
+			<td>
+				<input type="file" name="file" accept=".csv,.txt">
+			</td>
+		</tr>
+		<tr>
+			<td colspan=2>
+				<p class="hint"><a id="btnExport">点击这里</a>下载模板文件。或者直接复制下面文本到Excel中编辑后再粘贴回来。</p>
+			</td>
+		</tr>
+		<tr>
+			<td colspan=2 style="height:100%">
+				<textarea name="content" style="height:100%;width:95%; white-space:nowrap;"></textarea>
+			</td>
+		</tr>
+	</table>
+</form>
+
+<!--
+导入模板设置：
+
+- 首行若以!开头，表示URL参数（格式为`param1=val1&param2=val2`）。例如经常在此设置title参数。
+- 内容是以制表符分隔的文本行，第一行为标题行（可被title参数覆盖），之后为数据行。
+
+title参数中，"-"表示导入时忽略此行。
+-->
+<script type="text/template" class="tplEmployee">
+!title=uname,phone,name,perms
+登录名	手机号	姓名	权限
+admin	12345678901	管理员	mgr
+test1	12345678902	运营人员1	
+</script>
+
+<script type="text/template" class="tplUser">
+!title=uname,phone,name,createTm
+登录名	手机号	姓名	注册时间
+user1	12345678901	用户1	2018-10-1
+user2	12345678902	用户2	2018-11-1
+</script>
+
+</div>
