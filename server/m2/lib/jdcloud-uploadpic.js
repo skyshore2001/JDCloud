@@ -358,7 +358,7 @@ function uploadPic1(jo)
 
 	loadPreview(jo, isMul);
 
-	jinput.change(function (ev) {
+	jo.on("change", "input[type=file]", function (ev) {
 		$.each(this.files, function (i, fileObj) {
 			compressImg(fileObj, function (picData) {
 				previewImg(jo, null, picData, isMul);
@@ -367,8 +367,13 @@ function uploadPic1(jo)
 		this.value = "";
 	});
 
-	jo.on("click", ".uploadpic-item", function () {
-		if (this.style.backgroundImage != "none") {
+	jo.on("click", ".uploadpic-item", function (ev) {
+		var ji = $(this);
+		if ($(ev.target).hasClass("uploadpic-delItem")) {
+			delPreview(ji);
+			return false;
+		}
+		if (ji.css("backgroundImage") != "none") {
 			PageGallery.show($(this));
 			return false;
 		}
@@ -405,7 +410,7 @@ function previewImg(jo, attId, picData, isMul)
 	if (!isMul) {
 		var ji = jo.find(".uploadpic-item");
 		if (ji.size() == 0) {
-			ji = newPreview().addClass("uploadpic-item").prependTo(jo);
+			ji = newPreview().prependTo(jo);
 		}
 	}
 	else {
@@ -416,16 +421,21 @@ function previewImg(jo, attId, picData, isMul)
 		}
 		else {
 			ji0.each(function(i, e) {
-				if (e.style.backgroundImage == "none") {
-					ji = $(e);
+				if ($(this).css("backgroundImage") == "none") {
+					ji = $(this);
 					return false;
 				}
 			});
 			if (ji == null) {
-				ji = newPreview();
+				ji = ji0.first().clone();
 				$(ji0[ji0.size()-1]).after(ji);
 			}
 		}
+	}
+
+	if (ji.find(".uploadpic-delItem").size() == 0) {
+		// z-index: 在input button之上
+		$("<div>").addClass("uploadpic-delItem").css("z-index",1).text("x").appendTo(ji);
 	}
 	ji.css("backgroundImage", "url(" + url + ")");
 	ji.prop("picData_", picData)
@@ -434,27 +444,21 @@ function previewImg(jo, attId, picData, isMul)
 
 function newPreview()
 {
-	var ji = $("<div>").addClass("uploadpic-item");
-	var btnDel = $("<div>").addClass("uploadpic-delItem").text("x").appendTo(ji);
-	btnDel.click(onDelPreview);
-	return ji;
+	return $("<div>").addClass("uploadpic-item");
 }
 
-function onDelPreview(ev)
-{
-	var ji = $(this).parent();
-	delPreviewItem(ji);
-}
-
-function delPreviewItem(ji)
+// forReset=false
+function delPreview(ji, forReset)
 {
 	var jo = ji.closest(".uploadpic");
-	jo.prop("delMark_", true); // 标记有删除操作，需要更新
+	if (!forReset)
+		jo.prop("delMark_", true); // 标记有删除操作，需要更新
 
 	if (ji.prop("isFixed_")) {
 		ji.prop("attId_", null);
 		ji.prop("picData_", null);
 		ji.css("backgroundImage", "none");
+		ji.find(".uploadpic-delItem").remove();
 	}
 	else {
 		ji.remove();
@@ -642,7 +646,7 @@ function initPageGallery()
 
 	jdel.click(function(ev) {
 		ev.preventDefault();
-		delPreviewItem(PageGallery.jpreviewItem_);
+		delPreview(PageGallery.jpreviewItem_);
 		PageGallery.jpreviewItem_ = null;
 		history.back();
 	});
@@ -669,9 +673,11 @@ function initPageGallery()
 		{
 			ji1 = ji.prev(".uploadpic-item");
 		}
-		if (ji1 && ji1.size() > 0) {
-			PageGallery.jpreviewItem_ = ji = ji1;
+		if (ji1 == null || ji1.size() == 0) {
+			history.back();
+			return false;
 		}
+		PageGallery.jpreviewItem_ = ji = ji1;
 		setupImage(ji);
 	}
 }
@@ -684,7 +690,7 @@ function uploadPic_reset()
 	self.jupload.each(function () {
 		var jo = $(this);
 		jo.find(".uploadpic-item").each(function (i, e) {
-			delPreviewItem($(this));
+			delPreview($(this), true);
 		});
 		var isMul = jo.prop("isMul");
 		loadPreview(jo, isMul);
