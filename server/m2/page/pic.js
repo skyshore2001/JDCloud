@@ -12,6 +12,7 @@ function initPagePic()
 			var attIds = MUI.getStorage(name);
 			jpage.find("#" + name).attr("data-atts", attIds);
 		});
+		uploadPic.reset();
 	}
 
 	function btnUpload_click() {

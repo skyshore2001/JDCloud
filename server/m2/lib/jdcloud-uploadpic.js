@@ -265,6 +265,9 @@ JS
 	// 初始化，显示预览图
 	var uploadPic = new MUI.UploadPic(jpage); // 可直接传uploadpic类的jQuery对象或包含它的jQuery DOM对象
 
+	// 如果重新设置了data-atts属性，可调用
+	// uploadPic.reset();
+
 	// 点击提交时调用submit，当上传完成后，
 	uploadPic.submit().then(function (userPic, itemPics) {
 		
@@ -314,7 +317,13 @@ onUploadDone在全部上传完成后调用，参数分别为每个上传区的�
 - ji.prop("picData_") -> {b64src,blob,w,h,size,...} (参考compressImg的回调函数cb的参数) 
  当选择的图片进行压缩后，数据存储在picData_中。b64src字段可作为url显示图片。在上传服务端后该数据被清空。
 - ji.prop("attId_") -> 对应的图片（缩略图）编号。仅当在服务器上已有才显示。
+- ji.prop("isFixed_") -> true表示固定预览位，只能清空，不可被删除。
 - ji.css("background-image"); -> 缩略图片的url。如果是待上传或刚刚上传的图片，则是大图的base64编码url。
+
+在上传区uploadpic对象上，设置了以下属性：
+
+- isMul: 标识是多图上传区。在安卓手机上，由于对文件选择框的multiple属性支持不好，常常去掉和禁用它。所以内部使用isMul属性来区分。
+- delMark_: 标识是否有删除图片操作。在submit后恢复为null.
 
 TODO: 无操作时回调？
 
@@ -335,88 +344,100 @@ function UploadPic(jparent, opt)
 	self.jupload.each(function () {
 		uploadPic1($(this));
 	});
+}
 
-	function uploadPic1(jo)
-	{
-		var jinput = jo.find("input[type=file]");
-		var isMul = jinput.prop("multiple");
+function uploadPic1(jo)
+{
+	var jinput = jo.find("input[type=file]");
+	var isMul = jinput.prop("multiple");
+	jo.prop("isMul", isMul);
 
-		var atts = jo.data("atts");
-		if (atts) {
-			atts = atts.toString().split(/\s*,\s*/);
-			$.each(atts, function (i, e) {
-				previewImg(jo, e, null, isMul);
+	jo.find(".uploadpic-item").each(function (i, e) {
+		this.isFixed_ = true;
+	});
+
+	loadPreview(jo, isMul);
+
+	jinput.change(function (ev) {
+		$.each(this.files, function (i, fileObj) {
+			compressImg(fileObj, function (picData) {
+				previewImg(jo, null, picData, isMul);
 			});
-		}
-
-		jinput.change(function (ev) {
-			$.each(this.files, function (i, fileObj) {
-				compressImg(fileObj, function (picData) {
-					previewImg(jo, null, picData, isMul);
-				});
-			});
-			this.value = "";
 		});
+		this.value = "";
+	});
 
-		jo.on("click", ".uploadpic-item", function () {
-			if (this.picData_ || this.attId_) {
-				PageGallery.show($(this));
-				return false;
-			}
+	jo.on("click", ".uploadpic-item", function () {
+		if (this.style.backgroundImage != "none") {
+			PageGallery.show($(this));
+			return false;
+		}
+	});
+}
+
+function loadPreview(jo, isMul)
+{
+	var atts = jo.attr("data-atts");
+	if (atts) {
+		atts = atts.toString().split(/\s*,\s*/);
+		$.each(atts, function (i, e) {
+			previewImg(jo, e, null, isMul);
 		});
 	}
+}
 
-	// 对于单图, 直接覆盖原先的uploadpic-item; 如果原先没有, 则新建一个.
-	// 对于多图, 如果之前有空闲的item就直接用, 否则在其后创建一个.
-	// uploadpic-item上的property: attId_, picData_; attribute: `background-image: url(url)`
-	function previewImg(jo, attId, picData, isMul) {
-		var url;
-		if (attId != null) {
-			url = MUI.makeUrl("att", {id:attId});
+// 对于单图, 直接覆盖原先的uploadpic-item; 如果原先没有, 则新建一个.
+// 对于多图, 如果之前有空闲的item就直接用, 否则在其后创建一个.
+// uploadpic-item上的property: attId_, picData_; attribute: `background-image: url(url)`
+function previewImg(jo, attId, picData, isMul)
+{
+	var url;
+	if (attId != null) {
+		url = MUI.makeUrl("att", {id:attId});
+	}
+	else if (picData != null) {
+		url = picData.b64src;
+	}
+	else {
+		MUI.assert(false);
+	}
+
+	if (!isMul) {
+		var ji = jo.find(".uploadpic-item");
+		if (ji.size() == 0) {
+			ji = newPreview().addClass("uploadpic-item").prependTo(jo);
 		}
-		else if (picData != null) {
-			url = picData.b64src;
+	}
+	else {
+		var ji0 = jo.find(".uploadpic-item");
+		var ji;
+		if (ji0.size() == 0) {
+			ji = newPreview().prependTo(jo);
 		}
 		else {
-			MUI.assert(false);
-		}
-
-		if (!isMul) {
-			var ji = jo.find(".uploadpic-item");
-			if (ji.size() == 0) {
-				ji = newPreview().addClass("uploadpic-item").prependTo(jo);
-			}
-		}
-		else {
-			var ji0 = jo.find(".uploadpic-item");
-			var ji;
-			if (ji0.size() == 0) {
-				ji = newPreview().prependTo(jo);
-			}
-			else {
-				ji0.each(function(i, e) {
-					if (e.style.backgroundImage == "") {
-						ji = $(e);
-						return false;
-					}
-				});
-				if (ji == null) {
-					ji = newPreview();
-					$(ji0[ji0.size()-1]).after(ji);
+			ji0.each(function(i, e) {
+				if (e.style.backgroundImage == "none") {
+					ji = $(e);
+					return false;
 				}
+			});
+			if (ji == null) {
+				ji = newPreview();
+				$(ji0[ji0.size()-1]).after(ji);
 			}
 		}
-		ji.css("background-image", "url(" + url + ")");
-		ji.prop("picData_", picData)
-			.prop("attId_", attId);
 	}
+	ji.css("backgroundImage", "url(" + url + ")");
+	ji.prop("picData_", picData)
+		.prop("attId_", attId);
+}
 
-	function newPreview() {
-		var ji = $("<div>").addClass("uploadpic-item");
-		var btnDel = $("<div>").addClass("uploadpic-delItem").text("x").appendTo(ji);
-		btnDel.click(onDelPreview);
-		return ji;
-	}
+function newPreview()
+{
+	var ji = $("<div>").addClass("uploadpic-item");
+	var btnDel = $("<div>").addClass("uploadpic-delItem").text("x").appendTo(ji);
+	btnDel.click(onDelPreview);
+	return ji;
 }
 
 function onDelPreview(ev)
@@ -427,8 +448,17 @@ function onDelPreview(ev)
 
 function delPreviewItem(ji)
 {
-	ji.closest(".uploadpic").prop("delMark_", true); // 标记有删除操作，需要更新
-	ji.remove();
+	var jo = ji.closest(".uploadpic");
+	jo.prop("delMark_", true); // 标记有删除操作，需要更新
+
+	if (ji.prop("isFixed_")) {
+		ji.prop("attId_", null);
+		ji.prop("picData_", null);
+		ji.css("backgroundImage", "none");
+	}
+	else {
+		ji.remove();
+	}
 }
 
 // 如果需要更改，返回Deferred对象，在上传完成后Deferred对象可执行；否则返回空。
@@ -647,5 +677,18 @@ function initPageGallery()
 }
 // ------------ }}}
 
+UploadPic.prototype.reset = uploadPic_reset;
+function uploadPic_reset()
+{
+	var self = this;
+	self.jupload.each(function () {
+		var jo = $(this);
+		jo.find(".uploadpic-item").each(function (i, e) {
+			delPreviewItem($(this));
+		});
+		var isMul = jo.prop("isMul");
+		loadPreview(jo, isMul);
+	});
+}
 }
 
