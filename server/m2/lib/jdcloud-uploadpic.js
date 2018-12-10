@@ -352,6 +352,11 @@ function uploadPic1(jo)
 	var isMul = jinput.prop("multiple");
 	jo.prop("isMul", isMul);
 
+	// TODO: Remove. NOTE: 部分安卓手机设置multiple后无法选择文件
+	if (isMul && MUI.isWeixin() && MUI.isAndroid()) {
+		jinput.prop("multiple", false);
+	}
+
 	jo.find(".uploadpic-item").each(function (i, e) {
 		this.isFixed_ = true;
 	});
