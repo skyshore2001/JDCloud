@@ -2159,7 +2159,7 @@ $.fn.jdata = function (val) {
 - opt.quality: 0.0-1.0之间的数字。
 - opt.mimeType: 输出MIME格式。
 
-函数cb的回调参数: picData={b64src,blob,w,h,w0,h0,quality,mimeType,size0,size,b64size,info}
+函数cb的回调参数: picData={b64src,blob,w,h,w0,h0,quality,name,mimeType,size0,size,b64size,info}
 
 b64src为base64格式的Data URL, 如 "data:image/jpeg;base64,/9j/4AAQSk...", 用于给image或background-image赋值显示图片；
 
@@ -2170,11 +2170,11 @@ b64src为base64格式的Data URL, 如 "data:image/jpeg;base64,/9j/4AAQSk...", �
 
 或
 
-	$("<div>").css("background-image", "url(" + rv.b64src + ")");
+	$("<div>").css("background-image", "url(" + picData.b64src + ")");
 
 blob用于放到FormData中上传：
 
-	fd.append('file' + idx, this.lrzData_.blob, this.lrzData_.name);
+	fd.append('file', picData.blob, picData.name);
 
 其它picData属性：
 
