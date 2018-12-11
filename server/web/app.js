@@ -201,7 +201,11 @@ function arrayToImg(jp, arr)
 					'src': url,
 					'picId':attId
 				})
-				.css("max-width", "150px")
+				.css({
+					width: "150px",
+					height: "150px",
+					objectFit: "cover"
+				})
 				.appendTo(ja);
 		}
 		else {
