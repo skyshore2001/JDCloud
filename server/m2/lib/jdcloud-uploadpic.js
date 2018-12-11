@@ -217,12 +217,14 @@ function compressImg(fileObj, cb, opt)
 }
 
 /**
-@class MUI.UploadPic(jo, opt)
+@class MUI.UploadPic(jo, opt/optfn)
 
 @param jo jQuery DOM对象, 它是uploadpic类，或是包含一个或多个uploadpic类（上传区）的DOM对象。
-@param opt {size?=1280, quality?=0.8, uploadParam?}
-参考compressImg函数opt参数.
-TODO: 支持为每个上传区定义不同的opt, 这时opt是一个回调函数: opt(jo) - jo为上传区, 返回该区的设置。
+@param opt {uploadParam?} 兼容compressImg函数opt参数，如 {quality=0.8, maxSize=1280, ...}
+opt也可以是一个函数: optfn(jo) - jo为上传区, 返回该区的设置，这样就支持为每个上传区定义不同的选项。
+
+@param opt.uploadParam 调用upload接口的额外参数。
+目前调用筋斗云upload接口，使用参数`{genThumb:1, autoResize:0}`，可以通过uploadParam指定额外参数。
 
 TODO: 是否允许删除，加opt; 防止双击上传多次
 
@@ -264,6 +266,7 @@ JS
 
 	// 初始化，显示预览图
 	var uploadPic = new MUI.UploadPic(jpage); // 可直接传uploadpic类的jQuery对象或包含它的jQuery DOM对象
+	// var uploadPic = new MUI.UploadPic(jpage, {maxSize:1600, uploadParam:{type:"task"}} ); // 指定选项
 
 	// 如果重新设置了data-atts属性，可调用
 	// uploadPic.reset();
@@ -320,7 +323,7 @@ onUploadDone在全部上传完成后调用，参数分别为每个上传区的�
 - ji.prop("isFixed_") -> true表示固定预览位，只能清空，不可被删除。
 - ji.css("background-image"); -> 缩略图片的url。如果是待上传或刚刚上传的图片，则是大图的base64编码url。
 
-在上传区uploadpic对象上，设置了以下属性：
+在上传区uploadpic对象上，私有数据存储在MUI.getOptions(jo)中：
 
 - isMul: 标识是多图上传区。在安卓手机上，由于对文件选择框的multiple属性支持不好，常常去掉和禁用它。所以内部使用isMul属性来区分。
 - delMark_: 标识是否有删除图片操作。在submit后恢复为null.
@@ -339,18 +342,29 @@ function UploadPic(jparent, opt)
 {
 	var self = this;
 	self.jupload = jparent.is(".uploadpic")? jparent: jparent.find(".uploadpic");
-	self.opt = $.extend({}, opt);
+
+	var optfn = null;
+	if ($.isFunction(opt)) {
+		optfn = opt;
+	}
 
 	self.jupload.each(function () {
-		uploadPic1($(this));
+		var jo = $(this);
+		if (optfn)
+			opt = optfn(jo);
+		uploadPic1(jo, opt);
 	});
 }
 
-function uploadPic1(jo)
+// UploadPicArea，一个上传区。私有数据存储存储于 areaOpt = MUI.getOptions(jo)
+// areaOpt: {isMul, delMark_}
+function uploadPic1(jo, opt)
 {
 	var jinput = jo.find("input[type=file]");
 	var isMul = jinput.prop("multiple");
-	jo.prop("isMul", isMul);
+	var areaOpt = MUI.getOptions(jo);
+	$.extend(areaOpt, opt);
+	areaOpt.isMul = isMul;
 
 	// TODO: Remove. NOTE: 部分安卓手机设置multiple后无法选择文件
 	if (isMul && MUI.isWeixin() && MUI.isAndroid()) {
@@ -367,7 +381,7 @@ function uploadPic1(jo)
 		$.each(this.files, function (i, fileObj) {
 			compressImg(fileObj, function (picData) {
 				previewImg(jo, null, picData, isMul);
-			});
+			}, areaOpt);
 		});
 		this.value = "";
 	});
@@ -456,8 +470,9 @@ function newPreview()
 function delPreview(ji, forReset)
 {
 	var jo = ji.closest(".uploadpic");
-	if (!forReset)
-		jo.prop("delMark_", true); // 标记有删除操作，需要更新
+	if (!forReset) {
+		MUI.getOptions(jo).delMark_ = true; // 标记有删除操作，需要更新
+	}
 
 	if (ji.prop("isFixed_")) {
 		ji.prop("attId_", null);
@@ -471,7 +486,7 @@ function delPreview(ji, forReset)
 }
 
 // 如果需要更改，返回Deferred对象，在上传完成后Deferred对象可执行；否则返回空。
-function submit1(jo, cb, opt, progress, progressCb)
+function submit1(jo, cb, progress, progressCb)
 {
 	var fd = null;
 	var idx = 1;
@@ -479,6 +494,7 @@ function submit1(jo, cb, opt, progress, progressCb)
 	var totalKB = 0;
 	var atts = null;
 	var dfd = $.Deferred();
+	var opt = MUI.getOptions(jo);
 
 	jo.find(".uploadpic-item").each(function () {
 		if (this.picData_ == null)
@@ -493,7 +509,7 @@ function submit1(jo, cb, opt, progress, progressCb)
 		++idx;
 	});
 	if (fd == null) {
-		if (jo.prop("delMark_")) {
+		if (opt.delMark_) {
 			progress.areaCnt += 1;
 			done(cb);
 			return dfd;
@@ -530,7 +546,7 @@ function submit1(jo, cb, opt, progress, progressCb)
 				return;
 			}
 		}
-		jo.prop("delMark_", null);
+		opt.delMark_ = null;
 		progress.curAreaCnt += 1;
 		progress.curPicCnt += imgArr.length;
 		progress.curKB += totalKB;
@@ -560,7 +576,7 @@ function uploadPic_submit(cb, progressCb)
 	var progress = {curPicCnt:0, picCnt:0, curAreaCnt:0, areaCnt:0, curKB:0, KB:0, done: false};
 	self.jupload.each(function () {
 		var jo = $(this);
-		var dfd = submit1(jo, cb, self.opt, progress, progressCb1);
+		var dfd = submit1(jo, cb, progress, progressCb1);
 		if (dfd) {
 			needWork = true;
 			dfdArr.push(dfd);
@@ -697,7 +713,7 @@ function uploadPic_reset()
 		jo.find(".uploadpic-item").each(function (i, e) {
 			delPreview($(this), true);
 		});
-		var isMul = jo.prop("isMul");
+		var isMul = MUI.getOptions(jo).isMul;
 		loadPreview(jo, isMul);
 	});
 }
