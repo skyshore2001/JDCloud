@@ -4592,7 +4592,12 @@ function callInitfn(jo, paramArr)
 	if (initfn)
 	{
 		console.log("### initfn: " + attr);
-		initfn.apply(jo, paramArr || []);
+ 		try {
+			initfn.apply(jo, paramArr || []);
+		} catch (ex) {
+			console.error(ex);
+			throw(ex);
+		}
 	}
 	jo.jdata().init = true;
 }
