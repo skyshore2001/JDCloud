@@ -16,6 +16,10 @@ function initPagePic()
 	}
 
 	function btnUpload_click() {
+		// 防止重复点击提交
+		if (MUI.isBusy)
+			return;
+
 		/* 简单上传
 		uploadPic.submit().then(function (userPic, itemPics) {
 		});

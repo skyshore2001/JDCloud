@@ -5502,6 +5502,15 @@ JdcloudMuiPage.call(self);
 @var isBusy
 
 标识应用当前是否正在与服务端交互。一般用于自动化测试。
+也常用于防止重复提交，示例：
+
+	jpage.find(".btnUpload").click(btnUpload_click);
+	function btnUpload_click() {
+		// 防止重复点击提交
+		if (MUI.isBusy)
+			return;
+		callSvr("upload", ...);
+	}
 */
 self.isBusy = false;
 
@@ -5752,6 +5761,9 @@ function setFormSubmit(jf, fn, opt)
 	opt = opt || {};
 	jf.submit(function (ev) {
 		ev.preventDefault();
+		// 防止重复点击提交
+		if (self.isBusy)
+			return;
 
 		var queryParam = {ac: jf.attr("action")};
 		if (opt.validate) {
