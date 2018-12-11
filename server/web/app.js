@@ -175,12 +175,27 @@ function arrayToImg(jp, arr)
 	jImgContainer.empty();
 	jImgContainer.addClass("my-reset"); // 用于在 查找/添加 模式时清除内容.
 	
-	$.each (arr, function (i, attId) {
+	$.each (arr, function (i, att) {
+		if (!att)
+			return;
+		var attId,text;
+		if (att.indexOf(':') > 0) {
+			var arr1 = att.split(':');
+			attId = arr1[0];
+			text = arr1[1];
+		}
+		else {
+			attId = text = att;
+		}
 		if (attId == "")
 			return;
 		var url = WUI.makeUrl("att", {id: attId});
 		var linkUrl = (nothumb||nopic) ? url: WUI.makeUrl("att", {thumbId: attId});
-		var ja = $("<a target='_black'>").attr("href", linkUrl).appendTo(jImgContainer);
+		var ja = $("<a target='_black'>").attr({
+			"href": linkUrl,
+			"att": att,
+			"attId": attId
+		}).appendTo(jImgContainer);
 		if (!nopic) {
 			$("<img>").attr({
 					'src': url,
@@ -190,8 +205,8 @@ function arrayToImg(jp, arr)
 				.appendTo(ja);
 		}
 		else {
-			ja.html(attId);
-			jImgContainer.append($("<span> </span>"));
+			ja.html(text);
+			jImgContainer.append($("<br/>"));
 		}
 	});
 	// 图片浏览器升级显示
@@ -309,13 +324,14 @@ JS逻辑如下：
 以上传视频文件为例，HTML代码如下：
 
 	<td>上传素材视频</td>
-	<td id="divVideoFile" wui-nopic>
-		<input name="attId" style="display:none">
+	<td id="divVideoFile" wui-nopic wui-fname>
+		<input name="atts" style="display:none">
 		<div class="imgs"></div>
-		<input class="videoFile" type="file">
+		<input class="videoFile" type="file" multiple>
 	</td>
  
 通过添加属性"wui-nopic", 在.imgs区域内显示文件链接而非图片。其它JS代码与处理图片无异。
+添加属性"wui-fname", 表示将保存原文件的名字, 即保存的格式List(attId, fileName)即"{attId}:{orgName},{attId2}:{orgName2},..."
 
 @see imgToHidden
 @see onChooseFile
@@ -346,29 +362,45 @@ function imgToHidden(jp, sep)
 	jp.find("div.imgs").addClass("my-reset"); // 用于在 查找/添加 模式时清除内容.
 	var nothumb = jp.attr('wui-nothumb') !== undefined;
 	var nopic = jp.attr('wui-nopic') !== undefined;
+	var fnameEnabled = jp.attr('wui-fname') !== undefined;
+
 	var doUpdate = false;
 	if (! (nothumb||nopic) ) {
-		jp.find("img").each(function () {
-			doUpdate = true;
+		var fd = new FormData();
+		doUpdate = true;
+		var imgArr = [];
+		jp.find("img").each(function (i, e) {
 			// e.g. "data:image/jpeg;base64,..."
-			if (this.src.substr(0, 4) === "data") {
-				// TODO: upload all file once
-				var b64data = this.src.substr(this.src.indexOf(",")+1);
-				var params = {fmt: "raw_b64", genThumb: 1, f: "1.jpg", autoResize: 0};
-				var ids;
-				callSvrSync("upload", params, function (data) {
-					val.push(data[0].thumbId);
-				}, b64data, {contentType: "application/raw_b64"});
+			if (this.picData_ != null) {
+				imgArr.push(this);
+				fd.append("file" + imgArr.length, this.picData_.blob, this.picData_.name);
 			}
 			else {
 				var picId = $(this).attr("picId");
-				if (picId);
+				if (picId)
 					val.push(picId);
 			}
 		});
+		if (imgArr.length > 0) {
+			var params = {genThumb: 1, autoResize: 0};
+			callSvrSync('upload', params, function (data) {
+				$.each(data, function (i, e) {
+					val.push(e.thumbId);
+					imgArr[i].picId = e.thumbId;
+					imgArr[i].picData_ = null;
+				});
+			}, fd);
+		}
 	}
 	else {
-		var files = jp.find("input[type=file]")[0].files;
+		var jf = jp.find("input[type=file]");
+		var files = jf[0].files;
+		var isMultiple = jf.prop("multiple");
+		if (isMultiple) {
+			jp.find(".imgs a").each(function() {
+				val.push($(this).attr('att'));
+			});
+		}
 		if (files.length > 0) {
 			doUpdate = true;
 			var fd = new FormData();
@@ -377,9 +409,14 @@ function imgToHidden(jp, sep)
 			});
 			callSvrSync('upload', function (data) {
 				$.each(data, function (i, e) {
-					val.push(e.id);
+					var att = e.id;
+					if (fnameEnabled) {
+						att += ":" + e.orgName.replace(/[:,]/g, '_'); // 去除文件名中特殊符号
+					}
+					val.push(att);
 				});
 			}, fd);
+			jf.val("");
 		}
 	}
 	if (doUpdate)
@@ -418,47 +455,37 @@ function onChooseFile()
 
 	var nothumb = jp.attr('wui-nothumb') !== undefined;
 
-	var dfd = WUI.loadScript("lib/lrz.all.bundle.js");
 	var picFiles = this.files;
 	var compress = !nothumb;
 
 	var onlyOne = $(this).prop("multiple") == false;
 
-	dfd.done(function () {
-		$.each(picFiles, function (i, file) {
-			if (compress) {
-				lrz(file, {
-					width: 1280,
-					height: 1280,
-					quality: 80,
-					fieldName: "file"
-				}).then(function (results) {
-					console.log(results);
-					//results.base64
-					var jimg;
-					if (onlyOne) {
-						jimg = jdiv.find("img:first");
-						if (jimg.size() == 0) {
-							jimg = $("<img>");
-						}
-					}
-					else {
+	$.each(picFiles, function (i, fileObj) {
+		if (compress) {
+			WUI.compressImg(fileObj, function (picData) {
+				var jimg;
+				if (onlyOne) {
+					jimg = jdiv.find("img:first");
+					if (jimg.size() == 0) {
 						jimg = $("<img>");
 					}
-					jimg.attr("src", results.base64)
-						.css("max-width", "150px")
-						.appendTo(jdiv);
-					// TODO: upload file
-					// jimg[0].file_ = results.file;
-				});
-			}
-			else {
-				var windowURL = window.URL || window.webkitURL;
-				var dataURL = windowURL.createObjectURL(file);
-				jimg.attr('src', dataURL);
-			}
-		});
-	})
+				}
+				else {
+					jimg = $("<img>");
+				}
+				jimg.attr("src", picData.b64src)
+					.prop("picData_", picData)
+					.css("max-width", "150px")
+					.appendTo(jdiv);
+			});
+		}
+		else {
+			var windowURL = window.URL || window.webkitURL;
+			var dataURL = windowURL.createObjectURL(fileObj);
+			jimg.attr('src', dataURL);
+		}
+	});
+	this.value = "";
 }
 
 /**

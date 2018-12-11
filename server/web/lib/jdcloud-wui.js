@@ -2449,6 +2449,225 @@ $.fn.jdata = function (val) {
 	return jd;
 }
 
+/**
+@fn compressImg(img, cb, opt)
+
+通过限定图片大小来压缩图片，用于图片预览和上传。
+不支持IE8及以下版本。
+
+- img: Image对象
+- cb: Function(picData) 回调函数
+- opt: {quality=0.8, maxSize=1280, mimeType?="image/jpeg"}
+- opt.maxSize: 压缩完后宽、高不超过该值。为0表示不压缩。
+- opt.quality: 0.0-1.0之间的数字。
+- opt.mimeType: 输出MIME格式。
+
+函数cb的回调参数: picData={b64src,blob,w,h,w0,h0,quality,name,mimeType,size0,size,b64size,info}
+
+b64src为base64格式的Data URL, 如 "data:image/jpeg;base64,/9j/4AAQSk...", 用于给image或background-image赋值显示图片；
+
+可以赋值给Image.src:
+
+	var img = new Image();
+	img.src = picData.b64src;
+
+或
+
+	$("<div>").css("background-image", "url(" + picData.b64src + ")");
+
+blob用于放到FormData中上传：
+
+	fd.append('file', picData.blob, picData.name);
+
+其它picData属性：
+
+- w0,h0,size0分别为原图宽、高、大小; w,h,size为压缩后图片的宽、高、大小。
+- quality: jpeg压缩质量,0-1之间。
+- mimeType: 输出的图片格式
+- info: 提示信息，会在console中显示。用于调试。
+
+**[预览和上传示例]**
+
+HTML:
+
+	<form action="upfile.php">
+		<div class="img-preview"></div>
+		<input type="file" /><br/>
+		<input type="submit" >
+	</form>
+
+用picData.b64src来显示预览图，并将picData保存在img.picData_属性中，供后面上传用。
+
+	var jfrm = $("form");
+	var jpreview = jfrm.find(".img-preview");
+	var opt = {maxSize:1280};
+	jfrm.find("input[type=file]").change(function (ev) {
+		$.each(this.files, function (i, fileObj) {
+			compressImg(fileObj, function (picData) {
+				$("<img>").attr("src", picData.b64src)
+					.prop("picData_", picData)
+					.appendTo(jpreview);
+				//$("<div>").css("background-image", "url("+picData.b64src+")").appendTo(jpreview);
+			}, opt);
+		});
+		this.value = "";
+	});
+
+上传picData.blob到服务器
+
+	jfrm.submit(function (ev) {
+		ev.preventDefault();
+
+		var fd = new FormData();
+		var idx = 1;
+		jpreview.find("img").each(function () {
+			// 名字要不一样，否则可能会覆盖
+			fd.append('file' + idx, this.picData_.blob, this.picData_.name);
+			++idx;
+		});
+	 
+		$.ajax({
+			url: jfrm.attr("action"),
+			data: fd,
+			processData: false,
+			contentType: false,
+			type: 'POST',
+			// 允许跨域调用
+			xhrFields: {
+				withCredentials: true
+			},
+			success: cb
+		});
+		return false;
+	});
+
+参考：JIC.js (https://github.com/brunobar79/J-I-C)
+
+TODO: 用完后及时释放内存，如调用revokeObjectURL等。
+ */
+self.compressImg = compressImg;
+function compressImg(fileObj, cb, opt)
+{
+	var opt0 = {
+		quality: 0.8,
+		maxSize: 1280,
+		mimeType: "image/jpeg"
+	};
+	opt = $.extend(opt0, opt);
+
+	// 部分旧浏览器使用BlobBuilder的（如android-6.0, mate7自带浏览器）, 压缩率很差。不如直接上传。而且似乎是2M左右文件浏览器无法上传，导致服务器收不到。
+	window.BlobBuilder = (window.BlobBuilder || window.WebKitBlobBuilder || window.MozBlobBuilder || window.MSBlobBuilder);
+ 	var doDowngrade = !window.Blob 
+			|| window.BlobBuilder;
+	if (doDowngrade) {
+		var rv = {
+			name: fileObj.name,
+			size: fileObj.size,
+			b64src: window.URL.createObjectURL(fileObj),
+			blob: fileObj,
+		};
+		rv.info = "compress ignored. " + rv.name + ": " + (rv.size/1024).toFixed(0) + "KB";
+		console.log(rv.info);
+		cb(rv);
+		return;
+	}
+
+	var img = new Image();
+	// 火狐7以下版本要用 img.src = fileObj.getAsDataURL();
+	img.src = window.URL.createObjectURL(fileObj);
+	img.onload = function () {
+		var rv = resizeImg(img);
+		rv.info = "compress " + rv.name + " q=" + rv.quality + ": " + rv.w0 + "x" + rv.h0 + "->" + rv.w + "x" + rv.h + ", " + (rv.size0/1024).toFixed(0) + "KB->" + (rv.size/1024).toFixed(0) + "KB(rate=" + (rv.size / rv.size0 * 100).toFixed(2) + "%,b64=" + (rv.b64size/1024).toFixed(0) + "KB)";
+		console.log(rv.info);
+		cb(rv);
+	}
+
+	// return: {w, h, quality, size, b64src}
+	function resizeImg()
+	{
+		var w = img.naturalWidth, h = img.naturalHeight;
+		if (opt.maxSize<w || opt.maxSize<h) {
+			if (w > h) {
+				h = Math.round(h * opt.maxSize / w);
+				w = opt.maxSize;
+			}
+			else {
+				w = Math.round(w * opt.maxSize / h);
+				h = opt.maxSize;
+			}
+		}
+
+		var cvs = document.createElement('canvas');
+		cvs.width = w;
+		cvs.height = h;
+
+		var ctx = cvs.getContext("2d").drawImage(img, 0, 0, w, h);
+		var b64src = cvs.toDataURL(opt.mimeType, opt.quality);
+		var blob = getBlob(b64src);
+		// 无压缩效果，则直接用原图
+		if (blob.size > fileObj.size) {
+			blob = fileObj;
+			b64src = img.src;
+			opt.mimeType = fileObj.type;
+		}
+		// 如果没有扩展名或文件类型发生变化，自动更改扩展名
+		var fname = getFname(fileObj.name, opt.mimeType);
+		return {
+			w0: img.naturalWidth,
+			h0: img.naturalHeight,
+			w: w,
+			h: h,
+			quality: opt.quality,
+			mimeType: opt.mimeType,
+			b64src: b64src,
+			name: fname,
+			blob: blob,
+			size0: fileObj.size,
+			b64size: b64src.length,
+			size: blob.size
+		};
+	}
+
+	function getBlob(b64src) 
+	{
+		var bytes = window.atob(b64src.split(',')[1]); // "data:image/jpeg;base64,{b64data}"
+		//var ab = new ArrayBuffer(bytes.length);
+		var ia = new Uint8Array(bytes.length);
+		for(var i = 0; i < bytes.length; i++){
+			ia[i] = bytes.charCodeAt(i);
+		}
+		var blob;
+		try {
+			blob = new Blob([ia.buffer], {type: opt.mimeType});
+		}
+		catch(e){
+			// TypeError old chrome and FF
+			if (e.name == 'TypeError' && window.BlobBuilder){
+				var bb = new BlobBuilder();
+				bb.append(ia.buffer);
+				blob = bb.getBlob(opt.mimeType);
+			}
+			else{
+				// We're screwed, blob constructor unsupported entirely   
+			}
+		}
+		return blob;
+	}
+
+	function getFname(fname, mimeType)
+	{
+		var exts = {
+			"image/jpeg": ".jpg",
+			"image/png": ".png",
+			"image/webp": ".webp"
+		};
+		var ext1 = exts[mimeType];
+		if (ext1 == null)
+			return fname;
+		return fname.replace(/(\.\w+)?$/, ext1);
+	}
+}
+
 }
 // ====== WEBCC_END_FILE commonjq.js }}}
 
