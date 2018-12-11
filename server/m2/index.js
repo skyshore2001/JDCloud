@@ -143,15 +143,6 @@ function closeDlg(o)
 {
 	MUI.closeDialog($(o).closest(".mui-dialog"));
 }
-
-var dfdUploadLib_;
-function loadUploadLib()
-{
-	if (dfdUploadLib_ == null) {
-		dfdUploadLib_ = MUI.loadScript("./lib/jdcloud-uploadpic.js");
-	}
-	return dfdUploadLib_;
-}
 //}}}
 
 // ====== main {{{
