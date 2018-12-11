@@ -386,7 +386,7 @@ function imgToHidden(jp, sep)
 			callSvrSync('upload', params, function (data) {
 				$.each(data, function (i, e) {
 					val.push(e.thumbId);
-					imgArr[i].picId = e.thumbId;
+					$(imgArr[i]).attr("picId", e.thumbId);
 					imgArr[i].picData_ = null;
 				});
 			}, fd);
