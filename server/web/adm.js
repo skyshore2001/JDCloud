@@ -10,6 +10,16 @@ $.extend(WUI.options, {
 });
 
 var g_data = {}; // { userInfo={id,uname} }
+
+// interface
+var DlgImport = {
+	data_: null,
+	// data: {obj, ...} 对应dlgImport.html中的带name对象
+	show: function (data) {
+		this.data_ = data;
+		WUI.showDlg("#dlgImport", {modal:false});
+	}
+};
 //}}}
 
 // ====== data-options {{{
