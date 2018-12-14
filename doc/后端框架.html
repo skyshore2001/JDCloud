@@ -76,7 +76,9 @@
 </ul></li>
 <li><a href="#todo-写升级脚本"><span class="toc-section-number">7.2.2</span> TODO: 写升级脚本</a></li>
 </ul></li>
-<li><a href="#版本发布"><span class="toc-section-number">7.3</span> 版本发布</a></li>
+<li><a href="#版本发布"><span class="toc-section-number">7.3</span> 版本发布</a><ul>
+<li><a href="#直接源码部署"><span class="toc-section-number">7.3.1</span> 直接源码部署</a></li>
+</ul></li>
 <li><a href="#客户端自动升级"><span class="toc-section-number">7.4</span> 客户端自动升级</a></li>
 </ul></li>
 <li><a href="#工具接口"><span class="toc-section-number">8</span> 工具接口</a><ul>
@@ -1338,7 +1340,7 @@ if (dbver &lt; 4) {
 update cinf set ver, update_tm</code></pre>
 <h3 id="版本发布"><span class="header-section-number">7.3</span> 版本发布</h3>
 <p>版本发布又称“部署”或“版本上线”，是将开发版本进行构建和优化后，上传线上服务器的过程。</p>
-<p>筋斗云框架使用webcc组件进行版本发布，对构建后的版本，也要求git进行代码库管理。</p>
+<p>筋斗云框架使用webcc组件进行版本发布，对构建后的版本，也要求git进行代码库管理。 （注：v5.2起，常常使用另一种更简单的方式，不使用webcc也不创建online版本库，直接使用源码上线，参考下一小节介绍）</p>
 <p>webcc提供的功能主要有：</p>
 <ul>
 <li>快速的差量热更新。只上传版本间有差异的文件到服务器。</li>
@@ -1354,6 +1356,49 @@ update cinf set ver, update_tm</code></pre>
 <p><strong>[开发版本号与发布版本号]</strong></p>
 <p>在构建后，online文件夹中会自动生成文件<code>revision.txt</code>，代表当前开发版本号。下次构建时通过检查该版本与最新开发版本间的差异，可实现差量构建（注意：其中还包含依赖文件管理）。</p>
 <p>在上传服务器后，会自动在服务器上生成文件<code>revision_rel.txt</code>, 代表当前发布版本号。下次上传时，只会进行差量上传。</p>
+<h4 id="直接源码部署"><span class="header-section-number">7.3.1</span> 直接源码部署</h4>
+<p>使用webcc可以对应用进行较好的打包与发布（类似webpack，但可以更灵活的处理打包的逻辑页数），其缺点是：</p>
+<ul>
+<li>必须创建一个单独的online发布库，每次上线需要运行build_web程序。</li>
+<li>由于线上代码常常是压缩优化后的，线上直接修改源码来测试不太方便。</li>
+</ul>
+<p>源码部署指的是不使用webcc，直接将源码通过git push推送到服务器就实现上线，且可直接在线上修改或提交代码。</p>
+<p><strong>[创建线上代码库和部署web目录]</strong></p>
+<p>习惯上部署用户使用builder, web服务器用户(即apache用户)为www。注意以下操作中，应设置相关访问权限，实现两者创建的目录或文件相互可读或可写。 以builder用户在apache用户主目录下(一般是/var/www)创建src目录，使用git_clone.sh工具创建git代码库。 假设项目名为myproject:</p>
+<pre><code>mkdir /var/www/src
+cd /var/www/src
+git_clone.sh myproject</code></pre>
+<p>需要实现当推送新版本后，前端应可直接热更新（即自动重新刷新）。在使用webcc时，会自动生成源码版本文件revision.txt，框架会读该文件获取版本号实现热更新。 在使用源码部署后，应实现推送后创建和更新该文件。方法是在线上设置版本库：</p>
+<pre><code>cd /var/www/src/myproject
+vi .git/hooks/post_update</code></pre>
+<p>找到下面一句打开注释：</p>
+<pre><code>git log -1 --format=%H &gt; server/revision.txt</code></pre>
+<p>在web目录下(一般是/var/www/html)为应用创建链接：</p>
+<pre><code>cd /var/www/html
+ln -sf /var/www/src/myproject/server ./myproject</code></pre>
+<p>这样就可以直接访问项目如：<code>http://myserver/myproject/</code>。注意server目录才是线上目录，要用它来创建链接。</p>
+<p>在builder主目录下创建链接，便于推送：</p>
+<pre><code>ln -sf /var/www/src ./</code></pre>
+<p>这样要上线，就只要使用git直接推送到地址: <code>myserver:src/myproject</code></p>
+<p><strong>[缓存设置]</strong></p>
+<p>即设置apache的.htaccess文件。</p>
+<p>使用webcc编译优化时，移动端的缓存策略是：</p>
+<ol style="list-style-type: decimal">
+<li>m2/.htaccess: m2目录下的html文件不允许浏览器缓存（即要求浏览器每次都获取，apache发现文件未更新，应返回304），其它文件均可缓存；</li>
+<li>m2/page/.htaccess: page目录下的逻辑页对html/js/css均不允许缓存。</li>
+</ol>
+<p>在不使用webcc时，应将m2/.htaccess中设置为对html/js/css均不允许缓存。 否则更新js/css后，前端（尤其是微信）无法得到更新。（如果出现此种情况，只能手工修改html中对css/js的引用链接，比如加参数）。</p>
+<p>做法可以直接拷贝web/.htaccess到m2/.htaccess，注意修改后应提交代码库。</p>
+<p><strong>[移动端加载优化]</strong></p>
+<p>使用webcc时，会对html/js/css/小图标等做压缩优化，以加快移动端加载速度。</p>
+<p>使用源码部署后，可酌情做部分优化。</p>
+<p>示例：对index.html文件，将不常修改的css/js文件（比如第三方库、jdcloud框架库等）合并压缩。</p>
+<p>先在html去掉要优化合并的js/css文件，改为放置：</p>
+<pre><code>&lt;!--link rel=&quot;import&quot; href=&quot;lib.html&quot; /--&gt;
+&lt;link rel=&quot;stylesheet&quot; href=&quot;lib.min.css&quot; /&gt;
+&lt;script src=&quot;lib.min.js&quot;&gt;&lt;/script&gt;</code></pre>
+<p>将要合并压缩的js/css列举在m2/Makefile中。运行make命令生成上面引用的三个文件（内部使用了tool/mergeJsCss.sh工具），别忘记将它们加到代码库。 其中lib.min.css和lib.min.js即是压缩后的代码。而lib.html用于直接调试合并前的js/css源码，使用时打开该行注释，并注释掉下面两行。</p>
+<p>注意当任何被优化的js/css文件修改后，应重新运行make更新相关文件并提交代码库。</p>
 <h3 id="客户端自动升级"><span class="header-section-number">7.4</span> 客户端自动升级</h3>
 <p>对于Web应用，每次浏览器打开时均已是最新版本；但是如果浏览器一直未关闭，则需要手工刷新页面才能更新。</p>
 <p>在手机上，特别是将Web应用打包为手机原生应用后，当服务器升级后，用户必须将应用重新打开才能获得最新版本，这相当于在浏览器中刷新。 如果用户一直不退出应用（这在手机上很常见，应用会在后台一直缓存着），必须有机制能保证版本更新后可自动刷新。</p>
