@@ -740,7 +740,7 @@ class AccessControl
 			if ($cond === null)
 				continue;
 			if (is_array($cond))
-				$cond = getCondStr($cond);
+				$cond = self::getCondStr($cond);
 
 			if ($condSql === null) {
 				if (stripos($cond, " or ") !== false && substr($cond,0,1) != '(') {
@@ -1029,7 +1029,7 @@ class AccessControl
 			if (! preg_match('/^\s*(\w+)(?:\s+(?:AS\s+)?([^,]+))?\s*$/i', $col, $ms))
 			{
 				// 对于res, 还支持部分函数: "fn(col) as col1", 目前支持函数: count/sum，如"count(distinct ac) cnt", "sum(qty*price) docTotal"
-				if (!$gres && preg_match('/(\w+)\([a-z0-9_.\'* ,+-\/]+\)\s+(?:AS\s+)?([^,]+)/i', $col, $ms)) {
+				if (!$gres && preg_match('/(\w+)\([a-z0-9_.\'* ,+\/]+\)\s+(?:AS\s+)?([^,]+)/i', $col, $ms)) {
 					list($fn, $alias) = [strtoupper($ms[1]), $ms[2]];
 					if ($fn != "COUNT" && $fn != "SUM" && $fn != "AVG")
 						throw new MyException(E_FORBIDDEN, "function not allowed: `$fn`");
@@ -2045,6 +2045,18 @@ function KVtoCond($k, $v)
 		}
 	}
 
+	function table2html($tbl)
+	{
+		echo("<table border=1 cellspacing=0>");
+		if (isset($tbl["h"])) {
+			echo "<tr><th>" . join("</th><th>", $tbl["h"]), "</th></tr>\n";
+		}
+		foreach ($tbl["d"] as $row) {
+			echo "<tr><td>" . join("</td><td>", $row), "</td></tr>\n";
+		}
+		echo("</table>");
+	}
+
 /**
 @fn handleExportFormat($fmt, $arr, $fname)
 
@@ -2118,6 +2130,12 @@ function KVtoCond($k, $v)
 			header("Content-Type: text/plain; charset=UTF-8");
 			header("Content-Disposition: attachment;filename={$fname}.txt");
 			$this->table2txt($ret);
+			$handled = true;
+		}
+		else if ($fmt === "html") {
+			header("Content-Type: text/html; charset=UTF-8");
+			header("Content-Disposition: filename={$fname}.html");
+			$this->table2html($ret);
 			$handled = true;
 		}
 		if ($handled)
