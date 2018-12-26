@@ -1567,11 +1567,11 @@ function htmlEscape($s)
 function utf8InputFilter($fp)
 {
 	$str = fread($fp, 1000);
+	rewind($fp);
 	$enc = strtolower(mb_detect_encoding($str, ["gbk","utf-8"]));
 	if ($enc && $enc != "utf-8") {
 		stream_filter_append($fp, "convert.iconv.$enc.utf-8");
 	}
-	rewind($fp);
 }
 //}}}
 
@@ -2068,6 +2068,7 @@ class AppFw_
 	static function init()
 	{
 		mb_internal_encoding("UTF-8");
+		setlocale(LC_ALL, "zh_CN.UTF-8");
 		self::initGlobal();
 		self::setupSession();
 	}
