@@ -1,5 +1,18 @@
 ## 升级到v5.2
 
+### 管理端对话框样式调整
+
+对话框上的table会自动占满对话框, 且设置了不换行, 有可能造成样式混乱, 主要有两种情况:
+
+如果某个td内容过长导致table被撑开, 需要在该td的样式上设置:
+
+	white-space: normal;
+
+如果某个td内一行既有input又有其它组件, 由于input被自动设置为宽度95%, 其它组件被挤的很小.
+这时可重设每个组件的width, 如分别为70%, 25%.
+
+	width: 70%;
+
 ### 要求开启php_mbstring模块
 
 	yum install php-mbstring
