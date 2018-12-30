@@ -1390,9 +1390,9 @@ function delCookie(name)
 @fn setStorage(name, value, useSession?=false)
 
 使用localStorage存储(或使用sessionStorage存储, 如果useSession=true)。
-注意只能存储字符串，所以value不可以为数组，对象等，必须序列化后存储。 
+value可以是简单类型，也可以为数组，对象等，后者将自动在序列化后存储。 
 
-如果浏览器不支持Storage，则使用cookie实现.
+如果设置了window.STORAGE_PREFIX, 则键值(name)会加上该前缀.
 
 示例：
 
@@ -1400,12 +1400,17 @@ function delCookie(name)
 	var id = getStorage("id");
 	delStorage("id");
 
-示例2：对象需要序列化后存储：
+示例2：存储对象:
 
+	window.STORAGE_PREFIX = "jdcloud_"; // 一般在app.js中全局设置
 	var obj = {id:10, name:"Jason"};
-	setStorage("obj", JSON.stringify(obj));
+	setStorage("obj", obj);   // 实际存储键值为 "jdcloud_obj"
 	var obj2 = getStorage("obj");
 	alert(obj2.name);
+
+@var STORAGE_PREFIX 本地存储的键值前缀
+
+如果指定, 则调用setStorage/getStorage/delStorage时都将自动加此前缀, 避免不同项目的存储项冲突.
 
 @see getStorage
 @see delStorage
@@ -1413,12 +1418,12 @@ function delCookie(name)
 self.setStorage = setStorage;
 function setStorage(name, value, useSession)
 {
-	assert(typeof value != "object", "value must be scalar!");
-	if (window.localStorage == null)
-	{
-		setCookie(name, value);
-		return;
+	if ($.isPlainObject(value) || $.isArray(value)) {
+		value = JSON.stringify(value);
 	}
+	assert(typeof value != "object", "value must be scalar!");
+	if (window.STORAGE_PREFIX)
+		name = window.STORAGE_PREFIX + name;
 	if (useSession)
 		sessionStorage.setItem(name, value);
 	else
@@ -1439,21 +1444,18 @@ function setStorage(name, value, useSession)
 self.getStorage = getStorage;
 function getStorage(name, useSession)
 {
-	if (window.localStorage == null)
-	{
-		getCookie(name);
-		return;
-	}
-	var rv;
-	if (useSession)
-		rv = sessionStorage.getItem(name);
-	else
-		rv = localStorage.getItem(name);
+	if (window.STORAGE_PREFIX)
+		name = window.STORAGE_PREFIX + name;
 
-	// 兼容之前用setCookie设置的项
-	if (rv == null)
-		return getCookie(name);
-	return rv;
+	var value;
+	if (useSession)
+		value = sessionStorage.getItem(name);
+	else
+		value = localStorage.getItem(name);
+
+	if (typeof(value)=="string" && (value[0] == '{' || value[0] == '['))
+		value = JSON.parse(value);
+	return value;
 }
 
 /**
@@ -1467,16 +1469,12 @@ function getStorage(name, useSession)
 self.delStorage = delStorage;
 function delStorage(name, useSession)
 {
-	if (window.localStorage == null)
-	{
-		delCookie(name);
-		return;
-	}
+	if (window.STORAGE_PREFIX)
+		name = window.STORAGE_PREFIX + name;
 	if (useSession)
 		sessionStorage.removeItem(name);
 	else
 		localStorage.removeItem(name);
-	delCookie(name);
 }
 //}}}
 

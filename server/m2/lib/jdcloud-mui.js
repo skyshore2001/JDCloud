@@ -2363,6 +2363,81 @@ function compressImg(fileObj, cb, opt)
 	}
 }
 
+/**
+@fn getDataOptions(jo, defVal?)
+@key data-options
+
+读取jo上的data-options属性，返回JS对象。例如：
+
+	<div data-options="a:1,b:'hello',c:true"></div>
+
+上例可返回 `{a:1, b:'hello', c:true}`.
+
+也支持各种表达式及函数调用，如：
+
+	<div data-options="getSomeOption()"></div>
+
+@see getOptions
+ */
+self.getDataOptions = getDataOptions;
+function getDataOptions(jo, defVal)
+{
+	var optStr = jo.attr("data-options");
+	var opts;
+	try {
+		if (optStr != null) {
+			if (optStr.indexOf(":") > 0) {
+				opts = eval("({" + optStr + "})");
+			}
+			else {
+				opts = eval("(" + optStr + ")");
+			}
+		}
+	}catch (e) {
+		alert("bad data-options: " + optStr);
+	}
+	return $.extend({}, defVal, opts);
+}
+
+/**
+@fn triggerAsync(jo, ev, paramArr)
+
+触发含有异步操作的事件，在异步事件完成后继续。兼容同步事件处理函数，或多个处理函数中既有同步又有异步。
+返回Deferred对象，或false表示要求取消之后操作。
+
+@param ev 事件名，或事件对象$.Event()
+
+示例：以事件触发方式调用jo的异步方法submit:
+
+	var dfd = WUI.triggerAsync(jo, 'submit');
+	if (dfd === false)
+		return;
+	dfd.then(doNext);
+
+	function doNext() { }
+
+jQuery对象这样提供异步方法：triggerAsync会用事件对象ev创建一个dfds数组，将Deferred对象存入即可支持异步调用。
+
+	jo.on('submit', function (ev) {
+		var dfd = $.ajax("upload", ...);
+		if (ev.dfds)
+			ev.dfds.push(dfd);
+	});
+
+*/
+self.triggerAsync = triggerAsync;
+function triggerAsync(jo, ev, paramArr)
+{
+	if (typeof(ev) == "string") {
+		ev = $.Event(ev);
+	}
+	ev.dfds = [];
+	jo.trigger(ev, paramArr);
+	if (ev.isDefaultPrevented())
+		return false;
+	return $.when.apply(this, ev.dfds);
+}
+
 }
 // ====== WEBCC_END_FILE commonjq.js }}}
 
@@ -2559,15 +2634,20 @@ function enhanceWithin(jp)
 }
 
 /**
-@fn getOptions(jo)
+@fn getOptions(jo, defVal?)
+
+第一次调用，根据jo上设置的data-options属性及指定的defVal初始化，或为`{}`。
+存到jo.prop("muiOptions")上。之后调用，直接返回该属性。
+
+@see getDataOptions
 */
 self.getOptions = getOptions;
-function getOptions(jo)
+function getOptions(jo, defVal)
 {
-	var opt = jo.data("muiOptions");
+	var opt = jo.prop("muiOptions");
 	if (opt === undefined) {
-		opt = {};
-		jo.data("muiOptions", opt);
+		opt = self.getDataOptions(jo, defVal);
+		jo.prop("muiOptions", opt);
 	}
 	return opt;
 }
