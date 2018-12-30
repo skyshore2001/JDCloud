@@ -27,22 +27,25 @@
 
 	<div id="my-pages" style="display:none">
 		...
-		<div class="pageOrder" title="订单管理" my-initfn="initPageOrder">
-			<table id="tblOrder" style="width:auto;height:auto">
-				<thead><tr>
-					<th data-options="field:'id', sortable:true, sorter:intSort">订单号</th>
-					<th data-options="field:'userPhone', sortable:true">用户联系方式</th>
-					<th data-options="field:'createTm', sortable:true">创建时间</th>
-					<th data-options="field:'status', jdEnumMap: OrderStatusMap, formatter:Formatter.orderStatus, styler:OrderColumns.statusStyler, sortable:true">状态</th>
-					<th data-options="field:'dscr', sortable:true">描述</th>
-					<th data-options="field:'cmt'">用户备注</th>
-				</tr></thead>
-			</table>
-		</div>
+		<script type="text/html" id="tpl_pageOrder">
+			<div class="pageOrder" title="订单管理" my-initfn="initPageOrder">
+				<table id="tblOrder" style="width:auto;height:auto">
+					<thead><tr>
+						<th data-options="field:'id', sortable:true, sorter:intSort">订单号</th>
+						<th data-options="field:'userPhone', sortable:true">用户联系方式</th>
+						<th data-options="field:'createTm', sortable:true">创建时间</th>
+						<th data-options="field:'status', jdEnumMap: OrderStatusMap, formatter:Formatter.orderStatus, styler:OrderColumns.statusStyler, sortable:true">状态</th>
+						<th data-options="field:'dscr', sortable:true">描述</th>
+						<th data-options="field:'cmt'">用户备注</th>
+					</tr></thead>
+				</table>
+			</div>
+		</script>
 	</div>
 
 注意：
 
+- 逻辑页的定义建议放在script标签中，便于按需加载，性能更佳（后面模块化时还会讲到放到单独文件中）。模板id为"tpl_pageOrder"，应与页面名相对应，否则无法加载。
 - 逻辑页面div.pageOrder，属性class="pageOrder"定义了该逻辑页面的名字。它将作为页面模板，在WUI.showPage("pageOrder")时复制一份显示出来。
 - 属性my-initfn定义了该页面的初始化函数. 在初次调用WUI.showPage时，会执行该初始化函数，用于初始化列表，设定事件处理等。
 - 逻辑页面下包含了一个table，用于显示订单列表。里面每列对应订单的相关属性。
@@ -50,10 +53,11 @@
 
 详情页展示为一个对话框，也将它也放在 div#my-pages 下。定义如下（此处为展示原理已简化）：
 
-	<div id="dlgOrder" my-obj="Ordr" my-initfn="initDlgOrder" title="用户订单" style="width:520px;height:500px;">  
-		<form method="POST">
-			订单号：<input name="id" disabled></td>
-			订单状态：
+	<script type="text/html" id="tpl_dlgOrder">
+		<div id="dlgOrder" my-obj="Ordr" my-initfn="initDlgOrder" title="用户订单" style="width:520px;height:500px;">  
+			<form method="POST">
+				订单号：<input name="id" disabled></td>
+				订单状态：
 						<select name="status" style="width:150px">
 							<option value="">&nbsp;</option>
 							<option value="CR">未付款</option>
@@ -64,11 +68,13 @@
 							<option value="CA">已取消</option>
 						</select>
 			用户备注：<textarea name="cmt" rows=3 cols=30></textarea>
-		</form>
-	<div>
+			</form>
+		<div>
+	</script>
 
 注意：
 
+- 对话框的定义建议放在script标签中，便于按需加载，性能更佳（后面模块化时还会讲到放到单独文件中）。模板id为"tpl_dlgOrder"应与对话框名相应，否则无法加载。
 - 对话框div#dlgOrder. 与列表页使用class标识名称不同，详情页对话框以id标识（因为全局共用一个对话框，而列表页可以复制为多个同时显示）。
 - 对话框上定义了 "my-obj"属性，用于标识它对应的服务端对象名。对象增删改查操作都会用到它。
 - 对话框的属性 my-initfn 定义了初始化函数，在首次显示时调用。
