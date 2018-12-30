@@ -1632,16 +1632,25 @@ e.g.
 		}
 	}
 
+	// for setIf/delIf
 	// return {tblSql, condSql}
 	protected function genCondSql()
 	{
 		$cond = $this->getCondParam("cond");
-		if ($cond === null)
-			throw new MyException(E_PARAM, "setIf requires param `cond`");
 		$this->initVColMap();
-		$this->addCond($cond, false, true);
+		if ($cond)
+			$this->addCond($cond, false, true);
+
+		// borrow query handler
+		$ac = $this->ac;
+		$this->ac = "query";
+		$this->onQuery();
+		$this->ac = $ac;
 
 		$sqlConf = $this->sqlConf;
+		if (count($sqlConf["cond"]) == 0)
+			throw new MyException(E_PARAM, "setIf/delIf requires condition");
+
 		$tblSql = "{$this->table} t0";
 		if (count($sqlConf["join"]) > 0)
 			$tblSql .= "\n" . join("\n", $sqlConf["join"]);
