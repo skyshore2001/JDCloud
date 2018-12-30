@@ -836,12 +836,16 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 
 #### 批量更新、批量删除
 
-(v5.2) 按住Ctrl键进行批量处理模式。
+(v5.2) 
+列表页支持两种批量操作模式。
 
-先搜索出要更新或删除的记录：
-
-- 批量更新：双击任意一行打开对话框，修改后按住Ctrl点击确定按钮，批量更新所有表中的内容。
-- 批量删除：按住Ctrl键点数据表上面的“删除”按钮，即是批量删除所有表中的内容。
+- 基于多选行
+	- 在数据表中按Ctrl多选；或按Shift连续选择。
+	- 点击删除菜单，或在修改对话框点确定时，一旦发现是多选，则执行批量删除或批量更新。
+- 基于过滤条件
+	- 先搜索出要更新或删除的记录：
+	- 批量更新：双击任意一行打开对话框，修改后按住Ctrl点击确定按钮，批量更新所有表中的内容。
+	- 批量删除：按住Ctrl键点数据表上面的“删除”按钮，即是批量删除所有表中的内容。
 
 服务端应支持`{obj}.setIf(cond)`及`{obj}.delIf(cond)`接口。
 
@@ -2666,6 +2670,29 @@ function compressImg(fileObj, cb, opt)
 			return fname;
 		return fname.replace(/(\.\w+)?$/, ext1);
 	}
+}
+
+self.getDataOptions = getDataOptions;
+function getDataOptions(jo)
+{
+	var optStr = jo.attr("data-options");
+	var opts;
+	try {
+		if (optStr != null) {
+			if (optStr.indexOf(":") > 0) {
+				opts = eval("({" + optStr + "})");
+			}
+			else {
+				opts = eval("(" + optStr + ")");
+			}
+		}
+		else {
+			opts = {};
+		}
+	}catch (e) {
+		alert("bad data-options: " + optStr);
+	}
+	return opts;
 }
 
 }
@@ -4869,7 +4896,7 @@ $.fn.okCancel = function (fnOk, fnCancel) {
 
 	beforeshow - 对话框显示前。常用来处理对话框显示参数opt或初始数据opt.data.
 	show - 显示对话框后。常用来设置字段值或样式，隐藏字段、初始化子表datagrid或隐藏子表列等。
-	validate - 用于提交前验证、补齐数据等。返回false可取消提交。
+	validate - 用于提交前验证、补齐数据等。返回false可取消提交。(v5.2) 支持其中有异步操作.
 	retdata - 服务端返回结果时触发。用来根据服务器返回数据继续处理，如再次调用接口。
 
 注意：
@@ -4892,6 +4919,22 @@ $.fn.okCancel = function (fnOk, fnCancel) {
 
 @key event-validate(ev, formMode, initData, newData)
 initData为初始数据，如果要验证或修改待提交数据，应直接检查form中相应DOM元素的值。如果需要增加待提交字段，可加到newData中去。示例：添加参数: newData.mystatus='CR';
+
+(v5.2) validate事件支持返回Deferred对象支持异步操作.
+示例: 在提交前先弹出对话框询问. 由于app_alert是异步对话框, 需要将一个Deferred对象放入ev.dfds数组, 告诉框架等待ev.dfds中的延迟对象都resolve后再继续执行.
+
+	jdlg.on("validate", onValidate);
+	function onValidate(ev, mode, oriData, newData) 
+	{
+		var dfd = $.Deferred();
+		app_alert("确认?", "q", function () {
+			console.log("OK!");
+			dfd.resolve();
+		});
+		ev.dfds.push(dfd.promise());
+	}
+
+常用于在validate中异步调用接口(比如上传文件).
 
 @key event-retdata(ev, data, formMode)
 form提交后事件，用于处理返回数据
@@ -5017,37 +5060,47 @@ function showDlg(jdlg, opt)
 
 		var newData = {};
 		var ev = $.Event("validate");
+		ev.dfds = [];
 		jfrm.trigger(ev, [formMode, opt.data, newData]);
+		var dfds = $.grep(ev.dfds, function (e) { return e && e.then });
+		if (dfds.length > 0) {
+			$.when.apply(this, dfds).then(afterValidate);
+			return false;
+		}
 		if (ev.isDefaultPrevented())
 			return false;
+		afterValidate();
 
-		// TODO: remove. 用validate事件替代。
-		var ev = $.Event("savedata");
-		jfrm.trigger(ev, [formMode, opt.data]);
-		if (ev.isDefaultPrevented())
-			return false;
-
-		var data = mCommon.getFormData(jdlg);
-		$.extend(data, newData);
-		if (opt.url) {
-			if (opt.onSubmit && opt.onSubmit(data) === false)
+		function afterValidate() {
+			// TODO: remove. 用validate事件替代。
+			var ev = $.Event("savedata");
+			jfrm.trigger(ev, [formMode, opt.data]);
+			if (ev.isDefaultPrevented())
 				return false;
 
-			// 批量更新
-			if (m_batchMode && formMode==FormMode.forSet && opt.url.action && /.set$/.test(opt.url.action)) {
-				var jtbl = jdlg.jdata().jtbl;
-				var obj = opt.url.action.replace(".set", "");
-				batchOp(obj, "setIf", jtbl, data, function () {
-					closeDlg(jdlg);
-				});
-				return;
+			var data = mCommon.getFormData(jdlg);
+			$.extend(data, newData);
+			if (opt.url) {
+				if (opt.onSubmit && opt.onSubmit(data) === false)
+					return false;
+
+				// 批量更新
+				if (formMode==FormMode.forSet && opt.url.action && /.set$/.test(opt.url.action)) {
+					var jtbl = jdlg.jdata().jtbl;
+					var obj = opt.url.action.replace(".set", "");
+					var rv = batchOp(obj, "setIf", jtbl, data, function () {
+						closeDlg(jdlg);
+					});
+					if (rv !== false)
+						return;
+				}
+				self.callSvr(opt.url, success, data);
 			}
-			self.callSvr(opt.url, success, data);
+			else {
+				success(data);
+			}
+			// opt.onAfterSubmit && opt.onAfterSubmit(jfrm); // REMOVED
 		}
-		else {
-			success(data);
-		}
-		// opt.onAfterSubmit && opt.onAfterSubmit(jfrm); // REMOVED
 
 		function success (data)
 		{
@@ -5060,21 +5113,74 @@ function showDlg(jdlg, opt)
 }
 
 // 按住Ctrl键进入批量模式。
+var tmrBatch_;
 $(document).keydown(function (e) {
-	if (e.ctrlKey && ! m_batchMode) {
+	if (e.keyCode == 17) {
 		m_batchMode = true;
-		setTimeout(function () {
+		clearTimeout(tmrBatch_);
+		tmrBatch_ = setTimeout(function () {
 			m_batchMode = false;
-		},200);
+			tmrBatch_ = null;
+		},500);
+	}
+});
+$(window).keyup(function (e) {
+	if (e.keyCode == 17) {
+		m_batchMode = false;
+		clearTimeout(tmrBatch_);
 	}
 });
 
+/**
+@fn batchOp(obj, ac, jtbl, data/dataFn, onBatchDone?, forceFlag?)
 
-// ac: "setIf"/"delIf"
-function batchOp(obj, ac, jtbl, data, fn)
+@param ac "setIf"/"delIf"
+@param data/dataFn 批量操作的参数。
+可以是一个函数dataFn(batchCnt)，参数batchCnt为当前批量操作的记录数。
+该函数返回data或一个Deferred对象(该对象适时应调用dfd.resolve(data)做批量操作)
+
+批量操作支持两种方式: 
+
+1. 基于多选: 按Ctrl/Shift在表上多选，然后点删除或更新，批量操作选中行；
+2. 基于条件: 按住Ctrl键点删除或更新，批量操作过滤条件下的所有行
+
+函数返回false表示当前非批量处理模式，不予处理。
+
+@param forceFlag 强制批量操作。
+默认仅当多选或按住Ctrl键才认为是批量操作；
+如果值为1，表示无须按Ctrl键，即如果有多选，就用多选；如果没有多选，则使用当前的过滤条件；
+如果值为2，表示只基于选择项操作，即使只选了一项也对其操作。但如果没有选任何行，则使用过滤条件。
+
+示例：批量更新附件到行记录上, 在onBatch中返回一个Deferred对象，并在获得数据后调用dfd.resolve(data)
+
+		var forceFlag = 1; // 如果没有多选，则按当前过滤条件全部更新。
+		WUI.batchOp("Task", "setIf", jtbl, onBatch, function () {
+			WUI.closeDlg(jdlg);
+		}, forceFlag);
+
+		function onBatch(batchCnt)
+		{
+			var dfd = $.Deferred();
+			app_confirm("批量上传附件到" + batchCnt + "行记录?", function (isOk) {
+				if (!isOk)
+					return;
+				imgToHidden(jfrm.find("#divAtts"));
+				var data = WUI.getFormData(jfrm);
+				dfd.resolve(data);
+			});
+			return dfd.promise();
+		}
+*/
+self.batchOp = batchOp;
+function batchOp(obj, ac, jtbl, data, onBatchDone, forceFlag)
 {
 	if (obj == null || jtbl == null)
-		return;
+		return false;
+	var selArr =  jtbl.datagrid("getChecked");
+	if (!forceFlag && ! (m_batchMode || selArr.length > 1)) {
+		return false;
+	}
+
 	var acName;
 	if (ac == "setIf") {
 		acName = "批量更新";
@@ -5085,23 +5191,57 @@ function batchOp(obj, ac, jtbl, data, fn)
 	else {
 		return;
 	}
-	var cond = getQueryParamFromTable(jtbl).cond;
-	if (! cond) {
-		cond = "id>0";
+	var queryParams;
+	var doBatchOnSel = selArr.length > 1 && selArr[0].id != null;
+	// forceFlag=2时，一行也批量操作
+	if (!doBatchOnSel && forceFlag === 2 && selArr.length == 1 && selArr[0].id != null)
+		doBatchOnSel = true;
+	// 多选，cond为`id IN (...)`
+	if (doBatchOnSel) {
+		var idList = $.map(selArr, function (e) { return e.id}).join(',');
+		queryParams = {cond: "t0.id IN (" + idList + ")"};
+		confirmBatch(selArr.length);
 	}
-	self.callSvr(obj + ".query", {cond: cond, res: "count(*) cnt"}, function (data1) {
-		console.log(obj + "." + ac + ": " + cond);
-		app_confirm(acName + data1.d[0][0] + "条记录？", function (b) {
-			if (!b)
-				return;
-			self.callSvr(obj+"."+ac, {cond: cond}, function (cnt) {
-				fn && fn();
-				reload(jtbl);
-				app_alert(acName + cnt + "条记录");
-			}, data);
+	else {
+		var dgOpt = jtbl.datagrid("options");
+		var p1 = dgOpt.url && dgOpt.url.params;
+		var p2 = dgOpt.queryParams;
+		queryParams = $.extend({}, p1, p2, {res: "count(*) cnt"});
+		self.callSvr(obj + ".query", queryParams, function (data1) {
+			confirmBatch(data1.d[0][0]);
 		});
-	});
+	}
 	return;
+	
+	function confirmBatch(batchCnt) {
+		console.log(obj + "." + ac + ": " + JSON.stringify(queryParams));
+		if (!$.isFunction(data)) {
+			app_confirm(acName + batchCnt + "条记录？", function (b) {
+				if (!b)
+					return;
+				doBatch(data);
+			});
+		}
+		else {
+			var dataFn = data;
+			data = dataFn(batchCnt);
+			if (data == false)
+				return;
+			$.when(data).then(doBatch);
+		}
+	}
+
+	function doBatch(data) {
+		if (ac == "setIf" && $.isEmptyObject(data)) {
+			app_alert("没有需要更新的内容。");
+			return;
+		}
+		self.callSvr(obj+"."+ac, queryParams, function (cnt) {
+			onBatchDone && onBatchDone();
+			reload(jtbl);
+			app_alert(acName + cnt + "条记录");
+		}, data);
+	}
 }
 
 /**
@@ -5283,6 +5423,7 @@ function loadDialog(jdlg, onLoad)
 		jdlg.find("style").attr("wui-origin", dlgId).appendTo(document.head);
 		jdlg.attr("id", dlgId).appendTo(jcontainer);
 		jdlg.attr("wui-pageFile", pageFile);
+		jdlg.addClass('wui-dialog');
 
 		$.parser.parse(jdlg); // easyui enhancement
 		jdlg.find(">table:first, form>table:first").addClass("wui-form-table");
@@ -5400,9 +5541,10 @@ function showObjDlg(jdlg, mode, opt)
 			mCommon.assert(jd.jtbl);
 
 			// 批量删除
-			if (mode == FormMode.forDel && m_batchMode) {
-				batchOp(obj, "delIf", jd.jtbl);
-				return;
+			if (mode == FormMode.forDel) {
+				var rv = batchOp(obj, "delIf", jd.jtbl);
+				if (rv !== false)
+					return;
 			}
 
 			rowData = getRow(jd.jtbl);
@@ -5773,13 +5915,10 @@ function enhanceAnchor(jo)
 self.getExportHandler = getExportHandler;
 function getExportHandler(jtbl, ac, param)
 {
-	if (param == null)
-		param = {};
-
-	if (param.fmt === undefined)
-		param.fmt = "excel";
-	if (param.pagesz === undefined)
-		param.pagesz = -1;
+	param = $.extend({}, {
+		fmt: "excel",
+		pagesz: -1
+	}, param);
 	if (ac == null) {
 		setTimeout(function () {
 			ac = jtbl.datagrid("options").url;
@@ -5787,10 +5926,16 @@ function getExportHandler(jtbl, ac, param)
 	}
 
 	return function () {
-		var url = WUI.makeUrl(ac, getQueryParamFromTable(jtbl, param));
+		var debugShow = m_batchMode;
+		var p1 = getQueryParamFromTable(jtbl, param);
+		var url = WUI.makeUrl(ac, p1);
 		// !!! 调试导出的方法：在控制台中设置  window.open=$.get 即可查看请求响应过程。
 		console.log("export: " + url);
-		console.log("(HINT: debug via window.open=$.get)");
+		console.log("(HINT: debug via Ctrl-Export OR window.open=$.get)");
+		if (debugShow) {
+			$.get(url);
+			return;
+		}
 		window.open(url);
 	}
 }
@@ -5804,13 +5949,22 @@ function getExportHandler(jtbl, ac, param)
 
 res参数从列设置中获取，如"id 编号,name 姓名", 特别地，如果列对应字段以"_"结尾，不会加入res参数。
 
+(v5.2)
+如果表上有多选行，则导出条件为cond="t0.id IN (id1, id2)"这种形式。
+
 @see getExportHandler 导出Excel
 */
 self.getQueryParamFromTable = self.getParamFromTable = getQueryParamFromTable;
 function getQueryParamFromTable(jtbl, param)
 {
 	var opt = jtbl.datagrid("options");
+
 	param = $.extend({}, opt.queryParams, param);
+	var selArr =  jtbl.datagrid("getChecked");
+	if (selArr.length > 1 && selArr[0].id != null) {
+		var idList = $.map(selArr, function (e) { return e.id}).join(',');
+		param.cond = "t0.id IN (" + idList + ")";
+	}
 	if (param.orderby === undefined && opt.sortName) {
 		param.orderby = opt.sortName;
 		if (opt.sortOrder && opt.sortOrder.toLowerCase() != "asc")
@@ -5996,7 +6150,8 @@ $.extend($.fn.datagrid.defaults, {
 // 		method: 'POST',
 
 	rownumbers:true,
-	singleSelect:true,
+	//singleSelect:true,
+	ctrlSelect: true, // 默认是单选，按ctrl或shift支持多选
 
 // 	pagination: false,
 	pagination: true,
@@ -6467,6 +6622,60 @@ self.app_show = app_show;
 function app_show(msg)
 {
 	$.messager.show({title: self.options.title, msg: msg});
+}
+
+/**
+@fn app_progress(value, msg?)
+
+@param value 0-100间数值.
+
+显示进度条对话框. 达到100%后自动关闭.
+
+注意：同一时刻只能显示一个进度条。
+ */
+self.app_progress = app_progress;
+var m_isPgShow = false;
+function app_progress(value, msg)
+{
+	value = Math.round(value);
+	if (! m_isPgShow) {
+		$.messager.progress({interval:0});
+		m_isPgShow = true;
+	}
+	if (msg !== undefined) {
+		$(".messager-p-msg").html(msg || '');
+	}
+	var bar = $.messager.progress('bar');
+	bar.progressbar("setValue", value);
+	if (value >= 100) {
+		setTimeout(function () {
+			if (m_isPgShow) {
+				$.messager.progress('close');
+				m_isPgShow = false;
+			}
+		}, 500);
+	}
+	/*
+	var jdlg = $("#dlgProgress");
+	if (jdlg.size() == 0) {
+		jdlg = $('<div id="dlgProgress"><p class="easyui-progressbar"></p></div>');
+	}
+	if (value >= 100) {
+		setTimeout(function () {
+			jdlg.dialog('close');
+		}, 500);
+	}
+	if (!jdlg.data('dialog')) {
+		jdlg.dialog({title:'进度', closable:false, width: 200});
+		$.parser.parse(jdlg);
+	}
+	else if (jdlg.dialog('options').closed) {
+		jdlg.dialog('open');
+	}
+	var jpg = jdlg.find(".easyui-progressbar");
+	jpg.progressbar("setValue", value);
+	return jdlg;
+	*/
 }
 
 /**
@@ -7063,24 +7272,9 @@ function mycombobox(force)
 		if (!force && opts && !opts.dirty)
 			return;
 
-		var optStr = jo.data("options");
-		try {
-			if (opts == null) {
-				if (optStr != null) {
-					if (optStr.indexOf(":") > 0) {
-						opts = eval("({" + optStr + "})");
-					}
-					else {
-						opts = eval("(" + optStr + ")");
-					}
-				}
-				else {
-					opts = {};
-				}
-				jo.prop("opts_", opts);
-			}
-		}catch (e) {
-			alert("bad options for mycombobox: " + optStr);
+		if (opts == null) {
+			opts = WUI.getDataOptions(jo);
+			jo.prop("opts_", opts);
 		}
 		if (opts.jdEnumMap || opts.jdEnumList) {
 			loadOptions();
