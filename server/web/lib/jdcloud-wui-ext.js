@@ -169,12 +169,12 @@ function enhanceUpload(jupload)
 	if (jdlg.size() == 0)
 		return;
 
-	var opt = WUI.getOptions(jupload);
-	$.extend(opt, {
+	var defOpt = {
 		multiple: true,
 		pic: true,
 		manual: false
-	}, WUI.getDataOptions(jupload));
+	};
+	var opt = WUI.getOptions(jupload, defOpt);
 	if (opt.fname === undefined)
 		opt.fname = !opt.pic; // 非图片时，自动保存文件名
 

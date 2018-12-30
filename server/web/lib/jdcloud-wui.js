@@ -2678,8 +2678,24 @@ function compressImg(fileObj, cb, opt)
 	}
 }
 
+/**
+@fn getDataOptions(jo, defVal?)
+@key data-options
+
+读取jo上的data-options属性，返回JS对象。例如：
+
+	<div data-options="a:1,b:'hello',c:true"></div>
+
+上例可返回 `{a:1, b:'hello', c:true}`.
+
+也支持各种表达式及函数调用，如：
+
+	<div data-options="getSomeOption()"></div>
+
+@see getOptions
+ */
 self.getDataOptions = getDataOptions;
-function getDataOptions(jo)
+function getDataOptions(jo, defVal)
 {
 	var optStr = jo.attr("data-options");
 	var opts;
@@ -2692,13 +2708,10 @@ function getDataOptions(jo)
 				opts = eval("(" + optStr + ")");
 			}
 		}
-		else {
-			opts = {};
-		}
 	}catch (e) {
 		alert("bad data-options: " + optStr);
 	}
-	return opts;
+	return $.extend({}, defVal, opts);
 }
 
 /**
@@ -2936,15 +2949,20 @@ function enhanceWithin(jp)
 }
 
 /**
-@fn getOptions(jo)
+@fn getOptions(jo, defVal?)
+
+第一次调用，根据jo上设置的data-options属性及指定的defVal初始化，或为`{}`。
+存到jo.prop("muiOptions")上。之后调用，直接返回该属性。
+
+@see getDataOptions
 */
 self.getOptions = getOptions;
-function getOptions(jo)
+function getOptions(jo, defVal)
 {
-	var opt = jo.data("muiOptions");
+	var opt = jo.prop("muiOptions");
 	if (opt === undefined) {
-		opt = {};
-		jo.data("muiOptions", opt);
+		opt = self.getDataOptions(jo, defVal);
+		jo.prop("muiOptions", opt);
 	}
 	return opt;
 }
@@ -5214,6 +5232,8 @@ $(window).keyup(function (e) {
 		return dfd.promise();
 	}
 
+@see triggerAsync 异步事件调用
+
 上面函数中处理异步调用链，不易理解，可以简单理解为：
 
 	if (confirm("确认操作?") == no)
@@ -7138,6 +7158,14 @@ $.each([
 - (v5.0) HTML select组件的jQuery.val()方法被改写。当设置不在范围内的值时，虽然下拉框显示为空，其实际值存储在 value_ 字段中，(v5.2) 通过jQuery.val()方法仍可获取到。
  用原生JS可以分别取 this.value 和 this.value_ 字段。
 
+@param opt {url, jdEnumMap/jdEnumList, formatter, textField, valueField, loadFilter, urlParams, isLoaded_, url_}
+
+@param opt.url 动态加载使用的url，或一个返回URL的函数（这时会调用opt.url(opt.urlParams)得到实际URL，并保存在opt.url_中）
+所以要取URL可以用
+
+	var opt = WUI.getOptions(jo);
+	url = opt.url_ || opt.url;
+
 ## 用url选项加载下拉列表
 
 例如，想显示所有员工(Employee)的下拉列表，绑定员工编号字段(id)，显示是员工姓名(name):
@@ -7328,16 +7356,13 @@ function mycombobox(force)
 	function initCombobox(i, o)
 	{
 		var jo = $(o);
-		var opts = jo.prop("opts_");
-		if (!force && opts && !opts.dirty)
+		var opts = WUI.getOptions(jo);
+		if (!force && opts.isLoaded_)
 			return;
 
-		if (opts == null) {
-			opts = WUI.getDataOptions(jo);
-			jo.prop("opts_", opts);
-		}
 		if (opts.jdEnumMap || opts.jdEnumList) {
 			loadOptions();
+			opts.isLoaded_ = true;
 		}
 		else if (opts.url) {
 			loadOptions();
@@ -7353,18 +7378,18 @@ function mycombobox(force)
 			jo.on("refresh", refresh);
 			jo.on("markRefresh", markRefresh);
 			jo.on("loadOptions", function (ev, param) {
-				loadOptions(param);
+				opts.urlParams = param;
+				loadOptions();
 			});
 			jo.click(function () {
-				if (!opts.dirty)
+				if (opts.isLoaded_)
 					return;
-				// TODO: 带param怎么办?
 				loadOptions();
 				return false;
 			});
 		}
 
-		function loadOptions(param)
+		function loadOptions()
 		{
 			jo.prop("value_", jo.val()); // 备份val到value_
 			jo.empty();
@@ -7390,8 +7415,8 @@ function mycombobox(force)
 				if (url.length == 0) { // 无参数直接调用
 					url = url();
 				}
-				else if (param != null) {
-					url = url(param);
+				else if (opts.urlParams != null) {
+					url = url(opts.urlParams);
 				}
 				else if (opts.url_) {
 					url = opts.url_;
@@ -7419,7 +7444,7 @@ function mycombobox(force)
 
 		function applyData(data) 
 		{
-			opts.dirty = false;
+			opts.isLoaded_ = true;
 			function getText(row)
 			{
 				if (opts.formatter) {
@@ -7471,7 +7496,7 @@ function mycombobox(force)
 					return;
 			}
 			delete m_dataCache[url];
-			opts.dirty = true;
+			opts.isLoaded_ = false;
 		}
 	}
 }
