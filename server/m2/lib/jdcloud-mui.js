@@ -6047,9 +6047,8 @@ function validateEntry(allowedEntries)
 		return;
 	m_allowedEntries = allowedEntries;
 
-	if (/*location.search != "" || */
-			(location.hash && location.hash != "#" && allowedEntries.indexOf(location.hash) < 0) ) {
-		location.href = location.pathname + location.search;
+	if (location.hash && location.hash != "#" && allowedEntries.indexOf(location.hash) < 0) {
+		location.href = location.pathname; // remove search and hash like "?k=v#page1"
 		self.app_abort();
 	}
 }

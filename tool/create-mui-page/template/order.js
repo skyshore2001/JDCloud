@@ -32,12 +32,12 @@ function initPage<?=$obj?>()
 	function onPageBeforeShow()
 	{
 /* example: handle g_args
-		if (g_args.<?=$file?>Id) {
+		if (Page<?=$obj?>.id && objId_ != Page<?=$obj?>.id) {
+			objId_ = Page<?=$obj?>.id_;
+		}
+		else if (g_args.<?=$file?>Id) {
 			objId_ = g_args.<?=$file?>Id;
 			delete g_args.<?=$file?>Id;
-		}
-		else if (Page<?=$obj?>.id && objId_ != Page<?=$obj?>.id) {
-			objId_ = Page<?=$obj?>.id;
 		}
 		else {
 			if (objId_ == null)
