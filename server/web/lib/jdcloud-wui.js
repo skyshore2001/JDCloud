@@ -5095,6 +5095,7 @@ function showDlg(jdlg, opt)
 					var jtbl = jdlg.jdata().jtbl;
 					var obj = opt.url.action.replace(".set", "");
 					var rv = batchOp(obj, "setIf", jtbl, data, function () {
+						// TODO: onCrud();
 						closeDlg(jdlg);
 					});
 					if (rv !== false)
@@ -5548,7 +5549,7 @@ function showObjDlg(jdlg, mode, opt)
 
 			// 批量删除
 			if (mode == FormMode.forDel) {
-				var rv = batchOp(obj, "delIf", jd.jtbl);
+				var rv = batchOp(obj, "delIf", jd.jtbl, null, onCrud);
 				if (rv !== false)
 					return;
 			}
@@ -5576,7 +5577,7 @@ function showObjDlg(jdlg, mode, opt)
 			if (jd.jtbl) {
 				var rowIndex = jd.jtbl.datagrid("getRowIndex", rowData);
 				jd.jtbl.datagrid("deleteRow", rowIndex);
-				opt.onCrud && opt.onCrud();
+				onCrud();
 			}
 			return;
 		}
@@ -5590,7 +5591,7 @@ function showObjDlg(jdlg, mode, opt)
 				if (jd.jtbl)
 					reload(jd.jtbl);
 				self.app_show('删除成功!');
-				opt.onCrud && opt.onCrud();
+				onCrud();
 			});
 		});
 		return;
@@ -5702,7 +5703,7 @@ function showObjDlg(jdlg, mode, opt)
 				param.cond = dgOpt.url.params.cond + " AND (" + param.cond + ")";
 			}
 			reload(jtbl, undefined, param);
-			opt.onCrud && opt.onCrud();
+			onCrud();
 			return;
 		}
 		// add/set/link
@@ -5738,6 +5739,14 @@ function showObjDlg(jdlg, mode, opt)
 		}
 		if (!opt.offline)
 			self.app_show('操作成功!');
+		onCrud();
+	}
+
+	function onCrud() {
+		if (obj && !opt.offline) {
+			console.log("refresh: " + obj);
+			$(".my-combobox").trigger("markRefresh", obj);
+		}
 		opt.onCrud && opt.onCrud();
 	}
 }
@@ -7067,7 +7076,7 @@ $.each([
 操作：
 
 - 刷新列表： jo.trigger("refresh");
-- 标记刷新（下次打开时刷新）： jo.trigger("markRefresh");
+- 标记刷新（下次打开时刷新）： jo.trigger("markRefresh", [obj?]); 如果指定obj，则仅当URL匹配obj的查询接口时才刷新。
 - (v5.2)加载列表：jo.trigger("loadOptions", param);  一般用于级联列表，即url带参数的情况。
 
 特性：
@@ -7301,6 +7310,13 @@ function mycombobox(force)
 			jo.on("loadOptions", function (ev, param) {
 				loadOptions(param);
 			});
+			jo.click(function () {
+				if (!opts.dirty)
+					return;
+				// TODO: 带param怎么办?
+				loadOptions();
+				return false;
+			});
 		}
 
 		function loadOptions(param)
@@ -7341,7 +7357,7 @@ function mycombobox(force)
 				// 在url为function时，实际url保存在opts.url_中。确保可刷新。
 				opts.url_ = url;
 			}
-			if (opts.dirty || m_dataCache[url] === undefined) {
+			if (m_dataCache[url] === undefined) {
 				self.callSvr(url, onLoadOptions);
 			}
 			else {
@@ -7399,8 +7415,17 @@ function mycombobox(force)
 			loadOptions();
 		}
 
-		function markRefresh()
+		function markRefresh(ev, obj)
 		{
+			var url = opts.url_ || opts.url;
+			if (url == null)
+				return;
+			if (obj) {
+				var ac = obj + ".query";
+				if (url.action != ac)
+					return;
+			}
+			delete m_dataCache[url];
 			opts.dirty = true;
 		}
 	}
