@@ -191,8 +191,11 @@ input:disabled,select:disabled,textarea:disabled {
 	z-index:9999 !important;
 }
 
-.wui-upload img {
+.wui-upload .imgs img {
 	width: 150px;
 	height: 150px;
 	object-fit: cover;
+}
+.wui-upload .imgs p:hover {
+	background-color: #fffbce;
 }

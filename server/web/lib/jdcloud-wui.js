@@ -2701,6 +2701,45 @@ function getDataOptions(jo)
 	return opts;
 }
 
+/**
+@fn triggerAsync(jo, ev, paramArr)
+
+触发含有异步操作的事件，在异步事件完成后继续。兼容同步事件处理函数，或多个处理函数中既有同步又有异步。
+返回Deferred对象，或false表示要求取消之后操作。
+
+@param ev 事件名，或事件对象$.Event()
+
+示例：以事件触发方式调用jo的异步方法submit:
+
+	var dfd = WUI.triggerAsync(jo, 'submit');
+	if (dfd === false)
+		return;
+	dfd.then(doNext);
+
+	function doNext() { }
+
+jQuery对象这样提供异步方法：triggerAsync会用事件对象ev创建一个dfds数组，将Deferred对象存入即可支持异步调用。
+
+	jo.on('submit', function (ev) {
+		var dfd = $.ajax("upload", ...);
+		if (ev.dfds)
+			ev.dfds.push(dfd);
+	});
+
+*/
+self.triggerAsync = triggerAsync;
+function triggerAsync(jo, ev, paramArr)
+{
+	if (typeof(ev) == "string") {
+		ev = $.Event(ev);
+	}
+	ev.dfds = [];
+	jo.trigger(ev, paramArr);
+	if (ev.isDefaultPrevented())
+		return false;
+	return $.when.apply(this, ev.dfds);
+}
+
 }
 // ====== WEBCC_END_FILE commonjq.js }}}
 
@@ -5065,17 +5104,10 @@ function showDlg(jdlg, opt)
 			return false;
 
 		var newData = {};
-		var ev = $.Event("validate");
-		ev.dfds = [];
-		jfrm.trigger(ev, [formMode, opt.data, newData]);
-		var dfds = $.grep(ev.dfds, function (e) { return e && e.then });
-		if (dfds.length > 0) {
-			$.when.apply(this, dfds).then(afterValidate);
+		var dfd = self.triggerAsync(jfrm, "validate", [formMode, opt.data, newData]);
+		if (dfd === false)
 			return false;
-		}
-		if (ev.isDefaultPrevented())
-			return false;
-		afterValidate();
+		dfd.then(afterValidate);
 
 		function afterValidate() {
 			// TODO: remove. 用validate事件替代。
@@ -5144,7 +5176,7 @@ $(window).keyup(function (e) {
 @param ac "setIf"/"delIf"
 @param data/dataFn 批量操作的参数。
 可以是一个函数dataFn(batchCnt)，参数batchCnt为当前批量操作的记录数。
-该函数返回data或一个Deferred对象(该对象适时应调用dfd.resolve(data)做批量操作)
+该函数返回data或一个Deferred对象(该对象适时应调用dfd.resolve(data)做批量操作)。dataFn返回false表示不做后续处理。
 
 批量操作支持两种方式: 
 
@@ -5160,23 +5192,35 @@ $(window).keyup(function (e) {
 
 示例：批量更新附件到行记录上, 在onBatch中返回一个Deferred对象，并在获得数据后调用dfd.resolve(data)
 
-		var forceFlag = 1; // 如果没有多选，则按当前过滤条件全部更新。
-		WUI.batchOp("Task", "setIf", jtbl, onBatch, function () {
-			WUI.closeDlg(jdlg);
-		}, forceFlag);
+	var forceFlag = 1; // 如果没有多选，则按当前过滤条件全部更新。
+	WUI.batchOp("Task", "setIf", jtbl, onBatch, function () {
+		WUI.closeDlg(jdlg);
+	}, forceFlag);
 
-		function onBatch(batchCnt)
-		{
-			var dfd = $.Deferred();
-			app_confirm("批量上传附件到" + batchCnt + "行记录?", function (isOk) {
-				if (!isOk)
-					return;
-				imgToHidden(jfrm.find("#divAtts"));
+	function onBatch(batchCnt)
+	{
+		if (batchCnt == 0) {
+			app_alert("没有记录更新。");
+			return false;
+		}
+		var dfd = $.Deferred();
+		app_alert("批量上传附件到" + batchCnt + "行记录?", "q", function () {
+			var dfd1 = triggerAsync(jdlg.find(".wui-upload"), "submit"); // 异步上传文件，返回Deferred对象
+			dfd1.then(function () {
 				var data = WUI.getFormData(jfrm);
 				dfd.resolve(data);
 			});
-			return dfd.promise();
-		}
+		});
+		return dfd.promise();
+	}
+
+上面函数中处理异步调用链，不易理解，可以简单理解为：
+
+	if (confirm("确认操作?") == no)
+		return;
+	jupload.submit();
+	return getFormData(jfrm);
+
 */
 self.batchOp = batchOp;
 function batchOp(obj, ac, jtbl, data, onBatchDone, forceFlag)
@@ -5213,8 +5257,9 @@ function batchOp(obj, ac, jtbl, data, onBatchDone, forceFlag)
 		var dgOpt = jtbl.datagrid("options");
 		var p1 = dgOpt.url && dgOpt.url.params;
 		var p2 = dgOpt.queryParams;
-		queryParams = $.extend({}, p1, p2, {res: "count(*) cnt"});
-		self.callSvr(obj + ".query", queryParams, function (data1) {
+		queryParams = $.extend({}, p1, p2);
+		var p3 = $.extend({}, queryParams, {res: "count(*) cnt"});
+		self.callSvr(obj + ".query", p3, function (data1) {
 			confirmBatch(data1.d[0][0]);
 		});
 	}

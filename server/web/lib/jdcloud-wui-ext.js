@@ -67,13 +67,13 @@ a标签上数据如下：
 - attr("picId")保存图片缩略图ID。如果无该属性，表示尚未上传。
 - prop("picData_")保存图片压缩信息。仅当新选择的图片才有。
 
-@param opt.multiple 设置false限制只能选一张图。
+@param opt.multiple=true 设置false限制只能选一张图。
 
-@param opt.nothumb 设置为true表示不生成缩略图
+@param opt.nothumb=false 设置为true表示不生成缩略图
 
 	<td class="wui-upload" data-options="nothumb:true">...</td>
 
-@param opt.pic 设置为false，用于上传视频或其它非图片文件
+@param opt.pic=true 设置为false，用于上传视频或其它非图片文件
 
 如果为false, 在.imgs区域内显示文件名链接而非图片。
 
@@ -81,6 +81,33 @@ a标签上数据如下：
 
 在opt.pic=true时，默认会保存文件名到字段中。保存的格式为 `List(attId, fileName)` 即"{attId}:{orgName},{attId2}:{orgName2},..."
 设置为false只保存文件编号，不保存文件名。
+
+@param opt.manual=false 是否自动上传提交
+
+默认无须代码即可自动上传文件。如果想要手工操控，可以触发submit事件，
+示例：在dialog的validate事件中先确认提示再上传，而不是直接上传：
+
+HTML:
+
+	<div class="wui-upload" data-options="manual:true">...</div>
+
+JS:
+
+	jdlg.on("validate", onValidate);
+	function onValidate(ev)
+	{
+		var dfd = $.Deferred();
+		app_alert("确认上传?", "q", function () {
+			var dfd1 = WUI.triggerAsync(jdlg.find(".wui-upload"), "submit");
+			dfd1.then(doNext);
+		});
+		// dialog的validate方法支持异步，故设置ev.dfds数组来告知调用者等异步操作结束再继续
+		ev.dfds.push(dfd.promise());
+
+		function doNext() {
+			dfd.resolve();
+		}
+	}
 
 @param opt.menu 设置右键菜单
 
@@ -146,6 +173,7 @@ function enhanceUpload(jupload)
 	$.extend(opt, {
 		multiple: true,
 		pic: true,
+		manual: false
 	}, WUI.getDataOptions(jupload));
 	if (opt.fname === undefined)
 		opt.fname = !opt.pic; // 非图片时，自动保存文件名
@@ -194,8 +222,11 @@ function enhanceUpload(jupload)
 		curSel = this;
 	});
 
-	jdlg.on("show", onShow)
-		.on("validate", onValidate);
+	jupload.on("submit", onSubmit);
+
+	jdlg.on("show", onShow);
+	if (!opt.manual)
+		jdlg.on("validate", onValidate);
 
 	function onShow(ev) {
 		jname.hide();
@@ -203,8 +234,13 @@ function enhanceUpload(jupload)
 	}
 
 	function onValidate(ev, mode, oriData, newData) {
+		onSubmit(ev);
+	}
+
+	function onSubmit(ev) {
 		var dfd = imgToHidden(jupload);
-		ev.dfds.push(dfd);
+		if (ev.dfds && $.isArray(ev.dfds) && dfd && dfd.then)
+			ev.dfds.push(dfd);
 	}
 }
 
