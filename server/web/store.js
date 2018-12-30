@@ -13,9 +13,12 @@ var g_data = {}; // {userInfo={id, storeId, perms,...}, hasPerm(perm)}
 // interface
 var DlgImport = {
 	data_: null,
+	cb_: null,
 	// data: {obj, ...} 对应dlgImport.html中的带name对象
-	show: function (data) {
+	// cb: 导入成功后的回调函数
+	show: function (data, cb) {
 		this.data_ = data;
+		this.cb_ = cb;
 		WUI.showDlg("#dlgImport", {modal:false});
 	}
 };

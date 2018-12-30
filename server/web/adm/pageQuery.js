@@ -129,4 +129,29 @@ function initPageQuery()
 		}
 
 	}
+
+/*
+@fn row2tr(row)
+@return jquery tr对象
+@param row {\@cols}, col: {useTh?=false, html?, \%css?, \%attr?, \%on?}
+
+根据row结构构造jQuery tr对象。
+*/
+	function row2tr(row)
+	{
+		var jtr = $("<tr></tr>");
+		$.each(row.cols, function (i, col) {
+			var jtd = $(col.useTh? "<th></th>": "<td></td>");
+			jtd.appendTo(jtr);
+			if (col.html != null)
+				jtd.html(col.html);
+			if (col.css != null)
+				jtd.css(col.css);
+			if (col.attr != null)
+				jtd.attr(col.attr);
+			if (col.on != null)
+				jtd.on(col.on);
+		});
+		return jtr;
+	}
 }

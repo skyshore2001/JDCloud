@@ -186,3 +186,13 @@ input:disabled,select:disabled,textarea:disabled {
 	vertical-align: middle;
 }
 
+/* Í¼Æ¬ä¯ÀÀÆ÷photoSwipe */
+.pswp {
+	z-index:9999 !important;
+}
+
+.wui-upload img {
+	width: 150px;
+	height: 150px;
+	object-fit: cover;
+}
