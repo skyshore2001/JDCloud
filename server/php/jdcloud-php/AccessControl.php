@@ -1728,33 +1728,48 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 /**
 @fn AccessControl::api_batchAdd()
 
-批量添加（导入）。返回导入记录数及编号: {cnt, @idList}。
+批量添加（导入）。返回导入记录数cnt及编号列表idList
+
+	Obj.batchAdd(title?)(...) -> {cnt, @idList}
+
 在一个事务中执行，一行出错后立即失败返回，该行前面已导入的内容也会被取消（回滚）。
+
+- title: List(fieldName). 指定标题行(即字段列表). 如果有该参数, 则忽略POST内容或文件中的标题行.
+ 如"title=name,-,addr"表示导入第一列name和第三列addr, 其中"-"表示忽略该列，不导入。
 
 支持两种方式上传：
 
-1. 直接在HTTP POST中传输内容，数据格式为：首行为字段名列表，次行为显示名列表，之后为实际数据。
+1. 直接在HTTP POST中传输内容，数据格式为：首行为标题行(即字段名列表)，之后为实际数据行。
+行使用"\n"分隔, 列使用"\t"分隔.
 接口为：
 
-	{Obj}.batchAdd()(标题行，显示标题行，数据行)
+	{Obj}.batchAdd(title?)(标题行，数据行)
 	(Content-Type=text/plain)
 
-每行数据中，以"\t"分隔列。
 前端JS调用示例：
 
-	var data = "name\taddr\n" + "门店名\t地址\n" + "门店1\t地址1\n门店2\t地址2\n";
+	var data = "name\taddr\n" + "门店1\t地址1\n门店2\t地址2\n";
 	callSvr("Store.batchAdd", function (ret) {
+		app_alert("成功导入" + ret.cnt + "条数据！");
+	}, data, {contentType:"text/plain"});
+
+或指定title参数:
+
+	var data = "门店名\t地址\n" + "门店1\t地址1\n门店2\t地址2\n";
+	callSvr("Store.batchAdd", {title: "name,addr"}, function (ret) {
 		app_alert("成功导入" + ret.cnt + "条数据！");
 	}, data, {contentType:"text/plain"});
 
 2. 标准csv/txt文件上传：
 
 上传的文件首行当作标题列，如果这一行不是后台要求的标题名称，可通过URL参数title重新定义。
-一般使用excel csv文件（编码为gbk的csv文件），或txt文件（以"\t"分隔列，utf-8编码）。
+一般使用excel csv文件（编码一般为gbk），或txt文件（以"\t"分隔列）。
 接口为：
 
 	{Obj}.batchAdd(title?)(csv/txt文件)
 	(Content-Type=multipart/form-data, 即html form默认传文件的格式)
+
+后端处理时, 将自动判断文本编码(utf-8或gbk).
 
 前端HTML:
 
@@ -1784,6 +1799,8 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		foreach ($this as $k=>$v) {
 			$bak[$k] = $v;
 		}
+		$bak_SOLO = ApiFw_::$SOLO;
+		ApiFw_::$SOLO = false; // 避免其间有setRet输出
 		while (($row = $st->getRow()) != null) {
 			if ($n == 1) {
 				$titleRow = $row;
@@ -1813,10 +1830,22 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 						$this->$k = $v;
 					}
 				}
+				catch (DirectReturn $ex) {
+					global $X_RET;
+					if ($X_RET[0] == 0) {
+						$id = $X_RET[1];
+					}
+					else {
+						$msg = ($X_RET[2] ?: $X_RET[1]);
+						ApiFw_::$SOLO = $bak_SOLO;
+						throw new MyException(E_PARAM, $X_RET[1], "第{$n}行出错(\"" . join(',', $row) . "\"): " . $msg);
+					}
+				}
 				catch (Exception $ex) {
 					$msg = $ex->getMessage();
 					if ( ($ex instanceof MyException) && $ex->internalMsg != null)
 						$msg .= "-" .$ex->internalMsg;
+					ApiFw_::$SOLO = $bak_SOLO;
 					throw new MyException(E_PARAM, (string)$ex, "第{$n}行出错(\"" . join(',', $row) . "\"): " . $msg);
 				}
 				++ $ret["cnt"];
@@ -1824,6 +1853,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 			}
 			++ $n;
 		}
+		ApiFw_::$SOLO = $bak_SOLO;
 		$this->ac = "batchAdd";
 		$_POST = $tmp;
 		return $ret;

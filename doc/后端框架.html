@@ -41,7 +41,11 @@
 <li><a href="#客户端版本_ver"><span class="toc-section-number">3.1.8</span> 客户端版本(_ver)</a></li>
 <li><a href="#权限说明"><span class="toc-section-number">3.1.9</span> 权限说明</a></li>
 </ul></li>
-<li><a href="#通用对象接口"><span class="toc-section-number">3.2</span> 通用对象接口</a></li>
+<li><a href="#通用对象接口"><span class="toc-section-number">3.2</span> 通用对象接口</a><ul>
+<li><a href="#通用查询导出与分组统计"><span class="toc-section-number">3.2.1</span> 通用查询、导出与分组统计</a></li>
+<li><a href="#批量更新与删除"><span class="toc-section-number">3.2.2</span> 批量更新与删除</a></li>
+<li><a href="#批量添加导入"><span class="toc-section-number">3.2.3</span> 批量添加（导入）</a></li>
+</ul></li>
 <li><a href="#api调用监控"><span class="toc-section-number">3.3</span> API调用监控</a></li>
 <li><a href="#批量请求"><span class="toc-section-number">3.4</span> 批量请求</a></li>
 <li><a href="#服务端信息反馈x-daca头"><span class="toc-section-number">3.5</span> 服务端信息反馈/X-Daca头</a></li>
@@ -646,14 +650,17 @@ Obj.query(fmt=csv/txt/excel, fname?...) -&gt; 文件内容
 Obj.setIf(cond)(POST fields...)
 
 批量删除：
-Obj.delIf(cond)</code></pre>
+Obj.delIf(cond)
+
+批量添加(导入):
+Obj.batchAdd(title?)(数据或文件)</code></pre>
 <p>缺省这些操作只对超级管理员角色开放，其他角色默认无权操作。超级管理员可对所有对象的所有字段操作。</p>
 <p>对象是否开放出来，或是开放哪些操作及字段，一般按用户角色进行权限控制，如用户登录后可操作某些对象，或员工登录后可操作另一些对象，请查阅设计文档中相应的专用接口定义。 在专用接口定义中应描述允许的角色、允许的操作类型(如只能get/set,不能add/del)、只读字段、隐藏字段等，以及应实现的业务逻辑。</p>
 <p>系统中的表设计(表名, 字段等)参见&quot;数据库设计&quot;章节. 一般表都设计为使用整形字段id作为主键. 该字段创建后变只读, 不允许被修改.</p>
 <p>对于add操作，默认返回id, 如果想多返回其它字段，可设置res参数，如</p>
 <pre><code>Ordr.add()(status=&quot;CR&quot;, total=100) -&gt; 809
 Ordr.add(res=&quot;id,status,total&quot;)(status=&quot;CR&quot;, total=100) -&gt; {id: 810, status:&quot;CR&quot;, total: 100}</code></pre>
-<p><strong>[query]</strong></p>
+<h4 id="通用查询导出与分组统计"><span class="header-section-number">3.2.1</span> 通用查询、导出与分组统计</h4>
 <p>query可以用参数cond指定查询条件, 如</p>
 <pre><code>cond=&quot;type=&#39;A&#39; and name like &#39;%hello%&#39;&quot; 
 
@@ -828,6 +835,59 @@ name=华莹汽车(张江店)&amp;addr=金科路88号&amp;tel=021-12345678</code>
 <p><strong>[例: 删除商户]</strong></p>
 <pre><code>Store.del(id=8)</code></pre>
 <p>操作成功时无返回内容.</p>
+<h4 id="批量更新与删除"><span class="header-section-number">3.2.2</span> 批量更新与删除</h4>
+<pre><code>Obj.setIf/delIf</code></pre>
+<p>一般使用cond参数指定查询条件，允许使用虚拟字段；也可以使用与query接口相同的其它自定义参数。</p>
+<p>示例，下面query接口定义了虚拟字段storeName和非标查询参数q:</p>
+<pre><code>Item.query(q?, cond?) -&gt; tbl(id, ..., storeName?)
+
+- q: &quot;my&quot;-表示我发布的商品. 默认返回所有商品。
+- storeName: 商户名，关联到Store表。</code></pre>
+<p>批量更新示例：</p>
+<pre><code>Item.setIf(cond: &quot;status=&#39;CR&#39;)(status=ST)
+Item.setIf(cond: &quot;t0.id IN (3,5,7)&quot;)(status=ST)
+Item.setIf(q:&quot;my&quot;, cond:&quot;storeName LIKE &quot;上海%&quot;)(status=ST)</code></pre>
+<p>批量删除示例：</p>
+<pre><code>Item.delIf(cond: &quot;status=&#39;ST&#39;)
+Item.delIf(cond: &quot;t0.id IN (3,5,7)&quot;)
+Item.delIf(q: &quot;my&quot;, cond:&quot;storeName LIKE &quot;上海%&quot;)</code></pre>
+<h4 id="批量添加导入"><span class="header-section-number">3.2.3</span> 批量添加（导入）</h4>
+<p>批量添加（导入）。返回导入记录数cnt及编号列表idList</p>
+<pre><code>Obj.batchAdd(title?)(...) -&gt; {cnt, @idList}</code></pre>
+<p>在一个事务中执行，一行出错后立即失败返回，该行前面已导入的内容也会被取消（回滚）。</p>
+<ul>
+<li>title: List(fieldName). 指定标题行(即字段列表). 如果有该参数, 则忽略POST内容或文件中的标题行. 如&quot;title=name,-,addr&quot;表示导入第一列name和第三列addr, 其中&quot;-&quot;表示忽略该列，不导入。</li>
+</ul>
+<p>支持两种方式上传：</p>
+<ol style="list-style-type: decimal">
+<li><p>直接在HTTP POST中传输内容，数据格式为：首行为标题行(即字段名列表)，之后为实际数据行。 行使用&quot;&quot;分隔, 列使用&quot;&quot;分隔. 接口为：</p>
+<p>{Obj}.batchAdd(title?)(标题行，数据行) (Content-Type=text/plain)</p></li>
+</ol>
+<p>前端JS调用示例：</p>
+<pre><code>var data = &quot;name\taddr\n&quot; + &quot;门店1\t地址1\n门店2\t地址2\n&quot;;
+callSvr(&quot;Store.batchAdd&quot;, function (ret) {
+    app_alert(&quot;成功导入&quot; + ret.cnt + &quot;条数据！&quot;);
+}, data, {contentType:&quot;text/plain&quot;});</code></pre>
+<p>或指定title参数:</p>
+<pre><code>var data = &quot;门店名\t地址\n&quot; + &quot;门店1\t地址1\n门店2\t地址2\n&quot;;
+callSvr(&quot;Store.batchAdd&quot;, {title: &quot;name,addr&quot;}, function (ret) {
+    app_alert(&quot;成功导入&quot; + ret.cnt + &quot;条数据！&quot;);
+}, data, {contentType:&quot;text/plain&quot;});</code></pre>
+<ol start="2" style="list-style-type: decimal">
+<li>标准csv/txt文件上传：</li>
+</ol>
+<p>上传的文件首行当作标题列，如果这一行不是后台要求的标题名称，可通过URL参数title重新定义。 一般使用excel csv文件（编码一般为gbk），或txt文件（以&quot;&quot;分隔列，一般为utf-8编码）。 接口为：</p>
+<pre><code>{Obj}.batchAdd(title?)(csv/txt文件)
+(Content-Type=multipart/form-data, 即html form默认传文件的格式)</code></pre>
+<p>后端处理时, 将自动判断文本编码(utf-8或gbk).</p>
+<p>前端HTML:</p>
+<pre><code>&lt;input type=&quot;file&quot; name=&quot;f&quot; accept=&quot;.csv,.txt&quot;&gt;</code></pre>
+<p>前端JS示例：</p>
+<pre><code>var fd = new FormData();
+fd.append(&quot;file&quot;, frm.f.files[0]);
+callSvr(&quot;Store.batchAdd&quot;, {title: &quot;name,addr&quot;}, function (ret) {
+    app_alert(&quot;成功导入&quot; + ret.cnt + &quot;条数据！&quot;);
+}, fd);</code></pre>
 <h3 id="api调用监控"><span class="header-section-number">3.3</span> API调用监控</h3>
 <p>所有对API的调用（请求与响应）均记录到表ApiLog中供分析。</p>
 <p>对一个session, 监控其API调用是否有异常，避免自动化操作行为，这时将返回 E_FORBIDDEN 错误。安全类异常将记录到日志文件 secure.log</p>
