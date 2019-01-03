@@ -75,11 +75,11 @@ attIds为上传后返回的缩略图Id数组，this为当前上传区的jQuery�
 
 onUploadProgress用于显示上传进度。框架也会自动在console中显示上传进度。
 
-	// progress: {curPicCnt/已上传照片数, picCnt/总共需上传的照片数, curAreaCnt/已完成的上传区数, areaCnt/总共需更新的上传区数, curKB/当前已完成的上传大小, KB/总上传大小, done/是否全部完成}
+	// progress: {curPicCnt/已上传照片数, picCnt/总共需上传的照片数, curAreaCnt/已完成的上传区数, areaCnt/总共需更新的上传区数, curSize/当前已完成的上传大小, size/总上传大小, done/是否全部完成, percent/上传完成百分数0-100}
 	// 示例：利用app_alert显示进度。
 	function onUploadProgress(progress)
 	{
-		var info = progress.picCnt>0? "上传" + progress.curPicCnt + "/" + progress.picCnt + "张照片": "更新照片";
+		var info = progress.picCnt>0? "正在上传... " + progress.percent + "% - " + progress.curPicCnt + "/" + progress.picCnt + "张照片": "更新照片";
 		if (progress.done) {
 			info += " - <b>完成!</b>";
 		}
@@ -109,6 +109,12 @@ onUploadDone在全部上传完成后调用，参数分别为每个上传区的�
 - delMark_: 标识是否有删除图片操作。在submit后恢复为null.
 
 @see compressImg
+
+## 设置只读，不可添加删除图片
+
+	uploadPic.readonly(true);
+	var isReadonly = uploadPic.readonly();
+
  */
 JdcloudUploadPic.call(window.WUI || window.MUI);
 function JdcloudUploadPic()
@@ -163,6 +169,13 @@ function uploadPic1(jo, opt)
 			}, areaOpt);
 		});
 		this.value = "";
+	});
+
+	jo.on("click", "input[type=file]", function (ev) {
+		if (areaOpt.readonly) {
+			app_alert("当前不可添加!", "w");
+			return false;
+		}
 	});
 
 	jo.on("click", ".uploadpic-item", function (ev) {
@@ -249,8 +262,11 @@ function newPreview()
 function delPreview(ji, forReset)
 {
 	var jo = ji.closest(".uploadpic");
+	var opt = MUI.getOptions(jo);
+	if (opt.readonly)
+		return;
 	if (!forReset) {
-		MUI.getOptions(jo).delMark_ = true; // 标记有删除操作，需要更新
+		opt.delMark_ = true; // 标记有删除操作，需要更新
 	}
 
 	if (ji.prop("isFixed_")) {
@@ -270,7 +286,7 @@ function submit1(jo, cb, progress, progressCb)
 	var fd = null;
 	var idx = 1;
 	var imgArr = [];
-	var totalKB = 0;
+	var totalSize = 0;
 	var atts = null;
 	var dfd = $.Deferred();
 	var opt = MUI.getOptions(jo);
@@ -283,7 +299,7 @@ function submit1(jo, cb, progress, progressCb)
 		}
 		// 名字要不一样，否则可能会覆盖
 		fd.append('file' + idx, this.picData_.blob, this.picData_.name);
-		totalKB += this.picData_.size;
+		totalSize += this.picData_.size;
 		imgArr.push(this);
 		++idx;
 	});
@@ -296,13 +312,31 @@ function submit1(jo, cb, progress, progressCb)
 		return;
 	}
 
+	var sizeObj = {loaded:0, total:0};
 	progress.areaCnt += 1;
 	progress.picCnt += imgArr.length;
-	totalKB = parseFloat((totalKB/1024).toFixed(0));
-	progress.KB += totalKB;
+	progress.size += totalSize;
+	progress.uploadedSize.push(sizeObj);
+
+	var ajaxOpt = {
+		onUploadProgress: function (e) {
+			if (e.lengthComputable) {
+				sizeObj.loaded = e.loaded;
+				sizeObj.total = e.total;
+				progressCb(progress);
+			}
+		},
+		xhr: function () {
+			var xhr = $.ajaxSettings.xhr();
+			if (xhr.upload) {
+				xhr.upload.addEventListener('progress', this.onUploadProgress, false);
+			}
+			return xhr;
+		}
+	};
 
 	var param = $.extend({genThumb:1, autoResize:0}, opt.uploadParam);
-	callSvr("upload", param, api_upload, fd);
+	callSvr("upload", param, api_upload, fd, ajaxOpt);
 	return dfd;
 
 	function api_upload(data) {
@@ -328,7 +362,7 @@ function submit1(jo, cb, progress, progressCb)
 		opt.delMark_ = null;
 		progress.curAreaCnt += 1;
 		progress.curPicCnt += imgArr.length;
-		progress.curKB += totalKB;
+		progress.curSize += totalSize;
 		progressCb(progress);
 		if (dfd) {
 			dfd.resolve(atts);
@@ -351,8 +385,8 @@ function uploadPic_submit(cb, progressCb)
 	var self = this;
 	var dfdArr = [];
 	var needWork = false;
-	// progress: {curPicCnt, picCnt, curAreaCnt, areaCnt, curKB, KB, done}
-	var progress = {curPicCnt:0, picCnt:0, curAreaCnt:0, areaCnt:0, curKB:0, KB:0, done: false};
+	// progress: {curPicCnt, picCnt, curAreaCnt, areaCnt, curSize, size, percent, done}
+	var progress = {curPicCnt:0, picCnt:0, curAreaCnt:0, areaCnt:0, curSize:0, size:0, done: false, percent:0, uploadedSize:[]};
 	self.jupload.each(function () {
 		var jo = $(this);
 		var dfd = submit1(jo, cb, progress, progressCb1);
@@ -378,8 +412,20 @@ function uploadPic_submit(cb, progressCb)
 
 	function progressCb1(pg)
 	{
-		var info = "uploadpic: area " + pg.curAreaCnt + "/" + pg.areaCnt + ", pic " + pg.curPicCnt + "/" + pg.picCnt + ", size " + pg.curKB + "KB/" + pg.KB + "KB";
-		if (progress.done) {
+		// calc percent
+		var arr = pg.uploadedSize; // elem: {loaded, total}
+		var loaded = 0, total = 0;
+		$.each(arr, function () {
+			loaded += this.loaded;
+			total += this.total;
+		});
+		if (total < pg.size) {
+			total = pg.size;
+		}
+		pg.percent = (loaded / total * 100).toFixed(0);
+
+		var info = "uploadpic: " + pg.percent + "%, area " + pg.curAreaCnt + "/" + pg.areaCnt + ", pic " + pg.curPicCnt + "/" + pg.picCnt + ", size " + pg.curSize + "/" + pg.size + ", uploadedSize " + loaded + "/" + total;
+		if (pg.done) {
 			info += " - done!";
 		}
 		else {
@@ -496,5 +542,20 @@ function uploadPic_reset()
 		loadPreview(jo, isMul);
 	});
 }
+
+UploadPic.prototype.readonly = uploadPic_readonly;
+function uploadPic_readonly(val)
+{
+	var self = this;
+	if (val == null)
+		return MUI.getOptions(self.jupload).readonly;
+
+	self.jupload.each(function () {
+		var jo = $(this);
+		MUI.getOptions(jo).readonly = val;
+		jo.find(".uploadpic-delItem").toggle(!val);
+	});
+}
+
 }
 

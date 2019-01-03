@@ -576,6 +576,19 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 
 	function initPageItem(storeId) // storeId=row.id
 
+此外，在Item页对应的详情对话框上（dlgItem.html页面中），还应设置storeId字段是只读的，在添加、设置和查询时不可被修改。
+
+	<select name="storeId" class="my-combobox" data-options="ListOptions.Store()" readonly></select>
+
+注意：select组件默认不支持readonly属性，框架定义了CSS：为select[readonly]设置`pointer-events:none`达到类似效果。
+
+然后，在initDlgItem函数中(dlgItem.js文件)，应设置在添加时自动填好该字段：
+
+	function onBeforeShow(ev, formMode, opt)
+		if (formMode == FormMode.forAdd && objParam.storeId) {
+			opt.data.storeId = objParam.storeId);
+		}
+
 @see showPage
 
 ### 设计模式：页面间调用
@@ -604,7 +617,7 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 			...
 			PageItem.show({storeId: row.id});
 		}
-		var btn1 = {text: "查看商品", iconCls: "icon-search", handler: showPageCloseOrder};
+		var btn1 = {text: "查看商品", iconCls: "icon-search", handler: showItemPage};
 
 		...
 		jtbl.datagrid({
@@ -2174,10 +2187,12 @@ function formItems(jo, cb)
  对div等其它对象, 会清空该对象的内容.
 - 如果对象设置有属性"noReset", 则不会对它进行设置.
 
-@param opt {setOrigin?=false}
+@param opt {setOrigin?=false, setOnlyDefined?=false}
 
-选项 setOrigin: 为true时将data设置为数据源, 这样在getFormData时, 只会返回与数据源相比有变化的数据.
+@param opt.setOrigin 为true时将data设置为数据源, 这样在getFormData时, 只会返回与数据源相比有变化的数据.
 缺省会设置该DOM对象数据源为空.
+
+@param opt.setOnlyDefined 设置为true时，只设置form中name在data中存在的项，其它项保持不变；而默认是其它项会清空。
 
 对象关联的数据源, 可以通过 jo.data("origin_") 来获取, 或通过 jo.data("origin_", newOrigin) 来设置.
 
@@ -2221,6 +2236,8 @@ function setFormData(jo, data, opt)
 		var ji = $(this);
 		var name = ji.attr("name");
 		var content = data[name];
+		if (opt1.setOnlyDefined && content === undefined)
+			return;
 		var isInput = ji.is(":input");
 		if (content === undefined) {
 			if (isInput) {
@@ -2235,7 +2252,7 @@ function setFormData(jo, data, opt)
 				content = "";
 			}
 		}
-		if (ji.is(":input")) {
+		if (isInput) {
 			ji.val(content);
 		}
 		else {
@@ -2937,10 +2954,10 @@ function enhanceWithin(jp)
 			return;
 		jo.each(function (i, e) {
 			var je = $(e);
-			var opt = getOptions(je);
-			if (opt.enhanced)
+			var enhanced = je.data("mui-enhanced");
+			if (enhanced)
 				return;
-			opt.enhanced = true;
+			je.data("mui-enhanced", true);
 			fn(je);
 		});
 	});
@@ -4634,7 +4651,7 @@ function appendRow(jtbl, id)
 
 function tabid(title)
 {
-	return "pg_" + title.replace(/[ ()\[\]]/g, "_");
+	return "pg_" + title.replace(/[ ()\[\]\/\\,>]/g, "_");
 }
 function istab(o)
 {
@@ -5276,6 +5293,8 @@ function batchOp(obj, ac, jtbl, data, onBatchDone, forceFlag)
 		var p1 = dgOpt.url && dgOpt.url.params;
 		var p2 = dgOpt.queryParams;
 		queryParams = $.extend({}, p1, p2);
+		if (!queryParams.cond)
+			queryParams.cond = "t0.id>0"; // 避免后台因无条件而报错
 		var p3 = $.extend({}, queryParams, {res: "count(*) cnt"});
 		self.callSvr(obj + ".query", p3, function (data1) {
 			confirmBatch(data1.d[0][0]);

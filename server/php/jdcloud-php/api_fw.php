@@ -738,7 +738,7 @@ class ApiLog
 
 	function logBefore()
 	{
-		$this->startTm = microtime(true);
+		$this->startTm = $_SERVER["REQUEST_TIME_FLOAT"] ?: microtime(true);
 
 		global $APP;
 		$type = getAppType();

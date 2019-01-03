@@ -318,8 +318,8 @@ function imgToHidden(jp, sep)
 	var ajaxOpt = {
 		onUploadProgress: function (e) {
 			if (e.lengthComputable) {
-				console.log("upload " + (e.loaded/1024).toFixed(1) + "KB/" + (e.total/1024).toFixed(1) + "KB");
 				var value = e.loaded / e.total * 100;
+				console.log("upload " + value + "% " + (e.loaded/1024).toFixed(1) + "KB/" + (e.total/1024).toFixed(1) + "KB");
 				WUI.app_progress(value);
 			}
 		},

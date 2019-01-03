@@ -50,8 +50,12 @@ input:not([type=button]):focus, select:focus, textarea:focus{
 	background-color: #fffbce;
 }
 
-.wui-readonly, input[readonly],select[readonly] {
+.wui-readonly, input[readonly] {
 /*	pointer-events: none;*/
+	background-color: #fff3f3;
+}
+select[readonly] {
+	pointer-events: none;
 	background-color: #fff3f3;
 }
 input:disabled,select:disabled,textarea:disabled {
