@@ -106,6 +106,40 @@ app.js中很多内容移动至lib/jdcloud-wui-ext.js库中. 在主HTML文件中�
 
 	width: 70%;
 
+### jdcloud-uploadpic组件
+
+对于图片预览、压缩、上传功能，原UploadPic.js与lrz库组合不再使用，换成jdcloud-uploadpic组件（以及框架自带的compressImg函数，用于替代lrz库）。
+
+OLD: 新版自动查找"uploadpic"类
+	var uploadPic = new UploadPic(jpage.find(".uploadpic"));
+NEW:
+	var uploadPic = new MUI.UploadPic(jpage);
+
+OLD: 新版废弃refresh
+	uploadPic.empty().refresh();
+NEW:
+	uploadPic.empty();
+
+OLD: 新版submit后面参数变化
+	uploadPic.submit(function(certPics, pics) {
+	});
+NEW:
+	uploadPic.submit().then(function (certPics, pics) {
+	});
+
+OLD: 再次初始化
+	jo.attr("data-attr", "10,13,15");
+	uploadPic.initAtts();
+NEW:
+	jo.attr("data-attr", "10,13,15");
+	uploadPic.reset();
+
+OLD: 检查图片数目
+	if (jpage.find('.uploadpic.swiperpic_zz .uploadpic-item.uploadpic-item-selected').length == 0)...
+NEW:
+	if (uploadPic.filter('.swiperpic_zz').countPic() == 0) ...
+
+
 ### 要求开启php_mbstring模块
 
 	yum install php-mbstring
