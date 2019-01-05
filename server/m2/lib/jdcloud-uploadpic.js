@@ -5,6 +5,11 @@
 @param opt {uploadParam?} 兼容MUI.compressImg函数opt参数，如 {quality=0.8, maxSize=1280, ...}
 opt也可以是一个函数: optfn(jo) - jo为上传区, 返回该区的设置，这样就支持为每个上传区定义不同的选项。
 
+初始化之后也可以这样为每一个上传区指定option:
+
+	var opt = MUI.getOptions(jo);
+	opt.xx =xxx;
+
 @param opt.uploadParam 调用upload接口的额外参数。
 目前调用筋斗云upload接口，使用参数`{genThumb:1, autoResize:0}`，可以通过uploadParam指定额外参数。
 
@@ -73,20 +78,22 @@ attIds为上传后返回的缩略图Id数组，this为当前上传区的jQuery�
 		return callSvr("Task1.set", {id: task.id}, $.noop, {pics: pics});
 	}
 
-onUploadProgress用于显示上传进度。框架也会自动在console中显示上传进度。
+onUploadProgress用于显示上传进度。如果未指定，框架使用默认的进度提示，同时会在console中显示上传进度。如下所示：
 
 	// progress: {curPicCnt/已上传照片数, picCnt/总共需上传的照片数, curAreaCnt/已完成的上传区数, areaCnt/总共需更新的上传区数, curSize/当前已完成的上传大小, size/总上传大小, done/是否全部完成, percent/上传完成百分数0-100}
 	// 示例：利用app_alert显示进度。
 	function onUploadProgress(progress)
 	{
 		var info = progress.picCnt>0? "正在上传... " + progress.percent + "% - " + progress.curPicCnt + "/" + progress.picCnt + "张照片": "更新照片";
+		var alertOpt = {keep: true};
 		if (progress.done) {
 			info += " - <b>完成!</b>";
+			alertOpt.timeoutInterval = 500;
 		}
 		else {
 			info += "...";
 		}
-		app_alert(info, {keep:true});
+		app_alert(info, alertOpt);
 	}
 
 onUploadDone在全部上传完成后调用，参数分别为每个上传区的图片编号数组（不论该上传区是否需要更新）。
@@ -110,10 +117,41 @@ onUploadDone在全部上传完成后调用，参数分别为每个上传区的�
 
 @see compressImg
 
+## 清空与重置
+
+清空全部图片：
+
+	uploadPic.empty();
+	// 等价于 uploadPic.reset(true);
+
+修改了data-attr属性后重新刷新显示：
+
+	uploadPic.reset();
+
 ## 设置只读，不可添加删除图片
 
 	uploadPic.readonly(true);
 	var isReadonly = uploadPic.readonly();
+
+## 获取图片数
+
+要判断预览区有几张图，可以用：
+
+	var cnt = uploadPic.countPic(); // 总图片数
+	var oldCnt = uploadPic.countPic(1); // 已有图片数
+	var newCnt = uploadPic.countPic(2); // 新选择的图片数
+
+## 指定上传区操作
+
+当uploadPic包含多个上传区时，可以用filter指定之后的方法是针对哪一个区。注意filter只对下一次调用有效。
+
+	uploadPic.filter(idx).其它方法(); // idx为下标或jQuery的filter
+
+示例：
+
+	var cnt = uploadPic.filter(0).stat().cnt;
+	// 等价于 var cnt = uploadPic.filter(":eq(0)").stat().cnt;
+	uploadPic.filter(".storePics").empty();
 
  */
 JdcloudUploadPic.call(window.WUI || window.MUI);
@@ -155,6 +193,7 @@ function uploadPic1(jo, opt)
 	if (isMul && MUI.isWeixin() && MUI.isAndroid()) {
 		jinput.prop("multiple", false);
 	}
+	jinput.attr("accept", "image/*");
 
 	jo.find(".uploadpic-item").each(function (i, e) {
 		this.isFixed_ = true;
@@ -379,6 +418,20 @@ function getAtts(jo)
 	return atts;
 }
 
+function onUploadProgress(progress)
+{
+	var info = progress.picCnt>0? "正在上传... " + progress.percent + "% - " + progress.curPicCnt + "/" + progress.picCnt + "张照片": "更新照片";
+	var alertOpt = {keep: true};
+	if (progress.done) {
+		info += " - <b>完成!</b>";
+		alertOpt.timeoutInterval = 500;
+	}
+	else {
+		info += "...";
+	}
+	app_alert(info, alertOpt);
+}
+
 UploadPic.prototype.submit = uploadPic_submit;
 function uploadPic_submit(cb, progressCb)
 {
@@ -387,6 +440,8 @@ function uploadPic_submit(cb, progressCb)
 	var needWork = false;
 	// progress: {curPicCnt, picCnt, curAreaCnt, areaCnt, curSize, size, percent, done}
 	var progress = {curPicCnt:0, picCnt:0, curAreaCnt:0, areaCnt:0, curSize:0, size:0, done: false, percent:0, uploadedSize:[]};
+	if (progressCb == null)
+		progressCb = onUploadProgress;
 	self.jupload.each(function () {
 		var jo = $(this);
 		var dfd = submit1(jo, cb, progress, progressCb1);
@@ -529,32 +584,82 @@ function initPageGallery()
 }
 // ------------ }}}
 
+UploadPic.prototype.filter = function (idx) {
+	if (idx === undefined)
+		return;
+	var jo = this.jupload;
+	if (typeof(idx) == "number")
+		jo = jo.eq(idx);
+	else
+		jo = jo.filter(idx);
+	this.jfiltered = jo;
+	return this;
+}
+
+function getFiltered(self) {
+	if (self.jfiltered) {
+		var jo = self.jfiltered;
+		self.jfiltered = null;
+		return jo;
+	}
+	return self.jupload;
+}
+
 UploadPic.prototype.reset = uploadPic_reset;
-function uploadPic_reset()
+function uploadPic_reset(empty)
 {
 	var self = this;
-	self.jupload.each(function () {
+	var jupload = getFiltered(self);
+	jupload.each(function () {
 		var jo = $(this);
 		jo.find(".uploadpic-item").each(function (i, e) {
 			delPreview($(this), true);
 		});
-		var isMul = MUI.getOptions(jo).isMul;
-		loadPreview(jo, isMul);
+		if (empty) {
+			jo.attr("data-atts", "");
+		}
+		else {
+			var isMul = MUI.getOptions(jo).isMul;
+			loadPreview(jo, isMul);
+		}
 	});
+}
+
+UploadPic.prototype.empty = function () {
+	this.reset(true);
 }
 
 UploadPic.prototype.readonly = uploadPic_readonly;
 function uploadPic_readonly(val)
 {
 	var self = this;
+	var jupload = getFiltered(self);
 	if (val == null)
-		return MUI.getOptions(self.jupload).readonly;
+		return MUI.getOptions(jupload).readonly;
 
-	self.jupload.each(function () {
+	jupload.each(function () {
 		var jo = $(this);
 		MUI.getOptions(jo).readonly = val;
 		jo.find(".uploadpic-delItem").toggle(!val);
 	});
+}
+
+// which: 0-all(缺省), 1-old, 2-new
+UploadPic.prototype.countPic = function (which) {
+	var self = this;
+	var jupload = getFiltered(self);
+	var oldCnt=0, newCnt=0;
+	jupload.find(".uploadpic-item").each(function () {
+		if (this.attId_) {
+			++ oldCnt;
+		}
+		else if (this.picData_) {
+			++ newCnt;
+		}
+	});
+	if (!which)
+		return oldCnt + newCnt;
+	return which==1? oldCnt: which==2? newCnt: 0;
 }
 
 }
