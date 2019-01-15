@@ -1210,6 +1210,19 @@ function flag_getExpForSet($k, $v)
 	return "$k1=" . $v;
 }
 
+class DbExpr
+{
+	public $val;
+	function __construct($val) {
+		$this->val = $val;
+	}
+}
+
+function dbExpr($val)
+{
+	return new DbExpr($val);
+}
+
 /**
 @fn dbUpdate(table, kv, id_or_cond?) -> cnt
 
@@ -1228,7 +1241,7 @@ e.g.
 
 	// UPDATE Ordr SET tm=now() WHERE tm IS NULL
 	$cnt = dbUpdate("Ordr", [
-		"tm" => ["now()"]  // 使用数组，表示是SQL表达式
+		"tm" => dbExpr("now()")  // 使用dbExpr，表示是SQL表达式
 	], "tm IS NULL);
 
 	// 全表更新，没有条件。UPDATE Cinf SET appleDeviceToken={token}
@@ -1265,9 +1278,8 @@ function dbUpdate($table, $kv, $cond)
 			$kvstr .= "$k=null";
 		else if ($v === "empty")
 			$kvstr .= "$k=''";
-		else if (is_array($v)) { // 直接传SQL表达式
-			assert(count($v)>0);
-			$kvstr .= $k . '=' . $v[0];
+		else if ($v instanceof dbExpr) { // 直接传SQL表达式
+			$kvstr .= $k . '=' . $v->val;
 		}
 		else if (startsWith($k, "flag_") || startsWith($k, "prop_"))
 		{

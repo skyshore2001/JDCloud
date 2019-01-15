@@ -157,8 +157,8 @@ php-for-windows版本请检查php.ini中开启了该模块：
 
 新写法：
 
-	dbInsert("MyLog", [ "tm"=>["NOW()"] ]);
-	dbUpdate("MyLog", [ "tm"=>["NOW()"] ], 1001);
+	dbInsert("MyLog", [ "tm"=>dbExpr("NOW()") ]);
+	dbUpdate("MyLog", [ "tm"=>dbExpr("NOW()") ], 1001);
 
 这是为了避免用户输入等号造成错误处理。
 
