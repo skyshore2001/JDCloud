@@ -1210,7 +1210,7 @@ function apiMain()
 		// 删除空会话
 		if (isset($_SESSION) && count($_SESSION) <= 1) {
 			// jd-php框架设置过lastAccess，故空会话至少有1个key
-			session_destroy();
+			@session_destroy();
 		}
 	}
 }
