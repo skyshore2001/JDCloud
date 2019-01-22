@@ -159,11 +159,18 @@ function handleLogin(data)
 $(document).on("muiInit", myInit);
 
 // called after page is load. called in html page.
-function myInit()
+function myInit(ev)
 {
 	// MUI.initClient();
 	// redirect to login if auto login fails
-	MUI.tryAutoLogin(handleLogin, "User.get");
+	var dfd = MUI.tryAutoLogin(handleLogin, "User.get");
+	ev.dfds.push(dfd);
+
+/* 示例
+	dfd.then(function () {
+		MUI.showPage("createOrder");
+	});
+*/
 }
 
 function logoutUser()

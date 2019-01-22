@@ -5551,11 +5551,13 @@ function main()
 	self.enhanceWithin(self.container);
 
 	// 在muiInit事件中可以调用showPage.
-	self.container.trigger("muiInit");
-
-	// 根据hash进入首页
-	if (self.showFirstPage)
-		showPage();
+	// self.container.trigger("muiInit");
+	var dfd = self.triggerAsync(self.container, "muiInit");
+	dfd.then(function () {
+		// 根据hash进入首页
+		if (self.showFirstPage)
+			showPage();
+	});
 }
 
 $(main);
@@ -6145,48 +6147,64 @@ function deleteLoginToken()
 self.tryAutoLogin = tryAutoLogin;
 function tryAutoLogin(onHandleLogin, reuseCmd, allowNoLogin)
 {
-	var ok = false;
-	var ajaxOpt = {async: false, noex: true};
-
-	function handleAutoLogin(data)
-	{
-		if (data === false) // has exception (as noex=true)
-			return;
-
-		g_data.userInfo = data;
-		if (onHandleLogin)
-			onHandleLogin.call(this, data);
-		ok = true;
-	}
+	var ajaxOpt = {noex: true};
+	var dfd = $.Deferred();
 
 	// first try "User.get"
 	if (reuseCmd != null) {
-		self.callSvr(reuseCmd, handleAutoLogin, null, ajaxOpt);
+		self.callSvr(reuseCmd, function (data) {
+			if (data === false) {
+				tryLogin();
+				return;
+			}
+			handleAutoLogin.call(this, data);
+		}, null, ajaxOpt);
 	}
-	if (ok)
-		return ok;
-	if ($.isFunction(self.options.onAutoLogin)) {
-		if (self.options.onAutoLogin() === true)
-			return true;
+	else {
+		tryLogin();
+	}
+	return dfd;
+
+	function handleAutoLogin(data)
+	{
+		g_data.userInfo = data;
+		if (onHandleLogin)
+			onHandleLogin.call(this, data);
+		dfd.resolve();
 	}
 
-	// then use "login(token)"
-	var token = loadLoginToken();
-	if (token != null)
-	{
-		var param = {};
-		var postData = {token: token};
-		self.callSvr("login", param, handleAutoLogin, postData, ajaxOpt);
-	}
-	if (ok)
-		return ok;
+	function tryLogin() {
+		if ($.isFunction(self.options.onAutoLogin)) {
+			if (self.options.onAutoLogin() === true)
+				return true;
+		}
 
-	if (! allowNoLogin)
-	{
-		self.showFirstPage = false;
-		showLogin();
+		// then use "login(token)"
+		var token = loadLoginToken();
+		if (token != null)
+		{
+			var param = {};
+			var postData = {token: token};
+			self.callSvr("login", param, function (data) {
+				if (data === false) {
+					onLoginFail();
+					return;
+				}
+				handleAutoLogin.call(this, data);
+			}, postData, ajaxOpt);
+		}
+		else {
+			onLoginFail();
+		}
 	}
-	return ok;
+
+	function onLoginFail() {
+		if (! allowNoLogin)
+		{
+			self.showFirstPage = false;
+			showLogin();
+		}
+	}
 }
 
 /**
