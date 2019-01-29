@@ -1044,7 +1044,7 @@ e.g.
 
 	$orderId = dbInsert("Ordr", [
 		"tm" => date(FMT_DT),
-		"tm1" => ["now()"], // 使用数组，表示是SQL表达式
+		"tm1" => dbExpr("now()"), // 使用dbExpr直接提供SQL表达式
 		"amount" => 100,
 		"dscr" => null // null字段会被忽略
 	]);
