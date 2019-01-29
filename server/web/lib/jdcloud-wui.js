@@ -2117,7 +2117,17 @@ function getFormData(jo)
 		if (content !== String(orgContent)) // 避免 "" == 0 或 "" == false
 		{
 			if (! isFormData) {
-				data[name] = content;
+				// URL参数支持数组，如`a[]=hello&a[]=world`，表示数组`a=["hello","world"]`
+				if (name.substr(-2) == "[]") {
+					name = name.substr(0, name.length-2);
+					if (! data[name]) {
+						data[name] = [];
+					}
+					data[name].push(content);
+				}
+				else {
+					data[name] = content;
+				}
 			}
 			else {
 				if (ji.is(":file")) {
@@ -4925,6 +4935,7 @@ $.fn.okCancel = function (fnOk, fnCancel) {
 - opt.onSubmit: Function(data) 自动提交前回调。用于验证或补齐提交数据，返回false可取消提交。opt.url为空时不回调。
 - opt.onOk: Function(jdlg, data?) 如果自动提交(opt.url非空)，则服务端接口返回数据后回调，data为返回数据。如果是手动提交，则点确定按钮时回调，没有data参数。
 - opt.title: String. 如果指定，则更新对话框标题。
+- opt.dialogOpt: 底层jquery-easyui dialog选项。参考http://www.jeasyui.net/plugins/159.html
 
 对话框有两种编程模式，一是通过opt参数在启动对话框时设置属性及回调函数(如onOk)，另一种是在dialog初始化函数中处理事件(如validate事件)实现逻辑，有利于独立模块化。
 
@@ -5039,7 +5050,20 @@ form提交后事件，用于处理返回数据
 
 	<input type="hidden" name="status" value="PA" noReset>
 
- */
+**控制底层jquery-easyui对话框**
+
+示例：关闭对话框时回调事件：
+
+	var dialogOpt = {  
+		onClose:function(){
+			console.log("close");
+		}  
+	};
+
+	jfrm.on("beforeshow",function(ev, formMode, opt) {
+		opt.dialogOpt = dialogOpt;
+	})
+*/
 self.showDlg = showDlg;
 function showDlg(jdlg, opt) 
 {
@@ -5074,7 +5098,7 @@ function showDlg(jdlg, opt)
 	if ($.isArray(opt.buttons))
 		btns.push.apply(btns, opt.buttons);
 
-	var dlgOpt = {
+	var dlgOpt = $.extend({
 //		minimizable: true,
 		maximizable: true,
 		collapsible: true,
@@ -5088,7 +5112,7 @@ function showDlg(jdlg, opt)
 		modal: opt.modal,
 		buttons: btns,
 		title: opt.title
-	};
+	}, opt.dialogOpt);
 	if (jdlg.is(":visible")) {
 		dlgOpt0 = jdlg.dialog("options");
 		$.extend(dlgOpt, {
@@ -5482,7 +5506,7 @@ function loadDialog(jdlg, onLoad)
 	var html = $(sel).html();
 	if (html) {
 		loadDialogTpl(html, dlgId, pageFile);
-		return;
+		return true;
 	}
 
 	var pageFile = getModulePath(dlgId + ".html");
