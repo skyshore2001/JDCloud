@@ -26,6 +26,18 @@
 
 	Login::$autoRegEmp ?= false;
 
+- 微信公众号登录需要接口：weixin/auth.php
+ 在非微信浏览器中支持模拟登录，这时应设置模拟用户：
+
+	Login::$mockWeixinUser = ['openid'=>"test_openid", 'nickname'=>"测试用户", 'headimgurl'=>"...", 'sex'=>1];
+
+- 微信小程序认证(login2接口)需要设置以下信息, 示例：
+
+	Login::$wxApp = [
+		"appid" => "wxf5502ed6914b4b7e",
+		"secret" => "381c380860a3aad4514853e216cXXXX"
+	];
+
 ## 模块内部接口
 
 若要对模块缺省逻辑进行配置或扩展，应实现LoginImp类，它继承LoginImpBase。
@@ -68,6 +80,10 @@ class Login
 	static $autoRegEmp = false;
 	static $allowManualReg = false;
 	static $mockWeixinUser = ['openid'=>"test_openid", 'nickname'=>"测试用户", 'headimgurl'=>"...", 'sex'=>1];
+	static $wxApp = [
+		"appid" => "wxf5502ed6914b4b7e",
+		"secret" => "381c380860a3aad4514853e216c7e1f3"
+	];
 }
 
 class LoginImpBase
@@ -91,14 +107,34 @@ class LoginImpBase
 	{
 	}
 
+/**
+@fn LoginImpBase.onWeixinLogin($userInfo, $rawData)
+
+微信认证成功后，可以得到openid；根据openid还可以得到userInfo.
+
+- 如果只用openid，则参数$userInfo只有openid属性，且$rawData为空；
+- 如果获取到了完整的userInfo，则传入$userInfo和$rawData(即微信返回的原始JSON字符串)
+
+返回 {id}, 其中会调用 onLogin，可能会为返回值增加一些属性。
+
+*/
 	function onWeixinLogin($userInfo, $rawData)
 	{
-		$userData = [
-			"pic" => $userInfo["headimgurl"],
-			"name" => $userInfo["nickname"],
-			"uname" => $userInfo["nickname"],
-			"weixinData" => $rawData
-		];
+		if ($rawData !== null) {
+			$userData = [
+				"pic" => $userInfo["headimgurl"],
+				"name" => $userInfo["nickname"],
+				"uname" => $userInfo["nickname"],
+				"weixinData" => $rawData
+			];
+		}
+		else {
+			$name = "用户" . date("Ymd") . '-'. rand(1000, 9999);
+			$userData = [
+				"uname" => $name,
+				"name" => $name
+			];
+		}
 		dbconn();
 		$sql = sprintf("SELECT id FROM User WHERE weixinKey=%s", Q($userInfo["openid"]));
 		$id = queryOne($sql);
@@ -109,13 +145,14 @@ class LoginImpBase
 			$imp = LoginImpBase::getInstance();
 			$imp->onRegNewUser($id, $userData['uname']);
 		}
-		else {
+		else if ($rawData) {
 			dbUpdate("User", $userData, $id);
 		}
 
 		$ret = ["id"=>$id];
 		$this->onLogin("user", $id, $ret);
 		$_SESSION["uid"] = $id;
+		return $ret;
 	}
 
 	function onBindUser($phone){
@@ -577,3 +614,36 @@ function api_bindUser()
 	$imp = LoginImpBase::getInstance();
 	$imp->onBindUser($phone);
 }
+
+function api_login2()
+{
+	$wxCode = mparam("wxCode");
+
+	//根据wxCode 获取 weixinOpenId
+	$params = [
+		"appid" => Login::$wxApp["appid"],
+		"secret" => Login::$wxApp["secret"],
+		"js_code" => $wxCode,
+		"grant_type" => "authorization_code"
+	];
+	$url = makeUrl("https://api.weixin.qq.com/sns/jscode2session", $params);
+	$rv = httpCall($url);
+	$ret = json_decode($rv, true);
+	// 成功时返回 {openid, session_key} (没有errcode!), 失败时返回 {errcode, errmsg}
+	if (@!$ret["openid"]) {
+		logit("login2(wxCode) error: $rv");
+		throw new MyException(E_AUTHFAIL, @$ret["errmsg"]);
+	}
+	// {openid, session_key, unionid?, ...}
+	// TODO: get user info?
+	$wxUserInfo =  [
+		"openid" => $ret["openid"]
+	];
+	$imp = LoginImpBase::getInstance();
+	$ret = $imp->onWeixinLogin($wxUserInfo, null);
+
+	$rv = callSvcInt("User.get");
+	$ret += $rv;
+	return $ret;
+}
+

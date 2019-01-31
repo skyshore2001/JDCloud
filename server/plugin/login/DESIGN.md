@@ -298,6 +298,17 @@ _token/_expire
  - 当手机号存在且未绑定微信时：合并微信用户到手机号用户，然后将微信用户禁用（在字段User.weixinKey中设置特别标识`merged-{openId}`，使该用户失效，今后无法登录）。
   合并逻辑可通过`LoginImpBase::onBindUser(phone)`回调来扩展，如考虑合并相应的个人信息、操作记录、订单等。
 
+### 第三方认证 / 微信小程序认证
+
+	login2(wxCode) -> {id, ...} (与login接口一致)
+
+- wxCode: 使用微信小程序token(在小程序中调用wx.login接口获取到)登录。后端凭此token可中微信服务器获取用户信息即登录成功。
+
+参考：
+
+- 小程序登录过程：https://developers.weixin.qq.com/miniprogram/dev/framework/open-ability/login.html
+- 使用code2Session接口获取openid: https://developers.weixin.qq.com/miniprogram/dev/api/code2Session.html
+
 ## 后端接口
 
 $_SESSION:

@@ -6159,6 +6159,14 @@ function tryAutoLogin(onHandleLogin, reuseCmd, allowNoLogin)
 		ok = true;
 	}
 
+	if (g_args.wxCode) {
+		console.log("login via wxCode. href=" + location.href);
+		self.callSvr("login2", {wxCode: g_args.wxCode}, handleAutoLogin, null, ajaxOpt);
+		self.deleteUrlParam("wxCode");
+		if (ok)
+			return ok;
+	}
+
 	// first try "User.get"
 	if (reuseCmd != null) {
 		self.callSvr(reuseCmd, handleAutoLogin, null, ajaxOpt);
