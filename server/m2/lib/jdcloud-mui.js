@@ -73,6 +73,11 @@
 		</div>
 	</div>
 
+(v5.2) 
+hd和ft可以有多个, bd只能有一个。框架将自动为它们计算和设置位置。
+hd一般用于显示页面标题、返回和菜单。在hd中出现的第一个h1或h2标签的文字将自动设置为当前文档标题。
+在微信中（如公众号或小程序），第一个hd会自动隐藏，以避免与微信的标题栏重复。
+
 app.css中定义了`btn-icon`为顶栏图标按钮类，如果在`hd`中有多个`btn-icon`，则依次为左一，右一，左二，右二按钮，例如：
 
 	<div class="hd">
@@ -3166,18 +3171,21 @@ function defDataProc(rv)
 			console.log("Server Revision: " + val);
 			g_data.serverRev = val;
 		}
+		var modeStr;
 		val = mCommon.parseValue(this.xhr_.getResponseHeader("X-Daca-Test-Mode"));
 		if (g_data.testMode != val) {
 			g_data.testMode = val;
 			if (g_data.testMode)
-				self.app_alert("测试模式!", {timeoutInterval:2000});
+				modeStr = "测试模式";
 		}
 		val = mCommon.parseValue(this.xhr_.getResponseHeader("X-Daca-Mock-Mode"));
 		if (g_data.mockMode != val) {
 			g_data.mockMode = val;
 			if (g_data.mockMode)
-				self.app_alert("模拟模式!", {timeoutInterval:2000});
+				modeStr = "测试模式+模拟模式";
 		}
+		if (modeStr)
+			self.app_alert(modeStr, {timeoutInterval:2000});
 	}
 
 	try {
@@ -5096,12 +5104,16 @@ function fixPageSize()
 		var jpage = self.activePage;
 		var H = self.container.height();
 		var jo, hd, ft;
-		jo= jpage.find(">.hd");
-		hd = (jo.size() > 0 && jo.css("display") != "none")? jo.height() : 0;
+		hd = 0;
+		jpage.find(">.hd:visible").each(function () {
+			$(this).css("top", hd);
+			hd += $(this).height();
+		});
 		ft = 0;
-		jpage.find(">.ft").each(function () {
-			if ($(this).is(":visible"))
-				ft += $(this).height();
+		var ftArr = jpage.find(">.ft:visible").get().reverse();
+		$.each(ftArr, function () {
+			$(this).css("bottom", ft);
+			ft += $(this).height();
 		});
 		jpage.height(H);
 		jpage.find(">.bd").css({
@@ -5218,12 +5230,6 @@ function enhanceFooter(jfooter)
 			if (jfooter.parent()[0] !== m_jstash[0])
 				jfooter.appendTo(m_jstash);
 			return;
-		}
-		var jft = jpage.find(".ft");
-		if (jft.size() > 0) {
-			setTimeout(function () {
-				jft.css("bottom", jfooter.height());
-			});
 		}
 		jfooter.appendTo(jpage);
 		activateElem($(e));

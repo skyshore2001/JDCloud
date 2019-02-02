@@ -43,7 +43,7 @@
 }
 
 /* 微信中不显示hd */
-.mui-weixin .mui-page > .hd {
+.mui-weixin .mui-page > .hd:first-child {
 	display:none;
 }
 
