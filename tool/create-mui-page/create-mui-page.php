@@ -5,15 +5,15 @@
 根据模板生成相应的逻辑页
 在server/m2/page下有文件create-mui-page.sh，可在git-bash中直接运行，在该目录下创建文件。
 
-	Usage: create-mui-page {obj} {title} {template=order|orders} [baseObj]
+	Usage: create-mui-page {name} {title} {template=simple|order|orders} [baseObj=name]
 
-- obj: 文件名，一般与对象名相同。比如`Item`会生成`item.html`等文件及`initPageItem`函数。
+- name: 文件名，一般与对象名相同。比如`Item`会生成`item.html`等文件及`initPageItem`函数。
 
 - title: 页面标题。一般为中文描述。传"-"表示先用TODO填充之后再修改。
 
 - templateFile: 模板名。
 
-- baseObj: 基础对象名称。如果省略，则与obj相同。
+- baseObj: 基础对象名称。如果省略，则与name相同。
 
 示例：
 
@@ -24,7 +24,7 @@
 
 @list ($prog, $obj, $title, $tpl, $baseObj) = $argv;
 if (! $obj || ! $title || !$tpl) {
-	echo "Usage: create-mui-page {obj} {title} {template=order|orders} [baseObj=obj]\n";
+	echo "Usage: create-mui-page {name} {title} {template=simple|order|orders} [baseObj=name]\n";
 	echo "   eg: create-mui-page Item 商品明细 order\n";
 	echo "   eg: create-mui-page Items 商品列表 orders Item\n";
 	exit;
