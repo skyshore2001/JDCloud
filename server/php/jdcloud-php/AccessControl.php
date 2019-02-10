@@ -125,7 +125,7 @@ AccessControl简写为AC，同时AC也表示自动补全(AutoComplete).
 - 在onValidate中，对添加操作时的字段做自动补全。由于添加和更新都会走这个接口，所以用 $this->ac 判断只对添加操作时补全。
   由于添加和更新操作的具体字段都通过 $_POST 来传递，故直接设置 $_POST中的相应字段即可。
 
-## 虚拟字段
+## 虚拟字段(VCol)
 
 @var AccessControl::$vcolDefs (for get/query) 定义虚拟字段
 
@@ -335,6 +335,115 @@ props字段与之类似，flags字段中一个标志是一个字母，而props�
 也可以进行设置和清除，并可与flags一起用，如：
 
 	Ordr.set(id=1)(prop_go=1/0, flag_v=1/0)
+
+### 外部虚拟字段(ExtVCol)
+
+(v5.2) 增加“外部虚拟字段”用于创建嵌套查询。
+
+#### 嵌套查询
+
+示例：下面已定义y, m两个虚拟字段，现在基于y和m再创建新的虚拟字段ym，可以这样：
+
+	$vcolDefs = [
+		[
+			"res" => ["year(tm) y", "month(tm) m"],
+		],
+		[
+			"res" => ["concat(y, '-', m) ym"],
+			// 用isExt指定这是外部虚拟字段
+			"isExt" => true,
+			// 用require指定所有依赖的内层字段
+			"require" => 'y,m'
+		]
+	]
+
+query/get接口生成的查询语句大致为：
+
+	SELECT t0.*, concat(y, '-', m) ym
+	FROM (
+		SELECT t0.id,year(tm) y,month(tm) m FROM ApiLog t0
+		WHERE ...
+	) t0
+
+注意：即使在调用接口时用res参数指定了返回字段，外部虚拟字段依赖的内部字段也将返回。比如query(res="id,ym")返回`tbl(id,y,m,ym)`.
+
+注意：设置require或res属性时，如果依赖的是表的字段，应加表名，如"t0.tm, t1.name"，如果是虚拟字段，则不加表名，如"y,m"。
+
+注意：关于时间统计相关的虚拟字段，一般通过tmCols函数来指定：
+
+	function __construct() {
+		$this->vcolDefs[] = [ "res" => tmCols() ];
+	}
+
+#### 关联子查询优化
+
+**外部虚拟字段还常常用于优化SELECT语句中关联子查询性能。框架将自动识别关联子查询，并使用嵌套查询机制来优化性能。**
+
+如果一个虚拟字段，它的res中定义有关联子查询，在query操作时可能性能很差，当：
+排序字段(orderby)不是主表字段；
+或orderby虽然是主表字段（甚至是索引），但查询引擎的查询计划不佳，也会导致特别慢。（这种情况下，测试时可强制指定索引，比如在from t0后加上force index(primary)，可以大幅优化。）
+
+示例：对ApiLog表有虚拟字段sesCnt，它使用关联子查询，定义如下：
+
+	$vcolDefs = [
+		[
+			// 可作为“外部虚拟字段”来优化
+			"res" => ["(select count(*) from ApiLog t1 where t1.ses=t0.ses) sesCnt"]
+		],
+		[
+			// 普通虚拟字段，将在示例中用于orderby
+			"res" => ["u.name AS userName", "u.phone AS userPhone"],
+			"join" => "INNER JOIN User u ON u.id=t0.userId"
+		]
+	]
+
+未做优化时，query(orderby=userName)查询语句如下：
+
+	SELECT t0.*, (select count(*) from ApiLog t1 where t1.ses=t0.ses) sesCnt
+	FROM ApiLog t0
+	JOIN User ...
+	ORDER BY u.name
+	LIMIT 0,20
+
+当ORDER-BY不是主表ApiLog的字段时，或虽然是主表字段但数据库的查询引擎判断失误（此处不可预料），
+都可能导致查询计划中将会把虚拟字段全部计算出来后再排序，导致巨慢。（实测2万行数据，查询20行数据需要16秒）
+
+优化策略是使用嵌套查询，将sesCnt字段放到外层查询：
+
+	SELECT t0.*, (select count(*) from ApiLog t1 where t1.ses=t0.ses) sesCnt
+	FROM (
+		SELECT t0.*
+		FROM ApiLog t0
+		JOIN User ...
+		ORDER BY u.name
+		LIMIT 0,20
+	) t0
+
+这样只需要对最终结果20条数据计算虚拟字段。
+由于出现了外层和内层两层SQL，我们将外层的虚拟字段称为外部虚拟字段。
+
+效果：ApiLog仅20000行数据，优化前查询一次16秒，优化后降低到0.2s。
+
+注意：自动优化只处理res中只有一个元素且未指定join条件的情况，并且会自动识别出依赖内层t0.ses字段。
+如果自动处理或识别有误，可手工设置isExt和require属性，比如：
+
+	[
+		"res" => ["(select count(*) from ApiLog t1 where t1.ses=t0.ses and t0.userId is not null) sesCnt"],
+		"isExt" => true,
+		"require" => "t0.ses,t0.userId"
+	]
+
+上面require属性指定内层查询应暴露给外层的字段，如果有多个可用逗号分隔（自动优化只能处理一个）。
+注意res中的t0指的是内层查询的结果表，名称固定为t0; 而require中的表指的是内层查询内部的表。
+
+注意：使用外部虚拟字段时，将导致require中的字段被添加到最终结果集。例如上面例子中的"t0.ses,t0.userId"字段会被添加到最终结果集。
+
+注意：如果想禁止优化，可手工设置vcolDef的isExt属性为false：
+
+	[
+		"res" => ["(select count(*) from ApiLog t1 where t1.ses=t0.ses) sesCnt"],
+		"isExt" => false
+	]
 
 ## 子表
 
@@ -773,6 +882,7 @@ class AccessControl
 		$res = param("res");
 		$this->sqlConf = [
 			"res" => [],
+			"resExt" => [],
 			"gres" => $gres,
 			"gcond" => $this->getCondParam("gcond"),
 			"cond" => [$this->getCondParam("cond")],
@@ -1098,6 +1208,35 @@ class AccessControl
 		return join(",", $colArr);
 	}
 
+	// 将外部虚拟字段的require依赖字段添加到res中（支持其中引用其它虚拟字段）
+	// 引用内层查询的某字段时，需要将该字段加到内层res中暴露到外层使用；但是如果内层res已经有t0.*则不要重复添加。
+	// 示例："res" => ["(select count(*) from ApiLog t1 where t1.ses=t0.ses) sesCnt"], 需要将t0.ses暴露给外层SQL使用。
+	private function filterExtVColRequire($cols)
+	{
+		$ignoreT0 = @$this->sqlConf["res"][0] == "t0.*";
+		foreach (explode(',', $cols) as $col) {
+			$col = preg_replace_callback('/^(\w+)$/', function ($ms) {
+				$col1 = $ms[1];
+				if ($this->addVCol($col1, true) !== false)
+					return "";
+				return "t0." . $col1;
+			}, trim($col));
+			if (! $col) // 虚拟字段
+				continue;
+
+			if (! ($ignoreT0 && substr($col,0,3) == "t0.")) {
+				// 避免重复添加字段到res
+				$found = false;
+				foreach ($this->sqlConf["res"] as $e) {
+					if ($e == $col)
+						$found = true;
+				}
+				if (!$found)
+					$this->sqlConf["res"][] = $col;
+			}
+		}
+	}
+
 	final public function issetCond()
 	{
 		return isset($this->sqlConf["cond"][0]);
@@ -1116,8 +1255,12 @@ class AccessControl
 @see AccessControl::addCond 其中有示例
 @see AccessControl::addVCol 添加已定义的虚拟列。
  */
-	final public function addRes($res, $analyzeCol=true)
+	final public function addRes($res, $analyzeCol=true, $isExt=false)
 	{
+		if ($isExt) {
+			$this->sqlConf["resExt"][] = $res;
+			return;
+		}
 		$this->sqlConf["res"][] = $res;
 		if ($analyzeCol)
 			$this->setColFromRes($res, true);
@@ -1240,18 +1383,33 @@ class AccessControl
 		}
 	}
 
+	// 外部虚拟字段：如果未设置isExt，且无join条件，将自动识别和处理外部虚拟字段（以便之后优化查询）。
+	// 示例 "res" => ["(select count(*) from ApiLog t1 where t1.ses=t0.ses) sesCnt"] 将设置 isExt=true, require="t0.ses"
+	// 注意目前只自动处理第一个res。如果自动处理有误，请手工设置vcolDef的isExt和require属性。require属性支持逗号分隔的多字段。
+	private function autoHandleExtVCol(&$vcolDef) {
+		if (isset($vcolDef["isExt"]) || isset($vcolDef["join"]))
+			return;
+		$res_0 = $vcolDef["res"][0];
+		if (preg_match('/\(.*select.*where.*?(t0\.\w+)?\)/', $res_0, $ms)) {
+			$vcolDef["isExt"] = true;
+			if (isset($ms[1])) {
+				$vcolDef["require"] = $ms[1];
+			}
+		}
+	}
+
 	private function initVColMap()
 	{
 		if (is_null($this->vcolMap)) {
 			$this->vcolMap = [];
-			$idx = 0;
-			foreach ($this->vcolDefs as $vcolDef) {
+			foreach ($this->vcolDefs as $idx=>&$vcolDef) {
 				@$res = $vcolDef["res"];
 				assert(is_array($res), "res必须为数组");
 				foreach ($vcolDef["res"] as $e) {
 					$this->setColFromRes($e, false, $idx);
 				}
-				++ $idx;
+
+				$this->autoHandleExtVCol($vcolDef);
 			}
 		}
 	}
@@ -1282,13 +1440,14 @@ class AccessControl
 		}
 		if ($this->vcolMap[$col]["added"])
 			return true;
-		$this->addVColDef($this->vcolMap[$col]["vcolDefIdx"]);
+		$vcolDef = $this->addVColDef($this->vcolMap[$col]["vcolDefIdx"]);
+		$isExt = @ $vcolDef["isExt"] && true;
 		if ($alias) {
 			if ($alias !== "-")
-				$this->addRes($this->vcolMap[$col]["def"] . " AS {$alias}", false);
+				$this->addRes($this->vcolMap[$col]["def"] . " AS {$alias}", false, $isExt);
 		}
 		else {
-			$this->addRes($this->vcolMap[$col]["def0"], false);
+			$this->addRes($this->vcolMap[$col]["def0"], false, $isExt);
 		}
 		return true;
 	}
@@ -1299,8 +1458,9 @@ class AccessControl
 		foreach ($this->vcolDefs as $vcolDef) {
 			if (@$vcolDef["default"]) {
 				$this->addVColDef($idx);
+				$isExt = @ $vcolDef["isExt"] && true;
 				foreach ($vcolDef["res"] as $e) {
-					$this->addRes($e);
+					$this->addRes($e, true, $isExt);
 				}
 			}
 			++ $idx;
@@ -1317,6 +1477,15 @@ class AccessControl
 		$this->vcolDefs[$idx]["added"] = true;
 
 		$vcolDef = $this->vcolDefs[$idx];
+
+		if (@$vcolDef["isExt"]) {
+			$requireCol = @$vcolDef["require"];
+			// 外部虚拟字段：将require字段加入内层SQL。
+			if ($requireCol) {
+				$this->filterExtVColRequire($requireCol);
+			}
+			return $vcolDef;
+		}
 		if (isset($vcolDef["require"]))
 		{
 			$requireCol = $vcolDef["require"];
@@ -1326,6 +1495,7 @@ class AccessControl
 			$this->addJoin($vcolDef["join"]);
 		if (isset($vcolDef["cond"]))
 			$this->addCond($vcolDef["cond"]);
+		return $vcolDef;
 	}
 
 	protected function onInit()
@@ -1386,7 +1556,8 @@ class AccessControl
 		$cnt = dbUpdate($this->table, $_POST, $this->id);
 	}
 
-	protected function genQuerySql(&$tblSql=null, &$condSql=null)
+	// extSqlFn: 如果为空，则如果有外部虚拟字段，则返回完整嵌套SQL语句；否则返回内层SQL语句，由调用方再调用extSqlFn函数生成嵌套SQL查询。
+	protected function genQuerySql(&$tblSql=null, &$condSql=null, &$extSqlFn=null)
 	{
 		$sqlConf = &$this->sqlConf;
 		$resSql = join(",", $sqlConf["res"]);
@@ -1422,6 +1593,16 @@ class AccessControl
 		{
 			$this->flag_handleCond($condSql);
 			$sql .= "\nWHERE $condSql";
+		}
+		if (count($sqlConf["resExt"]) > 0) {
+			$resExtSql = join(",", $sqlConf["resExt"]);
+			$doExtSql = !isset($extSqlFn);
+			$extSqlFn = function ($sql) use ($resExtSql) {
+				return "SELECT t0.*, $resExtSql
+FROM ($sql) t0";
+			};
+			if ($doExtSql)
+				$sql = $extSqlFn($sql);
 		}
 		return $sql;
 	}
@@ -1515,7 +1696,8 @@ class AccessControl
 
 		$tblSql = null;
 		$condSql = null;
-		$sql = $this->genQuerySql($tblSql, $condSql);
+		$extSqlFn = false;
+		$sql = $this->genQuerySql($tblSql, $condSql, $extSqlFn);
 
 		$complexCntSql = false;
 		if (isset($sqlConf["union"])) {
@@ -1552,6 +1734,9 @@ class AccessControl
 			$sql .= "\nLIMIT " . ($pagekey-1)*$pagesz . "," . $pagesz;
 		}
 
+		if ($extSqlFn) {
+			$sql = $extSqlFn($sql);
+		}
 		$ret = queryAll($sql, true);
 		if ($ret === false)
 			$ret = [];
