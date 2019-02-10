@@ -1213,7 +1213,6 @@ class AccessControl
 	// 示例："res" => ["(select count(*) from ApiLog t1 where t1.ses=t0.ses) sesCnt"], 需要将t0.ses暴露给外层SQL使用。
 	private function filterExtVColRequire($cols)
 	{
-		$ignoreT0 = @$this->sqlConf["res"][0] == "t0.*";
 		foreach (explode(',', $cols) as $col) {
 			$col = preg_replace_callback('/^(\w+)$/', function ($ms) {
 				$col1 = $ms[1];
@@ -1221,19 +1220,9 @@ class AccessControl
 					return "";
 				return "t0." . $col1;
 			}, trim($col));
-			if (! $col) // 虚拟字段
+			if (! $col) // 虚拟字段已在addVCol中加过
 				continue;
-
-			if (! ($ignoreT0 && substr($col,0,3) == "t0.")) {
-				// 避免重复添加字段到res
-				$found = false;
-				foreach ($this->sqlConf["res"] as $e) {
-					if ($e == $col)
-						$found = true;
-				}
-				if (!$found)
-					$this->sqlConf["res"][] = $col;
-			}
+			$this->addRes($col, false);
 		}
 	}
 
@@ -1258,12 +1247,26 @@ class AccessControl
 	final public function addRes($res, $analyzeCol=true, $isExt=false)
 	{
 		if ($isExt) {
-			$this->sqlConf["resExt"][] = $res;
+			$this->addResInt($this->sqlConf["resExt"], $res);
 			return;
 		}
-		$this->sqlConf["res"][] = $res;
+		$this->addResInt($this->sqlConf["res"], $res);
 		if ($analyzeCol)
 			$this->setColFromRes($res, true);
+	}
+
+	// 内部被addRes调用。避免重复添加字段到res
+	private function addResInt(&$resArr, $col) {
+		$ignoreT0 = @$resArr[0] == "t0.*";
+		if ($ignoreT0 && substr($col,0,3) == "t0.")
+			return;
+		$found = false;
+		foreach ($resArr as $e) {
+			if ($e == $col)
+				$found = true;
+		}
+		if (!$found)
+			$resArr[] = $col;
 	}
 
 /**
