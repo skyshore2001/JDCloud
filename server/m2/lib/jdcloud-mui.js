@@ -5762,6 +5762,16 @@ window.g_data = {}; // {userInfo, serverRev?, initClient?, testMode?, mockMode?}
 		MUI.app_abort();
 	}
 
+@var options.enableWxLogin 微信认证登录
+
+设置enableWxLogin为true，或者appName为"user"，则如果URL中有参数wxCode, 就调用后端"login2(wxCode)"接口登录认证。
+一般用于从微信小程序调用H5应用。
+要求后端已实现login2接口。
+
+	$.extend(MUI.options, {
+		...
+		enableWxLogin: true
+	});
 */
 	var m_opt = self.options = {
 		appName: "user",
@@ -6165,7 +6175,7 @@ function tryAutoLogin(onHandleLogin, reuseCmd, allowNoLogin)
 		ok = true;
 	}
 
-	if (g_args.wxCode) {
+	if (g_args.wxCode && (self.options.enableWxLogin || self.options.appName == "user")) {
 		console.log("login via wxCode. href=" + location.href);
 		self.callSvr("login2", {wxCode: g_args.wxCode}, handleAutoLogin, null, ajaxOpt);
 		self.deleteUrlParam("wxCode");
@@ -7084,7 +7094,7 @@ param={idx, arr, isFirstPage}
 @param opt.onBeforeLoad(jlst, isFirstPage)->Boolean  如果返回false, 可取消load动作。参数isFirstPage=true表示是分页中的第一页，即刚刚加载数据。
 @param opt.onLoad(jlst, isLastPage)  参数isLastPage=true表示是分页中的最后一页, 即全部数据已加载完。
 
-@param opt.onGetData(data, pagesz, pagekey?) 每次请求获取到数据后回调。pagesz为请求时的页大小，pagekey为页码（首次为null）
+@param opt.onGetData(data, pagesz, pagekey?) 每次请求获取到数据后回调。pagesz为请求时的页大小，pagekey为页码（首次为null）. this为当前jlst
 
 @param opt.onRemoveAll(jlst) 清空列表操作，默认为 jlst.empty()
 
@@ -7521,7 +7531,7 @@ function initPageList(jpage, opt)
 			if (opt_.onGetData) {
 				var pagesz = queryParam[opt_.pageszName];
 				var pagekey = queryParam[opt_.pagekeyName];
-				opt_.onGetData(data, pagesz, pagekey);
+				opt_.onGetData.call(jlst, data, pagesz, pagekey);
 			}
 			var arr = data;
 			if ($.isArray(data.h) && $.isArray(data.d)) {
