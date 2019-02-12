@@ -5772,6 +5772,19 @@ window.g_data = {}; // {userInfo, serverRev?, initClient?, testMode?, mockMode?}
 		...
 		enableWxLogin: true
 	});
+
+@var options.enableSwitchApp 自动保存和切换应用
+@key g_args.enableSwitchApp =1 应用自动切换
+
+同一个目录下的多个应用，支持自动切换。
+例如原生APP（或微信小程序中）的URL为用户端，但在登录页或个人中心页可切换到员工端。
+当进入员工端并登录成功后，希望下次打开APP后直接进入员工端，做法如下：
+
+在H5应用中设置选项options.enableSwitchApp=true。(例如在app.js中设置，这样所有应用都允许跳转）
+应用登录后将自动记录当前URL。
+
+在APP中初次打开H5应用(history.length<=1)时，会在进入应用后自动检查和切换应用（将在MUI.validateEntry函数中检查，一般H5应用的主JS文件入口处默认会调用它）。
+最好在URL中添加参数enableSwitchApp=1强制检查，例如在chrome中初次打开页面history.length为2，不加参数就无法自动切换H5应用。
 */
 	var m_opt = self.options = {
 		appName: "user",
@@ -6042,6 +6055,16 @@ function logout(dontReload)
 	});
 }
 
+// 取H5应用的页面名。 e.g. "/jdcloud/m2/index.html" -> "index.html"
+function getAppPage()
+{
+	var url = location.pathname.replace(/.*\/+/, '');
+	if (url == "") {
+		url = "index.html"
+	}
+	return url;
+}
+
 /**
 @fn validateEntry(@allowedEntries) 入口页检查
 
@@ -6059,6 +6082,18 @@ self.validateEntry = validateEntry;
 // check if the entry is in the entry list. if not, refresh the page without search query (?xx) or hash (#xx)
 function validateEntry(allowedEntries)
 {
+	// 自动切换APP
+	if (self.options.enableSwitchApp && (history.length <= 1 || g_args.enableSwitchApp)) {
+		var appPage0 = mCommon.getStorage("appPage")
+		if (appPage0) {
+			var appPage = getAppPage();
+			if (appPage != appPage0) {
+				location.href = appPage0;
+				self.app_abort();
+			}
+		}
+	}
+
 	if (allowedEntries == null)
 		return;
 	m_allowedEntries = allowedEntries;
@@ -6221,10 +6256,10 @@ function tryAutoLogin(onHandleLogin, reuseCmd, allowNoLogin)
 可以根据用户属性在此处定制home页，例如：
 
 	if(role == "SA"){
-		MUI.options.homePage: "#sa-home";
+		MUI.options.homePage = "#sa-home";
 	}
 	else if (role == "MA") {
-		MUI.options.homePage: "#ma-home";
+		MUI.options.homePage = "#ma-home";
 	}
 
 
@@ -6236,6 +6271,10 @@ function handleLogin(data)
 	if (data.id == null)
 		return;
 	g_data.userInfo = data;
+
+	if (self.options.enableSwitchApp) {
+		mCommon.setStorage("appPage", getAppPage());
+	}
 
 	// 登录成功后点返回，避免出现login页
 	var popN = 0;
