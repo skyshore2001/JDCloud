@@ -1,156 +1,29 @@
 /* This file contains styles used by all application */
 /* 所有应用共享部分 */
 
-/* overwrite weui */
-.weui-cells {
-	margin-top: 0;
-}
+/* 修改色调直接替换颜色值
+前景: #04be02; / #546BDC
+背景: #fffffe;
 
-.weui-btn {
-	cursor: pointer;
+.mui-container {
+	background-color: #04be02;
 }
-
-.weui-btn_mini {
-	min-width: 80px;
+.mui-page>.hd:first-child  {
+	background-color: #04be02;
+	color: #fffffe;
 }
-
-.weui-label {
-	min-width: 4em;
-	margin-right: 0.2em;
-	width: 20%;
+.mui-navbar > .active {
+	color: #04be02;
+	border-bottom-color: #04be02;
 }
-.weui-cell:before {
-	right: 15px;
-	width: auto;
+.mui-btn.primary {
+	color: #04be02;
 }
-
-.weui-select {
-	height: auto;
-	-webkit-appearance: menulist;
+.mui-page {
+	background-color: #fffffe;
 }
-
-/****** my css ******/
-.mui-navbar > a {
-	padding: 3px 0;
+.weui-btn_primary {
+	background-color: #04be02;
 }
-
-.mui-container.mui-ios {
-	/* 禁止选择。在IOS上尝试。 */
-	-webkit-user-select: none;
-	/* 禁止系统菜单 */
-	/*-webkit-touch-callout: none; */
-	/*-webkit-overflow-scrolling: touch;*/
-}
-
-/* 微信中不显示hd */
-.mui-weixin .mui-page > .hd:first-child {
-	display:none;
-}
-
-.right {
-	text-align: right;
-}
-select.right {
-	direction: rtl;
-}
-
-.icon {
-	background-repeat: no-repeat;
-	display: inline-block;
-}
-
-/* 适合 16x16 列表项或菜单项 */
-.mui-menu .icon {
-	margin: 5px 12px 0px -5px;
-}
-
-.weui-cell .icon {
-	margin: 5px 12px 2px 5px;
-}
-
-.mui-navbar .icon {
-	position: relative;
-	left: -5px;
-	top: 2px;
-}
-
-/* 适合 24x24 底部导航 */
-#footer .icon {
-	position: relative;
-	left: -5px;
-	top: 5px;
-}
-
-/* for jdcloud-uploadpic */
-.uploadpic{
-	/* 避免inline-block间的间隙. 若子组件要显示文字，需要指定font-size */
-	font-size: 0;
-}
-
-.uploadpic-item{
-	width: 23%;
-	padding-top: 23%;
-	height: 0;
-	margin: 1%;
-	background: no-repeat 50%;
-	background-size: cover;
-	display: inline-block;
-	position: relative;
-	border: 1px solid #d9d9d9;
-	box-sizing: border-box;
-}
-.uploadpic-btn{
-	width: 23%;
-	padding-top: 23%;
-	height: 0;
-	margin: 1%;
-	background: no-repeat 50%;
-	background-size: cover;
-	display: inline-block;
-	position: relative;
-	border: 1px solid #d9d9d9;
-	box-sizing: border-box;
-}
-.uploadpic-btn:after, .uploadpic-btn:before{
-	content: " ";
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	-webkit-transform: translate(-50%,-50%);
-	transform: translate(-50%,-50%);
-	background-color: #d9d9d9;
-}
-.uploadpic-btn:before {
-	width: 2px;
-	height: 39.5px;
-}
-.uploadpic-btn:after {
-	width: 39.5px;
-	height: 2px;
-}
-.uploadpic-btn input[type=file]{
-	position: absolute;
-	z-index: 1;
-	top: 0;
-	left: 0;
-	width: 100%;
-	height: 100%;
-	opacity: 0;
-	-webkit-tap-highlight-color: rgba(0,0,0,0);
-}
-.uploadpic-item .uploadpic-delItem{
-	position: absolute;
-	text-align: center;
-	top: 0;
-	right: 0;
-	color: #fff;
-	width: 20px;
-	height: 20px;
-	line-height: 20px;
-	border-radius: 20px;
-	background-color: rgba(0,0,0,0.3);
-	font-size: 17px;
-	cursor: pointer;
-}
-/* jdcloud-uploadpic end*/
+*/
 

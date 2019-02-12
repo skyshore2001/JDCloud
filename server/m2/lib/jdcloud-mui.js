@@ -366,19 +366,19 @@ style将被插入到head标签中，并自动添加属性`mui-origin={pageId}`.
 
 		<div class="bd weui-cells">
 			<div class="weui-cell weui-cell_access">
-				<label class="weui-cell_hd weui-label" style="min-width:7em">为<span class="p-name"></span>添加:</label>
+				<label class="weui-cell_hd weui-label">添加:</label>
 				<select id="cboRelation" class="weui-cell__bd weui-select right" style="min-width:90px">
 					<option value="parent">父亲</option>
 					<option value="child">子女</option>
 				</select>
 				<div class="weui-cell__ft"></div>
 			</div>
-			<div class="weui-cell nowrap" style="display:block;">
-				<a id="btnOK" class="mui-btn primary">确定</a>
-				<a id="btnCancel" class="mui-btn">取消</a>
-			</div>
 		</div>
 
+		<div class="ft">
+			<a id="btnCancel" class="mui-btn">取消</a>
+			<a id="btnOK" class="mui-btn primary">确定</a>
+		</div>
 	</div>
 
 要弹出这个对话框：
@@ -695,9 +695,10 @@ self.reloadSite = reloadSite;
 function reloadSite()
 {
 	var href = location.href.replace(/#.+/, '#');
-	location.href = href;
+	//location.href = href; // dont use this. it triggers hashchange.
+	history.replaceState(null, null, href);
 	location.reload();
-	throw "abort";
+	throw "abort"; // dont call self.app_abort() because it does not exist after reload.
 }
 
 // ====== Date {{{
@@ -2575,7 +2576,8 @@ function app_abort()
 
 可直接调用app_abort();
 */
-window.DirectReturn = function () {}
+window.DirectReturn = DirectReturn;
+function DirectReturn() {}
 
 /**
 @fn setOnError()
@@ -2591,6 +2593,8 @@ function setOnError()
 		if (fn && fn.apply(this, arguments) === true)
 			return true;
 		if (errObj instanceof DirectReturn || /abort$/.test(msg) || (!script && !line))
+			return true;
+		if (errObj === undefined && msg === "[object Object]") // fix for IOS9
 			return true;
 		debugger;
 		var content = msg + " (" + script + ":" + line + ":" + col + ")";
@@ -5406,12 +5410,14 @@ function app_alert(msg)
 	if (jdlg.size() == 0) {
 		var html = '' + 
 '<div id="muiAlert" class="mui-dialog">' + 
-'	<h3 class="hd p-title"></h3>' + 
-'	<div class="sp p-msg"></div>' +
-'	<input type="text" id="txtInput" style="border:1px solid #bbb; line-height:1.5">' +
-'	<div class="sp nowrap">' +
-'		<a href="javascript:;" id="btnOK" class="mui-btn primary">确定</a>' +
+'	<div class="hd p-title"></div>' + 
+'	<div class="bd">' + 
+'		<div class="p-msg"></div>' +
+'		<input type="text" id="txtInput" style="border:1px solid #bbb; height:30px; text-align: center">' +
+'	</div>' + 
+'	<div class="ft">' +
 '		<a href="javascript:;" id="btnCancel" class="mui-btn">取消</a>' +
+'		<a href="javascript:;" id="btnOK" class="mui-btn primary">确定</a>' +
 '	</div>' +
 '</div>'
 		jdlg = $(html);
@@ -6699,7 +6705,8 @@ function initPullList(container, opt)
 			return;
 		}
 		jo_.html(msg);
-		jo_.height(height).css("lineHeight", height + "px");
+		jo_.height(height);
+		//jo_.height(height).css("lineHeight", height + "px");
 			
 		if (ac == "D") {
 			var c = cont_.getElementsByClassName("mui-pullHint")[0];
@@ -7472,12 +7479,14 @@ function initPageList(jpage, opt)
 			if (! tm)
 				return;
 			var diff = mCommon.getTimeDiffDscr(tm, new Date());
-			var str = diff + "刷新";
+			var str = "<p>下拉可以刷新</p>";
+			var str1 = "<p>上次刷新：" + diff + "</p>";
 			if (uptoThreshold) {
-				msg = "<b>" + str + "~~~</b>";
+				str = "<p>松开立即刷新</p>";
+				msg = "<div>" + str + str1 + "</div>";
 			}
 			else {
-				msg = str;
+				msg = "<div>" + str + str1 + "</div>";
 			}
 			return msg;
 		}
