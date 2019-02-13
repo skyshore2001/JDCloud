@@ -223,7 +223,8 @@ function uploadPic1(jo, opt)
 			delPreview(ji);
 			return false;
 		}
-		if (ji.css("backgroundImage") != "none") {
+		// 已有图片可用photoSwipe看；新加的图片(picData_非空)用PageGallery看。
+		if (ji.css("backgroundImage") != "none" && (!jQuery.fn.jqPhotoSwipe || ji.prop("picData_") != null)) {
 			PageGallery.show($(this));
 			return false;
 		}
@@ -239,6 +240,15 @@ function loadPreview(jo, isMul)
 			previewImg(jo, e, null, isMul);
 		});
 	}
+	if (jQuery.fn.jqPhotoSwipe) {
+		var opt = {
+			onGetPicUrl: function (jo) {
+				return MUI.makeUrl("att", {thumbId: jo.prop("attId_")});
+			}
+		};
+		jo.find(".uploadpic-item").jqPhotoSwipe(opt);
+	}
+
 }
 
 // 对于单图, 直接覆盖原先的uploadpic-item; 如果原先没有, 则新建一个.
@@ -499,7 +509,7 @@ var PageGallery = {
 	show: function (jpreviewItem) {
 		this.jpreviewItem_ = jpreviewItem;
 		createPageGallery();
-		MUI.showPage("#uploadpic-gallery", {backNoRefresh:true});
+		MUI.showPage("#uploadpic-gallery", {ani:'none', backNoRefresh:true});
 	}
 };
 

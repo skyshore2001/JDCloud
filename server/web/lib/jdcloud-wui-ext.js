@@ -61,6 +61,7 @@ a标签上数据如下：
 
 - attr("attId")为当前图片的缩略图编号，如"100"。如果无该属性，表示尚未上传。
 - attr("att")为当前预览图的原始数据。在opt.fname=1时包含文件名，如"100:file1.pdf"。
+- prop("fileObj_") 当上传无缩略图图片(opt.nothumb=1)或上传附件(opt.pic=false)时，fileObj_中保存了文件对象，用于之后上传。
 
 在a下的img标签上，有以下数据：
 
@@ -69,7 +70,7 @@ a标签上数据如下：
 
 @param opt.multiple=true 设置false限制只能选一张图。
 
-@param opt.nothumb=false 设置为true表示不生成缩略图
+@param opt.nothumb=false 设置为true表示不生成缩略图，且不做压缩。
 
 	<td class="wui-upload" data-options="nothumb:true">...</td>
 
@@ -192,8 +193,8 @@ function enhanceUpload(jupload)
 
 	if (opt.pic) {
 		jfile.attr("accept", "image/*");
-		jfile.change(onChooseFile);
 	}
+	jfile.change(onChooseFile);
 
 	// 右键菜单
 	var jmenu = $('<div><div id="mnuDelPic">删除</div></div>');
@@ -234,6 +235,8 @@ function enhanceUpload(jupload)
 	}
 
 	function onValidate(ev, mode, oriData, newData) {
+		if (mode != FormMode.forAdd && mode != FormMode.forSet)
+			return;
 		onSubmit(ev);
 	}
 
@@ -280,12 +283,24 @@ function arrayToImg(jp, arr)
 				.appendTo(ja);
 		}
 		else {
-			$("<p>").text(text).css("margin", "0").appendTo(ja);
+			createFilePreview(ja, text);
 		}
 	});
 	// 图片浏览器升级显示
 	if (opt.pic && jQuery.fn.jqPhotoSwipe)
 		jImgContainer.find(">a").jqPhotoSwipe();
+}
+
+// 创建<p>标签显示文件名，添加到<a>标签上。<p>标签内有"删除"按钮
+function createFilePreview(ja, text)
+{
+	var jp = $("<p>").text(text).css("margin", "0").appendTo(ja);
+	var jx = $("<span style='color:#aaa; margin-left:8px'>[删除]</span>").appendTo(jp);
+	jx.click(function () {
+		$(this).closest("a").remove();
+		return false;
+	});
+	return jp;
 }
 
 function hiddenToImg(jp, sep)
@@ -359,15 +374,16 @@ function imgToHidden(jp, sep)
 		}
 	}
 	else {
-		var jf = jp.find("input[type=file]");
-		var files = jf[0].files;
-		if (opt.multiple) {
-			jp.find(".imgs a").each(function() {
+		var files = [];
+		jp.find(".imgs a").each(function() {
+			if (opt.multiple) {
 				var att = $(this).attr('att');
 				if (att)
 					val.push(att);
-			});
-		}
+			}
+			if (this.fileObj_)
+				files.push(this.fileObj_);
+		});
 		if (files.length > 0) {
 			var fd = new FormData();
 			$.each(files, function (i, e) {
@@ -382,7 +398,6 @@ function imgToHidden(jp, sep)
 					val.push(att);
 				});
 			}, fd, ajaxOpt);
-			jf.val("");
 		}
 	}
 	if (dfd) {
@@ -415,9 +430,19 @@ function onChooseFile(ev)
 	var jp = $(this).closest(".wui-upload");
 	var jdiv = jp.find("div.imgs");
 	var opt = WUI.getOptions(jp);
-
-	if (!opt.pic)
+	if (!opt.multiple) {
+		jdiv.empty();
+	}
+	if (!opt.pic) { // 显示附件
+		$.each(this.files, function (i, fileObj) {
+			console.log(fileObj);
+			var ja = $('<a target="_blank">').appendTo(jdiv);
+			ja.prop('fileObj_', fileObj);
+			createFilePreview(ja, fileObj.name);
+		});
+		this.value = "";
 		return;
+	}
 
 	var picFiles = this.files;
 	var compress = !opt.nothumb;
@@ -445,12 +470,11 @@ function onChooseFile(ev)
 			var dataURL = windowURL.createObjectURL(fileObj);
 			var jimg = $("<img>");
 			jimg.attr('src', dataURL);
-			addNewItem(jimg);
+			var ja = addNewItem(jimg);
+			ja.prop("fileObj_", fileObj);
 		}
 	});
-	// opt.nothumb时当作普通文件处理，不清空
-	if (!opt.nothumb)
-		this.value = "";
+	this.value = "";
 
 	function addNewItem(ji) {
 		var ja = $('<a target="_blank">');
@@ -458,6 +482,7 @@ function onChooseFile(ev)
 		ja.attr("href", ji.attr("src"));
 		if (ja.jqPhotoSwipe)
 			ja.jqPhotoSwipe();
+		return ja;
 	}
 }
 
