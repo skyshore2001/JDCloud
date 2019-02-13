@@ -23,7 +23,7 @@
 .mui-btn.primary {
 	color: #04be02;
 }
-.weui-btn_primary {
+.weui-btn_primary, .weui-btn_primary:not(.weui-btn_disabled):active {
 	background-color: #04be02;
 }
 */
