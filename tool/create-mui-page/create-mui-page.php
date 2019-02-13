@@ -14,25 +14,24 @@
 - templateFile: 模板名。
 
 - baseObj: 基础对象名称。如果省略，则与name相同。
+ 特别地，如果name是复数比如Items，且选择的是orders模板，且baseObj为Item.
 
 示例：
 
-	create-mui-page Item 商品明细 order
-	create-mui-page Items 商品列表 orders Item
+	create-mui-page item 商品明细 order
+	create-mui-page items 商品列表 orders
 
 */
 
-@list ($prog, $obj, $title, $tpl, $baseObj) = $argv;
-if (! $obj || ! $title || !$tpl) {
+@list ($prog, $file, $title, $tpl, $baseObj) = $argv;
+if (! $file || ! $title || !$tpl) {
 	echo "Usage: create-mui-page {name} {title} {template=simple|order|orders} [baseObj=name]\n";
-	echo "   eg: create-mui-page Item 商品明细 order\n";
-	echo "   eg: create-mui-page Items 商品列表 orders Item\n";
+	echo "   eg: create-mui-page item 商品明细 order\n";
+	echo "   eg: create-mui-page items 商品列表 orders\n";
 	exit;
 }
-if (!ctype_upper($obj[0])) {
-	echo "Bad object format (uppercase first): $obj";
-	exit;
-}
+$obj = ucfirst($file);
+$file = lcfirst($file);
 if ($title === "-" || $title === null)
 	$title = "TODO-$obj"; // 要改成中文，所以加TODO
 else if (PHP_OS == "WINNT") {
@@ -46,9 +45,12 @@ if (! file_exists(__DIR__ . "/template/$tpl.html")) {
 	exit;
 }
 
-if (!isset($baseObj))
+if (!isset($baseObj)) {
 	$baseObj = $obj;
-$file = lcfirst($obj);
+	if ($tpl == "orders" && substr($baseObj, -1) == "s") {
+		$baseObj = substr($baseObj, 0, strlen($baseObj)-1);
+	}
+}
 
 genFile("$file.html", "template/$tpl.html");
 genFile("$file.js", "template/$tpl.js");

@@ -11,20 +11,20 @@
 	</div>
 
 	<div class="bd">
-		<div id="lst1" class="p-list weui-cells active" data-cond="id='TODO'"></div>
-		<div id="lst2" class="p-list weui-cells" data-cond="id='TODO'"></div>
+		<div id="lst1" class="p-list weui-cells active" data-cond="'TODO'='TODO'"></div>
+		<div id="lst2" class="p-list weui-cells" data-cond="'TODO'!='TODO'"></div>
 	</div>
 
-<script type="text/template" id="tpl<?=$obj?>">
+<script type="text/template" id="tpl<?=$baseObj?>">
 <li class="weui-cell weui-cell_access">
 	<div class="weui-cell__hd">
 		<i class="icon icon-dscr"></i>
 	</div>
 	<div class="weui-cell__bd">
-		<p><b name="dscr"></b></p>
-		<p>订单号: <span name="id"></span></p>
+		<p>编号: <span name="id"></span></p>
+		<p><span name="userName"></span> <span name="userPhone"></span></p>
 	</div>
-	<div class="weui-cell__ft" name="statusStr_"></div>
+	<div class="weui-cell__ft"></div>
 </li>
 </script>
 
