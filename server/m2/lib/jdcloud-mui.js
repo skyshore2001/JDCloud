@@ -6964,6 +6964,8 @@ function initPullList(container, opt)
 	<div mui-initfn="initPageOrders" mui-script="orders.js">
 		<div class="hd">
 			<h2>订单列表</h2>
+		</div>
+		<div class="hd">
 			<div class="mui-navbar">
 				<a href="javascript:;" class="active" mui-linkto="#lst1">待服务</a>
 				<a href="javascript:;" mui-linkto="#lst2">已完成</a>
@@ -6978,7 +6980,7 @@ function initPullList(container, opt)
 
 上面页面应注意：
 
-- navbar在header中，不随着滚动条移动而改变位置
+- navbar一般放在header(hd)中，不随着滚动条移动而改变位置。(v5.2)hd可以有多个，第一个用作页面标题和导航，在微信中不显示。
 - 默认要显示的list应加上active类，否则自动取第一个显示列表。
 - mui-navbar在点击一项时，会在对应的div组件（通过被点击的<a>按钮上mui-linkto属性指定链接到哪个div）添加class="active"。非active项会自动隐藏。
 
@@ -7314,6 +7316,8 @@ param={idx, arr, isFirstPage}
 	<div mui-initfn="initPageOrders" mui-script="orders.js">
 		<div class="hd">
 			<h2>订单列表</h2>
+		</div>
+		<div class="hd">
 			<div class="mui-navbar">
 				<a href="javascript:;" class="active" mui-linkto="#lst1">待服务</a>
 				<a href="javascript:;" mui-linkto="#lst2">已完成</a>
