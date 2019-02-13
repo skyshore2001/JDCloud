@@ -106,6 +106,13 @@ app.js中很多内容移动至lib/jdcloud-wui-ext.js库中. 在主HTML文件中�
 
 	width: 70%;
 
+### 移动端样式调整
+
+app.css中有关对话框(muiAlert)、组件upload-pic、weui定制等内容移到mui.css中。
+只留下 1. 主题色调、全局字体定义 2. 图标大小定义（如顶栏、底栏、列表项图标）。
+
+在升级时，应先重写上述两部分，然后将其它样式放在app.css后面。
+
 ### jdcloud-uploadpic组件
 
 对于图片预览、压缩、上传功能，原UploadPic.js与lrz库组合不再使用，换成jdcloud-uploadpic组件（以及框架自带的compressImg函数，用于替代lrz库）。
