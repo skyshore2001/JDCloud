@@ -1,12 +1,16 @@
 /* This file contains styles used by all application */
 /* 所有应用共享部分 */
 
-/* 修改色调直接替换颜色值
-前景: #04be02; / #546BDC
-背景: #fffffe;
+/* 定义主题色调、字体
+
+主题色: #04be02; 如顶栏、高亮按钮、高亮文字等。假如需更换为#546BDC，可直接替换颜色值。
+背景色: #fffffe;
 
 .mui-container {
 	background-color: #04be02;
+}
+.mui-page {
+	background-color: #fffffe;
 }
 .mui-page>.hd:first-child  {
 	background-color: #04be02;
@@ -19,11 +23,31 @@
 .mui-btn.primary {
 	color: #04be02;
 }
-.mui-page {
-	background-color: #fffffe;
-}
 .weui-btn_primary {
 	background-color: #04be02;
+}
+*/
+
+/* 定义通用图标大小，如顶栏和底栏
+.hd >.btn-icon {
+	width: 16px;
+	height: 16px;
+	padding: 10px;
+}
+.hd .icon {
+	background-size: 16px;
+	width: 16px;
+	height: 16px;
+}
+#footer .icon {
+	background-size: 24px;
+	width: 24px;
+	height: 24px;
+}
+.weui-cell .icon {
+	background-size: 16px;
+	width: 16px;
+	height: 16px;
 }
 */
 
