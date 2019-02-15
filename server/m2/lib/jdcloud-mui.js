@@ -7130,7 +7130,7 @@ param={idx, arr, isFirstPage}
 
 @param opt.onNoItem (jlst)
 
-当没有任何数据时，可以插入提示信息。
+当没有任何数据时，可以插入提示信息。缺省会添加"没有数据"提示, 可由CSS类noData来定制样式.
 
 @param opt.pageItf - page interface {refresh?/io}
 
@@ -7272,6 +7272,7 @@ param={idx, arr, isFirstPage}
 
 	$.extend(initPageList.options, {
 		pageszName: 'rows', 
+		onNoItem: function (jlst) { ... }
 		...
 	});
 
@@ -7649,6 +7650,10 @@ initPageList.options = {
 	canPullDown: true,
 	onRemoveAll: function (jlst) {
 		jlst.empty();
+	},
+	onNoItem: function (jlst) {
+		var ji = $("<div class='noData'>没有数据</div>");
+		ji.appendTo(jlst);
 	}
 };
 

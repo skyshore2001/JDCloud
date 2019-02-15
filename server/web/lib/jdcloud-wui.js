@@ -6288,9 +6288,25 @@ $.extend($.fn.datagrid.defaults, {
 		resetPageNumber(jtbl);
 	},
 
-	// bugfix: 有时无法显示横向滚动条
 	onLoadSuccess: function (data) {
-		$(this).datagrid("fitColumns");
+		if (data.total) {
+			// bugfix: 有时无法显示横向滚动条
+			$(this).datagrid("fitColumns");
+		}
+		else {
+/**
+@key .noData
+
+CSS类, 可定义无数据提示的样式
+ */
+			// 提示"无数据". 在sytle.css中定义noData类
+			var body = $(this).data().datagrid.dc.body2;
+			var view =  $(this).data().datagrid.dc.view;
+			var h = 50;
+			view.height(view.height() - body.height() + h);
+			body.height(h);
+			body.find('table tbody').empty().append('<tr><td width="' + body.width() + 'px" height="50px" align="center" class="noData" style="border:none; color:#ccc; font-size:14px">没有数据</td></tr>');
+		}
 	}
 
 	// Decided in dgLoadFilter: 超过1页使用remoteSort, 否则使用localSort.

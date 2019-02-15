@@ -8,11 +8,11 @@ button {
 	min-height: 30;
 }
 
-td {
+form>table:first-child td {
 	vertical-align: top;
 }
 
-form>table, .wui-form-table {
+form>table:first-child, .wui-form-table {
 	width: 100%;
 	white-space: nowrap;
 	border-spacing: 10px 2px;

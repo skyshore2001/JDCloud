@@ -11,8 +11,7 @@ function initPage<?=$obj?>()
 			queryParam.ac = "<?=$baseObj?>.query";
 			queryParam.orderby = "id desc";
 		},
-		onAddItem: onAddItem,
-		onNoItem: onNoItem
+		onAddItem: onAddItem
 	});
 
 	function onAddItem(jlst, itemData)
@@ -28,13 +27,6 @@ function initPage<?=$obj?>()
 
 		// ev.data = itemData
 		ji.on("click", null, itemData, li_click);
-	}
-
-	function onNoItem(jlst)
-	{
-		var ji = createCell({bd: "没有数据"}); // TODO
-		ji.css("text-align", "center");
-		ji.appendTo(jlst);
 	}
 
 	function li_click(ev)

@@ -537,3 +537,10 @@ select.right {
 	-webkit-appearance: menulist;
 }
 
+.noData {
+	height: 50px;
+	line-height: 50px;
+	text-align: center;
+	color: #aaa;
+	font-size: 15px;
+}
