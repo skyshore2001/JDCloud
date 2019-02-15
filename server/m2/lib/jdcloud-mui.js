@@ -7002,10 +7002,6 @@ js调用逻辑示例：
 		onAddItem: function (jlst, itemData) {
 			var ji = $("<li>" + itemData.title + "</li>");
 			ji.appendTo(jlst);
-		},
-		onNoItem: function (jlst) {
-			var ji = $("<li>没有订单</li>");
-			ji.appendTo(jlst);
 		}
 	});
 
@@ -7131,6 +7127,7 @@ param={idx, arr, isFirstPage}
 @param opt.onNoItem (jlst)
 
 当没有任何数据时，可以插入提示信息。缺省会添加"没有数据"提示, 可由CSS类noData来定制样式.
+一般可全局设置 initPageList.onNoItem 回调函数.
 
 @param opt.pageItf - page interface {refresh?/io}
 
@@ -7270,7 +7267,7 @@ param={idx, arr, isFirstPage}
 
 如果需要作为全局默认设置可以这样：
 
-	$.extend(initPageList.options, {
+	$.extend(MUI.initPageList.options, {
 		pageszName: 'rows', 
 		onNoItem: function (jlst) { ... }
 		...
