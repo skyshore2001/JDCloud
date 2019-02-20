@@ -4221,6 +4221,21 @@ self.container = null;
 */
 self.showFirstPage = true;
 
+/**
+@var nextShowPageOpt
+
+如果指定, 则在下次showPage时生效. 
+初次进入App时无动画效果.
+
+示例: 在返回在指定不要动画效果:
+
+	MUI.nextShowPageOpt = {ani: 'none'};
+	history.back();
+
+因为未直接调用MUI.showPage, 可以用nextShowPageOpt来传递参数. 此参数用后即焚.
+ */
+self.nextShowPageOpt = {ani: 'none'};
+
 var m_jstash; // 页面暂存区; 首次加载页面后可用
 var m_jLoader;
 
@@ -4729,6 +4744,7 @@ opt.url:: String. 指定在地址栏显示的地址。如 `showPage("#order", {u
 			// opt={orderId: 100}
 		});
 	}
+
 (v5.2)
 @param opt.backNoRefresh ?=false 从新页面返回后，不要刷新当前页
 实际为A->B页面跳转后，此后若有B->A跳转，不触发A页面的pagebeforeshow事件。
@@ -4761,7 +4777,8 @@ function showPage(pageRef, opt)
 
 	var showPageOpt_ = $.extend({
 		ani: self.options.ani
-	}, opt);
+	}, opt, self.nextShowPageOpt);
+	self.nextShowPageOpt = null;
 
 	var ret = handlePageStack(pageRef);
 	if (ret === false)

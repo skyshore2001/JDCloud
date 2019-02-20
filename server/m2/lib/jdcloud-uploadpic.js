@@ -247,6 +247,12 @@ function loadPreview(jo, isMul)
 			}
 		};
 		jo.find(".uploadpic-item").jqPhotoSwipe(opt);
+		// bugfix: jqPhotoSwipe之后, delItem无法点击.
+		jo.find(".uploadpic-delItem").click(function () {
+			var ji = $(this).closest(".uploadpic-item");
+			delPreview(ji);
+			return false;
+		});
 	}
 
 }
@@ -552,14 +558,14 @@ function initPageGallery()
 	});
 
 	jimg.click(function(ev) {
-		history.back();
+		goBackNoAni();
 	});
 
 	jdel.click(function(ev) {
 		ev.preventDefault();
 		delPreview(PageGallery.jpreviewItem_);
 		PageGallery.jpreviewItem_ = null;
-		history.back();
+		goBackNoAni();
 	});
 
 	function setupImage(ji) {
@@ -585,11 +591,16 @@ function initPageGallery()
 			ji1 = ji.prev(".uploadpic-item");
 		}
 		if (ji1 == null || ji1.size() == 0) {
-			history.back();
+			goBackNoAni();
 			return false;
 		}
 		PageGallery.jpreviewItem_ = ji = ji1;
 		setupImage(ji);
+	}
+
+	function goBackNoAni() {
+		MUI.nextShowPageOpt = {ani:"none"};
+		history.back();
 	}
 }
 // ------------ }}}
