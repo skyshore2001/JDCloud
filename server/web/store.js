@@ -135,7 +135,7 @@ function applyPermission(perms)
 	// e.g. "item,mgr" - ".perm-item, .perm-mgr"
 	if (perms == null)
 		perms = "emp";
-	var sel = perms.replace(/(\w+)/g, '.perm-$1');
+	var sel = perms.replace(/([^, ]+)/g, '.perm-$1');
 	var arr = perms.split(/,/);
 	if (sel) {
 		$(sel).show();
