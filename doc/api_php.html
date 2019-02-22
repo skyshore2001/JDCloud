@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2018-10-16</div>
+<div>最后更新：2019-02-22</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -53,6 +53,7 @@ code {
 <div class="toc">
 <p><a href="#$APP">$APP (var)</a></p>
 <p><a href="#$BASE_DIR">$BASE_DIR (var)</a></p>
+<p><a href="#$DBH">$DBH (var)</a></p>
 <p><a href="#$X_RET_FN">$X_RET_FN (var)</a></p>
 <p><a href="#AC0_">AC0_ (key)</a></p>
 <p><a href="#AC1_">AC1_ (key)</a></p>
@@ -77,6 +78,7 @@ code {
 <p><a href="#AccessControl::addJoin">AccessControl::addJoin (fn)</a></p>
 <p><a href="#AccessControl::addRes">AccessControl::addRes (fn)</a></p>
 <p><a href="#AccessControl::addVCol">AccessControl::addVCol (fn)</a></p>
+<p><a href="#AccessControl::api_batchAdd">AccessControl::api_batchAdd (fn)</a></p>
 <p><a href="#AccessControl::api_delIf">AccessControl::api_delIf (fn)</a></p>
 <p><a href="#AccessControl::api_setIf">AccessControl::api_setIf (fn)</a></p>
 <p><a href="#AccessControl::checkSetFields">AccessControl::checkSetFields (fn)</a></p>
@@ -90,6 +92,7 @@ code {
 <p><a href="#AccessControl::onValidateId">AccessControl::onValidateId (fn)</a></p>
 <p><a href="#ApiLog::$lastId">ApiLog::$lastId (var)</a></p>
 <p><a href="#AppBase">AppBase (class)</a></p>
+<p><a href="#BatchAddLogic">BatchAddLogic (class)</a></p>
 <p><a href="#BatchInsert">BatchInsert (class)</a></p>
 <p><a href="#Conf">Conf (key)</a></p>
 <p><a href="#ConfBase">ConfBase (class)</a></p>
@@ -102,6 +105,7 @@ code {
 <p><a href="#JDEvent">JDEvent (class)</a></p>
 <p><a href="#JDEvent.on">JDEvent.on (fn)</a></p>
 <p><a href="#JDEvent.trigger">JDEvent.trigger (fn)</a></p>
+<p><a href="#JDPDO">JDPDO (class)</a></p>
 <p><a href="#JDSingleton">JDSingleton (class)</a></p>
 <p><a href="#JDSingletonImp">JDSingletonImp (class)</a></p>
 <p><a href="#MapCol.$colMap">MapCol.$colMap (var)</a></p>
@@ -126,6 +130,7 @@ code {
 <p><a href="#apiMain">apiMain (key)</a></p>
 <p><a href="#api_fw">api_fw (module)</a></p>
 <p><a href="#app_fw">app_fw (module)</a></p>
+<p><a href="#arrCopy">arrCopy (fn)</a></p>
 <p><a href="#arrayCmp">arrayCmp (fn)</a></p>
 <p><a href="#callSvc">callSvc (fn)</a></p>
 <p><a href="#callSvcInt">callSvcInt (fn)</a></p>
@@ -140,9 +145,12 @@ code {
 <p><a href="#ext">ext (module)</a></p>
 <p><a href="#getAppType">getAppType (fn)</a></p>
 <p><a href="#getBaseUrl">getBaseUrl (fn)</a></p>
+<p><a href="#getBcParam">getBcParam (fn)</a></p>
 <p><a href="#getClientVersion">getClientVersion (fn)</a></p>
 <p><a href="#getCred">getCred (fn)</a></p>
 <p><a href="#getExt">getExt (fn)</a></p>
+<p><a href="#getRsAsTable">getRsAsTable (alias)</a></p>
+<p><a href="#handleExportFormat">handleExportFormat (fn)</a></p>
 <p><a href="#hasPerm">hasPerm (fn)</a></p>
 <p><a href="#hasSignFile">hasSignFile (fn)</a></p>
 <p><a href="#httpCall">httpCall (fn)</a></p>
@@ -166,7 +174,9 @@ code {
 <p><a href="#plugin">plugin (key)</a></p>
 <p><a href="#plugin/index.php">plugin/index.php (key)</a></p>
 <p><a href="#queryAll">queryAll (fn)</a></p>
+<p><a href="#queryAllWithHeader">queryAllWithHeader (fn)</a></p>
 <p><a href="#queryOne">queryOne (fn)</a></p>
+<p><a href="#setBcParam">setBcParam (fn)</a></p>
 <p><a href="#setParam">setParam (fn)</a></p>
 <p><a href="#setParam">setParam (fn)</a></p>
 <p><a href="#setRet">setRet (fn)</a></p>
@@ -329,6 +339,20 @@ addToStr($atts, "100");
 addToStr($atts, "200");
 // $atts = "100,200"</code></pre></div>
 <div class="block">
+<h2 id="arrCopy">@fn arrCopy(&$dst, $src, $fields)</h2>
+<p>将数组$src中指定字段复制到$dst中。<br />
+数组$fields指定字段列表。如果字段复制后需要改名，可以以[$dstName, $srcName]这样的数组来表示。</p>
+<p>示例：将workItem提取指定字段后插入数据库中：</p>
+<pre><code>$workItem = ["repairWiId"=&gt;$id, "wiName"=&gt;$name, ...];
+$wiData = ["orderId" =&gt; $orderId];
+arrCopy($wiData, $workItem, [
+    ["code", "repairWiId"], // 复制后改名，即 $wiData["code"] = $workItem["repairWiId"]
+    "name",
+    "saleWorkQty",
+    ["addFlag", "isAdd"]
+]);
+dbInsert("WorkItem", $wiData);</code></pre></div>
+<div class="block">
 <h2 id="app_fw">@module app_fw</h2><div class="toc"><p style="margin-left:0em"><a href="#app_fw-1 通用函数">1 通用函数</a></p>
 <p style="margin-left:0em"><a href="#app_fw-2 初始化配置">2 初始化配置</a></p>
 <p style="margin-left:2em"><a href="#app_fw-2.1 数据库配置">2.1 数据库配置</a></p>
@@ -487,6 +511,32 @@ setParam([
 ]);</code></pre>
 <p class="see"><strong>@see <a href="#tableCRUD">tableCRUD</a></strong> </p></div>
 <div class="block">
+<h2 id="getBcParam">@fn getBcParam($name, $defVal=null)</h2>
+<p class="fn"><strong>@fn <a id="setBcParam">setBcParam</a></strong> ($name, $value)</p>
+<p>TODO: BC是什么？改名？</p>
+<p>获取或设置特别的HTTP头部参数。</p></div>
+<div class="block">
+<h2 id="queryAllWithHeader">@fn queryAllWithHeader($sql, $wantArray=false)</h2>
+<p class="alias"><strong>@alias <a id="getRsAsTable">getRsAsTable</a></strong> ($sql)</p>
+<p>查询SQL，返回筋斗云table格式：{@h, @d}<br />
+h是标题字段数组，d是数据行。<br />
+即queryAll函数的带表格标题版本。</p>
+<pre><code>$tbl = queryAllWithHeader("SELECT id, name FROM User");</code></pre>
+<p>返回示例：</p>
+<pre><code>[
+    "h"=&gt;["id","name"],
+    "d"=&gt;[ [1,"name1"], [2, "name2"]]
+]</code></pre>
+<p>如果查询结果为空，则返回：</p>
+<pre><code>[ "h" =&gt; [], "d" =&gt; [] ];</code></pre>
+<p>如果指定了参数$wantArray=true, 则返回二维数组，其中首行为标题行：</p>
+<pre><code>$tbl = queryAllWithHeader("SELECT id, name FROM User", true);</code></pre>
+<p>返回：</p>
+<pre><code>[ ["id", "name"], [1, "name1"], [2, "name2"] ]</code></pre>
+<p>如果查询结果为空，则返回:</p>
+<pre><code>[ [], [] ]</code></pre>
+<p class="see"><strong>@see <a href="#queryAll">queryAll</a></strong> </p></div>
+<div class="block">
 <h2 id="objarr2table">@fn objarr2table ($objarr, $fixedColCnt=null)</h2>
 <p>将objarr格式转为table格式, 如：</p>
 <pre><code>objarr2table(
@@ -575,7 +625,7 @@ dir1/dir2/carsvc.db (以.db文件扩展名标识的文件路径，表示SQLITE�
 <p class="param"><strong>@param $getInsertId</strong> ?=false 取INSERT语句执行后得到的id. 仅用于INSERT语句。</p>
 <p>执行SQL语句，如INSERT, UPDATE等。执行SELECT语句请使用queryOne/queryAll.</p>
 <pre><code>$token = mparam("token");
-execOne("UPDATE cinf SET appleDeviceToken=" . Q($token));</code></pre>
+execOne("UPDATE Cinf SET appleDeviceToken=" . Q($token));</code></pre>
 <p>注意：在拼接SQL语句时，对于传入的string类型参数，应使用Q函数进行转义，避免SQL注入攻击。</p>
 <p>对于INSERT语句，设置参数$getInsertId=true, 可取新加入数据行的id. 例：</p>
 <pre><code>$sql = sprintf("INSERT INTO Hongbao (userId, createTm, src, expireTm, vdays) VALUES ({$uid}, '%s', '{$src}', '%s', {$vdays})", date('c', $createTm), date('c', $expireTm));
@@ -583,7 +633,7 @@ $hongbaoId = execOne($sql, true);</code></pre>
 <p>(v5.1) 简单的单表添加和更新记录建议优先使用dbInsert和dbUpdate函数，更易使用。<br />
 上面两个例子，用dbInsert/dbUpdate函数，无须使用Q函数防注入，也无须考虑字段值是否要加引号：</p>
 <pre><code>// 更新操作示例
-$cnt = dbUpdate("Cinf", ["appleDeviceToken" =&gt; $token]);
+$cnt = dbUpdate("Cinf", ["appleDeviceToken" =&gt; $token], "ALL");
 
 // 插入操作示例
 $hongbaoId = dbInsert("Hongbao", [
@@ -642,13 +692,15 @@ $rows = [
 ]
 // 可转成table格式返回
 return objarr2table($rows);</code></pre>
+<p>queryAll支持执行返回多结果集的存储过程，这时返回的不是单一结果集，而是结果集的数组：</p>
+<pre><code>$allRows = queryAll("call syncAll()");</code></pre>
 <p class="see"><strong>@see <a href="#objarr2table">objarr2table</a></strong> </p></div>
 <div class="block">
 <h2 id="dbInsert">@fn dbInsert(table, kv) -> newId</h2>
 <p>e.g. </p>
 <pre><code>$orderId = dbInsert("Ordr", [
     "tm" =&gt; date(FMT_DT),
-    "tm1" =&gt; ["now()"], // 使用数组，表示是SQL表达式
+    "tm1" =&gt; dbExpr("now()"), // 使用dbExpr直接提供SQL表达式
     "amount" =&gt; 100,
     "dscr" =&gt; null // null字段会被忽略
 ]);</code></pre>
@@ -657,6 +709,18 @@ return objarr2table($rows);</code></pre>
 <div class="block">
 <h2 id="BatchInsert">@class BatchInsert</h2>
 <p>大批量为某表添加记录，一次性提交。</p>
+<pre><code>$bi = new BatchInsert($table, $headers, $opt=null);</code></pre>
+<ul>
+<li>headers: 列名数组(如[&quot;name&quot;,&quot;dscr&quot;])，或逗号分隔的字符串(如&quot;name,dscr&quot;)</li>
+<li>opt.batchSize/i?=0: 指定批大小。0表示不限大小。</li>
+<li>opt.useReplace/b?=false: 默认用&quot;INSERT INTO&quot;语句，设置为true则用&quot;REPLACE INFO&quot;语句。一般用于根据某unique index列添加或更新行。</li>
+<li>
+<p>opt.debug/b?=false: 如果设置为true, 只输出SQL语句，不插入数据库。</p>
+<p>$bi-&gt;add($row);</p>
+</li>
+<li>row: 可以是值数组或关联数组。如果是值数组，必须与headers一一对应，比如[&quot;name1&quot;, &quot;dscr1&quot;]；<br />
+如果是关联数组，按headers中字段自动取出值数组，这样关联数组中即使多一些字段也无影响，比如[&quot;name&quot;=&gt;&quot;name1&quot;, &quot;dscr&quot;=&gt;&quot;dscr1&quot;, &quot;notUsedCol&quot;=100]。</li>
+</ul>
 <p>示例：</p>
 <pre><code>$bi = new BatchInsert("Syslog", "module,tm,content");
 for ($i=0; $i&lt;10000; ++$i)
@@ -672,7 +736,8 @@ $bi = new BatchInsert("Syslog", "module,tm,content", $opt);</code></pre>
 </ul></div>
 <div class="block">
 <h2 id="dbUpdate">@fn dbUpdate(table, kv, id_or_cond?) -> cnt</h2>
-<p class="param"><strong>@param id_or_cond</strong>  查询条件，如果是数值比如100或"100"，则当作条件"id=100"处理；否则直接作为查询表达式，比如"qty<0"；如果未指定则无查询条件。</p>
+<p class="param"><strong>@param id_or_cond</strong>  查询条件，如果是数值比如100或"100"，则当作条件"id=100"处理；否则直接作为查询表达式，比如"qty<0"；</p>
+<p>为了安全，cond必须指定值，不可为空（避免因第三参数为空导致误更新全表!）。如果要对全表更新，可传递特殊值&quot;ALL&quot;，或用&quot;1=1&quot;之类条件。</p>
 <p>e.g.</p>
 <pre><code>// UPDATE Ordr SET ... WHERE id=100
 $cnt = dbUpdate("Ordr", [
@@ -684,22 +749,23 @@ $cnt = dbUpdate("Ordr", [
 
 // UPDATE Ordr SET tm=now() WHERE tm IS NULL
 $cnt = dbUpdate("Ordr", [
-    "tm" =&gt; ["now()"]  // 使用数组，表示是SQL表达式
-], "tm IS NULL);</code></pre></div>
+    "tm" =&gt; dbExpr("now()")  // 使用dbExpr，表示是SQL表达式
+], "tm IS NULL);
+
+// 全表更新，没有条件。UPDATE Cinf SET appleDeviceToken={token}
+$cnt = dbUpdate("Cinf", ["appleDeviceToken" =&gt; $token], "ALL");</code></pre></div>
 <div class="block">
 <h2 id="getBaseUrl">@fn getBaseUrl($wantHost = true)</h2>
-<p>返回 $BASE_DIR 对应的网络路径（最后以&quot;/&quot;结尾）。<br />
-如果指定了环境变量 P_URL_PATH（可在conf.user.php中设置）, 则根据该变量计算；否则自动判断（如果有符号链接可能不准）</p>
+<p>返回 $BASE_DIR 对应的网络路径（最后以&quot;/&quot;结尾），一般指api.php所在路径。<br />
+如果指定了环境变量 P_BASE_URL(可在conf.user.php中设置), 则使用该变量。<br />
+否则自动判断（如果有代理转发则可能不准）</p>
 <p>例：</p>
-<pre><code>P_URL_PATH = "/myapp/" 或 P_URL_PATH = "/myapp"</code></pre>
-<p>则</p>
 <pre><code>getBaseUrl() -&gt; "http://myserver.com/myapp/"
 getBaseUrl(false) -&gt; "/myapp/"</code></pre>
-<p>注意：如果使用了反向代理等机制，该函数往往无法返回正确的值。</p>
-<p>例如 <a href="http://myserver.com/8081/myapp/api.php">http://myserver.com/8081/myapp/api.php</a> 被代理到 <a href="http://localhost:8081/myapp/api.php">http://localhost:8081/myapp/api.php</a><br />
-getBaseUrl()默认返回 &quot;<a href="http://myserver.com/myapp/">http://myserver.com/myapp/</a>&quot; 是错误的，可以设置P_BASE_URL解决：</p>
+<p>注意：如果使用了反向代理等机制，该函数往往无法返回正确的值，<br />
+例如 <a href="http://myserver.com/8081/myapp/api.php">http://myserver.com/8081/myapp/api.php</a> 被代理到 <a href="http://localhost:8081/myapp/api.php">http://localhost:8081/myapp/api.php</a><br />
+getBaseUrl()默认返回 &quot;<a href="http://localhost:8081/myapp/">http://localhost:8081/myapp/</a>&quot; 是错误的，可以设置P_BASE_URL解决：</p>
 <pre><code>putenv("P_BASE_URL=http://myserver.com/8081/myapp/");</code></pre>
-<p>这样getBaseUrl()可返回该值。</p>
 <p class="see"><strong>@see <a href="#$BASE_DIR">$BASE_DIR</a></strong> </p></div>
 <div class="block">
 <h2 id="logit">@fn logit($s, $addHeader=true, $type="trace")</h2>
@@ -758,6 +824,19 @@ throw new DirectReturn();</code></pre>
 <p>例：返回指定数据后立即中断处理：</p>
 <pre><code>setRet(0, ["id"=&gt;1]);
 throw new DirectReturn();</code></pre></div>
+<div class="block">
+<h2 id="JDPDO">@class JDPDO</h2>
+<p class="var"><strong>@var <a id="$DBH">$DBH</a></strong> </p>
+<p>数据库类PDO增强。全局变量$DBH为默认数据库连接，dbconn,queryAll,execOne等数据库函数都使用它。</p>
+<ul>
+<li>在调试等级P_DEBUG=9时，将SQL日志输出到前端，即<code>addLog(sqlStr, DEBUG=9)</code>。</li>
+<li>如果有符号文件CFG_CONN_POOL，则使用连接池（缺省不用）</li>
+</ul>
+<p>如果想忽略输出一条SQL日志，可以在调用SQL查询前设置skipLogCnt，如：</p>
+<pre><code>global $DBH;
+++ $DBH-&gt;skipLogCnt;  // 若要忽略两条就用 $DBH-&gt;skipLogCnt+=2
+$DBH-&gt;exec('set names utf8'); // 也可以是queryOne/execOne等函数。</code></pre>
+<p class="see"><strong>@see <a href="#queryAll">queryAll</a> <a href="#execOne">execOne</a> <a href="#dbconn">dbconn</a></strong> </p></div>
 <div class="block">
 <h2 id="AppBase">@class AppBase</h2>
 <p>应用框架，用于提供符合BQP协议的接口。<br />
@@ -1355,13 +1434,16 @@ $_POST[key] = value; // 设置post参数</code></pre>
 <p class="param"><strong>@param $hideResult</strong>  Boolean. 如果为true, 不输出结果。</p></div>
 <div class="block">
 <h2 id="AccessControl">@module AccessControl</h2><div class="toc"><p style="margin-left:0em"><a href="#AccessControl-1 基本权限控制">1 基本权限控制</a></p>
-<p style="margin-left:0em"><a href="#AccessControl-2 虚拟字段">2 虚拟字段</a></p>
+<p style="margin-left:0em"><a href="#AccessControl-2 虚拟字段(VCol)">2 虚拟字段(VCol)</a></p>
 <p style="margin-left:2em"><a href="#AccessControl-2.1 关联字段">2.1 关联字段</a></p>
 <p style="margin-left:2em"><a href="#AccessControl-2.2 关联字段依赖">2.2 关联字段依赖</a></p>
 <p style="margin-left:2em"><a href="#AccessControl-2.3 计算字段">2.3 计算字段</a></p>
 <p style="margin-left:2em"><a href="#AccessControl-2.4 子表压缩字段">2.4 子表压缩字段</a></p>
 <p style="margin-left:2em"><a href="#AccessControl-2.5 自定义字段">2.5 自定义字段</a></p>
 <p style="margin-left:2em"><a href="#AccessControl-2.6 flags和props字段">2.6 flags和props字段</a></p>
+<p style="margin-left:2em"><a href="#AccessControl-2.7 外部虚拟字段(ExtVCol)">2.7 外部虚拟字段(ExtVCol)</a></p>
+<p style="margin-left:4em"><a href="#AccessControl-2.7.1 嵌套查询">2.7.1 嵌套查询</a></p>
+<p style="margin-left:4em"><a href="#AccessControl-2.7.2 关联子查询优化">2.7.2 关联子查询优化</a></p>
 <p style="margin-left:0em"><a href="#AccessControl-3 子表">3 子表</a></p>
 <p style="margin-left:0em"><a href="#AccessControl-4 操作完成回调">4 操作完成回调</a></p>
 <p style="margin-left:0em"><a href="#AccessControl-5 其它">5 其它</a></p>
@@ -1470,7 +1552,7 @@ $_SESSION[&quot;uid&quot;]是在用户登录后设置的，可参考login接口�
 <li>在onValidate中，对添加操作时的字段做自动补全。由于添加和更新都会走这个接口，所以用 $this-&gt;ac 判断只对添加操作时补全。<br />
 由于添加和更新操作的具体字段都通过 $_POST 来传递，故直接设置 $_POST中的相应字段即可。</li>
 </ul>
-<h4 id="AccessControl-2 虚拟字段">2 虚拟字段</h4>
+<h4 id="AccessControl-2 虚拟字段(VCol)">2 虚拟字段(VCol)</h4>
 <p class="var"><strong>@var <a id="AccessControl::$vcolDefs">AccessControl::$vcolDefs</a></strong>  (for get/query) 定义虚拟字段</p>
 <p>常用于展示关联表字段、统计字段等。<br />
 在query,get操作中可以通过res参数指定需要返回的每个字段，这些字段可能是普通列名(col)/虚拟列名(vcol)/子对象(subobj)名。</p>
@@ -1488,7 +1570,7 @@ $_SESSION[&quot;uid&quot;]是在用户登录后设置的，可参考login接口�
         [
             "res" =&gt; ["u.name AS userName", "u.phone AS userPhone"],
             "join" =&gt; "INNER JOIN User u ON u.id=t0.userId",
-            // "default" =&gt; false, // 指定true表示Ordr.query在不指定res时默认会返回该字段。一般不建议设置为true.
+            // "default" =&gt; false, // 指定true表示Ordr.query在不指定res时或res中以"*"开头时将默认会返回该字段。
         ],
         [
             "res" =&gt; ["log_cr.tm AS createTm"],
@@ -1496,6 +1578,14 @@ $_SESSION[&quot;uid&quot;]是在用户登录后设置的，可参考login接口�
         ]
     ]
 }</code></pre>
+<ul>
+<li>default: 默认虚拟字段，示例：&quot;<em>,picCnt&quot;表示返回t0表所有字段加默认虚拟字段，再加指定的picCnt字段；而&quot;t0.</em>,picCnt&quot;返回t0表的所有字段以及picCnt字段，不含默认虚拟字段；<br />
+对移动端应用接口，尽量不使用default=true，让前端自由控制。对管理平台接口，列表页和详情对话框上均显示的虚拟字段设置为default=true比较方便，因为链接方式打开详情对话框时，只能直接调用&quot;Obj.query&quot;接口，不方便指定res参数。</li>
+</ul>
+<p>注意：如果需要在程序中引入某个关联表定义，可以调用addVCol显式指定，例如：</p>
+<pre><code>$this-&gt;addVcol("userName"); // 在SQL语句中添加SELECT userName ... JOIN User
+// 如果不想影响SELECT字段:
+$this-&gt;addVcol("userName", false, "-"); // 只在SQL语句中添加 JOIN User</code></pre>
 <h5 id="AccessControl-2.2 关联字段依赖">2.2 关联字段依赖</h5>
 <p>假设设计有“订单评价”对象，它会与“订单对象”相关联：</p>
 <pre><code>@Rating: id, orderId, content</code></pre>
@@ -1616,6 +1706,86 @@ class AC1_UserTaskLog extends AccessControl
 假设Ordr表中定义了props字段，且某条记录的值为&quot;go visited&quot;，则该记录返回字段会有 <code>{ prop_go:1, prop_visited:1 }</code></p>
 <p>也可以进行设置和清除，并可与flags一起用，如：</p>
 <pre><code>Ordr.set(id=1)(prop_go=1/0, flag_v=1/0)</code></pre>
+<h5 id="AccessControl-2.7 外部虚拟字段(ExtVCol)">2.7 外部虚拟字段(ExtVCol)</h5>
+<p>(v5.2) 增加“外部虚拟字段”用于创建嵌套查询。</p>
+<h6 id="AccessControl-2.7.1 嵌套查询">2.7.1 嵌套查询</h6>
+<p>示例：下面已定义y, m两个虚拟字段，现在基于y和m再创建新的虚拟字段ym，可以这样：</p>
+<pre><code>$vcolDefs = [
+    [
+        "res" =&gt; ["year(tm) y", "month(tm) m"],
+    ],
+    [
+        "res" =&gt; ["concat(y, '-', m) ym"],
+        // 用isExt指定这是外部虚拟字段
+        "isExt" =&gt; true,
+        // 用require指定所有依赖的内层字段
+        "require" =&gt; 'y,m'
+    ]
+]</code></pre>
+<p>query/get接口生成的查询语句大致为：</p>
+<pre><code>SELECT t0.*, concat(y, '-', m) ym
+FROM (
+    SELECT t0.id,year(tm) y,month(tm) m FROM ApiLog t0
+    WHERE ...
+) t0</code></pre>
+<p>注意：即使在调用接口时用res参数指定了返回字段，外部虚拟字段依赖的内部字段也将返回。比如query(res=&quot;id,ym&quot;)返回<code>tbl(id,y,m,ym)</code>.</p>
+<p>注意：设置require或res属性时，如果依赖的是表的字段，应加表名，如&quot;t0.tm, t1.name&quot;，如果是虚拟字段，则不加表名，如&quot;y,m&quot;。</p>
+<p>注意：关于时间统计相关的虚拟字段，一般通过tmCols函数来指定：</p>
+<pre><code>function __construct() {
+    $this-&gt;vcolDefs[] = [ "res" =&gt; tmCols() ];
+}</code></pre>
+<h6 id="AccessControl-2.7.2 关联子查询优化">2.7.2 关联子查询优化</h6>
+<p><strong>外部虚拟字段还常常用于优化SELECT语句中关联子查询性能。框架将自动识别关联子查询，并使用嵌套查询机制来优化性能。</strong></p>
+<p>如果一个虚拟字段，它的res中定义有关联子查询，在query操作时可能性能很差，当：<br />
+排序字段(orderby)不是主表字段；<br />
+或orderby虽然是主表字段（甚至是索引），但查询引擎的查询计划不佳，也会导致特别慢。（这种情况下，测试时可强制指定索引，比如在from t0后加上force index(primary)，可以大幅优化。）</p>
+<p>示例：对ApiLog表有虚拟字段sesCnt，它使用关联子查询，定义如下：</p>
+<pre><code>$vcolDefs = [
+    [
+        // 可作为“外部虚拟字段”来优化
+        "res" =&gt; ["(select count(*) from ApiLog t1 where t1.ses=t0.ses) sesCnt"]
+    ],
+    [
+        // 普通虚拟字段，将在示例中用于orderby
+        "res" =&gt; ["u.name AS userName", "u.phone AS userPhone"],
+        "join" =&gt; "INNER JOIN User u ON u.id=t0.userId"
+    ]
+]</code></pre>
+<p>未做优化时，query(orderby=userName)查询语句如下：</p>
+<pre><code>SELECT t0.*, (select count(*) from ApiLog t1 where t1.ses=t0.ses) sesCnt
+FROM ApiLog t0
+JOIN User ...
+ORDER BY u.name
+LIMIT 0,20</code></pre>
+<p>当ORDER-BY不是主表ApiLog的字段时，或虽然是主表字段但数据库的查询引擎判断失误（此处不可预料），<br />
+都可能导致查询计划中将会把虚拟字段全部计算出来后再排序，导致巨慢。（实测2万行数据，查询20行数据需要16秒）</p>
+<p>优化策略是使用嵌套查询，将sesCnt字段放到外层查询：</p>
+<pre><code>SELECT t0.*, (select count(*) from ApiLog t1 where t1.ses=t0.ses) sesCnt
+FROM (
+    SELECT t0.*
+    FROM ApiLog t0
+    JOIN User ...
+    ORDER BY u.name
+    LIMIT 0,20
+) t0</code></pre>
+<p>这样只需要对最终结果20条数据计算虚拟字段。<br />
+由于出现了外层和内层两层SQL，我们将外层的虚拟字段称为外部虚拟字段。</p>
+<p>效果：ApiLog仅20000行数据，优化前查询一次16秒，优化后降低到0.2s。</p>
+<p>注意：自动优化只处理res中只有一个元素且未指定join条件的情况，并且会自动识别出依赖内层t0.ses字段。<br />
+如果自动处理或识别有误，可手工设置isExt和require属性，比如：</p>
+<pre><code>[
+    "res" =&gt; ["(select count(*) from ApiLog t1 where t1.ses=t0.ses and t0.userId is not null) sesCnt"],
+    "isExt" =&gt; true,
+    "require" =&gt; "t0.ses,t0.userId"
+]</code></pre>
+<p>上面require属性指定内层查询应暴露给外层的字段，如果有多个可用逗号分隔（自动优化只能处理一个）。<br />
+注意res中的t0指的是内层查询的结果表，名称固定为t0; 而require中的表指的是内层查询内部的表。</p>
+<p>注意：使用外部虚拟字段时，将导致require中的字段被添加到最终结果集。例如上面例子中的&quot;t0.ses,t0.userId&quot;字段会被添加到最终结果集。</p>
+<p>注意：如果想禁止优化，可手工设置vcolDef的isExt属性为false：</p>
+<pre><code>[
+    "res" =&gt; ["(select count(*) from ApiLog t1 where t1.ses=t0.ses) sesCnt"],
+    "isExt" =&gt; false
+]</code></pre>
 <h4 id="AccessControl-3 子表">3 子表</h4>
 <p class="var"><strong>@var <a id="AccessControl::$subobj">AccessControl::$subobj</a></strong>  (for get/query) 定义子表</p>
 <p>subobj: { name =&gt; {sql, default?=false, wantOne?=false, force?=false} }</p>
@@ -1633,7 +1803,7 @@ orderLog:: {id, tm, dscr, ..., empName} 订单日志子表。</code></pre>
 <ul>
 <li>sql: 子表查询语句，其中应包含用&quot;field=%d&quot;这样语句来定义与主表id字段的关系。<br />
 (v5.1)为了优化query接口，避免每一行分别查一次子表，查询语句会被改为&quot;field IN (...)&quot;的形式。</li>
-<li>default: 虚拟字段(vcolDefs)上的&quot;default&quot;选项一样，表示当未指定&quot;res&quot;参数时，是否默认返回该字段。</li>
+<li>default: 与虚拟字段(vcolDefs)上的&quot;default&quot;选项一样，表示当&quot;res&quot;参数以&quot;<em>&quot;开头(比如`res=&quot;</em>,picCnt&quot;`)或未指定时，是否默认返回该字段。</li>
 <li>wantOne: 如果为true, 则结果以一个对象返回即 {id, tm, ...}, 适用于主表与子表一对一的情况。</li>
 <li>force: (v5.1) 如果sql中没有与主表的关联即没有包含&quot;field=%d&quot;，应指定force=true，否则在query接口中会当作语句错误。</li>
 </ul>
@@ -1682,7 +1852,7 @@ orderLog:: {id, tm, dscr, ..., empName} 订单日志子表。</code></pre>
     ...
 }</code></pre>
 <h5 id="AccessControl-5.3 缺省输出字段列表">5.3 缺省输出字段列表</h5>
-<p class="var"><strong>@var <a id="AccessControl::$defaultRes">AccessControl::$defaultRes</a></strong>  (for query)指定缺省输出字段列表. 如果不指定，则为 "t0.*" 加  default=true的虚拟字段</p>
+<p class="var"><strong>@var <a id="AccessControl::$defaultRes">AccessControl::$defaultRes</a></strong>  (for query)指定缺省输出字段列表. 如果不指定，则为"*", 即 "t0.*" 加默认虚拟字段(指定default=true的字段)</p>
 <h5 id="AccessControl-5.4 最大每页数据条数">5.4 最大每页数据条数</h5>
 <p class="fn"><strong>@fn <a id="AccessControl::getMaxPageSz">AccessControl::getMaxPageSz</a></strong> ()  (for query) 取最大每页数据条数。为非负整数。</p>
 <p class="var"><strong>@var <a id="AccessControl::$maxPageSz">AccessControl::$maxPageSz</a></strong>  ?= 1000 (for query) 指定最大每页数据条数。值为负数表示取PAGE_SZ_LIMIT值.</p>
@@ -1736,6 +1906,31 @@ ORDER BY t0.id DESC</code></pre>
 <li>重写 AccessControl::$defaultRes</li>
 <li>用addCond添加缺省查询条件</li>
 </ul>
+<p>table也可以指定为子表(即视图)，例如上例也可以这样实现，省去onQuery中的实现：</p>
+<pre><code>class AC2_EmpLog extends AccessControl 
+{
+    protected $allowedAc = ["query"];
+    // 注意：子查询要加括号括起来
+    protected $table = "(SELECT * FROM ApiLog t0 WHERE t0.app='emp-adm' and t0.userId IS NOT NULL)";
+    protected $defaultSort = "t0.id DESC";
+    protected $defaultRes = "id, tm, userId, ac, req, res, reqsz, ressz, empName, empPhone";
+    protected $vcolDefs = [
+        [
+            "res" =&gt; ["e.name AS empName", "e.phone AS empPhone"],
+            "join" =&gt; "LEFT JOIN Employee e ON e.id=t0.userId"
+        ]
+    ];
+}</code></pre>
+<p>甚至可将整个SQL子查询封在table中：</p>
+<pre><code>class AC2_EmpLog extends AccessControl 
+{
+    protected $allowedAc = ["query"];
+    protected $table = "(SELECT t0.id, tm, userId, ac, req, res, reqsz, ressz, e.name AS empName, e.phone AS empPhone </code></pre>
+<p>FROM ApiLog t0<br />
+LEFT JOIN Employee e ON e.id=t0.userId<br />
+WHERE t0.app='user' and t0.userId IS NOT NULL<br />
+ORDER BY t0.id DESC)&quot;;<br />
+}</p>
 <h5 id="AccessControl-5.6 query接口输出格式">5.6 query接口输出格式</h5>
 <p>query接口支持fmt参数：</p>
 <ul>
@@ -1816,10 +2011,11 @@ Ordr.delIf(cond)</code></pre>
 也可以直接用checkSetFields指定哪些字段允许更新。</p></div>
 <div class="block">
 <h2 id="AccessControl::addRes">@fn AccessControl::addRes($res, $analyzeCol=true)</h2>
-<p>添加列或计算列. </p>
+<p>定义新的虚拟字段，并添加到get/query接口的返回字段中。<br />
+如果要引入已有的虚拟字段，应调用addVCol。</p>
 <p>注意: </p>
 <ul>
-<li>analyzeCol=true时, addRes(&quot;col&quot;); -- (analyzeCol=true) 添加一列, 注意:如果列是一个虚拟列(在vcolDefs中有定义), 不能指定alias, 且vcolDefs中同一组Res中所有定义的列都会加入查询; 如果希望只加一列且能定义alias, 可调用addVCol函数.</li>
+<li>analyzeCol=true时, 注册到对象的虚拟字段中。</li>
 <li>addRes(&quot;col+1 as col1&quot;, false); -- 简单地新定义一个计算列, as可省略</li>
 </ul>
 <p class="see"><strong>@see <a href="#AccessControl::addCond">AccessControl::addCond</a></strong>  其中有示例</p>
@@ -1849,10 +2045,34 @@ q:: 查询条件，值为"paid"时，查询10天内已付款的订单。且结�
         $this-&gt;addCond("olpay.action='PA' AND olpay.tm&gt;'$validDate'");
     }
 }</code></pre>
+<p>上例在处理&quot;q&quot;参数时，临时引入了关联表。如果关联表已在vcolDefs中定义过，可以用addVCol直接引入：</p>
+<pre><code>protected $vcolDefs = [
+    [
+        "res" =&gt; ["olpay.tm payTm"],
+        "join" =&gt; "INNER JOIN OrderLog olpay ON olpay.orderId=t0.id"
+    ]
+];
+protected function onQuery()
+{
+    $q = param("q");
+    if (isset($q) &amp;&amp; $q == "paid") {
+        $validDate = date("Y-m-d", strtotime("-9 day"));
+        // 注意：要添加虚拟字段用addVCol，不是addRes
+        $this-&gt;addVCol("payTm");
+        // 注意：addCond中不可直接使用payTm，要用原始定义olpay.tm。(下面会讲怎样直接在cond中用payTm)
+        $this-&gt;addCond("olpay.action='PA' AND olpay.tm&gt;'$validDate'");
+    }
+}</code></pre>
 <p>关于fixUserQuery=true:</p>
 <p>默认后端可以添加任何形式的SQL条件，但是如果其中含有虚拟字段，如果它尚未加到res查询结果中时，查询就会出错（无法识别这个字段）。<br />
 设置fixUserQuery=true后，就会将该条件当作用户查询(UserQuery)来处理，即相当于query接口传入的cond字段，其中的虚拟字段会自动处理避免出错。<br />
-但用户查询条件是受限的，比如不允许各种子查询，也不允许使用各种SQL函数（count/sum等少量聚合函数除外）。</p>
+但用户查询条件是受限的，比如不允许各种子查询，也不允许使用各种SQL函数（count/sum/avg等少量聚合函数除外）。</p>
+<p>仍用上面示例：</p>
+<pre><code>// 在cond中使用payTm虚拟字段，可自动解析和引入它的定义
+$this-&gt;addCond("olpay.action='PA' AND payTm&gt;'$validDate'", false, true);</code></pre>
+<p>这相当于调用：</p>
+<pre><code>$this-&gt;addVCol("payTm", false, "-"); // 引入定义但并不加到SELECT字段中
+$this-&gt;addCond("olpay.action='PA' AND olpay.tm&gt;'$validDate'");</code></pre>
 <p class="see"><strong>@see <a href="#AccessControl::addRes">AccessControl::addRes</a></strong> </p>
 <p class="see"><strong>@see <a href="#AccessControl::addJoin">AccessControl::addJoin</a></strong> </p></div>
 <div class="block">
@@ -1862,9 +2082,14 @@ q:: 查询条件，值为"paid"时，查询10天内已付款的订单。且结�
 <div class="block">
 <h2 id="AccessControl::addVCol">@fn AccessControl::addVCol($col, $ignoreError=false, $alias=null)</h2>
 <p class="param"><strong>@param $col</strong>  必须是一个英文词, 不允许"col as col1"形式; 该列必须在 vcolDefs 中已定义.</p>
-<p class="param"><strong>@param $alias</strong>  列的别名。可以中文. 特殊字符"-"表示不加到最终res中(只添加join/cond等定义), 由addVColDef内部调用时使用.</p>
+<p class="param"><strong>@param $alias</strong>  列的别名。可以中文. 特殊字符"-"表示只添加join/cond等定义，并不将该字段加到输出字段中。</p>
 <p class="return"><strong>@return Boolean</strong>  T/F</p>
-<p>用于AccessControl子类添加已在vcolDefs中定义的vcol. 一般应先考虑调用addRes(col)函数.</p>
+<p>引入一个已有的虚拟字段及其相应关联表，例如之前在vcolDefs中定义过虚拟字段<code>createTm</code>:</p>
+<pre><code>// 引入createTm定义及关联表，且在最终输出中添加createTm列
+$this-&gt;addVCol("createTm"); 
+
+// 只引入createTm字段的关联表，不影响最终输出字段
+$this-&gt;addVCol("createTm", false, "-");</code></pre>
 <p class="see"><strong>@see <a href="#AccessControl::addRes">AccessControl::addRes</a></strong> </p></div>
 <div class="block">
 <h2 id="AccessControl::checkSetFields">@fn AccessControl::checkSetFields($allowedFields)</h2>
@@ -1904,8 +2129,130 @@ $this-&gt;checkSetFields([&quot;status&quot;, &quot;cmt&quot;]);<br />
     }
 }</code></pre></div>
 <div class="block">
+<h2 id="AccessControl::api_batchAdd">@fn AccessControl::api_batchAdd()</h2>
+<p>批量添加（导入）。返回导入记录数cnt及编号列表idList</p>
+<pre><code>Obj.batchAdd(title?)(...) -&gt; {cnt, @idList}</code></pre>
+<p>在一个事务中执行，一行出错后立即失败返回，该行前面已导入的内容也会被取消（回滚）。</p>
+<ul>
+<li>title: List(fieldName). 指定标题行(即字段列表). 如果有该参数, 则忽略POST内容或文件中的标题行.<br />
+如&quot;title=name,-,addr&quot;表示导入第一列name和第三列addr, 其中&quot;-&quot;表示忽略该列，不导入。</li>
+</ul>
+<p>支持两种方式上传：</p>
+<ol>
+<li>
+<p>直接在HTTP POST中传输内容，数据格式为：首行为标题行(即字段名列表)，之后为实际数据行。<br />
+行使用&quot;\n&quot;分隔, 列使用&quot;\t&quot;分隔.<br />
+接口为：</p>
+<p>{Obj}.batchAdd(title?)(标题行，数据行)<br />
+(Content-Type=text/plain)</p>
+</li>
+</ol>
+<p>前端JS调用示例：</p>
+<pre><code>var data = "name\taddr\n" + "门店1\t地址1\n门店2\t地址2\n";
+callSvr("Store.batchAdd", function (ret) {
+    app_alert("成功导入" + ret.cnt + "条数据！");
+}, data, {contentType:"text/plain"});</code></pre>
+<p>或指定title参数:</p>
+<pre><code>var data = "门店名\t地址\n" + "门店1\t地址1\n门店2\t地址2\n";
+callSvr("Store.batchAdd", {title: "name,addr"}, function (ret) {
+    app_alert("成功导入" + ret.cnt + "条数据！");
+}, data, {contentType:"text/plain"});</code></pre>
+<ol>
+<li>标准csv/txt文件上传：</li>
+</ol>
+<p>上传的文件首行当作标题列，如果这一行不是后台要求的标题名称，可通过URL参数title重新定义。<br />
+一般使用excel csv文件（编码一般为gbk），或txt文件（以&quot;\t&quot;分隔列）。<br />
+接口为：</p>
+<pre><code>{Obj}.batchAdd(title?)(csv/txt文件)
+(Content-Type=multipart/form-data, 即html form默认传文件的格式)</code></pre>
+<p>后端处理时, 将自动判断文本编码(utf-8或gbk).</p>
+<p>前端HTML:</p>
+<pre><code>&lt;input type="file" name="f" accept=".csv,.txt"&gt;</code></pre>
+<p>前端JS示例：</p>
+<pre><code>var fd = new FormData();
+fd.append("file", frm.f.files[0]);
+callSvr("Store.batchAdd", {title: "name,addr"}, function (ret) {
+    app_alert("成功导入" + ret.cnt + "条数据！");
+}, fd);</code></pre></div>
+<div class="block">
+<h2 id="handleExportFormat">@fn handleExportFormat($fmt, $arr, $fname)</h2>
+<p>导出表到文件。</p>
+<ul>
+<li>fmt: csv-逗号分隔的文本; excel-使用gb18030编码的csv文本(excel可直接打开); txt-制表符分隔的文本。 </li>
+<li>arr: 筋斗云表格格式({@h, @d}), 或二维数组表格格式。</li>
+<li>fname: 导出的文件名</li>
+</ul>
+<p>示例：导出订单行及其明细等表，将多个查询结果拼成一个数组，导出excel-csv文件。</p>
+<pre><code>class AC2_Ordr 
+{
+    function api_export()
+    {
+        $id = mparam("id");
+        $tbl = queryAllWithHeader("SELECT t0.id 订单号, u.name 用户, u.phone 联系方式, t0.createTm 创建时间, t0.amount 金额
+FROM Ordr t0
+LEFT JOIN User u ON u.id=t0.userId
+WHERE t0.id=$id", true);
+        $tbl2 = queryAllWithHeader("SELECT name 商品, price 单价, qty 数量, spec 规格 FROM OrderItem WHERE orderId=$id", true);
+        $tbl3 = queryAllWithHeader("SELECT name 名称, amount 金额 FROM OrderAmount WHERE orderId=$id", true);
+
+        $arr = array_merge($tbl, [[], ["订单明细:"]], $tbl2, [[], ["金额调整:"]], $tbl3);
+
+        $this-&gt;handleExportFormat("excel", $arr, "订单明细-$id");
+    }
+}</code></pre>
+<p>注意：<code>[[], ["订单明细"]</code>表示插入两行，一个空行，另一个只有一列&quot;订单明细&quot;。</p>
+<p>前端JS示例:</p>
+<pre><code>var url = WUI.makeUrl("Ordr.export", {id: orderId});
+window.open(url);</code></pre>
+<p>导出示例：</p>
+<pre><code>订单号 用户  联系方式    创建时间    金额
+51343   王五555   "12345678901    "   2018/11/16 15:38    135
+
+订单明细:               
+商品  单价  数量  规格  
+高压氧气管三胶二线   115 1   8MM 
+
+金额调整:               
+名称  金额          
+运费  20</code></pre></div>
+<div class="block">
 <h2 id="AccessControl::isFileExport">@fn AccessControl::isFileExport()</h2>
 <p>返回是否为导出文件请求。</p></div>
+<div class="block">
+<h2 id="BatchAddLogic">@class BatchAddLogic</h2>
+<p>用于定制批量导入行为。<br />
+示例，实现接口：</p>
+<pre><code>Task.batchAdd(orderId, task1)(city, brand, vendorName, storeName)</code></pre>
+<p>其中vendorName和storeName字段需要通过查阅修正为vendorId和storeId字段。</p>
+<pre><code>class TaskBatchAddLogic extends BatchAddLogic
+{
+    protected $vendorCache = [];
+    function __construct () {
+        // 每个对象添加时都会用的字段，加在$this-&gt;params数组中
+        $this-&gt;params["orderId"] = mparam("orderId", "G"); // mparam要求必须指定该字段
+        $this-&gt;params["task1"] = param("task1", null, "G");
+    }
+    // $params为待添加数据，可在此修改，如用`$params["k1"]=val1`添加或更新字段，用unset($params["k1"])删除字段。
+    // $row为原始行数据数组。
+    function beforeAdd(&amp;$params, $row) {
+        // vendorName -&gt; vendorId 将params数组中的venderName字段查阅Vendor表改成vendorId字段。如果查不到则报错。传入vendorCache数组来优化查询。
+        translateKey($params, "vendorName", "vendorId", "SELECT id FROM Vendor WHERE name=%s", null, $this-&gt;vendorCache);
+        // storeName -&gt; storeId 将params数组中的storeName字段查阅Store表改成storeId字段。如果查不到则自动以指定insert语句创建。
+        translateKey($params, "storeName", "storeId", "SELECT id FROM Store WHERE name=%s", "INSERT INTO Store (name) VALUES (%s)");
+    }
+    // 处理原始标题行数据, $row1是通过title参数传入的标题数组，可能为空
+    function onGetTitleRow($row, $row1) {
+    }
+}
+
+class AC2_Task extends AC0_Task
+{
+    function api_batchAdd() {
+        $this-&gt;batchAddLogic = new TaskBatchAddLogic();
+        return parent::api_batchAdd();
+    }
+}</code></pre>
+<p class="see"><strong>@see <a href="#api_batchAdd">api_batchAdd</a></strong> </p></div>
 <div style="text-align:center">Generated by jdcloud-gendoc</div>
 </body>
 
