@@ -6669,6 +6669,12 @@ function initPullList(container, opt)
 	var lastUpdateTm_ = new Date();
 	var dy_ = 0; // 纵向移动。<0为上拉，>0为下拉
 
+	// bugfix: 避免同一DOM多次绑定事件
+	if (cont_.pullListInited_) {
+		return;
+	}
+	cont_.pullListInited_ = true;
+
 	window.requestAnimationFrame = window.requestAnimationFrame || function (fn) {
 		setTimeout(fn, 1000/60);
 	};
