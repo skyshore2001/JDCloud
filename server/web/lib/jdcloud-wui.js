@@ -7444,6 +7444,10 @@ function mycombobox(force)
 				loadOptions();
 				return false;
 			});
+			// bugfix: loadOptions中会设置value_, 这将导致无法选择空行.
+			jo.change(function () {
+				this.value_ = "";
+			});
 		}
 
 		function loadOptions()
