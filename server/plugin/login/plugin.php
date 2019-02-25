@@ -557,7 +557,7 @@ function addToPwdTable($pwd)
 		$id = dbInsert("Pwd", ["pwd"=>$pwd, "cnt"=>1]);
 	}
 	else {
-		dbUpdate("Pwd", ["cnt"=>"=cnt+1"], $id);
+		dbUpdate("Pwd", ["cnt"=>dbExpr("cnt+1")], $id);
 	}
 }
 
