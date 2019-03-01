@@ -1169,6 +1169,177 @@ function getHttpInput()
 	return $content;
 }
 
+/**
+@fn inWhiteIpList()
+
+检查调用者是否在IP白名单中。配置项为whiteIpList。
+
+@see whiteIpList
+@see api_checkIp
+*/
+function inWhiteIpList()
+{
+	$list = getenv("whiteIpList") ?: "127.0.0.1";
+	$ips = [$_SERVER["REMOTE_ADDR"], $_SERVER["HTTP_REMOTEIP"] ] + explode(',', $_SERVER["HTTP_X_FORWARDED_FOR"]);
+	foreach ($ips as $ip) {
+		$ip = trim($ip);
+		// addLog($ip);
+		if (!$ip)
+			continue;
+		if (stripos($list, $ip) !== false)
+			return true;
+	}
+	return false;
+}
+
+/**
+@fn api_checkIp()
+
+@key whiteIpList 白名单配置，默认值为"127.0.0.1"
+
+可在conf.user.php中设置whiteIpList，如
+
+	putenv("whiteIpList=115.238.59.110 127.0.0.1 ::1");
+
+要验证调用者是否在IP白名单中，不是白名单调用将直接抛错，可以调用
+
+	api_checkIp();
+
+外部可直接调用接口checkIp测试，例如用JS：
+
+	callSvr("checkIp");
+
+@see inWhiteIpList
+*/
+function api_checkIp()
+{
+	if (inWhiteIpList())
+		return;
+	$log = @sprintf("*** unauthorized call: ip is NOT in white list. ApiLog.id=%s, REMOTE_ADDR=%s, HTTP_REMOTEIP=%s, HTTP_X_FORWARDED_FOR=%s.", 
+		ApiLog::$lastId, 
+		$_SERVER["REMOTE_ADDR"], $_SERVER["HTTP_REMOTEIP"], $_SERVER["HTTP_X_FORWARDED_FOR"]);
+	logit($log);
+	throw new MyException(E_PARAM, "ip is NOT in white list", "IP不在白名单");
+}
+
+// ------ 异步调用支持 {{{
+/**
+@fn httpCallAsync($url, $postParams=null)
+
+发起调用后立即返回，即用于发起异步调用。
+默认发起GET调用，如果postParams非空(可以为字符串、数值或数组)，则发起POST调用。
+
+示例：
+
+	httpCallAsync("/jdcloud/api.php?ac=async&f=sendSms", [
+		"phone" => "13712345678",
+		"msg" => "验证码为1234"
+	]);
+
+TODO:目前只用于本机
+*/
+function httpCallAsync($url, $postParams = null)
+{
+	$host = '127.0.0.1';
+	$port = 80;
+
+	$fp = fsockopen($host, $port, $errno, $errstr, 3);
+	if (!$fp) {
+		echo "$errstr ($errno)";
+		return false;
+	}
+	$data = null;
+	if (isset($postParams)) {
+		if (is_array($postParams))
+			$data = json_encode($postParams, JSON_UNESCAPED_UNICODE);
+		else if (!is_string($postParams))
+			$data = (string)$postParams;
+	}
+
+	//stream_set_blocking($fp, 0); // 设置成非阻塞模式则担心写入失败。
+	$header = ($data? "POST": "GET") . " $url HTTP/1.1\r\nHost: $host\r\n";
+	if ($data) {
+		$header .= "Content-Type: application/json;charset=utf-8\r\n"
+			. "Content-Length: " . strlen($data) . "\r\n";
+	}
+	$header .= "Connection: Close\r\n\r\n"; //长连接关闭
+	fwrite($fp, $header);
+	// echo("$header$data"); // show log
+
+	if ($data)
+		fwrite($fp, $data);
+	 
+	fclose($fp);
+}
+
+/**
+@fn callAsync($ac, $params)
+
+@key enableAsync 配置异步调用
+
+发起异步调用请求，然后立即返回。它使用如下接口：
+
+	async(f)(params...)
+	其中params为JSON格式
+
+示例：让一个同步调用变成支持异步调用，以sendSms为例
+
+	// 1. 设置已注册的异步调用函数。建议在api.php中设置。
+	$allowedAsyncCalls = ["sendSms"];
+
+	function sendSms($phone, $msg) {
+		// 2. 为支持异步的函数加上判断分支
+		if (getenv("enableAsync") === "1") {
+			return callAsync('pushMsg', func_get_args());
+		}
+		
+		// 同步调用
+		return httpCall("...");
+	}
+
+	// 3. 在conf.user.php中配置开启异步支持。如果不配置则为同步调用，便于比较区别与调试。
+	// 打开异步调用支持, 依赖 P_BASE_URL 和 whiteIpList 设置
+	putenv("enableAsync=1");
+
+@see api_async
+*/
+function callAsync($ac, $param) {
+	$url = getBaseUrl(false) . "api.php?ac=async&f=$ac";
+	httpCallAsync($url, $param);
+}
+
+/**
+@fn api_async
+
+提供async接口，用于内部发起异步调用:
+
+	async(f)(params...)
+	params为JSON格式。
+
+注意：要求调用者在IP白名单中，配置示例：
+
+	putenv("whiteIpList=115.238.59.110 127.0.0.1 ::1");
+
+@see enableAsync
+@see whiteIpList
+*/
+function api_async() {
+	api_checkIp();
+	@$f = $_GET["f"];
+	global $allowedAsyncCalls;
+	if (!($f && in_array($f, $allowedAsyncCalls) && function_exists($f)))
+		throw new MyException(E_PARAM, "bad async fn: $f");
+
+	$param = file_get_contents("php://input");
+	$arr = json_decode($param, true);
+	if (! is_array($arr))
+		throw new MyException(E_PARAM, "bad param for async fn $f: $param");
+	
+	putenv("enableAsync=0");
+	return call_user_func_array($f, $arr);
+}
+// }}}
+
 // ====== main routine {{{
 function apiMain()
 {
