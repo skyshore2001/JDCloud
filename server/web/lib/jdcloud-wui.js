@@ -4918,6 +4918,19 @@ $.fn.okCancel = function (fnOk, fnCancel) {
 }
 
 /**
+@fn isSmallScreen
+
+判断是否为手机小屏显示. 宽度低于640当作小屏处理.
+*/
+self.isSmallScreen = isSmallScreen;
+function isSmallScreen() {
+	return $(document.body).width() < 640;
+}
+if (isSmallScreen()) {
+	$('<meta name="viewport" content="width=device-width, initial-scale=0.8, maximum-scale=0.8">').appendTo(document.head);
+}
+
+/**
 @fn showDlg(jdlg, opt?)
 
 @param jdlg 可以是jquery对象，也可以是selector字符串或DOM对象，比如 "#dlgOrder".
@@ -5098,11 +5111,12 @@ function showDlg(jdlg, opt)
 	if ($.isArray(opt.buttons))
 		btns.push.apply(btns, opt.buttons);
 
+	var small = self.isSmallScreen();
 	var dlgOpt = $.extend({
 //		minimizable: true,
-		maximizable: true,
-		collapsible: true,
-		resizable: true,
+		maximizable: !small,
+		collapsible: !small,
+		resizable: !small,
 
 		// reset default pos.
 		left: null,

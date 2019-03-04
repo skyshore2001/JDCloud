@@ -28,6 +28,7 @@
 <div id="divNoScript"><font color=red>您的浏览器禁用了脚本，不能使用本系统!</font></div>
 
 <div id="menu" region="west" split="true" title="选择操作" style="width:200px;">
+<script> if (WUI.isSmallScreen()) $("#menu").attr("data-options", "collapsed:true"); </script>
 <!--
 如果为菜单加图标，将图标和文字放到span中如：
 	<a href="?chpwd"><span><i class="fa fa-pencil-square-o"></i>修改密码</span></a>

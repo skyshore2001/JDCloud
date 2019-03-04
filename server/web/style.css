@@ -41,6 +41,11 @@ input:not([type=button]), select, textarea {
 .wui-dialog td textarea {
 	width: 95%;
 }
+@media (max-width: 640px) {
+	.wui-dialog {
+		padding: 10px 5px !important;
+	}
+}
 
 input:not([type=button]):focus, select:focus, textarea:focus{
 	border:1px solid #66afe9;
@@ -68,6 +73,10 @@ input:disabled,select:disabled,textarea:disabled {
 
 .window .window-header {
 	padding:6px 0;
+}
+.panel.window {
+	max-height: 95%;
+	max-width: 95%;
 }
 .form-caption {
 	font-size: 12pt;
