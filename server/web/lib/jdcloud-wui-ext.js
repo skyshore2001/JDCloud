@@ -288,7 +288,7 @@ function arrayToImg(jp, arr)
 	});
 	// 图片浏览器升级显示
 	if (opt.pic && jQuery.fn.jqPhotoSwipe)
-		jImgContainer.find(">a").jqPhotoSwipe();
+		jImgContainer.jqPhotoSwipe({selector:"a"});
 }
 
 // 创建<p>标签显示文件名，添加到<a>标签上。<p>标签内有"删除"按钮
@@ -480,8 +480,10 @@ function onChooseFile(ev)
 		var ja = $('<a target="_blank">');
 		ja.append(ji).appendTo(jdiv);
 		ja.attr("href", ji.attr("src"));
+		/*
 		if (ja.jqPhotoSwipe)
 			ja.jqPhotoSwipe();
+		*/
 		return ja;
 	}
 }
