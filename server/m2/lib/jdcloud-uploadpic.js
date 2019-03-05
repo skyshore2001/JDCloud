@@ -221,11 +221,13 @@ function uploadPic1(jo, opt)
 		var ji = $(this);
 		if ($(ev.target).hasClass("uploadpic-delItem")) {
 			delPreview(ji);
+			ev.stopImmediatePropagation();
 			return false;
 		}
-		// 已有图片可用photoSwipe看；新加的图片(picData_非空)用PageGallery看。
-		if (ji.css("backgroundImage") != "none" && (!jQuery.fn.jqPhotoSwipe || ji.prop("picData_") != null)) {
+		// 有photoSwipe则用之, 否则用PageGallery看。
+		if (ji.css("backgroundImage") != "none" && !jQuery.fn.jqPhotoSwipe) {
 			PageGallery.show($(this));
+			ev.stopImmediatePropagation();
 			return false;
 		}
 	});
@@ -243,16 +245,24 @@ function loadPreview(jo, isMul)
 	if (jQuery.fn.jqPhotoSwipe) {
 		var opt = {
 			onGetPicUrl: function (jo) {
-				return MUI.makeUrl("att", {thumbId: jo.prop("attId_")});
-			}
+				var attId = jo.prop("attId_");
+				if (!attId) {
+					var picData = jo.prop("picData_");
+					return picData && picData.b64src;
+				}
+				return MUI.makeUrl("att", {thumbId: attId});
+			},
+			selector: ".uploadpic-item"
 		};
-		jo.find(".uploadpic-item").jqPhotoSwipe(opt);
-		// bugfix: jqPhotoSwipe之后, delItem无法点击.
+		//jo.find(".uploadpic-item").jqPhotoSwipe(opt);
+		jo.jqPhotoSwipe(opt);
+		/* bugfix: jqPhotoSwipe之后, delItem无法点击. 新版jd_photoSwipe.js重写后不再需要这段
 		jo.find(".uploadpic-delItem").click(function () {
 			var ji = $(this).closest(".uploadpic-item");
 			delPreview(ji);
 			return false;
 		});
+		*/
 	}
 
 }
@@ -263,14 +273,14 @@ function loadPreview(jo, isMul)
 function previewImg(jo, attId, picData, isMul)
 {
 	var url;
-	if (attId != null) {
+	if (attId) {
 		url = MUI.makeUrl("att", {id:attId});
 	}
 	else if (picData != null) {
 		url = picData.b64src;
 	}
 	else {
-		MUI.assert(false);
+		return false;
 	}
 
 	if (!isMul) {
