@@ -62,7 +62,7 @@ JS
 	});
 
 	// 如果要精细控制上传进度：
-	var dfd = uploadPic.submit(onUpload, onUploadProgress);
+	var dfd = uploadPic.submit(onUpload, onUploadProgress, onNoWork);
 	dfd.then(onUploadDone);
 
 onUpload回调仅当需要上传照片或删除照片时调用，在照片上传完成后触发。一般用于将照片列表更新到相应对象上。如果有多个上传区更新，则会分别调用。
@@ -94,6 +94,12 @@ onUploadProgress用于显示上传进度。如果未指定，框架使用默认�
 			info += "...";
 		}
 		app_alert(info, alertOpt);
+	}
+
+onNoWork在无任何更新时回调。这时onUpload和onUploadProgress都不会被调用到。
+
+	function onNoWork() {
+		app_alert("都保存好了。");
 	}
 
 onUploadDone在全部上传完成后调用，参数分别为每个上传区的图片编号数组（不论该上传区是否需要更新）。
@@ -459,7 +465,7 @@ function onUploadProgress(progress)
 }
 
 UploadPic.prototype.submit = uploadPic_submit;
-function uploadPic_submit(cb, progressCb)
+function uploadPic_submit(cb, progressCb, onNoWork)
 {
 	var self = this;
 	var dfdArr = [];
@@ -488,6 +494,9 @@ function uploadPic_submit(cb, progressCb)
 			progress.done = true;
 			progressCb1(progress);
 		});
+	}
+	else {
+		onNoWork && onNoWork();
 	}
 	return dfdAll;
 
