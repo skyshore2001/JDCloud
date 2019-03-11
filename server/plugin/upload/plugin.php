@@ -365,7 +365,9 @@ function api_att()
 	$ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
 	//$mimeType = 'application/octet-stream';
 	$mimeType = Upload::$fileTypes[$ext];
-	if (@$mimeType) {
+	$reqRange = array_key_exists("HTTP_RANGE", $_SERVER);
+	// 对于大文件(>10M)或带range参数的请求，交给web server处理源文件。
+	if (@$mimeType && !($reqRange || filesize($file) > 10*1024*1024)) {
 		header("Content-Type: $mimeType");
 		header("Etag: $etag");
 		#header("Expires: Thu, 3 Sep 2020 08:52:00 GMT");

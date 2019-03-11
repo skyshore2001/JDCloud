@@ -171,6 +171,8 @@ HTTP header "Content-Type"将标识正确的文件MIME类型，如jpg类型为"i
 
 如果找不到附件，将返回HTTP状态码"404 Not Found"。
 
+默认是直接输入文件内容，但如果文件大小超过10MB，或是请求头中含有"Range"（比如播放mp4视频，会分段取），则直接重定向到原文件。
+
 **[参数]**
 
 thumbId
