@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2019-02-22</div>
+<div>最后更新：2019-03-15</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -154,6 +154,7 @@ code {
 <p><a href="#isAndroid">isAndroid (fn)</a></p>
 <p><a href="#isBusy">isBusy (var)</a></p>
 <p><a href="#isIOS">isIOS (fn)</a></p>
+<p><a href="#isSmallScreen">isSmallScreen (fn)</a></p>
 <p><a href="#isWeixin">isWeixin (fn)</a></p>
 <p><a href="#jQuery.fn.jdata">jQuery.fn.jdata (fn)</a></p>
 <p><a href="#jQuery.fn.mycombobox">jQuery.fn.mycombobox (fn)</a></p>
@@ -2134,6 +2135,9 @@ WUI.showPage("pageHome", "首页2");</code></pre></div>
 <p>动态加载的逻辑页(或对话框)具有该属性，值为源文件名。</p></div>
 <div class="block">
 <h2 id="closeDlg">@fn closeDlg(jdlg)</h2></div>
+<div class="block">
+<h2 id="isSmallScreen">@fn isSmallScreen</h2>
+<p>判断是否为手机小屏显示. 宽度低于640当作小屏处理.</p></div>
 <div class="block">
 <h2 id="showDlg">@fn showDlg(jdlg, opt?)</h2>
 <p class="param"><strong>@param jdlg</strong>  可以是jquery对象，也可以是selector字符串或DOM对象，比如 "#dlgOrder".</p>

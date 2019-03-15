@@ -23,7 +23,7 @@
 
 # 版本日志
 
-## v5.2 - 2018/12
+## v5.2 - 2019/3
 
 - 前端(jd-m2)
  - 脚本错误可上传到syslog表
@@ -54,6 +54,8 @@
  - dbUpdate等操作数据库时，可用dbExpr指定SQL表达式
  - jd-plugin-login: 支持微信小程序登录，增加login2(wxCode)接口
  - 外部虚拟字段机制
+ - IP白名单机制(whiteIpList)
+ - 异步调用机制(enableAsync)
 
 - 管理端(jd-web)
  - 详情对话框样式调整，输入框自动占满宽度
@@ -65,6 +67,7 @@
  - 添加对象（或更新后）时下拉列表（my-combobox）可自动刷新
  - 引入异步事件调用triggerAsync
  - 在showDlg时可设置底层jquery-easyui dialog选项
+ - 手机上显示优化
 
 - 工具(jd-tool)
  - create-mui-page.sh，生成移动页面模板。

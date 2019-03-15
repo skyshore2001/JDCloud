@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2019-02-22</div>
+<div>最后更新：2019-03-15</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -128,10 +128,13 @@ code {
 <p><a href="#addLog">addLog (fn)</a></p>
 <p><a href="#addToStr">addToStr (fn)</a></p>
 <p><a href="#apiMain">apiMain (key)</a></p>
+<p><a href="#api_async">api_async (fn)</a></p>
+<p><a href="#api_checkIp">api_checkIp (fn)</a></p>
 <p><a href="#api_fw">api_fw (module)</a></p>
 <p><a href="#app_fw">app_fw (module)</a></p>
 <p><a href="#arrCopy">arrCopy (fn)</a></p>
 <p><a href="#arrayCmp">arrayCmp (fn)</a></p>
+<p><a href="#callAsync">callAsync (fn)</a></p>
 <p><a href="#callSvc">callSvc (fn)</a></p>
 <p><a href="#callSvcInt">callSvcInt (fn)</a></p>
 <p><a href="#checkAuth">checkAuth (fn)</a></p>
@@ -140,6 +143,7 @@ code {
 <p><a href="#dbInsert">dbInsert (fn)</a></p>
 <p><a href="#dbUpdate">dbUpdate (fn)</a></p>
 <p><a href="#dbconn">dbconn (fn)</a></p>
+<p><a href="#enableAsync">enableAsync (key)</a></p>
 <p><a href="#errQuit">errQuit (fn)</a></p>
 <p><a href="#execOne">execOne (fn)</a></p>
 <p><a href="#ext">ext (module)</a></p>
@@ -154,13 +158,15 @@ code {
 <p><a href="#hasPerm">hasPerm (fn)</a></p>
 <p><a href="#hasSignFile">hasSignFile (fn)</a></p>
 <p><a href="#httpCall">httpCall (fn)</a></p>
+<p><a href="#httpCallAsync">httpCallAsync (fn)</a></p>
+<p><a href="#inWhiteIpList">inWhiteIpList (fn)</a></p>
 <p><a href="#isCLI">isCLI (fn)</a></p>
 <p><a href="#isCLIServer">isCLIServer (fn)</a></p>
 <p><a href="#isEqualCollection">isEqualCollection (fn)</a></p>
 <p><a href="#isMockMode">isMockMode (fn)</a></p>
 <p><a href="#logext">logext (fn)</a></p>
-<p><a href="#logit">logit (fn)</a></p>
 <p><a href="#logit">logit (alias)</a></p>
+<p><a href="#logit">logit (fn)</a></p>
 <p><a href="#makeUrl">makeUrl (fn)</a></p>
 <p><a href="#mparam">mparam (fn)</a></p>
 <p><a href="#myEncrypt">myEncrypt (fn)</a></p>
@@ -189,6 +195,7 @@ code {
 <p><a href="#tryParseBool">tryParseBool (fn)</a></p>
 <p><a href="#urlEncodeArr">urlEncodeArr (fn)</a></p>
 <p><a href="#varr2objarr">varr2objarr (fn)</a></p>
+<p><a href="#whiteIpList">whiteIpList (key)</a></p>
 </div><hr>
 </div>
 <div class="block">
@@ -1427,6 +1434,64 @@ $_POST[key] = value; // 设置post参数</code></pre>
 <p class="see"><strong>@see <a href="#setParam">setParam</a></strong> </p>
 <p class="see"><strong>@see <a href="#tableCRUD">tableCRUD</a></strong> </p>
 <p class="see"><strong>@see <a href="#callSvc">callSvc</a></strong> </p></div>
+<div class="block">
+<h2 id="inWhiteIpList">@fn inWhiteIpList()</h2>
+<p>检查调用者是否在IP白名单中。配置项为whiteIpList。</p>
+<p class="see"><strong>@see <a href="#whiteIpList">whiteIpList</a></strong> </p>
+<p class="see"><strong>@see <a href="#api_checkIp">api_checkIp</a></strong> </p></div>
+<div class="block">
+<h2 id="api_checkIp">@fn api_checkIp()</h2>
+<p class="key"><strong>@key <a id="whiteIpList">whiteIpList</a></strong>  白名单配置，默认值为"127.0.0.1"</p>
+<p>可在conf.user.php中设置whiteIpList，如</p>
+<pre><code>putenv("whiteIpList=115.238.59.110 127.0.0.1 ::1");</code></pre>
+<p>要验证调用者是否在IP白名单中，不是白名单调用将直接抛错，可以调用</p>
+<pre><code>api_checkIp();</code></pre>
+<p>外部可直接调用接口checkIp测试，例如用JS：</p>
+<pre><code>callSvr("checkIp");</code></pre>
+<p class="see"><strong>@see <a href="#inWhiteIpList">inWhiteIpList</a></strong> </p></div>
+<div class="block">
+<h2 id="httpCallAsync">@fn httpCallAsync($url, $postParams=null)</h2>
+<p>发起调用后立即返回，即用于发起异步调用。<br />
+默认发起GET调用，如果postParams非空(可以为字符串、数值或数组)，则发起POST调用。</p>
+<p>示例：</p>
+<pre><code>httpCallAsync("/jdcloud/api.php?ac=async&amp;f=sendSms", [
+    "phone" =&gt; "13712345678",
+    "msg" =&gt; "验证码为1234"
+]);</code></pre>
+<p>TODO:目前只用于本机</p></div>
+<div class="block">
+<h2 id="callAsync">@fn callAsync($ac, $params)</h2>
+<p class="key"><strong>@key <a id="enableAsync">enableAsync</a></strong>  配置异步调用</p>
+<p>发起异步调用请求，然后立即返回。它使用如下接口：</p>
+<pre><code>async(f)(params...)
+其中params为JSON格式</code></pre>
+<p>示例：让一个同步调用变成支持异步调用，以sendSms为例</p>
+<pre><code>// 1. 设置已注册的异步调用函数。建议在api.php中设置。
+$allowedAsyncCalls = ["sendSms"];
+
+function sendSms($phone, $msg) {
+    // 2. 为支持异步的函数加上判断分支
+    if (getenv("enableAsync") === "1") {
+        return callAsync('pushMsg', func_get_args());
+    }
+
+    // 同步调用
+    return httpCall("...");
+}
+
+// 3. 在conf.user.php中配置开启异步支持。如果不配置则为同步调用，便于比较区别与调试。
+// 打开异步调用支持, 依赖 P_BASE_URL 和 whiteIpList 设置
+putenv("enableAsync=1");</code></pre>
+<p class="see"><strong>@see <a href="#api_async">api_async</a></strong> </p></div>
+<div class="block">
+<h2 id="api_async">@fn api_async</h2>
+<p>提供async接口，用于内部发起异步调用:</p>
+<pre><code>async(f)(params...)
+params为JSON格式。</code></pre>
+<p>注意：要求调用者在IP白名单中，配置示例：</p>
+<pre><code>putenv("whiteIpList=115.238.59.110 127.0.0.1 ::1");</code></pre>
+<p class="see"><strong>@see <a href="#enableAsync">enableAsync</a></strong> </p>
+<p class="see"><strong>@see <a href="#whiteIpList">whiteIpList</a></strong> </p></div>
 <div class="block">
 <h2 id="callSvc">@fn callSvc($ac?, $urlParam?, $postParam?, $cleanCall?=false, $hideResult?=false)</h2>
 <p>直接调用接口，返回数据。如果出错，将调用$GLOBALS['errorFn'] (缺省为errQuit).</p>

@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（移动Web版）</h1>
-<div>最后更新：2019-02-22</div>
+<div>最后更新：2019-03-15</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -1106,9 +1106,10 @@ var arr = mCommon.rs2Array(rs);</code></pre>
 对div等其它对象, 会清空该对象的内容.</li>
 <li>如果对象设置有属性&quot;noReset&quot;, 则不会对它进行设置.</li>
 </ul>
-<p class="param"><strong>@param opt</strong>  {setOrigin?=false}</p>
-<p>选项 setOrigin: 为true时将data设置为数据源, 这样在getFormData时, 只会返回与数据源相比有变化的数据.<br />
-缺省会设置该DOM对象数据源为空.</p>
+<p class="param"><strong>@param opt</strong>  {setOrigin?=false, setOnlyDefined?=false}</p>
+<p class="param"><strong>@param opt.setOrigin</strong>  为true时将data设置为数据源, 这样在getFormData时, 只会返回与数据源相比有变化的数据.</p>
+<p>缺省会设置该DOM对象数据源为空.</p>
+<p class="param"><strong>@param opt.setOnlyDefined</strong>  设置为true时，只设置form中name在data中存在的项，其它项保持不变；而默认是其它项会清空。</p>
 <p>对象关联的数据源, 可以通过 jo.data(&quot;origin<em>&quot;) 来获取, 或通过 jo.data(&quot;origin</em>&quot;, newOrigin) 来设置.</p>
 <p>示例：</p>
 <pre><code>&lt;div id="div1"&gt;

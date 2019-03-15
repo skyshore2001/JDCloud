@@ -1797,7 +1797,17 @@ function getFormData(jo)
 		if (content !== String(orgContent)) // 避免 "" == 0 或 "" == false
 		{
 			if (! isFormData) {
-				data[name] = content;
+				// URL参数支持数组，如`a[]=hello&a[]=world`，表示数组`a=["hello","world"]`
+				if (name.substr(-2) == "[]") {
+					name = name.substr(0, name.length-2);
+					if (! data[name]) {
+						data[name] = [];
+					}
+					data[name].push(content);
+				}
+				else {
+					data[name] = content;
+				}
 			}
 			else {
 				if (ji.is(":file")) {
@@ -1867,10 +1877,12 @@ function formItems(jo, cb)
  对div等其它对象, 会清空该对象的内容.
 - 如果对象设置有属性"noReset", 则不会对它进行设置.
 
-@param opt {setOrigin?=false}
+@param opt {setOrigin?=false, setOnlyDefined?=false}
 
-选项 setOrigin: 为true时将data设置为数据源, 这样在getFormData时, 只会返回与数据源相比有变化的数据.
+@param opt.setOrigin 为true时将data设置为数据源, 这样在getFormData时, 只会返回与数据源相比有变化的数据.
 缺省会设置该DOM对象数据源为空.
+
+@param opt.setOnlyDefined 设置为true时，只设置form中name在data中存在的项，其它项保持不变；而默认是其它项会清空。
 
 对象关联的数据源, 可以通过 jo.data("origin_") 来获取, 或通过 jo.data("origin_", newOrigin) 来设置.
 
@@ -1914,6 +1926,8 @@ function setFormData(jo, data, opt)
 		var ji = $(this);
 		var name = ji.attr("name");
 		var content = data[name];
+		if (opt1.setOnlyDefined && content === undefined)
+			return;
 		var isInput = ji.is(":input");
 		if (content === undefined) {
 			if (isInput) {
@@ -1928,7 +1942,7 @@ function setFormData(jo, data, opt)
 				content = "";
 			}
 		}
-		if (ji.is(":input")) {
+		if (isInput) {
 			ji.val(content);
 		}
 		else {
@@ -2633,10 +2647,10 @@ function enhanceWithin(jp)
 			return;
 		jo.each(function (i, e) {
 			var je = $(e);
-			var opt = getOptions(je);
-			if (opt.enhanced)
+			var enhanced = je.data("mui-enhanced");
+			if (enhanced)
 				return;
-			opt.enhanced = true;
+			je.data("mui-enhanced", true);
 			fn(je);
 		});
 	});

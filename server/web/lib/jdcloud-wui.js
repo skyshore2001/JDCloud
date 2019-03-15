@@ -1016,9 +1016,10 @@ self.reloadSite = reloadSite;
 function reloadSite()
 {
 	var href = location.href.replace(/#.+/, '#');
-	location.href = href;
+	//location.href = href; // dont use this. it triggers hashchange.
+	history.replaceState(null, null, href);
 	location.reload();
-	throw "abort";
+	throw "abort"; // dont call self.app_abort() because it does not exist after reload.
 }
 
 // ====== Date {{{
@@ -2910,7 +2911,8 @@ function app_abort()
 
 可直接调用app_abort();
 */
-window.DirectReturn = function () {}
+window.DirectReturn = DirectReturn;
+function DirectReturn() {}
 
 /**
 @fn setOnError()
@@ -2926,6 +2928,8 @@ function setOnError()
 		if (fn && fn.apply(this, arguments) === true)
 			return true;
 		if (errObj instanceof DirectReturn || /abort$/.test(msg) || (!script && !line))
+			return true;
+		if (errObj === undefined && msg === "[object Object]") // fix for IOS9
 			return true;
 		debugger;
 		var content = msg + " (" + script + ":" + line + ":" + col + ")";
@@ -3506,18 +3510,21 @@ function defDataProc(rv)
 			console.log("Server Revision: " + val);
 			g_data.serverRev = val;
 		}
+		var modeStr;
 		val = mCommon.parseValue(this.xhr_.getResponseHeader("X-Daca-Test-Mode"));
 		if (g_data.testMode != val) {
 			g_data.testMode = val;
 			if (g_data.testMode)
-				self.app_alert("测试模式!", {timeoutInterval:2000});
+				modeStr = "测试模式";
 		}
 		val = mCommon.parseValue(this.xhr_.getResponseHeader("X-Daca-Mock-Mode"));
 		if (g_data.mockMode != val) {
 			g_data.mockMode = val;
 			if (g_data.mockMode)
-				self.app_alert("模拟模式!", {timeoutInterval:2000});
+				modeStr = "测试模式+模拟模式";
 		}
+		if (modeStr)
+			self.app_alert(modeStr, {timeoutInterval:2000});
 	}
 
 	try {
