@@ -2537,6 +2537,7 @@ class CsvBatchAddStrategy extends BatchAddStrategy
 
 		$orgName = $f["name"];
 		$file = $f["tmp_name"];
+		self::backupFile($file, $orgName);
 		$this->fp = fopen($file, "rb");
 		utf8InputFilter($this->fp);
 
@@ -2547,12 +2548,40 @@ class CsvBatchAddStrategy extends BatchAddStrategy
 			$this->delim = ",";
 		}
 	}
-	protected function onGetRow() {
-		$row = fgetcsv($this->fp, 0, $this->delim);
-		if ($row === false) {
-			fclose($this->fp);
-			$row = null;
+
+	static function backupFile($file, $orgName) {
+		$dir = "upload/import";
+		if (! is_dir($dir)) {
+			if (mkdir($dir, 0777, true) === false)
+				throw new MyException(E_SERVER, "fail to create folder: $dir");
 		}
+		$bakF = $dir . "/" . date("Ymd_His");
+		$ext = strtolower(pathinfo($orgName, PATHINFO_EXTENSION));
+		if ($ext) {
+			$bakF .= ".$ext";
+		}
+		copy($file, $bakF);
+		logit("import file: $orgName, backup: $bakF");
+	}
+
+	static function isEmptyArr($arr) {
+		$isEmpty = true;
+		foreach ($arr as $e) {
+			if ($e != "") {
+				$isEmpty = false;
+			}
+		}
+		return $isEmpty;
+	}
+	protected function onGetRow() {
+		do {
+			$row = fgetcsv($this->fp, 0, $this->delim);
+			if ($row === false) {
+				fclose($this->fp);
+				$row = null;
+				break;
+			}
+		} while(self::isEmptyArr($row));
 		return $row;
 	}
 }

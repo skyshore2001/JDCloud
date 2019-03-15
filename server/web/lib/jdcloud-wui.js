@@ -4902,13 +4902,13 @@ $.fn.okCancel = function (fnOk, fnCancel) {
 			return false;
 		}
 		// Ctrl-F: find mode
-		else if (e.ctrlKey && e.which == 70)
+		else if ((e.ctrlKey||e.metaKey) && e.which == 70)
 		{
 			showObjDlg($(this), FormMode.forFind, null);
 			return false;
 		}
 /* // Ctrl-A: add mode
-		else if (e.ctrlKey && e.which == 65)
+		else if ((e.ctrlKey||e.metaKey) && e.which == 65)
 		{
 			showObjDlg($(this), FormMode.forAdd, null);
 			return false;
@@ -5222,10 +5222,10 @@ function showDlg(jdlg, opt)
 	}
 }
 
-// 按住Ctrl键进入批量模式。
+// 按住Ctrl/Command键进入批量模式。
 var tmrBatch_;
 $(document).keydown(function (e) {
-	if (e.keyCode == 17) {
+	if (e.ctrlKey || e.metaKey) {
 		m_batchMode = true;
 		clearTimeout(tmrBatch_);
 		tmrBatch_ = setTimeout(function () {
@@ -5235,7 +5235,7 @@ $(document).keydown(function (e) {
 	}
 });
 $(window).keyup(function (e) {
-	if (e.keyCode == 17) {
+	if (e.ctrlKey || e.metaKey) {
 		m_batchMode = false;
 		clearTimeout(tmrBatch_);
 	}

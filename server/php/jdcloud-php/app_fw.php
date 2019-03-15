@@ -1074,9 +1074,11 @@ function dbInsert($table, $kv)
 			$values .= ", ";
 		}
 		$keys .= $k;
-		if (is_array($v)) { // 直接传SQL表达式
-			assert(count($v)>0);
-			$values .= $v[0];
+		if ($v instanceof dbExpr) { // 直接传SQL表达式
+			$values .= $v->val;
+		}
+		else if (is_array($v)) {
+			throw new MyException(E_PARAM, "dbInsert: array is not allowed");
 		}
 		else {
 			$values .= Q(htmlEscape($v));
