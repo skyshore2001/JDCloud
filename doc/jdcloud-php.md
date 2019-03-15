@@ -30,7 +30,8 @@
 
 假设数据库中已经建好一张记录操作日志的表叫"ApiLog"，包含字段id（主键，整数类型）, tm（日期时间类型）, addr（客户端地址，字符串类型）。
 
-使用筋斗云后端框架，只要创建一个空的类，就可将这个表（或称为对象）通过HTTP接口暴露给前端，提供增删改查各项功能：
+使用筋斗云后端框架，只要创建一个空的类，就可将这个表（或称为对象）通过HTTP接口暴露给前端，提供增删改查各项功能。
+将下面代码写在文件server/php/api_objects.php中（它被包含在主入口server/api.php中)：
 ```php
 class AC_ApiLog extends AccessControl
 {
@@ -174,7 +175,7 @@ class AC2_ApiLog extends AccessControl
 	php upgrade.php
 
 
-为了学习对象型接口，我们以暴露ApiLog对象提供CRUD操作为例，只要在接口主文件api.php后面加上一句：
+为了学习对象型接口，我们以暴露ApiLog对象提供CRUD操作为例，只要在接口实现文件php/api_objects.php(包含在主入口api.php中)中添加代码：
 ```php
 class AC_ApiLog extends AccessControl
 {
