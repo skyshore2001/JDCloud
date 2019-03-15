@@ -4,11 +4,12 @@
 	background-color: #ffe48d;
 }
 table td {
-	padding: 5px 15px;
-	min-width: 100px;
+	padding: 5px;
+	min-width: 80px;
 }
 table select, .btnStat {
 	min-width: 100px;
+	width: 100%;
 }
 </style>
 
@@ -63,7 +64,7 @@ table select, .btnStat {
 
 		<td>接口名</td>
 		<td>
-			<select name="ac" class="my-combobox" data-options="ListOptions.Ac()">
+			<select name="ac" class="my-combobox" data-options="jdEnumList:'initClient;User.query;Employee.query;upload;att;login;batch'">
 			</select>
 		</td>
 	</tr>

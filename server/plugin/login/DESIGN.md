@@ -258,6 +258,33 @@ _token/_expire
 	location.href = "../weixin/auth.php?" + $.param(param);
 	MUI.app_abort();
 
+#### 本地调试微信认证
+
+本插件结合weixin/auth.php处理微信认证。
+由于必须在微信中设置过“网页授权域名”的域名才可以认证，本地调试时，必须映射到实际服务器上。
+
+建议方法如下：比如线上URL为 http://oliveche.com/mall/m2/index.html，本地实际URL为http://localhost/p/mall/m2/index.html
+调试时应把服务器 localhost 换成 oliveche.com/8081 即访问URL: http://oliveche.com/8081/p/mall/m2/index.html
+
+配置方法：
+
+- 配置apache: 线上/8081开头的地址用代理转到8081端口:
+
+		ProxyPass /8081/ http://localhost:8081/
+		ProxyPassReverse /8081/ http://localhost:8081/
+		ProxyPass /8082/ http://localhost:8082/
+		ProxyPassReverse /8082/ http://localhost:8082/
+		# 可以加8081,8082等多个，以便多人分别调试
+		<LocationMatch ^/80 >
+		ProxyPassReverseCookiePath / /
+		</LocationMatch>
+
+- 本地映射到线上：即访问8081实际访问本地
+
+		ssh -R 8081:localhost:80 oliveche.com
+
+在weixin/auth.php中会自动拼接正确的redirect_uri（访问后可在trace.log中查看），如仍不正确，可临时手工修改为正确值。
+
 ### 绑定手机
 
 微信登录的用户绑定手机号到当前登录帐号：
@@ -270,6 +297,17 @@ _token/_expire
  - 当该手机号已绑定其他微信帐户时，不允许再绑定。
  - 当手机号存在且未绑定微信时：合并微信用户到手机号用户，然后将微信用户禁用（在字段User.weixinKey中设置特别标识`merged-{openId}`，使该用户失效，今后无法登录）。
   合并逻辑可通过`LoginImpBase::onBindUser(phone)`回调来扩展，如考虑合并相应的个人信息、操作记录、订单等。
+
+### 第三方认证 / 微信小程序认证
+
+	login2(wxCode) -> {id, ...} (与login接口一致)
+
+- wxCode: 使用微信小程序token(在小程序中调用wx.login接口获取到)登录。后端凭此token可中微信服务器获取用户信息即登录成功。
+
+参考：
+
+- 小程序登录过程：https://developers.weixin.qq.com/miniprogram/dev/framework/open-ability/login.html
+- 使用code2Session接口获取openid: https://developers.weixin.qq.com/miniprogram/dev/api/code2Session.html
 
 ## 后端接口
 

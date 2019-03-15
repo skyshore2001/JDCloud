@@ -1,3 +1,174 @@
+## 升级到v5.2
+
+### 管理端app.js重构到jdcloud-wui-ext.js，增加upload和checkList组件
+
+app.js中很多内容移动至lib/jdcloud-wui-ext.js库中. 在主HTML文件中应添加:
+
+	<script src="lib/jdcloud-wui-ext.js"></script>
+
+对象详情对话框上的upload组件和checkList被组件化.
+
+#### 对话框上的upload组件
+
+原HTML代码:
+
+	<tr>
+		<td>门店照片</td>
+		<td id="divStorePics">
+			<input name="pics" style="display:none">
+			<div class="imgs"></div>
+			<input type="file" accept="image/*" multiple onchange="onChooseFile.apply(this)">
+			<p>（图片上点右键，可以删除图片等操作）</p>
+		</td>
+	</tr>
+
+应修改为:
+
+	<tr>
+		<td>门店照片</td>
+		<td class="wui-upload">
+			<input name="pics">
+		</td>
+	</tr>
+
+各属性或选项统一通过data-options属性来指定，如：
+
+- 之前单选通过input[type=file]组件的不设置multiple属性来指定，现在应使用`<div class="wui-upload" data-options="multiple:false">`
+- 之前的`<div wui-nopic wui-nothumb>`设置，现在使用 `<div class="wui-upload" data-options="pic:false, nothumb:true">`
+- 之前菜单项由专门的HTML和JS指定，现在使用`data-options="menu:{...}"`来指定。
+
+无须额外的JS代码来控制加载、保存和菜单, 删除原先这些JS代码:
+
+	jdlg.on("show", function (ev, data) {
+		// 加载图片
+		hiddenToImg(jfrm.find("#divStorePics"));
+		hiddenToImg(jfrm.find("#divStorePicId"));
+	})
+	.on("validate", function (ev) {
+		// 保存图片
+		imgToHidden(jfrm.find("#divStorePics"));
+		imgToHidden(jfrm.find("#divStorePicId"));
+	});
+
+以及删除相关的右键菜单控制代码以及相关的HTML：
+
+	// 设置右键菜单，比如删除图片
+	var curImg;
+	jmenu.menu({
+		onClick: function (item) {
+			...
+		}
+	});
+	jdlg.on("contextmenu", "img", function (ev) {
+		...
+	});
+
+关于自定义菜单的用法，参考.wui-upload文档。
+
+#### 对话框上的checkList组件
+
+原HTML代码：
+
+	<td id="divPerms">
+		<input type="hidden" name="perms">
+		<label><input type="checkbox" value="item">上架商品管理</label><br>
+		<label><input type="checkbox" value="emp" checked>员工:查看,操作订单(默认)</label><br>
+		<label><input type="checkbox" value="mgr">商户管理</label><br>
+	</td>
+
+改为：
+
+	<td class="wui-checkList">
+		...
+	</td>
+
+原JS代码直接删除即可：
+
+	jdlg.on("show", function (ev, data) {
+		// 显示时perms字段自动存在hidden对象中，通过调用 hiddenToCheckbox将相应的checkbox选中
+		hiddenToCheckbox(jfrm.find("#divPerms"));
+	})
+	.on("validate", function (ev) {
+		// 保存时收集checkbox选中的内容，存储到hidden对象中。
+		checkboxToHidden(jfrm.find("#divPerms"));
+	});
+
+### 管理端对话框样式调整
+
+对话框上的table会自动占满对话框, 且设置了不换行, 有可能造成样式混乱, 主要有两种情况:
+
+如果某个td内容过长导致table被撑开, 需要在该td的样式上设置:
+
+	white-space: normal;
+
+如果某个td内一行既有input又有其它组件, 由于input被自动设置为宽度95%, 其它组件被挤的很小.
+这时可重设每个组件的width, 如分别为70%, 25%.
+
+	width: 70%;
+
+### 移动端样式调整
+
+app.css中有关对话框(muiAlert)、组件upload-pic、weui定制等内容移到mui.css中。
+只留下 1. 主题色调、全局字体定义 2. 图标大小定义（如顶栏、底栏、列表项图标）。
+
+在升级时，应先重写上述两部分，然后将其它样式放在app.css后面。
+
+### jdcloud-uploadpic组件
+
+对于图片预览、压缩、上传功能，原UploadPic.js与lrz库组合不再使用，换成jdcloud-uploadpic组件（以及框架自带的compressImg函数，用于替代lrz库）。
+
+OLD: 新版自动查找"uploadpic"类
+	var uploadPic = new UploadPic(jpage.find(".uploadpic"));
+NEW:
+	var uploadPic = new MUI.UploadPic(jpage);
+
+OLD: 新版废弃refresh
+	uploadPic.empty().refresh();
+NEW:
+	uploadPic.empty();
+
+OLD: 新版submit后面参数变化
+	uploadPic.submit(function(certPics, pics) {
+	});
+NEW:
+	uploadPic.submit().then(function (certPics, pics) {
+	});
+
+OLD: 再次初始化
+	jo.attr("data-attr", "10,13,15");
+	uploadPic.initAtts();
+NEW:
+	jo.attr("data-attr", "10,13,15");
+	uploadPic.reset();
+
+OLD: 检查图片数目
+	if (jpage.find('.uploadpic.swiperpic_zz .uploadpic-item.uploadpic-item-selected').length == 0)...
+NEW:
+	if (uploadPic.filter('.swiperpic_zz').countPic() == 0) ...
+
+
+### 要求开启php_mbstring模块
+
+	yum install php-mbstring
+
+php-for-windows版本请检查php.ini中开启了该模块：
+
+	extension=php_mbstring.dll
+
+### dbInsert/dbUpdate中支持SQL表达式的写法调整
+
+原写法：
+
+	dbInsert("MyLog", [ "tm"=>"=NOW()" ]);
+	dbUpdate("MyLog", [ "tm"=>"=NOW()" ], 1001);
+
+新写法：
+
+	dbInsert("MyLog", [ "tm"=>dbExpr("NOW()") ]);
+	dbUpdate("MyLog", [ "tm"=>dbExpr("NOW()") ], 1001);
+
+这是为了避免用户输入等号造成错误处理。
+
 ## 升级到v5.1
 
 ### WeUI库升级到1.x

@@ -23,6 +23,56 @@
 
 # 版本日志
 
+## v5.2 - 2019/3
+
+- 前端(jd-m2)
+ - 脚本错误可上传到syslog表
+ - jd-uploadpic插件，用于上传图片（压缩、预览、上传）。增加compressImg函数。
+   支持上传时显示进度百分比
+ - 支持设置从某些页面返回时，不刷新当前页(backNoRefresh)
+ - setStorage/getStorage支持自动添加变量前缀，由STORAGE_PREFIX指定，以便不同项目可同时运行。
+ - 直接用源码部署，也支持应用优化，m2目录下可运行make用于合并文件。
+ - 批量导入对话框示例dlgImport
+ - 微信中不显示标题栏
+ - getFormData支持传数组参数即name=xx[] 形式
+ - 页面支持多个hd和ft
+ - 自动处理URL中的wxCode参数（一般是微信小程序中获取并传给web-view），做微信认证
+ - MUI.options.enableSwitchApp自动切换H5应用
+ - app.css中可定义主色调等。
+
+- 后端(jd-php)
+ - 批量更新、批量删除、批量导入（添加）功能: setIf, delIf, batchAdd
+ - 导出文件增强：queryAllWithHeader, handleExportFormat
+ - ApiLog1: 记录batch操作明细
+ - queryAll支持返回多结果集
+ - upload与login插件增强
+ - httpCall记录慢查询到日志
+ - 缺省查询最大返回数据条数由100条改为1000条。
+ - 在conf.user.php中设置session超时时间
+ - query接口导出时，支持html格式：Obj.query(fmt=html)
+ - jd-php: apilog中将上传时间也算进来
+ - dbUpdate等操作数据库时，可用dbExpr指定SQL表达式
+ - jd-plugin-login: 支持微信小程序登录，增加login2(wxCode)接口
+ - 外部虚拟字段机制
+ - IP白名单机制(whiteIpList)
+ - 异步调用机制(enableAsync)
+
+- 管理端(jd-web)
+ - 详情对话框样式调整，输入框自动占满宽度
+ - my-combobox: 支持级联下拉列表
+ - 菜单中设置"nperm-xxx"类表示无xxx权限则显示。
+ - 统计页支持直接显示未汇总数据的图表
+ - 用WUI.compressImg替代lrz库。
+ - 增加jdcloud-wui-ext.js，支持wui-upload和wui-checkList组件，用于对话框上的上传文件/图片，以及多选框。
+ - 添加对象（或更新后）时下拉列表（my-combobox）可自动刷新
+ - 引入异步事件调用triggerAsync
+ - 在showDlg时可设置底层jquery-easyui dialog选项
+ - 手机上显示优化
+
+- 工具(jd-tool)
+ - create-mui-page.sh，生成移动页面模板。
+ - tool/genDbDoc.pl 生成数据库表文档工具
+
 ## v5.1 - 2018/7
 
 - 前端

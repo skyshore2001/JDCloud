@@ -3,14 +3,19 @@
 class AC_Syslog extends AccessControl
 {
 	protected $allowedAc = ["add"];
-	protected $requiredFields = ["module", "pri", "content"];
+	protected $requiredFields = ["module", "content"];
 
 	protected function onValidate()
 	{
 		if ($this->ac == 'add') {
-			$now = time(0);
-			$_POST['tm'] = date(FMT_DT, $now);
+			$_POST['tm'] = date(FMT_DT);
+			$_POST['apiLogId'] = ApiLog::$lastId;
+			if (! issetval("pri"))
+				$_POST['pri'] = "INF";
 		}
 	}
 }
 
+class AC2_Syslog extends AC_Syslog
+{
+}

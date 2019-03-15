@@ -11,8 +11,9 @@ Header set Content-Type "text/html;charset=utf-8"
 
 ## 直接访问page/目录时，跳转H5应用入口。
 # RewriteEngine on
-# RewriteCond %{HTTP_X_REQUESTED_WITH} !XMLHttpRequest [NC]
+# RewriteCond %{HTTP:X-Requested-With} !XMLHttpRequest [NC]
 # # TODO use real path
-# RewriteBase /jdcloud-m/
+# RewriteBase /jdcloud/m2/
+# #RewriteBase /p/jdcloud/server/m2/
 # RewriteRule ^(\w+).html$ index.html?%{QUERY_STRING}#$1 [R,NE,L]
 

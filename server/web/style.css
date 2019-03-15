@@ -1,37 +1,87 @@
-button {
-	width: 100;
-	height: 30;
+html {
+	margin: 0;
+	padding: 0;
 }
 
-td {
+button {
+	min-width: 100;
+	min-height: 30;
+}
+
+form>table:first-child td {
 	vertical-align: top;
 }
 
-form>table {
+form>table:first-child, .wui-form-table {
 	width: 100%;
+	white-space: nowrap;
+	border-spacing: 10px 2px;
 }
 
 a {
 	cursor: pointer;
 }
 
-.wui-dialog input, .wui-dialog select, .wui-dialog textarea {
-	padding: 2px;
+/* wui-dialog */
+input:not([type=button]), select, textarea {
+	padding: 2px 5px;
+	display: inline-block;
+	border-width: 1px;
+	border-style: solid;
+	border-color: rgb(169, 169, 169);
+	border-radius: 4px;
+	outline: none;
+	margin: 0 2px;
 }
-.wui-page input, .wui-page select, .wui-page textarea {
-	padding: 2px;
+.wui-dialog td input:not([type=checkbox]):not([type=radio]):not([type=button]), .wui-dialog td select {
+	height:30px;
+	line-height: 30px;
+	width: 95%;
+}
+.wui-dialog td textarea {
+	width: 95%;
+}
+@media (max-width: 640px) {
+	.wui-dialog {
+		padding: 10px 5px !important;
+	}
+}
+
+input:not([type=button]):focus, select:focus, textarea:focus{
+	border:1px solid #66afe9;
 }
 
 .wui-find-field {
 	background-color: #fffbce;
 }
 
-.wui-readonly {
+.wui-readonly, input[readonly] {
+/*	pointer-events: none;*/
+	background-color: #fff3f3;
+}
+select[readonly] {
 	pointer-events: none;
 	background-color: #fff3f3;
 }
-input[disabled],select[disabled] {
+input:disabled,select:disabled,textarea:disabled {
+	background-color: #fff3f3;
 	color: #000;
+}
+.validatebox-invalid {
+	border-color: #ffa8a8 !important;
+}
+
+.window .window-header {
+	padding:6px 0;
+}
+.panel.window {
+	max-height: 95%;
+	max-width: 95%;
+}
+.form-caption {
+	font-size: 12pt;
+	font-weight: bold;
+	padding: 5px 0;
 }
 
 .block {
@@ -85,16 +135,13 @@ input[disabled],select[disabled] {
 	font-size: 0.6em;
 	margin-top: 0;
 	color: blue;
-}
-
-.perm-mgr2, .perm-mgr, .perm-emp, .perm-item, .perm-astore {
-	display: none
+	white-space: normal;
 }
 
 /* customize menu */
 #menu {
 	background: #1d2127;
-	box-shadow: -5px 0 0 #2f3139 inset;
+	/*box-shadow: -5px 0 0 #2f3139 inset;*/
 }
 
 #menu .my-menu-item {
@@ -127,8 +174,6 @@ input[disabled],select[disabled] {
 	width: 60px;
 	text-align: center;
 	font-size: 1.5em;
-	transition: 0.35s cubic-bezier(0.35, 0, 0.25, 1);
-	transition-property: transform;
 }
 
 #menu .menu-item-head.expanded > i {
@@ -136,10 +181,6 @@ input[disabled],select[disabled] {
 }
 
 #menu .menu-expandable {
-	height: 0;
-	overflow: hidden;
-	transition: 0.35s cubic-bezier(0.35, 0, 0.25, 1);
-	transition-property: height;
 	background: #171717;
 }
 
@@ -156,4 +197,18 @@ input[disabled],select[disabled] {
 }
 .pagination td {
 	vertical-align: middle;
+}
+
+/* Í¼Æ¬ä¯ÀÀÆ÷photoSwipe */
+.pswp {
+	z-index:9999 !important;
+}
+
+.wui-upload .imgs img {
+	width: 150px;
+	height: 150px;
+	object-fit: cover;
+}
+.wui-upload .imgs p:hover {
+	background-color: #fffbce;
 }

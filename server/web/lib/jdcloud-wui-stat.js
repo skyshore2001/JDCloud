@@ -315,6 +315,34 @@ rs.h表头格式为 [汇总字段, 汇总显示字段?, sum]，表示简单汇�
 
 - 显示饼图时，echart要求data的格式为{name, value}，这将在WUI.initChart中特殊处理。
 
+## 未分组数据，需要自行分组显示
+
+rs.h表头字段固定为 [g?, x, y], 其中g为分组字段，x为横轴标签，y为纵轴数值。
+分组字段可以没有，如果有将显示为多系列，系列标签即该列名（支持用WUI.options.statFormatter定制显示）。
+
+示例：
+
+	var rs = {
+		h: ["g", "x", "y"],
+		d: [
+			["app", "a1", 99],
+			["db", "a1", 98],
+			["app", "a2", 97],
+			["app", "a4", 96]
+		]
+	};
+
+	var statData = rs2Stat(rs);
+
+	// 结果：
+	statData = {
+		xData: [ "a1", "a2", "a4" ],
+		yData: [
+			{name: "app", data: [99, 97, null]},
+			{name: "db", data: [98, null, 96]}
+		]
+	}
+
 ## 指定类型数据 TODO
 
 根据opt.cols指定列类型，并转换数据。opt.cols是字符串，每个字符表示列的类型，列分为"x"列（生成x轴数据，归入xData中），"g"列（分组列，生成图表系列，yData中每项的name），"y"列（数据列，可以有多个，yData中每项的data）。
@@ -375,6 +403,10 @@ function rs2Stat(rs, opt)
 
 	if (rs.d.length == 0) {
 		return ret;
+	}
+
+	if (rs.h[0] == 'g' || rs.h[0] == 'x') {
+		return rs2Stat_gxy(rs, opt);
 	}
 
 	opt = $.extend({
@@ -521,6 +553,40 @@ function rs2Stat(rs, opt)
 		if (k == null || /\D/.test(k))
 			return k;
 		return k + '.';
+	}
+
+	function rs2Stat_gxy(rs, opt)
+	{
+		// 不必分组
+		if (rs.h[0] != 'g') {
+			var yArr = [];
+			yData.push({name: sumName_, data: yArr});
+			$.each(rs.d, function (i, e) {
+				var x = e[0];
+				var y = parseFloat(e[1]);
+				xData.push(x);
+				yArr.push(y);
+			});
+		}
+		else {
+			var xMap = {}, gMap = {}; // x=>idx_x, g=>arr
+			$.each(rs.d, function (i, e) {
+				var g = getGroupName(e[0], e, 0);
+				if (gMap[g] == null) {
+					gMap[g] = [];
+					yData.push({name: g, data: gMap[g]});
+				}
+				var x = e[1];
+				var y = parseFloat(e[2]);
+				var idx = xMap[x];
+				if (idx == null) {
+					xMap[x] = idx = xData.length;
+					xData.push(x);
+				}
+				gMap[g][idx] = y;
+			});
+		}
+		return ret;
 	}
 }
 
@@ -819,9 +885,9 @@ html示例:
 	
 这样生成的opt.queryParam中: 
 
-	gres="y,m,d,dramaId";
+	gres="y,m,d,sceneId";
 	orderby="y,m,d";
-	res="dramaName,COUNT(*) sum";
+	res="sceneName,COUNT(*) sum";
 
 @param opt.queryParam 接口查询参数
 可以设置ac, res, gres, cond, orderby, pagesz等筋斗云框架通用查询参数，或依照接口文档设置。
@@ -878,6 +944,50 @@ setTmRange(desc)用于设置jpage中的.txtTm1, .txtTm2两个文本框，作为�
 
 		WUI.initChart(jchart, statData, seriesOpt, chartOpt);
 	}, {res: "COUNT(distinct ses) sum", gres: tmUnit, orderby: tmUnit, cond: cond });
+
+
+此外，也支持直接显示无汇总的数据。
+
+示例：有以下接口：
+
+	RecM.query() -> tbl(who, tm, cpu)
+
+返回 服务器(who)在每一分钟(tm)的最低cpu使用率。数据示例：
+
+	{ h: ["who", "tm", "cpu"],
+	  d: [ 
+	  	["app", "2018-10-1 10:10:00", 89],
+	  	["app", "2018-10-1 10:11:00", 91],
+	  	["db", "2018-10-1 10:10:00", 68],
+	  	["db", "2018-10-1 10:11:00", 72]
+	  ]
+	}
+
+由于tm已经汇总到分钟，现在希望直接显示tm对应的值，且按服务器不同("app"表示"应用服务器"，"db"表示"数据库服务器")分系列显示。
+rs2Stat支持转化此类数据，但表示要求是 "g, x, y"的格式，分别表示分组字段（系列名）、x轴标签、y轴数据，应该可用查询：
+
+	RecM.query(res="who g, tm x, cpu y", cond="...") -> tbl(g, x, y)
+
+JS示例：
+
+	function initPageRecMStat()
+	{
+		...
+		var statItf_ = WUI.initPageStat(jpage, setStatOpt);
+		function setStatOpt(chartIdx, opt) 
+		{
+			var param = opt.queryParam;
+			param.res = "who g,tm x,cpu y";
+
+			opt.formatter = function (value, arr, i) {
+				var map = {
+					"app": "应用服务器",
+					"db": "数据库服务器"
+				};
+				return map[value] || value;
+			};
+		}
+	}
 
 */
 self.initPageStat = initPageStat;
@@ -937,8 +1047,8 @@ function initPageStat(jpage, setStatOpt)
 	getTmRange("前1周") -> ["2015-8-31"(上周一)，"2015-9-7"(本周一)]
 	getTmRange("前3月") -> ["2015-6-1", "2015-9-1"]
 
-	getTmRange("近1周") -> ["2015-9-2"，"2015-9-9"]
-	getTmRange("近3月") -> ["2015-6-9", "2015-9-9"]
+	getTmRange("近1周") -> ["2015-9-3"，"2015-9-10"]
+	getTmRange("近3月") -> ["2015-6-10", "2015-9-10"]
 
 	getTmRange("本日") -> ["2015-9-9", "2015-9-10"]
 	getTmRange("本月"") -> ["2015-9-1", "2015-10-1"]
@@ -948,6 +1058,8 @@ dscr可以是
 
 	"近|前" N "个"? "小时|日|周|月|年"
 	"本|今" "小时|日/天|周|月|年"
+
+注意："近X周"包括今天（即使尚未过完）。
 
  */
 self.getTmRange = getTmRange;
@@ -981,6 +1093,9 @@ function getTmRange(dscr, now)
 			now.add("h",1);
 			n = 1;
 		}
+		if (type == "近") {
+			now.add("h",1);
+		}
 		dt2 = now.format(fmt_h);
 		dt1 = now.add("h", -n).format(fmt_h);
 	}
@@ -998,6 +1113,7 @@ function getTmRange(dscr, now)
 			n = 1;
 		}
 		if (type == "近") {
+			now.addDay(1);
 			var d2 = now.getDate();
 			dt2 = now.format(fmt_d);
 			now.add("m", -n);
@@ -1024,6 +1140,7 @@ function getTmRange(dscr, now)
 			n = 1;
 		}
 		if (type == "近") {
+			now.addDay(1);
 			dt2 = now.format(fmt_d);
 			//now.add("d", -now.getDay()+1); // 回到周1
 			dt1 = now.add("d", -n*7).format(fmt_d);
@@ -1039,6 +1156,7 @@ function getTmRange(dscr, now)
 			n = 1;
 		}
 		if (type == "近") {
+			now.addDay(1);
 			dt2 = now.format(fmt_d);
 			//now = WUI.parseDate(now.format(fmt_y)); // 回到1/1
 			dt1 = now.add("y", -n).format(fmt_d);

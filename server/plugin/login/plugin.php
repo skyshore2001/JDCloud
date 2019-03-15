@@ -12,15 +12,31 @@
 
 ## 模块外部接口
 
-**配置项**
+各配置项及默认值如下。
 
 - 允许用户自动注册
 
-	Login::$autoRegUser = true;
+	Login::$autoRegUser ?= true;
+
+- 允许传统注册（即无需验证手机号）
+
+	Login::$allowManualReg ?= false;
 
 - 允许员工自动注册
 
-	Login::$autoRegEmp = false;
+	Login::$autoRegEmp ?= false;
+
+- 微信公众号登录需要接口：weixin/auth.php
+ 在非微信浏览器中支持模拟登录，这时应设置模拟用户：
+
+	Login::$mockWeixinUser = ['openid'=>"test_openid", 'nickname'=>"测试用户", 'headimgurl'=>"...", 'sex'=>1];
+
+- 微信小程序认证(login2接口)需要设置以下信息, 示例：
+
+	Login::$wxApp = [
+		"appid" => "wxf5502ed6914b4b7e",
+		"secret" => "381c380860a3aad4514853e216cXXXX"
+	];
 
 ## 模块内部接口
 
@@ -62,7 +78,12 @@ class Login
 {
 	static $autoRegUser = true;
 	static $autoRegEmp = false;
+	static $allowManualReg = false;
 	static $mockWeixinUser = ['openid'=>"test_openid", 'nickname'=>"测试用户", 'headimgurl'=>"...", 'sex'=>1];
+	static $wxApp = [
+		"appid" => "wxf5502ed6914b4b7e",
+		"secret" => "381c380860a3aad4514853e216c7e1f3"
+	];
 }
 
 class LoginImpBase
@@ -86,54 +107,73 @@ class LoginImpBase
 	{
 	}
 
-	function onWeixinLogin($userInfo, $rawData){
+/**
+@fn LoginImpBase.onWeixinLogin($userInfo, $rawData)
+
+微信认证成功后，可以得到openid；根据openid还可以得到userInfo.
+
+- 如果只用openid，则参数$userInfo只有openid属性，且$rawData为空；
+- 如果获取到了完整的userInfo，则传入$userInfo和$rawData(即微信返回的原始JSON字符串)
+
+返回 {id}, 其中会调用 onLogin，可能会为返回值增加一些属性。
+
+*/
+	function onWeixinLogin($userInfo, $rawData)
+	{
+		if ($rawData !== null) {
+			$userData = [
+				"pic" => $userInfo["headimgurl"],
+				"name" => $userInfo["nickname"],
+				"uname" => $userInfo["nickname"],
+				"weixinData" => $rawData
+			];
+		}
+		else {
+			$name = "用户" . date("Ymd") . '-'. rand(1000, 9999);
+			$userData = [
+				"uname" => $name,
+				"name" => $name
+			];
+		}
 		dbconn();
 		$sql = sprintf("SELECT id FROM User WHERE weixinKey=%s", Q($userInfo["openid"]));
 		$id = queryOne($sql);
 		if ($id === false) {
-			$sql = sprintf("INSERT INTO User (weixinKey, pic, createTm, weixinData, uname) VALUES (%s, %s, '%s', %s, %s)",
-				Q($userInfo["openid"]),
-				Q($userInfo["headimgurl"]),
-				date("c"),
-				Q($rawData),
-				Q($userInfo["nickname"])
-			);
-			$id = execOne($sql, true);
+			$userData["createTm"] = date(FMT_DT);
+			$userData["weixinKey"] = $userInfo["openid"];
+			$id = dbInsert("User", $userData);
+			$imp = LoginImpBase::getInstance();
+			$imp->onRegNewUser($id, $userData['uname']);
 		}
-		else {
-			$sql = sprintf("UPDATE User SET pic=%s, weixinData=%s, uname=%s WHERE weixinKey=%s",
-				Q($userInfo["headimgurl"]),
-				Q($rawData),
-				Q($userInfo["nickname"]),
-				Q($userInfo["openid"])
-			);
-			execOne($sql);
+		else if ($rawData) {
+			dbUpdate("User", $userData, $id);
 		}
 
+		$ret = ["id"=>$id];
+		$this->onLogin("user", $id, $ret);
 		$_SESSION["uid"] = $id;
+		return $ret;
 	}
 
 	function onBindUser($phone){
 		$userId = $_SESSION["uid"];
 		//查询是否绑定微信用户
-		$row = queryOne("SELECT id, weixinKey FROM User WHERE phone=$phone", PDO::FETCH_ASSOC);
-		if(!is_null($row["weixinKey"])){ //绑定过
+		$row = queryOne("SELECT id, weixinKey FROM User WHERE phone=$phone", true);
+		if(isset($row["weixinKey"])){ //绑定过
 			throw new MyException(E_AUTHFAIL, "phone had binding", "该手机已经被绑定");
 		}
-		if(!is_null($row["id"])){ //将微信用户merge过来
+		if(isset($row["id"])){ //将微信用户merge过来
 			//取出weixinKey
 			$weixinKey = queryOne("SELECT weixinKey FROM User WHERE id=$userId");
 			//将微信key与手机用户绑定
-			$sql = sprintf("UPDATE User SET weixinKey=%s WHERE id=%d", Q($weixinKey), $row['id']);
-			execOne($sql);
+			dbUpdate("User", ["weixinKey"=>$weixinKey], $row["id"]);
 			//微信用户失效，今后无法登录
 			$key = 'merge-'.$weixinKey;
-			$sql = sprintf("UPDATE User SET weixinKey=%s WHERE id=$userId", Q($key));
-			execOne($sql);
+			dbUpdate("User", ["weixinKey"=>$key], $userId);
+			$_SESSION["uid"] = $row["id"];
 		}else{
 			//将手机号与微信用户绑定
-			$sql = sprintf("UPDATE User SET phone=%s WHERE id=$userId", Q($phone));
-			execOne($sql);
+			dbUpdate("User", ["phone"=>$phone], $userId);
 		}
 	}
 }
@@ -299,13 +339,12 @@ function regUser($phone, $pwd)
 	$phone1 = preg_replace('/^\d{3}\K(\d{4})/', '****', $phone);
 	$name = "用户" . $phone1;
 
-	$sql = sprintf("INSERT INTO User (phone, pwd, name, createTm) VALUES (%s, %s, %s, '%s')",
-		Q($phone),
-		Q(hashPwd($pwd)),
-		Q($name),
-		date(FMT_DT)
-	);
-	$id = execOne($sql, true);
+	$id = dbInsert("User", [
+		"phone" => $phone,
+		"pwd" => hashPwd($pwd),
+		"name" => $name,
+		"createTm" => date(FMT_DT)
+	]);
 	addToPwdTable($pwd);
 	$ret = ["id"=>$id];
 
@@ -319,13 +358,12 @@ function regEmp($phone, $pwd)
 	$phone1 = preg_replace('/^\d{3}\K(\d{4})/', '****', $phone);
 	$name = "员工" . $phone1;
 
-	$sql = sprintf("INSERT INTO Employee (phone, pwd, name, createTm) VALUES (%s, %s, %s, '%s')",
-		Q($phone),
-		Q(hashPwd($pwd)),
-		Q($name),
-		date(FMT_DT)
-	);
-	$id = execOne($sql, true);
+	$id = dbInsert("Employee", [
+		"phone" => $phone,
+		"pwd" => hashPwd($pwd),
+		"name" => $name,
+		"createTm" => date(FMT_DT)
+	]);
 	addToPwdTable($pwd);
 	$ret = ["id"=>$id];
 
@@ -484,10 +522,7 @@ function api_logout()
 function setUserPwd($userId, $pwd, $genToken)
 {
 	# change password
-	$sql = sprintf("UPDATE User SET pwd=%s WHERE id=%d", 
-		Q(hashPwd($pwd)),
-		$userId);
-	execOne($sql);
+	dbUpdate("User", ["pwd"=>hashPwd($pwd)], $userId);
 
 	if ($genToken) {
 		list($uname, $pwd) = queryOne("SELECT phone, pwd FROM User WHERE id={$userId}");
@@ -501,10 +536,7 @@ function setUserPwd($userId, $pwd, $genToken)
 function setEmployeePwd($empId, $pwd, $genToken)
 {
 	# change password
-	$sql = sprintf("UPDATE Employee SET pwd=%s WHERE id=%d", 
-		Q(hashPwd($pwd)),
-		$empId);
-	execOne($sql);
+	dbUpdate("Employee", ["pwd"=>hashPwd($pwd)], $empId);
 
 	if ($genToken) {
 		list($uname, $pwd) = queryOne("SELECT phone, pwd FROM Employee WHERE id={$empId}");
@@ -522,12 +554,10 @@ function addToPwdTable($pwd)
 		return;
 	$id = queryOne("SELECT id FROM Pwd WHERE pwd=" . Q($pwd));
 	if ($id === false) {
-		$sql = sprintf("INSERT INTO Pwd (pwd, cnt) VALUES (%s, 1)", Q($pwd));
-		execOne($sql);
+		$id = dbInsert("Pwd", ["pwd"=>$pwd, "cnt"=>1]);
 	}
 	else {
-		$sql = "UPDATE Pwd SET cnt=cnt+1 WHERE id={$id}";
-		execOne($sql);
+		dbUpdate("Pwd", ["cnt"=>dbExpr("cnt+1")], $id);
 	}
 }
 
@@ -561,6 +591,9 @@ function api_chpwd()
 		if ($row === false)
 			throw new MyException(E_AUTHFAIL, "bad password", "密码验证失败");
 	}
+	else { // 使用验证码
+		validateDynCode($code);
+	}
 	# change password
 	if($type == "user"){
 		$rv = setUserPwd($uid, $pwd, true);
@@ -581,3 +614,36 @@ function api_bindUser()
 	$imp = LoginImpBase::getInstance();
 	$imp->onBindUser($phone);
 }
+
+function api_login2()
+{
+	$wxCode = mparam("wxCode");
+
+	//根据wxCode 获取 weixinOpenId
+	$params = [
+		"appid" => Login::$wxApp["appid"],
+		"secret" => Login::$wxApp["secret"],
+		"js_code" => $wxCode,
+		"grant_type" => "authorization_code"
+	];
+	$url = makeUrl("https://api.weixin.qq.com/sns/jscode2session", $params);
+	$rv = httpCall($url);
+	$ret = json_decode($rv, true);
+	// 成功时返回 {openid, session_key} (没有errcode!), 失败时返回 {errcode, errmsg}
+	if (@!$ret["openid"]) {
+		logit("login2(wxCode) error: $rv");
+		throw new MyException(E_AUTHFAIL, @$ret["errmsg"]);
+	}
+	// {openid, session_key, unionid?, ...}
+	// TODO: get user info?
+	$wxUserInfo =  [
+		"openid" => $ret["openid"]
+	];
+	$imp = LoginImpBase::getInstance();
+	$ret = $imp->onWeixinLogin($wxUserInfo, null);
+
+	$rv = callSvcInt("User.get");
+	$ret += $rv;
+	return $ret;
+}
+

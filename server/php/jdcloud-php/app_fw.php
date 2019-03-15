@@ -92,6 +92,15 @@ P_DBCRED格式为`{用户名}:{密码}`，或其base64编码后的值，如
 @key P_URL_PATH 环境变量。项目的URL路径，如"/jdcloud", 用于定义cookie生效的作用域，也用于拼接相对URL路径。
 @see getBaseUrl
 
+PHP默认的session过期时间为1440s(24分钟)，每次在使用session时，以1/1000的概率检查过期。
+要配置它，可以应用程序的conf.user.php中设置，如：
+
+	ini_set("session.gc_maxlifetime", "2592000"); // 30天过期
+
+测试时，想要到时间立即清除session，可以设置：
+
+	ini_set("session.gc_probability", "1000"); // 1000/1000概率做回收。每次访问都回收，性能差，仅用于测试。
+
 ## 应用框架
 
 继承AppBase类，可实现提供符合BQP协议接口的模块。[api_fw](#api_fw)框架就是使用它的一个典型例子。
@@ -237,7 +246,7 @@ function param_varr($str, $type, $name)
 		$row1 = [];
 		foreach ($row as $e) {
 			list($t, $optional) = $elemTypes[$i];
-			if ($e == null) {
+			if ($e == null || $e === "null") {
 				if ($optional) {
 					++$i;
 					$row1[] = null;
@@ -519,6 +528,14 @@ function mfparam($name)
 }
 */
 
+/**
+@fn getBcParam($name, $defVal=null)
+@fn setBcParam($name, $value)
+
+TODO: BC是什么？改名？
+
+获取或设置特别的HTTP头部参数。
+ */
 function getBcParam($name, $defVal = null)
 {
 	$name1 = "HTTP_BC_" . strtoupper($name);
@@ -562,19 +579,61 @@ function getRsHeader($sth)
 	return $h;
 }
 
-function getRsAsTable($sql)
+/**
+@fn queryAllWithHeader($sql, $wantArray=false)
+@alias getRsAsTable($sql)
+
+查询SQL，返回筋斗云table格式：{@h, @d} 
+h是标题字段数组，d是数据行。
+即queryAll函数的带表格标题版本。
+
+	$tbl = queryAllWithHeader("SELECT id, name FROM User");
+
+返回示例：
+
+	[
+		"h"=>["id","name"],
+		"d"=>[ [1,"name1"], [2, "name2"]]
+	]
+
+如果查询结果为空，则返回：
+
+	[ "h" => [], "d" => [] ];
+
+如果指定了参数$wantArray=true, 则返回二维数组，其中首行为标题行：
+
+	$tbl = queryAllWithHeader("SELECT id, name FROM User", true);
+
+返回：
+
+	[ ["id", "name"], [1, "name1"], [2, "name2"] ]
+
+如果查询结果为空，则返回:
+
+	[ [], [] ]
+
+@see queryAll
+ */
+function queryAllWithHeader($sql, $wantArray=false)
 {
 	global $DBH;
 	$sth = $DBH->query($sql);
-	$wantArray = param("wantArray/b", false);
-	if ($wantArray) {
-		return $sth->fetchAll(PDO::FETCH_ASSOC);
-	}
 
 	$h = getRsHeader($sth);
 	$d = $sth->fetchAll(PDO::FETCH_NUM);
 
-	return ["h"=>$h, "d"=>$d];
+	if ($wantArray) {
+		$ret = array_merge([$h], $d);
+	}
+	else {
+		$ret = ["h"=>$h, "d"=>$d];
+	}
+	return $ret;
+}
+
+function getRsAsTable($sql)
+{
+	return queryAllWithHeader($sql);
 }
 
 /**
@@ -777,7 +836,7 @@ function dbconn($fnConfirm = null)
 		exit;
 	}
 	try {
-		@$DBH = new MyPDO ($C[0], $C[1], $C[2]);
+		@$DBH = new JDPDO ($C[0], $C[1], $C[2]);
 	}
 	catch (PDOException $e) {
 		$msg = $GLOBALS["TEST_MODE"] ? $e->getMessage() : "dbconn fails";
@@ -785,6 +844,7 @@ function dbconn($fnConfirm = null)
 	}
 	
 	if ($DBTYPE == "mysql") {
+		++ $DBH->skipLogCnt;
 		$DBH->exec('set names utf8');
 	}
 	$DBH->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION); # by default use PDO::ERRMODE_SILENT
@@ -812,6 +872,7 @@ function Q($s, $dbh = null)
 {
 	if ($s === null)
 		return "null";
+	$s = str_replace("\\", "\\\\", $s);
 	return "'" . str_replace("'", "\\'", $s) . "'";
 	//return $dbh->quote($s);
 }
@@ -834,7 +895,7 @@ function sql_concat()
 执行SQL语句，如INSERT, UPDATE等。执行SELECT语句请使用queryOne/queryAll.
 
 	$token = mparam("token");
-	execOne("UPDATE cinf SET appleDeviceToken=" . Q($token));
+	execOne("UPDATE Cinf SET appleDeviceToken=" . Q($token));
 
 注意：在拼接SQL语句时，对于传入的string类型参数，应使用Q函数进行转义，避免SQL注入攻击。
 
@@ -847,7 +908,7 @@ function sql_concat()
 上面两个例子，用dbInsert/dbUpdate函数，无须使用Q函数防注入，也无须考虑字段值是否要加引号：
 
 	// 更新操作示例
-	$cnt = dbUpdate("Cinf", ["appleDeviceToken" => $token]);
+	$cnt = dbUpdate("Cinf", ["appleDeviceToken" => $token], "ALL");
 
 	// 插入操作示例
 	$hongbaoId = dbInsert("Hongbao", [
@@ -951,6 +1012,10 @@ function queryOne($sql, $assoc = false)
 	// 可转成table格式返回
 	return objarr2table($rows);
 
+queryAll支持执行返回多结果集的存储过程，这时返回的不是单一结果集，而是结果集的数组：
+
+	$allRows = queryAll("call syncAll()");
+
 @see objarr2table
  */
 function queryAll($sql, $assoc = false)
@@ -962,9 +1027,14 @@ function queryAll($sql, $assoc = false)
 	if ($sth === false)
 		return false;
 	$fetchMode = $assoc? PDO::FETCH_ASSOC: PDO::FETCH_NUM;
-	$rows = $sth->fetchAll($fetchMode);
-	$sth->closeCursor();
-	return $rows;
+	$allRows = [];
+	do {
+		$rows = $sth->fetchAll($fetchMode);
+		$allRows[] = $rows;
+	}
+	while ($sth->nextRowSet());
+	// $sth->closeCursor();
+	return count($allRows)>1? $allRows: $allRows[0];
 }
 
 /**
@@ -974,7 +1044,7 @@ e.g.
 
 	$orderId = dbInsert("Ordr", [
 		"tm" => date(FMT_DT),
-		"tm1" => "=now()", // "="开头，表示是SQL表达式
+		"tm1" => dbExpr("now()"), // 使用dbExpr直接提供SQL表达式
 		"amount" => 100,
 		"dscr" => null // null字段会被忽略
 	]);
@@ -1004,10 +1074,11 @@ function dbInsert($table, $kv)
 			$values .= ", ";
 		}
 		$keys .= $k;
-		if (is_numeric($v))
-			$values .= $v;
-		else if (is_string($v) && $v[0] === '=') {
-			$values .= substr($v, 1);
+		if ($v instanceof dbExpr) { // 直接传SQL表达式
+			$values .= $v->val;
+		}
+		else if (is_array($v)) {
+			throw new MyException(E_PARAM, "dbInsert: array is not allowed");
 		}
 		else {
 			$values .= Q(htmlEscape($v));
@@ -1024,6 +1095,18 @@ function dbInsert($table, $kv)
 @class BatchInsert
 
 大批量为某表添加记录，一次性提交。
+
+	$bi = new BatchInsert($table, $headers, $opt=null);
+
+- headers: 列名数组(如["name","dscr"])，或逗号分隔的字符串(如"name,dscr")
+- opt.batchSize/i?=0: 指定批大小。0表示不限大小。
+- opt.useReplace/b?=false: 默认用"INSERT INTO"语句，设置为true则用"REPLACE INFO"语句。一般用于根据某unique index列添加或更新行。
+- opt.debug/b?=false: 如果设置为true, 只输出SQL语句，不插入数据库。
+
+	$bi->add($row);
+
+- row: 可以是值数组或关联数组。如果是值数组，必须与headers一一对应，比如["name1", "dscr1"]；
+ 如果是关联数组，按headers中字段自动取出值数组，这样关联数组中即使多一些字段也无影响，比如["name"=>"name1", "dscr"=>"dscr1", "notUsedCol"=100]。
 
 示例：
 
@@ -1045,17 +1128,36 @@ class BatchInsert
 {
 	private $sql0;
 	private $batchSize;
+	private $headers;
+	private $debug;
 
 	private $sql;
 	private $n = 0;
 	private $retn = 0;
 	function __construct($table, $headers, $opt=null) {
 		$verb = @$opt["useReplace"]? "REPLACE": "INSERT";
-		$this->sql0 = "$verb INTO $table ($headers) VALUES ";
+		if (is_string($headers)) {
+			$headerStr = $headers;
+			$headers = preg_split('/\s*,/\s*/', $headerStr);
+		}
+		else {
+			$headerStr = join(',', $headers);
+		}
+		$this->headers = $headers;
+		$this->sql0 = "$verb INTO $table ($headerStr) VALUES ";
 		$this->batchSize = @$opt["batchSize"]?:0;
+		$this->debug = @$opt["debug"]?:false;
 	}
 	function add($row) {
 		$values = '';
+		// 如果是关联数组，转成值数组
+		if (! isset($row[0])) {
+			$row0 = [];
+			foreach ($this->headers as $hdr) {
+				$row0[] = $row[$hdr];
+			}
+			$row = $row0;
+		}
 		foreach ($row as $v) {
 			if ($v === '')
 				$v = "NULL";
@@ -1076,7 +1178,13 @@ class BatchInsert
 	}
 	function exec() {
 		if ($this->n > 0) {
-			$this->retn += execOne($this->sql);
+			if (! $this->debug) {
+				$this->retn += execOne($this->sql);
+			}
+			else {
+				echo($this->sql);
+				$this->retn += $this->n;
+			}
 			$this->sql = null;
 			$this->n = 0;
 		}
@@ -1104,10 +1212,24 @@ function flag_getExpForSet($k, $v)
 	return "$k1=" . $v;
 }
 
+class DbExpr
+{
+	public $val;
+	function __construct($val) {
+		$this->val = $val;
+	}
+}
+
+function dbExpr($val)
+{
+	return new DbExpr($val);
+}
+
 /**
 @fn dbUpdate(table, kv, id_or_cond?) -> cnt
 
-@param id_or_cond 查询条件，如果是数值比如100或"100"，则当作条件"id=100"处理；否则直接作为查询表达式，比如"qty<0"；如果未指定则无查询条件。
+@param id_or_cond 查询条件，如果是数值比如100或"100"，则当作条件"id=100"处理；否则直接作为查询表达式，比如"qty<0"；
+为了安全，cond必须指定值，不可为空（避免因第三参数为空导致误更新全表!）。如果要对全表更新，可传递特殊值"ALL"，或用"1=1"之类条件。
 
 e.g.
 
@@ -1121,14 +1243,23 @@ e.g.
 
 	// UPDATE Ordr SET tm=now() WHERE tm IS NULL
 	$cnt = dbUpdate("Ordr", [
-		"tm" => "=now()"  // "="开头，表示是SQL表达式
+		"tm" => dbExpr("now()")  // 使用dbExpr，表示是SQL表达式
 	], "tm IS NULL);
 
+	// 全表更新，没有条件。UPDATE Cinf SET appleDeviceToken={token}
+	$cnt = dbUpdate("Cinf", ["appleDeviceToken" => $token], "ALL");
+
 */
-function dbUpdate($table, $kv, $cond=null)
+function dbUpdate($table, $kv, $cond)
 {
-	if (isset($cond) && is_numeric($cond)) {
+	if ($cond === null)
+		throw new MyException(E_SERVER, "bad cond");
+
+	if (is_numeric($cond)) {
 		$cond = "id=$cond";
+	}
+	else if ($cond === "ALL") {
+		$cond = null;
 	}
 	$kvstr = "";
 	foreach ($kv as $k=>$v) {
@@ -1147,12 +1278,11 @@ function dbUpdate($table, $kv, $cond=null)
 		// 空串或null置空；empty设置空字符串
 		if ($v === "" || $v === "null")
 			$kvstr .= "$k=null";
-		else if (is_numeric($v))
-			$kvstr .= "$k=$v";
-		else if (is_string($v) && $v[0] === '=')
-			$kvstr .= $k . $v;
 		else if ($v === "empty")
 			$kvstr .= "$k=''";
+		else if ($v instanceof dbExpr) { // 直接传SQL表达式
+			$kvstr .= $k . '=' . $v->val;
+		}
 		else if (startsWith($k, "flag_") || startsWith($k, "prop_"))
 		{
 			$kvstr .= flag_getExpForSet($k, $v);
@@ -1173,6 +1303,51 @@ function dbUpdate($table, $kv, $cond=null)
 	}
 	return $cnt;
 }
+/**
+translateKey(&$params, $fromCol, $toCol, $sqlQuery, $sqlInsert=null, &$cache=null)
+
+将fromCol转换为toCol，通过sqlQuery来查询，查不到则用sqlInsert来插入。
+如果未指定sqlInsert，则查阅不到字段时报错退出。
+
+在sqlQuery和sqlInsert中，用"%s"代替参数。
+示例：
+
+	// vendorName -> vendorId
+	$params = ["vendorName" => "v1"];
+	translateKey("vendorName", "vendorId", "SELECT id FROM Vendor WHERE name=%s", "INSERT INTO Vendor (name) VALUES (%s)");
+	// $params = ["vendorId" => "101"];
+
+如果导入字段有很多重复，可以传入cache数组以提高效率，如：
+
+	$vendorCache = []; // {vendorName=>vendorId}
+	$params = ["vendorName" => "v1", "storeName" => "store1"];
+	translateKey("vendorName", "vendorId", "SELECT id FROM Vendor WHERE name=%s", "INSERT INTO Vendor (name) VALUES (%s)", $vendorCache);
+	$storeCache = []; // {storeName=>storeId}
+	translateKey("storeName", "storeId", "SELECT id FROM Store WHERE name=%s", "INSERT INTO Store (name) VALUES (%s)", $storeCache);
+
+在translateKey中会将映射表存储在$cache中供下次查阅使用，这样不用每次都查数据库。
+*/
+function translateKey(&$params, $fromCol, $toCol, $sqlQuery, $sqlInsert=null, &$cache=null)
+{
+	$val = $params[$fromCol];
+	$rv = null;
+	if (is_array($cache)) {
+		$rv = $cache[$val];
+	}
+	if ($rv === null) {
+		$qval = Q($val);
+		$rv = queryOne(sprintf($sqlQuery, $qval));
+		if ($rv === false) {
+			if ($sqlInsert == null)
+				throw new MyException(E_PARAM, "bad ref key", "在关联表中找不到\"$val\"");
+			$rv = execOne(sprintf($sqlInsert, $qval), true);
+		}
+		if (is_array($cache))
+			$cache[$val] = $rv;
+	}
+	$params[$toCol] = $rv;
+	unset($params[$fromCol]);
+}
 //}}}
 
 function isHttps()
@@ -1190,64 +1365,49 @@ function isHttps()
 /**
 @fn getBaseUrl($wantHost = true)
 
-返回 $BASE_DIR 对应的网络路径（最后以"/"结尾）。
-如果指定了环境变量 P_URL_PATH（可在conf.user.php中设置）, 则根据该变量计算；否则自动判断（如果有符号链接可能不准）
+返回 $BASE_DIR 对应的网络路径（最后以"/"结尾），一般指api.php所在路径。
+如果指定了环境变量 P_BASE_URL(可在conf.user.php中设置), 则使用该变量。
+否则自动判断（如果有代理转发则可能不准）
 
 例：
-
-	P_URL_PATH = "/myapp/" 或 P_URL_PATH = "/myapp"
-
-则
 
 	getBaseUrl() -> "http://myserver.com/myapp/"
 	getBaseUrl(false) -> "/myapp/"
 
-注意：如果使用了反向代理等机制，该函数往往无法返回正确的值。
-
+注意：如果使用了反向代理等机制，该函数往往无法返回正确的值，
 例如 http://myserver.com/8081/myapp/api.php 被代理到 http://localhost:8081/myapp/api.php
-getBaseUrl()默认返回 "http://myserver.com/myapp/" 是错误的，可以设置P_BASE_URL解决：
+getBaseUrl()默认返回 "http://localhost:8081/myapp/" 是错误的，可以设置P_BASE_URL解决：
 
-	putenv("P_URL_PATH=http://myserver.com/8081/myapp/");
-
-这样getBaseUrl()可返回该值。
+	putenv("P_BASE_URL=http://myserver.com/8081/myapp/");
 
 @see $BASE_DIR
  */
 function getBaseUrl($wantHost = true)
 {
-	if ($wantHost && getenv("P_BASE_URL")) {
-		$baseUrl = getenv("P_BASE_URL");
-		if (substr($baseUrl, -1, 1) != "/")
+	$baseUrl = getenv("P_BASE_URL");
+	if ($baseUrl) {
+		if (!$wantHost) {
+			$baseUrl = preg_replace('/^[^\/]+/', '', $baseUrl);
+		}
+		if (strlen($baseUrl) == 0 || substr($baseUrl, -1, 1) != "/")
 			$baseUrl .= "/";
-		return $baseUrl;
-	}
-
-	$baseUrl = getenv("P_URL_PATH");
-	if ($baseUrl === false)
-	{
-		// 自动判断
-		global $BASE_DIR;
-		$pat = "/" . basename($BASE_DIR) . "/";
-		if (($i = strrpos($_SERVER["SCRIPT_NAME"], $pat)) !== false)
-			$baseUrl = substr($_SERVER["SCRIPT_NAME"], 0, $i+strlen($pat));
-		else
-			$baseUrl = "/";
 	}
 	else {
-		if (substr($baseUrl, -1, 1) != "/")
-			$baseUrl .= "/";
-	}
+		// 自动判断
+		$baseUrl = dirname($_SERVER["SCRIPT_NAME"]) . "/";
 
-	if ($wantHost)
-	{
-		$host = (isHttps() ? "https://" : "http://") . $_SERVER["HTTP_HOST"]; // $_SERVER["HTTP_X_FORWARDED_HOST"]
-		$baseUrl = $host . $baseUrl;
+		if ($wantHost)
+		{
+			$host = (isHttps() ? "https://" : "http://") . $_SERVER["HTTP_HOST"]; // $_SERVER["HTTP_X_FORWARDED_HOST"]
+			$baseUrl = $host . $baseUrl;
+		}
 	}
 	return $baseUrl;
 }
 
 /**
 @fn logit($s, $addHeader=true, $type="trace")
+@alias logit($s, $type)
 
 记录日志。
 
@@ -1257,9 +1417,13 @@ function getBaseUrl($wantHost = true)
  */
 function logit($s, $addHeader=true, $type="trace")
 {
+	if (is_string($addHeader)) {
+		$type = $addHeader;
+		$addHeader = true;
+	}
 	if ($addHeader) {
 		$remoteAddr = @$_SERVER['REMOTE_ADDR'] ?: 'unknown';
-		$s = "=== REQ from [$remoteAddr] at [".strftime("%Y/%m/%d %H:%M:%S",time())."]\n" . $s . "\n";
+		$s = "=== REQ from [$remoteAddr] at [".strftime("%Y/%m/%d %H:%M:%S",time())."] " . $s . "\n";
 	}
 	else {
 		$s .= "\n";
@@ -1413,6 +1577,16 @@ function htmlEscape($s)
 // 		return $s;
 	return htmlentities($s, ENT_NOQUOTES);
 }
+// 取部分内容判断编码, 如果是gbk则自动透明转码为utf-8
+function utf8InputFilter($fp)
+{
+	$str = fread($fp, 1000);
+	rewind($fp);
+	$enc = strtolower(mb_detect_encoding($str, ["gbk","utf-8"]));
+	if ($enc && $enc != "utf-8") {
+		stream_filter_append($fp, "convert.iconv.$enc.utf-8");
+	}
+}
 //}}}
 
 // ====== classes {{{
@@ -1433,6 +1607,11 @@ class MyException extends LogicException
 	function __construct($code, $internalMsg = null, $outMsg = null) {
 		parent::__construct($outMsg, $code);
 		$this->internalMsg = $internalMsg;
+		if ($code && !$outMsg) {
+			global $ERRINFO;
+			assert(array_key_exists($code, $ERRINFO));
+			$this->message = $ERRINFO[$code];
+		}
 	}
 	public $internalMsg;
 
@@ -1440,7 +1619,7 @@ class MyException extends LogicException
 	{
 		$str = "MyException({$this->code}): {$this->internalMsg}";
 		if ($this->getMessage() != null)
-			$str .= $this->getMessage();
+			$str = "Error: " . $this->getMessage() . " - " . $str;
 		return $str;
 	}
 }
@@ -1465,8 +1644,26 @@ class DirectReturn extends LogicException
 {
 }
 
-class MyPDO extends PDO
+/**
+@class JDPDO
+@var $DBH
+
+数据库类PDO增强。全局变量$DBH为默认数据库连接，dbconn,queryAll,execOne等数据库函数都使用它。
+
+- 在调试等级P_DEBUG=9时，将SQL日志输出到前端，即`addLog(sqlStr, DEBUG=9)`。
+- 如果有符号文件CFG_CONN_POOL，则使用连接池（缺省不用）
+
+如果想忽略输出一条SQL日志，可以在调用SQL查询前设置skipLogCnt，如：
+
+	global $DBH;
+	++ $DBH->skipLogCnt;  // 若要忽略两条就用 $DBH->skipLogCnt+=2
+	$DBH->exec('set names utf8'); // 也可以是queryOne/execOne等函数。
+
+@see queryAll,execOne,dbconn
+ */
+class JDPDO extends PDO
 {
+	public $skipLogCnt = 0;
 	function __construct($dsn, $user = null, $pwd = null)
 	{
 		$opts = [];
@@ -1477,6 +1674,10 @@ class MyPDO extends PDO
 	}
 	private function addLog($str)
 	{
+		if ($this->skipLogCnt > 0) {
+			-- $this->skipLogCnt;
+			return;
+		}
 		addLog($str, 9);
 	}
 	function query($sql)
@@ -1600,18 +1801,15 @@ class AppBase
 		}
 		catch (MyException $e) {
 			list($code, $msg, $msg2) = [$e->getCode(), $e->getMessage(), $e->internalMsg];
-			if (isset($e->xdebug_message))
-				addLog($e->xdebug_message, 9);
+			addLog((string)$e, 9);
 		}
 		catch (PDOException $e) {
 			list($code, $msg, $msg2) = [E_DB, $ERRINFO[E_DB], $e->getMessage()];
-			if (isset($e->xdebug_message))
-				addLog($e->xdebug_message, 9);
+			addLog((string)$e, 9);
 		}
 		catch (Exception $e) {
 			list($code, $msg, $msg2) = [E_SERVER, $ERRINFO[E_SERVER], $e->getMessage()];
-			if (isset($e->xdebug_message))
-				addLog($e->xdebug_message, 9);
+			addLog((string)$e, 9);
 		}
 
 		try {
@@ -1826,6 +2024,7 @@ class AppFw_
 				header('Access-Control-Allow-Origin: ' . $origin);
 				header('Access-Control-Allow-Credentials: true');
 				header('Access-Control-Allow-Headers: Content-Type');
+				header('Access-Control-Expose-Headers: X-Daca-Server-Rev, X-Daca-Test-Mode, X-Daca-Mock-Mode');
 			}
 		}
 
@@ -1873,7 +2072,7 @@ class AppFw_
 		ini_set("session.cookie_httponly", 1);
 
 		$path = getenv("P_URL_PATH");
-		if ($path !== false)
+		if ($path)
 		{
 			// e.g. path=/cheguanjia
 			ini_set("session.cookie_path", $path);
@@ -1882,6 +2081,8 @@ class AppFw_
 
 	static function init()
 	{
+		mb_internal_encoding("UTF-8");
+		setlocale(LC_ALL, "zh_CN.UTF-8");
 		self::initGlobal();
 		self::setupSession();
 	}

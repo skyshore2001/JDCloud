@@ -14,6 +14,7 @@
 <script language="javascript" src="lib/easyui/locale/easyui-lang-zh_CN.js" type="text/javascript" charset="utf-8"></script>
 
 <script src="lib/jdcloud-wui.js"></script>
+<script src="lib/jdcloud-wui-ext.js"></script>
 
 <script src="app.js"></script>
 <script src="store.js"></script>
@@ -24,9 +25,9 @@
 </head>
 
 <body class="easyui-layout">
-<div id="divNoScript"><font color=red>您的浏览器禁用了脚本，不能使用本系统!</font></div>
 
 <div id="menu" region="west" split="true" title="选择操作" style="width:200px;">
+<script> if (WUI.isSmallScreen()) $("#menu").attr("data-options", "collapsed:true"); </script>
 <!--
 如果为菜单加图标，将图标和文字放到span中如：
 	<a href="?chpwd"><span><i class="fa fa-pencil-square-o"></i>修改密码</span></a>
@@ -92,8 +93,8 @@ menu-expand-group下第一个a为菜单组标题，可加"expanded"类使其默�
 
 <!-- dialogs {{{ -->
 
-<div id="dlgLogin" title="商户登录" style="padding:20px 40px 20px 40px;width:350px;height:200px;">  
-	<form method="POST">
+<div id="dlgLogin" title="商户登录" style="padding:20px 40px 20px 40px;width:350px;height:210px;">  
+	<form>
 		<table>
 			<tr>
 				<td>登录名</td>
@@ -107,8 +108,8 @@ menu-expand-group下第一个a为菜单组标题，可加"expanded"类使其默�
 	</form>
 </div>
 
-<div id="dlgChpwd" title="修改密码" style="padding:20px 40px 20px 40px;width:350px;height:230px;">  
-	<form method="POST">
+<div id="dlgChpwd" title="修改密码" style="padding:20px 40px 20px 40px;width:350px;height:240px;">  
+	<form>
 		<table>
 			<tr>
 				<td>旧密码</td>

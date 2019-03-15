@@ -1,3 +1,8 @@
+/* 色调
+前景: #04be02;
+背景: #fffffe;
+ */
+
 html, body {
 	overflow: hidden;
 }
@@ -8,7 +13,8 @@ html, body {
 }
 
 .mui-container, .mui-page {
-	background-color: #FBF9FE;
+	background-color: #fffffe;
+	font-size: 17px;
 	position: absolute;
 	top: 0;
 	right: 0;
@@ -31,11 +37,14 @@ html, body {
 	border: 0px;
 }
 
-.hd {
+.mui-page>.hd:first-child {
 	background-color: #04be02;
+	color: #fffffe;
+}
+
+.hd {
 	text-overflow: ellipsis;
 	border: 1px solid transparent; /* 防止子元素margin越界*/
-	color: #fff;
 }
 
 .bd {
@@ -46,13 +55,13 @@ html, body {
 
 .hd h1, .hd h2, .hd h3 {
 	text-align: center;
-	font-size: 1.1em;
+	font-size: inherit;
 	font-weight: normal;
 	margin: 0.1em auto;
 	line-height: 2.0;
 }
 
-.ft {
+.mui-page>.ft {
 	position: absolute;
 	bottom: 0px;
 	width: 100%;
@@ -75,7 +84,7 @@ html, body {
 	flex: 1;
 	display: block;
 	text-align: center;
-	background-color: #FBF9FE;
+	background-color: #fffffe;
 	border-top: 1px solid #ececec;
 	border-bottom: 1px solid #ececec;
 	color: black;
@@ -85,6 +94,23 @@ html, body {
 	color: #04be02;
 	font-weight: 500;
 	border-bottom: 3px solid #04be02;
+}
+
+.mui-navbar > a {
+	padding: 3px 0;
+}
+
+.mui-container.mui-ios {
+	/* 禁止选择。在IOS上尝试。 */
+	-webkit-user-select: none;
+	/* 禁止系统菜单 */
+	/*-webkit-touch-callout: none; */
+	/*-webkit-overflow-scrolling: touch;*/
+}
+
+/* 微信中不显示hd */
+.mui-weixin .mui-page > .hd:first-child {
+	display:none;
 }
 
 @keyframes slideIn {
@@ -185,17 +211,68 @@ html, body {
 	position: absolute;
 	top: 50%;
 	left: 50%;
-	max-width: 95%;
-	min-width: 60%;
+	width: 80%;
 	-webkit-transform: translate(-50%, -50%);
 	transform: translate(-50%, -50%);
 	border-radius: 5px;
 	text-align: center;
 	background-color: #fafafc;
 	display: none;
+	overflow: hidden;
 }
 .mui-dialog>.hd {
-	border-radius: 5px 5px 0 0;
+	font-size: 0.9em;
+	color: #666;
+}
+.mui-dialog>.bd {
+	padding: 10px;
+}
+
+/* 对话框底栏放置按钮组 */
+.mui-dialog>.ft {
+	position: relative;
+	line-height: 48px;
+	display: -webkit-box;
+	display: -webkit-flex;
+	display: flex;
+}
+
+.mui-dialog>.ft .mui-btn {
+	display: block;
+	-webkit-box-flex: 1;
+	-webkit-flex: 1;
+	flex: 1;
+	position: relative;
+}
+
+.mui-dialog>.ft .mui-btn:after {
+	content: " ";
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 1px;
+	bottom: 0;
+	border-left: 1px solid #D5D5D6;
+	color: #D5D5D6;
+	-webkit-transform-origin: 0 0;
+	transform-origin: 0 0;
+	-webkit-transform: scaleX(0.5);
+	transform: scaleX(0.5);
+}
+
+.mui-dialog>.ft:after {
+	content: " ";
+	position: absolute;
+	left: 0;
+	top: 0;
+	right: 0;
+	height: 1px;
+	border-top: 1px solid #D5D5D6;
+	color: #D5D5D6;
+	-webkit-transform-origin: 0 0;
+	transform-origin: 0 0;
+	-webkit-transform: scaleY(0.5);
+	transform: scaleY(0.5);
 }
 
 /* 与mui-dialog一样居中显示，但点击一下自动消失 */
@@ -249,56 +326,59 @@ html, body {
 }
 
 .mui-btn {
-	border: 1px solid rgba(0, 0, 0, 0.2);
-	border-radius: 5px;
+	border: 0;
 	display: inline-block;
-	min-width: 80px;
+	/*min-width: 80px;*/
 	text-align: center;
-	color: #454545;
-	background-color: #F7F7F7;
-	font-size: 0.8em;
-	line-height: 1.5;
-	padding: 0.1em 0.5em;
-	margin: 0.1em 0.1em;
+	background-color: #fffffe;
 	cursor: pointer;
+	color: #000;
 }
 
 .mui-btn:focus {
 	outline: 0;
 }
 
-.mui-btn:active {
-	background-color: #e7e7e7;
-}
-
 .mui-btn.primary {
-	color: #FFFFFF;
-	background-color: #04BE02;
-	border-color: transparent;
+	color: #04be02;
 }
 .mui-btn.disabled {
-	border: 1px solid rgba(0, 0, 0, 0.2);
-	background-color: #F7F7F7;
 	color: #C7C7C7;
-}
-
-.mui-btn.primary:active {
-	background-color: #04AE02;
+	pointer-events: none;
 }
 
 .mui-pullPrompt {
+	font-size: 12px;
 	overflow: hidden;
-	text-align: center;
-	vertical-align: middle;
+
+	/* 水平、垂直居中 */
+	display: -webkit-box;
+	display: -moz-box;
+	display: -ms-flexbox;
+	display: -webkit-flex;
+	display: flex;
+
+	-webkit-box-align: center; 
+	-moz-box-align: center; 
+	-ms-flex-align: center; 
+	-webkit-align-items: center; 
+	align-items: center;
+
+	-webkit-box-pack: center; 
+	-moz-box-pack: center; 
+	-ms-flex-pack: center; 
+	-webkit-justify-content: center; 
+	justify-content: center;
 }
 
 .mui-loadPrompt {
-	background-color: #FBF9FE;
+	background-color: #fffffe;
 	padding: 5px 3px;
 	text-align: center;
 	vertical-align: middle;
 }
 
+/* my css */
 .sp {
 	margin: 10px;
 }
@@ -309,6 +389,13 @@ html, body {
 
 .hidden {
 	display: none;
+}
+
+.right {
+	text-align: right;
+}
+select.right {
+	direction: rtl;
 }
 
 /* 标题栏左右侧两个图标，一般是返回和菜单。适合16x16 */
@@ -332,3 +419,128 @@ html, body {
 	right: 32px;
 }
 
+.icon {
+	background-repeat: no-repeat;
+	display: inline-block;
+	vertical-align: middle;
+}
+
+/* 适合 16x16 列表项或菜单项 */
+/* 下拉菜单左侧图标 */
+.mui-menu .icon {
+	margin: -4px 12px 0px -5px;
+}
+
+/* 列表条目左侧图标 */
+.weui-cell .icon {
+	margin: 0px 12px 0px 5px;
+}
+
+/* for jdcloud-uploadpic */
+.uploadpic{
+	/* 避免inline-block间的间隙. 若子组件要显示文字，需要指定font-size */
+	font-size: 0;
+}
+
+.uploadpic-item{
+	width: 23%;
+	padding-top: 23%;
+	height: 0;
+	margin: 1%;
+	background: no-repeat 50%;
+	background-size: cover;
+	display: inline-block;
+	position: relative;
+	border: 1px solid #d9d9d9;
+	box-sizing: border-box;
+}
+.uploadpic-btn{
+	width: 23%;
+	padding-top: 23%;
+	height: 0;
+	margin: 1%;
+	background: no-repeat 50%;
+	background-size: cover;
+	display: inline-block;
+	position: relative;
+	border: 1px solid #d9d9d9;
+	box-sizing: border-box;
+}
+.uploadpic-btn:after, .uploadpic-btn:before{
+	content: " ";
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	-webkit-transform: translate(-50%,-50%);
+	transform: translate(-50%,-50%);
+	background-color: #d9d9d9;
+}
+.uploadpic-btn:before {
+	width: 2px;
+	height: 39.5px;
+}
+.uploadpic-btn:after {
+	width: 39.5px;
+	height: 2px;
+}
+.uploadpic-btn input[type=file]{
+	position: absolute;
+	z-index: 1;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	opacity: 0;
+	-webkit-tap-highlight-color: rgba(0,0,0,0);
+}
+.uploadpic-item .uploadpic-delItem{
+	position: absolute;
+	text-align: center;
+	top: 0;
+	right: 0;
+	color: #fff;
+	width: 20px;
+	height: 20px;
+	line-height: 20px;
+	border-radius: 20px;
+	background-color: rgba(0,0,0,0.3);
+	font-size: 17px;
+	cursor: pointer;
+}
+/* jdcloud-uploadpic end*/
+
+/* overwrite weui */
+.weui-cells {
+	margin-top: 0;
+}
+
+.weui-btn {
+	cursor: pointer;
+}
+
+.weui-btn_mini {
+	min-width: 80px;
+}
+
+.weui-label {
+	min-width: 4em;
+	margin-right: 0.2em;
+	width: 20%;
+}
+.weui-cell:before {
+	right: 15px;
+	width: auto;
+}
+
+.weui-select {
+	height: auto;
+	-webkit-appearance: menulist;
+}
+
+.noData {
+	height: 50px;
+	line-height: 50px;
+	text-align: center;
+	color: #aaa;
+	font-size: 15px;
+}

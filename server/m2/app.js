@@ -27,6 +27,15 @@ function loadStatLib()
 	}
 	return dfdStatLib_;
 }
+
+var dfdUploadLib_;
+function loadUploadLib()
+{
+	if (dfdUploadLib_ == null) {
+		dfdUploadLib_ = MUI.loadScript("./lib/jdcloud-uploadpic.js");
+	}
+	return dfdUploadLib_;
+}
 //}}}
 
 // vim: set foldmethod=marker:

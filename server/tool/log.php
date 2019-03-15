@@ -2,8 +2,8 @@
 header("Cache-Control: no-cache");
 header("Content-Type: text/html; charset=UTF-8");
 
-$F = @$_GET["f"] ?: "ext";
-$F = "../{$F}.log";
+$F0 = @$_GET["f"] ?: "ext";
+$F = "../{$F0}.log";
 $MAX_READ_SZ = @intval($_GET["sz"])?:5000;
 
 $msgs = [];
@@ -45,6 +45,14 @@ loadMsgs();
 <html>
 <body>
 <style>
+p {
+  font-size: 0.6em;
+  color: grey;
+  line-height: 0.8;
+}
+xmp {
+  overflow: auto;
+}
 </style>
 
 <h2>查看日志</h2>
@@ -59,8 +67,18 @@ if (count($msgs) == 0) {
 }
 else {
 	for ($i=count($msgs)-1; $i>=0; --$i) {
-		echo "<xmp>" . $msgs[$i] . "</xmp>";
-		echo "<hr/>";
+		$hdr = null;
+		$msg = $msgs[$i];
+		$a = preg_split('/^(===.*? at \[.*?\]\s*)/', $msg, 2, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
+		if (count($a) == 2) {
+			$hdr = $a[0];
+			$msg = $a[1];
+		}
+		if ($hdr) {
+			echo "<p>" . $hdr . "</p>\n";
+		}
+
+		echo "<xmp>" . $msg . "</xmp><hr/>\n";
 	}
 }
 ?>

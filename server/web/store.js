@@ -9,6 +9,19 @@ $.extend(WUI.options, {
 });
 
 var g_data = {}; // {userInfo={id, storeId, perms,...}, hasPerm(perm)}
+
+// interface
+var DlgImport = {
+	data_: null,
+	cb_: null,
+	// data: {obj, ...} 对应dlgImport.html中的带name对象
+	// cb: 导入成功后的回调函数
+	show: function (data, cb) {
+		this.data_ = data;
+		this.cb_ = cb;
+		WUI.showDlg("#dlgImport", {modal:false});
+	}
+};
 //}}}
 
 // ====== functions {{{
@@ -104,15 +117,30 @@ function initPageHome()
 	});
 }
 
+/*
+根据用户权限，如"item,mgr"等，菜单中有perm-xxx类的元素会显示，有nperm-xxx类的元素会隐藏
+
+示例：只有mgr权限显示
+
+	<div class="perm-mgr" style="display:none"></div>
+
+示例：bx权限不显示（其它权限可显示）
+
+	<a href="#pageItem" class="nperm-bx">商品管理</a>
+
+可通过 g_data.hasPerm(perm) 查询是否有某项权限。
+ */
 function applyPermission(perms)
 {
 	// e.g. "item,mgr" - ".perm-item, .perm-mgr"
 	if (perms == null)
 		perms = "emp";
-	var sel = perms.replace(/(\w+)/g, '.perm-$1');
+	var sel = perms.replace(/([^, ]+)/g, '.perm-$1');
 	var arr = perms.split(/,/);
 	if (sel) {
 		$(sel).show();
+		var sel2 = sel.replace(/perm/g, 'nperm');
+		$(sel2).hide();
 	}
 
 	g_data.hasPerm = function (perm) {
