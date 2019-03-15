@@ -331,6 +331,39 @@ require_once("AccessControl.php");
 // ====== config {{{
 global $X_RET; // maybe set by the caller
 global $X_RET_STR;
+/**
+@var $X_RET_FN
+
+默认接口调用后输出筋斗云的`[0, data]`格式。
+若想修改返回格式，可设置该回调函数。
+
+- 如果返回对象，则输出json格式。
+- 如果返回false，应自行用echo输出。注意API日志中仍记录筋斗云返回数据格式。
+
+示例：返回 `{code, data}`格式：
+
+	global $X_RET_FN;
+	$X_RET_FN = function ($X_RET) {
+		$ret = [
+			"code" => $X_RET[0],
+			"data" => $X_RET[1]
+		];
+		if ($GLOBALS["TEST_MODE"])
+			$ret["jdData"] = $X_RET;
+		return $ret;
+	};
+
+示例：返回xml格式：
+
+	global $X_RET_FN;
+	$X_RET_FN = function ($X_RET) {
+		header("Content-Type: application/xml");
+		echo "<xml><code>$X_RET[0]</code><data>$_RET[1]</data></xml>";
+		return false;
+	};
+	
+*/
+global $X_RET_FN;
 
 const PAGE_SZ_LIMIT = 10000;
 // }}}
@@ -370,6 +403,7 @@ class ApiFw_
 
 @see $X_RET
 @see $X_RET_STR
+@see $X_RET_FN
 @see $errorFn
 @see errQuit()
 */
@@ -397,7 +431,19 @@ function setRet($code, $data = null, $internalMsg = null)
 
 	if (ApiFw_::$SOLO) {
 		global $X_RET_STR;
+		global $X_RET_FN;
 		if (! isset($X_RET_STR)) {
+			if (is_callable(@$X_RET_FN)) {
+				$ret1 = $X_RET_FN($X_RET);
+				if ($ret1 === false)
+					return;
+				if (is_string($ret1)) {
+					$X_RET_STR = $ret1;
+					echo $X_RET_STR . "\n";
+					return;
+				}
+				$X_RET = $ret1;
+			}
 			$X_RET_STR = json_encode($X_RET, $JSON_FLAG);
 		}
 		else {
@@ -419,6 +465,7 @@ function setRet($code, $data = null, $internalMsg = null)
 根据全局变量"SERVER_REV"或应用根目录下的文件"revision.txt"， 来设置HTTP响应头"X-Daca-Server-Rev"表示服务端版本信息（最多6位）。
 
 客户端框架可本地缓存该版本信息，一旦发现不一致，可刷新应用。
+服务器可使用$GLOBALS["SERVER_REV"]来取服务端版本号（6位）。
  */
 function setServerRev()
 {
@@ -426,6 +473,7 @@ function setServerRev()
 	if (! $ver)
 		return;
 	$ver = substr($ver, 0, 6);
+	$GLOBALS["SERVER_REV"] = $ver;
 	header("X-Daca-Server-Rev: {$ver}");
 }
 
@@ -633,6 +681,9 @@ class ApiLog
 	private $ac;
 	private $id;
 
+	// for batch detail (ApiLog1)
+	private $ac1, $req1, $startTm1;
+
 /**
 @var ApiLog::$lastId
 
@@ -650,7 +701,7 @@ class ApiLog
 		if (is_string($var)) {
 			$var = preg_replace('/\s+/', " ", $var);
 			if (strlen($var) > $maxLength)
-				$var = substr($var, 0, $maxLength) . "...";
+				$var = mb_substr($var, 0, $maxLength) . "...";
 			return $var;
 		}
 		if (is_scalar($var)) {
@@ -663,7 +714,7 @@ class ApiLog
 			$klen = strlen($k);
 			// 注意：有时raw http内容被误当作url-encoded编码，会导致所有内容成为key. 例如API upload.
 			if ($klen > $maxKeyLen)
-				return substr($k, 0, $maxKeyLen) . "...";
+				return mb_substr($k, 0, $maxKeyLen) . "...";
 			$len = strlen($s);
 			if ($len >= $maxLength) {
 				$s .= "$k=...";
@@ -687,7 +738,7 @@ class ApiLog
 
 	function logBefore()
 	{
-		$this->startTm = microtime(true);
+		$this->startTm = $_SERVER["REQUEST_TIME_FLOAT"] ?: microtime(true);
 
 		global $APP;
 		$type = getAppType();
@@ -702,11 +753,11 @@ class ApiLog
 			$userId = $_SESSION["adminId"];
 		}
 		if (! (is_int($userId) || ctype_digit($userId)))
-			$userId = 'NULL';
+			$userId = null;
 		$content = $this->myVarExport($_GET, 2000);
-		$ct = $_SERVER["HTTP_CONTENT_TYPE"];
+		$ct = getContentType();
 		if (! preg_match('/x-www-form-urlencoded|form-data/i', $ct)) {
-			$post = file_get_contents("php://input");
+			$post = getHttpInput();
 			$content2 = $this->myVarExport($post, 2000);
 		}
 		else {
@@ -719,10 +770,21 @@ class ApiLog
 		$ua = $_SERVER["HTTP_USER_AGENT"];
 		$ver = getClientVersion();
 
-		$sql = sprintf("INSERT INTO ApiLog (tm, addr, ua, app, ses, userId, ac, req, reqsz, ver) VALUES ('%s', %s, %s, %s, %s, $userId, %s, %s, $reqsz, %s)", 
-			date(FMT_DT), Q($remoteAddr), Q($ua), Q($APP), Q(session_id()), Q($this->ac), Q($content), Q($ver["str"])
-		);
-		$this->id = execOne($sql, true);
+		global $DBH;
+		++ $DBH->skipLogCnt;
+		$this->id = dbInsert("ApiLog", [
+			"tm" => date(FMT_DT),
+			"addr" => $remoteAddr,
+			"ua" => $ua,
+			"app" => $APP,
+			"ses" => session_id(),
+			"userId" => $userId,
+			"ac" => $this->ac,
+			"req" => $content,
+			"reqsz" => $reqsz,
+			"ver" => $ver["str"],
+			"serverRev" => $GLOBALS["SERVER_REV"]
+		]);
 		self::$lastId = $this->id;
 // 		$logStr = "=== [" . date("Y-m-d H:i:s") . "] id={$this->logId} from=$remoteAddr ses=" . session_id() . " app=$APP user=$userId ac=$ac >>>$content<<<\n";
 	}
@@ -739,13 +801,50 @@ class ApiLog
 			$X_RET_STR = json_encode($X_RET, $GLOBALS["JSON_FLAG"]);
 		$content = $this->myVarExport($X_RET_STR);
 
-		$userIdStr = "";
+		$userId = null;
 		if ($this->ac == 'login' && is_array($X_RET[1]) && @$X_RET[1]['id']) {
-			$userIdStr = ", userId={$X_RET[1]['id']}";
+			$userId = $X_RET[1]['id'];
 		}
-		$sql = sprintf("UPDATE ApiLog SET t=$iv, retval=%d, ressz=%d, res=%s {$userIdStr} WHERE id={$this->id}", $X_RET[0], strlen($X_RET_STR), Q($content));
-		$rv = execOne($sql);
+		++ $DBH->skipLogCnt;
+		$rv = dbUpdate("ApiLog", [
+			"t" => $iv,
+			"retval" => $X_RET[0],
+			"ressz" => strlen($X_RET_STR),
+			"res" => $content,
+			"userId" => $userId
+		], $this->id);
 // 		$logStr = "=== id={$this->logId} t={$iv} >>>$content<<<\n";
+	}
+
+	function logBefore1($ac1)
+	{
+		$this->ac1 = $ac1;
+		$this->startTm1 = microtime(true);
+		$this->req1 = $this->myVarExport($_GET, 2000);
+		$content2 = $this->myVarExport($_POST, 2000);
+		if ($content2 != "")
+			$this->req1 .= ";\n" . $content2;
+	}
+
+	function logAfter1()
+	{
+		global $DBH;
+		global $X_RET;
+		if ($DBH == null)
+			return;
+		$iv = sprintf("%.0f", (microtime(true) - $this->startTm1) * 1000); // ms
+		$res = json_encode($X_RET, $GLOBALS["JSON_FLAG"]);
+		$content = $this->myVarExport($res);
+
+		++ $DBH->skipLogCnt;
+		dbInsert("ApiLog1", [
+			"apiLogId" => $this->id,
+			"ac" => $this->ac1,
+			"t" => $iv,
+			"retval" => $X_RET[0],
+			"req" => $this->req1,
+			"res" => $content
+		]);
 	}
 }
 
@@ -972,12 +1071,12 @@ $file为插件主文件，可返回一个插件配置。如果未指定，则自
 
 function tableCRUD($ac1, $tbl, $asAdmin = false)
 {
-	$accessCtl = AccessControl::create($tbl, $asAdmin);
+	$accessCtl = AccessControl::create($tbl, $ac1, $asAdmin);
 	$fn = "api_" . $ac1;
 	//if (! method_exists($accessCtl, $fn))
 	if (! is_callable([$accessCtl, $fn]))
-		throw new MyException(E_PARAM, "Bad request - unknown `$tbl` method: `$ac1`");
-	$accessCtl->before($ac1);
+		throw new MyException(E_PARAM, "Bad request - unknown `$tbl` method: `$ac1`", "接口不支持");
+	$accessCtl->before();
 	$ret = $accessCtl->$fn();
 	$accessCtl->after($ret);
 	return $ret;
@@ -1011,7 +1110,7 @@ function callSvcInt($ac)
 		$ret = $fn();
 	}
 	else {
-		throw new MyException(E_PARAM, "Bad request - unknown ac: {$ac}");
+		throw new MyException(E_PARAM, "Bad request - unknown ac: {$ac}", "接口不支持");
 	}
 	if (!isset($ret))
 		$ret = "OK";
@@ -1043,6 +1142,204 @@ function api_initClient()
 	return $ret;
 }
 
+function getContentType()
+{
+	static $ct;
+	if ($ct == null) {
+		$ct = @$_SERVER["HTTP_CONTENT_TYPE"] ?: $_SERVER["CONTENT_TYPE"];
+	}
+	return $ct;
+}
+
+function getHttpInput()
+{
+	static $content;
+	if ($content == null) {
+		$ct = getContentType();
+		$content = file_get_contents("php://input");
+		if (preg_match('/charset=([\w-]+)/i', $ct, $ms)) {
+			$charset = strtolower($ms[1]);
+			if ($charset != "utf-8") {
+				@$content = iconv($charset, "utf-8//IGNORE", $content);
+			}
+			if ($content === false)
+				throw new MyException(E_PARAM, "unknown encoding $charset");
+		}
+	}
+	return $content;
+}
+
+/**
+@fn inWhiteIpList()
+
+检查调用者是否在IP白名单中。配置项为whiteIpList。
+
+@see whiteIpList
+@see api_checkIp
+*/
+function inWhiteIpList()
+{
+	$list = getenv("whiteIpList") ?: "127.0.0.1";
+	$ips = [$_SERVER["REMOTE_ADDR"], $_SERVER["HTTP_REMOTEIP"] ] + explode(',', $_SERVER["HTTP_X_FORWARDED_FOR"]);
+	foreach ($ips as $ip) {
+		$ip = trim($ip);
+		// addLog($ip);
+		if (!$ip)
+			continue;
+		if (stripos($list, $ip) !== false)
+			return true;
+	}
+	return false;
+}
+
+/**
+@fn api_checkIp()
+
+@key whiteIpList 白名单配置，默认值为"127.0.0.1"
+
+可在conf.user.php中设置whiteIpList，如
+
+	putenv("whiteIpList=115.238.59.110 127.0.0.1 ::1");
+
+要验证调用者是否在IP白名单中，不是白名单调用将直接抛错，可以调用
+
+	api_checkIp();
+
+外部可直接调用接口checkIp测试，例如用JS：
+
+	callSvr("checkIp");
+
+@see inWhiteIpList
+*/
+function api_checkIp()
+{
+	if (inWhiteIpList())
+		return;
+	$log = @sprintf("*** unauthorized call: ip is NOT in white list. ApiLog.id=%s, REMOTE_ADDR=%s, HTTP_REMOTEIP=%s, HTTP_X_FORWARDED_FOR=%s.", 
+		ApiLog::$lastId, 
+		$_SERVER["REMOTE_ADDR"], $_SERVER["HTTP_REMOTEIP"], $_SERVER["HTTP_X_FORWARDED_FOR"]);
+	logit($log);
+	throw new MyException(E_PARAM, "ip is NOT in white list", "IP不在白名单");
+}
+
+// ------ 异步调用支持 {{{
+/**
+@fn httpCallAsync($url, $postParams=null)
+
+发起调用后立即返回，即用于发起异步调用。
+默认发起GET调用，如果postParams非空(可以为字符串、数值或数组)，则发起POST调用。
+
+示例：
+
+	httpCallAsync("/jdcloud/api.php?ac=async&f=sendSms", [
+		"phone" => "13712345678",
+		"msg" => "验证码为1234"
+	]);
+
+TODO:目前只用于本机
+*/
+function httpCallAsync($url, $postParams = null)
+{
+	$host = '127.0.0.1';
+	$port = 80;
+
+	$fp = fsockopen($host, $port, $errno, $errstr, 3);
+	if (!$fp) {
+		echo "$errstr ($errno)";
+		return false;
+	}
+	$data = null;
+	if (isset($postParams)) {
+		if (is_array($postParams))
+			$data = json_encode($postParams, JSON_UNESCAPED_UNICODE);
+		else if (!is_string($postParams))
+			$data = (string)$postParams;
+	}
+
+	//stream_set_blocking($fp, 0); // 设置成非阻塞模式则担心写入失败。
+	$header = ($data? "POST": "GET") . " $url HTTP/1.1\r\nHost: $host\r\n";
+	if ($data) {
+		$header .= "Content-Type: application/json;charset=utf-8\r\n"
+			. "Content-Length: " . strlen($data) . "\r\n";
+	}
+	$header .= "Connection: Close\r\n\r\n"; //长连接关闭
+	fwrite($fp, $header);
+	// echo("$header$data"); // show log
+
+	if ($data)
+		fwrite($fp, $data);
+	 
+	fclose($fp);
+}
+
+/**
+@fn callAsync($ac, $params)
+
+@key enableAsync 配置异步调用
+
+发起异步调用请求，然后立即返回。它使用如下接口：
+
+	async(f)(params...)
+	其中params为JSON格式
+
+示例：让一个同步调用变成支持异步调用，以sendSms为例
+
+	// 1. 设置已注册的异步调用函数。建议在api.php中设置。
+	$allowedAsyncCalls = ["sendSms"];
+
+	function sendSms($phone, $msg) {
+		// 2. 为支持异步的函数加上判断分支
+		if (getenv("enableAsync") === "1") {
+			return callAsync('pushMsg', func_get_args());
+		}
+		
+		// 同步调用
+		return httpCall("...");
+	}
+
+	// 3. 在conf.user.php中配置开启异步支持。如果不配置则为同步调用，便于比较区别与调试。
+	// 打开异步调用支持, 依赖 P_BASE_URL 和 whiteIpList 设置
+	putenv("enableAsync=1");
+
+@see api_async
+*/
+function callAsync($ac, $param) {
+	$url = getBaseUrl(false) . "api.php?ac=async&f=$ac";
+	httpCallAsync($url, $param);
+}
+
+/**
+@fn api_async
+
+提供async接口，用于内部发起异步调用:
+
+	async(f)(params...)
+	params为JSON格式。
+
+注意：要求调用者在IP白名单中，配置示例：
+
+	putenv("whiteIpList=115.238.59.110 127.0.0.1 ::1");
+
+@see enableAsync
+@see whiteIpList
+*/
+function api_async() {
+	api_checkIp();
+	@$f = $_GET["f"];
+	global $allowedAsyncCalls;
+	if (!($f && in_array($f, $allowedAsyncCalls) && function_exists($f)))
+		throw new MyException(E_PARAM, "bad async fn: $f");
+
+	$param = file_get_contents("php://input");
+	$arr = json_decode($param, true);
+	if (! is_array($arr))
+		throw new MyException(E_PARAM, "bad param for async fn $f: $param");
+	
+	putenv("enableAsync=0");
+	return call_user_func_array($f, $arr);
+}
+// }}}
+
 // ====== main routine {{{
 function apiMain()
 {
@@ -1057,9 +1354,9 @@ function apiMain()
 
 	$supportJson = function () {
 		// 支持POST为json格式
-		$ct = @$_SERVER["HTTP_CONTENT_TYPE"] ?: $_SERVER["CONTENT_TYPE"];
+		$ct = getContentType();
 		if (strstr($ct, "/json") !== false) {
-			$content = file_get_contents("php://input");
+			$content = getHttpInput();
 			@$arr = json_decode($content, true);
 			if (!is_array($arr))
 				throw new MyException(E_PARAM, "bad json-format body");
@@ -1080,6 +1377,12 @@ function apiMain()
 		$api = new ApiApp();
 		$api->onBeforeExec[] = $supportJson;
 		$api->exec();
+
+		// 删除空会话
+		if (isset($_SESSION) && count($_SESSION) <= 1) {
+			// jd-php框架设置过lastAccess，故空会话至少有1个key
+			@session_destroy();
+		}
 	}
 }
 
@@ -1237,14 +1540,17 @@ class ApiApp extends AppBase
 		if ($method !== "POST")
 			throw new MyException(E_PARAM, "batch MUST use `POST' method");
 
-		$s = file_get_contents("php://input");
+		$s = getHttpInput();
 		$calls = json_decode($s, true);
 		if (! is_array($calls))
 			throw new MyException(E_PARAM, "bad batch request");
 
 		global $DBH;
 		global $X_RET;
-		// 以下过程不允许抛出异常
+
+		// 以下过程不允许抛出异常, 一旦有异常, 返回将不符合batch协议
+		try {
+
 		$batchApiApp = new BatchApiApp($this, $useTrans);
 		if ($useTrans && !$DBH->inTransaction())
 			$DBH->beginTransaction();
@@ -1273,6 +1579,9 @@ class ApiApp extends AppBase
 				BatchApiApp::handleBatchRef($call["ref"], $retVal);
 			}
 			$_REQUEST = array_merge($_GET, $_POST);
+			if ($this->apiLog) {
+				$this->apiLog->logBefore1($call["ac"]);
+			}
 
 			$batchApiApp->ac = $call["ac"];
 			// 如果batch使用trans, 则单次调用不用trans
@@ -1286,11 +1595,22 @@ class ApiApp extends AppBase
 				}
 			}
 			$retVal[] = $X_RET;
+			if ($this->apiLog) {
+				$this->apiLog->logAfter1();
+			}
 		}
 		if ($useTrans && $DBH && $DBH->inTransaction())
 			$DBH->commit();
 		ApiFw_::$SOLO = $solo;
 		setRet(0, $retVal);
+
+		} /* try */
+		catch (Exception $ex) {
+			ApiFw_::$SOLO = $solo;
+			logit($ex);
+			throw $ex;
+		}
+
 		return $retVal;
 	}
 

@@ -194,6 +194,12 @@ postParams可以是一个kv数组或字符串，也可以是一个文件名(以"
 如果CURL返回错误，可在此查阅错误码：
 http://curl.haxx.se/libcurl/c/libcurl-errors.html
 
+出错及慢调用会记录到日志中，以下环境变量可控制日志记录：
+
+	# 默认情况下：日志记录到trace.log中，记录超过1s的慢调用
+	P_SLOW_CALL_LOG=trace
+	P_SLOW_CALL_VAL=1
+
 @see makeUrl
 */
 function httpCall($url, $postParams=null, $opt=[])
@@ -237,16 +243,25 @@ function httpCall($url, $postParams=null, $opt=[])
 		curl_setopt($h, CURLOPT_POST, true);
 		curl_setopt($h, CURLOPT_POSTFIELDS, $data);
 	}
+	$t0 = microtime(true);
 	$content = curl_exec($h);
+	$tv = round(microtime(true) - $t0, 2);
 // 	$status = curl_getinfo($h);
 // 	if (intval($status["http_code"]) != 200)
 // 		return false;
+	$slowLogFile = getenv("P_SLOW_CALL_LOG") ?: "trace";
 	if (! $content)
 	{
 		$errno = curl_errno($h);
 		curl_close($h);
-		throw new MyException(E_SERVER, "curl fail to connect $url, errcode=$errno");
+		logit("httpCall error $errno: time={$tv}s, url=$url", true, $slowLogFile);
+		throw new MyException(E_SERVER, "curl fail to connect $url, errcode=$errno, time={$tv}s");
 		// echo "<a href='http://curl.haxx.se/libcurl/c/libcurl-errors.html'>错误原因查询</a></br>";
+	}
+	// slow log
+	$slowVal = getenv("P_SLOW_CALL_VAL") ?: 1;
+	if ($tv > $slowVal) {
+		logit("httpCall slow call: time={$tv}s, url=$url", true, $slowLogFile);
 	}
 	curl_close($h);
 	return $content;
@@ -335,6 +350,58 @@ function arrayCmp($a1, $a2, $fnEq, $cb)
 		if (! array_key_exists($i, $mark)) {
 			$cb(null, $a2[$i]);
 		}
+	}
+}
+
+/**
+@fn addToStr(&$str, $str1, $sep=',')
+
+添加字符串到str. str开始必须为null。
+
+	$atts = null;
+	addToStr($atts, "100");
+	addToStr($atts, "200");
+	// $atts = "100,200"
+
+*/
+function addToStr(&$str, $str1, $sep=',')
+{
+	if (! $str1)
+		return;
+	if ($str === null)
+		$str = $str1;
+	else
+		$str .= $sep . $str1;
+}
+
+/**
+@fn arrCopy(&$dst, $src, $fields)
+
+将数组$src中指定字段复制到$dst中。
+数组$fields指定字段列表。如果字段复制后需要改名，可以以[$dstName, $srcName]这样的数组来表示。
+
+示例：将workItem提取指定字段后插入数据库中：
+
+	$workItem = ["repairWiId"=>$id, "wiName"=>$name, ...];
+	$wiData = ["orderId" => $orderId];
+	arrCopy($wiData, $workItem, [
+		["code", "repairWiId"], // 复制后改名，即 $wiData["code"] = $workItem["repairWiId"]
+		"name",
+		"saleWorkQty",
+		["addFlag", "isAdd"]
+	]);
+	dbInsert("WorkItem", $wiData);
+
+*/
+function arrCopy(&$ret, $arr, $fields)
+{
+	if ($ret == null)
+		$ret = [];
+	foreach ($fields as $f) {
+		if (is_array($f))
+			@$ret[$f[0]] = $arr[$f[1]];
+		else
+			@$ret[$f] = $arr[$f];
 	}
 }
 

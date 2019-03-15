@@ -36,7 +36,7 @@ interface IWxSupport
 	// 向用户推送订单提醒
 	// msg={header, \%fixedBody, \%body, footer}
 	// fixedBody/body={key => value}
-	function sendUserNotification($wxOpenId, $msg, $linkUrl);
+	function sendUserNotification($weixinKey, $msg, $linkUrl=null);
 }
 
 // 推送消息
@@ -53,11 +53,13 @@ function onCreateExt($extType)
 	$obj = null;
 	switch ($extType) {
 	case Ext_WxSupport:
-		/* TODO
-		require_once(__DIR__ . "/../weixin/WxSupport.php");
-		$obj = new WxSupport();
-		 */
-		$obj = new ExtMock();
+		
+		if(@$GLOBALS["MOCK_MODE"]){
+			$obj = new ExtMock();
+		}else{
+			require_once(__DIR__ . "/../../weixin/WxSupport.php");
+			$obj = new WxSupport();
+		}
 		break;
 
 	case Ext_SmsSupport:
@@ -93,7 +95,7 @@ class ExtMock implements ISmsSupport, IWxSupport, IPushMsg
 
 	function prepay($forJS, $outTradeNo, $amount, $dscr)
 	{
-		$log = "[微信支付] forJS=`{$forJS}`, outTradeNo=`{$outTradeNo}`, amount=`{$amount}`, dscr=`{$dscr}`";
+		$log = "[发起微信支付] forJS=`{$forJS}`, outTradeNo=`{$outTradeNo}`, amount=`{$amount}`, dscr=`{$dscr}`";
 		logext($log);
 
 		return ["err" => "mock"];
@@ -110,11 +112,11 @@ class ExtMock implements ISmsSupport, IWxSupport, IPushMsg
 	// msg={header, \%fixedBody, \%body, footer}
 	// fixedBody/body={key => value}
 	// throw exception for error
-	function sendUserNotification($wxOpenId, $msg, $linkUrl)
+	function sendUserNotification($weixinKey, $msg, $linkUrl=null)
 	{
 		$str = PayImpBase::msgStructToStr($msg);
 
-		$log = "[微信用户推送] wxOpenId=`{$wxOpenId}`, linkUrl=`{$linkUrl}`, msg=\n`$str`\n";
+		$log = "[微信用户推送] weixinKey=`{$weixinKey}`, linkUrl=`{$linkUrl}`, msg=\n`$str`\n";
 		logext($log);
 	}
 

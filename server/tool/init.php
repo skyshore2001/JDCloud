@@ -115,6 +115,12 @@ function checkEnv()
 		"result" => $val
 	];
 
+	$val = function_exists('mb_substr');
+	$check["mbstring"] = [
+		"value"=>$val? "支持": "不可用",
+		"result" => $val
+	];
+
 	// upload
 	$val = sprintf("upload_max_filesize=%s, post_max_size=%s, max_execution_time=%s", 
 		ini_get('upload_max_filesize'),
@@ -236,8 +242,10 @@ if (getenv("P_DB") === false) {
 	putenv("P_DB={$db}");
 	putenv("P_DBCRED={$dbcred_b64}");
 }
-putenv("P_URL_PATH={$urlPath}");
 putenv("P_ADMIN_CRED={$adminCred}");
+// putenv("P_TEST_MODE=1");
+// putenv("P_DEBUG=9");
+// putenv("P_URL_PATH={$urlPath}");
 EOL;
 
 	$rv = file_put_contents(CONF_FILE, $str);
@@ -317,6 +325,9 @@ p.hint {
 	</tr>
 	<tr>
 		<td>GD图像库</td><td data-item="gd"></td>
+	</tr>
+	<tr>
+		<td>中文支持(mbstring模块)</td><td data-item="mbstring"></td>
 	</tr>
 	<tr>
 		<td>上传文件设置</td><td data-item="uploadsz"></td>
