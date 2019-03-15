@@ -2,6 +2,8 @@
 
 require_once('php/autoload.php');
 require_once('php/jdcloud-php/api_fw.php');
+require_once('php/api_objects.php');
+
 // ====== config {{{
 const AUTH_GUEST = 0;
 // 登陆类型

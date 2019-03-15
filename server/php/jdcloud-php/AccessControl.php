@@ -69,7 +69,7 @@ AccessControl简写为AC，同时AC也表示自动补全(AutoComplete).
 
 @fn AccessControl::onQuery() (for get/query)  用于对查询条件进行设定。
 @fn AccessControl::onValidate()  (for add/set). 验证添加和更新时的字段，或做自动补全(AutoComplete)工作。
-@fn	AccessControl::onValidateId() (for get/set/del) 用于对id字段进行检查。比如在del时检查用户是否有权操作该记录。
+@fn	AccessControl::onValidateId() (for get/set/del) 用于对id字段进行检查。比如在del时检查用户是否有权操作该记录。可在其中设置$this->id。
 
 上节例子中，用户可以操作系统的所有订单。
 
@@ -125,7 +125,7 @@ AccessControl简写为AC，同时AC也表示自动补全(AutoComplete).
 - 在onValidate中，对添加操作时的字段做自动补全。由于添加和更新都会走这个接口，所以用 $this->ac 判断只对添加操作时补全。
   由于添加和更新操作的具体字段都通过 $_POST 来传递，故直接设置 $_POST中的相应字段即可。
 
-## 虚拟字段
+## 虚拟字段(VCol)
 
 @var AccessControl::$vcolDefs (for get/query) 定义虚拟字段
 
@@ -154,7 +154,7 @@ query接口的"..."之后就是虚拟字段。后缀"?"表示是非缺省字段�
 			[
 				"res" => ["u.name AS userName", "u.phone AS userPhone"],
 				"join" => "INNER JOIN User u ON u.id=t0.userId",
-				// "default" => false, // 指定true表示Ordr.query在不指定res时默认会返回该字段。一般不建议设置为true.
+				// "default" => false, // 指定true表示Ordr.query在不指定res时或res中以"*"开头时将默认会返回该字段。
 			],
 			[
 				"res" => ["log_cr.tm AS createTm"],
@@ -162,6 +162,15 @@ query接口的"..."之后就是虚拟字段。后缀"?"表示是非缺省字段�
 			]
 		]
 	}
+
+- default: 默认虚拟字段，示例："*,picCnt"表示返回t0表所有字段加默认虚拟字段，再加指定的picCnt字段；而"t0.*,picCnt"返回t0表的所有字段以及picCnt字段，不含默认虚拟字段；
+ 对移动端应用接口，尽量不使用default=true，让前端自由控制。对管理平台接口，列表页和详情对话框上均显示的虚拟字段设置为default=true比较方便，因为链接方式打开详情对话框时，只能直接调用"Obj.query"接口，不方便指定res参数。
+
+注意：如果需要在程序中引入某个关联表定义，可以调用addVCol显式指定，例如：
+
+	$this->addVcol("userName"); // 在SQL语句中添加SELECT userName ... JOIN User
+	// 如果不想影响SELECT字段:
+	$this->addVcol("userName", false, "-"); // 只在SQL语句中添加 JOIN User
 
 ### 关联字段依赖
 
@@ -327,6 +336,115 @@ props字段与之类似，flags字段中一个标志是一个字母，而props�
 
 	Ordr.set(id=1)(prop_go=1/0, flag_v=1/0)
 
+### 外部虚拟字段(ExtVCol)
+
+(v5.2) 增加“外部虚拟字段”用于创建嵌套查询。
+
+#### 嵌套查询
+
+示例：下面已定义y, m两个虚拟字段，现在基于y和m再创建新的虚拟字段ym，可以这样：
+
+	$vcolDefs = [
+		[
+			"res" => ["year(tm) y", "month(tm) m"],
+		],
+		[
+			"res" => ["concat(y, '-', m) ym"],
+			// 用isExt指定这是外部虚拟字段
+			"isExt" => true,
+			// 用require指定所有依赖的内层字段
+			"require" => 'y,m'
+		]
+	]
+
+query/get接口生成的查询语句大致为：
+
+	SELECT t0.*, concat(y, '-', m) ym
+	FROM (
+		SELECT t0.id,year(tm) y,month(tm) m FROM ApiLog t0
+		WHERE ...
+	) t0
+
+注意：即使在调用接口时用res参数指定了返回字段，外部虚拟字段依赖的内部字段也将返回。比如query(res="id,ym")返回`tbl(id,y,m,ym)`.
+
+注意：设置require或res属性时，如果依赖的是表的字段，应加表名，如"t0.tm, t1.name"，如果是虚拟字段，则不加表名，如"y,m"。
+
+注意：关于时间统计相关的虚拟字段，一般通过tmCols函数来指定：
+
+	function __construct() {
+		$this->vcolDefs[] = [ "res" => tmCols() ];
+	}
+
+#### 关联子查询优化
+
+**外部虚拟字段还常常用于优化SELECT语句中关联子查询性能。框架将自动识别关联子查询，并使用嵌套查询机制来优化性能。**
+
+如果一个虚拟字段，它的res中定义有关联子查询，在query操作时可能性能很差，当：
+排序字段(orderby)不是主表字段；
+或orderby虽然是主表字段（甚至是索引），但查询引擎的查询计划不佳，也会导致特别慢。（这种情况下，测试时可强制指定索引，比如在from t0后加上force index(primary)，可以大幅优化。）
+
+示例：对ApiLog表有虚拟字段sesCnt，它使用关联子查询，定义如下：
+
+	$vcolDefs = [
+		[
+			// 可作为“外部虚拟字段”来优化
+			"res" => ["(select count(*) from ApiLog t1 where t1.ses=t0.ses) sesCnt"]
+		],
+		[
+			// 普通虚拟字段，将在示例中用于orderby
+			"res" => ["u.name AS userName", "u.phone AS userPhone"],
+			"join" => "INNER JOIN User u ON u.id=t0.userId"
+		]
+	]
+
+未做优化时，query(orderby=userName)查询语句如下：
+
+	SELECT t0.*, (select count(*) from ApiLog t1 where t1.ses=t0.ses) sesCnt
+	FROM ApiLog t0
+	JOIN User ...
+	ORDER BY u.name
+	LIMIT 0,20
+
+当ORDER-BY不是主表ApiLog的字段时，或虽然是主表字段但数据库的查询引擎判断失误（此处不可预料），
+都可能导致查询计划中将会把虚拟字段全部计算出来后再排序，导致巨慢。（实测2万行数据，查询20行数据需要16秒）
+
+优化策略是使用嵌套查询，将sesCnt字段放到外层查询：
+
+	SELECT t0.*, (select count(*) from ApiLog t1 where t1.ses=t0.ses) sesCnt
+	FROM (
+		SELECT t0.*
+		FROM ApiLog t0
+		JOIN User ...
+		ORDER BY u.name
+		LIMIT 0,20
+	) t0
+
+这样只需要对最终结果20条数据计算虚拟字段。
+由于出现了外层和内层两层SQL，我们将外层的虚拟字段称为外部虚拟字段。
+
+效果：ApiLog仅20000行数据，优化前查询一次16秒，优化后降低到0.2s。
+
+注意：自动优化只处理res中只有一个元素且未指定join条件的情况，并且会自动识别出依赖内层t0.ses字段。
+如果自动处理或识别有误，可手工设置isExt和require属性，比如：
+
+	[
+		"res" => ["(select count(*) from ApiLog t1 where t1.ses=t0.ses and t0.userId is not null) sesCnt"],
+		"isExt" => true,
+		"require" => "t0.ses,t0.userId"
+	]
+
+上面require属性指定内层查询应暴露给外层的字段，如果有多个可用逗号分隔（自动优化只能处理一个）。
+注意res中的t0指的是内层查询的结果表，名称固定为t0; 而require中的表指的是内层查询内部的表。
+
+注意：使用外部虚拟字段时，将导致require中的字段被添加到最终结果集。例如上面例子中的"t0.ses,t0.userId"字段会被添加到最终结果集。
+
+注意：如果想禁止优化，可手工设置vcolDef的isExt属性为false：
+
+	[
+		"res" => ["(select count(*) from ApiLog t1 where t1.ses=t0.ses) sesCnt"],
+		"isExt" => false
+	]
+
 ## 子表
 
 @var AccessControl::$subobj (for get/query) 定义子表
@@ -351,7 +469,7 @@ subobj: { name => {sql, default?=false, wantOne?=false, force?=false} }
 
 - sql: 子表查询语句，其中应包含用"field=%d"这样语句来定义与主表id字段的关系。
  (v5.1)为了优化query接口，避免每一行分别查一次子表，查询语句会被改为"field IN (...)"的形式。
-- default: 虚拟字段(vcolDefs)上的"default"选项一样，表示当未指定"res"参数时，是否默认返回该字段。
+- default: 与虚拟字段(vcolDefs)上的"default"选项一样，表示当"res"参数以"*"开头(比如`res="*,picCnt"`)或未指定时，是否默认返回该字段。
 - wantOne: 如果为true, 则结果以一个对象返回即 {id, tm, ...}, 适用于主表与子表一对一的情况。
 - force: (v5.1) 如果sql中没有与主表的关联即没有包含"field=%d"，应指定force=true，否则在query接口中会当作语句错误。
 
@@ -380,7 +498,7 @@ subobj: { name => {sql, default?=false, wantOne?=false, force?=false} }
 				dbInsert("OrderLog", [
 					"orderId" => $orderId,
 					"action" => "CR",
-					"tm" => date(FMT_DT)  // 或用mysql表达式"=now()"
+					"tm" => date(FMT_DT)  // 或用mysql表达式 ["now()"]
 				]);
 			};
 		}
@@ -420,12 +538,12 @@ subobj: { name => {sql, default?=false, wantOne?=false, force?=false} }
 
 ### 缺省输出字段列表
 
-@var AccessControl::$defaultRes (for query)指定缺省输出字段列表. 如果不指定，则为 "t0.*" 加  default=true的虚拟字段
+@var AccessControl::$defaultRes (for query)指定缺省输出字段列表. 如果不指定，则为"*", 即 "t0.*" 加默认虚拟字段(指定default=true的字段)
 
 ### 最大每页数据条数
 
 @fn AccessControl::getMaxPageSz()  (for query) 取最大每页数据条数。为非负整数。
-@var AccessControl::$maxPageSz ?= 100 (for query) 指定最大每页数据条数。值为负数表示取PAGE_SZ_LIMIT值.
+@var AccessControl::$maxPageSz ?= 1000 (for query) 指定最大每页数据条数。值为负数表示取PAGE_SZ_LIMIT值.
 
 前端通过 {obj}.query(pagesz)来指定每页返回多少条数据，缺省是20条，最高不可超过100条。当指定为负数时，表示按最大允许值=min($maxPageSz, PAGE_SZ_LIMIT)返回。
 PAGE_SZ_LIMIT目前定为10000条。如果还不够，一定是应用设计有问题。
@@ -434,7 +552,7 @@ PAGE_SZ_LIMIT目前定为10000条。如果还不够，一定是应用设计有�
 
 	class MyObj extends AccessControl
 	{
-		protected $maxPageSz = 1000; // 最大允许返回1000条
+		protected $maxPageSz = 2000; // 最大允许返回2000条
 		// protected $maxPageSz = -1; // 最大允许返回 PAGE_SZ_LIMIT 条
 	}
 
@@ -491,6 +609,35 @@ PAGE_SZ_LIMIT目前定为10000条。如果还不够，一定是应用设计有�
 - 重写 AccessControl::$defaultRes
 - 用addCond添加缺省查询条件
 
+table也可以指定为子表(即视图)，例如上例也可以这样实现，省去onQuery中的实现：
+
+	class AC2_EmpLog extends AccessControl 
+	{
+		protected $allowedAc = ["query"];
+		// 注意：子查询要加括号括起来
+		protected $table = "(SELECT * FROM ApiLog t0 WHERE t0.app='emp-adm' and t0.userId IS NOT NULL)";
+		protected $defaultSort = "t0.id DESC";
+		protected $defaultRes = "id, tm, userId, ac, req, res, reqsz, ressz, empName, empPhone";
+		protected $vcolDefs = [
+			[
+				"res" => ["e.name AS empName", "e.phone AS empPhone"],
+				"join" => "LEFT JOIN Employee e ON e.id=t0.userId"
+			]
+		];
+	}
+
+甚至可将整个SQL子查询封在table中：
+
+	class AC2_EmpLog extends AccessControl 
+	{
+		protected $allowedAc = ["query"];
+		protected $table = "(SELECT t0.id, tm, userId, ac, req, res, reqsz, ressz, e.name AS empName, e.phone AS empPhone 
+FROM ApiLog t0 
+LEFT JOIN Employee e ON e.id=t0.userId
+WHERE t0.app='user' and t0.userId IS NOT NULL
+ORDER BY t0.id DESC)";
+	}
+
 ### query接口输出格式
 
 query接口支持fmt参数：
@@ -521,12 +668,12 @@ TODO: 可加一个系统参数`_enc`表示输出编码的格式。
 
 作为比onHandleRow/onAfterActions等更易用的工具，enumFields可对返回字段做修正。例如，想要对返回的status字段做修正，如"CR"显示为"Created"，可设置：
 
-	$enumFields["status"] = ["CR"=>"Created", "CA"=>"Cancelled"];
+	$this->enumFields["status"] = ["CR"=>"Created", "CA"=>"Cancelled"];
 
 也可以设置为自定义函数，如：
 
 	$map = ["CR"=>"Created", "CA"=>"Cancelled"];
-	$enumFields["status"] = function($v) use ($map) {
+	$this->enumFields["status"] = function($v) use ($map) {
 		if (array_key_exists($v, $map))
 			return $v . "-" . $map[$v];
 		return $v;
@@ -540,6 +687,33 @@ TODO: 可加一个系统参数`_enc`表示输出编码的格式。
 
 (版本5.1)
 设置enumFields也支持逗号分隔的枚举列表，比如字段值为"CR,CA"，实际可返回"Created,Cancelled"。
+
+(v5.2) 导出文件时，处理字段格式
+
+在导出报表时，常常需要处理字段格式，例如，虚拟子表字段inv定义为：`[{itemId,qty,itemName}]`
+
+	protected $subobj = [
+		"inv" => ["sql"=>"SELECT itemId,qty,i.name itemName FROM Inv LEFT JOIN Item i ON i.id=Inv.itemId WHERE couponId=%d"]
+	];
+
+默认导出文件时值会处理成 "1000:1.00:商品1,1001:2.00:商品2" 这种格式，现在希望导出格式如"商品1,商品2(2件)"，可处理该字段如下：
+(写在onQuery或onInit回调中均可)
+
+	protected function onQuery() {
+		if ($this->isFileExport()) {
+			$this->enumFields["inv"] = function($v) {
+				if (is_array($v)) {
+					$v = join(',', array_map(function ($e) {
+						if ($e['qty'] != 1.0)
+							return $e['itemName'] . '(' . doubleval($e['qty']) . '件)';
+						else
+							return $e['itemName'];
+					}, $v));
+				}
+				return $v;
+			};
+		}
+	}
 
 ## 批量更新(setIf)和批量删除(delIf)
 
@@ -574,7 +748,7 @@ class AccessControl
 {
 	protected $table;
 	protected $ac;
-	protected static $stdAc = ["add", "get", "set", "del", "query"];
+	protected static $stdAc = ["add", "get", "set", "del", "query", "setIf", "delIf"];
 	protected $allowedAc;
 	# for add/set
 	protected $readonlyFields = [];
@@ -587,11 +761,12 @@ class AccessControl
 	# for get/query
 	protected $hiddenFields = [];
 	protected $enumFields = []; // elem: {field => {key=>val}} 或 {field => fn(val)}，与onHandleRow类似地去修改数据。
+	protected $aliasMap = []; // { col => alias}
 	# for query
-	protected $defaultRes = "t0.*"; // 缺省为 "t0.*" 加  default=true的虚拟字段
+	protected $defaultRes = "*"; // 缺省为 "t0.*" 加  default=true的虚拟字段
 	protected $defaultSort = "t0.id";
 	# for query
-	protected $maxPageSz = 100;
+	protected $maxPageSz = 1000;
 
 	# for get/query
 	# virtual columns
@@ -612,7 +787,10 @@ class AccessControl
 	// 在add后自动设置; 在get/set/del操作调用onValidateId后设置。
 	protected $id;
 
-	static function create($tbl, $asAdmin = false) 
+	// for batchAdd
+	protected $batchAddLogic;
+
+	static function create($tbl, $ac, $asAdmin = false) 
 	{
 		/*
 		if (!hasPerm(AUTH_USER | AUTH_EMP))
@@ -646,10 +824,16 @@ class AccessControl
 			throw new MyException($noauth? E_NOAUTH: E_FORBIDDEN, "Operation is not allowed for current user on object `$tbl`");
 		}
 		$x = new $cls;
-		$x->onInit();
-		if (is_null($x->table))
-			$x->table = $tbl;
+		$x->init($tbl, $ac);
 		return $x;
+	}
+
+	function init($tbl, $ac)
+	{
+		if (is_null($this->table))
+			$this->table = $tbl;
+		$this->ac = $ac;
+		$this->onInit();
 	}
 
 	/*
@@ -665,10 +849,16 @@ class AccessControl
 			if ($cond === null)
 				continue;
 			if (is_array($cond))
-				$cond = getCondStr($cond);
+				$cond = self::getCondStr($cond);
 
-			if ($condSql === null)
-				$condSql = $cond;
+			if ($condSql === null) {
+				if (stripos($cond, " or ") !== false && substr($cond,0,1) != '(') {
+					$condSql = "($cond)";
+				}
+				else {
+					$condSql = $cond;
+				}
+			}
 			else if (stripos($cond, " and ") !== false || stripos($cond, " or ") !== false)
 				$condSql .= " AND ({$cond})";
 			else 
@@ -692,6 +882,7 @@ class AccessControl
 		$res = param("res");
 		$this->sqlConf = [
 			"res" => [],
+			"resExt" => [],
 			"gres" => $gres,
 			"gcond" => $this->getCondParam("gcond"),
 			"cond" => [$this->getCondParam("cond")],
@@ -737,6 +928,9 @@ class AccessControl
 		// 设置gres时，不使用defaultRes
 		else if (!isset($res)) {
 			$res = $this->defaultRes;
+			$addDefaultCol = true;
+		}
+		else if ($res[0] == '*') {
 			$addDefaultCol = true;
 		}
 
@@ -807,12 +1001,12 @@ class AccessControl
 		$this->onValidate();
 	}
 
-	final function before($ac)
+	final function before()
 	{
+		$ac = $this->ac;
 		if (isset($this->allowedAc) && in_array($ac, self::$stdAc) && !in_array($ac, $this->allowedAc)) {
 			throw new MyException(E_FORBIDDEN, "Operation `$ac` is not allowed on object `$this->table`");
 		}
-		$this->ac = $ac;
 	}
 
 	private $afterIsCalled = false;
@@ -852,6 +1046,9 @@ class AccessControl
 
 		$SEP = ',';
 		foreach ($this->enumFields as $field=>$map) {
+			if (array_key_exists($field, $this->aliasMap)) {
+				$field = $this->aliasMap[$field];
+			}
 			if (array_key_exists($field, $rowData)) {
 				$v = $rowData[$field];
 				if (is_callable($map)) {
@@ -879,7 +1076,7 @@ class AccessControl
 			throw new MyException(E_FORBIDDEN, "forbidden SELECT in param cond");
 		}
 		# "aa = 100 and t1.bb>30 and cc IS null" -> "t0.aa = 100 and t1.bb>30 and t0.cc IS null" 
-		$ret = preg_replace_callback('/[\w.\x{4E00}-\x{9FA5}]+(?=(\s*[=><]|(\s+(IS|LIKE))))/iu', function ($ms) {
+		$ret = preg_replace_callback('/[\w.\x{4E00}-\x{9FA5}]+(?=(\s*[=><]|(\s+(IS|LIKE)\s+)))/iu', function ($ms) {
 			// 't0.$0' for col, or 'voldef' for vcol
 			$col = $ms[0];
 			if (strpos($col, '.') !== false)
@@ -917,12 +1114,12 @@ class AccessControl
 	{
 		// support enum
 		$a = explode('=', $alias, 2);
-		if (count($a) != 2)
-			return;
-
-		$alias = $a[0] ?: null;
-		$k = self::removeQuote($alias ?: $col);
-		$this->enumFields[$k] = parseKvList($a[1], ";", ":");
+		if (count($a) == 2) {
+			$this->enumFields[$col] = parseKvList($a[1], ";", ":");
+			$alias = $a[0] ?: null;
+		}
+		if ($alias)
+			$this->aliasMap[self::removeQuote($col)] = self::removeQuote($alias);
 	}
 
 	// return: new field list
@@ -944,7 +1141,7 @@ class AccessControl
 				// 对于res, 还支持部分函数: "fn(col) as col1", 目前支持函数: count/sum，如"count(distinct ac) cnt", "sum(qty*price) docTotal"
 				if (!$gres && preg_match('/(\w+)\([a-z0-9_.\'* ,+\/]+\)\s+(?:AS\s+)?([^,]+)/i', $col, $ms)) {
 					list($fn, $alias) = [strtoupper($ms[1]), $ms[2]];
-					if ($fn != "COUNT" && $fn != "SUM")
+					if ($fn != "COUNT" && $fn != "SUM" && $fn != "AVG")
 						throw new MyException(E_FORBIDDEN, "function not allowed: `$fn`");
 					$this->isAggregatinQuery = true;
 				}
@@ -1000,13 +1197,33 @@ class AccessControl
 			}
 			$col = preg_replace_callback('/^\s*(\w+)/', function ($ms) {
 				$col1 = $ms[1];
-				if ($this->addVCol($col1, true, '-') !== false)
+				// 注意：与cond不同，orderby使用了虚拟字段，应在res中添加。而cond中是直接展开了虚拟字段。因为where条件不支持虚拟字段。
+				// 故不用：$this->addVCol($col1, true, '-');
+				if ($this->addVCol($col1, true) !== false)
 					return $col1;
 				return "t0." . $col1;
 			}, $col);
 			$colArr[] = $col;
 		}
 		return join(",", $colArr);
+	}
+
+	// 将外部虚拟字段的require依赖字段添加到res中（支持其中引用其它虚拟字段）
+	// 引用内层查询的某字段时，需要将该字段加到内层res中暴露到外层使用；但是如果内层res已经有t0.*则不要重复添加。
+	// 示例："res" => ["(select count(*) from ApiLog t1 where t1.ses=t0.ses) sesCnt"], 需要将t0.ses暴露给外层SQL使用。
+	private function filterExtVColRequire($cols)
+	{
+		foreach (explode(',', $cols) as $col) {
+			$col = preg_replace_callback('/^(\w+)$/', function ($ms) {
+				$col1 = $ms[1];
+				if ($this->addVCol($col1, true) !== false)
+					return "";
+				return "t0." . $col1;
+			}, trim($col));
+			if (! $col) // 虚拟字段已在addVCol中加过
+				continue;
+			$this->addRes($col, false);
+		}
 	}
 
 	final public function issetCond()
@@ -1017,26 +1234,46 @@ class AccessControl
 /**
 @fn AccessControl::addRes($res, $analyzeCol=true)
 
-添加列或计算列. 
+定义新的虚拟字段，并添加到get/query接口的返回字段中。
+如果要引入已有的虚拟字段，应调用addVCol。
 
 注意: 
-- analyzeCol=true时, addRes("col"); -- (analyzeCol=true) 添加一列, 注意:如果列是一个虚拟列(在vcolDefs中有定义), 不能指定alias, 且vcolDefs中同一组Res中所有定义的列都会加入查询; 如果希望只加一列且能定义alias, 可调用addVCol函数.
+- analyzeCol=true时, 注册到对象的虚拟字段中。
 - addRes("col+1 as col1", false); -- 简单地新定义一个计算列, as可省略
 
 @see AccessControl::addCond 其中有示例
 @see AccessControl::addVCol 添加已定义的虚拟列。
  */
-	final public function addRes($res, $analyzeCol=true)
+	final public function addRes($res, $analyzeCol=true, $isExt=false)
 	{
-		$this->sqlConf["res"][] = $res;
+		if ($isExt) {
+			$this->addResInt($this->sqlConf["resExt"], $res);
+			return;
+		}
+		$this->addResInt($this->sqlConf["res"], $res);
 		if ($analyzeCol)
 			$this->setColFromRes($res, true);
 	}
 
+	// 内部被addRes调用。避免重复添加字段到res
+	private function addResInt(&$resArr, $col) {
+		$ignoreT0 = @$resArr[0] == "t0.*";
+		if ($ignoreT0 && substr($col,0,3) == "t0.")
+			return;
+		$found = false;
+		foreach ($resArr as $e) {
+			if ($e == $col)
+				$found = true;
+		}
+		if (!$found)
+			$resArr[] = $col;
+	}
+
 /**
-@fn AccessControl::addCond($cond, $prepend=false)
+@fn AccessControl::addCond($cond, $prepend=false, $fixUserQuery=false)
 
 @param $prepend 为true时将条件排到前面。
+@param $fixUserQuery 设置为true，用于自动处理虚拟字段，这时不允许复杂查询。
 
 调用多次addCond时，多个条件会依次用"AND"连接起来。
 
@@ -1064,11 +1301,49 @@ class AccessControl
 		}
 	}
 
+上例在处理"q"参数时，临时引入了关联表。如果关联表已在vcolDefs中定义过，可以用addVCol直接引入：
+
+	protected $vcolDefs = [
+		[
+			"res" => ["olpay.tm payTm"],
+			"join" => "INNER JOIN OrderLog olpay ON olpay.orderId=t0.id"
+		]
+	];
+	protected function onQuery()
+	{
+		$q = param("q");
+		if (isset($q) && $q == "paid") {
+			$validDate = date("Y-m-d", strtotime("-9 day"));
+			// 注意：要添加虚拟字段用addVCol，不是addRes
+			$this->addVCol("payTm");
+			// 注意：addCond中不可直接使用payTm，要用原始定义olpay.tm。(下面会讲怎样直接在cond中用payTm)
+			$this->addCond("olpay.action='PA' AND olpay.tm>'$validDate'");
+		}
+	}
+
+关于fixUserQuery=true:
+
+默认后端可以添加任何形式的SQL条件，但是如果其中含有虚拟字段，如果它尚未加到res查询结果中时，查询就会出错（无法识别这个字段）。
+设置fixUserQuery=true后，就会将该条件当作用户查询(UserQuery)来处理，即相当于query接口传入的cond字段，其中的虚拟字段会自动处理避免出错。
+但用户查询条件是受限的，比如不允许各种子查询，也不允许使用各种SQL函数（count/sum/avg等少量聚合函数除外）。
+
+仍用上面示例：
+
+	// 在cond中使用payTm虚拟字段，可自动解析和引入它的定义
+	$this->addCond("olpay.action='PA' AND payTm>'$validDate'", false, true);
+
+这相当于调用：
+
+	$this->addVCol("payTm", false, "-"); // 引入定义但并不加到SELECT字段中
+	$this->addCond("olpay.action='PA' AND olpay.tm>'$validDate'");
+
 @see AccessControl::addRes
 @see AccessControl::addJoin
  */
-	final public function addCond($cond, $prepend=false)
+	final public function addCond($cond, $prepend=false, $fixUserQuery=false)
 	{
+		if ($fixUserQuery)
+			$cond = $this->fixUserQuery($cond);
 		if ($prepend)
 			array_unshift($this->sqlConf["cond"], $cond);
 		else
@@ -1111,18 +1386,33 @@ class AccessControl
 		}
 	}
 
+	// 外部虚拟字段：如果未设置isExt，且无join条件，将自动识别和处理外部虚拟字段（以便之后优化查询）。
+	// 示例 "res" => ["(select count(*) from ApiLog t1 where t1.ses=t0.ses) sesCnt"] 将设置 isExt=true, require="t0.ses"
+	// 注意目前只自动处理第一个res。如果自动处理有误，请手工设置vcolDef的isExt和require属性。require属性支持逗号分隔的多字段。
+	private function autoHandleExtVCol(&$vcolDef) {
+		if (isset($vcolDef["isExt"]) || isset($vcolDef["join"]))
+			return;
+		$res_0 = $vcolDef["res"][0];
+		if (preg_match('/\(.*select.*where.*?(t0\.\w+)?\)/', $res_0, $ms)) {
+			$vcolDef["isExt"] = true;
+			if (isset($ms[1])) {
+				$vcolDef["require"] = $ms[1];
+			}
+		}
+	}
+
 	private function initVColMap()
 	{
 		if (is_null($this->vcolMap)) {
 			$this->vcolMap = [];
-			$idx = 0;
-			foreach ($this->vcolDefs as $vcolDef) {
+			foreach ($this->vcolDefs as $idx=>&$vcolDef) {
 				@$res = $vcolDef["res"];
 				assert(is_array($res), "res必须为数组");
 				foreach ($vcolDef["res"] as $e) {
 					$this->setColFromRes($e, false, $idx);
 				}
-				++ $idx;
+
+				$this->autoHandleExtVCol($vcolDef);
 			}
 		}
 	}
@@ -1131,10 +1421,16 @@ class AccessControl
 @fn AccessControl::addVCol($col, $ignoreError=false, $alias=null)
 
 @param $col 必须是一个英文词, 不允许"col as col1"形式; 该列必须在 vcolDefs 中已定义.
-@param $alias 列的别名。可以中文. 特殊字符"-"表示不加到最终res中(只添加join/cond等定义), 由addVColDef内部调用时使用.
+@param $alias 列的别名。可以中文. 特殊字符"-"表示只添加join/cond等定义，并不将该字段加到输出字段中。
 @return Boolean T/F
 
-用于AccessControl子类添加已在vcolDefs中定义的vcol. 一般应先考虑调用addRes(col)函数.
+引入一个已有的虚拟字段及其相应关联表，例如之前在vcolDefs中定义过虚拟字段`createTm`:
+
+	// 引入createTm定义及关联表，且在最终输出中添加createTm列
+	$this->addVCol("createTm"); 
+
+	// 只引入createTm字段的关联表，不影响最终输出字段
+	$this->addVCol("createTm", false, "-");
 
 @see AccessControl::addRes
  */
@@ -1147,13 +1443,14 @@ class AccessControl
 		}
 		if ($this->vcolMap[$col]["added"])
 			return true;
-		$this->addVColDef($this->vcolMap[$col]["vcolDefIdx"]);
+		$vcolDef = $this->addVColDef($this->vcolMap[$col]["vcolDefIdx"]);
+		$isExt = @ $vcolDef["isExt"] && true;
 		if ($alias) {
 			if ($alias !== "-")
-				$this->addRes($this->vcolMap[$col]["def"] . " AS {$alias}", false);
+				$this->addRes($this->vcolMap[$col]["def"] . " AS {$alias}", false, $isExt);
 		}
 		else {
-			$this->addRes($this->vcolMap[$col]["def0"], false);
+			$this->addRes($this->vcolMap[$col]["def0"], false, $isExt);
 		}
 		return true;
 	}
@@ -1164,8 +1461,9 @@ class AccessControl
 		foreach ($this->vcolDefs as $vcolDef) {
 			if (@$vcolDef["default"]) {
 				$this->addVColDef($idx);
+				$isExt = @ $vcolDef["isExt"] && true;
 				foreach ($vcolDef["res"] as $e) {
-					$this->addRes($e);
+					$this->addRes($e, true, $isExt);
 				}
 			}
 			++ $idx;
@@ -1182,6 +1480,15 @@ class AccessControl
 		$this->vcolDefs[$idx]["added"] = true;
 
 		$vcolDef = $this->vcolDefs[$idx];
+
+		if (@$vcolDef["isExt"]) {
+			$requireCol = @$vcolDef["require"];
+			// 外部虚拟字段：将require字段加入内层SQL。
+			if ($requireCol) {
+				$this->filterExtVColRequire($requireCol);
+			}
+			return $vcolDef;
+		}
 		if (isset($vcolDef["require"]))
 		{
 			$requireCol = $vcolDef["require"];
@@ -1191,6 +1498,7 @@ class AccessControl
 			$this->addJoin($vcolDef["join"]);
 		if (isset($vcolDef["cond"]))
 			$this->addCond($vcolDef["cond"]);
+		return $vcolDef;
 	}
 
 	protected function onInit()
@@ -1244,13 +1552,15 @@ class AccessControl
 	function api_set()
 	{
 		$this->onValidateId();
-		$this->id = mparam("id");
+		if ($this->id === null)
+			$this->id = mparam("id");
 		$this->validate();
 
 		$cnt = dbUpdate($this->table, $_POST, $this->id);
 	}
 
-	protected function genQuerySql(&$tblSql=null, &$condSql=null)
+	// extSqlFn: 如果为空，则如果有外部虚拟字段，则返回完整嵌套SQL语句；否则返回内层SQL语句，由调用方再调用extSqlFn函数生成嵌套SQL查询。
+	protected function genQuerySql(&$tblSql=null, &$condSql=null, &$extSqlFn=null)
 	{
 		$sqlConf = &$this->sqlConf;
 		$resSql = join(",", $sqlConf["res"]);
@@ -1287,13 +1597,24 @@ class AccessControl
 			$this->flag_handleCond($condSql);
 			$sql .= "\nWHERE $condSql";
 		}
+		if (count($sqlConf["resExt"]) > 0) {
+			$resExtSql = join(",", $sqlConf["resExt"]);
+			$doExtSql = !isset($extSqlFn);
+			$extSqlFn = function ($sql) use ($resExtSql) {
+				return "SELECT t0.*, $resExtSql
+FROM ($sql) t0";
+			};
+			if ($doExtSql)
+				$sql = $extSqlFn($sql);
+		}
 		return $sql;
 	}
 
 	function api_get()
 	{
 		$this->onValidateId();
-		$this->id = mparam("id");
+		if ($this->id === null)
+			$this->id = mparam("id");
 		$this->initQuery();
 
 		$this->addCond("t0.id={$this->id}", true);
@@ -1378,7 +1699,8 @@ class AccessControl
 
 		$tblSql = null;
 		$condSql = null;
-		$sql = $this->genQuerySql($tblSql, $condSql);
+		$extSqlFn = false;
+		$sql = $this->genQuerySql($tblSql, $condSql, $extSqlFn);
 
 		$complexCntSql = false;
 		if (isset($sqlConf["union"])) {
@@ -1415,6 +1737,9 @@ class AccessControl
 			$sql .= "\nLIMIT " . ($pagekey-1)*$pagesz . "," . $pagesz;
 		}
 
+		if ($extSqlFn) {
+			$sql = $extSqlFn($sql);
+		}
 		$ret = queryAll($sql, true);
 		if ($ret === false)
 			$ret = [];
@@ -1469,7 +1794,8 @@ class AccessControl
 	function api_del()
 	{
 		$this->onValidateId();
-		$this->id = mparam("id");
+		if ($this->id === null)
+			$this->id = mparam("id");
 		$sql = sprintf("DELETE FROM %s WHERE id=%d", $this->table, $this->id);
 		$cnt = execOne($sql);
 		if ($cnt != 1)
@@ -1494,16 +1820,25 @@ e.g.
 		}
 	}
 
+	// for setIf/delIf
 	// return {tblSql, condSql}
 	protected function genCondSql()
 	{
 		$cond = $this->getCondParam("cond");
-		if ($cond === null)
-			throw new MyException(E_PARAM, "setIf requires param `cond`");
 		$this->initVColMap();
-		$this->addCond($this->fixUserQuery($cond));
+		if ($cond)
+			$this->addCond($cond, false, true);
+
+		// borrow query handler
+		$ac = $this->ac;
+		$this->ac = "query";
+		$this->onQuery();
+		$this->ac = $ac;
 
 		$sqlConf = $this->sqlConf;
+		if (count($sqlConf["cond"]) == 0)
+			throw new MyException(E_PARAM, "setIf/delIf requires condition");
+
 		$tblSql = "{$this->table} t0";
 		if (count($sqlConf["join"]) > 0)
 			$tblSql .= "\n" . join("\n", $sqlConf["join"]);
@@ -1533,7 +1868,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		}
 	}
  */
-	protected function api_setIf()
+	function api_setIf()
 	{
 		$roFields = $this->readonlyFields + $this->readonlyFields2;
 		foreach ($roFields as $field) {
@@ -1570,12 +1905,146 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		}
 	}
  */
-	protected function api_delIf()
+	function api_delIf()
 	{
 		$rv = $this->genCondSql();
 		$sql = sprintf("DELETE t0 FROM %s WHERE %s", $rv["tblSql"], $rv["condSql"]);
 		$cnt = execOne($sql);
 		return $cnt;
+	}
+
+/**
+@fn AccessControl::api_batchAdd()
+
+批量添加（导入）。返回导入记录数cnt及编号列表idList
+
+	Obj.batchAdd(title?)(...) -> {cnt, @idList}
+
+在一个事务中执行，一行出错后立即失败返回，该行前面已导入的内容也会被取消（回滚）。
+
+- title: List(fieldName). 指定标题行(即字段列表). 如果有该参数, 则忽略POST内容或文件中的标题行.
+ 如"title=name,-,addr"表示导入第一列name和第三列addr, 其中"-"表示忽略该列，不导入。
+
+支持两种方式上传：
+
+1. 直接在HTTP POST中传输内容，数据格式为：首行为标题行(即字段名列表)，之后为实际数据行。
+行使用"\n"分隔, 列使用"\t"分隔.
+接口为：
+
+	{Obj}.batchAdd(title?)(标题行，数据行)
+	(Content-Type=text/plain)
+
+前端JS调用示例：
+
+	var data = "name\taddr\n" + "门店1\t地址1\n门店2\t地址2\n";
+	callSvr("Store.batchAdd", function (ret) {
+		app_alert("成功导入" + ret.cnt + "条数据！");
+	}, data, {contentType:"text/plain"});
+
+或指定title参数:
+
+	var data = "门店名\t地址\n" + "门店1\t地址1\n门店2\t地址2\n";
+	callSvr("Store.batchAdd", {title: "name,addr"}, function (ret) {
+		app_alert("成功导入" + ret.cnt + "条数据！");
+	}, data, {contentType:"text/plain"});
+
+2. 标准csv/txt文件上传：
+
+上传的文件首行当作标题列，如果这一行不是后台要求的标题名称，可通过URL参数title重新定义。
+一般使用excel csv文件（编码一般为gbk），或txt文件（以"\t"分隔列）。
+接口为：
+
+	{Obj}.batchAdd(title?)(csv/txt文件)
+	(Content-Type=multipart/form-data, 即html form默认传文件的格式)
+
+后端处理时, 将自动判断文本编码(utf-8或gbk).
+
+前端HTML:
+
+	<input type="file" name="f" accept=".csv,.txt">
+
+前端JS示例：
+
+	var fd = new FormData();
+	fd.append("file", frm.f.files[0]);
+	callSvr("Store.batchAdd", {title: "name,addr"}, function (ret) {
+		app_alert("成功导入" + ret.cnt + "条数据！");
+	}, fd);
+
+*/
+	function api_batchAdd()
+	{
+		$st = BatchAddStrategy::create($this->batchAddLogic);
+		$n = 1;
+		$titleRow = null;
+		$ret = [
+			"cnt" => 0,
+			"idList" => []
+		];
+		$tmp = $_POST;
+		$this->ac = "add";
+		$bak = [];
+		foreach ($this as $k=>$v) {
+			$bak[$k] = $v;
+		}
+		$bak_SOLO = ApiFw_::$SOLO;
+		ApiFw_::$SOLO = false; // 避免其间有setRet输出
+		while (($row = $st->getRow()) != null) {
+			if ($n == 1) {
+				$titleRow = $row;
+			}
+			else if (($cnt = count($row)) > 0) {
+				// $_POST = array_combine($titleRow, $row);
+				$i = 0;
+				$_POST = [];
+				foreach ($titleRow as $e) {
+					if ($i >= $cnt)
+						break;
+					if ($e === '-') {
+						++ $i;
+						continue;
+					}
+					$_POST[$e] = $row[$i++];
+					if ($_POST[$e] === '') {
+						$_POST[$e] = null;
+					}
+				}
+				try {
+					$st->beforeAdd($_POST, $row);
+					$id = $this->api_add();
+					$this->after($id);
+					// restore fields
+					foreach ($bak as $k=>$v) {
+						$this->$k = $v;
+					}
+				}
+				catch (DirectReturn $ex) {
+					global $X_RET;
+					if ($X_RET[0] == 0) {
+						$id = $X_RET[1];
+					}
+					else {
+						$msg = ($X_RET[2] ?: $X_RET[1]);
+						ApiFw_::$SOLO = $bak_SOLO;
+						throw new MyException(E_PARAM, $X_RET[1], "第{$n}行出错(\"" . join(',', $row) . "\"): " . $msg);
+					}
+				}
+				catch (Exception $ex) {
+					$msg = $ex->getMessage();
+					if ( ($ex instanceof MyException) && $ex->internalMsg != null)
+						$msg .= "-" .$ex->internalMsg;
+					ApiFw_::$SOLO = $bak_SOLO;
+					throw new MyException(E_PARAM, (string)$ex, "第{$n}行出错(\"" . join(',', $row) . "\"): " . $msg);
+				}
+				++ $ret["cnt"];
+				$ret["idList"][] = $id;
+			}
+			++ $n;
+		}
+		ApiFw_::$SOLO = $bak_SOLO;
+		$this->ac = "batchAdd";
+		$_POST = $tmp;
+		return $ret;
 	}
 
 	// query sub table for mainObj(id), and add result to mainObj as obj or obj collection (opt["wantOne"])
@@ -1768,7 +2237,7 @@ function KVtoCond($k, $v)
 			if (is_array($e))
 				$e = self::array2Str($e);
 			if ($enc) {
-				$e = iconv("UTF-8", "{$enc}//IGNORE" , (string)$e);
+				$e = iconv("UTF-8", "{$enc}//TRANSLIT" , (string)$e);
 
 				// Excel使用本地编码(gb18030)
 				// 大数字，避免excel用科学计数法显示（从11位手机号开始）。
@@ -1777,7 +2246,7 @@ function KVtoCond($k, $v)
 					$e .= "\t";
 				}
 			}
-			if (strpos($e, '"') !== false || strpos($e, "\n") !== false)
+			if (strpos($e, '"') !== false || strpos($e, "\n") !== false || strpos($e, ",") !== false)
 				echo '"', str_replace('"', '""', $e), '"';
 			else
 				echo $e;
@@ -1787,7 +2256,8 @@ function KVtoCond($k, $v)
 
 	function table2csv($tbl, $enc = null)
 	{
-		$this->outputCsvLine($tbl["h"], $enc);
+		if (isset($tbl["h"]))
+			$this->outputCsvLine($tbl["h"], $enc);
 		foreach ($tbl["d"] as $row) {
 			$this->outputCsvLine($row, $enc);
 		}
@@ -1795,14 +2265,81 @@ function KVtoCond($k, $v)
 
 	function table2txt($tbl)
 	{
-		echo join("\t", $tbl["h"]), "\n";
+		if (isset($tbl["h"]))
+			echo join("\t", $tbl["h"]), "\n";
 		foreach ($tbl["d"] as $row) {
 			echo join("\t", $row), "\n";
 		}
 	}
 
+	function table2html($tbl)
+	{
+		echo("<table border=1 cellspacing=0>");
+		if (isset($tbl["h"])) {
+			echo "<tr><th>" . join("</th><th>", $tbl["h"]), "</th></tr>\n";
+		}
+		foreach ($tbl["d"] as $row) {
+			echo "<tr><td>" . join("</td><td>", $row), "</td></tr>\n";
+		}
+		echo("</table>");
+	}
+
+/**
+@fn handleExportFormat($fmt, $arr, $fname)
+
+导出表到文件。
+
+- fmt: csv-逗号分隔的文本; excel-使用gb18030编码的csv文本(excel可直接打开); txt-制表符分隔的文本。 
+- arr: 筋斗云表格格式({@h, @d}), 或二维数组表格格式。
+- fname: 导出的文件名
+
+示例：导出订单行及其明细等表，将多个查询结果拼成一个数组，导出excel-csv文件。
+
+	class AC2_Ordr 
+	{
+		function api_export()
+		{
+			$id = mparam("id");
+			$tbl = queryAllWithHeader("SELECT t0.id 订单号, u.name 用户, u.phone 联系方式, t0.createTm 创建时间, t0.amount 金额
+	FROM Ordr t0
+	LEFT JOIN User u ON u.id=t0.userId
+	WHERE t0.id=$id", true);
+			$tbl2 = queryAllWithHeader("SELECT name 商品, price 单价, qty 数量, spec 规格 FROM OrderItem WHERE orderId=$id", true);
+			$tbl3 = queryAllWithHeader("SELECT name 名称, amount 金额 FROM OrderAmount WHERE orderId=$id", true);
+
+			$arr = array_merge($tbl, [[], ["订单明细:"]], $tbl2, [[], ["金额调整:"]], $tbl3);
+
+			$this->handleExportFormat("excel", $arr, "订单明细-$id");
+		}
+	}
+
+注意：`[[], ["订单明细"]`表示插入两行，一个空行，另一个只有一列"订单明细"。
+
+前端JS示例:
+
+	var url = WUI.makeUrl("Ordr.export", {id: orderId});
+	window.open(url);
+
+导出示例：
+
+	订单号	用户	联系方式	创建时间	金额
+	51343	王五555	"12345678901	"	2018/11/16 15:38	135
+					
+	订单明细:				
+	商品	单价	数量	规格	
+	高压氧气管三胶二线	115	1	8MM	
+					
+	金额调整:				
+	名称	金额			
+	运费	20			
+
+*/
 	function handleExportFormat($fmt, $ret, $fname)
 	{
+		// 若二维数组转成{h,d}格式
+		if (!isset($ret["d"])) {
+			$ret = ["d"=>$ret];
+		}
 		$handled = false;
 		if ($fmt === "csv") {
 			header("Content-Type: application/csv; charset=UTF-8");
@@ -1822,8 +2359,27 @@ function KVtoCond($k, $v)
 			$this->table2txt($ret);
 			$handled = true;
 		}
+		else if ($fmt === "html") {
+			header("Content-Type: text/html; charset=UTF-8");
+			header("Content-Disposition: filename={$fname}.html");
+			$this->table2html($ret);
+			$handled = true;
+		}
 		if ($handled)
 			throw new DirectReturn();
+	}
+
+/**
+@fn AccessControl::isFileExport()
+
+返回是否为导出文件请求。
+*/
+	function isFileExport()
+	{
+		if ($this->ac != "query")
+			return false;
+		$fmt = param("fmt");
+		return $fmt != null && $fmt != 'list';
 	}
 }
 
@@ -1833,6 +2389,203 @@ function issetval($k, $arr = null)
 		$arr = $_POST;
 	return isset($arr[$k]) && $arr[$k] !== "";
 }
+/**
+@class BatchAddLogic
+
+用于定制批量导入行为。
+示例，实现接口：
+
+	Task.batchAdd(orderId, task1)(city, brand, vendorName, storeName)
+
+其中vendorName和storeName字段需要通过查阅修正为vendorId和storeId字段。
+
+	class TaskBatchAddLogic extends BatchAddLogic
+	{
+		protected $vendorCache = [];
+		function __construct () {
+			// 每个对象添加时都会用的字段，加在$this->params数组中
+			$this->params["orderId"] = mparam("orderId", "G"); // mparam要求必须指定该字段
+			$this->params["task1"] = param("task1", null, "G");
+		}
+		// $params为待添加数据，可在此修改，如用`$params["k1"]=val1`添加或更新字段，用unset($params["k1"])删除字段。
+		// $row为原始行数据数组。
+		function beforeAdd(&$params, $row) {
+			// vendorName -> vendorId 将params数组中的venderName字段查阅Vendor表改成vendorId字段。如果查不到则报错。传入vendorCache数组来优化查询。
+			translateKey($params, "vendorName", "vendorId", "SELECT id FROM Vendor WHERE name=%s", null, $this->vendorCache);
+			// storeName -> storeId 将params数组中的storeName字段查阅Store表改成storeId字段。如果查不到则自动以指定insert语句创建。
+			translateKey($params, "storeName", "storeId", "SELECT id FROM Store WHERE name=%s", "INSERT INTO Store (name) VALUES (%s)");
+		}
+		// 处理原始标题行数据, $row1是通过title参数传入的标题数组，可能为空
+		function onGetTitleRow($row, $row1) {
+		}
+	}
+
+	class AC2_Task extends AC0_Task
+	{
+		function api_batchAdd() {
+			$this->batchAddLogic = new TaskBatchAddLogic();
+			return parent::api_batchAdd();
+		}
+	}
+
+@see api_batchAdd
+*/
+class BatchAddLogic
+{
+	public $params = [];
+	function beforeAdd(&$paramArr, $row) {
+	}
+	function onGetTitleRow($row, $row1) {
+	}
+}
+
+/*
+分析符合下列格式的HTTP POST内容：
+
+- 以"\n"为行分隔，以"\t"为列分隔的文本数据表。
+- 第1行: 标题(如果有URL参数title，则忽略该行)，第2行开始为数据
+
+若需要定制其它导入方式，可继承和改写该类，如CsvBatchAddStrategy，改写以下方法
+
+	onInit
+	onGetRow
+
+通过BatchAddLogic::create来创建合适的类。
+*/
+class BatchAddStrategy
+{
+	protected $rowIdx;
+	protected $logic; // BatchAddLogic
+	private $rows;
+
+	static function create($logic=null) {
+		$st = null;
+		if (empty($_FILES)) {
+			$st = new BatchAddStrategy();
+		}
+		else {
+			$st = new CsvBatchAddStrategy();
+		}
+		if ($logic == null)
+			$st->logic = new BatchAddLogic();
+		else
+			$st->logic = $logic;
+		return $st;
+	}
+
+	final function beforeAdd(&$paramArr, $row) {
+		foreach ($this->logic->params as $k=>$v) {
+			$paramArr[$k] = $v;
+		}
+		$this->logic->beforeAdd($paramArr, $row);
+	}
+
+	protected function onInit() {
+		$content = getHttpInput();
+		$this->rows = preg_split('/\s*\n/', $content);
+	}
+	protected function onGetRow() {
+		if ($this->rowIdx >= count($this->rows))
+			return null;
+		$rowStr = $this->rows[$this->rowIdx];
+		if ($rowStr == "") {
+			$row = [];
+		}
+		else {
+			$row = preg_split('/[ ]*\t[ ]*/', $rowStr);
+		}
+		return $row;
+	}
+
+	function getRow() {
+		if ($this->rowIdx == null) {
+			$this->rowIdx = 0;
+			$this->onInit();
+		}
+		$row = $this->onGetRow();
+		if ($row == null)
+			return null;
+		if (++ $this->rowIdx == 1) {
+			$title = param("title", null, "G");
+			$row1 = null;
+			if ($title) {
+				$row1 = explode(',', $title);
+			}
+			$this->logic->onGetTitleRow($row, $row1);
+			if ($row1 != null)
+				$row = $row1;
+		}
+		return $row;
+	}
+}
+
+/*
+支持csv, txt两种文件，分别以","和"\t"分隔。
+标题栏为数据第一行，也可通过title参数来覆盖。
+*/
+class CsvBatchAddStrategy extends BatchAddStrategy
+{
+	protected $fp;
+	protected $delim;
+
+	protected function onInit() {
+		if (empty($_FILES))
+			throw new MyException(E_PARAM, "no file", "没有文件上传");
+		$f = current($_FILES);
+		if ($f["size"] <= 0 || $f["error"] != 0)
+			throw new MyException(E_PARAM, "error file: code={$f['error']}", "文件数据出错");
+
+		$orgName = $f["name"];
+		$file = $f["tmp_name"];
+		self::backupFile($file, $orgName);
+		$this->fp = fopen($file, "rb");
+		utf8InputFilter($this->fp);
+
+		if (substr($orgName, 4) == ".txt") {
+			$this->delim = "\t";
+		}
+		else {
+			$this->delim = ",";
+		}
+	}
+
+	static function backupFile($file, $orgName) {
+		$dir = "upload/import";
+		if (! is_dir($dir)) {
+			if (mkdir($dir, 0777, true) === false)
+				throw new MyException(E_SERVER, "fail to create folder: $dir");
+		}
+		$bakF = $dir . "/" . date("Ymd_His");
+		$ext = strtolower(pathinfo($orgName, PATHINFO_EXTENSION));
+		if ($ext) {
+			$bakF .= ".$ext";
+		}
+		copy($file, $bakF);
+		logit("import file: $orgName, backup: $bakF");
+	}
+
+	static function isEmptyArr($arr) {
+		$isEmpty = true;
+		foreach ($arr as $e) {
+			if ($e != "") {
+				$isEmpty = false;
+			}
+		}
+		return $isEmpty;
+	}
+	protected function onGetRow() {
+		do {
+			$row = fgetcsv($this->fp, 0, $this->delim);
+			if ($row === false) {
+				fclose($this->fp);
+				$row = null;
+				break;
+			}
+		} while(self::isEmptyArr($row));
+		return $row;
+	}
+}
+
 # }}}
 
 // vi: foldmethod=marker

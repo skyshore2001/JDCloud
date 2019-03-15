@@ -28,11 +28,11 @@ tm
 
 使用multipart/form-data格式上传（标准html支持，可一次传多个文件）:
 
-	upload(type?=default, genThumb?=0, autoResize?=1)(POST content:multipart/form-data) -> [{id, orgName, thumbId?}]
+	upload(type?=default, genThumb?=0, autoResize?=1)(POST content:multipart/form-data) -> [{id, orgName, size, thumbId?}]
 	
 直接传文件内容，一次只能传一个文件:
 
-	upload(fmt=raw|raw_b64, f, exif?, ...)(POST content:raw) -> [{id, orgName, thumbId?}]
+	upload(fmt=raw|raw_b64, f, exif?, ...)(POST content:raw) -> [{id, orgName, size, thumbId?}]
 	
 上传照片等内容. 返回附件id. 因为允许一次上传多个文件，返回的是一个数组，每项对应上传的一个文件。
 
@@ -42,12 +42,8 @@ genThumb
 : Boolean. 为1时生成缩略图。如果未指定type, 则按type=default设置缩略图大小.
 
 type
-: String. 图片类别，用于图片自动裁切缩略图到指定大小。
- 例如，商家图片上传使用"store", 用户头像上传使用"user", 其它情况不赋值. 不同的type在生成缩略图时尺寸不同。可在源码中配置变量`$UploadType`，缺省为：
-
-		type=user: 128x128
-		type=store: 200x150
-		type=default: 100x100
+: String. 图片类别。服务端将根据type不同，将图片放置相应的文件夹中(upload/{type}/{date:yyyymm}/)，用于图片自动裁切缩略图到指定大小。
+ 例如，商家图片上传使用"store", 用户头像上传使用"user", 其它情况不赋值. 不同的type在生成缩略图时尺寸不同, 可配置变量`Upload:$typeMap`，缺省为："default" => 360x360.
 
 content
 : 文件内容。默认使用multipart/form-data格式，详见请求示例。如果fmt为"raw"或"raw_b64"，则直接为文件内容（或其base64编码）
@@ -67,7 +63,7 @@ f
 
 注意：
 
-- 仅支持上传指定的文件扩展名，可在源码中配置`$ALLOWED_MIME`。
+- 仅支持上传指定的文件扩展名，可配置`Upload::$fileTypes`。
 - 文件最大可上传的大小，可在php.ini中修改配置upload_max_filesize, post_max_size, max_execution_time等相关选项。
 - 在保存文件时，文件路径使用以下规则: upload/{type}/{date:YYYYMM}/{6位随机数}.{原扩展名}
  例如, 商家图片(type=store)路径为 upload/store/201501/123456.jpg. 用户上传的某图片(type为空)路径可能为 upload/201501/123456.jpg
@@ -175,6 +171,8 @@ HTTP header "Content-Type"将标识正确的文件MIME类型，如jpg类型为"i
 
 如果找不到附件，将返回HTTP状态码"404 Not Found"。
 
+默认是直接输入文件内容，但如果文件大小超过10MB，或是请求头中含有"Range"（比如播放mp4视频，会分段取），则直接重定向到原文件。
+
 **[参数]**
 
 thumbId
@@ -205,6 +203,35 @@ thumbId
 
 	HTTP/1.1 404 Not Found
 	Content-Type: text/plain; charset=UTF-8
+
+### 查看图片
+
+该接口生成一个图片列表网页。
+
+	pic(id)
+
+- id: 缩略图编号，或编号列表(以逗号分隔)。
+
+示例：
+
+	<a target="_black" href="http://myserver/mysvc/api.php/pic?id=10,12,14">查看图片</a>
+
+### 导出文本文件
+
+导出指定文本的文件，可指定编码。
+
+	export(fname, str, enc?)
+
+- fname: 下载文件的默认文件名。
+- str: 文件内容。
+- enc: 要转换的编码，默认utf-8。最终以该编码输出。
+
+JS使用示例：
+
+	var text = "标题1,标题2\n内容1,内容2";
+	window.open(WUI.makeUrl("export", {fname:"template.csv", enc: "gbk", str: text}));
+	
+直接导出指定文件名的文件。
 
 ## 前端应用接口
 

@@ -103,7 +103,7 @@ class Partner
 
 		dbInsert("OpenApiRecord", [
 			"partnerId"=>$partnerId,
-			"tm"=>"=NOW()",
+			"tm"=>dbExpr("NOW()"),
 			"apiLogId"=>ApiLog::$lastId,
 			"sign"=>$sign
 		]);

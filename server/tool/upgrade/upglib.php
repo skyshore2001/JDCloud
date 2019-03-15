@@ -383,7 +383,7 @@ class UpgHelper
 			$fi = new SplFileInfo($files[$i]);
 			$file = $fi->getRealPath();
 
-			//$file = iconv("utf-8", "gbk", $METAFILE); // for OS windows
+			//$file = iconv("utf-8", "gbk//TRANSLIT", $METAFILE); // for OS windows
 			$fd = fopen($file, "r");
 			if ($fd === false)
 				throw new Exception("*** cannot read meta file $file");
@@ -574,7 +574,7 @@ class UpgHelper
 			if (!$force)
 			{
 				# check whether to add missing fields
-				$rs = $this->execSql("SELECT * FROM (SELECT 1 AS id) t0 LEFT JOIN $tbl1 ON 1<>1", true);
+				$rs = $this->execSql("SELECT * FROM (SELECT 1 AS id) t0 LEFT JOIN (SELECT * FROM $tbl1 LIMIT 0) t1 ON 1<>1", true);
 				$row = $rs[0];
 				$found = false;
 

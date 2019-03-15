@@ -279,6 +279,8 @@ Ordr.add(res=&quot;id,status,total&quot;)(status=&quot;CR&quot;, total=100) -&gt
 <p>另外注意，上例是设置字段为null，而不是设置成空串&quot;&quot;。 如果要将字符串置空串(一般不建议使用)，可以用&quot;empty&quot;, 例如：</p>
 <pre><code>Obj.set(809)(sn=empty)</code></pre>
 <p>假如sn是数值类型，会导致其值为0或0.0。</p>
+<p>支持根据条件批量更新：</p>
+<pre><code>Obj.setIf(cond)(POST fields...)</code></pre>
 <p><strong>[获取对象操作]</strong></p>
 <p>接口原型：</p>
 <pre><code>Obj.get(id, res?) -&gt; {fields...}</code></pre>
@@ -288,6 +290,8 @@ Ordr.add(res=&quot;id,status,total&quot;)(status=&quot;CR&quot;, total=100) -&gt
 <pre><code>Obj.del(id)</code></pre>
 <p>根据id删除一个对象，例如：</p>
 <pre><code>Obj.del(809)</code></pre>
+<p>支持根据条件进行批量删除：</p>
+<pre><code>Obj.delIf(cond)</code></pre>
 <h3 id="查询操作"><span class="header-section-number">3.2</span> 查询操作</h3>
 <p>接口原型：</p>
 <pre><code>查询列表(默认压缩表格式)：

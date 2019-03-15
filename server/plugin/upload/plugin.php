@@ -1,32 +1,78 @@
 <?php
+/**
+@module Upload
 
+## 概述
+
+后端服务接口参考DESIGN.md文档。主要包括upload, att接口。
+
+类Upload为模块对外接口，包括配置项和公共方法。
+（暂无：类UploadImp为模块内部扩展接口，通过回调实现应用专用逻辑，应继承类UploadImpBase。）
+
+## 模块外部接口
+
+各配置项及默认值如下。
+
+- 定义允许上传的文件类型
+上传文件时，如果文件扩展名不在列表中，则禁止上传。
+如果未指定扩展名，则检查MIME类型是否在此表中；若不在列表，则尝试根据文件头自动猜测文件类型(目前支持JPG/PNG/GIF, 见guessFileType)；猜测失败则禁止上传该文件。
+下载文件时(att接口)，将按该表返回文件MIME类型。
+
+	Upload::$fileTypes = [
+		'jpg'=>'image/jpeg',
+		'jpeg'=>'image/jpeg',
+		'png'=>'image/png',
+		'gif'=>'image/gif',
+		'txt'=>'text/plain',
+		'pdf' => 'application/pdf',
+		'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+		'doc' => 'application/msword',
+		'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+		'xls' => 'application/vnd.ms-excel',
+		'zip' => 'application/zip',
+		'rar' => 'application/x-rar-compressed'
+	];
+
+- 定义图片类型及其缩略图尺寸
+
+	Upload::$typeMap = [
+		"default" => ["w"=>360, "h"=>360]
+	];
+
+- 服务器图片压缩选项
+ 调用upload接口时，超过maxPicKB的图片，会自动压缩到长宽不超过maxPicSize像素，除非接口参数autoResize设置为0。
+
+	Upload::$maxPicKB = 500; // KB
+	Upload::$maxPicSize = 1280;
+
+ */
+
+class Upload
+{
+	static $fileTypes = [
+		'jpg'=>'image/jpeg',
+		'jpeg'=>'image/jpeg',
+		'png'=>'image/png',
+		'gif'=>'image/gif',
+		'txt'=>'text/plain',
+		'pdf' => 'application/pdf',
+		'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+		'doc' => 'application/msword',
+		'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+		'xls' => 'application/vnd.ms-excel',
+		'zip' => 'application/zip',
+		'rar' => 'application/x-rar-compressed'
+	];
+
+	static $typeMap = [
+		"default" => ["w"=>360, "h"=>360]
+	];
+	// 默认调用upload时(autoResize参数为1)，超过maxPicKB的图片，会自动压缩到长宽不超过maxPicSize像素。
+	static $maxPicKB = 500; // KB
+	static $maxPicSize = 1280;
+}
 // ====== config {{{
 const HTTP_NOT_FOUND = "HTTP/1.1 404 Not Found";
-
-# thumb size for upload type:
-global $UploadType;
-$UploadType = [
-	"user" => ["w"=>128, "h"=>128],
-	"store" => ["w"=>200, "h"=>150],
-	"default" => ["w"=>360, "h"=>360],
-];
-
-// 如果扩展名未知，则使用MIME类型限制上传：
-global $ALLOWED_MIME;
-$ALLOWED_MIME = [
-	'jpg'=>'image/jpeg',
-	'jpeg'=>'image/jpeg',
-	'png'=>'image/png',
-	'gif'=>'image/gif',
-	'txt'=>'text/plain',
-	'pdf' => 'application/pdf',
-	'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-	'doc' => 'application/msword',
-	'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-	'xls' => 'application/vnd.ms-excel',
-	'zip' => 'application/zip',
-	'rar' => 'application/x-rar-compressed'
-];
 
 global $FILE_TAG; // tag => ext
 $FILE_TAG = [
@@ -37,11 +83,6 @@ $FILE_TAG = [
 	// GIF文件头
 	"GIF8" => "gif"
 ];
-
-// 设置允许上传的文件类型。设置为空表示允许所有。
-global $ALLOWED_EXTS;
-$ALLOWED_EXTS = array_keys($ALLOWED_MIME);
-
 //}}}
 
 # generate image/jpeg output. if $out=null, output to stdout
@@ -83,24 +124,18 @@ function resizeImage($in, $w, $h, $out=null)
 	$thumb = imageCreateTrueColor($w, $h);
 	
 	// Resize
-	imageCopyResized($thumb, $source, 0, 0, 0, 0, $w, $h, $srcw, $srch);
+	// imageCopyResized($thumb, $source, 0, 0, 0, 0, $w, $h, $srcw, $srch);
+	imageCopyResampled($thumb, $source, 0, 0, 0, 0, $w, $h, $srcw, $srch);
 
 	// Output
 	imageJpeg($thumb, $out);
 }
 
-function getUploadTypeInfo($type)
-{
-	global $UploadType;
-	if (! isset($UploadType[$type]))
-		$type = 'default';
-	return $UploadType[$type];
-}
-
 function api_upload()
 {
 	checkAuth(AUTH_LOGIN);
-	#$uid = $_SESSION["uid"];
+	session_commit(); // !!!释放session锁避免阻塞其它调用。注意此后要修改session应先调用session_start
+
 	$fmt = param("fmt");
 	if ($fmt === 'raw' || $fmt === 'raw_b64')
 	{
@@ -111,8 +146,8 @@ function api_upload()
 	$autoResize = param("autoResize/b", 1);
 	$exif = param("exif");
 
-	if ($type != "user" && $type != "store" && $type != "default") {
-		throw new MyException(E_PARAM, "bad type: $type");
+	if (!array_key_exists($type, Upload::$typeMap)) {
+		throw new MyException(E_PARAM, "unknown attachment type: $type");
 	}
 
 	$ret = [];
@@ -136,9 +171,8 @@ function api_upload()
 			$mtype = $f["type"];
 			$ext = strtolower(pathinfo($f["name"], PATHINFO_EXTENSION));
 			$orgName = basename($f["name"]);
-			global $ALLOWED_MIME, $ALLOWED_EXTS;
 			if ($ext == "" && $mtype) {
-				$ext = array_search($mtype, $ALLOWED_MIME);
+				$ext = array_search($mtype, Upload::$fileTypes);
 				if ($ext === false) {
 					// 猜测文件类型
 					$ext = guessFileType($f["tmp_name"]);
@@ -146,7 +180,7 @@ function api_upload()
 						throw new MyException(E_PARAM, "MIME type not supported: `$mtype`", "文件类型`$mtype`不支持.");
 				}
 			}
-			if (count($ALLOWED_EXTS) > 0 && ($ext == "" || !in_array($ext, $ALLOWED_EXTS))) {
+			if ($ext == "" || !array_key_exists($ext, Upload::$fileTypes)) {
 				throw new MyException(E_PARAM, "bad extention file name: `$orgName`", "文件扩展名`$ext`不支持");
 			}
 
@@ -245,16 +279,17 @@ function api_upload()
 			}
 			file_put_contents($fname, $s);
 		}
-		if ($autoResize && preg_match('/\.(jpg|jpeg|png)$/', $fname) && filesize($fname) > 500*1024) {
-			resizeImage($fname, 1280, 1280, $fname);
+		if ($autoResize && preg_match('/\.(jpg|jpeg|png)$/', $fname) && filesize($fname) > Upload::$maxPicKB*1024) {
+			resizeImage($fname, Upload::$maxPicSize, Upload::$maxPicSize, $fname); // 1280x1280
 		}
 
 		$sth->execute([$fname, null, null, $orgName]);
 		$id = (int)$DBH->lastInsertId();
-		$r = ["id"=>$id, "orgName"=>$orgName];
+		$r = ["id"=>$id, "orgName"=>$orgName, "size"=>filesize($fname)];
 
 		if ($genThumb) {
-			$info = getUploadTypeInfo($type);
+			$info = Upload::$typeMap[$type];
+			assert($info);
 			resizeImage($fname, $info["w"], $info["h"], $thumbName);
 			#file_put_contents($thumbName, "THUMB");
 			$sth->execute([$thumbName, $id, $exif, $orgName]);
@@ -271,12 +306,15 @@ function api_upload()
 function api_att()
 {
 	// overwritten the default
-	header("Cache-Control: private, max-age=99999999");
+	header("Cache-Control: max-age=99999999");
 	//header("Cache-Control: private");
-	header("Pragma: "); // session_start() set this one to "no-cache"
+	header_remove("Pragma");
+	header_remove("Expires");
 
 	#checkAuth(AUTH_LOGIN);
 	#$uid = $_SESSION["uid"];
+	session_commit(); // !!!释放session锁避免阻塞其它调用。注意此后要修改session应先调用session_start
+
 	$id = param("id");
 	$thumbId = param("thumbId");
 
@@ -325,10 +363,11 @@ function api_att()
 	# 对指定mime的直接返回，否则使用重定向。
 	# TODO: 使用 apache x-sendfile module 解决性能和安全性问题。
 	$ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-	global $ALLOWED_MIME;
-	//$mimeType = $ALLOWED_MIME[$ext] ?: 'application/octet-stream';
-	$mimeType = $ALLOWED_MIME[$ext];
-	if (@$mimeType) {
+	//$mimeType = 'application/octet-stream';
+	$mimeType = Upload::$fileTypes[$ext];
+	$reqRange = array_key_exists("HTTP_RANGE", $_SERVER);
+	// 对于大文件(>10M)或带range参数的请求，交给web server处理源文件。
+	if (@$mimeType && !($reqRange || filesize($file) > 10*1024*1024)) {
 		header("Content-Type: $mimeType");
 		header("Etag: $etag");
 		#header("Expires: Thu, 3 Sep 2020 08:52:00 GMT");
@@ -348,6 +387,41 @@ function api_att()
 		$url = $baseUrl . $file;
 		header('Location: ' . $url);
 	}
+	throw new DirectReturn();
+}
+
+function api_pic()
+{
+	session_commit();
+	header("Content-Type: text/html");
+	$pics = param("id/s");
+	$baseUrl = getBaseUrl();
+	foreach (explode(',', $pics) as $id) {
+		$id = trim($id);
+		if ($id)
+			echo("<img src='{$baseUrl}api.php/att?thumbId=$id'>\n");
+	}
+	throw new DirectReturn();
+}
+
+/*
+export(fname, str, enc?)
+
+- fname: 下载文件的默认文件名。
+- str: 文件内容。
+- enc: 要转换的编码，默认utf-8。最终以该编码输出。
+*/
+function api_export()
+{
+	session_commit();
+	$fname = mparam("fname");
+	$str = mparam("str");
+	$enc = param("enc", "utf-8");
+	header("Content-Type: text/plain; charset=" . $enc);
+	header('Content-Disposition: attachment; filename='. $fname);
+	if ($enc != "utf-8")
+		$str = iconv("utf-8", "$enc//IGNORE", $str);
+	echo($str);
 	throw new DirectReturn();
 }
 

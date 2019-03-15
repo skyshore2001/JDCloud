@@ -73,7 +73,7 @@ createTm
 
 **[订单]**
 
-@Ordr: id, userId, status(2), amount, dscr(l), cmt(l)
+@Ordr: id, userId, createTm, status(2), amount, dscr(l), cmt(l)
 
 status
 : Enum. 订单状态。CR-新创建,RE-已服务,CA-已取消. 其它备用值: PA-已付款(待服务), ST-开始服务, CL-已结算.
@@ -111,7 +111,7 @@ empId
 
 **[API调用日志]**
 
-@ApiLog: id, tm, addr, ua(l), app, ses, userId, ac, t&, retval&, req(t), res(t), reqsz&, ressz&, ver
+@ApiLog: id, tm, addr, ua(l), app, ses, userId, ac, t&, retval&, req(t), res(t), reqsz&, ressz&, ver, serverRev(10)
 
 app
 : "user"|"emp"|"store"...
@@ -127,6 +127,10 @@ t
 
 ver
 : 客户端版本。格式为："web"表示通用网页(通过ua可查看明细浏览器)，"wx/{ver}"表示微信版本如"wx/6.2.5", "a/{ver}"表示安卓客户端及版本如"a/1", "ios/{ver}"表示苹果客户端版本如"ios/15".
+
+@ApiLog1: id, apiLogId, ac, t&, retval&, req(t), res(t)
+
+batch操作的明细表。
 
 **[插件相关]**
 
