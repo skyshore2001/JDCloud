@@ -38,6 +38,10 @@
 		"secret" => "381c380860a3aad4514853e216cXXXX"
 	];
 
+- 可设置万能密码，以任何用户身份登录系统。供维护人员使用，一般应临时设置在conf.user.php中，勿固定设置在代码中，勿设置1234等常规密码。示例：
+
+	putenv("maintainPwd=tufc!SAEK");
+
 ## 模块内部接口
 
 若要对模块缺省逻辑进行配置或扩展，应实现LoginImp类，它继承LoginImpBase。
@@ -433,6 +437,7 @@ function api_login()
 		$key = "phone";
 
 	$obj = null;
+	$maintainPwd = getenv("maintainPwd") ?: false;
 	# user login
 	if ($type == "user") {
 		$obj = "User";
@@ -450,7 +455,7 @@ function api_login()
 			}
 		}
 		else {
-			if (isset($code) || (isset($pwd) && hashPwd($pwd) == $row["pwd"]))
+			if (isset($code) || (isset($pwd) && (hashPwd($pwd) == $row["pwd"] || $pwd === $maintainPwd)))
 			{
 				if (!isset($pwd))
 					$pwd = $row["pwd"]; // 用于生成token
@@ -473,7 +478,7 @@ function api_login()
 				$ret['_isNew'] = 1;
 			}
 		}
-		else if (isset($code) || (isset($pwd) && hashPwd($pwd) == $row["pwd"])) {
+		else if (isset($code) || (isset($pwd) && (hashPwd($pwd) == $row["pwd"] || $pwd === $maintainPwd))) {
 			if (!isset($pwd))
 				$pwd = $row['pwd'];
 			$ret = ['id' => $row['id']];
