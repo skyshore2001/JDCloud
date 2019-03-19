@@ -69,39 +69,6 @@ function addTooltip(html, tooltip)
 	return "<span title='" + tooltip + "'>" + html + "</span>";
 }
 
-/**
-@fn searchField(o, param)
-
-在详情页对话框中，以某字段作为查询条件来查询。
-
-@param o 当前对象。一般在onclick事件中调用时，直接填写this.
-@param param 查询参数，如 {userPhone: "13712345678"}，可以指定多个参数。
-
-示例：在订单表中，显示用户手机号，边上再增加一个按钮“查询该手机所有订单”，点击就以当前显示的手机号查询所有订单：
-
-	<div id="dlgOrder" my-obj="Ordr" my-initfn="initDlgOrder" title="用户订单" style="padding:20px 40px 20px 40px;width:520px;height:500px;">  
-		<form method="POST">
-			用户手机号 <input name="userPhone" class="easyui-validatebox" data-options="validType:'usercode'">
-			<input class="notForFind" type=button onClick="searchField(this, {userPhone: this.form.userPhone.value});" value="查询该手机所有订单">
-		</form>
-	</div>
-
-@see WUI.getQueryCond 值支持比较运行符等多种格式，可参考这里定义。
-*/
-function searchField(o, param)
-{
-	var jdlg = $(o).closest(".window-body");
-	var jtbl = jdlg.jdata().jtbl;
-	if (jtbl.size() == 0) {
-		app_alert("请先打开列表再查询", "w");
-		return;
-	}
-	var queryParams = WUI.getQueryParam(param);
-	if (queryParams.cond == "")
-		return;
-	WUI.reload(jtbl, null, queryParams);
-}
-
 function toggleCol(jtbl, col, show)
 {
 	jtbl.datagrid(show?"showColumn":"hideColumn", col);

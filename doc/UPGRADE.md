@@ -1,3 +1,19 @@
+## 升级到v5.3
+
+### 废弃searchField
+
+取消了app.js中的searchField方法。该方法用于在对话框上按某字段查询，如：
+
+	<td>用户联系方式</td>
+	<td>
+		<input name="userPhone" style="width:50%" class="easyui-validatebox" data-options="validType:'usercode'">
+		<input class="forSet" type=button onClick="searchField(this, {userPhone: this.form.userPhone.value});" value="查询该手机所有订单">
+	</td>
+
+v5.3开始可直接三击字段标题来查询，所以可以不需要加查询按钮了。如果要保留原按钮，可以在onClick中用WUI.doFind替代：
+
+	onClick="WUI.doFind($(this).closest('td'));"
+
 ## 升级到v5.2
 
 ### 管理端app.js重构到jdcloud-wui-ext.js，增加upload和checkList组件

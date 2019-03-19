@@ -495,6 +495,11 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 
 如果不加wui-notCond类，生成的查询参数为：`{cond: "status=0"}`；加上后，生成查询参数如：`{status: 0}`.
 
+(v5.3)
+
+- 在对话框中三击（2秒内）字段标题栏，可快速按查询该字段。
+- 在页面工具栏中，按住Ctrl(batch模式)点击“刷新”按钮，可清空当前查询条件。
+
 #### 设计模式：关联选择框
 
 示例：下拉框中显示员工列表 (Choose-from-list / 关联选择框)
@@ -2017,7 +2022,7 @@ function jdModule(name, fn, overrideCtor)
 	}
 
 	var ret;
-	if (fn instanceof Function) {
+	if (typeof(fn) === "function") {
 		if (window.jdModuleMap[name]) {
 			fn.call(window.jdModuleMap[name]);
 		}
@@ -3219,9 +3224,9 @@ function getQueryParam(kvList)
 }
 
 /**
-@fn doSpecial(jo, filter, fn)
+@fn doSpecial(jo, filter, fn, cnt=5, interval=4s)
 
-连续5次点击某处，执行隐藏动作。
+4s内连续5次点击某处，执行隐藏动作。
 
 例：
 	// 连续5次点击当前tab标题，重新加载页面
@@ -3231,13 +3236,17 @@ function getQueryParam(kvList)
 		self.reloadDialog(true);
 	});
 
+2s内连续3次点击对话框中的字段标题，触发查询：
+
+	WUI.doSpecial(jdlg, ".wui-form-table td", fn, 3, 2);
+
 */
 self.doSpecial = doSpecial;
-function doSpecial(jo, filter, fn)
+function doSpecial(jo, filter, fn, cnt, interval)
 {
-	jo.on("click", filter, function (ev) {
-		var INTERVAL = 4; // 4s
-		var MAX_CNT = 5;
+	var MAX_CNT = cnt || 5;
+	var INTERVAL = interval || 4; // 4s
+	jo.on("click.special", filter, function (ev) {
 		var tm = new Date();
 		var obj = this;
 		// init, or reset if interval 
@@ -3252,7 +3261,7 @@ function doSpecial(jo, filter, fn)
 		fn.cnt = 0;
 		fn.lastTm = tm;
 
-		fn();
+		fn.call(this, ev);
 	});
 }
 }
@@ -4104,7 +4113,7 @@ self.callSvr = callSvr;
 self.callSvrExt = {};
 function callSvr(ac, params, fn, postParams, userOptions)
 {
-	if (params instanceof Function) {
+	if ($.isFunction(params)) {
 		// 兼容格式：callSvr(url, fn?, postParams?, userOptions?);
 		userOptions = postParams;
 		postParams = fn;
@@ -4243,7 +4252,7 @@ self.callSvrSync = callSvrSync;
 function callSvrSync(ac, params, fn, postParams, userOptions)
 {
 	var ret;
-	if (params instanceof Function) {
+	if ($.isFunction(params)) {
 		userOptions = postParams;
 		postParams = fn;
 		fn = params;
@@ -5579,6 +5588,39 @@ function loadDialog(jdlg, onLoad)
 }
 
 /**
+@fn doFind(jo, jtbl?)
+
+根据对话框中jo部分内容查询，结果显示到表格(jtbl)中。
+jo一般为对话框内的form或td，也可以为dialog自身。
+查询时，取jo内部带name属性的字段作为查询条件。如果有多个字段，则生成AND条件。
+
+jtbl未指定时，自动取对话框关联的表格；如果未关联，则不做查询。
+
+@see .wui-notCond 指定独立查询条件
+ */
+self.doFind = doFind;
+function doFind(jo, jtbl)
+{
+	if (!jtbl) {
+		var jdlg = jo.closest(".wui-dialog");
+		if (jdlg.size() > 0)
+			jtbl = jdlg.jdata().jtbl;
+	}
+	if (!jtbl || jtbl.size() == 0) {
+		console.warn("doFind fails: no table");
+		return;
+	}
+
+	var param = getFindData(jo);
+	// 归并table上的cond条件. dgOpt.url是makeUrl生成的，保存了原始的params
+	var dgOpt = jtbl.datagrid("options");
+	if (param.cond && dgOpt && dgOpt.url && dgOpt.url.params && dgOpt.url.params.cond) {
+		param.cond = dgOpt.url.params.cond + " AND (" + param.cond + ")";
+	}
+	reload(jtbl, undefined, param);
+}
+
+/**
 @fn showObjDlg(jdlg, mode, opt?={jtbl, id, obj})
 
 @param jdlg 可以是jquery对象，也可以是selector字符串或DOM对象，比如 "#dlgOrder". 注意：当对话框保存为单独模块时，jdlg=$("#dlgOrder") 一开始会为空数组，这时也可以调用该函数，且调用后jdlg会被修改为实际加载的对话框对象。
@@ -5822,14 +5864,8 @@ function showObjDlg(jdlg, mode, opt)
 	function onOk (retData) {
 		var jtbl = jd.jtbl;
 		if (mode==FormMode.forFind) {
-			var param = getFindData(jfrm);
 			mCommon.assert(jtbl); // 查询结果显示到jtbl中
-			// 归并table上的cond条件. dgOpt.url是makeUrl生成的，保存了原始的params
-			var dgOpt = jtbl.datagrid("options");
-			if (param.cond && dgOpt && dgOpt.url && dgOpt.url.params && dgOpt.url.params.cond) {
-				param.cond = dgOpt.url.params.cond + " AND (" + param.cond + ")";
-			}
-			reload(jtbl, undefined, param);
+			doFind(jfrm, jtbl);
 			onCrud();
 			return;
 		}
@@ -5947,7 +5983,7 @@ function dg_toolbar(jtbl, jdlg)
 	*/
 
 	var tb = {
-		r: {text:'刷新', iconCls:'icon-reload', handler: function() { reload(jtbl); /* reload(jtbl, org_url, org_param) */ } },
+		r: {text:'刷新', iconCls:'icon-reload', handler: function() { reload(jtbl, null, m_batchMode?{}:null);} }, // Ctrl-点击，清空查询条件后查询。
 		f: {text:'查询', iconCls:'icon-search', handler: function () {
 			showObjDlg(jdlg, FormMode.forFind, {jtbl: jtbl});
 		}},
@@ -6184,23 +6220,25 @@ var Formatter = {
 			return v;
 		}
 	},
-	linkTo: function (field, dlgRef) {
+	linkTo: function (field, dlgRef, showId) {
 		return function (value, row) {
 			if (value == null)
 				return;
-			return self.makeLinkTo(dlgRef, row[field], value);
+			var val = !showId? value: row[field] + "-" + value;
+			return self.makeLinkTo(dlgRef, row[field], val);
 		}
 	}
 };
 
 /**
-@var formatter = {dt, number, pics, flag(yes?=是,no?=否), enum(enumMap), linkTo(field, dlgRef) }
+@var formatter = {dt, number, pics, flag(yes?=是,no?=否), enum(enumMap), linkTo(field, dlgRef, showId?=false) }
 
 常常应用定义Formatter变量来扩展WUI.formatter，如
 
 	var Formatter = {
-		userId: WUI.formatter.linkTo("userId", "#dlgUser"),
-		orderStatus: WUI.formatter.enum({CR: "新创建", CA: "已取消"})
+		userId: WUI.formatter.linkTo("userId", "#dlgUser"), // 显示用户名(value)，点击后打开用户明细框
+		storeId: WUI.formatter.linkTo("storeId", "#dlgStore", true), // 显示"商户id-商户名", 点击后打开商户明细框
+		orderStatus: WUI.formatter.enum({CR: "新创建", CA: "已取消"}) // 将CR,CA这样的值转换为显示文字。
 	};
 	Formatter = $.extend(WUI.formatter, Formatter);
 
@@ -6526,6 +6564,15 @@ function enhanceTableLayout(jo) {
 		if (je.attr("width") == null)
 			je.attr("width", rates[colCnt][i]);
 	}
+
+	/*
+	2s内3次点击字段标题，触发查询。
+	 */
+	self.doSpecial(jo, 'td', function (ev) {
+		var jo = $(this).next();
+		if (jo.find("[name]").size() > 0)
+			doFind(jo);
+	}, 3, 2);
 
 	function dup(s, n) {
 		var ret = '';
@@ -7493,7 +7540,7 @@ function mycombobox(force)
 			if (opts.url == null)
 				return;
 			var url = opts.url;
-			if (url instanceof Function) {
+			if ($.isFunction(url)) {
 				if (url.length == 0) { // 无参数直接调用
 					url = url();
 				}
