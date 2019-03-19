@@ -497,7 +497,7 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 
 (v5.3)
 
-- 在对话框中三击（2秒内）字段标题栏，可快速按查询该字段。
+- 在对话框中三击（2秒内）字段标题栏，可快速按查询该字段。Ctrl+三击为追加过滤条件。
 - 在页面工具栏中，按住Ctrl(batch模式)点击“刷新”按钮，可清空当前查询条件。
 
 #### 设计模式：关联选择框
@@ -5588,7 +5588,7 @@ function loadDialog(jdlg, onLoad)
 }
 
 /**
-@fn doFind(jo, jtbl?)
+@fn doFind(jo, jtbl?, appendFilter?=false)
 
 根据对话框中jo部分内容查询，结果显示到表格(jtbl)中。
 jo一般为对话框内的form或td，也可以为dialog自身。
@@ -5597,11 +5597,12 @@ jo一般为对话框内的form或td，也可以为dialog自身。
 如果查询条件为空，则不做查询；但如果指定jtbl的话，则强制查询。
 
 jtbl未指定时，自动取对话框关联的表格；如果未关联，则不做查询。
+appendFilter=true时，表示追加过滤条件。
 
 @see .wui-notCond 指定独立查询条件
  */
 self.doFind = doFind;
-function doFind(jo, jtbl)
+function doFind(jo, jtbl, appendFilter)
 {
 	var force = (jtbl!=null);
 	if (!jtbl) {
@@ -5621,9 +5622,17 @@ function doFind(jo, jtbl)
 	}
 
 	// 归并table上的cond条件. dgOpt.url是makeUrl生成的，保存了原始的params
+	// 避免url和queryParams中同名cond条件被覆盖，因而用AND合并。
 	var dgOpt = jtbl.datagrid("options");
-	if (param.cond && dgOpt && dgOpt.url && dgOpt.url.params && dgOpt.url.params.cond) {
-		param.cond = dgOpt.url.params.cond + " AND (" + param.cond + ")";
+	if (!appendFilter || $.isEmptyObject(dgOpt.queryParams)) { // 设置过滤条件
+		if (param.cond && dgOpt && dgOpt.url && dgOpt.url.params && dgOpt.url.params.cond) {
+			param.cond = dgOpt.url.params.cond + " AND (" + param.cond + ")";
+		}
+	}
+	else { // 追加过滤条件
+		if (dgOpt.queryParams.cond)
+			dgOpt.queryParams.cond += " AND (" + param.cond + ")";
+		$.extend(param, dgOpt.queryParams);
 	}
 	reload(jtbl, undefined, param);
 }
@@ -6574,12 +6583,14 @@ function enhanceTableLayout(jo) {
 	}
 
 	/*
-	2s内3次点击字段标题，触发查询。
+	2s内三击字段标题，触发查询。Ctrl+三击为追加过滤条件
 	 */
 	self.doSpecial(jo, 'td', function (ev) {
 		var jo = $(this).next();
-		if (jo.find("[name]").size() > 0)
-			doFind(jo);
+		if (jo.find("[name]").size() > 0) {
+			var appendFilter = (ev.ctrlKey || ev.metaKey);
+			doFind(jo, null, appendFilter);
+		}
 	}, 3, 2);
 
 	function dup(s, n) {
