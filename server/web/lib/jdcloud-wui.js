@@ -5594,6 +5594,8 @@ function loadDialog(jdlg, onLoad)
 jo一般为对话框内的form或td，也可以为dialog自身。
 查询时，取jo内部带name属性的字段作为查询条件。如果有多个字段，则生成AND条件。
 
+如果查询条件为空，则不做查询；但如果指定jtbl的话，则强制查询。
+
 jtbl未指定时，自动取对话框关联的表格；如果未关联，则不做查询。
 
 @see .wui-notCond 指定独立查询条件
@@ -5601,17 +5603,23 @@ jtbl未指定时，自动取对话框关联的表格；如果未关联，则不�
 self.doFind = doFind;
 function doFind(jo, jtbl)
 {
+	var force = (jtbl!=null);
 	if (!jtbl) {
 		var jdlg = jo.closest(".wui-dialog");
 		if (jdlg.size() > 0)
 			jtbl = jdlg.jdata().jtbl;
 	}
 	if (!jtbl || jtbl.size() == 0) {
-		console.warn("doFind fails: no table");
+		console.warn("doFind: no table");
 		return;
 	}
 
 	var param = getFindData(jo);
+	if (!force && $.isEmptyObject(param)) {
+		console.warn("doFind: no param");
+		return;
+	}
+
 	// 归并table上的cond条件. dgOpt.url是makeUrl生成的，保存了原始的params
 	var dgOpt = jtbl.datagrid("options");
 	if (param.cond && dgOpt && dgOpt.url && dgOpt.url.params && dgOpt.url.params.cond) {
@@ -7349,7 +7357,7 @@ $.each([
 		...
 	};
 
-(v5.2) url还可以是一个函数。如果带一个参数，一般用于级联列表。参考**级联列表支持**节.
+(v5.2) url还可以是一个函数。如果带一个参数，一般用于**动态列表**或**级联列表**。参考后面相关章节。
 
 ## 用jdEnumMap选项指定下拉列表
 
@@ -7407,11 +7415,59 @@ JS代码ListOptions.Brand:
 
 注意：jdEnumMap指定的固定选项会先出现。
 
+## 动态列表
+
+(v5.2) url选项使用函数，之后调用loadOptions方法刷新
+
+示例：在安装任务明细对话框(dlgTask)中，根据品牌(brand)过滤显示相应的门店列表(Store).
+
+	var ListOptions = {
+		Store: function () {
+			var opts = {
+				valueField: "id",
+				textField: "name",
+				// !!! url使用函数指定, 之后手工给参数调用loadOptions方法刷新 !!!
+				url: function (brand) {
+					return WUI.makeUrl('Store.query', {
+						res: 'id,name',
+						cond: "brand='" + brand + "'",
+						pagesz: -1
+					})
+				},
+				formatter: function (row) { return row.id + "-" + row.name; }
+			};
+			return opts;
+		}
+	};
+
+在明细对话框HTML中：
+
+	<form>
+		品牌 <input name="brand">
+		门店 <select name="storeId" class="my-combobox" data-options="ListOptions.Store()"></select>
+	</form>
+
+对话框初始化函数：在显示对话框或修改品牌后刷新门店列表
+
+	function initDlgTask()
+	{
+		...
+		
+		$(frm.brand).on("blur", function () {
+			if (this.value)
+				$(frm.storeId).trigger("loadOptions", this.value);
+		});
+
+		function onShow() {
+			$(frm.brand).trigger("blur");
+		}
+	}
+
 ## 级联列表支持
 
-(v5.2)
+(v5.2) 与动态列表机制相同。
 
-缺陷类型(defectTypeId)与缺陷代码(defectId)二级关系：选一个缺陷类型，缺陷代码自动刷新为该类型下的代码。
+示例：缺陷类型(defectTypeId)与缺陷代码(defectId)二级关系：选一个缺陷类型，缺陷代码自动刷新为该类型下的代码。
 在初始化时，如果字段有值，下拉框应分别正确显示。
 
 在一级内容切换时，二级列表自动从后台查询获取。同时如果是已经获取过的，缓存可以生效不必反复获取。
