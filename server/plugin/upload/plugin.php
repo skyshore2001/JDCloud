@@ -93,7 +93,7 @@ function resizeImage($in, $w, $h, $out=null)
 
 	list($srcw, $srch) = @getImageSize($in);
 	if (is_null($srcw))
-		throw new MyException(E_PARAM, "cannot get impage info: $in");
+		throw new MyException(E_PARAM, "cannot get image info: $in");
 
 	// 保持宽高协调
 	if ($srcw < $srch) {
