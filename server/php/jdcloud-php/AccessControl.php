@@ -1798,8 +1798,8 @@ FROM ($sql) t0";
 			$this->id = mparam("id");
 		$sql = sprintf("DELETE FROM %s WHERE id=%d", $this->table, $this->id);
 		$cnt = execOne($sql);
-		if ($cnt != 1)
-			throw new MyException(E_PARAM, "not found id=$id");
+		if (param('force')!=1 && $cnt != 1)
+			throw new MyException(E_PARAM, "del: not found id={$this->id}");
 	}
 
 /**
@@ -2564,9 +2564,11 @@ class CsvBatchAddStrategy extends BatchAddStrategy
 		logit("import file: $orgName, backup: $bakF");
 	}
 
-	static function isEmptyArr($arr) {
+	// 如果是全空行，返回true
+	static function trimArr(&$arr) {
 		$isEmpty = true;
-		foreach ($arr as $e) {
+		foreach ($arr as &$e) {
+			$e = trim($e);
 			if ($e != "") {
 				$isEmpty = false;
 			}
@@ -2581,7 +2583,7 @@ class CsvBatchAddStrategy extends BatchAddStrategy
 				$row = null;
 				break;
 			}
-		} while(self::isEmptyArr($row));
+		} while(self::trimArr($row));
 		return $row;
 	}
 }

@@ -1083,9 +1083,13 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 }
 
 /**
-@fn callSvcInt($ac)
+@fn callSvcInt($ac, $param=null, $postParam=null)
 
-内部调用另一接口，获得返回值。如果要设置GET, POST参数，分别用
+内部调用另一接口，获得返回值。
+如果指定了$param或$postParam参数，则会备份现有环境，并在调用后恢复。
+否则直接使用现有环境。
+
+如果想手工逐项设置GET, POST参数，可分别用
 
 	setParam(key, value); // 设置get参数
 	// 或批量设置用 setParam({key => value});
@@ -1094,11 +1098,25 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 与callSvc不同的是，它不处理事务、不写ApiLog，不输出数据，更轻量；
 与tableCRUD不同的是，它支持函数型调用。
 
+示例：
+
+	$vendorId = callSvcInt("Vendor.add", null, [
+		"name" => $params["vendorName"],
+		"tel" => $params["vendorPhone"]
+	]);
+
 @see setParam
 @see tableCRUD
 @see callSvc
 */
-function callSvcInt($ac)
+function callSvcInt($ac, $param=null, $postParam=null)
+{
+	if ($param || $postParam)
+		return callSvcInt2_($ac, $param, $postParam);
+	return callSvcInt_($ac);
+}
+
+function callSvcInt_($ac)
 {
 	$fn = "api_$ac";
 	if (preg_match('/^([A-Z]\w*)\.([a-z]\w*)$/', $ac, $ms)) {
@@ -1114,6 +1132,32 @@ function callSvcInt($ac)
 	}
 	if (!isset($ret))
 		$ret = "OK";
+	return $ret;
+}
+
+function callSvcInt2_($ac, $param=null, $postParam=null)
+{
+	$bak = [$_GET, $_POST, $_REQUEST];
+	if ($param) {
+		$_GET = $param;
+	}
+	if ($postParam) {
+		$_POST = $postParam;
+	}
+	$_REQUEST = $_GET + $_REQUEST;
+
+	$ret = null;
+	$ex = null;
+	try {
+		$ret = callSvcInt_($ac);
+	}
+	catch (Exception $ex1) {
+		$ex = $ex1;
+	}
+	// restore env
+	list($_GET, $_POST, $_REQUEST) = $bak;
+	if ($ex)
+		throw $ex;
 	return $ret;
 }
 

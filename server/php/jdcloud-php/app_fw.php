@@ -338,7 +338,12 @@ List类型示例。参数"items"类型在文档中定义为list(id/Integer, qty/
 
 	[ [ 100, 1.0, null], [101, null, "打蜡"] ]
 
-TODO: 直接支持 param("items/(id,qty?/n,dscr?)"), 添加param_objarr函数，去掉parseList函数。上例将返回
+要转换成objarr，可以用：
+
+	$varr = param("items/i:n?:s?");
+	$objarr = varr2objarr($var, ["id", "qty", "dscr"]);
+
+$objarr值为：
 
 	[
 		[ "id"=>100, "qty"=>1.0, dscr=>null],
@@ -888,6 +893,83 @@ function sql_concat()
 }
 
 /**
+@fn getQueryCond(cond)
+
+示例：key-value形式
+
+	getQueryCond([
+		"name"=>"eric",
+		"phone"=>null
+	]) => "name='eric' AND phone IS NULL"
+
+示例：条件数组
+
+	getQueryCond([
+		"type IS NOT NULL",
+		"tm>='2018-1-1' AND tm<'2019-1-1'"
+	]) => "type IS NOT NULL AND (tm>='2018-1-1' AND tm<'2019-1-1')"
+
+（以上两种在jd-php中可混用）
+
+特别地：
+
+	getQueryCond(null) => null
+	getQueryCond("ALL") => null
+	getQueryCond(100) => "id=100"
+	getQueryCond("100") => "id=100"
+	getQueryCond("id<>100") => "id<>100"
+
+*/
+function getQueryCond($cond)
+{
+	if ($cond === null || $cond === "ALL")
+		return null;
+	if (is_numeric($cond))
+		return "id=$cond";
+	if (!is_array($cond))
+		return $cond;
+	
+	$condArr = [];
+	foreach($cond as $k=>$v) {
+		if (is_int($k)) {
+			if (stripos($v, ' and ') !== false || $stripos($v, ' or ') !== false)
+				$exp = "($v)";
+			else
+				$exp = $v;
+		}
+		else {
+			if ($v === null) {
+				$exp = "$k IS NULL";
+			}
+			else {
+				$exp = "$k=" . Q($v);
+			}
+		}
+		$condArr[] = $exp;
+	}
+	return join(' AND ', $condArr);
+}
+
+/**
+@fn genQuery($sql, $cond)
+
+连接SELECT主语句(不带WHERE条件)和查询条件。
+示例：
+
+	genQuery("SELECT id FROM Vendor", [name=>$name, "phone"=>$phone]);
+	genQuery("SELECT id FROM Vendor", [name=>$name, "phone IS NOT NULL"]);
+
+@see getQueryCond
+*/
+function genQuery($sql, $cond)
+{
+	$condStr = getQueryCond($cond);
+	if (!$condStr)
+		return $sql;
+	return $sql . ' WHERE ' . $condStr;
+}
+
+/**
 @fn execOne($sql, $getInsertId?=false)
 
 @param $getInsertId?=false 取INSERT语句执行后得到的id. 仅用于INSERT语句。
@@ -957,14 +1039,25 @@ function execOne($sql, $getInsertId = false)
 		throw new MyException(E_PARAM, "bad user id");
 	// $phone = "13712345678"
 
+(v5.3)
+可将WHERE条件单独指定：$cond参数形式该函数getQueryCond
+
+	$id = queryOne("SELECT id FROM Vendor", false, ["phone"=>$phone]);
+
 @see queryAll
+@see getQueryCond
  */
-function queryOne($sql, $assoc = false)
+function queryOne($sql, $assoc = false, $cond = null)
 {
 	global $DBH;
 	if (! isset($DBH))
 		dbconn();
+	if ($cond)
+		$sql = genQuery($sql, $cond);
+	if (stripos($sql, "limit ") === false)
+		$sql .= " LIMIT 1";
 	$sth = $DBH->query($sql);
+
 	if ($sth === false)
 		return false;
 
@@ -1016,13 +1109,21 @@ queryAll支持执行返回多结果集的存储过程，这时返回的不是单
 
 	$allRows = queryAll("call syncAll()");
 
+(v5.3)
+可将WHERE条件单独指定：$cond参数形式该函数getQueryCond
+
+	$rows = queryAll("SELECT id FROM Vendor", false, ["phone"=>$phone]);
+
 @see objarr2table
+@see getQueryCond
  */
-function queryAll($sql, $assoc = false)
+function queryAll($sql, $assoc = false, $cond = null)
 {
 	global $DBH;
 	if (! isset($DBH))
 		dbconn();
+	if ($cond)
+		$sql = genQuery($sql, $cond);
 	$sth = $DBH->query($sql);
 	if ($sth === false)
 		return false;
@@ -1249,18 +1350,19 @@ e.g.
 	// 全表更新，没有条件。UPDATE Cinf SET appleDeviceToken={token}
 	$cnt = dbUpdate("Cinf", ["appleDeviceToken" => $token], "ALL");
 
+cond条件可以用key-value指定(cond写法参考getQueryCond)，如：
+
+	dbUpdate("Task", ["vendorId" => $id], ["vendorId" => $id1]);
+	基本等价于 (当id1为null时稍有不同, 上面生成"IS NULL"，而下面的SQL为"=null"非标准)
+	dbUpdate("Task", ["vendorId" => $id], "vendorId=$id1"]);
+
 */
 function dbUpdate($table, $kv, $cond)
 {
 	if ($cond === null)
 		throw new MyException(E_SERVER, "bad cond");
 
-	if (is_numeric($cond)) {
-		$cond = "id=$cond";
-	}
-	else if ($cond === "ALL") {
-		$cond = null;
-	}
+	$condStr = getQueryCond($cond);
 	$kvstr = "";
 	foreach ($kv as $k=>$v) {
 		if ($k === 'id' || is_null($v))
@@ -1295,60 +1397,59 @@ function dbUpdate($table, $kv, $cond)
 		addLog("no field found to be set");
 	}
 	else {
-		if (isset($cond))
-			$sql = sprintf("UPDATE %s SET %s WHERE $cond", $table, $kvstr);
+		if (isset($condStr))
+			$sql = sprintf("UPDATE %s SET %s WHERE $condStr", $table, $kvstr);
 		else
 			$sql = sprintf("UPDATE %s SET %s", $table, $kvstr);
 		$cnt = execOne($sql);
 	}
 	return $cnt;
 }
-/**
-translateKey(&$params, $fromCol, $toCol, $sqlQuery, $sqlInsert=null, &$cache=null)
-
-将fromCol转换为toCol，通过sqlQuery来查询，查不到则用sqlInsert来插入。
-如果未指定sqlInsert，则查阅不到字段时报错退出。
-
-在sqlQuery和sqlInsert中，用"%s"代替参数。
-示例：
-
-	// vendorName -> vendorId
-	$params = ["vendorName" => "v1"];
-	translateKey("vendorName", "vendorId", "SELECT id FROM Vendor WHERE name=%s", "INSERT INTO Vendor (name) VALUES (%s)");
-	// $params = ["vendorId" => "101"];
-
-如果导入字段有很多重复，可以传入cache数组以提高效率，如：
-
-	$vendorCache = []; // {vendorName=>vendorId}
-	$params = ["vendorName" => "v1", "storeName" => "store1"];
-	translateKey("vendorName", "vendorId", "SELECT id FROM Vendor WHERE name=%s", "INSERT INTO Vendor (name) VALUES (%s)", $vendorCache);
-	$storeCache = []; // {storeName=>storeId}
-	translateKey("storeName", "storeId", "SELECT id FROM Store WHERE name=%s", "INSERT INTO Store (name) VALUES (%s)", $storeCache);
-
-在translateKey中会将映射表存储在$cache中供下次查阅使用，这样不用每次都查数据库。
-*/
-function translateKey(&$params, $fromCol, $toCol, $sqlQuery, $sqlInsert=null, &$cache=null)
-{
-	$val = $params[$fromCol];
-	$rv = null;
-	if (is_array($cache)) {
-		$rv = $cache[$val];
-	}
-	if ($rv === null) {
-		$qval = Q($val);
-		$rv = queryOne(sprintf($sqlQuery, $qval));
-		if ($rv === false) {
-			if ($sqlInsert == null)
-				throw new MyException(E_PARAM, "bad ref key", "在关联表中找不到\"$val\"");
-			$rv = execOne(sprintf($sqlInsert, $qval), true);
-		}
-		if (is_array($cache))
-			$cache[$val] = $rv;
-	}
-	$params[$toCol] = $rv;
-	unset($params[$fromCol]);
-}
 //}}}
+
+/**
+@class SimpleCache
+
+缓存在数组中。适合在循环中缓存key-value数据。
+
+	$cache = new SimpleCache(); // id=>name
+	for ($idList as $id) {
+		$name = $cache->get($id, function () use ($id){
+			return queryOne("SELECT name FROM Vendor WHERE id=$id");
+		});
+	}
+
+示例2：
+
+	$key = join('-', [$name, $phone]);
+	$id = $cache->get($key);
+	if ($id === false) {
+		$val = getVal();
+		$cache->set($key, $val);
+	}
+
+*/
+class SimpleCache
+{
+	protected $cacheData = [];
+
+	// return false if key does not exist
+	function get($key, $fnGet = null) {
+		if (! array_key_exists($key, $this->cacheData)) {
+			if (!isset($fnGet))
+				return false;
+
+			$val = $fnGet();
+			$this->set($key, $val);
+			return $val;
+		}
+		return $this->cacheData[$key];
+	}
+
+	function set($key, $val) {
+		$this->cacheData[$key] = $val;
+	}
+}
 
 function isHttps()
 {
