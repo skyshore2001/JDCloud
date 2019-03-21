@@ -19,6 +19,12 @@ opt也可以是一个函数: optfn(jo) - jo为上传区, 返回该区的设置�
 - 以uploadpic开头的类所需CSS，目前放在app.css中。
 - 预览大图依赖weui库中的样式。
 
+引入库：由于要上传功能的页面不多，建议只在逻辑页面用到的时候引入，像这样：
+
+	<div mui-initfn="initPagePic" mui-script="pic.js" mui-deferred="loadUploadLib()">
+	
+loadUploadLib在app.js中有示例。在预览图片时，它自动检查和调用photoswipe库，优先用该库来预览。
+
 示例HTML
 
 	<!-- 单图上传区: 比如上传用户头像。这里把预览图和文件按钮合一了，点预览图即可再选择文件 -->

@@ -2322,7 +2322,7 @@ function compressImg(fileObj, cb, opt)
 		// 无压缩效果，则直接用原图
 		if (blob.size > fileObj.size) {
 			blob = fileObj;
-			b64src = img.src;
+			// b64src = img.src;
 			opt.mimeType = fileObj.type;
 		}
 		// 如果没有扩展名或文件类型发生变化，自动更改扩展名
