@@ -845,6 +845,7 @@ function dbconn($fnConfirm = null)
 	}
 	catch (PDOException $e) {
 		$msg = $GLOBALS["TEST_MODE"] ? $e->getMessage() : "dbconn fails";
+		logit("dbconn fails: " . $e->getMessage());
 		throw new MyException(E_DB, $msg, "数据库连接失败");
 	}
 	
