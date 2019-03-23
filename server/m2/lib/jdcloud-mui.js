@@ -1696,7 +1696,7 @@ function jdModule(name, fn, overrideCtor)
 	}
 
 	var ret;
-	if (fn instanceof Function) {
+	if (typeof(fn) === "function") {
 		if (window.jdModuleMap[name]) {
 			fn.call(window.jdModuleMap[name]);
 		}
@@ -3783,7 +3783,7 @@ self.callSvr = callSvr;
 self.callSvrExt = {};
 function callSvr(ac, params, fn, postParams, userOptions)
 {
-	if (params instanceof Function) {
+	if ($.isFunction(params)) {
 		// 兼容格式：callSvr(url, fn?, postParams?, userOptions?);
 		userOptions = postParams;
 		postParams = fn;
@@ -3922,7 +3922,7 @@ self.callSvrSync = callSvrSync;
 function callSvrSync(ac, params, fn, postParams, userOptions)
 {
 	var ret;
-	if (params instanceof Function) {
+	if ($.isFunction(params)) {
 		userOptions = postParams;
 		postParams = fn;
 		fn = params;
@@ -5865,7 +5865,9 @@ $(document).on("pagecreate", document_pageCreate);
 @param fn Function(data); 与callSvr时的回调相同，data为服务器返回的数据。
 函数中可以使用this["userPost"] 来获取post参数。
 
-@param opt.validate: Function(jf, queryParam={ac?,...}). 如果返回false, 则取消submit. queryParam为调用参数，可以修改。
+@param opt.validate: Function(jf, queryParam={ac?,...}). 
+如果返回false, 则取消submit. queryParam为调用参数，可以修改。
+(v5.3) 支持异步提交，返回Deferred对象时，表示在Deferred.resolve之后再提交。
 
 form提交时的调用参数, 如果不指定, 则以form的action属性作为queryParam.ac发起callSvr调用.
 form提交时的POST参数，由带name属性且不带disabled属性的组件决定, 可在validate回调中设置．
@@ -5898,6 +5900,20 @@ form提交时的POST参数，由带name属性且不带disabled属性的组件决
 
 @param opt.onNoAction: Function(jf). 当form中数据没有变化时, 不做提交. 这时可调用该回调函数.
 
+(v5.3)
+异步提交示例：点击提交后，先上传照片，照片传完获取到picId，然后做之后提交动作
+
+	MUI.setFormSubmit(jf, api_fn1, {
+		validate: function(jf, queryParam) {
+			var dfd = $.Deferred();
+			uploadPic.submit().then(function (picId) {
+				jf[0].picId.value = picId;
+				dfd.resolve();
+			});
+			return dfd;
+		}
+	});
+
 */
 self.setFormSubmit = setFormSubmit;
 function setFormSubmit(jf, fn, opt)
@@ -5911,19 +5927,29 @@ function setFormSubmit(jf, fn, opt)
 
 		var queryParam = {ac: jf.attr("action")};
 		if (opt.validate) {
-			if (false === opt.validate(jf, queryParam))
+			var ret = opt.validate(jf, queryParam);
+			if (false === ret)
 				return false;
+			// 异步支持
+			if (ret && ret.then) {
+				ret.then(doSubmit);
+				return false;
+			}
 		}
-		var postParam = mCommon.getFormData(jf);
-		if (! $.isEmptyObject(postParam)) {
-			var ac = queryParam.ac;
-			delete queryParam.ac;
-			self.callSvr(ac, queryParam, fn, postParam, {userPost: postParam});
-		}
-		else if (opt.onNoAction) {
-			opt.onNoAction(jf);
-		}
+		doSubmit();
 		return false;
+
+		function doSubmit() {
+			var postParam = mCommon.getFormData(jf);
+			if (! $.isEmptyObject(postParam)) {
+				var ac = queryParam.ac;
+				delete queryParam.ac;
+				self.callSvr(ac, queryParam, fn, postParam, {userPost: postParam});
+			}
+			else if (opt.onNoAction) {
+				opt.onNoAction(jf);
+			}
+		}
 	});
 }
 //}}}
@@ -7758,7 +7784,7 @@ form.action为对象名.
 pageItf: {formMode, formData}; formData用于forSet模式下显示数据, 它必须有属性id. 
 Form将则以pageItf.formData作为源数据, 除非它只有id一个属性(这时将则调用callSvr获取源数据)
 
-onValidate: Function(jform, queryParam); 提交前的验证, 或做字段补全的工作, 或补全调用参数。queryParam是查询参数，它可能包含{ac?, res?, ...}，可以进行修改。
+onValidate: Function(jform, queryParam); 提交前的验证, 或做字段补全的工作, 或补全调用参数。queryParam是查询参数，它可能包含{ac?, res?, ...}，可以进行修改。(v5.3)支持返回Deferred对象做异步提交。
 onGetData: Function(jform, queryParam); 在forSet模式下，如果需要取数据，则回调该函数，获取get调用的参数。
 onNoAction: Function(jform); 一般用于更新模式下，当没有任何数据更改时，直接点按钮提交，其实不做任何调用, 这时将回调 onNoAction，缺省行为是返回上一页。
 onAdd: Function(id); 添加完成后的回调. id为新加数据的编号. 
@@ -7779,6 +7805,7 @@ onDel: Function(); 删除对象后回调.
 		...
 		<div class="bd">
 			<form action="Person">
+				编号：<input name="id" class="forSet"> 
 				<input name="name" required placeholder="输入名称">
 				<textarea name="dscr" placeholder="写点简介"></textarea>
 				<div class="forSet">人物标签</div>
@@ -7789,6 +7816,8 @@ onDel: Function(); 删除对象后回调.
 			</form>
 		</div>
 	</div>
+
+注意：支持设置CSS类forSet,forAdd，用于标识只在更新或添加模式下使用。上例中编号id在添加时不出现，在更新时才显示。
 
 调用initPageDetail使它成为支持添加、查看和更新的详情页：
 
@@ -7857,6 +7886,28 @@ onDel: Function(); 删除对象后回调.
 
 如果formData中有多个属性，则自动以formData的内容作为数据源显示页面，不再发起查询。
 
+(v5.3) 在onValidate中返回Deferred对象，可支持异步提交。
+示例：先上传完照片获得picId后，再添加或保存。
+
+	initPageDetail(jpage, {
+		...,
+		onValidate: function (jf) {
+			var dfd = $.Deferred();
+			// 上传照片完成后再提交
+			uploadPic.submit().then(function (picId) {
+				jf[0].picId.value = picId;
+				dfd.resolve();
+			});
+			return dfd;
+		},
+		onGet: function (data) {
+			// 显示照片
+			jpage.find(".uploadpic").attr("data-atts", data.picId);
+			uploadPic.reset();
+		},
+	}
+
+@see setFormSubmit
 */
 self.initPageDetail = initPageDetail;
 function initPageDetail(jpage, opt)

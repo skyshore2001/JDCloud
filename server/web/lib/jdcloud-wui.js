@@ -6121,8 +6121,19 @@ function getExportHandler(jtbl, ac, param)
 	}
 
 	return function () {
-		var debugShow = m_batchMode;
 		var p1 = getQueryParamFromTable(jtbl, param);
+		var debugShow = false;
+		if (m_batchMode) {
+			var fmt = prompt("输入导出格式: excel csv txt excelcsv html (以!结尾为调试输出)", p1.fmt);
+			if (!fmt)
+				return;
+			if (fmt.substr(-1) == "!") {
+				fmt = fmt.substr(0, fmt.length-1);
+				debugShow = true;
+			}
+			p1.fmt = fmt;
+		}
+
 		var url = WUI.makeUrl(ac, p1);
 		// !!! 调试导出的方法：在控制台中设置  window.open=$.get 即可查看请求响应过程。
 		console.log("export: " + url);

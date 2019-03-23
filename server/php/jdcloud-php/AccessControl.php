@@ -1971,6 +1971,17 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		app_alert("成功导入" + ret.cnt + "条数据！");
 	}, fd);
 
+或者使用curl等工具导入：
+从excel中将数据全选复制到1.txt中(包含标题行，也可另存为csv格式文件)，然后导入。
+下面示例用curl工具调用VendorA.batchAdd导入：
+
+	#/bin/sh
+	baseUrl=http://localhost/p/anzhuang/api.php
+	param=title=name,phone,idCard,addr,email,legalAddr,weixin,qq,area
+	curl -v -F "file=@1.txt" "$baseUrl/VendorA.batchAdd?$param"
+
+如果要调试(php/xdebug)，可加URL参数`XDEBUG_SESSION_START=1`或Cookie中加`XDEBUG_SESSION=1`
+
 */
 	function api_batchAdd()
 	{
@@ -2284,6 +2295,17 @@ function KVtoCond($k, $v)
 		echo("</table>");
 	}
 
+	function table2excel($tbl)
+	{
+		$hdr = [];
+		foreach ($tbl["h"] as $h) {
+			$hdr[$h] = "string";
+		}
+		$writer = new XLSXWriter();
+		$writer->writeSheet($tbl["d"], "Sheet1", $hdr);
+		$writer->writeToStdOut();
+	}
+
 /**
 @fn handleExportFormat($fmt, $arr, $fname)
 
@@ -2348,6 +2370,14 @@ function KVtoCond($k, $v)
 			$handled = true;
 		}
 		else if ($fmt === "excel") {
+			require_once("xlsxwriter.class.php");
+			header("Content-disposition: attachment; filename=" . XLSXWriter::sanitize_filename($fname) . ".xlsx");
+			header("Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+			header("Content-Transfer-Encoding: binary");
+			$this->table2excel($ret);
+			$handled = true;
+		}
+		else if ($fmt === "excelcsv") {
 			header("Content-Type: application/csv; charset=gb18030");
 			header("Content-Disposition: attachment;filename={$fname}.csv");
 			$this->table2csv($ret, "gb18030");
@@ -2541,7 +2571,7 @@ class CsvBatchAddStrategy extends BatchAddStrategy
 		$this->fp = fopen($file, "rb");
 		utf8InputFilter($this->fp);
 
-		if (substr($orgName, 4) == ".txt") {
+		if (substr($orgName, -4) == ".txt") {
 			$this->delim = "\t";
 		}
 		else {
