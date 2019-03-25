@@ -2404,7 +2404,7 @@ function KVtoCond($k, $v)
 
 返回是否为导出文件请求。
 */
-	function isFileExport()
+	function isFileExport(&$fmt=null)
 	{
 		if ($this->ac != "query")
 			return false;

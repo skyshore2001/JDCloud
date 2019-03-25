@@ -55,6 +55,16 @@ JS
 	jpage.find("#userPic").attr("data-atts", "208");
 	jpage.find("#itemPics").attr("data-atts", "210,212,214");
 
+也可以在上传区内放置一个带name属性的input, 框架将优先从它取值或设置值, 这样就不用手工取值和赋值了, 比如:
+
+	<div class="uploadpic">
+		// 这个input的value将与data-atts一致.
+		<input name="itemPics" style="display:none">
+		<div class="uploadpic-btn">
+			<input type="file" multiple>
+		</div>
+	</div>
+
 	// 初始化，显示预览图
 	var uploadPic = new MUI.UploadPic(jpage); // 可直接传uploadpic类的jQuery对象或包含它的jQuery DOM对象
 	// var uploadPic = new MUI.UploadPic(jpage, {maxSize:1600, uploadParam:{type:"task"}} ); // 指定选项
@@ -136,7 +146,7 @@ onUploadDone在全部上传完成后调用，参数分别为每个上传区的�
 	uploadPic.empty();
 	// 等价于 uploadPic.reset(true);
 
-修改了data-attr属性后重新刷新显示：
+修改了data-atts属性后重新刷新显示：
 
 	uploadPic.reset();
 
@@ -245,9 +255,23 @@ function uploadPic1(jo, opt)
 	});
 }
 
+function getAtts(jo)
+{
+	var ji = jo.find(">input[name]");
+	if (ji.size() > 0)
+		return ji.val();
+	return jo.attr("data-atts");
+}
+
+function setAtts(jo, val)
+{
+	jo.find(">input[name]").val(val);
+	jo.attr("data-atts", val);
+}
+
 function loadPreview(jo, isMul)
 {
-	var atts = jo.attr("data-atts");
+	var atts = getAtts(jo);
 	if (atts) {
 		atts = atts.toString().split(/\s*,\s*/);
 		$.each(atts, function (i, e) {
@@ -418,15 +442,18 @@ function submit1(jo, cb, progress, progressCb)
 
 	function api_upload(data) {
 		MUI.assert($.isArray(data) && data.length == imgArr.length);
+		var atts = [];
 		$.each(imgArr, function(i) {
 			this.picData_ = null;
 			this.attId_ = data[i].thumbId;
+			atts.push(this.attId_);
 		});
+		setAtts(jo, atts.join(','));
 		done(cb);
 	}
 
 	function done (cb) {
-		atts = getAtts(jo);
+		atts = getCurrentAtts(jo);
 		if (cb) {
 			var rv = cb.call(jo, atts);
 			if (rv && rv.then) {
@@ -447,7 +474,7 @@ function submit1(jo, cb, progress, progressCb)
 	}
 }
 
-function getAtts(jo)
+function getCurrentAtts(jo)
 {
 	var atts = [];
 	jo.find(".uploadpic-item").each(function () {
@@ -488,7 +515,7 @@ function uploadPic_submit(cb, progressCb, onNoWork)
 			dfdArr.push(dfd);
 		}
 		else {
-			var atts = getAtts(jo);
+			var atts = getCurrentAtts(jo);
 			dfdArr.push(atts);
 		}
 	});
@@ -662,7 +689,7 @@ function uploadPic_reset(empty)
 			delPreview($(this), true);
 		});
 		if (empty) {
-			jo.attr("data-atts", "");
+			setAtts(jo, "");
 		}
 		else {
 			var isMul = MUI.getOptions(jo).isMul;

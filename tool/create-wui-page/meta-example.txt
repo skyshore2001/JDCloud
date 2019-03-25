@@ -1,0 +1,10 @@
+# meta文件中, #开头或空白行自动忽略, 实际有效行为两行.
+# 第一行是 @table: field1, field2, ... 
+# 字段可加类型标识, 如"cnt&", 与DESIGN.md中表定义相同, 可直接复制过来.
+# 以picId/pics结尾作为图片处理; 以attId/atts结尾作为附件处理
+
+# 第二行是各字段描述信息, 表描述: 字段1描述, 字段2描述, ...   因为不是真正的数据库表, 描述前不加@前缀
+# 字段后可加描述, "客户/linkTo:Customer"表示外键链接Customer表,"状态/enum:OrderStatusMap"表示是枚举类型,可选项由OrderStatusMap定义(变量名以Map结尾)
+
+@Ordr: id, name, qty, customerId, status, cmt
+订单: 编号, 名称, 数量, 客户/linkTo:Customer, 状态/enum:OrderStatusMap, 备注

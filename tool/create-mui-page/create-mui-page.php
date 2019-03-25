@@ -5,7 +5,7 @@
 根据模板生成相应的逻辑页
 在server/m2/page下有文件create-mui-page.sh，可在git-bash中直接运行，在该目录下创建文件。
 
-	Usage: create-mui-page {name} {title} {template=simple|order|orders} [baseObj=name]
+	Usage: create-mui-page {name} {title} {template=simple|order|orders|...} [baseObj=name]
 
 - name: 文件名，一般与对象名相同。比如`Item`会生成`item.html`等文件及`initPageItem`函数。
 
@@ -25,9 +25,10 @@
 
 @list ($prog, $file, $title, $tpl, $baseObj) = $argv;
 if (! $file || ! $title || !$tpl) {
-	echo "Usage: create-mui-page {name} {title} {template=simple|order|orders} [baseObj=name]\n";
+	echo "Usage: create-mui-page {name} {title} {template} [baseObj=name]\n";
 	echo "   eg: create-mui-page item 商品明细 order\n";
 	echo "   eg: create-mui-page items 商品列表 orders\n";
+	echo "模板: simple: 空框架; orders/order: 列表页/明细页; list/detail: 简单列表/编辑页\n";
 	exit;
 }
 $obj = ucfirst($file);

@@ -5849,12 +5849,8 @@ function document_pageCreate(ev)
 	var jpage = $(ev.target);
 
 	var jhdr = jpage.find("> .hd");
-	// 标题栏空白处点击5次, 进入测试模式
-	jhdr.click(function (ev) {
-		// 注意避免子元素bubble导致的事件
-		if ($(ev.target).hasClass("hd") || ev.target.tagName == "H1" || ev.target.tagName == "H2")
-			switchTestMode(this); 
-	});
+	// 标题栏空白处点击5次, 进入测试模式; 注意避免子元素bubble导致的事件
+	self.doSpecial(jhdr, "H1,H2", switchTestMode);
 }
 
 $(document).on("pagecreate", document_pageCreate);
@@ -6400,34 +6396,21 @@ window.Plugins = {
 //}}}
 
 // ------ main {{{
-
-// 单击5次，每次间隔不大于2s
-function switchTestMode(obj)
+// 标题栏单击5次召唤
+function switchTestMode()
 {
-	var INTERVAL = 4; // 2s
-	var MAX_CNT = 5;
-	var f = switchTestMode;
-	var tm = new Date();
-	// init, or reset if interval 
-	if (f.cnt == null || f.lastTm == null || tm - f.lastTm > INTERVAL*1000 || f.lastObj != obj)
-	{
-		f.cnt = 0;
-		f.lastTm = tm;
-		f.lastObj = obj;
+	var url = prompt("切换URL?", location.href);
+	if (url == null || url === "")
+		return;
+	if (url == location.href) {
+		MUI.reloadPage();
+		return;
 	}
-//	console.log("switch: " + f.cnt);
-	if (++ f.cnt >= MAX_CNT) {
-		f.cnt = 0;
-		f.lastTm = tm;
-		var url = prompt("切换URL?", location.href);
-		if (url == null || url === "" || url == location.href)
-			return;
-		if (url[0] == "/") {
-			url = "http://" + url;
-		}
-		location.href = url;
-		self.app_abort();
+	if (url[0] == "/") {
+		url = "http://" + url;
 	}
+	location.href = url;
+	self.app_abort();
 }
 
 function main()
