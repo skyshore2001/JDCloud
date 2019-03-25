@@ -15,6 +15,8 @@ $CHAR_SZ = [
 	'm' => 50,
 	'l' => 255 
 ];
+
+$IS_CLI = (php_sapi_name() == "cli");
 #}}}
 
 ###### db adapter {{{
@@ -95,7 +97,13 @@ $SQLDIFF = null;
 // 注意：die返回0，请调用die1返回1标识出错。
 function die1($msg)
 {
-	fwrite(STDERR, $msg . "\n");
+	global $IS_CLI;
+	if ($IS_CLI) {
+		fwrite(STDERR, $msg . "\n");
+	}
+	else {
+		echo($msg);
+	}
 	exit(1);
 }
 
@@ -253,7 +261,13 @@ function genSql($meta)
 
 function prompt($s)
 {
-	fprintf(STDERR, "%s", $s);
+	global $IS_CLI;
+	if ($IS_CLI) {
+		fprintf(STDERR, "%s", $s);
+	}
+	else {
+		printf("%s", $s);
+	}
 }
 
 function logstr($s, $show=true)
@@ -527,8 +541,11 @@ class UpgHelper
 		$fnConfirm = null;
 		if (!$this->forRtest) {
 			$fnConfirm = function ($connstr) {
-				prompt("=== connect to $connstr (enter to cont, ctrl-c to break) ");
-				fgets(STDIN);
+				global $IS_CLI;
+				if ($IS_CLI) {
+					prompt("=== connect to $connstr (enter to cont, ctrl-c to break) ");
+					fgets(STDIN);
+				}
 				logstr("=== [" . date('c') . "] connect to $connstr\n", false);
 				return true;
 			};
