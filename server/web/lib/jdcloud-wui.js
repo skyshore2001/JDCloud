@@ -6239,7 +6239,7 @@ var Formatter = {
 			var v = enumMap[value];
 			if (v != null)
 				return v;
-			if (value.indexOf(sep) > 0) {
+			if (value.indexOf && value.indexOf(sep) > 0) {
 				var v1 = $.map(value.split(sep), function(e) {
 					return enumMap[e] || e;
 				});
