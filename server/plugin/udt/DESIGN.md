@@ -17,13 +17,30 @@
  这些字段无须手工添加。
 
 定义时，字段默认为字符串类型，可以指定的类型参考下节UDF.type字段说明。
+使用tool/upgrade工具升级数据库。
+（注意：TODO: 目前受限于upgrade工具，必须先调用一次upgrade工具生成UDT等表，再定义用户表，然后再运行一次upgrade工具）
 
 后端包含该插件，在plugin/index.php中添加：
 
 	Plugins::add("udt");
 
 系统根据用户表定义，自动显示合适的前端页面（包括移动端和管理端）。
-将m2/page和web/page下的文件复制到相应位置。
+将m2/page和web/page下的文件复制到相应位置。(可在本目录运行make命令);
+将m2/index.js合并到主js文件中（如m2/index.js).
+
+查看管理端页面：
+
+	WUI.showPage("pageUDT","费用",["费用"]);
+
+第三个参数是UDT名字，必传。第二个参数是页面标题，一般与UDT名相关。
+
+管理端显示明细对话框：
+
+	WUI.showDlg("#dlgUDT__费用");
+
+查看移动端页面：
+
+	MUI.showPage("#udt__费用");
 
 ## 数据库设计
 

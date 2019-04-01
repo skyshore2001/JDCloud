@@ -3,6 +3,10 @@ html {
 	padding: 0;
 }
 
+input,select,textarea {
+	font-size: 13px;
+}
+
 button {
 	min-width: 100;
 	min-height: 30;
@@ -40,6 +44,10 @@ input:not([type=button]), select, textarea {
 }
 .wui-dialog td textarea {
 	width: 95%;
+}
+.wui-dialog {
+	padding: 20px;
+	width: 450px;
 }
 @media (max-width: 640px) {
 	.wui-dialog {

@@ -1168,7 +1168,7 @@ function dbInsert($table, $kv)
 		if ($v === "")
 			continue;
 		# TODO: check meta
-		if (! preg_match('/^\w+$/', $k))
+		if (! preg_match('/^\w+$/u', $k))
 			throw new MyException(E_PARAM, "bad key $k");
 
 		if ($keys !== '') {
@@ -1372,7 +1372,7 @@ function dbUpdate($table, $kv, $cond)
 		if (substr($k,0,2) === "p_")
 			continue;
 		# TODO: check meta
-		if (! preg_match('/^(\w+\.)?\w+$/', $k))
+		if (! preg_match('/^(\w+\.)?\w+$/u', $k))
 			throw new MyException(E_PARAM, "bad key $k");
 
 		if ($kvstr !== '')
