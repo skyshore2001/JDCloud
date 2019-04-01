@@ -800,7 +800,6 @@ class AccessControl
 		}
 		 */
 		$cls = null;
-		$noauth = 0;
 		# note the order.
 		if ($asAdmin || hasPerm(AUTH_ADMIN))
 		{
@@ -810,18 +809,22 @@ class AccessControl
 		}
 		else {
 			$cls = onCreateAC($tbl);
-			if (!isset($cls)) {
+			if (!isset($cls))
 				$cls = "AC_$tbl";
-				if (! class_exists($cls))
-				{
+			if (! class_exists($cls))
+			{
+				// UDT general AC class
+				if (substr($tbl, 0, 2) === "U_" && class_exists("AC_U_Obj")) {
+					$cls = "AC_U_Obj";
+				}
+				else {
 					$cls = null;
-					$noauth = 1;
 				}
 			}
 		}
-		if ($cls == null || ! class_exists($cls))
+		if ($cls == null)
 		{
-			throw new MyException($noauth? E_NOAUTH: E_FORBIDDEN, "Operation is not allowed for current user on object `$tbl`");
+			throw new MyException(!hasPerm(AUTH_LOGIN)? E_NOAUTH: E_FORBIDDEN, "Operation is not allowed for current user on object `$tbl`");
 		}
 		$x = new $cls;
 		$x->init($tbl, $ac);
@@ -1136,10 +1139,10 @@ class AccessControl
 			}
 			// 适用于res/gres, 支持格式："col" / "col col1" / "col as col1", alias可以为中文，如"col 某列"
 			// 如果alias中有特殊字符（逗号不支持），则应加引号，如"amount \"金额(元)\"", "v \"速率 m/s\""等。
-			if (! preg_match('/^\s*(\w+)(?:\s+(?:AS\s+)?([^,]+))?\s*$/i', $col, $ms))
+			if (! preg_match('/^\s*(\w+)(?:\s+(?:AS\s+)?([^,]+))?\s*$/iu', $col, $ms))
 			{
 				// 对于res, 还支持部分函数: "fn(col) as col1", 目前支持函数: count/sum，如"count(distinct ac) cnt", "sum(qty*price) docTotal"
-				if (!$gres && preg_match('/(\w+)\([a-z0-9_.\'* ,+\/]+\)\s+(?:AS\s+)?([^,]+)/i', $col, $ms)) {
+				if (!$gres && preg_match('/(\w+)\([a-z0-9_.\'* ,+\/]+\)\s+(?:AS\s+)?([^,]+)/iu', $col, $ms)) {
 					list($fn, $alias) = [strtoupper($ms[1]), $ms[2]];
 					if ($fn != "COUNT" && $fn != "SUM" && $fn != "AVG")
 						throw new MyException(E_FORBIDDEN, "function not allowed: `$fn`");
@@ -2130,6 +2133,9 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 			}
 
 			$sql = preg_replace('/ from/i', ", $joinField id_$0", $sql);
+			// "SELECT status, count(*) cnt FROM Task WHERE orderId=%d group by status" 
+			// => "select status, count(*) cnt, orderId id_ FROM Task WHERE orderId IN (...) group by id_, status"
+			$sql = preg_replace('/group by/i', "$0 id_, ", $sql);
 
 			$ret1 = queryAll($sql, true);
 			$subMap = []; // {id_=>[subobj]}

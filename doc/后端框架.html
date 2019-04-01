@@ -278,7 +278,58 @@ putenv(&quot;P_DBCRED=bGo6aWhxZ19VR0xH&quot;);</code></pre>
 <li>每个表均有整型字段id作为主键；关联表也不例外。</li>
 <li>外键一般以xxxId表示，除非特殊说明，一般该字段非空；</li>
 </ul>
-<p>字段名的类型根据命名规范自动判断，比如以id结尾的字段会被自动作为整型创建，以tm结尾会被当作日期时间类型创建，其它默认是字符串，规则如下：</p>
+<p>字段名的类型可在字段后标示，例如：<code>status(2)</code>表示2字符长度的字符串(nvarchar(2)), <code>创建时间(dt)</code>表示date类型。</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">标记</th>
+<th align="left">类型</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">s</td>
+<td align="left">small string(20)</td>
+</tr>
+<tr class="even">
+<td align="left">l</td>
+<td align="left">long string(255)</td>
+</tr>
+<tr class="odd">
+<td align="left">t</td>
+<td align="left">text</td>
+</tr>
+<tr class="even">
+<td align="left">i</td>
+<td align="left">int</td>
+</tr>
+<tr class="odd">
+<td align="left">n</td>
+<td align="left">numeric(decimal)</td>
+</tr>
+<tr class="even">
+<td align="left">date</td>
+<td align="left">date</td>
+</tr>
+<tr class="odd">
+<td align="left">tm</td>
+<td align="left">datetime</td>
+</tr>
+<tr class="even">
+<td align="left">flag</td>
+<td align="left">tiny int</td>
+</tr>
+<tr class="odd">
+<td align="left">数字</td>
+<td align="left">指定长度的string</td>
+</tr>
+<tr class="even">
+<td align="left">不指定</td>
+<td align="left">自动判断</td>
+</tr>
+</tbody>
+</table>
+<p>如果未指定类型，则根据命名规范自动判断，比如以id结尾的字段会被自动作为整型创建，以tm结尾会被当作日期时间类型创建，其它默认是字符串（长度50），规则如下：</p>
 <table>
 <thead>
 <tr class="header">
@@ -326,33 +377,6 @@ putenv(&quot;P_DBCRED=bGo6aWhxZ19VR0xH&quot;);</code></pre>
 <tr class="odd">
 <td align="left">#</td>
 <td align="left">Double</td>
-</tr>
-</tbody>
-</table>
-<p>字符串可以指定长度如<code>status(2)</code>，<code>name(s)</code>，字串长度以如下方式描述：</p>
-<table>
-<thead>
-<tr class="header">
-<th align="left">标记</th>
-<th align="left">长度</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="left">s</td>
-<td align="left">small=20</td>
-</tr>
-<tr class="even">
-<td align="left">m</td>
-<td align="left">medium=50 (default)</td>
-</tr>
-<tr class="odd">
-<td align="left">l</td>
-<td align="left">long=255</td>
-</tr>
-<tr class="even">
-<td align="left">t</td>
-<td align="left">text</td>
 </tr>
 </tbody>
 </table>
@@ -630,7 +654,7 @@ Obj.set(id)(POST fields...)
 Obj.get(id, res?) -&gt; {fields...}
 
 删除：
-Obj.del(id)
+Obj.del(id, force?)
 
 查询列表(默认压缩表格式)：
 Obj.query(res?, cond?, distinct?=0, pagesz?=20, pagekey?, fmt?) -&gt; tbl(fields...) = {nextkey?, total?, @h, @d}

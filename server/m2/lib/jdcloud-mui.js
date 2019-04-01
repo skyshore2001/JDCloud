@@ -4654,11 +4654,13 @@ initPageStack();
 // "#xx/aaa.html" => {pageId: "aaa", pageRef: "#aaa", pageFile: "xx/aaa.html"}
 // "#plugin1-page1" => 支持多级目录，如果plugin1不是一个插件：{pageId: "plugin1-page1", pageFile: "{pageFolder}/plugin1/page1.html"}
 // "#plugin1-page1" => 如果plugin1是一个插件：{pageId: "plugin1-page1", pageFile: "{pluginFolder}/plugin1/m2/page/page1.html"}
+// "#udf__A" => {pageId: "udf__A", pageRef: "#udf__A", pageFile: "udf.html"
 function getPageInfo(pageRef)
 {
 	if (pageRef == "#" || pageRef == "" || pageRef == null)
 		pageRef = self.options.homePage;
 	var pageId = pageRef[0] == '#'? pageRef.substr(1): pageRef;
+	var tplName = pageId.split("__")[0];
 	var ret = {pageId: pageId, pageRef: pageRef};
 	var p = pageId.lastIndexOf(".");
 	if (p == -1) {
@@ -4670,14 +4672,14 @@ function getPageInfo(pageRef)
 				ret.pageFile = self.options.pluginFolder + '/' + plugin + '/m2/page/' + pageId2 + '.html';
 			}
 		}
-		ret.templateRef = "#tpl_" + pageId;
+		ret.templateRef = "#tpl_" + tplName;
 	}
 	else {
 		ret.pageFile = pageId;
 		ret.pageId = pageId.match(/[^.\/]+(?=\.)/)[0];
 	}
 	if (ret.pageFile == null) 
-		ret.pageFile = self.options.pageFolder + '/' + pageId.replace(/-/g, '/') + ".html";
+		ret.pageFile = self.options.pageFolder + '/' + tplName.replace(/-/g, '/') + ".html";
 	return ret;
 }
 
@@ -4764,6 +4766,14 @@ opt.url:: String. 指定在地址栏显示的地址。如 `showPage("#order", {u
 实际为A->B页面跳转后，此后若有B->A跳转，不触发A页面的pagebeforeshow事件。
 在initPage时，也可直接在页面上设置: `jpage.prop("backNoRefresh", ["page1", "page2"])`, 表示从page1, page2转到当前页面，不触发pagebeforeshow事件。注意，数组中保存的是pageId，不是pageRef.
 
+(v5.3)
+支持一个页面模板可创建多个页面实例。
+
+	MUI.showPage("udt__费用");
+	MUI.showPage("udt__供应商");
+
+两者用同一套html/js，但数据不会干扰。
+
 */
 self.showPage = showPage;
 function showPage(pageRef, opt)
@@ -4777,6 +4787,7 @@ function showPage(pageRef, opt)
 		pageRef = self.options.homePage;
 	else if (pageRef[0] != "#")
 		pageRef = "#" + pageRef; // 为了兼容showPage(pageId), 新代码不建议使用
+	pageRef = decodeURIComponent(pageRef);
 
 	// 避免hashchange重复调用
 	if (m_lastPageRef == pageRef)
@@ -6134,6 +6145,7 @@ function getAppPage()
 	MUI.validateEntry([
 		"#home",
 		"#me",
+		/^#udt__/  # (v5.3) 支持正则式
 	]);
 
 */
@@ -6157,9 +6169,22 @@ function validateEntry(allowedEntries)
 		return;
 	m_allowedEntries = allowedEntries;
 
-	if (location.hash && location.hash != "#" && allowedEntries.indexOf(location.hash) < 0) {
+	if (location.hash && location.hash != "#" && !isAllowed()) {
 		location.href = location.pathname; // remove search and hash like "?k=v#page1"
 		self.app_abort();
+	}
+
+	function isAllowed() {
+		var found = false;
+		//var hash = decodeURIComponent(location.hash);
+		var hash = location.hash;
+		$.each(allowedEntries, function () {
+			if ( (this instanceof RegExp && this.test(hash)) || this == hash) {
+				found = true;
+				return false;
+			}
+		});
+		return found;
 	}
 }
 
@@ -7900,7 +7925,7 @@ function initPageDetail(jpage, opt)
 		throw("require opt.pageItf");
 	var jf = opt.jform || jpage.find("form:first");
 	var obj_ = jf.attr("action");
-	if (!obj_ || /\W/.test(obj_)) 
+	if (!obj_ || /\s/.test(obj_)) 
 		throw("bad object: form.action=" + obj_);
 
 	jpage.on("pagebeforeshow", onPageBeforeShow);

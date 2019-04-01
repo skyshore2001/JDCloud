@@ -1119,7 +1119,7 @@ function callSvcInt($ac, $param=null, $postParam=null)
 function callSvcInt_($ac)
 {
 	$fn = "api_$ac";
-	if (preg_match('/^([A-Z]\w*)\.([a-z]\w*)$/', $ac, $ms)) {
+	if (preg_match('/^([A-Z]\w*)\.([a-z]\w*)$/u', $ac, $ms)) {
 		list($tmp, $tbl, $ac1) = $ms;
 		// TODO: check meta
 		$ret = tableCRUD($ac1, $tbl);
@@ -1726,7 +1726,7 @@ class ApiApp extends AppBase
 		$ac = htmlEscape(substr($pathInfo,1));
 		// POST /login  (小写开头)
 		// GET/POST /Store.add (含.)
-		if (!preg_match('/^[A-Z][\w\/]+$/', $ac))
+		if (!preg_match('/^[A-Z][\w\/]+$/u', $ac))
 		{
 			if ($method !== 'GET' && $method !== 'POST')
 				throw new MyException(E_PARAM, "bad verb '$method'. use 'GET' or 'POST'");

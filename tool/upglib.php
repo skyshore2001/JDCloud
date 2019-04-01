@@ -17,6 +17,8 @@ $CHAR_SZ = [
 ];
 
 $IS_CLI = (php_sapi_name() == "cli");
+
+$UDT_defaultMeta = ["id", "tm", "updateTm"];
 #}}}
 
 ###### db adapter {{{
@@ -62,7 +64,7 @@ class SqlDiff_mysql extends SqlDiff
 	public $ntext = "TEXT CHARACTER SET utf8";
 	public $autoInc = 'AUTO_INCREMENT';
 	public $money = "DECIMAL(19,2)";
-	public $createOpt = "DEFAULT CHARSET=utf8";
+	public $createOpt = "ENGINE=InnoDB DEFAULT CHARSET=utf8";
 
 	public function tableExists($tbl) {
 		$sth = $this->dbh->query("show tables like '$tbl'");
@@ -138,7 +140,7 @@ function arrayCmp($a1, $a2, $fnEq, $cb)
 - name: 字段名，如"cmt".
 - dscr: 原始定义，如"cmt(l)"。
 - def: 字段生成的SQL语句
-- type: Enum("id", "nvarchar", "ntext", "int", "real", "decimal", "date", "datetime", "flag")
+- type: Enum("id", "s"-string, "t"-text, "i"-int, "real", "n"-number, "date", "tm"-datetime, "flag")
 - len: 仅当type="nvarchar"时有意义，表示字串长。
 
 e.g.
@@ -149,12 +151,12 @@ function parseFieldDef($fieldDef, $tableName)
 {
 	global $CHAR_SZ, $SQLDIFF;
 	$f = $fieldDef;
-	$f1 = ucfirst(preg_replace('/(\d|\W)*$/', '', $f));
+	$f1 = ucfirst(preg_replace('/(\d|\W)*$/u', '', $f));
 
 	$ret = [
 		"name" => null,
 		"dscr" => $fieldDef,
-		"type" => "nvarchar",
+		"type" => "s",
 		"len" => null,
 		"def" => null
 	];
@@ -162,16 +164,37 @@ function parseFieldDef($fieldDef, $tableName)
 		$ret["type"] = "id";
 		$def = "INTEGER PRIMARY KEY " . $SQLDIFF->autoInc;
 	}
-	elseif (preg_match('/\((\w+)\)$/', $f, $ms)) {
+	elseif (preg_match('/\((\w+)\)$/u', $f, $ms)) {
 		$tag = $ms[1];
-		$f = preg_replace('/\((\w+)\)$/', '', $f);
+		$f = preg_replace('/\((\w+)\)$/u', '', $f);
 		if ($tag == 't') {
-			$ret["type"] = "ntext";
+			$ret["type"] = "t";
 			$def = $SQLDIFF->ntext;
 		}
 		elseif ($tag == 's' || $tag == 'm' || $tag == 'l') {
 			$ret["len"] = $CHAR_SZ[$tag];
 			$def = "NVARCHAR(" . $CHAR_SZ[$tag] . ")";
+		}
+		elseif ($tag == 'n') {
+			$ret["type"] = $tag;
+			$ret["len"] = "19,2";
+			$def = $SQLDIFF->money;
+		}
+		elseif ($tag == 'i') {
+			$ret["type"] = $tag;
+			$def = "INTEGER";
+		}
+		elseif ($tag == 'tm') {
+			$ret["type"] = $tag;
+			$def = "DATETIME";
+		}
+		elseif ($tag == 'date') {
+			$ret["type"] = $tag;
+			$def = "DATE";
+		}
+		elseif ($tag == 'flag') {
+			$ret["type"] = $tag;
+			$def = "TINYINT UNSIGNED NOT NULL DEFAULT 0";
 		}
 		elseif (is_numeric($tag)) {
 			$ret["len"] = $tag;
@@ -184,12 +207,12 @@ function parseFieldDef($fieldDef, $tableName)
 	elseif (preg_match('/(@|&|#)$/', $f, $ms)) {
 		$f = substr_replace($f, "", -1);
 		if ($ms[1] == '@') {
-			$ret["type"] = "decimal";
+			$ret["type"] = "n";
 			$ret["len"] = "19,2";
 			$def = $SQLDIFF->money;
 		}
 		else if ($ms[1] == '&') {
-			$ret["type"] = "int";
+			$ret["type"] = "i";
 			$def = "INTEGER";
 		}
 		else if ($ms[1] == '#') {
@@ -197,28 +220,28 @@ function parseFieldDef($fieldDef, $tableName)
 			$def = "REAL";
 		}
 	}
-	elseif (preg_match('/(Price|Qty|Total|Amount)$/', $f1)) {
-		$ret["type"] = "decimal";
+	elseif (preg_match('/(Price|Qty|Total|Amount)$/u', $f1)) {
+		$ret["type"] = "n";
 		$ret["len"] = "19,2";
 		$def = $SQLDIFF->money;
 	}
-	elseif (preg_match('/Id$/', $f1)) {
-		$ret["type"] = "int";
+	elseif (preg_match('/Id$/u', $f1)) {
+		$ret["type"] = "i";
 		$def = "INTEGER";
 	}
-	elseif (preg_match('/Tm$/', $f1)) {
-		$ret["type"] = "datetime";
+	elseif (preg_match('/Tm$/u', $f1)) {
+		$ret["type"] = "tm";
 		$def = "DATETIME";
 	}
-	elseif (preg_match('/Dt$/', $f1)) {
+	elseif (preg_match('/Dt$/u', $f1)) {
 		$ret["type"] = "date";
 		$def = "DATE";
 	}
-	elseif (preg_match('/Flag$/', $f1)) {
+	elseif (preg_match('/Flag$/u', $f1)) {
 		$ret["type"] = "flag";
 		$def = "TINYINT UNSIGNED NOT NULL DEFAULT 0";
 	}
-	elseif (preg_match('/^\w+$/', $f)) { # default
+	elseif (preg_match('/^\w+$/u', $f)) { # default
 		$ret["len"] = $CHAR_SZ['m'];
 		$def = "NVARCHAR(" . $CHAR_SZ['m'] . ")";
 	}
@@ -437,6 +460,192 @@ function dbconn($fnConfirm = null)
 	$DBH->setAttribute(PDO::ATTR_STRINGIFY_FETCHES, false);
 	return $DBH;
 }
+
+class DbExpr
+{
+	public $val;
+	function __construct($val) {
+		$this->val = $val;
+	}
+}
+
+function dbExpr($val)
+{
+	return new DbExpr($val);
+}
+
+function Q($s, $dbh = null)
+{
+	if ($s === null)
+		return "null";
+	$s = str_replace("\\", "\\\\", $s);
+	return "'" . str_replace("'", "\\'", $s) . "'";
+	//return $dbh->quote($s);
+}
+
+function getQueryCond($cond)
+{
+	if ($cond === null || $cond === "ALL")
+		return null;
+	if (is_numeric($cond))
+		return "id=$cond";
+	if (!is_array($cond))
+		return $cond;
+	
+	$condArr = [];
+	foreach($cond as $k=>$v) {
+		if (is_int($k)) {
+			if (stripos($v, ' and ') !== false || $stripos($v, ' or ') !== false)
+				$exp = "($v)";
+			else
+				$exp = $v;
+		}
+		else {
+			if ($v === null) {
+				$exp = "$k IS NULL";
+			}
+			else {
+				$exp = "$k=" . Q($v);
+			}
+		}
+		$condArr[] = $exp;
+	}
+	return join(' AND ', $condArr);
+}
+
+function genQuery($sql, $cond)
+{
+	$condStr = getQueryCond($cond);
+	if (!$condStr)
+		return $sql;
+	return $sql . ' WHERE ' . $condStr;
+}
+
+function execOne($sql, $getInsertId = false)
+{
+	global $DBH;
+	if (! isset($DBH))
+		dbconn();
+	$rv = $DBH->exec($sql);
+	if ($getInsertId)
+		$rv = (int)$DBH->lastInsertId();
+	return $rv;
+}
+
+function queryOne($sql, $assoc = false, $cond = null)
+{
+	global $DBH;
+	if (! isset($DBH))
+		dbconn();
+	if ($cond)
+		$sql = genQuery($sql, $cond);
+	if (stripos($sql, "limit ") === false)
+		$sql .= " LIMIT 1";
+	$sth = $DBH->query($sql);
+
+	if ($sth === false)
+		return false;
+
+	$fetchMode = $assoc? PDO::FETCH_ASSOC: PDO::FETCH_NUM;
+	$row = $sth->fetch($fetchMode);
+	$sth->closeCursor();
+	if ($row !== false && count($row)===1 && !$assoc)
+		return $row[0];
+	return $row;
+}
+
+function queryAll($sql, $assoc = false, $cond = null)
+{
+	global $DBH;
+	if (! isset($DBH))
+		dbconn();
+	if ($cond)
+		$sql = genQuery($sql, $cond);
+	$sth = $DBH->query($sql);
+	if ($sth === false)
+		return false;
+	$fetchMode = $assoc? PDO::FETCH_ASSOC: PDO::FETCH_NUM;
+	$allRows = [];
+	do {
+		$rows = $sth->fetchAll($fetchMode);
+		$allRows[] = $rows;
+	}
+	while ($sth->nextRowSet());
+	// $sth->closeCursor();
+	return count($allRows)>1? $allRows: $allRows[0];
+}
+
+function dbInsert($table, $kv)
+{
+	$keys = '';
+	$values = '';
+	foreach ($kv as $k=>$v) {
+		if (is_null($v))
+			continue;
+		if ($v === "")
+			continue;
+
+		if ($keys !== '') {
+			$keys .= ", ";
+			$values .= ", ";
+		}
+		$keys .= $k;
+		if ($v instanceof dbExpr) { // 直接传SQL表达式
+			$values .= $v->val;
+		}
+		else if (is_array($v)) {
+			throw new Exception("dbInsert: array is not allowed");
+		}
+		else {
+			$values .= Q($v);
+		}
+	}
+	if (strlen($keys) == 0) 
+		throw new Exception("no field found to be added");
+	$sql = sprintf("INSERT INTO %s (%s) VALUES (%s)", $table, $keys, $values);
+#			var_dump($sql);
+	return execOne($sql, true);
+}
+
+function dbUpdate($table, $kv, $cond)
+{
+	if ($cond === null)
+		throw new Exception("bad cond");
+
+	$condStr = getQueryCond($cond);
+	$kvstr = "";
+	foreach ($kv as $k=>$v) {
+		if ($k === 'id' || is_null($v))
+			continue;
+
+		if ($kvstr !== '')
+			$kvstr .= ", ";
+
+		// 空串或null置空；empty设置空字符串
+		if ($v === "" || $v === "null")
+			$kvstr .= "$k=null";
+		else if ($v === "empty")
+			$kvstr .= "$k=''";
+		else if ($v instanceof dbExpr) { // 直接传SQL表达式
+			$kvstr .= $k . '=' . $v->val;
+		}
+		else {
+			$kvstr .= "$k=" . Q($v);
+		}
+	}
+	$cnt = 0;
+	if (strlen($kvstr) == 0) {
+		// addLog("no field found to be set");
+	}
+	else {
+		if (isset($condStr))
+			$sql = sprintf("UPDATE %s SET %s WHERE $condStr", $table, $kvstr);
+		else
+			$sql = sprintf("UPDATE %s SET %s", $table, $kvstr);
+		$cnt = execOne($sql);
+	}
+	return $cnt;
+}
 #}}}
 
 class UpgHelper
@@ -507,7 +716,7 @@ class UpgHelper
 				throw new Exception("*** cannot read meta file $file");
 
 			while (($s = fgets($fd)) !== false) {
-				if (preg_match('/^@(\w+):\s+(\w.*?)\s*$/', $s, $ms)) {
+				if (preg_match('/^@([\w_]+):\s+(\w.*?)\s*$/u', $s, $ms)) {
 					$tableName = $ms[1];
 					foreach ($this->tableMeta as $e) {
 						if ($e["name"] == $tableName) {
@@ -515,7 +724,7 @@ class UpgHelper
 							continue;
 						}
 					}
-					$fields = preg_split('/\s*,\s*/', $ms[2]);
+					$fields = preg_split('/[\s,]+/u', $ms[2]);
 					// fieldsMeta在SQL_DIFF初始化后再设置.
 					$this->tableMeta[] = ["name"=>$ms[1], "fields"=>$fields, "fieldsMeta"=>null, "file"=>$file, "tableDef"=>$s];
 		# 			print "-- $_";
@@ -560,9 +769,14 @@ class UpgHelper
 		$SQLDIFF = SqlDiff::create($this->dbh);
 		foreach ($this->tableMeta as &$e) {
 			$tableName = $e["name"];
+			$fields = $e["fields"];
+			if (substr($tableName, 0, 2) == "U_") {
+				global $UDT_defaultMeta;
+				array_splice($fields, 0,0, $UDT_defaultMeta);
+			}
 			$fieldsMeta = array_map(function ($e) use ($tableName){
 				return parseFieldDef($e, $tableName);
-			}, $e["fields"]);
+			}, $fields);
 			$e["fieldsMeta"] = $fieldsMeta;
 		}
 		unset($e);
@@ -645,19 +859,23 @@ class UpgHelper
 		}
 
 		switch($meta["type"]) {
-		case "nvarchar":
-			return $dbType == "varchar" && $len == $meta["len"];
-		case "ntext":
-			return $dbType == "text";
-		case "int":
+		case "s":
+			return ($dbType == "varchar"||$dbType == "nvarchar")  && $len == $meta["len"];
+		case "t":
+			return $dbType == "text" || $dbType == "ntext";
+		case "i":
 		case "id":
 			return $dbType == "int";
 		case "flag":
 			return $dbType == "tinyint";
-		case "decimal":
+		case "n":
 			return $dbType == "decimal" && $len == $meta["len"];
 		case "real":
 			return $dbType == "double";
+		case "tm":
+			return $dbType == "datetime";
+		case "date":
+			return $dbType == "date";
 		default:
 			return $meta["type"] == $dbType;
 		}
@@ -716,6 +934,7 @@ class UpgHelper
 						$this->_addColByMeta($tbl, $fieldMeta);
 					}
 				}
+				$this->handleUDTMeta($tableMeta);
 				return $found;
 			}
 			$this->execSql("DROP TABLE $tbl1");
@@ -730,7 +949,55 @@ class UpgHelper
 			echo "*** Fail to create table `$tbl`. DO NOT use SQL keyword as the name of table or column.\n";
 			throw $e;
 		}
+		$this->handleUDTMeta($tableMeta);
 		return true;
+	}
+
+	function handleUDTMeta($tableMeta) {
+		$tbl = $tableMeta['name'];
+		// handle UDT
+		if (substr($tbl, 0, 2) != "U_")
+			return;
+
+		$name = substr($tbl, 2);
+		$tableDef = queryOne("SELECT * FROM UDT WHERE name=" . Q($name), true);
+		$udtData = [
+			"name" => $name,
+			"title" => $name
+		];
+		global $UDT_defaultMeta;
+		if (!$tableDef) {
+			$udtId = dbInsert("UDT", $udtData);
+		}
+		else {
+			$udtId = $tableDef["id"];
+			dbUpdate("UDT", $udtData, $udtId);
+		}
+
+		// TODO: the title of table and field 
+		$udf = queryAll("SELECT id, name FROM UDF WHERE udtId=$udtId", true);
+		$fieldsMeta = array_splice($tableMeta["fieldsMeta"], count($UDT_defaultMeta));
+		arrayCmp($fieldsMeta, $udf, function ($fieldMeta, $udf1) {
+			return $fieldMeta["name"] == $udf1["name"];
+		}, function ($fieldMeta, $udf1) use ($udtId) {
+			if ($fieldMeta != null) {
+				$fieldData = [
+					"name" => $fieldMeta["name"],
+					"title" => $fieldMeta["name"],
+					"type" => $fieldMeta["type"],
+					"udtId" => $udtId
+				];
+				if ($udf1 == null) { // insert
+					dbInsert("UDF", $fieldData);
+				}
+				else {
+					dbUpdate("UDF", $fieldData, $udf1["id"]);
+				}
+			}
+			else { // delete
+				execOne("DELETE FROM UDF WHERE id=" . $udf1["id"]);
+			}
+		});
 	}
 
 	/** @api */

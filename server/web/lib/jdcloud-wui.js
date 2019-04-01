@@ -5092,6 +5092,12 @@ form提交后事件，用于处理返回数据
 	jfrm.on("beforeshow",function(ev, formMode, opt) {
 		opt.dialogOpt = dialogOpt;
 	})
+
+**复用dialog模板**
+(v5.3)
+
+如 dlgUDT__A 与 dlgUDT__B 共用dlgUDT对话框模板，只要用"__"分隔对话框模板文件和后缀名。
+
 */
 self.showDlg = showDlg;
 function showDlg(jdlg, opt) 
@@ -5114,7 +5120,7 @@ function showDlg(jdlg, opt)
 	}, opt);
 
 	jdlg.addClass('wui-dialog');
-	callInitfn(jdlg);
+	callInitfn(jdlg, [opt]);
 
 	// TODO: 事件换成jdlg触发，不用jfrm。目前旧应用仍使用jfrm监听事件，暂应保持兼容。
 	var jfrm = jdlg.is("form")? jdlg: jdlg.find("form:first");
@@ -5532,14 +5538,17 @@ function loadDialog(jdlg, onLoad)
 	}
 
 	var dlgId = jdlg.selector.substr(1);
-	var sel = "#tpl_" + dlgId;
+	// 支持dialog复用，dlgId格式为"{模板id}__{后缀名}"。如 dlgUDT__A 与 dlgUDT__B 共用dlgUDT对话框模板。
+	var arr = dlgId.split("__");
+	var tplName = arr[0];
+	var sel = "#tpl_" + tplName;
 	var html = $(sel).html();
 	if (html) {
 		loadDialogTpl(html, dlgId, pageFile);
 		return true;
 	}
 
-	var pageFile = getModulePath(dlgId + ".html");
+	var pageFile = getModulePath(tplName + ".html");
 	$.ajax(pageFile).then(function (html) {
 		loadDialogTpl(html, dlgId, pageFile);
 	})
@@ -5663,6 +5672,7 @@ function doFind(jo, jtbl, appendFilter)
 	// 等价于 showObjDlg(jdlg, FormMode.forSet, {id:101, obj: "Customer", type: "C"});
 
 在dialog的事件beforeshow(ev, formMode, opt)中，可以通过opt.objParam取出showObjDlg传入的所有参数opt。
+(v5.3) 可在对象对话框的初始化函数中使用 initDlgXXX(opt)，注意：非对象对话框初始化函数的opt参数与此不同。
 
 @param opt.onCrud Function(). (v5.1) 对话框操作完成时回调。
 一般用于点击表格上的增删改查工具按钮完成操作时插入逻辑。
@@ -5713,7 +5723,7 @@ function showObjDlg(jdlg, mode, opt)
 		showObjDlg(jdlg, mode, opt);
 	}
 
-	callInitfn(jdlg);
+	callInitfn(jdlg, [opt]);
 	if (opt.jtbl) {
 		jdlg.jdata().jtbl = opt.jtbl;
 	}

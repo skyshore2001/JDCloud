@@ -1,0 +1,53 @@
+<div mui-initfn="initPageUdt" mui-script="udt.js">
+	<div class="hd">
+		<h1>加载...</h1>
+	</div>
+	<div class="bd">
+		<form action="">
+			<div class="weui-cells weui-cells_form">
+				<div class="weui-cell" style="display:block" id="divBtns">
+					<button id="btnOk" class="weui-btn weui-btn_primary">保存</button>
+					<button id="btnReset" type="reset" class="weui-btn weui-btn_default">清除重填</button>
+				</div>
+			</div>
+		</form>
+	</div>
+<script type="text/template" id="tplCellSys">
+<div class="weui-cell forSet">
+	<label class="weui-cell__hd weui-label">{title}</label>
+	<input name="{name}" class="weui-cell__bd weui-input right" readonly>
+</div>
+</script>
+
+<script type="text/template" id="tplCell">
+<div class="weui-cell">
+	<label class="weui-cell__hd weui-label">{title}</label>
+	<input name="{name}" required class="weui-cell__bd weui-input right" placeholder="填写{title}">
+</div>
+</script>
+
+<script type="text/template" id="tplCellPic">
+<div class="weui-cell" style="display:block">
+	<input name="{name}" style="display:none">
+	<p class="weui-cell__hd weui-label">{title}</p>
+	<div class="uploadpic">
+		<div class="uploadpic-btn uploadpic-item" >
+			<input type="file" {multiple}>
+		</div>
+	</div>
+</div>
+</script>
+<script type="text/template" id="tplCellPic2">
+<div class="weui-cell" style="display:block">
+	<input name="{name}" style="display:none">
+	<p class="weui-cell__hd weui-label">{title}</p>
+	<div class="uploadpic">
+		<div class="uploadpic-btn" >
+			<input type="file" multiple>
+		</div>
+	</div>
+</div>
+</script>
+
+</div>
+
