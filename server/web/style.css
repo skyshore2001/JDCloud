@@ -48,6 +48,7 @@ input:not([type=button]), select, textarea {
 .wui-dialog {
 	padding: 20px;
 	width: 450px;
+	margin: 0;
 }
 @media (max-width: 640px) {
 	.wui-dialog {
@@ -207,7 +208,7 @@ input:disabled,select:disabled,textarea:disabled {
 	vertical-align: middle;
 }
 
-/* Í¼Æ¬ä¯ÀÀÆ÷photoSwipe */
+/* å›¾ç‰‡æµè§ˆå™¨photoSwipe */
 .pswp {
 	z-index:9999 !important;
 }
