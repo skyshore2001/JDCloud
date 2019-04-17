@@ -5922,7 +5922,7 @@ function showObjDlg(jdlg, mode, opt)
 					reload(jtbl);
 			}
 		}
-		if (mode == FormMode.forAdd)
+		if (mode == FormMode.forAdd && !self.options.closeAfterAdd)
 		{
 			showObjDlg(jdlg, mode); // reset and add another
 		}
@@ -6716,13 +6716,14 @@ window.FormMode = {
 };
 
 /**
-@var options
+@var WUI.options
 
 {appName=user, title="客户端", onShowLogin, pageHome="pageHome", pageFolder="page"}
 
 - appName: 用于与后端通讯时标识app.
 - pageHome: 首页的id, 默认为"pageHome"
 - pageFolder: 子页面或对话框所在文件夹, 默认为"page"
+- closeAfterAdd: (=false) 设置为true时，添加数据后关闭窗口。默认行为是添加数据后保留并清空窗口以便连续添加。
 */
 self.options = {
 	title: "客户端",

@@ -45,6 +45,18 @@
 	Upload::$maxPicKB = 500; // KB
 	Upload::$maxPicSize = 1280;
 
+- 导出zip文件
+
+	$fname = "ORDR-17.zip"; // 导出的文件名，不用目录名
+	// zip中子目录名，对应的附件编号列表
+	$pics = [
+		"TASK-1/T-1" => "51,53,55",
+		"TASK-1/T-2" => "57",
+		"TASK-2/T-3" => "59,61"
+	];
+	Upload::exportZip($fname, $pics);
+	// 如果id列表为缩略图，应使用 Upload::exportZip($fname, $pics, true);
+
  */
 
 class Upload
@@ -70,6 +82,56 @@ class Upload
 	// 默认调用upload时(autoResize参数为1)，超过maxPicKB的图片，会自动压缩到长宽不超过maxPicSize像素。
 	static $maxPicKB = 500; // KB
 	static $maxPicSize = 1280;
+
+	static function exportZip($zipname, $pics, $byThumbId=false)
+	{
+		session_commit();
+		if (!$zipname || count($pics) == 0) {
+			echo("没有图片或附件!");
+			throw new DirectReturn();
+		}
+		$zip = new ZipArchive;
+		$tmpf = tempnam("/tmp", "zip");
+		if (($rv=$zip->open($tmpf, ZipArchive::CREATE)) !== TRUE) {
+			throw new MyException(E_SERVER, "zip error $rv");
+		}
+		foreach ($pics as $k=>$v) {
+			if (!$v)
+				continue;
+			if (!$byThumbId)
+				$sql = "SELECT id, path, orgName FROM Attachment WHERE id IN ($v)";
+			else {
+				# t0: original, a2: thumb
+				$sql = "SELECT t0.id, t0.path, t0.orgName FROM Attachment t0 INNER JOIN Attachment a2 ON t0.id=a2.orgPicId WHERE a2.id IN ($v)";
+			}
+			$rows = queryAll($sql, true);
+			foreach($rows as $row) { // {id, path, orgName}
+				$ext = strtolower(pathinfo($row["orgName"], PATHINFO_EXTENSION));
+				$fname = "$k/{$row['id']}.$ext";
+				$realFile = $GLOBALS["BASE_DIR"] . '/' . $row["path"];
+				if (!is_file($realFile)) {
+					$fname = iconv("UTF-8", "GBK//IGNORE", "$fname.missing!"); // TODO: 支持中文
+					$zip->addFromString($fname, "");
+					continue;
+				}
+				else {
+					$fname = iconv("UTF-8", "GBK//IGNORE", $fname); // TODO: 支持中文
+					$zip->addFile($realFile, $fname);
+				}
+				//$zip->addFromString($fname, $realFile);
+			}
+		}
+		$zip->close();
+		logit("export zip: name=$zipname, file=$tmpf, size=" . filesize($tmpf));
+
+		///Then download the zipped file.
+		header('Content-Type: application/zip');
+		header('Content-disposition: attachment; filename='.$zipname);
+		header('Content-Length: ' . filesize($tmpf));
+		readfile($tmpf);
+		unlink($tmpf);
+		throw new DirectReturn();
+	}
 }
 // ====== config {{{
 const HTTP_NOT_FOUND = "HTTP/1.1 404 Not Found";

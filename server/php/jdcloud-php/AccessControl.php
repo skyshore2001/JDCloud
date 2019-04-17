@@ -1843,7 +1843,7 @@ e.g.
 			throw new MyException(E_PARAM, "setIf/delIf requires condition");
 
 		$tblSql = "{$this->table} t0";
-		if (count($sqlConf["join"]) > 0)
+		if ($sqlConf["join"] && count($sqlConf["join"]) > 0)
 			$tblSql .= "\n" . join("\n", $sqlConf["join"]);
 		$condSql = self::getCondStr($sqlConf["cond"]);
 
@@ -1884,7 +1884,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		// 有join时，防止字段重名。统一加"t0."
 		$kv = $_POST;
 		$sqlConf = $this->sqlConf;
-		if (count($sqlConf["join"]) > 0) {
+		if ($sqlConf["join"] && count($sqlConf["join"]) > 0) {
 			$kv = [];
 			foreach ($_POST as $k=>$v) {
 				$kv["t0.$k"] = $v;
@@ -1927,6 +1927,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 
 - title: List(fieldName). 指定标题行(即字段列表). 如果有该参数, 则忽略POST内容或文件中的标题行.
  如"title=name,-,addr"表示导入第一列name和第三列addr, 其中"-"表示忽略该列，不导入。
+ 字段列表以逗号或空白分隔, 如"title=name - addr"与"title=name, -, addr"都可以.
 
 支持两种方式上传：
 
@@ -1951,6 +1952,13 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		app_alert("成功导入" + ret.cnt + "条数据！");
 	}, data, {contentType:"text/plain"});
 
+示例: 在chrome console中导入数据
+
+	callSvr("Vendor.batchAdd", {title: "-,name, tel, idCard, addr, email, legalAddr, weixin, qq, area, picId"}, $.noop, `编号	姓名	手机号码	身份证号	通讯地址	邮箱	户籍地址	微信号	QQ号	负责安装的区域	身份证图
+	112	郭志强	15384813214	150221199211215000	内蒙古呼和浩特赛罕区丰州路法院小区二号楼	815060695@qq.com	内蒙古包头市	15384813214	815060695	内蒙古	532
+	111	高长平	18375998418	500226198312065000	重庆市南岸区丁香路同景国际W组	1119780700@qq.com	荣昌	18375998418	1119780700	重庆	534
+	`, {contentType:"text/plain"});
+		
 2. 标准csv/txt文件上传：
 
 上传的文件首行当作标题列，如果这一行不是后台要求的标题名称，可通过URL参数title重新定义。
@@ -2518,6 +2526,7 @@ class BatchAddStrategy
 
 	protected function onInit() {
 		$content = getHttpInput();
+		self::backupFile(null, null);
 		$this->rows = preg_split('/\s*\n/', $content);
 	}
 	protected function onGetRow() {
@@ -2545,13 +2554,45 @@ class BatchAddStrategy
 			$title = param("title", null, "G");
 			$row1 = null;
 			if ($title) {
-				$row1 = explode(',', $title);
+				$row1 = preg_split('/[\s,]+/', $title);
 			}
 			$this->logic->onGetTitleRow($row, $row1);
 			if ($row1 != null)
 				$row = $row1;
 		}
 		return $row;
+	}
+
+	// backupFile(null, null): 保存http请求的内容.
+	static function backupFile($file, $orgName) {
+		$dir = "upload/import";
+		if (! is_dir($dir)) {
+			if (mkdir($dir, 0777, true) === false)
+				throw new MyException(E_SERVER, "fail to create folder: $dir");
+		}
+		$fname = $dir . "/" . date("Ymd_His");
+		$ext = strtolower(pathinfo($orgName, PATHINFO_EXTENSION)) ?: "txt";
+		$n = 0;
+		do {
+			if (!$n)
+				$bakF = "$fname.$ext";
+			else
+				$bakF = "$fname_$n.$ext";
+			++ $n;
+		} while (is_file($bakF));
+
+		if (is_null($file)) {
+			$orgName = "(http content)";
+			file_put_contents($bakF, getHttpInput());
+		}
+		else {
+			copy($file, $bakF);
+		}
+		$title = param("title", null, "G");
+		if ($title) {
+			$title = ", param title=`$title`";
+		}
+		logit("import file: $orgName, backup: $bakF{$title}");
 	}
 }
 
@@ -2583,21 +2624,6 @@ class CsvBatchAddStrategy extends BatchAddStrategy
 		else {
 			$this->delim = ",";
 		}
-	}
-
-	static function backupFile($file, $orgName) {
-		$dir = "upload/import";
-		if (! is_dir($dir)) {
-			if (mkdir($dir, 0777, true) === false)
-				throw new MyException(E_SERVER, "fail to create folder: $dir");
-		}
-		$bakF = $dir . "/" . date("Ymd_His");
-		$ext = strtolower(pathinfo($orgName, PATHINFO_EXTENSION));
-		if ($ext) {
-			$bakF .= ".$ext";
-		}
-		copy($file, $bakF);
-		logit("import file: $orgName, backup: $bakF");
 	}
 
 	// 如果是全空行，返回true

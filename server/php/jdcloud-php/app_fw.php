@@ -1176,7 +1176,7 @@ function dbInsert($table, $kv)
 			$values .= ", ";
 		}
 		$keys .= $k;
-		if ($v instanceof dbExpr) { // 直接传SQL表达式
+		if ($v instanceof DbExpr) { // 直接传SQL表达式
 			$values .= $v->val;
 		}
 		else if (is_array($v)) {
@@ -1383,7 +1383,7 @@ function dbUpdate($table, $kv, $cond)
 			$kvstr .= "$k=null";
 		else if ($v === "empty")
 			$kvstr .= "$k=''";
-		else if ($v instanceof dbExpr) { // 直接传SQL表达式
+		else if ($v instanceof DbExpr) { // 直接传SQL表达式
 			$kvstr .= $k . '=' . $v->val;
 		}
 		else if (startsWith($k, "flag_") || startsWith($k, "prop_"))
