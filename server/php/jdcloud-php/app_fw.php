@@ -1508,6 +1508,40 @@ function getBaseUrl($wantHost = true)
 }
 
 /**
+@fn getReqIp
+
+请求的IP。与`$_SERVER['REMOTE_ADDR']`不同的是，如果有代理，则返回所有IP列表。
+*/
+function getReqIp()
+{
+	static $reqIp;
+	if (!isset($reqIp)) {
+		$reqIp = @$_SERVER['REMOTE_ADDR'] ?: 'unknown';
+		$fw = @$_SERVER["HTTP_X_FORWARDED_FOR"] ?: $_SERVER["HTTP_CLIENT_IP"];
+		if ($fw) {
+			$reqIp .= '; ' . $fw;
+		}
+	}
+	return $reqIp;
+}
+
+/**
+@fn getRealIp()
+
+取实际IP地址，支持透过代理服务器。
+*/
+function getRealIp()
+{
+	static $realIp;
+	if (!isset($realIp)) {
+		$realIp = @$_SERVER["HTTP_X_FORWARDED_FOR"] ?: $_SERVER["HTTP_CLIENT_IP"] ?: $_SERVER["REMOTE_ADDR"]; // HTTP_REMOTEIP
+		// "1.1.1.1,2.2.2.2" => "1.1.1.1"
+		$realIp = preg_replace('/,.*/', '', $realIp);
+	}
+	return $realIp;
+}
+
+/**
 @fn logit($s, $addHeader=true, $type="trace")
 @alias logit($s, $type)
 
@@ -1524,7 +1558,7 @@ function logit($s, $addHeader=true, $type="trace")
 		$addHeader = true;
 	}
 	if ($addHeader) {
-		$remoteAddr = @$_SERVER['REMOTE_ADDR'] ?: 'unknown';
+		$remoteAddr = getReqIp();
 		$s = "=== REQ from [$remoteAddr] at [".strftime("%Y/%m/%d %H:%M:%S",time())."] " . $s . "\n";
 	}
 	else {

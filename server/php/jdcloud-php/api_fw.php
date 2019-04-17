@@ -673,6 +673,37 @@ class ConfBase
 	static function onInitClient(&$ret)
 	{
 	}
+
+/**
+@fn ConfBase::checkSecure($ac)
+
+@var ConfBase::enableSecure ?=false
+
+安全检查。一般用于检测可疑调用并记录日志，以及管理黑白IP名单。默认值为false。
+
+checkSecure函数返回false则不处理该调用，并将请求加入黑名单，且返回`[5, "OK"]`. 
+黑名单可查看文件blackip.txt。
+(5为E_FORBIDDEN，返回"OK"是为了不让攻击者获得准确的出错信息)。
+
+示例：如果不是前端H5中的ajax调用，且没有cookie信息，则记录该事件到 secure.log 中，人工分析后可添加黑名单。
+
+	static function checkSecure($ac)
+	{
+		if (! (isset($_SERVER["HTTP_REFERER"]) && isset($_SERVER["HTTP_X_REQUESTED_WITH"]) && isset($_SERVER["HTTP_COOKIE"])) ) {
+			$log = @sprintf("secure check: ac=$ac, ses=%s, ApiLog.id=%s", session_id(), ApiLog::$lastId);
+			logit($log, true, "secure");
+			// BlackList::add(getRealIp(), "no referer");
+			// return false; // false表示本次调用直接返回。
+		}
+	}
+
+@see BlackList
+*/
+
+	static $enableSecure = false;
+	static function checkSecure($ac)
+	{
+	}
 }
 
 class ApiLog
@@ -765,7 +796,11 @@ class ApiLog
 		}
 		if ($content2 != "")
 			$content .= ";\n" . $content2;
-		$remoteAddr = @$_SERVER['REMOTE_ADDR'] ?: 'unknown';
+		$remoteAddr = getReqIp();
+		if (strlen($remoteAddr>50)) { // 太长则保留头和尾
+			$remoteAddr = preg_replace('/,.+,/', ',,', $remoteAddr);
+		}
+		
 		$reqsz = strlen($_SERVER["REQUEST_URI"]) + (@$_SERVER["HTTP_CONTENT_LENGTH"]?:$_SERVER["CONTENT_LENGTH"]?:0);
 		$ua = $_SERVER["HTTP_USER_AGENT"];
 		$ver = getClientVersion();
@@ -849,11 +884,12 @@ class ApiLog
 }
 
 /*
+(v5.3) 已废弃不使用。
+
 	1. 只对同一session的API调用进行监控; 只对成功的调用监控
 	2. 相邻两次调用时间<0.5s, 记一次不良记录(bad). 当bad数超过50次(CNT1)时报错，记一次历史不良记录；此后bad每超过2次(CNT2)，报错一次。
 	之所以不是每次都报错，是考虑正常程序也可能一次发多个请求。
 	3. 回归测试模式下不监控。
- */
 class ApiWatch
 {
 	private $CNT1 = 50;
@@ -900,6 +936,7 @@ class ApiWatch
 		$_SESSION["lastAccess"] = microtime(true);
 	}
 }
+ */
 
 trait MapCol
 {
@@ -1214,36 +1251,13 @@ function getHttpInput()
 }
 
 /**
-@fn inWhiteIpList()
-
-检查调用者是否在IP白名单中。配置项为whiteIpList。
-
-@see whiteIpList
-@see api_checkIp
-*/
-function inWhiteIpList()
-{
-	$list = getenv("whiteIpList") ?: "127.0.0.1";
-	$ips = [$_SERVER["REMOTE_ADDR"], $_SERVER["HTTP_REMOTEIP"] ] + explode(',', $_SERVER["HTTP_X_FORWARDED_FOR"]);
-	foreach ($ips as $ip) {
-		$ip = trim($ip);
-		// addLog($ip);
-		if (!$ip)
-			continue;
-		if (stripos($list, $ip) !== false)
-			return true;
-	}
-	return false;
-}
-
-/**
 @fn api_checkIp()
 
-@key whiteIpList 白名单配置，默认值为"127.0.0.1"
+@key whiteIpList 白名单配置.
 
 可在conf.user.php中设置whiteIpList，如
 
-	putenv("whiteIpList=115.238.59.110 127.0.0.1 ::1");
+	putenv("whiteIpList=115.238.59.110");
 
 要验证调用者是否在IP白名单中，不是白名单调用将直接抛错，可以调用
 
@@ -1253,15 +1267,13 @@ function inWhiteIpList()
 
 	callSvr("checkIp");
 
-@see inWhiteIpList
+@see BlackList
 */
 function api_checkIp()
 {
-	if (inWhiteIpList())
+	if (BlackList::isWhiteReq())
 		return;
-	$log = @sprintf("*** unauthorized call: ip is NOT in white list. ApiLog.id=%s, REMOTE_ADDR=%s, HTTP_REMOTEIP=%s, HTTP_X_FORWARDED_FOR=%s.", 
-		ApiLog::$lastId, 
-		$_SERVER["REMOTE_ADDR"], $_SERVER["HTTP_REMOTEIP"], $_SERVER["HTTP_X_FORWARDED_FOR"]);
+	$log = @sprintf("*** unauthorized call: ip is NOT in white list. ApiLog.id=%s", ApiLog::$lastId);
 	logit($log);
 	throw new MyException(E_PARAM, "ip is NOT in white list", "IP不在白名单");
 }
@@ -1423,8 +1435,8 @@ function apiMain()
 		$api->exec();
 
 		// 删除空会话
-		if (isset($_SESSION) && count($_SESSION) <= 1) {
-			// jd-php框架设置过lastAccess，故空会话至少有1个key
+		if (isset($_SESSION) && count($_SESSION) == 0) {
+			// jd-php框架ApiWatch中设置过lastAccess，则空会话至少有1个key。v5.3不再使用ApiWatch
 			@session_destroy();
 		}
 	}
@@ -1563,9 +1575,17 @@ class ApiApp extends AppBase
 			$this->apiLog->logBefore();
 		}
 
+/*
 		// API调用监控
 		$this->apiWatch = new ApiWatch($ac);
 		$this->apiWatch->execute();
+*/
+		if (Conf::$enableSecure) {
+			if (!BlackList::isWhiteReq() && (BlackList::isBlackReq() || Conf::checkSecure($ac) === false)) {
+				setRet(E_FORBIDDEN, "OK");
+				return "OK";
+			}
+		}
 
 		if ($ac == "batch") {
 			$useTrans = param("useTrans", false, $_GET);
@@ -1678,8 +1698,10 @@ class ApiApp extends AppBase
 
 	protected function onAfter($ok)
 	{
+/*
 		if ($this->apiWatch)
 			$this->apiWatch->postExecute();
+*/
 		if ($this->apiLog)
 			$this->apiLog->logAfter();
 
