@@ -628,7 +628,8 @@ function assert(cond, dscr)
 		var msg = "!!! assert fail!";
 		if (dscr)
 			msg += " - " + dscr;
-		throw(msg);
+		// 用throw new Error会有调用栈; 直接用throw "some msg"无法获取调用栈.
+		throw new Error(msg);
 	}
 }
 
