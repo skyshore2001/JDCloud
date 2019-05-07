@@ -221,8 +221,6 @@ function uploadPic1(jo, opt)
 		this.isFixed_ = true;
 	});
 
-	loadPreview(jo, isMul);
-
 	jo.on("change", "input[type=file]", function (ev) {
 		$.each(this.files, function (i, fileObj) {
 			MUI.compressImg(fileObj, function (picData) {
@@ -253,6 +251,8 @@ function uploadPic1(jo, opt)
 			return false;
 		}
 	});
+
+	loadPreview(jo, isMul);
 }
 
 function getAtts(jo)
