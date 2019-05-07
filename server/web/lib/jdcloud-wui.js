@@ -581,11 +581,19 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 
 	function initPageItem(storeId) // storeId=row.id
 
-此外，在Item页对应的详情对话框上（dlgItem.html页面中），还应设置storeId字段是只读的，在添加、设置和查询时不可被修改。
+@see showPage
+@key .wui-fixedField 固定值字段
+
+此外，在Item页对应的详情对话框上（dlgItem.html页面中），还应设置storeId字段是只读的，在添加、设置和查询时不可被修改，在添加时还应自动填充值。
+(v5.3) 只要在字段上添加wui-fixedField类即可：
+
+	<select name="storeId" class="my-combobox wui-fixedField" data-options="ListOptions.Store()"></select>
+
+注意：wui-fixedField在v5.3引入，之前方法是应先设置字段为readonly:
 
 	<select name="storeId" class="my-combobox" data-options="ListOptions.Store()" readonly></select>
 
-注意：select组件默认不支持readonly属性，框架定义了CSS：为select[readonly]设置`pointer-events:none`达到类似效果。
+（select组件默认不支持readonly属性，框架定义了CSS：为select[readonly]设置`pointer-events:none`达到类似效果。）
 
 然后，在initDlgItem函数中(dlgItem.js文件)，应设置在添加时自动填好该字段：
 
@@ -593,8 +601,6 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 		if (formMode == FormMode.forAdd && objParam.storeId) {
 			opt.data.storeId = objParam.storeId);
 		}
-
-@see showPage
 
 ### 设计模式：页面间调用
 
@@ -774,6 +780,23 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 	jdlg.toggleClass("wui-readonly", isReadonly);
 
 只读对话框不可输入(在style.css中设定pointer-events为none)，点击确定按钮后直接关闭。
+
+### 只读字段：使用disabled和readonly属性
+
+- disabled：不可添加或更新该字段，但可查询（即forAdd/forSet模式下只显示不提交，forFind时可设置和提交)，例如编号字段、计算字段。示例：
+
+		<input name="id" disabled>
+		<input name="userName" disabled>
+
+- readonly：不可手工添加、更新和查询（但可通过代码设置）。示例：
+
+		<input name="total" readonly>
+
+(v5.3) 如果是在展示层次对象（参考[[设计模式：展示层次对象]]章节），某些字段是外部传入的固定值，这时用wui-fixedField类标识：
+
+	<select name="storeId" class="my-combobox wui-fixedField" data-options="ListOptions.Store()"></select>
+
+@see .wui-fixedField
 
 ## 模块化开发
 
@@ -5181,6 +5204,9 @@ function showDlg(jdlg, opt)
 // 		});
 	}
 
+	// 含有固定值的对话框，根据opt.objParam[fieldName]填充值并设置只读.
+	setFixedFields(jdlg, opt);
+
 // 	openDlg(jdlg);
 	focusDlg(jdlg);
 	jfrm.trigger("show", [formMode, opt.data]);
@@ -5391,6 +5417,28 @@ function batchOp(obj, ac, jtbl, data, onBatchDone, forceFlag)
 			app_alert(acName + cnt + "条记录");
 		}, data);
 	}
+}
+
+/*
+如果objParam中指定了值，则字段只读，并且在forAdd模式下填充值。
+如果objParam中未指定值，则不限制该字段，可自由设置或修改。
+*/
+function setFixedFields(jdlg, beforeShowOpt) {
+	jdlg.find(".wui-fixedField[name]").each(function () {
+		var je = $(this);
+		var name = je.attr("name");
+		var fixedVal = beforeShowOpt && beforeShowOpt.objParam && beforeShowOpt.objParam[name];
+		if (fixedVal) {
+			je.attr("readonly", true);
+			var forAdd = beforeShowOpt.objParam.mode == FormMode.forAdd;
+			if (forAdd) {
+				je.val(fixedVal);
+			}
+		}
+		else {
+			je.attr("readonly", null);
+		}
+	});
 }
 
 /**
