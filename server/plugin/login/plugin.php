@@ -38,6 +38,10 @@
 		"secret" => "381c380860a3aad4514853e216cXXXX"
 	];
 
+- 绑定用户手机时无须验证码
+
+	Login::$bindUserUseCode ?= true;
+
 - 可设置万能密码，以任何用户身份登录系统。供维护人员使用，一般应临时设置在conf.user.php中，勿固定设置在代码中，勿设置1234等常规密码。示例：
 
 	putenv("maintainPwd=tufc!SAEK");
@@ -88,6 +92,7 @@ class Login
 		"appid" => "wxf5502ed6914b4b7e",
 		"secret" => "381c380860a3aad4514853e216c7e1f3"
 	];
+	static $bindUserUseCode = true;
 }
 
 class LoginImpBase
@@ -172,13 +177,14 @@ class LoginImpBase
 			//将微信key与手机用户绑定
 			dbUpdate("User", ["weixinKey"=>$weixinKey], $row["id"]);
 			//微信用户失效，今后无法登录
-			$key = 'merge-'.$weixinKey;
+			$key = 'merge-user-'.$row["id"];
 			dbUpdate("User", ["weixinKey"=>$key], $userId);
 			$_SESSION["uid"] = $row["id"];
 		}else{
 			//将手机号与微信用户绑定
 			dbUpdate("User", ["phone"=>$phone], $userId);
 		}
+		return ["id" => $_SESSION["uid"]];
 	}
 }
 
@@ -614,10 +620,12 @@ function api_chpwd()
 function api_bindUser()
 {	
 	$phone = mparam("phone");
-	$code = mparam("code");
-	validateDynCode($code, $phone);
+	if (Login::$bindUserUseCode) {
+		$code = mparam("code");
+		validateDynCode($code, $phone);
+	}
 	$imp = LoginImpBase::getInstance();
-	$imp->onBindUser($phone);
+	return $imp->onBindUser($phone);
 }
 
 function api_login2()
