@@ -6125,7 +6125,7 @@ self.dg_dblclick = function (jtbl, jdlg)
 - href="#pageXXX"开头的，点击时会调用 WUI.showPage("#pageXXX");
 - href="?fn"，会直接调用函数 fn();
 */
-self.m_enhanceFn["a[href^=#]"] = enhanceAnchor;
+self.m_enhanceFn["a[href^='#']"] = enhanceAnchor;
 function enhanceAnchor(jo)
 {
 	if (jo.attr("onclick"))

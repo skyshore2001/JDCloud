@@ -5573,7 +5573,7 @@ function hideLoading()
 //}}}
 // ------- ui: anchor {{{
 
-self.m_enhanceFn["a[href^=#]"] = enhanceAnchor;
+self.m_enhanceFn["a[href^='#']"] = enhanceAnchor;
 
 function enhanceAnchor(jo)
 {
