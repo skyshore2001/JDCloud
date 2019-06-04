@@ -1,10 +1,14 @@
 #!/bin/sh
 
 # 注意：
-# 用户必须有以下权限：
+# 以用户xeycro为例，必须有以下权限：
 # grant select, lock tables, show view on carsvc.* to xeycro;
 # grant select on mysql.* to xeycro;
 # grant reload, replication client, replication slave on *.* to xeycro;
+
+# 如果报错：mysqldump: Error: Binlogging on server not active
+# 需要在my.cnf中[mysqld]段中添加以下配置，并重启mysql服务
+# log_bin=mysql-bin
 
 dbuser=xeycro
 dbpwd=xeyc2014
