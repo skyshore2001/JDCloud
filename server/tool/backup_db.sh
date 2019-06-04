@@ -8,7 +8,8 @@
 
 # 如果报错：mysqldump: Error: Binlogging on server not active
 # 需要在my.cnf中[mysqld]段中添加以下配置，并重启mysql服务
-# log_bin=mysql-bin
+#	log_bin=mysql-bin
+#	log-bin-trust-function-creators=1 # 避免DETERMINISTIC function之类的错误
 
 dbuser=xeycro
 dbpwd=xeyc2014
