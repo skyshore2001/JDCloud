@@ -54,7 +54,7 @@ var PageSetUserInfo = {
 
 // ====== functions {{{
 // <button id="btnGenCode">发送验证码<span class="p-prompt"></span></button>
-function setupGenCodeButton(btnGenCode, txtPhone)
+function setupGenCodeButton(btnGenCode, txtPhone, onGenCode)
 {
 	btnGenCode.click(btnGenCode_click);
 	function btnGenCode_click()
@@ -64,7 +64,8 @@ function setupGenCodeButton(btnGenCode, txtPhone)
 			app_alert("填写手机号!")
 			return;
 		}
-		callSvr("genCode", {phone: phone}, api_genCode);
+		var dfd = callSvr("genCode", {phone: phone}, api_genCode);
+		dfd.then(onGenCode);
 
 		function api_genCode(data)
 		{
