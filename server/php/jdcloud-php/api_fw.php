@@ -1566,8 +1566,10 @@ class ApiApp extends AppBase
 		dbconn();
 
 		global $DBH;
-		if (! isCLI())
+		if (! isCLI()) {
 			session_start();
+			bugfix_sessionStart();
+		}
 
 		if (Conf::$enableApiLog)
 		{
@@ -1812,6 +1814,41 @@ class ApiApp extends AppBase
 			throw new MyException(E_PARAM, "bad verb '$method'");
 		}
 		return "{$obj}.{$ac}";
+	}
+}
+
+/*
+Bug: session_start doesn't create session
+https://bugs.php.net/bug.php?id=78155&thanks=4
+
+Scenario: 
+Request A and B are sent from the same browser at the same time and use the same cookie.
+A destroys session and B writes session.
+
+Request A:
+	session_start();
+	sleep(5);
+	session_destroy();
+
+Request B:
+	// B will be blocked by A on the session file
+	session_start(); // !!!return ok but not session file!!!
+	// resume until A destroys(releases) it. but no session file and the 'uid' cannot save.
+	$_SESSION["uid"] = 1;
+	
+Expected result:
+the session file exists with variable 'uid'.
+
+Actual result:
+No session file.
+*/
+function bugfix_sessionStart() 
+{
+	$f = session_save_path() . "/sess_" . session_id();
+	if (!file_exists($f)) {
+		logit("warning: session conflict. reload session.");
+		session_commit();
+		session_start();
 	}
 }
 
