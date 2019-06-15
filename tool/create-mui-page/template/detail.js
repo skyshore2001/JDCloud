@@ -21,7 +21,7 @@ function initPage<?=$obj?>()
 		pageItf.showForAdd();
 	}
 
-	MUI.initPageDetail(jpage, {
+	var detailItf = MUI.initPageDetail(jpage, {
 		pageItf: pageItf,
 		onValidate: function (jf) {
 			// 补足字段和验证字段，返回false则取消form提交。
@@ -69,6 +69,12 @@ EOL;
 		}
 		*/
 	});
+
+	jpage.find("#btnDel").click(btnDel_click);
+
+	function btnDel_click(ev) {
+		app_alert("删除记录？", "q", detailItf.del.bind(detailItf));
+	}
 }
 
 // TODO: move page interface to the main js file
@@ -76,12 +82,12 @@ var Page<?=$obj?> = {
 	showForAdd: function(formData) {
 		this.formMode = FormMode.forAdd;
 		this.formData = formData;
-		MUI.showPage("#<?=$obj?>");
+		MUI.showPage("#<?=lcfirst($obj)?>");
 	},
 	showForSet: function (formData) {
 		this.formMode = FormMode.forSet;
 		this.formData = formData;
-		MUI.showPage("#<?=$obj?>");
+		MUI.showPage("#<?=lcfirst($obj)?>");
 	},
 	show: function (id) {
 		if (id)

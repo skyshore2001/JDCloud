@@ -5,7 +5,7 @@ function initPage<?=$obj?>()
 
 	var lstIf = MUI.initPageList(jpage, {
 		pageItf: Page<?=$obj?>,
-		navRef: ">.hd .mui-navbar",
+		navRef: "",
 		listRef: ">.bd .p-list",
 		onGetQueryParam: function (jlst, queryParam) {
 			queryParam.ac = "<?=$baseObj?>.query";
@@ -30,7 +30,7 @@ function initPage<?=$obj?>()
 	function li_click(ev)
 	{
 		var id = ev.data.id;
-		// 显示详情页
+		// TODO: 显示详情页
 		// Page<?=$baseObj?>.show(id);
 		return false;
 	}
@@ -38,6 +38,12 @@ function initPage<?=$obj?>()
 
 // TODO: move page interface to the main js file
 var Page<?=$obj?> = {
-	refresh: null
+	refresh: null,
+	// Page<?=$obj?>.show(refresh?)
+	show: function (refresh) {
+		if (refresh != null)
+			this.refresh = refresh;
+		MUI.showPage("#<?=lcfirst($obj)?>");
+	}
 };
 

@@ -7785,7 +7785,7 @@ function showByFormMode(jo, formMode)
 /**
 @fn initPageDetail(jpage, opt) -> PageDetailInterface={refresh(), del()}
 
-详情页框架. 用于对象的添加/查看/更新多合一页面.
+详情页框架. 用于对象的添加/查看/更新/删除多合一页面.
 form.action为对象名.
 
 @param opt {pageItf, jform?=jpage.find("form:first"), onValidate?, onGetData?, onNoAction?=history.back, onAdd?, onSet?, onGet?, onDel?}
@@ -7820,6 +7820,7 @@ onDel: Function(); 删除对象后回调.
 				<div class="forSet">人物标签</div>
 
 				<button type="submit" id="btnOK">确定</button>
+				<button type="button" id="btnDel">删除</button>
 				<input type="text" style="display:none" name="familyId">
 
 			</form>
@@ -7839,7 +7840,7 @@ onDel: Function(); 删除对象后回调.
 	{
 		var jpage = this;
 		var pageItf = PagePerson;
-		initPageDetail(jpage, {
+		var detailItf = MUI.initPageDetail(jpage, {
 			pageItf: pageItf, // 需要页面接口提供 formMode, formData等属性。
 			onValidate: function (jf) {
 				// 补足字段和验证字段，返回false则取消form提交。
@@ -7857,6 +7858,12 @@ onDel: Function(); 删除对象后回调.
 				PagePersons.show({refresh: true});
 			},
 		});
+
+		jpage.find("#btnDel").click(btnDel_click);
+
+		function btnDel_click(ev) {
+			app_alert("删除记录？", "q", detailItf.del.bind(detailItf));
+		}
 	}
 
 	// 其它页调用它：
