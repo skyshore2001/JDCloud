@@ -616,6 +616,20 @@ $BASE_DIR/conf.php中包含Conf类，用于定义易变的临时逻辑，例如�
 class ConfBase
 {
 /**
+@var ConfBase::$enableAutoSession?=true
+
+默认为请求创建session，请求结束时，如果session是空则会删除掉.
+将enableAutoSession设置为false，则在需要读写session之前需要手工调用
+
+	session_start();
+
+这样便于手工控制session的启停(与php默认处理一致)。
+
+如果php选项session.auto_start=1，则此选项无效。
+ */
+	static $enableAutoSession = true;
+
+/**
 @var ConfBase::$enableApiLog?=true
 
 设置为false可关闭ApiLog. 例：
@@ -1437,7 +1451,8 @@ function apiMain()
 		// 删除空会话
 		if (isset($_SESSION) && count($_SESSION) == 0) {
 			// jd-php框架ApiWatch中设置过lastAccess，则空会话至少有1个key。v5.3不再使用ApiWatch
-			@session_destroy();
+			// @session_destroy();
+			safe_sessionDestroy();
 		}
 	}
 }
@@ -1566,9 +1581,8 @@ class ApiApp extends AppBase
 		dbconn();
 
 		global $DBH;
-		if (! isCLI()) {
+		if (! isCLI() && Conf::$enableAutoSession) {
 			session_start();
-			bugfix_sessionStart();
 		}
 
 		if (Conf::$enableApiLog)
@@ -1842,13 +1856,30 @@ the session file exists with variable 'uid'.
 Actual result:
 No session file.
 */
-function bugfix_sessionStart() 
+function safe_sessionDestroy() 
 {
+	// windows上文件被其它进程打开时，无法删除。故直接忽略错误即可。
+	if (PHP_OS === "WINNT") {
+		@session_destroy();
+		return;
+	}
+	// linux上文件被其它进程独占打开时，也可以删除。
+	// 为避免误删除，将session_destroy拆分为session_write_close和unlink，先测试没有被别的进程lock，这时再删除。
+	session_write_close();
 	$f = session_save_path() . "/sess_" . session_id();
-	if (!file_exists($f)) {
-		logit("warning: session conflict. reload session.");
-		session_commit();
-		session_start();
+	@$fp = fopen($f, "r");
+	if ($fp === false)
+		return;
+	usleep(0); // sched_yeild CPU cycle, check if the session file is locked by other proc
+	$rv = flock($fp, LOCK_EX|LOCK_NB);
+	if ($rv) {
+		flock($fp, LOCK_UN);
+		fclose($fp);
+		@unlink($f);
+	}
+	else {
+		fclose($fp);
+		// echo("!!! ignore session destroy !!!\n");
 	}
 }
 
