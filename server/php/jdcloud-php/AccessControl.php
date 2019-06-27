@@ -1862,11 +1862,17 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 
 	class AC2_Ordr extends AccessControl {
 		function api_setIf() {
+			// 限制只有经理权限才能批量更新
 			checkAuth(PERM_MGR);
+
+			// 限制只能更新指定字段
 			$this->checkSetFields(["status", "cmt"]);
+
+			// 限制只可更新自己的订单，一般写在onQuery中，以便get/query/setIf/delIf均可通用。
 			$empId = $_SESSION["empId"];
 			$this->addCond("t0.empId=$empId");
 			// $this->addJoin(...);
+
 			return parent::api_setIf();
 		}
 	}
@@ -1901,9 +1907,14 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 
 	class AC2_Ordr extends AccessControl {
 		function api_delIf() {
+			// 限制只有经理权限才能批量更新
 			checkAuth(PERM_MGR);
-			// $this->addCond(...);
+
+			// 限制只可更新自己的订单，一般写在onQuery中，以便get/query/setIf/delIf均可通用。
+			$empId = $_SESSION["empId"];
+			$this->addCond("t0.empId=$empId");
 			// $this->addJoin(...);
+
 			return parent::api_delIf();
 		}
 	}
