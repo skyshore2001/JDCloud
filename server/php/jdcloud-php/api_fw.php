@@ -1855,6 +1855,27 @@ the session file exists with variable 'uid'.
 
 Actual result:
 No session file.
+
+session_destroy会误删除其它进程正在使用的session文件。
+此bug影响linux系统，目前尚无法解决。可定期手工删除空session：
+
+	cd session
+	find . -size 0 | xargs rm
+
+如果有特定的轮询API，若不希望它产生空session，可设置enableAutoSession=false禁上自动创建session:
+
+	class Conf extends ConfBase
+	{
+		...
+
+		static function onApiInit(&$ac)
+		{
+			if ($ac == "Cmd.query") {
+				self::$enableAutoSession = false;
+			}
+		}
+	}
+
 */
 function safe_sessionDestroy() 
 {
@@ -1863,6 +1884,10 @@ function safe_sessionDestroy()
 		@session_destroy();
 		return;
 	}
+
+	/* 此bug在linux系统上目前无法解决，下面代码只能降低session被误删除的概率，但无法根除 */
+	return;
+
 	// linux上文件被其它进程独占打开时，也可以删除。
 	// 为避免误删除，将session_destroy拆分为session_write_close和unlink，先测试没有被别的进程lock，这时再删除。
 	session_write_close();
@@ -1871,6 +1896,8 @@ function safe_sessionDestroy()
 	if ($fp === false)
 		return;
 	usleep(0); // sched_yeild CPU cycle, check if the session file is locked by other proc
+	usleep(0);
+	usleep(0);
 	$rv = flock($fp, LOCK_EX|LOCK_NB);
 	if ($rv) {
 		flock($fp, LOCK_UN);
