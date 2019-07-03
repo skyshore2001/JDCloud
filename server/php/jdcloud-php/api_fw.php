@@ -662,6 +662,29 @@ class ConfBase
 		}
 	}
 
+	class AC_DMS extends AccessControl
+	{
+		function onInit() {
+			Partner::checkAuth();
+		}
+		// DFIS-BK_S001
+		function api_workGroup() {
+		}
+	}
+
+例：第三方要求回调 {BASE_URL}/notify/orderStatus 这样的URL，但框架默认不支持，可以在onApiInit中转换：
+
+	static function onApiInit(&$ac)
+	{
+		if ($ac == "notify/orderStatus") {
+			$ac = "Notify.orderStatus";
+		}
+	}
+
+	class AC_Notify extends AccessControl
+	{ ... }
+
+注意：框架默认支持`Notify/orderStatus`这样的URL（对象名Notify必须首字母大写），它可自动转成Notify.orderStatus。
  */
 	static function onApiInit(&$ac)
 	{
