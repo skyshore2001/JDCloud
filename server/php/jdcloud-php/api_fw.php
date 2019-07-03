@@ -449,13 +449,66 @@ function setRet($code, $data = null, $internalMsg = null)
 		else {
 			$X_RET_STR = "[" . $code . ", " . $X_RET_STR . "]";
 		}
-		echo $X_RET_STR . "\n";
+		echoRet();
 	}
 	else {
 		$errfn = $GLOBALS["errorFn"] ?: "errQuit";
 		if ($code != 0) {
 			$errfn($X_RET[0], $X_RET[1], $X_RET[2]);
 		}
+	}
+}
+
+/**
+@var _jsonp 用于支持jsonp返回格式的URL参数
+
+示例：
+
+	http://localhost/p/jdcloud/api.php/Ordr/10?_jsonp=api_OrdrGet
+	返回
+
+	api_OrdrGet([
+		0, {"id":10,...}
+	]);
+
+	http://localhost/p/jdcloud/api.php/Ordr/10?_jsonp=api_order%3d
+	返回
+
+	api_order=[
+		0, {"id":10,...}
+	];
+
+JS示例：
+
+	<script>
+	function api_OrdrGet(order)
+	{
+		console.log(order);
+	}
+	</script>
+	<script src="http://localhost/p/jdcloud/api.php/Ordr/10?_jsonp=api_OrdrGet"></script>
+
+JS示例：
+
+	<script src="http://localhost/p/jdcloud/api.php/Ordr/10?_jsonp=api_order%3d"></script>
+	<script>
+	console.log(api_order);
+	</script>
+*/
+function echoRet()
+{
+	global $X_RET_STR;
+	$jsonp = $_GET["_jsonp"];
+	if ($jsonp) {
+		if (substr($jsonp,-1) === '=') {
+			echo $jsonp . $X_RET_STR . ";\n";
+		}
+		else {
+			echo $jsonp . "(" . $X_RET_STR . ");\n";
+		}
+	}
+	else {
+		echo $X_RET_STR . "\n";
 	}
 }
 
