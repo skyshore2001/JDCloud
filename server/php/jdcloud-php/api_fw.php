@@ -971,6 +971,18 @@ class ApiLog
 			"res" => $content
 		]);
 	}
+
+	static function addObjLog($obj, $objId, $dscr) {
+		// TODO: 1. support apiLog1; 2. dscr includes obj, app and username like "管理员张某添加员工10"; 3. override dscr
+		dbInsert("ObjLog", [
+			"tm" => date(FMT_DT),
+			"obj" => $obj,
+			"objId" => $objId,
+			"dscr" => $dscr,
+			"apiLogId" => ApiLog::$lastId,
+			//"apiLogId1"
+		]);
+	}
 }
 
 /*

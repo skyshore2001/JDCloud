@@ -1013,6 +1013,14 @@ class AccessControl
 	}
 
 	private $afterIsCalled = false;
+	protected static $objLogAcMap = [
+		"add" => "添加",
+		"set" => "更新",
+		"del" => "删除",
+		"batchAdd" => "批量添加",
+		"setIf" => "批量更新",
+		"delIf" => "批量删除"
+	];
 	final function after(&$ret) 
 	{
 		// 确保只调用一次
@@ -1026,6 +1034,10 @@ class AccessControl
 		{
 			# NOTE: php does not allow call $this->onAfterActions();
 			$fn($ret);
+		}
+
+		if (array_key_exists($this->ac, self::$objLogAcMap)) {
+			ApiLog::addObjLog($this->table, $this->id, self::$objLogAcMap[$this->ac]);
 		}
 	}
 

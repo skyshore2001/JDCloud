@@ -132,6 +132,10 @@ ver
 
 batch操作的明细表。
 
+**[操作日志]**
+
+@ObjLog: id, tm, obj, objId, dscr, apiLogId, apiLogId1
+
 **[插件相关]**
 
 @include server\plugin\login\DESIGN.md
