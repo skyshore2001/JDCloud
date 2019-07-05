@@ -155,6 +155,8 @@ HTML: 在data-options中指定菜单的ID和显示文字。缺省头像将添加
 			}
 		}
 	}
+	// 高亮显示选中的头像picId。
+	// 注意：要用jdlg而不是jfrm的show事件。否则wui-upload尚未初始化完成
 	jdlg.on("show", function (ev, formMode, initData) {
 		if (initData && initData.picId) {
 			jdlg.find(".wui-upload img[picId=" + initData.picId + "]").addClass("active");

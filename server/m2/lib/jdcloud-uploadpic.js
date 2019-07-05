@@ -139,6 +139,20 @@ onUploadDone在全部上传完成后调用，参数分别为每个上传区的�
 
 @see compressImg
 
+@event changepic uploadpic对应的jquery对象事件，在添加或删除图片时触发
+
+示例：在选择图片后显示预览区，无图片则不显示
+
+	<div class="" v-show='uploadObjNum>0'>
+		<div class="uploadpic">...</div>
+	</div>
+
+	// 注意：添加多张图片时，会连续触发多次
+	jpage.find("#addMsg").on("changepic", function (ev) {
+		console.log('changepic');
+		vm.uploadObjNum = uploadPic.countPic();
+	});
+
 ## 清空与重置
 
 清空全部图片：
@@ -171,8 +185,8 @@ onUploadDone在全部上传完成后调用，参数分别为每个上传区的�
 
 示例：
 
-	var cnt = uploadPic.filter(0).stat().cnt;
-	// 等价于 var cnt = uploadPic.filter(":eq(0)").stat().cnt;
+	var cnt = uploadPic.filter(0).countPic();
+	// 等价于 var cnt = uploadPic.filter(":eq(0)").countPic;
 	uploadPic.filter(".storePics").empty();
 
  */
@@ -352,6 +366,8 @@ function previewImg(jo, attId, picData, isMul)
 	ji.css("backgroundImage", "url(" + url + ")");
 	ji.prop("picData_", picData)
 		.prop("attId_", attId);
+
+	jo.trigger("changepic");
 }
 
 function newPreview()
@@ -379,6 +395,7 @@ function delPreview(ji, forReset)
 	else {
 		ji.remove();
 	}
+	jo.trigger("changepic");
 }
 
 // 如果需要更改，返回Deferred对象，在上传完成后Deferred对象可执行；否则返回空。
