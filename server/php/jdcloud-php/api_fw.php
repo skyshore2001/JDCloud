@@ -692,6 +692,15 @@ class ConfBase
 	static $enableApiLog = true;
 
 /**
+@var ConfBase::$enableObjLog?=true
+
+设置为false可关闭ObjLog. 例：
+
+	static $enableObjLog = false;
+ */
+	static $enableObjLog = true;
+
+/**
 @fn ConfBase::onApiInit()
 
 所有API执行时都会先走这里。
@@ -841,10 +850,10 @@ class ApiLog
 				$s .= "$k=...";
 				break;
 			}
-			if ($k == "pwd" || $k == "oldpwd") {
+/*			if ($k == "pwd" || $k == "oldpwd") {
 				$v = "?";
 			}
-			else if (! is_scalar($v)) {
+*/			else if (! is_scalar($v)) {
 				$v = "obj:" . json_encode($v, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 			}
 			if ($len == 0) {
@@ -962,7 +971,7 @@ class ApiLog
 		$content = $this->myVarExport($res);
 
 		++ $DBH->skipLogCnt;
-		dbInsert("ApiLog1", [
+		$apiLog1Id = dbInsert("ApiLog1", [
 			"apiLogId" => $this->id,
 			"ac" => $this->ac1,
 			"t" => $iv,
@@ -970,17 +979,22 @@ class ApiLog
 			"req" => $this->req1,
 			"res" => $content
 		]);
+		if (Conf::$enableObjLog && self::$objLogId) {
+			dbUpdate("ObjLog", ["apiLog1Id" => $apiLog1Id], self::$objLogId);
+			self::$objLogId = null;
+		}
 	}
 
+	static $objLogId;
 	static function addObjLog($obj, $objId, $dscr) {
-		// TODO: 1. support apiLog1; 2. dscr includes obj, app and username like "管理员张某添加员工10"; 3. override dscr
-		dbInsert("ObjLog", [
-			"tm" => date(FMT_DT),
+		if (!Conf::$enableObjLog)
+			return;
+		// TODO: 1. dscr includes obj, app and username like "管理员张某添加员工10"; 2. override dscr
+		self::$objLogId = dbInsert("ObjLog", [
 			"obj" => $obj,
 			"objId" => $objId,
 			"dscr" => $dscr,
-			"apiLogId" => ApiLog::$lastId,
-			//"apiLogId1"
+			"apiLogId" => ApiLog::$lastId
 		]);
 	}
 }

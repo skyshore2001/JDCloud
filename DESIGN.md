@@ -134,7 +134,7 @@ batch操作的明细表。
 
 **[操作日志]**
 
-@ObjLog: id, tm, obj, objId, dscr, apiLogId, apiLogId1
+@ObjLog: id, obj, objId, dscr, apiLogId, apiLog1Id
 
 **[插件相关]**
 
