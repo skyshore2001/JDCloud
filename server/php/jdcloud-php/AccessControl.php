@@ -790,6 +790,32 @@ class AccessControl
 	// for batchAdd
 	protected $batchAddLogic;
 
+/**
+$var AccessControl::$uuid ?=false 将id伪装为uuid
+
+为避免整数类型的id暴露内部编号，可输出仿uuid类型的id，例如：
+
+	class AC1_Ordr extends AccessControl
+	{
+		protected $uuid = true;
+	}
+
+例如原先`Ordr.get/Ordr.query`返回`{id: 41}`，现在变为`{id: "d9a37e4c2038e8ad"}`.
+
+其原理为在onQuery中添加：
+
+	$this->enumFields["id"] = function($v) {
+		return jdEncryptI($v, "E", "hex");
+	};
+
+param函数以"id"类型符来支持这种伪uuid类型，如：
+
+	$id = param("userId"); // 支持整数或伪uuid类型
+	$key = param("pagekey/id");  // 支持整数或伪uuid类型
+
+*/
+	protected $uuid = false;
+
 	static function create($tbl, $ac, $asAdmin = false) 
 	{
 		/*
@@ -922,6 +948,11 @@ class AccessControl
 		}
 
 		$this->onQuery();
+		if ($this->uuid) {
+			$this->enumFields["id"] = function($v) {
+				return jdEncryptI($v, "E", "hex");
+			};
+		}
 
 		$addDefaultCol = false;
 		// 确保res/gres参数符合安全限定
@@ -1656,7 +1687,7 @@ FROM ($sql) t0";
 		$sqlConf = &$this->sqlConf;
 
 		$pagesz = param("pagesz/i");
-		$pagekey = param("pagekey/i");
+		$pagekey = param("pagekey/id");
 		if (! isset($pagekey)) {
 			$pagekey = param("page/i");
 			if (isset($pagekey))

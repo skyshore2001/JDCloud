@@ -189,7 +189,7 @@ assert_options(ASSERT_BAIL, 1);
 # 	end with "/i+": int array
 # 	end with "/js": json object
 # 	default or "/s": string
-# fix $name and return type: "i"-int, "b"-bool, "n"-numeric, "i+"-int[], "js"-object, "s"-string
+# fix $name and return type: "id"-int/encrypt-int, "i"-int, "b"-bool, "n"-numeric, "i+"-int[], "js"-object, "s"-string
 # support list(i:n:b:dt:tm). e.g. 参数"items"类型为list(id/Integer, qty/Double, dscr/String)，可用param("items/i:n:s")获取
 function parseType_(&$name)
 {
@@ -201,7 +201,7 @@ function parseType_(&$name)
 	}
 	else {
 		if ($name === "id" || substr($name, -2) === "Id") {
-			$type = "i";
+			$type = "id";
 		}
 		else {
 			$type = "s";
@@ -385,6 +385,15 @@ function param($name, $defVal = null, $col = null, $doHtmlEscape = true)
 		if ($doHtmlEscape)
 			$ret = htmlEscape($ret);
 		if ($type === "s") {
+		}
+		elseif ($type === "id") {
+			if (! is_numeric($ret)) {
+				$ret1 = jdEncryptI($ret, "D", "hex");
+				if (! is_numeric($ret1))
+					throw new MyException(E_PARAM, "Bad Request - id param `$name`=`$ret`.");
+				$ret = $ret1;
+			}
+			$ret = intval($ret);
 		}
 		elseif ($type === "i") {
 			if (! is_numeric($ret))
@@ -1676,19 +1685,21 @@ function myEncrypt($string, $enc='E')
 }
 
 /**
-@fn jdEncryptI($data, $enc=E|D, $fmt=b64|hex, $key=$ENC_KEY)
+@fn jdEncryptI($data, $enc=E|D, $fmt=hex|b64, $key=$ENC_KEY)
 
 基于rc4算法的32位整数加解密，缺省密码为全局变量$ENC_KEY.
 
-	$cipher = jdEncryptI(12345678, "E", "hex"); // dfa27c4c208489ca (4字节校验+4字节整数=8字节，用16进制文本表示为16个字节)
-	$n = jdEncryptI($cipher, "D", "hex");
+	$cipher = jdEncryptI(12345678, "E"); // dfa27c4c208489ca (4字节校验+4字节整数=8字节，用16进制文本表示为16个字节)
+	$n = jdEncryptI($cipher, "D");
 	if ($n === false)
 		throw "bad cipher";
+
+可用于将整型id伪装成8字节的uuid.
 
 @see rc4 基础rc4算法
 @see jdEncrypt 基于rc4的文本加密
 */
-function jdEncryptI($data, $enc='E', $fmt='b64', $key=null)
+function jdEncryptI($data, $enc='E', $fmt='hex', $key=null)
 {
 	if ($enc=='E')
 		return jdEncrypt(pack("N", $data), $enc, $fmt, $key);
