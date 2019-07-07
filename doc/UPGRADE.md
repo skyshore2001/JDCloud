@@ -14,6 +14,27 @@ v5.3开始可直接三击字段标题来查询，所以可以不需要加查询�
 
 	onClick="WUI.doFind($(this).closest('td'));"
 
+### 加密算法myEncrypt改为jdEncrypt
+
+新的内容应使用jdEncrypt函数加解密，两者算法一致但参数有差异。
+升级后，旧版本使用myEncrypt函数加密的内容将无法用jdEncrypt解密。
+
+例如，此前生成登录token使用了myEncrypt密码，为了使用户仍可以自动登录，login plugin在解密时做了以下兼容处理：
+原代码：
+
+	$data = @unserialize(myEncrypt($token, "D"));
+	if ($data === false)
+		throw new MyException(E_AUTHFAIL, "Bad login token!");
+
+新代码：
+
+	$data = @unserialize(jdEncrypt($token, "D"));
+	if ($data === false) {
+		$data = @unserialize(myEncrypt($token, "D"));
+		if ($data === false)
+			throw new MyException(E_AUTHFAIL, "Bad login token!");
+	}
+
 ## 升级到v5.2
 
 ### 管理端app.js重构到jdcloud-wui-ext.js，增加upload和checkList组件

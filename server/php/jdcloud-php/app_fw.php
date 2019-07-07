@@ -1567,75 +1567,139 @@ function logit($s, $addHeader=true, $type="trace")
 	file_put_contents($GLOBALS['BASE_DIR'] . "/{$type}.log", $s, FILE_APPEND | LOCK_EX);
 }
 
-/*********************************************************************
-@fn myEncrypt($string,$operation='E',$key='carsvc')
-@param operation 'E': encrypt; 'D': decrypt
+// ==== 加密算法 {{{
+/**
+@var ENC_KEY = 'jdcloud'
 
-加密解密字符串
+默认加密key。可在api.php等处修改覆盖。
+*/
+global $ENC_KEY;
+$ENC_KEY="jdcloud"; // 缺省加密密码
 
-加密:
+/**
+@fn rc4($data, $pwd)
 
-	$cipher = myEncrypt('hello, world!');
-	or
-	$cipher = myEncrypt('hello, world!','E','nowamagic');
+返回密文串（未编码的二进制，可用base64或hex编码）。
+RC4加密算法。基于异或的算法。
+https://www.cnblogs.com/haoxuanchen2014/p/7783782.html
 
-解密：
+更完善的短字符串编码，可以使用
 
-	$text = myEncrypt($cipher,'D','nowamagic');
-
-参数说明:
-$string   :需要加密解密的字符串
-$operation:判断是加密还是解密:E:加密   D:解密
-$key      :加密的钥匙(密匙);
-
-http://www.open-open.com/lib/view/open1388916054765.html
-*********************************************************************/
-function myEncrypt($string,$operation='E',$key='carsvc')
+@see jdEncrypt 基于rc4的文本加密
+@see jdEncryptI 基于rc4的32位整数加密
+*/
+function rc4($data, $pwd)
 {
-	$key=md5($key);
-	$key_length=strlen($key);
-	$string=$operation=='D'? base64_decode($string): substr(md5($string.$key),0,8).$string;
-	$string_length=strlen($string);
-	$rndkey=$box=array();
-	$result='';
-	for($i=0;$i<=255;$i++)
-	{
-		$rndkey[$i]=ord($key[$i%$key_length]);
-		$box[$i]=$i;
+    $cipher      = '';
+    $key[]       = "";
+    $box[]       = "";
+    $pwd_length  = strlen($pwd);
+    $data_length = strlen($data);
+    for ($i = 0; $i < 256; $i++) {
+        $key[$i] = ord($pwd[$i % $pwd_length]);
+        $box[$i] = $i;
+    }
+    for ($j = $i = 0; $i < 256; $i++) {
+        $j       = ($j + $box[$i] + $key[$i]) % 256;
+        $tmp     = $box[$i];
+        $box[$i] = $box[$j];
+        $box[$j] = $tmp;
+    }
+    for ($a = $j = $i = 0; $i < $data_length; $i++) {
+        $a       = ($a + 1) % 256;
+        $j       = ($j + $box[$a]) % 256;
+        $tmp     = $box[$a];
+        $box[$a] = $box[$j];
+        $box[$j] = $tmp;
+        $k       = $box[(($box[$a] + $box[$j]) % 256)];
+        $cipher .= chr(ord($data[$i]) ^ $k);
+    }
+    return $cipher;
+}
+
+/**
+@fn jdEncrypt($string, $enc=E|D, $fmt=b64|hex, $key=$ENC_KEY, $vcnt=4)
+
+基于rc4算法的文本加密，缺省密码为全局变量 $ENC_KEY。
+enc=E表示加密，enc=D表示解密。
+
+	$cipher = jdEncrypt("hello");
+	$text = jdEncrypt($cipher, "D");
+	if ($text === false)
+		throw "bad cipher";
+
+缺省返回base64编码的密文串，可设置参数$fmt="hex"输出16进制编码的密文串。
+算法包含了校验机制，解密时如果校验失败则返回false.
+
+@param vcnt 校验字节数，默认为4. validation bytes cnt
+
+@see rc4 基础rc4算法
+@see jdEncryptI 基于rc4的32位整数加密
+*/
+function jdEncrypt($string, $enc='E', $fmt='b64', $key=null, $vcnt=4)
+{
+	if ($key == null) {
+		global $ENC_KEY;
+		$key = md5($ENC_KEY);
 	}
-	for($j=$i=0;$i<256;$i++)
-	{
-		$j=($j+$box[$i]+$rndkey[$i])%256;
-		$tmp=$box[$i];
-		$box[$i]=$box[$j];
-		$box[$j]=$tmp;
+	else {
+		$key = md5($key);
 	}
-	for($a=$j=$i=0;$i<$string_length;$i++)
-	{
-		$a=($a+1)%256;
-		$j=($j+$box[$a])%256;
-		$tmp=$box[$a];
-		$box[$a]=$box[$j];
-		$box[$j]=$tmp;
-		$result.=chr(ord($string[$i])^($box[($box[$a]+$box[$j])%256]));
+	if ($enc == 'E') {
+		$data = substr(md5($string.$key),0,$vcnt) . $string;
+		$result = rc4($data, $key);
+		if ($fmt == "hex")
+			return bin2hex($result);
+		return preg_replace('/=+$/', '', base64_encode($result));
 	}
-	if($operation=='D')
-	{
-		if(substr($result,0,8)==substr(md5(substr($result,8).$key),0,8))
-		{
-			return substr($result,8);
-		}
-		else
-		{
-			return'';
-		}
-	}
-	else
-	{
-		return str_replace('=','',base64_encode($result));
-// 		return base64_encode($result);
+	else if ($enc == 'D') {
+		$data = $fmt=='hex'? hex2bin($string): base64_decode($string);
+		$result = rc4($data, $key);
+		$result1 = substr($result,$vcnt);
+		if (substr($result,0,$vcnt) != substr(md5($result1.$key),0,$vcnt))
+			return false;
+		return $result1;
 	}
 }
+
+/**
+@fn myEncrypt($string, $enc=E|D)
+
+基于rc4的字符串加密算法。
+新代码不建议使用，仅用作兼容旧版本同名函数。缺省key='carsvc', vcnt=8(校验字节数)
+
+@see jdEncrypt
+*/
+function myEncrypt($string, $enc='E')
+{
+	return jdEncrypt($string, $enc, 'b64', 'carsvc', 8);
+}
+
+/**
+@fn jdEncryptI($data, $enc=E|D, $fmt=b64|hex, $key=$ENC_KEY)
+
+基于rc4算法的32位整数加解密，缺省密码为全局变量$ENC_KEY.
+
+	$cipher = jdEncryptI(12345678, "E", "hex"); // dfa27c4c208489ca (4字节校验+4字节整数=8字节，用16进制文本表示为16个字节)
+	$n = jdEncryptI($cipher, "D", "hex");
+	if ($n === false)
+		throw "bad cipher";
+
+@see rc4 基础rc4算法
+@see jdEncrypt 基于rc4的文本加密
+*/
+function jdEncryptI($data, $enc='E', $fmt='b64', $key=null)
+{
+	if ($enc=='E')
+		return jdEncrypt(pack("N", $data), $enc, $fmt, $key);
+
+	$n = jdEncrypt($data, $enc, $fmt, $key);
+	if ($n !== false) {
+		$n = unpack("N", $n)[1];
+	}
+	return $n;
+}
+//}}}
 
 /**
 @fn errQuit($code, $msg, $msg2 =null)

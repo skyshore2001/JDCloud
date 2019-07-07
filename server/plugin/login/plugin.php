@@ -388,7 +388,7 @@ function genLoginToken(&$ret, $uname, $pwd)
 		"create" => time(0),
 		"expire" => 99999999
 	];
-	$token = myEncrypt(serialize($data), "E");
+	$token = jdEncrypt(serialize($data), "E");
 	$ret["_token"] = $token;
 	$ret["_expire"] = $data["expire"];
 	return $token;
@@ -396,9 +396,12 @@ function genLoginToken(&$ret, $uname, $pwd)
 
 function parseLoginToken($token)
 {
-	$data = @unserialize(myEncrypt($token, "D"));
-	if ($data === false)
-		throw new MyException(E_AUTHFAIL, "Bad login token!");
+	$data = @unserialize(jdEncrypt($token, "D"));
+	if ($data === false) {
+		$data = @unserialize(myEncrypt($token, "D"));
+		if ($data === false)
+			throw new MyException(E_AUTHFAIL, "Bad login token!");
+	}
 
 	$diff = array_diff(["uname", "pwd", "create", "expire"], array_keys($data));
 	if (count($diff) != 0)
