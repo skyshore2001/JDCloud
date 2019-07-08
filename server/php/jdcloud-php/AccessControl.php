@@ -1121,6 +1121,10 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 		if (stripos($q, "select") !== false) {
 			throw new MyException(E_FORBIDDEN, "forbidden SELECT in param cond");
 		}
+		// 伪uuid转换 id='d9a37e4c2038e8ad' => id=41
+		$q = preg_replace_callback('/([iI]d=)\'([a-fA-F0-9]{16})\'/u', function ($ms) {
+			return $ms[1] . jdEncryptI($ms[2], 'D', 'hex');
+		}, $q);
 		# "aa = 100 and t1.bb>30 and cc IS null" -> "t0.aa = 100 and t1.bb>30 and t0.cc IS null" 
 		$ret = preg_replace_callback('/[\w.\x{4E00}-\x{9FA5}]+(?=(\s*[=><]|(\s+(IS|LIKE)\s+)))/iu', function ($ms) {
 			// 't0.$0' for col, or 'voldef' for vcol
