@@ -1337,7 +1337,10 @@ function rs2MultiHash(rs, key)
 }
 
 /**
-@fn list2varr(ls, sep=':', sep2=',')
+@fn list2varr(ls, colSep=':', rowSep=',')
+
+- ls: 代表二维表的字符串，有行列分隔符。
+- colSep, rowSep: 列分隔符，行分隔符。
 
 将字符串代表的压缩表("v1:v2:v3,...")转成对象数组。
 
@@ -1844,7 +1847,7 @@ self.formItems = formItems;
 function formItems(jo, cb)
 {
 	jo.find("[name]:not([disabled])").each (function () {
-		var name = this.name;
+		var name = this.name || $(this).attr("name");
 		if (! name)
 			return;
 
@@ -7171,7 +7174,7 @@ navRef是否为空的区别是，如果非空，则表示listRef是一组互斥�
 ## 参数说明
 
 @param opt {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list", onBeforeLoad?, onLoad?, onGetData?, canPullDown?=true, onRemoveAll?}
-@param opt 分页相关 { pageszName?="pagesz", pagekeyName?="pagekey" }
+@param opt 分页相关 { pageszName?="pagesz", pagekeyName?="pagekey", localPageSize? }
 
 @param opt.onGetQueryParam Function(jlst, queryParam/o)
 
@@ -7435,6 +7438,14 @@ jlst:: 当前活动页。函数如果返回false，则取消所有上拉加载�
 
 设置为false时，当列表到底部时，可以自动加载下一页，但没有下拉刷新行为，这时页面容器也不需要确定高度。
 
+## 本地分页
+
+@param opt.localPageSize
+
+服务器一次性返回所有数据，在前端不想一次性全部显示，比如也按10条一页分页显示，下拉加载下一页，称为本地分页.
+这个场景下可以设置`opt.localPageSize=10`
+
+也支持是远程分页+本地分页混用, 但没有意义, 容易造成错乱, 故请匆混用.
  */
 self.initPageList = initPageList;
 function initPageList(jpage, opt)
@@ -7444,6 +7455,7 @@ function initPageList(jpage, opt)
 	var jbtns_ = opt_.navRef instanceof jQuery? opt_.navRef: jpage.find(opt_.navRef);
 	var firstShow_ = true;
 	var busy_ = false;
+	var localPagingFn_ = null;
 
 	if (jbtns_.hasClass("mui-navbar")) {
 		jbtns_ = jbtns_.find("a");
@@ -7591,6 +7603,11 @@ function initPageList(jpage, opt)
 		if (isRefresh) {
 			nextkey = null;
 		}
+		else if (localPagingFn_) {
+			localPagingFn_();
+			return;
+		}
+
 		if (nextkey == null) {
 			opt_.onRemoveAll(jlst); // jlst.empty();
 		}
@@ -7667,10 +7684,30 @@ function initPageList(jpage, opt)
 			var isFirstPage = (nextkey == null);
 			var isLastPage = (data.nextkey == null);
 			var param = {arr: arr, isFirstPage: isFirstPage};
-			$.each(arr, function (i, itemData) {
-				param.idx = i;
-				opt_.onAddItem && opt_.onAddItem(jlst, itemData, param);
-			});
+
+			if (opt_.localPageSize && arr.length >= opt_.localPageSize) {
+				// 前端本地分页
+				var curIdx = 0;
+				var fn = function () {
+					for (var i=curIdx; i<arr.length && i-curIdx<opt_.localPageSize; ++i) {
+						param.idx = i;
+						opt_.onAddItem && opt_.onAddItem(jlst, arr[i], param);
+					}
+					if (i >= arr.length) {
+						localPagingFn_ = null;
+					}
+					curIdx = i;
+				};
+				localPagingFn_ = fn;
+				fn(); // 显示第一页
+			}
+			else {
+				$.each(arr, function (i, itemData) {
+					param.idx = i;
+					opt_.onAddItem && opt_.onAddItem(jlst, itemData, param);
+				});
+			}
+
 			if (! isLastPage)
 				jlst.data("nextkey_", data.nextkey);
 			else {

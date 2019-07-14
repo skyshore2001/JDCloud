@@ -198,6 +198,19 @@ function parseFieldType(&$f, &$fieldMeta)
 			$type = 'n';
 		}
 	}
+	elseif (preg_match('/\((\w+)\)$/u', $f, $ms)) {
+		$tag = $ms[1];
+		$f = preg_replace('/\((\w+)\)$/u', '', $f);
+		if ($tag == 'm' || $tag == 'l') {
+			$type = 's';
+		}
+		elseif (is_numeric($tag)) {
+			$type = 's';
+		}
+		else {
+			$type = $tag;
+		}
+	}
 	elseif (preg_match('/(Price|Qty|Total|Amount)$/', $f1)) {
 		$type = 'n';
 	}

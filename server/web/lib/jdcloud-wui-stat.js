@@ -690,7 +690,22 @@ function runStat(jo, jcharts, setStatOpt)
 /**
 @fn WUI.initChart(chartTable, statData, seriesOpt, chartOpt)
 
-初始化报表
+初始化echarts报表组件.
+
+- chartTable: 图表DOM对象
+- statData: 符合echarts规范的数据，格式为 {@xData, @yData=[{name, @data}]}.
+- seriesOpt, chartOpt: 参考百度echarts全局参数以及series参数: http://echarts.baidu.com/echarts2/doc/doc.html
+
+statData示例：
+
+	statData = {
+		xData: [
+			'2016-6-29', '2016-6-30', '2016-7-1', '2016-7-2'
+		],
+		yData: [
+			{name: 'sum', data: [13, 0, 2, 9]} // 分别对应xData中每个日期，其中'2016-6-30'没有数据自动补0
+		]
+	}
 
 @see WUI.rs2Stat, WUI.initPageStat
  */
@@ -925,13 +940,12 @@ setTmRange(desc)用于设置jpage中的.txtTm1, .txtTm2两个文本框，作为�
 
 也可以调用WUI.initChart及WUI.rs2Stat自行设置报表，示例如下：
 
-	var jcharts = jpage.find(".divChart");
+	var jchart = jpage.find(".divChart");
 	var tmUnit = "y,m"; // 按时间维度分析，按“年月”展开数据
 	var cond = "tm>='2016-1-1' and tm<'2017-1-1'";
 	// WUI.useBatchCall(); // 如果有多个报表，可以批量调用后端接口
 	// 会话访问量
 	callSvr("ApiLog.query", function (data) {
-		var jchart = jcharts[0];
 		var opt = { tmUnit: tmUnit };
 		var statData = WUI.rs2Stat(data, opt);
 		var seriesOpt = {};
@@ -942,7 +956,7 @@ setTmRange(desc)用于设置jpage中的.txtTm1, .txtTm2两个文本框，作为�
 			legend: null
 		};
 
-		WUI.initChart(jchart, statData, seriesOpt, chartOpt);
+		WUI.initChart(jchart[0], statData, seriesOpt, chartOpt);
 	}, {res: "COUNT(distinct ses) sum", gres: tmUnit, orderby: tmUnit, cond: cond });
 
 

@@ -45,9 +45,17 @@ EOL;
 			$opts[] = 'class="easyui-validatebox" data-options="required:true"';
 		}
 		$optStr = join(' ', $opts);
-		$dom = <<<EOL
+
+		if (@$v["type"] == "t") {
+			$dom = <<<EOL
+<textarea name="$k" {$optStr} rows=2></textarea>
+EOL;
+		}
+		else {
+			$dom = <<<EOL
 <input name="$k" {$optStr}>
 EOL;
+		}
 	}
 
 	print <<<EOL

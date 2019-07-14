@@ -151,7 +151,7 @@ postParams可以是一个kv数组或字符串，也可以是一个文件名(以"
 			"Cookie: userid=" . session_id()
 		]]);
 		// 筋斗云协议格式：成功为[0, obj] 或 失败为[errCode, userMessage, internalMessage?]
-		$ret = json_decode($rv);
+		$ret = json_decode($rv, true);
 		if ( $ret[0] !== 0 ) {
 			throw new MyException(E_PARAM, $ret[2], $ret[1]);
 		}
