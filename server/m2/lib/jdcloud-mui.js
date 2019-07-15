@@ -7618,6 +7618,7 @@ function initPageList(jpage, opt)
 		var nextkey = jlst.data("nextkey_");
 		if (isRefresh) {
 			nextkey = null;
+			localPagingFn_ = null;
 		}
 		else if (localPagingFn_) {
 			localPagingFn_();
