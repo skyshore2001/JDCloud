@@ -1039,7 +1039,8 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 	{
 		$ac = $this->ac;
 		if (isset($this->allowedAc) && in_array($ac, self::$stdAc) && !in_array($ac, $this->allowedAc)) {
-			throw new MyException(E_FORBIDDEN, "Operation `$ac` is not allowed on object `$this->table`");
+			$errCode = hasPerm(AUTH_LOGIN)? E_FORBIDDEN: E_NOAUTH;
+			throw new MyException($errCode, "Operation `$ac` is not allowed on object `$this->table`");
 		}
 	}
 
