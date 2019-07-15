@@ -28,7 +28,7 @@ perms
 
 @see @User: id, uname, phone(s), pwd, name(s), createTm
 
-如果要支持微信认证，需要字段：weixinKey, weixinData, pic
+如果要支持微信认证，需要字段：weixinKey, weixinData(1000), pic(l)
 
 phone/pwd
 : 登录用的用户名和密码。密码采用md5加密。
