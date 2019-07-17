@@ -3247,28 +3247,32 @@ function getQueryParam(kvList)
 }
 
 /**
-@fn doSpecial(jo, filter, fn, cnt=5, interval=4s)
+@fn doSpecial(jo, filter, fn, cnt=5, interval=2s)
 
-4s内连续5次点击某处，执行隐藏动作。
+连续5次点击某处，每次点击间隔不超过2s, 执行隐藏动作。
 
 例：
-	// 连续5次点击当前tab标题，重新加载页面
+	// 连续5次点击当前tab标题，重新加载页面. ev为最后一次点击事件.
 	var self = WUI;
-	self.doSpecial(self.tabMain.find(".tabs-header"), ".tabs-selected", function () {
+	self.doSpecial(self.tabMain.find(".tabs-header"), ".tabs-selected", function (ev) {
 		self.reloadPage();
 		self.reloadDialog(true);
+
+		// 弹出菜单
+		//jmenu.menu('show', {left: ev.pageX, top: ev.pageY});
+		return false;
 	});
 
-2s内连续3次点击对话框中的字段标题，触发查询：
+连续3次点击对话框中的字段标题，触发查询：
 
-	WUI.doSpecial(jdlg, ".wui-form-table td", fn, 3, 2);
+	WUI.doSpecial(jdlg, ".wui-form-table td", fn, 3);
 
 */
 self.doSpecial = doSpecial;
 function doSpecial(jo, filter, fn, cnt, interval)
 {
 	var MAX_CNT = cnt || 5;
-	var INTERVAL = interval || 4; // 4s
+	var INTERVAL = interval || 2; // 2s
 	jo.on("click.special", filter, function (ev) {
 		var tm = new Date();
 		var obj = this;
@@ -4533,6 +4537,23 @@ self.ctx = self.ctx || {};
 
 var mCommon = jdModule("jdcloud.common");
 var m_batchMode = false; // 批量操作模式, 按住Ctrl键。
+
+self.toggleBatchMode = toggleBatchMode;
+function toggleBatchMode(val) {
+	if (val !== undefined)
+		m_batchMode = val;
+	else
+		m_batchMode = !m_batchMode;
+	app_alert("批量模式: " + (m_batchMode?"ON":"OFF"));
+	// 标题栏显示红色. 在style.css中设置#my-tabMain.batchMode.
+	self.tabMain.toggleClass("batchMode", m_batchMode);
+
+	// 允许点击多选
+	var opt = WUI.getActivePage().find(".datagrid-f").datagrid("options");
+	opt.ctrlSelect = !m_batchMode;
+	$.fn.datagrid.defaults.singleSelect = false;
+	$.fn.datagrid.defaults.ctrlSelect = !m_batchMode;
+}
 
 mCommon.assert($.fn.combobox, "require jquery-easyui lib.");
 
@@ -7265,11 +7286,29 @@ function mainInit()
 		}
 	});
 
-	// 连续5次点击当前tab标题，重新加载页面
-	self.doSpecial(self.tabMain.find(".tabs-header"), ".tabs-selected", function () {
-		self.reloadPage();
-		self.reloadDialog(true);
+	// 标题栏右键菜单
+	var jmenu = $('<div><div id="mnuReload">刷新页面</div><div id="mnuBatch">批量模式</div></div>');
+	jmenu.menu({
+		onClick: function (mnuItem) {
+			var mnuId = mnuItem.id;
+			switch (mnuItem.id) {
+			case "mnuReload":
+				self.reloadPage();
+				self.reloadDialog(true);
+				break;
+			case "mnuBatch":
+				self.toggleBatchMode();
+				break;
+			}
+		}
 	});
+	function onSpecial(ev) {
+		jmenu.menu('show', {left: ev.pageX, top: ev.pageY});
+		return false;
+	}
+	// 连续3次点击当前tab标题，或右键点击, 弹出特别菜单, 可重新加载页面等
+	self.doSpecial(self.tabMain.find(".tabs-header"), ".tabs-selected", onSpecial, 3);
+	self.tabMain.find(".tabs-header").on("contextmenu", ".tabs-selected", onSpecial);
 
 	// bugfix for datagrid size after resizing
 	var tmr;

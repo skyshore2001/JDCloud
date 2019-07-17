@@ -221,3 +221,9 @@ input:disabled,select:disabled,textarea:disabled {
 .wui-upload .imgs p:hover {
 	background-color: #fffbce;
 }
+
+/* 批量模式高亮显示 batchMode */
+#my-tabMain.batchMode .tabs-selected a {
+	border-top-color: red;
+	color: red;
+}
