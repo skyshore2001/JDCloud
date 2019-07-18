@@ -205,14 +205,14 @@ http://curl.haxx.se/libcurl/c/libcurl-errors.html
 function httpCall($url, $postParams=null, $opt=[])
 {
 	$h = curl_init();
-	if(stripos($url,"https://")!==FALSE){
-		curl_setopt($h, CURLOPT_SSL_VERIFYPEER, FALSE);
-		curl_setopt($h, CURLOPT_SSL_VERIFYHOST, FALSE);
+	if(stripos($url,"https://")!==false){
+		curl_setopt($h, CURLOPT_SSL_VERIFYPEER, false);
+		curl_setopt($h, CURLOPT_SSL_VERIFYHOST, false);
 		curl_setopt($h, CURLOPT_SSLVERSION, 1); //CURL_SSLVERSION_TLSv1
 	}
 	curl_setopt($h, CURLOPT_URL, $url);
-	curl_setopt($h, CURLOPT_RETURNTRANSFER, 1);
-	curl_setopt($h, CURLOPT_HEADER, FALSE);
+	curl_setopt($h, CURLOPT_RETURNTRANSFER, true);
+	curl_setopt($h, CURLOPT_HEADER, false);
 
 	$timeout = @$opt["timeout"] ?: 5;
 	curl_setopt($h, CURLOPT_TIMEOUT, $timeout);
@@ -246,16 +246,19 @@ function httpCall($url, $postParams=null, $opt=[])
 	$t0 = microtime(true);
 	$content = curl_exec($h);
 	$tv = round(microtime(true) - $t0, 2);
+//	$statusCode = curl_getinfo($h, CURLINFO_HTTP_CODE); // $status["http_code"]
 // 	$status = curl_getinfo($h);
 // 	if (intval($status["http_code"]) != 200)
 // 		return false;
 	$slowLogFile = getenv("P_SLOW_CALL_LOG") ?: "trace";
-	if (! $content)
+	$errno = curl_errno($h);
+	if ($errno)
 	{
-		$errno = curl_errno($h);
+		$errmsg = curl_error($h);
 		curl_close($h);
-		logit("httpCall error $errno: time={$tv}s, url=$url", true, $slowLogFile);
-		throw new MyException(E_SERVER, "curl fail to connect $url, errcode=$errno, time={$tv}s");
+		$msg = "httpCall error $errno: time={$tv}s, url=$url, errmsg=$errmsg";
+		logit($msg, true, $slowLogFile);
+		throw new MyException(E_SERVER, $msg);
 		// echo "<a href='http://curl.haxx.se/libcurl/c/libcurl-errors.html'>错误原因查询</a></br>";
 	}
 	// slow log
