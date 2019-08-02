@@ -1331,6 +1331,34 @@ class DbExpr
 	}
 }
 
+/**
+@fn dbExpr($val)
+
+用于在dbInsert/dbUpdate(插入或更新数据库)时，使用表达式：
+
+	$id = dbInsert("Ordr", [
+		"tm" => dbExpr("now()") // 使用dbExpr直接提供SQL表达式
+	]);
+
+另外，写数据库时，为防止XSS跨域攻击，dbInsert/dbUpdate对值会自动做htmlentity转义，如">7"转成"&gt;7"。
+为防止转义，使用原始字串值，可以用：
+
+	$id = dbUpdate("Ordr", [
+		"cond" => dbExpr(Q("f>3 && r<60")); // 注意用Q函数对字符串加引号
+	]);
+
+示例：对象set/add接口中，防止某字段被转义：
+
+	protected function onValidate()
+	{
+		if (issetval("cond")) {
+			$_POST["cond"] = dbExpr(Q($_POST["cond"]));
+		}
+	}
+
+@see dbInsert
+@see dbUpdate
+*/
 function dbExpr($val)
 {
 	return new DbExpr($val);
