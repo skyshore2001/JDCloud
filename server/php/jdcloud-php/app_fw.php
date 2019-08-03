@@ -888,17 +888,25 @@ function sql_concat()
 
 示例：key-value形式
 
-	getQueryCond([
+	$rv = getQueryCond([
 		"name"=>"eric",
 		"phone"=>null
-	]) => "name='eric' AND phone IS NULL"
+	]);
+	// "name='eric'
+
+	$rv = getQueryCond([
+		"name"=>"eric",
+		"phone IS NULL"
+	]);
+	// "name='eric' AND phone IS NULL"
 
 示例：条件数组
 
-	getQueryCond([
+	$rv = getQueryCond([
 		"type IS NOT NULL",
 		"tm>='2018-1-1' AND tm<'2019-1-1'"
-	]) => "type IS NOT NULL AND (tm>='2018-1-1' AND tm<'2019-1-1')"
+	]);
+	// "type IS NOT NULL AND (tm>='2018-1-1' AND tm<'2019-1-1')"
 
 （以上两种在jd-php中可混用）
 
@@ -909,6 +917,22 @@ function sql_concat()
 	getQueryCond(100) => "id=100"
 	getQueryCond("100") => "id=100"
 	getQueryCond("id<>100") => "id<>100"
+
+默认用AND连接条件，也支持OR连接：
+
+	$rv = getQueryCond([
+		"_or" => true, // 特殊用法，标识用OR连接条件
+		"name"=>"eric",
+		"phone IS NULL"
+	]);
+	// "name='eric' OR phone IS NULL"
+
+	$rv = getQueryCond([
+		"type IS NOT NULL",
+		"tm>='2018-1-1' AND tm<'2019-1-1'",
+		"_or" => true
+	]);
+	// "type IS NOT NULL OR (tm>='2018-1-1' AND tm<'2019-1-1')"
 
 */
 function getQueryCond($cond)
@@ -921,24 +945,26 @@ function getQueryCond($cond)
 		return $cond;
 	
 	$condArr = [];
+	$isOR = false;
+	if (@$cond["_or"]) {
+		$isOR = true;
+	}
+
 	foreach($cond as $k=>$v) {
 		if (is_int($k)) {
-			if (stripos($v, ' and ') !== false || $stripos($v, ' or ') !== false)
+			if (stripos($v, ' and ') !== false || stripos($v, ' or ') !== false)
 				$exp = "($v)";
 			else
 				$exp = $v;
 		}
 		else {
-			if ($v === null) {
-				$exp = "$k IS NULL";
-			}
-			else {
-				$exp = "$k=" . Q($v);
-			}
+			if ($v === null || $k[0] == "_")
+				continue;
+			$exp = "$k=" . Q($v);
 		}
 		$condArr[] = $exp;
 	}
-	return join(' AND ', $condArr);
+	return join($isOR?' OR ':' AND ', $condArr);
 }
 
 /**
@@ -949,6 +975,7 @@ function getQueryCond($cond)
 
 	genQuery("SELECT id FROM Vendor", [name=>$name, "phone"=>$phone]);
 	genQuery("SELECT id FROM Vendor", [name=>$name, "phone IS NOT NULL"]);
+	genQuery("SELECT id FROM Vendor", [name=>$name, "phone"=>$phone, "_or"=>true]); // "name='eric' OR phone='13700000001'"
 
 @see getQueryCond
 */
@@ -2118,15 +2145,17 @@ class AppFw_
 		global $JSON_FLAG;
 		global $DBG_LEVEL;
 		$TEST_MODE = getenv("P_TEST_MODE")===false? 0: intval(getenv("P_TEST_MODE"));
+		$isCLI = isCLI();
 		if ($TEST_MODE) {
-			header("X-Daca-Test-Mode: $TEST_MODE");
+			if (!$isCLI)
+				header("X-Daca-Test-Mode: $TEST_MODE");
 			$JSON_FLAG |= JSON_PRETTY_PRINT;
 			$defaultDebugLevel = getenv("P_DEBUG")===false? 0 : intval(getenv("P_DEBUG"));
 			$DBG_LEVEL = param("_debug/i", $defaultDebugLevel, $_GET);
 
 			// 允许跨域
 			@$origin = $_SERVER['HTTP_ORIGIN'];
-			if (isset($origin)) {
+			if (isset($origin) && !$isCLI) {
 				header('Access-Control-Allow-Origin: ' . $origin);
 				header('Access-Control-Allow-Credentials: true');
 				header('Access-Control-Allow-Headers: Content-Type');
@@ -2138,7 +2167,7 @@ class AppFw_
 		if ($TEST_MODE) {
 			$MOCK_MODE = getenv("P_MOCK_MODE") ?: 0;
 		}
-		if ($MOCK_MODE) {
+		if ($MOCK_MODE && !$isCLI) {
 			header("X-Daca-Mock-Mode: $MOCK_MODE");
 		}
 

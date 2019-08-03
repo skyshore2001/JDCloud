@@ -136,6 +136,9 @@ class LoginImpBase
 				"uname" => $userInfo["nickname"],
 				"weixinData" => $rawData
 			];
+			if (array_key_exists("unionid", $userInfo)) {
+				$userData["weixinUnionKey"] = $userInfo["unionid"];
+			}
 		}
 		else {
 			$name = "用户" . date("Ymd") . '-'. rand(1000, 9999);
@@ -663,3 +666,18 @@ function api_login2()
 	return $ret;
 }
 
+function api_queryWeixinKey()
+{
+	$phone = param("phone");
+	$unionid = mparam("unionid");
+
+	$arr = queryAll("SELECT weixinKey FROM User", false, [
+		"_or" => true,
+		"phone" => $phone,
+		"weixinUnionKey" => $unionid
+	]);
+	$res = array_map(function ($e) {
+		return $e[0];
+	}, $arr);
+	return $res;
+}

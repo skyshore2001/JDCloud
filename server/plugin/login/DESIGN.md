@@ -29,6 +29,10 @@ perms
 @see @User: id, uname, phone(s), pwd, name(s), createTm
 
 如果要支持微信认证，需要字段：weixinKey, weixinData(1000), pic(l)
+公众号、小程序均有自已的openid。如果将多个公众号或小程序绑定在同一开放平台帐号下，则可以通过unionid来互通。
+如果要微信开放平台的unionid，需要字段: weixinUnionKey
+
+同步微信公众号用户到User表，可以使用命令行工具 weixin/tool/syncWeixinUser.php
 
 phone/pwd
 : 登录用的用户名和密码。密码采用md5加密。
@@ -36,8 +40,8 @@ phone/pwd
 createTm
 : DateTime. 注册日期. 可用于分析用户数增长。
 
-weixinKey
-: String. 微信的openid.
+weixinKey, weixinUnionKey
+: String. 微信的openid和unionid. 
 
 weixinData
 : String. 从微信中取得的原始数据。一般为JSON格式: userInfo={openid, nickname, sex=1-男/2-女, province, city, country, headimgurl, privilege, unionid?}
@@ -309,6 +313,12 @@ _token/_expire
 
 - 小程序登录过程：https://developers.weixin.qq.com/miniprogram/dev/framework/open-ability/login.html
 - 使用code2Session接口获取openid: https://developers.weixin.qq.com/miniprogram/dev/api/code2Session.html
+
+### 查询openid
+
+	queryWeixinKey(phone?, unionid?) -> [openid, ...]
+
+用于外部系统通过手机号或unionid来查询openid
 
 ## 后端接口
 
