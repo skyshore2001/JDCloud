@@ -3,8 +3,81 @@
 define("T_HOUR", 3600);
 define("T_DAY", 24*T_HOUR);
 define("FMT_DT", "Y-m-d H:i:s");
-
 // const T_DAY = 24*T_HOUR; // not allowed
+
+# error code definition:
+const E_ABORT = -100; // 客户端不报错
+const E_AUTHFAIL=-1;
+const E_OK=0;
+const E_PARAM=1;
+const E_NOAUTH=2;
+const E_DB=3;
+const E_SERVER=4;
+const E_FORBIDDEN=5;
+
+$ERRINFO = [
+	E_AUTHFAIL => "认证失败",
+	E_PARAM => "参数不正确",
+	E_NOAUTH => "未登录",
+	E_DB => "数据库错误",
+	E_SERVER => "服务器错误",
+	E_FORBIDDEN => "禁止操作"
+];
+
+/** 
+@class MyException($code, $internalMsg?, $outMsg?)
+
+@param $internalMsg String. 内部错误信息，前端不应处理。
+@param $outMsg String. 错误信息。如果为空，则会自动根据$code填上相应的错误信息。
+
+抛出错误，中断执行:
+
+	throw new MyException(E_PARAM, "Bad Request - numeric param `$name`=`$ret`.", "需要数值型参数");
+
+*/
+# Most time outMsg is optional because it can be filled according to code. It's set when you want to tell user the exact error.
+class MyException extends LogicException 
+{
+	function __construct($code, $internalMsg = null, $outMsg = null) {
+		parent::__construct($outMsg, $code);
+		$this->internalMsg = $internalMsg;
+		if ($code && !$outMsg) {
+			global $ERRINFO;
+			assert(array_key_exists($code, $ERRINFO));
+			$this->message = $ERRINFO[$code];
+		}
+	}
+	public $internalMsg;
+
+	function __toString()
+	{
+		$str = "MyException({$this->code}): {$this->internalMsg}";
+		if ($this->getMessage() != null)
+			$str = "Error: " . $this->getMessage() . " - " . $str;
+		return $str;
+	}
+}
+
+/**
+@class DirectReturn
+
+抛出该异常，可以中断执行直接返回，不显示任何错误。
+
+例：API返回非BPQ协议标准数据，可以跳出setRet而直接返回：
+
+	echo "return data";
+	throw new DirectReturn();
+
+例：返回指定数据后立即中断处理：
+
+	setRet(0, ["id"=>1]);
+	throw new DirectReturn();
+
+*/
+class DirectReturn extends LogicException 
+{
+}
+
 
 /**
 @fn tobool($s)
@@ -81,12 +154,15 @@ function isEqualCollection($a, $b)
 e.g.
 
 	urlEncodeArr(["a"=>1, "b"=>"hello"]) -> a=1&b=hello
+	urlEncodeArr(["a"=>1, "b"=>null]) -> a=1
 
 */
 function urlEncodeArr($params)
 {
 	$p = "";
 	foreach ($params as $k=>$v) {
+		if ($v === null)
+			continue;
 		if ($p !== "")
 			$p .= "&";
 		$p .= $k . "=" . urlencode($v);
@@ -199,6 +275,11 @@ http://curl.haxx.se/libcurl/c/libcurl-errors.html
 	# 默认情况下：日志记录到trace.log中，记录超过1s的慢调用
 	P_SLOW_CALL_LOG=trace
 	P_SLOW_CALL_VAL=1
+
+e.g.
+
+	$url = makeUrl("http://oliveche.com/echo.php", ["a"=>1, "b"=>@$GLOBALS["b"]]);
+	echo(httpCall($url, ["c"=>1, "d"=>0] ));
 
 @see makeUrl
 */
@@ -406,6 +487,70 @@ function arrCopy(&$ret, $arr, $fields)
 		else
 			@$ret[$f] = $arr[$f];
 	}
+}
+
+/**
+@fn getReqIp
+
+请求的IP。与`$_SERVER['REMOTE_ADDR']`不同的是，如果有代理，则返回所有IP列表。
+*/
+function getReqIp()
+{
+	if (isCLI()) {
+		return "cli";
+	}
+	static $reqIp;
+	if (!isset($reqIp)) {
+		$reqIp = @$_SERVER['REMOTE_ADDR'] ?: 'unknown';
+		@$fw = $_SERVER["HTTP_X_FORWARDED_FOR"] ?: $_SERVER["HTTP_CLIENT_IP"];
+		if ($fw) {
+			$reqIp .= '; ' . $fw;
+		}
+	}
+	return $reqIp;
+}
+
+/**
+@fn getRealIp()
+
+取实际IP地址，支持透过代理服务器。
+*/
+function getRealIp()
+{
+	static $realIp;
+	if (!isset($realIp)) {
+		@$realIp = $_SERVER["HTTP_X_FORWARDED_FOR"] ?: $_SERVER["HTTP_CLIENT_IP"] ?: $_SERVER["REMOTE_ADDR"]; // HTTP_REMOTEIP
+		// "1.1.1.1,2.2.2.2" => "1.1.1.1"
+		$realIp = preg_replace('/,.*/', '', $realIp);
+	}
+	return $realIp;
+}
+
+/**
+@fn logit($s, $addHeader=true, $type="trace")
+@alias logit($s, $type)
+
+记录日志。
+
+默认到日志文件 $BASE_DIR/trace.log. 如果指定type=secure, 则写到 $BASE_DIR/secure.log.
+
+可通过在线日志工具 tool/log.php 来查看日志。也可直接打开日志文件查看。
+ */
+function logit($s, $addHeader=true, $type="trace")
+{
+	if (is_string($addHeader)) {
+		$type = $addHeader;
+		$addHeader = true;
+	}
+	if ($addHeader) {
+		$remoteAddr = getReqIp();
+		$s = "=== REQ from [$remoteAddr] at [".strftime("%Y/%m/%d %H:%M:%S",time())."] " . $s . "\n";
+	}
+	else {
+		$s .= "\n";
+	}
+	@$baseDir = $GLOBALS['BASE_DIR'] ?: ".";
+	file_put_contents($baseDir . "/{$type}.log", $s, FILE_APPEND | LOCK_EX);
 }
 
 // vi: foldmethod=marker

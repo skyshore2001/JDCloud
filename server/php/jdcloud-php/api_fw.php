@@ -933,7 +933,8 @@ class ApiLog
 		$iv = sprintf("%.0f", (microtime(true) - $this->startTm) * 1000); // ms
 		if ($X_RET_STR == null)
 			$X_RET_STR = json_encode($X_RET, $GLOBALS["JSON_FLAG"]);
-		$content = $this->myVarExport($X_RET_STR);
+		$logLen = $X_RET[0] !== 0? 2000: 200;
+		$content = $this->myVarExport($X_RET_STR, $logLen);
 
 		$userId = null;
 		if ($this->ac == 'login' && is_array($X_RET[1]) && @$X_RET[1]['id']) {
@@ -968,7 +969,8 @@ class ApiLog
 			return;
 		$iv = sprintf("%.0f", (microtime(true) - $this->startTm1) * 1000); // ms
 		$res = json_encode($X_RET, $GLOBALS["JSON_FLAG"]);
-		$content = $this->myVarExport($res);
+		$logLen = $X_RET[0] !== 0? 2000: 200;
+		$content = $this->myVarExport($res, $logLen);
 
 		++ $DBH->skipLogCnt;
 		$apiLog1Id = dbInsert("ApiLog1", [
@@ -1462,7 +1464,7 @@ function httpCallAsync($url, $postParams = null)
 	function sendSms($phone, $msg) {
 		// 2. 为支持异步的函数加上判断分支
 		if (getenv("enableAsync") === "1") {
-			return callAsync('pushMsg', func_get_args());
+			return callAsync('sendSms', func_get_args());
 		}
 		
 		// 同步调用
