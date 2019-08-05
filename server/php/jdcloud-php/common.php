@@ -34,6 +34,12 @@ $ERRINFO = [
 
 	throw new MyException(E_PARAM, "Bad Request - numeric param `$name`=`$ret`.", "需要数值型参数");
 
+注意：在API中抛出MyException异常后，将回滚对数据库的操作，即所有之前数据库操作都将失效。
+如果不想回滚，可以用：
+
+	$this->cancelOrder($id); // 数据库操作
+	setRet(E_FORBIDDEN, "付款码已失效", "fail to pay order $id: overdue");
+	throw new DirectReturn();
 */
 # Most time outMsg is optional because it can be filled according to code. It's set when you want to tell user the exact error.
 class MyException extends LogicException 
