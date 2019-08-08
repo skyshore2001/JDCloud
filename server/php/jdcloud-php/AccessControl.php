@@ -679,6 +679,8 @@ TODO: 可加一个系统参数`_enc`表示输出编码的格式。
 		return $v;
 	};
 
+enumFields机制支持字段别名，比如若调用`Ordr.query(res="id 编号,status 状态")`，status字段使用了别名"状态"后，仍然可被正确处理，而用onHandleRow就处理不了了。
+
 此外，枚举字段可直接由请求方通过res参数指定描述值，如：
 
 	Ordr.query(res="id, status =CR:Created;CA:Cancelled")
