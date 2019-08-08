@@ -4576,6 +4576,7 @@ function callInitfn(jo, paramArr)
 
 	if (initfn && $.isFunction(initfn))
 	{
+		console.log("### initfn: " + initfn.name);
 		ret = initfn.apply(jo, paramArr) || true;
 	}
 	jo.data("mui.init", ret);
@@ -4820,6 +4821,8 @@ function showPage(pageRef, opt)
 	// find in document
 	var pageId = pi.pageId;
 	m_toPageId = pageId;
+	self.syslog("page", null, pageId);
+
 	var jpage = self.container.find("#" + pageId + ".mui-page");
 	// find in template
 	if (jpage.size() > 0)
