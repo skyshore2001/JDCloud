@@ -4,6 +4,7 @@ class AC_Syslog extends AccessControl
 {
 	protected $allowedAc = ["add"];
 	protected $requiredFields = ["module", "content"];
+	protected $enableObjLog = false;
 
 	protected function onValidate()
 	{

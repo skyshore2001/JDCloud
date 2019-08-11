@@ -987,6 +987,20 @@ class ApiLog
 		}
 	}
 
+/**
+@fn ApiLog::addObjLog($obj, $objId, $dscr)
+
+添加对象日志ObjLog。默认系统会记录标准add/set/del等日志到ObjLog，非标准方法若需要手工添加日志可调用此方法。
+示例：在Ordr.cancel接口中记录日志
+
+	class AC1_Ordr {
+		function api_cancel() {
+			...
+			ApiLog::addObjLog("Ordr", 99, "取消订单");
+		}
+	}
+
+*/
 	static $objLogId;
 	static function addObjLog($obj, $objId, $dscr) {
 		if (!Conf::$enableObjLog)

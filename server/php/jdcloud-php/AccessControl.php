@@ -818,6 +818,15 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 */
 	protected $uuid = false;
 
+/**
+$var AccessControl::$enableObjLog ?=true 默认记ObjLog
+
+标准增删改方法会自动记录ObjLog。如果不要自动记录，可设置此字段为false.
+
+@see ApiLog::addObjLog (table, id, dscr) 手动加ObjLog
+*/
+	protected $enableObjLog = true;
+
 	static function create($tbl, $ac, $asAdmin = false) 
 	{
 		/*
@@ -1070,7 +1079,7 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 			$fn($ret);
 		}
 
-		if (array_key_exists($this->ac, self::$objLogAcMap)) {
+		if ($this->enableObjLog && array_key_exists($this->ac, self::$objLogAcMap)) {
 			ApiLog::addObjLog($this->table, $this->id, self::$objLogAcMap[$this->ac]);
 		}
 	}
