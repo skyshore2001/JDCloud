@@ -17,7 +17,7 @@ db=carsvc
 
 bak=bak/db_`date +%Y%m%d_%H%M%S`.gz
 
-mysqldump -u$dbuser -p$dbpwd --routines $db --master-data=2 --ignore-table=${db}.ApiLog | gzip > $bak
+mysqldump -u$dbuser -p$dbpwd --routines $db --master-data=2 --ignore-table=${db}.ApiLog --ignore-table=${db}.ApiLog1 --ignore-table=${db}.Syslog --ignore-table=${db}.ObjLog | gzip > $bak
 
 echo "=== db backup to file '$bak'"
 
