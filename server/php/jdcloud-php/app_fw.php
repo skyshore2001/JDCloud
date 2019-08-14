@@ -1406,7 +1406,7 @@ cond条件可以用key-value指定(cond写法参考getQueryCond)，如：
 function dbUpdate($table, $kv, $cond)
 {
 	if ($cond === null)
-		throw new MyException(E_SERVER, "bad cond");
+		throw new MyException(E_SERVER, "bad cond for update $table");
 
 	$condStr = getQueryCond($cond);
 	$kvstr = "";
@@ -1908,6 +1908,32 @@ class Coord
 
 应用框架，用于提供符合BQP协议的接口。
 在onExec中返回协议数据；在onAfter中建议及时关闭DB.
+包含通用错误处理等。
+
+示例：接口`url.php(p)`预处理一些参数，然后调用api.php。
+在预处理中，如果有MyException报错，可以优雅处理。
+
+	require_once('app.php');
+	class UrlApp extends AppBase
+	{
+		protected function onExec()
+		{
+			$p = mparam("p");
+			$param = json_decode(jdEncrypt($p, "D"), true);
+			if (!$param) {
+				throw new MyException(E_PARAM);
+			}
+			$_GET = $param["get"];
+			$_POST = $param["post"];
+			if ($param["ses"]) {
+				session_id($param["ses"]);
+			}
+		}
+	}
+	$app = new UrlApp();
+	$ret = $app->exec();
+	require_once('api.php');
+
  */
 class AppBase
 {
@@ -1975,7 +2001,7 @@ class AppBase
 
 	protected function onErr($code, $msg, $msg2)
 	{
-		$fn = $GLOBALS["errorFn"] ?: "errQuit";
+		@$fn = $GLOBALS["errorFn"] ?: "errQuit";
 		$fn($code, $msg, $msg2);
 	}
 
