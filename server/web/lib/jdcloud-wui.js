@@ -58,7 +58,7 @@
 			<form method="POST">
 				订单号：<input name="id" disabled></td>
 				订单状态：
-						<select name="status" style="width:150px">
+						<select name="status">
 							<option value="">&nbsp;</option>
 							<option value="CR">未付款</option>
 							<option value="PA">待服务(已付款)</option>
@@ -977,7 +977,8 @@ function assert(cond, dscr)
 		var msg = "!!! assert fail!";
 		if (dscr)
 			msg += " - " + dscr;
-		throw(msg);
+		// 用throw new Error会有调用栈; 直接用throw "some msg"无法获取调用栈.
+		throw new Error(msg);
 	}
 }
 
@@ -1685,7 +1686,10 @@ function rs2MultiHash(rs, key)
 }
 
 /**
-@fn list2varr(ls, sep=':', sep2=',')
+@fn list2varr(ls, colSep=':', rowSep=',')
+
+- ls: 代表二维表的字符串，有行列分隔符。
+- colSep, rowSep: 列分隔符，行分隔符。
 
 将字符串代表的压缩表("v1:v2:v3,...")转成对象数组。
 
@@ -1840,11 +1844,14 @@ function appendParam(url, param)
 	var url = "http://xxx/api.php?a=1&b=3&c=2";
 	var url1 = deleteParam(url, "b"); // "http://xxx/api.php?a=1&c=2";
 
+	var url = "http://server/jdcloud/m2/?logout#me";
+	var url1 = deleteParam(url, "logout"); // "http://server/jdcloud/m2/?#me"
+
 */
 self.deleteParam = deleteParam;
 function deleteParam(url, paramName)
 {
-	var ret = url.replace(new RegExp('&?' + paramName + "=[^&#]+"), '');
+	var ret = url.replace(new RegExp('&?' + paramName + "(=[^&#]+)?"), '');
 	if (ret.indexOf('?&') >=0) {
 		ret = ret.replace('?&', '?');
 	}
@@ -2192,7 +2199,7 @@ self.formItems = formItems;
 function formItems(jo, cb)
 {
 	jo.find("[name]:not([disabled])").each (function () {
-		var name = this.name;
+		var name = this.name || $(this).attr("name");
 		if (! name)
 			return;
 
@@ -2671,7 +2678,7 @@ function compressImg(fileObj, cb, opt)
 		// 无压缩效果，则直接用原图
 		if (blob.size > fileObj.size) {
 			blob = fileObj;
-			b64src = img.src;
+			// b64src = img.src;
 			opt.mimeType = fileObj.type;
 		}
 		// 如果没有扩展名或文件类型发生变化，自动更改扩展名
@@ -6746,13 +6753,14 @@ URL参数会自动加入该对象，例如URL为 `http://{server}/{app}/index.ht
 	g_args.orderId=10; // 注意：如果参数是个数值，则自动转为数值类型，不再是字符串。
 	g_args.dscr="上门洗车"; // 对字符串会自动进行URL解码。
 
-此外，框架会自动加一些参数：
+框架会自动处理一些参数：
 
-@var g_args._app?="user" 应用名称，由 WUI.options.appName 指定。
+- g_args._debug: 在测试模式下，指定后台的调试等级，有效值为1-9. 参考：后端测试模式 P_TEST_MODE，调试等级 P_DEBUG.
+- g_args.autoLogin: 记住登录信息(token)，下次自动登录；注意：如果是在手机模式下打开，此行为是默认的。示例：http://server/jdcloud/web/?autoLogin
 
 @see parseQuery URL参数通过该函数获取。
 */
-window.g_args = {}; // {_test, _debug}
+window.g_args = {}; // {_debug}
 
 /**
 @var g_data = {userInfo?}
@@ -6811,16 +6819,11 @@ self.options = {
 
 //}}}
 
-// TODO: remove testmode
 // set g_args
 function parseArgs()
 {
 	if (location.search) {
 		g_args = mCommon.parseQuery(location.search.substr(1));
-		if (g_args.test || g_args._test) {
-			g_args._test = 1;
-			alert("测试模式!");
-		}
 	}
 }
 parseArgs();
@@ -7031,8 +7034,6 @@ function tokenName()
 	var name = "token";
 	if (self.options.appName)
 		name += "_" + self.options.appName;
-	if (g_args._test)
-		name += "_test";
 	return name;
 }
 
@@ -7486,11 +7487,11 @@ $.each([
 
 也支持通过key-value列表用jdEnumMap选项或jdEnumList选项来初始化下拉框，如：
 
-	订单状态： <select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap" style="width:150px"></select>
+	订单状态： <select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap"></select>
 	或者：
-	订单状态： <select name="status" class="my-combobox" data-options="jdEnumList:'CR:未付款;CA:已取消'" style="width:150px"></select>
+	订单状态： <select name="status" class="my-combobox" data-options="jdEnumList:'CR:未付款;CA:已取消'"></select>
 	或者：(key-value相同时, 只用';'间隔)
-	订单状态： <select name="status" class="my-combobox" data-options="jdEnumList:'未付款;已取消'" style="width:150px"></select>
+	订单状态： <select name="status" class="my-combobox" data-options="jdEnumList:'未付款;已取消'"></select>
 
 其中OrderStatusMap定义如下：
 

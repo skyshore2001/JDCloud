@@ -87,7 +87,7 @@ class Login
 	static $autoRegUser = true;
 	static $autoRegEmp = false;
 	static $allowManualReg = false;
-	static $mockWeixinUser = ['openid'=>"test_openid", 'nickname'=>"测试用户", 'headimgurl'=>"...", 'sex'=>1];
+	static $mockWeixinUser = ["openid"=>"test_openid", "nickname"=>"测试用户", "headimgurl"=>"http://oliveche.com/jdcloud/logo.jpg", "sex"=>1];
 	static $wxApp = [
 		"appid" => "wxf5502ed6914b4b7e",
 		"secret" => "381c380860a3aad4514853e216c7e1f3"
@@ -532,7 +532,7 @@ function api_login()
 
 function api_logout()
 {
-	session_destroy();
+	@session_destroy();
 	return "OK";
 }
 

@@ -202,7 +202,7 @@ style将被插入到head标签中，并自动添加属性`mui-origin={pageId}`.
 
 #### 进入应用时动态显示初始逻辑页
 
-默认进入应用时的主页为 MUI.options.homePage. 如果要根据参数动态显示页面，应在muiInit事件中操作：
+默认进入应用时的主页为 MUI.options.homePage. 如果要根据参数动态显示页面，可在muiInit事件中操作，示例：
 
 	$(document).on("muiInit", myInit);
 
@@ -232,6 +232,8 @@ style将被插入到head标签中，并自动添加属性`mui-origin={pageId}`.
 	}
 
 在pagebeforeshow事件中做页面切换，框架保证不会产生闪烁，且在新页面上点返回按钮，不会返回到旧页面。
+
+(v5.4) 如果想在页面加载前添加处理逻辑，请参考 MUI.options.onShowPage 回调，可处理检测是否登录这类需求。
 
 除此之外如果多次调用showPage（包括在pageshow事件中调用），一般最终显示的是最后一次调用的页面，过程中可能产生闪烁，且可能会丢失一些pageshow/pagehide事件，应尽量避免。
 
@@ -1495,11 +1497,14 @@ function appendParam(url, param)
 	var url = "http://xxx/api.php?a=1&b=3&c=2";
 	var url1 = deleteParam(url, "b"); // "http://xxx/api.php?a=1&c=2";
 
+	var url = "http://server/jdcloud/m2/?logout#me";
+	var url1 = deleteParam(url, "logout"); // "http://server/jdcloud/m2/?#me"
+
 */
 self.deleteParam = deleteParam;
 function deleteParam(url, paramName)
 {
-	var ret = url.replace(new RegExp('&?' + paramName + "=[^&#]+"), '');
+	var ret = url.replace(new RegExp('&?' + paramName + "(=[^&#]+)?"), '');
 	if (ret.indexOf('?&') >=0) {
 		ret = ret.replace('?&', '?');
 	}
@@ -2902,25 +2907,33 @@ function getQueryParam(kvList)
 }
 
 /**
-@fn doSpecial(jo, filter, fn)
+@fn doSpecial(jo, filter, fn, cnt=5, interval=2s)
 
-连续5次点击某处，执行隐藏动作。
+连续5次点击某处，每次点击间隔不超过2s, 执行隐藏动作。
 
 例：
-	// 连续5次点击当前tab标题，重新加载页面
+	// 连续5次点击当前tab标题，重新加载页面. ev为最后一次点击事件.
 	var self = WUI;
-	self.doSpecial(self.tabMain.find(".tabs-header"), ".tabs-selected", function () {
+	self.doSpecial(self.tabMain.find(".tabs-header"), ".tabs-selected", function (ev) {
 		self.reloadPage();
 		self.reloadDialog(true);
+
+		// 弹出菜单
+		//jmenu.menu('show', {left: ev.pageX, top: ev.pageY});
+		return false;
 	});
+
+连续3次点击对话框中的字段标题，触发查询：
+
+	WUI.doSpecial(jdlg, ".wui-form-table td", fn, 3);
 
 */
 self.doSpecial = doSpecial;
-function doSpecial(jo, filter, fn)
+function doSpecial(jo, filter, fn, cnt, interval)
 {
-	jo.on("click", filter, function (ev) {
-		var INTERVAL = 4; // 4s
-		var MAX_CNT = 5;
+	var MAX_CNT = cnt || 5;
+	var INTERVAL = interval || 2; // 2s
+	jo.on("click.special", filter, function (ev) {
 		var tm = new Date();
 		var obj = this;
 		// init, or reset if interval 
@@ -2935,7 +2948,7 @@ function doSpecial(jo, filter, fn)
 		fn.cnt = 0;
 		fn.lastTm = tm;
 
-		fn();
+		fn.call(this, ev);
 	});
 }
 }
@@ -4245,7 +4258,7 @@ self.showFirstPage = true;
 如果指定, 则在下次showPage时生效. 
 初次进入App时无动画效果.
 
-示例: 在返回在指定不要动画效果:
+示例: 在返回上一页时指定不要动画效果:
 
 	MUI.nextShowPageOpt = {ani: 'none'};
 	history.back();
@@ -4537,7 +4550,7 @@ function deleteUrlParam(param)
 {
 	delete g_args[param];
 	var search = mCommon.deleteParam(location.search, param);
-	MUI.setUrl(search);
+	self.setUrl(search);
 }
 
 /**
@@ -4804,6 +4817,9 @@ function showPage(pageRef, opt)
 		m_isback = false; // 新页面
 		//self.m_pageStack.push(pageRef);
 	}
+
+	if (self.options.onShowPage && self.options.onShowPage(pageRef, opt) === false)
+		return;
 
 	var showPageOpt_ = $.extend({
 		ani: self.options.ani
@@ -5611,6 +5627,12 @@ function main()
 		self.container = $(document.body);
 	self.enhanceWithin(self.container);
 
+	// URL参数logout：先注销再进入
+	if (g_args.logout) {
+		self.deleteUrlParam("logout");
+		self.logout(true);
+	}
+
 	// 在muiInit事件中可以调用showPage.
 	self.container.trigger("muiInit");
 
@@ -5663,13 +5685,17 @@ URL参数会自动加入该对象，例如URL为 `http://{server}/{app}/index.ht
 	g_args.orderId=10; // 注意：如果参数是个数值，则自动转为数值类型，不再是字符串。
 	g_args.dscr="上门洗车"; // 对字符串会自动进行URL解码。
 
-此外，框架会自动加一些参数：
+框架会自动处理一些参数：
 
-@var g_args._app?="user" 应用名称，由 WUI.options.appName 指定。
+- g_args._debug: 在测试模式下，指定后台的调试等级，有效值为1-9. 参考：后端测试模式 P_TEST_MODE，调试等级 P_DEBUG.
+- g_args.cordova: 用于在手机APP应用中加载H5应用，参考“原生应用支持”。示例：http://server/jdcloud/m2/index.html?cordova=1
+- g_args.wxCode: 用于在微信小程序中加载H5应用，并自动登录。参考：options.enableWxLogin 微信认证登录
+- g_args.enableSwitchApp: 允许多应用自动切换功能。参考：options.enableSwitchApp
+- g_args.logout: 退出登录后再进入应用。示例：http://server/jdcloud/m2/index.html?logout
 
 @see parseQuery URL参数通过该函数获取。
 */
-window.g_args = {}; // {_test, _debug, cordova}
+window.g_args = {}; // {_debug, cordova}
 
 /**
 @var g_cordova
@@ -5686,7 +5712,7 @@ window.g_args = {}; // {_test, _debug, cordova}
 		}
 	}
 
-TODO: MUI.cordova
+@see 原生应用支持
 */
 window.g_cordova = 0; // the version for the android/ios native cient. 0 means web app.
 
@@ -5840,6 +5866,63 @@ window.g_data = {}; // {userInfo, serverRev?, initClient?, testMode?, mockMode?}
 
 在APP中初次打开H5应用(history.length<=1)时，会在进入应用后自动检查和切换应用（将在MUI.validateEntry函数中检查，一般H5应用的主JS文件入口处默认会调用它）。
 最好在URL中添加参数enableSwitchApp=1强制检查，例如在chrome中初次打开页面history.length为2，不加参数就无法自动切换H5应用。
+
+@var options.onShowPage(pageRef, opt) 显示页面前回调
+
+(v5.4) 在调用MUI.showPage时触发调用，参数与MUI.showPage相同，用于显示任何页面前通用的操作。
+此回调在页面加载或显示之前（先于目的页面的pagecreate/pagebeforeshow等事件）。
+如果返回false，则取消本次showPage调用。
+
+示例1：允许用户未登录使用，但除了home页面，进入其它页面均要求登录。
+注意：系统默认要求登录才能进入，若要修改，可在muiInit事件中修改调用`MUI.tryAutoLogin(..., allowNoLogin=true)`来实现允许未登录进入。
+此需求如果放在每个页面的pagebeforeshow中处理则非常麻烦，可在onShowPage中统一处理。
+
+	$.extend(MUI.options, {
+		...
+		onShowPage: onShowPage
+	});
+
+	...
+	// MUI.tryAutoLogin(handleLogin, "User.get");
+	MUI.tryAutoLogin(handleLogin, "User.get", true); // 允许未登录进入。
+
+	// 如果未登录，跳转login。
+	function onShowPage(pageRef, opt) {
+		if (pageRef == "#home" || pageRef == "#setUserInfo" || pageRef.substr(0, 6) == "#login")
+			return;
+
+		// 如果是未登录进入，则跳转登录页。
+		if (!g_data.userInfo) {
+			MUI.showLogin();
+			return false;
+		}
+	}
+
+示例2：接上例，当系统在微信中使用时，允许用户使用微信身份自动登录，并可以查看home页面。
+但如果用户尚未绑定过手机号，在进入其它页面时，必须先绑定手机号。
+
+	$.extend(MUI.options, {
+		...
+		onShowPage: onShowPage
+	});
+
+	// 如果手机号没有填写，则要求填写并返回false。
+	function onShowPage(pageRef, opt) {
+		if (pageRef == "#home" || pageRef == "#setUserInfo" || pageRef.substr(0, 6) == "#login")
+			return;
+
+		// 如果是未登录进入，则跳转登录页。
+		if (!g_data.userInfo) {
+			MUI.showLogin(pageRef);
+			return false;
+		}
+		if (g_data.userInfo && !g_data.userInfo.phone) {
+			PageSetUserInfo.userInit = true;
+			PageSetUserInfo.fromPageRef = pageRef;
+			MUI.showPage("#setUserInfo");
+			return false;
+		}
+	}
 */
 	var m_opt = self.options = {
 		appName: "user",
