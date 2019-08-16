@@ -37,7 +37,7 @@ html, body {
 	border: 0px;
 }
 
-.mui-page>.hd:first-child {
+.mui-page>.hd:first-of-type {
 	background-color: #04be02;
 	color: #fffffe;
 }
@@ -109,7 +109,7 @@ html, body {
 }
 
 /* 微信中不显示hd */
-.mui-weixin .mui-page > .hd:first-child {
+.mui-weixin .mui-page > .hd:first-of-type {
 	display:none;
 }
 
