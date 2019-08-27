@@ -68,6 +68,11 @@ html, body {
 	text-align: center;
 }
 
+#footer {
+	position: absolute;
+	bottom: 0px;
+}
+
 /* navbar */
 .mui-navbar {
 	width: 100%;
