@@ -559,4 +559,28 @@ function logit($s, $addHeader=true, $type="trace")
 	file_put_contents($baseDir . "/{$type}.log", $s, FILE_APPEND | LOCK_EX);
 }
 
+/**
+@fn jsonEncode($data, $doPretty=false)
+
+	$str = jsonEncode($data);
+	$data = jsonDecode($str);
+
+*/
+function jsonEncode($data, $doPretty=false)
+{
+	$flag = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
+	if ($doPretty)
+		$flag |= JSON_PRETTY_PRINT;
+	return json_encode($data, $flag);
+}
+/**
+@fn jsonDecode($str)
+
+等价于`json_decoe($str, true)`. 返回数组（而非对象）。
+*/
+function jsonDecode($str)
+{
+	return json_decode($str, true);
+}
+
 // vi: foldmethod=marker
