@@ -813,6 +813,7 @@ class ApiLog
 
 	// for batch detail (ApiLog1)
 	private $ac1, $req1, $startTm1;
+	public $batchAc; // new ac for batch
 
 /**
 @var ApiLog::$lastId
@@ -946,7 +947,8 @@ class ApiLog
 			"retval" => $X_RET[0],
 			"ressz" => strlen($X_RET_STR),
 			"res" => $content,
-			"userId" => $userId
+			"userId" => $userId,
+			"ac" => $this->batchAc // 默认为null；对batch调用则列出详情
 		], $this->id);
 // 		$logStr = "=== id={$this->logId} t={$iv} >>>$content<<<\n";
 	}
@@ -1757,6 +1759,7 @@ class ApiApp extends AppBase
 		$retVal = [];
 		$retCode = 0;
 		$GLOBALS["errorFn"] = function () {};
+		$acList = [];
 		foreach ($calls as $call) {
 			if ($useTrans && $retCode) {
 				$retVal[] = [E_ABORT, "事务失败，取消执行", "batch call cancelled."];
@@ -1766,6 +1769,7 @@ class ApiApp extends AppBase
 				$retVal[] = [E_PARAM, "参数错误", "bad batch request: require `ac'"];
 				continue;
 			}
+			$acList[] = $call["ac"];
 
 			$_GET = $call["get"] ?: [];
 			$_POST = $call["post"] ?: [];
@@ -1796,6 +1800,9 @@ class ApiApp extends AppBase
 			if ($this->apiLog) {
 				$this->apiLog->logAfter1();
 			}
+		}
+		if ($this->apiLog) {
+			$this->apiLog->batchAc = 'batch:' . count($acList) . ',' . join(',', $acList);
 		}
 		if ($useTrans && $DBH && $DBH->inTransaction())
 			$DBH->commit();
