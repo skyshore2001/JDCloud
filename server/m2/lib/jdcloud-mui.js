@@ -5048,6 +5048,8 @@ function showPage(pageRef, opt)
 @fn setDocTitle(title)
 
 设置文档标题。默认在切换页面时，会将文档标题设置为逻辑页的标题(`hd`块中的`h1`或`h2`标签)。
+
+文档原始标题可通过`MUI.title`获得。
 */
 self.setDocTitle = setDocTitle;
 function setDocTitle(newTitle)
@@ -5621,6 +5623,13 @@ function enhanceAnchor(jo)
 	
 function main()
 {
+/**
+@var title
+
+文档原始标题保存在`MUI.title`，在切换逻辑页面时，document.title会自动变更为当前页标题。
+
+@see setDocTitle
+*/
 	self.title = document.title;
 	self.container = $(".mui-container");
 	if (self.container.size() == 0)
@@ -6672,6 +6681,13 @@ function hd_back(pageRef)
 
 向后端发送日志。后台必须已添加syslog插件。
 日志可在后台Syslog表中查看，客户端信息可查看ApiLog表。
+
+@param module app,fw(framework),page
+@param pri ERR,INF,WARN
+
+示例：
+
+	MUI.syslog("app", "ERR", "fail to pay: " + err.msg);
 
 注意：如果操作失败，本函数不报错。
  */

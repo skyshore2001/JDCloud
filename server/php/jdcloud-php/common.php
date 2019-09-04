@@ -162,6 +162,7 @@ e.g.
 	urlEncodeArr(["a"=>1, "b"=>"hello"]) -> a=1&b=hello
 	urlEncodeArr(["a"=>1, "b"=>null]) -> a=1
 
+NOTE: use http_build_query instead.
 */
 function urlEncodeArr($params)
 {
@@ -581,6 +582,45 @@ function jsonEncode($data, $doPretty=false)
 function jsonDecode($str)
 {
 	return json_decode($str, true);
+}
+
+/**
+@fn getSignContent($params, $paramFilter?)
+
+取URL签名内容。一般都是将参数先排序，然后拼成`k1=v1&k2=v2`这种形式。
+之后用md5, sha1, rsa等算法签名。
+
+默认"_"开头的参数以及"sign"参数不参与签名，规则可定制，示例："sign"与"sign_type"参数不参与验签：
+
+	$s = getSignContent($_POST, function ($k) {
+		if ($k == "sign" || $k == "sign_type")
+			return false;
+	});
+
+*/
+function getSignContent($params, $paramFilter=null)
+{
+	if (!$paramFilter) {
+		$paramFilter = function ($k) {
+			if ($k[0] === "_" || $k == "sign") // e.g. "_pwd", "_sign", "_ac"
+				return false;
+		};
+	}
+	ksort($params);
+	$str = null;
+	foreach ($params as $k=>$v) {
+		if (call_user_func($paramFilter, $k) === false)  // e.g. "_pwd", "_sign", "_ac"
+			continue;
+		if ($v === null)
+			$v = "";
+		if ($str === null) {
+			$str = "{$k}={$v}";
+		}
+		else {
+			$str .= "&{$k}={$v}";
+		}
+	}
+	return $str;
 }
 
 // vi: foldmethod=marker

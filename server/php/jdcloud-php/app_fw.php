@@ -1545,7 +1545,7 @@ function getBaseUrl($wantHost = true)
 
 		if ($wantHost)
 		{
-			$host = (isHttps() ? "https://" : "http://") . $_SERVER["HTTP_HOST"]; // $_SERVER["HTTP_X_FORWARDED_HOST"]
+			$host = (isHttps() ? "https://" : "http://") . (@$_SERVER["HTTP_HOST"]?:"localhost"); // $_SERVER["HTTP_X_FORWARDED_HOST"]
 			$baseUrl = $host . $baseUrl;
 		}
 	}
