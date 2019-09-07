@@ -1072,7 +1072,7 @@ function queryOne($sql, $assoc = false, $cond = null)
 		dbconn();
 	if ($cond)
 		$sql = genQuery($sql, $cond);
-	if (stripos($sql, "limit ") === false)
+	if (stripos($sql, "limit ") === false && stripos($sql, "for update") === false)
 		$sql .= " LIMIT 1";
 	$sth = $DBH->query($sql);
 
