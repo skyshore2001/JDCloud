@@ -17,10 +17,15 @@ if (@ARGV == 0) {
 while(<>) {
 	last if /^## 数据库设计/;
 }
+if (eof) {
+	print "error: require `## 数据库设计'\n";
+	exit(1);
+}
 
 my $table = {}; # {name, dscr?, fieldDef, %fieldDscr={name=>dscr}}
 my $field;
 while(<>) {
+	s/\s+$//g;
 	if (/^## 交互接口设计/) {
 		&outputTable($table);
 		last;
