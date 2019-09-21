@@ -1758,12 +1758,29 @@ function hasSignFile($f)
 	return file_exists("{$BASE_DIR}/{$f}");
 }
 
+/**
+@fn htmlEscape($s)
+
+用于防止XSS攻击。只转义字符"<", ">"，示例：
+当用户保存`<script>alert(1)</script>`时，实际保存的是`&lt;script&gt;alert(1)&lt;/script&gt;`
+这样，当前端以`$div.html($val)`来显示时，不会产生跨域攻击泄漏Cookie。
+
+如果前端就是需要带"<>"的字符串（如显示在input中），则应自行转义。
+ */
 function htmlEscape($s)
 {
+	return preg_replace_callback('/[<>]/', function ($ms) {
+		static $map = [
+			"<" => "&lt;",
+			">" => "&gt;"
+		];
+		return $map[$ms[0]];
+	}, $s);
 // 	if ($s[0] == '{' || $s[0] == '[')
 // 		return $s;
-	return htmlentities($s, ENT_NOQUOTES);
+//	return htmlentities($s, ENT_NOQUOTES);
 }
+
 // 取部分内容判断编码, 如果是gbk则自动透明转码为utf-8
 function utf8InputFilter($fp)
 {
