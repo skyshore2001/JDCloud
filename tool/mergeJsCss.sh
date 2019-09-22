@@ -11,6 +11,10 @@
 dir=`dirname $0`
 jsmin=$dir/jsmin
 cssmin=$dir/cssmin
+if [[ -n WINDIR ]]; then
+	jsmin=${jsmin}.exe
+	cssmin=${cssmin}.exe
+fi
 
 if [[ -z MERGE ]]; then
 	MERGE=lib
