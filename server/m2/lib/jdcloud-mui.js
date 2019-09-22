@@ -5832,6 +5832,7 @@ window.g_data = {}; // {userInfo, serverRev?, initClient?, testMode?, mockMode?}
 在IOS+cordova环境下，点击事件会有300ms延迟，默认会加载lib/fastclick.min.js解决。
 
 @var options.onAutoLogin 自动登录
+@event autoLogin 自动登录事件(v5.4)
 
 设置如何自动登录系统，进入应用后，一般会调用tryAutoLogin，其中会先尝试重用已有会话，如果当前没有会话则回调onAutoLogin自动登录系统。
 返回true则跳过后面系统默认的登录过程，包括使用本地保存的token自动登录以及调用login接口。
@@ -5851,6 +5852,10 @@ window.g_data = {}; // {userInfo, serverRev?, initClient?, testMode?, mockMode?}
 		// 修改了URL后直接跳出即可。不用返回true
 		MUI.app_abort();
 	}
+
+(v5.4)也可以用autoLogin事件：
+
+	$(document).on("autoLogin", onAutoLogin);
 
 @var options.enableWxLogin 微信认证登录
 
@@ -6411,6 +6416,7 @@ function tryAutoLogin(onHandleLogin, reuseCmd, allowNoLogin)
 		if (self.options.onAutoLogin() === true)
 			return true;
 	}
+	$(document).trigger("autoLogin");
 
 	// then use "login(token)"
 	var token = loadLoginToken();

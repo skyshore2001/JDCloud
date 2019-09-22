@@ -768,6 +768,15 @@ class ConfBase
 		$app = mparam('app');
 		$ret['appName'] = 'my-app';
 	}
+
+(v5.4) 此外，在全局配置`P_initClient`数据中的量将自动设置到ret中，它用于后端控制前端配置，如：
+
+	// 配置在conf.user.php中：
+	$GLOBALS["P_initClient"] = [
+		"enableWeixinLogin" => true, // 自动微信登录
+		"enableAppReviewMode" => true // APP审核定制
+	];
+	
  */
 	static function onInitClient(&$ret)
 	{
@@ -1351,6 +1360,11 @@ function api_initClient()
 		$keys = ["js"];
 		foreach (Plugins::$map as $p=>$cfg) {
 			$ret['plugins'][$p] = filter_hash($cfg, $keys);
+		}
+	}
+	if (is_array($GLOBALS["P_initClient"])) {
+		foreach ($GLOBALS["P_initClient"] as $k=>$v) {
+			$ret[$k] = $v;
 		}
 	}
 	Conf::onInitClient($ret);

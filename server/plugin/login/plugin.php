@@ -147,12 +147,15 @@ class LoginImpBase
 				"name" => $name
 			];
 		}
+		$userData["weixinKey"] = $userInfo["openid"];
 		dbconn();
-		$sql = sprintf("SELECT id FROM User WHERE weixinKey=%s", Q($userInfo["openid"]));
-		$id = queryOne($sql);
+		$id = @$_SESSION["uid"] ?: false;
+		if ($id === false) {
+			$sql = sprintf("SELECT id FROM User WHERE weixinKey=%s", Q($userInfo["openid"]));
+			$id = queryOne($sql);
+		}
 		if ($id === false) {
 			$userData["createTm"] = date(FMT_DT);
-			$userData["weixinKey"] = $userInfo["openid"];
 			$id = dbInsert("User", $userData);
 			$imp = LoginImpBase::getInstance();
 			$imp->onRegNewUser($id, $userData['uname']);
