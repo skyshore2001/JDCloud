@@ -77,13 +77,14 @@ T_fofgFKDxJ2gJRVHcQjEA9HyS9WMTNPOgWDhmGYgAM
 */
 	function sendWeixin($msgData);
 
+/*
 	// 企业向个人付款
 	// 返回：{payNo, payTm, outTradeNo}, 失败抛出异常
 	// document: https://pay.weixin.qq.com/wiki/doc/api/tools/mch_pay.php?chapter=14_2
 	function payToUser($weixinKey, $outTradeNo, $name, $amount, $dscr);
 
 	function initWeixinJsapi($url);
-
+*/
 }
 
 // 推送APP消息
