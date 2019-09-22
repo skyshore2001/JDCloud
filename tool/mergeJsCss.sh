@@ -11,12 +11,12 @@
 dir=`dirname $0`
 jsmin=$dir/jsmin
 cssmin=$dir/cssmin
-if [[ -n WINDIR ]]; then
+if [[ -n $WINDIR ]]; then
 	jsmin=${jsmin}.exe
 	cssmin=${cssmin}.exe
 fi
 
-if [[ -z MERGE ]]; then
+if [[ -z $MERGE ]]; then
 	MERGE=lib
 fi
 CSS=$MERGE.min.css
