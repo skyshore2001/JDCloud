@@ -1541,7 +1541,16 @@ function getBaseUrl($wantHost = true)
 	}
 	else {
 		// 自动判断
-		$baseUrl = dirname($_SERVER["SCRIPT_NAME"]) . "/";
+		$d = dirname($_SERVER["SCRIPT_NAME"]);
+		// 如果是baseUrl下面一级目录则自动去除, 调用getBaseUrl应在baseUrl或baseUrl的下一级目录下, 否则判断出错, 应通过设置环境变量解决.
+		$b = basename($d);
+		if (is_dir(__DIR__ . '/../../' . $b)) {
+			$baseUrl = dirname($d) . "/";
+		}
+		else {
+			$baseUrl .= "/";
+		}
+		// $baseUrl = dirname($_SERVER["SCRIPT_NAME"]) . "/";
 
 		if ($wantHost)
 		{
