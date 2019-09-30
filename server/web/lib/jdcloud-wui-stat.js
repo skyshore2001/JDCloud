@@ -1060,9 +1060,11 @@ function initPageStat(jpage, setStatOpt)
 
 	getTmRange("前1周") -> ["2015-8-31"(上周一)，"2015-9-7"(本周一)]
 	getTmRange("前3月") -> ["2015-6-1", "2015-9-1"]
+	getTmRange("前3天") -> ["2015-9-7", "2015-9-9"]
 
 	getTmRange("近1周") -> ["2015-9-3"，"2015-9-10"]
 	getTmRange("近3月") -> ["2015-6-10", "2015-9-10"]
+	getTmRange("近3天") -> ["2015-9-7", "2015-9-10"]  // "前3天"+今天
 
 	getTmRange("本日") -> ["2015-9-9", "2015-9-10"]
 	getTmRange("本月"") -> ["2015-9-1", "2015-10-1"]
@@ -1114,9 +1116,9 @@ function getTmRange(dscr, now)
 		dt1 = now.add("h", -n).format(fmt_h);
 	}
 	else if (u == "日" || u == "天") {
-		if (n == 0) {
+		if (n == 0 || type == "近") {
 			now.addDay(1);
-			n = 1;
+			++ n;
 		}
 		dt2 = now.format(fmt_d);
 		dt1 = now.add("d", -n).format(fmt_d);

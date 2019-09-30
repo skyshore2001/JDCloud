@@ -4808,8 +4808,11 @@ page定义示例:
 page调用示例:
 
 	WUI.showPage("pageHome");
-	WUI.showPage("pageHome", "首页");
-	WUI.showPage("pageHome", "首页2");
+	WUI.showPage("pageHome", "我的首页"); // 默认标题是"首页"，这里指定显示标题为"我的首页"。
+
+(v5.4) 如果标题中含有"%s"，将替换成原始标题，同时传参到initPage:
+
+	WUI.showPage("pageHome", "%s-" + cityName, [{cityName: cityName}]); //e.g. 显示 "首页-上海"
 
 */
 self.showPage = showPage;
@@ -4842,8 +4845,11 @@ function showPage(pageName, title, paramArr)
 
 	function initPage()
 	{
+		var title0 = jpage.attr("title") || "无标题";
 		if (title == null)
-			title = jpage.attr("title") || "无标题";
+			title = title0;
+		else
+			title = title.replace('%s', title0);
 
 		var tt = self.tabMain;
 		if (tt.tabs('exists', title)) {
