@@ -5709,8 +5709,8 @@ window.g_args = {}; // {_debug, cordova}
 /**
 @var g_cordova
 
-值是一个整数，默认为0. 
-如果非0，表示WEB应用在苹果或安卓APP中运行，且数值代表原生应用容器的大版本号。
+值是一个整数，默认为0. 可用它来判断WEB应用是否在APP容器中运行。
+如果非0，表示WEB应用在苹果或安卓APP中运行，且数值代表原生应用容器的版本号。
 
 示例：检查用户APP版本是否可以使用某些插件。
 
@@ -5720,6 +5720,26 @@ window.g_args = {}; // {_debug, cordova}
 			app_alert("您的版本太旧，XX功能无法使用，请升级到最新版本");
 		}
 	}
+
+WEB应用容器应在URL中传递cordova参数，表示容器版本号。该版本号会保存在ApiLog的ver字段中。
+
+如果容器不支持上述约定，可在WEB应用初始化时设置g_cordova变量来做兼容，示例：
+
+	// UserAgent for infiniti app
+	// android example: Mozilla/5.0 ... AppVersion/1.2.4 ... AppName/dafengche+infiniti
+	// iphone example: Mozilla/5.0 ... Souche/Dafengche/spartner/infiniti/InfinitiInhouse/1.2.4
+	function initApp() {
+		var ua = navigator.userAgent;
+		var m;
+		if ((m = ua.match(/android.*appversion\/([\d.]+)/i)) || (m = ua.match(/iphone.*infinitiInhouse\/([\d.]+)/i))) {
+			MUI.options.appName = "emp-m";
+			var ver = m[1];
+			if (m = ver.match(/(\d+)\.(\d+)\.(\d+)/)) {
+				window.g_cordova = parseInt(m[1]) * 10000 + parseInt(m[2]) * 100 + parseInt(m[3]);
+			}
+		}
+	}
+	initApp();
 
 @see 原生应用支持
 */
