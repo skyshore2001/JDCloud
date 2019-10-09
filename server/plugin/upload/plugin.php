@@ -83,6 +83,11 @@ class Upload
 	static $maxPicKB = 500; // KB
 	static $maxPicSize = 1280;
 
+	static function quote($s)
+	{
+		return '"' . str_replace('"', '\"', $s) . '"';
+	}
+
 	static function exportZip($zipname, $pics, $byThumbId=false)
 	{
 		session_commit();
@@ -126,7 +131,7 @@ class Upload
 
 		///Then download the zipped file.
 		header('Content-Type: application/zip');
-		header('Content-disposition: attachment; filename='.$zipname);
+		header('Content-disposition: attachment; filename='.Upload::quote($zipname));
 		header('Content-Length: ' . filesize($tmpf));
 		readfile($tmpf);
 		unlink($tmpf);
@@ -437,10 +442,10 @@ function api_att()
 		if (! isset($orgName))
 			$orgName = basename($file);
 		if ($ext == "jpg" || $ext == "png" || $ext == "gif") {
-			header('Content-Disposition: filename='. $orgName);
+			header('Content-Disposition: filename='. Upload::quote($orgName));
 		}
 		else {
-			header('Content-Disposition: attachment; filename='. $orgName);
+			header('Content-Disposition: attachment; filename='. Upload::quote($orgName));
 		}
 		readfile($file);
 	}
@@ -480,7 +485,7 @@ function api_export()
 	$str = mparam("str");
 	$enc = param("enc", "utf-8");
 	header("Content-Type: text/plain; charset=" . $enc);
-	header('Content-Disposition: attachment; filename='. $fname);
+	header('Content-Disposition: attachment; filename='. Upload::quote($fname));
 	if ($enc != "utf-8")
 		$str = iconv("utf-8", "$enc//IGNORE", $str);
 	echo($str);
