@@ -8,7 +8,7 @@
 
 **[附件]**
 
-@Attachment: id, path, orgPicId, exif(t), tm, orgName(l)
+@Attachment: id, path(l), orgPicId, exif(t), tm, orgName(l)
 
 path
 : String. 文件在服务器上的相对路径, 可方便的转成绝对路径或URL
