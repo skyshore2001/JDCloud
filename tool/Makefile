@@ -9,7 +9,7 @@
 # make clean-refdoc 
 ##############################
 
-opt=-encoding gb2312
+#opt=-encoding gb2312
 gendoc=php jdcloud-gendoc.php -template refdoc-template.php -linkFiles "style.css,doc.css,refdoc.js"
 
 all: refdoc

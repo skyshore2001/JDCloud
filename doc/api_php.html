@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2019-03-15</div>
+<div>最后更新：2019-10-17</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -91,15 +91,21 @@ code {
 <p><a href="#AccessControl::onValidate">AccessControl::onValidate (fn)</a></p>
 <p><a href="#AccessControl::onValidateId">AccessControl::onValidateId (fn)</a></p>
 <p><a href="#ApiLog::$lastId">ApiLog::$lastId (var)</a></p>
+<p><a href="#ApiLog::addObjLog">ApiLog::addObjLog (fn)</a></p>
 <p><a href="#AppBase">AppBase (class)</a></p>
 <p><a href="#BatchAddLogic">BatchAddLogic (class)</a></p>
 <p><a href="#BatchInsert">BatchInsert (class)</a></p>
 <p><a href="#Conf">Conf (key)</a></p>
 <p><a href="#ConfBase">ConfBase (class)</a></p>
 <p><a href="#ConfBase::$enableApiLog">ConfBase::$enableApiLog (var)</a></p>
+<p><a href="#ConfBase::$enableAutoSession">ConfBase::$enableAutoSession (var)</a></p>
+<p><a href="#ConfBase::$enableObjLog">ConfBase::$enableObjLog (var)</a></p>
+<p><a href="#ConfBase::checkSecure">ConfBase::checkSecure (fn)</a></p>
+<p><a href="#ConfBase::enableSecure">ConfBase::enableSecure (var)</a></p>
 <p><a href="#ConfBase::onApiInit">ConfBase::onApiInit (fn)</a></p>
 <p><a href="#ConfBase::onInitClient">ConfBase::onInitClient (fn)</a></p>
 <p><a href="#DirectReturn">DirectReturn (class)</a></p>
+<p><a href="#ENC_KEY">ENC_KEY (var)</a></p>
 <p><a href="#ExtFactory::getInstance">ExtFactory::getInstance (fn)</a></p>
 <p><a href="#ExtFactory::getObj">ExtFactory::getObj (fn)</a></p>
 <p><a href="#JDEvent">JDEvent (class)</a></p>
@@ -125,6 +131,8 @@ code {
 <p><a href="#Plugins::add">Plugins::add (fn)</a></p>
 <p><a href="#Plugins::exists">Plugins::exists (fn)</a></p>
 <p><a href="#Q">Q (fn)</a></p>
+<p><a href="#SimpleCache">SimpleCache (class)</a></p>
+<p><a href="#_jsonp">_jsonp (var)</a></p>
 <p><a href="#addLog">addLog (fn)</a></p>
 <p><a href="#addToStr">addToStr (fn)</a></p>
 <p><a href="#apiMain">apiMain (key)</a></p>
@@ -140,6 +148,7 @@ code {
 <p><a href="#checkAuth">checkAuth (fn)</a></p>
 <p><a href="#conf.php">conf.php (key)</a></p>
 <p><a href="#dbConfirmFn">dbConfirmFn (key)</a></p>
+<p><a href="#dbExpr">dbExpr (fn)</a></p>
 <p><a href="#dbInsert">dbInsert (fn)</a></p>
 <p><a href="#dbUpdate">dbUpdate (fn)</a></p>
 <p><a href="#dbconn">dbconn (fn)</a></p>
@@ -147,26 +156,35 @@ code {
 <p><a href="#errQuit">errQuit (fn)</a></p>
 <p><a href="#execOne">execOne (fn)</a></p>
 <p><a href="#ext">ext (module)</a></p>
+<p><a href="#genQuery">genQuery (fn)</a></p>
 <p><a href="#getAppType">getAppType (fn)</a></p>
 <p><a href="#getBaseUrl">getBaseUrl (fn)</a></p>
 <p><a href="#getBcParam">getBcParam (fn)</a></p>
 <p><a href="#getClientVersion">getClientVersion (fn)</a></p>
 <p><a href="#getCred">getCred (fn)</a></p>
 <p><a href="#getExt">getExt (fn)</a></p>
+<p><a href="#getQueryCond">getQueryCond (fn)</a></p>
+<p><a href="#getRealIp">getRealIp (fn)</a></p>
+<p><a href="#getReqIp">getReqIp (fn)</a></p>
 <p><a href="#getRsAsTable">getRsAsTable (alias)</a></p>
+<p><a href="#getSignContent">getSignContent (fn)</a></p>
 <p><a href="#handleExportFormat">handleExportFormat (fn)</a></p>
 <p><a href="#hasPerm">hasPerm (fn)</a></p>
 <p><a href="#hasSignFile">hasSignFile (fn)</a></p>
+<p><a href="#htmlEscape">htmlEscape (fn)</a></p>
 <p><a href="#httpCall">httpCall (fn)</a></p>
 <p><a href="#httpCallAsync">httpCallAsync (fn)</a></p>
-<p><a href="#inWhiteIpList">inWhiteIpList (fn)</a></p>
 <p><a href="#isCLI">isCLI (fn)</a></p>
 <p><a href="#isCLIServer">isCLIServer (fn)</a></p>
 <p><a href="#isEqualCollection">isEqualCollection (fn)</a></p>
 <p><a href="#isMockMode">isMockMode (fn)</a></p>
+<p><a href="#jdEncrypt">jdEncrypt (fn)</a></p>
+<p><a href="#jdEncryptI">jdEncryptI (fn)</a></p>
+<p><a href="#jsonDecode">jsonDecode (fn)</a></p>
+<p><a href="#jsonEncode">jsonEncode (fn)</a></p>
 <p><a href="#logext">logext (fn)</a></p>
-<p><a href="#logit">logit (alias)</a></p>
 <p><a href="#logit">logit (fn)</a></p>
+<p><a href="#logit">logit (alias)</a></p>
 <p><a href="#makeUrl">makeUrl (fn)</a></p>
 <p><a href="#mparam">mparam (fn)</a></p>
 <p><a href="#myEncrypt">myEncrypt (fn)</a></p>
@@ -182,6 +200,7 @@ code {
 <p><a href="#queryAll">queryAll (fn)</a></p>
 <p><a href="#queryAllWithHeader">queryAllWithHeader (fn)</a></p>
 <p><a href="#queryOne">queryOne (fn)</a></p>
+<p><a href="#rc4">rc4 (fn)</a></p>
 <p><a href="#setBcParam">setBcParam (fn)</a></p>
 <p><a href="#setParam">setParam (fn)</a></p>
 <p><a href="#setParam">setParam (fn)</a></p>
@@ -198,6 +217,26 @@ code {
 <p><a href="#whiteIpList">whiteIpList (key)</a></p>
 </div><hr>
 </div>
+<div class="block">
+<h2 id="MyException">@class MyException($code, $internalMsg?, $outMsg?)</h2>
+<p class="param"><strong>@param $internalMsg</strong>  String. 内部错误信息，前端不应处理。</p>
+<p class="param"><strong>@param $outMsg</strong>  String. 错误信息。如果为空，则会自动根据$code填上相应的错误信息。</p>
+<p>抛出错误，中断执行:</p>
+<pre><code>throw new MyException(E_PARAM, "Bad Request - numeric param `$name`=`$ret`.", "需要数值型参数");</code></pre>
+<p>注意：在API中抛出MyException异常后，将回滚对数据库的操作，即所有之前数据库操作都将失效。<br />
+如果不想回滚，可以用：</p>
+<pre><code>$this-&gt;cancelOrder($id); // 数据库操作
+setRet(E_FORBIDDEN, "付款码已失效", "fail to pay order $id: overdue");
+throw new DirectReturn();</code></pre></div>
+<div class="block">
+<h2 id="DirectReturn">@class DirectReturn</h2>
+<p>抛出该异常，可以中断执行直接返回，不显示任何错误。</p>
+<p>例：API返回非BPQ协议标准数据，可以跳出setRet而直接返回：</p>
+<pre><code>echo "return data";
+throw new DirectReturn();</code></pre>
+<p>例：返回指定数据后立即中断处理：</p>
+<pre><code>setRet(0, ["id"=&gt;1]);
+throw new DirectReturn();</code></pre></div>
 <div class="block">
 <h2 id="tobool">@fn tobool($s)</h2></div>
 <div class="block">
@@ -216,7 +255,9 @@ code {
 <div class="block">
 <h2 id="urlEncodeArr">@fn urlEncodeArr($params)</h2>
 <p>e.g.</p>
-<pre><code>urlEncodeArr(["a"=&gt;1, "b"=&gt;"hello"]) -&gt; a=1&amp;b=hello</code></pre></div>
+<pre><code>urlEncodeArr(["a"=&gt;1, "b"=&gt;"hello"]) -&gt; a=1&amp;b=hello
+urlEncodeArr(["a"=&gt;1, "b"=&gt;null]) -&gt; a=1</code></pre>
+<p>NOTE: use http_build_query instead.</p></div>
 <div class="block">
 <h2 id="makeUrl">@fn makeUrl($ac, $params, $hash)</h2>
 <p>e.g.</p>
@@ -253,7 +294,7 @@ $rv = httpCall($url, $data, ["headers" =&gt; $headers]);</code></pre>
         "Cookie: userid=" . session_id()
     ]]);
     // 筋斗云协议格式：成功为[0, obj] 或 失败为[errCode, userMessage, internalMessage?]
-    $ret = json_decode($rv);
+    $ret = json_decode($rv, true);
     if ( $ret[0] !== 0 ) {
         throw new MyException(E_PARAM, $ret[2], $ret[1]);
     }
@@ -294,6 +335,9 @@ $rv = httpCall($url, $data, ["curlOpt" =&gt; $curlOpt]);</code></pre>
 <pre><code># 默认情况下：日志记录到trace.log中，记录超过1s的慢调用
 P_SLOW_CALL_LOG=trace
 P_SLOW_CALL_VAL=1</code></pre>
+<p>e.g.</p>
+<pre><code>$url = makeUrl("http://oliveche.com/echo.php", ["a"=&gt;1, "b"=&gt;@$GLOBALS["b"]]);
+echo(httpCall($url, ["c"=&gt;1, "d"=&gt;0] ));</code></pre>
 <p class="see"><strong>@see <a href="#makeUrl">makeUrl</a></strong> </p></div>
 <div class="block">
 <h2 id="parseKvList">@fn parseKvList($kvListStr, $sep, $sep2)</h2>
@@ -359,6 +403,34 @@ arrCopy($wiData, $workItem, [
     ["addFlag", "isAdd"]
 ]);
 dbInsert("WorkItem", $wiData);</code></pre></div>
+<div class="block">
+<h2 id="getReqIp">@fn getReqIp</h2>
+<p>请求的IP。与<code>$_SERVER['REMOTE_ADDR']</code>不同的是，如果有代理，则返回所有IP列表。</p></div>
+<div class="block">
+<h2 id="getRealIp">@fn getRealIp()</h2>
+<p>取实际IP地址，支持透过代理服务器。</p></div>
+<div class="block">
+<h2 id="logit">@fn logit($s, $addHeader=true, $type="trace")</h2>
+<p class="alias"><strong>@alias <a id="logit">logit</a></strong> ($s, $type)</p>
+<p>记录日志。</p>
+<p>默认到日志文件 $BASE_DIR/trace.log. 如果指定type=secure, 则写到 $BASE_DIR/secure.log.</p>
+<p>可通过在线日志工具 tool/log.php 来查看日志。也可直接打开日志文件查看。</p></div>
+<div class="block">
+<h2 id="jsonEncode">@fn jsonEncode($data, $doPretty=false)</h2>
+<pre><code>$str = jsonEncode($data);
+$data = jsonDecode($str);</code></pre></div>
+<div class="block">
+<h2 id="jsonDecode">@fn jsonDecode($str)</h2>
+<p>等价于<code>json_decoe($str, true)</code>. 返回数组（而非对象）。</p></div>
+<div class="block">
+<h2 id="getSignContent">@fn getSignContent($params, $paramFilter?)</h2>
+<p>取URL签名内容。一般都是将参数先排序，然后拼成<code>k1=v1&amp;k2=v2</code>这种形式。<br />
+之后用md5, sha1, rsa等算法签名。</p>
+<p>默认&quot;_&quot;开头的参数以及&quot;sign&quot;参数不参与签名，规则可定制，示例：&quot;sign&quot;与&quot;sign_type&quot;参数不参与验签：</p>
+<pre><code>$s = getSignContent($_POST, function ($k) {
+    if ($k == "sign" || $k == "sign_type")
+        return false;
+});</code></pre></div>
 <div class="block">
 <h2 id="app_fw">@module app_fw</h2><div class="toc"><p style="margin-left:0em"><a href="#app_fw-1 通用函数">1 通用函数</a></p>
 <p style="margin-left:0em"><a href="#app_fw-2 初始化配置">2 初始化配置</a></p>
@@ -489,7 +561,10 @@ $startTm = param("startTm/dt", time());</code></pre>
 <pre><code>items=100:1,101::打蜡</code></pre>
 <p>返回</p>
 <pre><code>[ [ 100, 1.0, null], [101, null, "打蜡"] ]</code></pre>
-<p>TODO: 直接支持 param(&quot;items/(id,qty?/n,dscr?)&quot;), 添加param_objarr函数，去掉parseList函数。上例将返回</p>
+<p>要转换成objarr，可以用：</p>
+<pre><code>$varr = param("items/i:n?:s?");
+$objarr = varr2objarr($var, ["id", "qty", "dscr"]);</code></pre>
+<p>$objarr值为：</p>
 <pre><code>[
     [ "id"=&gt;100, "qty"=&gt;1.0, dscr=&gt;null],
     [ "id"=&gt;101, "qty"=&gt;null, dscr=&gt;"打蜡"]
@@ -628,6 +703,55 @@ dir1/dir2/carsvc.db (以.db文件扩展名标识的文件路径，表示SQLITE�
 <p>示例：</p>
 <pre><code>$sql = sprintf("SELECT id FROM User WHERE uname=%s AND pwd=%s", Q(param("uname")), Q(param("pwd")));</code></pre></div>
 <div class="block">
+<h2 id="getQueryCond">@fn getQueryCond(cond)</h2>
+<p>示例：key-value形式</p>
+<pre><code>$rv = getQueryCond([
+    "name"=&gt;"eric",
+    "phone"=&gt;null
+]);
+// "name='eric'
+
+$rv = getQueryCond([
+    "name"=&gt;"eric",
+    "phone IS NULL"
+]);
+// "name='eric' AND phone IS NULL"</code></pre>
+<p>示例：条件数组</p>
+<pre><code>$rv = getQueryCond([
+    "type IS NOT NULL",
+    "tm&gt;='2018-1-1' AND tm&lt;'2019-1-1'"
+]);
+// "type IS NOT NULL AND (tm&gt;='2018-1-1' AND tm&lt;'2019-1-1')"</code></pre>
+<p>（以上两种在jd-php中可混用）</p>
+<p>特别地：</p>
+<pre><code>getQueryCond(null) =&gt; null
+getQueryCond("ALL") =&gt; null
+getQueryCond(100) =&gt; "id=100"
+getQueryCond("100") =&gt; "id=100"
+getQueryCond("id&lt;&gt;100") =&gt; "id&lt;&gt;100"</code></pre>
+<p>默认用AND连接条件，也支持OR连接：</p>
+<pre><code>$rv = getQueryCond([
+    "_or" =&gt; true, // 特殊用法，标识用OR连接条件
+    "name"=&gt;"eric",
+    "phone IS NULL"
+]);
+// "name='eric' OR phone IS NULL"
+
+$rv = getQueryCond([
+    "type IS NOT NULL",
+    "tm&gt;='2018-1-1' AND tm&lt;'2019-1-1'",
+    "_or" =&gt; true
+]);
+// "type IS NOT NULL OR (tm&gt;='2018-1-1' AND tm&lt;'2019-1-1')"</code></pre></div>
+<div class="block">
+<h2 id="genQuery">@fn genQuery($sql, $cond)</h2>
+<p>连接SELECT主语句(不带WHERE条件)和查询条件。<br />
+示例：</p>
+<pre><code>genQuery("SELECT id FROM Vendor", [name=&gt;$name, "phone"=&gt;$phone]);
+genQuery("SELECT id FROM Vendor", [name=&gt;$name, "phone IS NOT NULL"]);
+genQuery("SELECT id FROM Vendor", [name=&gt;$name, "phone"=&gt;$phone, "_or"=&gt;true]); // "name='eric' OR phone='13700000001'"</code></pre>
+<p class="see"><strong>@see <a href="#getQueryCond">getQueryCond</a></strong> </p></div>
+<div class="block">
 <h2 id="execOne">@fn execOne($sql, $getInsertId?=false)</h2>
 <p class="param"><strong>@param $getInsertId</strong> ?=false 取INSERT语句执行后得到的id. 仅用于INSERT语句。</p>
 <p>执行SQL语句，如INSERT, UPDATE等。执行SELECT语句请使用queryOne/queryAll.</p>
@@ -668,7 +792,11 @@ if ($row === false)
 if ($phone === false)
     throw new MyException(E_PARAM, "bad user id");
 // $phone = "13712345678"</code></pre>
-<p class="see"><strong>@see <a href="#queryAll">queryAll</a></strong> </p></div>
+<p>(v5.3)<br />
+可将WHERE条件单独指定：$cond参数形式该函数getQueryCond</p>
+<pre><code>$id = queryOne("SELECT id FROM Vendor", false, ["phone"=&gt;$phone]);</code></pre>
+<p class="see"><strong>@see <a href="#queryAll">queryAll</a></strong> </p>
+<p class="see"><strong>@see <a href="#getQueryCond">getQueryCond</a></strong> </p></div>
 <div class="block">
 <h2 id="queryAll">@fn queryAll($sql, $assoc = false)</h2>
 <p>执行查询语句，返回数组。<br />
@@ -701,7 +829,11 @@ $rows = [
 return objarr2table($rows);</code></pre>
 <p>queryAll支持执行返回多结果集的存储过程，这时返回的不是单一结果集，而是结果集的数组：</p>
 <pre><code>$allRows = queryAll("call syncAll()");</code></pre>
-<p class="see"><strong>@see <a href="#objarr2table">objarr2table</a></strong> </p></div>
+<p>(v5.3)<br />
+可将WHERE条件单独指定：$cond参数形式该函数getQueryCond</p>
+<pre><code>$rows = queryAll("SELECT id FROM Vendor", false, ["phone"=&gt;$phone]);</code></pre>
+<p class="see"><strong>@see <a href="#objarr2table">objarr2table</a></strong> </p>
+<p class="see"><strong>@see <a href="#getQueryCond">getQueryCond</a></strong> </p></div>
 <div class="block">
 <h2 id="dbInsert">@fn dbInsert(table, kv) -> newId</h2>
 <p>e.g. </p>
@@ -742,6 +874,26 @@ $bi = new BatchInsert("Syslog", "module,tm,content", $opt);</code></pre>
 <li>opt: {batchSize/i, useReplace/b}</li>
 </ul></div>
 <div class="block">
+<h2 id="dbExpr">@fn dbExpr($val)</h2>
+<p>用于在dbInsert/dbUpdate(插入或更新数据库)时，使用表达式：</p>
+<pre><code>$id = dbInsert("Ordr", [
+    "tm" =&gt; dbExpr("now()") // 使用dbExpr直接提供SQL表达式
+]);</code></pre>
+<p>另外，写数据库时，为防止XSS跨域攻击，dbInsert/dbUpdate对值会自动做htmlentity转义，如&quot;&gt;7&quot;转成&quot;&gt;7&quot;。<br />
+为防止转义，使用原始字串值，可以用：</p>
+<pre><code>$id = dbUpdate("Ordr", [
+    "cond" =&gt; dbExpr(Q("f&gt;3 &amp;&amp; r&lt;60")); // 注意用Q函数对字符串加引号
+]);</code></pre>
+<p>示例：对象set/add接口中，防止某字段被转义：</p>
+<pre><code>protected function onValidate()
+{
+    if (issetval("cond")) {
+        $_POST["cond"] = dbExpr(Q($_POST["cond"]));
+    }
+}</code></pre>
+<p class="see"><strong>@see <a href="#dbInsert">dbInsert</a></strong> </p>
+<p class="see"><strong>@see <a href="#dbUpdate">dbUpdate</a></strong> </p></div>
+<div class="block">
 <h2 id="dbUpdate">@fn dbUpdate(table, kv, id_or_cond?) -> cnt</h2>
 <p class="param"><strong>@param id_or_cond</strong>  查询条件，如果是数值比如100或"100"，则当作条件"id=100"处理；否则直接作为查询表达式，比如"qty<0"；</p>
 <p>为了安全，cond必须指定值，不可为空（避免因第三参数为空导致误更新全表!）。如果要对全表更新，可传递特殊值&quot;ALL&quot;，或用&quot;1=1&quot;之类条件。</p>
@@ -760,7 +912,27 @@ $cnt = dbUpdate("Ordr", [
 ], "tm IS NULL);
 
 // 全表更新，没有条件。UPDATE Cinf SET appleDeviceToken={token}
-$cnt = dbUpdate("Cinf", ["appleDeviceToken" =&gt; $token], "ALL");</code></pre></div>
+$cnt = dbUpdate("Cinf", ["appleDeviceToken" =&gt; $token], "ALL");</code></pre>
+<p>cond条件可以用key-value指定(cond写法参考getQueryCond)，如：</p>
+<pre><code>dbUpdate("Task", ["vendorId" =&gt; $id], ["vendorId" =&gt; $id1]);
+基本等价于 (当id1为null时稍有不同, 上面生成"IS NULL"，而下面的SQL为"=null"非标准)
+dbUpdate("Task", ["vendorId" =&gt; $id], "vendorId=$id1"]);</code></pre></div>
+<div class="block">
+<h2 id="SimpleCache">@class SimpleCache</h2>
+<p>缓存在数组中。适合在循环中缓存key-value数据。</p>
+<pre><code>$cache = new SimpleCache(); // id=&gt;name
+for ($idList as $id) {
+    $name = $cache-&gt;get($id, function () use ($id){
+        return queryOne("SELECT name FROM Vendor WHERE id=$id");
+    });
+}</code></pre>
+<p>示例2：</p>
+<pre><code>$key = join('-', [$name, $phone]);
+$id = $cache-&gt;get($key);
+if ($id === false) {
+    $val = getVal();
+    $cache-&gt;set($key, $val);
+}</code></pre></div>
 <div class="block">
 <h2 id="getBaseUrl">@fn getBaseUrl($wantHost = true)</h2>
 <p>返回 $BASE_DIR 对应的网络路径（最后以&quot;/&quot;结尾），一般指api.php所在路径。<br />
@@ -775,26 +947,44 @@ getBaseUrl()默认返回 &quot;<a href="http://localhost:8081/myapp/">http://loc
 <pre><code>putenv("P_BASE_URL=http://myserver.com/8081/myapp/");</code></pre>
 <p class="see"><strong>@see <a href="#$BASE_DIR">$BASE_DIR</a></strong> </p></div>
 <div class="block">
-<h2 id="logit">@fn logit($s, $addHeader=true, $type="trace")</h2>
-<p class="alias"><strong>@alias <a id="logit">logit</a></strong> ($s, $type)</p>
-<p>记录日志。</p>
-<p>默认到日志文件 $BASE_DIR/trace.log. 如果指定type=secure, 则写到 $BASE_DIR/secure.log.</p>
-<p>可通过在线日志工具 tool/log.php 来查看日志。也可直接打开日志文件查看。</p></div>
+<h2 id="ENC_KEY">@var ENC_KEY = 'jdcloud'</h2>
+<p>默认加密key。可在api.php等处修改覆盖。</p></div>
 <div class="block">
-<h2 id="myEncrypt">@fn myEncrypt($string,$operation='E',$key='carsvc')</h2>
-<p class="param"><strong>@param operation</strong>  'E': encrypt; 'D': decrypt</p>
-<p>加密解密字符串</p>
-<p>加密:</p>
-<pre><code>$cipher = myEncrypt('hello, world!');
-or
-$cipher = myEncrypt('hello, world!','E','nowamagic');</code></pre>
-<p>解密：</p>
-<pre><code>$text = myEncrypt($cipher,'D','nowamagic');</code></pre>
-<p>参数说明:<br />
-$string   :需要加密解密的字符串<br />
-$operation:判断是加密还是解密:E:加密   D:解密<br />
-$key      :加密的钥匙(密匙);</p>
-<p><a href="http://www.open-open.com/lib/view/open1388916054765.html">http://www.open-open.com/lib/view/open1388916054765.html</a></p></div>
+<h2 id="rc4">@fn rc4($data, $pwd)</h2>
+<p>返回密文串（未编码的二进制，可用base64或hex编码）。<br />
+RC4加密算法。基于异或的算法。<br />
+<a href="https://www.cnblogs.com/haoxuanchen2014/p/7783782.html">https://www.cnblogs.com/haoxuanchen2014/p/7783782.html</a></p>
+<p>更完善的短字符串编码，可以使用</p>
+<p class="see"><strong>@see <a href="#jdEncrypt">jdEncrypt</a></strong>  基于rc4的文本加密</p>
+<p class="see"><strong>@see <a href="#jdEncryptI">jdEncryptI</a></strong>  基于rc4的32位整数加密</p></div>
+<div class="block">
+<h2 id="jdEncrypt">@fn jdEncrypt($string, $enc=E|D, $fmt=b64|hex, $key=$ENC_KEY, $vcnt=4)</h2>
+<p>基于rc4算法的文本加密，缺省密码为全局变量 $ENC_KEY。<br />
+enc=E表示加密，enc=D表示解密。</p>
+<pre><code>$cipher = jdEncrypt("hello");
+$text = jdEncrypt($cipher, "D");
+if ($text === false)
+    throw "bad cipher";</code></pre>
+<p>缺省返回base64编码的密文串，可设置参数$fmt=&quot;hex&quot;输出16进制编码的密文串。<br />
+算法包含了校验机制，解密时如果校验失败则返回false.</p>
+<p class="param"><strong>@param vcnt</strong>  校验字节数，默认为4. validation bytes cnt</p>
+<p class="see"><strong>@see <a href="#rc4">rc4</a></strong>  基础rc4算法</p>
+<p class="see"><strong>@see <a href="#jdEncryptI">jdEncryptI</a></strong>  基于rc4的32位整数加密</p></div>
+<div class="block">
+<h2 id="myEncrypt">@fn myEncrypt($string, $enc=E|D)</h2>
+<p>基于rc4的字符串加密算法。<br />
+新代码不建议使用，仅用作兼容旧版本同名函数。缺省key='carsvc', vcnt=8(校验字节数)</p>
+<p class="see"><strong>@see <a href="#jdEncrypt">jdEncrypt</a></strong> </p></div>
+<div class="block">
+<h2 id="jdEncryptI">@fn jdEncryptI($data, $enc=E|D, $fmt=hex|b64, $key=$ENC_KEY)</h2>
+<p>基于rc4算法的32位整数加解密，缺省密码为全局变量$ENC_KEY.</p>
+<pre><code>$cipher = jdEncryptI(12345678, "E"); // dfa27c4c208489ca (4字节校验+4字节整数=8字节，用16进制文本表示为16个字节)
+$n = jdEncryptI($cipher, "D");
+if ($n === false)
+    throw "bad cipher";</code></pre>
+<p>可用于将整型id伪装成8字节的uuid.</p>
+<p class="see"><strong>@see <a href="#rc4">rc4</a></strong>  基础rc4算法</p>
+<p class="see"><strong>@see <a href="#jdEncrypt">jdEncrypt</a></strong>  基于rc4的文本加密</p></div>
 <div class="block">
 <h2 id="errQuit">@fn errQuit($code, $msg, $msg2 =null)</h2>
 <p>生成html格式的错误信息并中止执行。<br />
@@ -817,20 +1007,11 @@ $key      :加密的钥匙(密匙);</p>
 <h2 id="hasSignFile">@fn hasSignFile($f)</h2>
 <p>检查应用根目录下($BASE_DIR)下是否存在标志文件。标志文件一般命名为&quot;CFG_XXX&quot;, 如&quot;CFG_MOCK_MODE&quot;等。</p></div>
 <div class="block">
-<h2 id="MyException">@class MyException($code, $internalMsg?, $outMsg?)</h2>
-<p class="param"><strong>@param $internalMsg</strong>  String. 内部错误信息，前端不应处理。</p>
-<p class="param"><strong>@param $outMsg</strong>  String. 错误信息。如果为空，则会自动根据$code填上相应的错误信息。</p>
-<p>抛出错误，中断执行:</p>
-<pre><code>throw new MyException(E_PARAM, "Bad Request - numeric param `$name`=`$ret`.", "需要数值型参数");</code></pre></div>
-<div class="block">
-<h2 id="DirectReturn">@class DirectReturn</h2>
-<p>抛出该异常，可以中断执行直接返回，不显示任何错误。</p>
-<p>例：API返回非BPQ协议标准数据，可以跳出setRet而直接返回：</p>
-<pre><code>echo "return data";
-throw new DirectReturn();</code></pre>
-<p>例：返回指定数据后立即中断处理：</p>
-<pre><code>setRet(0, ["id"=&gt;1]);
-throw new DirectReturn();</code></pre></div>
+<h2 id="htmlEscape">@fn htmlEscape($s)</h2>
+<p>用于防止XSS攻击。只转义字符&quot;&lt;&quot;, &quot;&gt;&quot;，示例：<br />
+当用户保存<code>&lt;script&gt;alert(1)&lt;/script&gt;</code>时，实际保存的是<code>&amp;lt;script&amp;gt;alert(1)&amp;lt;/script&amp;gt;</code><br />
+这样，当前端以<code>$div.html($val)</code>来显示时，不会产生跨域攻击泄漏Cookie。</p>
+<p>如果前端就是需要带&quot;<>&quot;的字符串（如显示在input中），则应自行转义。</p></div>
 <div class="block">
 <h2 id="JDPDO">@class JDPDO</h2>
 <p class="var"><strong>@var <a id="$DBH">$DBH</a></strong> </p>
@@ -847,7 +1028,30 @@ $DBH-&gt;exec('set names utf8'); // 也可以是queryOne/execOne等函数。</co
 <div class="block">
 <h2 id="AppBase">@class AppBase</h2>
 <p>应用框架，用于提供符合BQP协议的接口。<br />
-在onExec中返回协议数据；在onAfter中建议及时关闭DB.</p></div>
+在onExec中返回协议数据；在onAfter中建议及时关闭DB.<br />
+包含通用错误处理等。</p>
+<p>示例：接口<code>url.php(p)</code>预处理一些参数，然后调用api.php。<br />
+在预处理中，如果有MyException报错，可以优雅处理。</p>
+<pre><code>require_once('app.php');
+class UrlApp extends AppBase
+{
+    protected function onExec()
+    {
+        $p = mparam("p");
+        $param = json_decode(jdEncrypt($p, "D"), true);
+        if (!$param) {
+            throw new MyException(E_PARAM);
+        }
+        $_GET = $param["get"];
+        $_POST = $param["post"];
+        if ($param["ses"]) {
+            session_id($param["ses"]);
+        }
+    }
+}
+$app = new UrlApp();
+$ret = $app-&gt;exec();
+require_once('api.php');</code></pre></div>
 <div class="block">
 <h2 id="JDSingleton">@class JDSingleton (trait)</h2>
 <p>用于单件类，提供getInstance方法，例：</p>
@@ -1260,6 +1464,35 @@ throw new DirectReturn();
 <p class="see"><strong>@see <a href="#$errorFn">$errorFn</a></strong> </p>
 <p class="see"><strong>@see <a href="#errQuit">errQuit</a></strong> ()</p></div>
 <div class="block">
+<h2 id="_jsonp">@var _jsonp 用于支持jsonp返回格式的URL参数</h2>
+<p>示例：</p>
+<pre><code>http://localhost/p/jdcloud/api.php/Ordr/10?_jsonp=api_OrdrGet
+返回
+
+api_OrdrGet([
+    0, {"id":10,...}
+]);
+
+http://localhost/p/jdcloud/api.php/Ordr/10?_jsonp=api_order%3d
+返回
+
+api_order=[
+    0, {"id":10,...}
+];</code></pre>
+<p>JS示例：</p>
+<pre><code>&lt;script&gt;
+function api_OrdrGet(order)
+{
+    console.log(order);
+}
+&lt;/script&gt;
+&lt;script src="http://localhost/p/jdcloud/api.php/Ordr/10?_jsonp=api_OrdrGet"&gt;&lt;/script&gt;</code></pre>
+<p>JS示例：</p>
+<pre><code>&lt;script src="http://localhost/p/jdcloud/api.php/Ordr/10?_jsonp=api_order%3d"&gt;&lt;/script&gt;
+&lt;script&gt;
+console.log(api_order);
+&lt;/script&gt;</code></pre></div>
+<div class="block">
 <h2 id="setServerRev">@fn setServerRev()</h2>
 <p>根据全局变量&quot;SERVER_REV&quot;或应用根目录下的文件&quot;revision.txt&quot;， 来设置HTTP响应头&quot;X-Daca-Server-Rev&quot;表示服务端版本信息（最多6位）。</p>
 <p>客户端框架可本地缓存该版本信息，一旦发现不一致，可刷新应用。<br />
@@ -1308,9 +1541,20 @@ checkPerm(AUTH_ADMIN | PERM_TEST_MODE); 要求必须管理员登录或测试模�
 <p>$BASE_DIR/conf.php中包含Conf类，用于定义易变的临时逻辑，例如数据库维护时报错提示，临时控制某个版本不能使用，遇到节假日休息提醒等等。</p>
 <p>不变的全局配置应在app.php中定义。</p></div>
 <div class="block">
+<h2 id="ConfBase::$enableAutoSession">@var ConfBase::$enableAutoSession?=true</h2>
+<p>默认为请求创建session，请求结束时，如果session是空则会删除掉.<br />
+将enableAutoSession设置为false，则在需要读写session之前需要手工调用</p>
+<pre><code>session_start();</code></pre>
+<p>这样便于手工控制session的启停(与php默认处理一致)。</p>
+<p>如果php选项session.auto_start=1，则此选项无效。</p></div>
+<div class="block">
 <h2 id="ConfBase::$enableApiLog">@var ConfBase::$enableApiLog?=true</h2>
 <p>设置为false可关闭ApiLog. 例：</p>
 <pre><code>static $enableApiLog = false;</code></pre></div>
+<div class="block">
+<h2 id="ConfBase::$enableObjLog">@var ConfBase::$enableObjLog?=true</h2>
+<p>设置为false可关闭ObjLog. 例：</p>
+<pre><code>static $enableObjLog = false;</code></pre></div>
 <div class="block">
 <h2 id="ConfBase::onApiInit">@fn ConfBase::onApiInit()</h2>
 <p>所有API执行时都会先走这里。</p>
@@ -1328,7 +1572,28 @@ checkPerm(AUTH_ADMIN | PERM_TEST_MODE); 要求必须管理员登录或测试模�
     if ($ac == "DFIS-BK_S001") {
         $ac = "DMS.workGroup";
     }
-}</code></pre></div>
+}
+
+class AC_DMS extends AccessControl
+{
+    function onInit() {
+        Partner::checkAuth();
+    }
+    // DFIS-BK_S001
+    function api_workGroup() {
+    }
+}</code></pre>
+<p>例：第三方要求回调 {BASE_URL}/notify/orderStatus 这样的URL，但框架默认不支持，可以在onApiInit中转换：</p>
+<pre><code>static function onApiInit(&amp;$ac)
+{
+    if ($ac == "notify/orderStatus") {
+        $ac = "Notify.orderStatus";
+    }
+}
+
+class AC_Notify extends AccessControl
+{ ... }</code></pre>
+<p>注意：框架默认支持<code>Notify/orderStatus</code>这样的URL（对象名Notify必须首字母大写），它可自动转成Notify.orderStatus。</p></div>
 <div class="block">
 <h2 id="ConfBase::onInitClient">@fn ConfBase::onInitClient(&$ret)</h2>
 <p>客户端初始化应用时会调用initClient接口，返回plugins等信息。若要加上其它信息，可在这里扩展。</p>
@@ -1339,10 +1604,44 @@ checkPerm(AUTH_ADMIN | PERM_TEST_MODE); 要求必须管理员登录或测试模�
 {
     $app = mparam('app');
     $ret['appName'] = 'my-app';
-}</code></pre></div>
+}</code></pre>
+<p>(v5.4) 此外，在全局配置<code>P_initClient</code>数据中的量将自动设置到ret中，它用于后端控制前端配置，如：</p>
+<pre><code>// 配置在conf.user.php中：
+$GLOBALS["P_initClient"] = [
+    "enableWeixinLogin" =&gt; true, // 自动微信登录
+    "enableAppReviewMode" =&gt; true // APP审核定制
+];</code></pre></div>
+<div class="block">
+<h2 id="ConfBase::checkSecure">@fn ConfBase::checkSecure($ac)</h2>
+<p class="var"><strong>@var <a id="ConfBase::enableSecure">ConfBase::enableSecure</a></strong>  ?=false</p>
+<p>安全检查。一般用于检测可疑调用并记录日志，以及管理黑白IP名单。默认值为false。</p>
+<p>checkSecure函数返回false则不处理该调用，并将请求加入黑名单，且返回<code>[5, "OK"]</code>.<br />
+黑名单可查看文件blackip.txt。<br />
+(5为E_FORBIDDEN，返回&quot;OK&quot;是为了不让攻击者获得准确的出错信息)。</p>
+<p>示例：如果不是前端H5中的ajax调用，且没有cookie信息，则记录该事件到 secure.log 中，人工分析后可添加黑名单。</p>
+<pre><code>static function checkSecure($ac)
+{
+    if (! (isset($_SERVER["HTTP_REFERER"]) &amp;&amp; isset($_SERVER["HTTP_X_REQUESTED_WITH"]) &amp;&amp; isset($_SERVER["HTTP_COOKIE"])) ) {
+        $log = @sprintf("secure check: ac=$ac, ses=%s, ApiLog.id=%s", session_id(), ApiLog::$lastId);
+        logit($log, true, "secure");
+        // BlackList::add(getRealIp(), "no referer");
+        // return false; // false表示本次调用直接返回。
+    }
+}</code></pre>
+<p class="see"><strong>@see <a href="#BlackList">BlackList</a></strong> </p></div>
 <div class="block">
 <h2 id="ApiLog::$lastId">@var ApiLog::$lastId</h2>
 <p>取当前调用的ApiLog编号。</p></div>
+<div class="block">
+<h2 id="ApiLog::addObjLog">@fn ApiLog::addObjLog($obj, $objId, $dscr)</h2>
+<p>添加对象日志ObjLog。默认系统会记录标准add/set/del等日志到ObjLog，非标准方法若需要手工添加日志可调用此方法。<br />
+示例：在Ordr.cancel接口中记录日志</p>
+<pre><code>class AC1_Ordr {
+    function api_cancel() {
+        ...
+        ApiLog::addObjLog("Ordr", 99, "取消订单");
+    }
+}</code></pre></div>
 <div class="block">
 <h2 id="MapCol.$colMap">@var MapCol.$colMap</h2>
 <p>%colMap = {tbl =&gt; [tblAlias, %cols]}<br />
@@ -1424,31 +1723,34 @@ $file为插件主文件，可返回一个插件配置。如果未指定，则自
 <p class="see"><strong>@see <a href="#callSvcInt">callSvcInt</a></strong> </p>
 <p class="see"><strong>@see <a href="#callSvc">callSvc</a></strong> </p></div>
 <div class="block">
-<h2 id="callSvcInt">@fn callSvcInt($ac)</h2>
-<p>内部调用另一接口，获得返回值。如果要设置GET, POST参数，分别用</p>
+<h2 id="callSvcInt">@fn callSvcInt($ac, $param=null, $postParam=null)</h2>
+<p>内部调用另一接口，获得返回值。<br />
+如果指定了$param或$postParam参数，则会备份现有环境，并在调用后恢复。<br />
+否则直接使用现有环境。</p>
+<p>如果想手工逐项设置GET, POST参数，可分别用</p>
 <pre><code>setParam(key, value); // 设置get参数
 // 或批量设置用 setParam({key =&gt; value});
 $_POST[key] = value; // 设置post参数</code></pre>
 <p>与callSvc不同的是，它不处理事务、不写ApiLog，不输出数据，更轻量；<br />
 与tableCRUD不同的是，它支持函数型调用。</p>
+<p>示例：</p>
+<pre><code>$vendorId = callSvcInt("Vendor.add", null, [
+    "name" =&gt; $params["vendorName"],
+    "tel" =&gt; $params["vendorPhone"]
+]);</code></pre>
 <p class="see"><strong>@see <a href="#setParam">setParam</a></strong> </p>
 <p class="see"><strong>@see <a href="#tableCRUD">tableCRUD</a></strong> </p>
 <p class="see"><strong>@see <a href="#callSvc">callSvc</a></strong> </p></div>
 <div class="block">
-<h2 id="inWhiteIpList">@fn inWhiteIpList()</h2>
-<p>检查调用者是否在IP白名单中。配置项为whiteIpList。</p>
-<p class="see"><strong>@see <a href="#whiteIpList">whiteIpList</a></strong> </p>
-<p class="see"><strong>@see <a href="#api_checkIp">api_checkIp</a></strong> </p></div>
-<div class="block">
 <h2 id="api_checkIp">@fn api_checkIp()</h2>
-<p class="key"><strong>@key <a id="whiteIpList">whiteIpList</a></strong>  白名单配置，默认值为"127.0.0.1"</p>
+<p class="key"><strong>@key <a id="whiteIpList">whiteIpList</a></strong>  白名单配置.</p>
 <p>可在conf.user.php中设置whiteIpList，如</p>
-<pre><code>putenv("whiteIpList=115.238.59.110 127.0.0.1 ::1");</code></pre>
+<pre><code>putenv("whiteIpList=115.238.59.110");</code></pre>
 <p>要验证调用者是否在IP白名单中，不是白名单调用将直接抛错，可以调用</p>
 <pre><code>api_checkIp();</code></pre>
 <p>外部可直接调用接口checkIp测试，例如用JS：</p>
 <pre><code>callSvr("checkIp");</code></pre>
-<p class="see"><strong>@see <a href="#inWhiteIpList">inWhiteIpList</a></strong> </p></div>
+<p class="see"><strong>@see <a href="#BlackList">BlackList</a></strong> </p></div>
 <div class="block">
 <h2 id="httpCallAsync">@fn httpCallAsync($url, $postParams=null)</h2>
 <p>发起调用后立即返回，即用于发起异步调用。<br />
@@ -1472,7 +1774,7 @@ $allowedAsyncCalls = ["sendSms"];
 function sendSms($phone, $msg) {
     // 2. 为支持异步的函数加上判断分支
     if (getenv("enableAsync") === "1") {
-        return callAsync('pushMsg', func_get_args());
+        return callAsync('sendSms', func_get_args());
     }
 
     // 同步调用
@@ -2026,6 +2328,7 @@ $this-&gt;enumFields["status"] = function($v) use ($map) {
         return $v . "-" . $map[$v];
     return $v;
 };</code></pre>
+<p>enumFields机制支持字段别名，比如若调用<code>Ordr.query(res="id 编号,status 状态")</code>，status字段使用了别名&quot;状态&quot;后，仍然可被正确处理，而用onHandleRow就处理不了了。</p>
 <p>此外，枚举字段可直接由请求方通过res参数指定描述值，如：</p>
 <pre><code>Ordr.query(res="id, status =CR:Created;CA:Cancelled")
 或指定alias:
@@ -2173,11 +2476,17 @@ $this-&gt;checkSetFields([&quot;status&quot;, &quot;cmt&quot;]);<br />
 示例：</p>
 <pre><code>class AC2_Ordr extends AccessControl {
     function api_setIf() {
+        // 限制只有经理权限才能批量更新
         checkAuth(PERM_MGR);
+
+        // 限制只能更新指定字段
         $this-&gt;checkSetFields(["status", "cmt"]);
+
+        // 限制只可更新自己的订单，一般写在onQuery中，以便get/query/setIf/delIf均可通用。
         $empId = $_SESSION["empId"];
         $this-&gt;addCond("t0.empId=$empId");
         // $this-&gt;addJoin(...);
+
         return parent::api_setIf();
     }
 }</code></pre></div>
@@ -2187,9 +2496,14 @@ $this-&gt;checkSetFields([&quot;status&quot;, &quot;cmt&quot;]);<br />
 示例：</p>
 <pre><code>class AC2_Ordr extends AccessControl {
     function api_delIf() {
+        // 限制只有经理权限才能批量更新
         checkAuth(PERM_MGR);
-        // $this-&gt;addCond(...);
+
+        // 限制只可更新自己的订单，一般写在onQuery中，以便get/query/setIf/delIf均可通用。
+        $empId = $_SESSION["empId"];
+        $this-&gt;addCond("t0.empId=$empId");
         // $this-&gt;addJoin(...);
+
         return parent::api_delIf();
     }
 }</code></pre></div>
@@ -2200,7 +2514,8 @@ $this-&gt;checkSetFields([&quot;status&quot;, &quot;cmt&quot;]);<br />
 <p>在一个事务中执行，一行出错后立即失败返回，该行前面已导入的内容也会被取消（回滚）。</p>
 <ul>
 <li>title: List(fieldName). 指定标题行(即字段列表). 如果有该参数, 则忽略POST内容或文件中的标题行.<br />
-如&quot;title=name,-,addr&quot;表示导入第一列name和第三列addr, 其中&quot;-&quot;表示忽略该列，不导入。</li>
+如&quot;title=name,-,addr&quot;表示导入第一列name和第三列addr, 其中&quot;-&quot;表示忽略该列，不导入。<br />
+字段列表以逗号或空白分隔, 如&quot;title=name - addr&quot;与&quot;title=name, -, addr&quot;都可以.</li>
 </ul>
 <p>支持两种方式上传：</p>
 <ol>
@@ -2222,6 +2537,11 @@ callSvr("Store.batchAdd", function (ret) {
 callSvr("Store.batchAdd", {title: "name,addr"}, function (ret) {
     app_alert("成功导入" + ret.cnt + "条数据！");
 }, data, {contentType:"text/plain"});</code></pre>
+<p>示例: 在chrome console中导入数据</p>
+<pre><code>callSvr("Vendor.batchAdd", {title: "-,name, tel, idCard, addr, email, legalAddr, weixin, qq, area, picId"}, $.noop, `编号 姓名  手机号码    身份证号    通讯地址    邮箱  户籍地址    微信号 QQ号 负责安装的区域 身份证图
+112 郭志强 15384813214 150221199211215000  内蒙古呼和浩特赛罕区丰州路法院小区二号楼    815060695@qq.com    内蒙古包头市  15384813214 815060695   内蒙古 532
+111 高长平 18375998418 500226198312065000  重庆市南岸区丁香路同景国际W组 1119780700@qq.com   荣昌  18375998418 1119780700  重庆  534
+`, {contentType:"text/plain"});</code></pre>
 <ol>
 <li>标准csv/txt文件上传：</li>
 </ol>
@@ -2238,7 +2558,15 @@ callSvr("Store.batchAdd", {title: "name,addr"}, function (ret) {
 fd.append("file", frm.f.files[0]);
 callSvr("Store.batchAdd", {title: "name,addr"}, function (ret) {
     app_alert("成功导入" + ret.cnt + "条数据！");
-}, fd);</code></pre></div>
+}, fd);</code></pre>
+<p>或者使用curl等工具导入：<br />
+从excel中将数据全选复制到1.txt中(包含标题行，也可另存为csv格式文件)，然后导入。<br />
+下面示例用curl工具调用VendorA.batchAdd导入：</p>
+<pre><code>#/bin/sh
+baseUrl=http://localhost/p/anzhuang/api.php
+param=title=name,phone,idCard,addr,email,legalAddr,weixin,qq,area
+curl -v -F "file=@1.txt" "$baseUrl/VendorA.batchAdd?$param"</code></pre>
+<p>如果要调试(php/xdebug)，可加URL参数<code>XDEBUG_SESSION_START=1</code>或Cookie中加<code>XDEBUG_SESSION=1</code></p></div>
 <div class="block">
 <h2 id="handleExportFormat">@fn handleExportFormat($fmt, $arr, $fname)</h2>
 <p>导出表到文件。</p>
