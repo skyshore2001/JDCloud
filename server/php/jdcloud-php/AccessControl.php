@@ -664,7 +664,7 @@ TODO: 可加一个系统参数`_enc`表示输出编码的格式。
 ### 枚举支持及自定义字段处理
 
 (版本5.0)
-@var AccessControl::$enumFields {field => map/fn($val) }支持处理枚举字段，或自定义处理。
+@var AccessControl::$enumFields {field => map/fn($val, $row) }支持处理枚举字段，或自定义处理。
 
 作为比onHandleRow/onAfterActions等更易用的工具，enumFields可对返回字段做修正。例如，想要对返回的status字段做修正，如"CR"显示为"Created"，可设置：
 
@@ -673,7 +673,7 @@ TODO: 可加一个系统参数`_enc`表示输出编码的格式。
 也可以设置为自定义函数，如：
 
 	$map = ["CR"=>"Created", "CA"=>"Cancelled"];
-	$this->enumFields["status"] = function($v) use ($map) {
+	$this->enumFields["status"] = function($v, $row) use ($map) {
 		if (array_key_exists($v, $map))
 			return $v . "-" . $map[$v];
 		return $v;
@@ -703,7 +703,7 @@ enumFields机制支持字段别名，比如若调用`Ordr.query(res="id 编号,s
 
 	protected function onQuery() {
 		if ($this->isFileExport()) {
-			$this->enumFields["inv"] = function($v) {
+			$this->enumFields["inv"] = function($v, $row) {
 				if (is_array($v)) {
 					$v = join(',', array_map(function ($e) {
 						if ($e['qty'] != 1.0)
@@ -762,7 +762,7 @@ class AccessControl
 	protected $requiredFields2 = [];
 	# for get/query
 	protected $hiddenFields = [];
-	protected $enumFields = []; // elem: {field => {key=>val}} 或 {field => fn(val)}，与onHandleRow类似地去修改数据。
+	protected $enumFields = []; // elem: {field => {key=>val}} 或 {field => fn(val, row)}，与onHandleRow类似地去修改数据。
 	protected $aliasMap = []; // { col => alias}
 	# for query
 	protected $defaultRes = "*"; // 缺省为 "t0.*" 加  default=true的虚拟字段
@@ -806,7 +806,7 @@ $var AccessControl::$uuid ?=false 将id伪装为uuid
 
 其原理为在onQuery中添加：
 
-	$this->enumFields["id"] = function($v) {
+	$this->enumFields["id"] = function($v, $row) {
 		return jdEncryptI($v, "E", "hex");
 	};
 
@@ -960,7 +960,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 
 		$this->onQuery();
 		if ($this->uuid) {
-			$this->enumFields["id"] = function($v) {
+			$this->enumFields["id"] = function($v, $row) {
 				return jdEncryptI($v, "E", "hex");
 			};
 		}
@@ -1110,7 +1110,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			if (array_key_exists($field, $rowData)) {
 				$v = $rowData[$field];
 				if (is_callable($map)) {
-					$v = $map($v);
+					$v = $map($v, $rowData);
 				}
 				else if (array_key_exists($v, $map)) {
 					$v = $map[$v];
