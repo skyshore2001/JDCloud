@@ -110,6 +110,8 @@ JS:
 		}
 	}
 
+## 右键菜单
+
 @param opt.menu 设置右键菜单
 
 在预览区右键单击会出现菜单，默认有“删除”菜单。
@@ -163,6 +165,18 @@ HTML: 在data-options中指定菜单的ID和显示文字。缺省头像将添加
 		}
 	});
 	
+## 音频等文件上传
+
+@param opt.accept 指定可上传的文件类型
+
+示例：上传单个音频文件，如m4a, mp3等格式。
+
+	<td>文件</td>
+	<td class="wui-upload" data-options="multiple:false,pic:false,accept:'audio/*'">
+		<input name="attId">
+		<p class="hint">要求格式m4a,mp3,wav; 采样率为16000</p>
+	</td>
+
  */
 self.m_enhanceFn[".wui-upload"] = enhanceUpload;
 
@@ -182,9 +196,10 @@ function enhanceUpload(jupload)
 		opt.fname = !opt.pic; // 非图片时，自动保存文件名
 
 	var jname = jupload.find("input[name]:first");
-	var jimgs = $('<div class="imgs"></div>').appendTo(jupload);
-	var jfile = $('<input type="file">').appendTo(jupload);
-	var jedit = $('<p class="hint"><a href="javascript:;" class="btnEditAtts">编辑文本</a> 右键删除</p>').appendTo(jupload);
+	var jimgs = $('<div class="imgs"></div>');
+	var jfile = $('<input type="file">');
+	var jedit = $('<p class="hint"><a href="javascript:;" class="btnEditAtts">编辑文本</a> 右键删除</p>');
+	jname.after(jimgs, jfile, jedit);
 
 	jupload.css("white-space", "normal");
 	jupload.find(".btnEditAtts").click(function () {
@@ -193,7 +208,10 @@ function enhanceUpload(jupload)
 
 	jfile.prop("multiple", opt.multiple);
 
-	if (opt.pic) {
+	if (opt.accept) {
+		jfile.attr("accept", opt.accept);
+	}
+	else if (opt.pic) {
 		jfile.attr("accept", "image/*");
 	}
 	jfile.change(onChooseFile);
@@ -378,11 +396,9 @@ function imgToHidden(jp, sep)
 	else {
 		var files = [];
 		jp.find(".imgs a").each(function() {
-			if (opt.multiple) {
-				var att = $(this).attr('att');
-				if (att)
-					val.push(att);
-			}
+			var att = $(this).attr('att');
+			if (att)
+				val.push(att);
 			if (this.fileObj_)
 				files.push(this.fileObj_);
 		});
