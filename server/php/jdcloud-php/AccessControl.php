@@ -864,16 +864,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			throw new MyException(!hasPerm(AUTH_LOGIN)? E_NOAUTH: E_FORBIDDEN, "Operation is not allowed for current user on object `$tbl`");
 		}
 		$x = new $cls;
-		$x->init($tbl, $ac);
 		return $x;
-	}
-
-	function init($tbl, $ac)
-	{
-		if (is_null($this->table))
-			$this->table = $tbl;
-		$this->ac = $ac;
-		$this->onInit();
 	}
 
 	/*
@@ -1046,7 +1037,51 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		$this->onValidate();
 	}
 
-	final function before()
+/**
+@fn AccessControl::callSvc($tbl, $ac, $param=null, $postParam=null)
+
+直接调用指定类的接口，如内部直接调用"PdiRecord.query"方法：
+
+	// 假如当前是AC2权限，对应的AC类为AC2_PdiRecord:
+	$acObj = new AC2_PdiRecord();
+	$acObj->callSvc("PdiRecord", "query");
+
+这相当于调用`callSvcInt("PdiRecord.query")`。
+区别是，用本方法可自由指定任意AC类，无须根据当前权限自动匹配类。
+
+例如，"PdiRecord.query"接口不对外开放，只对内开放，我们就可以只定义`class PdiRecord extends AccessControl`（无AC前缀，外界无法访问），在内部访问它的query接口：
+
+	$acObj = new PdiRecord();
+	$acObj->callSvc("PdiRecord", "query");
+
+如果未指定param/postParam，则使用当前GET/POST环境参数执行，否则使用指定环境执行，并在执行后恢复当前环境。
+
+@see callSvc
+@see callSvcInt
+*/
+	final function callSvc($tbl, $ac, $param=null, $postParam=null)
+	{
+		if ($param || $postParam) {
+			return tmpEnv($param, $postParam, function () use ($tbl, $ac) {
+				return $this->callSvc($tbl, $ac);
+			});
+		}
+
+		if (is_null($this->table))
+			$this->table = $tbl;
+		$this->ac = $ac;
+		$this->onInit();
+
+		$fn = "api_" . $ac;
+		if (! is_callable([$this, $fn]))
+			throw new MyException(E_PARAM, "Bad request - unknown `$tbl` method: `$ac`", "接口不支持");
+		$this->before();
+		$ret = $this->$fn();
+		$this->after($ret);
+		return $ret;
+	}
+
+	protected final function before()
 	{
 		$ac = $this->ac;
 		if (isset($this->allowedAc) && in_array($ac, self::$stdAc) && !in_array($ac, $this->allowedAc)) {
@@ -1064,7 +1099,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		"setIf" => "批量更新",
 		"delIf" => "批量删除"
 	];
-	final function after(&$ret) 
+	protected final function after(&$ret) 
 	{
 		// 确保只调用一次
 		if ($this->afterIsCalled)
@@ -1586,6 +1621,11 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		return 0;
 	}
 
+/**
+@fn AccessControl::api_add()
+
+标准对象添加接口。
+*/
 	function api_add()
 	{
 		$this->validate();
@@ -1611,6 +1651,11 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		return $ret;
 	}
 
+/**
+@fn AccessControl::api_set()
+
+标准对象设置接口。api函数应通过callSvc调用，不应直接调用。
+*/
 	function api_set()
 	{
 		$this->onValidateId();
@@ -1672,6 +1717,11 @@ FROM ($sql) t0";
 		return $sql;
 	}
 
+/**
+@fn AccessControl::api_get()
+
+标准对象获取接口。api函数应通过callSvc调用，不应直接调用。
+*/
 	function api_get()
 	{
 		$this->onValidateId();
@@ -1696,6 +1746,28 @@ FROM ($sql) t0";
 		return $ret;
 	}
 
+/**
+@fn AccessControl::api_query()
+
+标准对象查询接口（列表）。api函数应通过callSvc调用，不应直接调用。
+
+接口参数有：res, cond, pagesz, pagekey, orderby, gres, union, fmt等。(参见DACA架构接口文档)
+
+内部调用时还支持以下参数：
+
+- res2, cond2: 它们要求为数组，数组的每一项与res, cond含义相同。这样不覆盖res, cond参数（从而外部仍可以使用它们）。
+- join: 要求为数组。指定关联表。
+- subobj: 指定子对象。
+
+调用示例：
+
+	// 定死res外部无法覆盖, 但外部可额外指定cond参数
+	$ret = callSvcInt("PdiRecord.query", [
+		"res": "id,vinCode,result,orderId,tm",
+		"cond2": ["type='EQ'", "tm>='2019-1-1'"]
+	]);
+
+*/
 	function api_query()
 	{
 		$this->initQuery();
@@ -1853,6 +1925,11 @@ FROM ($sql) t0";
 		return $ret;
 	}
 
+/**
+@fn AccessControl::api_del()
+
+标准对象删除接口。api函数应通过callSvc调用，不应直接调用。
+*/
 	function api_del()
 	{
 		$this->onValidateId();

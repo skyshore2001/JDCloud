@@ -1207,6 +1207,8 @@ $file为插件主文件，可返回一个插件配置。如果未指定，则自
 /**
 @fn tableCRUD($ac, $tbl, $asAdmin?=false)
 
+(v5.4)本函数仅做兼容使用，请用`callSvcInt`或`AccessControl::callSvc`方法替代。
+
 对象型接口的入口。
 也可直接被调用，常与setParam一起使用, 提供一些定制的操作。
 
@@ -1242,7 +1244,23 @@ $file为插件主文件，可返回一个插件配置。如果未指定，则自
 	}
 
 注意：
-- 以上示例中的设计不可取，应使用标准对象接口来实现这个需求。
+一般应直接使用标准对象接口来实现需求，有时可能出于特别需要，不方便暴露标准接口，可以对标准接口进行了包装，定死一些参数。
+v5.4后建议这样实现：
+
+	function api_queryRating()
+	{
+		$storeId = mparam("storeId");
+
+		// 或用callSvcInt
+		$acObj = new AccessControl(); // 或 AC2_Rating，根据需要创建指定的类
+		$ret = $acObj->callSvc("Rating", "query", [
+			// 定死输出内容。
+			"res" => "id, score, dscr, tm, orderDscr",
+			"cond2" => ["storeId=$storeId"],
+			"orderby" => "tm DESC"
+		]);
+		return $ret;
+	}
 
 @see setParam
 @see callSvcInt
@@ -1251,15 +1269,8 @@ $file为插件主文件，可返回一个插件配置。如果未指定，则自
 
 function tableCRUD($ac1, $tbl, $asAdmin = false)
 {
-	$accessCtl = AccessControl::create($tbl, $ac1, $asAdmin);
-	$fn = "api_" . $ac1;
-	//if (! method_exists($accessCtl, $fn))
-	if (! is_callable([$accessCtl, $fn]))
-		throw new MyException(E_PARAM, "Bad request - unknown `$tbl` method: `$ac1`", "接口不支持");
-	$accessCtl->before();
-	$ret = $accessCtl->$fn();
-	$accessCtl->after($ret);
-	return $ret;
+	$acObj = AccessControl::create($tbl, $ac1, $asAdmin);
+	return $acObj->callSvc($tbl, $ac1);
 }
 
 /**
@@ -1291,18 +1302,18 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 */
 function callSvcInt($ac, $param=null, $postParam=null)
 {
-	if ($param || $postParam)
-		return callSvcInt2_($ac, $param, $postParam);
-	return callSvcInt_($ac);
-}
+	if ($param || $postParam) {
+		return tmpEnv($param, $postParam, function () use ($ac) {
+			return callSvcInt($ac);
+		});
+	}
 
-function callSvcInt_($ac)
-{
 	$fn = "api_$ac";
 	if (preg_match('/^([A-Z]\w*)\.([a-z]\w*)$/u', $ac, $ms)) {
 		list($tmp, $tbl, $ac1) = $ms;
 		// TODO: check meta
-		$ret = tableCRUD($ac1, $tbl);
+		$acObj = AccessControl::create($tbl, $ac1);
+		$ret = $acObj->callSvc($tbl, $ac1);
 	}
 	elseif (function_exists($fn)) {
 		$ret = $fn();
@@ -1315,7 +1326,19 @@ function callSvcInt_($ac)
 	return $ret;
 }
 
-function callSvcInt2_($ac, $param=null, $postParam=null)
+/**
+@fn tmpEnv($param, $postParam, $fn)
+
+(v5.4) 在指定的GET/POST参数下执行fn函数，执行完后恢复初始环境。
+示例：
+
+	$param = ["cond" => "createTm>'2019-1-1'];
+	$ret = tmpEnv($param, null, function () {
+		return callSvcInt("User.query");
+	});
+
+*/
+function tmpEnv($param, $postParam, $fn)
 {
 	$bak = [$_GET, $_POST, $_REQUEST];
 	if ($param) {
@@ -1329,7 +1352,7 @@ function callSvcInt2_($ac, $param=null, $postParam=null)
 	$ret = null;
 	$ex = null;
 	try {
-		$ret = callSvcInt_($ac);
+		$ret = $fn();
 	}
 	catch (Exception $ex1) {
 		$ex = $ex1;
