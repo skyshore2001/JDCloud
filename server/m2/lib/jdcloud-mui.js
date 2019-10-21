@@ -134,7 +134,7 @@ app.css中定义了`btn-icon`为顶栏图标按钮类，如果在`hd`中有多�
 	}
 
 @event pagecreate(ev) DOM事件。this为当前页面，习惯名为jpage。
-@event pagebeforeshow(ev, opt) DOM事件。this为当前页面。opt参数为`MUI.showPage(pageRef, opt?)`中的opt，如未指定则为`{}`
+@event pagebeforeshow(ev, opt) DOM事件。this为当前页面。opt参数为`MUI.showPage(pageRef, opt?)`中的opt，如未指定则为`{}`。(v5.4) 设置backNoRefresh选项会忽略此事件，这时可用pagebeforeshow.always替代。
 @event pageshow(ev, opt)  DOM事件。this为当前页面。opt参数与pagebeforeshow事件的opt参数一样。
 @event pagehide(ev) DOM事件。this为当前页面。
 
@@ -4784,6 +4784,8 @@ opt.url:: String. 指定在地址栏显示的地址。如 `showPage("#order", {u
 实际为A->B页面跳转后，此后若有B->A跳转，不触发A页面的pagebeforeshow事件。
 在initPage时，也可直接在页面上设置: `jpage.prop("backNoRefresh", ["page1", "page2"])`, 表示从page1, page2转到当前页面，不触发pagebeforeshow事件。注意，数组中保存的是pageId，不是pageRef.
 
+(v5.4) 设置backNoRefresh选项会导致pagebeforeshow事件不触发，对于必须依赖pagebeforeshow事件的逻辑，可以监听`pagebeforeshow.always`事件。
+
 (v5.3)
 支持一个页面模板可创建多个页面实例。
 
@@ -4984,6 +4986,8 @@ function showPage(pageRef, opt)
 
 		if (!skipBeforeShow)
 			jpage.trigger("pagebeforeshow", [showPageOpt_]);
+		else
+			jpage.trigger("pagebeforeshow.always", [showPageOpt_]);
 		// 如果在pagebeforeshow中调用showPage显示其它页，则不显示当前页，避免页面闪烁。
 		if (toPageId != m_toPageId)
 		{
@@ -5290,7 +5294,7 @@ function enhanceFooter(jfooter)
 		return id2nav[pageId];
 	}
 
-	$(document).on("pagebeforeshow", function (ev) {
+	$(document).on("pagebeforeshow.always", function (ev) {
 		var jpage = $(ev.target);
 		var pageId = jpage.attr("id");
 		if (m_toPageId != pageId)
