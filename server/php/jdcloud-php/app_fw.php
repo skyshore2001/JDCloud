@@ -1647,7 +1647,9 @@ function jdEncrypt($string, $enc='E', $fmt='b64', $key=null, $vcnt=4)
 		return preg_replace('/=+$/', '', base64_encode($result));
 	}
 	else if ($enc == 'D') {
-		$data = $fmt=='hex'? hex2bin($string): base64_decode($string);
+		@$data = $fmt=='hex'? hex2bin($string): base64_decode($string);
+		if ($data === false)
+			return false;
 		$result = rc4($data, $key);
 		$result1 = substr($result,$vcnt);
 		if (substr($result,0,$vcnt) != substr(md5($result1.$key),0,$vcnt))
