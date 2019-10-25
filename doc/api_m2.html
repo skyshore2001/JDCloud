@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（移动Web版）</h1>
-<div>最后更新：2019-10-17</div>
+<div>最后更新：2019-10-25</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -77,6 +77,7 @@ code {
 <p><a href="#DirectReturn">DirectReturn (class)</a></p>
 <p><a href="#FormMode">FormMode (var)</a></p>
 <p><a href="#MUI">MUI (module)</a></p>
+<p><a href="#MUI.UploadPic">MUI.UploadPic (class)</a></p>
 <p><a href="#Plugins">Plugins (class)</a></p>
 <p><a href="#Plugins.exists">Plugins.exists (fn)</a></p>
 <p><a href="#Plugins.list">Plugins.list (fn)</a></p>
@@ -97,6 +98,7 @@ code {
 <p><a href="#callSvrExt[].dataFilter">callSvrExt[].dataFilter (key)</a></p>
 <p><a href="#callSvrExt[].makeUrl">callSvrExt[].makeUrl (key)</a></p>
 <p><a href="#callSvrSync">callSvrSync (fn)</a></p>
+<p><a href="#changepic">changepic (event)</a></p>
 <p><a href="#closeDialog">closeDialog (fn)</a></p>
 <p><a href="#compressImg">compressImg (fn)</a></p>
 <p><a href="#container">container (var)</a></p>
@@ -374,7 +376,7 @@ hd一般用于显示页面标题、返回和菜单。在hd中出现的第一个h
     return jpage;
 }</code></pre>
 <p class="event"><strong>@event <a id="pagecreate">pagecreate</a></strong> (ev) DOM事件。this为当前页面，习惯名为jpage。</p>
-<p class="event"><strong>@event <a id="pagebeforeshow">pagebeforeshow</a></strong> (ev, opt) DOM事件。this为当前页面。opt参数为`MUI.showPage(pageRef, opt?)`中的opt，如未指定则为`{}`</p>
+<p class="event"><strong>@event <a id="pagebeforeshow">pagebeforeshow</a></strong> (ev, opt) DOM事件。this为当前页面。opt参数为`MUI.showPage(pageRef, opt?)`中的opt，如未指定则为`{}`。(v5.4) 设置backNoRefresh选项会忽略此事件，这时可用pagebeforeshow.always替代。</p>
 <p class="event"><strong>@event <a id="pageshow">pageshow</a></strong> (ev, opt)  DOM事件。this为当前页面。opt参数与pagebeforeshow事件的opt参数一样。</p>
 <p class="event"><strong>@event <a id="pagehide">pagehide</a></strong> (ev) DOM事件。this为当前页面。</p>
 <h6 id="MUI-1.2.1 逻辑页内嵌style">1.2.1 逻辑页内嵌style</h6>
@@ -2031,6 +2033,7 @@ function initPageOrder()
 <p class="param"><strong>@param opt.backNoRefresh</strong>  ?=false 从新页面返回后，不要刷新当前页</p>
 <p>实际为A-&gt;B页面跳转后，此后若有B-&gt;A跳转，不触发A页面的pagebeforeshow事件。<br />
 在initPage时，也可直接在页面上设置: <code>jpage.prop("backNoRefresh", ["page1", "page2"])</code>, 表示从page1, page2转到当前页面，不触发pagebeforeshow事件。注意，数组中保存的是pageId，不是pageRef.</p>
+<p>(v5.4) 设置backNoRefresh选项会导致pagebeforeshow事件不触发，对于必须依赖pagebeforeshow事件的逻辑，可以监听<code>pagebeforeshow.always</code>事件。</p>
 <p>(v5.3)<br />
 支持一个页面模板可创建多个页面实例。</p>
 <pre><code>MUI.showPage("udt__费用");
@@ -3096,6 +3099,161 @@ PagePerson.showForSet({id: 3}); // 以id=3查询人物并显示，可更新。</
     },
 }</code></pre>
 <p class="see"><strong>@see <a href="#setFormSubmit">setFormSubmit</a></strong> </p></div>
+<div class="block">
+<h2 id="MUI.UploadPic">@class MUI.UploadPic(jo, opt/optfn)</h2><div class="toc"><p style="margin-left:0em"><a href="#MUI.UploadPic-1 清空与重置">1 清空与重置</a></p>
+<p style="margin-left:0em"><a href="#MUI.UploadPic-2 设置只读，不可添加删除图片">2 设置只读，不可添加删除图片</a></p>
+<p style="margin-left:0em"><a href="#MUI.UploadPic-3 获取图片数">3 获取图片数</a></p>
+<p style="margin-left:0em"><a href="#MUI.UploadPic-4 指定上传区操作">4 指定上传区操作</a></p>
+</div>
+<p class="param"><strong>@param jo</strong>  jQuery DOM对象, 它是uploadpic类，或是包含一个或多个uploadpic类（上传区）的DOM对象。</p>
+<p class="param"><strong>@param opt</strong>  {uploadParam?} 兼容MUI.compressImg函数opt参数，如 {quality=0.8, maxSize=1280, ...}</p>
+<p>opt也可以是一个函数: optfn(jo) - jo为上传区, 返回该区的设置，这样就支持为每个上传区定义不同的选项。</p>
+<p>初始化之后也可以这样为每一个上传区指定option:</p>
+<pre><code>var opt = MUI.getOptions(jo);
+opt.xx =xxx;</code></pre>
+<p class="param"><strong>@param opt.uploadParam</strong>  调用upload接口的额外参数。</p>
+<p>目前调用筋斗云upload接口，使用参数<code>{genThumb:1, autoResize:0}</code>，可以通过uploadParam指定额外参数。</p>
+<p>注意：</p>
+<ul>
+<li>加载 jdcloud-uploadpic.js</li>
+<li>以uploadpic开头的类所需CSS，目前放在app.css中。</li>
+<li>预览大图依赖weui库中的样式。</li>
+</ul>
+<p>引入库：由于要上传功能的页面不多，建议只在逻辑页面用到的时候引入，像这样：</p>
+<pre><code>&lt;div mui-initfn="initPagePic" mui-script="pic.js" mui-deferred="loadUploadLib()"&gt;</code></pre>
+<p>loadUploadLib在app.js中有示例。在预览图片时，它自动检查和调用photoswipe库，优先用该库来预览。</p>
+<p>示例HTML</p>
+<pre><code>&lt;!-- 单图上传区: 比如上传用户头像。这里把预览图和文件按钮合一了，点预览图即可再选择文件 --&gt;
+&lt;div class="uploadpic" id="userPic"&gt;
+  &lt;div class="uploadpic-btn uploadpic-item"&gt;
+    &lt;input type="file"&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+
+&lt;!-- 多图上传区：比如上传产品明细图片。 --&gt;
+&lt;div class="uploadpic" id="itemPics"&gt;
+  &lt;div class="uploadpic-btn"&gt;
+    &lt;input type="file" multiple&gt;
+  &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+<ul>
+<li>类uploadpic为上传区。</li>
+<li>类uploadpic-btn为文件选择区，其中包含的input[type=file]组件，如果没有multiple属性，则是单图上传区，只允许选择一张图预览和上传，否则为多图上传区，允许选择和上传多图。</li>
+<li>类uploadpic-item为预览位，每张图片对应一个预览位。点击预览位可以查看大图（Gallery页面）<br />
+如果当前没有预览位，则会在uploadpic内创建一个预览位；否则，在单图上传区中则会覆盖已有预览位，在多图上传区中会有已有上传位后再创建一个新的预览位。</li>
+<li>如果在uploadpic中预先定义了uploadpic-item类对象，称为固定预览位，常用于自行指定预览位位置或样式。程序自动创建的预览位称为动态预览位。<br />
+选择图片后，如果有空闲的固定预览位，则在该预览位显示预览，否则动态创建新的预览位（clone第一个固定预览位）</li>
+<li>在删除图片时，如果图片在动态预览位，则会删除预览位，否则只是清空预览位的背景。</li>
+</ul>
+<p>JS</p>
+<pre><code>// 如果已有图片需要预览，将缩略图ID列表传入data-atts属性，在new UploadPic时会根据Id在图片预览区加上已经存在的图片
+jpage.find("#userPic").attr("data-atts", "208");
+jpage.find("#itemPics").attr("data-atts", "210,212,214");</code></pre>
+<p>也可以在上传区内放置一个带name属性的input, 框架将优先从它取值或设置值, 这样就不用手工取值和赋值了, 比如:</p>
+<pre><code>&lt;div class="uploadpic"&gt;
+    // 这个input的value将与data-atts一致.
+    &lt;input name="itemPics" style="display:none"&gt;
+    &lt;div class="uploadpic-btn"&gt;
+        &lt;input type="file" multiple&gt;
+    &lt;/div&gt;
+&lt;/div&gt;
+
+// 初始化，显示预览图
+var uploadPic = new MUI.UploadPic(jpage); // 可直接传uploadpic类的jQuery对象或包含它的jQuery DOM对象
+// var uploadPic = new MUI.UploadPic(jpage, {maxSize:1600, uploadParam:{type:"task"}} ); // 指定选项
+
+// 如果重新设置了data-atts属性，可调用
+// uploadPic.reset();
+
+// 点击提交时调用submit，当上传完成后，
+uploadPic.submit().then(function (userPic, itemPics) {
+
+});
+
+// 如果要精细控制上传进度：
+var dfd = uploadPic.submit(onUpload, onUploadProgress, onNoWork);
+dfd.then(onUploadDone);</code></pre>
+<p>onUpload回调仅当需要上传照片或删除照片时调用，在照片上传完成后触发。一般用于将照片列表更新到相应对象上。如果有多个上传区更新，则会分别调用。<br />
+attIds为上传后返回的缩略图Id数组，this为当前上传区的jQuery对象。<br />
+如果函数返回一个Deferred对象（如callSvr调用），则onUploadDone（以及onUploadProgress的最后一次progress.done=true的回调）会在所有这些调用完成之后才触发。</p>
+<pre><code>// 每个上传区一旦有图片更新，则调用Task1.set更新图片列表。
+function onUpload(attIds) {
+    // this对象为当前uploadpic
+    var pics = attIds.join(',');
+    var task = this.data("task_");
+    // 如果返回一个Deferred对象，则progress.done会等待该事件结束才发生
+    return callSvr("Task1.set", {id: task.id}, $.noop, {pics: pics});
+}</code></pre>
+<p>onUploadProgress用于显示上传进度。如果未指定，框架使用默认的进度提示，同时会在console中显示上传进度。如下所示：</p>
+<pre><code>// progress: {curPicCnt/已上传照片数, picCnt/总共需上传的照片数, curAreaCnt/已完成的上传区数, areaCnt/总共需更新的上传区数, curSize/当前已完成的上传大小, size/总上传大小, done/是否全部完成, percent/上传完成百分数0-100}
+// 示例：利用app_alert显示进度。
+function onUploadProgress(progress)
+{
+    var info = progress.picCnt&gt;0? "正在上传... " + progress.percent + "% - " + progress.curPicCnt + "/" + progress.picCnt + "张照片": "更新照片";
+    var alertOpt = {keep: true};
+    if (progress.done) {
+        info += " - &lt;b&gt;完成!&lt;/b&gt;";
+        alertOpt.timeoutInterval = 500;
+    }
+    else {
+        info += "...";
+    }
+    app_alert(info, alertOpt);
+}</code></pre>
+<p>onNoWork在无任何更新时回调。这时onUpload和onUploadProgress都不会被调用到。</p>
+<pre><code>function onNoWork() {
+    app_alert("都保存好了。");
+}</code></pre>
+<p>onUploadDone在全部上传完成后调用，参数分别为每个上传区的图片编号数组（不论该上传区是否需要更新）。</p>
+<pre><code>function onUploadDone(attIds, attIds1) {
+    // arguments
+}</code></pre>
+<p>在预览位uploadpic-item对象上，设置了以下属性：</p>
+<ul>
+<li>ji.prop(&quot;picData_&quot;) -&gt; {b64src,blob,w,h,size,...} (参考compressImg的回调函数cb的参数)<br />
+当选择的图片进行压缩后，数据存储在picData_中。b64src字段可作为url显示图片。在上传服务端后该数据被清空。</li>
+<li>ji.prop(&quot;attId_&quot;) -&gt; 对应的图片（缩略图）编号。仅当在服务器上已有才显示。</li>
+<li>ji.prop(&quot;isFixed_&quot;) -&gt; true表示固定预览位，只能清空，不可被删除。</li>
+<li>ji.css(&quot;background-image&quot;); -&gt; 缩略图片的url。如果是待上传或刚刚上传的图片，则是大图的base64编码url。</li>
+</ul>
+<p>在上传区uploadpic对象上，私有数据存储在MUI.getOptions(jo)中：</p>
+<ul>
+<li>isMul: 标识是多图上传区。在安卓手机上，由于对文件选择框的multiple属性支持不好，常常去掉和禁用它。所以内部使用isMul属性来区分。</li>
+<li>delMark_: 标识是否有删除图片操作。在submit后恢复为null.</li>
+</ul>
+<p class="see"><strong>@see <a href="#compressImg">compressImg</a></strong> </p>
+<p class="event"><strong>@event <a id="changepic">changepic</a></strong>  uploadpic对应的jquery对象事件，在添加或删除图片时触发</p>
+<p>示例：在选择图片后显示预览区，无图片则不显示</p>
+<pre><code>&lt;div class="" v-show='uploadObjNum&gt;0'&gt;
+    &lt;div class="uploadpic"&gt;...&lt;/div&gt;
+&lt;/div&gt;
+
+// 注意：添加多张图片时，会连续触发多次
+jpage.find("#addMsg").on("changepic", function (ev) {
+    console.log('changepic');
+    vm.uploadObjNum = uploadPic.countPic();
+});</code></pre>
+<h4 id="MUI.UploadPic-1 清空与重置">1 清空与重置</h4>
+<p>清空全部图片：</p>
+<pre><code>uploadPic.empty();
+// 等价于 uploadPic.reset(true);</code></pre>
+<p>修改了data-atts属性后重新刷新显示：</p>
+<pre><code>uploadPic.reset();</code></pre>
+<h4 id="MUI.UploadPic-2 设置只读，不可添加删除图片">2 设置只读，不可添加删除图片</h4>
+<pre><code>uploadPic.readonly(true);
+var isReadonly = uploadPic.readonly();</code></pre>
+<h4 id="MUI.UploadPic-3 获取图片数">3 获取图片数</h4>
+<p>要判断预览区有几张图，可以用：</p>
+<pre><code>var cnt = uploadPic.countPic(); // 总图片数
+var oldCnt = uploadPic.countPic(1); // 已有图片数
+var newCnt = uploadPic.countPic(2); // 新选择的图片数</code></pre>
+<h4 id="MUI.UploadPic-4 指定上传区操作">4 指定上传区操作</h4>
+<p>当uploadPic包含多个上传区时，可以用filter指定之后的方法是针对哪一个区。注意filter只对下一次调用有效。</p>
+<pre><code>uploadPic.filter(idx).其它方法(); // idx为下标或jQuery的filter</code></pre>
+<p>示例：</p>
+<pre><code>var cnt = uploadPic.filter(0).countPic();
+// 等价于 var cnt = uploadPic.filter(":eq(0)").countPic;
+uploadPic.filter(".storePics").empty();</code></pre></div>
 <div style="text-align:center">Generated by jdcloud-gendoc</div>
 </body>
 

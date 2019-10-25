@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2019-10-17</div>
+<div>最后更新：2019-10-25</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -78,9 +78,15 @@ code {
 <p><a href="#AccessControl::addJoin">AccessControl::addJoin (fn)</a></p>
 <p><a href="#AccessControl::addRes">AccessControl::addRes (fn)</a></p>
 <p><a href="#AccessControl::addVCol">AccessControl::addVCol (fn)</a></p>
+<p><a href="#AccessControl::api_add">AccessControl::api_add (fn)</a></p>
 <p><a href="#AccessControl::api_batchAdd">AccessControl::api_batchAdd (fn)</a></p>
+<p><a href="#AccessControl::api_del">AccessControl::api_del (fn)</a></p>
 <p><a href="#AccessControl::api_delIf">AccessControl::api_delIf (fn)</a></p>
+<p><a href="#AccessControl::api_get">AccessControl::api_get (fn)</a></p>
+<p><a href="#AccessControl::api_query">AccessControl::api_query (fn)</a></p>
+<p><a href="#AccessControl::api_set">AccessControl::api_set (fn)</a></p>
 <p><a href="#AccessControl::api_setIf">AccessControl::api_setIf (fn)</a></p>
+<p><a href="#AccessControl::callSvc">AccessControl::callSvc (fn)</a></p>
 <p><a href="#AccessControl::checkSetFields">AccessControl::checkSetFields (fn)</a></p>
 <p><a href="#AccessControl::getMaxPageSz">AccessControl::getMaxPageSz (fn)</a></p>
 <p><a href="#AccessControl::isFileExport">AccessControl::isFileExport (fn)</a></p>
@@ -210,6 +216,7 @@ code {
 <p><a href="#table2objarr">table2objarr (fn)</a></p>
 <p><a href="#tableCRUD">tableCRUD (fn)</a></p>
 <p><a href="#tmCols">tmCols (fn)</a></p>
+<p><a href="#tmpEnv">tmpEnv (fn)</a></p>
 <p><a href="#tobool">tobool (fn)</a></p>
 <p><a href="#tryParseBool">tryParseBool (fn)</a></p>
 <p><a href="#urlEncodeArr">urlEncodeArr (fn)</a></p>
@@ -1687,6 +1694,7 @@ $file为插件主文件，可返回一个插件配置。如果未指定，则自
 <h2 id="Plugins::exists">@fn Plugins::exists($pluginName)</h2></div>
 <div class="block">
 <h2 id="tableCRUD">@fn tableCRUD($ac, $tbl, $asAdmin?=false)</h2>
+<p>(v5.4)本函数仅做兼容使用，请用<code>callSvcInt</code>或<code>AccessControl::callSvc</code>方法替代。</p>
 <p>对象型接口的入口。<br />
 也可直接被调用，常与setParam一起使用, 提供一些定制的操作。</p>
 <p class="param"><strong>@param $asAdmin</strong>  默认根据用户身份自动选择"AC_"类; 如果为true, 则以超级管理员身份调用，即使用"AC0_"类。</p>
@@ -1715,10 +1723,23 @@ $file为插件主文件，可返回一个插件配置。如果未指定，则自
     $ret = tableCRUD("query", "Rating", true);
     return $ret;
 }</code></pre>
-<p>注意：</p>
-<ul>
-<li>以上示例中的设计不可取，应使用标准对象接口来实现这个需求。</li>
-</ul>
+<p>注意：<br />
+一般应直接使用标准对象接口来实现需求，有时可能出于特别需要，不方便暴露标准接口，可以对标准接口进行了包装，定死一些参数。<br />
+v5.4后建议这样实现：</p>
+<pre><code>function api_queryRating()
+{
+    $storeId = mparam("storeId");
+
+    // 或用callSvcInt
+    $acObj = new AccessControl(); // 或 AC2_Rating，根据需要创建指定的类
+    $ret = $acObj-&gt;callSvc("Rating", "query", [
+        // 定死输出内容。
+        "res" =&gt; "id, score, dscr, tm, orderDscr",
+        "cond2" =&gt; ["storeId=$storeId"],
+        "orderby" =&gt; "tm DESC"
+    ]);
+    return $ret;
+}</code></pre>
 <p class="see"><strong>@see <a href="#setParam">setParam</a></strong> </p>
 <p class="see"><strong>@see <a href="#callSvcInt">callSvcInt</a></strong> </p>
 <p class="see"><strong>@see <a href="#callSvc">callSvc</a></strong> </p></div>
@@ -1741,6 +1762,14 @@ $_POST[key] = value; // 设置post参数</code></pre>
 <p class="see"><strong>@see <a href="#setParam">setParam</a></strong> </p>
 <p class="see"><strong>@see <a href="#tableCRUD">tableCRUD</a></strong> </p>
 <p class="see"><strong>@see <a href="#callSvc">callSvc</a></strong> </p></div>
+<div class="block">
+<h2 id="tmpEnv">@fn tmpEnv($param, $postParam, $fn)</h2>
+<p>(v5.4) 在指定的GET/POST参数下执行fn函数，执行完后恢复初始环境。<br />
+示例：</p>
+<pre><code>$param = ["cond" =&gt; "createTm&gt;'2019-1-1'];
+$ret = tmpEnv($param, null, function () {
+    return callSvcInt("User.query");
+});</code></pre></div>
 <div class="block">
 <h2 id="api_checkIp">@fn api_checkIp()</h2>
 <p class="key"><strong>@key <a id="whiteIpList">whiteIpList</a></strong>  白名单配置.</p>
@@ -2318,12 +2347,12 @@ ORDER BY t0.id DESC)&quot;;<br />
 <pre><code>$this-&gt;sqlConf["distinct"] =1;</code></pre>
 <h5 id="AccessControl-5.8 枚举支持及自定义字段处理">5.8 枚举支持及自定义字段处理</h5>
 <p>(版本5.0)</p>
-<p class="var"><strong>@var <a id="AccessControl::$enumFields">AccessControl::$enumFields</a></strong>  {field => map/fn($val) }支持处理枚举字段，或自定义处理。</p>
+<p class="var"><strong>@var <a id="AccessControl::$enumFields">AccessControl::$enumFields</a></strong>  {field => map/fn($val, $row) }支持处理枚举字段，或自定义处理。</p>
 <p>作为比onHandleRow/onAfterActions等更易用的工具，enumFields可对返回字段做修正。例如，想要对返回的status字段做修正，如&quot;CR&quot;显示为&quot;Created&quot;，可设置：</p>
 <pre><code>$this-&gt;enumFields["status"] = ["CR"=&gt;"Created", "CA"=&gt;"Cancelled"];</code></pre>
 <p>也可以设置为自定义函数，如：</p>
 <pre><code>$map = ["CR"=&gt;"Created", "CA"=&gt;"Cancelled"];
-$this-&gt;enumFields["status"] = function($v) use ($map) {
+$this-&gt;enumFields["status"] = function($v, $row) use ($map) {
     if (array_key_exists($v, $map))
         return $v . "-" . $map[$v];
     return $v;
@@ -2344,7 +2373,7 @@ Ordr.query(res="id 编号, status 状态=CR:Created;CA:Cancelled")</code></pre>
 (写在onQuery或onInit回调中均可)</p>
 <pre><code>protected function onQuery() {
     if ($this-&gt;isFileExport()) {
-        $this-&gt;enumFields["inv"] = function($v) {
+        $this-&gt;enumFields["inv"] = function($v, $row) {
             if (is_array($v)) {
                 $v = join(',', array_map(function ($e) {
                     if ($e['qty'] != 1.0)
@@ -2377,6 +2406,20 @@ Ordr.delIf(cond)</code></pre>
 }</code></pre>
 <p>setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更新。<br />
 也可以直接用checkSetFields指定哪些字段允许更新。</p></div>
+<div class="block">
+<h2 id="AccessControl::callSvc">@fn AccessControl::callSvc($tbl, $ac, $param=null, $postParam=null)</h2>
+<p>直接调用指定类的接口，如内部直接调用&quot;PdiRecord.query&quot;方法：</p>
+<pre><code>// 假如当前是AC2权限，对应的AC类为AC2_PdiRecord:
+$acObj = new AC2_PdiRecord();
+$acObj-&gt;callSvc("PdiRecord", "query");</code></pre>
+<p>这相当于调用<code>callSvcInt("PdiRecord.query")</code>。<br />
+区别是，用本方法可自由指定任意AC类，无须根据当前权限自动匹配类。</p>
+<p>例如，&quot;PdiRecord.query&quot;接口不对外开放，只对内开放，我们就可以只定义<code>class PdiRecord extends AccessControl</code>（无AC前缀，外界无法访问），在内部访问它的query接口：</p>
+<pre><code>$acObj = new PdiRecord();
+$acObj-&gt;callSvc("PdiRecord", "query");</code></pre>
+<p>如果未指定param/postParam，则使用当前GET/POST环境参数执行，否则使用指定环境执行，并在执行后恢复当前环境。</p>
+<p class="see"><strong>@see <a href="#callSvc">callSvc</a></strong> </p>
+<p class="see"><strong>@see <a href="#callSvcInt">callSvcInt</a></strong> </p></div>
 <div class="block">
 <h2 id="AccessControl::addRes">@fn AccessControl::addRes($res, $analyzeCol=true)</h2>
 <p>定义新的虚拟字段，并添加到get/query接口的返回字段中。<br />
@@ -2459,6 +2502,34 @@ $this-&gt;addVCol("createTm");
 // 只引入createTm字段的关联表，不影响最终输出字段
 $this-&gt;addVCol("createTm", false, "-");</code></pre>
 <p class="see"><strong>@see <a href="#AccessControl::addRes">AccessControl::addRes</a></strong> </p></div>
+<div class="block">
+<h2 id="AccessControl::api_add">@fn AccessControl::api_add()</h2>
+<p>标准对象添加接口。</p></div>
+<div class="block">
+<h2 id="AccessControl::api_set">@fn AccessControl::api_set()</h2>
+<p>标准对象设置接口。api函数应通过callSvc调用，不应直接调用。</p></div>
+<div class="block">
+<h2 id="AccessControl::api_get">@fn AccessControl::api_get()</h2>
+<p>标准对象获取接口。api函数应通过callSvc调用，不应直接调用。</p></div>
+<div class="block">
+<h2 id="AccessControl::api_query">@fn AccessControl::api_query()</h2>
+<p>标准对象查询接口（列表）。api函数应通过callSvc调用，不应直接调用。</p>
+<p>接口参数有：res, cond, pagesz, pagekey, orderby, gres, union, fmt等。(参见DACA架构接口文档)</p>
+<p>内部调用时还支持以下参数：</p>
+<ul>
+<li>res2, cond2: 它们要求为数组，数组的每一项与res, cond含义相同。这样不覆盖res, cond参数（从而外部仍可以使用它们）。</li>
+<li>join: 要求为数组。指定关联表。</li>
+<li>subobj: 指定子对象。</li>
+</ul>
+<p>调用示例：</p>
+<pre><code>// 定死res外部无法覆盖, 但外部可额外指定cond参数
+$ret = callSvcInt("PdiRecord.query", [
+    "res": "id,vinCode,result,orderId,tm",
+    "cond2": ["type='EQ'", "tm&gt;='2019-1-1'"]
+]);</code></pre></div>
+<div class="block">
+<h2 id="AccessControl::api_del">@fn AccessControl::api_del()</h2>
+<p>标准对象删除接口。api函数应通过callSvc调用，不应直接调用。</p></div>
 <div class="block">
 <h2 id="AccessControl::checkSetFields">@fn AccessControl::checkSetFields($allowedFields)</h2>
 <p>e.g.<br />

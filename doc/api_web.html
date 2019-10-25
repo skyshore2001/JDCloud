@@ -40,21 +40,25 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2019-10-17</div>
+<div>最后更新：2019-10-25</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
 <p><a href="#WUI">WUI (module)</a></p>
 <p><a href="#jquery-mycombobox">jquery-mycombobox (module)</a></p>
+<p><a href="#JdcloudExt">JdcloudExt (module)</a></p>
+<p><a href="#JdcloudStat">JdcloudStat (module)</a></p>
 </div><hr>
 <h2>Keywords</h2>
 <div class="toc">
+<p><a href="##menu">#menu (key)</a></p>
 <p><a href="##my-pages">#my-pages (key)</a></p>
 <p><a href="#.easyui-validatebox">.easyui-validatebox (key)</a></p>
 <p><a href="#.my-combobox">.my-combobox (key)</a></p>
 <p><a href="#.my-reset">.my-reset (key)</a></p>
 <p><a href="#.noData">.noData (key)</a></p>
 <p><a href="#.notForFind">.notForFind (key)</a></p>
+<p><a href="#.wui-checkList">.wui-checkList (key)</a></p>
 <p><a href="#.wui-dialog">.wui-dialog (key)</a></p>
 <p><a href="#.wui-find-field">.wui-find-field (key)</a></p>
 <p><a href="#.wui-fixedField">.wui-fixedField (key)</a></p>
@@ -62,6 +66,7 @@ code {
 <p><a href="#.wui-notCond">.wui-notCond (key)</a></p>
 <p><a href="#.wui-page">.wui-page (key)</a></p>
 <p><a href="#.wui-readonly">.wui-readonly (key)</a></p>
+<p><a href="#.wui-upload">.wui-upload (key)</a></p>
 <p><a href="#BASE_URL">BASE_URL (var)</a></p>
 <p><a href="#Date.add">Date.add (fn)</a></p>
 <p><a href="#Date.addDay">Date.addDay (fn)</a></p>
@@ -71,13 +76,21 @@ code {
 <p><a href="#Date.diff">Date.diff (fn)</a></p>
 <p><a href="#Date.format">Date.format (fn)</a></p>
 <p><a href="#DirectReturn">DirectReturn (class)</a></p>
+<p><a href="#JdcloudExt">JdcloudExt (module)</a></p>
+<p><a href="#JdcloudStat">JdcloudStat (module)</a></p>
+<p><a href="#JdcloudStat.tmUnit">JdcloudStat.tmUnit (key)</a></p>
 <p><a href="#ListOptions">ListOptions (var)</a></p>
 <p><a href="#Plugins">Plugins (class)</a></p>
 <p><a href="#Plugins.exists">Plugins.exists (fn)</a></p>
 <p><a href="#Plugins.list">Plugins.list (fn)</a></p>
 <p><a href="#STORAGE_PREFIX">STORAGE_PREFIX (var)</a></p>
 <p><a href="#WUI">WUI (module)</a></p>
+<p><a href="#WUI.getTmRange">WUI.getTmRange (fn)</a></p>
+<p><a href="#WUI.initChart">WUI.initChart (fn)</a></p>
+<p><a href="#WUI.initPageStat">WUI.initPageStat (fn)</a></p>
 <p><a href="#WUI.options">WUI.options (var)</a></p>
+<p><a href="#WUI.options.statFormatter">WUI.options.statFormatter (var)</a></p>
+<p><a href="#WUI.rs2Stat">WUI.rs2Stat (fn)</a></p>
 <p><a href="#[noReset]">[noReset] (key)</a></p>
 <p><a href="#a[href=">a[href= (key)</a></p>
 <p><a href="#a[href=#page]">a[href=#page] (key)</a></p>
@@ -2910,6 +2923,621 @@ var ListOptions = {
 <pre><code>function onShow() {
     $(frm.defectTypeId).val(defectTypeId).trigger("change");
 }</code></pre></div>
+<div class="block">
+<h2 id="JdcloudExt">@module JdcloudExt</h2>
+<p>框架扩展功能或常用函数.</p></div>
+<div class="block">
+<h2 id=".wui-upload">@key .wui-upload</h2><div class="toc"><p style="margin-left:0em"><a href="#.wui-upload-1 右键菜单">1 右键菜单</a></p>
+<p style="margin-left:0em"><a href="#.wui-upload-2 音频等文件上传">2 音频等文件上传</a></p>
+</div>
+<p>对话框上的上传文件组件。</p>
+<p>用于在对象详情对话框中，展示关联图片字段。图片可以为单张或多张。<br />
+除显示图片外，也可以展示其它用户上传的文件，如视频、文本等。</p>
+<p>预览图样式在style.css中由 <code>.wui-upload img</code>定义。<br />
+点击一张预览图，如果有jqPhotoSwipe插件，则全屏显示图片且可左右切换；否则在新窗口打开大图。</p>
+<p>示例：只需要标注wui-upload类及指定data-options，即可实现图片预览、上传等操作。</p>
+<pre><code>&lt;table&gt;
+    &lt;tr&gt;
+        &lt;td&gt;上传多图&lt;/td&gt;
+        &lt;td class="wui-upload"&gt;
+            &lt;input name="pics"&gt;
+        &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+        &lt;td&gt;上传单图&lt;/td&gt;
+        &lt;td class="wui-upload" data-options="multiple:false"&gt;
+            &lt;input name="picId"&gt;
+        &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+        &lt;td&gt;上传附件&lt;/td&gt;
+        &lt;td class="wui-upload" data-options="pic:false"&gt;
+            &lt;input name="atts"&gt;
+        &lt;/td&gt;
+    &lt;/tr&gt;
+&lt;/table&gt;</code></pre>
+<ul>
+<li>带name组件的input绑定到后端字段，并被自动隐藏。允许有多个带name的input组件，仅第一个input被处理。</li>
+<li>options中可以设置：{ nothumb, pic, fname }</li>
+</ul>
+<p>组件会自动添加预览区及文件选择框等，完整的DOM大体如下：</p>
+<pre><code>&lt;div class="wui-upload"&gt;
+    &lt;input name="atts"&gt;
+    &lt;div class="imgs"&gt;&lt;/div&gt;
+    &lt;input type="file" multiple&gt;
+    &lt;p class="hint"&gt;&lt;a href="javascript:;" class="btnEditAtts"&gt;编辑&lt;/a&gt;&lt;/p&gt;
+&lt;/div&gt;</code></pre>
+<p>其中imgs为预览区，内部DOM结构为 <code>.imgs - a标签 - img或p标签</code>。<br />
+在上传图片或文件后，会在imgs下创建<code>&lt;a&gt;</code>标签，对于图片a标签里面是img标签，否则是p标签。<br />
+a标签上数据如下：</p>
+<ul>
+<li>attr(&quot;attId&quot;)为当前图片的缩略图编号，如&quot;100&quot;。如果无该属性，表示尚未上传。</li>
+<li>attr(&quot;att&quot;)为当前预览图的原始数据。在opt.fname=1时包含文件名，如&quot;100:file1.pdf&quot;。</li>
+<li>prop(&quot;fileObj_&quot;) 当上传无缩略图图片(opt.nothumb=1)或上传附件(opt.pic=false)时，fileObj_中保存了文件对象，用于之后上传。</li>
+</ul>
+<p>在a下的img标签上，有以下数据：</p>
+<ul>
+<li>attr(&quot;picId&quot;)保存图片缩略图ID。如果无该属性，表示尚未上传。</li>
+<li>prop(&quot;picData_&quot;)保存图片压缩信息。仅当新选择的图片才有。</li>
+</ul>
+<p class="param"><strong>@param opt.multiple=true</strong>  设置false限制只能选一张图。</p>
+<p class="param"><strong>@param opt.nothumb=false</strong>  设置为true表示不生成缩略图，且不做压缩。</p>
+<pre><code>&lt;td class="wui-upload" data-options="nothumb:true"&gt;...&lt;/td&gt;</code></pre>
+<p class="param"><strong>@param opt.pic=true</strong>  设置为false，用于上传视频或其它非图片文件</p>
+<p>如果为false, 在.imgs区域内显示文件名链接而非图片。</p>
+<p class="param"><strong>@param opt.fname</strong>  上传附件时（pic=true）时保存原文件名。</p>
+<p>在opt.pic=true时，默认会保存文件名到字段中。保存的格式为 <code>List(attId, fileName)</code> 即&quot;{attId}:{orgName},{attId2}:{orgName2},...&quot;<br />
+设置为false只保存文件编号，不保存文件名。</p>
+<p class="param"><strong>@param opt.manual=false</strong>  是否自动上传提交</p>
+<p>默认无须代码即可自动上传文件。如果想要手工操控，可以触发submit事件，<br />
+示例：在dialog的validate事件中先确认提示再上传，而不是直接上传：</p>
+<p>HTML:</p>
+<pre><code>&lt;div class="wui-upload" data-options="manual:true"&gt;...&lt;/div&gt;</code></pre>
+<p>JS:</p>
+<pre><code>jdlg.on("validate", onValidate);
+function onValidate(ev)
+{
+    var dfd = $.Deferred();
+    app_alert("确认上传?", "q", function () {
+        var dfd1 = WUI.triggerAsync(jdlg.find(".wui-upload"), "submit");
+        dfd1.then(doNext);
+    });
+    // dialog的validate方法支持异步，故设置ev.dfds数组来告知调用者等异步操作结束再继续
+    ev.dfds.push(dfd.promise());
+
+    function doNext() {
+        dfd.resolve();
+    }
+}</code></pre>
+<h4 id=".wui-upload-1 右键菜单">1 右键菜单</h4>
+<p class="param"><strong>@param opt.menu</strong>  设置右键菜单</p>
+<p>在预览区右键单击会出现菜单，默认有“删除”菜单。<br />
+示例：商品可以上传多张照片，其中选择一张作为商品头像。<br />
+我们在右键中添加一个“设置为缺省头像”菜单，点击后将该图片圈出，将其图片编号保存到字段中。<br />
+数据结构为：</p>
+<pre><code>@Item: id, picId, pics</code></pre>
+<p>上面表Item中，picId为头像的图片ID，pics为逗号分隔的图片列表。</p>
+<p>HTML: 在data-options中指定菜单的ID和显示文字。缺省头像将添加&quot;active&quot;类：</p>
+<pre><code>&lt;style&gt;
+.wui-upload img.active {
+    border: 5px solid red;
+}
+&lt;/style&gt;
+
+&lt;tr&gt;
+    &lt;td&gt;门店照片&lt;/td&gt;
+    &lt;td class="wui-upload" data-options="menu:{mnuSetDefault:'设置为缺省头像'}"&gt;
+        &lt;input name="pics"&gt;
+        &lt;input type="input" style="display:none" name="picId"&gt;
+    &lt;/td&gt;
+&lt;/tr&gt;</code></pre>
+<p>在右键点击菜单时，wui-upload组件会触发onMenu事件，其中参数item为当前预览项（.imgs区域下的a标签，在它下面才是img或p标签）</p>
+<pre><code>// 在initDlgXXX中：
+jdlg.on("menu", onMenu);
+function onMenu(ev, menuId, item)
+{
+    if (menuId == "mnuSetDefault") {
+        var ja = $(item);
+        if (ja.attr("attId")) {
+            ja.closest(".wui-upload").find("img").removeClass("active");
+            var jimg = ja.find("img");
+            jimg.addClass("active");
+
+            frm = jdlg.find("form")[0];
+            frm.picId.value = jimg.attr("picId");
+        }
+    }
+}
+// 高亮显示选中的头像picId。
+// 注意：要用jdlg而不是jfrm的show事件。否则wui-upload尚未初始化完成
+jdlg.on("show", function (ev, formMode, initData) {
+    if (initData &amp;&amp; initData.picId) {
+        jdlg.find(".wui-upload img[picId=" + initData.picId + "]").addClass("active");
+    }
+});</code></pre>
+<h4 id=".wui-upload-2 音频等文件上传">2 音频等文件上传</h4>
+<p class="param"><strong>@param opt.accept</strong>  指定可上传的文件类型</p>
+<p>示例：上传单个音频文件，如m4a, mp3等格式。</p>
+<pre><code>&lt;td&gt;文件&lt;/td&gt;
+&lt;td class="wui-upload" data-options="multiple:false,pic:false,accept:'audio/*'"&gt;
+    &lt;input name="attId"&gt;
+    &lt;p class="hint"&gt;要求格式m4a,mp3,wav; 采样率为16000&lt;/p&gt;
+&lt;/td&gt;</code></pre></div>
+<div class="block">
+<h2 id=".wui-checkList">@key .wui-checkList</h2>
+<p>用于在对象详情对话框中，以一组复选框(checkbox)来对应一个逗号分隔式列表的字段。<br />
+例如对象Employee中有一个“权限列表”字段perms定义如下：</p>
+<pre><code>perms:: List(perm)。权限列表，可用值为: item-上架商户管理权限, emp-普通员工权限, mgr-经理权限。</code></pre>
+<p>现在以一组checkbox来在表达perms字段，希望字段中有几项就将相应的checkbox选中，例如值&quot;emp,mgr&quot;表示同时具有emp与mgr权限，显示时应选中这两项。<br />
+定义HTML如下：</p>
+<pre><code>&lt;tr&gt;
+    &lt;td&gt;权限&lt;/td&gt;
+    &lt;td class="wui-checkList"&gt;
+        &lt;input type="hidden" name="perms"&gt;
+        &lt;label&gt;&lt;input type="checkbox" value="emp" checked&gt;员工(默认)&lt;/label&gt;&lt;br&gt;
+        &lt;label&gt;&lt;input type="checkbox" value="item"&gt;上架商品管理&lt;/label&gt;&lt;br&gt;
+        &lt;label&gt;&lt;input type="checkbox" value="mgr"&gt;经理&lt;/label&gt;&lt;br&gt;
+    &lt;/td&gt;
+&lt;/tr&gt;</code></pre>
+<p>wui-checkList块中包含一个hidden对象和一组checkbox. hidden对象的name设置为字段名, 每个checkbox的value字段设置为每一项的内部名字。</p></div>
+<div class="block">
+<h2 id="#menu">@key #menu</h2>
+<p>管理端功能菜单，以&quot;menu&quot;作为id:</p>
+<pre><code>&lt;div id="menu"&gt;
+    &lt;div class="menu-expand-group"&gt;
+        &lt;a class="expanded"&gt;&lt;span&gt;&lt;i class="fa fa-pencil-square-o"&gt;&lt;/i&gt;主数据管理&lt;/span&gt;&lt;/a&gt;
+        &lt;div class="menu-expandable"&gt;
+            &lt;a href="#pageCustomer"&gt;客户管理&lt;/a&gt;
+            &lt;a href="#pageStore"&gt;门店管理&lt;/a&gt;
+            &lt;a href="#pageVendor"&gt;供应商管理&lt;/a&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+    &lt;!-- 单独的菜单项示例 --&gt;
+    &lt;a href="javascript:WUI.showDlg('#dlgImport',{modal:false})"&gt;&lt;span&gt;&lt;i class="fa fa-pencil-square-o"&gt;&lt;/i&gt;批量导入&lt;/span&gt;&lt;/a&gt;
+    &lt;a href="javascript:showDlgChpwd()"&gt;&lt;span&gt;&lt;i class="fa fa-user-times"&gt;&lt;/i&gt;修改密码&lt;/span&gt;&lt;/a&gt;
+&lt;/div&gt;</code></pre>
+<p>菜单组由menu-expand-group标识，第一个a为菜单组标题，可加&quot;expanded&quot;类使其默认展开。<br />
+图标使用font awesome库，由<code>&lt;i class="fa fa-xxx"&gt;&lt;/i&gt;</code>指定，图标查询可参考 <a href="http://www.fontawesome.com.cn/faicons/">http://www.fontawesome.com.cn/faicons/</a> 或 <a href="https://fontawesome.com/icons">https://fontawesome.com/icons</a></p></div>
+<div class="block">
+<h2 id="JdcloudStat">@module JdcloudStat</h2>
+<p>按日期进行数据分析统计</p>
+<p class="see"><strong>@see <a href="#initPageStat">initPageStat</a></strong> </p></div>
+<div class="block">
+<h2 id="WUI.options.statFormatter">@var WUI.options.statFormatter</h2></div>
+<div class="block">
+<h2 id="JdcloudStat.tmUnit">@key JdcloudStat.tmUnit 按时间维度分析</h2>
+<p>tmUnit指定时间维度分析的类型，目前支持以下维度：</p>
+<pre><code>"y,m"     年月
+"y,m,d"   年月日
+"y,m,d,h" 年月日时
+"y,w"     年周</code></pre></div>
+<div class="block">
+<h2 id="WUI.rs2Stat">@fn WUI.rs2Stat(rs, opt?) -> statData</h2><div class="toc"><p style="margin-left:0em"><a href="#WUI.rs2Stat-1 有时间维度的统计数据">1 有时间维度的统计数据</a></p>
+<p style="margin-left:0em"><a href="#WUI.rs2Stat-2 简单汇总数据">2 简单汇总数据</a></p>
+<p style="margin-left:0em"><a href="#WUI.rs2Stat-3 未分组数据，需要自行分组显示">3 未分组数据，需要自行分组显示</a></p>
+<p style="margin-left:0em"><a href="#WUI.rs2Stat-4 指定类型数据 TODO">4 指定类型数据 TODO</a></p>
+<p style="margin-left:0em"><a href="#WUI.rs2Stat-5 参数说明">5 参数说明</a></p>
+</div>
+<p>将table格式数据({h,d})，转换成显示统计图需要的格式。尤其是支持按时间维度组织数据，生成折线图/柱状图。</p>
+<p class="param"><strong>@param rs</strong>  {@h, @d} RowSet数据。筋斗云框架标准数据表格式。</p>
+<p class="param"><strong>@param opt</strong>  {formatter?=WUI.options.statFormatter[groupKey], maxSeriesCnt?, tmUnit?}  </p>
+<h4 id="WUI.rs2Stat-1 有时间维度的统计数据">1 有时间维度的统计数据</h4>
+<p>对于折线图/柱状图，支持由opt.tmUnit指定时间维度来组织数据，这时需要对所给数据中缺失的时间自动补全。</p>
+<p>对输入数据rs的要求为，rs.h表头格式为 [ 时间字段, 汇总字段?, 汇总显示字段?, sum, ... ]</p>
+<p>rs.h中前面几个为时间字段，必须与opt.tmUnit指定相符，一般是以下字段组合：&quot;y&quot;(年),&quot;m&quot;(月),&quot;d&quot;(日),&quot;h&quot;(小时),&quot;w&quot;(周)。<br />
+例如opt.tmUnit值为&quot;y,m,d&quot;，则rs.h中前几个字段必须为[&quot;y&quot;,&quot;m&quot;,&quot;d&quot;]</p>
+<p>汇总字段0到1个，汇总显示字段0到1个。如果有汇总字段，则以“系列”的方式显示。<br />
+例如rs.h中有汇总字段和汇总显示字段[&quot;cityId&quot;, &quot;cityName&quot;], 则会将&quot;北京&quot;，&quot;上海&quot;这些&quot;cityName&quot;作为图表“系列”展示。</p>
+<p>sum为累计值字段的名字，必须名为&quot;sum&quot;.<br />
+sum之后字段暂不使用。</p>
+<p>注意：rs.d中的数据必须已按时间排序，否则无法补齐缺失的时间维度。</p>
+<p>返回数据格式为 {@xData, @yData=[{name, @data}]}, 其中xData来自时间字段;<br />
+如果有汇总，则yData包含多个系列{name, data}，否则只有一个系列且name固定为&quot;累计&quot;. data来源于sum字段。</p>
+<p>示例一：</p>
+<pre><code>var rs = {
+    h: ["y", "m", "d", "sum"], // 时间维度为 y,m,d; sum为统计值
+    d: [
+        [2016, 6, 29, 13],
+        [2016, 7, 1, 2],
+        [2016, 7, 2, 9],
+    ]
+}
+var statData = rs2Stat(rs, {tmUnit: "y,m,d"});
+
+// 结果：
+statData = {
+    xData: [
+        '2016-6-29', '2016-6-30', '2016-7-1', '2016-7-2' // 2016-6-30为自动补上的日期
+    ],
+    yData: [
+        {name: 'sum', data: [13, 0, 2, 9]} // 分别对应xData中每个日期，其中'2016-6-30'没有数据自动补0
+    ]
+}</code></pre>
+<p>示例二： 有汇总字段</p>
+<pre><code>var rs = {
+    h: ["y", "m", "d", "sex", "sum"], // 时间维度为 y,m,d; sex为汇总字段, sum为累计值
+    d: [
+        [2016, 6, 29, '男', 10],
+        [2016, 6, 29, '女', 3],
+        [2016, 7, 1, '男', 2],
+        [2016, 7, 2, '男', 8],
+        [2016, 7, 2, '女', 1],
+    ]
+}
+var statData = rs2Stat(rs, {tmUnit: "y,m,d"});
+
+// 结果：
+statData = {
+    xData: [
+        '2016-6-29', '2016-6-30', '2016-7-1', '2016-7-2' // 2016-6-30为自动补上的日期
+    ],
+    yData: [
+        {name: '男', data: [10, 0, 2, 8]}, // 分别对应xData中每个日期，其中'2016-6-30'没有数据自动补0
+        {name: '女', data: [3, 0, 0, 1]} // '2016-6-30'与'2016-7-1'没有数据自动补0.
+    ]
+}</code></pre>
+<p>默认yData中的系列名(seriesName)直接使用汇总字段，但如果汇总字段后还有一列，则以该列作为显示名称。</p>
+<p>示例三： 汇总字段&quot;sex&quot;后面还有一列&quot;sexName&quot;, 因而使用sexName作为图表系列名用于显示. 而&quot;sex&quot;以&quot;M&quot;,&quot;F&quot;分别表示男女，仅做内部使用：</p>
+<pre><code>var rs = {
+    h: ["y", "m", "d", "sex", "sexName", "sum"], // 时间维度为 y,m,d; sex为汇总字段, sexName为汇总显示字段, sum为累计值
+    d: [
+        [2016, 6, 29, 'M', '男', 10],
+        [2016, 6, 29, 'F', '女', 3],
+        [2016, 7, 1, 'M', '男', 2],
+        [2016, 7, 2, 'M', '男', 8],
+        [2016, 7, 2, 'F', '女', 1],
+    ]
+}
+var statData = rs2Stat(rs, {tmUnit: "y,m,d"});
+// 结果：与示例二相同。</code></pre>
+<p>示例四： 汇总字段支持格式化，假设性别字段以'M','F'分别表示'男', '女':</p>
+<pre><code>var rs = {
+    h: ["y", "m", "d", "sex", "sum"], // 时间维度为 y,m,d; sex为汇总字段, sum为累计值
+    d: [
+        [2016, 6, 29, 'M', 10],
+        [2016, 6, 29, 'F', 3],
+        [2016, 7, 1, 'M', 2],
+        [2016, 7, 2, 'M', 8],
+        [2016, 7, 2, 'F', 1],
+    ]
+}
+var opt = {
+    tmUnit: "y,m,d",
+    // arr为当前行数组, i为统计字段在数组中的index, 即 arr[i] = value.
+    formatter: function (value, arr, i) {
+        return value=='M'?'男':'女';
+    }
+};
+var statData = rs2Stat(rs, opt);
+// 结果：与示例二相同。</code></pre>
+<p>可以使用变量WUI.options.statFormatter指定全局formatter，如示例四也可以写：</p>
+<pre><code>WUI.options.statFormatter = {
+    sex: function (value, arr, i) {
+        return value=='M'?'男':'女';
+    }
+}
+var statData = rs2Stat(rs, {tmUnit: "y,m,d"});</code></pre>
+<p>在无汇总时，默认汇总显示为&quot;sum&quot;，也可以通过formatter修改，例如</p>
+<pre><code>WUI.options.statFormatter = {
+    sum: function (value, arr, i) {
+        return '累计';
+    }
+}</code></pre>
+<p>注意：示例三实际上在内部使用了如下formatter:</p>
+<pre><code>function formatter(value, arr, i)
+{
+    return arr[i+1];
+}</code></pre>
+<h4 id="WUI.rs2Stat-2 简单汇总数据">2 简单汇总数据</h4>
+<p>rs.h表头格式为 [汇总字段, 汇总显示字段?, sum]，表示简单汇总数据，可用于显示折线图/柱状图/饼图等。</p>
+<p>示例：无时间字段，使用汇总字段显示为x轴数据：</p>
+<pre><code>var rs = {
+    h: ["wd", "sum"], // 查看每周几的注册人数
+    d: [
+        [1, 201],
+        [2, 180],
+        [3, 206],
+        [4, 322],
+        [5, 208],
+        [6, 435],
+        [0, 478],
+    ]
+}
+var statData = rs2Stat(rs);
+
+// 结果：
+statData = {
+    xData: [
+        '1', '2', '3', '4', '5', '6', '0'
+    ],
+    yData: [
+        {name: 'sum', data: [201, 180, 206, 322, 208, 435, 478]} // 分别对应xData中每个值
+    ]
+}</code></pre>
+<p>注意：</p>
+<ul>
+<li>显示饼图时，echart要求data的格式为{name, value}，这将在WUI.initChart中特殊处理。</li>
+</ul>
+<h4 id="WUI.rs2Stat-3 未分组数据，需要自行分组显示">3 未分组数据，需要自行分组显示</h4>
+<p>rs.h表头字段固定为 [g?, x, y], 其中g为分组字段，x为横轴标签，y为纵轴数值。<br />
+分组字段可以没有，如果有将显示为多系列，系列标签即该列名（支持用WUI.options.statFormatter定制显示）。</p>
+<p>示例：</p>
+<pre><code>var rs = {
+    h: ["g", "x", "y"],
+    d: [
+        ["app", "a1", 99],
+        ["db", "a1", 98],
+        ["app", "a2", 97],
+        ["app", "a4", 96]
+    ]
+};
+
+var statData = rs2Stat(rs);
+
+// 结果：
+statData = {
+    xData: [ "a1", "a2", "a4" ],
+    yData: [
+        {name: "app", data: [99, 97, null]},
+        {name: "db", data: [98, null, 96]}
+    ]
+}</code></pre>
+<h4 id="WUI.rs2Stat-4 指定类型数据 TODO">4 指定类型数据 TODO</h4>
+<p>根据opt.cols指定列类型，并转换数据。opt.cols是字符串，每个字符表示列的类型，列分为&quot;x&quot;列（生成x轴数据，归入xData中），&quot;g&quot;列（分组列，生成图表系列，yData中每项的name），&quot;y&quot;列（数据列，可以有多个，yData中每项的data）。<br />
+对于其它列rs2Stat不做处理，一般用字符&quot;.&quot;表示。</p>
+<p>示例：</p>
+<ul>
+<li>opt.cols=&quot;yy&quot; 例如散点图原始数据格式 table(&quot;身高&quot;,&quot;体重&quot;)，将数据全部放在yData的默认系列中。</li>
+<li>opt.cols=&quot;gyy&quot; 例如多系列散点图原始数据为 table(&quot;性别&quot;,&quot;身高&quot;,&quot;体重&quot;)，将性别作为系列，其它作为数据。</li>
+<li>opt.cols=&quot;.gyy&quot; 例如多系列散点图原始数据为 table(&quot;cityId&quot;, &quot;cityName&quot;,&quot;身高&quot;,&quot;体重&quot;)，第一列被忽略，第二列cityName作为系列。</li>
+<li>opt.cols=&quot;xyyyy&quot; 例如k线图数据 table(&quot;日期&quot;, &quot;开&quot;,&quot;收&quot;,&quot;低&quot;,&quot;高&quot;)</li>
+<li>opt.cols=&quot;.xy&quot; 例如饼图数据 table(&quot;cityId&quot;, &quot;cityName&quot;, &quot;sum&quot;)</li>
+</ul>
+<h4 id="WUI.rs2Stat-5 参数说明">5 参数说明</h4>
+<p class="param"><strong>@param opt.formatter</strong>  可对汇总数据进行格式化。Function(value, arr, i). </p>
+<ul>
+<li>value: 当前汇总字段的值</li>
+<li>arr: 当前行数组</li>
+<li>i: 汇总字段的数组index, 即 arr[i]=value</li>
+</ul>
+<p class="param"><strong>@param opt.tmUnit</strong>  如果非空，表示按指定时间维度分析。参考[JdcloudStat.tmUnit]().</p>
+<p class="param"><strong>@param opt.maxSeriesCnt</strong> ?=10</p>
+<p>指定此选项，则按sum倒排序，取前面的maxSeriesCnt项seriesName用于展示，剩余的项归并到“其它”中。</p>
+<p class="return"><strong>@return statData</strong>  { @xData, @yData=[{name=seriesName, data=@seriesData}]  }</p>
+<p>与echart结合使用示例可参考 initChart. 原理如下：</p>
+<pre><code>var option = {
+    ...
+    legend: {
+        data: getSeriesNames(statData.yData) // 取yData中每项的name
+    },
+    xAxis:  {
+        type: 'category',
+        boundaryGap: false,
+        data: statData.xData
+    },
+    yAxis: {
+        type: 'value',
+        axisLabel: {
+            formatter: '{value}'
+        }
+    },
+    series: statData.yData
+};
+myChart.setOption(option);</code></pre></div>
+<div class="block">
+<h2 id="WUI.initChart">@fn WUI.initChart(chartTable, statData, seriesOpt, chartOpt)</h2>
+<p>初始化echarts报表组件.</p>
+<ul>
+<li>chartTable: 图表DOM对象</li>
+<li>statData: 符合echarts规范的数据，格式为 {@xData, @yData=[{name, @data}]}.</li>
+<li>seriesOpt, chartOpt: 参考百度echarts全局参数以及series参数: <a href="http://echarts.baidu.com/echarts2/doc/doc.html">http://echarts.baidu.com/echarts2/doc/doc.html</a></li>
+</ul>
+<p>statData示例：</p>
+<pre><code>statData = {
+    xData: [
+        '2016-6-29', '2016-6-30', '2016-7-1', '2016-7-2'
+    ],
+    yData: [
+        {name: 'sum', data: [13, 0, 2, 9]} // 分别对应xData中每个日期，其中'2016-6-30'没有数据自动补0
+    ]
+}</code></pre>
+<p class="see"><strong>@see <a href="#WUI.rs2Stat">WUI.rs2Stat</a> <a href="#"></a></strong>  WUI.initPageStat</p></div>
+<div class="block">
+<h2 id="WUI.initPageStat">@fn WUI.initPageStat(jpage, setStatOpt) -> statItf</h2>
+<p>通用统计页模式</p>
+<ul>
+<li>查询条件区，如起止时间</li>
+<li>生成统计图按钮</li>
+<li>一个或多个图表，每个图表可设置不同的查询条件、时间维度等。</li>
+</ul>
+<p>html示例:</p>
+<pre><code>&lt;div wui-script="pageUserRegStat.js" title="用户注册统计" my-initfn="initPageUserRegStat"&gt;
+    开始时间 
+    &lt;input type="text" name="createTm" data-op="&gt;=" data-options="showSeconds:false" class="easyui-datetimebox txtTm1"&gt;
+    结束时间
+    &lt;input type="text" name="createTm" data-op="&lt;" data-options="showSeconds:false" class="easyui-datetimebox txtTm2"&gt;
+    快捷时间选择
+    &lt;select class="txtTmRange"&gt;
+        &lt;option value ="近8周"&gt;近8周&lt;/option&gt;
+        &lt;option value ="近6月"&gt;近6月&lt;/option&gt;
+    &lt;/select&gt;
+
+    各种过滤条件：
+    性别:
+    &lt;select name="sex"&gt;
+        &lt;option value =""&gt;全部&lt;/option&gt;
+        &lt;option value ="男"&gt;男&lt;/option&gt;
+        &lt;option value ="女"&gt;女&lt;/option&gt;
+    &lt;/select&gt;
+    地域:
+    &lt;select name="region" class="my-combobox" data-options="valueField:'id',textField:'name',url:WUI.makeUrl(...)"&gt;&lt;/select&gt;
+
+    汇总字段:
+    &lt;select id="g"&gt;
+        &lt;option value =""&gt;无&lt;/option&gt;
+        &lt;option value ="sex"&gt;性别&lt;/option&gt;
+        &lt;option value="region"&gt;地域&lt;/option&gt;
+    &lt;/select&gt;
+
+    &lt;input type="button" value="生成" class="btnStat"/&gt;
+
+    时间维度类型：
+    &lt;select id="tmUnit"&gt;
+        &lt;option value="y,w"&gt;周报表&lt;/option&gt;
+        &lt;option value="y,m"&gt;月报表&lt;/option&gt;
+    &lt;/select&gt;
+
+    统计图：
+    &lt;div class="divChart" data-ac="User.query"&gt;&lt;/div&gt;
+&lt;/div&gt;</code></pre>
+<p>遍历jpage中带name属性的各组件，生成统计请求的参数，调用接口获取统计数据并显示统计图表.</p>
+<ul>
+<li>报表组件.divChart上，可以用data-ac属性指定调用名，用data-res属性指定调用的res参数(默认为&quot;COUNT(*) sum&quot;)，更多参数可通过setStatOpt(...opt)回调函数动态设置opt.queryParam参数。<br />
+可以用 jpage.find(&quot;.divChart&quot;)[0].echart 来取 echart对象.</li>
+<li>生成图表的按钮组件 .btnStat</li>
+<li>带name属性（且没有disabled属性）的组件，会自动生成查询条件(根据name, data-op, value生成表达式)</li>
+<li>组件.txtTm1, .txtTm2识别为起止时间，可以用过 statItf.setTmRange()去重设置它们，或放置.txtTmRange下拉框组件自动设置</li>
+</ul>
+<p>初始化示例：</p>
+<pre><code>var statItf_ = WUI.initPageStat(jpage, setStatOpt);
+
+function setStatOpt(chartIdx, opt) 
+{
+    // this是当前chart的jquery对象，chartIdx为序号，依此可针对每个chart分别设置参数
+
+    // 设置查询参数param.ac/param.res/param.cond等
+    var param = opt.queryParam;
+    param.cond += ...;
+
+    // 设置时间维度，汇总字段
+    opt.tmUnit = jpage.find("#tmUnit").val();
+    opt.g = jpage.find("#g").val();
+
+    // 设置echarts参数
+    var chartOpt, seriesOpt;
+    if (chartIdx == 0) {
+        chartOpt = { ... };
+        seriesOpt = { ... };
+    }
+    else if (chartIdx == 1) {
+        chartOpt = { ... };
+        seriesOpt = { ... };
+    }
+
+    $.extend(true, opt, {
+        chartOpt: chartOpt,
+        seriesOpt: seriesOpt,
+    });
+}</code></pre>
+<p class="param"><strong>@param setStatOpt</strong> (chartIdx, opt) 回调设置每个chart. this为当前chart组件，chartIdx为当前chart的序号，从0开始。</p>
+<p class="param"><strong>@param opt=</strong> {tmUnit?, g?, gname?, queryParam, chartOpt, seriesOpt, onLoadData?, maxSeriesCnt?, formatter?}</p>
+<p class="param"><strong>@param opt.tmUnit</strong>  Enum. 时间维度</p>
+<p>如果非空，则按时间维度分析，即按指定时间类型组织横轴数据，会补全时间。参考[JdcloudStat.tmUnit]()<br />
+如果设置，它会自动设置 opt.queryParam 中的gres/orderby参数。</p>
+<p class="param"><strong>@param opt.g</strong>  分组字段名</p>
+<p>会影响opt.queryParam中的gres选项。</p>
+<p class="param"><strong>@param opt.gname</strong>  分组字段显示名。</p>
+<p>有时分组字段使用xxxId字段，但希望显示时用xxxName字段，这时可以设置gname选项，它会影响opt.queryParam中的res选项。</p>
+<p>示例，按场景分组显示日报表：</p>
+<pre><code>opt.tmUnit = "y,m,d"; // 日报表
+opt.g = "sceneId";
+opt.gname = "sceneName";</code></pre>
+<p>这样生成的opt.queryParam中: </p>
+<pre><code>gres="y,m,d,sceneId";
+orderby="y,m,d";
+res="sceneName,COUNT(*) sum";</code></pre>
+<p class="param"><strong>@param opt.queryParam</strong>  接口查询参数</p>
+<p>可以设置ac, res, gres, cond, orderby, pagesz等筋斗云框架通用查询参数，或依照接口文档设置。<br />
+设置opt.tmUnit/opt.g/opt.gname会自动设置其中部分参数。</p>
+<p>此外 ac, res参数也可通过在.divChart组件上设置data-ac, data-res属性，如</p>
+<pre><code>&lt;div class="divChart" data-ac="Ordr.query" data-res="SUM(amount) sum"&gt;&lt;/div&gt;</code></pre>
+<p>关于接口返回数据到图表数据转换，参考rs2Stat函数：</p>
+<p class="see"><strong>@see <a href="#WUI.rs2Stat">WUI.rs2Stat</a></strong>  </p>
+<p class="param"><strong>@param opt.chartOpt,</strong>  opt.seriesOpt </p>
+<p>参考百度echarts全局参数以及series参数: <a href="http://echarts.baidu.com/echarts2/doc/doc.html">http://echarts.baidu.com/echarts2/doc/doc.html</a></p>
+<p class="param"><strong>@param opt.onLoadData</strong> (statData, opt) 处理统计数据后、显示图表前回调。</p>
+<p>this为当前图表组件(jchart对象)。常用于根据统计数据调整图表显示，修改opt中的chartOpt, seriesOpt选项即可。</p>
+<p class="param"><strong>@param opt.maxSeriesCnt</strong> ?=10 </p>
+<p>最多显示多少图表系列（其它系列自动归并到“其它”中）。参考rs2Stat函数同名选项。</p>
+<p class="param"><strong>@param opt.formatter</strong>  </p>
+<p>对汇总数据进行格式化显示。参考 rs2Stat函数同名选项。</p>
+<p class="see"><strong>@see <a href="#WUI.rs2Stat">WUI.rs2Stat</a></strong> </p>
+<p class="return"><strong>@return statItf=</strong> {refreshStat(), setTmRange(desc)} 统计页接口</p>
+<p>refreshStat()用于显示或刷新统计图。当调用initPageStat(jpage)且jpage中有.btnStat组件时，会自动点击该按钮以显示统计图。<br />
+setTmRange(desc)用于设置jpage中的.txtTm1, .txtTm2两个文本框，作为起止时间。</p>
+<p class="see"><strong>@see <a href="#WUI.getTmRange">WUI.getTmRange</a></strong> </p>
+<p class="see"><strong>@see <a href="#WUI.initChart　显示图表">WUI.initChart　显示图表</a></strong> </p>
+<p>也可以调用WUI.initChart及WUI.rs2Stat自行设置报表，示例如下：</p>
+<pre><code>var jchart = jpage.find(".divChart");
+var tmUnit = "y,m"; // 按时间维度分析，按“年月”展开数据
+var cond = "tm&gt;='2016-1-1' and tm&lt;'2017-1-1'";
+// WUI.useBatchCall(); // 如果有多个报表，可以批量调用后端接口
+// 会话访问量
+callSvr("ApiLog.query", function (data) {
+    var opt = { tmUnit: tmUnit };
+    var statData = WUI.rs2Stat(data, opt);
+    var seriesOpt = {};
+    var chartOpt = {
+        title: {
+            text: "访问量（会话数）"
+        },
+        legend: null
+    };
+
+    WUI.initChart(jchart[0], statData, seriesOpt, chartOpt);
+}, {res: "COUNT(distinct ses) sum", gres: tmUnit, orderby: tmUnit, cond: cond });</code></pre>
+<p>此外，也支持直接显示无汇总的数据。</p>
+<p>示例：有以下接口：</p>
+<pre><code>RecM.query() -&gt; tbl(who, tm, cpu)</code></pre>
+<p>返回 服务器(who)在每一分钟(tm)的最低cpu使用率。数据示例：</p>
+<pre><code>{ h: ["who", "tm", "cpu"],
+  d: [ 
+    ["app", "2018-10-1 10:10:00", 89],
+    ["app", "2018-10-1 10:11:00", 91],
+    ["db", "2018-10-1 10:10:00", 68],
+    ["db", "2018-10-1 10:11:00", 72]
+  ]
+}</code></pre>
+<p>由于tm已经汇总到分钟，现在希望直接显示tm对应的值，且按服务器不同(&quot;app&quot;表示&quot;应用服务器&quot;，&quot;db&quot;表示&quot;数据库服务器&quot;)分系列显示。<br />
+rs2Stat支持转化此类数据，但表示要求是 &quot;g, x, y&quot;的格式，分别表示分组字段（系列名）、x轴标签、y轴数据，应该可用查询：</p>
+<pre><code>RecM.query(res="who g, tm x, cpu y", cond="...") -&gt; tbl(g, x, y)</code></pre>
+<p>JS示例：</p>
+<pre><code>function initPageRecMStat()
+{
+    ...
+    var statItf_ = WUI.initPageStat(jpage, setStatOpt);
+    function setStatOpt(chartIdx, opt) 
+    {
+        var param = opt.queryParam;
+        param.res = "who g,tm x,cpu y";
+
+        opt.formatter = function (value, arr, i) {
+            var map = {
+                "app": "应用服务器",
+                "db": "数据库服务器"
+            };
+            return map[value] || value;
+        };
+    }
+}</code></pre></div>
+<div class="block">
+<h2 id="WUI.getTmRange">@fn WUI.getTmRange(dscr, now?)</h2>
+<p>假设今天是2015-9-9 周三：</p>
+<pre><code>getTmRange("前1周") -&gt; ["2015-8-31"(上周一)，"2015-9-7"(本周一)]
+getTmRange("前3月") -&gt; ["2015-6-1", "2015-9-1"]
+getTmRange("前3天") -&gt; ["2015-9-7", "2015-9-9"]
+
+getTmRange("近1周") -&gt; ["2015-9-3"，"2015-9-10"]
+getTmRange("近3月") -&gt; ["2015-6-10", "2015-9-10"]
+getTmRange("近3天") -&gt; ["2015-9-7", "2015-9-10"]  // "前3天"+今天
+
+getTmRange("本日") -&gt; ["2015-9-9", "2015-9-10"]
+getTmRange("本月"") -&gt; ["2015-9-1", "2015-10-1"]
+getTmRange("本年"") -&gt; ["2015-1-1", "2016-1-1"]</code></pre>
+<p>dscr可以是 </p>
+<pre><code>"近|前" N "个"? "小时|日|周|月|年"
+"本|今" "小时|日/天|周|月|年"</code></pre>
+<p>注意：&quot;近X周&quot;包括今天（即使尚未过完）。</p></div>
 <div style="text-align:center">Generated by jdcloud-gendoc</div>
 </body>
 
