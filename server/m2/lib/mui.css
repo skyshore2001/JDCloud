@@ -118,6 +118,7 @@ html, body {
 	display:none;
 }
 
+/* 标准动画: slideIn: 进入; slideIn1: 返回时新页面进入(类似退出); slideOut: 退出(暂未使用) */
 @keyframes slideIn {
 	from {
 		transform: translateX(100%);
@@ -126,7 +127,6 @@ html, body {
 		transform: translateX(0);
 	}
 }
-
 @keyframes slideIn1 {
 	from {
 		transform: translateX(-100%);
@@ -135,7 +135,6 @@ html, body {
 		transform: translateX(0);
 	}
 }
-
 @keyframes slideOut {
 	from {
 		transform: translateX(0);
@@ -149,27 +148,22 @@ html, body {
 	from {
 		-webkit-transform: translateX(100%);
 	}
-
 	to {
 		-webkit-transform: translateX(0);
 	}
 }
-
 @-webkit-keyframes slideIn1 {
 	from {
 		-webkit-transform: translateX(-100%);
 	}
-
 	to {
 		-webkit-transform: translateX(0);
 	}
 }
-
 @-webkit-keyframes slideOut {
 	from {
 		-webkit-transform: translateX(0);
 	}
-
 	to {
 		-webkit-transform: translateX(-100%);
 	}
@@ -187,6 +181,72 @@ html, body {
 	-webkit-animation: slideOut .2s forwards;
 	animation: slideOut .2s forwards;
 }
+
+/* begin: mui-ani="up" */
+@keyframes slideIn_up {
+	from {
+		transform: translateY(100%);
+	}
+	to {
+		transform: translateY(0);
+	}
+}
+@keyframes slideIn1_up {
+	from {
+		transform: translateY(-100%);
+	}
+	to {
+		transform: translateY(0);
+	}
+}
+@keyframes slideOut_up {
+	from {
+		transform: translateY(0);
+	}
+	to {
+		transform: translateY(-100%);
+	}
+}
+
+@-webkit-keyframes slideIn_up {
+	from {
+		-webkit-transform: translateY(100%);
+	}
+	to {
+		-webkit-transform: translateY(0);
+	}
+}
+@-webkit-keyframes slideIn1_up {
+	from {
+		-webkit-transform: translateY(-100%);
+	}
+	to {
+		-webkit-transform: translateY(0);
+	}
+}
+@-webkit-keyframes slideOut_up {
+	from {
+		-webkit-transform: translateY(0);
+	}
+	to {
+		-webkit-transform: translateY(-100%);
+	}
+}
+
+.mui-page.slideIn_up {
+	-webkit-animation: slideIn_up .4s forwards;
+	animation: slideIn_up .4s forwards;
+}
+.mui-page.slideIn1_up {
+	-webkit-animation: slideIn1_up .4s forwards;
+	animation: slideIn1_up .4s forwards;
+}
+.mui-page.slideOut_up {
+	-webkit-animation: slideOut_up .4s forwards;
+	animation: slideOut_up .4s forwards;
+}
+/* end */
+
 
 .mui-loader {
 	z-index: 99999;

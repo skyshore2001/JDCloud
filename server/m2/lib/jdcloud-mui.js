@@ -2125,6 +2125,25 @@ function waitFor(dfd)
 }
 
 /**
+@fn rgb(r,g,b)
+
+生成"#112233"形式的颜色值.
+
+	rgb(255,255,255) -> "#ffffff"
+
+ */
+self.rgb = rgb;
+function rgb(r,g,b)
+{
+	return '#' + pad16(r) + pad16(g) + pad16(b);
+
+	function pad16(n) {
+		var ret = n.toString(16);
+		return n>16? ret: '0'+ret;
+	}
+}
+
+/**
 @fn rgb2hex(rgb)
 
 将jquery取到的颜色转成16进制形式，如："rgb(4, 190, 2)" -> "#04be02"
@@ -2135,8 +2154,15 @@ function waitFor(dfd)
 
  */
 self.rgb2hex = rgb2hex;
-function rgb2hex(rgb)
+function rgb2hex(rgbFormat)
 {
+	var rgba = rgb; // function rgb or rgba
+	try {
+		return eval(rgbFormat);
+	} catch (ex) {
+		console.log(ex);
+	}
+/*
 	var ms = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
 	if (ms == null)
 		return;
@@ -2151,6 +2177,7 @@ function rgb2hex(rgb)
 		}
 	}
 	return hex;
+*/
 }
 
 /**
@@ -4709,7 +4736,7 @@ function getPageInfo(pageRef)
   如果未指定，则使用当前URL的hash或指定的主页(MUI.options.homePage). "#"表示主页。
 @param opt {ani, url, backNoRefresh}  (v3.3) 该参数会传递给pagebeforeshow/pageshow回调函数。
 
-opt.ani:: String. 动画效果。设置为"none"禁用动画。
+opt.ani:: String. 动画效果。设置为"none"禁用动画。默认页面由右向左进入，设置为"up"表示由下向上进入（常用于popup页面）。
 
 opt.url:: String. 指定在地址栏显示的地址。如 `showPage("#order", {url: "?id=100"})` 可设置显示的URL为 `page/order.html?id=100`.
 @see setUrl
@@ -4793,6 +4820,21 @@ opt.url:: String. 指定在地址栏显示的地址。如 `showPage("#order", {u
 	MUI.showPage("udt__供应商");
 
 两者用同一套html/js，但数据不会干扰。
+
+(v5.4)
+@key mui-ani 指定本页面进入时的动画效果. 支持"up"。
+
+支持扩展动画效果。例如新动画名为"xx"，请参考mui.css定义slideIn_xx, slideIn1_xx类，即可使用：
+
+在page上指定进入动画：
+
+	<div mui-initfn="initSynopsis" mui-script="doctorSynopsis.js" mui-ani="up">
+
+在显示页面时指定动画：
+
+	MUI.showPage("#doctorSynopsis", {ani: "up"});
+	或
+	<a href="#doctorSynopsis" mui-opt="ani:'up'">页面1<a>
 
 */
 self.showPage = showPage;
@@ -5004,6 +5046,17 @@ function showPage(pageRef, opt)
 
 		var enableAni = showPageOpt_.ani !== 'none'; // TODO
 		var slideInClass = m_isback? "slideIn1": "slideIn";
+		if (enableAni) {
+			var ani = showPageOpt_.ani || jpage.attr("mui-ani");
+			if (ani) {
+				slideInClass += "_" + ani;
+				if (showPageOpt_.ani)
+					jpage.attr("mui-ani", ani);
+			}
+			else if (m_isback && oldPage.attr("mui-ani")) {
+				slideInClass = "slideIn1_" + oldPage.attr("mui-ani");
+			}
+		}
 		m_isback = null;
 		self.container.show(); // !!!! 
 		jpage.css("z-index", 1).show();
@@ -5794,6 +5847,11 @@ window.g_data = {}; // {userInfo, serverRev?, initClient?, testMode?, mockMode?}
 设置为"none"表示隐藏标题栏。
 设置为空("")表示禁止框架设置状态栏。
 
+@var options.fixTopbarColor?=false
+
+如果为true, 则自动根据页面第一个hd的背景色设置手机顶栏颜色.
+适合每个页面头部颜色不同的情况. 更复杂的情况, 可使用`MUI.setTopbarColor`手工设置顶栏颜色.
+
 @var options.manualSplash?=false
 @see topic-splashScreen
 
@@ -6138,6 +6196,9 @@ $(document).on("deviceready", function () {
 					bar.styleLightContent();
 			}
 		}
+		if (m_opt.fixTopbarColor) {
+			fixTopbarColor();
+		}
 		if (mCommon.isIOS()) {
 			// bugfix: IOS上显示statusbar时可能窗口大小不正确
 			bar.overlaysWebView(false);
@@ -6147,6 +6208,44 @@ $(document).on("deviceready", function () {
 		}
 	}
 });
+
+
+/**
+@fn MUI.setTopbarColor(colorHex, style?)
+
+@param colorHex 颜色值,格式如 "#fafafa", 可用MUI.rgb2hex函数转换.
+@param style dark|light
+
+设置顶栏颜色和字体黑白风格.
+*/
+self.setTopbarColor = setTopbarColor;
+function setTopbarColor(colorHex, style)
+{
+	var bar = window.StatusBar;
+	if (g_cordova && bar && colorHex) {
+		bar.backgroundColorByHexString(colorHex);
+		if (style) {
+			if (style === "dark")
+				bar.styleDefault();
+			else if (style === "light")
+				bar.styleLightContent();
+		}
+		self.options.statusBarColor = colorHex;
+	}
+}
+
+function fixTopbarColor()
+{
+	if (!g_cordova)
+		return;
+	$(document).on("pageshow", function () {
+		var color = MUI.activePage.find(".hd").css("backgroundColor"); // format: "rgb(...)"
+		if (color) {
+			var colorHex = self.rgb2hex(color); // call rgb(...)
+			setTopbarColor(colorHex);
+		}
+	});
+}
 
 //}}}
 
