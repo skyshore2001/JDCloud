@@ -989,8 +989,8 @@ class ApiLog
 			"ac" => $this->ac1,
 			"t" => $iv,
 			"retval" => $X_RET[0],
-			"req" => $this->req1,
-			"res" => $content
+			"req" => dbExpr(Q($this->req1)),
+			"res" => dbExpr(Q($content))
 		]);
 		if (Conf::$enableObjLog && self::$objLogId) {
 			dbUpdate("ObjLog", ["apiLog1Id" => $apiLog1Id], self::$objLogId);
