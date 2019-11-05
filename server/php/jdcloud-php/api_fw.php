@@ -924,7 +924,7 @@ class ApiLog
 			"ses" => session_id(),
 			"userId" => $userId,
 			"ac" => $this->ac,
-			"req" => $content,
+			"req" => dbExpr(Q($content)),
 			"reqsz" => $reqsz,
 			"ver" => $ver["str"],
 			"serverRev" => $GLOBALS["SERVER_REV"]
@@ -955,7 +955,7 @@ class ApiLog
 			"t" => $iv,
 			"retval" => $X_RET[0],
 			"ressz" => strlen($X_RET_STR),
-			"res" => $content,
+			"res" => dbExpr(Q($content)),
 			"userId" => $userId,
 			"ac" => $this->batchAc // 默认为null；对batch调用则列出详情
 		], $this->id);
