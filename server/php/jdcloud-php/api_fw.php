@@ -12,6 +12,56 @@ error_reporting(E_ALL & ~E_NOTICE);
 - 函数型接口，如 "login", "getToken"等, 一般实现在 api_functions.php中。
 - 对象型接口，如 "Ordr.query", "User.get" 等，一般实现在 api_objects.php中。
 
+关于参数传递，除add/set等接口有特殊要求外（添加或修改的字段必须用POST传递），
+一般用GET或POST传递参数均可。使用POST传参时，Content-Type支持 application/x-www-form-urlencoded , application/form-data , application/json。
+
+示例：接口定义`fn(a, b) -> {id}`，可以这样调用：
+
+	GET /api.php/fn?a=1&b=2
+
+返回示例：`[0, {"id":1}]`
+
+或用POST传参：
+
+	POST /api.php/fn
+	Content-Type: application/x-www-form-urlencoded
+
+	a=1&b=2
+
+或
+
+	POST /api.php/fn
+	Content-Type: application/json
+
+	{"a":1,"b":2}
+
+甚至混用GET/POST传参：
+
+	POST /api.php/fn?a=1
+	Content-Type: application/x-www-form-urlencoded
+
+	b=2
+
+如果使用筋斗云前端JS，可以调用：
+
+	callSvr("fn", {a:1, b:2}); // 用GET传参
+
+	callSvr("fn", $.noop, {a:1, b:2}); // 用POST传参. $.noop是jQuery定义的空函数，这里只用于占位，表示空的回调函数。
+
+	callSvr("fn", $.noop, JSON.stringify({a:1, b:2}), {
+		contentType: "application/json"
+	}); // 用POST传参, json格式
+
+	callSvr("fn", {a:1}, $.noop, {b:2}); // 用GET,POST混合传参
+
+GET或POST传参时，编码默认使用UTF-8。
+POST传参时支持其它编码，应在Content-Type中显示指定，如下面指定编码为`charset=gbk`：
+
+	POST /api.php/fn
+	Content-Type: application/x-www-form-urlencoded; charset=gbk
+
+	a=参数1&b=参数2
+	
 ## 函数型接口
 
 假设在文档有定义以下接口
