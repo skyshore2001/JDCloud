@@ -52,10 +52,10 @@ class SqlDiff_sqlite extends SqlDiff
 
 class SqlDiff_mysql extends SqlDiff
 {
-	public $ntext = "TEXT CHARACTER SET utf8";
+	public $ntext = "TEXT CHARACTER SET utf8mb4";
 	public $autoInc = 'AUTO_INCREMENT';
 	public $money = "DECIMAL(19,2)";
-	public $createOpt = "ENGINE=InnoDB DEFAULT CHARSET=utf8";
+	public $createOpt = "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
 
 	public function tableExists($tbl) {
 		$sth = $this->dbh->query("show tables like '$tbl'");
