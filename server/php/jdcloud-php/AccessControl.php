@@ -643,6 +643,7 @@ ORDER BY t0.id DESC)";
 query接口支持fmt参数：
 
 - list: 生成`{ @list, nextkey?, total? }`格式，而非缺省的 `{ @h, @d, nextkey?, total? }`格式
+- one: 类似get接口，只返回第一条数据，常用于统计等接口。
 - csv/txt/excel: 导出文件，注意为了避免分页，调用时可设置较大的pagesz值。
 	- csv: 逗号分隔的文件，utf8编码。
 	- excel: 逗号分隔的文件，gb18030编码以便excel可直接打开不会显示中文乱码。
@@ -1784,8 +1785,9 @@ FROM ($sql) t0";
 				$enablePartialQuery = false;
 			}
 		}
-		if ($pagesz == 0)
-			$pagesz = 20;
+		if ($pagesz == 0) {
+			$pagesz = param("fmt") !== "one"? 20: 1;
+		}
 
 		$maxPageSz = $this->getMaxPageSz();
 		if ($pagesz < 0 || $pagesz > $maxPageSz)
@@ -1909,6 +1911,11 @@ FROM ($sql) t0";
 		$fmt = param("fmt");
 		if ($fmt === "list") {
 			$ret = ["list" => $ret];
+		}
+		else if ($fmt === "one") {
+			if (count($ret) == 0)
+				throw new MyException(E_PARAM, "no data", "查询不到数据");
+			return $ret[0];
 		}
 		else {
 			$ret = objarr2table($ret, $fixedColCnt);
