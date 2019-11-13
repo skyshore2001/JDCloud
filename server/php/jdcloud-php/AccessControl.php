@@ -2294,7 +2294,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 				continue;
 			}
 
-			$sql = preg_replace('/ from/i', ", $joinField id_$0", $sql);
+			$sql = preg_replace('/ from/i', ", $joinField id_$0", $sql, 1);
 			// "SELECT status, count(*) cnt FROM Task WHERE orderId=%d group by status" 
 			// => "select status, count(*) cnt, orderId id_ FROM Task WHERE orderId IN (...) group by id_, status"
 			$sql = preg_replace('/group by/i', "$0 id_, ", $sql);
