@@ -1356,7 +1356,8 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	// 内部被addRes调用。避免重复添加字段到res
 	private function addResInt(&$resArr, $col) {
 		$ignoreT0 = @$resArr[0] == "t0.*";
-		if ($ignoreT0 && substr($col,0,3) == "t0.")
+		// 如果有"t0.*"，则忽略主表字段如"t0.id"，但应避免别名字段如"t0.id orderId"被去掉
+		if ($ignoreT0 && substr($col,0,3) == "t0." && strpos($col, ' ') === false)
 			return;
 		$found = false;
 		foreach ($resArr as $e) {
