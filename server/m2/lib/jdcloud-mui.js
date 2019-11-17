@@ -5923,6 +5923,21 @@ window.g_data = {}; // {userInfo, serverRev?, initClient?, testMode?, mockMode?}
 
 在IOS+cordova环境下，点击事件会有300ms延迟，默认会加载lib/fastclick.min.js解决。
 
+该库会导致部分场景下点击失效问题。这时可以通过在关键点击元素上设置"needsclick"类来解决。
+
+例如：fastclick库与图片裁切库image-process-tool有些冲突, ios手机APP中点修改头像无法弹出图片选择框. JS初始化配置如下：
+
+	var zxImageProcess = new ZxImageProcess({
+		// 触发文件选择的元素
+		selector: jpage.find(".downSelect-btn[value=1]")[0],
+		...
+	});
+
+最终将绑定用于点击的元素 `<div class='downSelect-btn'></div>`改为 `<div class='downSelect-btn needsclick'></div>`解决。
+发现IOS上点击失效问题，可先设置`options.disableFastClick=true`检查问题是否消失来判定。
+
+TODO: cordova-ios未来将使用WkWebView作为容器（目前仍使用UIWebView），将不再有点击延迟问题，到时将去除FastClick库。
+
 @var options.onAutoLogin 自动登录
 @event autoLogin 自动登录事件(v5.4)
 
