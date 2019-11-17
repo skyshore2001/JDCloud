@@ -2133,8 +2133,10 @@ function waitFor(dfd)
 
  */
 self.rgb = rgb;
-function rgb(r,g,b)
+function rgb(r,g,b,a)
 {
+	if (a === 0) // transparent (alpha=0)
+		return;
 	return '#' + pad16(r) + pad16(g) + pad16(b);
 
 	function pad16(n) {
@@ -3141,7 +3143,7 @@ function enterWaiting(ctx)
 	setTimeout(function () {
 		if (self.isBusy)
 			self.showLoading();
-	}, 200);
+	}, (self.options.showLoadingDelay || 200));
 // 		if ($.mobile && !(ctx && ctx.noLoadingImg))
 // 			$.mobile.loading("show");
 	//},1);
@@ -4822,9 +4824,10 @@ opt.url:: String. 指定在地址栏显示的地址。如 `showPage("#order", {u
 两者用同一套html/js，但数据不会干扰。
 
 (v5.4)
-@key mui-ani 指定本页面进入时的动画效果. 支持"up"。
-
-支持扩展动画效果。例如新动画名为"xx"，请参考mui.css定义slideIn_xx, slideIn1_xx类，即可使用：
+@key mui-ani 指定本页面进入时的动画效果. 支持"up"(由下向上), "pop"(fade展开)。
+@key slideIn
+@key slideOut
+支持扩展动画效果。例如新动画名为"xx"，请参考mui.css定义slideIn_xx, slideOut_xx类，即可使用：
 
 在page上指定进入动画：
 
@@ -5044,32 +5047,35 @@ function showPage(pageRef, opt)
 			return;
 		}
 
-		var enableAni = showPageOpt_.ani !== 'none'; // TODO
-		var slideInClass = m_isback? "slideIn1": "slideIn";
+		var enableAni = showPageOpt_.ani !== 'none';
+		var isback = m_isback && oldPage;
+		var slideClass = isback? "slideOut": "slideIn";
 		if (enableAni) {
-			var ani = showPageOpt_.ani || jpage.attr("mui-ani");
-			if (ani) {
-				slideInClass += "_" + ani;
-				if (showPageOpt_.ani)
-					jpage.attr("mui-ani", ani);
+			if (! isback) {
+				var ani = showPageOpt_.ani || jpage.attr("mui-ani");
+				if (ani) {
+					slideClass += "_" + ani;
+					if (showPageOpt_.ani)
+						jpage.attr("mui-ani", ani);
+				}
+				jpage.addClass(slideClass)
+					.one("animationend", onAnimationEnd)
+					.one("webkitAnimationEnd", onAnimationEnd);
 			}
-			else if (m_isback && oldPage.attr("mui-ani")) {
-				slideInClass = "slideIn1_" + oldPage.attr("mui-ani");
-			}
-		}
-		m_isback = null;
-		self.container.show(); // !!!! 
-		jpage.css("z-index", 1).show();
-		if (oldPage)
-			oldPage.css("z-index", "-1");
-		if (enableAni) {
-			jpage.addClass(slideInClass);
-			jpage.one("animationend", onAnimationEnd)
-				.one("webkitAnimationEnd", onAnimationEnd);
+			else {
+				var ani = oldPage.attr("mui-ani");
+				if (ani)
+					slideClass += "_" + ani;
 
-// 				if (oldPage)
-// 					oldPage.addClass("slideOut");
+				oldPage.addClass(slideClass)
+					.one("animationend", onAnimationEnd)
+					.one("webkitAnimationEnd", onAnimationEnd);
+			}
 		}
+		jpage.css("z-index", 1).show();
+		self.container.show(); // !!!! 
+
+		m_isback = null;
 		self.activePage = jpage;
 		fixPageSize();
 		var title = jpage.find(".hd h1, .hd h2").filter(":first").text() || self.title || jpage.attr("id");
@@ -5081,10 +5087,14 @@ function showPage(pageRef, opt)
 		function onAnimationEnd()
 		{
 			if (enableAni) {
-				// NOTE: 如果不删除，动画效果将导致fixed position无效。
-				jpage.removeClass(slideInClass);
-// 					if (oldPage)
-// 						oldPage.removeClass("slideOut");
+				if (! isback) {
+					// NOTE: 如果不删除，动画效果将导致fixed position无效。
+					jpage.removeClass(slideClass);
+				}
+				else {
+					oldPage.css("z-index", "-1");
+					oldPage.removeClass(slideClass);
+				}
 			}
 			if (toPageId != m_toPageId)
 				return;
@@ -6019,6 +6029,11 @@ window.g_data = {}; // {userInfo, serverRev?, initClient?, testMode?, mockMode?}
 			return false;
 		}
 	}
+
+@var options.showLoadingDelay ?= 500  延迟显示加载图标
+
+(v5.4) 默认如果在500ms内如果远程调用成功, 则不显示加载图标.
+
 */
 	var m_opt = self.options = {
 		appName: "user",
@@ -6031,6 +6046,7 @@ window.g_data = {}; // {userInfo, serverRev?, initClient?, testMode?, mockMode?}
 		PAGE_SZ: 20,
 		manualSplash: false,
 		mockDelay: 50,
+		showLoadingDelay: 500,
 
 		pluginFolder: "../plugin",
 		showHash: ($("base").attr("mui-showHash") != "no"),
