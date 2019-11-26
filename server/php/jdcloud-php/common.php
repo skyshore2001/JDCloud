@@ -346,7 +346,7 @@ function httpCall($url, $postParams=null, $opt=[])
 		curl_close($h);
 		$msg = "httpCall error $errno: time={$tv}s, url=$url, errmsg=$errmsg";
 		logit($msg, true, $slowLogFile);
-		throw new MyException(E_SERVER, $msg);
+		throw new MyException(E_SERVER, $msg, "服务器请求出错或超时");
 		// echo "<a href='http://curl.haxx.se/libcurl/c/libcurl-errors.html'>错误原因查询</a></br>";
 	}
 	// slow log
@@ -466,10 +466,10 @@ function addToStr(&$str, $str1, $sep=',')
 }
 
 /**
-@fn arrCopy(&$dst, $src, $fields)
+@fn arrCopy(&$dst, $src, $fields=null)
 
 将数组$src中指定字段复制到$dst中。
-数组$fields指定字段列表。如果字段复制后需要改名，可以以[$dstName, $srcName]这样的数组来表示。
+数组$fields指定字段列表，如果未指定，则全部字段复制过去；如果字段复制后需要改名，可以以[$dstName, $srcName]这样的数组来表示。
 
 示例：将workItem提取指定字段后插入数据库中：
 
@@ -483,11 +483,25 @@ function addToStr(&$str, $str1, $sep=',')
 	]);
 	dbInsert("WorkItem", $wiData);
 
+示例：
+
+	$arrCopy($wiData, $workItem); // 复制全部字段过去
+
+如果不想覆盖已有字段(即使值为null也不覆盖)，可以用：
+
+	$wiData += $workItem;
+
 */
-function arrCopy(&$ret, $arr, $fields)
+function arrCopy(&$ret, $arr, $fields=null)
 {
 	if ($ret == null)
 		$ret = [];
+	if ($fields == null) {
+		foreach ($arr as $k=>$v) {
+			$ret[$k] = $v;
+		}
+		return;
+	}
 	foreach ($fields as $f) {
 		if (is_array($f))
 			@$ret[$f[0]] = $arr[$f[1]];

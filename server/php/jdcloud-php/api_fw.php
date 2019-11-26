@@ -880,6 +880,15 @@ class ApiLog
 取当前调用的ApiLog编号。
 */
 	static $lastId;
+/**
+@var ApiLog::$instance
+
+e.g. 修改ApiLog的ac:
+
+	ApiLog::$instance->batchAc = "async:$f";
+
+*/
+	static $instance;
 
 	function __construct($ac) 
 	{
@@ -980,6 +989,7 @@ class ApiLog
 			"serverRev" => $GLOBALS["SERVER_REV"]
 		]);
 		self::$lastId = $this->id;
+		self::$instance = $this;
 // 		$logStr = "=== [" . date("Y-m-d H:i:s") . "] id={$this->logId} from=$remoteAddr ses=" . session_id() . " app=$APP user=$userId ac=$ac >>>$content<<<\n";
 	}
 
@@ -1346,9 +1356,20 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 		"tel" => $params["vendorPhone"]
 	]);
 
+(v5.4) 上面例子会自动根据当前用户角色来选择AC类，还可以直接指定使用哪个AC类来调用，如：
+
+	$acObj = new AC2_Vendor();
+	$vendorId = $acObj->callSvc("Vendor", "query", [
+		"name" => $params["vendorName"],
+		"tel" => $params["vendorPhone"]
+	]);
+
+注意请自行确保AC类对当前角色兼容性，如用户角色调用了管理员的AC类，就可能出问题。
+
 @see setParam
-@see tableCRUD
+@see tableCRUD (obsolete)
 @see callSvc
+@see AccessControl::callSvc
 */
 function callSvcInt($ac, $param=null, $postParam=null)
 {
@@ -1602,7 +1623,8 @@ function callAsync($ac, $param) {
 */
 function api_async() {
 	api_checkIp();
-	@$f = $_GET["f"];
+	$f = mparam("f", "G");
+	ApiLog::$instance->batchAc = "async:$f";
 	global $allowedAsyncCalls;
 	if (!($f && in_array($f, $allowedAsyncCalls) && function_exists($f)))
 		throw new MyException(E_PARAM, "bad async fn: $f");

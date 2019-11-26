@@ -865,6 +865,9 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			throw new MyException(!hasPerm(AUTH_LOGIN)? E_NOAUTH: E_FORBIDDEN, "Operation is not allowed for current user on object `$tbl`");
 		}
 		$x = new $cls;
+		if (!is_a($x, "AccessControl")) {
+			throw new MyException(E_SERVER, "bad AC class `$cls`. MUST extend AccessControl", "AC类定义错误");
+		}
 		return $x;
 	}
 
