@@ -1639,6 +1639,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		else if (array_key_exists("id", $_POST)) {
 			unset($_POST["id"]);
 		}
+		$this->handleSubObjForAddSet();
 
 		$this->id = dbInsert($this->table, $_POST);
 
@@ -1664,8 +1665,37 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		if ($this->id === null)
 			$this->id = mparam("id");
 		$this->validate();
+		$this->handleSubObjForAddSet();
 
 		$cnt = dbUpdate($this->table, $_POST, $this->id);
+	}
+
+	function handleSubObjForAddSet()
+	{
+		foreach ($this->subobj as $k=>$v) {
+			if (is_array($_POST[$k]) && isset($v["AC"])) {
+				$subobjList = $_POST[$k];
+				list($objName, $relatedKey) = $v["AC"];
+				$this->onAfterActions[] = function (&$ret) use ($subobjList, $objName, $relatedKey) {
+					foreach ($subobjList as $subobj) {
+						$subobj[$relatedKey] = $this->id;
+						$subid = $subobj["id"];
+						if ($subid) {
+							if ($subid > 0) {
+								callSvcInt("$objName.set", ["id"=>$subid], $subobj);
+							}
+							else {
+								callSvcInt("$objName.del", ["id"=>-$subid]);
+							}
+						}
+						else {
+							callSvcInt("$objName.add", null, $subobj);
+						}
+					}
+				};
+				unset($_POST[$k]);
+			}
+		}
 	}
 
 	// extSqlFn: 如果为空，则如果有外部虚拟字段，则返回完整嵌套SQL语句；否则返回内层SQL语句，由调用方再调用extSqlFn函数生成嵌套SQL查询。
@@ -1946,7 +1976,7 @@ FROM ($sql) t0";
 		$sql = sprintf("DELETE FROM %s WHERE id=%d", $this->table, $this->id);
 		$cnt = execOne($sql);
 		if (param('force')!=1 && $cnt != 1)
-			throw new MyException(E_PARAM, "del: not found id={$this->id}");
+			throw new MyException(E_PARAM, "del: not found {$this->table}.id={$this->id}");
 	}
 
 /**

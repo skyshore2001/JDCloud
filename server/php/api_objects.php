@@ -83,9 +83,12 @@ class AC2_Employee extends AC0_Employee
 // ====== Ordr {{{
 class AC0_Ordr extends AccessControl
 {
+	// 1. 子对象GET(cond: "包含this.id的等式"), 2. 子对象ADD/SET, 3. 关联对象
 	protected $subobj = [
 		"orderLog" => ["sql"=>"SELECT ol.*, e.uname AS empPhone, e.name AS empName FROM OrderLog ol LEFT JOIN Employee e ON ol.empId=e.id WHERE orderId=%d", "wantOne"=>false],
-		"atts" => ["sql"=>"SELECT id, attId FROM OrderAtt WHERE orderId=%d", "wantOne"=>false],
+		//"atts" => ["sql"=>"SELECT id, attId FROM OrderAtt WHERE orderId=%d", "wantOne"=>false, "AC"=>["OrderAtt", "orderId"]],
+		"atts" => ["obj"=>"OrderAtt", "res"=>"id,name", "cond"=>"t0.orderId=this.id"],
+//		"user" => ["obj"=>"User", "cond"=>"this.userId=t0.id"]
 	];
 
 	protected $vcolDefs = [
@@ -98,6 +101,10 @@ class AC0_Ordr extends AccessControl
 	function __construct() {
 		$this->vcolDefs[] = [ "res" => tmCols("t0.createTm") ];
 	}
+}
+
+class AC1_OrderAtt extends AccessControl
+{
 }
 
 class AC1_Ordr extends AC0_Ordr

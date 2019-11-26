@@ -263,3 +263,94 @@ app类型为"admin".
 
 ## 运营统计
 
+## 带子表的对象操作
+
+在添加或更新对象时，对子项采用PATCH机制，即不必传所有行子项，如果在子项中指定了id，则做更新子项操作（特别地，如果id是负数，表示删除-id这个子项），否则做追加子项操作。
+
+假设有如下表定义：
+
+	订单：
+	@Ordr: id, dscr, amount
+
+	订单明细
+	@OrderItem: id, orderId, itemId, itemName, price, qty, amount
+
+接口设计示例：
+
+	Ordr.add()(..., items={itemId, price?, qty?=1})
+
+	Ordr.set()(..., items={id?, itemId?, price?, qty?})
+
+	Ordr.get(id)(..., items={id, itemId, price, qty, itemName, amount})
+
+可同时开放子项接口：
+
+	OrderItem.add()(orderId, itemId, price, qty?)
+	OrderItem.set()(itemId?, price?, qty?)
+	OrderItem.del(id)
+	OrderItem.query(cond="orderId={orderId}")
+
+- 注意：add/set接口中，子项只能设置itemId, qty, price字段，不允许设置itemName, amount等计算字段或关联字段，这两个字段和主表的amount字段应由服务端自动补全。
+- 如果未指定price或itemName，则自动根据itemId从item信息中查找补全。
+
+调用接口示例，先添加订单：
+
+	callSvr("Ordr.add", $.noop, {dscr: 'order 1', items: [ {itemId:1, price:200}, {itemId:2, price:100, qty:3} ] })
+
+购买了两个子项：
+
+	"item 1" x 1
+	"item 2" x 3
+
+获取一下子项：
+
+	callSvr("Ordr.get", {res:"items"});
+
+返回示例:
+
+	{id: 1, items: [
+		{id: 100, itemId:1, orderId:1, price:200, qty:1, itemName:"item 1", amount:200},
+		{id: 101, itemId:2, orderId:1, price:100, qty:3, itemName:"item 2", amount:300}
+	]}
+
+更新一项，又追加一项：
+
+	callSvr("Ordr.set", {id:1}, $.noop, {items: [ {id:100, qty:2}, {itemId:2, qty:2.5} ] })
+	或
+	callSvr("OrderItem.set", {id:100}, $.noop, {qty:2});
+	callSvr("OrderItem.add", $.noop, {orderId:1, itemId:2, qty:2.5} ] })
+
+现在子项为：
+
+	"item 1" x 2
+	"item 2" x 3
+	"item 2" x 2.5
+
+注意：由于第二项未传id，服务端做追加处理。
+
+要删除第二项：
+
+	callSvr("Ordr.set", $.noop, { items: [ {id:-101} ] })
+	或
+	callSvr("OrderItem.del", {id: 101})
+
+现在子项为：
+
+	"item 1" x 2
+	"item 2" x 2.5
+
+TODO 问题：
+
+- 在添加或修改子项时，如何计算主表金额并更新？似乎不应暴露子项出去。!不暴露子项时，调用默认的AccessControl来更新？
+- 客户端如何请求服务端做计算
+
+### 服务端实现
+
+	class AC2_Ordr extends AccessControl {
+		protected $subobj = [
+			"items" => ["obj"=>"OrderItem", "cond"=>"t0.orderId=this.id"]
+		]
+	}
+
+	class AC2_OrderItem extends AccessControl {
+	}
