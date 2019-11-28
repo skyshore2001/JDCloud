@@ -82,6 +82,9 @@ status
 
 - 使用ordr而不是order是为了避免与sql关键字order冲突
 
+@Item: id, name, price
+@OrderItem: id, orderId, itemId, itemName, price, qty, amount
+
 **[订单日志]**
 
 @OrderLog: id, orderId, action, tm, dscr, empId
@@ -350,7 +353,42 @@ TODO 问题：
 		protected $subobj = [
 			"items" => ["obj"=>"OrderItem", "cond"=>"t0.orderId=this.id"]
 		]
+
+- 注意：add/set接口中，子项只能设置itemId, qty, price字段，不允许设置itemName, amount等计算字段或关联字段，这两个字段和主表的amount字段应由服务端自动补全。
+- 如果未指定price或itemName，则自动根据itemId从item信息中查找补全。
+
+		protected function onValidate() {
+			$_POST["amount"] = 0;
+			$this->handleSubObj($_POST);
+		}
 	}
 
 	class AC2_OrderItem extends AccessControl {
+		protected $readonlyFields = ["amount"];
+		protected function onValidate(&$order) {
+			$items = &$_POST;
+			if ($this->ac == "add") {
+				$items["amount"] = $items["price"] * $items["qty"];
+				$order["amount"] += $items["amount"];
+			}
+			else { // "set"
+				if (issetval("price", $item) || issetval("qty")) {
+				}
+				$items["amount"] = $items["price"] * $items["qty"];
+				$order["amount"] += $items["amount"];
+			}
+		}
 	}
+
+### 前端子表处理
+
+删除：标记此行数据的delete=1
+修改：标记此行数据的edit=1
+最终只提交edit和delete标志的行。
+
+后端提供calc接口用于计算或验算。一般前端使用calc计算相关字段。
+在添加或更新时，前端应传入金额等字段，后端不做验证。但在添加或更新后，后端可取出数据并调用calc验证前端计算是否正确。
+
+
+	callSvr("Ordr.get", {id:62, res:"*,items", res_items:"id,itemName,amount 金额"})
+

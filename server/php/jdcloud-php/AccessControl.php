@@ -862,7 +862,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		}
 		if ($cls == null)
 		{
-			throw new MyException(!hasPerm(AUTH_LOGIN)? E_NOAUTH: E_FORBIDDEN, "Operation is not allowed for current user on object `$tbl`");
+			throw new MyException(!hasPerm(AUTH_LOGIN)? E_NOAUTH: E_FORBIDDEN, "Operation is not allowed for current user: `$tbl.$ac`");
 		}
 		$x = new $cls;
 		return $x;
@@ -1673,10 +1673,18 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	function handleSubObjForAddSet()
 	{
 		foreach ($this->subobj as $k=>$v) {
-			if (is_array($_POST[$k]) && isset($v["AC"])) {
+			if (is_array($_POST[$k]) && isset($v["obj"])) {
 				$subobjList = $_POST[$k];
-				list($objName, $relatedKey) = $v["AC"];
-				$this->onAfterActions[] = function (&$ret) use ($subobjList, $objName, $relatedKey) {
+				$objName = $v["obj"];
+				$relatedKey = null;
+				if (preg_match('/(\w+)=%d/', $v["cond"], $ms)) {
+					$relatedKey = $ms[1];
+				}
+				if ($relatedKey == null) {
+					throw new MyException(E_SERVER, "bad cond: cannot get relatedKey", "子表配置错误");
+				}
+
+				array_unshift($this->onAfterActions, function (&$ret) use ($subobjList, $objName, $relatedKey) {
 					foreach ($subobjList as $subobj) {
 						$subobj[$relatedKey] = $this->id;
 						$subid = $subobj["id"];
@@ -1692,7 +1700,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 							callSvcInt("$objName.add", null, $subobj);
 						}
 					}
-				};
+				});
 				unset($_POST[$k]);
 			}
 		}
@@ -2261,6 +2269,20 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		if (is_array($subobj)) {
 			# $opt: {sql, wantOne=false}
 			foreach ($subobj as $k => $opt) {
+				if ($opt["obj"] && $opt["cond"]) {
+					$opt["cond"] = sprintf($opt["cond"], $id); # e.g. "orderId=%d"
+					$res = param("res_$k");
+					if ($res) {
+						$opt["res"] = $res;
+					}
+					$rv = callSvcInt($opt["obj"] . ".query", $opt + [
+						"fmt" => "list",
+						"pagesz" => -1
+					]);
+					$mainObj[$k] = $rv["list"];
+					continue;
+				}
+
 				if (! @$opt["sql"])
 					continue;
 				$sql1 = sprintf($opt["sql"], $id); # e.g. "select * from OrderItem where orderId=%d"

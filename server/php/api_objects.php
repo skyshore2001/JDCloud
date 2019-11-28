@@ -87,7 +87,8 @@ class AC0_Ordr extends AccessControl
 	protected $subobj = [
 		"orderLog" => ["sql"=>"SELECT ol.*, e.uname AS empPhone, e.name AS empName FROM OrderLog ol LEFT JOIN Employee e ON ol.empId=e.id WHERE orderId=%d", "wantOne"=>false],
 		//"atts" => ["sql"=>"SELECT id, attId FROM OrderAtt WHERE orderId=%d", "wantOne"=>false, "AC"=>["OrderAtt", "orderId"]],
-		"atts" => ["obj"=>"OrderAtt", "res"=>"id,name", "cond"=>"t0.orderId=this.id"],
+		"atts" => ["obj"=>"OrderAtt", "res"=>"id,attId", "cond"=>"orderId=%d"],
+		"items" => ["obj"=>"OrderItem", "cond"=>"orderId=%d", "res"=>"id,itemName"]
 //		"user" => ["obj"=>"User", "cond"=>"this.userId=t0.id"]
 	];
 
@@ -107,6 +108,16 @@ class AC1_OrderAtt extends AccessControl
 {
 }
 
+class AC1_OrderItem extends AccessControl
+{
+	protected $vcolDefs = [
+		[
+			"res" => ["i.name iname"],
+			"join" => "JOIN Item i ON i.id=t0.itemId"
+		]
+	];
+}
+
 class AC1_Ordr extends AC0_Ordr
 {
 	protected $allowedAc = ["get", "query", "add", "set"];
@@ -117,6 +128,36 @@ class AC1_Ordr extends AC0_Ordr
 		$userId = $_SESSION["uid"];
 		$this->addCond("t0.userId={$userId}");
 	}
+
+	// { items={qty, price, amount!}, amount! }
+	function api_calc()
+	{
+		$this->calc($_POST);
+		return $_POST;
+	}
+
+	protected function calc(&$order)
+	{
+		mparam("items", $order);
+		$amount = 0;
+		foreach ($order["items"] as &$item) {
+			mparam("price", $item);
+			mparam("qty", $item);
+			$item["amount"] = $item["price"] * $item["qty"];
+			$amount += $item["amount"];
+		}
+		$order["amount"] = $amount;
+	}
+	/*
+	protected function needCalc($order)
+	{
+		if (!is_array($order["items"]))
+			return false;
+		foreach ($order["items"] as $e) {
+			if (issetval("qty", $price))
+		}
+	}
+	*/
 
 	protected function onValidate()
 	{
@@ -144,6 +185,15 @@ class AC1_Ordr extends AC0_Ordr
 				]);
 			};
 		}
+
+		$this->onAfterActions[] = function () {
+			$order = queryOne("SELECT amount FROM Ordr WHERE id=" . $this->id, true);
+			$order["items"] = queryAll("SELECT price,qty,amount FROM OrderItem WHERE orderId=" . $this->id, true);
+			$order0 = $order;
+			$this->calc($order);
+			if ($order0["amount"] != $order["amount"])
+				throw new MyException(E_PARAM, "bad amount, require " . $order["amount"] . ", actual " . $order0["amount"]);
+		};
 	}
 }
 
@@ -203,5 +253,8 @@ class AC0_ApiLog extends AccessControl
 		$this->vcolDefs[] = [ "res" => tmCols() ];
 	}
 }
+
+class AC1_Item extends AccessControl
+{}
 
 // vi: foldmethod=marker
