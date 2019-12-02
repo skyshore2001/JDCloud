@@ -1695,6 +1695,7 @@ class BatchApiApp extends AppBase
 		$g_dbgInfo = [];
 	}
 
+/*
 	static function handleBatchRef($ref, $retVal)
 	{
 		foreach ($ref as $k) {
@@ -1706,11 +1707,42 @@ class BatchApiApp extends AppBase
 			}
 		}
 	}
+*/
+
+	// return: false OR params
+	// name: "get"/"post"
+	static function getParams($call, $name, &$retVal)
+	{
+		$params = $call[$name];
+		if (is_null($params))
+			return [];
+		// e.g. {get: "{$1}"}
+		if (is_string($params)) {
+			$params = self::calcRefValue($params, $retVal);
+		}
+		// e.g. { get: {status: "{$1.status}", cond: "id>{$1.id}"}, ref: ["status", "cond"] }
+		else if ($call["ref"]) {
+			if (! is_array($call["ref"])) {
+				$retVal[] = [E_PARAM, "参数错误", "batch `ref' should be array"];
+				return false;
+			}
+			foreach ($call["ref"] as $k) {
+				if (isset($params[$k])) {
+					$params[$k] = self::calcRefValue($params[$k], $retVal);
+				}
+			}
+		}
+		if (!is_array($params)) {
+			$retVal[] = [E_PARAM, "参数错误", "param $name MUST be array."];
+			return false;
+		}
+		return $params;
+	}
 
 	// 原理：
 	// "{$n.id}" => "$f(n)["id"]"
 	// 如果计算错误，则返回NULL
-	static function calcRefValue($val, $arr)
+	private static function calcRefValue($val, $arr)
 	{
 		$f = function ($n) use ($arr) {
 			if ($n <= 0)
@@ -1866,27 +1898,8 @@ class ApiApp extends AppBase
 			}
 			$acList[] = $call["ac"];
 
-			$_GET = $call["get"] ?: [];
-			$_POST = $call["post"] ?: [];
-			if ($call["ref"]) {
-				if (! is_array($call["ref"])) {
-					$retVal[] = [E_PARAM, "参数错误", "batch `ref' should be array"];
-					continue;
-				}
-				BatchApiApp::handleBatchRef($call["ref"], $retVal);
-			}
-			if (is_string($_GET)) {
-				$_GET = BatchApiApp::calcRefValue($_GET, $retVal);
-			}
-			if (is_string($_POST)) {
-				$_POST = BatchApiApp::calcRefValue($_POST, $retVal);
-			}
-
-			if (!is_array($_GET) || !is_array($_POST)) {
-				$retVal[] = [E_PARAM, "参数错误", "bad GET/POST array."];
-				continue;
-			}
-
+			$_GET = BatchApiApp::getParams($call, "get", $retVal);
+			$_POST = BatchApiApp::getParams($call, "post", $retVal);
 			$_REQUEST = array_merge($_GET, $_POST);
 			if ($this->apiLog) {
 				$this->apiLog->logBefore1($call["ac"]);
