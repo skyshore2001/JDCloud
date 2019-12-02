@@ -392,3 +392,8 @@ TODO 问题：
 
 	callSvr("Ordr.get", {id:62, res:"*,items", res_items:"id,itemName,amount 金额"})
 
+	MUI.useBatchCall();
+	callSvr("Ordr.calc", $.noop, {items:[{itemId:1, itemName:'item 1', qty:1, price:200}, {itemId:2, itemName:'item 2', qty:3, price:200}]}, {contentType:"application/json"});
+	callSvr("Ordr.add", $.noop, "{$1}", {contentType:"application/json"});
+
+

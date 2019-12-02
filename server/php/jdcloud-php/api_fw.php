@@ -1710,7 +1710,7 @@ class BatchApiApp extends AppBase
 	// 原理：
 	// "{$n.id}" => "$f(n)["id"]"
 	// 如果计算错误，则返回NULL
-	private static function calcRefValue($val, $arr)
+	static function calcRefValue($val, $arr)
 	{
 		$f = function ($n) use ($arr) {
 			if ($n <= 0)
@@ -1740,14 +1740,22 @@ class BatchApiApp extends AppBase
 			return $rv;
 		};
 		
-		$v1 = preg_replace_callback('/\{(.+?)\}/', function ($ms) use ($calcOne) {
+		// 完全替换，如 "{$-1}" 返回上次调用对象
+		if (preg_match('/^\{  ([^{}]+)  \}$/x', $val, $ms)) {
 			$expr = $ms[1];
-			$rv = $calcOne($expr);
-			if (!isset($rv))
-				$rv = "null";
-			return $rv;
-		}, $val);
-		addLog("### batch ref: `{$val}' -> `{$v1}'");
+			$v1 = $calcOne($expr);
+		}
+		// 部分替换，只返回字符串。如 "id={$-1}"
+		else {
+			$v1 = preg_replace_callback('/\{(.+?)\}/', function ($ms) use ($calcOne) {
+				$expr = $ms[1];
+				$rv = $calcOne($expr);
+				if (!isset($rv))
+					$rv = "null";
+				return $rv;
+			}, $val);
+			addLog("### batch ref: `{$val}' -> `{$v1}'");
+		}
 		return $v1;
 	}
 }
@@ -1867,6 +1875,18 @@ class ApiApp extends AppBase
 				}
 				BatchApiApp::handleBatchRef($call["ref"], $retVal);
 			}
+			if (is_string($_GET)) {
+				$_GET = BatchApiApp::calcRefValue($_GET, $retVal);
+			}
+			if (is_string($_POST)) {
+				$_POST = BatchApiApp::calcRefValue($_POST, $retVal);
+			}
+
+			if (!is_array($_GET) || !is_array($_POST)) {
+				$retVal[] = [E_PARAM, "参数错误", "bad GET/POST array."];
+				continue;
+			}
+
 			$_REQUEST = array_merge($_GET, $_POST);
 			if ($this->apiLog) {
 				$this->apiLog->logBefore1($call["ac"]);

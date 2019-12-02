@@ -828,7 +828,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 */
 	protected $enableObjLog = true;
 
-	static function create($tbl, $ac, $asAdmin = false) 
+	static function create($tbl, $ac = null, $asAdmin = false) 
 	{
 		/*
 		if (!hasPerm(AUTH_USER | AUTH_EMP))
@@ -862,7 +862,8 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		}
 		if ($cls == null)
 		{
-			throw new MyException(!hasPerm(AUTH_LOGIN)? E_NOAUTH: E_FORBIDDEN, "Operation is not allowed for current user: `$tbl.$ac`");
+			$msg = $ac ? "$tbl.$ac": $tbl;
+			throw new MyException(!hasPerm(AUTH_LOGIN)? E_NOAUTH: E_FORBIDDEN, "Operation is not allowed for current user: `$msg`");
 		}
 		$x = new $cls;
 		return $x;
@@ -1672,37 +1673,44 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 
 	function handleSubObjForAddSet()
 	{
+		$onAfterActions = [];
 		foreach ($this->subobj as $k=>$v) {
 			if (is_array($_POST[$k]) && isset($v["obj"])) {
 				$subobjList = $_POST[$k];
-				$objName = $v["obj"];
-				$relatedKey = null;
-				if (preg_match('/(\w+)=%d/', $v["cond"], $ms)) {
-					$relatedKey = $ms[1];
-				}
-				if ($relatedKey == null) {
-					throw new MyException(E_SERVER, "bad cond: cannot get relatedKey", "子表配置错误");
-				}
+				$onAfterActions[] = function (&$ret) use ($subobjList, $v) {
+					$objName = $v["obj"];
+					$acClass = $v["AC"] ?: AccessControl::create($objName);
+					$acObj = new $acClass();
+					$relatedKey = null;
+					if (preg_match('/(\w+)=%d/', $v["cond"], $ms)) {
+						$relatedKey = $ms[1];
+					}
+					if ($relatedKey == null) {
+						throw new MyException(E_SERVER, "bad cond: cannot get relatedKey", "子表配置错误");
+					}
 
-				array_unshift($this->onAfterActions, function (&$ret) use ($subobjList, $objName, $relatedKey) {
+					$acObj = AccessControl::create($objName, "set");
 					foreach ($subobjList as $subobj) {
 						$subobj[$relatedKey] = $this->id;
 						$subid = $subobj["id"];
 						if ($subid) {
 							if ($subid > 0) {
-								callSvcInt("$objName.set", ["id"=>$subid], $subobj);
+								$acObj->callSvc($objName, "set", ["id"=>$subid], $subobj);
 							}
 							else {
-								callSvcInt("$objName.del", ["id"=>-$subid]);
+								$acObj->callSvc($objName, "del", ["id"=>-$subid]);
 							}
 						}
 						else {
-							callSvcInt("$objName.add", null, $subobj);
+							$acObj->callSvc($objName, "add", null, $subobj);
 						}
 					}
-				});
+				};
 				unset($_POST[$k]);
 			}
+		}
+		if ($onAfterActions) {
+			array_splice($this->onAfterActions, 0, 0, $onAfterActions);
 		}
 	}
 
