@@ -88,7 +88,8 @@ class AC0_Ordr extends AccessControl
 		"orderLog" => ["sql"=>"SELECT ol.*, e.uname AS empPhone, e.name AS empName FROM OrderLog ol LEFT JOIN Employee e ON ol.empId=e.id WHERE orderId=%d", "wantOne"=>false],
 		//"atts" => ["sql"=>"SELECT id, attId FROM OrderAtt WHERE orderId=%d", "wantOne"=>false, "AC"=>["OrderAtt", "orderId"]],
 		"atts" => ["obj"=>"OrderAtt", "res"=>"id,attId", "cond"=>"orderId=%d"],
-		"items" => ["obj"=>"OrderItem", "cond"=>"orderId=%d", "res"=>"id,itemName", "AC"=>"AccessControl"]
+		//"items" => ["obj"=>"OrderItem", "cond"=>"orderId=%d", "res"=>"id,itemName", "AC"=>"AccessControl"]
+		"items" => ["obj"=>"OrderItem", "cond"=>"orderId=%d", "AC"=>"AccessControl"]
 //		"user" => ["obj"=>"User", "cond"=>"this.userId=t0.id"]
 	];
 
@@ -136,6 +137,27 @@ class AC1_Ordr extends AC0_Ordr
 		return $_POST;
 	}
 
+	function api_completeItem()
+	{
+		$this->completeItem($_POST);
+		return $_POST;
+	}
+
+	protected function completeItem(&$item)
+	{
+		$itemId = mparam("itemId", $item);
+		if (!issetval("price", $item) || !issetval("itemName", $item)) {
+			$rv = queryOne("SELECT name, price FROM Item WHERE id=" . $itemId, true);
+			if (!issetval("price", $item))
+				$item["price"] = $rv["price"];
+			if (!issetval("itemName", $item))
+				$item["itemName"] = $rv["name"];
+		}
+		if (!issetval("qty", $item)) {
+			$item["qty"] = 1.0;
+		}
+	}
+
 	protected function calc(&$order)
 	{
 		mparam("items", $order);
@@ -147,6 +169,18 @@ class AC1_Ordr extends AC0_Ordr
 			$amount += $item["amount"];
 		}
 		$order["amount"] = $amount;
+	}
+
+	protected function validateCalc()
+	{
+		$this->onAfterActions[] = function () {
+			$order = queryOne("SELECT amount FROM Ordr WHERE id=" . $this->id, true);
+			$order["items"] = queryAll("SELECT price,qty,amount FROM OrderItem WHERE orderId=" . $this->id, true);
+			$order0 = $order;
+			$this->calc($order);
+			if ($order0["amount"] != $order["amount"])
+				throw new MyException(E_PARAM, "bad amount, require " . $order["amount"] . ", actual " . $order0["amount"], "金额不正确");
+		};
 	}
 	/*
 	protected function needCalc($order)
@@ -168,12 +202,23 @@ class AC1_Ordr extends AC0_Ordr
 			$_POST["status"] = "CR";
 			$_POST["createTm"] = date(FMT_DT);
 			$logAction = "CR";
+
+			mparam("items", $_POST);
+			foreach ($_POST["items"] as &$item) {
+				$this->completeItem($item);
+			}
+			if ($_GET["doCalc"])
+				$this->calc($_POST);
+			else
+				$this->validateCalc();
 		}
 		else {
 			if (issetval("status")) {
 				// TODO: validate status
 				$logAction = $_POST["status"];
 			}
+			if (issetval("amount") || issetval("items"))
+				$this->validateCalc();
 		}
 
 		if ($logAction) {
@@ -185,15 +230,6 @@ class AC1_Ordr extends AC0_Ordr
 				]);
 			};
 		}
-
-		$this->onAfterActions[] = function () {
-			$order = queryOne("SELECT amount FROM Ordr WHERE id=" . $this->id, true);
-			$order["items"] = queryAll("SELECT price,qty,amount FROM OrderItem WHERE orderId=" . $this->id, true);
-			$order0 = $order;
-			$this->calc($order);
-			if ($order0["amount"] != $order["amount"])
-				throw new MyException(E_PARAM, "bad amount, require " . $order["amount"] . ", actual " . $order0["amount"], "金额不正确");
-		};
 	}
 }
 

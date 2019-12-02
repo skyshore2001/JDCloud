@@ -389,21 +389,31 @@ TODO 问题：
 后端提供calc接口用于计算或验算。一般前端使用calc计算相关字段。
 在添加或更新时，前端应传入金额等字段，后端不做验证。但在添加或更新后，后端可取出数据并调用calc验证前端计算是否正确。
 
+	id = callSvrSync("Ordr.add", {doCalc:1}, $.noop, {items:[{itemId:1}, {itemId:2, qty:2}]}, {contentType:"application/json"});
+
+	item1 = callSvrSync("Ordr.completeItem", $.noop, {itemId:1})
+	item2 = callSvrSync("Ordr.completeItem", $.noop, {itemId:2, qty:2})
+	ordr = callSvrSync("Ordr.calc", $.noop, {items:[ item1, item2 ]}, {contentType:"application/json"});
+	id = callSvrSync("Ordr.add", $.noop, ordr, {contentType:"application/json"});
+
+	// TODO:
 	MUI.useBatchCall();
-	callSvr("Ordr.calc", $.noop, {items:[{itemId:1, itemName:'item 1', qty:1, price:200}, {itemId:2, itemName:'item 2', qty:3, price:200}]}, {contentType:"application/json"});
-	callSvr("Ordr.add", $.noop, "{$1}", {contentType:"application/json"});
+	callSvr("Ordr.completeItem", $.noop, {itemId:1})
+	callSvr("Ordr.completeItem", $.noop, {itemId:2, qty:2})
+	callSvr("Ordr.calc", $.noop, {items:["{$1}", "{$2}"]}, {contentType:"application/json"}); // TODO
+	callSvr("Ordr.add", $.noop, "{$3}", {contentType:"application/json"});
 
-	callSvr("Ordr.get", {id:62, res:"*,items"})
-	callSvr("Ordr.get", {id:62, res:"*,items", res_items:"id,itemName,amount 金额"})
+	callSvr("Ordr.get", {id: id, res:"*,items"})
+	callSvr("Ordr.get", {id: id, res:"*,items", res_items:"id,itemName,amount 金额"})
 
-	callSvr("Ordr.set", {id:75}, $.noop, {items:[{id:11, itemName: "item-1"}]} , {contentType:"application/json"})
+	callSvr("Ordr.set", {id: id}, $.noop, {items:[{id:11, itemName: "item-1"}]} , {contentType:"application/json"})
 
 	(如果要修改qty, price这些，必先调用calc计算后再提交)
-	callSvr("Ordr.set", {id:75}, $.noop, {items:[{id:11, qty: 3}], amount:1200} , {contentType:"application/json"})
+	callSvr("Ordr.set", {id: id}, $.noop, {items:[{id:11, qty: 3}], amount:1200} , {contentType:"application/json"})
 
 	删除一项：
-	callSvr("Ordr.set", {id:75}, $.noop, {items:[{id:11, _delete:1}], amount:600} , {contentType:"application/json"})
+	callSvr("Ordr.set", {id: id}, $.noop, {items:[{id:11, _delete:1}], amount:600} , {contentType:"application/json"})
 
 	添加一项：
-	callSvr("Ordr.set", {id:75}, $.noop, {items:[{itemId:1, qty:2, price:50, amount:100}], amount:700} , {contentType:"application/json"})
+	callSvr("Ordr.set", {id: id}, $.noop, {items:[{itemId:1, qty:2, price:50, amount:100}], amount:700} , {contentType:"application/json"})
 

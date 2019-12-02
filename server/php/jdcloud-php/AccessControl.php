@@ -1706,17 +1706,20 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 					$objName = $v["obj"];
 					$acObj = AccessControl::create($objName, null, $v["AC"]);
 					foreach ($subobjList as $subobj) {
-						$subobj[$relatedKey] = $this->id;
 						$subid = $subobj["id"];
 						if ($subid) {
 							if (! @$subobj["_delete"]) {
-								$acObj->callSvc($objName, "set", ["id"=>$subid], $subobj);
+								// TODO: fix the cond
+								$cond = $relatedKey . "=" . $this->id;
+								$acObj->callSvc($objName, "set", ["id"=>$subid, "cond"=>$cond], $subobj);
 							}
 							else {
+								// TODO: fix the cond
 								$acObj->callSvc($objName, "del", ["id"=>$subid]);
 							}
 						}
 						else {
+							$subobj[$relatedKey] = $this->id;
 							$acObj->callSvc($objName, "add", null, $subobj);
 						}
 					}
