@@ -828,7 +828,22 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 */
 	protected $enableObjLog = true;
 
-	static function create($tbl, $ac = null, $asAdmin = false) 
+/**
+@var AccessControl::create($tbl, $ac = null, $cls = null) 
+
+如果$cls非空，则按指定AC类创建AC对象。
+否则按当前登录类型自动创建AC类（回调onCreateAC）。
+
+特别地，为兼容旧版本，当$cls为true时，按超级管理员权限创建AC类（即检查"AC0_XX"或"AccessControl"类）。
+
+示例：
+
+	AccessControl::create("Ordr", "add");
+	AccessControl::create("Ordr", "add", true);
+	AccessControl::create("Ordr", null, "AC0_Ordr");
+
+*/
+	static function create($tbl, $ac = null, $cls = null) 
 	{
 		/*
 		if (!hasPerm(AUTH_USER | AUTH_EMP))
@@ -837,9 +852,11 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			$wx->autoLogin();
 		}
 		 */
-		$cls = null;
-		# note the order.
-		if ($asAdmin || hasPerm(AUTH_ADMIN))
+		if (is_string($cls)) {
+			if (! class_exists($cls))
+				throw new MyException(E_SERVER, "bad class $cls");
+		}
+		else if ($cls === true || hasPerm(AUTH_ADMIN))
 		{
 			$cls = "AC0_$tbl";
 			if (! class_exists($cls))
@@ -1678,9 +1695,6 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			if (is_array($_POST[$k]) && isset($v["obj"])) {
 				$subobjList = $_POST[$k];
 				$onAfterActions[] = function (&$ret) use ($subobjList, $v) {
-					$objName = $v["obj"];
-					$acClass = $v["AC"] ?: AccessControl::create($objName);
-					$acObj = new $acClass();
 					$relatedKey = null;
 					if (preg_match('/(\w+)=%d/', $v["cond"], $ms)) {
 						$relatedKey = $ms[1];
@@ -1689,16 +1703,17 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 						throw new MyException(E_SERVER, "bad cond: cannot get relatedKey", "子表配置错误");
 					}
 
-					$acObj = AccessControl::create($objName, "set");
+					$objName = $v["obj"];
+					$acObj = AccessControl::create($objName, null, $v["AC"]);
 					foreach ($subobjList as $subobj) {
 						$subobj[$relatedKey] = $this->id;
 						$subid = $subobj["id"];
 						if ($subid) {
-							if ($subid > 0) {
+							if (! @$subobj["_delete"]) {
 								$acObj->callSvc($objName, "set", ["id"=>$subid], $subobj);
 							}
 							else {
-								$acObj->callSvc($objName, "del", ["id"=>-$subid]);
+								$acObj->callSvc($objName, "del", ["id"=>$subid]);
 							}
 						}
 						else {
@@ -2283,7 +2298,9 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 					if ($res) {
 						$opt["res"] = $res;
 					}
-					$rv = callSvcInt($opt["obj"] . ".query", $opt + [
+					$objName = $opt["obj"];
+					$acObj = AccessControl::create($objName, null, $opt["AC"]);
+					$rv = $acObj->callSvc($objName, "query", $opt + [
 						"fmt" => "list",
 						"pagesz" => -1
 					]);

@@ -88,7 +88,7 @@ class AC0_Ordr extends AccessControl
 		"orderLog" => ["sql"=>"SELECT ol.*, e.uname AS empPhone, e.name AS empName FROM OrderLog ol LEFT JOIN Employee e ON ol.empId=e.id WHERE orderId=%d", "wantOne"=>false],
 		//"atts" => ["sql"=>"SELECT id, attId FROM OrderAtt WHERE orderId=%d", "wantOne"=>false, "AC"=>["OrderAtt", "orderId"]],
 		"atts" => ["obj"=>"OrderAtt", "res"=>"id,attId", "cond"=>"orderId=%d"],
-		"items" => ["obj"=>"OrderItem", "cond"=>"orderId=%d", "res"=>"id,itemName"]
+		"items" => ["obj"=>"OrderItem", "cond"=>"orderId=%d", "res"=>"id,itemName", "AC"=>"AccessControl"]
 //		"user" => ["obj"=>"User", "cond"=>"this.userId=t0.id"]
 	];
 
@@ -107,7 +107,7 @@ class AC0_Ordr extends AccessControl
 class AC1_OrderAtt extends AccessControl
 {
 }
-
+/*
 class AC1_OrderItem extends AccessControl
 {
 	protected $vcolDefs = [
@@ -117,7 +117,7 @@ class AC1_OrderItem extends AccessControl
 		]
 	];
 }
-
+*/
 class AC1_Ordr extends AC0_Ordr
 {
 	protected $allowedAc = ["get", "query", "add", "set"];
@@ -192,7 +192,7 @@ class AC1_Ordr extends AC0_Ordr
 			$order0 = $order;
 			$this->calc($order);
 			if ($order0["amount"] != $order["amount"])
-				throw new MyException(E_PARAM, "bad amount, require " . $order["amount"] . ", actual " . $order0["amount"]);
+				throw new MyException(E_PARAM, "bad amount, require " . $order["amount"] . ", actual " . $order0["amount"], "金额不正确");
 		};
 	}
 }
