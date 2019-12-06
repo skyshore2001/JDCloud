@@ -828,7 +828,22 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 */
 	protected $enableObjLog = true;
 
-	static function create($tbl, $ac, $asAdmin = false) 
+/**
+@var AccessControl::create($tbl, $ac = null, $cls = null) 
+
+如果$cls非空，则按指定AC类创建AC对象。
+否则按当前登录类型自动创建AC类（回调onCreateAC）。
+
+特别地，为兼容旧版本，当$cls为true时，按超级管理员权限创建AC类（即检查"AC0_XX"或"AccessControl"类）。
+
+示例：
+
+	AccessControl::create("Ordr", "add");
+	AccessControl::create("Ordr", "add", true);
+	AccessControl::create("Ordr", null, "AC0_Ordr");
+
+*/
+	static function create($tbl, $ac = null, $cls = null) 
 	{
 		/*
 		if (!hasPerm(AUTH_USER | AUTH_EMP))
@@ -837,9 +852,11 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			$wx->autoLogin();
 		}
 		 */
-		$cls = null;
-		# note the order.
-		if ($asAdmin || hasPerm(AUTH_ADMIN))
+		if (is_string($cls)) {
+			if (! class_exists($cls))
+				throw new MyException(E_SERVER, "bad class $cls");
+		}
+		else if ($cls === true || hasPerm(AUTH_ADMIN))
 		{
 			$cls = "AC0_$tbl";
 			if (! class_exists($cls))
@@ -862,7 +879,8 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		}
 		if ($cls == null)
 		{
-			throw new MyException(!hasPerm(AUTH_LOGIN)? E_NOAUTH: E_FORBIDDEN, "Operation is not allowed for current user on object `$tbl`");
+			$msg = $ac ? "$tbl.$ac": $tbl;
+			throw new MyException(!hasPerm(AUTH_LOGIN)? E_NOAUTH: E_FORBIDDEN, "Operation is not allowed for current user: `$msg`");
 		}
 		$x = new $cls;
 		if (!is_a($x, "AccessControl")) {
@@ -1642,6 +1660,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		else if (array_key_exists("id", $_POST)) {
 			unset($_POST["id"]);
 		}
+		$this->handleSubObjForAddSet();
 
 		$this->id = dbInsert($this->table, $_POST);
 
@@ -1667,8 +1686,54 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		if ($this->id === null)
 			$this->id = mparam("id");
 		$this->validate();
+		$this->handleSubObjForAddSet();
 
 		$cnt = dbUpdate($this->table, $_POST, $this->id);
+	}
+
+	function handleSubObjForAddSet()
+	{
+		$onAfterActions = [];
+		foreach ($this->subobj as $k=>$v) {
+			if (is_array($_POST[$k]) && isset($v["obj"])) {
+				$subobjList = $_POST[$k];
+				$onAfterActions[] = function (&$ret) use ($subobjList, $v) {
+					$relatedKey = null;
+					if (preg_match('/(\w+)=%d/', $v["cond"], $ms)) {
+						$relatedKey = $ms[1];
+					}
+					if ($relatedKey == null) {
+						throw new MyException(E_SERVER, "bad cond: cannot get relatedKey", "子表配置错误");
+					}
+
+					$objName = $v["obj"];
+					$acObj = AccessControl::create($objName, null, $v["AC"]);
+					foreach ($subobjList as $subobj) {
+						$subid = $subobj["id"];
+						if ($subid) {
+							$fatherId = queryOne("SELECT $relatedKey FROM $objName WHERE id=$subid");
+							if ($fatherId != $this->id)
+								throw new MyException(E_FORBIDDEN, "$objName id=$subid: require $relatedKey={$this->id}, actual " . var_export($fatherId, true), "不可操作该子项");
+							// TODO: set/del接口支持cond. $cond = $relatedKey . "=" . $this->id;
+							if (! @$subobj["_delete"]) {
+								$acObj->callSvc($objName, "set", ["id"=>$subid], $subobj);
+							}
+							else {
+								$acObj->callSvc($objName, "del", ["id"=>$subid]);
+							}
+						}
+						else {
+							$subobj[$relatedKey] = $this->id;
+							$acObj->callSvc($objName, "add", null, $subobj);
+						}
+					}
+				};
+				unset($_POST[$k]);
+			}
+		}
+		if ($onAfterActions) {
+			array_splice($this->onAfterActions, 0, 0, $onAfterActions);
+		}
 	}
 
 	// extSqlFn: 如果为空，则如果有外部虚拟字段，则返回完整嵌套SQL语句；否则返回内层SQL语句，由调用方再调用extSqlFn函数生成嵌套SQL查询。
@@ -1949,7 +2014,7 @@ FROM ($sql) t0";
 		$sql = sprintf("DELETE FROM %s WHERE id=%d", $this->table, $this->id);
 		$cnt = execOne($sql);
 		if (param('force')!=1 && $cnt != 1)
-			throw new MyException(E_PARAM, "del: not found id={$this->id}");
+			throw new MyException(E_PARAM, "del: not found {$this->table}.id={$this->id}");
 	}
 
 /**
@@ -2234,6 +2299,22 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		if (is_array($subobj)) {
 			# $opt: {sql, wantOne=false}
 			foreach ($subobj as $k => $opt) {
+				if ($opt["obj"] && $opt["cond"]) {
+					$opt["cond"] = sprintf($opt["cond"], $id); # e.g. "orderId=%d"
+					$res = param("res_$k");
+					if ($res) {
+						$opt["res"] = $res;
+					}
+					$objName = $opt["obj"];
+					$acObj = AccessControl::create($objName, null, $opt["AC"]);
+					$rv = $acObj->callSvc($objName, "query", $opt + [
+						"fmt" => "list",
+						"pagesz" => -1
+					]);
+					$mainObj[$k] = $rv["list"];
+					continue;
+				}
+
 				if (! @$opt["sql"])
 					continue;
 				$sql1 = sprintf($opt["sql"], $id); # e.g. "select * from OrderItem where orderId=%d"
