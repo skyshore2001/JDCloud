@@ -85,7 +85,8 @@ class AC0_Ordr extends AccessControl
 {
 	protected $subobj = [
 		"orderLog" => ["sql"=>"SELECT ol.*, e.uname AS empPhone, e.name AS empName FROM OrderLog ol LEFT JOIN Employee e ON ol.empId=e.id WHERE orderId=%d", "wantOne"=>false],
-		"atts" => ["sql"=>"SELECT id, attId FROM OrderAtt WHERE orderId=%d", "wantOne"=>false],
+		// "atts" => ["sql"=>"SELECT id, attId FROM OrderAtt WHERE orderId=%d", "wantOne"=>false],
+		"atts" => ["obj"=>"OrderAtt", "cond"=>"orderId=%d", "AC"=>"AccessControl", "res"=>"id,attId"]
 	];
 
 	protected $vcolDefs = [

@@ -449,6 +449,10 @@ query/get接口生成的查询语句大致为：
 
 @var AccessControl::$subobj (for get/query) 定义子表
 
+subobj: { name => {obj, cond, AC?, res?, default?=false} } （v5.4）指定子表对象obj，全面支持子表的增删改查。
+
+或
+
 subobj: { name => {sql, default?=false, wantOne?=false, force?=false} }
 
 设计接口：
@@ -461,7 +465,26 @@ subobj: { name => {sql, default?=false, wantOne?=false, force?=false} }
 	class AC1_Ordr extends AccessControl
 	{
 		protected $subobj = [
-			"orderLog" => ["sql"=>"SELECT ol.*, e.name AS empName FROM OrderLog ol LEFT JOIN Employee e ON ol.empId=e.id WHERE orderId=%d", "default"=>false, "wantOne"=>false],
+			"orderLog" => ["obj"=>"OrderLog", "cond"=>"orderId=%d", "AC"=>"OrderLog", "res"=>"*,empName,empPhone"],
+		];
+	}
+
+	class OrderLog extends AccessControl
+	{
+		protected $vcolDefs = [
+			[
+				"res" => ["e.name AS empName", "e.phone AS empPhone"],
+				"join" => "LEFT JOIN Employee e ON e.id=t0.empId"
+			]
+		];
+	}
+
+或
+
+	class AC1_Ordr extends AccessControl
+	{
+		protected $subobj = [
+			"orderLog" => ["sql"=>"SELECT ol.*, e.name empName, e.phone empPhone FROM OrderLog ol LEFT JOIN Employee e ON ol.empId=e.id WHERE orderId=%d", "default"=>false, "wantOne"=>false],
 		];
 	}
 
@@ -2311,7 +2334,10 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 						"fmt" => "list",
 						"pagesz" => -1
 					]);
-					$mainObj[$k] = $rv["list"];
+					if (array_key_exists("list", $rv))
+						$mainObj[$k] = $rv["list"];
+					else
+						$mainObj[$k] = $rv;
 					continue;
 				}
 

@@ -1321,6 +1321,7 @@ class AC1_Ordr extends AccessControl
 - 查询时可以用`res_{子表显示名}`参数来指定子表返回字段。示例：`callSvr("Ordr.get", {id: 1, res_orderLog:"id,dscr"})`
 - 子表返回行数受分页控制，默认是相当于`pagesz=-1`时返回的项数。
 - 不仅仅是查询，还支持对子表的添加、追加、更新、删除。
+- 定义subobj时不支持选项`wantOne`，但可以用`"fmt"=>"one"`来替代。
 
 例如，可增加子表项`OrderLog`的AC类定义，实现更多的子表控制。
 
