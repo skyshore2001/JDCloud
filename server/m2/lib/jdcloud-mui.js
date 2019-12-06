@@ -4058,22 +4058,39 @@ function setupCallSvrViaForm($form, $iframe, url, fn, callOpt)
 
 参数中可以引用之前结果中的值，引用部分需要用"{}"括起来，且要在opt.ref参数中指定哪些参数使用了引用：
 
-	var batch = new MUI.batchCall({useTrans: 1});
-	callSvr("Attachment.add", api_AttAdd, {path: "path-1"}); // 假如返回 22
-	var opt = {ref: ["id"]};
-	callSvr("Attachment.get", {id: "{$1}"}, api_AttGet, null, opt); // {$1}=22, 假如返回 {id: 22, path: '/data/1.png'}
-	opt = {ref: ["cond"]};
-	callSvr("Attachment.query", {res: "count(*) cnt", cond: "path='{$-1.path}'"}, api_AttQuery, null, opt); // {$-1.path}计算出为 '/data/1.png'
-	batch.commit();
+
+	MUI.useBatchCall();
+	callSvr("..."); // 这个返回值的结果将用于以下调用
+	callSvr("Ordr.query", {
+		res: "id,dscr",
+		status: "{$-1.status}",  // 整体替换，结果可以是一个对象
+		cond: "id>{$-1.id}" // 部分替换，其结果只能是字符串
+	}, api_OrdrQuery, {
+		ref: ["status", "cond"] // 须在ref中指定需要处理的key
+	});
+
+特别地，当get/post整个是一个字符串时，直接整体替换，无须在ref中指定，如：
+
+	callSvr("Ordr.add", $.noop, "{$-1}", {contentType:"application/json"});
 
 以下为引用格式示例：
 
-	{$-2} // 前2次的结果。
-	{$2[0]} // 取第2次结果（是个数组）的第0个值。
-	{$-1.path} // 取前一次结果的path属性
-	{$2 -1}  // 可以做简单的计算
+	{$1} // 第1次调用的结果。
+	{$-1} // 前1次调用的结果。
+	{$-1.path} // 取前一次调用结果的path属性
+	{$1[0]} // 取第1次调用结果（是个数组）的第0个值。
+	{$1[0].amount}
+	{$-1.price * $-1.qty} // 可以做简单的数值计算
 
 如果值计算失败，则当作"null"填充。
+
+综合示例：
+
+	MUI.useBatchCall();
+	callSvr("Ordr.completeItem", $.noop, {itemId:1})
+	callSvr("Ordr.completeItem", $.noop, {itemId:2, qty:2})
+	callSvr("Ordr.calc", $.noop, {items:["{$1}", "{$2}"]}, {contentType:"application/json", ref:["items"] });
+	callSvr("Ordr.add", $.noop, "{$3}", {contentType:"application/json"});
 
 @see useBatchCall
 @see disableBatch
