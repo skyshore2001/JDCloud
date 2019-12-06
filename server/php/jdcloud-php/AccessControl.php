@@ -2378,39 +2378,65 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		$idList = join(',', $idArr);
 
 		# $opt: {sql, wantOne=false}
+		$joinField = null;
 		foreach ($subobj as $k => $opt) {
-			if (! @$opt["sql"])
-				continue;
-			$joinField = null;
-
-			# e.g. "select * from OrderItem where orderId=%d" => (添加主表关联字段id_) "select *, orderId id_ from OrderItem where orderId=%d"
-			$sql = preg_replace_callback('/(\S+)=%d/', function ($ms) use (&$joinField, $idList){
-				$joinField = $ms[1];
-				return $ms[1] . " IN ($idList)";
-			}, $opt["sql"]); 
-			if ($joinField === null) {
-				if (! @$opt["force"])
-					throw new MyException(E_SERVER, "bad subobj def: `" . $opt["sql"] . "'. require `field=%d`");
-
-				$ret1 = queryAll($sql, true);
-				if (@$opt["wantOne"]) {
-					if (count($ret1) == 0)
-						$ret1 = null;
-					else
-						$ret1 = $ret1[0];
+			if ($opt["obj"] && $opt["cond"]) {
+				// $opt["cond"] = sprintf($opt["cond"], $id); # e.g. "orderId=%d"
+				$opt["cond"] = preg_replace_callback('/(\S+)=%d/', function ($ms) use (&$joinField, $idList){
+					$joinField = $ms[1];
+					return $ms[1] . " IN ($idList)";
+				}, $opt["cond"]); 
+				$res = param("res_$k");
+				if ($res) {
+					$opt["res"] = $res;
 				}
-				foreach ($ret as &$row) {
-					$row[$k] = $ret1;
-				}
+				$objName = $opt["obj"];
+				$acObj = AccessControl::create($objName, null, $opt["AC"]);
+//				$acObj->addRes("$joinField id_");
+				$rv = $acObj->callSvc($objName, "query", $opt + [
+					"fmt" => "list",
+					"pagesz" => -1,
+					"res2" => ["$joinField id_"]
+				]);
+				if (array_key_exists("list", $rv))
+					$ret1 = $rv["list"];
+				else
+					$ret1 = $rv;
+			}
+			else if (! @$opt["sql"]) {
 				continue;
 			}
+			else {
+				# e.g. "select * from OrderItem where orderId=%d" => (添加主表关联字段id_) "select *, orderId id_ from OrderItem where orderId=%d"
+				$sql = preg_replace_callback('/(\S+)=%d/', function ($ms) use (&$joinField, $idList){
+					$joinField = $ms[1];
+					return $ms[1] . " IN ($idList)";
+				}, $opt["sql"]); 
+				if ($joinField === null) {
+					if (! @$opt["force"])
+						throw new MyException(E_SERVER, "bad subobj def: `" . $opt["sql"] . "'. require `field=%d`");
 
-			$sql = preg_replace('/ from/i', ", $joinField id_$0", $sql, 1);
-			// "SELECT status, count(*) cnt FROM Task WHERE orderId=%d group by status" 
-			// => "select status, count(*) cnt, orderId id_ FROM Task WHERE orderId IN (...) group by id_, status"
-			$sql = preg_replace('/group by/i', "$0 id_, ", $sql);
+					$ret1 = queryAll($sql, true);
+					if (@$opt["wantOne"]) {
+						if (count($ret1) == 0)
+							$ret1 = null;
+						else
+							$ret1 = $ret1[0];
+					}
+					foreach ($ret as &$row) {
+						$row[$k] = $ret1;
+					}
+					continue;
+				}
 
-			$ret1 = queryAll($sql, true);
+				$sql = preg_replace('/ from/i', ", $joinField id_$0", $sql, 1);
+				// "SELECT status, count(*) cnt FROM Task WHERE orderId=%d group by status" 
+				// => "select status, count(*) cnt, orderId id_ FROM Task WHERE orderId IN (...) group by id_, status"
+				$sql = preg_replace('/group by/i', "$0 id_, ", $sql);
+
+				$ret1 = queryAll($sql, true);
+			}
+
 			$subMap = []; // {id_=>[subobj]}
 			foreach ($ret1 as $e) {
 				$key = $e["id_"];
