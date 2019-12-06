@@ -1718,7 +1718,7 @@ class BatchApiApp extends AppBase
 			return [];
 		// e.g. {get: "{$1}"}
 		if (is_string($params)) {
-			$params = self::calcRefValue($params, $retVal);
+			self::calcRefValue($params, $retVal);
 		}
 		// e.g. { get: {status: "{$1.status}", cond: "id>{$1.id}"}, ref: ["status", "cond"] }
 		else if ($call["ref"]) {
@@ -1728,7 +1728,7 @@ class BatchApiApp extends AppBase
 			}
 			foreach ($call["ref"] as $k) {
 				if (isset($params[$k])) {
-					$params[$k] = self::calcRefValue($params[$k], $retVal);
+					self::calcRefValue($params[$k], $retVal);
 				}
 			}
 		}
@@ -1742,7 +1742,7 @@ class BatchApiApp extends AppBase
 	// 原理：
 	// "{$n.id}" => "$f(n)["id"]"
 	// 如果计算错误，则返回NULL
-	private static function calcRefValue($val, $arr)
+	private static function calcRefValue(&$val, $arr)
 	{
 		$f = function ($n) use ($arr) {
 			if ($n <= 0)
@@ -1771,6 +1771,13 @@ class BatchApiApp extends AppBase
 			$rv = eval("return @({$expr1});");
 			return $rv;
 		};
+
+		if (is_array($val)) {
+			foreach ($val as &$v) {
+				self::calcRefValue($v, $arr);
+			}
+			return $val;
+		}
 		
 		// 完全替换，如 "{$-1}" 返回上次调用对象
 		if (preg_match('/^\{  ([^{}]+)  \}$/x', $val, $ms)) {
@@ -1788,6 +1795,7 @@ class BatchApiApp extends AppBase
 			}, $val);
 			addLog("### batch ref: `{$val}' -> `{$v1}'");
 		}
+		$val = $v1;
 		return $v1;
 	}
 }

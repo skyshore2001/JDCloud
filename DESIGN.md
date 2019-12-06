@@ -400,7 +400,7 @@ TODO 问题：
 	MUI.useBatchCall();
 	callSvr("Ordr.completeItem", $.noop, {itemId:1})
 	callSvr("Ordr.completeItem", $.noop, {itemId:2, qty:2})
-	callSvr("Ordr.calc", $.noop, {items:["{$1}", "{$2}"]}, {contentType:"application/json"}); // TODO
+	callSvr("Ordr.calc", $.noop, {items:["{$1}", "{$2}"]}, {contentType:"application/json", ref:["items"] });
 	callSvr("Ordr.add", $.noop, "{$3}", {contentType:"application/json"});
 
 	callSvr("Ordr.get", {id: id, res:"*,items"})
