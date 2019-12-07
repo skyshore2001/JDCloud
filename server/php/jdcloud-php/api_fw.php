@@ -415,6 +415,21 @@ global $X_RET_STR;
 */
 global $X_RET_FN;
 
+/**
+@var $X_APP
+
+可以在应用结束前添加逻辑，如：
+
+	$GLOBALS["X_APP"]->onAfterActions[] = function () {
+		httpCall("http://oliveche.com/echo.php");
+	};
+
+注意：
+此处应用输出已完成，不可再输出或抛出异常，否则将导致返回内容错乱。
+之前的数据库事务已提交，如果再操作数据库，与之前操作不在同一事务中。
+*/
+global $X_APP;
+
 const PAGE_SZ_LIMIT = 10000;
 // }}}
 
@@ -1603,7 +1618,9 @@ function httpCallAsync($url, $postParams = null)
 */
 function callAsync($ac, $param) {
 	$url = getBaseUrl(false) . "api.php?ac=async&f=$ac";
-	httpCallAsync($url, $param);
+	$GLOBALS["X_APP"]->onAfterActions[] = function () use ($url, $param) {
+		httpCallAsync($url, $param);
+	};
 }
 
 /**
@@ -1674,7 +1691,8 @@ function apiMain()
 
 	if (ApiFw_::$SOLO) {
 		$api = new ApiApp();
-		$api->onBeforeExec[] = $supportJson;
+		$GLOBALS["X_APP"] = $api;
+		$api->onBeforeActions[] = $supportJson;
 		$api->exec();
 
 		// 删除空会话

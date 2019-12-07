@@ -1204,7 +1204,7 @@ function dbInsert($table, $kv)
 		}
 	}
 	if (strlen($keys) == 0) 
-		throw new MyException(E_PARAM, "no field found to be added");
+		throw new MyException(E_PARAM, "no field found to be added: $table");
 	$sql = sprintf("INSERT INTO %s (%s) VALUES (%s)", $table, $keys, $values);
 #			var_dump($sql);
 	return execOne($sql, true);
@@ -1440,7 +1440,7 @@ function dbUpdate($table, $kv, $cond)
 	}
 	$cnt = 0;
 	if (strlen($kvstr) == 0) {
-		addLog("no field found to be set");
+		addLog("no field found to be set: $table");
 	}
 	else {
 		if (isset($condStr))
@@ -1965,8 +1965,8 @@ class Coord
  */
 class AppBase
 {
-	public $onBeforeExec = [];
-	public $onAfterExec = [];
+	public $onBeforeActions = [];
+	public $onAfterActions = [];
 	public function exec($handleTrans=true)
 	{
 		global $DBH;
@@ -1974,11 +1974,11 @@ class AppBase
 		$ok = false;
 		$ret = false;
 		try {
-			foreach ($this->onBeforeExec as $fn) {
+			foreach ($this->onBeforeActions as $fn) {
 				$fn();
 			}
 			$ret = $this->onExec();
-			foreach ($this->onAfterExec as $fn) {
+			foreach ($this->onAfterActions as $fn) {
 				$fn();
 			}
 			$ok = true;

@@ -529,6 +529,9 @@ subobj: { name => {sql, default?=false, wantOne?=false, force?=false} }
 
 与onAfter类似，加到onAfterActions集合中的函数，如果要修改返回数据，只要在函数参数中声明`&$ret`就可以修改它了。
 
+(v5.4) 如果要在应用处理完成时添加逻辑，可使用全局对象`$X_APP`的onAfterActions方法，注意这时逻辑不在同一数据库事务中。
+@see $X_APP
+
 @fn AccessControl::onHandleRow(&$rowData) (for get/query) 在onAfter之前运行，用于修改行中字段。
 
 ## 其它
