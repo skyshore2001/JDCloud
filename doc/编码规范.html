@@ -17,17 +17,18 @@
 <ul>
 <li><a href="#toc_1.1">1 命名规范</a>
 <li><a href="#toc_1.2">2 代码结构与分区</a>
-<li><a href="#toc_1.3">3 前端代码</a>
+<li><a href="#toc_1.3">3 书写规范</a>
+<li><a href="#toc_1.4">4 前端代码</a>
 <ul>
-<li><a href="#toc_1.3.1">3.1 JS编码规范</a>
-<li><a href="#toc_1.3.2">3.2 Jquery-mobile框架编码规范</a>
-<li><a href="#toc_1.3.3">3.3 Jquery-easyui/MyUI编码规范</a>
+<li><a href="#toc_1.4.1">4.1 JS编码规范</a>
+<li><a href="#toc_1.4.2">4.2 Jquery-mobile框架编码规范</a>
+<li><a href="#toc_1.4.3">4.3 Jquery-easyui/MyUI编码规范</a>
 </ul>
-<li><a href="#toc_1.4">4 后端代码</a>
+<li><a href="#toc_1.5">5 后端代码</a>
 <ul>
-<li><a href="#toc_1.4.1">4.1 命名</a>
+<li><a href="#toc_1.5.1">5.1 命名</a>
 </ul>
-<li><a href="#toc_1.5">5 格式化注释</a>
+<li><a href="#toc_1.6">6 格式化注释</a>
 </ul>
 </ul>
 </div>
@@ -211,9 +212,33 @@ function initPageOrder()
 }
 </pre>
 
-<h2 id="toc_1.3"><a name="前端代码">3 前端代码</a></h2>
+<h2 id="toc_1.3"><a name="书写规范">3 书写规范</a></h2>
 
-<h3 id="toc_1.3.1"><a name="JS编码规范">3.1 JS编码规范</a></h3>
+<p>
+缩进应使用TAB键，不要用空格。建议在编辑器中将TAB宽度定为4空格。
+</p>
+
+<p>
+代码中空格的使用规范如下：
+</p>
+<pre>
+	// 标点符号之后一般加空格。但请注意括号前后空格的用法。
+	function fn(a, b)
+	{
+		return a + b;
+	}
+	fn(100, 200);
+
+	// for和if的用法。短表达式中间也可省略空格。
+	for (i=0; i&lt;100; ++i) {
+	}
+	if (a &gt; b) {
+	}
+</pre>
+
+<h2 id="toc_1.4"><a name="前端代码">4 前端代码</a></h2>
+
+<h3 id="toc_1.4.1"><a name="JS编码规范">4.1 JS编码规范</a></h3>
 
 <p>
 常用的通用变量名：
@@ -318,7 +343,7 @@ css类命名采用驼峰式，如"notForFind", 如果有前缀，用"-"分隔，
 
 </ul>
 
-<h3 id="toc_1.3.2"><a name="Jquery-mobile框架编码规范">3.2 Jquery-mobile框架编码规范</a></h3>
+<h3 id="toc_1.4.2"><a name="Jquery-mobile框架编码规范">4.2 Jquery-mobile框架编码规范</a></h3>
 
 <p>
 设计目标：
@@ -428,7 +453,7 @@ function initPageOrder()
 }
 </pre>
 
-<h3 id="toc_1.3.3"><a name="Jquery-easyui/MyUI编码规范">3.3 Jquery-easyui/MyUI编码规范</a></h3>
+<h3 id="toc_1.4.3"><a name="Jquery-easyui/MyUI编码规范">4.3 Jquery-easyui/MyUI编码规范</a></h3>
 
 <p>
 主要约定：
@@ -499,7 +524,7 @@ function initDlgOrder()
 }
 </pre>
 
-<h2 id="toc_1.4"><a name="后端代码">4 后端代码</a></h2>
+<h2 id="toc_1.5"><a name="后端代码">5 后端代码</a></h2>
 
 <p>
 后端API框架强制要求：
@@ -513,7 +538,7 @@ function initDlgOrder()
 
 </ul>
 
-<h3 id="toc_1.4.1"><a name="命名">4.1 命名</a></h3>
+<h3 id="toc_1.5.1"><a name="命名">5.1 命名</a></h3>
 
 <p>
 在应用中, 对于模块, 一般应考虑用类实现(如class Conf), 这样便于隐藏内部实现函数;
@@ -582,7 +607,7 @@ function param($name)
 
 </ul>
 
-<h2 id="toc_1.5"><a name="格式化注释">5 格式化注释</a></h2>
+<h2 id="toc_1.6"><a name="格式化注释">6 格式化注释</a></h2>
 
 <p>
 格式化注释用于描述接口，也可通过工具生成文档。
