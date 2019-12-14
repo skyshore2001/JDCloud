@@ -50,6 +50,8 @@ AccessControl简写为AC，同时AC也表示自动补全(AutoComplete).
 
 框架为AUTH_ADMIN权限自动选择AC0_类，其它类可以通过函数 onCreateAC 进行自定义，仍未定义的框架使用AC_类。
 
+(v5.4) 当调用对象接口时，将自动尝试加载 php/class/AC_{obj}.php 文件。所以可将该obj相关的AC类放到该文件中。
+
 @fn onCreateAC($obj)
 
 需开发者在api.php中定义。
@@ -878,6 +880,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			$wx->autoLogin();
 		}
 		 */
+		class_exists("AC_$tbl"); // !!! 自动加载文件 AC_{obj}.php
 		if (is_string($cls)) {
 			if (! class_exists($cls))
 				throw new MyException(E_SERVER, "bad class $cls");
