@@ -90,7 +90,7 @@ class Partner
 			return;
 		}
 		$sign1 = self::genSign($pwd1);
-		if ($sign !== $sign1)
+		if (strtolower($sign) !== strtolower($sign1))
 			throw new MyException(E_AUTHFAIL, "bad sign for partnerId=$partnerId");
 
 		if (! self::$replayCheck)

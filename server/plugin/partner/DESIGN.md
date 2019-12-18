@@ -92,7 +92,7 @@ OpenApi请求可以不需要Session（通过Cookie机制），但服务端会支
 	string1 = "amount=0&svcId=100" （按参数名字母排序拼接）
 	pwd = "ABCD"
 	string2 = string1 + pwd = "amount=0&svcId=100ABCD"
-	_sign = md5(string2) = "4c4ca8bf0f29a0e877ce1f1b0bf5054a"
+	_sign = md5(string2) = "4c4ca8bf0f29a0e877ce1f1b0bf5054a" (字母大小写均可)
 
 ## 内部接口
 
