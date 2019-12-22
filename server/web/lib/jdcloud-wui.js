@@ -34,7 +34,7 @@
 						<th data-options="field:'id', sortable:true, sorter:intSort">订单号</th>
 						<th data-options="field:'userPhone', sortable:true">用户联系方式</th>
 						<th data-options="field:'createTm', sortable:true">创建时间</th>
-						<th data-options="field:'status', jdEnumMap: OrderStatusMap, formatter:Formatter.orderStatus, styler:OrderColumns.statusStyler, sortable:true">状态</th>
+						<th data-options="field:'status', jdEnumMap: OrderStatusMap, formatter:Formatter.enum(OrderStatusMap), styler:Formatter.enumStyler({PA:'Warning'}), sortable:true">状态</th>
 						<th data-options="field:'dscr', sortable:true">描述</th>
 						<th data-options="field:'cmt'">用户备注</th>
 					</tr></thead>
@@ -244,7 +244,7 @@
 
 订单状态字段定义为：
 
-	status:: Enum. 订单状态。CR-新创建,RE-已服务,CA-已取消. 
+	- status: 订单状态. Enum(CR-新创建,RE-已服务,CA-已取消). 
 
 在显示时，要求显示其中文名称，且根据状态不同，显示不同的背景颜色。
 
@@ -255,12 +255,12 @@
 			<thead><tr>
 				<th data-options="field:'id', sortable:true, sorter:intSort">订单号</th>
 				...
-				<th data-options="field:'status', jdEnumMap: OrderStatusMap, formatter:Formatter.orderStatus, styler:OrderColumns.statusStyler, sortable:true">状态</th>
+				<th data-options="field:'status', jdEnumMap: OrderStatusMap, formatter:Formatter.enum(OrderStatusMap), styler:Formatter.enumStyler({PA:'Warning', RE:'Disabled', CR:'#00ff00', null: 'Error'}), sortable:true">状态</th>
 			</tr></thead>
 		</table>
 	</div>
 
-formatter用于控制Cell中的HTML标签，styler用于控制Cell自己的CSS style.
+formatter用于控制Cell中的HTML标签，styler用于控制Cell自己的CSS style, 常用于标记颜色.
 在JS中定义：
 
 	var OrderStatusMap = {
@@ -268,15 +268,16 @@ formatter用于控制Cell中的HTML标签，styler用于控制Cell自己的CSS s
 		RE: "已服务", 
 		CA: "已取消"
 	};
-	var Formatter = {
-		// 显示枚举值的描述，相当于`return map[value] || value`；
-		orderStatus: WUI.formatter.enum(OrderStatusMap),
-		// 显示链接，点击打开用户详情对话框
-		userId: WUI.formatter.linkTo("userId", "#dlgUser")
-	};
 	Formatter = $.extend(WUI.formatter, Formatter);
 
+上面Formatter.enum及Formatter.enumStyler是框架预定义的常用项，也可自定义formatter或styler，例：
+
 	var OrderColumns = {
+		status: function (value, row) {
+			if (! value)
+				return;
+			return OrderStatusMap[value] || value;
+		},
 		statusStyler: function (value, row) {
 			var colors = {
 				CR: "#000",
@@ -6291,6 +6292,11 @@ function getQueryParamFromTable(jtbl, param)
 	return param;
 }
 
+window.YesNoMap = {
+	0: "否",
+	1: "是"
+};
+
 var Formatter = {
 	dt: function (value, row) {
 		var dt = WUI.parseDate(value);
@@ -6343,11 +6349,24 @@ var Formatter = {
 			return v;
 		}
 	},
-	linkTo: function (field, dlgRef, showId) {
+	enumStyler: function (colorMap) {
+		return function (value, row) {
+			var color = colorMap[value];
+			if (Color[color])
+				color = Color[color];
+			if (color)
+				return "background-color: " + color;
+		}
+	},
+	// showField=false: 显示value
+	// showField=true: 显示"{id}-{name}"
+	// 否则显示指定字段
+	linkTo: function (field, dlgRef, showField=false) {
 		return function (value, row) {
 			if (value == null)
 				return;
-			var val = !showId? value: row[field] + "-" + value;
+			var val = typeof(showField)=="string"? row[showField]:
+				showField? (row[field] + "-" + value): value;
 			return self.makeLinkTo(dlgRef, row[field], val);
 		}
 	}
@@ -6378,7 +6397,7 @@ var Formatter = {
 
 	<th data-options="field:'createTm', sortable:true, formatter:Formatter.dt">创建时间</th>
 	<th data-options="field:'amount', sortable:true, sorter: numberSort, formatter:Formatter.number">金额</th>
-	<th data-options="field:'userName', sortable:true, formatter:Formatter.userId">用户</th>
+	<th data-options="field:'userName', sortable:true, formatter:Formatter.linkTo('userId', '#dlgUser')">用户</th>
 	<th data-options="field:'status', sortable:true, jdEnumMap: OrderStatusMap, formatter: Formatter.orderStatus">状态</th>
 	<th data-options="field:'done', sortable:true, formatter: Formatter.flag()">已处理</th>
 */

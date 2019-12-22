@@ -716,7 +716,7 @@ class UpgHelper
 				throw new Exception("*** cannot read meta file $file");
 
 			while (($s = fgets($fd)) !== false) {
-				if (preg_match('/^@([\w_]+):\s+(\w.*?)\s*$/u', $s, $ms)) {
+				if (preg_match('/^@([\w_]+)[:：]\s+(\w.*?)\s*$/u', $s, $ms)) {
 					$tableName = $ms[1];
 					foreach ($this->tableMeta as $e) {
 						if ($e["name"] == $tableName) {
@@ -724,7 +724,7 @@ class UpgHelper
 							continue;
 						}
 					}
-					$fields = preg_split('/[\s,]+/u', $ms[2]);
+					$fields = preg_split('/[\s,，]+/u', $ms[2]);
 					// fieldsMeta在SQL_DIFF初始化后再设置.
 					$this->tableMeta[] = ["name"=>$ms[1], "fields"=>$fields, "fieldsMeta"=>null, "file"=>$file, "tableDef"=>$s];
 		# 			print "-- $_";

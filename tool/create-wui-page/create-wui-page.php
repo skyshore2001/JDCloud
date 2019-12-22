@@ -162,17 +162,19 @@ function loadMetafile()
 	if (!isset($title))
 		$title = $tableDscr["table"];
 
+	// 字段定义："field/key1:value1"
+	// 选项可以有多项："field/key1:value1/key2:value2" 中间不要出现空格
 	$idx = 0;
 	foreach ($tableDef["fields"] as $fieldName) {
 		$fieldInfo = $tableDscr["fields"][$idx];
-		@list($fieldDscr,$script) = explode('/', $fieldInfo);
+		@list($fieldDscr,$script) = explode('/', $fieldInfo, 2);
 		$fieldMeta = [
 			"name" => $fieldDscr
 		];
 		// guess type. e.g. price
 		parseFieldType($fieldName, $fieldMeta);
 		if ($script) {
-			foreach (explode(';', $script) as $kvstr) {
+			foreach (explode('/', $script) as $kvstr) {
 				list($k, $v) = explode(':', $kvstr);
 				$fieldMeta[$k] = $v;
 			}
@@ -205,7 +207,10 @@ function parseFieldType(&$f, &$fieldMeta)
 			$type = 's';
 		}
 		elseif (is_numeric($tag)) {
-			$type = 's';
+			if ($tag <= 255)
+				$type = 's';
+			else
+				$type = 't'; // 长文本当成text
 		}
 		else {
 			$type = $tag;
@@ -234,13 +239,13 @@ function parseFieldType(&$f, &$fieldMeta)
 // return: {table, @fields}
 function readMetaLine($line)
 {
-	if (!preg_match('/@?(\S+):\s*(.+?)\s*$/', $line, $ms)) {
+	if (!preg_match('/@?([\w_]+)[:：]\s*(.+?)\s*$/u', $line, $ms)) {
 		echo("bad metafile line: $line");
 		exit(1);
 	}
 	return [
 		"table" => $ms[1],
-		"fields" => preg_split('/\s*,\s*/', $ms[2])
+		"fields" => preg_split('/\s*[,，]\s*/u', $ms[2])
 	];
 }
 

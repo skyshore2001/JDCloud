@@ -13,8 +13,15 @@ foreach ($meta as $k => $v) {
 EOL;
 	}
 	else if (@$v["enum"]) {
+		$enum = $v["enum"];
+		if (substr($enum, -3) == "Map") {
+			$opt = "jdEnumMap:$enum";
+		}
+		else {
+			$opt = "jdEnumList:$enum";
+		}
 		$dom = <<<EOL
-<select name="$k" class="my-combobox" data-options="jdEnumMap:{$v["enum"]}"></select>
+<select name="$k" class="my-combobox" data-options="$opt"></select>
 EOL;
 	}
 	else if (@$v["isAtt"]) {
@@ -37,6 +44,7 @@ EOL;
 				<input name="$k">
 			</td>
 		</tr>
+
 EOL;
 		continue;
 	}

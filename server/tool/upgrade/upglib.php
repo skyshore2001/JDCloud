@@ -359,15 +359,18 @@ class UpgHelper
 	private $dbh = null;
 	private $forRtest = null;
 
-	function __construct ($forRtest=false) {
+	function __construct ($forRtest=false, $noDb=false) {
 		$this->forRtest = $forRtest;
-		$this->_init();
+		if (! $noDb)
+			$this->_init();
+		else
+			$this->_initMeta();
 	}
 	function __destruct () {
 		global $LOGF;
 		logstr("=== [" . date('c') . "] done\n", false);
 		if (! $this->forRtest)
-			prompt("=== Done!\n");
+			prompt("=== Done! Find log in $LOGF\n");
 	}
 
 	// 添加文件到$files集合。
@@ -411,7 +414,7 @@ class UpgHelper
 				throw new Exception("*** cannot read meta file $file");
 
 			while (($s = fgets($fd)) !== false) {
-				if (preg_match('/^@([\w_]+):\s+(\w.*?)\s*$/u', $s, $ms)) {
+				if (preg_match('/^@([\w_]+)[:：]\s+(\w.*?)\s*$/u', $s, $ms)) {
 					$tableName = $ms[1];
 					foreach ($this->tableMeta as $e) {
 						if ($e["name"] == $tableName) {
@@ -419,7 +422,7 @@ class UpgHelper
 							continue;
 						}
 					}
-					$fields = preg_split('/[\s,]+/u', $ms[2]);
+					$fields = preg_split('/[\s,，]+/u', $ms[2]);
 					// fieldsMeta在SQL_DIFF初始化后再设置.
 					$this->tableMeta[] = ["name"=>$ms[1], "fields"=>$fields, "fieldsMeta"=>null, "file"=>$file, "tableDef"=>$s];
 		# 			print "-- $_";

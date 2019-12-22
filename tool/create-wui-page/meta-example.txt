@@ -7,4 +7,4 @@
 # 字段后可加描述, "客户/linkTo:Customer"表示外键链接Customer表,"状态/enum:OrderStatusMap"表示是枚举类型,可选项由OrderStatusMap定义(变量名以Map结尾)
 
 @Ordr: id, name, qty, customerId, status, cmt
-订单: 编号, 名称, 数量, 客户/linkTo:Customer, 状态/enum:OrderStatusMap, 备注
+订单: 编号, 名称, 数量, 客户/linkTo:Customer/showField:customerName, 状态/enum:OrderStatusMap, 备注

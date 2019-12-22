@@ -73,10 +73,10 @@ iframe {
 	height: 300px;
 }
 </style>
-<li><a href="../../web/store.html" target="_blank">管理端</a></li>
-<li><a href="../../m2/index.html" target="_blank">移动端</a></li>
+<li><a href="../server/web/store.html" target="_blank">管理端</a></li>
+<li><a href="../server/m2/index.html" target="_blank">移动端</a></li>
 
-<li>升级数据库
+<li><a href="../server/tool/init.php" target="_blank">初始化/升级数据库</a></li>
 <li>导入模型
 <form action="?ac=model" method="POST" target="ifrResult" enc-type="text-plain">
 <textarea name="content" wrap="off" rows=5 style="width:98%;">

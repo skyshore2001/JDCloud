@@ -7,23 +7,32 @@ foreach ($meta as $k => $v) {
 		"field:'$k'",
 		'sortable:true'
 	];
-	if (@$v["type"]) {
-		if ($v["type"] == "i") {
-			$opts[] = 'sorter:intSort';
-		}
-		else if ($v["type"] == "n") {
-			$opts[] = 'sorter:numberSort';
-		}
-	}
+	@$type = $v["type"];
 	if (@$v["linkTo"]) {
 		$linkTo = "#dlg" . $v["linkTo"];
-		$opts[] = "formatter: Formatter.linkTo('$k', '$linkTo'/*, true*/)";
+		@$textField = $v["textField"] ?: $k;
+		$opts[] = "formatter:Formatter.linkTo('$k', '$linkTo')";
+		$opts[0] = "field:'$textField'";
+		$type = 's';
 	}
 	else if (@$v["enum"]) {
-		$opts[] = "jdEnumMap: {$v['enum']}, formatter: Formatter.enum({$v['enum']})";
+		$enum = $v["enum"];
+		if (substr($enum, -3) == "Map")
+			$opts[] = "jdEnumMap:$enum, formatter:Formatter.enum($enum), styler:Formatter.enumStyler({})";
+		else
+			$opts[] = "styler:Formatter.enumStyler({})";
 	}
 	else if (@$v["isAtt"]) {
-		$opts[] = "formatter: Formatter.pics";
+		$opts[] = "formatter:Formatter.pics";
+	}
+
+	if ($type) {
+		if ($type == "i") {
+			$opts[] = 'sorter:intSort';
+		}
+		else if ($type == "n") {
+			$opts[] = 'sorter:numberSort';
+		}
 	}
 	$optStr = join(', ', $opts);
 	print <<<EOL
