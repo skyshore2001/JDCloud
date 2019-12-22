@@ -69,7 +69,7 @@ AccessControl简写为AC，同时AC也表示自动补全(AutoComplete).
 @var AccessControl::$requiredFields ?=[] (for add/set) 字段列表。添加时必须填值；更新时不允许置空。
 @var AccessControl::$requiredFields2 ?=[] (for set) 字段列表。更新时不允许设置空。
 
-@fn AccessControl::onQuery() (for get/query)  用于对查询条件进行设定。
+@fn AccessControl::onQuery() (for get/query)  用于对查询条件进行设定。实际上，set/del/setIf/delIf等操作也会调用它验证数据是否可操作。
 @fn AccessControl::onValidate()  (for add/set). 验证添加和更新时的字段，或做自动补全(AutoComplete)工作。
 @fn	AccessControl::onValidateId() (for get/set/del) 用于对id字段进行检查。比如在del时检查用户是否有权操作该记录。可在其中设置$this->id。
 
@@ -926,6 +926,8 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	*/
 	static function getCondStr($condArr)
 	{
+		if (! $condArr)
+			return null;
 		$condSql = null;
 		foreach ($condArr as $cond) {
 			if ($cond === null)
@@ -1216,6 +1218,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	# for query. "field1"=>"t0.field1"
 	private function fixUserQuery($q)
 	{
+		$this->initVColMap();
 		if (stripos($q, "select") !== false) {
 			throw new MyException(E_FORBIDDEN, "forbidden SELECT in param cond");
 		}
@@ -1336,14 +1339,14 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	{
 		$colArr = [];
 		foreach (explode(',', $orderby) as $col) {
-			if (! preg_match('/^\s*(\w+\.)?(\S+)(\s+(asc|desc))?$/i', $col, $ms))
+			if (! preg_match('/^\s*(\w+\.)?(\S+)(\s+(asc|desc))?$/iu', $col, $ms))
 				throw new MyException(E_PARAM, "bad property `$col`");
 			if ($ms[1]) // e.g. "t0.id desc"
 			{
 				$colArr[] = $col;
 				continue;
 			}
-			$col = preg_replace_callback('/^\s*(\w+)/', function ($ms) {
+			$col = preg_replace_callback('/^\s*(\w+)/u', function ($ms) {
 				$col1 = $ms[1];
 				// 注意：与cond不同，orderby使用了虚拟字段，应在res中添加。而cond中是直接展开了虚拟字段。因为where条件不支持虚拟字段。
 				// 故不用：$this->addVCol($col1, true, '-');
@@ -1419,10 +1422,10 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	}
 
 /**
-@fn AccessControl::addCond($cond, $prepend=false, $fixUserQuery=false)
+@fn AccessControl::addCond($cond, $prepend=false, $fixUserQuery=true)
 
 @param $prepend 为true时将条件排到前面。
-@param $fixUserQuery 设置为true，用于自动处理虚拟字段，这时不允许复杂查询。
+@param $fixUserQuery 值为true会自动处理虚拟字段，但这时不允许复杂查询。设置为false写cond不受规则限制。
 
 调用多次addCond时，多个条件会依次用"AND"连接起来。
 
@@ -1489,7 +1492,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 @see AccessControl::addRes
 @see AccessControl::addJoin
  */
-	final public function addCond($cond, $prepend=false, $fixUserQuery=false)
+	final public function addCond($cond, $prepend=false, $fixUserQuery=true)
 	{
 		if ($fixUserQuery)
 			$cond = $this->fixUserQuery($cond);
@@ -1513,11 +1516,11 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 
 	private function setColFromRes($res, $added, $vcolDefIdx=-1)
 	{
-		if (preg_match('/^(\w+)\.(\w+)$/', $res, $ms)) {
+		if (preg_match('/^(\w+)\.(\w+)$/u', $res, $ms)) {
 			$colName = $ms[2];
 			$def = $res;
 		}
-		else if (preg_match('/^(.*?)\s+(?:as\s+)?(\S+)\s*$/is', $res, $ms)) {
+		else if (preg_match('/^(.*?)\s+(?:as\s+)?(\S+)\s*$/ius', $res, $ms)) {
 			$colName = $ms[2];
 			$def = $ms[1];
 		}
@@ -1542,7 +1545,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		if (isset($vcolDef["isExt"]) || isset($vcolDef["join"]))
 			return;
 		$res_0 = $vcolDef["res"][0];
-		if (preg_match('/\(.*select.*where.*?(t0\.\w+)?\)/', $res_0, $ms)) {
+		if (preg_match('/\(.*select.*where.*?(t0\.\w+)?\)/u', $res_0, $ms)) {
 			$vcolDef["isExt"] = true;
 			if (isset($ms[1])) {
 				$vcolDef["require"] = $ms[1];
@@ -1550,13 +1553,14 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		}
 	}
 
+	// 可多次调用
 	private function initVColMap()
 	{
 		if (is_null($this->vcolMap)) {
 			$this->vcolMap = [];
 			foreach ($this->vcolDefs as $idx=>&$vcolDef) {
 				@$res = $vcolDef["res"];
-				assert(is_array($res), "res必须为数组");
+				assert(is_array($res), "res必须为数组: {$this->table}.vcolDefs");
 				foreach ($vcolDef["res"] as $e) {
 					$this->setColFromRes($e, false, $idx);
 				}
@@ -1704,6 +1708,27 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		return $ret;
 	}
 
+	// checkCond=true将检查id是否可操作。
+	protected function validateId($checkCond=false)
+	{
+		$this->onValidateId();
+		if ($this->id === null) {
+			$this->id = mparam("id");
+		}
+		else {
+			$checkCond = false; // 如已补上this->id，就不必再查验
+		}
+
+		if ($checkCond) {
+			$rv = $this->genCondSql(false);
+			if ($rv["condSql"]) {
+				$sql = sprintf("SELECT t0.id FROM %s WHERE t0.id=%s AND %s", $rv["tblSql"], $this->id, $rv["condSql"]);
+				if (queryOne($sql) === false)
+					throw new MyException(E_PARAM, "bad {$this->table}.id=" . $this->id, "操作对象不存在");
+			}
+		}
+	}
+
 /**
 @fn AccessControl::api_set()
 
@@ -1711,9 +1736,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 */
 	function api_set()
 	{
-		$this->onValidateId();
-		if ($this->id === null)
-			$this->id = mparam("id");
+		$this->validateId(true);
 		$this->validate();
 		$this->handleSubObjForAddSet();
 
@@ -1728,7 +1751,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 				$subobjList = $_POST[$k];
 				$onAfterActions[] = function (&$ret) use ($subobjList, $v) {
 					$relatedKey = null;
-					if (preg_match('/(\w+)=%d/', $v["cond"], $ms)) {
+					if (preg_match('/(\w+)=%d/u', $v["cond"], $ms)) {
 						$relatedKey = $ms[1];
 					}
 					if ($relatedKey == null) {
@@ -1823,9 +1846,7 @@ FROM ($sql) t0";
 */
 	function api_get()
 	{
-		$this->onValidateId();
-		if ($this->id === null)
-			$this->id = mparam("id");
+		$this->validateId();
 		$this->initQuery();
 
 		$this->addCond("t0.id={$this->id}", true);
@@ -2037,9 +2058,7 @@ FROM ($sql) t0";
 */
 	function api_del()
 	{
-		$this->onValidateId();
-		if ($this->id === null)
-			$this->id = mparam("id");
+		$this->validateId(true);
 		$sql = sprintf("DELETE FROM %s WHERE id=%d", $this->table, $this->id);
 		$cnt = execOne($sql);
 		if (param('force')!=1 && $cnt != 1)
@@ -2066,22 +2085,21 @@ e.g.
 
 	// for setIf/delIf
 	// return {tblSql, condSql}
-	protected function genCondSql()
+	protected function genCondSql($checkCond=true)
 	{
 		$cond = $this->getCondParam("cond");
-		$this->initVColMap();
 		if ($cond)
 			$this->addCond($cond, false, true);
 
 		// borrow query handler
-		$ac = $this->ac;
-		$this->ac = "query";
+//		$ac = $this->ac;
+//		$this->ac = "query";
 		$this->onQuery();
-		$this->ac = $ac;
+//		$this->ac = $ac;
 
 		$sqlConf = $this->sqlConf;
-		if (count($sqlConf["cond"]) == 0)
-			throw new MyException(E_PARAM, "setIf/delIf requires condition");
+		if ($checkCond && count($sqlConf["cond"]) == 0)
+			throw new MyException(E_PARAM, "requires condition", "未指定操作条件");
 
 		$tblSql = "{$this->table} t0";
 		if ($sqlConf["join"] && count($sqlConf["join"]) > 0)
