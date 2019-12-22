@@ -2052,6 +2052,45 @@ FROM ($sql) t0";
 	}
 
 /**
+@fn AccessControl.qsearch($fields, $q)
+
+模糊查询 (v5.4)
+
+示例接口：
+
+	Obj.query(q) -> 同query接口返回
+
+查询匹配参数q的内容（比如查询name, label等字段）。
+参数q是一个字符串，或多个以空格分隔的字符串。例如"aa bb"表示字段包含"aa"且包含"bb"。
+
+实现：
+
+	protected function onQuery() {
+		$this->qsearch(["name", "label", "content"], param("q"));
+	}
+
+*/
+	protected function qsearch($fields, $q)
+	{
+		assert(is_array($fields));
+		if (! $q)
+			return;
+
+		$cond = null;
+		foreach (preg_split('/\s+/', trim($q)) as $q1) {
+			if (strlen($q1) == 0)
+				continue;
+			$qstr = Q("%$q1%");
+			$cond1 = null;
+			foreach ($fields as $f) {
+				addToStr($cond1, "$f LIKE $qstr", ' OR ');
+			}
+			addToStr($cond, "($cond1)", ' AND ');
+		}
+		$this->addCond($cond);
+	}
+
+/**
 @fn AccessControl::api_del()
 
 标准对象删除接口。api函数应通过callSvc调用，不应直接调用。
