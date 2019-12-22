@@ -1699,9 +1699,8 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 
 		$res = param("res");
 		if (isset($res)) {
-			// TODO
-			setParam("id", $this->id);
-			$ret = tableCRUD("get", $this->table);
+			$acObj = AccessControl::create($this->table, "get");
+			$ret = $acObj->callSvc($this->table, "get", ["id"=>$this->id, "res"=>$res]);
 		}
 		else
 			$ret = $this->id;
@@ -1763,15 +1762,18 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 					foreach ($subobjList as $subobj) {
 						$subid = $subobj["id"];
 						if ($subid) {
+							/*
 							$fatherId = queryOne("SELECT $relatedKey FROM $objName WHERE id=$subid");
 							if ($fatherId != $this->id)
 								throw new MyException(E_FORBIDDEN, "$objName id=$subid: require $relatedKey={$this->id}, actual " . var_export($fatherId, true), "不可操作该子项");
-							// TODO: set/del接口支持cond. $cond = $relatedKey . "=" . $this->id;
+							*/
+							// set/del接口支持cond.
+							$cond = $relatedKey . "=" . $this->id;
 							if (! @$subobj["_delete"]) {
-								$acObj->callSvc($objName, "set", ["id"=>$subid], $subobj);
+								$acObj->callSvc($objName, "set", ["id"=>$subid, "cond"=>$cond], $subobj);
 							}
 							else {
-								$acObj->callSvc($objName, "del", ["id"=>$subid]);
+								$acObj->callSvc($objName, "del", ["id"=>$subid, "cond"=>$cond]);
 							}
 						}
 						else {
