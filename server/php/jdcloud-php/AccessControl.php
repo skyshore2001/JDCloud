@@ -1109,11 +1109,51 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 
 如果未指定param/postParam，则使用当前GET/POST环境参数执行，否则使用指定环境执行，并在执行后恢复当前环境。
 
+也适用于AC类内的调用，这时可不传table，例如调用当前类的add接口：
+
+	$rv = $this->callSvc(null, "add", null, $postParam);
+
+示例：通过手机号发优惠券时，支持批量发量，用逗号分隔的多个手机号，接口：
+
+	手机号userPhone只有一个时：
+	Coupon.add()(userPhone, ...) -> id
+
+	如果userPhone包含多个手机号：（用逗号隔开，支持中文逗号，支持有空格）
+	Coupon.add()(userPhone, ...) -> {cnt, idList}
+
+重载add接口，如果是批量添加则通过callSvc再调用add接口：
+
+	function api_add() {
+		if (@$_POST["userPhone"]) {
+			$arr = preg_split('/[,，]/u', $_POST["userPhone"]);
+			if (count($arr) > 1) {
+				$idList = [];
+				foreach ($arr as $e) {
+					$postParam = array_merge($_POST, ["userPhone"=>trim($e)]);
+					$idList[] = $this->callSvc(null, "add", null, $postParam);
+				}
+				setRet(0, [
+					"cnt"=>count($idList),
+					"idList"=>$idList
+				]);
+				throw new DirectReturn();
+			}
+		}
+		return parent::api_add();
+	}
+
+框架自带的批量添加接口api_batch也是类似调用。
+
 @see callSvc
 @see callSvcInt
 */
 	final function callSvc($tbl, $ac, $param=null, $postParam=null)
 	{
+		// 已初始化过，创建新对象调用接口，避免污染当前环境。
+		if ($this->ac && $this->table) {
+			$acObj = new static();
+			return $acObj->callSvc($tbl ?: $this->table, $ac, $param, $postParam);
+		}
 		if ($param || $postParam) {
 			return tmpEnv($param, $postParam, function () use ($tbl, $ac) {
 				return $this->callSvc($tbl, $ac);
@@ -2314,12 +2354,6 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 			"cnt" => 0,
 			"idList" => []
 		];
-		$tmp = $_POST;
-		$this->ac = "add";
-		$bak = [];
-		foreach ($this as $k=>$v) {
-			$bak[$k] = $v;
-		}
 		$bak_SOLO = ApiFw_::$SOLO;
 		ApiFw_::$SOLO = false; // 避免其间有setRet输出
 		while (($row = $st->getRow()) != null) {
@@ -2329,7 +2363,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 			else if (($cnt = count($row)) > 0) {
 				// $_POST = array_combine($titleRow, $row);
 				$i = 0;
-				$_POST = [];
+				$postParam = [];
 				foreach ($titleRow as $e) {
 					if ($i >= $cnt)
 						break;
@@ -2337,19 +2371,14 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 						++ $i;
 						continue;
 					}
-					$_POST[$e] = $row[$i++];
-					if ($_POST[$e] === '') {
-						$_POST[$e] = null;
+					$postParam[$e] = $row[$i++];
+					if ($postParam[$e] === '') {
+						$postParam[$e] = null;
 					}
 				}
 				try {
-					$st->beforeAdd($_POST, $row);
-					$id = $this->api_add();
-					$this->after($id);
-					// restore fields
-					foreach ($bak as $k=>$v) {
-						$this->$k = $v;
-					}
+					$st->beforeAdd($postParam, $row);
+					$id = $this->callSvc(null, "add", $_GET, $postParam);
 				}
 				catch (DirectReturn $ex) {
 					global $X_RET;
@@ -2375,8 +2404,6 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 			++ $n;
 		}
 		ApiFw_::$SOLO = $bak_SOLO;
-		$this->ac = "batchAdd";
-		$_POST = $tmp;
 		return $ret;
 	}
 
