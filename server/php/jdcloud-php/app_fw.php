@@ -1534,7 +1534,7 @@ function getBaseUrl($wantHost = true)
 	$baseUrl = getenv("P_BASE_URL");
 	if ($baseUrl) {
 		if (!$wantHost) {
-			$baseUrl = preg_replace('/^[^\/]+/', '', $baseUrl);
+			$baseUrl = preg_replace('/^https?:\/\/[^\/]+/i', '', $baseUrl);
 		}
 		if (strlen($baseUrl) == 0 || substr($baseUrl, -1, 1) != "/")
 			$baseUrl .= "/";
