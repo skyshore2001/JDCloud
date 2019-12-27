@@ -1330,10 +1330,19 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			if (! preg_match('/^\s*(\w+)(?:\s+(?:AS\s+)?([^,]+))?\s*$/iu', $col, $ms))
 			{
 				// 对于res, 还支持部分函数: "fn(col) as col1", 目前支持函数: count/sum，如"count(distinct ac) cnt", "sum(qty*price) docTotal"
-				if (!$gres && preg_match('/(\w+)\([a-z0-9_.\'* ,+\/]+\)\s+(?:AS\s+)?([^,]+)/iu', $col, $ms)) {
-					list($fn, $alias) = [strtoupper($ms[1]), $ms[2]];
+				if (!$gres && preg_match('/(\w+)\(([a-z0-9_.\'* ,+\/]+)\)\s+(?:AS\s+)?([^,]+)/iu', $col, $ms)) {
+					list($fn, $expr, $alias) = [strtoupper($ms[1]), $ms[2], $ms[3]];
 					if ($fn != "COUNT" && $fn != "SUM" && $fn != "AVG")
 						throw new MyException(E_FORBIDDEN, "function not allowed: `$fn`");
+					// 支持对虚拟字段的聚合函数 (addVCol)
+					$rv = preg_match_all('/\w+/iu', $expr, $ms1);
+					if ($rv && $ms1) {
+						foreach ($ms1[0] as $col1) {
+							if (strcasecmp($col1, 'distinct') == 0)
+								continue;
+							$this->addVCol($col1, true, '-');
+						}
+					}
 					$this->isAggregatinQuery = true;
 				}
 				else 
