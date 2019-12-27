@@ -175,8 +175,8 @@ function loadMetafile()
 		parseFieldType($fieldName, $fieldMeta);
 		if ($script) {
 			foreach (explode('/', $script) as $kvstr) {
-				list($k, $v) = explode(':', $kvstr);
-				$fieldMeta[$k] = $v;
+				@list($k, $v) = explode(':', $kvstr);
+				$fieldMeta[$k] = $v ?: true;
 			}
 		}
 

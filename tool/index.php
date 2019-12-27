@@ -10,7 +10,9 @@ if ($ac == "model") {
 	$metafile = "$dir/meta.txt";
 	chdir($dir);
 	file_put_contents($metafile, $content);
-	putenv("mui=1"); // 同时生成移动端页面, 
+	if (@$_POST["doMui"]) {
+		putenv("mui=1"); // 同时生成移动端页面, 
+	}
 	$argv = ["tool/index", "-"];
 	include(__DIR__ . "/create-wui-page/create-wui-page.php");
 	// 可用变量: $obj, $baseObj, $title, $meta
@@ -84,6 +86,8 @@ iframe {
 供应商: 编号, 姓名, 手机号, 身份证号, 身份证图
 </textarea>
 <button>生成</button>
+<input type="checkbox" name="doMui" id="doMui" value="1" style="margin-left:20px"><label for="doMui">生成移动端页面</label>
+<a href="create-wui-page/meta-example.txt" style="margin-left:20px" target="_blank">查看示例</a>
 </form>
 
 <div id="divResult">
