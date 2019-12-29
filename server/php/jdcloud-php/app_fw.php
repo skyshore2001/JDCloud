@@ -55,7 +55,8 @@ P_DBCRED格式为`{用户名}:{密码}`，或其base64编码后的值，如
 ## 测试模式与调试等级
 
 @key P_TEST_MODE Integer。环境变量，允许测试模式。0-生产模式；1-测试模式；2-自动化回归测试模式(RTEST_MODE)
-@key P_DEBUG Integer。环境变量，设置调试等级，值范围0-9。仅在测试模式下有效。
+@key P_DEBUG Integer。环境变量，设置调试等级，值范围0-9。
+@key P_DEBUG_LOG Integer。(v5.4) 环境变量，是否打印接口明细日志到debug.log。0-不打印，1-全部打印，2-只打印出错的调用
 
 测试模式特点：
 
@@ -64,6 +65,8 @@ P_DBCRED格式为`{用户名}:{密码}`，或其base64编码后的值，如
   如果想要查看本次调用涉及的SQL语句，可以用`_debug=9`。
 - 某些用于测试的接口可以调用，例如execSql。因而十分危险，生产模式下一定不可误设置为测试模式。
 - 可以使用模拟模式
+
+注意：v5.4起可设置P_DEBUG_LOG，在测试模式或生产模式都可用，可记录日志到后台debug.log文件中。一般用于在生产环境下，临时开放查看后台日志。
 
 注意：v3.4版本起不允许客户端设置_test参数，且用环境变量P_TEST_MODE替代符号文件CFG_TEST_MODE和设置全局变量TEST_MODE.
 
@@ -2204,8 +2207,6 @@ class AppFw_
 			if (!$isCLI)
 				header("X-Daca-Test-Mode: $TEST_MODE");
 			$JSON_FLAG |= JSON_PRETTY_PRINT;
-			$defaultDebugLevel = getenv("P_DEBUG")===false? 0 : intval(getenv("P_DEBUG"));
-			$DBG_LEVEL = param("_debug/i", $defaultDebugLevel, $_GET);
 
 			// 允许跨域
 			@$origin = $_SERVER['HTTP_ORIGIN'];
@@ -2216,6 +2217,8 @@ class AppFw_
 				header('Access-Control-Expose-Headers: X-Daca-Server-Rev, X-Daca-Test-Mode, X-Daca-Mock-Mode');
 			}
 		}
+		$defaultDebugLevel = getenv("P_DEBUG")===false? 0 : intval(getenv("P_DEBUG"));
+		$DBG_LEVEL = param("_debug/i", $defaultDebugLevel, $_GET);
 
 		global $MOCK_MODE;
 		if ($TEST_MODE) {

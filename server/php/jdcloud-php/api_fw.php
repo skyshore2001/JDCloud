@@ -488,6 +488,11 @@ function setRet($code, $data = null, $internalMsg = null)
 	if (isset($internalMsg))
 		$X_RET[] = $internalMsg;
 
+	$debugLog = getenv("P_DEBUG_LOG") ?: 0;
+	if ($debugLog == 1 || ($debugLog == 2 && $X_RET[0] != 0)) {
+		$s = 'ac=' . ApiLog::$instance->getAc() . ', apiLogId=' . ApiLog::$lastId . ', ret=' . jsonEncode($X_RET) . ", dbgInfo=" . jsonEncode($GLOBALS["g_dbgInfo"], true);
+		logit($s, true, 'debug');
+	}
 	if ($TEST_MODE) {
 		global $g_dbgInfo;
 		if (count($g_dbgInfo) > 0)
@@ -908,6 +913,10 @@ e.g. 修改ApiLog的ac:
 	function __construct($ac) 
 	{
 		$this->ac = $ac;
+	}
+
+	function getAc() {
+		return $this->ac;
 	}
 
 	private function myVarExport($var, $maxLength=200)
