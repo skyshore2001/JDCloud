@@ -490,7 +490,8 @@ function setRet($code, $data = null, $internalMsg = null)
 
 	$debugLog = getenv("P_DEBUG_LOG") ?: 0;
 	if ($debugLog == 1 || ($debugLog == 2 && $X_RET[0] != 0)) {
-		$s = 'ac=' . ApiLog::$instance->getAc() . ', apiLogId=' . ApiLog::$lastId . ', ret=' . jsonEncode($X_RET) . ", dbgInfo=" . jsonEncode($GLOBALS["g_dbgInfo"], true);
+		$ac = $GLOBALS["X_APP"]? $GLOBALS["X_APP"]->getAc(): 'unknown';
+		$s = 'ac=' . $ac . ', apiLogId=' . ApiLog::$lastId . ', ret=' . jsonEncode($X_RET) . ", dbgInfo=" . jsonEncode($GLOBALS["g_dbgInfo"], true);
 		logit($s, true, 'debug');
 	}
 	if ($TEST_MODE) {
@@ -913,10 +914,6 @@ e.g. 修改ApiLog的ac:
 	function __construct($ac) 
 	{
 		$this->ac = $ac;
-	}
-
-	function getAc() {
-		return $this->ac;
 	}
 
 	private function myVarExport($var, $maxLength=200)
@@ -1849,10 +1846,18 @@ class BatchApiApp extends AppBase
 	}
 }
 
+// 取当前全局APP可以用X_APP，如
+//  $ac = $GLOBALS["X_APP"]? $GLOBALS["X_APP"]->getAc(): 'unknown';
 class ApiApp extends AppBase
 {
 	private $apiLog;
 	private $apiWatch;
+	private $ac;
+
+	function getAc() {
+		return $this->ac;
+	}
+
 	protected function onExec()
 	{
 		if (! isCLI())
@@ -1881,6 +1886,7 @@ class ApiApp extends AppBase
 		}
 
 		Conf::onApiInit($ac);
+		$this->ac = $ac;
 
 		dbconn();
 
