@@ -4978,7 +4978,7 @@ $.fn.okCancel = function (fnOk, fnCancel) {
 		// Ctrl-F: find mode
 		else if ((e.ctrlKey||e.metaKey) && e.which == 70)
 		{
-			showObjDlg($(this), FormMode.forFind, null);
+			showObjDlg($(this), FormMode.forFind, $(this).data("objParam"));
 			return false;
 		}
 /* // Ctrl-A: add mode
@@ -5798,6 +5798,7 @@ self.showObjDlg = showObjDlg;
 function showObjDlg(jdlg, mode, opt)
 {
 	opt = $.extend({mode: mode}, jdlg.objParam, opt);
+	jdlg.data("objParam", jdlg.objParam);
 	if (jdlg.constructor != jQuery)
 		jdlg = $(jdlg);
 	if (loadDialog(jdlg, onLoad))
