@@ -4978,7 +4978,7 @@ $.fn.okCancel = function (fnOk, fnCancel) {
 		// Ctrl-F: find mode
 		else if ((e.ctrlKey||e.metaKey) && e.which == 70)
 		{
-			showObjDlg($(this), FormMode.forFind, null);
+			showObjDlg($(this), FormMode.forFind, $(this).data("objParam"));
 			return false;
 		}
 /* // Ctrl-A: add mode
@@ -5215,6 +5215,8 @@ function showDlg(jdlg, opt)
 		});
 	}
 	jdlg.dialog(dlgOpt);
+	var perm = jdlg.attr("wui-perm") || jdlg.dialog("options").title;
+	jdlg.toggleClass("wui-readonly", !self.canDo(perm, "对话框"));
 
 	jdlg.okCancel(fnOk, opt.noCancel? undefined: fnCancel);
 
@@ -5276,6 +5278,14 @@ function showDlg(jdlg, opt)
 				if (opt.onSubmit && opt.onSubmit(data) === false)
 					return false;
 
+				var m = opt.url.action.match(/\.(add|set|del)$/);
+				if (m) {
+					var cmd = {add: "新增", set: "修改", del: "删除"}[m[1]];
+					if (!self.canDo(perm, cmd)) {
+						app_alert("无权限操作! 本操作需要权限：" + perm + "." + cmd, "w");
+						throw "abort";
+					}
+				}
 				// 批量更新
 				if (formMode==FormMode.forSet && opt.url.action && /.set$/.test(opt.url.action)) {
 					var jtbl = jdlg.jdata().jtbl;
@@ -5568,6 +5578,119 @@ function unloadDialog(all)
 	return jdlg;
 }
 
+/**
+@fn canDo(topic, cmd=null, defaultVal=true)
+
+权限检查回调，支持以下场景：
+
+1. 页面上的操作（按钮）
+
+	canDo(页面标题, 按钮标题, true);// 返回false则不显示该按钮
+
+2. 对话框上的操作
+
+	canDo(对话框标题, "对话框", true); // 返回false表示对话框只读
+
+TODO:通过设置 WUI.options.canDo(topic, cmd) 可扩展定制权限。
+TODO: 链接的对话框有安全问题
+
+默认情况下，所有菜单不显示，其它操作均允许。
+如果指定了"*"权限，则显示所有菜单。
+如果指定了"不可XX"权限，则topic或cmd匹配XX则不允许。
+
+- topic: 通过菜单、页面、对话框、按钮的wui-perm属性指定，如果未指定，则取其text.
+- cmd: 对话框，新增，修改，删除，导出，自定义的按钮
+
+示例：假设有菜单结构如下（不包含最高管理员专有的“系统设置”）
+
+	主数据管理
+		企业
+		用户
+
+	运营管理
+		活动
+		公告
+		积分商城
+
+只显示“公告”菜单项：
+
+	公告
+
+只显示“运营管理”菜单组：
+
+	运营管理
+
+显示除了“运营管理”外的所有内容：
+
+	* 不可运营管理
+
+其中`*`表示显示所有菜单项。
+显示所有内容（与管理员权限相同），但只能查看不可操作
+
+	* 只读
+
+“只读”权限排除了“新增”、“修改”等操作。
+特别地，“只读”权限也不允许“导出”操作（虽然导出是读操作，但一般要求较高权限），假如要允许导出公告，可以设置：
+
+	* 只读 公告.导出
+
+显示“运营管理”，在列表页中不显示“删除”、“导出”按钮：
+
+	运营管理 不可删除 不可导出
+
+显示“运营管理”，在列表页中，不显示“删除”、“导出”按钮，但“公告”中显示“删除”按钮：
+
+	运营管理 不可删除 不可导出 公告.删除
+
+或等价于：
+
+	运营管理 不可导出 活动.不可删除 积分商城.不可删除
+
+显示“运营管理”和“主数据管理”菜单组，但“主数据管理”下面内容均是只读的：
+
+	运营管理 主数据管理 企业.只读 用户.只读
+
+ */
+self.canDo = canDo;
+function canDo(topic, cmd, defaultVal)
+{
+//	console.log('canDo: ', topic, cmd);
+	if (!g_data.permSet)
+		return true;
+	self.assert(topic);
+
+	if (defaultVal === undefined)
+		defaultVal = true;
+	if (cmd == null) {
+		var rv = g_data.permSet[topic];
+		if (rv !== undefined)
+			return rv;
+		return defaultVal;
+	}
+
+	var rv = g_data.permSet[topic + "." + cmd];
+	if (rv !== undefined)
+		return rv;
+
+	rv = g_data.permSet[cmd];
+	if (rv !== undefined)
+		return rv;
+
+	rv = g_data.permSet[topic + ".只读"];
+	if (rv === undefined)
+		rv = g_data.permSet["只读"];
+	if (rv && (cmd == "新增" || cmd == "修改" || cmd == "删除" || cmd == "导出" || cmd == "对话框")) {
+		return false;
+	}
+
+	rv = g_data.permSet[topic];
+	if (rv !== undefined)
+		return rv;
+	
+	return defaultVal;
+//	return self.options.canDo(topic, cmd);
+}
+
 // ---- object CRUD {{{
 var BTN_TEXT = ["添加", "保存", "保存", "查找", "删除"];
 // e.g. var text = BTN_TEXT[mode];
@@ -5800,6 +5923,8 @@ function showObjDlg(jdlg, mode, opt)
 	opt = $.extend({mode: mode}, jdlg.objParam, opt);
 	if (jdlg.constructor != jQuery)
 		jdlg = $(jdlg);
+	else
+		jdlg.data("objParam", jdlg.objParam);
 	if (loadDialog(jdlg, onLoad))
 		return;
 	function onLoad() {
@@ -6111,8 +6236,13 @@ function dg_toolbar(jtbl, jdlg)
 		}},
 		'export': {text: '导出', iconCls: 'icon-save', handler: getExportHandler(jtbl)}
 	};
+	var jpage = jtbl.closest(".wui-page");
+	var perm = jpage.attr("wui-perm") || jpage.attr("title");
 	$.each(toolbar.split(""), function(i, e) {
 		if (tb[e]) {
+			if (! self.canDo(perm, tb[e].text)) {
+				return;
+			}
 			btns.push(tb[e]);
 			btns.push("-");
 		}
@@ -6124,6 +6254,9 @@ function dg_toolbar(jtbl, jdlg)
 		if (btn !== '-' && typeof(btn) == "string") {
 			btn = tb[btn];
 			mCommon.assert(btn, "toolbar button name does not support");
+		}
+		if (btn.text != "-" && !self.canDo(perm, btn.text)) {
+			continue;
 		}
 		btns.push(btn);
 	}

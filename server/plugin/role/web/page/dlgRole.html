@@ -1,0 +1,35 @@
+<form my-obj="Role" title="角色" style="width:500px;height:400px;" wui-script="dlgRole.js" my-initfn="initDlgRole">
+	<table>
+		<tr>
+			<td>编号</td>
+			<td>
+				<input name="id" disabled>
+			</td>
+		</tr>
+		<tr>
+			<td>名称</td>
+			<td>
+				<input name="name" >
+			</td>
+		</tr>
+		<tr>
+			<td>权限列表</td>
+			<td>
+				<textarea name="perms"  rows=2></textarea>
+				<p class="hint perms">常用值：
+					<a>*</a>
+					<a>只读</a>
+					<a>不可新增</a>
+					<a>不可修改</a>
+					<a>不可删除</a>
+					<a>不可导出</a>
+				</p>
+			</td>
+		</tr>
+	</table>
+</form>
+<!-- examples:
+<input name="name" class="easyui-validatebox" data-options="required:true">
+<select name="customerId" class="my-combobox" data-options="ListOptions.Customer()"></select>
+<select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap"></select>
+-->
