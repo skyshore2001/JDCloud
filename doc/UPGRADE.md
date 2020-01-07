@@ -1,3 +1,23 @@
+## 升级到v5.4
+
+### 管理端列表页表头固定
+
+建议在pageXX中将表格的高度设置100%，以便表头和工具栏固定在表格上方。以及在dlgXX中使用默认的padding，不必自定义。
+可以运行下面的命令来修改：
+
+	cd web/page
+	sed -i '1s/padding:.[^;]\+;//' dlg*.html
+	sed -i '2s/height:auto/height:100%/' page*.html
+
+### 服务端addCond
+
+以下接口的第三个参数$fixUserQuery缺省值由false改成了true:
+
+	AccessControl.addCond($cond, $prepend=false, $fixUserQuery=true)
+
+即默认在后端代码中调用`$this->addCond("status='发布中')`这样的代码时，会与前端传来的cond字段一样处理。
+升级后，如果遇到cond为复杂查询（用了函数、子查询等）的情况则不支持并出错，这时须显式设置fixUserQuery参数=false即可解决。
+
 ## 升级到v5.3
 
 ### 废弃searchField
