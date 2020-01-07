@@ -30,8 +30,8 @@ var ActionMap = {
 };
 
 var PermMap = {
-	emp: "员工",
-	mgr: "管理员"
+	mgr: "最高管理员",
+	emp: "管理员"
 };
 
 // 注意：与class "status-info", "status-warning"等保持一致。
@@ -68,11 +68,6 @@ function addTooltip(html, tooltip)
 		return html;
 	return "<span title='" + tooltip + "'>" + html + "</span>";
 }
-
-function toggleCol(jtbl, col, show)
-{
-	jtbl.datagrid(show?"showColumn":"hideColumn", col);
-}
 //}}}
 
 // ==== functions {{{
@@ -82,6 +77,7 @@ function setAppTitle(title)
 		document.title = title;
 	$(".my-title").html(document.title);
 	$("body.easyui-layout").layout("panel", "center").panel({title: "欢迎使用" + title});
+	$(".header-bar .header-bar_name").html(title);
 }
 
 function logout()

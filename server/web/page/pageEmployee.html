@@ -1,11 +1,11 @@
 <div title="员工管理" wui-script="pageEmployee.js" my-initfn="initPageEmployee">
-	<table id="tblEmployee" style="width:auto;height:auto">
+	<table id="tblEmployee" style="width:auto;height:100%">
 		<thead><tr>
 			<th data-options="field:'id', sortable:true, sorter:intSort">编号</th>
 			<th data-options="field:'uname', sortable:true">登录名</th>
 			<th data-options="field:'phone', sortable:true">手机号</th>
 			<th data-options="field:'name', sortable:true">姓名</th>
-			<th data-options="field:'perms', jdEnumMap:PermMap, formatter:Formatter.enum(PermMap), sortable:true">权限</th>
+			<th data-options="field:'perms', jdEnumMap:PermMap, formatter:Formatter.enum(PermMap), sortable:true">角色</th>
 		</tr></thead>
 	</table>
 </div>

@@ -7,7 +7,11 @@ input,select,textarea {
 	font-size: 13px;
 }
 
-button {
+.wui-page {
+	box-sizing: border-box;
+	height: 100%;
+}
+.wui-dialog button {
 	min-width: 100;
 	min-height: 30;
 }
@@ -142,7 +146,7 @@ input:disabled,select:disabled,textarea:disabled {
 
 .hint {
 	font-size: 0.6em;
-	margin-top: 0;
+	margin: 2px;
 	color: blue;
 	white-space: normal;
 }
@@ -226,4 +230,10 @@ input:disabled,select:disabled,textarea:disabled {
 #my-tabMain.batchMode .tabs-selected a {
 	border-top-color: red;
 	color: red;
+}
+/* datagrid表格中显示图片 */
+.datagrid-cell img {
+	height: 40px;
+	margin: -10px 0;
+	object-fit: contain;
 }

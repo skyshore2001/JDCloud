@@ -537,11 +537,43 @@ function enhanceCheckList(jp)
 	if (jdlg.size() == 0)
 		return;
 
+	var defOpt = {
+		sep: ','
+	};
+	var opt = WUI.getOptions(jp, defOpt);
+	var dfd = $.Deferred();
+	if (opt.url) {
+		var url = opt.url;
+		self.assert(opt.valueField && opt.textField, "wui-checkList: 使用url选项，必须设置valueField和textField选项");
+		if (m_dataCache[url] === undefined) {
+			self.callSvr(url, onLoadOptions);
+		}
+		else {
+			onLoadOptions(m_dataCache[url]);
+		}
+	}
+	else {
+		dfd.resolve();
+	}
+	function onLoadOptions(data) {
+		m_dataCache[url] = data;
+		applyData(data);
+	}
+	function applyData(data) {
+		var ls = WUI.rs2Array(data);
+		$.each(ls, function (i, e) {
+			$('<div><label><input type="checkbox" value="' + e[opt.valueField] + '">' + e[opt.textField] + '</label></div>').appendTo(jp);
+		});
+		dfd.resolve();
+	}
+
 	jdlg.on("show", onShow)
 		.on("validate", onValidate);
 
 	function onShow(ev) {
-		hiddenToCheckbox(jp);
+		dfd.then(function () {
+			hiddenToCheckbox(jp);
+		});
 	}
 
 	function onValidate(ev, mode, oriData, newData) {
@@ -636,4 +668,191 @@ function enhanceMenu()
 }
 $(enhanceMenu);
 
+/**
+@fn toggleCol(jtbl, col, show)
+
+显示或隐藏datagrid的列。示例：
+
+	WUI.toggleCol(jtbl, 'status', false);
+
+如果列不存在将出错。
+*/
+self.toggleCol = toggleCol;
+function toggleCol(jtbl, col, show)
+{
+	jtbl.datagrid(show?"showColumn":"hideColumn", col);
 }
+
+/**
+@fn toggleFields(jtbl_or_jfrm, showMap)
+
+根据type隐藏datagrid列表或明细页form中的项。示例：
+
+	function toggleItemFields(jo, type)
+	{
+		WUI.toggleFields(jo, {
+			type: !type,
+			status: !type || type!="公告",
+			tm: !type || type=="活动" || type=="卡券" || type=="停车券",
+			price: !type || type=="集市",
+			qty: !type || type=="卡券"
+		});
+	}
+
+列表中调用，控制列显示：pageItem.js
+
+		var type = objParam & objParam.type; // 假设objParam是initPageXX函数的传入参数。
+		toggleItemFields(jtbl, type);
+
+明细页中调用，控制字段显示：dlgItem.js
+
+		var type = objParam && objParam.type; // objParam = 对话框beforeshow事件中的opt.objParam
+		toggleItemFields(jfrm, type);
+
+ */
+self.toggleFields = toggleFields;
+function toggleFields(jo, showMap)
+{
+	if (jo.prop("tagName") == "TABLE") {
+		var jtbl = jo;
+		$.each(showMap, function (k, v) {
+			// 忽略找不到列的错误
+			try {
+				toggleCol(jtbl, k, v);
+			} catch (ex) {
+				// console.error('fail to toggleCol: ' + k);
+			}
+		});
+	}
+	else if (jo.prop("tagName") == "FORM") {
+		var frm = jo[0];
+		$.each(showMap, function (k, v) {
+			var o = frm[k];
+			if (o)
+				$(o).closest("tr").toggle(v);
+		});
+	}
+}
+
+function initPermSet(rolePerms)
+{
+	if (!rolePerms)
+		return;
+
+	var permSet = {};
+	var rpArr = rolePerms.split(/\s+/);
+	$.each (rpArr, function (i, e) {
+		var e1 = e.replace(/不可/, '');
+		if (e1.length != e.length) {
+			permSet[e1] = false;
+		}
+		else {
+			var n = e.indexOf('.');
+			if (n > 0)
+				permSet[e.substr(0, n)] = true;
+			permSet[e] = true;
+		}
+	});
+	console.log('permSet', permSet);
+	return permSet;
+}
+
+/**
+@fn WUI.applyPermission()
+
+@key permission 菜单权限控制
+
+前端通过菜单项来控制不同角色可见项，具体参见store.html中菜单样例。
+
+	<div class="perm-mgr" style="display:none">
+		<div class="menu-expand-group">
+			<a><span><i class="fa fa-pencil-square-o"></i>系统设置</span></a>
+			<div class="menu-expandable">
+				<a href="#pageEmployee">登录帐户管理</a>
+				...
+			</div>
+		</div>
+	</div>
+
+系统默认使用mgr,emp两个角色。一般系统设置由perm-mgr控制，其它菜单组由perm-emp控制。
+其它角色则需要在角色表中定义允许的菜单项。
+
+根据用户权限，如"item,mgr"等，菜单中有perm-xxx类的元素会显示，有nperm-xxx类的元素会隐藏
+
+示例：只有mgr权限显示
+
+	<div class="perm-mgr" style="display:none"></div>
+
+示例：bx权限不显示（其它权限可显示）
+
+	<a href="#pageItem" class="nperm-bx">商品管理</a>
+
+可通过 g_data.hasPerm(perm) 查询是否有某项权限。
+ */
+self.applyPermission = applyPermission;
+function applyPermission()
+{
+	var perms = g_data.userInfo.perms;
+	var rolePerms = g_data.userInfo.rolePerms;
+
+	// e.g. "item,mgr" - ".perm-item, .perm-mgr"
+	if (!perms)
+		return;
+	var sel = perms.replace(/([^, ]+)/g, '.perm-$1');
+	var arr = perms.split(/,/);
+	if (sel) {
+		$(sel).show();
+		var sel2 = sel.replace(/perm/g, 'nperm');
+		$(sel2).hide();
+	}
+
+	g_data.hasRole = g_data.hasPerm = function (perm) {
+		return arr.indexOf(perm) >= 0;
+/*
+		var found = false;
+		$.each(arr, function (i, e) {
+				if (e == perm) {
+					found = true;
+					return false;
+				}
+		});
+		return found;
+*/	}
+
+	if (rolePerms) {
+		g_data.permSet = initPermSet(rolePerms);
+		var defaultShow = self.canDo("*", null, false);
+		$("#menu .perm-emp .menu-expand-group").each(function () {
+			showGroup($(this));
+		});
+
+		// 支持多级嵌套
+		function showGroup(jo) {
+			var t = jo.find("a:first").text(); // 菜单组名称
+			var doShowGroup = self.canDo(t, null, defaultShow);
+			var doShow = defaultShow;
+			jo.find(">.menu-expandable>a").each(function () {
+				var t = $(this).text();
+				if (WUI.canDo(t, null, doShowGroup)) {
+					doShow = true;
+					// $(this).show();
+				}
+				else {
+					$(this).hide();
+				}
+			});
+			jo.find(">.menu-expand-group").each(function () {
+				if (showGroup($(this)))
+					doShow = true;
+			});
+			if (doShowGroup || doShow) {
+				jo.closest(".perm-emp").show();
+				return true;
+			}
+			return false;
+		}
+	}
+}
+
+}
+

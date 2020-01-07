@@ -1,4 +1,4 @@
-<div wui-script="dlgEmployee.js" my-obj="Employee" my-initfn="initDlgEmployee" title="员工" style="padding:20px 40px 20px 40px;width:520px;height:450px;">
+<div wui-script="dlgEmployee.js" my-obj="Employee" my-initfn="initDlgEmployee" title="员工" style="width:520px;height:450px;">
 	<form method="POST">
 		<table>
 			<tr>
@@ -23,11 +23,11 @@
 				</td>
 			</tr> 
 			<tr>
-				<td>权限</td>
+				<td>角色</td>
 				<td class="wui-checkList">
 					<input type="hidden" name="perms">
-					<label><input type="checkbox" value="emp" checked>员工:查看,操作订单(默认)</label><br>
-					<label><input type="checkbox" value="mgr">经理</label><br>
+					<div><label><input type="checkbox" value="mgr">最高管理员</label></div>
+					<div><label><input type="checkbox" value="emp" checked>管理员</label></div>
 				</td>
 			</tr>
 		</table>  
