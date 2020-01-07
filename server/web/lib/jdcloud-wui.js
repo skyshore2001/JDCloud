@@ -6440,16 +6440,37 @@ var Formatter = {
 	number: function (value, row) {
 		return parseFloat(value);
 	},
-	pics: function (value, row) {
+	atts: function (value, row) {
+		if (value == null)
+			return "(无)";
+		return value.toString().replace(/(\d+)(:([^,]+))?/g, function (ms, attId, name) {
+			var url = WUI.makeUrl("att", {id: attId});
+			if (name == null)
+				name = attId;
+			return "<a target='_black' href='" + url + "'>" + name + "</a>&nbsp;";
+		});
+	},
+	pics1: function (value, row) {
 		if (value == null)
 			return "(无图)";
 		return '<a target="_black" href="' + WUI.makeUrl("pic", {id:value}) + '">' + value + '</a>';
-		/*
-		return value.replace(/(\d+),?/g, function (ms, picId) {
-			var url = WUI.makeUrl("att", {thumbId: picId});
-			return "<a target='_black' href='" + url + "'>" + picId + "</a>&nbsp;";
+	},
+	pics: function (value, row) {
+		if (value == null)
+			return "(无图)";
+		var maxN = Formatter.pics.maxCnt || 3; // 最多显示图片数
+		// value = value + "," + value + "," + value;
+		value1 = value.toString().replace(/(\d+)(:([^,]+))?/g, function (ms, picId, name) {
+			if (name == null)
+				name = "图" + picId;
+			if (maxN <= 0)
+				return name + " ";
+			-- maxN;
+			var url = WUI.makeUrl("att", {id: picId});
+			return '<img alt="' + name + '" src="' + url + '">';
 		});
-		*/
+		var linkUrl = WUI.makeUrl("pic", {id:value});
+		return '<a target="_black" href="' + linkUrl + '">' + value1 + '</a>';
 	},
 	flag: function (yes, no) {
 		if (yes == null)
@@ -6520,7 +6541,8 @@ var Formatter = {
 可用值：
 
 - dt/number: 显示日期、数值
-- pics: 显示一张或一组图片链接，点一个链接可以在新页面上显示原图片
+- pics/pics1: 显示一张或一组图片链接，点一个链接可以在新页面上显示原图片。(v5.4) pics直接显示图片(最多3张，可通过Formatter.pics.maxCnt设置)，更直观；pics1只显示图片编号，效率更好。
+- atts: (v5.4) 显示一个或一组附件，点链接可下载附件。
 - enum(enumMap): 根据一个map为枚举值显示描述信息，如 `enum({CR:"创建", CA:"取消"})`。
  (v5.1) 也支持枚举值列表，如设置为 `enumList({emp:"员工", mgr:"经理"})`，则会将"emp"和"emp,mgr"分别解析为"员工", "员工,经理"
 - flag(yes?, no?): 显示yes-no字段，如 `flag("禁用","启用")`，也可以用enum，如`enum({0:"启用",1:"禁用"})`

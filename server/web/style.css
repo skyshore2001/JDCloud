@@ -231,3 +231,9 @@ input:disabled,select:disabled,textarea:disabled {
 	border-top-color: red;
 	color: red;
 }
+/* datagrid表格中显示图片 */
+.datagrid-cell img {
+	height: 40px;
+	margin: -10px 0;
+	object-fit: contain;
+}
