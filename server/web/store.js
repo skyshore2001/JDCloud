@@ -28,17 +28,25 @@ var DlgImport = {
 
 // ==== data-options {{{
 var ListOptions = {
-	// ListOptions.Emp()
-	Emp: function () {
+	Employee: function () {
 		var opts = {
 			valueField: "id",
-			textField: "name",
 			url: WUI.makeUrl('Employee.query', {
-				res: 'id,name,uname',
-				cond: 'storeId=' + g_data.userInfo.storeId,
+				res: 'id,name',
 				pagesz: -1
 			}),
-			formatter: function (row) { return row.name + '(' + row.uname + ')'; }
+			formatter: function (row) { return row.id + '-' + row.name; }
+		};
+		return opts;
+	},
+	Role: function () {
+		var opts = {
+			valueField: "name",
+			textField: "name",
+			url: WUI.makeUrl('Role.query', {
+				res: 'name',
+				pagesz: -1
+			})
 		};
 		return opts;
 	},
