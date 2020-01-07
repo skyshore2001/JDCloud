@@ -7095,7 +7095,11 @@ function app_alert(msg)
 		jbtn.focus();
 		if (alertOpt.timeoutInterval) {
 			setTimeout(function() {
-				jbtn.click();
+				try {
+					jbtn.click();
+				} catch (ex) {
+					console.error(ex);
+				}
 			}, alertOpt.timeoutInterval);
 		}
 	});
