@@ -1267,7 +1267,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			return $ms[1] . jdEncryptI($ms[2], 'D', 'hex');
 		}, $q);
 		# "aa = 100 and t1.bb>30 and cc IS null" -> "t0.aa = 100 and t1.bb>30 and t0.cc IS null" 
-		$ret = preg_replace_callback('/[\w.\x{4E00}-\x{9FA5}]+(?=(\s*[=><]|(\s+(IS|LIKE)\s+)))/iu', function ($ms) {
+		$ret = preg_replace_callback('/[\w.\x{4E00}-\x{9FA5}]+(?=(\s*[=><]|(\s+(IS|LIKE|BETWEEN)\s+)))/iu', function ($ms) {
 			// 't0.$0' for col, or 'voldef' for vcol
 			$col = $ms[0];
 			if (strpos($col, '.') !== false)
