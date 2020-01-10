@@ -69,7 +69,9 @@ sub outputTable
 	print "$table->{name}表\t$table->{dscr}\n";
 #	print "字段\t类型\t说明\n";
 	for $field (split/\s*,\s*/, $table->{fieldDef}) {
-		if ($field eq 'id' || $field =~ /Id$/) {
+		$field1 = $field;
+		$field1 =~ s/\d+$//; # e.g. tm1 => tm
+		if ($field1 eq 'id' || $field1 =~ /Id$/) {
 			$type = "INTEGER";
 		}
 		elsif ($field =~ s/\((\w+)\)$//) {
@@ -98,16 +100,16 @@ sub outputTable
 				$type = "REAL";
 			}
 		}
-		elsif ($field =~ /(Price|Qty|Total|Amount)$/) {
+		elsif ($field1 =~ /^(price|qty|total|amount)|(Price|Qty|Total|Amount)$/) {
 			$type = "DECIMAL(19,2)";
 		}
-		elsif ($field =~ /Tm$/) {
+		elsif ($field1 =~ /^tm|Tm$/) {
 			$type = "DATETIME";
 		}
-		elsif ($field =~ /Dt$/) {
+		elsif ($field1 =~ /^dt|Dt$/) {
 			$type = "DATE";
 		}
-		elsif ($field =~ /Flag$/) {
+		elsif ($field1 =~ /^flag|Flag$/) {
 			$type = "TINYINT"; # default 0
 		}
 		elsif ($field =~ /^\w+$/) { # default
