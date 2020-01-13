@@ -7326,12 +7326,13 @@ var plugins_ = {};
 function initClient()
 {
 	self.callSvrSync('initClient', function (data) {
+		g_data.initClient = data;
 		plugins_ = data.plugins || {};
 		$.each(plugins_, function (k, e) {
 			if (e.js) {
 				// plugin dir
 				var js = BASE_URL + 'plugin/' + k + '/' + e.js;
-				mCommon.loadScript(js, null, true);
+				mCommon.loadScript(js, {async:true});
 			}
 		});
 	});

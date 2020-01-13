@@ -175,7 +175,7 @@ function main()
 {
 	setAppTitle(APP_TITLE);
 
-	//WUI.initClient();
+	WUI.initClient();
 	WUI.tryAutoLogin(handleLogin, "Employee.get");
 }
 

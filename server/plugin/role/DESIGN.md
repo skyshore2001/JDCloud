@@ -8,7 +8,11 @@
 
 用于创建表和字段。
 
-后端无须包含本插件，即无须修改plugin/index.php。
+后端无须包含本插件，应在plugin/index.php中设置：
+
+	$GLOBALS["P_initClient"]["enableRole"] = true;
+
+前端可使用`g_data.initClient.enableRole`检查是否开启本特性。
 
 在本目录中运行`make`，为工程添加相关文件，将它们加入git仓库 (TODO: 自动加)。
 
