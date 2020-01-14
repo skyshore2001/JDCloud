@@ -657,6 +657,13 @@ function enhanceMenu()
 				}
 			});
 	});
+	// set active
+	jo[0].addEventListener("click", function (ev) {
+		if (ev.target.tagName != "A" || !$(ev.target).is(".my-menu-item:not(.menu-item-head)")<0)
+			return;
+		jo.find(".my-menu-item").removeClass("active");
+		$(ev.target).addClass("active");
+	}, true);
 
 	// add event handler to menu items
 	function menu_onexpand(ev) {

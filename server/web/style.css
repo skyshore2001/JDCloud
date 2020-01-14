@@ -201,6 +201,11 @@ input:disabled,select:disabled,textarea:disabled {
 	padding-left: 55px;
 }
 
+#menu .my-menu-item.active:not(.menu-item-head) {
+/*	border-left: #0088cc 3px solid;*/
+	box-shadow:  #0088cc 3px 0px inset;
+}
+
 /* customize easyui */
 .datagrid-cell, .datagrid-cell-group {
 	padding: 7px 10px;
