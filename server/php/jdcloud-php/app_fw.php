@@ -157,7 +157,8 @@ $g_dbgInfo = [];
 //}}}
 
 // load user config
-@include_once("{$BASE_DIR}/php/conf.user.php");
+$userConf = "{$BASE_DIR}/php/conf.user.php";
+file_exists($userConf) && include_once($userConf);
 
 // ====== functions {{{
 // assert失败中止运行
