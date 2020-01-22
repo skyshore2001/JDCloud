@@ -2479,8 +2479,8 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		$idList = join(',', $idArr);
 
 		# $opt: {sql, wantOne=false}
-		$joinField = null;
 		foreach ($subobj as $k => $opt) {
+			$joinField = null;
 			if ($opt["obj"] && $opt["cond"]) {
 				// $opt["cond"] = sprintf($opt["cond"], $id); # e.g. "orderId=%d"
 				$opt["cond"] = preg_replace_callback('/(\S+)=%d/', function ($ms) use (&$joinField, $idList){
