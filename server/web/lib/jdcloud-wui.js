@@ -5921,7 +5921,6 @@ self.showObjDlg = showObjDlg;
 function showObjDlg(jdlg, mode, opt)
 {
 	opt = $.extend({mode: mode}, jdlg.objParam, opt);
-	jdlg.data("objParam", jdlg.objParam);
 	if (jdlg.constructor != jQuery)
 		jdlg = $(jdlg);
 	else
