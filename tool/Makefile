@@ -59,4 +59,5 @@ clean-sprite:
 
 meta:
 	php upgrade.php export | tee ../server/tool/upgrade/META
+	git add ../server/tool/upgrade/META
 

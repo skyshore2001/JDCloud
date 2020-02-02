@@ -110,6 +110,8 @@ function genFileWithTpl($f, $tpl)
 	fclose($fp);
 	$fp = null;
 	echo("create $f\n");
+	if (getenv("doGitAdd"))
+		system("git add $f");
 }
 
 function loadMetafile()

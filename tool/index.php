@@ -13,6 +13,9 @@ if ($ac == "model") {
 	if (@$_POST["doMui"]) {
 		putenv("mui=1"); // 同时生成移动端页面, 
 	}
+	if (@$_POST["doGitAdd"]) {
+		putenv("doGitAdd=1"); // 添加到git
+	}
 	$argv = ["tool/index", "-"];
 	include(__DIR__ . "/create-wui-page/create-wui-page.php");
 	// 可用变量: $obj, $baseObj, $title, $meta
@@ -27,10 +30,11 @@ if ($ac == "model") {
 	// add backend code
 	echo("=== 处理后端接口\n");
 	$f = __DIR__."/../server/php/api_objects.php";
-	$tag = "AC_{$baseObj}";
+	$tag = "class AC2_{$baseObj} ";
 	$str = file_get_contents($f);
 	if (stripos($str, $tag) === false) {
 		$code = <<<EOL
+
 // TODO: add codes
 class AC_{$baseObj} extends AccessControl
 {
@@ -87,6 +91,7 @@ iframe {
 </textarea>
 <button>生成</button>
 <input type="checkbox" name="doMui" id="doMui" value="1" style="margin-left:20px"><label for="doMui">生成移动端页面</label>
+<input type="checkbox" name="doGitAdd" id="doGitAdd" value="1" checked style="margin-left:20px"><label for="doGitAdd">添加到Git库</label>
 <a href="create-wui-page/meta-example.txt" style="margin-left:20px" target="_blank">查看示例</a>
 </form>
 
