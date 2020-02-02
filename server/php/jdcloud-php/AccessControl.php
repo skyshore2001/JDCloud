@@ -367,9 +367,16 @@ query/get接口生成的查询语句大致为：
 		WHERE ...
 	) t0
 
+如果不使用isExt=true, 则生成的语句为像下面这样，是不正确的语句，将报“数据库错误”：
+
+	SELECT t0.id,year(tm) y,month(tm) m, concat(y, '-', m) ym FROM ApiLog t0
+	WHERE ...
+
+用require标识依赖的内层查询的字段，上例中若未指定requrie，查询`query(res="id,y,m,ym")`没有问题，但查询`query(res="id,ym")`将出错，因为y,m字段未引入，不可识别。
+
 注意：即使在调用接口时用res参数指定了返回字段，外部虚拟字段依赖的内部字段也将返回。比如query(res="id,ym")返回`tbl(id,y,m,ym)`.
 
-注意：设置require或res属性时，如果依赖的是表的字段，应加表名，如"t0.tm, t1.name"，如果是虚拟字段，则不加表名，如"y,m"。
+注意：设置require或res属性时，如果依赖的是表的字段，应加上表名更健壮，如"t0.tm, t1.name"，如果是虚拟字段，则不加表名，如"y,m"。
 
 注意：关于时间统计相关的虚拟字段，一般通过tmCols函数来指定：
 
@@ -1594,7 +1601,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		if (isset($vcolDef["isExt"]) || isset($vcolDef["join"]))
 			return;
 		$res_0 = $vcolDef["res"][0];
-		if (preg_match('/\(.*select.*where.*?(t0\.\w+)?\)/u', $res_0, $ms)) {
+		if (preg_match('/\(.*select.*where.*?(\bt0\.\w+).*\)/ui', $res_0, $ms)) {
 			$vcolDef["isExt"] = true;
 			if (isset($ms[1])) {
 				$vcolDef["require"] = $ms[1];
@@ -2081,6 +2088,7 @@ FROM ($sql) t0";
 		$fmt = param("fmt");
 		if ($fmt === "list") {
 			$ret = ["list" => $ret];
+			unset($fmt);
 		}
 		else if ($fmt === "one") {
 			if (count($ret) == 0)
@@ -2815,7 +2823,7 @@ function KVtoCond($k, $v)
 		if ($this->ac != "query")
 			return false;
 		$fmt = param("fmt");
-		return $fmt != null && $fmt != 'list';
+		return $fmt != null && $fmt != 'list' && $fmt != 'one';
 	}
 }
 
