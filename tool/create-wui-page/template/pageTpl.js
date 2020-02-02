@@ -12,7 +12,8 @@ function initPage<?=$obj?>()
 		var row = WUI.getRow(jtbl);
 		if (row == null)
 			return;
-		WUI.showPage("pageOrder", "结算明细-" + row.id + "-" + row.startDt, [ {cond: "closeLogId="+row.id} ]);
+		var objParam = {closeLogId: row.id};
+		WUI.showPage("pageOrder", "结算明细-" + row.id, [ objParam ]);
 	}};
 */
 
