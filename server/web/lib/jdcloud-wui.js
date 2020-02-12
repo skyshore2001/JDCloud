@@ -4991,6 +4991,7 @@ function showPage(pageName, title, paramArr)
 		jpageNew.attr("title", title);
 
 		$.parser.parse(jpageNew); // easyui enhancement
+		enhanceGrid(jpageNew);
 		self.enhanceWithin(jpageNew);
 		callInitfn(jpageNew, paramArr);
 
@@ -5041,6 +5042,16 @@ function showPage(pageName, title, paramArr)
 		else {
 			initPage();
 		}
+	}
+}
+
+// 对于页面中只有一个datagrid的情况，铺满显示，且工具栏置顶。
+function enhanceGrid(jpage)
+{
+	var o = jpage[0].firstElementChild;
+	if (o && o.tagName == "TABLE" && jpage[0].children.length == 1) {
+		if (o.style.height == "" || o.style.height == "auto")
+			o.style.height = "100%";
 	}
 }
 
