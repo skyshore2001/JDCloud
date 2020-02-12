@@ -462,6 +462,40 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 	jtbl.datagrid("loadData", {h: ["id","name"], d: [ [1, "name1"], [2, "name2"]}); // 筋斗云query接口默认返回格式。
 	jtbl.datagrid("loadData", {list: rows}); // 筋斗云query接口指定fmt=list参数时，返回这种格式
 
+#### treegrid集成
+
+后端数据模型中有fatherId字段, 即可适配treegrid.
+
+- 支持一次全部加载和分层次加载两种模式。
+- 支持查询时，只展示部分行。
+- 点添加时，如果当前有选中行，当这一行是展开的父结点（或是叶子结点，也相当于是展开的），则默认行为是为选中行添加子项，预置fatherId, level字段；
+ 如果是未展开的父结点，则是加同级的结点。
+- 更新时如果修改了父结点, 它将移动到新的父结点下。否则直接刷新这行。
+- 支持排序和导出。
+
+在初始化页面时, 与datagrid类似: pageItemType.js
+
+	var dgOpt = {
+		// treegrid查询时不分页. 设置pagesz=-1. (注意后端默认返回1000条, 可设置放宽到10000条. 再多应考虑按层级展开)
+		url: WUI.makeUrl("ItemType.query", {pagesz: -1}),
+		toolbar: WUI.dg_toolbar(jtbl, jdlg),
+		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
+	};
+	// 用treegrid替代常规的datagrid
+	jtbl.treegrid(dgOpt);
+
+如果数据量非常大, 可以只显示第一层级, 展开时再查询.
+仅需增加初始查询条件(只查第一级)以及一个判断是否终端结点的回调函数isLeaf (否则都当作终端结点将无法展开):
+
+	var dgOpt = {
+		queryParams: {cond: "fatherId is null"},
+		isLeaf: function (row) {
+			return row.level>1;
+		},
+		...
+	};
+	jtbl.treegrid(dgOpt);
+
 ### 详情页对话框的常见需求
 
 #### 通用查询
@@ -4566,15 +4600,20 @@ function toggleBatchMode(val) {
 mCommon.assert($.fn.combobox, "require jquery-easyui lib.");
 
 self.getRow = getRow;
-function getRow(jtbl)
+function getRow(jtbl, silent)
 {
-	var row = jtbl.datagrid('getSelected');   
-	if (! row)
+	var row = jtbl.datagrid('getSelected');
+	if (! row && ! silent)
 	{
 		self.app_alert("请先选择一行。", "w");
 		return null;
 	}
 	return row;
+}
+
+function isTreegrid(jtbl)
+{
+	return !! jtbl.data().treegrid;
 }
 
 /** 
@@ -4583,8 +4622,9 @@ function getRow(jtbl)
 self.reload = reload;
 function reload(jtbl, url, queryParams)
 {
+	var datagrid = isTreegrid(jtbl)? "treegrid": "datagrid";
 	if (url != null || queryParams != null) {
-		var opt = jtbl.datagrid("options");
+		var opt = jtbl[datagrid]("options");
 		if (url != null) {
 			opt.url = url;
 		}
@@ -4601,8 +4641,8 @@ function reload(jtbl, url, queryParams)
 	}
 
 	resetPageNumber(jtbl);
-	jtbl.datagrid('reload');
-	jtbl.datagrid('clearSelections');
+	jtbl[datagrid]('reload');
+	jtbl[datagrid]('clearSelections');
 }
 
 /** 
@@ -4672,6 +4712,55 @@ function jdListToArray(data)
 	return ret;
 }
 
+/*
+jdListToDgList处理后的数据格式：
+
+	{total:10, rows:[
+		{id:1, name, fatherId: null},
+		{id:2, name, fatherId: 1},
+		...
+	]}
+
+为适合treegrid显示，应为子结点添加_parentId字段：
+
+	{total:10, rows:[
+		{id:1, ...}
+		{id:2, ..., _parentId:1},
+		...
+	]}
+
+easyui-treegrid会将其再转成层次结构：
+
+	{total:10, rows:[
+		{id:1, ..., children: [
+			{id:2, ...},
+		]}
+		...
+	]}
+
+特别地，为了查询结果能正常显示（排除展开结点操作的查询，其它查询的树表是残缺不全的），当发现数据有fatherId但父结点不在列表中时，不去设置_parentId，避免该行无法显示。
+*/
+function jdListToTree(data, fatherField, parentId, isLeaf)
+{
+	var data1 = jdListToDgList(data)
+
+	var idMap = {};
+	$.each(data1.rows, function (i, e) {
+		idMap[e.id] = true;
+	});
+	$.each(data1.rows, function (i, e) {
+		var fatherId = e[fatherField];
+		// parentId存在表示异步查询子结点, 应设置_parentId字段.
+		if (fatherId && (idMap[fatherId] || parentId)) {
+			e._parentId = fatherId;
+		}
+		if (isLeaf && !isLeaf(e)) {
+			e.state = 'closed'; // 如果无结点, 则其展开时将触发ajax查询子结点
+		}
+	})
+	return data1;
+}
+
 /** 
 @fn reloadRow(jtbl, rowData?)
 
@@ -4682,20 +4771,36 @@ rowData如果未指定，则使用当前选择的行。
 self.reloadRow = reloadRow;
 function reloadRow(jtbl, rowData)
 {
+	var datagrid = isTreegrid(jtbl)? "treegrid": "datagrid";
 	if (rowData == null) {
-		rowData = jtbl.datagrid('getSelected');
+		rowData = jtbl[datagrid]('getSelected');
 		if (rowData == null)
 			return;
 	}
-	jtbl.datagrid("loading");
-	var opt = jtbl.datagrid("options");
+	jtbl[datagrid]("loading");
+	var opt = jtbl[datagrid]("options");
 	self.callSvr(opt.url, api_queryOne, {cond: "id=" + rowData.id});
 
 	function api_queryOne(data) 
 	{
-		jtbl.datagrid("loaded");
-		var idx = jtbl.datagrid("getRowIndex", rowData);
+		jtbl[datagrid]("loaded");
+		var idx = jtbl[datagrid]("getRowIndex", rowData);
 		var objArr = jdListToArray(data);
+		if (datagrid == "treegrid") {
+			$.extend(rowData, objArr[0]);
+			if (rowData["_parentId"] && rowData["_parentId"] != rowData["fatherId"]) {
+				rowData["_parentId"] = rowData["fatherId"];
+				jtbl.treegrid("remove", rowData.id);
+				jtbl.treegrid("append", {
+					parent: rowData["_parentId"],
+					data: [rowData]
+				});
+			}
+			else {
+				jtbl.treegrid("update", {id: rowData.id, row: rowData});
+			}
+			return;
+		}
 		if (idx != -1 && objArr.length == 1) {
 			// NOTE: updateRow does not work, must use the original rowData
 // 			jtbl.datagrid("updateRow", {index: idx, row: data[0]});
@@ -4709,17 +4814,25 @@ function reloadRow(jtbl, rowData)
 
 function appendRow(jtbl, id)
 {
-	jtbl.datagrid("loading");
-	var opt = jtbl.datagrid("options");
+	var datagrid = isTreegrid(jtbl)? "treegrid": "datagrid";
+	jtbl[datagrid]("loading");
+	var opt = jtbl[datagrid]("options");
 	self.callSvr(opt.url, api_queryOne, {cond: "id=" + id});
 
 	function api_queryOne(data)
 	{
-		jtbl.datagrid("loaded");
+		jtbl[datagrid]("loaded");
 		var objArr = jdListToArray(data);
 		if (objArr.length != 1)
 			return;
 		var row = objArr[0];
+		if (datagrid == "treegrid") {
+			jtbl.treegrid('append',{
+				parent: row["fatherId"],
+				data: [row]
+			});
+			return;
+		}
 		if (opt.sortOrder == "desc")
 			jtbl.datagrid("insertRow", {index:0, row: row});
 		else
@@ -5972,8 +6085,8 @@ function showObjDlg(jdlg, mode, opt)
 	if (mode == FormMode.forAdd) {
 		if (! opt.offline)
 			url = self.makeUrl([obj, "add"], jd.url_param);
-		if (jd.jtbl) 
-			jd.jtbl.datagrid("clearSelections");
+//		if (jd.jtbl) 
+//			jd.jtbl.datagrid("clearSelections");
 	}
 	else if (mode == FormMode.forSet) {
 		if (! opt.offline)
@@ -6055,6 +6168,18 @@ function showObjDlg(jdlg, mode, opt)
 	if (mode == FormMode.forAdd) {
 		var init_data = jd.init_data || (jd2 && jd2.init_data);
 		load_data = $.extend({}, init_data);
+		// 添加时尝试设置父结点
+		if (jd.jtbl && isTreegrid(jd.jtbl) && (rowData=getRow(jd.jtbl, true))) {
+			// 在展开的结点上点添加，默认添加子结点；否则添加兄弟结点
+			if (rowData.state == "open") {
+				load_data["fatherId"] = rowData.id;
+				//load_data["level"] = rowData.level+1;
+			}
+			else {
+				load_data["fatherId"] = rowData["fatherId"];
+				//load_data["level"] = rowData["level"];
+			}
+		}
 	}
 	else if (mode == FormMode.forSet) {
 		if (rowData) {
@@ -6274,7 +6399,7 @@ function dg_toolbar(jtbl, jdlg)
 self.dg_dblclick = function (jtbl, jdlg)
 {
 	return function (idx, data) {
-		jtbl.datagrid("selectRow", idx);
+//		jtbl.datagrid("selectRow", idx);
 		showObjDlg(jdlg, FormMode.forSet, {jtbl: jtbl});
 	}
 }
@@ -6676,6 +6801,23 @@ CSS类, 可定义无数据提示的样式
 // 		if (idx === $(this).data("sel"))
 // 			$(this).datagrid("selectRow", idx);
 // 	}
+});
+
+$.extend($.fn.treegrid.defaults, {
+	idField: "id",
+	treeField: "id",
+	pagination: false,
+	loadFilter: function (data, parentId) {
+		var isLeaf = $(this).treegrid("options").isLeaf;
+		var ret = jdListToTree(data, "fatherId", parentId, isLeaf);
+		return ret;
+	},
+	onBeforeLoad: function (row, param) {
+		if (row) { // row非空表示展开父结点操作，须将param改为 {cond?, id} => {cond:"fatherId=1"}
+			param.cond = "fatherId=" + row.id;
+			delete param["id"];
+		}
+	}
 });
 
 /*
