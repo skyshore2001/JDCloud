@@ -158,10 +158,13 @@ input:disabled,select:disabled,textarea:disabled {
 }
 
 #menu .my-menu-item {
+	display: -ms-flexbox;
 	display: flex;
 	height: 47px;
 	padding-left: 25px;
+	-ms-flex-align: center;
 	align-items: center;
+	-ms-flex-pack: justify;
 	justify-content: space-between;
 	color: #abb4be;
 	font-size: 13px;

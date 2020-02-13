@@ -6651,7 +6651,7 @@ var Formatter = {
 	// showField=false: 显示value
 	// showField=true: 显示"{id}-{name}"
 	// 否则显示指定字段
-	linkTo: function (field, dlgRef, showField=false) {
+	linkTo: function (field, dlgRef, showField) {
 		return function (value, row) {
 			if (value == null)
 				return;
