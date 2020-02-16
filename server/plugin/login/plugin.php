@@ -117,17 +117,18 @@ class LoginImpBase
 	}
 
 /**
-@fn LoginImpBase.onWeixinLogin($userInfo, $rawData)
+@fn LoginImpBase.onWeixinLogin($userInfo, $rawData, $userGetAc=null)
 
 微信认证成功后，可以得到openid；根据openid还可以得到userInfo.
 
 - 如果只用openid，则参数$userInfo只有openid属性，且$rawData为空；
 - 如果获取到了完整的userInfo，则传入$userInfo和$rawData(即微信返回的原始JSON字符串)
 
-返回 {id}, 其中会调用 onLogin，可能会为返回值增加一些属性。
+默认返回 {id}, 如果指定$userGetAc(一般设置为"User.get"), 则会调用该接口获取用户数据并返回.
+返回前会调用 onLogin，可会为返回值增加一些属性。
 
 */
-	function onWeixinLogin($userInfo, $rawData)
+	function onWeixinLogin($userInfo, $rawData, $userGetAc = null)
 	{
 		if ($rawData !== null) {
 			$userData = [
@@ -161,7 +162,12 @@ class LoginImpBase
 			dbUpdate("User", $userData, $id);
 		}
 
-		$ret = ["id"=>$id];
+		if ($userGetAc) {
+			$ret = callSvcInt("User.get", ["id" => $id]);
+		}
+		else {
+			$ret = ["id"=>$id];
+		}
 		$this->onLogin("user", $id, $ret);
 		$_SESSION["uid"] = $id;
 		return $ret;
@@ -659,10 +665,8 @@ function api_login2()
 		"openid" => $ret["openid"]
 	];
 	$imp = LoginImpBase::getInstance();
-	$ret = $imp->onWeixinLogin($wxUserInfo, null);
+	$ret = $imp->onWeixinLogin($wxUserInfo, null, "User.get");
 
-	$rv = callSvcInt("User.get");
-	$ret += $rv;
 	return $ret;
 }
 
