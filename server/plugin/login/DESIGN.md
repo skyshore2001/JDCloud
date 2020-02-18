@@ -229,6 +229,15 @@ _token/_expire
 	chpwd(code=533114, pwd=12345678)
 	(之前生成了动态验证码为533114)
 
+### 忘记密码后重置密码
+
+与修改密码的接口相同，但指定phone参数。这时无需登录，可直接修改密码：
+
+	chpwd(phone, code|oldpwd, pwd) -> {_token, _expire}
+
+code为手机验证码，之前应调用过genCode接口。
+也支持使用oldpwd（原密码）来验证，一般不使用。
+
 ### 微信认证
 
 微信认证：

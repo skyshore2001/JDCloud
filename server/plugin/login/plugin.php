@@ -589,8 +589,16 @@ function api_chpwd()
 	$type = getAppType();
 
 	if ($type == "user") {
-		checkAuth(AUTH_USER);
-		$uid = $_SESSION["uid"];
+		$phone = param("phone");
+		if ($phone == null) {
+			checkAuth(AUTH_USER);
+			$uid = $_SESSION["uid"];
+		}
+		else {
+			$uid = queryOne("SELECT id FROM User WHERE phone=" . Q($phone));
+			if ($uid === false)
+				throw new MyException(E_AUTHFAIL, "bad user", "手机号未注册");
+		}
 	}
 	elseif($type == "emp") {
 		checkAuth(AUTH_EMP);
