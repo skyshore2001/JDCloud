@@ -602,9 +602,9 @@ function setServerRev()
 }
 
 /**
-@fn hasPerm($perm)
+@fn hasPerm($perms, $exPerms=null)
 
-检查权限。perm可以是单个权限或多个权限，例：
+检查权限。perms可以是单个权限或多个权限，例：
 
 	hasPerm(AUTH_USER); // 用户登录后可用
 	hasPerm(AUTH_USER | AUTH_EMP); // 用户或员工登录后可用
@@ -613,18 +613,60 @@ function setServerRev()
 
 开发者需要定义该函数，用于返回所有检测到的权限。hasPerm函数依赖该函数。
 
+(v5.4) exPerms用于扩展验证, 是一个权限名数组, 示例:
+
+	hasPerm(AUTH_LOGIN, ["simple"]);
+
+它表示AUTH_LOGIN检查失败后, 将再调用`hasPerm_simple()`进行检查. 支持以下权限名:
+
+**[simple]**
+
+通过HTTP头`X-Daca-Simple`传递密码, 与环境变量`simplePwd`进行比较. 
+示例: upload接口允许simple验证.
+
+	function api_upload() {
+		checkAuth(AUTH_LOGIN, ["simple"]);
+		...
+	}
+
+然后在conf.user.php中配置:
+
+	putenv("simplePwd=helloworldsimple");
+
+用curl访问该接口示例:
+
+	curl -s -F "file=@1.jpg" "http://localhost/jdcloud/api/upload?autoResize=0" -H "X-Daca-Simple: helloworldsimple"
+
+@see hasPerm_simple
 @see checkAuth
  */
-function hasPerm($perm)
+function hasPerm($perms, $exPerms=null)
 {
 	if (is_null(ApiFw_::$perms))
 		ApiFw_::$perms = onGetPerms();
 
-	return (ApiFw_::$perms & $perm) != 0;
+	if ( (ApiFw_::$perms & $perms) != 0 )
+		return true;
+
+	if (is_array($exPerms)) {
+		foreach ($exPerms as $name) {
+			$fn = "hasPerm_" . $name; // e.g. hasPerm_simple
+			if (function_exists($fn) && $fn())
+				return true;
+		}
+	}
+	return false;
+}
+
+function hasPerm_simple()
+{
+	@$pwd = $_SERVER["HTTP_X_DACA_SIMPLE"];
+	@$pwd1 = getenv("simplePwd");
+	return $pwd && $pwd1 && $pwd === $pwd1;
 }
 
 /** 
-@fn checkAuth($perm)
+@fn checkAuth($perms)
 
 用法与hasPerm类似，检查权限，如果不正确，则抛出错误，返回错误对象。
 
@@ -633,9 +675,9 @@ function hasPerm($perm)
 
 @see hasPerm
  */
-function checkAuth($perm)
+function checkAuth($perms, $exPerms=null)
 {
-	$ok = hasPerm($perm);
+	$ok = hasPerm($perms, $exPerms);
 	if (!$ok) {
 		$auth = [];
 		// TODO: AUTH_LOGIN
@@ -645,11 +687,16 @@ function checkAuth($perm)
 			$errCode = E_NOAUTH;
 
 		foreach ($GLOBALS["PERMS"] as $p=>$name) {
-			if (($perm & $p) != 0) {
+			if (($perms & $p) != 0) {
 				$auth[] = $name;
 			}
 		}
-		throw new MyException($errCode, "require auth to " . join(" or ", $auth));
+		if (is_array($exPerms)) {
+			foreach ($exPerms as $name) {
+				$auth[] = $name;
+			}
+		}
+		throw new MyException($errCode, "require auth to " . join("/", $auth));
 	}
 }
 

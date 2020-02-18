@@ -152,8 +152,10 @@ $FILE_TAG = [
 ];
 //}}}
 
-# generate image/jpeg output. if $out=null, output to stdout
-function resizeImage($in, $w, $h, $out=null)
+// generate image/jpeg output. if $out=null, output to stdout
+// 用于缩小图片. 使得宽高不超过$w和$h. 如果宽高本来就小, 则不做处理(除非$forceDo=true)
+// return: false-未处理; true-处理了
+function resizeImage($in, $w, $h, $out=null, $forceDo=false)
 {
 	if (! function_exists("imageJpeg")) 
 		throw new MyException(E_SERVER, "Require GD library");
@@ -166,13 +168,23 @@ function resizeImage($in, $w, $h, $out=null)
 	if ($srcw < $srch) {
 		list($w, $h) = [$h, $w];
 	}
-	// 保持等比例, 不拉伸
-	$h1 = $w * $srch / $srcw;
-	if ($h1 > $h) {
-		$w = $h * $srcw / $srch;
+
+	// 如果图片很小, 就按原尺寸, 不要拉伸.
+	if ($srcw < $w && $srch < $h) {
+		if (!$forceDo)
+			return false;
+		$w = $srcw;
+		$h = $srch;
 	}
 	else {
-		$h = $h1;
+		// 保持等比例, 不拉伸
+		$h1 = $w * $srch / $srcw;
+		if ($h1 > $h) {
+			$w = $h * $srcw / $srch;
+		}
+		else {
+			$h = $h1;
+		}
 	}
 	$ext = strtolower(pathinfo($in, PATHINFO_EXTENSION));
 	if ($ext == "png")
@@ -196,11 +208,12 @@ function resizeImage($in, $w, $h, $out=null)
 
 	// Output
 	imageJpeg($thumb, $out);
+	return true;
 }
 
 function api_upload()
 {
-	checkAuth(AUTH_LOGIN);
+	checkAuth(AUTH_LOGIN, ['simple']);
 	session_commit(); // !!!释放session锁避免阻塞其它调用。注意此后要修改session应先调用session_start
 
 	$fmt = param("fmt");
@@ -210,7 +223,7 @@ function api_upload()
 	}
 	$type = param("type", 'default');
 	$genThumb = param("genThumb/b");
-	$autoResize = param("autoResize/b", 1);
+	$autoResize = param("autoResize/i", 1);
 	$exif = param("exif");
 
 	if (!array_key_exists($type, Upload::$typeMap)) {
@@ -346,8 +359,11 @@ function api_upload()
 			}
 			file_put_contents($fname, $s);
 		}
-		if ($autoResize && preg_match('/\.(jpg|jpeg|png)$/', $fname) && filesize($fname) > Upload::$maxPicKB*1024) {
-			resizeImage($fname, Upload::$maxPicSize, Upload::$maxPicSize, $fname); // 1280x1280
+		if ($autoResize && preg_match('/\.(jpg|jpeg|png)$/', $fname)) {
+			// 如果大于500K或是用autoResize指定了最大宽高, 则压缩.
+			$forceDo = filesize($fname) > Upload::$maxPicKB*1024;
+			$maxHW = $autoResize < 10? Upload::$maxPicSize: $autoResize;
+			$rv = resizeImage($fname, $maxHW, $maxHW, $fname, $forceDo); // 1280x1280
 		}
 
 		$sth->execute([$fname, null, null, $orgName]);
@@ -357,11 +373,17 @@ function api_upload()
 		if ($genThumb) {
 			$info = Upload::$typeMap[$type];
 			assert($info);
-			resizeImage($fname, $info["w"], $info["h"], $thumbName);
-			#file_put_contents($thumbName, "THUMB");
-			$sth->execute([$thumbName, $id, $exif, $orgName]);
-			$thumbId = (int)$DBH->lastInsertId();
-			$r["thumbId"] = $thumbId;
+			$rv = resizeImage($fname, $info["w"], $info["h"], $thumbName);
+			if ($rv) {
+				#file_put_contents($thumbName, "THUMB");
+				$sth->execute([$thumbName, $id, $exif, $orgName]);
+				$thumbId = (int)$DBH->lastInsertId();
+				$r["thumbId"] = $thumbId;
+			}
+			else {
+				dbUpdate("Attachment", ["orgPicId"=>$id], $id);
+				$r["thumbId"] = $id;
+			}
 		}
 		$ret[] = $r;
 	}
