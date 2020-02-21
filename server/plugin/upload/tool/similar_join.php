@@ -30,8 +30,14 @@ function loadcsv($f)
 	@$fp = fopen($f, "r") or die("cannot read file: $f");
 	# test csv or tsv
 	$s = fgets($fp);
-	rewind($fp);
 	$sep = stripos($s, "\t") !== false? "\t": ",";
+	// remove bomb
+	if (substr($s,0,3) == "\xef\xbb\xbf") {
+		fseek($fp, 3);
+	}
+	else {
+		rewind($fp);
+	}
 
 	$ret = [];
 	while ($a = fgetcsv($fp, 0, $sep)) {
