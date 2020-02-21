@@ -192,7 +192,7 @@ function loadMetafile()
 function parseFieldType(&$f, &$fieldMeta)
 {
 	$type = null;
-	$f1 = ucfirst(preg_replace('/(\d|\W)*$/', '', $f)); // price0, unitPrice -> Price
+	$f1 = ucfirst(preg_replace('/(\d|\W)*$/u', '', $f)); // price0, unitPrice -> Price
 	if (preg_match('/(@|&|#)$/', $f, $ms)) {
 		$f = substr_replace($f, "", -1);
 		if ($ms[1] == '&') {
@@ -224,7 +224,7 @@ function parseFieldType(&$f, &$fieldMeta)
 	elseif (preg_match('/Id$/', $f1)) {
 		$type = 'i';
 	}
-	elseif (preg_match('/^是否|Flag$/', $f1)) {
+	elseif (preg_match('/^是否|Flag$/u', $f1)) {
 		$type = 'flag';
 	}
 
