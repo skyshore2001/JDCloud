@@ -224,6 +224,9 @@ function parseFieldType(&$f, &$fieldMeta)
 	elseif (preg_match('/Id$/', $f1)) {
 		$type = 'i';
 	}
+	elseif (preg_match('/^是否|Flag$/', $f1)) {
+		$type = 'flag';
+	}
 
 	if ($type) {
 		$fieldMeta["type"] = $type;

@@ -7,6 +7,9 @@ foreach ($meta as $k => $v) {
 	if ($k == "id") {
 		$opts[] = 'disabled';
 	}
+	if (@$v["type"] == "flag" && @!$v["enum"]) {
+		$v["enum"] = "YesNoMap";
+	}
 	if (@$v["linkTo"]) {
 		$dom = <<<EOL
 <select name="$k" class="my-combobox" data-options="ListOptions.{$v["linkTo"]}()"></select>
@@ -51,6 +54,10 @@ EOL;
 	else {
 		if (@$v["required"]) {
 			$opts[] = 'class="easyui-validatebox" data-options="required:true"';
+		}
+		if (@$v["textField"]) {
+			$k = $v['textField'];
+			$opts[] = "disabled";
 		}
 		$optStr = join(' ', $opts);
 

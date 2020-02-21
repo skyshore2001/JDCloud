@@ -225,19 +225,19 @@ function parseFieldDef($fieldDef, $tableName)
 		$ret["len"] = "19,2";
 		$def = $SQLDIFF->money;
 	}
-	elseif (preg_match('/Id$/u', $f1)) {
+	elseif (preg_match('/(Id|编号)$/u', $f1)) {
 		$ret["type"] = "i";
 		$def = "INTEGER";
 	}
-	elseif (preg_match('/Tm$/u', $f1)) {
+	elseif (preg_match('/(Tm|时间)$/u', $f1)) {
 		$ret["type"] = "tm";
 		$def = "DATETIME";
 	}
-	elseif (preg_match('/Dt$/u', $f1)) {
+	elseif (preg_match('/(Dt|日期)$/u', $f1)) {
 		$ret["type"] = "date";
 		$def = "DATE";
 	}
-	elseif (preg_match('/Flag$/u', $f1)) {
+	elseif (preg_match('/^是否|Flag$/u', $f1)) {
 		$ret["type"] = "flag";
 		$def = "TINYINT UNSIGNED NOT NULL DEFAULT 0";
 	}

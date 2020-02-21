@@ -8,21 +8,26 @@ foreach ($meta as $k => $v) {
 		'sortable:true'
 	];
 	@$type = $v["type"];
+	if ($type == "flag" && @!$v["enum"]) {
+		$v["enum"] = "YesNoMap";
+	}
 	if (@$v["linkTo"]) {
 		$linkTo = "#dlg" . $v["linkTo"];
-		@$textField = $v["textField"] ?: $k;
 		$opts[] = "formatter:Formatter.linkTo('$k', '$linkTo')";
-		$opts[0] = "field:'$textField'";
 		$type = 's';
 	}
-	else if (@$v["enum"]) {
+	if (@$v["textField"]) {
+		$opts[0] = "field:'" . $v['textField'] . "'";
+	}
+
+	if (@$v["enum"]) {
 		$enum = $v["enum"];
 		if (substr($enum, -3) == "Map")
 			$opts[] = "jdEnumMap:$enum, formatter:Formatter.enum($enum), styler:Formatter.enumStyler({})";
 		else
 			$opts[] = "styler:Formatter.enumStyler({})";
 	}
-	else if (@$v["isAtt"]) {
+	if (@$v["isAtt"]) {
 		$opts[] = "formatter:Formatter.pics";
 	}
 
