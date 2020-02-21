@@ -228,7 +228,7 @@ input:disabled,select:disabled,textarea:disabled {
 .wui-upload .imgs img {
 	width: 150px;
 	height: 150px;
-	object-fit: cover;
+	object-fit: contain;
 }
 .wui-upload .imgs p:hover {
 	background-color: #fffbce;
@@ -242,6 +242,7 @@ input:disabled,select:disabled,textarea:disabled {
 /* datagrid表格中显示图片 */
 .datagrid-cell img {
 	height: 40px;
-	margin: -10px 0;
+	max-width: 100px;
+	margin: -8px 0;
 	object-fit: contain;
 }
