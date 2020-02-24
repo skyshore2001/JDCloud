@@ -657,4 +657,50 @@ function inSet($str, $strList)
 	return preg_match('/\b' . $str . '\b/u', $strList)? true: false;
 }
 
+/**
+@fn text2html($s)
+
+简单的文本转html处理。支持标题、段落、列表。示例：
+
+	# 标题1
+	这是段落1
+	## 标题2
+	这是段落2
+	- 列表1
+	- 列表2
+
+示例：商品详情可在管理端编辑多行文本，在客户端显示html内容：
+数据库定义：
+
+	@Item: id, ... content
+
+客户端访问接口Item.query/Item.get时，content返回html内容：
+
+	class AC_Item extends AC0_Item
+	{
+		protected function onQuery() {
+			parent::onQuery();
+			$this->enumFields["content"] = function ($val) {
+				return text2html($val);
+			};
+		}
+	}
+
+*/
+function text2html($s)
+{
+	return preg_replace_callback('/^(?:([#-]+)\s+)?(.*?)\s*$/um', function ($m) {
+		list ($begin, $text) = [$m[1], $m[2]];
+		if ($begin) {
+			if ($begin[0] == '#') {
+				$n = strlen($begin);
+				return "<h$n>$text</h$n>";
+			}
+			if ($begin[0] == '-') {
+				return "<li>$text</li>";
+			}
+		}
+		return "<p>$text</p>";
+	}, $s);
+}
 // vi: foldmethod=marker
