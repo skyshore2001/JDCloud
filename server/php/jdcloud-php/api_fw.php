@@ -1588,6 +1588,95 @@ function api_checkIp()
 	throw new MyException(E_PARAM, "ip is NOT in white list", "IP不在白名单");
 }
 
+/**
+@fn injectSession($userId, $appType, $fn, $days=30)
+
+对别人的session进行操作，比如删除，修改参数等。
+$fn为对session的操作，当设置为false时，表示删除session.
+
+基于ApiLog查找指定用户的session, 默认找30天(参数days)内该用户的所有session. 
+操作将记录在日志trace.log中。
+
+示例：当管理员的权限字段(perms)被修改后，直接修改该用户的session令其立刻生效。
+
+	class AC0_Employee {
+		protected function onValidate() {
+			if ($this->ac == "set" && issetval("perms?")) {  // "perms?"以问号结尾表示传入空串也算设置了，这时set接口将置空该字段。
+				$params = $_POST; // 注意：闭包不可直接use $_POST，否则得到null值
+				injectSession($this->id, "emp", function () use ($params) {
+					$_SESSION["perms"] = $params["perms"];
+					// $_SESSION["adminFlag"] = param("adminFlag/i", 0, $params); // 注意字段类型要正确，可用param函数。
+				});
+			}
+		}
+	}
+
+@see delSession
+*/
+function injectSession($userId, $appType, $fn, $days=30)
+{
+	$name = $fn === false? "delSession": "injectSession";
+	if (! Conf::$enableApiLog) {
+		logit("warn: ignore $name as Conf::\$enableApiLog=false");
+		return false;
+	}
+	addLog("$name(userId=$userId,appType=$appType)");
+	$tm = date(FMT_D, time() - $days * T_DAY);
+	$curSessionId = session_id();
+	// 目前允许将自己删除
+	// $sql = sprintf("SELECT distinct ses FROM ApiLog WHERE tm>='$tm' AND userId=%d AND app LIKE %s AND ses<>'%s'", $userId, Q("$appType%"), $curSessionId);
+	$sql = sprintf("SELECT distinct ses FROM ApiLog WHERE tm>='$tm' AND userId=%d AND app LIKE %s", $userId, Q("$appType%"));
+	$rv = queryAll($sql);
+
+	if (count($rv) > 0) {
+		logit("$name(userId=$userId, appType=$appType, days=$days): " . count($rv) . " sessions");
+		$GLOBALS["X_APP"]->onAfterActions[] = function () use ($rv, $curSessionId, $fn) {
+			if (session_status() == PHP_SESSION_ACTIVE) // 0: disabled, 1: none(before session_start), 2: active
+				session_write_close();
+
+			foreach ($rv as $e) {
+				session_id($e[0]);
+				// TODO: 检查session不存在时应不做操作
+				session_start();
+				if ($fn === false || count($_SESSION) == 0) {
+					session_destroy();
+				}
+				else {
+					$fn();
+					session_write_close();
+				}
+			}
+
+			// restore current session id
+			session_id($curSessionId);
+			session_start();
+			session_write_close();
+		};
+	}
+}
+
+/**
+@fn delSession($userId, $appType, $days=30)
+
+删除指定用户的session. 例如：踢掉在线用户等。
+
+示例：当用户的“管理员标志”(adminFlag)被修改后，踢掉该用户让其重新登录。
+
+	class AC0_User {
+		protected function onValidate() {
+			if ($this->ac == "set" && issetval("adminFlag")) {
+				delSession($this->id, "user");
+			}
+		}
+	}
+
+@see injectSession
+*/
+function delSession($userId, $appType, $days=30)
+{
+	injectSession($userId, $appType, false, $days);
+}
+
 // ------ 异步调用支持 {{{
 /**
 @fn httpCallAsync($url, $postParams=null)

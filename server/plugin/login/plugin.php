@@ -498,8 +498,7 @@ function api_login()
 		
 		$_SESSION["empId"] = $ret["id"];
 		if ($row && $row["perms"]) {
-			$perms = explode(',', $row["perms"]);
-			$_SESSION['perms'] = $perms;
+			$_SESSION['perms'] = $row["perms"];
 		}
 	}
 	// admin login

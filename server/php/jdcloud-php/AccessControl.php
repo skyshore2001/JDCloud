@@ -2837,10 +2837,28 @@ function KVtoCond($k, $v)
 	}
 }
 
+/**
+@fn issetval($k, $arr=$_POST, &$val)
+
+一般用于add/set接口，判断是否设置了某字段。
+默认检查$_POST中的值。默认不允许设置空串。
+
+e.g.
+	if (issetval("perms")) ...
+
+表示传入了perms字段，且非空串。注意：add接口会忽略空串字段，而set接口处理空串方式是置空该字段(null)。
+
+	if ($this->ac == "set" && issetval("perms?")) ...
+
+表示传入了perms字段，即使为空串也算设置，返回true，等同于isset($_POST["perms"])。
+*/
 function issetval($k, $arr = null)
 {
 	if ($arr === null)
 		$arr = $_POST;
+	if (substr($k,-1) === "?") {
+		return isset($arr[substr($k,0,-1)]);
+	}
 	return isset($arr[$k]) && $arr[$k] !== "";
 }
 /**

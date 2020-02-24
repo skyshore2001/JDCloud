@@ -1,9 +1,42 @@
 ## 升级到v5.4
 
+### 设置只读属性报错
+
+v5.4之前设置只读属性(以readonlyFields或readonlyFields2定义的属性数组），只写警告日志，不报错。
+v5.4起将报错，一般应调用客户端接口调用。也可简单设置useStrictReadonly字段兼容旧版本：
+
+	class AC0_User extends AccessControl
+	{
+		protected $useStrictReadonly = false; // 默认为true，改为false则不报错。
+	}
+
+### 权限存储格式变化影响onGetPerms
+
+$_SESSION["perms"]由保存权限数组改为保存字符串（与Employee.perms字段一致），扩展权限设置的代码应做调整，使用新的inSet函数：
+原代码：api.php中
+
+	function onGetPerms()
+	{
+		$p = @$_SESSION["perms"];
+		...
+			if (array_search("mgr", $p) !== false)
+				$perms |= PERM_MGR;
+	}
+
+改为：
+
+	function onGetPerms()
+	{
+		$p = @$_SESSION["perms"];
+		...
+			if (inSet("mgr", $p))
+				$perms |= PERM_MGR;
+	}
+
 ### 管理端列表页表头固定
 
 建议在pageXX中将表格的高度设置100%，以便表头和工具栏固定在表格上方。以及在dlgXX中使用默认的padding，不必自定义。
-为了平滑升级旧页面(pageXX)，对于页面中只有一个datagrid的情况，自动纵向铺满显示，使工具栏置顶。
+为了平滑升级旧页面(pageXX)，对于页面中只有一个datagrid的情况，不用做任何修改，自动纵向铺满显示，使工具栏置顶。
 
 也可以运行下面的命令来修改各页面：
 

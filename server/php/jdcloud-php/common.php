@@ -3,6 +3,7 @@
 define("T_HOUR", 3600);
 define("T_DAY", 24*T_HOUR);
 define("FMT_DT", "Y-m-d H:i:s");
+define("FMT_D", "Y-m-d");
 // const T_DAY = 24*T_HOUR; // not allowed
 
 # error code definition:
@@ -635,6 +636,25 @@ function getSignContent($params, $paramFilter=null)
 		}
 	}
 	return $str;
+}
+
+/**
+@fn inSet($str, $strList)
+e.g. 
+	$rv = inSet("管理员", "财务,销售,管理员"); // true
+	$rv = inSet("管理员", "财务,销售,仓库管理员"); // false
+	$rv = inSet("管理员", ["财务","销售","管理员"]); // true
+
+str可以是中英文字符，不可以带空格或符号。
+strList可以是数组或字符串。如果为字符串，则多个词以分隔符相隔，分隔符可以是各种符号或空格，支持中文符号或空格（必须utf-8编码）。常用英文逗号，与MySQL的find_in_set函数类似。
+*/
+function inSet($str, $strList)
+{
+	if (!isset($str) || !isset($strList))
+		return false;
+	if (is_array($strList))
+		return in_array($str, $strList);
+	return preg_match('/\b' . $str . '\b/u', $strList)? true: false;
 }
 
 // vi: foldmethod=marker

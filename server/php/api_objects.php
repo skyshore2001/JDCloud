@@ -49,6 +49,12 @@ class AC0_Employee extends AccessControl
 		if ($this->ac == "add" && !issetval("perms")) {
 			$_POST["perms"] = "emp";
 		}
+		if ($this->ac == "set" && issetval("perms?")) {
+			$params = $_POST;
+			injectSession($this->id, "emp", function () use ($params) {
+				$_SESSION["perms"] = $params["perms"];
+			});
+		}
 
 		if (issetval("pwd")) {
 			$_POST["pwd"] = hashPwd($_POST["pwd"]);
@@ -60,12 +66,14 @@ class AC2_Employee extends AC0_Employee
 {
 	protected $requiredFields = [["phone", "uname"], "pwd"];
 	protected $allowedAc = ["query", "get", "set"];
-	protected $allowedAc2 = ["query", "get", "set", "add", "del"];
 
 	function __construct()
 	{
 		if (hasPerm(PERM_MGR)) {
-			$this->allowedAc = $this->allowedAc2;
+			$this->allowedAc = null; // all ac
+		}
+		else {
+			$this->readonlyFields[] = "perms";
 		}
 	}
 
