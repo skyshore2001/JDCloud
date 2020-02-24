@@ -62,8 +62,12 @@ AccessControl简写为AC，同时AC也表示自动补全(AutoComplete).
 
 @var AccessControl::$allowedAc?=["add", "get", "set", "del", "query"] 设定允许的操作，如不指定，则允许所有操作。
 
-@var AccessControl::$readonlyFields ?=[]  (影响add/set) 字段列表，添加/更新时为这些字段填值无效（但不报错）。
+@var AccessControl::$readonlyFields ?=[]  (影响add/set) 字段列表，添加/更新时为这些字段填值无效。
 @var AccessControl::$readonlyFields2 ?=[]  (影响set操作) 字段列表，更新时对这些字段填值无效。
+
+注意：v5.4以下设置只读字段，只记录日志但不报错。
+v5.4起将报错，设置该类的useStrictReadonly=false可以兼容旧行为不报错。
+
 @var AccessControl::$hiddenFields ?= []  (for get/query) 隐藏字段列表。默认表中所有字段都可返回。一些敏感字段不希望返回的可在此设置。
 
 @var AccessControl::$requiredFields ?=[] (for add/set) 字段列表。添加时必须填值；更新时不允许置空。
@@ -790,6 +794,8 @@ class AccessControl
 	protected $allowedAc;
 	# for add/set
 	protected $readonlyFields = [];
+	# 设置readonlyFields或readonlyFields2中字段将报错。
+	protected $useStrictReadonly = true;
 	# for set
 	protected $readonlyFields2 = [];
 	# for add/set
@@ -1065,6 +1071,8 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 
 		foreach ($this->readonlyFields as $field) {
 			if (array_key_exists($field, $_POST) && !($this->ac == "add" && array_search($field, $this->requiredFields) !== false)) {
+				if ($this->useStrictReadonly)
+					throw new MyException(E_FORBIDDEN, "set readonly field `$field`");
 				logit("!!! warn: attempt to change readonly field `$field`");
 				unset($_POST[$field]);
 			}
@@ -1072,6 +1080,8 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		if ($this->ac == "set") {
 			foreach ($this->readonlyFields2 as $field) {
 				if (array_key_exists($field, $_POST)) {
+					if ($this->useStrictReadonly)
+						throw new MyException(E_FORBIDDEN, "set readonly field `$field`");
 					logit("!!! warn: attempt to change readonly field `$field`");
 					unset($_POST[$field]);
 				}
