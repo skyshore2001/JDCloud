@@ -8008,6 +8008,7 @@ function mycombobox(force)
 			opts.isLoaded_ = true;
 		}
 		else if (opts.url) {
+			o.enableAsyncFix = true; // 有这个标志的select才做特殊处理
 			loadOptions();
 
 			if (!jo.attr("ondblclick"))
@@ -8160,7 +8161,9 @@ function mycombobox_fixAsyncSetValue()
 			return hook.set.apply(this, arguments);
 		},
 		get: function (elem) {
-			return hook.get.apply(this, arguments) || elem.value_;
+			if (this.enableAsyncFix)
+				return hook.get.apply(this, arguments) || elem.value_;
+			return hook.get.apply(this, arguments);
 		}
 	}
 }
