@@ -1287,6 +1287,8 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		$ret = preg_replace_callback('/[\w.\x{4E00}-\x{9FA5}]+(?=(\s*[=><]|(\s+(IS|LIKE|BETWEEN)\s+)))/iu', function ($ms) {
 			// 't0.$0' for col, or 'voldef' for vcol
 			$col = $ms[0];
+			if (ctype_digit($col[0]))
+				return $col;
 			if (strpos($col, '.') !== false)
 				return $col;
 			if (isset($this->vcolMap[$col])) {
@@ -1554,6 +1556,10 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 
 	$this->addVCol("payTm", false, "-"); // 引入定义但并不加到SELECT字段中
 	$this->addCond("olpay.action='PA' AND olpay.tm>'$validDate'");
+
+如果想要查询固定返回空，习惯上可以用:
+
+	$this->addCond("1<>1");
 
 @see AccessControl::addRes
 @see AccessControl::addJoin
