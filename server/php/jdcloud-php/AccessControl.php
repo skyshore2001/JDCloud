@@ -757,6 +757,19 @@ enumFields机制支持字段别名，比如若调用`Ordr.query(res="id 编号,s
 		}
 	}
 
+### 动态设置虚拟字段及属性
+
+添加虚拟字段或属性，vcolDefs, subobj建议在onInit函数中添加或修改，而不是onQuery中。否则用res指定返回字段将无效。
+onQuery常用addCond来添加过滤条件，也可以设置enumFields。
+示例：AC2继承AC0类，但要增加一个虚拟字段，又不要影响AC1，故可以加在AC2的onInit中。
+
+	protected function onInit() {
+		parent::onInit();
+		$this->vcolDefs[] = [
+			"res" => ["(SELECT result FROM PdiItemResult WHERE pdiRecordId=t0.id AND itemId=1) 客户描述"],
+		];
+	}
+
 ## 批量更新(setIf)和批量删除(delIf)
 
 (v5.1) 以Ordr对象为例，要支持根据条件批量更新或删除：
