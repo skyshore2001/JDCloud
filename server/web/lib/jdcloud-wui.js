@@ -5908,7 +5908,7 @@ function loadDialog(jdlg, onLoad)
 		jdlg.addClass('wui-dialog');
 
 		$.parser.parse(jdlg); // easyui enhancement
-		jdlg.find(">table:first, form>table:first").addClass("wui-form-table");
+		jdlg.find(">table:first, form>table:first").has(":input").addClass("wui-form-table");
 		self.enhanceWithin(jdlg);
 
 		var val = jdlg.attr("wui-script");

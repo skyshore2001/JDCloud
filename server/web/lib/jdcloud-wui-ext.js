@@ -861,5 +861,66 @@ function applyPermission()
 	}
 }
 
+/**
+@fn WUI.fname(fn)
+
+为fn生成一个名字。一般用于为a链接生成全局函数。
+
+	function onGetHtml(value, row) {
+		var fn = WUI.fname(function () {
+			console.log(row);
+		});
+		return '<a href="' + fn + '()">' + value + '</a>';
+	}
+
+或：
+
+	function onGetHtml(value, row) {
+		return WUI.makeLink(value, function () {
+			console.log(row);
+		});
+	}
+
+@see makeLink
+ */
+window.fnarr = [];
+self.fname = fname;
+function fname(fn)
+{
+	fnarr.push(fn);
+	return "fnarr[" + (fnarr.length-1) + "]";
 }
 
+/**
+@fn WUI.makeLink(text, fn)
+
+生成一个A链接，显示text，点击运行fn.
+用于为easyui-datagrid cell提供html.
+
+	<table>
+		...
+		<th data-options="field:'orderCnt', sortable:true, sorter:intSort, formatter:ItemFormatter.orderCnt">订单数/报名数</th>
+	</table>
+
+定义formatter:
+
+	var ItemFormatter = {
+		orderCnt: function (value, row) {
+			if (!value)
+				return value;
+			return WUI.makeLink(value, function () {
+				var objParam = {type: row.type, itemId: row.id};
+				WUI.showPage("pageOrder", "订单-" + objParam.itemId, [ objParam ]);
+			});
+		},
+	};
+
+@see fname
+ */
+self.makeLink = makeLink;
+function makeLink(text, fn)
+{
+	return '<a href="javascript:' + self.fname(fn) + '()">' + text + '</a>';
+}
+
+}
