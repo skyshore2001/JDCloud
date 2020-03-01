@@ -18,6 +18,7 @@ class SqlDiff
 	protected $dbh;
 
 	public $ntext = "NTEXT";
+	public $ntext2 = "NTEXT";
 	public $autoInc = 'AUTOINCREMENT';
 	public $money = "MONEY";
 	public $createOpt = "";
@@ -53,6 +54,7 @@ class SqlDiff_sqlite extends SqlDiff
 class SqlDiff_mysql extends SqlDiff
 {
 	public $ntext = "TEXT CHARACTER SET utf8mb4";
+	public $ntext2 = "MEDIUMTEXT CHARACTER SET utf8mb4";
 	public $autoInc = 'AUTO_INCREMENT';
 	public $money = "DECIMAL(19,2)";
 	public $createOpt = "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
@@ -103,7 +105,7 @@ function die1($msg)
 - name: 字段名，如"cmt".
 - dscr: 原始定义，如"cmt(l)"。
 - def: 字段生成的SQL语句
-- type: Enum("id", "s"-string, "t"-text, "i"-int, "real", "n"-number, "date", "tm"-datetime, "flag")
+- type: Enum("id", "s"-string, "t"-text, "tt"-mediumtext, "i"-int, "real", "n"-number, "date", "tm"-datetime, "flag")
 - len: 仅当type="nvarchar"时有意义，表示字串长。
 
 e.g.
@@ -130,9 +132,9 @@ function parseFieldDef($fieldDef, $tableName)
 	elseif (preg_match('/\((\w+)\)$/u', $f, $ms)) {
 		$tag = $ms[1];
 		$f = preg_replace('/\((\w+)\)$/u', '', $f);
-		if ($tag == 't') {
-			$ret["type"] = "t";
-			$def = $SQLDIFF->ntext;
+		if ($tag == 't' || $tag == 'tt') {
+			$ret["type"] = $tag;
+			$def = $tag == 't'? $SQLDIFF->ntext: $SQLDIFF->ntext2;
 		}
 		elseif ($tag == 's' || $tag == 'm' || $tag == 'l') {
 			$ret["len"] = $CHAR_SZ[$tag];
@@ -550,6 +552,8 @@ class UpgHelper
 			return ($dbType == "varchar"||$dbType == "nvarchar")  && $len == $meta["len"];
 		case "t":
 			return $dbType == "text" || $dbType == "ntext";
+		case "tt": // TODO: MSSQL会有问题
+			return $dbType == "mediumtext";
 		case "i":
 		case "id":
 			return $dbType == "int";
