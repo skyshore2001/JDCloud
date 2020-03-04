@@ -21,7 +21,7 @@ function initPage<?=$obj?>()
 		url: WUI.makeUrl("<?=$baseObj?>.query"),
 		toolbar: WUI.dg_toolbar(jtbl, jdlg, "export"),
 		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg),
-		//sortOrder: "desc",
+		sortOrder: "desc",
 		sortName: "id"
 	});
 }
