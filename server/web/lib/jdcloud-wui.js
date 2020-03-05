@@ -8161,7 +8161,7 @@ function mycombobox_fixAsyncSetValue()
 			return hook.set.apply(this, arguments);
 		},
 		get: function (elem) {
-			if (this.enableAsyncFix)
+			if (elem.enableAsyncFix)
 				return hook.get.apply(this, arguments) || elem.value_;
 			return hook.get.apply(this, arguments);
 		}
