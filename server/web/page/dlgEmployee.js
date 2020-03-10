@@ -38,3 +38,11 @@ function initDlgEmployee()
 	}
 }
 
+$.extend($.fn.validatebox.defaults.rules, {
+	uname_zn: {
+		validator: function (v) {
+			return /^[^\d]/i.test(v);
+		},
+		message: "用户名不可以数字开头."
+	}
+});
