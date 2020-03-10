@@ -60,7 +60,7 @@ AccessControl简写为AC，同时AC也表示自动补全(AutoComplete).
 
 ## 基本权限控制
 
-@var AccessControl::$allowedAc?=["add", "get", "set", "del", "query"] 设定允许的操作，如不指定，则允许所有操作。
+@var AccessControl::$allowedAc 设定允许的操作，如不指定，则允许所有操作。示例: ["add", "get", "set", "del", "query"] 
 
 @var AccessControl::$readonlyFields ?=[]  (影响add/set) 字段列表，添加/更新时为这些字段填值无效。
 @var AccessControl::$readonlyFields2 ?=[]  (影响set操作) 字段列表，更新时对这些字段填值无效。

@@ -73,7 +73,7 @@ class AC2_Employee extends AC0_Employee
 			$this->allowedAc = null; // all ac
 		}
 		else {
-			$this->readonlyFields[] = "perms";
+			$this->readonlyFields = ["perms", "pwd", "phone", "uname"];
 		}
 	}
 
