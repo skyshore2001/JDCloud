@@ -11,7 +11,7 @@ function upgrade()
 	$meta = __DIR__ . "/META";
 	putenv("P_METAFILE=$meta");
 
-	header("Content-Type: text/plain");
+	header("Content-Type: text/plain; charset=utf-8");
  	require_once("upglib.php");
  	$h = new UpgHelper();
 	if (param("diff") != 1) {
