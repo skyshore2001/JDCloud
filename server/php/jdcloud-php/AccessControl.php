@@ -437,17 +437,21 @@ query/get接口生成的查询语句大致为：
 
 效果：ApiLog仅20000行数据，优化前查询一次16秒，优化后降低到0.2s。
 
-注意：自动优化只处理res中只有一个元素且未指定join条件的情况，并且会自动识别出依赖内层t0.ses字段。
-如果自动处理或识别有误，可手工设置isExt和require属性，比如：
+注意：框架对于未指定isExt也未指定join条件的vcol定义，将自动生成isExt及require属性。
+对于含有嵌套子查询的res定义，例如`(SELECT... WHERE t0.xxx...)`，当作是外部字段，并分析其依赖于t0表的字段。例如：
 
 	[
 		"res" => ["(select count(*) from ApiLog t1 where t1.ses=t0.ses and t0.userId is not null) sesCnt"],
-		"isExt" => true,
-		"require" => "t0.ses,t0.userId"
 	]
 
-上面require属性指定内层查询应暴露给外层的字段，如果有多个可用逗号分隔（自动优化只能处理一个）。
+将自动计算和添加属性：
+
+		"isExt" => true,
+		"require" => "t0.ses,t0.userId"
+
+上面require属性指定内层查询应暴露给外层的字段，如果有多个可用逗号分隔。
 注意res中的t0指的是内层查询的结果表，名称固定为t0; 而require中的表指的是内层查询内部的表。
+如果自动处理或识别有误，可手工设置isExt和require属性。
 
 注意：使用外部虚拟字段时，将导致require中的字段被添加到最终结果集。例如上面例子中的"t0.ses,t0.userId"字段会被添加到最终结果集。
 
@@ -456,6 +460,29 @@ query/get接口生成的查询语句大致为：
 	[
 		"res" => ["(select count(*) from ApiLog t1 where t1.ses=t0.ses) sesCnt"],
 		"isExt" => false
+	]
+
+注意：一组res定义将共享相同的isExt和require属性，因而不可将外部字段与普通字段定义在一起，且依赖t0字段不同的的外部字段也不应放在一组中。
+下面示例在处理时将报错：
+
+	[
+		"res" => [
+			"(SELECT COUNT(id) FROM PdiRecord WHERE type='EQ' AND orderId=t0.id) AS eqCnt",
+			"t0.DMSOrderNo dmsOrder",
+		]
+	]
+
+应将res分成几组：
+
+	[
+		"res" => [
+			"(SELECT COUNT(id) FROM PdiRecord WHERE type='EQ' AND orderId=t0.id) AS eqCnt",
+		]
+	],
+	[
+		"res" => [
+			"t0.DMSOrderNo dmsOrder",
+		]
 	]
 
 ## 子表
@@ -1626,17 +1653,30 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 
 	// 外部虚拟字段：如果未设置isExt，且无join条件，将自动识别和处理外部虚拟字段（以便之后优化查询）。
 	// 示例 "res" => ["(select count(*) from ApiLog t1 where t1.ses=t0.ses) sesCnt"] 将设置 isExt=true, require="t0.ses"
-	// 注意目前只自动处理第一个res。如果自动处理有误，请手工设置vcolDef的isExt和require属性。require属性支持逗号分隔的多字段。
+	// 注意框架自动分析res得到isExt和require属性，如果分析不正确，则可手工设置。require属性支持逗号分隔的多字段。
 	private function autoHandleExtVCol(&$vcolDef) {
 		if (isset($vcolDef["isExt"]) || isset($vcolDef["join"]))
 			return;
-		$res_0 = $vcolDef["res"][0];
-		if (preg_match('/\(.*select.*where.*?(\bt0\.\w+).*\)/ui', $res_0, $ms)) {
-			$vcolDef["isExt"] = true;
-			if (isset($ms[1])) {
-				$vcolDef["require"] = $ms[1];
+
+		// 只有res数组定义时：不允许既有外部字段又有内部字段；如果全是外部字段，尝试自动分析得到require字段。
+		$isExt = null;
+		$reqColSet = []; // [col => true]
+		foreach ($vcolDef["res"] as $res) {
+			$isExt1 = preg_match('/\(.*select.*where(.*)\)/ui', $res, $ms)? true: false;
+			if ($isExt === null)
+				$isExt = $isExt1;
+			if ($isExt !== $isExt1) {
+				throw new MyException(E_SERVER, "bad res: '$res'", "字段定义错误：外部虚拟字段与普通虚拟字段不可定义在一起，请分拆成多组，或明确定义`isExt`。");
+			}
+			if (preg_match_all('/\bt0\.\w+\b/u', $ms[1], $ms1)) {
+				foreach ($ms1[0] as $e) {
+					$reqColSet[$e] = true;
+				}
 			}
 		}
+		$vcolDef["isExt"] = $isExt;
+		if (count($reqColSet) > 0)
+			$vcolDef["require"] = join(',', array_keys($reqColSet));
 	}
 
 	// 可多次调用
