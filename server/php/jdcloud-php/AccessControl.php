@@ -1683,7 +1683,9 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		if ($this->vcolMap[$col]["added"])
 			return true;
 		$vcolDef = $this->addVColDef($this->vcolMap[$col]["vcolDefIdx"]);
-		$isExt = @ $vcolDef["isExt"] && true;
+		if (! $vcolDef)
+			throw new MyException(E_SERVER, "bad vcol $col");
+		$isExt = @ $vcolDef["isExt"] ? true : false;
 		if ($alias) {
 			if ($alias !== "-")
 				$this->addRes($this->vcolMap[$col]["def"] . " AS {$alias}", false, $isExt);
@@ -1700,7 +1702,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		foreach ($this->vcolDefs as $vcolDef) {
 			if (@$vcolDef["default"]) {
 				$this->addVColDef($idx);
-				$isExt = @ $vcolDef["isExt"] && true;
+				$isExt = @ $vcolDef["isExt"] ? true: false;
 				foreach ($vcolDef["res"] as $e) {
 					$this->addRes($e, true, $isExt);
 				}
@@ -1711,15 +1713,18 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 
 	/*
 	根据index找到vcolDef中的一项，添加join/cond到最终查询语句(但不包含res)。
+	返回vcolDef或undef
+	注意：idx可以不是数字。
 	 */
 	private function addVColDef($idx)
 	{
-		if ($idx < 0 || @$this->vcolDefs[$idx]["added"])
+		@$vcolDef = $this->vcolDefs[$idx];
+		if (!$vcolDef)
 			return;
-		$this->vcolDefs[$idx]["added"] = true;
+		if ($vcolDef["added"])
+			return $vcolDef;
 
-		$vcolDef = $this->vcolDefs[$idx];
-
+		$vcolDef["added"] = true;
 		if (@$vcolDef["isExt"]) {
 			$requireCol = @$vcolDef["require"];
 			// 外部虚拟字段：将require字段加入内层SQL。
