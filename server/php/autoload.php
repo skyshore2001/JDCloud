@@ -16,6 +16,6 @@ set_include_path(get_include_path().PATH_SEPARATOR.__DIR__ . '/class');
 spl_autoload_register(function ($cls) {
 	$path = __DIR__ . '/class/' . str_replace('\\', '/', $cls) . '.php';
 	if (is_file($path)) {
-		include($path);
+		include_once($path);
 	}
 });
