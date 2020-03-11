@@ -1850,7 +1850,11 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		}
 
 		if ($checkCond) {
+			$t = $_POST;
+			$_POST = []; // 避免POST中的内容影响到onQuery
 			$rv = $this->genCondSql(false);
+			$_POST = $t;
+
 			if ($rv["condSql"]) {
 				$sql = sprintf("SELECT t0.id FROM %s WHERE t0.id=%s AND %s", $rv["tblSql"], $this->id, $rv["condSql"]);
 				if (queryOne($sql) === false)
