@@ -1758,9 +1758,9 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	 */
 	private function addVColDef($idx)
 	{
-		@$vcolDef = $this->vcolDefs[$idx];
-		if (!$vcolDef)
+		if (! isset($this->vcolDefs[$idx]))
 			return;
+		$vcolDef = &$this->vcolDefs[$idx];
 		if ($vcolDef["added"])
 			return $vcolDef;
 
