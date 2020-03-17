@@ -485,6 +485,17 @@ query/get接口生成的查询语句大致为：
 		]
 	]
 
+注意: 在做分组查询时(query接口有gres参数), 不会自动优化为外部查询, 以免语句错误. 
+示例: `Hub.query`为列车查询接口, exFlag为虚拟字段, 表示是否有异常, 则 查看正常/异常列车数接口为:
+
+	Hub.query(gres: "exFlag", res: "count(*) cnt") -> tbl(exFlag, cnt)
+
+实现虚拟字段:
+
+	[ "res" => ["EXISTS (SELECT id FROM Exception WHERE hubId=t0.id AND doneFlag=0) exFlag"] ]
+
+在普通查询时, exFlag为外部字段, 而在分组查询时为普通字段.
+
 ## 子表
 
 @var AccessControl::$subobj (for get/query) 定义子表
@@ -1068,12 +1079,12 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			$this->filterRes($gres, true);
 		}
 		// 设置gres时，不使用defaultRes
-		else if (!isset($res)) {
-			$res = $this->defaultRes;
-			$addDefaultCol = true;
-		}
-		else if ($res[0] == '*') {
-			$addDefaultCol = true;
+		else {
+			if (!isset($res))
+				$res = $this->defaultRes;
+
+			if ($res[0] == '*')
+				$addDefaultCol = true;
 		}
 
 		if (isset($res)) {
@@ -1655,7 +1666,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	// 示例 "res" => ["(select count(*) from ApiLog t1 where t1.ses=t0.ses) sesCnt"] 将设置 isExt=true, require="t0.ses"
 	// 注意框架自动分析res得到isExt和require属性，如果分析不正确，则可手工设置。require属性支持逗号分隔的多字段。
 	private function autoHandleExtVCol(&$vcolDef) {
-		if (isset($vcolDef["isExt"]) || isset($vcolDef["join"]))
+		if (isset($vcolDef["isExt"]) || isset($vcolDef["join"]) || isset($this->sqlConf['gres']))
 			return;
 
 		// 只有res数组定义时：不允许既有外部字段又有内部字段；如果全是外部字段，尝试自动分析得到require字段。
