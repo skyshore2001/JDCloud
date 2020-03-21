@@ -7407,11 +7407,12 @@ function deleteLoginToken()
 			onShowLogin: showDlgLogin
 		});
 
-		WUI.tryAutoLogin(WUI.handleLogin, "whoami");
+		WUI.tryAutoLogin(WUI.handleLogin, "Employee.get");
 	}
 
 	$(main);
 
+该函数同步调用后端接口。如果要异步调用，请改用tryAutoLoginAsync函数，返回Deferred对象，resolve表示登录成功，reject表示登录失败。
 */
 self.tryAutoLogin = tryAutoLogin;
 function tryAutoLogin(onHandleLogin, reuseCmd)
@@ -7448,6 +7449,58 @@ function tryAutoLogin(onHandleLogin, reuseCmd)
 
 	self.options.onShowLogin();
 	return ok;
+}
+
+self.tryAutoLoginAsync = tryAutoLoginAsync;
+function tryAutoLoginAsync(onHandleLogin, reuseCmd)
+{
+	var ajaxOpt = {noex: true};
+	var dfd = $.Deferred();
+
+	function success(data) {
+		if (onHandleLogin)
+			onHandleLogin.call(this, data);
+		dfd.resolve();
+	}
+	function fail() {
+		dfd.reject();
+		self.options.onShowLogin();
+	}
+
+	// first try "User.get"
+	if (reuseCmd != null) {
+		self.callSvr(reuseCmd, function (data) {
+			if (data === false) {
+				loginByToken()
+				return;
+			}
+			success(data);
+		}, null, ajaxOpt);
+	}
+	else {
+		loginByToken();
+	}
+
+	// then use "login(token)"
+	function loginByToken()
+	{
+		var token = loadLoginToken();
+		if (token != null)
+		{
+			var postData = {token: token};
+			self.callSvr("login", function (data) {
+				if (data === false) {
+					fail();
+					return;
+				}
+				success(data);
+			}, postData, ajaxOpt);
+		}
+		else {
+			fail();
+		}
+	}
+	return dfd.promise();
 }
 
 /**
