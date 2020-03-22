@@ -13,6 +13,10 @@ function initDlgRole()
 			frm.perms.value = frm.perms.value.replace(' ' + perm, '').replace(perm, '');
 		}
 	});
+	jfrm.find(".btnExample").click(function () {
+		jdlg.find("#example").toggle();
+		return false;
+	});
 /*
 	jdlg.on("beforeshow", onBeforeShow)
 		.on("validate", onValidate);

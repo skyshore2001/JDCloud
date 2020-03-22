@@ -1,4 +1,12 @@
 <form my-obj="Role" title="角色" style="width:500px;height:400px;" wui-script="dlgRole.js" my-initfn="initDlgRole">
+<style>
+#example {
+	background-color: #eee;
+	padding: 5px;
+	white-space: pre-wrap;
+	display: none;
+}
+</style>
 	<table>
 		<tr>
 			<td>编号</td>
@@ -24,12 +32,66 @@
 					<a>不可删除</a>
 					<a>不可导出</a>
 				</p>
+				<a class="hint btnExample">查看设置规则示例</a>
 			</td>
 		</tr>
 	</table>
+
+<pre id="example">
+默认情况下，所有菜单不显示，其它操作均允许。
+如果指定了`*`权限，则显示所有菜单和操作按钮。
+如果指定了`不可XX`权限，则相应菜单、页面、对话框、按钮匹配`XX`则不允许。
+
+权限名/操作名默认是和菜单、页面、对话框、按钮标题相匹配的，除非为它们特别设置过wui-perm属性（可通过浏览器开发工具查看该属性）。
+
+示例：假设有菜单结构如下（不包含最高管理员专有的“系统设置”）
+
+	主数据管理
+		企业
+		用户
+
+	运营管理
+		活动
+		公告
+		积分商城
+
+只显示“公告”菜单项：
+
+	公告
+
+只显示“运营管理”菜单组：
+
+	运营管理
+
+显示除了“运营管理”外的所有内容：
+
+	* 不可运营管理
+
+其中`*`表示显示所有菜单项。
+显示所有内容（与管理员权限相同），但只能查看不可操作
+
+	* 只读
+
+“只读”权限排除了“新增”、“修改”等操作。
+特别地，“只读”权限也不允许“导出”操作（虽然导出是读操作，但一般要求较高权限），假如要允许导出公告，可以设置：
+
+	* 只读 公告.导出
+
+显示“运营管理”，在列表页中不显示“删除”、“导出”按钮：
+
+	运营管理 不可删除 不可导出
+
+显示“运营管理”，在列表页中，不显示“删除”、“导出”按钮，但“公告”中显示“删除”按钮：
+
+	运营管理 不可删除 不可导出 公告.删除
+
+或等价于：
+
+	运营管理 不可导出 活动.不可删除 积分商城.不可删除
+
+显示“运营管理”和“主数据管理”菜单组，但“主数据管理”下面内容均是只读的：
+
+	运营管理 主数据管理 企业.只读 用户.只读
+</pre>
+	
 </form>
-<!-- examples:
-<input name="name" class="easyui-validatebox" data-options="required:true">
-<select name="customerId" class="my-combobox" data-options="ListOptions.Customer()"></select>
-<select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap"></select>
--->
