@@ -348,8 +348,9 @@ function api_upload()
 	foreach ($files as $f) {
 		# 0: tmpname; 1: fname; 2: orgName; 3: thumbName(optional)
 		list($tmpname, $fname, $orgName, $thumbName) = $f;
+		$rv = null;
 		if (isset($tmpname)) {
-			move_uploaded_file($tmpname, $fname);
+			$rv = move_uploaded_file($tmpname, $fname);
 		}
 		else {
 			// for upload raw/raw_b64
@@ -357,7 +358,10 @@ function api_upload()
 			if ($fmt === 'raw_b64') {
 				$s = base64_decode($s);
 			}
-			file_put_contents($fname, $s);
+			$rv = file_put_contents($fname, $s);
+		}
+		if ($rv === false) {
+			throw new MyException(E_SERVER, "fail to create or write uploaded file", "写文件失败！");
 		}
 		if ($autoResize && preg_match('/\.(jpg|jpeg|png)$/', $fname)) {
 			// 如果大于500K或是用autoResize指定了最大宽高, 则压缩.
