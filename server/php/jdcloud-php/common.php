@@ -689,7 +689,7 @@ function inSet($str, $strList)
 */
 function text2html($s)
 {
-	return preg_replace_callback('/^(?:([#-]+)\s+)?(.*?)\s*$/um', function ($m) {
+	return preg_replace_callback('/^(?:([#-]+)\s+)?(.*)$/um', function ($m) {
 		list ($begin, $text) = [$m[1], $m[2]];
 		if ($begin) {
 			if ($begin[0] == '#') {
@@ -699,6 +699,13 @@ function text2html($s)
 			if ($begin[0] == '-') {
 				return "<li>$text</li>";
 			}
+		}
+		// 空段落处理
+		if ($text) {
+			$text = str_replace(" ", "&nbsp;", $text);
+		}
+		else {
+			$text = "&nbsp;";
 		}
 		return "<p>$text</p>";
 	}, $s);
