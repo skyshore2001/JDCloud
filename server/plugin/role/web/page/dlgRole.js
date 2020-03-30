@@ -4,15 +4,6 @@ function initDlgRole()
 	var jfrm = jdlg;
 	var frm = jfrm[0];
 
-	jfrm.find(".perms a").click(function () {
-		var perm = $(this).text();
-		if (frm.perms.value.indexOf(perm) < 0) {
-			frm.perms.value += ' ' + perm;
-		}
-		else {
-			frm.perms.value = frm.perms.value.replace(' ' + perm, '').replace(perm, '');
-		}
-	});
 	jfrm.find(".btnExample").click(function () {
 		jdlg.find("#example").toggle();
 		return false;

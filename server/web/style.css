@@ -246,3 +246,12 @@ input:disabled,select:disabled,textarea:disabled {
 	margin: -8px 0;
 	object-fit: contain;
 }
+
+.labelMark {
+	border: 1px solid #aaa;
+	border-radius: 5px;
+	background-color: #fffbce;
+	cursor: pointer;
+	white-space: nowrap;
+	padding: 0 4px;
+}

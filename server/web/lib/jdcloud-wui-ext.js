@@ -617,6 +617,104 @@ function hiddenToCheckbox(jp, sep)
 }
 
 /**
+@key .wui-labels
+
+标签字段（labels）是空白分隔的一组词，每个词是一个标签（label）。
+可以在字段下方将常用标签列出供用户选择，点一下标签则添加到文本框中，再点一下删除它。
+
+	<tr>
+		<td>标签</td>
+		<td class="wui-labels">
+			<input name="label" >
+			<p class="hint">企业类型：<span class="labels" dfd="StoreDialog.dfdLabel"></span></p>
+			<p class="hint">行业标签：<span class="labels">IT 金融 工业</span></p>
+			<p class="hint">位置标签：<span class="labels">一期 二期 三期 四期</span></p>
+		</td>
+	</tr>
+
+- 最终操作的文本字段是.wui-labels下带name属性的输入框。
+- 在.labels中的文本将被按空白切换，优化显示成一个个标签，可以点击。
+- 支持异步获取，比如要调用接口获取内容，可以指定`dfd`属性是一个Deferred对象。
+- 添加的标签具有`labelMark`类(label太常用，没有用它以免冲突)，默认已设置样式。
+
+异步获取示例：
+
+	var StoreDialog = {
+		dfdLabel: $.Deferred()
+	}
+	callSvr("Conf.query", {cond: "name='企业分类'", fmt: "one", res: "value"}, function (data) {
+		StoreDialog.dfdLabel.resolve(data.value);
+	})
+
+// TODO: 支持beforeShow时更新
+ */ 
+self.m_enhanceFn[".wui-labels"] = enhanceLabels;
+
+function enhanceLabels(jp)
+{
+	var jdlg = jp.closest(".wui-dialog");
+	if (jdlg.size() == 0)
+		return;
+
+	var doInit = true;
+	jdlg.on("beforeshow", onBeforeShow);
+
+	function onBeforeShow() {
+		if (! doInit)
+			return;
+		doInit = false;
+
+		jp.on("click", ".labelMark", function () {
+			var label = $(this).text();
+			var o = jp.find(":input[name]")[0];
+			var str = o.value;
+			if (str.indexOf(label) < 0) {
+				if (str.length == 0)
+					str = label;
+				else
+					str += ' ' + label;
+			}
+			else {
+				str = str.replace(/\s*(\S+)/g, function (m, m1) {
+					if (m1 == label)
+						return "";
+					return m;
+				});
+			}
+			o.value = str;
+		});
+
+		showLabel();
+	}
+
+	function showLabel() {
+		jp.find(".labels").each(function () {
+			var jo = $(this);
+			var prop = jo.attr("dfd");
+			if (prop) {
+				var rv = WUI.evalAttr(jo, "dfd");
+				WUI.assert(rv.then, "Property `dfd' MUST be a Deferred object: " + prop);
+				rv.then(function (text) {
+					handleLabel(jo, text);
+				})
+			}
+			else {
+				handleLabel(jo, jo.html());
+			}
+		});
+	}
+
+	function handleLabel(jo, s) {
+		if (s && s.indexOf("span") < 0) {
+			var spanHtml = s.split(/\s+/).map(function (e) {
+				return '<span class="labelMark">' + e + '</span>';
+			}).join(' ');
+			jo.html(spanHtml);
+		}
+	}
+}
+
+/**
 @key #menu
 
 管理端功能菜单，以"menu"作为id:
