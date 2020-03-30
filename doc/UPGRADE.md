@@ -1,5 +1,36 @@
 ## 升级到v5.4
 
+### 报错：操作对象不存在或无权限修改
+
+对set/del接口操作时，增加了调用onQuery回调，来检查当前用户是否可以query出指定id，以此来证明有权限修改此id。
+这个特性会导致误调用onQuery接口，导致set/del接口失败。
+
+示例：
+
+	protected function onQuery() {
+		$type = mparam("type");	
+		$this->addCond("type=" . Q($type));
+	}
+
+分析：执行set/del接口时，走到上述地方将因没有传type参数而报错。
+显示这段逻辑是为query接口写的，不应用于set/del。
+
+解决方案：
+
+	protected function onQuery() {
+		if ($this->ac == "query") {
+			$type = mparam("type");	
+			$this->addCond("type=" . Q($type));
+		}
+	}
+	或
+	protected function onQuery() {
+		if ($this->ac != "query")
+			return;
+		$type = mparam("type");	
+		$this->addCond("type=" . Q($type));
+	}
+
 ### 设置只读属性报错
 
 v5.4之前设置只读属性(以readonlyFields或readonlyFields2定义的属性数组），只写警告日志，不报错。

@@ -1869,7 +1869,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			if ($rv["condSql"]) {
 				$sql = sprintf("SELECT t0.id FROM %s WHERE t0.id=%s AND %s", $rv["tblSql"], $this->id, $rv["condSql"]);
 				if (queryOne($sql) === false)
-					throw new MyException(E_PARAM, "bad {$this->table}.id=" . $this->id, "操作对象不存在");
+					throw new MyException(E_PARAM, "bad {$this->table}.id=" . $this->id . ". Check addCond in `onQuery`.", "操作对象不存在或无权限修改");
 			}
 		}
 	}
