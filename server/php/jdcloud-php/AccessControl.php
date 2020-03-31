@@ -1388,12 +1388,14 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	private function filterRes($res, $gres=false)
 	{
 		$cols = [];
+		$isAll = false;
 		foreach (explode(',', $res) as $col) {
 			$col = trim($col);
 			$alias = null;
 			$fn = null;
 			if ($col === "*" || $col === "t0.*") {
 				$this->addRes("t0.*", false);
+				$isAll = true;
 				continue;
 			}
 			// 适用于res/gres, 支持格式："col" / "col col1" / "col as col1", alias可以为中文，如"col 某列"
@@ -1441,6 +1443,8 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 					$this->sqlConf["subobj"][$key] = $this->subobj[$col];
 				}
 				else {
+					if ($isAll)
+						throw new MyException(E_PARAM, "`$col` MUST be virtual column when `res` has `*`", "虚拟字段未定义: $col");
 					$col = "t0." . $col;
 					$col1 = $col;
 					if (isset($alias)) {
