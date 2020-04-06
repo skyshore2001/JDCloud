@@ -387,6 +387,7 @@ fastclick库的引入，让IOS上点击事件响应更迅速，去除200ms延迟
 	function initDlgEmployee()
 	{
 		var jdlg = $(this);
+		// 注意find模式下以下opt.data或initData为空
 		jdlg.on("beforeshow", function (ev, formMode, opt) {
 			if (formMode == FormMode.forSet)
 				opt.data.pwd = "****";
@@ -394,7 +395,7 @@ fastclick库的引入，让IOS上点击事件响应更迅速，去除200ms延迟
 		.on("show", function (ev, formMode, initData) {
 			hiddenToCheckbox(jdlg.find("#divPerms"));
 		})
-		.on("validate", function (ev, formMode, initData) {
+		.on("validate", function (ev, formMode, initData, newData) {
 			checkboxToHidden(jdlg.find("#divPerms"));
 		});
 	}
