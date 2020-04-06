@@ -6579,7 +6579,7 @@ var Formatter = {
 	atts: function (value, row) {
 		if (value == null)
 			return "(无)";
-		return value.toString().replace(/(\d+)(:([^,]+))?/g, function (ms, attId, name) {
+		return value.toString().replace(/(\d+)(?::([^,]+))?,?/g, function (ms, attId, name) {
 			var url = WUI.makeUrl("att", {id: attId});
 			if (name == null)
 				name = attId;
@@ -6596,7 +6596,7 @@ var Formatter = {
 			return "(无图)";
 		var maxN = Formatter.pics.maxCnt || 3; // 最多显示图片数
 		// value = value + "," + value + "," + value;
-		value1 = value.toString().replace(/(\d+)(:([^,]+))?/g, function (ms, picId, name) {
+		value1 = value.toString().replace(/(\d+)(?::([^,]+))?,?/g, function (ms, picId, name) {
 			if (name == null)
 				name = "图" + picId;
 			if (maxN <= 0)
@@ -7806,13 +7806,15 @@ $.each([
 - (v5.0) HTML select组件的jQuery.val()方法被改写。当设置不在范围内的值时，虽然下拉框显示为空，其实际值存储在 value_ 字段中，(v5.2) 通过jQuery.val()方法仍可获取到。
  用原生JS可以分别取 this.value 和 this.value_ 字段。
 
-@param opt {url, jdEnumMap/jdEnumList, formatter, textField, valueField, loadFilter, urlParams, isLoaded_, url_}
+@param opt {url, jdEnumMap/jdEnumList, formatter, textField, valueField, loadFilter, urlParams, isLoaded_, url_, emptyText}
 
 @param opt.url 动态加载使用的url，或一个返回URL的函数（这时会调用opt.url(opt.urlParams)得到实际URL，并保存在opt.url_中）
 所以要取URL可以用
 
 	var opt = WUI.getOptions(jo);
 	url = opt.url_ || opt.url;
+
+@param opt.emptyText 设置首个空行（值为null）对应的显示文字。
 
 ## 用url选项加载下拉列表
 
@@ -8095,7 +8097,9 @@ function mycombobox(force)
 			jo.prop("value_", jo.val()); // 备份val到value_
 			jo.empty();
 			// 添加空值到首行
-			$("<option value=''></option>").appendTo(jo);
+			var j1 = $("<option value=''></option>").appendTo(jo);
+			if (opts.emptyText)
+				j1.text(opts.emptyText);
 
 			if (opts.jdEnumList) {
 				opts.jdEnumMap = mCommon.parseKvList(opts.jdEnumList, ';', ':');
