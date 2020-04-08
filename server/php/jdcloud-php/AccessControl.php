@@ -3013,6 +3013,7 @@ class BatchAddStrategy
 	protected $rowIdx;
 	protected $logic; // BatchAddLogic
 	private $rows;
+	protected $delim;
 
 	static function create($logic=null) {
 		$st = null;
@@ -3040,6 +3041,12 @@ class BatchAddStrategy
 		$content = getHttpInput();
 		self::backupFile(null, null);
 		$this->rows = preg_split('/\s*\n/', $content);
+		if (count($this->rows) > 0) {
+			if (strpos($this->rows[0], "\t") !== false)
+				$this->delim = "\t";
+			else
+				$this->delim = ",";
+		}
 	}
 	protected function onGetRow() {
 		if ($this->rowIdx >= count($this->rows))
@@ -3047,6 +3054,9 @@ class BatchAddStrategy
 		$rowStr = $this->rows[$this->rowIdx];
 		if ($rowStr == "") {
 			$row = [];
+		}
+		else if ($this->delim == ",") {
+			$row = preg_split('/[ ]*,[ ]*/', $rowStr);
 		}
 		else {
 			$row = preg_split('/[ ]*\t[ ]*/', $rowStr);
@@ -3115,7 +3125,6 @@ class BatchAddStrategy
 class CsvBatchAddStrategy extends BatchAddStrategy
 {
 	protected $fp;
-	protected $delim;
 
 	protected function onInit() {
 		if (empty($_FILES))
@@ -3128,14 +3137,13 @@ class CsvBatchAddStrategy extends BatchAddStrategy
 		$file = $f["tmp_name"];
 		self::backupFile($file, $orgName);
 		$this->fp = fopen($file, "rb");
-		utf8InputFilter($this->fp);
-
-		if (substr($orgName, -4) == ".txt") {
-			$this->delim = "\t";
-		}
-		else {
-			$this->delim = ",";
-		}
+		utf8InputFilter($this->fp, function ($str) {
+			$str1 = strstr($str, "\n", true) ?: $str;
+			if (strpos($str1, "\t") !== false)
+				$this->delim = "\t";
+			else
+				$this->delim = ",";
+		});
 	}
 
 	// 如果是全空行，返回true

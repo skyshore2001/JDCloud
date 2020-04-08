@@ -1797,7 +1797,8 @@ function htmlEscape($s)
 }
 
 // 取部分内容判断编码, 如果是gbk则自动透明转码为utf-8
-function utf8InputFilter($fp)
+// 如果指定fnTest, 则对前1000字节做自定义测试: $fnTest($text)
+function utf8InputFilter($fp, $fnTest=null)
 {
 	$str = fread($fp, 1000);
 	rewind($fp);
@@ -1805,6 +1806,8 @@ function utf8InputFilter($fp)
 	if ($enc && $enc != "utf-8") {
 		stream_filter_append($fp, "convert.iconv.$enc.utf-8");
 	}
+	if ($fnTest)
+		$fnTest($str);
 }
 //}}}
 

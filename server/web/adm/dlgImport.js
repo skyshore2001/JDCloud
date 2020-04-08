@@ -68,7 +68,17 @@ function initDlgImport()
 				ok = false;
 				return false;
 			}
-			param[$(e).attr("name")] = $(e).val();
+			var name = $(e).attr("name");
+			var val = $(e).val();
+			if (name == "obj_") {
+				obj = val;
+			}
+			else if (name == "params_") {
+				$.extend(param, WUI.parseQuery(val));
+			}
+			else {
+				param[name] = val;
+			}
 		});
 		if (!ok)
 			return;
