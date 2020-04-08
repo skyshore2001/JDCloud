@@ -31,10 +31,6 @@ var g_data = {
 	userInfo : null, // {id, name, uname=phone}
 };
 
-var g_cfg = {
-	WAIT: 3000, // 3s
-};
-
 // ---- page interface {{{
 var PageOrder = {
 	// PageOrder.id

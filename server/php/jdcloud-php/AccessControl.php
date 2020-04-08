@@ -547,6 +547,82 @@ subobj: { name => {sql, default?=false, wantOne?=false, force?=false} }
 - wantOne: 如果为true, 则结果以一个对象返回即 {id, tm, ...}, 适用于主表与子表一对一的情况。
 - force: (v5.1) 如果sql中没有与主表的关联即没有包含"field=%d"，应指定force=true，否则在query接口中会当作语句错误。
 
+### 子表查询参数
+
+(v5.4)
+可以通过 "res_{子对象名}" 或 "param_{子对象名}" 为子对象指定查询条件，param可指定子对象可接受的一切参数。
+示例：实现接口 `Hub.query(id, ..., lastData)`, 查询主机时，可通过lastData字段返回最近一次的主机数据.
+
+	class AC2_Hub extends AccessControl
+	{
+		protected $subobj = [
+			"lastData" => ["obj"=>"HubData", "cond"=>"hubId=%d", "AC"=>"AC2_HubData", "res"=>"tm,pos,speed,alt", "wantOne"=>true ]
+		];
+	}
+
+前端调用例：
+
+	callSvr("Hub.get", {id:5, res: "id,name,lastData", res_lastData:"pos,speed"});
+	或
+	callSvr("Hub.get", {
+		id: 5,
+		res: "id,name,lastData", // 指定返回子对象lastData，可在param_lastData中定义其参数
+		param_lastData: {res:"pos,speed", cond:"tm>'2019-1-1'"} 
+		// 这个里面的res相当于直接用res_lastData参数; 若指定cond，不会覆盖$subobj定义中的cond，而是追加条件。
+		// cond条件同样支持使用子对象的虚拟字段, 如子对象定义了`year(tm) y`，可以用`cond: "y>=2020"`条件。
+	});
+
+参数中还可以添加orderby等标准query接口条件，或子对象query接口支持的自定义查询条件。
+
+特别地，在子查询param中还可以指定`wantOne`覆盖subobj中的定义，如返回最近5条数据可以调用：
+
+	callSvr("Hub.get", {
+		id: 5,
+		res: "id,name,lastData", 
+		param_lastData: {pagesz: 5, wantOne: 0} 
+	});
+
+注意：子查询适合用于get接口。
+对于query接口，可用于一般带分页的查询，一次返回主表项几十个的情况。
+例如典型的主、子表场景：一次查询不超过100个订单（分页<100），一个订单带有最多几十行明细，或最多几十条订单日志。
+不可用于总查询返回（主表项数乘以子表项数）超过千行的场景，因为会丢数据。虽可以通过调节子表的maxPageSz解决，但并不建议这样做。
+
+query接口的子查询默认是不分页的，即返回所有子对象数据（实现时是设置pagesz=-1，所有主表项的子对象数加起来最多返回1000条，所以可能会造成子对象丢失问题）。
+即使指定wantOne也会查询出所有数据后返回首行，若指定pagesz参数则会报错。
+
+这是由于query接口的子查询使用了查询优化，对所有主表项一次查询返回所有子对象。
+当关联表很大时（如主表每条数据关联上千条）不适用。或通过设置参数`disableSubobjOptimize=1`禁用query接口的子查询优化。
+这时一次query接口相当于分别执行多次get接口，效率低，但允许指定pagesz或wantOne参数只返回指定条数据。
+
+query接口子查询示例：
+
+	// subobj定义中指定了wantOne=true，但它仍会查所有子对象并取第一条（get接口没有这个问题），当子对象很多时可能丢失数据。
+	callSvr("Hub.query", {
+		res: "id,name,lastData"
+	});
+
+	// 禁用了子查询优化，这时为每个主表项分别查询子对象，根据wantOne=true为每个主表项返回1个子对象。
+	callSvr("Hub.query", {
+		disableSubobjOptimize: 1,
+		res: "id,name,lastData"
+	});
+
+	// wantOne设置为0可覆盖掉subobj定义中的wantOne参数，返回所有子对象列表。
+	// 但这里设置pagesz无效，框架将报错。
+	callSvr("Hub.query", {
+		res: "id,name,lastData", 
+		param_lastData: {pagesz: 5, wantOne: 0}  // pagesz设置无效，将出错!!!
+	});
+
+	// 禁用了子查询优化，这时为每个主表项分别查询子对象，根据pagesz=5为每个主表项返回5个子对象。
+	callSvr("Hub.query", {
+		disableSubobjOptimize: 1,
+		res: "id,name,lastData", 
+		param_lastData: {pagesz: 5, wantOne: 0}  // pagesz设置有效
+	});
+
+此处细节较为复杂，最佳实践请参考“筋斗云开发实例讲解”文档的“最先、最后关联问题”。
+
 ## 操作完成回调
 
 @fn AccessControl::onAfter(&$ret)  (for all) 操作完成时的回调。可修改操作结果ret。
@@ -1049,7 +1125,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			if (! is_array($res2))
 				throw new MyException(E_SERVER, "res2 should be an array: `$res2`");
 			foreach ($res2 as $e)
-				$this->addRes($e);
+				$this->filterRes($e);
 		}
 		if (($join=param("join")) != null) {
 			$this->addJoin($join);
@@ -1384,6 +1460,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			$this->aliasMap[self::removeQuote($col)] = self::removeQuote($alias);
 	}
 
+	// 和fixUserQuery处理外部cond类似(安全版的addCond), filterRes处理外部传入的res (安全版的addRes)
 	// return: new field list
 	private function filterRes($res, $gres=false)
 	{
@@ -2154,7 +2231,7 @@ FROM ($sql) t0";
 		// Note: colCnt may be changed in after().
 		$fixedColCnt = count($ret)==0? 0: count($ret[0]);
 
-		$SUBOBJ_OPTIMIZE = true;
+		$SUBOBJ_OPTIMIZE = !param("disableSubobjOptimize/b", false);
 		if ($SUBOBJ_OPTIMIZE) {
 			$this->handleSubObjForList($ret); // 优化: 总共只用一次查询, 替代每个主表查询一次
 			foreach ($ret as &$ret1) {
@@ -2518,6 +2595,55 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		return $ret;
 	}
 
+	// k: subobj name
+	protected function querySubObj($k, &$opt, $opt1) {
+		$param = $opt;
+
+		$param1 = param("param_$k");
+		if ($param1) {
+			@$cond = $param1["cond"];
+			if ($cond) {
+				unset($param1["cond"]);
+			}
+			$param = array_merge($opt, $param1);
+			if ($cond) {
+				$param["cond2"] = [$cond];
+			}
+			if (isset($param1["wantOne"])) {
+				$opt["wantOne"] = param("wantOne/b", null, $param1);
+			}
+		}
+		$res = param("res_$k");
+		if ($res) {
+			$param["res"] = $res;
+		}
+
+		// 设置默认参数，可被覆盖
+		$param["fmt"] = "list";
+		if ($this->ac == "query" && !param("disableSubobjOptimize/b")) {
+			if (array_key_exists("pagesz", $param))
+				throw new MyException(E_PARAM, "pagesz not allowed", "子查询query接口不可指定pagesz参数，请使用get接口或加disableSubobjOptimize=1参数");
+			// 由于query操作对子查询做了查询优化，不支持指定pagesz, 必须查全部子对象数据。
+			$param["pagesz"] = -1;
+		}
+		else if (! array_key_exists("pagesz", $param)) {
+			$param["pagesz"] = @$opt["wantOne"]? 1: -1;
+		}
+
+		foreach (["obj", "AC", "default", "wantOne", "force", "sql"] as $e) {
+			unset($param[$e]);
+		}
+		foreach ($opt1 as $k=>$v) {
+			$param[$k] = $v;
+		}
+
+		$objName = $opt["obj"];
+		$acObj = AccessControl::create($objName, null, $opt["AC"]);
+		$rv = $acObj->callSvc($objName, "query", $param);
+		$ret = $rv["list"];
+		return $ret;
+	}
+
 	// query sub table for mainObj(id), and add result to mainObj as obj or obj collection (opt["wantOne"])
 	protected function handleSubObj($id, &$mainObj)
 	{
@@ -2526,28 +2652,18 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 			# $opt: {sql, wantOne=false}
 			foreach ($subobj as $k => $opt) {
 				if ($opt["obj"] && $opt["cond"]) {
-					$opt["cond"] = sprintf($opt["cond"], $id); # e.g. "orderId=%d"
-					$res = param("res_$k");
-					if ($res) {
-						$opt["res"] = $res;
-					}
-					$objName = $opt["obj"];
-					$acObj = AccessControl::create($objName, null, $opt["AC"]);
-					$rv = $acObj->callSvc($objName, "query", $opt + [
-						"fmt" => "list",
-						"pagesz" => -1
+					$cond = sprintf($opt["cond"], $id); # e.g. "orderId=%d"
+					$ret1 = $this->querySubObj($k, $opt, [
+						"cond" => $cond
 					]);
-					if (array_key_exists("list", $rv))
-						$mainObj[$k] = $rv["list"];
-					else
-						$mainObj[$k] = $rv;
+				}
+				else if (! @$opt["sql"]) {
 					continue;
 				}
-
-				if (! @$opt["sql"])
-					continue;
-				$sql1 = sprintf($opt["sql"], $id); # e.g. "select * from OrderItem where orderId=%d"
-				$ret1 = queryAll($sql1, true);
+				else {
+					$sql1 = sprintf($opt["sql"], $id); # e.g. "select * from OrderItem where orderId=%d"
+					$ret1 = queryAll($sql1, true);
+				}
 				if (@$opt["wantOne"]) {
 					if (count($ret1) > 0)
 						$mainObj[$k] = $ret1[0];
@@ -2585,26 +2701,15 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 			$joinField = null;
 			if ($opt["obj"] && $opt["cond"]) {
 				// $opt["cond"] = sprintf($opt["cond"], $id); # e.g. "orderId=%d"
-				$opt["cond"] = preg_replace_callback('/(\S+)=%d/', function ($ms) use (&$joinField, $idList){
+				$cond = preg_replace_callback('/(\S+)=%d/', function ($ms) use (&$joinField, $idList){
 					$joinField = $ms[1];
 					return $ms[1] . " IN ($idList)";
 				}, $opt["cond"]); 
-				$res = param("res_$k");
-				if ($res) {
-					$opt["res"] = $res;
-				}
-				$objName = $opt["obj"];
-				$acObj = AccessControl::create($objName, null, $opt["AC"]);
-//				$acObj->addRes("$joinField id_");
-				$rv = $acObj->callSvc($objName, "query", $opt + [
-					"fmt" => "list",
-					"pagesz" => -1,
+				$ret1 = $this->querySubObj($k, $opt, [
+					"cond" => $cond,
 					"res2" => ["$joinField id_"]
 				]);
-				if (array_key_exists("list", $rv))
-					$ret1 = $rv["list"];
-				else
-					$ret1 = $rv;
+//				$acObj->addRes("$joinField id_");
 			}
 			else if (! @$opt["sql"]) {
 				continue;

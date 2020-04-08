@@ -763,7 +763,7 @@ function getClientVersion()
  */
 function tmCols($fieldName = "t0.tm")
 {
-	return ["year({$fieldName}) y", "month({$fieldName}) m", "week({$fieldName},7) w", "day({$fieldName}) d", "weekday({$fieldName})+1 wd", "hour({$fieldName}) h"];
+	return ["year({$fieldName}) y", "quarter({$fieldName}) q", "month({$fieldName}) m", "week({$fieldName},7) w", "day({$fieldName}) d", "weekday({$fieldName})+1 wd", "hour({$fieldName}) h"];
 }
 // }}}
 
