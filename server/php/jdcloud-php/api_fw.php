@@ -479,9 +479,14 @@ function setRet($code, $data = null, $internalMsg = null)
 	global $ERRINFO;
 	global $X_RET;
 
-	if ($code && !$data) {
-		assert(array_key_exists($code, $ERRINFO));
-		$data = $ERRINFO[$code];
+	if (!isset($data)) {
+		if ($code) {
+			assert(array_key_exists($code, $ERRINFO));
+			$data = $ERRINFO[$code];
+		}
+		else {
+			$data = "OK";
+		}
 	}
 	$X_RET = [$code, $data];
 
@@ -1589,15 +1594,16 @@ function api_checkIp()
 }
 
 /**
-@fn injectSession($userId, $appType, $fn, $days=30)
+@fn injectSession($userId, $appType, $fn, $days=3)
 
 对别人的session进行操作，比如删除，修改参数等。
 $fn为对session的操作，当设置为false时，表示删除session.
 
-基于ApiLog查找指定用户的session, 默认找30天(参数days)内该用户的所有session. 
+基于ApiLog查找指定用户的session, 默认找3天(参数days)内该用户的最近一次session（且该session此后未被别的用户使用）. 
 操作将记录在日志trace.log中。
 
 示例：当管理员的权限字段(perms)被修改后，直接修改该用户的session令其立刻生效。
+(注意：此机制仅优化常见场景，但并不可靠）
 
 	class AC0_Employee {
 		protected function onValidate() {
@@ -1613,7 +1619,7 @@ $fn为对session的操作，当设置为false时，表示删除session.
 
 @see delSession
 */
-function injectSession($userId, $appType, $fn, $days=30)
+function injectSession($userId, $appType, $fn, $days=3)
 {
 	$name = $fn === false? "delSession": "injectSession";
 	if (! Conf::$enableApiLog) {
@@ -1625,8 +1631,13 @@ function injectSession($userId, $appType, $fn, $days=30)
 	$curSessionId = session_id();
 	// 目前允许将自己删除
 	// $sql = sprintf("SELECT distinct ses FROM ApiLog WHERE tm>='$tm' AND userId=%d AND app LIKE %s AND ses<>'%s'", $userId, Q("$appType%"), $curSessionId);
-	$sql = sprintf("SELECT distinct ses FROM ApiLog WHERE tm>='$tm' AND userId=%d AND app LIKE %s", $userId, Q("$appType%"));
-	$rv = queryAll($sql);
+	$sql = sprintf("SELECT ses, tm FROM ApiLog WHERE tm>='$tm' AND userId=%d AND app LIKE %s ORDER BY tm DESC LIMIT 1", $userId, Q("$appType%"));
+	$rv1 = queryAll($sql);
+	$rv = array_filter($rv1, function ($e) use ($userId) {
+		// 确保session没有被其它共用
+		$sql = sprintf("SELECT 1 FROM ApiLog WHERE tm>='%s' AND ses='%s' AND userId<>%d", $e[1], $e[0], $userId);
+		return queryOne($sql) === false;
+	});
 
 	if (count($rv) > 0) {
 		logit("$name(userId=$userId, appType=$appType, days=$days): " . count($rv) . " sessions");
@@ -1656,7 +1667,7 @@ function injectSession($userId, $appType, $fn, $days=30)
 }
 
 /**
-@fn delSession($userId, $appType, $days=30)
+@fn delSession($userId, $appType, $days=3)
 
 删除指定用户的session. 例如：踢掉在线用户等。
 
@@ -1672,7 +1683,7 @@ function injectSession($userId, $appType, $fn, $days=30)
 
 @see injectSession
 */
-function delSession($userId, $appType, $days=30)
+function delSession($userId, $appType, $days=3)
 {
 	injectSession($userId, $appType, false, $days);
 }
