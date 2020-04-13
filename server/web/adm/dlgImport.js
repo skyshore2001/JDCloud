@@ -107,7 +107,13 @@ function initDlgImport()
 
 	function api_batchAdd(data) {
 		var objDscr = frm.obj.selectedOptions[0].text;
-		app_alert("成功添加 " + data.cnt + " 条" + objDscr + "记录!");
+		app_alert("成功添加 " + data.cnt + " 条" + objDscr + "记录!", function () {
+			if (DlgImport.cb_) {
+				DlgImport.cb_();
+				DlgImport.cb_ = null;
+			}
+			WUI.closeDlg(jdlg);
+		});
 	}
 
 	function btnExport_click(ev) {
@@ -125,9 +131,12 @@ function initDlgImport()
 // 主JS页中包含外部接口，以便从外部打开和设置批量导入框
 var DlgImport = {
 	data_: null,
+	cb_: null,
 	// data: {obj, ...} 对应dlgImport.html中的带name对象
-	show: function (data) {
+	// cb: 导入成功后的回调函数
+	show: function (data, cb) {
 		this.data_ = data;
+		this.cb_ = cb;
 		WUI.showDlg("#dlgImport", {modal:false});
 	}
 };
