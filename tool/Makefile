@@ -61,3 +61,8 @@ meta:
 	php upgrade.php export | tee ../server/tool/upgrade/META
 	git add ../server/tool/upgrade/META
 
+meta2:
+	sh upgrade.sh initdb
+
+meta3:
+	sh upgrade.sh 'export(2)'
