@@ -33,6 +33,12 @@
 		'rar' => 'application/x-rar-compressed'
 	];
 
+增加上传类型示例：（一般在plugin/index.php中设置）
+
+	Upload::$fileTypes += [
+		'mp4'=>'video/mp4'
+	];
+
 - 定义图片类型及其缩略图尺寸
 
 	Upload::$typeMap = [
@@ -442,7 +448,7 @@ function api_att()
 		exit;
 	}
 	list($file, $orgName) = $row;
-	if (preg_match('/http:/', $file)) {
+	if (preg_match('/(http:|https:)/', $file)) {
 		header('Location: ' . $file);
 		throw new DirectReturn();
 	}
@@ -487,12 +493,23 @@ function api_pic()
 {
 	session_commit();
 	header("Content-Type: text/html");
-	$pics = param("id/s");
 	$baseUrl = getBaseUrl();
-	foreach (explode(',', $pics) as $id) {
-		$id = trim($id);
-		if ($id)
-			echo("<img src='{$baseUrl}api.php/att?thumbId=$id'>\n");
+	$n = 0;
+	foreach ([param("id/s"), param("thumbId/s"), param("smallId/s")] as $pics) {
+		if ($pics) {
+			foreach (explode(',', $pics) as $id) {
+				$id = trim($id);
+				if ($id) {
+					if ($n == 0)
+						echo("<img src='{$baseUrl}api.php/att?id=$id'>\n");
+					else if ($n == 1)
+						echo("<img src='{$baseUrl}api.php/att?thumbId=$id'>\n");
+					else if ($n == 2)
+						echo("<a href='{$baseUrl}api.php/att?thumbId=$id' target='_blank'><img src='{$baseUrl}api.php/att?id=$id'></a>\n");
+				}
+			}
+		}
+		++ $n;
 	}
 	throw new DirectReturn();
 }

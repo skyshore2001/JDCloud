@@ -212,13 +212,17 @@ thumbId
 
 该接口生成一个图片列表网页。
 
-	pic(id)
+	pic(id?, thumbId?, smallId?)
 
-- id: 缩略图编号，或编号列表(以逗号分隔)。
+- id: 图片编号，或编号列表(以逗号分隔)。
+- thumbId: 缩略图编号，或编号列表(以逗号分隔)。
+- smallId: 缩略图编号列表，显示小图，点击可跳转到大图
 
 示例：
 
 	<a target="_black" href="http://myserver/mysvc/api.php/pic?id=10,12,14">查看图片</a>
+	<a target="_black" href="http://myserver/mysvc/api.php/pic?thumbId=10,12,14">查看图片</a>
+	<a target="_black" href="http://myserver/mysvc/api.php/pic?id=10,12&thumbId=10,12&smallId=10,12">查看图片</a>
 
 ### 导出文本文件
 
