@@ -7970,13 +7970,13 @@ JS代码ListOptions.Brand:
 	{
 		...
 		
-		$(frm.brand).on("blur", function () {
+		$(frm.brand).on("change", function () {
 			if (this.value)
 				$(frm.storeId).trigger("loadOptions", this.value);
 		});
 
 		function onShow() {
-			$(frm.brand).trigger("blur");
+			$(frm.brand).trigger("change");
 		}
 	}
 
