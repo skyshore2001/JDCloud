@@ -1063,6 +1063,10 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		URL中：cond[]=a=1&cond[]=b=2
 		POST中：cond=c=3
 	后端处理成 "a=1 AND b=2 AND c=3"
+
+示例: url参数支持数组. post参数无论用urlencoded格式或json格式也都支持数组: 
+	callSvr("Hub.query", {res:"id", cond: ["id=1", "id=2"]}, $.noop, {cond: ["id=3", "id=4"]})
+	callSvr("Hub.query", {res:"id", cond: ["id=1", "id=2"]}, $.noop, {cond: ["id=3", "id=4"]}, {contentType:"application/json"})
 	*/
 	static function getCondStr($condArr)
 	{
@@ -1120,26 +1124,26 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 
 		$this->initVColMap();
 
-		# support internal param res2/join/cond2
-		if (($res2 = param("res2")) != null) {
-			if (! is_array($res2))
-				throw new MyException(E_SERVER, "res2 should be an array: `$res2`");
-			foreach ($res2 as $e)
-				$this->filterRes($e);
+		# support internal param res2/join/cond2, 内部使用, 必须用dbExpr()包装一下.
+		if (($v = param("res2")) != null) {
+			if (! $v instanceof DbExpr)
+				throw new MyException(E_SERVER, "res2 should be DbExpr");
+			$this->filterRes($v->val);
 		}
-		if (($join=param("join")) != null) {
-			$this->addJoin($join);
+		if (($v = param("join")) != null) {
+			if (! $v instanceof DbExpr)
+				throw new MyException(E_SERVER, "res2 should be DbExpr");
+			$this->addJoin($v->val);
 		}
-		if (($cond2 = param("cond2", null, null, false)) != null) {
-			if (! is_array($cond2))
-				throw new MyException(E_SERVER, "cond2 should be an array: `$cond2`");
-			foreach ($cond2 as $e)
-				$this->addCond($e);
+		if (($v = param("cond2", null, null, false)) != null) {
+			if (! $v instanceof DbExpr)
+				throw new MyException(E_SERVER, "cond2 should be DbExpr");
+			$this->addCond($v->val);
 		}
-		if (($subobj = param("subobj")) != null) {
-			if (! is_array($subobj))
-				throw new MyException(E_SERVER, "subobj should be an array");
-			$this->sqlConf["subobj"] = $subobj;
+		if (($v = param("subobj")) != null) {
+			if (! $v instanceof DbExpr)
+				throw new MyException(E_SERVER, "subobj should be DbExpr");
+			$this->sqlConf["subobj"][] = $v->val;
 		}
 
 		$this->onQuery();
@@ -1922,11 +1926,11 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 
 		$res = param("res");
 		if (isset($res)) {
-			$acObj = AccessControl::create($this->table, "get");
-			$ret = $acObj->callSvc($this->table, "get", ["id"=>$this->id, "res"=>$res]);
+			$ret = $this->callSvc(null, "get", ["id"=>$this->id, "res"=>$res]);
 		}
-		else
+		else {
 			$ret = $this->id;
+		}
 		return $ret;
 	}
 
