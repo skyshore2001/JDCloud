@@ -2321,13 +2321,8 @@ function setFormData(jo, data, opt)
 			return;
 		var isInput = ji.is(":input");
 		if (content === undefined) {
-			if (isInput) {
-				if (ji[0].tagName === "TEXTAREA")
-					content = ji.html();
-				else
-					content = ji.attr("value");
-				if (content === undefined)
-					content = "";
+			if (isInput && ji[0].tagName === "INPUT") {
+				content = ji.attr("value");
 			}
 			else {
 				content = "";
