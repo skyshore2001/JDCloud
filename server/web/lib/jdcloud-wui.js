@@ -6474,13 +6474,13 @@ function getExportHandler(jtbl, ac, param)
 		fmt: "excel",
 		pagesz: -1
 	}, param);
-	if (ac == null) {
-		setTimeout(function () {
-			ac = jtbl.datagrid("options").url;
-		});
-	}
 
 	return function () {
+		if (ac == null) {
+			if (jtbl.size() == 0 || !jtbl.hasClass("datagrid-f"))
+				throw "error: bad datagrid: \"" + jtbl.selector + "\"";
+			ac = jtbl.datagrid("options").url;
+		}
 		var p1 = getQueryParamFromTable(jtbl, param);
 		var debugShow = false;
 		if (m_batchMode) {
