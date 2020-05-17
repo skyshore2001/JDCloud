@@ -407,7 +407,8 @@ function imgToHidden(jp, sep)
 			$.each(files, function (i, e) {
 				fd.append('file' + (i+1), e);
 			});
-			dfd = callSvr('upload', function (data) {
+			var params = {autoResize: 0};
+			dfd = callSvr('upload', params, function (data) {
 				$.each(data, function (i, e) {
 					var att = e.id;
 					if (opt.fname) {
