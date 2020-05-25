@@ -177,6 +177,20 @@ HTML: 在data-options中指定菜单的ID和显示文字。缺省头像将添加
 		<p class="hint">要求格式m4a,mp3,wav; 采样率为16000</p>
 	</td>
 
+## 压缩参数
+
+@param opt.maxSize?=1280 指定压缩后图片的最大长或宽
+@param opt.quality?=0.8 指定压缩质量, 一般不用修改.
+
+示例：默认1280像素不够, 增加到2000像素:
+
+	<tr>
+		<td>图片</td>
+		<td class="wui-upload" data-options="maxSize:2000">
+			<input name="pics">
+		</td>
+	</tr>
+
  */
 self.m_enhanceFn[".wui-upload"] = enhanceUpload;
 
@@ -468,6 +482,7 @@ function onChooseFile(ev)
 
 	$.each(picFiles, function (i, fileObj) {
 		if (compress) {
+			var compressOpt = {quality: opt.quality||0.8, maxSize: opt.maxSize||1280};
 			WUI.compressImg(fileObj, function (picData) {
 				var jimg;
 				if (! opt.multiple) {
@@ -482,7 +497,7 @@ function onChooseFile(ev)
 				jimg.attr("src", picData.b64src)
 					.prop("picData_", picData);
 				addNewItem(jimg);
-			});
+			}, compressOpt);
 		}
 		else {
 			var windowURL = window.URL || window.webkitURL;
