@@ -754,7 +754,7 @@ function getClientVersion()
 /**
 @fn tmCols($fieldName = "t0.tm")
 
-为查询添加时间维度单位: y,m,w,d,wd,h (年，月，周，日，周几，时)。
+为查询添加时间维度单位: y,q,m,w,d,wd,h (年，季度，月，周，日，周几，时)。
 
 - wd: 1-7表示周一到周日
 - w: 一年中第一周，从该年第一个周一开始(mysql week函数模式7).
