@@ -756,6 +756,35 @@ function varr2objarr($varr, $headerLine)
 	return $ret;
 }
 
+/**
+@fn list2varr(ls, colSep=':', rowSep=',')
+
+- ls: 代表二维表的字符串，有行列分隔符。
+- colSep, rowSep: 列分隔符，行分隔符。
+
+将字符串代表的压缩表("v1:v2:v3,...")转成值数组。
+
+e.g.
+
+	$users = "101:andy,102:beddy";
+	$varr = list2varr($users);
+	// $varr = [["101", "andy"], ["102", "beddy"]];
+	
+	$cmts = "101\thello\n102\tgood";
+	$varr = list2varr($cmts, "\t", "\n");
+	// $varr=[["101", "hello"], ["102", "good"]]
+ */
+function list2varr($ls, $colSep=':', $rowSep=',')
+{
+	$ret = [];
+	foreach(explode($rowSep, $ls) as $e) {
+		$e = trim($e);
+		if (!$e)
+			continue;
+		$ret[] = explode($colSep, $e);
+	}
+	return $ret;
+}
 //}}}
 
 // ==== database {{{

@@ -1485,13 +1485,14 @@ function callSvcInt($ac, $param=null, $postParam=null)
 function tmpEnv($param, $postParam, $fn)
 {
 	$bak = [$_GET, $_POST, $_REQUEST];
-	if ($param) {
+	if ($param !== null) {
 		$_GET = $param;
 	}
-	if ($postParam) {
+	if ($postParam !== null) {
 		$_POST = $postParam;
 	}
-	$_REQUEST = $_GET + $_REQUEST;
+	assert(is_array($_GET) && is_array($_POST));
+	$_REQUEST = $_GET + $_POST;
 
 	$ret = null;
 	$ex = null;
