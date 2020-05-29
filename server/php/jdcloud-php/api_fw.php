@@ -12,6 +12,56 @@ error_reporting(E_ALL & ~E_NOTICE);
 - 函数型接口，如 "login", "getToken"等, 一般实现在 api_functions.php中。
 - 对象型接口，如 "Ordr.query", "User.get" 等，一般实现在 api_objects.php中。
 
+关于参数传递，除add/set等接口有特殊要求外（添加或修改的字段必须用POST传递），
+一般用GET或POST传递参数均可。使用POST传参时，Content-Type支持 application/x-www-form-urlencoded , application/form-data , application/json。
+
+示例：接口定义`fn(a, b) -> {id}`，可以这样调用：
+
+	GET /api.php/fn?a=1&b=2
+
+返回示例：`[0, {"id":1}]`
+
+或用POST传参：
+
+	POST /api.php/fn
+	Content-Type: application/x-www-form-urlencoded
+
+	a=1&b=2
+
+或
+
+	POST /api.php/fn
+	Content-Type: application/json
+
+	{"a":1,"b":2}
+
+甚至混用GET/POST传参：
+
+	POST /api.php/fn?a=1
+	Content-Type: application/x-www-form-urlencoded
+
+	b=2
+
+如果使用筋斗云前端JS，可以调用：
+
+	callSvr("fn", {a:1, b:2}); // 用GET传参
+
+	callSvr("fn", $.noop, {a:1, b:2}); // 用POST传参. $.noop是jQuery定义的空函数，这里只用于占位，表示空的回调函数。
+
+	callSvr("fn", $.noop, JSON.stringify({a:1, b:2}), {
+		contentType: "application/json"
+	}); // 用POST传参, json格式
+
+	callSvr("fn", {a:1}, $.noop, {b:2}); // 用GET,POST混合传参
+
+GET或POST传参时，编码默认使用UTF-8。
+POST传参时支持其它编码，应在Content-Type中显示指定，如下面指定编码为`charset=gbk`：
+
+	POST /api.php/fn
+	Content-Type: application/x-www-form-urlencoded; charset=gbk
+
+	a=参数1&b=参数2
+	
 ## 函数型接口
 
 假设在文档有定义以下接口
@@ -365,6 +415,21 @@ global $X_RET_STR;
 */
 global $X_RET_FN;
 
+/**
+@var $X_APP
+
+可以在应用结束前添加逻辑，如：
+
+	$GLOBALS["X_APP"]->onAfterActions[] = function () {
+		httpCall("http://oliveche.com/echo.php");
+	};
+
+注意：
+此处应用输出已完成，不可再输出或抛出异常，否则将导致返回内容错乱。
+之前的数据库事务已提交，如果再操作数据库，与之前操作不在同一事务中。
+*/
+global $X_APP;
+
 const PAGE_SZ_LIMIT = 10000;
 // }}}
 
@@ -414,15 +479,26 @@ function setRet($code, $data = null, $internalMsg = null)
 	global $ERRINFO;
 	global $X_RET;
 
-	if ($code && !$data) {
-		assert(array_key_exists($code, $ERRINFO));
-		$data = $ERRINFO[$code];
+	if (!isset($data)) {
+		if ($code) {
+			assert(array_key_exists($code, $ERRINFO));
+			$data = $ERRINFO[$code];
+		}
+		else {
+			$data = "OK";
+		}
 	}
 	$X_RET = [$code, $data];
 
 	if (isset($internalMsg))
 		$X_RET[] = $internalMsg;
 
+	$debugLog = getenv("P_DEBUG_LOG") ?: 0;
+	if ($debugLog == 1 || ($debugLog == 2 && $X_RET[0] != 0)) {
+		$ac = $GLOBALS["X_APP"]? $GLOBALS["X_APP"]->getAc(): 'unknown';
+		$s = 'ac=' . $ac . ', apiLogId=' . ApiLog::$lastId . ', ret=' . jsonEncode($X_RET) . ", dbgInfo=" . jsonEncode($GLOBALS["g_dbgInfo"], true);
+		logit($s, true, 'debug');
+	}
 	if ($TEST_MODE) {
 		global $g_dbgInfo;
 		if (count($g_dbgInfo) > 0)
@@ -449,13 +525,66 @@ function setRet($code, $data = null, $internalMsg = null)
 		else {
 			$X_RET_STR = "[" . $code . ", " . $X_RET_STR . "]";
 		}
-		echo $X_RET_STR . "\n";
+		echoRet();
 	}
 	else {
 		$errfn = $GLOBALS["errorFn"] ?: "errQuit";
 		if ($code != 0) {
 			$errfn($X_RET[0], $X_RET[1], $X_RET[2]);
 		}
+	}
+}
+
+/**
+@var _jsonp 用于支持jsonp返回格式的URL参数
+
+示例：
+
+	http://localhost/p/jdcloud/api.php/Ordr/10?_jsonp=api_OrdrGet
+	返回
+
+	api_OrdrGet([
+		0, {"id":10,...}
+	]);
+
+	http://localhost/p/jdcloud/api.php/Ordr/10?_jsonp=api_order%3d
+	返回
+
+	api_order=[
+		0, {"id":10,...}
+	];
+
+JS示例：
+
+	<script>
+	function api_OrdrGet(order)
+	{
+		console.log(order);
+	}
+	</script>
+	<script src="http://localhost/p/jdcloud/api.php/Ordr/10?_jsonp=api_OrdrGet"></script>
+
+JS示例：
+
+	<script src="http://localhost/p/jdcloud/api.php/Ordr/10?_jsonp=api_order%3d"></script>
+	<script>
+	console.log(api_order);
+	</script>
+*/
+function echoRet()
+{
+	global $X_RET_STR;
+	$jsonp = $_GET["_jsonp"];
+	if ($jsonp) {
+		if (substr($jsonp,-1) === '=') {
+			echo $jsonp . $X_RET_STR . ";\n";
+		}
+		else {
+			echo $jsonp . "(" . $X_RET_STR . ");\n";
+		}
+	}
+	else {
+		echo $X_RET_STR . "\n";
 	}
 }
 
@@ -478,9 +607,9 @@ function setServerRev()
 }
 
 /**
-@fn hasPerm($perm)
+@fn hasPerm($perms, $exPerms=null)
 
-检查权限。perm可以是单个权限或多个权限，例：
+检查权限。perms可以是单个权限或多个权限，例：
 
 	hasPerm(AUTH_USER); // 用户登录后可用
 	hasPerm(AUTH_USER | AUTH_EMP); // 用户或员工登录后可用
@@ -489,18 +618,60 @@ function setServerRev()
 
 开发者需要定义该函数，用于返回所有检测到的权限。hasPerm函数依赖该函数。
 
+(v5.4) exPerms用于扩展验证, 是一个权限名数组, 示例:
+
+	hasPerm(AUTH_LOGIN, ["simple"]);
+
+它表示AUTH_LOGIN检查失败后, 将再调用`hasPerm_simple()`进行检查. 支持以下权限名:
+
+**[simple]**
+
+通过HTTP头`X-Daca-Simple`传递密码, 与环境变量`simplePwd`进行比较. 
+示例: upload接口允许simple验证.
+
+	function api_upload() {
+		checkAuth(AUTH_LOGIN, ["simple"]);
+		...
+	}
+
+然后在conf.user.php中配置:
+
+	putenv("simplePwd=helloworldsimple");
+
+用curl访问该接口示例:
+
+	curl -s -F "file=@1.jpg" "http://localhost/jdcloud/api/upload?autoResize=0" -H "X-Daca-Simple: helloworldsimple"
+
+@see hasPerm_simple
 @see checkAuth
  */
-function hasPerm($perm)
+function hasPerm($perms, $exPerms=null)
 {
 	if (is_null(ApiFw_::$perms))
 		ApiFw_::$perms = onGetPerms();
 
-	return (ApiFw_::$perms & $perm) != 0;
+	if ( (ApiFw_::$perms & $perms) != 0 )
+		return true;
+
+	if (is_array($exPerms)) {
+		foreach ($exPerms as $name) {
+			$fn = "hasPerm_" . $name; // e.g. hasPerm_simple
+			if (function_exists($fn) && $fn())
+				return true;
+		}
+	}
+	return false;
+}
+
+function hasPerm_simple()
+{
+	@$pwd = $_SERVER["HTTP_X_DACA_SIMPLE"];
+	@$pwd1 = getenv("simplePwd");
+	return $pwd && $pwd1 && $pwd === $pwd1;
 }
 
 /** 
-@fn checkAuth($perm)
+@fn checkAuth($perms)
 
 用法与hasPerm类似，检查权限，如果不正确，则抛出错误，返回错误对象。
 
@@ -509,9 +680,9 @@ function hasPerm($perm)
 
 @see hasPerm
  */
-function checkAuth($perm)
+function checkAuth($perms, $exPerms=null)
 {
-	$ok = hasPerm($perm);
+	$ok = hasPerm($perms, $exPerms);
 	if (!$ok) {
 		$auth = [];
 		// TODO: AUTH_LOGIN
@@ -521,11 +692,16 @@ function checkAuth($perm)
 			$errCode = E_NOAUTH;
 
 		foreach ($GLOBALS["PERMS"] as $p=>$name) {
-			if (($perm & $p) != 0) {
+			if (($perms & $p) != 0) {
 				$auth[] = $name;
 			}
 		}
-		throw new MyException($errCode, "require auth to " . join(" or ", $auth));
+		if (is_array($exPerms)) {
+			foreach ($exPerms as $name) {
+				$auth[] = $name;
+			}
+		}
+		throw new MyException($errCode, "require auth to " . join("/", $auth));
 	}
 }
 
@@ -578,7 +754,7 @@ function getClientVersion()
 /**
 @fn tmCols($fieldName = "t0.tm")
 
-为查询添加时间维度单位: y,m,w,d,wd,h (年，月，周，日，周几，时)。
+为查询添加时间维度单位: y,q,m,w,d,wd,h (年，季度，月，周，日，周几，时)。
 
 - wd: 1-7表示周一到周日
 - w: 一年中第一周，从该年第一个周一开始(mysql week函数模式7).
@@ -592,7 +768,7 @@ function getClientVersion()
  */
 function tmCols($fieldName = "t0.tm")
 {
-	return ["year({$fieldName}) y", "month({$fieldName}) m", "week({$fieldName},7) w", "day({$fieldName}) d", "weekday({$fieldName})+1 wd", "hour({$fieldName}) h"];
+	return ["year({$fieldName}) y", "quarter({$fieldName}) q", "month({$fieldName}) m", "week({$fieldName},7) w", "day({$fieldName}) d", "weekday({$fieldName})+1 wd", "hour({$fieldName}) h"];
 }
 // }}}
 
@@ -616,6 +792,20 @@ $BASE_DIR/conf.php中包含Conf类，用于定义易变的临时逻辑，例如�
 class ConfBase
 {
 /**
+@var ConfBase::$enableAutoSession?=true
+
+默认为请求创建session，请求结束时，如果session是空则会删除掉.
+将enableAutoSession设置为false，则在需要读写session之前需要手工调用
+
+	session_start();
+
+这样便于手工控制session的启停(与php默认处理一致)。
+
+如果php选项session.auto_start=1，则此选项无效。
+ */
+	static $enableAutoSession = true;
+
+/**
 @var ConfBase::$enableApiLog?=true
 
 设置为false可关闭ApiLog. 例：
@@ -623,6 +813,15 @@ class ConfBase
 	static $enableApiLog = false;
  */
 	static $enableApiLog = true;
+
+/**
+@var ConfBase::$enableObjLog?=true
+
+设置为false可关闭ObjLog. 例：
+
+	static $enableObjLog = false;
+ */
+	static $enableObjLog = true;
 
 /**
 @fn ConfBase::onApiInit()
@@ -648,6 +847,29 @@ class ConfBase
 		}
 	}
 
+	class AC_DMS extends AccessControl
+	{
+		function onInit() {
+			Partner::checkAuth();
+		}
+		// DFIS-BK_S001
+		function api_workGroup() {
+		}
+	}
+
+例：第三方要求回调 {BASE_URL}/notify/orderStatus 这样的URL，但框架默认不支持，可以在onApiInit中转换：
+
+	static function onApiInit(&$ac)
+	{
+		if ($ac == "notify/orderStatus") {
+			$ac = "Notify.orderStatus";
+		}
+	}
+
+	class AC_Notify extends AccessControl
+	{ ... }
+
+注意：框架默认支持`Notify/orderStatus`这样的URL（对象名Notify必须首字母大写），它可自动转成Notify.orderStatus。
  */
 	static function onApiInit(&$ac)
 	{
@@ -669,8 +891,48 @@ class ConfBase
 		$app = mparam('app');
 		$ret['appName'] = 'my-app';
 	}
+
+(v5.4) 此外，在全局配置`P_initClient`数据中的量将自动设置到ret中，它用于后端控制前端配置，如：
+
+	// 配置在conf.user.php中：
+	$GLOBALS["P_initClient"] = [
+		"enableWeixinLogin" => true, // 自动微信登录
+		"enableAppReviewMode" => true // APP审核定制
+	];
+	
  */
 	static function onInitClient(&$ret)
+	{
+	}
+
+/**
+@fn ConfBase::checkSecure($ac)
+
+@var ConfBase::enableSecure ?=false
+
+安全检查。一般用于检测可疑调用并记录日志，以及管理黑白IP名单。默认值为false。
+
+checkSecure函数返回false则不处理该调用，并将请求加入黑名单，且返回`[5, "OK"]`. 
+黑名单可查看文件blackip.txt。
+(5为E_FORBIDDEN，返回"OK"是为了不让攻击者获得准确的出错信息)。
+
+示例：如果不是前端H5中的ajax调用，且没有cookie信息，则记录该事件到 secure.log 中，人工分析后可添加黑名单。
+
+	static function checkSecure($ac)
+	{
+		if (! (isset($_SERVER["HTTP_REFERER"]) && isset($_SERVER["HTTP_X_REQUESTED_WITH"]) && isset($_SERVER["HTTP_COOKIE"])) ) {
+			$log = @sprintf("secure check: ac=$ac, ses=%s, ApiLog.id=%s", session_id(), ApiLog::$lastId);
+			logit($log, true, "secure");
+			// BlackList::add(getRealIp(), "no referer");
+			// return false; // false表示本次调用直接返回。
+		}
+	}
+
+@see BlackList
+*/
+
+	static $enableSecure = false;
+	static function checkSecure($ac)
 	{
 	}
 }
@@ -683,6 +945,7 @@ class ApiLog
 
 	// for batch detail (ApiLog1)
 	private $ac1, $req1, $startTm1;
+	public $batchAc; // new ac for batch
 
 /**
 @var ApiLog::$lastId
@@ -690,6 +953,15 @@ class ApiLog
 取当前调用的ApiLog编号。
 */
 	static $lastId;
+/**
+@var ApiLog::$instance
+
+e.g. 修改ApiLog的ac:
+
+	ApiLog::$instance->batchAc = "async:$f";
+
+*/
+	static $instance;
 
 	function __construct($ac) 
 	{
@@ -720,10 +992,10 @@ class ApiLog
 				$s .= "$k=...";
 				break;
 			}
-			if ($k == "pwd" || $k == "oldpwd") {
+/*			if ($k == "pwd" || $k == "oldpwd") {
 				$v = "?";
 			}
-			else if (! is_scalar($v)) {
+*/			else if (! is_scalar($v)) {
 				$v = "obj:" . json_encode($v, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 			}
 			if ($len == 0) {
@@ -765,7 +1037,11 @@ class ApiLog
 		}
 		if ($content2 != "")
 			$content .= ";\n" . $content2;
-		$remoteAddr = @$_SERVER['REMOTE_ADDR'] ?: 'unknown';
+		$remoteAddr = getReqIp();
+		if (strlen($remoteAddr>50)) { // 太长则保留头和尾
+			$remoteAddr = preg_replace('/,.+,/', ',,', $remoteAddr);
+		}
+		
 		$reqsz = strlen($_SERVER["REQUEST_URI"]) + (@$_SERVER["HTTP_CONTENT_LENGTH"]?:$_SERVER["CONTENT_LENGTH"]?:0);
 		$ua = $_SERVER["HTTP_USER_AGENT"];
 		$ver = getClientVersion();
@@ -780,12 +1056,13 @@ class ApiLog
 			"ses" => session_id(),
 			"userId" => $userId,
 			"ac" => $this->ac,
-			"req" => $content,
+			"req" => dbExpr(Q($content)),
 			"reqsz" => $reqsz,
 			"ver" => $ver["str"],
 			"serverRev" => $GLOBALS["SERVER_REV"]
 		]);
 		self::$lastId = $this->id;
+		self::$instance = $this;
 // 		$logStr = "=== [" . date("Y-m-d H:i:s") . "] id={$this->logId} from=$remoteAddr ses=" . session_id() . " app=$APP user=$userId ac=$ac >>>$content<<<\n";
 	}
 
@@ -799,7 +1076,8 @@ class ApiLog
 		$iv = sprintf("%.0f", (microtime(true) - $this->startTm) * 1000); // ms
 		if ($X_RET_STR == null)
 			$X_RET_STR = json_encode($X_RET, $GLOBALS["JSON_FLAG"]);
-		$content = $this->myVarExport($X_RET_STR);
+		$logLen = $X_RET[0] !== 0? 2000: 200;
+		$content = $this->myVarExport($X_RET_STR, $logLen);
 
 		$userId = null;
 		if ($this->ac == 'login' && is_array($X_RET[1]) && @$X_RET[1]['id']) {
@@ -810,8 +1088,9 @@ class ApiLog
 			"t" => $iv,
 			"retval" => $X_RET[0],
 			"ressz" => strlen($X_RET_STR),
-			"res" => $content,
-			"userId" => $userId
+			"res" => dbExpr(Q($content)),
+			"userId" => $userId,
+			"ac" => $this->batchAc // 默认为null；对batch调用则列出详情
 		], $this->id);
 // 		$logStr = "=== id={$this->logId} t={$iv} >>>$content<<<\n";
 	}
@@ -834,26 +1113,59 @@ class ApiLog
 			return;
 		$iv = sprintf("%.0f", (microtime(true) - $this->startTm1) * 1000); // ms
 		$res = json_encode($X_RET, $GLOBALS["JSON_FLAG"]);
-		$content = $this->myVarExport($res);
+		$logLen = $X_RET[0] !== 0? 2000: 200;
+		$content = $this->myVarExport($res, $logLen);
 
 		++ $DBH->skipLogCnt;
-		dbInsert("ApiLog1", [
+		$apiLog1Id = dbInsert("ApiLog1", [
 			"apiLogId" => $this->id,
 			"ac" => $this->ac1,
 			"t" => $iv,
 			"retval" => $X_RET[0],
-			"req" => $this->req1,
-			"res" => $content
+			"req" => dbExpr(Q($this->req1)),
+			"res" => dbExpr(Q($content))
+		]);
+		if (Conf::$enableObjLog && self::$objLogId) {
+			dbUpdate("ObjLog", ["apiLog1Id" => $apiLog1Id], self::$objLogId);
+			self::$objLogId = null;
+		}
+	}
+
+/**
+@fn ApiLog::addObjLog($obj, $objId, $dscr)
+
+添加对象日志ObjLog。默认系统会记录标准add/set/del等日志到ObjLog，非标准方法若需要手工添加日志可调用此方法。
+示例：在Ordr.cancel接口中记录日志
+
+	class AC1_Ordr {
+		function api_cancel() {
+			...
+			ApiLog::addObjLog("Ordr", 99, "取消订单");
+		}
+	}
+
+*/
+	static $objLogId;
+	static function addObjLog($obj, $objId, $dscr) {
+		if (!Conf::$enableObjLog)
+			return;
+		// TODO: 1. dscr includes obj, app and username like "管理员张某添加员工10"; 2. override dscr
+		self::$objLogId = dbInsert("ObjLog", [
+			"obj" => $obj,
+			"objId" => $objId,
+			"dscr" => $dscr,
+			"apiLogId" => ApiLog::$lastId
 		]);
 	}
 }
 
 /*
+(v5.3) 已废弃不使用。
+
 	1. 只对同一session的API调用进行监控; 只对成功的调用监控
 	2. 相邻两次调用时间<0.5s, 记一次不良记录(bad). 当bad数超过50次(CNT1)时报错，记一次历史不良记录；此后bad每超过2次(CNT2)，报错一次。
 	之所以不是每次都报错，是考虑正常程序也可能一次发多个请求。
 	3. 回归测试模式下不监控。
- */
 class ApiWatch
 {
 	private $CNT1 = 50;
@@ -900,6 +1212,7 @@ class ApiWatch
 		$_SESSION["lastAccess"] = microtime(true);
 	}
 }
+ */
 
 trait MapCol
 {
@@ -1027,6 +1340,8 @@ $file为插件主文件，可返回一个插件配置。如果未指定，则自
 /**
 @fn tableCRUD($ac, $tbl, $asAdmin?=false)
 
+(v5.4)本函数仅做兼容使用，请用`callSvcInt`或`AccessControl::callSvc`方法替代。
+
 对象型接口的入口。
 也可直接被调用，常与setParam一起使用, 提供一些定制的操作。
 
@@ -1062,7 +1377,23 @@ $file为插件主文件，可返回一个插件配置。如果未指定，则自
 	}
 
 注意：
-- 以上示例中的设计不可取，应使用标准对象接口来实现这个需求。
+一般应直接使用标准对象接口来实现需求，有时可能出于特别需要，不方便暴露标准接口，可以对标准接口进行了包装，定死一些参数。
+v5.4后建议这样实现：
+
+	function api_queryRating()
+	{
+		$storeId = mparam("storeId");
+
+		// 或用callSvcInt
+		$acObj = new AccessControl(); // 或 AC2_Rating，根据需要创建指定的类
+		$ret = $acObj->callSvc("Rating", "query", [
+			// 定死输出内容。
+			"res" => "id, score, dscr, tm, orderDscr",
+			"cond2" => ["storeId=$storeId"],
+			"orderby" => "tm DESC"
+		]);
+		return $ret;
+	}
 
 @see setParam
 @see callSvcInt
@@ -1071,21 +1402,18 @@ $file为插件主文件，可返回一个插件配置。如果未指定，则自
 
 function tableCRUD($ac1, $tbl, $asAdmin = false)
 {
-	$accessCtl = AccessControl::create($tbl, $ac1, $asAdmin);
-	$fn = "api_" . $ac1;
-	//if (! method_exists($accessCtl, $fn))
-	if (! is_callable([$accessCtl, $fn]))
-		throw new MyException(E_PARAM, "Bad request - unknown `$tbl` method: `$ac1`", "接口不支持");
-	$accessCtl->before();
-	$ret = $accessCtl->$fn();
-	$accessCtl->after($ret);
-	return $ret;
+	$acObj = AccessControl::create($tbl, $ac1, $asAdmin);
+	return $acObj->callSvc($tbl, $ac1);
 }
 
 /**
-@fn callSvcInt($ac)
+@fn callSvcInt($ac, $param=null, $postParam=null)
 
-内部调用另一接口，获得返回值。如果要设置GET, POST参数，分别用
+内部调用另一接口，获得返回值。
+如果指定了$param或$postParam参数，则会备份现有环境，并在调用后恢复。
+否则直接使用现有环境。
+
+如果想手工逐项设置GET, POST参数，可分别用
 
 	setParam(key, value); // 设置get参数
 	// 或批量设置用 setParam({key => value});
@@ -1094,17 +1422,42 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 与callSvc不同的是，它不处理事务、不写ApiLog，不输出数据，更轻量；
 与tableCRUD不同的是，它支持函数型调用。
 
+示例：
+
+	$vendorId = callSvcInt("Vendor.add", null, [
+		"name" => $params["vendorName"],
+		"tel" => $params["vendorPhone"]
+	]);
+
+(v5.4) 上面例子会自动根据当前用户角色来选择AC类，还可以直接指定使用哪个AC类来调用，如：
+
+	$acObj = new AC2_Vendor();
+	$vendorId = $acObj->callSvc("Vendor", "query", [
+		"name" => $params["vendorName"],
+		"tel" => $params["vendorPhone"]
+	]);
+
+注意请自行确保AC类对当前角色兼容性，如用户角色调用了管理员的AC类，就可能出问题。
+
 @see setParam
-@see tableCRUD
+@see tableCRUD (obsolete)
 @see callSvc
+@see AccessControl::callSvc
 */
-function callSvcInt($ac)
+function callSvcInt($ac, $param=null, $postParam=null)
 {
+	if ($param || $postParam) {
+		return tmpEnv($param, $postParam, function () use ($ac) {
+			return callSvcInt($ac);
+		});
+	}
+
 	$fn = "api_$ac";
-	if (preg_match('/^([A-Z]\w*)\.([a-z]\w*)$/', $ac, $ms)) {
+	if (preg_match('/^([A-Z]\w*)\.([a-z]\w*)$/u', $ac, $ms)) {
 		list($tmp, $tbl, $ac1) = $ms;
 		// TODO: check meta
-		$ret = tableCRUD($ac1, $tbl);
+		$acObj = AccessControl::create($tbl, $ac1);
+		$ret = $acObj->callSvc($tbl, $ac1);
 	}
 	elseif (function_exists($fn)) {
 		$ret = $fn();
@@ -1114,6 +1467,45 @@ function callSvcInt($ac)
 	}
 	if (!isset($ret))
 		$ret = "OK";
+	return $ret;
+}
+
+/**
+@fn tmpEnv($param, $postParam, $fn)
+
+(v5.4) 在指定的GET/POST参数下执行fn函数，执行完后恢复初始环境。
+示例：
+
+	$param = ["cond" => "createTm>'2019-1-1'];
+	$ret = tmpEnv($param, null, function () {
+		return callSvcInt("User.query");
+	});
+
+*/
+function tmpEnv($param, $postParam, $fn)
+{
+	$bak = [$_GET, $_POST, $_REQUEST];
+	if ($param !== null) {
+		$_GET = $param;
+	}
+	if ($postParam !== null) {
+		$_POST = $postParam;
+	}
+	assert(is_array($_GET) && is_array($_POST));
+	$_REQUEST = $_GET + $_POST;
+
+	$ret = null;
+	$ex = null;
+	try {
+		$ret = $fn();
+	}
+	catch (Exception $ex1) {
+		$ex = $ex1;
+	}
+	// restore env
+	list($_GET, $_POST, $_REQUEST) = $bak;
+	if ($ex)
+		throw $ex;
 	return $ret;
 }
 
@@ -1136,6 +1528,11 @@ function api_initClient()
 		$keys = ["js"];
 		foreach (Plugins::$map as $p=>$cfg) {
 			$ret['plugins'][$p] = filter_hash($cfg, $keys);
+		}
+	}
+	if (is_array($GLOBALS["P_initClient"])) {
+		foreach ($GLOBALS["P_initClient"] as $k=>$v) {
+			$ret[$k] = $v;
 		}
 	}
 	Conf::onInitClient($ret);
@@ -1170,36 +1567,13 @@ function getHttpInput()
 }
 
 /**
-@fn inWhiteIpList()
-
-检查调用者是否在IP白名单中。配置项为whiteIpList。
-
-@see whiteIpList
-@see api_checkIp
-*/
-function inWhiteIpList()
-{
-	$list = getenv("whiteIpList") ?: "127.0.0.1";
-	$ips = [$_SERVER["REMOTE_ADDR"], $_SERVER["HTTP_REMOTEIP"] ] + explode(',', $_SERVER["HTTP_X_FORWARDED_FOR"]);
-	foreach ($ips as $ip) {
-		$ip = trim($ip);
-		// addLog($ip);
-		if (!$ip)
-			continue;
-		if (stripos($list, $ip) !== false)
-			return true;
-	}
-	return false;
-}
-
-/**
 @fn api_checkIp()
 
-@key whiteIpList 白名单配置，默认值为"127.0.0.1"
+@key whiteIpList 白名单配置.
 
 可在conf.user.php中设置whiteIpList，如
 
-	putenv("whiteIpList=115.238.59.110 127.0.0.1 ::1");
+	putenv("whiteIpList=115.238.59.110");
 
 要验证调用者是否在IP白名单中，不是白名单调用将直接抛错，可以调用
 
@@ -1209,17 +1583,110 @@ function inWhiteIpList()
 
 	callSvr("checkIp");
 
-@see inWhiteIpList
+@see BlackList
 */
 function api_checkIp()
 {
-	if (inWhiteIpList())
+	if (BlackList::isWhiteReq())
 		return;
-	$log = @sprintf("*** unauthorized call: ip is NOT in white list. ApiLog.id=%s, REMOTE_ADDR=%s, HTTP_REMOTEIP=%s, HTTP_X_FORWARDED_FOR=%s.", 
-		ApiLog::$lastId, 
-		$_SERVER["REMOTE_ADDR"], $_SERVER["HTTP_REMOTEIP"], $_SERVER["HTTP_X_FORWARDED_FOR"]);
+	$log = @sprintf("*** unauthorized call: ip is NOT in white list. ApiLog.id=%s", ApiLog::$lastId);
 	logit($log);
 	throw new MyException(E_PARAM, "ip is NOT in white list", "IP不在白名单");
+}
+
+/**
+@fn injectSession($userId, $appType, $fn, $days=3)
+
+对别人的session进行操作，比如删除，修改参数等。
+$fn为对session的操作，当设置为false时，表示删除session.
+
+基于ApiLog查找指定用户的session, 默认找3天(参数days)内该用户的最近一次session（且该session此后未被别的用户使用）. 
+操作将记录在日志trace.log中。
+
+示例：当管理员的权限字段(perms)被修改后，直接修改该用户的session令其立刻生效。
+(注意：此机制仅优化常见场景，但并不可靠）
+
+	class AC0_Employee {
+		protected function onValidate() {
+			if ($this->ac == "set" && issetval("perms?")) {  // "perms?"以问号结尾表示传入空串也算设置了，这时set接口将置空该字段。
+				$params = $_POST; // 注意：闭包不可直接use $_POST，否则得到null值
+				injectSession($this->id, "emp", function () use ($params) {
+					$_SESSION["perms"] = $params["perms"];
+					// $_SESSION["adminFlag"] = param("adminFlag/i", 0, $params); // 注意字段类型要正确，可用param函数。
+				});
+			}
+		}
+	}
+
+@see delSession
+*/
+function injectSession($userId, $appType, $fn, $days=3)
+{
+	$name = $fn === false? "delSession": "injectSession";
+	if (! Conf::$enableApiLog) {
+		logit("warn: ignore $name as Conf::\$enableApiLog=false");
+		return false;
+	}
+	addLog("$name(userId=$userId,appType=$appType)");
+	$tm = date(FMT_D, time() - $days * T_DAY);
+	$curSessionId = session_id();
+	// 目前允许将自己删除
+	// $sql = sprintf("SELECT distinct ses FROM ApiLog WHERE tm>='$tm' AND userId=%d AND app LIKE %s AND ses<>'%s'", $userId, Q("$appType%"), $curSessionId);
+	$sql = sprintf("SELECT ses, tm FROM ApiLog WHERE tm>='$tm' AND userId=%d AND app LIKE %s ORDER BY tm DESC LIMIT 1", $userId, Q("$appType%"));
+	$rv1 = queryAll($sql);
+	$rv = array_filter($rv1, function ($e) use ($userId) {
+		// 确保session没有被其它共用
+		$sql = sprintf("SELECT 1 FROM ApiLog WHERE tm>='%s' AND ses='%s' AND userId<>%d", $e[1], $e[0], $userId);
+		return queryOne($sql) === false;
+	});
+
+	if (count($rv) > 0) {
+		logit("$name(userId=$userId, appType=$appType, days=$days): " . count($rv) . " sessions");
+		$GLOBALS["X_APP"]->onAfterActions[] = function () use ($rv, $curSessionId, $fn) {
+			if (session_status() == PHP_SESSION_ACTIVE) // 0: disabled, 1: none(before session_start), 2: active
+				session_write_close();
+
+			foreach ($rv as $e) {
+				session_id($e[0]);
+				// TODO: 检查session不存在时应不做操作
+				session_start();
+				if ($fn === false || count($_SESSION) == 0) {
+					session_destroy();
+				}
+				else {
+					$fn();
+					session_write_close();
+				}
+			}
+
+			// restore current session id
+			session_id($curSessionId);
+			session_start();
+			session_write_close();
+		};
+	}
+}
+
+/**
+@fn delSession($userId, $appType, $days=3)
+
+删除指定用户的session. 例如：踢掉在线用户等。
+
+示例：当用户的“管理员标志”(adminFlag)被修改后，踢掉该用户让其重新登录。
+
+	class AC0_User {
+		protected function onValidate() {
+			if ($this->ac == "set" && issetval("adminFlag")) {
+				delSession($this->id, "user");
+			}
+		}
+	}
+
+@see injectSession
+*/
+function delSession($userId, $appType, $days=3)
+{
+	injectSession($userId, $appType, false, $days);
 }
 
 // ------ 异步调用支持 {{{
@@ -1290,7 +1757,7 @@ function httpCallAsync($url, $postParams = null)
 	function sendSms($phone, $msg) {
 		// 2. 为支持异步的函数加上判断分支
 		if (getenv("enableAsync") === "1") {
-			return callAsync('pushMsg', func_get_args());
+			return callAsync('sendSms', func_get_args());
 		}
 		
 		// 同步调用
@@ -1305,7 +1772,9 @@ function httpCallAsync($url, $postParams = null)
 */
 function callAsync($ac, $param) {
 	$url = getBaseUrl(false) . "api.php?ac=async&f=$ac";
-	httpCallAsync($url, $param);
+	$GLOBALS["X_APP"]->onAfterActions[] = function () use ($url, $param) {
+		httpCallAsync($url, $param);
+	};
 }
 
 /**
@@ -1325,7 +1794,8 @@ function callAsync($ac, $param) {
 */
 function api_async() {
 	api_checkIp();
-	@$f = $_GET["f"];
+	$f = mparam("f", "G");
+	ApiLog::$instance->batchAc = "async:$f";
 	global $allowedAsyncCalls;
 	if (!($f && in_array($f, $allowedAsyncCalls) && function_exists($f)))
 		throw new MyException(E_PARAM, "bad async fn: $f");
@@ -1375,13 +1845,15 @@ function apiMain()
 
 	if (ApiFw_::$SOLO) {
 		$api = new ApiApp();
-		$api->onBeforeExec[] = $supportJson;
+		$GLOBALS["X_APP"] = $api;
+		$api->onBeforeActions[] = $supportJson;
 		$api->exec();
 
 		// 删除空会话
-		if (isset($_SESSION) && count($_SESSION) <= 1) {
-			// jd-php框架设置过lastAccess，故空会话至少有1个key
-			@session_destroy();
+		if (isset($_SESSION) && count($_SESSION) == 0) {
+			// jd-php框架ApiWatch中设置过lastAccess，则空会话至少有1个key。v5.3不再使用ApiWatch
+			// @session_destroy();
+			safe_sessionDestroy();
 		}
 	}
 }
@@ -1417,6 +1889,7 @@ class BatchApiApp extends AppBase
 		$g_dbgInfo = [];
 	}
 
+/*
 	static function handleBatchRef($ref, $retVal)
 	{
 		foreach ($ref as $k) {
@@ -1428,11 +1901,42 @@ class BatchApiApp extends AppBase
 			}
 		}
 	}
+*/
+
+	// return: false OR params
+	// name: "get"/"post"
+	static function getParams($call, $name, &$retVal)
+	{
+		$params = $call[$name];
+		if (is_null($params))
+			return [];
+		// e.g. {get: "{$1}"}
+		if (is_string($params)) {
+			self::calcRefValue($params, $retVal);
+		}
+		// e.g. { get: {status: "{$1.status}", cond: "id>{$1.id}"}, ref: ["status", "cond"] }
+		else if ($call["ref"]) {
+			if (! is_array($call["ref"])) {
+				$retVal[] = [E_PARAM, "参数错误", "batch `ref' should be array"];
+				return false;
+			}
+			foreach ($call["ref"] as $k) {
+				if (isset($params[$k])) {
+					self::calcRefValue($params[$k], $retVal);
+				}
+			}
+		}
+		if (!is_array($params)) {
+			$retVal[] = [E_PARAM, "参数错误", "param $name MUST be array."];
+			return false;
+		}
+		return $params;
+	}
 
 	// 原理：
 	// "{$n.id}" => "$f(n)["id"]"
 	// 如果计算错误，则返回NULL
-	private static function calcRefValue($val, $arr)
+	private static function calcRefValue(&$val, $arr)
 	{
 		$f = function ($n) use ($arr) {
 			if ($n <= 0)
@@ -1461,23 +1965,47 @@ class BatchApiApp extends AppBase
 			$rv = eval("return @({$expr1});");
 			return $rv;
 		};
+
+		if (is_array($val)) {
+			foreach ($val as &$v) {
+				self::calcRefValue($v, $arr);
+			}
+			return $val;
+		}
 		
-		$v1 = preg_replace_callback('/\{(.+?)\}/', function ($ms) use ($calcOne) {
+		// 完全替换，如 "{$-1}" 返回上次调用对象
+		if (preg_match('/^\{  ([^{}]+)  \}$/x', $val, $ms)) {
 			$expr = $ms[1];
-			$rv = $calcOne($expr);
-			if (!isset($rv))
-				$rv = "null";
-			return $rv;
-		}, $val);
-		addLog("### batch ref: `{$val}' -> `{$v1}'");
+			$v1 = $calcOne($expr);
+		}
+		// 部分替换，只返回字符串。如 "id={$-1}"
+		else {
+			$v1 = preg_replace_callback('/\{(.+?)\}/', function ($ms) use ($calcOne) {
+				$expr = $ms[1];
+				$rv = $calcOne($expr);
+				if (!isset($rv))
+					$rv = "null";
+				return $rv;
+			}, $val);
+			addLog("### batch ref: `{$val}' -> `{$v1}'");
+		}
+		$val = $v1;
 		return $v1;
 	}
 }
 
+// 取当前全局APP可以用X_APP，如
+//  $ac = $GLOBALS["X_APP"]? $GLOBALS["X_APP"]->getAc(): 'unknown';
 class ApiApp extends AppBase
 {
 	private $apiLog;
 	private $apiWatch;
+	private $ac;
+
+	function getAc() {
+		return $this->ac;
+	}
+
 	protected function onExec()
 	{
 		if (! isCLI())
@@ -1506,12 +2034,14 @@ class ApiApp extends AppBase
 		}
 
 		Conf::onApiInit($ac);
+		$this->ac = $ac;
 
 		dbconn();
 
 		global $DBH;
-		if (! isCLI())
+		if (! isCLI() && Conf::$enableAutoSession) {
 			session_start();
+		}
 
 		if (Conf::$enableApiLog)
 		{
@@ -1519,9 +2049,17 @@ class ApiApp extends AppBase
 			$this->apiLog->logBefore();
 		}
 
+/*
 		// API调用监控
 		$this->apiWatch = new ApiWatch($ac);
 		$this->apiWatch->execute();
+*/
+		if (Conf::$enableSecure) {
+			if (!BlackList::isWhiteReq() && (BlackList::isBlackReq() || Conf::checkSecure($ac) === false)) {
+				setRet(E_FORBIDDEN, "OK");
+				return "OK";
+			}
+		}
 
 		if ($ac == "batch") {
 			$useTrans = param("useTrans", false, $_GET);
@@ -1559,6 +2097,7 @@ class ApiApp extends AppBase
 		$retVal = [];
 		$retCode = 0;
 		$GLOBALS["errorFn"] = function () {};
+		$acList = [];
 		foreach ($calls as $call) {
 			if ($useTrans && $retCode) {
 				$retVal[] = [E_ABORT, "事务失败，取消执行", "batch call cancelled."];
@@ -1568,16 +2107,10 @@ class ApiApp extends AppBase
 				$retVal[] = [E_PARAM, "参数错误", "bad batch request: require `ac'"];
 				continue;
 			}
+			$acList[] = $call["ac"];
 
-			$_GET = $call["get"] ?: [];
-			$_POST = $call["post"] ?: [];
-			if ($call["ref"]) {
-				if (! is_array($call["ref"])) {
-					$retVal[] = [E_PARAM, "参数错误", "batch `ref' should be array"];
-					continue;
-				}
-				BatchApiApp::handleBatchRef($call["ref"], $retVal);
-			}
+			$_GET = BatchApiApp::getParams($call, "get", $retVal);
+			$_POST = BatchApiApp::getParams($call, "post", $retVal);
 			$_REQUEST = array_merge($_GET, $_POST);
 			if ($this->apiLog) {
 				$this->apiLog->logBefore1($call["ac"]);
@@ -1598,6 +2131,9 @@ class ApiApp extends AppBase
 			if ($this->apiLog) {
 				$this->apiLog->logAfter1();
 			}
+		}
+		if ($this->apiLog) {
+			$this->apiLog->batchAc = 'batch:' . count($acList) . ',' . join(',', $acList);
 		}
 		if ($useTrans && $DBH && $DBH->inTransaction())
 			$DBH->commit();
@@ -1634,8 +2170,10 @@ class ApiApp extends AppBase
 
 	protected function onAfter($ok)
 	{
+/*
 		if ($this->apiWatch)
 			$this->apiWatch->postExecute();
+*/
 		if ($this->apiLog)
 			$this->apiLog->logAfter();
 
@@ -1682,7 +2220,7 @@ class ApiApp extends AppBase
 		$ac = htmlEscape(substr($pathInfo,1));
 		// POST /login  (小写开头)
 		// GET/POST /Store.add (含.)
-		if (!preg_match('/^[A-Z][\w\/]+$/', $ac))
+		if (!preg_match('/^[A-Z][\w\/]+$/u', $ac))
 		{
 			if ($method !== 'GET' && $method !== 'POST')
 				throw new MyException(E_PARAM, "bad verb '$method'. use 'GET' or 'POST'");
@@ -1746,6 +2284,85 @@ class ApiApp extends AppBase
 			throw new MyException(E_PARAM, "bad verb '$method'");
 		}
 		return "{$obj}.{$ac}";
+	}
+}
+
+/*
+Bug: session_start doesn't create session
+https://bugs.php.net/bug.php?id=78155&thanks=4
+
+Scenario: 
+Request A and B are sent from the same browser at the same time and use the same cookie.
+A destroys session and B writes session.
+
+Request A:
+	session_start();
+	sleep(5);
+	session_destroy();
+
+Request B:
+	// B will be blocked by A on the session file
+	session_start(); // !!!return ok but not session file!!!
+	// resume until A destroys(releases) it. but no session file and the 'uid' cannot save.
+	$_SESSION["uid"] = 1;
+	
+Expected result:
+the session file exists with variable 'uid'.
+
+Actual result:
+No session file.
+
+session_destroy会误删除其它进程正在使用的session文件。
+此bug影响linux系统，目前尚无法解决。可定期手工删除空session：
+
+	cd session
+	find . -size 0 | xargs rm
+
+如果有特定的轮询API，若不希望它产生空session，可设置enableAutoSession=false禁上自动创建session:
+
+	class Conf extends ConfBase
+	{
+		...
+
+		static function onApiInit(&$ac)
+		{
+			if ($ac == "Cmd.query") {
+				self::$enableAutoSession = false;
+			}
+		}
+	}
+
+*/
+function safe_sessionDestroy() 
+{
+	// windows上文件被其它进程打开时，无法删除。故直接忽略错误即可。
+	if (PHP_OS === "WINNT") {
+		@session_destroy();
+		return;
+	}
+
+	/* 此bug在linux系统上目前无法解决，下面代码只能降低session被误删除的概率，但无法根除 */
+	return;
+
+	// linux上文件被其它进程独占打开时，也可以删除。
+	// 为避免误删除，将session_destroy拆分为session_write_close和unlink，先测试没有被别的进程lock，这时再删除。
+	session_write_close();
+	$f = session_save_path() . "/sess_" . session_id();
+	@$fp = fopen($f, "r");
+	if ($fp === false)
+		return;
+	usleep(0); // sched_yeild CPU cycle, check if the session file is locked by other proc
+	usleep(0);
+	usleep(0);
+	$rv = flock($fp, LOCK_EX|LOCK_NB);
+	if ($rv) {
+		flock($fp, LOCK_UN);
+		fclose($fp);
+		@unlink($f);
+	}
+	else {
+		fclose($fp);
+		// echo("!!! ignore session destroy !!!\n");
 	}
 }
 

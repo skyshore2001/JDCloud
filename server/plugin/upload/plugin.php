@@ -33,6 +33,12 @@
 		'rar' => 'application/x-rar-compressed'
 	];
 
+增加上传类型示例：（一般在plugin/index.php中设置）
+
+	Upload::$fileTypes += [
+		'mp4'=>'video/mp4'
+	];
+
 - 定义图片类型及其缩略图尺寸
 
 	Upload::$typeMap = [
@@ -44,6 +50,18 @@
 
 	Upload::$maxPicKB = 500; // KB
 	Upload::$maxPicSize = 1280;
+
+- 导出zip文件
+
+	$fname = "ORDR-17.zip"; // 导出的文件名，不用目录名
+	// zip中子目录名，对应的附件编号列表
+	$pics = [
+		"TASK-1/T-1" => "51,53,55",
+		"TASK-1/T-2" => "57",
+		"TASK-2/T-3" => "59,61"
+	];
+	Upload::exportZip($fname, $pics);
+	// 如果id列表为缩略图，应使用 Upload::exportZip($fname, $pics, true);
 
  */
 
@@ -70,6 +88,61 @@ class Upload
 	// 默认调用upload时(autoResize参数为1)，超过maxPicKB的图片，会自动压缩到长宽不超过maxPicSize像素。
 	static $maxPicKB = 500; // KB
 	static $maxPicSize = 1280;
+
+	static function quote($s)
+	{
+		return '"' . str_replace('"', '\"', $s) . '"';
+	}
+
+	static function exportZip($zipname, $pics, $byThumbId=false)
+	{
+		session_commit();
+		if (!$zipname || count($pics) == 0) {
+			echo("没有图片或附件!");
+			throw new DirectReturn();
+		}
+		$zip = new ZipArchive;
+		$tmpf = tempnam("/tmp", "zip");
+		if (($rv=$zip->open($tmpf, ZipArchive::CREATE)) !== TRUE) {
+			throw new MyException(E_SERVER, "zip error $rv");
+		}
+		foreach ($pics as $k=>$v) {
+			if (!$v)
+				continue;
+			if (!$byThumbId)
+				$sql = "SELECT id, path, orgName FROM Attachment WHERE id IN ($v)";
+			else {
+				# t0: original, a2: thumb
+				$sql = "SELECT t0.id, t0.path, t0.orgName FROM Attachment t0 INNER JOIN Attachment a2 ON t0.id=a2.orgPicId WHERE a2.id IN ($v)";
+			}
+			$rows = queryAll($sql, true);
+			foreach($rows as $row) { // {id, path, orgName}
+				$ext = strtolower(pathinfo($row["orgName"], PATHINFO_EXTENSION));
+				$fname = "$k/{$row['id']}.$ext";
+				$realFile = $GLOBALS["BASE_DIR"] . '/' . $row["path"];
+				if (!is_file($realFile)) {
+					$fname = iconv("UTF-8", "GBK//IGNORE", "$fname.missing!"); // TODO: 支持中文
+					$zip->addFromString($fname, "");
+					continue;
+				}
+				else {
+					$fname = iconv("UTF-8", "GBK//IGNORE", $fname); // TODO: 支持中文
+					$zip->addFile($realFile, $fname);
+				}
+				//$zip->addFromString($fname, $realFile);
+			}
+		}
+		$zip->close();
+		logit("export zip: name=$zipname, file=$tmpf, size=" . filesize($tmpf));
+
+		///Then download the zipped file.
+		header('Content-Type: application/zip');
+		header('Content-disposition: attachment; filename='.Upload::quote($zipname));
+		header('Content-Length: ' . filesize($tmpf));
+		readfile($tmpf);
+		unlink($tmpf);
+		throw new DirectReturn();
+	}
 }
 // ====== config {{{
 const HTTP_NOT_FOUND = "HTTP/1.1 404 Not Found";
@@ -85,27 +158,39 @@ $FILE_TAG = [
 ];
 //}}}
 
-# generate image/jpeg output. if $out=null, output to stdout
-function resizeImage($in, $w, $h, $out=null)
+// generate image/jpeg output. if $out=null, output to stdout
+// 用于缩小图片. 使得宽高不超过$w和$h. 如果宽高本来就小, 则不做处理(除非$forceDo=true)
+// return: false-未处理; true-处理了
+function resizeImage($in, $w, $h, $out=null, $forceDo=false)
 {
 	if (! function_exists("imageJpeg")) 
 		throw new MyException(E_SERVER, "Require GD library");
 
 	list($srcw, $srch) = @getImageSize($in);
 	if (is_null($srcw))
-		throw new MyException(E_PARAM, "cannot get impage info: $in");
+		throw new MyException(E_PARAM, "cannot get image info: $in");
 
 	// 保持宽高协调
 	if ($srcw < $srch) {
 		list($w, $h) = [$h, $w];
 	}
-	// 保持等比例, 不拉伸
-	$h1 = $w * $srch / $srcw;
-	if ($h1 > $h) {
-		$w = $h * $srcw / $srch;
+
+	// 如果图片很小, 就按原尺寸, 不要拉伸.
+	if ($srcw < $w && $srch < $h) {
+		if (!$forceDo)
+			return false;
+		$w = $srcw;
+		$h = $srch;
 	}
 	else {
-		$h = $h1;
+		// 保持等比例, 不拉伸
+		$h1 = $w * $srch / $srcw;
+		if ($h1 > $h) {
+			$w = $h * $srcw / $srch;
+		}
+		else {
+			$h = $h1;
+		}
 	}
 	$ext = strtolower(pathinfo($in, PATHINFO_EXTENSION));
 	if ($ext == "png")
@@ -129,11 +214,12 @@ function resizeImage($in, $w, $h, $out=null)
 
 	// Output
 	imageJpeg($thumb, $out);
+	return true;
 }
 
 function api_upload()
 {
-	checkAuth(AUTH_LOGIN);
+	checkAuth(AUTH_LOGIN, ['simple']);
 	session_commit(); // !!!释放session锁避免阻塞其它调用。注意此后要修改session应先调用session_start
 
 	$fmt = param("fmt");
@@ -143,7 +229,7 @@ function api_upload()
 	}
 	$type = param("type", 'default');
 	$genThumb = param("genThumb/b");
-	$autoResize = param("autoResize/b", 1);
+	$autoResize = param("autoResize/i", 1);
 	$exif = param("exif");
 
 	if (!array_key_exists($type, Upload::$typeMap)) {
@@ -268,8 +354,9 @@ function api_upload()
 	foreach ($files as $f) {
 		# 0: tmpname; 1: fname; 2: orgName; 3: thumbName(optional)
 		list($tmpname, $fname, $orgName, $thumbName) = $f;
+		$rv = null;
 		if (isset($tmpname)) {
-			move_uploaded_file($tmpname, $fname);
+			$rv = move_uploaded_file($tmpname, $fname);
 		}
 		else {
 			// for upload raw/raw_b64
@@ -277,10 +364,16 @@ function api_upload()
 			if ($fmt === 'raw_b64') {
 				$s = base64_decode($s);
 			}
-			file_put_contents($fname, $s);
+			$rv = file_put_contents($fname, $s);
 		}
-		if ($autoResize && preg_match('/\.(jpg|jpeg|png)$/', $fname) && filesize($fname) > Upload::$maxPicKB*1024) {
-			resizeImage($fname, Upload::$maxPicSize, Upload::$maxPicSize, $fname); // 1280x1280
+		if ($rv === false) {
+			throw new MyException(E_SERVER, "fail to create or write uploaded file", "写文件失败！");
+		}
+		if ($autoResize && preg_match('/\.(jpg|jpeg|png)$/', $fname)) {
+			// 如果大于500K或是用autoResize指定了最大宽高, 则压缩.
+			$forceDo = filesize($fname) > Upload::$maxPicKB*1024;
+			$maxHW = $autoResize < 10? Upload::$maxPicSize: $autoResize;
+			$rv = resizeImage($fname, $maxHW, $maxHW, $fname, $forceDo); // 1280x1280
 		}
 
 		$sth->execute([$fname, null, null, $orgName]);
@@ -290,11 +383,17 @@ function api_upload()
 		if ($genThumb) {
 			$info = Upload::$typeMap[$type];
 			assert($info);
-			resizeImage($fname, $info["w"], $info["h"], $thumbName);
-			#file_put_contents($thumbName, "THUMB");
-			$sth->execute([$thumbName, $id, $exif, $orgName]);
-			$thumbId = (int)$DBH->lastInsertId();
-			$r["thumbId"] = $thumbId;
+			$rv = resizeImage($fname, $info["w"], $info["h"], $thumbName);
+			if ($rv) {
+				#file_put_contents($thumbName, "THUMB");
+				$sth->execute([$thumbName, $id, $exif, $orgName]);
+				$thumbId = (int)$DBH->lastInsertId();
+				$r["thumbId"] = $thumbId;
+			}
+			else {
+				dbUpdate("Attachment", ["orgPicId"=>$id], $id);
+				$r["thumbId"] = $id;
+			}
 		}
 		$ret[] = $r;
 	}
@@ -349,7 +448,7 @@ function api_att()
 		exit;
 	}
 	list($file, $orgName) = $row;
-	if (preg_match('/http:/', $file)) {
+	if (preg_match('/(http:|https:)/', $file)) {
 		header('Location: ' . $file);
 		throw new DirectReturn();
 	}
@@ -375,10 +474,10 @@ function api_att()
 		if (! isset($orgName))
 			$orgName = basename($file);
 		if ($ext == "jpg" || $ext == "png" || $ext == "gif") {
-			header('Content-Disposition: filename='. $orgName);
+			header('Content-Disposition: filename='. Upload::quote($orgName));
 		}
 		else {
-			header('Content-Disposition: attachment; filename='. $orgName);
+			header('Content-Disposition: attachment; filename='. Upload::quote($orgName));
 		}
 		readfile($file);
 	}
@@ -394,12 +493,23 @@ function api_pic()
 {
 	session_commit();
 	header("Content-Type: text/html");
-	$pics = param("id/s");
 	$baseUrl = getBaseUrl();
-	foreach (explode(',', $pics) as $id) {
-		$id = trim($id);
-		if ($id)
-			echo("<img src='{$baseUrl}api.php/att?thumbId=$id'>\n");
+	$n = 0;
+	foreach ([param("id/s"), param("thumbId/s"), param("smallId/s")] as $pics) {
+		if ($pics) {
+			foreach (explode(',', $pics) as $id) {
+				$id = trim($id);
+				if ($id) {
+					if ($n == 0)
+						echo("<img src='{$baseUrl}api.php/att?id=$id'>\n");
+					else if ($n == 1)
+						echo("<img src='{$baseUrl}api.php/att?thumbId=$id'>\n");
+					else if ($n == 2)
+						echo("<a href='{$baseUrl}api.php/att?thumbId=$id' target='_blank'><img src='{$baseUrl}api.php/att?id=$id'></a>\n");
+				}
+			}
+		}
+		++ $n;
 	}
 	throw new DirectReturn();
 }
@@ -418,7 +528,7 @@ function api_export()
 	$str = mparam("str");
 	$enc = param("enc", "utf-8");
 	header("Content-Type: text/plain; charset=" . $enc);
-	header('Content-Disposition: attachment; filename='. $fname);
+	header('Content-Disposition: attachment; filename='. Upload::quote($fname));
 	if ($enc != "utf-8")
 		$str = iconv("utf-8", "$enc//IGNORE", $str);
 	echo($str);

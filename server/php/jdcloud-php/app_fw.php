@@ -55,7 +55,8 @@ P_DBCRED格式为`{用户名}:{密码}`，或其base64编码后的值，如
 ## 测试模式与调试等级
 
 @key P_TEST_MODE Integer。环境变量，允许测试模式。0-生产模式；1-测试模式；2-自动化回归测试模式(RTEST_MODE)
-@key P_DEBUG Integer。环境变量，设置调试等级，值范围0-9。仅在测试模式下有效。
+@key P_DEBUG Integer。环境变量，设置调试等级，值范围0-9。
+@key P_DEBUG_LOG Integer。(v5.4) 环境变量，是否打印接口明细日志到debug.log。0-不打印，1-全部打印，2-只打印出错的调用
 
 测试模式特点：
 
@@ -64,6 +65,8 @@ P_DBCRED格式为`{用户名}:{密码}`，或其base64编码后的值，如
   如果想要查看本次调用涉及的SQL语句，可以用`_debug=9`。
 - 某些用于测试的接口可以调用，例如execSql。因而十分危险，生产模式下一定不可误设置为测试模式。
 - 可以使用模拟模式
+
+注意：v5.4起可设置P_DEBUG_LOG，在测试模式或生产模式都可用，可记录日志到后台debug.log文件中。一般用于在生产环境下，临时开放查看后台日志。
 
 注意：v3.4版本起不允许客户端设置_test参数，且用环境变量P_TEST_MODE替代符号文件CFG_TEST_MODE和设置全局变量TEST_MODE.
 
@@ -112,25 +115,6 @@ PHP默认的session过期时间为1440s(24分钟)，每次在使用session时，
 require_once("common.php");
 
 // ====== defines {{{
-# error code definition:
-const E_ABORT = -100; // 客户端不报错
-const E_AUTHFAIL=-1;
-const E_OK=0;
-const E_PARAM=1;
-const E_NOAUTH=2;
-const E_DB=3;
-const E_SERVER=4;
-const E_FORBIDDEN=5;
-
-$ERRINFO = [
-	E_AUTHFAIL => "认证失败",
-	E_PARAM => "参数不正确",
-	E_NOAUTH => "未登录",
-	E_DB => "数据库错误",
-	E_SERVER => "服务器错误",
-	E_FORBIDDEN => "禁止操作",
-];
-
 const RTEST_MODE=2;
 
 //}}}
@@ -173,7 +157,8 @@ $g_dbgInfo = [];
 //}}}
 
 // load user config
-@include_once("{$BASE_DIR}/php/conf.user.php");
+$userConf = "{$BASE_DIR}/php/conf.user.php";
+file_exists($userConf) && include_once($userConf);
 
 // ====== functions {{{
 // assert失败中止运行
@@ -189,7 +174,7 @@ assert_options(ASSERT_BAIL, 1);
 # 	end with "/i+": int array
 # 	end with "/js": json object
 # 	default or "/s": string
-# fix $name and return type: "i"-int, "b"-bool, "n"-numeric, "i+"-int[], "js"-object, "s"-string
+# fix $name and return type: "id"-int/encrypt-int, "i"-int, "b"-bool, "n"-numeric, "i+"-int[], "js"-object, "s"-string
 # support list(i:n:b:dt:tm). e.g. 参数"items"类型为list(id/Integer, qty/Double, dscr/String)，可用param("items/i:n:s")获取
 function parseType_(&$name)
 {
@@ -201,7 +186,7 @@ function parseType_(&$name)
 	}
 	else {
 		if ($name === "id" || substr($name, -2) === "Id") {
-			$type = "i";
+			$type = "id";
 		}
 		else {
 			$type = "s";
@@ -338,7 +323,12 @@ List类型示例。参数"items"类型在文档中定义为list(id/Integer, qty/
 
 	[ [ 100, 1.0, null], [101, null, "打蜡"] ]
 
-TODO: 直接支持 param("items/(id,qty?/n,dscr?)"), 添加param_objarr函数，去掉parseList函数。上例将返回
+要转换成objarr，可以用：
+
+	$varr = param("items/i:n?:s?");
+	$objarr = varr2objarr($var, ["id", "qty", "dscr"]);
+
+$objarr值为：
 
 	[
 		[ "id"=>100, "qty"=>1.0, dscr=>null],
@@ -380,6 +370,15 @@ function param($name, $defVal = null, $col = null, $doHtmlEscape = true)
 		if ($doHtmlEscape)
 			$ret = htmlEscape($ret);
 		if ($type === "s") {
+		}
+		elseif ($type === "id") {
+			if (! is_numeric($ret)) {
+				$ret1 = jdEncryptI($ret, "D", "hex");
+				if (! is_numeric($ret1))
+					throw new MyException(E_PARAM, "Bad Request - id param `$name`=`$ret`.");
+				$ret = $ret1;
+			}
+			$ret = intval($ret);
 		}
 		elseif ($type === "i") {
 			if (! is_numeric($ret))
@@ -757,6 +756,35 @@ function varr2objarr($varr, $headerLine)
 	return $ret;
 }
 
+/**
+@fn list2varr(ls, colSep=':', rowSep=',')
+
+- ls: 代表二维表的字符串，有行列分隔符。
+- colSep, rowSep: 列分隔符，行分隔符。
+
+将字符串代表的压缩表("v1:v2:v3,...")转成值数组。
+
+e.g.
+
+	$users = "101:andy,102:beddy";
+	$varr = list2varr($users);
+	// $varr = [["101", "andy"], ["102", "beddy"]];
+	
+	$cmts = "101\thello\n102\tgood";
+	$varr = list2varr($cmts, "\t", "\n");
+	// $varr=[["101", "hello"], ["102", "good"]]
+ */
+function list2varr($ls, $colSep=':', $rowSep=',')
+{
+	$ret = [];
+	foreach(explode($rowSep, $ls) as $e) {
+		$e = trim($e);
+		if (!$e)
+			continue;
+		$ret[] = explode($colSep, $e);
+	}
+	return $ret;
+}
 //}}}
 
 // ==== database {{{
@@ -807,7 +835,7 @@ function dbconn($fnConfirm = null)
 	global $DB, $DBCRED, $DBTYPE;
 
 	// 未指定驱动类型，则按 mysql或sqlite 连接
-	if (! preg_match('/^\w{3,10}:/', $DB)) {
+// 	if (! preg_match('/^\w{3,10}:/', $DB)) {
 		// e.g. P_DB="../carsvc.db"
 		if ($DBTYPE == "sqlite") {
 			$C = ["sqlite:" . $DB, '', ''];
@@ -824,11 +852,11 @@ function dbconn($fnConfirm = null)
 			list($dbuser, $dbpwd) = getCred($DBCRED); 
 			$C = ["mysql:host={$dbhost};dbname={$dbname};port={$dbport}", $dbuser, $dbpwd];
 		}
-	}
-	else {
-		list($dbuser, $dbpwd) = getCred($DBCRED); 
-		$C = [$DB, $dbuser, $dbpwd];
-	}
+// 	}
+// 	else {
+// 		list($dbuser, $dbpwd) = getCred($DBCRED); 
+// 		$C = [$DB, $dbuser, $dbpwd];
+// 	}
 
 	if ($fnConfirm == null)
 		@$fnConfirm = $GLOBALS["dbConfirmFn"];
@@ -840,6 +868,7 @@ function dbconn($fnConfirm = null)
 	}
 	catch (PDOException $e) {
 		$msg = $GLOBALS["TEST_MODE"] ? $e->getMessage() : "dbconn fails";
+		logit("dbconn fails: " . $e->getMessage());
 		throw new MyException(E_DB, $msg, "数据库连接失败");
 	}
 	
@@ -885,6 +914,110 @@ function sql_concat()
 
 	# sqlite3
 	return join(" || ", func_get_args());
+}
+
+/**
+@fn getQueryCond(cond)
+
+示例：key-value形式
+
+	$rv = getQueryCond([
+		"name"=>"eric",
+		"phone"=>null
+	]);
+	// "name='eric'
+
+	$rv = getQueryCond([
+		"name"=>"eric",
+		"phone IS NULL"
+	]);
+	// "name='eric' AND phone IS NULL"
+
+示例：条件数组
+
+	$rv = getQueryCond([
+		"type IS NOT NULL",
+		"tm>='2018-1-1' AND tm<'2019-1-1'"
+	]);
+	// "type IS NOT NULL AND (tm>='2018-1-1' AND tm<'2019-1-1')"
+
+（以上两种在jd-php中可混用）
+
+特别地：
+
+	getQueryCond(null) => null
+	getQueryCond("ALL") => null
+	getQueryCond(100) => "id=100"
+	getQueryCond("100") => "id=100"
+	getQueryCond("id<>100") => "id<>100"
+
+默认用AND连接条件，也支持OR连接：
+
+	$rv = getQueryCond([
+		"_or" => true, // 特殊用法，标识用OR连接条件
+		"name"=>"eric",
+		"phone IS NULL"
+	]);
+	// "name='eric' OR phone IS NULL"
+
+	$rv = getQueryCond([
+		"type IS NOT NULL",
+		"tm>='2018-1-1' AND tm<'2019-1-1'",
+		"_or" => true
+	]);
+	// "type IS NOT NULL OR (tm>='2018-1-1' AND tm<'2019-1-1')"
+
+*/
+function getQueryCond($cond)
+{
+	if ($cond === null || $cond === "ALL")
+		return null;
+	if (is_numeric($cond))
+		return "id=$cond";
+	if (!is_array($cond))
+		return $cond;
+	
+	$condArr = [];
+	$isOR = false;
+	if (@$cond["_or"]) {
+		$isOR = true;
+	}
+
+	foreach($cond as $k=>$v) {
+		if (is_int($k)) {
+			if (stripos($v, ' and ') !== false || stripos($v, ' or ') !== false)
+				$exp = "($v)";
+			else
+				$exp = $v;
+		}
+		else {
+			if ($v === null || $k[0] == "_")
+				continue;
+			$exp = "$k=" . Q($v);
+		}
+		$condArr[] = $exp;
+	}
+	return join($isOR?' OR ':' AND ', $condArr);
+}
+
+/**
+@fn genQuery($sql, $cond)
+
+连接SELECT主语句(不带WHERE条件)和查询条件。
+示例：
+
+	genQuery("SELECT id FROM Vendor", [name=>$name, "phone"=>$phone]);
+	genQuery("SELECT id FROM Vendor", [name=>$name, "phone IS NOT NULL"]);
+	genQuery("SELECT id FROM Vendor", [name=>$name, "phone"=>$phone, "_or"=>true]); // "name='eric' OR phone='13700000001'"
+
+@see getQueryCond
+*/
+function genQuery($sql, $cond)
+{
+	$condStr = getQueryCond($cond);
+	if (!$condStr)
+		return $sql;
+	return $sql . ' WHERE ' . $condStr;
 }
 
 /**
@@ -957,14 +1090,25 @@ function execOne($sql, $getInsertId = false)
 		throw new MyException(E_PARAM, "bad user id");
 	// $phone = "13712345678"
 
+(v5.3)
+可将WHERE条件单独指定：$cond参数形式该函数getQueryCond
+
+	$id = queryOne("SELECT id FROM Vendor", false, ["phone"=>$phone]);
+
 @see queryAll
+@see getQueryCond
  */
-function queryOne($sql, $assoc = false)
+function queryOne($sql, $assoc = false, $cond = null)
 {
 	global $DBH;
 	if (! isset($DBH))
 		dbconn();
+	if ($cond)
+		$sql = genQuery($sql, $cond);
+	if (stripos($sql, "limit ") === false && stripos($sql, "for update") === false)
+		$sql .= " LIMIT 1";
 	$sth = $DBH->query($sql);
+
 	if ($sth === false)
 		return false;
 
@@ -1016,13 +1160,21 @@ queryAll支持执行返回多结果集的存储过程，这时返回的不是单
 
 	$allRows = queryAll("call syncAll()");
 
+(v5.3)
+可将WHERE条件单独指定：$cond参数形式该函数getQueryCond
+
+	$rows = queryAll("SELECT id FROM Vendor", false, ["phone"=>$phone]);
+
 @see objarr2table
+@see getQueryCond
  */
-function queryAll($sql, $assoc = false)
+function queryAll($sql, $assoc = false, $cond = null)
 {
 	global $DBH;
 	if (! isset($DBH))
 		dbconn();
+	if ($cond)
+		$sql = genQuery($sql, $cond);
 	$sth = $DBH->query($sql);
 	if ($sth === false)
 		return false;
@@ -1066,7 +1218,7 @@ function dbInsert($table, $kv)
 		if ($v === "")
 			continue;
 		# TODO: check meta
-		if (! preg_match('/^\w+$/', $k))
+		if (! preg_match('/^\w+$/u', $k))
 			throw new MyException(E_PARAM, "bad key $k");
 
 		if ($keys !== '') {
@@ -1074,7 +1226,7 @@ function dbInsert($table, $kv)
 			$values .= ", ";
 		}
 		$keys .= $k;
-		if ($v instanceof dbExpr) { // 直接传SQL表达式
+		if ($v instanceof DbExpr) { // 直接传SQL表达式
 			$values .= $v->val;
 		}
 		else if (is_array($v)) {
@@ -1085,7 +1237,7 @@ function dbInsert($table, $kv)
 		}
 	}
 	if (strlen($keys) == 0) 
-		throw new MyException(E_PARAM, "no field found to be added");
+		throw new MyException(E_PARAM, "no field found to be added: $table");
 	$sql = sprintf("INSERT INTO %s (%s) VALUES (%s)", $table, $keys, $values);
 #			var_dump($sql);
 	return execOne($sql, true);
@@ -1220,6 +1372,34 @@ class DbExpr
 	}
 }
 
+/**
+@fn dbExpr($val)
+
+用于在dbInsert/dbUpdate(插入或更新数据库)时，使用表达式：
+
+	$id = dbInsert("Ordr", [
+		"tm" => dbExpr("now()") // 使用dbExpr直接提供SQL表达式
+	]);
+
+另外，写数据库时，为防止XSS跨域攻击，dbInsert/dbUpdate对值会自动做htmlentity转义，如">7"转成"&gt;7"。
+为防止转义，使用原始字串值，可以用：
+
+	$id = dbUpdate("Ordr", [
+		"cond" => dbExpr(Q("f>3 && r<60")); // 注意用Q函数对字符串加引号
+	]);
+
+示例：对象set/add接口中，防止某字段被转义：
+
+	protected function onValidate()
+	{
+		if (issetval("cond")) {
+			$_POST["cond"] = dbExpr(Q($_POST["cond"]));
+		}
+	}
+
+@see dbInsert
+@see dbUpdate
+*/
 function dbExpr($val)
 {
 	return new DbExpr($val);
@@ -1249,18 +1429,19 @@ e.g.
 	// 全表更新，没有条件。UPDATE Cinf SET appleDeviceToken={token}
 	$cnt = dbUpdate("Cinf", ["appleDeviceToken" => $token], "ALL");
 
+cond条件可以用key-value指定(cond写法参考getQueryCond)，如：
+
+	dbUpdate("Task", ["vendorId" => $id], ["vendorId" => $id1]);
+	基本等价于 (当id1为null时稍有不同, 上面生成"IS NULL"，而下面的SQL为"=null"非标准)
+	dbUpdate("Task", ["vendorId" => $id], "vendorId=$id1"]);
+
 */
 function dbUpdate($table, $kv, $cond)
 {
 	if ($cond === null)
-		throw new MyException(E_SERVER, "bad cond");
+		throw new MyException(E_SERVER, "bad cond for update $table");
 
-	if (is_numeric($cond)) {
-		$cond = "id=$cond";
-	}
-	else if ($cond === "ALL") {
-		$cond = null;
-	}
+	$condStr = getQueryCond($cond);
 	$kvstr = "";
 	foreach ($kv as $k=>$v) {
 		if ($k === 'id' || is_null($v))
@@ -1269,7 +1450,7 @@ function dbUpdate($table, $kv, $cond)
 		if (substr($k,0,2) === "p_")
 			continue;
 		# TODO: check meta
-		if (! preg_match('/^(\w+\.)?\w+$/', $k))
+		if (! preg_match('/^(\w+\.)?\w+$/u', $k))
 			throw new MyException(E_PARAM, "bad key $k");
 
 		if ($kvstr !== '')
@@ -1280,7 +1461,7 @@ function dbUpdate($table, $kv, $cond)
 			$kvstr .= "$k=null";
 		else if ($v === "empty")
 			$kvstr .= "$k=''";
-		else if ($v instanceof dbExpr) { // 直接传SQL表达式
+		else if ($v instanceof DbExpr) { // 直接传SQL表达式
 			$kvstr .= $k . '=' . $v->val;
 		}
 		else if (startsWith($k, "flag_") || startsWith($k, "prop_"))
@@ -1292,63 +1473,62 @@ function dbUpdate($table, $kv, $cond)
 	}
 	$cnt = 0;
 	if (strlen($kvstr) == 0) {
-		addLog("no field found to be set");
+		addLog("no field found to be set: $table");
 	}
 	else {
-		if (isset($cond))
-			$sql = sprintf("UPDATE %s SET %s WHERE $cond", $table, $kvstr);
+		if (isset($condStr))
+			$sql = sprintf("UPDATE %s SET %s WHERE $condStr", $table, $kvstr);
 		else
 			$sql = sprintf("UPDATE %s SET %s", $table, $kvstr);
 		$cnt = execOne($sql);
 	}
 	return $cnt;
 }
-/**
-translateKey(&$params, $fromCol, $toCol, $sqlQuery, $sqlInsert=null, &$cache=null)
-
-将fromCol转换为toCol，通过sqlQuery来查询，查不到则用sqlInsert来插入。
-如果未指定sqlInsert，则查阅不到字段时报错退出。
-
-在sqlQuery和sqlInsert中，用"%s"代替参数。
-示例：
-
-	// vendorName -> vendorId
-	$params = ["vendorName" => "v1"];
-	translateKey("vendorName", "vendorId", "SELECT id FROM Vendor WHERE name=%s", "INSERT INTO Vendor (name) VALUES (%s)");
-	// $params = ["vendorId" => "101"];
-
-如果导入字段有很多重复，可以传入cache数组以提高效率，如：
-
-	$vendorCache = []; // {vendorName=>vendorId}
-	$params = ["vendorName" => "v1", "storeName" => "store1"];
-	translateKey("vendorName", "vendorId", "SELECT id FROM Vendor WHERE name=%s", "INSERT INTO Vendor (name) VALUES (%s)", $vendorCache);
-	$storeCache = []; // {storeName=>storeId}
-	translateKey("storeName", "storeId", "SELECT id FROM Store WHERE name=%s", "INSERT INTO Store (name) VALUES (%s)", $storeCache);
-
-在translateKey中会将映射表存储在$cache中供下次查阅使用，这样不用每次都查数据库。
-*/
-function translateKey(&$params, $fromCol, $toCol, $sqlQuery, $sqlInsert=null, &$cache=null)
-{
-	$val = $params[$fromCol];
-	$rv = null;
-	if (is_array($cache)) {
-		$rv = $cache[$val];
-	}
-	if ($rv === null) {
-		$qval = Q($val);
-		$rv = queryOne(sprintf($sqlQuery, $qval));
-		if ($rv === false) {
-			if ($sqlInsert == null)
-				throw new MyException(E_PARAM, "bad ref key", "在关联表中找不到\"$val\"");
-			$rv = execOne(sprintf($sqlInsert, $qval), true);
-		}
-		if (is_array($cache))
-			$cache[$val] = $rv;
-	}
-	$params[$toCol] = $rv;
-	unset($params[$fromCol]);
-}
 //}}}
+
+/**
+@class SimpleCache
+
+缓存在数组中。适合在循环中缓存key-value数据。
+
+	$cache = new SimpleCache(); // id=>name
+	for ($idList as $id) {
+		$name = $cache->get($id, function () use ($id){
+			return queryOne("SELECT name FROM Vendor WHERE id=$id");
+		});
+	}
+
+示例2：
+
+	$key = join('-', [$name, $phone]);
+	$id = $cache->get($key);
+	if ($id === false) {
+		$val = getVal();
+		$cache->set($key, $val);
+	}
+
+*/
+class SimpleCache
+{
+	protected $cacheData = [];
+
+	// return false if key does not exist
+	function get($key, $fnGet = null) {
+		if (! array_key_exists($key, $this->cacheData)) {
+			if (!isset($fnGet))
+				return false;
+
+			$val = $fnGet();
+			$this->set($key, $val);
+			return $val;
+		}
+		return $this->cacheData[$key];
+	}
+
+	function set($key, $val) {
+		$this->cacheData[$key] = $val;
+	}
+}
 
 function isHttps()
 {
@@ -1387,119 +1567,170 @@ function getBaseUrl($wantHost = true)
 	$baseUrl = getenv("P_BASE_URL");
 	if ($baseUrl) {
 		if (!$wantHost) {
-			$baseUrl = preg_replace('/^[^\/]+/', '', $baseUrl);
+			$baseUrl = preg_replace('/^https?:\/\/[^\/]+/i', '', $baseUrl);
 		}
 		if (strlen($baseUrl) == 0 || substr($baseUrl, -1, 1) != "/")
 			$baseUrl .= "/";
 	}
 	else {
 		// 自动判断
-		$baseUrl = dirname($_SERVER["SCRIPT_NAME"]) . "/";
+		$baseUrl = dirname($_SERVER["SCRIPT_NAME"]);
+		// 如果是baseUrl下面一级目录则自动去除, 调用getBaseUrl应在baseUrl或baseUrl的下一级目录下, 否则判断出错, 应通过设置环境变量解决.
+		$b = basename($baseUrl);
+		if (is_dir(__DIR__ . '/../../' . $b)) {
+			$baseUrl = dirname($baseUrl) . "/";
+		}
+		else {
+			$baseUrl .= "/";
+		}
+		// $baseUrl = dirname($_SERVER["SCRIPT_NAME"]) . "/";
 
 		if ($wantHost)
 		{
-			$host = (isHttps() ? "https://" : "http://") . $_SERVER["HTTP_HOST"]; // $_SERVER["HTTP_X_FORWARDED_HOST"]
+			$host = (isHttps() ? "https://" : "http://") . (@$_SERVER["HTTP_HOST"]?:"localhost"); // $_SERVER["HTTP_X_FORWARDED_HOST"]
 			$baseUrl = $host . $baseUrl;
 		}
 	}
 	return $baseUrl;
 }
 
+// ==== 加密算法 {{{
 /**
-@fn logit($s, $addHeader=true, $type="trace")
-@alias logit($s, $type)
+@var ENC_KEY = 'jdcloud'
 
-记录日志。
+默认加密key。可在api.php等处修改覆盖。
+*/
+global $ENC_KEY;
+$ENC_KEY="jdcloud"; // 缺省加密密码
 
-默认到日志文件 $BASE_DIR/trace.log. 如果指定type=secure, 则写到 $BASE_DIR/secure.log.
+/**
+@fn rc4($data, $pwd)
 
-可通过在线日志工具 tool/log.php 来查看日志。也可直接打开日志文件查看。
- */
-function logit($s, $addHeader=true, $type="trace")
+返回密文串（未编码的二进制，可用base64或hex编码）。
+RC4加密算法。基于异或的算法。
+https://www.cnblogs.com/haoxuanchen2014/p/7783782.html
+
+更完善的短字符串编码，可以使用
+
+@see jdEncrypt 基于rc4的文本加密
+@see jdEncryptI 基于rc4的32位整数加密
+*/
+function rc4($data, $pwd)
 {
-	if (is_string($addHeader)) {
-		$type = $addHeader;
-		$addHeader = true;
-	}
-	if ($addHeader) {
-		$remoteAddr = @$_SERVER['REMOTE_ADDR'] ?: 'unknown';
-		$s = "=== REQ from [$remoteAddr] at [".strftime("%Y/%m/%d %H:%M:%S",time())."] " . $s . "\n";
+    $cipher      = '';
+    $key[]       = "";
+    $box[]       = "";
+    $pwd_length  = strlen($pwd);
+    $data_length = strlen($data);
+    for ($i = 0; $i < 256; $i++) {
+        $key[$i] = ord($pwd[$i % $pwd_length]);
+        $box[$i] = $i;
+    }
+    for ($j = $i = 0; $i < 256; $i++) {
+        $j       = ($j + $box[$i] + $key[$i]) % 256;
+        $tmp     = $box[$i];
+        $box[$i] = $box[$j];
+        $box[$j] = $tmp;
+    }
+    for ($a = $j = $i = 0; $i < $data_length; $i++) {
+        $a       = ($a + 1) % 256;
+        $j       = ($j + $box[$a]) % 256;
+        $tmp     = $box[$a];
+        $box[$a] = $box[$j];
+        $box[$j] = $tmp;
+        $k       = $box[(($box[$a] + $box[$j]) % 256)];
+        $cipher .= chr(ord($data[$i]) ^ $k);
+    }
+    return $cipher;
+}
+
+/**
+@fn jdEncrypt($string, $enc=E|D, $fmt=b64|hex, $key=$ENC_KEY, $vcnt=4)
+
+基于rc4算法的文本加密，缺省密码为全局变量 $ENC_KEY。
+enc=E表示加密，enc=D表示解密。
+
+	$cipher = jdEncrypt("hello");
+	$text = jdEncrypt($cipher, "D");
+	if ($text === false)
+		throw "bad cipher";
+
+缺省返回base64编码的密文串，可设置参数$fmt="hex"输出16进制编码的密文串。
+算法包含了校验机制，解密时如果校验失败则返回false.
+
+@param vcnt 校验字节数，默认为4. validation bytes cnt
+
+@see rc4 基础rc4算法
+@see jdEncryptI 基于rc4的32位整数加密
+*/
+function jdEncrypt($string, $enc='E', $fmt='b64', $key=null, $vcnt=4)
+{
+	if ($key == null) {
+		global $ENC_KEY;
+		$key = md5($ENC_KEY);
 	}
 	else {
-		$s .= "\n";
+		$key = md5($key);
 	}
-	file_put_contents($GLOBALS['BASE_DIR'] . "/{$type}.log", $s, FILE_APPEND | LOCK_EX);
+	if ($enc == 'E') {
+		$data = substr(md5($string.$key),0,$vcnt) . $string;
+		$result = rc4($data, $key);
+		if ($fmt == "hex")
+			return bin2hex($result);
+		return preg_replace('/=+$/', '', base64_encode($result));
+	}
+	else if ($enc == 'D') {
+		@$data = $fmt=='hex'? hex2bin($string): base64_decode($string);
+		if ($data === false)
+			return false;
+		$result = rc4($data, $key);
+		$result1 = substr($result,$vcnt);
+		if (substr($result,0,$vcnt) != substr(md5($result1.$key),0,$vcnt))
+			return false;
+		return $result1;
+	}
 }
 
-/*********************************************************************
-@fn myEncrypt($string,$operation='E',$key='carsvc')
-@param operation 'E': encrypt; 'D': decrypt
+/**
+@fn myEncrypt($string, $enc=E|D)
 
-加密解密字符串
+基于rc4的字符串加密算法。
+新代码不建议使用，仅用作兼容旧版本同名函数。缺省key='carsvc', vcnt=8(校验字节数)
 
-加密:
-
-	$cipher = myEncrypt('hello, world!');
-	or
-	$cipher = myEncrypt('hello, world!','E','nowamagic');
-
-解密：
-
-	$text = myEncrypt($cipher,'D','nowamagic');
-
-参数说明:
-$string   :需要加密解密的字符串
-$operation:判断是加密还是解密:E:加密   D:解密
-$key      :加密的钥匙(密匙);
-
-http://www.open-open.com/lib/view/open1388916054765.html
-*********************************************************************/
-function myEncrypt($string,$operation='E',$key='carsvc')
+@see jdEncrypt
+*/
+function myEncrypt($string, $enc='E')
 {
-	$key=md5($key);
-	$key_length=strlen($key);
-	$string=$operation=='D'? base64_decode($string): substr(md5($string.$key),0,8).$string;
-	$string_length=strlen($string);
-	$rndkey=$box=array();
-	$result='';
-	for($i=0;$i<=255;$i++)
-	{
-		$rndkey[$i]=ord($key[$i%$key_length]);
-		$box[$i]=$i;
-	}
-	for($j=$i=0;$i<256;$i++)
-	{
-		$j=($j+$box[$i]+$rndkey[$i])%256;
-		$tmp=$box[$i];
-		$box[$i]=$box[$j];
-		$box[$j]=$tmp;
-	}
-	for($a=$j=$i=0;$i<$string_length;$i++)
-	{
-		$a=($a+1)%256;
-		$j=($j+$box[$a])%256;
-		$tmp=$box[$a];
-		$box[$a]=$box[$j];
-		$box[$j]=$tmp;
-		$result.=chr(ord($string[$i])^($box[($box[$a]+$box[$j])%256]));
-	}
-	if($operation=='D')
-	{
-		if(substr($result,0,8)==substr(md5(substr($result,8).$key),0,8))
-		{
-			return substr($result,8);
-		}
-		else
-		{
-			return'';
-		}
-	}
-	else
-	{
-		return str_replace('=','',base64_encode($result));
-// 		return base64_encode($result);
-	}
+	return jdEncrypt($string, $enc, 'b64', 'carsvc', 8);
 }
+
+/**
+@fn jdEncryptI($data, $enc=E|D, $fmt=hex|b64, $key=$ENC_KEY)
+
+基于rc4算法的32位整数加解密，缺省密码为全局变量$ENC_KEY.
+
+	$cipher = jdEncryptI(12345678, "E"); // dfa27c4c208489ca (4字节校验+4字节整数=8字节，用16进制文本表示为16个字节)
+	$n = jdEncryptI($cipher, "D");
+	if ($n === false)
+		throw "bad cipher";
+
+可用于将整型id伪装成8字节的uuid.
+
+@see rc4 基础rc4算法
+@see jdEncrypt 基于rc4的文本加密
+*/
+function jdEncryptI($data, $enc='E', $fmt='hex', $key=null)
+{
+	if ($enc=='E')
+		return jdEncrypt(pack("N", $data), $enc, $fmt, $key);
+
+	$n = jdEncrypt($data, $enc, $fmt, $key);
+	if ($n !== false) {
+		$n = unpack("N", $n)[1];
+	}
+	return $n;
+}
+//}}}
 
 /**
 @fn errQuit($code, $msg, $msg2 =null)
@@ -1571,14 +1802,32 @@ function hasSignFile($f)
 	return file_exists("{$BASE_DIR}/{$f}");
 }
 
+/**
+@fn htmlEscape($s)
+
+用于防止XSS攻击。只转义字符"<", ">"，示例：
+当用户保存`<script>alert(1)</script>`时，实际保存的是`&lt;script&gt;alert(1)&lt;/script&gt;`
+这样，当前端以`$div.html($val)`来显示时，不会产生跨域攻击泄漏Cookie。
+
+如果前端就是需要带"<>"的字符串（如显示在input中），则应自行转义。
+ */
 function htmlEscape($s)
 {
+	return preg_replace_callback('/[<>]/', function ($ms) {
+		static $map = [
+			"<" => "&lt;",
+			">" => "&gt;"
+		];
+		return $map[$ms[0]];
+	}, $s);
 // 	if ($s[0] == '{' || $s[0] == '[')
 // 		return $s;
-	return htmlentities($s, ENT_NOQUOTES);
+//	return htmlentities($s, ENT_NOQUOTES);
 }
+
 // 取部分内容判断编码, 如果是gbk则自动透明转码为utf-8
-function utf8InputFilter($fp)
+// 如果指定fnTest, 则对前1000字节做自定义测试: $fnTest($text)
+function utf8InputFilter($fp, $fnTest=null)
 {
 	$str = fread($fp, 1000);
 	rewind($fp);
@@ -1586,64 +1835,12 @@ function utf8InputFilter($fp)
 	if ($enc && $enc != "utf-8") {
 		stream_filter_append($fp, "convert.iconv.$enc.utf-8");
 	}
+	if ($fnTest)
+		$fnTest($str);
 }
 //}}}
 
 // ====== classes {{{
-/** 
-@class MyException($code, $internalMsg?, $outMsg?)
-
-@param $internalMsg String. 内部错误信息，前端不应处理。
-@param $outMsg String. 错误信息。如果为空，则会自动根据$code填上相应的错误信息。
-
-抛出错误，中断执行:
-
-	throw new MyException(E_PARAM, "Bad Request - numeric param `$name`=`$ret`.", "需要数值型参数");
-
-*/
-# Most time outMsg is optional because it can be filled according to code. It's set when you want to tell user the exact error.
-class MyException extends LogicException 
-{
-	function __construct($code, $internalMsg = null, $outMsg = null) {
-		parent::__construct($outMsg, $code);
-		$this->internalMsg = $internalMsg;
-		if ($code && !$outMsg) {
-			global $ERRINFO;
-			assert(array_key_exists($code, $ERRINFO));
-			$this->message = $ERRINFO[$code];
-		}
-	}
-	public $internalMsg;
-
-	function __toString()
-	{
-		$str = "MyException({$this->code}): {$this->internalMsg}";
-		if ($this->getMessage() != null)
-			$str = "Error: " . $this->getMessage() . " - " . $str;
-		return $str;
-	}
-}
-
-/**
-@class DirectReturn
-
-抛出该异常，可以中断执行直接返回，不显示任何错误。
-
-例：API返回非BPQ协议标准数据，可以跳出setRet而直接返回：
-
-	echo "return data";
-	throw new DirectReturn();
-
-例：返回指定数据后立即中断处理：
-
-	setRet(0, ["id"=>1]);
-	throw new DirectReturn();
-
-*/
-class DirectReturn extends LogicException 
-{
-}
-
 /**
 @class JDPDO
 @var $DBH
@@ -1775,11 +1972,37 @@ class Coord
 
 应用框架，用于提供符合BQP协议的接口。
 在onExec中返回协议数据；在onAfter中建议及时关闭DB.
+包含通用错误处理等。
+
+示例：接口`url.php(p)`预处理一些参数，然后调用api.php。
+在预处理中，如果有MyException报错，可以优雅处理。
+
+	require_once('app.php');
+	class UrlApp extends AppBase
+	{
+		protected function onExec()
+		{
+			$p = mparam("p");
+			$param = json_decode(jdEncrypt($p, "D"), true);
+			if (!$param) {
+				throw new MyException(E_PARAM);
+			}
+			$_GET = $param["get"];
+			$_POST = $param["post"];
+			if ($param["ses"]) {
+				session_id($param["ses"]);
+			}
+		}
+	}
+	$app = new UrlApp();
+	$ret = $app->exec();
+	require_once('api.php');
+
  */
 class AppBase
 {
-	public $onBeforeExec = [];
-	public $onAfterExec = [];
+	public $onBeforeActions = [];
+	public $onAfterActions = [];
 	public function exec($handleTrans=true)
 	{
 		global $DBH;
@@ -1787,11 +2010,11 @@ class AppBase
 		$ok = false;
 		$ret = false;
 		try {
-			foreach ($this->onBeforeExec as $fn) {
+			foreach ($this->onBeforeActions as $fn) {
 				$fn();
 			}
 			$ret = $this->onExec();
-			foreach ($this->onAfterExec as $fn) {
+			foreach ($this->onAfterActions as $fn) {
 				$fn();
 			}
 			$ok = true;
@@ -1842,7 +2065,7 @@ class AppBase
 
 	protected function onErr($code, $msg, $msg2)
 	{
-		$fn = $GLOBALS["errorFn"] ?: "errQuit";
+		@$fn = $GLOBALS["errorFn"] ?: "errQuit";
 		$fn($code, $msg, $msg2);
 	}
 
@@ -2012,27 +2235,29 @@ class AppFw_
 		global $JSON_FLAG;
 		global $DBG_LEVEL;
 		$TEST_MODE = getenv("P_TEST_MODE")===false? 0: intval(getenv("P_TEST_MODE"));
+		$isCLI = isCLI();
 		if ($TEST_MODE) {
-			header("X-Daca-Test-Mode: $TEST_MODE");
+			if (!$isCLI)
+				header("X-Daca-Test-Mode: $TEST_MODE");
 			$JSON_FLAG |= JSON_PRETTY_PRINT;
-			$defaultDebugLevel = getenv("P_DEBUG")===false? 0 : intval(getenv("P_DEBUG"));
-			$DBG_LEVEL = param("_debug/i", $defaultDebugLevel, $_GET);
 
 			// 允许跨域
 			@$origin = $_SERVER['HTTP_ORIGIN'];
-			if (isset($origin)) {
+			if (isset($origin) && !$isCLI) {
 				header('Access-Control-Allow-Origin: ' . $origin);
 				header('Access-Control-Allow-Credentials: true');
 				header('Access-Control-Allow-Headers: Content-Type');
 				header('Access-Control-Expose-Headers: X-Daca-Server-Rev, X-Daca-Test-Mode, X-Daca-Mock-Mode');
 			}
 		}
+		$defaultDebugLevel = getenv("P_DEBUG")===false? 0 : intval(getenv("P_DEBUG"));
+		$DBG_LEVEL = param("_debug/i", $defaultDebugLevel, $_GET);
 
 		global $MOCK_MODE;
 		if ($TEST_MODE) {
 			$MOCK_MODE = getenv("P_MOCK_MODE") ?: 0;
 		}
-		if ($MOCK_MODE) {
+		if ($MOCK_MODE && !$isCLI) {
 			header("X-Daca-Mock-Mode: $MOCK_MODE");
 		}
 

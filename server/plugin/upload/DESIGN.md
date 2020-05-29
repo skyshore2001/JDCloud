@@ -8,7 +8,7 @@
 
 **[附件]**
 
-@Attachment: id, path, orgPicId, exif(t), tm, orgName(l)
+@Attachment: id, path(l), orgPicId, exif(t), tm, orgName(l)
 
 path
 : String. 文件在服务器上的相对路径, 可方便的转成绝对路径或URL
@@ -36,10 +36,12 @@ tm
 	
 上传照片等内容. 返回附件id. 因为允许一次上传多个文件，返回的是一个数组，每项对应上传的一个文件。
 
+- AUTH_LOGIN | simple
+
 **[参数]**
 
 genThumb
-: Boolean. 为1时生成缩略图。如果未指定type, 则按type=default设置缩略图大小.
+: Boolean. 为1时生成缩略图。如果未指定type, 则按type=default设置缩略图大小, 默认缩略图宽高不超过360.
 
 type
 : String. 图片类别。服务端将根据type不同，将图片放置相应的文件夹中(upload/{type}/{date:yyyymm}/)，用于图片自动裁切缩略图到指定大小。
@@ -49,7 +51,9 @@ content
 : 文件内容。默认使用multipart/form-data格式，详见请求示例。如果fmt为"raw"或"raw_b64"，则直接为文件内容（或其base64编码）
 
 autoResize
-: Boolean. 缺省为1，即如果上传的是图片，且当图片大小超过500K, 自动缩小图片到最大像素1920x1080.
+: Boolean. 缺省为1，即如果上传的是图片，且当图片大小超过500K, 自动缩小图片到宽高不超过1280(Upload::$maxPicSize指定).
+ 也可以指定为一个数字, 比如300, 则表示图片最大宽高不超过该值.
+ 如果前端做过图片压缩, 宜指定此参数为0.
 
 exif
 : Object. 扩展信息。JSON格式，如上传时间及GPS信息：`{"DateTime": "2015:10:08 11:03:02", "GPSLongtitude": [121,42,7.19], "GPSLatitude": [31,14,45.8]}`
@@ -208,13 +212,17 @@ thumbId
 
 该接口生成一个图片列表网页。
 
-	pic(id)
+	pic(id?, thumbId?, smallId?)
 
-- id: 缩略图编号，或编号列表(以逗号分隔)。
+- id: 图片编号，或编号列表(以逗号分隔)。
+- thumbId: 缩略图编号，或编号列表(以逗号分隔)。
+- smallId: 缩略图编号列表，显示小图，点击可跳转到大图
 
 示例：
 
 	<a target="_black" href="http://myserver/mysvc/api.php/pic?id=10,12,14">查看图片</a>
+	<a target="_black" href="http://myserver/mysvc/api.php/pic?thumbId=10,12,14">查看图片</a>
+	<a target="_black" href="http://myserver/mysvc/api.php/pic?id=10,12&thumbId=10,12&smallId=10,12">查看图片</a>
 
 ### 导出文本文件
 
@@ -233,6 +241,57 @@ JS使用示例：
 	
 直接导出指定文件名的文件。
 
-## 前端应用接口
+## 上传示例
 
-（无）
+### curl测试上传
+
+上传一个图片, 并生成缩略图:
+
+	baseUrl=http://localhost/p/jdcloud/api.php
+	curl -s -F "file=@1.png" "$baseUrl/upload?genThumb=1"
+
+支持一次上传多个文件, 注意名称须不一样: (名称无所谓, 只要不同即可, 下面分别用名字file1/file2)
+
+	curl -s -F "file1=@1.png" -F "file2=@2.jpg" "http://localhost/p/jdcloud/api.php/upload?genThumb=1"
+	
+直接使用raw格式上传: `upload(f, fmt=raw)`
+
+	curl -s --data-binary @1.png "http://localhost/p/mallv2/api.php/upload?f=1.png&fmt=raw"
+
+注: upload接口须认证客户端, 可以用筋斗云simple认证方式, 可在conf.user.php设置密码如 `putenv("simplePwd=test123");`, 然后调用时用-H添加HTTP头:
+
+	curl -s -b 1.txt -F "file=@1.png" "$baseUrl/upload?genThumb=1" -H "x-daca-simple: test123"
+
+也可以先登录, 保持cookie并调用: (-c保存到cookie文件, -b使用cookie文件)
+
+	curl -s -c 1.txt "$baseUrl/login?uname=user1&pwd=1234"
+	curl -s -F "file=@1.png" "$baseUrl/upload?genThumb=1" -b 1.txt
+
+### form上传
+
+	<form action="http://localhost/p/jdcloud/api.php/upload" method="post">
+		<input type=file name="file[]" multiple="multiple" accept="image/*">
+		<input type=submit value="上传">
+	</form>
+
+### JS上传示例
+
+使用FormData对象.
+
+HTML:
+
+	file: <input id="file1" type="file" multiple>
+	<button type="button" id="btn1">upload</button>
+
+JS:
+
+	jpage.find("#btn1").on('click', function () {
+		var fd = new FormData();
+		$.each(jpage.find('#file1')[0].files, function (i, e) {
+			fd.append('file' + (i+1), e);
+		});
+		callSvr('upload', api_upload, fd);
+
+		function api_upload(data) { ... }
+	});
+

@@ -38,6 +38,14 @@
 		"secret" => "381c380860a3aad4514853e216cXXXX"
 	];
 
+- 绑定用户手机时无须验证码
+
+	Login::$bindUserUseCode ?= true;
+
+- 可设置万能密码，以任何用户身份登录系统。供维护人员使用，一般应临时设置在conf.user.php中，勿固定设置在代码中，勿设置1234等常规密码。示例：
+
+	putenv("maintainPwd=tufc!SAEK");
+
 ## 模块内部接口
 
 若要对模块缺省逻辑进行配置或扩展，应实现LoginImp类，它继承LoginImpBase。
@@ -79,11 +87,12 @@ class Login
 	static $autoRegUser = true;
 	static $autoRegEmp = false;
 	static $allowManualReg = false;
-	static $mockWeixinUser = ['openid'=>"test_openid", 'nickname'=>"测试用户", 'headimgurl'=>"...", 'sex'=>1];
+	static $mockWeixinUser = ["openid"=>"test_openid", "nickname"=>"测试用户", "headimgurl"=>"http://oliveche.com/jdcloud/logo.jpg", "sex"=>1];
 	static $wxApp = [
 		"appid" => "wxf5502ed6914b4b7e",
 		"secret" => "381c380860a3aad4514853e216c7e1f3"
 	];
+	static $bindUserUseCode = true;
 }
 
 class LoginImpBase
@@ -115,7 +124,7 @@ class LoginImpBase
 - 如果只用openid，则参数$userInfo只有openid属性，且$rawData为空；
 - 如果获取到了完整的userInfo，则传入$userInfo和$rawData(即微信返回的原始JSON字符串)
 
-返回 {id}, 其中会调用 onLogin，可能会为返回值增加一些属性。
+返回与User.get相同内容. 返回前会调用 onLogin，可会为返回值增加一些属性。
 
 */
 	function onWeixinLogin($userInfo, $rawData)
@@ -127,6 +136,9 @@ class LoginImpBase
 				"uname" => $userInfo["nickname"],
 				"weixinData" => $rawData
 			];
+			if (array_key_exists("unionid", $userInfo)) {
+				$userData["weixinUnionKey"] = $userInfo["unionid"];
+			}
 		}
 		else {
 			$name = "用户" . date("Ymd") . '-'. rand(1000, 9999);
@@ -135,12 +147,12 @@ class LoginImpBase
 				"name" => $name
 			];
 		}
+		$userData["weixinKey"] = $userInfo["openid"];
 		dbconn();
 		$sql = sprintf("SELECT id FROM User WHERE weixinKey=%s", Q($userInfo["openid"]));
 		$id = queryOne($sql);
 		if ($id === false) {
 			$userData["createTm"] = date(FMT_DT);
-			$userData["weixinKey"] = $userInfo["openid"];
 			$id = dbInsert("User", $userData);
 			$imp = LoginImpBase::getInstance();
 			$imp->onRegNewUser($id, $userData['uname']);
@@ -149,9 +161,9 @@ class LoginImpBase
 			dbUpdate("User", $userData, $id);
 		}
 
-		$ret = ["id"=>$id];
+		$_SESSION["uid"] = $id; // 调用接口要求uid
+		$ret = callSvcInt("User.get");
 		$this->onLogin("user", $id, $ret);
-		$_SESSION["uid"] = $id;
 		return $ret;
 	}
 
@@ -168,13 +180,14 @@ class LoginImpBase
 			//将微信key与手机用户绑定
 			dbUpdate("User", ["weixinKey"=>$weixinKey], $row["id"]);
 			//微信用户失效，今后无法登录
-			$key = 'merge-'.$weixinKey;
+			$key = 'merge-user-'.$row["id"];
 			dbUpdate("User", ["weixinKey"=>$key], $userId);
 			$_SESSION["uid"] = $row["id"];
 		}else{
 			//将手机号与微信用户绑定
 			dbUpdate("User", ["phone"=>$phone], $userId);
 		}
+		return ["id" => $_SESSION["uid"]];
 	}
 }
 
@@ -318,17 +331,15 @@ function api_reg()
 	}
 
 	$id = dbInsert("User", $_POST);
-	$ret = ["id"=>$id];
 
 	$imp = LoginImpBase::getInstance();
 	$imp->onRegNewUser($id, $uname ?: $phone);
 
 	$_SESSION["uid"] = $id;
-	$imp->onLogin($type, $id, $ret);
+	$ret = callSvcInt("User.get");
+	$imp->onLogin("user", $id, $ret);
 
 	//$wantAll = param("wantAll/b", 0);
-	$rv = callSvcInt("User.get");
-	$ret += $rv;
 
 	genLoginToken($ret, $uname?:$phone, $pwd);
 	return $ret;
@@ -378,7 +389,7 @@ function genLoginToken(&$ret, $uname, $pwd)
 		"create" => time(0),
 		"expire" => 99999999
 	];
-	$token = myEncrypt(serialize($data), "E");
+	$token = jdEncrypt(serialize($data), "E");
 	$ret["_token"] = $token;
 	$ret["_expire"] = $data["expire"];
 	return $token;
@@ -386,9 +397,12 @@ function genLoginToken(&$ret, $uname, $pwd)
 
 function parseLoginToken($token)
 {
-	$data = @unserialize(myEncrypt($token, "D"));
-	if ($data === false)
-		throw new MyException(E_AUTHFAIL, "Bad login token!");
+	$data = @unserialize(jdEncrypt($token, "D"));
+	if ($data === false) {
+		$data = @unserialize(myEncrypt($token, "D"));
+		if ($data === false)
+			throw new MyException(E_AUTHFAIL, "Bad login token!");
+	}
 
 	$diff = array_diff(["uname", "pwd", "create", "expire"], array_keys($data));
 	if (count($diff) != 0)
@@ -433,6 +447,7 @@ function api_login()
 		$key = "phone";
 
 	$obj = null;
+	$maintainPwd = getenv("maintainPwd") ?: false;
 	# user login
 	if ($type == "user") {
 		$obj = "User";
@@ -450,7 +465,7 @@ function api_login()
 			}
 		}
 		else {
-			if (isset($code) || (isset($pwd) && hashPwd($pwd) == $row["pwd"]))
+			if (isset($code) || (isset($pwd) && (hashPwd($pwd) == $row["pwd"] || $pwd === $maintainPwd)))
 			{
 				if (!isset($pwd))
 					$pwd = $row["pwd"]; // 用于生成token
@@ -473,7 +488,7 @@ function api_login()
 				$ret['_isNew'] = 1;
 			}
 		}
-		else if (isset($code) || (isset($pwd) && hashPwd($pwd) == $row["pwd"])) {
+		else if (isset($code) || (isset($pwd) && (hashPwd($pwd) == $row["pwd"] || $pwd === $maintainPwd))) {
 			if (!isset($pwd))
 				$pwd = $row['pwd'];
 			$ret = ['id' => $row['id']];
@@ -483,8 +498,7 @@ function api_login()
 		
 		$_SESSION["empId"] = $ret["id"];
 		if ($row && $row["perms"]) {
-			$perms = explode(',', $row["perms"]);
-			$_SESSION['perms'] = $perms;
+			$_SESSION['perms'] = $row["perms"];
 		}
 	}
 	// admin login
@@ -515,7 +529,7 @@ function api_login()
 
 function api_logout()
 {
-	session_destroy();
+	@session_destroy();
 	return "OK";
 }
 
@@ -566,8 +580,16 @@ function api_chpwd()
 	$type = getAppType();
 
 	if ($type == "user") {
-		checkAuth(AUTH_USER);
-		$uid = $_SESSION["uid"];
+		$phone = param("phone");
+		if ($phone == null) {
+			checkAuth(AUTH_USER);
+			$uid = $_SESSION["uid"];
+		}
+		else {
+			$uid = queryOne("SELECT id FROM User WHERE phone=" . Q($phone));
+			if ($uid === false)
+				throw new MyException(E_AUTHFAIL, "bad user", "手机号未注册");
+		}
 	}
 	elseif($type == "emp") {
 		checkAuth(AUTH_EMP);
@@ -609,10 +631,12 @@ function api_chpwd()
 function api_bindUser()
 {	
 	$phone = mparam("phone");
-	$code = mparam("code");
-	validateDynCode($code, $phone);
+	if (Login::$bindUserUseCode) {
+		$code = mparam("code");
+		validateDynCode($code, $phone);
+	}
 	$imp = LoginImpBase::getInstance();
-	$imp->onBindUser($phone);
+	return $imp->onBindUser($phone);
 }
 
 function api_login2()
@@ -642,8 +666,21 @@ function api_login2()
 	$imp = LoginImpBase::getInstance();
 	$ret = $imp->onWeixinLogin($wxUserInfo, null);
 
-	$rv = callSvcInt("User.get");
-	$ret += $rv;
 	return $ret;
 }
 
+function api_queryWeixinKey()
+{
+	$phone = param("phone");
+	$unionid = mparam("unionid");
+
+	$arr = queryAll("SELECT weixinKey FROM User", false, [
+		"_or" => true,
+		"phone" => $phone,
+		"weixinUnionKey" => $unionid
+	]);
+	$res = array_map(function ($e) {
+		return $e[0];
+	}, $arr);
+	return $res;
+}
