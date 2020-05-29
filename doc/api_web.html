@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2019-10-25</div>
+<div>最后更新：2020-05-29</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -63,6 +63,7 @@ code {
 <p><a href="#.wui-find-field">.wui-find-field (key)</a></p>
 <p><a href="#.wui-fixedField">.wui-fixedField (key)</a></p>
 <p><a href="#.wui-form-table">.wui-form-table (key)</a></p>
+<p><a href="#.wui-labels">.wui-labels (key)</a></p>
 <p><a href="#.wui-notCond">.wui-notCond (key)</a></p>
 <p><a href="#.wui-page">.wui-page (key)</a></p>
 <p><a href="#.wui-readonly">.wui-readonly (key)</a></p>
@@ -85,9 +86,12 @@ code {
 <p><a href="#Plugins.list">Plugins.list (fn)</a></p>
 <p><a href="#STORAGE_PREFIX">STORAGE_PREFIX (var)</a></p>
 <p><a href="#WUI">WUI (module)</a></p>
+<p><a href="#WUI.applyPermission">WUI.applyPermission (fn)</a></p>
+<p><a href="#WUI.fname">WUI.fname (fn)</a></p>
 <p><a href="#WUI.getTmRange">WUI.getTmRange (fn)</a></p>
 <p><a href="#WUI.initChart">WUI.initChart (fn)</a></p>
 <p><a href="#WUI.initPageStat">WUI.initPageStat (fn)</a></p>
+<p><a href="#WUI.makeLink">WUI.makeLink (fn)</a></p>
 <p><a href="#WUI.options">WUI.options (var)</a></p>
 <p><a href="#WUI.options.statFormatter">WUI.options.statFormatter (var)</a></p>
 <p><a href="#WUI.rs2Stat">WUI.rs2Stat (fn)</a></p>
@@ -112,6 +116,7 @@ code {
 <p><a href="#callSvrExt[].dataFilter">callSvrExt[].dataFilter (key)</a></p>
 <p><a href="#callSvrExt[].makeUrl">callSvrExt[].makeUrl (key)</a></p>
 <p><a href="#callSvrSync">callSvrSync (fn)</a></p>
+<p><a href="#canDo">canDo (fn)</a></p>
 <p><a href="#closeDlg">closeDlg (fn)</a></p>
 <p><a href="#compressImg">compressImg (fn)</a></p>
 <p><a href="#data-options">data-options (key)</a></p>
@@ -198,6 +203,7 @@ code {
 <p><a href="#parseQuery">parseQuery (fn)</a></p>
 <p><a href="#parseTime">parseTime (fn)</a></p>
 <p><a href="#parseValue">parseValue (fn)</a></p>
+<p><a href="#permission">permission (key)</a></p>
 <p><a href="#queryHint">queryHint (var)</a></p>
 <p><a href="#reload">reload (fn)</a></p>
 <p><a href="#reloadDialog">reloadDialog (alias)</a></p>
@@ -224,6 +230,8 @@ code {
 <p><a href="#tabClose">tabClose (fn)</a></p>
 <p><a href="#tabMain">tabMain (var)</a></p>
 <p><a href="#tobool">tobool (fn)</a></p>
+<p><a href="#toggleCol">toggleCol (fn)</a></p>
+<p><a href="#toggleFields">toggleFields (fn)</a></p>
 <p><a href="#triggerAsync">triggerAsync (fn)</a></p>
 <p><a href="#tryAutoLogin">tryAutoLogin (fn)</a></p>
 <p><a href="#unloadDialog">unloadDialog (fn)</a></p>
@@ -246,6 +254,7 @@ code {
 <p style="margin-left:4em"><a href="#WUI-1.5.2 排序与分页">1.5.2 排序与分页</a></p>
 <p style="margin-left:4em"><a href="#WUI-1.5.3 列表导出Excel文件">1.5.3 列表导出Excel文件</a></p>
 <p style="margin-left:4em"><a href="#WUI-1.5.4 datagrid增强项">1.5.4 datagrid增强项</a></p>
+<p style="margin-left:4em"><a href="#WUI-1.5.5 treegrid集成">1.5.5 treegrid集成</a></p>
 <p style="margin-left:2em"><a href="#WUI-1.6 详情页对话框的常见需求">1.6 详情页对话框的常见需求</a></p>
 <p style="margin-left:4em"><a href="#WUI-1.6.1 通用查询">1.6.1 通用查询</a></p>
 <p style="margin-left:4em"><a href="#WUI-1.6.2 设计模式：关联选择框">1.6.2 设计模式：关联选择框</a></p>
@@ -287,7 +296,7 @@ code {
                     &lt;th data-options="field:'id', sortable:true, sorter:intSort"&gt;订单号&lt;/th&gt;
                     &lt;th data-options="field:'userPhone', sortable:true"&gt;用户联系方式&lt;/th&gt;
                     &lt;th data-options="field:'createTm', sortable:true"&gt;创建时间&lt;/th&gt;
-                    &lt;th data-options="field:'status', jdEnumMap: OrderStatusMap, formatter:Formatter.orderStatus, styler:OrderColumns.statusStyler, sortable:true"&gt;状态&lt;/th&gt;
+                    &lt;th data-options="field:'status', jdEnumMap: OrderStatusMap, formatter:Formatter.enum(OrderStatusMap), styler:Formatter.enumStyler({PA:'Warning'}), sortable:true"&gt;状态&lt;/th&gt;
                     &lt;th data-options="field:'dscr', sortable:true"&gt;描述&lt;/th&gt;
                     &lt;th data-options="field:'cmt'"&gt;用户备注&lt;/th&gt;
                 &lt;/tr&gt;&lt;/thead&gt;
@@ -467,7 +476,7 @@ code {
 <p class="key"><strong>@key <a id="datagrid.styler">datagrid.styler</a></strong> </p>
 <p>示例一：显示名称及颜色</p>
 <p>订单状态字段定义为：</p>
-<pre><code>status:: Enum. 订单状态。CR-新创建,RE-已服务,CA-已取消. </code></pre>
+<pre><code>- status: 订单状态. Enum(CR-新创建,RE-已服务,CA-已取消). </code></pre>
 <p>在显示时，要求显示其中文名称，且根据状态不同，显示不同的背景颜色。</p>
 <p>在table中设置formatter与styler选项：</p>
 <pre><code>&lt;div class="pageOrder" title="订单管理" my-initfn="initPageOrder"&gt;
@@ -475,26 +484,25 @@ code {
         &lt;thead&gt;&lt;tr&gt;
             &lt;th data-options="field:'id', sortable:true, sorter:intSort"&gt;订单号&lt;/th&gt;
             ...
-            &lt;th data-options="field:'status', jdEnumMap: OrderStatusMap, formatter:Formatter.orderStatus, styler:OrderColumns.statusStyler, sortable:true"&gt;状态&lt;/th&gt;
+            &lt;th data-options="field:'status', jdEnumMap: OrderStatusMap, formatter:Formatter.enum(OrderStatusMap), styler:Formatter.enumStyler({PA:'Warning', RE:'Disabled', CR:'#00ff00', null: 'Error'}), sortable:true"&gt;状态&lt;/th&gt;
         &lt;/tr&gt;&lt;/thead&gt;
     &lt;/table&gt;
 &lt;/div&gt;</code></pre>
-<p>formatter用于控制Cell中的HTML标签，styler用于控制Cell自己的CSS style.<br />
+<p>formatter用于控制Cell中的HTML标签，styler用于控制Cell自己的CSS style, 常用于标记颜色.<br />
 在JS中定义：</p>
 <pre><code>var OrderStatusMap = {
     CR: "未付款", 
     RE: "已服务", 
     CA: "已取消"
 };
-var Formatter = {
-    // 显示枚举值的描述，相当于`return map[value] || value`；
-    orderStatus: WUI.formatter.enum(OrderStatusMap),
-    // 显示链接，点击打开用户详情对话框
-    userId: WUI.formatter.linkTo("userId", "#dlgUser")
-};
-Formatter = $.extend(WUI.formatter, Formatter);
-
-var OrderColumns = {
+Formatter = $.extend(WUI.formatter, Formatter);</code></pre>
+<p>上面Formatter.enum及Formatter.enumStyler是框架预定义的常用项，也可自定义formatter或styler，例：</p>
+<pre><code>var OrderColumns = {
+    status: function (value, row) {
+        if (! value)
+            return;
+        return OrderStatusMap[value] || value;
+    },
     statusStyler: function (value, row) {
         var colors = {
             CR: "#000",
@@ -638,6 +646,35 @@ jtbl.datagrid("loadData", {tota:2, rows: rows});
 jtbl.datagrid("loadData", rows);
 jtbl.datagrid("loadData", {h: ["id","name"], d: [ [1, "name1"], [2, "name2"]}); // 筋斗云query接口默认返回格式。
 jtbl.datagrid("loadData", {list: rows}); // 筋斗云query接口指定fmt=list参数时，返回这种格式</code></pre>
+<h6 id="WUI-1.5.5 treegrid集成">1.5.5 treegrid集成</h6>
+<p>后端数据模型中有fatherId字段, 即可适配treegrid.</p>
+<ul>
+<li>支持一次全部加载和分层次加载两种模式。</li>
+<li>支持查询时，只展示部分行。</li>
+<li>点添加时，如果当前有选中行，当这一行是展开的父结点（或是叶子结点，也相当于是展开的），则默认行为是为选中行添加子项，预置fatherId, level字段；<br />
+如果是未展开的父结点，则是加同级的结点。</li>
+<li>更新时如果修改了父结点, 它将移动到新的父结点下。否则直接刷新这行。</li>
+<li>支持排序和导出。</li>
+</ul>
+<p>在初始化页面时, 与datagrid类似: pageItemType.js</p>
+<pre><code>var dgOpt = {
+    // treegrid查询时不分页. 设置pagesz=-1. (注意后端默认返回1000条, 可设置放宽到10000条. 再多应考虑按层级展开)
+    url: WUI.makeUrl("ItemType.query", {pagesz: -1}),
+    toolbar: WUI.dg_toolbar(jtbl, jdlg),
+    onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
+};
+// 用treegrid替代常规的datagrid
+jtbl.treegrid(dgOpt);</code></pre>
+<p>如果数据量非常大, 可以只显示第一层级, 展开时再查询.<br />
+仅需增加初始查询条件(只查第一级)以及一个判断是否终端结点的回调函数isLeaf (否则都当作终端结点将无法展开):</p>
+<pre><code>var dgOpt = {
+    queryParams: {cond: "fatherId is null"},
+    isLeaf: function (row) {
+        return row.level&gt;1;
+    },
+    ...
+};
+jtbl.treegrid(dgOpt);</code></pre>
 <h5 id="WUI-1.6 详情页对话框的常见需求">1.6 详情页对话框的常见需求</h5>
 <h6 id="WUI-1.6.1 通用查询">1.6.1 通用查询</h6>
 <p>在对话框中按快捷键&quot;Ctrl-F&quot;可进入查询模式。<br />
@@ -2376,6 +2413,57 @@ WUI.reloadDialog(true); // 重置所有外部加载的对话框(v5.1)</code></pr
 <li>由于不知道打开对话框的参数，reloadDialog无法重新打开对话框，因而它的行为与unloadDialog一样。</li>
 </ul></div>
 <div class="block">
+<h2 id="canDo">@fn canDo(topic, cmd=null, defaultVal=true)</h2>
+<p>权限检查回调，支持以下场景：</p>
+<ol>
+<li>
+<p>页面上的操作（按钮）</p>
+<p>canDo(页面标题, 按钮标题, true);// 返回false则不显示该按钮</p>
+</li>
+<li>
+<p>对话框上的操作</p>
+<p>canDo(对话框标题, &quot;对话框&quot;, true); // 返回false表示对话框只读</p>
+</li>
+</ol>
+<p>TODO:通过设置 WUI.options.canDo(topic, cmd) 可扩展定制权限。<br />
+TODO: 链接的对话框有安全问题</p>
+<p>默认情况下，所有菜单不显示，其它操作均允许。<br />
+如果指定了&quot;*&quot;权限，则显示所有菜单。<br />
+如果指定了&quot;不可XX&quot;权限，则topic或cmd匹配XX则不允许。</p>
+<ul>
+<li>topic: 通过菜单、页面、对话框、按钮的wui-perm属性指定（按钮参考dg_toolbar函数），如果未指定，则取其text.</li>
+<li>cmd: 对话框，新增，修改，删除，导出，自定义的按钮</li>
+</ul>
+<p>示例：假设有菜单结构如下（不包含最高管理员专有的“系统设置”）</p>
+<pre><code>主数据管理
+    企业
+    用户
+
+运营管理
+    活动
+    公告
+    积分商城</code></pre>
+<p>只显示“公告”菜单项：</p>
+<pre><code>公告</code></pre>
+<p>只显示“运营管理”菜单组：</p>
+<pre><code>运营管理</code></pre>
+<p>显示除了“运营管理”外的所有内容：</p>
+<pre><code>* 不可运营管理</code></pre>
+<p>其中<code>*</code>表示显示所有菜单项。<br />
+显示所有内容（与管理员权限相同），但只能查看不可操作</p>
+<pre><code>* 只读</code></pre>
+<p>“只读”权限排除了“新增”、“修改”等操作。<br />
+特别地，“只读”权限也不允许“导出”操作（虽然导出是读操作，但一般要求较高权限），假如要允许导出公告，可以设置：</p>
+<pre><code>* 只读 公告.导出</code></pre>
+<p>显示“运营管理”，在列表页中不显示“删除”、“导出”按钮：</p>
+<pre><code>运营管理 不可删除 不可导出</code></pre>
+<p>显示“运营管理”，在列表页中，不显示“删除”、“导出”按钮，但“公告”中显示“删除”按钮：</p>
+<pre><code>运营管理 不可删除 不可导出 公告.删除</code></pre>
+<p>或等价于：</p>
+<pre><code>运营管理 不可导出 活动.不可删除 积分商城.不可删除</code></pre>
+<p>显示“运营管理”和“主数据管理”菜单组，但“主数据管理”下面内容均是只读的：</p>
+<pre><code>运营管理 主数据管理 企业.只读 用户.只读</code></pre></div>
+<div class="block">
 <h2 id="doFind">@fn doFind(jo, jtbl?, appendFilter?=false)</h2>
 <p>根据对话框中jo部分内容查询，结果显示到表格(jtbl)中。<br />
 jo一般为对话框内的form或td，也可以为dialog自身。<br />
@@ -2474,7 +2562,14 @@ jtbl.datagrid(dgOpt);</code></pre>
     toolbar: WUI.dg_toolbar(jtbl, jdlg, "export", "-", btn1),
 }</code></pre>
 <p>如果想自行定义导出行为参数，可以参考WUI.getExportHandler</p>
-<p class="see"><strong>@see <a href="#getExportHandler">getExportHandler</a></strong>  导出按钮设置</p></div>
+<p class="see"><strong>@see <a href="#getExportHandler">getExportHandler</a></strong>  导出按钮设置</p>
+<p>按钮的权限（即是否显示）取决于wui-perm和text属性。优先使用wui-perm。系统内置的常用的有：&quot;新增&quot;, &quot;修改&quot;, &quot;删除&quot;, &quot;导出&quot;<br />
+下面例子，把“导入”特别设置为内置的权限“新增”，这样不仅不必在角色管理中设置，且设置了“只读”等权限也可自动隐藏它。</p>
+<pre><code>var btn2 = {text: "导入", "wui-perm": "新增", iconCls:'icon-ok', handler: function () {
+    DlgImport.show({obj: "Salary"}, function () {
+        WUI.reload(jtbl);
+    });
+}};</code></pre></div>
 <div class="block">
 <h2 id="dg_dblclick">@fn dg_dblclick(jtbl, jdlg)</h2>
 <p class="param"><strong>@param jdlg</strong>  可以是对话框的jquery对象，或selector如"#dlgOrder".</p>
@@ -2523,7 +2618,8 @@ Formatter = $.extend(WUI.formatter, Formatter);</code></pre>
 <p>可用值：</p>
 <ul>
 <li>dt/number: 显示日期、数值</li>
-<li>pics: 显示一张或一组图片链接，点一个链接可以在新页面上显示原图片</li>
+<li>pics/pics1: 显示一张或一组图片链接，点一个链接可以在新页面上显示原图片。(v5.4) pics直接显示图片(最多3张，可通过Formatter.pics.maxCnt设置)，更直观；pics1只显示图片编号，效率更好。</li>
+<li>atts: (v5.4) 显示一个或一组附件，点链接可下载附件。</li>
 <li>enum(enumMap): 根据一个map为枚举值显示描述信息，如 <code>enum({CR:"创建", CA:"取消"})</code>。<br />
 (v5.1) 也支持枚举值列表，如设置为 <code>enumList({emp:"员工", mgr:"经理"})</code>，则会将&quot;emp&quot;和&quot;emp,mgr&quot;分别解析为&quot;员工&quot;, &quot;员工,经理&quot;</li>
 <li>flag(yes?, no?): 显示yes-no字段，如 <code>flag("禁用","启用")</code>，也可以用enum，如<code>enum({0:"启用",1:"禁用"})</code></li>
@@ -2532,7 +2628,7 @@ Formatter = $.extend(WUI.formatter, Formatter);</code></pre>
 <p>在datagrid中使用：</p>
 <pre><code>&lt;th data-options="field:'createTm', sortable:true, formatter:Formatter.dt"&gt;创建时间&lt;/th&gt;
 &lt;th data-options="field:'amount', sortable:true, sorter: numberSort, formatter:Formatter.number"&gt;金额&lt;/th&gt;
-&lt;th data-options="field:'userName', sortable:true, formatter:Formatter.userId"&gt;用户&lt;/th&gt;
+&lt;th data-options="field:'userName', sortable:true, formatter:Formatter.linkTo('userId', '#dlgUser')"&gt;用户&lt;/th&gt;
 &lt;th data-options="field:'status', sortable:true, jdEnumMap: OrderStatusMap, formatter: Formatter.orderStatus"&gt;状态&lt;/th&gt;
 &lt;th data-options="field:'done', sortable:true, formatter: Formatter.flag()"&gt;已处理&lt;/th&gt;</code></pre></div>
 <div class="block">
@@ -2656,10 +2752,11 @@ var html = makeLinkTo("#dlgOrder", orderId, "订单" + orderId);</code></pre>
         onShowLogin: showDlgLogin
     });
 
-    WUI.tryAutoLogin(WUI.handleLogin, "whoami");
+    WUI.tryAutoLogin(WUI.handleLogin, "Employee.get");
 }
 
-$(main);</code></pre></div>
+$(main);</code></pre>
+<p>该函数同步调用后端接口。如果要异步调用，请改用tryAutoLoginAsync函数，返回Deferred对象，resolve表示登录成功，reject表示登录失败。</p></div>
 <div class="block">
 <h2 id="handleLogin">@fn handleLogin(data)</h2>
 <p class="param"><strong>@param data</strong>  调用API "login"成功后的返回数据.</p>
@@ -2735,11 +2832,12 @@ WUI.tabMain.tabs("close", idx);</code></pre>
 <li>(v5.0) HTML select组件的jQuery.val()方法被改写。当设置不在范围内的值时，虽然下拉框显示为空，其实际值存储在 value<em> 字段中，(v5.2) 通过jQuery.val()方法仍可获取到。<br />
 用原生JS可以分别取 this.value 和 this.value</em> 字段。</li>
 </ul>
-<p class="param"><strong>@param opt</strong>  {url, jdEnumMap/jdEnumList, formatter, textField, valueField, loadFilter, urlParams, isLoaded_, url_}</p>
+<p class="param"><strong>@param opt</strong>  {url, jdEnumMap/jdEnumList, formatter, textField, valueField, loadFilter, urlParams, isLoaded_, url_, emptyText}</p>
 <p class="param"><strong>@param opt.url</strong>  动态加载使用的url，或一个返回URL的函数（这时会调用opt.url(opt.urlParams)得到实际URL，并保存在opt.url_中）</p>
 <p>所以要取URL可以用</p>
 <pre><code>var opt = WUI.getOptions(jo);
 url = opt.url_ || opt.url;</code></pre>
+<p class="param"><strong>@param opt.emptyText</strong>  设置首个空行（值为null）对应的显示文字。</p>
 <h4 id="jquery-mycombobox-1 用url选项加载下拉列表">1 用url选项加载下拉列表</h4>
 <p>例如，想显示所有员工(Employee)的下拉列表，绑定员工编号字段(id)，显示是员工姓名(name):</p>
 <pre><code>分派给 &lt;select name="empId" class="my-combobox" data-options="url:WUI.makeUrl('Employee.query', {res:'id,name',pagesz:-1})"&gt;&lt;/select&gt;</code></pre>
@@ -2863,13 +2961,13 @@ var ListOptions = {
 {
     ...
 
-    $(frm.brand).on("blur", function () {
+    $(frm.brand).on("change", function () {
         if (this.value)
             $(frm.storeId).trigger("loadOptions", this.value);
     });
 
     function onShow() {
-        $(frm.brand).trigger("blur");
+        $(frm.brand).trigger("change");
     }
 }</code></pre>
 <h4 id="jquery-mycombobox-5 级联列表支持">5 级联列表支持</h4>
@@ -2929,6 +3027,7 @@ var ListOptions = {
 <div class="block">
 <h2 id=".wui-upload">@key .wui-upload</h2><div class="toc"><p style="margin-left:0em"><a href="#.wui-upload-1 右键菜单">1 右键菜单</a></p>
 <p style="margin-left:0em"><a href="#.wui-upload-2 音频等文件上传">2 音频等文件上传</a></p>
+<p style="margin-left:0em"><a href="#.wui-upload-3 压缩参数">3 压缩参数</a></p>
 </div>
 <p>对话框上的上传文件组件。</p>
 <p>用于在对象详情对话框中，展示关联图片字段。图片可以为单张或多张。<br />
@@ -3062,7 +3161,17 @@ jdlg.on("show", function (ev, formMode, initData) {
 &lt;td class="wui-upload" data-options="multiple:false,pic:false,accept:'audio/*'"&gt;
     &lt;input name="attId"&gt;
     &lt;p class="hint"&gt;要求格式m4a,mp3,wav; 采样率为16000&lt;/p&gt;
-&lt;/td&gt;</code></pre></div>
+&lt;/td&gt;</code></pre>
+<h4 id=".wui-upload-3 压缩参数">3 压缩参数</h4>
+<p class="param"><strong>@param opt.maxSize</strong> ?=1280 指定压缩后图片的最大长或宽</p>
+<p class="param"><strong>@param opt.quality</strong> ?=0.8 指定压缩质量, 一般不用修改.</p>
+<p>示例：默认1280像素不够, 增加到2000像素:</p>
+<pre><code>&lt;tr&gt;
+    &lt;td&gt;图片&lt;/td&gt;
+    &lt;td class="wui-upload" data-options="maxSize:2000"&gt;
+        &lt;input name="pics"&gt;
+    &lt;/td&gt;
+&lt;/tr&gt;</code></pre></div>
 <div class="block">
 <h2 id=".wui-checkList">@key .wui-checkList</h2>
 <p>用于在对象详情对话框中，以一组复选框(checkbox)来对应一个逗号分隔式列表的字段。<br />
@@ -3081,6 +3190,33 @@ jdlg.on("show", function (ev, formMode, initData) {
 &lt;/tr&gt;</code></pre>
 <p>wui-checkList块中包含一个hidden对象和一组checkbox. hidden对象的name设置为字段名, 每个checkbox的value字段设置为每一项的内部名字。</p></div>
 <div class="block">
+<h2 id=".wui-labels">@key .wui-labels</h2>
+<p>标签字段（labels）是空白分隔的一组词，每个词是一个标签（label）。<br />
+可以在字段下方将常用标签列出供用户选择，点一下标签则添加到文本框中，再点一下删除它。</p>
+<pre><code>&lt;tr&gt;
+    &lt;td&gt;标签&lt;/td&gt;
+    &lt;td class="wui-labels"&gt;
+        &lt;input name="label" &gt;
+        &lt;p class="hint"&gt;企业类型：&lt;span class="labels" dfd="StoreDialog.dfdLabel"&gt;&lt;/span&gt;&lt;/p&gt;
+        &lt;p class="hint"&gt;行业标签：&lt;span class="labels"&gt;IT 金融 工业&lt;/span&gt;&lt;/p&gt;
+        &lt;p class="hint"&gt;位置标签：&lt;span class="labels"&gt;一期 二期 三期 四期&lt;/span&gt;&lt;/p&gt;
+    &lt;/td&gt;
+&lt;/tr&gt;</code></pre>
+<ul>
+<li>最终操作的文本字段是.wui-labels下带name属性的输入框。</li>
+<li>在.labels中的文本将被按空白切换，优化显示成一个个标签，可以点击。</li>
+<li>支持异步获取，比如要调用接口获取内容，可以指定<code>dfd</code>属性是一个Deferred对象。</li>
+<li>添加的标签具有<code>labelMark</code>类(label太常用，没有用它以免冲突)，默认已设置样式。</li>
+</ul>
+<p>异步获取示例：</p>
+<pre><code>var StoreDialog = {
+    dfdLabel: $.Deferred()
+}
+callSvr("Conf.query", {cond: "name='企业分类'", fmt: "one", res: "value"}, function (data) {
+    StoreDialog.dfdLabel.resolve(data.value);
+})</code></pre>
+<p>// TODO: 支持beforeShow时更新</p></div>
+<div class="block">
 <h2 id="#menu">@key #menu</h2>
 <p>管理端功能菜单，以&quot;menu&quot;作为id:</p>
 <pre><code>&lt;div id="menu"&gt;
@@ -3098,6 +3234,87 @@ jdlg.on("show", function (ev, formMode, initData) {
 &lt;/div&gt;</code></pre>
 <p>菜单组由menu-expand-group标识，第一个a为菜单组标题，可加&quot;expanded&quot;类使其默认展开。<br />
 图标使用font awesome库，由<code>&lt;i class="fa fa-xxx"&gt;&lt;/i&gt;</code>指定，图标查询可参考 <a href="http://www.fontawesome.com.cn/faicons/">http://www.fontawesome.com.cn/faicons/</a> 或 <a href="https://fontawesome.com/icons">https://fontawesome.com/icons</a></p></div>
+<div class="block">
+<h2 id="toggleCol">@fn toggleCol(jtbl, col, show)</h2>
+<p>显示或隐藏datagrid的列。示例：</p>
+<pre><code>WUI.toggleCol(jtbl, 'status', false);</code></pre>
+<p>如果列不存在将出错。</p></div>
+<div class="block">
+<h2 id="toggleFields">@fn toggleFields(jtbl_or_jfrm, showMap)</h2>
+<p>根据type隐藏datagrid列表或明细页form中的项。示例：</p>
+<pre><code>function toggleItemFields(jo, type)
+{
+    WUI.toggleFields(jo, {
+        type: !type,
+        status: !type || type!="公告",
+        tm: !type || type=="活动" || type=="卡券" || type=="停车券",
+        price: !type || type=="集市",
+        qty: !type || type=="卡券"
+    });
+}</code></pre>
+<p>列表中调用，控制列显示：pageItem.js</p>
+<pre><code>    var type = objParam &amp; objParam.type; // 假设objParam是initPageXX函数的传入参数。
+    toggleItemFields(jtbl, type);</code></pre>
+<p>明细页中调用，控制字段显示：dlgItem.js</p>
+<pre><code>    var type = objParam &amp;&amp; objParam.type; // objParam = 对话框beforeshow事件中的opt.objParam
+    toggleItemFields(jfrm, type);</code></pre></div>
+<div class="block">
+<h2 id="WUI.applyPermission">@fn WUI.applyPermission()</h2>
+<p class="key"><strong>@key <a id="permission">permission</a></strong>  菜单权限控制</p>
+<p>前端通过菜单项来控制不同角色可见项，具体参见store.html中菜单样例。</p>
+<pre><code>&lt;div class="perm-mgr" style="display:none"&gt;
+    &lt;div class="menu-expand-group"&gt;
+        &lt;a&gt;&lt;span&gt;&lt;i class="fa fa-pencil-square-o"&gt;&lt;/i&gt;系统设置&lt;/span&gt;&lt;/a&gt;
+        &lt;div class="menu-expandable"&gt;
+            &lt;a href="#pageEmployee"&gt;登录帐户管理&lt;/a&gt;
+            ...
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+<p>系统默认使用mgr,emp两个角色。一般系统设置由perm-mgr控制，其它菜单组由perm-emp控制。<br />
+其它角色则需要在角色表中定义允许的菜单项。</p>
+<p>根据用户权限，如&quot;item,mgr&quot;等，菜单中有perm-xxx类的元素会显示，有nperm-xxx类的元素会隐藏</p>
+<p>示例：只有mgr权限显示</p>
+<pre><code>&lt;div class="perm-mgr" style="display:none"&gt;&lt;/div&gt;</code></pre>
+<p>示例：bx权限不显示（其它权限可显示）</p>
+<pre><code>&lt;a href="#pageItem" class="nperm-bx"&gt;商品管理&lt;/a&gt;</code></pre>
+<p>可通过 g_data.hasPerm(perm) 查询是否有某项权限。</p></div>
+<div class="block">
+<h2 id="WUI.fname">@fn WUI.fname(fn)</h2>
+<p>为fn生成一个名字。一般用于为a链接生成全局函数。</p>
+<pre><code>function onGetHtml(value, row) {
+    var fn = WUI.fname(function () {
+        console.log(row);
+    });
+    return '&lt;a href="' + fn + '()"&gt;' + value + '&lt;/a&gt;';
+}</code></pre>
+<p>或：</p>
+<pre><code>function onGetHtml(value, row) {
+    return WUI.makeLink(value, function () {
+        console.log(row);
+    });
+}</code></pre>
+<p class="see"><strong>@see <a href="#makeLink">makeLink</a></strong> </p></div>
+<div class="block">
+<h2 id="WUI.makeLink">@fn WUI.makeLink(text, fn)</h2>
+<p>生成一个A链接，显示text，点击运行fn.<br />
+用于为easyui-datagrid cell提供html.</p>
+<pre><code>&lt;table&gt;
+    ...
+    &lt;th data-options="field:'orderCnt', sortable:true, sorter:intSort, formatter:ItemFormatter.orderCnt"&gt;订单数/报名数&lt;/th&gt;
+&lt;/table&gt;</code></pre>
+<p>定义formatter:</p>
+<pre><code>var ItemFormatter = {
+    orderCnt: function (value, row) {
+        if (!value)
+            return value;
+        return WUI.makeLink(value, function () {
+            var objParam = {type: row.type, itemId: row.id};
+            WUI.showPage("pageOrder", "订单-" + objParam.itemId, [ objParam ]);
+        });
+    },
+};</code></pre>
+<p class="see"><strong>@see <a href="#fname">fname</a></strong> </p></div>
 <div class="block">
 <h2 id="JdcloudStat">@module JdcloudStat</h2>
 <p>按日期进行数据分析统计</p>

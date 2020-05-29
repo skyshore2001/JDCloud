@@ -9,7 +9,8 @@
 # make clean-refdoc 
 ##############################
 
-#opt=-encoding gb2312
+# 注意：由于windows下php无法接收utf-8编码的中文参数（只能接受系统默认的gb2312），故本文件必须保存成gb2312编码，且让工具jdcloud-gendoc根据encoding参数内部转成utf-8再输出。
+opt=-encoding gb2312
 gendoc=php jdcloud-gendoc.php -template refdoc-template.php -linkFiles "style.css,doc.css,refdoc.js"
 
 all: refdoc

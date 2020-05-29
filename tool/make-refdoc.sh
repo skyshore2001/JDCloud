@@ -1,6 +1,6 @@
 #!/bin/sh
 
-make refdoc
+make refdoc $@
 
 # [[ -n $WINDIR ]] && opt='-encoding gb2312'
 # 

@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（移动Web版）</h1>
-<div>最后更新：2019-10-25</div>
+<div>最后更新：2020-05-29</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -78,6 +78,7 @@ code {
 <p><a href="#FormMode">FormMode (var)</a></p>
 <p><a href="#MUI">MUI (module)</a></p>
 <p><a href="#MUI.UploadPic">MUI.UploadPic (class)</a></p>
+<p><a href="#MUI.setTopbarColor">MUI.setTopbarColor (fn)</a></p>
 <p><a href="#Plugins">Plugins (class)</a></p>
 <p><a href="#Plugins.exists">Plugins.exists (fn)</a></p>
 <p><a href="#Plugins.list">Plugins.list (fn)</a></p>
@@ -166,6 +167,7 @@ code {
 <p><a href="#m_pageStack">m_pageStack (var)</a></p>
 <p><a href="#makeUrl">makeUrl (fn)</a></p>
 <p><a href="#mockData">mockData (var)</a></p>
+<p><a href="#mui-ani">mui-ani (key)</a></p>
 <p><a href="#mui-deferred">mui-deferred (key)</a></p>
 <p><a href="#mui-initfn">mui-initfn (key)</a></p>
 <p><a href="#mui-loadPrompt">mui-loadPrompt (key)</a></p>
@@ -184,6 +186,7 @@ code {
 <p><a href="#options.disableFastClick">options.disableFastClick (var)</a></p>
 <p><a href="#options.enableSwitchApp">options.enableSwitchApp (var)</a></p>
 <p><a href="#options.enableWxLogin">options.enableWxLogin (var)</a></p>
+<p><a href="#options.fixTopbarColor">options.fixTopbarColor (var)</a></p>
 <p><a href="#options.homePage">options.homePage (var)</a></p>
 <p><a href="#options.logAction">options.logAction (var)</a></p>
 <p><a href="#options.loginPage">options.loginPage (var)</a></p>
@@ -196,6 +199,7 @@ code {
 <p><a href="#options.serverUrl">options.serverUrl (var)</a></p>
 <p><a href="#options.serverUrlAc">options.serverUrlAc (var)</a></p>
 <p><a href="#options.showHash">options.showHash (var)</a></p>
+<p><a href="#options.showLoadingDelay">options.showLoadingDelay (var)</a></p>
 <p><a href="#options.statusBarColor">options.statusBarColor (var)</a></p>
 <p><a href="#pagebeforeshow">pagebeforeshow (event)</a></p>
 <p><a href="#pagecreate">pagecreate (event)</a></p>
@@ -211,6 +215,7 @@ code {
 <p><a href="#queryHint">queryHint (var)</a></p>
 <p><a href="#reloadPage">reloadPage (fn)</a></p>
 <p><a href="#reloadSite">reloadSite (fn)</a></p>
+<p><a href="#rgb">rgb (fn)</a></p>
 <p><a href="#rgb2hex">rgb2hex (fn)</a></p>
 <p><a href="#rs2Array">rs2Array (fn)</a></p>
 <p><a href="#rs2Hash">rs2Hash (fn)</a></p>
@@ -234,6 +239,8 @@ code {
 <p><a href="#showLoading">showLoading (fn)</a></p>
 <p><a href="#showLogin">showLogin (fn)</a></p>
 <p><a href="#showPage">showPage (fn)</a></p>
+<p><a href="#slideIn">slideIn (key)</a></p>
+<p><a href="#slideOut">slideOut (key)</a></p>
 <p><a href="#syslog">syslog (fn)</a></p>
 <p><a href="#title">title (var)</a></p>
 <p><a href="#tobool">tobool (fn)</a></p>
@@ -1197,6 +1204,10 @@ function onSubmit()
     bar();
 }</code></pre></div>
 <div class="block">
+<h2 id="rgb">@fn rgb(r,g,b)</h2>
+<p>生成&quot;#112233&quot;形式的颜色值.</p>
+<pre><code>rgb(255,255,255) -&gt; "#ffffff"</code></pre></div>
+<div class="block">
 <h2 id="rgb2hex">@fn rgb2hex(rgb)</h2>
 <p>将jquery取到的颜色转成16进制形式，如：&quot;rgb(4, 190, 2)&quot; -&gt; &quot;#04be02&quot;</p>
 <p>示例：</p>
@@ -1851,19 +1862,31 @@ batch.commit();</code></pre>
 <p>在一个事务中，所有调用要么成功要么都取消。<br />
 任何一个调用失败，会导致它后面所有调用取消执行，且所有已执行的调用会回滚。</p>
 <p>参数中可以引用之前结果中的值，引用部分需要用&quot;{}&quot;括起来，且要在opt.ref参数中指定哪些参数使用了引用：</p>
-<pre><code>var batch = new MUI.batchCall({useTrans: 1});
-callSvr("Attachment.add", api_AttAdd, {path: "path-1"}); // 假如返回 22
-var opt = {ref: ["id"]};
-callSvr("Attachment.get", {id: "{$1}"}, api_AttGet, null, opt); // {$1}=22, 假如返回 {id: 22, path: '/data/1.png'}
-opt = {ref: ["cond"]};
-callSvr("Attachment.query", {res: "count(*) cnt", cond: "path='{$-1.path}'"}, api_AttQuery, null, opt); // {$-1.path}计算出为 '/data/1.png'
-batch.commit();</code></pre>
+<pre><code>MUI.useBatchCall();
+callSvr("..."); // 这个返回值的结果将用于以下调用
+callSvr("Ordr.query", {
+    res: "id,dscr",
+    status: "{$-1.status}",  // 整体替换，结果可以是一个对象
+    cond: "id&gt;{$-1.id}" // 部分替换，其结果只能是字符串
+}, api_OrdrQuery, {
+    ref: ["status", "cond"] // 须在ref中指定需要处理的key
+});</code></pre>
+<p>特别地，当get/post整个是一个字符串时，直接整体替换，无须在ref中指定，如：</p>
+<pre><code>callSvr("Ordr.add", $.noop, "{$-1}", {contentType:"application/json"});</code></pre>
 <p>以下为引用格式示例：</p>
-<pre><code>{$-2} // 前2次的结果。
-{$2[0]} // 取第2次结果（是个数组）的第0个值。
-{$-1.path} // 取前一次结果的path属性
-{$2 -1}  // 可以做简单的计算</code></pre>
+<pre><code>{$1} // 第1次调用的结果。
+{$-1} // 前1次调用的结果。
+{$-1.path} // 取前一次调用结果的path属性
+{$1[0]} // 取第1次调用结果（是个数组）的第0个值。
+{$1[0].amount}
+{$-1.price * $-1.qty} // 可以做简单的数值计算</code></pre>
 <p>如果值计算失败，则当作&quot;null&quot;填充。</p>
+<p>综合示例：</p>
+<pre><code>MUI.useBatchCall();
+callSvr("Ordr.completeItem", $.noop, {itemId:1})
+callSvr("Ordr.completeItem", $.noop, {itemId:2, qty:2})
+callSvr("Ordr.calc", $.noop, {items:["{$1}", "{$2}"]}, {contentType:"application/json", ref:["items"] });
+callSvr("Ordr.add", $.noop, "{$3}", {contentType:"application/json"});</code></pre>
 <p class="see"><strong>@see <a href="#useBatchCall">useBatchCall</a></strong> </p>
 <p class="see"><strong>@see <a href="#disableBatch">disableBatch</a></strong> </p>
 <p class="see"><strong>@see <a href="#m_curBatch">m_curBatch</a></strong> </p></div>
@@ -1984,7 +2007,7 @@ e.g. </p>
 <p class="param"><strong>@param pageRef</strong>  String. 页面引用（即location.hash），以"#"开头，后面可以是一个pageId（如"#home"）或一个相对页的地址（如"#info.html", "#emp/info.html"）。</p>
 <p>如果未指定，则使用当前URL的hash或指定的主页(MUI.options.homePage). &quot;#&quot;表示主页。</p>
 <p class="param"><strong>@param opt</strong>  {ani, url, backNoRefresh}  (v3.3) 该参数会传递给pagebeforeshow/pageshow回调函数。</p>
-<p>opt.ani:: String. 动画效果。设置为&quot;none&quot;禁用动画。</p>
+<p>opt.ani:: String. 动画效果。设置为&quot;none&quot;禁用动画。默认页面由右向左进入，设置为&quot;up&quot;表示由下向上进入（常用于popup页面）。</p>
 <p>opt.url:: String. 指定在地址栏显示的地址。如 <code>showPage("#order", {url: "?id=100"})</code> 可设置显示的URL为 <code>page/order.html?id=100</code>.</p>
 <p class="see"><strong>@see <a href="#setUrl">setUrl</a></strong> </p>
 <p>在应用内无刷新地显示一个页面。</p>
@@ -2038,7 +2061,18 @@ function initPageOrder()
 支持一个页面模板可创建多个页面实例。</p>
 <pre><code>MUI.showPage("udt__费用");
 MUI.showPage("udt__供应商");</code></pre>
-<p>两者用同一套html/js，但数据不会干扰。</p></div>
+<p>两者用同一套html/js，但数据不会干扰。</p>
+<p>(v5.4)</p>
+<p class="key"><strong>@key <a id="mui-ani">mui-ani</a></strong>  指定本页面进入时的动画效果. 支持"up"(由下向上), "pop"(fade展开)。</p>
+<p class="key"><strong>@key <a id="slideIn">slideIn</a></strong> </p>
+<p class="key"><strong>@key <a id="slideOut">slideOut</a></strong> </p>
+<p>支持扩展动画效果。例如新动画名为&quot;xx&quot;，请参考mui.css定义slideIn_xx, slideOut_xx类，即可使用：</p>
+<p>在page上指定进入动画：</p>
+<pre><code>&lt;div mui-initfn="initSynopsis" mui-script="doctorSynopsis.js" mui-ani="up"&gt;</code></pre>
+<p>在显示页面时指定动画：</p>
+<pre><code>MUI.showPage("#doctorSynopsis", {ani: "up"});
+或
+&lt;a href="#doctorSynopsis" mui-opt="ani:'up'"&gt;页面1&lt;a&gt;</code></pre></div>
 <div class="block">
 <h2 id="setDocTitle">@fn setDocTitle(title)</h2>
 <p>设置文档标题。默认在切换页面时，会将文档标题设置为逻辑页的标题(<code>hd</code>块中的<code>h1</code>或<code>h2</code>标签)。</p>
@@ -2237,6 +2271,9 @@ initApp();</code></pre>
 前景设置使用&quot;light&quot;(白色)或&quot;dark&quot;(黑色)。<br />
 设置为&quot;none&quot;表示隐藏标题栏。<br />
 设置为空(&quot;&quot;)表示禁止框架设置状态栏。</p>
+<p class="var"><strong>@var <a id="options.fixTopbarColor">options.fixTopbarColor</a></strong> ?=false</p>
+<p>如果为true, 则自动根据页面第一个hd的背景色设置手机顶栏颜色.<br />
+适合每个页面头部颜色不同的情况. 更复杂的情况, 可使用<code>MUI.setTopbarColor</code>手工设置顶栏颜色.</p>
 <p class="var"><strong>@var <a id="options.manualSplash">options.manualSplash</a></strong> ?=false</p>
 <p class="see"><strong>@see <a href="#topic-splashScreen">topic-splashScreen</a></strong> </p>
 <p class="var"><strong>@var <a id="options.logAction">options.logAction</a></strong> ?=false  Boolean. 是否显示详细日志。</p>
@@ -2272,6 +2309,16 @@ initApp();</code></pre>
 <p>在showHash=false时，必须设置base标签, 否则逻辑页将无法加载。</p>
 <p class="var"><strong>@var <a id="options.disableFastClick">options.disableFastClick</a></strong> ?=false</p>
 <p>在IOS+cordova环境下，点击事件会有300ms延迟，默认会加载lib/fastclick.min.js解决。</p>
+<p>该库会导致部分场景下点击失效问题。这时可以通过在关键点击元素上设置&quot;needsclick&quot;类来解决。</p>
+<p>例如：fastclick库与图片裁切库image-process-tool有些冲突, ios手机APP中点修改头像无法弹出图片选择框. JS初始化配置如下：</p>
+<pre><code>var zxImageProcess = new ZxImageProcess({
+    // 触发文件选择的元素
+    selector: jpage.find(".downSelect-btn[value=1]")[0],
+    ...
+});</code></pre>
+<p>最终将绑定用于点击的元素 <code>&lt;div class='downSelect-btn'&gt;&lt;/div&gt;</code>改为 <code>&lt;div class='downSelect-btn needsclick'&gt;&lt;/div&gt;</code>解决。<br />
+发现IOS上点击失效问题，可先设置<code>options.disableFastClick=true</code>检查问题是否消失来判定。</p>
+<p>TODO: cordova-ios未来将使用WkWebView作为容器（目前仍使用UIWebView），将不再有点击延迟问题，到时将去除FastClick库。</p>
 <p class="var"><strong>@var <a id="options.onAutoLogin">options.onAutoLogin</a></strong>  自动登录</p>
 <p class="event"><strong>@event <a id="autoLogin">autoLogin</a></strong>  自动登录事件(v5.4)</p>
 <p>设置如何自动登录系统，进入应用后，一般会调用tryAutoLogin，其中会先尝试重用已有会话，如果当前没有会话则回调onAutoLogin自动登录系统。<br />
@@ -2359,7 +2406,9 @@ function onShowPage(pageRef, opt) {
         MUI.showPage("#setUserInfo");
         return false;
     }
-}</code></pre></div>
+}</code></pre>
+<p class="var"><strong>@var <a id="options.showLoadingDelay">options.showLoadingDelay</a></strong>  ?= 500  延迟显示加载图标</p>
+<p>(v5.4) 默认如果在500ms内如果远程调用成功, 则不显示加载图标.</p></div>
 <div class="block">
 <h2 id="setFormSubmit">@fn setFormSubmit(jf, fn?, opt?={validate?, onNoAction?})</h2>
 <p class="param"><strong>@param fn</strong>  Function(data); 与callSvr时的回调相同，data为服务器返回的数据。</p>
@@ -2405,6 +2454,11 @@ MUI.setFormSubmit(jf, api_fn1, {
         return dfd;
     }
 });</code></pre></div>
+<div class="block">
+<h2 id="MUI.setTopbarColor">@fn MUI.setTopbarColor(colorHex, style?)</h2>
+<p class="param"><strong>@param colorHex</strong>  颜色值,格式如 "#fafafa", 可用MUI.rgb2hex函数转换.</p>
+<p class="param"><strong>@param style</strong>  dark|light</p>
+<p>设置顶栏颜色和字体黑白风格.</p></div>
 <div class="block">
 <h2 id="showLogin">@fn showLogin(page?)</h2>
 <p class="param"><strong>@param page=pageRef/jpage</strong>  如果指定, 则登录成功后转向该页面; 否则转向登录前所在的页面.</p>

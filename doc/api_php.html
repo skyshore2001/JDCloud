@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2019-10-25</div>
+<div>最后更新：2020-05-29</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -54,12 +54,14 @@ code {
 <p><a href="#$APP">$APP (var)</a></p>
 <p><a href="#$BASE_DIR">$BASE_DIR (var)</a></p>
 <p><a href="#$DBH">$DBH (var)</a></p>
+<p><a href="#$X_APP">$X_APP (var)</a></p>
 <p><a href="#$X_RET_FN">$X_RET_FN (var)</a></p>
 <p><a href="#AC0_">AC0_ (key)</a></p>
 <p><a href="#AC1_">AC1_ (key)</a></p>
 <p><a href="#AC2_">AC2_ (key)</a></p>
 <p><a href="#AC_">AC_ (key)</a></p>
 <p><a href="#AccessControl">AccessControl (module)</a></p>
+<p><a href="#AccessControl.qsearch">AccessControl.qsearch (fn)</a></p>
 <p><a href="#AccessControl::$allowedAc">AccessControl::$allowedAc (var)</a></p>
 <p><a href="#AccessControl::$defaultRes">AccessControl::$defaultRes (var)</a></p>
 <p><a href="#AccessControl::$defaultSort">AccessControl::$defaultSort (var)</a></p>
@@ -88,6 +90,7 @@ code {
 <p><a href="#AccessControl::api_setIf">AccessControl::api_setIf (fn)</a></p>
 <p><a href="#AccessControl::callSvc">AccessControl::callSvc (fn)</a></p>
 <p><a href="#AccessControl::checkSetFields">AccessControl::checkSetFields (fn)</a></p>
+<p><a href="#AccessControl::create">AccessControl::create (var)</a></p>
 <p><a href="#AccessControl::getMaxPageSz">AccessControl::getMaxPageSz (fn)</a></p>
 <p><a href="#AccessControl::isFileExport">AccessControl::isFileExport (fn)</a></p>
 <p><a href="#AccessControl::onAfter">AccessControl::onAfter (fn)</a></p>
@@ -96,6 +99,7 @@ code {
 <p><a href="#AccessControl::onQuery">AccessControl::onQuery (fn)</a></p>
 <p><a href="#AccessControl::onValidate">AccessControl::onValidate (fn)</a></p>
 <p><a href="#AccessControl::onValidateId">AccessControl::onValidateId (fn)</a></p>
+<p><a href="#ApiLog::$instance">ApiLog::$instance (var)</a></p>
 <p><a href="#ApiLog::$lastId">ApiLog::$lastId (var)</a></p>
 <p><a href="#ApiLog::addObjLog">ApiLog::addObjLog (fn)</a></p>
 <p><a href="#AppBase">AppBase (class)</a></p>
@@ -128,6 +132,7 @@ code {
 <p><a href="#P_DB">P_DB (key)</a></p>
 <p><a href="#P_DBCRED">P_DBCRED (key)</a></p>
 <p><a href="#P_DEBUG">P_DEBUG (key)</a></p>
+<p><a href="#P_DEBUG_LOG">P_DEBUG_LOG (key)</a></p>
 <p><a href="#P_MOCK_MODE">P_MOCK_MODE (key)</a></p>
 <p><a href="#P_SESSION_DIR">P_SESSION_DIR (key)</a></p>
 <p><a href="#P_TEST_MODE">P_TEST_MODE (key)</a></p>
@@ -158,6 +163,7 @@ code {
 <p><a href="#dbInsert">dbInsert (fn)</a></p>
 <p><a href="#dbUpdate">dbUpdate (fn)</a></p>
 <p><a href="#dbconn">dbconn (fn)</a></p>
+<p><a href="#delSession">delSession (fn)</a></p>
 <p><a href="#enableAsync">enableAsync (key)</a></p>
 <p><a href="#errQuit">errQuit (fn)</a></p>
 <p><a href="#execOne">execOne (fn)</a></p>
@@ -180,17 +186,21 @@ code {
 <p><a href="#htmlEscape">htmlEscape (fn)</a></p>
 <p><a href="#httpCall">httpCall (fn)</a></p>
 <p><a href="#httpCallAsync">httpCallAsync (fn)</a></p>
+<p><a href="#inSet">inSet (fn)</a></p>
+<p><a href="#injectSession">injectSession (fn)</a></p>
 <p><a href="#isCLI">isCLI (fn)</a></p>
 <p><a href="#isCLIServer">isCLIServer (fn)</a></p>
 <p><a href="#isEqualCollection">isEqualCollection (fn)</a></p>
 <p><a href="#isMockMode">isMockMode (fn)</a></p>
+<p><a href="#issetval">issetval (fn)</a></p>
 <p><a href="#jdEncrypt">jdEncrypt (fn)</a></p>
 <p><a href="#jdEncryptI">jdEncryptI (fn)</a></p>
 <p><a href="#jsonDecode">jsonDecode (fn)</a></p>
 <p><a href="#jsonEncode">jsonEncode (fn)</a></p>
+<p><a href="#list2varr">list2varr (fn)</a></p>
 <p><a href="#logext">logext (fn)</a></p>
-<p><a href="#logit">logit (fn)</a></p>
 <p><a href="#logit">logit (alias)</a></p>
+<p><a href="#logit">logit (fn)</a></p>
 <p><a href="#makeUrl">makeUrl (fn)</a></p>
 <p><a href="#mparam">mparam (fn)</a></p>
 <p><a href="#myEncrypt">myEncrypt (fn)</a></p>
@@ -215,6 +225,7 @@ code {
 <p><a href="#startsWith">startsWith (fn)</a></p>
 <p><a href="#table2objarr">table2objarr (fn)</a></p>
 <p><a href="#tableCRUD">tableCRUD (fn)</a></p>
+<p><a href="#text2html">text2html (fn)</a></p>
 <p><a href="#tmCols">tmCols (fn)</a></p>
 <p><a href="#tmpEnv">tmpEnv (fn)</a></p>
 <p><a href="#tobool">tobool (fn)</a></p>
@@ -397,9 +408,9 @@ addToStr($atts, "100");
 addToStr($atts, "200");
 // $atts = "100,200"</code></pre></div>
 <div class="block">
-<h2 id="arrCopy">@fn arrCopy(&$dst, $src, $fields)</h2>
+<h2 id="arrCopy">@fn arrCopy(&$dst, $src, $fields=null)</h2>
 <p>将数组$src中指定字段复制到$dst中。<br />
-数组$fields指定字段列表。如果字段复制后需要改名，可以以[$dstName, $srcName]这样的数组来表示。</p>
+数组$fields指定字段列表，如果未指定，则全部字段复制过去；如果字段复制后需要改名，可以以[$dstName, $srcName]这样的数组来表示。</p>
 <p>示例：将workItem提取指定字段后插入数据库中：</p>
 <pre><code>$workItem = ["repairWiId"=&gt;$id, "wiName"=&gt;$name, ...];
 $wiData = ["orderId" =&gt; $orderId];
@@ -409,7 +420,11 @@ arrCopy($wiData, $workItem, [
     "saleWorkQty",
     ["addFlag", "isAdd"]
 ]);
-dbInsert("WorkItem", $wiData);</code></pre></div>
+dbInsert("WorkItem", $wiData);</code></pre>
+<p>示例：</p>
+<pre><code>$arrCopy($wiData, $workItem); // 复制全部字段过去</code></pre>
+<p>如果不想覆盖已有字段(即使值为null也不覆盖)，可以用：</p>
+<pre><code>$wiData += $workItem;</code></pre></div>
 <div class="block">
 <h2 id="getReqIp">@fn getReqIp</h2>
 <p>请求的IP。与<code>$_SERVER['REMOTE_ADDR']</code>不同的是，如果有代理，则返回所有IP列表。</p></div>
@@ -438,6 +453,36 @@ $data = jsonDecode($str);</code></pre></div>
     if ($k == "sign" || $k == "sign_type")
         return false;
 });</code></pre></div>
+<div class="block">
+<h2 id="inSet">@fn inSet($str, $strList)</h2>
+<p>e.g.<br />
+$rv = inSet(&quot;管理员&quot;, &quot;财务,销售,管理员&quot;); // true<br />
+$rv = inSet(&quot;管理员&quot;, &quot;财务,销售,仓库管理员&quot;); // false<br />
+$rv = inSet(&quot;管理员&quot;, [&quot;财务&quot;,&quot;销售&quot;,&quot;管理员&quot;]); // true</p>
+<p>str可以是中英文字符，不可以带空格或符号。<br />
+strList可以是数组或字符串。如果为字符串，则多个词以分隔符相隔，分隔符可以是各种符号或空格，支持中文符号或空格（必须utf-8编码）。常用英文逗号，与MySQL的find_in_set函数类似。</p></div>
+<div class="block">
+<h2 id="text2html">@fn text2html($s)</h2>
+<p>简单的文本转html处理。支持标题、段落、列表。示例：</p>
+<pre><code># 标题1
+这是段落1
+## 标题2
+这是段落2
+- 列表1
+- 列表2</code></pre>
+<p>示例：商品详情可在管理端编辑多行文本，在客户端显示html内容：<br />
+数据库定义：</p>
+<pre><code>@Item: id, ... content</code></pre>
+<p>客户端访问接口Item.query/Item.get时，content返回html内容：</p>
+<pre><code>class AC_Item extends AC0_Item
+{
+    protected function onQuery() {
+        parent::onQuery();
+        $this-&gt;enumFields["content"] = function ($val) {
+            return text2html($val);
+        };
+    }
+}</code></pre></div>
 <div class="block">
 <h2 id="app_fw">@module app_fw</h2><div class="toc"><p style="margin-left:0em"><a href="#app_fw-1 通用函数">1 通用函数</a></p>
 <p style="margin-left:0em"><a href="#app_fw-2 初始化配置">2 初始化配置</a></p>
@@ -485,7 +530,8 @@ P_DB=../myorder.db</code></pre>
 <p>连接SQLite数据库未做严格测试，不建议使用。</p>
 <h4 id="app_fw-3 测试模式与调试等级">3 测试模式与调试等级</h4>
 <p class="key"><strong>@key <a id="P_TEST_MODE">P_TEST_MODE</a></strong>  Integer。环境变量，允许测试模式。0-生产模式；1-测试模式；2-自动化回归测试模式(RTEST_MODE)</p>
-<p class="key"><strong>@key <a id="P_DEBUG">P_DEBUG</a></strong>  Integer。环境变量，设置调试等级，值范围0-9。仅在测试模式下有效。</p>
+<p class="key"><strong>@key <a id="P_DEBUG">P_DEBUG</a></strong>  Integer。环境变量，设置调试等级，值范围0-9。</p>
+<p class="key"><strong>@key <a id="P_DEBUG_LOG">P_DEBUG_LOG</a></strong>  Integer。(v5.4) 环境变量，是否打印接口明细日志到debug.log。0-不打印，1-全部打印，2-只打印出错的调用</p>
 <p>测试模式特点：</p>
 <ul>
 <li>输出的HTTP头中包含：<code>X-Daca-Test-Mode: 1</code></li>
@@ -494,6 +540,7 @@ P_DB=../myorder.db</code></pre>
 <li>某些用于测试的接口可以调用，例如execSql。因而十分危险，生产模式下一定不可误设置为测试模式。</li>
 <li>可以使用模拟模式</li>
 </ul>
+<p>注意：v5.4起可设置P_DEBUG_LOG，在测试模式或生产模式都可用，可记录日志到后台debug.log文件中。一般用于在生产环境下，临时开放查看后台日志。</p>
 <p>注意：v3.4版本起不允许客户端设置_test参数，且用环境变量P_TEST_MODE替代符号文件CFG_TEST_MODE和设置全局变量TEST_MODE.</p>
 <p>在过去测试模式用于：可直接对生产环境进行测试且不影响生产环境，即部署后，在前端指定以测试模式连接，在后端为测试模式连接专用的测试数据库，且使用专用的cookie，实现与生产模式共用代码但互不影响。<br />
 现已废弃这种用法，应搭建专用的测试环境用于测试开发。</p>
@@ -685,6 +732,21 @@ h是标题字段数组，d是数据行。<br />
     [ [100, "A"], [101, "B"] ], 
     ["id", "name"] )
 -&gt; [ ["id"=&gt;100, "name"=&gt;"A"], ["id"=&gt;101, "name"=&gt;"B"] ]</code></pre></div>
+<div class="block">
+<h2 id="list2varr">@fn list2varr(ls, colSep=':', rowSep=',')</h2>
+<ul>
+<li>ls: 代表二维表的字符串，有行列分隔符。</li>
+<li>colSep, rowSep: 列分隔符，行分隔符。</li>
+</ul>
+<p>将字符串代表的压缩表(&quot;v1:v2:v3,...&quot;)转成值数组。</p>
+<p>e.g.</p>
+<pre><code>$users = "101:andy,102:beddy";
+$varr = list2varr($users);
+// $varr = [["101", "andy"], ["102", "beddy"]];
+
+$cmts = "101\thello\n102\tgood";
+$varr = list2varr($cmts, "\t", "\n");
+// $varr=[["101", "hello"], ["102", "good"]]</code></pre></div>
 <div class="block">
 <h2 id="getCred">@fn getCred($cred) -> [user, pwd]</h2>
 <p>$cred为&quot;{user}:{pwd}&quot;格式，支持使用base64编码。<br />
@@ -1187,6 +1249,42 @@ putenv("P_MOCK_MODE=1");
 <li>函数型接口，如 &quot;login&quot;, &quot;getToken&quot;等, 一般实现在 api_functions.php中。</li>
 <li>对象型接口，如 &quot;Ordr.query&quot;, &quot;User.get&quot; 等，一般实现在 api_objects.php中。</li>
 </ul>
+<p>关于参数传递，除add/set等接口有特殊要求外（添加或修改的字段必须用POST传递），<br />
+一般用GET或POST传递参数均可。使用POST传参时，Content-Type支持 application/x-www-form-urlencoded , application/form-data , application/json。</p>
+<p>示例：接口定义<code>fn(a, b) -&gt; {id}</code>，可以这样调用：</p>
+<pre><code>GET /api.php/fn?a=1&amp;b=2</code></pre>
+<p>返回示例：<code>[0, {"id":1}]</code></p>
+<p>或用POST传参：</p>
+<pre><code>POST /api.php/fn
+Content-Type: application/x-www-form-urlencoded
+
+a=1&amp;b=2</code></pre>
+<p>或</p>
+<pre><code>POST /api.php/fn
+Content-Type: application/json
+
+{"a":1,"b":2}</code></pre>
+<p>甚至混用GET/POST传参：</p>
+<pre><code>POST /api.php/fn?a=1
+Content-Type: application/x-www-form-urlencoded
+
+b=2</code></pre>
+<p>如果使用筋斗云前端JS，可以调用：</p>
+<pre><code>callSvr("fn", {a:1, b:2}); // 用GET传参
+
+callSvr("fn", $.noop, {a:1, b:2}); // 用POST传参. $.noop是jQuery定义的空函数，这里只用于占位，表示空的回调函数。
+
+callSvr("fn", $.noop, JSON.stringify({a:1, b:2}), {
+    contentType: "application/json"
+}); // 用POST传参, json格式
+
+callSvr("fn", {a:1}, $.noop, {b:2}); // 用GET,POST混合传参</code></pre>
+<p>GET或POST传参时，编码默认使用UTF-8。<br />
+POST传参时支持其它编码，应在Content-Type中显示指定，如下面指定编码为<code>charset=gbk</code>：</p>
+<pre><code>POST /api.php/fn
+Content-Type: application/x-www-form-urlencoded; charset=gbk
+
+a=参数1&amp;b=参数2</code></pre>
 <h4 id="api_fw-1 函数型接口">1 函数型接口</h4>
 <p>假设在文档有定义以下接口</p>
 <pre><code>用户修改密码
@@ -1449,6 +1547,15 @@ $X_RET_FN = function ($X_RET) {
     return false;
 };</code></pre></div>
 <div class="block">
+<h2 id="$X_APP">@var $X_APP</h2>
+<p>可以在应用结束前添加逻辑，如：</p>
+<pre><code>$GLOBALS["X_APP"]-&gt;onAfterActions[] = function () {
+    httpCall("http://oliveche.com/echo.php");
+};</code></pre>
+<p>注意：<br />
+此处应用输出已完成，不可再输出或抛出异常，否则将导致返回内容错乱。<br />
+之前的数据库事务已提交，如果再操作数据库，与之前操作不在同一事务中。</p></div>
+<div class="block">
 <h2 id="setRet">@fn setRet($code, $data?, $internalMsg?)</h2>
 <p class="param"><strong>@param $code</strong>  Integer. 返回码, 0表示成功, 否则表示操作失败。</p>
 <p class="param"><strong>@param $data</strong>  返回数据。</p>
@@ -1505,15 +1612,30 @@ console.log(api_order);
 <p>客户端框架可本地缓存该版本信息，一旦发现不一致，可刷新应用。<br />
 服务器可使用$GLOBALS[&quot;SERVER_REV&quot;]来取服务端版本号（6位）。</p></div>
 <div class="block">
-<h2 id="hasPerm">@fn hasPerm($perm)</h2>
-<p>检查权限。perm可以是单个权限或多个权限，例：</p>
+<h2 id="hasPerm">@fn hasPerm($perms, $exPerms=null)</h2>
+<p>检查权限。perms可以是单个权限或多个权限，例：</p>
 <pre><code>hasPerm(AUTH_USER); // 用户登录后可用
 hasPerm(AUTH_USER | AUTH_EMP); // 用户或员工登录后可用</code></pre>
 <p class="fn"><strong>@fn <a id="onGetPerms">onGetPerms</a></strong> ()</p>
 <p>开发者需要定义该函数，用于返回所有检测到的权限。hasPerm函数依赖该函数。</p>
+<p>(v5.4) exPerms用于扩展验证, 是一个权限名数组, 示例:</p>
+<pre><code>hasPerm(AUTH_LOGIN, ["simple"]);</code></pre>
+<p>它表示AUTH_LOGIN检查失败后, 将再调用<code>hasPerm_simple()</code>进行检查. 支持以下权限名:</p>
+<p><strong>[simple]</strong></p>
+<p>通过HTTP头<code>X-Daca-Simple</code>传递密码, 与环境变量<code>simplePwd</code>进行比较.<br />
+示例: upload接口允许simple验证.</p>
+<pre><code>function api_upload() {
+    checkAuth(AUTH_LOGIN, ["simple"]);
+    ...
+}</code></pre>
+<p>然后在conf.user.php中配置:</p>
+<pre><code>putenv("simplePwd=helloworldsimple");</code></pre>
+<p>用curl访问该接口示例:</p>
+<pre><code>curl -s -F "file=@1.jpg" "http://localhost/jdcloud/api/upload?autoResize=0" -H "X-Daca-Simple: helloworldsimple"</code></pre>
+<p class="see"><strong>@see <a href="#hasPerm_simple">hasPerm_simple</a></strong> </p>
 <p class="see"><strong>@see <a href="#checkAuth">checkAuth</a></strong> </p></div>
 <div class="block">
-<h2 id="checkAuth">@fn checkAuth($perm)</h2>
+<h2 id="checkAuth">@fn checkAuth($perms)</h2>
 <p>用法与hasPerm类似，检查权限，如果不正确，则抛出错误，返回错误对象。</p>
 <pre><code>checkPerm(AUTH_USER); // 必须用户登录后可用
 checkPerm(AUTH_ADMIN | PERM_TEST_MODE); 要求必须管理员登录或测试模式才可用。</code></pre>
@@ -1528,7 +1650,7 @@ checkPerm(AUTH_ADMIN | PERM_TEST_MODE); 要求必须管理员登录或测试模�
 <p>e.g. {type: &quot;a&quot;, ver: 2, str: &quot;a/2&quot;}</p></div>
 <div class="block">
 <h2 id="tmCols">@fn tmCols($fieldName = "t0.tm")</h2>
-<p>为查询添加时间维度单位: y,m,w,d,wd,h (年，月，周，日，周几，时)。</p>
+<p>为查询添加时间维度单位: y,q,m,w,d,wd,h (年，季度，月，周，日，周几，时)。</p>
 <ul>
 <li>wd: 1-7表示周一到周日</li>
 <li>w: 一年中第一周，从该年第一个周一开始(mysql week函数模式7).</li>
@@ -1639,6 +1761,10 @@ $GLOBALS["P_initClient"] = [
 <div class="block">
 <h2 id="ApiLog::$lastId">@var ApiLog::$lastId</h2>
 <p>取当前调用的ApiLog编号。</p></div>
+<div class="block">
+<h2 id="ApiLog::$instance">@var ApiLog::$instance</h2>
+<p>e.g. 修改ApiLog的ac:</p>
+<pre><code>ApiLog::$instance-&gt;batchAc = "async:$f";</code></pre></div>
 <div class="block">
 <h2 id="ApiLog::addObjLog">@fn ApiLog::addObjLog($obj, $objId, $dscr)</h2>
 <p>添加对象日志ObjLog。默认系统会记录标准add/set/del等日志到ObjLog，非标准方法若需要手工添加日志可调用此方法。<br />
@@ -1759,9 +1885,17 @@ $_POST[key] = value; // 设置post参数</code></pre>
     "name" =&gt; $params["vendorName"],
     "tel" =&gt; $params["vendorPhone"]
 ]);</code></pre>
+<p>(v5.4) 上面例子会自动根据当前用户角色来选择AC类，还可以直接指定使用哪个AC类来调用，如：</p>
+<pre><code>$acObj = new AC2_Vendor();
+$vendorId = $acObj-&gt;callSvc("Vendor", "query", [
+    "name" =&gt; $params["vendorName"],
+    "tel" =&gt; $params["vendorPhone"]
+]);</code></pre>
+<p>注意请自行确保AC类对当前角色兼容性，如用户角色调用了管理员的AC类，就可能出问题。</p>
 <p class="see"><strong>@see <a href="#setParam">setParam</a></strong> </p>
-<p class="see"><strong>@see <a href="#tableCRUD">tableCRUD</a></strong> </p>
-<p class="see"><strong>@see <a href="#callSvc">callSvc</a></strong> </p></div>
+<p class="see"><strong>@see <a href="#tableCRUD">tableCRUD</a></strong>  (obsolete)</p>
+<p class="see"><strong>@see <a href="#callSvc">callSvc</a></strong> </p>
+<p class="see"><strong>@see <a href="#AccessControl::callSvc">AccessControl::callSvc</a></strong> </p></div>
 <div class="block">
 <h2 id="tmpEnv">@fn tmpEnv($param, $postParam, $fn)</h2>
 <p>(v5.4) 在指定的GET/POST参数下执行fn函数，执行完后恢复初始环境。<br />
@@ -1780,6 +1914,38 @@ $ret = tmpEnv($param, null, function () {
 <p>外部可直接调用接口checkIp测试，例如用JS：</p>
 <pre><code>callSvr("checkIp");</code></pre>
 <p class="see"><strong>@see <a href="#BlackList">BlackList</a></strong> </p></div>
+<div class="block">
+<h2 id="injectSession">@fn injectSession($userId, $appType, $fn, $days=3)</h2>
+<p>对别人的session进行操作，比如删除，修改参数等。<br />
+$fn为对session的操作，当设置为false时，表示删除session.</p>
+<p>基于ApiLog查找指定用户的session, 默认找3天(参数days)内该用户的最近一次session（且该session此后未被别的用户使用）.<br />
+操作将记录在日志trace.log中。</p>
+<p>示例：当管理员的权限字段(perms)被修改后，直接修改该用户的session令其立刻生效。<br />
+(注意：此机制仅优化常见场景，但并不可靠）</p>
+<pre><code>class AC0_Employee {
+    protected function onValidate() {
+        if ($this-&gt;ac == "set" &amp;&amp; issetval("perms?")) {  // "perms?"以问号结尾表示传入空串也算设置了，这时set接口将置空该字段。
+            $params = $_POST; // 注意：闭包不可直接use $_POST，否则得到null值
+            injectSession($this-&gt;id, "emp", function () use ($params) {
+                $_SESSION["perms"] = $params["perms"];
+                // $_SESSION["adminFlag"] = param("adminFlag/i", 0, $params); // 注意字段类型要正确，可用param函数。
+            });
+        }
+    }
+}</code></pre>
+<p class="see"><strong>@see <a href="#delSession">delSession</a></strong> </p></div>
+<div class="block">
+<h2 id="delSession">@fn delSession($userId, $appType, $days=3)</h2>
+<p>删除指定用户的session. 例如：踢掉在线用户等。</p>
+<p>示例：当用户的“管理员标志”(adminFlag)被修改后，踢掉该用户让其重新登录。</p>
+<pre><code>class AC0_User {
+    protected function onValidate() {
+        if ($this-&gt;ac == "set" &amp;&amp; issetval("adminFlag")) {
+            delSession($this-&gt;id, "user");
+        }
+    }
+}</code></pre>
+<p class="see"><strong>@see <a href="#injectSession">injectSession</a></strong> </p></div>
 <div class="block">
 <h2 id="httpCallAsync">@fn httpCallAsync($url, $postParams=null)</h2>
 <p>发起调用后立即返回，即用于发起异步调用。<br />
@@ -1841,6 +2007,7 @@ params为JSON格式。</code></pre>
 <p style="margin-left:4em"><a href="#AccessControl-2.7.1 嵌套查询">2.7.1 嵌套查询</a></p>
 <p style="margin-left:4em"><a href="#AccessControl-2.7.2 关联子查询优化">2.7.2 关联子查询优化</a></p>
 <p style="margin-left:0em"><a href="#AccessControl-3 子表">3 子表</a></p>
+<p style="margin-left:2em"><a href="#AccessControl-3.1 子表查询参数">3.1 子表查询参数</a></p>
 <p style="margin-left:0em"><a href="#AccessControl-4 操作完成回调">4 操作完成回调</a></p>
 <p style="margin-left:0em"><a href="#AccessControl-5 其它">5 其它</a></p>
 <p style="margin-left:2em"><a href="#AccessControl-5.1 编号自定义生成">5.1 编号自定义生成</a></p>
@@ -1851,6 +2018,7 @@ params为JSON格式。</code></pre>
 <p style="margin-left:2em"><a href="#AccessControl-5.6 query接口输出格式">5.6 query接口输出格式</a></p>
 <p style="margin-left:2em"><a href="#AccessControl-5.7 distinct查询">5.7 distinct查询</a></p>
 <p style="margin-left:2em"><a href="#AccessControl-5.8 枚举支持及自定义字段处理">5.8 枚举支持及自定义字段处理</a></p>
+<p style="margin-left:2em"><a href="#AccessControl-5.9 动态设置虚拟字段及属性">5.9 动态设置虚拟字段及属性</a></p>
 <p style="margin-left:0em"><a href="#AccessControl-6 批量更新(setIf)和批量删除(delIf)">6 批量更新(setIf)和批量删除(delIf)</a></p>
 </div>
 <p>对象型接口框架。<br />
@@ -1885,18 +2053,21 @@ Ordr.del(id=1)</code></pre>
 <p class="key"><strong>@key <a id="AC2_">AC2_</a></strong>   员工权限(AUTH_EMP/AUTH_MGR), 如未定义，报权限不足错误。</p>
 <p>因而上例中命名为 &quot;AC1_Ordr&quot; 就表示用户登录后调用Ordr对象接口，将受该类控制。而这是个空的类，所以拥有一切操作权限。</p>
 <p>框架为AUTH_ADMIN权限自动选择AC0_类，其它类可以通过函数 onCreateAC 进行自定义，仍未定义的框架使用AC_类。</p>
+<p>(v5.4) 当调用对象接口时，将自动尝试加载 php/class/AC_{obj}.php 文件。所以可将该obj相关的AC类放到该文件中。</p>
 <p class="fn"><strong>@fn <a id="onCreateAC">onCreateAC</a></strong> ($obj)</p>
 <p>需开发者在api.php中定义。<br />
 根据对象名，返回权限控制类名，如 AC1<em>{$obj}。<br />
 如果返回null, 则默认为 AC</em>{obj}</p>
 <h4 id="AccessControl-1 基本权限控制">1 基本权限控制</h4>
-<p class="var"><strong>@var <a id="AccessControl::$allowedAc">AccessControl::$allowedAc</a></strong> ?=["add", "get", "set", "del", "query"] 设定允许的操作，如不指定，则允许所有操作。</p>
-<p class="var"><strong>@var <a id="AccessControl::$readonlyFields">AccessControl::$readonlyFields</a></strong>  ?=[]  (影响add/set) 字段列表，添加/更新时为这些字段填值无效（但不报错）。</p>
+<p class="var"><strong>@var <a id="AccessControl::$allowedAc">AccessControl::$allowedAc</a></strong>  设定允许的操作，如不指定，则允许所有操作。示例: ["add", "get", "set", "del", "query"] </p>
+<p class="var"><strong>@var <a id="AccessControl::$readonlyFields">AccessControl::$readonlyFields</a></strong>  ?=[]  (影响add/set) 字段列表，添加/更新时为这些字段填值无效。</p>
 <p class="var"><strong>@var <a id="AccessControl::$readonlyFields2">AccessControl::$readonlyFields2</a></strong>  ?=[]  (影响set操作) 字段列表，更新时对这些字段填值无效。</p>
+<p>注意：v5.4以下设置只读字段，只记录日志但不报错。<br />
+v5.4起将报错，设置该类的useStrictReadonly=false可以兼容旧行为不报错。</p>
 <p class="var"><strong>@var <a id="AccessControl::$hiddenFields">AccessControl::$hiddenFields</a></strong>  ?= []  (for get/query) 隐藏字段列表。默认表中所有字段都可返回。一些敏感字段不希望返回的可在此设置。</p>
 <p class="var"><strong>@var <a id="AccessControl::$requiredFields">AccessControl::$requiredFields</a></strong>  ?=[] (for add/set) 字段列表。添加时必须填值；更新时不允许置空。</p>
 <p class="var"><strong>@var <a id="AccessControl::$requiredFields2">AccessControl::$requiredFields2</a></strong>  ?=[] (for set) 字段列表。更新时不允许设置空。</p>
-<p class="fn"><strong>@fn <a id="AccessControl::onQuery">AccessControl::onQuery</a></strong> () (for get/query)  用于对查询条件进行设定。</p>
+<p class="fn"><strong>@fn <a id="AccessControl::onQuery">AccessControl::onQuery</a></strong> () (for get/query)  用于对查询条件进行设定。实际上，set/del/setIf/delIf等操作也会调用它验证数据是否可操作。</p>
 <p class="fn"><strong>@fn <a id="AccessControl::onValidate">AccessControl::onValidate</a></strong> ()  (for add/set). 验证添加和更新时的字段，或做自动补全(AutoComplete)工作。</p>
 <p class="fn"><strong>@fn <a id="AccessControl::onValidateId">AccessControl::onValidateId</a></strong> () (for get/set/del) 用于对id字段进行检查。比如在del时检查用户是否有权操作该记录。可在其中设置$this->id。</p>
 <p>上节例子中，用户可以操作系统的所有订单。</p>
@@ -2124,8 +2295,12 @@ FROM (
     SELECT t0.id,year(tm) y,month(tm) m FROM ApiLog t0
     WHERE ...
 ) t0</code></pre>
+<p>如果不使用isExt=true, 则生成的语句为像下面这样，是不正确的语句，将报“数据库错误”：</p>
+<pre><code>SELECT t0.id,year(tm) y,month(tm) m, concat(y, '-', m) ym FROM ApiLog t0
+WHERE ...</code></pre>
+<p>用require标识依赖的内层查询的字段，上例中若未指定requrie，查询<code>query(res="id,y,m,ym")</code>没有问题，但查询<code>query(res="id,ym")</code>将出错，因为y,m字段未引入，不可识别。</p>
 <p>注意：即使在调用接口时用res参数指定了返回字段，外部虚拟字段依赖的内部字段也将返回。比如query(res=&quot;id,ym&quot;)返回<code>tbl(id,y,m,ym)</code>.</p>
-<p>注意：设置require或res属性时，如果依赖的是表的字段，应加表名，如&quot;t0.tm, t1.name&quot;，如果是虚拟字段，则不加表名，如&quot;y,m&quot;。</p>
+<p>注意：设置require或res属性时，如果依赖的是表的字段，应加上表名更健壮，如&quot;t0.tm, t1.name&quot;，如果是虚拟字段，则不加表名，如&quot;y,m&quot;。</p>
 <p>注意：关于时间统计相关的虚拟字段，一般通过tmCols函数来指定：</p>
 <pre><code>function __construct() {
     $this-&gt;vcolDefs[] = [ "res" =&gt; tmCols() ];
@@ -2167,23 +2342,52 @@ FROM (
 <p>这样只需要对最终结果20条数据计算虚拟字段。<br />
 由于出现了外层和内层两层SQL，我们将外层的虚拟字段称为外部虚拟字段。</p>
 <p>效果：ApiLog仅20000行数据，优化前查询一次16秒，优化后降低到0.2s。</p>
-<p>注意：自动优化只处理res中只有一个元素且未指定join条件的情况，并且会自动识别出依赖内层t0.ses字段。<br />
-如果自动处理或识别有误，可手工设置isExt和require属性，比如：</p>
+<p>注意：框架对于未指定isExt也未指定join条件的vcol定义，将自动生成isExt及require属性。<br />
+对于含有嵌套子查询的res定义，例如<code>(SELECT... WHERE t0.xxx...)</code>，当作是外部字段，并分析其依赖于t0表的字段。例如：</p>
 <pre><code>[
     "res" =&gt; ["(select count(*) from ApiLog t1 where t1.ses=t0.ses and t0.userId is not null) sesCnt"],
-    "isExt" =&gt; true,
-    "require" =&gt; "t0.ses,t0.userId"
 ]</code></pre>
-<p>上面require属性指定内层查询应暴露给外层的字段，如果有多个可用逗号分隔（自动优化只能处理一个）。<br />
-注意res中的t0指的是内层查询的结果表，名称固定为t0; 而require中的表指的是内层查询内部的表。</p>
+<p>将自动计算和添加属性：</p>
+<pre><code>    "isExt" =&gt; true,
+    "require" =&gt; "t0.ses,t0.userId"</code></pre>
+<p>上面require属性指定内层查询应暴露给外层的字段，如果有多个可用逗号分隔。<br />
+注意res中的t0指的是内层查询的结果表，名称固定为t0; 而require中的表指的是内层查询内部的表。<br />
+如果自动处理或识别有误，可手工设置isExt和require属性。</p>
 <p>注意：使用外部虚拟字段时，将导致require中的字段被添加到最终结果集。例如上面例子中的&quot;t0.ses,t0.userId&quot;字段会被添加到最终结果集。</p>
 <p>注意：如果想禁止优化，可手工设置vcolDef的isExt属性为false：</p>
 <pre><code>[
     "res" =&gt; ["(select count(*) from ApiLog t1 where t1.ses=t0.ses) sesCnt"],
     "isExt" =&gt; false
 ]</code></pre>
+<p>注意：一组res定义将共享相同的isExt和require属性，因而不可将外部字段与普通字段定义在一起，且依赖t0字段不同的的外部字段也不应放在一组中。<br />
+下面示例在处理时将报错：</p>
+<pre><code>[
+    "res" =&gt; [
+        "(SELECT COUNT(id) FROM PdiRecord WHERE type='EQ' AND orderId=t0.id) AS eqCnt",
+        "t0.DMSOrderNo dmsOrder",
+    ]
+]</code></pre>
+<p>应将res分成几组：</p>
+<pre><code>[
+    "res" =&gt; [
+        "(SELECT COUNT(id) FROM PdiRecord WHERE type='EQ' AND orderId=t0.id) AS eqCnt",
+    ]
+],
+[
+    "res" =&gt; [
+        "t0.DMSOrderNo dmsOrder",
+    ]
+]</code></pre>
+<p>注意: 在做分组查询时(query接口有gres参数), 不会自动优化为外部查询, 以免语句错误.<br />
+示例: <code>Hub.query</code>为列车查询接口, exFlag为虚拟字段, 表示是否有异常, 则 查看正常/异常列车数接口为:</p>
+<pre><code>Hub.query(gres: "exFlag", res: "count(*) cnt") -&gt; tbl(exFlag, cnt)</code></pre>
+<p>实现虚拟字段:</p>
+<pre><code>[ "res" =&gt; ["EXISTS (SELECT id FROM Exception WHERE hubId=t0.id AND doneFlag=0) exFlag"] ]</code></pre>
+<p>在普通查询时, exFlag为外部字段, 而在分组查询时为普通字段.</p>
 <h4 id="AccessControl-3 子表">3 子表</h4>
 <p class="var"><strong>@var <a id="AccessControl::$subobj">AccessControl::$subobj</a></strong>  (for get/query) 定义子表</p>
+<p>subobj: { name =&gt; {obj, cond, AC?, res?, default?=false} } （v5.4）指定子表对象obj，全面支持子表的增删改查。</p>
+<p>或</p>
 <p>subobj: { name =&gt; {sql, default?=false, wantOne?=false, force?=false} }</p>
 <p>设计接口：</p>
 <pre><code>Ordr.get() -&gt; {id, ..., @orderLog}
@@ -2192,7 +2396,24 @@ orderLog:: {id, tm, dscr, ..., empName} 订单日志子表。</code></pre>
 <pre><code>class AC1_Ordr extends AccessControl
 {
     protected $subobj = [
-        "orderLog" =&gt; ["sql"=&gt;"SELECT ol.*, e.name AS empName FROM OrderLog ol LEFT JOIN Employee e ON ol.empId=e.id WHERE orderId=%d", "default"=&gt;false, "wantOne"=&gt;false],
+        "orderLog" =&gt; ["obj"=&gt;"OrderLog", "cond"=&gt;"orderId=%d", "AC"=&gt;"OrderLog", "res"=&gt;"*,empName,empPhone"],
+    ];
+}
+
+class OrderLog extends AccessControl
+{
+    protected $vcolDefs = [
+        [
+            "res" =&gt; ["e.name AS empName", "e.phone AS empPhone"],
+            "join" =&gt; "LEFT JOIN Employee e ON e.id=t0.empId"
+        ]
+    ];
+}</code></pre>
+<p>或</p>
+<pre><code>class AC1_Ordr extends AccessControl
+{
+    protected $subobj = [
+        "orderLog" =&gt; ["sql"=&gt;"SELECT ol.*, e.name empName, e.phone empPhone FROM OrderLog ol LEFT JOIN Employee e ON ol.empId=e.id WHERE orderId=%d", "default"=&gt;false, "wantOne"=&gt;false],
     ];
 }</code></pre>
 <p>子表和虚拟字段类似，支持get/query操作，执行指定的SQL语句作为结果。结果以一个数组返回[{id, tm, ...}]。</p>
@@ -2203,6 +2424,68 @@ orderLog:: {id, tm, dscr, ..., empName} 订单日志子表。</code></pre>
 <li>wantOne: 如果为true, 则结果以一个对象返回即 {id, tm, ...}, 适用于主表与子表一对一的情况。</li>
 <li>force: (v5.1) 如果sql中没有与主表的关联即没有包含&quot;field=%d&quot;，应指定force=true，否则在query接口中会当作语句错误。</li>
 </ul>
+<h5 id="AccessControl-3.1 子表查询参数">3.1 子表查询参数</h5>
+<p>(v5.4)<br />
+可以通过 &quot;res<em>{子对象名}&quot; 或 &quot;param</em>{子对象名}&quot; 为子对象指定查询条件，param可指定子对象可接受的一切参数。<br />
+示例：实现接口 <code>Hub.query(id, ..., lastData)</code>, 查询主机时，可通过lastData字段返回最近一次的主机数据.</p>
+<pre><code>class AC2_Hub extends AccessControl
+{
+    protected $subobj = [
+        "lastData" =&gt; ["obj"=&gt;"HubData", "cond"=&gt;"hubId=%d", "AC"=&gt;"AC2_HubData", "res"=&gt;"tm,pos,speed,alt", "wantOne"=&gt;true ]
+    ];
+}</code></pre>
+<p>前端调用例：</p>
+<pre><code>callSvr("Hub.get", {id:5, res: "id,name,lastData", res_lastData:"pos,speed"});
+或
+callSvr("Hub.get", {
+    id: 5,
+    res: "id,name,lastData", // 指定返回子对象lastData，可在param_lastData中定义其参数
+    param_lastData: {res:"pos,speed", cond:"tm&gt;'2019-1-1'"} 
+    // 这个里面的res相当于直接用res_lastData参数; 若指定cond，不会覆盖$subobj定义中的cond，而是追加条件。
+    // cond条件同样支持使用子对象的虚拟字段, 如子对象定义了`year(tm) y`，可以用`cond: "y&gt;=2020"`条件。
+});</code></pre>
+<p>参数中还可以添加orderby等标准query接口条件，或子对象query接口支持的自定义查询条件。</p>
+<p>特别地，在子查询param中还可以指定<code>wantOne</code>覆盖subobj中的定义，如返回最近5条数据可以调用：</p>
+<pre><code>callSvr("Hub.get", {
+    id: 5,
+    res: "id,name,lastData", 
+    param_lastData: {pagesz: 5, wantOne: 0} 
+});</code></pre>
+<p>注意：子查询适合用于get接口。<br />
+对于query接口，可用于一般带分页的查询，一次返回主表项几十个的情况。<br />
+例如典型的主、子表场景：一次查询不超过100个订单（分页&lt;100），一个订单带有最多几十行明细，或最多几十条订单日志。<br />
+不可用于总查询返回（主表项数乘以子表项数）超过千行的场景，因为会丢数据。虽可以通过调节子表的maxPageSz解决，但并不建议这样做。</p>
+<p>query接口的子查询默认是不分页的，即返回所有子对象数据（实现时是设置pagesz=-1，所有主表项的子对象数加起来最多返回1000条，所以可能会造成子对象丢失问题）。<br />
+即使指定wantOne也会查询出所有数据后返回首行，若指定pagesz参数则会报错。</p>
+<p>这是由于query接口的子查询使用了查询优化，对所有主表项一次查询返回所有子对象。<br />
+当关联表很大时（如主表每条数据关联上千条）不适用。或通过设置参数<code>disableSubobjOptimize=1</code>禁用query接口的子查询优化。<br />
+这时一次query接口相当于分别执行多次get接口，效率低，但允许指定pagesz或wantOne参数只返回指定条数据。</p>
+<p>query接口子查询示例：</p>
+<pre><code>// subobj定义中指定了wantOne=true，但它仍会查所有子对象并取第一条（get接口没有这个问题），当子对象很多时可能丢失数据。
+callSvr("Hub.query", {
+    res: "id,name,lastData"
+});
+
+// 禁用了子查询优化，这时为每个主表项分别查询子对象，根据wantOne=true为每个主表项返回1个子对象。
+callSvr("Hub.query", {
+    disableSubobjOptimize: 1,
+    res: "id,name,lastData"
+});
+
+// wantOne设置为0可覆盖掉subobj定义中的wantOne参数，返回所有子对象列表。
+// 但这里设置pagesz无效，框架将报错。
+callSvr("Hub.query", {
+    res: "id,name,lastData", 
+    param_lastData: {pagesz: 5, wantOne: 0}  // pagesz设置无效，将出错!!!
+});
+
+// 禁用了子查询优化，这时为每个主表项分别查询子对象，根据pagesz=5为每个主表项返回5个子对象。
+callSvr("Hub.query", {
+    disableSubobjOptimize: 1,
+    res: "id,name,lastData", 
+    param_lastData: {pagesz: 5, wantOne: 0}  // pagesz设置有效
+});</code></pre>
+<p>此处细节较为复杂，最佳实践请参考“筋斗云开发实例讲解”文档的“最先、最后关联问题”。</p>
 <h4 id="AccessControl-4 操作完成回调">4 操作完成回调</h4>
 <p class="fn"><strong>@fn <a id="AccessControl::onAfter">AccessControl::onAfter</a></strong> (&$ret)  (for all) 操作完成时的回调。可修改操作结果ret。</p>
 <p>如果要对get/query结果中的每行字段进行设置，应重写回调 onHandleRow.<br />
@@ -2228,6 +2511,8 @@ orderLog:: {id, tm, dscr, ..., empName} 订单日志子表。</code></pre>
     }
 }</code></pre>
 <p>与onAfter类似，加到onAfterActions集合中的函数，如果要修改返回数据，只要在函数参数中声明<code>&amp;$ret</code>就可以修改它了。</p>
+<p>(v5.4) 如果要在应用处理完成时添加逻辑，可使用全局对象<code>$X_APP</code>的onAfterActions方法，注意这时逻辑不在同一数据库事务中。</p>
+<p class="see"><strong>@see <a href="#$X_APP">$X_APP</a></strong> </p>
 <p class="fn"><strong>@fn <a id="AccessControl::onHandleRow">AccessControl::onHandleRow</a></strong> (&$rowData) (for get/query) 在onAfter之前运行，用于修改行中字段。</p>
 <h4 id="AccessControl-5 其它">5 其它</h4>
 <h5 id="AccessControl-5.1 编号自定义生成">5.1 编号自定义生成</h5>
@@ -2331,6 +2616,7 @@ ORDER BY t0.id DESC)&quot;;<br />
 <p>query接口支持fmt参数：</p>
 <ul>
 <li>list: 生成<code>{ @list, nextkey?, total? }</code>格式，而非缺省的 <code>{ @h, @d, nextkey?, total? }</code>格式</li>
+<li>one: 类似get接口，只返回第一条数据，常用于统计等接口。</li>
 <li>csv/txt/excel: 导出文件，注意为了避免分页，调用时可设置较大的pagesz值。
 <ul>
 <li>csv: 逗号分隔的文件，utf8编码。</li>
@@ -2386,6 +2672,16 @@ Ordr.query(res="id 编号, status 状态=CR:Created;CA:Cancelled")</code></pre>
         };
     }
 }</code></pre>
+<h5 id="AccessControl-5.9 动态设置虚拟字段及属性">5.9 动态设置虚拟字段及属性</h5>
+<p>添加虚拟字段或属性，vcolDefs, subobj建议在onInit函数中添加或修改，而不是onQuery中。否则用res指定返回字段将无效。<br />
+onQuery常用addCond来添加过滤条件，也可以设置enumFields。<br />
+示例：AC2继承AC0类，但要增加一个虚拟字段，又不要影响AC1，故可以加在AC2的onInit中。</p>
+<pre><code>protected function onInit() {
+    parent::onInit();
+    $this-&gt;vcolDefs[] = [
+        "res" =&gt; ["(SELECT result FROM PdiItemResult WHERE pdiRecordId=t0.id AND itemId=1) 客户描述"],
+    ];
+}</code></pre>
 <h4 id="AccessControl-6 批量更新(setIf)和批量删除(delIf)">6 批量更新(setIf)和批量删除(delIf)</h4>
 <p>(v5.1) 以Ordr对象为例，要支持根据条件批量更新或删除：</p>
 <pre><code>Ordr.setIf(cond)(field1=value1, field2=value2, ...)
@@ -2407,6 +2703,15 @@ Ordr.delIf(cond)</code></pre>
 <p>setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更新。<br />
 也可以直接用checkSetFields指定哪些字段允许更新。</p></div>
 <div class="block">
+<h2 id="AccessControl::create">@var AccessControl::create($tbl, $ac = null, $cls = null) </h2>
+<p>如果$cls非空，则按指定AC类创建AC对象。<br />
+否则按当前登录类型自动创建AC类（回调onCreateAC）。</p>
+<p>特别地，为兼容旧版本，当$cls为true时，按超级管理员权限创建AC类（即检查&quot;AC0_XX&quot;或&quot;AccessControl&quot;类）。</p>
+<p>示例：</p>
+<pre><code>AccessControl::create("Ordr", "add");
+AccessControl::create("Ordr", "add", true);
+AccessControl::create("Ordr", null, "AC0_Ordr");</code></pre></div>
+<div class="block">
 <h2 id="AccessControl::callSvc">@fn AccessControl::callSvc($tbl, $ac, $param=null, $postParam=null)</h2>
 <p>直接调用指定类的接口，如内部直接调用&quot;PdiRecord.query&quot;方法：</p>
 <pre><code>// 假如当前是AC2权限，对应的AC类为AC2_PdiRecord:
@@ -2418,6 +2723,34 @@ $acObj-&gt;callSvc("PdiRecord", "query");</code></pre>
 <pre><code>$acObj = new PdiRecord();
 $acObj-&gt;callSvc("PdiRecord", "query");</code></pre>
 <p>如果未指定param/postParam，则使用当前GET/POST环境参数执行，否则使用指定环境执行，并在执行后恢复当前环境。</p>
+<p>也适用于AC类内的调用，这时可不传table，例如调用当前类的add接口：</p>
+<pre><code>$rv = $this-&gt;callSvc(null, "add", null, $postParam);</code></pre>
+<p>示例：通过手机号发优惠券时，支持批量发量，用逗号分隔的多个手机号，接口：</p>
+<pre><code>手机号userPhone只有一个时：
+Coupon.add()(userPhone, ...) -&gt; id
+
+如果userPhone包含多个手机号：（用逗号隔开，支持中文逗号，支持有空格）
+Coupon.add()(userPhone, ...) -&gt; {cnt, idList}</code></pre>
+<p>重载add接口，如果是批量添加则通过callSvc再调用add接口：</p>
+<pre><code>function api_add() {
+    if (@$_POST["userPhone"]) {
+        $arr = preg_split('/[,，]/u', $_POST["userPhone"]);
+        if (count($arr) &gt; 1) {
+            $idList = [];
+            foreach ($arr as $e) {
+                $postParam = array_merge($_POST, ["userPhone"=&gt;trim($e)]);
+                $idList[] = $this-&gt;callSvc(null, "add", null, $postParam);
+            }
+            setRet(0, [
+                "cnt"=&gt;count($idList),
+                "idList"=&gt;$idList
+            ]);
+            throw new DirectReturn();
+        }
+    }
+    return parent::api_add();
+}</code></pre>
+<p>框架自带的批量添加接口api_batch也是类似调用。</p>
 <p class="see"><strong>@see <a href="#callSvc">callSvc</a></strong> </p>
 <p class="see"><strong>@see <a href="#callSvcInt">callSvcInt</a></strong> </p></div>
 <div class="block">
@@ -2432,9 +2765,9 @@ $acObj-&gt;callSvc("PdiRecord", "query");</code></pre>
 <p class="see"><strong>@see <a href="#AccessControl::addCond">AccessControl::addCond</a></strong>  其中有示例</p>
 <p class="see"><strong>@see <a href="#AccessControl::addVCol">AccessControl::addVCol</a></strong>  添加已定义的虚拟列。</p></div>
 <div class="block">
-<h2 id="AccessControl::addCond">@fn AccessControl::addCond($cond, $prepend=false, $fixUserQuery=false)</h2>
+<h2 id="AccessControl::addCond">@fn AccessControl::addCond($cond, $prepend=false, $fixUserQuery=true)</h2>
 <p class="param"><strong>@param $prepend</strong>  为true时将条件排到前面。</p>
-<p class="param"><strong>@param $fixUserQuery</strong>  设置为true，用于自动处理虚拟字段，这时不允许复杂查询。</p>
+<p class="param"><strong>@param $fixUserQuery</strong>  值为true会自动处理虚拟字段，但这时不允许复杂查询。设置为false写cond不受规则限制。</p>
 <p>调用多次addCond时，多个条件会依次用&quot;AND&quot;连接起来。</p>
 <p>添加查询条件。<br />
 示例：假如设计有接口：</p>
@@ -2484,6 +2817,8 @@ $this-&gt;addCond("olpay.action='PA' AND payTm&gt;'$validDate'", false, true);</
 <p>这相当于调用：</p>
 <pre><code>$this-&gt;addVCol("payTm", false, "-"); // 引入定义但并不加到SELECT字段中
 $this-&gt;addCond("olpay.action='PA' AND olpay.tm&gt;'$validDate'");</code></pre>
+<p>如果想要查询固定返回空，习惯上可以用:</p>
+<pre><code>$this-&gt;addCond("1&lt;&gt;1");</code></pre>
 <p class="see"><strong>@see <a href="#AccessControl::addRes">AccessControl::addRes</a></strong> </p>
 <p class="see"><strong>@see <a href="#AccessControl::addJoin">AccessControl::addJoin</a></strong> </p></div>
 <div class="block">
@@ -2527,6 +2862,18 @@ $ret = callSvcInt("PdiRecord.query", [
     "res": "id,vinCode,result,orderId,tm",
     "cond2": ["type='EQ'", "tm&gt;='2019-1-1'"]
 ]);</code></pre></div>
+<div class="block">
+<h2 id="AccessControl.qsearch">@fn AccessControl.qsearch($fields, $q)</h2>
+<p>模糊查询 (v5.4)</p>
+<p>示例接口：</p>
+<pre><code>Obj.query(q) -&gt; 同query接口返回</code></pre>
+<p>查询匹配参数q的内容（比如查询name, label等字段）。<br />
+参数q是一个字符串，或多个以空格分隔的字符串。例如&quot;aa bb&quot;表示字段包含&quot;aa&quot;且包含&quot;bb&quot;。<br />
+每个字符串中可以用通配符&quot;<em>&quot;，如&quot;a</em>&quot;表示以a开头，&quot;<em>a&quot;表示以a结尾，而&quot;</em>a*&quot;和&quot;a&quot;是效果相同的。</p>
+<p>实现：</p>
+<pre><code>protected function onQuery() {
+    $this-&gt;qsearch(["name", "label", "content"], param("q"));
+}</code></pre></div>
 <div class="block">
 <h2 id="AccessControl::api_del">@fn AccessControl::api_del()</h2>
 <p>标准对象删除接口。api函数应通过callSvc调用，不应直接调用。</p></div>
@@ -2588,7 +2935,7 @@ $this-&gt;checkSetFields([&quot;status&quot;, &quot;cmt&quot;]);<br />
 如&quot;title=name,-,addr&quot;表示导入第一列name和第三列addr, 其中&quot;-&quot;表示忽略该列，不导入。<br />
 字段列表以逗号或空白分隔, 如&quot;title=name - addr&quot;与&quot;title=name, -, addr&quot;都可以.</li>
 </ul>
-<p>支持两种方式上传：</p>
+<p>支持三种方式上传：</p>
 <ol>
 <li>
 <p>直接在HTTP POST中传输内容，数据格式为：首行为标题行(即字段名列表)，之后为实际数据行。<br />
@@ -2637,7 +2984,22 @@ callSvr("Store.batchAdd", {title: "name,addr"}, function (ret) {
 baseUrl=http://localhost/p/anzhuang/api.php
 param=title=name,phone,idCard,addr,email,legalAddr,weixin,qq,area
 curl -v -F "file=@1.txt" "$baseUrl/VendorA.batchAdd?$param"</code></pre>
-<p>如果要调试(php/xdebug)，可加URL参数<code>XDEBUG_SESSION_START=1</code>或Cookie中加<code>XDEBUG_SESSION=1</code></p></div>
+<p>如果要调试(php/xdebug)，可加URL参数<code>XDEBUG_SESSION_START=1</code>或Cookie中加<code>XDEBUG_SESSION=1</code></p>
+<ol>
+<li>
+<p>传入对象数组<br />
+格式为 {list: [...]}</p>
+<p>var data = {<br />
+list: [<br />
+{name: &quot;郭志强&quot;, tel: &quot;15384813214&quot;},<br />
+{name: &quot;高长平&quot;, tel: &quot;18375998418&quot;}<br />
+]<br />
+};<br />
+callSvr(&quot;Store.batchAdd&quot;, function (ret) {<br />
+app_alert(&quot;成功导入&quot; + ret.cnt + &quot;条数据！&quot;);<br />
+}, data, {contentType:&quot;application/json&quot;});</p>
+</li>
+</ol></div>
 <div class="block">
 <h2 id="handleExportFormat">@fn handleExportFormat($fmt, $arr, $fname)</h2>
 <p>导出表到文件。</p>
@@ -2683,6 +3045,15 @@ window.open(url);</code></pre>
 <h2 id="AccessControl::isFileExport">@fn AccessControl::isFileExport()</h2>
 <p>返回是否为导出文件请求。</p></div>
 <div class="block">
+<h2 id="issetval">@fn issetval($k, $arr=$_POST, &$val)</h2>
+<p>一般用于add/set接口，判断是否设置了某字段。<br />
+默认检查$_POST中的值。默认不允许设置空串。</p>
+<p>e.g.<br />
+if (issetval(&quot;perms&quot;)) ...</p>
+<p>表示传入了perms字段，且非空串。注意：add接口会忽略空串字段，而set接口处理空串方式是置空该字段(null)。</p>
+<pre><code>if ($this-&gt;ac == "set" &amp;&amp; issetval("perms?")) ...</code></pre>
+<p>表示传入了perms字段，即使为空串也算设置，返回true，等同于isset($_POST[&quot;perms&quot;])。</p></div>
+<div class="block">
 <h2 id="BatchAddLogic">@class BatchAddLogic</h2>
 <p>用于定制批量导入行为。<br />
 示例，实现接口：</p>
@@ -2699,10 +3070,27 @@ window.open(url);</code></pre>
     // $params为待添加数据，可在此修改，如用`$params["k1"]=val1`添加或更新字段，用unset($params["k1"])删除字段。
     // $row为原始行数据数组。
     function beforeAdd(&amp;$params, $row) {
-        // vendorName -&gt; vendorId 将params数组中的venderName字段查阅Vendor表改成vendorId字段。如果查不到则报错。传入vendorCache数组来优化查询。
-        translateKey($params, "vendorName", "vendorId", "SELECT id FROM Vendor WHERE name=%s", null, $this-&gt;vendorCache);
-        // storeName -&gt; storeId 将params数组中的storeName字段查阅Store表改成storeId字段。如果查不到则自动以指定insert语句创建。
-        translateKey($params, "storeName", "storeId", "SELECT id FROM Store WHERE name=%s", "INSERT INTO Store (name) VALUES (%s)");
+        // vendorName -&gt; vendorId
+        // 如果会大量重复查询vendorName,可以将结果加入cache来优化性能
+        if (! $this-&gt;vendorCache)
+            $this-&gt;vendorCache = new SimpleCache(); // name=&gt;vendorId
+        $vendorId = $this-&gt;vendorCache-&gt;get($params["vendorName"], function () use ($params) {
+            $id = queryOne("SELECT id FROM Vendor", false, ["name" =&gt; $params["vendorName"]] );
+            if (!$id) {
+                // throw new MyException(E_PARAM, "请添加供应商", "供应商未注册: " . $params["vendorName"]);
+                // 自动添加
+                $id = callSvcInt("Vendor.add", null, [
+                    "name" =&gt; $params["vendorName"],
+                    "tel" =&gt; $params["vendorPhone"]
+                ]);
+            }
+            return $id;
+        });
+        $params["vendorId"] = $vendorId;
+        unset($params["vendorName"]);
+        unset($params["vendorPhone"]);
+
+        // storeName -&gt; storeId 类似处理 ...
     }
     // 处理原始标题行数据, $row1是通过title参数传入的标题数组，可能为空
     function onGetTitleRow($row, $row1) {
