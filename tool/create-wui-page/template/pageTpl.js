@@ -12,7 +12,8 @@ function initPage<?=$obj?>()
 		var row = WUI.getRow(jtbl);
 		if (row == null)
 			return;
-		WUI.showPage("pageOrder", "结算明细-" + row.id + "-" + row.startDt, [ {cond: "closeLogId="+row.id} ]);
+		var objParam = {closeLogId: row.id};
+		WUI.showPage("pageOrder", "结算明细-" + row.id, [ objParam ]);
 	}};
 */
 
@@ -20,7 +21,7 @@ function initPage<?=$obj?>()
 		url: WUI.makeUrl("<?=$baseObj?>.query"),
 		toolbar: WUI.dg_toolbar(jtbl, jdlg, "export"),
 		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg),
-		//sortOrder: "desc",
+		sortOrder: "desc",
 		sortName: "id"
 	});
 }

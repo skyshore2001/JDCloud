@@ -3,7 +3,15 @@ html {
 	padding: 0;
 }
 
-button {
+input,select,textarea {
+	font-size: 13px;
+}
+
+.wui-page {
+	box-sizing: border-box;
+	height: 100%;
+}
+.wui-dialog button {
 	min-width: 100;
 	min-height: 30;
 }
@@ -41,6 +49,11 @@ input:not([type=button]), select, textarea {
 .wui-dialog td textarea {
 	width: 95%;
 }
+.wui-dialog {
+	padding: 20px;
+	width: 450px;
+	margin: 0;
+}
 @media (max-width: 640px) {
 	.wui-dialog {
 		padding: 10px 5px !important;
@@ -55,7 +68,7 @@ input:not([type=button]):focus, select:focus, textarea:focus{
 	background-color: #fffbce;
 }
 
-.wui-readonly, input[readonly] {
+.wui-readonly, input[readonly], textarea[readonly] {
 /*	pointer-events: none;*/
 	background-color: #fff3f3;
 }
@@ -133,7 +146,7 @@ input:disabled,select:disabled,textarea:disabled {
 
 .hint {
 	font-size: 0.6em;
-	margin-top: 0;
+	margin: 2px;
 	color: blue;
 	white-space: normal;
 }
@@ -145,10 +158,13 @@ input:disabled,select:disabled,textarea:disabled {
 }
 
 #menu .my-menu-item {
+	display: -ms-flexbox;
 	display: flex;
 	height: 47px;
 	padding-left: 25px;
+	-ms-flex-align: center;
 	align-items: center;
+	-ms-flex-pack: justify;
 	justify-content: space-between;
 	color: #abb4be;
 	font-size: 13px;
@@ -188,6 +204,11 @@ input:disabled,select:disabled,textarea:disabled {
 	padding-left: 55px;
 }
 
+#menu .my-menu-item.active:not(.menu-item-head) {
+/*	border-left: #0088cc 3px solid;*/
+	box-shadow:  #0088cc 3px 0px inset;
+}
+
 /* customize easyui */
 .datagrid-cell, .datagrid-cell-group {
 	padding: 7px 10px;
@@ -199,7 +220,7 @@ input:disabled,select:disabled,textarea:disabled {
 	vertical-align: middle;
 }
 
-/* ͼƬ�����photoSwipe */
+/* 图片浏览器photoSwipe */
 .pswp {
 	z-index:9999 !important;
 }
@@ -207,8 +228,30 @@ input:disabled,select:disabled,textarea:disabled {
 .wui-upload .imgs img {
 	width: 150px;
 	height: 150px;
-	object-fit: cover;
+	object-fit: contain;
 }
 .wui-upload .imgs p:hover {
 	background-color: #fffbce;
+}
+
+/* 批量模式高亮显示 batchMode */
+#my-tabMain.batchMode .tabs-selected a {
+	border-top-color: red;
+	color: red;
+}
+/* datagrid表格中显示图片 */
+.datagrid-cell img {
+	height: 40px;
+	max-width: 100px;
+	margin: -8px 0;
+	object-fit: contain;
+}
+
+.labelMark {
+	border: 1px solid #aaa;
+	border-radius: 5px;
+	background-color: #fffbce;
+	cursor: pointer;
+	white-space: nowrap;
+	padding: 0 4px;
 }

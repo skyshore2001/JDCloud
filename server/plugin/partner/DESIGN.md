@@ -53,10 +53,10 @@ OpenApi请求可以不需要Session（通过Cookie机制），但服务端会支
 
 在每个调用请求中，添加以下特别参数：
 
-- partnerId: 调用者编号。
+- partnerId: 调用者编号。可缺省，缺省值为1。
 - timestamp: 时间戳。格式为精确到秒(或毫秒)的Unix纪元时间（从1970/1/1至现在的秒数或毫秒数），一般可通过C/PHP的time()函数，或JS/Java的new Date().getTime()获得。
  (如果系统配置了Partner::$replayCheck=false，则无须此参数)
-- _sign/_pwd: 签名或密码。HTTPS协议，或测试模式下可以使用_pwd，否则应使用_sign。关于_sign如何生成请参考附录-签名算法。
+- _sign/_pwd: 签名或密码。HTTPS协议可以使用_pwd，否则应使用_sign。关于_sign如何生成请参考附录-签名算法。
 
 注意：如果参数名以下划线开头，则它不参与签名，例如_pwd, _sign这些参数都不参与签名。
 
@@ -72,7 +72,7 @@ OpenApi请求可以不需要Session（通过Cookie机制），但服务端会支
 
 ## 签名算法
 
-签名生成规则如下：
+默认签名规则如下：
 
 - 所有名字不以下划线开头的参数（包括URL中和POST中的参数）均为待签名参数。如_pwd/_test这些参数不参与签名。
 - 对所有待签名参数按照字段名的ASCII 码从小到大排序（字典序，注意区分大小写）后，使用URL键值对的格式（即key1=value1&key2=value2…）拼接成字符串string1。
@@ -92,7 +92,7 @@ OpenApi请求可以不需要Session（通过Cookie机制），但服务端会支
 	string1 = "amount=0&svcId=100" （按参数名字母排序拼接）
 	pwd = "ABCD"
 	string2 = string1 + pwd = "amount=0&svcId=100ABCD"
-	_sign = md5(string2) = "4c4ca8bf0f29a0e877ce1f1b0bf5054a"
+	_sign = md5(string2) = "4c4ca8bf0f29a0e877ce1f1b0bf5054a" (字母大小写均可)
 
 ## 内部接口
 
@@ -121,15 +121,37 @@ OpenApi请求可以不需要Session（通过Cookie机制），但服务端会支
 
 	Partner::$replayCheck=true;
 
-设置为false可取消这些检查，只验证签名是否正确，请求中无须传timestamp参数。
+- 如果设置为true, 检测时间戳和重放攻击。
+- 如果设置为"timestamp"，只检测时间戳（要求timestamp参数，默认允许10分钟内的调用），不检查`_sign`参数是否已用过。
+- 如果设置为false，则请求中无须timestamp参数，不检查调用时间及是否已调用过，安全性低。
 
-默认所有partner的密码为"1234"，可通过实现PartnerImp来定制:
+默认所有partner的密码为"Partner123"，可通过实现PartnerImp来定制:
 
 示例：
 
 	class PartnerImp extends PartnerImpBase {
 		function onGetPartnerPwd($partnerId) {
 			return @Conf::$partners[$partnerId]["pwd"];
+		}
+	}
+
+可重写默认签名算法。示例：partnerId为1时，采用默认算法，否则用 md5(timestamp + pwd):
+
+	Partner::$replayCheck = "timestamp";
+	Partner::$timestampPeriod = 3600*2; // 允许2小时内调用
+	class PartnerImp extends PartnerImpBase {
+		protected $partnerId;
+		function onGetPartnerPwd($partnerId) {
+			$this->partnerId = $partnerId;
+			return @Conf::$partners[$partnerId]["pwd"];
+		}
+		function onGetSign($pwd, $params) {
+			if ($this->partnerId == 1)
+				return PartnerImpBase::onGetSign($pwd, $params);
+
+			$str = mparam("timestamp/n", $params);
+			$str .= $pwd;
+			return md5($str);
 		}
 	}
 
@@ -140,6 +162,17 @@ OpenApi请求可以不需要Session（通过Cookie机制），但服务端会支
 	function api_test()
 	{
 		Partner::checkAuth();
+		...
+	}
+
+对象型接口示例：
+
+	class AC_Store extends AccessControl
+	{
+		protected function onInit()
+		{
+			Partner::checkAuth();
+		}
 		...
 	}
 

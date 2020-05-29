@@ -4,7 +4,7 @@ MERGE=../../tool/mergeJsCss.sh
 all: $(LIB) $(LIB_APP)
 	
 $(LIB): lib/weui.min.css \
-	lib/jquery-1.11.1.min.js lib/jquery.touchSwipe.min.js lib/jquery-dataview.min.js \
+	lib/jquery-1.11.1.min.js lib/jquery.touchSwipe.min.js \
 	lib/mui.css app.css icon.out.css \
 	lib/jdcloud-mui.js app.js
 	MERGE=lib $(MERGE) $^

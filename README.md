@@ -23,6 +23,88 @@
 
 # 版本日志
 
+## v5.4 - 2020/5
+
+- 后端(jd-php)
+ - (subobj)支持子对象级联操作，支持子对象查询参数`param_{subobj}`, 添加文档“子表对象设计”及最佳实践。
+ - 支持qsearch模糊匹配机制，可模糊查询表中多个字段。
+ - 支持记录调试日志到debug.log，不再只依赖于调试输出到前端，便于线上调试和追溯。日志文件可设置`P_DEBUG_LOG`
+ - 对象调用重构。增加AccessControl::callSvc，内部可直接指定AC类调用。增加tmpEnv函数。
+ - 增加simple认证方式, 目前upload接口支持simple认证. 
+ - 外部字段增强(isExt)
+ - 设置只读属性将报错，增加useStrictReadonly兼容旧版;
+ - 对象set/del接口也会先通过执行onQuery查询是否有操作权限，从而限制操作数据的范围. 
+ - 调用对象接口时，系统自动加载`class/AC_{obj}.php`文件
+ - batch重构和增强：引用参数更灵活；batch调用在ac中显示明细
+ - query接口支持fmt=one, 类似get接口，方便单条查询，特别适合取数量的接口。
+ - enumFields回调函数增强，增加参数row: fn(val, row)
+ - 增加`P_initClient`机制为前端传全局配置。
+ - 支持伪uuid类型的id
+ - 使用jdEncryptI加解密。
+ - 增加text2html支持简单markdown文本转html
+ - 增加inSet, issetval增强(支持"perms?"), getBaseUrl增强；增加getSignContent支持生成签名，jsonEncode/jsonDecode
+ - jd-plugin-pay, jd-plugin-login: 重构三方支付插件和微信认证。支持微信unionid
+ - jd-plugin-upload: autoResize参数支持直接设置图片宽高. 小图片可不再做压缩
+ - jd-plugin-login: 增加重置密码接口
+ - jd-plugin-upload: 增加pic接口，可生成多图页面。
+
+- 前端(jd-m2)
+ - 支持扩展动画效果，添加动效：向上滑入up和弹出pop两个效果；调整页面返回时效果为推出
+ - jd-plugin-syslog: 增加记录页面切换日志
+ - 增加MUI.options.fixTopbarColor，为true则自动根据页面第一个hd的背景色设置手机顶栏颜色. 增加setTopbarColor手动设置顶栏色。
+ - 增加MUI.options.onShowPage选项: 可用于统一处理登录认证
+ - MUI.initPageList支持本地分页(localPageSize)
+ - 加载时延迟500ms显示加载图标(可配置)。
+
+- 管理端(jd-web)
+ - jd-plugin-role: 管理端角色权限框架，支持自定义角色对应的菜单/按钮项。
+ - 批量导入与batchAdd接口功能增强及最佳实践，批量上传及工具：upload/tool/gen_upload simiar_join
+ - 支持treegrid树型列表. 
+ - 新增标签选择组件 .wui-labels
+ - 页面表格自适应高度，表头和工具栏置顶。
+ - 新增WUI.makeLink, 支持生成a链接时同时指定回调函数。
+ - 三击或右击标题栏, 弹出隐藏菜单. 支持手机上三击标题栏设置批量操作模式.
+ - 添加WUI.tryAutoLoginAsync 支持异步登录
+ - 对话框padding按默认不指定。
+ - WUI.showPage标题中可以使用%s占位符
+
+- 工具(jd-tool)
+ - 新增文档《筋斗云开发实例讲解.md》和《子表对象设计.md》
+ - create-wui-page改进。生成页面时可配置是否生成移动端页面
+ - `git_clone`: 默认不下载项目日志（使用depth=1参数），减少项目大小
+
+## v5.3 - 2019/7
+
+- 后端(jd-php)
+ - ObjLog机制。可用Conf::enableObjLog关闭
+ - 支持jsonp格式返回（URL参数`_jsonp`）
+ - 可在onApiInit中支持将`notify/orderStatus`这样的URL转换成`Notify.orderStatus`
+ - 增加Conf::enableAutoSession可手工控制session开始。
+ - 用黑白名单和Conf::checkSecure替代ApiWatch; 日志中记录IP时支持透过代理(getReqIp)
+ - 将class目录设置为默认库包含路径. 
+ - 批量导入时支持备份文件(batchAdd)
+ - callSvcInt增强; getQueryCond; SimpleCache; 
+ - 接口`Obj.del(force=1)`在id不存在时不报错
+ - jd-plugin-login: 万能密码机制, 可配置变量maintainPwd（维护密码）
+ - jd-plugin-upload: 支持导出附件到zip(Upload::exportZip)
+ - jd-plugin-login: 绑定微信用户增强，可合并用户；Login::$bindUserUseCode=false 绑定用户手机时无须验证码
+
+- 前端(jd-m2)
+ - MUI.initPageDetail/setFormSubmit支持异步提交; 
+
+- 管理端(jd-web)
+ - 导出excel文件, 不再用excelcsv, 而是输出真正的excel. 支持ctrl-导出时选择导出格式
+ - 添加数据后可关闭窗口(WUI.options.closeAfterAdd)
+ - jd-plugin-udt: 初步支持UDT(用户自定义表对象)，支持中文对象名和前端页面名
+ - 管理端表格列数很多时，在手机上加载、刷新很慢。修改easyui源码解决
+ - 对话框上的固定字段：wui-fixedField, 添加时自动从对话框的objParam中取值，其它模式不可修改（即readonly）
+ - 增加查询操作：对话框中三击（2秒内）字段标题栏，可快速按查询该字段，Ctrl+三击为追加过滤条件
+ - 在页面工具栏中，按住Ctrl(batch模式)点击“刷新”按钮，可清空当前查询条件
+
+- 工具(tool)
+ - 增加模型一键生成演示(tool/index.php), 自动生成后端、前端、更新数据库表、添加菜单项。
+ - create-wui-page/create-mui-page模板增强: 列表、明细页处理对象添加和删除
+
 ## v5.2 - 2019/3
 
 - 前端(jd-m2)
@@ -45,6 +127,7 @@
  - 导出文件增强：queryAllWithHeader, handleExportFormat
  - ApiLog1: 记录batch操作明细
  - queryAll支持返回多结果集
+ - 自定义返回格式机制(`X_RET_FN`)
  - upload与login插件增强
  - httpCall记录慢查询到日志
  - 缺省查询最大返回数据条数由100条改为1000条。
@@ -53,7 +136,7 @@
  - jd-php: apilog中将上传时间也算进来
  - dbUpdate等操作数据库时，可用dbExpr指定SQL表达式
  - jd-plugin-login: 支持微信小程序登录，增加login2(wxCode)接口
- - 外部虚拟字段机制
+ - 外部虚拟字段机制(isExt)
  - IP白名单机制(whiteIpList)
  - 异步调用机制(enableAsync)
 

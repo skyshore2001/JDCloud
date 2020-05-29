@@ -1,0 +1,39 @@
+<div mui-initfn="initPage<?=$obj?>" mui-script="<?=lcfirst($obj)?>.js">
+	<div class="hd">
+		<a href="javascript:hd_back();" class="btn-icon"><i class="icon icon-back"></i></a>
+		<h2><?=$title?>列表</h2>
+	</div>
+
+	<div class="ft" style="padding: 5px;">
+		<a TODO:href="javascript: Page<?=$baseObj?>.showForAdd()" class="weui-btn weui-btn_primary">新增</a>
+	</div>
+
+	<div class="bd">
+		<div class="p-list weui-cells"></div>
+	</div>
+
+<script type="text/template" id="tpl<?=$baseObj?>">
+<li class="weui-cell weui-cell_access">
+	<div class="weui-cell__hd">
+	</div>
+	<div class="weui-cell__bd">
+<?php
+if (!isset($meta)) {
+	$meta = [
+		"id" => ["name"=>"编号"],
+		"name" => ["name"=>"名称"],
+	];
+}
+foreach($meta as $k=>$v) {
+	echo <<<EOL
+		<p>{$v["name"]}: <span name="{$k}"></span></p>
+
+EOL;
+}
+?>
+	</div>
+	<div class="weui-cell__ft"></div>
+</li>
+</script>
+
+</div>

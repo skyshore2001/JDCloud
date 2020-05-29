@@ -18,6 +18,7 @@ class SqlDiff
 	protected $dbh;
 
 	public $ntext = "NTEXT";
+	public $ntext2 = "NTEXT";
 	public $autoInc = 'AUTOINCREMENT';
 	public $money = "MONEY";
 	public $createOpt = "";
@@ -52,10 +53,11 @@ class SqlDiff_sqlite extends SqlDiff
 
 class SqlDiff_mysql extends SqlDiff
 {
-	public $ntext = "TEXT CHARACTER SET utf8";
+	public $ntext = "TEXT CHARACTER SET utf8mb4";
+	public $ntext2 = "MEDIUMTEXT CHARACTER SET utf8mb4";
 	public $autoInc = 'AUTO_INCREMENT';
 	public $money = "DECIMAL(19,2)";
-	public $createOpt = "DEFAULT CHARSET=utf8";
+	public $createOpt = "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
 
 	public function tableExists($tbl) {
 		$sth = $this->dbh->query("show tables like '$tbl'");
@@ -103,23 +105,23 @@ function die1($msg)
 - name: 字段名，如"cmt".
 - dscr: 原始定义，如"cmt(l)"。
 - def: 字段生成的SQL语句
-- type: Enum("id", "nvarchar", "ntext", "int", "real", "decimal", "date", "datetime", "flag")
+- type: Enum("id", "s"-string, "t"-text, "tt"-mediumtext, "i"-int, "real", "n"-number, "date", "tm"-datetime, "flag")
 - len: 仅当type="nvarchar"时有意义，表示字串长。
 
 e.g.
 
 	"cmt(l)" => ["name"=>"cmt", "def"=>"cmt(l)", "type=>"nvarchar", "len"=>250];
 */
-function parseFieldDef($fieldDef)
+function parseFieldDef($fieldDef, $tableName)
 {
 	global $CHAR_SZ, $SQLDIFF;
 	$f = $fieldDef;
-	$f1 = ucfirst(preg_replace('/(\d|\W)*$/', '', $f));
+	$f1 = ucfirst(preg_replace('/(\d|\W)*$/u', '', $f));
 
 	$ret = [
 		"name" => null,
 		"dscr" => $fieldDef,
-		"type" => "nvarchar",
+		"type" => "s",
 		"len" => null,
 		"def" => null
 	];
@@ -127,34 +129,55 @@ function parseFieldDef($fieldDef)
 		$ret["type"] = "id";
 		$def = "INTEGER PRIMARY KEY " . $SQLDIFF->autoInc;
 	}
-	elseif (preg_match('/\((\w+)\)$/', $f, $ms)) {
+	elseif (preg_match('/\((\w+)\)$/u', $f, $ms)) {
 		$tag = $ms[1];
-		$f = preg_replace('/\((\w+)\)$/', '', $f);
-		if ($tag == 't') {
-			$ret["type"] = "ntext";
-			$def = $SQLDIFF->ntext;
+		$f = preg_replace('/\((\w+)\)$/u', '', $f);
+		if ($tag == 't' || $tag == 'tt') {
+			$ret["type"] = $tag;
+			$def = $tag == 't'? $SQLDIFF->ntext: $SQLDIFF->ntext2;
 		}
 		elseif ($tag == 's' || $tag == 'm' || $tag == 'l') {
 			$ret["len"] = $CHAR_SZ[$tag];
 			$def = "NVARCHAR(" . $CHAR_SZ[$tag] . ")";
+		}
+		elseif ($tag == 'n') {
+			$ret["type"] = $tag;
+			$ret["len"] = "19,2";
+			$def = $SQLDIFF->money;
+		}
+		elseif ($tag == 'i') {
+			$ret["type"] = $tag;
+			$def = "INTEGER";
+		}
+		elseif ($tag == 'tm') {
+			$ret["type"] = $tag;
+			$def = "DATETIME";
+		}
+		elseif ($tag == 'date') {
+			$ret["type"] = $tag;
+			$def = "DATE";
+		}
+		elseif ($tag == 'flag') {
+			$ret["type"] = $tag;
+			$def = "TINYINT UNSIGNED NOT NULL DEFAULT 0";
 		}
 		elseif (is_numeric($tag)) {
 			$ret["len"] = $tag;
 			$def = "NVARCHAR($tag)";
 		}
 		else {
-			die1("unknown type of string fields");
+			die1("unknown type of string fields: @{$tableName}.$f");
 		}
 	}
 	elseif (preg_match('/(@|&|#)$/', $f, $ms)) {
 		$f = substr_replace($f, "", -1);
 		if ($ms[1] == '@') {
-			$ret["type"] = "decimal";
+			$ret["type"] = "n";
 			$ret["len"] = "19,2";
 			$def = $SQLDIFF->money;
 		}
 		else if ($ms[1] == '&') {
-			$ret["type"] = "int";
+			$ret["type"] = "i";
 			$def = "INTEGER";
 		}
 		else if ($ms[1] == '#') {
@@ -162,33 +185,33 @@ function parseFieldDef($fieldDef)
 			$def = "REAL";
 		}
 	}
-	elseif (preg_match('/(Price|Qty|Total|Amount)$/', $f1)) {
-		$ret["type"] = "decimal";
+	elseif (preg_match('/(Price|Qty|Total|Amount)$/u', $f1)) {
+		$ret["type"] = "n";
 		$ret["len"] = "19,2";
 		$def = $SQLDIFF->money;
 	}
-	elseif (preg_match('/Id$/', $f1)) {
-		$ret["type"] = "int";
+	elseif (preg_match('/(Id|编号)$/u', $f1)) {
+		$ret["type"] = "i";
 		$def = "INTEGER";
 	}
-	elseif (preg_match('/Tm$/', $f1)) {
-		$ret["type"] = "datetime";
+	elseif (preg_match('/(Tm|时间)$/u', $f1)) {
+		$ret["type"] = "tm";
 		$def = "DATETIME";
 	}
-	elseif (preg_match('/Dt$/', $f1)) {
+	elseif (preg_match('/(Dt|日期)$/u', $f1)) {
 		$ret["type"] = "date";
 		$def = "DATE";
 	}
-	elseif (preg_match('/Flag$/', $f1)) {
+	elseif (preg_match('/^是否|Flag$/u', $f1)) {
 		$ret["type"] = "flag";
 		$def = "TINYINT UNSIGNED NOT NULL DEFAULT 0";
 	}
-	elseif (preg_match('/^\w+$/', $f)) { # default
+	elseif (preg_match('/^\w+$/u', $f)) { # default
 		$ret["len"] = $CHAR_SZ['m'];
 		$def = "NVARCHAR(" . $CHAR_SZ['m'] . ")";
 	}
 	else {
-		die1("unknown type of fields");
+		die1("unknown type of fields: @{$tableName}.$f");
 	}
 
 # 		# !!! fix some name that conflicts with reserved words
@@ -338,20 +361,24 @@ class UpgHelper
 	private $dbh = null;
 	private $forRtest = null;
 
-	function __construct ($forRtest=false) {
+	function __construct ($forRtest=false, $noDb=false) {
 		$this->forRtest = $forRtest;
-		$this->_init();
+		if (! $noDb)
+			$this->_init();
+		else
+			$this->_initMeta();
 	}
 	function __destruct () {
 		global $LOGF;
 		logstr("=== [" . date('c') . "] done\n", false);
 		if (! $this->forRtest)
-			prompt("=== Done!\n");
+			prompt("=== Done! Find log in $LOGF\n");
 	}
 
 	// 添加文件到$files集合。
 	private function includeFile($f, &$files) {
 		if (strpos($f, "*") === false) {
+			$f = str_replace("\\", "/", $f);
 			if (! file_exists($f)) {
 				logstr("!!! cannot read included file $f\n");
 				return;
@@ -375,7 +402,7 @@ class UpgHelper
 		if (!$meta || !is_file($meta)) {
 			throw new Exception("*** bad main meta file $meta");
 		}
-		prompt("=== load metafile\n");
+		prompt("=== load metafile: $meta\n");
 
 		$baseDir = dirname($meta);
 		$files = [$meta];
@@ -389,7 +416,7 @@ class UpgHelper
 				throw new Exception("*** cannot read meta file $file");
 
 			while (($s = fgets($fd)) !== false) {
-				if (preg_match('/^@(\w+):\s+(\w.*?)\s*$/', $s, $ms)) {
+				if (preg_match('/^@([\w_]+)[:：]\s+(\w.*?)\s*$/u', $s, $ms)) {
 					$tableName = $ms[1];
 					foreach ($this->tableMeta as $e) {
 						if ($e["name"] == $tableName) {
@@ -397,7 +424,7 @@ class UpgHelper
 							continue;
 						}
 					}
-					$fields = preg_split('/\s*,\s*/', $ms[2]);
+					$fields = preg_split('/[\s,，]+/u', $ms[2]);
 					// fieldsMeta在SQL_DIFF初始化后再设置.
 					$this->tableMeta[] = ["name"=>$ms[1], "fields"=>$fields, "fieldsMeta"=>null, "file"=>$file, "tableDef"=>$s];
 		# 			print "-- $_";
@@ -422,7 +449,7 @@ class UpgHelper
 		$this->_initMeta();
 		logstr("=== [" . date('c') . "] connect to $connstr\n", false);
 		try {
-		$this->dbh = dbconn();
+		$this->dbh = dbconn($fnConfirm);
 		} catch (Exception $e) {
 			echo $e->getMessage() . "\n";
 			exit;
@@ -430,9 +457,15 @@ class UpgHelper
 		global $SQLDIFF;
 		$SQLDIFF = SqlDiff::create($this->dbh);
 		foreach ($this->tableMeta as &$e) {
-			$fieldsMeta = array_map(function ($e) {
-				return parseFieldDef($e);
-			}, $e["fields"]);
+			$tableName = $e["name"];
+			$fields = $e["fields"];
+			if (substr($tableName, 0, 2) == "U_") {
+				global $UDT_defaultMeta;
+				array_splice($fields, 0,0, $UDT_defaultMeta);
+			}
+			$fieldsMeta = array_map(function ($e) use ($tableName){
+				return parseFieldDef($e, $tableName);
+			}, $fields);
 			$e["fieldsMeta"] = $fieldsMeta;
 		}
 		unset($e);
@@ -515,19 +548,25 @@ class UpgHelper
 		}
 
 		switch($meta["type"]) {
-		case "nvarchar":
-			return $dbType == "varchar" && $len == $meta["len"];
-		case "ntext":
-			return $dbType == "text";
-		case "int":
+		case "s":
+			return ($dbType == "varchar"||$dbType == "nvarchar")  && $len == $meta["len"];
+		case "t":
+			return $dbType == "text" || $dbType == "ntext";
+		case "tt": // TODO: MSSQL会有问题
+			return $dbType == "mediumtext";
+		case "i":
 		case "id":
 			return $dbType == "int";
 		case "flag":
 			return $dbType == "tinyint";
-		case "decimal":
+		case "n":
 			return $dbType == "decimal" && $len == $meta["len"];
 		case "real":
 			return $dbType == "double";
+		case "tm":
+			return $dbType == "datetime";
+		case "date":
+			return $dbType == "date";
 		default:
 			return $meta["type"] == $dbType;
 		}
@@ -574,6 +613,7 @@ class UpgHelper
 			if (!$force)
 			{
 				# check whether to add missing fields
+				# todo: get columns: mysql uses `desc {table}`, mssql uses `sp_help {table}`
 				$rs = $this->execSql("SELECT * FROM (SELECT 1 AS id) t0 LEFT JOIN (SELECT * FROM $tbl1 LIMIT 0) t1 ON 1<>1", true);
 				$row = $rs[0];
 				$found = false;
@@ -585,6 +625,7 @@ class UpgHelper
 						$this->_addColByMeta($tbl, $fieldMeta);
 					}
 				}
+				$this->handleUDTMeta($tableMeta);
 				return $found;
 			}
 			$this->execSql("DROP TABLE $tbl1");
@@ -599,7 +640,55 @@ class UpgHelper
 			echo "*** Fail to create table `$tbl`. DO NOT use SQL keyword as the name of table or column.\n";
 			throw $e;
 		}
+		$this->handleUDTMeta($tableMeta);
 		return true;
+	}
+
+	function handleUDTMeta($tableMeta) {
+		$tbl = $tableMeta['name'];
+		// handle UDT
+		if (substr($tbl, 0, 2) != "U_")
+			return;
+
+		$name = substr($tbl, 2);
+		$tableDef = queryOne("SELECT * FROM UDT WHERE name=" . Q($name), true);
+		$udtData = [
+			"name" => $name,
+			"title" => $name
+		];
+		global $UDT_defaultMeta;
+		if (!$tableDef) {
+			$udtId = dbInsert("UDT", $udtData);
+		}
+		else {
+			$udtId = $tableDef["id"];
+			dbUpdate("UDT", $udtData, $udtId);
+		}
+
+		// TODO: the title of table and field 
+		$udf = queryAll("SELECT id, name FROM UDF WHERE udtId=$udtId", true);
+		$fieldsMeta = array_splice($tableMeta["fieldsMeta"], count($UDT_defaultMeta));
+		arrayCmp($fieldsMeta, $udf, function ($fieldMeta, $udf1) {
+			return $fieldMeta["name"] == $udf1["name"];
+		}, function ($fieldMeta, $udf1) use ($udtId) {
+			if ($fieldMeta != null) {
+				$fieldData = [
+					"name" => $fieldMeta["name"],
+					"title" => $fieldMeta["name"],
+					"type" => $fieldMeta["type"],
+					"udtId" => $udtId
+				];
+				if ($udf1 == null) { // insert
+					dbInsert("UDF", $fieldData);
+				}
+				else {
+					dbUpdate("UDF", $fieldData, $udf1["id"]);
+				}
+			}
+			else { // delete
+				execOne("DELETE FROM UDF WHERE id=" . $udf1["id"]);
+			}
+		});
 	}
 
 	/** @api */

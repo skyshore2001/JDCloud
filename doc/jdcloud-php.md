@@ -30,7 +30,8 @@
 
 假设数据库中已经建好一张记录操作日志的表叫"ApiLog"，包含字段id（主键，整数类型）, tm（日期时间类型）, addr（客户端地址，字符串类型）。
 
-使用筋斗云后端框架，只要创建一个空的类，就可将这个表（或称为对象）通过HTTP接口暴露给前端，提供增删改查各项功能：
+使用筋斗云后端框架，只要创建一个空的类，就可将这个表（或称为对象）通过HTTP接口暴露给前端，提供增删改查各项功能。
+将下面代码写在文件server/php/api_objects.php中（它被包含在主入口server/api.php中)：
 ```php
 class AC_ApiLog extends AccessControl
 {
@@ -174,7 +175,7 @@ class AC2_ApiLog extends AccessControl
 	php upgrade.php
 
 
-为了学习对象型接口，我们以暴露ApiLog对象提供CRUD操作为例，只要在接口主文件api.php后面加上一句：
+为了学习对象型接口，我们以暴露ApiLog对象提供CRUD操作为例，只要在接口实现文件php/api_objects.php(包含在主入口api.php中)中添加代码：
 ```php
 class AC_ApiLog extends AccessControl
 {
@@ -1270,7 +1271,8 @@ class AC1_Ordr extends AccessControl
 
 上面接口原型描述中，字段orderLog前面的"@"标记表示它是一个数组，在返回值介绍中列出了它的数据结构。
 
-实现：
+**[实现方式一：直接指定子表查询]**
+
 ```php
 class AC1_Ordr extends AccessControl
 {
@@ -1293,6 +1295,71 @@ class AC1_Ordr extends AccessControl
   一般应使用默认值false，客户端需要时应通过res参数指定，如 `Ordr.query(res="*,orderLog")`.
 
 注意：查询子表作为子对象字段是不支持分页的。如果子表可能很大，不要设计使用子表字段或列表字段，而应直接用子表的query方法来取，如开放接口"OrderLog.query"。
+
+**[实现方式二：复用子表AC对象]**
+
+(v5.4起支持)
+
+```php
+class AC1_Ordr extends AccessControl
+{
+	protected $subobj = [
+		// "orderLog" => ["sql"=>"SELECT ol.* FROM OrderLog ol WHERE ol.orderId=%d"]
+		"orderLog" => ["obj"=>"OrderLog", cond"=>"orderId=%d", "AC"=>"AccessControl", "res"=>"tm,dscr"]
+	];
+}
+```
+
+- 参数`obj`指定子对象名。意味着`Ordr.get`查询中返回的`orderLog`字段，实现时相当于调用内部接口`OrderLog.query(fmt=list, pagesz=-1)`。
+- 参数`cond`指定了关联关系，其中用`%d`替代主表id。
+- 可选参数`AC`指定子表类名，如果不指定，则根据当前角色自动选择类（如`AC1_OrderLog`，若没有这个类则会报错）。这里直接指定使用基类`AccessControl`，是最简单的做法，不必去定义子表的AC类。
+- 可选参数`res`指定子表缺省字段，相当于调用`OrderLog.query(res="tm,dscr")`. 类似地，多数query接口的参数均可使用在此，例如`orderby`, `gres`等，还支持内部参数，如`cond2`, `join`, `res2`以及`OrderLog`子对象支持的特殊参数等。
+
+与方式一的区别有：
+
+- 查询时，充分利用子表AC类，例如可使用子表定义的虚拟字段等。
+- 查询时可以用`res_{子表显示名}`参数来指定子表返回字段。示例：`callSvr("Ordr.get", {id: 1, res_orderLog:"id,dscr"})`
+- 子表返回行数受分页控制，默认是相当于`pagesz=-1`时返回的项数。
+- 不仅仅是查询，还支持对子表的添加、追加、更新、删除。
+- 定义subobj时不支持选项`wantOne`，但可以用`"fmt"=>"one"`来替代。
+
+例如，可增加子表项`OrderLog`的AC类定义，实现更多的子表控制。
+
+```php
+class OrderLog extends AccessControl
+{
+	protected $allowedAc = ["query"];
+	protected $vcolDefs = [
+		...
+	];
+}
+```
+有子表定义后，只要将"orderLog"定义的AC选项由"AccessControl"改成"OrderLog"即可使用:
+
+		"orderLog" => ["obj"=>"OrderLog", cond"=>"orderId=%d", "AC"=>"OrderLog"]
+
+当然也可以定义`AC1_OrderLog`这样的类，这样就对外直接提供了像`OrderLog.query`这样的子对象接口。
+一般子表AC类是不对外开放的。
+
+而且，可以在`Ordr.add`接口中直接添加子项，如
+
+	callSvr("Ordr.add", $.noop, {..., orderLog: [{dscr:"操作1"}, {dscr:"操作2"}]}, {contentType: "application/json"});
+	(注意前端callSvr接口可指定contentType为json格式，传输更清晰)
+
+它内部会调用`OrderLog.add`接口。
+
+以及在`Ordr.set`中追加、更新和删除子项，如：
+
+	callSvr("Ordr.set", $.noop, {orderLog: [{dscr:"操作3"}] } ); // 未指定子项id，表示追加一项，
+	callSvr("Ordr.set", $.noop, {orderLog: [{id:1, dscr:"操作-1"}]} ); // 指定子项id，更新一项
+	callSvr("Ordr.set", $.noop, {orderLog: [{id:2, _delete:1} ]} ); // 指定子项id，并指定`_delete:1`表示删除一项
+
+	// 更新一项，删除一项，追加一项：
+	callSvr("Ordr.set", $.noop, {orderLog: [{id:1, dscr:"操作-1"}, {id:2, _delete:1}, {dscr:"操作3"} ]} );
+
+它内部会调用`OrderLog.add/set/del`接口。
+
+注意子项默认是支持这些标准接口的，但可由子表AC类的`$allowedAc`来限定，例如例中限制了只允许`query`接口(`$allowedAc=["query"]`)，于是所有对子项的追加、更新、修改都会报错。
 
 ### 虚拟表和视图
 

@@ -148,7 +148,7 @@ function dbconn($dbhost, $dbname, $dbuser, $dbpwd)
 		die("连接数据库失败: {$msg}");
 	}
 
-	$dbh->exec('set names utf8');
+	$dbh->exec('set names utf8mb4');
 	$dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION); # by default use PDO::ERRMODE_SILENT
 
 	# enable real types (works on mysql after php5.4)
@@ -197,7 +197,7 @@ function api_initDb()
 		catch (Exception $e) {
 			echo("=== 创建数据库: {$dbname}\n");
 			try {
-				$dbh->exec("create database {$dbname}");
+				$dbh->exec("create database {$dbname} character set utf8mb4");
 			}
 			catch (Exception $e) {
 				$msg = $e->getMessage();
@@ -243,10 +243,24 @@ if (getenv("P_DB") === false) {
 	putenv("P_DBCRED={$dbcred_b64}");
 }
 putenv("P_ADMIN_CRED={$adminCred}");
+// putenv("P_URL_PATH={$urlPath}");
+
+EOL;
+
+	if (! param("testmode")) {
+		$str .= <<<EOL
 // putenv("P_TEST_MODE=1");
 // putenv("P_DEBUG=9");
-// putenv("P_URL_PATH={$urlPath}");
+
 EOL;
+	}
+	else {
+		$str .= <<<EOL
+putenv("P_TEST_MODE=1");
+putenv("P_DEBUG=9");
+
+EOL;
+	}
 
 	$rv = file_put_contents(CONF_FILE, $str);
 	if ($rv === false) {
@@ -368,6 +382,11 @@ p.hint {
 		<tr>
 			<td>超级管理端登录帐号<p class="hint">P_ADMIN_CRED, 格式为"用户名:密码", 如不填写则无法登录超级管理端。</p></td>
 			<td><input type="text" name="adminCred" autocomplete="off" placeholder="admin:admin123"></td>
+		</tr>
+		<tr>
+			<td colspan=2>
+				<label><input type="checkbox" name="testmode" value=1>开启测试模式</label>
+			</td>
 		</tr>
 		<tr>
 			<td colspan=2 align=center>

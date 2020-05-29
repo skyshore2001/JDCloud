@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（移动Web版）</h1>
-<div>最后更新：2019-03-15</div>
+<div>最后更新：2020-05-29</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -77,6 +77,8 @@ code {
 <p><a href="#DirectReturn">DirectReturn (class)</a></p>
 <p><a href="#FormMode">FormMode (var)</a></p>
 <p><a href="#MUI">MUI (module)</a></p>
+<p><a href="#MUI.UploadPic">MUI.UploadPic (class)</a></p>
+<p><a href="#MUI.setTopbarColor">MUI.setTopbarColor (fn)</a></p>
 <p><a href="#Plugins">Plugins (class)</a></p>
 <p><a href="#Plugins.exists">Plugins.exists (fn)</a></p>
 <p><a href="#Plugins.list">Plugins.list (fn)</a></p>
@@ -87,6 +89,7 @@ code {
 <p><a href="#appendParam">appendParam (fn)</a></p>
 <p><a href="#applyTpl">applyTpl (fn)</a></p>
 <p><a href="#assert">assert (fn)</a></p>
+<p><a href="#autoLogin">autoLogin (event)</a></p>
 <p><a href="#batchCall">batchCall (class)</a></p>
 <p><a href="#callSvr">callSvr (fn)</a></p>
 <p><a href="#callSvr.noex">callSvr.noex (key)</a></p>
@@ -96,6 +99,7 @@ code {
 <p><a href="#callSvrExt[].dataFilter">callSvrExt[].dataFilter (key)</a></p>
 <p><a href="#callSvrExt[].makeUrl">callSvrExt[].makeUrl (key)</a></p>
 <p><a href="#callSvrSync">callSvrSync (fn)</a></p>
+<p><a href="#changepic">changepic (event)</a></p>
 <p><a href="#closeDialog">closeDialog (fn)</a></p>
 <p><a href="#compressImg">compressImg (fn)</a></p>
 <p><a href="#container">container (var)</a></p>
@@ -118,7 +122,6 @@ code {
 <p><a href="#formItems">formItems (fn)</a></p>
 <p><a href="#formatField">formatField (fn)</a></p>
 <p><a href="#g_args">g_args (var)</a></p>
-<p><a href="#g_args._app">g_args._app (var)</a></p>
 <p><a href="#g_args.enableSwitchApp">g_args.enableSwitchApp (key)</a></p>
 <p><a href="#g_cordova">g_cordova (var)</a></p>
 <p><a href="#g_data">g_data (var)</a></p>
@@ -164,6 +167,7 @@ code {
 <p><a href="#m_pageStack">m_pageStack (var)</a></p>
 <p><a href="#makeUrl">makeUrl (fn)</a></p>
 <p><a href="#mockData">mockData (var)</a></p>
+<p><a href="#mui-ani">mui-ani (key)</a></p>
 <p><a href="#mui-deferred">mui-deferred (key)</a></p>
 <p><a href="#mui-initfn">mui-initfn (key)</a></p>
 <p><a href="#mui-loadPrompt">mui-loadPrompt (key)</a></p>
@@ -182,17 +186,20 @@ code {
 <p><a href="#options.disableFastClick">options.disableFastClick (var)</a></p>
 <p><a href="#options.enableSwitchApp">options.enableSwitchApp (var)</a></p>
 <p><a href="#options.enableWxLogin">options.enableWxLogin (var)</a></p>
+<p><a href="#options.fixTopbarColor">options.fixTopbarColor (var)</a></p>
 <p><a href="#options.homePage">options.homePage (var)</a></p>
 <p><a href="#options.logAction">options.logAction (var)</a></p>
 <p><a href="#options.loginPage">options.loginPage (var)</a></p>
 <p><a href="#options.manualSplash">options.manualSplash (var)</a></p>
 <p><a href="#options.mockDelay">options.mockDelay (var)</a></p>
 <p><a href="#options.onAutoLogin">options.onAutoLogin (var)</a></p>
+<p><a href="#options.onShowPage">options.onShowPage (var)</a></p>
 <p><a href="#options.pageFolder">options.pageFolder (var)</a></p>
 <p><a href="#options.pluginFolder">options.pluginFolder (var)</a></p>
 <p><a href="#options.serverUrl">options.serverUrl (var)</a></p>
 <p><a href="#options.serverUrlAc">options.serverUrlAc (var)</a></p>
 <p><a href="#options.showHash">options.showHash (var)</a></p>
+<p><a href="#options.showLoadingDelay">options.showLoadingDelay (var)</a></p>
 <p><a href="#options.statusBarColor">options.statusBarColor (var)</a></p>
 <p><a href="#pagebeforeshow">pagebeforeshow (event)</a></p>
 <p><a href="#pagecreate">pagecreate (event)</a></p>
@@ -208,6 +215,7 @@ code {
 <p><a href="#queryHint">queryHint (var)</a></p>
 <p><a href="#reloadPage">reloadPage (fn)</a></p>
 <p><a href="#reloadSite">reloadSite (fn)</a></p>
+<p><a href="#rgb">rgb (fn)</a></p>
 <p><a href="#rgb2hex">rgb2hex (fn)</a></p>
 <p><a href="#rs2Array">rs2Array (fn)</a></p>
 <p><a href="#rs2Hash">rs2Hash (fn)</a></p>
@@ -231,7 +239,10 @@ code {
 <p><a href="#showLoading">showLoading (fn)</a></p>
 <p><a href="#showLogin">showLogin (fn)</a></p>
 <p><a href="#showPage">showPage (fn)</a></p>
+<p><a href="#slideIn">slideIn (key)</a></p>
+<p><a href="#slideOut">slideOut (key)</a></p>
 <p><a href="#syslog">syslog (fn)</a></p>
+<p><a href="#title">title (var)</a></p>
 <p><a href="#tobool">tobool (fn)</a></p>
 <p><a href="#topic-iosStatusBar">topic-iosStatusBar (key)</a></p>
 <p><a href="#topic-splashScreen">topic-splashScreen (key)</a></p>
@@ -372,7 +383,7 @@ hd一般用于显示页面标题、返回和菜单。在hd中出现的第一个h
     return jpage;
 }</code></pre>
 <p class="event"><strong>@event <a id="pagecreate">pagecreate</a></strong> (ev) DOM事件。this为当前页面，习惯名为jpage。</p>
-<p class="event"><strong>@event <a id="pagebeforeshow">pagebeforeshow</a></strong> (ev, opt) DOM事件。this为当前页面。opt参数为`MUI.showPage(pageRef, opt?)`中的opt，如未指定则为`{}`</p>
+<p class="event"><strong>@event <a id="pagebeforeshow">pagebeforeshow</a></strong> (ev, opt) DOM事件。this为当前页面。opt参数为`MUI.showPage(pageRef, opt?)`中的opt，如未指定则为`{}`。(v5.4) 设置backNoRefresh选项会忽略此事件，这时可用pagebeforeshow.always替代。</p>
 <p class="event"><strong>@event <a id="pageshow">pageshow</a></strong> (ev, opt)  DOM事件。this为当前页面。opt参数与pagebeforeshow事件的opt参数一样。</p>
 <p class="event"><strong>@event <a id="pagehide">pagehide</a></strong> (ev) DOM事件。this为当前页面。</p>
 <h6 id="MUI-1.2.1 逻辑页内嵌style">1.2.1 逻辑页内嵌style</h6>
@@ -423,7 +434,7 @@ hd一般用于显示页面标题、返回和菜单。在hd中出现的第一个h
     &lt;/__script__&gt;
 &lt;/script&gt;</code></pre>
 <h6 id="MUI-1.2.3 进入应用时动态显示初始逻辑页">1.2.3 进入应用时动态显示初始逻辑页</h6>
-<p>默认进入应用时的主页为 MUI.options.homePage. 如果要根据参数动态显示页面，应在muiInit事件中操作：</p>
+<p>默认进入应用时的主页为 MUI.options.homePage. 如果要根据参数动态显示页面，可在muiInit事件中操作，示例：</p>
 <pre><code>$(document).on("muiInit", myInit);
 
 function myInit()
@@ -446,6 +457,7 @@ function myInit()
     // 显示该页面...
 }</code></pre>
 <p>在pagebeforeshow事件中做页面切换，框架保证不会产生闪烁，且在新页面上点返回按钮，不会返回到旧页面。</p>
+<p>(v5.4) 如果想在页面加载前添加处理逻辑，请参考 MUI.options.onShowPage 回调，可处理检测是否登录这类需求。</p>
 <p>除此之外如果多次调用showPage（包括在pageshow事件中调用），一般最终显示的是最后一次调用的页面，过程中可能产生闪烁，且可能会丢失一些pageshow/pagehide事件，应尽量避免。</p>
 <h6 id="MUI-1.2.5 逻辑页声明依赖库">1.2.5 逻辑页声明依赖库</h6>
 <p class="key"><strong>@key <a id="mui-deferred">mui-deferred</a></strong> </p>
@@ -950,7 +962,11 @@ hash = {
 <p class="see"><strong>@see <a href="#rs2Hash">rs2Hash</a></strong> </p>
 <p class="see"><strong>@see <a href="#rs2Array">rs2Array</a></strong> </p></div>
 <div class="block">
-<h2 id="list2varr">@fn list2varr(ls, sep=':', sep2=',')</h2>
+<h2 id="list2varr">@fn list2varr(ls, colSep=':', rowSep=',')</h2>
+<ul>
+<li>ls: 代表二维表的字符串，有行列分隔符。</li>
+<li>colSep, rowSep: 列分隔符，行分隔符。</li>
+</ul>
 <p>将字符串代表的压缩表(&quot;v1:v2:v3,...&quot;)转成对象数组。</p>
 <p>e.g.</p>
 <pre><code>var users = "101:andy,102:beddy";
@@ -1003,7 +1019,10 @@ appendParam(url, "pay=1"); // "http://xxx/api.php?id=1&amp;pay=1#order";</code><
 <h2 id="deleteParam">@fn deleteParam(url, paramName)</h2>
 <p>示例:</p>
 <pre><code>var url = "http://xxx/api.php?a=1&amp;b=3&amp;c=2";
-var url1 = deleteParam(url, "b"); // "http://xxx/api.php?a=1&amp;c=2";</code></pre></div>
+var url1 = deleteParam(url, "b"); // "http://xxx/api.php?a=1&amp;c=2";
+
+var url = "http://server/jdcloud/m2/?logout#me";
+var url1 = deleteParam(url, "logout"); // "http://server/jdcloud/m2/?#me"</code></pre></div>
 <div class="block">
 <h2 id="isWeixin">@fn isWeixin()</h2>
 <p>当前应用运行在微信中。</p></div>
@@ -1184,6 +1203,10 @@ function onSubmit()
     foo();
     bar();
 }</code></pre></div>
+<div class="block">
+<h2 id="rgb">@fn rgb(r,g,b)</h2>
+<p>生成&quot;#112233&quot;形式的颜色值.</p>
+<pre><code>rgb(255,255,255) -&gt; "#ffffff"</code></pre></div>
 <div class="block">
 <h2 id="rgb2hex">@fn rgb2hex(rgb)</h2>
 <p>将jquery取到的颜色转成16进制形式，如：&quot;rgb(4, 190, 2)&quot; -&gt; &quot;#04be02&quot;</p>
@@ -1386,15 +1409,20 @@ WUI.getQueryCond(kvList); // 结果同上。</code></pre>
 <p class="see"><strong>@see <a href="#getQueryCond">getQueryCond</a></strong> </p>
 <p class="see"><strong>@see <a href="#getQueryParamFromTable">getQueryParamFromTable</a></strong>  获取datagrid的当前查询参数</p></div>
 <div class="block">
-<h2 id="doSpecial">@fn doSpecial(jo, filter, fn)</h2>
-<p>连续5次点击某处，执行隐藏动作。</p>
+<h2 id="doSpecial">@fn doSpecial(jo, filter, fn, cnt=5, interval=2s)</h2>
+<p>连续5次点击某处，每次点击间隔不超过2s, 执行隐藏动作。</p>
 <p>例：<br />
-// 连续5次点击当前tab标题，重新加载页面<br />
+// 连续5次点击当前tab标题，重新加载页面. ev为最后一次点击事件.<br />
 var self = WUI;<br />
-self.doSpecial(self.tabMain.find(&quot;.tabs-header&quot;), &quot;.tabs-selected&quot;, function () {<br />
+self.doSpecial(self.tabMain.find(&quot;.tabs-header&quot;), &quot;.tabs-selected&quot;, function (ev) {<br />
 self.reloadPage();<br />
-self.reloadDialog(true);<br />
-});</p></div>
+self.reloadDialog(true);</p>
+<pre><code>    // 弹出菜单
+    //jmenu.menu('show', {left: ev.pageX, top: ev.pageY});
+    return false;
+});</code></pre>
+<p>连续3次点击对话框中的字段标题，触发查询：</p>
+<pre><code>WUI.doSpecial(jdlg, ".wui-form-table td", fn, 3);</code></pre></div>
 <div class="block">
 <h2 id="lastError">@var lastError = ctx</h2>
 <p>出错时，取出错调用的上下文信息。</p>
@@ -1834,19 +1862,31 @@ batch.commit();</code></pre>
 <p>在一个事务中，所有调用要么成功要么都取消。<br />
 任何一个调用失败，会导致它后面所有调用取消执行，且所有已执行的调用会回滚。</p>
 <p>参数中可以引用之前结果中的值，引用部分需要用&quot;{}&quot;括起来，且要在opt.ref参数中指定哪些参数使用了引用：</p>
-<pre><code>var batch = new MUI.batchCall({useTrans: 1});
-callSvr("Attachment.add", api_AttAdd, {path: "path-1"}); // 假如返回 22
-var opt = {ref: ["id"]};
-callSvr("Attachment.get", {id: "{$1}"}, api_AttGet, null, opt); // {$1}=22, 假如返回 {id: 22, path: '/data/1.png'}
-opt = {ref: ["cond"]};
-callSvr("Attachment.query", {res: "count(*) cnt", cond: "path='{$-1.path}'"}, api_AttQuery, null, opt); // {$-1.path}计算出为 '/data/1.png'
-batch.commit();</code></pre>
+<pre><code>MUI.useBatchCall();
+callSvr("..."); // 这个返回值的结果将用于以下调用
+callSvr("Ordr.query", {
+    res: "id,dscr",
+    status: "{$-1.status}",  // 整体替换，结果可以是一个对象
+    cond: "id&gt;{$-1.id}" // 部分替换，其结果只能是字符串
+}, api_OrdrQuery, {
+    ref: ["status", "cond"] // 须在ref中指定需要处理的key
+});</code></pre>
+<p>特别地，当get/post整个是一个字符串时，直接整体替换，无须在ref中指定，如：</p>
+<pre><code>callSvr("Ordr.add", $.noop, "{$-1}", {contentType:"application/json"});</code></pre>
 <p>以下为引用格式示例：</p>
-<pre><code>{$-2} // 前2次的结果。
-{$2[0]} // 取第2次结果（是个数组）的第0个值。
-{$-1.path} // 取前一次结果的path属性
-{$2 -1}  // 可以做简单的计算</code></pre>
+<pre><code>{$1} // 第1次调用的结果。
+{$-1} // 前1次调用的结果。
+{$-1.path} // 取前一次调用结果的path属性
+{$1[0]} // 取第1次调用结果（是个数组）的第0个值。
+{$1[0].amount}
+{$-1.price * $-1.qty} // 可以做简单的数值计算</code></pre>
 <p>如果值计算失败，则当作&quot;null&quot;填充。</p>
+<p>综合示例：</p>
+<pre><code>MUI.useBatchCall();
+callSvr("Ordr.completeItem", $.noop, {itemId:1})
+callSvr("Ordr.completeItem", $.noop, {itemId:2, qty:2})
+callSvr("Ordr.calc", $.noop, {items:["{$1}", "{$2}"]}, {contentType:"application/json", ref:["items"] });
+callSvr("Ordr.add", $.noop, "{$3}", {contentType:"application/json"});</code></pre>
 <p class="see"><strong>@see <a href="#useBatchCall">useBatchCall</a></strong> </p>
 <p class="see"><strong>@see <a href="#disableBatch">disableBatch</a></strong> </p>
 <p class="see"><strong>@see <a href="#m_curBatch">m_curBatch</a></strong> </p></div>
@@ -1887,7 +1927,7 @@ callSvr("User.get", {res: "id,phone"}, api_UserGet);</code></pre>
 <h2 id="nextShowPageOpt">@var nextShowPageOpt</h2>
 <p>如果指定, 则在下次showPage时生效.<br />
 初次进入App时无动画效果.</p>
-<p>示例: 在返回在指定不要动画效果:</p>
+<p>示例: 在返回上一页时指定不要动画效果:</p>
 <pre><code>MUI.nextShowPageOpt = {ani: 'none'};
 history.back();</code></pre>
 <p>因为未直接调用MUI.showPage, 可以用nextShowPageOpt来传递参数. 此参数用后即焚.</p></div>
@@ -1967,7 +2007,7 @@ e.g. </p>
 <p class="param"><strong>@param pageRef</strong>  String. 页面引用（即location.hash），以"#"开头，后面可以是一个pageId（如"#home"）或一个相对页的地址（如"#info.html", "#emp/info.html"）。</p>
 <p>如果未指定，则使用当前URL的hash或指定的主页(MUI.options.homePage). &quot;#&quot;表示主页。</p>
 <p class="param"><strong>@param opt</strong>  {ani, url, backNoRefresh}  (v3.3) 该参数会传递给pagebeforeshow/pageshow回调函数。</p>
-<p>opt.ani:: String. 动画效果。设置为&quot;none&quot;禁用动画。</p>
+<p>opt.ani:: String. 动画效果。设置为&quot;none&quot;禁用动画。默认页面由右向左进入，设置为&quot;up&quot;表示由下向上进入（常用于popup页面）。</p>
 <p>opt.url:: String. 指定在地址栏显示的地址。如 <code>showPage("#order", {url: "?id=100"})</code> 可设置显示的URL为 <code>page/order.html?id=100</code>.</p>
 <p class="see"><strong>@see <a href="#setUrl">setUrl</a></strong> </p>
 <p>在应用内无刷新地显示一个页面。</p>
@@ -2015,10 +2055,28 @@ function initPageOrder()
 <p>(v5.2)</p>
 <p class="param"><strong>@param opt.backNoRefresh</strong>  ?=false 从新页面返回后，不要刷新当前页</p>
 <p>实际为A-&gt;B页面跳转后，此后若有B-&gt;A跳转，不触发A页面的pagebeforeshow事件。<br />
-在initPage时，也可直接在页面上设置: <code>jpage.prop("backNoRefresh", ["page1", "page2"])</code>, 表示从page1, page2转到当前页面，不触发pagebeforeshow事件。注意，数组中保存的是pageId，不是pageRef.</p></div>
+在initPage时，也可直接在页面上设置: <code>jpage.prop("backNoRefresh", ["page1", "page2"])</code>, 表示从page1, page2转到当前页面，不触发pagebeforeshow事件。注意，数组中保存的是pageId，不是pageRef.</p>
+<p>(v5.4) 设置backNoRefresh选项会导致pagebeforeshow事件不触发，对于必须依赖pagebeforeshow事件的逻辑，可以监听<code>pagebeforeshow.always</code>事件。</p>
+<p>(v5.3)<br />
+支持一个页面模板可创建多个页面实例。</p>
+<pre><code>MUI.showPage("udt__费用");
+MUI.showPage("udt__供应商");</code></pre>
+<p>两者用同一套html/js，但数据不会干扰。</p>
+<p>(v5.4)</p>
+<p class="key"><strong>@key <a id="mui-ani">mui-ani</a></strong>  指定本页面进入时的动画效果. 支持"up"(由下向上), "pop"(fade展开)。</p>
+<p class="key"><strong>@key <a id="slideIn">slideIn</a></strong> </p>
+<p class="key"><strong>@key <a id="slideOut">slideOut</a></strong> </p>
+<p>支持扩展动画效果。例如新动画名为&quot;xx&quot;，请参考mui.css定义slideIn_xx, slideOut_xx类，即可使用：</p>
+<p>在page上指定进入动画：</p>
+<pre><code>&lt;div mui-initfn="initSynopsis" mui-script="doctorSynopsis.js" mui-ani="up"&gt;</code></pre>
+<p>在显示页面时指定动画：</p>
+<pre><code>MUI.showPage("#doctorSynopsis", {ani: "up"});
+或
+&lt;a href="#doctorSynopsis" mui-opt="ani:'up'"&gt;页面1&lt;a&gt;</code></pre></div>
 <div class="block">
 <h2 id="setDocTitle">@fn setDocTitle(title)</h2>
-<p>设置文档标题。默认在切换页面时，会将文档标题设置为逻辑页的标题(<code>hd</code>块中的<code>h1</code>或<code>h2</code>标签)。</p></div>
+<p>设置文档标题。默认在切换页面时，会将文档标题设置为逻辑页的标题(<code>hd</code>块中的<code>h1</code>或<code>h2</code>标签)。</p>
+<p>文档原始标题可通过<code>MUI.title</code>获得。</p></div>
 <div class="block">
 <h2 id="unloadPage">@fn unloadPage(pageRef?)</h2>
 <p class="param"><strong>@param pageRef</strong>  如未指定，表示当前页。</p>
@@ -2128,6 +2186,10 @@ app_alert("处理完成!", {keep:true});</code></pre></div>
 <div class="block">
 <h2 id="hideLoading">@fn hideLoading()</h2></div>
 <div class="block">
+<h2 id="title">@var title</h2>
+<p>文档原始标题保存在<code>MUI.title</code>，在切换逻辑页面时，document.title会自动变更为当前页标题。</p>
+<p class="see"><strong>@see <a href="#setDocTitle">setDocTitle</a></strong> </p></div>
+<div class="block">
 <h2 id="isBusy">@var isBusy</h2>
 <p>标识应用当前是否正在与服务端交互。一般用于自动化测试。<br />
 也常用于防止重复提交，示例：</p>
@@ -2144,13 +2206,19 @@ function btnUpload_click() {
 <p>URL参数会自动加入该对象，例如URL为 <code>http://{server}/{app}/index.html?orderId=10&amp;dscr=上门洗车</code>，则该对象有以下值：</p>
 <pre><code>g_args.orderId=10; // 注意：如果参数是个数值，则自动转为数值类型，不再是字符串。
 g_args.dscr="上门洗车"; // 对字符串会自动进行URL解码。</code></pre>
-<p>此外，框架会自动加一些参数：</p>
-<p class="var"><strong>@var <a id="g_args._app">g_args._app</a></strong> ?="user" 应用名称，由 WUI.options.appName 指定。</p>
+<p>框架会自动处理一些参数：</p>
+<ul>
+<li>g_args._debug: 在测试模式下，指定后台的调试等级，有效值为1-9. 参考：后端测试模式 P_TEST_MODE，调试等级 P_DEBUG.</li>
+<li>g_args.cordova: 用于在手机APP应用中加载H5应用，参考“原生应用支持”。示例：<a href="http://server/jdcloud/m2/index.html?cordova=1">http://server/jdcloud/m2/index.html?cordova=1</a></li>
+<li>g_args.wxCode: 用于在微信小程序中加载H5应用，并自动登录。参考：options.enableWxLogin 微信认证登录</li>
+<li>g_args.enableSwitchApp: 允许多应用自动切换功能。参考：options.enableSwitchApp</li>
+<li>g_args.logout: 退出登录后再进入应用。示例：<a href="http://server/jdcloud/m2/index.html?logout">http://server/jdcloud/m2/index.html?logout</a></li>
+</ul>
 <p class="see"><strong>@see <a href="#parseQuery">parseQuery</a></strong>  URL参数通过该函数获取。</p></div>
 <div class="block">
 <h2 id="g_cordova">@var g_cordova</h2>
-<p>值是一个整数，默认为0.<br />
-如果非0，表示WEB应用在苹果或安卓APP中运行，且数值代表原生应用容器的大版本号。</p>
+<p>值是一个整数，默认为0. 可用它来判断WEB应用是否在APP容器中运行。<br />
+如果非0，表示WEB应用在苹果或安卓APP中运行，且数值代表原生应用容器的版本号。</p>
 <p>示例：检查用户APP版本是否可以使用某些插件。</p>
 <pre><code>if (g_cordova) { // 在原生APP中。可以使用插件。
     // 假如在IOS应用的大版本3中，加入了某插件，如果用户未升级，可提示他升级：
@@ -2158,7 +2226,24 @@ g_args.dscr="上门洗车"; // 对字符串会自动进行URL解码。</code></p
         app_alert("您的版本太旧，XX功能无法使用，请升级到最新版本");
     }
 }</code></pre>
-<p>TODO: MUI.cordova</p></div>
+<p>WEB应用容器应在URL中传递cordova参数，表示容器版本号。该版本号会保存在ApiLog的ver字段中。</p>
+<p>如果容器不支持上述约定，可在WEB应用初始化时设置g_cordova变量来做兼容，示例：</p>
+<pre><code>// UserAgent for infiniti app
+// android example: Mozilla/5.0 ... AppVersion/1.2.4 ... AppName/dafengche+infiniti
+// iphone example: Mozilla/5.0 ... Souche/Dafengche/spartner/infiniti/InfinitiInhouse/1.2.4
+function initApp() {
+    var ua = navigator.userAgent;
+    var m;
+    if ((m = ua.match(/android.*appversion\/([\d.]+)/i)) || (m = ua.match(/iphone.*infinitiInhouse\/([\d.]+)/i))) {
+        MUI.options.appName = "emp-m";
+        var ver = m[1];
+        if (m = ver.match(/(\d+)\.(\d+)\.(\d+)/)) {
+            window.g_cordova = parseInt(m[1]) * 10000 + parseInt(m[2]) * 100 + parseInt(m[3]);
+        }
+    }
+}
+initApp();</code></pre>
+<p class="see"><strong>@see <a href="#原生应用支持">原生应用支持</a></strong> </p></div>
 <div class="block">
 <h2 id="g_data">@var g_data = {userInfo?, serverRev?, initClient?}</h2>
 <p>应用全局共享数据。</p>
@@ -2186,6 +2271,9 @@ g_args.dscr="上门洗车"; // 对字符串会自动进行URL解码。</code></p
 前景设置使用&quot;light&quot;(白色)或&quot;dark&quot;(黑色)。<br />
 设置为&quot;none&quot;表示隐藏标题栏。<br />
 设置为空(&quot;&quot;)表示禁止框架设置状态栏。</p>
+<p class="var"><strong>@var <a id="options.fixTopbarColor">options.fixTopbarColor</a></strong> ?=false</p>
+<p>如果为true, 则自动根据页面第一个hd的背景色设置手机顶栏颜色.<br />
+适合每个页面头部颜色不同的情况. 更复杂的情况, 可使用<code>MUI.setTopbarColor</code>手工设置顶栏颜色.</p>
 <p class="var"><strong>@var <a id="options.manualSplash">options.manualSplash</a></strong> ?=false</p>
 <p class="see"><strong>@see <a href="#topic-splashScreen">topic-splashScreen</a></strong> </p>
 <p class="var"><strong>@var <a id="options.logAction">options.logAction</a></strong> ?=false  Boolean. 是否显示详细日志。</p>
@@ -2221,7 +2309,18 @@ g_args.dscr="上门洗车"; // 对字符串会自动进行URL解码。</code></p
 <p>在showHash=false时，必须设置base标签, 否则逻辑页将无法加载。</p>
 <p class="var"><strong>@var <a id="options.disableFastClick">options.disableFastClick</a></strong> ?=false</p>
 <p>在IOS+cordova环境下，点击事件会有300ms延迟，默认会加载lib/fastclick.min.js解决。</p>
+<p>该库会导致部分场景下点击失效问题。这时可以通过在关键点击元素上设置&quot;needsclick&quot;类来解决。</p>
+<p>例如：fastclick库与图片裁切库image-process-tool有些冲突, ios手机APP中点修改头像无法弹出图片选择框. JS初始化配置如下：</p>
+<pre><code>var zxImageProcess = new ZxImageProcess({
+    // 触发文件选择的元素
+    selector: jpage.find(".downSelect-btn[value=1]")[0],
+    ...
+});</code></pre>
+<p>最终将绑定用于点击的元素 <code>&lt;div class='downSelect-btn'&gt;&lt;/div&gt;</code>改为 <code>&lt;div class='downSelect-btn needsclick'&gt;&lt;/div&gt;</code>解决。<br />
+发现IOS上点击失效问题，可先设置<code>options.disableFastClick=true</code>检查问题是否消失来判定。</p>
+<p>TODO: cordova-ios未来将使用WkWebView作为容器（目前仍使用UIWebView），将不再有点击延迟问题，到时将去除FastClick库。</p>
 <p class="var"><strong>@var <a id="options.onAutoLogin">options.onAutoLogin</a></strong>  自动登录</p>
+<p class="event"><strong>@event <a id="autoLogin">autoLogin</a></strong>  自动登录事件(v5.4)</p>
 <p>设置如何自动登录系统，进入应用后，一般会调用tryAutoLogin，其中会先尝试重用已有会话，如果当前没有会话则回调onAutoLogin自动登录系统。<br />
 返回true则跳过后面系统默认的登录过程，包括使用本地保存的token自动登录以及调用login接口。</p>
 <p>一般用于微信认证后绑定用户身份，示例：</p>
@@ -2238,6 +2337,8 @@ function onAutoLogin()
     // 修改了URL后直接跳出即可。不用返回true
     MUI.app_abort();
 }</code></pre>
+<p>(v5.4)也可以用autoLogin事件：</p>
+<pre><code>$(document).on("autoLogin", onAutoLogin);</code></pre>
 <p class="var"><strong>@var <a id="options.enableWxLogin">options.enableWxLogin</a></strong>  微信认证登录</p>
 <p>设置enableWxLogin为true，或者appName为&quot;user&quot;，则如果URL中有参数wxCode, 就调用后端&quot;login2(wxCode)&quot;接口登录认证。<br />
 一般用于从微信小程序调用H5应用。<br />
@@ -2254,12 +2355,67 @@ function onAutoLogin()
 <p>在H5应用中设置选项options.enableSwitchApp=true。(例如在app.js中设置，这样所有应用都允许跳转）<br />
 应用登录后将自动记录当前URL。</p>
 <p>在APP中初次打开H5应用(history.length&lt;=1)时，会在进入应用后自动检查和切换应用（将在MUI.validateEntry函数中检查，一般H5应用的主JS文件入口处默认会调用它）。<br />
-最好在URL中添加参数enableSwitchApp=1强制检查，例如在chrome中初次打开页面history.length为2，不加参数就无法自动切换H5应用。</p></div>
+最好在URL中添加参数enableSwitchApp=1强制检查，例如在chrome中初次打开页面history.length为2，不加参数就无法自动切换H5应用。</p>
+<p class="var"><strong>@var <a id="options.onShowPage">options.onShowPage</a></strong> (pageRef, opt) 显示页面前回调</p>
+<p>(v5.4) 在调用MUI.showPage时触发调用，参数与MUI.showPage相同，用于显示任何页面前通用的操作。<br />
+此回调在页面加载或显示之前（先于目的页面的pagecreate/pagebeforeshow等事件）。<br />
+如果返回false，则取消本次showPage调用。</p>
+<p>示例1：允许用户未登录使用，但除了home页面，进入其它页面均要求登录。<br />
+注意：系统默认要求登录才能进入，若要修改，可在muiInit事件中修改调用<code>MUI.tryAutoLogin(..., allowNoLogin=true)</code>来实现允许未登录进入。<br />
+此需求如果放在每个页面的pagebeforeshow中处理则非常麻烦，可在onShowPage中统一处理。</p>
+<pre><code>$.extend(MUI.options, {
+    ...
+    onShowPage: onShowPage
+});
+
+...
+// MUI.tryAutoLogin(handleLogin, "User.get");
+MUI.tryAutoLogin(handleLogin, "User.get", true); // 允许未登录进入。
+
+// 如果未登录，跳转login。
+function onShowPage(pageRef, opt) {
+    if (pageRef == "#home" || pageRef == "#setUserInfo" || pageRef.substr(0, 6) == "#login")
+        return;
+
+    // 如果是未登录进入，则跳转登录页。
+    if (!g_data.userInfo) {
+        MUI.showLogin();
+        return false;
+    }
+}</code></pre>
+<p>示例2：接上例，当系统在微信中使用时，允许用户使用微信身份自动登录，并可以查看home页面。<br />
+但如果用户尚未绑定过手机号，在进入其它页面时，必须先绑定手机号。</p>
+<pre><code>$.extend(MUI.options, {
+    ...
+    onShowPage: onShowPage
+});
+
+// 如果手机号没有填写，则要求填写并返回false。
+function onShowPage(pageRef, opt) {
+    if (pageRef == "#home" || pageRef == "#setUserInfo" || pageRef.substr(0, 6) == "#login")
+        return;
+
+    // 如果是未登录进入，则跳转登录页。
+    if (!g_data.userInfo) {
+        MUI.showLogin(pageRef);
+        return false;
+    }
+    if (g_data.userInfo &amp;&amp; !g_data.userInfo.phone) {
+        PageSetUserInfo.userInit = true;
+        PageSetUserInfo.fromPageRef = pageRef;
+        MUI.showPage("#setUserInfo");
+        return false;
+    }
+}</code></pre>
+<p class="var"><strong>@var <a id="options.showLoadingDelay">options.showLoadingDelay</a></strong>  ?= 500  延迟显示加载图标</p>
+<p>(v5.4) 默认如果在500ms内如果远程调用成功, 则不显示加载图标.</p></div>
 <div class="block">
 <h2 id="setFormSubmit">@fn setFormSubmit(jf, fn?, opt?={validate?, onNoAction?})</h2>
 <p class="param"><strong>@param fn</strong>  Function(data); 与callSvr时的回调相同，data为服务器返回的数据。</p>
 <p>函数中可以使用this[&quot;userPost&quot;] 来获取post参数。</p>
-<p class="param"><strong>@param opt.validate:</strong>  Function(jf, queryParam={ac?,...}). 如果返回false, 则取消submit. queryParam为调用参数，可以修改。</p>
+<p class="param"><strong>@param opt.validate:</strong>  Function(jf, queryParam={ac?,...}). </p>
+<p>如果返回false, 则取消submit. queryParam为调用参数，可以修改。<br />
+(v5.3) 支持异步提交，返回Deferred对象时，表示在Deferred.resolve之后再提交。</p>
 <p>form提交时的调用参数, 如果不指定, 则以form的action属性作为queryParam.ac发起callSvr调用.<br />
 form提交时的POST参数，由带name属性且不带disabled属性的组件决定, 可在validate回调中设置．</p>
 <p>设置POST参数时，固定参数可以用<code>&lt;input type="hidden"&gt;</code>标签来设置，自动计算的参数可以先放置一个隐藏的input组件，然后在validate回调中来设置。<br />
@@ -2285,7 +2441,24 @@ MUI.setFormSubmit(jf, api_fn1, {
     }
 });</code></pre>
 <p>如果之前调用过setFormData(jo, data, {setOrigin:true})来展示数据, 则提交时，只会提交被修改过的字段，否则提交所有字段。</p>
-<p class="param"><strong>@param opt.onNoAction:</strong>  Function(jf). 当form中数据没有变化时, 不做提交. 这时可调用该回调函数.</p></div>
+<p class="param"><strong>@param opt.onNoAction:</strong>  Function(jf). 当form中数据没有变化时, 不做提交. 这时可调用该回调函数.</p>
+<p>(v5.3)<br />
+异步提交示例：点击提交后，先上传照片，照片传完获取到picId，然后做之后提交动作</p>
+<pre><code>MUI.setFormSubmit(jf, api_fn1, {
+    validate: function(jf, queryParam) {
+        var dfd = $.Deferred();
+        uploadPic.submit().then(function (picId) {
+            jf[0].picId.value = picId;
+            dfd.resolve();
+        });
+        return dfd;
+    }
+});</code></pre></div>
+<div class="block">
+<h2 id="MUI.setTopbarColor">@fn MUI.setTopbarColor(colorHex, style?)</h2>
+<p class="param"><strong>@param colorHex</strong>  颜色值,格式如 "#fafafa", 可用MUI.rgb2hex函数转换.</p>
+<p class="param"><strong>@param style</strong>  dark|light</p>
+<p>设置顶栏颜色和字体黑白风格.</p></div>
 <div class="block">
 <h2 id="showLogin">@fn showLogin(page?)</h2>
 <p class="param"><strong>@param page=pageRef/jpage</strong>  如果指定, 则登录成功后转向该页面; 否则转向登录前所在的页面.</p>
@@ -2316,6 +2489,7 @@ MUI.setFormSubmit(jf, api_fn1, {
 <pre><code>MUI.validateEntry([
     "#home",
     "#me",
+    /^#udt__/  # (v5.3) 支持正则式
 ]);</code></pre></div>
 <div class="block">
 <h2 id="tryAutoLogin">@fn tryAutoLogin(onHandleLogin, reuseCmd?, allowNoLogin?=false)</h2>
@@ -2399,6 +2573,10 @@ var order = MUI.formatField(obj); // obj会被修改，最终与order相同
 <h2 id="syslog">@fn syslog(module, pri, content)</h2>
 <p>向后端发送日志。后台必须已添加syslog插件。<br />
 日志可在后台Syslog表中查看，客户端信息可查看ApiLog表。</p>
+<p class="param"><strong>@param module</strong>  app,fw(framework),page</p>
+<p class="param"><strong>@param pri</strong>  ERR,INF,WARN</p>
+<p>示例：</p>
+<pre><code>MUI.syslog("app", "ERR", "fail to pay: " + err.msg);</code></pre>
 <p>注意：如果操作失败，本函数不报错。</p></div>
 <div class="block">
 <h2 id="initPullList">@fn initPullList(container, opt)</h2>
@@ -2480,6 +2658,7 @@ uptoThreshold:: Boolean. 是否达到阈值</code></pre>
 <p style="margin-left:0em"><a href="#initPageList-9 下拉刷新提示信息">9 下拉刷新提示信息</a></p>
 <p style="margin-left:0em"><a href="#initPageList-10 禁止下拉和上拉行为">10 禁止下拉和上拉行为</a></p>
 <p style="margin-left:0em"><a href="#initPageList-11 仅自动加载，禁止下拉刷新行为">11 仅自动加载，禁止下拉刷新行为</a></p>
+<p style="margin-left:0em"><a href="#initPageList-12 本地分页">12 本地分页</a></p>
 </div>
 <p class="alias"><strong>@alias <a id="initNavbarAndList">initNavbarAndList</a></strong> </p>
 <p>列表页逻辑框架.</p>
@@ -2608,8 +2787,8 @@ callSvr(queryParam.ac, queryParam, function (data) {
         opt.onNoItem(jlst);
 });</code></pre>
 <h4 id="initPageList-5 参数说明">5 参数说明</h4>
-<p class="param"><strong>@param opt</strong>  {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list", onBeforeLoad?, onLoad?, onGetData?, canPullDown?=true, onRemoveAll?}</p>
-<p class="param"><strong>@param opt</strong>  分页相关 { pageszName?="pagesz", pagekeyName?="pagekey" }</p>
+<p class="param"><strong>@param opt</strong>  {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list", onBeforeLoad?, onLoad?, onGetData?, canPullDown?=true, onRemoveAll?, jContainer?}</p>
+<p class="param"><strong>@param opt</strong>  分页相关 { pageszName?="pagesz", pagekeyName?="pagekey", localPageSize? }</p>
 <p class="param"><strong>@param opt.onGetQueryParam</strong>  Function(jlst, queryParam/o)</p>
 <p>queryParam: {ac?, res?, cond?, ...}</p>
 <p>框架在调用callSvr之前，先取列表对象jlst上的data-queryParam属性作为queryParam的缺省值，再尝试取data-ac, data-res, data-cond, data-orderby属性作为queryParam.ac等参数的缺省值，<br />
@@ -2640,6 +2819,8 @@ callSvr(queryParam.ac, queryParam, function (data) {
 <li>markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 下次浏览该列表时刷新。</li>
 <li>loadMore: Function(), 加载下一页数据</li>
 </ul>
+<p class="param"><strong>@param opt.jContainer</strong>  设置列表所有的容器，默认为页面body(".bd")对象。</p>
+<p>注意jContainer必须有固定高度(.bd会由框架自动设置高度)，否则会造成无法上下拉动，除非设置了 opt.canPullDown=false。</p>
 <h4 id="initPageList-6 css类">6 css类</h4>
 <p>可以对以下两个CSS class指定样式：</p>
 <p class="key"><strong>@key <a id="mui-pullPrompt">mui-pullPrompt</a></strong>  CSS-class 下拉刷新提示块</p>
@@ -2808,14 +2989,29 @@ onGetData: function (data, pagesz, pagekey) {
 <p class="param"><strong>@param opt.onPull</strong>  function(ev, jlst)</p>
 <p>jlst:: 当前活动页。函数如果返回false，则取消所有上拉加载或下拉刷新行为，使用系统默认行为。</p>
 <h4 id="initPageList-11 仅自动加载，禁止下拉刷新行为">11 仅自动加载，禁止下拉刷新行为</h4>
-<p>有时不想为列表容器指定固定高度，而是随着列表增长而自动向下滚动，在滚动到底时自动加载下一页。<br />
-这时可禁止下拉刷新行为：</p>
+<p>只上拉加载，不需要下拉刷新行为。随着列表增长而自动向下滚动，在滚动到底时自动加载下一页。<br />
+这时容器允许没有固定高度，而是可禁止下拉刷新行为：</p>
 <pre><code>var listItf = initPageList(jpage, 
     ...,
     canPullDown: false,
 );</code></pre>
 <p class="param"><strong>@param opt.canPullDown</strong> ?=true  是否允许下拉刷新</p>
-<p>设置为false时，当列表到底部时，可以自动加载下一页，但没有下拉刷新行为，这时页面容器也不需要确定高度。</p></div>
+<p>设置为false时，当列表到底部时，可以自动加载下一页，但没有下拉刷新行为，这时页面容器也不需要确定高度。</p>
+<h4 id="initPageList-12 本地分页">12 本地分页</h4>
+<p class="param"><strong>@param opt.localPageSize</strong> </p>
+<p>服务器一次性返回所有数据，在前端不想一次性全部显示，比如也按10条一页分页显示，下拉加载下一页，称为本地分页.<br />
+这个场景下可以设置<code>opt.localPageSize=10</code>，示例：</p>
+<pre><code>var lstIf = MUI.initPageList(jpage, {
+    ...
+    localPageSize: 10, // 设置本地分页
+    onGetQueryParam: function (jlst, queryParam) {
+        queryParam.ac = "Ordr.query";
+        ...
+        queryParam.pagesz = -1; // 服务端不分页
+    },
+    onAddItem: onAddItem
+});</code></pre>
+<p>也支持是远程分页+本地分页混用, 但没有意义, 容易造成错乱, 故请匆混用.</p></div>
 <div class="block">
 <h2 id="FormMode">@var FormMode</h2>
 <p>FormMode.forAdd/forSet/forFind.</p>
@@ -2834,12 +3030,12 @@ onGetData: function (data, pagesz, pagekey) {
 调用showByFormMode(jo, FormMode.forSet)时, 显示 div2, div4, div5;</p></div>
 <div class="block">
 <h2 id="initPageDetail">@fn initPageDetail(jpage, opt) -> PageDetailInterface={refresh(), del()}</h2>
-<p>详情页框架. 用于对象的添加/查看/更新多合一页面.<br />
+<p>详情页框架. 用于对象的添加/查看/更新/删除多合一页面.<br />
 form.action为对象名.</p>
 <p class="param"><strong>@param opt</strong>  {pageItf, jform?=jpage.find("form:first"), onValidate?, onGetData?, onNoAction?=history.back, onAdd?, onSet?, onGet?, onDel?}</p>
 <p>pageItf: {formMode, formData}; formData用于forSet模式下显示数据, 它必须有属性id.<br />
 Form将则以pageItf.formData作为源数据, 除非它只有id一个属性(这时将则调用callSvr获取源数据)</p>
-<p>onValidate: Function(jform, queryParam); 提交前的验证, 或做字段补全的工作, 或补全调用参数。queryParam是查询参数，它可能包含{ac?, res?, ...}，可以进行修改。<br />
+<p>onValidate: Function(jform, queryParam); 提交前的验证, 或做字段补全的工作, 或补全调用参数。queryParam是查询参数，它可能包含{ac?, res?, ...}，可以进行修改。(v5.3)支持返回Deferred对象做异步提交。<br />
 onGetData: Function(jform, queryParam); 在forSet模式下，如果需要取数据，则回调该函数，获取get调用的参数。<br />
 onNoAction: Function(jform); 一般用于更新模式下，当没有任何数据更改时，直接点按钮提交，其实不做任何调用, 这时将回调 onNoAction，缺省行为是返回上一页。<br />
 onAdd: Function(id); 添加完成后的回调. id为新加数据的编号.<br />
@@ -2858,16 +3054,19 @@ onDel: Function(); 删除对象后回调.</p>
     ...
     &lt;div class="bd"&gt;
         &lt;form action="Person"&gt;
+            编号：&lt;input name="id" class="forSet"&gt; 
             &lt;input name="name" required placeholder="输入名称"&gt;
             &lt;textarea name="dscr" placeholder="写点简介"&gt;&lt;/textarea&gt;
             &lt;div class="forSet"&gt;人物标签&lt;/div&gt;
 
             &lt;button type="submit" id="btnOK"&gt;确定&lt;/button&gt;
+            &lt;button type="button" id="btnDel"&gt;删除&lt;/button&gt;
             &lt;input type="text" style="display:none" name="familyId"&gt;
 
         &lt;/form&gt;
     &lt;/div&gt;
 &lt;/div&gt;</code></pre>
+<p>注意：支持设置CSS类forSet,forAdd，用于标识只在更新或添加模式下使用。上例中编号id在添加时不出现，在更新时才显示。</p>
 <p>调用initPageDetail使它成为支持添加、查看和更新的详情页：</p>
 <pre><code>var PagePerson = {
     showForAdd: function (formData) ...
@@ -2878,7 +3077,7 @@ function initPagePerson()
 {
     var jpage = this;
     var pageItf = PagePerson;
-    initPageDetail(jpage, {
+    var detailItf = MUI.initPageDetail(jpage, {
         pageItf: pageItf, // 需要页面接口提供 formMode, formData等属性。
         onValidate: function (jf) {
             // 补足字段和验证字段，返回false则取消form提交。
@@ -2896,6 +3095,12 @@ function initPagePerson()
             PagePersons.show({refresh: true});
         },
     });
+
+    jpage.find("#btnDel").click(btnDel_click);
+
+    function btnDel_click(ev) {
+        app_alert("删除记录？", "q", detailItf.del.bind(detailItf));
+    }
 }
 
 // 其它页调用它：
@@ -2927,7 +3132,182 @@ PagePerson.showForSet({id: 3}); // 以id=3查询人物并显示，可更新。</
     &lt;div name=familyName&gt;&lt;/div&gt;
     ...
 &lt;/form&gt;</code></pre>
-<p>如果formData中有多个属性，则自动以formData的内容作为数据源显示页面，不再发起查询。</p></div>
+<p>如果formData中有多个属性，则自动以formData的内容作为数据源显示页面，不再发起查询。</p>
+<p>(v5.3) 在onValidate中返回Deferred对象，可支持异步提交。<br />
+示例：先上传完照片获得picId后，再添加或保存。</p>
+<pre><code>initPageDetail(jpage, {
+    ...,
+    onValidate: function (jf) {
+        var dfd = $.Deferred();
+        // 上传照片完成后再提交
+        uploadPic.submit().then(function (picId) {
+            jf[0].picId.value = picId;
+            dfd.resolve();
+        });
+        return dfd;
+    },
+    onGet: function (data) {
+        // 显示照片
+        jpage.find(".uploadpic").attr("data-atts", data.picId);
+        uploadPic.reset();
+    },
+}</code></pre>
+<p class="see"><strong>@see <a href="#setFormSubmit">setFormSubmit</a></strong> </p></div>
+<div class="block">
+<h2 id="MUI.UploadPic">@class MUI.UploadPic(jo, opt/optfn)</h2><div class="toc"><p style="margin-left:0em"><a href="#MUI.UploadPic-1 清空与重置">1 清空与重置</a></p>
+<p style="margin-left:0em"><a href="#MUI.UploadPic-2 设置只读，不可添加删除图片">2 设置只读，不可添加删除图片</a></p>
+<p style="margin-left:0em"><a href="#MUI.UploadPic-3 获取图片数">3 获取图片数</a></p>
+<p style="margin-left:0em"><a href="#MUI.UploadPic-4 指定上传区操作">4 指定上传区操作</a></p>
+</div>
+<p class="param"><strong>@param jo</strong>  jQuery DOM对象, 它是uploadpic类，或是包含一个或多个uploadpic类（上传区）的DOM对象。</p>
+<p class="param"><strong>@param opt</strong>  {uploadParam?} 兼容MUI.compressImg函数opt参数，如 {quality=0.8, maxSize=1280, ...}</p>
+<p>opt也可以是一个函数: optfn(jo) - jo为上传区, 返回该区的设置，这样就支持为每个上传区定义不同的选项。</p>
+<p>初始化之后也可以这样为每一个上传区指定option:</p>
+<pre><code>var opt = MUI.getOptions(jo);
+opt.xx =xxx;</code></pre>
+<p class="param"><strong>@param opt.uploadParam</strong>  调用upload接口的额外参数。</p>
+<p>目前调用筋斗云upload接口，使用参数<code>{genThumb:1, autoResize:0}</code>，可以通过uploadParam指定额外参数。</p>
+<p>注意：</p>
+<ul>
+<li>加载 jdcloud-uploadpic.js</li>
+<li>以uploadpic开头的类所需CSS，目前放在app.css中。</li>
+<li>预览大图依赖weui库中的样式。</li>
+</ul>
+<p>引入库：由于要上传功能的页面不多，建议只在逻辑页面用到的时候引入，像这样：</p>
+<pre><code>&lt;div mui-initfn="initPagePic" mui-script="pic.js" mui-deferred="loadUploadLib()"&gt;</code></pre>
+<p>loadUploadLib在app.js中有示例。在预览图片时，它自动检查和调用photoswipe库，优先用该库来预览。</p>
+<p>示例HTML</p>
+<pre><code>&lt;!-- 单图上传区: 比如上传用户头像。这里把预览图和文件按钮合一了，点预览图即可再选择文件 --&gt;
+&lt;div class="uploadpic" id="userPic"&gt;
+  &lt;div class="uploadpic-btn uploadpic-item"&gt;
+    &lt;input type="file"&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+
+&lt;!-- 多图上传区：比如上传产品明细图片。 --&gt;
+&lt;div class="uploadpic" id="itemPics"&gt;
+  &lt;div class="uploadpic-btn"&gt;
+    &lt;input type="file" multiple&gt;
+  &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+<ul>
+<li>类uploadpic为上传区。</li>
+<li>类uploadpic-btn为文件选择区，其中包含的input[type=file]组件，如果没有multiple属性，则是单图上传区，只允许选择一张图预览和上传，否则为多图上传区，允许选择和上传多图。</li>
+<li>类uploadpic-item为预览位，每张图片对应一个预览位。点击预览位可以查看大图（Gallery页面）<br />
+如果当前没有预览位，则会在uploadpic内创建一个预览位；否则，在单图上传区中则会覆盖已有预览位，在多图上传区中会有已有上传位后再创建一个新的预览位。</li>
+<li>如果在uploadpic中预先定义了uploadpic-item类对象，称为固定预览位，常用于自行指定预览位位置或样式。程序自动创建的预览位称为动态预览位。<br />
+选择图片后，如果有空闲的固定预览位，则在该预览位显示预览，否则动态创建新的预览位（clone第一个固定预览位）</li>
+<li>在删除图片时，如果图片在动态预览位，则会删除预览位，否则只是清空预览位的背景。</li>
+</ul>
+<p>JS</p>
+<pre><code>// 如果已有图片需要预览，将缩略图ID列表传入data-atts属性，在new UploadPic时会根据Id在图片预览区加上已经存在的图片
+jpage.find("#userPic").attr("data-atts", "208");
+jpage.find("#itemPics").attr("data-atts", "210,212,214");</code></pre>
+<p>也可以在上传区内放置一个带name属性的input, 框架将优先从它取值或设置值, 这样就不用手工取值和赋值了, 比如:</p>
+<pre><code>&lt;div class="uploadpic"&gt;
+    // 这个input的value将与data-atts一致.
+    &lt;input name="itemPics" style="display:none"&gt;
+    &lt;div class="uploadpic-btn"&gt;
+        &lt;input type="file" multiple&gt;
+    &lt;/div&gt;
+&lt;/div&gt;
+
+// 初始化，显示预览图
+var uploadPic = new MUI.UploadPic(jpage); // 可直接传uploadpic类的jQuery对象或包含它的jQuery DOM对象
+// var uploadPic = new MUI.UploadPic(jpage, {maxSize:1600, uploadParam:{type:"task"}} ); // 指定选项
+
+// 如果重新设置了data-atts属性，可调用
+// uploadPic.reset();
+
+// 点击提交时调用submit，当上传完成后，
+uploadPic.submit().then(function (userPic, itemPics) {
+
+});
+
+// 如果要精细控制上传进度：
+var dfd = uploadPic.submit(onUpload, onUploadProgress, onNoWork);
+dfd.then(onUploadDone);</code></pre>
+<p>onUpload回调仅当需要上传照片或删除照片时调用，在照片上传完成后触发。一般用于将照片列表更新到相应对象上。如果有多个上传区更新，则会分别调用。<br />
+attIds为上传后返回的缩略图Id数组，this为当前上传区的jQuery对象。<br />
+如果函数返回一个Deferred对象（如callSvr调用），则onUploadDone（以及onUploadProgress的最后一次progress.done=true的回调）会在所有这些调用完成之后才触发。</p>
+<pre><code>// 每个上传区一旦有图片更新，则调用Task1.set更新图片列表。
+function onUpload(attIds) {
+    // this对象为当前uploadpic
+    var pics = attIds.join(',');
+    var task = this.data("task_");
+    // 如果返回一个Deferred对象，则progress.done会等待该事件结束才发生
+    return callSvr("Task1.set", {id: task.id}, $.noop, {pics: pics});
+}</code></pre>
+<p>onUploadProgress用于显示上传进度。如果未指定，框架使用默认的进度提示，同时会在console中显示上传进度。如下所示：</p>
+<pre><code>// progress: {curPicCnt/已上传照片数, picCnt/总共需上传的照片数, curAreaCnt/已完成的上传区数, areaCnt/总共需更新的上传区数, curSize/当前已完成的上传大小, size/总上传大小, done/是否全部完成, percent/上传完成百分数0-100}
+// 示例：利用app_alert显示进度。
+function onUploadProgress(progress)
+{
+    var info = progress.picCnt&gt;0? "正在上传... " + progress.percent + "% - " + progress.curPicCnt + "/" + progress.picCnt + "张照片": "更新照片";
+    var alertOpt = {keep: true};
+    if (progress.done) {
+        info += " - &lt;b&gt;完成!&lt;/b&gt;";
+        alertOpt.timeoutInterval = 500;
+    }
+    else {
+        info += "...";
+    }
+    app_alert(info, alertOpt);
+}</code></pre>
+<p>onNoWork在无任何更新时回调。这时onUpload和onUploadProgress都不会被调用到。</p>
+<pre><code>function onNoWork() {
+    app_alert("都保存好了。");
+}</code></pre>
+<p>onUploadDone在全部上传完成后调用，参数分别为每个上传区的图片编号数组（不论该上传区是否需要更新）。</p>
+<pre><code>function onUploadDone(attIds, attIds1) {
+    // arguments
+}</code></pre>
+<p>在预览位uploadpic-item对象上，设置了以下属性：</p>
+<ul>
+<li>ji.prop(&quot;picData_&quot;) -&gt; {b64src,blob,w,h,size,...} (参考compressImg的回调函数cb的参数)<br />
+当选择的图片进行压缩后，数据存储在picData_中。b64src字段可作为url显示图片。在上传服务端后该数据被清空。</li>
+<li>ji.prop(&quot;attId_&quot;) -&gt; 对应的图片（缩略图）编号。仅当在服务器上已有才显示。</li>
+<li>ji.prop(&quot;isFixed_&quot;) -&gt; true表示固定预览位，只能清空，不可被删除。</li>
+<li>ji.css(&quot;background-image&quot;); -&gt; 缩略图片的url。如果是待上传或刚刚上传的图片，则是大图的base64编码url。</li>
+</ul>
+<p>在上传区uploadpic对象上，私有数据存储在MUI.getOptions(jo)中：</p>
+<ul>
+<li>isMul: 标识是多图上传区。在安卓手机上，由于对文件选择框的multiple属性支持不好，常常去掉和禁用它。所以内部使用isMul属性来区分。</li>
+<li>delMark_: 标识是否有删除图片操作。在submit后恢复为null.</li>
+</ul>
+<p class="see"><strong>@see <a href="#compressImg">compressImg</a></strong> </p>
+<p class="event"><strong>@event <a id="changepic">changepic</a></strong>  uploadpic对应的jquery对象事件，在添加或删除图片时触发</p>
+<p>示例：在选择图片后显示预览区，无图片则不显示</p>
+<pre><code>&lt;div class="" v-show='uploadObjNum&gt;0'&gt;
+    &lt;div class="uploadpic"&gt;...&lt;/div&gt;
+&lt;/div&gt;
+
+// 注意：添加多张图片时，会连续触发多次
+jpage.find("#addMsg").on("changepic", function (ev) {
+    console.log('changepic');
+    vm.uploadObjNum = uploadPic.countPic();
+});</code></pre>
+<h4 id="MUI.UploadPic-1 清空与重置">1 清空与重置</h4>
+<p>清空全部图片：</p>
+<pre><code>uploadPic.empty();
+// 等价于 uploadPic.reset(true);</code></pre>
+<p>修改了data-atts属性后重新刷新显示：</p>
+<pre><code>uploadPic.reset();</code></pre>
+<h4 id="MUI.UploadPic-2 设置只读，不可添加删除图片">2 设置只读，不可添加删除图片</h4>
+<pre><code>uploadPic.readonly(true);
+var isReadonly = uploadPic.readonly();</code></pre>
+<h4 id="MUI.UploadPic-3 获取图片数">3 获取图片数</h4>
+<p>要判断预览区有几张图，可以用：</p>
+<pre><code>var cnt = uploadPic.countPic(); // 总图片数
+var oldCnt = uploadPic.countPic(1); // 已有图片数
+var newCnt = uploadPic.countPic(2); // 新选择的图片数</code></pre>
+<h4 id="MUI.UploadPic-4 指定上传区操作">4 指定上传区操作</h4>
+<p>当uploadPic包含多个上传区时，可以用filter指定之后的方法是针对哪一个区。注意filter只对下一次调用有效。</p>
+<pre><code>uploadPic.filter(idx).其它方法(); // idx为下标或jQuery的filter</code></pre>
+<p>示例：</p>
+<pre><code>var cnt = uploadPic.filter(0).countPic();
+// 等价于 var cnt = uploadPic.filter(":eq(0)").countPic;
+uploadPic.filter(".storePics").empty();</code></pre></div>
 <div style="text-align:center">Generated by jdcloud-gendoc</div>
 </body>
 

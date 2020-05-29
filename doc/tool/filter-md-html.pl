@@ -92,6 +92,7 @@ print <<EOL;
 <html>
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>$g_docTitle</title>
   <style type="text/css">code{white-space: pre;}</style>
 $linkFiles

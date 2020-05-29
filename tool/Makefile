@@ -9,6 +9,7 @@
 # make clean-refdoc 
 ##############################
 
+# 注意：由于windows下php无法接收utf-8编码的中文参数（只能接受系统默认的gb2312），故本文件必须保存成gb2312编码，且让工具jdcloud-gendoc根据encoding参数内部转成utf-8再输出。
 opt=-encoding gb2312
 gendoc=php jdcloud-gendoc.php -template refdoc-template.php -linkFiles "style.css,doc.css,refdoc.js"
 
@@ -21,10 +22,10 @@ refdoc_targets=../doc/api_m2.html ../doc/api_php.html ../doc/api_web.html ../doc
 
 refdoc: $(refdoc_targets)
 
-../doc/api_m2.html: ../server/m2/lib/jdcloud-mui.js
+../doc/api_m2.html: ../server/m2/lib/jdcloud-mui.js ../server/m2/lib/jdcloud-uploadpic.js
 	$(gendoc) $^ -title "API参考 - 筋斗云前端（移动Web版）" $(opt) > $@
 
-../doc/api_web.html: ../server/web/lib/jdcloud-wui.js
+../doc/api_web.html: ../server/web/lib/jdcloud-wui.js ../server/web/lib/jdcloud-wui-ext.js ../server/web/lib/jdcloud-wui-stat.js
 	$(gendoc) $^ -title "API参考 - 筋斗云前端（桌面Web版）" $(opt) > $@
 
 ../doc/api_php.html: ../server/php/jdcloud-php/common.php ../server/php/jdcloud-php/app_fw.php ../server/php/jdcloud-php/api_fw.php ../server/php/jdcloud-php/AccessControl.php ../server/php/jdcloud-php/ext.php
@@ -59,4 +60,10 @@ clean-sprite:
 
 meta:
 	php upgrade.php export | tee ../server/tool/upgrade/META
+	git add ../server/tool/upgrade/META
 
+meta2:
+	sh upgrade.sh initdb
+
+meta3:
+	sh upgrade.sh 'export(2)'

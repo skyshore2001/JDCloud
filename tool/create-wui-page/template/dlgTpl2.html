@@ -1,0 +1,93 @@
+<form my-obj="<?=$baseObj?>" title="<?=$title?>" style="width:500px;height:400px;">
+<!-- wui-script="dlg<?=$obj?>.js" my-initfn="initDlg<?=$obj?>"  -->
+	<table>
+<?php
+foreach ($meta as $k => $v) {
+	$opts = [];
+	if ($k == "id") {
+		$opts[] = 'disabled';
+	}
+	if (@$v["type"] == "flag" && @!$v["enum"]) {
+		$v["enum"] = "YesNoMap";
+	}
+	if (@$v["linkTo"]) {
+		$dom = <<<EOL
+<select name="$k" class="my-combobox" data-options="ListOptions.{$v["linkTo"]}()"></select>
+EOL;
+	}
+	else if (@$v["enum"]) {
+		$enum = $v["enum"];
+		if (substr($enum, -3) == "Map") {
+			$opt = "jdEnumMap:$enum";
+		}
+		else {
+			$opt = "jdEnumList:$enum";
+		}
+		$dom = <<<EOL
+<select name="$k" class="my-combobox" data-options="$opt"></select>
+EOL;
+	}
+	else if (@$v["isAtt"]) {
+		$uploadOpts = [];
+		// 不是复数(atts/pics), 设置单选选项
+		if (substr($k,-1) != "s") {
+			$uploadOpts[] = "multiple:false";
+		}
+		if (@!$v["isPic"]) {
+			$uploadOpts[] = "pic:false";
+		}
+		$optStr = '';
+		if ($uploadOpts) {
+			$optStr = 'data-options="' . join(',', $uploadOpts) . '"';
+		}
+		print <<<EOL
+		<tr>
+			<td>{$v["name"]}</td>
+			<td class="wui-upload" $optStr>
+				<input name="$k">
+			</td>
+		</tr>
+
+EOL;
+		continue;
+	}
+	else {
+		if (@$v["required"]) {
+			$opts[] = 'class="easyui-validatebox" data-options="required:true"';
+		}
+		if (@$v["textField"]) {
+			$k = $v['textField'];
+			$opts[] = "disabled";
+		}
+		$optStr = join(' ', $opts);
+
+		if (@$v["type"] == "t") {
+			$dom = <<<EOL
+<textarea name="$k" {$optStr} rows=2></textarea>
+EOL;
+		}
+		else {
+			$dom = <<<EOL
+<input name="$k" {$optStr}>
+EOL;
+		}
+	}
+
+	print <<<EOL
+		<tr>
+			<td>{$v["name"]}</td>
+			<td>
+				$dom
+			</td>
+		</tr>
+
+EOL;
+}
+?>
+	</table>
+</form>
+<!-- examples:
+<input name="name" class="easyui-validatebox" data-options="required:true">
+<select name="customerId" class="my-combobox" data-options="ListOptions.Customer()"></select>
+<select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap"></select>
+-->

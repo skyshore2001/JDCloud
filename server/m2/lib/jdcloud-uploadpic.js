@@ -19,6 +19,12 @@ opt也可以是一个函数: optfn(jo) - jo为上传区, 返回该区的设置�
 - 以uploadpic开头的类所需CSS，目前放在app.css中。
 - 预览大图依赖weui库中的样式。
 
+引入库：由于要上传功能的页面不多，建议只在逻辑页面用到的时候引入，像这样：
+
+	<div mui-initfn="initPagePic" mui-script="pic.js" mui-deferred="loadUploadLib()">
+	
+loadUploadLib在app.js中有示例。在预览图片时，它自动检查和调用photoswipe库，优先用该库来预览。
+
 示例HTML
 
 	<!-- 单图上传区: 比如上传用户头像。这里把预览图和文件按钮合一了，点预览图即可再选择文件 -->
@@ -48,6 +54,16 @@ JS
 	// 如果已有图片需要预览，将缩略图ID列表传入data-atts属性，在new UploadPic时会根据Id在图片预览区加上已经存在的图片
 	jpage.find("#userPic").attr("data-atts", "208");
 	jpage.find("#itemPics").attr("data-atts", "210,212,214");
+
+也可以在上传区内放置一个带name属性的input, 框架将优先从它取值或设置值, 这样就不用手工取值和赋值了, 比如:
+
+	<div class="uploadpic">
+		// 这个input的value将与data-atts一致.
+		<input name="itemPics" style="display:none">
+		<div class="uploadpic-btn">
+			<input type="file" multiple>
+		</div>
+	</div>
 
 	// 初始化，显示预览图
 	var uploadPic = new MUI.UploadPic(jpage); // 可直接传uploadpic类的jQuery对象或包含它的jQuery DOM对象
@@ -123,6 +139,20 @@ onUploadDone在全部上传完成后调用，参数分别为每个上传区的�
 
 @see compressImg
 
+@event changepic uploadpic对应的jquery对象事件，在添加或删除图片时触发
+
+示例：在选择图片后显示预览区，无图片则不显示
+
+	<div class="" v-show='uploadObjNum>0'>
+		<div class="uploadpic">...</div>
+	</div>
+
+	// 注意：添加多张图片时，会连续触发多次
+	jpage.find("#addMsg").on("changepic", function (ev) {
+		console.log('changepic');
+		vm.uploadObjNum = uploadPic.countPic();
+	});
+
 ## 清空与重置
 
 清空全部图片：
@@ -130,7 +160,7 @@ onUploadDone在全部上传完成后调用，参数分别为每个上传区的�
 	uploadPic.empty();
 	// 等价于 uploadPic.reset(true);
 
-修改了data-attr属性后重新刷新显示：
+修改了data-atts属性后重新刷新显示：
 
 	uploadPic.reset();
 
@@ -155,8 +185,8 @@ onUploadDone在全部上传完成后调用，参数分别为每个上传区的�
 
 示例：
 
-	var cnt = uploadPic.filter(0).stat().cnt;
-	// 等价于 var cnt = uploadPic.filter(":eq(0)").stat().cnt;
+	var cnt = uploadPic.filter(0).countPic();
+	// 等价于 var cnt = uploadPic.filter(":eq(0)").countPic;
 	uploadPic.filter(".storePics").empty();
 
  */
@@ -205,8 +235,6 @@ function uploadPic1(jo, opt)
 		this.isFixed_ = true;
 	});
 
-	loadPreview(jo, isMul);
-
 	jo.on("change", "input[type=file]", function (ev) {
 		$.each(this.files, function (i, fileObj) {
 			MUI.compressImg(fileObj, function (picData) {
@@ -237,11 +265,27 @@ function uploadPic1(jo, opt)
 			return false;
 		}
 	});
+
+	loadPreview(jo, isMul);
+}
+
+function getAtts(jo)
+{
+	var ji = jo.find(">input[name]");
+	if (ji.size() > 0)
+		return ji.val();
+	return jo.attr("data-atts");
+}
+
+function setAtts(jo, val)
+{
+	jo.find(">input[name]").val(val);
+	jo.attr("data-atts", val);
 }
 
 function loadPreview(jo, isMul)
 {
-	var atts = jo.attr("data-atts");
+	var atts = getAtts(jo);
 	if (atts) {
 		atts = atts.toString().split(/\s*,\s*/);
 		$.each(atts, function (i, e) {
@@ -322,6 +366,8 @@ function previewImg(jo, attId, picData, isMul)
 	ji.css("backgroundImage", "url(" + url + ")");
 	ji.prop("picData_", picData)
 		.prop("attId_", attId);
+
+	jo.trigger("changepic");
 }
 
 function newPreview()
@@ -349,6 +395,7 @@ function delPreview(ji, forReset)
 	else {
 		ji.remove();
 	}
+	jo.trigger("changepic");
 }
 
 // 如果需要更改，返回Deferred对象，在上传完成后Deferred对象可执行；否则返回空。
@@ -412,15 +459,18 @@ function submit1(jo, cb, progress, progressCb)
 
 	function api_upload(data) {
 		MUI.assert($.isArray(data) && data.length == imgArr.length);
+		var atts = [];
 		$.each(imgArr, function(i) {
 			this.picData_ = null;
 			this.attId_ = data[i].thumbId;
+			atts.push(this.attId_);
 		});
+		setAtts(jo, atts.join(','));
 		done(cb);
 	}
 
 	function done (cb) {
-		atts = getAtts(jo);
+		atts = getCurrentAtts(jo);
 		if (cb) {
 			var rv = cb.call(jo, atts);
 			if (rv && rv.then) {
@@ -441,7 +491,7 @@ function submit1(jo, cb, progress, progressCb)
 	}
 }
 
-function getAtts(jo)
+function getCurrentAtts(jo)
 {
 	var atts = [];
 	jo.find(".uploadpic-item").each(function () {
@@ -482,7 +532,7 @@ function uploadPic_submit(cb, progressCb, onNoWork)
 			dfdArr.push(dfd);
 		}
 		else {
-			var atts = getAtts(jo);
+			var atts = getCurrentAtts(jo);
 			dfdArr.push(atts);
 		}
 	});
@@ -656,7 +706,7 @@ function uploadPic_reset(empty)
 			delPreview($(this), true);
 		});
 		if (empty) {
-			jo.attr("data-atts", "");
+			setAtts(jo, "");
 		}
 		else {
 			var isMul = MUI.getOptions(jo).isMul;

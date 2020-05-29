@@ -1,3 +1,126 @@
+## 升级到v5.4
+
+### 报错：操作对象不存在或无权限修改
+
+对set/del接口操作时，增加了调用onQuery回调，来检查当前用户是否可以query出指定id，以此来证明有权限修改此id。
+这个特性会导致误调用onQuery接口，导致set/del接口失败。
+
+示例：
+
+	protected function onQuery() {
+		$type = mparam("type");	
+		$this->addCond("type=" . Q($type));
+	}
+
+分析：执行set/del接口时，走到上述地方将因没有传type参数而报错。
+显示这段逻辑是为query接口写的，不应用于set/del。
+
+解决方案：
+
+	protected function onQuery() {
+		if ($this->ac == "query") {
+			$type = mparam("type");	
+			$this->addCond("type=" . Q($type));
+		}
+	}
+	或
+	protected function onQuery() {
+		if ($this->ac != "query")
+			return;
+		$type = mparam("type");	
+		$this->addCond("type=" . Q($type));
+	}
+
+### 设置只读属性报错
+
+v5.4之前设置只读属性(以readonlyFields或readonlyFields2定义的属性数组），只写警告日志，不报错。
+v5.4起将报错，一般应调用客户端接口调用。也可简单设置useStrictReadonly字段兼容旧版本：
+
+	class AC0_User extends AccessControl
+	{
+		protected $useStrictReadonly = false; // 默认为true，改为false则不报错。
+	}
+
+### 权限存储格式变化影响onGetPerms
+
+$_SESSION["perms"]由保存权限数组改为保存字符串（与Employee.perms字段一致），扩展权限设置的代码应做调整，使用新的inSet函数：
+原代码：api.php中
+
+	function onGetPerms()
+	{
+		$p = @$_SESSION["perms"];
+		...
+			if (array_search("mgr", $p) !== false)
+				$perms |= PERM_MGR;
+	}
+
+改为：
+
+	function onGetPerms()
+	{
+		$p = @$_SESSION["perms"];
+		...
+			if (inSet("mgr", $p))
+				$perms |= PERM_MGR;
+	}
+
+### 管理端列表页表头固定
+
+建议在pageXX中将表格的高度设置100%，以便表头和工具栏固定在表格上方。以及在dlgXX中使用默认的padding，不必自定义。
+为了平滑升级旧页面(pageXX)，对于页面中只有一个datagrid的情况，不用做任何修改，自动纵向铺满显示，使工具栏置顶。
+
+也可以运行下面的命令来修改各页面：
+
+	cd web/page
+	sed -i '1s/padding:.[^;]\+;//' dlg*.html
+	sed -i '2s/height:auto/height:100%/' page*.html
+
+### 服务端addCond
+
+以下接口的第三个参数$fixUserQuery缺省值由false改成了true:
+
+	AccessControl.addCond($cond, $prepend=false, $fixUserQuery=true)
+
+即默认在后端代码中调用`$this->addCond("status='发布中')`这样的代码时，会与前端传来的cond字段一样处理。
+升级后，如果遇到cond为复杂查询（用了函数、子查询等）的情况则不支持并出错，这时须显式设置fixUserQuery参数=false即可解决。
+
+## 升级到v5.3
+
+### 废弃searchField
+
+取消了app.js中的searchField方法。该方法用于在对话框上按某字段查询，如：
+
+	<td>用户联系方式</td>
+	<td>
+		<input name="userPhone" style="width:50%" class="easyui-validatebox" data-options="validType:'usercode'">
+		<input class="forSet" type=button onClick="searchField(this, {userPhone: this.form.userPhone.value});" value="查询该手机所有订单">
+	</td>
+
+v5.3开始可直接三击字段标题来查询，所以可以不需要加查询按钮了。如果要保留原按钮，可以在onClick中用WUI.doFind替代：
+
+	onClick="WUI.doFind($(this).closest('td'));"
+
+### 加密算法myEncrypt改为jdEncrypt
+
+新的内容应使用jdEncrypt函数加解密，两者算法一致但参数有差异。
+升级后，旧版本使用myEncrypt函数加密的内容将无法用jdEncrypt解密。
+
+例如，此前生成登录token使用了myEncrypt密码，为了使用户仍可以自动登录，login plugin在解密时做了以下兼容处理：
+原代码：
+
+	$data = @unserialize(myEncrypt($token, "D"));
+	if ($data === false)
+		throw new MyException(E_AUTHFAIL, "Bad login token!");
+
+新代码：
+
+	$data = @unserialize(jdEncrypt($token, "D"));
+	if ($data === false) {
+		$data = @unserialize(myEncrypt($token, "D"));
+		if ($data === false)
+			throw new MyException(E_AUTHFAIL, "Bad login token!");
+	}
+
 ## 升级到v5.2
 
 ### 管理端app.js重构到jdcloud-wui-ext.js，增加upload和checkList组件
@@ -264,6 +387,7 @@ fastclick库的引入，让IOS上点击事件响应更迅速，去除200ms延迟
 	function initDlgEmployee()
 	{
 		var jdlg = $(this);
+		// 注意find模式下以下opt.data或initData为空
 		jdlg.on("beforeshow", function (ev, formMode, opt) {
 			if (formMode == FormMode.forSet)
 				opt.data.pwd = "****";
@@ -271,7 +395,7 @@ fastclick库的引入，让IOS上点击事件响应更迅速，去除200ms延迟
 		.on("show", function (ev, formMode, initData) {
 			hiddenToCheckbox(jdlg.find("#divPerms"));
 		})
-		.on("validate", function (ev, formMode, initData) {
+		.on("validate", function (ev, formMode, initData, newData) {
 			checkboxToHidden(jdlg.find("#divPerms"));
 		});
 	}

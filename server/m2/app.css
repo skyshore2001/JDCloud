@@ -12,7 +12,7 @@
 .mui-page {
 	background-color: #fffffe;
 }
-.mui-page>.hd:first-child  {
+.mui-page>.hd:first-of-type  {
 	background-color: #04be02;
 	color: #fffffe;
 }

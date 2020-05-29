@@ -1,0 +1,81 @@
+<?php
+if (!isset($meta)) {
+	$meta = [
+		"id" => ["name"=>"编号"],
+		"name" => ["name"=>"名称"],
+	];
+}
+$hasPic = false;
+$pageAttrForPic = '';
+foreach($meta as $k=>$v) {
+	if (@$v["isPic"]) {
+		$hasPic= true;
+		$pageAttrForPic = 'mui-deferred="loadUploadLib()"';
+		break;
+	}
+};
+?>
+<div mui-initfn="initPage<?=$obj?>" mui-script="<?=lcfirst($obj)?>.js" <?=$pageAttrForPic?>>
+	<div class="hd">
+		<a href="javascript:hd_back();" class="btn-icon"><i class="icon icon-back"></i></a>
+<!--  example: menu
+		<a href="#dlgMenu" class="btn-icon"><i class="icon icon-menu"></i></a>
+-->
+		<h1><?=$title?></h1>
+	</div>
+	<div class="bd">
+		<form action="<?=$baseObj?>">
+			<div class="weui-cells weui-cells_form">
+<?php
+foreach($meta as $k=>$v) {
+	if ($k == "id") {
+		echo <<<EOL
+				<div class="weui-cell forSet">
+					<label class="weui-cell__hd weui-label">{$v["name"]}</label>
+					<input name="$k" class="weui-cell__bd weui-input right" readonly>
+				</div>
+
+EOL;
+	}
+	else if (@$v["isPic"]) {
+		$multiple = '';
+		$uploadpicItem = 'uploadpic-item';
+		// 是复数(pics), 设置多选
+		if (substr($k,-1) == "s") {
+			$multiple = 'multiple';
+			$uploadpicItem = '';
+		}
+		echo <<<EOL
+				<div class="weui-cell" style="display:block">
+					<p class="weui-cell__hd weui-label">{$v["name"]}</p>
+					<div class="uploadpic">
+						<input name="$k" style="display:none">
+						<div class="uploadpic-btn $uploadpicItem">
+							<input type="file" $multiple>
+						</div>
+					</div>
+				</div>
+
+EOL;
+	}
+	else {
+		echo <<<EOL
+				<div class="weui-cell">
+					<label class="weui-cell__hd weui-label">{$v["name"]}</label>
+					<input name="$k" required class="weui-cell__bd weui-input right" placeholder="填写{$v["name"]}">
+				</div>
+
+EOL;
+	}
+}
+?>
+
+				<div class="weui-cell" style="display:block">
+					<button id="btnOk" class="weui-btn weui-btn_primary">保存</button>
+					<button id="btnDel" type="button" class="weui-btn weui-btn_default forSet">删除</button>
+				</div>
+			</div>
+		</form>
+	</div>
+</div>
+

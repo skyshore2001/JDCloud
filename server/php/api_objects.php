@@ -49,6 +49,12 @@ class AC0_Employee extends AccessControl
 		if ($this->ac == "add" && !issetval("perms")) {
 			$_POST["perms"] = "emp";
 		}
+		if ($this->ac == "set" && issetval("perms?")) {
+			$params = $_POST;
+			injectSession($this->id, "emp", function () use ($params) {
+				$_SESSION["perms"] = $params["perms"];
+			});
+		}
 
 		if (issetval("pwd")) {
 			$_POST["pwd"] = hashPwd($_POST["pwd"]);
@@ -60,12 +66,14 @@ class AC2_Employee extends AC0_Employee
 {
 	protected $requiredFields = [["phone", "uname"], "pwd"];
 	protected $allowedAc = ["query", "get", "set"];
-	protected $allowedAc2 = ["query", "get", "set", "add", "del"];
 
 	function __construct()
 	{
 		if (hasPerm(PERM_MGR)) {
-			$this->allowedAc = $this->allowedAc2;
+			$this->allowedAc = null; // all ac
+		}
+		else {
+			$this->readonlyFields = ["perms", "pwd", "phone", "uname"];
 		}
 	}
 
@@ -74,6 +82,24 @@ class AC2_Employee extends AC0_Employee
 		$id = param("id");
 		if (!hasPerm(PERM_MGR) || is_null($id)) {
 			setParam("id", $_SESSION["empId"]);
+		}
+	}
+
+	protected function onQuery()
+	{
+		if ($this->ac == "get" && $GLOBALS["P_initClient"]["enableRole"]) {
+			$this->addRes("perms rolePerms");
+			$this->enumFields["rolePerms"] = function ($perms, $row) {
+				if (! $perms)
+					return;
+				// "perm1, perm2" => "IN ('perm1', 'perm2')"
+				$permsExpr = preg_replace_callback('/\w+/u', function ($ms) {
+					return Q($ms[0]);
+				}, $perms);
+				$arr = queryAll("SELECT perms FROM Role WHERE name IN (" . $permsExpr . ")");
+				$rolePerms = array_map(function ($e) { return $e[0]; }, $arr);
+				return join(' ', $rolePerms);
+			};
 		}
 	}
 }
@@ -85,7 +111,8 @@ class AC0_Ordr extends AccessControl
 {
 	protected $subobj = [
 		"orderLog" => ["sql"=>"SELECT ol.*, e.uname AS empPhone, e.name AS empName FROM OrderLog ol LEFT JOIN Employee e ON ol.empId=e.id WHERE orderId=%d", "wantOne"=>false],
-		"atts" => ["sql"=>"SELECT id, attId FROM OrderAtt WHERE orderId=%d", "wantOne"=>false],
+		// "atts" => ["sql"=>"SELECT id, attId FROM OrderAtt WHERE orderId=%d", "wantOne"=>false],
+		"atts" => ["obj"=>"OrderAtt", "cond"=>"orderId=%d", "AC"=>"AccessControl", "res"=>"id,attId"]
 	];
 
 	protected $vcolDefs = [

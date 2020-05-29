@@ -28,17 +28,25 @@ var DlgImport = {
 
 // ==== data-options {{{
 var ListOptions = {
-	// ListOptions.Emp()
-	Emp: function () {
+	Employee: function () {
 		var opts = {
 			valueField: "id",
-			textField: "name",
 			url: WUI.makeUrl('Employee.query', {
-				res: 'id,name,uname',
-				cond: 'storeId=' + g_data.userInfo.storeId,
+				res: 'id,name',
 				pagesz: -1
 			}),
-			formatter: function (row) { return row.name + '(' + row.uname + ')'; }
+			formatter: function (row) { return row.id + '-' + row.name; }
+		};
+		return opts;
+	},
+	Role: function () {
+		var opts = {
+			valueField: "name",
+			textField: "name",
+			url: WUI.makeUrl('Role.query', {
+				res: 'name',
+				pagesz: -1
+			})
 		};
 		return opts;
 	},
@@ -108,51 +116,11 @@ function initPageHome()
 	var jpage = $(this);
 	var jtbl = jpage.find("#tblMe");
 	var jdlg = $("#dlgEmployee");
-
+	
 	jtbl.datagrid({
-		url: WUI.makeUrl("Employee.query", {cond: "id=" + g_data.userInfo.id}),
-		onLoadSuccess: function(data) {
-			applyPermission(data.rows[0].perms);
-		}
+		data: [g_data.userInfo]
 	});
-}
-
-/*
-根据用户权限，如"item,mgr"等，菜单中有perm-xxx类的元素会显示，有nperm-xxx类的元素会隐藏
-
-示例：只有mgr权限显示
-
-	<div class="perm-mgr" style="display:none"></div>
-
-示例：bx权限不显示（其它权限可显示）
-
-	<a href="#pageItem" class="nperm-bx">商品管理</a>
-
-可通过 g_data.hasPerm(perm) 查询是否有某项权限。
- */
-function applyPermission(perms)
-{
-	// e.g. "item,mgr" - ".perm-item, .perm-mgr"
-	if (perms == null)
-		perms = "emp";
-	var sel = perms.replace(/([^, ]+)/g, '.perm-$1');
-	var arr = perms.split(/,/);
-	if (sel) {
-		$(sel).show();
-		var sel2 = sel.replace(/perm/g, 'nperm');
-		$(sel2).hide();
-	}
-
-	g_data.hasPerm = function (perm) {
-		var found = false;
-		$.each(arr, function (i, e) {
-				if (e == perm) {
-					found = true;
-					return false;
-				}
-		});
-		return found;
-	}
+	WUI.applyPermission();
 }
 
 // init functions }}}
@@ -207,7 +175,7 @@ function main()
 {
 	setAppTitle(APP_TITLE);
 
-	//WUI.initClient();
+	WUI.initClient();
 	WUI.tryAutoLogin(handleLogin, "Employee.get");
 }
 

@@ -30,16 +30,64 @@ interface IWxSupport
 {
 	function prepay($forJS, $outTradeNo, $amount, $dscr);
 
-	// 向企业号成员推送消息
-	function sendEmpNotification($msg);
+/*
+document: https://mp.weixin.qq.com/advanced/tmplmsg?action=faq&token=1260719760&lang=zh_CN
+向公众号用户推送消息。msgData为模板消息，示例：
 
-	// 向用户推送订单提醒
-	// msg={header, \%fixedBody, \%body, footer}
-	// fixedBody/body={key => value}
-	function sendUserNotification($weixinKey, $msg, $linkUrl=null);
+T_fofgFKDxJ2gJRVHcQjEA9HyS9WMTNPOgWDhmGYgAM
+
+	{{first.DATA}}
+	提交时间：{{keyword1.DATA}}
+	预约类型：{{keyword2.DATA}}
+	{{remark.DATA}}
+
+调用示例：
+
+	$linkUrl = getBaseUrl() . "web/index.html";
+	$msgData = [
+		"touser" => "oAtEv1T3CiB-zQPKKGTAPaMgMQNk", // 特别的，如果是多个人，可用数组：["oAtEv1T3CiB-zQPKKGTAPaMgMQNk", "..."]
+		"template_id" => "T_fofgFKDxJ2gJRVHcQjEA9HyS9WMTNPOgWDhmGYgAM",
+		"url" => $linkUrl,
+		"topcolor" => "#ff0000",
+		"data" => [
+			"first" => [
+				"value" => $msg,
+				"color" => '',
+			],
+			"keyword1" => [
+				"value" => '',
+				"color" => '',
+			],
+			"keyword2" => [
+				"value" => '',
+				"color" => '',
+			],
+			"remark" => [
+				"value" => '',
+				"color" => '',
+			],
+		]
+	];
+	$wx = getExt(Ext_WxSupport);
+	$wx->sendWeiXin($msgData);
+
+为了使 getBaseUrl() 得到正确的前缀（比如测试时默认是localhost，无法在微信中打开），可在conf.user.php中配置 P_BASE_URL，如
+
+	putenv("P_BASE_URL=http://oliveche.com/8081/p/mall/server/");
+*/
+	function sendWeixin($msgData);
+
+/*
+	// 企业向个人付款
+	// 返回：{payNo, payTm, outTradeNo}, 失败抛出异常
+	// document: https://pay.weixin.qq.com/wiki/doc/api/tools/mch_pay.php?chapter=14_2
+	function payToUser($weixinKey, $outTradeNo, $name, $amount, $dscr);
+
+	function initWeixinJsapi($url);
+*/
 }
 
-// 推送消息
+// 推送APP消息
 interface IPushMsg
 {
 	// $toUserId: 0表示所有用户
@@ -101,30 +149,20 @@ class ExtMock implements ISmsSupport, IWxSupport, IPushMsg
 		return ["err" => "mock"];
 	}
 
-	// 向企业号成员推送消息
-	function sendEmpNotification($msg)
+	// 推送微信消息
+	function sendWeixin($msgData)
 	{
-		$log = "[微信企业号推送] msg=\n`{$msg}`\n";
-		logext($log);
-	}
-
-	// 向用户推送订单提醒
-	// msg={header, \%fixedBody, \%body, footer}
-	// fixedBody/body={key => value}
-	// throw exception for error
-	function sendUserNotification($weixinKey, $msg, $linkUrl=null)
-	{
-		$str = PayImpBase::msgStructToStr($msg);
-
-		$log = "[微信用户推送] weixinKey=`{$weixinKey}`, linkUrl=`{$linkUrl}`, msg=\n`$str`\n";
+		$str = jsonEncode($msgData);
+		$log = "[推送微信消息] msg=$str";
 		logext($log);
 	}
 
 	function pushMessage($toUserId, $msg, $opt=null)
 	{
-		$log = "[消息推送] toUser=`{$toUserId}`, msg=`{$msg}`\n";
+		$log = "[推送APP消息] toUser=`{$toUserId}`, msg=`{$msg}`\n";
 		logext($log);
 	}
+
 }
 //}}}
 

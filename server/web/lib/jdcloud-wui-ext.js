@@ -110,6 +110,8 @@ JS:
 		}
 	}
 
+## 右键菜单
+
 @param opt.menu 设置右键菜单
 
 在预览区右键单击会出现菜单，默认有“删除”菜单。
@@ -155,12 +157,40 @@ HTML: 在data-options中指定菜单的ID和显示文字。缺省头像将添加
 			}
 		}
 	}
+	// 高亮显示选中的头像picId。
+	// 注意：要用jdlg而不是jfrm的show事件。否则wui-upload尚未初始化完成
 	jdlg.on("show", function (ev, formMode, initData) {
 		if (initData && initData.picId) {
 			jdlg.find(".wui-upload img[picId=" + initData.picId + "]").addClass("active");
 		}
 	});
 	
+## 音频等文件上传
+
+@param opt.accept 指定可上传的文件类型
+
+示例：上传单个音频文件，如m4a, mp3等格式。
+
+	<td>文件</td>
+	<td class="wui-upload" data-options="multiple:false,pic:false,accept:'audio/*'">
+		<input name="attId">
+		<p class="hint">要求格式m4a,mp3,wav; 采样率为16000</p>
+	</td>
+
+## 压缩参数
+
+@param opt.maxSize?=1280 指定压缩后图片的最大长或宽
+@param opt.quality?=0.8 指定压缩质量, 一般不用修改.
+
+示例：默认1280像素不够, 增加到2000像素:
+
+	<tr>
+		<td>图片</td>
+		<td class="wui-upload" data-options="maxSize:2000">
+			<input name="pics">
+		</td>
+	</tr>
+
  */
 self.m_enhanceFn[".wui-upload"] = enhanceUpload;
 
@@ -180,9 +210,10 @@ function enhanceUpload(jupload)
 		opt.fname = !opt.pic; // 非图片时，自动保存文件名
 
 	var jname = jupload.find("input[name]:first");
-	var jimgs = $('<div class="imgs"></div>').appendTo(jupload);
-	var jfile = $('<input type="file">').appendTo(jupload);
-	var jedit = $('<p class="hint"><a href="javascript:;" class="btnEditAtts">编辑文本</a> 右键删除</p>').appendTo(jupload);
+	var jimgs = $('<div class="imgs"></div>');
+	var jfile = $('<input type="file">');
+	var jedit = $('<p class="hint"><a href="javascript:;" class="btnEditAtts">编辑文本</a> 右键删除</p>');
+	jname.after(jimgs, jfile, jedit);
 
 	jupload.css("white-space", "normal");
 	jupload.find(".btnEditAtts").click(function () {
@@ -191,7 +222,10 @@ function enhanceUpload(jupload)
 
 	jfile.prop("multiple", opt.multiple);
 
-	if (opt.pic) {
+	if (opt.accept) {
+		jfile.attr("accept", opt.accept);
+	}
+	else if (opt.pic) {
 		jfile.attr("accept", "image/*");
 	}
 	jfile.change(onChooseFile);
@@ -376,11 +410,9 @@ function imgToHidden(jp, sep)
 	else {
 		var files = [];
 		jp.find(".imgs a").each(function() {
-			if (opt.multiple) {
-				var att = $(this).attr('att');
-				if (att)
-					val.push(att);
-			}
+			var att = $(this).attr('att');
+			if (att)
+				val.push(att);
 			if (this.fileObj_)
 				files.push(this.fileObj_);
 		});
@@ -389,7 +421,8 @@ function imgToHidden(jp, sep)
 			$.each(files, function (i, e) {
 				fd.append('file' + (i+1), e);
 			});
-			dfd = callSvr('upload', function (data) {
+			var params = {autoResize: 0};
+			dfd = callSvr('upload', params, function (data) {
 				$.each(data, function (i, e) {
 					var att = e.id;
 					if (opt.fname) {
@@ -449,6 +482,7 @@ function onChooseFile(ev)
 
 	$.each(picFiles, function (i, fileObj) {
 		if (compress) {
+			var compressOpt = {quality: opt.quality||0.8, maxSize: opt.maxSize||1280};
 			WUI.compressImg(fileObj, function (picData) {
 				var jimg;
 				if (! opt.multiple) {
@@ -463,7 +497,7 @@ function onChooseFile(ev)
 				jimg.attr("src", picData.b64src)
 					.prop("picData_", picData);
 				addNewItem(jimg);
-			});
+			}, compressOpt);
 		}
 		else {
 			var windowURL = window.URL || window.webkitURL;
@@ -519,11 +553,43 @@ function enhanceCheckList(jp)
 	if (jdlg.size() == 0)
 		return;
 
+	var defOpt = {
+		sep: ','
+	};
+	var opt = WUI.getOptions(jp, defOpt);
+	var dfd = $.Deferred();
+	if (opt.url) {
+		var url = opt.url;
+		self.assert(opt.valueField && opt.textField, "wui-checkList: 使用url选项，必须设置valueField和textField选项");
+		if (m_dataCache[url] === undefined) {
+			self.callSvr(url, onLoadOptions);
+		}
+		else {
+			onLoadOptions(m_dataCache[url]);
+		}
+	}
+	else {
+		dfd.resolve();
+	}
+	function onLoadOptions(data) {
+		m_dataCache[url] = data;
+		applyData(data);
+	}
+	function applyData(data) {
+		var ls = WUI.rs2Array(data);
+		$.each(ls, function (i, e) {
+			$('<div><label><input type="checkbox" value="' + e[opt.valueField] + '">' + e[opt.textField] + '</label></div>').appendTo(jp);
+		});
+		dfd.resolve();
+	}
+
 	jdlg.on("show", onShow)
 		.on("validate", onValidate);
 
 	function onShow(ev) {
-		hiddenToCheckbox(jp);
+		dfd.then(function () {
+			hiddenToCheckbox(jp);
+		});
 	}
 
 	function onValidate(ev, mode, oriData, newData) {
@@ -567,6 +633,104 @@ function hiddenToCheckbox(jp, sep)
 }
 
 /**
+@key .wui-labels
+
+标签字段（labels）是空白分隔的一组词，每个词是一个标签（label）。
+可以在字段下方将常用标签列出供用户选择，点一下标签则添加到文本框中，再点一下删除它。
+
+	<tr>
+		<td>标签</td>
+		<td class="wui-labels">
+			<input name="label" >
+			<p class="hint">企业类型：<span class="labels" dfd="StoreDialog.dfdLabel"></span></p>
+			<p class="hint">行业标签：<span class="labels">IT 金融 工业</span></p>
+			<p class="hint">位置标签：<span class="labels">一期 二期 三期 四期</span></p>
+		</td>
+	</tr>
+
+- 最终操作的文本字段是.wui-labels下带name属性的输入框。
+- 在.labels中的文本将被按空白切换，优化显示成一个个标签，可以点击。
+- 支持异步获取，比如要调用接口获取内容，可以指定`dfd`属性是一个Deferred对象。
+- 添加的标签具有`labelMark`类(label太常用，没有用它以免冲突)，默认已设置样式。
+
+异步获取示例：
+
+	var StoreDialog = {
+		dfdLabel: $.Deferred()
+	}
+	callSvr("Conf.query", {cond: "name='企业分类'", fmt: "one", res: "value"}, function (data) {
+		StoreDialog.dfdLabel.resolve(data.value);
+	})
+
+// TODO: 支持beforeShow时更新
+ */ 
+self.m_enhanceFn[".wui-labels"] = enhanceLabels;
+
+function enhanceLabels(jp)
+{
+	var jdlg = jp.closest(".wui-dialog");
+	if (jdlg.size() == 0)
+		return;
+
+	var doInit = true;
+	jdlg.on("beforeshow", onBeforeShow);
+
+	function onBeforeShow() {
+		if (! doInit)
+			return;
+		doInit = false;
+
+		jp.on("click", ".labelMark", function () {
+			var label = $(this).text();
+			var o = jp.find(":input[name]")[0];
+			var str = o.value;
+			if (str.indexOf(label) < 0) {
+				if (str.length == 0)
+					str = label;
+				else
+					str += ' ' + label;
+			}
+			else {
+				str = str.replace(/\s*(\S+)/g, function (m, m1) {
+					if (m1 == label)
+						return "";
+					return m;
+				});
+			}
+			o.value = str;
+		});
+
+		showLabel();
+	}
+
+	function showLabel() {
+		jp.find(".labels").each(function () {
+			var jo = $(this);
+			var prop = jo.attr("dfd");
+			if (prop) {
+				var rv = WUI.evalAttr(jo, "dfd");
+				WUI.assert(rv.then, "Property `dfd' MUST be a Deferred object: " + prop);
+				rv.then(function (text) {
+					handleLabel(jo, text);
+				})
+			}
+			else {
+				handleLabel(jo, jo.html());
+			}
+		});
+	}
+
+	function handleLabel(jo, s) {
+		if (s && s.indexOf("span") < 0) {
+			var spanHtml = s.split(/\s+/).map(function (e) {
+				return '<span class="labelMark">' + e + '</span>';
+			}).join(' ');
+			jo.html(spanHtml);
+		}
+	}
+}
+
+/**
 @key #menu
 
 管理端功能菜单，以"menu"作为id:
@@ -607,6 +771,13 @@ function enhanceMenu()
 				}
 			});
 	});
+	// set active
+	jo[0].addEventListener("click", function (ev) {
+		if (ev.target.tagName != "A" || !$(ev.target).is(".my-menu-item:not(.menu-item-head)")<0)
+			return;
+		jo.find(".my-menu-item").removeClass("active");
+		$(ev.target).addClass("active");
+	}, true);
 
 	// add event handler to menu items
 	function menu_onexpand(ev) {
@@ -617,5 +788,253 @@ function enhanceMenu()
 	}
 }
 $(enhanceMenu);
+
+/**
+@fn toggleCol(jtbl, col, show)
+
+显示或隐藏datagrid的列。示例：
+
+	WUI.toggleCol(jtbl, 'status', false);
+
+如果列不存在将出错。
+*/
+self.toggleCol = toggleCol;
+function toggleCol(jtbl, col, show)
+{
+	jtbl.datagrid(show?"showColumn":"hideColumn", col);
+}
+
+/**
+@fn toggleFields(jtbl_or_jfrm, showMap)
+
+根据type隐藏datagrid列表或明细页form中的项。示例：
+
+	function toggleItemFields(jo, type)
+	{
+		WUI.toggleFields(jo, {
+			type: !type,
+			status: !type || type!="公告",
+			tm: !type || type=="活动" || type=="卡券" || type=="停车券",
+			price: !type || type=="集市",
+			qty: !type || type=="卡券"
+		});
+	}
+
+列表中调用，控制列显示：pageItem.js
+
+		var type = objParam & objParam.type; // 假设objParam是initPageXX函数的传入参数。
+		toggleItemFields(jtbl, type);
+
+明细页中调用，控制字段显示：dlgItem.js
+
+		var type = objParam && objParam.type; // objParam = 对话框beforeshow事件中的opt.objParam
+		toggleItemFields(jfrm, type);
+
+ */
+self.toggleFields = toggleFields;
+function toggleFields(jo, showMap)
+{
+	if (jo.prop("tagName") == "TABLE") {
+		var jtbl = jo;
+		$.each(showMap, function (k, v) {
+			// 忽略找不到列的错误
+			try {
+				toggleCol(jtbl, k, v);
+			} catch (ex) {
+				// console.error('fail to toggleCol: ' + k);
+			}
+		});
+	}
+	else if (jo.prop("tagName") == "FORM") {
+		var frm = jo[0];
+		$.each(showMap, function (k, v) {
+			var o = frm[k];
+			if (o)
+				$(o).closest("tr").toggle(v);
+		});
+	}
+}
+
+function initPermSet(rolePerms)
+{
+	if (!rolePerms)
+		return;
+
+	var permSet = {};
+	var rpArr = rolePerms.split(/\s+/);
+	$.each (rpArr, function (i, e) {
+		var e1 = e.replace(/不可/, '');
+		if (e1.length != e.length) {
+			permSet[e1] = false;
+		}
+		else {
+			var n = e.indexOf('.');
+			if (n > 0)
+				permSet[e.substr(0, n)] = true;
+			permSet[e] = true;
+		}
+	});
+	console.log('permSet', permSet);
+	return permSet;
+}
+
+/**
+@fn WUI.applyPermission()
+
+@key permission 菜单权限控制
+
+前端通过菜单项来控制不同角色可见项，具体参见store.html中菜单样例。
+
+	<div class="perm-mgr" style="display:none">
+		<div class="menu-expand-group">
+			<a><span><i class="fa fa-pencil-square-o"></i>系统设置</span></a>
+			<div class="menu-expandable">
+				<a href="#pageEmployee">登录帐户管理</a>
+				...
+			</div>
+		</div>
+	</div>
+
+系统默认使用mgr,emp两个角色。一般系统设置由perm-mgr控制，其它菜单组由perm-emp控制。
+其它角色则需要在角色表中定义允许的菜单项。
+
+根据用户权限，如"item,mgr"等，菜单中有perm-xxx类的元素会显示，有nperm-xxx类的元素会隐藏
+
+示例：只有mgr权限显示
+
+	<div class="perm-mgr" style="display:none"></div>
+
+示例：bx权限不显示（其它权限可显示）
+
+	<a href="#pageItem" class="nperm-bx">商品管理</a>
+
+可通过 g_data.hasPerm(perm) 查询是否有某项权限。
+ */
+self.applyPermission = applyPermission;
+function applyPermission()
+{
+	var perms = g_data.userInfo.perms;
+	var rolePerms = g_data.userInfo.rolePerms;
+
+	// e.g. "item,mgr" - ".perm-item, .perm-mgr"
+	if (!perms)
+		return;
+	var sel = perms.replace(/([^, ]+)/g, '.perm-$1');
+	var arr = perms.split(/,/);
+	if (sel) {
+		$(sel).show();
+		var sel2 = sel.replace(/perm/g, 'nperm');
+		$(sel2).hide();
+	}
+
+	g_data.hasRole = g_data.hasPerm = function (perm) {
+		return arr.indexOf(perm) >= 0;
+/*
+		var found = false;
+		$.each(arr, function (i, e) {
+				if (e == perm) {
+					found = true;
+					return false;
+				}
+		});
+		return found;
+*/	}
+
+	if (rolePerms) {
+		g_data.permSet = initPermSet(rolePerms);
+		var defaultShow = self.canDo("*", null, false);
+		$("#menu .perm-emp .menu-expand-group").each(function () {
+			showGroup($(this));
+		});
+
+		// 支持多级嵌套
+		function showGroup(jo) {
+			var t = jo.find("a:first").text(); // 菜单组名称
+			var doShowGroup = self.canDo(t, null, defaultShow);
+			var doShow = defaultShow;
+			jo.find(">.menu-expandable>a").each(function () {
+				var t = $(this).text();
+				if (WUI.canDo(t, null, doShowGroup)) {
+					doShow = true;
+					// $(this).show();
+				}
+				else {
+					$(this).hide();
+				}
+			});
+			jo.find(">.menu-expand-group").each(function () {
+				if (showGroup($(this)))
+					doShow = true;
+			});
+			if (doShowGroup || doShow) {
+				jo.closest(".perm-emp").show();
+				return true;
+			}
+			return false;
+		}
+	}
+}
+
+/**
+@fn WUI.fname(fn)
+
+为fn生成一个名字。一般用于为a链接生成全局函数。
+
+	function onGetHtml(value, row) {
+		var fn = WUI.fname(function () {
+			console.log(row);
+		});
+		return '<a href="' + fn + '()">' + value + '</a>';
+	}
+
+或：
+
+	function onGetHtml(value, row) {
+		return WUI.makeLink(value, function () {
+			console.log(row);
+		});
+	}
+
+@see makeLink
+ */
+window.fnarr = [];
+self.fname = fname;
+function fname(fn)
+{
+	fnarr.push(fn);
+	return "fnarr[" + (fnarr.length-1) + "]";
+}
+
+/**
+@fn WUI.makeLink(text, fn)
+
+生成一个A链接，显示text，点击运行fn.
+用于为easyui-datagrid cell提供html.
+
+	<table>
+		...
+		<th data-options="field:'orderCnt', sortable:true, sorter:intSort, formatter:ItemFormatter.orderCnt">订单数/报名数</th>
+	</table>
+
+定义formatter:
+
+	var ItemFormatter = {
+		orderCnt: function (value, row) {
+			if (!value)
+				return value;
+			return WUI.makeLink(value, function () {
+				var objParam = {type: row.type, itemId: row.id};
+				WUI.showPage("pageOrder", "订单-" + objParam.itemId, [ objParam ]);
+			});
+		},
+	};
+
+@see fname
+ */
+self.makeLink = makeLink;
+function makeLink(text, fn)
+{
+	return '<a href="javascript:' + self.fname(fn) + '()">' + text + '</a>';
+}
 
 }

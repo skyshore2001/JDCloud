@@ -1,0 +1,55 @@
+<div wui-script="page<?=$obj?>.js" title="<?=$title?>" my-initfn="initPage<?=$obj?>">
+	<table id="tbl<?=$obj?>" style="width:auto;height:100%">
+		<thead><tr>
+<?php
+foreach ($meta as $k => $v) {
+	$opts = [
+		"field:'$k'",
+		'sortable:true'
+	];
+	@$type = $v["type"];
+	if ($type == "flag" && @!$v["enum"]) {
+		$v["enum"] = "YesNoMap";
+	}
+	if (@$v["linkTo"]) {
+		$linkTo = "#dlg" . $v["linkTo"];
+		$opts[] = "formatter:Formatter.linkTo('$k', '$linkTo')";
+		$type = 's';
+	}
+	if (@$v["textField"]) {
+		$opts[0] = "field:'" . $v['textField'] . "'";
+	}
+
+	if (@$v["enum"]) {
+		$enum = $v["enum"];
+		if (substr($enum, -3) == "Map")
+			$opts[] = "jdEnumMap:$enum, formatter:Formatter.enum($enum), styler:Formatter.enumStyler({})";
+		else
+			$opts[] = "styler:Formatter.enumStyler({})";
+	}
+	if (@$v["isAtt"]) {
+		$opts[] = "formatter:Formatter.pics";
+	}
+
+	if ($type) {
+		if ($type == "i") {
+			$opts[] = 'sorter:intSort';
+		}
+		else if ($type == "n") {
+			$opts[] = 'sorter:numberSort';
+		}
+	}
+	$optStr = join(', ', $opts);
+	print <<<EOL
+			<th data-options="$optStr">{$v["name"]}</th>
+
+EOL;
+}
+?>
+		</tr></thead>
+	</table>
+</div>
+<!-- examples:
+			<th data-options="field:'customerCode', sortable:true, formatter:Formatter.customerId">客户代码</th>
+			<th data-options="field:'status', sortable:true, jdEnumMap: OrderStatusMap, formatter: Formatter.enum(OrderStatusMap), styler:OrderColumns.statusStyler">状态</th>
+-->

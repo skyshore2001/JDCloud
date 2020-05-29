@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <title>子表对象设计</title>
+  <style type="text/css">code{white-space: pre;}</style>
+<link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="doc.css" />
+<script src="doc.js"></script>
+
+</head>
+<body>
+<h1 id="子表对象设计">子表对象设计</h1>
+<p>假设有主表对象Ordr，一对多关联子表对象OrderItem，数据模型如下：</p>
+<pre><code>订单：
+@Ordr: id, dscr, amount
+
+物料：
+@Item: id, name, price
+
+订单明细
+@OrderItem: id, orderId, itemId, itemName, price, qty, amount</code></pre>
+<p>在订单中，购买多个物料，形成子表订单明细。</p>
+<p>注意：在订单明细表以及主表中，有一些计算逻辑，比如：</p>
+<ul>
+<li>在添加订单明细时，选择一个物料，应自动填上默认值<code>itemName=Item.name, price=Item.price, qty=1.0</code>。</li>
+<li>订单明细子表行应满足<code>amount=price * qty</code>，主表金额为所有子表金额之和: <code>Ordr.amount=SUM(OrderItem.amount)</code></li>
+</ul>
+
+<div id="TOC" class="toc">
+<ul>
+<li><a href="#子表对象设计">子表对象设计</a><ul>
+<li><a href="#基本设计"><span class="toc-section-number">1</span> 基本设计</a></li>
+<li><a href="#服务端计算与校验"><span class="toc-section-number">2</span> 服务端计算与校验</a></li>
+<li><a href="#子表自动完成逻辑"><span class="toc-section-number">3</span> 子表自动完成逻辑</a></li>
+</ul></li>
+</ul></div>
+
+<h2 id="基本设计"><span class="header-section-number">1</span> 基本设计</h2>
+<p>最简单的设计，是将所有计算逻辑放在前端（调用方），服务端不做计算、不做验证，只做数据存取。</p>
+<p>接口设计示例：</p>
+<pre><code>Ordr.get(id) -&gt; {id, ..., @items?}
+Ordr.add()(dscr, amount, @items=[{itemId, price, qty, amount}])</code></pre>
+<p>服务端初步实现如下：</p>
+<div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="kw">class</span> AC1_Ordr <span class="kw">extends</span> AccessControl
+{
+    <span class="kw">protected</span> <span class="kw">$subobj</span> = <span class="ot">[</span>
+        <span class="st">&quot;items&quot;</span> =&gt; <span class="ot">[</span><span class="st">&quot;obj&quot;</span>=&gt;<span class="st">&quot;OrderItem&quot;</span><span class="ot">,</span> <span class="st">&quot;cond&quot;</span>=&gt;<span class="st">&quot;orderId=%d&quot;</span><span class="ot">,</span> <span class="st">&quot;AC&quot;</span>=&gt;<span class="st">&quot;AccessControl&quot;</span><span class="ot">]</span>
+    <span class="ot">];</span>
+    <span class="co">// TODO: items子项的必填字段验证</span>
+}</code></pre></div>
+<p>现在我们来添加订单：</p>
+<pre><code>var items = [{itemId:1, itemName:&quot;item 1&quot;, price: 200, qty: 1.0}, {itemId:2, itemName:&quot;item 2&quot;, price:100, qty:3.0}];
+callSvr(&quot;Ordr.add&quot;, $.noop, {dscr: &quot;订单1&quot;, amount: 500, items: items}, {contentType:&quot;application/json&quot;});</code></pre>
+<p>查询一下该订单：</p>
+<pre><code>var id = 1; // 假如返回id为1
+callSvr(&quot;Ordr.get&quot;, {id: id, res:&quot;*,items&quot;})</code></pre>
+<p>返回示例:</p>
+<pre><code>{id: 1, dscr: &quot;订单1&quot;, amount: &quot;500.00&quot;, items: [
+    {id: 100, itemId:1, orderId:1, price:200, qty:1, itemName:&quot;item 1&quot;, amount:200},
+    {id: 101, itemId:2, orderId:1, price:100, qty:3, itemName:&quot;item 2&quot;, amount:300}
+]}</code></pre>
+<p>对订单明细子表做追加、更新和删除，可以用<code>Ordr.set</code>接口。 注意更新时对子项采用PATCH机制，即不必传所有子项，如果在子项中指定了id，则做更新子项操作（特别地，如果有delete参数，表示删除该子项），否则做追加子项操作。</p>
+<p>注意无论是添加或是更新订单，均由调用方来保证主表、子表的计算逻辑，即要正确提供amount等字段。</p>
+<p>更新子项示例：更新<code>id=100</code>子项的，数量设置为2，同时更新子表和主表的amount字段</p>
+<pre><code>callSvr(&quot;Ordr.set&quot;, {id: id}, $.noop, {items:[{id:100, qty: 2, amount: 400}], amount:700} , {contentType:&quot;application/json&quot;})</code></pre>
+<p>追加子项：追加<code>{itemId:1}</code>的子项，并更新相关字段</p>
+<pre><code>callSvr(&quot;Ordr.set&quot;, {id: id}, $.noop, {items:[{itemId:1, qty:2, price:50, amount:100}], amount:800} , {contentType:&quot;application/json&quot;})</code></pre>
+<p>删除子项：删除<code>id=100</code>子项，指定<code>_delete</code>为1</p>
+<pre><code>callSvr(&quot;Ordr.set&quot;, {id: id}, $.noop, {items:[{id:100, _delete:1}], amount:300} , {contentType:&quot;application/json&quot;})</code></pre>
+<p>更新子项示例：更新<code>id=100</code>子项的，数量设置为2，同时更新子表和主表的amount字段</p>
+<pre><code>callSvr(&quot;Ordr.set&quot;, {id: id}, $.noop, {items:[{id:100, qty: 2, amount: 400}], amount:700} , {contentType:&quot;application/json&quot;})</code></pre>
+<p>上面实现中留了个问题：<code>Ordr.add</code>接口指定了添加子项（或<code>Ordr.set</code>接口中追加子项）时的必填字段，如itemId, price等，可通过子项的AC类来设置：</p>
+<div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="kw">class</span> AC1_Ordr <span class="kw">extends</span> AccessControl
+{
+    <span class="kw">protected</span> <span class="kw">$subobj</span> = <span class="ot">[</span>
+        <span class="st">&quot;items&quot;</span> =&gt; <span class="ot">[</span><span class="st">&quot;obj&quot;</span>=&gt;<span class="st">&quot;OrderItem&quot;</span><span class="ot">,</span> <span class="st">&quot;cond&quot;</span>=&gt;<span class="st">&quot;orderId=%d&quot;</span><span class="ot">,</span> <span class="st">&quot;AC&quot;</span>=&gt;<span class="st">&quot;OrderItem&quot;</span><span class="ot">]</span> <span class="co">// AC类由AccessControl换成OrderItem，以便提供更详尽的控制。</span>
+    <span class="ot">];</span>
+}
+
+<span class="kw">class</span> OrderItem <span class="kw">extends</span> AccessControl
+{
+    <span class="co">// 指定子项必填字段</span>
+    <span class="kw">protected</span> <span class="kw">$requiredFields</span> = <span class="ot">[</span><span class="st">&quot;itemId&quot;</span><span class="ot">,</span> <span class="st">&quot;price&quot;</span><span class="ot">,</span> <span class="st">&quot;qty&quot;</span><span class="ot">,</span> <span class="st">&quot;amount&quot;</span><span class="ot">];</span>
+}</code></pre></div>
+<h2 id="服务端计算与校验"><span class="header-section-number">2</span> 服务端计算与校验</h2>
+<p>之前前端自行计算后，调用服务接口存储，在后端未做验证。这样容易导致数据不一致问题。 改进设计时，可在后端提供一个接口<code>calc</code>，一方面替代前端计算，另一方面用于服务端验证：</p>
+<pre><code>Ordr.calc({ items={qty, price, amount!}, amount! }) -&gt; 同输入内容</code></pre>
+<p>其中带叹号的字段表示out字段，即运算出来填入并返回的字段。</p>
+<p>服务端实现示例，在AC1_Ordr类中添加：</p>
+<div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php">    <span class="co">// 定义Ordr.add接口</span>
+    <span class="co">// { items={qty, price, amount!}, amount! }</span>
+    <span class="kw">function</span> api_calc<span class="ot">()</span>
+    {
+        <span class="kw">$this</span>-&gt;calc<span class="ot">(</span><span class="kw">$_POST</span><span class="ot">);</span>
+        <span class="kw">return</span> <span class="kw">$_POST</span><span class="ot">;</span>
+    }
+
+    <span class="co">// 计算逻辑</span>
+    <span class="kw">protected</span> <span class="kw">function</span> calc<span class="ot">(</span>&amp;<span class="kw">$order</span><span class="ot">)</span>
+    {
+        mparam<span class="ot">(</span><span class="st">&quot;items&quot;</span><span class="ot">,</span> <span class="kw">$order</span><span class="ot">);</span>
+        <span class="kw">$amount</span> = <span class="dv">0</span><span class="ot">;</span>
+        <span class="kw">foreach</span> <span class="ot">(</span><span class="kw">$order</span><span class="ot">[</span><span class="st">&quot;items&quot;</span><span class="ot">]</span> <span class="kw">as</span> &amp;<span class="kw">$item</span><span class="ot">)</span> {
+            mparam<span class="ot">(</span><span class="st">&quot;price&quot;</span><span class="ot">,</span> <span class="kw">$item</span><span class="ot">);</span>
+            mparam<span class="ot">(</span><span class="st">&quot;qty&quot;</span><span class="ot">,</span> <span class="kw">$item</span><span class="ot">);</span>
+            <span class="kw">$item</span><span class="ot">[</span><span class="st">&quot;amount&quot;</span><span class="ot">]</span> = <span class="kw">$item</span><span class="ot">[</span><span class="st">&quot;price&quot;</span><span class="ot">]</span> * <span class="kw">$item</span><span class="ot">[</span><span class="st">&quot;qty&quot;</span><span class="ot">];</span>
+            <span class="kw">$amount</span> += <span class="kw">$item</span><span class="ot">[</span><span class="st">&quot;amount&quot;</span><span class="ot">];</span>
+        }
+        <span class="kw">$order</span><span class="ot">[</span><span class="st">&quot;amount&quot;</span><span class="ot">]</span> = <span class="kw">$amount</span><span class="ot">;</span>
+    }</code></pre></div>
+<p>再进一步，可以对<code>Ordr.add/set</code>接口，增加验算逻辑； 同时，扩展<code>Ordr.add</code>接口，增加自动计算逻辑。</p>
+<pre><code>Ordr.add(doCalc?)(...)
+- doCalc为1时，自动计算amount等字段（如果参数中带此字段，则将覆盖）。否则在添加后验算amount等字段。</code></pre>
+<p>服务端实现示例，在AC1_Ordr类中添加：</p>
+<div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php">    <span class="co">// 验算逻辑</span>
+    <span class="kw">protected</span> <span class="kw">function</span> validateCalc<span class="ot">()</span>
+    {
+        <span class="kw">$this</span>-&gt;onAfterActions<span class="ot">[]</span> = <span class="kw">function</span> <span class="ot">()</span> {
+            <span class="kw">$order</span> = queryOne<span class="ot">(</span><span class="st">&quot;SELECT amount FROM Ordr WHERE id=&quot;</span> . <span class="kw">$this</span>-&gt;id<span class="ot">,</span> <span class="kw">true</span><span class="ot">);</span>
+            <span class="kw">$order</span><span class="ot">[</span><span class="st">&quot;items&quot;</span><span class="ot">]</span> = queryAll<span class="ot">(</span><span class="st">&quot;SELECT price,qty,amount FROM OrderItem WHERE orderId=&quot;</span> . <span class="kw">$this</span>-&gt;id<span class="ot">,</span> <span class="kw">true</span><span class="ot">);</span>
+            <span class="kw">$order0</span> = <span class="kw">$order</span><span class="ot">;</span>
+            <span class="kw">$this</span>-&gt;calc<span class="ot">(</span><span class="kw">$order</span><span class="ot">);</span>
+            <span class="kw">if</span> <span class="ot">(</span><span class="kw">$order0</span><span class="ot">[</span><span class="st">&quot;amount&quot;</span><span class="ot">]</span> != <span class="kw">$order</span><span class="ot">[</span><span class="st">&quot;amount&quot;</span><span class="ot">])</span>
+                <span class="kw">throw</span> <span class="kw">new</span> MyException<span class="ot">(</span><span class="kw">E_PARAM</span><span class="ot">,</span> <span class="st">&quot;bad amount, require &quot;</span> . <span class="kw">$order</span><span class="ot">[</span><span class="st">&quot;amount&quot;</span><span class="ot">]</span> . <span class="st">&quot;, actual &quot;</span> . <span class="kw">$order0</span><span class="ot">[</span><span class="st">&quot;amount&quot;</span><span class="ot">],</span> <span class="st">&quot;金额不正确&quot;</span><span class="ot">);</span>
+        }<span class="ot">;</span>
+    }
+
+    <span class="kw">protected</span> <span class="kw">function</span> onValidate<span class="ot">()</span>
+    {
+        <span class="kw">if</span> <span class="ot">(</span><span class="kw">$this</span>-&gt;ac == <span class="st">&quot;add&quot;</span><span class="ot">)</span> {
+            <span class="kw">$userId</span> = <span class="kw">$_SESSION</span><span class="ot">[</span><span class="st">&quot;uid&quot;</span><span class="ot">];</span>
+            <span class="kw">$_POST</span><span class="ot">[</span><span class="st">&quot;userId&quot;</span><span class="ot">]</span> = <span class="kw">$userId</span><span class="ot">;</span>
+            <span class="kw">$_POST</span><span class="ot">[</span><span class="st">&quot;status&quot;</span><span class="ot">]</span> = <span class="st">&quot;CR&quot;</span><span class="ot">;</span>
+            <span class="kw">$_POST</span><span class="ot">[</span><span class="st">&quot;createTm&quot;</span><span class="ot">]</span> = <span class="fu">date</span><span class="ot">(</span><span class="kw">FMT_DT</span><span class="ot">);</span>
+
+            <span class="co">// 添加时，如果在doCalc参数，则自动计算，否则事后验算</span>
+            <span class="kw">if</span> <span class="ot">(</span><span class="kw">$_GET</span><span class="ot">[</span><span class="st">&quot;doCalc&quot;</span><span class="ot">])</span>
+                <span class="kw">$this</span>-&gt;calc<span class="ot">(</span><span class="kw">$_POST</span><span class="ot">);</span>
+            <span class="kw">else</span>
+                <span class="kw">$this</span>-&gt;validateCalc<span class="ot">();</span>
+        }
+        <span class="kw">else</span> {
+            <span class="co">// 更新时，如果涉及amount或items参数，则事后验算</span>
+            <span class="kw">if</span> <span class="ot">(</span>issetval<span class="ot">(</span><span class="st">&quot;amount&quot;</span><span class="ot">)</span> || issetval<span class="ot">(</span><span class="st">&quot;items&quot;</span><span class="ot">))</span>
+                <span class="kw">$this</span>-&gt;validateCalc<span class="ot">();</span>
+        }
+    }</code></pre></div>
+<h2 id="子表自动完成逻辑"><span class="header-section-number">3</span> 子表自动完成逻辑</h2>
+<p>选择一个物料，自动填上物料名、价格、数量等默认值。 与计算逻辑类似，这个逻辑可放在服务端中做，更安全（避免被黑客调用），同时让前端更轻。</p>
+<p>增加接口<code>Ordr.completeItem</code>:</p>
+<pre><code>Ordr.completeItem({itemId, price?, itemName?, qty?}) -&gt; 同输入内容
+带?的字段，如果未传入，则自动填写。</code></pre>
+<p>同时在<code>Ordr.add</code>接口中也对子项添加自动完成功能（如果未指定字段，则先补齐）。</p>
+<p>后端实现如下：</p>
+<div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php">    <span class="kw">function</span> api_completeItem<span class="ot">()</span>
+    {
+        <span class="kw">$this</span>-&gt;completeItem<span class="ot">(</span><span class="kw">$_POST</span><span class="ot">);</span>
+        <span class="kw">return</span> <span class="kw">$_POST</span><span class="ot">;</span>
+    }
+
+    <span class="co">// {itemId, price?, itemName?, qty?}</span>
+    <span class="kw">protected</span> <span class="kw">function</span> completeItem<span class="ot">(</span>&amp;<span class="kw">$item</span><span class="ot">)</span>
+    {
+        <span class="kw">$itemId</span> = mparam<span class="ot">(</span><span class="st">&quot;itemId&quot;</span><span class="ot">,</span> <span class="kw">$item</span><span class="ot">);</span>
+        <span class="kw">if</span> <span class="ot">(</span>!issetval<span class="ot">(</span><span class="st">&quot;price&quot;</span><span class="ot">,</span> <span class="kw">$item</span><span class="ot">)</span> || !issetval<span class="ot">(</span><span class="st">&quot;itemName&quot;</span><span class="ot">,</span> <span class="kw">$item</span><span class="ot">))</span> {
+            <span class="kw">$rv</span> = queryOne<span class="ot">(</span><span class="st">&quot;SELECT name, price FROM Item WHERE id=&quot;</span> . <span class="kw">$itemId</span><span class="ot">,</span> <span class="kw">true</span><span class="ot">);</span>
+            <span class="kw">if</span> <span class="ot">(</span>!issetval<span class="ot">(</span><span class="st">&quot;price&quot;</span><span class="ot">,</span> <span class="kw">$item</span><span class="ot">))</span>
+                <span class="kw">$item</span><span class="ot">[</span><span class="st">&quot;price&quot;</span><span class="ot">]</span> = <span class="kw">$rv</span><span class="ot">[</span><span class="st">&quot;price&quot;</span><span class="ot">];</span>
+            <span class="kw">if</span> <span class="ot">(</span>!issetval<span class="ot">(</span><span class="st">&quot;itemName&quot;</span><span class="ot">,</span> <span class="kw">$item</span><span class="ot">))</span>
+                <span class="kw">$item</span><span class="ot">[</span><span class="st">&quot;itemName&quot;</span><span class="ot">]</span> = <span class="kw">$rv</span><span class="ot">[</span><span class="st">&quot;name&quot;</span><span class="ot">];</span>
+        }
+        <span class="kw">if</span> <span class="ot">(</span>!issetval<span class="ot">(</span><span class="st">&quot;qty&quot;</span><span class="ot">,</span> <span class="kw">$item</span><span class="ot">))</span> {
+            <span class="kw">$item</span><span class="ot">[</span><span class="st">&quot;qty&quot;</span><span class="ot">]</span> = <span class="fl">1.0</span><span class="ot">;</span>
+        }
+    }
+
+    <span class="kw">protected</span> <span class="kw">function</span> onValidate<span class="ot">()</span>
+    {
+        <span class="kw">if</span> <span class="ot">(</span><span class="kw">$this</span>-&gt;ac == <span class="st">&quot;add&quot;</span><span class="ot">)</span> {
+            <span class="st">...</span>
+            <span class="co">// 补齐子项字段</span>
+            mparam<span class="ot">(</span><span class="st">&quot;items&quot;</span><span class="ot">,</span> <span class="kw">$_POST</span><span class="ot">);</span>
+            <span class="kw">foreach</span> <span class="ot">(</span><span class="kw">$_POST</span><span class="ot">[</span><span class="st">&quot;items&quot;</span><span class="ot">]</span> <span class="kw">as</span> &amp;<span class="kw">$item</span><span class="ot">)</span> {
+                <span class="kw">$this</span>-&gt;completeItem<span class="ot">(</span><span class="kw">$item</span><span class="ot">);</span>
+            }
+
+            <span class="co">// 上面补齐子项字段后，再计算</span>
+            <span class="kw">if</span> <span class="ot">(</span><span class="kw">$_GET</span><span class="ot">[</span><span class="st">&quot;doCalc&quot;</span><span class="ot">])</span>
+                <span class="kw">$this</span>-&gt;calc<span class="ot">(</span><span class="kw">$_POST</span><span class="ot">);</span>
+            <span class="kw">else</span>
+                <span class="kw">$this</span>-&gt;validateCalc<span class="ot">();</span>
+        }
+        <span class="st">...</span>
+    }</code></pre></div>
+<p>有了completeItem和calc接口，前端可轻松得到add接口所需的参数：</p>
+<pre><code>item1 = callSvrSync(&quot;Ordr.completeItem&quot;, $.noop, {itemId:1})
+item2 = callSvrSync(&quot;Ordr.completeItem&quot;, $.noop, {itemId:2, qty:2})
+ordr = callSvrSync(&quot;Ordr.calc&quot;, $.noop, {items:[ item1, item2 ]}, {contentType:&quot;application/json&quot;});
+id = callSvrSync(&quot;Ordr.add&quot;, $.noop, ordr, {contentType:&quot;application/json&quot;});</code></pre>
+<p>或用batch操作合并多次请求：</p>
+<pre><code>MUI.useBatchCall();
+callSvr(&quot;Ordr.completeItem&quot;, $.noop, {itemId:1})
+callSvr(&quot;Ordr.completeItem&quot;, $.noop, {itemId:2, qty:2})
+callSvr(&quot;Ordr.calc&quot;, $.noop, {items:[&quot;{$1}&quot;, &quot;{$2}&quot;]}, {contentType:&quot;application/json&quot;, ref:[&quot;items&quot;] });
+callSvr(&quot;Ordr.add&quot;, $.noop, &quot;{$3}&quot;, {contentType:&quot;application/json&quot;});</code></pre>
+<p>或现在调用<code>Ordr.add</code>时也可以省略很多参数，如：</p>
+<pre><code>id = callSvrSync(&quot;Ordr.add&quot;, {doCalc:1}, $.noop, {items:[{itemId:1}, {itemId:2, qty:2}]}, {contentType:&quot;application/json&quot;});</code></pre>
+
+</body>
+</html>

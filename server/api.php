@@ -54,9 +54,8 @@ function onGetPerms()
 		$perms |= AUTH_EMP;
 
 		$p = @$_SESSION["perms"];
-		if (is_array($p)) {
-			if (array_search("mgr", $p) !== false)
-				$perms |= PERM_MGR;
+		if (inSet("mgr", $p)) {
+			$perms |= PERM_MGR;
 		}
 	}
 

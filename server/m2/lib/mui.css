@@ -37,7 +37,7 @@ html, body {
 	border: 0px;
 }
 
-.mui-page>.hd:first-child {
+.mui-page>.hd:first-of-type {
 	background-color: #04be02;
 	color: #fffffe;
 }
@@ -66,6 +66,11 @@ html, body {
 	bottom: 0px;
 	width: 100%;
 	text-align: center;
+}
+
+#footer {
+	position: absolute;
+	bottom: 0px;
 }
 
 /* navbar */
@@ -109,10 +114,11 @@ html, body {
 }
 
 /* 微信中不显示hd */
-.mui-weixin .mui-page > .hd:first-child {
+.mui-weixin .mui-page > .hd:first-of-type {
 	display:none;
 }
 
+/* 标准动画: slideIn: 进入; slideOut: 返回时当前页退出; slideIn1: 返回时新页面进入（已不用） */
 @keyframes slideIn {
 	from {
 		transform: translateX(100%);
@@ -121,7 +127,6 @@ html, body {
 		transform: translateX(0);
 	}
 }
-
 @keyframes slideIn1 {
 	from {
 		transform: translateX(-100%);
@@ -130,13 +135,12 @@ html, body {
 		transform: translateX(0);
 	}
 }
-
 @keyframes slideOut {
 	from {
 		transform: translateX(0);
 	}
 	to {
-		transform: translateX(-100%);
+		transform: translateX(100%);
 	}
 }
 
@@ -144,29 +148,24 @@ html, body {
 	from {
 		-webkit-transform: translateX(100%);
 	}
-
 	to {
 		-webkit-transform: translateX(0);
 	}
 }
-
 @-webkit-keyframes slideIn1 {
 	from {
 		-webkit-transform: translateX(-100%);
 	}
-
 	to {
 		-webkit-transform: translateX(0);
 	}
 }
-
 @-webkit-keyframes slideOut {
 	from {
 		-webkit-transform: translateX(0);
 	}
-
 	to {
-		-webkit-transform: translateX(-100%);
+		-webkit-transform: translateX(100%);
 	}
 }
 
@@ -174,14 +173,85 @@ html, body {
 	-webkit-animation: slideIn .2s forwards;
 	animation: slideIn .2s forwards;
 }
-.mui-page.slideIn1 {
-	-webkit-animation: slideIn1 .2s forwards;
-	animation: slideIn1 .2s forwards;
-}
 .mui-page.slideOut {
 	-webkit-animation: slideOut .2s forwards;
 	animation: slideOut .2s forwards;
 }
+
+/* begin: mui-ani="up" */
+@keyframes slideIn_up {
+	from {
+		transform: translateY(100%);
+	}
+	to {
+		transform: translateY(0);
+	}
+}
+@keyframes slideOut_up {
+	from {
+		transform: translateY(0);
+	}
+	to {
+		transform: translateY(100%);
+	}
+}
+
+@-webkit-keyframes slideIn_up {
+	from {
+		-webkit-transform: translateY(100%);
+	}
+	to {
+		-webkit-transform: translateY(0);
+	}
+}
+@-webkit-keyframes slideOut_up {
+	from {
+		-webkit-transform: translateY(0);
+	}
+	to {
+		-webkit-transform: translateY(100%);
+	}
+}
+
+.mui-page.slideIn_up {
+	-webkit-animation: slideIn_up .4s forwards;
+	animation: slideIn_up .4s forwards;
+}
+.mui-page.slideOut_up {
+	-webkit-animation: slideOut_up .4s forwards;
+	animation: slideOut_up .4s forwards;
+}
+/* end */
+
+/* begin: mui-ani="pop" */
+.slideIn_pop {
+	animation: slideIn_pop .4s forwards;
+}
+.slideOut_pop {
+	animation: slideOut_pop .4s forwards;
+}
+
+@keyframes slideIn_pop {
+	from {
+		transform: scale(.8);
+		opacity: 0;
+	}
+	to {
+		transform: scale(1);
+		opacity: 1;
+	}
+}
+@keyframes slideOut_pop {
+	from {
+		transform: scale(1);
+		opacity: 1;
+	}
+	to {
+		transform: scale(.8);
+		opacity: 0;
+	}
+}
+/* end */
 
 .mui-loader {
 	z-index: 99999;

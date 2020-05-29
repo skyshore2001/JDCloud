@@ -23,7 +23,7 @@ function initPageOrder()
 	var btn2 = {text: "所有未完成", iconCls:'icon-search', handler: getTodoOrders};
 
 	var dgOpt = {
-		url: WUI.makeUrl("Ordr.query", {res:"*,createTm,userPhone,orderLog"}),
+		url: WUI.makeUrl("Ordr.query", {res:"*,userPhone,orderLog"}),
 		queryParams: query2,
 		toolbar: WUI.dg_toolbar(jtbl, jdlg, btn1, "-", btn2),
 		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg),

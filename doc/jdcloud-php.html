@@ -76,7 +76,7 @@
 <p>筋斗云提供对象型接口和函数型接口两类接口开发模式，前者专为对象的增删改查提供易用强大的编程框架，后者则更为自由。</p>
 <p><strong>[对象型接口 - 数据模型即接口]</strong></p>
 <p>假设数据库中已经建好一张记录操作日志的表叫&quot;ApiLog&quot;，包含字段id（主键，整数类型）, tm（日期时间类型）, addr（客户端地址，字符串类型）。</p>
-<p>使用筋斗云后端框架，只要创建一个空的类，就可将这个表（或称为对象）通过HTTP接口暴露给前端，提供增删改查各项功能：</p>
+<p>使用筋斗云后端框架，只要创建一个空的类，就可将这个表（或称为对象）通过HTTP接口暴露给前端，提供增删改查各项功能。 将下面代码写在文件server/php/api_objects.php中（它被包含在主入口server/api.php中)：</p>
 <div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="kw">class</span> AC_ApiLog <span class="kw">extends</span> AccessControl
 {
 }</code></pre></div>
@@ -156,7 +156,7 @@ php upgrade.php
 <pre><code>export P_DB=&quot;myserver/mydb&quot;
 export P_DBCRED=&quot;myuser:mypwd&quot;
 php upgrade.php</code></pre>
-<p>为了学习对象型接口，我们以暴露ApiLog对象提供CRUD操作为例，只要在接口主文件api.php后面加上一句：</p>
+<p>为了学习对象型接口，我们以暴露ApiLog对象提供CRUD操作为例，只要在接口实现文件php/api_objects.php(包含在主入口api.php中)中添加代码：</p>
 <div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="kw">class</span> AC_ApiLog <span class="kw">extends</span> AccessControl
 {
 }</code></pre></div>

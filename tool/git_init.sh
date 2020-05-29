@@ -9,7 +9,8 @@ if [[ -z $name ]]; then
 	exit 1
 fi
 
-git init $name
+git init $name --shared
+chmod g+rwxs $name
 cd $name
 git config receive.denyCurrentBranch ignore
 cat <<.  > .git/hooks/post-update
