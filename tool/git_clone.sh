@@ -39,10 +39,11 @@ fi
 $GIT_INIT $to
 cd $to
 git checkout -b $tob
-git pull ../$from $fromb
+git pull ../$from $fromb --depth 1
+initMsg="init from $from $(git log -1 --format=%H)"
 git checkout --orphan master
 git add .
-git commit -m 'init'
+git commit -m "$initMsg"
 git checkout $tob
 git merge master $mergeOpt -m 'merge init'
 git checkout master

@@ -3,8 +3,88 @@
 define("T_HOUR", 3600);
 define("T_DAY", 24*T_HOUR);
 define("FMT_DT", "Y-m-d H:i:s");
-
+define("FMT_D", "Y-m-d");
 // const T_DAY = 24*T_HOUR; // not allowed
+
+# error code definition:
+const E_ABORT = -100; // 客户端不报错
+const E_AUTHFAIL=-1;
+const E_OK=0;
+const E_PARAM=1;
+const E_NOAUTH=2;
+const E_DB=3;
+const E_SERVER=4;
+const E_FORBIDDEN=5;
+
+$ERRINFO = [
+	E_AUTHFAIL => "认证失败",
+	E_PARAM => "参数不正确",
+	E_NOAUTH => "未登录",
+	E_DB => "数据库错误",
+	E_SERVER => "服务器错误",
+	E_FORBIDDEN => "禁止操作"
+];
+
+/** 
+@class MyException($code, $internalMsg?, $outMsg?)
+
+@param $internalMsg String. 内部错误信息，前端不应处理。
+@param $outMsg String. 错误信息。如果为空，则会自动根据$code填上相应的错误信息。
+
+抛出错误，中断执行:
+
+	throw new MyException(E_PARAM, "Bad Request - numeric param `$name`=`$ret`.", "需要数值型参数");
+
+注意：在API中抛出MyException异常后，将回滚对数据库的操作，即所有之前数据库操作都将失效。
+如果不想回滚，可以用：
+
+	$this->cancelOrder($id); // 数据库操作
+	setRet(E_FORBIDDEN, "付款码已失效", "fail to pay order $id: overdue");
+	throw new DirectReturn();
+*/
+# Most time outMsg is optional because it can be filled according to code. It's set when you want to tell user the exact error.
+class MyException extends LogicException 
+{
+	function __construct($code, $internalMsg = null, $outMsg = null) {
+		parent::__construct($outMsg, $code);
+		$this->internalMsg = $internalMsg;
+		if ($code && !$outMsg) {
+			global $ERRINFO;
+			assert(array_key_exists($code, $ERRINFO));
+			$this->message = $ERRINFO[$code];
+		}
+	}
+	public $internalMsg;
+
+	function __toString()
+	{
+		$str = "MyException({$this->code}): {$this->internalMsg}";
+		if ($this->getMessage() != null)
+			$str = "Error: " . $this->getMessage() . " - " . $str;
+		return $str;
+	}
+}
+
+/**
+@class DirectReturn
+
+抛出该异常，可以中断执行直接返回，不显示任何错误。
+
+例：API返回非BPQ协议标准数据，可以跳出setRet而直接返回：
+
+	echo "return data";
+	throw new DirectReturn();
+
+例：返回指定数据后立即中断处理：
+
+	setRet(0, ["id"=>1]);
+	throw new DirectReturn();
+
+*/
+class DirectReturn extends LogicException 
+{
+}
+
 
 /**
 @fn tobool($s)
@@ -81,12 +161,16 @@ function isEqualCollection($a, $b)
 e.g.
 
 	urlEncodeArr(["a"=>1, "b"=>"hello"]) -> a=1&b=hello
+	urlEncodeArr(["a"=>1, "b"=>null]) -> a=1
 
+NOTE: use http_build_query instead.
 */
 function urlEncodeArr($params)
 {
 	$p = "";
 	foreach ($params as $k=>$v) {
+		if ($v === null)
+			continue;
 		if ($p !== "")
 			$p .= "&";
 		$p .= $k . "=" . urlencode($v);
@@ -151,7 +235,7 @@ postParams可以是一个kv数组或字符串，也可以是一个文件名(以"
 			"Cookie: userid=" . session_id()
 		]]);
 		// 筋斗云协议格式：成功为[0, obj] 或 失败为[errCode, userMessage, internalMessage?]
-		$ret = json_decode($rv);
+		$ret = json_decode($rv, true);
 		if ( $ret[0] !== 0 ) {
 			throw new MyException(E_PARAM, $ret[2], $ret[1]);
 		}
@@ -200,19 +284,24 @@ http://curl.haxx.se/libcurl/c/libcurl-errors.html
 	P_SLOW_CALL_LOG=trace
 	P_SLOW_CALL_VAL=1
 
+e.g.
+
+	$url = makeUrl("http://oliveche.com/echo.php", ["a"=>1, "b"=>@$GLOBALS["b"]]);
+	echo(httpCall($url, ["c"=>1, "d"=>0] ));
+
 @see makeUrl
 */
 function httpCall($url, $postParams=null, $opt=[])
 {
 	$h = curl_init();
-	if(stripos($url,"https://")!==FALSE){
-		curl_setopt($h, CURLOPT_SSL_VERIFYPEER, FALSE);
-		curl_setopt($h, CURLOPT_SSL_VERIFYHOST, FALSE);
+	if(stripos($url,"https://")!==false){
+		curl_setopt($h, CURLOPT_SSL_VERIFYPEER, false);
+		curl_setopt($h, CURLOPT_SSL_VERIFYHOST, false);
 		curl_setopt($h, CURLOPT_SSLVERSION, 1); //CURL_SSLVERSION_TLSv1
 	}
 	curl_setopt($h, CURLOPT_URL, $url);
-	curl_setopt($h, CURLOPT_RETURNTRANSFER, 1);
-	curl_setopt($h, CURLOPT_HEADER, FALSE);
+	curl_setopt($h, CURLOPT_RETURNTRANSFER, true);
+	curl_setopt($h, CURLOPT_HEADER, false);
 
 	$timeout = @$opt["timeout"] ?: 5;
 	curl_setopt($h, CURLOPT_TIMEOUT, $timeout);
@@ -246,16 +335,19 @@ function httpCall($url, $postParams=null, $opt=[])
 	$t0 = microtime(true);
 	$content = curl_exec($h);
 	$tv = round(microtime(true) - $t0, 2);
+//	$statusCode = curl_getinfo($h, CURLINFO_HTTP_CODE); // $status["http_code"]
 // 	$status = curl_getinfo($h);
 // 	if (intval($status["http_code"]) != 200)
 // 		return false;
 	$slowLogFile = getenv("P_SLOW_CALL_LOG") ?: "trace";
-	if (! $content)
+	$errno = curl_errno($h);
+	if ($errno)
 	{
-		$errno = curl_errno($h);
+		$errmsg = curl_error($h);
 		curl_close($h);
-		logit("httpCall error $errno: time={$tv}s, url=$url", true, $slowLogFile);
-		throw new MyException(E_SERVER, "curl fail to connect $url, errcode=$errno, time={$tv}s");
+		$msg = "httpCall error $errno: time={$tv}s, url=$url, errmsg=$errmsg";
+		logit($msg, true, $slowLogFile);
+		throw new MyException(E_SERVER, $msg, "服务器请求出错或超时");
 		// echo "<a href='http://curl.haxx.se/libcurl/c/libcurl-errors.html'>错误原因查询</a></br>";
 	}
 	// slow log
@@ -375,10 +467,10 @@ function addToStr(&$str, $str1, $sep=',')
 }
 
 /**
-@fn arrCopy(&$dst, $src, $fields)
+@fn arrCopy(&$dst, $src, $fields=null)
 
 将数组$src中指定字段复制到$dst中。
-数组$fields指定字段列表。如果字段复制后需要改名，可以以[$dstName, $srcName]这样的数组来表示。
+数组$fields指定字段列表，如果未指定，则全部字段复制过去；如果字段复制后需要改名，可以以[$dstName, $srcName]这样的数组来表示。
 
 示例：将workItem提取指定字段后插入数据库中：
 
@@ -392,11 +484,25 @@ function addToStr(&$str, $str1, $sep=',')
 	]);
 	dbInsert("WorkItem", $wiData);
 
+示例：
+
+	$arrCopy($wiData, $workItem); // 复制全部字段过去
+
+如果不想覆盖已有字段(即使值为null也不覆盖)，可以用：
+
+	$wiData += $workItem;
+
 */
-function arrCopy(&$ret, $arr, $fields)
+function arrCopy(&$ret, $arr, $fields=null)
 {
 	if ($ret == null)
 		$ret = [];
+	if ($fields == null) {
+		foreach ($arr as $k=>$v) {
+			$ret[$k] = $v;
+		}
+		return;
+	}
 	foreach ($fields as $f) {
 		if (is_array($f))
 			@$ret[$f[0]] = $arr[$f[1]];
@@ -405,4 +511,203 @@ function arrCopy(&$ret, $arr, $fields)
 	}
 }
 
+/**
+@fn getReqIp
+
+请求的IP。与`$_SERVER['REMOTE_ADDR']`不同的是，如果有代理，则返回所有IP列表。
+*/
+function getReqIp()
+{
+	if (isCLI()) {
+		return "cli";
+	}
+	static $reqIp;
+	if (!isset($reqIp)) {
+		$reqIp = @$_SERVER['REMOTE_ADDR'] ?: 'unknown';
+		@$fw = $_SERVER["HTTP_X_FORWARDED_FOR"] ?: $_SERVER["HTTP_CLIENT_IP"];
+		if ($fw) {
+			$reqIp .= '; ' . $fw;
+		}
+	}
+	return $reqIp;
+}
+
+/**
+@fn getRealIp()
+
+取实际IP地址，支持透过代理服务器。
+*/
+function getRealIp()
+{
+	static $realIp;
+	if (!isset($realIp)) {
+		@$realIp = $_SERVER["HTTP_X_FORWARDED_FOR"] ?: $_SERVER["HTTP_CLIENT_IP"] ?: $_SERVER["REMOTE_ADDR"]; // HTTP_REMOTEIP
+		// "1.1.1.1,2.2.2.2" => "1.1.1.1"
+		$realIp = preg_replace('/,.*/', '', $realIp);
+	}
+	return $realIp;
+}
+
+/**
+@fn logit($s, $addHeader=true, $type="trace")
+@alias logit($s, $type)
+
+记录日志。
+
+默认到日志文件 $BASE_DIR/trace.log. 如果指定type=secure, 则写到 $BASE_DIR/secure.log.
+
+可通过在线日志工具 tool/log.php 来查看日志。也可直接打开日志文件查看。
+ */
+function logit($s, $addHeader=true, $type="trace")
+{
+	if (is_string($addHeader)) {
+		$type = $addHeader;
+		$addHeader = true;
+	}
+	if ($addHeader) {
+		$remoteAddr = getReqIp();
+		$s = "=== REQ from [$remoteAddr] at [".strftime("%Y/%m/%d %H:%M:%S",time())."] " . $s . "\n";
+	}
+	else {
+		$s .= "\n";
+	}
+	@$baseDir = $GLOBALS['BASE_DIR'] ?: ".";
+	file_put_contents($baseDir . "/{$type}.log", $s, FILE_APPEND | LOCK_EX);
+}
+
+/**
+@fn jsonEncode($data, $doPretty=false)
+
+	$str = jsonEncode($data);
+	$data = jsonDecode($str);
+
+*/
+function jsonEncode($data, $doPretty=false)
+{
+	$flag = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
+	if ($doPretty)
+		$flag |= JSON_PRETTY_PRINT;
+	return json_encode($data, $flag);
+}
+/**
+@fn jsonDecode($str)
+
+等价于`json_decoe($str, true)`. 返回数组（而非对象）。
+*/
+function jsonDecode($str)
+{
+	return json_decode($str, true);
+}
+
+/**
+@fn getSignContent($params, $paramFilter?)
+
+取URL签名内容。一般都是将参数先排序，然后拼成`k1=v1&k2=v2`这种形式。
+之后用md5, sha1, rsa等算法签名。
+
+默认"_"开头的参数以及"sign"参数不参与签名，规则可定制，示例："sign"与"sign_type"参数不参与验签：
+
+	$s = getSignContent($_POST, function ($k) {
+		if ($k == "sign" || $k == "sign_type")
+			return false;
+	});
+
+*/
+function getSignContent($params, $paramFilter=null)
+{
+	if (!$paramFilter) {
+		$paramFilter = function ($k) {
+			if ($k[0] === "_" || $k == "sign") // e.g. "_pwd", "_sign", "_ac"
+				return false;
+		};
+	}
+	ksort($params);
+	$str = null;
+	foreach ($params as $k=>$v) {
+		if (call_user_func($paramFilter, $k) === false)  // e.g. "_pwd", "_sign", "_ac"
+			continue;
+		if ($v === null)
+			$v = "";
+		if ($str === null) {
+			$str = "{$k}={$v}";
+		}
+		else {
+			$str .= "&{$k}={$v}";
+		}
+	}
+	return $str;
+}
+
+/**
+@fn inSet($str, $strList)
+e.g. 
+	$rv = inSet("管理员", "财务,销售,管理员"); // true
+	$rv = inSet("管理员", "财务,销售,仓库管理员"); // false
+	$rv = inSet("管理员", ["财务","销售","管理员"]); // true
+
+str可以是中英文字符，不可以带空格或符号。
+strList可以是数组或字符串。如果为字符串，则多个词以分隔符相隔，分隔符可以是各种符号或空格，支持中文符号或空格（必须utf-8编码）。常用英文逗号，与MySQL的find_in_set函数类似。
+*/
+function inSet($str, $strList)
+{
+	if (!isset($str) || !isset($strList))
+		return false;
+	if (is_array($strList))
+		return in_array($str, $strList);
+	return preg_match('/\b' . $str . '\b/u', $strList)? true: false;
+}
+
+/**
+@fn text2html($s)
+
+简单的文本转html处理。支持标题、段落、列表。示例：
+
+	# 标题1
+	这是段落1
+	## 标题2
+	这是段落2
+	- 列表1
+	- 列表2
+
+示例：商品详情可在管理端编辑多行文本，在客户端显示html内容：
+数据库定义：
+
+	@Item: id, ... content
+
+客户端访问接口Item.query/Item.get时，content返回html内容：
+
+	class AC_Item extends AC0_Item
+	{
+		protected function onQuery() {
+			parent::onQuery();
+			$this->enumFields["content"] = function ($val) {
+				return text2html($val);
+			};
+		}
+	}
+
+*/
+function text2html($s)
+{
+	return preg_replace_callback('/^(?:([#-]+)\s+)?(.*)$/um', function ($m) {
+		list ($begin, $text) = [$m[1], $m[2]];
+		if ($begin) {
+			if ($begin[0] == '#') {
+				$n = strlen($begin);
+				return "<h$n>$text</h$n>";
+			}
+			if ($begin[0] == '-') {
+				return "<li>$text</li>";
+			}
+		}
+		// 空段落处理
+		if ($text) {
+			$text = str_replace(" ", "&nbsp;", $text);
+		}
+		else {
+			$text = "&nbsp;";
+		}
+		return "<p>$text</p>";
+	}, $s);
+}
 // vi: foldmethod=marker

@@ -28,7 +28,11 @@ perms
 
 @see @User: id, uname, phone(s), pwd, name(s), createTm
 
-如果要支持微信认证，需要字段：weixinKey, weixinData, pic
+如果要支持微信认证，需要字段：weixinKey, weixinData(1000), pic(l)
+公众号、小程序均有自已的openid。如果将多个公众号或小程序绑定在同一开放平台帐号下，则可以通过unionid来互通。
+如果要微信开放平台的unionid，需要字段: weixinUnionKey
+
+同步微信公众号用户到User表，可以使用命令行工具 weixin/tool/syncWeixinUser.php
 
 phone/pwd
 : 登录用的用户名和密码。密码采用md5加密。
@@ -36,8 +40,8 @@ phone/pwd
 createTm
 : DateTime. 注册日期. 可用于分析用户数增长。
 
-weixinKey
-: String. 微信的openid.
+weixinKey, weixinUnionKey
+: String. 微信的openid和unionid. 
 
 weixinData
 : String. 从微信中取得的原始数据。一般为JSON格式: userInfo={openid, nickname, sex=1-男/2-女, province, city, country, headimgurl, privilege, unionid?}
@@ -225,6 +229,15 @@ _token/_expire
 	chpwd(code=533114, pwd=12345678)
 	(之前生成了动态验证码为533114)
 
+### 忘记密码后重置密码
+
+与修改密码的接口相同，但指定phone参数。这时无需登录，可直接修改密码：
+
+	chpwd(phone, code|oldpwd, pwd) -> {_token, _expire}
+
+code为手机验证码，之前应调用过genCode接口。
+也支持使用oldpwd（原密码）来验证，一般不使用。
+
 ### 微信认证
 
 微信认证：
@@ -232,22 +245,35 @@ _token/_expire
 	$BASE_URL/weixin/auth.php
 	
 	发起认证：
-	auth.php(state)
+	auth.php(state, userinfo?=1)
 
 	该页面同时供微信回调：
 	auth.php(code, state)
 
 - state: 认证成功后转向的页面。一般即前端当前页面(location.href)。
+- userinfo: 是否需要获取昵称、头像等微信用户信息。注意必须已认证的公众号才可获取，否则会报错`Scope 参数错误或没有 Scope 权限`。
 - 如果是发起认证，则直接重定向到微信认证的地址(即https://open.weixin.qq.com/connect/oauth2/authorize加appId,state等参数的地址)
 - 如果是微信回调（这时有code参数），则获取openid, userInfo并处理微信登录成功的逻辑(`LoginImpBase::onWeixinLogin`)。
 
-模拟发起微信认证：
+#### 模拟微信认证登录
 
-	auth.php(state, mock=1)
+微信认证必须在微信浏览器（或开发者工具）中使用，且必须使用公众号认证过的域名来访问（不可用localhost）。
+如果想本地模拟微信身份登录，后端weixin/auth.php支持以下接口：
 
-- 必须后端启用了模拟模式才可以
-- 使用固定身份模拟登录，然后转向state中的URL地址。
-- 固定身份使用 Login::mockWeixinUser 配置，默认值如 {openid="test_openid", nickname="测试用户", headimgurl="...", sex=1}
+	auth.php(state, mock=1, userinfo?)
+
+其中mock=1用于模拟登录，这时userinfo参数（用于获取昵称、头像等用户信息）不起作用，而是根据下面mockWeixinUser设置来返回内容。
+
+操作步骤：
+
+- 微信用户模拟数据使用 Login::mockWeixinUser 配置，如需修改（比如增加模拟的unionid），可在plugin/index.php中设置（以下为默认值，一般不用设置）：
+
+		Login::$mockWeixinUser = ["openid"=>"test_openid", "nickname"=>"测试用户1", "headimgurl"=>"http://...", "sex"=>1];
+
+- 必须后端启用了模拟模式，在conf.user.php中设置`putenv("P_MOCK_MODE=1");`
+
+- 在Chrome浏览器访问时，F12进入手机模式，在模拟设备中必须选用模拟微信设备：添加一个Emulated Device，名为"micromessenger", UserAgent填写"micromessenger"即可（前端`MUI.isWeixin`函数用此来判断）。
+ 在URL参数中应加上mock=1，如`http://localhost/jdcloud/m2/index.html?mock=1`。在index.js中搜索`onAutoLogin`/`isWeixin`找到相关代码。
 
 前端发起微信认证示例：
 
@@ -260,8 +286,19 @@ _token/_expire
 
 #### 本地调试微信认证
 
-本插件结合weixin/auth.php处理微信认证。
-由于必须在微信中设置过“网页授权域名”的域名才可以认证，本地调试时，必须映射到实际服务器上。
+前提：本插件结合weixin/auth.php处理微信认证。
+
+- 必须在微信中设置过“网页授权域名”的域名才可以认证；
+
+- 默认auth.php会要获取用户信息（如昵称、头像、unionid等），此功能要求公众号必须已通过微信认证（需要提交资料审核，300元/年）。
+ 如果公众号未注册或无须获取用户信息，前端调用auth.php时应加参数`userinfo=0`；
+
+- 如果要获取unionid用于多个公众号及小程序间使用统一帐号，还需要这些公众号/小程序绑定到某开放平台帐号中（也需要微信认证，提交资料审核，300元/年）。
+
+- 必须在微信中才能正常打开，或在微信开发者工具中才可调试。
+ 要在开发者工具调试该公众号的页面，需要“绑定网页开发者”：公众号登录管理后台，启用开发者中心，在开发者工具——web 开发者工具页面，向开发者微信号发送绑定邀请，且该人确认后才可使用。
+
+- 本地调试时，必须映射到已设置授权的域名所在实际服务器上，如使用"oliveche.com"，不可用"localhost"。
 
 建议方法如下：比如线上URL为 http://oliveche.com/mall/m2/index.html，本地实际URL为http://localhost/p/mall/m2/index.html
 调试时应把服务器 localhost 换成 oliveche.com/8081 即访问URL: http://oliveche.com/8081/p/mall/m2/index.html
@@ -283,13 +320,13 @@ _token/_expire
 
 		ssh -R 8081:localhost:80 oliveche.com
 
-在weixin/auth.php中会自动拼接正确的redirect_uri（访问后可在trace.log中查看），如仍不正确，可临时手工修改为正确值。
+在weixin/auth.php中会自动拼接正确的redirect_uri（访问后可在trace.log中查看），如仍不正确，可临时手工修改为正确值（在auth.php中搜索`$host=`处来修改）。
 
 ### 绑定手机
 
 微信登录的用户绑定手机号到当前登录帐号：
 
-	bindUser(phone, code)
+	bindUser(phone, code) -> {id}
 
 - code: 手机验证码。通过genCode调用获得，也可用测试模式下的特别码080909.
 - 如果手机号尚未被其他用户占用，则只要设置手机号到该微信用户即可。
@@ -297,6 +334,7 @@ _token/_expire
  - 当该手机号已绑定其他微信帐户时，不允许再绑定。
  - 当手机号存在且未绑定微信时：合并微信用户到手机号用户，然后将微信用户禁用（在字段User.weixinKey中设置特别标识`merged-{openId}`，使该用户失效，今后无法登录）。
   合并逻辑可通过`LoginImpBase::onBindUser(phone)`回调来扩展，如考虑合并相应的个人信息、操作记录、订单等。
+- 返回用户的id。注意由于可能合并用户，id与之前登录的用户id可能不同。
 
 ### 第三方认证 / 微信小程序认证
 
@@ -308,6 +346,12 @@ _token/_expire
 
 - 小程序登录过程：https://developers.weixin.qq.com/miniprogram/dev/framework/open-ability/login.html
 - 使用code2Session接口获取openid: https://developers.weixin.qq.com/miniprogram/dev/api/code2Session.html
+
+### 查询openid
+
+	queryWeixinKey(phone?, unionid?) -> [openid, ...]
+
+用于外部系统通过手机号或unionid来查询openid
 
 ## 后端接口
 

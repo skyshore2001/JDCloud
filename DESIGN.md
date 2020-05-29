@@ -132,6 +132,10 @@ ver
 
 batch操作的明细表。
 
+**[操作日志]**
+
+@ObjLog: id, obj, objId, dscr, apiLogId, apiLog1Id
+
 **[插件相关]**
 
 @include server\plugin\login\DESIGN.md
@@ -244,6 +248,15 @@ app类型为"admin".
 	web/adm.html
 
 使用超级管理员帐号登录.
+
+## 后端内部接口
+
+会话变量：
+
+- 用户登录
+	- uid: 用户编号
+- 员工登录
+	- empId: 员工编号
 
 # 专题设计
 

@@ -9,7 +9,7 @@
 @Syslog: id, module(s), pri(3), tm, content(t), apiLogId
 
 module
-: 模块名. "fw" - 前端框架; "core" - 前端主应用逻辑.
+: 模块名. "fw" - 前端框架; "core" - 前端主应用逻辑; "page" - 页面切换日志。
 
 pri
 : 优先级. Enum(ERR|WAR|INF|DBG)

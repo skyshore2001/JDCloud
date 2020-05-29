@@ -45,6 +45,7 @@
 <li><a href="#通用查询导出与分组统计"><span class="toc-section-number">3.2.1</span> 通用查询、导出与分组统计</a></li>
 <li><a href="#批量更新与删除"><span class="toc-section-number">3.2.2</span> 批量更新与删除</a></li>
 <li><a href="#批量添加导入"><span class="toc-section-number">3.2.3</span> 批量添加（导入）</a></li>
+<li><a href="#通用子表对象操作"><span class="toc-section-number">3.2.4</span> 通用子表对象操作</a></li>
 </ul></li>
 <li><a href="#api调用监控"><span class="toc-section-number">3.3</span> API调用监控</a></li>
 <li><a href="#批量请求"><span class="toc-section-number">3.4</span> 批量请求</a></li>
@@ -60,6 +61,7 @@
 <li><a href="#桌面应用查询用法"><span class="toc-section-number">4.2.3</span> 桌面应用查询用法</a></li>
 <li><a href="#通用参数"><span class="toc-section-number">4.2.4</span> 通用参数</a></li>
 <li><a href="#全局变量"><span class="toc-section-number">4.2.5</span> 全局变量</a></li>
+<li><a href="#管理端用法技巧"><span class="toc-section-number">4.2.6</span> 管理端用法技巧</a></li>
 </ul></li>
 </ul></li>
 <li><a href="#测试设计"><span class="toc-section-number">5</span> 测试设计</a><ul>
@@ -278,7 +280,58 @@ putenv(&quot;P_DBCRED=bGo6aWhxZ19VR0xH&quot;);</code></pre>
 <li>每个表均有整型字段id作为主键；关联表也不例外。</li>
 <li>外键一般以xxxId表示，除非特殊说明，一般该字段非空；</li>
 </ul>
-<p>字段名的类型根据命名规范自动判断，比如以id结尾的字段会被自动作为整型创建，以tm结尾会被当作日期时间类型创建，其它默认是字符串，规则如下：</p>
+<p>字段名的类型可在字段后标示，例如：<code>status(2)</code>表示2字符长度的字符串(nvarchar(2)), <code>创建时间(dt)</code>表示date类型。</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">标记</th>
+<th align="left">类型</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">s</td>
+<td align="left">small string(20)</td>
+</tr>
+<tr class="even">
+<td align="left">l</td>
+<td align="left">long string(255)</td>
+</tr>
+<tr class="odd">
+<td align="left">t</td>
+<td align="left">text</td>
+</tr>
+<tr class="even">
+<td align="left">i</td>
+<td align="left">int</td>
+</tr>
+<tr class="odd">
+<td align="left">n</td>
+<td align="left">numeric(decimal)</td>
+</tr>
+<tr class="even">
+<td align="left">date</td>
+<td align="left">date</td>
+</tr>
+<tr class="odd">
+<td align="left">tm</td>
+<td align="left">datetime</td>
+</tr>
+<tr class="even">
+<td align="left">flag</td>
+<td align="left">tiny int</td>
+</tr>
+<tr class="odd">
+<td align="left">数字</td>
+<td align="left">指定长度的string</td>
+</tr>
+<tr class="even">
+<td align="left">不指定</td>
+<td align="left">自动判断</td>
+</tr>
+</tbody>
+</table>
+<p>如果未指定类型，则根据命名规范自动判断，比如以id结尾的字段会被自动作为整型创建，以tm结尾会被当作日期时间类型创建，其它默认是字符串（长度50），规则如下：</p>
 <table>
 <thead>
 <tr class="header">
@@ -326,33 +379,6 @@ putenv(&quot;P_DBCRED=bGo6aWhxZ19VR0xH&quot;);</code></pre>
 <tr class="odd">
 <td align="left">#</td>
 <td align="left">Double</td>
-</tr>
-</tbody>
-</table>
-<p>字符串可以指定长度如<code>status(2)</code>，<code>name(s)</code>，字串长度以如下方式描述：</p>
-<table>
-<thead>
-<tr class="header">
-<th align="left">标记</th>
-<th align="left">长度</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="left">s</td>
-<td align="left">small=20</td>
-</tr>
-<tr class="even">
-<td align="left">m</td>
-<td align="left">medium=50 (default)</td>
-</tr>
-<tr class="odd">
-<td align="left">l</td>
-<td align="left">long=255</td>
-</tr>
-<tr class="even">
-<td align="left">t</td>
-<td align="left">text</td>
 </tr>
 </tbody>
 </table>
@@ -630,7 +656,7 @@ Obj.set(id)(POST fields...)
 Obj.get(id, res?) -&gt; {fields...}
 
 删除：
-Obj.del(id)
+Obj.del(id, force?)
 
 查询列表(默认压缩表格式)：
 Obj.query(res?, cond?, distinct?=0, pagesz?=20, pagekey?, fmt?) -&gt; tbl(fields...) = {nextkey?, total?, @h, @d}
@@ -888,6 +914,55 @@ fd.append(&quot;file&quot;, frm.f.files[0]);
 callSvr(&quot;Store.batchAdd&quot;, {title: &quot;name,addr&quot;}, function (ret) {
     app_alert(&quot;成功导入&quot; + ret.cnt + &quot;条数据！&quot;);
 }, fd);</code></pre>
+<h4 id="通用子表对象操作"><span class="header-section-number">3.2.4</span> 通用子表对象操作</h4>
+<p>详细可参考文档 <a href="子表对象设计.html">子表对象设计</a></p>
+<p>假设有主表对象Ordr，一对多关联子表对象OrderItem，数据模型如下：</p>
+<pre><code>订单：
+@Ordr: id, dscr, amount
+
+物料：
+@Item: id, name, price
+
+订单明细
+@OrderItem: id, orderId, itemId, itemName, price, qty, amount</code></pre>
+<p><strong>[在add接口中指定子表项]</strong></p>
+<pre><code>Ordr.add()(dscr, amount, @items=[{itemId, price, qty}])</code></pre>
+<p>示例：</p>
+<pre><code>var items = [{itemId:1, price: 200, qty: 1.0}, {itemId:2, price:100, qty:3.0}];
+callSvr(&quot;Ordr.add&quot;, $.noop, {dscr: &quot;订单1&quot;, amount: 500, items: items}, {contentType:&quot;application/json&quot;});</code></pre>
+<p><strong>[在get接口中返回子表]</strong></p>
+<pre><code>Ordr.get(id, res_items?) -&gt; {id, ..., @items?}</code></pre>
+<p>接口返回的<code>items</code>为OrderItem子表数组内容。调用示例：</p>
+<pre><code>var id = 1;
+callSvr(&quot;Ordr.get&quot;, {id: id, res:&quot;*,items&quot;})</code></pre>
+<p>返回示例:</p>
+<pre><code>{id: 1, dscr: &quot;订单1&quot;, amount: 500, items: [
+    {id: 100, itemId:1, orderId:1, price:200, qty:1, itemName:&quot;item 1&quot;, amount:200},
+    {id: 101, itemId:2, orderId:1, price:100, qty:3, itemName:&quot;item 2&quot;, amount:300}
+]}</code></pre>
+<p>我们知道通过<code>res</code>参数可指定返回项，而对于通用子表接口，通过<code>res_{子表显示名}</code>可指定子表项的返回项，在本例中，用参数<code>res_items</code>可指定子表项<code>items</code>的返回项，调用示例：</p>
+<pre><code>callSvr(&quot;Ordr.get&quot;, {id: id, res:&quot;id,items&quot;, res_items:&quot;id,itemName,amount&quot;})</code></pre>
+<p>返回示例：</p>
+<pre><code>{id: 1, items: [
+    {id: 100, itemName:&quot;item 1&quot;, amount:200},
+    {id: 101, itemName:&quot;item 2&quot;, amount:300}
+]}</code></pre>
+<p>示例2，指定字段显示名：</p>
+<pre><code>callSvr(&quot;Ordr.get&quot;, {id: id, res:&quot;id 订单编号,items 订单明细&quot;, res_订单明细:&quot;id,itemName 物料,amount 金额&quot;})</code></pre>
+<p>返回示例：</p>
+<pre><code>{订单编号: 1, 订单明细: [
+    {id: 100, 物料:&quot;item 1&quot;, 金额:200},
+    {id: 101, 物料:&quot;item 2&quot;, 金额:300}
+]}</code></pre>
+<p><strong>[在set接口中追加、修改、删除子表项]</strong></p>
+<pre><code>Ordr.set()(..., items={id?, itemId?, price?, qty?})</code></pre>
+<p>注意更新时对子项采用PATCH机制，即不必传所有子项，如果在子项中指定了id，则做更新子项操作（特别地，如果有delete参数，表示删除该子项），否则做追加子项操作。</p>
+<p>更新子项示例：更新<code>id=100</code>子项的，数量设置为2，同时更新子表和主表的amount字段</p>
+<pre><code>callSvr(&quot;Ordr.set&quot;, {id: id}, $.noop, {items:[{id:100, qty: 2, amount: 400}], amount:700} , {contentType:&quot;application/json&quot;})</code></pre>
+<p>追加子项：追加<code>{itemId:1}</code>的子项，并更新相关字段</p>
+<pre><code>callSvr(&quot;Ordr.set&quot;, {id: id}, $.noop, {items:[{itemId:1, qty:2, price:50, amount:100}], amount:800} , {contentType:&quot;application/json&quot;})</code></pre>
+<p>删除子项：删除<code>id=100</code>子项，指定<code>_delete</code>为1</p>
+<pre><code>callSvr(&quot;Ordr.set&quot;, {id: id}, $.noop, {items:[{id:100, _delete:1}], amount:300} , {contentType:&quot;application/json&quot;})</code></pre>
 <h3 id="api调用监控"><span class="header-section-number">3.3</span> API调用监控</h3>
 <p>所有对API的调用（请求与响应）均记录到表ApiLog中供分析。</p>
 <p>对一个session, 监控其API调用是否有异常，避免自动化操作行为，这时将返回 E_FORBIDDEN 错误。安全类异常将记录到日志文件 secure.log</p>
@@ -1025,7 +1100,7 @@ X-Daca-Mock-Mode: {value}</code></pre>
 <li>支持and/or查询，如 <code>&gt;=100 and &lt;200</code>, <code>null or 0 or 1</code>, <code>1-100 and &lt;&gt;50</code>，不支持用括号组合条件。</li>
 </ul>
 <p>如果同时对多个字段填写了搜索值，则表示这些条件需要同时满足，即<code>AND</code>关系。</p>
-<p>详细可参考文档 [[api_web.html#WUI.getQueryCond|API参考 -&gt; 筋斗云前端(桌面Web版) -&gt; WUI.getQueryCond]]</p>
+<p>详细可参考文档 <a href="api_web.html#getQueryCond">API参考 -&gt; 筋斗云前端(桌面Web版) -&gt; WUI.getQueryCond</a></p>
 <h4 id="通用参数"><span class="header-section-number">4.2.4</span> 通用参数</h4>
 <p>移动应用和桌面应用的框架支持以下通用参数：</p>
 <dl>
@@ -1060,6 +1135,21 @@ X-Daca-Mock-Mode: {value}</code></pre>
 </dd>
 </dl>
 <p>以上变量可通过控制台手工调节部分参数.</p>
+<h4 id="管理端用法技巧"><span class="header-section-number">4.2.6</span> 管理端用法技巧</h4>
+<ul>
+<li>查询对话框：要模糊查询，应使用通配符“<em>”，如“上海</em>”；更多的查询用法，可将鼠标停留在查询框上查看。</li>
+<li>快速查询：表格中双击一行可以打开明细对话框，在字段标题上三击可快速查询。</li>
+<li>清空查询条件：按住Ctrl键点击列表页上的“刷新”按钮，可清除之前的查询条件并显示所有数据。</li>
+<li>批量修改或删除：在表格中，可按Ctrl或Shift多选行，之后可以批量修改或删除。</li>
+<li>全部修改或删除：按住Ctrl键点“删除”按钮为全部删除；在对话框上修改字段后，按住Ctrl键点确定为全部修改。</li>
+</ul>
+<p>注：在Mac OS中一般用Command键替代Ctrl键。</p>
+<p>其它隐含用法（一般用于调试）：</p>
+<ul>
+<li>TAB页面标题点击5次：重新加载当前页面和所有对话框。</li>
+<li>下拉列表框双击：可立即刷新数据。</li>
+<li>Ctrl-导出: 可选择导出格式。</li>
+</ul>
 <h2 id="测试设计"><span class="header-section-number">5</span> 测试设计</h2>
 <p><strong>[测试需求]</strong></p>
 <ul>

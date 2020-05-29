@@ -18,29 +18,10 @@ class PartnerImpBase
 	use JDSingletonImp;
 
 	function onGetPartnerPwd($partnerId) {
-		return "1234";
+		return "Partner123";
 	}
-}
 
-class Partner
-{
-/**
-@var Partner::$timestampPeriod=600
-*/
-	static $timestampPeriod = 600; // 默认10分钟, 10*60
-
-/**
-@var Partner::$replayCheck=true
-
-检测时间戳和重放攻击。如果设置为false，则请求中无须timestamp参数，不检查调用时间及是否已调用过，安全性低。
-*/
-	static $replayCheck = true;
-
-	// 默认对GET+POST字段做签名(忽略下划线开头的控制字段)
-	static function genSign($pwd, $params=null)
-	{
-		if ($params == null)
-			$params = array_merge($_GET, $_POST);
+	function onGetSign($pwd, $params) {
 		ksort($params);
 		$str = null;
 		foreach ($params as $k=>$v) {
@@ -59,6 +40,32 @@ class Partner
 		$sign = md5($str);
 		return $sign;
 	}
+}
+
+class Partner
+{
+/**
+@var Partner::$timestampPeriod=600
+*/
+	static $timestampPeriod = 600; // 默认10分钟, 10*60
+
+/**
+@var Partner::$replayCheck=true
+
+如果设置为true, 检测时间戳和重放攻击。
+如果设置为"timestamp"，只检测时间戳（要求timestamp参数，默认允许10分钟内的调用），不检查`_sign`参数是否已用过。
+如果设置为false，则请求中无须timestamp参数，不检查调用时间及是否已调用过，安全性低。
+*/
+	static $replayCheck = true;
+
+	// 默认对GET+POST字段做签名(忽略下划线开头的控制字段)
+	static function genSign($pwd, $params=null)
+	{
+		if ($params == null)
+			$params = array_merge($_GET, $_POST);
+		$imp = PartnerImpBase::getInstance();
+		return $imp->onGetSign($pwd, $params);
+	}
 
 /**
 @fn Partner::checkAuth()
@@ -67,7 +74,7 @@ class Partner
 */
 	static function checkAuth()
 	{
-		$partnerId = mparam("partnerId");
+		$partnerId = param("partnerId", 1);
 		list($sign, $pwd) = mparam(["_sign", "_pwd"]);
 		
 		$imp = PartnerImpBase::getInstance();
@@ -76,14 +83,14 @@ class Partner
 			throw new MyException(E_FORBIDDEN, "unknown partnerId=$partnerId");
 
 		if ($pwd !== null) {
-			if (! (self::isHttps() || hasPerm(PERM_TEST_MODE)))
+			if (! self::isHttps())
 				throw new MyException(E_FORBIDDEN, "use param `_sign` instead of `_pwd`");
 			if ($pwd != $pwd1)
 				throw new MyException(E_AUTHFAIL, "bad pwd for partnerId=$partnerId");
 			return;
 		}
 		$sign1 = self::genSign($pwd1);
-		if ($sign !== $sign1)
+		if (strtolower($sign) !== strtolower($sign1))
 			throw new MyException(E_AUTHFAIL, "bad sign for partnerId=$partnerId");
 
 		if (! self::$replayCheck)
@@ -95,7 +102,9 @@ class Partner
 		}
 		$diff = abs(time() - $timestamp);
 		if ($diff > self::$timestampPeriod)
-			throw new MyException(E_FORBIDDEN, "timestamp expires");
+			throw new MyException(E_FORBIDDEN, "timestamp expires in " . self::$timestampPeriod . "s", "时间戳过期");
+		if (self::$replayCheck === "timestamp")
+			return;
 
 		$rv = queryOne(sprintf("SELECT 1 FROM OpenApiRecord WHERE sign=%s", Q($sign)));
 		if ($rv !== false)
