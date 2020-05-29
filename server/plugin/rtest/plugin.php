@@ -68,6 +68,7 @@ class AC_ApiLog extends AccessControl
 	protected $requiredFields = ["ac"];
 	protected $readonlyFields = ["ac", "tm"];
 	protected $hiddenFields = ["ua"];
+	protected $useStrictReadonly = false;
 
 	protected function onValidate()
 	{
