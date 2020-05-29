@@ -73,6 +73,11 @@
 		</div>
 	</div>
 
+(v5.2) 
+hd和ft可以有多个, bd只能有一个。框架将自动为它们计算和设置位置。
+hd一般用于显示页面标题、返回和菜单。在hd中出现的第一个h1或h2标签的文字将自动设置为当前文档标题。
+在微信中（如公众号或小程序），第一个hd会自动隐藏，以避免与微信的标题栏重复。
+
 app.css中定义了`btn-icon`为顶栏图标按钮类，如果在`hd`中有多个`btn-icon`，则依次为左一，右一，左二，右二按钮，例如：
 
 	<div class="hd">
@@ -129,7 +134,7 @@ app.css中定义了`btn-icon`为顶栏图标按钮类，如果在`hd`中有多�
 	}
 
 @event pagecreate(ev) DOM事件。this为当前页面，习惯名为jpage。
-@event pagebeforeshow(ev, opt) DOM事件。this为当前页面。opt参数为`MUI.showPage(pageRef, opt?)`中的opt，如未指定则为`{}`
+@event pagebeforeshow(ev, opt) DOM事件。this为当前页面。opt参数为`MUI.showPage(pageRef, opt?)`中的opt，如未指定则为`{}`。(v5.4) 设置backNoRefresh选项会忽略此事件，这时可用pagebeforeshow.always替代。
 @event pageshow(ev, opt)  DOM事件。this为当前页面。opt参数与pagebeforeshow事件的opt参数一样。
 @event pagehide(ev) DOM事件。this为当前页面。
 
@@ -197,7 +202,7 @@ style将被插入到head标签中，并自动添加属性`mui-origin={pageId}`.
 
 #### 进入应用时动态显示初始逻辑页
 
-默认进入应用时的主页为 MUI.options.homePage. 如果要根据参数动态显示页面，应在muiInit事件中操作：
+默认进入应用时的主页为 MUI.options.homePage. 如果要根据参数动态显示页面，可在muiInit事件中操作，示例：
 
 	$(document).on("muiInit", myInit);
 
@@ -227,6 +232,8 @@ style将被插入到head标签中，并自动添加属性`mui-origin={pageId}`.
 	}
 
 在pagebeforeshow事件中做页面切换，框架保证不会产生闪烁，且在新页面上点返回按钮，不会返回到旧页面。
+
+(v5.4) 如果想在页面加载前添加处理逻辑，请参考 MUI.options.onShowPage 回调，可处理检测是否登录这类需求。
 
 除此之外如果多次调用showPage（包括在pageshow事件中调用），一般最终显示的是最后一次调用的页面，过程中可能产生闪烁，且可能会丢失一些pageshow/pagehide事件，应尽量避免。
 
@@ -289,18 +296,25 @@ style将被插入到head标签中，并自动添加属性`mui-origin={pageId}`.
 
 ### 页面路由
 
-默认路由：
+框架支持hash路由（默认方式）和文件路由（逻辑页面文件）两种方式。
+
+- hash路由URL示例: http://server/app/index.html#home 切换页面后为 http://server/app/index.html#order 
+- 文件路由URL示例: http://server/app/page/home.html 切换页面后为 http://server/app/page/order.html
+
+默认hash路由：
 
 - 一般只用一级目录：`http://server/app/index.html#order`对应`{pageFolder=page}/order.html`，一般为`page/order.html`
 - 也支持多级目录：`http://server/app/index.html#order-list`对应`page/order/list.html`
 - 与筋斗云后端框架一起使用时，支持插件目录：`http://server/app/index.html#order-list`在存在插件'order'时，对应`{pluginFolder=../plugin}/order/m2/page/list.html`，一般为`../plugin/order/m2/page/list.html`
 
-URL也可以显示为文件风格，比如在设置：
+文件路由：在主页面中head标签中应添加：
 
 	<base href="./" mui-showHash="no">
 
 之后，上面两个例子中，URL会显示为 `http://server/app/page/order.html` 和 `http://server/app/page/order/list.html`
 @see options.showHash
+
+注意：使用文件路由时，如果刷新页面将无法显示。必须在web服务器中设置URL重写规则来解决。apache请参考和修改m2/page/.htaccess文件，nginx请参考和修改m2/.ht.nginx文件。
 
 特别地，还可以通过`MUI.setUrl(url)`或`MUI.showPage(pageRef, {url: url})`来定制URL，例如将订单id=100的逻辑页显示为RESTful风格：`http://server/app/order/100`
 @see setUrl
@@ -354,19 +368,19 @@ URL也可以显示为文件风格，比如在设置：
 
 		<div class="bd weui-cells">
 			<div class="weui-cell weui-cell_access">
-				<label class="weui-cell_hd weui-label" style="min-width:7em">为<span class="p-name"></span>添加:</label>
+				<label class="weui-cell_hd weui-label">添加:</label>
 				<select id="cboRelation" class="weui-cell__bd weui-select right" style="min-width:90px">
 					<option value="parent">父亲</option>
 					<option value="child">子女</option>
 				</select>
 				<div class="weui-cell__ft"></div>
 			</div>
-			<div class="weui-cell nowrap" style="display:block;">
-				<a id="btnOK" class="mui-btn primary">确定</a>
-				<a id="btnCancel" class="mui-btn">取消</a>
-			</div>
 		</div>
 
+		<div class="ft">
+			<a id="btnCancel" class="mui-btn">取消</a>
+			<a id="btnOK" class="mui-btn primary">确定</a>
+		</div>
 	</div>
 
 要弹出这个对话框：
@@ -522,12 +536,26 @@ APP初始化成功后，回调该事件。如果deviceready事件未被回调，
 - 左划：页面前进
 
 @key mui-swipenav DOM属性
-如果页面中某组件上的左右划与该功能冲突，可以设置属性mui-swipenav="no"来禁用该功能：
+如果页面中某组件上的左右划与该功能冲突，可以设置属性mui-swipenav="no"来禁用页面前进后退功能，以确保组件自身的左右划功能正常：
 
-	<div mui-swipenav="no"></div>
+	<div id="div1" mui-swipenav="no"></div>
+
+	jpage.find("#div1").swipe({
+		swipeLeft: swipeH,
+		swipeRight: swipeH
+	});
+
+	function swipeH(ev, direction, distance, duration, fingerCnt, fingerData, currentDirection) {
+		if (direction == 'left') {
+			console.log("next");
+		}
+		else if (direction == 'right') {
+			console.log("prev");
+		}
+	}
 
 @key .noSwipe CSS-class
-左右划前进后退功能会导致横向滚动生效。可以通过添加noSwipe类（注意大小写）的方式禁用swipe事件恢复滚动功能：
+左右划前进后退功能会导致横向滚动失效。可以通过添加noSwipe类（注意大小写）的方式禁用swipe事件恢复滚动功能：
 
 	<div class="noSwipe"></div>
 
@@ -602,7 +630,8 @@ function assert(cond, dscr)
 		var msg = "!!! assert fail!";
 		if (dscr)
 			msg += " - " + dscr;
-		throw(msg);
+		// 用throw new Error会有调用栈; 直接用throw "some msg"无法获取调用栈.
+		throw new Error(msg);
 	}
 }
 
@@ -669,9 +698,10 @@ self.reloadSite = reloadSite;
 function reloadSite()
 {
 	var href = location.href.replace(/#.+/, '#');
-	location.href = href;
+	//location.href = href; // dont use this. it triggers hashchange.
+	history.replaceState(null, null, href);
 	location.reload();
-	throw "abort";
+	throw "abort"; // dont call self.app_abort() because it does not exist after reload.
 }
 
 // ====== Date {{{
@@ -1056,9 +1086,9 @@ function delCookie(name)
 @fn setStorage(name, value, useSession?=false)
 
 使用localStorage存储(或使用sessionStorage存储, 如果useSession=true)。
-注意只能存储字符串，所以value不可以为数组，对象等，必须序列化后存储。 
+value可以是简单类型，也可以为数组，对象等，后者将自动在序列化后存储。 
 
-如果浏览器不支持Storage，则使用cookie实现.
+如果设置了window.STORAGE_PREFIX, 则键值(name)会加上该前缀.
 
 示例：
 
@@ -1066,12 +1096,17 @@ function delCookie(name)
 	var id = getStorage("id");
 	delStorage("id");
 
-示例2：对象需要序列化后存储：
+示例2：存储对象:
 
+	window.STORAGE_PREFIX = "jdcloud_"; // 一般在app.js中全局设置
 	var obj = {id:10, name:"Jason"};
-	setStorage("obj", JSON.stringify(obj));
+	setStorage("obj", obj);   // 实际存储键值为 "jdcloud_obj"
 	var obj2 = getStorage("obj");
 	alert(obj2.name);
+
+@var STORAGE_PREFIX 本地存储的键值前缀
+
+如果指定, 则调用setStorage/getStorage/delStorage时都将自动加此前缀, 避免不同项目的存储项冲突.
 
 @see getStorage
 @see delStorage
@@ -1079,12 +1114,12 @@ function delCookie(name)
 self.setStorage = setStorage;
 function setStorage(name, value, useSession)
 {
-	assert(typeof value != "object", "value must be scalar!");
-	if (window.localStorage == null)
-	{
-		setCookie(name, value);
-		return;
+	if ($.isPlainObject(value) || $.isArray(value)) {
+		value = JSON.stringify(value);
 	}
+	assert(typeof value != "object", "value must be scalar!");
+	if (window.STORAGE_PREFIX)
+		name = window.STORAGE_PREFIX + name;
 	if (useSession)
 		sessionStorage.setItem(name, value);
 	else
@@ -1105,21 +1140,18 @@ function setStorage(name, value, useSession)
 self.getStorage = getStorage;
 function getStorage(name, useSession)
 {
-	if (window.localStorage == null)
-	{
-		getCookie(name);
-		return;
-	}
-	var rv;
-	if (useSession)
-		rv = sessionStorage.getItem(name);
-	else
-		rv = localStorage.getItem(name);
+	if (window.STORAGE_PREFIX)
+		name = window.STORAGE_PREFIX + name;
 
-	// 兼容之前用setCookie设置的项
-	if (rv == null)
-		return getCookie(name);
-	return rv;
+	var value;
+	if (useSession)
+		value = sessionStorage.getItem(name);
+	else
+		value = localStorage.getItem(name);
+
+	if (typeof(value)=="string" && (value[0] == '{' || value[0] == '['))
+		value = JSON.parse(value);
+	return value;
 }
 
 /**
@@ -1133,16 +1165,12 @@ function getStorage(name, useSession)
 self.delStorage = delStorage;
 function delStorage(name, useSession)
 {
-	if (window.localStorage == null)
-	{
-		delCookie(name);
-		return;
-	}
+	if (window.STORAGE_PREFIX)
+		name = window.STORAGE_PREFIX + name;
 	if (useSession)
 		sessionStorage.removeItem(name);
 	else
 		localStorage.removeItem(name);
-	delCookie(name);
 }
 //}}}
 
@@ -1210,6 +1238,18 @@ function rs2Array(rs)
 		101: {id: 101, name: "Jane"}
 	};
 
+key可以为一个函数，返回实际key值，示例：
+
+	var hash = rs2Hash(rs, function (o) {
+		return "USER-" + o.id;
+	}); 
+
+	// 结果为
+	hash = {
+		"USER-100": {id: 100, name: "Tom"},
+		"USER-101": {id: 101, name: "Jane"}
+	};
+
 @see rs2Array
 */
 self.rs2Hash = rs2Hash;
@@ -1217,19 +1257,25 @@ function rs2Hash(rs, key)
 {
 	var ret = {};
 	var colCnt = rs.h.length;
+	var keyfn;
+	if (typeof(key) == "function")
+		keyfn = key;
 	for (var i=0; i<rs.d.length; ++i) {
 		var obj = {};
 		var row = rs.d[i];
 		for (var j=0; j<colCnt; ++j) {
 			obj[rs.h[j]] = row[j];
 		}
-		ret[ obj[key] ] = obj;
+		var k = keyfn?  keyfn(obj): obj[key];
+		ret[ k ] = obj;
 	}
 	return ret;
 }
 
 /**
 @fn rs2MultiHash(rs, key)
+
+数据分组(group by).
 
 @param rs={h, d}  rs对象(RowSet)
 @return hash={key => [ %obj ]}
@@ -1248,6 +1294,24 @@ function rs2Hash(rs, key)
 		"Jane": [{id: 101, name: "Jane"}]
 	};
 
+key也可以是一个函数，返回实际的key值，示例，按生日年份分组：
+
+	var rs = {
+		h: ["id", "name", "birthday"], 
+		d: [ [100, "Tom", "1998-10-1"], [101, "Jane", "1999-1-10"], [102, "Tom", "1998-3-8"] ] 
+	};
+	// 按生日年份分组
+	var hash = rs2MultiHash(rs, function (o) {
+		var m = o.birthday.match(/^\d+/);
+		return m && m[0];
+	});
+
+	// 结果为
+	hash = {
+		"1998": [{id: 100, name: "Tom", birthday: "1998-10-1"}, {id: 102, name: "Tom", birthday:"1998-3-8"}],
+		"1999": [{id: 101, name: "Jane", birthday: "1999-1-10"}]
+	};
+
 @see rs2Hash
 @see rs2Array
 */
@@ -1256,21 +1320,29 @@ function rs2MultiHash(rs, key)
 {
 	var ret = {};
 	var colCnt = rs.h.length;
+	var keyfn;
+	if (typeof(key) == "function")
+		keyfn = key;
 	for (var i=0; i<rs.d.length; ++i) {
 		var obj = {};
 		var row = rs.d[i];
 		for (var j=0; j<colCnt; ++j) {
 			obj[rs.h[j]] = row[j];
 		}
-		if (ret[ obj[key] ] === undefined)
-			ret[ obj[key] ] = [];
-		ret[ obj[key] ].push(obj);
+		var k = keyfn?  keyfn(obj): obj[key];
+		if (ret[ k ] === undefined)
+			ret[ k ] = [obj];
+		else
+			ret[ k ].push(obj);
 	}
 	return ret;
 }
 
 /**
-@fn list2varr(ls, sep=':', sep2=',')
+@fn list2varr(ls, colSep=':', rowSep=',')
+
+- ls: 代表二维表的字符串，有行列分隔符。
+- colSep, rowSep: 列分隔符，行分隔符。
 
 将字符串代表的压缩表("v1:v2:v3,...")转成对象数组。
 
@@ -1425,11 +1497,14 @@ function appendParam(url, param)
 	var url = "http://xxx/api.php?a=1&b=3&c=2";
 	var url1 = deleteParam(url, "b"); // "http://xxx/api.php?a=1&c=2";
 
+	var url = "http://server/jdcloud/m2/?logout#me";
+	var url1 = deleteParam(url, "logout"); // "http://server/jdcloud/m2/?#me"
+
 */
 self.deleteParam = deleteParam;
 function deleteParam(url, paramName)
 {
-	var ret = url.replace(new RegExp('&?' + paramName + "=[^&#]+"), '');
+	var ret = url.replace(new RegExp('&?' + paramName + "(=[^&#]+)?"), '');
 	if (ret.indexOf('?&') >=0) {
 		ret = ret.replace('?&', '?');
 	}
@@ -1630,7 +1705,7 @@ function jdModule(name, fn, overrideCtor)
 	}
 
 	var ret;
-	if (fn instanceof Function) {
+	if (typeof(fn) === "function") {
 		if (window.jdModuleMap[name]) {
 			fn.call(window.jdModuleMap[name]);
 		}
@@ -1731,7 +1806,17 @@ function getFormData(jo)
 		if (content !== String(orgContent)) // 避免 "" == 0 或 "" == false
 		{
 			if (! isFormData) {
-				data[name] = content;
+				// URL参数支持数组，如`a[]=hello&a[]=world`，表示数组`a=["hello","world"]`
+				if (name.substr(-2) == "[]") {
+					name = name.substr(0, name.length-2);
+					if (! data[name]) {
+						data[name] = [];
+					}
+					data[name].push(content);
+				}
+				else {
+					data[name] = content;
+				}
 			}
 			else {
 				if (ji.is(":file")) {
@@ -1767,7 +1852,7 @@ self.formItems = formItems;
 function formItems(jo, cb)
 {
 	jo.find("[name]:not([disabled])").each (function () {
-		var name = this.name;
+		var name = this.name || $(this).attr("name");
 		if (! name)
 			return;
 
@@ -1801,10 +1886,12 @@ function formItems(jo, cb)
  对div等其它对象, 会清空该对象的内容.
 - 如果对象设置有属性"noReset", 则不会对它进行设置.
 
-@param opt {setOrigin?=false}
+@param opt {setOrigin?=false, setOnlyDefined?=false}
 
-选项 setOrigin: 为true时将data设置为数据源, 这样在getFormData时, 只会返回与数据源相比有变化的数据.
+@param opt.setOrigin 为true时将data设置为数据源, 这样在getFormData时, 只会返回与数据源相比有变化的数据.
 缺省会设置该DOM对象数据源为空.
+
+@param opt.setOnlyDefined 设置为true时，只设置form中name在data中存在的项，其它项保持不变；而默认是其它项会清空。
 
 对象关联的数据源, 可以通过 jo.data("origin_") 来获取, 或通过 jo.data("origin_", newOrigin) 来设置.
 
@@ -1848,6 +1935,8 @@ function setFormData(jo, data, opt)
 		var ji = $(this);
 		var name = ji.attr("name");
 		var content = data[name];
+		if (opt1.setOnlyDefined && content === undefined)
+			return;
 		var isInput = ji.is(":input");
 		if (content === undefined) {
 			if (isInput) {
@@ -1862,7 +1951,7 @@ function setFormData(jo, data, opt)
 				content = "";
 			}
 		}
-		if (ji.is(":input")) {
+		if (isInput) {
 			ji.val(content);
 		}
 		else {
@@ -2036,6 +2125,27 @@ function waitFor(dfd)
 }
 
 /**
+@fn rgb(r,g,b)
+
+生成"#112233"形式的颜色值.
+
+	rgb(255,255,255) -> "#ffffff"
+
+ */
+self.rgb = rgb;
+function rgb(r,g,b,a)
+{
+	if (a === 0) // transparent (alpha=0)
+		return;
+	return '#' + pad16(r) + pad16(g) + pad16(b);
+
+	function pad16(n) {
+		var ret = n.toString(16);
+		return n>16? ret: '0'+ret;
+	}
+}
+
+/**
 @fn rgb2hex(rgb)
 
 将jquery取到的颜色转成16进制形式，如："rgb(4, 190, 2)" -> "#04be02"
@@ -2046,8 +2156,15 @@ function waitFor(dfd)
 
  */
 self.rgb2hex = rgb2hex;
-function rgb2hex(rgb)
+function rgb2hex(rgbFormat)
 {
+	var rgba = rgb; // function rgb or rgba
+	try {
+		return eval(rgbFormat);
+	} catch (ex) {
+		console.log(ex);
+	}
+/*
 	var ms = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
 	if (ms == null)
 		return;
@@ -2062,6 +2179,7 @@ function rgb2hex(rgb)
 		}
 	}
 	return hex;
+*/
 }
 
 /**
@@ -2082,6 +2200,300 @@ $.fn.jdata = function (val) {
 	if (jd == null)
 		jd = this.jdata({});
 	return jd;
+}
+
+/**
+@fn compressImg(img, cb, opt)
+
+通过限定图片大小来压缩图片，用于图片预览和上传。
+不支持IE8及以下版本。
+
+- img: Image对象
+- cb: Function(picData) 回调函数
+- opt: {quality=0.8, maxSize=1280, mimeType?="image/jpeg"}
+- opt.maxSize: 压缩完后宽、高不超过该值。为0表示不压缩。
+- opt.quality: 0.0-1.0之间的数字。
+- opt.mimeType: 输出MIME格式。
+
+函数cb的回调参数: picData={b64src,blob,w,h,w0,h0,quality,name,mimeType,size0,size,b64size,info}
+
+b64src为base64格式的Data URL, 如 "data:image/jpeg;base64,/9j/4AAQSk...", 用于给image或background-image赋值显示图片；
+
+可以赋值给Image.src:
+
+	var img = new Image();
+	img.src = picData.b64src;
+
+或
+
+	$("<div>").css("background-image", "url(" + picData.b64src + ")");
+
+blob用于放到FormData中上传：
+
+	fd.append('file', picData.blob, picData.name);
+
+其它picData属性：
+
+- w0,h0,size0分别为原图宽、高、大小; w,h,size为压缩后图片的宽、高、大小。
+- quality: jpeg压缩质量,0-1之间。
+- mimeType: 输出的图片格式
+- info: 提示信息，会在console中显示。用于调试。
+
+**[预览和上传示例]**
+
+HTML:
+
+	<form action="upfile.php">
+		<div class="img-preview"></div>
+		<input type="file" /><br/>
+		<input type="submit" >
+	</form>
+
+用picData.b64src来显示预览图，并将picData保存在img.picData_属性中，供后面上传用。
+
+	var jfrm = $("form");
+	var jpreview = jfrm.find(".img-preview");
+	var opt = {maxSize:1280};
+	jfrm.find("input[type=file]").change(function (ev) {
+		$.each(this.files, function (i, fileObj) {
+			compressImg(fileObj, function (picData) {
+				$("<img>").attr("src", picData.b64src)
+					.prop("picData_", picData)
+					.appendTo(jpreview);
+				//$("<div>").css("background-image", "url("+picData.b64src+")").appendTo(jpreview);
+			}, opt);
+		});
+		this.value = "";
+	});
+
+上传picData.blob到服务器
+
+	jfrm.submit(function (ev) {
+		ev.preventDefault();
+
+		var fd = new FormData();
+		var idx = 1;
+		jpreview.find("img").each(function () {
+			// 名字要不一样，否则可能会覆盖
+			fd.append('file' + idx, this.picData_.blob, this.picData_.name);
+			++idx;
+		});
+	 
+		$.ajax({
+			url: jfrm.attr("action"),
+			data: fd,
+			processData: false,
+			contentType: false,
+			type: 'POST',
+			// 允许跨域调用
+			xhrFields: {
+				withCredentials: true
+			},
+			success: cb
+		});
+		return false;
+	});
+
+参考：JIC.js (https://github.com/brunobar79/J-I-C)
+
+TODO: 用完后及时释放内存，如调用revokeObjectURL等。
+ */
+self.compressImg = compressImg;
+function compressImg(fileObj, cb, opt)
+{
+	var opt0 = {
+		quality: 0.8,
+		maxSize: 1280,
+		mimeType: "image/jpeg"
+	};
+	opt = $.extend(opt0, opt);
+
+	// 部分旧浏览器使用BlobBuilder的（如android-6.0, mate7自带浏览器）, 压缩率很差。不如直接上传。而且似乎是2M左右文件浏览器无法上传，导致服务器收不到。
+	window.BlobBuilder = (window.BlobBuilder || window.WebKitBlobBuilder || window.MozBlobBuilder || window.MSBlobBuilder);
+ 	var doDowngrade = !window.Blob 
+			|| window.BlobBuilder;
+	if (doDowngrade) {
+		var rv = {
+			name: fileObj.name,
+			size: fileObj.size,
+			b64src: window.URL.createObjectURL(fileObj),
+			blob: fileObj,
+		};
+		rv.info = "compress ignored. " + rv.name + ": " + (rv.size/1024).toFixed(0) + "KB";
+		console.log(rv.info);
+		cb(rv);
+		return;
+	}
+
+	var img = new Image();
+	// 火狐7以下版本要用 img.src = fileObj.getAsDataURL();
+	img.src = window.URL.createObjectURL(fileObj);
+	img.onload = function () {
+		var rv = resizeImg(img);
+		rv.info = "compress " + rv.name + " q=" + rv.quality + ": " + rv.w0 + "x" + rv.h0 + "->" + rv.w + "x" + rv.h + ", " + (rv.size0/1024).toFixed(0) + "KB->" + (rv.size/1024).toFixed(0) + "KB(rate=" + (rv.size / rv.size0 * 100).toFixed(2) + "%,b64=" + (rv.b64size/1024).toFixed(0) + "KB)";
+		console.log(rv.info);
+		cb(rv);
+	}
+
+	// return: {w, h, quality, size, b64src}
+	function resizeImg()
+	{
+		var w = img.naturalWidth, h = img.naturalHeight;
+		if (opt.maxSize<w || opt.maxSize<h) {
+			if (w > h) {
+				h = Math.round(h * opt.maxSize / w);
+				w = opt.maxSize;
+			}
+			else {
+				w = Math.round(w * opt.maxSize / h);
+				h = opt.maxSize;
+			}
+		}
+
+		var cvs = document.createElement('canvas');
+		cvs.width = w;
+		cvs.height = h;
+
+		var ctx = cvs.getContext("2d").drawImage(img, 0, 0, w, h);
+		var b64src = cvs.toDataURL(opt.mimeType, opt.quality);
+		var blob = getBlob(b64src);
+		// 无压缩效果，则直接用原图
+		if (blob.size > fileObj.size) {
+			blob = fileObj;
+			// b64src = img.src;
+			opt.mimeType = fileObj.type;
+		}
+		// 如果没有扩展名或文件类型发生变化，自动更改扩展名
+		var fname = getFname(fileObj.name, opt.mimeType);
+		return {
+			w0: img.naturalWidth,
+			h0: img.naturalHeight,
+			w: w,
+			h: h,
+			quality: opt.quality,
+			mimeType: opt.mimeType,
+			b64src: b64src,
+			name: fname,
+			blob: blob,
+			size0: fileObj.size,
+			b64size: b64src.length,
+			size: blob.size
+		};
+	}
+
+	function getBlob(b64src) 
+	{
+		var bytes = window.atob(b64src.split(',')[1]); // "data:image/jpeg;base64,{b64data}"
+		//var ab = new ArrayBuffer(bytes.length);
+		var ia = new Uint8Array(bytes.length);
+		for(var i = 0; i < bytes.length; i++){
+			ia[i] = bytes.charCodeAt(i);
+		}
+		var blob;
+		try {
+			blob = new Blob([ia.buffer], {type: opt.mimeType});
+		}
+		catch(e){
+			// TypeError old chrome and FF
+			if (e.name == 'TypeError' && window.BlobBuilder){
+				var bb = new BlobBuilder();
+				bb.append(ia.buffer);
+				blob = bb.getBlob(opt.mimeType);
+			}
+			else{
+				// We're screwed, blob constructor unsupported entirely   
+			}
+		}
+		return blob;
+	}
+
+	function getFname(fname, mimeType)
+	{
+		var exts = {
+			"image/jpeg": ".jpg",
+			"image/png": ".png",
+			"image/webp": ".webp"
+		};
+		var ext1 = exts[mimeType];
+		if (ext1 == null)
+			return fname;
+		return fname.replace(/(\.\w+)?$/, ext1);
+	}
+}
+
+/**
+@fn getDataOptions(jo, defVal?)
+@key data-options
+
+读取jo上的data-options属性，返回JS对象。例如：
+
+	<div data-options="a:1,b:'hello',c:true"></div>
+
+上例可返回 `{a:1, b:'hello', c:true}`.
+
+也支持各种表达式及函数调用，如：
+
+	<div data-options="getSomeOption()"></div>
+
+@see getOptions
+ */
+self.getDataOptions = getDataOptions;
+function getDataOptions(jo, defVal)
+{
+	var optStr = jo.attr("data-options");
+	var opts;
+	try {
+		if (optStr != null) {
+			if (optStr.indexOf(":") > 0) {
+				opts = eval("({" + optStr + "})");
+			}
+			else {
+				opts = eval("(" + optStr + ")");
+			}
+		}
+	}catch (e) {
+		alert("bad data-options: " + optStr);
+	}
+	return $.extend({}, defVal, opts);
+}
+
+/**
+@fn triggerAsync(jo, ev, paramArr)
+
+触发含有异步操作的事件，在异步事件完成后继续。兼容同步事件处理函数，或多个处理函数中既有同步又有异步。
+返回Deferred对象，或false表示要求取消之后操作。
+
+@param ev 事件名，或事件对象$.Event()
+
+示例：以事件触发方式调用jo的异步方法submit:
+
+	var dfd = WUI.triggerAsync(jo, 'submit');
+	if (dfd === false)
+		return;
+	dfd.then(doNext);
+
+	function doNext() { }
+
+jQuery对象这样提供异步方法：triggerAsync会用事件对象ev创建一个dfds数组，将Deferred对象存入即可支持异步调用。
+
+	jo.on('submit', function (ev) {
+		var dfd = $.ajax("upload", ...);
+		if (ev.dfds)
+			ev.dfds.push(dfd);
+	});
+
+*/
+self.triggerAsync = triggerAsync;
+function triggerAsync(jo, ev, paramArr)
+{
+	if (typeof(ev) == "string") {
+		ev = $.Event(ev);
+	}
+	ev.dfds = [];
+	jo.trigger(ev, paramArr);
+	if (ev.isDefaultPrevented())
+		return false;
+	return $.when.apply(this, ev.dfds);
 }
 
 }
@@ -2216,7 +2628,8 @@ function app_abort()
 
 可直接调用app_abort();
 */
-window.DirectReturn = function () {}
+window.DirectReturn = DirectReturn;
+function DirectReturn() {}
 
 /**
 @fn setOnError()
@@ -2232,6 +2645,8 @@ function setOnError()
 		if (fn && fn.apply(this, arguments) === true)
 			return true;
 		if (errObj instanceof DirectReturn || /abort$/.test(msg) || (!script && !line))
+			return true;
+		if (errObj === undefined && msg === "[object Object]") // fix for IOS9
 			return true;
 		debugger;
 		var content = msg + " (" + script + ":" + line + ":" + col + ")";
@@ -2270,25 +2685,30 @@ function enhanceWithin(jp)
 			return;
 		jo.each(function (i, e) {
 			var je = $(e);
-			var opt = getOptions(je);
-			if (opt.enhanced)
+			var enhanced = je.data("mui-enhanced");
+			if (enhanced)
 				return;
-			opt.enhanced = true;
+			je.data("mui-enhanced", true);
 			fn(je);
 		});
 	});
 }
 
 /**
-@fn getOptions(jo)
+@fn getOptions(jo, defVal?)
+
+第一次调用，根据jo上设置的data-options属性及指定的defVal初始化，或为`{}`。
+存到jo.prop("muiOptions")上。之后调用，直接返回该属性。
+
+@see getDataOptions
 */
 self.getOptions = getOptions;
-function getOptions(jo)
+function getOptions(jo, defVal)
 {
-	var opt = jo.data("muiOptions");
+	var opt = jo.prop("muiOptions");
 	if (opt === undefined) {
-		opt = {};
-		jo.data("muiOptions", opt);
+		opt = self.getDataOptions(jo, defVal);
+		jo.prop("muiOptions", opt);
 	}
 	return opt;
 }
@@ -2516,25 +2936,33 @@ function getQueryParam(kvList)
 }
 
 /**
-@fn doSpecial(jo, filter, fn)
+@fn doSpecial(jo, filter, fn, cnt=5, interval=2s)
 
-连续5次点击某处，执行隐藏动作。
+连续5次点击某处，每次点击间隔不超过2s, 执行隐藏动作。
 
 例：
-	// 连续5次点击当前tab标题，重新加载页面
+	// 连续5次点击当前tab标题，重新加载页面. ev为最后一次点击事件.
 	var self = WUI;
-	self.doSpecial(self.tabMain.find(".tabs-header"), ".tabs-selected", function () {
+	self.doSpecial(self.tabMain.find(".tabs-header"), ".tabs-selected", function (ev) {
 		self.reloadPage();
 		self.reloadDialog(true);
+
+		// 弹出菜单
+		//jmenu.menu('show', {left: ev.pageX, top: ev.pageY});
+		return false;
 	});
+
+连续3次点击对话框中的字段标题，触发查询：
+
+	WUI.doSpecial(jdlg, ".wui-form-table td", fn, 3);
 
 */
 self.doSpecial = doSpecial;
-function doSpecial(jo, filter, fn)
+function doSpecial(jo, filter, fn, cnt, interval)
 {
-	jo.on("click", filter, function (ev) {
-		var INTERVAL = 4; // 4s
-		var MAX_CNT = 5;
+	var MAX_CNT = cnt || 5;
+	var INTERVAL = interval || 2; // 2s
+	jo.on("click.special", filter, function (ev) {
 		var tm = new Date();
 		var obj = this;
 		// init, or reset if interval 
@@ -2549,7 +2977,7 @@ function doSpecial(jo, filter, fn)
 		fn.cnt = 0;
 		fn.lastTm = tm;
 
-		fn();
+		fn.call(this, ev);
 	});
 }
 }
@@ -2715,7 +3143,7 @@ function enterWaiting(ctx)
 	setTimeout(function () {
 		if (self.isBusy)
 			self.showLoading();
-	}, 200);
+	}, (self.options.showLoadingDelay || 200));
 // 		if ($.mobile && !(ctx && ctx.noLoadingImg))
 // 			$.mobile.loading("show");
 	//},1);
@@ -2798,7 +3226,7 @@ function defDataProc(rv)
 	var ext = ctx.ext;
 
 	// ajax-beforeSend回调中设置
-	if (this.xhr_ && ext == null) {
+	if (this.xhr_ && (ext == null || ext == "default") ) {
 		var val = this.xhr_.getResponseHeader("X-Daca-Server-Rev");
 		if (val && g_data.serverRev != val) {
 			if (g_data.serverRev) {
@@ -2807,18 +3235,21 @@ function defDataProc(rv)
 			console.log("Server Revision: " + val);
 			g_data.serverRev = val;
 		}
+		var modeStr;
 		val = mCommon.parseValue(this.xhr_.getResponseHeader("X-Daca-Test-Mode"));
 		if (g_data.testMode != val) {
 			g_data.testMode = val;
 			if (g_data.testMode)
-				self.app_alert("测试模式!", {timeoutInterval:2000});
+				modeStr = "测试模式";
 		}
 		val = mCommon.parseValue(this.xhr_.getResponseHeader("X-Daca-Mock-Mode"));
 		if (g_data.mockMode != val) {
 			g_data.mockMode = val;
 			if (g_data.mockMode)
-				self.app_alert("模拟模式!", {timeoutInterval:2000});
+				modeStr = "测试模式+模拟模式";
 		}
+		if (modeStr)
+			self.app_alert(modeStr, {timeoutInterval:2000});
 	}
 
 	try {
@@ -3398,7 +3829,7 @@ self.callSvr = callSvr;
 self.callSvrExt = {};
 function callSvr(ac, params, fn, postParams, userOptions)
 {
-	if (params instanceof Function) {
+	if ($.isFunction(params)) {
 		// 兼容格式：callSvr(url, fn?, postParams?, userOptions?);
 		userOptions = postParams;
 		postParams = fn;
@@ -3537,7 +3968,7 @@ self.callSvrSync = callSvrSync;
 function callSvrSync(ac, params, fn, postParams, userOptions)
 {
 	var ret;
-	if (params instanceof Function) {
+	if ($.isFunction(params)) {
 		userOptions = postParams;
 		postParams = fn;
 		fn = params;
@@ -3627,22 +4058,39 @@ function setupCallSvrViaForm($form, $iframe, url, fn, callOpt)
 
 参数中可以引用之前结果中的值，引用部分需要用"{}"括起来，且要在opt.ref参数中指定哪些参数使用了引用：
 
-	var batch = new MUI.batchCall({useTrans: 1});
-	callSvr("Attachment.add", api_AttAdd, {path: "path-1"}); // 假如返回 22
-	var opt = {ref: ["id"]};
-	callSvr("Attachment.get", {id: "{$1}"}, api_AttGet, null, opt); // {$1}=22, 假如返回 {id: 22, path: '/data/1.png'}
-	opt = {ref: ["cond"]};
-	callSvr("Attachment.query", {res: "count(*) cnt", cond: "path='{$-1.path}'"}, api_AttQuery, null, opt); // {$-1.path}计算出为 '/data/1.png'
-	batch.commit();
+
+	MUI.useBatchCall();
+	callSvr("..."); // 这个返回值的结果将用于以下调用
+	callSvr("Ordr.query", {
+		res: "id,dscr",
+		status: "{$-1.status}",  // 整体替换，结果可以是一个对象
+		cond: "id>{$-1.id}" // 部分替换，其结果只能是字符串
+	}, api_OrdrQuery, {
+		ref: ["status", "cond"] // 须在ref中指定需要处理的key
+	});
+
+特别地，当get/post整个是一个字符串时，直接整体替换，无须在ref中指定，如：
+
+	callSvr("Ordr.add", $.noop, "{$-1}", {contentType:"application/json"});
 
 以下为引用格式示例：
 
-	{$-2} // 前2次的结果。
-	{$2[0]} // 取第2次结果（是个数组）的第0个值。
-	{$-1.path} // 取前一次结果的path属性
-	{$2 -1}  // 可以做简单的计算
+	{$1} // 第1次调用的结果。
+	{$-1} // 前1次调用的结果。
+	{$-1.path} // 取前一次调用结果的path属性
+	{$1[0]} // 取第1次调用结果（是个数组）的第0个值。
+	{$1[0].amount}
+	{$-1.price * $-1.qty} // 可以做简单的数值计算
 
 如果值计算失败，则当作"null"填充。
+
+综合示例：
+
+	MUI.useBatchCall();
+	callSvr("Ordr.completeItem", $.noop, {itemId:1})
+	callSvr("Ordr.completeItem", $.noop, {itemId:2, qty:2})
+	callSvr("Ordr.calc", $.noop, {items:["{$1}", "{$2}"]}, {contentType:"application/json", ref:["items"] });
+	callSvr("Ordr.add", $.noop, "{$3}", {contentType:"application/json"});
 
 @see useBatchCall
 @see disableBatch
@@ -3849,6 +4297,21 @@ self.container = null;
 如果为false, 则必须手工执行 MUI.showPage 来显示第一个页面。
 */
 self.showFirstPage = true;
+
+/**
+@var nextShowPageOpt
+
+如果指定, 则在下次showPage时生效. 
+初次进入App时无动画效果.
+
+示例: 在返回上一页时指定不要动画效果:
+
+	MUI.nextShowPageOpt = {ani: 'none'};
+	history.back();
+
+因为未直接调用MUI.showPage, 可以用nextShowPageOpt来传递参数. 此参数用后即焚.
+ */
+self.nextShowPageOpt = {ani: 'none'};
 
 var m_jstash; // 页面暂存区; 首次加载页面后可用
 var m_jLoader;
@@ -4133,7 +4596,7 @@ function deleteUrlParam(param)
 {
 	delete g_args[param];
 	var search = mCommon.deleteParam(location.search, param);
-	MUI.setUrl(search);
+	self.setUrl(search);
 }
 
 /**
@@ -4172,6 +4635,7 @@ function callInitfn(jo, paramArr)
 
 	if (initfn && $.isFunction(initfn))
 	{
+		console.log("### initfn: " + initfn.name);
 		ret = initfn.apply(jo, paramArr) || true;
 	}
 	jo.data("mui.init", ret);
@@ -4254,11 +4718,13 @@ initPageStack();
 // "#xx/aaa.html" => {pageId: "aaa", pageRef: "#aaa", pageFile: "xx/aaa.html"}
 // "#plugin1-page1" => 支持多级目录，如果plugin1不是一个插件：{pageId: "plugin1-page1", pageFile: "{pageFolder}/plugin1/page1.html"}
 // "#plugin1-page1" => 如果plugin1是一个插件：{pageId: "plugin1-page1", pageFile: "{pluginFolder}/plugin1/m2/page/page1.html"}
+// "#udf__A" => {pageId: "udf__A", pageRef: "#udf__A", pageFile: "udf.html"
 function getPageInfo(pageRef)
 {
 	if (pageRef == "#" || pageRef == "" || pageRef == null)
 		pageRef = self.options.homePage;
 	var pageId = pageRef[0] == '#'? pageRef.substr(1): pageRef;
+	var tplName = pageId.split("__")[0];
 	var ret = {pageId: pageId, pageRef: pageRef};
 	var p = pageId.lastIndexOf(".");
 	if (p == -1) {
@@ -4270,25 +4736,26 @@ function getPageInfo(pageRef)
 				ret.pageFile = self.options.pluginFolder + '/' + plugin + '/m2/page/' + pageId2 + '.html';
 			}
 		}
-		ret.templateRef = "#tpl_" + pageId;
+		ret.templateRef = "#tpl_" + tplName;
 	}
 	else {
 		ret.pageFile = pageId;
 		ret.pageId = pageId.match(/[^.\/]+(?=\.)/)[0];
 	}
 	if (ret.pageFile == null) 
-		ret.pageFile = self.options.pageFolder + '/' + pageId.replace(/-/g, '/') + ".html";
+		ret.pageFile = self.options.pageFolder + '/' + tplName.replace(/-/g, '/') + ".html";
 	return ret;
 }
 
 /**
-@fn showPage(pageRef, opt)
+@fn showPage(pageId/pageRef?, opt?)
 
 @param pageId String. 页面名字. 仅由字母、数字、"_"等字符组成。
 @param pageRef String. 页面引用（即location.hash），以"#"开头，后面可以是一个pageId（如"#home"）或一个相对页的地址（如"#info.html", "#emp/info.html"）。
-@param opt {ani?, url?}  (v3.3) 该参数会传递给pagebeforeshow/pageshow回调函数。
+  如果未指定，则使用当前URL的hash或指定的主页(MUI.options.homePage). "#"表示主页。
+@param opt {ani, url, backNoRefresh}  (v3.3) 该参数会传递给pagebeforeshow/pageshow回调函数。
 
-opt.ani:: String. 动画效果。设置为"none"禁用动画。
+opt.ani:: String. 动画效果。设置为"none"禁用动画。默认页面由右向左进入，设置为"up"表示由下向上进入（常用于popup页面）。
 
 opt.url:: String. 指定在地址栏显示的地址。如 `showPage("#order", {url: "?id=100"})` 可设置显示的URL为 `page/order.html?id=100`.
 @see setUrl
@@ -4357,6 +4824,38 @@ opt.url:: String. 指定在地址栏显示的地址。如 `showPage("#order", {u
 			// opt={orderId: 100}
 		});
 	}
+
+(v5.2)
+@param opt.backNoRefresh ?=false 从新页面返回后，不要刷新当前页
+实际为A->B页面跳转后，此后若有B->A跳转，不触发A页面的pagebeforeshow事件。
+在initPage时，也可直接在页面上设置: `jpage.prop("backNoRefresh", ["page1", "page2"])`, 表示从page1, page2转到当前页面，不触发pagebeforeshow事件。注意，数组中保存的是pageId，不是pageRef.
+
+(v5.4) 设置backNoRefresh选项会导致pagebeforeshow事件不触发，对于必须依赖pagebeforeshow事件的逻辑，可以监听`pagebeforeshow.always`事件。
+
+(v5.3)
+支持一个页面模板可创建多个页面实例。
+
+	MUI.showPage("udt__费用");
+	MUI.showPage("udt__供应商");
+
+两者用同一套html/js，但数据不会干扰。
+
+(v5.4)
+@key mui-ani 指定本页面进入时的动画效果. 支持"up"(由下向上), "pop"(fade展开)。
+@key slideIn
+@key slideOut
+支持扩展动画效果。例如新动画名为"xx"，请参考mui.css定义slideIn_xx, slideOut_xx类，即可使用：
+
+在page上指定进入动画：
+
+	<div mui-initfn="initSynopsis" mui-script="doctorSynopsis.js" mui-ani="up">
+
+在显示页面时指定动画：
+
+	MUI.showPage("#doctorSynopsis", {ani: "up"});
+	或
+	<a href="#doctorSynopsis" mui-opt="ani:'up'">页面1<a>
+
 */
 self.showPage = showPage;
 function showPage(pageRef, opt)
@@ -4370,6 +4869,7 @@ function showPage(pageRef, opt)
 		pageRef = self.options.homePage;
 	else if (pageRef[0] != "#")
 		pageRef = "#" + pageRef; // 为了兼容showPage(pageId), 新代码不建议使用
+	pageRef = decodeURIComponent(pageRef);
 
 	// 避免hashchange重复调用
 	if (m_lastPageRef == pageRef)
@@ -4382,9 +4882,13 @@ function showPage(pageRef, opt)
 		//self.m_pageStack.push(pageRef);
 	}
 
+	if (self.options.onShowPage && self.options.onShowPage(pageRef, opt) === false)
+		return;
+
 	var showPageOpt_ = $.extend({
 		ani: self.options.ani
-	}, opt);
+	}, opt, self.nextShowPageOpt);
+	self.nextShowPageOpt = null;
 
 	var ret = handlePageStack(pageRef);
 	if (ret === false)
@@ -4397,6 +4901,8 @@ function showPage(pageRef, opt)
 	// find in document
 	var pageId = pi.pageId;
 	m_toPageId = pageId;
+	self.syslog("page", null, pageId);
+
 	var jpage = self.container.find("#" + pageId + ".mui-page");
 	// find in template
 	if (jpage.size() > 0)
@@ -4484,7 +4990,12 @@ function showPage(pageRef, opt)
 			// 检测运营商js劫持，并自动恢复。
 			var fname = jpage.attr("mui-initfn");
 			if (fname && window[fname] == null) {
-				// 10s内重试
+				if (location.protocol == "https:") {
+					var err = "逻辑页加载失败: " + jpage.attr("id");
+					self.app_alert(err);
+					return;
+				}
+				// 如果不是https协议，则可能是页面html/js被运营商劫持，在10s内反复重试
 				var failTry_ = jpage.data("failTry_");
 				var dt = new Date();
 				if (failTry_ == null) {
@@ -4515,12 +5026,30 @@ function showPage(pageRef, opt)
 		if (self.activePage && self.activePage[0] === jpage[0])
 			return;
 
+		var toPageId = jpage.attr("id");
+		var skipBeforeShow = false;
 		var oldPage = self.activePage;
 		if (oldPage) {
 			self.prevPageId = oldPage.attr("id");
+			var backNoRefresh = jpage.prop("backNoRefresh");
+			if ($.isArray(backNoRefresh) && backNoRefresh.indexOf(self.prevPageId) >= 0) {
+				skipBeforeShow = true;
+			}
+			if (showPageOpt_.backNoRefresh) {
+				backNoRefresh = oldPage.prop("backNoRefresh");
+				if (! $.isArray(backNoRefresh)) {
+					backNoRefresh = [];
+					oldPage.prop("backNoRefresh", backNoRefresh);
+				}
+				if (backNoRefresh.indexOf(toPageId) < 0)
+					backNoRefresh.push(toPageId);
+			}
 		}
-		var toPageId = jpage.attr("id");
-		jpage.trigger("pagebeforeshow", [showPageOpt_]);
+
+		if (!skipBeforeShow)
+			jpage.trigger("pagebeforeshow", [showPageOpt_]);
+		else
+			jpage.trigger("pagebeforeshow.always", [showPageOpt_]);
 		// 如果在pagebeforeshow中调用showPage显示其它页，则不显示当前页，避免页面闪烁。
 		if (toPageId != m_toPageId)
 		{
@@ -4535,21 +5064,35 @@ function showPage(pageRef, opt)
 			return;
 		}
 
-		var enableAni = showPageOpt_.ani !== 'none'; // TODO
-		var slideInClass = m_isback? "slideIn1": "slideIn";
-		m_isback = null;
-		self.container.show(); // !!!! 
-		jpage.css("z-index", 1).show();
-		if (oldPage)
-			oldPage.css("z-index", "-1");
+		var enableAni = showPageOpt_.ani !== 'none';
+		var isback = m_isback && oldPage;
+		var slideClass = isback? "slideOut": "slideIn";
 		if (enableAni) {
-			jpage.addClass(slideInClass);
-			jpage.one("animationend", onAnimationEnd)
-				.one("webkitAnimationEnd", onAnimationEnd);
+			if (! isback) {
+				var ani = showPageOpt_.ani || jpage.attr("mui-ani");
+				if (ani) {
+					slideClass += "_" + ani;
+					if (showPageOpt_.ani)
+						jpage.attr("mui-ani", ani);
+				}
+				jpage.addClass(slideClass)
+					.one("animationend", onAnimationEnd)
+					.one("webkitAnimationEnd", onAnimationEnd);
+			}
+			else {
+				var ani = oldPage.attr("mui-ani");
+				if (ani)
+					slideClass += "_" + ani;
 
-// 				if (oldPage)
-// 					oldPage.addClass("slideOut");
+				oldPage.addClass(slideClass)
+					.one("animationend", onAnimationEnd)
+					.one("webkitAnimationEnd", onAnimationEnd);
+			}
 		}
+		jpage.css("z-index", 1).show();
+		self.container.show(); // !!!! 
+
+		m_isback = null;
 		self.activePage = jpage;
 		fixPageSize();
 		var title = jpage.find(".hd h1, .hd h2").filter(":first").text() || self.title || jpage.attr("id");
@@ -4561,10 +5104,14 @@ function showPage(pageRef, opt)
 		function onAnimationEnd()
 		{
 			if (enableAni) {
-				// NOTE: 如果不删除，动画效果将导致fixed position无效。
-				jpage.removeClass(slideInClass);
-// 					if (oldPage)
-// 						oldPage.removeClass("slideOut");
+				if (! isback) {
+					// NOTE: 如果不删除，动画效果将导致fixed position无效。
+					jpage.removeClass(slideClass);
+				}
+				else {
+					oldPage.css("z-index", "-1");
+					oldPage.removeClass(slideClass);
+				}
 			}
 			if (toPageId != m_toPageId)
 				return;
@@ -4585,6 +5132,8 @@ function showPage(pageRef, opt)
 @fn setDocTitle(title)
 
 设置文档标题。默认在切换页面时，会将文档标题设置为逻辑页的标题(`hd`块中的`h1`或`h2`标签)。
+
+文档原始标题可通过`MUI.title`获得。
 */
 self.setDocTitle = setDocTitle;
 function setDocTitle(newTitle)
@@ -4692,9 +5241,11 @@ function popPageStack(n)
 	self.m_pageStack.pop(n);
 }
 
+// 前进后退时触发(m_curState非空); 或直接在地址栏修改hash触发(m_curState为空)
+// 某些手机首次进入时也触发
 $(window).on('popstate', function (ev) {
 	m_curState = ev.originalEvent.state;
-	if (m_curState) // bugfix: 红米等某些手机在MUI.options.showHash=false模式下，且在安卓APP中，进入非主页的入口页，会自动跳转回主页。
+	if (m_curState || self.options.showHash) // bugfix: 红米等某些手机在MUI.options.showHash=false模式下，且在安卓APP中，进入非主页的入口页，会自动跳转回主页。
 		showPage();
 });
 
@@ -4708,12 +5259,16 @@ function fixPageSize()
 		var jpage = self.activePage;
 		var H = self.container.height();
 		var jo, hd, ft;
-		jo= jpage.find(">.hd");
-		hd = (jo.size() > 0 && jo.css("display") != "none")? jo.height() : 0;
+		hd = 0;
+		jpage.find(">.hd:visible").each(function () {
+			$(this).css("top", hd);
+			hd += $(this).height();
+		});
 		ft = 0;
-		jpage.find(">.ft").each(function () {
-			if ($(this).is(":visible"))
-				ft += $(this).height();
+		var ftArr = jpage.find(">.ft:visible").get().reverse();
+		$.each(ftArr, function () {
+			$(this).css("bottom", ft);
+			ft += $(this).height();
 		});
 		jpage.height(H);
 		jpage.find(">.bd").css({
@@ -4819,7 +5374,7 @@ function enhanceFooter(jfooter)
 		return id2nav[pageId];
 	}
 
-	$(document).on("pagebeforeshow", function (ev) {
+	$(document).on("pagebeforeshow.always", function (ev) {
 		var jpage = $(ev.target);
 		var pageId = jpage.attr("id");
 		if (m_toPageId != pageId)
@@ -4830,12 +5385,6 @@ function enhanceFooter(jfooter)
 			if (jfooter.parent()[0] !== m_jstash[0])
 				jfooter.appendTo(m_jstash);
 			return;
-		}
-		var jft = jpage.find(".ft");
-		if (jft.size() > 0) {
-			setTimeout(function () {
-				jft.css("bottom", jfooter.height());
-			});
 		}
 		jfooter.appendTo(jpage);
 		activateElem($(e));
@@ -4926,13 +5475,13 @@ function setupDialog(jdlg, initfn)
 }
 
 /**
-@fn app_alert(msg, [type?=i], [fn?], opt?={timeoutInterval?, defValue?, onCancel()?})
+@fn app_alert(msg, [type?=i], [fn?], opt?={timeoutInterval, defValue, onCancel(), keep})
 @key #muiAlert
 @param type 对话框类型: "i": info, 信息提示框; "e": error, 错误框; "w": warning, 警告框; "q": question, 确认框(会有"确定"和"取消"两个按钮); "p": prompt, 输入框
 @param fn Function(text?) 回调函数，当点击确定按钮时调用。当type="p" (prompt)时参数text为用户输入的内容。
 @param opt Object. 可选项。 timeoutInterval表示几秒后自动关闭对话框。defValue用于输入框(type=p)的缺省值.
 
-onCancel: 用于"q", 点取消时回调.
+opt.onCancel: 用于"q", 点取消时回调.
 
 示例:
 
@@ -4975,6 +5524,14 @@ onCancel: 用于"q", 点取消时回调.
 
 app_alert一般会复用对话框 muiAlert, 除非层叠开多个alert, 这时将clone一份用于显示并在关闭后删除。
 
+(v5.2)
+@param opt.keep?=false 如果设置为true，则如果已经有弹出框，重用这个框而非重新弹出一个新框。
+常用于显示进度，如：
+
+	app_alert("正在处理: 0/1...");
+	app_alert("正在处理: 1/1...", {keep:true});
+	app_alert("处理完成!", {keep:true});
+
 */
 window.app_alert = self.app_alert = app_alert;
 function app_alert(msg)
@@ -5004,12 +5561,14 @@ function app_alert(msg)
 	if (jdlg.size() == 0) {
 		var html = '' + 
 '<div id="muiAlert" class="mui-dialog">' + 
-'	<h3 class="hd p-title"></h3>' + 
-'	<div class="sp p-msg"></div>' +
-'	<input type="text" id="txtInput" style="border:1px solid #bbb; line-height:1.5">' +
-'	<div class="sp nowrap">' +
-'		<a href="javascript:;" id="btnOK" class="mui-btn primary">确定</a>' +
+'	<div class="hd p-title"></div>' + 
+'	<div class="bd">' + 
+'		<div class="p-msg"></div>' +
+'		<input type="text" id="txtInput" style="border:1px solid #bbb; height:30px; text-align: center">' +
+'	</div>' + 
+'	<div class="ft">' +
 '		<a href="javascript:;" id="btnCancel" class="mui-btn">取消</a>' +
+'		<a href="javascript:;" id="btnOK" class="mui-btn primary">确定</a>' +
 '	</div>' +
 '</div>'
 		jdlg = $(html);
@@ -5019,7 +5578,7 @@ function app_alert(msg)
 
 	var isClone = false;
 	// 如果正在显示，则使用clone
-	if (jdlg.parent().is(":visible")) {
+	if (jdlg.parent().is(":visible") && !alertOpt.keep) {
 		var jo = jdlg.parent().clone().appendTo(self.container);
 		jdlg = jo.find(".mui-dialog");
 		isClone = true;
@@ -5122,7 +5681,7 @@ function hideLoading()
 //}}}
 // ------- ui: anchor {{{
 
-self.m_enhanceFn["a[href^=#]"] = enhanceAnchor;
+self.m_enhanceFn["a[href^='#']"] = enhanceAnchor;
 
 function enhanceAnchor(jo)
 {
@@ -5148,11 +5707,24 @@ function enhanceAnchor(jo)
 	
 function main()
 {
+/**
+@var title
+
+文档原始标题保存在`MUI.title`，在切换逻辑页面时，document.title会自动变更为当前页标题。
+
+@see setDocTitle
+*/
 	self.title = document.title;
 	self.container = $(".mui-container");
 	if (self.container.size() == 0)
 		self.container = $(document.body);
 	self.enhanceWithin(self.container);
+
+	// URL参数logout：先注销再进入
+	if (g_args.logout) {
+		self.deleteUrlParam("logout");
+		self.logout(true);
+	}
 
 	// 在muiInit事件中可以调用showPage.
 	self.container.trigger("muiInit");
@@ -5184,6 +5756,15 @@ JdcloudMuiPage.call(self);
 @var isBusy
 
 标识应用当前是否正在与服务端交互。一般用于自动化测试。
+也常用于防止重复提交，示例：
+
+	jpage.find(".btnUpload").click(btnUpload_click);
+	function btnUpload_click() {
+		// 防止重复点击提交
+		if (MUI.isBusy)
+			return;
+		callSvr("upload", ...);
+	}
 */
 self.isBusy = false;
 
@@ -5197,19 +5778,23 @@ URL参数会自动加入该对象，例如URL为 `http://{server}/{app}/index.ht
 	g_args.orderId=10; // 注意：如果参数是个数值，则自动转为数值类型，不再是字符串。
 	g_args.dscr="上门洗车"; // 对字符串会自动进行URL解码。
 
-此外，框架会自动加一些参数：
+框架会自动处理一些参数：
 
-@var g_args._app?="user" 应用名称，由 WUI.options.appName 指定。
+- g_args._debug: 在测试模式下，指定后台的调试等级，有效值为1-9. 参考：后端测试模式 P_TEST_MODE，调试等级 P_DEBUG.
+- g_args.cordova: 用于在手机APP应用中加载H5应用，参考“原生应用支持”。示例：http://server/jdcloud/m2/index.html?cordova=1
+- g_args.wxCode: 用于在微信小程序中加载H5应用，并自动登录。参考：options.enableWxLogin 微信认证登录
+- g_args.enableSwitchApp: 允许多应用自动切换功能。参考：options.enableSwitchApp
+- g_args.logout: 退出登录后再进入应用。示例：http://server/jdcloud/m2/index.html?logout
 
 @see parseQuery URL参数通过该函数获取。
 */
-window.g_args = {}; // {_test, _debug, cordova}
+window.g_args = {}; // {_debug, cordova}
 
 /**
 @var g_cordova
 
-值是一个整数，默认为0. 
-如果非0，表示WEB应用在苹果或安卓APP中运行，且数值代表原生应用容器的大版本号。
+值是一个整数，默认为0. 可用它来判断WEB应用是否在APP容器中运行。
+如果非0，表示WEB应用在苹果或安卓APP中运行，且数值代表原生应用容器的版本号。
 
 示例：检查用户APP版本是否可以使用某些插件。
 
@@ -5220,7 +5805,27 @@ window.g_args = {}; // {_test, _debug, cordova}
 		}
 	}
 
-TODO: MUI.cordova
+WEB应用容器应在URL中传递cordova参数，表示容器版本号。该版本号会保存在ApiLog的ver字段中。
+
+如果容器不支持上述约定，可在WEB应用初始化时设置g_cordova变量来做兼容，示例：
+
+	// UserAgent for infiniti app
+	// android example: Mozilla/5.0 ... AppVersion/1.2.4 ... AppName/dafengche+infiniti
+	// iphone example: Mozilla/5.0 ... Souche/Dafengche/spartner/infiniti/InfinitiInhouse/1.2.4
+	function initApp() {
+		var ua = navigator.userAgent;
+		var m;
+		if ((m = ua.match(/android.*appversion\/([\d.]+)/i)) || (m = ua.match(/iphone.*infinitiInhouse\/([\d.]+)/i))) {
+			MUI.options.appName = "emp-m";
+			var ver = m[1];
+			if (m = ver.match(/(\d+)\.(\d+)\.(\d+)/)) {
+				window.g_cordova = parseInt(m[1]) * 10000 + parseInt(m[2]) * 100 + parseInt(m[3]);
+			}
+		}
+	}
+	initApp();
+
+@see 原生应用支持
 */
 window.g_cordova = 0; // the version for the android/ios native cient. 0 means web app.
 
@@ -5268,6 +5873,11 @@ window.g_data = {}; // {userInfo, serverRev?, initClient?, testMode?, mockMode?}
 前景设置使用"light"(白色)或"dark"(黑色)。
 设置为"none"表示隐藏标题栏。
 设置为空("")表示禁止框架设置状态栏。
+
+@var options.fixTopbarColor?=false
+
+如果为true, 则自动根据页面第一个hd的背景色设置手机顶栏颜色.
+适合每个页面头部颜色不同的情况. 更复杂的情况, 可使用`MUI.setTopbarColor`手工设置顶栏颜色.
 
 @var options.manualSplash?=false
 @see topic-splashScreen
@@ -5329,6 +5939,133 @@ window.g_data = {}; // {userInfo, serverRev?, initClient?, testMode?, mockMode?}
 @var options.disableFastClick?=false
 
 在IOS+cordova环境下，点击事件会有300ms延迟，默认会加载lib/fastclick.min.js解决。
+
+该库会导致部分场景下点击失效问题。这时可以通过在关键点击元素上设置"needsclick"类来解决。
+
+例如：fastclick库与图片裁切库image-process-tool有些冲突, ios手机APP中点修改头像无法弹出图片选择框. JS初始化配置如下：
+
+	var zxImageProcess = new ZxImageProcess({
+		// 触发文件选择的元素
+		selector: jpage.find(".downSelect-btn[value=1]")[0],
+		...
+	});
+
+最终将绑定用于点击的元素 `<div class='downSelect-btn'></div>`改为 `<div class='downSelect-btn needsclick'></div>`解决。
+发现IOS上点击失效问题，可先设置`options.disableFastClick=true`检查问题是否消失来判定。
+
+TODO: cordova-ios未来将使用WkWebView作为容器（目前仍使用UIWebView），将不再有点击延迟问题，到时将去除FastClick库。
+
+@var options.onAutoLogin 自动登录
+@event autoLogin 自动登录事件(v5.4)
+
+设置如何自动登录系统，进入应用后，一般会调用tryAutoLogin，其中会先尝试重用已有会话，如果当前没有会话则回调onAutoLogin自动登录系统。
+返回true则跳过后面系统默认的登录过程，包括使用本地保存的token自动登录以及调用login接口。
+
+一般用于微信认证后绑定用户身份，示例：
+
+	$.extend(MUI.options, {
+		...
+		onAutoLogin: onAutoLogin
+	});
+
+	function onAutoLogin()
+	{
+		// 发起微信认证
+		var param = {state: location.href};
+		location.href = "../weixin/auth.php?" + $.param(param);
+		// 修改了URL后直接跳出即可。不用返回true
+		MUI.app_abort();
+	}
+
+(v5.4)也可以用autoLogin事件：
+
+	$(document).on("autoLogin", onAutoLogin);
+
+@var options.enableWxLogin 微信认证登录
+
+设置enableWxLogin为true，或者appName为"user"，则如果URL中有参数wxCode, 就调用后端"login2(wxCode)"接口登录认证。
+一般用于从微信小程序调用H5应用。
+要求后端已实现login2接口。
+
+	$.extend(MUI.options, {
+		...
+		enableWxLogin: true
+	});
+
+@var options.enableSwitchApp 自动保存和切换应用
+@key g_args.enableSwitchApp =1 应用自动切换
+
+同一个目录下的多个应用，支持自动切换。
+例如原生APP（或微信小程序中）的URL为用户端，但在登录页或个人中心页可切换到员工端。
+当进入员工端并登录成功后，希望下次打开APP后直接进入员工端，做法如下：
+
+在H5应用中设置选项options.enableSwitchApp=true。(例如在app.js中设置，这样所有应用都允许跳转）
+应用登录后将自动记录当前URL。
+
+在APP中初次打开H5应用(history.length<=1)时，会在进入应用后自动检查和切换应用（将在MUI.validateEntry函数中检查，一般H5应用的主JS文件入口处默认会调用它）。
+最好在URL中添加参数enableSwitchApp=1强制检查，例如在chrome中初次打开页面history.length为2，不加参数就无法自动切换H5应用。
+
+@var options.onShowPage(pageRef, opt) 显示页面前回调
+
+(v5.4) 在调用MUI.showPage时触发调用，参数与MUI.showPage相同，用于显示任何页面前通用的操作。
+此回调在页面加载或显示之前（先于目的页面的pagecreate/pagebeforeshow等事件）。
+如果返回false，则取消本次showPage调用。
+
+示例1：允许用户未登录使用，但除了home页面，进入其它页面均要求登录。
+注意：系统默认要求登录才能进入，若要修改，可在muiInit事件中修改调用`MUI.tryAutoLogin(..., allowNoLogin=true)`来实现允许未登录进入。
+此需求如果放在每个页面的pagebeforeshow中处理则非常麻烦，可在onShowPage中统一处理。
+
+	$.extend(MUI.options, {
+		...
+		onShowPage: onShowPage
+	});
+
+	...
+	// MUI.tryAutoLogin(handleLogin, "User.get");
+	MUI.tryAutoLogin(handleLogin, "User.get", true); // 允许未登录进入。
+
+	// 如果未登录，跳转login。
+	function onShowPage(pageRef, opt) {
+		if (pageRef == "#home" || pageRef == "#setUserInfo" || pageRef.substr(0, 6) == "#login")
+			return;
+
+		// 如果是未登录进入，则跳转登录页。
+		if (!g_data.userInfo) {
+			MUI.showLogin();
+			return false;
+		}
+	}
+
+示例2：接上例，当系统在微信中使用时，允许用户使用微信身份自动登录，并可以查看home页面。
+但如果用户尚未绑定过手机号，在进入其它页面时，必须先绑定手机号。
+
+	$.extend(MUI.options, {
+		...
+		onShowPage: onShowPage
+	});
+
+	// 如果手机号没有填写，则要求填写并返回false。
+	function onShowPage(pageRef, opt) {
+		if (pageRef == "#home" || pageRef == "#setUserInfo" || pageRef.substr(0, 6) == "#login")
+			return;
+
+		// 如果是未登录进入，则跳转登录页。
+		if (!g_data.userInfo) {
+			MUI.showLogin(pageRef);
+			return false;
+		}
+		if (g_data.userInfo && !g_data.userInfo.phone) {
+			PageSetUserInfo.userInit = true;
+			PageSetUserInfo.fromPageRef = pageRef;
+			MUI.showPage("#setUserInfo");
+			return false;
+		}
+	}
+
+@var options.showLoadingDelay ?= 500  延迟显示加载图标
+
+(v5.4) 默认如果在500ms内如果远程调用成功, 则不显示加载图标.
+
 */
 	var m_opt = self.options = {
 		appName: "user",
@@ -5341,6 +6078,7 @@ window.g_data = {}; // {userInfo, serverRev?, initClient?, testMode?, mockMode?}
 		PAGE_SZ: 20,
 		manualSplash: false,
 		mockDelay: 50,
+		showLoadingDelay: 500,
 
 		pluginFolder: "../plugin",
 		showHash: ($("base").attr("mui-showHash") != "no"),
@@ -5356,12 +6094,8 @@ function document_pageCreate(ev)
 	var jpage = $(ev.target);
 
 	var jhdr = jpage.find("> .hd");
-	// 标题栏空白处点击5次, 进入测试模式
-	jhdr.click(function (ev) {
-		// 注意避免子元素bubble导致的事件
-		if ($(ev.target).hasClass("hd") || ev.target.tagName == "H1" || ev.target.tagName == "H2")
-			switchTestMode(this); 
-	});
+	// 标题栏空白处点击5次, 进入测试模式; 注意避免子元素bubble导致的事件
+	self.doSpecial(jhdr, "H1,H2", switchTestMode);
 }
 
 $(document).on("pagecreate", document_pageCreate);
@@ -5372,7 +6106,9 @@ $(document).on("pagecreate", document_pageCreate);
 @param fn Function(data); 与callSvr时的回调相同，data为服务器返回的数据。
 函数中可以使用this["userPost"] 来获取post参数。
 
-@param opt.validate: Function(jf, queryParam={ac?,...}). 如果返回false, 则取消submit. queryParam为调用参数，可以修改。
+@param opt.validate: Function(jf, queryParam={ac?,...}). 
+如果返回false, 则取消submit. queryParam为调用参数，可以修改。
+(v5.3) 支持异步提交，返回Deferred对象时，表示在Deferred.resolve之后再提交。
 
 form提交时的调用参数, 如果不指定, 则以form的action属性作为queryParam.ac发起callSvr调用.
 form提交时的POST参数，由带name属性且不带disabled属性的组件决定, 可在validate回调中设置．
@@ -5405,6 +6141,20 @@ form提交时的POST参数，由带name属性且不带disabled属性的组件决
 
 @param opt.onNoAction: Function(jf). 当form中数据没有变化时, 不做提交. 这时可调用该回调函数.
 
+(v5.3)
+异步提交示例：点击提交后，先上传照片，照片传完获取到picId，然后做之后提交动作
+
+	MUI.setFormSubmit(jf, api_fn1, {
+		validate: function(jf, queryParam) {
+			var dfd = $.Deferred();
+			uploadPic.submit().then(function (picId) {
+				jf[0].picId.value = picId;
+				dfd.resolve();
+			});
+			return dfd;
+		}
+	});
+
 */
 self.setFormSubmit = setFormSubmit;
 function setFormSubmit(jf, fn, opt)
@@ -5412,22 +6162,35 @@ function setFormSubmit(jf, fn, opt)
 	opt = opt || {};
 	jf.submit(function (ev) {
 		ev.preventDefault();
+		// 防止重复点击提交
+		if (self.isBusy)
+			return;
 
 		var queryParam = {ac: jf.attr("action")};
 		if (opt.validate) {
-			if (false === opt.validate(jf, queryParam))
+			var ret = opt.validate(jf, queryParam);
+			if (false === ret)
 				return false;
+			// 异步支持
+			if (ret && ret.then) {
+				ret.then(doSubmit);
+				return false;
+			}
 		}
-		var postParam = mCommon.getFormData(jf);
-		if (! $.isEmptyObject(postParam)) {
-			var ac = queryParam.ac;
-			delete queryParam.ac;
-			self.callSvr(ac, queryParam, fn, postParam, {userPost: postParam});
-		}
-		else if (opt.onNoAction) {
-			opt.onNoAction(jf);
-		}
+		doSubmit();
 		return false;
+
+		function doSubmit() {
+			var postParam = mCommon.getFormData(jf);
+			if (! $.isEmptyObject(postParam)) {
+				var ac = queryParam.ac;
+				delete queryParam.ac;
+				self.callSvr(ac, queryParam, fn, postParam, {userPost: postParam});
+			}
+			else if (opt.onNoAction) {
+				opt.onNoAction(jf);
+			}
+		}
 	});
 }
 //}}}
@@ -5440,7 +6203,7 @@ $(document).on("deviceready", function () {
 		if (self.activePage.attr("id") == homePageId) {
 			self.app_alert("退出应用?", 'q', function () {
 				navigator.app.exitApp();
-			});
+			}, {keep:true});
 			return;
 		}
 		history.back();
@@ -5481,6 +6244,9 @@ $(document).on("deviceready", function () {
 					bar.styleLightContent();
 			}
 		}
+		if (m_opt.fixTopbarColor) {
+			fixTopbarColor();
+		}
 		if (mCommon.isIOS()) {
 			// bugfix: IOS上显示statusbar时可能窗口大小不正确
 			bar.overlaysWebView(false);
@@ -5490,6 +6256,44 @@ $(document).on("deviceready", function () {
 		}
 	}
 });
+
+
+/**
+@fn MUI.setTopbarColor(colorHex, style?)
+
+@param colorHex 颜色值,格式如 "#fafafa", 可用MUI.rgb2hex函数转换.
+@param style dark|light
+
+设置顶栏颜色和字体黑白风格.
+*/
+self.setTopbarColor = setTopbarColor;
+function setTopbarColor(colorHex, style)
+{
+	var bar = window.StatusBar;
+	if (g_cordova && bar && colorHex) {
+		bar.backgroundColorByHexString(colorHex);
+		if (style) {
+			if (style === "dark")
+				bar.styleDefault();
+			else if (style === "light")
+				bar.styleLightContent();
+		}
+		self.options.statusBarColor = colorHex;
+	}
+}
+
+function fixTopbarColor()
+{
+	if (!g_cordova)
+		return;
+	$(document).on("pageshow", function () {
+		var color = MUI.activePage.find(".hd").css("backgroundColor"); // format: "rgb(...)"
+		if (color) {
+			var colorHex = self.rgb2hex(color); // call rgb(...)
+			setTopbarColor(colorHex);
+		}
+	});
+}
 
 //}}}
 
@@ -5596,6 +6400,16 @@ function logout(dontReload)
 	});
 }
 
+// 取H5应用的页面名。 e.g. "/jdcloud/m2/index.html" -> "index.html"
+function getAppPage()
+{
+	var url = location.pathname.replace(/.*\/+/, '');
+	if (url == "") {
+		url = "index.html"
+	}
+	return url;
+}
+
 /**
 @fn validateEntry(@allowedEntries) 入口页检查
 
@@ -5606,6 +6420,7 @@ function logout(dontReload)
 	MUI.validateEntry([
 		"#home",
 		"#me",
+		/^#udt__/  # (v5.3) 支持正则式
 	]);
 
 */
@@ -5613,14 +6428,38 @@ self.validateEntry = validateEntry;
 // check if the entry is in the entry list. if not, refresh the page without search query (?xx) or hash (#xx)
 function validateEntry(allowedEntries)
 {
+	// 自动切换APP
+	if (self.options.enableSwitchApp && (history.length <= 1 || g_args.enableSwitchApp)) {
+		var appPage0 = mCommon.getStorage("appPage")
+		if (appPage0) {
+			var appPage = getAppPage();
+			if (appPage != appPage0) {
+				location.href = appPage0;
+				self.app_abort();
+			}
+		}
+	}
+
 	if (allowedEntries == null)
 		return;
 	m_allowedEntries = allowedEntries;
 
-	if (/*location.search != "" || */
-			(location.hash && location.hash != "#" && allowedEntries.indexOf(location.hash) < 0) ) {
-		location.href = location.pathname + location.search;
+	if (location.hash && location.hash != "#" && !isAllowed()) {
+		location.href = location.pathname; // remove search and hash like "?k=v#page1"
 		self.app_abort();
+	}
+
+	function isAllowed() {
+		var found = false;
+		//var hash = decodeURIComponent(location.hash);
+		var hash = location.hash;
+		$.each(allowedEntries, function () {
+			if ( (this instanceof RegExp && this.test(hash)) || this == hash) {
+				found = true;
+				return false;
+			}
+		});
+		return found;
 	}
 }
 
@@ -5730,12 +6569,25 @@ function tryAutoLogin(onHandleLogin, reuseCmd, allowNoLogin)
 		ok = true;
 	}
 
+	if (g_args.wxCode && (self.options.enableWxLogin || self.options.appName == "user")) {
+		console.log("login via wxCode. href=" + location.href);
+		self.callSvr("login2", {wxCode: g_args.wxCode}, handleAutoLogin, null, ajaxOpt);
+		self.deleteUrlParam("wxCode");
+		if (ok)
+			return ok;
+	}
+
 	// first try "User.get"
 	if (reuseCmd != null) {
 		self.callSvr(reuseCmd, handleAutoLogin, null, ajaxOpt);
 	}
 	if (ok)
 		return ok;
+	if ($.isFunction(self.options.onAutoLogin)) {
+		if (self.options.onAutoLogin() === true)
+			return true;
+	}
+	$(document).trigger("autoLogin");
 
 	// then use "login(token)"
 	var token = loadLoginToken();
@@ -5764,10 +6616,10 @@ function tryAutoLogin(onHandleLogin, reuseCmd, allowNoLogin)
 可以根据用户属性在此处定制home页，例如：
 
 	if(role == "SA"){
-		MUI.options.homePage: "#sa-home";
+		MUI.options.homePage = "#sa-home";
 	}
 	else if (role == "MA") {
-		MUI.options.homePage: "#ma-home";
+		MUI.options.homePage = "#ma-home";
 	}
 
 
@@ -5779,6 +6631,10 @@ function handleLogin(data)
 	if (data.id == null)
 		return;
 	g_data.userInfo = data;
+
+	if (self.options.enableSwitchApp) {
+		mCommon.setStorage("appPage", getAppPage());
+	}
 
 	// 登录成功后点返回，避免出现login页
 	var popN = 0;
@@ -5841,34 +6697,21 @@ window.Plugins = {
 //}}}
 
 // ------ main {{{
-
-// 单击5次，每次间隔不大于2s
-function switchTestMode(obj)
+// 标题栏单击5次召唤
+function switchTestMode()
 {
-	var INTERVAL = 4; // 2s
-	var MAX_CNT = 5;
-	var f = switchTestMode;
-	var tm = new Date();
-	// init, or reset if interval 
-	if (f.cnt == null || f.lastTm == null || tm - f.lastTm > INTERVAL*1000 || f.lastObj != obj)
-	{
-		f.cnt = 0;
-		f.lastTm = tm;
-		f.lastObj = obj;
+	var url = prompt("切换URL?", location.href);
+	if (url == null || url === "")
+		return;
+	if (url == location.href) {
+		MUI.reloadPage();
+		return;
 	}
-//	console.log("switch: " + f.cnt);
-	if (++ f.cnt >= MAX_CNT) {
-		f.cnt = 0;
-		f.lastTm = tm;
-		var url = prompt("切换URL?", location.href);
-		if (url == null || url === "" || url == location.href)
-			return;
-		if (url[0] == "/") {
-			url = "http://" + url;
-		}
-		location.href = url;
-		self.app_abort();
+	if (url[0] == "/") {
+		url = "http://" + url;
 	}
+	location.href = url;
+	self.app_abort();
 }
 
 function main()
@@ -6016,6 +6859,13 @@ function hd_back(pageRef)
 向后端发送日志。后台必须已添加syslog插件。
 日志可在后台Syslog表中查看，客户端信息可查看ApiLog表。
 
+@param module app,fw(framework),page
+@param pri ERR,INF,WARN
+
+示例：
+
+	MUI.syslog("app", "ERR", "fail to pay: " + err.msg);
+
 注意：如果操作失败，本函数不报错。
  */
 self.syslog = syslog;
@@ -6150,6 +7000,12 @@ function initPullList(container, opt)
 	var lastUpdateTm_ = new Date();
 	var dy_ = 0; // 纵向移动。<0为上拉，>0为下拉
 
+	// bugfix: 避免同一DOM多次绑定事件
+	if (cont_.pullListInited_) {
+		return;
+	}
+	cont_.pullListInited_ = true;
+
 	window.requestAnimationFrame = window.requestAnimationFrame || function (fn) {
 		setTimeout(fn, 1000/60);
 	};
@@ -6203,7 +7059,8 @@ function initPullList(container, opt)
 			return;
 		}
 		jo_.html(msg);
-		jo_.height(height).css("lineHeight", height + "px");
+		jo_.height(height);
+		//jo_.height(height).css("lineHeight", height + "px");
 			
 		if (ac == "D") {
 			var c = cont_.getElementsByClassName("mui-pullHint")[0];
@@ -6461,6 +7318,8 @@ function initPullList(container, opt)
 	<div mui-initfn="initPageOrders" mui-script="orders.js">
 		<div class="hd">
 			<h2>订单列表</h2>
+		</div>
+		<div class="hd">
 			<div class="mui-navbar">
 				<a href="javascript:;" class="active" mui-linkto="#lst1">待服务</a>
 				<a href="javascript:;" mui-linkto="#lst2">已完成</a>
@@ -6475,7 +7334,7 @@ function initPullList(container, opt)
 
 上面页面应注意：
 
-- navbar在header中，不随着滚动条移动而改变位置
+- navbar一般放在header(hd)中，不随着滚动条移动而改变位置。(v5.2)hd可以有多个，第一个用作页面标题和导航，在微信中不显示。
 - 默认要显示的list应加上active类，否则自动取第一个显示列表。
 - mui-navbar在点击一项时，会在对应的div组件（通过被点击的<a>按钮上mui-linkto属性指定链接到哪个div）添加class="active"。非active项会自动隐藏。
 
@@ -6496,10 +7355,6 @@ js调用逻辑示例：
 		},
 		onAddItem: function (jlst, itemData) {
 			var ji = $("<li>" + itemData.title + "</li>");
-			ji.appendTo(jlst);
-		},
-		onNoItem: function (jlst) {
-			var ji = $("<li>没有订单</li>");
 			ji.appendTo(jlst);
 		}
 	});
@@ -6597,8 +7452,8 @@ navRef是否为空的区别是，如果非空，则表示listRef是一组互斥�
 
 ## 参数说明
 
-@param opt {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list", onBeforeLoad?, onLoad?, onGetData?, canPullDown?=true, onRemoveAll?}
-@param opt 分页相关 { pageszName?="pagesz", pagekeyName?="pagekey" }
+@param opt {onGetQueryParam?, onAddItem?, onNoItem?, pageItf?, navRef?=">.hd .mui-navbar", listRef?=">.bd .p-list", onBeforeLoad?, onLoad?, onGetData?, canPullDown?=true, onRemoveAll?, jContainer?}
+@param opt 分页相关 { pageszName?="pagesz", pagekeyName?="pagekey", localPageSize? }
 
 @param opt.onGetQueryParam Function(jlst, queryParam/o)
 
@@ -6625,7 +7480,8 @@ param={idx, arr, isFirstPage}
 
 @param opt.onNoItem (jlst)
 
-当没有任何数据时，可以插入提示信息。
+当没有任何数据时，可以插入提示信息。缺省会添加"没有数据"提示, 可由CSS类noData来定制样式.
+一般可全局设置 initPageList.onNoItem 回调函数.
 
 @param opt.pageItf - page interface {refresh?/io}
 
@@ -6637,7 +7493,7 @@ param={idx, arr, isFirstPage}
 @param opt.onBeforeLoad(jlst, isFirstPage)->Boolean  如果返回false, 可取消load动作。参数isFirstPage=true表示是分页中的第一页，即刚刚加载数据。
 @param opt.onLoad(jlst, isLastPage)  参数isLastPage=true表示是分页中的最后一页, 即全部数据已加载完。
 
-@param opt.onGetData(data, pagesz, pagekey?) 每次请求获取到数据后回调。pagesz为请求时的页大小，pagekey为页码（首次为null）
+@param opt.onGetData(data, pagesz, pagekey?) 每次请求获取到数据后回调。pagesz为请求时的页大小，pagekey为页码（首次为null）. this为当前jlst
 
 @param opt.onRemoveAll(jlst) 清空列表操作，默认为 jlst.empty()
 
@@ -6646,6 +7502,10 @@ param={idx, arr, isFirstPage}
 - refresh: Function(), 刷新当前列表
 - markRefresh: Function(jlst?), 刷新指定列表jlst或所有列表(jlst=null), 下次浏览该列表时刷新。
 - loadMore: Function(), 加载下一页数据
+
+@param opt.jContainer 设置列表所有的容器，默认为页面body(".bd")对象。
+
+注意jContainer必须有固定高度(.bd会由框架自动设置高度)，否则会造成无法上下拉动，除非设置了 opt.canPullDown=false。
 
 ## css类
 
@@ -6765,8 +7625,9 @@ param={idx, arr, isFirstPage}
 
 如果需要作为全局默认设置可以这样：
 
-	$.extend(initPageList.options, {
+	$.extend(MUI.initPageList.options, {
 		pageszName: 'rows', 
+		onNoItem: function (jlst) { ... }
 		...
 	});
 
@@ -6811,6 +7672,8 @@ param={idx, arr, isFirstPage}
 	<div mui-initfn="initPageOrders" mui-script="orders.js">
 		<div class="hd">
 			<h2>订单列表</h2>
+		</div>
+		<div class="hd">
 			<div class="mui-navbar">
 				<a href="javascript:;" class="active" mui-linkto="#lst1">待服务</a>
 				<a href="javascript:;" mui-linkto="#lst2">已完成</a>
@@ -6846,8 +7709,8 @@ jlst:: 当前活动页。函数如果返回false，则取消所有上拉加载�
 
 ## 仅自动加载，禁止下拉刷新行为
 
-有时不想为列表容器指定固定高度，而是随着列表增长而自动向下滚动，在滚动到底时自动加载下一页。
-这时可禁止下拉刷新行为：
+只上拉加载，不需要下拉刷新行为。随着列表增长而自动向下滚动，在滚动到底时自动加载下一页。
+这时容器允许没有固定高度，而是可禁止下拉刷新行为：
 
 	var listItf = initPageList(jpage, 
 		...,
@@ -6858,6 +7721,25 @@ jlst:: 当前活动页。函数如果返回false，则取消所有上拉加载�
 
 设置为false时，当列表到底部时，可以自动加载下一页，但没有下拉刷新行为，这时页面容器也不需要确定高度。
 
+## 本地分页
+
+@param opt.localPageSize
+
+服务器一次性返回所有数据，在前端不想一次性全部显示，比如也按10条一页分页显示，下拉加载下一页，称为本地分页.
+这个场景下可以设置`opt.localPageSize=10`，示例：
+
+	var lstIf = MUI.initPageList(jpage, {
+		...
+		localPageSize: 10, // 设置本地分页
+		onGetQueryParam: function (jlst, queryParam) {
+			queryParam.ac = "Ordr.query";
+			...
+			queryParam.pagesz = -1; // 服务端不分页
+		},
+		onAddItem: onAddItem
+	});
+
+也支持是远程分页+本地分页混用, 但没有意义, 容易造成错乱, 故请匆混用.
  */
 self.initPageList = initPageList;
 function initPageList(jpage, opt)
@@ -6867,6 +7749,7 @@ function initPageList(jpage, opt)
 	var jbtns_ = opt_.navRef instanceof jQuery? opt_.navRef: jpage.find(opt_.navRef);
 	var firstShow_ = true;
 	var busy_ = false;
+	var localPagingFn_ = null;
 
 	if (jbtns_.hasClass("mui-navbar")) {
 		jbtns_ = jbtns_.find("a");
@@ -6918,6 +7801,7 @@ function initPageList(jpage, opt)
 			});
 		});
 
+		var jContainer = opt_.jContainer || jallList_.closest(".bd");
 		if (opt_.canPullDown) {
 			var pullListOpt = {
 				onLoadItem: showOrderList,
@@ -6932,13 +7816,13 @@ function initPageList(jpage, opt)
 				}
 			};
 
-			jallList_.parent().each(function () {
+			jContainer.each(function () {
 				var container = this;
 				initPullList(container, pullListOpt);
 			});
 		}
 		else {
-			jallList_.parent().scroll(function () {
+			jContainer.scroll(function () {
 				var container = this;
 				//var distanceToBottom = cont_.scrollHeight - cont_.clientHeight - cont_.scrollTop;
 				if (! busy_ && container.scrollTop / (container.scrollHeight - container.clientHeight) >= 0.95) {
@@ -6976,12 +7860,14 @@ function initPageList(jpage, opt)
 			if (! tm)
 				return;
 			var diff = mCommon.getTimeDiffDscr(tm, new Date());
-			var str = diff + "刷新";
+			var str = "<p>下拉可以刷新</p>";
+			var str1 = "<p>上次刷新：" + diff + "</p>";
 			if (uptoThreshold) {
-				msg = "<b>" + str + "~~~</b>";
+				str = "<p>松开立即刷新</p>";
+				msg = "<div>" + str + str1 + "</div>";
 			}
 			else {
-				msg = str;
+				msg = "<div>" + str + str1 + "</div>";
 			}
 			return msg;
 		}
@@ -7011,7 +7897,13 @@ function initPageList(jpage, opt)
 		var nextkey = jlst.data("nextkey_");
 		if (isRefresh) {
 			nextkey = null;
+			localPagingFn_ = null;
 		}
+		else if (localPagingFn_) {
+			localPagingFn_();
+			return;
+		}
+
 		if (nextkey == null) {
 			opt_.onRemoveAll(jlst); // jlst.empty();
 		}
@@ -7074,7 +7966,7 @@ function initPageList(jpage, opt)
 			if (opt_.onGetData) {
 				var pagesz = queryParam[opt_.pageszName];
 				var pagekey = queryParam[opt_.pagekeyName];
-				opt_.onGetData(data, pagesz, pagekey);
+				opt_.onGetData.call(jlst, data, pagesz, pagekey);
 			}
 			var arr = data;
 			if ($.isArray(data.h) && $.isArray(data.d)) {
@@ -7088,10 +7980,30 @@ function initPageList(jpage, opt)
 			var isFirstPage = (nextkey == null);
 			var isLastPage = (data.nextkey == null);
 			var param = {arr: arr, isFirstPage: isFirstPage};
-			$.each(arr, function (i, itemData) {
-				param.idx = i;
-				opt_.onAddItem && opt_.onAddItem(jlst, itemData, param);
-			});
+
+			if (opt_.localPageSize && arr.length >= opt_.localPageSize) {
+				// 前端本地分页
+				var curIdx = 0;
+				var fn = function () {
+					for (var i=curIdx; i<arr.length && i-curIdx<opt_.localPageSize; ++i) {
+						param.idx = i;
+						opt_.onAddItem && opt_.onAddItem(jlst, arr[i], param);
+					}
+					if (i >= arr.length) {
+						localPagingFn_ = null;
+					}
+					curIdx = i;
+				};
+				localPagingFn_ = fn;
+				fn(); // 显示第一页
+			}
+			else {
+				$.each(arr, function (i, itemData) {
+					param.idx = i;
+					opt_.onAddItem && opt_.onAddItem(jlst, itemData, param);
+				});
+			}
+
 			if (! isLastPage)
 				jlst.data("nextkey_", data.nextkey);
 			else {
@@ -7140,6 +8052,10 @@ initPageList.options = {
 	canPullDown: true,
 	onRemoveAll: function (jlst) {
 		jlst.empty();
+	},
+	onNoItem: function (jlst) {
+		var ji = $("<div class='noData'>没有数据</div>");
+		ji.appendTo(jlst);
 	}
 };
 
@@ -7202,7 +8118,7 @@ function showByFormMode(jo, formMode)
 /**
 @fn initPageDetail(jpage, opt) -> PageDetailInterface={refresh(), del()}
 
-详情页框架. 用于对象的添加/查看/更新多合一页面.
+详情页框架. 用于对象的添加/查看/更新/删除多合一页面.
 form.action为对象名.
 
 @param opt {pageItf, jform?=jpage.find("form:first"), onValidate?, onGetData?, onNoAction?=history.back, onAdd?, onSet?, onGet?, onDel?}
@@ -7210,7 +8126,7 @@ form.action为对象名.
 pageItf: {formMode, formData}; formData用于forSet模式下显示数据, 它必须有属性id. 
 Form将则以pageItf.formData作为源数据, 除非它只有id一个属性(这时将则调用callSvr获取源数据)
 
-onValidate: Function(jform, queryParam); 提交前的验证, 或做字段补全的工作, 或补全调用参数。queryParam是查询参数，它可能包含{ac?, res?, ...}，可以进行修改。
+onValidate: Function(jform, queryParam); 提交前的验证, 或做字段补全的工作, 或补全调用参数。queryParam是查询参数，它可能包含{ac?, res?, ...}，可以进行修改。(v5.3)支持返回Deferred对象做异步提交。
 onGetData: Function(jform, queryParam); 在forSet模式下，如果需要取数据，则回调该函数，获取get调用的参数。
 onNoAction: Function(jform); 一般用于更新模式下，当没有任何数据更改时，直接点按钮提交，其实不做任何调用, 这时将回调 onNoAction，缺省行为是返回上一页。
 onAdd: Function(id); 添加完成后的回调. id为新加数据的编号. 
@@ -7231,16 +8147,20 @@ onDel: Function(); 删除对象后回调.
 		...
 		<div class="bd">
 			<form action="Person">
+				编号：<input name="id" class="forSet"> 
 				<input name="name" required placeholder="输入名称">
 				<textarea name="dscr" placeholder="写点简介"></textarea>
 				<div class="forSet">人物标签</div>
 
 				<button type="submit" id="btnOK">确定</button>
+				<button type="button" id="btnDel">删除</button>
 				<input type="text" style="display:none" name="familyId">
 
 			</form>
 		</div>
 	</div>
+
+注意：支持设置CSS类forSet,forAdd，用于标识只在更新或添加模式下使用。上例中编号id在添加时不出现，在更新时才显示。
 
 调用initPageDetail使它成为支持添加、查看和更新的详情页：
 
@@ -7253,7 +8173,7 @@ onDel: Function(); 删除对象后回调.
 	{
 		var jpage = this;
 		var pageItf = PagePerson;
-		initPageDetail(jpage, {
+		var detailItf = MUI.initPageDetail(jpage, {
 			pageItf: pageItf, // 需要页面接口提供 formMode, formData等属性。
 			onValidate: function (jf) {
 				// 补足字段和验证字段，返回false则取消form提交。
@@ -7271,6 +8191,12 @@ onDel: Function(); 删除对象后回调.
 				PagePersons.show({refresh: true});
 			},
 		});
+
+		jpage.find("#btnDel").click(btnDel_click);
+
+		function btnDel_click(ev) {
+			app_alert("删除记录？", "q", detailItf.del.bind(detailItf));
+		}
 	}
 
 	// 其它页调用它：
@@ -7309,6 +8235,28 @@ onDel: Function(); 删除对象后回调.
 
 如果formData中有多个属性，则自动以formData的内容作为数据源显示页面，不再发起查询。
 
+(v5.3) 在onValidate中返回Deferred对象，可支持异步提交。
+示例：先上传完照片获得picId后，再添加或保存。
+
+	initPageDetail(jpage, {
+		...,
+		onValidate: function (jf) {
+			var dfd = $.Deferred();
+			// 上传照片完成后再提交
+			uploadPic.submit().then(function (picId) {
+				jf[0].picId.value = picId;
+				dfd.resolve();
+			});
+			return dfd;
+		},
+		onGet: function (data) {
+			// 显示照片
+			jpage.find(".uploadpic").attr("data-atts", data.picId);
+			uploadPic.reset();
+		},
+	}
+
+@see setFormSubmit
 */
 self.initPageDetail = initPageDetail;
 function initPageDetail(jpage, opt)
@@ -7318,7 +8266,7 @@ function initPageDetail(jpage, opt)
 		throw("require opt.pageItf");
 	var jf = opt.jform || jpage.find("form:first");
 	var obj_ = jf.attr("action");
-	if (!obj_ || /\W/.test(obj_)) 
+	if (!obj_ || /\s/.test(obj_)) 
 		throw("bad object: form.action=" + obj_);
 
 	jpage.on("pagebeforeshow", onPageBeforeShow);

@@ -1,0 +1,31 @@
+<div mui-initfn="initPagePic" mui-script="pic.js" mui-deferred="loadUploadLib()">
+<style>
+.bd {
+	box-sizing: border-box;
+	padding: 10px;
+}
+</style>
+	<div class="hd">
+		<a href="javascript:hd_back();" class="btn-icon"><i class="icon icon-back"></i></a>
+		<h2>图片上传测试</h2>
+	</div>
+
+	<div class="bd">
+		<p>单图上传区: 比如用户头像</p>
+		<div class="uploadpic" id="userPic">
+			<div class="uploadpic-item uploadpic-btn" >
+				<input type="file">
+			</div>
+		</div>
+		<p>多图上传区：比如上传产品明细图片。</p>
+		<div class="uploadpic" id="itemPics">
+			<div class="uploadpic-btn" >
+				<input type="file" multiple>
+			</div>
+		</div>
+
+		<div class="sp">
+			<a href="javascript:;" class="weui-btn weui-btn_primary btnUpload">保存照片</a>
+		</div>
+	</div>
+</div>

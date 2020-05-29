@@ -1,78 +1,53 @@
 /* This file contains styles used by all application */
 /* 所有应用共享部分 */
 
-/* overwrite weui */
-.weui-cells {
-	margin-top: 0;
-}
+/* 定义主题色调、字体
 
-.weui-btn {
-	cursor: pointer;
-}
+主题色: #04be02; 如顶栏、高亮按钮、高亮文字等。假如需更换为#546BDC，可直接替换颜色值。
+背景色: #fffffe;
 
-.weui-btn_mini {
-	min-width: 80px;
+.mui-container {
+	background-color: #04be02;
 }
+.mui-page {
+	background-color: #fffffe;
+}
+.mui-page>.hd:first-of-type  {
+	background-color: #04be02;
+	color: #fffffe;
+}
+.mui-navbar > .active {
+	color: #04be02;
+	border-bottom-color: #04be02;
+}
+.mui-btn.primary {
+	color: #04be02;
+}
+.weui-btn_primary, .weui-btn_primary:not(.weui-btn_disabled):active {
+	background-color: #04be02;
+}
+*/
 
-.weui-label {
-	min-width: 4em;
-	margin-right: 0.2em;
-	width: 20%;
+/* 定义通用图标大小，如顶栏和底栏
+.hd >.btn-icon {
+	width: 16px;
+	height: 16px;
+	padding: 10px;
 }
-.weui-cell:before {
-	right: 15px;
-	width: auto;
+.hd .icon {
+	background-size: 16px;
+	width: 16px;
+	height: 16px;
 }
-
-.weui-select {
-	height: auto;
-	-webkit-appearance: menulist;
-}
-
-/****** my css ******/
-.mui-navbar > a {
-	padding: 3px 0;
-}
-
-.mui-container.mui-ios {
-	/* 禁止选择。在IOS上尝试。 */
-	-webkit-user-select: none;
-	/* 禁止系统菜单 */
-	/*-webkit-touch-callout: none; */
-	/*-webkit-overflow-scrolling: touch;*/
-}
-
-.right {
-	text-align: right;
-}
-select.right {
-	direction: rtl;
-}
-
-.icon {
-	background-repeat: no-repeat;
-	display: inline-block;
-}
-
-/* 适合 16x16 列表项或菜单项 */
-.mui-menu .icon {
-	margin: 5px 12px 0px -5px;
-}
-
-.weui-cell .icon {
-	margin: 5px 12px 2px 5px;
-}
-
-.mui-navbar .icon {
-	position: relative;
-	left: -5px;
-	top: 2px;
-}
-
-/* 适合 24x24 底部导航 */
 #footer .icon {
-	position: relative;
-	left: -5px;
-	top: 5px;
+	background-size: 24px;
+	width: 24px;
+	height: 24px;
 }
+.mui-menu .icon, .weui-cell .icon {
+	background-size: 16px;
+	width: 16px;
+	height: 16px;
+}
+*/
 
