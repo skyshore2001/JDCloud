@@ -835,7 +835,7 @@ function dbconn($fnConfirm = null)
 	global $DB, $DBCRED, $DBTYPE;
 
 	// 未指定驱动类型，则按 mysql或sqlite 连接
-	if (! preg_match('/^\w{3,10}:/', $DB)) {
+// 	if (! preg_match('/^\w{3,10}:/', $DB)) {
 		// e.g. P_DB="../carsvc.db"
 		if ($DBTYPE == "sqlite") {
 			$C = ["sqlite:" . $DB, '', ''];
@@ -852,11 +852,11 @@ function dbconn($fnConfirm = null)
 			list($dbuser, $dbpwd) = getCred($DBCRED); 
 			$C = ["mysql:host={$dbhost};dbname={$dbname};port={$dbport}", $dbuser, $dbpwd];
 		}
-	}
-	else {
-		list($dbuser, $dbpwd) = getCred($DBCRED); 
-		$C = [$DB, $dbuser, $dbpwd];
-	}
+// 	}
+// 	else {
+// 		list($dbuser, $dbpwd) = getCred($DBCRED); 
+// 		$C = [$DB, $dbuser, $dbpwd];
+// 	}
 
 	if ($fnConfirm == null)
 		@$fnConfirm = $GLOBALS["dbConfirmFn"];

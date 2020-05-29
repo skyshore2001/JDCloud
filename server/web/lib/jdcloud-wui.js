@@ -1954,7 +1954,7 @@ function parseValue(str)
 self.applyTpl = applyTpl;
 function applyTpl(tpl, data)
 {
-	return tpl.replace(/{(\w+)}/g, function(m0, m1) {
+	return tpl.replace(/{([^{}]+)}/g, function(m0, m1) {
 		return data[m1];
 	});
 }
@@ -5717,7 +5717,7 @@ TODO: 链接的对话框有安全问题
 如果指定了"*"权限，则显示所有菜单。
 如果指定了"不可XX"权限，则topic或cmd匹配XX则不允许。
 
-- topic: 通过菜单、页面、对话框、按钮的wui-perm属性指定，如果未指定，则取其text.
+- topic: 通过菜单、页面、对话框、按钮的wui-perm属性指定（按钮参考dg_toolbar函数），如果未指定，则取其text.
 - cmd: 对话框，新增，修改，删除，导出，自定义的按钮
 
 示例：假设有菜单结构如下（不包含最高管理员专有的“系统设置”）
@@ -6333,6 +6333,15 @@ function showObjDlg(jdlg, mode, opt)
 
 如果想自行定义导出行为参数，可以参考WUI.getExportHandler
 @see getExportHandler 导出按钮设置
+
+按钮的权限（即是否显示）取决于wui-perm和text属性。优先使用wui-perm。系统内置的常用的有："新增", "修改", "删除", "导出"
+下面例子，把“导入”特别设置为内置的权限“新增”，这样不仅不必在角色管理中设置，且设置了“只读”等权限也可自动隐藏它。
+
+	var btn2 = {text: "导入", "wui-perm": "新增", iconCls:'icon-ok', handler: function () {
+		DlgImport.show({obj: "Salary"}, function () {
+			WUI.reload(jtbl);
+		});
+	}};
 */
 self.dg_toolbar = dg_toolbar;
 function dg_toolbar(jtbl, jdlg)
@@ -6386,7 +6395,7 @@ function dg_toolbar(jtbl, jdlg)
 			btn = tb[btn];
 			mCommon.assert(btn, "toolbar button name does not support");
 		}
-		if (btn.text != "-" && !self.canDo(perm, btn.text)) {
+		if (btn.text != "-" && !self.canDo(perm, btn["wui-perm"] || btn.text)) {
 			continue;
 		}
 		btns.push(btn);

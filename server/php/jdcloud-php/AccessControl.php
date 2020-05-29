@@ -2296,6 +2296,7 @@ FROM ($sql) t0";
 
 查询匹配参数q的内容（比如查询name, label等字段）。
 参数q是一个字符串，或多个以空格分隔的字符串。例如"aa bb"表示字段包含"aa"且包含"bb"。
+每个字符串中可以用通配符"*"，如"a*"表示以a开头，"*a"表示以a结尾，而"*a*"和"a"是效果相同的。
 
 实现：
 
@@ -2314,7 +2315,12 @@ FROM ($sql) t0";
 		foreach (preg_split('/\s+/', trim($q)) as $q1) {
 			if (strlen($q1) == 0)
 				continue;
-			$qstr = Q("%$q1%");
+			if (strpos($q1, "*") !== false) {
+				$qstr = Q(str_replace("*", "%", $q1));
+			}
+			else {
+				$qstr = Q("%$q1%");
+			}
 			$cond1 = null;
 			foreach ($fields as $f) {
 				addToStr($cond1, "$f LIKE $qstr", ' OR ');
@@ -2472,7 +2478,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
  如"title=name,-,addr"表示导入第一列name和第三列addr, 其中"-"表示忽略该列，不导入。
  字段列表以逗号或空白分隔, 如"title=name - addr"与"title=name, -, addr"都可以.
 
-支持两种方式上传：
+支持三种方式上传：
 
 1. 直接在HTTP POST中传输内容，数据格式为：首行为标题行(即字段名列表)，之后为实际数据行。
 行使用"\n"分隔, 列使用"\t"分隔.
@@ -2536,6 +2542,19 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 
 如果要调试(php/xdebug)，可加URL参数`XDEBUG_SESSION_START=1`或Cookie中加`XDEBUG_SESSION=1`
 
+3. 传入对象数组
+格式为 {list: [...]}
+
+	var data = {
+		list: [
+			{name: "郭志强", tel: "15384813214"},
+			{name: "高长平", tel: "18375998418"}
+		]
+	};
+	callSvr("Store.batchAdd", function (ret) {
+		app_alert("成功导入" + ret.cnt + "条数据！");
+	}, data, {contentType:"application/json"});
+
 */
 	function api_batchAdd()
 	{
@@ -2549,24 +2568,29 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		$bak_SOLO = ApiFw_::$SOLO;
 		ApiFw_::$SOLO = false; // 避免其间有setRet输出
 		while (($row = $st->getRow()) != null) {
-			if ($n == 1) {
+			if ($st->isTable() && $n == 1) {
 				$titleRow = $row;
 			}
 			else if (($cnt = count($row)) > 0) {
 				// $_POST = array_combine($titleRow, $row);
-				$i = 0;
-				$postParam = [];
-				foreach ($titleRow as $e) {
-					if ($i >= $cnt)
-						break;
-					if ($e === '-') {
-						++ $i;
-						continue;
+				if ($st->isTable()) {
+					$i = 0;
+					$postParam = [];
+					foreach ($titleRow as $e) {
+						if ($i >= $cnt)
+							break;
+						if ($e === '-') {
+							++ $i;
+							continue;
+						}
+						$postParam[$e] = $row[$i++];
+						if ($postParam[$e] === '') {
+							$postParam[$e] = null;
+						}
 					}
-					$postParam[$e] = $row[$i++];
-					if ($postParam[$e] === '') {
-						$postParam[$e] = null;
-					}
+				}
+				else {
+					$postParam = $row;
 				}
 				try {
 					$st->beforeAdd($postParam, $row);
@@ -3075,10 +3099,27 @@ function issetval($k, $arr = null)
 		// $params为待添加数据，可在此修改，如用`$params["k1"]=val1`添加或更新字段，用unset($params["k1"])删除字段。
 		// $row为原始行数据数组。
 		function beforeAdd(&$params, $row) {
-			// vendorName -> vendorId 将params数组中的venderName字段查阅Vendor表改成vendorId字段。如果查不到则报错。传入vendorCache数组来优化查询。
-			translateKey($params, "vendorName", "vendorId", "SELECT id FROM Vendor WHERE name=%s", null, $this->vendorCache);
-			// storeName -> storeId 将params数组中的storeName字段查阅Store表改成storeId字段。如果查不到则自动以指定insert语句创建。
-			translateKey($params, "storeName", "storeId", "SELECT id FROM Store WHERE name=%s", "INSERT INTO Store (name) VALUES (%s)");
+			// vendorName -> vendorId
+			// 如果会大量重复查询vendorName,可以将结果加入cache来优化性能
+			if (! $this->vendorCache)
+				$this->vendorCache = new SimpleCache(); // name=>vendorId
+			$vendorId = $this->vendorCache->get($params["vendorName"], function () use ($params) {
+				$id = queryOne("SELECT id FROM Vendor", false, ["name" => $params["vendorName"]] );
+				if (!$id) {
+					// throw new MyException(E_PARAM, "请添加供应商", "供应商未注册: " . $params["vendorName"]);
+					// 自动添加
+					$id = callSvcInt("Vendor.add", null, [
+						"name" => $params["vendorName"],
+						"tel" => $params["vendorPhone"]
+					]);
+				}
+				return $id;
+			});
+			$params["vendorId"] = $vendorId;
+			unset($params["vendorName"]);
+			unset($params["vendorPhone"]);
+
+			// storeName -> storeId 类似处理 ...
 		}
 		// 处理原始标题行数据, $row1是通过title参数传入的标题数组，可能为空
 		function onGetTitleRow($row, $row1) {
@@ -3126,7 +3167,10 @@ class BatchAddStrategy
 
 	static function create($logic=null) {
 		$st = null;
-		if (empty($_FILES)) {
+		if (isset($_POST["list"])) {
+			$st = new JsonBatchAddStrategy();
+		}
+		else if (empty($_FILES)) {
 			$st = new BatchAddStrategy();
 		}
 		else {
@@ -3144,6 +3188,11 @@ class BatchAddStrategy
 			$paramArr[$k] = $v;
 		}
 		$this->logic->beforeAdd($paramArr, $row);
+	}
+
+	// true: h,d分离的格式, false: objarr格式
+	function isTable() {
+		return true;
 	}
 
 	protected function onInit() {
@@ -3276,6 +3325,20 @@ class CsvBatchAddStrategy extends BatchAddStrategy
 			}
 		} while(self::trimArr($row));
 		return $row;
+	}
+}
+
+class JsonBatchAddStrategy extends BatchAddStrategy
+{
+	private $rows;
+	protected function onInit() {
+		$this->rows = $_POST["list"];
+	}
+	protected function onGetRow() {
+		return $this->rows[$this->rowIdx];
+	}
+	function isTable() {
+		return false;
 	}
 }
 
