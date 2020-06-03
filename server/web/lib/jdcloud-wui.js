@@ -2178,11 +2178,13 @@ function getFormData(jo)
 		data = new FormData();
 	}
 	var orgData = jo.data("origin_") || {};
-	formItems(jo, function (name, content) {
-		var ji = this;
+	formItems(jo, function (ji, name, it) {
+		if (it.getDisabled(ji))
+			return;
 		var orgContent = orgData[name];
 		if (orgContent == null)
 			orgContent = "";
+		content = it.getValue(ji);
 		if (content == null)
 			content = "";
 		if (content !== String(orgContent)) // 避免 "" == 0 或 "" == false
@@ -2219,40 +2221,119 @@ function getFormData(jo)
 /**
 @fn formItems(jo, cb)
 
-遍历jo下带name属性的有效控件，回调cb函数。
+表单对象遍历。对表单jo（实际可以不是form标签）下带name属性的控件，交给回调cb处理。
+可通过扩展`WUI.formItems[sel]`来为表单扩展其它类型控件，参考 `WUI.defaultFormItems`来查看要扩展的接口方法。
 
 注意:
 
 - 忽略有disabled属性的控件
 - 忽略未选中的checkbox/radiobutton
 
-@param cb(name, val) this=ji=当前jquery对象
+@param cb(ji, name, it) it.getDisabled/setDisabled/getValue/setValue/getShowbox
 当cb返回false时可中断遍历。
 
+@key defaultFormItems
  */
 self.formItems = formItems;
-function formItems(jo, cb)
-{
-	jo.find("[name]:not([disabled])").each (function () {
-		var name = this.name || $(this).attr("name");
-		if (! name)
+self.formItems["[name]"] = self.defaultFormItems = {
+	getName: function (jo) {
+		// !!! NOTE: 为避免控件处理两次，这里忽略easyui控件的值控件textbox-value。其它表单扩展控件也可使用该类。
+		if (jo.hasClass("textbox-value"))
 			return;
-
-		var ji = $(this);
-		var val;
-		if (ji.is(":input")) {
-			if (this.type == "checkbox" && !this.checked)
-				return;
-			if (this.type == "radio" && !this.checked)
-				return;
-			val = ji.val();
+		return jo.attr("name") || jo.prop("name");
+	},
+	getDisabled: function (jo) {
+		var v = jo.prop("disabled") || jo.attr("disabled");
+		var o = jo[0];
+		if (! v && o.tagName == "INPUT") {
+			if (o.type == "checkbox" && !o.checked)
+				return true;
+			if (o.type == "radio" && !o.checked)
+				return true;
+		}
+		return v;
+	},
+	setDisabled: function (jo, val) {
+		jo.prop("disabled", !!val);
+		if (val)
+			jo.attr("disabled", "disabled");
+		else
+			jo.removeAttr("disabled");
+	},
+	setValue: function (jo, val) {
+		var isInput = jo.is(":input");
+		if (val === undefined) {
+			if (isInput) {
+				var o = jo[0];
+				// 取初始值
+				if (o.tagName === "TEXTAREA")
+					val = jo.html();
+				else if (! (o.tagName == "INPUT") && (o.type == "hidden")) // input[type=hidden]对象比较特殊：设置property value后，attribute value也会被设置。
+					val = jo.attr("value");
+				if (val === undefined)
+					val = "";
+			}
+			else {
+				val = "";
+			}
+		}
+		if (isInput) {
+			jo.val(val);
 		}
 		else {
-			val = ji.html();
+			jo.html(val);
 		}
-		if (cb.call(ji, name,  val) === false)
+	},
+	getValue: function (jo) {
+		var val;
+		if (jo.is(":input")) {
+			val = jo.val();
+		}
+		else {
+			val = jo.html();
+		}
+		return val;
+	},
+	// TODO: 用于find模式设置。搜索"设置find模式"/datetime
+	getShowbox: function (jo) {
+		return jo;
+	}
+};
+
+/*
+// 倒序遍历对象obj, 用法与$.each相同。
+function eachR(obj, cb)
+{
+	var arr = [];
+	for (var prop in obj) {
+		arr.push(prop);
+	}
+	for (var i=arr.length-1; i>=0; --i) {
+		var v = obj[arr[i]];
+		if (cb.call(v, arr[i], v) === false)
+			break;
+	}
+}
+*/
+
+function formItems(jo, cb)
+{
+	var doBreak = false;
+	$.each(self.formItems, function (sel, it) {
+		jo.filter(sel).add(jo.find(sel)).each (function () {
+			var ji = $(this);
+			var name = it.getName(ji);
+			if (! name)
+				return;
+			if (cb(ji, name, it) === false) {
+				doBreak = true;
+				return false;
+			}
+		});
+		if (doBreak)
 			return false;
 	});
+	return !doBreak;
 }
 
 /**
@@ -2264,7 +2345,7 @@ function formItems(jo, cb)
 注意:
 - DOM项的内容指: 如果是input/textarea/select等对象, 内容为其value值; 如果是div组件, 内容为其innerHTML值.
 - 当data[name]未设置(即值为undefined, 注意不是null)时, 对于input/textarea等组件, 行为与form.reset()逻辑相同, 
- 即恢复为初始化值, 除了input[type=hidden]对象, 它的内容不会变.
+ 即恢复为初始化值。（特别地，form.reset无法清除input[type=hidden]对象的内容, 而setFormData可以)
  对div等其它对象, 会清空该对象的内容.
 - 如果对象设置有属性"noReset", 则不会对它进行设置.
 
@@ -2312,28 +2393,13 @@ function setFormData(jo, data, opt)
 	}, opt);
 	if (data == null)
 		data = {};
-	var jo1 = jo.filter("[name]:not([noReset])");
-	jo.find("[name]:not([noReset])").add(jo1).each (function () {
-		var ji = $(this);
-		var name = ji.attr("name");
+	formItems(jo, function (ji, name, it) {
+		if (ji.attr("noReset"))
+			return;
 		var content = data[name];
 		if (opt1.setOnlyDefined && content === undefined)
 			return;
-		var isInput = ji.is(":input");
-		if (content === undefined) {
-			if (isInput && ji[0].tagName === "INPUT") {
-				content = ji.attr("value");
-			}
-			else {
-				content = "";
-			}
-		}
-		if (isInput) {
-			ji.val(content);
-		}
-		else {
-			ji.html(content);
-		}
+		it.setValue(ji, content);
 	});
 	jo.data("origin_", opt1.setOrigin? data: null);
 }
@@ -3093,6 +3159,10 @@ function getop(v)
 		v = "";
 	if (v.length == 0 || v.match(/\D/) || v[0] == '0') {
 		v = v.replace(/'/g, "\\'");
+		if (self.options.fuzzyMatch && op == "=" && v.length>0) {
+			op = " like ";
+			v = "%" + v + "%";
+		}
 // 		// ???? 只对access数据库: 支持 yyyy-mm-dd, mm-dd, hh:nn, hh:nn:ss
 // 		if (!is_like && v.match(/^((19|20)\d{2}[\/.-])?\d{1,2}[\/.-]\d{1,2}$/) || v.match(/^\d{1,2}:\d{1,2}(:\d{1,2})?$/))
 // 			return op + "#" + v + "#";
@@ -5342,8 +5412,8 @@ function showDlg(jdlg, opt)
 	if (opt.reset)
 	{
 		mCommon.setFormData(jdlg); // reset
-		// !!! NOTE: setFormData or form.reset does not reset hidden items, which causes data is not cleared for find mode !!!
-		jdlg.find("[type=hidden]:not([noReset])").val("");
+		// !!! NOTE: form.reset does not reset hidden items, which causes data is not cleared for find mode !!!
+		// jdlg.find("[type=hidden]:not([noReset])").val(""); // setFormData可将hidden清除。
 		jdlg.find(".my-reset").empty();
 	}
 	if (opt.data)
@@ -5818,16 +5888,16 @@ function getFindData(jfrm)
 {
 	var kvList = {};
 	var kvList2 = {};
-	jfrm.find(":input[name]").each(function(i,e) {
-		if ($(e).hasClass("notForFind"))
+	self.formItems(jfrm, function (ji, name, it) {
+		if (ji.hasClass("notForFind"))
 			return;
-		var v = $(e).val();
+		var v = it.getValue(ji);
 		if (v == null || v === "")
 			return;
-		if ($(e).hasClass("wui-notCond"))
-			kvList2[e.name] = v;
+		if (ji.hasClass("wui-notCond"))
+			kvList2[name] = v;
 		else
-			kvList[e.name] = v;
+			kvList[name] = v;
 	})
 	var param = self.getQueryParam(kvList);
 	if (kvList2) 
@@ -6129,7 +6199,7 @@ function showObjDlg(jdlg, mode, opt)
 	// 设置find模式
 	var doReset = ! (jd.mode == FormMode.forFind && mode == FormMode.forFind) // 一直是find, 则不清除
 	if (mode == FormMode.forFind && jd.mode != FormMode.forFind) {
-		jfrm.find(":input[name]").each (function (i,e) {
+		jfrm.find(":input[name], .textbox-text").each (function (i,e) {
 			var je = $(e);
 			var bak = je.jdata().bak = {
 				disabled: je.prop("disabled"),
@@ -6139,6 +6209,8 @@ function showObjDlg(jdlg, mode, opt)
 			if (je.hasClass("notForFind") || je.attr("notForFind") != null) {
 				je.prop("disabled", true);
 				je.css("backgroundColor", "");
+			}
+			else if (je.is("[type=hidden]")) {
 			}
 			else {
 				je.prop("disabled", false);
@@ -6154,9 +6226,11 @@ function showObjDlg(jdlg, mode, opt)
 		jfrm.find(".easyui-validatebox").validatebox("disableValidation");
 	}
 	else if (jd.mode == FormMode.forFind && mode != FormMode.forFind) {
-		jfrm.find(":input[name]").each (function (i,e) {
+		jfrm.find(":input[name], .textbox-text").each (function (i,e) {
 			var je = $(e);
 			var bak = je.jdata().bak;
+			if (bak == null)
+				return;
 			je.prop("disabled", bak.disabled);
 			je.removeClass("wui-find-field");
 			je.prop("title", bak.title);
@@ -7138,6 +7212,7 @@ window.FormMode = {
 - pageHome: 首页的id, 默认为"pageHome"
 - pageFolder: 子页面或对话框所在文件夹, 默认为"page"
 - closeAfterAdd: (=false) 设置为true时，添加数据后关闭窗口。默认行为是添加数据后保留并清空窗口以便连续添加。
+- fuzzyMatch: (=false) 设置为true时，则查询对话框中的文本查询匹配字符串任意部分。
 */
 self.options = {
 	title: "客户端",

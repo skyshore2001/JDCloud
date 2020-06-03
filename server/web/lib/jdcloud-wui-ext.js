@@ -790,6 +790,224 @@ function enhanceMenu()
 $(enhanceMenu);
 
 /**
+@key .wui-combogrid
+
+可搜索的下拉列表。
+示例：在dialog上，填写门店字段（填写Id，显示名字），从门店列表中选择一个门店。
+
+	<form my-obj="Task" title="安装任务" wui-script="dlgTask.js" my-initfn="initDlgTask">
+		<tr>
+			<td>门店</td>
+			<td>
+				<input class="wui-combogrid" name="storeId" data-options="ListOptions.StoreGrid">
+			</td>
+		</tr>
+	</form>
+
+选项定义如下：
+
+	ListOptions.StoreGrid = {
+		jd_vField: "storeName",
+		panelWidth: 450,
+		width: '95%',
+		textField: "name",
+		columns: [[
+			{field:'id',title:'编号',width:80},
+			{field:'name',title:'名称',width:120}
+		]],
+		url: WUI.makeUrl('Store.query', {
+			res: 'id,name',
+		})
+	};
+
+属性请参考easyui-combogrid相关属性。wui-combogrid扩展属性如下:
+
+- jd_vField: 显示文本对应的虚拟字段, 用于初始显示和查询。
+- jd_showId: 默认为true. 显示"idField - textField"格式. 设置为false时只显示textField.
+
+在输入时，它会自动以url及参数q向后端发起查询，如`callSvr("Store.query", {res:'id,name', q='1'})`.
+在筋斗云后端须支持相应对象的模糊查询(请查阅文档qsearch)。
+
+特别逻辑：
+
+- 在初始化时，由于尚未从后端查询文本，这时显示jd_vField字段的文本。
+- 如果输入值不在列表中，且不是数字，将当作非法输入被清空。
+- 特别地，在查询模式下（forFind），可以输入任意条件，比如">10", "1-10"等。如果输入的是文本，比如"上海*"，则自动以jd_vField字段进行而非数值编号进行查询。
+ */
+self.m_enhanceFn[".wui-combogrid"] = enhanceCombogrid;
+function enhanceCombogrid(jo)
+{
+	var opt1 = WUI.getOptions(jo);
+	jo.removeAttr("data-options"); // 避免被easyui错误解析
+	var jdlg;
+	var $dg;
+	var doInit = true;
+
+	var vfield = opt1.jd_vField;
+	var showId = opt1.jd_showId;
+
+	var opt = $.extend({}, $.fn.datagrid.defaults, {
+		delay: 500,
+		idField: "id",
+		textField: "name",
+		jd_showId: true,
+		mode: 'remote',
+		// 首次打开面板时加载url
+		onShowPanel: function () {
+			if (doInit && opt1.url) {
+				doInit = false;
+				$dg.datagrid("options").url = opt1.url;
+				$dg.datagrid("reload");
+			}
+		},
+		// 值val必须为数值(因为值对应id字段)才合法, 否则将清空val和text
+		onHidePanel: function () {
+			var val = jo.combogrid("getValue");
+			if (! val)
+				return;
+			if (jdlg.size() > 0 && jdlg.jdata().mode == FormMode.forFind) {
+				if (vfield && /[^\d><=!-,]/.test(val) ) {
+					jo.prop("nameForFind", vfield);
+				}
+				return;
+			}
+			jo.removeProp("nameForFind");
+
+//			var val1 = jo.combogrid("textbox").val();
+			if (! $.isNumeric(val)) {
+				jo.combogrid("setValue", "");
+			}
+			else if (opt.jd_showId) {
+				var txt = jo.combogrid("getText");
+				if (! /^\d+ - /.test(txt)) {
+					jo.combogrid("setText", val + " - " + txt);
+				}
+			}
+		},
+		// !!! TODO: 解决combogrid 1.4.2的bug. 1.5.2以上已修复, 应移除。
+		onLoadSuccess: function () {
+			$dg && $.fn.datagrid.defaults.onLoadSuccess.apply($dg[0], arguments);
+		}
+	}, opt1);
+
+	// 创建后再指定，这样初始化时不调用接口
+	opt.url = null;
+	jo.combogrid(opt);
+	$dg = jo.combogrid("grid");
+// 	if (url) {
+// 		$dg.datagrid("options").url = url;
+// 	}
+
+/*
+	jo.combogrid("textbox").blur(function (ev) {
+		var val1 = this.value;
+	});
+	*/
+
+	jdlg = jo.closest(".wui-dialog");
+	if (jdlg.size() == 0)
+		return;
+
+	jdlg.on("beforeshow", onBeforeShow);
+
+	function onBeforeShow(ev, formMode, opt) {
+		if (formMode == FormMode.forSet && vfield) {
+			setTimeout(function () {
+				// onShow
+				var val = jo.combogrid("getValue");
+				if (val != "") {
+					var txt = showId? val + " - " + opt.data[vfield]: opt.data[vfield];
+					jo.combogrid("setText", txt);
+				}
+			});
+			jo.removeProp("nameForFind");
+		}
+	}
+}
+
+/**
+@key .combo-f
+
+支持基于easyui-combo的表单扩展控件，如 combogrid/datebox/datetimebox等, 在使用WUI.getFormData时可以获取到控件值.
+
+示例：可以在对话框或页面上使用日期/日期时间选择控件：
+
+	<input type="text" name="startDt" class="easyui-datebox">
+	<input type="text" name="startTm" data-options="showSeconds:false" class="easyui-datetimebox">
+
+form提交时能够正确获取它们的值：
+	var d = WUI.getFormData(jfrm); // {startDt: "2019-10-10", startTm: "2019-10-10 10:10"}
+
+而且在查询模式下，日期等字段也不受格式限制，可输入诸如"2019-10", "2019-1-1~2019-7-1"这样的表达式。
+*/
+self.formItems[".combo-f"] = $.extend({}, self.defaultFormItems, {
+	getComboType_: function (jo) {
+		var o = jo[0];
+		if (! o.comboType) {
+			var arr = Object.keys(jo.data()); // e.g. ["combogrid", "combo", "textbox"]
+			// console.log(arr);
+			for (var i=0; i<arr.length; ++i) {
+				if (jo[arr[i]]) {
+					o.comboType = arr[i];
+					break;
+				}
+			}
+		}
+		return o.comboType;
+	},
+	getName: function (jo) {
+		// 取原始名字comboname
+		return jo.prop("nameForFind") || jo.attr("comboname");
+	},
+	setValue: function (jo, val) {
+		var type = this.getComboType_(jo);
+		jo[type]("setValue", val);
+	},
+	getValue: function (jo) {
+		var type = this.getComboType_(jo);
+		return jo[type]("getValue");
+	}
+});
+
+/*
+self.formItems[".combogrid-f"] = $.extend({}, self.defaultFormItems, {
+	getName: function (jo) {
+		return jo.attr("comboname");
+	},
+	setValue: function (jo, val) {
+		jo.combogrid("setValue", val);
+	},
+	getValue: function (jo) {
+		return jo.combogrid("getValue");
+	}
+});
+
+self.formItems[".datebox-f"] = $.extend({}, self.defaultFormItems, {
+	getName: function (jo) {
+		return jo.attr("comboname");
+	},
+	setValue: function (jo, val) {
+		jo.datebox("setValue", val);
+	},
+	getValue: function (jo) {
+		return jo.datebox("getValue");
+	}
+});
+
+self.formItems[".datetimebox-f"] = $.extend({}, self.defaultFormItems, {
+	getName: function (jo) {
+		return jo.attr("comboname");
+	},
+	setValue: function (jo, val) {
+		jo.datetimebox("setValue", val);
+	},
+	getValue: function (jo) {
+		return jo.datetimebox("getValue");
+	}
+});
+*/
+
+/**
 @fn toggleCol(jtbl, col, show)
 
 显示或隐藏datagrid的列。示例：

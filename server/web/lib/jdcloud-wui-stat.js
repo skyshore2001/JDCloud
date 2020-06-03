@@ -609,16 +609,12 @@ initPageStat函数是对本函数的包装。参数可参考initPageStat函数�
 function runStat(jo, jcharts, setStatOpt)
 {
 	var condArr = [];
-	WUI.formItems(jo, function (name, val) {
-		var ji = this;
+	WUI.formItems(jo, function (ji, name, it) {
+		var val = it.getValue(ji);
 
 		if (val == null || val == "" || val == "无" || val == "全部")
 			return;
 
-		// fix for easyui-datetimebox
-		if (ji.is(".textbox-value")) {
-			ji = ji.parent().prev(".textbox-f");
-		}
 		var op = ji.attr('data-op');
 		if (op) {
 			val = op + ' ' + val;
