@@ -6,6 +6,22 @@ html {
 input,select,textarea {
 	font-size: 13px;
 }
+/* overwrite easyui */
+.textbox .textbox-text {
+	font-size: 13px;
+	padding: 2px 5px;
+}
+.combo {
+	border-color: rgb(169, 169, 169);
+}
+.wui-form-table td .combo.textbox {
+	width: 95% !important;
+	height: auto !important;
+}
+.wui-form-table td .combo.textbox .textbox-text{
+	width: 100% !important;
+}
+/* end */
 
 .wui-page {
 	box-sizing: border-box;
