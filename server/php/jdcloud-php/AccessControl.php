@@ -547,6 +547,31 @@ subobj: { name => {sql, default?=false, wantOne?=false, force?=false} }
 - wantOne: 如果为true, 则结果以一个对象返回即 {id, tm, ...}, 适用于主表与子表一对一的情况。
 - force: (v5.1) 如果sql中没有与主表的关联即没有包含"field=%d"，应指定force=true，否则在query接口中会当作语句错误。
 
+(v5.5) 关联子表对象
+典型的主子表关系是一对多的，如果将上面例子反过来，在`OrderLog.query`中想返回Ordr对象，也可使用subobj机制，设置"%d"为外键，如接口定义为：
+
+	OrderLog.query() -> tbl(id, ..., @ordr)
+
+可实现为：
+
+	class AC2_OrderLog extends AccessControl
+	{
+		protected $subobj = [
+			"ordr" => [
+				"%d" => "orderId", // (v5.5新增) 设置关联外键，下面cond中的%d即使用这里指定的字段。若不指定，默认为"id"
+				//"sql"=>"SELECT o.* FROM Ordr o LEFT JOIN Job j ON o.id=j.orderId WHERE j.id=%d",
+				"obj"=>"Ordr", "AC"=>"AC2_Ordr", "cond"=>"t0.id=%d", 
+				"res" => "t0.*",
+				"wantOne"=>true,
+				"default"=>true
+			]
+		];
+	}
+
+多对一的关联表往往设置`wantOne=true`，这样ordr属性就是个对象而非数组。
+
+注意：关联表不适用于添加/更新的情况。
+
 ### 子表查询参数
 
 (v5.4)
@@ -1058,16 +1083,32 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		return $x;
 	}
 
-	/*
-	支持get/post参数中同时有cond参数，且cond参数允许为数组，比如传
-		URL中：cond[]=a=1&cond[]=b=2
-		POST中：cond=c=3
-	后端处理成 "a=1 AND b=2 AND c=3"
+/*
+@fn AccessControl.getCondStr($condArr)
+
+将条件数组生成条件字符串，如：
+
+	$condStr = getCondStr(["a=1", "b=2"]); // "a=1 AND b=2"
+	$condStr = getCondStr(["a=1", "b=2 or b=3"]); // "a=1 AND (b=2 or b=3)"
+
+支持前端传入的get/post参数中同时有cond参数，且cond参数允许为数组，比如传
+
+	URL中：cond[]=a=1&cond[]=b=2
+	POST中：cond=c=3
+
+后端处理
+
+	getCondStr([$_GET[$name], $_POST[$name]]);
+
+最终得到cond参数为"a=1 AND b=2 AND c=3"。
 
 示例: url参数支持数组. post参数无论用urlencoded格式或json格式也都支持数组: 
+
 	callSvr("Hub.query", {res:"id", cond: ["id=1", "id=2"]}, $.noop, {cond: ["id=3", "id=4"]})
 	callSvr("Hub.query", {res:"id", cond: ["id=1", "id=2"]}, $.noop, {cond: ["id=3", "id=4"]}, {contentType:"application/json"})
-	*/
+
+@see getQueryCond
+*/
 	static function getCondStr($condArr)
 	{
 		if (! $condArr)
@@ -1132,18 +1173,13 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		}
 		if (($v = param("join")) != null) {
 			if (! $v instanceof DbExpr)
-				throw new MyException(E_SERVER, "res2 should be DbExpr");
+				throw new MyException(E_SERVER, "join should be DbExpr");
 			$this->addJoin($v->val);
 		}
 		if (($v = param("cond2", null, null, false)) != null) {
 			if (! $v instanceof DbExpr)
 				throw new MyException(E_SERVER, "cond2 should be DbExpr");
 			$this->addCond($v->val);
-		}
-		if (($v = param("subobj")) != null) {
-			if (! $v instanceof DbExpr)
-				throw new MyException(E_SERVER, "subobj should be DbExpr");
-			$this->sqlConf["subobj"][] = $v->val;
 		}
 
 		$this->onQuery();
@@ -1175,8 +1211,9 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			$this->addDefaultVCols();
 			if (count($this->sqlConf["subobj"]) == 0) {
 				foreach ($this->subobj as $col => $def) {
-					if (@$def["default"])
-						$this->sqlConf["subobj"][$col] = $def;
+					if (@$def["default"]) {
+						$this->addSubobj($col, $def);
+					}
 				}
 			}
 		}
@@ -1302,7 +1339,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			$acObj = new static();
 			return $acObj->callSvc($tbl ?: $this->table, $ac, $param, $postParam);
 		}
-		if ($param || $postParam) {
+		if ($param !== null || $postParam !== null) {
 			return tmpEnv($param, $postParam, function () use ($tbl, $ac) {
 				return $this->callSvc($tbl, $ac);
 			});
@@ -1464,6 +1501,13 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			$this->aliasMap[self::removeQuote($col)] = self::removeQuote($alias);
 	}
 
+	private function addSubobj($col, $def) {
+		$this->sqlConf["subobj"][$col] = $def;
+		if (array_key_exists("%d", $def)) {
+			$this->filterRes($def["%d"]);
+		}
+	}
+
 	// 和fixUserQuery处理外部cond类似(安全版的addCond), filterRes处理外部传入的res (安全版的addRes)
 	// return: new field list
 	private function filterRes($res, $gres=false)
@@ -1521,7 +1565,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			if ($this->addVCol($col, true, $alias) === false) {
 				if (!$gres && array_key_exists($col, $this->subobj)) {
 					$key = self::removeQuote($alias ?: $col);
-					$this->sqlConf["subobj"][$key] = $this->subobj[$col];
+					$this->addSubobj($key, $this->subobj[$col]);
 				}
 				else {
 					if ($isAll)
@@ -1613,7 +1657,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 
 	// 内部被addRes调用。避免重复添加字段到res
 	private function addResInt(&$resArr, $col) {
-		$ignoreT0 = @$resArr[0] == "t0.*";
+		$ignoreT0 = in_array("t0.*", $resArr);
 		// 如果有"t0.*"，则忽略主表字段如"t0.id"，但应避免别名字段如"t0.id orderId"被去掉
 		if ($ignoreT0 && substr($col,0,3) == "t0." && strpos($col, ' ') === false)
 			return;
@@ -2108,18 +2152,27 @@ FROM ($sql) t0";
 
 内部调用时还支持以下参数：
 
-- res2, cond2: 它们要求为数组，数组的每一项与res, cond含义相同。这样不覆盖res, cond参数（从而外部仍可以使用它们）。
-- join: 要求为数组。指定关联表。
-- subobj: 指定子对象。
+- res2, cond2: 与res, cond含义相同，为确保只能通过后端代码调用，不可由前端参数指定，必须用dbExpr包一层，比如
+		[
+			"res2"=>dbExpr("id,name,snCnt"),
+			"cond2"=>dbExpr("tm>'2020-1-1'")
+		]
+ 用于为AccessControl类指定res/cond外的其它字段或条件，而res/cond是可以由前端来指定的。
+
+- join: 指定关联表。必须用dbExpr包一层。
 
 调用示例：
 
 	// 定死res外部无法覆盖, 但外部可额外指定cond参数
 	$ret = callSvcInt("PdiRecord.query", [
-		"res": "id,vinCode,result,orderId,tm",
-		"cond2": ["type='EQ'", "tm>='2019-1-1'"]
+		"res": "id,vinCode,result,orderId,tm", // 用了res则意味着不允许前端指定字段，用res2则前端还可以用res指定其它字段
+		"cond2": dbExpr("type='EQ' AND tm>='2019-1-1'") // 多个条件也可这样自动拼接： getQueryCond(["type='EQ'", "tm>='2019-1-1'])
 	]);
 
+@see AccessControl::addCond
+@see AccessControl::addRes
+@see AccessControl::addJoin
+@see getQueryCond
 */
 	function api_query()
 	{
@@ -2635,7 +2688,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 			}
 			$param = array_merge($opt, $param1);
 			if ($cond) {
-				$param["cond2"] = [$cond];
+				$param["cond2"] = dbExpr($cond);
 			}
 			if (isset($param1["wantOne"])) {
 				$opt["wantOne"] = param("wantOne/b", null, $param1);
@@ -2680,9 +2733,17 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 			# $opt: {sql, wantOne=false}
 			foreach ($subobj as $k => $opt) {
 				if ($opt["obj"] && $opt["cond"]) {
-					$cond = sprintf($opt["cond"], $id); # e.g. "orderId=%d"
-					$ret1 = $this->querySubObj($k, $opt, [
-						"cond" => $cond
+					$id1 = @$opt["%d"]? $mainObj[$opt["%d"]] : $id; // %d指定的关联字段会事先添加
+					$opt["cond"] = sprintf($opt["cond"], $id1); # e.g. "orderId=%d"
+					$res = param("res_$k");
+					if ($res) {
+						$opt["res"] = $res;
+					}
+					$objName = $opt["obj"];
+					$acObj = AccessControl::create($objName, null, $opt["AC"]);
+					$rv = $acObj->callSvc($objName, "query", $opt + [
+						"fmt" => "list",
+						"pagesz" => -1
 					]);
 				}
 				else if (! @$opt["sql"]) {
@@ -2710,23 +2771,18 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 	protected function handleSubObjForList(&$ret)
 	{
 		$subobj = $this->sqlConf["subobj"];
-		if (! is_array($subobj) || count($subobj)==0)
+		if (! is_array($subobj) || count($subobj)==0 || count($ret) == 0)
 			return;
 
-		$idArr = [];
-		foreach ($ret as $row) {
-			$key = $row["id"] ?: $row["编号"]; // TODO: use id
-			if ($key === null)
-				continue;
-			$idArr[] = $key;
-		}
-		if (count($idArr) == 0)
-			return;
-		$idList = join(',', $idArr);
-
+		$row1 = $ret[0];
 		# $opt: {sql, wantOne=false}
 		foreach ($subobj as $k => $opt) {
+			$idField = $opt["%d"] ?: "id"; // 主表关联字段，默认为id，也可由"%d"选项指定。TODO: "编号"
 			$joinField = null;
+			$idArr = array_map(function ($e) use ($idField) {
+				return $e[$idField];
+			}, $ret);
+			$idList = join(',', $idArr);
 			if ($opt["obj"] && $opt["cond"]) {
 				// $opt["cond"] = sprintf($opt["cond"], $id); # e.g. "orderId=%d"
 				$cond = preg_replace_callback('/(\S+)=%d/', function ($ms) use (&$joinField, $idList){
@@ -2735,7 +2791,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 				}, $opt["cond"]); 
 				$ret1 = $this->querySubObj($k, $opt, [
 					"cond" => $cond,
-					"res2" => ["$joinField id_"]
+					"res2" => dbExpr("$joinField id_")
 				]);
 //				$acObj->addRes("$joinField id_");
 			}
@@ -2785,7 +2841,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 				}
 			}
 			foreach ($ret as &$row) {
-				$key = $row["id"] ?: $row["编号"]; // TODO: use id
+				$key = $row[$idField] ?: $row["编号"]; // TODO: use id
 				$val = @$subMap[$key];
 				if (@$opt["wantOne"]) {
 					if ($val !== null)

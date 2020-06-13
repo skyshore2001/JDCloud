@@ -13,11 +13,13 @@
 
 dbuser=xeycro
 dbpwd=xeyc2014
+dbhost=localhost
 db=carsvc
 
 bak=bak/db_`date +%Y%m%d_%H%M%S`.gz
 
-mysqldump -u$dbuser -p$dbpwd --routines $db --master-data=2 --ignore-table=${db}.ApiLog --ignore-table=${db}.ApiLog1 --ignore-table=${db}.Syslog --ignore-table=${db}.ObjLog | gzip > $bak
+mysqldump -h$dbhost -u$dbuser -p$dbpwd --routines $db --ignore-table=${db}.ApiLog --ignore-table=${db}.ApiLog1 --ignore-table=${db}.Syslog --ignore-table=${db}.ObjLog | gzip > $bak
+#--master-data=2 
 
 echo "=== db backup to file '$bak'"
 

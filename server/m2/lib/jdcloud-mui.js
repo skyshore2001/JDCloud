@@ -972,7 +972,12 @@ Date.prototype.diff = function(sInterval, dtEnd)
 	var dtStart = this;
 	switch (sInterval) 
 	{
-		case 'd' :return Math.round((dtEnd - dtStart) / 86400000);
+		case 'd' :
+		{
+			var d1 = (dtStart.getTime() - dtStart.getTimezoneOffset()*60000) / 86400000;
+			var d2 = (dtEnd.getTime() - dtEnd.getTimezoneOffset()*60000) / 86400000;
+			return Math.floor(d2) - Math.floor(d1);
+		}	
 		case 'm' :return dtEnd.getMonth() - dtStart.getMonth() + (dtEnd.getFullYear()-dtStart.getFullYear())*12;
 		case 'y' :return dtEnd.getFullYear() - dtStart.getFullYear();
 		case 's' :return Math.round((dtEnd - dtStart) / 1000);
@@ -1504,10 +1509,9 @@ function appendParam(url, param)
 self.deleteParam = deleteParam;
 function deleteParam(url, paramName)
 {
-	var ret = url.replace(new RegExp('&?' + paramName + "(=[^&#]+)?"), '');
-	if (ret.indexOf('?&') >=0) {
-		ret = ret.replace('?&', '?');
-	}
+	var ret = url.replace(new RegExp('&?\\b' + paramName + "\\b(=[^&#]+)?"), '');
+	ret = ret.replace(/\?&/, '?');
+	// ret = ret.replace(/\?(#|$)/, '$1'); // 问号不能去掉，否则history.replaceState(null,null,"#xxx")会无效果
 	return ret;
 }
 
@@ -2645,6 +2649,8 @@ function setOnError()
 		if (fn && fn.apply(this, arguments) === true)
 			return true;
 		if (errObj instanceof DirectReturn || /abort$/.test(msg) || (!script && !line))
+			return true;
+		if (self.options.skipErrorRegex && self.options.skipErrorRegex.test(msg))
 			return true;
 		if (errObj === undefined && msg === "[object Object]") // fix for IOS9
 			return true;
@@ -6066,6 +6072,15 @@ TODO: cordova-ios未来将使用WkWebView作为容器（目前仍使用UIWebView
 
 (v5.4) 默认如果在500ms内如果远程调用成功, 则不显示加载图标.
 
+
+@var options.skipErrorRegex 定义要忽略的错误
+
+示例：有video标签时，缩小窗口或全屏预览时，有时会报一个错（见下例），暂不清楚解决方案，也不影响执行，可以先安全忽略它不要报错：
+
+	$.extend(MUI.options, {
+		skipErrorRegex: /ResizeObserver loop limit exceeded/i,
+	});
+
 */
 	var m_opt = self.options = {
 		appName: "user",
@@ -6082,7 +6097,9 @@ TODO: cordova-ios未来将使用WkWebView作为容器（目前仍使用UIWebView
 
 		pluginFolder: "../plugin",
 		showHash: ($("base").attr("mui-showHash") != "no"),
-		statusBarColor: "#,light"
+		statusBarColor: "#,light",
+
+		skipErrorRegex: null
 	};
 
 	var m_onLoginOK;

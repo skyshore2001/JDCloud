@@ -1367,7 +1367,7 @@ $file为插件主文件，可返回一个插件配置。如果未指定，则自
 		setParam("res", "id, score, dscr, tm, orderDscr");
 
 		// 相当于AccessControl框架中调用 addCond，用Obj.query接口的内部参数cond2以保证用户还可以使用cond参数。
-		setParam("cond2", ["o.storeId=$storeId"]); 
+		setParam("cond2", dbExpr("o.storeId=$storeId")); 
 
 		// 定死排序条件
 		setParam("orderby", "tm DESC");
@@ -1389,7 +1389,7 @@ v5.4后建议这样实现：
 		$ret = $acObj->callSvc("Rating", "query", [
 			// 定死输出内容。
 			"res" => "id, score, dscr, tm, orderDscr",
-			"cond2" => ["storeId=$storeId"],
+			"cond2" => dbExpr("storeId=$storeId"),
 			"orderby" => "tm DESC"
 		]);
 		return $ret;
@@ -1557,6 +1557,9 @@ function getHttpInput()
 		if (preg_match('/charset=([\w-]+)/i', $ct, $ms)) {
 			$charset = strtolower($ms[1]);
 			if ($charset != "utf-8") {
+				if ($charset == "gbk" || $charset == "gb2312") {
+					$charset = "gb18030";
+				}
 				@$content = iconv($charset, "utf-8//IGNORE", $content);
 			}
 			if ($content === false)
