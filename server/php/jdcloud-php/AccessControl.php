@@ -1770,6 +1770,8 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	private function setColFromRes($res, $added, $vcolDefIdx=-1)
 	{
 		if (preg_match('/^(\w+)\.(\w+)$/u', $res, $ms)) {
+			if ($ms[1] == "t0")
+				return;
 			$colName = $ms[2];
 			$def = $res;
 		}
