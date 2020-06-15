@@ -34,6 +34,12 @@ self.options.statFormatter = {
 	y: function (value) {
 		return value + "年";
 	},
+	m: function (value) {
+		return value + "月";
+	},
+	d: function (value) {
+		return value + "日";
+	},
 
 	// for tmUnit:
 	"y,m": function (tmArr) {
@@ -53,7 +59,7 @@ self.options.statFormatter = {
 		return dt.getFullYear() + "-" + (dt.getMonth()+1) + "-" + dt.getDate();
 	},
 	"y,q": function (tmArr) {
-		ret = tmArr[0] + "-Q" + tmArr[1];
+		return tmArr[0] + "-Q" + tmArr[1];
 	}
 };
 
@@ -762,19 +768,12 @@ tmUnit用于指定时间字段: "y,m"-年,月; "y,m,d"-年,月,日; "y,w"-年,�
 	}
 	var statData = rs2Stat(rs, {tmUnit: "y,m,d"});
 
-在无汇总时，默认汇总显示为"sum"，也可以通过formatter修改，例如
+在无汇总时，列"sum"会自动被改为"累计"，这时默认在statFormatter中设置的：
 
 	WUI.options.statFormatter = {
-		sum: function (value, arr, i) {
+		sum: function (value) {
 			return '累计';
 		}
-	}
-
-注意：示例三实际上在内部使用了如下formatter:
-
-	function formatter(value, arr, i)
-	{
-		return arr[i+1];
 	}
 
 */
