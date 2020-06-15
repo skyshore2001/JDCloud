@@ -1678,6 +1678,18 @@ key可以为一个函数，返回实际key值，示例：
 		"USER-101": {id: 101, name: "Jane"}
 	};
 
+key函数也可以返回[key, value]数组：
+
+	var hash = rs2Hash(rs, function (o) {
+		return ["USER-" + o.id, o.name];
+	}); 
+
+	// 结果为
+	hash = {
+		"USER-100": "Tom",
+		"USER-101": "Jane"
+	};
+
 @see rs2Array
 */
 self.rs2Hash = rs2Hash;
@@ -1695,7 +1707,10 @@ function rs2Hash(rs, key)
 			obj[rs.h[j]] = row[j];
 		}
 		var k = keyfn?  keyfn(obj): obj[key];
-		ret[ k ] = obj;
+		if (Array.isArray(k) && k.length == 2)
+			ret[k[0]] = k[1];
+		else
+			ret[ k ] = obj;
 	}
 	return ret;
 }
@@ -1740,6 +1755,19 @@ key也可以是一个函数，返回实际的key值，示例，按生日年份�
 		"1999": [{id: 101, name: "Jane", birthday: "1999-1-10"}]
 	};
 
+key作为函数，也可返回[key, value]:
+
+	var hash = rs2MultiHash(rs, function (o) {
+		return [o.name, [o.id, o.birthday]];
+	});
+
+	// 结果为
+	hash = {
+		"Tom": [[100, "1998-10-1"], [102, "1998-3-8"]],
+		"Jane": [[101, "1999-1-10"]]
+	};
+
+
 @see rs2Hash
 @see rs2Array
 */
@@ -1758,6 +1786,10 @@ function rs2MultiHash(rs, key)
 			obj[rs.h[j]] = row[j];
 		}
 		var k = keyfn?  keyfn(obj): obj[key];
+		if (Array.isArray(k) && k.length == 2) {
+			obj = k[1];
+			k = k[0];
+		}
 		if (ret[ k ] === undefined)
 			ret[ k ] = [obj];
 		else
@@ -2956,6 +2988,26 @@ function triggerAsync(jo, ev, paramArr)
 	return $.when.apply(this, ev.dfds);
 }
 
+/**
+@fn $.Deferred
+@alias Promise
+兼容Promise的接口，如then/catch/finally
+ */
+var fnDeferred = $.Deferred;
+$.Deferred = function () {
+	var ret = fnDeferred.apply(this, arguments);
+	ret.catch = ret.fail;
+	ret.finally = ret.always;
+	var fn = ret.promise;
+	ret.promise = function () {
+		var r = fn.apply(this, arguments);
+		r.catch = r.fail;
+		r.finally = r.always;
+		return r;
+	}
+	return ret;
+}
+
 }
 // ====== WEBCC_END_FILE commonjq.js }}}
 
@@ -3290,7 +3342,7 @@ function getQueryCond(kvList)
 	}
 
 	function handleOne(k,v) {
-		if (v == null || v === "")
+		if (v == null || v === "" || ($.isArray(v) && v.length==0))
 			return;
 
 		var arr = v.toString().split(/\s+(and|or)\s+/i);
@@ -3745,8 +3797,15 @@ function defDataProc(rv)
 	}
 
 	if (rv && $.isArray(rv) && rv.length >= 2 && typeof rv[0] == "number") {
-		if (rv[0] == 0)
+		if (rv[0] == 0) {
+			ctx.dfd && setTimeout(function () {
+				ctx.dfd.resolve(rv[1]);
+			});
 			return rv[1];
+		}
+		ctx.dfd && setTimeout(function () {
+			ctx.dfd.reject(rv[1]);
+		});
 
 		if (this.noex)
 		{
@@ -4288,6 +4347,18 @@ callSvr扩展示例：
 		}
 	}
 
+## jQuery的$.Deferred兼容Promise接口
+
+	var dfd = callSvr("...");
+	dfd.then(function (data) {
+		console.log(data);
+	})
+	.catch(function (err) {
+		app_alert(err);
+	})
+	.finally(...)
+
+支持catch/finally等Promise类接口。接口逻辑失败时，dfd.reject()触发fail/catch链。
 */
 self.callSvr = callSvr;
 self.callSvrExt = {};
@@ -4335,6 +4406,7 @@ function callSvr(ac, params, fn, postParams, userOptions)
 	if (ext) {
 		ctx.ext = ext;
 	}
+	ctx.dfd = $.Deferred();
 	if (self.mockData && self.mockData[ac0]) {
 		ctx.isMock = true;
 		ctx.getMockData = function () {
@@ -4388,13 +4460,15 @@ function callSvr(ac, params, fn, postParams, userOptions)
 	console.log(callType + ": " + opt.type + " " + ac0);
 	if (ctx.isMock)
 		return callSvrMock(opt, isSyncCall);
-	return $.ajax(opt);
+	$.ajax(opt);
+	// dfd.resolve/reject is done in defDataProc
+	return ctx.dfd;
 }
 
-// opt = {success, .ctx_={isMock, getMockData} }
+// opt = {success, .ctx_={isMock, getMockData, dfd} }
 function callSvrMock(opt, isSyncCall)
 {
-	var dfd_ = $.Deferred();
+	var dfd_ = opt.ctx_.dfd;
 	var opt_ = opt;
 	if (isSyncCall) {
 		callSvrMock1();
@@ -4413,7 +4487,7 @@ function callSvrMock(opt, isSyncCall)
 		if (rv != null)
 		{
 			opt_.success && opt_.success(rv);
-			dfd_.resolve(rv);
+//			dfd_.resolve(rv); // defDataProc resolve it
 			return;
 		}
 		self.app_abort();
@@ -7736,13 +7810,14 @@ function setApp(app)
 @param dontReload 如果非0, 则注销后不刷新页面.
 
 注销当前登录, 成功后刷新页面(除非指定dontReload=1)
+返回logout调用的deferred对象
 */
 self.logout = logout;
 function logout(dontReload)
 {
 	deleteLoginToken();
 	g_data.userInfo = null;
-	self.callSvr("logout", function (data) {
+	return self.callSvr("logout", function (data) {
 		if (! dontReload)
 			mCommon.reloadSite();
 	});
