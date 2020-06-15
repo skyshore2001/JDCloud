@@ -1018,6 +1018,52 @@ function assert(cond, dscr)
 }
 
 /**
+@fn randInt(from, to)
+
+生成指定区间的随机整数。示例：
+
+	var i = randInt(1, 10); // 1-10之间的整数，包含1或10
+
+*/
+self.randInt = randInt;
+function randInt(from, to)
+{
+	return Math.floor(Math.random() * (to - from + 1)) + from;
+}
+
+/**
+@fn randInt(from, to)
+
+生成随机字符串，包含字母或数字，不包含易混淆的0或O。示例：
+
+	var dynCode = randChr(4); // e.g. "9BZ3"
+
+*/
+self.randChr = randChr;
+function randChr(cnt)
+{
+	var charCodeArr = [];
+	var code_O = 'O'.charCodeAt(0) - 'A'.charCodeAt(0) + 10;
+	
+	for (var i=0; i<cnt; ) {
+		var ch = randInt(0, 35); // 0-9 A-Z 共36个
+		// 去除0,O易混淆的
+		if (ch == 0 || ch == code_O) {
+			continue;
+		}
+		if (ch < 10) {
+			charCodeArr.push(0x30 + ch);
+		}
+		else {
+			charCodeArr.push(0x41 + ch -10);
+		}
+		i ++;
+	}
+//	console.log(charCodeArr);
+	return String.fromCharCode.apply(this, charCodeArr);
+}
+
+/**
 @fn parseQuery(str)
 
 解析url编码格式的查询字符串，返回对应的对象。
@@ -6399,10 +6445,11 @@ function showObjDlg(jdlg, mode, opt)
 	jtbl.datagrid(dgOpt);
 
 特别地，要添加导出数据到Excel文件的功能按钮，可以增加参数"export"作为按钮定义：
+导入可以用"import", 快速查询可以用"qsearch" (这两个以扩展方式在jdcloud-wui-ext.js中定义):
 
 	var dgOpt = {
 		...
-		toolbar: WUI.dg_toolbar(jtbl, jdlg, "export", "-", btn1),
+		toolbar: WUI.dg_toolbar(jtbl, jdlg, "import", "export", "-", btn1, btn2, "qsearch"),
 	}
 
 如果想自行定义导出行为参数，可以参考WUI.getExportHandler
@@ -6411,11 +6458,27 @@ function showObjDlg(jdlg, mode, opt)
 按钮的权限（即是否显示）取决于wui-perm和text属性。优先使用wui-perm。系统内置的常用的有："新增", "修改", "删除", "导出"
 下面例子，把“导入”特别设置为内置的权限“新增”，这样不仅不必在角色管理中设置，且设置了“只读”等权限也可自动隐藏它。
 
-	var btn2 = {text: "导入", "wui-perm": "新增", iconCls:'icon-ok', handler: function () {
-		DlgImport.show({obj: "Salary"}, function () {
+	var btnImport = {text: "导入", "wui-perm": "新增", iconCls:'icon-ok', handler: function () {
+		DlgImport.show({obj: "Ordr"}, function () {
 			WUI.reload(jtbl);
 		});
 	}};
+
+支持定义扩展，比如importOrdr:
+
+	// ctx = {jtbl, jpage, jdlg} // 注意jdlg在调用时可能尚未初始化，可以访问 jdlg.selector和jdlg.objParam等。
+	dg_toolbar.importOrdr = function (ctx) {
+		return {text: "导入", "wui-perm": "新增", iconCls:'icon-ok', handler: function () {
+			DlgImport.show({obj: "Ordr"}, function () {
+				WUI.reload(jtbl);
+			});
+		}}
+	};
+
+这时就可以直接这样来指定导入按钮（便于全局重用）：
+
+	WUI.dg_toolbar(jtbl, jdlg, ..., "importOrdr")
+	
 */
 self.dg_toolbar = dg_toolbar;
 function dg_toolbar(jtbl, jdlg)
@@ -6434,40 +6497,22 @@ function dg_toolbar(jtbl, jdlg)
 	}, 100);
 	*/
 
-	var tb = {
-		r: {text:'刷新', iconCls:'icon-reload', handler: function() { reload(jtbl, null, m_batchMode?{}:null);} }, // Ctrl-点击，清空查询条件后查询。
-		f: {text:'查询', iconCls:'icon-search', handler: function () {
-			showObjDlg(jdlg, FormMode.forFind, {jtbl: jtbl});
-		}},
-		a: {text:'新增', iconCls:'icon-add', handler: function () {
-			showObjDlg(jdlg, FormMode.forAdd, {jtbl: jtbl});
-		}},
-		s: {text:'修改', iconCls:'icon-edit', handler: function () {
-			showObjDlg(jdlg, FormMode.forSet, {jtbl: jtbl});
-		}}, 
-		d: {text:'删除', iconCls:'icon-remove', handler: function () { 
-			showObjDlg(jdlg, FormMode.forDel, {jtbl: jtbl});
-		}},
-		'export': {text: '导出', iconCls: 'icon-save', handler: getExportHandler(jtbl)}
-	};
+	var btnSpecArr = toolbar.split("");
+	for (var i=2; i<arguments.length; ++i) {
+		btnSpecArr.push(arguments[i]);
+	}
+
 	var jpage = jtbl.closest(".wui-page");
 	var perm = jpage.attr("wui-perm") || jpage.attr("title");
-	$.each(toolbar.split(""), function(i, e) {
-		if (tb[e]) {
-			if (! self.canDo(perm, tb[e].text)) {
-				return;
-			}
-			btns.push(tb[e]);
-			btns.push("-");
-		}
-	});
-	for (var i=2; i<arguments.length; ++i) {
-		var btn = arguments[i];
+	var ctx = {jpage: jpage, jtbl: jtbl, jdlg: jdlg};
+	for (var i=0; i<btnSpecArr.length; ++i) {
+		var btn = btnSpecArr[i];
 		if (! btn)
 			continue;
 		if (btn !== '-' && typeof(btn) == "string") {
-			btn = tb[btn];
-			mCommon.assert(btn, "toolbar button name does not support");
+			var btnfn = dg_toolbar[btn];
+			mCommon.assert(btnfn, "toolbar button `" + btn + "` does not support");
+			btn = btnfn(ctx);
 		}
 		if (btn.text != "-" && !self.canDo(perm, btn["wui-perm"] || btn.text)) {
 			continue;
@@ -6477,6 +6522,37 @@ function dg_toolbar(jtbl, jdlg)
 
 	return btns;
 }
+
+$.extend(dg_toolbar, {
+	r: function (ctx) {
+		return {text:'刷新', iconCls:'icon-reload', handler: function() {
+			reload(ctx.jtbl, null, m_batchMode?{}:null);
+		}} // Ctrl-点击，清空查询条件后查询。
+	},
+	f: function (ctx) {
+		return {text:'查询', iconCls:'icon-search', handler: function () {
+			showObjDlg(ctx.jdlg, FormMode.forFind, {jtbl: ctx.jtbl});
+		}}
+	},
+	a: function (ctx) {
+		return {text:'新增', iconCls:'icon-add', handler: function () {
+			showObjDlg(ctx.jdlg, FormMode.forAdd, {jtbl: ctx.jtbl});
+		}}
+	},
+	s: function (ctx) {
+		return {text:'修改', iconCls:'icon-edit', handler: function () {
+			showObjDlg(ctx.jdlg, FormMode.forSet, {jtbl: ctx.jtbl});
+		}}
+	},
+	d: function (ctx) {
+		return {text:'删除', iconCls:'icon-remove', handler: function () {
+			showObjDlg(ctx.jdlg, FormMode.forDel, {jtbl: ctx.jtbl});
+		}}
+	},
+	'export': function (ctx) {
+		return {text: '导出', iconCls: 'icon-save', handler: getExportHandler(ctx.jtbl)}
+	}
+});
 
 /**
 @fn dg_dblclick(jtbl, jdlg)

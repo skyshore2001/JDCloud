@@ -825,6 +825,14 @@ $(enhanceMenu);
 - jd_vField: 显示文本对应的虚拟字段, 用于初始显示和查询。
 - jd_showId: 默认为true. 显示"idField - textField"格式. 设置为false时只显示textField.
 
+在选择一行并返回时，它会触发choose事件：
+
+	var jo = jdlg.find("[comboname=storeId]"); // 注意不是 "[name=storeId]"（原始的input已经变成一个hidden组件，只存储值）
+	jo.on("choose", function (ev, row) {
+		console.log('choose row: ', row);
+		...
+	});
+
 在输入时，它会自动以url及参数q向后端发起查询，如`callSvr("Store.query", {res:'id,name', q='1'})`.
 在筋斗云后端须支持相应对象的模糊查询(请查阅文档qsearch)。
 
@@ -842,9 +850,6 @@ function enhanceCombogrid(jo)
 	var jdlg;
 	var $dg;
 	var doInit = true;
-
-	var vfield = opt1.jd_vField;
-	var showId = opt1.jd_showId;
 
 	var opt = $.extend({}, $.fn.datagrid.defaults, {
 		delay: 500,
@@ -883,12 +888,18 @@ function enhanceCombogrid(jo)
 					jo.combogrid("setText", val + " - " + txt);
 				}
 			}
+			var row = $dg.datagrid("getSelected");
+			if (row)
+				jo.trigger("choose", [row]);
 		},
 		// !!! TODO: 解决combogrid 1.4.2的bug. 1.5.2以上已修复, 应移除。
 		onLoadSuccess: function () {
 			$dg && $.fn.datagrid.defaults.onLoadSuccess.apply($dg[0], arguments);
 		}
 	}, opt1);
+
+	var vfield = opt.jd_vField;
+	var showId = opt.jd_showId;
 
 	// 创建后再指定，这样初始化时不调用接口
 	opt.url = null;
@@ -1254,5 +1265,47 @@ function makeLink(text, fn)
 {
 	return '<a href="javascript:' + self.fname(fn) + '()">' + text + '</a>';
 }
+
+function getObjFromJtbl(jtbl)
+{
+	if (!jtbl || jtbl.size() == 0 || !jtbl.hasClass("datagrid-f")) {
+		console.error("bad datagrid: ", jtbl);
+		throw "getObjFromJtbl error: bad datagrid.";
+	}
+	var url = jtbl.datagrid("options").url;
+	var m = url.match(/\w+(?=\.query\b)/);
+	return m && m[0];
+}
+
+$.extend(self.dg_toolbar, {
+	"import": function (ctx) {
+		return {text: "导入", "wui-perm": "新增", iconCls:'icon-ok', handler: function () {
+			var obj = getObjFromJtbl(ctx.jtbl);
+			self.assert(obj, "dg_toolbar.import: 对象未指定，无法导入");
+			self.assert(DlgImport, "DlgImport未定义");
+			DlgImport.show({obj: obj}, function () {
+				WUI.reload(ctx.jtbl);
+			});
+		}};
+	},
+
+	qsearch: function (ctx) {
+		var randCls = "qsearch-" + WUI.randChr(4); // 避免有多个qsearch组件时重名冲突
+		setTimeout(function () {
+			ctx.jpage.find(".qsearch." + randCls).click(function () {
+				return false;
+			});
+			ctx.jpage.find(".qsearch." + randCls).keydown(function (e) {
+				if (e.keyCode == 13) {
+					$(this).closest(".l-btn").click();
+				}
+			});
+		});
+		return {text: "<input style='width:8em' class='qsearch " + randCls + "'>", iconAlign:'right', iconCls:'icon-search', handler: function () {
+			var val = $(this).find(".qsearch").val();
+			WUI.reload(ctx.jtbl, null, {q: val});
+		}};
+	}
+});
 
 }

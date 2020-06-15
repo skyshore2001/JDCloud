@@ -485,6 +485,27 @@ function mparam($name, $col = null)
 }
 
 /**
+@fn checkParams($params, $names)
+
+检查必填参数。
+
+示例：params中必须有"brand", "vendorName"字段，否则应报错：
+
+	checkParams($params, [
+		"brand" => "品牌",
+		"vendorName" => "供应商"
+	]);
+
+*/
+function checkParams($params, $names)
+{
+	foreach ($names as $name=>$showName) {
+		if (!@$params[$name])
+			throw new MyException(E_PARAM, "require param $name", "缺少参数`$showName`");
+	}
+}
+
+/**
 @fn setParam($k, $v)
 @fn setParam(@kv)
 
