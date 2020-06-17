@@ -480,13 +480,7 @@ function setRet($code, $data = null, $internalMsg = null)
 	global $X_RET;
 
 	if (!isset($data)) {
-		if ($code) {
-			assert(array_key_exists($code, $ERRINFO));
-			$data = $ERRINFO[$code];
-		}
-		else {
-			$data = "OK";
-		}
+		$data = @($code && $ERRINFO[$code]) ?: "OK";
 	}
 	$X_RET = [$code, $data];
 
