@@ -1598,8 +1598,8 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			$col = preg_replace_callback('/^\s*(\w+)/u', function ($ms) {
 				$col1 = $ms[1];
 				// 注意：与cond不同，orderby使用了虚拟字段，应在res中添加。而cond中是直接展开了虚拟字段。因为where条件不支持虚拟字段。
-				// 故不用：$this->addVCol($col1, true, '-');
-				if ($this->addVCol($col1, true) !== false)
+				// 故不用：$this->addVCol($col1, true, '-'); 但应在处理完后删除辅助字段，避免多余字段影响导出文件等场景。
+				if ($this->addVCol($col1, true, null, true) !== false)
 					return $col1;
 				return "t0." . $col1;
 			}, $col);
@@ -1641,26 +1641,29 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 - analyzeCol=true时, 注册到对象的虚拟字段中。
 - addRes("col+1 as col1", false); -- 简单地新定义一个计算列, as可省略
 
+返回true/false: 是否添加到输出列表
+
 @see AccessControl::addCond 其中有示例
 @see AccessControl::addVCol 添加已定义的虚拟列。
  */
 	final public function addRes($res, $analyzeCol=true, $isExt=false)
 	{
 		if ($isExt) {
-			$this->addResInt($this->sqlConf["resExt"], $res);
-			return;
+			return $this->addResInt($this->sqlConf["resExt"], $res);
 		}
-		$this->addResInt($this->sqlConf["res"], $res);
+		$rv = $this->addResInt($this->sqlConf["res"], $res);
 		if ($analyzeCol)
 			$this->setColFromRes($res, true);
+		return $rv;
 	}
 
-	// 内部被addRes调用。避免重复添加字段到res
+	// 内部被addRes调用。避免重复添加字段到res。
+	// 返回true/false: 是否添加到输出列表
 	private function addResInt(&$resArr, $col) {
 		$ignoreT0 = in_array("t0.*", $resArr);
 		// 如果有"t0.*"，则忽略主表字段如"t0.id"，但应避免别名字段如"t0.id orderId"被去掉
 		if ($ignoreT0 && substr($col,0,3) == "t0." && strpos($col, ' ') === false)
-			return;
+			return false;
 		$found = false;
 		foreach ($resArr as $e) {
 			if ($e == $col)
@@ -1668,6 +1671,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		}
 		if (!$found)
 			$resArr[] = $col;
+		return !$found;
 	}
 
 /**
@@ -1764,6 +1768,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	 */
 	final public function addJoin($join)
 	{
+		assert(is_string($join), "join须为字符串");
 		$this->sqlConf["join"][] = $join;
 	}
 
@@ -1855,7 +1860,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 
 @see AccessControl::addRes
  */
-	protected function addVCol($col, $ignoreError = false, $alias = null)
+	protected function addVCol($col, $ignoreError = false, $alias = null, $isHiddenField = false)
 	{
 		if (! isset($this->vcolMap[$col])) {
 			if (!$ignoreError)
@@ -1869,11 +1874,18 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			throw new MyException(E_SERVER, "bad vcol $col");
 		$isExt = @ $vcolDef["isExt"] ? true : false;
 		if ($alias) {
-			if ($alias !== "-")
-				$this->addRes($this->vcolMap[$col]["def"] . " AS {$alias}", false, $isExt);
+			if ($alias !== "-") {
+				$rv = $this->addRes($this->vcolMap[$col]["def"] . " AS {$alias}", false, $isExt);
+				if ($isHiddenField && $rv) {
+					$this->hiddenFields[] = $alias;
+				}
+			}
 		}
 		else {
-			$this->addRes($this->vcolMap[$col]["def0"], false, $isExt);
+			$rv = $this->addRes($this->vcolMap[$col]["def0"], false, $isExt);
+			if ($isHiddenField && $rv) {
+				$this->hiddenFields[] = $col;
+			}
 		}
 		return true;
 	}

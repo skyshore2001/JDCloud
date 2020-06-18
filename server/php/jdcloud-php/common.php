@@ -127,6 +127,17 @@ function startsWith($s, $pat)
 	return substr($s, 0, strlen($pat)) == $pat;
 }
 
+/**
+@fn endWith($s, $pat)
+*/
+function endWith($s, $pat)
+{
+	$length = strlen($pat);
+	if ($length == 0)
+		return true;
+	return substr($s, -$length) === $pat;
+}
+
 /** 
 @fn isCLI() 
 
