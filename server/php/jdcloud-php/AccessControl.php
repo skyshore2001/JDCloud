@@ -2736,17 +2736,23 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 			foreach ($subobj as $k => $opt) {
 				if ($opt["obj"] && $opt["cond"]) {
 					$id1 = @$opt["%d"]? $mainObj[$opt["%d"]] : $id; // %d指定的关联字段会事先添加
-					$opt["cond"] = sprintf($opt["cond"], $id1); # e.g. "orderId=%d"
-					$res = param("res_$k");
-					if ($res) {
-						$opt["res"] = $res;
+					if ($id1) {
+						$opt["cond"] = sprintf($opt["cond"], $id1); # e.g. "orderId=%d"
+						$res = param("res_$k");
+						if ($res) {
+							$opt["res"] = $res;
+						}
+						$objName = $opt["obj"];
+						$acObj = AccessControl::create($objName, null, $opt["AC"]);
+						$rv = $acObj->callSvc($objName, "query", $opt + [
+							"fmt" => "list",
+							"pagesz" => -1
+						]);
+						$ret1 = $rv["list"];
 					}
-					$objName = $opt["obj"];
-					$acObj = AccessControl::create($objName, null, $opt["AC"]);
-					$rv = $acObj->callSvc($objName, "query", $opt + [
-						"fmt" => "list",
-						"pagesz" => -1
-					]);
+					else {
+						$ret1 = [];
+					}
 				}
 				else if (! @$opt["sql"]) {
 					continue;
@@ -2784,8 +2790,14 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 			$idArr = array_map(function ($e) use ($idField) {
 				return $e[$idField];
 			}, $ret);
+			$idArr = array_filter($idArr, function ($e) {
+				return isset($e);
+			});
 			$idList = join(',', $idArr);
-			if ($opt["obj"] && $opt["cond"]) {
+			if (! $idList) {
+				$ret1 = [];
+			}
+			else if ($opt["obj"] && $opt["cond"]) {
 				// $opt["cond"] = sprintf($opt["cond"], $id); # e.g. "orderId=%d"
 				$cond = preg_replace_callback('/(\S+)=%d/', function ($ms) use (&$joinField, $idList){
 					$joinField = $ms[1];
