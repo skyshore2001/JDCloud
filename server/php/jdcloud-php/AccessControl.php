@@ -2735,7 +2735,10 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		$objName = $opt["obj"];
 		$acObj = AccessControl::create($objName, null, $opt["AC"]);
 		$rv = $acObj->callSvc($objName, "query", $param);
-		$ret = $rv["list"];
+		if (array_key_exists("list", $rv))
+			$ret = $rv["list"];
+		else
+			$ret = $rv;
 		return $ret;
 	}
 
@@ -2749,18 +2752,10 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 				if ($opt["obj"] && $opt["cond"]) {
 					$id1 = @$opt["%d"]? $mainObj[$opt["%d"]] : $id; // %d指定的关联字段会事先添加
 					if ($id1) {
-						$opt["cond"] = sprintf($opt["cond"], $id1); # e.g. "orderId=%d"
-						$res = param("res_$k");
-						if ($res) {
-							$opt["res"] = $res;
-						}
-						$objName = $opt["obj"];
-						$acObj = AccessControl::create($objName, null, $opt["AC"]);
-						$rv = $acObj->callSvc($objName, "query", $opt + [
-							"fmt" => "list",
-							"pagesz" => -1
+						$cond = sprintf($opt["cond"], $id1); # e.g. "orderId=%d"
+						$ret1 = $this->querySubObj($k, $opt, [
+							"cond" => $cond
 						]);
-						$ret1 = $rv["list"];
 					}
 					else {
 						$ret1 = [];
