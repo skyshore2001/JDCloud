@@ -1504,7 +1504,11 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	private function addSubobj($col, $def) {
 		$this->sqlConf["subobj"][$col] = $def;
 		if (array_key_exists("%d", $def)) {
-			$this->filterRes($def["%d"]);
+			$col = $def["%d"];
+			if (preg_match('/\W/u', $col)) {
+				throw new MyException(E_PARAM, "bad subobj['%d']=`$col`. MUST be a column or virtual column.", "子对象定义错误");
+			}
+			$this->addVCol($col, "addRes", null, true);
 		}
 	}
 
@@ -1844,7 +1848,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	}
 
 /**
-@fn AccessControl::addVCol($col, $ignoreError=false, $alias=null)
+@fn AccessControl::addVCol($col, $ignoreError=false, $alias=null, $isHiddenField=false)
 
 @param $col 必须是一个英文词, 不允许"col as col1"形式; 该列必须在 vcolDefs 中已定义.
 @param $alias 列的别名。可以中文. 特殊字符"-"表示只添加join/cond等定义，并不将该字段加到输出字段中。
@@ -1858,13 +1862,24 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	// 只引入createTm字段的关联表，不影响最终输出字段
 	$this->addVCol("createTm", false, "-");
 
+	// 添加字段(如果不是虚拟字段则当作主表t0.xx添加)
+	$this->addVCol("createTm", "addRes"); // ignoreError特别用法
+
+如果isHiddenField=true, 则该字段是辅助字段，最终返回前将删除(AccessControl::hiddenFields机制)
+
 @see AccessControl::addRes
  */
 	protected function addVCol($col, $ignoreError = false, $alias = null, $isHiddenField = false)
 	{
 		if (! isset($this->vcolMap[$col])) {
-			if (!$ignoreError)
+			if ($ignoreError === false)
 				throw new MyException(E_SERVER, "unknown vcol `$col`");
+			if ($ignoreError === "addRes") {
+				$rv = addRes("t0." . $col);
+				if ($isHiddenField && $rv === true)
+					$this->hiddenFields[] = $col;
+				return $rv;
+			}
 			return false;
 		}
 		if ($this->vcolMap[$col]["added"])
