@@ -2262,7 +2262,7 @@ function getFormData(jo)
 		var orgContent = orgData[name];
 		if (orgContent == null)
 			orgContent = "";
-		content = it.getValue(ji);
+		var content = it.getValue(ji);
 		if (content == null)
 			content = "";
 		if (content !== String(orgContent)) // 避免 "" == 0 或 "" == false
