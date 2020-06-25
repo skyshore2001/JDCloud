@@ -222,6 +222,10 @@ query接口的"..."之后就是虚拟字段。后缀"?"表示是非缺省字段�
 	或
 	Rating.query(res="*,userName,orderDscr")
 
+(v5.5) 如果要依赖多个字段，"require"可以用数组，如：
+
+	"require" => ["userId", "procId"]
+
 ### 计算字段
 
 示例：管理端应用在查询订单时，需要订单对象上有一个原价字段：
@@ -1871,6 +1875,12 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
  */
 	protected function addVCol($col, $ignoreError = false, $alias = null, $isHiddenField = false)
 	{
+		if (is_array($col)) {
+			foreach ($col as $e) {
+				$rv = $this->addVCol($e, $ignoreError, $alias, $isHiddenField);
+			}
+			return $rv;
+		}
 		if (! isset($this->vcolMap[$col])) {
 			if ($ignoreError === false)
 				throw new MyException(E_SERVER, "unknown vcol `$col`");
@@ -2825,6 +2835,10 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 					$joinField = $ms[1];
 					return $ms[1] . " IN ($idList)";
 				}, $opt["cond"]); 
+				// NOTE: GROUP BY也要做调整
+				if (isset($opt["gres"])) {
+					$opt["gres"] = "id_," . $opt["gres"];
+				}
 				$ret1 = $this->querySubObj($k, $opt, [
 					"cond" => $cond,
 					"res2" => dbExpr("$joinField id_")
