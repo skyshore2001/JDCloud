@@ -475,6 +475,7 @@ function addToStr(&$str, $str1, $sep=',')
 		$str = $str1;
 	else
 		$str .= $sep . $str1;
+	return $str;
 }
 
 /**
