@@ -24,7 +24,7 @@ git reset --hard
 # touch -c WEB-INF/web.xml
 
 ### for dev release (no build_web): generate revision file for auto refresh
-# git log -1 --format=%H > server/revision.txt
+git log -1 --format=%H > server/revision.txt
 .
 chmod a+x .git/hooks/post-update
 
