@@ -200,9 +200,24 @@ function parseType_(&$name)
 
 type的格式如"i:n:b?:dt:tm?".
 
+	$ordr1 = param_varr("10:1.5,11:2.0", "i:n", "ordr1"); // [ [10, 1.5], [11, 2.0] ] 注意类型已转换
+	$ordr1 = varr2objarr($ordr1, ["itemId", "qty"]); // [ ["itemId"=>10, "qty"=>1.5], ["itemId"=>11, "qty"=>2.0] ]
+
+	// 一般通过param调用来取值：
+	$ordr1 = param("ordr1/i:n", null, "P"); // 从$_POST中取ordr1参数。
+	$ordr1 = varr2objarr($ordr1, ["itemId", "qty"]); 
+
+	// 只有单个列的特殊写法
+	$snLog1 = param_varr("10,11,12", "i:", "snLog1"); // [ [10], [11], [12] ]
+	$snLog1 = varr2objarr($snLog1, ["snId"]); // [ ["snId"=>10], ["snId"=>11], ["snId"=>12] ]
+
 - 每个词表示一个字段类型
   类型标识：i-Integer; n-Number/Double; b-Boolean(0/1); dt/tm-DateTime
 - 后置"?"表示该参数可缺省。
+
+@see param
+@see list2varr
+@see varr2objarr
  */
 function param_varr($str, $type, $name)
 {
@@ -211,7 +226,7 @@ function param_varr($str, $type, $name)
 	foreach (explode(":", $type) as $t) {
 		$tlen = strlen($t);
 		if ($tlen === 0)
-			throw new MyException(E_SERVER, "bad type spec: `$type`");
+			continue;
 		$optional = false;
 		if ($t[$tlen-1] === '?') {
 			$t = substr($t, 0, $tlen-1);
@@ -296,9 +311,9 @@ $name中指定类型的方式如下：
 - 以"/tm"结尾: datetime
 - 以"/n"结尾: numeric/double
 - 以"/s"结尾（缺省）: string. 缺省为防止XSS攻击会做html编码，如"a&b"处理成"a&amp;b"，设置参数doHtmlEscape可禁用这个功能。
-- 复杂类型：以"/i+"结尾: int array
+- 复杂类型(数组)：以"/i+"结尾: int array
 - 复杂类型：以"/js"结尾: json object
-- 复杂类型：List类型（以","分隔行，以":"分隔列），类型定义如"/i:n:b:dt:tm" （列只支持简单类型，不可为复杂类型）
+- 复杂类型(二维数组)：List类型（以","分隔行，以":"分隔列），类型定义如"/i:n:b:dt:tm" （列只支持简单类型，不可为复杂类型）
 
 示例：
 
@@ -790,10 +805,14 @@ e.g.
 	$users = "101:andy,102:beddy";
 	$varr = list2varr($users);
 	// $varr = [["101", "andy"], ["102", "beddy"]];
+	$objarr = $varr2objarr($varr, ["id", "name"]); // [ ["id"=>"101", "name"=>"andy"], ["id"=>"102", "name"=>"beddy"] ]
 	
 	$cmts = "101\thello\n102\tgood";
 	$varr = list2varr($cmts, "\t", "\n");
 	// $varr=[["101", "hello"], ["102", "good"]]
+
+@see varr2objarr
+@see param_varr
  */
 function list2varr($ls, $colSep=':', $rowSep=',')
 {

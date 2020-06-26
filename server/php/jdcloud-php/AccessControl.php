@@ -1871,6 +1871,10 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 
 如果isHiddenField=true, 则该字段是辅助字段，最终返回前将删除(AccessControl::hiddenFields机制)
 
+支持一次添加多个字段：
+
+	$this->addVCol(["createTm", "procId"]); 
+
 @see AccessControl::addRes
  */
 	protected function addVCol($col, $ignoreError = false, $alias = null, $isHiddenField = false)
@@ -1901,6 +1905,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		if ($alias) {
 			if ($alias !== "-") {
 				$rv = $this->addRes($this->vcolMap[$col]["def"] . " AS {$alias}", false, $isExt);
+				$this->vcolMap[$alias] = $this->vcolMap[$col]; // vcol及其alias同时加入vcolMap并标记已添加"added"
 				if ($isHiddenField && $rv) {
 					$this->hiddenFields[] = $alias;
 				}
