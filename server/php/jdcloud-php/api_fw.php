@@ -1446,7 +1446,7 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 */
 function callSvcInt($ac, $param=null, $postParam=null)
 {
-	if ($param || $postParam) {
+	if ($param != null || $postParam != null) {
 		return tmpEnv($param, $postParam, function () use ($ac) {
 			return callSvcInt($ac);
 		});
@@ -1485,12 +1485,8 @@ function callSvcInt($ac, $param=null, $postParam=null)
 function tmpEnv($param, $postParam, $fn)
 {
 	$bak = [$_GET, $_POST, $_REQUEST];
-	if ($param !== null) {
-		$_GET = $param;
-	}
-	if ($postParam !== null) {
-		$_POST = $postParam;
-	}
+	$_GET = $param ?: [];
+	$_POST = $postParam ?: [];
 	assert(is_array($_GET) && is_array($_POST));
 	$_REQUEST = $_GET + $_POST;
 
