@@ -2210,6 +2210,8 @@ function JdcloudCommonJq()
 var self = this;
 
 self.assert(window.jQuery, "require jquery lib.");
+var mCommon = jdModule("jdcloud.common");
+
 /**
 @fn getFormData(jo)
 
@@ -2307,6 +2309,12 @@ function getFormData(jo)
 - 忽略有disabled属性的控件
 - 忽略未选中的checkbox/radiobutton
 
+对于checkbox，设置时根据val确定是否选中；取值时如果选中取value属性否则取value-off属性。
+缺省value为"on", value-off为空(非标准属性，本框架支持)，可以设置：
+
+	<input type="checkbox" name="flag" value="1">
+	<input type="checkbox" name="flag" value="1" value-off="0">
+
 @param cb(ji, name, it) it.getDisabled/setDisabled/getValue/setValue/getShowbox
 当cb返回false时可中断遍历。
 
@@ -2324,8 +2332,6 @@ self.formItems["[name]"] = self.defaultFormItems = {
 		var v = jo.prop("disabled") || jo.attr("disabled");
 		var o = jo[0];
 		if (! v && o.tagName == "INPUT") {
-			if (o.type == "checkbox" && !o.checked)
-				return true;
 			if (o.type == "radio" && !o.checked)
 				return true;
 		}
@@ -2355,7 +2361,10 @@ self.formItems["[name]"] = self.defaultFormItems = {
 				val = "";
 			}
 		}
-		if (isInput) {
+		if (jo.is(":checkbox")) {
+			jo.prop("checked", mCommon.tobool(val));
+		}
+		else if (isInput) {
 			jo.val(val);
 		}
 		else {
@@ -2364,7 +2373,10 @@ self.formItems["[name]"] = self.defaultFormItems = {
 	},
 	getValue: function (jo) {
 		var val;
-		if (jo.is(":input")) {
+		if (jo.is(":checkbox")) {
+			val = jo.prop("checked")? jo.val(): jo.attr("value-off");
+		}
+		else if (jo.is(":input")) {
 			val = jo.val();
 		}
 		else {
