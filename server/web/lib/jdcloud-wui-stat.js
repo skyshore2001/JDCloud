@@ -784,8 +784,10 @@ function rs2Stat(rs, opt)
 
 	// 设置缺省xcol,ycol,gcol
 	var colCnt = rs.h.length;
+	var ycol_isset = true;
 	if (opt.ycol == null) {
 		opt.ycol = colCnt -1;
+		ycol_isset = false;
 	}
 	if (opt.tmUnit) {
 		var tmCnt = opt.tmUnit.split(',').length;
@@ -793,7 +795,7 @@ function rs2Stat(rs, opt)
 			opt.xcol = rangeArr(0, tmCnt);
 		}
 		var leftColCnt = colCnt - tmCnt;
-		if (opt.gcol == null && leftColCnt >= 2) { // gcol?, gtext?, sum
+		if (opt.gcol == null && !ycol_isset && leftColCnt >= 2) { // gcol?, gtext?, sum
 			opt.gcol = tmCnt;
 			if (leftColCnt >= 3)
 				opt.gtext = tmCnt +1;
@@ -865,7 +867,7 @@ function rs2Stat(rs, opt)
 			x = makeTm(opt.tmUnit, tmArr);
 			var completeCnt = 0;
 			if (lastX != null) {
-				while (1) {
+				while (lastX != x) {
 					lastTmArr = nextTm(opt.tmUnit, lastTmArr);
 					var nextX = makeTm(opt.tmUnit, lastTmArr);
 					if (x == nextX)
@@ -960,7 +962,20 @@ function runStat(jo, jcharts, setStatOpt)
 		if (opt.tmUnit)
 			param.orderby = param.gres = opt.tmUnit;
 
-		if (opt.g) {
+		// 如果有多个ycol字段，则按ycol显示多系列（这时g分组无效）
+		var ycol = null;
+		var yCnt = 0;
+		if ((yCnt = param.res.split(',').length) > 1) {
+			var tmCnt = opt.tmUnit? opt.tmUnit.split(',').length: 0;
+			ycol = rangeArr(tmCnt, yCnt);
+		}
+		else if (opt.g) {
+			if (opt.g.indexOf(',') > 0) {
+				var a = opt.g.split(/,/);
+				opt.g = a[0];
+				opt.gname = a[1];
+			}
+
 			if (param.gres)
 				param.gres += ',' + opt.g;
 			else
@@ -978,6 +993,7 @@ function runStat(jo, jcharts, setStatOpt)
 			var rs2StatOpt = {
 				maxSeriesCnt: opt.maxSeriesCnt,
 				tmUnit: opt.tmUnit,
+				ycol: ycol,
 				formatter: opt.formatter
 			};
 			var statData = rs2Stat(data, rs2StatOpt);
@@ -1104,6 +1120,8 @@ $(window).on('resize.echart', function () {
 - 生成统计图按钮
 - 一个或多个图表，每个图表可设置不同的查询条件、时间维度等。
 
+示例可参考超级管理端API日志统计(web/adm/pageApiLogStat)
+
 html示例:
 
 	<div wui-script="pageUserRegStat.js" title="用户注册统计" my-initfn="initPageUserRegStat">
@@ -1127,11 +1145,25 @@ html示例:
 		地域:
 		<select name="region" class="my-combobox" data-options="valueField:'id',textField:'name',url:WUI.makeUrl(...)"></select>
 
+		统计项
+		<select id="cboRes">
+			<option value ="COUNT(*) 总数">数量</option>
+			<option value="SUM(t) sum">调用时间(毫秒)</option>
+			<!-- 可以指定多个字段，逗号分隔，表示显示多个系列（这时下面的“分类汇总”是无效的），示例：
+			<option value ="totalMh 理论工时,totalMh1 实际工时,totalMh2 出勤工时">工时</option>
+			-->
+		</select>
+
 		汇总字段:
 		<select id="g">
 			<option value ="">无</option>
 			<option value ="sex">性别</option>
 			<option value="region">地域</option>
+
+			<!-- 可以指定两个字段，逗号分隔，格式"分组字段,分组显示字段"
+			<option value="userId,userName">用户</option>
+			<option value="itemId,itemName">物料</option>
+			-->
 		</select>
 
 		<input type="button" value="生成" class="btnStat"/>
@@ -1165,6 +1197,7 @@ html示例:
 		// 设置查询参数param.ac/param.res/param.cond等
 		var param = opt.queryParam;
 		param.cond += ...;
+		param.res = jpage.find("#cboRes").val();
 
 		// 设置时间维度，汇总字段
 		opt.tmUnit = jpage.find("#tmUnit").val();

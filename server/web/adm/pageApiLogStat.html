@@ -45,10 +45,17 @@ table select, .btnStat {
 		<td>统计项</td>
 		<td>
 			<select id="cboRes">
-				<option value ="COUNT(*)">数量</option>
-				<option value="SUM(t)">调用时间(毫秒)</option>
-				<option value="SUM(reqsz)">请求字节数</option>
-				<option value="SUM(ressz)">返回字节数</option>
+				<option value ="COUNT(*) sum">数量</option>
+				<option value="SUM(t) sum">调用时间(毫秒)</option>
+				<option value="SUM(reqsz) sum">请求字节数</option>
+				<option value="SUM(ressz) sum">返回字节数</option>
+				<!-- 可以指定显示名：
+				<option value ="COUNT(orderId) 工单数">工单数</option>
+				<option value ="totalSnCnt 工件数">工件数</option>
+
+				可以指定多个字段，逗号分隔，表示显示多个系列（这时下面的“分类汇总”是无效的），示例：
+				<option value ="totalMh 理论工时,totalMh1 实际工时,totalMh2 出勤工时">工时</option>
+				-->
 			</select>
 		</td>
 
@@ -79,6 +86,10 @@ table select, .btnStat {
 				<option value="userId">用户编号</option>
 				<option value="wd">每周几</option>
 				<option value="h">每小时</option>
+				<!-- 可以指定两个字段，逗号分隔，格式"分组字段,分组显示字段"
+				<option value="userId,userName">用户</option>
+				<option value="itemId,itemName">物料</option>
+				-->
 			</select>
 		</td>
 		<td>
