@@ -182,13 +182,43 @@
 			.on("retdata", onRetData);
 		
 		function onBeforeShow(ev, formMode, opt) {
-			jdlg.find(".forFind").toggle(formMode == FormMode.forFind);
+			// beforeshow用于设置字段是否隐藏、是否可编辑；或是设置opt(即WUI.showDlg的opt)。
+
+			var objParam = opt.objParam;
+			var forAdd = formMode == FormMode.forAdd;
+			var forSet = formMode == FormMode.forSet;
+
 			jdlg.find(".notForFind").toggle(formMode != FormMode.forFind);
+
+			// WUI.toggleFields也常用于控制jfrm上字段显示或jtbl上列显示
+			var type = opt.objParam && opt.objParam.type;
+			var isMgr = g_data.hasRole("mgr"); // 最高管理员
+			var isAdm = g_data.hasRole("mgr,emp"); // 管理员
+			WUI.toggleFields(jfrm, {
+				type: !type,
+				status: !type || type!="公告",
+				atts: isAdm
+			});
+
+			// 根据权限控制字段是否可编辑。注意：find模式下一般不禁用。
+			if (formMode != FormMode.forFind) {
+				$(frm.empId).prop("disabled", !isMgr);
+				$(frm.status).prop("disabled", forAdd || !isAdm);
+				$(frm.code).prop("disabled", !isAdm);
+			}
 		}
 		function onShow(ev, formMode, initData) {
-			// data是列表页中一行对应的数据，框架自动根据此数据将对应属性填上值。
+			// 常用于add模式下设置初值，或是set模式下将原值转换并显示。
+			// initData是列表页中一行对应的数据，框架自动根据此数据将对应属性填上值。
 			// 如果界面上展示的字段无法与属性直接对应，可以在该事件回调中设置。
 			// hiddenToCheckbox(jdlg.find("#divPerms"));
+			if (forAdd) {
+				$(frm.status).val("CR");
+			}
+			else if (forSet) {
+				// 显示成表格
+				jdlg.find("#tbl1").datagrid(...);
+			}
 		}
 		function onValidate(ev, formMode, initData, newData) {
 			// 在form提交时，所有带name属性且不带disabled属性的对象值会被发往服务端。
@@ -4464,6 +4494,16 @@ function callSvr(ac, params, fn, postParams, userOptions)
 		self.callSvrExt[ext].beforeSend(opt);
 	}
 
+	// 自动判断是否用json格式
+	if (!opt.contentType && opt.data && $.isPlainObject(opt.data)) {
+		$.each(opt.data, function (i, e) {
+			if (typeof(e) == "object") {
+				opt.contentType = "application/json";
+				return false;
+			}
+		})
+	}
+
 	// post json content
 	var isJson = opt.contentType && opt.contentType.indexOf("/json")>0;
 	if (isJson && opt.data instanceof Object)
@@ -5537,7 +5577,7 @@ function showDlg(jdlg, opt)
 	}
 	jdlg.dialog(dlgOpt);
 	var perm = jdlg.attr("wui-perm") || jdlg.dialog("options").title;
-	jdlg.toggleClass("wui-readonly", !self.canDo(perm, "对话框"));
+	jdlg.toggleClass("wui-readonly", (opt.objParam && opt.objParam.readonly) || !self.canDo(perm, "对话框"));
 
 	jdlg.okCancel(fnOk, opt.noCancel? undefined: fnCancel);
 
@@ -5794,7 +5834,7 @@ function setFixedFields(jdlg, beforeShowOpt) {
 		var je = $(this);
 		var name = je.attr("name");
 		var fixedVal = beforeShowOpt && beforeShowOpt.objParam && beforeShowOpt.objParam[name];
-		if (fixedVal) {
+		if (fixedVal || fixedVal == '') {
 			je.attr("readonly", true);
 			var forAdd = beforeShowOpt.objParam.mode == FormMode.forAdd;
 			if (forAdd) {
@@ -6186,6 +6226,7 @@ function doFind(jo, jtbl, appendFilter)
 @param opt.obj String. (v5.1) 对象对话框的对象名，如果未指定，则从my-obj属性获取。通过该参数可动态指定对象名。
 @param opt.offline Boolean. (v5.1) 不与后台交互。
 @param opt.title String. (v5.1) 指定对话框标题。
+@param opt.readonly String. (v5.5) 指定对话框只读。即设置wui-readonly类。
 
 @key objParam 对象对话框的初始参数。
 
@@ -6588,6 +6629,7 @@ function dg_toolbar(jtbl, jdlg)
 		btnSpecArr.push(arguments[i]);
 	}
 
+	// TODO: dialog上的button未考虑
 	var jpage = jtbl.closest(".wui-page");
 	var perm = jpage.attr("wui-perm") || jpage.attr("title");
 	var ctx = {jpage: jpage, jtbl: jtbl, jdlg: jdlg};
@@ -6600,7 +6642,7 @@ function dg_toolbar(jtbl, jdlg)
 			mCommon.assert(btnfn, "toolbar button `" + btn + "` does not support");
 			btn = btnfn(ctx);
 		}
-		if (btn.text != "-" && !self.canDo(perm, btn["wui-perm"] || btn.text)) {
+		if (btn.text != "-" && perm && !self.canDo(perm, btn["wui-perm"] || btn.text)) {
 			continue;
 		}
 		btns.push(btn);
@@ -8331,6 +8373,11 @@ function mycombobox(force)
 			// bugfix: loadOptions中会设置value_, 这将导致无法选择空行.
 			jo.change(function () {
 				this.value_ = "";
+			});
+			// 处理只读属性
+			jo.keydown(function () {
+				if ($(this).attr("readonly"))
+					return false;
 			});
 		}
 

@@ -446,7 +446,7 @@ xcol,ycol,gcol,gtext,maxSeriesCnt参数可参考函数 WUI.pivot
 
 @param opt.tmUnit 如果非空，表示按指定时间维度分析。参考[JdcloudStat.tmUnit]().
 
-未指定tmUnit时，缺省xcol=0列，ycol=最后一列，gcol如需要则应手工指定
+未指定tmUnit时，缺省xcol=0列（或1列，当有3列及以上且未指定ycol时，当成是`xcol,xcoltext,ycol`三列格式），ycol=最后一列，gcol如需要则应手工指定
 
 tmUnit用于指定时间字段: "y,m"-年,月; "y,m,d"-年,月,日; "y,w"-年,周; "y,m,d,h"-年,月,日,时; "y,q"-年,季度
 若指定了tmUnit，则可以不指定xcol,gcol,ycol，而是由字段排列自动得到，详见"tmUnit使用举例"章节。
@@ -802,7 +802,7 @@ function rs2Stat(rs, opt)
 		}
 	}
 	if (opt.xcol == null) {
-		opt.xcol = 0;
+		opt.xcol = colCnt>=3 && !ycol_isset? 1: 0;
 	}
 
 	if (opt.gcol != null) {

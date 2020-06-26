@@ -1169,7 +1169,17 @@ function initPermSet(rolePerms)
 
 	<a href="#pageItem" class="nperm-bx">商品管理</a>
 
-可通过 g_data.hasPerm(perm) 查询是否有某项权限。
+可通过 g_data.hasRole(roles) 查询是否有某一项或几项角色。注意：由于历史原因，hasRole/hasPerm是同样的函数。
+
+	var isMgr = g_data.hasRole("mgr"); // 最高管理员
+	var isEmp = g_data.hasRole("emp"); // 一般管理员
+	var isAdm = g_data.hasRole("mgr,emp"); // 管理员(两种都行)
+	var isKF = g_data.hasRole("客服");
+
+自定义权限规则复杂，一般由框架管理，可以用g_data.permSet[perm]查询，如：
+
+	var bval = g_data.permSet["客户管理"];
+
  */
 self.applyPermission = applyPermission;
 function applyPermission()
@@ -1188,8 +1198,15 @@ function applyPermission()
 		$(sel2).hide();
 	}
 
-	g_data.hasRole = g_data.hasPerm = function (perm) {
-		return arr.indexOf(perm) >= 0;
+	g_data.hasRole = g_data.hasPerm = function (perms) {
+		var arr1 = perms.split(',');
+		for (var i=0; i<arr1.length; ++i) {
+			var perm = arr1[i].trim();
+			if (arr.indexOf(perm) >= 0)
+				return true;
+		}
+		return false;
+		
 /*
 		var found = false;
 		$.each(arr, function (i, e) {
@@ -1339,5 +1356,176 @@ $.extend(self.dg_toolbar, {
 		}};
 	}
 });
+
+/**
+@key .wui-subobj
+
+选项：{obj, relatedKey, res?, dlg?/关联的明细对话框}
+
+这些选项在dlg设置时有效：{valueField, readonly}
+
+示例1：可以增删改查的子表：
+
+	<div class="wui-subobj" data-options="obj:'CusOrder', relatedKey:'cusId', valueField:'orders', dlg:'dlgCusOrder'">
+		<p><b>物流订单</b></p>
+		<table>
+			<thead><tr>
+				<th data-options="field:'tm', sortable:true">制单时间</th>
+				<th data-options="field:'status', sortable:true, jdEnumMap:CusOrderStatusMap, formatter:Formatter.enum(CusOrderStatusMap), styler:Formatter.enumStyler({CR:'Warning',CL:'Disabled'})">状态</th>
+				<th data-options="field:'amount', sortable:true, sorter:numberSort">金额</th>
+			</tr></thead>
+		</table>
+	</div>
+
+选项说明：
+
+- obj: 子表对象，与relatedKey字段一起自动生成子表查询，即`{obj}.query`接口。
+
+		class AC2_CusOrder extends AccessControl
+		{
+		}
+
+- dlg: 对应子表详情对话框。如果指定，则允许添加、更新、查询操作。
+
+以下字段仅当关联对话框（即dlg选项设置）后有效：
+
+- valueField: 对应后端子表名称，在随主表一起添加子表时，会用到该字段。如果不指定，则不可在主表添加时一起添加。它对应的后端实现示例如下：
+
+		class AC2_Customer extends AccessControl
+		{
+			protected $subobj = [
+				"orders" => [ "obj" => "CusOrder", "cond" => "cusId=%d" ]
+			]
+		}
+
+- readonly: 默认为false, 设置为true则在主表添加之后，不可对子表进行添加、更新或删除。
+
+可以在validate事件中，对添加的子表进行判断处理：
+
+	function onValidate(ev, mode, oriData, newData) 
+	{
+		// 由于valueField选项设置为"orders", 子表数组会写在newDate.orders中
+		if (newData.orders.length == 0) {
+			WUI.app_alert("请添加子表项!", "w");
+			return false;
+		}
+		// 假如需要压缩成一个字符串：
+		// newData.orders = WUI.objarr2list(newData.orders, ["type", "amount"]);
+	}
+
+选项可以动态修改，如：
+
+	// 在dialog的beforeshow回调中：
+	var jsub = jdlg.find(".wui-subobj");
+	WUI.getOptions(jsub).readonly = !g_data.hasRole("emp,mgr");
+
+示例2：主表记录添加时不需要展示，添加之后子表/关联表可以增删改查：
+
+	<div class="wui-subobj" data-options="obj:'CusOrder', relatedKey:'cusId', dlg:'dlgCusOrder'>
+		...
+	</div>
+
+示例3：和主表字段一起添加，添加后变成只读不可再新增、更新、删除：
+
+	<div class="wui-subobj" data-options="obj:'CusOrder', relatedKey:'cusId', valueField:'orders', dlg:'dlgCusOrder', readonly: true">
+		...
+	</div>
+
+示例4：最简单的只读子表，只查看，也不关联对话框
+
+	<div class="wui-subobj" data-options="obj:'CusOrder', res:'id,tm,status,amount', relatedKey:'cusId'">
+	</div>
+
+- res: 指定返回字段以提高性能，即query接口的res参数。注意在关联详细对话框（即指定dlg选项）时，一般不指定res，否则双击打开对话框时会字段显示不全。
+ */
+self.m_enhanceFn[".wui-subobj"] = enhanceSubobj;
+function enhanceSubobj(jo)
+{
+	var opt = WUI.getOptions(jo);
+	self.assert(opt.relatedKey, "wui-subobj: 选项relatedKey未设置");
+
+	// 子表表格和子表对话框
+	var jtbl = jo.find("table:first");
+	self.assert(jtbl.size() >0, "wui-subobj: 未找到子表表格");
+
+	var jdlg = jo.closest(".wui-dialog");
+	if (jdlg.size() == 0)
+		return;
+
+	jdlg.on("beforeshow", onBeforeShow);
+
+	var jdlg1;
+	if (opt.dlg) {
+		jdlg1 = $("#" + opt.dlg);
+		if (opt.valueField)
+			jdlg.on("validate", onValidate);
+	}
+	
+	function onBeforeShow(ev, formMode, beforeShowOpt) 
+	{
+		var objParam = beforeShowOpt.objParam;
+		setTimeout(onShow);
+
+		function onShow() {
+			if (jdlg1) {
+				jo.toggle(formMode == FormMode.forSet || (formMode == FormMode.forAdd && !!opt.valueField));
+				jdlg1.objParam = {};
+				if (formMode == FormMode.forAdd) {
+					if (opt.valueField) {
+						jdlg1.objParam.offline = true; // 添加时主子表一起提交
+						jdlg1.objParam[opt.relatedKey] = ''; // 同时设置子表对话框中cusId字段的CSS类为wui-fixedField，让该字段不可修改。
+						jtbl.jdata().toolbar = "ads"; // add/del/set
+						var dgOpt = {
+							toolbar: WUI.dg_toolbar(jtbl, jdlg1),
+							onDblClickRow: WUI.dg_dblclick(jtbl, jdlg1),
+							data: [],
+							url: null,
+						};
+						jtbl.datagrid(dgOpt);
+					}
+				}
+				else if (formMode == FormMode.forSet) {
+					var mainId = beforeShowOpt.data.id;
+
+					jdlg1.objParam[opt.relatedKey] = mainId;
+					jdlg1.objParam.readonly = opt.readonly;
+					jtbl.jdata().toolbar = null;  // 允许所有
+					var dgOpt = {
+						toolbar: WUI.dg_toolbar(jtbl, jdlg1),
+						onDblClickRow: WUI.dg_dblclick(jtbl, jdlg1),
+						url: getQueryUrl(mainId)
+					};
+					jtbl.datagrid(dgOpt);
+
+					// 隐藏子表工具栏，不允许操作（但可以双击一行查看明细，会设置这时子对话框只读）
+					jtbl.closest(".datagrid").find(".datagrid-toolbar").toggle(!opt.readonly);
+				}
+			}
+			else {
+				jo.toggle(formMode == FormMode.forSet);
+				if (formMode == FormMode.forSet) {
+					var mainId = beforeShowOpt.data.id;
+					var dgOpt = {
+						url: getQueryUrl(mainId)
+					};
+					jtbl.datagrid(dgOpt);
+				}
+			}
+		}
+
+		function getQueryUrl(mainId) {
+			return WUI.makeUrl(opt.obj + ".query", {cond: opt.relatedKey + "=" + mainId, res: opt.res});
+		}
+	}
+
+	function onValidate(ev, mode, oriData, newData) 
+	{
+		if (mode == FormMode.forAdd) {
+			// 添加时设置子表字段
+			self.assert(opt.valueField, "wui-subobj: 选项valueField未设置");
+			newData[opt.valueField] = jtbl.datagrid("getData").rows;
+		}
+	}
+}
 
 }
