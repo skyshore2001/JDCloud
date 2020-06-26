@@ -41,10 +41,16 @@ var self = this;
 				<input name="atts">
 			</td>
 		</tr>
+		<tr>
+			<td>上传单个附件</td>
+			<td class="wui-upload" data-options="multiple:false,pic:false,textField:'att'">
+				<input name="attId">
+			</td>
+		</tr>
 	</table>
 
 - 带name组件的input绑定到后端字段，并被自动隐藏。允许有多个带name的input组件，仅第一个input被处理。
-- options中可以设置：{ nothumb, pic, fname }
+- options中可以设置：{ nothumb, pic, fname, textField(需要后端支持) }
 
 组件会自动添加预览区及文件选择框等，完整的DOM大体如下：
 
@@ -78,10 +84,33 @@ a标签上数据如下：
 
 如果为false, 在.imgs区域内显示文件名链接而非图片。
 
-@param opt.fname 上传附件时（pic=true）时保存原文件名。
+@param opt.fname = !opt.pic 上传附件时（pic=false）时保存原文件名。
 
-在opt.pic=true时，默认会保存文件名到字段中。保存的格式为 `List(attId, fileName)` 即"{attId}:{orgName},{attId2}:{orgName2},..."
+在opt.pic=false时，默认会保存文件名到字段中。保存的格式为 `List(attId, fileName)` 即"{attId}:{orgName},{attId2}:{orgName2},..."
 设置为false只保存文件编号，不保存文件名。
+
+@param opt.textField 如果指定，则显示时使用指定的字段（用于显示文件名）。
+
+(v5.6) 在显示单个附件时, 一般使用attId字段（数值字段，不像atts可存字符串），这样就无法保存和显示文件名。可在后端做一个虚拟字段如att，格式为"{attId}:{fileName}":
+
+		protected $vcolDefs = [
+			[
+				"res" => ["concat(att.id,':',att.orgName) att"],
+				"join" => "LEFT JOIN Attachment att ON att.id=t0.attId",
+				"default" => true
+			]
+		];
+
+列表页中展示使用att而非attId：
+
+			<th data-options="field:'att', sortable:true, formatter:Formatter.atts, sorter:intSort">模板文件</th>
+
+详情对话框中示例，指定att：
+
+			<td>模板文件</td>
+			<td class="wui-upload" data-options="multiple:false,pic:false,textField:'att'">
+				<input name="attId">
+			</td>
 
 @param opt.manual=false 是否自动上传提交
 
@@ -263,9 +292,10 @@ function enhanceUpload(jupload)
 	if (!opt.manual)
 		jdlg.on("validate", onValidate);
 
-	function onShow(ev) {
+	function onShow(ev, formMode, initData) {
 		jname.hide();
-		hiddenToImg(jupload);
+		var val = initData && opt.textField && initData[opt.textField];
+		hiddenToImg(jupload, null, val);
 	}
 
 	function onValidate(ev, mode, oriData, newData) {
@@ -337,11 +367,13 @@ function createFilePreview(ja, text)
 	return jp;
 }
 
-function hiddenToImg(jp, sep)
+function hiddenToImg(jp, sep, val)
 {
 	if (sep == null)
 		sep = DEFAULT_SEP;
-	var val = jp.find("input[name]:first").val();
+	var ji = jp.find("input[name]:first");
+	if (val == null)
+		val = ji.val();
 	var arr = val? val.split(sep) : [];
 	arrayToImg(jp, arr);
 }
