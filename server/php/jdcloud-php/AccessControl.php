@@ -70,6 +70,11 @@ v5.4起将报错，设置该类的useStrictReadonly=false可以兼容旧行为�
 
 @var AccessControl::$hiddenFields ?= []  (for get/query) 隐藏字段列表。默认表中所有字段都可返回。一些敏感字段不希望返回的可在此设置。
 
+字段"pwd"，以"_"结尾的字段，以及被加入$hiddenFields的字段在最终结果中会被删除掉。
+示例：按客户编号(cusId)分组，但返回客户名(cusName)字段，不要返回cusId这个字段:
+
+	callSvr("CusOrder.query", {gres:"cusId _", res:"cusName 客户, COUNT(*) 订单数, SUM(amount) 总金额"})
+
 @var AccessControl::$requiredFields ?=[] (for add/set) 字段列表。添加时必须填值；更新时不允许置空。
 @var AccessControl::$requiredFields2 ?=[] (for set) 字段列表。更新时不允许设置空。
 
@@ -1410,8 +1415,14 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		return $this->maxPageSz <0? PAGE_SZ_LIMIT: min($this->maxPageSz, PAGE_SZ_LIMIT);
 	}
 
-	private function handleRow(&$rowData)
+	private function handleRow(&$rowData, $idx, $rowCnt)
 	{
+		if ($idx == 0) {
+			foreach (array_keys($rowData) as $col) {
+				if (endWith($col, "_"))
+					$this->hiddenFields[] = $col;
+			}
+		}
 		foreach ($this->hiddenFields as $field) {
 			unset($rowData[$field]);
 		}
@@ -2183,7 +2194,7 @@ FROM ($sql) t0";
 			$ret = ["id" => $this->id];
 		}
 		$this->handleSubObj($this->id, $ret);
-		$this->handleRow($ret);
+		$this->handleRow($ret, 0, 1);
 		return $ret;
 	}
 
@@ -2332,19 +2343,22 @@ FROM ($sql) t0";
 		// Note: colCnt may be changed in after().
 		$fixedColCnt = count($ret)==0? 0: count($ret[0]);
 
+		$rowCnt = count($ret);
 		$SUBOBJ_OPTIMIZE = !param("disableSubobjOptimize/b", false);
 		if ($SUBOBJ_OPTIMIZE) {
 			$this->handleSubObjForList($ret); // 优化: 总共只用一次查询, 替代每个主表查询一次
+			$i = 0;
 			foreach ($ret as &$ret1) {
-				$this->handleRow($ret1);
+				$this->handleRow($ret1, $i++, $rowCnt);
 			}
 		}
 		else {
+			$i = 0;
 			foreach ($ret as &$ret1) {
 				$id1 = $ret1["id"];
 				if (isset($id1))
 					$this->handleSubObj($id1, $ret1);
-				$this->handleRow($ret1);
+				$this->handleRow($ret1, $i++, $rowCnt);
 			}
 		}
 		$this->after($ret);

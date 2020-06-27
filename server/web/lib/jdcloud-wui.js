@@ -5179,6 +5179,8 @@ page调用示例:
 
 	WUI.showPage("pageHome", "%s-" + cityName, [{cityName: cityName}]); //e.g. 显示 "首页-上海"
 
+title用于唯一标识tab，即如果相同title的tab存在则直接切换过去。除非：
+(v5.5) 如果标题以"!"结尾, 则每次都打开新的tab页。
 */
 self.showPage = showPage;
 function showPage(pageName, title, paramArr)
@@ -5216,10 +5218,19 @@ function showPage(pageName, title, paramArr)
 		else
 			title = title.replace('%s', title0);
 
+		var force = false;
+		if (title.substr(-1, 1) == "!") {
+			force = true;
+			title = title.substr(0, title.length-1);
+		}
+
 		var tt = self.tabMain;
 		if (tt.tabs('exists', title)) {
-			tt.tabs('select', title);
-			return;
+			if (!force) {
+				tt.tabs('select', title);
+				return;
+			}
+			tt.tabs('close', title);
 		}
 
 		var id = tabid(title);

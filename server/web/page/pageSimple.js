@@ -1,3 +1,22 @@
+/*
+用于快捷展示报表。示例：在订单列表上添加“月报表”按钮，点击显示订单月统计报表，并可以导出到Excel。
+
+	// function initPageCusOrder()
+	var btnStat1 = {text: "月报表", "wui-perm": "导出", iconCls:'icon-ok', handler: function () {
+		var queryParams = jtbl.datagrid("options").queryParams;
+		var url = WUI.makeUrl("CusOrder.query", {
+			gres:"y 年,m 月, cusId _", // 以下划线结尾的字段是辅助字段，不出现在返回结果中。
+			res:"cusName 客户, COUNT(*) 订单数, SUM(amount) 总金额",
+			orderby: "总金额 DESC"
+		});
+		WUI.showPage("pageSimple", "订单月报表!", [url, queryParams]);
+	}};
+	jtbl.datagrid({
+		toolbar: WUI.dg_toolbar(jtbl, jdlg, ..., btnStat1),
+		...
+	});
+
+*/
 function initPageSimple(url, queryParams)
 {
 	var jpage = $(this);
