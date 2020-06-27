@@ -6853,6 +6853,15 @@ function getQueryParamFromTable(jtbl, param)
 	}
 	if (param.fname === undefined) {
 		param.fname = jtbl.prop("title") || jtbl.closest(".wui-page").prop("title");
+		if (opt.queryParams && opt.queryParams.cond) {
+			var keys = [];
+			opt.queryParams.cond.replace(/'([^']+?)'/g, function (ms, ms1) {
+				keys.push(ms1);
+			});
+			if (keys.length > 0) {
+				param.fname += "-" + keys.join("-");
+			}
+		}
 	}
 	return param;
 }
