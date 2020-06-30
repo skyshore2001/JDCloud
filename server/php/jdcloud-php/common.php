@@ -722,4 +722,79 @@ function text2html($s)
 		return "<p>$text</p>";
 	}, $s);
 }
+
+/**
+@fn pivit($objArr, $gcols)
+
+将行转置到列。一般用于统计分析数据处理。
+
+- $gcols为转置字段，可以是一个或多个字段。可以是个字符串("f1" 或 "f1,f2")，也可以是个数组（如["f1","f2"]）
+- $objArr是对象数组，最后一列是统计列。
+
+示例：
+
+	$arr = [
+		["y"=>2019, "m"=>11, "cateId"=>1, "cateName"=>"衣服", "sum" => 20000],
+		["y"=>2019, "m"=>11, "cateId"=>2, "cateName"=>"食品", "sum" => 12000],
+		["y"=>2019, "m"=>12, "cateId"=>2, "cateName"=>"食品", "sum" => 15000],
+		["y"=>2020, "m"=>2, "cateId"=>1, "cateName"=>"衣服", "sum" => 19000]
+	];
+
+	// 将类别转到列
+	$arr1 = pivot($arr, "cateId,cateName");
+
+得到：
+
+	$arr1 = [
+		["y"=>2019, "m"=>11, "衣服"=>20000, "食品"=>12000],
+		["y"=>2019, "m"=>12, "食品"=>15000],
+		["y"=>2020, "m"=>2, "衣服"=>19000]
+	];
+*/
+function pivot($objArr, $gcols, &$xcolCnt=null)
+{
+	if (count($objArr) == 0)
+		return $objArr;
+
+	if (is_string($gcols)) {
+		$gcols = preg_split('/\s*,\s*/', $gcols);
+	}
+
+	$xMap = []; // {x=>新行}
+
+	// 去除最后一列（统计值列），去除gcols，剩下是xcols
+	$cols = array_keys($objArr[0]);
+	array_pop($cols); // 去除ycol
+	$xcols = array_diff($cols, $gcols); // 去除gcols
+	if (count($xcols) + count($gcols) != count($cols)) {
+		throw new MyException(E_PARAM, "bad gcols: not in cols", "分组列不正确");
+	}
+	$xcolCnt = count($xcols);
+
+	foreach ($objArr as $row) {
+		// $x = xtext($row);
+		$xarr = [];
+		foreach ($xcols as $col) {
+			$xarr[$col] = $row[$col];
+		}
+		$x = join('-', $xarr);
+
+		$garr = array_map(function ($col) use ($row) {
+			return $row[$col];
+		}, $gcols);
+		$g = join('-', $garr) ?: "(null)";
+
+		if (! array_key_exists($x, $xMap)) {
+			$xMap[$x] = $xarr;
+		}
+		$y = end($row);
+
+		if (! array_key_exists($g, $xMap[$x]))
+			$xMap[$x][$g] = $y;
+		else
+			$xMap[$x][$g] += $y;
+	}
+	$ret = array_values($xMap);
+	return $ret;
+}
 // vi: foldmethod=marker

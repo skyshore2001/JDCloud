@@ -2362,6 +2362,10 @@ FROM ($sql) t0";
 			}
 		}
 		$this->after($ret);
+		$pivot = param("pivot");
+		if ($pivot) {
+			$ret = pivot($ret, $pivot, $fixedColCnt);
+		}
 
 		if ($pagesz == count($ret)) { // 还有下一页数据, 添加nextkey
 			if ($enablePartialQuery) {

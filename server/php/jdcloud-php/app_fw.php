@@ -726,7 +726,7 @@ function objarr2table($rs, $fixedColCnt=null)
 			$h1 = array_keys($row);
 			for ($i=$fixedColCnt; $i<count($h1); ++$i) {
 				if (array_search($h1[$i], $h) === false) {
-					$h[] = $h1[$i];
+					$h[] = (string)$h1[$i];
 				}
 			}
 		}
