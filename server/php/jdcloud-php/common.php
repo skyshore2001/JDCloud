@@ -746,6 +746,19 @@ function text2html($s)
 得到：
 
 	$arr1 = [
+		["y"=>2019, "m"=>11, "1-衣服"=>20000, "2-食品"=>12000],
+		["y"=>2019, "m"=>12, "2-食品"=>15000],
+		["y"=>2020, "m"=>2, "1-衣服"=>19000]
+	];
+
+如果字段名以"_"结尾，则将被忽略，此逻辑与query接口返回字段一样。
+例如上例中cateId若设置别名为_，则不会出现在最终结果中：
+
+	callSvr("Ordr.query", {gres: "y,m,cateId _", res: "cateName,SUM(amount) sum", pivot: "cateName"})
+
+结果为：
+
+	$arr1 = [
 		["y"=>2019, "m"=>11, "衣服"=>20000, "食品"=>12000],
 		["y"=>2019, "m"=>12, "食品"=>15000],
 		["y"=>2020, "m"=>2, "衣服"=>19000]
@@ -759,16 +772,21 @@ function pivot($objArr, $gcols, &$xcolCnt=null)
 	if (is_string($gcols)) {
 		$gcols = preg_split('/\s*,\s*/', $gcols);
 	}
-
-	$xMap = []; // {x=>新行}
-
-	// 去除最后一列（统计值列），去除gcols，剩下是xcols
-	$cols = array_keys($objArr[0]);
-	array_pop($cols); // 去除ycol
-	$xcols = array_diff($cols, $gcols); // 去除gcols
-	if (count($xcols) + count($gcols) != count($cols)) {
-		throw new MyException(E_PARAM, "bad gcols: not in cols", "分组列不正确");
+	if (count($gcols) == 0) {
+		throw new MyException(E_PARAM, "bad gcols: no data", "未指定分组列");
 	}
+	$cols = array_keys($objArr[0]);
+	$ycol = array_pop($cols); // 去除ycol
+	foreach ($gcols as $gcol) {
+		if (! in_array($gcol, $cols)) {
+			throw new MyException(E_PARAM, "bad gcol $gcol: not in cols", "分组列不正确: $gcol");
+		}
+	}
+		
+	$xMap = []; // {x=>新行}
+	$xcols = array_filter(array_diff($cols, $gcols), function ($col) {
+		return !endWith($col, "_");
+	});
 	$xcolCnt = count($xcols);
 
 	foreach ($objArr as $row) {
