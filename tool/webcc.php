@@ -12,6 +12,8 @@ Webcc用于Web站点优化，即生成用于发布的Web应用目录。
 	export WEBCC_LS_CMD='find . -type f'
 	# export WEBCC_LS_CMD='find . -type f | grep -v .svn | grep -v .git'
 	# export WEBCC_LS_CMD='svn ls -R | egrep -v "/$"'
+	# 这个是默认命令:
+	# export WEBCC_LS_CMD='git ls-files'
 	webcc {srcDir}
 
 webcc进入{srcDir}目录，执行`WEBCC_LS_CMD`命令得到源文件列表，分别进行处理，生成发布目录，默认为"output_web"目录。

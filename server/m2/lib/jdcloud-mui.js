@@ -6497,7 +6497,12 @@ function parseArgs()
 			$(function () {
 				var path = './';
 				if (mCommon.isIOS()) {
-					mCommon.loadScript(path + "cordova-ios/cordova.js?__HASH__,.."); 
+					if (g_args.mergeJs) {
+						mCommon.loadScript(path + "lib-cordova-ios.min.js"); 
+					}
+					else {
+						mCommon.loadScript(path + "cordova-ios/cordova.js?__HASH__,.."); 
+					}
 
 					if (! m_opt.disableFastClick) {
 						// introduce fastclick for IOS webview: https://github.com/ftlabs/fastclick
@@ -6507,7 +6512,12 @@ function parseArgs()
 					}
 				}
 				else {
-					mCommon.loadScript(path + "cordova/cordova.js?__HASH__,.."); 
+					if (g_args.mergeJs) {
+						mCommon.loadScript(path + "lib-cordova.min.js"); 
+					}
+					else {
+						mCommon.loadScript(path + "cordova/cordova.js?__HASH__,.."); 
+					}
 				}
 			});
 		}
