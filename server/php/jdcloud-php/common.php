@@ -751,10 +751,10 @@ function text2html($s)
 		["y"=>2020, "m"=>2, "1-衣服"=>19000]
 	];
 
-如果字段名以"_"结尾，则将被忽略，此逻辑与query接口返回字段一样。
-例如上例中cateId若设置别名为_，则不会出现在最终结果中：
+在后端查询时, 往往用id字段分组但显示为名字, 可以用hiddenFields参数指定不要返回的字段:
+例如上例中cateId若只需要参与查询, 不需要返回在最终结果中：
 
-	callSvr("Ordr.query", {gres: "y,m,cateId _", res: "cateName,SUM(amount) sum", pivot: "cateName"})
+	callSvr("Ordr.query", {gres: "y,m,cateId", res: "cateName,SUM(amount) sum", pivot: "cateName", hiddenFields:"cateId"})
 
 结果为：
 
@@ -763,6 +763,12 @@ function text2html($s)
 		["y"=>2019, "m"=>12, "食品"=>15000],
 		["y"=>2020, "m"=>2, "衣服"=>19000]
 	];
+
+其它示例: 显示用户单数统计表
+
+	var url = WUI.makeUrl("Ordr.query", {gres:"userId", res:"userName 客户, COUNT(*) 订单数, SUM(amount) 总金额", hiddenFields:"userId", pivot:'订单数'});
+	WUI.showPage("pageSimple", "用户单数统计!", [url]);
+
 */
 function pivot($objArr, $gcols, &$xcolCnt=null)
 {
@@ -784,9 +790,7 @@ function pivot($objArr, $gcols, &$xcolCnt=null)
 	}
 		
 	$xMap = []; // {x=>新行}
-	$xcols = array_filter(array_diff($cols, $gcols), function ($col) {
-		return !endWith($col, "_");
-	});
+	$xcols = array_diff($cols, $gcols);
 	$xcolCnt = count($xcols);
 
 	foreach ($objArr as $row) {
