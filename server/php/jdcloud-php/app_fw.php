@@ -719,8 +719,10 @@ function objarr2table($rs, $fixedColCnt=null)
 	$d = [];
 	if (count($rs) == 0)
 		return ["h"=>$h, "d"=>$d];
-
-	$h = array_keys($rs[0]);
+	// NOTE: 避免rs[0]中含有数字值的key
+	foreach ($rs[0] as $k=>$v) {
+		$h[] = (string)$k;
+	}
 	if (isset($fixedColCnt)) {
 		foreach ($rs as $row) {
 			$h1 = array_keys($row);
