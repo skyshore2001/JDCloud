@@ -1902,7 +1902,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			if ($ignoreError === false)
 				throw new MyException(E_SERVER, "unknown vcol `$col`");
 			if ($ignoreError === "addRes") {
-				$rv = addRes("t0." . $col);
+				$rv = $this->addRes("t0." . $col);
 				if ($isHiddenField && $rv === true)
 					$this->hiddenFields[] = $col;
 				return $rv;
