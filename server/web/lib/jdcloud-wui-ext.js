@@ -37,20 +37,20 @@ var self = this;
 		</tr>
 		<tr>
 			<td>上传附件</td>
-			<td class="wui-upload" data-options="pic:false">
+			<td class="wui-upload" data-options="pic:false,fname:'attName'"> <!-- v5.5: 显示使用虚拟字段attName,须后端提供,也可以用 fname=1将显示内容保存到atts字段 -->
 				<input name="atts">
 			</td>
 		</tr>
 		<tr>
 			<td>上传单个附件</td>
-			<td class="wui-upload" data-options="multiple:false,pic:false,textField:'att'">
+			<td class="wui-upload" data-options="multiple:false,pic:false,fname:'attName'">
 				<input name="attId">
 			</td>
 		</tr>
 	</table>
 
 - 带name组件的input绑定到后端字段，并被自动隐藏。允许有多个带name的input组件，仅第一个input被处理。
-- options中可以设置：{ nothumb, pic, fname, textField(需要后端支持) }
+- options中可以设置：{ nothumb, pic, fname  }
 
 组件会自动添加预览区及文件选择框等，完整的DOM大体如下：
 
@@ -84,33 +84,48 @@ a标签上数据如下：
 
 如果为false, 在.imgs区域内显示文件名链接而非图片。
 
-@param opt.fname = !opt.pic 上传附件时（pic=false）时保存原文件名。
+@param opt.fname 是否显示文件名。默认为0。目前不用于图片，只用于附件（即pic=false时有效）。
 
-在opt.pic=false时，默认会保存文件名到字段中。保存的格式为 `List(attId, fileName)` 即"{attId}:{orgName},{attId2}:{orgName2},..."
-设置为false只保存文件编号，不保存文件名。
+(v5.5) 
 
-@param opt.textField 如果指定，则显示时使用指定的字段（用于显示文件名）。
+- 当值为0时，字段只保存文件编号或编号列表，如"100", "100,101"。
+- 当值为1时，字段保存文件编号及文件名（可当备注使用），如"100:合同.docx", "100:合同.docx,101:合同附件.xlsx"
+- 还可以指定一个虚拟字段名，表示字段虽然只保存编号，但显示时可使用指定的虚拟字段，且其格式与fname=1时相同。这样看到的效果与fname=1类似。
 
-(v5.6) 在显示单个附件时, 一般使用attId字段（数值字段，不像atts可存字符串），这样就无法保存和显示文件名。可在后端做一个虚拟字段如att，格式为"{attId}:{fileName}":
+示例：用attId字段保存单个附件，并显示附件名
+
+由于attId是数值字段，不可存额外字符串信息，所以不能设置fname=1。
+这时在后端做一个虚拟字段如attName，格式为"{attId}:{fileName}":
 
 		protected $vcolDefs = [
 			[
-				"res" => ["concat(att.id,':',att.orgName) att"],
+				"res" => ["concat(att.id,':',att.orgName) attName"],
 				"join" => "LEFT JOIN Attachment att ON att.id=t0.attId",
 				"default" => true
 			]
+			...
 		];
 
-列表页中展示使用att而非attId：
+列表页中展示使用虚拟字段attName而非attId：
 
-			<th data-options="field:'att', sortable:true, formatter:Formatter.atts, sorter:intSort">模板文件</th>
+			<th data-options="field:'attName', formatter:Formatter.atts">模板文件</th>
 
-详情对话框中示例，指定att：
+在详情对话框中指定fname为虚拟字段"att"：
 
 			<td>模板文件</td>
-			<td class="wui-upload" data-options="multiple:false,pic:false,textField:'att'">
+			<td class="wui-upload" data-options="multiple:false,pic:false,fname:'attName'">
 				<input name="attId">
 			</td>
+
+示例：用atts存多个附件。
+
+这时，可设置fname=1，即把文件名也存到atts字段。
+也可以设置fname='attName'(虚拟字段)，其格式为"{attId}:{filename},{attId2}:{filename2}"，后端实现参考如下(使用find_in_set)：
+
+			[
+				"res" => ["(SELECT group_concat(concat(att.id,':',att.orgName)) FROM Attachment att WHERE find_in_set(id, t0.atts)) attName"],
+				"default" => true
+			]
 
 @param opt.manual=false 是否自动上传提交
 
@@ -232,11 +247,10 @@ function enhanceUpload(jupload)
 	var defOpt = {
 		multiple: true,
 		pic: true,
-		manual: false
+		manual: false,
+		fname: 0
 	};
 	var opt = WUI.getOptions(jupload, defOpt);
-	if (opt.fname === undefined)
-		opt.fname = !opt.pic; // 非图片时，自动保存文件名
 
 	var jname = jupload.find("input[name]:first");
 	var jimgs = $('<div class="imgs"></div>');
@@ -294,8 +308,16 @@ function enhanceUpload(jupload)
 
 	function onShow(ev, formMode, initData) {
 		jname.hide();
-		var val = initData && opt.textField && initData[opt.textField];
-		hiddenToImg(jupload, null, val);
+		var val = null;
+		if (opt.fname == 0 || opt.fname == 1) {
+			val = jupload.find("input[name]:first").val();
+		}
+		else {
+			val = initData && initData[opt.fname];
+		}
+		var sep = DEFAULT_SEP;
+		var arr = val? val.split(sep) : [];
+		arrayToImg(jupload, arr);
 	}
 
 	function onValidate(ev, mode, oriData, newData) {
@@ -367,17 +389,6 @@ function createFilePreview(ja, text)
 	return jp;
 }
 
-function hiddenToImg(jp, sep, val)
-{
-	if (sep == null)
-		sep = DEFAULT_SEP;
-	var ji = jp.find("input[name]:first");
-	if (val == null)
-		val = ji.val();
-	var arr = val? val.split(sep) : [];
-	arrayToImg(jp, arr);
-}
-
 /*
 @fn imgToHidden(jp, sep?=",")
 
@@ -386,7 +397,6 @@ function hiddenToImg(jp, sep, val)
 如果有文件需要上传, 调用upload接口保存新增加的图片。使用异步上传，返回Deferred对象给dialog的validate事件处理函数。
 可显示文件上传进度条。
 
-@see hiddenToImg 有示例
 */
 function imgToHidden(jp, sep)
 {
@@ -442,7 +452,7 @@ function imgToHidden(jp, sep)
 	else {
 		var files = [];
 		jp.find(".imgs a").each(function() {
-			var att = $(this).attr('att');
+			var att = $(this).attr(opt.fname==1? 'att': 'attId'); //=1时保存文件名到字段中。
 			if (att)
 				val.push(att);
 			if (this.fileObj_)
@@ -457,7 +467,7 @@ function imgToHidden(jp, sep)
 			dfd = callSvr('upload', params, function (data) {
 				$.each(data, function (i, e) {
 					var att = e.id;
-					if (opt.fname) {
+					if (opt.fname == 1) {
 						att += ":" + e.orgName.replace(/[:,]/g, '_'); // 去除文件名中特殊符号
 					}
 					val.push(att);
@@ -488,7 +498,6 @@ function imgToHidden(jp, sep)
 
 TODO: 添加图片压缩参数，图片框显示大小等。
 
-@see hiddenToImg
 */
 function onChooseFile(ev)
 {
