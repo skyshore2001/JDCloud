@@ -4,9 +4,10 @@
 	// function initPageCusOrder()
 	var btnStat1 = {text: "月报表", "wui-perm": "导出", iconCls:'icon-ok', handler: function () {
 		var queryParams = jtbl.datagrid("options").queryParams;
-		var url = WUI.makeUrl("CusOrder.query", {
-			gres:"y 年,m 月, cusId _", // 以下划线结尾的字段是辅助字段，不出现在返回结果中。
-			res:"cusName 客户, COUNT(*) 订单数, SUM(amount) 总金额",
+		var url = WUI.makeUrl("Ordr.query", {
+			gres:"y 年,m 月, userId",
+			res:"userName 客户, COUNT(*) 订单数, SUM(amount) 总金额",
+			hiddenFields: "userId",
 			orderby: "总金额 DESC"
 		});
 		WUI.showPage("pageSimple", "订单月报表!", [url, queryParams]);
