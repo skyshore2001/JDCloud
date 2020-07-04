@@ -831,7 +831,8 @@ ORDER BY t0.id DESC)";
 query接口支持fmt参数：
 
 - list: 生成`{ @list, nextkey?, total? }`格式，而非缺省的 `{ @h, @d, nextkey?, total? }`格式
-- one: 类似get接口，只返回第一条数据，常用于统计等接口。
+- one: 类似get接口，只返回第一条数据，常用于统计等接口。若查询不到则抛错。
+- one?: (v5.5) 与"one"相似，但若查询不到则返回false而不抛出错误。而且若只有一个字段，则直接返回该字段内容，而非该行对象。
 - csv/txt/excel: 导出文件，注意为了避免分页，调用时可设置较大的pagesz值。
 	- csv: 逗号分隔的文件，utf8编码。
 	- excel: 逗号分隔的文件，gb18030编码以便excel可直接打开不会显示中文乱码。
@@ -2072,6 +2073,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		$this->handleSubObjForAddSet();
 
 		$cnt = dbUpdate($this->table, $_POST, $this->id);
+		return "OK";
 	}
 
 	function handleSubObjForAddSet()
@@ -2237,6 +2239,7 @@ FROM ($sql) t0";
 
 		$sqlConf = &$this->sqlConf;
 
+		$fmt = param("fmt");
 		$pagesz = param("pagesz/i");
 		$pagekey = param("pagekey/id");
 		if (! isset($pagekey)) {
@@ -2248,7 +2251,7 @@ FROM ($sql) t0";
 			}
 		}
 		if ($pagesz == 0) {
-			$pagesz = param("fmt") !== "one"? 20: 1;
+			$pagesz = ($fmt === "one" || $fmt === "one?") ? 1: 20;
 		}
 
 		$maxPageSz = $this->getMaxPageSz();
@@ -2377,7 +2380,6 @@ FROM ($sql) t0";
 				$nextkey = $pagekey + 1;
 			}
 		}
-		$fmt = param("fmt");
 		if ($fmt === "list") {
 			$ret = ["list" => $ret];
 			unset($fmt);
@@ -2385,6 +2387,13 @@ FROM ($sql) t0";
 		else if ($fmt === "one") {
 			if (count($ret) == 0)
 				throw new MyException(E_PARAM, "no data", "查询不到数据");
+			return $ret[0];
+		}
+		else if ($fmt === "one?") {
+			if (count($ret) == 0)
+				return false;
+			if (count($ret[0]) == 1)
+				return current($ret[0]);
 			return $ret[0];
 		}
 		else {
@@ -2459,6 +2468,7 @@ FROM ($sql) t0";
 		$cnt = execOne($sql);
 		if (param('force')!=1 && $cnt != 1)
 			throw new MyException(E_PARAM, "del: not found {$this->table}.id={$this->id}");
+		return "OK";
 	}
 
 /**
@@ -3181,7 +3191,7 @@ function KVtoCond($k, $v)
 		if ($this->ac != "query")
 			return false;
 		$fmt = param("fmt");
-		return $fmt != null && $fmt != 'list' && $fmt != 'one';
+		return $fmt != null && $fmt != 'list' && $fmt != 'one' && $fmt != 'one?';
 	}
 }
 

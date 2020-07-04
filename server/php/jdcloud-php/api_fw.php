@@ -479,14 +479,9 @@ function setRet($code, $data = null, $internalMsg = null)
 	global $ERRINFO;
 	global $X_RET;
 
-	if (!isset($data)) {
-		if ($code) {
-			assert(array_key_exists($code, $ERRINFO));
-			$data = $ERRINFO[$code];
-		}
-		else {
-			$data = "OK";
-		}
+	if (!isset($data) && $code) {
+		assert(array_key_exists($code, $ERRINFO));
+		$data = $ERRINFO[$code];
 	}
 	$X_RET = [$code, $data];
 
@@ -1465,8 +1460,8 @@ function callSvcInt($ac, $param=null, $postParam=null)
 	else {
 		throw new MyException(E_PARAM, "Bad request - unknown ac: {$ac}", "接口不支持");
 	}
-	if (!isset($ret))
-		$ret = "OK";
+//	if (!isset($ret))
+//		$ret = "OK";
 	return $ret;
 }
 
