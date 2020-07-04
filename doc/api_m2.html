@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（移动Web版）</h1>
-<div>最后更新：2020-05-29</div>
+<div>最后更新：2020-07-04</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -50,6 +50,7 @@ code {
 <div class="toc">
 <p><a href="##footer">#footer (key)</a></p>
 <p><a href="##muiAlert">#muiAlert (key)</a></p>
+<p><a href="#$.Deferred">$.Deferred (fn)</a></p>
 <p><a href="#.bd">.bd (key)</a></p>
 <p><a href="#.btn-icon">.btn-icon (key)</a></p>
 <p><a href="#.ft">.ft (key)</a></p>
@@ -82,6 +83,7 @@ code {
 <p><a href="#Plugins">Plugins (class)</a></p>
 <p><a href="#Plugins.exists">Plugins.exists (fn)</a></p>
 <p><a href="#Plugins.list">Plugins.list (fn)</a></p>
+<p><a href="#Promise">Promise (alias)</a></p>
 <p><a href="#STORAGE_PREFIX">STORAGE_PREFIX (var)</a></p>
 <p><a href="#activePage">activePage (var)</a></p>
 <p><a href="#app_abort">app_abort (fn)</a></p>
@@ -105,6 +107,7 @@ code {
 <p><a href="#container">container (var)</a></p>
 <p><a href="#data-options">data-options (key)</a></p>
 <p><a href="#defDataProc">defDataProc (fn)</a></p>
+<p><a href="#defaultFormItems">defaultFormItems (key)</a></p>
 <p><a href="#delCookie">delCookie (fn)</a></p>
 <p><a href="#delStorage">delStorage (fn)</a></p>
 <p><a href="#delayDo">delayDo (fn)</a></p>
@@ -200,6 +203,7 @@ code {
 <p><a href="#options.serverUrlAc">options.serverUrlAc (var)</a></p>
 <p><a href="#options.showHash">options.showHash (var)</a></p>
 <p><a href="#options.showLoadingDelay">options.showLoadingDelay (var)</a></p>
+<p><a href="#options.skipErrorRegex">options.skipErrorRegex (var)</a></p>
 <p><a href="#options.statusBarColor">options.statusBarColor (var)</a></p>
 <p><a href="#pagebeforeshow">pagebeforeshow (event)</a></p>
 <p><a href="#pagecreate">pagecreate (event)</a></p>
@@ -213,6 +217,8 @@ code {
 <p><a href="#popPageStack">popPageStack (fn)</a></p>
 <p><a href="#prevPageId">prevPageId (var)</a></p>
 <p><a href="#queryHint">queryHint (var)</a></p>
+<p><a href="#randInt">randInt (fn)</a></p>
+<p><a href="#randInt">randInt (fn)</a></p>
 <p><a href="#reloadPage">reloadPage (fn)</a></p>
 <p><a href="#reloadSite">reloadSite (fn)</a></p>
 <p><a href="#rgb">rgb (fn)</a></p>
@@ -750,6 +756,14 @@ app_alert</code></pre>
 <div class="block">
 <h2 id="assert">@fn assert(cond, dscr?)</h2></div>
 <div class="block">
+<h2 id="randInt">@fn randInt(from, to)</h2>
+<p>生成指定区间的随机整数。示例：</p>
+<pre><code>var i = randInt(1, 10); // 1-10之间的整数，包含1或10</code></pre></div>
+<div class="block">
+<h2 id="randInt">@fn randInt(from, to)</h2>
+<p>生成随机字符串，包含字母或数字，不包含易混淆的0或O。示例：</p>
+<pre><code>var dynCode = randChr(4); // e.g. "9BZ3"</code></pre></div>
+<div class="block">
 <h2 id="parseQuery">@fn parseQuery(str)</h2>
 <p>解析url编码格式的查询字符串，返回对应的对象。</p>
 <pre><code>if (location.search) {
@@ -925,6 +939,16 @@ hash = {
     "USER-100": {id: 100, name: "Tom"},
     "USER-101": {id: 101, name: "Jane"}
 };</code></pre>
+<p>key函数也可以返回[key, value]数组：</p>
+<pre><code>var hash = rs2Hash(rs, function (o) {
+    return ["USER-" + o.id, o.name];
+}); 
+
+// 结果为
+hash = {
+    "USER-100": "Tom",
+    "USER-101": "Jane"
+};</code></pre>
 <p class="see"><strong>@see <a href="#rs2Array">rs2Array</a></strong> </p></div>
 <div class="block">
 <h2 id="rs2MultiHash">@fn rs2MultiHash(rs, key)</h2>
@@ -958,6 +982,16 @@ var hash = rs2MultiHash(rs, function (o) {
 hash = {
     "1998": [{id: 100, name: "Tom", birthday: "1998-10-1"}, {id: 102, name: "Tom", birthday:"1998-3-8"}],
     "1999": [{id: 101, name: "Jane", birthday: "1999-1-10"}]
+};</code></pre>
+<p>key作为函数，也可返回[key, value]:</p>
+<pre><code>var hash = rs2MultiHash(rs, function (o) {
+    return [o.name, [o.id, o.birthday]];
+});
+
+// 结果为
+hash = {
+    "Tom": [[100, "1998-10-1"], [102, "1998-3-8"]],
+    "Jane": [[101, "1999-1-10"]]
 };</code></pre>
 <p class="see"><strong>@see <a href="#rs2Hash">rs2Hash</a></strong> </p>
 <p class="see"><strong>@see <a href="#rs2Array">rs2Array</a></strong> </p></div>
@@ -1105,14 +1139,20 @@ var arr = mCommon.rs2Array(rs);</code></pre>
 <p class="see"><strong>@see <a href="#setFormData">setFormData</a></strong> </p></div>
 <div class="block">
 <h2 id="formItems">@fn formItems(jo, cb)</h2>
-<p>遍历jo下带name属性的有效控件，回调cb函数。</p>
+<p>表单对象遍历。对表单jo（实际可以不是form标签）下带name属性的控件，交给回调cb处理。<br />
+可通过扩展<code>WUI.formItems[sel]</code>来为表单扩展其它类型控件，参考 <code>WUI.defaultFormItems</code>来查看要扩展的接口方法。</p>
 <p>注意:</p>
 <ul>
 <li>忽略有disabled属性的控件</li>
 <li>忽略未选中的checkbox/radiobutton</li>
 </ul>
-<p class="param"><strong>@param cb</strong> (name, val) this=ji=当前jquery对象</p>
-<p>当cb返回false时可中断遍历。</p></div>
+<p>对于checkbox，设置时根据val确定是否选中；取值时如果选中取value属性否则取value-off属性。<br />
+缺省value为&quot;on&quot;, value-off为空(非标准属性，本框架支持)，可以设置：</p>
+<pre><code>&lt;input type="checkbox" name="flag" value="1"&gt;
+&lt;input type="checkbox" name="flag" value="1" value-off="0"&gt;</code></pre>
+<p class="param"><strong>@param cb</strong> (ji, name, it) it.getDisabled/setDisabled/getValue/setValue/getShowbox</p>
+<p>当cb返回false时可中断遍历。</p>
+<p class="key"><strong>@key <a id="defaultFormItems">defaultFormItems</a></strong> </p></div>
 <div class="block">
 <h2 id="setFormData">@fn setFormData(jo, data?, opt?)</h2>
 <p>用于为带name属性的DOM对象设置内容为data[name].<br />
@@ -1121,7 +1161,7 @@ var arr = mCommon.rs2Array(rs);</code></pre>
 <ul>
 <li>DOM项的内容指: 如果是input/textarea/select等对象, 内容为其value值; 如果是div组件, 内容为其innerHTML值.</li>
 <li>当data[name]未设置(即值为undefined, 注意不是null)时, 对于input/textarea等组件, 行为与form.reset()逻辑相同,<br />
-即恢复为初始化值, 除了input[type=hidden]对象, 它的内容不会变.<br />
+即恢复为初始化值。（特别地，form.reset无法清除input[type=hidden]对象的内容, 而setFormData可以)<br />
 对div等其它对象, 会清空该对象的内容.</li>
 <li>如果对象设置有属性&quot;noReset&quot;, 则不会对它进行设置.</li>
 </ul>
@@ -1323,6 +1363,10 @@ function doNext() { }</code></pre>
         ev.dfds.push(dfd);
 });</code></pre></div>
 <div class="block">
+<h2 id="$.Deferred">@fn $.Deferred</h2>
+<p class="alias"><strong>@alias <a id="Promise">Promise</a></strong> </p>
+<p>兼容Promise的接口，如then/catch/finally</p></div>
+<div class="block">
 <h2 id="evalAttr">@fn evalAttr(jo, name)</h2>
 <p>返回一个属性做eval后的js值。</p>
 <p>示例：读取一个对象值：</p>
@@ -1522,6 +1566,7 @@ var url = MUI.makeUrl("Ordr.set", params);</code></pre>
 <p style="margin-left:0em"><a href="#callSvr-2 文件上传支持(FormData)">2 文件上传支持(FormData)</a></p>
 <p style="margin-left:0em"><a href="#callSvr-3 callSvr扩展">3 callSvr扩展</a></p>
 <p style="margin-left:0em"><a href="#callSvr-4 适配RESTful API">4 适配RESTful API</a></p>
+<p style="margin-left:0em"><a href="#callSvr-5 jQuery的$.Deferred兼容Promise接口">5 jQuery的$.Deferred兼容Promise接口</a></p>
 </div>
 <p class="param"><strong>@param ac</strong>  String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)</p>
 <p class="param"><strong>@param params</strong>  Object. URL参数（或称HTTP GET参数）</p>
@@ -1537,14 +1582,24 @@ var url = MUI.makeUrl("Ordr.set", params);</code></pre>
 <p>想为ajax选项设置缺省值，可以用callSvrExt中的beforeSend回调函数，也可以用$.ajaxSetup，<br />
 但要注意：ajax的dataFilter/beforeSend选项由于框架已用，最好不要覆盖。</p>
 <p class="see"><strong>@see <a href="#callSvrExt[].beforeSend">callSvrExt[].beforeSend</a></strong> (opt) 为callSvr选项设置缺省值</p>
-<p class="return"><strong>@return deferred对象，与$.ajax相同。</strong> </p>
+<p class="return"><strong>@return deferred对象，在Ajax调用成功后回调。</strong> </p>
 <p>例如，</p>
 <pre><code>var dfd = callSvr(ac, fn1);
 dfd.then(fn2);
 
 function fn1(data) {}
 function fn2(data) {}</code></pre>
-<p>在接口调用成功后，会依次回调fn1, fn2.</p>
+<p>在接口调用成功后，会依次回调fn1, fn2. 在回调函数中this表示ajax参数。例如：</p>
+<pre><code>callSvr(ac, function (data) {
+    // 可以取到传入的参数。
+    console.log(this.key1);
+}, null, {key1: 'val1'});</code></pre>
+<p>(v5.4) 支持失败时回调：</p>
+<pre><code>var dfd = callSvr(ac);
+dfd.fail(function (data) {
+    console.log('error', data);
+    console.log(this.ctx_.ret); // 和设置选项{noex:1}时回调中取MUI.lastError.ret 或 this.lastError相同。
+});</code></pre>
 <p class="key"><strong>@key <a id="callSvr.noex">callSvr.noex</a></strong>  调用接口时忽略出错，可由回调函数fn自己处理错误。</p>
 <p>当后端返回错误时, 回调<code>fn(false)</code>（参数data=false）. 可通过 MUI.lastError.ret 或 this.lastError 取到返回的原始数据。</p>
 <p>示例：</p>
@@ -1812,7 +1867,17 @@ callSvr("User.get", function (data) {
         });
         return "./api.php/" + ac;
     }
-}</code></pre></div>
+}</code></pre>
+<h4 id="callSvr-5 jQuery的$.Deferred兼容Promise接口">5 jQuery的$.Deferred兼容Promise接口</h4>
+<pre><code>var dfd = callSvr("...");
+dfd.then(function (data) {
+    console.log(data);
+})
+.catch(function (err) {
+    app_alert(err);
+})
+.finally(...)</code></pre>
+<p>支持catch/finally等Promise类接口。接口逻辑失败时，dfd.reject()触发fail/catch链。</p></div>
 <div class="block">
 <h2 id="callSvrSync">@fn callSvrSync(ac, [params?], fn?, postParams?, userOptions?)</h2>
 <p class="return"><strong>@return data</strong>  原型规定的返回数据</p>
@@ -2408,7 +2473,12 @@ function onShowPage(pageRef, opt) {
     }
 }</code></pre>
 <p class="var"><strong>@var <a id="options.showLoadingDelay">options.showLoadingDelay</a></strong>  ?= 500  延迟显示加载图标</p>
-<p>(v5.4) 默认如果在500ms内如果远程调用成功, 则不显示加载图标.</p></div>
+<p>(v5.4) 默认如果在500ms内如果远程调用成功, 则不显示加载图标.</p>
+<p class="var"><strong>@var <a id="options.skipErrorRegex">options.skipErrorRegex</a></strong>  定义要忽略的错误</p>
+<p>示例：有video标签时，缩小窗口或全屏预览时，有时会报一个错（见下例），暂不清楚解决方案，也不影响执行，可以先安全忽略它不要报错：</p>
+<pre><code>$.extend(MUI.options, {
+    skipErrorRegex: /ResizeObserver loop limit exceeded/i,
+});</code></pre></div>
 <div class="block">
 <h2 id="setFormSubmit">@fn setFormSubmit(jf, fn?, opt?={validate?, onNoAction?})</h2>
 <p class="param"><strong>@param fn</strong>  Function(data); 与callSvr时的回调相同，data为服务器返回的数据。</p>

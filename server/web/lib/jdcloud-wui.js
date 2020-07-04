@@ -1430,7 +1430,12 @@ Date.prototype.diff = function(sInterval, dtEnd)
 	var dtStart = this;
 	switch (sInterval) 
 	{
-		case 'd' :return Math.round((dtEnd - dtStart) / 86400000);
+		case 'd' :
+		{
+			var d1 = (dtStart.getTime() - dtStart.getTimezoneOffset()*60000) / 86400000;
+			var d2 = (dtEnd.getTime() - dtEnd.getTimezoneOffset()*60000) / 86400000;
+			return Math.floor(d2) - Math.floor(d1);
+		}	
 		case 'm' :return dtEnd.getMonth() - dtStart.getMonth() + (dtEnd.getFullYear()-dtStart.getFullYear())*12;
 		case 'y' :return dtEnd.getFullYear() - dtStart.getFullYear();
 		case 's' :return Math.round((dtEnd - dtStart) / 1000);
@@ -1994,10 +1999,9 @@ function appendParam(url, param)
 self.deleteParam = deleteParam;
 function deleteParam(url, paramName)
 {
-	var ret = url.replace(new RegExp('&?' + paramName + "(=[^&#]+)?"), '');
-	if (ret.indexOf('?&') >=0) {
-		ret = ret.replace('?&', '?');
-	}
+	var ret = url.replace(new RegExp('&?\\b' + paramName + "\\b(=[^&#]+)?"), '');
+	ret = ret.replace(/\?&/, '?');
+	// ret = ret.replace(/\?(#|$)/, '$1'); // 问号不能去掉，否则history.replaceState(null,null,"#xxx")会无效果
 	return ret;
 }
 
@@ -2688,6 +2692,27 @@ function waitFor(dfd)
 }
 
 /**
+@fn rgb(r,g,b)
+
+生成"#112233"形式的颜色值.
+
+	rgb(255,255,255) -> "#ffffff"
+
+ */
+self.rgb = rgb;
+function rgb(r,g,b,a)
+{
+	if (a === 0) // transparent (alpha=0)
+		return;
+	return '#' + pad16(r) + pad16(g) + pad16(b);
+
+	function pad16(n) {
+		var ret = n.toString(16);
+		return n>16? ret: '0'+ret;
+	}
+}
+
+/**
 @fn rgb2hex(rgb)
 
 将jquery取到的颜色转成16进制形式，如："rgb(4, 190, 2)" -> "#04be02"
@@ -2698,8 +2723,15 @@ function waitFor(dfd)
 
  */
 self.rgb2hex = rgb2hex;
-function rgb2hex(rgb)
+function rgb2hex(rgbFormat)
 {
+	var rgba = rgb; // function rgb or rgba
+	try {
+		return eval(rgbFormat);
+	} catch (ex) {
+		console.log(ex);
+	}
+/*
 	var ms = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
 	if (ms == null)
 		return;
@@ -2714,6 +2746,7 @@ function rgb2hex(rgb)
 		}
 	}
 	return hex;
+*/
 }
 
 /**
@@ -3199,6 +3232,8 @@ function setOnError()
 		if (fn && fn.apply(this, arguments) === true)
 			return true;
 		if (errObj instanceof DirectReturn || /abort$/.test(msg) || (!script && !line))
+			return true;
+		if (self.options.skipErrorRegex && self.options.skipErrorRegex.test(msg))
 			return true;
 		if (errObj === undefined && msg === "[object Object]") // fix for IOS9
 			return true;
@@ -3701,7 +3736,7 @@ function enterWaiting(ctx)
 	setTimeout(function () {
 		if (self.isBusy)
 			self.showLoading();
-	}, 200);
+	}, (self.options.showLoadingDelay || 200));
 // 		if ($.mobile && !(ctx && ctx.noLoadingImg))
 // 			$.mobile.loading("show");
 	//},1);
@@ -4662,22 +4697,39 @@ function setupCallSvrViaForm($form, $iframe, url, fn, callOpt)
 
 参数中可以引用之前结果中的值，引用部分需要用"{}"括起来，且要在opt.ref参数中指定哪些参数使用了引用：
 
-	var batch = new MUI.batchCall({useTrans: 1});
-	callSvr("Attachment.add", api_AttAdd, {path: "path-1"}); // 假如返回 22
-	var opt = {ref: ["id"]};
-	callSvr("Attachment.get", {id: "{$1}"}, api_AttGet, null, opt); // {$1}=22, 假如返回 {id: 22, path: '/data/1.png'}
-	opt = {ref: ["cond"]};
-	callSvr("Attachment.query", {res: "count(*) cnt", cond: "path='{$-1.path}'"}, api_AttQuery, null, opt); // {$-1.path}计算出为 '/data/1.png'
-	batch.commit();
+
+	MUI.useBatchCall();
+	callSvr("..."); // 这个返回值的结果将用于以下调用
+	callSvr("Ordr.query", {
+		res: "id,dscr",
+		status: "{$-1.status}",  // 整体替换，结果可以是一个对象
+		cond: "id>{$-1.id}" // 部分替换，其结果只能是字符串
+	}, api_OrdrQuery, {
+		ref: ["status", "cond"] // 须在ref中指定需要处理的key
+	});
+
+特别地，当get/post整个是一个字符串时，直接整体替换，无须在ref中指定，如：
+
+	callSvr("Ordr.add", $.noop, "{$-1}", {contentType:"application/json"});
 
 以下为引用格式示例：
 
-	{$-2} // 前2次的结果。
-	{$2[0]} // 取第2次结果（是个数组）的第0个值。
-	{$-1.path} // 取前一次结果的path属性
-	{$2 -1}  // 可以做简单的计算
+	{$1} // 第1次调用的结果。
+	{$-1} // 前1次调用的结果。
+	{$-1.path} // 取前一次调用结果的path属性
+	{$1[0]} // 取第1次调用结果（是个数组）的第0个值。
+	{$1[0].amount}
+	{$-1.price * $-1.qty} // 可以做简单的数值计算
 
 如果值计算失败，则当作"null"填充。
+
+综合示例：
+
+	MUI.useBatchCall();
+	callSvr("Ordr.completeItem", $.noop, {itemId:1})
+	callSvr("Ordr.completeItem", $.noop, {itemId:2, qty:2})
+	callSvr("Ordr.calc", $.noop, {items:["{$1}", "{$2}"]}, {contentType:"application/json", ref:["items"] });
+	callSvr("Ordr.add", $.noop, "{$3}", {contentType:"application/json"});
 
 @see useBatchCall
 @see disableBatch

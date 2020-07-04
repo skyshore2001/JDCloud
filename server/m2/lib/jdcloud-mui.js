@@ -636,6 +636,52 @@ function assert(cond, dscr)
 }
 
 /**
+@fn randInt(from, to)
+
+生成指定区间的随机整数。示例：
+
+	var i = randInt(1, 10); // 1-10之间的整数，包含1或10
+
+*/
+self.randInt = randInt;
+function randInt(from, to)
+{
+	return Math.floor(Math.random() * (to - from + 1)) + from;
+}
+
+/**
+@fn randInt(from, to)
+
+生成随机字符串，包含字母或数字，不包含易混淆的0或O。示例：
+
+	var dynCode = randChr(4); // e.g. "9BZ3"
+
+*/
+self.randChr = randChr;
+function randChr(cnt)
+{
+	var charCodeArr = [];
+	var code_O = 'O'.charCodeAt(0) - 'A'.charCodeAt(0) + 10;
+	
+	for (var i=0; i<cnt; ) {
+		var ch = randInt(0, 35); // 0-9 A-Z 共36个
+		// 去除0,O易混淆的
+		if (ch == 0 || ch == code_O) {
+			continue;
+		}
+		if (ch < 10) {
+			charCodeArr.push(0x30 + ch);
+		}
+		else {
+			charCodeArr.push(0x41 + ch -10);
+		}
+		i ++;
+	}
+//	console.log(charCodeArr);
+	return String.fromCharCode.apply(this, charCodeArr);
+}
+
+/**
 @fn parseQuery(str)
 
 解析url编码格式的查询字符串，返回对应的对象。
@@ -1255,6 +1301,18 @@ key可以为一个函数，返回实际key值，示例：
 		"USER-101": {id: 101, name: "Jane"}
 	};
 
+key函数也可以返回[key, value]数组：
+
+	var hash = rs2Hash(rs, function (o) {
+		return ["USER-" + o.id, o.name];
+	}); 
+
+	// 结果为
+	hash = {
+		"USER-100": "Tom",
+		"USER-101": "Jane"
+	};
+
 @see rs2Array
 */
 self.rs2Hash = rs2Hash;
@@ -1272,7 +1330,10 @@ function rs2Hash(rs, key)
 			obj[rs.h[j]] = row[j];
 		}
 		var k = keyfn?  keyfn(obj): obj[key];
-		ret[ k ] = obj;
+		if (Array.isArray(k) && k.length == 2)
+			ret[k[0]] = k[1];
+		else
+			ret[ k ] = obj;
 	}
 	return ret;
 }
@@ -1317,6 +1378,19 @@ key也可以是一个函数，返回实际的key值，示例，按生日年份�
 		"1999": [{id: 101, name: "Jane", birthday: "1999-1-10"}]
 	};
 
+key作为函数，也可返回[key, value]:
+
+	var hash = rs2MultiHash(rs, function (o) {
+		return [o.name, [o.id, o.birthday]];
+	});
+
+	// 结果为
+	hash = {
+		"Tom": [[100, "1998-10-1"], [102, "1998-3-8"]],
+		"Jane": [[101, "1999-1-10"]]
+	};
+
+
 @see rs2Hash
 @see rs2Array
 */
@@ -1335,6 +1409,10 @@ function rs2MultiHash(rs, key)
 			obj[rs.h[j]] = row[j];
 		}
 		var k = keyfn?  keyfn(obj): obj[key];
+		if (Array.isArray(k) && k.length == 2) {
+			obj = k[1];
+			k = k[0];
+		}
 		if (ret[ k ] === undefined)
 			ret[ k ] = [obj];
 		else
@@ -1576,7 +1654,7 @@ function parseValue(str)
 self.applyTpl = applyTpl;
 function applyTpl(tpl, data)
 {
-	return tpl.replace(/{(\w+)}/g, function(m0, m1) {
+	return tpl.replace(/{([^{}]+)}/g, function(m0, m1) {
 		return data[m1];
 	});
 }
@@ -1754,6 +1832,8 @@ function JdcloudCommonJq()
 var self = this;
 
 self.assert(window.jQuery, "require jquery lib.");
+var mCommon = jdModule("jdcloud.common");
+
 /**
 @fn getFormData(jo)
 
@@ -1800,11 +1880,13 @@ function getFormData(jo)
 		data = new FormData();
 	}
 	var orgData = jo.data("origin_") || {};
-	formItems(jo, function (name, content) {
-		var ji = this;
+	formItems(jo, function (ji, name, it) {
+		if (it.getDisabled(ji))
+			return;
 		var orgContent = orgData[name];
 		if (orgContent == null)
 			orgContent = "";
+		var content = it.getValue(ji);
 		if (content == null)
 			content = "";
 		if (content !== String(orgContent)) // 避免 "" == 0 或 "" == false
@@ -1841,40 +1923,129 @@ function getFormData(jo)
 /**
 @fn formItems(jo, cb)
 
-遍历jo下带name属性的有效控件，回调cb函数。
+表单对象遍历。对表单jo（实际可以不是form标签）下带name属性的控件，交给回调cb处理。
+可通过扩展`WUI.formItems[sel]`来为表单扩展其它类型控件，参考 `WUI.defaultFormItems`来查看要扩展的接口方法。
 
 注意:
 
 - 忽略有disabled属性的控件
 - 忽略未选中的checkbox/radiobutton
 
-@param cb(name, val) this=ji=当前jquery对象
+对于checkbox，设置时根据val确定是否选中；取值时如果选中取value属性否则取value-off属性。
+缺省value为"on", value-off为空(非标准属性，本框架支持)，可以设置：
+
+	<input type="checkbox" name="flag" value="1">
+	<input type="checkbox" name="flag" value="1" value-off="0">
+
+@param cb(ji, name, it) it.getDisabled/setDisabled/getValue/setValue/getShowbox
 当cb返回false时可中断遍历。
 
+@key defaultFormItems
  */
 self.formItems = formItems;
-function formItems(jo, cb)
-{
-	jo.find("[name]:not([disabled])").each (function () {
-		var name = this.name || $(this).attr("name");
-		if (! name)
+self.formItems["[name]"] = self.defaultFormItems = {
+	getName: function (jo) {
+		// !!! NOTE: 为避免控件处理两次，这里忽略easyui控件的值控件textbox-value。其它表单扩展控件也可使用该类。
+		if (jo.hasClass("textbox-value"))
 			return;
-
-		var ji = $(this);
-		var val;
-		if (ji.is(":input")) {
-			if (this.type == "checkbox" && !this.checked)
-				return;
-			if (this.type == "radio" && !this.checked)
-				return;
-			val = ji.val();
+		return jo.attr("name") || jo.prop("name");
+	},
+	getDisabled: function (jo) {
+		var v = jo.prop("disabled") || jo.attr("disabled");
+		var o = jo[0];
+		if (! v && o.tagName == "INPUT") {
+			if (o.type == "radio" && !o.checked)
+				return true;
+		}
+		return v;
+	},
+	setDisabled: function (jo, val) {
+		jo.prop("disabled", !!val);
+		if (val)
+			jo.attr("disabled", "disabled");
+		else
+			jo.removeAttr("disabled");
+	},
+	setValue: function (jo, val) {
+		var isInput = jo.is(":input");
+		if (val === undefined) {
+			if (isInput) {
+				var o = jo[0];
+				// 取初始值
+				if (o.tagName === "TEXTAREA")
+					val = jo.html();
+				else if (! (o.tagName == "INPUT") && (o.type == "hidden")) // input[type=hidden]对象比较特殊：设置property value后，attribute value也会被设置。
+					val = jo.attr("value");
+				if (val === undefined)
+					val = "";
+			}
+			else {
+				val = "";
+			}
+		}
+		if (jo.is(":checkbox")) {
+			jo.prop("checked", mCommon.tobool(val));
+		}
+		else if (isInput) {
+			jo.val(val);
 		}
 		else {
-			val = ji.html();
+			jo.html(val);
 		}
-		if (cb.call(ji, name,  val) === false)
+	},
+	getValue: function (jo) {
+		var val;
+		if (jo.is(":checkbox")) {
+			val = jo.prop("checked")? jo.val(): jo.attr("value-off");
+		}
+		else if (jo.is(":input")) {
+			val = jo.val();
+		}
+		else {
+			val = jo.html();
+		}
+		return val;
+	},
+	// TODO: 用于find模式设置。搜索"设置find模式"/datetime
+	getShowbox: function (jo) {
+		return jo;
+	}
+};
+
+/*
+// 倒序遍历对象obj, 用法与$.each相同。
+function eachR(obj, cb)
+{
+	var arr = [];
+	for (var prop in obj) {
+		arr.push(prop);
+	}
+	for (var i=arr.length-1; i>=0; --i) {
+		var v = obj[arr[i]];
+		if (cb.call(v, arr[i], v) === false)
+			break;
+	}
+}
+*/
+
+function formItems(jo, cb)
+{
+	var doBreak = false;
+	$.each(self.formItems, function (sel, it) {
+		jo.filter(sel).add(jo.find(sel)).each (function () {
+			var ji = $(this);
+			var name = it.getName(ji);
+			if (! name)
+				return;
+			if (cb(ji, name, it) === false) {
+				doBreak = true;
+				return false;
+			}
+		});
+		if (doBreak)
 			return false;
 	});
+	return !doBreak;
 }
 
 /**
@@ -1886,7 +2057,7 @@ function formItems(jo, cb)
 注意:
 - DOM项的内容指: 如果是input/textarea/select等对象, 内容为其value值; 如果是div组件, 内容为其innerHTML值.
 - 当data[name]未设置(即值为undefined, 注意不是null)时, 对于input/textarea等组件, 行为与form.reset()逻辑相同, 
- 即恢复为初始化值, 除了input[type=hidden]对象, 它的内容不会变.
+ 即恢复为初始化值。（特别地，form.reset无法清除input[type=hidden]对象的内容, 而setFormData可以)
  对div等其它对象, 会清空该对象的内容.
 - 如果对象设置有属性"noReset", 则不会对它进行设置.
 
@@ -1934,33 +2105,13 @@ function setFormData(jo, data, opt)
 	}, opt);
 	if (data == null)
 		data = {};
-	var jo1 = jo.filter("[name]:not([noReset])");
-	jo.find("[name]:not([noReset])").add(jo1).each (function () {
-		var ji = $(this);
-		var name = ji.attr("name");
+	formItems(jo, function (ji, name, it) {
+		if (ji.attr("noReset"))
+			return;
 		var content = data[name];
 		if (opt1.setOnlyDefined && content === undefined)
 			return;
-		var isInput = ji.is(":input");
-		if (content === undefined) {
-			if (isInput) {
-				if (ji[0].tagName === "TEXTAREA")
-					content = ji.html();
-				else
-					content = ji.attr("value");
-				if (content === undefined)
-					content = "";
-			}
-			else {
-				content = "";
-			}
-		}
-		if (isInput) {
-			ji.val(content);
-		}
-		else {
-			ji.html(content);
-		}
+		it.setValue(ji, content);
 	});
 	jo.data("origin_", opt1.setOrigin? data: null);
 }
@@ -2500,6 +2651,26 @@ function triggerAsync(jo, ev, paramArr)
 	return $.when.apply(this, ev.dfds);
 }
 
+/**
+@fn $.Deferred
+@alias Promise
+兼容Promise的接口，如then/catch/finally
+ */
+var fnDeferred = $.Deferred;
+$.Deferred = function () {
+	var ret = fnDeferred.apply(this, arguments);
+	ret.catch = ret.fail;
+	ret.finally = ret.always;
+	var fn = ret.promise;
+	ret.promise = function () {
+		var r = fn.apply(this, arguments);
+		r.catch = r.fail;
+		r.finally = r.always;
+		return r;
+	}
+	return ret;
+}
+
 }
 // ====== WEBCC_END_FILE commonjq.js }}}
 
@@ -2751,6 +2922,10 @@ function getop(v)
 		v = "";
 	if (v.length == 0 || v.match(/\D/) || v[0] == '0') {
 		v = v.replace(/'/g, "\\'");
+		if (self.options.fuzzyMatch && op == "=" && v.length>0) {
+			op = " like ";
+			v = "%" + v + "%";
+		}
 // 		// ???? 只对access数据库: 支持 yyyy-mm-dd, mm-dd, hh:nn, hh:nn:ss
 // 		if (!is_like && v.match(/^((19|20)\d{2}[\/.-])?\d{1,2}[\/.-]\d{1,2}$/) || v.match(/^\d{1,2}:\d{1,2}(:\d{1,2})?$/))
 // 			return op + "#" + v + "#";
@@ -2832,7 +3007,7 @@ function getQueryCond(kvList)
 	}
 
 	function handleOne(k,v) {
-		if (v == null || v === "")
+		if (v == null || v === "" || ($.isArray(v) && v.length==0))
 			return;
 
 		var arr = v.toString().split(/\s+(and|or)\s+/i);
@@ -3287,8 +3462,16 @@ function defDataProc(rv)
 	}
 
 	if (rv && $.isArray(rv) && rv.length >= 2 && typeof rv[0] == "number") {
-		if (rv[0] == 0)
+		var that = this;
+		if (rv[0] == 0) {
+			ctx.dfd && setTimeout(function () {
+				ctx.dfd.resolve.call(that, rv[1]);
+			});
 			return rv[1];
+		}
+		ctx.dfd && setTimeout(function () {
+			ctx.dfd.reject.call(that, rv[1]);
+		});
 
 		if (this.noex)
 		{
@@ -3495,7 +3678,7 @@ function makeUrl(action, params)
 
 @see callSvrExt[].beforeSend(opt) 为callSvr选项设置缺省值
 
-@return deferred对象，与$.ajax相同。
+@return deferred对象，在Ajax调用成功后回调。
 例如，
 
 	var dfd = callSvr(ac, fn1);
@@ -3504,7 +3687,20 @@ function makeUrl(action, params)
 	function fn1(data) {}
 	function fn2(data) {}
 
-在接口调用成功后，会依次回调fn1, fn2.
+在接口调用成功后，会依次回调fn1, fn2. 在回调函数中this表示ajax参数。例如：
+
+	callSvr(ac, function (data) {
+		// 可以取到传入的参数。
+		console.log(this.key1);
+	}, null, {key1: 'val1'});
+
+(v5.4) 支持失败时回调：
+
+	var dfd = callSvr(ac);
+	dfd.fail(function (data) {
+		console.log('error', data);
+		console.log(this.ctx_.ret); // 和设置选项{noex:1}时回调中取MUI.lastError.ret 或 this.lastError相同。
+	});
 
 @key callSvr.noex 调用接口时忽略出错，可由回调函数fn自己处理错误。
 
@@ -3830,6 +4026,18 @@ callSvr扩展示例：
 		}
 	}
 
+## jQuery的$.Deferred兼容Promise接口
+
+	var dfd = callSvr("...");
+	dfd.then(function (data) {
+		console.log(data);
+	})
+	.catch(function (err) {
+		app_alert(err);
+	})
+	.finally(...)
+
+支持catch/finally等Promise类接口。接口逻辑失败时，dfd.reject()触发fail/catch链。
 */
 self.callSvr = callSvr;
 self.callSvrExt = {};
@@ -3877,6 +4085,7 @@ function callSvr(ac, params, fn, postParams, userOptions)
 	if (ext) {
 		ctx.ext = ext;
 	}
+	ctx.dfd = $.Deferred();
 	if (self.mockData && self.mockData[ac0]) {
 		ctx.isMock = true;
 		ctx.getMockData = function () {
@@ -3922,6 +4131,16 @@ function callSvr(ac, params, fn, postParams, userOptions)
 		self.callSvrExt[ext].beforeSend(opt);
 	}
 
+	// 自动判断是否用json格式
+	if (!opt.contentType && opt.data && $.isPlainObject(opt.data)) {
+		$.each(opt.data, function (i, e) {
+			if (typeof(e) == "object") {
+				opt.contentType = "application/json";
+				return false;
+			}
+		})
+	}
+
 	// post json content
 	var isJson = opt.contentType && opt.contentType.indexOf("/json")>0;
 	if (isJson && opt.data instanceof Object)
@@ -3930,13 +4149,15 @@ function callSvr(ac, params, fn, postParams, userOptions)
 	console.log(callType + ": " + opt.type + " " + ac0);
 	if (ctx.isMock)
 		return callSvrMock(opt, isSyncCall);
-	return $.ajax(opt);
+	$.ajax(opt);
+	// dfd.resolve/reject is done in defDataProc
+	return ctx.dfd;
 }
 
-// opt = {success, .ctx_={isMock, getMockData} }
+// opt = {success, .ctx_={isMock, getMockData, dfd} }
 function callSvrMock(opt, isSyncCall)
 {
-	var dfd_ = $.Deferred();
+	var dfd_ = opt.ctx_.dfd;
 	var opt_ = opt;
 	if (isSyncCall) {
 		callSvrMock1();
@@ -3955,7 +4176,7 @@ function callSvrMock(opt, isSyncCall)
 		if (rv != null)
 		{
 			opt_.success && opt_.success(rv);
-			dfd_.resolve(rv);
+//			dfd_.resolve(rv); // defDataProc resolve it
 			return;
 		}
 		self.app_abort();
@@ -3981,10 +4202,10 @@ function callSvrSync(ac, params, fn, postParams, userOptions)
 		params = null;
 	}
 	userOptions = $.extend({async: false}, userOptions);
-	var dfd = callSvr(ac, params, fn, postParams, userOptions);
-	dfd.then(function(data) {
+	var dfd = callSvr(ac, params, function (data) {
 		ret = data;
-	});
+		fn && fn.call(this, data);
+	}, postParams, userOptions);
 	return ret;
 }
 

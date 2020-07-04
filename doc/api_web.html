@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2020-05-29</div>
+<div>最后更新：2020-07-04</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -53,12 +53,15 @@ code {
 <div class="toc">
 <p><a href="##menu">#menu (key)</a></p>
 <p><a href="##my-pages">#my-pages (key)</a></p>
+<p><a href="#$.Deferred">$.Deferred (fn)</a></p>
+<p><a href="#.combo-f">.combo-f (key)</a></p>
 <p><a href="#.easyui-validatebox">.easyui-validatebox (key)</a></p>
 <p><a href="#.my-combobox">.my-combobox (key)</a></p>
 <p><a href="#.my-reset">.my-reset (key)</a></p>
 <p><a href="#.noData">.noData (key)</a></p>
 <p><a href="#.notForFind">.notForFind (key)</a></p>
 <p><a href="#.wui-checkList">.wui-checkList (key)</a></p>
+<p><a href="#.wui-combogrid">.wui-combogrid (key)</a></p>
 <p><a href="#.wui-dialog">.wui-dialog (key)</a></p>
 <p><a href="#.wui-find-field">.wui-find-field (key)</a></p>
 <p><a href="#.wui-fixedField">.wui-fixedField (key)</a></p>
@@ -67,6 +70,7 @@ code {
 <p><a href="#.wui-notCond">.wui-notCond (key)</a></p>
 <p><a href="#.wui-page">.wui-page (key)</a></p>
 <p><a href="#.wui-readonly">.wui-readonly (key)</a></p>
+<p><a href="#.wui-subobj">.wui-subobj (key)</a></p>
 <p><a href="#.wui-upload">.wui-upload (key)</a></p>
 <p><a href="#BASE_URL">BASE_URL (var)</a></p>
 <p><a href="#Date.add">Date.add (fn)</a></p>
@@ -84,6 +88,7 @@ code {
 <p><a href="#Plugins">Plugins (class)</a></p>
 <p><a href="#Plugins.exists">Plugins.exists (fn)</a></p>
 <p><a href="#Plugins.list">Plugins.list (fn)</a></p>
+<p><a href="#Promise">Promise (alias)</a></p>
 <p><a href="#STORAGE_PREFIX">STORAGE_PREFIX (var)</a></p>
 <p><a href="#WUI">WUI (module)</a></p>
 <p><a href="#WUI.applyPermission">WUI.applyPermission (fn)</a></p>
@@ -94,6 +99,7 @@ code {
 <p><a href="#WUI.makeLink">WUI.makeLink (fn)</a></p>
 <p><a href="#WUI.options">WUI.options (var)</a></p>
 <p><a href="#WUI.options.statFormatter">WUI.options.statFormatter (var)</a></p>
+<p><a href="#WUI.pivot">WUI.pivot (fn)</a></p>
 <p><a href="#WUI.rs2Stat">WUI.rs2Stat (fn)</a></p>
 <p><a href="#[noReset]">[noReset] (key)</a></p>
 <p><a href="#a[href=">a[href= (key)</a></p>
@@ -125,6 +131,7 @@ code {
 <p><a href="#datagrid.sorter">datagrid.sorter (key)</a></p>
 <p><a href="#datagrid.styler">datagrid.styler (key)</a></p>
 <p><a href="#defDataProc">defDataProc (fn)</a></p>
+<p><a href="#defaultFormItems">defaultFormItems (key)</a></p>
 <p><a href="#delCookie">delCookie (fn)</a></p>
 <p><a href="#delStorage">delStorage (fn)</a></p>
 <p><a href="#delayDo">delayDo (fn)</a></p>
@@ -205,12 +212,15 @@ code {
 <p><a href="#parseValue">parseValue (fn)</a></p>
 <p><a href="#permission">permission (key)</a></p>
 <p><a href="#queryHint">queryHint (var)</a></p>
+<p><a href="#randInt">randInt (fn)</a></p>
+<p><a href="#randInt">randInt (fn)</a></p>
 <p><a href="#reload">reload (fn)</a></p>
 <p><a href="#reloadDialog">reloadDialog (alias)</a></p>
 <p><a href="#reloadPage">reloadPage (fn)</a></p>
 <p><a href="#reloadRow">reloadRow (fn)</a></p>
 <p><a href="#reloadSite">reloadSite (fn)</a></p>
 <p><a href="#reloadTmp">reloadTmp (fn)</a></p>
+<p><a href="#rgb">rgb (fn)</a></p>
 <p><a href="#rgb2hex">rgb2hex (fn)</a></p>
 <p><a href="#rs2Array">rs2Array (fn)</a></p>
 <p><a href="#rs2Hash">rs2Hash (fn)</a></p>
@@ -427,13 +437,43 @@ code {
         .on("retdata", onRetData);
 
     function onBeforeShow(ev, formMode, opt) {
-        jdlg.find(".forFind").toggle(formMode == FormMode.forFind);
+        // beforeshow用于设置字段是否隐藏、是否可编辑；或是设置opt(即WUI.showDlg的opt)。
+
+        var objParam = opt.objParam;
+        var forAdd = formMode == FormMode.forAdd;
+        var forSet = formMode == FormMode.forSet;
+
         jdlg.find(".notForFind").toggle(formMode != FormMode.forFind);
+
+        // WUI.toggleFields也常用于控制jfrm上字段显示或jtbl上列显示
+        var type = opt.objParam &amp;&amp; opt.objParam.type;
+        var isMgr = g_data.hasRole("mgr"); // 最高管理员
+        var isAdm = g_data.hasRole("mgr,emp"); // 管理员
+        WUI.toggleFields(jfrm, {
+            type: !type,
+            status: !type || type!="公告",
+            atts: isAdm
+        });
+
+        // 根据权限控制字段是否可编辑。注意：find模式下一般不禁用。
+        if (formMode != FormMode.forFind) {
+            $(frm.empId).prop("disabled", !isMgr);
+            $(frm.status).prop("disabled", forAdd || !isAdm);
+            $(frm.code).prop("disabled", !isAdm);
+        }
     }
     function onShow(ev, formMode, initData) {
-        // data是列表页中一行对应的数据，框架自动根据此数据将对应属性填上值。
+        // 常用于add模式下设置初值，或是set模式下将原值转换并显示。
+        // initData是列表页中一行对应的数据，框架自动根据此数据将对应属性填上值。
         // 如果界面上展示的字段无法与属性直接对应，可以在该事件回调中设置。
         // hiddenToCheckbox(jdlg.find("#divPerms"));
+        if (forAdd) {
+            $(frm.status).val("CR");
+        }
+        else if (forSet) {
+            // 显示成表格
+            jdlg.find("#tbl1").datagrid(...);
+        }
     }
     function onValidate(ev, formMode, initData, newData) {
         // 在form提交时，所有带name属性且不带disabled属性的对象值会被发往服务端。
@@ -1058,6 +1098,14 @@ app_show</code></pre>
 <div class="block">
 <h2 id="assert">@fn assert(cond, dscr?)</h2></div>
 <div class="block">
+<h2 id="randInt">@fn randInt(from, to)</h2>
+<p>生成指定区间的随机整数。示例：</p>
+<pre><code>var i = randInt(1, 10); // 1-10之间的整数，包含1或10</code></pre></div>
+<div class="block">
+<h2 id="randInt">@fn randInt(from, to)</h2>
+<p>生成随机字符串，包含字母或数字，不包含易混淆的0或O。示例：</p>
+<pre><code>var dynCode = randChr(4); // e.g. "9BZ3"</code></pre></div>
+<div class="block">
 <h2 id="parseQuery">@fn parseQuery(str)</h2>
 <p>解析url编码格式的查询字符串，返回对应的对象。</p>
 <pre><code>if (location.search) {
@@ -1233,6 +1281,16 @@ hash = {
     "USER-100": {id: 100, name: "Tom"},
     "USER-101": {id: 101, name: "Jane"}
 };</code></pre>
+<p>key函数也可以返回[key, value]数组：</p>
+<pre><code>var hash = rs2Hash(rs, function (o) {
+    return ["USER-" + o.id, o.name];
+}); 
+
+// 结果为
+hash = {
+    "USER-100": "Tom",
+    "USER-101": "Jane"
+};</code></pre>
 <p class="see"><strong>@see <a href="#rs2Array">rs2Array</a></strong> </p></div>
 <div class="block">
 <h2 id="rs2MultiHash">@fn rs2MultiHash(rs, key)</h2>
@@ -1266,6 +1324,16 @@ var hash = rs2MultiHash(rs, function (o) {
 hash = {
     "1998": [{id: 100, name: "Tom", birthday: "1998-10-1"}, {id: 102, name: "Tom", birthday:"1998-3-8"}],
     "1999": [{id: 101, name: "Jane", birthday: "1999-1-10"}]
+};</code></pre>
+<p>key作为函数，也可返回[key, value]:</p>
+<pre><code>var hash = rs2MultiHash(rs, function (o) {
+    return [o.name, [o.id, o.birthday]];
+});
+
+// 结果为
+hash = {
+    "Tom": [[100, "1998-10-1"], [102, "1998-3-8"]],
+    "Jane": [[101, "1999-1-10"]]
 };</code></pre>
 <p class="see"><strong>@see <a href="#rs2Hash">rs2Hash</a></strong> </p>
 <p class="see"><strong>@see <a href="#rs2Array">rs2Array</a></strong> </p></div>
@@ -1413,14 +1481,20 @@ var arr = mCommon.rs2Array(rs);</code></pre>
 <p class="see"><strong>@see <a href="#setFormData">setFormData</a></strong> </p></div>
 <div class="block">
 <h2 id="formItems">@fn formItems(jo, cb)</h2>
-<p>遍历jo下带name属性的有效控件，回调cb函数。</p>
+<p>表单对象遍历。对表单jo（实际可以不是form标签）下带name属性的控件，交给回调cb处理。<br />
+可通过扩展<code>WUI.formItems[sel]</code>来为表单扩展其它类型控件，参考 <code>WUI.defaultFormItems</code>来查看要扩展的接口方法。</p>
 <p>注意:</p>
 <ul>
 <li>忽略有disabled属性的控件</li>
 <li>忽略未选中的checkbox/radiobutton</li>
 </ul>
-<p class="param"><strong>@param cb</strong> (name, val) this=ji=当前jquery对象</p>
-<p>当cb返回false时可中断遍历。</p></div>
+<p>对于checkbox，设置时根据val确定是否选中；取值时如果选中取value属性否则取value-off属性。<br />
+缺省value为&quot;on&quot;, value-off为空(非标准属性，本框架支持)，可以设置：</p>
+<pre><code>&lt;input type="checkbox" name="flag" value="1"&gt;
+&lt;input type="checkbox" name="flag" value="1" value-off="0"&gt;</code></pre>
+<p class="param"><strong>@param cb</strong> (ji, name, it) it.getDisabled/setDisabled/getValue/setValue/getShowbox</p>
+<p>当cb返回false时可中断遍历。</p>
+<p class="key"><strong>@key <a id="defaultFormItems">defaultFormItems</a></strong> </p></div>
 <div class="block">
 <h2 id="setFormData">@fn setFormData(jo, data?, opt?)</h2>
 <p>用于为带name属性的DOM对象设置内容为data[name].<br />
@@ -1429,7 +1503,7 @@ var arr = mCommon.rs2Array(rs);</code></pre>
 <ul>
 <li>DOM项的内容指: 如果是input/textarea/select等对象, 内容为其value值; 如果是div组件, 内容为其innerHTML值.</li>
 <li>当data[name]未设置(即值为undefined, 注意不是null)时, 对于input/textarea等组件, 行为与form.reset()逻辑相同,<br />
-即恢复为初始化值, 除了input[type=hidden]对象, 它的内容不会变.<br />
+即恢复为初始化值。（特别地，form.reset无法清除input[type=hidden]对象的内容, 而setFormData可以)<br />
 对div等其它对象, 会清空该对象的内容.</li>
 <li>如果对象设置有属性&quot;noReset&quot;, 则不会对它进行设置.</li>
 </ul>
@@ -1511,6 +1585,10 @@ function onSubmit()
     foo();
     bar();
 }</code></pre></div>
+<div class="block">
+<h2 id="rgb">@fn rgb(r,g,b)</h2>
+<p>生成&quot;#112233&quot;形式的颜色值.</p>
+<pre><code>rgb(255,255,255) -&gt; "#ffffff"</code></pre></div>
 <div class="block">
 <h2 id="rgb2hex">@fn rgb2hex(rgb)</h2>
 <p>将jquery取到的颜色转成16进制形式，如：&quot;rgb(4, 190, 2)&quot; -&gt; &quot;#04be02&quot;</p>
@@ -1626,6 +1704,10 @@ function doNext() { }</code></pre>
     if (ev.dfds)
         ev.dfds.push(dfd);
 });</code></pre></div>
+<div class="block">
+<h2 id="$.Deferred">@fn $.Deferred</h2>
+<p class="alias"><strong>@alias <a id="Promise">Promise</a></strong> </p>
+<p>兼容Promise的接口，如then/catch/finally</p></div>
 <div class="block">
 <h2 id="evalAttr">@fn evalAttr(jo, name)</h2>
 <p>返回一个属性做eval后的js值。</p>
@@ -1826,6 +1908,7 @@ var url = MUI.makeUrl("Ordr.set", params);</code></pre>
 <p style="margin-left:0em"><a href="#callSvr-2 文件上传支持(FormData)">2 文件上传支持(FormData)</a></p>
 <p style="margin-left:0em"><a href="#callSvr-3 callSvr扩展">3 callSvr扩展</a></p>
 <p style="margin-left:0em"><a href="#callSvr-4 适配RESTful API">4 适配RESTful API</a></p>
+<p style="margin-left:0em"><a href="#callSvr-5 jQuery的$.Deferred兼容Promise接口">5 jQuery的$.Deferred兼容Promise接口</a></p>
 </div>
 <p class="param"><strong>@param ac</strong>  String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)</p>
 <p class="param"><strong>@param params</strong>  Object. URL参数（或称HTTP GET参数）</p>
@@ -1841,14 +1924,24 @@ var url = MUI.makeUrl("Ordr.set", params);</code></pre>
 <p>想为ajax选项设置缺省值，可以用callSvrExt中的beforeSend回调函数，也可以用$.ajaxSetup，<br />
 但要注意：ajax的dataFilter/beforeSend选项由于框架已用，最好不要覆盖。</p>
 <p class="see"><strong>@see <a href="#callSvrExt[].beforeSend">callSvrExt[].beforeSend</a></strong> (opt) 为callSvr选项设置缺省值</p>
-<p class="return"><strong>@return deferred对象，与$.ajax相同。</strong> </p>
+<p class="return"><strong>@return deferred对象，在Ajax调用成功后回调。</strong> </p>
 <p>例如，</p>
 <pre><code>var dfd = callSvr(ac, fn1);
 dfd.then(fn2);
 
 function fn1(data) {}
 function fn2(data) {}</code></pre>
-<p>在接口调用成功后，会依次回调fn1, fn2.</p>
+<p>在接口调用成功后，会依次回调fn1, fn2. 在回调函数中this表示ajax参数。例如：</p>
+<pre><code>callSvr(ac, function (data) {
+    // 可以取到传入的参数。
+    console.log(this.key1);
+}, null, {key1: 'val1'});</code></pre>
+<p>(v5.4) 支持失败时回调：</p>
+<pre><code>var dfd = callSvr(ac);
+dfd.fail(function (data) {
+    console.log('error', data);
+    console.log(this.ctx_.ret); // 和设置选项{noex:1}时回调中取MUI.lastError.ret 或 this.lastError相同。
+});</code></pre>
 <p class="key"><strong>@key <a id="callSvr.noex">callSvr.noex</a></strong>  调用接口时忽略出错，可由回调函数fn自己处理错误。</p>
 <p>当后端返回错误时, 回调<code>fn(false)</code>（参数data=false）. 可通过 MUI.lastError.ret 或 this.lastError 取到返回的原始数据。</p>
 <p>示例：</p>
@@ -2116,7 +2209,17 @@ callSvr("User.get", function (data) {
         });
         return "./api.php/" + ac;
     }
-}</code></pre></div>
+}</code></pre>
+<h4 id="callSvr-5 jQuery的$.Deferred兼容Promise接口">5 jQuery的$.Deferred兼容Promise接口</h4>
+<pre><code>var dfd = callSvr("...");
+dfd.then(function (data) {
+    console.log(data);
+})
+.catch(function (err) {
+    app_alert(err);
+})
+.finally(...)</code></pre>
+<p>支持catch/finally等Promise类接口。接口逻辑失败时，dfd.reject()触发fail/catch链。</p></div>
 <div class="block">
 <h2 id="callSvrSync">@fn callSvrSync(ac, [params?], fn?, postParams?, userOptions?)</h2>
 <p class="return"><strong>@return data</strong>  原型规定的返回数据</p>
@@ -2166,19 +2269,31 @@ batch.commit();</code></pre>
 <p>在一个事务中，所有调用要么成功要么都取消。<br />
 任何一个调用失败，会导致它后面所有调用取消执行，且所有已执行的调用会回滚。</p>
 <p>参数中可以引用之前结果中的值，引用部分需要用&quot;{}&quot;括起来，且要在opt.ref参数中指定哪些参数使用了引用：</p>
-<pre><code>var batch = new MUI.batchCall({useTrans: 1});
-callSvr("Attachment.add", api_AttAdd, {path: "path-1"}); // 假如返回 22
-var opt = {ref: ["id"]};
-callSvr("Attachment.get", {id: "{$1}"}, api_AttGet, null, opt); // {$1}=22, 假如返回 {id: 22, path: '/data/1.png'}
-opt = {ref: ["cond"]};
-callSvr("Attachment.query", {res: "count(*) cnt", cond: "path='{$-1.path}'"}, api_AttQuery, null, opt); // {$-1.path}计算出为 '/data/1.png'
-batch.commit();</code></pre>
+<pre><code>MUI.useBatchCall();
+callSvr("..."); // 这个返回值的结果将用于以下调用
+callSvr("Ordr.query", {
+    res: "id,dscr",
+    status: "{$-1.status}",  // 整体替换，结果可以是一个对象
+    cond: "id&gt;{$-1.id}" // 部分替换，其结果只能是字符串
+}, api_OrdrQuery, {
+    ref: ["status", "cond"] // 须在ref中指定需要处理的key
+});</code></pre>
+<p>特别地，当get/post整个是一个字符串时，直接整体替换，无须在ref中指定，如：</p>
+<pre><code>callSvr("Ordr.add", $.noop, "{$-1}", {contentType:"application/json"});</code></pre>
 <p>以下为引用格式示例：</p>
-<pre><code>{$-2} // 前2次的结果。
-{$2[0]} // 取第2次结果（是个数组）的第0个值。
-{$-1.path} // 取前一次结果的path属性
-{$2 -1}  // 可以做简单的计算</code></pre>
+<pre><code>{$1} // 第1次调用的结果。
+{$-1} // 前1次调用的结果。
+{$-1.path} // 取前一次调用结果的path属性
+{$1[0]} // 取第1次调用结果（是个数组）的第0个值。
+{$1[0].amount}
+{$-1.price * $-1.qty} // 可以做简单的数值计算</code></pre>
 <p>如果值计算失败，则当作&quot;null&quot;填充。</p>
+<p>综合示例：</p>
+<pre><code>MUI.useBatchCall();
+callSvr("Ordr.completeItem", $.noop, {itemId:1})
+callSvr("Ordr.completeItem", $.noop, {itemId:2, qty:2})
+callSvr("Ordr.calc", $.noop, {items:["{$1}", "{$2}"]}, {contentType:"application/json", ref:["items"] });
+callSvr("Ordr.add", $.noop, "{$3}", {contentType:"application/json"});</code></pre>
 <p class="see"><strong>@see <a href="#useBatchCall">useBatchCall</a></strong> </p>
 <p class="see"><strong>@see <a href="#disableBatch">disableBatch</a></strong> </p>
 <p class="see"><strong>@see <a href="#m_curBatch">m_curBatch</a></strong> </p></div>
@@ -2218,7 +2333,9 @@ callSvr("User.get", {res: "id,phone"}, api_UserGet);</code></pre>
 <pre><code>WUI.showPage("pageHome");
 WUI.showPage("pageHome", "我的首页"); // 默认标题是"首页"，这里指定显示标题为"我的首页"。</code></pre>
 <p>(v5.4) 如果标题中含有&quot;%s&quot;，将替换成原始标题，同时传参到initPage:</p>
-<pre><code>WUI.showPage("pageHome", "%s-" + cityName, [{cityName: cityName}]); //e.g. 显示 "首页-上海"</code></pre></div>
+<pre><code>WUI.showPage("pageHome", "%s-" + cityName, [{cityName: cityName}]); //e.g. 显示 "首页-上海"</code></pre>
+<p>title用于唯一标识tab，即如果相同title的tab存在则直接切换过去。除非：<br />
+(v5.5) 如果标题以&quot;!&quot;结尾, 则每次都打开新的tab页。</p></div>
 <div class="block">
 <h2 id="wui-pageFile">@key wui-pageFile</h2>
 <p>动态加载的逻辑页(或对话框)具有该属性，值为源文件名。</p></div>
@@ -2480,6 +2597,7 @@ appendFilter=true时，表示追加过滤条件。</p>
 <p class="param"><strong>@param opt.obj</strong>  String. (v5.1) 对象对话框的对象名，如果未指定，则从my-obj属性获取。通过该参数可动态指定对象名。</p>
 <p class="param"><strong>@param opt.offline</strong>  Boolean. (v5.1) 不与后台交互。</p>
 <p class="param"><strong>@param opt.title</strong>  String. (v5.1) 指定对话框标题。</p>
+<p class="param"><strong>@param opt.readonly</strong>  String. (v5.5) 指定对话框只读。即设置wui-readonly类。</p>
 <p class="key"><strong>@key <a id="objParam">objParam</a></strong>  对象对话框的初始参数。</p>
 <p>(v5.1)<br />
 此外，通过设置jdlg.objParam，具有和设置opt参数一样的功能，常在initPageXXX中使用，因为在page中不直接调用showObjDlg.<br />
@@ -2556,20 +2674,32 @@ var dgOpt = {
     onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
 };
 jtbl.datagrid(dgOpt);</code></pre>
-<p>特别地，要添加导出数据到Excel文件的功能按钮，可以增加参数&quot;export&quot;作为按钮定义：</p>
+<p>特别地，要添加导出数据到Excel文件的功能按钮，可以增加参数&quot;export&quot;作为按钮定义：<br />
+导入可以用&quot;import&quot;, 快速查询可以用&quot;qsearch&quot; (这两个以扩展方式在jdcloud-wui-ext.js中定义):</p>
 <pre><code>var dgOpt = {
     ...
-    toolbar: WUI.dg_toolbar(jtbl, jdlg, "export", "-", btn1),
+    toolbar: WUI.dg_toolbar(jtbl, jdlg, "import", "export", "-", btn1, btn2, "qsearch"),
 }</code></pre>
 <p>如果想自行定义导出行为参数，可以参考WUI.getExportHandler</p>
 <p class="see"><strong>@see <a href="#getExportHandler">getExportHandler</a></strong>  导出按钮设置</p>
 <p>按钮的权限（即是否显示）取决于wui-perm和text属性。优先使用wui-perm。系统内置的常用的有：&quot;新增&quot;, &quot;修改&quot;, &quot;删除&quot;, &quot;导出&quot;<br />
 下面例子，把“导入”特别设置为内置的权限“新增”，这样不仅不必在角色管理中设置，且设置了“只读”等权限也可自动隐藏它。</p>
-<pre><code>var btn2 = {text: "导入", "wui-perm": "新增", iconCls:'icon-ok', handler: function () {
-    DlgImport.show({obj: "Salary"}, function () {
+<pre><code>var btnImport = {text: "导入", "wui-perm": "新增", iconCls:'icon-ok', handler: function () {
+    DlgImport.show({obj: "Ordr"}, function () {
         WUI.reload(jtbl);
     });
-}};</code></pre></div>
+}};</code></pre>
+<p>支持定义扩展，比如importOrdr:</p>
+<pre><code>// ctx = {jtbl, jpage, jdlg} // 注意jdlg在调用时可能尚未初始化，可以访问 jdlg.selector和jdlg.objParam等。
+dg_toolbar.importOrdr = function (ctx) {
+    return {text: "导入", "wui-perm": "新增", iconCls:'icon-ok', handler: function () {
+        DlgImport.show({obj: "Ordr"}, function () {
+            WUI.reload(jtbl);
+        });
+    }}
+};</code></pre>
+<p>这时就可以直接这样来指定导入按钮（便于全局重用）：</p>
+<pre><code>WUI.dg_toolbar(jtbl, jdlg, ..., "importOrdr")</code></pre></div>
 <div class="block">
 <h2 id="dg_dblclick">@fn dg_dblclick(jtbl, jdlg)</h2>
 <p class="param"><strong>@param jdlg</strong>  可以是对话框的jquery对象，或selector如"#dlgOrder".</p>
@@ -2690,6 +2820,7 @@ g_args.dscr="上门洗车"; // 对字符串会自动进行URL解码。</code></p
 <li>pageHome: 首页的id, 默认为&quot;pageHome&quot;</li>
 <li>pageFolder: 子页面或对话框所在文件夹, 默认为&quot;page&quot;</li>
 <li>closeAfterAdd: (=false) 设置为true时，添加数据后关闭窗口。默认行为是添加数据后保留并清空窗口以便连续添加。</li>
+<li>fuzzyMatch: (=false) 设置为true时，则查询对话框中的文本查询匹配字符串任意部分。</li>
 </ul></div>
 <div class="block">
 <h2 id="app_alert">@fn app_alert(msg, [type?=i], [fn?], opt?={timeoutInterval?, defValue?, onCancel()?})</h2>
@@ -2776,7 +2907,8 @@ $(main);</code></pre>
 <div class="block">
 <h2 id="logout">@fn logout(dontReload?=0)</h2>
 <p class="param"><strong>@param dontReload</strong>  如果非0, 则注销后不刷新页面.</p>
-<p>注销当前登录, 成功后刷新页面(除非指定dontReload=1)</p></div>
+<p>注销当前登录, 成功后刷新页面(除非指定dontReload=1)<br />
+返回logout调用的deferred对象</p></div>
 <div class="block">
 <h2 id="tabClose">@fn tabClose(idx?)</h2>
 <p>关闭指定idx的标签页。如果未指定idx，则关闭当前标签页.</p></div>
@@ -3050,14 +3182,20 @@ var ListOptions = {
     &lt;/tr&gt;
     &lt;tr&gt;
         &lt;td&gt;上传附件&lt;/td&gt;
-        &lt;td class="wui-upload" data-options="pic:false"&gt;
+        &lt;td class="wui-upload" data-options="pic:false,fname:'attName'"&gt; &lt;!-- v5.5: 显示使用虚拟字段attName,须后端提供,也可以用 fname=1将显示内容保存到atts字段 --&gt;
             &lt;input name="atts"&gt;
+        &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+        &lt;td&gt;上传单个附件&lt;/td&gt;
+        &lt;td class="wui-upload" data-options="multiple:false,pic:false,fname:'attName'"&gt;
+            &lt;input name="attId"&gt;
         &lt;/td&gt;
     &lt;/tr&gt;
 &lt;/table&gt;</code></pre>
 <ul>
 <li>带name组件的input绑定到后端字段，并被自动隐藏。允许有多个带name的input组件，仅第一个input被处理。</li>
-<li>options中可以设置：{ nothumb, pic, fname }</li>
+<li>options中可以设置：{ nothumb, pic, fname  }</li>
 </ul>
 <p>组件会自动添加预览区及文件选择框等，完整的DOM大体如下：</p>
 <pre><code>&lt;div class="wui-upload"&gt;
@@ -3084,9 +3222,38 @@ a标签上数据如下：</p>
 <pre><code>&lt;td class="wui-upload" data-options="nothumb:true"&gt;...&lt;/td&gt;</code></pre>
 <p class="param"><strong>@param opt.pic=true</strong>  设置为false，用于上传视频或其它非图片文件</p>
 <p>如果为false, 在.imgs区域内显示文件名链接而非图片。</p>
-<p class="param"><strong>@param opt.fname</strong>  上传附件时（pic=true）时保存原文件名。</p>
-<p>在opt.pic=true时，默认会保存文件名到字段中。保存的格式为 <code>List(attId, fileName)</code> 即&quot;{attId}:{orgName},{attId2}:{orgName2},...&quot;<br />
-设置为false只保存文件编号，不保存文件名。</p>
+<p class="param"><strong>@param opt.fname</strong>  是否显示文件名。默认为0。目前不用于图片，只用于附件（即pic=false时有效）。</p>
+<p>(v5.5) </p>
+<ul>
+<li>当值为0时，字段只保存文件编号或编号列表，如&quot;100&quot;, &quot;100,101&quot;。</li>
+<li>当值为1时，字段保存文件编号及文件名（可当备注使用），如&quot;100:合同.docx&quot;, &quot;100:合同.docx,101:合同附件.xlsx&quot;</li>
+<li>还可以指定一个虚拟字段名，表示字段虽然只保存编号，但显示时可使用指定的虚拟字段，且其格式与fname=1时相同。这样看到的效果与fname=1类似。</li>
+</ul>
+<p>示例：用attId字段保存单个附件，并显示附件名</p>
+<p>由于attId是数值字段，不可存额外字符串信息，所以不能设置fname=1。<br />
+这时在后端做一个虚拟字段如attName，格式为&quot;{attId}:{fileName}&quot;:</p>
+<pre><code>    protected $vcolDefs = [
+        [
+            "res" =&gt; ["concat(att.id,':',att.orgName) attName"],
+            "join" =&gt; "LEFT JOIN Attachment att ON att.id=t0.attId",
+            "default" =&gt; true
+        ]
+        ...
+    ];</code></pre>
+<p>列表页中展示使用虚拟字段attName而非attId：</p>
+<pre><code>        &lt;th data-options="field:'attName', formatter:Formatter.atts"&gt;模板文件&lt;/th&gt;</code></pre>
+<p>在详情对话框中指定fname为虚拟字段&quot;att&quot;：</p>
+<pre><code>        &lt;td&gt;模板文件&lt;/td&gt;
+        &lt;td class="wui-upload" data-options="multiple:false,pic:false,fname:'attName'"&gt;
+            &lt;input name="attId"&gt;
+        &lt;/td&gt;</code></pre>
+<p>示例：用atts存多个附件。</p>
+<p>这时，可设置fname=1，即把文件名也存到atts字段。<br />
+也可以设置fname='attName'(虚拟字段)，其格式为&quot;{attId}:{filename},{attId2}:{filename2}&quot;，后端实现参考如下(使用find_in_set)：</p>
+<pre><code>        [
+            "res" =&gt; ["(SELECT group_concat(concat(att.id,':',att.orgName)) FROM Attachment att WHERE find_in_set(id, t0.atts)) attName"],
+            "default" =&gt; true
+        ]</code></pre>
 <p class="param"><strong>@param opt.manual=false</strong>  是否自动上传提交</p>
 <p>默认无须代码即可自动上传文件。如果想要手工操控，可以触发submit事件，<br />
 示例：在dialog的validate事件中先确认提示再上传，而不是直接上传：</p>
@@ -3235,6 +3402,60 @@ callSvr("Conf.query", {cond: "name='企业分类'", fmt: "one", res: "value"}, f
 <p>菜单组由menu-expand-group标识，第一个a为菜单组标题，可加&quot;expanded&quot;类使其默认展开。<br />
 图标使用font awesome库，由<code>&lt;i class="fa fa-xxx"&gt;&lt;/i&gt;</code>指定，图标查询可参考 <a href="http://www.fontawesome.com.cn/faicons/">http://www.fontawesome.com.cn/faicons/</a> 或 <a href="https://fontawesome.com/icons">https://fontawesome.com/icons</a></p></div>
 <div class="block">
+<h2 id=".wui-combogrid">@key .wui-combogrid</h2>
+<p>可搜索的下拉列表。<br />
+示例：在dialog上，填写门店字段（填写Id，显示名字），从门店列表中选择一个门店。</p>
+<pre><code>&lt;form my-obj="Task" title="安装任务" wui-script="dlgTask.js" my-initfn="initDlgTask"&gt;
+    &lt;tr&gt;
+        &lt;td&gt;门店&lt;/td&gt;
+        &lt;td&gt;
+            &lt;input class="wui-combogrid" name="storeId" data-options="ListOptions.StoreGrid"&gt;
+        &lt;/td&gt;
+    &lt;/tr&gt;
+&lt;/form&gt;</code></pre>
+<p>选项定义如下：</p>
+<pre><code>ListOptions.StoreGrid = {
+    jd_vField: "storeName",
+    panelWidth: 450,
+    width: '95%',
+    textField: "name",
+    columns: [[
+        {field:'id',title:'编号',width:80},
+        {field:'name',title:'名称',width:120}
+    ]],
+    url: WUI.makeUrl('Store.query', {
+        res: 'id,name',
+    })
+};</code></pre>
+<p>属性请参考easyui-combogrid相关属性。wui-combogrid扩展属性如下:</p>
+<ul>
+<li>jd_vField: 显示文本对应的虚拟字段, 用于初始显示和查询。</li>
+<li>jd_showId: 默认为true. 显示&quot;idField - textField&quot;格式. 设置为false时只显示textField.</li>
+</ul>
+<p>在选择一行并返回时，它会触发choose事件：</p>
+<pre><code>var jo = jdlg.find("[comboname=storeId]"); // 注意不是 "[name=storeId]"（原始的input已经变成一个hidden组件，只存储值）
+jo.on("choose", function (ev, row) {
+    console.log('choose row: ', row);
+    ...
+});</code></pre>
+<p>在输入时，它会自动以url及参数q向后端发起查询，如<code>callSvr("Store.query", {res:'id,name', q='1'})</code>.<br />
+在筋斗云后端须支持相应对象的模糊查询(请查阅文档qsearch)。</p>
+<p>特别逻辑：</p>
+<ul>
+<li>在初始化时，由于尚未从后端查询文本，这时显示jd_vField字段的文本。</li>
+<li>如果输入值不在列表中，且不是数字，将当作非法输入被清空。</li>
+<li>特别地，在查询模式下（forFind），可以输入任意条件，比如&quot;&gt;10&quot;, &quot;1-10&quot;等。如果输入的是文本，比如&quot;上海*&quot;，则自动以jd_vField字段进行而非数值编号进行查询。</li>
+</ul></div>
+<div class="block">
+<h2 id=".combo-f">@key .combo-f</h2>
+<p>支持基于easyui-combo的表单扩展控件，如 combogrid/datebox/datetimebox等, 在使用WUI.getFormData时可以获取到控件值.</p>
+<p>示例：可以在对话框或页面上使用日期/日期时间选择控件：</p>
+<pre><code>&lt;input type="text" name="startDt" class="easyui-datebox"&gt;
+&lt;input type="text" name="startTm" data-options="showSeconds:false" class="easyui-datetimebox"&gt;</code></pre>
+<p>form提交时能够正确获取它们的值：<br />
+var d = WUI.getFormData(jfrm); // {startDt: &quot;2019-10-10&quot;, startTm: &quot;2019-10-10 10:10&quot;}</p>
+<p>而且在查询模式下，日期等字段也不受格式限制，可输入诸如&quot;2019-10&quot;, &quot;2019-1-1~2019-7-1&quot;这样的表达式。</p></div>
+<div class="block">
 <h2 id="toggleCol">@fn toggleCol(jtbl, col, show)</h2>
 <p>显示或隐藏datagrid的列。示例：</p>
 <pre><code>WUI.toggleCol(jtbl, 'status', false);</code></pre>
@@ -3278,7 +3499,13 @@ callSvr("Conf.query", {cond: "name='企业分类'", fmt: "one", res: "value"}, f
 <pre><code>&lt;div class="perm-mgr" style="display:none"&gt;&lt;/div&gt;</code></pre>
 <p>示例：bx权限不显示（其它权限可显示）</p>
 <pre><code>&lt;a href="#pageItem" class="nperm-bx"&gt;商品管理&lt;/a&gt;</code></pre>
-<p>可通过 g_data.hasPerm(perm) 查询是否有某项权限。</p></div>
+<p>可通过 g_data.hasRole(roles) 查询是否有某一项或几项角色。注意：由于历史原因，hasRole/hasPerm是同样的函数。</p>
+<pre><code>var isMgr = g_data.hasRole("mgr"); // 最高管理员
+var isEmp = g_data.hasRole("emp"); // 一般管理员
+var isAdm = g_data.hasRole("mgr,emp"); // 管理员(两种都行)
+var isKF = g_data.hasRole("客服");</code></pre>
+<p>自定义权限规则复杂，一般由框架管理，可以用g_data.permSet[perm]查询，如：</p>
+<pre><code>var bval = g_data.permSet["客户管理"];</code></pre></div>
 <div class="block">
 <h2 id="WUI.fname">@fn WUI.fname(fn)</h2>
 <p>为fn生成一个名字。一般用于为a链接生成全局函数。</p>
@@ -3316,6 +3543,73 @@ callSvr("Conf.query", {cond: "name='企业分类'", fmt: "one", res: "value"}, f
 };</code></pre>
 <p class="see"><strong>@see <a href="#fname">fname</a></strong> </p></div>
 <div class="block">
+<h2 id=".wui-subobj">@key .wui-subobj</h2>
+<p>选项：{obj, relatedKey, res?, dlg?/关联的明细对话框}</p>
+<p>这些选项在dlg设置时有效：{valueField, readonly}</p>
+<p>示例1：可以增删改查的子表：</p>
+<pre><code>&lt;div class="wui-subobj" data-options="obj:'CusOrder', relatedKey:'cusId', valueField:'orders', dlg:'dlgCusOrder'"&gt;
+    &lt;p&gt;&lt;b&gt;物流订单&lt;/b&gt;&lt;/p&gt;
+    &lt;table&gt;
+        &lt;thead&gt;&lt;tr&gt;
+            &lt;th data-options="field:'tm', sortable:true"&gt;制单时间&lt;/th&gt;
+            &lt;th data-options="field:'status', sortable:true, jdEnumMap:CusOrderStatusMap, formatter:Formatter.enum(CusOrderStatusMap), styler:Formatter.enumStyler({CR:'Warning',CL:'Disabled'})"&gt;状态&lt;/th&gt;
+            &lt;th data-options="field:'amount', sortable:true, sorter:numberSort"&gt;金额&lt;/th&gt;
+        &lt;/tr&gt;&lt;/thead&gt;
+    &lt;/table&gt;
+&lt;/div&gt;</code></pre>
+<p>选项说明：</p>
+<ul>
+<li>
+<p>obj: 子表对象，与relatedKey字段一起自动生成子表查询，即<code>{obj}.query</code>接口。</p>
+<pre><code>class AC2_CusOrder extends AccessControl
+{
+}</code></pre>
+</li>
+<li>dlg: 对应子表详情对话框。如果指定，则允许添加、更新、查询操作。</li>
+</ul>
+<p>以下字段仅当关联对话框（即dlg选项设置）后有效：</p>
+<ul>
+<li>
+<p>valueField: 对应后端子表名称，在随主表一起添加子表时，会用到该字段。如果不指定，则不可在主表添加时一起添加。它对应的后端实现示例如下：</p>
+<pre><code>class AC2_Customer extends AccessControl
+{
+    protected $subobj = [
+        "orders" =&gt; [ "obj" =&gt; "CusOrder", "cond" =&gt; "cusId=%d" ]
+    ]
+}</code></pre>
+</li>
+<li>readonly: 默认为false, 设置为true则在主表添加之后，不可对子表进行添加、更新或删除。</li>
+</ul>
+<p>可以在validate事件中，对添加的子表进行判断处理：</p>
+<pre><code>function onValidate(ev, mode, oriData, newData) 
+{
+    // 由于valueField选项设置为"orders", 子表数组会写在newDate.orders中
+    if (newData.orders.length == 0) {
+        WUI.app_alert("请添加子表项!", "w");
+        return false;
+    }
+    // 假如需要压缩成一个字符串：
+    // newData.orders = WUI.objarr2list(newData.orders, ["type", "amount"]);
+}</code></pre>
+<p>选项可以动态修改，如：</p>
+<pre><code>// 在dialog的beforeshow回调中：
+var jsub = jdlg.find(".wui-subobj");
+WUI.getOptions(jsub).readonly = !g_data.hasRole("emp,mgr");</code></pre>
+<p>示例2：主表记录添加时不需要展示，添加之后子表/关联表可以增删改查：</p>
+<pre><code>&lt;div class="wui-subobj" data-options="obj:'CusOrder', relatedKey:'cusId', dlg:'dlgCusOrder'&gt;
+    ...
+&lt;/div&gt;</code></pre>
+<p>示例3：和主表字段一起添加，添加后变成只读不可再新增、更新、删除：</p>
+<pre><code>&lt;div class="wui-subobj" data-options="obj:'CusOrder', relatedKey:'cusId', valueField:'orders', dlg:'dlgCusOrder', readonly: true"&gt;
+    ...
+&lt;/div&gt;</code></pre>
+<p>示例4：最简单的只读子表，只查看，也不关联对话框</p>
+<pre><code>&lt;div class="wui-subobj" data-options="obj:'CusOrder', res:'id,tm,status,amount', relatedKey:'cusId'"&gt;
+&lt;/div&gt;</code></pre>
+<ul>
+<li>res: 指定返回字段以提高性能，即query接口的res参数。注意在关联详细对话框（即指定dlg选项）时，一般不指定res，否则双击打开对话框时会字段显示不全。</li>
+</ul></div>
+<div class="block">
 <h2 id="JdcloudStat">@module JdcloudStat</h2>
 <p>按日期进行数据分析统计</p>
 <p class="see"><strong>@see <a href="#initPageStat">initPageStat</a></strong> </p></div>
@@ -3329,27 +3623,309 @@ callSvr("Conf.query", {cond: "name='企业分类'", fmt: "one", res: "value"}, f
 "y,m,d,h" 年月日时
 "y,w"     年周</code></pre></div>
 <div class="block">
-<h2 id="WUI.rs2Stat">@fn WUI.rs2Stat(rs, opt?) -> statData</h2><div class="toc"><p style="margin-left:0em"><a href="#WUI.rs2Stat-1 有时间维度的统计数据">1 有时间维度的统计数据</a></p>
-<p style="margin-left:0em"><a href="#WUI.rs2Stat-2 简单汇总数据">2 简单汇总数据</a></p>
-<p style="margin-left:0em"><a href="#WUI.rs2Stat-3 未分组数据，需要自行分组显示">3 未分组数据，需要自行分组显示</a></p>
-<p style="margin-left:0em"><a href="#WUI.rs2Stat-4 指定类型数据 TODO">4 指定类型数据 TODO</a></p>
-<p style="margin-left:0em"><a href="#WUI.rs2Stat-5 参数说明">5 参数说明</a></p>
+<h2 id="WUI.pivot">@fn WUI.pivot(rs, opt)</h2>
+<p class="param"><strong>@param opt</strong>  {gcol, xcol, ycol?, gtext?, maxSeriesCnt?, formatter?}</p>
+<p>gcol/gtext, xcol, ycol可以是数字, 表示第几列; 也可以是数字数组, 表示若干列.<br />
+gtext也是列号或列号数组，与gcol合用，表示按gcol分组，最终“组名”结果按gtext列显示。<br />
+如果指定formatter，则“组名”再经formatter处理后显示。formatter(val): val是一个值或一个数组，由gcol/gtext决定。</p>
+<p>如果指定opt.maxSeriesCnt，则分组最多maxSeriesCnt列，其它组则都归并到“其它”组。</p>
+<p>示例: 按年-月统计各产品类别(cateId)的订单金额, 可以调用接口:</p>
+<pre><code>callSvr("Ordr.query", {gres: "y,m,cateId", res: "cateName,SUM(amount) sum"}, orderby: "y,m")</code></pre>
+<p>得到rs表格:</p>
+<pre><code>var rs = {
+    h: ["y","m","cateId","cateName","sum"],
+    d: [
+        [2019, 11, 1, "衣服", 20000],
+        [2019, 11, 2, "食品", 12000],
+        [2019, 12, 2, "食品", 15000],
+        [2020, 02, 1, "衣服", 19000]
+    ]
+}</code></pre>
+<p>即:</p>
+<pre><code>y   m   cateId  cateName    sum
+------------
+2019    11  1   衣服  20000
+2019    11  2   食品  12000
+2019    12  2   食品  15000
+2020    02  1   衣服  19000</code></pre>
+<ol>
+<li>
+<p>将分类cateId转到列上(但按cateName来显示):</p>
+<p>var rs1 = pivot(rs, {<br />
+xcol: [0, 1], // 0,1列<br />
+gcol: 2, // 按该列转置<br />
+gtext: 3, // 表示第3列是第2列的显示内容, 也可以用函数<code>function (row) { return row[3] }</code><br />
+ycol: 4, // 值列, 可以不指定, 缺省为最后一列.<br />
+})</p>
+</li>
+</ol>
+<p>得到结果:</p>
+<pre><code>rs1 = {
+    h: ["y","m","衣服","食品"],
+    d: [
+        [2019, 11, 20000, 12000],
+        [2019, 12, null, 15000],
+        [2020, 02, 19000, null]
+    ]
+}</code></pre>
+<p>即:</p>
+<pre><code>y   m 衣服    食品
+------------
+2019    11  20000   12000
+2019    12  null    15000
+2020    02  19000   null</code></pre>
+<ol>
+<li>
+<p>若xcol中只保留年:</p>
+<p>var rs1 = pivot(rs, {<br />
+xcol: 0,<br />
+gcol: 2,<br />
+gtext: 3,<br />
+ycol:4<br />
+})</p>
+</li>
+</ol>
+<p>得到结果将变成这样:</p>
+<pre><code>rs1 = {
+    h: ["y","衣服","食品"],
+    d: [
+        [2019, 20000, 27000],
+        [2020, 19000, null]
+    ]
+}</code></pre>
+<ol>
+<li>
+<p>若在xcol中保留分类, 将年-月转到列上:</p>
+<p>var rs1 = pivot(rs, {<br />
+xcol: [2, 3], // 或只留3也可以<br />
+gcol: [0, 1],<br />
+ycol:4<br />
+})</p>
+</li>
+</ol>
+<p>得到结果:</p>
+<pre><code>rs1 = {
+    h: ["cateId","cateName","2019-11","2019-12","2020-2"],
+    d: [
+        [1, "衣服", 20000, null, 19000],
+        [2, "食品", 12000, 15000, null]
+    ]
+}</code></pre>
+<p>即:</p>
+<pre><code>cateId cateName 2019-11 2019-12 2020-02
+------------
+1   衣服  20000   0   19000
+2   食品  12000   15000   0</code></pre>
+<ol>
+<li>
+<p>ycol也可以指定多列, 用的比较少.</p>
+<p>var rs1 = pivot(rs, {<br />
+xcol: [0, 1],<br />
+gcol: 3,<br />
+ycol: [4,4], // 为演示结果, 故意重复sum列. 实际可能为&quot;订单总额&quot;,&quot;订单数&quot;两列.<br />
+})</p>
+</li>
+</ol>
+<p>得到结果:</p>
+<pre><code>rs1 = {
+    h: ["y","m","衣服","食品"],
+    d: [
+        [2019, 11, [20000,20000], [12000,12000]],
+        [2019, 12, null, [15000,15000]],
+        [2020, 02, [19000,19000], null]
+    ]
+}</code></pre></div>
+<div class="block">
+<h2 id="WUI.rs2Stat">@fn WUI.rs2Stat(rs, opt?) -> statData</h2><div class="toc"><p style="margin-left:0em"><a href="#WUI.rs2Stat-1 常用统计图示例">1 常用统计图示例</a></p>
+<p style="margin-left:0em"><a href="#WUI.rs2Stat-2 tmUnit使用举例">2 tmUnit使用举例</a></p>
 </div>
-<p>将table格式数据({h,d})，转换成显示统计图需要的格式。尤其是支持按时间维度组织数据，生成折线图/柱状图。</p>
-<p class="param"><strong>@param rs</strong>  {@h, @d} RowSet数据。筋斗云框架标准数据表格式。</p>
-<p class="param"><strong>@param opt</strong>  {formatter?=WUI.options.statFormatter[groupKey], maxSeriesCnt?, tmUnit?}  </p>
-<h4 id="WUI.rs2Stat-1 有时间维度的统计数据">1 有时间维度的统计数据</h4>
-<p>对于折线图/柱状图，支持由opt.tmUnit指定时间维度来组织数据，这时需要对所给数据中缺失的时间自动补全。</p>
-<p>对输入数据rs的要求为，rs.h表头格式为 [ 时间字段, 汇总字段?, 汇总显示字段?, sum, ... ]</p>
-<p>rs.h中前面几个为时间字段，必须与opt.tmUnit指定相符，一般是以下字段组合：&quot;y&quot;(年),&quot;m&quot;(月),&quot;d&quot;(日),&quot;h&quot;(小时),&quot;w&quot;(周)。<br />
-例如opt.tmUnit值为&quot;y,m,d&quot;，则rs.h中前几个字段必须为[&quot;y&quot;,&quot;m&quot;,&quot;d&quot;]</p>
-<p>汇总字段0到1个，汇总显示字段0到1个。如果有汇总字段，则以“系列”的方式显示。<br />
-例如rs.h中有汇总字段和汇总显示字段[&quot;cityId&quot;, &quot;cityName&quot;], 则会将&quot;北京&quot;，&quot;上海&quot;这些&quot;cityName&quot;作为图表“系列”展示。</p>
-<p>sum为累计值字段的名字，必须名为&quot;sum&quot;.<br />
-sum之后字段暂不使用。</p>
-<p>注意：rs.d中的数据必须已按时间排序，否则无法补齐缺失的时间维度。</p>
-<p>返回数据格式为 {@xData, @yData=[{name, @data}]}, 其中xData来自时间字段;<br />
-如果有汇总，则yData包含多个系列{name, data}，否则只有一个系列且name固定为&quot;累计&quot;. data来源于sum字段。</p>
+<p>将query接口返回的数据，转成统计图需要的数据格式。</p>
+<p class="param"><strong>@param opt</strong>  {xcol, ycol, gcol, gtext, maxSeriesCnt, tmUnit, formatter, formatterX}</p>
+<p class="param"><strong>@param opt.xcol</strong>  指定X轴数据，可以是一列或多列，如0表示第0列, 值[0,1]表示前2列。</p>
+<p class="param"><strong>@param opt.ycol</strong>  指定值数据，可以是一列或多列。</p>
+<p class="param"><strong>@param opt.gcol</strong>  指定分组列。</p>
+<p class="param"><strong>@param opt.gtext</strong>  指定分组值对应的显示文本列。比如表中既有商品编号，又有商品名称，商品编号列设置为gcol用于分组，而商品名称列设置为gtext用于显示。</p>
+<p>xcol,ycol,gcol,gtext,maxSeriesCnt参数可参考函数 WUI.pivot</p>
+<p class="param"><strong>@param opt.tmUnit</strong>  如果非空，表示按指定时间维度分析。参考[JdcloudStat.tmUnit]().</p>
+<p>未指定tmUnit时，缺省xcol=0列（或1列，当有3列及以上且未指定ycol时，当成是<code>xcol,xcoltext,ycol</code>三列格式），ycol=最后一列，gcol如需要则应手工指定</p>
+<p>tmUnit用于指定时间字段: &quot;y,m&quot;-年,月; &quot;y,m,d&quot;-年,月,日; &quot;y,w&quot;-年,周; &quot;y,m,d,h&quot;-年,月,日,时; &quot;y,q&quot;-年,季度<br />
+若指定了tmUnit，则可以不指定xcol,gcol,ycol，而是由字段排列自动得到，详见&quot;tmUnit使用举例&quot;章节。</p>
+<p class="param"><strong>@param opt.formatter</strong>  对汇总数据列进行格式化，缺省取WUI.options.statFormatter[ycolNames]。Function(value).</p>
+<p class="param"><strong>@param opt.formatterX</strong>  对X轴数据进行格式化，缺省取WUI.options.statFormatter[xcolNames]。Function(value)。若opt.xcol是数组，则value也是数组。</p>
+<p class="return"><strong>@return statData</strong>  { @xData, @yData=[{name=seriesName, data=@seriesData}]  }</p>
+<p>与echart结合使用示例可参考 initChart. 原理如下：</p>
+<pre><code>var option = {
+    ...
+    legend: {
+        data: statData.yData
+    },
+    xAxis:  {
+        type: 'category',
+        boundaryGap: false,
+        data: statData.xData
+    },
+    yAxis: {
+        type: 'value',
+        axisLabel: {
+            formatter: '{value}'
+        }
+    },
+    series: statData.yData
+};
+myChart.setOption(option);</code></pre>
+<h4 id="WUI.rs2Stat-1 常用统计图示例">1 常用统计图示例</h4>
+<p>例1：统计每个用户的订单金额, 由高到低显示前10名, 显示为饼图或柱状图.</p>
+<pre><code>callSvr("Ordr.query", {gres: "userId 用户编号", res: "userName 用户, SUM(amount) 金额", orderby: "sum DESC", pagesz: 10})
+// 一般用userId而不是userName来分组, 因为不仅userName可能会重名, 而且userName一般是从外部表join过来的, 没有索引性能较差不适合做分组字段.</code></pre>
+<p>得到结果示例:</p>
+<pre><code>var rs = {
+    h: ["用户编号", "用户", "金额"],
+    d: [
+        [1001,"用户1",12000],
+        [1002,"用户2",10000]
+    ]
+}</code></pre>
+<p>即:</p>
+<pre><code>用户编号    用户  金额
+-------------
+1001    用户1 12000
+1002    用户2 10000
+...</code></pre>
+<p>通过rs2Stat转换:</p>
+<pre><code>var statData = rs2Stat(rs, {xcol:1}); // xcol指定横轴数据列, 缺省为第0列, 这里指定为第1列，用名字替代编号。ycol选项可指定统计值列, 这里没有指定，缺省为最后一列，
+// 结果：
+statData = {
+    xData: [
+        '用户1', '用户2'
+    ],
+    yData: [
+        {name: '金额', data: [12000, 10000]}
+    ]
+}</code></pre>
+<p>例2：按年-月统计订单金额, 显示为柱状图或折线图.</p>
+<pre><code>callSvr("Ordr.query", {gres: "y,m", res: "SUM(amount) sum", orderby: "y,m"})</code></pre>
+<p>得到表:</p>
+<pre><code>y   m   sum
+-----------
+2019    11  30000
+2019    12  34000
+2020    2   25000</code></pre>
+<p>转换示例:</p>
+<pre><code>var rs = {
+    h: ["y", "m", "sum"],
+    d: [
+        [2019,11,30000],
+        [2019,12,34000],
+        [2020,2,25000],
+    ]
+}
+var statData = rs2Stat(rs, {xcol:[0,1]});
+// 结果：
+statData = {
+    xData: [
+        '2019-11', '2019-12', '2020-2'
+    ],
+    yData: [
+        {name: '累计', data: [30000, 34000, 25000]}
+    ]
+}</code></pre>
+<p>上面年月中缺少了2020-1, 如果要补上缺少的月份, 可以使用tmUnit参数指定日期类型, 注意这时原始数据中年月须已排好序:</p>
+<pre><code>var statData = rs2Stat(rs, {xcol:[0,1], ycol:2, tmUnit:"y,m"} );
+// 指定tmUnit后, 若xcol缺省为前N列, N是tmUnit中列数, 如"y,m,d"(年月日)表示前3列即`xcol: [0,1,2]`. 上面参数可简写为:
+var statData = rs2Stat(rs, {tmUnit:"y,m"} );
+// 结果：
+statData = {
+    xData: [
+        '2019-11', '2019-12', '2020-1', '2020-2'
+    ],
+    yData: [
+        {name: '累计', data: [30000, 34000, 0, 25000]}
+    ]
+}</code></pre>
+<p>例3：按年-月统计各产品类别(cateId)的订单金额, 产品类别在列上显示(即显示为系列, 列为&quot;年,月,类别1,类别2,...&quot;):</p>
+<pre><code>callSvr("Ordr.query", {gres: "y,m,cateId", res: "cateName,SUM(amount) sum"}, orderby: "y,m")
+
+y   m   cateId  cateName    sum
+------------
+2019    11  1   衣服  20000
+2019    11  2   食品  12000
+2019    12  2   食品  15000
+2020    02  1   衣服  19000</code></pre>
+<p>结果需要将分类cateName转到列上, 即:</p>
+<pre><code>y   m 衣服    食品
+------------
+2019    11  20000   12000
+2019    12  0   15000
+2020    02  19000   0</code></pre>
+<p>可以添加gcol参数指定转置列(pivot column):</p>
+<pre><code>var rs = {
+    h: ["y","m","cateId","cateName","sum"],
+    d: [
+        [2019, 11, 1, "衣服", 20000],
+        [2019, 11, 2, "食品", 12000],
+        [2019, 12, 2, "食品", 15000],
+        [2020, 02, 1, "衣服", 19000]
+    ]
+}
+var statData = rs2Stat(rs, {
+    xcol: [0, 1], // 0,1列
+    gcol: 2,
+    gtext: 3 // gtext表示gcol如何显示, 数字3表示按第3列显示, 即"1","2"显示成"衣服", "食品"; gtext也可以用函数, 如 `function (val, row, i) { return row[3] }`
+})
+// 结果：
+statData = {
+    xData: [
+        '2019-11', '2019-12', '2020-2'
+    ],
+    yData: [
+        {name: '衣服', data: [20000, 0, 19000]},
+        {name: '食品', data: [12000, 15000, 0]}
+    ]
+}</code></pre>
+<p>如果还需要补上缺少的年月, 可以加tmUnit参数, 要求原始数据中年月须已排好序:</p>
+<pre><code>var statData = rs2Stat(rs, {
+    // xcol: [0, 1], // 有tmUnit参数时, 且刚好前N列表示时间, 则xcol可缺省
+    gcol: 2,
+    gtext: 3,
+    tmUnit: "y,m"
+})
+// 结果：
+statData = {
+    xData: [
+        '2019-11', '2019-12', '2020-1', '2020-2' // '2020-1'是自动补上的
+    ],
+    yData: [
+        {name: '衣服', data: [20000, 0, 0, 19000]},
+        {name: '食品', data: [12000, 15000, 0, 0]}
+    ]
+}</code></pre>
+<p>注意: 上面将分类cateName转到列上再转成统计数据, 也可以分步来做, 先用pivot函数:</p>
+<pre><code>var rs1 = pivot(rs, {
+    xcol: [0, 1],
+    gcol: 2,
+    gtext: 3
+})</code></pre>
+<p>得到结果rs1:</p>
+<pre><code>y   m 衣服    食品
+------------
+2019    11  20000   12000
+2019    12  0   15000
+2020    02  19000   0</code></pre>
+<p>再将rs1转成统计数据:</p>
+<pre><code>var statData = rs2Stat(rs1, {
+    xcol: [0, 1],
+    ycol: [2, 3], // 注意这时ycol是多列, 显式指定.
+    tmUnit: "y,m"
+})</code></pre>
+<h4 id="WUI.rs2Stat-2 tmUnit使用举例">2 tmUnit使用举例</h4>
+<p>当有tmUnit时, 列按如下规则分布, 可以省去指定xcol, gcol等参数:</p>
+<pre><code>与tmUnit匹配的时间列   值统计列
+与tmUnit匹配的时间列   分组列 值统计列
+与tmUnit匹配的时间列   分组列 组名列 值统计列</code></pre>
+<p>例如以下列, 均可以只用参数 <code>{tmUnit: "y,m,d"}</code>:</p>
+<pre><code>y,m,d,sum  完整参数为: { tmUnit: "y,m,d", xcol:[0,1,2], ycol: 3 }
+y,m,d,cateName,sum  完整参数为: { tmUnit: "y,m,d", xcol:[0,1,2], gcol:3, ycol: 4 }
+y,m,d,cateId,cateName,sum  完整参数为:   { tmUnit: "y,m,d", xcol:[0,1,2], gcol:3, gtext:4, ycol: 5 }</code></pre>
 <p>示例一：</p>
 <pre><code>var rs = {
     h: ["y", "m", "d", "sum"], // 时间维度为 y,m,d; sum为统计值
@@ -3406,7 +3982,13 @@ statData = {
     ]
 }
 var statData = rs2Stat(rs, {tmUnit: "y,m,d"});
-// 结果：与示例二相同。</code></pre>
+// 结果：与示例二相同。它等价于调用:
+var statData = rs2Stat(rs, {tmUnit: "y,m,d",
+    xcol: [0,1,2],
+    gcol: 3,
+    gtext: 4,
+    ycol: 5
+});</code></pre>
 <p>示例四： 汇总字段支持格式化，假设性别字段以'M','F'分别表示'男', '女':</p>
 <pre><code>var rs = {
     h: ["y", "m", "d", "sex", "sum"], // 时间维度为 y,m,d; sex为汇总字段, sum为累计值
@@ -3434,113 +4016,12 @@ var statData = rs2Stat(rs, opt);
     }
 }
 var statData = rs2Stat(rs, {tmUnit: "y,m,d"});</code></pre>
-<p>在无汇总时，默认汇总显示为&quot;sum&quot;，也可以通过formatter修改，例如</p>
+<p>在无汇总时，列&quot;sum&quot;会自动被改为&quot;累计&quot;，这时默认在statFormatter中设置的：</p>
 <pre><code>WUI.options.statFormatter = {
-    sum: function (value, arr, i) {
+    sum: function (value) {
         return '累计';
     }
-}</code></pre>
-<p>注意：示例三实际上在内部使用了如下formatter:</p>
-<pre><code>function formatter(value, arr, i)
-{
-    return arr[i+1];
-}</code></pre>
-<h4 id="WUI.rs2Stat-2 简单汇总数据">2 简单汇总数据</h4>
-<p>rs.h表头格式为 [汇总字段, 汇总显示字段?, sum]，表示简单汇总数据，可用于显示折线图/柱状图/饼图等。</p>
-<p>示例：无时间字段，使用汇总字段显示为x轴数据：</p>
-<pre><code>var rs = {
-    h: ["wd", "sum"], // 查看每周几的注册人数
-    d: [
-        [1, 201],
-        [2, 180],
-        [3, 206],
-        [4, 322],
-        [5, 208],
-        [6, 435],
-        [0, 478],
-    ]
-}
-var statData = rs2Stat(rs);
-
-// 结果：
-statData = {
-    xData: [
-        '1', '2', '3', '4', '5', '6', '0'
-    ],
-    yData: [
-        {name: 'sum', data: [201, 180, 206, 322, 208, 435, 478]} // 分别对应xData中每个值
-    ]
-}</code></pre>
-<p>注意：</p>
-<ul>
-<li>显示饼图时，echart要求data的格式为{name, value}，这将在WUI.initChart中特殊处理。</li>
-</ul>
-<h4 id="WUI.rs2Stat-3 未分组数据，需要自行分组显示">3 未分组数据，需要自行分组显示</h4>
-<p>rs.h表头字段固定为 [g?, x, y], 其中g为分组字段，x为横轴标签，y为纵轴数值。<br />
-分组字段可以没有，如果有将显示为多系列，系列标签即该列名（支持用WUI.options.statFormatter定制显示）。</p>
-<p>示例：</p>
-<pre><code>var rs = {
-    h: ["g", "x", "y"],
-    d: [
-        ["app", "a1", 99],
-        ["db", "a1", 98],
-        ["app", "a2", 97],
-        ["app", "a4", 96]
-    ]
-};
-
-var statData = rs2Stat(rs);
-
-// 结果：
-statData = {
-    xData: [ "a1", "a2", "a4" ],
-    yData: [
-        {name: "app", data: [99, 97, null]},
-        {name: "db", data: [98, null, 96]}
-    ]
-}</code></pre>
-<h4 id="WUI.rs2Stat-4 指定类型数据 TODO">4 指定类型数据 TODO</h4>
-<p>根据opt.cols指定列类型，并转换数据。opt.cols是字符串，每个字符表示列的类型，列分为&quot;x&quot;列（生成x轴数据，归入xData中），&quot;g&quot;列（分组列，生成图表系列，yData中每项的name），&quot;y&quot;列（数据列，可以有多个，yData中每项的data）。<br />
-对于其它列rs2Stat不做处理，一般用字符&quot;.&quot;表示。</p>
-<p>示例：</p>
-<ul>
-<li>opt.cols=&quot;yy&quot; 例如散点图原始数据格式 table(&quot;身高&quot;,&quot;体重&quot;)，将数据全部放在yData的默认系列中。</li>
-<li>opt.cols=&quot;gyy&quot; 例如多系列散点图原始数据为 table(&quot;性别&quot;,&quot;身高&quot;,&quot;体重&quot;)，将性别作为系列，其它作为数据。</li>
-<li>opt.cols=&quot;.gyy&quot; 例如多系列散点图原始数据为 table(&quot;cityId&quot;, &quot;cityName&quot;,&quot;身高&quot;,&quot;体重&quot;)，第一列被忽略，第二列cityName作为系列。</li>
-<li>opt.cols=&quot;xyyyy&quot; 例如k线图数据 table(&quot;日期&quot;, &quot;开&quot;,&quot;收&quot;,&quot;低&quot;,&quot;高&quot;)</li>
-<li>opt.cols=&quot;.xy&quot; 例如饼图数据 table(&quot;cityId&quot;, &quot;cityName&quot;, &quot;sum&quot;)</li>
-</ul>
-<h4 id="WUI.rs2Stat-5 参数说明">5 参数说明</h4>
-<p class="param"><strong>@param opt.formatter</strong>  可对汇总数据进行格式化。Function(value, arr, i). </p>
-<ul>
-<li>value: 当前汇总字段的值</li>
-<li>arr: 当前行数组</li>
-<li>i: 汇总字段的数组index, 即 arr[i]=value</li>
-</ul>
-<p class="param"><strong>@param opt.tmUnit</strong>  如果非空，表示按指定时间维度分析。参考[JdcloudStat.tmUnit]().</p>
-<p class="param"><strong>@param opt.maxSeriesCnt</strong> ?=10</p>
-<p>指定此选项，则按sum倒排序，取前面的maxSeriesCnt项seriesName用于展示，剩余的项归并到“其它”中。</p>
-<p class="return"><strong>@return statData</strong>  { @xData, @yData=[{name=seriesName, data=@seriesData}]  }</p>
-<p>与echart结合使用示例可参考 initChart. 原理如下：</p>
-<pre><code>var option = {
-    ...
-    legend: {
-        data: getSeriesNames(statData.yData) // 取yData中每项的name
-    },
-    xAxis:  {
-        type: 'category',
-        boundaryGap: false,
-        data: statData.xData
-    },
-    yAxis: {
-        type: 'value',
-        axisLabel: {
-            formatter: '{value}'
-        }
-    },
-    series: statData.yData
-};
-myChart.setOption(option);</code></pre></div>
+}</code></pre></div>
 <div class="block">
 <h2 id="WUI.initChart">@fn WUI.initChart(chartTable, statData, seriesOpt, chartOpt)</h2>
 <p>初始化echarts报表组件.</p>
@@ -3567,6 +4048,7 @@ myChart.setOption(option);</code></pre></div>
 <li>生成统计图按钮</li>
 <li>一个或多个图表，每个图表可设置不同的查询条件、时间维度等。</li>
 </ul>
+<p>示例可参考超级管理端API日志统计(web/adm/pageApiLogStat)</p>
 <p>html示例:</p>
 <pre><code>&lt;div wui-script="pageUserRegStat.js" title="用户注册统计" my-initfn="initPageUserRegStat"&gt;
     开始时间 
@@ -3589,11 +4071,25 @@ myChart.setOption(option);</code></pre></div>
     地域:
     &lt;select name="region" class="my-combobox" data-options="valueField:'id',textField:'name',url:WUI.makeUrl(...)"&gt;&lt;/select&gt;
 
+    统计项
+    &lt;select id="cboRes"&gt;
+        &lt;option value ="COUNT(*) 总数"&gt;数量&lt;/option&gt;
+        &lt;option value="SUM(t) sum"&gt;调用时间(毫秒)&lt;/option&gt;
+        &lt;!-- 可以指定多个字段，逗号分隔，表示显示多个系列（这时下面的“分类汇总”是无效的），示例：
+        &lt;option value ="totalMh 理论工时,totalMh1 实际工时,totalMh2 出勤工时"&gt;工时&lt;/option&gt;
+        --&gt;
+    &lt;/select&gt;
+
     汇总字段:
     &lt;select id="g"&gt;
         &lt;option value =""&gt;无&lt;/option&gt;
         &lt;option value ="sex"&gt;性别&lt;/option&gt;
         &lt;option value="region"&gt;地域&lt;/option&gt;
+
+        &lt;!-- 可以指定两个字段，逗号分隔，格式"分组字段,分组显示字段"
+        &lt;option value="userId,userName"&gt;用户&lt;/option&gt;
+        &lt;option value="itemId,itemName"&gt;物料&lt;/option&gt;
+        --&gt;
     &lt;/select&gt;
 
     &lt;input type="button" value="生成" class="btnStat"/&gt;
@@ -3625,6 +4121,7 @@ function setStatOpt(chartIdx, opt)
     // 设置查询参数param.ac/param.res/param.cond等
     var param = opt.queryParam;
     param.cond += ...;
+    param.res = jpage.find("#cboRes").val();
 
     // 设置时间维度，汇总字段
     opt.tmUnit = jpage.find("#tmUnit").val();
