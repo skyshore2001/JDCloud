@@ -1426,10 +1426,6 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 
 	private function handleRow(&$rowData, $idx, $rowCnt)
 	{
-		foreach ($this->hiddenFields as $field) {
-			unset($rowData[$field]);
-		}
-		unset($rowData["pwd"]);
 		$this->flag_handleResult($rowData);
 		$this->onHandleRow($rowData);
 
@@ -1456,6 +1452,10 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 				$rowData[$field] = $v;
 			}
 		}
+		foreach ($this->hiddenFields as $field) {
+			unset($rowData[$field]);
+		}
+		unset($rowData["pwd"]);
 	}
 
 	# for query. "field1"=>"t0.field1"
@@ -1885,6 +1885,8 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 
 如果isHiddenField=true, 则该字段是辅助字段，最终返回前将删除(AccessControl::hiddenFields机制)
 
+(v5.5) 支持添加subobj子表定义中的字段。
+
 支持一次添加多个字段：
 
 	$this->addVCol(["createTm", "procId"]); 
@@ -1900,15 +1902,20 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			return $rv;
 		}
 		if (! isset($this->vcolMap[$col])) {
-			if ($ignoreError === false)
-				throw new MyException(E_SERVER, "unknown vcol `$col`");
-			if ($ignoreError === "addRes") {
-				$rv = $this->addRes("t0." . $col);
-				if ($isHiddenField && $rv === true)
-					$this->hiddenFields[] = $col;
-				return $rv;
+			$rv = false;
+			if (array_key_exists($col, $this->subobj)) {
+				$this->addSubobj($col, $this->subobj[$col]);
+				$rv = true;
 			}
-			return false;
+			else if ($ignoreError === false) {
+				throw new MyException(E_SERVER, "unknown vcol `$col`");
+			}
+			else if ($ignoreError === "addRes") {
+				$rv = $this->addRes("t0." . $col);
+			}
+			if ($isHiddenField && $rv === true)
+				$this->hiddenFields[] = $col;
+			return $rv;
 		}
 		if ($this->vcolMap[$col]["added"])
 			return true;
@@ -1975,6 +1982,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		{
 			$requireCol = $vcolDef["require"];
 			$this->addVCol($requireCol, false, "-");
+//			$this->addVCol($requireCol, false, "-", true); // TODO: 应隐藏require字段，但若用户显式指定则不可隐藏
 		}
 		if (isset($vcolDef["join"]))
 			$this->addJoin($vcolDef["join"]);

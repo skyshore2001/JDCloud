@@ -63,6 +63,36 @@ function api_hello()
 	];
 }
 
+class AC1_UserA extends AccessControl
+{
+	protected $table = "User";
+	
+	protected $vcolDefs = [
+		[
+			"res" => ["(SELECT COUNT(*) FROM ApiLog WHERE userId=t0.id) logCnt"],
+			"default" => true
+		],
+		[
+			"res" => ["(SELECT MAX(id) FROM ApiLog WHERE userId=t0.id) lastLogId"]
+		],
+		[
+			"res" => ["null lastLogAc"],
+			"require" => "lastLog"
+		]
+	];
+
+	protected $subobj = [
+		"log" => ["obj"=>"ApiLog", "cond"=>"userId=%d", "res"=>"id,tm,ac,addr", "default"=>false],
+		"lastLog" => ["obj"=>"ApiLog", "cond"=>"id=%d", "%d"=>"lastLogId", "res"=>"id,tm,ac,addr", "wantOne"=>true, "default"=>true]
+	];
+
+	protected function onInit() {
+		$this->enumFields["lastLogAc"] = function ($val, $row) {
+			return $row["lastLog"]["ac"];
+		};
+	}
+}
+
 class AC_ApiLog extends AccessControl
 {
 	protected $requiredFields = ["ac"];
@@ -115,11 +145,14 @@ FROM ApiLog
 WHERE userId={$this->uid} ORDER BY id DESC LIMIT 3) t
 ) last3LogAc"]
 		];
+		$this->vcolDefs[] = [ "res" => tmCols("t0.tm") ];
 
 		$this->subobj = [
 			"user" => [ "sql" => "SELECT u.id,u.name FROM User u INNER JOIN ApiLog log ON log.userId=u.id WHERE log.id=%d", "wantOne" => true ],
 			//"user" => [ "sql" => "SELECT id,name FROM User u WHERE id={$this->uid}", "wantOne" => true, "force"=>true],
-			"last3Log" => [ "sql" => "SELECT id,ac FROM ApiLog log WHERE userId={$this->uid} ORDER BY id DESC LIMIT 3", "force"=>true ]
+			"last3Log" => [ "sql" => "SELECT id,ac FROM ApiLog log WHERE userId={$this->uid} ORDER BY id DESC LIMIT 3", "force"=>true ],
+
+			"user2" => ["obj"=>"User", "AC"=>"AC1_UserA", "cond"=>"id=%d", "%d"=>"userId", "res"=>"id,name", "wantOne"=>true]
 		];
 	}
 
@@ -134,7 +167,7 @@ WHERE userId={$this->uid} ORDER BY id DESC LIMIT 3) t
 
 	protected function onValidateId()
 	{
-		if ($this.ac == "del")
+		if ($this->ac == "del")
 		{
 			$id = mparam("id");
 			$rv = queryOne("SELECT id FROM ApiLog WHERE id={$id} AND userId={$this->uid}");
@@ -147,6 +180,8 @@ WHERE userId={$this->uid} ORDER BY id DESC LIMIT 3) t
 	{
 		parent::onQuery();
 		$this->addCond("userId=" . $this->uid);
+
+		$this->qsearch(["ac", "addr"], param("q"));
 	}
 
 	public function api_listByAc()
