@@ -109,6 +109,11 @@ class AC_ApiLog extends AccessControl
 			"isExt" => true,
 			// 用require指定所有依赖的内层字段
 			"require" => 'y,m'
+		],
+		[
+			"res" => ["u.name userName"],
+			"join" => "INNER JOIN User u ON u.id=t0.userId",
+			"default" => true
 		]
 	];
 
@@ -134,13 +139,6 @@ class AC1_UserApiLog extends AC_ApiLog
 	protected $table = "ApiLog";
 	protected $defaultSort = "id DESC";
 	protected $allowedAc = [ "get", "query", "add", "del" ];
-	protected $vcolDefs = [
-		[
-			"res" => ["u.name userName"],
-			"join" => "INNER JOIN User u ON u.id=t0.userId",
-			"default" => true
-		]
-	];
 
 	private $uid;
 

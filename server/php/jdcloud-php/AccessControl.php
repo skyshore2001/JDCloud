@@ -1560,14 +1560,16 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 					if ($fn != "COUNT" && $fn != "SUM" && $fn != "AVG")
 						throw new MyException(E_FORBIDDEN, "function not allowed: `$fn`");
 					// 支持对虚拟字段的聚合函数 (addVCol)
-					$rv = preg_match_all('/\w+/iu', $expr, $ms1);
-					if ($rv && $ms1) {
-						foreach ($ms1[0] as $col1) {
-							if (strcasecmp($col1, 'distinct') == 0)
-								continue;
-							$this->addVCol($col1, true, '-'); // TODO: 没有定义啊
-						}
-					}
+					$expr = preg_replace_callback('/\b\w+\b/iu', function ($ms) {
+						$col1 = $ms[0];
+						if (strcasecmp($col1, 'distinct') == 0 || is_numeric($col1))
+							return $col1;
+						// isVCol
+						if ($this->addVCol($col1, true, '-'))
+							return $this->vcolMap[$col1]["def"];
+						return "t0." . $col1;
+					}, $expr);
+					$col = $fn . '(' . $expr . ') ' . $alias;
 					$this->isAggregatinQuery = true;
 				}
 				else 
@@ -1951,7 +1953,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			throw new MyException(E_SERVER, "bad vcol $col");
 
 		if ($alias === "-")
-			return;
+			return true;
 
 		$isExt = @ $vcolDef["isExt"] ? true : false;
 		if ($alias) {
