@@ -7,6 +7,8 @@ AccessControl简写为AC，同时AC也表示自动补全(AutoComplete).
 
 在设计文档中完成数据库设计后，通过添加AccessControl的继承类，可以很方便的提供诸如 {Obj}.query/add/get/set/del 这些对象型接口。
 
+每个对象提供字段，包括 表字段（或称主表字段）、虚拟字段（称为vcol，包括关联字段，计算字段等）、子表字段（称为subobj）三种类别。
+
 例如，设计文档中已定义订单对象(Ordr)的主表(Ordr)和订单日志子表(OrderLog)：
 
 	@Ordr: id, userId, status, amount
@@ -75,6 +77,8 @@ v5.4起将报错，设置该类的useStrictReadonly=false可以兼容旧行为�
 示例：按客户编号(cusId)分组，但返回客户名(cusName)字段，不要返回cusId这个字段:
 
 	callSvr("CusOrder.query", {gres:"cusId", res:"cusName 客户, COUNT(*) 订单数, SUM(amount) 总金额", hiddenFields:"cusId"})
+
+特别地，如果指定为参数hiddenFields为0，则显示所有辅助字段（如虚拟字段依赖引入的字段），一般用于调试。
 
 @var AccessControl::$requiredFields ?=[] (for add/set) 字段列表。添加时必须填值；更新时不允许置空。
 @var AccessControl::$requiredFields2 ?=[] (for set) 字段列表。更新时不允许设置空。
@@ -388,7 +392,8 @@ query/get接口生成的查询语句大致为：
 
 用require标识依赖的内层查询的字段，上例中若未指定requrie，查询`query(res="id,y,m,ym")`没有问题，但查询`query(res="id,ym")`将出错，因为y,m字段未引入，不可识别。
 
-注意：即使在调用接口时用res参数指定了返回字段，外部虚拟字段依赖的内部字段也将返回。比如query(res="id,ym")返回`tbl(id,y,m,ym)`. (TODO：使用hiddenFields机制优化)
+注意：外部虚拟字段依赖的内部字段将自动添加到查询中，但不会返回到最终结果集中，除非用户指定了要这些字段或指定参数`hiddenFields:0`。
+比如query(res="id,ym")会在查询时引入y,m字段，但最终并不返回. (内部使用了hiddenFields机制)
 
 注意：目前外部虚拟字段不支持使用join, cond条件。
 
@@ -969,6 +974,9 @@ class AccessControl
 	protected $requiredFields2 = [];
 	# for get/query
 	protected $hiddenFields = [];
+	protected $hiddenFields0 = []; // 待隐藏的字段集合，字段加到hiddenFields中则一定隐藏，加到hiddenFields0中则根据用户指定的res参数判断是否隐藏该字段
+	protected $userRes = []; // 外部指定的res字段集合: { col => true}
+
 	protected $enumFields = []; // elem: {field => {key=>val}} 或 {field => fn(val, row)}，与onHandleRow类似地去修改数据。
 	protected $aliasMap = []; // { col => alias}
 	# for query
@@ -1175,13 +1183,6 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			"distinct" => param("distinct")
 		];
 		$this->isAggregatinQuery = isset($this->sqlConf["gres"]);
-
-		$hiddenFields = param("hiddenFields");
-		if ($hiddenFields) {
-			foreach (preg_split('/\s*,\s*/', $hiddenFields) as $e) {
-				$this->hiddenFields[] = $e;
-			}
-		}
 
 		$this->initVColMap();
 
@@ -1454,10 +1455,12 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 				$rowData[$field] = $v;
 			}
 		}
+		if ($idx == 0) {
+			$this->fixHiddenFields();
+		}
 		foreach ($this->hiddenFields as $field) {
 			unset($rowData[$field]);
 		}
-		unset($rowData["pwd"]);
 	}
 
 	# for query. "field1"=>"t0.field1"
@@ -1583,6 +1586,8 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 
 			if ($alias)
 				$this->handleAlias($col, $alias);
+
+			$this->userRes[$alias ?: $col] = true;
 
 // 			if (! ctype_alnum($col))
 // 				throw new MyException(E_PARAM, "bad property `$col`");
@@ -1778,6 +1783,51 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		$this->sqlConf["join"][] = $join;
 	}
 
+/*
+合并hiddenFields0到hiddenFields, 仅当字段符合下列条件：
+
+- 在请求的res参数中未指定该字段
+- 若res参数中包含"t0.*", 且该字段不是主表字段(t0.xxx)
+- 若res参数中包含"*"（未指定res参数也缺省是"*"），且该字段不是主表字段(t0.xxx)，且不是缺省的虚拟字段或虚拟表(vcolDefs或subobj的default属性为false)
+*/
+	final protected function fixHiddenFields()
+	{
+		$this->hiddenFields[] = "pwd";
+
+		$hiddenFields = param("hiddenFields");
+		if (isset($hiddenFields)) {
+			// 当请求时指定参数"hiddenFields=0"时，忽略自动隐藏
+			if ($hiddenFields === "0")
+				return;
+			foreach (preg_split('/\s*,\s*/', $hiddenFields) as $e) {
+				$this->hiddenFields[] = $e;
+			}
+		}
+
+		foreach ($this->hiddenFields0 as $col) {
+			if (isset($this->userRes[$col]) || in_array($col, $this->hiddenFields))
+				continue;
+
+			if (isset($this->userRes["*"]) || isset($this->userRes["t0.*"])) {
+				@$idx = $this->vcolMap[$col]["vcolDefIdx"];
+				if (isset($idx)) { // isVCol
+					@$isDefault = $this->vcolDefs[$idx]["default"];
+					if ( $isDefault && isset($this->userRes["*"]))
+						continue;
+				}
+				else if (isset($this->subobj[$col])) { // isSubobj
+					@$isDefault = $this->subobj[$col]["default"];
+					if ( $isDefault && isset($this->userRes["*"]))
+						continue;
+				}
+				else { // isMainobj
+					continue;
+				}
+			}
+			$this->hiddenFields[] = $col;
+		}
+	}
+
 	private function setColFromRes($res, $added, $vcolDefIdx=-1)
 	{
 		if (preg_match('/^(\w+)\.(\w+)$/u', $res, $ms)) {
@@ -1891,7 +1941,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 				$rv = $this->addRes($col);
 			}
 			if ($isHiddenField && $rv === true)
-				$this->hiddenFields[] = $col;
+				$this->hiddenFields0[] = $col;
 			return $rv;
 		}
 		if ($this->vcolMap[$col]["added"])
@@ -1899,22 +1949,20 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		$vcolDef = $this->addVColDef($this->vcolMap[$col]["vcolDefIdx"]);
 		if (! $vcolDef)
 			throw new MyException(E_SERVER, "bad vcol $col");
+
+		if ($alias === "-")
+			return;
+
 		$isExt = @ $vcolDef["isExt"] ? true : false;
 		if ($alias) {
-			if ($alias !== "-") {
-				$rv = $this->addRes($this->vcolMap[$col]["def"] . " " . $alias, false, $isExt);
-				$this->vcolMap[$alias] = $this->vcolMap[$col]; // vcol及其alias同时加入vcolMap并标记已添加"added"
-				if ($isHiddenField && $rv) {
-					$this->hiddenFields[] = $alias;
-				}
-			}
+			$rv = $this->addRes($this->vcolMap[$col]["def"] . " " . $alias, false, $isExt);
+			$this->vcolMap[$alias] = $this->vcolMap[$col]; // vcol及其alias同时加入vcolMap并标记已添加"added"
 		}
 		else {
 			$rv = $this->addRes($this->vcolMap[$col]["def0"], false, $isExt);
-			if ($isHiddenField && $rv) {
-				$this->hiddenFields[] = $col;
-			}
 		}
+		if ($isHiddenField)
+			$this->hiddenFields0[] = $alias ?: $col;
 		return true;
 	}
 
@@ -1943,7 +1991,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			return;
 		}
 		if (! $isExt) {
-			$this->addVCol($col, self::VCOL_ADD_RES | self::VCOL_ADD_SUBOBJ, "-");
+			$this->addVCol($col, self::VCOL_ADD_RES | self::VCOL_ADD_SUBOBJ, "-", true);
 		}
 		else {
 			// 将外部虚拟字段的require依赖字段添加到res中（支持其中引用其它虚拟字段）

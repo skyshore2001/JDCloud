@@ -99,6 +99,18 @@ class AC_ApiLog extends AccessControl
 	protected $readonlyFields = ["ac", "tm"];
 	protected $hiddenFields = ["ua"];
 	protected $useStrictReadonly = false;
+	protected $vcolDefs = [
+		[
+			"res" => ["year(tm) y", "month(tm) m"],
+		],
+		[
+			"res" => ["concat(y, '-', m) ym"],
+			// 用isExt指定这是外部虚拟字段
+			"isExt" => true,
+			// 用require指定所有依赖的内层字段
+			"require" => 'y,m'
+		]
+	];
 
 	protected function onValidate()
 	{
