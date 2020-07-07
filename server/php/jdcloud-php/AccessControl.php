@@ -388,7 +388,9 @@ query/get接口生成的查询语句大致为：
 
 用require标识依赖的内层查询的字段，上例中若未指定requrie，查询`query(res="id,y,m,ym")`没有问题，但查询`query(res="id,ym")`将出错，因为y,m字段未引入，不可识别。
 
-注意：即使在调用接口时用res参数指定了返回字段，外部虚拟字段依赖的内部字段也将返回。比如query(res="id,ym")返回`tbl(id,y,m,ym)`.
+注意：即使在调用接口时用res参数指定了返回字段，外部虚拟字段依赖的内部字段也将返回。比如query(res="id,ym")返回`tbl(id,y,m,ym)`. (TODO：使用hiddenFields机制优化)
+
+注意：目前外部虚拟字段不支持使用join, cond条件。
 
 注意：设置require或res属性时，如果依赖的是表的字段，应加上表名更健壮，如"t0.tm, t1.name"，如果是虚拟字段，则不加表名，如"y,m"。
 
@@ -1526,7 +1528,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			if (preg_match('/\W/u', $col)) {
 				throw new MyException(E_PARAM, "bad subobj['%d']=`$col`. MUST be a column or virtual column.", "子对象定义错误");
 			}
-			$this->addVCol($col, "addRes", null, true);
+			$this->addVCol($col, self::VCOL_ADD_RES, null, true);
 		}
 	}
 
@@ -1560,7 +1562,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 						foreach ($ms1[0] as $col1) {
 							if (strcasecmp($col1, 'distinct') == 0)
 								continue;
-							$this->addVCol($col1, true, '-');
+							$this->addVCol($col1, true, '-'); // TODO: 没有定义啊
 						}
 					}
 					$this->isAggregatinQuery = true;
@@ -1628,24 +1630,6 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			$colArr[] = $col;
 		}
 		return join(",", $colArr);
-	}
-
-	// 将外部虚拟字段的require依赖字段添加到res中（支持其中引用其它虚拟字段）
-	// 引用内层查询的某字段时，需要将该字段加到内层res中暴露到外层使用；但是如果内层res已经有t0.*则不要重复添加。
-	// 示例："res" => ["(select count(*) from ApiLog t1 where t1.ses=t0.ses) sesCnt"], 需要将t0.ses暴露给外层SQL使用。
-	private function filterExtVColRequire($cols)
-	{
-		foreach (explode(',', $cols) as $col) {
-			$col = preg_replace_callback('/^(\w+)$/', function ($ms) {
-				$col1 = $ms[1];
-				if ($this->addVCol($col1, true) !== false)
-					return "";
-				return "t0." . $col1;
-			}, trim($col));
-			if (! $col) // 虚拟字段已在addVCol中加过
-				continue;
-			$this->addRes($col, false);
-		}
 	}
 
 	final public function issetCond()
@@ -1762,7 +1746,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 这相当于调用：
 
 	$this->addVCol("payTm", false, "-"); // 引入定义但并不加到SELECT字段中
-	$this->addCond("olpay.action='PA' AND olpay.tm>'$validDate'");
+	$this->addCond("olpay.action='PA' AND olpay.tm>'$validDate'", false, false);
 
 如果想要查询固定返回空，习惯上可以用:
 
@@ -1870,7 +1854,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 
 @param $col 必须是一个英文词, 不允许"col as col1"形式; 该列必须在 vcolDefs 中已定义.
 @param $alias 列的别名。可以中文. 特殊字符"-"表示只添加join/cond等定义，并不将该字段加到输出字段中。
-@return Boolean T/F
+@return Boolean T/F 返回false表示添加失败。
 
 引入一个已有的虚拟字段及其相应关联表，例如之前在vcolDefs中定义过虚拟字段`createTm`:
 
@@ -1880,38 +1864,31 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	// 只引入createTm字段的关联表，不影响最终输出字段
 	$this->addVCol("createTm", false, "-");
 
-	// 添加字段(如果不是虚拟字段则当作主表t0.xx添加)
-	$this->addVCol("createTm", "addRes"); // ignoreError特别用法
+	// 添加字段(如果不是虚拟字段则当作表字段添加)
+	$this->addVCol("createTm", self::VCOL_ADD_RES); // ignoreError特别用法
+
+	// 如果不是虚拟字段则当作子表字段或表字段添加
+	$this->addVCol("createTm", self::VCOL_ADD_RES|self::VCOL_ADD_SUBOBJ); // ignoreError特别用法
 
 如果isHiddenField=true, 则该字段是辅助字段，最终返回前将删除(AccessControl::hiddenFields机制)
-
-(v5.5) 支持添加subobj子表定义中的字段。
-
-支持一次添加多个字段：
-
-	$this->addVCol(["createTm", "procId"]); 
-
-@see AccessControl::addRes
  */
+ 	const VCOL_ADD_RES = 0x2;
+ 	const VCOL_ADD_SUBOBJ = 0x4;
 	protected function addVCol($col, $ignoreError = false, $alias = null, $isHiddenField = false)
 	{
-		if (is_array($col)) {
-			foreach ($col as $e) {
-				$rv = $this->addVCol($e, $ignoreError, $alias, $isHiddenField);
-			}
-			return $rv;
-		}
 		if (! isset($this->vcolMap[$col])) {
 			$rv = false;
-			if (array_key_exists($col, $this->subobj)) {
+			if (($ignoreError & self::VCOL_ADD_SUBOBJ) && array_key_exists($col, $this->subobj)) {
 				$this->addSubobj($col, $this->subobj[$col]);
 				$rv = true;
 			}
 			else if ($ignoreError === false) {
 				throw new MyException(E_SERVER, "unknown vcol `$col`");
 			}
-			else if ($ignoreError === "addRes") {
-				$rv = $this->addRes("t0." . $col);
+			else if ($ignoreError & self::VCOL_ADD_RES) {
+				if (strpos($col, '.') === false)
+					$col = "t0." . $col;
+				$rv = $this->addRes($col);
 			}
 			if ($isHiddenField && $rv === true)
 				$this->hiddenFields[] = $col;
@@ -1925,7 +1902,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		$isExt = @ $vcolDef["isExt"] ? true : false;
 		if ($alias) {
 			if ($alias !== "-") {
-				$rv = $this->addRes($this->vcolMap[$col]["def"] . " AS {$alias}", false, $isExt);
+				$rv = $this->addRes($this->vcolMap[$col]["def"] . " " . $alias, false, $isExt);
 				$this->vcolMap[$alias] = $this->vcolMap[$col]; // vcol及其alias同时加入vcolMap并标记已添加"added"
 				if ($isHiddenField && $rv) {
 					$this->hiddenFields[] = $alias;
@@ -1956,6 +1933,26 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		}
 	}
 
+	private function addRequireCol($col, $isExt) {
+		if (strpos($col, ',') !== false) {
+			$colArr = explode(',', $col);
+			foreach ($colArr as $col1) {
+				$col1 = trim($col1);
+				$this->addRequireCol($col1, $isExt);
+			}
+			return;
+		}
+		if (! $isExt) {
+			$this->addVCol($col, self::VCOL_ADD_RES | self::VCOL_ADD_SUBOBJ, "-");
+		}
+		else {
+			// 将外部虚拟字段的require依赖字段添加到res中（支持其中引用其它虚拟字段）
+			// 引用内层查询的某字段时，需要将该字段加到内层res中暴露到外层使用；但是如果内层res已经有t0.*则不要重复添加。
+			// 示例："res" => ["(select count(*) from ApiLog t1 where t1.ses=t0.ses) sesCnt"], 需要将t0.ses暴露给外层SQL使用。
+			$this->addVCol($col, self::VCOL_ADD_RES | self::VCOL_ADD_SUBOBJ, null, true);
+		}
+	}
+
 	/*
 	根据index找到vcolDef中的一项，添加join/cond到最终查询语句(但不包含res)。
 	返回vcolDef或undef
@@ -1970,20 +1967,14 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			return $vcolDef;
 
 		$vcolDef["added"] = true;
-		if (@$vcolDef["isExt"]) {
-			$requireCol = @$vcolDef["require"];
-			// 外部虚拟字段：将require字段加入内层SQL。
-			if ($requireCol) {
-				$this->filterExtVColRequire($requireCol);
-			}
+		$isExt = @$vcolDef["isExt"]? true: false;
+		// require支持一个或多个字段(虚拟字段, 表字段, 子表字段均可), 多个字段以逗号分隔
+		if (isset($vcolDef["require"])) {
+			$this->addRequireCol($vcolDef["require"], $isExt);
+		}
+		if ($isExt)
 			return $vcolDef;
-		}
-		if (isset($vcolDef["require"]))
-		{
-			$requireCol = $vcolDef["require"];
-			$this->addVCol($requireCol, false, "-");
-//			$this->addVCol($requireCol, false, "-", true); // TODO: 应隐藏require字段，但若用户显式指定则不可隐藏
-		}
+
 		if (isset($vcolDef["join"]))
 			$this->addJoin($vcolDef["join"]);
 		if (isset($vcolDef["cond"]))
