@@ -568,10 +568,14 @@ function getRealIp()
 
 默认到日志文件 $BASE_DIR/trace.log. 如果指定type=secure, 则写到 $BASE_DIR/secure.log.
 
+$s可以是字符串、数值或数组。
+
 可通过在线日志工具 tool/log.php 来查看日志。也可直接打开日志文件查看。
  */
 function logit($s, $addHeader=true, $type="trace")
 {
+	if (is_array($s))
+		$s = var_export($s, true);
 	if (is_string($addHeader)) {
 		$type = $addHeader;
 		$addHeader = true;
