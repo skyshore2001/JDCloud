@@ -101,9 +101,6 @@ class AC_ApiLog extends AccessControl
 	protected $useStrictReadonly = false;
 	protected $vcolDefs = [
 		[
-			"res" => ["year(tm) y", "month(tm) m"],
-		],
-		[
 			"res" => ["concat(y, '-', m) ym"],
 			// 用isExt指定这是外部虚拟字段
 			"isExt" => true,
@@ -112,7 +109,7 @@ class AC_ApiLog extends AccessControl
 		],
 		[
 			"res" => ["u.name userName"],
-			"join" => "INNER JOIN User u ON u.id=t0.userId",
+			"join" => "LEFT JOIN User u ON u.id=t0.userId",
 			"default" => true
 		]
 	];
@@ -132,6 +129,14 @@ class AC_ApiLog extends AccessControl
 			"name" => "hello"
 		];
 	}
+
+	protected function onInit() {
+		$this->vcolDefs[] = [ "res" => tmCols("t0.tm") ];
+	}
+
+	protected function onQuery() {
+		$this->qsearch(["ac", "addr"], param("q"));
+	}
 }
 
 class AC1_UserApiLog extends AC_ApiLog
@@ -144,8 +149,9 @@ class AC1_UserApiLog extends AC_ApiLog
 
 	protected function onInit()
 	{
-		$this->uid = $_SESSION["uid"];
+		parent::onInit();
 
+		$this->uid = $_SESSION["uid"];
 
 		$this->vcolDefs[] = [
 			"res" => ["(SELECT group_concat(concat(id, ':', ac))
@@ -155,7 +161,6 @@ FROM ApiLog
 WHERE userId={$this->uid} ORDER BY id DESC LIMIT 3) t
 ) last3LogAc"]
 		];
-		$this->vcolDefs[] = [ "res" => tmCols("t0.tm") ];
 
 		$this->subobj = [
 			"user" => [ "sql" => "SELECT u.id,u.name FROM User u INNER JOIN ApiLog log ON log.userId=u.id WHERE log.id=%d", "wantOne" => true ],
@@ -190,8 +195,6 @@ WHERE userId={$this->uid} ORDER BY id DESC LIMIT 3) t
 	{
 		parent::onQuery();
 		$this->addCond("userId=" . $this->uid);
-
-		$this->qsearch(["ac", "addr"], param("q"));
 	}
 
 	public function api_listByAc()
