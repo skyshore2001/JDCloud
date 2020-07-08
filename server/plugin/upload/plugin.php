@@ -79,7 +79,9 @@ class Upload
 		'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 		'xls' => 'application/vnd.ms-excel',
 		'zip' => 'application/zip',
-		'rar' => 'application/x-rar-compressed'
+		'rar' => 'application/x-rar-compressed',
+		'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+		'ppt' => 'application/vnd.ms-powerpoint'
 	];
 
 	static $typeMap = [
