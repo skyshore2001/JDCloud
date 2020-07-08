@@ -91,6 +91,47 @@ query接口默认返回格式为`{h,d}`：
 
 返回数据中不带"nextkey"属性，表示所有数据获取完毕。
 
+### 图片地址
+
+系统中的图片字段，一般使用图片编号或编号列表。字段名常常叫做`picId`，内容如`100`, `101`这样的数字，或是字段名叫`pics`，内容是像`100,101`这样多个数字。
+要获取图片，可以用`att`接口，例如要显示编号为100的图片：
+
+	<img src="$BASE_URL/att?id=100">
+
+一般使用框架提供的`makeUrl`函数生成地址，如：
+
+	// 取图片地址：
+	var imgUrl = MUI.makeUrl("att", {id: 100});
+
+在支持缩略图时，字段内保存的是缩略图的编号，可以这样来取缩略图和原始大图的地址：
+
+	// 取缩略图地址：
+	var imgUrl = MUI.makeUrl("att", {id: 100});
+	// 取原始图地址：
+	var bigImgUrl = MUI.makeUrl("att", {thumbId: 100});
+
+### 上传文件
+
+使用multipart/form-data格式上传（标准html支持，可一次传多个文件）:
+
+	POST $BASE_URL/upload?genThumb={genThumb}
+	Content-Type: multipart/form-data
+
+	(multipart/form-data格式的单个或多个文件内容)
+
+参数：
+
+- genThumb: 默认为0。设置为1时表示生成缩略图。
+
+注意：该接口需要用户登录权限。
+
+返回：
+
+	[{id, thumbId?}]
+
+- id: 图片编号。
+- thumbId: 生成的缩略图编号。
+
 ### 签名
 
 若接口调用要求验证签名，须设置`_sign`参数。算法如下: 
