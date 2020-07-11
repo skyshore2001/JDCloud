@@ -464,13 +464,13 @@ query/get接口生成的查询语句大致为：
 将自动计算和添加属性：
 
 		"isExt" => true,
-		"require" => "t0.ses,t0.userId"
+		"require" => "ses,userId"
 
-上面require属性指定内层查询应暴露给外层的字段，如果有多个可用逗号分隔。
+上面require属性指定内层查询应暴露给外层的字段，可以是主表字段、虚拟字段或子表字段，不可加任何前缀（如`t0.ses`不允许），如果有多个可用逗号分隔。
 注意res中的t0指的是内层查询的结果表，名称固定为t0; 而require中的表指的是内层查询内部的表。
 如果自动处理或识别有误，可手工设置isExt和require属性。
 
-注意：使用外部虚拟字段时，将导致require中的字段被添加到最终结果集。例如上面例子中的"t0.ses,t0.userId"字段会被添加到最终结果集。
+注意：使用外部虚拟字段时，将导致require中的字段被添加到查询结果集，例如上面例子中的"ses,userId"字段，会出现在SQL语句中，但会在最终结果集中删除（除非请求指定了要该字段）。
 
 注意：如果想禁止优化，可手工设置vcolDef的isExt属性为false：
 
@@ -876,7 +876,28 @@ TODO: 可加一个系统参数`_enc`表示输出编码的格式。
 		return $v;
 	};
 
-enumFields机制支持字段别名，比如若调用`Ordr.query(res="id 编号,status 状态")`，status字段使用了别名"状态"后，仍然可被正确处理，而用onHandleRow就处理不了了。
+enumFields机制支持字段别名，比如若调用`Ordr.query(res="id 编号,status 状态")`，status字段使用了别名"状态"后，仍然可被正确处理，而用onHandleRow则不好处理。
+
+(v5.5) enum字段也常用于计算字段，即根据其它字段进行处理，可在require选项中指定依赖字段，并在函数中使用getAliasVal方法取值:
+
+	protected $vcolDefs = [
+		// 不良数
+		[
+			"res" => ["(SELECT COUNT(DISTINCT s.id) FROM Fault f JOIN Sn s ON s.id=f.snId WHERE s.orderId=t0.id) faultCnt"],
+		],
+		// 根据不良数计算不良率。faultCnt是虚拟字段，qty是主表字段
+		[
+			"res" => ["null faultRate"], // 由于不是主表字段，须当成alias添加，不可直接指定为"faultRate"。给默认值null
+			"require" => "faultCnt,qty" // 依赖字段可以是主表字段、虚拟字段或子表字段均可，若依赖多个字段，用","分隔
+		]
+	];
+
+	$this->enumFields["faultRate"] = function($v, $row) {
+		// 不要直接用 $row["xxx"]取值, 否则若调用时指定了别名（典型的是导出文件或输出统计表场景）则取不到值了。
+		$faultCnt = $this->getAliasVal($row, "faultCnt");
+		$qty = $this->getAliasVal($row, "qty");
+		return $qty == 0? 0: $faultCnt/$qty;
+	};
 
 此外，枚举字段可直接由请求方通过res参数指定描述值，如：
 
@@ -1427,6 +1448,11 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		return $this->maxPageSz <0? PAGE_SZ_LIMIT: min($this->maxPageSz, PAGE_SZ_LIMIT);
 	}
 
+	// 用于onHandleRow或enumFields中，从结果中取指定列数据，避免直接用$row[$col]，因为字段有可能用的是别名。
+	final protected function getAliasVal($row, $col) {
+		return @$row[$this->aliasMap[$col] ?: $col];
+	}
+
 	private function handleRow(&$rowData, $idx, $rowCnt)
 	{
 		$this->flag_handleResult($rowData);
@@ -1547,6 +1573,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			$fn = null;
 			if ($col === "*" || $col === "t0.*") {
 				$this->addRes("t0.*", false);
+				$this->userRes[$col] = true;
 				$isAll = true;
 				continue;
 			}
@@ -1873,8 +1900,8 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			if ($isExt !== $isExt1) {
 				throw new MyException(E_SERVER, "bad res: '$res'", "字段定义错误：外部虚拟字段与普通虚拟字段不可定义在一起，请分拆成多组，或明确定义`isExt`。");
 			}
-			if (preg_match_all('/\bt0\.\w+\b/u', $ms[1], $ms1)) {
-				foreach ($ms1[0] as $e) {
+			if (preg_match_all('/\bt0\.(\w+)\b/u', $ms[1], $ms1)) {
+				foreach ($ms1[1] as $e) {
 					$reqColSet[$e] = true;
 				}
 			}
@@ -1938,9 +1965,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 				throw new MyException(E_SERVER, "unknown vcol `$col`");
 			}
 			else if ($ignoreError & self::VCOL_ADD_RES) {
-				if (strpos($col, '.') === false)
-					$col = "t0." . $col;
-				$rv = $this->addRes($col);
+				$rv = $this->addRes("t0.". $col);
 			}
 			if ($isHiddenField && $rv === true)
 				$this->hiddenFields0[] = $col;
@@ -1992,15 +2017,9 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			}
 			return;
 		}
-		if (! $isExt) {
-			$this->addVCol($col, self::VCOL_ADD_RES | self::VCOL_ADD_SUBOBJ, "-", true);
-		}
-		else {
-			// 将外部虚拟字段的require依赖字段添加到res中（支持其中引用其它虚拟字段）
-			// 引用内层查询的某字段时，需要将该字段加到内层res中暴露到外层使用；但是如果内层res已经有t0.*则不要重复添加。
-			// 示例："res" => ["(select count(*) from ApiLog t1 where t1.ses=t0.ses) sesCnt"], 需要将t0.ses暴露给外层SQL使用。
-			$this->addVCol($col, self::VCOL_ADD_RES | self::VCOL_ADD_SUBOBJ, null, true);
-		}
+		if (strpos($col, '.') !== false)
+			throw new MyException(E_PARAM, "`require` cannot use table name: $col", "字段依赖设置错误");
+		$this->addVCol($col, self::VCOL_ADD_RES | self::VCOL_ADD_SUBOBJ, null, true);
 	}
 
 	/*
