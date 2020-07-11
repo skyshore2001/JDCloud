@@ -2428,7 +2428,7 @@ FROM ($sql) t0";
 		else {
 			$i = 0;
 			foreach ($ret as &$ret1) {
-				$id1 = $ret1["id"];
+				$id1 = $this->getAliasVal($ret1, "id");
 				if (isset($id1))
 					$this->handleSubObj($id1, $ret1);
 				$this->handleRow($ret1, $i++, $rowCnt);
@@ -2878,7 +2878,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 			# $opt: {sql, wantOne=false}
 			foreach ($subobj as $k => $opt) {
 				if ($opt["obj"] && $opt["cond"]) {
-					$id1 = @$opt["%d"]? $mainObj[$opt["%d"]] : $id; // %d指定的关联字段会事先添加
+					$id1 = @$opt["%d"]? $this->getAliasVal($mainObj, $opt["%d"]) : $id; // %d指定的关联字段会事先添加
 					if ($id1) {
 						$cond = sprintf($opt["cond"], $id1); # e.g. "orderId=%d"
 						$ret1 = $this->querySubObj($k, $opt, [
@@ -2920,10 +2920,10 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		$row1 = $ret[0];
 		# $opt: {sql, wantOne=false}
 		foreach ($subobj as $k => $opt) {
-			$idField = $opt["%d"] ?: "id"; // 主表关联字段，默认为id，也可由"%d"选项指定。TODO: "编号"
+			$idField = $opt["%d"] ?: "id"; // 主表关联字段，默认为id，也可由"%d"选项指定。
 			$joinField = null;
 			$idArr = array_map(function ($e) use ($idField) {
-				return $e[$idField];
+				return $this->getAliasVal($e, $idField);
 			}, $ret);
 			$idArr = array_filter($idArr, function ($e) {
 				return isset($e);
@@ -2994,7 +2994,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 				}
 			}
 			foreach ($ret as &$row) {
-				$key = $row[$idField] ?: $row["编号"]; // TODO: use id
+				$key = $this->getAliasVal($row, $idField);
 				$val = @$subMap[$key];
 				if (@$opt["wantOne"]) {
 					if ($val !== null)
