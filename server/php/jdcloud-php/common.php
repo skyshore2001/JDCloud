@@ -198,7 +198,12 @@ e.g.
 */
 function makeUrl($ac, $params, $hash = null)
 {
-	$url = $ac;
+	if (preg_match('/^[\w\.]+$/', $ac)) {
+		$url = getBaseUrl(false) . "api.php/" . $ac;
+	}
+	else {
+		$url = $ac;
+	}
 	if ($params) {
 		$url .= "?" . urlEncodeArr($params);
 	}

@@ -1736,6 +1736,8 @@ function httpCallAsync($url, $postParams = null)
 /**
 @fn callAsync($ac, $params)
 
+在当前事务完成后，调用"async"接口，不等服务器输出数据就立即返回。
+
 @key enableAsync 配置异步调用
 
 发起异步调用请求，然后立即返回。它使用如下接口：
@@ -1762,12 +1764,29 @@ function httpCallAsync($url, $postParams = null)
 	// 打开异步调用支持, 依赖 P_BASE_URL 和 whiteIpList 设置
 	putenv("enableAsync=1");
 
+@see callSvcAsync
 @see api_async
 */
 function callAsync($ac, $param) {
-	$url = getBaseUrl(false) . "api.php?ac=async&f=$ac";
-	$GLOBALS["X_APP"]->onAfterActions[] = function () use ($url, $param) {
-		httpCallAsync($url, $param);
+	callSvcAsync("async", ["f"=>$ac], $param);
+}
+
+/**
+@fn callSvcAsync($ac, $urlParam, $postParams)
+
+在当前事务执行完后，调用指定接口并立即返回（不等服务器输出数据）。一般用于各种异步通知。
+示例：
+
+	callSvcAsync("sendMail", ["type"=>"Issue", "id"=>100]);
+	// 自动以getBaseUrl来补全url
+
+	callSvcAsync("http://localhost/pdi/api/sendMail", ["type"=>"Issue", "id"=>100]);
+	// 将ac直接当成url
+*/
+function callSvcAsync($ac, $urlParam, $postParam = null) {
+	$url = makeUrl($ac, $urlParam);
+	$GLOBALS["X_APP"]->onAfterActions[] = function () use ($url, $postParam) {
+		httpCallAsync($url, $postParam);
 	};
 }
 
