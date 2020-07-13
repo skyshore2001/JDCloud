@@ -3087,7 +3087,7 @@ function KVtoCond($k, $v)
 		return join(',', array_map("self::array2Str", $arr));
 	}
 
-	function outputCsvLine($row, $enc)
+	static function outputCsvLine($row, $enc)
 	{
 		$firstCol = true;
 		foreach ($row as $e) {
@@ -3115,16 +3115,16 @@ function KVtoCond($k, $v)
 		echo "\n";
 	}
 
-	function table2csv($tbl, $enc = null)
+	static function table2csv($tbl, $enc = null)
 	{
 		if (isset($tbl["h"]))
-			$this->outputCsvLine($tbl["h"], $enc);
+			self::outputCsvLine($tbl["h"], $enc);
 		foreach ($tbl["d"] as $row) {
-			$this->outputCsvLine($row, $enc);
+			self::outputCsvLine($row, $enc);
 		}
 	}
 
-	function table2txt($tbl)
+	static function table2txt($tbl)
 	{
 		if (isset($tbl["h"]))
 			echo join("\t", $tbl["h"]), "\n";
@@ -3133,19 +3133,22 @@ function KVtoCond($k, $v)
 		}
 	}
 
-	function table2html($tbl)
+	static function table2html($tbl, $retStr=false)
 	{
-		echo("<table border=1 cellspacing=0>");
+		$rv = "<table border=1 cellspacing=0>";
 		if (isset($tbl["h"])) {
-			echo "<tr><th>" . join("</th><th>", $tbl["h"]), "</th></tr>\n";
+			$rv .= "<tr><th>" . join("</th><th>", $tbl["h"]) . "</th></tr>\n";
 		}
 		foreach ($tbl["d"] as $row) {
-			echo "<tr><td>" . join("</td><td>", $row), "</td></tr>\n";
+			$rv .= "<tr><td>" . join("</td><td>", $row) . "</td></tr>\n";
 		}
-		echo("</table>");
+		$rv .= "</table>";
+		if ($retStr)
+			return $rv;
+		echo($rv);
 	}
 
-	function table2excel($tbl)
+	static function table2excel($tbl)
 	{
 		$hdr = [];
 		foreach ($tbl["h"] as $h) {
@@ -3216,7 +3219,7 @@ function KVtoCond($k, $v)
 		if ($fmt === "csv") {
 			header("Content-Type: application/csv; charset=UTF-8");
 			header("Content-Disposition: attachment;filename={$fname}.csv");
-			$this->table2csv($ret);
+			self::table2csv($ret);
 			$handled = true;
 		}
 		else if ($fmt === "excel") {
@@ -3224,25 +3227,25 @@ function KVtoCond($k, $v)
 			header("Content-disposition: attachment; filename=" . XLSXWriter::sanitize_filename($fname) . ".xlsx");
 			header("Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
 			header("Content-Transfer-Encoding: binary");
-			$this->table2excel($ret);
+			self::table2excel($ret);
 			$handled = true;
 		}
 		else if ($fmt === "excelcsv") {
 			header("Content-Type: application/csv; charset=gb18030");
 			header("Content-Disposition: attachment;filename={$fname}.csv");
-			$this->table2csv($ret, "gb18030");
+			self::table2csv($ret, "gb18030");
 			$handled = true;
 		}
 		else if ($fmt === "txt") {
 			header("Content-Type: text/plain; charset=UTF-8");
 			header("Content-Disposition: attachment;filename={$fname}.txt");
-			$this->table2txt($ret);
+			self::table2txt($ret);
 			$handled = true;
 		}
 		else if ($fmt === "html") {
 			header("Content-Type: text/html; charset=UTF-8");
 			header("Content-Disposition: filename={$fname}.html");
-			$this->table2html($ret);
+			self::table2html($ret);
 			$handled = true;
 		}
 		if ($handled)

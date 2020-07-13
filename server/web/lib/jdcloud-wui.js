@@ -7878,6 +7878,7 @@ function tryAutoLoginAsync(onHandleLogin, reuseCmd)
 
 处理login相关的操作, 如设置g_data.userInfo, 保存自动登录的token等等.
 
+(v5.5) 如果URL中包含hash（即"#pageIssue"这样），且以"#page"开头，则登录后会自动打开同名的列表页（如"pageIssue"页面）。
 */
 self.handleLogin = handleLogin;
 function handleLogin(data)
@@ -7888,6 +7889,9 @@ function handleLogin(data)
 		saveLoginToken(data);
 
 	self.showPage(self.options.pageHome);
+	if (location.hash.startsWith("#page")) {
+		WUI.showPage(location.hash.replace('#', ''));
+	}
 }
 //}}}
 
