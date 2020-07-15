@@ -3396,6 +3396,12 @@ function getop(v)
 
 在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。
 
+(v5.5) value支持用数组表示范围（前闭后开区间），主要内部使用：
+
+	var cond = getQueryCond({tm: ["2019-1-1", "2020-1-1"]}); // 生成 "tm>='2019-1-1' AND tm<'2020-1-1'"
+	var cond = getQueryCond({tm: [null, "2020-1-1"]}); // 生成 "tm<'2020-1-1'"
+	var cond = getQueryCond({tm: [null, null]); // 返回null
+
 @see getQueryParam
 @see getQueryParamFromTable 获取datagrid的当前查询参数
 */
@@ -3419,8 +3425,15 @@ function getQueryCond(kvList)
 	}
 
 	function handleOne(k,v) {
-		if (v == null || v === "" || ($.isArray(v) && v.length==0))
+		if (v == null || v === "" || v.length==0)
 			return;
+		if ($.isArray(v)) {
+			if (v[0])
+				condArr.push(k + ">='" + v[0] + "'");
+			if (v[1])
+				condArr.push(k + "<'" + v[1] + "'");
+			return;
+		}
 
 		var arr = v.toString().split(/\s+(and|or)\s+/i);
 		var str = '';
@@ -5453,7 +5466,7 @@ if (isSmallScreen()) {
 - opt.url: String. 点击确定后，提交到后台的URL。如果设置则自动提交数据，否则应在opt.onOk回调或validate事件中手动提交。
 - opt.buttons: Object数组。用于添加“确定”、“取消”按钮以外的其它按钮，如`[{text: '下一步', iconCls:'icon-ok', handler: btnNext_click}]`。
  用opt.okLabel/cancelLabel可修改“确定”、“取消”按钮的名字，用opt.noCancel=true可不要“取消”按钮。
-- opt.model: Boolean.模态对话框，这时不可操作对话框外其它部分，如登录框等。设置为false改为非模态对话框。
+- opt.modal: Boolean.模态对话框，这时不可操作对话框外其它部分，如登录框等。设置为false改为非模态对话框。
 - opt.data: Object. 自动加载的数据, 将自动填充到对话框上带name属性的DOM上。在修改对象时，仅当与opt.data有差异的数据才会传到服务端。
 - opt.reset: Boolean. 显示对话框前先清空。
 - opt.validate: Boolean. 是否提交前用easyui-form组件验证数据。内部使用。
