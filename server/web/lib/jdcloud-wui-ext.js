@@ -235,6 +235,23 @@ HTML: 在data-options中指定菜单的ID和显示文字。缺省头像将添加
 		</td>
 	</tr>
 
+## 动态设置选项
+
+示例：在dialog的beforeshow事件回调中，根据情况设置upload组件的选项，如是否压缩图片：
+
+	// function initDlgXXX
+	//
+	jdlg.on("beforeshow", onBeforeShow);
+	
+	function onBeforeShow(ev, formMode, opt) 
+	{
+		var objParam = opt.objParam;
+		var jo = jpage.find(".picId");
+		// 获取和动态设置选项：
+		var uploadOpt = WUI.getOptions(jo);
+		uploadOpt.nothumb = (objParam.type === "A");
+	}
+
  */
 self.m_enhanceFn[".wui-upload"] = enhanceUpload;
 
