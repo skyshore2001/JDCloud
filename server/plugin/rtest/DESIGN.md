@@ -95,12 +95,30 @@
 	排序：
 	ApiLog.query(sort, order) = ApiLog.query(orderby="{sort} {order}")
 
+	支持qsearch: 可查询ac, addr字段
+	ApiLog.query(q)
+
+	外部字段
+	ApiLog.query() -> tbl(..., y,m等时间字段(tmCols),  ym)
+
 应用逻辑
 
 - 权限: AUTH_GUEST
 - 添加：tm自动填充为当前时间；ac必填(required)。
 - 更新：tm, ac不可更新(readonly)。
 - 获取：不返回ua(hidden).
+
+用于子表与关联表测试：
+
+	子表字段log, lastLog; lastLogAc依赖lastLog而实现
+	UserA.query() -> tbl(id, ..., logCnt, lastLogId, lastLogAc?, @log?, %lastLog)
+	UserA.get
+	UserA.add
+
+	关联表字段user2
+	UserApiLog.query() -> tbl(id, ..., %user2)
+
+- AUTH_USER
 
 ### 权限限制, 虚拟字段与子表
 
@@ -124,10 +142,6 @@ vcol: userName, %user?, %user2?, last3LogAc?, last3Log?, 统计时间字段(tmCo
 	UserApiLog.query() -> tbl(id, ..., userName, %user?, last3LogAc?, @last3Log?, %user2)
 	UserApiLog.get() -> ...
 	UserApiLog.del()
-
-支持qsearch: 可查询ac, addr字段
-
-	UserApiLog.query(q)
 
 返回
 

@@ -1582,7 +1582,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			if (! preg_match('/^\s*(\w+)(?:\s+(?:AS\s+)?([^,]+))?\s*$/iu', $col, $ms))
 			{
 				// 对于res, 还支持部分函数: "fn(col) as col1", 目前支持函数: count/sum，如"count(distinct ac) cnt", "sum(qty*price) docTotal"
-				if (!$gres && preg_match('/(\w+)\(([a-z0-9_.\'* ,+\/]+)\)\s+(?:AS\s+)?([^,]+)/iu', $col, $ms)) {
+				if (!$gres && preg_match('/(\w+)\(([a-z0-9_.\'* ,+-\/]+)\)\s+(?:AS\s+)?([^,]+)/iu', $col, $ms)) {
 					list($fn, $expr, $alias) = [strtoupper($ms[1]), $ms[2], $ms[3]];
 					if ($fn != "COUNT" && $fn != "SUM" && $fn != "AVG")
 						throw new MyException(E_FORBIDDEN, "function not allowed: `$fn`");
@@ -2917,7 +2917,6 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		if (! is_array($subobj) || count($subobj)==0 || count($ret) == 0)
 			return;
 
-		$row1 = $ret[0];
 		# $opt: {sql, wantOne=false}
 		foreach ($subobj as $k => $opt) {
 			$idField = $opt["%d"] ?: "id"; // 主表关联字段，默认为id，也可由"%d"选项指定。
@@ -2959,7 +2958,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 				}, $opt["sql"]); 
 				if ($joinField === null) {
 					if (! @$opt["force"])
-						throw new MyException(E_SERVER, "bad subobj def: `" . $opt["sql"] . "'. require `field=%d`");
+						throw new MyException(E_SERVER, "bad subobj def: `" . $opt["sql"] . "'. require `field=%d` or set `force=true`");
 
 					$ret1 = queryAll($sql, true);
 					if (@$opt["wantOne"]) {
