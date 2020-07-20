@@ -2354,9 +2354,10 @@ FROM ($sql) t0";
 				$enablePartialQuery = false;
 			}
 		}
-		if ($pagesz == 0) {
-			$pagesz = ($fmt === "one" || $fmt === "one?") ? 1: 20;
-		}
+		if ($fmt === "one" || $fmt === "one?")
+			$pagesz = 1;
+		else if (! isset($pagesz) || $pagesz == 0)
+			$pagesz = 20;
 
 		$maxPageSz = $this->getMaxPageSz();
 		if ($pagesz < 0 || $pagesz > $maxPageSz)
@@ -2484,6 +2485,17 @@ FROM ($sql) t0";
 				$nextkey = $pagekey + 1;
 			}
 		}
+		return $this->queryRet($ret, $nextkey, $totalCnt, $fixedColCnt);
+	}
+
+/**
+@fn AccessControl.queryRet(objArr, nextkey?, totalCnt?, fixedColCnt?=0)
+
+处理objArr，按照fmt参数指定的格式返回，与query接口返回相同。例如，默认的`h-d`表格式, `list`格式，`excel`等。
+ */
+	protected function queryRet($ret, $nextkey, $totalCnt, $fixedColCnt)
+	{
+		$fmt = param("fmt");
 		if ($fmt === "list") {
 			$ret = ["list" => $ret];
 			unset($fmt);

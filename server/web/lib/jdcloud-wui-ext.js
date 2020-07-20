@@ -1035,6 +1035,12 @@ self.formItems[".combo-f"] = $.extend({}, self.defaultFormItems, {
 	getValue: function (jo) {
 		var type = this.getComboType_(jo);
 		return jo[type]("getValue");
+	},
+	getReadonly: function (jo) {
+		return jo.combo("textbox").prop("readonly");
+	},
+	setReadonly: function (jo, val) {
+		jo.combo("textbox").prop("readonly", val);
 	}
 });
 

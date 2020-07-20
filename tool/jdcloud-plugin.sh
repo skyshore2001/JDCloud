@@ -99,8 +99,8 @@ ac=$1
 path=$2
 
 if [[ -z $ac || -z $path ]]; then
-	echo "Usage: jdcloud-plugin add <plugin-path>"
-	echo "       jdcloud-plugin del <plugin-name>"
+	echo "Usage: ./tool/jdcloud-plugin.sh {add|del|create} <plugin-path>"
+	echo "   eg: ./tool/jdcloud-plugin.sh add ../jdcloud-plugin-mail"
 	exit 1
 fi
 pluginName=`basename $path`
