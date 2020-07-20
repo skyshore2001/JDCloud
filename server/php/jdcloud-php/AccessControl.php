@@ -1908,7 +1908,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		$colName = self::removeQuote($colName);
 		if (array_key_exists($colName, $this->vcolMap)) {
 			if (! $added)
-				throw new MyException(E_SERVER, "redefine vcol `$colName`", "虚拟字段定义重复");
+				throw new MyException(E_SERVER, "redefine vcol `{$this->table}.$colName`", "虚拟字段定义重复");
 			if ($added && $this->vcolMap[ $colName ]["added"])
 				throw new MyException(E_SERVER, "res for col `$colName` has added: `$res`");
 			$this->vcolMap[ $colName ]["added"] = true;
