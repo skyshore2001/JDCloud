@@ -232,9 +232,11 @@ query接口的"..."之后就是虚拟字段。后缀"?"表示是非缺省字段�
 	或
 	Rating.query(res="*,userName,orderDscr")
 
-(v5.5) 如果要依赖多个字段，"require"可以用数组，如：
+(v5.5) 如果要依赖多个字段，"require"可以用逗号分隔多个字段，如：
 
-	"require" => ["userId", "procId"]
+	"require" => "userId,procId"
+
+可以依赖任何字段，包括虚拟字段(vcolDefs中定义的), 主表字段, 子表字段(subobj中定义的)。
 
 ### 计算字段
 
@@ -397,13 +399,23 @@ query/get接口生成的查询语句大致为：
 
 注意：目前外部虚拟字段不支持使用join, cond条件。
 
-注意：设置require或res属性时，如果依赖的是表的字段，应加上表名更健壮，如"t0.tm, t1.name"，如果是虚拟字段，则不加表名，如"y,m"。
-
 注意：关于时间统计相关的虚拟字段，一般通过tmCols函数来指定：
 
 	function __construct() {
 		$this->vcolDefs[] = [ "res" => tmCols() ];
 	}
+
+外部虚拟字段主要用于性能优化。对于上例中的计算字段，即使没有外部虚拟字段机制，也还可以利用MySQL变量做这样实现：
+
+	$vcolDefs = [
+		[
+			"res" => ["@y:=year(tm) y", "@m:=month(tm) m"],
+		],
+		[
+			"res" => ["concat(@y, '-', @m) ym"],
+			"require" => 'y,m'
+		]
+	]
 
 #### 关联子查询优化
 
@@ -1895,6 +1907,8 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 
 		$colName = self::removeQuote($colName);
 		if (array_key_exists($colName, $this->vcolMap)) {
+			if (! $added)
+				throw new MyException(E_SERVER, "redefine vcol `$colName`", "虚拟字段定义重复");
 			if ($added && $this->vcolMap[ $colName ]["added"])
 				throw new MyException(E_SERVER, "res for col `$colName` has added: `$res`");
 			$this->vcolMap[ $colName ]["added"] = true;
@@ -2002,6 +2016,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			return true;
 
 		$isExt = @ $vcolDef["isExt"] ? true : false;
+		$this->vcolMap[$col]["added"] = true;
 		if ($alias) {
 			$rv = $this->addRes($this->vcolMap[$col]["def"] . " " . $alias, false, $isExt);
 			$this->vcolMap[$alias] = $this->vcolMap[$col]; // vcol及其alias同时加入vcolMap并标记已添加"added"
