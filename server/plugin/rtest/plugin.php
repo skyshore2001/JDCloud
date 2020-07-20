@@ -83,7 +83,7 @@ class AC1_UserA extends AccessControl
 
 	protected $subobj = [
 		"log" => ["obj"=>"ApiLog", "cond"=>"userId=%d", "res"=>"id,tm,ac,addr", "default"=>false],
-		"lastLog" => ["obj"=>"ApiLog", "cond"=>"id=%d", "%d"=>"lastLogId", "res"=>"id,tm,ac,addr", "wantOne"=>true, "default"=>true]
+		"lastLog" => ["obj"=>"ApiLog", "cond"=>"id={lastLogId}", "res"=>"id,tm,ac,addr", "wantOne"=>true, "default"=>true]
 	];
 
 	protected function onInit() {
@@ -165,9 +165,9 @@ WHERE userId={$this->uid} ORDER BY id DESC LIMIT 3) t
 		$this->subobj = [
 			"user" => [ "sql" => "SELECT u.id,u.name FROM User u INNER JOIN ApiLog log ON log.userId=u.id WHERE log.id=%d", "wantOne" => true ],
 			//"user" => [ "sql" => "SELECT id,name FROM User u WHERE id={$this->uid}", "wantOne" => true, "force"=>true],
-			"last3Log" => [ "sql" => "SELECT id,ac FROM ApiLog log WHERE userId={$this->uid} ORDER BY id DESC LIMIT 3", "force"=>true ],
+			"last3Log" => [ "sql" => "SELECT id,ac FROM ApiLog log WHERE userId={$this->uid} ORDER BY id DESC LIMIT 3" ],
 
-			"user2" => ["obj"=>"User", "AC"=>"AC1_UserA", "cond"=>"id=%d", "%d"=>"userId", "res"=>"id,name", "wantOne"=>true]
+			"user2" => ["obj"=>"User", "AC"=>"AC1_UserA", "cond"=>"id={userId}", "res"=>"id,name", "wantOne"=>true]
 		];
 	}
 

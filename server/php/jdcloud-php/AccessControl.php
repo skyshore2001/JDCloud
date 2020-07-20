@@ -521,19 +521,19 @@ subobj: { name => {obj, cond, AC?, res?, default?=false} } （v5.4）指定子�
 
 或
 
-subobj: { name => {sql, default?=false, wantOne?=false, force?=false} }
+subobj: { name => {sql, default?=false, wantOne?=false} } 指定SQL语句，查询结果作为子表对象
 
 设计接口：
 
 	Ordr.get() -> {id, ..., @orderLog}
-	orderLog:: {id, tm, dscr, ..., empName} 订单日志子表。
+	- orderLog: {id, tm, dscr, ..., empName} 订单日志子表。
 
-实现：
+实现：复用已有的子表对象。
 
 	class AC1_Ordr extends AccessControl
 	{
 		protected $subobj = [
-			"orderLog" => ["obj"=>"OrderLog", "cond"=>"orderId=%d", "AC"=>"OrderLog", "res"=>"*,empName,empPhone"],
+			"orderLog" => ["obj"=>"OrderLog", "cond"=>"orderId=%d", "AC"=>"AC1_OrderLog", "res"=>"*,empName,empPhone"],
 		];
 	}
 
@@ -547,25 +547,39 @@ subobj: { name => {sql, default?=false, wantOne?=false, force?=false} }
 		];
 	}
 
-或
+选项说明：
+
+- obj: 指定调用哪个对象
+- AC: 指定使用哪个类来实现接口，常常是`AC1`, `AC2`这些类，其实只要是AccessControl的子表均可以，可以不是AC前缀的类。
+ 也可以不指定，这时根据用户权限自动寻找合适的类。
+ 也可以指定使用基类`"AC"=>"AccessControl"`，用在没有专门为该对象定义过类的情况下。
+- cond: cond条件是可选的，常常在其中包含"field=%d"，表示子表的field关联主表的id字段。(v5.5)也可用`field={id}`这种格式来表示关联主表的子段。
+- 还可以使用res, cond, gres, orderby等子表query接口的标准参数，或子表类支持的特定参数。
+
+子表对象也可以直接用SQL语句来定义：
 
 	class AC1_Ordr extends AccessControl
 	{
 		protected $subobj = [
-			"orderLog" => ["sql"=>"SELECT ol.*, e.name empName, e.phone empPhone FROM OrderLog ol LEFT JOIN Employee e ON ol.empId=e.id WHERE orderId=%d", "default"=>false, "wantOne"=>false],
+			"orderLog" => ["sql"=>"SELECT ol.*, e.name empName, e.phone empPhone FROM OrderLog ol LEFT JOIN Employee e ON ol.empId=e.id WHERE orderId=%d"],
+			// 替代了obj, AC, cond, res等子表设置。一般建议还是用obj来定义子表较好。
 		];
 	}
 
 子表和虚拟字段类似，支持get/query操作，执行指定的SQL语句作为结果。结果以一个数组返回[{id, tm, ...}]。
 
-- sql: 子表查询语句，其中应包含用"field=%d"这样语句来定义与主表id字段的关系。
+- sql选项定义子表查询语句，其中常常用"field=%d"这样语句来定义与主表id字段的关系。(v5.5) 也可以用"field={id}"的格式，花括号里定义主表关联字段。
  (v5.1)为了优化query接口，避免每一行分别查一次子表，查询语句会被改为"field IN (...)"的形式。
+
+其它选项：
+
 - default: 与虚拟字段(vcolDefs)上的"default"选项一样，表示当"res"参数以"*"开头(比如`res="*,picCnt"`)或未指定时，是否默认返回该字段。
 - wantOne: 如果为true, 则结果以一个对象返回即 {id, tm, ...}, 适用于主表与子表一对一的情况。
-- force: (v5.1) 如果sql中没有与主表的关联即没有包含"field=%d"，应指定force=true，否则在query接口中会当作语句错误。
 
-(v5.5) 关联子表对象
-典型的主子表关系是一对多的，如果将上面例子反过来，在`OrderLog.query`中想返回Ordr对象，也可使用subobj机制，设置"%d"为外键，如接口定义为：
+### 关联子表对象
+
+(v5.5) 
+典型的主子表关系是一对多的，如果将上面例子反过来，在`OrderLog.query`中想返回Ordr对象，也可使用subobj机制，如接口定义为：
 
 	OrderLog.query() -> tbl(id, ..., @ordr)
 
@@ -575,9 +589,8 @@ subobj: { name => {sql, default?=false, wantOne?=false, force?=false} }
 	{
 		protected $subobj = [
 			"ordr" => [
-				"%d" => "orderId", // (v5.5新增) 设置关联外键，下面cond中的%d即使用这里指定的字段。若不指定，默认为"id"
-				//"sql"=>"SELECT o.* FROM Ordr o LEFT JOIN Job j ON o.id=j.orderId WHERE j.id=%d",
-				"obj"=>"Ordr", "AC"=>"AC2_Ordr", "cond"=>"t0.id=%d", 
+				"obj"=>"Ordr", "AC"=>"AC2_Ordr", "cond"=>"t0.id={orderId}", // 用`{主表字段名}`设置关联外键。注意它等价于定义 `"cond"=>"t0.id=%d", "%d"=>"orderId"`
+				//"sql"=>"SELECT * FROM Ordr t1 WHERE t1.id={orderId}", // 也可以用 "sql" 来替代obj/AC/res/cond等子表选项
 				"res" => "t0.*",
 				"wantOne"=>true,
 				"default"=>true
@@ -1551,11 +1564,19 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	}
 
 	private function addSubobj($col, $def) {
+		foreach (["cond", "sql"] as $e) {
+			if (isset($def[$e])) {
+				$def[$e] = preg_replace_callback('/\{(\w+)\}/u', function ($ms) use (&$def) {
+					$def["%d"] = $ms[1];
+					return "%d";
+				}, $def[$e]);
+			}
+		}
 		$this->sqlConf["subobj"][$col] = $def;
 		if (array_key_exists("%d", $def)) {
 			$col = $def["%d"];
 			if (preg_match('/\W/u', $col)) {
-				throw new MyException(E_PARAM, "bad subobj['%d']=`$col`. MUST be a column or virtual column.", "子对象定义错误");
+				throw new MyException(E_PARAM, "bad subobj.relatedKey=`$col`. MUST be a column or virtual column.", "子对象定义错误");
 			}
 			$this->addVCol($col, self::VCOL_ADD_RES, null, true);
 		}
@@ -2820,6 +2841,9 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 
 	// k: subobj name
 	protected function querySubObj($k, &$opt, $opt1) {
+		if (! isset($opt["obj"])) 
+			throw new MyException(E_PARAM, "missing subobj.obj", "子表定义错误");
+
 		$param = $opt;
 
 		$param1 = param("param_$k");
@@ -2853,7 +2877,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 			$param["pagesz"] = @$opt["wantOne"]? 1: -1;
 		}
 
-		foreach (["obj", "AC", "default", "wantOne", "force", "sql"] as $e) {
+		foreach (["obj", "AC", "default", "wantOne", "sql", "%d"] as $e) {
 			unset($param[$e]);
 		}
 		foreach ($opt1 as $k=>$v) {
@@ -2877,10 +2901,10 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		if (is_array($subobj)) {
 			# $opt: {sql, wantOne=false}
 			foreach ($subobj as $k => $opt) {
-				if ($opt["obj"] && $opt["cond"]) {
-					$id1 = @$opt["%d"]? $this->getAliasVal($mainObj, $opt["%d"]) : $id; // %d指定的关联字段会事先添加
+				$id1 = @$opt["%d"]? $this->getAliasVal($mainObj, $opt["%d"]) : $id; // %d指定的关联字段会事先添加
+				if (! isset($opt["sql"])) {
 					if ($id1) {
-						$cond = sprintf($opt["cond"], $id1); # e.g. "orderId=%d"
+						$cond = isset($opt["cond"]) ? sprintf($opt["cond"], $id1): null; # e.g. "orderId=%d"
 						$ret1 = $this->querySubObj($k, $opt, [
 							"cond" => $cond
 						]);
@@ -2889,11 +2913,8 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 						$ret1 = [];
 					}
 				}
-				else if (! @$opt["sql"]) {
-					continue;
-				}
 				else {
-					$sql1 = sprintf($opt["sql"], $id); # e.g. "select * from OrderItem where orderId=%d"
+					$sql1 = sprintf($opt["sql"], $id1); # e.g. "select * from OrderItem where orderId=%d"
 					$ret1 = queryAll($sql1, true);
 				}
 				if (@$opt["wantOne"]) {
@@ -2927,60 +2948,54 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 			$idArr = array_filter($idArr, function ($e) {
 				return isset($e);
 			});
-			$idList = join(',', $idArr);
-			if (! $idList) {
-				$ret1 = [];
-			}
-			else if ($opt["obj"] && $opt["cond"]) {
+			$ret1 = [];
+			if (count($idArr) > 0) {
+				$idList = join(',', $idArr);
+
 				// $opt["cond"] = sprintf($opt["cond"], $id); # e.g. "orderId=%d"
-				$cond = preg_replace_callback('/(\S+)=%d/', function ($ms) use (&$joinField, $idList){
-					$joinField = $ms[1];
-					return $ms[1] . " IN ($idList)";
-				}, $opt["cond"]); 
-				// NOTE: GROUP BY也要做调整
-				if (isset($opt["gres"])) {
-					$opt["gres"] = "id_," . $opt["gres"];
+				$sql = $opt["cond"] ?: $opt["sql"];
+				if ($sql) {
+					$sql = preg_replace_callback('/(\S+)=%d/', function ($ms) use (&$joinField, $idList){
+						$joinField = $ms[1];
+						return $ms[1] . " IN ($idList)";
+					}, $sql); 
 				}
-				$ret1 = $this->querySubObj($k, $opt, [
-					"cond" => $cond,
-					"res2" => dbExpr("$joinField id_")
-				]);
-//				$acObj->addRes("$joinField id_");
+
+				if (! isset($opt["sql"])) {
+					$param = [ "cond" => $sql ];
+					if ($joinField != null) {
+						// NOTE: GROUP BY也要做调整
+						if (isset($opt["gres"])) {
+							$opt["gres"] = "id_," . $opt["gres"];
+						}
+						$param["res2"] = dbExpr("$joinField id_");
+					}
+					$ret1 = $this->querySubObj($k, $opt, $param);
+				}
+				else {
+					if ($joinField != null) {
+						$sql = preg_replace('/ from/i', ", $joinField id_$0", $sql, 1);
+						// "SELECT status, count(*) cnt FROM Task WHERE orderId=%d group by status" 
+						// => "select status, count(*) cnt, orderId id_ FROM Task WHERE orderId IN (...) group by id_, status"
+						$sql = preg_replace('/group by/i', "$0 id_, ", $sql);
+					}
+					$ret1 = queryAll($sql, true);
+				}
 			}
-			else if (! @$opt["sql"]) {
+			if ($joinField === null) {
+				if (@$opt["wantOne"]) {
+					if (count($ret1) == 0)
+						$ret1 = null;
+					else
+						$ret1 = $ret1[0];
+				}
+				foreach ($ret as &$row) {
+					$row[$k] = $ret1;
+				}
 				continue;
 			}
-			else {
-				# e.g. "select * from OrderItem where orderId=%d" => (添加主表关联字段id_) "select *, orderId id_ from OrderItem where orderId=%d"
-				$sql = preg_replace_callback('/(\S+)=%d/', function ($ms) use (&$joinField, $idList){
-					$joinField = $ms[1];
-					return $ms[1] . " IN ($idList)";
-				}, $opt["sql"]); 
-				if ($joinField === null) {
-					if (! @$opt["force"])
-						throw new MyException(E_SERVER, "bad subobj def: `" . $opt["sql"] . "'. require `field=%d` or set `force=true`");
 
-					$ret1 = queryAll($sql, true);
-					if (@$opt["wantOne"]) {
-						if (count($ret1) == 0)
-							$ret1 = null;
-						else
-							$ret1 = $ret1[0];
-					}
-					foreach ($ret as &$row) {
-						$row[$k] = $ret1;
-					}
-					continue;
-				}
-
-				$sql = preg_replace('/ from/i', ", $joinField id_$0", $sql, 1);
-				// "SELECT status, count(*) cnt FROM Task WHERE orderId=%d group by status" 
-				// => "select status, count(*) cnt, orderId id_ FROM Task WHERE orderId IN (...) group by id_, status"
-				$sql = preg_replace('/group by/i', "$0 id_, ", $sql);
-
-				$ret1 = queryAll($sql, true);
-			}
-
+			// 自行JOIN
 			$subMap = []; // {id_=>[subobj]}
 			foreach ($ret1 as $e) {
 				$key = $e["id_"];
