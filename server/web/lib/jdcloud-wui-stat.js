@@ -1017,6 +1017,10 @@ function runStat(jo, jcharts, setStatOpt)
 			else {
 				// 特别地，gy模式退化为xy模式，显示饼图
 				rs2StatOpt.xcol = gname? 1: 0;
+				if (opt.formatter) {
+					rs2StatOpt.formatterX = opt.formatter;
+					delete rs2StatOpt.formatter;
+				}
 			}
 		}
 		else {
