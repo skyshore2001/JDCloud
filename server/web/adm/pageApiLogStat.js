@@ -15,7 +15,7 @@ function initPageApiLogStat()
 		var param = opt.queryParam;
 		if (opt.tmUnit == null) { // 在显示饼图时，取sum最大的10个显示。
 			param.orderby = "sum DESC"; // 因为res中定义了字段别名为sum
-			param.pagesz = 10;
+			opt.maxSeriesCnt = 10;
 		}
 		param.res = jpage.find("#cboRes").val();
 

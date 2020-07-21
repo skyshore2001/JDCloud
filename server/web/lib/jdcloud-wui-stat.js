@@ -437,7 +437,7 @@ function rangeArr(from, length)
 
 @param opt {xcol, ycol, gcol, gtext, maxSeriesCnt, tmUnit, formatter, formatterX}
 
-@param opt.xcol 指定X轴数据，可以是一列或多列，如0表示第0列, 值[0,1]表示前2列。
+@param opt.xcol 指定X轴数据，可以是一列或多列，如0表示第0列, 值[0,1]表示前2列。可以没有x列，用空数组`[]`表示。
 @param opt.ycol 指定值数据，可以是一列或多列。
 @param opt.gcol 指定分组列。
 @param opt.gtext 指定分组值对应的显示文本列。比如表中既有商品编号，又有商品名称，商品编号列设置为gcol用于分组，而商品名称列设置为gtext用于显示。
@@ -552,7 +552,7 @@ tmUnit用于指定时间字段: "y,m"-年,月; "y,m,d"-年,月,日; "y,w"-年,�
 上面年月中缺少了2020-1, 如果要补上缺少的月份, 可以使用tmUnit参数指定日期类型, 注意这时原始数据中年月须已排好序:
 
 	var statData = rs2Stat(rs, {xcol:[0,1], ycol:2, tmUnit:"y,m"} );
-	// 指定tmUnit后, 若xcol缺省为前N列, N是tmUnit中列数, 如"y,m,d"(年月日)表示前3列即`xcol: [0,1,2]`. 上面参数可简写为:
+	// 指定tmUnit后, xcol缺省为前N列即tmUnit这几列, 如"y,m,d"(年月日)表示前3列即`xcol: [0,1,2]`. 上面参数可简写为:
 	var statData = rs2Stat(rs, {tmUnit:"y,m"} );
 	// 结果：
 	statData = {
@@ -802,7 +802,7 @@ function rs2Stat(rs, opt)
 		}
 	}
 	if (opt.xcol == null) {
-		opt.xcol = colCnt>=3 && !ycol_isset? 1: 0;
+		opt.xcol = 0;
 	}
 
 	if (opt.gcol != null) {
@@ -822,9 +822,29 @@ function rs2Stat(rs, opt)
 		opt.formatter = null;
 		rs = rs1;
 	}
-	else if (opt.formatter == null) {
-		var ycolName = rs.h[opt.ycol];
-		opt.formatter = self.options.statFormatter[ycolName];
+	else {
+		var ycols = $.isArray(opt.ycol)? opt.ycol: [opt.ycol];
+		if (opt.maxSeriesCnt && rs.d.length > opt.maxSeriesCnt) {
+			// 取值最大maxSeriesCnt组，剩下的放到“其它”组。数据应已按y字段由大到小倒序排好的
+			var other = [];
+			for (var j=0; j<rs.h.length; ++j) {
+				var isY = (ycols.indexOf(j) >= 0);
+				if (! isY) {
+					other[j] = "其它";
+					continue;
+				}
+				other[j] = 0;
+				for (var i=opt.maxSeriesCnt; i<rs.d.length; ++i) {
+					other[j] += rs.d[i][j];
+				}
+			}
+			rs.d.length = opt.maxSeriesCnt;
+			rs.d.push(other);
+		}
+		if (opt.formatter == null) {
+			var ycolName = rs.h[ycols[0]]; 
+			opt.formatter = self.options.statFormatter[ycolName];
+		}
 	}
 
 	var xData = [], yData = [];
@@ -954,48 +974,59 @@ function runStat(jo, jcharts, setStatOpt)
 			queryParam: param,
 			tmUnit: null,
 			g: null,
-			gname: null
 		};
 		setStatOpt.call(jchart, chartIdx, opt);
 		WUI.assert(param.ac, '*** no ac specified');
 
 		if (opt.tmUnit)
-			param.orderby = param.gres = opt.tmUnit;
+			param.orderby = opt.tmUnit;
 
-		// 如果有多个ycol字段，则按ycol显示多系列（这时g分组无效）
-		var ycol = null;
-		var yCnt = 0;
-		if ((yCnt = param.res.split(',').length) > 1) {
-			var tmCnt = opt.tmUnit? opt.tmUnit.split(',').length: 0;
-			ycol = rangeArr(tmCnt, yCnt);
+		var rs2StatOpt = {
+			maxSeriesCnt: opt.maxSeriesCnt,
+			tmUnit: opt.tmUnit,
+			formatter: opt.formatter
+		};
+		var gname = null;
+		if (opt.g && opt.g.indexOf(',') > 0) {
+			var a = opt.g.split(/,/);
+			opt.g = a[0];
+			gname = a[1];
 		}
-		else if (opt.g) {
-			if (opt.g.indexOf(',') > 0) {
-				var a = opt.g.split(/,/);
-				opt.g = a[0];
-				opt.gname = a[1];
-			}
-
-			if (param.gres)
-				param.gres += ',' + opt.g;
-			else
-				param.gres = opt.g;
-
-			if (opt.gname) {
-				param.res = opt.gname + ',' + param.res;
-			}
+		var y = param.res;
+		var gres = $.grep([opt.tmUnit, opt.x, opt.g], function (e, i) { return e} ).join(',');
+		var gresArr = gres.split(',');
+		if (! opt.useResOnly) {
+			param.gres = gres;
+			if (gname)
+				param.res = gname + ',' + param.res;
+		}
+		else {
+			var res = gres;
+			if (gname)
+				res += ',' + gname;
+			param.res = res + ',' + param.res;
 		}
 
+		if (opt.g) {
+			if (gresArr.length > 1) {
+				rs2StatOpt.gcol = gresArr.length-1;
+				rs2StatOpt.xcol = rangeArr(0, rs2StatOpt.gcol);
+				if (gname)
+					rs2StatOpt.gtext = rs2StatOpt.gcol+1;
+			}
+			else {
+				// 特别地，gy模式退化为xy模式，显示饼图
+				rs2StatOpt.xcol = gname? 1: 0;
+			}
+		}
+		else {
+			rs2StatOpt.xcol = rangeArr(0, gresArr.length);
+			rs2StatOpt.ycol = rangeArr(gresArr.length, y.split(',').length);
+		}
 		WUI.callSvr(param.ac, api_stat, param);
 
 		function api_stat(data)
 		{
-			var rs2StatOpt = {
-				maxSeriesCnt: opt.maxSeriesCnt,
-				tmUnit: opt.tmUnit,
-				ycol: ycol,
-				formatter: opt.formatter
-			};
 			var statData = rs2Stat(data, rs2StatOpt);
 			opt.onLoadData && opt.onLoadData.call(jchart, chartIdx, statData, opt);
 			initChart(chart, statData, opt.seriesOpt, opt.chartOpt);
@@ -1222,7 +1253,23 @@ html示例:
 
 @param setStatOpt(chartIdx, opt) 回调设置每个chart. this为当前chart组件，chartIdx为当前chart的序号，从0开始。
 
-@param opt={tmUnit?, g?, gname?, queryParam, chartOpt, seriesOpt, onLoadData?, maxSeriesCnt?, formatter?}
+@param opt={tmUnit?, g?, queryParam, chartOpt, seriesOpt, onLoadData?, maxSeriesCnt?, formatter?, x?, useResOnly?}
+
+**统计模型**
+
+x表示横坐标字段，y表示纵坐标字段，g表示要转置到列上的字段（pivot字段）
+
+- xy/xyy模式: 查询参数{res:"x,y,y2?"} 显示柱状图/折线图，若多个y则显示多系列。
+- gy模式: 查询参数{gres:g, res:y} 显示饼图或柱状图，显示时数据可看作xy模式。
+- xgy模式：查询参数{res:"x,g,gname?,y"} 或 {gres:"x,g",res:"gname?,y"} 显示多系列柱状图。
+
+参数运用：
+
+- opt.x定义x字段，注意时间字段tmUnit比如"y,m,d"是特殊的x量。x自身是一个或多个字段。
+- opt.g定义g字段，用于图表系列字段（pivot字段）。用于区分xyy与xgy模型: 设置了opt.g就是xgy, 否则就是xyy.
+ g是一个字段，也可以是逗号分隔的两个字段，这时表示`g,gname`，g用于转置, gname用于显示。
+- 查询参数opt.queryParam.res定义了y字段。当有opt.g时，y应只有一个字段，g作为图表系列；否则可以有多个y字段，形成多个图表系列。
+- 默认会将tmUnit/x和g参数拼接到gres和res参数中用于查询。若定义 opt.useResOnly=1 时，则只使用res参数。
 
 @param opt.tmUnit Enum. 时间维度
 如果非空，则按时间维度分析，即按指定时间类型组织横轴数据，会补全时间。参考[JdcloudStat.tmUnit]()
@@ -1231,14 +1278,12 @@ html示例:
 @param opt.g 分组字段名
 会影响opt.queryParam中的gres选项。
 
-@param opt.gname 分组字段显示名。
-有时分组字段使用xxxId字段，但希望显示时用xxxName字段，这时可以设置gname选项，它会影响opt.queryParam中的res选项。
+有时分组字段使用xxxId字段，但希望显示时用xxxName字段，这时可在g中包含两个字段。
 
 示例，按场景分组显示日报表：
 
 	opt.tmUnit = "y,m,d"; // 日报表
-	opt.g = "sceneId";
-	opt.gname = "sceneName";
+	opt.g = "sceneId,sceneName";
 	
 这样生成的opt.queryParam中: 
 
@@ -1248,7 +1293,7 @@ html示例:
 
 @param opt.queryParam 接口查询参数
 可以设置ac, res, gres, cond, orderby, pagesz等筋斗云框架通用查询参数，或依照接口文档设置。
-设置opt.tmUnit/opt.g/opt.gname会自动设置其中部分参数。
+设置opt.tmUnit/opt.g会自动设置其中部分参数。
 
 此外 ac, res参数也可通过在.divChart组件上设置data-ac, data-res属性，如
 
@@ -1319,10 +1364,9 @@ setTmRange(desc)用于设置jpage中的.txtTm1, .txtTm2两个文本框，作为�
 	  ]
 	}
 
-由于tm已经汇总到分钟，现在希望直接显示tm对应的值，且按服务器不同("app"表示"应用服务器"，"db"表示"数据库服务器")分系列显示。
-rs2Stat支持转化此类数据，但表示要求是 "g, x, y"的格式，分别表示分组字段（系列名）、x轴标签、y轴数据，应该可用查询：
+由于tm已经汇总到分钟，现在希望直接显示tm对应的值，且按服务器不同("app"表示"应用服务器"，"db"表示"数据库服务器")分系列显示。查询：
 
-	RecM.query(res="who g, tm x, cpu y", cond="...") -> tbl(g, x, y)
+	RecM.query(res="tm,who,cpu", cond="...")
 
 JS示例：
 
@@ -1333,7 +1377,10 @@ JS示例：
 		function setStatOpt(chartIdx, opt) 
 		{
 			var param = opt.queryParam;
-			param.res = "who g,tm x,cpu y";
+			param.res = "cpu"; // y字段
+			opt.x = "tm"; // x字段
+			opt.g = "who", // g字段即图表系列(pivot字段)
+			opt.useResOnly = true; // 直接显示原始数据，无须用gres分组，所以设置useResOnly.
 
 			opt.formatter = function (value, arr, i) {
 				var map = {
