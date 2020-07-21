@@ -18,6 +18,8 @@ function initPageApiLogStat()
 			opt.maxSeriesCnt = 10;
 		}
 		param.res = jpage.find("#cboRes").val();
+		// 注意: cond参数会自动填写，若想追加可这样写
+		// param.cond = [param.cond, "tm1 IS NOT NULL"];
 
 		var chartOpt, seriesOpt;
 		if (! opt.tmUnit) {
