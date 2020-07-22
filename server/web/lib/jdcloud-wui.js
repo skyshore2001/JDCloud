@@ -3305,10 +3305,17 @@ function enhanceWithin(jp)
 			return;
 		jo.each(function (i, e) {
 			var je = $(e);
+			// 支持一个DOM对象绑定多个组件，分别初始化
 			var enhanced = je.data("mui-enhanced");
-			if (enhanced)
-				return;
-			je.data("mui-enhanced", true);
+			if (enhanced) {
+				if (enhanced.indexOf(sel) >= 0)
+					return;
+				enhanced.push(sel);
+			}
+			else {
+				enhanced = [sel];
+			}
+			je.data("mui-enhanced", enhanced);
 			fn(je);
 		});
 	});
