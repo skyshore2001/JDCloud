@@ -1909,8 +1909,6 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		if (array_key_exists($colName, $this->vcolMap)) {
 			if (! $added)
 				throw new MyException(E_SERVER, "redefine vcol `{$this->table}.$colName`", "虚拟字段定义重复");
-			if ($added && $this->vcolMap[ $colName ]["added"])
-				throw new MyException(E_SERVER, "res for col `$colName` has added: `$res`");
 			$this->vcolMap[ $colName ]["added"] = true;
 		}
 		else {
@@ -2063,15 +2061,16 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	返回vcolDef或undef
 	注意：idx可以不是数字。
 	 */
+	private $vcolDefIndex = []; // {$idx => true}
 	private function addVColDef($idx)
 	{
 		if (! isset($this->vcolDefs[$idx]))
 			return;
 		$vcolDef = &$this->vcolDefs[$idx];
-		if ($vcolDef["added"])
+		if ($this->vcolDefIndex[$idx])
 			return $vcolDef;
 
-		$vcolDef["added"] = true;
+		$this->vcolDefIndex[$idx] = true;
 		$isExt = @$vcolDef["isExt"]? true: false;
 		// require支持一个或多个字段(虚拟字段, 表字段, 子表字段均可), 多个字段以逗号分隔
 		if (isset($vcolDef["require"])) {
