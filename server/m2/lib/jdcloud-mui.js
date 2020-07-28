@@ -7311,7 +7311,7 @@ function initPullList(container, opt)
 		//jo_.height(height).css("lineHeight", height + "px");
 			
 		if (ac == "D") {
-			var c = cont_.getElementsByClassName("mui-pullHint")[0];
+			var c = $(cont_).find(".mui-pullHint:visible")[0]; // cont_.getElementsByClassName("mui-pullHint")[0];
 			if (c)
 				jo_.appendTo(c);
 			else
