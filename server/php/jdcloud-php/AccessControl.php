@@ -1518,9 +1518,14 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	private function fixUserQuery($q)
 	{
 		$this->initVColMap();
-		if (stripos($q, "select") !== false) {
-			throw new MyException(E_FORBIDDEN, "forbidden SELECT in param cond");
+		// group(0)匹配：禁止各类函数（以后面跟括号来识别）和select子句）
+		if (preg_match_all('/\b \w+ (?=\s*\() | \b select \b /ix', $q, $ms)) {
+			foreach ($ms[0] as $key) {
+				if (!in_array(strtoupper($key), ["AND", "OR", "IN"]))
+					throw new MyException(E_FORBIDDEN, "forbidden `$key` in param cond");
+			}
 		}
+
 		// 伪uuid转换 id='d9a37e4c2038e8ad' => id=41
 		$q = preg_replace_callback('/([iI]d=)\'([a-fA-F0-9]{16})\'/u', function ($ms) {
 			return $ms[1] . jdEncryptI($ms[2], 'D', 'hex');
