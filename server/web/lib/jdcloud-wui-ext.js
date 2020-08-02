@@ -706,6 +706,20 @@ function hiddenToCheckbox(jp, sep)
 		</td>
 	</tr>
 
+示例2：设置配置项，并配以说明和示例
+
+	<tr>
+		<td>配置项名称</td>
+		<td class="wui-labels">
+			<input name="name" class="easyui-validatebox" data-options="required:true">
+			<div class="hint">可选项和示例值：
+				<p class="easyui-tooltip" title="在移动端提交缺陷问题时，可从下拉列表中选择问题类型，就是在此处配置的，多个值以英文分号分隔。"><span class="labels">常见问题</span> 内饰;轮胎</p>
+				<p class="easyui-tooltip" title="多个值以英文空格分隔"><span class="labels">集市品类</span> 办公用品 书籍 卡票券</p>
+				<p class="easyui-tooltip" title="格式为`姓名,电话`"><span class="labels">会议室预订联系人</span> Candy,13917091068</p>
+			</div>
+		</td>
+	</tr>
+
 - 最终操作的文本字段是.wui-labels下带name属性的输入框。
 - 在.labels中的文本将被按空白切换，优化显示成一个个标签，可以点击。
 - 支持异步获取，比如要调用接口获取内容，可以指定`dfd`属性是一个Deferred对象。
