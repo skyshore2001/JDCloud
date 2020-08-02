@@ -3282,10 +3282,13 @@ var ajaxOpt = {
 	dataFilter: function (data, type) {
 		if (this.jdFilter !== false && (type == "json" || type == "text")) {
 			rv = defDataProc.call(this, data);
+			return rv;
+			/*
 			if (rv != null)
 				return rv;
 			-- $.active; // ajax调用中断,这里应做些清理
 			self.app_abort();
+			*/
 		}
 		return data;
 	},
@@ -3379,8 +3382,7 @@ function defAjaxErrProc(xhr, textStatus, e)
 		else if (this.handleHttpError) {
 			var data = xhr.responseText;
 			var rv = defDataProc.call(this, data);
-			if (rv != null)
-				this.success && this.success(rv);
+			this.success && this.success(rv);
 			return;
 		}
 		else {
@@ -4173,13 +4175,8 @@ function callSvrMock(opt, isSyncCall)
 		if (typeof(data) != "string")
 			data = JSON.stringify(data);
 		var rv = defDataProc.call(opt_, data);
-		if (rv != null)
-		{
-			opt_.success && opt_.success(rv);
-//			dfd_.resolve(rv); // defDataProc resolve it
-			return;
-		}
-		self.app_abort();
+		opt_.success && opt_.success(rv);
+//		dfd_.resolve(rv); // defDataProc resolve it
 	}
 }
 
@@ -4249,8 +4246,6 @@ function setupCallSvrViaForm($form, $iframe, url, fn, callOpt)
 		if (data == "")
 			return;
 		var rv = defDataProc.call(callOpt, data);
-		if (rv == null)
-			self.app_abort();
 		fn(rv);
 	});
 }
@@ -4404,12 +4399,10 @@ batchCall.prototype = {
 				}
 
 				var data1 = defDataProc.call(ajaxCtx_, e);
-				if (data1 != null) {
-					if (callOpt.fn) {
-						callOpt.fn.call(ajaxCtx_, data1);
-					}
-					callOpt.dfd.resolve(data1);
+				if (callOpt.fn) {
+					callOpt.fn.call(ajaxCtx_, data1);
 				}
+				callOpt.dfd.resolve(data1);
 
 				// restore ajaxCtx_
 				if (extendCtx) {
