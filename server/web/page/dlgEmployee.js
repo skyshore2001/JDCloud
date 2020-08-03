@@ -29,7 +29,7 @@ function initDlgEmployee()
 
 	function onValidate(ev, mode, oriData, newData) 
 	{
-		if (frm.phone.value.length == 0 && frm.uname.value.length == 0) {
+		if (mode != FormMode.forFind && frm.phone.value.length == 0 && frm.uname.value.length == 0) {
 			app_alert("手机号和用户名至少填一项!", "w", function () {
 				frm.phone.focus();
 			});

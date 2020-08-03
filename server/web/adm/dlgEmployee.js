@@ -12,9 +12,10 @@ function initDlgEmployee()
 			opt.data.pwd = "****";
 	}
 
-	function onValidate(ev, mode, oriData, newData) {
-		if (frm.phone.value.length == 0 && frm.uname.value.length == 0) {
-			app_alert("ÊÖ»úºÅºÍÓÃ»§ÃûÖÁÉÙÌîÒ»Ïî!", "w", function () {
+	function onValidate(ev, mode, oriData, newData) 
+	{
+		if (mode != FormMode.forFind && frm.phone.value.length == 0 && frm.uname.value.length == 0) {
+			app_alert("æ‰‹æœºå·å’Œç”¨æˆ·åè‡³å°‘å¡«ä¸€é¡¹!", "w", function () {
 				frm.phone.focus();
 			});
 			return false;
@@ -27,6 +28,6 @@ $.extend($.fn.validatebox.defaults.rules, {
 		validator: function (v) {
 			return /^[^\d]/i.test(v);
 		},
-		message: "ÓÃ»§Ãû²»¿ÉÒÔÊı×Ö¿ªÍ·."
+		message: "ç”¨æˆ·åä¸å¯ä»¥æ•°å­—å¼€å¤´."
 	}
 });
