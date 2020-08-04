@@ -3204,6 +3204,8 @@ self.disableBatch = false;
 var m_curBatch = null;
 self.m_curBatch = m_curBatch;
 
+var RV_ABORT = "$abort$";
+
 /**
 @var mockData  模拟调用后端接口。
 
@@ -3282,13 +3284,10 @@ var ajaxOpt = {
 	dataFilter: function (data, type) {
 		if (this.jdFilter !== false && (type == "json" || type == "text")) {
 			rv = defDataProc.call(this, data);
-			return rv;
-			/*
-			if (rv != null)
+			if (rv !== RV_ABORT)
 				return rv;
 			-- $.active; // ajax调用中断,这里应做些清理
 			self.app_abort();
-			*/
 		}
 		return data;
 	},
@@ -3382,7 +3381,8 @@ function defAjaxErrProc(xhr, textStatus, e)
 		else if (this.handleHttpError) {
 			var data = xhr.responseText;
 			var rv = defDataProc.call(this, data);
-			this.success && this.success(rv);
+			if (rv !== RV_ABORT)
+				this.success && this.success(rv);
 			return;
 		}
 		else {
@@ -3397,9 +3397,9 @@ function defAjaxErrProc(xhr, textStatus, e)
 @fn defDataProc(rv)
 
 @param rv BQP协议原始数据，如 "[0, {id: 1}]"，一般是字符串，也可以是JSON对象。
-@return data 按接口定义返回的数据对象，如 {id: 1}. 如果返回==null，调用函数应直接返回，不回调应用层。
+@return data 按接口定义返回的数据对象，如 {id: 1}. 如果返回值===RV_ABORT，调用函数应直接返回，不回调应用层。
 
-注意：服务端不应返回null, 否则客户回调无法执行; 习惯上返回false表示让回调处理错误。
+注意：如果callSvr设置了`noex:1`选项，则当调用失败时返回false。
 
 */
 self.defDataProc = defDataProc;
@@ -3488,16 +3488,16 @@ function defDataProc(rv)
 			}
 // 				self.popPageStack(0);
 // 				self.showLogin();
-			return;
+			return RV_ABORT;
 		}
 		else if (rv[0] == E_AUTHFAIL) {
 			var errmsg = rv[1] || "验证失败，请检查输入是否正确!";
 			self.app_alert(errmsg, "e");
-			return;
+			return RV_ABORT;
 		}
 		else if (rv[0] == E_ABORT) {
 			console.log("!!! abort call");
-			return;
+			return RV_ABORT;
 		}
 		logError();
 		self.app_alert("操作失败：" + rv[1], "e");
@@ -3506,6 +3506,7 @@ function defDataProc(rv)
 		logError();
 		self.app_alert("服务器通讯协议异常!", "e"); // 格式不对
 	}
+	return RV_ABORT;
 
 	function logError()
 	{
@@ -4175,8 +4176,13 @@ function callSvrMock(opt, isSyncCall)
 		if (typeof(data) != "string")
 			data = JSON.stringify(data);
 		var rv = defDataProc.call(opt_, data);
-		opt_.success && opt_.success(rv);
-//		dfd_.resolve(rv); // defDataProc resolve it
+		if (rv !== RV_ABORT)
+		{
+			opt_.success && opt_.success(rv);
+//			dfd_.resolve(rv); // defDataProc resolve it
+			return;
+		}
+		self.app_abort();
 	}
 }
 
@@ -4246,6 +4252,8 @@ function setupCallSvrViaForm($form, $iframe, url, fn, callOpt)
 		if (data == "")
 			return;
 		var rv = defDataProc.call(callOpt, data);
+		if (rv === RV_ABORT)
+			self.app_abort();
 		fn(rv);
 	});
 }
@@ -4399,10 +4407,12 @@ batchCall.prototype = {
 				}
 
 				var data1 = defDataProc.call(ajaxCtx_, e);
-				if (callOpt.fn) {
-					callOpt.fn.call(ajaxCtx_, data1);
+				if (data1 !== RV_ABORT) {
+					if (callOpt.fn) {
+						callOpt.fn.call(ajaxCtx_, data1);
+					}
+					callOpt.dfd.resolve(data1);
 				}
-				callOpt.dfd.resolve(data1);
 
 				// restore ajaxCtx_
 				if (extendCtx) {

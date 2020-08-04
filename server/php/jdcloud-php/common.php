@@ -22,7 +22,8 @@ $ERRINFO = [
 	E_NOAUTH => "未登录",
 	E_DB => "数据库错误",
 	E_SERVER => "服务器错误",
-	E_FORBIDDEN => "禁止操作"
+	E_FORBIDDEN => "禁止操作",
+	E_ABORT => "中止执行"
 ];
 
 /** 
@@ -50,8 +51,8 @@ class MyException extends LogicException
 		$this->internalMsg = $internalMsg;
 		if ($code && !$outMsg) {
 			global $ERRINFO;
-			assert(array_key_exists($code, $ERRINFO));
-			$this->message = $ERRINFO[$code];
+			// assert(array_key_exists($code, $ERRINFO));
+			$this->message = @$ERRINFO[$code] ?: "ERROR $code";
 		}
 	}
 	public $internalMsg;
