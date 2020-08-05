@@ -3414,6 +3414,8 @@ class BatchAddLogic
 	onGetRow
 
 通过BatchAddLogic::create来创建合适的类。
+
+(v5.5) 由于CsvBatchAddStrategy提供更好的对csv格式的解析（如支持换行，支持引号等），本类只做为基类，不再用于解析。
 */
 class BatchAddStrategy
 {
@@ -3426,9 +3428,6 @@ class BatchAddStrategy
 		$st = null;
 		if (isset($_POST["list"])) {
 			$st = new JsonBatchAddStrategy();
-		}
-		else if (empty($_FILES)) {
-			$st = new BatchAddStrategy();
 		}
 		else {
 			$st = new CsvBatchAddStrategy();
@@ -3542,23 +3541,35 @@ class CsvBatchAddStrategy extends BatchAddStrategy
 	protected $fp;
 
 	protected function onInit() {
-		if (empty($_FILES))
-			throw new MyException(E_PARAM, "no file", "没有文件上传");
-		$f = current($_FILES);
-		if ($f["size"] <= 0 || $f["error"] != 0)
-			throw new MyException(E_PARAM, "error file: code={$f['error']}", "文件数据出错");
+		if (count($_FILES) == 0) {
+			$content = getHttpInput();
+			self::backupFile(null, null);
+			$this->fp = fopen("data://text/plain," . $content, "rb");
 
-		$orgName = $f["name"];
-		$file = $f["tmp_name"];
-		self::backupFile($file, $orgName);
-		$this->fp = fopen($file, "rb");
-		utf8InputFilter($this->fp, function ($str) {
-			$str1 = strstr($str, "\n", true) ?: $str;
-			if (strpos($str1, "\t") !== false)
+			$line1 = fgets($this->fp);
+			if (strpos($line1, "\t") !== false)
 				$this->delim = "\t";
 			else
 				$this->delim = ",";
-		});
+			rewind($this->fp);
+		}
+		else {
+			$f = current($_FILES);
+			if ($f["size"] <= 0 || $f["error"] != 0)
+				throw new MyException(E_PARAM, "error file: code={$f['error']}", "文件数据出错");
+
+			$orgName = $f["name"];
+			$file = $f["tmp_name"];
+			self::backupFile($file, $orgName);
+			$this->fp = fopen($file, "rb");
+			utf8InputFilter($this->fp, function ($str) {
+				$str1 = strstr($str, "\n", true) ?: $str;
+				if (strpos($str1, "\t") !== false)
+					$this->delim = "\t";
+				else
+					$this->delim = ",";
+			});
+		}
 	}
 
 	// 如果是全空行，返回true
