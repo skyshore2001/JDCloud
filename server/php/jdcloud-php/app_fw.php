@@ -2283,15 +2283,26 @@ class AppFw_
 				header("X-Daca-Test-Mode: $TEST_MODE");
 			$JSON_FLAG |= JSON_PRETTY_PRINT;
 
-			// 允许跨域
-			@$origin = $_SERVER['HTTP_ORIGIN'];
-			if (isset($origin) && !$isCLI) {
-				header('Access-Control-Allow-Origin: ' . $origin);
-				header('Access-Control-Allow-Credentials: true');
-				header('Access-Control-Allow-Headers: Content-Type');
-				header('Access-Control-Expose-Headers: X-Daca-Server-Rev, X-Daca-Test-Mode, X-Daca-Mock-Mode');
+		}
+		// 默认允许跨域
+		@$origin = $_SERVER['HTTP_ORIGIN'];
+		if (isset($origin) && !$isCLI) {
+			header('Access-Control-Allow-Origin: ' . $origin);
+			header('Access-Control-Allow-Credentials: true');
+			header('Access-Control-Expose-Headers: X-Daca-Server-Rev, X-Daca-Test-Mode, X-Daca-Mock-Mode');
+			
+			@$val = $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS'];
+			if ($val) {
+				header('Access-Control-Allow-Headers: ' . $val);
+			}
+			@$val = $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD'];
+			if ($val) {
+				header('Access-Control-Allow-Methods: ' . $val);
 			}
 		}
+		if ($_SERVER["REQUEST_METHOD"] === "OPTIONS")
+			exit();
+
 		$defaultDebugLevel = getenv("P_DEBUG")===false? 0 : intval(getenv("P_DEBUG"));
 		$DBG_LEVEL = param("_debug/i", $defaultDebugLevel, $_GET);
 
