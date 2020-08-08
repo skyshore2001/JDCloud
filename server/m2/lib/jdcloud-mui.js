@@ -3204,7 +3204,7 @@ self.disableBatch = false;
 var m_curBatch = null;
 self.m_curBatch = m_curBatch;
 
-var RV_ABORT = "$abort$";
+var RV_ABORT = undefined;//"$abort$";
 
 /**
 @var mockData  模拟调用后端接口。
