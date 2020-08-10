@@ -1940,6 +1940,22 @@ function getFormData(jo)
 @param cb(ji, name, it) it.getDisabled/setDisabled/getValue/setValue/getShowbox
 当cb返回false时可中断遍历。
 
+示例：
+
+	WUI.formItems(jdlg.find(".my-fixedField"), function (ji, name, it) {
+		var fixedVal = ...
+		if (fixedVal || fixedVal == '') {
+			it.setReadonly(ji, true);
+			var forAdd = beforeShowOpt.objParam.mode == FormMode.forAdd;
+			if (forAdd) {
+				it.setValue(ji, fixedVal);
+			}
+		}
+		else {
+			it.setReadonly(ji, false);
+		}
+	});
+
 @key defaultFormItems
  */
 self.formItems = formItems;
@@ -1951,13 +1967,15 @@ self.formItems["[name]"] = self.defaultFormItems = {
 		return jo.attr("name") || jo.prop("name");
 	},
 	getDisabled: function (jo) {
-		var v = jo.prop("disabled") || jo.attr("disabled");
+		var val = jo.prop("disabled");
+		if (val === undefined)
+			val = jo.attr("disabled");
 		var o = jo[0];
-		if (! v && o.tagName == "INPUT") {
+		if (! val && o.tagName == "INPUT") {
 			if (o.type == "radio" && !o.checked)
 				return true;
 		}
-		return v;
+		return val;
 	},
 	setDisabled: function (jo, val) {
 		jo.prop("disabled", !!val);
@@ -1965,6 +1983,19 @@ self.formItems["[name]"] = self.defaultFormItems = {
 			jo.attr("disabled", "disabled");
 		else
 			jo.removeAttr("disabled");
+	},
+	getReadonly: function (jo) {
+		var val = jo.prop("readonly");
+		if (val === undefined)
+			val = jo.attr("readonly");
+		return val;
+	},
+	setReadonly: function (jo, val) {
+		jo.prop("readonly", !!val);
+		if (val)
+			jo.attr("readonly", "readonly");
+		else
+			jo.removeAttr("readonly");
 	},
 	setValue: function (jo, val) {
 		var isInput = jo.is(":input");
@@ -2862,10 +2893,17 @@ function enhanceWithin(jp)
 			return;
 		jo.each(function (i, e) {
 			var je = $(e);
+			// 支持一个DOM对象绑定多个组件，分别初始化
 			var enhanced = je.data("mui-enhanced");
-			if (enhanced)
-				return;
-			je.data("mui-enhanced", true);
+			if (enhanced) {
+				if (enhanced.indexOf(sel) >= 0)
+					return;
+				enhanced.push(sel);
+			}
+			else {
+				enhanced = [sel];
+			}
+			je.data("mui-enhanced", enhanced);
 			fn(je);
 		});
 	});
@@ -2984,6 +3022,12 @@ function getop(v)
 
 在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。
 
+(v5.5) value支持用数组表示范围（前闭后开区间），主要内部使用：
+
+	var cond = getQueryCond({tm: ["2019-1-1", "2020-1-1"]}); // 生成 "tm>='2019-1-1' AND tm<'2020-1-1'"
+	var cond = getQueryCond({tm: [null, "2020-1-1"]}); // 生成 "tm<'2020-1-1'"
+	var cond = getQueryCond({tm: [null, null]); // 返回null
+
 @see getQueryParam
 @see getQueryParamFromTable 获取datagrid的当前查询参数
 */
@@ -3007,8 +3051,15 @@ function getQueryCond(kvList)
 	}
 
 	function handleOne(k,v) {
-		if (v == null || v === "" || ($.isArray(v) && v.length==0))
+		if (v == null || v === "" || v.length==0)
 			return;
+		if ($.isArray(v)) {
+			if (v[0])
+				condArr.push(k + ">='" + v[0] + "'");
+			if (v[1])
+				condArr.push(k + "<'" + v[1] + "'");
+			return;
+		}
 
 		var arr = v.toString().split(/\s+(and|or)\s+/i);
 		var str = '';
