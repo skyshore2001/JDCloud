@@ -2056,9 +2056,6 @@ class AppBase
 				$fn();
 			}
 			$ret = $this->onExec();
-			foreach ($this->onAfterActions as $fn) {
-				$fn();
-			}
 			$ok = true;
 		}
 		catch (DirectReturn $e) {
@@ -2078,6 +2075,17 @@ class AppBase
 		}
 
 		try {
+			if ($ok) {
+				foreach ($this->onAfterActions as $fn) {
+					$fn();
+				}
+			}
+		}
+		catch (Exception $e) {
+			logit((string)$e);
+		}
+
+		try {
 			if ($handleTrans && $DBH && $DBH->inTransaction())
 			{
 				if ($ok)
@@ -2089,12 +2097,16 @@ class AppBase
 				$this->onErr($code, $msg, $msg2);
 			}
 		}
-		catch (Exception $e) {}
+		catch (Exception $e) {
+			logit((string)$e);
+		}
 
 		try {
 			$this->onAfter($ok);
 		}
-		catch (Exception $e) {}
+		catch (Exception $e) {
+			logit((string)$e);
+		}
 
 		//$DBH = null;
 		return $ret;
