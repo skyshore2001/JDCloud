@@ -6,8 +6,9 @@
 # grant select on mysql.* to xeycro;
 # grant reload, replication client, replication slave on *.* to xeycro;
 
+# 如果已开启bin log，则应加上如下--master-data选项记录bin log位置。
 # 如果报错：mysqldump: Error: Binlogging on server not active
-# 需要在my.cnf中[mysqld]段中添加以下配置，并重启mysql服务
+# 表示bin log未开启，需要在my.cnf中[mysqld]段中添加以下配置，并重启mysql服务
 #	log_bin=mysql-bin
 #	log-bin-trust-function-creators=1 # 避免DETERMINISTIC function之类的错误
 
