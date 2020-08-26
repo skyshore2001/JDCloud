@@ -1039,6 +1039,24 @@ class AccessControl
 	# 回调函数集。在after中执行（在onAfter回调之后）。
 	protected $onAfterActions = [];
 
+/**
+@var AccessControl.delField
+
+如果设置该字段(例如设置为disableFlag字段)，则把删除动作当作是设置该字段为1，且在查询接口中跟踪此字段增加过滤。
+必须是flag字段（0/1值）。
+
+示例：
+
+	// class AC2_Store extends AccessControl
+	protected $delField = "disableFlag";
+
+由于数据实际上未删除，可以在管理端中手中调用接口恢复，比如
+
+	callSvr("Store.set", {id:139}, $.noop, {disabledFlag:0})
+
+*/
+	protected $delField;
+
 	# for get/query
 	# 注意：sqlConf["res"/"cond"][0]分别是传入的res/cond参数, sqlConf["orderby"]是传入的orderby参数, 为空(注意用isset/is_null判断)均表示未传值。
 	public $sqlConf; // {@cond, @res, @join, orderby, @subobj, gres}
@@ -1254,6 +1272,9 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			$this->enumFields["id"] = function($v, $row) {
 				return jdEncryptI($v, "E", "hex");
 			};
+		}
+		if ($this->delField !== null) {
+			$this->addCond($this->delField . "=0");
 		}
 
 		$addDefaultCol = false;
@@ -2584,7 +2605,9 @@ FROM ($sql) t0";
 	function api_del()
 	{
 		$this->validateId(true);
-		$sql = sprintf("DELETE FROM %s WHERE id=%d", $this->table, $this->id);
+		$sql = $this->delField === null
+			? sprintf("DELETE FROM %s WHERE id=%d", $this->table, $this->id)
+			: sprintf("UPDATE %s SET %s=1 WHERE id=%s", $this->table, $this->delField, $this->id);
 		$cnt = execOne($sql);
 		if (param('force')!=1 && $cnt != 1)
 			throw new MyException(E_PARAM, "del: not found {$this->table}.id={$this->id}");
@@ -2707,7 +2730,9 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 	function api_delIf()
 	{
 		$rv = $this->genCondSql();
-		$sql = sprintf("DELETE t0 FROM %s WHERE %s", $rv["tblSql"], $rv["condSql"]);
+		$sql = $this->delField === null
+			? sprintf("DELETE t0 FROM %s WHERE %s", $rv["tblSql"], $rv["condSql"])
+			: sprintf("UPDATE %s SET t0.%s=1 WHERE %s AND t0.%s=0", $rv["tblSql"], $this->delField, $rv["condSql"], $this->delField);
 		$cnt = execOne($sql);
 		return $cnt;
 	}
