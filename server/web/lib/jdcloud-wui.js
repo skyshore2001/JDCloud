@@ -756,10 +756,12 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 
 	<div id="dlgSendSms" title="群发短信" style="width:500px;height:300px;">  
 		<form method="POST">
-			手机号：<input name="phone" data-options="required:true">
-			发送内容： <textarea rows=5 cols=30 name="content"></textarea>
+			手机号：<input name="phone" class="easyui-validatebox" data-options="required:true">
+			发送内容： <textarea rows=5 cols=30 name="content" class="easyui-validatebox"  data-options="required:true"></textarea>
 		</form>
 	</div>
+
+在form中带name属性的字段上，可以设置class="easyui-validatebox"对输入进行验证。
 
 ### 显示对话框
 
@@ -779,6 +781,15 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 
 在showDlg的选项url中指定了接口为"sendSms"。操作成功后，显示一个消息。
 
+(v5.5) 新的编程惯例，建议使用定义对话框接口的方式，写在主应用（如store.js）的接口区域，如：
+
+	// 把showDlgSendSms换成DlgSendSms.show
+	var DlgSendSms = {
+		show: function () {
+			// 同showDlgSendSms
+		}
+	};
+
 @see showDlg
 @see app_show
 
@@ -787,6 +798,20 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 	<a href="?showDlgSendSms" class="easyui-linkbutton" icon="icon-ok">群发短信</a><br/><br/>
 
 点击该按钮，即调用了showDlgSendSms函数打开对话框。
+
+可以通过my-initfn属性为对话框指定初始化函数。复杂对话框的逻辑一般都写在初始化函数中。习惯上命令名initDlgXXX，如：
+
+	<div id="dlgSendSms" title="群发短信" style="width:500px;height:300px;" my-initfn="initDlgSendSms">
+
+	function initDlgSendSms() {
+		var jdlg = $(this);
+		// 处理对话框事件
+		jdlg.on("beforeshow", onBeforeShow)
+			.on("validate", onValidate);
+		// 处理内部组件事件
+		jdlg.find("#btn1").click(btn1_click);
+		...
+	}
 
 ### 页面传参数给对话框
 
@@ -1481,6 +1506,256 @@ function getTimeDiffDscr(tm, tm1)
 	if (diff < 10)
 		return Math.floor(diff) + "年前";
 	return "很久前";
+}
+
+/**
+@fn WUI.getTmRange(dscr, now?)
+
+根据时间段描述得到`[起始时间，结束时间)`，注意结束时间是开区间（即不包含）。
+假设今天是2015-9-9 周三：
+
+	getTmRange("本周", "2015-9-9") -> ["2015-9-7"(本周一), "2015-9-14")
+	getTmRange("上周") -> ["2015-8-31", "2015-9-7")  // 或"前1周"
+
+	getTmRange("本月") -> ["2015-9-1", "2015-10-1")
+	getTmRange("上月") -> ["2015-8-1", "2015-9-1")
+
+	getTmRange("今年") -> ["2015-1-1", "2016-1-1") // 或"本年"
+	getTmRange("去年") -> ["2014-1-1", "2015-1-1") // 或"上年"
+
+	getTmRange("本季度") -> ["2015-7-1", "2015-10-1") // 7,8,9三个月
+	getTmRange("上季度") -> ["2015-4-1", "2015-7-1")
+
+	getTmRange("上半年") -> ["2015-1-1", "2015-7-1")
+	getTmRange("下半年") -> ["2015-7-1", "2016-1-1")
+
+	getTmRange("今天") -> ["2015-9-9", "2015-9-10") // 或"本日"
+	getTmRange("昨天") -> ["2015-9-8", "2015-9-9") // 或"昨日"
+
+	getTmRange("前1周") -> ["2015-8-31"(上周一)，"2015-9-7"(本周一))
+	getTmRange("前3月") -> ["2015-6-1", "2015-9-1")
+	getTmRange("前3天") -> ["2015-9-6", "2015-9-9")
+
+	getTmRange("近1周") -> ["2015-9-3"，"2015-9-10")
+	getTmRange("近3月") -> ["2015-6-10", "2015-9-10")
+	getTmRange("近3天") -> ["2015-9-6", "2015-9-10")  // "前3天"+今天
+
+dscr可以是 
+
+	"近|前|上" N "个"? "小时|日|周|月|年|季度"
+	"本|今" "小时|日/天|周|月|年|季度"
+
+注意："近X周"包括今天（即使尚未过完）。
+
+示例：快捷填充
+
+		<td>
+			<select class="cboTmRange">
+				<option value ="本月">本月</option>
+				<option value ="上月">上月</option>
+				<option value ="本周">本周</option>
+				<option value ="上周">上周</option>
+				<option value ="今年">今年</option>
+				<option value ="去年">去年</option>
+			</select>
+		</td>
+
+	var txtTmRange = jdlg.find(".cboTmRange");
+	txtTmRange.change(function () {
+		var range = WUI.getTmRange(this.value);
+		if (range) {
+			WUI.setFormData(jfrm, {tm1: range[0], tm2: range[1]}, {setOnlyDefined: true});
+		}
+	});
+	// 初始选中
+	setTimeout(function () {
+		txtTmRange.change();
+	});
+
+ */
+self.getTmRange = getTmRange;
+function getTmRange(dscr, now)
+{
+	if (! now)
+		now = new Date();
+	else if (! (now instanceof Date)) {
+		now = WUI.parseDate(now);
+	}
+	else {
+		now = new Date(now); // 不修改原时间
+	}
+
+	var rv = getTmRangeSimple(dscr, now);
+	if (rv)
+		return rv;
+
+	dscr = dscr.replace(/本|今/, "前0");
+	dscr = dscr.replace(/上|昨/, "前");
+	var re = /(近|前)(\d*).*?(小时|日|天|月|周|年)/;
+	var m = dscr.match(re);
+	if (! m)
+		return;
+	
+	var dt1, dt2, dt;
+	var type = m[1];
+	var n = parseInt(m[2] || '1');
+	var u = m[3];
+	var fmt_d = "yyyy-mm-dd";
+	var fmt_h = "yyyy-mm-dd HH:00";
+	var fmt_m = "yyyy-mm-01";
+	var fmt_y = "yyyy-01-01";
+
+	if (u == "小时") {
+		if (n == 0) {
+			now.add("h",1);
+			n = 1;
+		}
+		if (type == "近") {
+			now.add("h",1);
+		}
+		dt2 = now.format(fmt_h);
+		dt1 = now.add("h", -n).format(fmt_h);
+	}
+	else if (u == "日" || u == "天") {
+		if (n == 0 || type == "近") {
+			now.addDay(1);
+			++ n;
+		}
+		dt2 = now.format(fmt_d);
+		dt1 = now.add("d", -n).format(fmt_d);
+	}
+	else if (u == "月") {
+		if (n == 0) {
+			now.addMonth(1);
+			n = 1;
+		}
+		if (type == "近") {
+			now.addDay(1);
+			var d2 = now.getDate();
+			dt2 = now.format(fmt_d);
+			now.add("m", -n);
+			do {
+				// 5/31近一个月, 从4/30开始: [4/30, 5/31]
+				var d1 = now.getDate();
+				if (d1 == d2 || d1 > 10)
+					break;
+				now.addDay(-1);
+			} while (true);
+			dt1 = now.format(fmt_d);
+			
+			// now = WUI.parseDate(now.format(fmt_m)); // 回到1号
+			//dt1 = now.add("m", -n).format(fmt_m);
+		}
+		else if (type == "前") {
+			dt2 = now.format(fmt_m);
+			dt1 = WUI.parseDate(dt2).add("m", -n).format(fmt_m);
+		}
+	}
+	else if (u == "周") {
+		if (n == 0) {
+			now.addDay(7);
+			n = 1;
+		}
+		if (type == "近") {
+			now.addDay(1);
+			dt2 = now.format(fmt_d);
+			//now.add("d", -now.getDay()+1); // 回到周1
+			dt1 = now.add("d", -n*7).format(fmt_d);
+		}
+		else if (type == "前") {
+			dt2 = now.add("d", -now.getDay()+1).format(fmt_d);
+			dt1 = now.add("d", -7*n).format(fmt_d);
+		}
+	}
+	else if (u == "年") {
+		if (n == 0) {
+			now.add("y",1);
+			n = 1;
+		}
+		if (type == "近") {
+			now.addDay(1);
+			dt2 = now.format(fmt_d);
+			//now = WUI.parseDate(now.format(fmt_y)); // 回到1/1
+			dt1 = now.add("y", -n).format(fmt_d);
+		}
+		else if (type == "前") {
+			dt2 = now.format(fmt_y);
+			dt1 = WUI.parseDate(dt2).add("y", -n).format(fmt_y);
+		}
+	}
+	else {
+		return;
+	}
+	return [dt1, dt2];
+}
+
+function getTmRangeSimple(dscr, now)
+{
+	var fmt_d = "yyyy-mm-dd";
+	var fmt_m = "yyyy-mm-01";
+	var fmt_y = "yyyy-01-01";
+
+	if (dscr == "本月") {
+		var dt1 = now.format(fmt_m);
+		now.addMonth(1);
+		var dt2 = now.format(fmt_m);
+	}
+	else if (dscr == "上月") {
+		var dt2 = now.format(fmt_m);
+		now.addMonth(-1);
+		var dt1 = now.format(fmt_m);
+	}
+	else if (dscr == "本周") {
+		var dt1 = now.add("d", -(now.getDay()||7)+1).format(fmt_d);
+		now.addDay(7);
+		var dt2 = now.format(fmt_d);
+	}
+	else if (dscr == "上周") {
+		var dt2 = now.add("d", -(now.getDay()||7)+1).format(fmt_d);
+		now.addDay(-7);
+		var dt1 = now.format(fmt_d);
+	}
+	else if (dscr == "今年") {
+		var dt1 = now.format(fmt_y);
+		now.addMonth(12);
+		var dt2 = now.format(fmt_y);
+	}
+	else if (dscr == "去年" || dscr == "上年") {
+		var dt2 = now.format(fmt_y);
+		now.addMonth(-12);
+		var dt1 = now.format(fmt_y);
+	}
+	else if (dscr == "本季度") {
+		var m = Math.floor(now.getMonth() / 3)*3 +1;
+		var dt1 = now.getFullYear() + "-" + setWidth_2(m) + "-01";
+		var dt2 = now.getFullYear() + "-" + setWidth_2(m+3) + "-01";
+	}
+	else if (dscr == "上季度") {
+		var m = Math.floor(now.getMonth() / 3)*3;
+		if (m > 0) {
+			var dt1 = now.getFullYear() + "-" + setWidth_2(m-3) + "-01";
+			var dt2 = now.getFullYear() + "-" + setWidth_2(m) + "-01";
+		}
+		else {
+			var y = now.getFullYear();
+			var dt1 = (y-1) + "-10-01";
+			var dt2 = y + "-01-01";
+		}
+	}
+	else if (dscr == "上半年") {
+		var y = now.getFullYear();
+		var dt1 = y + "-01-01";
+		var dt2 = y + "-07-01";
+	}
+	else if (dscr == "下半年") {
+		var y = now.getFullYear();
+		var dt1 = y + "-07-01";
+		var dt2 = (y+1) + "-01-01";
+	}
+	else {
+		return;
+	}
+	return [dt1, dt2];
 }
 
 // }}}
@@ -3905,7 +4180,9 @@ function defDataProc(rv)
 	catch (e)
 	{
 		leaveWaiting(ctx);
-		self.app_alert("服务器数据错误。");
+		var msg = "服务器数据错误。";
+		self.app_alert(msg);
+		ctx.dfd.reject.call(this, msg);
 		return;
 	}
 
@@ -5230,6 +5507,7 @@ function callInitfn(jo, paramArr)
 {
 	if (jo.jdata().init)
 		return;
+	jo.jdata().init = true;
 
 	var attr = jo.attr("my-initfn");
 	if (attr == null)
@@ -5244,7 +5522,7 @@ function callInitfn(jo, paramArr)
 
 	if (initfn)
 	{
-		console.log("### initfn: " + attr);
+		console.log("### initfn: " + attr, jo.selector);
  		try {
 			initfn.apply(jo, paramArr || []);
 		} catch (ex) {
@@ -5252,7 +5530,6 @@ function callInitfn(jo, paramArr)
 			throw(ex);
 		}
 	}
-	jo.jdata().init = true;
 }
 
 function getModulePath(file)
@@ -5515,8 +5792,14 @@ if (isSmallScreen()) {
 - opt.onOk: Function(jdlg, data?) 如果自动提交(opt.url非空)，则服务端接口返回数据后回调，data为返回数据。如果是手动提交，则点确定按钮时回调，没有data参数。
 - opt.title: String. 如果指定，则更新对话框标题。
 - opt.dialogOpt: 底层jquery-easyui dialog选项。参考http://www.jeasyui.net/plugins/159.html
+- opt.reload: (v5.5) 先重置再加载。只用于开发环境，方便在Chrome控制台中调试。
 
 对话框有两种编程模式，一是通过opt参数在启动对话框时设置属性及回调函数(如onOk)，另一种是在dialog初始化函数中处理事件(如validate事件)实现逻辑，有利于独立模块化。
+
+对话框显示时会触发以下事件：
+
+	事件beforeshow
+	事件show
 
 对于自动提交数据的对话框(设置了opt.url)，提交数据过程中回调函数及事件执行顺序为：
 
@@ -5661,6 +5944,13 @@ function showDlg(jdlg, opt)
 {
 	if (jdlg.constructor != jQuery)
 		jdlg = $(jdlg);
+
+	if (opt && opt.reload) {
+		opt = $.extend({}, opt);
+		delete opt.reload;
+		if (jdlg.size() > 0)
+			unloadDialog(jdlg);
+	}
 	if (loadDialog(jdlg, onLoad))
 		return;
 	function onLoad() {
@@ -5787,11 +6077,19 @@ function showDlg(jdlg, opt)
 				}
 				// 批量更新
 				if (formMode==FormMode.forSet && opt.url.action && /.set$/.test(opt.url.action)) {
+					if ($.isEmptyObject(data)) {
+						app_alert("没有需要更新的内容。");
+						return;
+					}
 					var jtbl = jdlg.jdata().jtbl;
 					var obj = opt.url.action.replace(".set", "");
-					var rv = batchOp(obj, "setIf", jtbl, data, function () {
-						// TODO: onCrud();
-						closeDlg(jdlg);
+					var rv = batchOp(obj, obj+".setIf", jtbl, {
+						acName: "更新",
+						data: data, 
+						onBatchDone: function () {
+							// TODO: onCrud();
+							closeDlg(jdlg);
+						}
 					});
 					if (rv !== false)
 						return;
@@ -5834,43 +6132,68 @@ $(window).keyup(function (e) {
 });
 
 /**
-@fn batchOp(obj, ac, jtbl, data/dataFn, onBatchDone?, forceFlag?)
+@fn batchOp(obj, ac, jtbl, opt={data, acName="操作", onBatchDone, batchOpMode=0})
 
-@param ac "setIf"/"delIf"
-@param data/dataFn 批量操作的参数。
-可以是一个函数dataFn(batchCnt)，参数batchCnt为当前批量操作的记录数。
+@param ac 对象接口名, 如"Task.setIf"/"Task.delIf"
+
+@param opt.acName 操作名称, 如"更新"/"删除"/"打印"等, 一个动词. 用于拼接操作提示语句.
+
+@param opt.data  调用支持批量的接口的POST参数
+
+opt.data也可以是一个函数dataFn(batchCnt)，参数batchCnt为当前批量操作的记录数(必定大于0)。
 该函数返回data或一个Deferred对象(该对象适时应调用dfd.resolve(data)做批量操作)。dataFn返回false表示不做后续处理。
 
-批量操作支持两种方式: 
+支持批量操作的接口须符合下列原型:
 
-1. 基于多选: 按Ctrl/Shift在表上多选，然后点删除或更新，批量操作选中行；
-2. 基于条件: 按住Ctrl键点删除或更新，批量操作过滤条件下的所有行
+	$obj.$ac($queryParam)($data) -> $cnt
 
-函数返回false表示当前非批量处理模式，不予处理。
+接受过滤查询条件(可通过$obj.query接口查询), 返回实际操作的数量.
+其中obj, ac, data(即POST参数)由本函数参数传入(data也可以是个函数, 返回POST参数), queryParam根据表格jtbl的选择行或过滤条件自动生成.
 
-@param forceFlag 强制批量操作。
-默认仅当多选或按住Ctrl键才认为是批量操作；
-如果值为1，表示无须按Ctrl键，即如果有多选，就用多选；如果没有多选，则使用当前的过滤条件；
-如果值为2，表示只基于选择项操作，即使只选了一项也对其操作。但如果没有选任何行，则使用过滤条件。
+操作完成会自动刷新表格, 无须手工刷新.
 
-示例：批量更新附件到行记录上, 在onBatch中返回一个Deferred对象，并在获得数据后调用dfd.resolve(data)
+默认批量操作方式为:
 
-	var forceFlag = 1; // 如果没有多选，则按当前过滤条件全部更新。
-	WUI.batchOp("Task", "setIf", jtbl, onBatch, function () {
-		WUI.closeDlg(jdlg);
-	}, forceFlag);
+1. 基于多选: 按Ctrl/Shift在表上选择多行，然后点操作按钮(如"删除"按钮, 更新时的"确定"按钮)，批量操作选中行；生成过滤条件形式是`{cond: "id IN (100,101)"}`, 
 
-	function onBatch(batchCnt)
-	{
-		if (batchCnt == 0) {
-			app_alert("没有记录更新。");
-			return false;
+2. 基于表格当前过滤条件: 按住Ctrl键(进入批量操作模式)点操作按钮, 批量操作表格过滤条件下的所有行. 若无过滤条件, 自动以`{cond: "id>0"}`做为过滤条件.
+
+3. 如果未按Ctrl键, 且当前未选行或是单选行, 函数返回false表示当前非批量处理模式，不予处理。
+
+@param batchOpMode 定制批量操作行为, 比如是否需要按Ctrl激活批量模式, 未按Ctrl时如何处理未选行或单选行。
+
+- batchOpMode未指定或为0时, 使用上面所述的默认批量操作方式.
+- 如果值为1: 总是批量操作, 无须按Ctrl键, 无论选择了0行或1行, 都使用当前的过滤条件.
+- 如果值为2: 按住Ctrl键时与默认行为相同; 没按Ctrl时, 若选了0行则报错, 若选了1行, 则按批量操作对这1行操作, 过滤条件形式是是`{cond:"id=100"}`
+
+简单来说, 默认模式对单个记录不处理, 返回false留给调用者处理; 模式2是对单个记录也按批量处理; 模式1是无须按Ctrl键就批量处理.
+
+## 示例：点"批量上传"按钮, 打开上传文件对话框, 选择上传并点击"确定"按钮后, 先上传文件, 再将返回的附件编号批量更新到行记录上.
+
+先选择操作模式batchOpMode=1, 点确定按钮时总是批量处理.
+参数data传入一个函数(onGetData)用于生成POST参数; 
+为了支持其中的异步上传文件操作, 函数除了直接返回data, 还可以返回一个Deferred对象(简称dfd), 在dfd.resolve(data)之后才会执行真正的批量操作.
+
+	WUI.batchOp("Task", "Task.setIf", jtbl, {
+		batchOpMode: 1,  // 无须按Ctrl键, 一律当成批量操作
+		data: onGetData,
+		onBatchDone: function () {
+			WUI.closeDlg(jdlg);
 		}
+	});
+
+	// 一定batchCnt>0. 若batchCnt=0即没有操作数据时, 会报错结束, 不会回调该函数.
+	function onGetData(batchCnt)
+	{
 		var dfd = $.Deferred();
 		app_alert("批量上传附件到" + batchCnt + "行记录?", "q", function () {
 			var dfd1 = triggerAsync(jdlg.find(".wui-upload"), "submit"); // 异步上传文件，返回Deferred对象
 			dfd1.then(function () {
 				var data = WUI.getFormData(jfrm);
+				if ($.isEmptyObject(data)) {
+					app_alert("没有需要更新的内容。");
+					return false;
+				}
 				dfd.resolve(data);
 			});
 		});
@@ -5886,36 +6209,63 @@ $(window).keyup(function (e) {
 	jupload.submit();
 	return getFormData(jfrm);
 
+## 示例2: 点"打印"按钮, 打印选中的1行或多行的标签, 如果未选则报错. 如果按住Ctrl点击, 则按表格过滤条件批量打印所有行的标签.
+
+显然, 这是一个batchOpMode=2的操作模式, 调用后端`Sn.print`接口, 对一行或多行数据统一处理:
+
+	WUI.batchOp("Sn", "Sn.print", jtbl, {
+		acName: "打印",
+		batchOpMode: 2
+	});
+
+后端应实现接口`Sn.print(查询条件)`, 实现示例:
+
+	// class AC2_Sn
+	function api_print() {
+		// 通过query接口查询操作对象内容. 
+		$param = array_merge($_GET, ["res"=>"code", "fmt"=>"array" ]);
+		$rv = $this->callSvc(null, "query", $param);
+		addLog($rv);
+		// 应返回操作数量
+		return count($rv);
+	}
+
 */
 self.batchOp = batchOp;
-function batchOp(obj, ac, jtbl, data, onBatchDone, forceFlag)
+function batchOp(obj, ac, jtbl, opt)
 {
 	if (obj == null || jtbl == null)
 		return false;
+	opt = $.extend({
+		batchOpMode: 0,
+		acName: "操作"
+	}, opt);
+
 	var selArr =  jtbl.datagrid("getChecked");
-	if (!forceFlag && ! (m_batchMode || selArr.length > 1)) {
+	var batchOpMode = opt.batchOpMode;
+	if (!batchOpMode && ! (m_batchMode || selArr.length > 1)) {
+		return false;
+	}
+	if (batchOpMode === 2 && !m_batchMode && selArr.length == 0) {
+		self.app_alert("请先选择一行。", "w");
 		return false;
 	}
 
-	var acName;
-	if (ac == "setIf") {
-		acName = "批量更新";
-	}
-	else if (ac == "delIf") {
-		acName = "批量删除";
-	}
-	else {
-		return;
-	}
 	var queryParams;
 	var doBatchOnSel = selArr.length > 1 && selArr[0].id != null;
-	// forceFlag=2时，一行也批量操作
-	if (!doBatchOnSel && forceFlag === 2 && selArr.length == 1 && selArr[0].id != null)
+	var acName = opt.acName;
+	// batchOpMode=2时，未按Ctrl时选中一行也按批量操作
+	if (!doBatchOnSel && batchOpMode === 2 && !m_batchMode && selArr.length == 1 && selArr[0].id != null)
 		doBatchOnSel = true;
 	// 多选，cond为`id IN (...)`
 	if (doBatchOnSel) {
-		var idList = $.map(selArr, function (e) { return e.id}).join(',');
-		queryParams = {cond: "t0.id IN (" + idList + ")"};
+		if (selArr.length == 1) {
+			queryParams = {cond: "id=" + selArr[0].id};
+		}
+		else {
+			var idList = $.map(selArr, function (e) { return e.id}).join(',');
+			queryParams = {cond: "id IN (" + idList + ")"};
+		}
 		confirmBatch(selArr.length);
 	}
 	else {
@@ -5933,8 +6283,15 @@ function batchOp(obj, ac, jtbl, data, onBatchDone, forceFlag)
 	return;
 	
 	function confirmBatch(batchCnt) {
-		console.log(obj + "." + ac + ": " + JSON.stringify(queryParams));
+		console.log(ac + ": " + JSON.stringify(queryParams));
+		if (batchCnt == 0) {
+			app_alert("没有记录需要操作。");
+			return;
+		}
+		var data = opt.data;
 		if (!$.isFunction(data)) {
+			if (batchCnt > 1)
+				acName = "批量" + acName;
 			app_confirm(acName + batchCnt + "条记录？", function (b) {
 				if (!b)
 					return;
@@ -5951,13 +6308,14 @@ function batchOp(obj, ac, jtbl, data, onBatchDone, forceFlag)
 	}
 
 	function doBatch(data) {
-		if (ac == "setIf" && $.isEmptyObject(data)) {
-			app_alert("没有需要更新的内容。");
-			return;
-		}
-		self.callSvr(obj+"."+ac, queryParams, function (cnt) {
-			onBatchDone && onBatchDone();
-			reload(jtbl);
+		self.callSvr(ac, queryParams, function (cnt) {
+			opt.onBatchDone && opt.onBatchDone();
+			if (doBatchOnSel && selArr.length == 1) {
+				reloadRow(jtbl, selArr[0]);
+			}
+			else {
+				reload(jtbl);
+			}
 			app_alert(acName + cnt + "条记录");
 		}, data);
 	}
@@ -6043,11 +6401,12 @@ function reloadPage()
 }
 
 /**
-@fn unloadDialog(all?=false)
+@fn unloadDialog(jdlg?)
 @alias reloadDialog
 
-删除当前激活的对话框。一般用于开发过程，在修改外部对话框后，调用该函数清除以便此后再载入页面，可以看到更新的内容。
+删除指定对话框jdlg，如果不指定jdlg，则删除当前激活的对话框。一般用于开发过程，在修改外部对话框后，调用该函数清除以便此后再载入页面，可以看到更新的内容。
 
+	WUI.reloadDialog(jdlg);
 	WUI.reloadDialog();
 	WUI.reloadDialog(true); // 重置所有外部加载的对话框(v5.1)
 
@@ -6058,12 +6417,24 @@ function reloadPage()
 */
 self.unloadDialog = unloadDialog;
 self.reloadDialog = unloadDialog;
-function unloadDialog(all)
+function unloadDialog(jdlg)
 {
-	var jdlg = all? $(".wui-dialog[wui-pageFile]"): getTopDialog();
+	if (jdlg == null) {
+		jdlg = getTopDialog();
+	}
+	else if (jdlg === true) {
+		jdlg = $(".wui-dialog[wui-pageFile]");
+	}
+	else if (jdlg.hasClass("wui-dialog")) {
+	}
+	else {
+		console.error("WUI.unloadDialog: bad dialog spec", jdlg);
+	}
 	if (jdlg.size() == 0)
 		return;
-	try { closeDlg(jdlg); } catch (ex) { console.log(ex); }
+	if (jdlg.is(":visible")) {
+		try { closeDlg(jdlg); } catch (ex) { console.log(ex); }
+	}
 
 	// 是内部对话框，不做删除处理
 	if (jdlg.attr("wui-pageFile") == null)
@@ -6357,17 +6728,19 @@ function doFind(jo, jtbl, appendFilter)
 
 @param jdlg 可以是jquery对象，也可以是selector字符串或DOM对象，比如 "#dlgOrder". 注意：当对话框保存为单独模块时，jdlg=$("#dlgOrder") 一开始会为空数组，这时也可以调用该函数，且调用后jdlg会被修改为实际加载的对话框对象。
 
-@param opt.id String. mode=link时必设，set/del如缺省则从关联的opt.jtbl中取, add/find时不需要
+@param opt.id String. 对话框set模式(mode=FormMode.forSet)时必设，set/del如缺省则从关联的opt.jtbl中取, add/find时不需要
 @param opt.jtbl Datagrid. dialog/form关联的datagrid -- 如果dlg对应多个tbl, 必须每次打开都设置
 @param opt.obj String. (v5.1) 对象对话框的对象名，如果未指定，则从my-obj属性获取。通过该参数可动态指定对象名。
 @param opt.offline Boolean. (v5.1) 不与后台交互。
 @param opt.title String. (v5.1) 指定对话框标题。
 @param opt.readonly String. (v5.5) 指定对话框只读。即设置wui-readonly类。
+@param opt.initData Object. 对话框add模式(mode=FormMode.forAdd)时可以设置，做为添加时的初始数据。
 
 @key objParam 对象对话框的初始参数。
 
+showObjDlg底层通过showDlg实现，注意这两个函数的opt参数含义完全不一样。showObjDlg的opt相当于showDlg中的opt.objParam, 也可以在每次打开对话框时，从beforeshow回调事件参数中以opt.objParam方式取出.
 (v5.1)
-此外，通过设置jdlg.objParam，具有和设置opt参数一样的功能，常在initPageXXX中使用，因为在page中不直接调用showObjDlg.
+此外，通过设置jdlg.objParam，具有和设置opt参数一样的功能，常在initPageXXX中使用，因为在page中不直接调用showObjDlg，无法直接传参数opt.
 示例：
 
 	var jdlg = $("#dlgSupplier");
@@ -6454,7 +6827,10 @@ function showObjDlg(jdlg, mode, opt)
 
 			// 批量删除
 			if (mode == FormMode.forDel) {
-				var rv = batchOp(obj, "delIf", jd.jtbl, null, onCrud);
+				var rv = batchOp(obj, obj+".delIf", jd.jtbl, {
+					acName: "删除",
+					onBatchDone: onCrud
+				});
 				if (rv !== false)
 					return;
 			}
@@ -6555,8 +6931,8 @@ function showObjDlg(jdlg, mode, opt)
 	// load data
 	var load_data;
 	if (mode == FormMode.forAdd) {
-		var init_data = jd.init_data || (jd2 && jd2.init_data);
-		load_data = $.extend({}, init_data);
+		// var init_data = jd.init_data || (jd2 && jd2.init_data);
+		load_data = $.extend({}, opt.initData);
 		// 添加时尝试设置父结点
 		if (jd.jtbl && isTreegrid(jd.jtbl) && (rowData=getRow(jd.jtbl, true))) {
 			// 在展开的结点上点添加，默认添加子结点；否则添加兄弟结点
@@ -6845,7 +7221,7 @@ self.dg_dblclick = function (jtbl, jdlg)
 	<a href="?logout">退出登录</a>
 
 - href="#pageXXX"开头的，点击时会调用 WUI.showPage("#pageXXX");
-- href="?fn"，会直接调用函数 fn();
+- href="?fn"，会直接调用函数 fn(); 函数中this对象为当前DOM对象
 */
 self.m_enhanceFn["a[href^='#']"] = enhanceAnchor;
 function enhanceAnchor(jo)
@@ -7166,8 +7542,11 @@ function dgLoader(param, success, error)
 			param1[k] = param[k];
 		}
 	}
-	self.callSvr(opts.url, param1, success);
-	// TODO: 调用失败时调用error？
+	var dfd = self.callSvr(opts.url, param1, success);
+	dfd.fail(function () {
+		// hide the loading icon
+		jo.datagrid("loaded");
+	});
 }
 
 function dgLoadFilter(data)

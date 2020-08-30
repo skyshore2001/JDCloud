@@ -1,5 +1,29 @@
 ## 升级到v5.5
 
+### 前端批量处理函数原型更新batchOp
+
+batchOp接口更新了, 原代码:
+
+	var forceFlag = 1; // 如果没有多选，则按当前过滤条件全部更新。
+	WUI.batchOp("Task", "setIf", jtbl, onGetData, function () {
+		WUI.closeDlg(jdlg);
+	}, forceFlag);
+
+应改为:
+
+	WUI.batchOp("Task", "Task.setIf", jtbl, {
+		acName: "更新",
+		batchOpMode: 1,  // 如果没有多选，则按当前过滤条件全部更新。
+		data: onGetData,
+		onBatchDone: function () {
+			WUI.closeDlg(jdlg);
+		}
+	});
+
+- ac参数变化, 现在应写完整的接口名.
+- jtbl后面的参数以opt方式提供
+- 建议提供acName选项, 表示操作名
+
 ### 后端允许返回null
 
 此前，后端未返回值的接口，服务器会自动让它返回"OK"，且前端遇到调用返回null时，callSvr类函数会自动忽略处理不去回调。

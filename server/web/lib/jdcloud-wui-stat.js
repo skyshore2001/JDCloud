@@ -1418,7 +1418,7 @@ function initPageStat(jpage, setStatOpt)
 	{
 		//var tm2 = jpage.find(".txtTm2").datetimebox("getValue");
 		//var range = getTmRange(dscr, tm2);
-		var range = getTmRange(dscr);
+		var range = WUI.getTmRange(dscr);
 		if (range) {
 			jpage.find(".txtTm1").datetimebox("setValue",range[0]);
 			jpage.find(".txtTm2").datetimebox("setValue",range[1]);
@@ -1444,139 +1444,6 @@ function initPageStat(jpage, setStatOpt)
 		refreshStat: refreshStat,
 		setTmRange: setTmRange
 	}
-}
-
-/**
-@fn WUI.getTmRange(dscr, now?)
-
-假设今天是2015-9-9 周三：
-
-	getTmRange("前1周") -> ["2015-8-31"(上周一)，"2015-9-7"(本周一)]
-	getTmRange("前3月") -> ["2015-6-1", "2015-9-1"]
-	getTmRange("前3天") -> ["2015-9-7", "2015-9-9"]
-
-	getTmRange("近1周") -> ["2015-9-3"，"2015-9-10"]
-	getTmRange("近3月") -> ["2015-6-10", "2015-9-10"]
-	getTmRange("近3天") -> ["2015-9-7", "2015-9-10"]  // "前3天"+今天
-
-	getTmRange("本日") -> ["2015-9-9", "2015-9-10"]
-	getTmRange("本月"") -> ["2015-9-1", "2015-10-1"]
-	getTmRange("本年"") -> ["2015-1-1", "2016-1-1"]
-
-dscr可以是 
-
-	"近|前" N "个"? "小时|日|周|月|年"
-	"本|今" "小时|日/天|周|月|年"
-
-注意："近X周"包括今天（即使尚未过完）。
-
- */
-self.getTmRange = getTmRange;
-function getTmRange(dscr, now)
-{
-	dscr = dscr.replace(/本|今/, "前0");
-	var re = /(近|前)(\d+).*?(小时|日|天|月|周|年)/;
-	var m = dscr.match(re);
-	if (! m)
-		return;
-	
-	if (! now)
-		now = new Date();
-	else if (! (now instanceof Date)) {
-		now = WUI.parseDate(now);
-	}
-	else {
-		now = new Date(now); // 不修改原时间
-	}
-	var dt1, dt2, dt;
-	var type = m[1];
-	var n = parseInt(m[2]);
-	var u = m[3];
-	var fmt_d = "yyyy-mm-dd";
-	var fmt_h = "yyyy-mm-dd HH:00";
-	var fmt_m = "yyyy-mm-01";
-	var fmt_y = "yyyy-01-01";
-
-	if (u == "小时") {
-		if (n == 0) {
-			now.add("h",1);
-			n = 1;
-		}
-		if (type == "近") {
-			now.add("h",1);
-		}
-		dt2 = now.format(fmt_h);
-		dt1 = now.add("h", -n).format(fmt_h);
-	}
-	else if (u == "日" || u == "天") {
-		if (n == 0 || type == "近") {
-			now.addDay(1);
-			++ n;
-		}
-		dt2 = now.format(fmt_d);
-		dt1 = now.add("d", -n).format(fmt_d);
-	}
-	else if (u == "月") {
-		if (n == 0) {
-			now.addMonth(1);
-			n = 1;
-		}
-		if (type == "近") {
-			now.addDay(1);
-			var d2 = now.getDate();
-			dt2 = now.format(fmt_d);
-			now.add("m", -n);
-			do {
-				// 5/31近一个月, 从4/30开始: [4/30, 5/31]
-				var d1 = now.getDate();
-				if (d1 == d2 || d1 > 10)
-					break;
-				now.addDay(-1);
-			} while (true);
-			dt1 = now.format(fmt_d);
-			
-			// now = WUI.parseDate(now.format(fmt_m)); // 回到1号
-			//dt1 = now.add("m", -n).format(fmt_m);
-		}
-		else if (type == "前") {
-			dt2 = now.format(fmt_m);
-			dt1 = WUI.parseDate(dt2).add("m", -n).format(fmt_m);
-		}
-	}
-	else if (u == "周") {
-		if (n == 0) {
-			now.addDay(7);
-			n = 1;
-		}
-		if (type == "近") {
-			now.addDay(1);
-			dt2 = now.format(fmt_d);
-			//now.add("d", -now.getDay()+1); // 回到周1
-			dt1 = now.add("d", -n*7).format(fmt_d);
-		}
-		else if (type == "前") {
-			dt2 = now.add("d", -now.getDay()+1).format(fmt_d);
-			dt1 = now.add("d", -7*n).format(fmt_d);
-		}
-	}
-	else if (u == "年") {
-		if (n == 0) {
-			now.add("y",1);
-			n = 1;
-		}
-		if (type == "近") {
-			now.addDay(1);
-			dt2 = now.format(fmt_d);
-			//now = WUI.parseDate(now.format(fmt_y)); // 回到1/1
-			dt1 = now.add("y", -n).format(fmt_d);
-		}
-		else if (type == "前") {
-			dt2 = now.format(fmt_y);
-			dt1 = WUI.parseDate(dt2).add("y", -n).format(fmt_y);
-		}
-	}
-
-	return [dt1, dt2];
 }
 
 }

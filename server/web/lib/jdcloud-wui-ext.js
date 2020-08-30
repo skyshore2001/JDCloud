@@ -913,6 +913,36 @@ $(enhanceMenu);
 - 在初始化时，由于尚未从后端查询文本，这时显示jd_vField字段的文本。
 - 如果输入值不在列表中，且不是数字，将当作非法输入被清空。
 - 特别地，在查询模式下（forFind），可以输入任意条件，比如">10", "1-10"等。如果输入的是文本，比如"上海*"，则自动以jd_vField字段进行而非数值编号进行查询。
+
+示例2：简单的情况，选择时只用名字，不用id。
+
+	// var ListOptions 定义中：
+	// 只用name不用id
+	CateGrid: {
+		jd_vField: "category",
+		jd_showId: false,
+		panelWidth: 450,
+		width: '95%',
+		idField: "name",
+		textField: "name",
+		columns: [[
+			{field:'name',title:'类别',width:120},
+			{field:'fatherName',title:'父类别',width:120},
+		]],
+		url: WUI.makeUrl('Category.query', {
+			res: 'id,name,fatherName'
+		})
+	}
+
+在dialog中：
+
+		<input class="wui-combogrid" name="category" data-options="ListOptions.CateGrid">
+
+设置方法：
+
+- idField和textField一样，都用name;
+- jd_showId指定为false即不显示idField;
+
  */
 self.m_enhanceFn[".wui-combogrid"] = enhanceCombogrid;
 function enhanceCombogrid(jo)
@@ -950,8 +980,9 @@ function enhanceCombogrid(jo)
 			}
 			jo.removeProp("nameForFind");
 
+			var isId = (opt.idField == "id");
 //			var val1 = jo.combogrid("textbox").val();
-			if (! $.isNumeric(val)) {
+			if (isId && ! $.isNumeric(val)) {
 				jo.combogrid("setValue", "");
 			}
 			else if (opt.jd_showId) {

@@ -17,8 +17,33 @@
 		...
 	});
 
+常常与报表条件对话框DlgReportCond一起使用, 示例:
+
+	var btnStat1 = {text: "月统计", iconCls:'icon-ok', handler: function () {
+		DlgReportCond.show(function (data) {
+			var queryParams = WUI.getQueryParam({dt: [data.tm1, data.tm2]});
+			var url = WUI.makeUrl("Capacity.query", { gres: 'y 年,m 月, name 员工', res: 'SUM(mh) 总工时, SUM(mhA) 总加班', pagesz: -1 });
+			WUI.showPage("pageSimple", "出勤月统计!", [url, queryParams]);
+		});
+	}};
+	jtbl.datagrid({
+		toolbar: WUI.dg_toolbar(jtbl, jdlg, ..., btnStat1),
+		...
+	});
+
+允许定制表格显示参数，如
+
+	WUI.showPage("pageSimple", "订单月报表!", [url, queryParams, onInitGrid]);
+
+	function onInitGrid(jpage, jtbl, dgOpt, columns, data)
+	{
+		// dgOpt: datagrid的选项，如设置 dgOpt.onClickCell等属性
+		// columns: 列数组，可设置列的formatter等属性
+		// data: ajax得到的原始数据
+	}
+
 */
-function initPageSimple(url, queryParams)
+function initPageSimple(url, queryParams, onInitGrid)
 {
 	var jpage = $(this);
 	var jtbl = jpage.find("table:first");
@@ -33,11 +58,13 @@ function initPageSimple(url, queryParams)
 		var columns = $.map(data.h, function (e) {
 			return {field: e, title: e};
 		});
-		jtbl.datagrid({
+		var dgOpt = {
 			columns: [ columns ],
 			data: data,
 			toolbar: WUI.dg_toolbar(jtbl, null, btnExport)
-		});
+		};
+		onInitGrid && onInitGrid(jpage, jtbl, dgOpt, columns, data);
+		jtbl.datagrid(dgOpt);
 		var opt = jtbl.datagrid("options");
 		opt.url = url;
 		opt.queryParams = queryParams;

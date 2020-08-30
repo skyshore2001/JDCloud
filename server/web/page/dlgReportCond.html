@@ -1,0 +1,31 @@
+<form title="报表条件" wui-script="dlgReportCond.js" my-initfn="initDlgReportCond">
+	<table>
+	<tr>
+		<td>快捷选项</td>
+		<td>
+			<select class="cboTmRange">
+				<option value ="本月">本月</option>
+				<option value ="上月">上月</option>
+				<option value ="本周">本周</option>
+				<option value ="上周">上周</option>
+				<option value ="今年">今年</option>
+				<option value ="去年">去年</option>
+			</select>
+		</td>
+	</tr>
+	<tr>
+		<td>开始日期</td>
+		<td>
+			<input type="text" name="tm1" class="easyui-datebox">
+			<p class="hint">可以不填。</p>
+		</td>
+	</tr>
+	<tr>
+		<td>结束日期</td>
+		<td>
+			<input type="text" name="tm2" class="easyui-datebox">
+			<p class="hint">不包含这一天。可以不填。</p>
+		</td>
+	</tr>
+	</table>
+</form>
