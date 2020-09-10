@@ -169,7 +169,7 @@ function parseFieldDef($fieldDef, $tableName)
 			die1("unknown type of string fields: @{$tableName}.$f");
 		}
 	}
-	elseif (preg_match('/(@|&|#)$/', $f, $ms)) {
+	elseif (preg_match('/(@|&|#|!)$/', $f, $ms)) {
 		$f = substr_replace($f, "", -1);
 		if ($ms[1] == '@') {
 			$ret["type"] = "n";
@@ -183,6 +183,10 @@ function parseFieldDef($fieldDef, $tableName)
 		else if ($ms[1] == '#') {
 			$ret["type"] = "real";
 			$def = "REAL";
+		}
+		else if ($ms[1] == '!') {
+			$ret["type"] = "float";
+			$def = "FLOAT";
 		}
 	}
 	elseif (preg_match('/(Price|Qty|Total|Amount)$/u', $f1)) {
