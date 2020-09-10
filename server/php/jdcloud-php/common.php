@@ -734,12 +734,13 @@ function text2html($s)
 }
 
 /**
-@fn pivit($objArr, $gcols)
+@fn pivot($objArr, $gcols, $ycolCnt=1)
 
 将行转置到列。一般用于统计分析数据处理。
 
 - $gcols为转置字段，可以是一个或多个字段。可以是个字符串("f1" 或 "f1,f2")，也可以是个数组（如["f1","f2"]）
-- $objArr是对象数组，最后一列是统计列。
+- $objArr是对象数组，默认最后一列是统计列，如果想要最后两列作为统计列，可以指定参数ycolCnt=2。注意此时最终统计值将是一个数组。
+- 以objArr[0]这个对象为基准，除去最后ycolCnt个字段做为统计列(ycols)，再除去gcols指定的要转置到列的字段，剩下的列就是xcols：相同的xcols会归并到一行中。
 
 示例：
 
@@ -747,7 +748,8 @@ function text2html($s)
 		["y"=>2019, "m"=>11, "cateId"=>1, "cateName"=>"衣服", "sum" => 20000],
 		["y"=>2019, "m"=>11, "cateId"=>2, "cateName"=>"食品", "sum" => 12000],
 		["y"=>2019, "m"=>12, "cateId"=>2, "cateName"=>"食品", "sum" => 15000],
-		["y"=>2020, "m"=>2, "cateId"=>1, "cateName"=>"衣服", "sum" => 19000]
+		["y"=>2020, "m"=>2, "cateId"=>1, "cateName"=>"衣服", "sum" => 19000],
+		["y"=>2020, "m"=>2, "cateId"=>3, "cateName"=>"电器", "sum" => 28000]
 	];
 
 	// 将类别转到列
@@ -756,10 +758,12 @@ function text2html($s)
 得到：
 
 	$arr1 = [
-		["y"=>2019, "m"=>11, "1-衣服"=>20000, "2-食品"=>12000],
+		["y"=>2019, "m"=>11, "1-衣服"=>20000, "2-食品"=>12000, "3-电器" => null],
 		["y"=>2019, "m"=>12, "2-食品"=>15000],
-		["y"=>2020, "m"=>2, "1-衣服"=>19000]
+		["y"=>2020, "m"=>2, "1-衣服"=>19000, "3-电器"=>28000]
 	];
+
+注意：结果的第一行中，会包含所有可能出现的列，没有值的列填null。
 
 在后端查询时, 往往用id字段分组但显示为名字, 可以用hiddenFields参数指定不要返回的字段:
 例如上例中cateId若只需要参与查询, 不需要返回在最终结果中：
@@ -769,9 +773,9 @@ function text2html($s)
 结果为：
 
 	$arr1 = [
-		["y"=>2019, "m"=>11, "衣服"=>20000, "食品"=>12000],
+		["y"=>2019, "m"=>11, "衣服"=>20000, "食品"=>12000, "电器"=>null],
 		["y"=>2019, "m"=>12, "食品"=>15000],
-		["y"=>2020, "m"=>2, "衣服"=>19000]
+		["y"=>2020, "m"=>2, "衣服"=>19000, "电器"=>28000]
 	];
 
 其它示例: 显示用户单数统计表
@@ -779,8 +783,29 @@ function text2html($s)
 	var url = WUI.makeUrl("Ordr.query", {gres:"userId", res:"userName 客户, COUNT(*) 订单数, SUM(amount) 总金额", hiddenFields:"userId", pivot:'订单数'});
 	WUI.showPage("pageSimple", "用户单数统计!", [url]);
 
+示例：多个统计列（ycolCnt>1）的情况
+
+	$arr = [
+		["y"=>2019, "m"=>11, "cateName"=>"衣服", "sum" => 20000, "cnt" => 100],
+		["y"=>2019, "m"=>11, "cateName"=>"衣服", "sum" => 12000, "cnt" => 150], // 故意与第一行重复，这时将与第一行最后两列分别累加
+		["y"=>2019, "m"=>12, "cateName"=>"食品", "sum" => 15000, "cnt" => 80],
+		["y"=>2020, "m"=>2, "cateName"=>"衣服", "sum" => 19000, "cnt" => 90],
+		["y"=>2020, "m"=>2, "cateName"=>"电器", "sum" => 28000, "cnt" => 30]
+	];
+
+	// 将类别转到列, 最后两列为统计列
+	$arr1 = pivot($arr, "cateName", 2);
+
+得到：
+
+	$arr1 = [
+		["y"=>2019, "m"=>11, "衣服"=>[32000, 250], "食品"=>null, "电器" => null],
+		["y"=>2019, "m"=>12, "食品"=>[15000, 80] ],
+		["y"=>2020, "m"=>2, "衣服"=>[19000,90], "电器"=>[28000, 30] ]
+	];
+
 */
-function pivot($objArr, $gcols, &$xcolCnt=null)
+function pivot($objArr, $gcols, $ycolCnt=1)
 {
 	if (count($objArr) == 0)
 		return $objArr;
@@ -792,7 +817,8 @@ function pivot($objArr, $gcols, &$xcolCnt=null)
 		throw new MyException(E_PARAM, "bad gcols: no data", "未指定分组列");
 	}
 	$cols = array_keys($objArr[0]);
-	$ycol = array_pop($cols); // 去除ycol
+	// $ycol = array_pop($cols); // 去除ycol
+	$ycols = array_splice($cols, -$ycolCnt); // 去除ycol
 	foreach ($gcols as $gcol) {
 		if (! in_array($gcol, $cols)) {
 			throw new MyException(E_PARAM, "bad gcol $gcol: not in cols", "分组列不正确: $gcol");
@@ -801,8 +827,9 @@ function pivot($objArr, $gcols, &$xcolCnt=null)
 		
 	$xMap = []; // {x=>新行}
 	$xcols = array_diff($cols, $gcols);
-	$xcolCnt = count($xcols);
+//	$xcolCnt = count($xcols);
 
+	$firstX = null;
 	foreach ($objArr as $row) {
 		// $x = xtext($row);
 		$xarr = [];
@@ -819,12 +846,31 @@ function pivot($objArr, $gcols, &$xcolCnt=null)
 		if (! array_key_exists($x, $xMap)) {
 			$xMap[$x] = $xarr;
 		}
-		$y = end($row);
+		if ($ycolCnt == 1)
+			$y = end($row);
+		else
+			$y = array_values(array_slice($row, -$ycolCnt));
 
 		if (! array_key_exists($g, $xMap[$x]))
 			$xMap[$x][$g] = $y;
-		else
-			$xMap[$x][$g] += $y;
+		else {
+			if ($ycolCnt == 1) {
+				$xMap[$x][$g] += $y;
+			}
+			else {
+				for ($i=0; $i<$ycolCnt; ++$i) {
+					$xMap[$x][$g][$i] += $y[$i];
+				}
+			}
+		}
+
+		// 确保第一行包含所有列，没有的填null；从而固化所有列，确定列的顺序
+		if ($firstX === null) {
+			$firstX = $x;
+		}
+		else if (! array_key_exists($g, $xMap[$firstX])) {
+			$xMap[$firstX][$g] = null;
+		}
 	}
 	$ret = array_values($xMap);
 	return $ret;

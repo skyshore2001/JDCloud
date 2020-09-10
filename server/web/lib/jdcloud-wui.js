@@ -675,7 +675,7 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 
 	function onBeforeShow(ev, formMode, opt)
 		if (formMode == FormMode.forAdd && objParam.storeId) {
-			opt.data.storeId = objParam.storeId);
+			opt.data.storeId = objParam.storeId;
 		}
 
 ### 设计模式：页面间调用
@@ -1708,13 +1708,25 @@ function getTmRangeSimple(dscr, now)
 
 	if (dscr == "本月") {
 		var dt1 = now.format(fmt_m);
-		now.addMonth(1);
-		var dt2 = now.format(fmt_m);
+		// NOTE: 不要用 now.addMonth(1). 否则: 2020/8/31取本月会得到 ["2020-08-01", "2020-10-01"]
+		var y = now.getFullYear();
+		var m = now.getMonth() + 2;
+		if (m == 12) {
+			++ y;
+			m = 1;
+		}
+		var dt2 = y + "-" + setWidth_2(m) + "-01";
 	}
 	else if (dscr == "上月") {
 		var dt2 = now.format(fmt_m);
+		var y = now.getFullYear();
+		var m = now.getMonth();
 		now.addMonth(-1);
-		var dt1 = now.format(fmt_m);
+		if (m == 0) {
+			-- y;
+			m = 12;
+		}
+		var dt1 = y + "-" + setWidth_2(m) + "-01";
 	}
 	else if (dscr == "本周") {
 		var dt1 = now.add("d", -(now.getDay()||7)+1).format(fmt_d);
@@ -4900,13 +4912,19 @@ function callSvr(ac, params, fn, postParams, userOptions)
 	}
 
 	// 自动判断是否用json格式
-	if (!opt.contentType && opt.data && $.isPlainObject(opt.data)) {
-		$.each(opt.data, function (i, e) {
-			if (typeof(e) == "object") {
-				opt.contentType = "application/json";
-				return false;
-			}
-		})
+	if (!opt.contentType && opt.data) {
+		var useJson = $.isArray(opt.data);
+		if (!useJson && $.isPlainObject(opt.data)) {
+			$.each(opt.data, function (i, e) {
+				if (typeof(e) == "object") {
+					useJson = true;
+					return false;
+				}
+			})
+		}
+		if (useJson) {
+			opt.contentType = "application/json";
+		}
 	}
 
 	// post json content
@@ -6754,16 +6772,37 @@ function doFind(jo, jtbl, appendFilter)
 @param jdlg 可以是jquery对象，也可以是selector字符串或DOM对象，比如 "#dlgOrder". 注意：当对话框保存为单独模块时，jdlg=$("#dlgOrder") 一开始会为空数组，这时也可以调用该函数，且调用后jdlg会被修改为实际加载的对话框对象。
 
 @param opt.id String. 对话框set模式(mode=FormMode.forSet)时必设，set/del如缺省则从关联的opt.jtbl中取, add/find时不需要
-@param opt.jtbl Datagrid. dialog/form关联的datagrid -- 如果dlg对应多个tbl, 必须每次打开都设置
+@param opt.jtbl Datagrid. 指定对话框关联的列表(datagrid)，用于从列表中取值，或最终自动刷新列表。 -- 如果dlg对应多个tbl, 必须每次打开都设置
 @param opt.obj String. (v5.1) 对象对话框的对象名，如果未指定，则从my-obj属性获取。通过该参数可动态指定对象名。
 @param opt.offline Boolean. (v5.1) 不与后台交互。
-@param opt.title String. (v5.1) 指定对话框标题。
 @param opt.readonly String. (v5.5) 指定对话框只读。即设置wui-readonly类。
-@param opt.initData Object. 对话框add模式(mode=FormMode.forAdd)时可以设置，做为添加时的初始数据。
+
+showObjDlg底层通过showDlg实现，(v5.5)showObjDlg的opt会合并到showDlg的opt参数中，同时showDlg的opt.objParam将保留showObjDlg的原始opt。在每次打开对话框时，可以从beforeshow回调事件参数中以opt.objParam方式取出.
+以下代码帮助你理解这几个参数的关系：
+
+	function showObjDlg(jdlg, mode, opt)
+	{
+		opt = $.extend({}, jdlg.objParam, opt);
+		var showDlgOpt = $.extend({}, opt, {
+			...
+			objParam: opt
+		});
+		showDlg(jdlg, showDlgOpt);
+	}
+	jdlg.on("beforeshow", function (ev, formMode, opt) {
+		// opt即是上述showDlgOpt
+		// opt.objParam为showObjDlg的原始opt，或由jdlg.objParam传入
+	});
+
+@param opt.title String. (v5.1) 指定对话框标题。
+@param opt.data Object. (v5.5) 为对话框指定初始数据，对话框中name属性匹配的控件会在beforeshow事件后且show事件前自动被赋值。
+
+注意：如果是forSet模式的对话框，即更新数据时，只有与原始数据不同的字段才会提交后端。
+
+其它参数可参考showDlg函数的opt参数。
 
 @key objParam 对象对话框的初始参数。
 
-showObjDlg底层通过showDlg实现，注意这两个函数的opt参数含义完全不一样。showObjDlg的opt相当于showDlg中的opt.objParam, 也可以在每次打开对话框时，从beforeshow回调事件参数中以opt.objParam方式取出.
 (v5.1)
 此外，通过设置jdlg.objParam，具有和设置opt参数一样的功能，常在initPageXXX中使用，因为在page中不直接调用showObjDlg，无法直接传参数opt.
 示例：
@@ -6816,17 +6855,16 @@ showObjDlg底层通过showDlg实现，注意这两个函数的opt参数含义完
 self.showObjDlg = showObjDlg;
 function showObjDlg(jdlg, mode, opt)
 {
-	opt = $.extend({mode: mode}, jdlg.objParam, opt);
 	if (jdlg.constructor != jQuery)
 		jdlg = $(jdlg);
-	else
-		jdlg.data("objParam", jdlg.objParam);
 	if (loadDialog(jdlg, onLoad))
 		return;
 	function onLoad() {
 		showObjDlg(jdlg, mode, opt);
 	}
 
+	opt = $.extend({mode: mode}, jdlg.objParam, opt);
+	jdlg.data("objParam", jdlg.objParam);
 	callInitfn(jdlg, [opt]);
 	if (opt.jtbl) {
 		jdlg.jdata().jtbl = opt.jtbl;
@@ -6957,7 +6995,7 @@ function showObjDlg(jdlg, mode, opt)
 	var load_data;
 	if (mode == FormMode.forAdd) {
 		// var init_data = jd.init_data || (jd2 && jd2.init_data);
-		load_data = $.extend({}, opt.initData);
+		load_data = $.extend({}, opt.data);
 		// 添加时尝试设置父结点
 		if (jd.jtbl && isTreegrid(jd.jtbl) && (rowData=getRow(jd.jtbl, true))) {
 			// 在展开的结点上点添加，默认添加子结点；否则添加兄弟结点
@@ -6982,6 +7020,11 @@ function showObjDlg(jdlg, mode, opt)
 				return;
 			load_data = data;
 		}
+		if (opt.data) {
+			setTimeout(function () {
+				mCommon.setFormData(jdlg, opt.data, {setOnlyDefined: true});
+			});
+		}
 	}
 	// objParam.reloadRow()
 	opt.reloadRow = function () {
@@ -6989,9 +7032,8 @@ function showObjDlg(jdlg, mode, opt)
 			self.reloadRow(opt.jtbl, rowData);
 	};
 	// open the dialog
-	showDlg(jdlg, {
+	var showDlgOpt = $.extend({}, opt, {
 		url: url,
-		title: opt.title,
 		okLabel: BTN_TEXT[mode],
 		validate: mode!=FormMode.forFind,
 		modal: false,  // mode == FormMode.forAdd || mode == FormMode.forSet
@@ -7001,6 +7043,7 @@ function showObjDlg(jdlg, mode, opt)
 		onOk: onOk,
 		objParam: opt
 	});
+	showDlg(jdlg, showDlgOpt);
 
 	if (mode == FormMode.forSet)
 		jfrm.form("validate");

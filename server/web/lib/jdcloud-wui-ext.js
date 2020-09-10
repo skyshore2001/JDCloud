@@ -1025,7 +1025,7 @@ function enhanceCombogrid(jo)
 	jdlg.on("beforeshow", onBeforeShow);
 
 	function onBeforeShow(ev, formMode, opt) {
-		if (formMode == FormMode.forSet && vfield) {
+		if (vfield && opt.data && opt.data[vfield]) {
 			setTimeout(function () {
 				// onShow
 				var val = jo.combogrid("getValue");
@@ -1034,6 +1034,7 @@ function enhanceCombogrid(jo)
 					jo.combogrid("setText", txt);
 				}
 			});
+			// nameForFind用于find模式下指定字段名，从而可以按名字来查询。Add/set模式下应清除。
 			jo.removeProp("nameForFind");
 		}
 	}

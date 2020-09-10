@@ -1852,6 +1852,12 @@ function hasSignFile($f)
 这样，当前端以`$div.html($val)`来显示时，不会产生跨域攻击泄漏Cookie。
 
 如果前端就是需要带"<>"的字符串（如显示在input中），则应自行转义。
+
+后端转义可以用html_entity_decode:
+
+	$s = "a&gt;1 and a&lt;100";
+	$s1 = html_entity_decode($s);
+
  */
 function htmlEscape($s)
 {

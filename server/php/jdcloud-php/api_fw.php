@@ -626,6 +626,8 @@ function setServerRev()
 
 **[simple]**
 
+@see hasPerm_simple
+
 通过HTTP头`X-Daca-Simple`传递密码, 与环境变量`simplePwd`进行比较. 
 示例: upload接口允许simple验证.
 
@@ -642,7 +644,12 @@ function setServerRev()
 
 	curl -s -F "file=@1.jpg" "http://localhost/jdcloud/api/upload?autoResize=0" -H "X-Daca-Simple: helloworldsimple"
 
-@see hasPerm_simple
+**[basic]**
+
+@see hasPerm_basic
+
+通过HTTP标准的Basic认证方式。
+
 @see checkAuth
  */
 function hasPerm($perms, $exPerms=null)
@@ -660,14 +667,75 @@ function hasPerm($perms, $exPerms=null)
 				return true;
 		}
 	}
+	else if ($exPerms) {
+		throw new MyException(E_SERVER, "bad perm: hasPerm require array for exPerms");
+	}
 	return false;
 }
 
+/**
+@fn hasPerm_simple()
+
+筋斗云简单认证，即添加HTTP头：
+
+	X-Daca-Simple: $authStr
+
+后端认证示例：
+
+	checkAuth(null, ["simple"]);
+	或
+	if (hasPerm(null, ["simple"]) ...
+
+其中authStr由配置项simplePwd确定，比如可以在conf.user.php中配置：
+
+	putenv("simplePwd=1234");
+
+请求示例：
+
+	curl http://localhost/jdcloud/api.php/xxx -H "X-Daca-Simple: 1234"
+*/
 function hasPerm_simple()
 {
 	@$pwd = $_SERVER["HTTP_X_DACA_SIMPLE"];
 	@$pwd1 = getenv("simplePwd");
 	return $pwd && $pwd1 && $pwd === $pwd1;
+}
+
+/**
+@fn hasPerm_basic()
+
+HTTP Basic认证，即添加HTTP头：
+
+	Authorization: Basic $authStr
+	
+按HTTP协议，authStr格式为base64($user:$password)
+可验证的用户名、密码在Conf类中配置，后端配置示例：
+
+	// class Conf (在conf.php中)
+	static $basicAuth = [
+		["user" => "user1", "pwd" => "1234"],
+		["user" => "user2", "pwd" => "1234"]
+	];
+
+请求示例：
+
+	curl --basic -u user1:1234 http://localhost/jdcloud/api.php/xxx
+
+注意：若php是基于apache fcgi方式的部署，可能无法收到认证串，可在apache中配置：
+
+	SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+
+*/
+function hasPerm_basic()
+{
+	list($user, $pwd) = [@$_SERVER['PHP_AUTH_USER'], @$_SERVER['PHP_AUTH_PW']];
+	if (! isset($user))
+		return false;
+	foreach (Conf::$basicAuth as $e) {
+		if ($e["user"] == $user && $e["pwd"] == $pwd)
+			return true;
+	}
+	return false;
 }
 
 /** 
@@ -935,6 +1003,22 @@ checkSecure函数返回false则不处理该调用，并将请求加入黑名单�
 	static function checkSecure($ac)
 	{
 	}
+
+/**
+@var ConfBase::basicAuth=[]
+
+可在conf.php中定义HTTP基本验证信息，一般用于合作伙伴接口认证，示例：
+
+	static $basicAuth = [
+		["user" => "user1", "pwd" => "1234"],
+		["user" => "user2", "pwd" => "1234"]
+	];
+
+*/
+	static $basicAuth = [
+//		["user" => "user1", "pwd" => "1234"],
+//		["user" => "user2", "pwd" => "1234"]
+	];
 }
 
 class ApiLog

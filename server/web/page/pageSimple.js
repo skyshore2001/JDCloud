@@ -42,6 +42,7 @@
 		// data: ajax得到的原始数据
 	}
 
+注意：关于分页：如果url中有pagesz=-1参数，则不分页。也可直接设置dgOpt.pagination指定。
 */
 function initPageSimple(url, queryParams, onInitGrid)
 {
@@ -58,9 +59,11 @@ function initPageSimple(url, queryParams, onInitGrid)
 		var columns = $.map(data.h, function (e) {
 			return {field: e, title: e};
 		});
+		var pagesz = url.params && url.params.pagesz;
 		var dgOpt = {
 			columns: [ columns ],
 			data: data,
+			pagination: pagesz !== -1,
 			toolbar: WUI.dg_toolbar(jtbl, null, btnExport)
 		};
 		onInitGrid && onInitGrid(jpage, jtbl, dgOpt, columns, data);
