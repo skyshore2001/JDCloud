@@ -6616,10 +6616,14 @@ function getFindData(jfrm)
 		var v = it.getValue(ji);
 		if (v == null || v === "")
 			return;
+		var k = ji.prop("name");
+		if (ji.attr("wui-find-hint")) {
+			k += "/" + ji.attr("wui-find-hint");
+		}
 		if (ji.hasClass("wui-notCond"))
-			kvList2[name] = v;
+			kvList2[k] = v;
 		else
-			kvList[name] = v;
+			kvList[k] = v;
 	})
 	var param = self.getQueryParam(kvList);
 	if (kvList2) 
