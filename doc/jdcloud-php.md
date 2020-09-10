@@ -757,13 +757,29 @@ function api_payOrder()
 
 在设计文档DESIGN.md中，我们用`@表名: 字段名1, 字段名2`这样的格式来定义数据模型。前面讲过，通过升级工具（tool/upgrade.php）可以把它们创建或更新到数据库中。
 
-字段名的类型根据命名规范自动判断，比如以id结尾的字段会被自动作为整型创建，以tm结尾会被当作日期时间类型创建，其它默认是字符串，规则如下：
+字段名的类型可在字段后标示，例如：`status(2)`表示2字符长度的字符串(nvarchar(2)), `创建时间(dt)`表示date类型。
+
+| 标记 | 类型 |
+|--    | --   |
+| s | small string(20)    |
+| l | long string(255)    |
+| t | text(64K)           |
+| tt | mediumtext(16M)    |
+| i | int                 |
+| n | numeric(decimal)    |
+| date | date             |
+| tm   | datetime         |
+| flag | tiny int         |
+| 数字 | 指定长度的string |
+| 不指定 | 自动判断       |
+
+如果未指定类型，则根据命名规范自动判断，比如以id结尾的字段会被自动作为整型创建，以tm结尾会被当作日期时间类型创建，其它默认是字符串（长度50），规则如下：
 
 | 规则 | 类型 |
 | --   | --   |
 | 以"Id"结尾                           | Integer
 | 以"Price"/"Total"/"Qty"/"Amount"结尾 | Currency
-| 以"Tm"/"Dt"/"Time"结尾               | Datetime/Date/Time
+| 以"Tm"/"Dt"结尾                      | Datetime/Date
 | 以"Flag"结尾                         | TinyInt(1B) NOT NULL
 
 例如，"total", "docTotal", "total2", "docTotal2"都被认为是Currency类型（字段名后面有数字的，判断类型时数字会被忽略）。
@@ -774,16 +790,8 @@ function api_payOrder()
 | --   | --   |
 | &    | Integer
 | @    | Currency
+| !    | Float
 | #    | Double
-
-字符串可以指定长度如`status(2)`，`name(s)`，字串长度以如下方式描述：
-
-| 标记 | 长度 |
-|--    | --   |
-| s | small=20            |
-| m | medium=50 (default) |
-| l | long=255            |
-| t | text                |
 
 为了简化接口对象到数据库表的映射，我们在数据库中创建的表名和字段名就按上述大小写相间的风格来，表名或对象名的首字母大写，表字段或对象属性的首字母小写。
 
