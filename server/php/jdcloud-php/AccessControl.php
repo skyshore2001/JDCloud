@@ -612,7 +612,7 @@ subobj: { name => {sql, default?=false, wantOne?=false} } 指定SQL语句，查�
 
 多对一的关联表往往设置`wantOne=true`，这样ordr属性就是个对象而非数组。
 
-注意：关联表不适用于添加/更新的情况。
+注意：在主表add接口中支持同时添加关联表, 但不可在set接口中添加/更新关联表.
 
 ### 子表查询参数
 
@@ -1582,7 +1582,10 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		}, $q);
 		# "aa = 100 and t1.bb>30 and cc IS null" -> "t0.aa = 100 and t1.bb>30 and t0.cc IS null" 
 		# "name not like 'a%'" => "t0.name not like 'a%'"
-		$ret = preg_replace_callback('/[\w.]+(?=\s*[=><]|\s+(IS|LIKE|BETWEEN|IN|NOT)\s)/iu', function ($ms) {
+		# NOTE: 避免字符串内被处理 "a='a=1'" 不要被处理成"t0.a='t0.a=1'"
+		$ret = preg_replace_callback('/(\'.+?\')|[\w.]+(?=\s*[=><]|\s+(IS|LIKE|BETWEEN|IN|NOT)\s)/iu', function ($ms) {
+			if ($ms[1])
+				return $ms[1];
 			// 't0.$0' for col, or 'voldef' for vcol
 			$col = $ms[0];
 			if (ctype_digit($col[0]) || strcasecmp($col, "NOT")==0 || strcasecmp($col, "IS")==0)
