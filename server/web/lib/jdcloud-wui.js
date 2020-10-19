@@ -1029,6 +1029,39 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 
 这个特性可用于未来WEB应用编译打包。
 
+### 按需加载依赖库
+
+@key wui-deferred
+(v5.5)
+
+如果页面或对话框依赖一个或一组库，且这些库不想在主页面中用script默认加载，这时可以使用`wui-deferred`属性。
+页面或对话框初始化函数wui-initfn将在该deferred对象操作成功后执行。
+
+示例：想在工艺对话框上使用mermaid库显示流程图，该库比较大，只在这一处使用，故不想在应用入口加载。
+可在app.js中添加库的加载函数：
+
+	var m_dfdMermaid;
+	function loadMermaidLib()
+	{
+		if (m_dfdMermaid == null)
+			m_dfdMermaid = WUI.loadScript("lib/mermaid.min.js");
+		return m_dfdMermaid;
+	}
+
+在对话框html中用wui-deferred引入依赖库：
+
+	<form my-obj="Flow" title="工艺" ... wui-deferred="loadMermaidLib()">
+
+在对话框模块（初始化函数）中就可以直接使用这个库了：
+
+	function initDlgFlow()
+	{
+		...
+		mermaid.render("graph", def, function (svg) {
+			jdlg.find(".graph").html(svg);
+		});
+	}
+
 ## 参考文档说明
 
 以下参考文档介绍WUI模块提供的方法/函数(fn)、属性/变量(var)等，示例如下：
@@ -2440,6 +2473,21 @@ function parseKvList(str, sep, sep2)
 	return map;
 }
 
+/**
+@fn Q(str, q?="'")
+
+	Q("abc") -> 'abc'
+	Q("a'bc") -> 'a\'bc'
+
+ */
+window.Q = self.Q = Q;
+function Q(str, q)
+{
+	if (q == null)
+		q = "'";
+	return q + str.replaceAll(q, "\\" + q) + q;
+}
+
 function initModule()
 {
 	// bugfix: 浏览器兼容性问题
@@ -2929,6 +2977,57 @@ function loadScript(url, fnOK, options)
 	}
 	document.head.appendChild(script);
 	return dfd_;
+}
+
+/**
+@fn loadJson(url, fnOK, options)
+
+从远程获取JSON结果. 
+注意: 与$.getJSON不同, 本函数不直接调用JSON.parse解析结果, 而是将返回当成JS代码使用eval执行得到JSON结果再回调fnOK.
+
+示例:
+
+	WUI.loadJson("1.js", function (data) {
+		// handle json value `data`
+	});
+
+1.js可以是返回任意JS对象的代码, 如:
+
+	{
+		a: 2 * 3600,
+		b: "hello",
+		// c: {}
+	}
+
+如果不处理结果, 则该函数与$.getScript效果类似.
+ */
+self.loadJson = loadJson;
+function loadJson(url, fnOK, options)
+{
+	var ajaxOpt = $.extend({
+		dataType: "text",
+		jdFilter: false,
+		success: function (data) {
+			val = eval("(" + data + ")");
+			fnOK.call(this, val);
+		}
+	}, options);
+	return $.ajax(url, ajaxOpt);
+}
+
+/**
+@fn loadCss(url)
+
+动态加载css文件, 示例:
+
+	WUI.loadCss("lib/bootstrap.min.css");
+
+ */
+self.loadCss = loadCss;
+function loadCss(url)
+{
+	var jo = $('<link type="text/css" rel="stylesheet" />').attr("href", url);
+	jo.appendTo($("head"));
 }
 
 /**
@@ -4050,14 +4149,41 @@ mockData中每项可以直接是数据，也可以是一个函数：fn(param, po
 */
 self.mockData = {};
 
+/**
+@key $.ajax
+@key ajaxOpt.jdFilter 禁用返回格式合规检查.
+
+以下调用, 如果1.json符合`[code, data]`格式, 则只返回处理data部分; 否则将报协议格式错误:
+
+	$.ajax("1.json", {dataType: "json"})
+	$.get("1.json", null, console.log, "json")
+	$.getJSON("1.json", null, console.log)
+
+对于ajax调用($.ajax,$.get,$.post,$.getJSON等), 若明确指定dataType为"json"或"text", 且未指定jdFilter为false, 
+则框架按筋斗云返回格式即`[code, data]`来处理只返回data部分, 不符合该格式, 则报协议格式错误.
+
+以下调用未指定dataType, 或指定了jdFilter=false, 则不会应用筋斗云协议格式:
+
+	$.ajax("1.json")
+	$.get("1.json", null, console.log)
+	$.ajax("1.json", {jdFilter: false}) // jdFilter选项明确指定了不应用筋斗云协议格式
+
+*/
 var ajaxOpt = {
 	beforeSend: function (xhr) {
 		// 保存xhr供dataFilter等函数内使用。
 		this.xhr_ = xhr;
+		var type = this.dataType;
+		if (this.jdFilter !== false && (type == "json" || type == "text")) {
+			this.jdFilter = true;
+			// for jquery > 1.4.2. don't convert text to json as it's processed by defDataProc.
+			// NOTE: 若指定dataType为"json"时, jquery会对dataFilter处理过的结果再进行JSON.parse导致出错, 根据jquery1.11源码修改如下:
+			this.converters["text json"] = true;
+		}
 	},
 	//dataType: "text",
 	dataFilter: function (data, type) {
-		if (this.jdFilter !== false && (type == "json" || type == "text")) {
+		if (this.jdFilter) {
 			rv = defDataProc.call(this, data);
 			if (rv !== RV_ABORT)
 				return rv;
@@ -4065,10 +4191,6 @@ var ajaxOpt = {
 			self.app_abort();
 		}
 		return data;
-	},
-	// for jquery > 1.4.2. don't convert text to json as it's processed by defDataProc.
-	converters: {
-		"text json": true
 	},
 
 	error: defAjaxErrProc
@@ -4333,6 +4455,11 @@ function getBaseUrl()
 
 	MUI.makeUrl(['login', 'zhanda']) 等价于 MUI.makeUrl('zhanda:login');
 
+特别地, 如果action是相对路径, 或是'.php'文件, 则不会自动拼接WUI.options.serverUrl:
+
+	callSvr("./1.json"); // 如果是callSvr("1.json") 则url可能是 "../api.php/1.json"这样.
+	callSvr("./1.php");
+
 @see callSvrExt
  */
 self.makeUrl = makeUrl;
@@ -4378,8 +4505,8 @@ function makeUrl(action, params)
 	if (fnMakeUrl) {
 		url = fnMakeUrl(action, params);
 	}
-	// 缺省接口调用：callSvr('login') 或 callSvr('php/login.php');
-	else if (action.indexOf(".php") < 0)
+	// 缺省接口调用：callSvr('login'),  callSvr('./1.json') 或 callSvr("1.php") (以"./"或"../"等相对路径开头, 或是取".php"文件, 则不去自动拼接serverUrl)
+	else if (action[0] != '.' && action.indexOf(".php") < 0)
 	{
 		var opt = self.options;
 		var usePathInfo = !opt.serverUrlAc;
@@ -4818,6 +4945,25 @@ callSvr扩展示例：
 	.finally(...)
 
 支持catch/finally等Promise类接口。接口逻辑失败时，dfd.reject()触发fail/catch链。
+
+## 直接取json类文件
+
+(v5.5) 如果ac是调用相对路径, 则直接当成最终路径, 不做url拼接处理:
+
+	callSvr("./1.json"); // 如果是callSvr("1.json") 则实际url可能是 "../api.php/1.json"这样.
+	callSvr("../1.php");
+
+相当于调用
+
+	$.ajax("../1.php", {dataType: "json", success: callback})
+	或
+	$.getJSON("../1.php", callback);
+
+注意下面调用未指定dataType, 不会按筋斗云协议格式处理:
+
+	$.ajax("../1.php", {success: callback})
+
+@see $.ajax
 */
 self.callSvr = callSvr;
 self.callSvrExt = {};
@@ -5678,14 +5824,25 @@ function showPage(pageName, title, paramArr)
 		jpageNew.attr("wui-pageName", pageName);
 		jpageNew.attr("title", title);
 
-		$.parser.parse(jpageNew); // easyui enhancement
-		enhanceGrid(jpageNew);
-		self.enhanceWithin(jpageNew);
-		callInitfn(jpageNew, paramArr);
+		var dep = self.evalAttr(jpageNew, "wui-deferred");
+		if (dep) {
+			self.assert(dep.then, "*** wui-deferred attribute DOES NOT return a deferred object");
+			dep.then(initPage1);
+			return;
+		}
+		initPage1();
 
-		jpageNew.data("showPageArgs_", showPageArgs_); // used by WUI.reloadPage
-		jpageNew.trigger('pagecreate');
-		jpageNew.trigger('pageshow');
+		function initPage1()
+		{
+			$.parser.parse(jpageNew); // easyui enhancement
+			enhanceGrid(jpageNew);
+			self.enhanceWithin(jpageNew);
+			callInitfn(jpageNew, paramArr);
+
+			jpageNew.data("showPageArgs_", showPageArgs_); // used by WUI.reloadPage
+			jpageNew.trigger('pagecreate');
+			jpageNew.trigger('pageshow');
+		}
 	}
 
 	function loadPage(html, pageClass, pageFile)
@@ -6697,23 +6854,34 @@ function loadDialog(jdlg, onLoad)
 		jdlg.attr("wui-pageFile", pageFile);
 		jdlg.addClass('wui-dialog');
 
-		$.parser.parse(jdlg); // easyui enhancement
-		jdlg.find(">table:first, form>table:first").has(":input").addClass("wui-form-table");
-		self.enhanceWithin(jdlg);
-
-		var val = jdlg.attr("wui-script");
-		if (val != null) {
-			var path = getModulePath(val);
-			var dfd = mCommon.loadScript(path, onLoad);
-			dfd.fail(function () {
-				self.app_alert("加载失败: " + val);
-			});
+		var dep = self.evalAttr(jdlg, "wui-deferred");
+		if (dep) {
+			self.assert(dep.then, "*** wui-deferred attribute DOES NOT return a deferred object");
+			dep.then(loadDialogTpl1);
+			return;
 		}
-		else {
-			// bugfix: 第1次点击对象链接时(showObjDlg动态加载对话框), 如果出错(如id不存在), 系统报错但遮罩层未清, 导致无法继续操作.
-			// 原因是, 在ajax回调中再调用*同步*ajax操作且失败(这时$.active=2), 在dataFilter中会$.active减1, 然后强制用app_abort退出, 导致$.active清0, 从而在leaveWaiting时无法hideLoading
-			// 解决方案: 在ajax回调处理中, 为防止后面调用同步ajax出错, 使用setTimeout让第一个调用先结束.
-			setTimeout(onLoad);
+		loadDialogTpl1();
+
+		function loadDialogTpl1()
+		{
+			$.parser.parse(jdlg); // easyui enhancement
+			jdlg.find(">table:first, form>table:first").has(":input").addClass("wui-form-table");
+			self.enhanceWithin(jdlg);
+
+			var val = jdlg.attr("wui-script");
+			if (val != null) {
+				var path = getModulePath(val);
+				var dfd = mCommon.loadScript(path, onLoad);
+				dfd.fail(function () {
+					self.app_alert("加载失败: " + val);
+				});
+			}
+			else {
+				// bugfix: 第1次点击对象链接时(showObjDlg动态加载对话框), 如果出错(如id不存在), 系统报错但遮罩层未清, 导致无法继续操作.
+				// 原因是, 在ajax回调中再调用*同步*ajax操作且失败(这时$.active=2), 在dataFilter中会$.active减1, 然后强制用app_abort退出, 导致$.active清0, 从而在leaveWaiting时无法hideLoading
+				// 解决方案: 在ajax回调处理中, 为防止后面调用同步ajax出错, 使用setTimeout让第一个调用先结束.
+				setTimeout(onLoad);
+			}
 		}
 	}
 	return true;

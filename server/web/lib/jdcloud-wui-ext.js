@@ -1463,6 +1463,9 @@ $.extend(self.dg_toolbar, {
 		{
 		}
 
+- relatedKey: 关联字段. 指定两表(当前表与obj对应表)如何关联, 值"cusId"与"cusId={id}"等价, 表示`主表.id=CusOrder.cusId`.
+ 可以明确指定被关联字段, 如relatedKey="name={name}" 表示`主表.name=CusOrder.name`. 
+
 - dlg: 对应子表详情对话框。如果指定，则允许添加、更新、查询操作。
 
 以下字段仅当关联对话框（即dlg选项设置）后有效：
@@ -1522,6 +1525,15 @@ function enhanceSubobj(jo)
 	var opt = WUI.getOptions(jo);
 	self.assert(opt.relatedKey, "wui-subobj: 选项relatedKey未设置");
 
+	var m = opt.relatedKey.match(/(\w+)=\{(\w+)\}/);
+	if (m) {
+		opt.relatedKey = m[1];
+		opt.relatedKeyTo = m[2];
+	}
+	else {
+		opt.relatedKeyTo = "id";
+	}
+
 	// 子表表格和子表对话框
 	var jtbl = jo.find("table:first");
 	self.assert(jtbl.size() >0, "wui-subobj: 未找到子表表格");
@@ -1563,7 +1575,7 @@ function enhanceSubobj(jo)
 					}
 				}
 				else if (formMode == FormMode.forSet) {
-					var mainId = beforeShowOpt.data.id;
+					var mainId = beforeShowOpt.data[opt.relatedKeyTo];
 
 					jdlg1.objParam[opt.relatedKey] = mainId;
 					jdlg1.objParam.readonly = opt.readonly;
@@ -1582,7 +1594,7 @@ function enhanceSubobj(jo)
 			else {
 				jo.toggle(formMode == FormMode.forSet);
 				if (formMode == FormMode.forSet) {
-					var mainId = beforeShowOpt.data.id;
+					var mainId = beforeShowOpt.data[opt.relatedKeyTo];
 					var dgOpt = {
 						url: getQueryUrl(mainId)
 					};
@@ -1592,7 +1604,8 @@ function enhanceSubobj(jo)
 		}
 
 		function getQueryUrl(mainId) {
-			return WUI.makeUrl(opt.obj + ".query", {cond: opt.relatedKey + "=" + mainId, res: opt.res});
+			var val = $.isNumeric(mainId)? mainId: Q(mainId);
+			return WUI.makeUrl(opt.obj + ".query", {cond: opt.relatedKey + "=" + val, res: opt.res});
 		}
 	}
 
