@@ -871,6 +871,29 @@ query接口支持fmt参数：
 	- excel: 逗号分隔的文件，gb18030编码以便excel可直接打开不会显示中文乱码。
 	- txt: 制表分隔的文件, utf8编码。
 
+- hash: (v5.5) 返回key-value形式的数据. 值可以是对象, 数组还是标量, 从而有多种细分格式, 如
+	"hash", "hash:keyField", "hash:keyField,valueField", "multihash", "multihash:keyField", "multihash:keyField,valueField"等形式
+
+array和hash格式示例:
+
+	callSvr("Sn.query", {gres:"status", res:"COUNT(id) cnt")
+	// {h: ["status","cnt"], d: [{status:"CA", cnt:2}, {status:"CR", cnt:50}, {status:"RE", cnt:2}]}
+
+	callSvr("Sn.query", {gres:"status", res:"COUNT(id) cnt", fmt:"array")
+	// [{status:"CA", cnt:2}, {status:"CR", cnt:50}, {status:"RE", cnt:2}]
+
+	callSvr("Sn.query", {gres:"status", res:"COUNT(id) cnt",fmt:"hash"}) 或(未指定keyField时,默认取第1个字段即status)
+	callSvr("Sn.query", {gres:"status", res:"COUNT(id) cnt",fmt:"hash:status"})
+	// {"CA":{status:"CA", cnt:2}, "CR":{status:"CR", cnt:50}, "RE":{status:"RE", cnt:2}}
+
+	callSvr("Sn.query", {gres:"status", res:"COUNT(id) cnt",fmt:"hash:status,cnt"})
+	// {"CA", 2, "CR":50, "RE": 2}
+
+	callSvr("Sn.query", {gres:"status", res:"COUNT(id) cnt",fmt:"multihash:cnt"})
+	// {2:[{status:"CA",cnt:2}, {status:"RE",cnt:2}], 50:[{status:"CR", cnt:50}]}
+	callSvr("Sn.query", {gres:"status", res:"COUNT(id) cnt",fmt:"multihash:cnt,status"})
+	// {2:["CA","RE"], 50:["CR"]}
+
 TODO: 可加一个系统参数`_enc`表示输出编码的格式。
 
 ### distinct查询
@@ -2219,8 +2242,10 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 				$subobjList = $_POST[$k];
 				$onAfterActions[] = function (&$ret) use ($subobjList, $v) {
 					$relatedKey = null;
-					if (preg_match('/(\w+)=%d/u', $v["cond"], $ms)) {
+					$relatedKeyTo = null;
+					if (preg_match('/(\w+)=(%d|\{(\w+)\})/u', $v["cond"], $ms)) {
 						$relatedKey = $ms[1];
+						$relatedKeyTo = $ms[3];
 					}
 					if ($relatedKey == null) {
 						throw new MyException(E_SERVER, "bad cond: cannot get relatedKey", "子表配置错误");
@@ -2228,6 +2253,12 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 
 					$objName = $v["obj"];
 					$acObj = AccessControl::create($objName, null, $v["AC"]);
+					$relatedValue = $this->id;
+					if ($relatedKeyTo != null && $relatedKeyTo != "id") {
+						$relatedValue = $_POST[$relatedKeyTo];
+						if (! isset($relatedValue))
+							throw new MyException(E_PARAM, "subobj-add/set fails: require relatedKey `$relatedKeyTo`");
+					}
 					foreach ($subobjList as $subobj) {
 						$subid = $subobj["id"];
 						if ($subid) {
@@ -2237,7 +2268,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 								throw new MyException(E_FORBIDDEN, "$objName id=$subid: require $relatedKey={$this->id}, actual " . var_export($fatherId, true), "不可操作该子项");
 							*/
 							// set/del接口支持cond.
-							$cond = $relatedKey . "=" . $this->id;
+							$cond = $relatedKey . "=" . $relatedValue;
 							if (! @$subobj["_delete"]) {
 								$acObj->callSvc($objName, "set", ["id"=>$subid, "cond"=>$cond], $subobj);
 							}
@@ -2246,7 +2277,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 							}
 						}
 						else {
-							$subobj[$relatedKey] = $this->id;
+							$subobj[$relatedKey] = $relatedValue;
 							$acObj->callSvc($objName, "add", null, $subobj);
 						}
 					}
@@ -2548,6 +2579,32 @@ FROM ($sql) t0";
 			if (count($ret[0]) == 1)
 				return current($ret[0]);
 			return $ret[0];
+		}
+		// hash
+		// hash:keyField
+		// hash:keyField,valueField
+		// multihash
+		// multihash:keyField
+		// multihash:keyField,valueField
+		else if (preg_match('/^(multi)?hash (: (\w+) (,(\w+))?)?$/xu', $fmt, $ms)) {
+			list($keyField, $isMulti, $valueField) = [$ms[3], $ms[1], $ms[5]];
+			$ret1 = [];
+			foreach ($ret as $row) {
+				$k = $keyField? $row[$keyField]: current($row);
+				$v = $valueField? $row[$valueField]: $row;
+				if ($isMulti) {
+					if (array_key_exists($k, $ret1)) {
+						$ret1[$k][] = $v;
+					}
+					else {
+						$ret1[$k] = [$v];
+					}
+				}
+				else {
+					$ret1[$k] = $v;
+				}
+			}
+			return $ret1;
 		}
 		else {
 			$ret = objarr2table($ret, $fixedColCnt);

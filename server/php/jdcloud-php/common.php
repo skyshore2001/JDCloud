@@ -875,4 +875,61 @@ function pivot($objArr, $gcols, $ycolCnt=1)
 	$ret = array_values($xMap);
 	return $ret;
 }
+
+/**
+@fn myround($val, $n=0)
+
+保留指定小数点位数，返回字符串。如果有多余的0则删除。
+
+注意：php的round返回的是浮点数，不精确。比如0.53会返回0.53000000000000003
+而number_format函数尾部可能会有多余的0.
+*/
+function myround($val, $n=0)
+{
+	$s = number_format($val, $n, ".", "");
+	// 去除多余的0或小数点
+	if (strpos($s, '.') !== false)
+		$s = preg_replace('/\.?0+$/', '', $s);
+	return $s;
+}
+
+/**
+@fn mh($val)
+
+显示工时。以"30s"（秒）, "5m"（分）, "1.2h"（小时）, "3d"（天）这种样式显示。
+*/
+function mh($val)
+{
+	if ($val < 0.0166) // 小于1分钟，以秒计
+		return myround($val * 3600) . "s";
+	if ($val < 1) // 小于1小时，以分钟计
+		return myround($val *60, 2) . "m";
+	if ($val > 48) // 大于48小时，以天计
+		return myround($val/24, 1) . "d";
+	return myround($val, 2) . "h";
+}
+
+/**
+@fn fromMh($val)
+
+将工时字符串转为小时。示例：
+
+- "30s"（秒） => 30/3600.0
+- "5m"（分）=> 5/60.0
+- "1.2h"（小时）=> 1.2
+- "3d"（天）=> 3*24.0
+*/
+function fromMh($str)
+{
+	$val = floatval($str);
+	$unit = substr($str, -1);
+	if ($unit === 's')
+		return $val / 3600.0;
+	if ($unit === 'm')
+		return $val / 60.0;
+	if ($unit === 'd')
+		return $val * 24.0;
+	return $val;
+}
+
 // vi: foldmethod=marker
