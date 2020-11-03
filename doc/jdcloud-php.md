@@ -5,7 +5,7 @@
 随着移动互联网的快速发展，各行业对手机应用开发需求旺盛。
 应用开发一般分为前端和后端，后端关注数据和业务，需要对前端各类应用（如安卓应用、苹果应用、H5应用等）提供基于HTTP协议的交互接口。
 
-筋斗云是一个Web接口开发框架，它基于模型驱动开发（MDD）的理念，提出极简化开发的“数据模型即接口”思想，用于快速实现基于数据模型的接口（MBI: Model Based Interface）。
+筋斗云是一个低代码架构的Web接口开发框架，它基于模型驱动开发（MDD）的理念，提出极简化开发的“数据模型即接口”思想，用于快速实现基于数据模型的接口（MBI: Model Based Interface）。
 它推崇以简约的方式在设计文档中描述数据模型，进而基于模型自动形成数据库表以及业务接口，称为“一站式数据模型部署”。
 
 筋斗云是使用php语言开发的，现在也支持其它语言的版本，它们都实现了[“分布式对象访问与权限控制架构”（DACA）](https://github.com/skyshore2001/daca/)中的服务端规约。
@@ -17,7 +17,7 @@
 - [jdclud-java](https://github.com/skyshore2001/jdcloud-java) (筋斗云后端java版本)
 - [jdclud-cs](https://github.com/skyshore2001/jdcloud-cs) (筋斗云后端.net版本)
 
-另外，筋斗云有优雅的前端框架，支持构建模块化的H5单页应用：
+另外，筋斗云有实用的前端框架，支持构建模块化的H5单页应用：
 
 - [jdcloud-mui](https://github.com/skyshore2001/jdcloud-mui) 筋斗云移动端单页应用框架，用于创建手机H5应用程序。
 - [jdcloud-wui](https://github.com/skyshore2001/jdcloud-wui) 筋斗云管理端单页应用框架，用于创建运营管理端H5应用程序。
@@ -118,6 +118,9 @@ class AC2_ApiLog extends AccessControl
 }
 ```
 
+其中会话变量empId为员工编号，在员工登录后就会自动存在这个变量中，在AC2前缀的类中可直接使用。
+类似的，用户登录后在uid变量表示用户编号，在AC1前缀类中可以直接使用。
+
 **[一站式数据模型部署]**
 
 筋斗云框架重视设计文档，倡导在设计文档中用简约的方式定义数据模型与接口原型，
@@ -144,7 +147,7 @@ class AC2_ApiLog extends AccessControl
 
 如果github访问困难，也可以用这个git仓库： `http://dacatec.com/git/jdcloud-php.git`
 
-配置好Web服务器，php环境和MySQL数据库。
+安装好Web服务器(一般用apache或nginx)，php环境和MySQL数据库。
 项目下server目录为Web应用的源码目录，把该目录映射到Web服务器下，假如URL为`http://localhost/mysvc/`，这称为该项目的基准路径（BASE_URL）。
 先检查系统环境以及配置数据库连接等，在浏览器中打开初始化工具页面：
 
@@ -260,7 +263,7 @@ curl用"-d"参数指定参数通过HTTP body来传递，由于默认使用HTTP P
 		"nextkey":11349
 	}]
 
-返回的格式称为压缩表，"h"为表头字段，"d"为表的数据，在接口描述中用`table(id, 其它字段...)`表示。
+返回的格式称为压缩表或hd表，"h"为表头字段，"d"为表的数据，在接口描述中用`table(id, 其它字段...)`表示。
 
 默认返回的JSON数据未经美化，效率较高，如果想看的清楚些，可以在配置文件conf.user.php中设置测试模式：
 
@@ -657,17 +660,29 @@ queryOne只返回首行数据，特别地，如果返回行中只有一列，则
 	// 没有数据时，返回空数组 []，而不是false
 	$rv = queryAll("SELECT id, dscr FROM Ordr WHERE userId={$uid}");
 
-执行非查询语句可以用包装函数`execOne`如：
+执行插入或更新操作可以用dbInsert和dbUpdate:
+
+	$orderId = dbInsert("Ordr", [
+		"dscr" => $_POST["dscr"]
+	]);
+
+	dbUpdate("Ordr", [
+		"dscr" => $_POST["dscr"]
+	], $orderId);
+
+也可以对所有非查询操作直接使用底层函数`execOne`如：
 
 	execOne("DELETE ...");
 	execOne("UPDATE ...");
 	execOne("INSERT INTO ...");
+	execOne("set group_concat_max_len=100000"); // 设置group_concat相关选项
+	$v = queryOne("SELECT @@group_concat_max_len");
 
 对于insert语句，可以取到执行后得到的新id值：
 
 	$newId = execOne("INSERT INTO ...", true);
 
-**[防备SQL注入]**
+**[Q函数与防备SQL注入]**
 
 要特别注意的是，所有外部传入的字符串参数都不应直接用来拼接SQL语句，
 下面登录接口的实现就包含一个典型的SQL注入漏洞：
@@ -1082,7 +1097,7 @@ class AC1_Ordr extends AccessControl
 
 一般虚拟字段都建议默认不返回，而是按需来取，以减少关联表或计算带来的开销。
 
-在cond参数中可以直接使用虚拟字段，不管它是否在res参数中指定，如
+虚拟字段不仅可用于查询输出，也常常用于查询条件。在cond参数中可以直接使用虚拟字段，不管它是否在res参数中指定，如
 
 	Ordr.query(cond="userName LIKE '%john%'", res="id,dscr")
 
@@ -1092,19 +1107,19 @@ class AC1_Ordr extends AccessControl
 {
 	protected $vcolDefs = [
 		[
-			"res" => ["u.name AS userName", "u.phone AS userPhone"],
+			"res" => ["u.name userName", "u.phone userPhone"],
 			"join" => "INNER JOIN User u ON u.id=t0.userId",
 			// "default" => false, // 与接口原型中字段是否可缺省(是否用"?"标记)对应
 		],
 		[
-			"res" => ["log_cr.tm AS createTm"],
+			"res" => ["log_cr.tm createTm"],
 			"join" => "LEFT JOIN OrderLog log_cr ON log_cr.action='CR' AND log_cr.orderId=t0.id",
 		]
 	]
 }
 ```
 
-- 以上很多表或字段指定了别名，比如表"User u"，字段"u.name AS userName"。在指定别名时，关键字"AS"可以省略。
+- 以上很多表或字段指定了别名，比如表"User u"，字段"u.name userName"（等价于与SQL类似的"u.name AS userName"）
 - 表的别名不是必须的，除非有多个同名的表被引用。
 - 如果指定"default"选项为true, 则调用Ordr.query()时如果未指定"res"参数，会默认会带上该字段。
 
@@ -1119,7 +1134,7 @@ class AC1_Ordr extends AccessControl
 	订单评价Rating(orderId) n<->1 订单Ordr
 	订单Ordr(userId) n<->1 用户User
 
-现在要为Rating表增加关联字段订单描述 "Ordr.dscr AS orderDscr", 以及客户姓名 "User.name AS userName", 设计接口为：
+现在要为Rating表增加关联字段订单描述 "Ordr.dscr orderDscr", 以及客户姓名 "User.name userName", 设计接口为：
 
 	Rating.query() -> tbl(id, orderId, content, ..., orderDscr?, userName?)
 
@@ -1131,11 +1146,11 @@ class AC1_Rating extends AccessControl
 {
 	protected $vcolDefs = [
 		[
-			"res" => ["o.dscr AS orderDscr"],
+			"res" => ["o.dscr orderDscr"],
 			"join" => "INNER JOIN Ordr o ON o.id=t0.orderId",
 		],
 		[
-			"res" => ["u.name AS userName"],
+			"res" => ["u.name userName"],
 			"join" => "INNER JOIN User u ON o.userId=u.id",
 		],
 	];
@@ -1158,7 +1173,7 @@ class AC1_Rating extends AccessControl
 {
 	protected $vcolDefs = [
 		[
-			"res" => ["o.dscr AS orderDscr", "u.name AS userName"],
+			"res" => ["o.dscr orderDscr", "u.name userName"],
 			"join" => "INNER JOIN Ordr o ON o.id=t0.orderId INNER JOIN User u ON o.userId=u.id",
 		]
 	];
@@ -1173,11 +1188,11 @@ class AC1_Rating extends AccessControl
 {
 	protected $vcolDefs = [
 		[
-			"res" => ["o.dscr AS orderDscr"],
+			"res" => ["o.dscr orderDscr"],
 			"join" => "INNER JOIN Ordr o ON o.id=t0.orderId",
 		],
 		[
-			"res" => ["u.name AS userName"],
+			"res" => ["u.name userName"],
 			"join" => "INNER JOIN User u ON o.userId=u.id",
 			"require" => "userId" // *** 定义依赖，如果要用到res中的字段如userName，则自动添加orderDscr字段引入的表关联。
 		]
@@ -1213,14 +1228,14 @@ class AC1_Ordr extends AccessControl
 {
 	protected $vcolDefs = [
 		[
-			"res" => ["(SELECT SUM(qty*ifnull(price2,0)) FROM OrderItem WHERE orderId=t0.id) AS amount2"],
+			"res" => ["(SELECT SUM(qty*ifnull(price2,0)) FROM OrderItem WHERE orderId=t0.id) amount2"],
 		]
 	];
 }
 ```
 
 这里amount2在res中定义为一个复杂的子查询，其中还用到了t0表，也即是主表"Ordr"的固定别名。
-可想而知，在这个例子中，取该字段的查询效率是比较差的。也不要把它用到cond条件中。
+可想而知，在这个例子中，取该字段的查询效率是比较差的。也尽量不要把它用到cond条件中。
 
 **[子表字段]**
 
@@ -1257,99 +1272,89 @@ class AC1_Ordr extends AccessControl
 }
 ```
 
+注意：子表字段在MySQL数据库中有长度限制，默认是1024。如果想扩大，可以自行估算大小并设置：
+
+	execOne("set group_concat_max_len=100000");
+
+由于每次接口调用都是独立的连接会话，在接口的设置只会影响当前接口，不影响其它接口。
+
 ### 子表对象
 
 前面提到过想在对象中返回子表时，可以使用压缩成一个字符串的子表字段，一般适合数据比较简单的场合。
 
-另一种方式是用`$subobj`来定义子表对象。
+另一种方式是用`$subobj`来定义子表字段，注意它也适用于关联表字段。
 
 例如在获取订单时，同时返回订单日志，设计接口如下：
 
-	Ordr.get() -> {id, ..., @orderLog?}
+	Ordr.get() -> {id, ..., @orderLog?, @user?}
+
+	数据库中订单，日志及用户表如下：
+	@Ordr: id, userId, tm, amount (通过userId关联User)
+	@OrderLog: id, orderId, tm, dscr (通过orderId关联Ordr)
+	@User: id, name
 
 	返回
-	orderLog: {id, tm, dscr, action} 订单日志子表。
+	orderLog: {tm, dscr} 订单日志（子表）。
+	user: {id, name} 关联的用户（关联表）。
 
 	示例
 
 	{id: 1, dscr: "换轮胎及洗车", ..., orderLog: [
-		{id: 1, tm: "2016-1-1 10:10", action: "CR", dscr: "创建订单"},
-		{id: 2, tm: "2016-1-1 10:20", action: "PA", dscr: "付款"}
-	]}
+		{tm: "2016-1-1 10:10", dscr: "创建订单"},
+		{tm: "2016-1-1 10:20", dscr: "付款"}
+	], user: {id: 1, name: "用户1"} }
 
 上面接口原型描述中，字段orderLog前面的"@"标记表示它是一个数组，在返回值介绍中列出了它的数据结构。
 
-**[实现方式一：直接指定子表查询]**
+实现示例：
 
 ```php
 class AC1_Ordr extends AccessControl
 {
 	protected $subobj = [
-		"orderLog" => ["sql"=>"SELECT ol.* FROM OrderLog ol WHERE ol.orderId=%d"]
+		"user" => ["obj"=>"User", cond"=>"id={userId}", "AC"=>"AccessControl", "wantOne"=>true],
+		"orderLog" => ["obj"=>"OrderLog", cond"=>"orderId={id}", "AC"=>"AccessControl", "res"=>"tm,dscr"]
 	];
 }
 ```
 
-用选项"sql"定义子表的查询语句，其中用"%d"来表示主表主键，这里即Ordr.id字段。
-
-定义子表对象时，还可设置一些选项，比如上面设置等价于：
-
-		"orderLog" => ["sql"=>..., "wantOne"=>false, "default"=>false]
-
-- 选项"wantOne"表示是否只返回一行。默认是返回一个对象数组，如`[{id, tm, ...}]`。
-  如果选项"wantOne"为true，则结果以一个对象返回即 `{id, tm, ...}`, 适用于主表与子表一对一的情况。
-
-- 选项"default"与虚拟字段(vcolDefs)上的"default"选项一样，表示当get或query接口未指定"res"参数时，是否默认返回该字段。
+- 参数`obj`指定子对象名。意味着`Ordr.get`查询中返回的`orderLog`字段，实现时相当于调用内部接口`OrderLog.query`。
+- 可选参数`AC`指定子表类名，如果不指定，则根据当前角色自动选择类（如`AC1_OrderLog`，若没有这个类则会报错）。这里直接指定使用基类`AccessControl`，是最简单的做法，不必去定义子表的AC类。
+- 参数`cond`指定了关联关系，其中用`{id}`替代主表id。在较早的版本使用`orderId=%d`的方式（`%d`等价于`{id}`）。
+- 可选参数`res`指定子表缺省字段，相当于调用`OrderLog.query(res="tm,dscr")`. 类似地，多数query接口的参数均可使用在此，例如`orderby`, `gres`等，还支持内部参数，如`cond2`, `join`, `res2`以及`OrderLog`子对象支持的特殊参数等。
+- 可选参数`wantOne`表示是否只返回一行。默认是返回一个对象数组，如`[{id, name...}]`。
+  如果选项"wantOne"为true，则结果以一个对象返回即 `{id, name...}`, 适用于当前主表与关联表一对一或多对一的情况。
+- 可选参数"default"与虚拟字段(vcolDefs)上的"default"选项一样，表示当get或query接口未指定"res"参数时，是否默认返回该字段。
   一般应使用默认值false，客户端需要时应通过res参数指定，如 `Ordr.query(res="*,orderLog")`.
 
-注意：查询子表作为子对象字段是不支持分页的。如果子表可能很大，不要设计使用子表字段或列表字段，而应直接用子表的query方法来取，如开放接口"OrderLog.query"。
+注意：
 
-**[实现方式二：复用子表AC对象]**
+- 由于分页的限制，子表字段查询到的条数有限制（默认1000条，可设置AC类的maxPageSz到10000条）。
+ 若一条主表记录可能关联超过千条子表记录，则不建议用子表，而是直接用OrderLog.query去做。
 
-(v5.4起支持)
+- 在query接口中，为避免对每一条记录分别查询子表导致性能低下，做了批量查询优化。
+ 例如Ordr.query返回20条数据，若不优化，该接口需要查询1(主表)+20(user子表)+20(orderLog子表)=41次，优化后只查询1(主表)+1(user子表)+1(orderLog子表)=3次。
+ 所以若一条主表记录平均关联50条以上子表记录，则只应使用get接口，不要用query接口。
+ 因为query接口的优化算法很可能导致子表数据有丢失（比如一次取20条数据，每条Ordr数据平均关联50条OrderLog子表记录，则优化后需要一次取1000条记录，而默认分页限制为1000条记录）。
 
-```php
-class AC1_Ordr extends AccessControl
-{
-	protected $subobj = [
-		// "orderLog" => ["sql"=>"SELECT ol.* FROM OrderLog ol WHERE ol.orderId=%d"]
-		"orderLog" => ["obj"=>"OrderLog", cond"=>"orderId=%d", "AC"=>"AccessControl", "res"=>"tm,dscr"]
-	];
-}
-```
-
-- 参数`obj`指定子对象名。意味着`Ordr.get`查询中返回的`orderLog`字段，实现时相当于调用内部接口`OrderLog.query(fmt=list, pagesz=-1)`。
-- 参数`cond`指定了关联关系，其中用`%d`替代主表id。
-- 可选参数`AC`指定子表类名，如果不指定，则根据当前角色自动选择类（如`AC1_OrderLog`，若没有这个类则会报错）。这里直接指定使用基类`AccessControl`，是最简单的做法，不必去定义子表的AC类。
-- 可选参数`res`指定子表缺省字段，相当于调用`OrderLog.query(res="tm,dscr")`. 类似地，多数query接口的参数均可使用在此，例如`orderby`, `gres`等，还支持内部参数，如`cond2`, `join`, `res2`以及`OrderLog`子对象支持的特殊参数等。
-
-与方式一的区别有：
-
-- 查询时，充分利用子表AC类，例如可使用子表定义的虚拟字段等。
-- 查询时可以用`res_{子表显示名}`参数来指定子表返回字段。示例：`callSvr("Ordr.get", {id: 1, res_orderLog:"id,dscr"})`
-- 子表返回行数受分页控制，默认是相当于`pagesz=-1`时返回的项数。
-- 不仅仅是查询，还支持对子表的添加、追加、更新、删除。
-- 定义subobj时不支持选项`wantOne`，但可以用`"fmt"=>"one"`来替代。
-
-例如，可增加子表项`OrderLog`的AC类定义，实现更多的子表控制。
+上面直接用了`AccessControl`类来实现子表查询，也可增加子表`OrderLog`的AC类定义，以实现更多的子表控制，比如限制增删改查操作类型、定义虚拟字段等。
 
 ```php
-class OrderLog extends AccessControl
+class AC1_OrderLog extends AccessControl
 {
-	protected $allowedAc = ["query"];
+	protected $allowedAc = ["query"]; // 只允许查询
 	protected $vcolDefs = [
 		...
 	];
 }
 ```
-有子表定义后，只要将"orderLog"定义的AC选项由"AccessControl"改成"OrderLog"即可使用:
+有子表定义后，只要将"orderLog"定义的AC选项由"AccessControl"改成"AC1_OrderLog"即可(或不定义AC选项，直接用默认):
 
-		"orderLog" => ["obj"=>"OrderLog", cond"=>"orderId=%d", "AC"=>"OrderLog"]
+		"orderLog" => ["obj"=>"OrderLog", cond"=>"orderId={id}", "AC"=>"AC1_OrderLog"]
 
-当然也可以定义`AC1_OrderLog`这样的类，这样就对外直接提供了像`OrderLog.query`这样的子对象接口。
-一般子表AC类是不对外开放的。
+用了`AC1`前缀则表示该接口对外开放了，也可以把类名改为`OrderLog`这样的类，这样子表接口就不直接对外开放了。
 
-而且，可以在`Ordr.add`接口中直接添加子项，如
+有了子表定义，可以在`Ordr.add`接口中直接添加子项，如
 
 	callSvr("Ordr.add", $.noop, {..., orderLog: [{dscr:"操作1"}, {dscr:"操作2"}]}, {contentType: "application/json"});
 	(注意前端callSvr接口可指定contentType为json格式，传输更清晰)
@@ -1367,7 +1372,101 @@ class OrderLog extends AccessControl
 
 它内部会调用`OrderLog.add/set/del`接口。
 
-注意子项默认是支持这些标准接口的，但可由子表AC类的`$allowedAc`来限定，例如例中限制了只允许`query`接口(`$allowedAc=["query"]`)，于是所有对子项的追加、更新、修改都会报错。
+当然，前提是子表AC类中允许相应的接口。AC类默认是支持这些标准接口的，可由`$allowedAc`来限定，例如例中限制了只允许`query`接口(`$allowedAc=["query"]`)，于是所有对子项的追加、更新、修改都会报错。
+
+### 枚举字段与字段处理
+
+之前讲的虚拟字段都是通过数据库来关联或计算的，还有一种方式可以使用代码任意处理返回字段值，这就是枚举字段。
+
+示例：实现接口
+
+	Ordr.get(id) -> {id, status, ..., statusStr?}
+	Ordr.query() -> tbl(同get接口字段...)
+
+	- status: "CR" - 新创建, "PA" - 已付款
+	- statusStr: 状态名称，用中文表示。
+
+分析：框架本身就支持枚举字段，比如要将status字段转成描述，可直接由前端调用，示例：
+
+	Ordr.query(res="id 编号, status 状态=CR:新创建;PA:已付款")
+
+此处是要求将statusStr字段进行转换，所以只需要定义一下虚拟字段即可，设置enumFields，让该字段能自动转换枚举值：
+
+```php
+class AC1_Ordr extends AccessControl
+{
+	protected $vcolDefs = [
+		// 定义statusStr就是status，如果希望默认返回，可加"default":true选项。
+		[ "res" => ["status statusStr"] ],
+	];
+	protected function onInit()
+	{
+		// 设置转换
+		$this->enumFields["statusStr"] = ["CR"=>"新创建", "PA"=>"已付款"];
+	}
+}
+```
+
+以上将statusStr定义成一个虚拟字段，可以和标准字段一样使用。
+也可以用enumFields指定处理函数，以下代码效果与上面相同：
+
+```php
+class AC1_Ordr extends AccessControl
+{
+	protected $vcolDefs = [
+		// 定义statusStr就是status，如果希望默认返回，可加"default":true选项。
+		[ "res" => ["status statusStr"] ],
+	];
+	static $statusMap = ["CR"=>"新创建", "PA"=>"已付款"];
+	protected function onInit()
+	{
+		$this->enumFields["statusStr"] = function ($val, $row) {
+			return @self::$statusMap[$val] ?: $val;
+		};
+	}
+}
+```
+
+由于enumFields很灵活，我们经常使用enumFields机制来实现计算字段。
+
+若遇到用虚拟字段不易解决的问题，还可以用试试更加底层的onHandleRow回调。
+下面的实现表示，如果返回了status字段，则自动添加statusStr字段：
+
+```php
+class AC1_Ordr extends AccessControl
+{
+	static $statusMap = ["CR"=>"新创建", "PA"=>"已付款"];
+	// get/query接口会回调
+ 	protected function onHandleRow(&$row)
+ 	{
+		if (isset($row["status"])) {
+			$val = $row["status"];
+			$row["statusStr"] = @self::$statusMap[$val] ?: $val;
+		}
+ 	}
+}
+```
+
+这个实现有一点问题，它不支持字段别名，比如接口调用`Ordr.query(res="id 编号, status 状态")`，这时在onHandleRow中取不到status字段，只有"状态"字段。
+解决方法是用 getAliasVal 函数取字段值：
+```php
+class AC1_Ordr extends AccessControl
+{
+	static $statusMap = ["CR"=>"新创建", "PA"=>"已付款"];
+	// get/query接口会回调
+ 	protected function onHandleRow(&$row)
+ 	{
+		$val = $this->getAliasVal($row, "status");
+		if ($val) {
+			// 假如statusStr是在vcolDefs或subobj中定义成虚拟字段的，
+			// 则应使用`$this->setAliasVal($row, "statusStr", $val)`来赋值以支持字段别名。
+			$row["statusStr"] = @self::$statusMap[$val] ?: $val;
+		}
+ 	}
+}
+```
+
+在enumFields回调中也是用getAliasVal和setAliasVal来支持字段别名的。
 
 ### 虚拟表和视图
 
@@ -1420,7 +1519,7 @@ class AC2_EmpLog extends AccessControl
 	protected $defaultRes = "id, tm, userId, ac, req, res, reqsz, ressz, empName, empPhone";
 	protected $vcolDefs = [
 		[
-			"res" => ["e.name AS empName", "e.phone AS empPhone"],
+			"res" => ["e.name empName", "e.phone empPhone"],
 			"join" => "LEFT JOIN Employee e ON e.id=t0.userId"
 		]
 	];
@@ -1471,30 +1570,7 @@ class AC1_Ordr extends AccessControl
 属性`$this->id`可用于取add操作结束时的新对象id，或get/set/del操作的id参数。
 
 对象接口调用完后，还会回调onAfter函数，也可以在这个回调里面操作。
-此外，如要在get/query接口返回前修改返回数据，用onHandleRow回调函数更加方便。
-
-示例：实现接口
-
-	Ordr.get(id) -> {id, status, ..., statusStr?}
-	Ordr.query() -> tbl(同get接口字段...)
-
-	- status: "CR" - 新创建, "PA" - 已付款
-	- statusStr: 状态名称，用中文表示，当有status返回时则同时返回该字段
-
-```php
-class AC1_Ordr extends AccessControl
-{
-	static $statusStr = ["CR" => "未付款", "PA" => "待服务"];
-	// get/query接口会回调
- 	protected function onHandleRow(&$rowData)
- 	{
-		if (isset($rowData["status"])) {
-			$st = $rowData["status"];
-			$rowData["statusStr"] = @self::$statusStr[$st] ?: $st;
-		}
- 	}
-}
-```
+此外，如要在get/query接口返回前修改返回数据，用enumFields机制或onHandleRow回调函数更加方便，请参考[枚举字段与字段处理]()章节。
 
 ### 非标准对象接口
 

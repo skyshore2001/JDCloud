@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（移动Web版）</h1>
-<div>最后更新：2020-07-04</div>
+<div>最后更新：2020-11-03</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -1152,6 +1152,20 @@ var arr = mCommon.rs2Array(rs);</code></pre>
 &lt;input type="checkbox" name="flag" value="1" value-off="0"&gt;</code></pre>
 <p class="param"><strong>@param cb</strong> (ji, name, it) it.getDisabled/setDisabled/getValue/setValue/getShowbox</p>
 <p>当cb返回false时可中断遍历。</p>
+<p>示例：</p>
+<pre><code>WUI.formItems(jdlg.find(".my-fixedField"), function (ji, name, it) {
+    var fixedVal = ...
+    if (fixedVal || fixedVal == '') {
+        it.setReadonly(ji, true);
+        var forAdd = beforeShowOpt.objParam.mode == FormMode.forAdd;
+        if (forAdd) {
+            it.setValue(ji, fixedVal);
+        }
+    }
+    else {
+        it.setReadonly(ji, false);
+    }
+});</code></pre>
 <p class="key"><strong>@key <a id="defaultFormItems">defaultFormItems</a></strong> </p></div>
 <div class="block">
 <h2 id="setFormData">@fn setFormData(jo, data?, opt?)</h2>
@@ -1440,6 +1454,10 @@ WUI.getQueryCond(kvList); // 结果同上。</code></pre>
 <pre><code>{k1:'1-5,7-10', k2:'1-10 and &lt;&gt;6'}</code></pre>
 <p>符号优先级依次为：&quot;-&quot;(类似and) &quot;,&quot;(类似or) and or</p>
 <p>在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。</p>
+<p>(v5.5) value支持用数组表示范围（前闭后开区间），主要内部使用：</p>
+<pre><code>var cond = getQueryCond({tm: ["2019-1-1", "2020-1-1"]}); // 生成 "tm&gt;='2019-1-1' AND tm&lt;'2020-1-1'"
+var cond = getQueryCond({tm: [null, "2020-1-1"]}); // 生成 "tm&lt;'2020-1-1'"
+var cond = getQueryCond({tm: [null, null]); // 返回null</code></pre>
 <p class="see"><strong>@see <a href="#getQueryParam">getQueryParam</a></strong> </p>
 <p class="see"><strong>@see <a href="#getQueryParamFromTable">getQueryParamFromTable</a></strong>  获取datagrid的当前查询参数</p></div>
 <div class="block">
@@ -1538,8 +1556,8 @@ callSvr('token/get-token', ...);</code></pre>
 <div class="block">
 <h2 id="defDataProc">@fn defDataProc(rv)</h2>
 <p class="param"><strong>@param rv</strong>  BQP协议原始数据，如 "[0, {id: 1}]"，一般是字符串，也可以是JSON对象。</p>
-<p class="return"><strong>@return data</strong>  按接口定义返回的数据对象，如 {id: 1}. 如果返回==null，调用函数应直接返回，不回调应用层。</p>
-<p>注意：服务端不应返回null, 否则客户回调无法执行; 习惯上返回false表示让回调处理错误。</p></div>
+<p class="return"><strong>@return data</strong>  按接口定义返回的数据对象，如 {id: 1}. 如果返回值===RV_ABORT，调用函数应直接返回，不回调应用层。</p>
+<p>注意：如果callSvr设置了<code>noex:1</code>选项，则当调用失败时返回false。</p></div>
 <div class="block">
 <h2 id="getBaseUrl">@fn getBaseUrl()</h2>
 <p>取服务端接口URL对应的目录。可用于拼接其它服务端资源。<br />
