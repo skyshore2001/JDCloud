@@ -10,10 +10,12 @@
 
 	require_once("php/autoload.php");
 
+特别地，对于AC类，统一按文件名"AC_{对象}"来查找，比如"AC0_Role", "AC_Role", "AC2_Role"都会找"AC_Role.php"文件。
 */
 
 set_include_path(get_include_path().PATH_SEPARATOR.__DIR__ . '/class');
 spl_autoload_register(function ($cls) {
+	$cls = preg_replace('/^AC\d_/', 'AC_', $cls);
 	$path = __DIR__ . '/class/' . str_replace('\\', '/', $cls) . '.php';
 	if (is_file($path)) {
 		include_once($path);

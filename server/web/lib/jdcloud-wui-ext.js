@@ -1268,6 +1268,8 @@ function applyPermission()
 	// e.g. "item,mgr" - ".perm-item, .perm-mgr"
 	if (!perms)
 		return;
+	// replace special chars
+	perms = perms.replace(/[&]/g, '_');
 	var sel = perms.replace(/([^, ]+)/g, '.perm-$1');
 	var arr = perms.split(/,/);
 	if (sel) {
