@@ -5,6 +5,14 @@
 - 测试环境为 http://a.com/jdcloud/api.php/
 - 生产环境为 http://a.com/jdcloud/api.php/
 
+本文档调用示例使用JS函数表示：
+
+	callSvr(调用名, URL参数/可选, $.noop/function(data){回调函数}, POST参数/可选)
+
+比如：
+
+	callSvr("Ordr.set", {id: 100}, $.noop, {amount: 99.9});
+
 ## 通用机制
 
 ### 接口返回
@@ -26,78 +34,113 @@
 
 ### 对象查询接口
 
-形式如`XX.query`的接口是对象查询接口，它支持以下通用查询参数：
+	GET $BASE_URL/XX.query
+
+形式如`XX.query`的接口是对象查询接口，一般使用GET方法通过URL传参，也可以通过POST内容传参。它支持以下通用查询参数：
 
 - res: 指定需要的返回字段，如`id,name`, `*,items`等，默认值为`*`。可以为字段指定别名，如`id 编号, name 名字`。
-- cond: 指定查询条件。示例：`status='PA'`, `status='PA' OR status='RE'`, `tm>='2020-1-1' and tm<'2020-2-1'`
+- cond: 指定查询条件。示例：`status='PA'`, `status='PA' OR status='RE'`, `tm>='2020-1-1' and tm<'2020-2-1'`。使用jdcloud前端框架可通过getQueryCond函数生成查询条件。
 - orderby: 指定排序方式，如按编号倒排：`id DESC`，可以多个字段如`status, id DESC`
+
+注意：返回列表会分页，默认每页20条数据，可通过pagesz参数调整每页条数。
 
 **[返回格式]**
 
-query接口默认返回格式为`{h,d}`：
+query接口默认返回格式为`{h,d}`，通过表头h与表内容d传数据表，由于表头单独返回，相比传统对象数组格式减少了重复，传输更高效：
 
 	{h: ["字段1", "字段2", ...], d: [ ["字段1内容", "字段2内容", ...], [ ...第2行 ], ... ] } 
 
-建议前端通过`rs2Array`函数转成对象对象格式。
+使用jdcloud前端框架可通过`rs2Array`函数转成对象对象格式，或通过`rs2Hash`/`rs2MultiHash`转成映射表格式。
 
 通过`fmt`参数可以调整返回格式，常用有：
 
 - fmt=list: 返回格式为`{list: 对象数组}`
 - fmt=one: 只取一条
+- fmt=array: 返回对象数组，相当于fmt=list时的list子项，由于无法返回分页参数，所以不适合分页。
 
 - fmt=excel: 导出Excel文件（配合fname参数可指定默认文件名）
 
 **[分页机制]**
 
-常用分页列表，或自动上拉加载列表。query接口支持以下参数：
+传统分页列表使用page参数指定页码，根据返回的total与页内条数(pagesz)确定页数：
 
-- pagesz: 指定每次返回多少条数据，默认为20条数据。
-- pagekey: 一般首页查询可不填写，而下次查询时应根据上次调用时返回数据的"nextkey"字段来填写。如果需要知道总记录数，可在首次查询时填写0，则会返回总记录数即total字段。
+- page: Integer. 可选，指定分页页码，默认为1（第1页）。
+- pagesz: Integer. 指定每次返回多少条数据，默认为20条数据。设置为-1表示返回最大条目数，后端默认限制为最大1000条，可调整到最大1万条。
 
 返回：
 
-- nextkey: 供取下一页时填写参数"pagekey". 如果不存在该字段，则说明已经是最后一批数据。
-- total: 返回总记录数，仅当pagekey指定为0时返回。
+- total: 返回总记录数，仅当指定了page参数，或有pagekey参数且指定为0时返回。
+- nextkey: 用于上拉加载分页（下节介绍），供取下一页时填写参数"pagekey". 如果不存在该字段，则说明已经是最后一页数据。
 
 示例：
 
-第一次查询
+取首页：
 
-	Ordr.query()
+	callSvr("Ordr.query", {page: 1})
+
+返回：
+
+	{h: [id, ...], data: [...], total: 51}
+
+可推算总页数为`Math.ceil(51/20)=3`页（按默认pagesz=20计算）。
+
+取第2页：
+
+	callSvr("Ordr.query", {page: 2})
+
+另一种分页方式更高效，即上拉加载分页，使用pagekey参数：
+
+- pagekey: String. 一般首页查询可不填写，而下次查询时应根据上次调用时返回数据的"nextkey"字段来填写。如果需要知道总记录数，可在首次查询时填写0，则会返回总记录数即total字段。
+
+示例：取首页查询
+
+	callSvr("Ordr.query")
 
 返回
 
-	{nextkey: 10800910, h: [id, ...], data: [...]}
+	{nextkey: "10800910", h: [id, ...], data: [...]}
 
-其中的nextkey将供下次查询时填写pagekey字段；首次查询还会返回total字段。由于缺省页大小为20，所以可估计总共有51/20=3页。
+其中的nextkey将供下次查询时填写pagekey字段。
 
-要在首次查询时返回总记录数，则用pagekey=0：
+第二次查询(下一页)
 
-	Ordr.query(pagekey=0)
+	callSvr("Ordr.query", {pagekey: "10800910"});
+
+返回数据有含有nextkey字段说明还可以继续查询，若不带"nextkey"属性，表示所有数据获取完毕。
+
+要在首次查询时返回总记录数，则须指定pagekey=0：
+
+	callSvr("Ordr.query", {pagekey: 0})
 
 这时返回
 
 	{nextkey: 10800910, total: 51, h: [id, ...], data: [...]}
 
-第二次查询(下一页)
+可推算总页数为`Math.ceil(51/20)=3`页（按默认pagesz=20计算）。
 
-	Ordr.query(pagekey=10800910)
+### 对象修改接口
 
-返回
+要更新的字段通过POST内容传输。支持urlencoded或json格式，通过`Content-Type: application/x-www-form-urlencoded`或`Content-Type: application/json`指定POST内容格式。
 
-	{nextkey: 10800931, h: [...], d: [...]}
+添加/add接口：
 
-仍返回nextkey字段说明还可以继续查询，
+	POST $BASE_URL/XX.add
 
-再查询下一页
+	添加字段内容
 
-	Ordr.query(pagekey=10800931)
+返回格式为`[0, id]`，其中id是新添加对象的编号，是个整数，可用于之后操作。
 
-返回
+更新/set接口：
 
-	{h: [...], d: [...]}
+	POST $BASE_URL/XX.set?id={id}
 
-返回数据中不带"nextkey"属性，表示所有数据获取完毕。
+	修改字段内容
+
+注意：编号id通过url传递，要修改的字段在POST内容中传递。
+
+删除/del接口：
+
+	GET $BASE_URL/XX.del?id={id}
 
 ### 图片地址
 
@@ -110,6 +153,7 @@ query接口默认返回格式为`{h,d}`：
 
 	// 取图片地址：
 	var imgUrl = MUI.makeUrl("att", {id: 100});
+	jimg.attr("src", imgUrl); // 设置到img.src属性。
 
 在支持缩略图时，字段内保存的是缩略图的编号，可以这样来取缩略图和原始大图的地址：
 
@@ -131,7 +175,7 @@ query接口默认返回格式为`{h,d}`：
 
 - genThumb: 默认为0。设置为1时表示生成缩略图。
 
-注意：该接口需要用户登录权限。
+注意：该接口需要用户登录权限，也可以使用简单认证（参考之前章节）。
 
 返回：
 
@@ -139,6 +183,30 @@ query接口默认返回格式为`{h,d}`：
 
 - id: 图片编号。
 - thumbId: 生成的缩略图编号。
+
+注意返回的是一个数组，若一次上传多个文件，则依次返回。
+
+在填写文件字段比如atts时（或是不带缩略图的图片字段），将文件编号以逗号分隔后存入，比如`100`, `101,102`这样。取文件时用`att(id)`接口。
+在填写图片字段比如pics时，一般应支持缩略图，这时将缩略图编号以逗号分隔，比如`101,103`这样存入图片字段中。取图片时用`att(thumbId)`接口。
+
+示例：使用FormData对象上传
+
+HTML:
+
+	file: <input id="file1" type="file" multiple>
+	<button type="button" id="btn1">upload</button>
+
+JS:
+
+	jpage.find("#btn1").on('click', function () {
+		var fd = new FormData();
+		$.each(jpage.find('#file1')[0].files, function (i, e) {
+			fd.append('file' + (i+1), e);
+		});
+		callSvr('upload', api_upload, fd);
+
+		function api_upload(data) { ... }
+	});
 
 ### 签名
 
