@@ -3727,6 +3727,16 @@ function makeUrl(action, params)
 - 指定{noex:1}用于忽略错误处理。
 - 指定{noLoadingImg:1} 静默调用，忽略loading图标，不设置busy状态。
 
+指定contentType和设置自定义HTTP头(headers)示例:
+
+	var opt = {
+		contentType: "text/xml",
+		headers: {
+			Authorization: "Basic aaa:bbb"
+		}
+	};
+	callSvr("hello", $.noop, "<?xml version='1.0' encoding='UTF-8'?><return><code>0</code></return>", opt);
+
 想为ajax选项设置缺省值，可以用callSvrExt中的beforeSend回调函数，也可以用$.ajaxSetup，
 但要注意：ajax的dataFilter/beforeSend选项由于框架已用，最好不要覆盖。
 
