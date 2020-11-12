@@ -1071,6 +1071,268 @@ function getTimeDiffDscr(tm, tm1)
 	return "很久前";
 }
 
+/**
+@fn WUI.getTmRange(dscr, now?)
+
+根据时间段描述得到`[起始时间，结束时间)`，注意结束时间是开区间（即不包含）。
+假设今天是2015-9-9 周三：
+
+	getTmRange("本周", "2015-9-9") -> ["2015-9-7"(本周一), "2015-9-14")
+	getTmRange("上周") -> ["2015-8-31", "2015-9-7")  // 或"前1周"
+
+	getTmRange("本月") -> ["2015-9-1", "2015-10-1")
+	getTmRange("上月") -> ["2015-8-1", "2015-9-1")
+
+	getTmRange("今年") -> ["2015-1-1", "2016-1-1") // 或"本年"
+	getTmRange("去年") -> ["2014-1-1", "2015-1-1") // 或"上年"
+
+	getTmRange("本季度") -> ["2015-7-1", "2015-10-1") // 7,8,9三个月
+	getTmRange("上季度") -> ["2015-4-1", "2015-7-1")
+
+	getTmRange("上半年") -> ["2015-1-1", "2015-7-1")
+	getTmRange("下半年") -> ["2015-7-1", "2016-1-1")
+
+	getTmRange("今天") -> ["2015-9-9", "2015-9-10") // 或"本日"
+	getTmRange("昨天") -> ["2015-9-8", "2015-9-9") // 或"昨日"
+
+	getTmRange("前1周") -> ["2015-8-31"(上周一)，"2015-9-7"(本周一))
+	getTmRange("前3月") -> ["2015-6-1", "2015-9-1")
+	getTmRange("前3天") -> ["2015-9-6", "2015-9-9")
+
+	getTmRange("近1周") -> ["2015-9-3"，"2015-9-10")
+	getTmRange("近3月") -> ["2015-6-10", "2015-9-10")
+	getTmRange("近3天") -> ["2015-9-6", "2015-9-10")  // "前3天"+今天
+
+dscr可以是 
+
+	"近|前|上" N "个"? "小时|日|周|月|年|季度"
+	"本|今" "小时|日/天|周|月|年|季度"
+
+注意："近X周"包括今天（即使尚未过完）。
+
+示例：快捷填充
+
+		<td>
+			<select class="cboTmRange">
+				<option value ="本月">本月</option>
+				<option value ="上月">上月</option>
+				<option value ="本周">本周</option>
+				<option value ="上周">上周</option>
+				<option value ="今年">今年</option>
+				<option value ="去年">去年</option>
+			</select>
+		</td>
+
+	var txtTmRange = jdlg.find(".cboTmRange");
+	txtTmRange.change(function () {
+		var range = WUI.getTmRange(this.value);
+		if (range) {
+			WUI.setFormData(jfrm, {tm1: range[0], tm2: range[1]}, {setOnlyDefined: true});
+		}
+	});
+	// 初始选中
+	setTimeout(function () {
+		txtTmRange.change();
+	});
+
+ */
+self.getTmRange = getTmRange;
+function getTmRange(dscr, now)
+{
+	if (! now)
+		now = new Date();
+	else if (! (now instanceof Date)) {
+		now = WUI.parseDate(now);
+	}
+	else {
+		now = new Date(now); // 不修改原时间
+	}
+
+	var rv = getTmRangeSimple(dscr, now);
+	if (rv)
+		return rv;
+
+	dscr = dscr.replace(/本|今/, "前0");
+	dscr = dscr.replace(/上|昨/, "前");
+	var re = /(近|前)(\d*).*?(小时|日|天|月|周|年)/;
+	var m = dscr.match(re);
+	if (! m)
+		return;
+	
+	var dt1, dt2, dt;
+	var type = m[1];
+	var n = parseInt(m[2] || '1');
+	var u = m[3];
+	var fmt_d = "yyyy-mm-dd";
+	var fmt_h = "yyyy-mm-dd HH:00";
+	var fmt_m = "yyyy-mm-01";
+	var fmt_y = "yyyy-01-01";
+
+	if (u == "小时") {
+		if (n == 0) {
+			now.add("h",1);
+			n = 1;
+		}
+		if (type == "近") {
+			now.add("h",1);
+		}
+		dt2 = now.format(fmt_h);
+		dt1 = now.add("h", -n).format(fmt_h);
+	}
+	else if (u == "日" || u == "天") {
+		if (n == 0 || type == "近") {
+			now.addDay(1);
+			++ n;
+		}
+		dt2 = now.format(fmt_d);
+		dt1 = now.add("d", -n).format(fmt_d);
+	}
+	else if (u == "月") {
+		if (n == 0) {
+			now.addMonth(1);
+			n = 1;
+		}
+		if (type == "近") {
+			now.addDay(1);
+			var d2 = now.getDate();
+			dt2 = now.format(fmt_d);
+			now.add("m", -n);
+			do {
+				// 5/31近一个月, 从4/30开始: [4/30, 5/31]
+				var d1 = now.getDate();
+				if (d1 == d2 || d1 > 10)
+					break;
+				now.addDay(-1);
+			} while (true);
+			dt1 = now.format(fmt_d);
+			
+			// now = WUI.parseDate(now.format(fmt_m)); // 回到1号
+			//dt1 = now.add("m", -n).format(fmt_m);
+		}
+		else if (type == "前") {
+			dt2 = now.format(fmt_m);
+			dt1 = WUI.parseDate(dt2).add("m", -n).format(fmt_m);
+		}
+	}
+	else if (u == "周") {
+		if (n == 0) {
+			now.addDay(7);
+			n = 1;
+		}
+		if (type == "近") {
+			now.addDay(1);
+			dt2 = now.format(fmt_d);
+			//now.add("d", -now.getDay()+1); // 回到周1
+			dt1 = now.add("d", -n*7).format(fmt_d);
+		}
+		else if (type == "前") {
+			dt2 = now.add("d", -now.getDay()+1).format(fmt_d);
+			dt1 = now.add("d", -7*n).format(fmt_d);
+		}
+	}
+	else if (u == "年") {
+		if (n == 0) {
+			now.add("y",1);
+			n = 1;
+		}
+		if (type == "近") {
+			now.addDay(1);
+			dt2 = now.format(fmt_d);
+			//now = WUI.parseDate(now.format(fmt_y)); // 回到1/1
+			dt1 = now.add("y", -n).format(fmt_d);
+		}
+		else if (type == "前") {
+			dt2 = now.format(fmt_y);
+			dt1 = WUI.parseDate(dt2).add("y", -n).format(fmt_y);
+		}
+	}
+	else {
+		return;
+	}
+	return [dt1, dt2];
+}
+
+function getTmRangeSimple(dscr, now)
+{
+	var fmt_d = "yyyy-mm-dd";
+	var fmt_m = "yyyy-mm-01";
+	var fmt_y = "yyyy-01-01";
+
+	if (dscr == "本月") {
+		var dt1 = now.format(fmt_m);
+		// NOTE: 不要用 now.addMonth(1). 否则: 2020/8/31取本月会得到 ["2020-08-01", "2020-10-01"]
+		var y = now.getFullYear();
+		var m = now.getMonth() + 2;
+		if (m == 12) {
+			++ y;
+			m = 1;
+		}
+		var dt2 = y + "-" + setWidth_2(m) + "-01";
+	}
+	else if (dscr == "上月") {
+		var dt2 = now.format(fmt_m);
+		var y = now.getFullYear();
+		var m = now.getMonth();
+		now.addMonth(-1);
+		if (m == 0) {
+			-- y;
+			m = 12;
+		}
+		var dt1 = y + "-" + setWidth_2(m) + "-01";
+	}
+	else if (dscr == "本周") {
+		var dt1 = now.add("d", -(now.getDay()||7)+1).format(fmt_d);
+		now.addDay(7);
+		var dt2 = now.format(fmt_d);
+	}
+	else if (dscr == "上周") {
+		var dt2 = now.add("d", -(now.getDay()||7)+1).format(fmt_d);
+		now.addDay(-7);
+		var dt1 = now.format(fmt_d);
+	}
+	else if (dscr == "今年") {
+		var dt1 = now.format(fmt_y);
+		now.addMonth(12);
+		var dt2 = now.format(fmt_y);
+	}
+	else if (dscr == "去年" || dscr == "上年") {
+		var dt2 = now.format(fmt_y);
+		now.addMonth(-12);
+		var dt1 = now.format(fmt_y);
+	}
+	else if (dscr == "本季度") {
+		var m = Math.floor(now.getMonth() / 3)*3 +1;
+		var dt1 = now.getFullYear() + "-" + setWidth_2(m) + "-01";
+		var dt2 = now.getFullYear() + "-" + setWidth_2(m+3) + "-01";
+	}
+	else if (dscr == "上季度") {
+		var m = Math.floor(now.getMonth() / 3)*3;
+		if (m > 0) {
+			var dt1 = now.getFullYear() + "-" + setWidth_2(m-3) + "-01";
+			var dt2 = now.getFullYear() + "-" + setWidth_2(m) + "-01";
+		}
+		else {
+			var y = now.getFullYear();
+			var dt1 = (y-1) + "-10-01";
+			var dt2 = y + "-01-01";
+		}
+	}
+	else if (dscr == "上半年") {
+		var y = now.getFullYear();
+		var dt1 = y + "-01-01";
+		var dt2 = y + "-07-01";
+	}
+	else if (dscr == "下半年") {
+		var y = now.getFullYear();
+		var dt1 = y + "-07-01";
+		var dt2 = (y+1) + "-01-01";
+	}
+	else {
+		return;
+	}
+	return [dt1, dt2];
+}
+
 // }}}
 
 // ====== Cookie and Storage (localStorage/sessionStorage) {{{
@@ -1730,6 +1992,21 @@ function parseKvList(str, sep, sep2)
 	return map;
 }
 
+/**
+@fn Q(str, q?="'")
+
+	Q("abc") -> 'abc'
+	Q("a'bc") -> 'a\'bc'
+
+ */
+window.Q = self.Q = Q;
+function Q(str, q)
+{
+	if (q == null)
+		q = "'";
+	return q + str.replaceAll(q, "\\" + q) + q;
+}
+
 function initModule()
 {
 	// bugfix: 浏览器兼容性问题
@@ -2219,6 +2496,57 @@ function loadScript(url, fnOK, options)
 	}
 	document.head.appendChild(script);
 	return dfd_;
+}
+
+/**
+@fn loadJson(url, fnOK, options)
+
+从远程获取JSON结果. 
+注意: 与$.getJSON不同, 本函数不直接调用JSON.parse解析结果, 而是将返回当成JS代码使用eval执行得到JSON结果再回调fnOK.
+
+示例:
+
+	WUI.loadJson("1.js", function (data) {
+		// handle json value `data`
+	});
+
+1.js可以是返回任意JS对象的代码, 如:
+
+	{
+		a: 2 * 3600,
+		b: "hello",
+		// c: {}
+	}
+
+如果不处理结果, 则该函数与$.getScript效果类似.
+ */
+self.loadJson = loadJson;
+function loadJson(url, fnOK, options)
+{
+	var ajaxOpt = $.extend({
+		dataType: "text",
+		jdFilter: false,
+		success: function (data) {
+			val = eval("(" + data + ")");
+			fnOK.call(this, val);
+		}
+	}, options);
+	return $.ajax(url, ajaxOpt);
+}
+
+/**
+@fn loadCss(url)
+
+动态加载css文件, 示例:
+
+	WUI.loadCss("lib/bootstrap.min.css");
+
+ */
+self.loadCss = loadCss;
+function loadCss(url)
+{
+	var jo = $('<link type="text/css" rel="stylesheet" />').attr("href", url);
+	jo.appendTo($("head"));
 }
 
 /**
@@ -3030,6 +3358,12 @@ function getop(v)
 
 @see getQueryParam
 @see getQueryParamFromTable 获取datagrid的当前查询参数
+@see doFind
+
+(v5.5) 支持在key中包含查询提示。如"code/s"表示不要自动猜测数值区间或日期区间。
+比如输入'126231-191024'时不会当作查询126231到191024的区间。
+
+@see wui-find-hint
 */
 self.queryHint = "查询示例\n" +
 	"文本：\"王小明\", \"王*\"(匹配开头), \"*上海*\"(匹配部分)\n" +
@@ -3061,12 +3395,26 @@ function getQueryCond(kvList)
 			return;
 		}
 
+		var hint = null;
+		var k1 = k.split('/');
+		if (k1.length > 1) {
+			k = k1[0];
+			hint = k1[1];
+		}
+
+		if ($.isArray(v)) {
+			if (v[0])
+				condArr.push(k + ">='" + v[0] + "'");
+			if (v[1])
+				condArr.push(k + "<'" + v[1] + "'");
+			return;
+		}
 		var arr = v.toString().split(/\s+(and|or)\s+/i);
 		var str = '';
 		var bracket = false;
 		// NOTE: 根据字段名判断时间类型
-		var isTm = /(Tm|^tm)\d*$/.test(k);
-		var isDt = /(Dt|^dt)\d*$/.test(k);
+		var isTm = hint == "tm" || /(Tm|^tm)\d*$/.test(k);
+		var isDt = hint == "dt" || /(Dt|^dt)\d*$/.test(k);
 		$.each(arr, function (i, v1) {
 			if ( (i % 2) == 1) {
 				str += ' ' + v1.toUpperCase() + ' ';
@@ -3074,6 +3422,7 @@ function getQueryCond(kvList)
 				return;
 			}
 			v1 = v1.replace(/，/g, ',');
+			v1 = v1.replace(/＊/g, '*');
 			// a-b,c-d,e
 			// dt1~dt2
 			var str1 = '';
@@ -3085,7 +3434,7 @@ function getQueryCond(kvList)
 				}
 				var mt; // match
 				var isHandled = false; 
-				if (isTm | isDt) {
+				if (hint != "s" && (isTm || isDt)) {
 					// "2018-5" => ">=2018-5-1 and <2018-6-1"
 					// "2018-5-1" => ">=2018-5-1 and <2018-5-2" (仅限Tm类型; Dt类型不处理)
 					if (mt=v2.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?$/)) {
@@ -3107,7 +3456,7 @@ function getQueryCond(kvList)
 						}
 					}
 				}
-				if (!isHandled) {
+				if (!isHandled && hint != "s") {
 					// "2018-5-1~2018-10-1"
 					// "2018-5-1 8:00 ~ 2018-10-1 18:00"
 					if (mt=v2.match(/^(\d{4}-\d{1,2}.*?)\s*~\s*(\d{4}-\d{1,2}.*?)$/)) {
@@ -3326,14 +3675,41 @@ mockData中每项可以直接是数据，也可以是一个函数：fn(param, po
 */
 self.mockData = {};
 
+/**
+@key $.ajax
+@key ajaxOpt.jdFilter 禁用返回格式合规检查.
+
+以下调用, 如果1.json符合`[code, data]`格式, 则只返回处理data部分; 否则将报协议格式错误:
+
+	$.ajax("1.json", {dataType: "json"})
+	$.get("1.json", null, console.log, "json")
+	$.getJSON("1.json", null, console.log)
+
+对于ajax调用($.ajax,$.get,$.post,$.getJSON等), 若明确指定dataType为"json"或"text", 且未指定jdFilter为false, 
+则框架按筋斗云返回格式即`[code, data]`来处理只返回data部分, 不符合该格式, 则报协议格式错误.
+
+以下调用未指定dataType, 或指定了jdFilter=false, 则不会应用筋斗云协议格式:
+
+	$.ajax("1.json")
+	$.get("1.json", null, console.log)
+	$.ajax("1.json", {jdFilter: false}) // jdFilter选项明确指定了不应用筋斗云协议格式
+
+*/
 var ajaxOpt = {
 	beforeSend: function (xhr) {
 		// 保存xhr供dataFilter等函数内使用。
 		this.xhr_ = xhr;
+		var type = this.dataType;
+		if (this.jdFilter !== false && (type == "json" || type == "text")) {
+			this.jdFilter = true;
+			// for jquery > 1.4.2. don't convert text to json as it's processed by defDataProc.
+			// NOTE: 若指定dataType为"json"时, jquery会对dataFilter处理过的结果再进行JSON.parse导致出错, 根据jquery1.11源码修改如下:
+			this.converters["text json"] = true;
+		}
 	},
 	//dataType: "text",
 	dataFilter: function (data, type) {
-		if (this.jdFilter !== false && (type == "json" || type == "text")) {
+		if (this.jdFilter) {
 			rv = defDataProc.call(this, data);
 			if (rv !== RV_ABORT)
 				return rv;
@@ -3341,10 +3717,6 @@ var ajaxOpt = {
 			self.app_abort();
 		}
 		return data;
-	},
-	// for jquery > 1.4.2. don't convert text to json as it's processed by defDataProc.
-	converters: {
-		"text json": true
 	},
 
 	error: defAjaxErrProc
@@ -3493,7 +3865,9 @@ function defDataProc(rv)
 	catch (e)
 	{
 		leaveWaiting(ctx);
-		self.app_alert("服务器数据错误。");
+		var msg = "服务器数据错误。";
+		self.app_alert(msg);
+		ctx.dfd.reject.call(this, msg);
 		return;
 	}
 
@@ -3607,6 +3981,11 @@ function getBaseUrl()
 
 	MUI.makeUrl(['login', 'zhanda']) 等价于 MUI.makeUrl('zhanda:login');
 
+特别地, 如果action是相对路径, 或是'.php'文件, 则不会自动拼接WUI.options.serverUrl:
+
+	callSvr("./1.json"); // 如果是callSvr("1.json") 则url可能是 "../api.php/1.json"这样.
+	callSvr("./1.php");
+
 @see callSvrExt
  */
 self.makeUrl = makeUrl;
@@ -3652,8 +4031,8 @@ function makeUrl(action, params)
 	if (fnMakeUrl) {
 		url = fnMakeUrl(action, params);
 	}
-	// 缺省接口调用：callSvr('login') 或 callSvr('php/login.php');
-	else if (action.indexOf(".php") < 0)
+	// 缺省接口调用：callSvr('login'),  callSvr('./1.json') 或 callSvr("1.php") (以"./"或"../"等相对路径开头, 或是取".php"文件, 则不去自动拼接serverUrl)
+	else if (action[0] != '.' && action.indexOf(".php") < 0)
 	{
 		var opt = self.options;
 		var usePathInfo = !opt.serverUrlAc;
@@ -4102,6 +4481,25 @@ callSvr扩展示例：
 	.finally(...)
 
 支持catch/finally等Promise类接口。接口逻辑失败时，dfd.reject()触发fail/catch链。
+
+## 直接取json类文件
+
+(v5.5) 如果ac是调用相对路径, 则直接当成最终路径, 不做url拼接处理:
+
+	callSvr("./1.json"); // 如果是callSvr("1.json") 则实际url可能是 "../api.php/1.json"这样.
+	callSvr("../1.php");
+
+相当于调用
+
+	$.ajax("../1.php", {dataType: "json", success: callback})
+	或
+	$.getJSON("../1.php", callback);
+
+注意下面调用未指定dataType, 不会按筋斗云协议格式处理:
+
+	$.ajax("../1.php", {success: callback})
+
+@see $.ajax
 */
 self.callSvr = callSvr;
 self.callSvrExt = {};
@@ -4196,13 +4594,19 @@ function callSvr(ac, params, fn, postParams, userOptions)
 	}
 
 	// 自动判断是否用json格式
-	if (!opt.contentType && opt.data && $.isPlainObject(opt.data)) {
-		$.each(opt.data, function (i, e) {
-			if (typeof(e) == "object") {
-				opt.contentType = "application/json";
-				return false;
-			}
-		})
+	if (!opt.contentType && opt.data) {
+		var useJson = $.isArray(opt.data);
+		if (!useJson && $.isPlainObject(opt.data)) {
+			$.each(opt.data, function (i, e) {
+				if (typeof(e) == "object") {
+					useJson = true;
+					return false;
+				}
+			})
+		}
+		if (useJson) {
+			opt.contentType = "application/json";
+		}
 	}
 
 	// post json content
