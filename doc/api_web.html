@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2020-11-03</div>
+<div>最后更新：2020-11-12</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -2099,6 +2099,14 @@ callSvr("./1.php");</code></pre>
 <li>指定{noex:1}用于忽略错误处理。</li>
 <li>指定{noLoadingImg:1} 静默调用，忽略loading图标，不设置busy状态。</li>
 </ul>
+<p>指定contentType和设置自定义HTTP头(headers)示例:</p>
+<pre><code>var opt = {
+    contentType: "text/xml",
+    headers: {
+        Authorization: "Basic aaa:bbb"
+    }
+};
+callSvr("hello", $.noop, "&lt;?xml version='1.0' encoding='UTF-8'?&gt;&lt;return&gt;&lt;code&gt;0&lt;/code&gt;&lt;/return&gt;", opt);</code></pre>
 <p>想为ajax选项设置缺省值，可以用callSvrExt中的beforeSend回调函数，也可以用$.ajaxSetup，<br />
 但要注意：ajax的dataFilter/beforeSend选项由于框架已用，最好不要覆盖。</p>
 <p class="see"><strong>@see <a href="#callSvrExt[].beforeSend">callSvrExt[].beforeSend</a></strong> (opt) 为callSvr选项设置缺省值</p>

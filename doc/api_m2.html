@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（移动Web版）</h1>
-<div>最后更新：2020-11-03</div>
+<div>最后更新：2020-11-12</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -51,6 +51,7 @@ code {
 <p><a href="##footer">#footer (key)</a></p>
 <p><a href="##muiAlert">#muiAlert (key)</a></p>
 <p><a href="#$.Deferred">$.Deferred (fn)</a></p>
+<p><a href="#$.ajax">$.ajax (key)</a></p>
 <p><a href="#.bd">.bd (key)</a></p>
 <p><a href="#.btn-icon">.btn-icon (key)</a></p>
 <p><a href="#.ft">.ft (key)</a></p>
@@ -84,8 +85,11 @@ code {
 <p><a href="#Plugins.exists">Plugins.exists (fn)</a></p>
 <p><a href="#Plugins.list">Plugins.list (fn)</a></p>
 <p><a href="#Promise">Promise (alias)</a></p>
+<p><a href="#Q">Q (fn)</a></p>
 <p><a href="#STORAGE_PREFIX">STORAGE_PREFIX (var)</a></p>
+<p><a href="#WUI.getTmRange">WUI.getTmRange (fn)</a></p>
 <p><a href="#activePage">activePage (var)</a></p>
+<p><a href="#ajaxOpt.jdFilter">ajaxOpt.jdFilter (key)</a></p>
 <p><a href="#app_abort">app_abort (fn)</a></p>
 <p><a href="#app_alert">app_alert (fn)</a></p>
 <p><a href="#appendParam">appendParam (fn)</a></p>
@@ -163,6 +167,8 @@ code {
 <p><a href="#lastError">lastError (var)</a></p>
 <p><a href="#leaveWaiting">leaveWaiting (fn)</a></p>
 <p><a href="#list2varr">list2varr (fn)</a></p>
+<p><a href="#loadCss">loadCss (fn)</a></p>
+<p><a href="#loadJson">loadJson (fn)</a></p>
 <p><a href="#loadScript">loadScript (fn)</a></p>
 <p><a href="#logout">logout (fn)</a></p>
 <p><a href="#m_curBatch">m_curBatch (var)</a></p>
@@ -847,6 +853,62 @@ var days = dt.diff("d", dt2); // 相隔多少天</code></pre>
 <p>从tm到tm1的时间差描述，如&quot;2分钟前&quot;, &quot;3天前&quot;等。</p>
 <p>tm和tm1可以为时间对象或时间字符串</p></div>
 <div class="block">
+<h2 id="WUI.getTmRange">@fn WUI.getTmRange(dscr, now?)</h2>
+<p>根据时间段描述得到<code>[起始时间，结束时间)</code>，注意结束时间是开区间（即不包含）。<br />
+假设今天是2015-9-9 周三：</p>
+<pre><code>getTmRange("本周", "2015-9-9") -&gt; ["2015-9-7"(本周一), "2015-9-14")
+getTmRange("上周") -&gt; ["2015-8-31", "2015-9-7")  // 或"前1周"
+
+getTmRange("本月") -&gt; ["2015-9-1", "2015-10-1")
+getTmRange("上月") -&gt; ["2015-8-1", "2015-9-1")
+
+getTmRange("今年") -&gt; ["2015-1-1", "2016-1-1") // 或"本年"
+getTmRange("去年") -&gt; ["2014-1-1", "2015-1-1") // 或"上年"
+
+getTmRange("本季度") -&gt; ["2015-7-1", "2015-10-1") // 7,8,9三个月
+getTmRange("上季度") -&gt; ["2015-4-1", "2015-7-1")
+
+getTmRange("上半年") -&gt; ["2015-1-1", "2015-7-1")
+getTmRange("下半年") -&gt; ["2015-7-1", "2016-1-1")
+
+getTmRange("今天") -&gt; ["2015-9-9", "2015-9-10") // 或"本日"
+getTmRange("昨天") -&gt; ["2015-9-8", "2015-9-9") // 或"昨日"
+
+getTmRange("前1周") -&gt; ["2015-8-31"(上周一)，"2015-9-7"(本周一))
+getTmRange("前3月") -&gt; ["2015-6-1", "2015-9-1")
+getTmRange("前3天") -&gt; ["2015-9-6", "2015-9-9")
+
+getTmRange("近1周") -&gt; ["2015-9-3"，"2015-9-10")
+getTmRange("近3月") -&gt; ["2015-6-10", "2015-9-10")
+getTmRange("近3天") -&gt; ["2015-9-6", "2015-9-10")  // "前3天"+今天</code></pre>
+<p>dscr可以是 </p>
+<pre><code>"近|前|上" N "个"? "小时|日|周|月|年|季度"
+"本|今" "小时|日/天|周|月|年|季度"</code></pre>
+<p>注意：&quot;近X周&quot;包括今天（即使尚未过完）。</p>
+<p>示例：快捷填充</p>
+<pre><code>    &lt;td&gt;
+        &lt;select class="cboTmRange"&gt;
+            &lt;option value ="本月"&gt;本月&lt;/option&gt;
+            &lt;option value ="上月"&gt;上月&lt;/option&gt;
+            &lt;option value ="本周"&gt;本周&lt;/option&gt;
+            &lt;option value ="上周"&gt;上周&lt;/option&gt;
+            &lt;option value ="今年"&gt;今年&lt;/option&gt;
+            &lt;option value ="去年"&gt;去年&lt;/option&gt;
+        &lt;/select&gt;
+    &lt;/td&gt;
+
+var txtTmRange = jdlg.find(".cboTmRange");
+txtTmRange.change(function () {
+    var range = WUI.getTmRange(this.value);
+    if (range) {
+        WUI.setFormData(jfrm, {tm1: range[0], tm2: range[1]}, {setOnlyDefined: true});
+    }
+});
+// 初始选中
+setTimeout(function () {
+    txtTmRange.change();
+});</code></pre></div>
+<div class="block">
 <h2 id="setCookie">@fn setCookie(name, value, days?=30)</h2>
 <p>设置cookie值。如果只是为了客户端长时间保存值，一般建议使用 setStorage.</p>
 <p class="see"><strong>@see <a href="#getCookie">getCookie</a></strong> </p>
@@ -1092,6 +1154,10 @@ var html = applyTpl(tpl, data);
 <pre><code>var map = parseKvList("CR:新创建;PA:已付款", ";", ":");
 // map: {"CR": "新创建", "PA":"已付款"}</code></pre></div>
 <div class="block">
+<h2 id="Q">@fn Q(str, q?="'")</h2>
+<pre><code>Q("abc") -&gt; 'abc'
+Q("a'bc") -&gt; 'a\'bc'</code></pre></div>
+<div class="block">
 <h2 id="jdModule">@fn jdModule(name?, fn?)</h2>
 <p>定义JS模块。这是一个全局函数。</p>
 <p>定义一个模块:</p>
@@ -1231,6 +1297,25 @@ loadScript("http://otherserver/path/1.js"); // 跨域加载</code></pre>
 </ul>
 <p>如果要动态加载script，且使用后删除标签（里面定义的函数会仍然保留），建议直接使用<code>$.getScript</code>，它等同于：</p>
 <pre><code>loadScript("1.js", {cache: false});</code></pre></div>
+<div class="block">
+<h2 id="loadJson">@fn loadJson(url, fnOK, options)</h2>
+<p>从远程获取JSON结果.<br />
+注意: 与$.getJSON不同, 本函数不直接调用JSON.parse解析结果, 而是将返回当成JS代码使用eval执行得到JSON结果再回调fnOK.</p>
+<p>示例:</p>
+<pre><code>WUI.loadJson("1.js", function (data) {
+    // handle json value `data`
+});</code></pre>
+<p>1.js可以是返回任意JS对象的代码, 如:</p>
+<pre><code>{
+    a: 2 * 3600,
+    b: "hello",
+    // c: {}
+}</code></pre>
+<p>如果不处理结果, 则该函数与$.getScript效果类似.</p></div>
+<div class="block">
+<h2 id="loadCss">@fn loadCss(url)</h2>
+<p>动态加载css文件, 示例:</p>
+<pre><code>WUI.loadCss("lib/bootstrap.min.css");</code></pre></div>
 <div class="block">
 <h2 id="setDateBox">@fn setDateBox(jo, defDateFn?)</h2>
 <p>设置日期框, 如果输入了非法日期, 自动以指定日期(如未指定, 用当前日期)填充.</p>
@@ -1459,7 +1544,11 @@ WUI.getQueryCond(kvList); // 结果同上。</code></pre>
 var cond = getQueryCond({tm: [null, "2020-1-1"]}); // 生成 "tm&lt;'2020-1-1'"
 var cond = getQueryCond({tm: [null, null]); // 返回null</code></pre>
 <p class="see"><strong>@see <a href="#getQueryParam">getQueryParam</a></strong> </p>
-<p class="see"><strong>@see <a href="#getQueryParamFromTable">getQueryParamFromTable</a></strong>  获取datagrid的当前查询参数</p></div>
+<p class="see"><strong>@see <a href="#getQueryParamFromTable">getQueryParamFromTable</a></strong>  获取datagrid的当前查询参数</p>
+<p class="see"><strong>@see <a href="#doFind">doFind</a></strong> </p>
+<p>(v5.5) 支持在key中包含查询提示。如&quot;code/s&quot;表示不要自动猜测数值区间或日期区间。<br />
+比如输入'126231-191024'时不会当作查询126231到191024的区间。</p>
+<p class="see"><strong>@see <a href="#wui-find-hint">wui-find-hint</a></strong> </p></div>
 <div class="block">
 <h2 id="getQueryParam">@fn getQueryParam(kvList)</h2>
 <p>根据键值对生成BQP协议中{obj}.query接口需要的cond参数.<br />
@@ -1549,6 +1638,19 @@ callSvr('token/get-token', ...);</code></pre>
 <p>要模拟该接口，可设置</p>
 <pre><code>MUI.mockData["token/get-token"] = ...;</code></pre></div>
 <div class="block">
+<h2 id="$.ajax">@key $.ajax</h2>
+<p class="key"><strong>@key <a id="ajaxOpt.jdFilter">ajaxOpt.jdFilter</a></strong>  禁用返回格式合规检查.</p>
+<p>以下调用, 如果1.json符合<code>[code, data]</code>格式, 则只返回处理data部分; 否则将报协议格式错误:</p>
+<pre><code>$.ajax("1.json", {dataType: "json"})
+$.get("1.json", null, console.log, "json")
+$.getJSON("1.json", null, console.log)</code></pre>
+<p>对于ajax调用($.ajax,$.get,$.post,$.getJSON等), 若明确指定dataType为&quot;json&quot;或&quot;text&quot;, 且未指定jdFilter为false,<br />
+则框架按筋斗云返回格式即<code>[code, data]</code>来处理只返回data部分, 不符合该格式, 则报协议格式错误.</p>
+<p>以下调用未指定dataType, 或指定了jdFilter=false, 则不会应用筋斗云协议格式:</p>
+<pre><code>$.ajax("1.json")
+$.get("1.json", null, console.log)
+$.ajax("1.json", {jdFilter: false}) // jdFilter选项明确指定了不应用筋斗云协议格式</code></pre></div>
+<div class="block">
 <h2 id="enterWaiting">@fn enterWaiting(ctx?)</h2>
 <p class="param"><strong>@param ctx</strong>  {ac, tm, tv?, tv2?, noLoadingImg?}</p></div>
 <div class="block">
@@ -1578,6 +1680,9 @@ var url = MUI.makeUrl("Ordr.set", params);</code></pre>
 <pre><code>WUI.makeUrl(['Ordr', 'query']) 等价于 WUI.makeUrl('Ordr.query');</code></pre>
 <p>在MUI环境下表示callSvr扩展调用:</p>
 <pre><code>MUI.makeUrl(['login', 'zhanda']) 等价于 MUI.makeUrl('zhanda:login');</code></pre>
+<p>特别地, 如果action是相对路径, 或是'.php'文件, 则不会自动拼接WUI.options.serverUrl:</p>
+<pre><code>callSvr("./1.json"); // 如果是callSvr("1.json") 则url可能是 "../api.php/1.json"这样.
+callSvr("./1.php");</code></pre>
 <p class="see"><strong>@see <a href="#callSvrExt">callSvrExt</a></strong> </p></div>
 <div class="block">
 <h2 id="callSvr">@fn callSvr(ac, [params?], fn?, postParams?, userOptions?) -> deferredObject</h2><div class="toc"><p style="margin-left:0em"><a href="#callSvr-1 调用监控">1 调用监控</a></p>
@@ -1585,6 +1690,7 @@ var url = MUI.makeUrl("Ordr.set", params);</code></pre>
 <p style="margin-left:0em"><a href="#callSvr-3 callSvr扩展">3 callSvr扩展</a></p>
 <p style="margin-left:0em"><a href="#callSvr-4 适配RESTful API">4 适配RESTful API</a></p>
 <p style="margin-left:0em"><a href="#callSvr-5 jQuery的$.Deferred兼容Promise接口">5 jQuery的$.Deferred兼容Promise接口</a></p>
+<p style="margin-left:0em"><a href="#callSvr-6 直接取json类文件">6 直接取json类文件</a></p>
 </div>
 <p class="param"><strong>@param ac</strong>  String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)</p>
 <p class="param"><strong>@param params</strong>  Object. URL参数（或称HTTP GET参数）</p>
@@ -1597,6 +1703,14 @@ var url = MUI.makeUrl("Ordr.set", params);</code></pre>
 <li>指定{noex:1}用于忽略错误处理。</li>
 <li>指定{noLoadingImg:1} 静默调用，忽略loading图标，不设置busy状态。</li>
 </ul>
+<p>指定contentType和设置自定义HTTP头(headers)示例:</p>
+<pre><code>var opt = {
+    contentType: "text/xml",
+    headers: {
+        Authorization: "Basic aaa:bbb"
+    }
+};
+callSvr("hello", $.noop, "&lt;?xml version='1.0' encoding='UTF-8'?&gt;&lt;return&gt;&lt;code&gt;0&lt;/code&gt;&lt;/return&gt;", opt);</code></pre>
 <p>想为ajax选项设置缺省值，可以用callSvrExt中的beforeSend回调函数，也可以用$.ajaxSetup，<br />
 但要注意：ajax的dataFilter/beforeSend选项由于框架已用，最好不要覆盖。</p>
 <p class="see"><strong>@see <a href="#callSvrExt[].beforeSend">callSvrExt[].beforeSend</a></strong> (opt) 为callSvr选项设置缺省值</p>
@@ -1895,7 +2009,18 @@ dfd.then(function (data) {
     app_alert(err);
 })
 .finally(...)</code></pre>
-<p>支持catch/finally等Promise类接口。接口逻辑失败时，dfd.reject()触发fail/catch链。</p></div>
+<p>支持catch/finally等Promise类接口。接口逻辑失败时，dfd.reject()触发fail/catch链。</p>
+<h4 id="callSvr-6 直接取json类文件">6 直接取json类文件</h4>
+<p>(v5.5) 如果ac是调用相对路径, 则直接当成最终路径, 不做url拼接处理:</p>
+<pre><code>callSvr("./1.json"); // 如果是callSvr("1.json") 则实际url可能是 "../api.php/1.json"这样.
+callSvr("../1.php");</code></pre>
+<p>相当于调用</p>
+<pre><code>$.ajax("../1.php", {dataType: "json", success: callback})
+或
+$.getJSON("../1.php", callback);</code></pre>
+<p>注意下面调用未指定dataType, 不会按筋斗云协议格式处理:</p>
+<pre><code>$.ajax("../1.php", {success: callback})</code></pre>
+<p class="see"><strong>@see <a href="#$.ajax">$.ajax</a></strong> </p></div>
 <div class="block">
 <h2 id="callSvrSync">@fn callSvrSync(ac, [params?], fn?, postParams?, userOptions?)</h2>
 <p class="return"><strong>@return data</strong>  原型规定的返回数据</p>
