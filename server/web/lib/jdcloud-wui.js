@@ -3740,10 +3740,10 @@ function getOptions(jo, defVal)
 //}}}
 
 // 参考 getQueryCond中对v各种值的定义
-function getop(v)
+function getexp(k, v)
 {
 	if (typeof(v) == "number")
-		return "=" + v;
+		return k + "=" + v;
 	var op = "=";
 	var is_like=false;
 	var ms;
@@ -3762,23 +3762,24 @@ function getop(v)
 	if (v === "null")
 	{
 		if (op == "<>")
-			return " is not null";
-		return " is null";
+			return k + " is not null";
+		return k + " is null";
 	}
 	if (v === "empty")
 		v = "";
-	if (v.length == 0 || v.match(/\D/) || v[0] == '0') {
+	var doFuzzy = self.options.fuzzyMatch && (k!="id" && k.substr(-2)!="Id");
+	if (doFuzzy || v.length == 0 || v.match(/\D/) || v[0] == '0') {
 		v = v.replace(/'/g, "\\'");
-		if (self.options.fuzzyMatch && op == "=" && v.length>0) {
+		if (doFuzzy && op == "=" && v.length>0) {
 			op = " like ";
 			v = "%" + v + "%";
 		}
 // 		// ???? 只对access数据库: 支持 yyyy-mm-dd, mm-dd, hh:nn, hh:nn:ss
 // 		if (!is_like && v.match(/^((19|20)\d{2}[\/.-])?\d{1,2}[\/.-]\d{1,2}$/) || v.match(/^\d{1,2}:\d{1,2}(:\d{1,2})?$/))
 // 			return op + "#" + v + "#";
-		return op + "'" + v + "'";
+		return k + op + "'" + v + "'";
 	}
-	return op + v;
+	return k + op + v;
 }
 
 /**
@@ -3955,7 +3956,7 @@ function getQueryCond(kvList)
 					}
 				}
 				if (!isHandled) {
-					str1 += k + getop(v2);
+					str1 += getexp(k, v2);
 				}
 			});
 			if (bracket2)
@@ -4279,7 +4280,7 @@ function defAjaxErrProc(xhr, textStatus, e)
 		ctx.status = xhr.status;
 		ctx.statusText = xhr.statusText;
 
-		if (xhr.status == 0) {
+		if (xhr.status == 0 && !ctx.noex) {
 			self.app_alert("连不上服务器了，是不是网络连接不给力？", "e");
 		}
 		else if (this.handleHttpError) {
@@ -4289,7 +4290,7 @@ function defAjaxErrProc(xhr, textStatus, e)
 				this.success && this.success(rv);
 			return;
 		}
-		else {
+		else if (!ctx.noex) {
 			self.app_alert("操作失败: 服务器错误. status=" + xhr.status + "-" + xhr.statusText, "e");
 		}
 
@@ -5025,6 +5026,8 @@ function callSvr(ac, params, fn, postParams, userOptions)
 	var ctx = {ac: ac0, tm: new Date()};
 	if (userOptions && userOptions.noLoadingImg)
 		ctx.noLoadingImg = 1;
+	if (userOptions && userOptions.noex)
+		ctx.noex = 1;
 	if (ext) {
 		ctx.ext = ext;
 	}
