@@ -13,6 +13,7 @@ git init $name --shared
 chmod g+rwxs $name
 cd $name
 git config receive.denyCurrentBranch ignore
+git config receive.denyNonFastForwards false
 cat <<.  > .git/hooks/post-update
 #!/bin/sh
 unset GIT_DIR
