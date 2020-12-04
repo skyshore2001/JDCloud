@@ -7309,7 +7309,8 @@ function showObjDlg(jdlg, mode, opt)
 设置easyui-datagrid上toolbar上的按钮。缺省支持的按钮有r(refresh), f(find), a(add), s(set), d(del), 可通过以下设置方式修改：
 
 	// jtbl.jdata().toolbar 缺省值为 "rfasd"
-	jtbl.jdata().toolbar = "rfs"; // 没有a-添加,d-删除
+	jtbl.jdata().toolbar = "rfs"; // 没有a-添加,d-删除.
+	// (v5.5) toolbar也可以是数组, 如 ["r", "f", "s", "export"]; 空串或空数组表示没有按钮.
 
 如果要添加自定义按钮，可通过button_lists一一传递.
 示例：添加两个自定义按钮查询“今天订单”和“所有未完成订单”。
@@ -7381,7 +7382,9 @@ function showObjDlg(jdlg, mode, opt)
 self.dg_toolbar = dg_toolbar;
 function dg_toolbar(jtbl, jdlg)
 {
-	var toolbar = jtbl.jdata().toolbar || "rfasd";
+	var toolbar = jtbl.jdata().toolbar;
+	if (toolbar == null)
+		toolbar = "rfasd";
 	var btns = [];
 
 	/*
@@ -7395,7 +7398,7 @@ function dg_toolbar(jtbl, jdlg)
 	}, 100);
 	*/
 
-	var btnSpecArr = toolbar.split("");
+	var btnSpecArr = $.isArray(toolbar)? $.extend([], toolbar): toolbar.split("");
 	for (var i=2; i<arguments.length; ++i) {
 		btnSpecArr.push(arguments[i]);
 	}
@@ -7419,6 +7422,8 @@ function dg_toolbar(jtbl, jdlg)
 		btns.push(btn);
 	}
 
+	if (btns.length == 0)
+		return null;
 	return btns;
 }
 

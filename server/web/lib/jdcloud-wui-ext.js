@@ -1442,9 +1442,9 @@ $.extend(self.dg_toolbar, {
 
 选项：{obj, relatedKey, res?, dlg?/关联的明细对话框}
 
-这些选项在dlg设置时有效：{valueField, readonly}
+这些选项在dlg设置时有效：{valueField, readonly, objParam, toolbar}
 
-示例1：可以增删改查的子表：
+## 示例1：可以增删改查的子表：
 
 	<div class="wui-subobj" data-options="obj:'CusOrder', relatedKey:'cusId', valueField:'orders', dlg:'dlgCusOrder'">
 		<p><b>物流订单</b></p>
@@ -1483,6 +1483,12 @@ $.extend(self.dg_toolbar, {
 
 - readonly: 默认为false, 设置为true则在主表添加之后，不可对子表进行添加、更新或删除。
 
+- objParam: 关联的明细对象对话框的初始参数, 对应dialogOpt.objParam. 例如有 offline, onCrud()等选项. 
+@see objParam
+
+- toolbar: 指定修改对象时的增删改查按钮, Enum(a-add, s-set, d-del, f-find, r-refresh), 字符串或数组, 缺省是所有按钮, 空串""或空数组[]表示没有任何按钮.
+@see dg_toolbar
+
 可以在validate事件中，对添加的子表进行判断处理：
 
 	function onValidate(ev, mode, oriData, newData) 
@@ -1502,13 +1508,13 @@ $.extend(self.dg_toolbar, {
 	var jsub = jdlg.find(".wui-subobj");
 	WUI.getOptions(jsub).readonly = !g_data.hasRole("emp,mgr");
 
-示例2：主表记录添加时不需要展示，添加之后子表/关联表可以增删改查：
+## 示例2：主表记录添加时不需要展示，添加之后子表/关联表可以增删改查：
 
 	<div class="wui-subobj" data-options="obj:'CusOrder', relatedKey:'cusId', dlg:'dlgCusOrder'>
 		...
 	</div>
 
-示例3：和主表字段一起添加，添加后变成只读不可再新增、更新、删除：
+## 示例3：和主表字段一起添加，添加后变成只读不可再新增、更新、删除：
 
 	<div class="wui-subobj" data-options="obj:'CusOrder', relatedKey:'cusId', valueField:'orders', dlg:'dlgCusOrder', readonly: true">
 		...
@@ -1520,6 +1526,69 @@ $.extend(self.dg_toolbar, {
 	</div>
 
 - res: 指定返回字段以提高性能，即query接口的res参数。注意在关联详细对话框（即指定dlg选项）时，一般不指定res，否则双击打开对话框时会字段显示不全。
+
+
+## 示例4: 动态启用/禁用子表
+
+启用或禁用可通过事件发送指令:
+	jo.trigger("setDisabled", boolDisabledVal); // 会自动刷新UI
+
+示例: 在物料明细对话框(dlgItem)中, 在Tabs组件中放置"组合"子表, 当下拉框选择"组合"时, 启用"组合"子表Tab页:
+
+	<select name="type">
+		<option value="">(无)</option>
+		<option value="P">组合</option>
+		<!--<option value="U">拆卖</option>-->
+	</select>
+
+	<div class="easyui-tabs">
+		<div class="wui-subobj" id="tabItem1" data-options="obj:'Item1', valueField:'item1', relatedKey:'itemId', dlg:'dlgItem1'" title="组合">
+			<table>
+				<thead><tr>
+					<th data-options="field:'srcItemName'">源商品</th>
+					<th data-options="field:'qty', formatter:WUI.formatter.number">数量</th>
+				</tr></thead>
+			</table>
+		</div>
+	</div>
+
+设置"组合"页随着type选择启用禁用:
+
+	$(frm.type).change(function () {
+		toggleItem1(this.value);
+	});
+
+	jdlg.on("beforeshow", onBeforeShow)
+		.on("validate", onValidate);
+	
+	function onBeforeShow(ev, formMode, opt) 
+	{
+		toggleItem1(opt.data && opt.data.type);
+	}
+
+	function onValidate(ev, mode, oriData, newData) 
+	{
+		// 添加时验证子表值
+		if (mode == FormMode.forAdd) {
+			var type = frm.type.value;
+			if (type == "P") {
+				console.log(newData.item1);
+				if (newData.item1 == null || newData.item1.length == 0) {
+					app_alert("请添加组合明细!", "w");
+					// 自动切换到该页
+					jdlg.find(".easyui-tabs").tabs("select", "组合");
+					return false;
+				}
+			}
+		}
+	}
+
+	// 启用或禁用子表的Tab
+	function toggleItem1(type)
+	{
+		var dis = type!="P";
+		jdlg.find("#tabItem1").trigger("setDisabled", dis);
+	}
  */
 self.m_enhanceFn[".wui-subobj"] = enhanceSubobj;
 function enhanceSubobj(jo)
@@ -1536,6 +1605,8 @@ function enhanceSubobj(jo)
 		opt.relatedKeyTo = "id";
 	}
 
+	var ctx = {};
+
 	// 子表表格和子表对话框
 	var jtbl = jo.find("table:first");
 	self.assert(jtbl.size() >0, "wui-subobj: 未找到子表表格");
@@ -1544,7 +1615,19 @@ function enhanceSubobj(jo)
 	if (jdlg.size() == 0)
 		return;
 
+	var jtabs = jo.closest(".easyui-tabs");
+	var inTab = jtabs.size() > 0;
+	var tabIndex = -1;
+
 	jdlg.on("beforeshow", onBeforeShow);
+	if (inTab) {
+		tabIndex = jtabs.tabs("getTabIndex", jo);
+		jo.on("tabSelect", loadData);
+	}
+	jo.on("setDisabled", function (ev, val) {
+		opt.disabled = val;
+		loadData();
+	});
 
 	var jdlg1;
 	if (opt.dlg) {
@@ -1559,66 +1642,128 @@ function enhanceSubobj(jo)
 		setTimeout(onShow);
 
 		function onShow() {
-			if (jdlg1) {
-				jo.toggle(formMode == FormMode.forSet || (formMode == FormMode.forAdd && !!opt.valueField));
-				jdlg1.objParam = {};
-				if (formMode == FormMode.forAdd) {
-					if (opt.valueField) {
-						jdlg1.objParam.offline = true; // 添加时主子表一起提交
-						jdlg1.objParam[opt.relatedKey] = ''; // 同时设置子表对话框中cusId字段的CSS类为wui-fixedField，让该字段不可修改。
-						jtbl.jdata().toolbar = "ads"; // add/del/set
-						var dgOpt = {
-							toolbar: WUI.dg_toolbar(jtbl, jdlg1),
-							onDblClickRow: WUI.dg_dblclick(jtbl, jdlg1),
-							data: [],
-							url: null,
-						};
-						jtbl.datagrid(dgOpt);
-					}
-				}
-				else if (formMode == FormMode.forSet) {
-					var mainId = beforeShowOpt.data[opt.relatedKeyTo];
-
-					jdlg1.objParam[opt.relatedKey] = mainId;
-					jdlg1.objParam.readonly = opt.readonly;
-					jtbl.jdata().toolbar = null;  // 允许所有
-					var dgOpt = {
-						toolbar: WUI.dg_toolbar(jtbl, jdlg1),
-						onDblClickRow: WUI.dg_dblclick(jtbl, jdlg1),
-						url: getQueryUrl(mainId)
-					};
-					jtbl.datagrid(dgOpt);
-
-					// 隐藏子表工具栏，不允许操作（但可以双击一行查看明细，会设置这时子对话框只读）
-					jtbl.closest(".datagrid").find(".datagrid-toolbar").toggle(!opt.readonly);
-				}
-			}
-			else {
-				jo.toggle(formMode == FormMode.forSet);
-				if (formMode == FormMode.forSet) {
-					var mainId = beforeShowOpt.data[opt.relatedKeyTo];
-					var dgOpt = {
-						url: getQueryUrl(mainId)
-					};
-					jtbl.datagrid(dgOpt);
-				}
-			}
-		}
-
-		function getQueryUrl(mainId) {
-			var val = $.isNumeric(mainId)? mainId: Q(mainId);
-			return WUI.makeUrl(opt.obj + ".query", {cond: opt.relatedKey + "=" + val, res: opt.res});
+			ctx = {
+				formMode: formMode,
+				formData: beforeShowOpt.data
+			};
+			jo.data("subobjLoaded_", false);
+			loadData();
 		}
 	}
 
 	function onValidate(ev, mode, oriData, newData) 
 	{
+		if (opt.disabled)
+			return;
 		if (mode == FormMode.forAdd) {
 			// 添加时设置子表字段
 			self.assert(opt.valueField, "wui-subobj: 选项valueField未设置");
-			newData[opt.valueField] = jtbl.datagrid("getData").rows;
+			if (jo.data("subobjLoaded_"))
+				newData[opt.valueField] = jtbl.datagrid("getData").rows;
 		}
 	}
+
+	function loadData() {
+		var formMode = ctx.formMode;
+		var formData = ctx.formData;
+		var show = formMode == FormMode.forSet;
+		if (jdlg1 && (formMode == FormMode.forAdd && !!opt.valueField))
+			show = true;
+		toggle(!opt.disabled && show);
+
+		if (jo.is(":hidden"))
+			return;
+
+		if (jo.data("subobjLoaded_"))
+			return;
+		jo.data("subobjLoaded_", true);
+
+		if (jdlg1) {
+			jdlg1.objParam = $.extend({}, opt.objParam);
+			if (formMode == FormMode.forAdd) {
+				if (opt.valueField) {
+					jdlg1.objParam.offline = true; // 添加时主子表一起提交
+					jdlg1.objParam[opt.relatedKey] = ''; // 同时设置子表对话框中cusId字段的CSS类为wui-fixedField，让该字段不可修改。
+					jtbl.jdata().toolbar = "ads"; // add/del/set
+					var dgOpt = {
+						toolbar: WUI.dg_toolbar(jtbl, jdlg1),
+						onDblClickRow: WUI.dg_dblclick(jtbl, jdlg1),
+						data: [],
+						url: null,
+					};
+					jtbl.datagrid(dgOpt);
+				}
+			}
+			else if (formMode == FormMode.forSet) {
+				var mainId = formData && formData[opt.relatedKeyTo];
+
+				jdlg1.objParam[opt.relatedKey] = mainId;
+				jdlg1.objParam.readonly = opt.readonly;
+				jtbl.jdata().toolbar = opt.toolbar;  // 允许所有
+				var dgOpt = {
+					toolbar: WUI.dg_toolbar(jtbl, jdlg1),
+					onDblClickRow: WUI.dg_dblclick(jtbl, jdlg1),
+					url: getQueryUrl(mainId)
+				};
+				jtbl.datagrid(dgOpt);
+
+				// 隐藏子表工具栏，不允许操作（但可以双击一行查看明细，会设置这时子对话框只读）
+				jtbl.closest(".datagrid").find(".datagrid-toolbar").toggle(!opt.readonly);
+			}
+		}
+		else {
+			if (formMode == FormMode.forSet) {
+				var mainId = formData[opt.relatedKeyTo];
+				var dgOpt = {
+					url: getQueryUrl(mainId)
+				};
+				jtbl.datagrid(dgOpt);
+			}
+		}
+	}
+
+	function toggle(show) {
+		if (inTab) {
+			toggleTab(jtabs, tabIndex, show);
+		}
+		else {
+			jo.toggle(show);
+		}
+	}
+
+	function getQueryUrl(mainId) {
+		var val = $.isNumeric(mainId)? mainId: Q(mainId);
+		return WUI.makeUrl(opt.obj + ".query", {cond: opt.relatedKey + "=" + val, res: opt.res});
+	}
+}
+
+/**
+@key easyui-tabs
+
+扩展: 若未指定onSelect回调, 默认行为: 点Tab发出tabSelect事件, 由Tab自行处理
+*/
+$.fn.tabs.defaults.onSelect = function (title, idx) {
+	$(this).tabs("getTab", idx).trigger("tabSelect");
+	console.log('onSelect', arguments);
+};
+
+/**
+@fn WUI.toggleTab(jtabs, which, show, noEvent?)
+
+禁用或启用easyui-tabs组件的某个Tab页.
+which可以是Tab页的索引数或标题.
+示例:
+
+	var jtabs = jdlg.find(".easyui-tabs");
+	WUI.toggleTab(jtabs, "组合物料", formData.type == "P");
+
+ */
+self.toggleTab = toggleTab;
+function toggleTab(jtabs, which, show, noEvent) {
+	var jtab = jtabs.tabs("getTab", which);
+	jtabs.tabs(show?"enableTab":"disableTab", which);
+	// jtab.toggle(show); // 如果用隐藏, 且刚好jtab是当前活动Tab, 则有问题: 其它Tab无法点击
+	jtab.css("visibility", show?"visible":"hidden");
 }
 
 }
