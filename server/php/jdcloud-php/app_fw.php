@@ -494,7 +494,7 @@ function mparam($name, $col = null)
 		}
 		if (!$found) {
 			$s = join($name, " or ");
-			throw new MyException(E_PARAM, "Bad Request - require param $s");
+			throw new MyException(E_PARAM, "Bad Request - require param $s", "缺少参数`$s`");
 		}
 		return $arr;
 	}
@@ -503,7 +503,7 @@ function mparam($name, $col = null)
 	if (isset($rv))
 		return $rv;
 	parseType_($name); // remove the type tag.
-	throw new MyException(E_PARAM, "Bad Request - param `$name` is missing");
+	throw new MyException(E_PARAM, "Bad Request - param `$name` is missing", "缺少参数`$name`");
 }
 
 /**
@@ -1279,7 +1279,7 @@ function dbInsert($table, $kv)
 			$values .= $v->val;
 		}
 		else if (is_array($v)) {
-			throw new MyException(E_PARAM, "dbInsert: array is not allowed");
+			throw new MyException(E_PARAM, "dbInsert: array `$k` is not allowed. pls define subobj to use array.", "未定义的子表`$k`");
 		}
 		else {
 			$values .= Q(htmlEscape($v));
