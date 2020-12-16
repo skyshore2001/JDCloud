@@ -2366,10 +2366,10 @@ class AppFw_
 		$path = getenv("P_SESSION_DIR") ?: $GLOBALS["BASE_DIR"] . "/session";
 		if (!  is_dir($path)) {
 			if (! mkdir($path, 0777, true))
-				throw new MyException(E_SERVER, "fail to create session folder.");
+				throw new MyException(E_SERVER, "fail to create session folder: $path");
 		}
 		if (! is_writeable($path))
-			throw new MyException(E_SERVER, "session folder is NOT writeable.");
+			throw new MyException(E_SERVER, "session folder is NOT writeable: $path");
 		session_save_path ($path);
 
 		ini_set("session.cookie_httponly", 1);
@@ -2387,7 +2387,8 @@ class AppFw_
 		mb_internal_encoding("UTF-8");
 		setlocale(LC_ALL, "zh_CN.UTF-8");
 		self::initGlobal();
-		self::setupSession();
+		if (!isCLI())
+			self::setupSession();
 	}
 }
 //}}}
