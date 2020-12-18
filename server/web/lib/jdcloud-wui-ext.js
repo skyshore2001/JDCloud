@@ -973,7 +973,7 @@ function enhanceCombogrid(jo)
 			if (! val)
 				return;
 			if (jdlg.size() > 0 && jdlg.jdata().mode == FormMode.forFind) {
-				if (vfield && /[^\d><=!-,]/.test(val) ) {
+				if (vfield && /[^\d><=!,-]/.test(val) ) {
 					jo.prop("nameForFind", vfield);
 				}
 				return;
@@ -1169,6 +1169,29 @@ function toggleCol(jtbl, col, show)
 		var type = objParam && objParam.type; // objParam = 对话框beforeshow事件中的opt.objParam
 		toggleItemFields(jfrm, type);
 
+@key .wui-field
+
+在隐藏字段时，默认是找到字段所在的行(tr)或标识`wui-field`类的元素控制其显示或隐藏。示例：
+
+		<tr>
+			<td></td>
+				<label class="wui-field"><input name="forEnd" type="checkbox" value="1"> 结束打卡</label>
+			</td>
+
+			<td></td>
+			<td>
+				<label class="wui-field"><input name="repairFlag" type="checkbox" value="1"> 是否维修</label>
+			</td>
+		</tr>
+
+这里一行有两组字段，以wui-field类来指定字段所在的范围。如果不指定该类，则整行(tr层)将默认当作字段范围。
+JS控制：(dialog的onShow时)
+
+		WUI.toggleFields(jfrm, {
+			forEnd: formMode == FormMode.forSet && !frm.tm1.value,
+			repairFlag: g_args.repair
+		})
+
  */
 self.toggleFields = toggleFields;
 function toggleFields(jo, showMap)
@@ -1178,7 +1201,7 @@ function toggleFields(jo, showMap)
 		$.each(showMap, function (k, v) {
 			// 忽略找不到列的错误
 			try {
-				toggleCol(jtbl, k, v);
+				toggleCol(jtbl, k, !!v);
 			} catch (ex) {
 				// console.error('fail to toggleCol: ' + k);
 			}
@@ -1189,7 +1212,7 @@ function toggleFields(jo, showMap)
 		$.each(showMap, function (k, v) {
 			var o = frm[k];
 			if (o)
-				$(o).closest("tr").toggle(v);
+				$(o).closest("tr,.wui-field").toggle(!!v);
 		});
 	}
 }
@@ -1440,7 +1463,7 @@ $.extend(self.dg_toolbar, {
 /**
 @key .wui-subobj
 
-选项：{obj, relatedKey, res?, dlg?/关联的明细对话框}
+选项：{obj, relatedKey, res?, dlg?/关联的明细对话框, datagrid/treegrid}
 
 这些选项在dlg设置时有效：{valueField, readonly, objParam, toolbar}
 
@@ -1487,6 +1510,7 @@ $.extend(self.dg_toolbar, {
 @see objParam
 
 - toolbar: 指定修改对象时的增删改查按钮, Enum(a-add, s-set, d-del, f-find, r-refresh), 字符串或数组, 缺省是所有按钮, 空串""或空数组[]表示没有任何按钮.
+示例：只留下删除和刷新: toolbar='rd'
 @see dg_toolbar
 
 可以在validate事件中，对添加的子表进行判断处理：
@@ -1589,6 +1613,23 @@ $.extend(self.dg_toolbar, {
 		var dis = type!="P";
 		jdlg.find("#tabItem1").trigger("setDisabled", dis);
 	}
+
+## 示例5：显示为树表(treegrid)
+
+- opt.datagrid: 设置easyui-datagrid的选项
+- opt.treegrid: 如果指定，则以树表方式展示子表，设置easyui-treegrid的选项
+
+默认使用以下配置：
+
+	{
+		idField: "id",  // 不建议修改
+		fatherField: "fatherId", // 指向父结点的字段，不建议修改
+		treeField: "id", // 显示树结点的字段名，可根据情况修改
+	}
+
+子表以树表显示时，不支持分页（查询时自动设置参数pagesz=-1）。
+
+@see treegrid
  */
 self.m_enhanceFn[".wui-subobj"] = enhanceSubobj;
 function enhanceSubobj(jo)
@@ -1635,6 +1676,8 @@ function enhanceSubobj(jo)
 		if (opt.valueField)
 			jdlg.on("validate", onValidate);
 	}
+
+	var datagrid = opt.treegrid? "treegrid": "datagrid";
 	
 	function onBeforeShow(ev, formMode, beforeShowOpt) 
 	{
@@ -1659,7 +1702,7 @@ function enhanceSubobj(jo)
 			// 添加时设置子表字段
 			self.assert(opt.valueField, "wui-subobj: 选项valueField未设置");
 			if (jo.data("subobjLoaded_"))
-				newData[opt.valueField] = jtbl.datagrid("getData").rows;
+				newData[opt.valueField] = jtbl[datagrid]("getData").rows;
 		}
 	}
 
@@ -1685,13 +1728,13 @@ function enhanceSubobj(jo)
 					jdlg1.objParam.offline = true; // 添加时主子表一起提交
 					jdlg1.objParam[opt.relatedKey] = ''; // 同时设置子表对话框中cusId字段的CSS类为wui-fixedField，让该字段不可修改。
 					jtbl.jdata().toolbar = "ads"; // add/del/set
-					var dgOpt = {
+					var dgOpt = $.extend({
 						toolbar: WUI.dg_toolbar(jtbl, jdlg1),
 						onDblClickRow: WUI.dg_dblclick(jtbl, jdlg1),
 						data: [],
 						url: null,
-					};
-					jtbl.datagrid(dgOpt);
+					}, opt[datagrid]);
+					jtbl[datagrid](dgOpt);
 				}
 			}
 			else if (formMode == FormMode.forSet) {
@@ -1700,12 +1743,12 @@ function enhanceSubobj(jo)
 				jdlg1.objParam[opt.relatedKey] = mainId;
 				jdlg1.objParam.readonly = opt.readonly;
 				jtbl.jdata().toolbar = opt.toolbar;  // 允许所有
-				var dgOpt = {
+				var dgOpt = $.extend({
 					toolbar: WUI.dg_toolbar(jtbl, jdlg1),
 					onDblClickRow: WUI.dg_dblclick(jtbl, jdlg1),
 					url: getQueryUrl(mainId)
-				};
-				jtbl.datagrid(dgOpt);
+				}, opt[datagrid]);
+				jtbl[datagrid](dgOpt);
 
 				// 隐藏子表工具栏，不允许操作（但可以双击一行查看明细，会设置这时子对话框只读）
 				jtbl.closest(".datagrid").find(".datagrid-toolbar").toggle(!opt.readonly);
@@ -1717,7 +1760,7 @@ function enhanceSubobj(jo)
 				var dgOpt = {
 					url: getQueryUrl(mainId)
 				};
-				jtbl.datagrid(dgOpt);
+				jtbl[datagrid](dgOpt);
 			}
 		}
 	}
@@ -1733,7 +1776,11 @@ function enhanceSubobj(jo)
 
 	function getQueryUrl(mainId) {
 		var val = $.isNumeric(mainId)? mainId: Q(mainId);
-		return WUI.makeUrl(opt.obj + ".query", {cond: opt.relatedKey + "=" + val, res: opt.res});
+		var param = {cond: opt.relatedKey + "=" + val, res: opt.res};
+		// 树型子表，一次全部取出
+		if (opt.treegrid)
+			param.pagesz = -1;
+		return WUI.makeUrl(opt.obj + ".query", param);
 	}
 }
 
@@ -1764,6 +1811,76 @@ function toggleTab(jtabs, which, show, noEvent) {
 	jtabs.tabs(show?"enableTab":"disableTab", which);
 	// jtab.toggle(show); // 如果用隐藏, 且刚好jtab是当前活动Tab, 则有问题: 其它Tab无法点击
 	jtab.css("visibility", show?"visible":"hidden");
+}
+
+/**
+@key .wui-picker 字段后的工具按钮
+
+示例：输入框后添加一个编辑按钮，默认不可编辑，点按钮编辑：
+
+	<input name="value" class="wui-picker-edit">
+
+示例：输入框后添加一个帮助按钮：
+
+	<input name="value" class="wui-picker-help" data-helpKey="取消工单">
+
+点击帮助按钮，跳往WUI.options.helpUrl指定的地址。如果指定data-helpKey，则跳到该锚点处。
+
+可以多个picker一起使用。
+*/
+
+self.m_enhanceFn[".wui-picker-edit, .wui-picker-help"] = enhancePicker;
+function enhancePicker(jo)
+{
+	var jbtns = $();
+	if (jo.hasClass("wui-picker-edit")) {
+		var jbtn = $("<a></a>");
+		jbtn.linkbutton({
+			iconCls: 'icon-edit',
+			plain: true
+		});
+		jbtns = jbtns.add(jbtn);
+
+		disable();
+		jbtn.click(enable);
+		jo.blur(disable);
+	}
+	if (jo.hasClass("wui-picker-help")) {
+		var jbtn = $("<a></a>");
+		jbtn.linkbutton({
+			iconCls: 'icon-help',
+			plain: true
+		});
+		jbtns = jbtns.add(jbtn);
+
+		jbtn.click(help);
+	}
+
+	if (jbtns.length > 0) {
+		jo.after(jbtns);
+		if (jo.is(":input"))
+			jo.css("margin-right", -5 -24 * jbtns.length);
+		if (jo.is("textarea"))
+			jo.css("vertical-align", "top");
+	}
+
+	//var jdlg = jo.closest(".wui-dialog");
+	//jdlg.on("beforeshow", disable);
+
+	function enable() {
+		jo.prop("readonly", false);
+	}
+	function disable() {
+		jo.prop("readonly", true);
+	}
+	function help() {
+		var url = WUI.options.helpUrl;
+		if (! url)
+			return;
+		if (jo.attr("data-helpKey"))
+			url += "#" + jo.attr("data-helpKey");
+		window.open(url);
+	}
 }
 
 }

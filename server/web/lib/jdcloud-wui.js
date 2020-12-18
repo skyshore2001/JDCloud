@@ -494,7 +494,11 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 
 #### treegrid集成
 
-后端数据模型中有fatherId字段, 即可适配treegrid.
+@key treegrid
+
+后端数据模型若要支持树类型，须在表中有父节点字段（默认为fatherId）, 即可适配treegrid. 典型的表设计如下：
+
+	@Dept: id, code, name, fatherId, level
 
 - 支持一次全部加载和分层次加载两种模式。
 - 支持查询时，只展示部分行。
@@ -510,6 +514,8 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 		url: WUI.makeUrl("ItemType.query", {pagesz: -1}),
 		toolbar: WUI.dg_toolbar(jtbl, jdlg),
 		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
+		// treeField: "code"  // 树表专用，表示在哪个字段上显示折叠，默认为"id"
+		// fatherField: "id" // 树表专用，WUI扩展字段，表示父节点字段，默认为"fatherId"
 	};
 	// 用treegrid替代常规的datagrid
 	jtbl.treegrid(dgOpt);
@@ -522,6 +528,21 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 		isLeaf: function (row) {
 			return row.level>1;
 		},
+		...
+	};
+	jtbl.treegrid(dgOpt);
+
+**[通过非id字段关联父节点的情况]**
+
+比如通过fatherCode字段关联到父节点的code字段：
+
+	@Dept: id, code, fatherCode
+
+则可以指定idField, 这样调用：
+
+	var dgOpt = {
+		idField: "code",
+		fatherField: "fatherCode",
 		...
 	};
 	jtbl.treegrid(dgOpt);
@@ -2580,6 +2601,12 @@ function jdModule(name, fn, overrideCtor)
 	return ret;
 }
 
+if (! String.prototype.replaceAll) {
+	String.prototype.replaceAll = function (from, to) {
+		return this.replace(new RegExp(from, "g"), to);
+	}
+}
+
 // vi: foldmethod=marker 
 // ====== WEBCC_END_FILE common.js }}}
 
@@ -3869,6 +3896,14 @@ function getQueryCond(kvList)
 	function handleOne(k,v) {
 		if (v == null || v === "" || v.length==0)
 			return;
+
+		var hint = null;
+		var k1 = k.split('/');
+		if (k1.length > 1) {
+			k = k1[0];
+			hint = k1[1];
+		}
+
 		if ($.isArray(v)) {
 			if (v[0])
 				condArr.push(k + ">='" + v[0] + "'");
@@ -3876,7 +3911,6 @@ function getQueryCond(kvList)
 				condArr.push(k + "<'" + v[1] + "'");
 			return;
 		}
-
 		var hint = null;
 		var k1 = k.split('/');
 		if (k1.length > 1) {
@@ -5583,13 +5617,13 @@ easyui-treegrid会将其再转成层次结构：
 
 特别地，为了查询结果能正常显示（排除展开结点操作的查询，其它查询的树表是残缺不全的），当发现数据有fatherId但父结点不在列表中时，不去设置_parentId，避免该行无法显示。
 */
-function jdListToTree(data, fatherField, parentId, isLeaf)
+function jdListToTree(data, idField, fatherField, parentId, isLeaf)
 {
 	var data1 = jdListToDgList(data)
 
 	var idMap = {};
 	$.each(data1.rows, function (i, e) {
-		idMap[e.id] = true;
+		idMap[e[idField]] = true;
 	});
 	$.each(data1.rows, function (i, e) {
 		var fatherId = e[fatherField];
@@ -5631,8 +5665,9 @@ function reloadRow(jtbl, rowData)
 		var objArr = jdListToArray(data);
 		if (datagrid == "treegrid") {
 			$.extend(rowData, objArr[0]);
-			if (rowData["_parentId"] && rowData["_parentId"] != rowData["fatherId"]) {
-				rowData["_parentId"] = rowData["fatherId"];
+			var fatherId = rowData[opt.fatherField]; // "fatherId"
+			if (rowData["_parentId"] && rowData["_parentId"] != fatherId) {
+				rowData["_parentId"] = fatherId;
 				jtbl.treegrid("remove", rowData.id);
 				jtbl.treegrid("append", {
 					parent: rowData["_parentId"],
@@ -5670,8 +5705,9 @@ function appendRow(jtbl, id)
 			return;
 		var row = objArr[0];
 		if (datagrid == "treegrid") {
+			var fatherId = row[opt.fatherField];
 			jtbl.treegrid('append',{
-				parent: row["fatherId"],
+				parent: fatherId,
 				data: [row]
 			});
 			return;
@@ -7896,18 +7932,25 @@ CSS类, 可定义无数据提示的样式
 
 $.extend($.fn.treegrid.defaults, {
 	idField: "id",
-	treeField: "id",
+	treeField: "id", // 只影响显示，在该字段上折叠
 	pagination: false,
+	fatherField: "fatherId", // 该字段为WUI扩展，指向父节点的字段
 	loadFilter: function (data, parentId) {
-		var isLeaf = $(this).treegrid("options").isLeaf;
-		var ret = jdListToTree(data, "fatherId", parentId, isLeaf);
+		var opt = $(this).treegrid("options");
+		var isLeaf = opt.isLeaf;
+		var ret = jdListToTree(data, opt.idField, opt.fatherField, parentId, isLeaf);
 		return ret;
 	},
 	onBeforeLoad: function (row, param) {
 		if (row) { // row非空表示展开父结点操作，须将param改为 {cond?, id} => {cond:"fatherId=1"}
-			param.cond = "fatherId=" + row.id;
+			var opt = $(this).treegrid("options");
+			param.cond = opt.fatherField + "=" + row.id;
 			delete param["id"];
 		}
+	},
+	onLoadSuccess: function (row, data) {
+		// 空数据显示优化
+		$.fn.datagrid.defaults.onLoadSuccess.call(this, data);
 	}
 });
 
@@ -8806,7 +8849,8 @@ function mainInit()
 	function onResizePanel() {
 		//console.log("dialog resize");
 		// 强制datagrid重排
-		$(this).closest(".panel-body").panel("doLayout", true);
+		var jo = $(this);
+		jo.find(".datagrid").closest(".panel-body:visible").panel("doLayout", true);
 	}
 	$.fn.dialog.defaults.onResize = onResizePanel;
 }

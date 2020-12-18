@@ -271,3 +271,12 @@ input:disabled,select:disabled,textarea:disabled {
 	white-space: nowrap;
 	padding: 0 4px;
 }
+
+.hidden {
+	display: none;
+}
+
+/* 对话框中子表tabs的上间距 */
+.wui-dialog .easyui-tabs {
+	margin-top: 20px;
+}
