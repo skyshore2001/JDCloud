@@ -9,9 +9,14 @@ if [[ -z $name ]]; then
 	exit 1
 fi
 
-git init $name --shared
+if [[ -d $name ]]; then
+	echo "!!! git repo $name exists. init it."
+else
+	git init $name --shared
+fi
 chmod g+rwxs $name
 cd $name
+
 git config receive.denyCurrentBranch ignore
 git config receive.denyNonFastForwards false
 cat <<.  > .git/hooks/post-update
