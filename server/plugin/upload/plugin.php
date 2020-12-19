@@ -276,7 +276,7 @@ function getPath($orgName, $cate, $cateConf)
 			$fname = $ext? "$fname0-$i.$ext": "$fname0-$i";
 			++ $i;
 		}
-		touch($fname); // 先占位，避免一次上传多个文件或并发多请求在上传文件时，可能产生重名
+//		touch($fname); // TODO: 一次上传多个文件或并发多请求在上传文件时，可能产生重名. 如果touch需要先创建文件夹.
 	}
 
 	return $fname;
