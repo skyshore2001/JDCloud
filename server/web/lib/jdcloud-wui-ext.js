@@ -76,7 +76,7 @@ a标签上数据如下：
 
 @param opt.multiple=true 设置false限制只能选一张图。
 
-@param opt.nothumb=false 设置为true表示不生成缩略图，且不做压缩。
+@param opt.nothumb=false 设置为true表示不生成缩略图，且不做压缩（除非指定maxSize参数，这时不生成缩略图，但仍然压缩）。
 
 	<td class="wui-upload" data-options="nothumb:true">...</td>
 
@@ -250,6 +250,29 @@ HTML: 在data-options中指定菜单的ID和显示文字。缺省头像将添加
 		// 获取和动态设置选项：
 		var uploadOpt = WUI.getOptions(jo);
 		uploadOpt.nothumb = (objParam.type === "A");
+	}
+
+ ## 定制上传接口
+
+ - opt.onGetQueryParam: Function() -> {ac?, ...} 定义上传接口名和接口参数。
+ - opt.onGetData: Function(ret)  处理接口返回结果ret。
+
+ 示例：调用`upload1(resource, version) -> [{id, ..., url}]` 接口。
+ 该接口扩展了默认的upload接口，需要传入resource等参数，返回的url字段需要设置到form相应字段上。
+
+    // function initDlgVersion
+ 	var jo = jdlg.find(".uploadFile");
+	var uploadOpt = WUI.getOptions(jo);
+	uploadOpt.onGetQueryParam = function () {
+		return {
+			ac: "upload1",
+			resource: $(frm.resourceId).val(),
+			version: $(frm.name).val()
+		}
+	}
+	uploadOpt.onGetData = function (ret) {
+		var resUrl = ret[0].url;
+		$(frm.url).val(resUrl);
 	}
 
  */
@@ -457,13 +480,13 @@ function imgToHidden(jp, sep)
 		});
 		if (imgArr.length > 0) {
 			var params = {genThumb: 1, autoResize: 0};
-			dfd = callSvr('upload', params, function (data) {
+			dfd = callUpload(params, fd, function (data) {
 				$.each(data, function (i, e) {
 					val.push(e.thumbId);
 					$(imgArr[i]).attr("picId", e.thumbId);
 					imgArr[i].picData_ = null;
 				});
-			}, fd, ajaxOpt);
+			});
 		}
 	}
 	else {
@@ -481,7 +504,7 @@ function imgToHidden(jp, sep)
 				fd.append('file' + (i+1), e);
 			});
 			var params = {autoResize: 0};
-			dfd = callSvr('upload', params, function (data) {
+			dfd = callUpload(params, fd, function (data) {
 				$.each(data, function (i, e) {
 					var att = e.id;
 					if (opt.fname == 1) {
@@ -489,7 +512,7 @@ function imgToHidden(jp, sep)
 					}
 					val.push(att);
 				});
-			}, fd, ajaxOpt);
+			});
 		}
 	}
 	if (dfd) {
@@ -498,6 +521,22 @@ function imgToHidden(jp, sep)
 	}
 	else {
 		done();
+	}
+
+	function callUpload(params, fd, api_upload) {
+		var ac = 'upload';
+		if (opt.onGetQueryParam) {
+			params = opt.onGetQueryParam();
+			if (params.ac) {
+				ac = params.ac;
+				delete params.ac;
+			}
+		}
+		var dfd = callSvr(ac, params, function (data) {
+			api_upload && api_upload.call(this, data);
+			opt.onGetData && opt.onGetData(data);
+		}, fd, ajaxOpt);
+		return dfd;
 	}
 
 	function done() {
@@ -536,7 +575,7 @@ function onChooseFile(ev)
 	}
 
 	var picFiles = this.files;
-	var compress = !opt.nothumb;
+	var compress = ! (opt.nothumb && opt.maxSize === undefined);
 
 	$.each(picFiles, function (i, fileObj) {
 		if (compress) {

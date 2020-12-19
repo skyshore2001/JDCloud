@@ -4,6 +4,8 @@
 
 上传下载接口。
 
+服务端配置参数及调用接口见plugin.php中头部注释.
+
 ## 数据库设计
 
 **[附件]**
@@ -28,11 +30,11 @@ tm
 
 使用multipart/form-data格式上传（标准html支持，可一次传多个文件）:
 
-	upload(type?=default, genThumb?=0, autoResize?=1)(POST content:multipart/form-data) -> [{id, orgName, size, thumbId?}]
+	upload(category?, genThumb?=0, autoResize?=1, onGetPath?)(POST content:multipart/form-data) -> [{id, orgName, size, path, thumbId?}]
 	
 直接传文件内容，一次只能传一个文件:
 
-	upload(fmt=raw|raw_b64, f, exif?, ...)(POST content:raw) -> [{id, orgName, size, thumbId?}]
+	upload(fmt=raw|raw_b64, f, exif?, ...)(POST content:raw) -> [{id, orgName, size, path, thumbId?}]
 	
 上传照片等内容. 返回附件id. 因为允许一次上传多个文件，返回的是一个数组，每项对应上传的一个文件。
 
@@ -41,11 +43,11 @@ tm
 **[参数]**
 
 genThumb
-: Boolean. 为1时生成缩略图。如果未指定type, 则按type=default设置缩略图大小, 默认缩略图宽高不超过360.
+: Boolean. 为1时生成缩略图。如果未指定category, 则默认缩略图宽高不超过360.
 
-type
-: String. 图片类别。服务端将根据type不同，将图片放置相应的文件夹中(upload/{type}/{date:yyyymm}/)，用于图片自动裁切缩略图到指定大小。
- 例如，商家图片上传使用"store", 用户头像上传使用"user", 其它情况不赋值. 不同的type在生成缩略图时尺寸不同, 可配置变量`Upload:$typeMap`，缺省为："default" => 360x360.
+category
+: String. 图片类别。服务端将根据category不同，将图片放置相应的文件夹中(upload/{category}/{date:yyyymm}/)，用于图片自动裁切缩略图到指定大小。
+ 例如，商家图片上传使用"store", 用户头像上传使用"user", 其它情况不赋值. 不同的category在生成缩略图时尺寸不同, 可配置变量`Upload:$categoryMap`，缺省为最大360
 
 content
 : 文件内容。默认使用multipart/form-data格式，详见请求示例。如果fmt为"raw"或"raw_b64"，则直接为文件内容（或其base64编码）
@@ -69,8 +71,8 @@ f
 
 - 仅支持上传指定的文件扩展名，可配置`Upload::$fileTypes`。
 - 文件最大可上传的大小，可在php.ini中修改配置upload_max_filesize, post_max_size, max_execution_time等相关选项。
-- 在保存文件时，文件路径使用以下规则: upload/{type}/{date:YYYYMM}/{6位随机数}.{原扩展名}
- 例如, 商家图片(type=store)路径为 upload/store/201501/123456.jpg. 用户上传的某图片(type为空)路径可能为 upload/201501/123456.jpg
+- 在保存文件时，文件路径使用以下规则: upload/{category}/{date:YYYYMM}/{6位随机数}.{原扩展名}
+ 例如, 商家图片(category=store)路径为 upload/store/201501/123456.jpg. 用户上传的某图片(category为空)路径可能为 upload/201501/123456.jpg
 
 **[返回]**
 
@@ -82,6 +84,9 @@ thumbId
 
 orgName
 : 原文件名。可在form-data中获取，或从参数f中获取。在下载(att接口)时会使用到。
+
+path
+: 文件路径. 可通过`{baseDir}/{path}`路径来下载文件. 但一般不建议使用它, 而是使用`att(id)`接口来下载文件.
 
 **[示例1]**
 
@@ -175,7 +180,7 @@ HTTP header "Content-Type"将标识正确的文件MIME类型，如jpg类型为"i
 
 如果找不到附件，将返回HTTP状态码"404 Not Found"。
 
-默认是直接输入文件内容，但如果文件大小超过10MB，或是请求头中含有"Range"（比如播放mp4视频，会分段取），则直接重定向到原文件。
+默认是直接输出文件内容供下载，但如果文件大小超过100MB(可通过`Upload::bigFileSize`配置, 设置为-1表示不限制大小都用php处理)，或是请求头中含有"Range"（比如播放mp4视频，会分段取），则直接重定向到原文件。
 
 **[参数]**
 
@@ -295,3 +300,26 @@ JS:
 		function api_upload(data) { ... }
 	});
 
+## 定制上传路径
+
+示例：下载中心资源版本文件上传要求将文件上传到`upload/resource/{资源名称}/{文件名称}`, 可定制接口:
+
+	upload(category=resource, resource, version) -> [{ id, orgName, size, path }]
+    
+参数:
+
+- resource: 文件所属资源
+- version: 版本号
+
+调用成功返回示例:
+
+    [0, [
+        {"id:" 100, "path":"upload/resource/fotric340操作手册/1.0.0/fotric340.pdf", ...}
+        ...
+    ]]
+    
+实现方式：在plugin/index.php中定制:
+
+	Upload::$categoryMap["resource"] = ["path"=>"%{resource}/%{version}/%f", "sameNameOverwrite"=>true];
+
+sameNameOverwrite表示若重名则覆盖. 默认是重名则自动改名.
