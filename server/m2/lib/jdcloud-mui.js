@@ -489,6 +489,13 @@ style将被插入到head标签中，并自动添加属性`mui-origin={pageId}`.
 	statusBarColor: "#ffffff,dark" // 白底黑字
 	statusBarColor: "none" // 不显示状态栏。
 
+如果不同页面有不同颜色，可以设置切换页面时自动按照页面头颜色来设置:
+
+	WUI.options.fixTopbarColor=true
+
+注意此时要设置顶栏颜色，页面必须有页头即hd类并设置好颜色，若不需要页头可以设置隐藏.
+@see options.fixTopbarColor
+
 如果希望自行设置状态栏，可以设置statusBarColor为null:
 
 	MUI.options.statusBarColor = null;
@@ -2021,6 +2028,79 @@ function initModule()
 	}
 }
 initModule();
+
+/**
+@fn text2html(str, pics)
+
+将文本或图片转成html，常用于将筋斗云后端返回的图文内容转成html在网页中显示。示例：
+
+	var item = {id: 1, name: "商品1", content: "商品介绍内容", pics: "100,102"};
+	var html = MUI.text2html(item.content, item.pics);
+	jpage.find("#content").html(html);
+
+文字转html示例：
+
+	var html = MUI.text2html("hello\nworld");
+
+生成html为
+
+	<p>hello</p>
+	<p>world</p>
+
+支持简单的markdown格式，如"# ","## "分别表示一二级标题, "- "表示列表（注意在"#"或"-"后面有英文空格）：
+	
+	# 标题1
+	内容1
+	# 标题2
+	内容2
+
+	- 列表1
+	- 列表2
+
+函数可将图片编号列表转成img列表，如：
+
+	var html = MUI.text2html(null, "100,102");
+
+生成
+
+	<img src="../api.php/att?thumbId=100">
+	<img src="../api.php/att?thumbId=102">
+
+ */
+self.text2html = text2html;
+function text2html(s, pics)
+{
+	var ret = "";
+	if (s) {
+		ret = s.replace(/^(?:([#-]+)\s+)?(.*)$/mg, function (m, begin, text) {
+			if (begin) {
+				if (begin[0] == '#') {
+					n = begin.length;
+					return "<h" + n + ">" + text + "</h" + n + ">";
+				}
+				if (begin[0] == '-') {
+					return "<li>" + text + "</li>";
+				}
+			}
+			// 空段落处理
+			if (text) {
+				text = text.replace(" ", "&nbsp;");
+			}
+			else {
+				text = "&nbsp;";
+			}
+			return "<p>" + text + "</p>";
+		}) + "\n";
+	}
+	if (pics) {
+		var arr = pics.split(/\s*,\s*/);
+		arr.forEach(function (e) {
+			var url = "../api.php/att?thumbId=" + e;
+			ret += "<img src=\"" + url + "\">\n";
+		});
+	}
+	return ret;
+}
 
 }/*jdcloud common*/
 
@@ -6992,13 +7072,16 @@ function fixTopbarColor()
 {
 	if (!g_cordova)
 		return;
-	$(document).on("pageshow", function () {
+	$(document).on("pageshow", onPageShow);
+	onPageShow();
+	
+	function onPageShow() {
 		var color = MUI.activePage.find(".hd").css("backgroundColor"); // format: "rgb(...)"
 		if (color) {
 			var colorHex = self.rgb2hex(color); // call rgb(...)
 			setTopbarColor(colorHex);
 		}
-	});
+	}
 }
 
 //}}}
@@ -7185,7 +7268,7 @@ function parseArgs()
 			mCommon.setStorage("cordova", g_cordova);
 			$(function () {
 				var path = './';
-				if (mCommon.isIOS()) {
+				if (/iPhone|iPad|Macintosh/i.test(navigator.userAgent)) {
 					if (g_args.mergeJs) {
 						mCommon.loadScript(path + "lib-cordova-ios.min.js"); 
 					}

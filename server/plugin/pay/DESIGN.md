@@ -7,7 +7,7 @@
 
 USAGE:
 
-- 前端调用Web服务接口：pay/payMock接口。
+- 前端在m2/lib/jd_weixin.js中封装了pay函数，可以直接调用该函数，其内部调用Web服务接口：pay/payMock接口。
 - 后端支付模块接口，用于配置支付及调用支付函数：Pay类
 - 后端支付实现逻辑：PayImp类。
 - 后端支付方式扩展：在PayImpBase::payTypes和PayImpBase::payMockTypes中注册函数。
@@ -21,22 +21,6 @@ USAGE:
 - type: wx-微信支付|ali-支付宝支付|自定义值
 - tradeNo: String. 交易号。格式："{tradeKey}-{id}", 如"ORDR-11"，表示订单11. 它最终将被转换成外部交易号outTradeNo。
 - 其它参数以及返回值，根据支付类型不同返回也不同，参考下面文档。
-
-### 模拟模式下
-
-	pay(type, tradeNo) -> { err=mock, outTradeNo, amount, dscr }
-
-返回err=mock时标识是模拟支付，此时让用户确认待支付信息，确认后调用payMock发起模拟支付:
-
-	var payParam = {type: "wx", tradeNo: "ORDR-10"};
-	if (res.err == "mock") {
-		// 确认支付，然后发起模拟支付。
-		app_alert("确认支付?", function () {
-			callSvr("payMock", payParam, function (data) {
-				app_alert("支付成功!");
-			});
-		});
-	}
 
 ### 微信支付
 
@@ -101,6 +85,26 @@ weixinKey用于推送公众号消息或发起支付。
 - PERM_MOCK_MODE
 - 仅当订单可支付时(如CR,CO等状态)，将其状态改为已支付(PA)
 - 推送消息
+
+在conf.user.php中设置模拟模式：
+
+	putenv("P_MOCK_MODE=1");
+
+在模拟模式下，pay接口会返回错误，提示应调用payMock接口走模拟支付：
+
+	pay(type, tradeNo) -> { err="mock", outTradeNo, amount, dscr }
+
+返回err="mock"时标识是模拟支付，此时让用户确认待支付信息，确认后调用payMock发起模拟支付，前端JS示例为（已封装在jd_weixin.js的pay函数中）:
+
+	var payParam = {type: "wx", tradeNo: "ORDR-10"};
+	if (res.err == "mock") {
+		// 确认支付，然后发起模拟支付。
+		app_alert("确认支付?", function () {
+			callSvr("payMock", payParam, function (data) {
+				app_alert("支付成功!");
+			});
+		});
+	}
 
 ## 后端模块接口 - 配置项与函数
 
@@ -236,3 +240,20 @@ weixinKey用于推送公众号消息或发起支付。
 		}
 	}
 
+## 调试支付
+
+向微信或支付宝发起支付时，一般需要使用公网地址。为了方便在本地调试后端，可以映射本地到公网，示例：
+将myserver.com的8081端口映射到本地80端口：
+
+    ssh -R 8081:localhost:80 myserver.com
+
+于是可以从公网访问本地服务：
+    http://myserver.com:8081/...
+
+为了便于与第三方对接（比如微信公众号支付需要安全域名，用8081端口无法设置），一般需要再配置Apache/nginx代理成 http://myserver.com/8081/... 这样来访问。
+具体参考 plugin/login/DESIGN.md 【本地调试微信认证】.
+
+在发起支付时，会生成给第三方调用的回调地址，pay插件会调用getBaseUrl()生成该地址。这在部署到线上后是正确的，但在本地调试并映射到公网时，getBaseUrl会返回localhost的地址，导致微信和支付宝在支付成功后无法回调。解决方法是在conf.user.php中临时设置映射后的baseUrl:
+
+    putenv("P_BASE_URL=http://myserver.com/8081/p/myapp/");
+ 
