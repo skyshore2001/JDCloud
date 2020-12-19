@@ -963,10 +963,18 @@ class ConfBase
 (v5.4) 此外，在全局配置`P_initClient`数据中的量将自动设置到ret中，它用于后端控制前端配置，如：
 
 	// 配置在conf.user.php中：
+	$val = preg_match('/iphone|ipad|macintosh/i', $_SERVER["HTTP_USER_AGENT"]);
+	// $val = preg_match('/\b17\./i', getReqIp()); // apple审核用的地址, 17开头的美国地址
 	$GLOBALS["P_initClient"] = [
 		"enableWeixinLogin" => true, // 自动微信登录
-		"enableAppReviewMode" => true // APP审核定制
+		"enableAppReviewMode" => $val // APP审核定制; 根据条件判断来设置
 	];
+	
+前端框架在入口处会调用MUI.initClient(), 之后配置将放在 g_data.initClient 下面, 前端判断示例:
+
+	if (g_data.initClient.enableAppReviewMode) {
+		// ...
+	}
 	
  */
 	static function onInitClient(&$ret)

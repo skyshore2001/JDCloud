@@ -51,6 +51,8 @@ query接口默认返回格式为`{h,d}`，通过表头h与表内容d传数据表
 	{h: ["字段1", "字段2", ...], d: [ ["字段1内容", "字段2内容", ...], [ ...第2行 ], ... ] } 
 
 使用jdcloud前端框架可通过`rs2Array`函数转成对象对象格式，或通过`rs2Hash`/`rs2MultiHash`转成映射表格式。
+`rs2MultiHash`常用于数据分组
+示例:http://oliveche.com/jdcloud-site/api_web.html#rs2MultiHash
 
 通过`fmt`参数可以调整返回格式，常用有：
 

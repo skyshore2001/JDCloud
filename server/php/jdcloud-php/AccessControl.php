@@ -1527,6 +1527,9 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	final protected function getAliasVal($row, $col) {
 		return @$row[$this->aliasMap[$col] ?: $col];
 	}
+	final protected function setAliasVal($row, $col, $val) {
+		$row[$this->aliasMap[$col] ?: $col] = $val;
+	}
 
 	private function handleRow(&$rowData, $idx, $rowCnt)
 	{
