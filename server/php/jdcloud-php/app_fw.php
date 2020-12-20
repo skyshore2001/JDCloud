@@ -1542,9 +1542,17 @@ function dbUpdate($table, $kv, $cond)
 
 	$cache = new SimpleCache(); // id=>name
 	for ($idList as $id) {
-		$name = $cache->get($id, function () use ($id){
+		$name = $cache->get($id, function () use ($id) {
 			return queryOne("SELECT name FROM Vendor WHERE id=$id");
 		});
+	}
+
+更简单地，也可以直接使用全局的cache (这时注意确保key在全局唯一）：
+
+	for ($idList as $id) {
+		$name = SimpleCache::getInstance()->get("VendorIdToName-{$id}", function () use ($id) {
+			return queryOne("SELECT name FROM Vendor WHERE id=$id");
+		})
 	}
 
 示例2：
@@ -1559,6 +1567,7 @@ function dbUpdate($table, $kv, $cond)
 */
 class SimpleCache
 {
+	use JDSingleton;
 	protected $cacheData = [];
 
 	// return false if key does not exist
@@ -2161,7 +2170,7 @@ class AppBase
  */
 trait JDSingleton
 {
-	private function __construct () {}
+//	private function __construct () {}
 	static function getInstance()
 	{
 		static $inst;
@@ -2196,7 +2205,7 @@ trait JDSingleton
  */
 trait JDSingletonImp
 {
-	private function __construct () {}
+//	private function __construct () {}
 	static function getInstance()
 	{
 		static $inst;

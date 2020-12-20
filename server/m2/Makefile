@@ -16,8 +16,8 @@ lib-cordova.min.js: $(shell git ls-files cordova)
 lib-cordova-ios.min.js: $(shell git ls-files cordova-ios)
 	MERGE=lib-cordova-ios $(MERGE) $^
 
-# ¼ì²éÊÇ·ñ·ûºÏES5¹æ·¶. Îª±£Ö¤¼æÈİĞÔ, Ä¿Ç°²»ÔÊĞíÊ¹ÓÃES6ÌØĞÔ.
-# ĞëÏÈ°²×°es-check: `cnpm i es-check -g`
+# æ£€æŸ¥æ˜¯å¦ç¬¦åˆES5è§„èŒƒ. ä¸ºä¿è¯å…¼å®¹æ€§, ç›®å‰ä¸å…è®¸ä½¿ç”¨ES6ç‰¹æ€§.
+# é¡»å…ˆå®‰è£…es-check: `cnpm i es-check -g`
 check:
 	es-check --module es5 *.js page/*.js page-emp/*.js page-emp/*/*.js | tee 1.log
 	@echo === write to 1.log

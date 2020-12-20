@@ -1527,8 +1527,10 @@ $.extend(self.dg_toolbar, {
 		{
 		}
 
-- relatedKey: 关联字段. 指定两表(当前表与obj对应表)如何关联, 值"cusId"与"cusId={id}"等价, 表示`主表.id=CusOrder.cusId`.
+- relatedKey: 关联字段. 指定两表(当前表与obj对应表)如何关联, 用于自动创建子表查询条件以及子表对话框的关联值设置(wui-fixed-field)
+ 值"cusId"与"cusId={id}"等价, 表示`主表.id=CusOrder.cusId`.
  可以明确指定被关联字段, 如relatedKey="name={name}" 表示`主表.name=CusOrder.name`. 
+ 支持多个关联字段设置, 如`relId={id} AND type={type}`.
 
 - dlg: 对应子表详情对话框。如果指定，则允许添加、更新、查询操作。
 
@@ -1676,14 +1678,9 @@ function enhanceSubobj(jo)
 	var opt = WUI.getOptions(jo);
 	self.assert(opt.relatedKey, "wui-subobj: 选项relatedKey未设置");
 
-	var m = opt.relatedKey.match(/(\w+)=\{(\w+)\}/);
-	if (m) {
-		opt.relatedKey = m[1];
-		opt.relatedKeyTo = m[2];
-	}
-	else {
-		opt.relatedKeyTo = "id";
-	}
+	var relatedKey = opt.relatedKey;
+	if (relatedKey.match(/^\w+$/))
+		relatedKey += "={id}";
 
 	var ctx = {};
 
@@ -1765,7 +1762,7 @@ function enhanceSubobj(jo)
 			if (formMode == FormMode.forAdd) {
 				if (opt.valueField) {
 					jdlg1.objParam.offline = true; // 添加时主子表一起提交
-					jdlg1.objParam[opt.relatedKey] = ''; // 同时设置子表对话框中cusId字段的CSS类为wui-fixedField，让该字段不可修改。
+					setObjParam(jdlg1.objParam, formData);
 					jtbl.jdata().toolbar = "ads"; // add/del/set
 					var dgOpt = $.extend({
 						toolbar: WUI.dg_toolbar(jtbl, jdlg1),
@@ -1777,15 +1774,13 @@ function enhanceSubobj(jo)
 				}
 			}
 			else if (formMode == FormMode.forSet) {
-				var mainId = formData && formData[opt.relatedKeyTo];
-
-				jdlg1.objParam[opt.relatedKey] = mainId;
+				setObjParam(jdlg1.objParam, formData);
 				jdlg1.objParam.readonly = opt.readonly;
 				jtbl.jdata().toolbar = opt.toolbar;  // 允许所有
 				var dgOpt = $.extend({
 					toolbar: WUI.dg_toolbar(jtbl, jdlg1),
 					onDblClickRow: WUI.dg_dblclick(jtbl, jdlg1),
-					url: getQueryUrl(mainId)
+					url: getQueryUrl(formData)
 				}, opt[datagrid]);
 				jtbl[datagrid](dgOpt);
 
@@ -1795,13 +1790,25 @@ function enhanceSubobj(jo)
 		}
 		else {
 			if (formMode == FormMode.forSet) {
-				var mainId = formData[opt.relatedKeyTo];
 				var dgOpt = {
-					url: getQueryUrl(mainId)
+					url: getQueryUrl(formData)
 				};
 				jtbl[datagrid](dgOpt);
 			}
 		}
+	}
+
+	// 根据主表数据和relatedKey设置子表固定数据
+	function setObjParam(objParam, formData) {
+		// 格式示例: `relId={id}`, `type='工艺'`, `flag=1`
+		relatedKey.replace(/(\w+)=(?:\{(\w+)\}|(\S+))/g, function (ms, key, key2, value) {
+			if (key2) {
+				objParam[key] = formData[key2];
+			}
+			else {
+				objParam[key] = value.replace(/['"]/g, '');
+			}
+		});
 	}
 
 	function toggle(show) {
@@ -1813,9 +1820,12 @@ function enhanceSubobj(jo)
 		}
 	}
 
-	function getQueryUrl(mainId) {
-		var val = $.isNumeric(mainId)? mainId: Q(mainId);
-		var param = {cond: opt.relatedKey + "=" + val, res: opt.res};
+	// 根据主表数据和relatedKey设置url
+	function getQueryUrl(formData) {
+		var cond = relatedKey.replace(/(\w+=)\{(\w+)\}/g, function (ms, ms1, ms2) {
+			return ms1 + Q(formData[ms2]);
+		});
+		var param = {cond: cond, res: opt.res};
 		// 树型子表，一次全部取出
 		if (opt.treegrid)
 			param.pagesz = -1;

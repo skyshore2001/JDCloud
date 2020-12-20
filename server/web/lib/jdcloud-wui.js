@@ -681,6 +681,8 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 @see showPage
 @key .wui-fixedField 固定值字段
 
+当打开对话框时, 标识为.wui-fixedField类的字段会自动从传入的opt.objParam中取值, 如果取到值则将自己设置为只读.
+
 此外，在Item页对应的详情对话框上（dlgItem.html页面中），还应设置storeId字段是只读的，在添加、设置和查询时不可被修改，在添加时还应自动填充值。
 (v5.3) 只要在字段上添加wui-fixedField类即可：
 
@@ -2504,9 +2506,13 @@ function parseKvList(str, sep, sep2)
 window.Q = self.Q = Q;
 function Q(str, q)
 {
+	if (str == null)
+		return "null";
+	if (typeof str == "number")
+		return str;
 	if (q == null)
 		q = "'";
-	return q + str.replaceAll(q, "\\" + q) + q;
+	return q + str.toString().replaceAll(q, "\\" + q) + q;
 }
 
 function initModule()
@@ -6587,7 +6593,8 @@ function setFixedFields(jdlg, beforeShowOpt) {
 		if (fixedVal || fixedVal == '') {
 			it.setReadonly(ji, true);
 			var forAdd = beforeShowOpt.objParam.mode == FormMode.forAdd;
-			if (forAdd) {
+			var forFind = beforeShowOpt.objParam.mode == FormMode.forFind;
+			if (forAdd || forFind) {
 				it.setValue(ji, fixedVal);
 			}
 		}
