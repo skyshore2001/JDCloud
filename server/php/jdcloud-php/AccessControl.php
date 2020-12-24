@@ -617,7 +617,7 @@ subobj: { name => {sql, default?=false, wantOne?=false} } 指定SQL语句，查�
 ### 子表查询参数
 
 (v5.4)
-可以通过 "res_{子对象名}" 或 "param_{子对象名}" 为子对象指定查询条件，param可指定子对象可接受的一切参数。
+可以通过 `res_{子对象名}` 或 `param_{子对象名}` 为子对象指定查询条件，param可指定子对象可接受的一切参数。
 示例：实现接口 `Hub.query(id, ..., lastData)`, 查询主机时，可通过lastData字段返回最近一次的主机数据.
 
 	class AC2_Hub extends AccessControl

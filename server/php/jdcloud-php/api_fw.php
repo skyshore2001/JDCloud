@@ -663,8 +663,10 @@ function hasPerm($perms, $exPerms=null)
 	if (is_array($exPerms)) {
 		foreach ($exPerms as $name) {
 			$fn = "hasPerm_" . $name; // e.g. hasPerm_simple
-			if (function_exists($fn) && $fn())
+			if (function_exists($fn) && $fn()) {
+				ApiFw_::$perms = onGetPerms(); // 刷新权限, 用于支持在扩展认证后模拟系统用户登录
 				return true;
+			}
 		}
 	}
 	else if ($exPerms) {
@@ -714,7 +716,7 @@ HTTP Basic认证，即添加HTTP头：
 	// class Conf (在conf.php中)
 	static $basicAuth = [
 		["user" => "user1", "pwd" => "1234"],
-		["user" => "user2", "pwd" => "1234"]
+		["user" => "user2", "pwd" => "1234", "SESSION" => ["empId" => -9999] ] // 可以指定SESSION变量, 这里设置empId是模拟员工登录, 以便以员工身份调用接口(如AC2_xxx类)
 	];
 
 请求示例：
@@ -732,8 +734,14 @@ function hasPerm_basic()
 	if (! isset($user))
 		return false;
 	foreach (Conf::$basicAuth as $e) {
-		if ($e["user"] == $user && $e["pwd"] == $pwd)
+		if ($e["user"] == $user && $e["pwd"] == $pwd) {
+			if (is_array($e["SESSION"])) {
+				foreach ($e["SESSION"] as $k=>$v) {
+					$_SESSION[$k] = $v;
+				}
+			}
 			return true;
+		}
 	}
 	return false;
 }
