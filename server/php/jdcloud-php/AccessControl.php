@@ -2090,8 +2090,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 
 	private function addDefaultVCols()
 	{
-		$idx = 0;
-		foreach ($this->vcolDefs as $vcolDef) {
+		foreach ($this->vcolDefs as $idx => $vcolDef) {
 			if (@$vcolDef["default"]) {
 				$this->addVColDef($idx);
 				$isExt = @ $vcolDef["isExt"] ? true: false;
@@ -2099,7 +2098,6 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 					$this->addRes($e, true, $isExt);
 				}
 			}
-			++ $idx;
 		}
 	}
 
