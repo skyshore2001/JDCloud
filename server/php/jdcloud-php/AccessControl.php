@@ -2244,6 +2244,9 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		foreach ($this->subobj as $k=>$v) {
 			if (is_array($_POST[$k]) && isset($v["obj"])) {
 				$subobjList = $_POST[$k];
+				if (! isArray012($subobjList)) {
+					throw new MyException(E_PARAM, "bad subobj $k", "子对象必须为数组: $k");
+				}
 				$onAfterActions[] = function (&$ret) use ($subobjList, $v) {
 					$relatedKey = null;
 					$relatedKeyTo = null;

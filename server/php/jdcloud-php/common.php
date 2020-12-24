@@ -932,4 +932,23 @@ function fromMh($str)
 	return $val;
 }
 
+/**
+@fn isArray012($var)
+
+判断是否为数值键的数组
+*/
+function isArray012($var)
+{
+	return is_array($var) && (count($var)==0 || array_key_exists(0, $var));
+}
+
+/**
+@fn isArrayAssoc($var)
+
+判断是否为关联数组
+*/
+function isArrayAssoc($var)
+{
+	return is_array($var) && !array_key_exists(0, $var);
+}
 // vi: foldmethod=marker
