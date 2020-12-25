@@ -68,7 +68,7 @@ AccessControl简写为AC，同时AC也表示自动补全(AutoComplete).
 @var AccessControl::$readonlyFields2 ?=[]  (影响set操作) 字段列表，更新时对这些字段填值无效。
 
 注意：v5.4以下设置只读字段，只记录日志但不报错。
-v5.4起将报错，设置该类的useStrictReadonly=false可以兼容旧行为不报错。
+v5.4起将报错，设置该类的useStrictReadonly=false可以兼容旧行为不报错，(v5.5)或者设置URL参数useStrictReadonly=0。
 
 @var AccessControl::$hiddenFields ?= []  (for get/query) 隐藏字段列表。默认表中所有字段都可返回。一些敏感字段不希望返回的可在此设置。
 
@@ -1416,9 +1416,12 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		# TODO: check fields in metadata
 		# foreach ($_POST as ($field, $val))
 
+		$useStrictReadonly = $this->useStrictReadonly;
+		if ($useStrictReadonly && param("useStrictReadonly/s") === "0")
+			$useStrictReadonly = false;
 		foreach ($this->readonlyFields as $field) {
 			if (array_key_exists($field, $_POST) && !($this->ac == "add" && array_search($field, $this->requiredFields) !== false)) {
-				if ($this->useStrictReadonly)
+				if ($useStrictReadonly)
 					throw new MyException(E_FORBIDDEN, "set readonly field {$this->table}.`$field`");
 				logit("!!! warn: attempt to change readonly field {$this->table}.`$field`");
 				unset($_POST[$field]);
@@ -1427,7 +1430,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		if ($this->ac == "set") {
 			foreach ($this->readonlyFields2 as $field) {
 				if (array_key_exists($field, $_POST)) {
-					if ($this->useStrictReadonly)
+					if ($useStrictReadonly)
 						throw new MyException(E_FORBIDDEN, "set readonly field {$this->table}.`$field`");
 					logit("!!! warn: attempt to change readonly field {$this->table}.`$field`");
 					unset($_POST[$field]);
@@ -2898,7 +2901,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
  如"title=name,-,addr"表示导入第一列name和第三列addr, 其中"-"表示忽略该列，不导入。
  字段列表以逗号或空白分隔, 如"title=name - addr"与"title=name, -, addr"都可以.
 
-- uniKey: (v5.5) 唯一索引字段. 如果指定, 则以该字段查询记录是否存在, 存在则更新. 通常可以设置为"id"或"code"等.
+- uniKey: (v5.5) 唯一索引字段. 如果指定, 则以该字段查询记录是否存在, 存在则更新。例如"code", 也支持多个字段（用于关联表），如"bpId,itemId"。
 
 支持三种方式上传：
 
@@ -3017,22 +3020,15 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 				}
 				try {
 					$doAdd = true;
-					if ($uniKey) {
-						$key = mparam($uniKey, $row);
-						if ($uniKey != "id") {
-							$sql = "SELECT id FROM " . $this->table . " WHERE $uniKey=" . Q($key);
-							$id = queryOne($sql);
-						}
-						else {
-							$id = $key;
-						}
-						if ($id) {
-							$this->callSvc(null, "set" , ["id" => $id], $postParam);
-							$doAdd = false;
-						}
+					$id = self::getIdByUniKey($this->table, $uniKey, $row);
+					if ($id) {
+						// useStrictReadonly: 遇到readonly字段的设置直接忽略，不要报错。
+						$this->callSvc(null, "set" , ["id" => $id, "useStrictReadonly" => "0"], $postParam);
+						$doAdd = false;
 					}
 					if ($doAdd) {
 						$st->beforeAdd($postParam, $row);
+						$_GET["useStrictReadonly"] = "0";
 						$id = $this->callSvc(null, "add", $_GET, $postParam);
 					}
 				}
@@ -3061,6 +3057,22 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		}
 		ApiFw_::$SOLO = $bak_SOLO;
 		return $ret;
+	}
+
+	// uniKey可以是多个字段，如"bpId,itemId"，这时生成查询"bpId='1' AND itemId='2'"这样
+	static function getIdByUniKey($table, $uniKey, $row)
+	{
+		if (! $uniKey)
+			return $row["id"];
+		$fields = explode(',', $uniKey);
+		$cond = null;
+		foreach ($fields as $k) {
+			$k = trim($k);
+			$v = mparam($k, $row);
+			addToStr($cond, $k . "=" . Q($v), " AND ");
+		}
+		$sql = "SELECT id FROM " . $table . " WHERE $cond";
+		return queryOne($sql);
 	}
 
 	// k: subobj name
