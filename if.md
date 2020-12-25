@@ -5,11 +5,11 @@
 - 测试环境为 http://a.com/jdcloud/api.php/
 - 生产环境为 http://a.com/jdcloud/api.php/
 
-本文档调用示例使用JS函数表示：
+本文档调用示例使用JS函数`callSvr`表示：
 
-	callSvr(调用名, URL参数/可选, $.noop/function(data){回调函数}, POST参数/可选)
+	callSvr(调用名, URL参数/可选, $.noop(表示空的回调函数，用来分隔URL和POST参数), POST参数/可选, 其它选项/可选)
 
-比如：
+比如，下面表示同时传了URL参数id和POST参数amount：
 
 	callSvr("Ordr.set", {id: 100}, $.noop, {amount: 99.9});
 

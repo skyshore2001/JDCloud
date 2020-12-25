@@ -533,7 +533,7 @@ subobj: { name => {obj, cond, AC?, res?, default?=false} } （v5.4）指定子�
 
 或
 
-subobj: { name => {sql, default?=false, wantOne?=false} } 指定SQL语句，查询结果作为子表对象
+subobj: { name => {sql, default?=false, wantOne?=false} } 指定SQL语句，查询结果作为子表对象（旧写法，不建议使用。只允许查询，不支持对子表修改）
 
 设计接口：
 
@@ -587,6 +587,73 @@ subobj: { name => {sql, default?=false, wantOne?=false} } 指定SQL语句，查�
 
 - default: 与虚拟字段(vcolDefs)上的"default"选项一样，表示当"res"参数以"*"开头(比如`res="*,picCnt"`)或未指定时，是否默认返回该字段。
 - wantOne: 如果为true, 则结果以一个对象返回即 {id, tm, ...}, 适用于主表与子表一对一的情况。
+
+### 子表的增删改查操作
+
+假设主对象为Obj，子对象为Obj1，设计如下：
+
+	@Obj: id, name
+	vcol: @obj1 (说明：vcol表示虚拟字段，@obj1表示字段obj1是个数组，一般就是子对象)
+
+	@Obj1: id, objId, name （通过objId关联主对象)
+
+在添加主对象时，同时添加子对象:
+
+	Obj.add()(name, @obj1...) -> id
+
+示例：
+
+	callSvr("Obj.add", $.noop, {
+		name: "name1",
+		obj1: [
+			{ name: "obj1-name1" },
+			{ name: "obj1-name2" }
+		]
+	});
+
+主对象添加后，可以通过get接口获取主对象及子对象：
+
+	callSvr("Obj.get", {id: 1001, res:"id,name,obj1"}) -> {
+		id: 1001,
+		name: "name1",
+		obj1: [
+			{ id: 10001, name: "obj1-name1" },
+			{ id: 10002, name: "obj1-name2" }
+		]
+	});
+
+要控制子对象的查询结果字段，可以加`res_{子对象名}`参数；要控制子对象的查询参数，可以加`param_{子对象名}`参数，示例：
+
+	callSvr("Obj.get", {id: 1001, res:"id,name,obj1", res_obj1:"id,name"})
+	或
+	callSvr("Obj.get", {id: 1001, res:"id,name,obj1", param_obj1: { res: "id,name"} })
+	callSvr("Obj.get", {id: 1001, res:"id,name,obj1", param_obj1: { res: "id,name", cond: "id>=10002"} })
+
+当然，也可以直接查询子对象，如：
+
+	callSvr("Obj1.query", {cond: "objId=1001", res:"id,name,obj1", fmt:"array"}) -> [
+		{ id: 10001, name: "obj1-name1" },
+		{ id: 10002, name: "obj1-name2" }
+	]
+
+这里用fmt参数指定返回array格式，因为默认返回的是`h/d`格式.
+
+主对象添加后，可以通过set接口添加/更新/删除子对象：
+
+	Obj.set(id)(name?, @obj1...)
+
+示例：
+
+	callSvr("Obj.set", {id: 1001}, $.noop, {
+		name: "name1",
+		obj1: [
+			{ id: 10001, name: "obj1-name1-changed" }, // set接口中指定子表id的，表示更新该子表行
+			{ name: "obj1-name3" },  // set接口中未指定子表id的，表示新增子表行
+			{ id: 10002, delete: 1}  // set接口中指定子表id且设置了`delete: 1`，表示删除该子表行
+		]
+	});
+
+主对象删除时（del/delIf接口），子对象不会自动删除。后端应根据情况自行处理。
 
 ### 关联子表对象
 
@@ -1224,7 +1291,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			return null;
 		$condSql = null;
 		foreach ($condArr as $cond) {
-			if ($cond === null)
+			if (! $cond)
 				continue;
 			if (is_array($cond))
 				$cond = self::getCondStr($cond);
@@ -1352,8 +1419,8 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		foreach ($this->readonlyFields as $field) {
 			if (array_key_exists($field, $_POST) && !($this->ac == "add" && array_search($field, $this->requiredFields) !== false)) {
 				if ($this->useStrictReadonly)
-					throw new MyException(E_FORBIDDEN, "set readonly field `$field`");
-				logit("!!! warn: attempt to change readonly field `$field`");
+					throw new MyException(E_FORBIDDEN, "set readonly field {$this->table}.`$field`");
+				logit("!!! warn: attempt to change readonly field {$this->table}.`$field`");
 				unset($_POST[$field]);
 			}
 		}
@@ -1361,8 +1428,8 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			foreach ($this->readonlyFields2 as $field) {
 				if (array_key_exists($field, $_POST)) {
 					if ($this->useStrictReadonly)
-						throw new MyException(E_FORBIDDEN, "set readonly field `$field`");
-					logit("!!! warn: attempt to change readonly field `$field`");
+						throw new MyException(E_FORBIDDEN, "set readonly field {$this->table}.`$field`");
+					logit("!!! warn: attempt to change readonly field {$this->table}.`$field`");
 					unset($_POST[$field]);
 				}
 			}
@@ -1885,6 +1952,8 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
  */
 	final public function addCond($cond, $prepend=false, $fixUserQuery=true)
 	{
+		if (! $cond)
+			return;
 		if ($fixUserQuery)
 			$cond = $this->fixUserQuery($cond);
 		if ($prepend)
@@ -2651,11 +2720,14 @@ FROM ($sql) t0";
 	protected function qsearch($fields, $q)
 	{
 		assert(is_array($fields));
+		if ($q === null)
+			return;
+		$q = trim($q);
 		if (! $q)
 			return;
 
 		$cond = null;
-		foreach (preg_split('/\s+/', trim($q)) as $q1) {
+		foreach (preg_split('/\s+/', $q) as $q1) {
 			if (strlen($q1) == 0)
 				continue;
 			if (strpos($q1, "*") !== false) {
@@ -2816,20 +2888,22 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 /**
 @fn AccessControl::api_batchAdd()
 
-批量添加（导入）。返回导入记录数cnt及编号列表idList
+标准接口`Obj.batchAdd`用于批量导入数据（支持不存在则添加，存在则更新）。返回导入记录数cnt及编号列表idList：
 
-	Obj.batchAdd(title?)(...) -> {cnt, @idList}
+	Obj.batchAdd(title?, uniKey?)(...) -> {cnt, @idList}
 
-在一个事务中执行，一行出错后立即失败返回，该行前面已导入的内容也会被取消（回滚）。
+它在一个事务中执行，一行出错后立即失败返回，该行前面已导入的内容也会被取消（回滚）。
 
 - title: List(fieldName). 指定标题行(即字段列表). 如果有该参数, 则忽略POST内容或文件中的标题行.
  如"title=name,-,addr"表示导入第一列name和第三列addr, 其中"-"表示忽略该列，不导入。
  字段列表以逗号或空白分隔, 如"title=name - addr"与"title=name, -, addr"都可以.
 
+- uniKey: (v5.5) 唯一索引字段. 如果指定, 则以该字段查询记录是否存在, 存在则更新. 通常可以设置为"id"或"code"等.
+
 支持三种方式上传：
 
 1. 直接在HTTP POST中传输内容，数据格式为：首行为标题行(即字段名列表)，之后为实际数据行。
-行使用"\n"分隔, 列使用"\t"分隔.
+行使用"\n"分隔, 列使用"\t"或逗号分隔（后端自动判断）.
 接口为：
 
 	{Obj}.batchAdd(title?)(标题行，数据行)
@@ -2851,9 +2925,9 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 
 示例: 在chrome console中导入数据
 
-	callSvr("Vendor.batchAdd", {title: "-,name, tel, idCard, addr, email, legalAddr, weixin, qq, area, picId"}, $.noop, `编号	姓名	手机号码	身份证号	通讯地址	邮箱	户籍地址	微信号	QQ号	负责安装的区域	身份证图
-	112	郭志强	15384813214	150221199211215000	内蒙古呼和浩特赛罕区丰州路法院小区二号楼	815060695@qq.com	内蒙古包头市	15384813214	815060695	内蒙古	532
-	111	高长平	18375998418	500226198312065000	重庆市南岸区丁香路同景国际W组	1119780700@qq.com	荣昌	18375998418	1119780700	重庆	534
+	callSvr("Vendor.batchAdd", {title: "-,name, tel, idCard, addr, picId"}, $.noop, `编号	姓名	手机号码	身份证号	通讯地址	身份证图
+	112	郭志强	15384811000	150221199211215XXX	地址1	532
+	111	高长平	18375991001	500226198312065XXX	地址2	534
 	`, {contentType:"text/plain"});
 		
 2. 标准csv/txt文件上传：
@@ -2895,8 +2969,8 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 
 	var data = {
 		list: [
-			{name: "郭志强", tel: "15384813214"},
-			{name: "高长平", tel: "18375998418"}
+			{name: "郭志强", tel: "15384811000"},
+			{name: "高长平", tel: "18375991001"}
 		]
 	};
 	callSvr("Store.batchAdd", function (ret) {
@@ -2915,6 +2989,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		];
 		$bak_SOLO = ApiFw_::$SOLO;
 		ApiFw_::$SOLO = false; // 避免其间有setRet输出
+		$uniKey = param("uniKey");
 		while (($row = $st->getRow()) != null) {
 			if ($st->isTable() && $n == 1) {
 				$titleRow = $row;
@@ -2941,8 +3016,25 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 					$postParam = $row;
 				}
 				try {
-					$st->beforeAdd($postParam, $row);
-					$id = $this->callSvc(null, "add", $_GET, $postParam);
+					$doAdd = true;
+					if ($uniKey) {
+						$key = mparam($uniKey, $row);
+						if ($uniKey != "id") {
+							$sql = "SELECT id FROM " . $this->table . " WHERE $uniKey=" . Q($key);
+							$id = queryOne($sql);
+						}
+						else {
+							$id = $key;
+						}
+						if ($id) {
+							$this->callSvc(null, "set" , ["id" => $id], $postParam);
+							$doAdd = false;
+						}
+					}
+					if ($doAdd) {
+						$st->beforeAdd($postParam, $row);
+						$id = $this->callSvc(null, "add", $_GET, $postParam);
+					}
 				}
 				catch (DirectReturn $ex) {
 					global $X_RET;

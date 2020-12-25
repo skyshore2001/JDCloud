@@ -18,6 +18,14 @@
 箭头后面部分是调用成功时的返回值，如果没有箭头后面部分，则表示不关心返回值，默认返回字符串"OK"。
 调用成功后返回JSON数组示例: `[0, {"field1": "value1", "field2": "value2"}]`。
 
+本文档调用示例使用JS函数`callSvr`表示：
+
+	callSvr(调用名, URL参数/可选, $.noop(表示空的回调函数，用来分隔URL和POST参数), POST参数/可选, 其它选项/可选)
+
+比如，下面表示同时传了URL参数id和POST参数amount：
+
+	callSvr("Ordr.set", {id: 100}, $.noop, {amount: 99.9});
+
 ## 接口通讯协议
 
 本章定义业务查询协议的实现方式，如何表示请求（调用名、参数、数据）和返回。
@@ -31,12 +39,20 @@
 
 	GET /api/fn?p1=value1&p2=value2
 
+或表示为
+
+	callSvr("fn", {p1: "value1", p2: "value2"})
+
 也可以使用HTTP POST请求实现：
 
 	POST /api/fn
 	Content-Type: application/x-www-form-urlencoded;charset=utf-8
 
 	p1=value1&p2=value2
+
+或表示为
+
+	callSvr("fn", $.noop, {p1: "value1", p2: "value2"})
 
 POST内容也可以使用json格式，如：
 
@@ -51,6 +67,10 @@ POST内容也可以使用json格式，如：
 	Content-Type: application/x-www-form-urlencoded;charset=utf-8
 
 	p2=value2
+
+或表示为
+
+	callSvr("fn", {p1: "value1"}, $.noop, {p2: "value2"})
 
 如果URL与POST内容中出现同名参数，最终以URL参数为准。
 
@@ -375,9 +395,9 @@ POST内容也可以使用json格式，如：
 对象的属性通过POST请求内容给出，为一个个键值对。
 添加完成后，默认返回新对象的id, 如果想多返回其它字段，可设置res参数，如 
 
-	Ordr.add()(status="CR", total=100) -> 809
+	callSvr("Ordr.add", $.noop, {status:"CR", total:100}) -> 809
 
-	Ordr.add(res="id,status,total")(status="CR", total=100) -> {id: 810, status:"CR", total: 100}
+	callSvr("Ordr.add", {res:"id,status,total"}, $.noop, {status:"CR", total:100}) -> {id: 810, status:"CR", total: 100}
 
 对象id支持自动生成。
 
@@ -391,14 +411,14 @@ POST内容也可以使用json格式，如：
 
 示例：
 
-	Obj.set(809)(status="PA", empId=10) -> "OK"
+	callSvr("Obj.set", {id: 809}, $.noop, {status:"PA", empId:10}) -> "OK"
 
 如果未指定返回值，一般默认返回"OK"。下面示例也将省略返回值。
 
 如果要将某字段置空, 可以用空串或"null" (小写)。例如：
 
-	Obj.set(809)(picId="", empId=null)
-	（实际传递参数的形式为 "picId=&empId=null"）
+	callSvr("Obj.set", {id: 809}, $.noop, {picId:"", empId:"null"})
+	（实际传递参数的形式为 "picId=&empId=null"，注意是字符串"null"，不是直接的null）
 
 这两种方式都是将字段置空。
 注意：一般情况下，接口传参数"picId="这样的，参数会被忽略，相当于没有设置该字段。
@@ -406,13 +426,17 @@ POST内容也可以使用json格式，如：
 另外注意，上例是设置字段为null，而不是设置成空串""。
 如果要将字符串置空串(一般不建议使用)，可以用"empty", 例如：
 
-	Obj.set(809)(sn=empty)
+	callSvr("Obj.set", {id: 809}, $.noop, {sn: "empty"})
 
 假如sn是数值类型，会导致其值为0或0.0。
 
-支持根据条件批量更新：
+支持根据条件批量更新，使用setIf接口：
 
 	Obj.setIf(cond)(POST fields...)
+
+示例：
+
+	callSvr("Obj.setIf", {cond: "tm>='2010-1-1' and tm<'2011-1-1'"}, $.noop, {dscr: "已处理"});
 
 **[获取对象操作]**
 
@@ -430,11 +454,15 @@ POST内容也可以使用json格式，如：
 
 根据id删除一个对象，例如：
 
-	Obj.del(809)
+	callSvr("Obj.del", {id: 809})
 
-支持根据条件进行批量删除：
+支持根据条件进行批量删除，使用delIf接口：
 
 	Obj.delIf(cond)
+
+示例：
+
+	callSvr("Obj.delIf", {cond: "tm>='2010-1-1' and tm<'2011-1-1'"});
 
 ### 查询操作
 
@@ -444,7 +472,7 @@ POST内容也可以使用json格式，如：
 	Obj.query(res?, cond?, distinct?=0, pagesz?=20, pagekey/page?) -> tbl(fields...) = {nextkey?, total?, @h, @d}
 
 	查询列表 - 对象列表格式：
-	Obj.query(fmt=list, ...) -> {nextkey?, total?, @list=[obj1, obj2...]}
+	Obj.query(fmt=list/one/one?/array/hash/multihash, ...) -> {nextkey?, total?, @list=[obj1, obj2...]}
 
 	分组统计：
 	Obj.query(gres, ...) -> tbl(fields...)
@@ -458,16 +486,16 @@ POST内容也可以使用json格式，如：
 
 res
 : String. 指定返回字段, 多个字段以逗号分隔，例如, res="field1,field2"。字段前不可加表名或别名(alias)，如"t0.id"或"id as userId"不合法。
-在res中允许使用部分统计函数如"sum"与"count", 这时必须指定字段别名, 如"count(id) cnt", "sum(qty*price) total", "count(distinct addr) addrCnt".
+在res中允许使用部分统计函数如`sum`与`count`, 这时必须指定字段别名, 如`count(id) cnt`, `sum(qty*price) total`, `count(distinct addr) addrCnt`.
 
 cond
-: String. 指定查询条件，语法可参照SQL语句的"WHERE"子句。例如：cond="field1>100 AND field2='hello'", 注意使用UTF8+URL编码, 字符串值应加上单引号.
+: String. 指定查询条件，语法可参照SQL语句的"WHERE"子句。例如：`cond="field1>100 AND field2='hello'"`, 注意使用UTF8+URL编码, 字符串值应加上单引号.
 
 orderby
-: String. 指定排序条件，语法可参照SQL语句的"ORDER BY"子句，例如：orderby="id desc"，也可以多个排序："tm desc,status" (按时间倒排，再按状态正排)
+: String. 指定排序条件，语法可参照SQL语句的"ORDER BY"子句，例如：`id desc`，也可以多个排序如：`tm desc,status` (按时间倒排，再按状态正排)
 
 distinct
-: Boolean. 如果为1, 生成"SELECT DISTINCT ..."查询.
+: Boolean. 如果为1, 生成`SELECT DISTINCT ...`查询.
 
 尽管类似SQL语句，但对参数值有一些安全限制：
 
@@ -476,7 +504,7 @@ distinct
 
 用参数`cond`指定查询条件, 如：
 
-	cond="type='A' and name like '%hello%'" 
+	{cond: "type='A' and name like '%hello%'"}
 
 以下情况都不允许：
 
@@ -484,20 +512,73 @@ distinct
 	type=type2  -- 字段与字段比较不允许
 	type in (select type from table2) -- 子查询不允许
 
-查询结果有两种返回形式, 缺省返回压缩表类型即"h/d"格式，例如：
+查询结果可以以指定形式返回, 缺省返回压缩表类型即"h/d"格式，例如：
 
 	{
-		"h": ["id", "name"],
-		"d": [[1, "jerry"], [2, "tom"]]
+		h: ["id", "name"],
+		d: [[1, "jerry"], [2, "tom"]]
+		nextkey: ... (用于分页，注意默认分页20条)
 	}
 
-如果指定`fmt=list`则返回对象列表格式:
+由于不会每行重复传输字段名，压缩表类型一般传输效率更高。
+
+如果指定`{fmt: "list"}`，则返回对象列表格式:
 
 	{
-		"list": [{"id": 1, "name": "jerry"}, {"id": 2, "name": "tom"}]
+		"list": [
+			{"id": 1, "name": "jerry"},
+			{"id": 2, "name": "tom"}
+		],
+		nextkey: ... (用于分页，注意默认分页20条)
 	}
 
-压缩表类型一般传输效率更高。
+如果指定`{fmt: "array"}`，则返回数组对象列表格式（相当于list格式的list内容部分），注意此时不支持分页，返回后端限制的最大行数的数据，一般用于行数不大的子表项查询：
+
+	[
+		{"id": 1, "name": "jerry"},
+		{"id": 2, "name": "tom"}
+	]
+
+如果指定`{fmt: "one"}`，则只以对象格式返回一行，类似get接口：
+
+	{"id": 1, "name": "jerry"}
+
+且如果查询不到数据，会抛出错误（也是与get接口类似）。如果查询不到数据时不想抛出错误，而是返回null，可以用`{fmt: "one?"}`参数。
+
+如果指定`{fmt: "hash"}`，则以映射表格式返回：
+
+	{
+		1: {"id": 1, "name": "jerry"},
+		2: {"id": 2, "name": "tom"}
+	}
+
+它等价于`{fmt: "hash:id"}`，即hash后未指定字段时，默认取第一个字段做为hash key。
+
+如果指定`{fmt: "hash:name"}`:
+
+	{
+		"jerry": {"id": 1, "name": "jerry"},
+		"tom": {"id": 2, "name": "tom"}
+	}
+
+如果指定`{fmt: "hash:id,name"}`:
+
+	{1: "jerry", 2: "tom"}
+
+如果指定`{fmt: "hash:name,id"}`:
+
+	{"jerry": 1, "tom": 2}
+
+multihash与hash类似，只是用数组表示结果，所以就算出现key重名时也不会覆盖，示例：指定`{fmt: "multihash"}`：
+
+	{
+		1: [ {"id": 1, "name": "jerry"} ],
+		2: [ {"id": 2, "name": "tom"} ]
+	}
+
+如果指定`{fmt: "multihash:name,id"}`:
+
+	{"jerry": [ 1 ], "tom": [ 2 ]}
 
 **查询结果支持分页**
 
@@ -522,13 +603,14 @@ fmt
 
 示例：导出以逗号分隔的表格文本
 
-	Store.query(
-		res=id,name,addr
-		fmt=csv
-		pagesz=9999
-	)
+	var url = makeUrl("Store.query", {
+		res: "id,name,addr",
+		fmt: "csv",
+		pagesz: -1
+	})
+	window.open(url); // 下载文件
 
-注意，由于默认会有分页，要想导出所有数据，一般可指定较大的分页大小，如`pagesz=9999`。
+注意，由于默认会有分页，要想导出所有数据，一般可指定分页大小为-1（后端最大限制一般为10000条，可在后端调整）
 
 **查询操作应支持分组统计**
 
@@ -539,7 +621,7 @@ gres
 
 例：统计2015年2月，按状态分类（如已付款、已评价、已取消等）的各类订单的总数和总金额。
 
-	Ordr.query(gres="status", res="count('A') totalCnt, sum(amount) totalAmount", cond="tm>='2016-1-1' and tm<'2016-2-1'")
+	callSvr("Ordr.query", {gres: "status", res: "count('A') totalCnt, sum(amount) totalAmount", cond: "tm>='2016-1-1' and tm<'2016-2-1'"})
 
 返回内容示例：
 
@@ -581,7 +663,7 @@ h/d
 
 第一次查询
 
-	Ordr.query()
+	callSvr("Ordr.query")
 
 返回
 
@@ -591,7 +673,7 @@ h/d
 
 要在首次查询时返回总记录数，可以设置用pagekey=0：
 
-	Ordr.query(pagekey=0)
+	callSvr("Ordr.query", {pagekey:0})
 
 这时返回
 
@@ -601,7 +683,7 @@ total字段表示总记录数。由于缺省页大小为20，所以可估计总�
 
 第二次查询(下一页)
 
-	Ordr.query(pagekey=10800910)
+	callSvr("Ordr.query", {pagekey:"10800910"});
 
 返回
 
@@ -611,7 +693,7 @@ total字段表示总记录数。由于缺省页大小为20，所以可估计总�
 
 再查询下一页
 
-	Ordr.query(pagekey=10800931)
+	callSvr("Ordr.query", {pagekey: "10800931"})
 
 返回
 
@@ -627,7 +709,7 @@ total字段表示总记录数。由于缺省页大小为20，所以可估计总�
 
 首次查询：
 
-	Ordr.query()
+	callSvr("Ordr.query")
 
 SQL样例如下：
 
@@ -638,7 +720,7 @@ SQL样例如下：
 
 再次查询
 
-	Ordr.query(pagekey=10800910)
+	callSvr("Ordr.query", {pagekey: "10800910"})
 
 SQL样例如下：
 
@@ -655,7 +737,7 @@ SQL样例如下：
 
 首次查询
 
-	Ordr.query(orderby="comeTm DESC")
+	callSvr("Ordr.query", {orderby:"comeTm DESC"})
 
 （以comeTm作为排序字段，无法应用分段查询机制，只能使用传统分页。）
 
@@ -668,7 +750,7 @@ SQL样例如下：
 
 再次查询
 
-	Ordr.query(pagekey=2)
+	callSvr("Ordr.query", {pagekey:2})
 
 SQL样例如下：
 
@@ -688,9 +770,167 @@ SQL样例如下：
 
 例如：
 
-	Ordr.query(orderby="id desc", page=1) -> {h=["id",...], d=[...], total=180, nextkey=2}
+	callSvr("Ordr.query", {orderby:"id desc", page:1}) -> {h=["id",...], d=[...], total=180, nextkey=2}
 
 本来因为按主键id排序，查询引擎应使用分段查询，但由于指定了page字段，改为使用传统分页。
+
+### 批量导入数据
+
+标准接口`Obj.batchAdd`用于批量导入数据（支持不存在则添加，存在则更新）。返回导入记录数cnt及编号列表idList：
+
+	Obj.batchAdd(title?, uniKey?)(...) -> {cnt, @idList}
+
+它在一个事务中执行，一行出错后立即失败返回，该行前面已导入的内容也会被取消（回滚）。
+
+- title: List(fieldName). 指定标题行(即字段列表). 如果有该参数, 则忽略POST内容或文件中的标题行.
+ 如"title=name,-,addr"表示导入第一列name和第三列addr, 其中"-"表示忽略该列，不导入。
+ 字段列表以逗号或空白分隔, 如"title=name - addr"与"title=name, -, addr"都可以.
+
+- uniKey: 唯一索引字段. 如果指定, 则以该字段查询记录是否存在, 存在则更新. 通常可以设置为"id"或"code"等.
+
+支持三种方式上传：
+
+1. 直接在HTTP POST中传输内容，数据格式为：首行为标题行(即字段名列表)，之后为实际数据行。
+行使用"\n"分隔, 列使用"\t"或逗号分隔（后端自动判断），方便直接从Excel中拷贝数据出来，或导出csv格式文件。
+接口为：
+
+	{Obj}.batchAdd(title?)(标题行，数据行)
+	(Content-Type=text/plain)
+
+前端JS调用示例：
+
+	var data = "name\taddr\n" + "门店1\t地址1\n门店2\t地址2\n";
+	callSvr("Store.batchAdd", function (ret) {
+		app_alert("成功导入" + ret.cnt + "条数据！");
+	}, data, {contentType:"text/plain"});
+
+或指定title参数:
+
+	var data = "门店名\t地址\n" + "门店1\t地址1\n门店2\t地址2\n";
+	callSvr("Store.batchAdd", {title: "name,addr"}, function (ret) {
+		app_alert("成功导入" + ret.cnt + "条数据！");
+	}, data, {contentType:"text/plain"});
+
+示例: 在chrome console中导入数据
+
+	callSvr("Vendor.batchAdd", {title: "-,name, tel, idCard, addr, picId"}, $.noop, `编号	姓名	手机号码	身份证号	通讯地址	身份证图
+	112	郭志强	15384811000	150221199211215XXX	地址1	532
+	111	高长平	18375991001	500226198312065XXX	地址2	534
+	`, {contentType:"text/plain"});
+		
+2. 标准csv/txt文件上传：
+
+上传的文件首行当作标题列，如果这一行不是后台要求的标题名称，可通过URL参数title重新定义。
+一般使用excel csv文件（编码一般为gbk），或txt文件（以"\t"分隔列）。
+接口为：
+
+	{Obj}.batchAdd(title?)(csv/txt文件)
+	(Content-Type=multipart/form-data, 即html form默认传文件的格式)
+
+后端处理时, 将自动判断文本编码(utf-8或gbk).
+
+前端HTML:
+
+	<input type="file" name="f" accept=".csv,.txt">
+
+前端JS示例：
+
+	var fd = new FormData();
+	fd.append("file", frm.f.files[0]);
+	callSvr("Store.batchAdd", {title: "name,addr"}, function (ret) {
+		app_alert("成功导入" + ret.cnt + "条数据！");
+	}, fd);
+
+或者使用curl等工具导入：
+从excel中将数据全选复制到1.txt中(包含标题行，也可另存为csv格式文件)，然后导入。
+下面示例用curl工具调用VendorA.batchAdd导入：
+
+	#/bin/sh
+	baseUrl=http://localhost/p/anzhuang/api.php
+	param=title=name,phone,idCard,addr,email,legalAddr,weixin,qq,area
+	curl -v -F "file=@1.txt" "$baseUrl/VendorA.batchAdd?$param"
+
+如果要调试(php/xdebug)，可加URL参数`XDEBUG_SESSION_START=1`或Cookie中加`XDEBUG_SESSION=1`
+
+3. 传入对象数组
+格式为 {list: [...]}
+
+	var data = {
+		list: [
+			{name: "郭志强", tel: "15384811000"},
+			{name: "高长平", tel: "18375991001"}
+		]
+	};
+	callSvr("Store.batchAdd", function (ret) {
+		app_alert("成功导入" + ret.cnt + "条数据！");
+	}, data, {contentType:"application/json"});
+
+### 子表的增删改查操作
+
+假设主对象为Obj，子对象为Obj1，设计如下：
+
+	@Obj: id, name
+	vcol: @obj1 (说明：vcol表示虚拟字段，@obj1表示字段obj1是个数组，一般就是子对象)
+
+	@Obj1: id, objId, name （通过objId关联主对象)
+
+在添加主对象时，同时添加子对象:
+
+	Obj.add()(name, @obj1...) -> id
+
+示例：
+
+	callSvr("Obj.add", $.noop, {
+		name: "name1",
+		obj1: [
+			{ name: "obj1-name1" },
+			{ name: "obj1-name2" }
+		]
+	});
+
+主对象添加后，可以通过get接口获取主对象及子对象：
+
+	callSvr("Obj.get", {id: 1001, res:"id,name,obj1"}) -> {
+		id: 1001,
+		name: "name1",
+		obj1: [
+			{ id: 10001, name: "obj1-name1" },
+			{ id: 10002, name: "obj1-name2" }
+		]
+	});
+
+要控制子对象的查询结果字段，可以加`res_{子对象名}`参数；要控制子对象的查询参数，可以加`param_{子对象名}`参数，示例：
+
+	callSvr("Obj.get", {id: 1001, res:"id,name,obj1", res_obj1:"id,name"})
+	或
+	callSvr("Obj.get", {id: 1001, res:"id,name,obj1", param_obj1: { res: "id,name"} })
+	callSvr("Obj.get", {id: 1001, res:"id,name,obj1", param_obj1: { res: "id,name", cond: "id>=10002"} })
+
+当然，也可以直接查询子对象，如：
+
+	callSvr("Obj1.query", {cond: "objId=1001", res:"id,name,obj1", fmt:"array"}) -> [
+		{ id: 10001, name: "obj1-name1" },
+		{ id: 10002, name: "obj1-name2" }
+	]
+
+这里用fmt参数指定返回array格式，因为默认返回的是`h/d`格式.
+
+主对象添加后，可以通过set接口添加/更新/删除子对象：
+
+	Obj.set(id)(name?, @obj1...)
+
+示例：
+
+	callSvr("Obj.set", {id: 1001}, $.noop, {
+		name: "name1",
+		obj1: [
+			{ id: 10001, name: "obj1-name1-changed" }, // set接口中指定子表id的，表示更新该子表行
+			{ name: "obj1-name3" },  // set接口中未指定子表id的，表示新增子表行
+			{ id: 10002, delete: 1}  // set接口中指定子表id且设置了`delete: 1`，表示删除该子表行
+		]
+	});
+
+主对象删除时（del/delIf接口），子对象不会自动删除。后端应根据情况自行处理。
 
 ## 批请求
 

@@ -2,6 +2,7 @@
 <html>
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>BQP - 业务查询协议</title>
   <style type="text/css">code{white-space: pre;}</style>
 <link rel="stylesheet" href="style.css" />
@@ -17,6 +18,10 @@
 <p>假如接口原型如下：</p>
 <pre><code>fn(p1, p2?)(data) -&gt; {field1, field2}</code></pre>
 <p>其中<code>fn</code>为接口名，<code>p1</code>, <code>p2</code>是两个参数，且<code>p2</code>可以缺省。第二个括号表示需要传输数据（数据格式会特别说明）。 箭头后面部分是调用成功时的返回值，如果没有箭头后面部分，则表示不关心返回值，默认返回字符串&quot;OK&quot;。 调用成功后返回JSON数组示例: <code>[0, {&quot;field1&quot;: &quot;value1&quot;, &quot;field2&quot;: &quot;value2&quot;}]</code>。</p>
+<p>本文档调用示例使用JS函数<code>callSvr</code>表示：</p>
+<pre><code>callSvr(调用名, URL参数/可选, $.noop(表示空的回调函数，用来分隔URL和POST参数), POST参数/可选, 其它选项/可选)</code></pre>
+<p>比如，下面表示同时传了URL参数id和POST参数amount：</p>
+<pre><code>callSvr(&quot;Ordr.set&quot;, {id: 100}, $.noop, {amount: 99.9});</code></pre>
 
 <div id="TOC" class="toc">
 <ul>
@@ -34,6 +39,8 @@
 <li><a href="#基本增删改查操作"><span class="toc-section-number">3.1</span> 基本增删改查操作</a></li>
 <li><a href="#查询操作"><span class="toc-section-number">3.2</span> 查询操作</a></li>
 <li><a href="#查询分页机制"><span class="toc-section-number">3.3</span> 查询分页机制</a></li>
+<li><a href="#批量导入数据"><span class="toc-section-number">3.4</span> 批量导入数据</a></li>
+<li><a href="#子表的增删改查操作"><span class="toc-section-number">3.5</span> 子表的增删改查操作</a></li>
 </ul></li>
 <li><a href="#批请求"><span class="toc-section-number">4</span> 批请求</a></li>
 <li><a href="#服务端信息反馈x-daca头"><span class="toc-section-number">5</span> 服务端信息反馈/X-Daca头</a></li>
@@ -46,11 +53,15 @@
 <pre><code>fn(p1, p2) -&gt; {field1, field2}</code></pre>
 <p>以下假定接口服务的URL基地址(BASE_URL)为<code>/api</code>。 该接口可以使用HTTP GET请求实现：</p>
 <pre><code>GET /api/fn?p1=value1&amp;p2=value2</code></pre>
+<p>或表示为</p>
+<pre><code>callSvr(&quot;fn&quot;, {p1: &quot;value1&quot;, p2: &quot;value2&quot;})</code></pre>
 <p>也可以使用HTTP POST请求实现：</p>
 <pre><code>POST /api/fn
 Content-Type: application/x-www-form-urlencoded;charset=utf-8
 
 p1=value1&amp;p2=value2</code></pre>
+<p>或表示为</p>
+<pre><code>callSvr(&quot;fn&quot;, $.noop, {p1: &quot;value1&quot;, p2: &quot;value2&quot;})</code></pre>
 <p>POST内容也可以使用json格式，如：</p>
 <pre><code>POST /api/fn
 Content-Type: application/json;charset=utf-8
@@ -61,6 +72,8 @@ Content-Type: application/json;charset=utf-8
 Content-Type: application/x-www-form-urlencoded;charset=utf-8
 
 p2=value2</code></pre>
+<p>或表示为</p>
+<pre><code>callSvr(&quot;fn&quot;, {p1: &quot;value1&quot;}, $.noop, {p2: &quot;value2&quot;})</code></pre>
 <p>如果URL与POST内容中出现同名参数，最终以URL参数为准。</p>
 <p>接口名为URL基地址后一个词（常称为PATH_INFO），如URL<code>/api/fn</code>中接口名为&quot;fn&quot;。 如果难以实现，也可以使用URL参数ac表示接口名，即URL中<code>/api?ac=fn&amp;p1=value1&amp;p2=value2</code>中接口名也是&quot;fn&quot;。</p>
 <p><strong>[必须使用HTTP POST的情形]</strong></p>
@@ -261,26 +274,28 @@ Ordr.get(id) -&gt; { id, dscr, %addr, @items }
 <pre><code>Obj.add()(POST fields...) -&gt; id
 Obj.add(res)(POST fields...) -&gt; {fields...} (返回的字段由res参数指定)</code></pre>
 <p>对象的属性通过POST请求内容给出，为一个个键值对。 添加完成后，默认返回新对象的id, 如果想多返回其它字段，可设置res参数，如</p>
-<pre><code>Ordr.add()(status=&quot;CR&quot;, total=100) -&gt; 809
+<pre><code>callSvr(&quot;Ordr.add&quot;, $.noop, {status:&quot;CR&quot;, total:100}) -&gt; 809
 
-Ordr.add(res=&quot;id,status,total&quot;)(status=&quot;CR&quot;, total=100) -&gt; {id: 810, status:&quot;CR&quot;, total: 100}</code></pre>
+callSvr(&quot;Ordr.add&quot;, {res:&quot;id,status,total&quot;}, $.noop, {status:&quot;CR&quot;, total:100}) -&gt; {id: 810, status:&quot;CR&quot;, total: 100}</code></pre>
 <p>对象id支持自动生成。</p>
 <p><strong>[更新操作]</strong></p>
 <p>接口原型：</p>
 <pre><code>Obj.set(id)(POST fields...)</code></pre>
 <p>与add操作类似，对象属性的修改通过POST请求传递，而在URL参数中需要有id标识哪个对象。</p>
 <p>示例：</p>
-<pre><code>Obj.set(809)(status=&quot;PA&quot;, empId=10) -&gt; &quot;OK&quot;</code></pre>
+<pre><code>callSvr(&quot;Obj.set&quot;, {id: 809}, $.noop, {status:&quot;PA&quot;, empId:10}) -&gt; &quot;OK&quot;</code></pre>
 <p>如果未指定返回值，一般默认返回&quot;OK&quot;。下面示例也将省略返回值。</p>
 <p>如果要将某字段置空, 可以用空串或&quot;null&quot; (小写)。例如：</p>
-<pre><code>Obj.set(809)(picId=&quot;&quot;, empId=null)
-（实际传递参数的形式为 &quot;picId=&amp;empId=null&quot;）</code></pre>
+<pre><code>callSvr(&quot;Obj.set&quot;, {id: 809}, $.noop, {picId:&quot;&quot;, empId:&quot;null&quot;})
+（实际传递参数的形式为 &quot;picId=&amp;empId=null&quot;，注意是字符串&quot;null&quot;，不是直接的null）</code></pre>
 <p>这两种方式都是将字段置空。 注意：一般情况下，接口传参数&quot;picId=&quot;这样的，参数会被忽略，相当于没有设置该字段。</p>
 <p>另外注意，上例是设置字段为null，而不是设置成空串&quot;&quot;。 如果要将字符串置空串(一般不建议使用)，可以用&quot;empty&quot;, 例如：</p>
-<pre><code>Obj.set(809)(sn=empty)</code></pre>
+<pre><code>callSvr(&quot;Obj.set&quot;, {id: 809}, $.noop, {sn: &quot;empty&quot;})</code></pre>
 <p>假如sn是数值类型，会导致其值为0或0.0。</p>
-<p>支持根据条件批量更新：</p>
+<p>支持根据条件批量更新，使用setIf接口：</p>
 <pre><code>Obj.setIf(cond)(POST fields...)</code></pre>
+<p>示例：</p>
+<pre><code>callSvr(&quot;Obj.setIf&quot;, {cond: &quot;tm&gt;=&#39;2010-1-1&#39; and tm&lt;&#39;2011-1-1&#39;&quot;}, $.noop, {dscr: &quot;已处理&quot;});</code></pre>
 <p><strong>[获取对象操作]</strong></p>
 <p>接口原型：</p>
 <pre><code>Obj.get(id, res?) -&gt; {fields...}</code></pre>
@@ -289,16 +304,18 @@ Ordr.add(res=&quot;id,status,total&quot;)(status=&quot;CR&quot;, total=100) -&gt
 <p>接口原型：</p>
 <pre><code>Obj.del(id)</code></pre>
 <p>根据id删除一个对象，例如：</p>
-<pre><code>Obj.del(809)</code></pre>
-<p>支持根据条件进行批量删除：</p>
+<pre><code>callSvr(&quot;Obj.del&quot;, {id: 809})</code></pre>
+<p>支持根据条件进行批量删除，使用delIf接口：</p>
 <pre><code>Obj.delIf(cond)</code></pre>
+<p>示例：</p>
+<pre><code>callSvr(&quot;Obj.delIf&quot;, {cond: &quot;tm&gt;=&#39;2010-1-1&#39; and tm&lt;&#39;2011-1-1&#39;&quot;});</code></pre>
 <h3 id="查询操作"><span class="header-section-number">3.2</span> 查询操作</h3>
 <p>接口原型：</p>
 <pre><code>查询列表(默认压缩表格式)：
 Obj.query(res?, cond?, distinct?=0, pagesz?=20, pagekey/page?) -&gt; tbl(fields...) = {nextkey?, total?, @h, @d}
 
 查询列表 - 对象列表格式：
-Obj.query(fmt=list, ...) -&gt; {nextkey?, total?, @list=[obj1, obj2...]}
+Obj.query(fmt=list/one/one?/array/hash/multihash, ...) -&gt; {nextkey?, total?, @list=[obj1, obj2...]}
 
 分组统计：
 Obj.query(gres, ...) -&gt; tbl(fields...)
@@ -309,16 +326,16 @@ Obj.query(fmt=csv/txt/excel, ...) -&gt; 文件内容</code></pre>
 <p>查询操作的参数可参照SQL语句来理解：</p>
 <dl>
 <dt>res</dt>
-<dd>String. 指定返回字段, 多个字段以逗号分隔，例如, res=&quot;field1,field2&quot;。字段前不可加表名或别名(alias)，如&quot;t0.id&quot;或&quot;id as userId&quot;不合法。 在res中允许使用部分统计函数如&quot;sum&quot;与&quot;count&quot;, 这时必须指定字段别名, 如&quot;count(id) cnt&quot;, &quot;sum(qty*price) total&quot;, &quot;count(distinct addr) addrCnt&quot;.
+<dd>String. 指定返回字段, 多个字段以逗号分隔，例如, res=&quot;field1,field2&quot;。字段前不可加表名或别名(alias)，如&quot;t0.id&quot;或&quot;id as userId&quot;不合法。 在res中允许使用部分统计函数如<code>sum</code>与<code>count</code>, 这时必须指定字段别名, 如<code>count(id) cnt</code>, <code>sum(qty*price) total</code>, <code>count(distinct addr) addrCnt</code>.
 </dd>
 <dt>cond</dt>
-<dd>String. 指定查询条件，语法可参照SQL语句的&quot;WHERE&quot;子句。例如：cond=&quot;field1&gt;100 AND field2='hello'&quot;, 注意使用UTF8+URL编码, 字符串值应加上单引号.
+<dd>String. 指定查询条件，语法可参照SQL语句的&quot;WHERE&quot;子句。例如：<code>cond=&quot;field1&gt;100 AND field2='hello'&quot;</code>, 注意使用UTF8+URL编码, 字符串值应加上单引号.
 </dd>
 <dt>orderby</dt>
-<dd>String. 指定排序条件，语法可参照SQL语句的&quot;ORDER BY&quot;子句，例如：orderby=&quot;id desc&quot;，也可以多个排序：&quot;tm desc,status&quot; (按时间倒排，再按状态正排)
+<dd>String. 指定排序条件，语法可参照SQL语句的&quot;ORDER BY&quot;子句，例如：<code>id desc</code>，也可以多个排序如：<code>tm desc,status</code> (按时间倒排，再按状态正排)
 </dd>
 <dt>distinct</dt>
-<dd>Boolean. 如果为1, 生成&quot;SELECT DISTINCT ...&quot;查询.
+<dd>Boolean. 如果为1, 生成<code>SELECT DISTINCT ...</code>查询.
 </dd>
 </dl>
 <p>尽管类似SQL语句，但对参数值有一些安全限制：</p>
@@ -327,21 +344,56 @@ Obj.query(fmt=csv/txt/excel, ...) -&gt; 文件内容</code></pre>
 <li>cond可以由多个条件通过and或or组合而成，而每个条件的左边是字段名，右边是常量。不允许对字段运算，不允许子查询（不可以有select等关键字）。</li>
 </ul>
 <p>用参数<code>cond</code>指定查询条件, 如：</p>
-<pre><code>cond=&quot;type=&#39;A&#39; and name like &#39;%hello%&#39;&quot; </code></pre>
+<pre><code>{cond: &quot;type=&#39;A&#39; and name like &#39;%hello%&#39;&quot;}</code></pre>
 <p>以下情况都不允许：</p>
 <pre><code>left(type, 1)=&#39;A&#39;  -- 条件左边只能是字段，不允许计算或函数
 type=type2  -- 字段与字段比较不允许
 type in (select type from table2) -- 子查询不允许</code></pre>
-<p>查询结果有两种返回形式, 缺省返回压缩表类型即&quot;h/d&quot;格式，例如：</p>
+<p>查询结果可以以指定形式返回, 缺省返回压缩表类型即&quot;h/d&quot;格式，例如：</p>
 <pre><code>{
-    &quot;h&quot;: [&quot;id&quot;, &quot;name&quot;],
-    &quot;d&quot;: [[1, &quot;jerry&quot;], [2, &quot;tom&quot;]]
+    h: [&quot;id&quot;, &quot;name&quot;],
+    d: [[1, &quot;jerry&quot;], [2, &quot;tom&quot;]]
+    nextkey: ... (用于分页，注意默认分页20条)
 }</code></pre>
-<p>如果指定<code>fmt=list</code>则返回对象列表格式:</p>
+<p>由于不会每行重复传输字段名，压缩表类型一般传输效率更高。</p>
+<p>如果指定<code>{fmt: &quot;list&quot;}</code>，则返回对象列表格式:</p>
 <pre><code>{
-    &quot;list&quot;: [{&quot;id&quot;: 1, &quot;name&quot;: &quot;jerry&quot;}, {&quot;id&quot;: 2, &quot;name&quot;: &quot;tom&quot;}]
+    &quot;list&quot;: [
+        {&quot;id&quot;: 1, &quot;name&quot;: &quot;jerry&quot;},
+        {&quot;id&quot;: 2, &quot;name&quot;: &quot;tom&quot;}
+    ],
+    nextkey: ... (用于分页，注意默认分页20条)
 }</code></pre>
-<p>压缩表类型一般传输效率更高。</p>
+<p>如果指定<code>{fmt: &quot;array&quot;}</code>，则返回数组对象列表格式（相当于list格式的list内容部分），注意此时不支持分页，返回后端限制的最大行数的数据，一般用于行数不大的子表项查询：</p>
+<pre><code>[
+    {&quot;id&quot;: 1, &quot;name&quot;: &quot;jerry&quot;},
+    {&quot;id&quot;: 2, &quot;name&quot;: &quot;tom&quot;}
+]</code></pre>
+<p>如果指定<code>{fmt: &quot;one&quot;}</code>，则只以对象格式返回一行，类似get接口：</p>
+<pre><code>{&quot;id&quot;: 1, &quot;name&quot;: &quot;jerry&quot;}</code></pre>
+<p>且如果查询不到数据，会抛出错误（也是与get接口类似）。如果查询不到数据时不想抛出错误，而是返回null，可以用<code>{fmt: &quot;one?&quot;}</code>参数。</p>
+<p>如果指定<code>{fmt: &quot;hash&quot;}</code>，则以映射表格式返回：</p>
+<pre><code>{
+    1: {&quot;id&quot;: 1, &quot;name&quot;: &quot;jerry&quot;},
+    2: {&quot;id&quot;: 2, &quot;name&quot;: &quot;tom&quot;}
+}</code></pre>
+<p>它等价于<code>{fmt: &quot;hash:id&quot;}</code>，即hash后未指定字段时，默认取第一个字段做为hash key。</p>
+<p>如果指定<code>{fmt: &quot;hash:name&quot;}</code>:</p>
+<pre><code>{
+    &quot;jerry&quot;: {&quot;id&quot;: 1, &quot;name&quot;: &quot;jerry&quot;},
+    &quot;tom&quot;: {&quot;id&quot;: 2, &quot;name&quot;: &quot;tom&quot;}
+}</code></pre>
+<p>如果指定<code>{fmt: &quot;hash:id,name&quot;}</code>:</p>
+<pre><code>{1: &quot;jerry&quot;, 2: &quot;tom&quot;}</code></pre>
+<p>如果指定<code>{fmt: &quot;hash:name,id&quot;}</code>:</p>
+<pre><code>{&quot;jerry&quot;: 1, &quot;tom&quot;: 2}</code></pre>
+<p>multihash与hash类似，只是用数组表示结果，所以就算出现key重名时也不会覆盖，示例：指定<code>{fmt: &quot;multihash&quot;}</code>：</p>
+<pre><code>{
+    1: [ {&quot;id&quot;: 1, &quot;name&quot;: &quot;jerry&quot;} ],
+    2: [ {&quot;id&quot;: 2, &quot;name&quot;: &quot;tom&quot;} ]
+}</code></pre>
+<p>如果指定<code>{fmt: &quot;multihash:name,id&quot;}</code>:</p>
+<pre><code>{&quot;jerry&quot;: [ 1 ], &quot;tom&quot;: [ 2 ]}</code></pre>
 <p><strong>查询结果支持分页</strong></p>
 <p>参数pagesz/pagekey等与返回分页列表有关，详细介绍请参考“<a href="#查询分页机制">查询分页机制</a>”章节。</p>
 <p><strong>查询结果支持导出到文件</strong></p>
@@ -358,12 +410,13 @@ Content-Disposition: attachment;filename=1.csv</code></pre>
 <pre><code>Content-Type: text/plain; charset=UTF-8
 Content-Disposition: attachment;filename=1.txt</code></pre>
 <p>示例：导出以逗号分隔的表格文本</p>
-<pre><code>Store.query(
-    res=id,name,addr
-    fmt=csv
-    pagesz=9999
-)</code></pre>
-<p>注意，由于默认会有分页，要想导出所有数据，一般可指定较大的分页大小，如<code>pagesz=9999</code>。</p>
+<pre><code>var url = makeUrl(&quot;Store.query&quot;, {
+    res: &quot;id,name,addr&quot;,
+    fmt: &quot;csv&quot;,
+    pagesz: -1
+})
+window.open(url); // 下载文件</code></pre>
+<p>注意，由于默认会有分页，要想导出所有数据，一般可指定分页大小为-1（后端最大限制一般为10000条，可在后端调整）</p>
 <p><strong>查询操作应支持分组统计</strong></p>
 <p>主要通过gres参数实现查询结果分组：</p>
 <dl>
@@ -372,7 +425,7 @@ Content-Disposition: attachment;filename=1.txt</code></pre>
 </dd>
 </dl>
 <p>例：统计2015年2月，按状态分类（如已付款、已评价、已取消等）的各类订单的总数和总金额。</p>
-<pre><code>Ordr.query(gres=&quot;status&quot;, res=&quot;count(&#39;A&#39;) totalCnt, sum(amount) totalAmount&quot;, cond=&quot;tm&gt;=&#39;2016-1-1&#39; and tm&lt;&#39;2016-2-1&#39;&quot;)</code></pre>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {gres: &quot;status&quot;, res: &quot;count(&#39;A&#39;) totalCnt, sum(amount) totalAmount&quot;, cond: &quot;tm&gt;=&#39;2016-1-1&#39; and tm&lt;&#39;2016-2-1&#39;&quot;})</code></pre>
 <p>返回内容示例：</p>
 <pre><code>[
     h: [&quot;status&quot;, &quot;totalCnt&quot;, &quot;totalAmount&quot;],
@@ -408,22 +461,22 @@ Content-Disposition: attachment;filename=1.txt</code></pre>
 </dl>
 <p><strong>[示例]</strong></p>
 <p>第一次查询</p>
-<pre><code>Ordr.query()</code></pre>
+<pre><code>callSvr(&quot;Ordr.query&quot;)</code></pre>
 <p>返回</p>
 <pre><code>{nextkey: 10800910, h: [&quot;id&quot;, &quot;desc&quot;, ...], d: [...]}</code></pre>
 <p>其中的nextkey将供下次查询时填写pagekey字段；</p>
 <p>要在首次查询时返回总记录数，可以设置用pagekey=0：</p>
-<pre><code>Ordr.query(pagekey=0)</code></pre>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {pagekey:0})</code></pre>
 <p>这时返回</p>
 <pre><code>{nextkey: 10800910, total: 51, h: [&quot;id&quot;, ...], d: [...]}</code></pre>
 <p>total字段表示总记录数。由于缺省页大小为20，所以可估计总共有51/20=3页。</p>
 <p>第二次查询(下一页)</p>
-<pre><code>Ordr.query(pagekey=10800910)</code></pre>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {pagekey:&quot;10800910&quot;});</code></pre>
 <p>返回</p>
 <pre><code>{nextkey: 10800931, h: [...], d: [...]}</code></pre>
 <p>仍返回nextkey字段说明还可以继续查询，</p>
 <p>再查询下一页</p>
-<pre><code>Ordr.query(pagekey=10800931)</code></pre>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {pagekey: &quot;10800931&quot;})</code></pre>
 <p>返回</p>
 <pre><code>{h: [...], d: [...]}</code></pre>
 <p>返回数据中不带&quot;nextkey&quot;属性，表示所有数据获取完毕。</p>
@@ -431,14 +484,14 @@ Content-Disposition: attachment;filename=1.txt</code></pre>
 <p>分页有两种实现方式：按主键字段的分段查询式分页，以及使用LIMIT操作为核心的传统分页。</p>
 <p>分段查询的原理是利用主键id进行查询条件控制（自动修改WHERE语句），每次返回的pagekey字段实际是上次数据的最后一个id.</p>
 <p>首次查询：</p>
-<pre><code>Ordr.query()</code></pre>
+<pre><code>callSvr(&quot;Ordr.query&quot;)</code></pre>
 <p>SQL样例如下：</p>
 <pre><code>SELECT * FROM Ordr t0
 ...
 ORDER BY t0.id
 LIMIT {pagesz}</code></pre>
 <p>再次查询</p>
-<pre><code>Ordr.query(pagekey=10800910)</code></pre>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {pagekey: &quot;10800910&quot;})</code></pre>
 <p>SQL样例如下：</p>
 <pre><code>SELECT * FROM Ordr t0
 ...
@@ -448,7 +501,7 @@ LIMIT {pagesz}</code></pre>
 <p>分段查询性能高，更精确，不会丢失数据。但它仅适用于未指定排序字段（无orderby参数）或排序字段是id的情况（例如：orderby=&quot;id DESC&quot;）。 查询引擎应根据orderby参数自动选择分段查询或传统分页。</p>
 <p>传统分页常通过SQL语句的LIMIT关键字来实现。pagekey字段实际是页码。其原理是：</p>
 <p>首次查询</p>
-<pre><code>Ordr.query(orderby=&quot;comeTm DESC&quot;)</code></pre>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {orderby:&quot;comeTm DESC&quot;})</code></pre>
 <p>（以comeTm作为排序字段，无法应用分段查询机制，只能使用传统分页。）</p>
 <p>SQL样例如下：</p>
 <pre><code>SELECT * FROM Ordr t0
@@ -456,7 +509,7 @@ LIMIT {pagesz}</code></pre>
 ORDER BY comeTm DESC, t0.id
 LIMIT 0,{pagesz}</code></pre>
 <p>再次查询</p>
-<pre><code>Ordr.query(pagekey=2)</code></pre>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {pagekey:2})</code></pre>
 <p>SQL样例如下：</p>
 <pre><code>SELECT * FROM Ordr t0
 ...
@@ -467,8 +520,110 @@ LIMIT ({pagekey}-1)*{pagesz}, {pagesz}</code></pre>
 <p>接口原型：</p>
 <pre><code>Ordr.query(page, pagesz/rows?=20) -&gt; {nextkey, total, @h, @d}</code></pre>
 <p>例如：</p>
-<pre><code>Ordr.query(orderby=&quot;id desc&quot;, page=1) -&gt; {h=[&quot;id&quot;,...], d=[...], total=180, nextkey=2}</code></pre>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {orderby:&quot;id desc&quot;, page:1}) -&gt; {h=[&quot;id&quot;,...], d=[...], total=180, nextkey=2}</code></pre>
 <p>本来因为按主键id排序，查询引擎应使用分段查询，但由于指定了page字段，改为使用传统分页。</p>
+<h3 id="批量导入数据"><span class="header-section-number">3.4</span> 批量导入数据</h3>
+<p>标准接口<code>Obj.batchAdd</code>用于批量导入数据（支持不存在则添加，存在则更新）。返回导入记录数cnt及编号列表idList：</p>
+<pre><code>Obj.batchAdd(title?, uniKey?)(...) -&gt; {cnt, @idList}</code></pre>
+<p>它在一个事务中执行，一行出错后立即失败返回，该行前面已导入的内容也会被取消（回滚）。</p>
+<ul>
+<li><p>title: List(fieldName). 指定标题行(即字段列表). 如果有该参数, 则忽略POST内容或文件中的标题行. 如&quot;title=name,-,addr&quot;表示导入第一列name和第三列addr, 其中&quot;-&quot;表示忽略该列，不导入。 字段列表以逗号或空白分隔, 如&quot;title=name - addr&quot;与&quot;title=name, -, addr&quot;都可以.</p></li>
+<li><p>uniKey: 唯一索引字段. 如果指定, 则以该字段查询记录是否存在, 存在则更新. 通常可以设置为&quot;id&quot;或&quot;code&quot;等.</p></li>
+</ul>
+<p>支持三种方式上传：</p>
+<ol style="list-style-type: decimal">
+<li><p>直接在HTTP POST中传输内容，数据格式为：首行为标题行(即字段名列表)，之后为实际数据行。 行使用&quot;&quot;分隔, 列使用&quot;&quot;或逗号分隔（后端自动判断），方便直接从Excel中拷贝数据出来，或导出csv格式文件。 接口为：</p>
+<p>{Obj}.batchAdd(title?)(标题行，数据行) (Content-Type=text/plain)</p></li>
+</ol>
+<p>前端JS调用示例：</p>
+<pre><code>var data = &quot;name\taddr\n&quot; + &quot;门店1\t地址1\n门店2\t地址2\n&quot;;
+callSvr(&quot;Store.batchAdd&quot;, function (ret) {
+    app_alert(&quot;成功导入&quot; + ret.cnt + &quot;条数据！&quot;);
+}, data, {contentType:&quot;text/plain&quot;});</code></pre>
+<p>或指定title参数:</p>
+<pre><code>var data = &quot;门店名\t地址\n&quot; + &quot;门店1\t地址1\n门店2\t地址2\n&quot;;
+callSvr(&quot;Store.batchAdd&quot;, {title: &quot;name,addr&quot;}, function (ret) {
+    app_alert(&quot;成功导入&quot; + ret.cnt + &quot;条数据！&quot;);
+}, data, {contentType:&quot;text/plain&quot;});</code></pre>
+<p>示例: 在chrome console中导入数据</p>
+<pre><code>callSvr(&quot;Vendor.batchAdd&quot;, {title: &quot;-,name, tel, idCard, addr, picId&quot;}, $.noop, `编号 姓名  手机号码    身份证号    通讯地址    身份证图
+112 郭志强 15384811000 150221199211215XXX  地址1 532
+111 高长平 18375991001 500226198312065XXX  地址2 534
+`, {contentType:&quot;text/plain&quot;});
+    </code></pre>
+<ol start="2" style="list-style-type: decimal">
+<li>标准csv/txt文件上传：</li>
+</ol>
+<p>上传的文件首行当作标题列，如果这一行不是后台要求的标题名称，可通过URL参数title重新定义。 一般使用excel csv文件（编码一般为gbk），或txt文件（以&quot;&quot;分隔列）。 接口为：</p>
+<pre><code>{Obj}.batchAdd(title?)(csv/txt文件)
+(Content-Type=multipart/form-data, 即html form默认传文件的格式)</code></pre>
+<p>后端处理时, 将自动判断文本编码(utf-8或gbk).</p>
+<p>前端HTML:</p>
+<pre><code>&lt;input type=&quot;file&quot; name=&quot;f&quot; accept=&quot;.csv,.txt&quot;&gt;</code></pre>
+<p>前端JS示例：</p>
+<pre><code>var fd = new FormData();
+fd.append(&quot;file&quot;, frm.f.files[0]);
+callSvr(&quot;Store.batchAdd&quot;, {title: &quot;name,addr&quot;}, function (ret) {
+    app_alert(&quot;成功导入&quot; + ret.cnt + &quot;条数据！&quot;);
+}, fd);</code></pre>
+<p>或者使用curl等工具导入： 从excel中将数据全选复制到1.txt中(包含标题行，也可另存为csv格式文件)，然后导入。 下面示例用curl工具调用VendorA.batchAdd导入：</p>
+<pre><code>#/bin/sh
+baseUrl=http://localhost/p/anzhuang/api.php
+param=title=name,phone,idCard,addr,email,legalAddr,weixin,qq,area
+curl -v -F &quot;file=@1.txt&quot; &quot;$baseUrl/VendorA.batchAdd?$param&quot;</code></pre>
+<p>如果要调试(php/xdebug)，可加URL参数<code>XDEBUG_SESSION_START=1</code>或Cookie中加<code>XDEBUG_SESSION=1</code></p>
+<ol start="3" style="list-style-type: decimal">
+<li><p>传入对象数组 格式为 {list: [...]}</p>
+<p>var data = { list: [ {name: &quot;郭志强&quot;, tel: &quot;15384811000&quot;}, {name: &quot;高长平&quot;, tel: &quot;18375991001&quot;} ] }; callSvr(&quot;Store.batchAdd&quot;, function (ret) { app_alert(&quot;成功导入&quot; + ret.cnt + &quot;条数据！&quot;); }, data, {contentType:&quot;application/json&quot;});</p></li>
+</ol>
+<h3 id="子表的增删改查操作"><span class="header-section-number">3.5</span> 子表的增删改查操作</h3>
+<p>假设主对象为Obj，子对象为Obj1，设计如下：</p>
+<pre><code>@Obj: id, name
+vcol: @obj1 (说明：vcol表示虚拟字段，@obj1表示字段obj1是个数组，一般就是子对象)
+
+@Obj1: id, objId, name （通过objId关联主对象)</code></pre>
+<p>在添加主对象时，同时添加子对象:</p>
+<pre><code>Obj.add()(name, @obj1...) -&gt; id</code></pre>
+<p>示例：</p>
+<pre><code>callSvr(&quot;Obj.add&quot;, $.noop, {
+    name: &quot;name1&quot;,
+    obj1: [
+        { name: &quot;obj1-name1&quot; },
+        { name: &quot;obj1-name2&quot; }
+    ]
+});</code></pre>
+<p>主对象添加后，可以通过get接口获取主对象及子对象：</p>
+<pre><code>callSvr(&quot;Obj.get&quot;, {id: 1001, res:&quot;id,name,obj1&quot;}) -&gt; {
+    id: 1001,
+    name: &quot;name1&quot;,
+    obj1: [
+        { id: 10001, name: &quot;obj1-name1&quot; },
+        { id: 10002, name: &quot;obj1-name2&quot; }
+    ]
+});</code></pre>
+<p>要控制子对象的查询结果字段，可以加<code>res_{子对象名}</code>参数；要控制子对象的查询参数，可以加<code>param_{子对象名}</code>参数，示例：</p>
+<pre><code>callSvr(&quot;Obj.get&quot;, {id: 1001, res:&quot;id,name,obj1&quot;, res_obj1:&quot;id,name&quot;})
+或
+callSvr(&quot;Obj.get&quot;, {id: 1001, res:&quot;id,name,obj1&quot;, param_obj1: { res: &quot;id,name&quot;} })
+callSvr(&quot;Obj.get&quot;, {id: 1001, res:&quot;id,name,obj1&quot;, param_obj1: { res: &quot;id,name&quot;, cond: &quot;id&gt;=10002&quot;} })</code></pre>
+<p>当然，也可以直接查询子对象，如：</p>
+<pre><code>callSvr(&quot;Obj1.query&quot;, {cond: &quot;objId=1001&quot;, res:&quot;id,name,obj1&quot;, fmt:&quot;array&quot;}) -&gt; [
+    { id: 10001, name: &quot;obj1-name1&quot; },
+    { id: 10002, name: &quot;obj1-name2&quot; }
+]</code></pre>
+<p>这里用fmt参数指定返回array格式，因为默认返回的是<code>h/d</code>格式.</p>
+<p>主对象添加后，可以通过set接口添加/更新/删除子对象：</p>
+<pre><code>Obj.set(id)(name?, @obj1...)</code></pre>
+<p>示例：</p>
+<pre><code>callSvr(&quot;Obj.set&quot;, {id: 1001}, $.noop, {
+    name: &quot;name1&quot;,
+    obj1: [
+        { id: 10001, name: &quot;obj1-name1-changed&quot; }, // set接口中指定子表id的，表示更新该子表行
+        { name: &quot;obj1-name3&quot; },  // set接口中未指定子表id的，表示新增子表行
+        { id: 10002, delete: 1}  // set接口中指定子表id且设置了`delete: 1`，表示删除该子表行
+    ]
+});</code></pre>
+<p>主对象删除时（del/delIf接口），子对象不会自动删除。后端应根据情况自行处理。</p>
 <h2 id="批请求"><span class="header-section-number">4</span> 批请求</h2>
 <p>BQP协议支持批请求，即在一次请求中，包含多条接口调用。 而且支持向前引用，即后面的调用可以引用前面调用的返回值。 而且在创建批请求时，可以指定这些调用是否在一个事务(transaction)中，一起成功提交或失败回滚。</p>
 <p>假如某场景需要两个请求，先获取用户信息(User.get接口)，然后上传页面名、用户编号等信息到服务器(ActionLog.add接口)供统计分析，调用示意如下：</p>
