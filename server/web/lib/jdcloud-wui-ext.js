@@ -1362,20 +1362,24 @@ function applyPermission()
 
 	if (rolePerms) {
 		g_data.permSet = initPermSet(rolePerms);
-		var defaultShow = self.canDo("*", null, false);
-		$("#menu .perm-emp .menu-expand-group").each(function () {
-			showGroup($(this));
-		});
+		if (! g_data.hasRole("mgr,emp")) {
+			var defaultShow = self.canDo("*", null, false);
+			$("#menu .perm-emp .menu-expand-group").each(function () {
+				showGroup($(this));
+			});
+		}
 
 		// 支持多级嵌套
 		function showGroup(jo) {
 			var t = jo.find("a:first").text(); // 菜单组名称
 			var doShowGroup = self.canDo(t, null, defaultShow);
 			var doShow = defaultShow;
+			var allHidden = true;
 			jo.find(">.menu-expandable>a").each(function () {
 				var t = $(this).text();
 				if (WUI.canDo(t, null, doShowGroup)) {
 					doShow = true;
+					allHidden = false;
 					// $(this).show();
 				}
 				else {
@@ -1383,10 +1387,16 @@ function applyPermission()
 				}
 			});
 			jo.find(">.menu-expand-group").each(function () {
-				if (showGroup($(this)))
+				if (showGroup($(this))) {
 					doShow = true;
+					allHidden = false;
+				}
 			});
-			if (doShowGroup || doShow) {
+			if (allHidden) {
+				jo.closest(".perm-emp").hide();
+				return false;
+			}
+			else if (doShowGroup || doShow) {
 				jo.closest(".perm-emp").show();
 				return true;
 			}
