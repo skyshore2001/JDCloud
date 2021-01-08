@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（移动Web版）</h1>
-<div>最后更新：2020-11-12</div>
+<div>最后更新：2021-01-08</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -254,6 +254,7 @@ code {
 <p><a href="#slideIn">slideIn (key)</a></p>
 <p><a href="#slideOut">slideOut (key)</a></p>
 <p><a href="#syslog">syslog (fn)</a></p>
+<p><a href="#text2html">text2html (fn)</a></p>
 <p><a href="#title">title (var)</a></p>
 <p><a href="#tobool">tobool (fn)</a></p>
 <p><a href="#topic-iosStatusBar">topic-iosStatusBar (key)</a></p>
@@ -661,6 +662,10 @@ function loadStatLib()
 statusBarColor: "#000000,light" // 黑底白字。
 statusBarColor: "#ffffff,dark" // 白底黑字
 statusBarColor: "none" // 不显示状态栏。</code></pre>
+<p>如果不同页面有不同颜色，可以设置切换页面时自动按照页面头颜色来设置:</p>
+<pre><code>WUI.options.fixTopbarColor=true</code></pre>
+<p>注意此时要设置顶栏颜色，页面必须有页头即hd类并设置好颜色，若不需要页头可以设置隐藏.</p>
+<p class="see"><strong>@see <a href="#options.fixTopbarColor">options.fixTopbarColor</a></strong> </p>
 <p>如果希望自行设置状态栏，可以设置statusBarColor为null:</p>
 <pre><code>MUI.options.statusBarColor = null;</code></pre>
 <p>然后在deviceready事件中自行设置样式, 如</p>
@@ -1157,6 +1162,30 @@ var html = applyTpl(tpl, data);
 <h2 id="Q">@fn Q(str, q?="'")</h2>
 <pre><code>Q("abc") -&gt; 'abc'
 Q("a'bc") -&gt; 'a\'bc'</code></pre></div>
+<div class="block">
+<h2 id="text2html">@fn text2html(str, pics)</h2>
+<p>将文本或图片转成html，常用于将筋斗云后端返回的图文内容转成html在网页中显示。示例：</p>
+<pre><code>var item = {id: 1, name: "商品1", content: "商品介绍内容", pics: "100,102"};
+var html = MUI.text2html(item.content, item.pics);
+jpage.find("#content").html(html);</code></pre>
+<p>文字转html示例：</p>
+<pre><code>var html = MUI.text2html("hello\nworld");</code></pre>
+<p>生成html为</p>
+<pre><code>&lt;p&gt;hello&lt;/p&gt;
+&lt;p&gt;world&lt;/p&gt;</code></pre>
+<p>支持简单的markdown格式，如&quot;# &quot;,&quot;## &quot;分别表示一二级标题, &quot;- &quot;表示列表（注意在&quot;#&quot;或&quot;-&quot;后面有英文空格）：</p>
+<pre><code># 标题1
+内容1
+# 标题2
+内容2
+
+- 列表1
+- 列表2</code></pre>
+<p>函数可将图片编号列表转成img列表，如：</p>
+<pre><code>var html = MUI.text2html(null, "100,102");</code></pre>
+<p>生成</p>
+<pre><code>&lt;img src="../api.php/att?thumbId=100"&gt;
+&lt;img src="../api.php/att?thumbId=102"&gt;</code></pre></div>
 <div class="block">
 <h2 id="jdModule">@fn jdModule(name?, fn?)</h2>
 <p>定义JS模块。这是一个全局函数。</p>

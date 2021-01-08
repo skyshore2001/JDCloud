@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2020-11-12</div>
+<div>最后更新：2021-01-08</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -64,12 +64,14 @@ code {
 <p><a href="#.wui-checkList">.wui-checkList (key)</a></p>
 <p><a href="#.wui-combogrid">.wui-combogrid (key)</a></p>
 <p><a href="#.wui-dialog">.wui-dialog (key)</a></p>
+<p><a href="#.wui-field">.wui-field (key)</a></p>
 <p><a href="#.wui-find-field">.wui-find-field (key)</a></p>
 <p><a href="#.wui-fixedField">.wui-fixedField (key)</a></p>
 <p><a href="#.wui-form-table">.wui-form-table (key)</a></p>
 <p><a href="#.wui-labels">.wui-labels (key)</a></p>
 <p><a href="#.wui-notCond">.wui-notCond (key)</a></p>
 <p><a href="#.wui-page">.wui-page (key)</a></p>
+<p><a href="#.wui-picker">.wui-picker (key)</a></p>
 <p><a href="#.wui-readonly">.wui-readonly (key)</a></p>
 <p><a href="#.wui-subobj">.wui-subobj (key)</a></p>
 <p><a href="#.wui-upload">.wui-upload (key)</a></p>
@@ -103,6 +105,7 @@ code {
 <p><a href="#WUI.options.statFormatter">WUI.options.statFormatter (var)</a></p>
 <p><a href="#WUI.pivot">WUI.pivot (fn)</a></p>
 <p><a href="#WUI.rs2Stat">WUI.rs2Stat (fn)</a></p>
+<p><a href="#WUI.toggleTab">WUI.toggleTab (fn)</a></p>
 <p><a href="#[noReset]">[noReset] (key)</a></p>
 <p><a href="#a[href=">a[href= (key)</a></p>
 <p><a href="#a[href=#page]">a[href=#page] (key)</a></p>
@@ -144,6 +147,7 @@ code {
 <p><a href="#disableBatch">disableBatch (var)</a></p>
 <p><a href="#doFind">doFind (fn)</a></p>
 <p><a href="#doSpecial">doSpecial (fn)</a></p>
+<p><a href="#easyui-tabs">easyui-tabs (key)</a></p>
 <p><a href="#enhanceWithin">enhanceWithin (fn)</a></p>
 <p><a href="#enterWaiting">enterWaiting (fn)</a></p>
 <p><a href="#evalAttr">evalAttr (fn)</a></p>
@@ -247,6 +251,7 @@ code {
 <p><a href="#tobool">tobool (fn)</a></p>
 <p><a href="#toggleCol">toggleCol (fn)</a></p>
 <p><a href="#toggleFields">toggleFields (fn)</a></p>
+<p><a href="#treegrid">treegrid (key)</a></p>
 <p><a href="#triggerAsync">triggerAsync (fn)</a></p>
 <p><a href="#tryAutoLogin">tryAutoLogin (fn)</a></p>
 <p><a href="#unloadDialog">unloadDialog (fn)</a></p>
@@ -695,7 +700,9 @@ jtbl.datagrid("loadData", rows);
 jtbl.datagrid("loadData", {h: ["id","name"], d: [ [1, "name1"], [2, "name2"]}); // 筋斗云query接口默认返回格式。
 jtbl.datagrid("loadData", {list: rows}); // 筋斗云query接口指定fmt=list参数时，返回这种格式</code></pre>
 <h6 id="WUI-1.5.5 treegrid集成">1.5.5 treegrid集成</h6>
-<p>后端数据模型中有fatherId字段, 即可适配treegrid.</p>
+<p class="key"><strong>@key <a id="treegrid">treegrid</a></strong> </p>
+<p>后端数据模型若要支持树类型，须在表中有父节点字段（默认为fatherId）, 即可适配treegrid. 典型的表设计如下：</p>
+<pre><code>@Dept: id, code, name, fatherId, level</code></pre>
 <ul>
 <li>支持一次全部加载和分层次加载两种模式。</li>
 <li>支持查询时，只展示部分行。</li>
@@ -710,6 +717,8 @@ jtbl.datagrid("loadData", {list: rows}); // 筋斗云query接口指定fmt=list�
     url: WUI.makeUrl("ItemType.query", {pagesz: -1}),
     toolbar: WUI.dg_toolbar(jtbl, jdlg),
     onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
+    // treeField: "code"  // 树表专用，表示在哪个字段上显示折叠，默认为"id"
+    // fatherField: "id" // 树表专用，WUI扩展字段，表示父节点字段，默认为"fatherId"
 };
 // 用treegrid替代常规的datagrid
 jtbl.treegrid(dgOpt);</code></pre>
@@ -720,6 +729,16 @@ jtbl.treegrid(dgOpt);</code></pre>
     isLeaf: function (row) {
         return row.level&gt;1;
     },
+    ...
+};
+jtbl.treegrid(dgOpt);</code></pre>
+<p><strong>[通过非id字段关联父节点的情况]</strong></p>
+<p>比如通过fatherCode字段关联到父节点的code字段：</p>
+<pre><code>@Dept: id, code, fatherCode</code></pre>
+<p>则可以指定idField, 这样调用：</p>
+<pre><code>var dgOpt = {
+    idField: "code",
+    fatherField: "fatherCode",
     ...
 };
 jtbl.treegrid(dgOpt);</code></pre>
@@ -819,6 +838,7 @@ function initPageItem(storeId)
 <pre><code>function initPageItem(storeId) // storeId=row.id</code></pre>
 <p class="see"><strong>@see <a href="#showPage">showPage</a></strong> </p>
 <p class="key"><strong>@key <a id=".wui-fixedField">.wui-fixedField</a></strong>  固定值字段</p>
+<p>当打开对话框时, 标识为.wui-fixedField类的字段会自动从传入的opt.objParam中取值, 如果取到值则将自己设置为只读.</p>
 <p>此外，在Item页对应的详情对话框上（dlgItem.html页面中），还应设置storeId字段是只读的，在添加、设置和查询时不可被修改，在添加时还应自动填充值。<br />
 (v5.3) 只要在字段上添加wui-fixedField类即可：</p>
 <pre><code>&lt;select name="storeId" class="my-combobox wui-fixedField" data-options="ListOptions.Store()"&gt;&lt;/select&gt;</code></pre>
@@ -2906,7 +2926,8 @@ jtbl.datagrid({
 <p class="param"><strong>@param jdlg</strong>  可以是对话框的jquery对象，或selector如"#dlgOrder".</p>
 <p>设置easyui-datagrid上toolbar上的按钮。缺省支持的按钮有r(refresh), f(find), a(add), s(set), d(del), 可通过以下设置方式修改：</p>
 <pre><code>// jtbl.jdata().toolbar 缺省值为 "rfasd"
-jtbl.jdata().toolbar = "rfs"; // 没有a-添加,d-删除</code></pre>
+jtbl.jdata().toolbar = "rfs"; // 没有a-添加,d-删除.
+// (v5.5) toolbar也可以是数组, 如 ["r", "f", "s", "export"]; 空串或空数组表示没有按钮.</code></pre>
 <p>如果要添加自定义按钮，可通过button_lists一一传递.<br />
 示例：添加两个自定义按钮查询“今天订单”和“所有未完成订单”。</p>
 <pre><code>function getTodayOrders()
@@ -3430,6 +3451,7 @@ var ListOptions = {
 <p style="margin-left:0em"><a href="#.wui-upload-2 音频等文件上传">2 音频等文件上传</a></p>
 <p style="margin-left:0em"><a href="#.wui-upload-3 压缩参数">3 压缩参数</a></p>
 <p style="margin-left:0em"><a href="#.wui-upload-4 动态设置选项">4 动态设置选项</a></p>
+<p style="margin-left:0em"><a href="#.wui-upload-5 定制上传接口">5 定制上传接口</a></p>
 </div>
 <p>对话框上的上传文件组件。</p>
 <p>用于在对象详情对话框中，展示关联图片字段。图片可以为单张或多张。<br />
@@ -3488,7 +3510,7 @@ a标签上数据如下：</p>
 <li>prop(&quot;picData_&quot;)保存图片压缩信息。仅当新选择的图片才有。</li>
 </ul>
 <p class="param"><strong>@param opt.multiple=true</strong>  设置false限制只能选一张图。</p>
-<p class="param"><strong>@param opt.nothumb=false</strong>  设置为true表示不生成缩略图，且不做压缩。</p>
+<p class="param"><strong>@param opt.nothumb=false</strong>  设置为true表示不生成缩略图，且不做压缩（除非指定maxSize参数，这时不生成缩略图，但仍然压缩）。</p>
 <pre><code>&lt;td class="wui-upload" data-options="nothumb:true"&gt;...&lt;/td&gt;</code></pre>
 <p class="param"><strong>@param opt.pic=true</strong>  设置为false，用于上传视频或其它非图片文件</p>
 <p>如果为false, 在.imgs区域内显示文件名链接而非图片。</p>
@@ -3622,7 +3644,30 @@ function onBeforeShow(ev, formMode, opt)
     // 获取和动态设置选项：
     var uploadOpt = WUI.getOptions(jo);
     uploadOpt.nothumb = (objParam.type === "A");
-}</code></pre></div>
+}</code></pre>
+<h4 id=".wui-upload-5 定制上传接口">5 定制上传接口</h4>
+<ul>
+<li>opt.onGetQueryParam: Function() -&gt; {ac?, ...} 定义上传接口名和接口参数。</li>
+<li>
+<p>opt.onGetData: Function(ret)  处理接口返回结果ret。</p>
+<p>示例：调用<code>upload1(resource, version) -&gt; [{id, ..., url}]</code> 接口。<br />
+该接口扩展了默认的upload接口，需要传入resource等参数，返回的url字段需要设置到form相应字段上。</p>
+<p>// function initDlgVersion<br />
+var jo = jdlg.find(&quot;.uploadFile&quot;);<br />
+var uploadOpt = WUI.getOptions(jo);<br />
+uploadOpt.onGetQueryParam = function () {<br />
+return {<br />
+ac: &quot;upload1&quot;,<br />
+resource: $(frm.resourceId).val(),<br />
+version: $(frm.name).val()<br />
+}<br />
+}<br />
+uploadOpt.onGetData = function (ret) {<br />
+var resUrl = ret[0].url;<br />
+$(frm.url).val(resUrl);<br />
+}</p>
+</li>
+</ul></div>
 <div class="block">
 <h2 id=".wui-checkList">@key .wui-checkList</h2>
 <p>用于在对象详情对话框中，以一组复选框(checkbox)来对应一个逗号分隔式列表的字段。<br />
@@ -3799,7 +3844,25 @@ var d = WUI.getFormData(jfrm); // {startDt: &quot;2019-10-10&quot;, startTm: &qu
     toggleItemFields(jtbl, type);</code></pre>
 <p>明细页中调用，控制字段显示：dlgItem.js</p>
 <pre><code>    var type = objParam &amp;&amp; objParam.type; // objParam = 对话框beforeshow事件中的opt.objParam
-    toggleItemFields(jfrm, type);</code></pre></div>
+    toggleItemFields(jfrm, type);</code></pre>
+<p class="key"><strong>@key <a id=".wui-field">.wui-field</a></strong> </p>
+<p>在隐藏字段时，默认是找到字段所在的行(tr)或标识<code>wui-field</code>类的元素控制其显示或隐藏。示例：</p>
+<pre><code>    &lt;tr&gt;
+        &lt;td&gt;&lt;/td&gt;
+            &lt;label class="wui-field"&gt;&lt;input name="forEnd" type="checkbox" value="1"&gt; 结束打卡&lt;/label&gt;
+        &lt;/td&gt;
+
+        &lt;td&gt;&lt;/td&gt;
+        &lt;td&gt;
+            &lt;label class="wui-field"&gt;&lt;input name="repairFlag" type="checkbox" value="1"&gt; 是否维修&lt;/label&gt;
+        &lt;/td&gt;
+    &lt;/tr&gt;</code></pre>
+<p>这里一行有两组字段，以wui-field类来指定字段所在的范围。如果不指定该类，则整行(tr层)将默认当作字段范围。<br />
+JS控制：(dialog的onShow时)</p>
+<pre><code>    WUI.toggleFields(jfrm, {
+        forEnd: formMode == FormMode.forSet &amp;&amp; !frm.tm1.value,
+        repairFlag: g_args.repair
+    })</code></pre></div>
 <div class="block">
 <h2 id="WUI.applyPermission">@fn WUI.applyPermission()</h2>
 <p class="key"><strong>@key <a id="permission">permission</a></strong>  菜单权限控制</p>
@@ -3864,10 +3927,15 @@ var isKF = g_data.hasRole("客服");</code></pre>
 };</code></pre>
 <p class="see"><strong>@see <a href="#fname">fname</a></strong> </p></div>
 <div class="block">
-<h2 id=".wui-subobj">@key .wui-subobj</h2>
-<p>选项：{obj, relatedKey, res?, dlg?/关联的明细对话框}</p>
-<p>这些选项在dlg设置时有效：{valueField, readonly}</p>
-<p>示例1：可以增删改查的子表：</p>
+<h2 id=".wui-subobj">@key .wui-subobj</h2><div class="toc"><p style="margin-left:0em"><a href="#.wui-subobj-1 示例1：可以增删改查的子表：">1 示例1：可以增删改查的子表：</a></p>
+<p style="margin-left:0em"><a href="#.wui-subobj-2 示例2：主表记录添加时不需要展示，添加之后子表/关联表可以增删改查：">2 示例2：主表记录添加时不需要展示，添加之后子表/关联表可以增删改查：</a></p>
+<p style="margin-left:0em"><a href="#.wui-subobj-3 示例3：和主表字段一起添加，添加后变成只读不可再新增、更新、删除：">3 示例3：和主表字段一起添加，添加后变成只读不可再新增、更新、删除：</a></p>
+<p style="margin-left:0em"><a href="#.wui-subobj-4 示例4: 动态启用/禁用子表">4 示例4: 动态启用/禁用子表</a></p>
+<p style="margin-left:0em"><a href="#.wui-subobj-5 示例5：显示为树表(treegrid)">5 示例5：显示为树表(treegrid)</a></p>
+</div>
+<p>选项：{obj, relatedKey, res?, dlg?/关联的明细对话框, datagrid/treegrid}</p>
+<p>这些选项在dlg设置时有效：{valueField, readonly, objParam, toolbar}</p>
+<h4 id=".wui-subobj-1 示例1：可以增删改查的子表：">1 示例1：可以增删改查的子表：</h4>
 <pre><code>&lt;div class="wui-subobj" data-options="obj:'CusOrder', relatedKey:'cusId', valueField:'orders', dlg:'dlgCusOrder'"&gt;
     &lt;p&gt;&lt;b&gt;物流订单&lt;/b&gt;&lt;/p&gt;
     &lt;table&gt;
@@ -3887,8 +3955,10 @@ var isKF = g_data.hasRole("客服");</code></pre>
 }</code></pre>
 </li>
 <li>
-<p>relatedKey: 关联字段. 指定两表(当前表与obj对应表)如何关联, 值&quot;cusId&quot;与&quot;cusId={id}&quot;等价, 表示<code>主表.id=CusOrder.cusId</code>.<br />
-可以明确指定被关联字段, 如relatedKey=&quot;name={name}&quot; 表示<code>主表.name=CusOrder.name</code>. </p>
+<p>relatedKey: 关联字段. 指定两表(当前表与obj对应表)如何关联, 用于自动创建子表查询条件以及子表对话框的关联值设置(wui-fixed-field)<br />
+值&quot;cusId&quot;与&quot;cusId={id}&quot;等价, 表示<code>主表.id=CusOrder.cusId</code>.<br />
+可以明确指定被关联字段, 如relatedKey=&quot;name={name}&quot; 表示<code>主表.name=CusOrder.name</code>.<br />
+支持多个关联字段设置, 如<code>relId={id} AND type={type}</code>.</p>
 </li>
 <li>dlg: 对应子表详情对话框。如果指定，则允许添加、更新、查询操作。</li>
 </ul>
@@ -3903,7 +3973,16 @@ var isKF = g_data.hasRole("客服");</code></pre>
     ]
 }</code></pre>
 </li>
-<li>readonly: 默认为false, 设置为true则在主表添加之后，不可对子表进行添加、更新或删除。</li>
+<li>
+<p>readonly: 默认为false, 设置为true则在主表添加之后，不可对子表进行添加、更新或删除。</p>
+</li>
+<li>
+<p>objParam: 关联的明细对象对话框的初始参数, 对应dialogOpt.objParam. 例如有 offline, onCrud()等选项. </p>
+<p class="see"><strong>@see <a href="#objParam">objParam</a></strong> </p>
+</li>
+<li>toolbar: 指定修改对象时的增删改查按钮, Enum(a-add, s-set, d-del, f-find, r-refresh), 字符串或数组, 缺省是所有按钮, 空串&quot;&quot;或空数组[]表示没有任何按钮.<br />
+示例：只留下删除和刷新: toolbar='rd'
+<p class="see"><strong>@see <a href="#dg_toolbar">dg_toolbar</a></strong> </p></li>
 </ul>
 <p>可以在validate事件中，对添加的子表进行判断处理：</p>
 <pre><code>function onValidate(ev, mode, oriData, newData) 
@@ -3920,11 +3999,11 @@ var isKF = g_data.hasRole("客服");</code></pre>
 <pre><code>// 在dialog的beforeshow回调中：
 var jsub = jdlg.find(".wui-subobj");
 WUI.getOptions(jsub).readonly = !g_data.hasRole("emp,mgr");</code></pre>
-<p>示例2：主表记录添加时不需要展示，添加之后子表/关联表可以增删改查：</p>
+<h4 id=".wui-subobj-2 示例2：主表记录添加时不需要展示，添加之后子表/关联表可以增删改查：">2 示例2：主表记录添加时不需要展示，添加之后子表/关联表可以增删改查：</h4>
 <pre><code>&lt;div class="wui-subobj" data-options="obj:'CusOrder', relatedKey:'cusId', dlg:'dlgCusOrder'&gt;
     ...
 &lt;/div&gt;</code></pre>
-<p>示例3：和主表字段一起添加，添加后变成只读不可再新增、更新、删除：</p>
+<h4 id=".wui-subobj-3 示例3：和主表字段一起添加，添加后变成只读不可再新增、更新、删除：">3 示例3：和主表字段一起添加，添加后变成只读不可再新增、更新、删除：</h4>
 <pre><code>&lt;div class="wui-subobj" data-options="obj:'CusOrder', relatedKey:'cusId', valueField:'orders', dlg:'dlgCusOrder', readonly: true"&gt;
     ...
 &lt;/div&gt;</code></pre>
@@ -3933,7 +4012,94 @@ WUI.getOptions(jsub).readonly = !g_data.hasRole("emp,mgr");</code></pre>
 &lt;/div&gt;</code></pre>
 <ul>
 <li>res: 指定返回字段以提高性能，即query接口的res参数。注意在关联详细对话框（即指定dlg选项）时，一般不指定res，否则双击打开对话框时会字段显示不全。</li>
-</ul></div>
+</ul>
+<h4 id=".wui-subobj-4 示例4: 动态启用/禁用子表">4 示例4: 动态启用/禁用子表</h4>
+<p>启用或禁用可通过事件发送指令:<br />
+jo.trigger(&quot;setDisabled&quot;, boolDisabledVal); // 会自动刷新UI</p>
+<p>示例: 在物料明细对话框(dlgItem)中, 在Tabs组件中放置&quot;组合&quot;子表, 当下拉框选择&quot;组合&quot;时, 启用&quot;组合&quot;子表Tab页:</p>
+<pre><code>&lt;select name="type"&gt;
+    &lt;option value=""&gt;(无)&lt;/option&gt;
+    &lt;option value="P"&gt;组合&lt;/option&gt;
+    &lt;!--&lt;option value="U"&gt;拆卖&lt;/option&gt;--&gt;
+&lt;/select&gt;
+
+&lt;div class="easyui-tabs"&gt;
+    &lt;div class="wui-subobj" id="tabItem1" data-options="obj:'Item1', valueField:'item1', relatedKey:'itemId', dlg:'dlgItem1'" title="组合"&gt;
+        &lt;table&gt;
+            &lt;thead&gt;&lt;tr&gt;
+                &lt;th data-options="field:'srcItemName'"&gt;源商品&lt;/th&gt;
+                &lt;th data-options="field:'qty', formatter:WUI.formatter.number"&gt;数量&lt;/th&gt;
+            &lt;/tr&gt;&lt;/thead&gt;
+        &lt;/table&gt;
+    &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+<p>设置&quot;组合&quot;页随着type选择启用禁用:</p>
+<pre><code>$(frm.type).change(function () {
+    toggleItem1(this.value);
+});
+
+jdlg.on("beforeshow", onBeforeShow)
+    .on("validate", onValidate);
+
+function onBeforeShow(ev, formMode, opt) 
+{
+    toggleItem1(opt.data &amp;&amp; opt.data.type);
+}
+
+function onValidate(ev, mode, oriData, newData) 
+{
+    // 添加时验证子表值
+    if (mode == FormMode.forAdd) {
+        var type = frm.type.value;
+        if (type == "P") {
+            console.log(newData.item1);
+            if (newData.item1 == null || newData.item1.length == 0) {
+                app_alert("请添加组合明细!", "w");
+                // 自动切换到该页
+                jdlg.find(".easyui-tabs").tabs("select", "组合");
+                return false;
+            }
+        }
+    }
+}
+
+// 启用或禁用子表的Tab
+function toggleItem1(type)
+{
+    var dis = type!="P";
+    jdlg.find("#tabItem1").trigger("setDisabled", dis);
+}</code></pre>
+<h4 id=".wui-subobj-5 示例5：显示为树表(treegrid)">5 示例5：显示为树表(treegrid)</h4>
+<ul>
+<li>opt.datagrid: 设置easyui-datagrid的选项</li>
+<li>opt.treegrid: 如果指定，则以树表方式展示子表，设置easyui-treegrid的选项</li>
+</ul>
+<p>默认使用以下配置：</p>
+<pre><code>{
+    idField: "id",  // 不建议修改
+    fatherField: "fatherId", // 指向父结点的字段，不建议修改
+    treeField: "id", // 显示树结点的字段名，可根据情况修改
+}</code></pre>
+<p>子表以树表显示时，不支持分页（查询时自动设置参数pagesz=-1）。</p>
+<p class="see"><strong>@see <a href="#treegrid">treegrid</a></strong> </p></div>
+<div class="block">
+<h2 id="easyui-tabs">@key easyui-tabs</h2>
+<p>扩展: 若未指定onSelect回调, 默认行为: 点Tab发出tabSelect事件, 由Tab自行处理</p></div>
+<div class="block">
+<h2 id="WUI.toggleTab">@fn WUI.toggleTab(jtabs, which, show, noEvent?)</h2>
+<p>禁用或启用easyui-tabs组件的某个Tab页.<br />
+which可以是Tab页的索引数或标题.<br />
+示例:</p>
+<pre><code>var jtabs = jdlg.find(".easyui-tabs");
+WUI.toggleTab(jtabs, "组合物料", formData.type == "P");</code></pre></div>
+<div class="block">
+<h2 id=".wui-picker">@key .wui-picker 字段后的工具按钮</h2>
+<p>示例：输入框后添加一个编辑按钮，默认不可编辑，点按钮编辑：</p>
+<pre><code>&lt;input name="value" class="wui-picker-edit"&gt;</code></pre>
+<p>示例：输入框后添加一个帮助按钮：</p>
+<pre><code>&lt;input name="value" class="wui-picker-help" data-helpKey="取消工单"&gt;</code></pre>
+<p>点击帮助按钮，跳往WUI.options.helpUrl指定的地址。如果指定data-helpKey，则跳到该锚点处。</p>
+<p>可以多个picker一起使用。</p></div>
 <div class="block">
 <h2 id="JdcloudStat">@module JdcloudStat</h2>
 <p>按日期进行数据分析统计</p>
