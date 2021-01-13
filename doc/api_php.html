@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2021-01-08</div>
+<div>最后更新：2021-01-13</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -2694,7 +2694,7 @@ callSvr("Obj.get", {id: 1001, res:"id,name,obj1", param_obj1: { res: "id,name", 
     obj1: [
         { id: 10001, name: "obj1-name1-changed" }, // set接口中指定子表id的，表示更新该子表行
         { name: "obj1-name3" },  // set接口中未指定子表id的，表示新增子表行
-        { id: 10002, delete: 1}  // set接口中指定子表id且设置了`delete: 1`，表示删除该子表行
+        { id: 10002, _delete: 1}  // set接口中指定子表id且设置了`_delete: 1`，表示删除该子表行
     ]
 });</code></pre>
 <p>主对象删除时（del/delIf接口），子对象不会自动删除。后端应根据情况自行处理。</p>
