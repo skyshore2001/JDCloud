@@ -926,7 +926,7 @@ SQL样例如下：
 		obj1: [
 			{ id: 10001, name: "obj1-name1-changed" }, // set接口中指定子表id的，表示更新该子表行
 			{ name: "obj1-name3" },  // set接口中未指定子表id的，表示新增子表行
-			{ id: 10002, delete: 1}  // set接口中指定子表id且设置了`delete: 1`，表示删除该子表行
+			{ id: 10002, _delete: 1}  // set接口中指定子表id且设置了`_delete: 1`，表示删除该子表行
 		]
 	});
 

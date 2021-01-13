@@ -991,7 +991,7 @@ callSvr(&quot;Ordr.get&quot;, {id: id, res:&quot;*,items&quot;})</code></pre>
 ]}</code></pre>
 <p><strong>[在set接口中追加、修改、删除子表项]</strong></p>
 <pre><code>Ordr.set()(..., items={id?, itemId?, price?, qty?})</code></pre>
-<p>注意更新时对子项采用PATCH机制，即不必传所有子项，如果在子项中指定了id，则做更新子项操作（特别地，如果有delete参数，表示删除该子项），否则做追加子项操作。</p>
+<p>注意更新时对子项采用PATCH机制，即不必传所有子项，如果在子项中指定了id，则做更新子项操作（特别地，如果有<code>_delete</code>参数，表示删除该子项），否则做追加子项操作。</p>
 <p>更新子项示例：更新<code>id=100</code>子项的，数量设置为2，同时更新子表和主表的amount字段</p>
 <pre><code>callSvr(&quot;Ordr.set&quot;, {id: id}, $.noop, {items:[{id:100, qty: 2, amount: 400}], amount:700} , {contentType:&quot;application/json&quot;})</code></pre>
 <p>追加子项：追加<code>{itemId:1}</code>的子项，并更新相关字段</p>

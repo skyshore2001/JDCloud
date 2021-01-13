@@ -620,7 +620,7 @@ callSvr(&quot;Obj.get&quot;, {id: 1001, res:&quot;id,name,obj1&quot;, param_obj1
     obj1: [
         { id: 10001, name: &quot;obj1-name1-changed&quot; }, // set接口中指定子表id的，表示更新该子表行
         { name: &quot;obj1-name3&quot; },  // set接口中未指定子表id的，表示新增子表行
-        { id: 10002, delete: 1}  // set接口中指定子表id且设置了`delete: 1`，表示删除该子表行
+        { id: 10002, _delete: 1}  // set接口中指定子表id且设置了`_delete: 1`，表示删除该子表行
     ]
 });</code></pre>
 <p>主对象删除时（del/delIf接口），子对象不会自动删除。后端应根据情况自行处理。</p>
