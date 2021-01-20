@@ -504,7 +504,7 @@ function addToStr(&$str, $str1, $sep=',')
 
 示例：
 
-	$arrCopy($wiData, $workItem); // 复制全部字段过去
+	arrCopy($wiData, $workItem); // 复制全部字段过去
 
 如果不想覆盖已有字段(即使值为null也不覆盖)，可以用：
 
@@ -527,6 +527,88 @@ function arrCopy(&$ret, $arr, $fields=null)
 		else
 			@$ret[$f] = $arr[$f];
 	}
+}
+
+/**
+@fn arrFind($arr, $fn)
+
+示例：
+
+	$personArr = [ ["id"=>1, "name"=>"name1"], ["id"=>2, "name"=>"name2"] ];
+	$person = arrFind($arr, function ($e) {
+		return $e["id"] === 1;
+	});
+	if ($person === false) {
+		// 未找到
+	}
+	
+*/
+function arrFind($arr, $fn)
+{
+	assert(is_array($arr));
+	assert(is_callable($fn));
+	foreach ($arr as $e) {
+		if ($fn($e))
+			return $e;
+	}
+	return false;
+}
+
+/**
+@fn arrMap($arr, $fn)
+
+示例：
+
+	$personArr = [ ["id"=>1, "name"=>"name1"], ["id"=>2, "name"=>"name2"] ];
+	$personIdList = arrMap($arr, function ($e) {
+		return $e["id"];
+	});
+	// [1, 2]
+
+*/
+function arrMap($arr, $fn)
+{
+	assert(is_array($arr));
+	assert(is_callable($fn));
+	$ret = [];
+	foreach ($arr as $e) {
+		$ret[] = $fn($e);
+	}
+	return $ret;
+}
+
+/**
+@fn arrGrep($arr, $fn, $mapFn=null)
+
+示例：
+
+	$personArr = [ ["id"=>1, "name"=>"name1"], ["id"=>2, "name"=>"name2"] ];
+	$personArr1 = arrGrep($arr, function ($e) {
+		return $e["id"] > 1;
+	}); // [ ["id"=>2, "name"=>"name2"] ]
+
+	$personNameArr1 = arrGrep($arr, function ($e) {
+		return $e["id"] > 1;
+	}, function ($e) {
+		return $e["name"];
+	}); // [ "name2" ]
+	
+*/
+function arrGrep($arr, $fn, $mapFn=null)
+{
+	assert(is_array($arr));
+	assert(is_callable($fn));
+	assert(is_callable($mapFn));
+	$ret = [];
+	foreach ($arr as $e) {
+		if ($fn($e)) {
+			if ($mapFn === null)
+				$ret[] = $e;
+			else
+				$ret[] = $mapFn($e);
+		}
+	}
+	return $ret;
 }
 
 /**
