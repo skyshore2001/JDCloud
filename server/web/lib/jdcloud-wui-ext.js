@@ -1583,6 +1583,8 @@ $.extend(self.dg_toolbar, {
 	var jsub = jdlg.find(".wui-subobj");
 	WUI.getOptions(jsub).readonly = !g_data.hasRole("emp,mgr");
 
+- forceLoad: 显示为Tab页时（即每个Tab页一个子表），为减少后端查询，若该Tab页尚未显示，是不加载该子表的。设置forceLoad为true则无论是否显示均强制加载。
+
 ## 示例2：主表记录添加时不需要展示，添加之后子表/关联表可以增删改查：
 
 	<div class="wui-subobj" data-options="obj:'CusOrder', relatedKey:'cusId', dlg:'dlgCusOrder'>
@@ -1760,7 +1762,7 @@ function enhanceSubobj(jo)
 			show = true;
 		toggle(!opt.disabled && show);
 
-		if (jo.is(":hidden"))
+		if (jo.is(":hidden") && !opt.forceLoad)
 			return;
 
 		if (jo.data("subobjLoaded_"))
