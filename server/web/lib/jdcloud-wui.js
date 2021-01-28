@@ -6430,19 +6430,107 @@ opt.data也可以是一个函数dataFn(batchCnt)，参数batchCnt为当前批量
 
 简单来说, 默认模式对单个记录不处理, 返回false留给调用者处理; 模式2是对单个记录也按批量处理; 模式1是无须按Ctrl键就批量处理.
 
-## 示例：点"批量上传"按钮, 打开上传文件对话框, 选择上传并点击"确定"按钮后, 先上传文件, 再将返回的附件编号批量更新到行记录上.
+## 示例1: 无须对话框填写额外信息的批量操作
+
+工件列表页(pageSn)中，点"打印条码"按钮, 打印选中的1行或多行的标签, 如果未选则报错. 如果按住Ctrl点击, 则按表格过滤条件批量打印所有行的标签.
+
+显然, 这是一个batchOpMode=2的操作模式, 调用后端`Sn.print`接口, 对一行或多行数据统一处理，在列表页pageSn.js中为操作按钮指定操作:
+
+	// function initPageSn
+	var btn1 = {text: "打印条码", iconCls:'icon-ok', handler: function () {
+		WUI.batchOp("Sn", "printSn", jtbl, {
+			acName: "打印", 
+			batchOpMode: 2
+		});
+	}};
+
+	jtbl.datagrid({
+		...
+		toolbar: WUI.dg_toolbar(jtbl, jdlg, "export", btn1),
+	});
+
+后端应实现接口`Sn.print(查询条件)`, 实现示例:
+
+	// class AC2_Sn
+	function api_print() {
+		// 通过query接口查询操作对象内容. 
+		$param = array_merge($_GET, ["res"=>"code", "fmt"=>"array" ]);
+		$rv = $this->callSvc(null, "query", $param);
+		addLog($rv);
+		// 应返回操作数量
+		return count($rv);
+	}
+
+## 示例2：打开对话框，批量设置一些信息
+
+在列表页上添加操作按钮，pageXXX.js:
+
+	// 点按钮打开批量上传对话框
+	var btn1 = {text: "批量设置", iconCls:'icon-add', handler: function () {
+		WUI.showDlg("#dlgUpload", {modal:false, jtbl: jtbl}); // 注意：为对话框传入特别参数jtbl即列表的jQuery对象，在batchOp函数中要使用它。
+	}};
+	jtbl.datagrid({
+		...
+		toolbar: WUI.dg_toolbar(jtbl, jdlg, "export", btn1),
+	});
+
+对批量设置页面上调用接口，dlgUpload.js:
+
+	var jtbl;
+	jdlg.on("validate", onValidate)
+		on("beforeshow", onBeforeShow);
+
+	function onBeforeShow(ev, formMode, opt) {
+		jtbl = opt.jtbl; // 记录传入的参数
+	}
+	function onValidate(ev, mode, oriData, newData) 
+	{
+		WUI.batchOp("Item", "batchSetItemPrice", jtbl, {
+			batchOpMode: 1,  // 无须按Ctrl键, 一律当成批量操作
+			data: WUI.getFormData(jfrm),
+			onBatchDone: function () {
+				WUI.closeDlg(jdlg);
+			}
+		});
+	}
+
+注意：对主表字段的设置都可在通用的详情对话框上解决（若要批量设置子表，也可通过在set/setIf接口里处理虚拟字段解决）。一般无须编写批量设置操作。
+
+## 示例3：打开对话框，先上传文件再批量操作
+
+在安装任务列表页上，点"批量上传"按钮, 打开上传文件对话框(dlgUpload), 选择上传并点击"确定"按钮后, 先上传文件, 再将返回的附件编号批量更新到行记录上.
 
 先选择操作模式batchOpMode=1, 点确定按钮时总是批量处理.
-参数data传入一个函数(onGetData)用于生成POST参数; 
-为了支持其中的异步上传文件操作, 函数除了直接返回data, 还可以返回一个Deferred对象(简称dfd), 在dfd.resolve(data)之后才会执行真正的批量操作.
 
-	WUI.batchOp("Task", "Task.setIf", jtbl, {
-		batchOpMode: 1,  // 无须按Ctrl键, 一律当成批量操作
-		data: onGetData,
-		onBatchDone: function () {
-			WUI.closeDlg(jdlg);
-		}
-	});
+与示例2不同，上传文件是个异步操作，可为参数data传入一个返回Deferred对象（简称dfd）的函数(onGetData)用于生成POST参数，
+以支持异步上传文件操作，在dfd.resolve(data)之后才会执行真正的批量操作.
+
+pageTask.js:
+
+	// 点按钮打开批量上传对话框
+	var btn2 = {text: "批量上传附件", iconCls:'icon-add', handler: function () {
+		WUI.showDlg("#dlgUpload", {modal:false, jtbl: jtbl}); // 注意：为对话框传入特别参数jtbl即列表的jQuery对象，在batchOp函数中要使用它。
+	}};
+
+dlgUpload.js:
+
+	var jtbl;
+	jdlg.on("validate", onValidate)
+		on("beforeshow", onBeforeShow);
+
+	function onBeforeShow(ev, formMode, opt) {
+		jtbl = opt.jtbl; // 记录传入的参数
+	}
+	function onValidate(ev, mode, oriData, newData) 
+	{
+		WUI.batchOp("Task", "Task.setIf", jtbl, {
+			batchOpMode: 1,  // 无须按Ctrl键, 一律当成批量操作
+			data: onGetData,
+			onBatchDone: function () {
+				WUI.closeDlg(jdlg);
+			}
+		});
+	}
 
 	// 一定batchCnt>0. 若batchCnt=0即没有操作数据时, 会报错结束, 不会回调该函数.
 	function onGetData(batchCnt)
@@ -6470,27 +6558,6 @@ opt.data也可以是一个函数dataFn(batchCnt)，参数batchCnt为当前批量
 		return;
 	jupload.submit();
 	return getFormData(jfrm);
-
-## 示例2: 点"打印"按钮, 打印选中的1行或多行的标签, 如果未选则报错. 如果按住Ctrl点击, 则按表格过滤条件批量打印所有行的标签.
-
-显然, 这是一个batchOpMode=2的操作模式, 调用后端`Sn.print`接口, 对一行或多行数据统一处理:
-
-	WUI.batchOp("Sn", "Sn.print", jtbl, {
-		acName: "打印",
-		batchOpMode: 2
-	});
-
-后端应实现接口`Sn.print(查询条件)`, 实现示例:
-
-	// class AC2_Sn
-	function api_print() {
-		// 通过query接口查询操作对象内容. 
-		$param = array_merge($_GET, ["res"=>"code", "fmt"=>"array" ]);
-		$rv = $this->callSvc(null, "query", $param);
-		addLog($rv);
-		// 应返回操作数量
-		return count($rv);
-	}
 
 */
 self.batchOp = batchOp;
