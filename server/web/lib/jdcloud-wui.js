@@ -5672,16 +5672,17 @@ function reloadRow(jtbl, rowData)
 		if (datagrid == "treegrid") {
 			$.extend(rowData, objArr[0]);
 			var fatherId = rowData[opt.fatherField]; // "fatherId"
+			var id = rowData[opt.idField];
 			if (rowData["_parentId"] && rowData["_parentId"] != fatherId) {
 				rowData["_parentId"] = fatherId;
-				jtbl.treegrid("remove", rowData.id);
+				jtbl.treegrid("remove", id);
 				jtbl.treegrid("append", {
 					parent: rowData["_parentId"],
 					data: [rowData]
 				});
 			}
 			else {
-				jtbl.treegrid("update", {id: rowData.id, row: rowData});
+				jtbl.treegrid("update", {id: id, row: rowData});
 			}
 			return;
 		}
@@ -5711,6 +5712,10 @@ function appendRow(jtbl, id)
 			return;
 		var row = objArr[0];
 		if (datagrid == "treegrid") {
+			if (jtbl.treegrid('getData').length == 0) { // bugfix: 加第一行时，使用loadData以删除“没有数据”这行
+				jtbl.treegrid('loadData', [row]);
+				return;
+			}
 			var fatherId = row[opt.fatherField];
 			jtbl.treegrid('append',{
 				parent: fatherId,
@@ -6598,7 +6603,8 @@ function batchOp(obj, ac, jtbl, opt)
 		confirmBatch(selArr.length);
 	}
 	else {
-		var dgOpt = jtbl.datagrid("options");
+		var datagrid = isTreegrid(jtbl)? "treegrid": "datagrid";
+		var dgOpt = jtbl[datagrid]("options");
 		var p1 = dgOpt.url && dgOpt.url.params;
 		var p2 = dgOpt.queryParams;
 		queryParams = $.extend({}, p1, p2);
