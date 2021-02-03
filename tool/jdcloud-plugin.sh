@@ -104,6 +104,7 @@ if [[ -z $ac || -z $path ]]; then
 	exit 1
 fi
 pluginName=`basename $path`
+readme=server/plugin/$pluginName.README.md
 
 if [[ $ac == "add" ]]; then
 	if [[ ! -d $path ]]; then
@@ -129,8 +130,14 @@ if [[ $ac == "add" ]]; then
 			echo "$pluginName	+$srcFile" >> $pluginInfo
 		fi
 	done
+	if [ -f "README.md" ]; then
+		cp README.md "$dstDir/$readme"
+	fi
 	popd >/dev/null
 	git add $files plugin.dat
+	if [ -f $readme ]; then
+		git add $readme
+	fi
 	rm $tmp
 
 elif [[ $ac == "del" ]]; then
@@ -143,6 +150,7 @@ elif [[ $ac == "del" ]]; then
 		delOne $srcFile
 	done
 	sed -i "/^$pluginName	/d" plugin.dat
+	rm -f $readme
 	# 注意去除files中的+号
 	git add ${files//+/} plugin.dat
 elif [[ $ac == "create" ]]; then
@@ -156,6 +164,7 @@ elif [[ $ac == "create" ]]; then
 	for srcFile in $files; do
 		createOne $srcFile $path
 	done
+	cp $readme $path/README.md 2>/dev/null
 else
 	echo "*** error: unknown action $ac"
 	exit 1
