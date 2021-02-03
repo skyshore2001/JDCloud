@@ -654,15 +654,22 @@ function setServerRev()
  */
 function hasPerm($perms, $exPerms=null)
 {
-	if (is_null(ApiFw_::$perms))
+	if (is_null(ApiFw_::$perms)) {
+		foreach (Conf::$authTypes as $e) {
+			$fn = Conf::$authHandlers[$e];
+			if (! is_callable($fn))
+				throw new MyException(E_SERVER, "unregistered authType `$e`", "未知认证类型`$e`");
+			$fn();
+		}
 		ApiFw_::$perms = onGetPerms();
+	}
 
 	if ( (ApiFw_::$perms & $perms) != 0 )
 		return true;
 
 	if (is_array($exPerms)) {
 		foreach ($exPerms as $name) {
-			$fn = "hasPerm_" . $name; // e.g. hasPerm_simple
+			$fn = Conf::$authHandlers[$name]; // e.g. hasPerm_simple
 			if (function_exists($fn) && $fn()) {
 				ApiFw_::$perms = onGetPerms(); // 刷新权限, 用于支持在扩展认证后模拟系统用户登录
 				return true;
@@ -673,6 +680,19 @@ function hasPerm($perms, $exPerms=null)
 		throw new MyException(E_SERVER, "bad perm: hasPerm require array for exPerms");
 	}
 	return false;
+}
+
+function checkAuthKeys($key)
+{
+	$auth = arrFind(Conf::$authKeys, function ($e) use ($key) {
+		return $key == $e["key"];
+	});
+	if (! $auth)
+		return false;
+	if (is_array($auth["SESSION"])) {
+		arrCopy($_SESSION, $auth["SESSION"]);
+	}
+	return true;
 }
 
 /**
@@ -698,10 +718,15 @@ function hasPerm($perms, $exPerms=null)
 */
 function hasPerm_simple()
 {
-	@$pwd = $_SERVER["HTTP_X_DACA_SIMPLE"];
-	@$pwd1 = getenv("simplePwd");
-	return $pwd && $pwd1 && $pwd === $pwd1;
+	@$key = $_SERVER["HTTP_X_DACA_SIMPLE"];
+	if (! $key)
+		return false;
+	$key1 = getenv("simplePwd");
+	if ($key1 && $key === $key1)
+		return true;
+	return checkAuthKeys($key);
 }
+ConfBase::$authHandlers["simple"] = "hasPerm_simple";
 
 /**
 @fn hasPerm_basic()
@@ -714,9 +739,9 @@ HTTP Basic认证，即添加HTTP头：
 可验证的用户名、密码在Conf类中配置，后端配置示例：
 
 	// class Conf (在conf.php中)
-	static $basicAuth = [
-		["user" => "user1", "pwd" => "1234"],
-		["user" => "user2", "pwd" => "1234", "SESSION" => ["empId" => -9999] ] // 可以指定SESSION变量, 这里设置empId是模拟员工登录, 以便以员工身份调用接口(如AC2_xxx类)
+	static $authKeys = [
+		["key" => "user1:1234"],
+		["key" => "user2:1234", "SESSION" => ["empId" => -9999] ] // 可以指定SESSION变量, 这里设置empId是模拟员工登录, 以便以员工身份调用接口(如AC2_xxx类)
 	];
 
 请求示例：
@@ -733,18 +758,10 @@ function hasPerm_basic()
 	list($user, $pwd) = [@$_SERVER['PHP_AUTH_USER'], @$_SERVER['PHP_AUTH_PW']];
 	if (! isset($user))
 		return false;
-	foreach (Conf::$basicAuth as $e) {
-		if ($e["user"] == $user && $e["pwd"] == $pwd) {
-			if (is_array($e["SESSION"])) {
-				foreach ($e["SESSION"] as $k=>$v) {
-					$_SESSION[$k] = $v;
-				}
-			}
-			return true;
-		}
-	}
-	return false;
+	$key = $user . ':' . $pwd;
+	return checkAuthKeys($key);
 }
+ConfBase::$authHandlers["basic"] = "hasPerm_basic";
 
 /** 
 @fn checkAuth($perms)
@@ -952,6 +969,34 @@ class ConfBase
 	}
 
 /**
+@var ConfBase::$authHandlers
+
+注册认证处理函数。示例：
+
+	Conf::authHandlers["basic"] = function () {
+		// 返回true表示认证成功
+	};
+*/
+	static $authHandlers = [];
+
+/**
+@var Conf::$authTypes
+
+指定检查权限时使用哪些认证方法。目前支持：basic, simple, jwt等(注册过Conf::$authHandlers)。
+默认为空数组。示例：
+
+	Conf::$authTypes = ["basic", "simple"];
+	Conf::$authKeys = [
+		// 当匹配以下key时，当作系统用户-9999
+		["key" => "user1:1234", "SESSION" => ["empId"=>-9999] ]
+	];
+
+@see Conf::$authKeys
+@see Conf::$authHandlers
+*/
+	static $authTypes = [];
+
+/**
 @fn ConfBase::onInitClient(&$ret)
 
 客户端初始化应用时会调用initClient接口，返回plugins等信息。若要加上其它信息，可在这里扩展。
@@ -1021,19 +1066,17 @@ checkSecure函数返回false则不处理该调用，并将请求加入黑名单�
 	}
 
 /**
-@var ConfBase::basicAuth=[]
+@var ConfBase::$authKeys=[]
 
-可在conf.php中定义HTTP基本验证信息，一般用于合作伙伴接口认证，示例：
+可在conf.php中定义HTTP基本验证信息，用于basic/simple认证，一般用于合作伙伴接口认证，示例：
 
-	static $basicAuth = [
-		["user" => "user1", "pwd" => "1234"],
-		["user" => "user2", "pwd" => "1234"]
+	static $authKeys = [
+		["key" => "user1:1234"],
+		["key" => "user2:1234", "SESSION" => ["empId"=>-9999] ]
 	];
 
 */
-	static $basicAuth = [
-//		["user" => "user1", "pwd" => "1234"],
-//		["user" => "user2", "pwd" => "1234"]
+	static $authKeys = [
 	];
 }
 
@@ -1946,8 +1989,10 @@ function apiMain()
 		if (strstr($ct, "/json") !== false) {
 			$content = getHttpInput();
 			@$arr = json_decode($content, true);
-			if (!is_array($arr))
+			if (!is_array($arr)) {
+				logit("bad json-format body: `$content`");
 				throw new MyException(E_PARAM, "bad json-format body");
+			}
 			$_POST = $arr;
 			$_REQUEST += $arr;
 		}

@@ -46,8 +46,8 @@ $ERRINFO = [
 # Most time outMsg is optional because it can be filled according to code. It's set when you want to tell user the exact error.
 class MyException extends LogicException 
 {
-	function __construct($code, $internalMsg = null, $outMsg = null) {
-		parent::__construct($outMsg, $code);
+	function __construct($code, $internalMsg = null, $outMsg = null, $ex = null) {
+		parent::__construct($outMsg, $code, $ex);
 		$this->internalMsg = $internalMsg;
 		if ($code && !$outMsg) {
 			global $ERRINFO;
@@ -86,6 +86,24 @@ class DirectReturn extends LogicException
 {
 }
 
+/**
+@fn jdRet($code, $internalMsg?, $msg?)
+
+成功返回：
+
+	jdRet(E_OK, ["id" => 100]);
+
+出错返回：
+
+	jdRet(E_SERVER);
+*/
+function jdRet($code, $internalMsg = null, $msg = null)
+{
+	if ($code)
+		throw new MyException($code, $internalMsg, $msg);
+	setRet(0, $internalMsg);
+	throw new DirectReturn();
+}
 
 /**
 @fn tobool($s)

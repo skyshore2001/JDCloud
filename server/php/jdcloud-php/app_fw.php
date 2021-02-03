@@ -507,23 +507,41 @@ function mparam($name, $col = null)
 }
 
 /**
-@fn checkParams($params, $names)
+@fn checkParams($params, $names, $errPrefix?)
 
 检查必填参数。
 
 示例：params中必须有"brand", "vendorName"字段，否则应报错：
 
 	checkParams($params, [
-		"brand" => "品牌",
-		"vendorName" => "供应商"
+		"brand", "vendorName"
 	]);
 
+或如果希望报错时明确一些，可以翻译一下参数，这样来指定：
+
+	checkParams($params, [
+		"brand" => "品牌",
+		"vendorName" => "供应商",
+		"phone" // 也允许不指定名字
+	]);
+
+示例：
+
+	foreach ($_POST as $i=>$e) {
+		checkParams($e, ["MATNR"=>"物料号", "MAKTX"=>"物料名"], "第".($i+1)."行"); // 设置第3参数，可让报错时前面会加上这个描述
+		...
+	}
 */
-function checkParams($params, $names)
+function checkParams($params, $names, $errPrefix="")
 {
 	foreach ($names as $name=>$showName) {
-		if (!@$params[$name])
-			throw new MyException(E_PARAM, "require param $name", "缺少参数`$showName`");
+		if (is_int($name))
+			$name = $showName;
+		else
+			$showName .= "({$name})";
+		if (!isset($params[$name]) || $params[$name] === "") {
+			throw new MyException(E_PARAM, "require param `$name`", $errPrefix."缺少参数`$showName`");
+		}
 	}
 }
 
