@@ -2037,4 +2037,56 @@ function enhancePicker(jo)
 	}
 }
 
+
+/**
+@fn WUI.showByType(jo, type)
+
+对话框上form内的一组控件中，根据type决定当前显示/启用哪一个控件。
+
+需求：ItemStatusList定义了Item的状态，但当Item类型为“报修”时，其状态使用`ItemStatusList_报修`，当类型为“公告”时，状态使用ItemStatusList_公告，其它类型的状态使用ItemStatusList
+
+HTML: 在对话框中，将这几种情况都定义出来：
+
+	<select name="status" class="my-combobox" data-options="jdEnumList:ItemStatusList"></select>
+	<select name="status" class="my-combobox type-报修" style="display:none" data-options="jdEnumList:ItemStatusList_报修"></select>
+	<select name="status" class="my-combobox type-公告" style="display:none" data-options="jdEnumList:ItemStatusList_公告"></select>
+
+注意：当type与“报修”时，它按class为"type-报修"来匹配，显示匹配到的控件（并添加active类），隐藏其它控件，并添加disabled属性（从而在WUI.getFormData时不会取到它的数据）。
+
+JS: 根据type设置合适的status下拉列表，当type变化时更新列表：
+
+	function initDlgXXX()
+	{
+		...
+		jdlg.on("beforeshow", onBeforeShow);
+		// 1. 根据type动态显示status
+		$(frm.type).on("change", function () {
+			var type = $(this).val();
+			WUI.showByType(jfrm.find("[name=status]"), type);
+		});
+		function onBeforeShow(ev, formMode, opt) 
+		{
+			...
+			setTimeout(onShow);
+			function onShow() {
+				...
+				// 2. 打开对话框时根据type动态显示status
+				$(frm.type).trigger("change");
+			}
+		}
+	}
+ */
+self.showByType = showByType;
+function showByType(jo, type) {
+	if (!type && jo.hasClass("active"))
+		return;
+	var j1 = type? jo.filter(".type-" + type): null;
+	if (!j1 || j1.size() == 0)
+		j1 = jo.first();
+	if (j1.hasClass("active"))
+		return;
+	jo.removeClass("active").prop("disabled", true).hide();
+	j1.addClass("active").prop("disabled", false).show();
+}
+
 }
