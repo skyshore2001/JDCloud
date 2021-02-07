@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2021-01-13</div>
+<div>最后更新：2021-02-07</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -108,11 +108,13 @@ code {
 <p><a href="#BatchAddLogic">BatchAddLogic (class)</a></p>
 <p><a href="#BatchInsert">BatchInsert (class)</a></p>
 <p><a href="#Conf">Conf (key)</a></p>
+<p><a href="#Conf::$authTypes">Conf::$authTypes (var)</a></p>
 <p><a href="#ConfBase">ConfBase (class)</a></p>
+<p><a href="#ConfBase::$authHandlers">ConfBase::$authHandlers (var)</a></p>
+<p><a href="#ConfBase::$authKeys=[]">ConfBase::$authKeys=[] (var)</a></p>
 <p><a href="#ConfBase::$enableApiLog">ConfBase::$enableApiLog (var)</a></p>
 <p><a href="#ConfBase::$enableAutoSession">ConfBase::$enableAutoSession (var)</a></p>
 <p><a href="#ConfBase::$enableObjLog">ConfBase::$enableObjLog (var)</a></p>
-<p><a href="#ConfBase::basicAuth=[]">ConfBase::basicAuth=[] (var)</a></p>
 <p><a href="#ConfBase::checkSecure">ConfBase::checkSecure (fn)</a></p>
 <p><a href="#ConfBase::enableSecure">ConfBase::enableSecure (var)</a></p>
 <p><a href="#ConfBase::onApiInit">ConfBase::onApiInit (fn)</a></p>
@@ -155,6 +157,9 @@ code {
 <p><a href="#api_fw">api_fw (module)</a></p>
 <p><a href="#app_fw">app_fw (module)</a></p>
 <p><a href="#arrCopy">arrCopy (fn)</a></p>
+<p><a href="#arrFind">arrFind (fn)</a></p>
+<p><a href="#arrGrep">arrGrep (fn)</a></p>
+<p><a href="#arrMap">arrMap (fn)</a></p>
 <p><a href="#arrayCmp">arrayCmp (fn)</a></p>
 <p><a href="#callAsync">callAsync (fn)</a></p>
 <p><a href="#callSvc">callSvc (fn)</a></p>
@@ -207,12 +212,13 @@ code {
 <p><a href="#issetval">issetval (fn)</a></p>
 <p><a href="#jdEncrypt">jdEncrypt (fn)</a></p>
 <p><a href="#jdEncryptI">jdEncryptI (fn)</a></p>
+<p><a href="#jdRet">jdRet (fn)</a></p>
 <p><a href="#jsonDecode">jsonDecode (fn)</a></p>
 <p><a href="#jsonEncode">jsonEncode (fn)</a></p>
 <p><a href="#list2varr">list2varr (fn)</a></p>
 <p><a href="#logext">logext (fn)</a></p>
-<p><a href="#logit">logit (fn)</a></p>
 <p><a href="#logit">logit (alias)</a></p>
+<p><a href="#logit">logit (fn)</a></p>
 <p><a href="#makeUrl">makeUrl (fn)</a></p>
 <p><a href="#mh">mh (fn)</a></p>
 <p><a href="#mparam">mparam (fn)</a></p>
@@ -270,6 +276,12 @@ throw new DirectReturn();</code></pre>
 <p>例：返回指定数据后立即中断处理：</p>
 <pre><code>setRet(0, ["id"=&gt;1]);
 throw new DirectReturn();</code></pre></div>
+<div class="block">
+<h2 id="jdRet">@fn jdRet($code, $internalMsg?, $msg?)</h2>
+<p>成功返回：</p>
+<pre><code>jdRet(E_OK, ["id" =&gt; 100]);</code></pre>
+<p>出错返回：</p>
+<pre><code>jdRet(E_SERVER);</code></pre></div>
 <div class="block">
 <h2 id="tobool">@fn tobool($s)</h2></div>
 <div class="block">
@@ -439,9 +451,40 @@ arrCopy($wiData, $workItem, [
 ]);
 dbInsert("WorkItem", $wiData);</code></pre>
 <p>示例：</p>
-<pre><code>$arrCopy($wiData, $workItem); // 复制全部字段过去</code></pre>
+<pre><code>arrCopy($wiData, $workItem); // 复制全部字段过去</code></pre>
 <p>如果不想覆盖已有字段(即使值为null也不覆盖)，可以用：</p>
 <pre><code>$wiData += $workItem;</code></pre></div>
+<div class="block">
+<h2 id="arrFind">@fn arrFind($arr, $fn)</h2>
+<p>示例：</p>
+<pre><code>$personArr = [ ["id"=&gt;1, "name"=&gt;"name1"], ["id"=&gt;2, "name"=&gt;"name2"] ];
+$person = arrFind($arr, function ($e) {
+    return $e["id"] === 1;
+});
+if ($person === false) {
+    // 未找到
+}</code></pre></div>
+<div class="block">
+<h2 id="arrMap">@fn arrMap($arr, $fn)</h2>
+<p>示例：</p>
+<pre><code>$personArr = [ ["id"=&gt;1, "name"=&gt;"name1"], ["id"=&gt;2, "name"=&gt;"name2"] ];
+$personIdList = arrMap($arr, function ($e) {
+    return $e["id"];
+});
+// [1, 2]</code></pre></div>
+<div class="block">
+<h2 id="arrGrep">@fn arrGrep($arr, $fn, $mapFn=null)</h2>
+<p>示例：</p>
+<pre><code>$personArr = [ ["id"=&gt;1, "name"=&gt;"name1"], ["id"=&gt;2, "name"=&gt;"name2"] ];
+$personArr1 = arrGrep($arr, function ($e) {
+    return $e["id"] &gt; 1;
+}); // [ ["id"=&gt;2, "name"=&gt;"name2"] ]
+
+$personNameArr1 = arrGrep($arr, function ($e) {
+    return $e["id"] &gt; 1;
+}, function ($e) {
+    return $e["name"];
+}); // [ "name2" ]</code></pre></div>
 <div class="block">
 <h2 id="getReqIp">@fn getReqIp</h2>
 <p>请求的IP。与<code>$_SERVER['REMOTE_ADDR']</code>不同的是，如果有代理，则返回所有IP列表。</p></div>
@@ -748,13 +791,23 @@ $svcId = mparam("svcId/i");
 $itts = mparam("itts/i+")
 list($svcId, $itts) = mparam(["svcId", "itts/i+"]); # require one of the 2 params</code></pre></div>
 <div class="block">
-<h2 id="checkParams">@fn checkParams($params, $names)</h2>
+<h2 id="checkParams">@fn checkParams($params, $names, $errPrefix?)</h2>
 <p>检查必填参数。</p>
 <p>示例：params中必须有&quot;brand&quot;, &quot;vendorName&quot;字段，否则应报错：</p>
 <pre><code>checkParams($params, [
+    "brand", "vendorName"
+]);</code></pre>
+<p>或如果希望报错时明确一些，可以翻译一下参数，这样来指定：</p>
+<pre><code>checkParams($params, [
     "brand" =&gt; "品牌",
-    "vendorName" =&gt; "供应商"
-]);</code></pre></div>
+    "vendorName" =&gt; "供应商",
+    "phone" // 也允许不指定名字
+]);</code></pre>
+<p>示例：</p>
+<pre><code>foreach ($_POST as $i=&gt;$e) {
+    checkParams($e, ["MATNR"=&gt;"物料号", "MAKTX"=&gt;"物料名"], "第".($i+1)."行"); // 设置第3参数，可让报错时前面会加上这个描述
+    ...
+}</code></pre></div>
 <div class="block">
 <h2 id="setParam">@fn setParam($k, $v)</h2>
 <p class="fn"><strong>@fn <a id="setParam">setParam</a></strong> (@kv)</p>
@@ -1794,9 +1847,9 @@ if (hasPerm(null, ["simple"]) ...</code></pre>
 <p>按HTTP协议，authStr格式为base64($user:$password)<br />
 可验证的用户名、密码在Conf类中配置，后端配置示例：</p>
 <pre><code>// class Conf (在conf.php中)
-static $basicAuth = [
-    ["user" =&gt; "user1", "pwd" =&gt; "1234"],
-    ["user" =&gt; "user2", "pwd" =&gt; "1234", "SESSION" =&gt; ["empId" =&gt; -9999] ] // 可以指定SESSION变量, 这里设置empId是模拟员工登录, 以便以员工身份调用接口(如AC2_xxx类)
+static $authKeys = [
+    ["key" =&gt; "user1:1234"],
+    ["key" =&gt; "user2:1234", "SESSION" =&gt; ["empId" =&gt; -9999] ] // 可以指定SESSION变量, 这里设置empId是模拟员工登录, 以便以员工身份调用接口(如AC2_xxx类)
 ];</code></pre>
 <p>请求示例：</p>
 <pre><code>curl --basic -u user1:1234 http://localhost/jdcloud/api.php/xxx</code></pre>
@@ -1892,6 +1945,23 @@ class AC_Notify extends AccessControl
 { ... }</code></pre>
 <p>注意：框架默认支持<code>Notify/orderStatus</code>这样的URL（对象名Notify必须首字母大写），它可自动转成Notify.orderStatus。</p></div>
 <div class="block">
+<h2 id="ConfBase::$authHandlers">@var ConfBase::$authHandlers</h2>
+<p>注册认证处理函数。示例：</p>
+<pre><code>Conf::authHandlers["basic"] = function () {
+    // 返回true表示认证成功
+};</code></pre></div>
+<div class="block">
+<h2 id="Conf::$authTypes">@var Conf::$authTypes</h2>
+<p>指定检查权限时使用哪些认证方法。目前支持：basic, simple, jwt等(注册过Conf::$authHandlers)。<br />
+默认为空数组。示例：</p>
+<pre><code>Conf::$authTypes = ["basic", "simple"];
+Conf::$authKeys = [
+    // 当匹配以下key时，当作系统用户-9999
+    ["key" =&gt; "user1:1234", "SESSION" =&gt; ["empId"=&gt;-9999] ]
+];</code></pre>
+<p class="see"><strong>@see <a href="#Conf::$authKeys">Conf::$authKeys</a></strong> </p>
+<p class="see"><strong>@see <a href="#Conf::$authHandlers">Conf::$authHandlers</a></strong> </p></div>
+<div class="block">
 <h2 id="ConfBase::onInitClient">@fn ConfBase::onInitClient(&$ret)</h2>
 <p>客户端初始化应用时会调用initClient接口，返回plugins等信息。若要加上其它信息，可在这里扩展。</p>
 <p>例：假如定义应用初始化接口为(plugins是框架默认返回的)：</p>
@@ -1933,11 +2003,11 @@ $GLOBALS["P_initClient"] = [
 }</code></pre>
 <p class="see"><strong>@see <a href="#BlackList">BlackList</a></strong> </p></div>
 <div class="block">
-<h2 id="ConfBase::basicAuth=[]">@var ConfBase::basicAuth=[]</h2>
-<p>可在conf.php中定义HTTP基本验证信息，一般用于合作伙伴接口认证，示例：</p>
-<pre><code>static $basicAuth = [
-    ["user" =&gt; "user1", "pwd" =&gt; "1234"],
-    ["user" =&gt; "user2", "pwd" =&gt; "1234"]
+<h2 id="ConfBase::$authKeys=[]">@var ConfBase::$authKeys=[]</h2>
+<p>可在conf.php中定义HTTP基本验证信息，用于basic/simple认证，一般用于合作伙伴接口认证，示例：</p>
+<pre><code>static $authKeys = [
+    ["key" =&gt; "user1:1234"],
+    ["key" =&gt; "user2:1234", "SESSION" =&gt; ["empId"=&gt;-9999] ]
 ];</code></pre></div>
 <div class="block">
 <h2 id="ApiLog::$lastId">@var ApiLog::$lastId</h2>
@@ -3291,7 +3361,10 @@ $this-&gt;checkSetFields([&quot;status&quot;, &quot;cmt&quot;]);<br />
     }
 }</code></pre></div>
 <div class="block">
-<h2 id="AccessControl::api_batchAdd">@fn AccessControl::api_batchAdd()</h2>
+<h2 id="AccessControl::api_batchAdd">@fn AccessControl::api_batchAdd()</h2><div class="toc"><p style="margin-left:0em"><a href="#AccessControl::api_batchAdd-1 支持三种方式上传">1 支持三种方式上传</a></p>
+<p style="margin-left:0em"><a href="#AccessControl::api_batchAdd-2 支持带子表导入">2 支持带子表导入</a></p>
+<p style="margin-left:0em"><a href="#AccessControl::api_batchAdd-3 支持列名映射">3 支持列名映射</a></p>
+</div>
 <p>标准接口<code>Obj.batchAdd</code>用于批量导入数据（支持不存在则添加，存在则更新）。返回导入记录数cnt及编号列表idList：</p>
 <pre><code>Obj.batchAdd(title?, uniKey?)(...) -&gt; {cnt, @idList}</code></pre>
 <p>它在一个事务中执行，一行出错后立即失败返回，该行前面已导入的内容也会被取消（回滚）。</p>
@@ -3303,7 +3376,7 @@ $this-&gt;checkSetFields([&quot;status&quot;, &quot;cmt&quot;]);<br />
 </li>
 <li>uniKey: (v5.5) 唯一索引字段. 如果指定, 则以该字段查询记录是否存在, 存在则更新。例如&quot;code&quot;, 也支持多个字段（用于关联表），如&quot;bpId,itemId&quot;。</li>
 </ul>
-<p>支持三种方式上传：</p>
+<h4 id="AccessControl::api_batchAdd-1 支持三种方式上传">1 支持三种方式上传</h4>
 <ol>
 <li>
 <p>直接在HTTP POST中传输内容，数据格式为：首行为标题行(即字段名列表)，之后为实际数据行。<br />
@@ -3367,7 +3440,62 @@ callSvr(&quot;Store.batchAdd&quot;, function (ret) {<br />
 app_alert(&quot;成功导入&quot; + ret.cnt + &quot;条数据！&quot;);<br />
 }, data, {contentType:&quot;application/json&quot;});</p>
 </li>
-</ol></div>
+</ol>
+<h4 id="AccessControl::api_batchAdd-2 支持带子表导入">2 支持带子表导入</h4>
+<p>(v5.5) 示例：有以下主-子表对象：</p>
+<pre><code>工单：@Ordr: id, code, itemId, qty
+工单配料单 @BOM: id, orderId, code, name</code></pre>
+<p>导入数据列及样例可定义为：（按dlgImport.html中样例定义格式，以<code>!</code>开头的首行为参数行（也可以没有），然后是标题行，后面都是数据行；列以Tab分隔）<br />
+注意：拷贝到Excel中看的比较清楚；为避免Excel将长数字显示为科学计数法，在复制前先设置单元格格式为文本。</p>
+<pre><code>&lt;script type="text/template" class="tplOrdr"&gt;
+!title=code,itemCode,itemName,planTm,planTm1,qty,@bom.code,@bom.name,@bom.qty&amp;uniKey=code
+生产订单号   物料编码    物料规格    开工日期    完工日期    生产数量    子件编码    子件规格    基本用量
+SCDD210202302   30101001010484  热像仪#Fotric 615C-L47 2021-02-04  2021-02-04  1.00    20901001000052  标品#Lantern_B31-L47  1
+SCDD210202302   30101001010484  热像仪#Fotric 615C-L47 2021-02-04  2021-02-04  1.00    10205001000017  标签#Lantern_40*30mm铜版纸空白标签#中性#通用 1
+&lt;/script&gt;</code></pre>
+<p>注意：由于子表分布在多行，是多次导入的，所以必须指定uniKey参数，避免重复加主表。此处实际调用可理解为：</p>
+<pre><code>callSvr("Ordr.add", $.noop, {code, itemCode, itemName, ..., qty, bom: [ {code, name, qty} ]);
+// code存在，则做更新操作
+callSvr("Ordr.set", {id}, $.noop, {code, itemCode, itemName, ..., qty, bom: [ {code, name, qty} ]);</code></pre>
+<p>可见，主-子表结构的表导入时，主表字段会重复多次，而真正有用的是uniKey字段，所以导入数据也可以精简为：</p>
+<pre><code>&lt;script type="text/template" class="tplOrdr"&gt;
+!title=code,itemCode,itemName,planTm,planTm1,qty,@bom.code,@bom.name,@bom.qty&amp;uniKey=code
+生产订单号   物料编码    物料规格    开工日期    完工日期    生产数量    子件编码    子件规格    基本用量
+SCDD210202302   30101001010484  热像仪#Fotric 615C-L47 2021-02-04  2021-02-04  1.00    20901001000052  标品#Lantern_B31-L47  1
+SCDD210202302                       10205001000017  标签#Lantern_40*30mm铜版纸空白标签#中性#通用 1
+&lt;/script&gt;</code></pre>
+<p>支持导入多个子表，格式示例：(拷贝到Excel中看)</p>
+<pre><code>主表字段1(假如为uniKey字段)  主表字段2   @子表A.字段1    @子表B.字段1
+id1 value1  suba1   subb1
+id1     suba2   
+id2 value2  suba3   </code></pre>
+<p>它等价于：（将主表、子表分开看的更清楚）</p>
+<pre><code>主表字段1(假如为uniKey字段)  主表字段2   @子表A.字段1    @子表B.字段1
+id1 value1      
+id1     suba1   
+id1     suba2   
+id1         subb1
+id2 value2      
+id2     suba3   </code></pre>
+<h4 id="AccessControl::api_batchAdd-3 支持列名映射">3 支持列名映射</h4>
+<p>(v5.5) 数据表导入时，默认是按固定列顺序来确定字段的，比如第1列必须是code，第2列必须是itemCode，如果要跳过一列，须通过&quot;-&quot;来指定；<br />
+使用列名映射是另一种方式（通过指定参数useColMap=1激活），示例：</p>
+<pre><code>!title=code,itemCode&amp;useColMap=1
+id  name    code    itemId  itemCode
+1   name1   code1   101 item-101
+2   name2   code2   102 item-102</code></pre>
+<p>这时只通过列名来匹配（若找不到匹配列则报错！），列的顺序对导入就没有影响。可以通过<code>-&gt;</code>来指定列的别名，示例：</p>
+<pre><code>!title=编码-&gt;code,物料编码-&gt;itemCode&amp;useColMap=1
+编号  物料名 编码  物料名 物料编码
+1   name1   code1   101 item-101
+2   name2   code2   102 item-102</code></pre>
+<p>同样也可以应用在上节主子表导入的例子中，写法如下：</p>
+<pre><code>&lt;script type="text/template" class="tplOrdr"&gt;
+!title=生产订单号-&gt;code,物料编码-&gt;itemCode,物料规格-&gt;itemName,开工日期-&gt;planTm,完工日期-&gt;planTm1,生产数量-&gt;qty,子件编码-&gt;@bom.code,子件规格-&gt;@bom.name,基本用量-&gt;@bom.qty&amp;uniKey=code&amp;useColMap=1
+生产订单号   物料编码    物料规格    开工日期    完工日期    生产数量    子件编码    子件规格    基本用量
+SCDD210202302   30101001010484  热像仪#Fotric 615C-L47 2021-02-04  2021-02-04  1.00    20901001000052  标品#Lantern_B31-L47  1
+SCDD210202302   30101001010484  热像仪#Fotric 615C-L47 2021-02-04  2021-02-04  1.00    10205001000017  标签#Lantern_40*30mm铜版纸空白标签#中性#通用 1
+&lt;/script&gt;</code></pre></div>
 <div class="block">
 <h2 id="handleExportFormat">@fn handleExportFormat($fmt, $arr, $fname)</h2>
 <p>导出表到文件。</p>

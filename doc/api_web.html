@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2021-01-08</div>
+<div>最后更新：2021-02-07</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -102,9 +102,11 @@ code {
 <p><a href="#WUI.initPageStat">WUI.initPageStat (fn)</a></p>
 <p><a href="#WUI.makeLink">WUI.makeLink (fn)</a></p>
 <p><a href="#WUI.options">WUI.options (var)</a></p>
+<p><a href="#WUI.options.moduleExt">WUI.options.moduleExt (var)</a></p>
 <p><a href="#WUI.options.statFormatter">WUI.options.statFormatter (var)</a></p>
 <p><a href="#WUI.pivot">WUI.pivot (fn)</a></p>
 <p><a href="#WUI.rs2Stat">WUI.rs2Stat (fn)</a></p>
+<p><a href="#WUI.showByType">WUI.showByType (fn)</a></p>
 <p><a href="#WUI.toggleTab">WUI.toggleTab (fn)</a></p>
 <p><a href="#[noReset]">[noReset] (key)</a></p>
 <p><a href="#a[href=">a[href= (key)</a></p>
@@ -173,6 +175,7 @@ code {
 <p><a href="#getDataOptions">getDataOptions (fn)</a></p>
 <p><a href="#getExportHandler">getExportHandler (fn)</a></p>
 <p><a href="#getFormData">getFormData (fn)</a></p>
+<p><a href="#getFormData_vf">getFormData_vf (fn)</a></p>
 <p><a href="#getOptions">getOptions (fn)</a></p>
 <p><a href="#getParamFromTable">getParamFromTable (alias)</a></p>
 <p><a href="#getQueryCond">getQueryCond (fn)</a></p>
@@ -1620,13 +1623,21 @@ var arr = mCommon.rs2Array(rs);</code></pre>
 &lt;/form&gt;</code></pre>
 <p class="see"><strong>@see <a href="#setFormData">setFormData</a></strong> </p></div>
 <div class="block">
+<h2 id="getFormData_vf">@fn getFormData_vf(jo)</h2>
+<p>专门取虚拟字段的值。例如：</p>
+<pre><code>&lt;select name="whId" class="my-combobox" data-options="url:..., jd_vField:'whName'"&gt;&lt;/select&gt;</code></pre>
+<p>用WUI.getFormData可取到<code>{whId: xxx}</code>，而WUI.getFormData_vf遍历带name属性且设置了jd_vField选项的控件，调用接口getValue_vf(ji)来取其显示值。<br />
+因而，为支持取虚拟字段值，控件须定义getValue_vf接口。</p>
+<pre><code>&lt;input name="orderType" data-options="jd_vField:'orderType'" disabled&gt;</code></pre>
+<p>注意：与getFormData不同，它不忽略有disabled属性的控件。</p>
+<p class="see"><strong>@see <a href="#defaultFormItems">defaultFormItems</a></strong> </p></div>
+<div class="block">
 <h2 id="formItems">@fn formItems(jo, cb)</h2>
 <p>表单对象遍历。对表单jo（实际可以不是form标签）下带name属性的控件，交给回调cb处理。<br />
 可通过扩展<code>WUI.formItems[sel]</code>来为表单扩展其它类型控件，参考 <code>WUI.defaultFormItems</code>来查看要扩展的接口方法。</p>
 <p>注意:</p>
 <ul>
-<li>忽略有disabled属性的控件</li>
-<li>忽略未选中的checkbox/radiobutton</li>
+<li>通过取getDisabled接口判断，可忽略有disabled属性的控件以及未选中的checkbox/radiobutton。</li>
 </ul>
 <p>对于checkbox，设置时根据val确定是否选中；取值时如果选中取value属性否则取value-off属性。<br />
 缺省value为&quot;on&quot;, value-off为空(非标准属性，本框架支持)，可以设置：</p>
@@ -2224,6 +2235,7 @@ callSvr("User.get", function (data) {
 <p>callSvr扩展示例：</p>
 <pre><code>MUI.callSvrExt['zhanda'] = {
     makeUrl: function(ac, param) {
+        // 只需要返回接口url即可，不必拼接param
         return 'http://hostname/lcapi/' + ac;
     },
     dataFilter: function (data) {
@@ -2239,10 +2251,12 @@ callSvr("User.get", function (data) {
         }
     }
 };</code></pre>
-<p>在调用时，ac参数传入一个数组：</p>
-<pre><code>callSvr(['token/get-token', 'zhanda'], {user: 'test', password: 'test123'}, function (data) {
+<p>在调用时，ac参数使用&quot;{扩展名}:{调用名}&quot;的格式：</p>
+<pre><code>callSvr('zhanda:token/get-token', {user: 'test', password: 'test123'}, function (data) {
     console.log(data);
 });</code></pre>
+<p>旧的调用方式ac参数使用数组，现在已不建议使用：</p>
+<pre><code>callSvr(['token/get-token', 'zhanda'], ...);</code></pre>
 <p class="key"><strong>@key <a id="callSvrExt[].makeUrl">callSvrExt[].makeUrl</a></strong> (ac, param)</p>
 <p>根据调用名ac生成url, 注意无需将param放到url中。</p>
 <p>注意：<br />
@@ -2259,8 +2273,7 @@ callSvr("User.get", function (data) {
 <p class="see"><strong>@see <a href="#lastError">lastError</a></strong>  出错时的上下文信息</p>
 <p class="key"><strong>@key <a id="callSvrExt['default']">callSvrExt['default']</a></strong> </p>
 <p>(支持版本: v3.1)<br />
-如果要修改callSvr缺省调用方法，可以改写 MUI.callSvrExt['default'].<br />
-例如，定义以下callSvr扩展：</p>
+如果要修改callSvr缺省调用方法，可以改写 MUI.callSvrExt['default']。示例：</p>
 <pre><code>MUI.callSvrExt['default'] = {
     makeUrl: function(ac) {
         return '../api.php/' + ac;
@@ -2309,10 +2322,6 @@ callSvr("User.get", function (data) {
         }
     }
 };</code></pre>
-<p>这样，以下调用</p>
-<pre><code>callSvr(['login', 'default']);</code></pre>
-<p>可以简写为：</p>
-<pre><code>callSvr('login');</code></pre>
 <p class="key"><strong>@key <a id="callSvrExt[].beforeSend">callSvrExt[].beforeSend</a></strong> (opt) 为callSvr或$.ajax选项设置缺省值</p>
 <p>如果有ajax选项想设置，可以使用beforeSend回调，例如POST参数使用JSON格式：</p>
 <pre><code>MUI.callSvrExt['default'] = {
@@ -2329,6 +2338,7 @@ callSvr("User.get", function (data) {
         }
     }
 }</code></pre>
+<p>可以从opt.ctx<em>中取到{ac, ext, noex, dfd}等值（如opt.ctx</em>.ac），可以从opt.url中取到{ac, params}值。</p>
 <p>如果要设置请求的HTTP headers，可以用<code>opt.headers = {header1: "value1", header2: "value2"}</code>.<br />
 更多选项参考jquery文档：jQuery.ajax的选项。</p>
 <h4 id="callSvr-4 适配RESTful API">4 适配RESTful API</h4>
@@ -2689,14 +2699,16 @@ jfrm.on("beforeshow",function(ev, formMode, opt) {
 (v5.3)</p>
 <p>如 dlgUDT<strong>A 与 dlgUDT</strong>B 共用dlgUDT对话框模板，只要用&quot;__&quot;分隔对话框模板文件和后缀名。</p></div>
 <div class="block">
-<h2 id="batchOp">@fn batchOp(obj, ac, jtbl, opt={data, acName="操作", onBatchDone, batchOpMode=0})</h2><div class="toc"><p style="margin-left:0em"><a href="#batchOp-1 示例：点"批量上传"按钮, 打开上传文件对话框, 选择上传并点击"确定"按钮后, 先上传文件, 再将返回的附件编号批量更新到行记录上.">1 示例：点"批量上传"按钮, 打开上传文件对话框, 选择上传并点击"确定"按钮后, 先上传文件, 再将返回的附件编号批量更新到行记录上.</a></p>
-<p style="margin-left:0em"><a href="#batchOp-2 示例2: 点"打印"按钮, 打印选中的1行或多行的标签, 如果未选则报错. 如果按住Ctrl点击, 则按表格过滤条件批量打印所有行的标签.">2 示例2: 点"打印"按钮, 打印选中的1行或多行的标签, 如果未选则报错. 如果按住Ctrl点击, 则按表格过滤条件批量打印所有行的标签.</a></p>
+<h2 id="batchOp">@fn batchOp(obj, ac, jtbl, opt={data, acName="操作", onBatchDone, batchOpMode=0})</h2><div class="toc"><p style="margin-left:0em"><a href="#batchOp-1 示例1: 无须对话框填写额外信息的批量操作">1 示例1: 无须对话框填写额外信息的批量操作</a></p>
+<p style="margin-left:0em"><a href="#batchOp-2 示例2：打开对话框，批量设置一些信息">2 示例2：打开对话框，批量设置一些信息</a></p>
+<p style="margin-left:0em"><a href="#batchOp-3 示例3：打开对话框，先上传文件再批量操作">3 示例3：打开对话框，先上传文件再批量操作</a></p>
 </div>
 <p class="param"><strong>@param ac</strong>  对象接口名, 如"Task.setIf"/"Task.delIf"</p>
 <p class="param"><strong>@param opt.acName</strong>  操作名称, 如"更新"/"删除"/"打印"等, 一个动词. 用于拼接操作提示语句.</p>
 <p class="param"><strong>@param opt.data</strong>   调用支持批量的接口的POST参数</p>
 <p>opt.data也可以是一个函数dataFn(batchCnt)，参数batchCnt为当前批量操作的记录数(必定大于0)。<br />
 该函数返回data或一个Deferred对象(该对象适时应调用dfd.resolve(data)做批量操作)。dataFn返回false表示不做后续处理。</p>
+<p class="return"><strong>@return 如果返回false，表示当前非批量操作模式，或参数不正确无法操作。</strong> </p>
 <p>支持批量操作的接口须符合下列原型:</p>
 <pre><code>$obj.$ac($queryParam)($data) -&gt; $cnt</code></pre>
 <p>接受过滤查询条件(可通过$obj.query接口查询), 返回实际操作的数量.<br />
@@ -2719,17 +2731,88 @@ jfrm.on("beforeshow",function(ev, formMode, opt) {
 <li>如果值为2: 按住Ctrl键时与默认行为相同; 没按Ctrl时, 若选了0行则报错, 若选了1行, 则按批量操作对这1行操作, 过滤条件形式是是<code>{cond:"id=100"}</code></li>
 </ul>
 <p>简单来说, 默认模式对单个记录不处理, 返回false留给调用者处理; 模式2是对单个记录也按批量处理; 模式1是无须按Ctrl键就批量处理.</p>
-<h4 id="batchOp-1 示例：点"批量上传"按钮, 打开上传文件对话框, 选择上传并点击"确定"按钮后, 先上传文件, 再将返回的附件编号批量更新到行记录上.">1 示例：点&quot;批量上传&quot;按钮, 打开上传文件对话框, 选择上传并点击&quot;确定&quot;按钮后, 先上传文件, 再将返回的附件编号批量更新到行记录上.</h4>
-<p>先选择操作模式batchOpMode=1, 点确定按钮时总是批量处理.<br />
-参数data传入一个函数(onGetData)用于生成POST参数;<br />
-为了支持其中的异步上传文件操作, 函数除了直接返回data, 还可以返回一个Deferred对象(简称dfd), 在dfd.resolve(data)之后才会执行真正的批量操作.</p>
-<pre><code>WUI.batchOp("Task", "Task.setIf", jtbl, {
-    batchOpMode: 1,  // 无须按Ctrl键, 一律当成批量操作
-    data: onGetData,
-    onBatchDone: function () {
-        WUI.closeDlg(jdlg);
-    }
-});
+<h4 id="batchOp-1 示例1: 无须对话框填写额外信息的批量操作">1 示例1: 无须对话框填写额外信息的批量操作</h4>
+<p>工件列表页(pageSn)中，点&quot;打印条码&quot;按钮, 打印选中的1行或多行的标签, 如果未选则报错. 如果按住Ctrl点击, 则按表格过滤条件批量打印所有行的标签.</p>
+<p>显然, 这是一个batchOpMode=2的操作模式, 调用后端<code>Sn.print</code>接口, 对一行或多行数据统一处理，在列表页pageSn.js中为操作按钮指定操作:</p>
+<pre><code>// function initPageSn
+var btn1 = {text: "打印条码", iconCls:'icon-ok', handler: function () {
+    WUI.batchOp("Sn", "printSn", jtbl, {
+        acName: "打印", 
+        batchOpMode: 2
+    });
+}};
+
+jtbl.datagrid({
+    ...
+    toolbar: WUI.dg_toolbar(jtbl, jdlg, "export", btn1),
+});</code></pre>
+<p>后端应实现接口<code>Sn.print(查询条件)</code>, 实现示例:</p>
+<pre><code>// class AC2_Sn
+function api_print() {
+    // 通过query接口查询操作对象内容. 
+    $param = array_merge($_GET, ["res"=&gt;"code", "fmt"=&gt;"array" ]);
+    $rv = $this-&gt;callSvc(null, "query", $param);
+    addLog($rv);
+    // 应返回操作数量
+    return count($rv);
+}</code></pre>
+<h4 id="batchOp-2 示例2：打开对话框，批量设置一些信息">2 示例2：打开对话框，批量设置一些信息</h4>
+<p>在列表页上添加操作按钮，pageXXX.js:</p>
+<pre><code>// 点按钮打开批量上传对话框
+var btn1 = {text: "批量设置", iconCls:'icon-add', handler: function () {
+    WUI.showDlg("#dlgUpload", {modal:false, jtbl: jtbl}); // 注意：为对话框传入特别参数jtbl即列表的jQuery对象，在batchOp函数中要使用它。
+}};
+jtbl.datagrid({
+    ...
+    toolbar: WUI.dg_toolbar(jtbl, jdlg, "export", btn1),
+});</code></pre>
+<p>对批量设置页面上调用接口，dlgUpload.js:</p>
+<pre><code>var jtbl;
+jdlg.on("validate", onValidate)
+    on("beforeshow", onBeforeShow);
+
+function onBeforeShow(ev, formMode, opt) {
+    jtbl = opt.jtbl; // 记录传入的参数
+}
+function onValidate(ev, mode, oriData, newData) 
+{
+    WUI.batchOp("Item", "batchSetItemPrice", jtbl, {
+        batchOpMode: 1,  // 无须按Ctrl键, 一律当成批量操作
+        data: WUI.getFormData(jfrm),
+        onBatchDone: function () {
+            WUI.closeDlg(jdlg);
+        }
+    });
+}</code></pre>
+<p>注意：对主表字段的设置都可在通用的详情对话框上解决（若要批量设置子表，也可通过在set/setIf接口里处理虚拟字段解决）。一般无须编写批量设置操作。</p>
+<h4 id="batchOp-3 示例3：打开对话框，先上传文件再批量操作">3 示例3：打开对话框，先上传文件再批量操作</h4>
+<p>在安装任务列表页上，点&quot;批量上传&quot;按钮, 打开上传文件对话框(dlgUpload), 选择上传并点击&quot;确定&quot;按钮后, 先上传文件, 再将返回的附件编号批量更新到行记录上.</p>
+<p>先选择操作模式batchOpMode=1, 点确定按钮时总是批量处理.</p>
+<p>与示例2不同，上传文件是个异步操作，可为参数data传入一个返回Deferred对象（简称dfd）的函数(onGetData)用于生成POST参数，<br />
+以支持异步上传文件操作，在dfd.resolve(data)之后才会执行真正的批量操作.</p>
+<p>pageTask.js:</p>
+<pre><code>// 点按钮打开批量上传对话框
+var btn2 = {text: "批量上传附件", iconCls:'icon-add', handler: function () {
+    WUI.showDlg("#dlgUpload", {modal:false, jtbl: jtbl}); // 注意：为对话框传入特别参数jtbl即列表的jQuery对象，在batchOp函数中要使用它。
+}};</code></pre>
+<p>dlgUpload.js:</p>
+<pre><code>var jtbl;
+jdlg.on("validate", onValidate)
+    on("beforeshow", onBeforeShow);
+
+function onBeforeShow(ev, formMode, opt) {
+    jtbl = opt.jtbl; // 记录传入的参数
+}
+function onValidate(ev, mode, oriData, newData) 
+{
+    WUI.batchOp("Task", "Task.setIf", jtbl, {
+        batchOpMode: 1,  // 无须按Ctrl键, 一律当成批量操作
+        data: onGetData,
+        onBatchDone: function () {
+            WUI.closeDlg(jdlg);
+        }
+    });
+}
 
 // 一定batchCnt&gt;0. 若batchCnt=0即没有操作数据时, 会报错结束, 不会回调该函数.
 function onGetData(batchCnt)
@@ -2753,23 +2836,7 @@ function onGetData(batchCnt)
 <pre><code>if (confirm("确认操作?") == no)
     return;
 jupload.submit();
-return getFormData(jfrm);</code></pre>
-<h4 id="batchOp-2 示例2: 点"打印"按钮, 打印选中的1行或多行的标签, 如果未选则报错. 如果按住Ctrl点击, 则按表格过滤条件批量打印所有行的标签.">2 示例2: 点&quot;打印&quot;按钮, 打印选中的1行或多行的标签, 如果未选则报错. 如果按住Ctrl点击, 则按表格过滤条件批量打印所有行的标签.</h4>
-<p>显然, 这是一个batchOpMode=2的操作模式, 调用后端<code>Sn.print</code>接口, 对一行或多行数据统一处理:</p>
-<pre><code>WUI.batchOp("Sn", "Sn.print", jtbl, {
-    acName: "打印",
-    batchOpMode: 2
-});</code></pre>
-<p>后端应实现接口<code>Sn.print(查询条件)</code>, 实现示例:</p>
-<pre><code>// class AC2_Sn
-function api_print() {
-    // 通过query接口查询操作对象内容. 
-    $param = array_merge($_GET, ["res"=&gt;"code", "fmt"=&gt;"array" ]);
-    $rv = $this-&gt;callSvc(null, "query", $param);
-    addLog($rv);
-    // 应返回操作数量
-    return count($rv);
-}</code></pre></div>
+return getFormData(jfrm);</code></pre></div>
 <div class="block">
 <h2 id="getTopDialog">@fn getTopDialog()</h2>
 <p>取处于最上层的对话框。如果没有，返回jo.size() == 0</p></div>
@@ -3111,6 +3178,28 @@ g_args.dscr="上门洗车"; // 对字符串会自动进行URL解码。</code></p
 <li>closeAfterAdd: (=false) 设置为true时，添加数据后关闭窗口。默认行为是添加数据后保留并清空窗口以便连续添加。</li>
 <li>fuzzyMatch: (=false) 设置为true时，则查询对话框中的文本查询匹配字符串任意部分。</li>
 </ul></div>
+<div class="block">
+<h2 id="WUI.options.moduleExt">@var WUI.options.moduleExt</h2>
+<p>用于模块扩展。有两个回调函数选项：</p>
+<pre><code>// 定制模块的页面路径
+WUI.options.moduleExt.showPage = function (name) {
+    // name为showPage或showDlg函数调用时的页面/对话框；返回实际页面地址；示例：
+    var map = {
+        "pageOrdr__Mes.html": "page/mes/pageOrdr.html",
+        "pageOrdr__Mes.js": "page/mes/pageOrdr.js",
+    };
+    return map[name] || name;
+}
+// 定制模块的接口调用地址
+WUI.options.moduleExt.callSvr = function (name) {
+    // name为callSvr调用的接口名，返回实际URL地址；示例：
+    var map = {
+        "Ordr__Mes.query" =&gt; "../../mes/api/Ordr.query",
+        "Ordr__Item.query" =&gt; "../../mes/api/Item.query"
+    }
+    return map[name] || name;
+}</code></pre>
+<p>详细用法案例，可参考：筋斗云开发实例讲解 - 系统复用与微服务方案。</p></div>
 <div class="block">
 <h2 id="app_alert">@fn app_alert(msg, [type?=i], [fn?], opt?={timeoutInterval?, defValue?, onCancel()?})</h2>
 <p class="param"><strong>@param type</strong>  对话框类型: "i": info, 信息提示框; "e": error, 错误框; "w": warning, 警告框; "q"(与app_confirm一样): question, 确认框(会有"确定"和"取消"两个按钮); "p": prompt, 输入框</p>
@@ -3932,9 +4021,10 @@ var isKF = g_data.hasRole("客服");</code></pre>
 <p style="margin-left:0em"><a href="#.wui-subobj-3 示例3：和主表字段一起添加，添加后变成只读不可再新增、更新、删除：">3 示例3：和主表字段一起添加，添加后变成只读不可再新增、更新、删除：</a></p>
 <p style="margin-left:0em"><a href="#.wui-subobj-4 示例4: 动态启用/禁用子表">4 示例4: 动态启用/禁用子表</a></p>
 <p style="margin-left:0em"><a href="#.wui-subobj-5 示例5：显示为树表(treegrid)">5 示例5：显示为树表(treegrid)</a></p>
+<p style="margin-left:0em"><a href="#.wui-subobj-6 示例6：offline模式时显示虚拟字段以及提交时排除虚拟字段">6 示例6：offline模式时显示虚拟字段以及提交时排除虚拟字段</a></p>
 </div>
 <p>选项：{obj, relatedKey, res?, dlg?/关联的明细对话框, datagrid/treegrid}</p>
-<p>这些选项在dlg设置时有效：{valueField, readonly, objParam, toolbar}</p>
+<p>这些选项在dlg设置时有效：{valueField, readonly, objParam, toolbar, vFields}</p>
 <h4 id=".wui-subobj-1 示例1：可以增删改查的子表：">1 示例1：可以增删改查的子表：</h4>
 <pre><code>&lt;div class="wui-subobj" data-options="obj:'CusOrder', relatedKey:'cusId', valueField:'orders', dlg:'dlgCusOrder'"&gt;
     &lt;p&gt;&lt;b&gt;物流订单&lt;/b&gt;&lt;/p&gt;
@@ -3976,10 +4066,21 @@ var isKF = g_data.hasRole("客服");</code></pre>
 <li>
 <p>readonly: 默认为false, 设置为true则在主表添加之后，不可对子表进行添加、更新或删除。</p>
 </li>
-<li>
-<p>objParam: 关联的明细对象对话框的初始参数, 对应dialogOpt.objParam. 例如有 offline, onCrud()等选项. </p>
-<p class="see"><strong>@see <a href="#objParam">objParam</a></strong> </p>
-</li>
+<li>objParam: 关联的明细对象对话框的初始参数, 对应dialogOpt.objParam. 例如有 offline, onCrud()等选项. 
+<p class="see"><strong>@see <a href="#objParam">objParam</a></strong> </p></li>
+</ul>
+<p>示例：在对话框dlgOrder上设置子表关联对话框dlgOrder1:</p>
+<pre><code>    &lt;div class="wui-subobj" id="tabOrder1" data-options="..."&gt;</code></pre>
+<p>注意：要在onBeforeShow中设置objParam，如果在onShow中设置就晚了：</p>
+<pre><code>jdlg.on("beforeshow", onBeforeShow)
+function onBeforeShow(ev, formMode, opt)
+{
+    var type = opt.objParam &amp;&amp; opt.objParam.type;
+    var tab1Opt = WUI.getOptions(jdlg.find("#tabOrder1"));
+    tab1Opt.objParam = { type: type };
+    ...
+}</code></pre>
+<ul>
 <li>toolbar: 指定修改对象时的增删改查按钮, Enum(a-add, s-set, d-del, f-find, r-refresh), 字符串或数组, 缺省是所有按钮, 空串&quot;&quot;或空数组[]表示没有任何按钮.<br />
 示例：只留下删除和刷新: toolbar='rd'
 <p class="see"><strong>@see <a href="#dg_toolbar">dg_toolbar</a></strong> </p></li>
@@ -3999,6 +4100,9 @@ var isKF = g_data.hasRole("客服");</code></pre>
 <pre><code>// 在dialog的beforeshow回调中：
 var jsub = jdlg.find(".wui-subobj");
 WUI.getOptions(jsub).readonly = !g_data.hasRole("emp,mgr");</code></pre>
+<ul>
+<li>forceLoad: 显示为Tab页时（即每个Tab页一个子表），为减少后端查询，若该Tab页尚未显示，是不加载该子表的。设置forceLoad为true则无论是否显示均强制加载。</li>
+</ul>
 <h4 id=".wui-subobj-2 示例2：主表记录添加时不需要展示，添加之后子表/关联表可以增删改查：">2 示例2：主表记录添加时不需要展示，添加之后子表/关联表可以增删改查：</h4>
 <pre><code>&lt;div class="wui-subobj" data-options="obj:'CusOrder', relatedKey:'cusId', dlg:'dlgCusOrder'&gt;
     ...
@@ -4081,7 +4185,48 @@ function toggleItem1(type)
     treeField: "id", // 显示树结点的字段名，可根据情况修改
 }</code></pre>
 <p>子表以树表显示时，不支持分页（查询时自动设置参数pagesz=-1）。</p>
-<p class="see"><strong>@see <a href="#treegrid">treegrid</a></strong> </p></div>
+<p class="see"><strong>@see <a href="#treegrid">treegrid</a></strong> </p>
+<h4 id=".wui-subobj-6 示例6：offline模式时显示虚拟字段以及提交时排除虚拟字段">6 示例6：offline模式时显示虚拟字段以及提交时排除虚拟字段</h4>
+<p>在添加主对象时，对子对象的添加、更新、删除操作不会立即操作数据库，而是将最终子对象列表与主对象一起提交（接口是主对象.add）。<br />
+我们称这时的子对象对话框为offline模式，它会带来一个问题，即子对象对话框上点确定后，子表列表中无法显示虚拟字段。</p>
+<p>解决方案是：1. 在对话框中用jd_vField选项指定虚拟字段名，2. 在subobj选项中以vFields选项指定这些字段只显示而不最终提交到add接口中。</p>
+<ul>
+<li>opt.vFields: (v5.5) 指定虚拟字段(virtual field)，多个字段以逗号分隔。这些字段只用于显示，不提交到后端。</li>
+</ul>
+<p>示例：InvRecord对象包含子表InvRecord1，字段定义为：</p>
+<pre><code>@InvRecord1: id, invId, whId, whId2, itemId
+vcol: itemName, whName, whName2</code></pre>
+<p>打开对话框dlgInvRecord添加对象，再打开子表明细对话框dlgInvRecord1添加子表项。<br />
+在subobj组件中，通过选项vFields排除只用于显示而不向后端提交的虚拟字段，dlgInvRecord.html中：</p>
+<pre><code>    &lt;div class="wui-subobj" data-options="obj:'InvRecord1', relatedKey:'invId', valueField:'inv1', vFields:'itemName,whName,whName2', dlg:'dlgInvRecord1'" title="物料明细"&gt;
+        ...子表与字段列表...
+    &lt;/div&gt;</code></pre>
+<p>子表明细对话框中，为了在点击确定后将虚拟字段拷贝回subobj子表列表中，应通过data-options中指定jd_vField选项来指定虚拟字段名，如 dlgInvRecord1.html:</p>
+<pre><code>仓库   &lt;select name="whId" class="my-combobox" required data-options="ListOptions.Warehouse()"&gt;&lt;/select&gt;  (Warehouse函数中已定义{jd_vField: 'whName'})
+到仓库 &lt;select name="whId2" class="my-combobox" required data-options="$.extend(ListOptions.Warehouse(), {jd_vField:'whName2'})"&gt;&lt;/select&gt; (覆盖Warehouse函数定义中的jd_vField选项)
+物料   &lt;input name="itemId" class="wui-combogrid" required data-options="ListOptions.ItemGrid()"&gt;  (ItemGrid函数中已定义{jd_vField: 'itemName'})</code></pre>
+<p>ListOptions中对下拉列表参数的设置示例：(store.js)</p>
+<pre><code>var ListOptions = {
+    ...
+    Warehouse: function () {
+        return {
+            jd_vField: "whName", // 指定它在明细对话框中对应的虚拟字段名
+            textField: "name", // 注意区别于jd_vField，textField是指定显示内容是url返回表中的哪一列
+            url: ...
+        }
+    },
+    ItemGrid: function () {
+        return {
+            jd_vField: "itemName",
+            textField: "name",
+            url: ...
+        }
+    },
+}</code></pre>
+<p>注意带Grid结尾的选项用于wui-combogrid组件; 否则应用于my-combobox组件；<br />
+两者选项接近，wui-combogrid选项中应包含columns定义以指定下拉列表中显示哪些列，而my-combobox往往包含formatter选项来控制显示（默认是显示textField选项指定的列，设置formatter后textField选项无效）</p>
+<p>上例中, 通过为组件指定jd_vField选项，实现在offline模式的子表对话框上点确定时，会自动调用WUI.getFormData_vf将虚拟字段和值字段拼到一起，返回并显示到表格中。</p>
+<p class="see"><strong>@see <a href="#getFormData_vf">getFormData_vf</a></strong> </p></div>
 <div class="block">
 <h2 id="easyui-tabs">@key easyui-tabs</h2>
 <p>扩展: 若未指定onSelect回调, 默认行为: 点Tab发出tabSelect事件, 由Tab自行处理</p></div>
@@ -4100,6 +4245,36 @@ WUI.toggleTab(jtabs, "组合物料", formData.type == "P");</code></pre></div>
 <pre><code>&lt;input name="value" class="wui-picker-help" data-helpKey="取消工单"&gt;</code></pre>
 <p>点击帮助按钮，跳往WUI.options.helpUrl指定的地址。如果指定data-helpKey，则跳到该锚点处。</p>
 <p>可以多个picker一起使用。</p></div>
+<div class="block">
+<h2 id="WUI.showByType">@fn WUI.showByType(jo, type)</h2>
+<p>对话框上form内的一组控件中，根据type决定当前显示/启用哪一个控件。</p>
+<p>需求：ItemStatusList定义了Item的状态，但当Item类型为“报修”时，其状态使用<code>ItemStatusList_报修</code>，当类型为“公告”时，状态使用ItemStatusList_公告，其它类型的状态使用ItemStatusList</p>
+<p>HTML: 在对话框中，将这几种情况都定义出来：</p>
+<pre><code>&lt;select name="status" class="my-combobox" data-options="jdEnumList:ItemStatusList"&gt;&lt;/select&gt;
+&lt;select name="status" class="my-combobox type-报修" style="display:none" data-options="jdEnumList:ItemStatusList_报修"&gt;&lt;/select&gt;
+&lt;select name="status" class="my-combobox type-公告" style="display:none" data-options="jdEnumList:ItemStatusList_公告"&gt;&lt;/select&gt;</code></pre>
+<p>注意：当type与“报修”时，它按class为&quot;type-报修&quot;来匹配，显示匹配到的控件（并添加active类），隐藏其它控件，并添加disabled属性（从而在WUI.getFormData时不会取到它的数据）。</p>
+<p>JS: 根据type设置合适的status下拉列表，当type变化时更新列表：</p>
+<pre><code>function initDlgXXX()
+{
+    ...
+    jdlg.on("beforeshow", onBeforeShow);
+    // 1. 根据type动态显示status
+    $(frm.type).on("change", function () {
+        var type = $(this).val();
+        WUI.showByType(jfrm.find("[name=status]"), type);
+    });
+    function onBeforeShow(ev, formMode, opt) 
+    {
+        ...
+        setTimeout(onShow);
+        function onShow() {
+            ...
+            // 2. 打开对话框时根据type动态显示status
+            $(frm.type).trigger("change");
+        }
+    }
+}</code></pre></div>
 <div class="block">
 <h2 id="JdcloudStat">@module JdcloudStat</h2>
 <p>按日期进行数据分析统计</p>
