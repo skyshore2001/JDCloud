@@ -2903,7 +2903,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 
 - uniKey: (v5.5) 唯一索引字段. 如果指定, 则以该字段查询记录是否存在, 存在则更新。例如"code", 也支持多个字段（用于关联表），如"bpId,itemId"。
 
-支持三种方式上传：
+## 支持三种方式上传
 
 1. 直接在HTTP POST中传输内容，数据格式为：首行为标题行(即字段名列表)，之后为实际数据行。
 行使用"\n"分隔, 列使用"\t"或逗号分隔（后端自动判断）.
@@ -2980,6 +2980,81 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		app_alert("成功导入" + ret.cnt + "条数据！");
 	}, data, {contentType:"application/json"});
 
+## 支持带子表导入
+
+(v5.5) 示例：有以下主-子表对象：
+
+	工单：@Ordr: id, code, itemId, qty
+	工单配料单 @BOM: id, orderId, code, name
+
+导入数据列及样例可定义为：（按dlgImport.html中样例定义格式，以`!`开头的首行为参数行（也可以没有），然后是标题行，后面都是数据行；列以Tab分隔）
+注意：拷贝到Excel中看的比较清楚；为避免Excel将长数字显示为科学计数法，在复制前先设置单元格格式为文本。
+
+	<script type="text/template" class="tplOrdr">
+	!title=code,itemCode,itemName,planTm,planTm1,qty,@bom.code,@bom.name,@bom.qty&uniKey=code
+	生产订单号	物料编码	物料规格	开工日期	完工日期	生产数量	子件编码	子件规格	基本用量
+	SCDD210202302	30101001010484	热像仪#Fotric 615C-L47	2021-02-04	2021-02-04	1.00	20901001000052	标品#Lantern_B31-L47	1
+	SCDD210202302	30101001010484	热像仪#Fotric 615C-L47	2021-02-04	2021-02-04	1.00	10205001000017	标签#Lantern_40*30mm铜版纸空白标签#中性#通用	1
+	</script>
+
+注意：由于子表分布在多行，是多次导入的，所以必须指定uniKey参数，避免重复加主表。此处实际调用可理解为：
+
+	callSvr("Ordr.add", $.noop, {code, itemCode, itemName, ..., qty, bom: [ {code, name, qty} ]);
+	// code存在，则做更新操作
+	callSvr("Ordr.set", {id}, $.noop, {code, itemCode, itemName, ..., qty, bom: [ {code, name, qty} ]);
+
+可见，主-子表结构的表导入时，主表字段会重复多次，而真正有用的是uniKey字段，所以导入数据也可以精简为：
+
+	<script type="text/template" class="tplOrdr">
+	!title=code,itemCode,itemName,planTm,planTm1,qty,@bom.code,@bom.name,@bom.qty&uniKey=code
+	生产订单号	物料编码	物料规格	开工日期	完工日期	生产数量	子件编码	子件规格	基本用量
+	SCDD210202302	30101001010484	热像仪#Fotric 615C-L47	2021-02-04	2021-02-04	1.00	20901001000052	标品#Lantern_B31-L47	1
+	SCDD210202302						10205001000017	标签#Lantern_40*30mm铜版纸空白标签#中性#通用	1
+	</script>
+
+支持导入多个子表，格式示例：(拷贝到Excel中看)
+
+	主表字段1(假如为uniKey字段)	主表字段2	@子表A.字段1	@子表B.字段1
+	id1	value1	suba1	subb1
+	id1		suba2	
+	id2	value2	suba3	
+
+它等价于：（将主表、子表分开看的更清楚）
+
+	主表字段1(假如为uniKey字段)	主表字段2	@子表A.字段1	@子表B.字段1
+	id1	value1		
+	id1		suba1	
+	id1		suba2	
+	id1			subb1
+	id2	value2		
+	id2		suba3	
+	
+## 支持列名映射
+
+(v5.5) 数据表导入时，默认是按固定列顺序来确定字段的，比如第1列必须是code，第2列必须是itemCode，如果要跳过一列，须通过"-"来指定；
+使用列名映射是另一种方式（通过指定参数useColMap=1激活），示例：
+
+	!title=code,itemCode&useColMap=1
+	id	name	code	itemId	itemCode
+	1	name1	code1	101	item-101
+	2	name2	code2	102	item-102
+	
+这时只通过列名来匹配（若找不到匹配列则报错！），列的顺序对导入就没有影响。可以通过`->`来指定列的别名，示例：
+
+	!title=编码->code,物料编码->itemCode&useColMap=1
+	编号	物料名	编码	物料名	物料编码
+	1	name1	code1	101	item-101
+	2	name2	code2	102	item-102
+
+同样也可以应用在上节主子表导入的例子中，写法如下：
+
+	<script type="text/template" class="tplOrdr">
+	!title=生产订单号->code,物料编码->itemCode,物料规格->itemName,开工日期->planTm,完工日期->planTm1,生产数量->qty,子件编码->@bom.code,子件规格->@bom.name,基本用量->@bom.qty&uniKey=code&useColMap=1
+	生产订单号	物料编码	物料规格	开工日期	完工日期	生产数量	子件编码	子件规格	基本用量
+	SCDD210202302	30101001010484	热像仪#Fotric 615C-L47	2021-02-04	2021-02-04	1.00	20901001000052	标品#Lantern_B31-L47	1
+	SCDD210202302	30101001010484	热像仪#Fotric 615C-L47	2021-02-04	2021-02-04	1.00	10205001000017	标签#Lantern_40*30mm铜版纸空白标签#中性#通用	1
+	</script>
+
 */
 	function api_batchAdd()
 	{
@@ -2991,7 +3066,6 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 			"idList" => []
 		];
 		$bak_SOLO = ApiFw_::$SOLO;
-		ApiFw_::$SOLO = false; // 避免其间有setRet输出
 		$uniKey = param("uniKey");
 		while (($row = $st->getRow()) != null) {
 			if ($st->isTable() && $n == 1) {
@@ -3009,9 +3083,15 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 							++ $i;
 							continue;
 						}
-						$postParam[$e] = $row[$i++];
-						if ($postParam[$e] === '') {
-							$postParam[$e] = null;
+						$val = $row[$i++];
+						if ($val === '')
+							$val = null;
+						if (preg_match('/^@(\w+)\.(\w+)$/u', $e, $ms)) {
+							// 形如`@bom.itemCode`，`@bom.qty`的列当作子表项处理，如: $postParam["bom"] = ["itemCode" => 'code1', "qty" => 1]
+							$postParam[$ms[1]][0][$ms[2]] = $val;
+						}
+						else {
+							$postParam[$e] = $val;
 						}
 					}
 				}
@@ -3019,8 +3099,9 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 					$postParam = $row;
 				}
 				try {
+					ApiFw_::$SOLO = false; // 避免其间有setRet输出
 					$doAdd = true;
-					$id = self::getIdByUniKey($this->table, $uniKey, $row);
+					$id = self::getIdByUniKey($this->table, $uniKey, $postParam);
 					if ($id) {
 						// useStrictReadonly: 遇到readonly字段的设置直接忽略，不要报错。
 						$this->callSvc(null, "set" , ["id" => $id, "useStrictReadonly" => "0"], $postParam);
@@ -3683,6 +3764,7 @@ class BatchAddStrategy
 		return $row;
 	}
 
+	protected $colMap;
 	function getRow() {
 		if ($this->rowIdx == null) {
 			$this->rowIdx = 0;
@@ -3692,14 +3774,37 @@ class BatchAddStrategy
 		if ($row == null)
 			return null;
 		if (++ $this->rowIdx == 1) {
-			$title = param("title", null, "G");
+			$title = param("title", null, "G", false);
 			$row1 = null;
 			if ($title) {
 				$row1 = preg_split('/[\s,]+/', $title);
+				$useColMap = param("useColMap", null, "G");
+				if ($useColMap) {
+					$newRow1 = [];
+					foreach ($row1 as $e) {
+						$arr = preg_split('/->/', $e);
+						$showCol = $arr[0];
+						$realCol = $arr[1] ?: $arr[0];
+						$newRow1[] = $realCol;
+						$idx = array_search($showCol, $row);
+						if ($idx === false)
+							throw new MyException(E_PARAM, "require col: $showCol", "缺少列`$showCol`");
+						$this->colMap[$arr[0]] = $idx;
+					}
+					$row1 = $newRow1;
+				}
 			}
 			$this->logic->onGetTitleRow($row, $row1);
 			if ($row1 != null)
 				$row = $row1;
+		}
+		else if (count($row) > 0 && $this->colMap) {
+			// 列转换
+			$newRow = [];
+			foreach ($this->colMap as $k => $idx) {
+				$newRow[] = $row[$idx];
+			}
+			$row = $newRow;
 		}
 		return $row;
 	}
