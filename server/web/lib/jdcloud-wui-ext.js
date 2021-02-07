@@ -1069,7 +1069,12 @@ function enhanceCombogrid(jo)
 				// onShow
 				var val = jo.combogrid("getValue");
 				if (val != "") {
-					var txt = showId? val + " - " + opt.data[vfield]: opt.data[vfield];
+					var txt = opt.data[vfield];
+					if (showId) {
+						var prefix = val + " - ";
+						if (!txt.startsWith(prefix))
+							txt = prefix + txt;
+					}
 					jo.combogrid("setText", txt);
 				}
 			});
@@ -1126,6 +1131,11 @@ self.formItems[".combo-f"] = $.extend({}, self.defaultFormItems, {
 	},
 	setReadonly: function (jo, val) {
 		jo.combo("textbox").prop("readonly", val);
+	},
+	// 用于显示的虚拟字段值
+	getValue_vf: function (jo) {
+		var type = this.getComboType_(jo);
+		return jo[type]("getText");
 	}
 });
 
@@ -1514,7 +1524,7 @@ $.extend(self.dg_toolbar, {
 
 选项：{obj, relatedKey, res?, dlg?/关联的明细对话框, datagrid/treegrid}
 
-这些选项在dlg设置时有效：{valueField, readonly, objParam, toolbar}
+这些选项在dlg设置时有效：{valueField, readonly, objParam, toolbar, vFields}
 
 ## 示例1：可以增删改查的子表：
 
@@ -1559,6 +1569,21 @@ $.extend(self.dg_toolbar, {
 
 - objParam: 关联的明细对象对话框的初始参数, 对应dialogOpt.objParam. 例如有 offline, onCrud()等选项. 
 @see objParam
+
+示例：在对话框dlgOrder上设置子表关联对话框dlgOrder1:
+
+		<div class="wui-subobj" id="tabOrder1" data-options="...">
+
+注意：要在onBeforeShow中设置objParam，如果在onShow中设置就晚了：
+
+	jdlg.on("beforeshow", onBeforeShow)
+	function onBeforeShow(ev, formMode, opt)
+	{
+		var type = opt.objParam && opt.objParam.type;
+		var tab1Opt = WUI.getOptions(jdlg.find("#tabOrder1"));
+		tab1Opt.objParam = { type: type };
+		...
+	}
 
 - toolbar: 指定修改对象时的增删改查按钮, Enum(a-add, s-set, d-del, f-find, r-refresh), 字符串或数组, 缺省是所有按钮, 空串""或空数组[]表示没有任何按钮.
 示例：只留下删除和刷新: toolbar='rd'
@@ -1683,6 +1708,60 @@ $.extend(self.dg_toolbar, {
 子表以树表显示时，不支持分页（查询时自动设置参数pagesz=-1）。
 
 @see treegrid
+
+## 示例6：offline模式时显示虚拟字段以及提交时排除虚拟字段
+
+在添加主对象时，对子对象的添加、更新、删除操作不会立即操作数据库，而是将最终子对象列表与主对象一起提交（接口是主对象.add）。
+我们称这时的子对象对话框为offline模式，它会带来一个问题，即子对象对话框上点确定后，子表列表中无法显示虚拟字段。
+
+解决方案是：1. 在对话框中用jd_vField选项指定虚拟字段名，2. 在subobj选项中以vFields选项指定这些字段只显示而不最终提交到add接口中。
+
+- opt.vFields: (v5.5) 指定虚拟字段(virtual field)，多个字段以逗号分隔。这些字段只用于显示，不提交到后端。
+
+示例：InvRecord对象包含子表InvRecord1，字段定义为：
+
+	@InvRecord1: id, invId, whId, whId2, itemId
+	vcol: itemName, whName, whName2
+
+打开对话框dlgInvRecord添加对象，再打开子表明细对话框dlgInvRecord1添加子表项。
+在subobj组件中，通过选项vFields排除只用于显示而不向后端提交的虚拟字段，dlgInvRecord.html中：
+
+		<div class="wui-subobj" data-options="obj:'InvRecord1', relatedKey:'invId', valueField:'inv1', vFields:'itemName,whName,whName2', dlg:'dlgInvRecord1'" title="物料明细">
+			...子表与字段列表...
+		</div>
+
+子表明细对话框中，为了在点击确定后将虚拟字段拷贝回subobj子表列表中，应通过data-options中指定jd_vField选项来指定虚拟字段名，如 dlgInvRecord1.html:
+
+	仓库   <select name="whId" class="my-combobox" required data-options="ListOptions.Warehouse()"></select>  (Warehouse函数中已定义{jd_vField: 'whName'})
+	到仓库 <select name="whId2" class="my-combobox" required data-options="$.extend(ListOptions.Warehouse(), {jd_vField:'whName2'})"></select> (覆盖Warehouse函数定义中的jd_vField选项)
+	物料   <input name="itemId" class="wui-combogrid" required data-options="ListOptions.ItemGrid()">  (ItemGrid函数中已定义{jd_vField: 'itemName'})
+
+ListOptions中对下拉列表参数的设置示例：(store.js)
+
+	var ListOptions = {
+		...
+		Warehouse: function () {
+			return {
+				jd_vField: "whName", // 指定它在明细对话框中对应的虚拟字段名
+				textField: "name", // 注意区别于jd_vField，textField是指定显示内容是url返回表中的哪一列
+				url: ...
+			}
+		},
+		ItemGrid: function () {
+			return {
+				jd_vField: "itemName",
+				textField: "name",
+				url: ...
+			}
+		},
+	}
+
+注意带Grid结尾的选项用于wui-combogrid组件; 否则应用于my-combobox组件； 
+两者选项接近，wui-combogrid选项中应包含columns定义以指定下拉列表中显示哪些列，而my-combobox往往包含formatter选项来控制显示（默认是显示textField选项指定的列，设置formatter后textField选项无效）
+
+上例中, 通过为组件指定jd_vField选项，实现在offline模式的子表对话框上点确定时，会自动调用WUI.getFormData_vf将虚拟字段和值字段拼到一起，返回并显示到表格中。
+
+@see getFormData_vf
  */
 self.m_enhanceFn[".wui-subobj"] = enhanceSubobj;
 function enhanceSubobj(jo)
@@ -1749,8 +1828,22 @@ function enhanceSubobj(jo)
 		if (mode == FormMode.forAdd) {
 			// 添加时设置子表字段
 			self.assert(opt.valueField, "wui-subobj: 选项valueField未设置");
-			if (jo.data("subobjLoaded_"))
-				newData[opt.valueField] = jtbl[datagrid]("getData").rows;
+			if (jo.data("subobjLoaded_")) {
+				var rows = jtbl[datagrid]("getData").rows;
+				if (opt.vFields) {
+					var fields = opt.vFields.split(/\s*,\s*/);
+					newData[opt.valueField] = $.map(rows, function (e, i) {
+						var e1 = $.extend({}, e);
+						$.each(fields, function (idx, k) {
+							delete e1[k];
+						});
+						return e1;
+					});
+				}
+				else {
+					newData[opt.valueField] = rows;
+				}
+			}
 		}
 	}
 

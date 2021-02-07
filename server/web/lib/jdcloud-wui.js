@@ -2712,6 +2712,35 @@ function getFormData(jo)
 }
 
 /**
+@fn getFormData_vf(jo)
+
+专门取虚拟字段的值。例如：
+
+	<select name="whId" class="my-combobox" data-options="url:..., jd_vField:'whName'"></select>
+
+用WUI.getFormData可取到`{whId: xxx}`，而WUI.getFormData_vf遍历带name属性且设置了jd_vField选项的控件，调用接口getValue_vf(ji)来取其显示值。
+因而，为支持取虚拟字段值，控件须定义getValue_vf接口。
+
+	<input name="orderType" data-options="jd_vField:'orderType'" disabled>
+
+注意：与getFormData不同，它不忽略有disabled属性的控件。
+
+@see defaultFormItems
+ */
+self.getFormData_vf = getFormData_vf;
+function getFormData_vf(jo)
+{
+	var data = {};
+	formItems(jo, function (ji, name, it) {
+		var vname = WUI.getOptions(ji).jd_vField;
+		if (!vname)
+			return;
+		data[vname] = it.getValue_vf(ji);
+	});
+	return data;
+}
+
+/**
 @fn formItems(jo, cb)
 
 表单对象遍历。对表单jo（实际可以不是form标签）下带name属性的控件，交给回调cb处理。
@@ -2719,8 +2748,7 @@ function getFormData(jo)
 
 注意:
 
-- 忽略有disabled属性的控件
-- 忽略未选中的checkbox/radiobutton
+- 通过取getDisabled接口判断，可忽略有disabled属性的控件以及未选中的checkbox/radiobutton。
 
 对于checkbox，设置时根据val确定是否选中；取值时如果选中取value属性否则取value-off属性。
 缺省value为"on", value-off为空(非标准属性，本框架支持)，可以设置：
@@ -2831,6 +2859,14 @@ self.formItems["[name]"] = self.defaultFormItems = {
 	// TODO: 用于find模式设置。搜索"设置find模式"/datetime
 	getShowbox: function (jo) {
 		return jo;
+	},
+
+	// 用于显示的虚拟字段值, 此处以select为例，适用于my-combobox
+	getValue_vf: function (jo) {
+		var o = jo[0];
+		if (o.tagName == "SELECT")
+			return o.options[o.selectedIndex].innerText;
+		return this.getValue(jo);
 	}
 };
 
@@ -3472,7 +3508,7 @@ function getDataOptions(jo, defVal)
 	var opts;
 	try {
 		if (optStr != null) {
-			if (optStr.indexOf(":") > 0) {
+			if (/^\w+:/.test(optStr)) {
 				opts = eval("({" + optStr + "})");
 			}
 			else {
@@ -6356,6 +6392,7 @@ function showDlg(jdlg, opt)
 					var rv = batchOp(obj, obj+".setIf", jtbl, {
 						acName: "更新",
 						data: data, 
+						offline: opt.offline,
 						onBatchDone: function () {
 							// TODO: onCrud();
 							closeDlg(jdlg);
@@ -6412,6 +6449,8 @@ $(window).keyup(function (e) {
 
 opt.data也可以是一个函数dataFn(batchCnt)，参数batchCnt为当前批量操作的记录数(必定大于0)。
 该函数返回data或一个Deferred对象(该对象适时应调用dfd.resolve(data)做批量操作)。dataFn返回false表示不做后续处理。
+
+@return 如果返回false，表示当前非批量操作模式，或参数不正确无法操作。
 
 支持批量操作的接口须符合下列原型:
 
@@ -6589,11 +6628,29 @@ function batchOp(obj, ac, jtbl, opt)
 	}
 
 	var queryParams;
-	var doBatchOnSel = selArr.length > 1 && selArr[0].id != null;
+	var doBatchOnSel = selArr.length > 1 && (selArr[0].id != null || opt.offline);
 	var acName = opt.acName;
 	// batchOpMode=2时，未按Ctrl时选中一行也按批量操作
 	if (!doBatchOnSel && batchOpMode === 2 && !m_batchMode && selArr.length == 1 && selArr[0].id != null)
 		doBatchOnSel = true;
+
+	// offline时批量删除单独处理
+	if (opt.offline) {
+		if (acName == "删除") {
+			var totalCnt = jtbl.datagrid("getRows").length;
+			if (doBatchOnSel && selArr.length < totalCnt) {
+				$.each(selArr, function (i, row) {
+					var idx = jtbl.datagrid("getRowIndex", row);
+					jtbl.datagrid("deleteRow", idx)
+				});
+			}
+			else {
+				jtbl.datagrid("loadData", []);
+			}
+		}
+		return;
+	}
+
 	// 多选，cond为`id IN (...)`
 	if (doBatchOnSel) {
 		if (selArr.length == 1) {
@@ -7202,7 +7259,8 @@ function showObjDlg(jdlg, mode, opt)
 			if (mode == FormMode.forDel) {
 				var rv = batchOp(obj, obj+".delIf", jd.jtbl, {
 					acName: "删除",
-					onBatchDone: onCrud
+					onBatchDone: onCrud,
+					offline: opt.offline
 				});
 				if (rv !== false)
 					return;
@@ -7379,6 +7437,8 @@ function showObjDlg(jdlg, mode, opt)
 		// TODO: add option to force reload all (for set/add)
 		if (jtbl) {
 			if (opt.offline) {
+				var retData_vf = self.getFormData_vf(jfrm);
+				retData = $.extend(retData_vf, retData);
 				if (mode == FormMode.forSet && rowData) {
 					var idx = jtbl.datagrid("getRowIndex", rowData);
 					$.extend(rowData, retData);
