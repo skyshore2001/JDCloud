@@ -27,14 +27,15 @@
 <li><a href="#运行经典筋斗云项目的工程"><span class="toc-section-number">1.7</span> 运行经典筋斗云项目的工程</a></li>
 <li><a href="#运行服务"><span class="toc-section-number">1.8</span> 运行服务</a></li>
 </ul></li>
-<li><a href="#java后端开发环境"><span class="toc-section-number">2</span> Java后端开发环境</a><ul>
-<li><a href="#安卓开发环境"><span class="toc-section-number">2.1</span> 安卓开发环境</a></li>
-<li><a href="#ios开发环境"><span class="toc-section-number">2.2</span> IOS开发环境</a></li>
+<li><a href="#java后端开发环境"><span class="toc-section-number">2</span> Java后端开发环境</a></li>
+<li><a href="#app开发环境"><span class="toc-section-number">3</span> App开发环境</a><ul>
+<li><a href="#安卓开发环境"><span class="toc-section-number">3.1</span> 安卓开发环境</a></li>
+<li><a href="#ios开发环境"><span class="toc-section-number">3.2</span> IOS开发环境</a></li>
 </ul></li>
-<li><a href="#测试环境"><span class="toc-section-number">3</span> 测试环境</a><ul>
-<li><a href="#安装perl"><span class="toc-section-number">3.1</span> 安装perl</a></li>
-<li><a href="#php单元测试工具phpunit"><span class="toc-section-number">3.2</span> php单元测试工具phpunit</a></li>
-<li><a href="#安装前端自动化测试环境"><span class="toc-section-number">3.3</span> 安装前端自动化测试环境</a></li>
+<li><a href="#测试环境"><span class="toc-section-number">4</span> 测试环境</a><ul>
+<li><a href="#安装perl"><span class="toc-section-number">4.1</span> 安装perl</a></li>
+<li><a href="#php单元测试工具phpunit"><span class="toc-section-number">4.2</span> php单元测试工具phpunit</a></li>
+<li><a href="#安装前端自动化测试环境"><span class="toc-section-number">4.3</span> 安装前端自动化测试环境</a></li>
 </ul></li>
 </ul></li>
 </ul></div>
@@ -156,7 +157,9 @@ PATH=%JAVA_HOME%\bin;...</code></pre>
 <pre><code>java -version
 （默认是32位java）</code></pre>
 <p>从该目录下安装eclipse和tomcat。</p>
-<h3 id="安卓开发环境"><span class="header-section-number">2.1</span> 安卓开发环境</h3>
+<h2 id="app开发环境"><span class="header-section-number">3</span> App开发环境</h2>
+<p>使用Cordova框架，为安卓和IOS应用分别制作“壳”，实际仍以H5应用为核心。</p>
+<h3 id="安卓开发环境"><span class="header-section-number">3.1</span> 安卓开发环境</h3>
 <p>android SDK:</p>
 <pre><code>\\server-pc\share\software\android\sdk-tools-windows-4333796.rar</code></pre>
 <p>解压到<code>d:\</code> 配置</p>
@@ -181,7 +184,7 @@ cd tomatomall-app
 npm i
 cordova platform add android
 make</code></pre>
-<h3 id="ios开发环境"><span class="header-section-number">2.2</span> IOS开发环境</h3>
+<h3 id="ios开发环境"><span class="header-section-number">3.2</span> IOS开发环境</h3>
 <p>安装ios虚机，使用其中的xcode开发。 虚拟使用vmware:</p>
 <pre><code>\\server-pc\share\software\vmware\VMware-player-16.1.0-17198959.exe</code></pre>
 <p>ios系统镜像：</p>
@@ -196,13 +199,13 @@ npm i
 cordova platform add ios
 make</code></pre>
 <p>打开xcode，加载工程，编译、测试和发布。</p>
-<h2 id="测试环境"><span class="header-section-number">3</span> 测试环境</h2>
+<h2 id="测试环境"><span class="header-section-number">4</span> 测试环境</h2>
 <p>用于自动化测试(目前很少使用，且phpunit已换成jasmine。此章节跳过。)</p>
 <p>前提: 先配置好Windows开发环境(git/php等).</p>
-<h3 id="安装perl"><span class="header-section-number">3.1</span> 安装perl</h3>
+<h3 id="安装perl"><span class="header-section-number">4.1</span> 安装perl</h3>
 <p>(git-bash中已包含perl) 某些工具使用perl开发，所以应安装perl运行环境。</p>
 <pre><code>{SHARE_SVR}\ActivePerl-5.16.3.1604-MSWin32-x86-298023.msi</code></pre>
-<h3 id="php单元测试工具phpunit"><span class="header-section-number">3.2</span> php单元测试工具phpunit</h3>
+<h3 id="php单元测试工具phpunit"><span class="header-section-number">4.2</span> php单元测试工具phpunit</h3>
 <p>phpunit可用于对php服务端提供的接口进行测试.</p>
 <p>安装 phpunit - 新建目录 c:用于放置自已创建的批处理文件。将该目录c:（参考附注1）。 - 解压 <code>{SHARE_SVR}\php\phpunit.rar</code> 到c:，得到 c:.phar 文件 - 新建 phpunit.bat 文件，内容如下：</p>
 <pre><code>    @echo off
@@ -210,7 +213,7 @@ make</code></pre>
 <p>这时，打开一个cmd窗口，应该可以直接运行phpunit命令：</p>
 <pre><code>phpunit</code></pre>
 <p>具体用法请参考文档[[后端框架]] 章节&quot;测试设计&quot; -&gt; &quot;回归测试&quot;.</p>
-<h3 id="安装前端自动化测试环境"><span class="header-section-number">3.3</span> 安装前端自动化测试环境</h3>
+<h3 id="安装前端自动化测试环境"><span class="header-section-number">4.3</span> 安装前端自动化测试环境</h3>
 <p>（目前已不使用）</p>
 <p>主要软件：nunit, selenium, VS.net (C#)</p>
 <p>参考文档[[后端框架]]中的“回归测试”章节。</p>
