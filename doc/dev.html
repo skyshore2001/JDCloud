@@ -23,7 +23,7 @@
 <li><a href="#浏览器及移动设备"><span class="toc-section-number">1.3</span> 浏览器及移动设备</a></li>
 <li><a href="#编辑器"><span class="toc-section-number">1.4</span> 编辑器</a></li>
 <li><a href="#服务器环境apachephp"><span class="toc-section-number">1.5</span> 服务器环境Apache+PHP</a></li>
-<li><a href="#命令行工具"><span class="toc-section-number">1.6</span> 命令行工具</a></li>
+<li><a href="#工具软件"><span class="toc-section-number">1.6</span> 工具软件</a></li>
 <li><a href="#运行经典筋斗云项目的工程"><span class="toc-section-number">1.7</span> 运行经典筋斗云项目的工程</a></li>
 <li><a href="#运行服务"><span class="toc-section-number">1.8</span> 运行服务</a></li>
 </ul></li>
@@ -66,6 +66,13 @@ git clone server-pc:src/jdcloud-ganlan
 <pre><code>{SHARE_SVR}\MYSQL\MySQL-Front_Setup_6.1.exe</code></pre>
 <p>MySQL服务端不是必装的，自己学习的话可以安装一个，注意安装的mariadb与mysql是兼容的：</p>
 <pre><code>{SHARE_SVR}\MYSQL\mariadb-10.3.27-winx64.msi</code></pre>
+<p>配置文件：找到 {mysql安装目录}/data/my.ini 补上以下配置：</p>
+<pre><code>[mysqld]
+character-set-server=utf8mb4
+lower_case_table_names=2</code></pre>
+<p>注意windows环境下须配置<code>lower_case_table_names=2</code>，我们的表名中有大小写，若不配置此项则表名全部为小写。</p>
+<p>通过windows服务启动、停止mysql服务器。</p>
+<p>测试：使用客户端连接本地mysql服务。</p>
 <h3 id="浏览器及移动设备"><span class="header-section-number">1.3</span> 浏览器及移动设备</h3>
 <p>建议开发时使用chrome浏览器；请从网上下载并安装其最新版本。</p>
 <h3 id="编辑器"><span class="header-section-number">1.4</span> 编辑器</h3>
@@ -94,7 +101,7 @@ git clone server-pc:src/jdcloud-ganlan
 <p>之间下载过jdcloud-ganlan项目在<code>d:\project</code>目录下，测试一下是否能正常访问：</p>
 <pre><code>http://localhost/jdcloud-ganlan/server/tool/init.php</code></pre>
 <p>查看环境检查是否为全绿色。</p>
-<h3 id="命令行工具"><span class="header-section-number">1.6</span> 命令行工具</h3>
+<h3 id="工具软件"><span class="header-section-number">1.6</span> 工具软件</h3>
 <p>安装make工具：</p>
 <pre><code>\\server-pc\share\software\make-mingw.zip</code></pre>
 <p>解压到<code>d:\bat</code>目录。如果没有该目录，创建它，并将它加入PATH路径。</p>
@@ -105,6 +112,8 @@ git clone server-pc:src/jdcloud-ganlan
 <p>安装文档生成工具pandoc：</p>
 <pre><code>\\server-pc\share\software\pandoc-1.16.0.2-windows.msi</code></pre>
 <p>检查：可以运行pandoc命令</p>
+<p>安装文件查找工具everything:</p>
+<pre><code>\\server-pc\share\software\Everything_1.4.1.877_x64-Setup</code></pre>
 <h3 id="运行经典筋斗云项目的工程"><span class="header-section-number">1.7</span> 运行经典筋斗云项目的工程</h3>
 <p>先从代码服务器下载代码。项目中的代码库命名规则一般如下：</p>
 <dl>

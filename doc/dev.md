@@ -50,6 +50,19 @@ MySQL服务端不是必装的，自己学习的话可以安装一个，注意安
 
 	{SHARE_SVR}\MYSQL\mariadb-10.3.27-winx64.msi
 
+配置文件：找到 {mysql安装目录}/data/my.ini
+补上以下配置：
+
+	[mysqld]
+	character-set-server=utf8mb4
+	lower_case_table_names=2
+
+注意windows环境下须配置`lower_case_table_names=2`，我们的表名中有大小写，若不配置此项则表名全部为小写。
+
+通过windows服务启动、停止mysql服务器。
+
+测试：使用客户端连接本地mysql服务。
+
 ### 浏览器及移动设备
 
 建议开发时使用chrome浏览器；请从网上下载并安装其最新版本。
@@ -107,7 +120,7 @@ MySQL服务端不是必装的，自己学习的话可以安装一个，注意安
 
 查看环境检查是否为全绿色。
 
-### 命令行工具
+### 工具软件
 
 安装make工具：
 
@@ -128,6 +141,10 @@ MySQL服务端不是必装的，自己学习的话可以安装一个，注意安
 	\\server-pc\share\software\pandoc-1.16.0.2-windows.msi
 
 检查：可以运行pandoc命令
+
+安装文件查找工具everything:
+
+	\\server-pc\share\software\Everything_1.4.1.877_x64-Setup
 
 ### 运行经典筋斗云项目的工程
 
