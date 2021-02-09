@@ -7819,7 +7819,8 @@ function getQueryParamFromTable(jtbl, param)
 
 window.YesNoMap = {
 	0: "否",
-	1: "是"
+	1: "是",
+	2: "处理中"
 };
 
 var Formatter = {
@@ -7832,6 +7833,11 @@ var Formatter = {
 	number: function (value, row) {
 		return parseFloat(value);
 	},
+/**
+@fn Formatter.atts
+
+列表中显示附件（支持多个）, 每个附件一个链接，点击后可下载该附件。（使用服务端att接口）
+*/
 	atts: function (value, row) {
 		if (value == null)
 			return "(无)";
@@ -7842,11 +7848,21 @@ var Formatter = {
 			return "<a target='_black' href='" + url + "'>" + name + "</a>&nbsp;";
 		});
 	},
+/**
+@fn Formatter.pics1
+
+显示图片（支持多图）, 显示为一个链接，点击后在新页面打开并依次显示所有的图片。（使用服务端pic接口）
+*/
 	pics1: function (value, row) {
 		if (value == null)
 			return "(无图)";
 		return '<a target="_black" href="' + WUI.makeUrl("pic", {id:value}) + '">' + value + '</a>';
 	},
+/**
+@fn Formatter.pics
+
+显示图片（支持多图）, 每个图有预览, 点击后在新页面打开并依次显示所有的图片.（使用服务端pic接口）
+*/
 	pics: function (value, row) {
 		if (value == null)
 			return "(无图)";
@@ -7864,6 +7880,18 @@ var Formatter = {
 		var linkUrl = WUI.makeUrl("pic", {id:value});
 		return '<a target="_black" href="' + linkUrl + '">' + value1 + '</a>';
 	},
+/**
+@fn Formatter.flag(yes, no)
+
+显示flag类的值，示例：
+
+	<th data-options="field:'clearFlag', sortable:true, formatter:Formatter.flag("已结算", "未结算"), styler:Formatter.enumStyler({1:'Disabled',0:'Warning'}, 'Warning')">结算状态</th>
+
+注意flag字段建议用Formatter.enum和jdEnumMap，因为在导出表格时，只用flag的话，导出值还是0,1无法被转换，还不如定义一个Map来的更清晰。
+
+@see datagrid.formatter
+@see Formatter.enum
+*/
 	flag: function (yes, no) {
 		if (yes == null)
 			yes = "是";
@@ -7875,6 +7903,27 @@ var Formatter = {
 			return value? yes: no;
 		}
 	},
+/**
+@fn Formatter.enum(enumMap, sep=',')
+
+将字段的枚举值显示为描述信息。示例：
+
+		<th data-options="field:'status', jdEnumMap: OrderStatusMap, formatter: WUI.formatter.enum(OrderStatusMap)">状态</th>
+
+如果状态值为"CR"，则显示为"未付款". 全局变量OrderStatusMap在代码中定义如下（一般在web/app.js中定义）
+
+	var OrderStatusMap = {
+		CR: "未付款", 
+		PA: "待服务"
+	}
+
+常用的YesNoMap是预定义的`0-否,1-是,2-处理中`映射，示例：
+
+	<th data-options="field:'clearFlag', sortable:true, jdEnumMap:YesNoMap, formatter:Formatter.enum(YesNoMap), styler:Formatter.enumStyler({1:'Disabled',0:'Warning'}, 'Warning')">已结算</th>
+
+@see datagrid.formatter
+@see Formatter.enumStyler
+ */
 	enum: function (enumMap, sep) {
 		sep = sep || ',';
 		return function (value, row) {
@@ -7895,9 +7944,59 @@ var Formatter = {
 			return v;
 		}
 	},
-	enumStyler: function (colorMap) {
+/**
+@fn Formatter.enumStyler(colorMap, defaultColor)
+
+为列表的单元格上色，示例：
+
+	<th data-options="field:'status', jdEnumMap: OrderStatusMap, formatter:Formatter.enum(OrderStatusMap), styler:Formatter.enumStyler({PA:'Warning', RE:'Disabled', CR:'#00ff00', null: 'Error'}), sortable:true">状态</th>
+
+颜色可以直接用rgb表示如'#00ff00'，或是颜色名如'red'等，最常用是用系统预定的几个常量'Warning', 'Error', 'Info', 'Disabled'.
+缺省值可通过defaultColor传入。
+
+@see datagrid.styler
+@see Formatter.enumFnStyler 比enumStyler更强大
+ */
+	enumStyler: function (colorMap, defaultColor) {
 		return function (value, row) {
 			var color = colorMap[value];
+			if (color == null && defaultColor)
+				color = defaultColor;
+			if (Color[color])
+				color = Color[color];
+			if (color)
+				return "background-color: " + color;
+		}
+	},
+/**
+@fn Formatter.enumFnStyler(colorMap, defaultColor)
+
+为列表的单元格上色，示例：
+
+	<th data-options="field:'id', sortable:true, sorter:intSort, styler:Formatter.enumFnStyler({'v<10': 'Error', 'v>=10&&v<20': 'Warning'}, 'Info')">编号</th>
+
+每个键是个表达式（其实是个函数），特殊变量v和row分别表示当前列值和当前行。缺省值可通过defaultColor传入。
+
+@see Formatter.enumStyler
+ */
+	enumFnStyler: function (colorMap, defaultColor) {
+		// elem: [fn(v), key]
+		var fnArr = $.map(colorMap, function (v0, k) {
+			// 注意：这里函数参数为v和row，所以字符串中可为使用v表示传入值; 特殊键true表示匹配所有剩下的
+			return [ [function (v, row) { return eval(k) }, v0] ];
+		});
+		console.log(fnArr);
+		return function (value, row) {
+			var color = null;
+			$.each(fnArr, function (i, fn) {
+				if (fn[0](value, row)) {
+					color = fn[1];
+					return false;
+				}
+			});
+			if (color == null && defaultColor)
+				color = defaultColor;
+			
 			if (Color[color])
 				color = Color[color];
 			if (color)
