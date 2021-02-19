@@ -611,46 +611,119 @@ function setServerRev()
 
 检查权限。perms可以是单个权限或多个权限，例：
 
-	hasPerm(AUTH_USER); // 用户登录后可用
-	hasPerm(AUTH_USER | AUTH_EMP); // 用户或员工登录后可用
+	if (hasPerm(AUTH_USER)) ...  // 用户登录后可用
+	if (hasPerm(AUTH_USER | AUTH_EMP)) ... // 用户或员工登录后可用
+	if (hasPerm(AUTH_LOGIN)) ... // 用户、员工、管理员任意一种登录
 
-@fn onGetPerms()
+类似的还有checkAuth函数，不同的是如果检查不通过则直接抛出异常，不再往下执行。
 
-开发者需要定义该函数，用于返回所有检测到的权限。hasPerm函数依赖该函数。
+	checkAuth(AUTH_USER);
+	checkAuth(AUTH_ADMIN | PERM_TEST_MODE); 要求必须管理员登录或测试模式才可用。
+	checkAuth(AUTH_LOGIN);
 
-(v5.4) exPerms用于扩展验证, 是一个权限名数组, 示例:
+@see checkAuth
+
+(v5.4) exPerms用于扩展验证, 是一个认证方式名数组, 示例:
 
 	hasPerm(AUTH_LOGIN, ["simple"]);
 
-它表示AUTH_LOGIN检查失败后, 将再调用`hasPerm_simple()`进行检查. 支持以下权限名:
+它表示AUTH_LOGIN检查失败后, 再检查是否通过了simple认证。支持的认证方式见下面章节描述。
 
-**[simple]**
+## 内置认证
 
-@see hasPerm_simple
+login接口支持不同类别的用户登录，登录成功后会设置相应的session变量，之后就具有相应权限。
 
-通过HTTP头`X-Daca-Simple`传递密码, 与环境变量`simplePwd`进行比较. 
-示例: upload接口允许simple验证.
+@fn onGetPerms() 权限生成逻辑
+
+默认逻辑如下，开发者可自定义该逻辑。
+
+- 用户登录后(session中有uid变量)，具有AUTH_USER权限
+- 员工登录后(session中有empId变量)，具有AUTH_EMP权限
+- 超级管理员登录后(session中有adminId变量)，具有AUTH_ADMIN权限
+- 测试模式具有 PERM_TEST_MODE权限，模拟模式具有PERM_MOCK_MODE权限。
+
+## 扩展认证方式
+
+@var Conf::$authTypes=[] 自动检查认证方式
+@var Conf::$authKeys=[] 认证密钥及权限设置
+
+示例：如果请求中使用了basic或simple认证，则通过认证后获得与员工登录相同的权限（即AUTH_EMP权限）
+
+	// class Conf (在conf.php中)
+	static $authTypes = ["basic", "simple"];
+	static $authKeys = [
+		// 当匹配以下key时，当作系统用户-9999
+		["key" => "user1:1234", "SESSION" => ["empId"=>-9999] ]
+	];
+
+- 可用authTypes指定检查权限时使用哪些认证方法，合法的认证方式名是在Conf::$authHandlers注册过的，目前支持：basic, simple。通过插件jdcloud-plugin-jwt可支持jwt认证。
+
+@see ConfBase::$authHandlers
+
+- 在authKeys中指定认证密钥，同时通过SESSION的设置，从而使得通过认证的接口请求，相当于具有系统-9999号用户的权限（即具有AUTH_EMP权限），
+  意味着它可以直接调用AC2类，或是通过`checkAuth(AUTH_EMP)`的检查。
+
+假如未指定authTypes，则在函数型接口中需要显示指定权限，如：
+
+	checkAuth(AUTH_EMP, ["basic", "simple"]);
+
+对于对象型接口，无法直接使用AC2类的接口（因为没有AUTH_EMP权限），只能使用AC类接口，在其中使用checkAuth再检查权限。
+
+支持的认证方式如下。
+
+### simple: 筋斗云简单认证
+
+在请求时，添加HTTP头：
+
+	X-Daca-Simple: $authStr
+
+后端检查示例: upload接口允许simple验证.
 
 	function api_upload() {
 		checkAuth(AUTH_LOGIN, ["simple"]);
 		...
 	}
 
-然后在conf.user.php中配置:
+其中authStr由Conf::$authKeys指定：
 
-	putenv("simplePwd=helloworldsimple");
+	// class Conf (在conf.php中)
+	static $authKeys = [
+		["key" => "user1:1234"],
+	];
 
 用curl访问该接口示例:
 
-	curl -s -F "file=@1.jpg" "http://localhost/jdcloud/api/upload?autoResize=0" -H "X-Daca-Simple: helloworldsimple"
+	curl -s -F "file=@1.jpg" "http://localhost/jdcloud/api/upload?autoResize=0" -H "X-Daca-Simple: user1:1234"
 
-**[basic]**
+simple认证也可以通过环境变量simplePwd确定，比如可以在conf.user.php中配置：
 
-@see hasPerm_basic
+	putenv("simplePwd=user1:1234");
+
+### basic: HTTP基本认证
 
 通过HTTP标准的Basic认证方式。
+HTTP Basic认证，即添加HTTP头：
 
-@see checkAuth
+	Authorization: Basic $authStr
+	
+按HTTP协议，authStr格式为base64($user:$password)
+可验证的用户名、密码在Conf类中配置，后端配置示例：
+
+	// class Conf (在conf.php中)
+	static $authTypes = ["basic"];
+	static $authKeys = [
+		["key" => "user1:1234"],
+		["key" => "user2:1234", "SESSION" => ["empId" => -9999] ] // 可以指定SESSION变量, 这里设置empId是模拟员工登录, 以便以员工身份调用接口(如AC2_xxx类)
+	];
+
+请求示例：
+
+	curl -u user1:1234 http://localhost/jdcloud/api.php/xxx
+
+注意：若php是基于apache fcgi方式的部署，可能无法收到认证串，可在apache中配置：
+
+	SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+
  */
 function hasPerm($perms, $exPerms=null)
 {
@@ -695,27 +768,6 @@ function checkAuthKeys($key)
 	return true;
 }
 
-/**
-@fn hasPerm_simple()
-
-筋斗云简单认证，即添加HTTP头：
-
-	X-Daca-Simple: $authStr
-
-后端认证示例：
-
-	checkAuth(null, ["simple"]);
-	或
-	if (hasPerm(null, ["simple"]) ...
-
-其中authStr由配置项simplePwd确定，比如可以在conf.user.php中配置：
-
-	putenv("simplePwd=1234");
-
-请求示例：
-
-	curl http://localhost/jdcloud/api.php/xxx -H "X-Daca-Simple: 1234"
-*/
 function hasPerm_simple()
 {
 	@$key = $_SERVER["HTTP_X_DACA_SIMPLE"];
@@ -728,31 +780,6 @@ function hasPerm_simple()
 }
 ConfBase::$authHandlers["simple"] = "hasPerm_simple";
 
-/**
-@fn hasPerm_basic()
-
-HTTP Basic认证，即添加HTTP头：
-
-	Authorization: Basic $authStr
-	
-按HTTP协议，authStr格式为base64($user:$password)
-可验证的用户名、密码在Conf类中配置，后端配置示例：
-
-	// class Conf (在conf.php中)
-	static $authKeys = [
-		["key" => "user1:1234"],
-		["key" => "user2:1234", "SESSION" => ["empId" => -9999] ] // 可以指定SESSION变量, 这里设置empId是模拟员工登录, 以便以员工身份调用接口(如AC2_xxx类)
-	];
-
-请求示例：
-
-	curl --basic -u user1:1234 http://localhost/jdcloud/api.php/xxx
-
-注意：若php是基于apache fcgi方式的部署，可能无法收到认证串，可在apache中配置：
-
-	SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
-
-*/
 function hasPerm_basic()
 {
 	list($user, $pwd) = [@$_SERVER['PHP_AUTH_USER'], @$_SERVER['PHP_AUTH_PW']];
@@ -766,12 +793,9 @@ ConfBase::$authHandlers["basic"] = "hasPerm_basic";
 /** 
 @fn checkAuth($perms)
 
-用法与hasPerm类似，检查权限，如果不正确，则抛出错误，返回错误对象。
+用法与hasPerm类似，检查权限，如果不正确，则抛出错误。
 
-	checkPerm(AUTH_USER); // 必须用户登录后可用
-	checkPerm(AUTH_ADMIN | PERM_TEST_MODE); 要求必须管理员登录或测试模式才可用。
-
-@see hasPerm
+@see hasPerm 认证与权限
  */
 function checkAuth($perms, $exPerms=null)
 {
@@ -971,29 +995,18 @@ class ConfBase
 /**
 @var ConfBase::$authHandlers
 
-注册认证处理函数。示例：
+注册认证处理函数。示例：注册jwt认证方式
 
-	Conf::authHandlers["basic"] = function () {
-		// 返回true表示认证成功
-	};
+	ConfBase::$authHandlers["jwt"] = "hasPerm_jwt";
+	function hasPerm_jwt()
+	{
+		// 返回true表示认证成功	
+	}
+
+@see hasPerm
 */
 	static $authHandlers = [];
 
-/**
-@var Conf::$authTypes
-
-指定检查权限时使用哪些认证方法。目前支持：basic, simple, jwt等(注册过Conf::$authHandlers)。
-默认为空数组。示例：
-
-	Conf::$authTypes = ["basic", "simple"];
-	Conf::$authKeys = [
-		// 当匹配以下key时，当作系统用户-9999
-		["key" => "user1:1234", "SESSION" => ["empId"=>-9999] ]
-	];
-
-@see Conf::$authKeys
-@see Conf::$authHandlers
-*/
 	static $authTypes = [];
 
 /**
@@ -1065,17 +1078,6 @@ checkSecure函数返回false则不处理该调用，并将请求加入黑名单�
 	{
 	}
 
-/**
-@var ConfBase::$authKeys=[]
-
-可在conf.php中定义HTTP基本验证信息，用于basic/simple认证，一般用于合作伙伴接口认证，示例：
-
-	static $authKeys = [
-		["key" => "user1:1234"],
-		["key" => "user2:1234", "SESSION" => ["empId"=>-9999] ]
-	];
-
-*/
 	static $authKeys = [
 	];
 }
