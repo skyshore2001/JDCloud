@@ -990,15 +990,20 @@ function sql_concat()
 
 	$rv = getQueryCond([
 		"name"=>"eric",
-		"phone"=>null
+		"phone"=> null,
+		"city" => ""
 	]);
-	// "name='eric'
+	// name='eric' AND phone IS NULL AND city=''
+
+忽略null项：
 
 	$rv = getQueryCond([
 		"name"=>"eric",
-		"phone IS NULL"
+		"phone"=> null,
+		"city" => "", // 空串仍有效，不会被"_null"选项忽略
+		"_null"=>true
 	]);
-	// "name='eric' AND phone IS NULL"
+	// name='eric' AND city=''
 
 示例：条件数组
 
@@ -1049,6 +1054,10 @@ function getQueryCond($cond)
 	if (@$cond["_or"]) {
 		$isOR = true;
 	}
+	$ignoreNull = false;
+	if (@$cond["_null"]) {
+		$ignoreNull = true;
+	}
 
 	foreach($cond as $k=>$v) {
 		if (is_int($k)) {
@@ -1057,8 +1066,13 @@ function getQueryCond($cond)
 			else
 				$exp = $v;
 		}
+		else if ($v === null) {
+			if ($ignoreNull)
+				continue;
+			$exp = "$k IS NULL";
+		}
 		else {
-			if ($v === null || $k[0] == "_")
+			if ($k[0] == "_")
 				continue;
 			$exp = "$k=" . Q($v);
 		}
