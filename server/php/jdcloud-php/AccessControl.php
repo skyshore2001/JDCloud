@@ -529,7 +529,7 @@ query/get接口生成的查询语句大致为：
 
 @var AccessControl::$subobj (for get/query) 定义子表
 
-subobj: { name => {obj, cond, AC?, res?, default?=false} } （v5.4）指定子表对象obj，全面支持子表的增删改查。
+subobj: { name => {obj, cond, AC?, res?, default?=false, forceUpdate(v5.5) } } （v5.4）指定子表对象obj，全面支持子表的增删改查。
 
 或
 
@@ -629,6 +629,12 @@ subobj: { name => {sql, default?=false, wantOne?=false} } 指定SQL语句，查�
 	callSvr("Obj.get", {id: 1001, res:"id,name,obj1", param_obj1: { res: "id,name"} })
 	callSvr("Obj.get", {id: 1001, res:"id,name,obj1", param_obj1: { res: "id,name", cond: "id>=10002"} })
 
+注意：如果使用了别名，则指定res,param时也要用别名：
+
+	callSvr("Obj.get", {id: 1001, res:"id,name,obj1 objList", res_objList:"id,name"})
+	// 甚至可以多别名分别指定:
+	callSvr("Obj.get", {id: 1001, res:"id,name,obj1 objList,obj1 objList2", res_objList:"id,name", res_objList2:"id,code"})
+
 当然，也可以直接查询子对象，如：
 
 	callSvr("Obj1.query", {cond: "objId=1001", res:"id,name,obj1", fmt:"array"}) -> [
@@ -654,6 +660,19 @@ subobj: { name => {sql, default?=false, wantOne?=false} } 指定SQL语句，查�
 	});
 
 主对象删除时（del/delIf接口），子对象不会自动删除。后端应根据情况自行处理。
+
+(v5.5) subobj选项forceUpdate
+
+对子表进行修改和删除时，默认会要求该项必须已关联主表。加此选项强制更新关联。
+在上面示例中，如果子项`id=10001`或`id=10002`的关联字段objId为空或与主表`id=1001`不同，则会报错“找不到该项”(因为数据隔离，该项确实不属于该主表，所以查不到)。
+加上选项`forceUpdate => true`就可以直接更新关联或删除指定子项了（但也同时引入安全隐患）：
+
+	class AC1_Ordr extends AccessControl
+	{
+		protected $subobj = [
+			"orderLog" => ["obj"=>"OrderLog", ..., "forceUpdate" => true],
+		];
+	}
 
 ### 关联子表对象
 
@@ -1154,7 +1173,7 @@ class AccessControl
 	private $isAggregatinQuery; // 是聚合查询，如带group by或res中有聚合函数
 
 	// virtual columns
-	private $vcolMap; # elem: $vcol => {def, def0, added?, vcolDefIdx?=-1}
+	private $vcolMap; # elem: $vcol => {def, def0, vcolDefIdx?=-1}
 
 	// 在add后自动设置; 在get/set/del操作调用onValidateId后设置。
 	protected $id;
@@ -2023,7 +2042,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		}
 	}
 
-	private function setColFromRes($res, $added, $vcolDefIdx=-1)
+	private function setColFromRes($res, $NOT_USED=false, $vcolDefIdx=-1)
 	{
 		if (preg_match('/^(\w+)\.(\w+)$/u', $res, $ms)) {
 			if ($ms[1] == "t0")
@@ -2040,12 +2059,10 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 
 		$colName = self::removeQuote($colName);
 		if (array_key_exists($colName, $this->vcolMap)) {
-			if (! $added)
-				throw new MyException(E_SERVER, "redefine vcol `{$this->table}.$colName`", "虚拟字段定义重复");
-			$this->vcolMap[ $colName ]["added"] = true;
+			throw new MyException(E_SERVER, "redefine vcol `{$this->table}.$colName`", "虚拟字段定义重复");
 		}
 		else {
-			$this->vcolMap[ $colName ] = ["def"=>$def, "def0"=>$res, "added"=>$added, "vcolDefIdx"=>$vcolDefIdx];
+			$this->vcolMap[ $colName ] = ["def"=>$def, "def0"=>$res, "vcolDefIdx"=>$vcolDefIdx];
 		}
 	}
 
@@ -2137,8 +2154,6 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 				$this->hiddenFields0[] = $col;
 			return $rv;
 		}
-		if ($this->vcolMap[$col]["added"])
-			return true;
 		$vcolDef = $this->addVColDef($this->vcolMap[$col]["vcolDefIdx"]);
 		if (! $vcolDef)
 			throw new MyException(E_SERVER, "bad vcol $col");
@@ -2147,10 +2162,9 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			return true;
 
 		$isExt = @ $vcolDef["isExt"] ? true : false;
-		$this->vcolMap[$col]["added"] = true;
 		if ($alias) {
 			$rv = $this->addRes($this->vcolMap[$col]["def"] . " " . $alias, false, $isExt);
-			$this->vcolMap[$alias] = $this->vcolMap[$col]; // vcol及其alias同时加入vcolMap并标记已添加"added"
+			$this->vcolMap[$alias] = $this->vcolMap[$col]; // vcol及其alias同时加入vcolMap
 		}
 		else {
 			$rv = $this->addRes($this->vcolMap[$col]["def0"], false, $isExt);
@@ -2167,7 +2181,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 				$this->addVColDef($idx);
 				$isExt = @ $vcolDef["isExt"] ? true: false;
 				foreach ($vcolDef["res"] as $e) {
-					$this->addRes($e, true, $isExt);
+					$this->addRes($e, false, $isExt);
 				}
 			}
 		}
@@ -2348,6 +2362,10 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 							*/
 							// set/del接口支持cond.
 							$cond = $relatedKey . "=" . $relatedValue;
+							if (@$v["forceUpdate"]) {
+								$subobj[$relatedKey] = $relatedValue;
+								$cond = null;
+							}
 							if (! @$subobj["_delete"]) {
 								$acObj->callSvc($objName, "set", ["id"=>$subid, "cond"=>$cond], $subobj);
 							}
