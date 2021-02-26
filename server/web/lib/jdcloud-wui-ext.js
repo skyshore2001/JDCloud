@@ -982,6 +982,13 @@ $(enhanceMenu);
 - idField和textField一样，都用name;
 - jd_showId指定为false即不显示idField;
 
+## markRefresh 标记下次打开时刷新列表
+
+(v5.5) 与my-combobox类似，组件会在其它页面更新对象后自动刷新列表。
+外部想要刷新组件列表，可以触发markRefresh事件：
+
+	jo.trigger("markRefresh", obj); // obj是可选的，若指定则仅当obj匹配组件对应obj时才会刷新。
+
  */
 self.m_enhanceFn[".wui-combogrid"] = enhanceCombogrid;
 function enhanceCombogrid(jo)
@@ -1062,6 +1069,7 @@ function enhanceCombogrid(jo)
 		return;
 
 	jdlg.on("beforeshow", onBeforeShow);
+	jo.on("markRefresh", markRefresh);
 
 	function onBeforeShow(ev, formMode, opt) {
 		if (vfield && opt.data && opt.data[vfield]) {
@@ -1081,6 +1089,19 @@ function enhanceCombogrid(jo)
 			// nameForFind用于find模式下指定字段名，从而可以按名字来查询。Add/set模式下应清除。
 			jo.removeProp("nameForFind");
 		}
+	}
+
+	function markRefresh(ev, obj)
+	{
+		var url = WUI.getOptions(jo).url;
+		if (url == null)
+			return;
+		if (obj) {
+			var ac = obj + ".query";
+			if (url.action != ac)
+				return;
+		}
+		doInit = true;
 	}
 }
 
