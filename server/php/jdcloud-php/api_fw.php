@@ -652,11 +652,14 @@ login接口支持不同类别的用户登录，登录成功后会设置相应的
 	// class Conf (在conf.php中)
 	static $authTypes = ["basic", "simple"];
 	static $authKeys = [
-		// 当匹配以下key时，当作系统用户-9999
+		// 当匹配以下key时，当作系统用户-9999；默认全部AUTH_EMP权限的接口都可被第三方访问
 		["key" => "user1:1234", "SESSION" => ["empId"=>-9999] ]
+		// 可指定allowedAc数组作为允许访问的接口列表。这样更安全。
+		// ["key" => "user1:1234", "SESSION" => ["empId"=>-9999], "allowedAc" => ["Ordr.query","Category.query"] ]
 	];
 
 - 可用authTypes指定检查权限时使用哪些认证方法，合法的认证方式名是在Conf::$authHandlers注册过的，目前支持：basic, simple。通过插件jdcloud-plugin-jwt可支持jwt认证。
+- 在authKeys中可指定allowedAc来限制该用户可访问的接口列表。
 
 @see ConfBase::$authHandlers
 
@@ -758,7 +761,20 @@ function hasPerm($perms, $exPerms=null)
 function checkAuthKeys($key)
 {
 	$auth = arrFind(Conf::$authKeys, function ($e) use ($key) {
-		return $key == $e["key"];
+		if ($key != $e["key"])
+			return false;
+		if (! is_array($e["allowedAc"]))
+			return true;
+
+		$ac = $GLOBALS["X_APP"]? $GLOBALS["X_APP"]->getAc(): 'unknown';
+		return in_array($ac, $e["allowedAc"]);
+		/*
+		foreach ($e["allowedAc"] as $e1) {
+			if (fnmatch($e1, $ac))
+				return true;
+		}
+		return false;
+		*/
 	});
 	if (! $auth)
 		return false;
