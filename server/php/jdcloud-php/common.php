@@ -1051,4 +1051,51 @@ function isArrayAssoc($var)
 {
 	return is_array($var) && !array_key_exists(0, $var);
 }
+
+/**
+@fn makeTree($arr, $idField="id", $fatherIdField="fatherId", $childrenField="children"
+
+将array转成tree.
+
+	$ret = makeTree([
+		["id"=>1],
+		["id"=>2, "fatherId"=>1],
+		["id"=>3, "fatherId"=>2],
+		["id"=>4, "fatherId"=>1]
+	]);
+
+结果：
+
+	$ret = [
+		["id"=>1, "children"=> [
+			["id"=>2, "fatherId"=>1, "children"=> [
+				["id"=>3, "fatherId"=>2],
+			],
+			["id"=>4, "fatherId"=>1]
+		]
+	]
+*/
+function makeTree($arr, $idField="id", $fatherIdField="fatherId", $childrenField="children")
+{
+	$ret = [];
+	foreach ($arr as &$e) {
+		$fid = $e[$fatherIdField];
+		if (! $fid) {
+			$ret[] = &$e;
+			continue;
+		}
+		$found = false;
+		foreach ($arr as &$e1) {
+			if ($fid == $e1[$idField]) {
+				$e1[$childrenField][] = &$e;
+				$found = true;
+				break;
+			}
+		}
+		if (! $found)
+			$ret[] = &$e;
+	}
+	return $ret;
+}
+
 // vi: foldmethod=marker
