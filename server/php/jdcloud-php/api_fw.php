@@ -444,6 +444,7 @@ class ApiFw_
 {
 	static $SOLO = true;
 	static $perms = null;
+	static $exPerm = null;
 }
 //}}}
 
@@ -644,29 +645,28 @@ login接口支持不同类别的用户登录，登录成功后会设置相应的
 
 ## 扩展认证方式
 
-@var Conf::$authTypes=[] 自动检查认证方式
 @var Conf::$authKeys=[] 认证密钥及权限设置
 
-示例：如果请求中使用了basic或simple认证，则通过认证后获得与员工登录相同的权限（即AUTH_EMP权限）
+示例：如果请求中使用了basic认证，则通过认证后获得与员工登录相同的权限（即AUTH_EMP权限）
 
 	// class Conf (在conf.php中)
-	static $authTypes = ["basic", "simple"];
 	static $authKeys = [
 		// 当匹配以下key时，当作系统用户-9999；默认全部AUTH_EMP权限的接口都可被第三方访问
-		["key" => "user1:1234", "SESSION" => ["empId"=>-9999] ]
-		// 可指定allowedAc数组作为允许访问的接口列表。这样更安全。
-		// ["key" => "user1:1234", "SESSION" => ["empId"=>-9999], "allowedAc" => ["Ordr.query","Category.query"] ]
+		["authType"=>"basic", "key" => "user1:1234", "SESSION" => ["empId"=>-9999], "allowedAc" => ["*.query","*.get"] ]
 	];
 
-- 可用authTypes指定检查权限时使用哪些认证方法，合法的认证方式名是在Conf::$authHandlers注册过的，目前支持：basic, simple。通过插件jdcloud-plugin-jwt可支持jwt认证。
-- 在authKeys中可指定allowedAc来限制该用户可访问的接口列表。
+- authType指定的认证方式名是在Conf::$authHandlers注册过的，目前支持：basic, simple。
+  要扩展可以参考$authHandlers用法，比如插件jdcloud-plugin-jwt可支持jwt认证。
 
 @see ConfBase::$authHandlers
 
-- 在authKeys中指定认证密钥，同时通过SESSION的设置，从而使得通过认证的接口请求，相当于具有系统-9999号用户的权限（即具有AUTH_EMP权限），
+- key被相应的认证方式使用，其格式由认证方式决定，一般即直接是认证密钥。
+
+- 通过SESSION的设置，从而使得通过认证的接口请求，相当于具有系统-9999号用户的权限（即具有AUTH_EMP权限），
   意味着它可以直接调用AC2类，或是通过`checkAuth(AUTH_EMP)`的检查。
 
-假如未指定authTypes，则在函数型接口中需要显示指定权限，如：
+在authKeys中须用allowedAc指定可用接口列表，所有都可访问可以用"*"。
+如果未指定allowedAc，则不会自动执行该权限检查，则在函数型接口中需要显示指定认证方式，如：
 
 	checkAuth(AUTH_EMP, ["basic", "simple"]);
 
@@ -687,11 +687,11 @@ login接口支持不同类别的用户登录，登录成功后会设置相应的
 		...
 	}
 
-其中authStr由Conf::$authKeys指定：
+其中$authStr由Conf::$authKeys中以key字段指定：
 
 	// class Conf (在conf.php中)
 	static $authKeys = [
-		["key" => "user1:1234"],
+		["authType"=>"simple", "key" => "user1:1234"],
 	];
 
 用curl访问该接口示例:
@@ -713,10 +713,9 @@ HTTP Basic认证，即添加HTTP头：
 可验证的用户名、密码在Conf类中配置，后端配置示例：
 
 	// class Conf (在conf.php中)
-	static $authTypes = ["basic"];
 	static $authKeys = [
-		["key" => "user1:1234"],
-		["key" => "user2:1234", "SESSION" => ["empId" => -9999] ] // 可以指定SESSION变量, 这里设置empId是模拟员工登录, 以便以员工身份调用接口(如AC2_xxx类)
+		["authType"=>"basic", "key" => "user1:1234"],
+		["authType"=>"basic", "key" => "user2:1235"], // 可以多个
 	];
 
 请求示例：
@@ -730,51 +729,61 @@ HTTP Basic认证，即添加HTTP头：
  */
 function hasPerm($perms, $exPerms=null)
 {
+	assert(is_null($exPerms) || is_array($exPerms));
 	if (is_null(ApiFw_::$perms)) {
-		foreach (Conf::$authTypes as $e) {
-			$fn = Conf::$authHandlers[$e];
-			if (! is_callable($fn))
-				throw new MyException(E_SERVER, "unregistered authType `$e`", "未知认证类型`$e`");
-			$fn();
+		// 扩展认证登录
+		if (count($_SESSION) == 0) { // 有session项则不进行认证
+			$authTypes = $exPerms;
+			if ($authTypes == null) {
+				$authTypes = [];
+				foreach (Conf::$authKeys as $e) {
+					// 注意去重. 如果未设置allowedAc则不会自动检查权限
+					if (is_array($e["allowedAc"]) && !in_array($e["authType"], $authTypes))
+						$authTypes[] = $e["authType"];
+				}
+			}
+			ApiFw_::$exPerm = null;
+			foreach ($authTypes as $e) {
+				$fn = Conf::$authHandlers[$e];
+				if (! is_callable($fn))
+					jdRet(E_SERVER, "unregistered authType `$e`", "未知认证类型`$e`");
+				if ($fn()) {
+					ApiFw_::$exPerm = $e;
+					break;
+				}
+			}
 		}
 		ApiFw_::$perms = onGetPerms();
 	}
 
 	if ( (ApiFw_::$perms & $perms) != 0 )
 		return true;
-
-	if (is_array($exPerms)) {
-		foreach ($exPerms as $name) {
-			$fn = Conf::$authHandlers[$name]; // e.g. hasPerm_simple
-			if (function_exists($fn) && $fn()) {
-				ApiFw_::$perms = onGetPerms(); // 刷新权限, 用于支持在扩展认证后模拟系统用户登录
-				return true;
-			}
-		}
-	}
-	else if ($exPerms) {
-		throw new MyException(E_SERVER, "bad perm: hasPerm require array for exPerms");
-	}
+	if (is_array($exPerms) && ApiFw_::$exPerm && in_array(ApiFw_::$exPerm, $exPerms))
+		return true;
 	return false;
 }
 
-function checkAuthKeys($key)
+// $key 或 $keyFn($key)
+function checkAuthKeys($key, $authType)
 {
-	$auth = arrFind(Conf::$authKeys, function ($e) use ($key) {
-		if ($key != $e["key"])
+	$auth = arrFind(Conf::$authKeys, function ($e) use ($key, $authType) {
+		assert(isset($e["authType"]), "authKey requires authType");
+		if ($authType != $e["authType"])
 			return false;
-		if (! is_array($e["allowedAc"]))
-			return true;
+		assert(isset($e["key"]), "authKey requires key");
 
+		// support key as a fn($key)
+		$eq = is_callable($key) ? $key($e["key"]): $key == $e["key"];
+		if (! $eq)
+			return false;
+
+		assert(isset($e["allowedAc"]), "authKey requires allowedAc");
 		$ac = $GLOBALS["X_APP"]? $GLOBALS["X_APP"]->getAc(): 'unknown';
-		return in_array($ac, $e["allowedAc"]);
-		/*
 		foreach ($e["allowedAc"] as $e1) {
 			if (fnmatch($e1, $ac))
 				return true;
 		}
 		return false;
-		*/
 	});
 	if (! $auth)
 		return false;
@@ -792,7 +801,7 @@ function hasPerm_simple()
 	$key1 = getenv("simplePwd");
 	if ($key1 && $key === $key1)
 		return true;
-	return checkAuthKeys($key);
+	return checkAuthKeys($key, "simple");
 }
 ConfBase::$authHandlers["simple"] = "hasPerm_simple";
 
@@ -802,7 +811,7 @@ function hasPerm_basic()
 	if (! isset($user))
 		return false;
 	$key = $user . ':' . $pwd;
-	return checkAuthKeys($key);
+	return checkAuthKeys($key, "basic");
 }
 ConfBase::$authHandlers["basic"] = "hasPerm_basic";
 
@@ -1023,8 +1032,6 @@ class ConfBase
 */
 	static $authHandlers = [];
 
-	static $authTypes = [];
-
 /**
 @fn ConfBase::onInitClient(&$ret)
 
@@ -1169,24 +1176,21 @@ e.g. 修改ApiLog的ac:
 		return $s;
 	}
 
+	protected $userId;
+	protected function getUserId()
+	{
+		$userId = $_SESSION["empId"] ?: $_SESSION["uid"] ?: $_SESSION["adminId"];
+		if (! (is_int($userId) || ctype_digit($userId)))
+			$userId = null;
+		$this->userId = $userId;
+		return $userId;
+	}
+
 	function logBefore()
 	{
 		$this->startTm = $_SERVER["REQUEST_TIME_FLOAT"] ?: microtime(true);
 
 		global $APP;
-		$type = getAppType();
-		$userId = null;
-		if ($type == "user") {
-			$userId = $_SESSION["uid"];
-		}
-		else if ($type == "emp" || $type == "store") {
-			$userId = $_SESSION["empId"];
-		}
-		else if ($type == "admin") {
-			$userId = $_SESSION["adminId"];
-		}
-		if (! (is_int($userId) || ctype_digit($userId)))
-			$userId = null;
 		$content = $this->myVarExport($_GET, 2000);
 		$ct = getContentType();
 		if (! preg_match('/x-www-form-urlencoded|form-data/i', $ct)) {
@@ -1215,7 +1219,7 @@ e.g. 修改ApiLog的ac:
 			"ua" => $ua,
 			"app" => $APP,
 			"ses" => session_id(),
-			"userId" => $userId,
+			"userId" => $this->getUserId(),
 			"ac" => $this->ac,
 			"req" => dbExpr(Q($content)),
 			"reqsz" => $reqsz,
@@ -1240,17 +1244,13 @@ e.g. 修改ApiLog的ac:
 		$logLen = $X_RET[0] !== 0? 2000: 200;
 		$content = $this->myVarExport($X_RET_STR, $logLen);
 
-		$userId = null;
-		if ($this->ac == 'login' && is_array($X_RET[1]) && @$X_RET[1]['id']) {
-			$userId = $X_RET[1]['id'];
-		}
 		++ $DBH->skipLogCnt;
 		$rv = dbUpdate("ApiLog", [
 			"t" => $iv,
 			"retval" => $X_RET[0],
 			"ressz" => strlen($X_RET_STR),
 			"res" => dbExpr(Q($content)),
-			"userId" => $userId,
+			"userId" => $this->userId ?: $this->getUserId(),
 			"ac" => $this->batchAc // 默认为null；对batch调用则列出详情
 		], $this->id);
 // 		$logStr = "=== id={$this->logId} t={$iv} >>>$content<<<\n";
