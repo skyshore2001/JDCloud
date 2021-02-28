@@ -777,7 +777,9 @@ function checkAuthKeys($key, $authType)
 		if (! $eq)
 			return false;
 
-		assert(isset($e["allowedAc"]), "authKey requires allowedAc");
+		if (! isset($e["allowedAc"]))
+			return true;
+		assert(is_array($e["allowedAc"]), "authKey requires allowedAc");
 		$ac = $GLOBALS["X_APP"]? $GLOBALS["X_APP"]->getAc(): 'unknown';
 		foreach ($e["allowedAc"] as $e1) {
 			if (fnmatch($e1, $ac))
