@@ -2009,9 +2009,13 @@ function parseKvList(str, sep, sep2)
 window.Q = self.Q = Q;
 function Q(str, q)
 {
+	if (str == null)
+		return "null";
+	if (typeof str == "number")
+		return str;
 	if (q == null)
 		q = "'";
-	return q + str.replaceAll(q, "\\" + q) + q;
+	return q + str.toString().replaceAll(q, "\\" + q) + q;
 }
 
 function initModule()
@@ -2179,6 +2183,12 @@ function jdModule(name, fn, overrideCtor)
 	return ret;
 }
 
+if (! String.prototype.replaceAll) {
+	String.prototype.replaceAll = function (from, to) {
+		return this.replace(new RegExp(from, "g"), to);
+	}
+}
+
 // vi: foldmethod=marker 
 // ====== WEBCC_END_FILE common.js }}}
 
@@ -2278,6 +2288,35 @@ function getFormData(jo)
 }
 
 /**
+@fn getFormData_vf(jo)
+
+专门取虚拟字段的值。例如：
+
+	<select name="whId" class="my-combobox" data-options="url:..., jd_vField:'whName'"></select>
+
+用WUI.getFormData可取到`{whId: xxx}`，而WUI.getFormData_vf遍历带name属性且设置了jd_vField选项的控件，调用接口getValue_vf(ji)来取其显示值。
+因而，为支持取虚拟字段值，控件须定义getValue_vf接口。
+
+	<input name="orderType" data-options="jd_vField:'orderType'" disabled>
+
+注意：与getFormData不同，它不忽略有disabled属性的控件。
+
+@see defaultFormItems
+ */
+self.getFormData_vf = getFormData_vf;
+function getFormData_vf(jo)
+{
+	var data = {};
+	formItems(jo, function (ji, name, it) {
+		var vname = WUI.getOptions(ji).jd_vField;
+		if (!vname)
+			return;
+		data[vname] = it.getValue_vf(ji);
+	});
+	return data;
+}
+
+/**
 @fn formItems(jo, cb)
 
 表单对象遍历。对表单jo（实际可以不是form标签）下带name属性的控件，交给回调cb处理。
@@ -2285,8 +2324,7 @@ function getFormData(jo)
 
 注意:
 
-- 忽略有disabled属性的控件
-- 忽略未选中的checkbox/radiobutton
+- 通过取getDisabled接口判断，可忽略有disabled属性的控件以及未选中的checkbox/radiobutton。
 
 对于checkbox，设置时根据val确定是否选中；取值时如果选中取value属性否则取value-off属性。
 缺省value为"on", value-off为空(非标准属性，本框架支持)，可以设置：
@@ -2397,6 +2435,14 @@ self.formItems["[name]"] = self.defaultFormItems = {
 	// TODO: 用于find模式设置。搜索"设置find模式"/datetime
 	getShowbox: function (jo) {
 		return jo;
+	},
+
+	// 用于显示的虚拟字段值, 此处以select为例，适用于my-combobox
+	getValue_vf: function (jo) {
+		var o = jo[0];
+		if (o.tagName == "SELECT")
+			return o.options[o.selectedIndex].innerText;
+		return this.getValue(jo);
 	}
 };
 
@@ -3038,7 +3084,7 @@ function getDataOptions(jo, defVal)
 	var opts;
 	try {
 		if (optStr != null) {
-			if (optStr.indexOf(":") > 0) {
+			if (/^\w+:/.test(optStr)) {
 				opts = eval("({" + optStr + "})");
 			}
 			else {
@@ -3339,10 +3385,10 @@ function getOptions(jo, defVal)
 //}}}
 
 // 参考 getQueryCond中对v各种值的定义
-function getop(v)
+function getexp(k, v)
 {
 	if (typeof(v) == "number")
-		return "=" + v;
+		return k + "=" + v;
 	var op = "=";
 	var is_like=false;
 	var ms;
@@ -3361,23 +3407,24 @@ function getop(v)
 	if (v === "null")
 	{
 		if (op == "<>")
-			return " is not null";
-		return " is null";
+			return k + " is not null";
+		return k + " is null";
 	}
 	if (v === "empty")
 		v = "";
-	if (v.length == 0 || v.match(/\D/) || v[0] == '0') {
+	var doFuzzy = self.options.fuzzyMatch && (k!="id" && k.substr(-2)!="Id");
+	if (doFuzzy || v.length == 0 || v.match(/\D/) || v[0] == '0') {
 		v = v.replace(/'/g, "\\'");
-		if (self.options.fuzzyMatch && op == "=" && v.length>0) {
+		if (doFuzzy && op == "=" && v.length>0) {
 			op = " like ";
 			v = "%" + v + "%";
 		}
 // 		// ???? 只对access数据库: 支持 yyyy-mm-dd, mm-dd, hh:nn, hh:nn:ss
 // 		if (!is_like && v.match(/^((19|20)\d{2}[\/.-])?\d{1,2}[\/.-]\d{1,2}$/) || v.match(/^\d{1,2}:\d{1,2}(:\d{1,2})?$/))
 // 			return op + "#" + v + "#";
-		return op + "'" + v + "'";
+		return k + op + "'" + v + "'";
 	}
-	return op + v;
+	return k + op + v;
 }
 
 /**
@@ -3467,6 +3514,14 @@ function getQueryCond(kvList)
 	function handleOne(k,v) {
 		if (v == null || v === "" || v.length==0)
 			return;
+
+		var hint = null;
+		var k1 = k.split('/');
+		if (k1.length > 1) {
+			k = k1[0];
+			hint = k1[1];
+		}
+
 		if ($.isArray(v)) {
 			if (v[0])
 				condArr.push(k + ">='" + v[0] + "'");
@@ -3474,7 +3529,6 @@ function getQueryCond(kvList)
 				condArr.push(k + "<'" + v[1] + "'");
 			return;
 		}
-
 		var hint = null;
 		var k1 = k.split('/');
 		if (k1.length > 1) {
@@ -3554,7 +3608,7 @@ function getQueryCond(kvList)
 					}
 				}
 				if (!isHandled) {
-					str1 += k + getop(v2);
+					str1 += getexp(k, v2);
 				}
 			});
 			if (bracket2)
@@ -3878,7 +3932,7 @@ function defAjaxErrProc(xhr, textStatus, e)
 		ctx.status = xhr.status;
 		ctx.statusText = xhr.statusText;
 
-		if (xhr.status == 0) {
+		if (xhr.status == 0 && !ctx.noex) {
 			self.app_alert("连不上服务器了，是不是网络连接不给力？", "e");
 		}
 		else if (this.handleHttpError) {
@@ -3888,7 +3942,7 @@ function defAjaxErrProc(xhr, textStatus, e)
 				this.success && this.success(rv);
 			return;
 		}
-		else {
+		else if (!ctx.noex) {
 			self.app_alert("操作失败: 服务器错误. status=" + xhr.status + "-" + xhr.statusText, "e");
 		}
 
@@ -4111,6 +4165,8 @@ function makeUrl(action, params)
 	if (fnMakeUrl) {
 		url = fnMakeUrl(action, params);
 	}
+	else if (url = self.options.moduleExt["callSvr"](action)) {
+	}
 	// 缺省接口调用：callSvr('login'),  callSvr('./1.json') 或 callSvr("1.php") (以"./"或"../"等相对路径开头, 或是取".php"文件, 则不去自动拼接serverUrl)
 	else if (action[0] != '.' && action.indexOf(".php") < 0)
 	{
@@ -4322,6 +4378,7 @@ callSvr扩展示例：
 
 	MUI.callSvrExt['zhanda'] = {
 		makeUrl: function(ac, param) {
+			// 只需要返回接口url即可，不必拼接param
 			return 'http://hostname/lcapi/' + ac;
 		},
 		dataFilter: function (data) {
@@ -4338,11 +4395,15 @@ callSvr扩展示例：
 		}
 	};
 
-在调用时，ac参数传入一个数组：
+在调用时，ac参数使用"{扩展名}:{调用名}"的格式：
 
-	callSvr(['token/get-token', 'zhanda'], {user: 'test', password: 'test123'}, function (data) {
+	callSvr('zhanda:token/get-token', {user: 'test', password: 'test123'}, function (data) {
 		console.log(data);
 	});
+
+旧的调用方式ac参数使用数组，现在已不建议使用：
+
+	callSvr(['token/get-token', 'zhanda'], ...);
 
 @key callSvrExt[].makeUrl(ac, param)
 
@@ -4368,8 +4429,7 @@ callSvr扩展示例：
 @key callSvrExt['default']
 
 (支持版本: v3.1)
-如果要修改callSvr缺省调用方法，可以改写 MUI.callSvrExt['default'].
-例如，定义以下callSvr扩展：
+如果要修改callSvr缺省调用方法，可以改写 MUI.callSvrExt['default']。示例：
 
 	MUI.callSvrExt['default'] = {
 		makeUrl: function(ac) {
@@ -4420,14 +4480,6 @@ callSvr扩展示例：
 		}
 	};
 
-这样，以下调用
-
-	callSvr(['login', 'default']);
-
-可以简写为：
-
-	callSvr('login');
-
 @key callSvrExt[].beforeSend(opt) 为callSvr或$.ajax选项设置缺省值
 
 如果有ajax选项想设置，可以使用beforeSend回调，例如POST参数使用JSON格式：
@@ -4446,6 +4498,8 @@ callSvr扩展示例：
 			}
 		}
 	}
+
+可以从opt.ctx_中取到{ac, ext, noex, dfd}等值（如opt.ctx_.ac），可以从opt.url中取到{ac, params}值。
 
 如果要设置请求的HTTP headers，可以用`opt.headers = {header1: "value1", header2: "value2"}`.
 更多选项参考jquery文档：jQuery.ajax的选项。
@@ -4624,6 +4678,8 @@ function callSvr(ac, params, fn, postParams, userOptions)
 	var ctx = {ac: ac0, tm: new Date()};
 	if (userOptions && userOptions.noLoadingImg)
 		ctx.noLoadingImg = 1;
+	if (userOptions && userOptions.noex)
+		ctx.noex = 1;
 	if (ext) {
 		ctx.ext = ext;
 	}
