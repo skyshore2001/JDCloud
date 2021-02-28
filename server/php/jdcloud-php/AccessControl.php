@@ -2157,8 +2157,6 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			return $rv;
 		}
 		$vcolDef = $this->addVColDef($this->vcolMap[$col]["vcolDefIdx"]);
-		if (! $vcolDef)
-			throw new MyException(E_SERVER, "bad vcol $col");
 
 		if ($alias === "-")
 			return true;
