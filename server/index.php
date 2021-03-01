@@ -1,6 +1,6 @@
 <?php
 // 缺省页
-$DEF_PAGE = "m2/index.html";
+$DEF_PAGE = "web/index.html";
 
 @$pathInfo = $_SERVER["PATH_INFO"];
 if (!isset($pathInfo) || $pathInfo === '/')

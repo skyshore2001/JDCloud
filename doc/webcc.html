@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>webcc - 站点发布优化工具</h1>
-<div>最后更新：2018-07-02</div>
+<div>最后更新：2020-07-04</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -67,12 +67,18 @@ code {
 </div>
 <div class="block">
 <h2 id="webcc">@module webcc 站点发布优化工具</h2>
+<ul>
+<li>参考文档：<a href="Web应用部署.html">Web应用部署</a></li>
+<li>2020/7更新: webcc对移动端文件的优化方法需要编译。现在已经被更简单的不编译的方式所取代。参考 <a href="筋斗云开发实例讲解.md">&quot;筋斗云开发实例讲解&quot;-&quot;移动端部署与应用优化&quot;章节</a>。</li>
+</ul>
 <p>Webcc用于Web站点优化，即生成用于发布的Web应用目录。<br />
 一般要求源代码使用git管理，通过git命令查询源文件列表及版本差异，实现增量编译、自动化发布等功能。</p>
 <p>也可以脱离git独立使用，这时要求指定源文件列表，通过设置环境变量WEBCC_LS_CMD，例如：</p>
 <pre><code>export WEBCC_LS_CMD='find . -type f'
 # export WEBCC_LS_CMD='find . -type f | grep -v .svn | grep -v .git'
 # export WEBCC_LS_CMD='svn ls -R | egrep -v "/$"'
+# 这个是默认命令:
+# export WEBCC_LS_CMD='git ls-files'
 webcc {srcDir}</code></pre>
 <p>webcc进入{srcDir}目录，执行<code>WEBCC_LS_CMD</code>命令得到源文件列表，分别进行处理，生成发布目录，默认为&quot;output_web&quot;目录。</p>
 <p>注意：</p>

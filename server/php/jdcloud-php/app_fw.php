@@ -104,6 +104,13 @@ PHP默认的session过期时间为1440s(24分钟)，每次在使用session时，
 
 	ini_set("session.gc_probability", "1000"); // 1000/1000概率做回收。每次访问都回收，性能差，仅用于测试。
 
+在浏览器中默认cookie的有效时间是'session'即浏览器关闭时生效，因而每次打开浏览器须重新登录。
+若想保留指定时长，可以设置：
+
+	session_set_cookie_params(3600*24*7); // 保留7天
+
+注意：前端会记住cookie过期时间，假如后端再次改成保留10天，由于前端已记录的是7天过期，无法立即更新，只能清除cookie后再请求才能生效。
+
 ## 应用框架
 
 继承AppBase类，可实现提供符合BQP协议接口的模块。[api_fw](#api_fw)框架就是使用它的一个典型例子。
@@ -200,9 +207,24 @@ function parseType_(&$name)
 
 type的格式如"i:n:b?:dt:tm?".
 
+	$ordr1 = param_varr("10:1.5,11:2.0", "i:n", "ordr1"); // [ [10, 1.5], [11, 2.0] ] 注意类型已转换
+	$ordr1 = varr2objarr($ordr1, ["itemId", "qty"]); // [ ["itemId"=>10, "qty"=>1.5], ["itemId"=>11, "qty"=>2.0] ]
+
+	// 一般通过param调用来取值：
+	$ordr1 = param("ordr1/i:n", null, "P"); // 从$_POST中取ordr1参数。
+	$ordr1 = varr2objarr($ordr1, ["itemId", "qty"]); 
+
+	// 只有单个列的特殊写法
+	$snLog1 = param_varr("10,11,12", "i:", "snLog1"); // [ [10], [11], [12] ]
+	$snLog1 = varr2objarr($snLog1, ["snId"]); // [ ["snId"=>10], ["snId"=>11], ["snId"=>12] ]
+
 - 每个词表示一个字段类型
   类型标识：i-Integer; n-Number/Double; b-Boolean(0/1); dt/tm-DateTime
 - 后置"?"表示该参数可缺省。
+
+@see param
+@see list2varr
+@see varr2objarr
  */
 function param_varr($str, $type, $name)
 {
@@ -211,7 +233,7 @@ function param_varr($str, $type, $name)
 	foreach (explode(":", $type) as $t) {
 		$tlen = strlen($t);
 		if ($tlen === 0)
-			throw new MyException(E_SERVER, "bad type spec: `$type`");
+			continue;
 		$optional = false;
 		if ($t[$tlen-1] === '?') {
 			$t = substr($t, 0, $tlen-1);
@@ -296,9 +318,9 @@ $name中指定类型的方式如下：
 - 以"/tm"结尾: datetime
 - 以"/n"结尾: numeric/double
 - 以"/s"结尾（缺省）: string. 缺省为防止XSS攻击会做html编码，如"a&b"处理成"a&amp;b"，设置参数doHtmlEscape可禁用这个功能。
-- 复杂类型：以"/i+"结尾: int array
+- 复杂类型(数组)：以"/i+"结尾: int array
 - 复杂类型：以"/js"结尾: json object
-- 复杂类型：List类型（以","分隔行，以":"分隔列），类型定义如"/i:n:b:dt:tm" （列只支持简单类型，不可为复杂类型）
+- 复杂类型(二维数组)：List类型（以","分隔行，以":"分隔列），类型定义如"/i:n:b:dt:tm" （列只支持简单类型，不可为复杂类型）
 
 示例：
 
@@ -472,7 +494,7 @@ function mparam($name, $col = null)
 		}
 		if (!$found) {
 			$s = join($name, " or ");
-			throw new MyException(E_PARAM, "Bad Request - require param $s");
+			throw new MyException(E_PARAM, "Bad Request - require param $s", "缺少参数`$s`");
 		}
 		return $arr;
 	}
@@ -481,7 +503,46 @@ function mparam($name, $col = null)
 	if (isset($rv))
 		return $rv;
 	parseType_($name); // remove the type tag.
-	throw new MyException(E_PARAM, "Bad Request - param `$name` is missing");
+	throw new MyException(E_PARAM, "Bad Request - param `$name` is missing", "缺少参数`$name`");
+}
+
+/**
+@fn checkParams($params, $names, $errPrefix?)
+
+检查必填参数。
+
+示例：params中必须有"brand", "vendorName"字段，否则应报错：
+
+	checkParams($params, [
+		"brand", "vendorName"
+	]);
+
+或如果希望报错时明确一些，可以翻译一下参数，这样来指定：
+
+	checkParams($params, [
+		"brand" => "品牌",
+		"vendorName" => "供应商",
+		"phone" // 也允许不指定名字
+	]);
+
+示例：
+
+	foreach ($_POST as $i=>$e) {
+		checkParams($e, ["MATNR"=>"物料号", "MAKTX"=>"物料名"], "第".($i+1)."行"); // 设置第3参数，可让报错时前面会加上这个描述
+		...
+	}
+*/
+function checkParams($params, $names, $errPrefix="")
+{
+	foreach ($names as $name=>$showName) {
+		if (is_int($name))
+			$name = $showName;
+		else
+			$showName .= "({$name})";
+		if (!isset($params[$name]) || $params[$name] === "") {
+			throw new MyException(E_PARAM, "require param `$name`", $errPrefix."缺少参数`$showName`");
+		}
+	}
 }
 
 /**
@@ -683,14 +744,16 @@ function objarr2table($rs, $fixedColCnt=null)
 	$d = [];
 	if (count($rs) == 0)
 		return ["h"=>$h, "d"=>$d];
-
-	$h = array_keys($rs[0]);
+	// NOTE: 避免rs[0]中含有数字值的key
+	foreach ($rs[0] as $k=>$v) {
+		$h[] = (string)$k;
+	}
 	if (isset($fixedColCnt)) {
 		foreach ($rs as $row) {
 			$h1 = array_keys($row);
 			for ($i=$fixedColCnt; $i<count($h1); ++$i) {
 				if (array_search($h1[$i], $h) === false) {
-					$h[] = $h1[$i];
+					$h[] = (string)$h1[$i];
 				}
 			}
 		}
@@ -769,10 +832,14 @@ e.g.
 	$users = "101:andy,102:beddy";
 	$varr = list2varr($users);
 	// $varr = [["101", "andy"], ["102", "beddy"]];
+	$objarr = $varr2objarr($varr, ["id", "name"]); // [ ["id"=>"101", "name"=>"andy"], ["id"=>"102", "name"=>"beddy"] ]
 	
 	$cmts = "101\thello\n102\tgood";
 	$varr = list2varr($cmts, "\t", "\n");
 	// $varr=[["101", "hello"], ["102", "good"]]
+
+@see varr2objarr
+@see param_varr
  */
 function list2varr($ls, $colSep=':', $rowSep=',')
 {
@@ -923,15 +990,20 @@ function sql_concat()
 
 	$rv = getQueryCond([
 		"name"=>"eric",
-		"phone"=>null
+		"phone"=> null,
+		"city" => ""
 	]);
-	// "name='eric'
+	// name='eric' AND phone IS NULL AND city=''
+
+忽略null项：
 
 	$rv = getQueryCond([
 		"name"=>"eric",
-		"phone IS NULL"
+		"phone"=> null,
+		"city" => "", // 空串仍有效，不会被"_null"选项忽略
+		"_null"=>true
 	]);
-	// "name='eric' AND phone IS NULL"
+	// name='eric' AND city=''
 
 示例：条件数组
 
@@ -982,6 +1054,10 @@ function getQueryCond($cond)
 	if (@$cond["_or"]) {
 		$isOR = true;
 	}
+	$ignoreNull = false;
+	if (@$cond["_null"]) {
+		$ignoreNull = true;
+	}
 
 	foreach($cond as $k=>$v) {
 		if (is_int($k)) {
@@ -990,8 +1066,13 @@ function getQueryCond($cond)
 			else
 				$exp = $v;
 		}
+		else if ($v === null) {
+			if ($ignoreNull)
+				continue;
+			$exp = "$k IS NULL";
+		}
 		else {
-			if ($v === null || $k[0] == "_")
+			if ($k[0] == "_")
 				continue;
 			$exp = "$k=" . Q($v);
 		}
@@ -1230,7 +1311,7 @@ function dbInsert($table, $kv)
 			$values .= $v->val;
 		}
 		else if (is_array($v)) {
-			throw new MyException(E_PARAM, "dbInsert: array is not allowed");
+			throw new MyException(E_PARAM, "dbInsert: array `$k` is not allowed. pls define subobj to use array.", "未定义的子表`$k`");
 		}
 		else {
 			$values .= Q(htmlEscape($v));
@@ -1493,9 +1574,17 @@ function dbUpdate($table, $kv, $cond)
 
 	$cache = new SimpleCache(); // id=>name
 	for ($idList as $id) {
-		$name = $cache->get($id, function () use ($id){
+		$name = $cache->get($id, function () use ($id) {
 			return queryOne("SELECT name FROM Vendor WHERE id=$id");
 		});
+	}
+
+更简单地，也可以直接使用全局的cache (这时注意确保key在全局唯一）：
+
+	for ($idList as $id) {
+		$name = SimpleCache::getInstance()->get("VendorIdToName-{$id}", function () use ($id) {
+			return queryOne("SELECT name FROM Vendor WHERE id=$id");
+		})
 	}
 
 示例2：
@@ -1510,6 +1599,7 @@ function dbUpdate($table, $kv, $cond)
 */
 class SimpleCache
 {
+	use JDSingleton;
 	protected $cacheData = [];
 
 	// return false if key does not exist
@@ -1810,6 +1900,12 @@ function hasSignFile($f)
 这样，当前端以`$div.html($val)`来显示时，不会产生跨域攻击泄漏Cookie。
 
 如果前端就是需要带"<>"的字符串（如显示在input中），则应自行转义。
+
+后端转义可以用html_entity_decode:
+
+	$s = "a&gt;1 and a&lt;100";
+	$s1 = html_entity_decode($s);
+
  */
 function htmlEscape($s)
 {
@@ -2014,9 +2110,6 @@ class AppBase
 				$fn();
 			}
 			$ret = $this->onExec();
-			foreach ($this->onAfterActions as $fn) {
-				$fn();
-			}
 			$ok = true;
 		}
 		catch (DirectReturn $e) {
@@ -2036,6 +2129,17 @@ class AppBase
 		}
 
 		try {
+			if ($ok) {
+				foreach ($this->onAfterActions as $fn) {
+					$fn();
+				}
+			}
+		}
+		catch (Exception $e) {
+			logit((string)$e);
+		}
+
+		try {
 			if ($handleTrans && $DBH && $DBH->inTransaction())
 			{
 				if ($ok)
@@ -2047,12 +2151,16 @@ class AppBase
 				$this->onErr($code, $msg, $msg2);
 			}
 		}
-		catch (Exception $e) {}
+		catch (Exception $e) {
+			logit((string)$e);
+		}
 
 		try {
 			$this->onAfter($ok);
 		}
-		catch (Exception $e) {}
+		catch (Exception $e) {
+			logit((string)$e);
+		}
 
 		//$DBH = null;
 		return $ret;
@@ -2094,7 +2202,7 @@ class AppBase
  */
 trait JDSingleton
 {
-	private function __construct () {}
+//	private function __construct () {}
 	static function getInstance()
 	{
 		static $inst;
@@ -2129,7 +2237,7 @@ trait JDSingleton
  */
 trait JDSingletonImp
 {
-	private function __construct () {}
+//	private function __construct () {}
 	static function getInstance()
 	{
 		static $inst;
@@ -2241,15 +2349,26 @@ class AppFw_
 				header("X-Daca-Test-Mode: $TEST_MODE");
 			$JSON_FLAG |= JSON_PRETTY_PRINT;
 
-			// 允许跨域
-			@$origin = $_SERVER['HTTP_ORIGIN'];
-			if (isset($origin) && !$isCLI) {
-				header('Access-Control-Allow-Origin: ' . $origin);
-				header('Access-Control-Allow-Credentials: true');
-				header('Access-Control-Allow-Headers: Content-Type');
-				header('Access-Control-Expose-Headers: X-Daca-Server-Rev, X-Daca-Test-Mode, X-Daca-Mock-Mode');
+		}
+		// 默认允许跨域
+		@$origin = $_SERVER['HTTP_ORIGIN'];
+		if (isset($origin) && !$isCLI) {
+			header('Access-Control-Allow-Origin: ' . $origin);
+			header('Access-Control-Allow-Credentials: true');
+			header('Access-Control-Expose-Headers: X-Daca-Server-Rev, X-Daca-Test-Mode, X-Daca-Mock-Mode');
+			
+			@$val = $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS'];
+			if ($val) {
+				header('Access-Control-Allow-Headers: ' . $val);
+			}
+			@$val = $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD'];
+			if ($val) {
+				header('Access-Control-Allow-Methods: ' . $val);
 			}
 		}
+		if ($_SERVER["REQUEST_METHOD"] === "OPTIONS")
+			exit();
+
 		$defaultDebugLevel = getenv("P_DEBUG")===false? 0 : intval(getenv("P_DEBUG"));
 		$DBG_LEVEL = param("_debug/i", $defaultDebugLevel, $_GET);
 
@@ -2288,10 +2407,10 @@ class AppFw_
 		$path = getenv("P_SESSION_DIR") ?: $GLOBALS["BASE_DIR"] . "/session";
 		if (!  is_dir($path)) {
 			if (! mkdir($path, 0777, true))
-				throw new MyException(E_SERVER, "fail to create session folder.");
+				throw new MyException(E_SERVER, "fail to create session folder: $path");
 		}
 		if (! is_writeable($path))
-			throw new MyException(E_SERVER, "session folder is NOT writeable.");
+			throw new MyException(E_SERVER, "session folder is NOT writeable: $path");
 		session_save_path ($path);
 
 		ini_set("session.cookie_httponly", 1);
@@ -2309,7 +2428,8 @@ class AppFw_
 		mb_internal_encoding("UTF-8");
 		setlocale(LC_ALL, "zh_CN.UTF-8");
 		self::initGlobal();
-		self::setupSession();
+		if (!isCLI())
+			self::setupSession();
 	}
 }
 //}}}

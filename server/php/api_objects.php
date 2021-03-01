@@ -88,18 +88,7 @@ class AC2_Employee extends AC0_Employee
 	protected function onQuery()
 	{
 		if ($this->ac == "get" && $GLOBALS["P_initClient"]["enableRole"]) {
-			$this->addRes("perms rolePerms");
-			$this->enumFields["rolePerms"] = function ($perms, $row) {
-				if (! $perms)
-					return;
-				// "perm1, perm2" => "IN ('perm1', 'perm2')"
-				$permsExpr = preg_replace_callback('/\w+/u', function ($ms) {
-					return Q($ms[0]);
-				}, $perms);
-				$arr = queryAll("SELECT perms FROM Role WHERE name IN (" . $permsExpr . ")");
-				$rolePerms = array_map(function ($e) { return $e[0]; }, $arr);
-				return join(' ', $rolePerms);
-			};
+			AC0_Role::handleRole($this);
 		}
 	}
 }

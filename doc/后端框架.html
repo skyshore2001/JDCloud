@@ -2,6 +2,7 @@
 <html>
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Web接口服务框架设计</title>
   <style type="text/css">code{white-space: pre;}</style>
 <link rel="stylesheet" href="style.css" />
@@ -299,33 +300,37 @@ putenv(&quot;P_DBCRED=bGo6aWhxZ19VR0xH&quot;);</code></pre>
 </tr>
 <tr class="odd">
 <td align="left">t</td>
-<td align="left">text</td>
+<td align="left">text(64K)</td>
 </tr>
 <tr class="even">
+<td align="left">tt</td>
+<td align="left">mediumtext(16M)</td>
+</tr>
+<tr class="odd">
 <td align="left">i</td>
 <td align="left">int</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">n</td>
 <td align="left">numeric(decimal)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">date</td>
 <td align="left">date</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">tm</td>
 <td align="left">datetime</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">flag</td>
 <td align="left">tiny int</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">数字</td>
 <td align="left">指定长度的string</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">不指定</td>
 <td align="left">自动判断</td>
 </tr>
@@ -379,6 +384,10 @@ putenv(&quot;P_DBCRED=bGo6aWhxZ19VR0xH&quot;);</code></pre>
 <tr class="odd">
 <td align="left">#</td>
 <td align="left">Double</td>
+</tr>
+<tr class="even">
+<td align="left">!</td>
+<td align="left">Float</td>
 </tr>
 </tbody>
 </table>
@@ -667,7 +676,7 @@ Obj.query(fmt=list, ...) -&gt; {nextkey?, total?, @list=[obj1, obj2...]}
 后端内部查询支持以下额外参数：@res2?, join?, @cond2?, union?, subobj
 
 分组统计：
-Obj.query(gres, ...) -&gt; tbl(fields...)
+Obj.query(gres, pivot?, pivotCnt?...) -&gt; tbl(fields...)
 
 导出文件：
 Obj.query(fmt=csv/txt/excel, fname?...) -&gt; 文件内容
@@ -777,6 +786,32 @@ cond=type%3d%27A%27+and+name+like+%27%25hello%25%27</code></pre>
         [ &quot;PA&quot;, 130, 1420 ],  // 已付款，共130单，1420元
         [ &quot;CA&quot;, 29, 310 ], // 取消的订单
         [ &quot;RA&quot;, 1530, 15580 ], // 已评价的订单
+    ]
+]</code></pre>
+<dl>
+<dt>pivot</dt>
+<dd>String. 指定转置列，将行值显示到列中。
+</dd>
+<dt>pivotCnt</dt>
+<dd>Integer. 指定统计列的个数。默认值为1，即最后一列为统计列，若想最后两列为统计列，可设置pivotCnt=2。
+</dd>
+</dl>
+<p>例：统计2015年2月，按状态分类（如已付款、已评价、已取消等）的各类订单的总金额，并将状态转置到列上。</p>
+<pre><code>Ordr.query(gres=&quot;status&quot;, res=&quot;sum(amount) totalAmount&quot;, cond=&quot;tm&gt;=&#39;2016-1-1&#39; and tm&lt;&#39;2016-2-1&#39;&quot;, pivot: &quot;status&quot;)</code></pre>
+<p>返回内容示例：</p>
+<pre><code>[
+    h: [&quot;PA&quot;, &quot;CA&quot;, &quot;RA&quot;],
+    d: [
+        [ 1420, 310, 15580 ]
+    ]
+]</code></pre>
+<p>例：统计2015年2月，按状态分类（如已付款、已评价、已取消等）的各类订单的总数和总金额(两个统计列)，并将状态转置到列上。</p>
+<pre><code>Ordr.query(gres=&quot;status&quot;, res=&quot;count(&#39;A&#39;) totalCnt, sum(amount) totalAmount&quot;, cond=&quot;tm&gt;=&#39;2016-1-1&#39; and tm&lt;&#39;2016-2-1&#39;&quot;, pivot: &quot;status&quot;, pivotCnt: 2)</code></pre>
+<p>返回内容示例：</p>
+<pre><code>[
+    h: [&quot;PA&quot;, &quot;CA&quot;, &quot;RA&quot;],
+    d: [
+        [ [130, 1420], [29, 310], [1530, 15580] ]
     ]
 ]</code></pre>
 <p><strong>[操作特殊属性flags和props]</strong></p>
@@ -956,7 +991,7 @@ callSvr(&quot;Ordr.get&quot;, {id: id, res:&quot;*,items&quot;})</code></pre>
 ]}</code></pre>
 <p><strong>[在set接口中追加、修改、删除子表项]</strong></p>
 <pre><code>Ordr.set()(..., items={id?, itemId?, price?, qty?})</code></pre>
-<p>注意更新时对子项采用PATCH机制，即不必传所有子项，如果在子项中指定了id，则做更新子项操作（特别地，如果有delete参数，表示删除该子项），否则做追加子项操作。</p>
+<p>注意更新时对子项采用PATCH机制，即不必传所有子项，如果在子项中指定了id，则做更新子项操作（特别地，如果有<code>_delete</code>参数，表示删除该子项），否则做追加子项操作。</p>
 <p>更新子项示例：更新<code>id=100</code>子项的，数量设置为2，同时更新子表和主表的amount字段</p>
 <pre><code>callSvr(&quot;Ordr.set&quot;, {id: id}, $.noop, {items:[{id:100, qty: 2, amount: 400}], amount:700} , {contentType:&quot;application/json&quot;})</code></pre>
 <p>追加子项：追加<code>{itemId:1}</code>的子项，并更新相关字段</p>
@@ -1594,18 +1629,28 @@ log.php?f=trace
 <pre><code>php upgrade.php export </code></pre>
 <p>该工具已集成到tool/init.php中，用于线上自动升级数据库。</p>
 <h2 id="定期任务"><span class="header-section-number">9</span> 定期任务</h2>
-<pre><code>tool/task.php(ac)</code></pre>
-<p>它作为命令行工具执行。通过crontab设置定期执行该命令。</p>
-<p><strong>[安装]</strong></p>
-<p>进入tool目录执行<code>php task.crontab.php</code>生成一串文本，再运行<code>crontab -e</code>编辑计划任务，将刚刚生成的文本复制过来即安装好。 屏幕输出到日志文件 <code>tool/task.log</code>.</p>
-<p><strong>[参数]</strong></p>
-<dl>
-<dt>ac</dt>
-<dd>String. 指定具体任务。定义如下。
-</dd>
-</dl>
-<p><strong>[ac=db]</strong></p>
-<p>每天执行一次。 备份数据库。</p>
+<p>例如, 想每天执行一次某任务(假如名为<code>task1</code>), 可以在<code>server/tool/task.php</code>中添加一个名为<code>ac_task1</code>的函数:</p>
+<pre><code>function ac_task1()
+{
+    // 执行任务
+}</code></pre>
+<p>注意: 与api_functions.php等在Web服务器环境下执行不一样, 它是作为命令行工具执行, 例如手工执行名为<code>db</code>的任务:</p>
+<pre><code>php ./task.php task1</code></pre>
+<p>由于包含了api.php, 它也可以用queryOne/execOne等函数直接操作数据库, 或用callSvcInt等函数内部调用服务器接口. 注意由于它是未登录的环境, 若是调用有登录权限检查的接口会因未登录而出错, 以确保安全可靠的前提下, 可以通过以下方式调用:</p>
+<pre><code>$_SESSION[&quot;uid&quot;] = 1; // 模拟id=1的用户登录.
+$rv = callSvcInt(&quot;XX.query&quot;); // 这样就可以调用AC1_XX类的接口.</code></pre>
+<p>当然也可以用system函数调用外部命令.</p>
+<p><strong>[部署]</strong></p>
+<p>通过Linux的crontab机制设置定期执行任务。推荐的部署方法是:</p>
+<ul>
+<li>在server/tool/task.crontab.php中根据设置任务执行时间. 该文件用于之后在服务器上输出生成crontab安装指令, 并设置日志输出.</li>
+<li>代码推送到服务器上, 进入server/tool/目录, 执行<code>php task.crontab.php</code>生成一串文本，复制这些文本.</li>
+<li>再运行<code>crontab -e</code>编辑计划任务，将刚刚生成的文本复制过来即安装好。</li>
+</ul>
+<p>在计划任务执行时, 本来输出到屏幕的内容会输出到日志文件 <code>tool/task.log</code>, 检查日志以查看任务执行情况.</p>
+<p>具体设置参照task.crontab.php中的注释说明.</p>
+<p><strong>[数据库备份任务:db]</strong></p>
+<p>作为示例, task.php中自带一个<code>db</code>任务, 在task.crontab.php中设置每天执行一次, 用于备份数据库。 备份脚本是backup_db.sh, 修改其中的数据库连接设置即可实现数据库日备份.</p>
 <h2 id="数据安全"><span class="header-section-number">10</span> 数据安全</h2>
 <p><strong><a href="#需求">需求</a></strong></p>
 <p>考虑以下灾难场景及恢复方式：</p>

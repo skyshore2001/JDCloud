@@ -425,8 +425,13 @@ global $X_RET_FN;
 	};
 
 注意：
-此处应用输出已完成，不可再输出或抛出异常，否则将导致返回内容错乱。
-之前的数据库事务已提交，如果再操作数据库，与之前操作不在同一事务中。
+
+- 如果接口返回错误, 该回调不执行. (DirectReturn返回除外)
+- 此时接口输出已完成，不可再输出内容，否则将导致返回内容错乱。addLog此时也无法输出日志(可以使用logit记日志到文件)
+- 此时接口的数据库事务已提交，如果再操作数据库，与之前操作不在同一事务中。
+
+示例: 当创建工单时, **异步**向用户发送通知消息, 且在异步操作中需要查询新创建的工单, 不应立即发送或使用AccessControl的onAfterActions;
+因为在异步任务查询新工单时, 可能接口还未执行完, 数据库事务尚未提交, 所以只有放在X_APP的onAfterActions中才可靠.
 */
 global $X_APP;
 
@@ -439,6 +444,7 @@ class ApiFw_
 {
 	static $SOLO = true;
 	static $perms = null;
+	static $exPerm = null;
 }
 //}}}
 
@@ -479,14 +485,9 @@ function setRet($code, $data = null, $internalMsg = null)
 	global $ERRINFO;
 	global $X_RET;
 
-	if (!isset($data)) {
-		if ($code) {
-			assert(array_key_exists($code, $ERRINFO));
-			$data = $ERRINFO[$code];
-		}
-		else {
-			$data = "OK";
-		}
+	if (!isset($data) && $code) {
+		assert(array_key_exists($code, $ERRINFO));
+		$data = $ERRINFO[$code];
 	}
 	$X_RET = [$code, $data];
 
@@ -611,74 +612,217 @@ function setServerRev()
 
 检查权限。perms可以是单个权限或多个权限，例：
 
-	hasPerm(AUTH_USER); // 用户登录后可用
-	hasPerm(AUTH_USER | AUTH_EMP); // 用户或员工登录后可用
+	if (hasPerm(AUTH_USER)) ...  // 用户登录后可用
+	if (hasPerm(AUTH_USER | AUTH_EMP)) ... // 用户或员工登录后可用
+	if (hasPerm(AUTH_LOGIN)) ... // 用户、员工、管理员任意一种登录
 
-@fn onGetPerms()
+类似的还有checkAuth函数，不同的是如果检查不通过则直接抛出异常，不再往下执行。
 
-开发者需要定义该函数，用于返回所有检测到的权限。hasPerm函数依赖该函数。
+	checkAuth(AUTH_USER);
+	checkAuth(AUTH_ADMIN | PERM_TEST_MODE); 要求必须管理员登录或测试模式才可用。
+	checkAuth(AUTH_LOGIN);
 
-(v5.4) exPerms用于扩展验证, 是一个权限名数组, 示例:
+@see checkAuth
+
+(v5.4) exPerms用于扩展验证, 是一个认证方式名数组, 示例:
 
 	hasPerm(AUTH_LOGIN, ["simple"]);
 
-它表示AUTH_LOGIN检查失败后, 将再调用`hasPerm_simple()`进行检查. 支持以下权限名:
+它表示AUTH_LOGIN检查失败后, 再检查是否通过了simple认证。支持的认证方式见下面章节描述。
 
-**[simple]**
+## 内置认证
 
-通过HTTP头`X-Daca-Simple`传递密码, 与环境变量`simplePwd`进行比较. 
-示例: upload接口允许simple验证.
+login接口支持不同类别的用户登录，登录成功后会设置相应的session变量，之后就具有相应权限。
+
+@fn onGetPerms() 权限生成逻辑
+
+默认逻辑如下，开发者可自定义该逻辑。
+
+- 用户登录后(session中有uid变量)，具有AUTH_USER权限
+- 员工登录后(session中有empId变量)，具有AUTH_EMP权限
+- 超级管理员登录后(session中有adminId变量)，具有AUTH_ADMIN权限
+- 测试模式具有 PERM_TEST_MODE权限，模拟模式具有PERM_MOCK_MODE权限。
+
+## 扩展认证方式
+
+@var Conf::$authKeys=[] 认证密钥及权限设置
+
+示例：如果请求中使用了basic认证，则通过认证后获得与员工登录相同的权限（即AUTH_EMP权限）
+
+	// class Conf (在conf.php中)
+	static $authKeys = [
+		// 当匹配以下key时，当作系统用户-9999；默认全部AUTH_EMP权限的接口都可被第三方访问
+		["authType"=>"basic", "key" => "user1:1234", "SESSION" => ["empId"=>-9999], "allowedAc" => ["*.query","*.get"] ]
+	];
+
+- authType指定的认证方式名是在Conf::$authHandlers注册过的，目前支持：basic, simple。
+  要扩展可以参考$authHandlers用法，比如插件jdcloud-plugin-jwt可支持jwt认证。
+
+@see ConfBase::$authHandlers
+
+- key被相应的认证方式使用，其格式由认证方式决定，一般即直接是认证密钥。
+
+- 通过SESSION的设置，从而使得通过认证的接口请求，相当于具有系统-9999号用户的权限（即具有AUTH_EMP权限），
+  意味着它可以直接调用AC2类，或是通过`checkAuth(AUTH_EMP)`的检查。
+
+在authKeys中须用allowedAc指定可用接口列表，所有都可访问可以用"*"。
+如果未指定allowedAc，则不会自动执行该权限检查，则在函数型接口中需要显示指定认证方式，如：
+
+	checkAuth(AUTH_EMP, ["basic", "simple"]);
+
+对于对象型接口，无法直接使用AC2类的接口（因为没有AUTH_EMP权限），只能使用AC类接口，在其中使用checkAuth再检查权限。
+
+支持的认证方式如下。
+
+### simple: 筋斗云简单认证
+
+在请求时，添加HTTP头：
+
+	X-Daca-Simple: $authStr
+
+后端检查示例: upload接口允许simple验证.
 
 	function api_upload() {
 		checkAuth(AUTH_LOGIN, ["simple"]);
 		...
 	}
 
-然后在conf.user.php中配置:
+其中$authStr由Conf::$authKeys中以key字段指定：
 
-	putenv("simplePwd=helloworldsimple");
+	// class Conf (在conf.php中)
+	static $authKeys = [
+		["authType"=>"simple", "key" => "user1:1234"],
+	];
 
 用curl访问该接口示例:
 
-	curl -s -F "file=@1.jpg" "http://localhost/jdcloud/api/upload?autoResize=0" -H "X-Daca-Simple: helloworldsimple"
+	curl -s -F "file=@1.jpg" "http://localhost/jdcloud/api/upload?autoResize=0" -H "X-Daca-Simple: user1:1234"
 
-@see hasPerm_simple
-@see checkAuth
+simple认证也可以通过环境变量simplePwd确定，比如可以在conf.user.php中配置：
+
+	putenv("simplePwd=user1:1234");
+
+### basic: HTTP基本认证
+
+通过HTTP标准的Basic认证方式。
+HTTP Basic认证，即添加HTTP头：
+
+	Authorization: Basic $authStr
+	
+按HTTP协议，authStr格式为base64($user:$password)
+可验证的用户名、密码在Conf类中配置，后端配置示例：
+
+	// class Conf (在conf.php中)
+	static $authKeys = [
+		["authType"=>"basic", "key" => "user1:1234"],
+		["authType"=>"basic", "key" => "user2:1235"], // 可以多个
+	];
+
+请求示例：
+
+	curl -u user1:1234 http://localhost/jdcloud/api.php/xxx
+
+注意：若php是基于apache fcgi方式的部署，可能无法收到认证串，可在apache中配置：
+
+	SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+
  */
 function hasPerm($perms, $exPerms=null)
 {
-	if (is_null(ApiFw_::$perms))
+	assert(is_null($exPerms) || is_array($exPerms));
+	if (is_null(ApiFw_::$perms)) {
+		// 扩展认证登录
+		if (count($_SESSION) == 0) { // 有session项则不进行认证
+			$authTypes = $exPerms;
+			if ($authTypes == null) {
+				$authTypes = [];
+				foreach (Conf::$authKeys as $e) {
+					// 注意去重. 如果未设置allowedAc则不会自动检查权限
+					if (is_array($e["allowedAc"]) && !in_array($e["authType"], $authTypes))
+						$authTypes[] = $e["authType"];
+				}
+			}
+			ApiFw_::$exPerm = null;
+			foreach ($authTypes as $e) {
+				$fn = Conf::$authHandlers[$e];
+				if (! is_callable($fn))
+					jdRet(E_SERVER, "unregistered authType `$e`", "未知认证类型`$e`");
+				if ($fn()) {
+					ApiFw_::$exPerm = $e;
+					break;
+				}
+			}
+		}
 		ApiFw_::$perms = onGetPerms();
+	}
 
 	if ( (ApiFw_::$perms & $perms) != 0 )
 		return true;
+	if (is_array($exPerms) && ApiFw_::$exPerm && in_array(ApiFw_::$exPerm, $exPerms))
+		return true;
+	return false;
+}
 
-	if (is_array($exPerms)) {
-		foreach ($exPerms as $name) {
-			$fn = "hasPerm_" . $name; // e.g. hasPerm_simple
-			if (function_exists($fn) && $fn())
+// $key 或 $keyFn($key)
+function checkAuthKeys($key, $authType)
+{
+	$auth = arrFind(Conf::$authKeys, function ($e) use ($key, $authType) {
+		assert(isset($e["authType"]), "authKey requires authType");
+		if ($authType != $e["authType"])
+			return false;
+		assert(isset($e["key"]), "authKey requires key");
+
+		// support key as a fn($key)
+		$eq = is_callable($key) ? $key($e["key"]): $key == $e["key"];
+		if (! $eq)
+			return false;
+
+		if (! isset($e["allowedAc"]))
+			return true;
+		assert(is_array($e["allowedAc"]), "authKey requires allowedAc");
+		$ac = $GLOBALS["X_APP"]? $GLOBALS["X_APP"]->getAc(): 'unknown';
+		foreach ($e["allowedAc"] as $e1) {
+			if (fnmatch($e1, $ac))
 				return true;
 		}
+		return false;
+	});
+	if (! $auth)
+		return false;
+	if (is_array($auth["SESSION"])) {
+		arrCopy($_SESSION, $auth["SESSION"]);
 	}
-	return false;
+	return true;
 }
 
 function hasPerm_simple()
 {
-	@$pwd = $_SERVER["HTTP_X_DACA_SIMPLE"];
-	@$pwd1 = getenv("simplePwd");
-	return $pwd && $pwd1 && $pwd === $pwd1;
+	@$key = $_SERVER["HTTP_X_DACA_SIMPLE"];
+	if (! $key)
+		return false;
+	$key1 = getenv("simplePwd");
+	if ($key1 && $key === $key1)
+		return true;
+	return checkAuthKeys($key, "simple");
 }
+ConfBase::$authHandlers["simple"] = "hasPerm_simple";
+
+function hasPerm_basic()
+{
+	list($user, $pwd) = [@$_SERVER['PHP_AUTH_USER'], @$_SERVER['PHP_AUTH_PW']];
+	if (! isset($user))
+		return false;
+	$key = $user . ':' . $pwd;
+	return checkAuthKeys($key, "basic");
+}
+ConfBase::$authHandlers["basic"] = "hasPerm_basic";
 
 /** 
 @fn checkAuth($perms)
 
-用法与hasPerm类似，检查权限，如果不正确，则抛出错误，返回错误对象。
+用法与hasPerm类似，检查权限，如果不正确，则抛出错误。
 
-	checkPerm(AUTH_USER); // 必须用户登录后可用
-	checkPerm(AUTH_ADMIN | PERM_TEST_MODE); 要求必须管理员登录或测试模式才可用。
-
-@see hasPerm
+@see hasPerm 认证与权限
  */
 function checkAuth($perms, $exPerms=null)
 {
@@ -876,6 +1020,21 @@ class ConfBase
 	}
 
 /**
+@var ConfBase::$authHandlers
+
+注册认证处理函数。示例：注册jwt认证方式
+
+	ConfBase::$authHandlers["jwt"] = "hasPerm_jwt";
+	function hasPerm_jwt()
+	{
+		// 返回true表示认证成功	
+	}
+
+@see hasPerm
+*/
+	static $authHandlers = [];
+
+/**
 @fn ConfBase::onInitClient(&$ret)
 
 客户端初始化应用时会调用initClient接口，返回plugins等信息。若要加上其它信息，可在这里扩展。
@@ -895,10 +1054,18 @@ class ConfBase
 (v5.4) 此外，在全局配置`P_initClient`数据中的量将自动设置到ret中，它用于后端控制前端配置，如：
 
 	// 配置在conf.user.php中：
+	$val = preg_match('/iphone|ipad|macintosh/i', $_SERVER["HTTP_USER_AGENT"]);
+	// $val = preg_match('/\b17\./i', getReqIp()); // apple审核用的地址, 17开头的美国地址
 	$GLOBALS["P_initClient"] = [
 		"enableWeixinLogin" => true, // 自动微信登录
-		"enableAppReviewMode" => true // APP审核定制
+		"enableAppReviewMode" => $val // APP审核定制; 根据条件判断来设置
 	];
+	
+前端框架在入口处会调用MUI.initClient(), 之后配置将放在 g_data.initClient 下面, 前端判断示例:
+
+	if (g_data.initClient.enableAppReviewMode) {
+		// ...
+	}
 	
  */
 	static function onInitClient(&$ret)
@@ -935,6 +1102,9 @@ checkSecure函数返回false则不处理该调用，并将请求加入黑名单�
 	static function checkSecure($ac)
 	{
 	}
+
+	static $authKeys = [
+	];
 }
 
 class ApiLog
@@ -1008,24 +1178,21 @@ e.g. 修改ApiLog的ac:
 		return $s;
 	}
 
+	protected $userId;
+	protected function getUserId()
+	{
+		$userId = $_SESSION["empId"] ?: $_SESSION["uid"] ?: $_SESSION["adminId"];
+		if (! (is_int($userId) || ctype_digit($userId)))
+			$userId = null;
+		$this->userId = $userId;
+		return $userId;
+	}
+
 	function logBefore()
 	{
 		$this->startTm = $_SERVER["REQUEST_TIME_FLOAT"] ?: microtime(true);
 
 		global $APP;
-		$type = getAppType();
-		$userId = null;
-		if ($type == "user") {
-			$userId = $_SESSION["uid"];
-		}
-		else if ($type == "emp" || $type == "store") {
-			$userId = $_SESSION["empId"];
-		}
-		else if ($type == "admin") {
-			$userId = $_SESSION["adminId"];
-		}
-		if (! (is_int($userId) || ctype_digit($userId)))
-			$userId = null;
 		$content = $this->myVarExport($_GET, 2000);
 		$ct = getContentType();
 		if (! preg_match('/x-www-form-urlencoded|form-data/i', $ct)) {
@@ -1054,7 +1221,7 @@ e.g. 修改ApiLog的ac:
 			"ua" => $ua,
 			"app" => $APP,
 			"ses" => session_id(),
-			"userId" => $userId,
+			"userId" => $this->getUserId(),
 			"ac" => $this->ac,
 			"req" => dbExpr(Q($content)),
 			"reqsz" => $reqsz,
@@ -1079,17 +1246,13 @@ e.g. 修改ApiLog的ac:
 		$logLen = $X_RET[0] !== 0? 2000: 200;
 		$content = $this->myVarExport($X_RET_STR, $logLen);
 
-		$userId = null;
-		if ($this->ac == 'login' && is_array($X_RET[1]) && @$X_RET[1]['id']) {
-			$userId = $X_RET[1]['id'];
-		}
 		++ $DBH->skipLogCnt;
 		$rv = dbUpdate("ApiLog", [
 			"t" => $iv,
 			"retval" => $X_RET[0],
 			"ressz" => strlen($X_RET_STR),
 			"res" => dbExpr(Q($content)),
-			"userId" => $userId,
+			"userId" => $this->userId ?: $this->getUserId(),
 			"ac" => $this->batchAc // 默认为null；对batch调用则列出详情
 		], $this->id);
 // 		$logStr = "=== id={$this->logId} t={$iv} >>>$content<<<\n";
@@ -1367,7 +1530,7 @@ $file为插件主文件，可返回一个插件配置。如果未指定，则自
 		setParam("res", "id, score, dscr, tm, orderDscr");
 
 		// 相当于AccessControl框架中调用 addCond，用Obj.query接口的内部参数cond2以保证用户还可以使用cond参数。
-		setParam("cond2", ["o.storeId=$storeId"]); 
+		setParam("cond2", dbExpr("o.storeId=$storeId")); 
 
 		// 定死排序条件
 		setParam("orderby", "tm DESC");
@@ -1389,7 +1552,7 @@ v5.4后建议这样实现：
 		$ret = $acObj->callSvc("Rating", "query", [
 			// 定死输出内容。
 			"res" => "id, score, dscr, tm, orderDscr",
-			"cond2" => ["storeId=$storeId"],
+			"cond2" => dbExpr("storeId=$storeId"),
 			"orderby" => "tm DESC"
 		]);
 		return $ret;
@@ -1446,7 +1609,7 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 */
 function callSvcInt($ac, $param=null, $postParam=null)
 {
-	if ($param || $postParam) {
+	if ($param != null || $postParam != null) {
 		return tmpEnv($param, $postParam, function () use ($ac) {
 			return callSvcInt($ac);
 		});
@@ -1465,8 +1628,8 @@ function callSvcInt($ac, $param=null, $postParam=null)
 	else {
 		throw new MyException(E_PARAM, "Bad request - unknown ac: {$ac}", "接口不支持");
 	}
-	if (!isset($ret))
-		$ret = "OK";
+//	if (!isset($ret))
+//		$ret = "OK";
 	return $ret;
 }
 
@@ -1485,12 +1648,8 @@ function callSvcInt($ac, $param=null, $postParam=null)
 function tmpEnv($param, $postParam, $fn)
 {
 	$bak = [$_GET, $_POST, $_REQUEST];
-	if ($param !== null) {
-		$_GET = $param;
-	}
-	if ($postParam !== null) {
-		$_POST = $postParam;
-	}
+	$_GET = $param ?: [];
+	$_POST = $postParam ?: [];
 	assert(is_array($_GET) && is_array($_POST));
 	$_REQUEST = $_GET + $_POST;
 
@@ -1557,6 +1716,9 @@ function getHttpInput()
 		if (preg_match('/charset=([\w-]+)/i', $ct, $ms)) {
 			$charset = strtolower($ms[1]);
 			if ($charset != "utf-8") {
+				if ($charset == "gbk" || $charset == "gb2312") {
+					$charset = "gb18030";
+				}
 				@$content = iconv($charset, "utf-8//IGNORE", $content);
 			}
 			if ($content === false)
@@ -1742,6 +1904,8 @@ function httpCallAsync($url, $postParams = null)
 /**
 @fn callAsync($ac, $params)
 
+在当前事务完成后，调用"async"接口，不等服务器输出数据就立即返回。
+
 @key enableAsync 配置异步调用
 
 发起异步调用请求，然后立即返回。它使用如下接口：
@@ -1768,12 +1932,29 @@ function httpCallAsync($url, $postParams = null)
 	// 打开异步调用支持, 依赖 P_BASE_URL 和 whiteIpList 设置
 	putenv("enableAsync=1");
 
+@see callSvcAsync
 @see api_async
 */
 function callAsync($ac, $param) {
-	$url = getBaseUrl(false) . "api.php?ac=async&f=$ac";
-	$GLOBALS["X_APP"]->onAfterActions[] = function () use ($url, $param) {
-		httpCallAsync($url, $param);
+	callSvcAsync("async", ["f"=>$ac], $param);
+}
+
+/**
+@fn callSvcAsync($ac, $urlParam, $postParams)
+
+在当前事务执行完后，调用指定接口并立即返回（不等服务器输出数据）。一般用于各种异步通知。
+示例：
+
+	callSvcAsync("sendMail", ["type"=>"Issue", "id"=>100]);
+	// 自动以getBaseUrl来补全url
+
+	callSvcAsync("http://localhost/pdi/api/sendMail", ["type"=>"Issue", "id"=>100]);
+	// 将ac直接当成url
+*/
+function callSvcAsync($ac, $urlParam, $postParam = null) {
+	$url = makeUrl($ac, $urlParam);
+	$GLOBALS["X_APP"]->onAfterActions[] = function () use ($url, $postParam) {
+		httpCallAsync($url, $postParam);
 	};
 }
 
@@ -1828,8 +2009,10 @@ function apiMain()
 		if (strstr($ct, "/json") !== false) {
 			$content = getHttpInput();
 			@$arr = json_decode($content, true);
-			if (!is_array($arr))
+			if (!is_array($arr)) {
+				logit("bad json-format body: `$content`");
 				throw new MyException(E_PARAM, "bad json-format body");
+			}
 			$_POST = $arr;
 			$_REQUEST += $arr;
 		}

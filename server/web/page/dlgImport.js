@@ -39,11 +39,12 @@ function initDlgImport()
 
 		function onShow() {
 			if (window.DlgImport && DlgImport.data_) {
-				WUI.setFormData($(frm), DlgImport.data_);
-				var obj = DlgImport.data_.obj;
+				var data = DlgImport.data_;
 				DlgImport.data_ = null;
+				var obj = data.obj;
+				$(frm.obj).val(obj).change();
 				WUI.assert(obj && frm.obj.value, "obj \"" + obj + "\" is NOT defined in dlgImport");
-				$(frm.obj).change();
+				WUI.setFormData($(frm), data, {setOnlyDefined:true});
 			}
 		}
 	}

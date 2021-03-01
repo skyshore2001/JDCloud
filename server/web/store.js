@@ -22,6 +22,15 @@ var DlgImport = {
 		WUI.showDlg("#dlgImport", {modal:false});
 	}
 };
+
+var DlgReportCond = {
+	cb_: null,
+	// cb(data): 回调函数
+	show: function (cb) {
+		this.cb_ = cb;
+		WUI.showDlg("#dlgReportCond", {modal:false, reset:false});
+	}
+};
 //}}}
 
 // ====== functions {{{

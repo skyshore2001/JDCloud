@@ -198,7 +198,7 @@ function pay_wx($payParam)
 function payMock_wx($payParam)
 {
 	$outTradeNo = $payParam["outTradeNo"];
-	$amount = $payParam["amount"];
+	$amount = round($payParam["amount"] * 100); // 微信支付：单位为分，且为整数
 
 	$ok_key = "CDATA[SUCCESS]";
 

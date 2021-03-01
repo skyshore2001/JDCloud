@@ -95,6 +95,12 @@
 	排序：
 	ApiLog.query(sort, order) = ApiLog.query(orderby="{sort} {order}")
 
+	支持qsearch: 可查询ac, addr字段
+	ApiLog.query(q)
+
+	外部字段
+	ApiLog.query() -> tbl(..., y,m等时间字段(tmCols),  ym)
+
 应用逻辑
 
 - 权限: AUTH_GUEST
@@ -102,18 +108,38 @@
 - 更新：tm, ac不可更新(readonly)。
 - 获取：不返回ua(hidden).
 
+用于子表与关联表测试：
+
+	子表字段log, lastLog; lastLogAc依赖lastLog而实现
+	UserA.query() -> tbl(id, ..., logCnt, lastLogId, lastLogAc?, @log?, %lastLog)
+	UserA.get
+	UserA.add
+
+	关联表字段user2
+	UserApiLog.query() -> tbl(id, ..., %user2)
+
+- AUTH_USER
+
 ### 权限限制, 虚拟字段与子表
 
-数据表：
+表：@User: id, name
+vcol: lastLogId?, lastLogAc? logCnt, @log?, %lastLog
 
-@User: id, name
+- lastLogId, logCnt: 日志数（外部字段）
+- log: [{id,tm,ac,addr}] 用户日志（标准子表），应只用于get。
+- lastLog: {id,tm,ac,addr} 最近1条日志（关联表，依赖lastLogId）
+- lastLogAc: 即lastLog.ac, 通过enumFields机制实现。
+
+表：@ApiLog: id, tm, ac, addr
 
 视图: @UserApiLog=ApiLog where userId IS NOT NULL
+vcol: userName, %user?, %user2?, last3LogAc?, last3Log?, 统计时间字段(tmCols)
+只读字段: tm, ac
 
 接口
 
 	UserApiLog.add(ac, tm?, addr?) -> id
-	UserApiLog.query() -> tbl(id, ..., userName, %user?, last3LogAc?, @last3Log?)
+	UserApiLog.query() -> tbl(id, ..., userName, %user?, last3LogAc?, @last3Log?, %user2)
 	UserApiLog.get() -> ...
 	UserApiLog.del()
 
@@ -123,6 +149,7 @@
 - %user={id, name}: user对象
 - last3LogAc: List(id, ac). 当前用户的最近3条日志, 按id倒排序。
 - @last3Log={id, ac}: 同上，返回子表。
+- %user2: (v5.4) 替代%user的实现，采用关联表机制，更简单高效。
 
 应用逻辑
 

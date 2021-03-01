@@ -39,11 +39,28 @@
 		'mp4'=>'video/mp4'
 	];
 
-- 定义图片类型及其缩略图尺寸
+如果允许上传所有文件类型(即不检查文件类型), 可以配置:
 
-	Upload::$typeMap = [
-		"default" => ["w"=>360, "h"=>360]
+	Upload::$checkFileType = false;
+
+- 定义文件分类及配置
+
+	Upload::$categoryMap = [
+		"default" => ["path"=>"%m/%r", "sameNameOverwrite"=>false, "w"=>360, "h"=>360]
 	];
+
+跟踪传入的category参数自动取配置, 取不到则使用default配置.
+保存文件路径为 upload/{年月}/{文件}, 如果指定了category则保存到 upload/{category}/{年月}/{文件}
+
+- path: 保存路径规则, 用%v/%{var}表示变量(变量名超过一个字段用花括号包起来), 特别地: %m-年月, %f-文件名(不含扩展名), %r-6位随机值, 其它从HTTP请求参数中获取.
+- w,h: 缩略图尺寸
+- sameNameOverwrite: 若有同名文件不覆盖, 而是加"-1", "-2"这样的后缀.
+
+示例: 增加一个resource类别, 将文件存到 upload/resource/{resource参数}/{文件名}-{version参数}, 如果同名文件存在则覆盖:
+
+	Upload::$categoryMap["resource"] = ["path"=>"%{resource}/%f-%{version}", "sameNameOverwrite"=>true];
+
+注意：在windows上，如果路径中包含"%f"即原文件名，则原文件名有中文时会出现乱码，也可能操作失败。在Linux上无此问题。
 
 - 服务器图片压缩选项
  调用upload接口时，超过maxPicKB的图片，会自动压缩到长宽不超过maxPicSize像素，除非接口参数autoResize设置为0。
@@ -79,15 +96,20 @@ class Upload
 		'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 		'xls' => 'application/vnd.ms-excel',
 		'zip' => 'application/zip',
-		'rar' => 'application/x-rar-compressed'
+		'rar' => 'application/x-rar-compressed',
+		'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+		'ppt' => 'application/vnd.ms-powerpoint'
 	];
+	static $checkFileType = true;
 
-	static $typeMap = [
-		"default" => ["w"=>360, "h"=>360]
+	static $categoryMap = [
+		"default" => ["path"=>"%m/%r", "sameNameOverwrite"=>false, "w"=>360, "h"=>360]
 	];
 	// 默认调用upload时(autoResize参数为1)，超过maxPicKB的图片，会自动压缩到长宽不超过maxPicSize像素。
 	static $maxPicKB = 500; // KB
 	static $maxPicSize = 1280;
+	// 对于大文件(>100M)，交给web server处理源文件。但这会导致大文件原始名字丢失，下载后是数字名字。设置值为-1表示总是由php处理。
+	static $bigFileSize = 100000000;
 
 	static function quote($s)
 	{
@@ -217,6 +239,49 @@ function resizeImage($in, $w, $h, $out=null, $forceDo=false)
 	return true;
 }
 
+function getPath($orgName, $cate, $cateConf)
+{
+/*
+	$onGetPath = @$_GET["onGetPath"];
+	if ($onGetPath && is_callable($onGetPath)) {
+		return $onGetPath($orgName);
+	}
+*/
+	$pi = pathinfo($orgName);
+	$f = $pi["filename"];
+	$ext = strtolower($pi["extension"]);
+
+	// 在categoryMap中path参数可以用%m,%{var}这些方式使用变量, 未定义的变量使用mparam从请求参数中来取.
+	$vars = [
+		"f" => $f, // 中文名在windows下有问题, 谨慎使用%f
+		"m" => date("Ym"),
+//			"t" => date("Ymd_His"), // 用时间做文件名增大了冲突可能
+		"r" => rand(100001,999999)
+	];
+	$fname0 = preg_replace_callback('/%(\w)|%(\{(\w+)\})/', function ($ms) use ($vars) {
+		// var_export($ms);
+		$var = $ms[1] ?: $ms[3];
+		if (array_key_exists($var, $vars))
+			return $vars[$var];
+		return mparam($var);
+	}, $cateConf["path"]);
+	$dir = $cate? ("upload/" . $cate): "upload";
+	$fname0 = "$dir/$fname0";
+	$fname = $ext? "$fname0.$ext": $fname0;
+	
+	if (! $cateConf["sameNameOverwrite"]) {
+		$i = 1;
+		// 如果文件"file.txt"存在, 则命名为"file-1.txt", "file-2.txt"依次类推
+		while (is_file($fname)) {
+			$fname = $ext? "$fname0-$i.$ext": "$fname0-$i";
+			++ $i;
+		}
+//		touch($fname); // TODO: 一次上传多个文件或并发多请求在上传文件时，可能产生重名. 如果touch需要先创建文件夹.
+	}
+
+	return $fname;
+}
+
 function api_upload()
 {
 	checkAuth(AUTH_LOGIN, ['simple']);
@@ -227,21 +292,21 @@ function api_upload()
 	{
 		$fileName = mparam("f");
 	}
-	$type = param("type", 'default');
 	$genThumb = param("genThumb/b");
 	$autoResize = param("autoResize/i", 1);
 	$exif = param("exif");
 
-	if (!array_key_exists($type, Upload::$typeMap)) {
-		throw new MyException(E_PARAM, "unknown attachment type: $type");
-	}
+	$cate = param("category");
+	$cateConf = Upload::$categoryMap['default'];
+	if ($cate && array_key_exists($cate, Upload::$categoryMap))
+		$cateConf = Upload::$categoryMap[$cate] + $cateConf;
 
 	$ret = [];
 	$files = []; # elem: [$tmpname, $fname, $thumbName]
 
 	chdir($GLOBALS["BASE_DIR"]);
 
-	function handleOneFile($f, $genThumb, &$files)
+	$handleOneFile = function ($f, $genThumb, &$files) use ($cate, $cateConf)
 	{
 		if ($f["error"] === 1 || $f["error"] === 2)
 			throw new MyException(E_PARAM, "large file (>upload_max_filesize or >MAX_FILE_SIZE)", "文件太大，禁止上传");
@@ -254,44 +319,38 @@ function api_upload()
 
 		if ($f["name"] != "" && $f["size"] > 0) {
 			// 检查文件类型
-			$mtype = $f["type"];
-			$ext = strtolower(pathinfo($f["name"], PATHINFO_EXTENSION));
 			$orgName = basename($f["name"]);
-			if ($ext == "" && $mtype) {
-				$ext = array_search($mtype, Upload::$fileTypes);
-				if ($ext === false) {
-					// 猜测文件类型
-					$ext = guessFileType($f["tmp_name"]);
-					if ($ext === null)
-						throw new MyException(E_PARAM, "MIME type not supported: `$mtype`", "文件类型`$mtype`不支持.");
+			if (Upload::$checkFileType) {
+				$ext = strtolower(pathinfo($orgName, PATHINFO_EXTENSION));
+				$mtype = $f["type"];
+				if ($ext == "" && $mtype) {
+					$ext = array_search($mtype, Upload::$fileTypes);
+					if ($ext === false) {
+						// 猜测文件类型
+						$ext = guessFileType($f["tmp_name"]);
+						if ($ext === null)
+							throw new MyException(E_PARAM, "MIME type not supported: `$mtype`", "文件类型`$mtype`不支持.");
+					}
+				}
+				if ($ext == "" || !array_key_exists($ext, Upload::$fileTypes)) {
+					throw new MyException(E_PARAM, "bad extension file name: `$orgName`", "文件扩展名`$ext`不支持");
 				}
 			}
-			if ($ext == "" || !array_key_exists($ext, Upload::$fileTypes)) {
-				throw new MyException(E_PARAM, "bad extention file name: `$orgName`", "文件扩展名`$ext`不支持");
-			}
 
-			if ($type) {
-				$dir = "upload/$type/" . date('Ym');
-			}
-			else {
-				$dir = "upload/" . date('Ym');
-			}
+			$fname = getPath($orgName, $cate, $cateConf);
+			$dir = dirname($fname);
 			if (! is_dir($dir)) {
 				if (mkdir($dir, 0777, true) === false)
 					throw new MyException(E_SERVER, "fail to create folder: $dir");
 			}
-			do {
-				$base = rand(100001,999999);
-				$fname = "$dir/$base.$ext";
-				if ($genThumb)
-					$thumbName = "$dir/t$base.$ext";
-			} while(is_file($fname));
 			$rec = [$f["tmp_name"], $fname, $orgName];
-			if ($genThumb)
+			if ($genThumb) {
+				$thumbName = preg_replace('/(\.\w+)?$/', "-thumb.jpg", $fname, 1);
 				$rec[] = $thumbName;
+			}
 			$files[] = $rec;
 		}
-	}
+	};
 
 	function guessFileType($f)
 	{
@@ -319,7 +378,7 @@ function api_upload()
 			"error" => 0,
 			"size" => 1,
 			];
-		handleOneFile($f1, $genThumb, $files);
+		$handleOneFile($f1, $genThumb, $files);
 	}
 	else {
 		foreach ($_FILES as $f) {
@@ -333,11 +392,11 @@ function api_upload()
 						"error" => $f["error"][$i],
 						"size" => $f["size"][$i],
 					];
-					handleOneFile($f1, $genThumb, $files);
+					$handleOneFile($f1, $genThumb, $files);
 				}
 			}
 			else {
-				handleOneFile($f, $genThumb, $files);
+				$handleOneFile($f, $genThumb, $files);
 			}
 		}
 	}
@@ -348,13 +407,12 @@ function api_upload()
 	}
 
 	# 2nd round: save file and add to DB
-	global $DBH;
-	$sql = "INSERT INTO Attachment (path, orgPicId, exif, tm, orgName) VALUES (?, ?, ?, now(), ?)";
-	$sth = $DBH->prepare($sql);
 	foreach ($files as $f) {
 		# 0: tmpname; 1: fname; 2: orgName; 3: thumbName(optional)
 		list($tmpname, $fname, $orgName, $thumbName) = $f;
 		$rv = null;
+//		if (PHP_OS == "WINNT")
+//			$fname = @iconv("utf-8", "gb2312", $fname) ?: $fname;
 		if (isset($tmpname)) {
 			$rv = move_uploaded_file($tmpname, $fname);
 		}
@@ -376,18 +434,24 @@ function api_upload()
 			$rv = resizeImage($fname, $maxHW, $maxHW, $fname, $forceDo); // 1280x1280
 		}
 
-		$sth->execute([$fname, null, null, $orgName]);
-		$id = (int)$DBH->lastInsertId();
-		$r = ["id"=>$id, "orgName"=>$orgName, "size"=>filesize($fname)];
+		$id = dbInsert("Attachment", [
+			"path" => $fname,
+			"orgName" => $orgName,
+			"exif" => $exif,
+			"tm" => date(FMT_DT),
+		]);
+		$r = ["id"=>$id, "orgName"=>$orgName, "size"=>filesize($fname), "path"=>$fname];
 
 		if ($genThumb) {
-			$info = Upload::$typeMap[$type];
-			assert($info);
-			$rv = resizeImage($fname, $info["w"], $info["h"], $thumbName);
+			$rv = resizeImage($fname, $cateConf["w"], $cateConf["h"], $thumbName);
 			if ($rv) {
 				#file_put_contents($thumbName, "THUMB");
-				$sth->execute([$thumbName, $id, $exif, $orgName]);
-				$thumbId = (int)$DBH->lastInsertId();
+				$thumbId = dbInsert("Attachment", [
+					"path" => $thumbName,
+					"orgPicId" => $id,
+					"orgName" => $orgName,
+					"tm" => date(FMT_DT),
+				]);
 				$r["thumbId"] = $thumbId;
 			}
 			else {
@@ -463,10 +527,10 @@ function api_att()
 	# TODO: 使用 apache x-sendfile module 解决性能和安全性问题。
 	$ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
 	//$mimeType = 'application/octet-stream';
-	$mimeType = Upload::$fileTypes[$ext];
+	$mimeType = Upload::$fileTypes[$ext] ?: 'application/octet-stream';
 	$reqRange = array_key_exists("HTTP_RANGE", $_SERVER);
 	// 对于大文件(>10M)或带range参数的请求，交给web server处理源文件。
-	if (@$mimeType && !($reqRange || filesize($file) > 10*1024*1024)) {
+	if (!($reqRange || (Upload::$bigFileSize > 0 && filesize($file) > Upload::$bigFileSize))) {
 		header("Content-Type: $mimeType");
 		header("Etag: $etag");
 		#header("Expires: Thu, 3 Sep 2020 08:52:00 GMT");

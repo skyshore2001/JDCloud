@@ -28,7 +28,7 @@ foreach ($meta as $k => $v) {
 			$opts[] = "styler:Formatter.enumStyler({})";
 	}
 	if (@$v["isAtt"]) {
-		$opts[] = "formatter:Formatter.pics";
+		$opts[] = @$v["isPic"]? "formatter:Formatter.pics": "formatter:Formatter.atts";
 	}
 
 	if ($type) {

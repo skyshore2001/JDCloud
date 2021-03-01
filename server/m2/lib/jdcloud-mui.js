@@ -489,6 +489,13 @@ style将被插入到head标签中，并自动添加属性`mui-origin={pageId}`.
 	statusBarColor: "#ffffff,dark" // 白底黑字
 	statusBarColor: "none" // 不显示状态栏。
 
+如果不同页面有不同颜色，可以设置切换页面时自动按照页面头颜色来设置:
+
+	WUI.options.fixTopbarColor=true
+
+注意此时要设置顶栏颜色，页面必须有页头即hd类并设置好颜色，若不需要页头可以设置隐藏.
+@see options.fixTopbarColor
+
 如果希望自行设置状态栏，可以设置statusBarColor为null:
 
 	MUI.options.statusBarColor = null;
@@ -633,6 +640,52 @@ function assert(cond, dscr)
 		// 用throw new Error会有调用栈; 直接用throw "some msg"无法获取调用栈.
 		throw new Error(msg);
 	}
+}
+
+/**
+@fn randInt(from, to)
+
+生成指定区间的随机整数。示例：
+
+	var i = randInt(1, 10); // 1-10之间的整数，包含1或10
+
+*/
+self.randInt = randInt;
+function randInt(from, to)
+{
+	return Math.floor(Math.random() * (to - from + 1)) + from;
+}
+
+/**
+@fn randInt(from, to)
+
+生成随机字符串，包含字母或数字，不包含易混淆的0或O。示例：
+
+	var dynCode = randChr(4); // e.g. "9BZ3"
+
+*/
+self.randChr = randChr;
+function randChr(cnt)
+{
+	var charCodeArr = [];
+	var code_O = 'O'.charCodeAt(0) - 'A'.charCodeAt(0) + 10;
+	
+	for (var i=0; i<cnt; ) {
+		var ch = randInt(0, 35); // 0-9 A-Z 共36个
+		// 去除0,O易混淆的
+		if (ch == 0 || ch == code_O) {
+			continue;
+		}
+		if (ch < 10) {
+			charCodeArr.push(0x30 + ch);
+		}
+		else {
+			charCodeArr.push(0x41 + ch -10);
+		}
+		i ++;
+	}
+//	console.log(charCodeArr);
+	return String.fromCharCode.apply(this, charCodeArr);
 }
 
 /**
@@ -972,7 +1025,12 @@ Date.prototype.diff = function(sInterval, dtEnd)
 	var dtStart = this;
 	switch (sInterval) 
 	{
-		case 'd' :return Math.round((dtEnd - dtStart) / 86400000);
+		case 'd' :
+		{
+			var d1 = (dtStart.getTime() - dtStart.getTimezoneOffset()*60000) / 86400000;
+			var d2 = (dtEnd.getTime() - dtEnd.getTimezoneOffset()*60000) / 86400000;
+			return Math.floor(d2) - Math.floor(d1);
+		}	
 		case 'm' :return dtEnd.getMonth() - dtStart.getMonth() + (dtEnd.getFullYear()-dtStart.getFullYear())*12;
 		case 'y' :return dtEnd.getFullYear() - dtStart.getFullYear();
 		case 's' :return Math.round((dtEnd - dtStart) / 1000);
@@ -1018,6 +1076,268 @@ function getTimeDiffDscr(tm, tm1)
 	if (diff < 10)
 		return Math.floor(diff) + "年前";
 	return "很久前";
+}
+
+/**
+@fn WUI.getTmRange(dscr, now?)
+
+根据时间段描述得到`[起始时间，结束时间)`，注意结束时间是开区间（即不包含）。
+假设今天是2015-9-9 周三：
+
+	getTmRange("本周", "2015-9-9") -> ["2015-9-7"(本周一), "2015-9-14")
+	getTmRange("上周") -> ["2015-8-31", "2015-9-7")  // 或"前1周"
+
+	getTmRange("本月") -> ["2015-9-1", "2015-10-1")
+	getTmRange("上月") -> ["2015-8-1", "2015-9-1")
+
+	getTmRange("今年") -> ["2015-1-1", "2016-1-1") // 或"本年"
+	getTmRange("去年") -> ["2014-1-1", "2015-1-1") // 或"上年"
+
+	getTmRange("本季度") -> ["2015-7-1", "2015-10-1") // 7,8,9三个月
+	getTmRange("上季度") -> ["2015-4-1", "2015-7-1")
+
+	getTmRange("上半年") -> ["2015-1-1", "2015-7-1")
+	getTmRange("下半年") -> ["2015-7-1", "2016-1-1")
+
+	getTmRange("今天") -> ["2015-9-9", "2015-9-10") // 或"本日"
+	getTmRange("昨天") -> ["2015-9-8", "2015-9-9") // 或"昨日"
+
+	getTmRange("前1周") -> ["2015-8-31"(上周一)，"2015-9-7"(本周一))
+	getTmRange("前3月") -> ["2015-6-1", "2015-9-1")
+	getTmRange("前3天") -> ["2015-9-6", "2015-9-9")
+
+	getTmRange("近1周") -> ["2015-9-3"，"2015-9-10")
+	getTmRange("近3月") -> ["2015-6-10", "2015-9-10")
+	getTmRange("近3天") -> ["2015-9-6", "2015-9-10")  // "前3天"+今天
+
+dscr可以是 
+
+	"近|前|上" N "个"? "小时|日|周|月|年|季度"
+	"本|今" "小时|日/天|周|月|年|季度"
+
+注意："近X周"包括今天（即使尚未过完）。
+
+示例：快捷填充
+
+		<td>
+			<select class="cboTmRange">
+				<option value ="本月">本月</option>
+				<option value ="上月">上月</option>
+				<option value ="本周">本周</option>
+				<option value ="上周">上周</option>
+				<option value ="今年">今年</option>
+				<option value ="去年">去年</option>
+			</select>
+		</td>
+
+	var txtTmRange = jdlg.find(".cboTmRange");
+	txtTmRange.change(function () {
+		var range = WUI.getTmRange(this.value);
+		if (range) {
+			WUI.setFormData(jfrm, {tm1: range[0], tm2: range[1]}, {setOnlyDefined: true});
+		}
+	});
+	// 初始选中
+	setTimeout(function () {
+		txtTmRange.change();
+	});
+
+ */
+self.getTmRange = getTmRange;
+function getTmRange(dscr, now)
+{
+	if (! now)
+		now = new Date();
+	else if (! (now instanceof Date)) {
+		now = WUI.parseDate(now);
+	}
+	else {
+		now = new Date(now); // 不修改原时间
+	}
+
+	var rv = getTmRangeSimple(dscr, now);
+	if (rv)
+		return rv;
+
+	dscr = dscr.replace(/本|今/, "前0");
+	dscr = dscr.replace(/上|昨/, "前");
+	var re = /(近|前)(\d*).*?(小时|日|天|月|周|年)/;
+	var m = dscr.match(re);
+	if (! m)
+		return;
+	
+	var dt1, dt2, dt;
+	var type = m[1];
+	var n = parseInt(m[2] || '1');
+	var u = m[3];
+	var fmt_d = "yyyy-mm-dd";
+	var fmt_h = "yyyy-mm-dd HH:00";
+	var fmt_m = "yyyy-mm-01";
+	var fmt_y = "yyyy-01-01";
+
+	if (u == "小时") {
+		if (n == 0) {
+			now.add("h",1);
+			n = 1;
+		}
+		if (type == "近") {
+			now.add("h",1);
+		}
+		dt2 = now.format(fmt_h);
+		dt1 = now.add("h", -n).format(fmt_h);
+	}
+	else if (u == "日" || u == "天") {
+		if (n == 0 || type == "近") {
+			now.addDay(1);
+			++ n;
+		}
+		dt2 = now.format(fmt_d);
+		dt1 = now.add("d", -n).format(fmt_d);
+	}
+	else if (u == "月") {
+		if (n == 0) {
+			now.addMonth(1);
+			n = 1;
+		}
+		if (type == "近") {
+			now.addDay(1);
+			var d2 = now.getDate();
+			dt2 = now.format(fmt_d);
+			now.add("m", -n);
+			do {
+				// 5/31近一个月, 从4/30开始: [4/30, 5/31]
+				var d1 = now.getDate();
+				if (d1 == d2 || d1 > 10)
+					break;
+				now.addDay(-1);
+			} while (true);
+			dt1 = now.format(fmt_d);
+			
+			// now = WUI.parseDate(now.format(fmt_m)); // 回到1号
+			//dt1 = now.add("m", -n).format(fmt_m);
+		}
+		else if (type == "前") {
+			dt2 = now.format(fmt_m);
+			dt1 = WUI.parseDate(dt2).add("m", -n).format(fmt_m);
+		}
+	}
+	else if (u == "周") {
+		if (n == 0) {
+			now.addDay(7);
+			n = 1;
+		}
+		if (type == "近") {
+			now.addDay(1);
+			dt2 = now.format(fmt_d);
+			//now.add("d", -now.getDay()+1); // 回到周1
+			dt1 = now.add("d", -n*7).format(fmt_d);
+		}
+		else if (type == "前") {
+			dt2 = now.add("d", -now.getDay()+1).format(fmt_d);
+			dt1 = now.add("d", -7*n).format(fmt_d);
+		}
+	}
+	else if (u == "年") {
+		if (n == 0) {
+			now.add("y",1);
+			n = 1;
+		}
+		if (type == "近") {
+			now.addDay(1);
+			dt2 = now.format(fmt_d);
+			//now = WUI.parseDate(now.format(fmt_y)); // 回到1/1
+			dt1 = now.add("y", -n).format(fmt_d);
+		}
+		else if (type == "前") {
+			dt2 = now.format(fmt_y);
+			dt1 = WUI.parseDate(dt2).add("y", -n).format(fmt_y);
+		}
+	}
+	else {
+		return;
+	}
+	return [dt1, dt2];
+}
+
+function getTmRangeSimple(dscr, now)
+{
+	var fmt_d = "yyyy-mm-dd";
+	var fmt_m = "yyyy-mm-01";
+	var fmt_y = "yyyy-01-01";
+
+	if (dscr == "本月") {
+		var dt1 = now.format(fmt_m);
+		// NOTE: 不要用 now.addMonth(1). 否则: 2020/8/31取本月会得到 ["2020-08-01", "2020-10-01"]
+		var y = now.getFullYear();
+		var m = now.getMonth() + 2;
+		if (m == 12) {
+			++ y;
+			m = 1;
+		}
+		var dt2 = y + "-" + setWidth_2(m) + "-01";
+	}
+	else if (dscr == "上月") {
+		var dt2 = now.format(fmt_m);
+		var y = now.getFullYear();
+		var m = now.getMonth();
+		now.addMonth(-1);
+		if (m == 0) {
+			-- y;
+			m = 12;
+		}
+		var dt1 = y + "-" + setWidth_2(m) + "-01";
+	}
+	else if (dscr == "本周") {
+		var dt1 = now.add("d", -(now.getDay()||7)+1).format(fmt_d);
+		now.addDay(7);
+		var dt2 = now.format(fmt_d);
+	}
+	else if (dscr == "上周") {
+		var dt2 = now.add("d", -(now.getDay()||7)+1).format(fmt_d);
+		now.addDay(-7);
+		var dt1 = now.format(fmt_d);
+	}
+	else if (dscr == "今年") {
+		var dt1 = now.format(fmt_y);
+		now.addMonth(12);
+		var dt2 = now.format(fmt_y);
+	}
+	else if (dscr == "去年" || dscr == "上年") {
+		var dt2 = now.format(fmt_y);
+		now.addMonth(-12);
+		var dt1 = now.format(fmt_y);
+	}
+	else if (dscr == "本季度") {
+		var m = Math.floor(now.getMonth() / 3)*3 +1;
+		var dt1 = now.getFullYear() + "-" + setWidth_2(m) + "-01";
+		var dt2 = now.getFullYear() + "-" + setWidth_2(m+3) + "-01";
+	}
+	else if (dscr == "上季度") {
+		var m = Math.floor(now.getMonth() / 3)*3;
+		if (m > 0) {
+			var dt1 = now.getFullYear() + "-" + setWidth_2(m-3) + "-01";
+			var dt2 = now.getFullYear() + "-" + setWidth_2(m) + "-01";
+		}
+		else {
+			var y = now.getFullYear();
+			var dt1 = (y-1) + "-10-01";
+			var dt2 = y + "-01-01";
+		}
+	}
+	else if (dscr == "上半年") {
+		var y = now.getFullYear();
+		var dt1 = y + "-01-01";
+		var dt2 = y + "-07-01";
+	}
+	else if (dscr == "下半年") {
+		var y = now.getFullYear();
+		var dt1 = y + "-07-01";
+		var dt2 = (y+1) + "-01-01";
+	}
+	else {
+		return;
+	}
+	return [dt1, dt2];
 }
 
 // }}}
@@ -1250,6 +1570,18 @@ key可以为一个函数，返回实际key值，示例：
 		"USER-101": {id: 101, name: "Jane"}
 	};
 
+key函数也可以返回[key, value]数组：
+
+	var hash = rs2Hash(rs, function (o) {
+		return ["USER-" + o.id, o.name];
+	}); 
+
+	// 结果为
+	hash = {
+		"USER-100": "Tom",
+		"USER-101": "Jane"
+	};
+
 @see rs2Array
 */
 self.rs2Hash = rs2Hash;
@@ -1267,7 +1599,10 @@ function rs2Hash(rs, key)
 			obj[rs.h[j]] = row[j];
 		}
 		var k = keyfn?  keyfn(obj): obj[key];
-		ret[ k ] = obj;
+		if (Array.isArray(k) && k.length == 2)
+			ret[k[0]] = k[1];
+		else
+			ret[ k ] = obj;
 	}
 	return ret;
 }
@@ -1312,6 +1647,19 @@ key也可以是一个函数，返回实际的key值，示例，按生日年份�
 		"1999": [{id: 101, name: "Jane", birthday: "1999-1-10"}]
 	};
 
+key作为函数，也可返回[key, value]:
+
+	var hash = rs2MultiHash(rs, function (o) {
+		return [o.name, [o.id, o.birthday]];
+	});
+
+	// 结果为
+	hash = {
+		"Tom": [[100, "1998-10-1"], [102, "1998-3-8"]],
+		"Jane": [[101, "1999-1-10"]]
+	};
+
+
 @see rs2Hash
 @see rs2Array
 */
@@ -1330,6 +1678,10 @@ function rs2MultiHash(rs, key)
 			obj[rs.h[j]] = row[j];
 		}
 		var k = keyfn?  keyfn(obj): obj[key];
+		if (Array.isArray(k) && k.length == 2) {
+			obj = k[1];
+			k = k[0];
+		}
 		if (ret[ k ] === undefined)
 			ret[ k ] = [obj];
 		else
@@ -1504,10 +1856,9 @@ function appendParam(url, param)
 self.deleteParam = deleteParam;
 function deleteParam(url, paramName)
 {
-	var ret = url.replace(new RegExp('&?' + paramName + "(=[^&#]+)?"), '');
-	if (ret.indexOf('?&') >=0) {
-		ret = ret.replace('?&', '?');
-	}
+	var ret = url.replace(new RegExp('&?\\b' + paramName + "\\b(=[^&#]+)?"), '');
+	ret = ret.replace(/\?&/, '?');
+	// ret = ret.replace(/\?(#|$)/, '$1'); // 问号不能去掉，否则history.replaceState(null,null,"#xxx")会无效果
 	return ret;
 }
 
@@ -1572,7 +1923,7 @@ function parseValue(str)
 self.applyTpl = applyTpl;
 function applyTpl(tpl, data)
 {
-	return tpl.replace(/{(\w+)}/g, function(m0, m1) {
+	return tpl.replace(/{([^{}]+)}/g, function(m0, m1) {
 		return data[m1];
 	});
 }
@@ -1648,6 +1999,25 @@ function parseKvList(str, sep, sep2)
 	return map;
 }
 
+/**
+@fn Q(str, q?="'")
+
+	Q("abc") -> 'abc'
+	Q("a'bc") -> 'a\'bc'
+
+ */
+window.Q = self.Q = Q;
+function Q(str, q)
+{
+	if (str == null)
+		return "null";
+	if (typeof str == "number")
+		return str;
+	if (q == null)
+		q = "'";
+	return q + str.toString().replaceAll(q, "\\" + q) + q;
+}
+
 function initModule()
 {
 	// bugfix: 浏览器兼容性问题
@@ -1662,6 +2032,79 @@ function initModule()
 	}
 }
 initModule();
+
+/**
+@fn text2html(str, pics)
+
+将文本或图片转成html，常用于将筋斗云后端返回的图文内容转成html在网页中显示。示例：
+
+	var item = {id: 1, name: "商品1", content: "商品介绍内容", pics: "100,102"};
+	var html = MUI.text2html(item.content, item.pics);
+	jpage.find("#content").html(html);
+
+文字转html示例：
+
+	var html = MUI.text2html("hello\nworld");
+
+生成html为
+
+	<p>hello</p>
+	<p>world</p>
+
+支持简单的markdown格式，如"# ","## "分别表示一二级标题, "- "表示列表（注意在"#"或"-"后面有英文空格）：
+	
+	# 标题1
+	内容1
+	# 标题2
+	内容2
+
+	- 列表1
+	- 列表2
+
+函数可将图片编号列表转成img列表，如：
+
+	var html = MUI.text2html(null, "100,102");
+
+生成
+
+	<img src="../api.php/att?thumbId=100">
+	<img src="../api.php/att?thumbId=102">
+
+ */
+self.text2html = text2html;
+function text2html(s, pics)
+{
+	var ret = "";
+	if (s) {
+		ret = s.replace(/^(?:([#-]+)\s+)?(.*)$/mg, function (m, begin, text) {
+			if (begin) {
+				if (begin[0] == '#') {
+					n = begin.length;
+					return "<h" + n + ">" + text + "</h" + n + ">";
+				}
+				if (begin[0] == '-') {
+					return "<li>" + text + "</li>";
+				}
+			}
+			// 空段落处理
+			if (text) {
+				text = text.replace(" ", "&nbsp;");
+			}
+			else {
+				text = "&nbsp;";
+			}
+			return "<p>" + text + "</p>";
+		}) + "\n";
+	}
+	if (pics) {
+		var arr = pics.split(/\s*,\s*/);
+		arr.forEach(function (e) {
+			var url = "../api.php/att?thumbId=" + e;
+			ret += "<img src=\"" + url + "\">\n";
+		});
+	}
+	return ret;
+}
 
 }/*jdcloud common*/
 
@@ -1740,6 +2183,12 @@ function jdModule(name, fn, overrideCtor)
 	return ret;
 }
 
+if (! String.prototype.replaceAll) {
+	String.prototype.replaceAll = function (from, to) {
+		return this.replace(new RegExp(from, "g"), to);
+	}
+}
+
 // vi: foldmethod=marker 
 // ====== WEBCC_END_FILE common.js }}}
 
@@ -1750,6 +2199,8 @@ function JdcloudCommonJq()
 var self = this;
 
 self.assert(window.jQuery, "require jquery lib.");
+var mCommon = jdModule("jdcloud.common");
+
 /**
 @fn getFormData(jo)
 
@@ -1796,11 +2247,13 @@ function getFormData(jo)
 		data = new FormData();
 	}
 	var orgData = jo.data("origin_") || {};
-	formItems(jo, function (name, content) {
-		var ji = this;
+	formItems(jo, function (ji, name, it) {
+		if (it.getDisabled(ji))
+			return;
 		var orgContent = orgData[name];
 		if (orgContent == null)
 			orgContent = "";
+		var content = it.getValue(ji);
 		if (content == null)
 			content = "";
 		if (content !== String(orgContent)) // 避免 "" == 0 或 "" == false
@@ -1835,42 +2288,198 @@ function getFormData(jo)
 }
 
 /**
+@fn getFormData_vf(jo)
+
+专门取虚拟字段的值。例如：
+
+	<select name="whId" class="my-combobox" data-options="url:..., jd_vField:'whName'"></select>
+
+用WUI.getFormData可取到`{whId: xxx}`，而WUI.getFormData_vf遍历带name属性且设置了jd_vField选项的控件，调用接口getValue_vf(ji)来取其显示值。
+因而，为支持取虚拟字段值，控件须定义getValue_vf接口。
+
+	<input name="orderType" data-options="jd_vField:'orderType'" disabled>
+
+注意：与getFormData不同，它不忽略有disabled属性的控件。
+
+@see defaultFormItems
+ */
+self.getFormData_vf = getFormData_vf;
+function getFormData_vf(jo)
+{
+	var data = {};
+	formItems(jo, function (ji, name, it) {
+		var vname = WUI.getOptions(ji).jd_vField;
+		if (!vname)
+			return;
+		data[vname] = it.getValue_vf(ji);
+	});
+	return data;
+}
+
+/**
 @fn formItems(jo, cb)
 
-遍历jo下带name属性的有效控件，回调cb函数。
+表单对象遍历。对表单jo（实际可以不是form标签）下带name属性的控件，交给回调cb处理。
+可通过扩展`WUI.formItems[sel]`来为表单扩展其它类型控件，参考 `WUI.defaultFormItems`来查看要扩展的接口方法。
 
 注意:
 
-- 忽略有disabled属性的控件
-- 忽略未选中的checkbox/radiobutton
+- 通过取getDisabled接口判断，可忽略有disabled属性的控件以及未选中的checkbox/radiobutton。
 
-@param cb(name, val) this=ji=当前jquery对象
+对于checkbox，设置时根据val确定是否选中；取值时如果选中取value属性否则取value-off属性。
+缺省value为"on", value-off为空(非标准属性，本框架支持)，可以设置：
+
+	<input type="checkbox" name="flag" value="1">
+	<input type="checkbox" name="flag" value="1" value-off="0">
+
+@param cb(ji, name, it) it.getDisabled/setDisabled/getValue/setValue/getShowbox
 当cb返回false时可中断遍历。
 
- */
-self.formItems = formItems;
-function formItems(jo, cb)
-{
-	jo.find("[name]:not([disabled])").each (function () {
-		var name = this.name || $(this).attr("name");
-		if (! name)
-			return;
+示例：
 
-		var ji = $(this);
-		var val;
-		if (ji.is(":input")) {
-			if (this.type == "checkbox" && !this.checked)
-				return;
-			if (this.type == "radio" && !this.checked)
-				return;
-			val = ji.val();
+	WUI.formItems(jdlg.find(".my-fixedField"), function (ji, name, it) {
+		var fixedVal = ...
+		if (fixedVal || fixedVal == '') {
+			it.setReadonly(ji, true);
+			var forAdd = beforeShowOpt.objParam.mode == FormMode.forAdd;
+			if (forAdd) {
+				it.setValue(ji, fixedVal);
+			}
 		}
 		else {
-			val = ji.html();
+			it.setReadonly(ji, false);
 		}
-		if (cb.call(ji, name,  val) === false)
+	});
+
+@key defaultFormItems
+ */
+self.formItems = formItems;
+self.formItems["[name]"] = self.defaultFormItems = {
+	getName: function (jo) {
+		// !!! NOTE: 为避免控件处理两次，这里忽略easyui控件的值控件textbox-value。其它表单扩展控件也可使用该类。
+		if (jo.hasClass("textbox-value"))
+			return;
+		return jo.attr("name") || jo.prop("name");
+	},
+	getDisabled: function (jo) {
+		var val = jo.prop("disabled");
+		if (val === undefined)
+			val = jo.attr("disabled");
+		var o = jo[0];
+		if (! val && o.tagName == "INPUT") {
+			if (o.type == "radio" && !o.checked)
+				return true;
+		}
+		return val;
+	},
+	setDisabled: function (jo, val) {
+		jo.prop("disabled", !!val);
+		if (val)
+			jo.attr("disabled", "disabled");
+		else
+			jo.removeAttr("disabled");
+	},
+	getReadonly: function (jo) {
+		var val = jo.prop("readonly");
+		if (val === undefined)
+			val = jo.attr("readonly");
+		return val;
+	},
+	setReadonly: function (jo, val) {
+		jo.prop("readonly", !!val);
+		if (val)
+			jo.attr("readonly", "readonly");
+		else
+			jo.removeAttr("readonly");
+	},
+	setValue: function (jo, val) {
+		var isInput = jo.is(":input");
+		if (val === undefined) {
+			if (isInput) {
+				var o = jo[0];
+				// 取初始值
+				if (o.tagName === "TEXTAREA")
+					val = jo.html();
+				else if (! (o.tagName == "INPUT") && (o.type == "hidden")) // input[type=hidden]对象比较特殊：设置property value后，attribute value也会被设置。
+					val = jo.attr("value");
+				if (val === undefined)
+					val = "";
+			}
+			else {
+				val = "";
+			}
+		}
+		if (jo.is(":checkbox")) {
+			jo.prop("checked", mCommon.tobool(val));
+		}
+		else if (isInput) {
+			jo.val(val);
+		}
+		else {
+			jo.html(val);
+		}
+	},
+	getValue: function (jo) {
+		var val;
+		if (jo.is(":checkbox")) {
+			val = jo.prop("checked")? jo.val(): jo.attr("value-off");
+		}
+		else if (jo.is(":input")) {
+			val = jo.val();
+		}
+		else {
+			val = jo.html();
+		}
+		return val;
+	},
+	// TODO: 用于find模式设置。搜索"设置find模式"/datetime
+	getShowbox: function (jo) {
+		return jo;
+	},
+
+	// 用于显示的虚拟字段值, 此处以select为例，适用于my-combobox
+	getValue_vf: function (jo) {
+		var o = jo[0];
+		if (o.tagName == "SELECT")
+			return o.options[o.selectedIndex].innerText;
+		return this.getValue(jo);
+	}
+};
+
+/*
+// 倒序遍历对象obj, 用法与$.each相同。
+function eachR(obj, cb)
+{
+	var arr = [];
+	for (var prop in obj) {
+		arr.push(prop);
+	}
+	for (var i=arr.length-1; i>=0; --i) {
+		var v = obj[arr[i]];
+		if (cb.call(v, arr[i], v) === false)
+			break;
+	}
+}
+*/
+
+function formItems(jo, cb)
+{
+	var doBreak = false;
+	$.each(self.formItems, function (sel, it) {
+		jo.filter(sel).add(jo.find(sel)).each (function () {
+			var ji = $(this);
+			var name = it.getName(ji);
+			if (! name)
+				return;
+			if (cb(ji, name, it) === false) {
+				doBreak = true;
+				return false;
+			}
+		});
+		if (doBreak)
 			return false;
 	});
+	return !doBreak;
 }
 
 /**
@@ -1882,7 +2491,7 @@ function formItems(jo, cb)
 注意:
 - DOM项的内容指: 如果是input/textarea/select等对象, 内容为其value值; 如果是div组件, 内容为其innerHTML值.
 - 当data[name]未设置(即值为undefined, 注意不是null)时, 对于input/textarea等组件, 行为与form.reset()逻辑相同, 
- 即恢复为初始化值, 除了input[type=hidden]对象, 它的内容不会变.
+ 即恢复为初始化值。（特别地，form.reset无法清除input[type=hidden]对象的内容, 而setFormData可以)
  对div等其它对象, 会清空该对象的内容.
 - 如果对象设置有属性"noReset", 则不会对它进行设置.
 
@@ -1930,33 +2539,13 @@ function setFormData(jo, data, opt)
 	}, opt);
 	if (data == null)
 		data = {};
-	var jo1 = jo.filter("[name]:not([noReset])");
-	jo.find("[name]:not([noReset])").add(jo1).each (function () {
-		var ji = $(this);
-		var name = ji.attr("name");
+	formItems(jo, function (ji, name, it) {
+		if (ji.attr("noReset"))
+			return;
 		var content = data[name];
 		if (opt1.setOnlyDefined && content === undefined)
 			return;
-		var isInput = ji.is(":input");
-		if (content === undefined) {
-			if (isInput) {
-				if (ji[0].tagName === "TEXTAREA")
-					content = ji.html();
-				else
-					content = ji.attr("value");
-				if (content === undefined)
-					content = "";
-			}
-			else {
-				content = "";
-			}
-		}
-		if (isInput) {
-			ji.val(content);
-		}
-		else {
-			ji.html(content);
-		}
+		it.setValue(ji, content);
 	});
 	jo.data("origin_", opt1.setOrigin? data: null);
 }
@@ -2033,6 +2622,57 @@ function loadScript(url, fnOK, options)
 	}
 	document.head.appendChild(script);
 	return dfd_;
+}
+
+/**
+@fn loadJson(url, fnOK, options)
+
+从远程获取JSON结果. 
+注意: 与$.getJSON不同, 本函数不直接调用JSON.parse解析结果, 而是将返回当成JS代码使用eval执行得到JSON结果再回调fnOK.
+
+示例:
+
+	WUI.loadJson("1.js", function (data) {
+		// handle json value `data`
+	});
+
+1.js可以是返回任意JS对象的代码, 如:
+
+	{
+		a: 2 * 3600,
+		b: "hello",
+		// c: {}
+	}
+
+如果不处理结果, 则该函数与$.getScript效果类似.
+ */
+self.loadJson = loadJson;
+function loadJson(url, fnOK, options)
+{
+	var ajaxOpt = $.extend({
+		dataType: "text",
+		jdFilter: false,
+		success: function (data) {
+			val = eval("(" + data + ")");
+			fnOK.call(this, val);
+		}
+	}, options);
+	return $.ajax(url, ajaxOpt);
+}
+
+/**
+@fn loadCss(url)
+
+动态加载css文件, 示例:
+
+	WUI.loadCss("lib/bootstrap.min.css");
+
+ */
+self.loadCss = loadCss;
+function loadCss(url)
+{
+	var jo = $('<link type="text/css" rel="stylesheet" />').attr("href", url);
+	jo.appendTo($("head"));
 }
 
 /**
@@ -2444,7 +3084,7 @@ function getDataOptions(jo, defVal)
 	var opts;
 	try {
 		if (optStr != null) {
-			if (optStr.indexOf(":") > 0) {
+			if (/^\w+:/.test(optStr)) {
 				opts = eval("({" + optStr + "})");
 			}
 			else {
@@ -2494,6 +3134,26 @@ function triggerAsync(jo, ev, paramArr)
 	if (ev.isDefaultPrevented())
 		return false;
 	return $.when.apply(this, ev.dfds);
+}
+
+/**
+@fn $.Deferred
+@alias Promise
+兼容Promise的接口，如then/catch/finally
+ */
+var fnDeferred = $.Deferred;
+$.Deferred = function () {
+	var ret = fnDeferred.apply(this, arguments);
+	ret.catch = ret.fail;
+	ret.finally = ret.always;
+	var fn = ret.promise;
+	ret.promise = function () {
+		var r = fn.apply(this, arguments);
+		r.catch = r.fail;
+		r.finally = r.always;
+		return r;
+	}
+	return ret;
 }
 
 }
@@ -2646,6 +3306,8 @@ function setOnError()
 			return true;
 		if (errObj instanceof DirectReturn || /abort$/.test(msg) || (!script && !line))
 			return true;
+		if (self.options.skipErrorRegex && self.options.skipErrorRegex.test(msg))
+			return true;
 		if (errObj === undefined && msg === "[object Object]") // fix for IOS9
 			return true;
 		debugger;
@@ -2685,10 +3347,17 @@ function enhanceWithin(jp)
 			return;
 		jo.each(function (i, e) {
 			var je = $(e);
+			// 支持一个DOM对象绑定多个组件，分别初始化
 			var enhanced = je.data("mui-enhanced");
-			if (enhanced)
-				return;
-			je.data("mui-enhanced", true);
+			if (enhanced) {
+				if (enhanced.indexOf(sel) >= 0)
+					return;
+				enhanced.push(sel);
+			}
+			else {
+				enhanced = [sel];
+			}
+			je.data("mui-enhanced", enhanced);
 			fn(je);
 		});
 	});
@@ -2716,10 +3385,10 @@ function getOptions(jo, defVal)
 //}}}
 
 // 参考 getQueryCond中对v各种值的定义
-function getop(v)
+function getexp(k, v)
 {
 	if (typeof(v) == "number")
-		return "=" + v;
+		return k + "=" + v;
 	var op = "=";
 	var is_like=false;
 	var ms;
@@ -2738,19 +3407,24 @@ function getop(v)
 	if (v === "null")
 	{
 		if (op == "<>")
-			return " is not null";
-		return " is null";
+			return k + " is not null";
+		return k + " is null";
 	}
 	if (v === "empty")
 		v = "";
-	if (v.length == 0 || v.match(/\D/) || v[0] == '0') {
+	var doFuzzy = self.options.fuzzyMatch && (k!="id" && k.substr(-2)!="Id");
+	if (doFuzzy || v.length == 0 || v.match(/\D/) || v[0] == '0') {
 		v = v.replace(/'/g, "\\'");
+		if (doFuzzy && op == "=" && v.length>0) {
+			op = " like ";
+			v = "%" + v + "%";
+		}
 // 		// ???? 只对access数据库: 支持 yyyy-mm-dd, mm-dd, hh:nn, hh:nn:ss
 // 		if (!is_like && v.match(/^((19|20)\d{2}[\/.-])?\d{1,2}[\/.-]\d{1,2}$/) || v.match(/^\d{1,2}:\d{1,2}(:\d{1,2})?$/))
 // 			return op + "#" + v + "#";
-		return op + "'" + v + "'";
+		return k + op + "'" + v + "'";
 	}
-	return op + v;
+	return k + op + v;
 }
 
 /**
@@ -2803,8 +3477,20 @@ function getop(v)
 
 在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。
 
+(v5.5) value支持用数组表示范围（前闭后开区间），主要内部使用：
+
+	var cond = getQueryCond({tm: ["2019-1-1", "2020-1-1"]}); // 生成 "tm>='2019-1-1' AND tm<'2020-1-1'"
+	var cond = getQueryCond({tm: [null, "2020-1-1"]}); // 生成 "tm<'2020-1-1'"
+	var cond = getQueryCond({tm: [null, null]); // 返回null
+
 @see getQueryParam
 @see getQueryParamFromTable 获取datagrid的当前查询参数
+@see doFind
+
+(v5.5) 支持在key中包含查询提示。如"code/s"表示不要自动猜测数值区间或日期区间。
+比如输入'126231-191024'时不会当作查询126231到191024的区间。
+
+@see wui-find-hint
 */
 self.queryHint = "查询示例\n" +
 	"文本：\"王小明\", \"王*\"(匹配开头), \"*上海*\"(匹配部分)\n" +
@@ -2826,15 +3512,43 @@ function getQueryCond(kvList)
 	}
 
 	function handleOne(k,v) {
-		if (v == null || v === "")
+		if (v == null || v === "" || v.length==0)
 			return;
 
+		var hint = null;
+		var k1 = k.split('/');
+		if (k1.length > 1) {
+			k = k1[0];
+			hint = k1[1];
+		}
+
+		if ($.isArray(v)) {
+			if (v[0])
+				condArr.push(k + ">='" + v[0] + "'");
+			if (v[1])
+				condArr.push(k + "<'" + v[1] + "'");
+			return;
+		}
+		var hint = null;
+		var k1 = k.split('/');
+		if (k1.length > 1) {
+			k = k1[0];
+			hint = k1[1];
+		}
+
+		if ($.isArray(v)) {
+			if (v[0])
+				condArr.push(k + ">='" + v[0] + "'");
+			if (v[1])
+				condArr.push(k + "<'" + v[1] + "'");
+			return;
+		}
 		var arr = v.toString().split(/\s+(and|or)\s+/i);
 		var str = '';
 		var bracket = false;
 		// NOTE: 根据字段名判断时间类型
-		var isTm = /(Tm|^tm)\d*$/.test(k);
-		var isDt = /(Dt|^dt)\d*$/.test(k);
+		var isTm = hint == "tm" || /(Tm|^tm)\d*$/.test(k);
+		var isDt = hint == "dt" || /(Dt|^dt)\d*$/.test(k);
 		$.each(arr, function (i, v1) {
 			if ( (i % 2) == 1) {
 				str += ' ' + v1.toUpperCase() + ' ';
@@ -2842,6 +3556,7 @@ function getQueryCond(kvList)
 				return;
 			}
 			v1 = v1.replace(/，/g, ',');
+			v1 = v1.replace(/＊/g, '*');
 			// a-b,c-d,e
 			// dt1~dt2
 			var str1 = '';
@@ -2853,7 +3568,7 @@ function getQueryCond(kvList)
 				}
 				var mt; // match
 				var isHandled = false; 
-				if (isTm | isDt) {
+				if (hint != "s" && (isTm || isDt)) {
 					// "2018-5" => ">=2018-5-1 and <2018-6-1"
 					// "2018-5-1" => ">=2018-5-1 and <2018-5-2" (仅限Tm类型; Dt类型不处理)
 					if (mt=v2.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?$/)) {
@@ -2875,7 +3590,7 @@ function getQueryCond(kvList)
 						}
 					}
 				}
-				if (!isHandled) {
+				if (!isHandled && hint != "s") {
 					// "2018-5-1~2018-10-1"
 					// "2018-5-1 8:00 ~ 2018-10-1 18:00"
 					if (mt=v2.match(/^(\d{4}-\d{1,2}.*?)\s*~\s*(\d{4}-\d{1,2}.*?)$/)) {
@@ -2893,7 +3608,7 @@ function getQueryCond(kvList)
 					}
 				}
 				if (!isHandled) {
-					str1 += k + getop(v2);
+					str1 += getexp(k, v2);
 				}
 			});
 			if (bracket2)
@@ -3023,6 +3738,8 @@ self.disableBatch = false;
 var m_curBatch = null;
 self.m_curBatch = m_curBatch;
 
+var RV_ABORT = undefined;//"$abort$";
+
 /**
 @var mockData  模拟调用后端接口。
 
@@ -3092,25 +3809,48 @@ mockData中每项可以直接是数据，也可以是一个函数：fn(param, po
 */
 self.mockData = {};
 
+/**
+@key $.ajax
+@key ajaxOpt.jdFilter 禁用返回格式合规检查.
+
+以下调用, 如果1.json符合`[code, data]`格式, 则只返回处理data部分; 否则将报协议格式错误:
+
+	$.ajax("1.json", {dataType: "json"})
+	$.get("1.json", null, console.log, "json")
+	$.getJSON("1.json", null, console.log)
+
+对于ajax调用($.ajax,$.get,$.post,$.getJSON等), 若明确指定dataType为"json"或"text", 且未指定jdFilter为false, 
+则框架按筋斗云返回格式即`[code, data]`来处理只返回data部分, 不符合该格式, 则报协议格式错误.
+
+以下调用未指定dataType, 或指定了jdFilter=false, 则不会应用筋斗云协议格式:
+
+	$.ajax("1.json")
+	$.get("1.json", null, console.log)
+	$.ajax("1.json", {jdFilter: false}) // jdFilter选项明确指定了不应用筋斗云协议格式
+
+*/
 var ajaxOpt = {
 	beforeSend: function (xhr) {
 		// 保存xhr供dataFilter等函数内使用。
 		this.xhr_ = xhr;
+		var type = this.dataType;
+		if (this.jdFilter !== false && (type == "json" || type == "text")) {
+			this.jdFilter = true;
+			// for jquery > 1.4.2. don't convert text to json as it's processed by defDataProc.
+			// NOTE: 若指定dataType为"json"时, jquery会对dataFilter处理过的结果再进行JSON.parse导致出错, 根据jquery1.11源码修改如下:
+			this.converters["text json"] = true;
+		}
 	},
 	//dataType: "text",
 	dataFilter: function (data, type) {
-		if (this.jdFilter !== false && (type == "json" || type == "text")) {
+		if (this.jdFilter) {
 			rv = defDataProc.call(this, data);
-			if (rv != null)
+			if (rv !== RV_ABORT)
 				return rv;
 			-- $.active; // ajax调用中断,这里应做些清理
 			self.app_abort();
 		}
 		return data;
-	},
-	// for jquery > 1.4.2. don't convert text to json as it's processed by defDataProc.
-	converters: {
-		"text json": true
 	},
 
 	error: defAjaxErrProc
@@ -3192,17 +3932,17 @@ function defAjaxErrProc(xhr, textStatus, e)
 		ctx.status = xhr.status;
 		ctx.statusText = xhr.statusText;
 
-		if (xhr.status == 0) {
+		if (xhr.status == 0 && !ctx.noex) {
 			self.app_alert("连不上服务器了，是不是网络连接不给力？", "e");
 		}
 		else if (this.handleHttpError) {
 			var data = xhr.responseText;
 			var rv = defDataProc.call(this, data);
-			if (rv != null)
+			if (rv !== RV_ABORT)
 				this.success && this.success(rv);
 			return;
 		}
-		else {
+		else if (!ctx.noex) {
 			self.app_alert("操作失败: 服务器错误. status=" + xhr.status + "-" + xhr.statusText, "e");
 		}
 
@@ -3214,9 +3954,9 @@ function defAjaxErrProc(xhr, textStatus, e)
 @fn defDataProc(rv)
 
 @param rv BQP协议原始数据，如 "[0, {id: 1}]"，一般是字符串，也可以是JSON对象。
-@return data 按接口定义返回的数据对象，如 {id: 1}. 如果返回==null，调用函数应直接返回，不回调应用层。
+@return data 按接口定义返回的数据对象，如 {id: 1}. 如果返回值===RV_ABORT，调用函数应直接返回，不回调应用层。
 
-注意：服务端不应返回null, 否则客户回调无法执行; 习惯上返回false表示让回调处理错误。
+注意：如果callSvr设置了`noex:1`选项，则当调用失败时返回false。
 
 */
 self.defDataProc = defDataProc;
@@ -3259,7 +3999,9 @@ function defDataProc(rv)
 	catch (e)
 	{
 		leaveWaiting(ctx);
-		self.app_alert("服务器数据错误。");
+		var msg = "服务器数据错误。";
+		self.app_alert(msg);
+		ctx.dfd.reject.call(this, msg);
 		return;
 	}
 
@@ -3281,8 +4023,16 @@ function defDataProc(rv)
 	}
 
 	if (rv && $.isArray(rv) && rv.length >= 2 && typeof rv[0] == "number") {
-		if (rv[0] == 0)
+		var that = this;
+		if (rv[0] == 0) {
+			ctx.dfd && setTimeout(function () {
+				ctx.dfd.resolve.call(that, rv[1]);
+			});
 			return rv[1];
+		}
+		ctx.dfd && setTimeout(function () {
+			ctx.dfd.reject.call(that, rv[1]);
+		});
 
 		if (this.noex)
 		{
@@ -3297,16 +4047,16 @@ function defDataProc(rv)
 			}
 // 				self.popPageStack(0);
 // 				self.showLogin();
-			return;
+			return RV_ABORT;
 		}
 		else if (rv[0] == E_AUTHFAIL) {
 			var errmsg = rv[1] || "验证失败，请检查输入是否正确!";
 			self.app_alert(errmsg, "e");
-			return;
+			return RV_ABORT;
 		}
 		else if (rv[0] == E_ABORT) {
 			console.log("!!! abort call");
-			return;
+			return RV_ABORT;
 		}
 		logError();
 		self.app_alert("操作失败：" + rv[1], "e");
@@ -3315,6 +4065,7 @@ function defDataProc(rv)
 		logError();
 		self.app_alert("服务器通讯协议异常!", "e"); // 格式不对
 	}
+	return RV_ABORT;
 
 	function logError()
 	{
@@ -3364,6 +4115,11 @@ function getBaseUrl()
 
 	MUI.makeUrl(['login', 'zhanda']) 等价于 MUI.makeUrl('zhanda:login');
 
+特别地, 如果action是相对路径, 或是'.php'文件, 则不会自动拼接WUI.options.serverUrl:
+
+	callSvr("./1.json"); // 如果是callSvr("1.json") 则url可能是 "../api.php/1.json"这样.
+	callSvr("./1.php");
+
 @see callSvrExt
  */
 self.makeUrl = makeUrl;
@@ -3409,8 +4165,10 @@ function makeUrl(action, params)
 	if (fnMakeUrl) {
 		url = fnMakeUrl(action, params);
 	}
-	// 缺省接口调用：callSvr('login') 或 callSvr('php/login.php');
-	else if (action.indexOf(".php") < 0)
+	else if (url = self.options.moduleExt["callSvr"](action)) {
+	}
+	// 缺省接口调用：callSvr('login'),  callSvr('./1.json') 或 callSvr("1.php") (以"./"或"../"等相对路径开头, 或是取".php"文件, 则不去自动拼接serverUrl)
+	else if (action[0] != '.' && action.indexOf(".php") < 0)
 	{
 		var opt = self.options;
 		var usePathInfo = !opt.serverUrlAc;
@@ -3484,12 +4242,22 @@ function makeUrl(action, params)
 - 指定{noex:1}用于忽略错误处理。
 - 指定{noLoadingImg:1} 静默调用，忽略loading图标，不设置busy状态。
 
+指定contentType和设置自定义HTTP头(headers)示例:
+
+	var opt = {
+		contentType: "text/xml",
+		headers: {
+			Authorization: "Basic aaa:bbb"
+		}
+	};
+	callSvr("hello", $.noop, "<?xml version='1.0' encoding='UTF-8'?><return><code>0</code></return>", opt);
+
 想为ajax选项设置缺省值，可以用callSvrExt中的beforeSend回调函数，也可以用$.ajaxSetup，
 但要注意：ajax的dataFilter/beforeSend选项由于框架已用，最好不要覆盖。
 
 @see callSvrExt[].beforeSend(opt) 为callSvr选项设置缺省值
 
-@return deferred对象，与$.ajax相同。
+@return deferred对象，在Ajax调用成功后回调。
 例如，
 
 	var dfd = callSvr(ac, fn1);
@@ -3498,7 +4266,20 @@ function makeUrl(action, params)
 	function fn1(data) {}
 	function fn2(data) {}
 
-在接口调用成功后，会依次回调fn1, fn2.
+在接口调用成功后，会依次回调fn1, fn2. 在回调函数中this表示ajax参数。例如：
+
+	callSvr(ac, function (data) {
+		// 可以取到传入的参数。
+		console.log(this.key1);
+	}, null, {key1: 'val1'});
+
+(v5.4) 支持失败时回调：
+
+	var dfd = callSvr(ac);
+	dfd.fail(function (data) {
+		console.log('error', data);
+		console.log(this.ctx_.ret); // 和设置选项{noex:1}时回调中取MUI.lastError.ret 或 this.lastError相同。
+	});
 
 @key callSvr.noex 调用接口时忽略出错，可由回调函数fn自己处理错误。
 
@@ -3597,6 +4378,7 @@ callSvr扩展示例：
 
 	MUI.callSvrExt['zhanda'] = {
 		makeUrl: function(ac, param) {
+			// 只需要返回接口url即可，不必拼接param
 			return 'http://hostname/lcapi/' + ac;
 		},
 		dataFilter: function (data) {
@@ -3613,11 +4395,15 @@ callSvr扩展示例：
 		}
 	};
 
-在调用时，ac参数传入一个数组：
+在调用时，ac参数使用"{扩展名}:{调用名}"的格式：
 
-	callSvr(['token/get-token', 'zhanda'], {user: 'test', password: 'test123'}, function (data) {
+	callSvr('zhanda:token/get-token', {user: 'test', password: 'test123'}, function (data) {
 		console.log(data);
 	});
+
+旧的调用方式ac参数使用数组，现在已不建议使用：
+
+	callSvr(['token/get-token', 'zhanda'], ...);
 
 @key callSvrExt[].makeUrl(ac, param)
 
@@ -3643,8 +4429,7 @@ callSvr扩展示例：
 @key callSvrExt['default']
 
 (支持版本: v3.1)
-如果要修改callSvr缺省调用方法，可以改写 MUI.callSvrExt['default'].
-例如，定义以下callSvr扩展：
+如果要修改callSvr缺省调用方法，可以改写 MUI.callSvrExt['default']。示例：
 
 	MUI.callSvrExt['default'] = {
 		makeUrl: function(ac) {
@@ -3695,14 +4480,6 @@ callSvr扩展示例：
 		}
 	};
 
-这样，以下调用
-
-	callSvr(['login', 'default']);
-
-可以简写为：
-
-	callSvr('login');
-
 @key callSvrExt[].beforeSend(opt) 为callSvr或$.ajax选项设置缺省值
 
 如果有ajax选项想设置，可以使用beforeSend回调，例如POST参数使用JSON格式：
@@ -3721,6 +4498,8 @@ callSvr扩展示例：
 			}
 		}
 	}
+
+可以从opt.ctx_中取到{ac, ext, noex, dfd}等值（如opt.ctx_.ac），可以从opt.url中取到{ac, params}值。
 
 如果要设置请求的HTTP headers，可以用`opt.headers = {header1: "value1", header2: "value2"}`.
 更多选项参考jquery文档：jQuery.ajax的选项。
@@ -3824,6 +4603,37 @@ callSvr扩展示例：
 		}
 	}
 
+## jQuery的$.Deferred兼容Promise接口
+
+	var dfd = callSvr("...");
+	dfd.then(function (data) {
+		console.log(data);
+	})
+	.catch(function (err) {
+		app_alert(err);
+	})
+	.finally(...)
+
+支持catch/finally等Promise类接口。接口逻辑失败时，dfd.reject()触发fail/catch链。
+
+## 直接取json类文件
+
+(v5.5) 如果ac是调用相对路径, 则直接当成最终路径, 不做url拼接处理:
+
+	callSvr("./1.json"); // 如果是callSvr("1.json") 则实际url可能是 "../api.php/1.json"这样.
+	callSvr("../1.php");
+
+相当于调用
+
+	$.ajax("../1.php", {dataType: "json", success: callback})
+	或
+	$.getJSON("../1.php", callback);
+
+注意下面调用未指定dataType, 不会按筋斗云协议格式处理:
+
+	$.ajax("../1.php", {success: callback})
+
+@see $.ajax
 */
 self.callSvr = callSvr;
 self.callSvrExt = {};
@@ -3868,9 +4678,12 @@ function callSvr(ac, params, fn, postParams, userOptions)
 	var ctx = {ac: ac0, tm: new Date()};
 	if (userOptions && userOptions.noLoadingImg)
 		ctx.noLoadingImg = 1;
+	if (userOptions && userOptions.noex)
+		ctx.noex = 1;
 	if (ext) {
 		ctx.ext = ext;
 	}
+	ctx.dfd = $.Deferred();
 	if (self.mockData && self.mockData[ac0]) {
 		ctx.isMock = true;
 		ctx.getMockData = function () {
@@ -3916,6 +4729,22 @@ function callSvr(ac, params, fn, postParams, userOptions)
 		self.callSvrExt[ext].beforeSend(opt);
 	}
 
+	// 自动判断是否用json格式
+	if (!opt.contentType && opt.data) {
+		var useJson = $.isArray(opt.data);
+		if (!useJson && $.isPlainObject(opt.data)) {
+			$.each(opt.data, function (i, e) {
+				if (typeof(e) == "object") {
+					useJson = true;
+					return false;
+				}
+			})
+		}
+		if (useJson) {
+			opt.contentType = "application/json";
+		}
+	}
+
 	// post json content
 	var isJson = opt.contentType && opt.contentType.indexOf("/json")>0;
 	if (isJson && opt.data instanceof Object)
@@ -3924,13 +4753,15 @@ function callSvr(ac, params, fn, postParams, userOptions)
 	console.log(callType + ": " + opt.type + " " + ac0);
 	if (ctx.isMock)
 		return callSvrMock(opt, isSyncCall);
-	return $.ajax(opt);
+	$.ajax(opt);
+	// dfd.resolve/reject is done in defDataProc
+	return ctx.dfd;
 }
 
-// opt = {success, .ctx_={isMock, getMockData} }
+// opt = {success, .ctx_={isMock, getMockData, dfd} }
 function callSvrMock(opt, isSyncCall)
 {
-	var dfd_ = $.Deferred();
+	var dfd_ = opt.ctx_.dfd;
 	var opt_ = opt;
 	if (isSyncCall) {
 		callSvrMock1();
@@ -3946,10 +4777,10 @@ function callSvrMock(opt, isSyncCall)
 		if (typeof(data) != "string")
 			data = JSON.stringify(data);
 		var rv = defDataProc.call(opt_, data);
-		if (rv != null)
+		if (rv !== RV_ABORT)
 		{
 			opt_.success && opt_.success(rv);
-			dfd_.resolve(rv);
+//			dfd_.resolve(rv); // defDataProc resolve it
 			return;
 		}
 		self.app_abort();
@@ -3975,10 +4806,10 @@ function callSvrSync(ac, params, fn, postParams, userOptions)
 		params = null;
 	}
 	userOptions = $.extend({async: false}, userOptions);
-	var dfd = callSvr(ac, params, fn, postParams, userOptions);
-	dfd.then(function(data) {
+	var dfd = callSvr(ac, params, function (data) {
 		ret = data;
-	});
+		fn && fn.call(this, data);
+	}, postParams, userOptions);
 	return ret;
 }
 
@@ -4022,7 +4853,7 @@ function setupCallSvrViaForm($form, $iframe, url, fn, callOpt)
 		if (data == "")
 			return;
 		var rv = defDataProc.call(callOpt, data);
-		if (rv == null)
+		if (rv === RV_ABORT)
 			self.app_abort();
 		fn(rv);
 	});
@@ -4177,7 +5008,7 @@ batchCall.prototype = {
 				}
 
 				var data1 = defDataProc.call(ajaxCtx_, e);
-				if (data1 != null) {
+				if (data1 !== RV_ABORT) {
 					if (callOpt.fn) {
 						callOpt.fn.call(ajaxCtx_, data1);
 					}
@@ -6066,6 +6897,15 @@ TODO: cordova-ios未来将使用WkWebView作为容器（目前仍使用UIWebView
 
 (v5.4) 默认如果在500ms内如果远程调用成功, 则不显示加载图标.
 
+
+@var options.skipErrorRegex 定义要忽略的错误
+
+示例：有video标签时，缩小窗口或全屏预览时，有时会报一个错（见下例），暂不清楚解决方案，也不影响执行，可以先安全忽略它不要报错：
+
+	$.extend(MUI.options, {
+		skipErrorRegex: /ResizeObserver loop limit exceeded/i,
+	});
+
 */
 	var m_opt = self.options = {
 		appName: "user",
@@ -6082,7 +6922,9 @@ TODO: cordova-ios未来将使用WkWebView作为容器（目前仍使用UIWebView
 
 		pluginFolder: "../plugin",
 		showHash: ($("base").attr("mui-showHash") != "no"),
-		statusBarColor: "#,light"
+		statusBarColor: "#,light",
+
+		skipErrorRegex: null
 	};
 
 	var m_onLoginOK;
@@ -6286,13 +7128,16 @@ function fixTopbarColor()
 {
 	if (!g_cordova)
 		return;
-	$(document).on("pageshow", function () {
+	$(document).on("pageshow", onPageShow);
+	onPageShow();
+	
+	function onPageShow() {
 		var color = MUI.activePage.find(".hd").css("backgroundColor"); // format: "rgb(...)"
 		if (color) {
 			var colorHex = self.rgb2hex(color); // call rgb(...)
 			setTopbarColor(colorHex);
 		}
-	});
+	}
 }
 
 //}}}
@@ -6479,8 +7324,13 @@ function parseArgs()
 			mCommon.setStorage("cordova", g_cordova);
 			$(function () {
 				var path = './';
-				if (mCommon.isIOS()) {
-					mCommon.loadScript(path + "cordova-ios/cordova.js?__HASH__,.."); 
+				if (/iPhone|iPad|Macintosh/i.test(navigator.userAgent)) {
+					if (g_args.mergeJs) {
+						mCommon.loadScript(path + "lib-cordova-ios.min.js"); 
+					}
+					else {
+						mCommon.loadScript(path + "cordova-ios/cordova.js?__HASH__,.."); 
+					}
 
 					if (! m_opt.disableFastClick) {
 						// introduce fastclick for IOS webview: https://github.com/ftlabs/fastclick
@@ -6490,7 +7340,12 @@ function parseArgs()
 					}
 				}
 				else {
-					mCommon.loadScript(path + "cordova/cordova.js?__HASH__,.."); 
+					if (g_args.mergeJs) {
+						mCommon.loadScript(path + "lib-cordova.min.js"); 
+					}
+					else {
+						mCommon.loadScript(path + "cordova/cordova.js?__HASH__,.."); 
+					}
 				}
 			});
 		}
@@ -7063,7 +7918,7 @@ function initPullList(container, opt)
 		//jo_.height(height).css("lineHeight", height + "px");
 			
 		if (ac == "D") {
-			var c = cont_.getElementsByClassName("mui-pullHint")[0];
+			var c = $(cont_).find(".mui-pullHint:visible")[0]; // cont_.getElementsByClassName("mui-pullHint")[0];
 			if (c)
 				jo_.appendTo(c);
 			else

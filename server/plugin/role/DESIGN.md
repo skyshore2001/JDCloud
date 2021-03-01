@@ -1,5 +1,82 @@
 # 管理平台角色权限设计
 
+## 安装
+
+在主设计文档中包含本文件：
+
+	@include server\plugin\role\DESIGN.md
+
+用于创建表和字段。
+
+后端无须包含本插件，应在plugin/index.php中设置：
+
+	$GLOBALS["P_initClient"]["enableRole"] = true;
+
+前端可使用`g_data.initClient.enableRole`检查是否开启本特性。
+
+在本目录中运行`make`，为工程添加相关文件，这些文件将自动加入git仓库。
+
+在管理端主菜单中添加“角色管理”：
+
+	<div class="perm-mgr" style="display:none">
+		<div class="menu-expand-group">
+			<a><span><i class="fa fa-pencil-square-o"></i>系统设置</span></a>
+			<div class="menu-expandable">
+				...
+				<a href="#pageRole">角色管理</a>
+				...
+			</div>
+		</div>
+	</div>
+
+以下编码已在项目中做过适配，无须添加，步骤仅供参考：
+
+在员工管理列表页，将perms字段改为如下：web/page/pageEmployee.html
+
+			<th data-options="field:'perms', jdEnumMap:PermMap, formatter:Formatter.enum(PermMap), sortable:true">角色</th>
+
+在员工管理详情页，将perms字段修改为如下：web/page/dlgEmployee.html
+
+			<tr>
+				<td>角色</td>
+				<td class="wui-checkList" data-options="ListOptions.Role()">
+					<input type="hidden" name="perms">
+					<div><label><input type="checkbox" value="mgr">最高管理员</label></div>
+					<div><label><input type="checkbox" value="emp" checked>管理员</label></div>
+				</td>
+			</tr>
+
+在主逻辑store.js中添加ListOptions.Role函数：
+
+	var ListOptions = {
+		...
+		Role: function () {
+			var opts = {
+				valueField: "name",
+				textField: "name",
+				url: WUI.makeUrl('Role.query', {
+					res: 'name',
+					pagesz: -1
+				})
+			};
+			return opts;
+		}
+	};
+
+在后端api_objects.php中，扩展接口`Employee.get`，返回rolePerms字段
+
+	Employee.get() -> {..., rolePerms}
+
+	class AC2_Employee extends ...
+	{
+		protected function onQuery()
+		{
+			if ($this->ac == "get" && $GLOBALS["P_initClient"]["enableRole"]) {
+				AC0_Role::handleRole($this);
+			}
+		}
+	}
+
 ## 概要设计
 
 角色包括系统**内置角色**和**自定义角色**. 
@@ -91,94 +168,6 @@
 
 - WUI.canDo 在jdcloud-wui.js中内置，实现权限规则。文档有如何设置权限的示例
 - WUI.applyPermission 登录后根据perms/rolePerms过滤菜单(或文档中查询key permission 菜单权限控制)，定义于jdcloud-wui-ext.js中。
-
-### 开发步骤
-
-在主设计文档中包含本文件：
-
-	@include server\plugin\role\DESIGN.md
-
-用于创建表和字段。
-
-后端无须包含本插件，应在plugin/index.php中设置：
-
-	$GLOBALS["P_initClient"]["enableRole"] = true;
-
-前端可使用`g_data.initClient.enableRole`检查是否开启本特性。
-
-在本目录中运行`make`，为工程添加相关文件，将它们加入git仓库。
-
-在管理端主菜单中添加“角色管理”：
-
-	<div class="perm-mgr" style="display:none">
-		<div class="menu-expand-group">
-			<a><span><i class="fa fa-pencil-square-o"></i>系统设置</span></a>
-			<div class="menu-expandable">
-				...
-				<a href="#pageRole">角色管理</a>
-				...
-			</div>
-		</div>
-	</div>
-
-以下编码已在项目中做过适配，无须添加，步骤仅供参考：
-
-在员工管理列表页，将perms字段改为如下：web/page/pageEmployee.html
-
-			<th data-options="field:'perms', jdEnumMap:PermMap, formatter:Formatter.enum(PermMap), sortable:true">角色</th>
-
-在员工管理详情页，将perms字段修改为如下：web/page/dlgEmployee.html
-
-			<tr>
-				<td>角色</td>
-				<td class="wui-checkList" data-options="ListOptions.Role()">
-					<input type="hidden" name="perms">
-					<div><label><input type="checkbox" value="mgr">最高管理员</label></div>
-					<div><label><input type="checkbox" value="emp" checked>管理员</label></div>
-				</td>
-			</tr>
-
-在主逻辑store.js中添加ListOptions.Role函数：
-
-	var ListOptions = {
-		...
-		Role: function () {
-			var opts = {
-				valueField: "name",
-				textField: "name",
-				url: WUI.makeUrl('Role.query', {
-					res: 'name',
-					pagesz: -1
-				})
-			};
-			return opts;
-		}
-	};
-
-在后端api_objects.php中，扩展接口`Employee.get`，返回rolePerms字段
-
-	Employee.get() -> {..., rolePerms}
-
-	class AC2_Employee extends ...
-	{
-		protected function onQuery()
-		{
-			if ($this->ac == "get" && $GLOBALS["P_initClient"]["enableRole"]) {
-				$this->addRes("perms rolePerms");
-				$this->enumFields["rolePerms"] = function ($perms, $row) {
-					if (! $perms)
-						return;
-					// "perm1, perm2" => "IN ('perm1', 'perm2')"
-					$permsExpr = preg_replace_callback('/\w+/u', function ($ms) {
-						return Q($ms[0]);
-					}, $perms);
-					$arr = queryAll("SELECT perms FROM Role WHERE name IN (" . $permsExpr . ")");
-					$rolePerms = array_map(function ($e) { return $e[0]; }, $arr);
-					return join(' ', $rolePerms);
-				};
-			}
-		}
-	}
 
 ## 数据库设计
 

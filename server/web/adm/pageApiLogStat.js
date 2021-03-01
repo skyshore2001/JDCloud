@@ -13,11 +13,13 @@ function initPageApiLogStat()
 		opt.maxSeriesCnt = 5;
 
 		var param = opt.queryParam;
-		if (opt.tmUnit == null) {
-			param.orderby = "sum DESC";
-			param.pagesz = 10;
+		if (opt.tmUnit == null) { // 在显示饼图时，取sum最大的10个显示。
+			param.orderby = "sum DESC"; // 因为res中定义了字段别名为sum
+			opt.maxSeriesCnt = 10;
 		}
-		param.res = jpage.find("#cboRes").val() + " sum";
+		param.res = jpage.find("#cboRes").val();
+		// 注意: cond参数会自动填写，若想追加可这样写
+		// param.cond = [param.cond, "tm1 IS NOT NULL"];
 
 		var chartOpt, seriesOpt;
 		if (! opt.tmUnit) {
@@ -46,6 +48,8 @@ function initPageApiLogStat()
 				}
 			};
 			seriesOpt = {
+				type: 'bar',
+				// stack: 'ser', // 堆积柱状图
 				//顶部数字
 				itemStyle: {
 					normal: {

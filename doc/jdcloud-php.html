@@ -2,6 +2,7 @@
 <html>
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>筋斗云接口编程</title>
   <style type="text/css">code{white-space: pre;}</style>
 <link rel="stylesheet" href="style.css" />
@@ -35,9 +36,10 @@
 <li><a href="#计算字段"><span class="toc-section-number">4.5.3</span> 计算字段</a></li>
 </ul></li>
 <li><a href="#子表对象"><span class="toc-section-number">4.6</span> 子表对象</a></li>
-<li><a href="#虚拟表和视图"><span class="toc-section-number">4.7</span> 虚拟表和视图</a></li>
-<li><a href="#接口返回前回调"><span class="toc-section-number">4.8</span> 接口返回前回调</a></li>
-<li><a href="#非标准对象接口"><span class="toc-section-number">4.9</span> 非标准对象接口</a></li>
+<li><a href="#枚举字段与字段处理"><span class="toc-section-number">4.7</span> 枚举字段与字段处理</a></li>
+<li><a href="#虚拟表和视图"><span class="toc-section-number">4.8</span> 虚拟表和视图</a></li>
+<li><a href="#接口返回前回调"><span class="toc-section-number">4.9</span> 接口返回前回调</a></li>
+<li><a href="#非标准对象接口"><span class="toc-section-number">4.10</span> 非标准对象接口</a></li>
 </ul></li>
 <li><a href="#框架功能"><span class="toc-section-number">5</span> 框架功能</a><ul>
 <li><a href="#日志与调试"><span class="toc-section-number">5.1</span> 日志与调试</a></li>
@@ -59,7 +61,7 @@
 
 <h2 id="概述"><span class="header-section-number">1</span> 概述</h2>
 <p>随着移动互联网的快速发展，各行业对手机应用开发需求旺盛。 应用开发一般分为前端和后端，后端关注数据和业务，需要对前端各类应用（如安卓应用、苹果应用、H5应用等）提供基于HTTP协议的交互接口。</p>
-<p>筋斗云是一个Web接口开发框架，它基于模型驱动开发（MDD）的理念，提出极简化开发的“数据模型即接口”思想，用于快速实现基于数据模型的接口（MBI: Model Based Interface）。 它推崇以简约的方式在设计文档中描述数据模型，进而基于模型自动形成数据库表以及业务接口，称为“一站式数据模型部署”。</p>
+<p>筋斗云是一个低代码架构的Web接口开发框架，它基于模型驱动开发（MDD）的理念，提出极简化开发的“数据模型即接口”思想，用于快速实现基于数据模型的接口（MBI: Model Based Interface）。 它推崇以简约的方式在设计文档中描述数据模型，进而基于模型自动形成数据库表以及业务接口，称为“一站式数据模型部署”。</p>
 <p>筋斗云是使用php语言开发的，现在也支持其它语言的版本，它们都实现了<a href="https://github.com/skyshore2001/daca/">“分布式对象访问与权限控制架构”（DACA）</a>中的服务端规约。 服务端使用业务查询协议(BQP)提供的Web接口，用户一般无需关心页面路由。</p>
 <p>筋斗云后端框架项目参考：</p>
 <ul>
@@ -67,7 +69,7 @@
 <li><a href="https://github.com/skyshore2001/jdcloud-java">jdclud-java</a> (筋斗云后端java版本)</li>
 <li><a href="https://github.com/skyshore2001/jdcloud-cs">jdclud-cs</a> (筋斗云后端.net版本)</li>
 </ul>
-<p>另外，筋斗云有优雅的前端框架，支持构建模块化的H5单页应用：</p>
+<p>另外，筋斗云有实用的前端框架，支持构建模块化的H5单页应用：</p>
 <ul>
 <li><a href="https://github.com/skyshore2001/jdcloud-mui">jdcloud-mui</a> 筋斗云移动端单页应用框架，用于创建手机H5应用程序。</li>
 <li><a href="https://github.com/skyshore2001/jdcloud-wui">jdcloud-wui</a> 筋斗云管理端单页应用框架，用于创建运营管理端H5应用程序。</li>
@@ -128,6 +130,7 @@
         }
     }
 }</code></pre></div>
+<p>其中会话变量empId为员工编号，在员工登录后就会自动存在这个变量中，在AC2前缀的类中可直接使用。 类似的，用户登录后在uid变量表示用户编号，在AC1前缀类中可以直接使用。</p>
 <p><strong>[一站式数据模型部署]</strong></p>
 <p>筋斗云框架重视设计文档，倡导在设计文档中用简约的方式定义数据模型与接口原型， 例如，上例中的ApiLog表，无需手工创建，只要设计文档中定义：</p>
 <pre><code>@ApiLog: id, tm, addr</code></pre>
@@ -140,7 +143,7 @@
 <p>建议安装git工具直接下载，便于以后更新，例如直接创建Web接口项目叫mysvc：</p>
 <pre><code>git clone https://github.com/skyshore2001/jdcloud-php.git mysvc</code></pre>
 <p>如果github访问困难，也可以用这个git仓库： <code>http://dacatec.com/git/jdcloud-php.git</code></p>
-<p>配置好Web服务器，php环境和MySQL数据库。 项目下server目录为Web应用的源码目录，把该目录映射到Web服务器下，假如URL为<code>http://localhost/mysvc/</code>，这称为该项目的基准路径（BASE_URL）。 先检查系统环境以及配置数据库连接等，在浏览器中打开初始化工具页面：</p>
+<p>安装好Web服务器(一般用apache或nginx)，php环境和MySQL数据库。 项目下server目录为Web应用的源码目录，把该目录映射到Web服务器下，假如URL为<code>http://localhost/mysvc/</code>，这称为该项目的基准路径（BASE_URL）。 先检查系统环境以及配置数据库连接等，在浏览器中打开初始化工具页面：</p>
 <pre><code>http://localhost/mysvc/tool/init.php</code></pre>
 <p>这个工具会先检查运行环境是否正确，如有异常（比如php版本不对，缺少组件等）请先解决。 注意PHP最低版本需要5.4版本，需要打开mysql, pdo, gd等支持。</p>
 <p>注意“应用程序URL根路径”一项应与BASE_URL一致，如本例中为<code>/mysvc</code>。</p>
@@ -205,7 +208,7 @@ ApiLog.del(id)</code></pre>
     &quot;d&quot;:[[11353,&quot;2016-01-04 18:31:06&quot;,&quot;::1&quot;],[11352,&quot;2016-02-04 18:30:43&quot;,&quot;::1&quot;],...],
     &quot;nextkey&quot;:11349
 }]</code></pre>
-<p>返回的格式称为压缩表，&quot;h&quot;为表头字段，&quot;d&quot;为表的数据，在接口描述中用<code>table(id, 其它字段...)</code>表示。</p>
+<p>返回的格式称为压缩表或hd表，&quot;h&quot;为表头字段，&quot;d&quot;为表的数据，在接口描述中用<code>table(id, 其它字段...)</code>表示。</p>
 <p>默认返回的JSON数据未经美化，效率较高，如果想看的清楚些，可以在配置文件conf.user.php中设置测试模式：</p>
 <pre><code>putenv(&quot;P_TEST_MODE=1&quot;);</code></pre>
 <p>测试模式不仅美化输出数据，还可返回调试信息，可以设置调试等级为0-9，如果设置为9，可以查看SQL调用日志：</p>
@@ -466,13 +469,23 @@ $rv = queryOne(&quot;SELECT id, dscr FROM Ordr WHERE id=1&quot;, true);</code></
 <pre><code>// 有数据时，返回二维数组 [[$id, $dscr], ...]
 // 没有数据时，返回空数组 []，而不是false
 $rv = queryAll(&quot;SELECT id, dscr FROM Ordr WHERE userId={$uid}&quot;);</code></pre>
-<p>执行非查询语句可以用包装函数<code>execOne</code>如：</p>
+<p>执行插入或更新操作可以用dbInsert和dbUpdate:</p>
+<pre><code>$orderId = dbInsert(&quot;Ordr&quot;, [
+    &quot;dscr&quot; =&gt; $_POST[&quot;dscr&quot;]
+]);
+
+dbUpdate(&quot;Ordr&quot;, [
+    &quot;dscr&quot; =&gt; $_POST[&quot;dscr&quot;]
+], $orderId);</code></pre>
+<p>也可以对所有非查询操作直接使用底层函数<code>execOne</code>如：</p>
 <pre><code>execOne(&quot;DELETE ...&quot;);
 execOne(&quot;UPDATE ...&quot;);
-execOne(&quot;INSERT INTO ...&quot;);</code></pre>
+execOne(&quot;INSERT INTO ...&quot;);
+execOne(&quot;set group_concat_max_len=100000&quot;); // 设置group_concat相关选项
+$v = queryOne(&quot;SELECT @@group_concat_max_len&quot;);</code></pre>
 <p>对于insert语句，可以取到执行后得到的新id值：</p>
 <pre><code>$newId = execOne(&quot;INSERT INTO ...&quot;, true);</code></pre>
-<p><strong>[防备SQL注入]</strong></p>
+<p><strong>[Q函数与防备SQL注入]</strong></p>
 <p>要特别注意的是，所有外部传入的字符串参数都不应直接用来拼接SQL语句， 下面登录接口的实现就包含一个典型的SQL注入漏洞：</p>
 <pre><code>$uname = mparam(&quot;uname&quot;);
 $pwd = mparam(&quot;pwd&quot;);
@@ -531,7 +544,62 @@ foreach ($addrList as $addr) {
 <pre><code>User 1&lt;-&gt;n Ordr (userId)
 Ordr 1&lt;-&gt;n OrderLog (orderId)</code></pre>
 <p>在设计文档DESIGN.md中，我们用<code>@表名: 字段名1, 字段名2</code>这样的格式来定义数据模型。前面讲过，通过升级工具（tool/upgrade.php）可以把它们创建或更新到数据库中。</p>
-<p>字段名的类型根据命名规范自动判断，比如以id结尾的字段会被自动作为整型创建，以tm结尾会被当作日期时间类型创建，其它默认是字符串，规则如下：</p>
+<p>字段名的类型可在字段后标示，例如：<code>status(2)</code>表示2字符长度的字符串(nvarchar(2)), <code>创建时间(dt)</code>表示date类型。</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">标记</th>
+<th align="left">类型</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">s</td>
+<td align="left">small string(20)</td>
+</tr>
+<tr class="even">
+<td align="left">l</td>
+<td align="left">long string(255)</td>
+</tr>
+<tr class="odd">
+<td align="left">t</td>
+<td align="left">text(64K)</td>
+</tr>
+<tr class="even">
+<td align="left">tt</td>
+<td align="left">mediumtext(16M)</td>
+</tr>
+<tr class="odd">
+<td align="left">i</td>
+<td align="left">int</td>
+</tr>
+<tr class="even">
+<td align="left">n</td>
+<td align="left">numeric(decimal)</td>
+</tr>
+<tr class="odd">
+<td align="left">date</td>
+<td align="left">date</td>
+</tr>
+<tr class="even">
+<td align="left">tm</td>
+<td align="left">datetime</td>
+</tr>
+<tr class="odd">
+<td align="left">flag</td>
+<td align="left">tiny int</td>
+</tr>
+<tr class="even">
+<td align="left">数字</td>
+<td align="left">指定长度的string</td>
+</tr>
+<tr class="odd">
+<td align="left">不指定</td>
+<td align="left">自动判断</td>
+</tr>
+</tbody>
+</table>
+<p>如果未指定类型，则根据命名规范自动判断，比如以id结尾的字段会被自动作为整型创建，以tm结尾会被当作日期时间类型创建，其它默认是字符串（长度50），规则如下：</p>
 <table>
 <thead>
 <tr class="header">
@@ -549,8 +617,8 @@ Ordr 1&lt;-&gt;n OrderLog (orderId)</code></pre>
 <td align="left">Currency</td>
 </tr>
 <tr class="odd">
-<td align="left">以&quot;Tm&quot;/&quot;Dt&quot;/&quot;Time&quot;结尾</td>
-<td align="left">Datetime/Date/Time</td>
+<td align="left">以&quot;Tm&quot;/&quot;Dt&quot;结尾</td>
+<td align="left">Datetime/Date</td>
 </tr>
 <tr class="even">
 <td align="left">以&quot;Flag&quot;结尾</td>
@@ -577,35 +645,12 @@ Ordr 1&lt;-&gt;n OrderLog (orderId)</code></pre>
 <td align="left">Currency</td>
 </tr>
 <tr class="odd">
+<td align="left">!</td>
+<td align="left">Float</td>
+</tr>
+<tr class="even">
 <td align="left">#</td>
 <td align="left">Double</td>
-</tr>
-</tbody>
-</table>
-<p>字符串可以指定长度如<code>status(2)</code>，<code>name(s)</code>，字串长度以如下方式描述：</p>
-<table>
-<thead>
-<tr class="header">
-<th align="left">标记</th>
-<th align="left">长度</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="left">s</td>
-<td align="left">small=20</td>
-</tr>
-<tr class="even">
-<td align="left">m</td>
-<td align="left">medium=50 (default)</td>
-</tr>
-<tr class="odd">
-<td align="left">l</td>
-<td align="left">long=255</td>
-</tr>
-<tr class="even">
-<td align="left">t</td>
-<td align="left">text</td>
 </tr>
 </tbody>
 </table>
@@ -798,25 +843,25 @@ Ordr.get(id) -&gt; { 同query接口字段...}
 <p>习惯上，我们在query或get接口的字段列表中加&quot;...&quot;表示参考数据表定义中的字段，而&quot;...&quot;之后描述的就是虚拟字段。 虚拟字段上的后缀&quot;?&quot;表示该字段默认不返回，仅当在res参数中指定才会返回，如：</p>
 <pre><code>Ordr.query(res=&quot;*,userName&quot;)</code></pre>
 <p>一般虚拟字段都建议默认不返回，而是按需来取，以减少关联表或计算带来的开销。</p>
-<p>在cond参数中可以直接使用虚拟字段，不管它是否在res参数中指定，如</p>
+<p>虚拟字段不仅可用于查询输出，也常常用于查询条件。在cond参数中可以直接使用虚拟字段，不管它是否在res参数中指定，如</p>
 <pre><code>Ordr.query(cond=&quot;userName LIKE &#39;%john%&#39;&quot;, res=&quot;id,dscr&quot;)</code></pre>
 <p>实现时，通过设置属性<code>$vcolDefs</code>实现这些关联字段：</p>
 <div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="kw">class</span> AC1_Ordr <span class="kw">extends</span> AccessControl
 {
     <span class="kw">protected</span> <span class="kw">$vcolDefs</span> = <span class="ot">[</span>
         <span class="ot">[</span>
-            <span class="st">&quot;res&quot;</span> =&gt; <span class="ot">[</span><span class="st">&quot;u.name AS userName&quot;</span><span class="ot">,</span> <span class="st">&quot;u.phone AS userPhone&quot;</span><span class="ot">],</span>
+            <span class="st">&quot;res&quot;</span> =&gt; <span class="ot">[</span><span class="st">&quot;u.name userName&quot;</span><span class="ot">,</span> <span class="st">&quot;u.phone userPhone&quot;</span><span class="ot">],</span>
             <span class="st">&quot;join&quot;</span> =&gt; <span class="st">&quot;INNER JOIN User u ON u.id=t0.userId&quot;</span><span class="ot">,</span>
             <span class="co">// &quot;default&quot; =&gt; false, // 与接口原型中字段是否可缺省(是否用&quot;?&quot;标记)对应</span>
         <span class="ot">],</span>
         <span class="ot">[</span>
-            <span class="st">&quot;res&quot;</span> =&gt; <span class="ot">[</span><span class="st">&quot;log_cr.tm AS createTm&quot;</span><span class="ot">],</span>
+            <span class="st">&quot;res&quot;</span> =&gt; <span class="ot">[</span><span class="st">&quot;log_cr.tm createTm&quot;</span><span class="ot">],</span>
             <span class="st">&quot;join&quot;</span> =&gt; <span class="st">&quot;LEFT JOIN OrderLog log_cr ON log_cr.action=&#39;CR&#39; AND log_cr.orderId=t0.id&quot;</span><span class="ot">,</span>
         <span class="ot">]</span>
     <span class="ot">]</span>
 }</code></pre></div>
 <ul>
-<li>以上很多表或字段指定了别名，比如表&quot;User u&quot;，字段&quot;u.name AS userName&quot;。在指定别名时，关键字&quot;AS&quot;可以省略。</li>
+<li>以上很多表或字段指定了别名，比如表&quot;User u&quot;，字段&quot;u.name userName&quot;（等价于与SQL类似的&quot;u.name AS userName&quot;）</li>
 <li>表的别名不是必须的，除非有多个同名的表被引用。</li>
 <li>如果指定&quot;default&quot;选项为true, 则调用Ordr.query()时如果未指定&quot;res&quot;参数，会默认会带上该字段。</li>
 </ul>
@@ -826,7 +871,7 @@ Ordr.get(id) -&gt; { 同query接口字段...}
 <p>一个订单可有多个评价，表间的关系为：</p>
 <pre><code>订单评价Rating(orderId) n&lt;-&gt;1 订单Ordr
 订单Ordr(userId) n&lt;-&gt;1 用户User</code></pre>
-<p>现在要为Rating表增加关联字段订单描述 &quot;Ordr.dscr AS orderDscr&quot;, 以及客户姓名 &quot;User.name AS userName&quot;, 设计接口为：</p>
+<p>现在要为Rating表增加关联字段订单描述 &quot;Ordr.dscr orderDscr&quot;, 以及客户姓名 &quot;User.name userName&quot;, 设计接口为：</p>
 <pre><code>Rating.query() -&gt; tbl(id, orderId, content, ..., orderDscr?, userName?)</code></pre>
 <p>注意：userName字段不直接与Rating表关联，而是通过Ordr表桥接过去。</p>
 <p>如果这样定义:</p>
@@ -834,11 +879,11 @@ Ordr.get(id) -&gt; { 同query接口字段...}
 {
     <span class="kw">protected</span> <span class="kw">$vcolDefs</span> = <span class="ot">[</span>
         <span class="ot">[</span>
-            <span class="st">&quot;res&quot;</span> =&gt; <span class="ot">[</span><span class="st">&quot;o.dscr AS orderDscr&quot;</span><span class="ot">],</span>
+            <span class="st">&quot;res&quot;</span> =&gt; <span class="ot">[</span><span class="st">&quot;o.dscr orderDscr&quot;</span><span class="ot">],</span>
             <span class="st">&quot;join&quot;</span> =&gt; <span class="st">&quot;INNER JOIN Ordr o ON o.id=t0.orderId&quot;</span><span class="ot">,</span>
         <span class="ot">],</span>
         <span class="ot">[</span>
-            <span class="st">&quot;res&quot;</span> =&gt; <span class="ot">[</span><span class="st">&quot;u.name AS userName&quot;</span><span class="ot">],</span>
+            <span class="st">&quot;res&quot;</span> =&gt; <span class="ot">[</span><span class="st">&quot;u.name userName&quot;</span><span class="ot">],</span>
             <span class="st">&quot;join&quot;</span> =&gt; <span class="st">&quot;INNER JOIN User u ON o.userId=u.id&quot;</span><span class="ot">,</span>
         <span class="ot">],</span>
     <span class="ot">];</span>
@@ -853,7 +898,7 @@ Ordr.get(id) -&gt; { 同query接口字段...}
 {
     <span class="kw">protected</span> <span class="kw">$vcolDefs</span> = <span class="ot">[</span>
         <span class="ot">[</span>
-            <span class="st">&quot;res&quot;</span> =&gt; <span class="ot">[</span><span class="st">&quot;o.dscr AS orderDscr&quot;</span><span class="ot">,</span> <span class="st">&quot;u.name AS userName&quot;</span><span class="ot">],</span>
+            <span class="st">&quot;res&quot;</span> =&gt; <span class="ot">[</span><span class="st">&quot;o.dscr orderDscr&quot;</span><span class="ot">,</span> <span class="st">&quot;u.name userName&quot;</span><span class="ot">],</span>
             <span class="st">&quot;join&quot;</span> =&gt; <span class="st">&quot;INNER JOIN Ordr o ON o.id=t0.orderId INNER JOIN User u ON o.userId=u.id&quot;</span><span class="ot">,</span>
         <span class="ot">]</span>
     <span class="ot">];</span>
@@ -864,11 +909,11 @@ Ordr.get(id) -&gt; { 同query接口字段...}
 {
     <span class="kw">protected</span> <span class="kw">$vcolDefs</span> = <span class="ot">[</span>
         <span class="ot">[</span>
-            <span class="st">&quot;res&quot;</span> =&gt; <span class="ot">[</span><span class="st">&quot;o.dscr AS orderDscr&quot;</span><span class="ot">],</span>
+            <span class="st">&quot;res&quot;</span> =&gt; <span class="ot">[</span><span class="st">&quot;o.dscr orderDscr&quot;</span><span class="ot">],</span>
             <span class="st">&quot;join&quot;</span> =&gt; <span class="st">&quot;INNER JOIN Ordr o ON o.id=t0.orderId&quot;</span><span class="ot">,</span>
         <span class="ot">],</span>
         <span class="ot">[</span>
-            <span class="st">&quot;res&quot;</span> =&gt; <span class="ot">[</span><span class="st">&quot;u.name AS userName&quot;</span><span class="ot">],</span>
+            <span class="st">&quot;res&quot;</span> =&gt; <span class="ot">[</span><span class="st">&quot;u.name userName&quot;</span><span class="ot">],</span>
             <span class="st">&quot;join&quot;</span> =&gt; <span class="st">&quot;INNER JOIN User u ON o.userId=u.id&quot;</span><span class="ot">,</span>
             <span class="st">&quot;require&quot;</span> =&gt; <span class="st">&quot;userId&quot;</span> <span class="co">// *** 定义依赖，如果要用到res中的字段如userName，则自动添加orderDscr字段引入的表关联。</span>
         <span class="ot">]</span>
@@ -892,11 +937,11 @@ OrderItem(orderId) n&lt;-&gt;1 Ordr</code></pre>
 {
     <span class="kw">protected</span> <span class="kw">$vcolDefs</span> = <span class="ot">[</span>
         <span class="ot">[</span>
-            <span class="st">&quot;res&quot;</span> =&gt; <span class="ot">[</span><span class="st">&quot;(SELECT SUM(qty*ifnull(price2,0)) FROM OrderItem WHERE orderId=t0.id) AS amount2&quot;</span><span class="ot">],</span>
+            <span class="st">&quot;res&quot;</span> =&gt; <span class="ot">[</span><span class="st">&quot;(SELECT SUM(qty*ifnull(price2,0)) FROM OrderItem WHERE orderId=t0.id) amount2&quot;</span><span class="ot">],</span>
         <span class="ot">]</span>
     <span class="ot">];</span>
 }</code></pre></div>
-<p>这里amount2在res中定义为一个复杂的子查询，其中还用到了t0表，也即是主表&quot;Ordr&quot;的固定别名。 可想而知，在这个例子中，取该字段的查询效率是比较差的。也不要把它用到cond条件中。</p>
+<p>这里amount2在res中定义为一个复杂的子查询，其中还用到了t0表，也即是主表&quot;Ordr&quot;的固定别名。 可想而知，在这个例子中，取该字段的查询效率是比较差的。也尽量不要把它用到cond条件中。</p>
 <p><strong>[子表字段]</strong></p>
 <p>上面Ordr与OrderItem表是典型的一对多关系，有时希望在返回一个对象时，同时返回一个子对象数组，比如获取一个订单像这样：</p>
 <pre><code>{ id: 1, dscr: &quot;换轮胎及洗车&quot;, ..., orderItem: [
@@ -920,38 +965,145 @@ OrderItem(orderId) n&lt;-&gt;1 Ordr</code></pre>
         <span class="st">...</span>
     <span class="ot">]</span>
 }</code></pre></div>
+<p>注意：子表字段在MySQL数据库中有长度限制，默认是1024。如果想扩大，可以自行估算大小并设置：</p>
+<pre><code>execOne(&quot;set group_concat_max_len=100000&quot;);</code></pre>
+<p>由于每次接口调用都是独立的连接会话，在接口的设置只会影响当前接口，不影响其它接口。</p>
 <h3 id="子表对象"><span class="header-section-number">4.6</span> 子表对象</h3>
 <p>前面提到过想在对象中返回子表时，可以使用压缩成一个字符串的子表字段，一般适合数据比较简单的场合。</p>
-<p>另一种方式是用<code>$subobj</code>来定义子表对象。</p>
+<p>另一种方式是用<code>$subobj</code>来定义子表字段，注意它也适用于关联表字段。</p>
 <p>例如在获取订单时，同时返回订单日志，设计接口如下：</p>
-<pre><code>Ordr.get() -&gt; {id, ..., @orderLog?}
+<pre><code>Ordr.get() -&gt; {id, ..., @orderLog?, @user?}
+
+数据库中订单，日志及用户表如下：
+@Ordr: id, userId, tm, amount (通过userId关联User)
+@OrderLog: id, orderId, tm, dscr (通过orderId关联Ordr)
+@User: id, name
 
 返回
-orderLog: {id, tm, dscr, action} 订单日志子表。
+orderLog: {tm, dscr} 订单日志（子表）。
+user: {id, name} 关联的用户（关联表）。
 
 示例
 
 {id: 1, dscr: &quot;换轮胎及洗车&quot;, ..., orderLog: [
-    {id: 1, tm: &quot;2016-1-1 10:10&quot;, action: &quot;CR&quot;, dscr: &quot;创建订单&quot;},
-    {id: 2, tm: &quot;2016-1-1 10:20&quot;, action: &quot;PA&quot;, dscr: &quot;付款&quot;}
-]}</code></pre>
+    {tm: &quot;2016-1-1 10:10&quot;, dscr: &quot;创建订单&quot;},
+    {tm: &quot;2016-1-1 10:20&quot;, dscr: &quot;付款&quot;}
+], user: {id: 1, name: &quot;用户1&quot;} }</code></pre>
 <p>上面接口原型描述中，字段orderLog前面的&quot;@&quot;标记表示它是一个数组，在返回值介绍中列出了它的数据结构。</p>
-<p>实现：</p>
+<p>实现示例：</p>
 <div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="kw">class</span> AC1_Ordr <span class="kw">extends</span> AccessControl
 {
     <span class="kw">protected</span> <span class="kw">$subobj</span> = <span class="ot">[</span>
-        <span class="st">&quot;orderLog&quot;</span> =&gt; <span class="ot">[</span><span class="st">&quot;sql&quot;</span>=&gt;<span class="st">&quot;SELECT ol.* FROM OrderLog ol WHERE ol.orderId=%d&quot;</span><span class="ot">]</span>
+        <span class="st">&quot;user&quot;</span> =&gt; <span class="ot">[</span><span class="st">&quot;obj&quot;</span>=&gt;<span class="st">&quot;User&quot;</span><span class="ot">,</span> cond<span class="st">&quot;=&gt;&quot;</span>id={userId}<span class="st">&quot;, &quot;</span><span class="kw">AC</span><span class="st">&quot;=&gt;&quot;</span>AccessControl<span class="st">&quot;, &quot;</span>wantOne<span class="st">&quot;=&gt;true],</span>
+<span class="st">        &quot;</span>orderLog<span class="st">&quot; =&gt; [&quot;</span>obj<span class="st">&quot;=&gt;&quot;</span>OrderLog<span class="st">&quot;, cond&quot;</span>=&gt;<span class="st">&quot;orderId={id}&quot;</span><span class="ot">,</span> <span class="st">&quot;AC&quot;</span>=&gt;<span class="st">&quot;AccessControl&quot;</span><span class="ot">,</span> <span class="st">&quot;res&quot;</span>=&gt;<span class="st">&quot;tm,dscr&quot;</span><span class="ot">]</span>
     <span class="ot">];</span>
 }</code></pre></div>
-<p>用选项&quot;sql&quot;定义子表的查询语句，其中用&quot;%d&quot;来表示主表主键，这里即Ordr.id字段。</p>
-<p>定义子表对象时，还可设置一些选项，比如上面设置等价于：</p>
-<pre><code>    &quot;orderLog&quot; =&gt; [&quot;sql&quot;=&gt;..., &quot;wantOne&quot;=&gt;false, &quot;default&quot;=&gt;false]</code></pre>
 <ul>
-<li><p>选项&quot;wantOne&quot;表示是否只返回一行。默认是返回一个对象数组，如<code>[{id, tm, ...}]</code>。 如果选项&quot;wantOne&quot;为true，则结果以一个对象返回即 <code>{id, tm, ...}</code>, 适用于主表与子表一对一的情况。</p></li>
-<li><p>选项&quot;default&quot;与虚拟字段(vcolDefs)上的&quot;default&quot;选项一样，表示当get或query接口未指定&quot;res&quot;参数时，是否默认返回该字段。 一般应使用默认值false，客户端需要时应通过res参数指定，如 <code>Ordr.query(res=&quot;*,orderLog&quot;)</code>.</p></li>
+<li>参数<code>obj</code>指定子对象名。意味着<code>Ordr.get</code>查询中返回的<code>orderLog</code>字段，实现时相当于调用内部接口<code>OrderLog.query</code>。</li>
+<li>可选参数<code>AC</code>指定子表类名，如果不指定，则根据当前角色自动选择类（如<code>AC1_OrderLog</code>，若没有这个类则会报错）。这里直接指定使用基类<code>AccessControl</code>，是最简单的做法，不必去定义子表的AC类。</li>
+<li>参数<code>cond</code>指定了关联关系，其中用<code>{id}</code>替代主表id。在较早的版本使用<code>orderId=%d</code>的方式（<code>%d</code>等价于<code>{id}</code>）。</li>
+<li>可选参数<code>res</code>指定子表缺省字段，相当于调用<code>OrderLog.query(res=&quot;tm,dscr&quot;)</code>. 类似地，多数query接口的参数均可使用在此，例如<code>orderby</code>, <code>gres</code>等，还支持内部参数，如<code>cond2</code>, <code>join</code>, <code>res2</code>以及<code>OrderLog</code>子对象支持的特殊参数等。</li>
+<li>可选参数<code>wantOne</code>表示是否只返回一行。默认是返回一个对象数组，如<code>[{id, name...}]</code>。 如果选项&quot;wantOne&quot;为true，则结果以一个对象返回即 <code>{id, name...}</code>, 适用于当前主表与关联表一对一或多对一的情况。</li>
+<li>可选参数&quot;default&quot;与虚拟字段(vcolDefs)上的&quot;default&quot;选项一样，表示当get或query接口未指定&quot;res&quot;参数时，是否默认返回该字段。 一般应使用默认值false，客户端需要时应通过res参数指定，如 <code>Ordr.query(res=&quot;*,orderLog&quot;)</code>.</li>
 </ul>
-<p>注意：查询子表作为子对象字段是不支持分页的。如果子表可能很大，不要设计使用子表字段或列表字段，而应直接用子表的query方法来取，如开放接口&quot;OrderLog.query&quot;。</p>
-<h3 id="虚拟表和视图"><span class="header-section-number">4.7</span> 虚拟表和视图</h3>
+<p>注意：</p>
+<ul>
+<li><p>由于分页的限制，子表字段查询到的条数有限制（默认1000条，可设置AC类的maxPageSz到10000条）。 若一条主表记录可能关联超过千条子表记录，则不建议用子表，而是直接用OrderLog.query去做。</p></li>
+<li><p>在query接口中，为避免对每一条记录分别查询子表导致性能低下，做了批量查询优化。 例如Ordr.query返回20条数据，若不优化，该接口需要查询1(主表)+20(user子表)+20(orderLog子表)=41次，优化后只查询1(主表)+1(user子表)+1(orderLog子表)=3次。 所以若一条主表记录平均关联50条以上子表记录，则只应使用get接口，不要用query接口。 因为query接口的优化算法很可能导致子表数据有丢失（比如一次取20条数据，每条Ordr数据平均关联50条OrderLog子表记录，则优化后需要一次取1000条记录，而默认分页限制为1000条记录）。</p></li>
+</ul>
+<p>上面直接用了<code>AccessControl</code>类来实现子表查询，也可增加子表<code>OrderLog</code>的AC类定义，以实现更多的子表控制，比如限制增删改查操作类型、定义虚拟字段等。</p>
+<div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="kw">class</span> AC1_OrderLog <span class="kw">extends</span> AccessControl
+{
+    <span class="kw">protected</span> <span class="kw">$allowedAc</span> = <span class="ot">[</span><span class="st">&quot;query&quot;</span><span class="ot">];</span> <span class="co">// 只允许查询</span>
+    <span class="kw">protected</span> <span class="kw">$vcolDefs</span> = <span class="ot">[</span>
+        <span class="st">...</span>
+    <span class="ot">];</span>
+}</code></pre></div>
+<p>有子表定义后，只要将&quot;orderLog&quot;定义的AC选项由&quot;AccessControl&quot;改成&quot;AC1_OrderLog&quot;即可(或不定义AC选项，直接用默认):</p>
+<pre><code>    &quot;orderLog&quot; =&gt; [&quot;obj&quot;=&gt;&quot;OrderLog&quot;, cond&quot;=&gt;&quot;orderId={id}&quot;, &quot;AC&quot;=&gt;&quot;AC1_OrderLog&quot;]</code></pre>
+<p>用了<code>AC1</code>前缀则表示该接口对外开放了，也可以把类名改为<code>OrderLog</code>这样的类，这样子表接口就不直接对外开放了。</p>
+<p>有了子表定义，可以在<code>Ordr.add</code>接口中直接添加子项，如</p>
+<pre><code>callSvr(&quot;Ordr.add&quot;, $.noop, {..., orderLog: [{dscr:&quot;操作1&quot;}, {dscr:&quot;操作2&quot;}]}, {contentType: &quot;application/json&quot;});
+(注意前端callSvr接口可指定contentType为json格式，传输更清晰)</code></pre>
+<p>它内部会调用<code>OrderLog.add</code>接口。</p>
+<p>以及在<code>Ordr.set</code>中追加、更新和删除子项，如：</p>
+<pre><code>callSvr(&quot;Ordr.set&quot;, $.noop, {orderLog: [{dscr:&quot;操作3&quot;}] } ); // 未指定子项id，表示追加一项，
+callSvr(&quot;Ordr.set&quot;, $.noop, {orderLog: [{id:1, dscr:&quot;操作-1&quot;}]} ); // 指定子项id，更新一项
+callSvr(&quot;Ordr.set&quot;, $.noop, {orderLog: [{id:2, _delete:1} ]} ); // 指定子项id，并指定`_delete:1`表示删除一项
+
+// 更新一项，删除一项，追加一项：
+callSvr(&quot;Ordr.set&quot;, $.noop, {orderLog: [{id:1, dscr:&quot;操作-1&quot;}, {id:2, _delete:1}, {dscr:&quot;操作3&quot;} ]} );</code></pre>
+<p>它内部会调用<code>OrderLog.add/set/del</code>接口。</p>
+<p>当然，前提是子表AC类中允许相应的接口。AC类默认是支持这些标准接口的，可由<code>$allowedAc</code>来限定，例如例中限制了只允许<code>query</code>接口(<code>$allowedAc=[&quot;query&quot;]</code>)，于是所有对子项的追加、更新、修改都会报错。</p>
+<h3 id="枚举字段与字段处理"><span class="header-section-number">4.7</span> 枚举字段与字段处理</h3>
+<p>之前讲的虚拟字段都是通过数据库来关联或计算的，还有一种方式可以使用代码任意处理返回字段值，这就是枚举字段。</p>
+<p>示例：实现接口</p>
+<pre><code>Ordr.get(id) -&gt; {id, status, ..., statusStr?}
+Ordr.query() -&gt; tbl(同get接口字段...)
+
+- status: &quot;CR&quot; - 新创建, &quot;PA&quot; - 已付款
+- statusStr: 状态名称，用中文表示。</code></pre>
+<p>分析：框架本身就支持枚举字段，比如要将status字段转成描述，可直接由前端调用，示例：</p>
+<pre><code>Ordr.query(res=&quot;id 编号, status 状态=CR:新创建;PA:已付款&quot;)</code></pre>
+<p>此处是要求将statusStr字段进行转换，所以只需要定义一下虚拟字段即可，设置enumFields，让该字段能自动转换枚举值：</p>
+<div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="kw">class</span> AC1_Ordr <span class="kw">extends</span> AccessControl
+{
+    <span class="kw">protected</span> <span class="kw">$vcolDefs</span> = <span class="ot">[</span>
+        <span class="co">// 定义statusStr就是status，如果希望默认返回，可加&quot;default&quot;:true选项。</span>
+        <span class="ot">[</span> <span class="st">&quot;res&quot;</span> =&gt; <span class="ot">[</span><span class="st">&quot;status statusStr&quot;</span><span class="ot">]</span> <span class="ot">],</span>
+    <span class="ot">];</span>
+    <span class="kw">protected</span> <span class="kw">function</span> onInit<span class="ot">()</span>
+    {
+        <span class="co">// 设置转换</span>
+        <span class="kw">$this</span>-&gt;enumFields<span class="ot">[</span><span class="st">&quot;statusStr&quot;</span><span class="ot">]</span> = <span class="ot">[</span><span class="st">&quot;CR&quot;</span>=&gt;<span class="st">&quot;新创建&quot;</span><span class="ot">,</span> <span class="st">&quot;PA&quot;</span>=&gt;<span class="st">&quot;已付款&quot;</span><span class="ot">];</span>
+    }
+}</code></pre></div>
+<p>以上将statusStr定义成一个虚拟字段，可以和标准字段一样使用。 也可以用enumFields指定处理函数，以下代码效果与上面相同：</p>
+<div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="kw">class</span> AC1_Ordr <span class="kw">extends</span> AccessControl
+{
+    <span class="kw">protected</span> <span class="kw">$vcolDefs</span> = <span class="ot">[</span>
+        <span class="co">// 定义statusStr就是status，如果希望默认返回，可加&quot;default&quot;:true选项。</span>
+        <span class="ot">[</span> <span class="st">&quot;res&quot;</span> =&gt; <span class="ot">[</span><span class="st">&quot;status statusStr&quot;</span><span class="ot">]</span> <span class="ot">],</span>
+    <span class="ot">];</span>
+    <span class="kw">static</span> <span class="kw">$statusMap</span> = <span class="ot">[</span><span class="st">&quot;CR&quot;</span>=&gt;<span class="st">&quot;新创建&quot;</span><span class="ot">,</span> <span class="st">&quot;PA&quot;</span>=&gt;<span class="st">&quot;已付款&quot;</span><span class="ot">];</span>
+    <span class="kw">protected</span> <span class="kw">function</span> onInit<span class="ot">()</span>
+    {
+        <span class="kw">$this</span>-&gt;enumFields<span class="ot">[</span><span class="st">&quot;statusStr&quot;</span><span class="ot">]</span> = <span class="kw">function</span> <span class="ot">(</span><span class="kw">$val</span><span class="ot">,</span> <span class="kw">$row</span><span class="ot">)</span> {
+            <span class="kw">return</span> <span class="er">@</span><span class="kw">self</span>::<span class="kw">$statusMap</span><span class="ot">[</span><span class="kw">$val</span><span class="ot">]</span> <span class="ot">?:</span> <span class="kw">$val</span><span class="ot">;</span>
+        }<span class="ot">;</span>
+    }
+}</code></pre></div>
+<p>由于enumFields很灵活，我们经常使用enumFields机制来实现计算字段。</p>
+<p>若遇到用虚拟字段不易解决的问题，还可以用试试更加底层的onHandleRow回调。 下面的实现表示，如果返回了status字段，则自动添加statusStr字段：</p>
+<div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="kw">class</span> AC1_Ordr <span class="kw">extends</span> AccessControl
+{
+    <span class="kw">static</span> <span class="kw">$statusMap</span> = <span class="ot">[</span><span class="st">&quot;CR&quot;</span>=&gt;<span class="st">&quot;新创建&quot;</span><span class="ot">,</span> <span class="st">&quot;PA&quot;</span>=&gt;<span class="st">&quot;已付款&quot;</span><span class="ot">];</span>
+    <span class="co">// get/query接口会回调</span>
+    <span class="kw">protected</span> <span class="kw">function</span> onHandleRow<span class="ot">(</span>&amp;<span class="kw">$row</span><span class="ot">)</span>
+    {
+        <span class="kw">if</span> <span class="ot">(</span><span class="fu">isset</span><span class="ot">(</span><span class="kw">$row</span><span class="ot">[</span><span class="st">&quot;status&quot;</span><span class="ot">]))</span> {
+            <span class="kw">$val</span> = <span class="kw">$row</span><span class="ot">[</span><span class="st">&quot;status&quot;</span><span class="ot">];</span>
+            <span class="kw">$row</span><span class="ot">[</span><span class="st">&quot;statusStr&quot;</span><span class="ot">]</span> = <span class="er">@</span><span class="kw">self</span>::<span class="kw">$statusMap</span><span class="ot">[</span><span class="kw">$val</span><span class="ot">]</span> <span class="ot">?:</span> <span class="kw">$val</span><span class="ot">;</span>
+        }
+    }
+}</code></pre></div>
+<p>这个实现有一点问题，它不支持字段别名，比如接口调用<code>Ordr.query(res=&quot;id 编号, status 状态&quot;)</code>，这时在onHandleRow中取不到status字段，只有&quot;状态&quot;字段。 解决方法是用 getAliasVal 函数取字段值：</p>
+<div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="kw">class</span> AC1_Ordr <span class="kw">extends</span> AccessControl
+{
+    <span class="kw">static</span> <span class="kw">$statusMap</span> = <span class="ot">[</span><span class="st">&quot;CR&quot;</span>=&gt;<span class="st">&quot;新创建&quot;</span><span class="ot">,</span> <span class="st">&quot;PA&quot;</span>=&gt;<span class="st">&quot;已付款&quot;</span><span class="ot">];</span>
+    <span class="co">// get/query接口会回调</span>
+    <span class="kw">protected</span> <span class="kw">function</span> onHandleRow<span class="ot">(</span>&amp;<span class="kw">$row</span><span class="ot">)</span>
+    {
+        <span class="kw">$val</span> = <span class="kw">$this</span>-&gt;getAliasVal<span class="ot">(</span><span class="kw">$row</span><span class="ot">,</span> <span class="st">&quot;status&quot;</span><span class="ot">);</span>
+        <span class="kw">if</span> <span class="ot">(</span><span class="kw">$val</span><span class="ot">)</span> {
+            <span class="co">// 假如statusStr是在vcolDefs或subobj中定义成虚拟字段的，</span>
+            <span class="co">// 则应使用`$this-&gt;setAliasVal($row, &quot;statusStr&quot;, $val)`来赋值以支持字段别名。</span>
+            <span class="kw">$row</span><span class="ot">[</span><span class="st">&quot;statusStr&quot;</span><span class="ot">]</span> = <span class="er">@</span><span class="kw">self</span>::<span class="kw">$statusMap</span><span class="ot">[</span><span class="kw">$val</span><span class="ot">]</span> <span class="ot">?:</span> <span class="kw">$val</span><span class="ot">;</span>
+        }
+    }
+}</code></pre></div>
+<p>在enumFields回调中也是用getAliasVal和setAliasVal来支持字段别名的。</p>
+<h3 id="虚拟表和视图"><span class="header-section-number">4.8</span> 虚拟表和视图</h3>
 <p>表ApiLog中有一个字段叫app，表示前端应用名：</p>
 <pre><code>@ApiLog: id, tm, addr, app, userId
 
@@ -989,7 +1141,7 @@ ORDER BY t0.id DESC</code></pre>
     <span class="kw">protected</span> <span class="kw">$defaultRes</span> = <span class="st">&quot;id, tm, userId, ac, req, res, reqsz, ressz, empName, empPhone&quot;</span><span class="ot">;</span>
     <span class="kw">protected</span> <span class="kw">$vcolDefs</span> = <span class="ot">[</span>
         <span class="ot">[</span>
-            <span class="st">&quot;res&quot;</span> =&gt; <span class="ot">[</span><span class="st">&quot;e.name AS empName&quot;</span><span class="ot">,</span> <span class="st">&quot;e.phone AS empPhone&quot;</span><span class="ot">],</span>
+            <span class="st">&quot;res&quot;</span> =&gt; <span class="ot">[</span><span class="st">&quot;e.name empName&quot;</span><span class="ot">,</span> <span class="st">&quot;e.phone empPhone&quot;</span><span class="ot">],</span>
             <span class="st">&quot;join&quot;</span> =&gt; <span class="st">&quot;LEFT JOIN Employee e ON e.id=t0.userId&quot;</span>
         <span class="ot">]</span>
     <span class="ot">];</span>
@@ -1008,7 +1160,7 @@ ORDER BY t0.id DESC</code></pre>
 <p>属性<code>$defaultSort</code>和<code>$defaultRes</code>可用于定义缺省返回字段及排序方式。</p>
 <p>在get/query接口中可以用&quot;res&quot;指定返回字段，如果未指定，则会返回除了<span class="math inline">$hiddenFields定义的字段之外，所有主表中的字段，还会包括设置了`default=&gt;true`的虚拟字段。 通过`$</span>defaultRes`可以指定缺省返回字段列表。</p>
 <p>query接口中可以通过&quot;orderby&quot;来指定排序方式，如果未指定，默认是按id排序的，通过<code>$defaultSort</code>可以修改默认排序方式。</p>
-<h3 id="接口返回前回调"><span class="header-section-number">4.8</span> 接口返回前回调</h3>
+<h3 id="接口返回前回调"><span class="header-section-number">4.9</span> 接口返回前回调</h3>
 <p>示例：添加订单到Ordr表时，自动添加一条&quot;创建订单&quot;日志到OrderLog表，可以这样实现：</p>
 <div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="kw">class</span> AC1_Ordr <span class="kw">extends</span> AccessControl
 {
@@ -1026,26 +1178,8 @@ ORDER BY t0.id DESC</code></pre>
     }
 }</code></pre></div>
 <p>属性<code>$this-&gt;onAfterActions</code>是一个回调函数数组，在操作结束时被回调。 属性<code>$this-&gt;id</code>可用于取add操作结束时的新对象id，或get/set/del操作的id参数。</p>
-<p>对象接口调用完后，还会回调onAfter函数，也可以在这个回调里面操作。 此外，如要在get/query接口返回前修改返回数据，用onHandleRow回调函数更加方便。</p>
-<p>示例：实现接口</p>
-<pre><code>Ordr.get(id) -&gt; {id, status, ..., statusStr?}
-Ordr.query() -&gt; tbl(同get接口字段...)
-
-- status: &quot;CR&quot; - 新创建, &quot;PA&quot; - 已付款
-- statusStr: 状态名称，用中文表示，当有status返回时则同时返回该字段</code></pre>
-<div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="kw">class</span> AC1_Ordr <span class="kw">extends</span> AccessControl
-{
-    <span class="kw">static</span> <span class="kw">$statusStr</span> = <span class="ot">[</span><span class="st">&quot;CR&quot;</span> =&gt; <span class="st">&quot;未付款&quot;</span><span class="ot">,</span> <span class="st">&quot;PA&quot;</span> =&gt; <span class="st">&quot;待服务&quot;</span><span class="ot">];</span>
-    <span class="co">// get/query接口会回调</span>
-    <span class="kw">protected</span> <span class="kw">function</span> onHandleRow<span class="ot">(</span>&amp;<span class="kw">$rowData</span><span class="ot">)</span>
-    {
-        <span class="kw">if</span> <span class="ot">(</span><span class="fu">isset</span><span class="ot">(</span><span class="kw">$rowData</span><span class="ot">[</span><span class="st">&quot;status&quot;</span><span class="ot">]))</span> {
-            <span class="kw">$st</span> = <span class="kw">$rowData</span><span class="ot">[</span><span class="st">&quot;status&quot;</span><span class="ot">];</span>
-            <span class="kw">$rowData</span><span class="ot">[</span><span class="st">&quot;statusStr&quot;</span><span class="ot">]</span> = <span class="er">@</span><span class="kw">self</span>::<span class="kw">$statusStr</span><span class="ot">[</span><span class="kw">$st</span><span class="ot">]</span> <span class="ot">?:</span> <span class="kw">$st</span><span class="ot">;</span>
-        }
-    }
-}</code></pre></div>
-<h3 id="非标准对象接口"><span class="header-section-number">4.9</span> 非标准对象接口</h3>
+<p>对象接口调用完后，还会回调onAfter函数，也可以在这个回调里面操作。 此外，如要在get/query接口返回前修改返回数据，用enumFields机制或onHandleRow回调函数更加方便，请参考<a href="">枚举字段与字段处理</a>章节。</p>
+<h3 id="非标准对象接口"><span class="header-section-number">4.10</span> 非标准对象接口</h3>
 <p>对象的增删改查(add/set/get/query/del共5个)接口称为标准接口。 可以为对象增加其它非标准接口，例如取消订单接口：</p>
 <pre><code>Ordr.cancel(id)
 

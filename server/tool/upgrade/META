@@ -8,4 +8,4 @@
 @ApiLog1: id, apiLogId, ac, t&, retval&, req(t), res(t)
 @ObjLog: id, obj, objId, dscr, apiLogId, apiLog1Id
 @Pwd: id, pwd, cnt&
-@Attachment: id, path, orgPicId, exif(t), tm, orgName(l)
+@Attachment: id, path(l), orgPicId, exif(t), tm, orgName(l)

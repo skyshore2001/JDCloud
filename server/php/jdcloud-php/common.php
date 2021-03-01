@@ -22,7 +22,8 @@ $ERRINFO = [
 	E_NOAUTH => "未登录",
 	E_DB => "数据库错误",
 	E_SERVER => "服务器错误",
-	E_FORBIDDEN => "禁止操作"
+	E_FORBIDDEN => "禁止操作",
+	E_ABORT => "中止执行"
 ];
 
 /** 
@@ -45,20 +46,20 @@ $ERRINFO = [
 # Most time outMsg is optional because it can be filled according to code. It's set when you want to tell user the exact error.
 class MyException extends LogicException 
 {
-	function __construct($code, $internalMsg = null, $outMsg = null) {
-		parent::__construct($outMsg, $code);
+	function __construct($code, $internalMsg = null, $outMsg = null, $ex = null) {
+		parent::__construct($outMsg, $code, $ex);
 		$this->internalMsg = $internalMsg;
 		if ($code && !$outMsg) {
 			global $ERRINFO;
-			assert(array_key_exists($code, $ERRINFO));
-			$this->message = $ERRINFO[$code];
+			// assert(array_key_exists($code, $ERRINFO));
+			$this->message = @$ERRINFO[$code] ?: "ERROR $code";
 		}
 	}
 	public $internalMsg;
 
 	function __toString()
 	{
-		$str = "MyException({$this->code}): {$this->internalMsg}";
+		$str = "MyException({$this->code}): {$this->internalMsg} - " . $this->file . ':' . $this->line;
 		if ($this->getMessage() != null)
 			$str = "Error: " . $this->getMessage() . " - " . $str;
 		return $str;
@@ -85,6 +86,24 @@ class DirectReturn extends LogicException
 {
 }
 
+/**
+@fn jdRet($code, $internalMsg?, $msg?)
+
+成功返回：
+
+	jdRet(E_OK, ["id" => 100]);
+
+出错返回：
+
+	jdRet(E_SERVER);
+*/
+function jdRet($code, $internalMsg = null, $msg = null)
+{
+	if ($code)
+		throw new MyException($code, $internalMsg, $msg);
+	setRet(0, $internalMsg);
+	throw new DirectReturn();
+}
 
 /**
 @fn tobool($s)
@@ -125,6 +144,17 @@ function tryParseBool($s, &$val)
 function startsWith($s, $pat)
 {
 	return substr($s, 0, strlen($pat)) == $pat;
+}
+
+/**
+@fn endWith($s, $pat)
+*/
+function endWith($s, $pat)
+{
+	$length = strlen($pat);
+	if ($length == 0)
+		return true;
+	return substr($s, -$length) === $pat;
 }
 
 /** 
@@ -187,7 +217,12 @@ e.g.
 */
 function makeUrl($ac, $params, $hash = null)
 {
-	$url = $ac;
+	if (preg_match('/^[\w\.]+$/', $ac)) {
+		$url = getBaseUrl(false) . "api.php/" . $ac;
+	}
+	else {
+		$url = $ac;
+	}
 	if ($params) {
 		$url .= "?" . urlEncodeArr($params);
 	}
@@ -464,6 +499,7 @@ function addToStr(&$str, $str1, $sep=',')
 		$str = $str1;
 	else
 		$str .= $sep . $str1;
+	return $str;
 }
 
 /**
@@ -486,7 +522,7 @@ function addToStr(&$str, $str1, $sep=',')
 
 示例：
 
-	$arrCopy($wiData, $workItem); // 复制全部字段过去
+	arrCopy($wiData, $workItem); // 复制全部字段过去
 
 如果不想覆盖已有字段(即使值为null也不覆盖)，可以用：
 
@@ -509,6 +545,88 @@ function arrCopy(&$ret, $arr, $fields=null)
 		else
 			@$ret[$f] = $arr[$f];
 	}
+}
+
+/**
+@fn arrFind($arr, $fn)
+
+示例：
+
+	$personArr = [ ["id"=>1, "name"=>"name1"], ["id"=>2, "name"=>"name2"] ];
+	$person = arrFind($arr, function ($e) {
+		return $e["id"] === 1;
+	});
+	if ($person === false) {
+		// 未找到
+	}
+	
+*/
+function arrFind($arr, $fn)
+{
+	assert(is_array($arr));
+	assert(is_callable($fn));
+	foreach ($arr as $e) {
+		if ($fn($e))
+			return $e;
+	}
+	return false;
+}
+
+/**
+@fn arrMap($arr, $fn)
+
+示例：
+
+	$personArr = [ ["id"=>1, "name"=>"name1"], ["id"=>2, "name"=>"name2"] ];
+	$personIdList = arrMap($arr, function ($e) {
+		return $e["id"];
+	});
+	// [1, 2]
+
+*/
+function arrMap($arr, $fn)
+{
+	assert(is_array($arr));
+	assert(is_callable($fn));
+	$ret = [];
+	foreach ($arr as $e) {
+		$ret[] = $fn($e);
+	}
+	return $ret;
+}
+
+/**
+@fn arrGrep($arr, $fn, $mapFn=null)
+
+示例：
+
+	$personArr = [ ["id"=>1, "name"=>"name1"], ["id"=>2, "name"=>"name2"] ];
+	$personArr1 = arrGrep($arr, function ($e) {
+		return $e["id"] > 1;
+	}); // [ ["id"=>2, "name"=>"name2"] ]
+
+	$personNameArr1 = arrGrep($arr, function ($e) {
+		return $e["id"] > 1;
+	}, function ($e) {
+		return $e["name"];
+	}); // [ "name2" ]
+	
+*/
+function arrGrep($arr, $fn, $mapFn=null)
+{
+	assert(is_array($arr));
+	assert(is_callable($fn));
+	assert(is_callable($mapFn));
+	$ret = [];
+	foreach ($arr as $e) {
+		if ($fn($e)) {
+			if ($mapFn === null)
+				$ret[] = $e;
+			else
+				$ret[] = $mapFn($e);
+		}
+	}
+	return $ret;
 }
 
 /**
@@ -556,10 +674,14 @@ function getRealIp()
 
 默认到日志文件 $BASE_DIR/trace.log. 如果指定type=secure, 则写到 $BASE_DIR/secure.log.
 
+$s可以是字符串、数值或数组。
+
 可通过在线日志工具 tool/log.php 来查看日志。也可直接打开日志文件查看。
  */
 function logit($s, $addHeader=true, $type="trace")
 {
+	if (is_array($s))
+		$s = var_export($s, true);
 	if (is_string($addHeader)) {
 		$type = $addHeader;
 		$addHeader = true;
@@ -710,4 +832,270 @@ function text2html($s)
 		return "<p>$text</p>";
 	}, $s);
 }
+
+/**
+@fn pivot($objArr, $gcols, $ycolCnt=1)
+
+将行转置到列。一般用于统计分析数据处理。
+
+- $gcols为转置字段，可以是一个或多个字段。可以是个字符串("f1" 或 "f1,f2")，也可以是个数组（如["f1","f2"]）
+- $objArr是对象数组，默认最后一列是统计列，如果想要最后两列作为统计列，可以指定参数ycolCnt=2。注意此时最终统计值将是一个数组。
+- 以objArr[0]这个对象为基准，除去最后ycolCnt个字段做为统计列(ycols)，再除去gcols指定的要转置到列的字段，剩下的列就是xcols：相同的xcols会归并到一行中。
+
+示例：
+
+	$arr = [
+		["y"=>2019, "m"=>11, "cateId"=>1, "cateName"=>"衣服", "sum" => 20000],
+		["y"=>2019, "m"=>11, "cateId"=>2, "cateName"=>"食品", "sum" => 12000],
+		["y"=>2019, "m"=>12, "cateId"=>2, "cateName"=>"食品", "sum" => 15000],
+		["y"=>2020, "m"=>2, "cateId"=>1, "cateName"=>"衣服", "sum" => 19000],
+		["y"=>2020, "m"=>2, "cateId"=>3, "cateName"=>"电器", "sum" => 28000]
+	];
+
+	// 将类别转到列
+	$arr1 = pivot($arr, "cateId,cateName");
+
+得到：
+
+	$arr1 = [
+		["y"=>2019, "m"=>11, "1-衣服"=>20000, "2-食品"=>12000, "3-电器" => null],
+		["y"=>2019, "m"=>12, "2-食品"=>15000],
+		["y"=>2020, "m"=>2, "1-衣服"=>19000, "3-电器"=>28000]
+	];
+
+注意：结果的第一行中，会包含所有可能出现的列，没有值的列填null。
+
+在后端查询时, 往往用id字段分组但显示为名字, 可以用hiddenFields参数指定不要返回的字段:
+例如上例中cateId若只需要参与查询, 不需要返回在最终结果中：
+
+	callSvr("Ordr.query", {gres: "y,m,cateId", res: "cateName,SUM(amount) sum", pivot: "cateName", hiddenFields:"cateId"})
+
+结果为：
+
+	$arr1 = [
+		["y"=>2019, "m"=>11, "衣服"=>20000, "食品"=>12000, "电器"=>null],
+		["y"=>2019, "m"=>12, "食品"=>15000],
+		["y"=>2020, "m"=>2, "衣服"=>19000, "电器"=>28000]
+	];
+
+其它示例: 显示用户单数统计表
+
+	var url = WUI.makeUrl("Ordr.query", {gres:"userId", res:"userName 客户, COUNT(*) 订单数, SUM(amount) 总金额", hiddenFields:"userId", pivot:'订单数'});
+	WUI.showPage("pageSimple", "用户单数统计!", [url]);
+
+示例：多个统计列（ycolCnt>1）的情况
+
+	$arr = [
+		["y"=>2019, "m"=>11, "cateName"=>"衣服", "sum" => 20000, "cnt" => 100],
+		["y"=>2019, "m"=>11, "cateName"=>"衣服", "sum" => 12000, "cnt" => 150], // 故意与第一行重复，这时将与第一行最后两列分别累加
+		["y"=>2019, "m"=>12, "cateName"=>"食品", "sum" => 15000, "cnt" => 80],
+		["y"=>2020, "m"=>2, "cateName"=>"衣服", "sum" => 19000, "cnt" => 90],
+		["y"=>2020, "m"=>2, "cateName"=>"电器", "sum" => 28000, "cnt" => 30]
+	];
+
+	// 将类别转到列, 最后两列为统计列
+	$arr1 = pivot($arr, "cateName", 2);
+
+得到：
+
+	$arr1 = [
+		["y"=>2019, "m"=>11, "衣服"=>[32000, 250], "食品"=>null, "电器" => null],
+		["y"=>2019, "m"=>12, "食品"=>[15000, 80] ],
+		["y"=>2020, "m"=>2, "衣服"=>[19000,90], "电器"=>[28000, 30] ]
+	];
+
+*/
+function pivot($objArr, $gcols, $ycolCnt=1)
+{
+	if (count($objArr) == 0)
+		return $objArr;
+
+	if (is_string($gcols)) {
+		$gcols = preg_split('/\s*,\s*/', $gcols);
+	}
+	if (count($gcols) == 0) {
+		throw new MyException(E_PARAM, "bad gcols: no data", "未指定分组列");
+	}
+	$cols = array_keys($objArr[0]);
+	// $ycol = array_pop($cols); // 去除ycol
+	$ycols = array_splice($cols, -$ycolCnt); // 去除ycol
+	foreach ($gcols as $gcol) {
+		if (! in_array($gcol, $cols)) {
+			throw new MyException(E_PARAM, "bad gcol $gcol: not in cols", "分组列不正确: $gcol");
+		}
+	}
+		
+	$xMap = []; // {x=>新行}
+	$xcols = array_diff($cols, $gcols);
+//	$xcolCnt = count($xcols);
+
+	$firstX = null;
+	foreach ($objArr as $row) {
+		// $x = xtext($row);
+		$xarr = [];
+		foreach ($xcols as $col) {
+			$xarr[$col] = $row[$col];
+		}
+		$x = join('-', $xarr);
+
+		$garr = array_map(function ($col) use ($row) {
+			return $row[$col];
+		}, $gcols);
+		$g = join('-', $garr) ?: "(null)";
+
+		if (! array_key_exists($x, $xMap)) {
+			$xMap[$x] = $xarr;
+		}
+		if ($ycolCnt == 1)
+			$y = end($row);
+		else
+			$y = array_values(array_slice($row, -$ycolCnt));
+
+		if (! array_key_exists($g, $xMap[$x]))
+			$xMap[$x][$g] = $y;
+		else {
+			if ($ycolCnt == 1) {
+				$xMap[$x][$g] += $y;
+			}
+			else {
+				for ($i=0; $i<$ycolCnt; ++$i) {
+					$xMap[$x][$g][$i] += $y[$i];
+				}
+			}
+		}
+
+		// 确保第一行包含所有列，没有的填null；从而固化所有列，确定列的顺序
+		if ($firstX === null) {
+			$firstX = $x;
+		}
+		else if (! array_key_exists($g, $xMap[$firstX])) {
+			$xMap[$firstX][$g] = null;
+		}
+	}
+	$ret = array_values($xMap);
+	return $ret;
+}
+
+/**
+@fn myround($val, $n=0)
+
+保留指定小数点位数，返回字符串。如果有多余的0则删除。
+
+注意：php的round返回的是浮点数，不精确。比如0.53会返回0.53000000000000003
+而number_format函数尾部可能会有多余的0.
+*/
+function myround($val, $n=0)
+{
+	$s = number_format($val, $n, ".", "");
+	// 去除多余的0或小数点
+	if (strpos($s, '.') !== false)
+		$s = preg_replace('/\.?0+$/', '', $s);
+	return $s;
+}
+
+/**
+@fn mh($val)
+
+显示工时。以"30s"（秒）, "5m"（分）, "1.2h"（小时）, "3d"（天）这种样式显示。
+*/
+function mh($val)
+{
+	if ($val < 0.0166) // 小于1分钟，以秒计
+		return myround($val * 3600) . "s";
+	if ($val < 1) // 小于1小时，以分钟计
+		return myround($val *60, 2) . "m";
+	if ($val > 48) // 大于48小时，以天计
+		return myround($val/24, 1) . "d";
+	return myround($val, 2) . "h";
+}
+
+/**
+@fn fromMh($val)
+
+将工时字符串转为小时。示例：
+
+- "30s"（秒） => 30/3600.0
+- "5m"（分）=> 5/60.0
+- "1.2h"（小时）=> 1.2
+- "3d"（天）=> 3*24.0
+*/
+function fromMh($str)
+{
+	$val = floatval($str);
+	$unit = substr($str, -1);
+	if ($unit === 's')
+		return $val / 3600.0;
+	if ($unit === 'm')
+		return $val / 60.0;
+	if ($unit === 'd')
+		return $val * 24.0;
+	return $val;
+}
+
+/**
+@fn isArray012($var)
+
+判断是否为数值键的数组
+*/
+function isArray012($var)
+{
+	return is_array($var) && (count($var)==0 || array_key_exists(0, $var));
+}
+
+/**
+@fn isArrayAssoc($var)
+
+判断是否为关联数组
+*/
+function isArrayAssoc($var)
+{
+	return is_array($var) && !array_key_exists(0, $var);
+}
+
+/**
+@fn makeTree($arr, $idField="id", $fatherIdField="fatherId", $childrenField="children"
+
+将array转成tree.
+
+	$ret = makeTree([
+		["id"=>1],
+		["id"=>2, "fatherId"=>1],
+		["id"=>3, "fatherId"=>2],
+		["id"=>4, "fatherId"=>1]
+	]);
+
+结果：
+
+	$ret = [
+		["id"=>1, "children"=> [
+			["id"=>2, "fatherId"=>1, "children"=> [
+				["id"=>3, "fatherId"=>2],
+			],
+			["id"=>4, "fatherId"=>1]
+		]
+	]
+*/
+function makeTree($arr, $idField="id", $fatherIdField="fatherId", $childrenField="children")
+{
+	$ret = [];
+	foreach ($arr as &$e) {
+		$fid = $e[$fatherIdField];
+		if (! $fid) {
+			$ret[] = &$e;
+			continue;
+		}
+		$found = false;
+		foreach ($arr as &$e1) {
+			if ($fid == $e1[$idField]) {
+				$e1[$childrenField][] = &$e;
+				$found = true;
+				break;
+			}
+		}
+		if (! $found)
+			$ret[] = &$e;
+	}
+	return $ret;
+}
+
 // vi: foldmethod=marker

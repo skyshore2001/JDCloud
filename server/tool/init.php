@@ -137,6 +137,9 @@ function checkEnv()
 // $dbname?=null
 function dbconn($dbhost, $dbname, $dbuser, $dbpwd)
 {
+	global $DBH;
+	if (isset($DBH))
+		return $DBH;
 	try {
 		$connstr = "mysql:host={$dbhost}";
 		if ($dbname) {
@@ -156,7 +159,40 @@ function dbconn($dbhost, $dbname, $dbuser, $dbpwd)
 	$dbh->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
 	$dbh->setAttribute(PDO::ATTR_STRINGIFY_FETCHES, false);
 
+	$DBH = $dbh;
 	return $dbh;
+}
+
+function queryOne($sql, $assoc=false)
+{
+	global $DBH;
+	if (!isset($DBH))
+		dbconn();
+	$sth = $DBH->query($sql);
+	if ($sth === false)
+		return false;
+	$fetchMode = $assoc? PDO::FETCH_ASSOC: PDO::FETCH_NUM;
+	$row = $sth->fetch($fetchMode);
+	$sth->closeCursor();
+	if ($row !== false && !$assoc && count($row) === 1)
+		return $row[0];
+	return $row;
+}
+
+function createUserForMysql8($dbuser, $dbpwd)
+{
+	global $DBH;
+	try {
+		$DBH->exec("create user {$dbuser}@localhost identified by '{$dbpwd}'");
+	}catch (Exception $e) {
+		$DBH->exec("alter user {$dbuser}@localhost identified by '{$dbpwd}'");
+	}
+
+	try {
+		$DBH->exec("create user {$dbuser}@'%' identified by '{$dbpwd}'");
+	}catch (Exception $e) {
+		$DBH->exec("alter user {$dbuser}@'%' identified by '{$dbpwd}'");
+	}
 }
 
 function api_initDb()
@@ -205,10 +241,19 @@ function api_initDb()
 			}
 			$dbh->exec("use {$dbname}");
 		}
+		$ver = queryOne("SELECT version()");
+		echo("=== DBVersion=$ver\n");
+		$majorVer = intval(explode(',', $ver)[0]); // 8.x
 
 		echo("=== 设置用户权限: {$dbuser}\n");
 		try {
-			$str = $dbpwd? " identified by '{$dbpwd}'": "";
+			if ($majorVer >= 8) {
+				createUserForMysql8($dbuser, $dbpwd);
+				$str = "";
+			}
+			else {
+				$str = $dbpwd? " identified by '{$dbpwd}'": "";
+			}
 			$sql = "grant all on {$dbname}.* to {$dbuser}@localhost {$str}";
 			$dbh->exec($sql);
 			$sql = "grant all on {$dbname}.* to {$dbuser}@'%' {$str}";
@@ -218,6 +263,7 @@ function api_initDb()
 			die("*** 用户`{$dbuser0}`无法设置用户权限: {$msg}\n");
 		}
 
+		// TODO: not used?
 		if ($dbcred_ro) {
 			echo("=== 设置只读用户权限: {$dbuser_ro}\n");
 			$str = $dbpwd_ro? " identified by '{$dbpwd_ro}'": "";

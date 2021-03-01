@@ -1,5 +1,6 @@
 <?php
 
+// $isTestEnv = (strpos($_SERVER["SCRIPT_NAME"], "-test") !== false);
 if (getenv("P_DB") === false) {
 	// use SQLite:
 	//putenv("P_DB=jdcloud.db");

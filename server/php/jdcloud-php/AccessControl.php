@@ -7,6 +7,8 @@ AccessControl简写为AC，同时AC也表示自动补全(AutoComplete).
 
 在设计文档中完成数据库设计后，通过添加AccessControl的继承类，可以很方便的提供诸如 {Obj}.query/add/get/set/del 这些对象型接口。
 
+每个对象提供字段，包括 表字段（或称主表字段）、虚拟字段（称为vcol，包括关联字段，计算字段等）、子表字段（称为subobj）三种类别。
+
 例如，设计文档中已定义订单对象(Ordr)的主表(Ordr)和订单日志子表(OrderLog)：
 
 	@Ordr: id, userId, status, amount
@@ -66,9 +68,17 @@ AccessControl简写为AC，同时AC也表示自动补全(AutoComplete).
 @var AccessControl::$readonlyFields2 ?=[]  (影响set操作) 字段列表，更新时对这些字段填值无效。
 
 注意：v5.4以下设置只读字段，只记录日志但不报错。
-v5.4起将报错，设置该类的useStrictReadonly=false可以兼容旧行为不报错。
+v5.4起将报错，设置该类的useStrictReadonly=false可以兼容旧行为不报错，(v5.5)或者设置URL参数useStrictReadonly=0。
 
 @var AccessControl::$hiddenFields ?= []  (for get/query) 隐藏字段列表。默认表中所有字段都可返回。一些敏感字段不希望返回的可在此设置。
+
+@key hiddenFields
+客户端请求可以加参数hiddenFields指定要隐藏的字段.
+示例：按客户编号(cusId)分组，但返回客户名(cusName)字段，不要返回cusId这个字段:
+
+	callSvr("CusOrder.query", {gres:"cusId", res:"cusName 客户, COUNT(*) 订单数, SUM(amount) 总金额", hiddenFields:"cusId"})
+
+特别地，如果指定为参数hiddenFields为0，则显示所有辅助字段（如虚拟字段依赖引入的字段），一般用于调试。
 
 @var AccessControl::$requiredFields ?=[] (for add/set) 字段列表。添加时必须填值；更新时不允许置空。
 @var AccessControl::$requiredFields2 ?=[] (for set) 字段列表。更新时不允许设置空。
@@ -221,6 +231,12 @@ query接口的"..."之后就是虚拟字段。后缀"?"表示是非缺省字段�
 	Rating.query(res="*,userName")
 	或
 	Rating.query(res="*,userName,orderDscr")
+
+(v5.5) 如果要依赖多个字段，"require"可以用逗号分隔多个字段，如：
+
+	"require" => "userId,procId"
+
+可以依赖任何字段，包括虚拟字段(vcolDefs中定义的), 主表字段, 子表字段(subobj中定义的)。
 
 ### 计算字段
 
@@ -378,15 +394,28 @@ query/get接口生成的查询语句大致为：
 
 用require标识依赖的内层查询的字段，上例中若未指定requrie，查询`query(res="id,y,m,ym")`没有问题，但查询`query(res="id,ym")`将出错，因为y,m字段未引入，不可识别。
 
-注意：即使在调用接口时用res参数指定了返回字段，外部虚拟字段依赖的内部字段也将返回。比如query(res="id,ym")返回`tbl(id,y,m,ym)`.
+注意：外部虚拟字段依赖的内部字段将自动添加到查询中，但不会返回到最终结果集中，除非用户指定了要这些字段或指定参数`hiddenFields:0`。
+比如query(res="id,ym")会在查询时引入y,m字段，但最终并不返回. (内部使用了hiddenFields机制)
 
-注意：设置require或res属性时，如果依赖的是表的字段，应加上表名更健壮，如"t0.tm, t1.name"，如果是虚拟字段，则不加表名，如"y,m"。
+注意：目前外部虚拟字段不支持使用join, cond条件。
 
 注意：关于时间统计相关的虚拟字段，一般通过tmCols函数来指定：
 
 	function __construct() {
 		$this->vcolDefs[] = [ "res" => tmCols() ];
 	}
+
+外部虚拟字段主要用于性能优化。对于上例中的计算字段，即使没有外部虚拟字段机制，也还可以利用MySQL变量做这样实现：
+
+	$vcolDefs = [
+		[
+			"res" => ["@y:=year(tm) y", "@m:=month(tm) m"],
+		],
+		[
+			"res" => ["concat(@y, '-', @m) ym"],
+			"require" => 'y,m'
+		]
+	]
 
 #### 关联子查询优化
 
@@ -447,13 +476,13 @@ query/get接口生成的查询语句大致为：
 将自动计算和添加属性：
 
 		"isExt" => true,
-		"require" => "t0.ses,t0.userId"
+		"require" => "ses,userId"
 
-上面require属性指定内层查询应暴露给外层的字段，如果有多个可用逗号分隔。
+上面require属性指定内层查询应暴露给外层的字段，可以是主表字段、虚拟字段或子表字段，不可加任何前缀（如`t0.ses`不允许），如果有多个可用逗号分隔。
 注意res中的t0指的是内层查询的结果表，名称固定为t0; 而require中的表指的是内层查询内部的表。
 如果自动处理或识别有误，可手工设置isExt和require属性。
 
-注意：使用外部虚拟字段时，将导致require中的字段被添加到最终结果集。例如上面例子中的"t0.ses,t0.userId"字段会被添加到最终结果集。
+注意：使用外部虚拟字段时，将导致require中的字段被添加到查询结果集，例如上面例子中的"ses,userId"字段，会出现在SQL语句中，但会在最终结果集中删除（除非请求指定了要该字段）。
 
 注意：如果想禁止优化，可手工设置vcolDef的isExt属性为false：
 
@@ -500,23 +529,23 @@ query/get接口生成的查询语句大致为：
 
 @var AccessControl::$subobj (for get/query) 定义子表
 
-subobj: { name => {obj, cond, AC?, res?, default?=false} } （v5.4）指定子表对象obj，全面支持子表的增删改查。
+subobj: { name => {obj, cond, AC?, res?, default?=false, forceUpdate(v5.5) } } （v5.4）指定子表对象obj，全面支持子表的增删改查。
 
 或
 
-subobj: { name => {sql, default?=false, wantOne?=false, force?=false} }
+subobj: { name => {sql, default?=false, wantOne?=false} } 指定SQL语句，查询结果作为子表对象（旧写法，不建议使用。只允许查询，不支持对子表修改）
 
 设计接口：
 
 	Ordr.get() -> {id, ..., @orderLog}
-	orderLog:: {id, tm, dscr, ..., empName} 订单日志子表。
+	- orderLog: {id, tm, dscr, ..., empName} 订单日志子表。
 
-实现：
+实现：复用已有的子表对象。
 
 	class AC1_Ordr extends AccessControl
 	{
 		protected $subobj = [
-			"orderLog" => ["obj"=>"OrderLog", "cond"=>"orderId=%d", "AC"=>"OrderLog", "res"=>"*,empName,empPhone"],
+			"orderLog" => ["obj"=>"OrderLog", "cond"=>"orderId=%d", "AC"=>"AC1_OrderLog", "res"=>"*,empName,empPhone"],
 		];
 	}
 
@@ -530,27 +559,151 @@ subobj: { name => {sql, default?=false, wantOne?=false, force?=false} }
 		];
 	}
 
-或
+选项说明：
+
+- obj: 指定调用哪个对象
+- AC: 指定使用哪个类来实现接口，常常是`AC1`, `AC2`这些类，其实只要是AccessControl的子表均可以，可以不是AC前缀的类。
+ 也可以不指定，这时根据用户权限自动寻找合适的类。
+ 也可以指定使用基类`"AC"=>"AccessControl"`，用在没有专门为该对象定义过类的情况下。
+- cond: cond条件是可选的，常常在其中包含"field=%d"，表示子表的field关联主表的id字段。(v5.5)也可用`field={id}`这种格式来表示关联主表的子段。
+- 还可以使用res, cond, gres, orderby等子表query接口的标准参数，或子表类支持的特定参数。
+
+子表对象也可以直接用SQL语句来定义：
 
 	class AC1_Ordr extends AccessControl
 	{
 		protected $subobj = [
-			"orderLog" => ["sql"=>"SELECT ol.*, e.name empName, e.phone empPhone FROM OrderLog ol LEFT JOIN Employee e ON ol.empId=e.id WHERE orderId=%d", "default"=>false, "wantOne"=>false],
+			"orderLog" => ["sql"=>"SELECT ol.*, e.name empName, e.phone empPhone FROM OrderLog ol LEFT JOIN Employee e ON ol.empId=e.id WHERE orderId=%d"],
+			// 替代了obj, AC, cond, res等子表设置。一般建议还是用obj来定义子表较好。
 		];
 	}
 
 子表和虚拟字段类似，支持get/query操作，执行指定的SQL语句作为结果。结果以一个数组返回[{id, tm, ...}]。
 
-- sql: 子表查询语句，其中应包含用"field=%d"这样语句来定义与主表id字段的关系。
+- sql选项定义子表查询语句，其中常常用"field=%d"这样语句来定义与主表id字段的关系。(v5.5) 也可以用"field={id}"的格式，花括号里定义主表关联字段。
  (v5.1)为了优化query接口，避免每一行分别查一次子表，查询语句会被改为"field IN (...)"的形式。
+
+其它选项：
+
 - default: 与虚拟字段(vcolDefs)上的"default"选项一样，表示当"res"参数以"*"开头(比如`res="*,picCnt"`)或未指定时，是否默认返回该字段。
 - wantOne: 如果为true, 则结果以一个对象返回即 {id, tm, ...}, 适用于主表与子表一对一的情况。
-- force: (v5.1) 如果sql中没有与主表的关联即没有包含"field=%d"，应指定force=true，否则在query接口中会当作语句错误。
+
+### 子表的增删改查操作
+
+假设主对象为Obj，子对象为Obj1，设计如下：
+
+	@Obj: id, name
+	vcol: @obj1 (说明：vcol表示虚拟字段，@obj1表示字段obj1是个数组，一般就是子对象)
+
+	@Obj1: id, objId, name （通过objId关联主对象)
+
+在添加主对象时，同时添加子对象:
+
+	Obj.add()(name, @obj1...) -> id
+
+示例：
+
+	callSvr("Obj.add", $.noop, {
+		name: "name1",
+		obj1: [
+			{ name: "obj1-name1" },
+			{ name: "obj1-name2" }
+		]
+	});
+
+主对象添加后，可以通过get接口获取主对象及子对象：
+
+	callSvr("Obj.get", {id: 1001, res:"id,name,obj1"}) -> {
+		id: 1001,
+		name: "name1",
+		obj1: [
+			{ id: 10001, name: "obj1-name1" },
+			{ id: 10002, name: "obj1-name2" }
+		]
+	});
+
+要控制子对象的查询结果字段，可以加`res_{子对象名}`参数；要控制子对象的查询参数，可以加`param_{子对象名}`参数，示例：
+
+	callSvr("Obj.get", {id: 1001, res:"id,name,obj1", res_obj1:"id,name"})
+	或
+	callSvr("Obj.get", {id: 1001, res:"id,name,obj1", param_obj1: { res: "id,name"} })
+	callSvr("Obj.get", {id: 1001, res:"id,name,obj1", param_obj1: { res: "id,name", cond: "id>=10002"} })
+
+注意：如果使用了别名，则指定res,param时也要用别名：
+
+	callSvr("Obj.get", {id: 1001, res:"id,name,obj1 objList", res_objList:"id,name"})
+	// 甚至可以多别名分别指定:
+	callSvr("Obj.get", {id: 1001, res:"id,name,obj1 objList,obj1 objList2", res_objList:"id,name", res_objList2:"id,code"})
+
+当然，也可以直接查询子对象，如：
+
+	callSvr("Obj1.query", {cond: "objId=1001", res:"id,name,obj1", fmt:"array"}) -> [
+		{ id: 10001, name: "obj1-name1" },
+		{ id: 10002, name: "obj1-name2" }
+	]
+
+这里用fmt参数指定返回array格式，因为默认返回的是`h/d`格式.
+
+主对象添加后，可以通过set接口添加/更新/删除子对象：
+
+	Obj.set(id)(name?, @obj1...)
+
+示例：
+
+	callSvr("Obj.set", {id: 1001}, $.noop, {
+		name: "name1",
+		obj1: [
+			{ id: 10001, name: "obj1-name1-changed" }, // set接口中指定子表id的，表示更新该子表行
+			{ name: "obj1-name3" },  // set接口中未指定子表id的，表示新增子表行
+			{ id: 10002, _delete: 1}  // set接口中指定子表id且设置了`_delete: 1`，表示删除该子表行
+		]
+	});
+
+主对象删除时（del/delIf接口），子对象不会自动删除。后端应根据情况自行处理。
+
+(v5.5) subobj选项forceUpdate
+
+对子表进行修改和删除时，默认会要求该项必须已关联主表。加此选项强制更新关联。
+在上面示例中，如果子项`id=10001`或`id=10002`的关联字段objId为空或与主表`id=1001`不同，则会报错“找不到该项”(因为数据隔离，该项确实不属于该主表，所以查不到)。
+加上选项`forceUpdate => true`就可以直接更新关联或删除指定子项了（但也同时引入安全隐患）：
+
+	class AC1_Ordr extends AccessControl
+	{
+		protected $subobj = [
+			"orderLog" => ["obj"=>"OrderLog", ..., "forceUpdate" => true],
+		];
+	}
+
+### 关联子表对象
+
+(v5.5) 
+典型的主子表关系是一对多的，如果将上面例子反过来，在`OrderLog.query`中想返回Ordr对象，也可使用subobj机制，如接口定义为：
+
+	OrderLog.query() -> tbl(id, ..., @ordr)
+
+可实现为：
+
+	class AC2_OrderLog extends AccessControl
+	{
+		protected $subobj = [
+			"ordr" => [
+				"obj"=>"Ordr", "AC"=>"AC2_Ordr", "cond"=>"t0.id={orderId}", // 用`{主表字段名}`设置关联外键。注意它等价于定义 `"cond"=>"t0.id=%d", "%d"=>"orderId"`
+				//"sql"=>"SELECT * FROM Ordr t1 WHERE t1.id={orderId}", // 也可以用 "sql" 来替代obj/AC/res/cond等子表选项
+				"res" => "t0.*",
+				"wantOne"=>true,
+				"default"=>true
+			]
+		];
+	}
+
+多对一的关联表往往设置`wantOne=true`，这样ordr属性就是个对象而非数组。
+
+注意：在主表add接口中支持同时添加关联表, 但不可在set接口中添加/更新关联表.
 
 ### 子表查询参数
 
 (v5.4)
-可以通过 "res_{子对象名}" 或 "param_{子对象名}" 为子对象指定查询条件，param可指定子对象可接受的一切参数。
+可以通过 `res_{子对象名}` 或 `param_{子对象名}` 为子对象指定查询条件，param可指定子对象可接受的一切参数。
 示例：实现接口 `Hub.query(id, ..., lastData)`, 查询主机时，可通过lastData字段返回最近一次的主机数据.
 
 	class AC2_Hub extends AccessControl
@@ -796,11 +949,38 @@ ORDER BY t0.id DESC)";
 query接口支持fmt参数：
 
 - list: 生成`{ @list, nextkey?, total? }`格式，而非缺省的 `{ @h, @d, nextkey?, total? }`格式
-- one: 类似get接口，只返回第一条数据，常用于统计等接口。
+- array: (v5.5) 直接返回对象数组, 没有分页信息. 若未指定pagesz参数, 则pagesz自动为-1, 尽可能返回全部数据.
+- tree: (v5.5) 将{id,fatherId}线性结构转为树型结构{id,children}.
+	可以通过URL参数treeFields重定义各字段名，默认值为`id,fatherId,children`，设置示例：`{treeFields:'code,fatherCode'}`，`{treeFields:'code,fatherCode,subtree'}`
+- one: 类似get接口，只返回第一条数据，常用于统计等接口。若查询不到则抛错。
+- one?: (v5.5) 与"one"相似，但若查询不到则返回false而不抛出错误。而且若只有一个字段，则直接返回该字段内容，而非该行对象。
 - csv/txt/excel: 导出文件，注意为了避免分页，调用时可设置较大的pagesz值。
 	- csv: 逗号分隔的文件，utf8编码。
 	- excel: 逗号分隔的文件，gb18030编码以便excel可直接打开不会显示中文乱码。
 	- txt: 制表分隔的文件, utf8编码。
+
+- hash: (v5.5) 返回key-value形式的数据. 值可以是对象, 数组还是标量, 从而有多种细分格式, 如
+	"hash", "hash:keyField", "hash:keyField,valueField", "multihash", "multihash:keyField", "multihash:keyField,valueField"等形式
+
+array和hash格式示例:
+
+	callSvr("Sn.query", {gres:"status", res:"COUNT(id) cnt")
+	// {h: ["status","cnt"], d: [{status:"CA", cnt:2}, {status:"CR", cnt:50}, {status:"RE", cnt:2}]}
+
+	callSvr("Sn.query", {gres:"status", res:"COUNT(id) cnt", fmt:"array")
+	// [{status:"CA", cnt:2}, {status:"CR", cnt:50}, {status:"RE", cnt:2}]
+
+	callSvr("Sn.query", {gres:"status", res:"COUNT(id) cnt",fmt:"hash"}) 或(未指定keyField时,默认取第1个字段即status)
+	callSvr("Sn.query", {gres:"status", res:"COUNT(id) cnt",fmt:"hash:status"})
+	// {"CA":{status:"CA", cnt:2}, "CR":{status:"CR", cnt:50}, "RE":{status:"RE", cnt:2}}
+
+	callSvr("Sn.query", {gres:"status", res:"COUNT(id) cnt",fmt:"hash:status,cnt"})
+	// {"CA", 2, "CR":50, "RE": 2}
+
+	callSvr("Sn.query", {gres:"status", res:"COUNT(id) cnt",fmt:"multihash:cnt"})
+	// {2:[{status:"CA",cnt:2}, {status:"RE",cnt:2}], 50:[{status:"CR", cnt:50}]}
+	callSvr("Sn.query", {gres:"status", res:"COUNT(id) cnt",fmt:"multihash:cnt,status"})
+	// {2:["CA","RE"], 50:["CR"]}
 
 TODO: 可加一个系统参数`_enc`表示输出编码的格式。
 
@@ -833,7 +1013,28 @@ TODO: 可加一个系统参数`_enc`表示输出编码的格式。
 		return $v;
 	};
 
-enumFields机制支持字段别名，比如若调用`Ordr.query(res="id 编号,status 状态")`，status字段使用了别名"状态"后，仍然可被正确处理，而用onHandleRow就处理不了了。
+enumFields机制支持字段别名，比如若调用`Ordr.query(res="id 编号,status 状态")`，status字段使用了别名"状态"后，仍然可被正确处理，而用onHandleRow则不好处理。
+
+(v5.5) enum字段也常用于计算字段，即根据其它字段进行处理，可在require选项中指定依赖字段，并在函数中使用getAliasVal方法取值:
+
+	protected $vcolDefs = [
+		// 不良数
+		[
+			"res" => ["(SELECT COUNT(DISTINCT s.id) FROM Fault f JOIN Sn s ON s.id=f.snId WHERE s.orderId=t0.id) faultCnt"],
+		],
+		// 根据不良数计算不良率。faultCnt是虚拟字段，qty是主表字段
+		[
+			"res" => ["null faultRate"], // 由于不是主表字段，须当成alias添加，不可直接指定为"faultRate"。给默认值null
+			"require" => "faultCnt,qty" // 依赖字段可以是主表字段、虚拟字段或子表字段均可，若依赖多个字段，用","分隔
+		]
+	];
+
+	$this->enumFields["faultRate"] = function($v, $row) {
+		// 不要直接用 $row["xxx"]取值, 否则若调用时指定了别名（典型的是导出文件或输出统计表场景）则取不到值了。
+		$faultCnt = $this->getAliasVal($row, "faultCnt");
+		$qty = $this->getAliasVal($row, "qty");
+		return $qty == 0? 0: $faultCnt/$qty;
+	};
 
 此外，枚举字段可直接由请求方通过res参数指定描述值，如：
 
@@ -931,6 +1132,9 @@ class AccessControl
 	protected $requiredFields2 = [];
 	# for get/query
 	protected $hiddenFields = [];
+	protected $hiddenFields0 = []; // 待隐藏的字段集合，字段加到hiddenFields中则一定隐藏，加到hiddenFields0中则根据用户指定的res参数判断是否隐藏该字段
+	protected $userRes = []; // 外部指定的res字段集合: { col => true}
+
 	protected $enumFields = []; // elem: {field => {key=>val}} 或 {field => fn(val, row)}，与onHandleRow类似地去修改数据。
 	protected $aliasMap = []; // { col => alias}
 	# for query
@@ -947,13 +1151,31 @@ class AccessControl
 	# 回调函数集。在after中执行（在onAfter回调之后）。
 	protected $onAfterActions = [];
 
+/**
+@var AccessControl.delField
+
+如果设置该字段(例如设置为disableFlag字段)，则把删除动作当作是设置该字段为1，且在查询接口中跟踪此字段增加过滤。
+必须是flag字段（0/1值）。
+
+示例：
+
+	// class AC2_Store extends AccessControl
+	protected $delField = "disableFlag";
+
+由于数据实际上未删除，可以在管理端中手中调用接口恢复，比如
+
+	callSvr("Store.set", {id:139}, $.noop, {disabledFlag:0})
+
+*/
+	protected $delField;
+
 	# for get/query
 	# 注意：sqlConf["res"/"cond"][0]分别是传入的res/cond参数, sqlConf["orderby"]是传入的orderby参数, 为空(注意用isset/is_null判断)均表示未传值。
 	public $sqlConf; // {@cond, @res, @join, orderby, @subobj, gres}
 	private $isAggregatinQuery; // 是聚合查询，如带group by或res中有聚合函数
 
 	// virtual columns
-	private $vcolMap; # elem: $vcol => {def, def0, added?, vcolDefIdx?=-1}
+	private $vcolMap; # elem: $vcol => {def, def0, vcolDefIdx?=-1}
 
 	// 在add后自动设置; 在get/set/del操作调用onValidateId后设置。
 	protected $id;
@@ -1058,23 +1280,39 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		return $x;
 	}
 
-	/*
-	支持get/post参数中同时有cond参数，且cond参数允许为数组，比如传
-		URL中：cond[]=a=1&cond[]=b=2
-		POST中：cond=c=3
-	后端处理成 "a=1 AND b=2 AND c=3"
+/*
+@fn AccessControl.getCondStr($condArr)
+
+将条件数组生成条件字符串，如：
+
+	$condStr = getCondStr(["a=1", "b=2"]); // "a=1 AND b=2"
+	$condStr = getCondStr(["a=1", "b=2 or b=3"]); // "a=1 AND (b=2 or b=3)"
+
+支持前端传入的get/post参数中同时有cond参数，且cond参数允许为数组，比如传
+
+	URL中：cond[]=a=1&cond[]=b=2
+	POST中：cond=c=3
+
+后端处理
+
+	getCondStr([$_GET[$name], $_POST[$name]]);
+
+最终得到cond参数为"a=1 AND b=2 AND c=3"。
 
 示例: url参数支持数组. post参数无论用urlencoded格式或json格式也都支持数组: 
+
 	callSvr("Hub.query", {res:"id", cond: ["id=1", "id=2"]}, $.noop, {cond: ["id=3", "id=4"]})
 	callSvr("Hub.query", {res:"id", cond: ["id=1", "id=2"]}, $.noop, {cond: ["id=3", "id=4"]}, {contentType:"application/json"})
-	*/
+
+@see getQueryCond
+*/
 	static function getCondStr($condArr)
 	{
 		if (! $condArr)
 			return null;
 		$condSql = null;
 		foreach ($condArr as $cond) {
-			if ($cond === null)
+			if (! $cond)
 				continue;
 			if (is_array($cond))
 				$cond = self::getCondStr($cond);
@@ -1132,7 +1370,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		}
 		if (($v = param("join")) != null) {
 			if (! $v instanceof DbExpr)
-				throw new MyException(E_SERVER, "res2 should be DbExpr");
+				throw new MyException(E_SERVER, "join should be DbExpr");
 			$this->addJoin($v->val);
 		}
 		if (($v = param("cond2", null, null, false)) != null) {
@@ -1140,17 +1378,15 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 				throw new MyException(E_SERVER, "cond2 should be DbExpr");
 			$this->addCond($v->val);
 		}
-		if (($v = param("subobj")) != null) {
-			if (! $v instanceof DbExpr)
-				throw new MyException(E_SERVER, "subobj should be DbExpr");
-			$this->sqlConf["subobj"][] = $v->val;
-		}
 
 		$this->onQuery();
 		if ($this->uuid) {
 			$this->enumFields["id"] = function($v, $row) {
 				return jdEncryptI($v, "E", "hex");
 			};
+		}
+		if ($this->delField !== null) {
+			$this->addCond($this->delField . "=0");
 		}
 
 		$addDefaultCol = false;
@@ -1175,8 +1411,9 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			$this->addDefaultVCols();
 			if (count($this->sqlConf["subobj"]) == 0) {
 				foreach ($this->subobj as $col => $def) {
-					if (@$def["default"])
-						$this->sqlConf["subobj"][$col] = $def;
+					if (@$def["default"]) {
+						$this->addSubobj($col, $def);
+					}
 				}
 			}
 		}
@@ -1200,29 +1437,37 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		# TODO: check fields in metadata
 		# foreach ($_POST as ($field, $val))
 
+		$useStrictReadonly = $this->useStrictReadonly;
+		if ($useStrictReadonly && param("useStrictReadonly/s") === "0")
+			$useStrictReadonly = false;
 		foreach ($this->readonlyFields as $field) {
 			if (array_key_exists($field, $_POST) && !($this->ac == "add" && array_search($field, $this->requiredFields) !== false)) {
-				if ($this->useStrictReadonly)
-					throw new MyException(E_FORBIDDEN, "set readonly field `$field`");
-				logit("!!! warn: attempt to change readonly field `$field`");
+				if ($useStrictReadonly)
+					throw new MyException(E_FORBIDDEN, "set readonly field {$this->table}.`$field`");
+				logit("!!! warn: attempt to change readonly field {$this->table}.`$field`");
 				unset($_POST[$field]);
 			}
 		}
 		if ($this->ac == "set") {
 			foreach ($this->readonlyFields2 as $field) {
 				if (array_key_exists($field, $_POST)) {
-					if ($this->useStrictReadonly)
-						throw new MyException(E_FORBIDDEN, "set readonly field `$field`");
-					logit("!!! warn: attempt to change readonly field `$field`");
+					if ($useStrictReadonly)
+						throw new MyException(E_FORBIDDEN, "set readonly field {$this->table}.`$field`");
+					logit("!!! warn: attempt to change readonly field {$this->table}.`$field`");
 					unset($_POST[$field]);
 				}
 			}
 		}
 		if ($this->ac == "add") {
+			try {
 			foreach ($this->requiredFields as $field) {
 // 					if (! issetval($field, $_POST))
 // 						throw new MyException(E_PARAM, "missing field `{$field}`", "参数`{$field}`未填写");
 				mparam($field, $_POST); // validate field and type; refer to field/type format for mparam.
+			}
+			} catch (MyException $ex) {
+				$ex->internalMsg .= " (by requiredFields check)";
+				throw $ex;
 			}
 		}
 		else { # for set, the fields can not be set null
@@ -1302,7 +1547,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			$acObj = new static();
 			return $acObj->callSvc($tbl ?: $this->table, $ac, $param, $postParam);
 		}
-		if ($param || $postParam) {
+		if ($param !== null || $postParam !== null) {
 			return tmpEnv($param, $postParam, function () use ($tbl, $ac) {
 				return $this->callSvc($tbl, $ac);
 			});
@@ -1369,12 +1614,16 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		return $this->maxPageSz <0? PAGE_SZ_LIMIT: min($this->maxPageSz, PAGE_SZ_LIMIT);
 	}
 
-	private function handleRow(&$rowData)
+	// 用于onHandleRow或enumFields中，从结果中取指定列数据，避免直接用$row[$col]，因为字段有可能用的是别名。
+	final protected function getAliasVal($row, $col) {
+		return @$row[$this->aliasMap[$col] ?: $col];
+	}
+	final protected function setAliasVal($row, $col, $val) {
+		$row[$this->aliasMap[$col] ?: $col] = $val;
+	}
+
+	private function handleRow(&$rowData, $idx, $rowCnt)
 	{
-		foreach ($this->hiddenFields as $field) {
-			unset($rowData[$field]);
-		}
-		unset($rowData["pwd"]);
 		$this->flag_handleResult($rowData);
 		$this->onHandleRow($rowData);
 
@@ -1401,22 +1650,36 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 				$rowData[$field] = $v;
 			}
 		}
+		if ($idx == 0) {
+			$this->fixHiddenFields();
+		}
+		foreach ($this->hiddenFields as $field) {
+			unset($rowData[$field]);
+		}
 	}
 
 	# for query. "field1"=>"t0.field1"
 	private function fixUserQuery($q)
 	{
 		$this->initVColMap();
-		if (stripos($q, "select") !== false) {
-			throw new MyException(E_FORBIDDEN, "forbidden SELECT in param cond");
+		// group(0)匹配：禁止各类函数（以后面跟括号来识别）和select子句）
+		if (preg_match_all('/\b \w+ (?=\s*\() | \b select \b /ix', $q, $ms)) {
+			foreach ($ms[0] as $key) {
+				if (!in_array(strtoupper($key), ["AND", "OR", "IN"]))
+					throw new MyException(E_FORBIDDEN, "forbidden `$key` in param cond");
+			}
 		}
+
 		// 伪uuid转换 id='d9a37e4c2038e8ad' => id=41
 		$q = preg_replace_callback('/([iI]d=)\'([a-fA-F0-9]{16})\'/u', function ($ms) {
 			return $ms[1] . jdEncryptI($ms[2], 'D', 'hex');
 		}, $q);
 		# "aa = 100 and t1.bb>30 and cc IS null" -> "t0.aa = 100 and t1.bb>30 and t0.cc IS null" 
 		# "name not like 'a%'" => "t0.name not like 'a%'"
-		$ret = preg_replace_callback('/[\w.]+(?=\s*[=><]|\s+(IS|LIKE|BETWEEN|IN|NOT)\s)/iu', function ($ms) {
+		# NOTE: 避免字符串内被处理 "a='a=1'" 不要被处理成"t0.a='t0.a=1'"
+		$ret = preg_replace_callback('/(\'.+?\')|[\w.]+(?=\s*[=><]|\s+(IS|LIKE|BETWEEN|IN|NOT)\s)/iu', function ($ms) {
+			if ($ms[1])
+				return $ms[1];
 			// 't0.$0' for col, or 'voldef' for vcol
 			$col = $ms[0];
 			if (ctype_digit($col[0]) || strcasecmp($col, "NOT")==0 || strcasecmp($col, "IS")==0)
@@ -1464,6 +1727,25 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			$this->aliasMap[self::removeQuote($col)] = self::removeQuote($alias);
 	}
 
+	private function addSubobj($col, $def) {
+		foreach (["cond", "sql"] as $e) {
+			if (isset($def[$e])) {
+				$def[$e] = preg_replace_callback('/\{(\w+)\}/u', function ($ms) use (&$def) {
+					$def["%d"] = $ms[1];
+					return "%d";
+				}, $def[$e]);
+			}
+		}
+		$this->sqlConf["subobj"][$col] = $def;
+		if (array_key_exists("%d", $def)) {
+			$col = $def["%d"];
+			if (preg_match('/\W/u', $col)) {
+				throw new MyException(E_PARAM, "bad subobj.relatedKey=`$col`. MUST be a column or virtual column.", "子对象定义错误");
+			}
+			$this->addVCol($col, self::VCOL_ADD_RES, null, true);
+		}
+	}
+
 	// 和fixUserQuery处理外部cond类似(安全版的addCond), filterRes处理外部传入的res (安全版的addRes)
 	// return: new field list
 	private function filterRes($res, $gres=false)
@@ -1476,6 +1758,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			$fn = null;
 			if ($col === "*" || $col === "t0.*") {
 				$this->addRes("t0.*", false);
+				$this->userRes[$col] = true;
 				$isAll = true;
 				continue;
 			}
@@ -1484,19 +1767,21 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			if (! preg_match('/^\s*(\w+)(?:\s+(?:AS\s+)?([^,]+))?\s*$/iu', $col, $ms))
 			{
 				// 对于res, 还支持部分函数: "fn(col) as col1", 目前支持函数: count/sum，如"count(distinct ac) cnt", "sum(qty*price) docTotal"
-				if (!$gres && preg_match('/(\w+)\(([a-z0-9_.\'* ,+\/]+)\)\s+(?:AS\s+)?([^,]+)/iu', $col, $ms)) {
+				if (!$gres && preg_match('/(\w+)\(([a-z0-9_.\'* ,+-\/]*)\)\s+(?:AS\s+)?([^,]+)/iu', $col, $ms)) {
 					list($fn, $expr, $alias) = [strtoupper($ms[1]), $ms[2], $ms[3]];
-					if ($fn != "COUNT" && $fn != "SUM" && $fn != "AVG")
+					if ($fn != "COUNT" && $fn != "SUM" && $fn != "AVG" && $fn != "MAX" && $fn != "MIN")
 						throw new MyException(E_FORBIDDEN, "function not allowed: `$fn`");
 					// 支持对虚拟字段的聚合函数 (addVCol)
-					$rv = preg_match_all('/\w+/iu', $expr, $ms1);
-					if ($rv && $ms1) {
-						foreach ($ms1[0] as $col1) {
-							if (strcasecmp($col1, 'distinct') == 0)
-								continue;
-							$this->addVCol($col1, true, '-');
-						}
-					}
+					$expr = preg_replace_callback('/\b\w+\b/iu', function ($ms) {
+						$col1 = $ms[0];
+						if (strcasecmp($col1, 'distinct') == 0 || is_numeric($col1))
+							return $col1;
+						// isVCol
+						if ($this->addVCol($col1, true, '-'))
+							return $this->vcolMap[$col1]["def"];
+						return "t0." . $col1;
+					}, $expr);
+					$col = $fn . '(' . $expr . ') ' . $alias;
 					$this->isAggregatinQuery = true;
 				}
 				else 
@@ -1508,20 +1793,22 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 					$alias = $ms[2];
 				}
 			}
+			if ($alias)
+				$this->handleAlias($col, $alias);
+
+			$this->userRes[$alias ?: $col] = true;
+
 			if (isset($fn)) {
 				$this->addRes($col);
 				continue;
 			}
-
-			if ($alias)
-				$this->handleAlias($col, $alias);
 
 // 			if (! ctype_alnum($col))
 // 				throw new MyException(E_PARAM, "bad property `$col`");
 			if ($this->addVCol($col, true, $alias) === false) {
 				if (!$gres && array_key_exists($col, $this->subobj)) {
 					$key = self::removeQuote($alias ?: $col);
-					$this->sqlConf["subobj"][$key] = $this->subobj[$col];
+					$this->addSubobj($key, $this->subobj[$col]);
 				}
 				else {
 					if ($isAll)
@@ -1554,32 +1841,14 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			$col = preg_replace_callback('/^\s*(\w+)/u', function ($ms) {
 				$col1 = $ms[1];
 				// 注意：与cond不同，orderby使用了虚拟字段，应在res中添加。而cond中是直接展开了虚拟字段。因为where条件不支持虚拟字段。
-				// 故不用：$this->addVCol($col1, true, '-');
-				if ($this->addVCol($col1, true) !== false)
+				// 故不用：$this->addVCol($col1, true, '-'); 但应在处理完后删除辅助字段，避免多余字段影响导出文件等场景。
+				if ($this->addVCol($col1, true, null, true) !== false)
 					return $col1;
 				return "t0." . $col1;
 			}, $col);
 			$colArr[] = $col;
 		}
 		return join(",", $colArr);
-	}
-
-	// 将外部虚拟字段的require依赖字段添加到res中（支持其中引用其它虚拟字段）
-	// 引用内层查询的某字段时，需要将该字段加到内层res中暴露到外层使用；但是如果内层res已经有t0.*则不要重复添加。
-	// 示例："res" => ["(select count(*) from ApiLog t1 where t1.ses=t0.ses) sesCnt"], 需要将t0.ses暴露给外层SQL使用。
-	private function filterExtVColRequire($cols)
-	{
-		foreach (explode(',', $cols) as $col) {
-			$col = preg_replace_callback('/^(\w+)$/', function ($ms) {
-				$col1 = $ms[1];
-				if ($this->addVCol($col1, true) !== false)
-					return "";
-				return "t0." . $col1;
-			}, trim($col));
-			if (! $col) // 虚拟字段已在addVCol中加过
-				continue;
-			$this->addRes($col, false);
-		}
 	}
 
 	final public function issetCond()
@@ -1597,26 +1866,29 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 - analyzeCol=true时, 注册到对象的虚拟字段中。
 - addRes("col+1 as col1", false); -- 简单地新定义一个计算列, as可省略
 
+返回true/false: 是否添加到输出列表
+
 @see AccessControl::addCond 其中有示例
 @see AccessControl::addVCol 添加已定义的虚拟列。
  */
 	final public function addRes($res, $analyzeCol=true, $isExt=false)
 	{
 		if ($isExt) {
-			$this->addResInt($this->sqlConf["resExt"], $res);
-			return;
+			return $this->addResInt($this->sqlConf["resExt"], $res);
 		}
-		$this->addResInt($this->sqlConf["res"], $res);
+		$rv = $this->addResInt($this->sqlConf["res"], $res);
 		if ($analyzeCol)
 			$this->setColFromRes($res, true);
+		return $rv;
 	}
 
-	// 内部被addRes调用。避免重复添加字段到res
+	// 内部被addRes调用。避免重复添加字段到res。
+	// 返回true/false: 是否添加到输出列表
 	private function addResInt(&$resArr, $col) {
-		$ignoreT0 = @$resArr[0] == "t0.*";
+		$ignoreT0 = in_array("t0.*", $resArr);
 		// 如果有"t0.*"，则忽略主表字段如"t0.id"，但应避免别名字段如"t0.id orderId"被去掉
 		if ($ignoreT0 && substr($col,0,3) == "t0." && strpos($col, ' ') === false)
-			return;
+			return false;
 		$found = false;
 		foreach ($resArr as $e) {
 			if ($e == $col)
@@ -1624,6 +1896,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		}
 		if (!$found)
 			$resArr[] = $col;
+		return !$found;
 	}
 
 /**
@@ -1692,7 +1965,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 这相当于调用：
 
 	$this->addVCol("payTm", false, "-"); // 引入定义但并不加到SELECT字段中
-	$this->addCond("olpay.action='PA' AND olpay.tm>'$validDate'");
+	$this->addCond("olpay.action='PA' AND olpay.tm>'$validDate'", false, false);
 
 如果想要查询固定返回空，习惯上可以用:
 
@@ -1703,6 +1976,8 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
  */
 	final public function addCond($cond, $prepend=false, $fixUserQuery=true)
 	{
+		if (! $cond)
+			return;
 		if ($fixUserQuery)
 			$cond = $this->fixUserQuery($cond);
 		if ($prepend)
@@ -1720,12 +1995,60 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	 */
 	final public function addJoin($join)
 	{
+		assert(is_string($join), "join须为字符串");
 		$this->sqlConf["join"][] = $join;
 	}
 
-	private function setColFromRes($res, $added, $vcolDefIdx=-1)
+/*
+合并hiddenFields0到hiddenFields, 仅当字段符合下列条件：
+
+- 在请求的res参数中未指定该字段
+- 若res参数中包含"t0.*", 且该字段不是主表字段(t0.xxx)
+- 若res参数中包含"*"（未指定res参数也缺省是"*"），且该字段不是主表字段(t0.xxx)，且不是缺省的虚拟字段或虚拟表(vcolDefs或subobj的default属性为false)
+*/
+	final protected function fixHiddenFields()
+	{
+		$this->hiddenFields[] = "pwd";
+
+		$hiddenFields = param("hiddenFields");
+		if (isset($hiddenFields)) {
+			// 当请求时指定参数"hiddenFields=0"时，忽略自动隐藏
+			if ($hiddenFields === "0")
+				return;
+			foreach (preg_split('/\s*,\s*/', $hiddenFields) as $e) {
+				$this->hiddenFields[] = $e;
+			}
+		}
+
+		foreach ($this->hiddenFields0 as $col) {
+			if (isset($this->userRes[$col]) || in_array($col, $this->hiddenFields))
+				continue;
+
+			if (isset($this->userRes["*"]) || isset($this->userRes["t0.*"])) {
+				@$idx = $this->vcolMap[$col]["vcolDefIdx"];
+				if (isset($idx)) { // isVCol
+					@$isDefault = $this->vcolDefs[$idx]["default"];
+					if ( $isDefault && isset($this->userRes["*"]))
+						continue;
+				}
+				else if (isset($this->subobj[$col])) { // isSubobj
+					@$isDefault = $this->subobj[$col]["default"];
+					if ( $isDefault && isset($this->userRes["*"]))
+						continue;
+				}
+				else { // isMainobj
+					continue;
+				}
+			}
+			$this->hiddenFields[] = $col;
+		}
+	}
+
+	private function setColFromRes($res, $NOT_USED=false, $vcolDefIdx=-1)
 	{
 		if (preg_match('/^(\w+)\.(\w+)$/u', $res, $ms)) {
+			if ($ms[1] == "t0")
+				return;
 			$colName = $ms[2];
 			$def = $res;
 		}
@@ -1738,12 +2061,10 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 
 		$colName = self::removeQuote($colName);
 		if (array_key_exists($colName, $this->vcolMap)) {
-			if ($added && $this->vcolMap[ $colName ]["added"])
-				throw new MyException(E_SERVER, "res for col `$colName` has added: `$res`");
-			$this->vcolMap[ $colName ]["added"] = true;
+			throw new MyException(E_SERVER, "redefine vcol `{$this->table}.$colName`", "虚拟字段定义重复");
 		}
 		else {
-			$this->vcolMap[ $colName ] = ["def"=>$def, "def0"=>$res, "added"=>$added, "vcolDefIdx"=>$vcolDefIdx];
+			$this->vcolMap[ $colName ] = ["def"=>$def, "def0"=>$res, "vcolDefIdx"=>$vcolDefIdx];
 		}
 	}
 
@@ -1764,8 +2085,8 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			if ($isExt !== $isExt1) {
 				throw new MyException(E_SERVER, "bad res: '$res'", "字段定义错误：外部虚拟字段与普通虚拟字段不可定义在一起，请分拆成多组，或明确定义`isExt`。");
 			}
-			if (preg_match_all('/\bt0\.\w+\b/u', $ms[1], $ms1)) {
-				foreach ($ms1[0] as $e) {
+			if (preg_match_all('/\bt0\.(\w+)\b/u', $ms[1], $ms1)) {
+				foreach ($ms1[1] as $e) {
 					$reqColSet[$e] = true;
 				}
 			}
@@ -1793,11 +2114,11 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	}
 
 /**
-@fn AccessControl::addVCol($col, $ignoreError=false, $alias=null)
+@fn AccessControl::addVCol($col, $ignoreError=false, $alias=null, $isHiddenField=false)
 
 @param $col 必须是一个英文词, 不允许"col as col1"形式; 该列必须在 vcolDefs 中已定义.
 @param $alias 列的别名。可以中文. 特殊字符"-"表示只添加join/cond等定义，并不将该字段加到输出字段中。
-@return Boolean T/F
+@return Boolean T/F 返回false表示添加失败。
 
 引入一个已有的虚拟字段及其相应关联表，例如之前在vcolDefs中定义过虚拟字段`createTm`:
 
@@ -1807,44 +2128,77 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	// 只引入createTm字段的关联表，不影响最终输出字段
 	$this->addVCol("createTm", false, "-");
 
-@see AccessControl::addRes
+	// 添加字段(如果不是虚拟字段则当作表字段添加)
+	$this->addVCol("createTm", self::VCOL_ADD_RES); // ignoreError特别用法
+
+	// 如果不是虚拟字段则当作子表字段或表字段添加
+	$this->addVCol("createTm", self::VCOL_ADD_RES|self::VCOL_ADD_SUBOBJ); // ignoreError特别用法
+
+如果isHiddenField=true, 则该字段是辅助字段，最终返回前将删除(AccessControl::hiddenFields机制)
  */
-	protected function addVCol($col, $ignoreError = false, $alias = null)
+ 	const VCOL_ADD_RES = 0x2;
+ 	const VCOL_ADD_SUBOBJ = 0x4;
+	protected function addVCol($col, $ignoreError = false, $alias = null, $isHiddenField = false)
 	{
 		if (! isset($this->vcolMap[$col])) {
-			if (!$ignoreError)
+			$rv = false;
+			if (($ignoreError & self::VCOL_ADD_SUBOBJ) && array_key_exists($col, $this->subobj)) {
+				$this->addSubobj($col, $this->subobj[$col]);
+				$rv = true;
+			}
+			else if ($ignoreError === false) {
 				throw new MyException(E_SERVER, "unknown vcol `$col`");
-			return false;
+			}
+			else if ($ignoreError & self::VCOL_ADD_RES) {
+				$rv = $this->addRes("t0.". $col);
+			}
+			if ($isHiddenField && $rv === true)
+				$this->hiddenFields0[] = $col;
+			return $rv;
 		}
-		if ($this->vcolMap[$col]["added"])
-			return true;
 		$vcolDef = $this->addVColDef($this->vcolMap[$col]["vcolDefIdx"]);
-		if (! $vcolDef)
-			throw new MyException(E_SERVER, "bad vcol $col");
+
+		if ($alias === "-")
+			return true;
+
 		$isExt = @ $vcolDef["isExt"] ? true : false;
 		if ($alias) {
-			if ($alias !== "-")
-				$this->addRes($this->vcolMap[$col]["def"] . " AS {$alias}", false, $isExt);
+			$rv = $this->addRes($this->vcolMap[$col]["def"] . " " . $alias, false, $isExt);
+			$this->vcolMap[$alias] = $this->vcolMap[$col]; // vcol及其alias同时加入vcolMap
 		}
 		else {
-			$this->addRes($this->vcolMap[$col]["def0"], false, $isExt);
+			$rv = $this->addRes($this->vcolMap[$col]["def0"], false, $isExt);
 		}
+		if ($isHiddenField)
+			$this->hiddenFields0[] = $alias ?: $col;
 		return true;
 	}
 
 	private function addDefaultVCols()
 	{
-		$idx = 0;
-		foreach ($this->vcolDefs as $vcolDef) {
+		foreach ($this->vcolDefs as $idx => $vcolDef) {
 			if (@$vcolDef["default"]) {
 				$this->addVColDef($idx);
 				$isExt = @ $vcolDef["isExt"] ? true: false;
 				foreach ($vcolDef["res"] as $e) {
-					$this->addRes($e, true, $isExt);
+					$this->addRes($e, false, $isExt);
 				}
 			}
-			++ $idx;
 		}
+	}
+
+	private function addRequireCol($col, $isExt) {
+		if (strpos($col, ',') !== false) {
+			$colArr = explode(',', $col);
+			foreach ($colArr as $col1) {
+				$col1 = trim($col1);
+				$this->addRequireCol($col1, $isExt);
+			}
+			return;
+		}
+		if (strpos($col, '.') !== false)
+			throw new MyException(E_PARAM, "`require` cannot use table name: $col", "字段依赖设置错误");
+		$this->addVCol($col, self::VCOL_ADD_RES | self::VCOL_ADD_SUBOBJ, null, true);
 	}
 
 	/*
@@ -1852,28 +2206,24 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	返回vcolDef或undef
 	注意：idx可以不是数字。
 	 */
+	private $vcolDefIndex = []; // {$idx => true}
 	private function addVColDef($idx)
 	{
 		if (! isset($this->vcolDefs[$idx]))
 			return;
 		$vcolDef = &$this->vcolDefs[$idx];
-		if ($vcolDef["added"])
+		if ($this->vcolDefIndex[$idx])
 			return $vcolDef;
 
-		$vcolDef["added"] = true;
-		if (@$vcolDef["isExt"]) {
-			$requireCol = @$vcolDef["require"];
-			// 外部虚拟字段：将require字段加入内层SQL。
-			if ($requireCol) {
-				$this->filterExtVColRequire($requireCol);
-			}
+		$this->vcolDefIndex[$idx] = true;
+		$isExt = @$vcolDef["isExt"]? true: false;
+		// require支持一个或多个字段(虚拟字段, 表字段, 子表字段均可), 多个字段以逗号分隔
+		if (isset($vcolDef["require"])) {
+			$this->addRequireCol($vcolDef["require"], $isExt);
+		}
+		if ($isExt)
 			return $vcolDef;
-		}
-		if (isset($vcolDef["require"]))
-		{
-			$requireCol = $vcolDef["require"];
-			$this->addVCol($requireCol, false, "-");
-		}
+
 		if (isset($vcolDef["join"]))
 			$this->addJoin($vcolDef["join"]);
 		if (isset($vcolDef["cond"]))
@@ -1971,6 +2321,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		$this->handleSubObjForAddSet();
 
 		$cnt = dbUpdate($this->table, $_POST, $this->id);
+		return "OK";
 	}
 
 	function handleSubObjForAddSet()
@@ -1979,10 +2330,15 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		foreach ($this->subobj as $k=>$v) {
 			if (is_array($_POST[$k]) && isset($v["obj"])) {
 				$subobjList = $_POST[$k];
+				if (! isArray012($subobjList)) {
+					throw new MyException(E_PARAM, "bad subobj $k", "子对象必须为数组: $k");
+				}
 				$onAfterActions[] = function (&$ret) use ($subobjList, $v) {
 					$relatedKey = null;
-					if (preg_match('/(\w+)=%d/u', $v["cond"], $ms)) {
+					$relatedKeyTo = null;
+					if (preg_match('/(\w+)=(%d|\{(\w+)\})/u', $v["cond"], $ms)) {
 						$relatedKey = $ms[1];
+						$relatedKeyTo = $ms[3];
 					}
 					if ($relatedKey == null) {
 						throw new MyException(E_SERVER, "bad cond: cannot get relatedKey", "子表配置错误");
@@ -1990,6 +2346,12 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 
 					$objName = $v["obj"];
 					$acObj = AccessControl::create($objName, null, $v["AC"]);
+					$relatedValue = $this->id;
+					if ($relatedKeyTo != null && $relatedKeyTo != "id") {
+						$relatedValue = $_POST[$relatedKeyTo];
+						if (! isset($relatedValue))
+							throw new MyException(E_PARAM, "subobj-add/set fails: require relatedKey `$relatedKeyTo`");
+					}
 					foreach ($subobjList as $subobj) {
 						$subid = $subobj["id"];
 						if ($subid) {
@@ -1999,7 +2361,11 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 								throw new MyException(E_FORBIDDEN, "$objName id=$subid: require $relatedKey={$this->id}, actual " . var_export($fatherId, true), "不可操作该子项");
 							*/
 							// set/del接口支持cond.
-							$cond = $relatedKey . "=" . $this->id;
+							$cond = $relatedKey . "=" . $relatedValue;
+							if (@$v["forceUpdate"]) {
+								$subobj[$relatedKey] = $relatedValue;
+								$cond = null;
+							}
 							if (! @$subobj["_delete"]) {
 								$acObj->callSvc($objName, "set", ["id"=>$subid, "cond"=>$cond], $subobj);
 							}
@@ -2008,7 +2374,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 							}
 						}
 						else {
-							$subobj[$relatedKey] = $this->id;
+							$subobj[$relatedKey] = $relatedValue;
 							$acObj->callSvc($objName, "add", null, $subobj);
 						}
 					}
@@ -2095,7 +2461,7 @@ FROM ($sql) t0";
 			$ret = ["id" => $this->id];
 		}
 		$this->handleSubObj($this->id, $ret);
-		$this->handleRow($ret);
+		$this->handleRow($ret, 0, 1);
 		return $ret;
 	}
 
@@ -2108,18 +2474,27 @@ FROM ($sql) t0";
 
 内部调用时还支持以下参数：
 
-- res2, cond2: 它们要求为数组，数组的每一项与res, cond含义相同。这样不覆盖res, cond参数（从而外部仍可以使用它们）。
-- join: 要求为数组。指定关联表。
-- subobj: 指定子对象。
+- res2, cond2: 与res, cond含义相同，为确保只能通过后端代码调用，不可由前端参数指定，必须用dbExpr包一层，比如
+		[
+			"res2"=>dbExpr("id,name,snCnt"),
+			"cond2"=>dbExpr("tm>'2020-1-1'")
+		]
+ 用于为AccessControl类指定res/cond外的其它字段或条件，而res/cond是可以由前端来指定的。
+
+- join: 指定关联表。必须用dbExpr包一层。
 
 调用示例：
 
 	// 定死res外部无法覆盖, 但外部可额外指定cond参数
 	$ret = callSvcInt("PdiRecord.query", [
-		"res": "id,vinCode,result,orderId,tm",
-		"cond2": ["type='EQ'", "tm>='2019-1-1'"]
+		"res": "id,vinCode,result,orderId,tm", // 用了res则意味着不允许前端指定字段，用res2则前端还可以用res指定其它字段
+		"cond2": dbExpr("type='EQ' AND tm>='2019-1-1'") // 多个条件也可这样自动拼接： getQueryCond(["type='EQ'", "tm>='2019-1-1'])
 	]);
 
+@see AccessControl::addCond
+@see AccessControl::addRes
+@see AccessControl::addJoin
+@see getQueryCond
 */
 	function api_query()
 	{
@@ -2127,6 +2502,7 @@ FROM ($sql) t0";
 
 		$sqlConf = &$this->sqlConf;
 
+		$fmt = param("fmt");
 		$pagesz = param("pagesz/i");
 		$pagekey = param("pagekey/id");
 		if (! isset($pagekey)) {
@@ -2137,9 +2513,12 @@ FROM ($sql) t0";
 				$enablePartialQuery = false;
 			}
 		}
-		if ($pagesz == 0) {
-			$pagesz = param("fmt") !== "one"? 20: 1;
-		}
+		if ($fmt === "one" || $fmt === "one?")
+			$pagesz = 1;
+		else if (! isset($pagesz) && ($fmt === "array" || $fmt == "tree"))
+			$pagesz = -1;
+		else if (! isset($pagesz) || $pagesz == 0)
+			$pagesz = 20;
 
 		$maxPageSz = $this->getMaxPageSz();
 		if ($pagesz < 0 || $pagesz > $maxPageSz)
@@ -2235,22 +2614,30 @@ FROM ($sql) t0";
 		// Note: colCnt may be changed in after().
 		$fixedColCnt = count($ret)==0? 0: count($ret[0]);
 
+		$rowCnt = count($ret);
 		$SUBOBJ_OPTIMIZE = !param("disableSubobjOptimize/b", false);
 		if ($SUBOBJ_OPTIMIZE) {
 			$this->handleSubObjForList($ret); // 优化: 总共只用一次查询, 替代每个主表查询一次
+			$i = 0;
 			foreach ($ret as &$ret1) {
-				$this->handleRow($ret1);
+				$this->handleRow($ret1, $i++, $rowCnt);
 			}
 		}
 		else {
+			$i = 0;
 			foreach ($ret as &$ret1) {
-				$id1 = $ret1["id"];
+				$id1 = $this->getAliasVal($ret1, "id");
 				if (isset($id1))
 					$this->handleSubObj($id1, $ret1);
-				$this->handleRow($ret1);
+				$this->handleRow($ret1, $i++, $rowCnt);
 			}
 		}
 		$this->after($ret);
+		$pivot = param("pivot");
+		if ($pivot && count($ret) > 0) {
+			$ret = pivot($ret, $pivot, param("pivotCnt/i", 1));
+			$fixedColCnt = count($ret[0]);
+		}
 
 		if ($pagesz == count($ret)) { // 还有下一页数据, 添加nextkey
 			if ($enablePartialQuery) {
@@ -2260,8 +2647,25 @@ FROM ($sql) t0";
 				$nextkey = $pagekey + 1;
 			}
 		}
+		return $this->queryRet($ret, $nextkey, $totalCnt, $fixedColCnt);
+	}
+
+/**
+@fn AccessControl.queryRet(objArr, nextkey?, totalCnt?, fixedColCnt?=0)
+
+处理objArr，按照fmt参数指定的格式返回，与query接口返回相同。例如，默认的`h-d`表格式, `list`格式，`excel`等。
+ */
+	protected function queryRet($ret, $nextkey=null, $totalCnt=null, $fixedColCnt=0)
+	{
 		$fmt = param("fmt");
-		if ($fmt === "list") {
+		if ($fmt === "array") {
+			return $ret;
+		}
+		else if ($fmt === "tree") {
+			$p = explode(',', param("treeFields", null, "G"));
+			return makeTree($ret, ($p[0]?:'id'), ($p[1]?:'fatherId'), ($p[2]?:'children'));
+		}
+		else if ($fmt === "list") {
 			$ret = ["list" => $ret];
 			unset($fmt);
 		}
@@ -2269,6 +2673,39 @@ FROM ($sql) t0";
 			if (count($ret) == 0)
 				throw new MyException(E_PARAM, "no data", "查询不到数据");
 			return $ret[0];
+		}
+		else if ($fmt === "one?") {
+			if (count($ret) == 0)
+				return false;
+			if (count($ret[0]) == 1)
+				return current($ret[0]);
+			return $ret[0];
+		}
+		// hash
+		// hash:keyField
+		// hash:keyField,valueField
+		// multihash
+		// multihash:keyField
+		// multihash:keyField,valueField
+		else if (preg_match('/^(multi)?hash (: (\w+) (,(\w+))?)?$/xu', $fmt, $ms)) {
+			list($keyField, $isMulti, $valueField) = [$ms[3], $ms[1], $ms[5]];
+			$ret1 = [];
+			foreach ($ret as $row) {
+				$k = $keyField? $row[$keyField]: current($row);
+				$v = $valueField? $row[$valueField]: $row;
+				if ($isMulti) {
+					if (array_key_exists($k, $ret1)) {
+						$ret1[$k][] = $v;
+					}
+					else {
+						$ret1[$k] = [$v];
+					}
+				}
+				else {
+					$ret1[$k] = $v;
+				}
+			}
+			return $ret1;
 		}
 		else {
 			$ret = objarr2table($ret, $fixedColCnt);
@@ -2308,11 +2745,14 @@ FROM ($sql) t0";
 	protected function qsearch($fields, $q)
 	{
 		assert(is_array($fields));
+		if ($q === null)
+			return;
+		$q = trim($q);
 		if (! $q)
 			return;
 
 		$cond = null;
-		foreach (preg_split('/\s+/', trim($q)) as $q1) {
+		foreach (preg_split('/\s+/', $q) as $q1) {
 			if (strlen($q1) == 0)
 				continue;
 			if (strpos($q1, "*") !== false) {
@@ -2338,10 +2778,13 @@ FROM ($sql) t0";
 	function api_del()
 	{
 		$this->validateId(true);
-		$sql = sprintf("DELETE FROM %s WHERE id=%d", $this->table, $this->id);
+		$sql = $this->delField === null
+			? sprintf("DELETE FROM %s WHERE id=%d", $this->table, $this->id)
+			: sprintf("UPDATE %s SET %s=1 WHERE id=%s", $this->table, $this->delField, $this->id);
 		$cnt = execOne($sql);
 		if (param('force')!=1 && $cnt != 1)
 			throw new MyException(E_PARAM, "del: not found {$this->table}.id={$this->id}");
+		return "OK";
 	}
 
 /**
@@ -2460,7 +2903,9 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 	function api_delIf()
 	{
 		$rv = $this->genCondSql();
-		$sql = sprintf("DELETE t0 FROM %s WHERE %s", $rv["tblSql"], $rv["condSql"]);
+		$sql = $this->delField === null
+			? sprintf("DELETE t0 FROM %s WHERE %s", $rv["tblSql"], $rv["condSql"])
+			: sprintf("UPDATE %s SET t0.%s=1 WHERE %s AND t0.%s=0", $rv["tblSql"], $this->delField, $rv["condSql"], $this->delField);
 		$cnt = execOne($sql);
 		return $cnt;
 	}
@@ -2468,20 +2913,22 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 /**
 @fn AccessControl::api_batchAdd()
 
-批量添加（导入）。返回导入记录数cnt及编号列表idList
+标准接口`Obj.batchAdd`用于批量导入数据（支持不存在则添加，存在则更新）。返回导入记录数cnt及编号列表idList：
 
-	Obj.batchAdd(title?)(...) -> {cnt, @idList}
+	Obj.batchAdd(title?, uniKey?)(...) -> {cnt, @idList}
 
-在一个事务中执行，一行出错后立即失败返回，该行前面已导入的内容也会被取消（回滚）。
+它在一个事务中执行，一行出错后立即失败返回，该行前面已导入的内容也会被取消（回滚）。
 
 - title: List(fieldName). 指定标题行(即字段列表). 如果有该参数, 则忽略POST内容或文件中的标题行.
  如"title=name,-,addr"表示导入第一列name和第三列addr, 其中"-"表示忽略该列，不导入。
  字段列表以逗号或空白分隔, 如"title=name - addr"与"title=name, -, addr"都可以.
 
-支持三种方式上传：
+- uniKey: (v5.5) 唯一索引字段. 如果指定, 则以该字段查询记录是否存在, 存在则更新。例如"code", 也支持多个字段（用于关联表），如"bpId,itemId"。
+
+## 支持三种方式上传
 
 1. 直接在HTTP POST中传输内容，数据格式为：首行为标题行(即字段名列表)，之后为实际数据行。
-行使用"\n"分隔, 列使用"\t"分隔.
+行使用"\n"分隔, 列使用"\t"或逗号分隔（后端自动判断）.
 接口为：
 
 	{Obj}.batchAdd(title?)(标题行，数据行)
@@ -2503,9 +2950,9 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 
 示例: 在chrome console中导入数据
 
-	callSvr("Vendor.batchAdd", {title: "-,name, tel, idCard, addr, email, legalAddr, weixin, qq, area, picId"}, $.noop, `编号	姓名	手机号码	身份证号	通讯地址	邮箱	户籍地址	微信号	QQ号	负责安装的区域	身份证图
-	112	郭志强	15384813214	150221199211215000	内蒙古呼和浩特赛罕区丰州路法院小区二号楼	815060695@qq.com	内蒙古包头市	15384813214	815060695	内蒙古	532
-	111	高长平	18375998418	500226198312065000	重庆市南岸区丁香路同景国际W组	1119780700@qq.com	荣昌	18375998418	1119780700	重庆	534
+	callSvr("Vendor.batchAdd", {title: "-,name, tel, idCard, addr, picId"}, $.noop, `编号	姓名	手机号码	身份证号	通讯地址	身份证图
+	112	郭志强	15384811000	150221199211215XXX	地址1	532
+	111	高长平	18375991001	500226198312065XXX	地址2	534
 	`, {contentType:"text/plain"});
 		
 2. 标准csv/txt文件上传：
@@ -2547,13 +2994,88 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 
 	var data = {
 		list: [
-			{name: "郭志强", tel: "15384813214"},
-			{name: "高长平", tel: "18375998418"}
+			{name: "郭志强", tel: "15384811000"},
+			{name: "高长平", tel: "18375991001"}
 		]
 	};
 	callSvr("Store.batchAdd", function (ret) {
 		app_alert("成功导入" + ret.cnt + "条数据！");
 	}, data, {contentType:"application/json"});
+
+## 支持带子表导入
+
+(v5.5) 示例：有以下主-子表对象：
+
+	工单：@Ordr: id, code, itemId, qty
+	工单配料单 @BOM: id, orderId, code, name
+
+导入数据列及样例可定义为：（按dlgImport.html中样例定义格式，以`!`开头的首行为参数行（也可以没有），然后是标题行，后面都是数据行；列以Tab分隔）
+注意：拷贝到Excel中看的比较清楚；为避免Excel将长数字显示为科学计数法，在复制前先设置单元格格式为文本。
+
+	<script type="text/template" class="tplOrdr">
+	!title=code,itemCode,itemName,planTm,planTm1,qty,@bom.code,@bom.name,@bom.qty&uniKey=code
+	生产订单号	物料编码	物料规格	开工日期	完工日期	生产数量	子件编码	子件规格	基本用量
+	SCDD210202302	30101001010484	热像仪#Fotric 615C-L47	2021-02-04	2021-02-04	1.00	20901001000052	标品#Lantern_B31-L47	1
+	SCDD210202302	30101001010484	热像仪#Fotric 615C-L47	2021-02-04	2021-02-04	1.00	10205001000017	标签#Lantern_40*30mm铜版纸空白标签#中性#通用	1
+	</script>
+
+注意：由于子表分布在多行，是多次导入的，所以必须指定uniKey参数，避免重复加主表。此处实际调用可理解为：
+
+	callSvr("Ordr.add", $.noop, {code, itemCode, itemName, ..., qty, bom: [ {code, name, qty} ]);
+	// code存在，则做更新操作
+	callSvr("Ordr.set", {id}, $.noop, {code, itemCode, itemName, ..., qty, bom: [ {code, name, qty} ]);
+
+可见，主-子表结构的表导入时，主表字段会重复多次，而真正有用的是uniKey字段，所以导入数据也可以精简为：
+
+	<script type="text/template" class="tplOrdr">
+	!title=code,itemCode,itemName,planTm,planTm1,qty,@bom.code,@bom.name,@bom.qty&uniKey=code
+	生产订单号	物料编码	物料规格	开工日期	完工日期	生产数量	子件编码	子件规格	基本用量
+	SCDD210202302	30101001010484	热像仪#Fotric 615C-L47	2021-02-04	2021-02-04	1.00	20901001000052	标品#Lantern_B31-L47	1
+	SCDD210202302						10205001000017	标签#Lantern_40*30mm铜版纸空白标签#中性#通用	1
+	</script>
+
+支持导入多个子表，格式示例：(拷贝到Excel中看)
+
+	主表字段1(假如为uniKey字段)	主表字段2	@子表A.字段1	@子表B.字段1
+	id1	value1	suba1	subb1
+	id1		suba2	
+	id2	value2	suba3	
+
+它等价于：（将主表、子表分开看的更清楚）
+
+	主表字段1(假如为uniKey字段)	主表字段2	@子表A.字段1	@子表B.字段1
+	id1	value1		
+	id1		suba1	
+	id1		suba2	
+	id1			subb1
+	id2	value2		
+	id2		suba3	
+	
+## 支持列名映射
+
+(v5.5) 数据表导入时，默认是按固定列顺序来确定字段的，比如第1列必须是code，第2列必须是itemCode，如果要跳过一列，须通过"-"来指定；
+使用列名映射是另一种方式（通过指定参数useColMap=1激活），示例：
+
+	!title=code,itemCode&useColMap=1
+	id	name	code	itemId	itemCode
+	1	name1	code1	101	item-101
+	2	name2	code2	102	item-102
+	
+这时只通过列名来匹配（若找不到匹配列则报错！），列的顺序对导入就没有影响。可以通过`->`来指定列的别名，示例：
+
+	!title=编码->code,物料编码->itemCode&useColMap=1
+	编号	物料名	编码	物料名	物料编码
+	1	name1	code1	101	item-101
+	2	name2	code2	102	item-102
+
+同样也可以应用在上节主子表导入的例子中，写法如下：
+
+	<script type="text/template" class="tplOrdr">
+	!title=生产订单号->code,物料编码->itemCode,物料规格->itemName,开工日期->planTm,完工日期->planTm1,生产数量->qty,子件编码->@bom.code,子件规格->@bom.name,基本用量->@bom.qty&uniKey=code&useColMap=1
+	生产订单号	物料编码	物料规格	开工日期	完工日期	生产数量	子件编码	子件规格	基本用量
+	SCDD210202302	30101001010484	热像仪#Fotric 615C-L47	2021-02-04	2021-02-04	1.00	20901001000052	标品#Lantern_B31-L47	1
+	SCDD210202302	30101001010484	热像仪#Fotric 615C-L47	2021-02-04	2021-02-04	1.00	10205001000017	标签#Lantern_40*30mm铜版纸空白标签#中性#通用	1
+	</script>
 
 */
 	function api_batchAdd()
@@ -2566,7 +3088,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 			"idList" => []
 		];
 		$bak_SOLO = ApiFw_::$SOLO;
-		ApiFw_::$SOLO = false; // 避免其间有setRet输出
+		$uniKey = param("uniKey");
 		while (($row = $st->getRow()) != null) {
 			if ($st->isTable() && $n == 1) {
 				$titleRow = $row;
@@ -2583,9 +3105,15 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 							++ $i;
 							continue;
 						}
-						$postParam[$e] = $row[$i++];
-						if ($postParam[$e] === '') {
-							$postParam[$e] = null;
+						$val = $row[$i++];
+						if ($val === '')
+							$val = null;
+						if (preg_match('/^@(\w+)\.(\w+)$/u', $e, $ms)) {
+							// 形如`@bom.itemCode`，`@bom.qty`的列当作子表项处理，如: $postParam["bom"] = ["itemCode" => 'code1', "qty" => 1]
+							$postParam[$ms[1]][0][$ms[2]] = $val;
+						}
+						else {
+							$postParam[$e] = $val;
 						}
 					}
 				}
@@ -2593,8 +3121,19 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 					$postParam = $row;
 				}
 				try {
-					$st->beforeAdd($postParam, $row);
-					$id = $this->callSvc(null, "add", $_GET, $postParam);
+					ApiFw_::$SOLO = false; // 避免其间有setRet输出
+					$doAdd = true;
+					$id = self::getIdByUniKey($this->table, $uniKey, $postParam);
+					if ($id) {
+						// useStrictReadonly: 遇到readonly字段的设置直接忽略，不要报错。
+						$this->callSvc(null, "set" , ["id" => $id, "useStrictReadonly" => "0"], $postParam);
+						$doAdd = false;
+					}
+					if ($doAdd) {
+						$st->beforeAdd($postParam, $row);
+						$_GET["useStrictReadonly"] = "0";
+						$id = $this->callSvc(null, "add", $_GET, $postParam);
+					}
 				}
 				catch (DirectReturn $ex) {
 					global $X_RET;
@@ -2623,8 +3162,27 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		return $ret;
 	}
 
+	// uniKey可以是多个字段，如"bpId,itemId"，这时生成查询"bpId='1' AND itemId='2'"这样
+	static function getIdByUniKey($table, $uniKey, $row)
+	{
+		if (! $uniKey)
+			return $row["id"];
+		$fields = explode(',', $uniKey);
+		$cond = null;
+		foreach ($fields as $k) {
+			$k = trim($k);
+			$v = mparam($k, $row);
+			addToStr($cond, $k . "=" . Q($v), " AND ");
+		}
+		$sql = "SELECT id FROM " . $table . " WHERE $cond";
+		return queryOne($sql);
+	}
+
 	// k: subobj name
 	protected function querySubObj($k, &$opt, $opt1) {
+		if (! isset($opt["obj"])) 
+			throw new MyException(E_PARAM, "missing subobj.obj", "子表定义错误");
+
 		$param = $opt;
 
 		$param1 = param("param_$k");
@@ -2635,7 +3193,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 			}
 			$param = array_merge($opt, $param1);
 			if ($cond) {
-				$param["cond2"] = [$cond];
+				$param["cond2"] = dbExpr($cond);
 			}
 			if (isset($param1["wantOne"])) {
 				$opt["wantOne"] = param("wantOne/b", null, $param1);
@@ -2658,7 +3216,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 			$param["pagesz"] = @$opt["wantOne"]? 1: -1;
 		}
 
-		foreach (["obj", "AC", "default", "wantOne", "force", "sql"] as $e) {
+		foreach (["obj", "AC", "default", "wantOne", "sql", "%d"] as $e) {
 			unset($param[$e]);
 		}
 		foreach ($opt1 as $k=>$v) {
@@ -2668,7 +3226,10 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		$objName = $opt["obj"];
 		$acObj = AccessControl::create($objName, null, $opt["AC"]);
 		$rv = $acObj->callSvc($objName, "query", $param);
-		$ret = $rv["list"];
+		if (array_key_exists("list", $rv))
+			$ret = $rv["list"];
+		else
+			$ret = $rv;
 		return $ret;
 	}
 
@@ -2679,17 +3240,20 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		if (is_array($subobj)) {
 			# $opt: {sql, wantOne=false}
 			foreach ($subobj as $k => $opt) {
-				if ($opt["obj"] && $opt["cond"]) {
-					$cond = sprintf($opt["cond"], $id); # e.g. "orderId=%d"
-					$ret1 = $this->querySubObj($k, $opt, [
-						"cond" => $cond
-					]);
-				}
-				else if (! @$opt["sql"]) {
-					continue;
+				$id1 = @$opt["%d"]? $this->getAliasVal($mainObj, $opt["%d"]) : $id; // %d指定的关联字段会事先添加
+				if (! isset($opt["sql"])) {
+					if ($id1) {
+						$cond = isset($opt["cond"]) ? sprintf($opt["cond"], $id1): null; # e.g. "orderId=%d"
+						$ret1 = $this->querySubObj($k, $opt, [
+							"cond" => $cond
+						]);
+					}
+					else {
+						$ret1 = [];
+					}
 				}
 				else {
-					$sql1 = sprintf($opt["sql"], $id); # e.g. "select * from OrderItem where orderId=%d"
+					$sql1 = sprintf($opt["sql"], $id1); # e.g. "select * from OrderItem where orderId=%d"
 					$ret1 = queryAll($sql1, true);
 				}
 				if (@$opt["wantOne"]) {
@@ -2710,69 +3274,67 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 	protected function handleSubObjForList(&$ret)
 	{
 		$subobj = $this->sqlConf["subobj"];
-		if (! is_array($subobj) || count($subobj)==0)
+		if (! is_array($subobj) || count($subobj)==0 || count($ret) == 0)
 			return;
-
-		$idArr = [];
-		foreach ($ret as $row) {
-			$key = $row["id"] ?: $row["编号"]; // TODO: use id
-			if ($key === null)
-				continue;
-			$idArr[] = $key;
-		}
-		if (count($idArr) == 0)
-			return;
-		$idList = join(',', $idArr);
 
 		# $opt: {sql, wantOne=false}
 		foreach ($subobj as $k => $opt) {
+			$idField = $opt["%d"] ?: "id"; // 主表关联字段，默认为id，也可由"%d"选项指定。
 			$joinField = null;
-			if ($opt["obj"] && $opt["cond"]) {
-				// $opt["cond"] = sprintf($opt["cond"], $id); # e.g. "orderId=%d"
-				$cond = preg_replace_callback('/(\S+)=%d/', function ($ms) use (&$joinField, $idList){
-					$joinField = $ms[1];
-					return $ms[1] . " IN ($idList)";
-				}, $opt["cond"]); 
-				$ret1 = $this->querySubObj($k, $opt, [
-					"cond" => $cond,
-					"res2" => ["$joinField id_"]
-				]);
-//				$acObj->addRes("$joinField id_");
-			}
-			else if (! @$opt["sql"]) {
-				continue;
-			}
-			else {
-				# e.g. "select * from OrderItem where orderId=%d" => (添加主表关联字段id_) "select *, orderId id_ from OrderItem where orderId=%d"
-				$sql = preg_replace_callback('/(\S+)=%d/', function ($ms) use (&$joinField, $idList){
-					$joinField = $ms[1];
-					return $ms[1] . " IN ($idList)";
-				}, $opt["sql"]); 
-				if ($joinField === null) {
-					if (! @$opt["force"])
-						throw new MyException(E_SERVER, "bad subobj def: `" . $opt["sql"] . "'. require `field=%d`");
+			$idArr = array_map(function ($e) use ($idField) {
+				return $this->getAliasVal($e, $idField);
+			}, $ret);
+			$idArr = array_filter($idArr, function ($e) {
+				return isset($e);
+			});
+			$ret1 = [];
+			if (count($idArr) > 0) {
+				$idList = join(',', $idArr);
 
-					$ret1 = queryAll($sql, true);
-					if (@$opt["wantOne"]) {
-						if (count($ret1) == 0)
-							$ret1 = null;
-						else
-							$ret1 = $ret1[0];
-					}
-					foreach ($ret as &$row) {
-						$row[$k] = $ret1;
-					}
-					continue;
+				// $opt["cond"] = sprintf($opt["cond"], $id); # e.g. "orderId=%d"
+				$sql = $opt["cond"] ?: $opt["sql"];
+				if ($sql) {
+					$sql = preg_replace_callback('/(\S+)=%d/', function ($ms) use (&$joinField, $idList){
+						$joinField = $ms[1];
+						return $ms[1] . " IN ($idList)";
+					}, $sql); 
 				}
 
-				$sql = preg_replace('/ from/i', ", $joinField id_$0", $sql, 1);
-				// "SELECT status, count(*) cnt FROM Task WHERE orderId=%d group by status" 
-				// => "select status, count(*) cnt, orderId id_ FROM Task WHERE orderId IN (...) group by id_, status"
-				$sql = preg_replace('/group by/i', "$0 id_, ", $sql);
-
-				$ret1 = queryAll($sql, true);
+				if (! isset($opt["sql"])) {
+					$param = [ "cond" => $sql ];
+					if ($joinField != null) {
+						// NOTE: GROUP BY也要做调整
+						if (isset($opt["gres"])) {
+							$opt["gres"] = "id_," . $opt["gres"];
+						}
+						$param["res2"] = dbExpr("$joinField id_");
+					}
+					$ret1 = $this->querySubObj($k, $opt, $param);
+				}
+				else {
+					if ($joinField != null) {
+						$sql = preg_replace('/ from/i', ", $joinField id_$0", $sql, 1);
+						// "SELECT status, count(*) cnt FROM Task WHERE orderId=%d group by status" 
+						// => "select status, count(*) cnt, orderId id_ FROM Task WHERE orderId IN (...) group by id_, status"
+						$sql = preg_replace('/group by/i', "$0 id_, ", $sql);
+					}
+					$ret1 = queryAll($sql, true);
+				}
+			}
+			if ($joinField === null) {
+				if (@$opt["wantOne"]) {
+					if (count($ret1) == 0)
+						$ret1 = null;
+					else
+						$ret1 = $ret1[0];
+				}
+				foreach ($ret as &$row) {
+					$row[$k] = $ret1;
+				}
+				continue;
 			}
 
+			// 自行JOIN
 			$subMap = []; // {id_=>[subobj]}
 			foreach ($ret1 as $e) {
 				$key = $e["id_"];
@@ -2785,7 +3347,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 				}
 			}
 			foreach ($ret as &$row) {
-				$key = $row["id"] ?: $row["编号"]; // TODO: use id
+				$key = $this->getAliasVal($row, $idField);
 				$val = @$subMap[$key];
 				if (@$opt["wantOne"]) {
 					if ($val !== null)
@@ -2878,7 +3440,7 @@ function KVtoCond($k, $v)
 		return join(',', array_map("self::array2Str", $arr));
 	}
 
-	function outputCsvLine($row, $enc)
+	static function outputCsvLine($row, $enc)
 	{
 		$firstCol = true;
 		foreach ($row as $e) {
@@ -2906,16 +3468,16 @@ function KVtoCond($k, $v)
 		echo "\n";
 	}
 
-	function table2csv($tbl, $enc = null)
+	static function table2csv($tbl, $enc = null)
 	{
 		if (isset($tbl["h"]))
-			$this->outputCsvLine($tbl["h"], $enc);
+			self::outputCsvLine($tbl["h"], $enc);
 		foreach ($tbl["d"] as $row) {
-			$this->outputCsvLine($row, $enc);
+			self::outputCsvLine($row, $enc);
 		}
 	}
 
-	function table2txt($tbl)
+	static function table2txt($tbl)
 	{
 		if (isset($tbl["h"]))
 			echo join("\t", $tbl["h"]), "\n";
@@ -2924,19 +3486,22 @@ function KVtoCond($k, $v)
 		}
 	}
 
-	function table2html($tbl)
+	static function table2html($tbl, $retStr=false)
 	{
-		echo("<table border=1 cellspacing=0>");
+		$rv = "<table border=1 cellspacing=0>";
 		if (isset($tbl["h"])) {
-			echo "<tr><th>" . join("</th><th>", $tbl["h"]), "</th></tr>\n";
+			$rv .= "<tr><th>" . join("</th><th>", $tbl["h"]) . "</th></tr>\n";
 		}
 		foreach ($tbl["d"] as $row) {
-			echo "<tr><td>" . join("</td><td>", $row), "</td></tr>\n";
+			$rv .= "<tr><td>" . join("</td><td>", $row) . "</td></tr>\n";
 		}
-		echo("</table>");
+		$rv .= "</table>";
+		if ($retStr)
+			return $rv;
+		echo($rv);
 	}
 
-	function table2excel($tbl)
+	static function table2excel($tbl)
 	{
 		$hdr = [];
 		foreach ($tbl["h"] as $h) {
@@ -3007,7 +3572,7 @@ function KVtoCond($k, $v)
 		if ($fmt === "csv") {
 			header("Content-Type: application/csv; charset=UTF-8");
 			header("Content-Disposition: attachment;filename={$fname}.csv");
-			$this->table2csv($ret);
+			self::table2csv($ret);
 			$handled = true;
 		}
 		else if ($fmt === "excel") {
@@ -3015,25 +3580,25 @@ function KVtoCond($k, $v)
 			header("Content-disposition: attachment; filename=" . XLSXWriter::sanitize_filename($fname) . ".xlsx");
 			header("Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
 			header("Content-Transfer-Encoding: binary");
-			$this->table2excel($ret);
+			self::table2excel($ret);
 			$handled = true;
 		}
 		else if ($fmt === "excelcsv") {
 			header("Content-Type: application/csv; charset=gb18030");
 			header("Content-Disposition: attachment;filename={$fname}.csv");
-			$this->table2csv($ret, "gb18030");
+			self::table2csv($ret, "gb18030");
 			$handled = true;
 		}
 		else if ($fmt === "txt") {
 			header("Content-Type: text/plain; charset=UTF-8");
 			header("Content-Disposition: attachment;filename={$fname}.txt");
-			$this->table2txt($ret);
+			self::table2txt($ret);
 			$handled = true;
 		}
 		else if ($fmt === "html") {
 			header("Content-Type: text/html; charset=UTF-8");
 			header("Content-Disposition: filename={$fname}.html");
-			$this->table2html($ret);
+			self::table2html($ret);
 			$handled = true;
 		}
 		if ($handled)
@@ -3050,7 +3615,7 @@ function KVtoCond($k, $v)
 		if ($this->ac != "query")
 			return false;
 		$fmt = param("fmt");
-		return $fmt != null && $fmt != 'list' && $fmt != 'one';
+		return $fmt != null && $fmt != 'list' && $fmt != 'one' && $fmt != 'one?';
 	}
 }
 
@@ -3157,6 +3722,8 @@ class BatchAddLogic
 	onGetRow
 
 通过BatchAddLogic::create来创建合适的类。
+
+(v5.5) 由于CsvBatchAddStrategy提供更好的对csv格式的解析（如支持换行，支持引号等），本类只做为基类，不再用于解析。
 */
 class BatchAddStrategy
 {
@@ -3169,9 +3736,6 @@ class BatchAddStrategy
 		$st = null;
 		if (isset($_POST["list"])) {
 			$st = new JsonBatchAddStrategy();
-		}
-		else if (empty($_FILES)) {
-			$st = new BatchAddStrategy();
 		}
 		else {
 			$st = new CsvBatchAddStrategy();
@@ -3222,6 +3786,7 @@ class BatchAddStrategy
 		return $row;
 	}
 
+	protected $colMap;
 	function getRow() {
 		if ($this->rowIdx == null) {
 			$this->rowIdx = 0;
@@ -3231,14 +3796,37 @@ class BatchAddStrategy
 		if ($row == null)
 			return null;
 		if (++ $this->rowIdx == 1) {
-			$title = param("title", null, "G");
+			$title = param("title", null, "G", false);
 			$row1 = null;
 			if ($title) {
 				$row1 = preg_split('/[\s,]+/', $title);
+				$useColMap = param("useColMap", null, "G");
+				if ($useColMap) {
+					$newRow1 = [];
+					foreach ($row1 as $e) {
+						$arr = preg_split('/->/', $e);
+						$showCol = $arr[0];
+						$realCol = $arr[1] ?: $arr[0];
+						$newRow1[] = $realCol;
+						$idx = array_search($showCol, $row);
+						if ($idx === false)
+							throw new MyException(E_PARAM, "require col: $showCol", "缺少列`$showCol`");
+						$this->colMap[$arr[0]] = $idx;
+					}
+					$row1 = $newRow1;
+				}
 			}
 			$this->logic->onGetTitleRow($row, $row1);
 			if ($row1 != null)
 				$row = $row1;
+		}
+		else if (count($row) > 0 && $this->colMap) {
+			// 列转换
+			$newRow = [];
+			foreach ($this->colMap as $k => $idx) {
+				$newRow[] = $row[$idx];
+			}
+			$row = $newRow;
 		}
 		return $row;
 	}
@@ -3285,23 +3873,35 @@ class CsvBatchAddStrategy extends BatchAddStrategy
 	protected $fp;
 
 	protected function onInit() {
-		if (empty($_FILES))
-			throw new MyException(E_PARAM, "no file", "没有文件上传");
-		$f = current($_FILES);
-		if ($f["size"] <= 0 || $f["error"] != 0)
-			throw new MyException(E_PARAM, "error file: code={$f['error']}", "文件数据出错");
+		if (count($_FILES) == 0) {
+			$content = getHttpInput();
+			self::backupFile(null, null);
+			$this->fp = fopen("data://text/plain," . $content, "rb");
 
-		$orgName = $f["name"];
-		$file = $f["tmp_name"];
-		self::backupFile($file, $orgName);
-		$this->fp = fopen($file, "rb");
-		utf8InputFilter($this->fp, function ($str) {
-			$str1 = strstr($str, "\n", true) ?: $str;
-			if (strpos($str1, "\t") !== false)
+			$line1 = fgets($this->fp);
+			if (strpos($line1, "\t") !== false)
 				$this->delim = "\t";
 			else
 				$this->delim = ",";
-		});
+			rewind($this->fp);
+		}
+		else {
+			$f = current($_FILES);
+			if ($f["size"] <= 0 || $f["error"] != 0)
+				throw new MyException(E_PARAM, "error file: code={$f['error']}", "文件数据出错");
+
+			$orgName = $f["name"];
+			$file = $f["tmp_name"];
+			self::backupFile($file, $orgName);
+			$this->fp = fopen($file, "rb");
+			utf8InputFilter($this->fp, function ($str) {
+				$str1 = strstr($str, "\n", true) ?: $str;
+				if (strpos($str1, "\t") !== false)
+					$this->delim = "\t";
+				else
+					$this->delim = ",";
+			});
+		}
 	}
 
 	// 如果是全空行，返回true

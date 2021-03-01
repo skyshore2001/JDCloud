@@ -63,12 +63,56 @@ function api_hello()
 	];
 }
 
+class AC1_UserA extends AccessControl
+{
+	protected $table = "User";
+	
+	protected $vcolDefs = [
+		[
+			"res" => ["(SELECT COUNT(*) FROM ApiLog WHERE userId=t0.id) logCnt"],
+			"default" => true
+		],
+		[
+			"res" => ["(SELECT MAX(id) FROM ApiLog WHERE userId=t0.id) lastLogId"]
+		],
+		[
+			"res" => ["null lastLogAc"],
+			"require" => "lastLog"
+		]
+	];
+
+	protected $subobj = [
+		"log" => ["obj"=>"ApiLog", "cond"=>"userId=%d", "res"=>"id,tm,ac,addr", "default"=>false],
+		"lastLog" => ["obj"=>"ApiLog", "cond"=>"id={lastLogId}", "res"=>"id,tm,ac,addr", "wantOne"=>true, "default"=>true]
+	];
+
+	protected function onInit() {
+		$this->enumFields["lastLogAc"] = function ($val, $row) {
+			return $row["lastLog"]["ac"];
+		};
+	}
+}
+
 class AC_ApiLog extends AccessControl
 {
 	protected $requiredFields = ["ac"];
 	protected $readonlyFields = ["ac", "tm"];
 	protected $hiddenFields = ["ua"];
 	protected $useStrictReadonly = false;
+	protected $vcolDefs = [
+		[
+			"res" => ["concat(y, '-', m) ym"],
+			// 用isExt指定这是外部虚拟字段
+			"isExt" => true,
+			// 用require指定所有依赖的内层字段
+			"require" => 'y,m'
+		],
+		[
+			"res" => ["u.name userName"],
+			"join" => "LEFT JOIN User u ON u.id=t0.userId",
+			"default" => true
+		]
+	];
 
 	protected function onValidate()
 	{
@@ -85,6 +129,14 @@ class AC_ApiLog extends AccessControl
 			"name" => "hello"
 		];
 	}
+
+	protected function onInit() {
+		$this->vcolDefs[] = [ "res" => tmCols("t0.tm") ];
+	}
+
+	protected function onQuery() {
+		$this->qsearch(["ac", "addr"], param("q"));
+	}
 }
 
 class AC1_UserApiLog extends AC_ApiLog
@@ -92,20 +144,14 @@ class AC1_UserApiLog extends AC_ApiLog
 	protected $table = "ApiLog";
 	protected $defaultSort = "id DESC";
 	protected $allowedAc = [ "get", "query", "add", "del" ];
-	protected $vcolDefs = [
-		[
-			"res" => ["u.name userName"],
-			"join" => "INNER JOIN User u ON u.id=t0.userId",
-			"default" => true
-		]
-	];
 
 	private $uid;
 
 	protected function onInit()
 	{
-		$this->uid = $_SESSION["uid"];
+		parent::onInit();
 
+		$this->uid = $_SESSION["uid"];
 
 		$this->vcolDefs[] = [
 			"res" => ["(SELECT group_concat(concat(id, ':', ac))
@@ -119,7 +165,9 @@ WHERE userId={$this->uid} ORDER BY id DESC LIMIT 3) t
 		$this->subobj = [
 			"user" => [ "sql" => "SELECT u.id,u.name FROM User u INNER JOIN ApiLog log ON log.userId=u.id WHERE log.id=%d", "wantOne" => true ],
 			//"user" => [ "sql" => "SELECT id,name FROM User u WHERE id={$this->uid}", "wantOne" => true, "force"=>true],
-			"last3Log" => [ "sql" => "SELECT id,ac FROM ApiLog log WHERE userId={$this->uid} ORDER BY id DESC LIMIT 3", "force"=>true ]
+			"last3Log" => [ "sql" => "SELECT id,ac FROM ApiLog log WHERE userId={$this->uid} ORDER BY id DESC LIMIT 3" ],
+
+			"user2" => ["obj"=>"User", "AC"=>"AC1_UserA", "cond"=>"id={userId}", "res"=>"id,name", "wantOne"=>true]
 		];
 	}
 
@@ -134,7 +182,7 @@ WHERE userId={$this->uid} ORDER BY id DESC LIMIT 3) t
 
 	protected function onValidateId()
 	{
-		if ($this.ac == "del")
+		if ($this->ac == "del")
 		{
 			$id = mparam("id");
 			$rv = queryOne("SELECT id FROM ApiLog WHERE id={$id} AND userId={$this->uid}");
