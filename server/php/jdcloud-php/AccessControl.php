@@ -1793,15 +1793,15 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 					$alias = $ms[2];
 				}
 			}
-			if (isset($fn)) {
-				$this->addRes($col);
-				continue;
-			}
-
 			if ($alias)
 				$this->handleAlias($col, $alias);
 
 			$this->userRes[$alias ?: $col] = true;
+
+			if (isset($fn)) {
+				$this->addRes($col);
+				continue;
+			}
 
 // 			if (! ctype_alnum($col))
 // 				throw new MyException(E_PARAM, "bad property `$col`");
