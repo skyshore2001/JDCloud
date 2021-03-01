@@ -23,6 +23,48 @@
 
 # 版本日志
 
+## v5.5 - 2021/2
+
+- 后端(jd-php)
+ - 对象定义增强，subobj支持关联表（设置关联条件）；
+   虚拟字段vcol可依赖主表字段、虚拟字段或子表字段(require)，支持多个依赖字段，且依赖的辅助字段不显示在最终结果中的。(hiddenFields0)
+   计算字段(enumFields)可使用各种类型的依赖，取字段值时使用getAliasVal函数。
+ - query查询接口增强，支持fmt=array/hash/multihash/one?/tree等格式；支持pivot参数，将行转置到列上
+ - batchAdd批量导入接口增强。支持存在则更新（uniKey指定唯一索引，支持联合索引），支持同时导入子表，支持列名映射，支持csv格式及json格式。
+ - 接口认证新机制，hasPerm支持扩展认证，支持HTTP标准的Basic认证方式及之前的simple认证。
+   通过Conf::$authKeys指定认证参数，支持模拟系统用户。通过Conf::$authHandlers扩展认证方式。
+ - del接口增强，删除对象自动当做禁用处理的机制(delField)
+ - 自动从AC_xxx文件中加载AC0_xxx, AC2_xxx等类
+ - 增加jdRet，callSvcAsync，table2html, arrFind, arrMap, arrGrep等函数
+ - 默认允许跨域调用
+ - upload插件：上传接口允许定制路径
+
+- 管理端(jd-web)
+ - 新增wui-combogrid下拉列表组件；
+ - wui-subobj组件增强，使用tabs组件在对话框中展示子表;
+   增加用`relateKey={id}`的方式定义关联，更直观；支持非id字段关联的关联表；支持树表(treegrid)展示
+   支持offline模式添加数据时回显虚拟字段，以及提交时排除虚拟字段。
+ - wui-upload组件: 上传附件时支持显示名字，选项opt.fname通过虚拟字段显示附件名；允许定制上传接口
+ - 查询模式增强，支持默认实施模糊查询(WUI.options.fuzzyMatch)；getQueryCond增强，支持指定字段类型等。
+ - 统计与通用报表查询增强(pageSimple, dlgReportCond, pivot机制), 
+   rs2Stat统计函数重构和增强，增加pivot行列转置，自定义显示格式更强大。增加pageSimple页面动态显示统计表。
+ - 批量操作batchOp增强,支持对任意操作批量操作
+ - 列表工具栏支持可扩展机制(`dg_toolbar`), 除增删改查外，扩展了“导入/import”,“快速查询qsearch”操作，成为标准操作。
+ - 导入导出增强，导出时文件名包含查询条件
+ - WUI.formItems重构支持扩展输入框，已支持easyui组件中的databox, datetimebox, combo系列等。
+ - callSvr返回的dfd支持用catch处理异常。$.Deferred自动兼容H5的Promise接口。
+ - callSvr支持取js/json等文件, 添加loadCss/loadJson函数；wui-deferred支持按需加载js/css库
+ - 访问项目根目录，默认打开web管理端；管理端打开时可直接进入URL hash中指定页面
+ - 新增moduleExt模块扩展机制，支持复用另一个项目的后端接口、页面、对话框。参见实例文档。
+ - 新增wui-picker-edit/wui-picker-help组件，用于增强对话框上输入框。
+ - 增加WUI.showByType根据type决定当前显示/启用一组控件中的哪一个控件。
+ - 增加Formatter.enumFnStyler用于更灵活地定义不同状态的颜色
+
+- 工具(jd-tool)
+ - 新插件体系，支持插件独立维护，新增插件工具jdcloud-plugin.sh。
+   创建jdcloud-plugin-notify, jdcloud-plugin-ueditor, jdcloud-plugin-mail, jdcloud-plugin-jsonEditor, jdcloud-plugin-seqgen等插件。
+ - 移动端部署简化，使用makefile替代webcc
+
 ## v5.4 - 2020/5
 
 - 后端(jd-php)
