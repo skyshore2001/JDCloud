@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2021-02-07</div>
+<div>最后更新：2021-03-01</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -108,10 +108,9 @@ code {
 <p><a href="#BatchAddLogic">BatchAddLogic (class)</a></p>
 <p><a href="#BatchInsert">BatchInsert (class)</a></p>
 <p><a href="#Conf">Conf (key)</a></p>
-<p><a href="#Conf::$authTypes">Conf::$authTypes (var)</a></p>
+<p><a href="#Conf::$authKeys=[]">Conf::$authKeys=[] (var)</a></p>
 <p><a href="#ConfBase">ConfBase (class)</a></p>
 <p><a href="#ConfBase::$authHandlers">ConfBase::$authHandlers (var)</a></p>
-<p><a href="#ConfBase::$authKeys=[]">ConfBase::$authKeys=[] (var)</a></p>
 <p><a href="#ConfBase::$enableApiLog">ConfBase::$enableApiLog (var)</a></p>
 <p><a href="#ConfBase::$enableAutoSession">ConfBase::$enableAutoSession (var)</a></p>
 <p><a href="#ConfBase::$enableObjLog">ConfBase::$enableObjLog (var)</a></p>
@@ -194,8 +193,6 @@ code {
 <p><a href="#getSignContent">getSignContent (fn)</a></p>
 <p><a href="#handleExportFormat">handleExportFormat (fn)</a></p>
 <p><a href="#hasPerm">hasPerm (fn)</a></p>
-<p><a href="#hasPerm_basic">hasPerm_basic (fn)</a></p>
-<p><a href="#hasPerm_simple">hasPerm_simple (fn)</a></p>
 <p><a href="#hasSignFile">hasSignFile (fn)</a></p>
 <p><a href="#hiddenFields">hiddenFields (key)</a></p>
 <p><a href="#htmlEscape">htmlEscape (fn)</a></p>
@@ -219,6 +216,7 @@ code {
 <p><a href="#logext">logext (fn)</a></p>
 <p><a href="#logit">logit (alias)</a></p>
 <p><a href="#logit">logit (fn)</a></p>
+<p><a href="#makeTree">makeTree (fn)</a></p>
 <p><a href="#makeUrl">makeUrl (fn)</a></p>
 <p><a href="#mh">mh (fn)</a></p>
 <p><a href="#mparam">mparam (fn)</a></p>
@@ -623,6 +621,24 @@ $arr1 = pivot($arr, "cateName", 2);</code></pre>
 <h2 id="isArrayAssoc">@fn isArrayAssoc($var)</h2>
 <p>判断是否为关联数组</p></div>
 <div class="block">
+<h2 id="makeTree">@fn makeTree($arr, $idField="id", $fatherIdField="fatherId", $childrenField="children"</h2>
+<p>将array转成tree.</p>
+<pre><code>$ret = makeTree([
+    ["id"=&gt;1],
+    ["id"=&gt;2, "fatherId"=&gt;1],
+    ["id"=&gt;3, "fatherId"=&gt;2],
+    ["id"=&gt;4, "fatherId"=&gt;1]
+]);</code></pre>
+<p>结果：</p>
+<pre><code>$ret = [
+    ["id"=&gt;1, "children"=&gt; [
+        ["id"=&gt;2, "fatherId"=&gt;1, "children"=&gt; [
+            ["id"=&gt;3, "fatherId"=&gt;2],
+        ],
+        ["id"=&gt;4, "fatherId"=&gt;1]
+    ]
+]</code></pre></div>
+<div class="block">
 <h2 id="app_fw">@module app_fw</h2><div class="toc"><p style="margin-left:0em"><a href="#app_fw-1 通用函数">1 通用函数</a></p>
 <p style="margin-left:0em"><a href="#app_fw-2 初始化配置">2 初始化配置</a></p>
 <p style="margin-left:2em"><a href="#app_fw-2.1 数据库配置">2.1 数据库配置</a></p>
@@ -953,15 +969,18 @@ dir1/dir2/carsvc.db (以.db文件扩展名标识的文件路径，表示SQLITE�
 <p>示例：key-value形式</p>
 <pre><code>$rv = getQueryCond([
     "name"=&gt;"eric",
-    "phone"=&gt;null
+    "phone"=&gt; null,
+    "city" =&gt; ""
 ]);
-// "name='eric'
-
-$rv = getQueryCond([
+// name='eric' AND phone IS NULL AND city=''</code></pre>
+<p>忽略null项：</p>
+<pre><code>$rv = getQueryCond([
     "name"=&gt;"eric",
-    "phone IS NULL"
+    "phone"=&gt; null,
+    "city" =&gt; "", // 空串仍有效，不会被"_null"选项忽略
+    "_null"=&gt;true
 ]);
-// "name='eric' AND phone IS NULL"</code></pre>
+// name='eric' AND city=''</code></pre>
 <p>示例：条件数组</p>
 <pre><code>$rv = getQueryCond([
     "type IS NOT NULL",
@@ -1803,64 +1822,94 @@ console.log(api_order);
 <p>客户端框架可本地缓存该版本信息，一旦发现不一致，可刷新应用。<br />
 服务器可使用$GLOBALS[&quot;SERVER_REV&quot;]来取服务端版本号（6位）。</p></div>
 <div class="block">
-<h2 id="hasPerm">@fn hasPerm($perms, $exPerms=null)</h2>
+<h2 id="hasPerm">@fn hasPerm($perms, $exPerms=null)</h2><div class="toc"><p style="margin-left:0em"><a href="#hasPerm-1 内置认证">1 内置认证</a></p>
+<p style="margin-left:0em"><a href="#hasPerm-2 扩展认证方式">2 扩展认证方式</a></p>
+<p style="margin-left:2em"><a href="#hasPerm-2.1 simple: 筋斗云简单认证">2.1 simple: 筋斗云简单认证</a></p>
+<p style="margin-left:2em"><a href="#hasPerm-2.2 basic: HTTP基本认证">2.2 basic: HTTP基本认证</a></p>
+</div>
 <p>检查权限。perms可以是单个权限或多个权限，例：</p>
-<pre><code>hasPerm(AUTH_USER); // 用户登录后可用
-hasPerm(AUTH_USER | AUTH_EMP); // 用户或员工登录后可用</code></pre>
-<p class="fn"><strong>@fn <a id="onGetPerms">onGetPerms</a></strong> ()</p>
-<p>开发者需要定义该函数，用于返回所有检测到的权限。hasPerm函数依赖该函数。</p>
-<p>(v5.4) exPerms用于扩展验证, 是一个权限名数组, 示例:</p>
+<pre><code>if (hasPerm(AUTH_USER)) ...  // 用户登录后可用
+if (hasPerm(AUTH_USER | AUTH_EMP)) ... // 用户或员工登录后可用
+if (hasPerm(AUTH_LOGIN)) ... // 用户、员工、管理员任意一种登录</code></pre>
+<p>类似的还有checkAuth函数，不同的是如果检查不通过则直接抛出异常，不再往下执行。</p>
+<pre><code>checkAuth(AUTH_USER);
+checkAuth(AUTH_ADMIN | PERM_TEST_MODE); 要求必须管理员登录或测试模式才可用。
+checkAuth(AUTH_LOGIN);</code></pre>
+<p class="see"><strong>@see <a href="#checkAuth">checkAuth</a></strong> </p>
+<p>(v5.4) exPerms用于扩展验证, 是一个认证方式名数组, 示例:</p>
 <pre><code>hasPerm(AUTH_LOGIN, ["simple"]);</code></pre>
-<p>它表示AUTH_LOGIN检查失败后, 将再调用<code>hasPerm_simple()</code>进行检查. 支持以下权限名:</p>
-<p><strong>[simple]</strong></p>
-<p class="see"><strong>@see <a href="#hasPerm_simple">hasPerm_simple</a></strong> </p>
-<p>通过HTTP头<code>X-Daca-Simple</code>传递密码, 与环境变量<code>simplePwd</code>进行比较.<br />
-示例: upload接口允许simple验证.</p>
+<p>它表示AUTH_LOGIN检查失败后, 再检查是否通过了simple认证。支持的认证方式见下面章节描述。</p>
+<h4 id="hasPerm-1 内置认证">1 内置认证</h4>
+<p>login接口支持不同类别的用户登录，登录成功后会设置相应的session变量，之后就具有相应权限。</p>
+<p class="fn"><strong>@fn <a id="onGetPerms">onGetPerms</a></strong> () 权限生成逻辑</p>
+<p>默认逻辑如下，开发者可自定义该逻辑。</p>
+<ul>
+<li>用户登录后(session中有uid变量)，具有AUTH_USER权限</li>
+<li>员工登录后(session中有empId变量)，具有AUTH_EMP权限</li>
+<li>超级管理员登录后(session中有adminId变量)，具有AUTH_ADMIN权限</li>
+<li>测试模式具有 PERM_TEST_MODE权限，模拟模式具有PERM_MOCK_MODE权限。</li>
+</ul>
+<h4 id="hasPerm-2 扩展认证方式">2 扩展认证方式</h4>
+<p class="var"><strong>@var <a id="Conf::$authKeys=[]">Conf::$authKeys=[]</a></strong>  认证密钥及权限设置</p>
+<p>示例：如果请求中使用了basic认证，则通过认证后获得与员工登录相同的权限（即AUTH_EMP权限）</p>
+<pre><code>// class Conf (在conf.php中)
+static $authKeys = [
+    // 当匹配以下key时，当作系统用户-9999；默认全部AUTH_EMP权限的接口都可被第三方访问
+    ["authType"=&gt;"basic", "key" =&gt; "user1:1234", "SESSION" =&gt; ["empId"=&gt;-9999], "allowedAc" =&gt; ["*.query","*.get"] ]
+];</code></pre>
+<ul>
+<li>authType指定的认证方式名是在Conf::$authHandlers注册过的，目前支持：basic, simple。<br />
+要扩展可以参考$authHandlers用法，比如插件jdcloud-plugin-jwt可支持jwt认证。</li>
+</ul>
+<p class="see"><strong>@see <a href="#ConfBase::$authHandlers">ConfBase::$authHandlers</a></strong> </p>
+<ul>
+<li>
+<p>key被相应的认证方式使用，其格式由认证方式决定，一般即直接是认证密钥。</p>
+</li>
+<li>通过SESSION的设置，从而使得通过认证的接口请求，相当于具有系统-9999号用户的权限（即具有AUTH_EMP权限），<br />
+意味着它可以直接调用AC2类，或是通过<code>checkAuth(AUTH_EMP)</code>的检查。</li>
+</ul>
+<p>在authKeys中须用allowedAc指定可用接口列表，所有都可访问可以用&quot;*&quot;。<br />
+如果未指定allowedAc，则不会自动执行该权限检查，则在函数型接口中需要显示指定认证方式，如：</p>
+<pre><code>checkAuth(AUTH_EMP, ["basic", "simple"]);</code></pre>
+<p>对于对象型接口，无法直接使用AC2类的接口（因为没有AUTH_EMP权限），只能使用AC类接口，在其中使用checkAuth再检查权限。</p>
+<p>支持的认证方式如下。</p>
+<h5 id="hasPerm-2.1 simple: 筋斗云简单认证">2.1 simple: 筋斗云简单认证</h5>
+<p>在请求时，添加HTTP头：</p>
+<pre><code>X-Daca-Simple: $authStr</code></pre>
+<p>后端检查示例: upload接口允许simple验证.</p>
 <pre><code>function api_upload() {
     checkAuth(AUTH_LOGIN, ["simple"]);
     ...
 }</code></pre>
-<p>然后在conf.user.php中配置:</p>
-<pre><code>putenv("simplePwd=helloworldsimple");</code></pre>
+<p>其中$authStr由Conf::$authKeys中以key字段指定：</p>
+<pre><code>// class Conf (在conf.php中)
+static $authKeys = [
+    ["authType"=&gt;"simple", "key" =&gt; "user1:1234"],
+];</code></pre>
 <p>用curl访问该接口示例:</p>
-<pre><code>curl -s -F "file=@1.jpg" "http://localhost/jdcloud/api/upload?autoResize=0" -H "X-Daca-Simple: helloworldsimple"</code></pre>
-<p><strong>[basic]</strong></p>
-<p class="see"><strong>@see <a href="#hasPerm_basic">hasPerm_basic</a></strong> </p>
-<p>通过HTTP标准的Basic认证方式。</p>
-<p class="see"><strong>@see <a href="#checkAuth">checkAuth</a></strong> </p></div>
-<div class="block">
-<h2 id="hasPerm_simple">@fn hasPerm_simple()</h2>
-<p>筋斗云简单认证，即添加HTTP头：</p>
-<pre><code>X-Daca-Simple: $authStr</code></pre>
-<p>后端认证示例：</p>
-<pre><code>checkAuth(null, ["simple"]);
-或
-if (hasPerm(null, ["simple"]) ...</code></pre>
-<p>其中authStr由配置项simplePwd确定，比如可以在conf.user.php中配置：</p>
-<pre><code>putenv("simplePwd=1234");</code></pre>
-<p>请求示例：</p>
-<pre><code>curl http://localhost/jdcloud/api.php/xxx -H "X-Daca-Simple: 1234"</code></pre></div>
-<div class="block">
-<h2 id="hasPerm_basic">@fn hasPerm_basic()</h2>
-<p>HTTP Basic认证，即添加HTTP头：</p>
+<pre><code>curl -s -F "file=@1.jpg" "http://localhost/jdcloud/api/upload?autoResize=0" -H "X-Daca-Simple: user1:1234"</code></pre>
+<p>simple认证也可以通过环境变量simplePwd确定，比如可以在conf.user.php中配置：</p>
+<pre><code>putenv("simplePwd=user1:1234");</code></pre>
+<h5 id="hasPerm-2.2 basic: HTTP基本认证">2.2 basic: HTTP基本认证</h5>
+<p>通过HTTP标准的Basic认证方式。<br />
+HTTP Basic认证，即添加HTTP头：</p>
 <pre><code>Authorization: Basic $authStr</code></pre>
 <p>按HTTP协议，authStr格式为base64($user:$password)<br />
 可验证的用户名、密码在Conf类中配置，后端配置示例：</p>
 <pre><code>// class Conf (在conf.php中)
 static $authKeys = [
-    ["key" =&gt; "user1:1234"],
-    ["key" =&gt; "user2:1234", "SESSION" =&gt; ["empId" =&gt; -9999] ] // 可以指定SESSION变量, 这里设置empId是模拟员工登录, 以便以员工身份调用接口(如AC2_xxx类)
+    ["authType"=&gt;"basic", "key" =&gt; "user1:1234"],
+    ["authType"=&gt;"basic", "key" =&gt; "user2:1235"], // 可以多个
 ];</code></pre>
 <p>请求示例：</p>
-<pre><code>curl --basic -u user1:1234 http://localhost/jdcloud/api.php/xxx</code></pre>
+<pre><code>curl -u user1:1234 http://localhost/jdcloud/api.php/xxx</code></pre>
 <p>注意：若php是基于apache fcgi方式的部署，可能无法收到认证串，可在apache中配置：</p>
 <pre><code>SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1</code></pre></div>
 <div class="block">
 <h2 id="checkAuth">@fn checkAuth($perms)</h2>
-<p>用法与hasPerm类似，检查权限，如果不正确，则抛出错误，返回错误对象。</p>
-<pre><code>checkPerm(AUTH_USER); // 必须用户登录后可用
-checkPerm(AUTH_ADMIN | PERM_TEST_MODE); 要求必须管理员登录或测试模式才可用。</code></pre>
-<p class="see"><strong>@see <a href="#hasPerm">hasPerm</a></strong> </p></div>
+<p>用法与hasPerm类似，检查权限，如果不正确，则抛出错误。</p>
+<p class="see"><strong>@see <a href="#hasPerm">hasPerm</a></strong>  认证与权限</p></div>
 <div class="block">
 <h2 id="getClientVersion">@fn getClientVersion()</h2>
 <p>通过参数<code>_ver</code>或useragent字段获取客户端版本号。</p>
@@ -1946,21 +1995,13 @@ class AC_Notify extends AccessControl
 <p>注意：框架默认支持<code>Notify/orderStatus</code>这样的URL（对象名Notify必须首字母大写），它可自动转成Notify.orderStatus。</p></div>
 <div class="block">
 <h2 id="ConfBase::$authHandlers">@var ConfBase::$authHandlers</h2>
-<p>注册认证处理函数。示例：</p>
-<pre><code>Conf::authHandlers["basic"] = function () {
-    // 返回true表示认证成功
-};</code></pre></div>
-<div class="block">
-<h2 id="Conf::$authTypes">@var Conf::$authTypes</h2>
-<p>指定检查权限时使用哪些认证方法。目前支持：basic, simple, jwt等(注册过Conf::$authHandlers)。<br />
-默认为空数组。示例：</p>
-<pre><code>Conf::$authTypes = ["basic", "simple"];
-Conf::$authKeys = [
-    // 当匹配以下key时，当作系统用户-9999
-    ["key" =&gt; "user1:1234", "SESSION" =&gt; ["empId"=&gt;-9999] ]
-];</code></pre>
-<p class="see"><strong>@see <a href="#Conf::$authKeys">Conf::$authKeys</a></strong> </p>
-<p class="see"><strong>@see <a href="#Conf::$authHandlers">Conf::$authHandlers</a></strong> </p></div>
+<p>注册认证处理函数。示例：注册jwt认证方式</p>
+<pre><code>ConfBase::$authHandlers["jwt"] = "hasPerm_jwt";
+function hasPerm_jwt()
+{
+    // 返回true表示认证成功 
+}</code></pre>
+<p class="see"><strong>@see <a href="#hasPerm">hasPerm</a></strong> </p></div>
 <div class="block">
 <h2 id="ConfBase::onInitClient">@fn ConfBase::onInitClient(&$ret)</h2>
 <p>客户端初始化应用时会调用initClient接口，返回plugins等信息。若要加上其它信息，可在这里扩展。</p>
@@ -2002,13 +2043,6 @@ $GLOBALS["P_initClient"] = [
     }
 }</code></pre>
 <p class="see"><strong>@see <a href="#BlackList">BlackList</a></strong> </p></div>
-<div class="block">
-<h2 id="ConfBase::$authKeys=[]">@var ConfBase::$authKeys=[]</h2>
-<p>可在conf.php中定义HTTP基本验证信息，用于basic/simple认证，一般用于合作伙伴接口认证，示例：</p>
-<pre><code>static $authKeys = [
-    ["key" =&gt; "user1:1234"],
-    ["key" =&gt; "user2:1234", "SESSION" =&gt; ["empId"=&gt;-9999] ]
-];</code></pre></div>
 <div class="block">
 <h2 id="ApiLog::$lastId">@var ApiLog::$lastId</h2>
 <p>取当前调用的ApiLog编号。</p></div>
@@ -2670,7 +2704,7 @@ FROM (
 <p>在普通查询时, exFlag为外部字段, 而在分组查询时为普通字段.</p>
 <h4 id="AccessControl-3 子表">3 子表</h4>
 <p class="var"><strong>@var <a id="AccessControl::$subobj">AccessControl::$subobj</a></strong>  (for get/query) 定义子表</p>
-<p>subobj: { name =&gt; {obj, cond, AC?, res?, default?=false} } （v5.4）指定子表对象obj，全面支持子表的增删改查。</p>
+<p>subobj: { name =&gt; {obj, cond, AC?, res?, default?=false, forceUpdate(v5.5) } } （v5.4）指定子表对象obj，全面支持子表的增删改查。</p>
 <p>或</p>
 <p>subobj: { name =&gt; {sql, default?=false, wantOne?=false} } 指定SQL语句，查询结果作为子表对象（旧写法，不建议使用。只允许查询，不支持对子表修改）</p>
 <p>设计接口：</p>
@@ -2750,6 +2784,10 @@ vcol: @obj1 (说明：vcol表示虚拟字段，@obj1表示字段obj1是个数组
 或
 callSvr("Obj.get", {id: 1001, res:"id,name,obj1", param_obj1: { res: "id,name"} })
 callSvr("Obj.get", {id: 1001, res:"id,name,obj1", param_obj1: { res: "id,name", cond: "id&gt;=10002"} })</code></pre>
+<p>注意：如果使用了别名，则指定res,param时也要用别名：</p>
+<pre><code>callSvr("Obj.get", {id: 1001, res:"id,name,obj1 objList", res_objList:"id,name"})
+// 甚至可以多别名分别指定:
+callSvr("Obj.get", {id: 1001, res:"id,name,obj1 objList,obj1 objList2", res_objList:"id,name", res_objList2:"id,code"})</code></pre>
 <p>当然，也可以直接查询子对象，如：</p>
 <pre><code>callSvr("Obj1.query", {cond: "objId=1001", res:"id,name,obj1", fmt:"array"}) -&gt; [
     { id: 10001, name: "obj1-name1" },
@@ -2768,6 +2806,16 @@ callSvr("Obj.get", {id: 1001, res:"id,name,obj1", param_obj1: { res: "id,name", 
     ]
 });</code></pre>
 <p>主对象删除时（del/delIf接口），子对象不会自动删除。后端应根据情况自行处理。</p>
+<p>(v5.5) subobj选项forceUpdate</p>
+<p>对子表进行修改和删除时，默认会要求该项必须已关联主表。加此选项强制更新关联。<br />
+在上面示例中，如果子项<code>id=10001</code>或<code>id=10002</code>的关联字段objId为空或与主表<code>id=1001</code>不同，则会报错“找不到该项”(因为数据隔离，该项确实不属于该主表，所以查不到)。<br />
+加上选项<code>forceUpdate =&gt; true</code>就可以直接更新关联或删除指定子项了（但也同时引入安全隐患）：</p>
+<pre><code>class AC1_Ordr extends AccessControl
+{
+    protected $subobj = [
+        "orderLog" =&gt; ["obj"=&gt;"OrderLog", ..., "forceUpdate" =&gt; true],
+    ];
+}</code></pre>
 <h5 id="AccessControl-3.2 关联子表对象">3.2 关联子表对象</h5>
 <p>(v5.5)<br />
 典型的主子表关系是一对多的，如果将上面例子反过来，在<code>OrderLog.query</code>中想返回Ordr对象，也可使用subobj机制，如接口定义为：</p>
@@ -2980,6 +3028,8 @@ ORDER BY t0.id DESC)&quot;;<br />
 <ul>
 <li>list: 生成<code>{ @list, nextkey?, total? }</code>格式，而非缺省的 <code>{ @h, @d, nextkey?, total? }</code>格式</li>
 <li>array: (v5.5) 直接返回对象数组, 没有分页信息. 若未指定pagesz参数, 则pagesz自动为-1, 尽可能返回全部数据.</li>
+<li>tree: (v5.5) 将{id,fatherId}线性结构转为树型结构{id,children}.<br />
+可以通过URL参数treeFields重定义各字段名，默认值为<code>id,fatherId,children</code>，设置示例：<code>{treeFields:'code,fatherCode'}</code>，<code>{treeFields:'code,fatherCode,subtree'}</code></li>
 <li>one: 类似get接口，只返回第一条数据，常用于统计等接口。若查询不到则抛错。</li>
 <li>one?: (v5.5) 与&quot;one&quot;相似，但若查询不到则返回false而不抛出错误。而且若只有一个字段，则直接返回该字段内容，而非该行对象。</li>
 <li>

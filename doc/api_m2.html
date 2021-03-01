@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（移动Web版）</h1>
-<div>最后更新：2021-01-08</div>
+<div>最后更新：2021-03-01</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -141,6 +141,7 @@ code {
 <p><a href="#getCookie">getCookie (fn)</a></p>
 <p><a href="#getDataOptions">getDataOptions (fn)</a></p>
 <p><a href="#getFormData">getFormData (fn)</a></p>
+<p><a href="#getFormData_vf">getFormData_vf (fn)</a></p>
 <p><a href="#getOptions">getOptions (fn)</a></p>
 <p><a href="#getQueryCond">getQueryCond (fn)</a></p>
 <p><a href="#getQueryParam">getQueryParam (fn)</a></p>
@@ -1233,13 +1234,21 @@ var arr = mCommon.rs2Array(rs);</code></pre>
 &lt;/form&gt;</code></pre>
 <p class="see"><strong>@see <a href="#setFormData">setFormData</a></strong> </p></div>
 <div class="block">
+<h2 id="getFormData_vf">@fn getFormData_vf(jo)</h2>
+<p>专门取虚拟字段的值。例如：</p>
+<pre><code>&lt;select name="whId" class="my-combobox" data-options="url:..., jd_vField:'whName'"&gt;&lt;/select&gt;</code></pre>
+<p>用WUI.getFormData可取到<code>{whId: xxx}</code>，而WUI.getFormData_vf遍历带name属性且设置了jd_vField选项的控件，调用接口getValue_vf(ji)来取其显示值。<br />
+因而，为支持取虚拟字段值，控件须定义getValue_vf接口。</p>
+<pre><code>&lt;input name="orderType" data-options="jd_vField:'orderType'" disabled&gt;</code></pre>
+<p>注意：与getFormData不同，它不忽略有disabled属性的控件。</p>
+<p class="see"><strong>@see <a href="#defaultFormItems">defaultFormItems</a></strong> </p></div>
+<div class="block">
 <h2 id="formItems">@fn formItems(jo, cb)</h2>
 <p>表单对象遍历。对表单jo（实际可以不是form标签）下带name属性的控件，交给回调cb处理。<br />
 可通过扩展<code>WUI.formItems[sel]</code>来为表单扩展其它类型控件，参考 <code>WUI.defaultFormItems</code>来查看要扩展的接口方法。</p>
 <p>注意:</p>
 <ul>
-<li>忽略有disabled属性的控件</li>
-<li>忽略未选中的checkbox/radiobutton</li>
+<li>通过取getDisabled接口判断，可忽略有disabled属性的控件以及未选中的checkbox/radiobutton。</li>
 </ul>
 <p>对于checkbox，设置时根据val确定是否选中；取值时如果选中取value属性否则取value-off属性。<br />
 缺省value为&quot;on&quot;, value-off为空(非标准属性，本框架支持)，可以设置：</p>
@@ -1837,6 +1846,7 @@ callSvr("User.get", function (data) {
 <p>callSvr扩展示例：</p>
 <pre><code>MUI.callSvrExt['zhanda'] = {
     makeUrl: function(ac, param) {
+        // 只需要返回接口url即可，不必拼接param
         return 'http://hostname/lcapi/' + ac;
     },
     dataFilter: function (data) {
@@ -1852,10 +1862,12 @@ callSvr("User.get", function (data) {
         }
     }
 };</code></pre>
-<p>在调用时，ac参数传入一个数组：</p>
-<pre><code>callSvr(['token/get-token', 'zhanda'], {user: 'test', password: 'test123'}, function (data) {
+<p>在调用时，ac参数使用&quot;{扩展名}:{调用名}&quot;的格式：</p>
+<pre><code>callSvr('zhanda:token/get-token', {user: 'test', password: 'test123'}, function (data) {
     console.log(data);
 });</code></pre>
+<p>旧的调用方式ac参数使用数组，现在已不建议使用：</p>
+<pre><code>callSvr(['token/get-token', 'zhanda'], ...);</code></pre>
 <p class="key"><strong>@key <a id="callSvrExt[].makeUrl">callSvrExt[].makeUrl</a></strong> (ac, param)</p>
 <p>根据调用名ac生成url, 注意无需将param放到url中。</p>
 <p>注意：<br />
@@ -1872,8 +1884,7 @@ callSvr("User.get", function (data) {
 <p class="see"><strong>@see <a href="#lastError">lastError</a></strong>  出错时的上下文信息</p>
 <p class="key"><strong>@key <a id="callSvrExt['default']">callSvrExt['default']</a></strong> </p>
 <p>(支持版本: v3.1)<br />
-如果要修改callSvr缺省调用方法，可以改写 MUI.callSvrExt['default'].<br />
-例如，定义以下callSvr扩展：</p>
+如果要修改callSvr缺省调用方法，可以改写 MUI.callSvrExt['default']。示例：</p>
 <pre><code>MUI.callSvrExt['default'] = {
     makeUrl: function(ac) {
         return '../api.php/' + ac;
@@ -1922,10 +1933,6 @@ callSvr("User.get", function (data) {
         }
     }
 };</code></pre>
-<p>这样，以下调用</p>
-<pre><code>callSvr(['login', 'default']);</code></pre>
-<p>可以简写为：</p>
-<pre><code>callSvr('login');</code></pre>
 <p class="key"><strong>@key <a id="callSvrExt[].beforeSend">callSvrExt[].beforeSend</a></strong> (opt) 为callSvr或$.ajax选项设置缺省值</p>
 <p>如果有ajax选项想设置，可以使用beforeSend回调，例如POST参数使用JSON格式：</p>
 <pre><code>MUI.callSvrExt['default'] = {
@@ -1942,6 +1949,7 @@ callSvr("User.get", function (data) {
         }
     }
 }</code></pre>
+<p>可以从opt.ctx<em>中取到{ac, ext, noex, dfd}等值（如opt.ctx</em>.ac），可以从opt.url中取到{ac, params}值。</p>
 <p>如果要设置请求的HTTP headers，可以用<code>opt.headers = {header1: "value1", header2: "value2"}</code>.<br />
 更多选项参考jquery文档：jQuery.ajax的选项。</p>
 <h4 id="callSvr-4 适配RESTful API">4 适配RESTful API</h4>
