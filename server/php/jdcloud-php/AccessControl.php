@@ -1015,7 +1015,7 @@ TODO: 可加一个系统参数`_enc`表示输出编码的格式。
 
 enumFields机制支持字段别名，比如若调用`Ordr.query(res="id 编号,status 状态")`，status字段使用了别名"状态"后，仍然可被正确处理，而用onHandleRow则不好处理。
 
-(v5.5) enum字段也常用于计算字段，即根据其它字段进行处理，可在require选项中指定依赖字段，并在函数中使用getAliasVal方法取值:
+(v5.5) enum字段也常用于计算字段，即根据其它字段进行处理，可在require选项中指定依赖字段，并在函数中使用getAliasVal/setAliasVal方法取值/设置值:
 
 	protected $vcolDefs = [
 		// 不良数
@@ -1033,6 +1033,7 @@ enumFields机制支持字段别名，比如若调用`Ordr.query(res="id 编号,s
 		// 不要直接用 $row["xxx"]取值, 否则若调用时指定了别名（典型的是导出文件或输出统计表场景）则取不到值了。
 		$faultCnt = $this->getAliasVal($row, "faultCnt");
 		$qty = $this->getAliasVal($row, "qty");
+		// $this->setAliasVal($row, "qty1", $qty); // 设置值，除非特别需要，一般不建议在enumFields某计算字段里设置其它字段值。
 		return $qty == 0? 0: $faultCnt/$qty;
 	};
 
