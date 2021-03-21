@@ -1016,7 +1016,7 @@ function sql_concat()
 		可以使用符号： > < >= <= !(not) ~(like匹配)
 		["id"=>"<100", "tm"=>">2020-1-1", "status"=>"!CR", "name"=>"~wang%", "dscr"=>"~aaa", "dscr2"=>"!~aaa"]
 		生成 "id<100 AND tm>'2020-1-1" AND status<>'CR' AND name LIKE 'wang%' AND dscr LIKE '%aaa%' AND dscr2 NOT LIKE '%aaa%'"
-		like用于字符串匹配，字符串中用"%"表示通配符，如果不存在通配符，则表示包含该串(即生成'%xxx%')
+		like用于字符串匹配，字符串中用"%"或"*"表示通配符，如果不存在通配符，则表示包含该串(即生成'%xxx%')
 
 	注意：null和空串匹配是特殊处理的，要用字符串null表示null, 用empty表示空串：
 
@@ -1129,8 +1129,11 @@ function getQueryExp($k, $v)
 	}, $v);
 	if ($v === "empty")
 		$v = "";
-	if (stripos($op, ' LIKE ') !== false && strpos($v, '%') === false)
-		$v = '%'.$v.'%';
+	if (stripos($op, ' LIKE ') !== false) {
+		$v = str_replace("*", "%", $v);
+		if (strpos($v, '%') === false)
+			$v = '%'.$v.'%';
+	}
 	return $k . $op . Q($v);
 }
 

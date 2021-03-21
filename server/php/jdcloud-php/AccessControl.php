@@ -1354,6 +1354,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			$this->addCond($v->val);
 		}
 
+		$this->supportQsearch();
 		$this->onQuery();
 		if ($this->uuid) {
 			$this->enumFields["id"] = function($v, $row) {
@@ -2515,6 +2516,9 @@ FROM ($sql) t0";
 
 接口参数有：res, cond, pagesz, pagekey, orderby, gres, union, fmt等。(参见DACA架构接口文档)
 
+(v6) cond字段很灵活支持类SQL查询字符串、数组或键值对，参考
+@see getQueryCond
+
 内部调用时还支持以下参数：
 
 - res2, cond2: 与res, cond含义相同，为确保只能通过后端代码调用，不可由前端参数指定，必须用dbExpr包一层，比如
@@ -2537,7 +2541,7 @@ FROM ($sql) t0";
 @see AccessControl::addCond
 @see AccessControl::addRes
 @see AccessControl::addJoin
-@see getQueryCond
+@see qsearch 模糊查询机制
 */
 	function api_query()
 	{
@@ -2767,10 +2771,11 @@ FROM ($sql) t0";
 
 /**
 @fn AccessControl.qsearch($fields, $q)
+@key qsearch
 
 模糊查询 (v5.4)
 
-示例接口：
+后端可定制如下示例接口：
 
 	Obj.query(q) -> 同query接口返回
 
@@ -2778,12 +2783,22 @@ FROM ($sql) t0";
 参数q是一个字符串，或多个以空格分隔的字符串。例如"aa bb"表示字段包含"aa"且包含"bb"。
 每个字符串中可以用通配符"*"，如"a*"表示以a开头，"*a"表示以a结尾，而"*a*"和"a"是效果相同的。
 
-实现：
+定制实现：可指定字段及查询参数
 
 	protected function onQuery() {
 		$this->qsearch(["name", "label", "content"], param("q"));
 	}
 
+(v6) 除了后端定制，query接口还内置支持qsearch操作，前端可直接通过qsearch参数指定查询条件，示例：
+
+	callSvr("Ordr.query", {qsearch: "dscr,cmt:张* 退款"})
+
+qsearch的格式是`字段1,字符2,...:查询内容`(使用英文逗号及冒号分隔).
+上例表示在dscr或cmt字段中查找包含"张%"(匹配开头)且包含"%退款%"的记录. 它等价于前端调用：
+
+	callSvr("Ordr.query", {cond: {dscr: "~张* and ~退款", cmt: "~张* and ~退款"}})
+
+@see getQueryCond
 */
 	protected function qsearch($fields, $q)
 	{
@@ -2811,6 +2826,18 @@ FROM ($sql) t0";
 			addToStr($cond, "($cond1)", ' AND ');
 		}
 		$this->addCond($cond);
+	}
+
+	protected function supportQsearch()
+	{
+		$qs = param("qsearch");
+		if ($qs === null)
+			return;
+		list ($fieldStr, $q) = explode(":", $qs, 2);
+		if (!$q || !$fieldStr)
+			jdRet(E_PARAM, "bad qsearch format");
+		$fields = explode(",", $fieldStr);
+		$this->qsearch($fields, $q);
 	}
 
 /**
