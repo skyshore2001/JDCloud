@@ -597,6 +597,8 @@ subobj: { name => {sql, default?=false, wantOne?=false} } 指定SQL语句，查�
 
 	@Obj1: id, objId, name （通过objId关联主对象)
 
+#### 子表添加
+
 在添加主对象时，同时添加子对象:
 
 	Obj.add()(name, @obj1...) -> id
@@ -610,6 +612,8 @@ subobj: { name => {sql, default?=false, wantOne?=false} } 指定SQL语句，查�
 			{ name: "obj1-name2" }
 		]
 	});
+
+#### 子表查询
 
 主对象添加后，可以通过get接口获取主对象及子对象：
 
@@ -644,6 +648,8 @@ subobj: { name => {sql, default?=false, wantOne?=false} } 指定SQL语句，查�
 
 这里用fmt参数指定返回array格式，因为默认返回的是`h/d`格式.
 
+#### 子表更新与删除
+
 主对象添加后，可以通过set接口添加/更新/删除子对象：
 
 	Obj.set(id)(name?, @obj1...)
@@ -659,7 +665,28 @@ subobj: { name => {sql, default?=false, wantOne?=false} } 指定SQL语句，查�
 		]
 	});
 
-主对象删除时（del/delIf接口），子对象不会自动删除。后端应根据情况自行处理。
+注意：主对象删除时（del/delIf接口），子对象不会自动删除。后端应根据情况自行处理。
+
+(v6) 对子表的更新有patch/put两种模式，通过submode参数指定，该参数只对主表set接口有效：
+
+- patch: 默认模式，见上面示例。须用`_delete`指定要删除的原来子表项。
+- put: 覆盖更新模式。与patch的区别是无须指定`_delete`来删除原来子表项，新子表直接覆盖原子表。
+
+与上述示例中效果相同的操作示例：
+
+	// submode=put模式
+	callSvr("Obj.set", {id: 1001}, $.noop, {
+		name: "name1",
+		submode: "put", // 指定子表更新模式
+		obj1: [
+			{ id: 10001, name: "obj1-name1-changed" }, // set接口中指定子表id的，表示更新该子表行; 也可以不指定id，则原来记录被删除，这条会被重新添加。
+			{ name: "obj1-name3" },  // set接口中未指定子表id的，表示新增子表行
+			// 原表中的10002项未指定，则自动被删除。
+		]
+	});
+
+注意：add接口在指定uniKey参数时，可检查数据存在则更新(即调用set接口)。因此add/batchAdd接口也可以指定submode参数。
+在批量导入(batchAdd接口+uniKey参数)时，默认使用put模式做子表更新。
 
 (v5.5) subobj选项forceUpdate
 
@@ -2341,6 +2368,33 @@ uniKey可以指定多个字段，以逗号分隔即可，常用于关联表，�
 						if (! isset($relatedValue))
 							throw new MyException(E_PARAM, "subobj-add/set fails: require relatedKey `$relatedKeyTo`");
 					}
+					// set接口对子表的更新支持2种模式
+					if ($this->ac == "set") {
+						$submode = param("submode", "patch"); // 默认patch模式, 以_delete指定删除原来子表的项，以id指定更新原来子表的项。
+						// put模式: 以新子表覆盖原来子表，原来子表中未出现在新子表中的项被删除
+						if ($submode == "put") {
+							// 如果子表项中没有指定id的项，直接用delIf删除原先子表；否则只删除未指定id的项.
+							$useDelIf = true;
+							foreach ($subobjList as $subobj) {
+								if (isset($subobj["id"]))
+									$useDelIf = false;
+							}
+							$cond = $relatedKey . "=" . $relatedValue;
+							if ($useDelIf) {
+								$acObj->callSvc($objName, "delIf", ["cond"=>$cond]);
+							}
+							else {
+								$curSubList = $acObj->callSvc($objName, "query", ["res"=>"id", "cond"=>$cond, "fmt"=>"array"]);
+								arrayCmp($subobjList, $curSubList, function ($new, $old) {
+									return $old["id"] == $new["id"];
+								}, function ($new, $old) use ($acObj, $objName) {
+									if ($new === null && $old !== null) {
+										$acObj->callSvc($objName, "del", ["id"=>$old["id"]]);
+									}
+								});
+							}
+						}
+					}
 					foreach ($subobjList as $subobj) {
 						$subid = $subobj["id"];
 						if ($subid) {
@@ -2991,6 +3045,22 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		app_alert("成功导入" + ret.cnt + "条数据！");
 	}, data, {contentType:"application/json"});
 
+其中指定contentType为json不是必须的，因为新版本callSvr实现中会根据POST内容判断自动使用json。
+
+## 通过导入实现批量更新
+
+(v5.5) batchAdd接口配合uniKey参数，可实现存在则更新，不存在则添加的逻辑。
+
+示例：接上节示例，在导入时希望实现根据名称与电话(name和tel字段)匹配，则记录存在则做更新，不存在则添加，只须增加uniKey参数：
+
+	callSvr("Store.batchAdd", {uniKey: "name,tel"}, function (ret) {
+		app_alert("成功导入" + ret.cnt + "条数据！");
+	}, data);
+
+@see uniKey 
+
+注意: v5.5中为batchAdd接口增加了uniKey机制，在v6中为add接口增加了uniKey机制，这样batchAdd可以直接使用add接口的相应机制。
+
 ## 支持带子表导入
 
 (v5.5) 示例：有以下主-子表对象：
@@ -3008,19 +3078,16 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 	SCDD210202302	30101001010484	热像仪#Fotric 615C-L47	2021-02-04	2021-02-04	1.00	10205001000017	标签#Lantern_40*30mm铜版纸空白标签#中性#通用	1
 	</script>
 
-注意：由于子表分布在多行，是多次导入的，所以必须指定uniKey参数，避免重复加主表。此处实际调用可理解为：
+注意：由于子表分布在多行，必须以uniKey参数指定主表唯一字段（支持多个字段联合，以逗号分隔），将根据此字段将多行数组组合成对象后一次导入。若不指定uniKey字段，则每行分别添加，导致子表被后面数据所覆盖。
+为了正确将主-子表结构的数据行组合成对象，必须保证：组成一个对象的所有行必须在一起，具有相同的uniKey字段，或是对象的第二行起，不指定uniKey字段。
 
-	callSvr("Ordr.add", $.noop, {code, itemCode, itemName, ..., qty, bom: [ {code, name, qty} ]);
-	// code存在，则做更新操作
-	callSvr("Ordr.set", {id}, $.noop, {code, itemCode, itemName, ..., qty, bom: [ {code, name, qty} ]);
-
-可见，主-子表结构的表导入时，主表字段会重复多次，而真正有用的是uniKey字段，所以导入数据也可以精简为：
+上例也可以简化定义成：(第二行起，无须主表字段，只需要最后三个子表字段) (拷贝到Excel中看)
 
 	<script type="text/template" class="tplOrdr">
 	!title=code,itemCode,itemName,planTm,planTm1,qty,@bom.code,@bom.name,@bom.qty&uniKey=code
 	生产订单号	物料编码	物料规格	开工日期	完工日期	生产数量	子件编码	子件规格	基本用量
 	SCDD210202302	30101001010484	热像仪#Fotric 615C-L47	2021-02-04	2021-02-04	1.00	20901001000052	标品#Lantern_B31-L47	1
-	SCDD210202302						10205001000017	标签#Lantern_40*30mm铜版纸空白标签#中性#通用	1
+							10205001000017	标签#Lantern_40*30mm铜版纸空白标签#中性#通用	1
 	</script>
 
 支持导入多个子表，格式示例：(拷贝到Excel中看)
@@ -3029,6 +3096,13 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 	id1	value1	suba1	subb1
 	id1		suba2	
 	id2	value2	suba3	
+
+它表示：
+
+	[
+		{"主表字段1": "id1", "主表字段2": "value1", "子表A": [{ "字段1": "suba1" }, {"字段1": "suba2"}], "子表B": [{"字段1": "subb1"}]},
+		{"主表字段1": "id2", "主表字段2": "value2", "子表A": [{ "字段1": "suba3" }] }
+	]
 
 它等价于：（将主表、子表分开看的更清楚）
 
@@ -3070,83 +3144,44 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 	function api_batchAdd()
 	{
 		$st = BatchAddStrategy::create($this->batchAddLogic);
-		$n = 1;
-		$titleRow = null;
 		$ret = [
 			"cnt" => 0,
 			"idList" => []
 		];
 		$bak_SOLO = ApiFw_::$SOLO;
-		$uniKey = param("uniKey");
-		while (($row = $st->getRow()) != null) {
-			if ($st->isTable() && $n == 1) {
-				$titleRow = $row;
+		$st->getObj(function ($obj) use ($st, &$ret, $bak_SOLO) {
+			try {
+				ApiFw_::$SOLO = false; // 避免其间有setRet输出
+				$st->beforeAdd($obj);
+				$param = $_GET + [  // 用+而不是array_merge, 允许用户指定参数覆盖，比如可指定submod参数
+					"useStrictReadonly" => 0,
+					"submode" => "put" // 若走更新接口，处理子表时，自动删除原先的子表项
+				];
+				$id = $this->callSvc(null, "add", $param, $obj);
 			}
-			else if (($cnt = count($row)) > 0) {
-				// $_POST = array_combine($titleRow, $row);
-				if ($st->isTable()) {
-					$i = 0;
-					$postParam = [];
-					foreach ($titleRow as $e) {
-						if ($i >= $cnt)
-							break;
-						if ($e === '-') {
-							++ $i;
-							continue;
-						}
-						$val = $row[$i++];
-						if ($val === '')
-							$val = null;
-						if (preg_match('/^@(\w+)\.(\w+)$/u', $e, $ms)) {
-							// 形如`@bom.itemCode`，`@bom.qty`的列当作子表项处理，如: $postParam["bom"] = ["itemCode" => 'code1', "qty" => 1]
-							$postParam[$ms[1]][0][$ms[2]] = $val;
-						}
-						else {
-							$postParam[$e] = $val;
-						}
-					}
+			catch (DirectReturn $ex) {
+				global $X_RET;
+				if ($X_RET[0] == 0) {
+					$id = $X_RET[1];
 				}
 				else {
-					$postParam = $row;
-				}
-				try {
-					ApiFw_::$SOLO = false; // 避免其间有setRet输出
-					$doAdd = true;
-					$id = self::getIdByUniKey($this->table, $uniKey, $postParam);
-					if ($id) {
-						// useStrictReadonly: 遇到readonly字段的设置直接忽略，不要报错。
-						$this->callSvc(null, "set" , ["id" => $id, "useStrictReadonly" => "0"], $postParam);
-						$doAdd = false;
-					}
-					if ($doAdd) {
-						$st->beforeAdd($postParam, $row);
-						$_GET["useStrictReadonly"] = "0";
-						$id = $this->callSvc(null, "add", $_GET, $postParam);
-					}
-				}
-				catch (DirectReturn $ex) {
-					global $X_RET;
-					if ($X_RET[0] == 0) {
-						$id = $X_RET[1];
-					}
-					else {
-						$msg = ($X_RET[2] ?: $X_RET[1]);
-						ApiFw_::$SOLO = $bak_SOLO;
-						throw new MyException(E_PARAM, $X_RET[1], "第{$n}行出错(\"" . join(',', $row) . "\"): " . $msg);
-					}
-				}
-				catch (Exception $ex) {
-					$msg = $ex->getMessage();
-					if ( ($ex instanceof MyException) && $ex->internalMsg != null)
-						$msg .= "-" .$ex->internalMsg;
+					$msg = ($X_RET[2] ?: $X_RET[1]);
 					ApiFw_::$SOLO = $bak_SOLO;
-					throw new MyException(E_PARAM, (string)$ex, "第{$n}行出错(\"" . join(',', $row) . "\"): " . $msg);
+					list($row, $n) = $st->getRowInfo();
+					throw new MyException(E_PARAM, $X_RET[1], "第{$n}行出错(\"" . join(',', $row) . "\"): " . $msg);
 				}
-				++ $ret["cnt"];
-				$ret["idList"][] = $id;
 			}
-			++ $n;
-		}
+			catch (Exception $ex) {
+				$msg = $ex->getMessage();
+				if ( ($ex instanceof MyException) && $ex->internalMsg != null)
+					$msg .= "-" .$ex->internalMsg;
+				ApiFw_::$SOLO = $bak_SOLO;
+				list($row, $n) = $st->getRowInfo();
+				throw new MyException(E_PARAM, (string)$ex, "第{$n}行出错(\"" . join(',', $row) . "\"): " . $msg);
+			}
+			++ $ret["cnt"];
+			$ret["idList"][] = $id;
+		});
 		ApiFw_::$SOLO = $bak_SOLO;
 		return $ret;
 	}
@@ -3636,7 +3671,7 @@ function issetval($k, $arr = null)
 		}
 		// $params为待添加数据，可在此修改，如用`$params["k1"]=val1`添加或更新字段，用unset($params["k1"])删除字段。
 		// $row为原始行数据数组。
-		function beforeAdd(&$params, $row) {
+		function beforeAdd(&$params) {
 			// vendorName -> vendorId
 			// 如果会大量重复查询vendorName,可以将结果加入cache来优化性能
 			if (! $this->vendorCache)
@@ -3677,7 +3712,7 @@ function issetval($k, $arr = null)
 class BatchAddLogic
 {
 	public $params = [];
-	function beforeAdd(&$paramArr, $row) {
+	function beforeAdd(&$paramArr) {
 	}
 	function onGetTitleRow($row, $row1) {
 	}
@@ -3700,7 +3735,10 @@ class BatchAddLogic
 */
 class BatchAddStrategy
 {
+	// 由getRow设置
 	protected $rowIdx;
+	protected $row;
+
 	protected $logic; // BatchAddLogic
 	private $rows;
 	protected $delim;
@@ -3720,11 +3758,11 @@ class BatchAddStrategy
 		return $st;
 	}
 
-	final function beforeAdd(&$paramArr, $row) {
+	final function beforeAdd(&$paramArr) {
 		foreach ($this->logic->params as $k=>$v) {
 			$paramArr[$k] = $v;
 		}
-		$this->logic->beforeAdd($paramArr, $row);
+		$this->logic->beforeAdd($paramArr);
 	}
 
 	// true: h,d分离的格式, false: objarr格式
@@ -3760,13 +3798,13 @@ class BatchAddStrategy
 	}
 
 	protected $colMap;
-	function getRow() {
+	protected function getRow() {
 		if ($this->rowIdx == null) {
 			$this->rowIdx = 0;
 			$this->onInit();
 		}
-		$row = $this->onGetRow();
-		if ($row == null)
+		$this->row = $this->onGetRow();
+		if ($this->row == null)
 			return null;
 		if (++ $this->rowIdx == 1) {
 			$title = param("title", null, "G", false);
@@ -3781,7 +3819,7 @@ class BatchAddStrategy
 						$showCol = $arr[0];
 						$realCol = $arr[1] ?: $arr[0];
 						$newRow1[] = $realCol;
-						$idx = array_search($showCol, $row);
+						$idx = array_search($showCol, $this->row);
 						if ($idx === false)
 							throw new MyException(E_PARAM, "require col: $showCol", "缺少列`$showCol`");
 						$this->colMap[$arr[0]] = $idx;
@@ -3789,19 +3827,128 @@ class BatchAddStrategy
 					$row1 = $newRow1;
 				}
 			}
-			$this->logic->onGetTitleRow($row, $row1);
+			$this->logic->onGetTitleRow($this->row, $row1);
 			if ($row1 != null)
-				$row = $row1;
+				$this->row = $row1;
 		}
-		else if (count($row) > 0 && $this->colMap) {
+		else if (count($this->row) > 0 && $this->colMap) {
 			// 列转换
 			$newRow = [];
 			foreach ($this->colMap as $k => $idx) {
-				$newRow[] = $row[$idx];
+				$newRow[] = $this->row[$idx];
 			}
-			$row = $newRow;
+			$this->row = $newRow;
 		}
-		return $row;
+		return $this->row;
+	}
+
+	// [row, rowNum] 取当前原始行信息，常用于报错
+	function getRowInfo() {
+		return [$this->row, $this->rowIdx];
+	}
+	// 比getRow层次更高，一次返回一个对象，支持子对象. 回调 handleObj(block={obj, row, rowNum})
+	function getObj($handleObj) {
+		if (! $this->isTable()) {
+			while (($row = $this->getRow()) != null) {
+				$handleObj($row);
+			}
+			return;
+		}
+
+		// for complex subobj
+		$uniKey = param("uniKey");
+		$subobjFields = null; // array. 当有子对象且指定了uniKey时非空，用于将多行row组装成主对象obj交handleObj处理。
+		$uniKeyFields = null; // array. 在组装主对象时，当本行关键字段与上一行相同或为空时，表示与上一行是同一对象。
+		$lastKey = null;  // 根据uniKeyFields生成，用于确认当前行否是新的对象，还是从属于上一对象
+
+		$titleRow = null;
+		readBlock(function () use (&$titleRow, &$subobjFields, &$uniKeyFields, $uniKey) { // getLine
+			if ($titleRow == null) {
+				$titleRow = $this->getRow();
+				if ($titleRow == null)
+					return null;
+				if ($uniKey) {
+					$uniKeyFields = explode(',', $uniKey);
+					foreach ($titleRow as $e) {
+						if (preg_match('/[^\w@\.]/u', $e, $ms)) // 检查标题格式
+							jdRet(E_PARAM, "bad title: $e", "标题格式错误: $e");
+						if (preg_match('/^@(\w+)/', $e, $ms))
+							$subobjFields[$ms[1]] = $ms[1];
+					}
+				}
+			}
+
+			while (true) {
+				$row = $this->getRow();
+				if ($row == null)
+					return null;
+				if (($cnt = count($row)) == 0)
+					continue;
+				return $this->rowToLineObj($row, $titleRow);
+			}
+		}, function (&$obj, $lineObj) use (&$subobjFields) { // makeBlock
+			if ($subobjFields === null || $obj == null) {
+				$obj = $lineObj;
+				return;
+			}
+			// lineObj组装成主对象obj
+			foreach ($subobjFields as $e) {
+				if (is_array($lineObj[$e]))
+					$obj[$e][] = $lineObj[$e][0];
+			}
+		}, function ($lineObj) use ($uniKey, &$uniKeyFields, &$subobjFields, &$lastKey) { // isNewBlock
+			if ($subobjFields === null || $uniKeyFields === null)
+				return true;
+			// 根据uniKey, 多行合并成一个对象后返回
+			// uniKey指定的字段，要么全部有非空值，要么全空(表示延用上一条的/当然不可以是第一条)
+			$status = null; // 1:全有值,2:全空
+			$key = null;
+			foreach ($uniKeyFields as $e) {
+				$curStatus = is_null($lineObj[$e])? 2: 1;
+				if ($this->rowIdx == 1 && $curStatus === 2) {
+					jdRet(E_PARAM, "bad value for field $uniKey: cannot be null for line 1", "第一行字段{$uniKey}不可为空");
+				}
+				if ($status === null) {
+					$status = $curStatus;
+				}
+				else if ($status !== $curStatus) {
+					jdRet(E_PARAM, "bad value for field $uniKey", "字段{$uniKey}必须全部有值或全部为空");
+				}
+				if ($status === 1) {
+					addToStr($key, $lineObj[$e]);
+				}
+			}
+			if ($key === null || $key == $lastKey)
+				return false;
+			$lastKey = $key;
+			return false;
+		}, $handleObj);
+	}
+
+	private function rowToLineObj($row, $titleRow) {
+		$retObj = [];
+		$i = 0;
+		$rowCnt = count($titleRow);
+		// $_POST = array_combine($titleRow, $row);
+		foreach ($titleRow as $e) {
+			if ($i >= $rowCnt)
+				break;
+			if ($e === '-') {
+				++ $i;
+				continue;
+			}
+			$val = $row[$i++];
+			if ($val === '')
+				$val = null;
+			if (preg_match('/^@(\w+)\.(\w+)$/u', $e, $ms)) {
+				// 形如`@bom.itemCode`，`@bom.qty`的列当作子表项处理，如: $postParam["bom"] = ["itemCode" => 'code1', "qty" => 1]
+				$retObj[$ms[1]][0][$ms[2]] = $val;
+			}
+			else {
+				$retObj[$e] = $val;
+			}
+		}
+		return $retObj;
 	}
 
 	// backupFile(null, null): 保存http请求的内容.

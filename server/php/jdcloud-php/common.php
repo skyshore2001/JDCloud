@@ -1100,4 +1100,219 @@ function makeTree($arr, $idField="id", $fatherIdField="fatherId", $childrenField
 	return $ret;
 }
 
+/**
+@fn readBlock($getLine, $makeBlock, $isNewBlock, $handleBlock, $opt)
+
+readBlock编程模式
+
+原型问题：读一个文件，其中以"#"开头的行(curLine)表示一个块(block)开始，这个块一直到下一个块开始处才结束。如：
+
+	# block1
+	paragraph 1
+	paragraph 2
+	# block 2
+	paragraph 3
+	# block 3
+
+提供以下回调函数，将解析出每个块，并最终交给handleBlock回调处理：
+
+	$block = null;
+	$curLine = getLine() // 读一行，返回null或false表示结束
+	makeBlock(&$block, $curLine) // 读一行时，添加到block
+	isNewBlock($curLine); // 判断一个新的block开始
+	handleBlock($block) // 处理block
+
+- opt: {skipStart=false} 可设置忽略开头行
+
+使用模型后示例如下：
+
+	$fp = fopen("1.txt","r");
+	readBlock(function () use ($fp) { // getLine
+		return fgets($fp);
+	}, function (&$block, $curLine) { // makeBlock
+		$block .= $curLine;
+	}, function ($curLine) { // isNewBlock
+		return $curLine[0] == "#";
+	}, function ($block) { // handleBlock
+		echo(">>>$block<<<\n");
+	});
+	fclose($fp);
+
+假如以数组方式处理，示例如下（注意除了getLine不同，其余部分相同）：
+
+	$arr = file("1.txt");
+	$i = 0;
+	readBlock(function () use ($arr, &$i) { // getLine
+		if ($i == count($arr))
+			return false;
+		return $arr[$i++];
+	}, function (&$block, $curLine) { // makeBlock
+		$block .= $curLine;
+	}, function ($curLine) { // isNewBlock
+		return $curLine[0] == "#";
+	}, function ($block) { // handleBlock
+		echo("$block\n");
+	});
+
+## 参考原型程序
+
+	$fp = fopen("1.txt","r");
+	$block = null;
+	while (true) {
+		$curLine = fgets($fp);
+		if ($curLine === false || ($block != null && $curLine[0] == "#")) {
+			handleBlock($block);
+			if ($curLine === false)
+				break;
+			$block = $curLine;
+			continue;
+		}
+		$block .= $curLine;
+	}
+	fclose($fp);
+
+## 协程(php5.5后支持)
+
+将`$handleBlock($block)`调用改为`yield $block`可提供协程式编程风格，可把循环控制交给主程序，调用示例：
+
+	$fp = fopen("1.txt","r");
+	$g = readBlockG(...);
+	while($g->valid()) {
+		$block = $g->current();
+		handleBlock($block);
+		$g->next();
+	}
+	fclose($fp);
+
+*/
+function readBlock($getLine, $makeBlock, $isNewBlock, $handleBlock, $opt=[])
+{
+	$opt += ["skipStart" => false];
+	$block = null;
+	while (true) {
+		$curLine = $getLine();
+		$isEnd = ($curLine === false || $curLine === null);
+		if ($isEnd || $isNewBlock($curLine)) {
+			if ($block != null)
+				$handleBlock($block);
+			if ($isEnd)
+				break;
+			$block = null; // init
+			if (! $opt["skipStart"])
+				$makeBlock($block, $curLine);
+			continue;
+		}
+		$makeBlock($block, $curLine);
+	}
+}
+
+/**
+@fn readBlock2($getLine, $makeBlock, $isBlockStart, $isBlockEnd, $handleBlock, $opt=[])
+
+readBlock2编程模式
+
+原型问题：读一个文件，其中以"#"开头的行(curLine)表示一个块(block)开始，以"."开头的行表示一个块结束，如：
+
+	# block1
+	paragraph 1
+	paragraph 2
+	.
+	others -- out of block
+	# block 2
+	paragraph 3
+	.
+	other2 -- out of block
+	# block 3
+
+提供以下回调函数，将解析出每个块，并最终交给handleBlock回调处理：
+
+	$block = null;
+	$curLine = getLine() // 读一行，返回null或false表示结束
+	makeBlock(&$block, $curLine) // 读一行时，添加到block
+	isBlockStart($curLine); // 判断一个block开始
+	isBlockEnd($curLine); // 判断一个block结束
+	handleBlock($block) // 处理block
+
+- opt: {skipStart=false, skipEnd=true} 可设置忽略开头行，以及包含结束行
+
+使用模型后的代码：
+
+	$fp = fopen("1.txt","r");
+	readBlock2(function () use ($fp) { // getLine
+		return fgets($fp);
+	}, function (&$block, $curLine) { // makeBlock
+		$block .= $curLine;
+	}, function ($curLine) { // isBlockStart
+		return $curLine[0] == "#";
+	}, function ($curLine) { // isBlockEnd
+		return $curLine[0] == ".";
+	}, function ($block) { // handleBlock
+		echo(">>>$block<<<\n");
+	});
+	fclose($fp);
+
+设置选项示例：
+
+	readBlock2(...
+	, ["skipStart"=>true]);
+
+原型代码：
+
+	$fp = fopen("1.txt","r");
+	$block = null;
+	$blockFlag = false;
+	while (true) {
+		$curLine = fgets($fp);
+		if ($curLine === false)
+			break;
+		if (! $blockFlag) {
+			if ($curLine[0] == "#")
+				$blockFlag = true;
+		}
+		else if ($curLine[0] == '.') {
+			$blockFlag = false;
+			handleBlock($block);
+			$block = null;
+			continue;
+		}
+		if ($blockFlag)
+			$block .= $curLine;
+	}
+	fclose($fp);
+
+	function handleBlock($s)
+	{
+		echo(">>>$s<<<\n");
+	}
+*/
+function readBlock2($getLine, $makeBlock, $isBlockStart, $isBlockEnd, $handleBlock, $opt=[])
+{
+	$opt += ["skipStart"=>false, "skipEnd"=>true];
+	$block = null;
+	$blockFlag = false;
+	while (true) {
+		$curLine = $getLine();
+		if ($curLine === false || $curLine === null)
+			break;
+		if (! $blockFlag) {
+			if ($isBlockStart($curLine)) {
+				$blockFlag = true;
+				if ($opt["skipStart"])
+					continue;
+			}
+		}
+		else if ($isBlockEnd($curLine)) {
+			if (! $opt["skipEnd"])
+				$makeBlock($block, $curLine);
+			$blockFlag = false;
+			if ($block != null)
+				$handleBlock($block);
+			$block = null; // init
+			continue;
+		}
+		if ($blockFlag)
+			$makeBlock($block, $curLine);
+	}
+}
+
 // vi: foldmethod=marker
