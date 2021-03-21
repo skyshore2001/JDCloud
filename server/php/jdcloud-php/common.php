@@ -707,6 +707,8 @@ function logit($s, $addHeader=true, $type="trace")
 function jsonEncode($data, $doPretty=false)
 {
 	$flag = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
+	if (defined("JSON_INVALID_UTF8_SUBSTITUTE")) // php7 JSON_INVALID_UTF8_IGNORE
+		$flag |= JSON_INVALID_UTF8_SUBSTITUTE;
 	if ($doPretty)
 		$flag |= JSON_PRETTY_PRINT;
 	return json_encode($data, $flag);

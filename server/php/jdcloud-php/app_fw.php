@@ -138,9 +138,6 @@ const RTEST_MODE=2;
 global $BASE_DIR;
 $BASE_DIR = dirname(dirname(__DIR__));
 
-global $JSON_FLAG;
-$JSON_FLAG = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
-
 global $DB, $DBCRED, $DBTYPE;
 $DB = "localhost/jdcloud";
 $DBCRED = "ZGVtbzpkZW1vMTIz"; // base64({user}:{pwd}), default: demo:demo123
@@ -2396,15 +2393,12 @@ class AppFw_
 	private static function initGlobal()
 	{
 		global $TEST_MODE;
-		global $JSON_FLAG;
 		global $DBG_LEVEL;
 		$TEST_MODE = getenv("P_TEST_MODE")===false? 0: intval(getenv("P_TEST_MODE"));
 		$isCLI = isCLI();
 		if ($TEST_MODE) {
 			if (!$isCLI)
 				header("X-Daca-Test-Mode: $TEST_MODE");
-			$JSON_FLAG |= JSON_PRETTY_PRINT;
-
 		}
 		// 默认允许跨域
 		@$origin = $_SERVER['HTTP_ORIGIN'];

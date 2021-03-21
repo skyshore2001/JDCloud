@@ -481,7 +481,6 @@ class ApiFw_
 function setRet($code, $data = null, $internalMsg = null)
 {
 	global $TEST_MODE;
-	global $JSON_FLAG;
 	global $ERRINFO;
 	global $X_RET;
 
@@ -521,7 +520,7 @@ function setRet($code, $data = null, $internalMsg = null)
 				}
 				$X_RET = $ret1;
 			}
-			$X_RET_STR = json_encode($X_RET, $JSON_FLAG);
+			$X_RET_STR = jsonEncode($X_RET, $GLOBALS["TEST_MODE"]);
 		}
 		else {
 			$X_RET_STR = "[" . $code . ", " . $X_RET_STR . "]";
@@ -1166,7 +1165,7 @@ e.g. 修改ApiLog的ac:
 				$v = "?";
 			}
 */			else if (! is_scalar($v)) {
-				$v = "obj:" . json_encode($v, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+				$v = "obj:" . jsonEncode($v);
 			}
 			if ($len == 0) {
 				$s = "$k=$v";
@@ -1242,7 +1241,7 @@ e.g. 修改ApiLog的ac:
 			return;
 		$iv = sprintf("%.0f", (microtime(true) - $this->startTm) * 1000); // ms
 		if ($X_RET_STR == null)
-			$X_RET_STR = json_encode($X_RET, $GLOBALS["JSON_FLAG"]);
+			$X_RET_STR = jsonEncode($X_RET, $GLOBALS["TEST_MODE"]);
 		$logLen = $X_RET[0] !== 0? 2000: 200;
 		$content = $this->myVarExport($X_RET_STR, $logLen);
 
@@ -1275,7 +1274,7 @@ e.g. 修改ApiLog的ac:
 		if ($DBH == null)
 			return;
 		$iv = sprintf("%.0f", (microtime(true) - $this->startTm1) * 1000); // ms
-		$res = json_encode($X_RET, $GLOBALS["JSON_FLAG"]);
+		$res = jsonEncode($X_RET, $GLOBALS["TEST_MODE"]);
 		$logLen = $X_RET[0] !== 0? 2000: 200;
 		$content = $this->myVarExport($res, $logLen);
 
@@ -1880,7 +1879,7 @@ function httpCallAsync($url, $postParams = null)
 	$data = null;
 	if (isset($postParams)) {
 		if (is_array($postParams))
-			$data = json_encode($postParams, JSON_UNESCAPED_UNICODE);
+			$data = jsonEncode($postParams);
 		else if (!is_string($postParams))
 			$data = (string)$postParams;
 	}
