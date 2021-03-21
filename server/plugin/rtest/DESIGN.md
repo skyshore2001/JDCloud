@@ -122,8 +122,9 @@
 
 ### 权限限制, 虚拟字段与子表
 
-表：@User: id, name
+表：@User: id, name, phone
 vcol: lastLogId?, lastLogAc? logCnt, @log?, %lastLog
+（由于@User对象限制了操作，测试时使用虚表 @UserA 用于对象接口测试，它与ApiLog构成主子表，@log为子表对象）
 
 - lastLogId, logCnt: 日志数（外部字段）
 - log: [{id,tm,ac,addr}] 用户日志（标准子表），应只用于get。

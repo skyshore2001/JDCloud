@@ -3897,7 +3897,7 @@ class BatchAddStrategy
 				if ($uniKey) {
 					$uniKeyFields = explode(',', $uniKey);
 					foreach ($titleRow as $e) {
-						if (preg_match('/[^\w@\.]/u', $e, $ms)) // 检查标题格式
+						if (preg_match('/[^\w@\.-]/u', $e, $ms)) // 检查标题格式
 							jdRet(E_PARAM, "bad title: $e", "标题格式错误: $e");
 						if (preg_match('/^@(\w+)/', $e, $ms))
 							$subobjFields[$ms[1]] = $ms[1];
@@ -3948,7 +3948,7 @@ class BatchAddStrategy
 			if ($key === null || $key == $lastKey)
 				return false;
 			$lastKey = $key;
-			return false;
+			return true;
 		}, $handleObj);
 	}
 

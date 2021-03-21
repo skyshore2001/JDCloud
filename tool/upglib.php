@@ -501,7 +501,7 @@ function getQueryCond($cond)
 	$condArr = [];
 	foreach($cond as $k=>$v) {
 		if (is_int($k)) {
-			if (stripos($v, ' and ') !== false || $stripos($v, ' or ') !== false)
+			if (stripos($v, ' and ') !== false || stripos($v, ' or ') !== false)
 				$exp = "($v)";
 			else
 				$exp = $v;

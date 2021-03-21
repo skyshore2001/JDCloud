@@ -1060,7 +1060,7 @@ function sql_concat()
 前端callSvr示例: url参数或post参数均可支持数组或键值对：
 
 	callSvr("Hub.query", {res:"id", cond: {id: ">=1 AND <100"}})
-	callSvr("Hub.query", {res:"id", cond: ["id>=1", "id<100"], $.noop, {cond: {name:"~wang%", dscr:"~111"}})
+	callSvr("Hub.query", {res:"id", cond: ["id>=1", "id<100"]}, $.noop, {cond: {name:"~wang%", dscr:"~111"}})
 
 */
 function getQueryCond($cond)
@@ -1094,14 +1094,18 @@ function getQueryCond($cond)
 		}
 		if (!$exp)
 			continue;
-		if (stripos($exp, ' and ') !== false || stripos($exp, ' or ') !== false) {
-			if ($exp[0]!='(' || substr($exp,-1)!=')') // 有括号则不重复加
-				$exp = "($exp)";
-		}
 		$condArr[] = $exp;
 	}
 	if (count($condArr) == 0)
 		return null;
+	// 超过1个条件时，对复合条件自动加括号
+	if (count($condArr) > 1) {
+		foreach ($condArr as &$exp) {
+			if (stripos($exp, ' and ') !== false || stripos($exp, ' or ') !== false) {
+				$exp = "($exp)";
+			}
+		}
+	}
 	return join($isOR?' OR ':' AND ', $condArr);
 }
 
@@ -1134,7 +1138,7 @@ function getQueryExp($k, $v)
 		if (strpos($v, '%') === false)
 			$v = '%'.$v.'%';
 	}
-	return $k . $op . Q($v);
+	return $k . $op . (is_numeric($v)? $v: Q($v));
 }
 
 /**
