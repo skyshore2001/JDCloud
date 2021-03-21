@@ -357,10 +357,19 @@ $objarr值为：
 		[ "id"=>101, "qty"=>null, dscr=>"打蜡"]
 	]
 
+(v6) 对cond参数或cond类型是特别处理的，会自动从GET/POST中取值，并且支持字符串、数组、键值对多种形式，参考getQueryCond：
+
+	$cond = mparam("cond");
+	$gcond = param("gcond/cond");
 */
 function param($name, $defVal = null, $col = null, $doHtmlEscape = true)
 {
 	$type = parseType_($name); // NOTE: $name will change.
+
+	// cond特别处理
+	if ($name == "cond" || $type == "cond")
+		return getQueryCond([$_GET[$name], $_POST[$name]]);
+
 	$ret = $defVal;
 	if ($col === "G") {
 		if (isset($_GET[$name]))
@@ -986,58 +995,75 @@ function sql_concat()
 /**
 @fn getQueryCond(cond)
 
-示例：key-value形式
+根据cond生成查询条件字符串。其中cond可以是
 
-	$rv = getQueryCond([
-		"name"=>"eric",
-		"phone"=> null,
-		"city" => ""
-	]);
-	// name='eric' AND phone IS NULL AND city=''
+- null，忽略
 
-忽略null项：
+- 条件字符串，参考SQL语句WHERE条件语法（不支持函数、子查询等），示例：
 
-	$rv = getQueryCond([
-		"name"=>"eric",
-		"phone"=> null,
-		"city" => "", // 空串仍有效，不会被"_null"选项忽略
-		"_null"=>true
-	]);
-	// name='eric' AND city=''
+		"100"或100 生成 "id=100"
+		"id=1"
+		"id>=1 and id<100"
+		"status='CR'"  注意字符串要加引号
+		"status IN ('CR','PA')"
+		"tm>='2020-1-1' AND tm<'2020-2-1'"
+		"name like 'wang%' OR dscr like 'want%'"
+		"name IS NULL OR dscr IS NOT NULL"
 
-示例：条件数组
+- 键值对，键为字段名，值为查询条件，使用更加直观（如字符串不用加引号），如：
 
-	$rv = getQueryCond([
-		"type IS NOT NULL",
-		"tm>='2018-1-1' AND tm<'2019-1-1'"
-	]);
-	// "type IS NOT NULL AND (tm>='2018-1-1' AND tm<'2019-1-1')"
+		["id"=>1, "status"=>"CR", "name"=>"null", "dscr"=>null, "f1"=>""]
+		生成 "id=1 AND status='CR'" AND name IS NULL AND f1=''
+		注意，当值为null时会忽略掉该条件，但若为"null"则表示"IS NULL"条件
 
-（以上两种在jd-php中可混用）
+		可以使用符号： > < >= <= !(not) ~(like匹配)
+		["id"=>"<100", "tm"=>">2020-1-1", "status"=>"!CR", "name"=>"~wang%", "dscr"=>"~aaa", "dscr2"=>"!~aaa"]
+		生成 "id<100 AND tm>'2020-1-1" AND status<>'CR' AND name LIKE 'wang%' AND dscr LIKE '%aaa%' AND dscr2 NOT LIKE '%aaa%'"
+		like用于字符串匹配，字符串中用"%"表示通配符，如果不存在通配符，则表示包含该串(即生成'%xxx%')
 
-特别地：
+	注意：null和空串匹配是特殊处理的，要用字符串null表示null, 用empty表示空串：
 
-	getQueryCond(null) => null
-	getQueryCond("ALL") => null
-	getQueryCond(100) => "id=100"
-	getQueryCond("100") => "id=100"
-	getQueryCond("id<>100") => "id<>100"
+		["a"=>null, "b"=>"null", "c"=>"", "d"=>"empty"]
+		生成 "b IS NULL" AND d=''", a和c会被忽略掉
 
-默认用AND连接条件，也支持OR连接：
+		["b"=>"!null", "d"=>"!empty"]
+		生成 "b IS NOT NULL" AND d<>''"
 
-	$rv = getQueryCond([
-		"_or" => true, // 特殊用法，标识用OR连接条件
-		"name"=>"eric",
-		"phone IS NULL"
-	]);
-	// "name='eric' OR phone IS NULL"
+	可用AND或OR连接多个条件，但不可加括号嵌套：
 
-	$rv = getQueryCond([
-		"type IS NOT NULL",
-		"tm>='2018-1-1' AND tm<'2019-1-1'",
-		"_or" => true
-	]);
-	// "type IS NOT NULL OR (tm>='2018-1-1' AND tm<'2019-1-1')"
+		["tm" => ">=2020-1-1 AND <2020-2-1"]
+		生成 "tm>='2020-1-1' AND tm<'2020-2-1"
+
+		["tm" => "<2020-1-1 OR >=2020-2-1"]
+		生成 "tm<'2020-1-1' OR tm>='2020-2-1"
+
+		["id"=>">=1 AND <100", "status"=>"CR OR PA", "status2"=>"!CR AND !PA OR null"]
+		生成 "(id>=1 AND id<100) AND (status='CR' OR status='PA') AND (status2<>'CR" AND status2<>'PA' OR status2 IS NULL)"
+
+		["a"=>"null OR empty", "b"=>"!null AND !empty"]
+		生成 "(a IS NULL OR a='') AND (b IS NOT NULL AND b<>'')"
+
+- 数组，每个元素是上述条件字符串或键值对，如：
+
+		["id>=1", "id<100", "name LIKE 'wang%'"] // "id>=1 AND id<100" AND name LIKE 'wang%'"
+		等价于 ["id"=>">=1 AND <100", "name"=>"~wang%"] 或混合使用 [ ["id"=>">=1 AND <100"], "name LIKE 'wang%'"]
+		["id=1", "id=2", "_or"=>true]  // 下划线开头是特别选项，"_or"表示用或条件，生成"id=1 OR id=2"
+
+支持前端传入的get/post参数中同时有cond参数，且cond参数允许为数组，比如传
+
+	URL中：cond[]=a=1&cond[]=b=2
+	POST中：cond=c=3
+
+后端处理
+
+	getQueryCond([$_GET["cond"], $_POST["cond"]]);
+
+最终得到cond参数为"a=1 AND b=2 AND c=3"。
+
+前端callSvr示例: url参数或post参数均可支持数组或键值对：
+
+	callSvr("Hub.query", {res:"id", cond: {id: ">=1 AND <100"}})
+	callSvr("Hub.query", {res:"id", cond: ["id>=1", "id<100"], $.noop, {cond: {name:"~wang%", dscr:"~111"}})
 
 */
 function getQueryCond($cond)
@@ -1054,31 +1080,61 @@ function getQueryCond($cond)
 	if (@$cond["_or"]) {
 		$isOR = true;
 	}
-	$ignoreNull = false;
-	if (@$cond["_null"]) {
-		$ignoreNull = true;
-	}
-
 	foreach($cond as $k=>$v) {
+		if ($v === null)
+			continue;
 		if (is_int($k)) {
-			if (stripos($v, ' and ') !== false || stripos($v, ' or ') !== false)
-				$exp = "($v)";
-			else
-				$exp = $v;
+			$exp = getQueryCond($v);
 		}
-		else if ($v === null) {
-			if ($ignoreNull)
-				continue;
-			$exp = "$k IS NULL";
+		else if ($k[0] == "_" || $v === null || $v === "") {
+			continue;
 		}
 		else {
-			if ($k[0] == "_")
-				continue;
-			$exp = "$k=" . Q($v);
+			// key => value, e.g. { id: ">100 AND <20", name: "~wang*", status: "CR OR PA", status2: "!CR AND !PA OR null"}
+			$exp = preg_replace_callback('/(.+?)(\s+(AND|OR)\s+|$)/i', function ($ms) use ($k) {
+				return getQueryExp($k, $ms[1]) . $ms[2];
+			}, $v);
+		}
+		if (!$exp)
+			continue;
+		if (stripos($exp, ' and ') !== false || stripos($exp, ' or ') !== false) {
+			if ($exp[0]!='(' || substr($exp,-1)!=')') // 有括号则不重复加
+				$exp = "($exp)";
 		}
 		$condArr[] = $exp;
 	}
+	if (count($condArr) == 0)
+		return null;
 	return join($isOR?' OR ':' AND ', $condArr);
+}
+
+// similar to h5 getexp but not same
+function getQueryExp($k, $v)
+{
+	if (is_numeric($v))
+		return "$k=$v";
+	if ($v === "null")
+		return "$k IS NULL";
+	if ($v === "!null")
+		return "$k IS NOT NULL";
+
+	$op = '=';
+	$v = preg_replace_callback('/^[><=!~]+/', function ($ms) use (&$op) {
+		if ($ms[0] == '!' || $ms[0] == '!=')
+			$op = '<>';
+		else if ($ms[0] == '~')
+			$op = ' LIKE ';
+		else if ($ms[0] == '!~')
+			$op = ' NOT LIKE ';
+		else
+			$op = $ms[0];
+		return "";
+	}, $v);
+	if ($v === "empty")
+		$v = "";
+	if (stripos($op, ' LIKE ') !== false && strpos($v, '%') === false)
+		$v = '%'.$v.'%';
+	return $k . $op . Q($v);
 }
 
 /**

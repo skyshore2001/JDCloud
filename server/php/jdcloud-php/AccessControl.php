@@ -1281,61 +1281,8 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		return $x;
 	}
 
-/*
-@fn AccessControl.getCondStr($condArr)
-
-将条件数组生成条件字符串，如：
-
-	$condStr = getCondStr(["a=1", "b=2"]); // "a=1 AND b=2"
-	$condStr = getCondStr(["a=1", "b=2 or b=3"]); // "a=1 AND (b=2 or b=3)"
-
-支持前端传入的get/post参数中同时有cond参数，且cond参数允许为数组，比如传
-
-	URL中：cond[]=a=1&cond[]=b=2
-	POST中：cond=c=3
-
-后端处理
-
-	getCondStr([$_GET[$name], $_POST[$name]]);
-
-最终得到cond参数为"a=1 AND b=2 AND c=3"。
-
-示例: url参数支持数组. post参数无论用urlencoded格式或json格式也都支持数组: 
-
-	callSvr("Hub.query", {res:"id", cond: ["id=1", "id=2"]}, $.noop, {cond: ["id=3", "id=4"]})
-	callSvr("Hub.query", {res:"id", cond: ["id=1", "id=2"]}, $.noop, {cond: ["id=3", "id=4"]}, {contentType:"application/json"})
-
-@see getQueryCond
-*/
-	static function getCondStr($condArr)
-	{
-		if (! $condArr)
-			return null;
-		$condSql = null;
-		foreach ($condArr as $cond) {
-			if (! $cond)
-				continue;
-			if (is_array($cond))
-				$cond = self::getCondStr($cond);
-
-			if ($condSql === null) {
-				if (stripos($cond, " or ") !== false && substr($cond,0,1) != '(') {
-					$condSql = "($cond)";
-				}
-				else {
-					$condSql = $cond;
-				}
-			}
-			else if (stripos($cond, " and ") !== false || stripos($cond, " or ") !== false)
-				$condSql .= " AND ({$cond})";
-			else 
-				$condSql .= " AND " . $cond;
-		}
-		return $condSql;
-	}
-
 	private function getCondParam($name) {
-		return self::getCondStr([$_GET[$name], $_POST[$name]]);
+		return getQueryCond([$_GET[$name], $_POST[$name]]);
 	}
 
 	static function removeQuote($k) {
@@ -2259,9 +2206,26 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 @fn AccessControl::api_add()
 
 标准对象添加接口。
+
+@key uniKey add接口支持存在则更新，不存在则添加
+
+(v6) 支持在添加时根据指定字段判断记录是否存在，若存在则更新，不存在才添加，称为uniKey机制。接口示例：
+
+	callSvr("Ordr.add", {uniKey: "code"}, $.noop, {code: "ordr1", itemId: 99});
+
+表示添加工单，若指定code已存在，则更新工单。
+
+uniKey可以指定多个字段，以逗号分隔即可，常用于关联表，如操作物料类别与打印模板的关联表Cate_PrintTpl:
+
+	callSvr("Cate_PrintTpl.add", {uniKey: "cateId,printTplId"}, $.noop, {cateId: 101, printTplId: 999});
+
+表示添加关联，若关联已存在则忽略。（当指定要添加的字段刚好完全就是uniKey中字段时，没必要做更新操作，会直接忽略。）
+
+注意：uniKey原理上支持使用虚拟字段（如关联字段）.
 */
 	function api_add()
 	{
+		$this->supportUnikey();
 		$this->validate();
 
 		$id = $this->onGenId();
@@ -2283,6 +2247,30 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			$ret = $this->id;
 		}
 		return $ret;
+	}
+
+	protected function supportUnikey()
+	{
+		$uniKey = param("uniKey");
+		if ($uniKey) {
+			$fields = explode(',', $uniKey);
+			$cond = [];
+			foreach ($fields as $k) {
+				$k = trim($k);
+				$v = mparam($k, "P");
+				$cond[$k] = $v;
+			}
+			$param = array_merge($_GET, ["res"=>"id", "cond"=>$cond, "fmt"=>"one?"]);
+			$id = $this->callSvc(null, "query", $param, $_POST);
+			if ($id) {
+				if (count($fields) != count($_POST)) {
+					$param = array_merge($_GET, ["id" => $id, "useStrictReadonly" => "0"]);
+					// useStrictReadonly: 遇到readonly字段的设置直接忽略，不要报错。
+					$this->callSvc(null, "set" , $param, $_POST);
+				}
+				jdRet(0, $id);
+			}
+		}
 	}
 
 	// checkCond=true将检查id是否可操作。
@@ -2403,7 +2391,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		$tblSql = "{$this->table} t0";
 		if (count($sqlConf["join"]) > 0)
 			$tblSql .= "\n" . join("\n", $sqlConf["join"]);
-		$condSql = self::getCondStr($sqlConf["cond"]);
+		$condSql = getQueryCond($sqlConf["cond"]);
 /*
 			foreach ($_POST as $k=>$v) {
 				# skip sys param which generally starts with "_"
@@ -2488,8 +2476,8 @@ FROM ($sql) t0";
 
 	// 定死res外部无法覆盖, 但外部可额外指定cond参数
 	$ret = callSvcInt("PdiRecord.query", [
-		"res": "id,vinCode,result,orderId,tm", // 用了res则意味着不允许前端指定字段，用res2则前端还可以用res指定其它字段
-		"cond2": dbExpr("type='EQ' AND tm>='2019-1-1'") // 多个条件也可这样自动拼接： getQueryCond(["type='EQ'", "tm>='2019-1-1'])
+		"res" =>"id,vinCode,result,orderId,tm", // 用了res则意味着不允许前端指定字段，用res2则前端还可以用res指定其它字段
+		"cond2" =>dbExpr("type='EQ' AND tm>='2019-1-1'") // 多个条件也可这样自动拼接： getQueryCond(["type='EQ'", "tm>='2019-1-1']) 或 getQueryCond(["type"=>"EQ", "tm"=>">=2019-1-1"])
 	]);
 
 @see AccessControl::addCond
@@ -2827,7 +2815,7 @@ e.g.
 		$tblSql = "{$this->table} t0";
 		if ($sqlConf["join"] && count($sqlConf["join"]) > 0)
 			$tblSql .= "\n" . join("\n", $sqlConf["join"]);
-		$condSql = self::getCondStr($sqlConf["cond"]);
+		$condSql = getQueryCond($sqlConf["cond"]);
 
 		return ["tblSql"=>$tblSql, "condSql"=>$condSql];
 	}
@@ -3161,22 +3149,6 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		}
 		ApiFw_::$SOLO = $bak_SOLO;
 		return $ret;
-	}
-
-	// uniKey可以是多个字段，如"bpId,itemId"，这时生成查询"bpId='1' AND itemId='2'"这样
-	static function getIdByUniKey($table, $uniKey, $row)
-	{
-		if (! $uniKey)
-			return $row["id"];
-		$fields = explode(',', $uniKey);
-		$cond = null;
-		foreach ($fields as $k) {
-			$k = trim($k);
-			$v = mparam($k, $row);
-			addToStr($cond, $k . "=" . Q($v), " AND ");
-		}
-		$sql = "SELECT id FROM " . $table . " WHERE $cond";
-		return queryOne($sql);
 	}
 
 	// k: subobj name
