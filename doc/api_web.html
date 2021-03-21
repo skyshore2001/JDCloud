@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2021-03-01</div>
+<div>最后更新：2021-03-22</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -273,6 +273,7 @@ code {
 <p><a href="#wui-find-hint">wui-find-hint (key)</a></p>
 <p><a href="#wui-pageFile">wui-pageFile (key)</a></p>
 <p><a href="#wui-pageName">wui-pageName (key)</a></p>
+<p><a href="#wui-perm">wui-perm (key)</a></p>
 <p><a href="#wui-script">wui-script (key)</a></p>
 </div><hr>
 </div>
@@ -2731,22 +2732,28 @@ jfrm.on("beforeshow",function(ev, formMode, opt) {
 (v5.3)</p>
 <p>如 dlgUDT<strong>A 与 dlgUDT</strong>B 共用dlgUDT对话框模板，只要用&quot;__&quot;分隔对话框模板文件和后缀名。</p></div>
 <div class="block">
-<h2 id="batchOp">@fn batchOp(obj, ac, jtbl, opt={data, acName="操作", onBatchDone, batchOpMode=0})</h2><div class="toc"><p style="margin-left:0em"><a href="#batchOp-1 示例1: 无须对话框填写额外信息的批量操作">1 示例1: 无须对话框填写额外信息的批量操作</a></p>
+<h2 id="batchOp">@fn batchOp(obj, ac, jtbl, opt={data, acName="操作", onBatchDone, batchOpMode=0, queryParam})</h2><div class="toc"><p style="margin-left:0em"><a href="#batchOp-1 示例1: 无须对话框填写额外信息的批量操作">1 示例1: 无须对话框填写额外信息的批量操作</a></p>
 <p style="margin-left:0em"><a href="#batchOp-2 示例2：打开对话框，批量设置一些信息">2 示例2：打开对话框，批量设置一些信息</a></p>
 <p style="margin-left:0em"><a href="#batchOp-3 示例3：打开对话框，先上传文件再批量操作">3 示例3：打开对话框，先上传文件再批量操作</a></p>
+<p style="margin-left:0em"><a href="#batchOp-4 示例4: 基于查询条件的批量操作">4 示例4: 基于查询条件的批量操作</a></p>
 </div>
-<p class="param"><strong>@param ac</strong>  对象接口名, 如"Task.setIf"/"Task.delIf"</p>
+<p>基于列表的批量处理逻辑：(v6支持基于查询条件的批量处理逻辑，见下面opt.queryParam)</p>
+<p>对表格jtbl中的多选数据进行批量处理，先调用<code>$obj.query(cond)</code>接口查询符合条件的数据条数（cond条件根据jtbl上的过滤条件及当前多选项自动得到），弹出确认框(<code>opt.acName</code>可定制弹出信息)，<br />
+确认后调用<code>ac(cond)</code>接口对多选数据进行批量处理，处理完成后回调<code>opt.onBatchDone</code>，并刷新jtbl表格。</p>
+<p>其行为与框架内置的批量更新、批量删除相同。</p>
+<p class="param"><strong>@param ac</strong>  对象接口名, 如"Task.setIf"/"Task.delIf"，也可以是函数接口，如"printSn"</p>
 <p class="param"><strong>@param opt.acName</strong>  操作名称, 如"更新"/"删除"/"打印"等, 一个动词. 用于拼接操作提示语句.</p>
 <p class="param"><strong>@param opt.data</strong>   调用支持批量的接口的POST参数</p>
 <p>opt.data也可以是一个函数dataFn(batchCnt)，参数batchCnt为当前批量操作的记录数(必定大于0)。<br />
 该函数返回data或一个Deferred对象(该对象适时应调用dfd.resolve(data)做批量操作)。dataFn返回false表示不做后续处理。</p>
 <p class="return"><strong>@return 如果返回false，表示当前非批量操作模式，或参数不正确无法操作。</strong> </p>
-<p>支持批量操作的接口须符合下列原型:</p>
-<pre><code>$obj.$ac($queryParam)($data) -&gt; $cnt</code></pre>
-<p>接受过滤查询条件(可通过$obj.query接口查询), 返回实际操作的数量.<br />
-其中obj, ac, data(即POST参数)由本函数参数传入(data也可以是个函数, 返回POST参数), queryParam根据表格jtbl的选择行或过滤条件自动生成.</p>
-<p>操作完成会自动刷新表格, 无须手工刷新.</p>
-<p>默认批量操作方式为:</p>
+<p>为支持批量操作，服务端须支持以下接口:</p>
+<pre><code>// 对象obj的标准查询接口:
+$obj.query($queryParam, res:"count(*) cnt") -&gt; {cnt}
+// 批量操作接口ac, 接受过滤查询条件(可通过$obj.query接口查询), 返回实际操作的数量.
+$ac($queryParam)($data) -&gt; $cnt</code></pre>
+<p>其中obj, ac, data(即POST参数)由本函数参数传入(data也可以是个函数, 返回POST参数), queryParam根据表格jtbl的选择行或过滤条件自动生成.</p>
+<p>基于列表的批量操作，完成时会自动刷新表格, 无须手工刷新. 在列表上支持以下批量操作方式:</p>
 <ol>
 <li>
 <p>基于多选: 按Ctrl/Shift在表上选择多行，然后点操作按钮(如&quot;删除&quot;按钮, 更新时的&quot;确定&quot;按钮)，批量操作选中行；生成过滤条件形式是<code>{cond: "id IN (100,101)"}</code>, </p>
@@ -2778,16 +2785,21 @@ jtbl.datagrid({
     ...
     toolbar: WUI.dg_toolbar(jtbl, jdlg, "export", btn1),
 });</code></pre>
-<p>后端应实现接口<code>Sn.print(查询条件)</code>, 实现示例:</p>
-<pre><code>// class AC2_Sn
-function api_print() {
+<p>后端应实现接口<code>printSn(cond)</code>, 实现示例:</p>
+<pre><code>function api_printSn() {
     // 通过query接口查询操作对象内容. 
     $param = array_merge($_GET, ["res"=&gt;"code", "fmt"=&gt;"array" ]);
-    $rv = $this-&gt;callSvc(null, "query", $param);
+    $arr = callSvcInt("Sn.query", $param);
     addLog($rv);
+    foreach ($arr as $one) {
+        // 处理每个对象
+    }
     // 应返回操作数量
-    return count($rv);
+    return count($arr);
 }</code></pre>
+<p class="param"><strong>@param opt.queryParam</strong> </p>
+<p>(v6) 基于查询条件的批量处理，即指定opt.queryParam，这时jtbl参数传null，与表格操作无关，只根据指定条件查询数量和批量操作。<br />
+注意jtbl和opt.queryParam必须指定其一。参见下面示例4。</p>
 <h4 id="batchOp-2 示例2：打开对话框，批量设置一些信息">2 示例2：打开对话框，批量设置一些信息</h4>
 <p>在列表页上添加操作按钮，pageXXX.js:</p>
 <pre><code>// 点按钮打开批量上传对话框
@@ -2868,7 +2880,19 @@ function onGetData(batchCnt)
 <pre><code>if (confirm("确认操作?") == no)
     return;
 jupload.submit();
-return getFormData(jfrm);</code></pre></div>
+return getFormData(jfrm);</code></pre>
+<h4 id="batchOp-4 示例4: 基于查询条件的批量操作">4 示例4: 基于查询条件的批量操作</h4>
+<p>示例：在工单列表页，批量为工单中的所有工件打印跟踪码。</p>
+<p>工单为Ordr对象，工件为Sn对象。注意：此时是操作Sn对象，而非当前Ordr对象，所以不传jtbl，而是直接传入查询条件.</p>
+<pre><code>WUI.batchOp("Sn", "printSn", null, {
+    acName: "打印", 
+    queryParam: {cond: "orderId=80"},
+    data: {tplId: 10}
+});</code></pre>
+<p>后端批量打印接口设计为：</p>
+<pre><code>printSn(cond, tplId) -&gt; cnt</code></pre>
+<p>上例中，查询操作数量时将调用接口<code>callSvr("Sn.query", {cond: "orderId=80", res: "count(*) cnt"})</code>，<br />
+在批量操作时调用接口<code>callSvr("printSn", {cond: "orderId=80"}, $.noop, {tplId: 10})</code>。</p></div>
 <div class="block">
 <h2 id="getTopDialog">@fn getTopDialog()</h2>
 <p>取处于最上层的对话框。如果没有，返回jo.size() == 0</p></div>
@@ -2893,7 +2917,8 @@ WUI.reloadDialog(true); // 重置所有外部加载的对话框(v5.1)</code></pr
 <li>由于不知道打开对话框的参数，reloadDialog无法重新打开对话框，因而它的行为与unloadDialog一样。</li>
 </ul></div>
 <div class="block">
-<h2 id="canDo">@fn canDo(topic, cmd=null, defaultVal=true)</h2>
+<h2 id="canDo">@fn canDo(topic, cmd=null, defaultVal=true)</h2><div class="toc"><p style="margin-left:0em"><a href="#canDo-1 关于页面与对话框">1 关于页面与对话框</a></p>
+</div>
 <p>权限检查回调，支持以下场景：</p>
 <ol>
 <li>
@@ -2905,11 +2930,11 @@ WUI.reloadDialog(true); // 重置所有外部加载的对话框(v5.1)</code></pr
 <p>canDo(对话框标题, &quot;对话框&quot;, true); // 返回false表示对话框只读</p>
 </li>
 </ol>
-<p>TODO:通过设置 WUI.options.canDo(topic, cmd) 可扩展定制权限。<br />
-TODO: 链接的对话框有安全问题</p>
+<p>TODO:通过设置 WUI.options.canDo(topic, cmd) 可扩展定制权限。</p>
 <p>默认情况下，所有菜单不显示，其它操作均允许。<br />
 如果指定了&quot;*&quot;权限，则显示所有菜单。<br />
 如果指定了&quot;不可XX&quot;权限，则topic或cmd匹配XX则不允许。</p>
+<p class="key"><strong>@key <a id="wui-perm">wui-perm</a></strong> </p>
 <ul>
 <li>topic: 通过菜单、页面、对话框、按钮的wui-perm属性指定（按钮参考dg_toolbar函数），如果未指定，则取其text.</li>
 <li>cmd: 对话框，新增，修改，删除，导出，自定义的按钮</li>
@@ -2942,7 +2967,21 @@ TODO: 链接的对话框有安全问题</p>
 <p>或等价于：</p>
 <pre><code>运营管理 不可导出 活动.不可删除 积分商城.不可删除</code></pre>
 <p>显示“运营管理”和“主数据管理”菜单组，但“主数据管理”下面内容均是只读的：</p>
-<pre><code>运营管理 主数据管理 企业.只读 用户.只读</code></pre></div>
+<pre><code>运营管理 主数据管理 企业.只读 用户.只读</code></pre>
+<h4 id="canDo-1 关于页面与对话框">1 关于页面与对话框</h4>
+<p>假如在“活动”页面中链接了“用户”对话框（或“活动”页面上某操作按钮会打开“用户”页面），即使该角色只有“活动”权限而没有“用户”的权限，也能正常打开用户对话框或页面并修改用户。<br />
+这是一个潜在安全漏洞，在配置权限时应特别注意。</p>
+<p>这样设计是因为用户权限主要是针对菜单项的，而且可以只指定到父级菜单（表示下面子菜单均可显示）；这样就导致对未指定的权限，也无法判断是否可用（因为可能是菜单子项），目前处理为默认可用（可通过权限<code>不可*</code>来指定默认不可用）。</p>
+<p>以指定运营管理下所有功能为例，解决办法：</p>
+<ul>
+<li>
+<p>简单的处理方式是对于所有链接的内容，分别加入黑名单，如特别指定“不可用户”（或指定“用户.只读”），这时链接的对话框或页面将以只读模式打开（对话框不可设置，页面无操作按钮）。最终权限指定为<code>运营管理 不可用户</code></p>
+</li>
+<li>还有一种拒绝优先+精确指定的处理方式，即先指定<code>不可*</code>，然后再精确指定该角色可用的所有权限（通常是列举所有子菜单项供打勾选择）。最终权限指定为<code>不可* 活动 公告 积分商城</code>。这时应注意：<br />
+如果菜单项、页面、对话框的权限名不相同的，则可能出现菜单项能显示，而页面和对话框显示为只读。这种情况应确保菜单、页面、对话框的权限名（标题名或设置菜单的wui-perm属性）应一致。<br />
+例如菜单项叫“活动管理”而对话框和页面名为“活动”，则可将菜单的wui-perm属性设置为“活动”。<br />
+还有种比较常见的情况是页面和对话框为多个对象共用的（如客户和供应商共用一个页面和对话框），也是确保菜单名、页面名、对话框一致，在处理时往往是以showPage将菜单名传到页面，从页面打开对话框时则以页面标题指定对话框标题。</li>
+</ul></div>
 <div class="block">
 <h2 id="doFind">@fn doFind(jo, jtbl?, appendFilter?=false)</h2>
 <p>根据对话框中jo部分内容查询，结果显示到表格(jtbl)中。<br />

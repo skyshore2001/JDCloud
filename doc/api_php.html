@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2021-03-01</div>
+<div>最后更新：2021-03-22</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -214,8 +214,8 @@ code {
 <p><a href="#jsonEncode">jsonEncode (fn)</a></p>
 <p><a href="#list2varr">list2varr (fn)</a></p>
 <p><a href="#logext">logext (fn)</a></p>
-<p><a href="#logit">logit (alias)</a></p>
 <p><a href="#logit">logit (fn)</a></p>
+<p><a href="#logit">logit (alias)</a></p>
 <p><a href="#makeTree">makeTree (fn)</a></p>
 <p><a href="#makeUrl">makeUrl (fn)</a></p>
 <p><a href="#mh">mh (fn)</a></p>
@@ -232,10 +232,13 @@ code {
 <p><a href="#pivot">pivot (fn)</a></p>
 <p><a href="#plugin">plugin (key)</a></p>
 <p><a href="#plugin/index.php">plugin/index.php (key)</a></p>
+<p><a href="#qsearch">qsearch (key)</a></p>
 <p><a href="#queryAll">queryAll (fn)</a></p>
 <p><a href="#queryAllWithHeader">queryAllWithHeader (fn)</a></p>
 <p><a href="#queryOne">queryOne (fn)</a></p>
 <p><a href="#rc4">rc4 (fn)</a></p>
+<p><a href="#readBlock">readBlock (fn)</a></p>
+<p><a href="#readBlock2">readBlock2 (fn)</a></p>
 <p><a href="#setBcParam">setBcParam (fn)</a></p>
 <p><a href="#setParam">setParam (fn)</a></p>
 <p><a href="#setParam">setParam (fn)</a></p>
@@ -249,6 +252,7 @@ code {
 <p><a href="#tmpEnv">tmpEnv (fn)</a></p>
 <p><a href="#tobool">tobool (fn)</a></p>
 <p><a href="#tryParseBool">tryParseBool (fn)</a></p>
+<p><a href="#uniKey">uniKey (key)</a></p>
 <p><a href="#urlEncodeArr">urlEncodeArr (fn)</a></p>
 <p><a href="#varr2objarr">varr2objarr (fn)</a></p>
 <p><a href="#whiteIpList">whiteIpList (key)</a></p>
@@ -639,6 +643,146 @@ $arr1 = pivot($arr, "cateName", 2);</code></pre>
     ]
 ]</code></pre></div>
 <div class="block">
+<h2 id="readBlock">@fn readBlock($getLine, $makeBlock, $isNewBlock, $handleBlock, $opt)</h2><div class="toc"><p style="margin-left:0em"><a href="#readBlock-1 参考原型程序">1 参考原型程序</a></p>
+<p style="margin-left:0em"><a href="#readBlock-2 协程(php5.5后支持)">2 协程(php5.5后支持)</a></p>
+</div>
+<p>readBlock编程模式</p>
+<p>原型问题：读一个文件，其中以&quot;#&quot;开头的行(curLine)表示一个块(block)开始，这个块一直到下一个块开始处才结束。如：</p>
+<pre><code># block1
+paragraph 1
+paragraph 2
+# block 2
+paragraph 3
+# block 3</code></pre>
+<p>提供以下回调函数，将解析出每个块，并最终交给handleBlock回调处理：</p>
+<pre><code>$block = null;
+$curLine = getLine() // 读一行，返回null或false表示结束
+makeBlock(&amp;$block, $curLine) // 读一行时，添加到block
+isNewBlock($curLine); // 判断一个新的block开始
+handleBlock($block) // 处理block</code></pre>
+<ul>
+<li>opt: {skipStart=false} 可设置忽略开头行</li>
+</ul>
+<p>使用模型后示例如下：</p>
+<pre><code>$fp = fopen("1.txt","r");
+readBlock(function () use ($fp) { // getLine
+    return fgets($fp);
+}, function (&amp;$block, $curLine) { // makeBlock
+    $block .= $curLine;
+}, function ($curLine) { // isNewBlock
+    return $curLine[0] == "#";
+}, function ($block) { // handleBlock
+    echo("&gt;&gt;&gt;$block&lt;&lt;&lt;\n");
+});
+fclose($fp);</code></pre>
+<p>假如以数组方式处理，示例如下（注意除了getLine不同，其余部分相同）：</p>
+<pre><code>$arr = file("1.txt");
+$i = 0;
+readBlock(function () use ($arr, &amp;$i) { // getLine
+    if ($i == count($arr))
+        return false;
+    return $arr[$i++];
+}, function (&amp;$block, $curLine) { // makeBlock
+    $block .= $curLine;
+}, function ($curLine) { // isNewBlock
+    return $curLine[0] == "#";
+}, function ($block) { // handleBlock
+    echo("$block\n");
+});</code></pre>
+<h4 id="readBlock-1 参考原型程序">1 参考原型程序</h4>
+<pre><code>$fp = fopen("1.txt","r");
+$block = null;
+while (true) {
+    $curLine = fgets($fp);
+    if ($curLine === false || ($block != null &amp;&amp; $curLine[0] == "#")) {
+        handleBlock($block);
+        if ($curLine === false)
+            break;
+        $block = $curLine;
+        continue;
+    }
+    $block .= $curLine;
+}
+fclose($fp);</code></pre>
+<h4 id="readBlock-2 协程(php5.5后支持)">2 协程(php5.5后支持)</h4>
+<p>将<code>$handleBlock($block)</code>调用改为<code>yield $block</code>可提供协程式编程风格，可把循环控制交给主程序，调用示例：</p>
+<pre><code>$fp = fopen("1.txt","r");
+$g = readBlockG(...);
+while($g-&gt;valid()) {
+    $block = $g-&gt;current();
+    handleBlock($block);
+    $g-&gt;next();
+}
+fclose($fp);</code></pre></div>
+<div class="block">
+<h2 id="readBlock2">@fn readBlock2($getLine, $makeBlock, $isBlockStart, $isBlockEnd, $handleBlock, $opt=[])</h2>
+<p>readBlock2编程模式</p>
+<p>原型问题：读一个文件，其中以&quot;#&quot;开头的行(curLine)表示一个块(block)开始，以&quot;.&quot;开头的行表示一个块结束，如：</p>
+<pre><code># block1
+paragraph 1
+paragraph 2
+.
+others -- out of block
+# block 2
+paragraph 3
+.
+other2 -- out of block
+# block 3</code></pre>
+<p>提供以下回调函数，将解析出每个块，并最终交给handleBlock回调处理：</p>
+<pre><code>$block = null;
+$curLine = getLine() // 读一行，返回null或false表示结束
+makeBlock(&amp;$block, $curLine) // 读一行时，添加到block
+isBlockStart($curLine); // 判断一个block开始
+isBlockEnd($curLine); // 判断一个block结束
+handleBlock($block) // 处理block</code></pre>
+<ul>
+<li>opt: {skipStart=false, skipEnd=true} 可设置忽略开头行，以及包含结束行</li>
+</ul>
+<p>使用模型后的代码：</p>
+<pre><code>$fp = fopen("1.txt","r");
+readBlock2(function () use ($fp) { // getLine
+    return fgets($fp);
+}, function (&amp;$block, $curLine) { // makeBlock
+    $block .= $curLine;
+}, function ($curLine) { // isBlockStart
+    return $curLine[0] == "#";
+}, function ($curLine) { // isBlockEnd
+    return $curLine[0] == ".";
+}, function ($block) { // handleBlock
+    echo("&gt;&gt;&gt;$block&lt;&lt;&lt;\n");
+});
+fclose($fp);</code></pre>
+<p>设置选项示例：</p>
+<pre><code>readBlock2(...
+, ["skipStart"=&gt;true]);</code></pre>
+<p>原型代码：</p>
+<pre><code>$fp = fopen("1.txt","r");
+$block = null;
+$blockFlag = false;
+while (true) {
+    $curLine = fgets($fp);
+    if ($curLine === false)
+        break;
+    if (! $blockFlag) {
+        if ($curLine[0] == "#")
+            $blockFlag = true;
+    }
+    else if ($curLine[0] == '.') {
+        $blockFlag = false;
+        handleBlock($block);
+        $block = null;
+        continue;
+    }
+    if ($blockFlag)
+        $block .= $curLine;
+}
+fclose($fp);
+
+function handleBlock($s)
+{
+    echo("&gt;&gt;&gt;$s&lt;&lt;&lt;\n");
+}</code></pre></div>
+<div class="block">
 <h2 id="app_fw">@module app_fw</h2><div class="toc"><p style="margin-left:0em"><a href="#app_fw-1 通用函数">1 通用函数</a></p>
 <p style="margin-left:0em"><a href="#app_fw-2 初始化配置">2 初始化配置</a></p>
 <p style="margin-left:2em"><a href="#app_fw-2.1 数据库配置">2.1 数据库配置</a></p>
@@ -794,7 +938,10 @@ $objarr = varr2objarr($var, ["id", "qty", "dscr"]);</code></pre>
 <pre><code>[
     [ "id"=&gt;100, "qty"=&gt;1.0, dscr=&gt;null],
     [ "id"=&gt;101, "qty"=&gt;null, dscr=&gt;"打蜡"]
-]</code></pre></div>
+]</code></pre>
+<p>(v6) 对cond参数或cond类型是特别处理的，会自动从GET/POST中取值，并且支持字符串、数组、键值对多种形式，参考getQueryCond：</p>
+<pre><code>$cond = mparam("cond");
+$gcond = param("gcond/cond");</code></pre></div>
 <div class="block">
 <h2 id="mparam">@fn mparam($name, $col = null)</h2>
 <p class="brief"><strong>@brief mandatory</strong>  param</p>
@@ -966,48 +1113,61 @@ dir1/dir2/carsvc.db (以.db文件扩展名标识的文件路径，表示SQLITE�
 <pre><code>$sql = sprintf("SELECT id FROM User WHERE uname=%s AND pwd=%s", Q(param("uname")), Q(param("pwd")));</code></pre></div>
 <div class="block">
 <h2 id="getQueryCond">@fn getQueryCond(cond)</h2>
-<p>示例：key-value形式</p>
-<pre><code>$rv = getQueryCond([
-    "name"=&gt;"eric",
-    "phone"=&gt; null,
-    "city" =&gt; ""
-]);
-// name='eric' AND phone IS NULL AND city=''</code></pre>
-<p>忽略null项：</p>
-<pre><code>$rv = getQueryCond([
-    "name"=&gt;"eric",
-    "phone"=&gt; null,
-    "city" =&gt; "", // 空串仍有效，不会被"_null"选项忽略
-    "_null"=&gt;true
-]);
-// name='eric' AND city=''</code></pre>
-<p>示例：条件数组</p>
-<pre><code>$rv = getQueryCond([
-    "type IS NOT NULL",
-    "tm&gt;='2018-1-1' AND tm&lt;'2019-1-1'"
-]);
-// "type IS NOT NULL AND (tm&gt;='2018-1-1' AND tm&lt;'2019-1-1')"</code></pre>
-<p>（以上两种在jd-php中可混用）</p>
-<p>特别地：</p>
-<pre><code>getQueryCond(null) =&gt; null
-getQueryCond("ALL") =&gt; null
-getQueryCond(100) =&gt; "id=100"
-getQueryCond("100") =&gt; "id=100"
-getQueryCond("id&lt;&gt;100") =&gt; "id&lt;&gt;100"</code></pre>
-<p>默认用AND连接条件，也支持OR连接：</p>
-<pre><code>$rv = getQueryCond([
-    "_or" =&gt; true, // 特殊用法，标识用OR连接条件
-    "name"=&gt;"eric",
-    "phone IS NULL"
-]);
-// "name='eric' OR phone IS NULL"
+<p>根据cond生成查询条件字符串。其中cond可以是</p>
+<ul>
+<li>
+<p>null，忽略</p>
+</li>
+<li>
+<p>条件字符串，参考SQL语句WHERE条件语法（不支持函数、子查询等），示例：</p>
+<pre><code>"100"或100 生成 "id=100"
+"id=1"
+"id&gt;=1 and id&lt;100"
+"status='CR'"  注意字符串要加引号
+"status IN ('CR','PA')"
+"tm&gt;='2020-1-1' AND tm&lt;'2020-2-1'"
+"name like 'wang%' OR dscr like 'want%'"
+"name IS NULL OR dscr IS NOT NULL"</code></pre>
+</li>
+<li>
+<p>键值对，键为字段名，值为查询条件，使用更加直观（如字符串不用加引号），如：</p>
+<pre><code>["id"=&gt;1, "status"=&gt;"CR", "name"=&gt;"null", "dscr"=&gt;null, "f1"=&gt;"", "f2"=&gt;"empty"]
+生成 "id=1 AND status='CR'" AND name IS NULL AND f2=''
+注意，当值为null或空串时会忽略掉该条件，用"null"表示"IS NULL"条件，用"empty"表示空串。
 
-$rv = getQueryCond([
-    "type IS NOT NULL",
-    "tm&gt;='2018-1-1' AND tm&lt;'2019-1-1'",
-    "_or" =&gt; true
-]);
-// "type IS NOT NULL OR (tm&gt;='2018-1-1' AND tm&lt;'2019-1-1')"</code></pre></div>
+可以使用符号： &gt; &lt; &gt;= &lt;= !(not) ~(like匹配)
+["id"=&gt;"&lt;100", "tm"=&gt;"&gt;2020-1-1", "status"=&gt;"!CR", "name"=&gt;"~wang%", "dscr"=&gt;"~aaa", "dscr2"=&gt;"!~aaa"]
+生成 "id&lt;100 AND tm&gt;'2020-1-1" AND status&lt;&gt;'CR' AND name LIKE 'wang%' AND dscr LIKE '%aaa%' AND dscr2 NOT LIKE '%aaa%'"
+like用于字符串匹配，字符串中用"%"或"*"表示通配符，如果不存在通配符，则表示包含该串(即生成'%xxx%')
+
+["b"=&gt;"!null", "d"=&gt;"!empty"]
+生成 "b IS NOT NULL" AND d&lt;&gt;''"</code></pre>
+<p>可用AND或OR连接多个条件，但不可加括号嵌套：</p>
+<pre><code>["tm"=&gt;"&gt;=2020-1-1 AND &lt;2020-2-1", "tm2"=&gt;"&lt;2020-1-1 OR &gt;=2020-2-1"]
+生成 "(tm&gt;='2020-1-1' AND tm&lt;'2020-2-1') AND (tm2&lt;'2020-1-1' OR tm2&gt;='2020-2-1')"
+
+["id"=&gt;"&gt;=1 AND &lt;100", "status"=&gt;"CR OR PA", "status2"=&gt;"!CR AND !PA OR null"]
+生成 "(id&gt;=1 AND id&lt;100) AND (status='CR' OR status='PA') AND (status2&lt;&gt;'CR" AND status2&lt;&gt;'PA' OR status2 IS NULL)"
+
+["a"=&gt;"null OR empty", "b"=&gt;"!null AND !empty", "_or"=&gt;1]
+生成 "(a IS NULL OR a='') OR (b IS NOT NULL AND b&lt;&gt;'')", 默认为AND条件, `_or`选项用于指定OR条件</code></pre>
+</li>
+<li>
+<p>数组，每个元素是上述条件字符串或键值对，如：</p>
+<pre><code>["id&gt;=1", "id&lt;100", "name LIKE 'wang%'"] // "id&gt;=1 AND id&lt;100" AND name LIKE 'wang%'"
+等价于 ["id"=&gt;"&gt;=1 AND &lt;100", "name"=&gt;"~wang%"] 或混合使用 [ ["id"=&gt;"&gt;=1 AND &lt;100"], "name LIKE 'wang%'"]
+["id=1", "id=2", "_or"=&gt;true]  // 下划线开头是特别选项，"_or"表示用或条件，生成"id=1 OR id=2"</code></pre>
+</li>
+</ul>
+<p>支持前端传入的get/post参数中同时有cond参数，且cond参数允许为数组，比如传</p>
+<pre><code>URL中：cond[]=a=1&amp;cond[]=b=2
+POST中：cond=c=3</code></pre>
+<p>后端处理</p>
+<pre><code>getQueryCond([$_GET["cond"], $_POST["cond"]]);</code></pre>
+<p>最终得到cond参数为&quot;a=1 AND b=2 AND c=3&quot;。</p>
+<p>前端callSvr示例: url参数或post参数均可支持数组或键值对：</p>
+<pre><code>callSvr("Hub.query", {res:"id", cond: {id: "&gt;=1 AND &lt;100"}})
+callSvr("Hub.query", {res:"id", cond: ["id&gt;=1", "id&lt;100"]}, $.noop, {cond: {name:"~wang%", dscr:"~111"}})</code></pre></div>
 <div class="block">
 <h2 id="genQuery">@fn genQuery($sql, $cond)</h2>
 <p>连接SELECT主语句(不带WHERE条件)和查询条件。<br />
@@ -2304,6 +2464,9 @@ params为JSON格式。</code></pre>
 <p style="margin-left:4em"><a href="#AccessControl-2.7.2 关联子查询优化">2.7.2 关联子查询优化</a></p>
 <p style="margin-left:0em"><a href="#AccessControl-3 子表">3 子表</a></p>
 <p style="margin-left:2em"><a href="#AccessControl-3.1 子表的增删改查操作">3.1 子表的增删改查操作</a></p>
+<p style="margin-left:4em"><a href="#AccessControl-3.1.1 子表添加">3.1.1 子表添加</a></p>
+<p style="margin-left:4em"><a href="#AccessControl-3.1.2 子表查询">3.1.2 子表查询</a></p>
+<p style="margin-left:4em"><a href="#AccessControl-3.1.3 子表更新与删除">3.1.3 子表更新与删除</a></p>
 <p style="margin-left:2em"><a href="#AccessControl-3.2 关联子表对象">3.2 关联子表对象</a></p>
 <p style="margin-left:2em"><a href="#AccessControl-3.3 子表查询参数">3.3 子表查询参数</a></p>
 <p style="margin-left:0em"><a href="#AccessControl-4 操作完成回调">4 操作完成回调</a></p>
@@ -2760,6 +2923,7 @@ class OrderLog extends AccessControl
 vcol: @obj1 (说明：vcol表示虚拟字段，@obj1表示字段obj1是个数组，一般就是子对象)
 
 @Obj1: id, objId, name （通过objId关联主对象)</code></pre>
+<h6 id="AccessControl-3.1.1 子表添加">3.1.1 子表添加</h6>
 <p>在添加主对象时，同时添加子对象:</p>
 <pre><code>Obj.add()(name, @obj1...) -&gt; id</code></pre>
 <p>示例：</p>
@@ -2770,6 +2934,7 @@ vcol: @obj1 (说明：vcol表示虚拟字段，@obj1表示字段obj1是个数组
         { name: "obj1-name2" }
     ]
 });</code></pre>
+<h6 id="AccessControl-3.1.2 子表查询">3.1.2 子表查询</h6>
 <p>主对象添加后，可以通过get接口获取主对象及子对象：</p>
 <pre><code>callSvr("Obj.get", {id: 1001, res:"id,name,obj1"}) -&gt; {
     id: 1001,
@@ -2794,6 +2959,7 @@ callSvr("Obj.get", {id: 1001, res:"id,name,obj1 objList,obj1 objList2", res_objL
     { id: 10002, name: "obj1-name2" }
 ]</code></pre>
 <p>这里用fmt参数指定返回array格式，因为默认返回的是<code>h/d</code>格式.</p>
+<h6 id="AccessControl-3.1.3 子表更新与删除">3.1.3 子表更新与删除</h6>
 <p>主对象添加后，可以通过set接口添加/更新/删除子对象：</p>
 <pre><code>Obj.set(id)(name?, @obj1...)</code></pre>
 <p>示例：</p>
@@ -2805,7 +2971,25 @@ callSvr("Obj.get", {id: 1001, res:"id,name,obj1 objList,obj1 objList2", res_objL
         { id: 10002, _delete: 1}  // set接口中指定子表id且设置了`_delete: 1`，表示删除该子表行
     ]
 });</code></pre>
-<p>主对象删除时（del/delIf接口），子对象不会自动删除。后端应根据情况自行处理。</p>
+<p>注意：主对象删除时（del/delIf接口），子对象不会自动删除。后端应根据情况自行处理。</p>
+<p>(v6) 对子表的更新有patch/put两种模式，通过submode参数指定，该参数只对主表set接口有效：</p>
+<ul>
+<li>patch: 默认模式，见上面示例。须用<code>_delete</code>指定要删除的原来子表项。</li>
+<li>put: 覆盖更新模式。与patch的区别是无须指定<code>_delete</code>来删除原来子表项，新子表直接覆盖原子表。</li>
+</ul>
+<p>与上述示例中效果相同的操作示例：</p>
+<pre><code>// submode=put模式
+callSvr("Obj.set", {id: 1001}, $.noop, {
+    name: "name1",
+    submode: "put", // 指定子表更新模式
+    obj1: [
+        { id: 10001, name: "obj1-name1-changed" }, // set接口中指定子表id的，表示更新该子表行; 也可以不指定id，则原来记录被删除，这条会被重新添加。
+        { name: "obj1-name3" },  // set接口中未指定子表id的，表示新增子表行
+        // 原表中的10002项未指定，则自动被删除。
+    ]
+});</code></pre>
+<p>注意：add接口在指定uniKey参数时，可检查数据存在则更新(即调用set接口)。因此add/batchAdd接口也可以指定submode参数。<br />
+在批量导入(batchAdd接口+uniKey参数)时，默认使用put模式做子表更新。</p>
 <p>(v5.5) subobj选项forceUpdate</p>
 <p>对子表进行修改和删除时，默认会要求该项必须已关联主表。加此选项强制更新关联。<br />
 在上面示例中，如果子项<code>id=10001</code>或<code>id=10002</code>的关联字段objId为空或与主表<code>id=1001</code>不同，则会报错“找不到该项”(因为数据隔离，该项确实不属于该主表，所以查不到)。<br />
@@ -3081,7 +3265,7 @@ $this-&gt;enumFields["status"] = function($v, $row) use ($map) {
     return $v;
 };</code></pre>
 <p>enumFields机制支持字段别名，比如若调用<code>Ordr.query(res="id 编号,status 状态")</code>，status字段使用了别名&quot;状态&quot;后，仍然可被正确处理，而用onHandleRow则不好处理。</p>
-<p>(v5.5) enum字段也常用于计算字段，即根据其它字段进行处理，可在require选项中指定依赖字段，并在函数中使用getAliasVal方法取值:</p>
+<p>(v5.5) enum字段也常用于计算字段，即根据其它字段进行处理，可在require选项中指定依赖字段，并在函数中使用getAliasVal/setAliasVal方法取值/设置值:</p>
 <pre><code>protected $vcolDefs = [
     // 不良数
     [
@@ -3098,6 +3282,7 @@ $this-&gt;enumFields["faultRate"] = function($v, $row) {
     // 不要直接用 $row["xxx"]取值, 否则若调用时指定了别名（典型的是导出文件或输出统计表场景）则取不到值了。
     $faultCnt = $this-&gt;getAliasVal($row, "faultCnt");
     $qty = $this-&gt;getAliasVal($row, "qty");
+    // $this-&gt;setAliasVal($row, "qty1", $qty); // 设置值，除非特别需要，一般不建议在enumFields某计算字段里设置其它字段值。
     return $qty == 0? 0: $faultCnt/$qty;
 };</code></pre>
 <p>此外，枚举字段可直接由请求方通过res参数指定描述值，如：</p>
@@ -3311,7 +3496,15 @@ $this-&gt;addVCol("createTm", self::VCOL_ADD_RES|self::VCOL_ADD_SUBOBJ); // igno
 <p>如果isHiddenField=true, 则该字段是辅助字段，最终返回前将删除(AccessControl::hiddenFields机制)</p></div>
 <div class="block">
 <h2 id="AccessControl::api_add">@fn AccessControl::api_add()</h2>
-<p>标准对象添加接口。</p></div>
+<p>标准对象添加接口。</p>
+<p class="key"><strong>@key <a id="uniKey">uniKey</a></strong>  add接口支持存在则更新，不存在则添加</p>
+<p>(v6) 支持在添加时根据指定字段判断记录是否存在，若存在则更新，不存在才添加，称为uniKey机制。接口示例：</p>
+<pre><code>callSvr("Ordr.add", {uniKey: "code"}, $.noop, {code: "ordr1", itemId: 99});</code></pre>
+<p>表示添加工单，若指定code已存在，则更新工单。</p>
+<p>uniKey可以指定多个字段，以逗号分隔即可，常用于关联表，如操作物料类别与打印模板的关联表Cate_PrintTpl:</p>
+<pre><code>callSvr("Cate_PrintTpl.add", {uniKey: "cateId,printTplId"}, $.noop, {cateId: 101, printTplId: 999});</code></pre>
+<p>表示添加关联，若关联已存在则忽略。（当指定要添加的字段刚好完全就是uniKey中字段时，没必要做更新操作，会直接忽略。）</p>
+<p>注意：uniKey原理上支持使用虚拟字段（如关联字段）.</p></div>
 <div class="block">
 <h2 id="AccessControl::api_set">@fn AccessControl::api_set()</h2>
 <p>标准对象设置接口。api函数应通过callSvc调用，不应直接调用。</p></div>
@@ -3322,6 +3515,8 @@ $this-&gt;addVCol("createTm", self::VCOL_ADD_RES|self::VCOL_ADD_SUBOBJ); // igno
 <h2 id="AccessControl::api_query">@fn AccessControl::api_query()</h2>
 <p>标准对象查询接口（列表）。api函数应通过callSvc调用，不应直接调用。</p>
 <p>接口参数有：res, cond, pagesz, pagekey, orderby, gres, union, fmt等。(参见DACA架构接口文档)</p>
+<p>(v6) cond字段很灵活支持类SQL查询字符串、数组或键值对，参考</p>
+<p class="see"><strong>@see <a href="#getQueryCond">getQueryCond</a></strong> </p>
 <p>内部调用时还支持以下参数：</p>
 <ul>
 <li>
@@ -3337,28 +3532,35 @@ $this-&gt;addVCol("createTm", self::VCOL_ADD_RES|self::VCOL_ADD_SUBOBJ); // igno
 <p>调用示例：</p>
 <pre><code>// 定死res外部无法覆盖, 但外部可额外指定cond参数
 $ret = callSvcInt("PdiRecord.query", [
-    "res": "id,vinCode,result,orderId,tm", // 用了res则意味着不允许前端指定字段，用res2则前端还可以用res指定其它字段
-    "cond2": dbExpr("type='EQ' AND tm&gt;='2019-1-1'") // 多个条件也可这样自动拼接： getQueryCond(["type='EQ'", "tm&gt;='2019-1-1'])
+    "res" =&gt;"id,vinCode,result,orderId,tm", // 用了res则意味着不允许前端指定字段，用res2则前端还可以用res指定其它字段
+    "cond2" =&gt;dbExpr("type='EQ' AND tm&gt;='2019-1-1'") // 多个条件也可这样自动拼接： getQueryCond(["type='EQ'", "tm&gt;='2019-1-1']) 或 getQueryCond(["type"=&gt;"EQ", "tm"=&gt;"&gt;=2019-1-1"])
 ]);</code></pre>
 <p class="see"><strong>@see <a href="#AccessControl::addCond">AccessControl::addCond</a></strong> </p>
 <p class="see"><strong>@see <a href="#AccessControl::addRes">AccessControl::addRes</a></strong> </p>
 <p class="see"><strong>@see <a href="#AccessControl::addJoin">AccessControl::addJoin</a></strong> </p>
-<p class="see"><strong>@see <a href="#getQueryCond">getQueryCond</a></strong> </p></div>
+<p class="see"><strong>@see <a href="#qsearch">qsearch</a></strong>  模糊查询机制</p></div>
 <div class="block">
 <h2 id="AccessControl.queryRet">@fn AccessControl.queryRet(objArr, nextkey?, totalCnt?, fixedColCnt?=0)</h2>
 <p>处理objArr，按照fmt参数指定的格式返回，与query接口返回相同。例如，默认的<code>h-d</code>表格式, <code>list</code>格式，<code>excel</code>等。</p></div>
 <div class="block">
 <h2 id="AccessControl.qsearch">@fn AccessControl.qsearch($fields, $q)</h2>
+<p class="key"><strong>@key <a id="qsearch">qsearch</a></strong> </p>
 <p>模糊查询 (v5.4)</p>
-<p>示例接口：</p>
+<p>后端可定制如下示例接口：</p>
 <pre><code>Obj.query(q) -&gt; 同query接口返回</code></pre>
 <p>查询匹配参数q的内容（比如查询name, label等字段）。<br />
 参数q是一个字符串，或多个以空格分隔的字符串。例如&quot;aa bb&quot;表示字段包含&quot;aa&quot;且包含&quot;bb&quot;。<br />
 每个字符串中可以用通配符&quot;<em>&quot;，如&quot;a</em>&quot;表示以a开头，&quot;<em>a&quot;表示以a结尾，而&quot;</em>a*&quot;和&quot;a&quot;是效果相同的。</p>
-<p>实现：</p>
+<p>定制实现：可指定字段及查询参数</p>
 <pre><code>protected function onQuery() {
     $this-&gt;qsearch(["name", "label", "content"], param("q"));
-}</code></pre></div>
+}</code></pre>
+<p>(v6) 除了后端定制，query接口还内置支持qsearch操作，前端可直接通过qsearch参数指定查询条件，示例：</p>
+<pre><code>callSvr("Ordr.query", {qsearch: "dscr,cmt:张* 退款"})</code></pre>
+<p>qsearch的格式是<code>字段1,字符2,...:查询内容</code>(使用英文逗号及冒号分隔).<br />
+上例表示在dscr或cmt字段中查找包含&quot;张%&quot;(匹配开头)且包含&quot;%退款%&quot;的记录. 它等价于前端调用：</p>
+<pre><code>callSvr("Ordr.query", {cond: {dscr: "~张* and ~退款", cmt: "~张* and ~退款"}})</code></pre>
+<p class="see"><strong>@see <a href="#getQueryCond">getQueryCond</a></strong> </p></div>
 <div class="block">
 <h2 id="AccessControl::api_del">@fn AccessControl::api_del()</h2>
 <p>标准对象删除接口。api函数应通过callSvc调用，不应直接调用。</p></div>
@@ -3412,8 +3614,9 @@ $this-&gt;checkSetFields([&quot;status&quot;, &quot;cmt&quot;]);<br />
 }</code></pre></div>
 <div class="block">
 <h2 id="AccessControl::api_batchAdd">@fn AccessControl::api_batchAdd()</h2><div class="toc"><p style="margin-left:0em"><a href="#AccessControl::api_batchAdd-1 支持三种方式上传">1 支持三种方式上传</a></p>
-<p style="margin-left:0em"><a href="#AccessControl::api_batchAdd-2 支持带子表导入">2 支持带子表导入</a></p>
-<p style="margin-left:0em"><a href="#AccessControl::api_batchAdd-3 支持列名映射">3 支持列名映射</a></p>
+<p style="margin-left:0em"><a href="#AccessControl::api_batchAdd-2 通过导入实现批量更新">2 通过导入实现批量更新</a></p>
+<p style="margin-left:0em"><a href="#AccessControl::api_batchAdd-3 支持带子表导入">3 支持带子表导入</a></p>
+<p style="margin-left:0em"><a href="#AccessControl::api_batchAdd-4 支持列名映射">4 支持列名映射</a></p>
 </div>
 <p>标准接口<code>Obj.batchAdd</code>用于批量导入数据（支持不存在则添加，存在则更新）。返回导入记录数cnt及编号列表idList：</p>
 <pre><code>Obj.batchAdd(title?, uniKey?)(...) -&gt; {cnt, @idList}</code></pre>
@@ -3491,7 +3694,16 @@ app_alert(&quot;成功导入&quot; + ret.cnt + &quot;条数据！&quot;);<br />
 }, data, {contentType:&quot;application/json&quot;});</p>
 </li>
 </ol>
-<h4 id="AccessControl::api_batchAdd-2 支持带子表导入">2 支持带子表导入</h4>
+<p>其中指定contentType为json不是必须的，因为新版本callSvr实现中会根据POST内容判断自动使用json。</p>
+<h4 id="AccessControl::api_batchAdd-2 通过导入实现批量更新">2 通过导入实现批量更新</h4>
+<p>(v5.5) batchAdd接口配合uniKey参数，可实现存在则更新，不存在则添加的逻辑。</p>
+<p>示例：接上节示例，在导入时希望实现根据名称与电话(name和tel字段)匹配，则记录存在则做更新，不存在则添加，只须增加uniKey参数：</p>
+<pre><code>callSvr("Store.batchAdd", {uniKey: "name,tel"}, function (ret) {
+    app_alert("成功导入" + ret.cnt + "条数据！");
+}, data);</code></pre>
+<p class="see"><strong>@see <a href="#uniKey">uniKey</a></strong>  </p>
+<p>注意: v5.5中为batchAdd接口增加了uniKey机制，在v6中为add接口增加了uniKey机制，这样batchAdd可以直接使用add接口的相应机制。</p>
+<h4 id="AccessControl::api_batchAdd-3 支持带子表导入">3 支持带子表导入</h4>
 <p>(v5.5) 示例：有以下主-子表对象：</p>
 <pre><code>工单：@Ordr: id, code, itemId, qty
 工单配料单 @BOM: id, orderId, code, name</code></pre>
@@ -3503,22 +3715,25 @@ app_alert(&quot;成功导入&quot; + ret.cnt + &quot;条数据！&quot;);<br />
 SCDD210202302   30101001010484  热像仪#Fotric 615C-L47 2021-02-04  2021-02-04  1.00    20901001000052  标品#Lantern_B31-L47  1
 SCDD210202302   30101001010484  热像仪#Fotric 615C-L47 2021-02-04  2021-02-04  1.00    10205001000017  标签#Lantern_40*30mm铜版纸空白标签#中性#通用 1
 &lt;/script&gt;</code></pre>
-<p>注意：由于子表分布在多行，是多次导入的，所以必须指定uniKey参数，避免重复加主表。此处实际调用可理解为：</p>
-<pre><code>callSvr("Ordr.add", $.noop, {code, itemCode, itemName, ..., qty, bom: [ {code, name, qty} ]);
-// code存在，则做更新操作
-callSvr("Ordr.set", {id}, $.noop, {code, itemCode, itemName, ..., qty, bom: [ {code, name, qty} ]);</code></pre>
-<p>可见，主-子表结构的表导入时，主表字段会重复多次，而真正有用的是uniKey字段，所以导入数据也可以精简为：</p>
+<p>注意：由于子表分布在多行，必须以uniKey参数指定主表唯一字段（支持多个字段联合，以逗号分隔），将根据此字段将多行数组组合成对象后一次导入。若不指定uniKey字段，则每行分别添加，导致子表被后面数据所覆盖。<br />
+为了正确将主-子表结构的数据行组合成对象，必须保证：组成一个对象的所有行必须在一起，具有相同的uniKey字段，或是对象的第二行起，不指定uniKey字段。</p>
+<p>上例也可以简化定义成：(第二行起，无须主表字段，只需要最后三个子表字段) (拷贝到Excel中看)</p>
 <pre><code>&lt;script type="text/template" class="tplOrdr"&gt;
 !title=code,itemCode,itemName,planTm,planTm1,qty,@bom.code,@bom.name,@bom.qty&amp;uniKey=code
 生产订单号   物料编码    物料规格    开工日期    完工日期    生产数量    子件编码    子件规格    基本用量
 SCDD210202302   30101001010484  热像仪#Fotric 615C-L47 2021-02-04  2021-02-04  1.00    20901001000052  标品#Lantern_B31-L47  1
-SCDD210202302                       10205001000017  标签#Lantern_40*30mm铜版纸空白标签#中性#通用 1
+                        10205001000017  标签#Lantern_40*30mm铜版纸空白标签#中性#通用 1
 &lt;/script&gt;</code></pre>
 <p>支持导入多个子表，格式示例：(拷贝到Excel中看)</p>
 <pre><code>主表字段1(假如为uniKey字段)  主表字段2   @子表A.字段1    @子表B.字段1
 id1 value1  suba1   subb1
 id1     suba2   
 id2 value2  suba3   </code></pre>
+<p>它表示：</p>
+<pre><code>[
+    {"主表字段1": "id1", "主表字段2": "value1", "子表A": [{ "字段1": "suba1" }, {"字段1": "suba2"}], "子表B": [{"字段1": "subb1"}]},
+    {"主表字段1": "id2", "主表字段2": "value2", "子表A": [{ "字段1": "suba3" }] }
+]</code></pre>
 <p>它等价于：（将主表、子表分开看的更清楚）</p>
 <pre><code>主表字段1(假如为uniKey字段)  主表字段2   @子表A.字段1    @子表B.字段1
 id1 value1      
@@ -3527,7 +3742,7 @@ id1     suba2
 id1         subb1
 id2 value2      
 id2     suba3   </code></pre>
-<h4 id="AccessControl::api_batchAdd-3 支持列名映射">3 支持列名映射</h4>
+<h4 id="AccessControl::api_batchAdd-4 支持列名映射">4 支持列名映射</h4>
 <p>(v5.5) 数据表导入时，默认是按固定列顺序来确定字段的，比如第1列必须是code，第2列必须是itemCode，如果要跳过一列，须通过&quot;-&quot;来指定；<br />
 使用列名映射是另一种方式（通过指定参数useColMap=1激活），示例：</p>
 <pre><code>!title=code,itemCode&amp;useColMap=1
@@ -3615,7 +3830,7 @@ if (issetval(&quot;perms&quot;)) ...</p>
     }
     // $params为待添加数据，可在此修改，如用`$params["k1"]=val1`添加或更新字段，用unset($params["k1"])删除字段。
     // $row为原始行数据数组。
-    function beforeAdd(&amp;$params, $row) {
+    function beforeAdd(&amp;$params) {
         // vendorName -&gt; vendorId
         // 如果会大量重复查询vendorName,可以将结果加入cache来优化性能
         if (! $this-&gt;vendorCache)

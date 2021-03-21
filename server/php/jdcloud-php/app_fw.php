@@ -1009,36 +1009,29 @@ function sql_concat()
 
 - 键值对，键为字段名，值为查询条件，使用更加直观（如字符串不用加引号），如：
 
-		["id"=>1, "status"=>"CR", "name"=>"null", "dscr"=>null, "f1"=>""]
-		生成 "id=1 AND status='CR'" AND name IS NULL AND f1=''
-		注意，当值为null时会忽略掉该条件，但若为"null"则表示"IS NULL"条件
+		["id"=>1, "status"=>"CR", "name"=>"null", "dscr"=>null, "f1"=>"", "f2"=>"empty"]
+		生成 "id=1 AND status='CR'" AND name IS NULL AND f2=''
+		注意，当值为null或空串时会忽略掉该条件，用"null"表示"IS NULL"条件，用"empty"表示空串。
 
 		可以使用符号： > < >= <= !(not) ~(like匹配)
 		["id"=>"<100", "tm"=>">2020-1-1", "status"=>"!CR", "name"=>"~wang%", "dscr"=>"~aaa", "dscr2"=>"!~aaa"]
 		生成 "id<100 AND tm>'2020-1-1" AND status<>'CR' AND name LIKE 'wang%' AND dscr LIKE '%aaa%' AND dscr2 NOT LIKE '%aaa%'"
 		like用于字符串匹配，字符串中用"%"或"*"表示通配符，如果不存在通配符，则表示包含该串(即生成'%xxx%')
 
-	注意：null和空串匹配是特殊处理的，要用字符串null表示null, 用empty表示空串：
-
-		["a"=>null, "b"=>"null", "c"=>"", "d"=>"empty"]
-		生成 "b IS NULL" AND d=''", a和c会被忽略掉
-
 		["b"=>"!null", "d"=>"!empty"]
 		生成 "b IS NOT NULL" AND d<>''"
 
 	可用AND或OR连接多个条件，但不可加括号嵌套：
 
-		["tm" => ">=2020-1-1 AND <2020-2-1"]
-		生成 "tm>='2020-1-1' AND tm<'2020-2-1"
-
-		["tm" => "<2020-1-1 OR >=2020-2-1"]
-		生成 "tm<'2020-1-1' OR tm>='2020-2-1"
+		["tm"=>">=2020-1-1 AND <2020-2-1", "tm2"=>"<2020-1-1 OR >=2020-2-1"]
+		生成 "(tm>='2020-1-1' AND tm<'2020-2-1') AND (tm2<'2020-1-1' OR tm2>='2020-2-1')"
 
 		["id"=>">=1 AND <100", "status"=>"CR OR PA", "status2"=>"!CR AND !PA OR null"]
 		生成 "(id>=1 AND id<100) AND (status='CR' OR status='PA') AND (status2<>'CR" AND status2<>'PA' OR status2 IS NULL)"
 
-		["a"=>"null OR empty", "b"=>"!null AND !empty"]
-		生成 "(a IS NULL OR a='') AND (b IS NOT NULL AND b<>'')"
+		["a"=>"null OR empty", "b"=>"!null AND !empty", "_or"=>1]
+		生成 "(a IS NULL OR a='') OR (b IS NOT NULL AND b<>'')", 默认为AND条件, `_or`选项用于指定OR条件
+
 
 - 数组，每个元素是上述条件字符串或键值对，如：
 
