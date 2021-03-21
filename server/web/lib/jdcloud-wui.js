@@ -7957,6 +7957,10 @@ function getQueryParamFromTable(jtbl, param)
 
 window.YesNoMap = {
 	0: "否",
+	1: "是"
+};
+window.YesNo2Map = {
+	0: "否",
 	1: "是",
 	2: "处理中"
 };
