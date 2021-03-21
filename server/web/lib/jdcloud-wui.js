@@ -6512,9 +6512,16 @@ $(window).keyup(function (e) {
 });
 
 /**
-@fn batchOp(obj, ac, jtbl, opt={data, acName="操作", onBatchDone, batchOpMode=0})
+@fn batchOp(obj, ac, jtbl, opt={data, acName="操作", onBatchDone, batchOpMode=0, queryParam})
 
-@param ac 对象接口名, 如"Task.setIf"/"Task.delIf"
+基于列表的批量处理逻辑：(v6支持基于查询条件的批量处理逻辑，见下面opt.queryParam)
+
+对表格jtbl中的多选数据进行批量处理，先调用`$obj.query(cond)`接口查询符合条件的数据条数（cond条件根据jtbl上的过滤条件及当前多选项自动得到），弹出确认框(`opt.acName`可定制弹出信息)，
+确认后调用`ac(cond)`接口对多选数据进行批量处理，处理完成后回调`opt.onBatchDone`，并刷新jtbl表格。
+
+其行为与框架内置的批量更新、批量删除相同。
+
+@param ac 对象接口名, 如"Task.setIf"/"Task.delIf"，也可以是函数接口，如"printSn"
 
 @param opt.acName 操作名称, 如"更新"/"删除"/"打印"等, 一个动词. 用于拼接操作提示语句.
 
@@ -6525,16 +6532,16 @@ opt.data也可以是一个函数dataFn(batchCnt)，参数batchCnt为当前批量
 
 @return 如果返回false，表示当前非批量操作模式，或参数不正确无法操作。
 
-支持批量操作的接口须符合下列原型:
+为支持批量操作，服务端须支持以下接口:
 
-	$obj.$ac($queryParam)($data) -> $cnt
+	// 对象obj的标准查询接口:
+	$obj.query($queryParam, res:"count(*) cnt") -> {cnt}
+	// 批量操作接口ac, 接受过滤查询条件(可通过$obj.query接口查询), 返回实际操作的数量.
+	$ac($queryParam)($data) -> $cnt
 
-接受过滤查询条件(可通过$obj.query接口查询), 返回实际操作的数量.
 其中obj, ac, data(即POST参数)由本函数参数传入(data也可以是个函数, 返回POST参数), queryParam根据表格jtbl的选择行或过滤条件自动生成.
 
-操作完成会自动刷新表格, 无须手工刷新.
-
-默认批量操作方式为:
+基于列表的批量操作，完成时会自动刷新表格, 无须手工刷新. 在列表上支持以下批量操作方式:
 
 1. 基于多选: 按Ctrl/Shift在表上选择多行，然后点操作按钮(如"删除"按钮, 更新时的"确定"按钮)，批量操作选中行；生成过滤条件形式是`{cond: "id IN (100,101)"}`, 
 
@@ -6569,17 +6576,24 @@ opt.data也可以是一个函数dataFn(batchCnt)，参数batchCnt为当前批量
 		toolbar: WUI.dg_toolbar(jtbl, jdlg, "export", btn1),
 	});
 
-后端应实现接口`Sn.print(查询条件)`, 实现示例:
+后端应实现接口`printSn(cond)`, 实现示例:
 
-	// class AC2_Sn
-	function api_print() {
+	function api_printSn() {
 		// 通过query接口查询操作对象内容. 
 		$param = array_merge($_GET, ["res"=>"code", "fmt"=>"array" ]);
-		$rv = $this->callSvc(null, "query", $param);
+		$arr = callSvcInt("Sn.query", $param);
 		addLog($rv);
+		foreach ($arr as $one) {
+			// 处理每个对象
+		}
 		// 应返回操作数量
-		return count($rv);
+		return count($arr);
 	}
+
+@param opt.queryParam
+
+(v6) 基于查询条件的批量处理，即指定opt.queryParam，这时jtbl参数传null，与表格操作无关，只根据指定条件查询数量和批量操作。
+注意jtbl和opt.queryParam必须指定其一。参见下面示例4。
 
 ## 示例2：打开对话框，批量设置一些信息
 
@@ -6679,16 +6693,46 @@ dlgUpload.js:
 	jupload.submit();
 	return getFormData(jfrm);
 
+## 示例4: 基于查询条件的批量操作
+
+示例：在工单列表页，批量为工单中的所有工件打印跟踪码。
+
+工单为Ordr对象，工件为Sn对象。注意：此时是操作Sn对象，而非当前Ordr对象，所以不传jtbl，而是直接传入查询条件.
+
+	WUI.batchOp("Sn", "printSn", null, {
+		acName: "打印", 
+		queryParam: {cond: "orderId=80"},
+		data: {tplId: 10}
+	});
+
+后端批量打印接口设计为：
+
+	printSn(cond, tplId) -> cnt
+
+上例中，查询操作数量时将调用接口`callSvr("Sn.query", {cond: "orderId=80", res: "count(*) cnt"})`，
+在批量操作时调用接口`callSvr("printSn", {cond: "orderId=80"}, $.noop, {tplId: 10})`。
 */
 self.batchOp = batchOp;
 function batchOp(obj, ac, jtbl, opt)
 {
-	if (obj == null || jtbl == null)
+	if (obj == null)
 		return false;
 	opt = $.extend({
 		batchOpMode: 0,
 		acName: "操作"
 	}, opt);
+
+	var acName = opt.acName;
+	var queryParams = opt.queryParam;
+	if (queryParams) {
+		queryCnt();
+		return;
+	}
+
+	if (jtbl == null) {
+		console.warn("batchOp: require jtbl or opt.queryParam")
+		return false;
+	}
 
 	var selArr =  jtbl.datagrid("getChecked");
 	var batchOpMode = opt.batchOpMode;
@@ -6700,9 +6744,7 @@ function batchOp(obj, ac, jtbl, opt)
 		return false;
 	}
 
-	var queryParams;
 	var doBatchOnSel = selArr.length > 1 && (selArr[0].id != null || opt.offline);
-	var acName = opt.acName;
 	// batchOpMode=2时，未按Ctrl时选中一行也按批量操作
 	if (!doBatchOnSel && batchOpMode === 2 && !m_batchMode && selArr.length == 1 && selArr[0].id != null)
 		doBatchOnSel = true;
@@ -6743,12 +6785,16 @@ function batchOp(obj, ac, jtbl, opt)
 		queryParams = $.extend({}, p1, p2);
 		if (!queryParams.cond)
 			queryParams.cond = "t0.id>0"; // 避免后台因无条件而报错
-		var p3 = $.extend({}, queryParams, {res: "count(*) cnt"});
-		self.callSvr(obj + ".query", p3, function (data1) {
+		queryCnt();
+	}
+	return;
+
+	function queryCnt() {
+		var param = $.extend({}, queryParams, {res: "count(*) cnt"});
+		self.callSvr(obj + ".query", param, function (data1) {
 			confirmBatch(data1.d[0][0]);
 		});
 	}
-	return;
 	
 	function confirmBatch(batchCnt) {
 		console.log(ac + ": " + JSON.stringify(queryParams));
@@ -6778,11 +6824,13 @@ function batchOp(obj, ac, jtbl, opt)
 	function doBatch(data) {
 		self.callSvr(ac, queryParams, function (cnt) {
 			opt.onBatchDone && opt.onBatchDone();
-			if (doBatchOnSel && selArr.length == 1) {
-				reloadRow(jtbl, selArr[0]);
-			}
-			else {
-				reload(jtbl);
+			if (jtbl) {
+				if (doBatchOnSel && selArr.length == 1) {
+					reloadRow(jtbl, selArr[0]);
+				}
+				else {
+					reload(jtbl);
+				}
 			}
 			app_alert(acName + cnt + "条记录");
 		}, data);
