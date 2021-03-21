@@ -48,10 +48,17 @@ function addOne() {
 		echo "append $1"
 		dstFile=$2/$1
 
+		if [[ $1 == *.html || $1 == *.md ]]; then
+			tag1="<!-- "
+			tag2=" -->"
+		else
+			tag1="/*! "
+			tag2=" */"
+		fi
 		echo >> $dstFile
-		echo "/*! $pluginName BEGIN */" >> $dstFile
+		echo "$tag1 $pluginName BEGIN $tag2" >> $dstFile
 		cat $1 >> $dstFile
-		echo "/*! $pluginName END */" >> $dstFile
+		echo "$tag1 $pluginName END $tag2" >> $dstFile
 		return 1
 	fi
 }

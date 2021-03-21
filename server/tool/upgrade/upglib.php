@@ -562,7 +562,7 @@ class UpgHelper
 		case "id":
 			return $dbType == "int";
 		case "flag":
-			return $dbType == "tinyint";
+			return $dbType == "tinyint" || $dbType == "tinyint unsigned";
 		case "n":
 			return $dbType == "decimal" && $len == $meta["len"];
 		case "real":
