@@ -3485,6 +3485,7 @@ function KVtoCond($k, $v)
 				echo ',';
 			if (is_array($e))
 				$e = self::array2Str($e);
+			$autoEscape = true;
 			if ($enc) {
 				$e = iconv("UTF-8", "{$enc}//TRANSLIT" , (string)$e);
 
@@ -3492,10 +3493,11 @@ function KVtoCond($k, $v)
 				// 大数字，避免excel用科学计数法显示（从11位手机号开始）。
 				// 5位-10位数字时，Excel会根据列宽显示科学计数法或完整数字，11位以上数字总显示科学计数法。
 				if (preg_match('/^\d{11,}$/', $e)) {
-					$e .= "\t";
+					$e = "=\"$e\"";
+					$autoEscape = false;
 				}
 			}
-			if (strpos($e, '"') !== false || strpos($e, "\n") !== false || strpos($e, ",") !== false)
+			if ($autoEscape && (strpos($e, '"') !== false || strpos($e, "\n") !== false || strpos($e, ",") !== false))
 				echo '"', str_replace('"', '""', $e), '"';
 			else
 				echo $e;
@@ -3539,9 +3541,28 @@ function KVtoCond($k, $v)
 	static function table2excel($tbl)
 	{
 		$hdr = [];
-		foreach ($tbl["h"] as $h) {
-			$hdr[$h] = "string";
+		// refer to: xlsxwriter::numberFormatStandardized
+		// 典型问题：11位手机号/18位身份证号等被当成数字，显示为科学计数法且损失了精度，对这种须指定格式为string(即格式"@")
+		foreach ($tbl["h"] as $colIdx=>$h) {
+			// 猜测类型
+			$type = "GENERAL";
+			$rowCnt = count($tbl["d"]);
+			for ($rowIdx=0; $rowIdx<$rowCnt; ++$rowIdx) {
+				$e = $tbl["d"][$rowIdx][$colIdx];
+				// 含有非数值，或全数值达到11位以上（含11位），则当文本类型
+				if ($e && preg_match('/[^0-9.]|^\d{11,}$/', $e)) {
+					$type = "string";
+					break;
+				}
+				// addLog([$colIdx, $rowIdx, $e]);
+				$N = 10;   // 最多探测前后N行
+				if ($rowIdx+1 >= $N) {
+					$rowIdx = max($rowIdx, $rowCnt-$N-1);
+				}
+			}
+			$hdr[$h] = $type;
 		}
+//		jdRet(0, $hdr);
 		$writer = new XLSXWriter();
 		$writer->writeSheet($tbl["d"], "Sheet1", $hdr);
 		$writer->writeToStdOut();
@@ -3830,9 +3851,10 @@ class BatchAddStrategy
 			$this->rowIdx = 0;
 			$this->onInit();
 		}
-		$this->row = $this->onGetRow();
-		if ($this->row == null)
+		$row = $this->onGetRow();
+		if ($row == null)
 			return null;
+		$this->row = $row;
 		if (++ $this->rowIdx == 1) {
 			$title = param("title", null, "G", false);
 			$row1 = null;
@@ -4023,7 +4045,7 @@ class CsvBatchAddStrategy extends BatchAddStrategy
 		if (count($_FILES) == 0) {
 			$content = getHttpInput();
 			self::backupFile(null, null);
-			$this->fp = fopen("data://text/plain," . $content, "rb");
+			$this->fp = fopen("data://text/plain," . urlencode($content), "rb");
 
 			$line1 = fgets($this->fp);
 			if (strpos($line1, "\t") !== false)

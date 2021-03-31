@@ -593,6 +593,11 @@ function api_export()
 	$enc = param("enc", "utf-8");
 	header("Content-Type: text/plain; charset=" . $enc);
 	header('Content-Disposition: attachment; filename='. Upload::quote($fname));
+
+	$forexcel = param("forexcel/b", 1);
+	if ($forexcel && stripos($fname, ".csv") !== false) {
+		$str = preg_replace('/\b\d{11,}\b/', '="$0"', $str);
+	}
 	if ($enc != "utf-8")
 		$str = iconv("utf-8", "$enc//IGNORE", $str);
 	echo($str);
