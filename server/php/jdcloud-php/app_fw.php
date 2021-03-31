@@ -2173,7 +2173,12 @@ class AppBase
 			addLog((string)$e, 9);
 		}
 		catch (PDOException $e) {
+			// SQLSTATE[23000]: Integrity constraint violation: 1451 Cannot delete or update a parent row: a foreign key constraint fails (`jdcloud`.`Obj1`, CONSTRAINT `Obj1_ibfk_1` FOREIGN KEY (`objId`) REFERENCES `Obj` (`id`))",
 			list($code, $msg, $msg2) = [E_DB, $ERRINFO[E_DB], $e->getMessage()];
+			if (preg_match('/a foreign key constraint fails [()]`\w+`.`(\w+)`/', $msg2, $ms)) {
+				$tbl = function_exists("T")? T($ms[1]) : $ms[1]; // T: translate function
+				$msg = "`$tbl`表中有数据引用了本记录";
+			}
 			addLog((string)$e, 9);
 		}
 		catch (Exception $e) {
