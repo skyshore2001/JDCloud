@@ -97,15 +97,18 @@
 <li><a href="#定期任务"><span class="toc-section-number">9</span> 定期任务</a></li>
 <li><a href="#数据安全"><span class="toc-section-number">10</span> 数据安全</a></li>
 <li><a href="#插件机制"><span class="toc-section-number">11</span> 插件机制</a><ul>
-<li><a href="#需求"><span class="toc-section-number">11.1</span> 需求</a></li>
-<li><a href="#插件目录结构"><span class="toc-section-number">11.2</span> 插件目录结构</a></li>
-<li><a href="#插件安装"><span class="toc-section-number">11.3</span> 插件安装</a></li>
-<li><a href="#接口"><span class="toc-section-number">11.4</span> 接口</a><ul>
-<li><a href="#后端php-api"><span class="toc-section-number">11.4.1</span> 后端PHP API</a></li>
-<li><a href="#前端js-api"><span class="toc-section-number">11.4.2</span> 前端JS API</a></li>
-<li><a href="#交互接口"><span class="toc-section-number">11.4.3</span> 交互接口</a></li>
+<li><a href="#安装与卸载插件"><span class="toc-section-number">11.1</span> 安装与卸载插件</a></li>
+<li><a href="#创建插件"><span class="toc-section-number">11.2</span> 创建插件</a></li>
 </ul></li>
-<li><a href="#发布与上线"><span class="toc-section-number">11.5</span> 发布与上线</a></li>
+<li><a href="#插件机制旧"><span class="toc-section-number">12</span> 插件机制（旧）</a><ul>
+<li><a href="#插件目录结构"><span class="toc-section-number">12.1</span> 插件目录结构</a></li>
+<li><a href="#插件安装"><span class="toc-section-number">12.2</span> 插件安装</a></li>
+<li><a href="#接口"><span class="toc-section-number">12.3</span> 接口</a><ul>
+<li><a href="#后端php-api"><span class="toc-section-number">12.3.1</span> 后端PHP API</a></li>
+<li><a href="#前端js-api"><span class="toc-section-number">12.3.2</span> 前端JS API</a></li>
+<li><a href="#交互接口"><span class="toc-section-number">12.3.3</span> 交互接口</a></li>
+</ul></li>
+<li><a href="#发布与上线"><span class="toc-section-number">12.4</span> 发布与上线</a></li>
 </ul></li>
 </ul></li>
 </ul></div>
@@ -1652,7 +1655,7 @@ $rv = callSvcInt(&quot;XX.query&quot;); // 这样就可以调用AC1_XX类的接�
 <p><strong>[数据库备份任务:db]</strong></p>
 <p>作为示例, task.php中自带一个<code>db</code>任务, 在task.crontab.php中设置每天执行一次, 用于备份数据库。 备份脚本是backup_db.sh, 修改其中的数据库连接设置即可实现数据库日备份.</p>
 <h2 id="数据安全"><span class="header-section-number">10</span> 数据安全</h2>
-<p><strong><a href="#需求">需求</a></strong></p>
+<p><strong>[需求]</strong></p>
 <p>考虑以下灾难场景及恢复方式：</p>
 <ul>
 <li>服务器不正常关机，重启后数据有损失 -- 通过数据库自带的工具修复，不做数据恢复</li>
@@ -1678,16 +1681,58 @@ $rv = callSvcInt(&quot;XX.query&quot;); // 这样就可以调用AC1_XX类的接�
 <li>如果事务增长至单一主机无法解决，则应组件集群。</li>
 </ul>
 <h2 id="插件机制"><span class="header-section-number">11</span> 插件机制</h2>
-<p>支持版本: v3.0</p>
-<h3 id="需求"><span class="header-section-number">11.1</span> 需求</h3>
+<p>筋斗云框架从v3.0开始支持插件，即plugin下的各目录，因与框架项目在一起，称为内置插件（下一章节介绍）； 到v5.5开始支持外部独立插件，便于独立维护，新的插件都应以这种方式创建和维护，本节只介绍新的插件机制。</p>
 <ul>
 <li>插件是一块独立的功能，可以被单独安装或删除。</li>
 <li>插件有版本管理，可以升级。</li>
 <li>插件开发的内容中包括数据模型定义、前端页面及后端接口。</li>
-<li><p>插件间可以有依赖关系。还可能依赖原生cordova插件。</p></li>
-<li><p>插件可以是通用于所有应用的，也可以是专用于某一应用的。</p></li>
+<li>插件间可以有依赖关系。还可能依赖原生cordova插件。</li>
+<li>插件可以是通用于所有应用的，也可以是专用于某一应用的。</li>
 </ul>
-<h3 id="插件目录结构"><span class="header-section-number">11.2</span> 插件目录结构</h3>
+<p>工具tool/jdcloud-plugin.sh用于安装、卸载和创建插件。文件plugin.dat用于记录插件安装信息。</p>
+<h3 id="安装与卸载插件"><span class="header-section-number">11.1</span> 安装与卸载插件</h3>
+<p>用法：须在项目目录下调用，假设项目目录为myproject, 插件为jdcloud-plugin-notify. 两个目录必须都使用git管理。</p>
+<pre><code># 用git下载插件，注意与项目目录平级
+git clone server-pc:src/jdcloud-plugin-notify
+cd myproject
+
+# 安装
+./tool/jdcloud-plugin add ../jdcloud-plugin-notify
+
+# 删除
+./tool/jdcloud-plugin del jdcloud-plugin-notify
+也可以用
+./tool/jdcloud-plugin del ../jdcloud-plugin-notify</code></pre>
+<p>插件的目录结构与项目目录一致。安装时，将插件目录下的文件复制到项目相应目录下，或对于项目中已有的文件，则会将内容追加到相应文件中，然后将安装信息写入plugin.dat文件中，并将相关文件均添加到git。 删除插件时，根据plugin.dat中的相应数据，删除文件或删除共享文件中插件的内容。</p>
+<p>特别地，插件下的README.md文件将被复制到项目下的路径<code>server/plugin/{插件名}.README.md</code>。</p>
+<p>plugin.dat格式如下：</p>
+<pre><code>{pluginName}    #{git版本}
+{pluginName}    {newFile}
+{pluginName}    +{appendfile}</code></pre>
+<p>版本行只用于记录版本，无处理逻辑。标记为+的文件在删除插件时，会自动将追加的内容删除掉，而不是删除整个文件。</p>
+<h3 id="创建插件"><span class="header-section-number">11.2</span> 创建插件</h3>
+<p>假如要创建名为jdcloud-plugin-url的插件，须先在plugin.dat中注册插件需要的所有文件，如：</p>
+<pre><code>jdcloud-plugin-url  #init
+jdcloud-plugin-url  server/url.php
+jdcloud-plugin-url  +server/plugin/index.php</code></pre>
+<p>其中第1行表示插件名；第2行表示将指定文件添加到插件；第3行中，文件名前有加号，表示只需要该文件将特定标识内的内容添加到插件。</p>
+<p>特定标识为<code>{插件名} BEGIN</code>和<code>{插件名} END</code>，其中的内容即为插件内容，特定标识一般包在注释内，示例：</p>
+<pre><code>/*! jdcloud-plugin-url BEGIN */
+function api_getShareUrl()
+{
+    ...
+}
+/*! jdcloud-plugin-url END */</code></pre>
+<p>创建一个说明文件，路径为<code>server/plugin/{插件名}.README.md</code>。这里创建<code>server/plugin/jdcloud-plugin-url.README.md</code>。 该文件将对应插件目录下的README.md文件。</p>
+<p>接下来，创建独立的插件目录和代码库，它与项目平级：</p>
+<pre><code>git init jdcloud-plugin-url</code></pre>
+<p>然后回到项目目录，调用命令，根据plugin.dat的内容创建插件到指定路径：</p>
+<pre><code>./tool/jdcloud-plugin create ../jdcloud-plugin-notify</code></pre>
+<p>然后进入插件目录，提交文件到git库即可。</p>
+<p>若要更新插件，也是相同步骤：更新plugin.dat，调用<code>jdcloud-plugin create</code>命令，提交文件到插件git库。</p>
+<h2 id="插件机制旧"><span class="header-section-number">12</span> 插件机制（旧）</h2>
+<p>支持版本: v3.0</p>
+<h3 id="插件目录结构"><span class="header-section-number">12.1</span> 插件目录结构</h3>
 <pre><code>plugin/  - 插件总目录
 
 plugin/index.php - 插件配置文件，指定应用使用哪些插件
@@ -1731,18 +1776,18 @@ return [
 <p>详参后端接口文档 模块api_fw -&gt; 插件机制 章节。</p>
 <p><strong>[插件移动WEB前端 plugin/{pluginName}/m2/page/]</strong></p>
 <p>和应用的 m2/page/ 目录一样，包含插件的每个逻辑页面。</p>
-<h3 id="插件安装"><span class="header-section-number">11.3</span> 插件安装</h3>
+<h3 id="插件安装"><span class="header-section-number">12.2</span> 插件安装</h3>
 <p>将插件直接复制到plugin目录下，在plugin/index.php中添加该插件名即可。</p>
 <p class="todo">TODO: 安装相关API和交互接口</p>
 <p class="todo">TODO: 相关表更新 用upgrade.php</p>
-<h3 id="接口"><span class="header-section-number">11.4</span> 接口</h3>
-<h4 id="后端php-api"><span class="header-section-number">11.4.1</span> 后端PHP API</h4>
+<h3 id="接口"><span class="header-section-number">12.3</span> 接口</h3>
+<h4 id="后端php-api"><span class="header-section-number">12.3.1</span> 后端PHP API</h4>
 <pre><code>Plugins.add($pluginList);  // 添加插件
 Plugins.exists($pluginName); // 判断插件是否存在</code></pre>
 <p class="todo">TODO: 服务端安装插件：</p>
 <pre><code>Plugins.install(&#39;plugin1@1.1&#39;); -- 注册的插件, 下载到本地，解压到plugin目录下，再自动更新plugin/index.php文件。
 Plugins.uninstall(&#39;plugin1&#39;); -- 删除插件目录，再更新plugin/index.php。</code></pre>
-<h4 id="前端js-api"><span class="header-section-number">11.4.2</span> 前端JS API</h4>
+<h4 id="前端js-api"><span class="header-section-number">12.3.2</span> 前端JS API</h4>
 <pre><code>MUI.initClient(); // 前端初始化，如需调用以下接口，须在muiInit事件中调用。
 
 Plugins.exists(pluginName); // 判断插件是否存在
@@ -1759,7 +1804,7 @@ function myInit()
 if (Plugins.exists(&#39;plugin1&#39;)) {
     MUI.showPage(&#39;#plugin1-page1&#39;);
 }</code></pre>
-<h4 id="交互接口"><span class="header-section-number">11.4.3</span> 交互接口</h4>
+<h4 id="交互接口"><span class="header-section-number">12.3.3</span> 交互接口</h4>
 <p>返回插件列表：</p>
 <pre><code>initClient() -&gt; { @plugins? }
 
@@ -1767,7 +1812,7 @@ plugins:: { name =&gt; {js?} }</code></pre>
 <p class="todo">TODO: 安装与卸载</p>
 <pre><code>addPlugin(name)
 delPlugin(name)</code></pre>
-<h3 id="发布与上线"><span class="header-section-number">11.5</span> 发布与上线</h3>
+<h3 id="发布与上线"><span class="header-section-number">12.4</span> 发布与上线</h3>
 <p>应用专属插件可直接存放在plugin目录下，使用与主应用相同的代码库。</p>
 <p>在上线时，不同的项目分别创建一个build_web.sh，根据配置不同选择不同的插件更新到服务器。 文件plugin/index.php不上线，必须手工上传服务器。</p>
 <p>build_web.sh</p>
