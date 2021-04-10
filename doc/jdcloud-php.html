@@ -2,7 +2,6 @@
 <html>
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>筋斗云接口编程</title>
   <style type="text/css">code{white-space: pre;}</style>
 <link rel="stylesheet" href="style.css" />
@@ -214,6 +213,9 @@ ApiLog.del(id)</code></pre>
 <p>测试模式不仅美化输出数据，还可返回调试信息，可以设置调试等级为0-9，如果设置为9，可以查看SQL调用日志：</p>
 <pre><code>putenv(&quot;P_DEBUG=9&quot;);</code></pre>
 <p>这在调试SQL语句时很有用。此外，测试模式还会开放某些内部接口，以及缺省允许跨域访问，便于通过web页面测试接口。注意线上生产环境绝不可设置为测试模式。</p>
+<p>将接口返回内存保存到debug.log用于调试：</p>
+<pre><code>putenv(&quot;P_DEBUG_LOG=1&quot;);</code></pre>
+<p>值为0: 不记日志；值为1：记录所有日志（适合调试或试用阶段）；值为2：只记录错误日志（适合正式使用）</p>
 <p>query接口也支持常用的数组返回，需要加上<code>fmt=list</code>参数：</p>
 <pre><code>curl http://localhost/mysvc/api.php/ApiLog.query -d &quot;fmt=list&quot;</code></pre>
 <p>返回示例：</p>
@@ -226,8 +228,9 @@ ApiLog.del(id)</code></pre>
     &quot;nextkey&quot;:11349
 }]</code></pre>
 <p>还可以将<code>fmt</code>参数指定为&quot;csv&quot;, &quot;excel&quot;, &quot;txt&quot;等，在浏览器访问时可直接下载相应格式的文件，读者可自己尝试。</p>
-<p>取下一页可以用pagekey字段，还可指定一次取的数据条数，用pagesz字段：</p>
+<p>返回的nextkey字段表示数据未完，可以用pagekey字段来取下一页，还可指定一次取的数据条数，用pagesz字段：</p>
 <pre><code>curl &quot;http://localhost/mysvc/api.php/ApiLog.query?pagekey=11349&amp;pagesz=5&quot;</code></pre>
+<p>直到返回数据中没有nextkey字段，表示已到最后一页。</p>
 <p>不仅支持分页，query接口非常灵活，可以指定返回字段、查询条件、排序方式， 比如查询2016年1月份的数据(cond参数)，结果只需返回id, addr字段(res参数，也可用于get接口)，按id倒序排列(orderby参数)：</p>
 <pre><code>curl http://localhost/mysvc/api.php/ApiLog.query -d &quot;res=id,addr&quot; -d &quot;cond=tm&gt;=&#39;2016-1-1&#39; and tm&lt;&#39;2016-2-1&#39;&quot; -d &quot;orderby=id desc&quot;</code></pre>
 <p>甚至可以做统计，比如查看2016年1月里，列出访问次数排名前10的地址，以及每个地址访问了多少次服务器，也可以通过query接口直接查出。 做一个按addr字段的分组统计(gres参数)：</p>
@@ -664,7 +667,7 @@ lower_case_table_names=0 </code></pre>
 <div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="kw">class</span> AC_ApiLog <span class="kw">extends</span> AccessControl
 {
     <span class="kw">protected</span> <span class="kw">$allowedAc</span> = <span class="ot">[</span><span class="st">&quot;get&quot;</span><span class="ot">,</span> <span class="st">&quot;query&quot;</span><span class="ot">];</span>
-    <span class="co">// 默认值为 [&quot;add&quot;, &quot;get&quot;, &quot;set&quot;, &quot;del&quot;, &quot;query&quot;]</span>
+    <span class="co">// 可以为 [&quot;add&quot;, &quot;get&quot;, &quot;set&quot;, &quot;del&quot;, &quot;query&quot;， &quot;setIf&quot;, &quot;delIf&quot;, &quot;batchAdd&quot;]中任意几个。</span>
 }</code></pre></div>
 <p>缺省get/query操作返回ApiLog的所有字段，可以用属性<code>$hiddenFields</code>隐藏一些字段，比如不返回&quot;addr&quot;和&quot;tm&quot;字段：</p>
 <div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="kw">class</span> AC_ApiLog <span class="kw">extends</span> AccessControl
@@ -972,24 +975,20 @@ OrderItem(orderId) n&lt;-&gt;1 Ordr</code></pre>
 <p>前面提到过想在对象中返回子表时，可以使用压缩成一个字符串的子表字段，一般适合数据比较简单的场合。</p>
 <p>另一种方式是用<code>$subobj</code>来定义子表字段，注意它也适用于关联表字段。</p>
 <p>例如在获取订单时，同时返回订单日志，设计接口如下：</p>
-<pre><code>Ordr.get() -&gt; {id, ..., @orderLog?, @user?}
+<pre><code>Ordr.get() -&gt; {id, ..., @orderLog?, %user?}
 
-数据库中订单，日志及用户表如下：
-@Ordr: id, userId, tm, amount (通过userId关联User)
-@OrderLog: id, orderId, tm, dscr (通过orderId关联Ordr)
-@User: id, name
-
-返回
-orderLog: {tm, dscr} 订单日志（子表）。
-user: {id, name} 关联的用户（关联表）。
-
-示例
-
-{id: 1, dscr: &quot;换轮胎及洗车&quot;, ..., orderLog: [
+- orderLog: [{tm, dscr}] 订单日志（子表）。
+- user: {id, name} 关联的用户（关联表）。</code></pre>
+<p>上面接口原型描述中，字段orderLog前面的&quot;@&quot;标记表示它是一个数组，字段user前面的&quot;%&quot;标记它是一个对象。</p>
+<p>接口返回示例：</p>
+<pre><code>{id: 1, dscr: &quot;换轮胎及洗车&quot;, ..., orderLog: [
     {tm: &quot;2016-1-1 10:10&quot;, dscr: &quot;创建订单&quot;},
     {tm: &quot;2016-1-1 10:20&quot;, dscr: &quot;付款&quot;}
 ], user: {id: 1, name: &quot;用户1&quot;} }</code></pre>
-<p>上面接口原型描述中，字段orderLog前面的&quot;@&quot;标记表示它是一个数组，在返回值介绍中列出了它的数据结构。</p>
+<p>数据库中订单，日志及用户表如下：</p>
+<pre><code>@Ordr: id, userId, tm, amount (通过userId关联User)
+@OrderLog: id, orderId, tm, dscr (通过orderId关联Ordr)
+@User: id, name</code></pre>
 <p>实现示例：</p>
 <div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="kw">class</span> AC1_Ordr <span class="kw">extends</span> AccessControl
 {
@@ -1023,8 +1022,7 @@ user: {id, name} 关联的用户（关联表）。
 <pre><code>    &quot;orderLog&quot; =&gt; [&quot;obj&quot;=&gt;&quot;OrderLog&quot;, cond&quot;=&gt;&quot;orderId={id}&quot;, &quot;AC&quot;=&gt;&quot;AC1_OrderLog&quot;]</code></pre>
 <p>用了<code>AC1</code>前缀则表示该接口对外开放了，也可以把类名改为<code>OrderLog</code>这样的类，这样子表接口就不直接对外开放了。</p>
 <p>有了子表定义，可以在<code>Ordr.add</code>接口中直接添加子项，如</p>
-<pre><code>callSvr(&quot;Ordr.add&quot;, $.noop, {..., orderLog: [{dscr:&quot;操作1&quot;}, {dscr:&quot;操作2&quot;}]}, {contentType: &quot;application/json&quot;});
-(注意前端callSvr接口可指定contentType为json格式，传输更清晰)</code></pre>
+<pre><code>callSvr(&quot;Ordr.add&quot;, $.noop, {..., orderLog: [{dscr:&quot;操作1&quot;}, {dscr:&quot;操作2&quot;}]});</code></pre>
 <p>它内部会调用<code>OrderLog.add</code>接口。</p>
 <p>以及在<code>Ordr.set</code>中追加、更新和删除子项，如：</p>
 <pre><code>callSvr(&quot;Ordr.set&quot;, $.noop, {orderLog: [{dscr:&quot;操作3&quot;}] } ); // 未指定子项id，表示追加一项，
@@ -1036,7 +1034,7 @@ callSvr(&quot;Ordr.set&quot;, $.noop, {orderLog: [{id:1, dscr:&quot;操作-1&quo
 <p>它内部会调用<code>OrderLog.add/set/del</code>接口。</p>
 <p>当然，前提是子表AC类中允许相应的接口。AC类默认是支持这些标准接口的，可由<code>$allowedAc</code>来限定，例如例中限制了只允许<code>query</code>接口(<code>$allowedAc=[&quot;query&quot;]</code>)，于是所有对子项的追加、更新、修改都会报错。</p>
 <h3 id="枚举字段与字段处理"><span class="header-section-number">4.7</span> 枚举字段与字段处理</h3>
-<p>之前讲的虚拟字段都是通过数据库来关联或计算的，还有一种方式可以使用代码任意处理返回字段值，这就是枚举字段。</p>
+<p>之前讲的虚拟字段都是通过数据库来关联或计算的，还有一种方式可以使用代码任意处理返回字段值，这就是枚举字段，也称计算字段。</p>
 <p>示例：实现接口</p>
 <pre><code>Ordr.get(id) -&gt; {id, status, ..., statusStr?}
 Ordr.query() -&gt; tbl(同get接口字段...)
@@ -1062,32 +1060,47 @@ Ordr.query() -&gt; tbl(同get接口字段...)
 <div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="kw">class</span> AC1_Ordr <span class="kw">extends</span> AccessControl
 {
     <span class="kw">protected</span> <span class="kw">$vcolDefs</span> = <span class="ot">[</span>
-        <span class="co">// 定义statusStr就是status，如果希望默认返回，可加&quot;default&quot;:true选项。</span>
+        <span class="co">// 定义虚拟字段statusStr，如果希望query接口默认返回该字段，可追加`&quot;default&quot;:true`选项。</span>
         <span class="ot">[</span> <span class="st">&quot;res&quot;</span> =&gt; <span class="ot">[</span><span class="st">&quot;status statusStr&quot;</span><span class="ot">]</span> <span class="ot">],</span>
     <span class="ot">];</span>
     <span class="kw">static</span> <span class="kw">$statusMap</span> = <span class="ot">[</span><span class="st">&quot;CR&quot;</span>=&gt;<span class="st">&quot;新创建&quot;</span><span class="ot">,</span> <span class="st">&quot;PA&quot;</span>=&gt;<span class="st">&quot;已付款&quot;</span><span class="ot">];</span>
     <span class="kw">protected</span> <span class="kw">function</span> onInit<span class="ot">()</span>
     {
+        <span class="co">// 字段计算逻辑</span>
         <span class="kw">$this</span>-&gt;enumFields<span class="ot">[</span><span class="st">&quot;statusStr&quot;</span><span class="ot">]</span> = <span class="kw">function</span> <span class="ot">(</span><span class="kw">$val</span><span class="ot">,</span> <span class="kw">$row</span><span class="ot">)</span> {
             <span class="kw">return</span> <span class="er">@</span><span class="kw">self</span>::<span class="kw">$statusMap</span><span class="ot">[</span><span class="kw">$val</span><span class="ot">]</span> <span class="ot">?:</span> <span class="kw">$val</span><span class="ot">;</span>
         }<span class="ot">;</span>
     }
 }</code></pre></div>
-<p>由于enumFields很灵活，我们经常使用enumFields机制来实现计算字段。</p>
-<p>若遇到用虚拟字段不易解决的问题，还可以用试试更加底层的onHandleRow回调。 下面的实现表示，如果返回了status字段，则自动添加statusStr字段：</p>
-<div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="kw">class</span> AC1_Ordr <span class="kw">extends</span> AccessControl
-{
+<p>由于enumFields很灵活，我们经常使用enumFields机制来对虚拟字段、子表字段做自定义计算处理，实现计算字段。</p>
+<p>假如上例中statusStr由status,type,closeFlag多个字段计算得来，可以使用require选项让它依赖其它字段。 依赖的字段可以是表字段、其它虚拟字段、子表字段等，支持多个字段，以逗号分隔，如：</p>
+<div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php">    <span class="kw">protected</span> <span class="kw">$vcolDefs</span> = <span class="ot">[</span>
+        <span class="ot">[</span>
+            <span class="st">&quot;res&quot;</span> =&gt; <span class="ot">[</span><span class="st">&quot;status statusStr&quot;</span><span class="ot">],</span>
+            <span class="st">&quot;require&quot;</span> =&gt; <span class="st">&quot;type,closeFlag&quot;</span>
+        <span class="ot">],</span>
+    <span class="ot">];</span>
     <span class="kw">static</span> <span class="kw">$statusMap</span> = <span class="ot">[</span><span class="st">&quot;CR&quot;</span>=&gt;<span class="st">&quot;新创建&quot;</span><span class="ot">,</span> <span class="st">&quot;PA&quot;</span>=&gt;<span class="st">&quot;已付款&quot;</span><span class="ot">];</span>
-    <span class="co">// get/query接口会回调</span>
-    <span class="kw">protected</span> <span class="kw">function</span> onHandleRow<span class="ot">(</span>&amp;<span class="kw">$row</span><span class="ot">)</span>
+    <span class="kw">protected</span> <span class="kw">function</span> onInit<span class="ot">()</span>
     {
-        <span class="kw">if</span> <span class="ot">(</span><span class="fu">isset</span><span class="ot">(</span><span class="kw">$row</span><span class="ot">[</span><span class="st">&quot;status&quot;</span><span class="ot">]))</span> {
-            <span class="kw">$val</span> = <span class="kw">$row</span><span class="ot">[</span><span class="st">&quot;status&quot;</span><span class="ot">];</span>
-            <span class="kw">$row</span><span class="ot">[</span><span class="st">&quot;statusStr&quot;</span><span class="ot">]</span> = <span class="er">@</span><span class="kw">self</span>::<span class="kw">$statusMap</span><span class="ot">[</span><span class="kw">$val</span><span class="ot">]</span> <span class="ot">?:</span> <span class="kw">$val</span><span class="ot">;</span>
-        }
-    }
-}</code></pre></div>
-<p>这个实现有一点问题，它不支持字段别名，比如接口调用<code>Ordr.query(res=&quot;id 编号, status 状态&quot;)</code>，这时在onHandleRow中取不到status字段，只有&quot;状态&quot;字段。 解决方法是用 getAliasVal 函数取字段值：</p>
+        <span class="co">// 字段计算逻辑</span>
+        <span class="kw">$this</span>-&gt;enumFields<span class="ot">[</span><span class="st">&quot;statusStr&quot;</span><span class="ot">]</span> = <span class="kw">function</span> <span class="ot">(</span><span class="kw">$val</span><span class="ot">,</span> <span class="kw">$row</span><span class="ot">)</span> {
+            <span class="kw">$status</span> = <span class="kw">$val</span><span class="ot">;</span>
+            <span class="co">// 用getAliasVal取字段值，不要直接用$row[k]，这样可以支持使用了别名的字段</span>
+            <span class="kw">$type</span> = <span class="kw">$this</span>-&gt;getAliasVal<span class="ot">(</span>row<span class="ot">,</span> <span class="st">&quot;type&quot;</span><span class="ot">);</span>
+            <span class="kw">$closeFlag</span> = <span class="kw">$this</span>-&gt;getAliasVal<span class="ot">(</span>row<span class="ot">,</span> <span class="st">&quot;closeFlag&quot;</span><span class="ot">);</span>
+            <span class="st">...</span> 计算逻辑 <span class="st">...</span>
+
+            <span class="co">// 示例：设置status1字段</span>
+            <span class="co">// 如果是设置已定义过的虚拟字段，应使用setAliasVal以支持别名，而非直接`$row[&quot;status1&quot;] = $val`</span>
+            <span class="kw">$this</span>-&gt;setAliasVal<span class="ot">(</span><span class="kw">$row</span><span class="ot">,</span> <span class="st">&quot;status1&quot;</span><span class="ot">,</span> <span class="st">...</span><span class="ot">);</span>
+            <span class="kw">return</span> <span class="kw">$val</span><span class="ot">;</span>
+        }<span class="ot">;</span>
+    }</code></pre></div>
+<p>类似地，可以对子表字段做深度处理，比如修改格式、增加字段等。 要注意的是，在enumField中应尽量少做SQL查询，因为在query接口中，每一行记录都会调用它，会导致大量的SQL调用和返回缓慢。</p>
+<p>一般通过计算字段已经可以解决绝大多数问题。 若遇到不易解决的问题，还可以试试更加底层的onHandleRow回调。</p>
+<p>示例：如果返回了status字段，则自动添加statusStr字段。</p>
+<p>显然，这个需求可以更优雅地通过<code>enumField(&quot;status&quot;, fn)</code>来解决，这里做为示例用onHandleRow实现如下：</p>
 <div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="kw">class</span> AC1_Ordr <span class="kw">extends</span> AccessControl
 {
     <span class="kw">static</span> <span class="kw">$statusMap</span> = <span class="ot">[</span><span class="st">&quot;CR&quot;</span>=&gt;<span class="st">&quot;新创建&quot;</span><span class="ot">,</span> <span class="st">&quot;PA&quot;</span>=&gt;<span class="st">&quot;已付款&quot;</span><span class="ot">];</span>
@@ -1102,7 +1115,6 @@ Ordr.query() -&gt; tbl(同get接口字段...)
         }
     }
 }</code></pre></div>
-<p>在enumFields回调中也是用getAliasVal和setAliasVal来支持字段别名的。</p>
 <h3 id="虚拟表和视图"><span class="header-section-number">4.8</span> 虚拟表和视图</h3>
 <p>表ApiLog中有一个字段叫app，表示前端应用名：</p>
 <pre><code>@ApiLog: id, tm, addr, app, userId

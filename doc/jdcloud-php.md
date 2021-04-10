@@ -275,6 +275,12 @@ curl用"-d"参数指定参数通过HTTP body来传递，由于默认使用HTTP P
 
 这在调试SQL语句时很有用。此外，测试模式还会开放某些内部接口，以及缺省允许跨域访问，便于通过web页面测试接口。注意线上生产环境绝不可设置为测试模式。
 
+将接口返回内存保存到debug.log用于调试：
+
+	putenv("P_DEBUG_LOG=1");
+
+值为0: 不记日志；值为1：记录所有日志（适合调试或试用阶段）；值为2：只记录错误日志（适合正式使用）
+
 query接口也支持常用的数组返回，需要加上`fmt=list`参数：
 
 	curl http://localhost/mysvc/api.php/ApiLog.query -d "fmt=list"
@@ -292,9 +298,11 @@ query接口也支持常用的数组返回，需要加上`fmt=list`参数：
 
 还可以将`fmt`参数指定为"csv", "excel", "txt"等，在浏览器访问时可直接下载相应格式的文件，读者可自己尝试。
 
-取下一页可以用pagekey字段，还可指定一次取的数据条数，用pagesz字段：
+返回的nextkey字段表示数据未完，可以用pagekey字段来取下一页，还可指定一次取的数据条数，用pagesz字段：
 
 	curl "http://localhost/mysvc/api.php/ApiLog.query?pagekey=11349&pagesz=5"
+
+直到返回数据中没有nextkey字段，表示已到最后一页。
 
 不仅支持分页，query接口非常灵活，可以指定返回字段、查询条件、排序方式，
 比如查询2016年1月份的数据(cond参数)，结果只需返回id, addr字段(res参数，也可用于get接口)，按id倒序排列(orderby参数)：
@@ -824,7 +832,7 @@ function api_payOrder()
 class AC_ApiLog extends AccessControl
 {
 	protected $allowedAc = ["get", "query"];
-	// 默认值为 ["add", "get", "set", "del", "query"]
+	// 可以为 ["add", "get", "set", "del", "query"， "setIf", "delIf", "batchAdd"]中任意几个。
 }
 ```
 
@@ -1286,25 +1294,25 @@ class AC1_Ordr extends AccessControl
 
 例如在获取订单时，同时返回订单日志，设计接口如下：
 
-	Ordr.get() -> {id, ..., @orderLog?, @user?}
+	Ordr.get() -> {id, ..., @orderLog?, %user?}
 
-	数据库中订单，日志及用户表如下：
-	@Ordr: id, userId, tm, amount (通过userId关联User)
-	@OrderLog: id, orderId, tm, dscr (通过orderId关联Ordr)
-	@User: id, name
+	- orderLog: [{tm, dscr}] 订单日志（子表）。
+	- user: {id, name} 关联的用户（关联表）。
 
-	返回
-	orderLog: {tm, dscr} 订单日志（子表）。
-	user: {id, name} 关联的用户（关联表）。
+上面接口原型描述中，字段orderLog前面的"@"标记表示它是一个数组，字段user前面的"%"标记它是一个对象。
 
-	示例
+接口返回示例：
 
 	{id: 1, dscr: "换轮胎及洗车", ..., orderLog: [
 		{tm: "2016-1-1 10:10", dscr: "创建订单"},
 		{tm: "2016-1-1 10:20", dscr: "付款"}
 	], user: {id: 1, name: "用户1"} }
 
-上面接口原型描述中，字段orderLog前面的"@"标记表示它是一个数组，在返回值介绍中列出了它的数据结构。
+数据库中订单，日志及用户表如下：
+
+	@Ordr: id, userId, tm, amount (通过userId关联User)
+	@OrderLog: id, orderId, tm, dscr (通过orderId关联Ordr)
+	@User: id, name
 
 实现示例：
 
@@ -1356,8 +1364,7 @@ class AC1_OrderLog extends AccessControl
 
 有了子表定义，可以在`Ordr.add`接口中直接添加子项，如
 
-	callSvr("Ordr.add", $.noop, {..., orderLog: [{dscr:"操作1"}, {dscr:"操作2"}]}, {contentType: "application/json"});
-	(注意前端callSvr接口可指定contentType为json格式，传输更清晰)
+	callSvr("Ordr.add", $.noop, {..., orderLog: [{dscr:"操作1"}, {dscr:"操作2"}]});
 
 它内部会调用`OrderLog.add`接口。
 
@@ -1376,7 +1383,7 @@ class AC1_OrderLog extends AccessControl
 
 ### 枚举字段与字段处理
 
-之前讲的虚拟字段都是通过数据库来关联或计算的，还有一种方式可以使用代码任意处理返回字段值，这就是枚举字段。
+之前讲的虚拟字段都是通过数据库来关联或计算的，还有一种方式可以使用代码任意处理返回字段值，这就是枚举字段，也称计算字段。
 
 示例：实现接口
 
@@ -1414,12 +1421,13 @@ class AC1_Ordr extends AccessControl
 class AC1_Ordr extends AccessControl
 {
 	protected $vcolDefs = [
-		// 定义statusStr就是status，如果希望默认返回，可加"default":true选项。
+		// 定义虚拟字段statusStr，如果希望query接口默认返回该字段，可追加`"default":true`选项。
 		[ "res" => ["status statusStr"] ],
 	];
 	static $statusMap = ["CR"=>"新创建", "PA"=>"已付款"];
 	protected function onInit()
 	{
+		// 字段计算逻辑
 		$this->enumFields["statusStr"] = function ($val, $row) {
 			return @self::$statusMap[$val] ?: $val;
 		};
@@ -1427,28 +1435,47 @@ class AC1_Ordr extends AccessControl
 }
 ```
 
-由于enumFields很灵活，我们经常使用enumFields机制来实现计算字段。
+由于enumFields很灵活，我们经常使用enumFields机制来对虚拟字段、子表字段做自定义计算处理，实现计算字段。
 
-若遇到用虚拟字段不易解决的问题，还可以用试试更加底层的onHandleRow回调。
-下面的实现表示，如果返回了status字段，则自动添加statusStr字段：
+假如上例中statusStr由status,type,closeFlag多个字段计算得来，可以使用require选项让它依赖其它字段。
+依赖的字段可以是表字段、其它虚拟字段、子表字段等，支持多个字段，以逗号分隔，如：
 
 ```php
-class AC1_Ordr extends AccessControl
-{
+	protected $vcolDefs = [
+		[
+			"res" => ["status statusStr"],
+			"require" => "type,closeFlag"
+		],
+	];
 	static $statusMap = ["CR"=>"新创建", "PA"=>"已付款"];
-	// get/query接口会回调
- 	protected function onHandleRow(&$row)
- 	{
-		if (isset($row["status"])) {
-			$val = $row["status"];
-			$row["statusStr"] = @self::$statusMap[$val] ?: $val;
-		}
- 	}
-}
+	protected function onInit()
+	{
+		// 字段计算逻辑
+		$this->enumFields["statusStr"] = function ($val, $row) {
+			$status = $val;
+			// 用getAliasVal取字段值，不要直接用$row[k]，这样可以支持使用了别名的字段
+			$type = $this->getAliasVal(row, "type");
+			$closeFlag = $this->getAliasVal(row, "closeFlag");
+			... 计算逻辑 ...
+
+			// 示例：设置status1字段
+			// 如果是设置已定义过的虚拟字段，应使用setAliasVal以支持别名，而非直接`$row["status1"] = $val`
+			$this->setAliasVal($row, "status1", ...);
+			return $val;
+		};
+	}
 ```
 
-这个实现有一点问题，它不支持字段别名，比如接口调用`Ordr.query(res="id 编号, status 状态")`，这时在onHandleRow中取不到status字段，只有"状态"字段。
-解决方法是用 getAliasVal 函数取字段值：
+类似地，可以对子表字段做深度处理，比如修改格式、增加字段等。
+要注意的是，在enumField中应尽量少做SQL查询，因为在query接口中，每一行记录都会调用它，会导致大量的SQL调用和返回缓慢。
+
+一般通过计算字段已经可以解决绝大多数问题。
+若遇到不易解决的问题，还可以试试更加底层的onHandleRow回调。
+
+示例：如果返回了status字段，则自动添加statusStr字段。
+
+显然，这个需求可以更优雅地通过`enumField("status", fn)`来解决，这里做为示例用onHandleRow实现如下：
+
 ```php
 class AC1_Ordr extends AccessControl
 {
@@ -1465,8 +1492,6 @@ class AC1_Ordr extends AccessControl
  	}
 }
 ```
-
-在enumFields回调中也是用getAliasVal和setAliasVal来支持字段别名的。
 
 ### 虚拟表和视图
 
