@@ -7866,7 +7866,8 @@ function getExportHandler(jtbl, ac, param)
 		if (ac == null) {
 			if (jtbl.size() == 0 || !jtbl.hasClass("datagrid-f"))
 				throw "error: bad datagrid: \"" + jtbl.selector + "\"";
-			ac = jtbl.datagrid("options").url;
+			var datagrid = isTreegrid(jtbl)? "treegrid": "datagrid";
+			ac = jtbl[datagrid]("options").url;
 		}
 		var p1 = getQueryParamFromTable(jtbl, param);
 		var debugShow = false;
