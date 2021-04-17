@@ -6165,7 +6165,7 @@ if (isSmallScreen()) {
  用opt.okLabel/cancelLabel可修改“确定”、“取消”按钮的名字，用opt.noCancel=true可不要“取消”按钮。
 - opt.modal: Boolean.模态对话框，这时不可操作对话框外其它部分，如登录框等。设置为false改为非模态对话框。
 - opt.data: Object. 自动加载的数据, 将自动填充到对话框上带name属性的DOM上。在修改对象时，仅当与opt.data有差异的数据才会传到服务端。
-- opt.reset: Boolean. 显示对话框前先清空。
+- opt.reset: Boolean. 显示对话框前先清空。默认为true.
 - opt.validate: Boolean. 是否提交前用easyui-form组件验证数据。内部使用。
 - opt.onSubmit: Function(data) 自动提交前回调。用于验证或补齐提交数据，返回false可取消提交。opt.url为空时不回调。
 - opt.onOk: Function(jdlg, data?) 如果自动提交(opt.url非空)，则服务端接口返回数据后回调，data为返回数据。如果是手动提交，则点确定按钮时回调，没有data参数。
@@ -6185,13 +6185,13 @@ if (isSmallScreen()) {
 	事件validate; // 提交前，用于验证或设置提交数据。返回false或ev.preventDefault()可取消提交，中止以下代码执行。
 	opt.onSubmit(); // 提交前，验证或设置提交数据，返回false将阻止提交。
 	... 框架通过callSvr自动提交数据，如添加、更新对象等。
-	opt.onOk(jdlg, data); // 提交且服务端返回数据后。data是服务端返回数据。
+	opt.onOk(data); // 提交且服务端返回数据后。回调函数中this为对话框jdlg, data是服务端返回数据。
 	事件retdata; // 与onOk类似。
 
 对于手动提交数据的对话框(opt.url为空)，执行顺序为：
 
 	事件validate; // 用于验证、设置提交数据、提交数据。
-	opt.onOk(jdlg); // 同上
+	opt.onOk(); // 同上. 回调函数中this为jdlg.
 
 注意：
 
@@ -6201,12 +6201,35 @@ if (isSmallScreen()) {
 调用此函数后，对话框将加上以下CSS Class:
 @key .wui-dialog 标识WUI对话框的类名。
 
-示例：显示一个对话框
+示例：显示一个对话框，点击确定后调用后端接口。
 
-	WUI.showDlg("#dlgReportCond", {modal:false, reset:false});
+	WUI.showDlg("#dlgCopyTo", {
+		modal: false, 
+		reset: false,
+		url: WUI.makeUrl("Category.copyTo", {cond: ...}),
+		onSubmit: ..., // 提交前验证，返回False则取消提交
+		onOk: function (retdata) {
+			var jdlgCopyTo = this; // this是当前对话框名
+			// 自动提交后处理返回数据retdata
+		}
+	});
 
-默认为模态框，指定modal:false使它成为非模态；
-默认每次打开都清空数据，指定reset:false使它保留状态。
+- 在对话框HTML中以带name属性的输入框作为参数，如`用户名:<input name="uname">`.
+- 默认为模态框(只能操作当前对话框，不能操作页面中其它组件)，指定modal:false使它成为非模态；
+- 默认每次打开都清空数据，指定reset:false使输入框保留初值或上次填写内容。
+- 设置了url属性，点击确定自动提交时相当于调用`callSvr(url, 回调onOk(retdata), POST内容为WUI.getFormData(dlg))`。
+
+如果不使用url选项，也可实现如下：
+
+	WUI.showDlg("#dlgCopyTo", {
+		modal: false, 
+		reset: false,
+		onOk: function () {
+			var jdlgCopyTo = this; // this是当前对话框名
+			var data = WUI.getFormData(jdlgCopyTo);
+			callSvr("Category.copyTo", {cond: ...}, function (retdata) { ... }, data);
+		}
+	});
 
 **对象型对话框与formMode**
 
@@ -8326,6 +8349,8 @@ $.extend($.fn.treegrid.defaults, {
 	treeField: "id", // 只影响显示，在该字段上折叠
 	pagination: false,
 	fatherField: "fatherId", // 该字段为WUI扩展，指向父节点的字段
+	singleSelect: false,
+	ctrlSelect: true, // 默认是单选，按ctrl或shift支持多选
 	loadFilter: function (data, parentId) {
 		var opt = $(this).treegrid("options");
 		var isLeaf = opt.isLeaf;

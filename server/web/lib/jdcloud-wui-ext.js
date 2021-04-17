@@ -733,7 +733,9 @@ function hiddenToCheckbox(jp, sep)
 @key .wui-labels
 
 标签字段（labels）是空白分隔的一组词，每个词是一个标签（label）。
-可以在字段下方将常用标签列出供用户选择，点一下标签则添加到文本框中，再点一下删除它。
+可以在字段下方将常用标签列出供用户选择，点一下标签则添加到文本框中，再点一下删除它。(v6) 或者点一下就设置为选中标签(设置opt.simple=true)。
+
+示例1：列出各种类型，点一下类型标签就追加到对话框。
 
 	<tr>
 		<td>标签</td>
@@ -744,6 +746,8 @@ function hiddenToCheckbox(jp, sep)
 			<p class="hint">位置标签：<span class="labels">一期 二期 三期 四期</span></p>
 		</td>
 	</tr>
+
+- 具有CSS类"labels"的组件，内容以空白分隔的多个标签，如`IT 金融 工业"。如果有dfd设置，则表示值是异步编程设置的（参考下面"异步获取示例"）。
 
 示例2：设置配置项，并配以说明和示例
 
@@ -774,6 +778,21 @@ function hiddenToCheckbox(jp, sep)
 	})
 
 // TODO: 支持beforeShow时更新
+
+示例3：(v6) 可以从推荐项中选择，也可以直接填写的输入框.
+
+		<tr>
+			<td>URL地址</td>
+			<td class="wui-labels" data-options="simple:true">
+				<input name="url" value="http://oliveche.com/mes/">
+				<p class="hint">
+					<span class="labels">生产环境|http://192.168.10.23/mes/ 测试|http://oliveche.com/mes/</span>
+				</p>
+			</td>
+		</tr>
+
+- 设置组件选项(data-options内)simple为true
+- 每项标签的格式为"text|value?"(前面例子也适用)，如"生产环境|http://192.168.10.23/mes/"表示显示"生产环境"，但点击后取值为"http://192.168.10.23/mes/"。
  */ 
 self.m_enhanceFn[".wui-labels"] = enhanceLabels;
 
@@ -782,6 +801,11 @@ function enhanceLabels(jp)
 	var jdlg = jp.closest(".wui-dialog");
 	if (jdlg.size() == 0)
 		return;
+
+	var defOpt = {
+		simple: false,
+	};
+	var opt = WUI.getOptions(jp, defOpt);
 
 	var doInit = true;
 	jdlg.on("beforeshow", onBeforeShow);
@@ -792,8 +816,12 @@ function enhanceLabels(jp)
 		doInit = false;
 
 		jp.on("click", ".labelMark", function () {
-			var label = $(this).text();
+			var label = $(this).attr("value");
 			var o = jp.find(":input[name]")[0];
+			if (opt.simple) {
+				o.value = label;
+				return;
+			}
 			var str = o.value;
 			if (str.indexOf(label) < 0) {
 				if (str.length == 0)
@@ -834,7 +862,9 @@ function enhanceLabels(jp)
 	function handleLabel(jo, s) {
 		if (s && s.indexOf("span") < 0) {
 			var spanHtml = s.split(/\s+/).map(function (e) {
-				return '<span class="labelMark">' + e + '</span>';
+				var a = e.split('|');
+				var text = a[0], value = (a[1]||a[0]);
+				return '<span class="labelMark" value="' + value + '">' + text + '</span>';
 			}).join(' ');
 			jo.html(spanHtml);
 		}
