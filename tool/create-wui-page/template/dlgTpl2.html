@@ -42,6 +42,8 @@ EOL;
 		}
 		if (@!$v["isPic"]) {
 			$uploadOpts[] = "pic:false";
+			if (preg_match('/atts$/i', $k))
+				$uploadOpts[] = "fname:true";
 		}
 		$optStr = '';
 		if ($uploadOpts) {
