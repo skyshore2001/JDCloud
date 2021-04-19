@@ -1151,7 +1151,8 @@ self.formItems[".combo-f"] = $.extend({}, self.defaultFormItems, {
 		return jo.combo("textbox").prop("readonly");
 	},
 	setReadonly: function (jo, val) {
-		jo.combo("textbox").prop("readonly", val);
+		jo.combo("readonly", val);
+		//jo.combo("textbox").prop("readonly", val);
 	},
 	// 用于显示的虚拟字段值
 	getValue_vf: function (jo) {
@@ -1930,6 +1931,8 @@ function enhanceSubobj(jo)
 		relatedKey.replace(/(\w+)=(?:\{(\w+)\}|(\S+))/g, function (ms, key, key2, value) {
 			if (key2) {
 				objParam[key] = formData[key2];
+				if (objParam[key] === undefined)
+					objParam[key] = "";
 			}
 			else {
 				objParam[key] = value.replace(/['"]/g, '');

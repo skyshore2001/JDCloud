@@ -11,9 +11,16 @@ foreach ($meta as $k => $v) {
 		$v["enum"] = "YesNoMap";
 	}
 	if (@$v["linkTo"]) {
-		$dom = <<<EOL
+		if (! preg_match('/Grid$/', $v["linkTo"])) {
+			$dom = <<<EOL
 <select name="$k" class="my-combobox" data-options="ListOptions.{$v["linkTo"]}()"></select>
 EOL;
+		}
+		else {
+			$dom = <<<EOL
+<input name="$k" class="wui-combogrid" data-options="ListOptions.{$v["linkTo"]}()">
+EOL;
+		}
 	}
 	else if (@$v["enum"]) {
 		$enum = $v["enum"];
@@ -90,4 +97,5 @@ EOL;
 <input name="name" class="easyui-validatebox" data-options="required:true">
 <select name="customerId" class="my-combobox" data-options="ListOptions.Customer()"></select>
 <select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap"></select>
+<input name="customerId" class="wui-combogrid" data-options="ListOptions.CustomerGrid()">
 -->
