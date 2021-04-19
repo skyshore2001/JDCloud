@@ -39,7 +39,12 @@ fi
 $GIT_INIT $to
 cd $to
 git checkout -b $tob
-git pull ../$from $fromb --depth 1
+# 如果不是网络地址或绝对地址则添加"../". 绝对地址如 server-pc:src/jdcloud  http://server-pc/git/jdcloud c:/git/jdcloud /git/jdcloud
+if [[ $from == *:* || $from == /* ]]; then
+	git pull $from $fromb --depth 1
+else
+	git pull ../$from $fromb --depth 1
+fi
 initMsg="init from $from $(git log -1 --format=%H)"
 git checkout --orphan master
 git add .
