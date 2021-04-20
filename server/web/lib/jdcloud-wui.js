@@ -8060,7 +8060,7 @@ var Formatter = {
 		PA: "待服务"
 	}
 
-常用的YesNoMap是预定义的`0-否,1-是,2-处理中`映射，示例：
+常用的YesNoMap是预定义的`0-否,1-是`映射，示例：
 
 	<th data-options="field:'clearFlag', sortable:true, jdEnumMap:YesNoMap, formatter:Formatter.enum(YesNoMap), styler:Formatter.enumStyler({1:'Disabled',0:'Warning'}, 'Warning')">已结算</th>
 
@@ -8088,20 +8088,26 @@ var Formatter = {
 		}
 	},
 /**
-@fn Formatter.enumStyler(colorMap, defaultColor)
+@fn Formatter.enumStyler(colorMap, defaultColor?, field?)
 
 为列表的单元格上色，示例：
 
 	<th data-options="field:'status', jdEnumMap: OrderStatusMap, formatter:Formatter.enum(OrderStatusMap), styler:Formatter.enumStyler({PA:'Warning', RE:'Disabled', CR:'#00ff00', null: 'Error'}), sortable:true">状态</th>
 
-颜色可以直接用rgb表示如'#00ff00'，或是颜色名如'red'等，最常用是用系统预定的几个常量'Warning', 'Error', 'Info', 'Disabled'.
+颜色可以直接用rgb表示如'#00ff00'，或是颜色名如'red'等，最常用是用系统预定的几个常量'Warning'（黄）, 'Error'（红）, 'Info'（绿）, 'Disabled'（灰）.
 缺省值可通过defaultColor传入。
+
+如果是根据其它字段来判断，使用field选项指定字段，示例: 显示statusStr字段，但根据status字段值来显示颜色（默认'Info'颜色）
+
+	<th data-options="field:'statusStr', styler:Formatter.enumStyler({PA:'Warning'}, 'Info', 'status'), sortable:true">状态</th>
 
 @see datagrid.styler
 @see Formatter.enumFnStyler 比enumStyler更强大
  */
-	enumStyler: function (colorMap, defaultColor) {
+	enumStyler: function (colorMap, defaultColor, field) {
 		return function (value, row) {
+			if (field)
+				value = row[field];
 			var color = colorMap[value];
 			if (color == null && defaultColor)
 				color = defaultColor;
