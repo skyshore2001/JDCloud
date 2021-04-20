@@ -1611,7 +1611,7 @@ function dbUpdate($table, $kv, $cond)
 	}
 	else {
 		if (isset($condStr))
-			$sql = sprintf("UPDATE %s SET %s WHERE $condStr", $table, $kvstr);
+			$sql = sprintf("UPDATE %s SET %s WHERE %s", $table, $kvstr, $condStr);
 		else
 			$sql = sprintf("UPDATE %s SET %s", $table, $kvstr);
 		$cnt = execOne($sql);
