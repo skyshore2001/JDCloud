@@ -2359,6 +2359,8 @@ uniKey可以指定多个字段，以逗号分隔即可，常用于关联表，�
 			}
 			if (count($_POST) > 0) {
 				$param = array_merge($_GET, ["id" => $id, "useStrictReadonly" => "0"]);
+				unset($param["uniKey"]);
+				unset($param["uniKeyMode"]);
 				// useStrictReadonly: 遇到readonly字段的设置直接忽略，不要报错。
 				$this->callSvc(null, "set" , $param, $_POST);
 			}
