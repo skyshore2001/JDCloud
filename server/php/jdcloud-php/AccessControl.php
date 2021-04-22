@@ -3685,15 +3685,50 @@ function KVtoCond($k, $v)
 	名称	金额			
 	运费	20			
 
+## 根据模板导出
+
+写onHandleExportFormat回调，示例：
+
+	trait ExportUtil
+	{
+		protected function onHandleExportFormat($fmt, $ret, $fname)
+		{
+			if ($fmt === "excel") {
+				header("Content-disposition: attachment; filename=" . $fname . ".xlsx");
+				header("Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+				header("Content-Transfer-Encoding: binary");
+				// 模板
+				$tpl = mparam("tpl");
+				// TODO: 根据模板生成excel
+				echo("tpl=tpl/$tpl.xlxs\n");
+				echo(jsonEncode($ret));
+				return true;
+			}
+		}
+	}
+
+在需要支持模板导出的对象类中使用它：
+
+	class AC2_Ordr extends AccessControl
+	{
+		use ExportUtil;
+		...
+	}
 */
+	protected function onHandleExportFormat($fmt, $ret, $fname)
+	{
+	}
+
 	function handleExportFormat($fmt, $ret, $fname)
 	{
 		// 若二维数组转成{h,d}格式
 		if (!isset($ret["d"])) {
 			$ret = ["d"=>$ret];
 		}
-		$handled = false;
-		if ($fmt === "csv") {
+		$handled = $this->onHandleExportFormat($fmt, $ret, $fname);
+		if ($handled) {
+		}
+		else if ($fmt === "csv") {
 			header("Content-Type: application/csv; charset=UTF-8");
 			header("Content-Disposition: attachment;filename={$fname}.csv");
 			self::table2csv($ret);
