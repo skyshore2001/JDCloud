@@ -1456,6 +1456,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 				}
 			}
 		}
+		$this->checkUniKey(param("uniKey"), param("uniKeyMode", "set"), true);
 		$this->onValidate();
 	}
 
@@ -2235,7 +2236,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 
 标准对象添加接口。
 
-@key uniKey add接口支持存在则更新，不存在则添加
+@key uniKey 防止重复机制/add接口支持存在则更新，不存在则添加
 
 (v6) 支持在添加时根据指定字段判断记录是否存在，若存在则更新，不存在才添加，称为uniKey机制。接口示例：
 
@@ -2249,11 +2250,25 @@ uniKey可以指定多个字段，以逗号分隔即可，常用于关联表，�
 
 表示添加关联，若关联已存在则忽略。（当指定要添加的字段刚好完全就是uniKey中字段时，没必要做更新操作，会直接忽略。）
 
-注意：uniKey原理上支持使用虚拟字段（如关联字段）.
+注意：uniKey支持使用虚拟字段（如关联字段）.
+
+在uniKey匹配时，默认处理是更新操作，可以通过`uniKeyMode`参数来定制行为：
+
+- set: 转为更新操作（如果要更新的字段刚好就是uniKey字段，则忽略更新），接口最终返回已存在记录的id。
+- error: 报错：已存在重复记录。
+- ignore: 忽略添加操作，接口直接返回已存在记录的id。
+
+示例：添加工单，如果code已存在则报错，不允许添加
+
+	callSvr("Ordr.add", {uniKey:"code", uniKeyMode:"error"}, $.noop, {code:"4500000088", itemId: 1, qty: 100});
+
+事实上set接口也会检查uniKey参数，若发现记录有重复会报错（uniKeyMode参数只影响add接口, 对set接口无效）。
+
+以上示例是将记录的控制权交给接口调用方的（如前端或后端内部接口调用callSvcInt等）；如果要在后端对象内控制重复记录行为，请参考
+@see AccessControl::checkUniKey
 */
 	function api_add()
 	{
-		$this->supportUnikey();
 		$this->validate();
 
 		$id = $this->onGenId();
@@ -2264,7 +2279,6 @@ uniKey可以指定多个字段，以逗号分隔即可，常用于关联表，�
 			unset($_POST["id"]);
 		}
 		$this->handleSubObjForAddSet();
-
 		$this->id = dbInsert($this->table, $_POST);
 
 		$res = param("res");
@@ -2277,28 +2291,79 @@ uniKey可以指定多个字段，以逗号分隔即可，常用于关联表，�
 		return $ret;
 	}
 
-	protected function supportUnikey()
+/*
+@fn AccessControl::checkUniKey($uniKey, $handler, $required=false)
+
+后端检查uniKey用于防止重复：
+
+- 添加时，如果根据uniKey匹配的记录已存在，则做更新处理（或报错不许重复设置）；
+- 更新时，如果根据uniKey匹配的记录已存在（且非当前记录），则报错不许设置。
+
+@param handler 添加时遇到重复记录的处理方式，可指定为以下字符串值
+
+- set: 转为更新操作（如果要更新的字段刚好就是uniKey字段，则忽略更新），接口最终返回已存在记录的id。
+- error: 报错：已存在重复记录。
+- ignore: 忽略添加操作，接口直接返回已存在记录的id。
+
+@param required 如果设置为true，则该字段添加时不可为空
+
+用法示例：
+
+	function onValidate()
 	{
-		$uniKey = param("uniKey");
-		if ($uniKey) {
-			$fields = explode(',', $uniKey);
-			$cond = [];
-			foreach ($fields as $k) {
-				$k = trim($k);
-				$v = mparam($k, "P");
+		// code字段不允许重复, 添加时若发现该记录已存在则报错("error")，但该字段可以为空。
+		$this->checkUniKey("code", "error");
+
+		// uniKey支持多字段：
+		// name,phone字段组合不允许重复。在添加时若遇到重复则当作更新处理("set")，且添加时这两个字段不可为空。
+		$this->checkUniKey("name,phone", "set", true);
+	}
+
+@see uniKey
+*/
+	protected function checkUniKey($uniKey, $handler, $required=false)
+	{
+		if (!$uniKey)
+			return;
+
+		$fields = explode(',', $uniKey);
+		$cond = [];
+		$allNull = true;
+		foreach ($fields as $k) {
+			$k = trim($k);
+			$v = param($k, null, "P");
+			if ($v) {
 				$cond[$k] = $v;
+				$allNull = false;
 			}
-			$param = array_merge($_GET, ["res"=>"id", "cond"=>$cond, "fmt"=>"one?"]);
-			$id = $this->callSvc(null, "query", $param, $_POST);
-			if ($id) {
-				if (count($fields) != count($_POST)) {
-					$param = array_merge($_GET, ["id" => $id, "useStrictReadonly" => "0"]);
-					// useStrictReadonly: 遇到readonly字段的设置直接忽略，不要报错。
-					$this->callSvc(null, "set" , $param, $_POST);
-				}
-				jdRet(0, $id);
+			else {
+				if ($required)
+					jdRet(E_PARAM, "checkUniKey: require field $k", "字段`{$k}`要求必填");
+				$cond[$k] = "null"; // 生成"IS NULL"条件
 			}
 		}
+		if ($allNull)
+			return;
+		$param = array_merge($_GET, ["res"=>"id", "cond"=>$cond, "fmt"=>"one?"]);
+		$id = $this->callSvc(null, "query", $param, $_POST);
+		if (! $id || ($this->ac == "set" && $id == $this->id))
+			return;
+
+		if ($handler === "error" || $this->ac == "set")
+			jdRet(E_PARAM, "duplicate record (id=$id): " . urlEncodeArr($cond), "已存在重复记录: " . join(',', $cond));
+
+		if ($handler === "set") {
+			// 清空字段，避免set时再检查
+			foreach ($fields as $e) {
+				unset($_POST[$e]);
+			}
+			if (count($_POST) > 0) {
+				$param = array_merge($_GET, ["id" => $id, "useStrictReadonly" => "0"]);
+				// useStrictReadonly: 遇到readonly字段的设置直接忽略，不要报错。
+				$this->callSvc(null, "set" , $param, $_POST);
+			}
+		}
+		jdRet(0, $id);
 	}
 
 	// checkCond=true将检查id是否可操作。
@@ -2994,6 +3059,9 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
  字段列表以逗号或空白分隔, 如"title=name - addr"与"title=name, -, addr"都可以.
 
 - uniKey: (v5.5) 唯一索引字段. 如果指定, 则以该字段查询记录是否存在, 存在则更新。例如"code", 也支持多个字段（用于关联表），如"bpId,itemId"。
+- uniKeyMode: (v6) 定制发现uniKey存在的行为，默认为更新，也可为报错或忽略。
+
+@see uniKey
 
 ## 支持三种方式上传
 
