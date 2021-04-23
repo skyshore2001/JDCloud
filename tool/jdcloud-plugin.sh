@@ -85,11 +85,11 @@ function addOne() {
 		dstFile=$2/$1
 
 		if [[ $1 == *.html || $1 == *.md ]]; then
-			tag1="<!-- "
-			tag2=" -->"
+			tag1="<!--"
+			tag2="-->"
 		else
-			tag1="/*! "
-			tag2=" */"
+			tag1="/*!"
+			tag2="*/"
 		fi
 		echo >> $dstFile
 		echo "$tag1 $pluginName BEGIN $tag2" >> $dstFile

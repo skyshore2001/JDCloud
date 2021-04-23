@@ -431,7 +431,11 @@ like用于字符串匹配，字符串中用&quot;%&quot;或&quot;*&quot;表示�
 <p><strong>[one与one?格式]</strong></p>
 <p>如果指定<code>{fmt: &quot;one&quot;}</code>，则只以对象格式返回一行，类似get接口：</p>
 <pre><code>{&quot;id&quot;: 1, &quot;name&quot;: &quot;jerry&quot;}</code></pre>
-<p>且如果查询不到数据，会抛出错误（也是与get接口类似）。如果查询不到数据时不想抛出错误，而是返回null，可以用<code>{fmt: &quot;one?&quot;}</code>参数。</p>
+<p>且如果查询不到数据，会抛出错误（也是与get接口类似）。</p>
+<p>如果查询不到数据时不想抛出错误，而是返回null，可以用<code>{fmt: &quot;one?&quot;}</code>参数。</p>
+<p>特别地，如果返回数据只有一列，<code>one?</code>格式则直接返回该列值。 示例：查询订单数，返回只有一列cnt。</p>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {res: &quot;COUNT(*) cnt&quot;, fmt: &quot;one?&quot;})</code></pre>
+<p>假如有99个订单，使用<code>fmt:&quot;one?&quot;</code>直接返回<code>99</code>，如果使用<code>fmt:&quot;one&quot;</code>则返回<code>{cnt: 99}</code>。</p>
 <p><strong>[hash与multihash格式]</strong></p>
 <p>如果指定<code>{fmt: &quot;hash&quot;}</code>，则以映射表格式返回：</p>
 <pre><code>{
