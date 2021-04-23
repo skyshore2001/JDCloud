@@ -2050,9 +2050,14 @@ function toggleTab(jtabs, which, show, noEvent) {
 点击帮助按钮，跳往WUI.options.helpUrl指定的地址。如果指定data-helpKey，则跳到该锚点处。
 
 可以多个picker一起使用。
+
+帮助链接：(加wui-help类则点击可跳转，同时也支持用data-helpKey属性指定主题)
+
+	<a class="wui-help"><span><i class="fa fa-question-circle"></i>帮助</span></a>
+
 */
 
-self.m_enhanceFn[".wui-picker-edit, .wui-picker-help"] = enhancePicker;
+self.m_enhanceFn[".wui-picker-edit, .wui-picker-help, .wui-help"] = enhancePicker;
 function enhancePicker(jo)
 {
 	var jbtns = $();
@@ -2077,6 +2082,12 @@ function enhancePicker(jo)
 		jbtns = jbtns.add(jbtn);
 
 		jbtn.click(help);
+	}
+	if (jo.hasClass("wui-help")) {
+		jo.click(function () {
+			help();
+			return false;
+		});
 	}
 
 	if (jbtns.length > 0) {
