@@ -2,6 +2,7 @@
 <html>
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>筋斗云接口编程</title>
   <style type="text/css">code{white-space: pre;}</style>
 <link rel="stylesheet" href="style.css" />
@@ -397,17 +398,19 @@ return $ret;</code></pre>
 <p>如果接口原型中没有定义返回值，框架会自动返回字符串&quot;OK&quot;。比如接口api_logout没有调用return，则最终返回的JSON为：</p>
 <pre><code>[0, &quot;OK&quot;]</code></pre>
 <p><strong>[异常返回]</strong></p>
-<p>如果处理出错，应返回一个错误对象，这通过抛出MyException异常来实现，比如</p>
-<pre><code>throw new MyException(E_AUTHFAIL, &quot;bad password&quot;, &quot;密码错误&quot;);</code></pre>
+<p>如果处理出错，应返回一个错误对象，这通过jdRet来实现，比如</p>
+<pre><code>jdRet(E_AUTHFAIL, &quot;bad password&quot;, &quot;密码错误&quot;);
+// 等价于以下旧写法，即抛出MyException异常
+throw new MyException(E_AUTHFAIL, &quot;bad password&quot;, &quot;密码错误&quot;);</code></pre>
 <p>它最终返回的JSON为：</p>
 <pre><code>[-1, &quot;密码错误&quot;, &quot;bad password&quot;]</code></pre>
 <p>分别表示<code>[错误码, 显示给用户看的错误信息, 调试信息]</code>，一般调试信息用英文，在各种编码下都能显示，且内容会详细些；错误信息一般用中文，提示给最终用户看。</p>
 <p>也可以忽略错误信息，这时框架返回错误码对应的默认错误信息，如</p>
-<pre><code>throw new MyException(E_AUTHFAIL, &quot;bad password&quot;);</code></pre>
+<pre><code>jdRet(E_AUTHFAIL, &quot;bad password&quot;);</code></pre>
 <p>最终返回JSON为：</p>
 <pre><code>[-1, &quot;认证失败&quot;, &quot;bad password&quot;]</code></pre>
 <p>甚至直接：</p>
-<pre><code>throw new MyException(E_AUTHFAIL);</code></pre>
+<pre><code>jdRet(E_AUTHFAIL);</code></pre>
 <p>最终返回JSON为：</p>
 <pre><code>[-1, &quot;认证失败&quot;]</code></pre>
 <p>常用的其它返回码还有E_PARAM（参数错）, E_FORBIDDEN（无权限操作）等:</p>
@@ -418,17 +421,17 @@ return $ret;</code></pre>
 <span class="kw">const</span> <span class="kw">E_SERVER</span>=<span class="dv">4</span><span class="ot">;</span> <span class="co">// 服务器错</span>
 <span class="kw">const</span> <span class="kw">E_FORBIDDEN</span>=<span class="dv">5</span><span class="ot">;</span> <span class="co">// 无操作权限，不允许访问</span></code></pre></div>
 <p><strong>[立即返回]</strong></p>
-<p>接口除了通过return来返回数据，还可以抛出DirectReturn异常，立即中断执行并返回结果，比如：</p>
-<pre><code>setRet(0, $retObj); // 直接设置返回码和返回对象
-throw new DirectReturn();</code></pre>
-<p>示例：实现获取图片接口pic。</p>
+<p>接口可以用jdRet函数，立即中断执行并返回结果，例如：</p>
+<pre><code>jdRet(0); // 返回 [0, null]
+jdRet(E_OK, &quot;OK&quot;); // 返回 [0, &quot;OK&quot;]</code></pre>
+<p>不加参数则直接返回. 示例：实现获取图片接口pic。</p>
 <pre><code>pic() -&gt; 图片内容</code></pre>
-<p>注意：该接口直接返回图片内容，不符合筋斗云<code>[0, JSON数据]</code>的返回规范，所以用DirectReturn立即返回，避免框架干预：</p>
+<p>注意：该接口直接返回图片内容，不符合筋斗云<code>[0, JSON数据]</code>的返回规范，所以用jdRet立即返回，避免框架干预：</p>
 <div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="kw">function</span> api_pic<span class="ot">()</span>
 {
     <span class="fu">header</span><span class="ot">(</span><span class="st">&quot;Content-Type: image/jpeg&quot;</span><span class="ot">);</span>
     <span class="fu">readfile</span><span class="ot">(</span><span class="st">&quot;1.jpg&quot;</span><span class="ot">);</span>
-    <span class="kw">throw</span> <span class="kw">new</span> DirectReturn<span class="ot">();</span>
+    jdRet<span class="ot">();</span>
 }</code></pre></div>
 <p>前端可以直接使用链接显示图片：</p>
 <pre><code>&lt;img src=&quot;http://localhost/mysvc/api.php/pic&quot;&gt;</code></pre>
@@ -443,11 +446,11 @@ throw new DirectReturn();</code></pre>
     <span class="er">@</span><span class="kw">$rv</span> = <span class="fu">file_get_contents</span><span class="ot">(</span><span class="kw">$URL</span><span class="ot">);</span>
     <span class="kw">if</span> <span class="ot">(</span><span class="kw">$rv</span> === <span class="kw">false</span> || <span class="fu">is_null</span><span class="ot">(</span><span class="fu">json_decode</span><span class="ot">(</span><span class="kw">$rv</span><span class="ot">)))</span> {
         addLog<span class="ot">(</span><span class="kw">$rv</span><span class="ot">);</span>
-        <span class="kw">throw</span> <span class="kw">new</span> MyException<span class="ot">(</span><span class="kw">E_SERVER</span><span class="ot">,</span> <span class="st">&quot;bad data&quot;</span><span class="ot">);</span>
+        jdRet<span class="ot">(</span><span class="kw">E_SERVER</span><span class="ot">,</span> <span class="st">&quot;bad data&quot;</span><span class="ot">);</span>
     }
     <span class="co">// 将已编码好的JSON数据包装成筋斗云返回格式</span>
     <span class="fu">echo</span> <span class="st">&quot;[0, </span><span class="kw">$rv</span><span class="st">]&quot;</span><span class="ot">;</span>
-    <span class="kw">throw</span> <span class="kw">new</span> DirectReturn<span class="ot">();</span>
+    jdRet<span class="ot">();</span>
 }</code></pre></div>
 <p>上面在处理失败时，调用函数addLog用于将日志返回给前端，便于测试模式下查看。还可以用logit函数记录到服务端文件中。</p>
 <h3 id="数据库操作"><span class="header-section-number">3.5</span> 数据库操作</h3>
@@ -494,7 +497,7 @@ $v = queryOne(&quot;SELECT @@group_concat_max_len&quot;);</code></pre>
 $pwd = mparam(&quot;pwd&quot;);
 $id = queryOne(&quot;SELECT id FROM User WHERE uname=&#39;$uname&#39; AND pwd=&#39;$pwd&#39;&quot;);
 if ($id === false)
-    throw new MyException(E_AUTHFAIL, &quot;bad uname/pwd&quot;, &quot;用户名或密码错误&quot;);
+    jdRet(E_AUTHFAIL, &quot;bad uname/pwd&quot;, &quot;用户名或密码错误&quot;);
 // 登录成功
 $_SESSION[&quot;uid&quot;] = $id;</code></pre>
 <p>如果黑客精心准备了参数 <code>uname=a&amp;pwd=a' or 1=1</code>，这样SQL语句将是</p>
@@ -784,16 +787,16 @@ Ordr.get(id) -&gt; { 同query接口字段...}
         <span class="kw">$id</span> = mparam<span class="ot">(</span><span class="st">&quot;id&quot;</span><span class="ot">);</span>
         <span class="kw">$rv</span> = queryOne<span class="ot">(</span><span class="st">&quot;SELECT id FROM Ordr WHERE id=</span><span class="kw">{$id}</span><span class="st"> AND userId=</span><span class="kw">{$uid}</span><span class="st">&quot;</span><span class="ot">);</span>
         <span class="kw">if</span> <span class="ot">(</span><span class="kw">$rv</span> === <span class="kw">false</span><span class="ot">)</span>
-            <span class="kw">throw</span> <span class="kw">new</span> MyException<span class="ot">(</span><span class="kw">E_FORBIDDEN</span><span class="ot">,</span> <span class="st">&quot;not your order&quot;</span><span class="ot">);</span>
+            jdRet<span class="ot">(</span><span class="kw">E_FORBIDDEN</span><span class="ot">,</span> <span class="st">&quot;not your order&quot;</span><span class="ot">);</span>
     }
 }</code></pre></div>
 <p>可通过<code>onValidateId</code>回调来限制get/set/del操作时，只允许访问自己的订单。</p>
 <p>函数<code>mparam</code>用来取必传参数(m表示mandatory)。 函数<code>queryOne</code>用来查询首行数据，如果查询只有一列，则返回首行首列数据，但如果查询不到数据，就返回false. 这里如果返回false，既可能是订单id不存在，也可能是虽然存在但是是别人的订单，简单处理，我们都返回一个E_FORBIDDEN异常。</p>
-<p>框架对异常会自动处理，一般不用特别再检查数据库操作失败之类的异常。如果返回错误对象，可抛出<code>MyException</code>异常：</p>
-<pre><code>throw new MyException(E_FORBIDDEN);</code></pre>
+<p>框架对异常会自动处理，一般不用特别再检查数据库操作失败之类的异常。如果返回错误，可调用jdRet:</p>
+<pre><code>jdRet(E_FORBIDDEN);</code></pre>
 <p>错误码&quot;E_FORBIDDEN&quot;表示没有权限，不允许操作；常用的其它错误码还有&quot;E_PARAM&quot;，表示参数错误。</p>
-<p>MyException的第二个参数是内部调试信息，第三个参数是对用户友好的报错信息，比如：</p>
-<pre><code>throw new MyException(E_FORBIDDEN, &quot;order id {$id} does not belong to user {$uid}&quot;, &quot;不是你的订单，不可操作&quot;);</code></pre>
+<p>jdRet的第二个参数是内部调试信息，第三个参数是对用户友好的报错信息，比如：</p>
+<pre><code>jdRet(E_FORBIDDEN, &quot;order id {$id} does not belong to user {$uid}&quot;, &quot;不是你的订单，不可操作&quot;);</code></pre>
 <h3 id="分页机制"><span class="header-section-number">4.4</span> 分页机制</h3>
 <p>query操作默认支持分页(paging), 一般调用形式为</p>
 <pre><code>Ordr.query(pagekey?, pagesz?=20) -&gt; {nextkey?, total?, @h, @d}
@@ -1436,7 +1439,7 @@ putenv(&quot;P_MOCK_MODE=1&quot;);</code></pre>
 <p>定义php接口，如 ISmsSupport:</p>
 <div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="kw">interface</span> ISmsSupport
 {
-    <span class="co">// 如果失败，抛出 MyException(E_SMS) 异常，并写日志到trace.log</span>
+    <span class="co">// 如果失败，中断执行立即返回，并写日志到trace.log</span>
     <span class="kw">function</span> sendSms<span class="ot">(</span><span class="kw">$phone</span><span class="ot">,</span> <span class="kw">$content</span><span class="ot">,</span> <span class="kw">$channel</span><span class="ot">);</span>
 }</code></pre></div>
 <p>在ExtMock类中模拟实现接口ISmsSupport中所有函数, 一般是调用logext()写日志到ext.log, 可以在tool/log.php中查看最近的ext日志。</p>

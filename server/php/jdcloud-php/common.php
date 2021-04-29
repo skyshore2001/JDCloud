@@ -32,6 +32,8 @@ $ERRINFO = [
 @param $internalMsg String. 内部错误信息，前端不应处理。
 @param $outMsg String. 错误信息。如果为空，则会自动根据$code填上相应的错误信息。
 
+(v6) 一般建议使用jdRet。
+
 抛出错误，中断执行:
 
 	throw new MyException(E_PARAM, "Bad Request - numeric param `$name`=`$ret`.", "需要数值型参数");
@@ -69,6 +71,8 @@ class MyException extends LogicException
 /**
 @class DirectReturn
 
+(v6) 一般建议使用jdRet。
+
 抛出该异常，可以中断执行直接返回，不显示任何错误。
 
 例：API返回非BPQ协议标准数据，可以跳出setRet而直接返回：
@@ -87,21 +91,34 @@ class DirectReturn extends LogicException
 }
 
 /**
-@fn jdRet($code, $internalMsg?, $msg?)
+@fn jdRet($code?, $internalMsg?, $msg?)
+
+直接返回（可用echo自行输出返回内容，否则系统不自动输出）：
+
+	echo("{\"code\": 0, \"msg\": \"hello\"}");
+	jdRet();
+	// 返回`{"code": 0, "msg": "hello"}`，注意不是标准筋斗云返回格式
 
 成功返回：
 
+	jdRet(E_OK);
 	jdRet(E_OK, ["id" => 100]);
+	// 返回 [0, {"id": 100}]
 
 出错返回：
 
-	jdRet(E_SERVER);
+	jdRet(E_PARAM);
+	jdRet(E_PARAM, "bad param");
+	jdRet(E_PARAM, "bad param", "参数错");
+	// 返回 [1, "参数错", "bad param"]
+
 */
-function jdRet($code, $internalMsg = null, $msg = null)
+function jdRet($code = null, $internalMsg = null, $msg = null)
 {
 	if ($code)
 		throw new MyException($code, $internalMsg, $msg);
-	setRet(0, $internalMsg);
+	if ($code === 0)
+		setRet(0, $internalMsg);
 	throw new DirectReturn();
 }
 

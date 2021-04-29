@@ -550,8 +550,10 @@ param/mparam除了检查简单类型，还支持一些复杂类型，比如列�
 
 **[异常返回]**
 
-如果处理出错，应返回一个错误对象，这通过抛出MyException异常来实现，比如
+如果处理出错，应返回一个错误对象，这通过jdRet来实现，比如
 
+	jdRet(E_AUTHFAIL, "bad password", "密码错误");
+	// 等价于以下旧写法，即抛出MyException异常
 	throw new MyException(E_AUTHFAIL, "bad password", "密码错误");
 
 它最终返回的JSON为：
@@ -562,7 +564,7 @@ param/mparam除了检查简单类型，还支持一些复杂类型，比如列�
 
 也可以忽略错误信息，这时框架返回错误码对应的默认错误信息，如
 
-	throw new MyException(E_AUTHFAIL, "bad password");
+	jdRet(E_AUTHFAIL, "bad password");
 
 最终返回JSON为：
 
@@ -570,7 +572,7 @@ param/mparam除了检查简单类型，还支持一些复杂类型，比如列�
 
 甚至直接：
 
-	throw new MyException(E_AUTHFAIL);
+	jdRet(E_AUTHFAIL);
 
 最终返回JSON为：
 
@@ -588,22 +590,22 @@ const E_FORBIDDEN=5; // 无操作权限，不允许访问
 
 **[立即返回]**
 
-接口除了通过return来返回数据，还可以抛出DirectReturn异常，立即中断执行并返回结果，比如：
+接口可以用jdRet函数，立即中断执行并返回结果，例如：
 
-	setRet(0, $retObj); // 直接设置返回码和返回对象
-	throw new DirectReturn();
+	jdRet(0); // 返回 [0, null]
+	jdRet(E_OK, "OK"); // 返回 [0, "OK"]
 
-示例：实现获取图片接口pic。
+不加参数则直接返回. 示例：实现获取图片接口pic。
 
 	pic() -> 图片内容
 	
-注意：该接口直接返回图片内容，不符合筋斗云`[0, JSON数据]`的返回规范，所以用DirectReturn立即返回，避免框架干预：
+注意：该接口直接返回图片内容，不符合筋斗云`[0, JSON数据]`的返回规范，所以用jdRet立即返回，避免框架干预：
 ```php
 function api_pic()
 {
 	header("Content-Type: image/jpeg");
 	readfile("1.jpg");
-	throw new DirectReturn();
+	jdRet();
 }
 ```
 前端可以直接使用链接显示图片：
@@ -624,11 +626,11 @@ function api_weather()
 	@$rv = file_get_contents($URL);
 	if ($rv === false || is_null(json_decode($rv))) {
 		addLog($rv);
-		throw new MyException(E_SERVER, "bad data");
+		jdRet(E_SERVER, "bad data");
 	}
 	// 将已编码好的JSON数据包装成筋斗云返回格式
 	echo "[0, $rv]";
-	throw new DirectReturn();
+	jdRet();
 }
 ```
 
@@ -699,7 +701,7 @@ queryOne只返回首行数据，特别地，如果返回行中只有一列，则
 	$pwd = mparam("pwd");
 	$id = queryOne("SELECT id FROM User WHERE uname='$uname' AND pwd='$pwd'");
 	if ($id === false)
-		throw new MyException(E_AUTHFAIL, "bad uname/pwd", "用户名或密码错误");
+		jdRet(E_AUTHFAIL, "bad uname/pwd", "用户名或密码错误");
 	// 登录成功
 	$_SESSION["uid"] = $id;
 	
@@ -992,7 +994,7 @@ class AC1_Ordr extends AccessControl
 		$id = mparam("id");
 		$rv = queryOne("SELECT id FROM Ordr WHERE id={$id} AND userId={$uid}");
 		if ($rv === false)
-			throw new MyException(E_FORBIDDEN, "not your order");
+			jdRet(E_FORBIDDEN, "not your order");
 	}
 }
 ```
@@ -1002,15 +1004,15 @@ class AC1_Ordr extends AccessControl
 函数`queryOne`用来查询首行数据，如果查询只有一列，则返回首行首列数据，但如果查询不到数据，就返回false. 
 这里如果返回false，既可能是订单id不存在，也可能是虽然存在但是是别人的订单，简单处理，我们都返回一个E_FORBIDDEN异常。
 
-框架对异常会自动处理，一般不用特别再检查数据库操作失败之类的异常。如果返回错误对象，可抛出`MyException`异常：
+框架对异常会自动处理，一般不用特别再检查数据库操作失败之类的异常。如果返回错误，可调用jdRet:
 
-	throw new MyException(E_FORBIDDEN);
+	jdRet(E_FORBIDDEN);
 
 错误码"E_FORBIDDEN"表示没有权限，不允许操作；常用的其它错误码还有"E_PARAM"，表示参数错误。
 
-MyException的第二个参数是内部调试信息，第三个参数是对用户友好的报错信息，比如：
+jdRet的第二个参数是内部调试信息，第三个参数是对用户友好的报错信息，比如：
 
-	throw new MyException(E_FORBIDDEN, "order id {$id} does not belong to user {$uid}", "不是你的订单，不可操作");
+	jdRet(E_FORBIDDEN, "order id {$id} does not belong to user {$uid}", "不是你的订单，不可操作");
 
 ### 分页机制
 
@@ -1992,7 +1994,7 @@ function api_getOssParam()
 ```php
 interface ISmsSupport
 {
-	// 如果失败，抛出 MyException(E_SMS) 异常，并写日志到trace.log
+	// 如果失败，中断执行立即返回，并写日志到trace.log
 	function sendSms($phone, $content, $channel);
 }
 ```
