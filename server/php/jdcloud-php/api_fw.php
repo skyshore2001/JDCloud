@@ -452,7 +452,7 @@ class ApiFw_
 /**
 @fn setRet($code, $data?, $internalMsg?)
 
-@param $code Integer. 返回码, 0表示成功, 否则表示操作失败。
+@param $code Integer. 返回码, 0表示成功, 否则表示操作失败。(v6) 如果为null，则直接输出data内容(仍会记录debug和ApiLog日志)
 @param $data 返回数据。
 @param $internalMsg 当返回错误时，作为额外调试信息返回。
 
@@ -496,9 +496,17 @@ function setRet($code, $data = null, $internalMsg = null)
 	$debugLog = getenv("P_DEBUG_LOG") ?: 0;
 	if ($debugLog == 1 || ($debugLog == 2 && $X_RET[0] != 0)) {
 		$ac = $GLOBALS["X_APP"]? $GLOBALS["X_APP"]->getAc(): 'unknown';
-		$s = 'ac=' . $ac . ', apiLogId=' . ApiLog::$lastId . ', ret=' . jsonEncode($X_RET) . ", dbgInfo=" . jsonEncode($GLOBALS["g_dbgInfo"], true);
+		$retStr = $code === null? $data: jsonEncode($X_RET);
+		$s = 'ac=' . $ac . ', apiLogId=' . ApiLog::$lastId . ', ret=' . $retStr . ", dbgInfo=" . jsonEncode($GLOBALS["g_dbgInfo"], true);
 		logit($s, true, 'debug');
 	}
+	global $X_RET_STR;
+	if ($code === null) {
+		$X_RET_STR = $data;
+		echo($X_RET_STR);
+		return;
+	}
+
 	if ($TEST_MODE) {
 		global $g_dbgInfo;
 		if (count($g_dbgInfo) > 0)
@@ -506,7 +514,6 @@ function setRet($code, $data = null, $internalMsg = null)
 	}
 
 	if (ApiFw_::$SOLO) {
-		global $X_RET_STR;
 		global $X_RET_FN;
 		if (! isset($X_RET_STR)) {
 			if (is_callable(@$X_RET_FN)) {

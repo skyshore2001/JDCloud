@@ -93,11 +93,10 @@ class DirectReturn extends LogicException
 /**
 @fn jdRet($code?, $internalMsg?, $msg?)
 
-直接返回（可用echo自行输出返回内容，否则系统不自动输出）：
+直接返回（可用echo/readfile等自行输出返回内容，否则系统不自动输出）：
 
-	echo("{\"code\": 0, \"msg\": \"hello\"}");
+	readfile(f1);
 	jdRet();
-	// 返回`{"code": 0, "msg": "hello"}`，注意不是标准筋斗云返回格式
 
 成功返回：
 
@@ -110,15 +109,26 @@ class DirectReturn extends LogicException
 	jdRet(E_PARAM);
 	jdRet(E_PARAM, "bad param");
 	jdRet(E_PARAM, "bad param", "参数错");
-	// 返回 [1, "参数错", "bad param"]
+	// 返回 [1, "参数错", "bad param"] 注意结果中字符串顺序不同，第3参数才是最终给用户看的报错信息（常用中文）。
+
+(v6) 自定义返回：(code传null)
+
+	jdRet(null, "{\"code\": 0, \"msg\": \"hello\"}");
+	// 返回`{"code": 0, "msg": "hello"}`，注意不是标准筋斗云返回格式。
+
+注意：对于自定义文本输出，用`jdRet(null, data)`比直接echo要好，因为echo不记录日志到debug日志，在ApiLog中也看不到输出，不利于接口内容审计。
+
+	echo("{\"code\": 0, \"msg\": \"hello\"}");
+	jdRet(null, "{\"code\": 0, \"msg\": \"hello\"}");
+
+更规范地，对于接口自定义格式输出，应使用 $X_RET_FN 定义转换函数。
 
 */
 function jdRet($code = null, $internalMsg = null, $msg = null)
 {
 	if ($code)
 		throw new MyException($code, $internalMsg, $msg);
-	if ($code === 0)
-		setRet(0, $internalMsg);
+	setRet($code, $internalMsg, $msg);
 	throw new DirectReturn();
 }
 

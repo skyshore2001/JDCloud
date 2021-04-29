@@ -629,12 +629,19 @@ function api_weather()
 		jdRet(E_SERVER, "bad data");
 	}
 	// 将已编码好的JSON数据包装成筋斗云返回格式
-	echo "[0, $rv]";
-	jdRet();
+	$ret = "[0, $rv]";
+	jdRet(null, $ret);
 }
 ```
-
 上面在处理失败时，调用函数addLog用于将日志返回给前端，便于测试模式下查看。还可以用logit函数记录到服务端文件中。
+
+注意：这个例子也可以用echo输出，但echo不记录日志到debug日志，在ApiLog中也看不到输出，不利于接口内容审计。
+
+	$ret = "[0, $rv]";
+	echo($ret);
+	jdRet();
+
+更规范地，对于接口自定义格式输出，应使用 $X_RET_FN 定义转换函数。
 
 ### 数据库操作
 

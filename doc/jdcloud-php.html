@@ -449,10 +449,15 @@ jdRet(E_OK, &quot;OK&quot;); // 返回 [0, &quot;OK&quot;]</code></pre>
         jdRet<span class="ot">(</span><span class="kw">E_SERVER</span><span class="ot">,</span> <span class="st">&quot;bad data&quot;</span><span class="ot">);</span>
     }
     <span class="co">// 将已编码好的JSON数据包装成筋斗云返回格式</span>
-    <span class="fu">echo</span> <span class="st">&quot;[0, </span><span class="kw">$rv</span><span class="st">]&quot;</span><span class="ot">;</span>
-    jdRet<span class="ot">();</span>
+    <span class="kw">$ret</span> = <span class="st">&quot;[0, </span><span class="kw">$rv</span><span class="st">]&quot;</span><span class="ot">;</span>
+    jdRet<span class="ot">(</span><span class="kw">null</span><span class="ot">,</span> <span class="kw">$ret</span><span class="ot">);</span>
 }</code></pre></div>
 <p>上面在处理失败时，调用函数addLog用于将日志返回给前端，便于测试模式下查看。还可以用logit函数记录到服务端文件中。</p>
+<p>注意：这个例子也可以用echo输出，但echo不记录日志到debug日志，在ApiLog中也看不到输出，不利于接口内容审计。</p>
+<pre><code>$ret = &quot;[0, $rv]&quot;;
+echo($ret);
+jdRet();</code></pre>
+<p>更规范地，对于接口自定义格式输出，应使用 $X_RET_FN 定义转换函数。</p>
 <h3 id="数据库操作"><span class="header-section-number">3.5</span> 数据库操作</h3>
 <p>数据库连接一开始是通过tool/init.php在线配置的，或直接手改文件 php/conf.user.php 文件的相关配置如：</p>
 <pre><code>putenv(&quot;P_DB=localhost/jdcloud&quot;);
