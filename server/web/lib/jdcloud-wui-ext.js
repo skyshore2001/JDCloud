@@ -989,6 +989,21 @@ $(enhanceMenu);
 
 	jo.trigger("markRefresh", obj); // obj是可选的，若指定则仅当obj匹配组件对应obj时才会刷新。
 
+## 动态修改下拉列表
+
+动态修改组件的url选项，然后触发markRefresh即可。示例：
+
+	// 比如每打开对话框时，根据某变量动态显示列表。可在dialog的beforeShow事件中编码：
+	var factoryId = ...;
+	// 取出选项，动态修改url
+	var jo = $(frm.categoryId);
+	var opt = WUI.getOptions(jo); 
+	opt.url = WUI.makeUrl('Category.query', {
+		res: 'id,name,fatherName',
+		cond: 'factoryId=' + factoryId
+	});
+	jo.trigger("markRefresh");
+
  */
 self.m_enhanceFn[".wui-combogrid"] = enhanceCombogrid;
 function enhanceCombogrid(jo)
