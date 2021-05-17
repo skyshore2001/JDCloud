@@ -1808,7 +1808,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	{
 		$colArr = [];
 		foreach (explode(',', $orderby) as $col) {
-			if (! preg_match('/^\s*(\w+\.)?(\S+)(\s+(asc|desc))?$/iu', $col, $ms))
+			if (! preg_match('/^\s*(\w+\.)?(\w+)(\s+(asc|desc))?\s*$/iu', $col, $ms))
 				throw new MyException(E_PARAM, "bad property `$col`");
 			if ($ms[1]) // e.g. "t0.id desc"
 			{
