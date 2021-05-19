@@ -59,7 +59,7 @@ input:not([type=button]), select, textarea {
 }
 .wui-dialog td input:not([type=checkbox]):not([type=radio]):not([type=button]), .wui-dialog td select {
 	height:30px;
-	line-height: 30px;
+	/*line-height: 30px;*/
 	width: 95%;
 }
 .wui-dialog td textarea {
@@ -229,9 +229,11 @@ input:disabled,select:disabled,textarea:disabled {
 .datagrid-cell, .datagrid-cell-group {
 	padding: 7px 10px;
 }
+/*
 .datagrid-header-rownumber, .datagrid-cell-rownumber {
 	padding: 7px 2px;
 }
+*/
 .pagination td {
 	vertical-align: middle;
 }
