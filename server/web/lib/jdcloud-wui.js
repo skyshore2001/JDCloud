@@ -7480,6 +7480,7 @@ function showObjDlg(jdlg, mode, opt)
 			var je = $(e);
 			var bak = je.jdata().bak = {
 				disabled: je.prop("disabled"),
+				readonly: je.prop("readonly"),
 				title: je.prop("title"),
 				type: null
 			}
@@ -7491,6 +7492,7 @@ function showObjDlg(jdlg, mode, opt)
 			}
 			else {
 				je.prop("disabled", false);
+				je.prop("readonly", false);
 				je.addClass("wui-find-field");
 				je.prop("title", self.queryHint);
 				var type = je.attr("type");
@@ -7509,6 +7511,7 @@ function showObjDlg(jdlg, mode, opt)
 			if (bak == null)
 				return;
 			je.prop("disabled", bak.disabled);
+			je.prop("readonly", bak.readonly);
 			je.removeClass("wui-find-field");
 			je.prop("title", bak.title);
 			if (bak.type) {

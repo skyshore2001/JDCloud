@@ -2105,6 +2105,9 @@ function enhancePicker(jo)
 		jo.prop("readonly", false);
 	}
 	function disable() {
+		// 对话框查询模式(forFind)下不禁用
+		if (jo.hasClass("wui-find-field"))
+			return;
 		jo.prop("readonly", true);
 	}
 	function help() {
