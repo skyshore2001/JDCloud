@@ -40,17 +40,17 @@
 		</table>  
 	</form>
 
-	<div id="divOrderLog" class="forSet">
-		<div class="form-caption"><hr>订单日志</div>
-		<table id="tblOrderLog" width="100%">
-			<thead><tr>
-				<th data-options="field:'action', formatter:WUI.formatter.enum(ActionMap)">操作</th>
-				<th data-options="field:'empName'">员工</th>
-				<th data-options="field:'dscr'">描述</th>
-				<th data-options="field:'tm'">时间</th>
-			</tr></thead>
-		</table>
-
+	<div class="easyui-tabs forSet">
+		<div title="订单日志">
+			<table id="tblOrderLog">
+				<thead><tr>
+					<th data-options="field:'action', formatter:WUI.formatter.enum(ActionMap)">操作</th>
+					<th data-options="field:'empName'">员工</th>
+					<th data-options="field:'dscr'">描述</th>
+					<th data-options="field:'tm'">时间</th>
+				</tr></thead>
+			</table>
+		</div>
 	</div>
 </div>
 

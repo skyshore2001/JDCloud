@@ -4,7 +4,7 @@ function initPageOrder()
 	var jtbl = jpage.find("#tblOrder");
 	var jdlg = $("#dlgOrder");
 
-	jtbl.jdata().toolbar = "rfs";
+//	jtbl.jdata().toolbar = "rfs";
 
 	// 当天订单
 	var query1 = {cond: "createTm between '" + new Date().format("D") + "' and '" + new Date().addDay(1).format("D") + "'"};
@@ -25,7 +25,7 @@ function initPageOrder()
 	var dgOpt = {
 		url: WUI.makeUrl("Ordr.query", {res:"*,userPhone,orderLog"}),
 		queryParams: query2,
-		toolbar: WUI.dg_toolbar(jtbl, jdlg, btn1, "-", btn2),
+		toolbar: WUI.dg_toolbar(jtbl, jdlg, btn1, "-", btn2, "export"),
 		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg),
 		sortName: "id",
 		sortOrder: "desc"
