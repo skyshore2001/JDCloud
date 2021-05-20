@@ -1640,8 +1640,11 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	{
 		$this->initVColMap();
 		// group(0)匹配：禁止各类函数（以后面跟括号来识别）和select子句）
-		if (preg_match_all('/\b \w+ (?=\s*\() | \b select \b /ix', $q, $ms)) {
+		// bugfix: 注意避免误匹配`field1='a(b)'`中的`a(b)`不是函数调用
+		if (preg_match_all('/\b \w+ (?=\s*\() | \b select \b | \'.+?\'/ix', $q, $ms)) {
 			foreach ($ms[0] as $key) {
+				if ($key[0] == "'")
+					continue;
 				if (!in_array(strtoupper($key), ["AND", "OR", "IN"]))
 					throw new MyException(E_FORBIDDEN, "forbidden `$key` in param cond");
 			}
