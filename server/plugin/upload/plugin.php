@@ -559,9 +559,9 @@ function api_pic()
 	header("Content-Type: text/html");
 	$baseUrl = getBaseUrl();
 	$n = 0;
-	foreach ([param("id/s"), param("thumbId/s"), param("smallId/s")] as $pics) {
+	foreach ([param("id/i+"), param("thumbId/i+"), param("smallId/i+")] as $pics) {
 		if ($pics) {
-			foreach (explode(',', $pics) as $id) {
+			foreach ($pics as $id) {
 				$id = trim($id);
 				if ($id) {
 					if ($n == 0)
