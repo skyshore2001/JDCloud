@@ -3826,7 +3826,6 @@ function issetval($k, $arr = null)
 			$this->params["task1"] = param("task1", null, "G");
 		}
 		// $params为待添加数据，可在此修改，如用`$params["k1"]=val1`添加或更新字段，用unset($params["k1"])删除字段。
-		// $row为原始行数据数组。
 		function beforeAdd(&$params) {
 			// vendorName -> vendorId
 			// 如果会大量重复查询vendorName,可以将结果加入cache来优化性能
