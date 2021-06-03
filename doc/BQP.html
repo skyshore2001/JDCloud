@@ -765,7 +765,7 @@ callSvr(&quot;Obj.get&quot;, {id: 1001, res:&quot;id,name,obj1 objList,obj1 objL
 ]</code></pre>
 <p>这里用fmt参数指定返回array格式，因为默认返回的是<code>h/d</code>格式.</p>
 <h4 id="子表更新与删除"><span class="header-section-number">3.5.3</span> 子表更新与删除</h4>
-<p>主对象添加后，可以通过set接口添加/更新/删除子对象：</p>
+<p>主对象添加后，可以通过set接口添加/更新/删除子对象。假定后端提供如下更新接口（可更新主表字段name等，子表名为obj1）：</p>
 <pre><code>Obj.set(id)(name?, @obj1...)</code></pre>
 <p>示例：</p>
 <pre><code>callSvr(&quot;Obj.set&quot;, {id: 1001}, $.noop, {
@@ -784,9 +784,8 @@ callSvr(&quot;Obj.get&quot;, {id: 1001, res:&quot;id,name,obj1 objList,obj1 objL
 </ul>
 <p>与上述示例中效果相同的操作示例：</p>
 <pre><code>// submode=put模式
-callSvr(&quot;Obj.set&quot;, {id: 1001}, $.noop, {
+callSvr(&quot;Obj.set&quot;, {id: 1001, submode: &quot;put&quot;}, $.noop, {
     name: &quot;name1&quot;,
-    submode: &quot;put&quot;, // 指定子表更新模式
     obj1: [
         { id: 10001, name: &quot;obj1-name1-changed&quot; }, // set接口中指定子表id的，表示更新该子表行; 也可以不指定id，则原来记录被删除，这条会被重新添加。
         { name: &quot;obj1-name3&quot; },  // set接口中未指定子表id的，表示新增子表行
@@ -794,7 +793,6 @@ callSvr(&quot;Obj.set&quot;, {id: 1001}, $.noop, {
     ]
 });</code></pre>
 <p>注意：add接口在指定uniKey参数时，可检查数据存在则更新(即调用set接口)。因此add/batchAdd接口也可以指定submode参数。 在批量导入(batchAdd接口+uniKey参数)时，默认使用put模式做子表更新。</p>
-<p>主对象删除时（del/delIf接口），子对象不会自动删除。后端应根据情况自行处理。</p>
 <h2 id="批请求"><span class="header-section-number">4</span> 批请求</h2>
 <p>BQP协议支持批请求，即在一次请求中，包含多条接口调用。 而且支持向前引用，即后面的调用可以引用前面调用的返回值。 而且在创建批请求时，可以指定这些调用是否在一个事务(transaction)中，一起成功提交或失败回滚。</p>
 <p>假如某场景需要两个请求，先获取用户信息(User.get接口)，然后上传页面名、用户编号等信息到服务器(ActionLog.add接口)供统计分析，调用示意如下：</p>

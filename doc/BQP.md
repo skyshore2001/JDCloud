@@ -1090,7 +1090,7 @@ batchAdd调用参数为: `{title: "编码->code,物料编码->itemCode", useColM
 
 #### 子表更新与删除
 
-主对象添加后，可以通过set接口添加/更新/删除子对象：
+主对象添加后，可以通过set接口添加/更新/删除子对象。假定后端提供如下更新接口（可更新主表字段name等，子表名为obj1）：
 
 	Obj.set(id)(name?, @obj1...)
 
@@ -1115,9 +1115,8 @@ batchAdd调用参数为: `{title: "编码->code,物料编码->itemCode", useColM
 与上述示例中效果相同的操作示例：
 
 	// submode=put模式
-	callSvr("Obj.set", {id: 1001}, $.noop, {
+	callSvr("Obj.set", {id: 1001, submode: "put"}, $.noop, {
 		name: "name1",
-		submode: "put", // 指定子表更新模式
 		obj1: [
 			{ id: 10001, name: "obj1-name1-changed" }, // set接口中指定子表id的，表示更新该子表行; 也可以不指定id，则原来记录被删除，这条会被重新添加。
 			{ name: "obj1-name3" },  // set接口中未指定子表id的，表示新增子表行
@@ -1127,8 +1126,6 @@ batchAdd调用参数为: `{title: "编码->code,物料编码->itemCode", useColM
 
 注意：add接口在指定uniKey参数时，可检查数据存在则更新(即调用set接口)。因此add/batchAdd接口也可以指定submode参数。
 在批量导入(batchAdd接口+uniKey参数)时，默认使用put模式做子表更新。
-
-主对象删除时（del/delIf接口），子对象不会自动删除。后端应根据情况自行处理。
 
 ## 批请求
 

@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2021-03-22</div>
+<div>最后更新：2021-06-03</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -2615,7 +2615,7 @@ WUI.showPage("pageHome", "我的首页"); // 默认标题是"首页"，这里指
 用opt.okLabel/cancelLabel可修改“确定”、“取消”按钮的名字，用opt.noCancel=true可不要“取消”按钮。</li>
 <li>opt.modal: Boolean.模态对话框，这时不可操作对话框外其它部分，如登录框等。设置为false改为非模态对话框。</li>
 <li>opt.data: Object. 自动加载的数据, 将自动填充到对话框上带name属性的DOM上。在修改对象时，仅当与opt.data有差异的数据才会传到服务端。</li>
-<li>opt.reset: Boolean. 显示对话框前先清空。</li>
+<li>opt.reset: Boolean. 显示对话框前先清空。默认为true.</li>
 <li>opt.validate: Boolean. 是否提交前用easyui-form组件验证数据。内部使用。</li>
 <li>opt.onSubmit: Function(data) 自动提交前回调。用于验证或补齐提交数据，返回false可取消提交。opt.url为空时不回调。</li>
 <li>opt.onOk: Function(jdlg, data?) 如果自动提交(opt.url非空)，则服务端接口返回数据后回调，data为返回数据。如果是手动提交，则点确定按钮时回调，没有data参数。</li>
@@ -2631,11 +2631,11 @@ WUI.showPage("pageHome", "我的首页"); // 默认标题是"首页"，这里指
 <pre><code>事件validate; // 提交前，用于验证或设置提交数据。返回false或ev.preventDefault()可取消提交，中止以下代码执行。
 opt.onSubmit(); // 提交前，验证或设置提交数据，返回false将阻止提交。
 ... 框架通过callSvr自动提交数据，如添加、更新对象等。
-opt.onOk(jdlg, data); // 提交且服务端返回数据后。data是服务端返回数据。
+opt.onOk(data); // 提交且服务端返回数据后。回调函数中this为对话框jdlg, data是服务端返回数据。
 事件retdata; // 与onOk类似。</code></pre>
 <p>对于手动提交数据的对话框(opt.url为空)，执行顺序为：</p>
 <pre><code>事件validate; // 用于验证、设置提交数据、提交数据。
-opt.onOk(jdlg); // 同上</code></pre>
+opt.onOk(); // 同上. 回调函数中this为jdlg.</code></pre>
 <p>注意：</p>
 <ul>
 <li>参数opt可在beforeshow事件中设置，这样便于在对话框模块中自行设置选项，包括okLabel, onOk回调等等。</li>
@@ -2643,10 +2643,33 @@ opt.onOk(jdlg); // 同上</code></pre>
 </ul>
 <p>调用此函数后，对话框将加上以下CSS Class:</p>
 <p class="key"><strong>@key <a id=".wui-dialog">.wui-dialog</a></strong>  标识WUI对话框的类名。</p>
-<p>示例：显示一个对话框</p>
-<pre><code>WUI.showDlg("#dlgReportCond", {modal:false, reset:false});</code></pre>
-<p>默认为模态框，指定modal:false使它成为非模态；<br />
-默认每次打开都清空数据，指定reset:false使它保留状态。</p>
+<p>示例：显示一个对话框，点击确定后调用后端接口。</p>
+<pre><code>WUI.showDlg("#dlgCopyTo", {
+    modal: false, 
+    reset: false,
+    url: WUI.makeUrl("Category.copyTo", {cond: ...}),
+    onSubmit: ..., // 提交前验证，返回False则取消提交
+    onOk: function (retdata) {
+        var jdlgCopyTo = this; // this是当前对话框名
+        // 自动提交后处理返回数据retdata
+    }
+});</code></pre>
+<ul>
+<li>在对话框HTML中以带name属性的输入框作为参数，如<code>用户名:&lt;input name="uname"&gt;</code>.</li>
+<li>默认为模态框(只能操作当前对话框，不能操作页面中其它组件)，指定modal:false使它成为非模态；</li>
+<li>默认每次打开都清空数据，指定reset:false使输入框保留初值或上次填写内容。</li>
+<li>设置了url属性，点击确定自动提交时相当于调用<code>callSvr(url, 回调onOk(retdata), POST内容为WUI.getFormData(dlg))</code>。</li>
+</ul>
+<p>如果不使用url选项，也可实现如下：</p>
+<pre><code>WUI.showDlg("#dlgCopyTo", {
+    modal: false, 
+    reset: false,
+    onOk: function () {
+        var jdlgCopyTo = this; // this是当前对话框名
+        var data = WUI.getFormData(jdlgCopyTo);
+        callSvr("Category.copyTo", {cond: ...}, function (retdata) { ... }, data);
+    }
+});</code></pre>
 <p><strong>对象型对话框与formMode</strong></p>
 <p>函数showObjDlg()会调用本函数显示对话框，称为对象型对话框，用于对象增删改查，它将以下操作集中在一起。<br />
 打开窗口时，会设置窗口模式(formMode):</p>
@@ -3188,16 +3211,18 @@ var btnExport = {text:'导出', iconCls:'icon-save', handler: WUI.getExportHandl
     CR: "未付款", 
     PA: "待服务"
 }</code></pre>
-<p>常用的YesNoMap是预定义的<code>0-否,1-是,2-处理中</code>映射，示例：</p>
+<p>常用的YesNoMap是预定义的<code>0-否,1-是</code>映射，示例：</p>
 <pre><code>&lt;th data-options="field:'clearFlag', sortable:true, jdEnumMap:YesNoMap, formatter:Formatter.enum(YesNoMap), styler:Formatter.enumStyler({1:'Disabled',0:'Warning'}, 'Warning')"&gt;已结算&lt;/th&gt;</code></pre>
 <p class="see"><strong>@see <a href="#datagrid.formatter">datagrid.formatter</a></strong> </p>
 <p class="see"><strong>@see <a href="#Formatter.enumStyler">Formatter.enumStyler</a></strong> </p></div>
 <div class="block">
-<h2 id="Formatter.enumStyler">@fn Formatter.enumStyler(colorMap, defaultColor)</h2>
+<h2 id="Formatter.enumStyler">@fn Formatter.enumStyler(colorMap, defaultColor?, field?)</h2>
 <p>为列表的单元格上色，示例：</p>
 <pre><code>&lt;th data-options="field:'status', jdEnumMap: OrderStatusMap, formatter:Formatter.enum(OrderStatusMap), styler:Formatter.enumStyler({PA:'Warning', RE:'Disabled', CR:'#00ff00', null: 'Error'}), sortable:true"&gt;状态&lt;/th&gt;</code></pre>
-<p>颜色可以直接用rgb表示如'#00ff00'，或是颜色名如'red'等，最常用是用系统预定的几个常量'Warning', 'Error', 'Info', 'Disabled'.<br />
+<p>颜色可以直接用rgb表示如'#00ff00'，或是颜色名如'red'等，最常用是用系统预定的几个常量'Warning'（黄）, 'Error'（红）, 'Info'（绿）, 'Disabled'（灰）.<br />
 缺省值可通过defaultColor传入。</p>
+<p>如果是根据其它字段来判断，使用field选项指定字段，示例: 显示statusStr字段，但根据status字段值来显示颜色（默认'Info'颜色）</p>
+<pre><code>&lt;th data-options="field:'statusStr', styler:Formatter.enumStyler({PA:'Warning'}, 'Info', 'status'), sortable:true"&gt;状态&lt;/th&gt;</code></pre>
 <p class="see"><strong>@see <a href="#datagrid.styler">datagrid.styler</a></strong> </p>
 <p class="see"><strong>@see <a href="#Formatter.enumFnStyler">Formatter.enumFnStyler</a></strong>  比enumStyler更强大</p></div>
 <div class="block">
@@ -3892,7 +3917,8 @@ $(frm.url).val(resUrl);<br />
 <div class="block">
 <h2 id=".wui-labels">@key .wui-labels</h2>
 <p>标签字段（labels）是空白分隔的一组词，每个词是一个标签（label）。<br />
-可以在字段下方将常用标签列出供用户选择，点一下标签则添加到文本框中，再点一下删除它。</p>
+可以在字段下方将常用标签列出供用户选择，点一下标签则添加到文本框中，再点一下删除它。(v6) 或者点一下就设置为选中标签(设置opt.simple=true)。</p>
+<p>示例1：列出各种类型，点一下类型标签就追加到对话框。</p>
 <pre><code>&lt;tr&gt;
     &lt;td&gt;标签&lt;/td&gt;
     &lt;td class="wui-labels"&gt;
@@ -3902,6 +3928,9 @@ $(frm.url).val(resUrl);<br />
         &lt;p class="hint"&gt;位置标签：&lt;span class="labels"&gt;一期 二期 三期 四期&lt;/span&gt;&lt;/p&gt;
     &lt;/td&gt;
 &lt;/tr&gt;</code></pre>
+<ul>
+<li>具有CSS类&quot;labels&quot;的组件，内容以空白分隔的多个标签，如`IT 金融 工业&quot;。如果有dfd设置，则表示值是异步编程设置的（参考下面&quot;异步获取示例&quot;）。</li>
+</ul>
 <p>示例2：设置配置项，并配以说明和示例</p>
 <pre><code>&lt;tr&gt;
     &lt;td&gt;配置项名称&lt;/td&gt;
@@ -3927,7 +3956,21 @@ $(frm.url).val(resUrl);<br />
 callSvr("Conf.query", {cond: "name='企业分类'", fmt: "one", res: "value"}, function (data) {
     StoreDialog.dfdLabel.resolve(data.value);
 })</code></pre>
-<p>// TODO: 支持beforeShow时更新</p></div>
+<p>// TODO: 支持beforeShow时更新</p>
+<p>示例3：(v6) 可以从推荐项中选择，也可以直接填写的输入框.</p>
+<pre><code>    &lt;tr&gt;
+        &lt;td&gt;URL地址&lt;/td&gt;
+        &lt;td class="wui-labels" data-options="simple:true"&gt;
+            &lt;input name="url" value="http://oliveche.com/mes/"&gt;
+            &lt;p class="hint"&gt;
+                &lt;span class="labels"&gt;生产环境|http://192.168.10.23/mes/ 测试|http://oliveche.com/mes/&lt;/span&gt;
+            &lt;/p&gt;
+        &lt;/td&gt;
+    &lt;/tr&gt;</code></pre>
+<ul>
+<li>设置组件选项(data-options内)simple为true</li>
+<li>每项标签的格式为&quot;text|value?&quot;(前面例子也适用)，如&quot;生产环境|<a href="http://192.168.10.23/mes/"表示显示"生产环境"，但点击后取值为"http://192.168.10.23/mes/">http://192.168.10.23/mes/"表示显示"生产环境"，但点击后取值为"http://192.168.10.23/mes/</a>&quot;。</li>
+</ul></div>
 <div class="block">
 <h2 id="#menu">@key #menu</h2>
 <p>管理端功能菜单，以&quot;menu&quot;作为id:</p>
@@ -3948,6 +3991,7 @@ callSvr("Conf.query", {cond: "name='企业分类'", fmt: "one", res: "value"}, f
 图标使用font awesome库，由<code>&lt;i class="fa fa-xxx"&gt;&lt;/i&gt;</code>指定，图标查询可参考 <a href="http://www.fontawesome.com.cn/faicons/">http://www.fontawesome.com.cn/faicons/</a> 或 <a href="https://fontawesome.com/icons">https://fontawesome.com/icons</a></p></div>
 <div class="block">
 <h2 id=".wui-combogrid">@key .wui-combogrid</h2><div class="toc"><p style="margin-left:0em"><a href="#.wui-combogrid-1 markRefresh 标记下次打开时刷新列表">1 markRefresh 标记下次打开时刷新列表</a></p>
+<p style="margin-left:0em"><a href="#.wui-combogrid-2 动态修改下拉列表">2 动态修改下拉列表</a></p>
 </div>
 <p>可搜索的下拉列表。<br />
 示例：在dialog上，填写门店字段（填写Id，显示名字），从门店列表中选择一个门店。</p>
@@ -4020,7 +4064,19 @@ CateGrid: {
 <h4 id=".wui-combogrid-1 markRefresh 标记下次打开时刷新列表">1 markRefresh 标记下次打开时刷新列表</h4>
 <p>(v5.5) 与my-combobox类似，组件会在其它页面更新对象后自动刷新列表。<br />
 外部想要刷新组件列表，可以触发markRefresh事件：</p>
-<pre><code>jo.trigger("markRefresh", obj); // obj是可选的，若指定则仅当obj匹配组件对应obj时才会刷新。</code></pre></div>
+<pre><code>jo.trigger("markRefresh", obj); // obj是可选的，若指定则仅当obj匹配组件对应obj时才会刷新。</code></pre>
+<h4 id=".wui-combogrid-2 动态修改下拉列表">2 动态修改下拉列表</h4>
+<p>动态修改组件的url选项，然后触发markRefresh即可。示例：</p>
+<pre><code>// 比如每打开对话框时，根据某变量动态显示列表。可在dialog的beforeShow事件中编码：
+var factoryId = ...;
+// 取出选项，动态修改url
+var jo = $(frm.categoryId);
+var opt = WUI.getOptions(jo); 
+opt.url = WUI.makeUrl('Category.query', {
+    res: 'id,name,fatherName',
+    cond: 'factoryId=' + factoryId
+});
+jo.trigger("markRefresh");</code></pre></div>
 <div class="block">
 <h2 id=".combo-f">@key .combo-f</h2>
 <p>支持基于easyui-combo的表单扩展控件，如 combogrid/datebox/datetimebox等, 在使用WUI.getFormData时可以获取到控件值.</p>
@@ -4364,7 +4420,9 @@ WUI.toggleTab(jtabs, "组合物料", formData.type == "P");</code></pre></div>
 <p>示例：输入框后添加一个帮助按钮：</p>
 <pre><code>&lt;input name="value" class="wui-picker-help" data-helpKey="取消工单"&gt;</code></pre>
 <p>点击帮助按钮，跳往WUI.options.helpUrl指定的地址。如果指定data-helpKey，则跳到该锚点处。</p>
-<p>可以多个picker一起使用。</p></div>
+<p>可以多个picker一起使用。</p>
+<p>帮助链接：(加wui-help类则点击可跳转，同时也支持用data-helpKey属性指定主题)</p>
+<pre><code>&lt;a class="wui-help"&gt;&lt;span&gt;&lt;i class="fa fa-question-circle"&gt;&lt;/i&gt;帮助&lt;/span&gt;&lt;/a&gt;</code></pre></div>
 <div class="block">
 <h2 id="WUI.showByType">@fn WUI.showByType(jo, type)</h2>
 <p>对话框上form内的一组控件中，根据type决定当前显示/启用哪一个控件。</p>
