@@ -1,6 +1,9 @@
 # 开发环境搭建
  
 服务器共享软件的路径为 `\\server-pc\share\Software`, 请将以下`{SHARE_SVR}`替换成该地址。
+外网环境使用路径[http://oliveche.com/app/tool/](http://oliveche.com/app/tool/)
+
+(部分内部文件从ftp下载，路径为 ftp://oliveche.com:10021/software 用户名密码请询问管理员。如果访问不了，需要联系管理员添加IP到白名单)
 
 ## Windows开发环境
 
@@ -20,23 +23,39 @@
 
 在 Settings->Network 中，确认右侧 SSH Client 使用的是刚刚安装的Git中的ssh路径，如
 
-	C:\Program Files (x86)\Git\bin\ssh.exe
+	C:\Program Files\Git\usr\bin\ssh.exe
 
-如果代码服务器不提供用户名密码登录，那么需要设置ssh证书登录方式：
+以下为配置登录公司相关服务器：
 
-在用户主目录下(开始->运行->输入 "." 或 "%userprofile%")创建目录".ssh", 将 `${SHARE_SVR}\server-pc-key` 目录下的文件(config, id_rsa等)拷贝到".ssh"目录中。
+公司内网代码服务器为server-pc（外部访问通过映射），一般采用ssh证书登录方式（免密码登录），配置如下：
+
+在用户主目录下(按Windows-R键打开运行对话框，输入 "." 或 "%userprofile%")，创建目录".ssh", 将 `${SHARE_SVR}\server-pc-key` 目录下的文件(config, id_rsa等)拷贝到".ssh"目录中。
 如果目前下已经有同名文件，请手工修改和合并。
 
-在文件夹空白处点右键，打开 Git Bash，尝试 ssh 是否可以自动登录到代码服务器:
+在文件夹空白处点右键，打开 Git Bash，尝试 ssh 是否可以自动登录到内网代码服务器:
 
 	ssh server-pc
 	(应可免密登录上, 按Ctrl-D退出)
+
+如果在外网，使用名称olive2（它就是server-pc服务器，映射到公网的），先配置刚刚复制到.ssh目录的config文件，添加上这些：
+
+	host olive2
+	hostname oliveche.com
+	port 10022
+
+然后测试登录：
+
+	ssh olive2
 
 创建目录d:\project做为项目目录，进行该目录拉取代码（在git-bash中运行）：
 
 	cd d:\project
 	git clone server-pc:src/jdcloud-ganlan
 	（应可免密下载项目）
+
+(如果用olive2，则路径为 olive2:src/jdcloud-ganlan)
+
+一般推荐使用图形工具TortoiseGit，在project目录下右键选择Git Clone.
 
 ### 数据库MYSQL
 
@@ -71,7 +90,7 @@ MySQL服务端不是必装的，自己学习的话可以安装一个，注意安
 
 建议安装vscode编辑器和gvim编辑器。
 
-	\\server-pc\share\software\vsCode
+{SHARE_SVR}下面有vscode安装包（VSCodeUserSetup-x64-1.46.1），也可从公网下载新版本。
 
 画图（如用例图、类图等）可安装drawio插件。
 
@@ -80,7 +99,7 @@ MySQL服务端不是必装的，自己学习的话可以安装一个，注意安
 	{SHARE_SVR}\vim\gvim74.exe
 
 建议安装到 `d:\vim`
-安装完成后将 `{SHARE_SVR}\vim\_vimrc` 拷贝到安装目录， 如`d:\vim`
+安装完成后将配置文件 `{SHARE_SVR}\vim\_vimrc` 拷贝到安装目录下（如`d:\vim`目录）
 
 ### 服务器环境Apache+PHP 
 
@@ -94,19 +113,20 @@ MySQL服务端不是必装的，自己学习的话可以安装一个，注意安
 
 	hello, jdcloud.
 
-命令行运行一下：
+在cmd命令行或git-bash中，进入`d:\project`目录，测试执行这个脚本文件，
 
 	php index.php
 
 应能正常输出。
 
-安装apache2:
+安装apache2: 解压`{SHARE_SVR}\Apache24-x64-vc15-fcgid.rar` 到 `d:\`，得到目录`D:\Apache24-x64-vc15`，下面以`{APACHE_HOME}`指代该目录。
 
-	解压`{SHARE_SVR}\Apache24-x64-vc15-fcgid.rar` 到 `d:\`
+检查配置文件：`{APACHE_HOME}\conf\__user.conf`（以及httpd.conf配置文件）其中各路径是否与实际文件路径相符。默认Web主目录为`d:\project`，检查php目录是否正确。
 
-检查配置文件：`D:\Apache24-x64-vc15\conf\__user.conf`其中路径是否相符。默认Web主目录为`d:\project`，检查php目录是否正确。
+右键`{APACHE_HOME}\install.bat`，选择“以管理员权限运行”，安装服务。
+双击`{APACHE_HOME}\bin\ApacheMonitor.exe`，在系统托盘中出现Apache管理图标，双击它打开可以启动、重启apache服务。修改配置文件后一般需要重启Aapche服务。
 
-双击`D:\Apache24-x64-vc15\bin\ApacheMonitor.exe`，在系统托盘中出现Apache管理图标，双击它打开可以启动、重启apache服务。修改配置文件后一般需要重启Aapche服务。
+如果启动失败，常见原因是有目录配置错误，或端口80被其它程序占用，可以进入`{APACHE_HOME}\bin`目录下用命令行`httpd -X`调试启动查看错误信息。
 
 测试：刚刚在Web主目录`d:\project`下创建过文件`index.php`，现在到chrome浏览器访问一下：
 
