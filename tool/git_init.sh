@@ -19,6 +19,7 @@ cd $name
 
 git config receive.denyCurrentBranch ignore
 git config receive.denyNonFastForwards false
+git config receive.shallowUpdate true
 cat <<.  > .git/hooks/post-update
 #!/bin/sh
 unset GIT_DIR
