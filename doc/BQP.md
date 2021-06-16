@@ -395,9 +395,13 @@ POST内容也可以使用json格式，如：
 对象的属性通过POST请求内容给出，为一个个键值对。
 添加完成后，默认返回新对象的id, 如果想多返回其它字段，可设置res参数，如 
 
-	callSvr("Ordr.add", $.noop, {status:"CR", total:100}) -> 809
+	callSvr("Ordr.add", $.noop, {status:"CR", total:100})
+	返回
+	809
 
-	callSvr("Ordr.add", {res:"id,status,total"}, $.noop, {status:"CR", total:100}) -> {id: 810, status:"CR", total: 100}
+	callSvr("Ordr.add", {res:"id,status,total"}, $.noop, {status:"CR", total:100})
+	返回
+	{id: 810, status:"CR", total: 100}
 
 对象id支持自动生成。
 
@@ -413,7 +417,9 @@ POST内容也可以使用json格式，如：
 
 示例：
 
-	callSvr("Obj.set", {id: 809}, $.noop, {status:"PA", empId:10}) -> "OK"
+	callSvr("Obj.set", {id: 809}, $.noop, {status:"PA", empId:10})
+	返回
+	"OK"
 
 如果未指定返回值，一般默认返回"OK"。下面示例也将省略返回值。
 
@@ -1057,14 +1063,16 @@ batchAdd调用参数为: `{title: "编码->code,物料编码->itemCode", useColM
 
 主对象添加后，可以通过get接口获取主对象及子对象：
 
-	callSvr("Obj.get", {id: 1001, res:"id,name,obj1"}) -> {
+	callSvr("Obj.get", {id: 1001, res:"id,name,obj1"})
+	返回
+	{
 		id: 1001,
 		name: "name1",
 		obj1: [
 			{ id: 10001, name: "obj1-name1" },
 			{ id: 10002, name: "obj1-name2" }
 		]
-	});
+	}
 
 要控制子对象的查询结果字段，可以加`res_{子对象名}`参数；要控制子对象的查询参数，可以加`param_{子对象名}`参数，示例：
 
@@ -1081,7 +1089,9 @@ batchAdd调用参数为: `{title: "编码->code,物料编码->itemCode", useColM
 
 当然，也可以直接查询子对象，如：
 
-	callSvr("Obj1.query", {cond: "objId=1001", res:"id,name,obj1", fmt:"array"}) -> [
+	callSvr("Obj1.query", {cond: "objId=1001", res:"id,name,obj1", fmt:"array"})
+	返回
+	[
 		{ id: 10001, name: "obj1-name1" },
 		{ id: 10002, name: "obj1-name2" }
 	]

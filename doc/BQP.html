@@ -289,9 +289,13 @@ Ordr.get(id) -&gt; { id, dscr, %addr, @items }
 <pre><code>Obj.add(uniKey?)(POST fields...) -&gt; id
 Obj.add(res)(POST fields...) -&gt; {fields...} (返回的字段由res参数指定)</code></pre>
 <p>对象的属性通过POST请求内容给出，为一个个键值对。 添加完成后，默认返回新对象的id, 如果想多返回其它字段，可设置res参数，如</p>
-<pre><code>callSvr(&quot;Ordr.add&quot;, $.noop, {status:&quot;CR&quot;, total:100}) -&gt; 809
+<pre><code>callSvr(&quot;Ordr.add&quot;, $.noop, {status:&quot;CR&quot;, total:100})
+返回
+809
 
-callSvr(&quot;Ordr.add&quot;, {res:&quot;id,status,total&quot;}, $.noop, {status:&quot;CR&quot;, total:100}) -&gt; {id: 810, status:&quot;CR&quot;, total: 100}</code></pre>
+callSvr(&quot;Ordr.add&quot;, {res:&quot;id,status,total&quot;}, $.noop, {status:&quot;CR&quot;, total:100})
+返回
+{id: 810, status:&quot;CR&quot;, total: 100}</code></pre>
 <p>对象id支持自动生成。</p>
 <ul>
 <li>uniKey: 唯一索引字段. 如果指定, 则以该字段查询记录是否存在(调用query接口）, 存在则更新（调用set接口）。例如&quot;code&quot;, 也支持多个字段（用于关联表），如&quot;bpId,itemId&quot;。</li>
@@ -301,7 +305,9 @@ callSvr(&quot;Ordr.add&quot;, {res:&quot;id,status,total&quot;}, $.noop, {status
 <pre><code>Obj.set(id)(POST fields...)</code></pre>
 <p>与add操作类似，对象属性的修改通过POST请求传递，而在URL参数中需要有id标识哪个对象。</p>
 <p>示例：</p>
-<pre><code>callSvr(&quot;Obj.set&quot;, {id: 809}, $.noop, {status:&quot;PA&quot;, empId:10}) -&gt; &quot;OK&quot;</code></pre>
+<pre><code>callSvr(&quot;Obj.set&quot;, {id: 809}, $.noop, {status:&quot;PA&quot;, empId:10})
+返回
+&quot;OK&quot;</code></pre>
 <p>如果未指定返回值，一般默认返回&quot;OK&quot;。下面示例也将省略返回值。</p>
 <p>如果要将某字段置空, 可以用空串或&quot;null&quot; (小写)。例如：</p>
 <pre><code>callSvr(&quot;Obj.set&quot;, {id: 809}, $.noop, {picId:&quot;&quot;, empId:&quot;null&quot;})
@@ -741,14 +747,16 @@ vcol: @obj1 (说明：vcol表示虚拟字段，@obj1表示字段obj1是个数组
 });</code></pre>
 <h4 id="子表查询"><span class="header-section-number">3.5.2</span> 子表查询</h4>
 <p>主对象添加后，可以通过get接口获取主对象及子对象：</p>
-<pre><code>callSvr(&quot;Obj.get&quot;, {id: 1001, res:&quot;id,name,obj1&quot;}) -&gt; {
+<pre><code>callSvr(&quot;Obj.get&quot;, {id: 1001, res:&quot;id,name,obj1&quot;})
+返回
+{
     id: 1001,
     name: &quot;name1&quot;,
     obj1: [
         { id: 10001, name: &quot;obj1-name1&quot; },
         { id: 10002, name: &quot;obj1-name2&quot; }
     ]
-});</code></pre>
+}</code></pre>
 <p>要控制子对象的查询结果字段，可以加<code>res_{子对象名}</code>参数；要控制子对象的查询参数，可以加<code>param_{子对象名}</code>参数，示例：</p>
 <pre><code>callSvr(&quot;Obj.get&quot;, {id: 1001, res:&quot;id,name,obj1&quot;, res_obj1:&quot;id,name&quot;})
 或
@@ -759,7 +767,9 @@ callSvr(&quot;Obj.get&quot;, {id: 1001, res:&quot;id,name,obj1&quot;, param_obj1
 // 甚至可以多别名分别指定:
 callSvr(&quot;Obj.get&quot;, {id: 1001, res:&quot;id,name,obj1 objList,obj1 objList2&quot;, res_objList:&quot;id,name&quot;, res_objList2:&quot;id,code&quot;})</code></pre>
 <p>当然，也可以直接查询子对象，如：</p>
-<pre><code>callSvr(&quot;Obj1.query&quot;, {cond: &quot;objId=1001&quot;, res:&quot;id,name,obj1&quot;, fmt:&quot;array&quot;}) -&gt; [
+<pre><code>callSvr(&quot;Obj1.query&quot;, {cond: &quot;objId=1001&quot;, res:&quot;id,name,obj1&quot;, fmt:&quot;array&quot;})
+返回
+[
     { id: 10001, name: &quot;obj1-name1&quot; },
     { id: 10002, name: &quot;obj1-name2&quot; }
 ]</code></pre>
