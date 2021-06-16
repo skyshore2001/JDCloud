@@ -159,24 +159,19 @@ class AC2_ApiLog extends AccessControl
 注意“应用程序URL根路径”一项应与BASE_URL一致，如本例中为`/mysvc`。
 
 初始化工具运行完后，生成的配置文件为`php/conf.user.php`，之后也可以手工编辑该文件。
-同时创建了项目数据库。接下来，数据库中表的部署需要使用数据模型部署工具tool/upgrade.php。
+同时创建了项目数据库。接下来，要在数据库中创建表和字段，我们称为部署数据模型。
 
-数据模型定义在主设计文档DESIGN.md中，作为示例，里面定义了一些数据模型，像用户(User)，订单(Ordr)以及前面提过的操作日志(ApiLog)等，还定义了一些常用接口，如登录操作(login)等。
-我们通过通过命令行工具tool/upgrade.php可以创建或更新数据库：
+数据模型定义在主设计文档DESIGN.md中，作为示例，里面定义了用户(User)，订单(Ordr)以及前面提过的操作日志(ApiLog)等表。
+我们通过通过命令行工具`tool/upgrade.sh`可以创建或更新数据库，在git-bash中运行命令：
 
 	cd tool
-	php upgrade.php
-	(这时进入upgrade交互操作，输入initdb命令创建或更新数据库)
-	> initdb
-	(输入命令q退出)
-	> q
+	./upgrade.sh initdb
+	(确认数据库信息无误后回车执行)
 
-工具默认使用前面生成的配置(php/conf.user.php)去连接数据库。如果要连接其它数据库，也可以设置"P_DB", "P_DBCRED"环境变量来指定，如
+该命令行工具内部调用的是`upgrade.php`工具，使用前面生成的配置(php/conf.user.php)去连接数据库。所以运行它需要php运行环境。
+如果要连接其它数据库，可以基于`upgrade.sh`新建一个脚本比如`upgrade-dev.sh`，改下其中的连接参数后运行即可。
 
-	export P_DB="myserver/mydb"
-	export P_DBCRED="myuser:mypwd"
-	php upgrade.php
-
+注意：开发时使用`tool/upgrade.sh`工具维护数据库，部署实施时应使用在线升级机制，参考[数据库在线部署与升级]。
 
 为了学习对象型接口，我们以暴露ApiLog对象提供CRUD操作为例，只要在接口实现文件php/api_objects.php(包含在主入口api.php中)中添加代码：
 ```php
@@ -1871,7 +1866,37 @@ task.php是以命令行方式运行的，写好任务"db"后可以这样运行�
 - 如果在task.php中调用了外部脚本，确保该脚本有可执行权限。
 - 即使手工运行脚本通过，在计划任务中运行也可能出错，因为运行环境不同，注意查看日志。
 
+### 数据库在线部署与升级
+
+系统上线前，应刷新META文件，进入tool目录下，在git-bash中运行命令:
+
+	make meta
+
+它将根据DESIGN.md中的声明生成或更新META文件，然后使用git提交更新，推送上线即可。
+
+在线访问URL:
+
+	http://{myserver}/{mysvc}/tool/init.php
+
+点击"数据库升级"按钮即可（如果没有更新，则不会显示该按钮）。
+
+注意：
+
+- 为了安全，工具默认只会添加表或字段，不会删除或更新字段类型。这时可以点击“数据库比较”按钮，将生成的SQL语句拷贝出来手工执行。
+- 工具不会自动删除表，要删除表必须手工操作数据。
+- 开发时使用tool/upgrade.sh工具直接升级（参考[创建筋斗云Web接口项目]），上线实施时应使用在线部署升级。
+
+若要强制手工升级，可以访问URL：
+
+	http://{myserver}/{mysvc}/tool/upgrade/
+
+若要强制查看字段差异，可以访问URL：
+
+	http://localhost/quiz/server/tool/upgrade/?diff=1
+
 ### 自动化发布上线
+
+（以下方法已过时，仅供参考）
 
 如果希望每次修改一些内容后，可以快速将差异部分上线，不必每次都上传所有文件，可以使用筋斗云自带的上线工具。
 
@@ -1904,6 +1929,14 @@ task.php是以命令行方式运行的，写好任务"db"后可以这样运行�
 在Windows平台上，打开git shell运行build_web.sh即可上线。
 
 ### 自动化接口测试
+
+目前对筋斗云后端框架的自动化测试，使用的是基于开源单元测试框架[jasmine](https://jasmine.github.io/)封装的后端接口测试框架：
+
+- [jdclud-rtest](https://github.com/skyshore2001/jdcloud-rtest) (筋斗云后端接口测试框架)
+
+在实际项目中，也常常使用SoapUI/JMeter/Postman等工具对接口进行自动化测试。
+
+（以下方法已过时，仅供参考）
 
 创建Web Service后，可对每个接口(WebAPI)进行自动化回归测试。自动化测试可用于持续集成环境的搭建。
 

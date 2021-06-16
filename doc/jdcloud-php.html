@@ -50,8 +50,9 @@
 </ul></li>
 <li><a href="#筋斗云工具"><span class="toc-section-number">6</span> 筋斗云工具</a><ul>
 <li><a href="#计划任务"><span class="toc-section-number">6.1</span> 计划任务</a></li>
-<li><a href="#自动化发布上线"><span class="toc-section-number">6.2</span> 自动化发布上线</a></li>
-<li><a href="#自动化接口测试"><span class="toc-section-number">6.3</span> 自动化接口测试</a></li>
+<li><a href="#数据库在线部署与升级"><span class="toc-section-number">6.2</span> 数据库在线部署与升级</a></li>
+<li><a href="#自动化发布上线"><span class="toc-section-number">6.3</span> 自动化发布上线</a></li>
+<li><a href="#自动化接口测试"><span class="toc-section-number">6.4</span> 自动化接口测试</a></li>
 </ul></li>
 <li><a href="#集成外部web服务"><span class="toc-section-number">7</span> 集成外部Web服务</a><ul>
 <li><a href="#模拟外部web服务"><span class="toc-section-number">7.1</span> 模拟外部Web服务</a></li>
@@ -147,18 +148,13 @@
 <pre><code>http://localhost/mysvc/tool/init.php</code></pre>
 <p>这个工具会先检查运行环境是否正确，如有异常（比如php版本不对，缺少组件等）请先解决。 注意PHP最低版本需要5.4版本，需要打开mysql, pdo, gd等支持。</p>
 <p>注意“应用程序URL根路径”一项应与BASE_URL一致，如本例中为<code>/mysvc</code>。</p>
-<p>初始化工具运行完后，生成的配置文件为<code>php/conf.user.php</code>，之后也可以手工编辑该文件。 同时创建了项目数据库。接下来，数据库中表的部署需要使用数据模型部署工具tool/upgrade.php。</p>
-<p>数据模型定义在主设计文档DESIGN.md中，作为示例，里面定义了一些数据模型，像用户(User)，订单(Ordr)以及前面提过的操作日志(ApiLog)等，还定义了一些常用接口，如登录操作(login)等。 我们通过通过命令行工具tool/upgrade.php可以创建或更新数据库：</p>
+<p>初始化工具运行完后，生成的配置文件为<code>php/conf.user.php</code>，之后也可以手工编辑该文件。 同时创建了项目数据库。接下来，要在数据库中创建表和字段，我们称为部署数据模型。</p>
+<p>数据模型定义在主设计文档DESIGN.md中，作为示例，里面定义了用户(User)，订单(Ordr)以及前面提过的操作日志(ApiLog)等表。 我们通过通过命令行工具<code>tool/upgrade.sh</code>可以创建或更新数据库，在git-bash中运行命令：</p>
 <pre><code>cd tool
-php upgrade.php
-(这时进入upgrade交互操作，输入initdb命令创建或更新数据库)
-&gt; initdb
-(输入命令q退出)
-&gt; q</code></pre>
-<p>工具默认使用前面生成的配置(php/conf.user.php)去连接数据库。如果要连接其它数据库，也可以设置&quot;P_DB&quot;, &quot;P_DBCRED&quot;环境变量来指定，如</p>
-<pre><code>export P_DB=&quot;myserver/mydb&quot;
-export P_DBCRED=&quot;myuser:mypwd&quot;
-php upgrade.php</code></pre>
+./upgrade.sh initdb
+(确认数据库信息无误后回车执行)</code></pre>
+<p>该命令行工具内部调用的是<code>upgrade.php</code>工具，使用前面生成的配置(php/conf.user.php)去连接数据库。所以运行它需要php运行环境。 如果要连接其它数据库，可以基于<code>upgrade.sh</code>新建一个脚本比如<code>upgrade-dev.sh</code>，改下其中的连接参数后运行即可。</p>
+<p>注意：开发时使用<code>tool/upgrade.sh</code>工具维护数据库，部署实施时应使用在线升级机制，参考<a href="#数据库在线部署与升级">数据库在线部署与升级</a>。</p>
 <p>为了学习对象型接口，我们以暴露ApiLog对象提供CRUD操作为例，只要在接口实现文件php/api_objects.php(包含在主入口api.php中)中添加代码：</p>
 <div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="kw">class</span> AC_ApiLog <span class="kw">extends</span> AccessControl
 {
@@ -1367,7 +1363,25 @@ crontab -e
 <li>如果在task.php中调用了外部脚本，确保该脚本有可执行权限。</li>
 <li>即使手工运行脚本通过，在计划任务中运行也可能出错，因为运行环境不同，注意查看日志。</li>
 </ul>
-<h3 id="自动化发布上线"><span class="header-section-number">6.2</span> 自动化发布上线</h3>
+<h3 id="数据库在线部署与升级"><span class="header-section-number">6.2</span> 数据库在线部署与升级</h3>
+<p>系统上线前，应刷新META文件，进入tool目录下，在git-bash中运行命令:</p>
+<pre><code>make meta</code></pre>
+<p>它将根据DESIGN.md中的声明生成或更新META文件，然后使用git提交更新，推送上线即可。</p>
+<p>在线访问URL:</p>
+<pre><code>http://{myserver}/{mysvc}/tool/init.php</code></pre>
+<p>点击&quot;数据库升级&quot;按钮即可（如果没有更新，则不会显示该按钮）。</p>
+<p>注意：</p>
+<ul>
+<li>为了安全，工具默认只会添加表或字段，不会删除或更新字段类型。这时可以点击“数据库比较”按钮，将生成的SQL语句拷贝出来手工执行。</li>
+<li>工具不会自动删除表，要删除表必须手工操作数据。</li>
+<li>开发时使用tool/upgrade.sh工具直接升级（参考<a href="#创建筋斗云web接口项目">创建筋斗云Web接口项目</a>），上线实施时应使用在线部署升级。</li>
+</ul>
+<p>若要强制手工升级，可以访问URL：</p>
+<pre><code>http://{myserver}/{mysvc}/tool/upgrade/</code></pre>
+<p>若要强制查看字段差异，可以访问URL：</p>
+<pre><code>http://localhost/quiz/server/tool/upgrade/?diff=1</code></pre>
+<h3 id="自动化发布上线"><span class="header-section-number">6.3</span> 自动化发布上线</h3>
+<p>（以下方法已过时，仅供参考）</p>
 <p>如果希望每次修改一些内容后，可以快速将差异部分上线，不必每次都上传所有文件，可以使用筋斗云自带的上线工具。</p>
 <p>筋斗云框架支持WEB应用自动化发布，并可差量更新。 目前差量更新依赖git工具，要求源目录及编译生成的发布目录均使用git管理，每次只上传与线上版本差异的部分。 本章详细介绍可参考官方文档&quot;webcc&quot;中的&quot;jdcloud-build&quot;模块。</p>
 <p>自动化发布支持ftp/git两种方式，前者只需服务器提供ftp上传帐号，后者需要服务器提供git-push权限。 本章介绍git方式，安全可靠且版本可任意回溯。ftp方式只需修改若干参数，可参考官方文档。</p>
@@ -1383,7 +1397,13 @@ export OUT_DIR=../mysvc-online
 export GIT_PATH=www@myserver:mysvc
 tool/jdcloud-build.sh</code></pre>
 <p>在Windows平台上，打开git shell运行build_web.sh即可上线。</p>
-<h3 id="自动化接口测试"><span class="header-section-number">6.3</span> 自动化接口测试</h3>
+<h3 id="自动化接口测试"><span class="header-section-number">6.4</span> 自动化接口测试</h3>
+<p>目前对筋斗云后端框架的自动化测试，使用的是基于开源单元测试框架<a href="https://jasmine.github.io/">jasmine</a>封装的后端接口测试框架：</p>
+<ul>
+<li><a href="https://github.com/skyshore2001/jdcloud-rtest">jdclud-rtest</a> (筋斗云后端接口测试框架)</li>
+</ul>
+<p>在实际项目中，也常常使用SoapUI/JMeter/Postman等工具对接口进行自动化测试。</p>
+<p>（以下方法已过时，仅供参考）</p>
 <p>创建Web Service后，可对每个接口(WebAPI)进行自动化回归测试。自动化测试可用于持续集成环境的搭建。</p>
 <p>所有测试内容存放在回归测试目录<code>rtest</code>（regression test）下。</p>
 <p>先确保phpunit已正确安装，这是php的单元测试框架，安装好后确认其可直接在命令行中运行。 确保安装了perl，一些小工具使用perl (Windows下git-bash中默认包含有perl).</p>
