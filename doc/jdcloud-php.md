@@ -15,7 +15,7 @@
 
 - [jdclud-php](https://github.com/skyshore2001/jdcloud-php) (筋斗云后端php版本)
 - [jdclud-java](https://github.com/skyshore2001/jdcloud-java) (筋斗云后端java版本)
-- [jdclud-cs](https://github.com/skyshore2001/jdcloud-cs) (筋斗云后端.net版本)
+- [jdclud-cs](https://github.com/skyshore2001/jdcloud-cs) (筋斗云后端.net/c#版本)
 
 另外，筋斗云有实用的前端框架，支持构建模块化的H5单页应用：
 
@@ -66,6 +66,7 @@ class AC_ApiLog extends AccessControl
 **[函数型接口 - 简单直接]**
 
 除了对象型接口，还有一类叫函数型接口，比如要实现一个接口叫"getInfo"用于返回一些信息，开发起来也非常容易，只要定义下面一个函数：
+(习惯上函数型接口写在 server/php/api_functions.php中)
 ```php
 function api_getInfo()
 {

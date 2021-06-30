@@ -68,7 +68,7 @@
 <ul>
 <li><a href="https://github.com/skyshore2001/jdcloud-php">jdclud-php</a> (筋斗云后端php版本)</li>
 <li><a href="https://github.com/skyshore2001/jdcloud-java">jdclud-java</a> (筋斗云后端java版本)</li>
-<li><a href="https://github.com/skyshore2001/jdcloud-cs">jdclud-cs</a> (筋斗云后端.net版本)</li>
+<li><a href="https://github.com/skyshore2001/jdcloud-cs">jdclud-cs</a> (筋斗云后端.net/c#版本)</li>
 </ul>
 <p>另外，筋斗云有实用的前端框架，支持构建模块化的H5单页应用：</p>
 <ul>
@@ -96,7 +96,7 @@
 <p>甚至可以做统计，比如查看2016年1月里，列出访问次数排名前10的地址，以及每个地址访问了多少次服务器，也可以通过query接口直接查出。</p>
 <p>可见，用筋斗云后端框架开发对象操作接口，可以用非常简单的代码实现强大而灵活的功能。</p>
 <p><strong>[函数型接口 - 简单直接]</strong></p>
-<p>除了对象型接口，还有一类叫函数型接口，比如要实现一个接口叫&quot;getInfo&quot;用于返回一些信息，开发起来也非常容易，只要定义下面一个函数：</p>
+<p>除了对象型接口，还有一类叫函数型接口，比如要实现一个接口叫&quot;getInfo&quot;用于返回一些信息，开发起来也非常容易，只要定义下面一个函数： (习惯上函数型接口写在 server/php/api_functions.php中)</p>
 <div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="kw">function</span> api_getInfo<span class="ot">()</span>
 {
     <span class="kw">return</span> <span class="ot">[</span><span class="st">&quot;name&quot;</span> =&gt; <span class="st">&quot;jdcloud&quot;</span><span class="ot">,</span> <span class="st">&quot;addr&quot;</span> =&gt; <span class="st">&quot;Shanghai&quot;</span><span class="ot">];</span>
