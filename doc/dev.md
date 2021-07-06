@@ -18,8 +18,8 @@
 
 浏览器右键点菜单 TortoiseGit->Settings->(左边菜单树中选择)Git->设置 Name 和 Email, 如
 
-	Name: liangjian
-	Email: liangjian@oliveche.com
+	Name: xxx（改成你的名字）
+	Email: xxx@126.com（改成你的邮箱地址）
 
 在 Settings->Network 中，确认右侧 SSH Client 使用的是刚刚安装的Git中的ssh路径，如
 

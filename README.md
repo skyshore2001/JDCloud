@@ -23,6 +23,25 @@
 
 # 版本日志
 
+## v6 - TODO
+
+- 后端(jd-php)
+ - 查询参数cond除支持字符串数组外，增加支持键值对，增强getQueryCond函数；可用params("cond")取cond参数，会同时从GET/POST参数中取
+ - 统一使用jsonEncode, 去除全局JSON_FLAG
+ - 子表更新支持patch/put两种模式
+ - 批量导入时的更新机制增强(batchAdd+uniKey), uniKey支持虚拟字段; 全面支持子表更新(默认使用put模式更新子表)
+ - 引入readBlock函数编程模型(common.php)
+ - 支持通用Obj.query(qsearch)接口，如`callSvr("Ordr.query", {qsearch: "dscr,cmt:张* 退款"})`
+ - 导出excel时(query接口)自动判断列类型(以前全部用字符串,不方便在excel中做数值计算)
+ - 推荐使用jdRet函数替代MyException/DirectReturn/setRet等
+
+- 管理端(jd-web)
+ - batchOp增强，支持基于指定查询条件的批量操作模式。
+ - treegrid支持多选。
+ - 系统间同步数据最佳实践：添加“复制到”对话框(dlgCopyTo)。
+ - 升级到jquery easyui 1.7.6(支持jquery1.x的最新版)
+ - 增加 wui-help 组件
+
 ## v5.5 - 2021/2
 
 - 后端(jd-php)
