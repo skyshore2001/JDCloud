@@ -776,6 +776,12 @@ tmUnit用于指定时间字段: "y,m"-年,月; "y,m,d"-年,月,日; "y,w"-年,�
 		}
 	}
 
+X轴数据也支持定制，通过设置formaterX回调函数，如tm="y,m,d"时，默认显示如"2020-10-1"，现在想只显示"10-1"，可以用：
+
+	var statData = WUI.rs2Stat(rs, {tmUnit:"y,m,d", formatterX:function (value) {
+		return value[1] + "-" + value[2]
+	}})
+
 */
 self.rs2Stat = rs2Stat
 function rs2Stat(rs, opt)
@@ -877,12 +883,13 @@ function rs2Stat(rs, opt)
 
 	// [x, y1, y2, y3...]
 	$.each(rs.d, function (i, row) {
-		// 补日期
 		var x;
 		if (! opt.tmUnit) {
 			x = xtext(row);
+			xData.push(x);
 		}
 		else {
+			// 补日期
 			var tmArr = xarr(row);
 			x = makeTm(opt.tmUnit, tmArr);
 			var completeCnt = 0;
@@ -892,7 +899,8 @@ function rs2Stat(rs, opt)
 					var nextX = makeTm(opt.tmUnit, lastTmArr);
 					if (x == nextX)
 						break;
-					xData.push(nextX);
+					// xData.push(nextX);
+					xData.push(xtext(lastTmArr));
 					++ completeCnt;
 				}
 			}
@@ -905,9 +913,10 @@ function rs2Stat(rs, opt)
 						yData[i].data.push(y);
 				});
 			}
+			// xData.push(x);
+			xData.push(xtext(tmArr));
 		}
 	
-		xData.push(x);
 		$.each(ycols, function (i, ycol) {
 			var y = parseFloat(row[ycol]) || 0; // y默认补0
 			yData[i].data.push(y);
@@ -1058,6 +1067,8 @@ statData示例：
 		]
 	}
 
+特别地，设置 chartOpt.swapXY = true，表示横向柱状图。
+
 @see WUI.rs2Stat, WUI.initPageStat
  */
 self.initChart = initChart;
@@ -1099,6 +1110,9 @@ function initChart(chartTable, statData, seriesOpt, chartOpt)
 				}
 			},
 		};
+		if (chartOpt.swapXY) {
+			var tmp = chartOpt0.xAxis; chartOpt0.xAxis = chartOpt0.yAxis; chartOpt0.yAxis = tmp;
+		}
 	}
 	else if (seriesOpt1.type == 'pie') {
 		WUI.assert(statData.yData.length <= 1, "*** 饼图应只有一个系列");
