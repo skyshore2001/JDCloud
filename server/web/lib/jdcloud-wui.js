@@ -4528,7 +4528,10 @@ function defDataProc(rv)
 			return rv[1];
 		}
 		ctx.dfd && setTimeout(function () {
-			ctx.dfd.reject.call(that, rv[1]);
+			if (!that.noex)
+				ctx.dfd.reject.call(that, rv[1]);
+			else
+				ctx.dfd.resolve.call(that, false);
 		});
 
 		if (this.noex)
@@ -5100,7 +5103,9 @@ callSvr扩展示例：
 		}
 	}
 
-## jQuery的$.Deferred兼容Promise接口
+## ES6支持：jQuery的$.Deferred兼容Promise接口 / 使用await
+
+支持Promise/Deferred编程风格:
 
 	var dfd = callSvr("...");
 	dfd.then(function (data) {
@@ -5112,6 +5117,24 @@ callSvr扩展示例：
 	.finally(...)
 
 支持catch/finally等Promise类接口。接口逻辑失败时，dfd.reject()触发fail/catch链。
+
+支持await编程风格，上例可写为：
+
+	// 使用await时callSvr调用失败是无法返回的，加{noex:1}选项可让失败时返回false
+	var rv = callSvr("...", $.noop, null, {noex:1});
+	if (rv === false) {
+		// 失败逻辑 dfd.catch. 取错误信息用WUI.lastError={ac, tm, tv, ret}
+		console.log(WUI.lastError.ret)
+	}
+	else {
+		// 成功逻辑 dfd.then
+	}
+	// finally逻辑
+
+示例：
+
+	let rv = await callSvr("Ordr.query", {res:"count(*) cnt", fmt:"one"})
+	let cnt = rv.cnt
 
 ## 直接取json类文件
 
