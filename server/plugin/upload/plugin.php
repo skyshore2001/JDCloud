@@ -308,14 +308,23 @@ function api_upload()
 
 	$handleOneFile = function ($f, $genThumb, &$files) use ($cate, $cateConf)
 	{
-		if ($f["error"] === 1 || $f["error"] === 2)
-			throw new MyException(E_PARAM, "large file (>upload_max_filesize or >MAX_FILE_SIZE)", "文件太大，禁止上传");
-		elseif ($f["error"] === 3)
-			throw new MyException(E_SERVER, "partial data got", "文件内容不完整");
+		if ($f["error"]) {
+			logit("fail to upload: " . jsonEncode($f));
+			if ($f["error"] === 1 || $f["error"] === 2)
+				throw new MyException(E_PARAM, "large file (>upload_max_filesize or >MAX_FILE_SIZE)", "文件太大，禁止上传");
+			elseif ($f["error"] === 3)
+				throw new MyException(E_SERVER, "partial data got", "文件内容不完整");
+			elseif ($f["error"] === 7)
+				throw new MyException(E_SERVER, "fail to write file or no disk space", "文件写入失败，请检查服务器权限或磁盘空间");
+
+			throw new MyException(E_SERVER, "fail to upload file: " . jsonEncode($f), "上传失败：错误码为"  . $f["error"]);
+		}
 // 1 : 上传的文件超过了 php.ini 中 upload_max_filesize 选项限制的值.
 // 2 : 上传文件的大小超过了 HTML 表单中 MAX_FILE_SIZE 选项指定的值。
 // 3 : 文件只有部分被上传
 // 4 : 没有文件被上传
+// 6 : 找不到临时文件夹
+// 7 : 文件写入失败
 
 		if ($f["name"] != "" && $f["size"] > 0) {
 			// 检查文件类型
