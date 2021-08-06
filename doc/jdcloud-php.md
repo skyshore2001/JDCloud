@@ -1455,12 +1455,12 @@ class AC1_Ordr extends AccessControl
 	static $statusMap = ["CR"=>"新创建", "PA"=>"已付款"];
 	protected function onInit()
 	{
-		// 字段计算逻辑
-		$this->enumFields["statusStr"] = function ($val, $row) {
+		// 字段计算逻辑，注意如果要对$row进行修改(setAliasVal)，应声明&$row而非$row
+		$this->enumFields["statusStr"] = function ($val, &$row) {
 			$status = $val;
 			// 用getAliasVal取字段值，不要直接用$row[k]，这样可以支持使用了别名的字段
-			$type = $this->getAliasVal(row, "type");
-			$closeFlag = $this->getAliasVal(row, "closeFlag");
+			$type = $this->getAliasVal($row, "type");
+			$closeFlag = $this->getAliasVal($row, "closeFlag");
 			... 计算逻辑 ...
 
 			// 示例：设置status1字段

@@ -1087,12 +1087,12 @@ Ordr.query() -&gt; tbl(同get接口字段...)
     <span class="kw">static</span> <span class="kw">$statusMap</span> = <span class="ot">[</span><span class="st">&quot;CR&quot;</span>=&gt;<span class="st">&quot;新创建&quot;</span><span class="ot">,</span> <span class="st">&quot;PA&quot;</span>=&gt;<span class="st">&quot;已付款&quot;</span><span class="ot">];</span>
     <span class="kw">protected</span> <span class="kw">function</span> onInit<span class="ot">()</span>
     {
-        <span class="co">// 字段计算逻辑</span>
-        <span class="kw">$this</span>-&gt;enumFields<span class="ot">[</span><span class="st">&quot;statusStr&quot;</span><span class="ot">]</span> = <span class="kw">function</span> <span class="ot">(</span><span class="kw">$val</span><span class="ot">,</span> <span class="kw">$row</span><span class="ot">)</span> {
+        <span class="co">// 字段计算逻辑，注意如果要对$row进行修改(setAliasVal)，应声明&amp;$row而非$row</span>
+        <span class="kw">$this</span>-&gt;enumFields<span class="ot">[</span><span class="st">&quot;statusStr&quot;</span><span class="ot">]</span> = <span class="kw">function</span> <span class="ot">(</span><span class="kw">$val</span><span class="ot">,</span> &amp;<span class="kw">$row</span><span class="ot">)</span> {
             <span class="kw">$status</span> = <span class="kw">$val</span><span class="ot">;</span>
             <span class="co">// 用getAliasVal取字段值，不要直接用$row[k]，这样可以支持使用了别名的字段</span>
-            <span class="kw">$type</span> = <span class="kw">$this</span>-&gt;getAliasVal<span class="ot">(</span>row<span class="ot">,</span> <span class="st">&quot;type&quot;</span><span class="ot">);</span>
-            <span class="kw">$closeFlag</span> = <span class="kw">$this</span>-&gt;getAliasVal<span class="ot">(</span>row<span class="ot">,</span> <span class="st">&quot;closeFlag&quot;</span><span class="ot">);</span>
+            <span class="kw">$type</span> = <span class="kw">$this</span>-&gt;getAliasVal<span class="ot">(</span><span class="kw">$row</span><span class="ot">,</span> <span class="st">&quot;type&quot;</span><span class="ot">);</span>
+            <span class="kw">$closeFlag</span> = <span class="kw">$this</span>-&gt;getAliasVal<span class="ot">(</span><span class="kw">$row</span><span class="ot">,</span> <span class="st">&quot;closeFlag&quot;</span><span class="ot">);</span>
             <span class="st">...</span> 计算逻辑 <span class="st">...</span>
 
             <span class="co">// 示例：设置status1字段</span>
