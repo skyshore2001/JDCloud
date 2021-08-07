@@ -7978,15 +7978,19 @@ function getQueryParamFromTable(jtbl, param)
 	}
 	if (param.res === undefined) {
 		var res = '';
-		$.each(opt.columns[0], function (i, e) {
-			if (! e.field || e.field.substr(-1) == "_")
+		$.each([opt.frozenColumns[0], opt.columns[0]], function (idx0, cols) {
+			if (cols == null)
 				return;
-			if (res.length > 0)
-				res += ',';
-			res += e.field + " \"" + e.title + "\"";
-			if (e.jdEnumMap) {
-				res += '=' + mCommon.kvList2Str(e.jdEnumMap, ';', ':');
-			}
+			$.each(cols, function (i, e) {
+				if (! e.field || e.field.substr(-1) == "_")
+					return;
+				if (res.length > 0)
+					res += ',';
+				res += e.field + " \"" + e.title + "\"";
+				if (e.jdEnumMap) {
+					res += '=' + mCommon.kvList2Str(e.jdEnumMap, ';', ':');
+				}
+			});
 		});
 		param.res = res;
 	}
