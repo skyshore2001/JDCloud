@@ -113,7 +113,7 @@ class AC2_ApiLog extends AccessControl
 	{
 		if (! hasPerm(PERM_MGR)) {
 			$empId = $_SESSION["empId"];
-			$this->addCond("t0.empId={$empId}");
+			$this->addCond("empId={$empId}");
 		}
 	}
 }
@@ -958,7 +958,7 @@ class AC1_Ordr extends AccessControl
 	protected function onQuery()
 	{
 		$userId = $_SESSION["uid"];
-		$this->addCond("t0.userId={$userId}");
+		$this->addCond("userId={$userId}");
 	}
 
 	// add/set接口会回调
@@ -974,7 +974,7 @@ class AC1_Ordr extends AccessControl
 ```
 
 - 在get/query操作中，会回调`onQuery`函数，在这里我们用`addCond`添加了一条限制：用户只能查看到自己的订单。
- `addCond`的参数可理解为SQL语句中WHERE子句的片段；字段用"t0.userId"来表示，其中"t0"表示当前操作表"Ordr"的别名(alias)。后面会讲到联合查询(join)其它表，就可能使用其它表的别名。
+ `addCond`的参数可理解为SQL语句中WHERE子句的片段，它等价于前端调用对象query接口中的cond参数。
 
 - add/set操作会回调`onValidate`函数（本例中`$allowedAc`中未定义"set"，因而不会有"set"操作过来）。在这个回调中常常设置`$_POST[字段名]`来自动完成一些字段。
 
@@ -1556,7 +1556,7 @@ class AC2_EmpLog extends AccessControl
 
 	// get/query操作都会走这里
 	protected function onQuery() {
-		$this->addCond("t0.app='emp' and t0.userId IS NOT NULL");
+		$this->addCond("app='emp' and userId IS NOT NULL");
 	}
 }
 ```

@@ -119,7 +119,7 @@ v5.4起将报错，设置该类的useStrictReadonly=false可以兼容旧行为�
 		protected function onQuery()
 		{
 			$userId = $_SESSION["uid"];
-			$this->addCond("t0.userId={$userId}");
+			$this->addCond("userId={$userId}");
 		}
 
 		protected function onValidate()
@@ -930,7 +930,7 @@ PAGE_SZ_LIMIT目前定为10000条。如果还不够，一定是应用设计有�
 		];
 
 		protected function onQuery() {
-			$this->addCond("t0.app='emp-adm' and t0.userId IS NOT NULL");
+			$this->addCond("app='emp-adm' and userId IS NOT NULL");
 		}
 	}
 
@@ -1102,7 +1102,7 @@ enumFields机制支持字段别名，比如若调用`Ordr.query(res="id 编号,s
 ### 动态设置虚拟字段及属性
 
 添加虚拟字段或属性，vcolDefs, subobj建议在onInit函数中添加或修改，而不是onQuery中。否则用res指定返回字段将无效。
-onQuery常用addCond来添加过滤条件，也可以设置enumFields。
+onQuery中常用addCond来添加过滤条件，也可以设置enumFields。
 示例：AC2继承AC0类，但要增加一个虚拟字段，又不要影响AC1，故可以加在AC2的onInit中。
 
 	protected function onInit() {
@@ -1884,74 +1884,50 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 @param $prepend 为true时将条件排到前面。
 @param $fixUserQuery 值为true会自动处理虚拟字段，但这时不允许复杂查询。设置为false写cond不受规则限制。
 
-调用多次addCond时，多个条件会依次用"AND"连接起来。
+addCond用于添加查询条件，可以使用表的字段或虚拟字段(无须用t0限定表名)，功能等同于前端调用对象query接口时给定的cond参数。
+可以调用多次addCond时，多个条件会依次用"AND"连接起来，如果指定参数prepand为true，则该条件加在最前面。
 
-添加查询条件。
 示例：假如设计有接口：
 
 	Ordr.query(q?) -> tbl(..., payTm?)
 	参数：
-	q:: 查询条件，值为"paid"时，查询10天内已付款的订单。且结果会多返回payTm/付款时间字段。
+	- q: 查询条件，值为"paid"时，查询10天内已付款的订单。且结果会多返回payTm/付款时间字段。
 
-实现时，在onQuery中检查参数"q"并定制查询条件：
-
-	protected function onQuery()
-	{
-		// 限制只能看用户自己的订单
-		$uid = $_SESSION["uid"];
-		$this->addCond("t0.userId=$uid");
-
-		$q = param("q");
-		if (isset($q) && $q == "paid") {
-			$validDate = date("Y-m-d", strtotime("-9 day"));
-			$this->addRes("olpay.tm payTm");
-			$this->addJoin("INNER JOIN OrderLog olpay ON olpay.orderId=t0.id");
-			$this->addCond("olpay.action='PA' AND olpay.tm>'$validDate'");
-		}
-	}
-
-上例在处理"q"参数时，临时引入了关联表。如果关联表已在vcolDefs中定义过，可以用addVCol直接引入：
+实现时，在onQuery中检查参数"q"并定制查询条件，虚拟字段可以用addVCol来引入(否则要在查询的res参数中指定了)：
 
 	protected $vcolDefs = [
 		[
 			"res" => ["olpay.tm payTm"],
-			"join" => "INNER JOIN OrderLog olpay ON olpay.orderId=t0.id"
+			"join" => "LEFT JOIN OrderLog olpay ON olpay.orderId=t0.id AND olpay.action='PA'"
 		]
 	];
 	protected function onQuery()
 	{
-		$q = param("q");
-		if (isset($q) && $q == "paid") {
+		if (param("q") == "paid") {
 			$validDate = date("Y-m-d", strtotime("-9 day"));
-			// 注意：要添加虚拟字段用addVCol，不是addRes
+			// 注意：要添加虚拟字段用addVCol，不是addRes(常用于定义虚拟字段)
 			$this->addVCol("payTm");
-			// 注意：addCond中不可直接使用payTm，要用原始定义olpay.tm。(下面会讲怎样直接在cond中用payTm)
-			$this->addCond("olpay.action='PA' AND olpay.tm>'$validDate'");
+			$this->addCond("payTm>'$validDate'");
 		}
 	}
-
-关于fixUserQuery=true:
-
-默认后端可以添加任何形式的SQL条件，但是如果其中含有虚拟字段，如果它尚未加到res查询结果中时，查询就会出错（无法识别这个字段）。
-设置fixUserQuery=true后，就会将该条件当作用户查询(UserQuery)来处理，即相当于query接口传入的cond字段，其中的虚拟字段会自动处理避免出错。
-但用户查询条件是受限的，比如不允许各种子查询，也不允许使用各种SQL函数（count/sum/avg等少量聚合函数除外）。
-
-仍用上面示例：
-
-	// 在cond中使用payTm虚拟字段，可自动解析和引入它的定义
-	$this->addCond("olpay.action='PA' AND payTm>'$validDate'", false, true);
-
-这相当于调用：
-
-	$this->addVCol("payTm", false, "-"); // 引入定义但并不加到SELECT字段中
-	$this->addCond("olpay.action='PA' AND olpay.tm>'$validDate'", false, false);
 
 如果想要查询固定返回空，习惯上可以用:
 
 	$this->addCond("1<>1");
 
-@see AccessControl::addRes
-@see AccessControl::addJoin
+当给定参数fixUserQuery=false时，可以突破query接口对cond的限制，比如不允许各种子查询，也不允许使用各种SQL函数（count/sum/avg等少量聚合函数除外）。
+但此时不再支持虚拟字段，各字段前宜加上相应的表名.
+
+仍用上面示例：
+
+	// 在cond中使用payTm虚拟字段，可自动解析和引入它的定义
+	$this->addCond("payTm>'$validDate'");
+
+这相当于调用：
+
+	$this->addVCol("payTm", false, "-"); // 需手工引入虚拟字段定义，用“-”参数表示并不加到结果字段中
+	$this->addCond("olpay.tm>'$validDate'", false, false);
+
  */
 	final public function addCond($cond, $prepend=false, $fixUserQuery=true)
 	{
@@ -2990,7 +2966,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 
 			// 限制只可更新自己的订单，一般写在onQuery中，以便get/query/setIf/delIf均可通用。
 			$empId = $_SESSION["empId"];
-			$this->addCond("t0.empId=$empId");
+			$this->addCond("empId=$empId");
 			// $this->addJoin(...);
 
 			return parent::api_setIf();
@@ -3032,7 +3008,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 
 			// 限制只可更新自己的订单，一般写在onQuery中，以便get/query/setIf/delIf均可通用。
 			$empId = $_SESSION["empId"];
-			$this->addCond("t0.empId=$empId");
+			$this->addCond("empId=$empId");
 			// $this->addJoin(...);
 
 			return parent::api_delIf();

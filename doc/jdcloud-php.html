@@ -127,7 +127,7 @@
     {
         <span class="kw">if</span> <span class="ot">(</span>! hasPerm<span class="ot">(</span><span class="kw">PERM_MGR</span><span class="ot">))</span> {
             <span class="kw">$empId</span> = <span class="kw">$_SESSION</span><span class="ot">[</span><span class="st">&quot;empId&quot;</span><span class="ot">];</span>
-            <span class="kw">$this</span>-&gt;addCond<span class="ot">(</span><span class="st">&quot;t0.empId=</span><span class="kw">{$empId}</span><span class="st">&quot;</span><span class="ot">);</span>
+            <span class="kw">$this</span>-&gt;addCond<span class="ot">(</span><span class="st">&quot;empId=</span><span class="kw">{$empId}</span><span class="st">&quot;</span><span class="ot">);</span>
         }
     }
 }</code></pre></div>
@@ -756,7 +756,7 @@ Ordr.get(id) -&gt; { 同query接口字段...}
     <span class="kw">protected</span> <span class="kw">function</span> onQuery<span class="ot">()</span>
     {
         <span class="kw">$userId</span> = <span class="kw">$_SESSION</span><span class="ot">[</span><span class="st">&quot;uid&quot;</span><span class="ot">];</span>
-        <span class="kw">$this</span>-&gt;addCond<span class="ot">(</span><span class="st">&quot;t0.userId=</span><span class="kw">{$userId}</span><span class="st">&quot;</span><span class="ot">);</span>
+        <span class="kw">$this</span>-&gt;addCond<span class="ot">(</span><span class="st">&quot;userId=</span><span class="kw">{$userId}</span><span class="st">&quot;</span><span class="ot">);</span>
     }
 
     <span class="co">// add/set接口会回调</span>
@@ -770,7 +770,7 @@ Ordr.get(id) -&gt; { 同query接口字段...}
     }
 }</code></pre></div>
 <ul>
-<li><p>在get/query操作中，会回调<code>onQuery</code>函数，在这里我们用<code>addCond</code>添加了一条限制：用户只能查看到自己的订单。 <code>addCond</code>的参数可理解为SQL语句中WHERE子句的片段；字段用&quot;t0.userId&quot;来表示，其中&quot;t0&quot;表示当前操作表&quot;Ordr&quot;的别名(alias)。后面会讲到联合查询(join)其它表，就可能使用其它表的别名。</p></li>
+<li><p>在get/query操作中，会回调<code>onQuery</code>函数，在这里我们用<code>addCond</code>添加了一条限制：用户只能查看到自己的订单。 <code>addCond</code>的参数可理解为SQL语句中WHERE子句的片段，它等价于前端调用对象query接口中的cond参数。</p></li>
 <li><p>add/set操作会回调<code>onValidate</code>函数（本例中<code>$allowedAc</code>中未定义&quot;set&quot;，因而不会有&quot;set&quot;操作过来）。在这个回调中常常设置<code>$_POST[字段名]</code>来自动完成一些字段。</p></li>
 <li><p>注意<code>$_SESSION[&quot;uid&quot;]</code>变量是在用户登录成功后设置的，由于&quot;AC1&quot;类是用户登录后使用的，所以必能取到该变量。</p></li>
 </ul>
@@ -1164,7 +1164,7 @@ ORDER BY t0.id DESC</code></pre>
 
     <span class="co">// get/query操作都会走这里</span>
     <span class="kw">protected</span> <span class="kw">function</span> onQuery<span class="ot">()</span> {
-        <span class="kw">$this</span>-&gt;addCond<span class="ot">(</span><span class="st">&quot;t0.app=&#39;emp&#39; and t0.userId IS NOT NULL&quot;</span><span class="ot">);</span>
+        <span class="kw">$this</span>-&gt;addCond<span class="ot">(</span><span class="st">&quot;app=&#39;emp&#39; and userId IS NOT NULL&quot;</span><span class="ot">);</span>
     }
 }</code></pre></div>
 <p>与上例相比，它不仅无须在数据库中创建视图，还也可以进行更新。 其要点是：</p>

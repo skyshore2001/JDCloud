@@ -10,7 +10,7 @@ class AC0_User extends AccessControl
 		],
 	];
 
-	function __construct() {
+	protected function onInit() {
 		$this->vcolDefs[] = [ "res" => tmCols("t0.createTm") ];
 	}
 
@@ -30,7 +30,7 @@ class AC1_User extends AccessControl
 	protected function onValidateId()
 	{
 		$uid = $_SESSION["uid"];
-		setParam("id", $uid);
+		$this->id = $uid;
 	}
 }
 
@@ -67,7 +67,7 @@ class AC2_Employee extends AC0_Employee
 	protected $requiredFields = [["phone", "uname"], "pwd"];
 	protected $allowedAc = ["query", "get", "set"];
 
-	function __construct()
+	protected function onInit()
 	{
 		if (hasPerm(PERM_MGR)) {
 			$this->allowedAc = null; // all ac
@@ -81,7 +81,7 @@ class AC2_Employee extends AC0_Employee
 	{
 		$id = param("id");
 		if (!hasPerm(PERM_MGR) || is_null($id)) {
-			setParam("id", $_SESSION["empId"]);
+			$this->id = $_SESSION["empId"];
 		}
 	}
 
@@ -96,22 +96,31 @@ class AC2_Employee extends AC0_Employee
 //}}}
 
 // ====== Ordr {{{
+class AC0_OrderLog extends AccessControl
+{
+	protected $vcolDefs = [
+		[
+			"res" => ["emp.name empName", "emp.phone empPhone"],
+			"join" => "LEFT JOIN Employee emp ON emp.id=t0.empId"
+		]
+	];
+}
+
 class AC0_Ordr extends AccessControl
 {
 	protected $subobj = [
-		"orderLog" => ["sql"=>"SELECT ol.*, e.uname AS empPhone, e.name AS empName FROM OrderLog ol LEFT JOIN Employee e ON ol.empId=e.id WHERE orderId=%d", "wantOne"=>false],
-		// "atts" => ["sql"=>"SELECT id, attId FROM OrderAtt WHERE orderId=%d", "wantOne"=>false],
-		"atts" => ["obj"=>"OrderAtt", "cond"=>"orderId=%d", "AC"=>"AccessControl", "res"=>"id,attId"]
+		"orderLog" => ["obj"=>"OrderLog", "cond"=>"orderId={id}", "AC"=>"AC0_OrderLog", "res"=>"*,empName,empPhone"],
+		"atts" => ["obj"=>"OrderAtt", "cond"=>"orderId={id}", "AC"=>"AccessControl", "res"=>"id,attId"]
 	];
 
 	protected $vcolDefs = [
 		[
-			"res" => ["u.name AS userName", "u.phone AS userPhone"],
+			"res" => ["u.name userName", "u.phone userPhone"],
 			"join" => "INNER JOIN User u ON u.id=t0.userId"
 		]
 	];
 
-	function __construct() {
+	protected function onInit() {
 		$this->vcolDefs[] = [ "res" => tmCols("t0.createTm") ];
 	}
 }
@@ -124,7 +133,7 @@ class AC1_Ordr extends AC0_Ordr
 	protected function onQuery()
 	{
 		$userId = $_SESSION["uid"];
-		$this->addCond("t0.userId={$userId}");
+		$this->addCond("userId={$userId}");
 	}
 
 	protected function onValidate()
@@ -169,7 +178,7 @@ class AC2_Ordr extends AC0_Ordr
 				if ($status == "RE" || $status == "CA") {
 					$oldStatus = queryOne("SELECT status FROM Ordr WHERE id={$this->id}");
 					if ($oldStatus != "CR") {
-						throw new MyException(E_FORBIDDEN, "forbidden to change status to $status");
+						jdRet(E_FORBIDDEN, "forbidden to change status to $status");
 					}
 					$this->onAfterActions[] = function () use ($status) {
 						dbInsert("OrderLog", [
@@ -181,7 +190,7 @@ class AC2_Ordr extends AC0_Ordr
 					};
 				}
 				else {
-					throw new MyException(E_FORBIDDEN, "forbidden to change status to {$_POST['status']}");
+					jdRet(E_FORBIDDEN, "forbidden to change status to {$_POST['status']}");
 				}
 			}
 		}
@@ -208,7 +217,7 @@ class AC2_Ordr extends AC0_Ordr
 
 class AC0_ApiLog extends AccessControl
 {
-	function __construct() {
+	protected function onInit() {
 		$this->vcolDefs[] = [ "res" => tmCols() ];
 	}
 }
