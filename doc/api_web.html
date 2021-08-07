@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2021-06-03</div>
+<div>最后更新：2021-08-07</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -2149,7 +2149,7 @@ callSvr("./1.php");</code></pre>
 <p style="margin-left:0em"><a href="#callSvr-2 文件上传支持(FormData)">2 文件上传支持(FormData)</a></p>
 <p style="margin-left:0em"><a href="#callSvr-3 callSvr扩展">3 callSvr扩展</a></p>
 <p style="margin-left:0em"><a href="#callSvr-4 适配RESTful API">4 适配RESTful API</a></p>
-<p style="margin-left:0em"><a href="#callSvr-5 jQuery的$.Deferred兼容Promise接口">5 jQuery的$.Deferred兼容Promise接口</a></p>
+<p style="margin-left:0em"><a href="#callSvr-5 ES6支持：jQuery的$.Deferred兼容Promise接口 / 使用await">5 ES6支持：jQuery的$.Deferred兼容Promise接口 / 使用await</a></p>
 <p style="margin-left:0em"><a href="#callSvr-6 直接取json类文件">6 直接取json类文件</a></p>
 </div>
 <p class="param"><strong>@param ac</strong>  String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)</p>
@@ -2459,7 +2459,8 @@ callSvr("User.get", function (data) {
         return "./api.php/" + ac;
     }
 }</code></pre>
-<h4 id="callSvr-5 jQuery的$.Deferred兼容Promise接口">5 jQuery的$.Deferred兼容Promise接口</h4>
+<h4 id="callSvr-5 ES6支持：jQuery的$.Deferred兼容Promise接口 / 使用await">5 ES6支持：jQuery的$.Deferred兼容Promise接口 / 使用await</h4>
+<p>支持Promise/Deferred编程风格:</p>
 <pre><code>var dfd = callSvr("...");
 dfd.then(function (data) {
     console.log(data);
@@ -2469,6 +2470,20 @@ dfd.then(function (data) {
 })
 .finally(...)</code></pre>
 <p>支持catch/finally等Promise类接口。接口逻辑失败时，dfd.reject()触发fail/catch链。</p>
+<p>支持await编程风格，上例可写为：</p>
+<pre><code>// 使用await时callSvr调用失败是无法返回的，加{noex:1}选项可让失败时返回false
+var rv = callSvr("...", $.noop, null, {noex:1});
+if (rv === false) {
+    // 失败逻辑 dfd.catch. 取错误信息用WUI.lastError={ac, tm, tv, ret}
+    console.log(WUI.lastError.ret)
+}
+else {
+    // 成功逻辑 dfd.then
+}
+// finally逻辑</code></pre>
+<p>示例：</p>
+<pre><code>let rv = await callSvr("Ordr.query", {res:"count(*) cnt", fmt:"one"})
+let cnt = rv.cnt</code></pre>
 <h4 id="callSvr-6 直接取json类文件">6 直接取json类文件</h4>
 <p>(v5.5) 如果ac是调用相对路径, 则直接当成最终路径, 不做url拼接处理:</p>
 <pre><code>callSvr("./1.json"); // 如果是callSvr("1.json") 则实际url可能是 "../api.php/1.json"这样.
@@ -4865,7 +4880,11 @@ var statData = rs2Stat(rs, {tmUnit: "y,m,d"});</code></pre>
     sum: function (value) {
         return '累计';
     }
-}</code></pre></div>
+}</code></pre>
+<p>X轴数据也支持定制，通过设置formaterX回调函数，如tm=&quot;y,m,d&quot;时，默认显示如&quot;2020-10-1&quot;，现在想只显示&quot;10-1&quot;，可以用：</p>
+<pre><code>var statData = WUI.rs2Stat(rs, {tmUnit:"y,m,d", formatterX:function (value) {
+    return value[1] + "-" + value[2]
+}})</code></pre></div>
 <div class="block">
 <h2 id="WUI.initChart">@fn WUI.initChart(chartTable, statData, seriesOpt, chartOpt)</h2>
 <p>初始化echarts报表组件.</p>
@@ -4883,6 +4902,7 @@ var statData = rs2Stat(rs, {tmUnit: "y,m,d"});</code></pre>
         {name: 'sum', data: [13, 0, 2, 9]} // 分别对应xData中每个日期，其中'2016-6-30'没有数据自动补0
     ]
 }</code></pre>
+<p>特别地，设置 chartOpt.swapXY = true，表示横向柱状图。</p>
 <p class="see"><strong>@see <a href="#WUI.rs2Stat">WUI.rs2Stat</a> <a href="#"></a></strong>  WUI.initPageStat</p></div>
 <div class="block">
 <h2 id="WUI.initPageStat">@fn WUI.initPageStat(jpage, setStatOpt) -> statItf</h2>

@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2021-06-03</div>
+<div>最后更新：2021-08-07</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -2582,7 +2582,7 @@ Ordr.get(id)
     protected function onQuery()
     {
         $userId = $_SESSION["uid"];
-        $this-&gt;addCond("t0.userId={$userId}");
+        $this-&gt;addCond("userId={$userId}");
     }
 
     protected function onValidate()
@@ -3188,7 +3188,7 @@ ORDER BY t0.id DESC</code></pre>
     ];
 
     protected function onQuery() {
-        $this-&gt;addCond("t0.app='emp-adm' and t0.userId IS NOT NULL");
+        $this-&gt;addCond("app='emp-adm' and userId IS NOT NULL");
     }
 }</code></pre>
 <p>与上例相比，它不仅无须在数据库中创建视图，还也可以进行更新。<br />
@@ -3331,7 +3331,7 @@ Ordr.query(res="id 编号, status 状态=CR:Created;CA:Cancelled")</code></pre>
 }</code></pre>
 <h5 id="AccessControl-5.9 动态设置虚拟字段及属性">5.9 动态设置虚拟字段及属性</h5>
 <p>添加虚拟字段或属性，vcolDefs, subobj建议在onInit函数中添加或修改，而不是onQuery中。否则用res指定返回字段将无效。<br />
-onQuery常用addCond来添加过滤条件，也可以设置enumFields。<br />
+onQuery中常用addCond来添加过滤条件，也可以设置enumFields。<br />
 示例：AC2继承AC0类，但要增加一个虚拟字段，又不要影响AC1，故可以加在AC2的onInit中。</p>
 <pre><code>protected function onInit() {
     parent::onInit();
@@ -3435,59 +3435,38 @@ Coupon.add()(userPhone, ...) -&gt; {cnt, idList}</code></pre>
 <h2 id="AccessControl::addCond">@fn AccessControl::addCond($cond, $prepend=false, $fixUserQuery=true)</h2>
 <p class="param"><strong>@param $prepend</strong>  为true时将条件排到前面。</p>
 <p class="param"><strong>@param $fixUserQuery</strong>  值为true会自动处理虚拟字段，但这时不允许复杂查询。设置为false写cond不受规则限制。</p>
-<p>调用多次addCond时，多个条件会依次用&quot;AND&quot;连接起来。</p>
-<p>添加查询条件。<br />
-示例：假如设计有接口：</p>
+<p>addCond用于添加查询条件，可以使用表的字段或虚拟字段(无须用t0限定表名)，功能等同于前端调用对象query接口时给定的cond参数。<br />
+可以调用多次addCond时，多个条件会依次用&quot;AND&quot;连接起来，如果指定参数prepand为true，则该条件加在最前面。</p>
+<p>示例：假如设计有接口：</p>
 <pre><code>Ordr.query(q?) -&gt; tbl(..., payTm?)
 参数：
-q:: 查询条件，值为"paid"时，查询10天内已付款的订单。且结果会多返回payTm/付款时间字段。</code></pre>
-<p>实现时，在onQuery中检查参数&quot;q&quot;并定制查询条件：</p>
-<pre><code>protected function onQuery()
-{
-    // 限制只能看用户自己的订单
-    $uid = $_SESSION["uid"];
-    $this-&gt;addCond("t0.userId=$uid");
-
-    $q = param("q");
-    if (isset($q) &amp;&amp; $q == "paid") {
-        $validDate = date("Y-m-d", strtotime("-9 day"));
-        $this-&gt;addRes("olpay.tm payTm");
-        $this-&gt;addJoin("INNER JOIN OrderLog olpay ON olpay.orderId=t0.id");
-        $this-&gt;addCond("olpay.action='PA' AND olpay.tm&gt;'$validDate'");
-    }
-}</code></pre>
-<p>上例在处理&quot;q&quot;参数时，临时引入了关联表。如果关联表已在vcolDefs中定义过，可以用addVCol直接引入：</p>
+- q: 查询条件，值为"paid"时，查询10天内已付款的订单。且结果会多返回payTm/付款时间字段。</code></pre>
+<p>实现时，在onQuery中检查参数&quot;q&quot;并定制查询条件，虚拟字段可以用addVCol来引入(否则要在查询的res参数中指定了)：</p>
 <pre><code>protected $vcolDefs = [
     [
         "res" =&gt; ["olpay.tm payTm"],
-        "join" =&gt; "INNER JOIN OrderLog olpay ON olpay.orderId=t0.id"
+        "join" =&gt; "LEFT JOIN OrderLog olpay ON olpay.orderId=t0.id AND olpay.action='PA'"
     ]
 ];
 protected function onQuery()
 {
-    $q = param("q");
-    if (isset($q) &amp;&amp; $q == "paid") {
+    if (param("q") == "paid") {
         $validDate = date("Y-m-d", strtotime("-9 day"));
-        // 注意：要添加虚拟字段用addVCol，不是addRes
+        // 注意：要添加虚拟字段用addVCol，不是addRes(常用于定义虚拟字段)
         $this-&gt;addVCol("payTm");
-        // 注意：addCond中不可直接使用payTm，要用原始定义olpay.tm。(下面会讲怎样直接在cond中用payTm)
-        $this-&gt;addCond("olpay.action='PA' AND olpay.tm&gt;'$validDate'");
+        $this-&gt;addCond("payTm&gt;'$validDate'");
     }
 }</code></pre>
-<p>关于fixUserQuery=true:</p>
-<p>默认后端可以添加任何形式的SQL条件，但是如果其中含有虚拟字段，如果它尚未加到res查询结果中时，查询就会出错（无法识别这个字段）。<br />
-设置fixUserQuery=true后，就会将该条件当作用户查询(UserQuery)来处理，即相当于query接口传入的cond字段，其中的虚拟字段会自动处理避免出错。<br />
-但用户查询条件是受限的，比如不允许各种子查询，也不允许使用各种SQL函数（count/sum/avg等少量聚合函数除外）。</p>
-<p>仍用上面示例：</p>
-<pre><code>// 在cond中使用payTm虚拟字段，可自动解析和引入它的定义
-$this-&gt;addCond("olpay.action='PA' AND payTm&gt;'$validDate'", false, true);</code></pre>
-<p>这相当于调用：</p>
-<pre><code>$this-&gt;addVCol("payTm", false, "-"); // 引入定义但并不加到SELECT字段中
-$this-&gt;addCond("olpay.action='PA' AND olpay.tm&gt;'$validDate'", false, false);</code></pre>
 <p>如果想要查询固定返回空，习惯上可以用:</p>
 <pre><code>$this-&gt;addCond("1&lt;&gt;1");</code></pre>
-<p class="see"><strong>@see <a href="#AccessControl::addRes">AccessControl::addRes</a></strong> </p>
-<p class="see"><strong>@see <a href="#AccessControl::addJoin">AccessControl::addJoin</a></strong> </p></div>
+<p>当给定参数fixUserQuery=false时，可以突破query接口对cond的限制，比如不允许各种子查询，也不允许使用各种SQL函数（count/sum/avg等少量聚合函数除外）。<br />
+但此时不再支持虚拟字段，各字段前宜加上相应的表名.</p>
+<p>仍用上面示例：</p>
+<pre><code>// 在cond中使用payTm虚拟字段，可自动解析和引入它的定义
+$this-&gt;addCond("payTm&gt;'$validDate'");</code></pre>
+<p>这相当于调用：</p>
+<pre><code>$this-&gt;addVCol("payTm", false, "-"); // 需手工引入虚拟字段定义，用“-”参数表示并不加到结果字段中
+$this-&gt;addCond("olpay.tm&gt;'$validDate'", false, false);</code></pre></div>
 <div class="block">
 <h2 id="AccessControl::addJoin">@fn AccessControl::addJoin(joinCond)</h2>
 <p>添加Join条件.</p>
@@ -3616,7 +3595,7 @@ $this-&gt;checkSetFields([&quot;status&quot;, &quot;cmt&quot;]);<br />
 
         // 限制只可更新自己的订单，一般写在onQuery中，以便get/query/setIf/delIf均可通用。
         $empId = $_SESSION["empId"];
-        $this-&gt;addCond("t0.empId=$empId");
+        $this-&gt;addCond("empId=$empId");
         // $this-&gt;addJoin(...);
 
         return parent::api_setIf();
@@ -3633,7 +3612,7 @@ $this-&gt;checkSetFields([&quot;status&quot;, &quot;cmt&quot;]);<br />
 
         // 限制只可更新自己的订单，一般写在onQuery中，以便get/query/setIf/delIf均可通用。
         $empId = $_SESSION["empId"];
-        $this-&gt;addCond("t0.empId=$empId");
+        $this-&gt;addCond("empId=$empId");
         // $this-&gt;addJoin(...);
 
         return parent::api_delIf();
