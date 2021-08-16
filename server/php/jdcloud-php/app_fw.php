@@ -1105,8 +1105,9 @@ function getQueryCond($cond)
 // similar to h5 getexp but not same
 function getQueryExp($k, $v)
 {
-	if (is_numeric($v))
-		return "$k=$v";
+	// 即使纯数值最好也加引号，不容易出错，特别是对0开头或很长数字的字符串
+// 	if (is_numeric($v))
+// 		return "$k='$v'";  
 	if ($v === "null")
 		return "$k IS NULL";
 	if ($v === "!null")
@@ -1131,7 +1132,7 @@ function getQueryExp($k, $v)
 		if (strpos($v, '%') === false)
 			$v = '%'.$v.'%';
 	}
-	return $k . $op . (is_numeric($v)? $v: Q($v));
+	return $k . $op . Q($v);
 }
 
 /**
