@@ -661,7 +661,7 @@ login接口支持不同类别的用户登录，登录成功后会设置相应的
 		["authType"=>"basic", "key" => "user1:1234", "SESSION" => ["empId"=>-9999], "allowedAc" => ["*.query","*.get"] ]
 	];
 
-- authType指定的认证方式名是在Conf::$authHandlers注册过的，目前支持：basic, simple。
+- authType指定的认证方式名是在Conf::$authHandlers注册过的，目前支持：basic, simple, none(v6)。
   要扩展可以参考$authHandlers用法，比如插件jdcloud-plugin-jwt可支持jwt认证。
 
 @see ConfBase::$authHandlers
@@ -732,6 +732,41 @@ HTTP Basic认证，即添加HTTP头：
 
 	SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
 
+### none: 不验证/模拟身份认证
+
+(v6) 主要用于为某些接口设置模拟身份。
+某些接口无须登录验证即可调用，但在实现时需要调用要求权限验证的内部接口，这时需要模拟一个管理员的身份。
+
+示例：提供接口queryEmp和Wis.wis01，无须登录即可调用，其内部调用Carton.query接口：
+
+	// 函数接口示例
+	function api_queryEmp()
+	{
+		// 假设Employee.query接口在AC2_Employee中定义，必须管理端登录才能调用；所以必须在Conf::$authKeys中配置模拟身份，才能正常调用。
+		return callSvcInt("Employee.query", ["fmt"=>"list"]);
+	}
+
+	// 对象接口示例
+	class AC_Wis extends AccessControl
+	{
+		function api_wis01()
+		{
+			// 与queryEmp接口遇到的问题相同，必须在Conf::$authKeys中配置后，才能正常调用。
+			return callSvcInt("Employee.query", ["fmt"=>"list"]);
+		}
+	}
+	// AC2类不是必须的，只是为了在管理端控制台中测试方便，因为管理端登录后只能调用AC2类不能调用AC类
+	class AC2_Wis extends AC_Wis
+	{
+	}
+
+	// class Conf (在conf.php中)
+	static $authKeys = [
+		// ["authType"=>"basic", "key" => "user1:1234", "SESSION" => ["empId"=>-9999], "allowedAc" => ["*.query","*.get"] ]
+		["authType"=>"none", "key" => "", "SESSION" => ["empId"=>-9999], "allowedAc" => ["queryEmp", "Wis.*"] ]
+	];
+
+在authKeys中通过"allowedAc"指定了匹配"queryEmp"或"Wis.*"的这些接口无须验证，且模拟-9999号管理员。作为对比，也可以设置HTTP Basic验证。
  */
 function hasPerm($perms, $exPerms=null)
 {
@@ -755,6 +790,7 @@ function hasPerm($perms, $exPerms=null)
 					jdRet(E_SERVER, "unregistered authType `$e`", "未知认证类型`$e`");
 				if ($fn()) {
 					ApiFw_::$exPerm = $e;
+					session_destroy();  // 对于第三方认证，不保存session（即使其中模拟了管理员登录，也不会影响下次调用）
 					break;
 				}
 			}
@@ -800,6 +836,12 @@ function checkAuthKeys($key, $authType)
 	}
 	return true;
 }
+
+function hasPerm_none()
+{
+	return checkAuthKeys("", "none");
+}
+ConfBase::$authHandlers["none"] = "hasPerm_none";
 
 function hasPerm_simple()
 {
