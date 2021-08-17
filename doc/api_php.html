@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2021-08-07</div>
+<div>最后更新：2021-08-17</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -2003,6 +2003,7 @@ console.log(api_order);
 <p style="margin-left:0em"><a href="#hasPerm-2 扩展认证方式">2 扩展认证方式</a></p>
 <p style="margin-left:2em"><a href="#hasPerm-2.1 simple: 筋斗云简单认证">2.1 simple: 筋斗云简单认证</a></p>
 <p style="margin-left:2em"><a href="#hasPerm-2.2 basic: HTTP基本认证">2.2 basic: HTTP基本认证</a></p>
+<p style="margin-left:2em"><a href="#hasPerm-2.3 none: 不验证/模拟身份认证">2.3 none: 不验证/模拟身份认证</a></p>
 </div>
 <p>检查权限。perms可以是单个权限或多个权限，例：</p>
 <pre><code>if (hasPerm(AUTH_USER)) ...  // 用户登录后可用
@@ -2035,7 +2036,7 @@ static $authKeys = [
     ["authType"=&gt;"basic", "key" =&gt; "user1:1234", "SESSION" =&gt; ["empId"=&gt;-9999], "allowedAc" =&gt; ["*.query","*.get"] ]
 ];</code></pre>
 <ul>
-<li>authType指定的认证方式名是在Conf::$authHandlers注册过的，目前支持：basic, simple。<br />
+<li>authType指定的认证方式名是在Conf::$authHandlers注册过的，目前支持：basic, simple, none(v6)。<br />
 要扩展可以参考$authHandlers用法，比如插件jdcloud-plugin-jwt可支持jwt认证。</li>
 </ul>
 <p class="see"><strong>@see <a href="#ConfBase::$authHandlers">ConfBase::$authHandlers</a></strong> </p>
@@ -2082,7 +2083,38 @@ static $authKeys = [
 <p>请求示例：</p>
 <pre><code>curl -u user1:1234 http://localhost/jdcloud/api.php/xxx</code></pre>
 <p>注意：若php是基于apache fcgi方式的部署，可能无法收到认证串，可在apache中配置：</p>
-<pre><code>SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1</code></pre></div>
+<pre><code>SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1</code></pre>
+<h5 id="hasPerm-2.3 none: 不验证/模拟身份认证">2.3 none: 不验证/模拟身份认证</h5>
+<p>(v6) 主要用于为某些接口设置模拟身份。<br />
+某些接口无须登录验证即可调用，但在实现时需要调用要求权限验证的内部接口，这时需要模拟一个管理员的身份。</p>
+<p>示例：提供接口queryEmp和Wis.wis01，无须登录即可调用，其内部调用Carton.query接口：</p>
+<pre><code>// 函数接口示例
+function api_queryEmp()
+{
+    // 假设Employee.query接口在AC2_Employee中定义，必须管理端登录才能调用；所以必须在Conf::$authKeys中配置模拟身份，才能正常调用。
+    return callSvcInt("Employee.query", ["fmt"=&gt;"list"]);
+}
+
+// 对象接口示例
+class AC_Wis extends AccessControl
+{
+    function api_wis01()
+    {
+        // 与queryEmp接口遇到的问题相同，必须在Conf::$authKeys中配置后，才能正常调用。
+        return callSvcInt("Employee.query", ["fmt"=&gt;"list"]);
+    }
+}
+// AC2类不是必须的，只是为了在管理端控制台中测试方便，因为管理端登录后只能调用AC2类不能调用AC类
+class AC2_Wis extends AC_Wis
+{
+}
+
+// class Conf (在conf.php中)
+static $authKeys = [
+    // ["authType"=&gt;"basic", "key" =&gt; "user1:1234", "SESSION" =&gt; ["empId"=&gt;-9999], "allowedAc" =&gt; ["*.query","*.get"] ]
+    ["authType"=&gt;"none", "key" =&gt; "", "SESSION" =&gt; ["empId"=&gt;-9999], "allowedAc" =&gt; ["queryEmp", "Wis.*"] ]
+];</code></pre>
+<p>在authKeys中通过&quot;allowedAc&quot;指定了匹配&quot;queryEmp&quot;或&quot;Wis.*&quot;的这些接口无须验证，且模拟-9999号管理员。作为对比，也可以设置HTTP Basic验证。</p></div>
 <div class="block">
 <h2 id="checkAuth">@fn checkAuth($perms)</h2>
 <p>用法与hasPerm类似，检查权限，如果不正确，则抛出错误。</p>

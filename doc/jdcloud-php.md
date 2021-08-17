@@ -756,6 +756,107 @@ function api_payOrder()
 
 **筋斗云一次接口调用中的所有数据库查询都在一个事务中。** 开发者一般不必自行使用事务，除非为了优化并发和数据库锁。
 
+### 内部接口调用
+
+在接口内部实现时常常会调用其它接口，尤其是灵活的对象接口。用到的函数主要有callSvcInt。
+
+比如根据用户手机尾号查询所有订单(假设有User-Ordr表关联)，先用SQL查询来实现，后面再换成更推荐的调用内部对象接口来实现。
+在api_functions.php中加函数接口：
+
+```php
+function api_queryOrders()
+{
+	$phone = mparam("phone");
+	return queryAll("SELECT o.id orderId, o.tm, o.amount, u.phone, u.name 
+FROM Ordr o JOIN User u ON o.userId=u.id
+WHERE u.phone LIKE " . Q("%$phone"), true);
+}
+```
+注意在拼接SQL时，字符串参数一定要用Q函数来加引号，避免非法字符出错或产生SQL注入等安全漏洞。
+
+在chrome中打开筋斗云管理端(localhost/jdcloud/server/web/)，在JS控制台里用callSvr测试该接口：`callSvr("queryOrders", {phone: "1234"})`，在Network中查看返回结果。
+或调用并直接查看结果：`await callSvr("queryOrders", {phone: "1234"})`。
+
+一般后端会对Ordr对象做对象接口实现，比如默认实现了AC2_Ordr类（AC2要求管理端登录才能调用），其中定义有userPhone,userName这些虚拟字段（下一章详细介绍），前端其实可以直接调用对象接口实现类似功能，而且还默认支持列表分页，打开筋斗云管理端，登录后在JS控制台中测试：
+```javascript
+callSvr("Ordr.query", {res: "id orderId, tm, amount, userPhone, userName", fmt: "list", cond: "userPhone LIKE '%3389'"})
+```
+
+较新的实现还可以用cond参数的[支持数组或对象的新语法](http://oliveche.com/jdcloud-site/BQP.html#查询条件cond)，像这样：`{..., cond: {userPhone: "~*3389"}}`。
+其中`~`表示模糊匹配，`*`为通配符（也可以用`%`）；如果没有出现通配符比如`~3389`，它其实相当于`~*3389*`。
+
+下面我们换成通过callSvcInt内部调用对象接口的实现方法，以便复用逻辑，callSvcInt的后缀Int表示内部调用（即Internal）：
+```php
+function api_queryOrders2()
+{
+	$phone = mparam("phone");
+	return callSvcInt("Ordr.query", [
+		"res" => "id orderId, tm, amount, userPhone, userName",
+		"fmt" => "list", // "list"支持分页，也可以用"array"返回所有
+		"cond" => "userPhone LIKE " . Q("%$phone"),
+		// 或新语法 "cond" => ["userPhone" => "~*$phone"],
+	]);
+}
+```
+
+注意由于Ordr接口在AC2_Ordr中实现，即要求管理端登录，未登录调用是会出错的。
+我们在管理端分未登录和登录两种情况，在JS控制台里用callSvr分别测试该接口，看看输出情况：
+```javascript
+callSvr("queryOrders2");
+```
+
+要解决未登录时无权限调用内部接口的问题，需要模拟管理端的身份，有两种方法。
+
+一种是不用callSvcInt，换用底层的AC类的callSvc方法，这里直接指定用AC2类来实现接口:
+```php
+	$acObj = new AC2_Ordr;
+	return $acObj->callSvc("Ordr", "query", [
+		"res" => ...
+	]);
+```
+注意由于并不是管理员，在SESSION中没有`empId`这些变量，假如AC2类中有用`$_SESSION["empId"]`来取管理员id的操作是要做特殊处理的。
+
+推荐另一种较新支持的方法(v6)，是在`Conf::$authKeys`中设置SESSION来模拟身份：
+```php
+// class Conf (在conf.php中)
+static $authKeys = [
+    // ["authType"=>"basic", "key" => "user1:1234", "SESSION" => ["empId"=>-9999], "allowedAc" => ["queryOrders2"]],
+    ["authType"=>"none", "key" => "", "SESSION" => ["empId"=>-9999], "allowedAc" => ["queryOrders*"] ]
+];
+```
+上面意思是如果未登录时调用匹配`queryOrders*`的接口（可以用通配符`*`来匹配多个接口），则在SESSION中设置empId为-9999，这意味着模拟了一个id为-9999的管理端来调用接口。
+
+也可以换用注释掉的authType值为basic的第一行，这表示调用该接口时要使用HTTP Basic认证，且在key字段中指定了用户名密码。
+这常用于为第三方提供接口且通过密码保障安全性，这也是authKeys机制最初的作用。
+
+最后我们优化一下接口的灵活性。上面就把查询条件及返回字段固化了，若想要更灵活些，允许调用方指定些内部参数，可以稍作变化：
+```php
+function api_queryOrders2()
+{
+	$phone = mparam("phone");
+	return callSvcInt("Ordr.query", $_GET + [
+		"res" => "id orderId, tm, amount, userPhone, userName",
+		"fmt" => "list", // "list"支持分页，也可以用"array"返回所有
+		"cond2" => dbExpr(["userPhone" => "~*$phone"])
+	], $_POST);
+}
+```
+上面例子实现了调用方可以指定res或fmt参数覆盖默认的设置；而若指定cond参数则会做为额外追加条件。
+
+注意php的关联数组加法A+B，表示返回一个新关联数组，优先用A中字段，然后是B中字段，与`array_merge`函数不太相同。
+
+注意上面用了query接口的cond2参数，该参数只能内部使用，必须用dbExpr函数把值包起来，与cond参数并列生效。
+
+登录管理端，在JS控制台用callSvr测试该接口，先测试下默认行为：
+```javascript
+callSvr("queryOrders2", {phone: "3389"})
+```
+
+再查询手机尾号3389用户的金额大于100的订单，自定义返回结果，且最多返回50条(默认分页是20条)，注意观察后端调试输出的SQL语句：
+```javascript
+callSvr("queryOrders2", {phone: "3389", res: "id,amount,userName,orderLog", cond: "amount>100", pagesz: 50});
+```
+
 ## 对象型接口
 
 为了更好的理解之后章节的示例，我们先了解一下示例中用到的数据模型。

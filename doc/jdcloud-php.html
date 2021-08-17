@@ -24,6 +24,7 @@
 <li><a href="#获取参数"><span class="toc-section-number">3.3</span> 获取参数</a></li>
 <li><a href="#接口返回"><span class="toc-section-number">3.4</span> 接口返回</a></li>
 <li><a href="#数据库操作"><span class="toc-section-number">3.5</span> 数据库操作</a></li>
+<li><a href="#内部接口调用"><span class="toc-section-number">3.6</span> 内部接口调用</a></li>
 </ul></li>
 <li><a href="#对象型接口"><span class="toc-section-number">4</span> 对象型接口</a><ul>
 <li><a href="#定制操作类型和字段"><span class="toc-section-number">4.1</span> 定制操作类型和字段</a></li>
@@ -530,6 +531,66 @@ foreach ($addrList as $addr) {
 <p>在更新之后，假如因故抛出了异常返回，订单状态或用户余额会不会状态错误？</p>
 <p>有经验的开发者知道应使用数据库事务，让多条数据库查询要么全部执行(事务提交/commit)，要么全部取消掉(事务回滚/rollback)。 而筋斗云已经帮我们自动使用了事务确保数据一致性。</p>
 <p><strong>筋斗云一次接口调用中的所有数据库查询都在一个事务中。</strong> 开发者一般不必自行使用事务，除非为了优化并发和数据库锁。</p>
+<h3 id="内部接口调用"><span class="header-section-number">3.6</span> 内部接口调用</h3>
+<p>在接口内部实现时常常会调用其它接口，尤其是灵活的对象接口。用到的函数主要有callSvcInt。</p>
+<p>比如根据用户手机尾号查询所有订单(假设有User-Ordr表关联)，先用SQL查询来实现，后面再换成更推荐的调用内部对象接口来实现。 在api_functions.php中加函数接口：</p>
+<div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="kw">function</span> api_queryOrders<span class="ot">()</span>
+{
+    <span class="kw">$phone</span> = mparam<span class="ot">(</span><span class="st">&quot;phone&quot;</span><span class="ot">);</span>
+    <span class="kw">return</span> queryAll<span class="ot">(</span><span class="st">&quot;SELECT o.id orderId, o.tm, o.amount, u.phone, u.name </span>
+<span class="st">FROM Ordr o JOIN User u ON o.userId=u.id</span>
+<span class="st">WHERE u.phone LIKE &quot;</span> . <span class="kw">Q</span><span class="ot">(</span><span class="st">&quot;%</span><span class="kw">$phone</span><span class="st">&quot;</span><span class="ot">),</span> <span class="kw">true</span><span class="ot">);</span>
+}</code></pre></div>
+<p>注意在拼接SQL时，字符串参数一定要用Q函数来加引号，避免非法字符出错或产生SQL注入等安全漏洞。</p>
+<p>在chrome中打开筋斗云管理端(localhost/jdcloud/server/web/)，在JS控制台里用callSvr测试该接口：<code>callSvr(&quot;queryOrders&quot;, {phone: &quot;1234&quot;})</code>，在Network中查看返回结果。 或调用并直接查看结果：<code>await callSvr(&quot;queryOrders&quot;, {phone: &quot;1234&quot;})</code>。</p>
+<p>一般后端会对Ordr对象做对象接口实现，比如默认实现了AC2_Ordr类（AC2要求管理端登录才能调用），其中定义有userPhone,userName这些虚拟字段（下一章详细介绍），前端其实可以直接调用对象接口实现类似功能，而且还默认支持列表分页，打开筋斗云管理端，登录后在JS控制台中测试：</p>
+<div class="sourceCode"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span class="at">callSvr</span>(<span class="st">&quot;Ordr.query&quot;</span><span class="op">,</span> <span class="op">{</span><span class="dt">res</span><span class="op">:</span> <span class="st">&quot;id orderId, tm, amount, userPhone, userName&quot;</span><span class="op">,</span> <span class="dt">fmt</span><span class="op">:</span> <span class="st">&quot;list&quot;</span><span class="op">,</span> <span class="dt">cond</span><span class="op">:</span> <span class="st">&quot;userPhone LIKE &#39;%3389&#39;&quot;</span><span class="op">}</span>)</code></pre></div>
+<p>较新的实现还可以用cond参数的<a href="http://oliveche.com/jdcloud-site/BQP.html#查询条件cond">支持数组或对象的新语法</a>，像这样：<code>{..., cond: {userPhone: &quot;~*3389&quot;}}</code>。 其中<code>~</code>表示模糊匹配，<code>*</code>为通配符（也可以用<code>%</code>）；如果没有出现通配符比如<code>~3389</code>，它其实相当于<code>~*3389*</code>。</p>
+<p>下面我们换成通过callSvcInt内部调用对象接口的实现方法，以便复用逻辑，callSvcInt的后缀Int表示内部调用（即Internal）：</p>
+<div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="kw">function</span> api_queryOrders2<span class="ot">()</span>
+{
+    <span class="kw">$phone</span> = mparam<span class="ot">(</span><span class="st">&quot;phone&quot;</span><span class="ot">);</span>
+    <span class="kw">return</span> callSvcInt<span class="ot">(</span><span class="st">&quot;Ordr.query&quot;</span><span class="ot">,</span> <span class="ot">[</span>
+        <span class="st">&quot;res&quot;</span> =&gt; <span class="st">&quot;id orderId, tm, amount, userPhone, userName&quot;</span><span class="ot">,</span>
+        <span class="st">&quot;fmt&quot;</span> =&gt; <span class="st">&quot;list&quot;</span><span class="ot">,</span> <span class="co">// &quot;list&quot;支持分页，也可以用&quot;array&quot;返回所有</span>
+        <span class="st">&quot;cond&quot;</span> =&gt; <span class="st">&quot;userPhone LIKE &quot;</span> . <span class="kw">Q</span><span class="ot">(</span><span class="st">&quot;%</span><span class="kw">$phone</span><span class="st">&quot;</span><span class="ot">),</span>
+        <span class="co">// 或新语法 &quot;cond&quot; =&gt; [&quot;userPhone&quot; =&gt; &quot;~*$phone&quot;],</span>
+    <span class="ot">]);</span>
+}</code></pre></div>
+<p>注意由于Ordr接口在AC2_Ordr中实现，即要求管理端登录，未登录调用是会出错的。 我们在管理端分未登录和登录两种情况，在JS控制台里用callSvr分别测试该接口，看看输出情况：</p>
+<div class="sourceCode"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span class="at">callSvr</span>(<span class="st">&quot;queryOrders2&quot;</span>)<span class="op">;</span></code></pre></div>
+<p>要解决未登录时无权限调用内部接口的问题，需要模拟管理端的身份，有两种方法。</p>
+<p>一种是不用callSvcInt，换用底层的AC类的callSvc方法，这里直接指定用AC2类来实现接口:</p>
+<div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php">    <span class="kw">$acObj</span> = <span class="kw">new</span> AC2_Ordr<span class="ot">;</span>
+    <span class="kw">return</span> <span class="kw">$acObj</span>-&gt;callSvc<span class="ot">(</span><span class="st">&quot;Ordr&quot;</span><span class="ot">,</span> <span class="st">&quot;query&quot;</span><span class="ot">,</span> <span class="ot">[</span>
+        <span class="st">&quot;res&quot;</span> =&gt; <span class="st">...</span>
+    <span class="ot">]);</span></code></pre></div>
+<p>注意由于并不是管理员，在SESSION中没有<code>empId</code>这些变量，假如AC2类中有用<code>$_SESSION[&quot;empId&quot;]</code>来取管理员id的操作是要做特殊处理的。</p>
+<p>推荐另一种较新支持的方法(v6)，是在<code>Conf::$authKeys</code>中设置SESSION来模拟身份：</p>
+<div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="co">// class Conf (在conf.php中)</span>
+<span class="kw">static</span> <span class="kw">$authKeys</span> = <span class="ot">[</span>
+    <span class="co">// [&quot;authType&quot;=&gt;&quot;basic&quot;, &quot;key&quot; =&gt; &quot;user1:1234&quot;, &quot;SESSION&quot; =&gt; [&quot;empId&quot;=&gt;-9999], &quot;allowedAc&quot; =&gt; [&quot;queryOrders2&quot;]],</span>
+    <span class="ot">[</span><span class="st">&quot;authType&quot;</span>=&gt;<span class="st">&quot;none&quot;</span><span class="ot">,</span> <span class="st">&quot;key&quot;</span> =&gt; <span class="st">&quot;&quot;</span><span class="ot">,</span> <span class="st">&quot;SESSION&quot;</span> =&gt; <span class="ot">[</span><span class="st">&quot;empId&quot;</span>=&gt;-<span class="dv">9999</span><span class="ot">],</span> <span class="st">&quot;allowedAc&quot;</span> =&gt; <span class="ot">[</span><span class="st">&quot;queryOrders*&quot;</span><span class="ot">]</span> <span class="ot">]</span>
+<span class="ot">];</span></code></pre></div>
+<p>上面意思是如果未登录时调用匹配<code>queryOrders*</code>的接口（可以用通配符<code>*</code>来匹配多个接口），则在SESSION中设置empId为-9999，这意味着模拟了一个id为-9999的管理端来调用接口。</p>
+<p>也可以换用注释掉的authType值为basic的第一行，这表示调用该接口时要使用HTTP Basic认证，且在key字段中指定了用户名密码。 这常用于为第三方提供接口且通过密码保障安全性，这也是authKeys机制最初的作用。</p>
+<p>最后我们优化一下接口的灵活性。上面就把查询条件及返回字段固化了，若想要更灵活些，允许调用方指定些内部参数，可以稍作变化：</p>
+<div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="kw">function</span> api_queryOrders2<span class="ot">()</span>
+{
+    <span class="kw">$phone</span> = mparam<span class="ot">(</span><span class="st">&quot;phone&quot;</span><span class="ot">);</span>
+    <span class="kw">return</span> callSvcInt<span class="ot">(</span><span class="st">&quot;Ordr.query&quot;</span><span class="ot">,</span> <span class="kw">$_GET</span> + <span class="ot">[</span>
+        <span class="st">&quot;res&quot;</span> =&gt; <span class="st">&quot;id orderId, tm, amount, userPhone, userName&quot;</span><span class="ot">,</span>
+        <span class="st">&quot;fmt&quot;</span> =&gt; <span class="st">&quot;list&quot;</span><span class="ot">,</span> <span class="co">// &quot;list&quot;支持分页，也可以用&quot;array&quot;返回所有</span>
+        <span class="st">&quot;cond2&quot;</span> =&gt; dbExpr<span class="ot">([</span><span class="st">&quot;userPhone&quot;</span> =&gt; <span class="st">&quot;~*</span><span class="kw">$phone</span><span class="st">&quot;</span><span class="ot">])</span>
+    <span class="ot">],</span> <span class="kw">$_POST</span><span class="ot">);</span>
+}</code></pre></div>
+<p>上面例子实现了调用方可以指定res或fmt参数覆盖默认的设置；而若指定cond参数则会做为额外追加条件。</p>
+<p>注意php的关联数组加法A+B，表示返回一个新关联数组，优先用A中字段，然后是B中字段，与<code>array_merge</code>函数不太相同。</p>
+<p>注意上面用了query接口的cond2参数，该参数只能内部使用，必须用dbExpr函数把值包起来，与cond参数并列生效。</p>
+<p>登录管理端，在JS控制台用callSvr测试该接口，先测试下默认行为：</p>
+<div class="sourceCode"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span class="at">callSvr</span>(<span class="st">&quot;queryOrders2&quot;</span><span class="op">,</span> <span class="op">{</span><span class="dt">phone</span><span class="op">:</span> <span class="st">&quot;3389&quot;</span><span class="op">}</span>)</code></pre></div>
+<p>再查询手机尾号3389用户的金额大于100的订单，自定义返回结果，且最多返回50条(默认分页是20条)，注意观察后端调试输出的SQL语句：</p>
+<div class="sourceCode"><pre class="sourceCode javascript"><code class="sourceCode javascript"><span class="at">callSvr</span>(<span class="st">&quot;queryOrders2&quot;</span><span class="op">,</span> <span class="op">{</span><span class="dt">phone</span><span class="op">:</span> <span class="st">&quot;3389&quot;</span><span class="op">,</span> <span class="dt">res</span><span class="op">:</span> <span class="st">&quot;id,amount,userName,orderLog&quot;</span><span class="op">,</span> <span class="dt">cond</span><span class="op">:</span> <span class="st">&quot;amount&gt;100&quot;</span><span class="op">,</span> <span class="dt">pagesz</span><span class="op">:</span> <span class="dv">50</span><span class="op">}</span>)<span class="op">;</span></code></pre></div>
 <h2 id="对象型接口"><span class="header-section-number">4</span> 对象型接口</h2>
 <p>为了更好的理解之后章节的示例，我们先了解一下示例中用到的数据模型。</p>
 <p><strong>[数据模型描述方式]</strong></p>
