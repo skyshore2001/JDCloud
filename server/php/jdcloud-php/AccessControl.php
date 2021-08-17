@@ -1933,6 +1933,8 @@ addCond用于添加查询条件，可以使用表的字段或虚拟字段(无须
 	{
 		if (! $cond)
 			return;
+		if (! is_string($cond))
+			$cond = getQueryCond($cond);
 		if ($fixUserQuery)
 			$cond = $this->fixUserQuery($cond);
 		if ($prepend)
