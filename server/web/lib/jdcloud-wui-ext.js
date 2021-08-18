@@ -1618,6 +1618,7 @@ $.extend(self.dg_toolbar, {
  值"cusId"与"cusId={id}"等价, 表示`主表.id=CusOrder.cusId`.
  可以明确指定被关联字段, 如relatedKey="name={name}" 表示`主表.name=CusOrder.name`. 
  支持多个关联字段设置, 如`relId={id} AND type={type}`.
+ 支持in方式关联，如`id in ({itemIds})`，其中itemIds字段为逗号分割的id列表，如"100,102"
 
 - dlg: 对应子表详情对话框。如果指定，则允许添加、更新、查询操作。
 
@@ -1892,7 +1893,7 @@ function enhanceSubobj(jo)
 	{
 		if (opt.disabled)
 			return;
-		if (mode == FormMode.forAdd) {
+		if ((mode == FormMode.forAdd || mode == FormMode.forSet) && (jdlg1.objParam && jdlg1.objParam.offline)) {
 			// 添加时设置子表字段
 			self.assert(opt.valueField, "wui-subobj: 选项valueField未设置");
 			if (jo.data("subobjLoaded_")) {
@@ -1996,8 +1997,12 @@ function enhanceSubobj(jo)
 
 	// 根据主表数据和relatedKey设置url
 	function getQueryUrl(formData) {
-		var cond = relatedKey.replace(/(\w+=)\{(\w+)\}/g, function (ms, ms1, ms2) {
-			return ms1 + Q(formData[ms2]);
+		var cond = relatedKey.replace(/\{(\w+)\}/g, function (ms, ms1) {
+			var val = formData[ms1];
+			// 支持`xx in (1,3,4)`方式
+			if (/^[\d,]+$/.test(val))
+				return val;
+			return Q(val);
 		});
 		var param = {cond: cond, res: opt.res};
 		// 树型子表，一次全部取出
