@@ -4098,7 +4098,7 @@ class BatchAddStrategy
 			if (!$n)
 				$bakF = "$fname.$ext";
 			else
-				$bakF = "$fname_$n.$ext";
+				$bakF = "{$fname}_$n.$ext";
 			++ $n;
 		} while (is_file($bakF));
 
