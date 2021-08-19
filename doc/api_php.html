@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2021-08-17</div>
+<div>最后更新：2021-08-19</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -173,6 +173,7 @@ code {
 <p><a href="#dbUpdate">dbUpdate (fn)</a></p>
 <p><a href="#dbconn">dbconn (fn)</a></p>
 <p><a href="#delSession">delSession (fn)</a></p>
+<p><a href="#delSessionById">delSessionById (fn)</a></p>
 <p><a href="#enableAsync">enableAsync (key)</a></p>
 <p><a href="#endWith">endWith (fn)</a></p>
 <p><a href="#errQuit">errQuit (fn)</a></p>
@@ -200,6 +201,7 @@ code {
 <p><a href="#httpCallAsync">httpCallAsync (fn)</a></p>
 <p><a href="#inSet">inSet (fn)</a></p>
 <p><a href="#injectSession">injectSession (fn)</a></p>
+<p><a href="#injectSessionById">injectSessionById (fn)</a></p>
 <p><a href="#isArray012">isArray012 (fn)</a></p>
 <p><a href="#isArrayAssoc">isArrayAssoc (fn)</a></p>
 <p><a href="#isCLI">isCLI (fn)</a></p>
@@ -214,8 +216,8 @@ code {
 <p><a href="#jsonEncode">jsonEncode (fn)</a></p>
 <p><a href="#list2varr">list2varr (fn)</a></p>
 <p><a href="#logext">logext (fn)</a></p>
-<p><a href="#logit">logit (fn)</a></p>
 <p><a href="#logit">logit (alias)</a></p>
+<p><a href="#logit">logit (fn)</a></p>
 <p><a href="#makeTree">makeTree (fn)</a></p>
 <p><a href="#makeUrl">makeUrl (fn)</a></p>
 <p><a href="#mh">mh (fn)</a></p>
@@ -2427,7 +2429,13 @@ $fn为对session的操作，当设置为false时，表示删除session.</p>
         }
     }
 }</code></pre>
-<p class="see"><strong>@see <a href="#delSession">delSession</a></strong> </p></div>
+<p class="see"><strong>@see <a href="#delSession">delSession</a></strong> </p>
+<p class="see"><strong>@see <a href="#injectSessionById">injectSessionById</a></strong> </p></div>
+<div class="block">
+<h2 id="injectSessionById">@fn injectSessionById($sessionId/$sessionIdArray, $fn)</h2>
+<p>对别人的session进行操作，比如删除，修改参数等。<br />
+$fn为对session的操作，当设置为false时，表示删除session.</p>
+<p class="see"><strong>@see <a href="#delSessionById">delSessionById</a></strong> </p></div>
 <div class="block">
 <h2 id="delSession">@fn delSession($userId, $appType, $days=3)</h2>
 <p>删除指定用户的session. 例如：踢掉在线用户等。</p>
@@ -2440,6 +2448,10 @@ $fn为对session的操作，当设置为false时，表示删除session.</p>
     }
 }</code></pre>
 <p class="see"><strong>@see <a href="#injectSession">injectSession</a></strong> </p></div>
+<div class="block">
+<h2 id="delSessionById">@fn delSessionById($sessionId/$sessionIdArray)</h2>
+<p>删除指定sessionId. 例如：踢掉在线用户等。</p>
+<p class="see"><strong>@see <a href="#injectSessionById">injectSessionById</a></strong> </p></div>
 <div class="block">
 <h2 id="httpCallAsync">@fn httpCallAsync($url, $postParams=null)</h2>
 <p>发起调用后立即返回，即用于发起异步调用。<br />
