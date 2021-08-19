@@ -1829,6 +1829,7 @@ $fn为对session的操作，当设置为false时，表示删除session.
 	}
 
 @see delSession
+@see injectSessionById
 */
 function injectSession($userId, $appType, $fn, $days=3)
 {
@@ -1839,7 +1840,6 @@ function injectSession($userId, $appType, $fn, $days=3)
 	}
 	addLog("$name(userId=$userId,appType=$appType)");
 	$tm = date(FMT_D, time() - $days * T_DAY);
-	$curSessionId = session_id();
 	// 目前允许将自己删除
 	// $sql = sprintf("SELECT distinct ses FROM ApiLog WHERE tm>='$tm' AND userId=%d AND app LIKE %s AND ses<>'%s'", $userId, Q("$appType%"), $curSessionId);
 	$sql = sprintf("SELECT ses, tm FROM ApiLog WHERE tm>='$tm' AND userId=%d AND app LIKE %s ORDER BY tm DESC LIMIT 1", $userId, Q("$appType%"));
@@ -1852,29 +1852,47 @@ function injectSession($userId, $appType, $fn, $days=3)
 
 	if (count($rv) > 0) {
 		logit("$name(userId=$userId, appType=$appType, days=$days): " . count($rv) . " sessions");
-		$GLOBALS["X_APP"]->onAfterActions[] = function () use ($rv, $curSessionId, $fn) {
-			if (session_status() == PHP_SESSION_ACTIVE) // 0: disabled, 1: none(before session_start), 2: active
-				session_write_close();
-
-			foreach ($rv as $e) {
-				session_id($e[0]);
-				// TODO: 检查session不存在时应不做操作
-				session_start();
-				if ($fn === false || count($_SESSION) == 0) {
-					session_destroy();
-				}
-				else {
-					$fn();
-					session_write_close();
-				}
-			}
-
-			// restore current session id
-			session_id($curSessionId);
-			session_start();
-			session_write_close();
-		};
+		$sessionIds = array_map(function ($e) { return $e[0]; }, $rv);
+		injectSessionById($sessionIds, $fn);
 	}
+}
+
+/**
+@fn injectSessionById($sessionId/$sessionIdArray, $fn)
+
+对别人的session进行操作，比如删除，修改参数等。
+$fn为对session的操作，当设置为false时，表示删除session.
+
+@see delSessionById
+*/
+function injectSessionById($sessionIds, $fn)
+{
+	if (!is_array($sessionIds))
+		$sessionIds = [$sessionIds];
+	$curSessionId = session_id();
+	$GLOBALS["X_APP"]->onAfterActions[] = function () use ($sessionIds, $curSessionId, $fn) {
+		$isActive = (session_status() == PHP_SESSION_ACTIVE); // 0: disabled, 1: none(before session_start), 2: active
+		if ($isActive)
+			session_write_close();
+
+		foreach ($sessionIds as $e) {
+			session_id($e);
+			// TODO: 检查session不存在时应不做操作
+			session_start();
+			if ($fn === false || count($_SESSION) == 0) {
+				session_destroy();
+			}
+			else {
+				$fn();
+				session_write_close();
+			}
+		}
+
+		// restore current session id
+		session_id($curSessionId);
+		if ($isActive)
+			session_start();
+	};
 }
 
 /**
@@ -1897,6 +1915,18 @@ function injectSession($userId, $appType, $fn, $days=3)
 function delSession($userId, $appType, $days=3)
 {
 	injectSession($userId, $appType, false, $days);
+}
+
+/**
+@fn delSessionById($sessionId/$sessionIdArray)
+
+删除指定sessionId. 例如：踢掉在线用户等。
+
+@see injectSessionById
+*/
+function delSessionById($sessionIds)
+{
+	injectSessionById($sessionIds, false);
 }
 
 // ------ 异步调用支持 {{{
