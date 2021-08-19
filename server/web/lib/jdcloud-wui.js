@@ -3055,6 +3055,9 @@ function setFormData(jo, data, opt)
 
 默认未指定ajaxOpt时，简单地使用添加script标签机制异步加载。如果曾经加载过，可以重用cache。
 
+注意：再次调用时是否可以从cache中取，是由服务器的cache-control决定的，在web和web/page目录下的js文件一般是禁止缓存的，再次调用时会从服务器再取，若文件无更改，服务器会返回304状态。
+这是因为默认我们使用Apache做服务器，在相应目录下.htaccess中配置有缓存策略。
+
 如果指定ajaxOpt，且非跨域，则通过ajax去加载，可以支持同步调用。如果是跨域，仍通过script标签方式加载，注意加载完成后会自动删除script标签。
 
 返回defered对象(与$.ajax类似)，可以用 dfd.then() / dfd.fail() 异步处理。
@@ -3075,6 +3078,25 @@ function setFormData(jo, data, opt)
 
 		loadScript("http://oliveche.com/1.js", {async: false});
 		// 一旦跨域，选项{async:false}指定无效，不可立即使用1.js中定义的内容。
+
+示例：在菜单中加一项“工单工时统计”，动态加载并执行一个JS文件：
+store.html中设置菜单：
+
+				<a href="javascript:WUI.loadScript('page/mod_工单工时统计.js')">工单工时统计</a>
+	
+在`page/mod_工单工时统计.js`文件中写报表逻辑，`mod`表示一个JS模块文件，示例：
+
+	function show工单工时统计()
+	{
+		DlgReportCond.show(function (data) {
+			var queryParams = WUI.getQueryParam({createTm: [data.tm1, data.tm2]});
+			var url = WUI.makeUrl("Ordr.query", { res: 'id 工单号, code 工单码, createTm 生产日期, itemCode 产品编码, itemName 产品名称, cate2Name 产品系列, itemCate 产品型号, qty 数量, mh 理论工时, mh1 实际工时', pagesz: -1 });
+			WUI.showPage("pageSimple", "工单工时统计!", [url, queryParams, onInitGrid]);
+		});
+	}
+	show工单工时统计();
+
+如果JS文件修改了，点菜单时可以实时执行最新的内容。
 
 如果要动态加载script，且使用后删除标签（里面定义的函数会仍然保留），建议直接使用`$.getScript`，它等同于：
 
