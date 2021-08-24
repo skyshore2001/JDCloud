@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2021-08-07</div>
+<div>最后更新：2021-08-19</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -48,6 +48,7 @@ code {
 <p><a href="#jquery-mycombobox">jquery-mycombobox (module)</a></p>
 <p><a href="#JdcloudExt">JdcloudExt (module)</a></p>
 <p><a href="#JdcloudStat">JdcloudStat (module)</a></p>
+<p><a href="#pageSimple">pageSimple (module)</a></p>
 </div><hr>
 <h2>Keywords</h2>
 <div class="toc">
@@ -224,6 +225,7 @@ code {
 <p><a href="#objParam">objParam (key)</a></p>
 <p><a href="#objarr2list">objarr2list (fn)</a></p>
 <p><a href="#options.pageFolder">options.pageFolder (key)</a></p>
+<p><a href="#pageSimple">pageSimple (module)</a></p>
 <p><a href="#parseDate">parseDate (fn)</a></p>
 <p><a href="#parseKvList">parseKvList (fn)</a></p>
 <p><a href="#parseQuery">parseQuery (fn)</a></p>
@@ -1737,6 +1739,8 @@ $.extend(jo.data("origin_"), changedData); // 合并变化的部分到数据源.
 <p class="param"><strong>@param fnOK</strong>  加载成功后的回调函数</p>
 <p class="param"><strong>@param ajaxOpt</strong>  传递给$.ajax的额外选项。</p>
 <p>默认未指定ajaxOpt时，简单地使用添加script标签机制异步加载。如果曾经加载过，可以重用cache。</p>
+<p>注意：再次调用时是否可以从cache中取，是由服务器的cache-control决定的，在web和web/page目录下的js文件一般是禁止缓存的，再次调用时会从服务器再取，若文件无更改，服务器会返回304状态。<br />
+这是因为默认我们使用Apache做服务器，在相应目录下.htaccess中配置有缓存策略。</p>
 <p>如果指定ajaxOpt，且非跨域，则通过ajax去加载，可以支持同步调用。如果是跨域，仍通过script标签方式加载，注意加载完成后会自动删除script标签。</p>
 <p>返回defered对象(与$.ajax类似)，可以用 dfd.then() / dfd.fail() 异步处理。</p>
 <p>常见用法：</p>
@@ -1755,6 +1759,20 @@ loadScript("http://otherserver/path/1.js"); // 跨域加载</code></pre>
 // 一旦跨域，选项{async:false}指定无效，不可立即使用1.js中定义的内容。</code></pre>
 </li>
 </ul>
+<p>示例：在菜单中加一项“工单工时统计”，动态加载并执行一个JS文件：<br />
+store.html中设置菜单：</p>
+<pre><code>            &lt;a href="javascript:WUI.loadScript('page/mod_工单工时统计.js')"&gt;工单工时统计&lt;/a&gt;</code></pre>
+<p>在<code>page/mod_工单工时统计.js</code>文件中写报表逻辑，<code>mod</code>表示一个JS模块文件，示例：</p>
+<pre><code>function show工单工时统计()
+{
+    DlgReportCond.show(function (data) {
+        var queryParams = WUI.getQueryParam({createTm: [data.tm1, data.tm2]});
+        var url = WUI.makeUrl("Ordr.query", { res: 'id 工单号, code 工单码, createTm 生产日期, itemCode 产品编码, itemName 产品名称, cate2Name 产品系列, itemCate 产品型号, qty 数量, mh 理论工时, mh1 实际工时', pagesz: -1 });
+        WUI.showPage("pageSimple", "工单工时统计!", [url, queryParams, onInitGrid]);
+    });
+}
+show工单工时统计();</code></pre>
+<p>如果JS文件修改了，点菜单时可以实时执行最新的内容。</p>
 <p>如果要动态加载script，且使用后删除标签（里面定义的函数会仍然保留），建议直接使用<code>$.getScript</code>，它等同于：</p>
 <pre><code>loadScript("1.js", {cache: false});</code></pre></div>
 <div class="block">
@@ -5111,6 +5129,91 @@ callSvr("ApiLog.query", function (data) {
             };
             return map[value] || value;
         };
+    }
+}</code></pre></div>
+<div class="block">
+<h2 id="pageSimple">@module pageSimple</h2><div class="toc"><p style="margin-left:0em"><a href="#pageSimple-1 示例1：列表页上加查看报表按钮">1 示例1：列表页上加查看报表按钮</a></p>
+<p style="margin-left:0em"><a href="#pageSimple-2 示例2：先弹出查询条件对话框，设置后再显示报表">2 示例2：先弹出查询条件对话框，设置后再显示报表</a></p>
+<p style="margin-left:0em"><a href="#pageSimple-3 示例3：菜单上增加报表，且定制报表列实现交互">3 示例3：菜单上增加报表，且定制报表列实现交互</a></p>
+</div>
+<p>用于快捷展示报表。</p>
+<h4 id="pageSimple-1 示例1：列表页上加查看报表按钮">1 示例1：列表页上加查看报表按钮</h4>
+<p>在订单列表上添加“月报表”按钮，点击显示订单月统计报表，并可以导出到Excel。</p>
+<pre><code>// function initPageCusOrder()
+var btnStat1 = {text: "月报表", "wui-perm": "导出", iconCls:'icon-ok', handler: function () {
+    var queryParams = jtbl.datagrid("options").queryParams;
+    var url = WUI.makeUrl("Ordr.query", {
+        gres:"y 年,m 月, userId",
+        res:"userName 客户, COUNT(*) 订单数, SUM(amount) 总金额",
+        hiddenFields: "userId",
+        orderby: "总金额 DESC"
+    });
+    WUI.showPage("pageSimple", "订单月报表!", [url, queryParams]);
+}};
+jtbl.datagrid({
+    toolbar: WUI.dg_toolbar(jtbl, jdlg, ..., btnStat1),
+    ...
+});</code></pre>
+<p>注意：调用WUI.showPage时，标题以&quot;!&quot;结尾表示每次调用都刷新该页面。而默认行为是如果页面已打开，就直接显示而不会刷新。</p>
+<h4 id="pageSimple-2 示例2：先弹出查询条件对话框，设置后再显示报表">2 示例2：先弹出查询条件对话框，设置后再显示报表</h4>
+<p>常常与报表查询条件对话DlgReportCond一起使用, 先设置查询时间段，然后出报表，示例:</p>
+<pre><code>var btnStat1 = {text: "月统计", iconCls:'icon-ok', handler: function () {
+    DlgReportCond.show(function (data) {
+        var queryParams = WUI.getQueryParam({dt: [data.tm1, data.tm2]});
+        var url = WUI.makeUrl("Capacity.query", { gres: 'y 年,m 月, name 员工', res: 'SUM(mh) 总工时, SUM(mhA) 总加班', pagesz: -1 });
+        WUI.showPage("pageSimple", "出勤月统计!", [url, queryParams]);
+    });
+}};
+jtbl.datagrid({
+    toolbar: WUI.dg_toolbar(jtbl, jdlg, ..., btnStat1),
+    ...
+});</code></pre>
+<p>回调函数参数data是对话框中设置了name的输入字段，默认有tm1, tm2。</p>
+<p>TODO: 允许定制查询条件对话框，如添加查询字段，可参考dlgImport.js设计，添加forXXX类。</p>
+<h4 id="pageSimple-3 示例3：菜单上增加报表，且定制报表列实现交互">3 示例3：菜单上增加报表，且定制报表列实现交互</h4>
+<p>允许定制表格显示参数，如</p>
+<pre><code>WUI.showPage("pageSimple", "订单月报表!", [url, queryParams, onInitGrid]);
+
+function onInitGrid(jpage, jtbl, dgOpt, columns, data)
+{
+    // dgOpt: datagrid的选项，如设置 dgOpt.onClickCell等属性
+    // columns: 列数组，可设置列的formatter等属性
+    // data: ajax得到的原始数据
+}</code></pre>
+<p>注意：关于分页：如果url中有pagesz=-1参数，则不分页。也可直接设置dgOpt.pagination指定。</p>
+<p>示例：菜单上增加“工单工时统计”报表，在“数量”列上可以点击，点击后在新页面中显示该工单下的所有工件明细。</p>
+<p>菜单上增加一项：</p>
+<pre><code>            &lt;a href="javascript:WUI.loadScript('page/mod_工单工时统计.js')"&gt;工单工时统计&lt;/a&gt;</code></pre>
+<p>用WUI.loadScript可以动态加载JS文件，web和page目录下的JS文件默认都是禁止缓存的，因此修改文件后再点菜单可立即生效无须刷新。<br />
+在文件<code>page/mod_工单工时统计.js</code>中写报表逻辑，并对“数量”列进行定制：</p>
+<pre><code>function show工单工时统计()
+{
+    DlgReportCond.show(function (data) {
+        var queryParams = WUI.getQueryParam({createTm: [data.tm1, data.tm2]});
+        var url = WUI.makeUrl("Ordr.query", { res: 'id 工单号, createTm 生产日期, itemCode 产品编码, itemName 产品名称, cate2Name 产品系列, itemCate 产品型号, qty 数量, mh 理论工时, mh1 实际工时', pagesz: -1 });
+        WUI.showPage("pageSimple", "工单工时统计!", [url, queryParams, onInitGrid]);
+    });
+
+    function onInitGrid(jpage, jtbl, dgOpt, columns, data)
+    {
+        // dgOpt: datagrid的选项，如设置 dgOpt.onClickCell等属性
+        // columns: 列数组，可设置列的formatter等属性
+        // data: ajax得到的原始数据
+        $.each(columns, function (i, col) {
+            if (col.field == "数量")
+                col.formatter = formatter_数量;
+        });
+        // console.log(columns);
+    }
+
+    function formatter_数量(value, row) {
+        if (!value)
+            return;
+        return WUI.makeLink(value, function () {
+            var orderId = row.工单号;
+            var objParam = {orderId: orderId };
+            WUI.showPage("pageSn", "工件-工单" + orderId, [ objParam ]);
+        });
     }
 }</code></pre></div>
 <div style="text-align:center">Generated by jdcloud-gendoc</div>
