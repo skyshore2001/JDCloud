@@ -2305,6 +2305,9 @@ uniKey可以指定多个字段，以逗号分隔即可，常用于关联表，�
 	{
 		if (!$uniKey)
 			return;
+		$forceMatch = (substr($uniKey, -1) == '!');
+		if ($forceMatch)
+			$uniKey = substr($uniKey, 0, strlen($uniKey)-1);
 
 		$fields = explode(',', $uniKey);
 		$cond = [];
@@ -2326,11 +2329,13 @@ uniKey可以指定多个字段，以逗号分隔即可，常用于关联表，�
 			return;
 		$param = array_merge($_GET, ["res"=>"id", "cond"=>$cond, "fmt"=>"one?"]);
 		$id = $this->callSvc(null, "query", $param, $_POST);
+		if (! $id && $forceMatch)
+			jdRet(E_PARAM, "uniKey does NOT match record", "找不到匹配项: uniKey=" . join(',', $cond));
 		if (! $id || ($this->ac == "set" && $id == $this->id))
 			return;
 
 		if ($handler === "error" || $this->ac == "set")
-			jdRet(E_PARAM, "duplicate record (id=$id): " . urlEncodeArr($cond), "已存在重复记录: " . join(',', $cond));
+			jdRet(E_PARAM, "duplicate record (id=$id): " . urlEncodeArr($cond), "已存在重复记录: uniKey=" . join(',', $cond));
 
 		if ($handler === "set") {
 			// 清空字段，避免set时再检查
@@ -3041,6 +3046,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
  字段列表以逗号或空白分隔, 如"title=name - addr"与"title=name, -, addr"都可以.
 
 - uniKey: (v5.5) 唯一索引字段. 如果指定, 则以该字段查询记录是否存在, 存在则更新。例如"code", 也支持多个字段（用于关联表），如"bpId,itemId"。
+ (v6) uniKey支持"!"结尾表示强制匹配，用于在批量更新时防止添加记录，如"code!"表示若code匹配则更新，不匹配则报错不添加。
 - uniKeyMode: (v6) 定制发现uniKey存在的行为，默认为更新，也可为报错或忽略。
 
 @see uniKey
@@ -3251,7 +3257,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 			catch (Exception $ex) {
 				$msg = $ex->getMessage();
 				if ( ($ex instanceof MyException) && $ex->internalMsg != null)
-					$msg .= "-" .$ex->internalMsg;
+					$msg .= " (" .$ex->internalMsg. ")";
 				ApiFw_::$SOLO = $bak_SOLO;
 				list($row, $n) = $st->getRowInfo();
 				throw new MyException(E_PARAM, (string)$ex, "第{$n}行出错(\"" . join(',', $row) . "\"): " . $msg);
@@ -3943,7 +3949,7 @@ class BatchAddStrategy
 			$title = param("title", null, "G", false);
 			$row1 = null;
 			if ($title) {
-				$row1 = preg_split('/[\s,]+/', $title);
+				$row1 = preg_split('/\s*,\s*/', $title);
 				$useColMap = param("useColMap", null, "G");
 				if ($useColMap) {
 					$newRow1 = [];
@@ -4062,6 +4068,7 @@ class BatchAddStrategy
 		$retObj = [];
 		$i = 0;
 		$rowCnt = count($titleRow);
+		$map = []; // 用于检测列重复
 		// $_POST = array_combine($titleRow, $row);
 		foreach ($titleRow as $e) {
 			if ($i >= $rowCnt)
@@ -4080,6 +4087,10 @@ class BatchAddStrategy
 			else {
 				$retObj[$e] = $val;
 			}
+			// 检测列重复定义。出现重复可能会出问题
+			if (isset($map[$e]))
+				jdRet(E_PARAM, "dup column def: " . $e, "列定义重复: " . $e);
+			$map[$e] = 1;
 		}
 		return $retObj;
 	}
