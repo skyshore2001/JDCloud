@@ -5636,6 +5636,16 @@ function toggleBatchMode(val) {
 
 mCommon.assert($.fn.combobox, "require jquery-easyui lib.");
 
+/**
+@fn getRow(jtbl) -> row
+
+用于列表中选择一行来操作，返回该行数据。如果未选则报错，返回null。
+
+	var row = WUI.getRow(jtbl);
+	if (row == null)
+		return;
+
+ */
 self.getRow = getRow;
 function getRow(jtbl, silent)
 {
@@ -8381,7 +8391,27 @@ CSS类, 可定义无数据提示的样式
 			body.height(h);
 			body.find('table tbody').empty().append('<tr><td width="' + body.width() + 'px" height="50px" align="center" class="noData" style="border:none; color:#ccc; font-size:14px">没有数据</td></tr>');
 		}
-	}
+	},
+
+	// 右键点左上角空白列:
+	onHeaderContextMenu: function (ev, field) {
+		if (field == null) {
+			var jtbl = $(this);
+			var param = WUI.getQueryParamFromTable(jtbl);
+			console.log(param);
+			var strArr = [];
+			var url = jtbl.datagrid("options").url;
+			if (url && url.action)
+				strArr.push("[接口]\n" + url.action);
+			if (param.cond)
+				strArr.push("[查询条件]\n" + param.cond);
+			if (param.orderby)
+				strArr.push("[排序]\n" + param.orderby);
+			strArr.push("[列设置]\n" + param.res.replace(/,/g, "\n"));
+			app_alert("字段信息<div><pre>" + strArr.join("\n\n") + "</pre></div>");
+			ev.preventDefault();
+		}
+	},
 
 	// Decided in dgLoadFilter: 超过1页使用remoteSort, 否则使用localSort.
 	// remoteSort: false
@@ -9625,6 +9655,8 @@ JS代码ListOptions.Brand:
 	<select id="defectTypeId" class="my-combobox" data-options="ListOptions.DefectType()" style="width:45%"></select>
 	<select name="defectId" class="my-combobox" data-options="ListOptions.Defect()" style="width:45%"></select>
 
+(v6)也可以用input来代替select，组件会自动处理
+
 其中，DefectType()与传统设置无区别，在Defect()函数中，应设置url为一个带参函数：
 
 	var ListOptions = {
@@ -9687,6 +9719,15 @@ function mycombobox(force)
 		var opts = WUI.getOptions(jo);
 		if (!force && opts.isLoaded_)
 			return;
+		if (o.tagName != "SELECT") {
+			var jo1 = $("<select></select>");
+			$.each(o.attributes, function (i,e) {
+				jo1.attr(e.name, e.value);
+			});
+			jo.replaceWith(jo1);
+			jo = jo1;
+			o = jo1[0];
+		}
 
 		if (opts.jdEnumMap || opts.jdEnumList) {
 			loadOptions();
