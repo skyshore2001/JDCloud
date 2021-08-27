@@ -2125,6 +2125,36 @@ function enhancePicker(jo)
 	}
 }
 
+/**
+@key .wui-more
+
+显示一个按钮，用于隐藏（默认）或显示后面的内容。基于easyui-linkbutton创建，兼容该组件的options比如图标.
+
+	示例: 列对应: title=code,-,amount 
+	<span class="wui-more" data-options="iconCls: 'icon-tip'">更多示例</span>
+	<pre>
+	映射方式对应: title=编码->code, Total Sum->amount&amp;useColMap=1
+	根据code, 存在则更新: title=code,amount&amp;uniKey=code
+	根据code, 批量更新: title=code,amount&amp;uniKey=code!
+	带子表: title=code,amount,@order1.itemCode,@order1.qty&amp;uniKey=code
+	</pre>
+
+*/
+self.m_enhanceFn[".wui-more"] = enhanceMoreBtn;
+function enhanceMoreBtn(jo)
+{
+	var jmore = jo.nextAll();
+	jmore.hide();
+	jo.linkbutton({
+//		iconCls: 'icon-tip',
+//		plain: true,
+		toggle: true
+	});
+//	jo.css({float: "left"});
+	jo.click(function () {
+		jmore.toggle();
+	});
+}
 
 /**
 @fn WUI.showByType(jo, type)

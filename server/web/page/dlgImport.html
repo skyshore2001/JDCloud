@@ -33,7 +33,15 @@
 			<td>参数</td>
 			<td>
 				<input name="params_" value="title=uname,phone,name,createTm">
-				<p class="hint">title参数: 当标题列与内部名称不一致时应指定, 要忽略列可用"-"替代, 如"title=uname,phone,-,createTm"</p>
+				<div class="hint">示例: 列对应: title=code,-,amount (`-`表示忽略某列)
+<span class="wui-more" data-options="iconCls: 'icon-tip'">更多示例</span>
+<pre>
+映射方式对应: title=编码->code, Total Sum->amount&amp;useColMap=1
+根据code, 存在则更新: title=code,amount&amp;uniKey=code
+根据code, 批量更新: title=code,amount&amp;uniKey=code!
+带子表: title=code,amount,@order1.itemCode,@order1.qty&amp;uniKey=code
+</pre>
+				</div>
 			</td>
 		</tr>
 		<!--tr class="optional forOrdr">
