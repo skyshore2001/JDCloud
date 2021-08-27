@@ -6570,6 +6570,45 @@ function showDlg(jdlg, opt)
 	}
 }
 
+/**
+@fn showDlgByMeta(itemArr, opt)
+
+WUI.showDlg的简化版本，通过直接指定组件创建对话框。
+
+- itemArr: [{title, dom, hint?}]
+- opt: 同showDlg的参数
+
+示例：
+
+	var itemArr = [
+		// title, dom, hint?
+		{title: "接口名", dom: "<input name='ac' required>", hint: "示例: Ordr.query"},
+		{title: "参数", dom: "<textarea name='param' rows=5></textarea>", hint: '示例: {cond: {createTm: ">2020-1-1"}, res: "count(*) cnt", gres: "status"}'}
+	];
+	WUI.showDlgByMeta(itemArr, {
+		title: "通用查询",
+		modal: false,
+		onOk: function (data) {
+			app_alert(JSON.stringify(data));
+		}
+	});
+ */
+self.showDlgByMeta = showDlgByMeta;
+function showDlgByMeta(itemArr, opt)
+{
+	var code = '';
+	for (var i=0; i<itemArr.length; ++i) {
+		var item = itemArr[i];
+		var hint = '';
+		if (item.hint)
+			hint = "<p class=\"hint\">" + item.hint + "</p>";
+		code += "<tr><td>" + item.title + "</td><td>" + item.dom + hint + "</td></tr>";
+	}
+
+	var jdlg = $("<form><table>" + code + "</table></form>");
+	return self.showDlg(jdlg, opt);
+}
+
 // 按住Ctrl/Command键进入批量模式。
 var tmrBatch_;
 $(document).keydown(function (e) {
@@ -7213,7 +7252,7 @@ function getFindData(jfrm)
 function loadDialog(jdlg, onLoad)
 {
 	// 判断dialog未被移除
-	if (jdlg.size() > 0 && jdlg[0].parentElement != null && jdlg[0].parentElement.parentElement != null)
+	if (jdlg.size() > 0 && (jdlg.data("dialog") == null || (jdlg[0].parentElement != null && jdlg[0].parentElement.parentElement != null)))
 		return;
 	var jo = $(jdlg.selector);
 	if (jo.size() > 0) {
@@ -8397,18 +8436,8 @@ CSS类, 可定义无数据提示的样式
 	onHeaderContextMenu: function (ev, field) {
 		if (field == null) {
 			var jtbl = $(this);
-			var param = WUI.getQueryParamFromTable(jtbl);
-			console.log(param);
-			var strArr = [];
-			var url = jtbl.datagrid("options").url;
-			if (url && url.action)
-				strArr.push("[接口]\n" + url.action);
-			if (param.cond)
-				strArr.push("[查询条件]\n" + param.cond);
-			if (param.orderby)
-				strArr.push("[排序]\n" + param.orderby);
-			strArr.push("[列设置]\n" + param.res.replace(/,/g, "\n"));
-			app_alert("字段信息<div><pre>" + strArr.join("\n\n") + "</pre></div>");
+			var jmenu = GridHeaderMenu.showMenu({left: ev.pageX, top: ev.pageY}, jtbl);
+
 			ev.preventDefault();
 		}
 	},
@@ -8425,6 +8454,99 @@ CSS类, 可定义无数据提示的样式
 // 			$(this).datagrid("selectRow", idx);
 // 	}
 });
+
+var GridHeaderMenu = {
+	jtbl_: null,
+	showMenu: function (pos, jtbl) {
+		var jmenu = $("#mnuGridHeader");
+		if (jmenu.size() == 0) {
+			// 注意id与函数名的匹配
+			jmenu = $('<div id="mnuGridHeader"><div id="showDlgFieldInfo">字段信息</div><div id="showDlgQuery">高级查询</div></div>');
+			jmenu.menu({
+				onClick: function (mnuItem) {
+					GridHeaderMenu[mnuItem.id](GridHeaderMenu.jtbl_);
+				}
+			});
+		}
+		this.jtbl_ = jtbl;
+		jmenu.menu('show', pos);
+	},
+	// 以下为菜单项处理函数
+
+	showDlgFieldInfo: function (jtbl) {
+		var param = WUI.getQueryParamFromTable(jtbl);
+		console.log(param);
+
+		var title = "字段信息";
+		var title1 = jtbl.prop("title") || jtbl.closest(".wui-page").prop("title");
+		if (title1)
+			title += "-" + title1;
+
+		var strArr = [];
+		var url = jtbl.datagrid("options").url;
+		if (url && url.action)
+			strArr.push("<b>[接口]</b>\n" + url.action);
+		if (param.cond)
+			strArr.push("<b>[查询条件]</b>\n" + param.cond);
+		if (param.orderby)
+			strArr.push("<b>[排序]</b>\n" + param.orderby);
+		strArr.push("<b>[字段列表]</b>\n" + param.res.replace(/,/g, "\n"));
+
+		var jdlg = $("<div title='" + title + "'><pre>" + strArr.join("\n\n") + "</pre></div>");
+		WUI.showDlg(jdlg, {
+			modal: false,
+			onOk: function () {
+				WUI.closeDlg(this);
+			},
+			noCancel: true
+		});
+	},
+
+	showDlgQuery: function (jtbl) {
+		var data = null;
+		var url = jtbl.datagrid("options").url;
+		if (url && url.action)
+			data = {ac: url.action};
+		self.showDlgQuery(data);
+	}
+}
+
+/**
+@fn showDlgQuery(data?={ac, param})
+ */
+self.showDlgQuery = showDlgQuery;
+function showDlgQuery(data1)
+{
+	var itemArr = [
+		// title, dom, hint?
+		{title: "接口名", dom: "<input name='ac' required>", hint: "示例: Ordr.query"},
+		{title: "参数", dom: '<textarea name="param" rows=8></textarea>', hint: "cond:查询条件, res:返回字段, gres:分组字段, pivot:转置字段"}
+	];
+	var data = $.extend({
+		ac: 'Ordr.query',
+		param: '{\n cond: {createTm: ">2020-1-1"},\n res: "count(*) 数量",\n gres: "status 状态=CR:新创建;PA:待处理;RE:已完成;CA:已取消",\n// pivot: "状态"\n}'
+	}, data1);
+	self.showDlgByMeta(itemArr, {
+		title: "高级查询",
+		modal: false,
+		data: data,
+		onOk: function (data) {
+			var param = {page: 1};
+			if (data.param) {
+				try {
+					param = $.extend(param, eval("(" + data.param + ")"));
+				}
+				catch (ex) {
+					app_alert("参数格式出错：须为JS对象格式");
+					return false;
+				}
+			}
+			var url = self.makeUrl(data.ac, param);
+			WUI.showPage("pageSimple", "查询结果!", [ url ]);
+//			WUI.closeDlg(this);
+		}
+	});
+}
 
 $.extend($.fn.treegrid.defaults, {
 	idField: "id",
