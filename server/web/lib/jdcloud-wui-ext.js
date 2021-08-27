@@ -968,11 +968,17 @@ $(enhanceMenu);
 
 在选择一行并返回时，它会触发choose事件：
 
-	var jo = jdlg.find("[comboname=storeId]"); // 注意不是 "[name=storeId]"（原始的input已经变成一个hidden组件，只存储值）
+	// 注意要取combogrid对象要用comboname! 而不是用 "[name=storeId]"（原始的input已经变成一个hidden组件，只存储值）
+	var jo = jdlg.find("[comboname=storeId]"); 
 	jo.on("choose", function (ev, row) {
 		console.log('choose row: ', row);
 		...
 	});
+
+jo是easyui-combogrid，可以调用它的相应方法，如禁用它：
+	jo.combogrid({disabled: true}); 
+或
+	jo.combogrid("disable");
 
 在输入时，它会自动以url及参数q向后端发起查询，如`callSvr("Store.query", {res:'id,name', q='1'})`.
 在筋斗云后端须支持相应对象的模糊查询(请查阅文档qsearch)。
@@ -2169,7 +2175,8 @@ HTML: 在对话框中，将这几种情况都定义出来：
 	<select name="status" class="my-combobox type-报修" style="display:none" data-options="jdEnumList:ItemStatusList_报修"></select>
 	<select name="status" class="my-combobox type-公告" style="display:none" data-options="jdEnumList:ItemStatusList_公告"></select>
 
-注意：当type与“报修”时，它按class为"type-报修"来匹配，显示匹配到的控件（并添加active类），隐藏其它控件，并添加disabled属性（从而在WUI.getFormData时不会取到它的数据）。
+注意：当type与“报修”时，它按class为"type-报修"来匹配，显示匹配到的控件（并添加active类），隐藏并禁用其它控件。
+如果都不匹配，这时看第一条，如果它不带`type-xxx`类，则使用第一条来显示，否则所有都不启用（隐藏、禁用）。
 
 JS: 根据type设置合适的status下拉列表，当type变化时更新列表：
 
@@ -2193,18 +2200,118 @@ JS: 根据type设置合适的status下拉列表，当type变化时更新列表�
 			}
 		}
 	}
- */
+
+支持combogrid组件，注意combogrid组件用"[comboname]"而非"[name]"来找jQuery组件：
+
+	WUI.showByType(jdlg.find("[comboname=orderId]"), type);
+
+HTML示例：
+
+	<tr>
+		<td class="orderIdTd">关联单据</td>
+		<td>
+			<input name="orderId" class="wui-combogrid type-生产领料 type-生产调拨 type-生产入库 type-生产退料" data-options="ListOptions.OrderGrid({type:'生产工单'})">
+			<input name="orderId" class="wui-combogrid type-销售" data-options="ListOptions.OrderGrid({type:'销售计划'})">
+			...
+		</td>
+	</tr>
+
+支持组件状态被动态修改，比如添加模式时打开对话框就禁用该组件：
+
+	jdlg.find("[comboname=orderId]").combogrid({disabled: forAdd});
+
+这时调用showByType后，active组件仍会保持disabled状态。类似的，如果调用者先隐藏了组件，则调用showByType后active组件也是隐藏的。
+
+注意：对tr等包含输入框的块组件也可使用，但要求内部只有一个带name的输入组件，且各块的内部输入组件的name都相同。
+
+		<tr class="optional type-出库">...<input name="orderId">...</tr>
+		<tr class="optional type-入库">...<input name="orderId">...</tr>
+
+JS控制：
+
+	WUI.showByType(jdlg.find("tr.optional"), type);
+
+当一个块不显示时，其内部的带name的输入组件被设置disabled，提交时不会带该字段。
+如果块内部包含多个输入框，或各块内的输入框的name不同，如果各块内所有输入框都默认显示、未禁用（也不会动态修改显示、禁用），这时也可以使用showByType，否则会有问题。
+*/
 self.showByType = showByType;
 function showByType(jo, type) {
-	if (!type && jo.hasClass("active"))
-		return;
-	var j1 = type? jo.filter(".type-" + type): null;
-	if (!j1 || j1.size() == 0)
-		j1 = jo.first();
-	if (j1.hasClass("active"))
-		return;
-	jo.removeClass("active").prop("disabled", true).hide();
-	j1.addClass("active").prop("disabled", false).show();
+	var it = jo.hasClass("combo-f")? showByType.comboInterface :
+		showByType.defaultInterface;
+
+	// ja: 原active项，可能为空; 切换active项时，保持原有各状态不变
+	var ja = it.getActive(jo);
+	var visible = ja.size()>0? it.getVisible(ja): true;
+	var disabled = ja.size()>0? it.getDisabled(ja): false;
+
+	var jinit = it.getInitJo(jo); // jinit是带有原始type和class的元素
+	var j1 = type? jinit.filter(".type-" + type): ja;
+	if (j1.size() == 0) {
+		// 如果第一个jo中没有设置type-xxx，则尝试用第一个做active; 否则就没有active项
+		var cls = jinit.first().attr("class");
+		if (cls && cls.indexOf("type-") < 0)
+			j1 = jo.first();
+	}
+	jo.each(function () {
+		var je = $(this);
+		if (j1.size() >0 && j1[0] == je[0]) {
+			it.setActive(je, true);
+			it.setDisabled(je, disabled);
+			it.setVisible(je, visible);
+		}
+		else {
+			it.setActive(je, false);
+			it.setDisabled(je, true);
+			it.setVisible(je, false);
+		}
+	});
 }
+
+showByType.defaultInterface = {
+	getInitJo: function (jo) {
+		return jo;
+	},
+	getActive: function (jo) {
+		return jo.filter(".active");
+	},
+	setActive: function (jo, val) {
+		jo.toggleClass("active", val);
+	},
+	getVisible: function (jo) {
+		return jo.is(":visible");
+	},
+	setVisible: function (jo, val) {
+		return jo.toggle(val);
+	},
+	getDisabled: function (jo) {
+		if (jo.is("[name]"))
+			return jo.prop("disabled");
+		return jo.find("[name]").prop("disabled");
+	},
+	setDisabled: function (jo, val) {
+		if (jo.is("[name]"))
+			jo.prop("disabled", val);
+		else
+			jo.find("[name]").prop("disabled", val);
+	}
+}
+
+// combobox/combogrid特别处理 jo: hidden对象
+// DOM结构为: input[comboname].combo-f.textbox-f(是隐藏的,原始type类加在这里), 
+// 			span.combo(应隐藏它), input[type=hidden][name].textbox-value (jo:原始带name的字段,应disable它)
+showByType.comboInterface = $.extend({}, showByType.defaultInterface, {
+	getVisible: function (jo) {
+		return jo.next().is(":visible");
+	},
+	setVisible: function (jo, val) {
+		return jo.next().toggle(val);
+	},
+	getDisabled: function (jo) {
+		return jo.next().find(".textbox-value").prop("disabled");
+	},
+	setDisabled: function (jo, val) {
+		return jo.next().find(".textbox-value").prop("disabled", val);
+	}
+});
 
 }
