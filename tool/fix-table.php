@@ -300,7 +300,11 @@ function fn_pic($val, $idx, $row)
 		$f1 = "tmp/" . basename($f);
 		$resize = $opts["resize"];
 		$cmd = "magick \"$f\" -resize $resize -quality 80 \"$f1\"";
-		system($cmd) or die("Fail to compress pic: $f");
+		system($cmd, $rv);
+		if ($rv) {
+			echo("*** Fail to compress pic: $f");
+			exit(1);
+		}
 		return $f1;
 	});
 }
