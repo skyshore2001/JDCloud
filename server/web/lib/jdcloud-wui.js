@@ -6228,6 +6228,48 @@ if (isSmallScreen()) {
 - opt.dialogOpt: 底层jquery-easyui dialog选项。参考http://www.jeasyui.net/plugins/159.html
 - opt.reload: (v5.5) 先重置再加载。只用于开发环境，方便在Chrome控制台中调试。
 
+## 对话框加载
+
+示例1：静态加载（在web/store.html中的my-pages中定义），通过对话框的id属性标识。
+
+	<div id="my-pages" style="display:none">
+		<div id="dlgLogin" title="商户登录">  
+			...
+		</div>
+	<div>
+
+加载：`WUI.showDlg($("#dlgLogin"))`。对话框顶层DOM用div或form都可以。用form更简单些。
+除了少数内置对话框，一般不建议这样用，而是建议从外部文件动态加载（模块化）。
+
+示例2：从内部模板动态加载，模板id须为"tpl_{对话框id}"，对话框上不用指定id
+
+	<script type="text/template" id="tpl_dlgLogin">
+		<div title="商户登录">  
+			...
+		</div>
+	</script>
+
+加载：`WUI.showDlg($("#dlgLogin"))`或`WUI.showDlg("#dlgLogin")`。
+比示例1要好些，但一般也不建议这样用。目前是webcc编译优化机制使用该技术做发布前常用对话框的合并压缩。
+
+示例3：从外部模板动态加载，模板是个文件如web/page/dlgLogin.html，对话框上不用指定id
+
+	<div title="商户登录">  
+		...
+	</div>
+
+加载：`WUI.showDlg($("#dlgLogin"))`或`WUI.showDlg("#dlgLogin")`。
+这是目前使用对话框的主要方式。
+
+示例4：不用HTML，直接JS中创建DOM：
+
+	var jdlg = $('<div title="商户登录">Hello World</div>');
+	WUI.showDlg(jdlg);
+
+适合编程动态实现的对话框。参考使用更简单的WUI.showDlgByMeta。
+
+## 对话框编程模式
+
 对话框有两种编程模式，一是通过opt参数在启动对话框时设置属性及回调函数(如onOk)，另一种是在dialog初始化函数中处理事件(如validate事件)实现逻辑，有利于独立模块化。
 
 对话框显示时会触发以下事件：
@@ -6286,7 +6328,7 @@ if (isSmallScreen()) {
 		}
 	});
 
-**对象型对话框与formMode**
+## 对象型对话框与formMode
 
 函数showObjDlg()会调用本函数显示对话框，称为对象型对话框，用于对象增删改查，它将以下操作集中在一起。
 打开窗口时，会设置窗口模式(formMode):
@@ -6305,7 +6347,7 @@ if (isSmallScreen()) {
 初始数据与对话框中带name属性的对象相关联，显示对话框时，带name属性的DOM对象将使用数据opt.data自动赋值(对话框show事件中可修改)，在点“确定”按钮提交时将改动的数据发到服务端(validate事件中可修改)，详见
 @see setFormData,getFormData
 
-**对话框事件**
+## 对话框事件
 
 操作对话框时会发出以下事件供回调：
 
@@ -6361,7 +6403,7 @@ form提交后事件，用于处理返回数据
 
 @see example-dialog 在对话框中使用事件
 
-**reset控制**
+## reset控制
 
 对话框上有name属性的组件在显示对话框时会自动清除（除非设置opt.reset=false或组件设置有noReset属性）。
 
@@ -6376,7 +6418,7 @@ form提交后事件，用于处理返回数据
 
 	<input type="hidden" name="status" value="PA" noReset>
 
-**控制底层jquery-easyui对话框**
+## 控制底层jquery-easyui对话框
 
 示例：关闭对话框时回调事件：
 
@@ -6390,11 +6432,17 @@ form提交后事件，用于处理返回数据
 		opt.dialogOpt = dialogOpt;
 	})
 
-**复用dialog模板**
-(v5.3)
+## 复用dialog模板
+(v5.3引入，v6已移除)
+
+本功能已移除，请参考 WUI.options.moduleExt
 
 如 dlgUDT__A 与 dlgUDT__B 共用dlgUDT对话框模板，只要用"__"分隔对话框模板文件和后缀名。
 
+	WUI.showDlg("dlgUDT__A"); // 自动加载page/dlgUDT.html文件
+
+@see showDlgByMeta
+@see showObjDlg
 */
 self.showDlg = showDlg;
 function showDlg(jdlg, opt) 
@@ -6592,6 +6640,8 @@ WUI.showDlg的简化版本，通过直接指定组件创建对话框。
 			app_alert(JSON.stringify(data));
 		}
 	});
+
+@see showDlg
  */
 self.showDlgByMeta = showDlgByMeta;
 function showDlgByMeta(itemArr, opt)
