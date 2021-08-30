@@ -487,11 +487,13 @@ style将被插入到head标签中，并自动添加属性`mui-origin={pageId}`.
 	statusBarColor: "#,light" // 默认，背景与MUI.container（即.mui-container类）背景一致，白字。
 	statusBarColor: "#000000,light" // 黑底白字。
 	statusBarColor: "#ffffff,dark" // 白底黑字
-	statusBarColor: "none" // 不显示状态栏。
+	statusBarColor: "none" // 不显示状态栏。(实际效果是纯色顶栏，而不是没有顶栏；如果要让页面平铺到顶栏，应自行调用`StatusBar.overlaysWebView(true)`)
 
 如果不同页面有不同颜色，可以设置切换页面时自动按照页面头颜色来设置:
 
-	WUI.options.fixTopbarColor=true
+	MUI.options.fixTopbarColor=true
+
+(v6) 或直接调用`MUI.fixTopbarColor()`。
 
 注意此时要设置顶栏颜色，页面必须有页头即hd类并设置好颜色，若不需要页头可以设置隐藏.
 @see options.fixTopbarColor
@@ -7124,6 +7126,12 @@ function setTopbarColor(colorHex, style)
 	}
 }
 
+/**
+@fn fixTopbarColor()
+
+用于原生应用，让顶栏颜色与页面hd部分的颜色自动保持一致。
+ */
+self.fixTopbarColor = fixTopbarColor;
 function fixTopbarColor()
 {
 	if (!g_cordova)
