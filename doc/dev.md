@@ -152,9 +152,9 @@ MySQL服务端不是必装的，自己学习的话可以安装一个，注意安
 
 安装图片处理工具imagemagick：
 
-	\\server-pc\share\software\android\ImageMagick-6.9.3-8-Q8-x64-dll.exe
+	\\server-pc\share\software\android\ImageMagick-7.0.8-12-Q16-x64-dll.exe
 
-检查：可以运行convert命令
+检查：可以运行magick命令(6.x版本的命令叫convert, 现在已不再使用)
 
 安装文档生成工具pandoc：
 
@@ -250,14 +250,25 @@ MySQL服务端不是必装的，自己学习的话可以安装一个，注意安
 
 ### 安卓开发环境
 
-android SDK:
+先根据【Java后端开发环境】安装java(jdk8)。（编译安卓不需要eclipse或tomcat）
 
-	\\server-pc\share\software\android\sdk-tools-windows-4333796.rar
+android SDK: （840M, 包含tools, platform-tools, android target-API-29等）
 
-解压到`d:\`
-配置
+	\\server-pc\share\software\android\sdk-tools-windows-4333796.zip
+
+解压到`d:\sdk-tools-windows-4333796`
+配置环境变量：
 
 	ANDROID_HOME=d:\sdk-tools-windows-4333796
+
+安装编译工具gradle:
+
+	\\server-pc\share\software\gradle-5.4.1.zip
+
+解压到d:\，配置环境变量：
+
+	GRADLE_HOME=d:\gradle-5.4.1
+	PATH中添加 %GRADLE_HOME%/bin
 
 安装nodejs/npm:
 
@@ -278,9 +289,9 @@ cordova开发环境安装（目前使用10.0版本）：
 
 其中要做图片处理，安装：
 
-	\\server-pc\share\software\android\ImageMagick-6.9.3-8-Q8-x64-dll.exe
+	\\server-pc\share\software\android\ImageMagick-7.0.8-12-Q16-x64-dll.exe
 
-检查：可以运行convert命令
+检查：可以运行magick命令
 
 如果要调试安卓插件，应安装android studio，并安装Android SDK.
 
@@ -293,6 +304,18 @@ cordova开发环境安装（目前使用10.0版本）：
 	npm i
 	cordova platform add android
 	make
+
+如果有错误，可以查看下少装了什么：
+
+	cordova requirements
+
+打开Makefile文件，修改其中的线上apk上传地址，如：
+
+	PUB=oliveche.com:html/app/apk/tomatomall-1.0.apk
+
+这样可以直接发布上线：
+
+	make dist
 
 ### IOS开发环境
 

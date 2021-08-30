@@ -2,7 +2,6 @@
 <html>
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>筋斗云接口编程</title>
   <style type="text/css">code{white-space: pre;}</style>
 <link rel="stylesheet" href="style.css" />
@@ -1289,8 +1288,12 @@ ORDER BY t0.id DESC</code></pre>
 <pre><code>addLog(&quot;### debug info&quot;); // 调试等级0，只要是测试模式下，总是输出
 addLog(&quot;### debug info level 1&quot;, 1); // 在测试模式下且调试等级&gt;=1时输出。</code></pre>
 <p>注意必须在conf.user.php中激活测试模式才能看到日志返回：</p>
-<pre><code>putenv(&quot;P_TEST_MODE&quot;,  1);</code></pre>
-<p>测试模式下，输出的JSON串经过美化更易读。 调用接口时添加URL参数<code>_debug</code>可以设置调试等级，如<code>http://.../api.php/Ordr.add?_debug=1</code>。</p>
+<pre><code>putenv(&quot;P_TEST_MODE&quot;,  1);
+putenv(&quot;P_DEBUG&quot;,  9); // 设置调试等级，9为最高（输出SQL）</code></pre>
+<p>测试模式下，输出的JSON串经过美化更易读。 也可以在调用接口时添加URL参数<code>_debug</code>来设置本次调用的调试等级，如<code>http://.../api.php/Ordr.add?_debug=9</code>。</p>
+<p>开启选项<code>P_DEBUG_LOG</code>可将接口调用日志记录到debug.log文件中，包括接口返回内容以及addLog记录的日志（详细程度由P_DEBUG决定）：</p>
+<pre><code>putenv(&quot;P_DEBUG_LOG=1&quot;); // 0: no log to &#39;debug.log&#39; 1: all log, 2: error log</code></pre>
+<p>默认值为0表示不记录，设置值为1为记录所有日志，值为2为记录错误日志（接口返回值非0为错误）。</p>
 <p><strong>[模拟模式]</strong></p>
 <p>系统中集成了第三方的短信发送功能，如何在日常测试时不用真发短信而走通流程，以及如果进行自动化测试？</p>
 <p>筋斗云建议，对第三方系统依赖（如微信认证、支付宝支付、发送短信等），应设计模拟接口来模拟。 如果在conf.user.php中配置：</p>
@@ -1315,6 +1318,7 @@ putenv(&quot;P_MOCK_MODE&quot;, 1);</code></pre>
 <li>reqsz/ressz: 请求与响应的长度。</li>
 <li>ver 前端应用版本。调用接口时通过URL参数<code>_ver</code>来指定应用版本名。</li>
 </ul>
+<p>如果要使用PHP调试功能，支持打断点、看变量、单步运行，推荐使用xdebug+vscode(php debug插件)，<a href="http://oliveche.com/jdcloud-site/phpdebug.html">具体参考这里</a></p>
 <h3 id="会话管理"><span class="header-section-number">5.2</span> 会话管理</h3>
 <p>筋斗云使用cookie机制来维持与客户端的会话。 它默认使用的cookie名称是&quot;userid&quot;，但可以由客户端请求中URL参数<code>_app</code>来修改，比如<code>_app=emp</code>，则使用cookie名称为&quot;empid&quot;。 在筋斗云中，<code>_app</code>参数称为前端应用名，因而不同的应用即使同时在浏览器中打开也不会发生会话错乱和冲突。</p>
 <p>示例请求：</p>

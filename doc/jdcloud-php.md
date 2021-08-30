@@ -1757,9 +1757,16 @@ class AC1_Ordr extends AccessControl
 注意必须在conf.user.php中激活测试模式才能看到日志返回：
 
 	putenv("P_TEST_MODE",  1);
+	putenv("P_DEBUG",  9); // 设置调试等级，9为最高（输出SQL）
 
 测试模式下，输出的JSON串经过美化更易读。
-调用接口时添加URL参数`_debug`可以设置调试等级，如`http://.../api.php/Ordr.add?_debug=1`。
+也可以在调用接口时添加URL参数`_debug`来设置本次调用的调试等级，如`http://.../api.php/Ordr.add?_debug=9`。
+
+开启选项`P_DEBUG_LOG`可将接口调用日志记录到debug.log文件中，包括接口返回内容以及addLog记录的日志（详细程度由P_DEBUG决定）：
+
+	putenv("P_DEBUG_LOG=1"); // 0: no log to 'debug.log' 1: all log, 2: error log
+
+默认值为0表示不记录，设置值为1为记录所有日志，值为2为记录错误日志（接口返回值非0为错误）。
 
 **[模拟模式]**
 
@@ -1793,6 +1800,8 @@ class AC1_Ordr extends AccessControl
 - req/res: 请求内容与响应内容，记录最多1K字节。
 - reqsz/ressz: 请求与响应的长度。
 - ver 前端应用版本。调用接口时通过URL参数`_ver`来指定应用版本名。
+
+如果要使用PHP调试功能，支持打断点、看变量、单步运行，推荐使用xdebug+vscode(php debug插件)，[具体参考这里](http://oliveche.com/jdcloud-site/phpdebug.html)
 
 ### 会话管理
 
