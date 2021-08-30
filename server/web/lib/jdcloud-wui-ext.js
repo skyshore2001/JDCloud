@@ -1023,91 +1023,115 @@ jo是easyui-combogrid，可以调用它的相应方法，如禁用它：
 (v5.5) 与my-combobox类似，组件会在其它页面更新对象后自动刷新列表。
 外部想要刷新组件列表，可以触发markRefresh事件：
 
+	jo = jdlg.find("[comboname=xxxId]");
 	jo.trigger("markRefresh", obj); // obj是可选的，若指定则仅当obj匹配组件对应obj时才会刷新。
 
 ## 动态修改下拉列表
 
-动态修改组件的url选项，然后触发markRefresh即可。示例：
+(v6) 与my-combobox方法相同，重新设置选项：
 
-	// 比如每打开对话框时，根据某变量动态显示列表。可在dialog的beforeShow事件中编码：
-	var factoryId = ...;
+	jo = jdlg.find("[comboname=xxxId]");
+	jo.trigger("setOption", opt);
+
+动态修改组件选项示例：
+
+	// 比如每打开对话框时，根据type动态显示列表。可在dialog的beforeShow事件中编码：
+	var cond = type == 'A'? xx: yy...;
 	// 取出选项，动态修改url
-	var jo = $(frm.categoryId);
-	var opt = WUI.getOptions(jo); 
-	opt.url = WUI.makeUrl('Category.query', {
-		res: 'id,name,fatherName',
-		cond: 'factoryId=' + factoryId
-	});
-	jo.trigger("markRefresh");
+	var jo = jdlg.find("[comboname=categoryId]");
+	jo.trigger("setOption", ListOptions.CategoryGrid(cond));
 
  */
 self.m_enhanceFn[".wui-combogrid"] = enhanceCombogrid;
 function enhanceCombogrid(jo)
 {
-	var opt1 = WUI.getOptions(jo);
-	jo.removeAttr("data-options"); // 避免被easyui错误解析
-	var jdlg;
-	var $dg;
-	var doInit = true;
-
-	var opt = $.extend({}, $.fn.datagrid.defaults, {
+	var myopt = WUI.getOptions(jo);
+	// add default option
+	WUI.extendNoOverride(myopt, {
+		jd_showId: true,
 		delay: 500,
 		idField: "id",
 		textField: "name",
-		jd_showId: true,
 		mode: 'remote',
-		// 首次打开面板时加载url
-		onShowPanel: function () {
-			if (doInit && opt1.url) {
-				doInit = false;
-				$dg.datagrid("options").url = opt1.url;
-				$dg.datagrid("reload");
-			}
-		},
-		// 值val必须为数值(因为值对应id字段)才合法, 否则将清空val和text
-		onHidePanel: function () {
-			var val = jo.combogrid("getValue");
-			if (! val)
-				return;
-			if (jdlg.size() > 0 && jdlg.jdata().mode == FormMode.forFind) {
-				if (vfield && /[^\d><=!,-]/.test(val) ) {
-					jo.prop("nameForFind", vfield);
+	});
+	jo.removeAttr("data-options"); // 避免被easyui错误解析
+
+	var jdlg;
+	var isCombogridCreated = false;
+	var doInit = true;
+
+	setOption();
+
+	jo.on("markRefresh", markRefresh);
+	jo.on("setOption", function (ev, opt) {
+		setOption(opt);
+	});
+
+	jdlg = jo.closest(".wui-dialog");
+	if (jdlg.size() == 0)
+		return;
+
+	jdlg.on("beforeshow", onBeforeShow);
+
+	function initCombogrid()
+	{
+		if (isCombogridCreated)
+			return;
+		isCombogridCreated = true;
+
+		var $dg;
+		var curVal, curText;
+
+		var initOpt = $.extend({}, $.fn.datagrid.defaults, {
+			// 首次打开面板时加载url
+			onShowPanel: function () {
+				if (doInit && myopt.url) {
+					doInit = false;
+					$dg.datagrid("options").url = myopt.url;
+					$dg.datagrid("reload");
 				}
-				return;
-			}
-			jo.removeProp("nameForFind");
-
-			var isId = (opt.idField == "id");
-//			var val1 = jo.combogrid("textbox").val();
-			if (isId && ! $.isNumeric(val)) {
-				jo.combogrid("setValue", "");
-			}
-			else if (opt.jd_showId) {
-				var txt = jo.combogrid("getText");
-				if (! /^\d+ - /.test(txt)) {
-					jo.combogrid("setText", val + " - " + txt);
+				curVal = jo.combogrid("getValue");
+				curText = jo.combogrid("getText");
+			},
+			// 值val必须为数值(因为值对应id字段)才合法, 否则将清空val和text
+			onHidePanel: function () {
+				var val = jo.combogrid("getValue");
+				if (! val || curVal == val) {
+					jo.combogrid("setText", curText);
+					return;
 				}
+				if (jdlg.size() > 0 && jdlg.jdata().mode == FormMode.forFind) {
+					if (myopt.jd_vField && /[^\d><=!,-]/.test(val) ) {
+						jo.prop("nameForFind", myopt.jd_vField);
+					}
+					return;
+				}
+				jo.removeProp("nameForFind");
+
+				var isId = (myopt.idField == "id");
+	//			var val1 = jo.combogrid("textbox").val();
+				if (isId && ! $.isNumeric(val)) {
+					jo.combogrid("setValue", "");
+				}
+				else if (myopt.jd_showId) {
+					var txt = jo.combogrid("getText");
+					if (! /^\d+ - /.test(txt)) {
+						jo.combogrid("setText", val + " - " + txt);
+					}
+				}
+				var row = $dg.datagrid("getSelected");
+				if (row)
+					jo.trigger("choose", [row]);
+			},
+			/* !!! TODO: 解决combogrid 1.4.2的bug. 1.5.2以上已修复, 应移除。
+			onLoadSuccess: function () {
+				$dg && $.fn.datagrid.defaults.onLoadSuccess.apply($dg[0], arguments);
 			}
-			var row = $dg.datagrid("getSelected");
-			if (row)
-				jo.trigger("choose", [row]);
-		},
-		// !!! TODO: 解决combogrid 1.4.2的bug. 1.5.2以上已修复, 应移除。
-		onLoadSuccess: function () {
-			$dg && $.fn.datagrid.defaults.onLoadSuccess.apply($dg[0], arguments);
-		}
-	}, opt1);
-
-	var vfield = opt.jd_vField;
-	var showId = opt.jd_showId;
-
-	// 创建后再指定，这样初始化时不调用接口
-	opt.url = null;
-	jo.combogrid(opt);
-	$dg = jo.combogrid("grid");
-// 	if (url) {
-// 		$dg.datagrid("options").url = url;
-// 	}
+			*/
+		}, myopt, {url: null}); // URL在创建后再指定，这样初始化时不调用接口
+		jo.combogrid(initOpt);
+		$dg = jo.combogrid("grid");
+	}
 
 /*
 	jo.combogrid("textbox").blur(function (ev) {
@@ -1115,31 +1139,25 @@ function enhanceCombogrid(jo)
 	});
 	*/
 
-	jdlg = jo.closest(".wui-dialog");
-	if (jdlg.size() == 0)
-		return;
-
-	jdlg.on("beforeshow", onBeforeShow);
-	jo.on("markRefresh", markRefresh);
-
-	function onBeforeShow(ev, formMode, opt) {
-		if (vfield && opt.data && opt.data[vfield]) {
-			setTimeout(function () {
+	function onBeforeShow(ev, formMode, formOpt) {
+		// 推迟执行，以便应用在onBeforeShow中设置组件选项。
+		setTimeout(function () {
+			if (myopt.jd_vField && formOpt.data && formOpt.data[myopt.jd_vField]) {
 				// onShow
 				var val = jo.combogrid("getValue");
 				if (val != "") {
-					var txt = opt.data[vfield];
-					if (showId) {
+					var txt = formOpt.data[myopt.jd_vField];
+					if (myopt.jd_showId) {
 						var prefix = val + " - ";
 						if (!txt.startsWith(prefix))
 							txt = prefix + txt;
 					}
 					jo.combogrid("setText", txt);
 				}
-			});
-			// nameForFind用于find模式下指定字段名，从而可以按名字来查询。Add/set模式下应清除。
-			jo.removeProp("nameForFind");
-		}
+				// nameForFind用于find模式下指定字段名，从而可以按名字来查询。Add/set模式下应清除。
+				jo.removeProp("nameForFind");
+			}
+		});
 	}
 
 	function markRefresh(ev, obj)
@@ -1153,6 +1171,19 @@ function enhanceCombogrid(jo)
 				return;
 		}
 		doInit = true;
+	}
+
+	function setOption(opt) {
+		var rv = diffObj(myopt, opt);
+		if (rv == null)
+			return;
+		$.extend(myopt, opt);
+		doInit = true;
+		if (opt && rv.columns) {
+			// 设置columns属性时做combogrid初始化
+			isCombogridCreated = false;
+		}
+		initCombogrid();
 	}
 }
 
@@ -1807,19 +1838,19 @@ $.extend(self.dg_toolbar, {
 子表明细对话框中，为了在点击确定后将虚拟字段拷贝回subobj子表列表中，应通过data-options中指定jd_vField选项来指定虚拟字段名，如 dlgInvRecord1.html:
 
 	仓库   <select name="whId" class="my-combobox" required data-options="ListOptions.Warehouse()"></select>  (Warehouse函数中已定义{jd_vField: 'whName'})
-	到仓库 <select name="whId2" class="my-combobox" required data-options="$.extend(ListOptions.Warehouse(), {jd_vField:'whName2'})"></select> (覆盖Warehouse函数定义中的jd_vField选项)
+	到仓库 <select name="whId2" class="my-combobox" required data-options="ListOptions.Warehouse({jd_vField:'whName2'})"></select> (覆盖Warehouse函数定义中的jd_vField选项)
 	物料   <input name="itemId" class="wui-combogrid" required data-options="ListOptions.ItemGrid()">  (ItemGrid函数中已定义{jd_vField: 'itemName'})
 
 ListOptions中对下拉列表参数的设置示例：(store.js)
 
 	var ListOptions = {
 		...
-		Warehouse: function () {
-			return {
+		Warehouse: function (opt) {
+			return $.extend({
 				jd_vField: "whName", // 指定它在明细对话框中对应的虚拟字段名
 				textField: "name", // 注意区别于jd_vField，textField是指定显示内容是url返回表中的哪一列
 				url: ...
-			}
+			}, opt);
 		},
 		ItemGrid: function () {
 			return {
@@ -2165,6 +2196,8 @@ function enhanceMoreBtn(jo)
 /**
 @fn WUI.showByType(jo, type)
 
+(v6) 该函数已不建议使用。本来用于显示多组mycombobox/wui-combogrid组件，现成推荐直接用组件的setOption事件动态修改组件选项。
+
 对话框上form内的一组控件中，根据type决定当前显示/启用哪一个控件。
 
 需求：ItemStatusList定义了Item的状态，但当Item类型为“报修”时，其状态使用`ItemStatusList_报修`，当类型为“公告”时，状态使用ItemStatusList_公告，其它类型的状态使用ItemStatusList
@@ -2313,5 +2346,57 @@ showByType.comboInterface = $.extend({}, showByType.defaultInterface, {
 		return jo.next().find(".textbox-value").prop("disabled", val);
 	}
 });
+
+/**
+
+@fn diffObj(obj, obj1)
+
+返回null-无差异，如果是对象与对象比较，返回差异对象，否则返回true表示有差异
+
+	var rv = diffObj({a:1, b:99}, {a:1, b:98, c:100});
+	// rv: {b:98, c:100}
+
+	var rv = diffObj([{a:1, b:99}], [{a:1, b:99}]);
+	// rv: null (无差异)
+
+	var rv = diffObj([{a:1, b:99}], [{a:1, b:99}, {a:2}]);
+	// rv: true
+	
+	var rv = diffObj("hello", "hello");
+	// rv: null (无差异)
+
+	var rv = diffObj("hello", 99);
+	// rv: true
+ */
+
+function diffObj(obj, obj1)
+{
+	if (obj == obj1)
+		return null;
+
+	if (typeof obj != typeof obj1)
+		return true;
+
+	if ($.isArray(obj) && $.isArray(obj1)) {
+		for (var i=0; i<obj1.length; ++i) {
+			if (diffObj(obj[i], obj1[i]) != null)
+				return true;
+		}
+		return null;
+	}
+	if (!$.isPlainObject(obj))
+		return JSON.stringify(obj) == JSON.stringify(obj1)? null: true;
+
+	var ret = {};
+	$.each(obj1, function (k, v) {
+		if (obj[k] === undefined || typeof(obj[k]) != typeof(v)) {
+			ret[k] = v;
+			return;
+		}
+		if (diffObj(obj[k], v) != null)
+			ret[k] = v;
+	});
+	return $.isEmptyObject(ret)? null: ret;
+}
 
 }

@@ -2603,6 +2603,29 @@ function text2html(s, pics)
 	return ret;
 }
 
+/**
+@fn extendNoOverride(a, b, ...)
+
+	var a = {a: 1};
+	WUI.extendNoOverride(a, {b: 'aa'}, {a: 99, b: '33', c: 'bb'});
+	// a = {a: 1, b: 'aa', c: 'bb'}
+ */
+self.extendNoOverride = extendNoOverride;
+function extendNoOverride(target)
+{
+	if (!target)
+		return target;
+	$.each(arguments, function (i, e) {
+		if (i == 0 || !$.isPlainObject(e))
+			return;
+		$.each(e, function (k, v) {
+			if (target[k] === undefined)
+				target[k] = v;
+		});
+	});
+	return target;
+}
+
 }/*jdcloud common*/
 
 /**
@@ -3102,6 +3125,14 @@ store.html中设置菜单：
 
 	loadScript("1.js", {cache: false});
 
+**[小技巧]**
+
+在index.js/app.js等文件中写代码，必须刷新整个页面才能加载生效。
+可以先把代码写在比如 web/test.js 中，这样每次修改后不用大刷新，直接在chrome控制台上加载运行：
+
+	WUI.loadScript("test.js")
+
+等改好了再拷贝到真正想放置这块代码的地方。修改已有的框架中函数也可以这样来快速迭代。
 */
 self.loadScript = loadScript;
 function loadScript(url, fnOK, options)
@@ -3602,7 +3633,7 @@ function getDataOptions(jo, defVal)
 	var optStr = jo.attr("data-options");
 	var opts;
 	try {
-		if (optStr != null) {
+		if (optStr) {
 			if (/^\w+:/.test(optStr)) {
 				opts = eval("({" + optStr + "})");
 			}
@@ -6330,6 +6361,25 @@ if (isSmallScreen()) {
 			callSvr("Category.copyTo", {cond: ...}, function (retdata) { ... }, data);
 		}
 	});
+
+如果要做更多的初始化配置，比如处理对话框事件，则使用初始化函数机制，即在对话框DOM上设置`my-initfn`属性：
+
+	<div title="复制到" my-initfn="initDlgCopyTo"> ... </div>
+
+初始化函数示例：
+
+	function initDlgCopyTo()
+	{
+		var jdlg = $(this);
+
+		jdlg.on("beforeshow", onBeforeShow)
+			.on("validate", onValidate);
+
+		function onBeforeShow(ev, formMode, opt) {
+		}
+		function onValidate(ev, mode, oriData, newData) {
+		}
+	}
 
 ## 对象型对话框与formMode
 
@@ -9626,7 +9676,8 @@ $.each([
 - 刷新列表： jo.trigger("refresh");
 - 标记刷新（下次打开时刷新）： jo.trigger("markRefresh", [obj?]); 如果指定obj，则仅当URL匹配obj的查询接口时才刷新。
  （注意：在其它页面进行修改操作时，会自动触发markRefresh事件，以便下拉框能自动刷新。）
-- (v5.2)加载列表：jo.trigger("loadOptions", param);  一般用于级联列表，即url带参数的情况。
+- (v5.2)加载列表：jo.trigger("loadOptions", param);  一般用于级联列表，即url带参数的情况。(注意：v6起不再使用，改用setOption事件)
+- (v6) 重新设置选项：jo.trigger("setOption", opt); 而且仅当点击到下拉框时才会加载选项列表。
 
 特性：
 
@@ -9657,6 +9708,8 @@ $.each([
 例如，想显示所有员工(Employee)的下拉列表，绑定员工编号字段(id)，显示是员工姓名(name):
 
 	分派给 <select name="empId" class="my-combobox" data-options="url:WUI.makeUrl('Employee.query', {res:'id,name',pagesz:-1})"></select>
+
+(v6)也可以用input来代替select，组件会自动处理.
 
 注意查询默认是有分页的（页大小一般为20条），用参数`{pagesz:-1}`使用服务器设置的最大的页大小（后端最大pagesz默认100，可使用maxPageSz参数调节）。
 为了精确控制返回字段与显示格式，data-options可能更加复杂，习惯上定义一个ListOptions变量包含各种下拉框的数据获取方式，便于多个页面上共享，像这样：
@@ -9768,11 +9821,71 @@ JS代码ListOptions.Brand:
 
 注意：jdEnumMap指定的固定选项会先出现。
 
-## 动态列表
+## 动态列表 - setOption
 
-(v5.2) url选项使用函数，之后调用loadOptions方法刷新
+(v6) url选项使用函数，之后调用loadOptions方法刷新
 
 示例：在安装任务明细对话框(dlgTask)中，根据品牌(brand)过滤显示相应的门店列表(Store).
+
+	var ListOptions = {
+		// 带个cond参数，为query接口的查询条件参数，支持 "brand='xxx'" 或 {brand: 'xxx'}两种格式。
+		Store: function (cond) {
+			var opts = {
+				valueField: "id",
+				textField: "name",
+				url: WUI.makeUrl('Store.query', {
+					res: 'id,name',
+					cond: cond,
+					pagesz: -1
+				},
+				formatter: function (row) { return row.id + "-" + row.name; }
+			};
+			return opts;
+		}
+	};
+
+在明细对话框HTML中不指定options而是代码中动态设置：
+
+	<form>
+		品牌 <input name="brand">
+		门店 <select name="storeId" class="my-combobox"></select>
+	</form>
+
+对话框初始化函数：在显示对话框或修改品牌后刷新门店列表
+
+	function initDlgTask()
+	{
+		...
+		
+		$(frm.brand).on("change", function () {
+			if (this.value) {
+				// 用setOption动态修改设置。注意trigger函数第二个参数须为数组，作为参数传递给用on监听该事件的处理函数。
+				$(frm.storeId).trigger("setOption", [ ListOptions.Store({brand: this.value}) ]);
+			}
+		});
+
+		function onShow() {
+			$(frm.brand).trigger("change");
+		}
+	}
+
+### 动态修改固定下拉列表
+
+(v6) 示例：根据type决定下拉列表用哪个，通过setOption来设置。
+
+	function onBeforeShow(ev, formMode, opt) {
+		var type = opt.objParam && opt.objParam.type || opt.data && opt.data.type;
+
+		var comboOpt = type == "入库" ? { jdEnumMap: MoveTypeMap } :
+			type == "出库"? { jdEnumMap: MoveTypeMap2 } : null
+		jdlg.find("[name=moveType]").trigger("setOption", [comboOpt]);
+	}
+
+如果setOption给的参数是null，则忽略不处理。
+
+### 旧方案(不建议使用)
+
+(v5.2起, v6前) url选项使用函数，之后调用loadOptions方法刷新:
 
 	var ListOptions = {
 		Store: function () {
@@ -9818,7 +9931,7 @@ JS代码ListOptions.Brand:
 
 ## 级联列表支持
 
-(v5.2) 与动态列表机制相同。
+(v5.2引入, v6使用新方案) 与动态列表机制相同。
 
 示例：缺陷类型(defectTypeId)与缺陷代码(defectId)二级关系：选一个缺陷类型，缺陷代码自动刷新为该类型下的代码。
 在初始化时，如果字段有值，下拉框应分别正确显示。
@@ -9826,12 +9939,12 @@ JS代码ListOptions.Brand:
 在一级内容切换时，二级列表自动从后台查询获取。同时如果是已经获取过的，缓存可以生效不必反复获取。
 双击仍支持刷新。
 
-对话框上HTML如下：（defectId是用于提交的字段，所以用name属性；defectTypeId不用提交，所以用了id属性；后端接口最好两个值都返回）
+对话框上HTML如下：（defectId是用于提交的字段，所以用name属性；defectTypeId不用提交，所以用了id属性）
 
 	<select id="defectTypeId" class="my-combobox" data-options="ListOptions.DefectType()" style="width:45%"></select>
-	<select name="defectId" class="my-combobox" data-options="ListOptions.Defect()" style="width:45%"></select>
+	<select name="defectId" class="my-combobox" data-options="" style="width:45%"></select>
 
-(v6)也可以用input来代替select，组件会自动处理
+defectId上暂时不设置，之后传参动态设置。
 
 其中，DefectType()与传统设置无区别，在Defect()函数中，应设置url为一个带参函数：
 
@@ -9850,16 +9963,14 @@ JS代码ListOptions.Brand:
 			return opts;
 		},
 		// ListOptions.Defect
-		Defect: function () {
+		Defect: function (typeId) {
 			var opts = {
 				valueField: "id",
 				textField: "code",
-				url: function (typeId) {
-					return WUI.makeUrl('Defect.query', {
-						res: 'id,code,name',
-						cond: "typeId=" + typeId,
-						pagesz: -1
-					})
+				url: WUI.makeUrl('Defect.query', {
+					res: 'id,code,name',
+					cond: "typeId=" + typeId,
+					pagesz: -1
 				},
 				formatter: function (row) { return row.code + "-" + row.name; }
 			};
@@ -9867,19 +9978,26 @@ JS代码ListOptions.Brand:
 		}
 	}
 
-在对话框上设置关联动作，调用loadOptions方法：
+在对话框上设置关联动作，调用setOption事件：
 
 	$(frm.defectTypeId).on("change", function () {
 		var typeId = $(this).val();
 		if (typeId)
-			$(frm.defectId).trigger("loadOptions", typeId);
+			$(frm.defectId).trigger("setOption", [ ListOptions.Defect(typeId) ]);
 	});
-	
+
+注意jQuery的trigger发起事件函数第二个参数须为数组。
+
 对话框加载时，手工设置defectTypeId的值：
 
 	function onShow() {
 		$(frm.defectTypeId).val(defectTypeId).trigger("change");
 	}
+
+## 自动感知对象变动并刷新列表
+
+假如某mycombobox组件查询Employee对象列表。当在Employee页面新建、修改、删除对象后，回到组件的页面，点击组件时将自动刷新列表。
+(wui-combogrid也具有类似功能)
 
  */
 var m_dataCache = {}; // url => data
@@ -9905,14 +10023,8 @@ function mycombobox(force)
 			o = jo1[0];
 		}
 
-		if (opts.jdEnumMap || opts.jdEnumList) {
-			loadOptions();
-			opts.isLoaded_ = true;
-		}
-		else if (opts.url) {
-			o.enableAsyncFix = true; // 有这个标志的select才做特殊处理
-			loadOptions();
-
+		o.enableAsyncFix = true; // 有这个标志的select才做特殊处理
+		if (opts.url) {
 			if (!jo.attr("ondblclick"))
 			{
 				jo.off("dblclick").dblclick(function () {
@@ -9921,31 +10033,42 @@ function mycombobox(force)
 					refresh();
 				});
 			}
-			jo.on("refresh", refresh);
-			jo.on("markRefresh", markRefresh);
-			jo.on("loadOptions", function (ev, param) {
-				opts.urlParams = param;
-				loadOptions();
-			});
-			jo.click(function () {
-				if (opts.isLoaded_)
-					return;
-				loadOptions();
-				return false;
-			});
-			// bugfix: loadOptions中会设置value_, 这将导致无法选择空行.
-			jo.change(function () {
-				this.value_ = "";
-			});
-			// 处理只读属性
-			jo.keydown(function () {
-				if ($(this).attr("readonly"))
-					return false;
-			});
 		}
+		jo.on("refresh", refresh);
+		jo.on("markRefresh", markRefresh);
+		jo.on("loadOptions", function (ev, param) {
+			opts.urlParams = param;
+			loadOptions();
+		});
+		// bugfix: loadOptions中会设置value_, 这将导致无法选择空行.
+		jo.change(function () {
+			this.value_ = "";
+		});
+		jo.on("setOption", function (ev, opt) {
+			if (opt == null)
+				return;
+			$.extend(opts, opt);
+			opts.isLoaded_ = false;
+			if (this.value_)
+				loadOptions();
+		});
+
+		// 在显示下拉列表前填充列表。注意若用click事件则太晚，会有闪烁。
+		jo.keydown(function () {
+			// 处理只读属性
+			if ($(this).attr("readonly"))
+				return false;
+			loadOptions();
+		});
+		jo.mousedown(function () {
+			loadOptions();
+		});
 
 		function loadOptions()
 		{
+			if (opts.isLoaded_)
+				return;
+			opts.isLoaded_ = true;
 			jo.prop("value_", jo.val()); // 备份val到value_
 			jo.empty();
 			// 添加空值到首行
@@ -9965,8 +10088,11 @@ function mycombobox(force)
 				});
 			}
 
-			if (opts.url == null)
+			if (opts.url == null) {
+				// 恢复value
+				jo.val(jo.prop("value_"));
 				return;
+			}
 			var url = opts.url;
 			if ($.isFunction(url)) {
 				if (url.length == 0) { // 无参数直接调用
@@ -10067,6 +10193,9 @@ function mycombobox_fixAsyncSetValue()
 	$.valHooks["select"] = {
 		set: function (elem, value) {
 			elem.value_ = value;
+			if (elem.enableAsyncFix && value) {
+				$(elem).trigger("loadOptions");
+			}
 			return hook.set.apply(this, arguments);
 		},
 		get: function (elem) {
