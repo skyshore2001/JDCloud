@@ -28,7 +28,7 @@ umask 002
 git reset --hard
 
 ### reload tomcat app, for jd-java project
-[[ -f WEB-INF ]] && touch -c WEB-INF/web.xml
+[[ -d WEB-INF ]] && touch -c WEB-INF/web.xml
 
 ### for dev release (no build_web): generate revision file for auto refresh
 [[ -d server ]] && git log -1 --format=%H > server/revision.txt
