@@ -95,15 +95,16 @@ function initDlgImport()
 
 		function batchAdd() {
 			$.extend(param, frm.content.param_);
+			var obj0 = obj.indexOf("__") < 0? obj: obj.split('__')[0];
 			if (files.length) {
 				var fd = new FormData();
 				fd.append("file", files[0]);
-				callSvr(obj + ".batchAdd", param, api_batchAdd, fd, {
+				callSvr(obj0 + ".batchAdd", param, api_batchAdd, fd, {
 					//contentType: ""
 				});
 			}
 			else {
-				callSvr(obj + ".batchAdd", param, api_batchAdd, text, {
+				callSvr(obj0 + ".batchAdd", param, api_batchAdd, text, {
 					contentType: "text/plain"
 				});
 			}
