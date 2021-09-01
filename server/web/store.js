@@ -5,7 +5,8 @@ var APP_NAME = "emp-adm";
 $.extend(WUI.options, {
 	appName: APP_NAME,
 	title: APP_TITLE,
-	onShowLogin: showDlgLogin
+	onShowLogin: showDlgLogin,
+	closeAfterFind: true
 });
 
 var g_data = {}; // {userInfo={id, storeId, perms,...}, hasPerm(perm)}

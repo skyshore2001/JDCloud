@@ -2961,7 +2961,7 @@ self.formItems["[name]"] = self.defaultFormItems = {
 	getValue_vf: function (jo) {
 		var o = jo[0];
 		if (o.tagName == "SELECT")
-			return o.options[o.selectedIndex].innerText;
+			return o.selectedIndex >= 0 ? o.options[o.selectedIndex].innerText : '';
 		return this.getValue(jo);
 	}
 };
@@ -7792,6 +7792,8 @@ function showObjDlg(jdlg, mode, opt)
 			mCommon.assert(jtbl); // 查询结果显示到jtbl中
 			doFind(jfrm, jtbl);
 			onCrud();
+			if (self.options.closeAfterFind)
+				closeDlg(jdlg);
 			return;
 		}
 		// add/set/link
@@ -8981,6 +8983,7 @@ window.FormMode = {
 - pageHome: 首页的id, 默认为"pageHome"
 - pageFolder: 子页面或对话框所在文件夹, 默认为"page"
 - closeAfterAdd: (=false) 设置为true时，添加数据后关闭窗口。默认行为是添加数据后保留并清空窗口以便连续添加。
+- closeAfterFind: (=false) (v6)设置为true时，查询后关闭窗口。默认行为是查询后窗口不关闭。
 - fuzzyMatch: (=false) 设置为true时，则查询对话框中的文本查询匹配字符串任意部分。
 */
 self.options = {
