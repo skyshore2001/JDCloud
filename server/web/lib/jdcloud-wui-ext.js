@@ -1594,7 +1594,7 @@ function getObjFromJtbl(jtbl)
 
 $.extend(self.dg_toolbar, {
 	"import": function (ctx) {
-		return {text: "导入", "wui-perm": "新增", iconCls:'icon-ok', handler: function () {
+		return {text: "导入", "wui-perm": "新增", iconCls:'icon-add', handler: function () {
 			var obj = getObjFromJtbl(ctx.jtbl);
 			self.assert(obj, "dg_toolbar.import: 对象未指定，无法导入");
 			self.assert(DlgImport, "DlgImport未定义");
@@ -1620,6 +1620,12 @@ $.extend(self.dg_toolbar, {
 			var val = $(this).find(".qsearch").val();
 			WUI.reload(ctx.jtbl, null, {q: val});
 		}};
+	},
+
+	report: function (ctx) {
+		return {text: '报表', iconCls: 'icon-sum', handler: function () {
+			self.showDlg("#dlgDataReport");
+		}};	
 	}
 });
 
@@ -2397,6 +2403,123 @@ function diffObj(obj, obj1)
 			ret[k] = v;
 	});
 	return $.isEmptyObject(ret)? null: ret;
+}
+
+/**
+@fn showDataReport(opt={ac, @gres, @gres2?, res?, cond?, title?="统计报表", detailPageName?, detailPageParamArr?})
+
+- res: 汇总字段，默认为`COUNT(*) 数量`
+- gres: 行统计字段
+- gres2: 列统计字段
+- cond: 查询条件，符合后端query接口的格式均可（字符串，数组或对象）
+- title: 统计页面标题
+- detailPageName: 在统计表中点击数值，可以显示明细页面。这里指定用哪个页面来显示明细项；如果未指定则以pageSimple来显示。
+- detailPageParamArr: 如果指定了detailPageName，可以用此参数来定制showPage的第三参数(paramArr)。
+
+示例：
+
+	WUI.showDataReport({
+		ac: "Employee.query",
+		gres: ["depName 部门", "性别"],
+		gres2: ["职称", "学历"],
+		cond: {status: '在职'},
+		detailPageName: "pageEmployee1",
+		title: "师资报表"
+	});
+
+ */
+self.showDataReport = showDataReport;
+function showDataReport(opt, showPageOpt)
+{
+	self.assert(opt && opt.ac, "选项ac未指定");
+	opt = $.extend({
+		title: "统计报表",
+		res: "COUNT(*) 数量",
+		gres: [],
+		gres2: [],
+		detailPageParamArr: []
+	}, opt);
+
+	var gres = [];
+	var pivot = [];
+
+	self.assert($.isArray(opt.gres), "gres必须为数组");
+	opt.gres.forEach(e => {
+		if (e)
+			gres.push(e);
+	});
+	self.assert($.isArray(opt.gres2), "gres2必须为数组");
+	opt.gres2.forEach(e => {
+		if (e) {
+			gres.push(e);
+			var arr = e.split(" ");
+			pivot.push(arr[1] || arr[0]);
+		}
+	});
+
+	var queryParams = {
+		res: opt.res,
+		cond: opt.cond,
+		gres: gres.join(','),
+		pivot: pivot.join(','),
+
+		pagesz: -1
+	};
+	var url = WUI.makeUrl(opt.ac, queryParams);
+	WUI.showPage("pageSimple", opt.title + "!", [url, null, onInitGrid]);
+
+	function onInitGrid(jpage, jtbl, dgOpt, columns, data)
+	{
+		// dgOpt: datagrid的选项，如设置 dgOpt.onClickCell等属性
+		// columns: 列数组，可设置列的formatter等属性
+		// data: ajax得到的原始数据
+		$.each(columns, function (i, col) {
+			if (i >= opt.gres.length)
+				col.formatter = getFormatter(col);
+		});
+		// console.log(columns);
+	}
+	function getFormatter(col) {
+		return formatter_sum;
+
+		function formatter_sum(value, row) {
+			if (!value)
+				return;
+			return WUI.makeLink(value, function () {
+				var cond = {};
+				if (opt.gres) {
+					opt.gres.forEach((e, i) => {
+						var arr = e.split(' '); // e: "name title?"
+						var name = arr[0];
+						var title = arr.length > 1? arr[1].replace('"', ''): name;
+						cond[name] = row[title];
+					});
+				}
+				if (opt.gres2) {
+					opt.gres2.forEach((e, i) => {
+						var name = e.split(' ')[0]; // e: "name title?"
+						cond[name] = col.title.split('-')[i]; // col.title: "field1-field2"
+					});
+				}
+				console.log(cond);
+				if (queryParams.cond) {
+					cond = [queryParams.cond, cond];
+				}
+
+				var title = opt.title + "-明细项";
+				if (opt.detailPageName) {
+					opt.detailPageParamArr[1] = cond;
+					self.showPage(opt.detailPageName, title, opt.detailPageParamArr);
+				}
+				else {
+					var url = WUI.makeUrl(opt.ac, {
+						cond: cond,
+					});
+					self.showPage("pageSimple", title, [url])
+				}
+			});
+		}
+	}
 }
 
 }

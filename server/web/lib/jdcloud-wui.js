@@ -2754,6 +2754,18 @@ var mCommon = jdModule("jdcloud.common");
 		<input name="pdf" type="file" accept="application/pdf">
 	</form>
 
+如果有多个同名组件（name相同，且非disabled状态），最终值将以最后组件为准。
+如果想要以数组形式返回所有值，应在名字上加后缀"[]"，示例：
+
+	行统计字段: <select name="gres[]" class="my-combobox fields"></select>
+	行统计字段2: <select name="gres[]" class="my-combobox fields"></select>
+	列统计字段: <select name="gres2" class="my-combobox fields"></select>
+	列统计字段2: <select name="gres2" class="my-combobox fields"></select>
+
+取到的结果示例：
+
+	{ gres: ["id", "name"], gres2: "name" }
+
 @see setFormData
  */
 self.getFormData = getFormData;
@@ -4689,7 +4701,7 @@ function makeUrl(action, params)
 			action = action[0] + "." + action[1];
 		}
 	}
-	else {
+	else if (action) {
 		var m = action.match(/^(\w+):(\w.*)/);
 		if (m) {
 			ext = m[1];
@@ -4698,6 +4710,9 @@ function makeUrl(action, params)
 		else {
 			ext = "default";
 		}
+	}
+	else {
+		throw "makeUrl error: no action";
 	}
 
 	// 有makeUrl属性表示已调用过makeUrl
@@ -6021,6 +6036,12 @@ page调用示例:
 
 title用于唯一标识tab，即如果相同title的tab存在则直接切换过去。除非：
 (v5.5) 如果标题以"!"结尾, 则每次都打开新的tab页。
+
+(v6) 支持通过paramArr第二参数指定列表页过滤条件，示例
+
+	WUI.showPage("pageEmployee", "员工", [null, {status: "在职"}]);
+
+它直接影响页面中的datagrid的查询条件。
 */
 self.showPage = showPage;
 function showPage(pageName, title, paramArr)
@@ -6102,12 +6123,12 @@ function showPage(pageName, title, paramArr)
 
 		function initPage1()
 		{
+			jpageNew.data("showPageArgs_", showPageArgs_); // used by WUI.reloadPage
 			$.parser.parse(jpageNew); // easyui enhancement
 			enhanceGrid(jpageNew);
 			self.enhanceWithin(jpageNew);
 			callInitfn(jpageNew, paramArr);
 
-			jpageNew.data("showPageArgs_", showPageArgs_); // used by WUI.reloadPage
 			jpageNew.trigger('pagecreate');
 			jpageNew.trigger('pageshow');
 		}
@@ -6420,6 +6441,7 @@ if (isSmallScreen()) {
 - opt.objParam参数是由showObjDlg传入给dialog的参数，比如opt.objParam.obj, opt.objParam.formMode等。
 - 通过修改opt.data可为字段设置缺省值。注意forFind模式下opt.data为空。
 - 可以通过在beforeshow中用setTimeout延迟执行某些动作，这与在show事件中回调操作效果基本一样。
+- (v6) 设置opt.cancel=true可取消显示对话框.
 
 注意：每次调用showDlg()都会回调，可能这时对话框已经在显示。
 
@@ -6506,8 +6528,12 @@ function showDlg(jdlg, opt)
 	if (opt && opt.reload) {
 		opt = $.extend({}, opt);
 		delete opt.reload;
-		if (jdlg.size() > 0)
+		if (jdlg.size() > 0) {
 			unloadDialog(jdlg);
+			if (! jdlg.attr("id"))
+				return;
+			jdlg = $("#" + jdlg.attr("id"));
+		}
 	}
 	if (loadDialog(jdlg, onLoad))
 		return;
@@ -6519,7 +6545,7 @@ function showDlg(jdlg, opt)
 		okLabel: "确定",
 		cancelLabel: "取消",
 		noCancel: false,
-		modal: true,
+		modal: opt && opt.noCancel,
 		reset: true,
 		validate: true
 	}, opt);
@@ -6531,6 +6557,8 @@ function showDlg(jdlg, opt)
 	var jfrm = jdlg.is("form")? jdlg: jdlg.find("form:first");
 	var formMode = jdlg.jdata().mode;
 	jfrm.trigger("beforeshow", [formMode, opt]);
+	if (opt.cancel)
+		return;
 
 	var btns = [{text: opt.okLabel, iconCls:'icon-ok', handler: fnOk}];
 	if (! opt.noCancel) 
@@ -6709,6 +6737,7 @@ function showDlgByMeta(itemArr, opt)
 	}
 
 	var jdlg = $("<form><table>" + code + "</table></form>");
+	self.enhanceWithin(jdlg);
 	return self.showDlg(jdlg, opt);
 }
 
@@ -7180,7 +7209,6 @@ function unloadDialog(jdlg)
 	try { jdlg.dialog("destroy"); } catch (ex) { console.log(ex); }
 	jdlg.remove();
 	$("style[wui-origin=" + dlgId + "]").remove();
-	return jdlg;
 }
 
 /**
@@ -7339,6 +7367,21 @@ function getFindData(jfrm)
 	if (kvList2) 
 		$.extend(param, kvList2);
 	return param;
+}
+
+// 返回筋斗云后端query接口可接受的cond条件：
+function appendCond(cond, cond1)
+{
+	if (!cond)
+		return cond1;
+
+	if ($.isArray(cond)) {
+		cond.push(cond1);
+	}
+	else {
+		cond = [cond, cond1];
+	}
+	return cond;
 }
 
 /*
@@ -8462,6 +8505,16 @@ function dgLoader(param, success, error)
 			param1[k] = param[k];
 		}
 	}
+
+	// 根据showPage参数自动对页面中的datagrid进行过滤: 
+	// WUI.showPage(pageName, title, [param1, cond]) 内置支持cond参数
+	var jpage = jo.closest(".wui-page");
+	var showPageArgs = jpage.data("showPageArgs_");
+	if (showPageArgs && $.isArray(showPageArgs[2]) && showPageArgs[2][1]) {
+		var cond = showPageArgs[2][1];
+		param1.cond = appendCond(param1.cond, cond);
+	}
+
 	var dfd = self.callSvr(opts.url, param1, success);
 	dfd.fail(function () {
 		// hide the loading icon
@@ -8566,7 +8619,7 @@ var GridHeaderMenu = {
 		var jmenu = $("#mnuGridHeader");
 		if (jmenu.size() == 0) {
 			// 注意id与函数名的匹配
-			jmenu = $('<div id="mnuGridHeader"><div id="showDlgFieldInfo">字段信息</div><div id="showDlgQuery">高级查询</div></div>');
+			jmenu = $('<div id="mnuGridHeader"><div id="showDlgFieldInfo">字段信息</div><div id="showDlgDataReport">自定义报表</div><div id="showDlgQuery">自定义查询</div></div>');
 			jmenu.menu({
 				onClick: function (mnuItem) {
 					GridHeaderMenu[mnuItem.id](GridHeaderMenu.jtbl_);
@@ -8607,6 +8660,9 @@ var GridHeaderMenu = {
 		});
 	},
 
+	showDlgDataReport: function (jtbl) {
+		self.showDlg("#dlgDataReport");
+	},
 	showDlgQuery: function (jtbl) {
 		var data = null;
 		var url = jtbl.datagrid("options").url;

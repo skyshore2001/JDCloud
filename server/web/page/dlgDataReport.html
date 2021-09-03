@@ -1,0 +1,34 @@
+<form title="自定义报表" style="width:450px;height:400px;" wui-script="dlgDataReport.js" my-initfn="initDlgDataReport">
+	<table>
+		<tr>
+			<td>汇总字段</td>
+			<td>
+				<input name="res" class="wui-picker-edit">
+				<p class="hint">示例-对某列求和：`SUM(amount) 总额`</p>
+				<input style="display:none" name="ac">
+			</td>
+		</tr>
+		<tr>
+			<td>查询条件</td>
+			<td>
+				<input name="cond" class="wui-picker-edit">
+			</td>
+		</tr>
+		<tr>
+			<td>行统计字段</td>
+			<td>
+				<select name="gres[]" class="my-combobox fields"></select>
+				<a class="easyui-linkbutton btnAdd" data-options="iconCls:'icon-add'"></a>
+				<a class="easyui-linkbutton btnRemove" data-options="iconCls:'icon-remove'" style="display:none"></a>
+			</td>
+		</tr>
+		<tr>
+			<td>列统计字段</td>
+			<td>
+				<select name="gres2[]" class="my-combobox fields"></select>
+				<a class="easyui-linkbutton btnAdd" data-options="iconCls:'icon-add'"></a>
+				<a class="easyui-linkbutton btnRemove" data-options="iconCls:'icon-remove'" style="display:none"></a>
+			</td>
+		</tr>
+	</table>
+</form>
