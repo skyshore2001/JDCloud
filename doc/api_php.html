@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2021-08-19</div>
+<div>最后更新：2021-09-03</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -3674,10 +3674,11 @@ $this-&gt;checkSetFields([&quot;status&quot;, &quot;cmt&quot;]);<br />
 <ul>
 <li>
 <p>title: List(fieldName). 指定标题行(即字段列表). 如果有该参数, 则忽略POST内容或文件中的标题行.<br />
-如&quot;title=name,-,addr&quot;表示导入第一列name和第三列addr, 其中&quot;-&quot;表示忽略该列，不导入。<br />
+如&quot;title=name,-,addr&quot;表示导入第一列name和第三列addr, 其中&quot;-&quot;表示忽略该列（v6:或以&quot;-&quot;开头如&quot;-empName&quot;），不导入。<br />
 字段列表以逗号或空白分隔, 如&quot;title=name - addr&quot;与&quot;title=name, -, addr&quot;都可以.</p>
 </li>
-<li>uniKey: (v5.5) 唯一索引字段. 如果指定, 则以该字段查询记录是否存在, 存在则更新。例如&quot;code&quot;, 也支持多个字段（用于关联表），如&quot;bpId,itemId&quot;。</li>
+<li>uniKey: (v5.5) 唯一索引字段. 如果指定, 则以该字段查询记录是否存在, 存在则更新。例如&quot;code&quot;, 也支持多个字段（用于关联表），如&quot;bpId,itemId&quot;。<br />
+(v6) uniKey支持&quot;!&quot;结尾表示强制匹配，用于在批量更新时防止添加记录，如&quot;code!&quot;表示若code匹配则更新，不匹配则报错不添加。</li>
 <li>uniKeyMode: (v6) 定制发现uniKey存在的行为，默认为更新，也可为报错或忽略。</li>
 </ul>
 <p class="see"><strong>@see <a href="#uniKey">uniKey</a></strong> </p>

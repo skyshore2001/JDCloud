@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（移动Web版）</h1>
-<div>最后更新：2021-03-01</div>
+<div>最后更新：2021-09-03</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -126,6 +126,7 @@ code {
 <p><a href="#example-list-choose">example-list-choose (key)</a></p>
 <p><a href="#example-upload">example-upload (key)</a></p>
 <p><a href="#filterCordovaModule">filterCordovaModule (fn)</a></p>
+<p><a href="#fixTopbarColor">fixTopbarColor (fn)</a></p>
 <p><a href="#formItems">formItems (fn)</a></p>
 <p><a href="#formatField">formatField (fn)</a></p>
 <p><a href="#g_args">g_args (var)</a></p>
@@ -662,9 +663,10 @@ function loadStatLib()
 <pre><code>statusBarColor: "#,light" // 默认，背景与MUI.container（即.mui-container类）背景一致，白字。
 statusBarColor: "#000000,light" // 黑底白字。
 statusBarColor: "#ffffff,dark" // 白底黑字
-statusBarColor: "none" // 不显示状态栏。</code></pre>
+statusBarColor: "none" // 不显示状态栏。(实际效果是纯色顶栏，而不是没有顶栏；如果要让页面平铺到顶栏，应自行调用`StatusBar.overlaysWebView(true)`)</code></pre>
 <p>如果不同页面有不同颜色，可以设置切换页面时自动按照页面头颜色来设置:</p>
-<pre><code>WUI.options.fixTopbarColor=true</code></pre>
+<pre><code>MUI.options.fixTopbarColor=true</code></pre>
+<p>(v6) 或直接调用<code>MUI.fixTopbarColor()</code>。</p>
 <p>注意此时要设置顶栏颜色，页面必须有页头即hd类并设置好颜色，若不需要页头可以设置隐藏.</p>
 <p class="see"><strong>@see <a href="#options.fixTopbarColor">options.fixTopbarColor</a></strong> </p>
 <p>如果希望自行设置状态栏，可以设置statusBarColor为null:</p>
@@ -2709,6 +2711,9 @@ MUI.setFormSubmit(jf, api_fn1, {
 <p class="param"><strong>@param colorHex</strong>  颜色值,格式如 "#fafafa", 可用MUI.rgb2hex函数转换.</p>
 <p class="param"><strong>@param style</strong>  dark|light</p>
 <p>设置顶栏颜色和字体黑白风格.</p></div>
+<div class="block">
+<h2 id="fixTopbarColor">@fn fixTopbarColor()</h2>
+<p>用于原生应用，让顶栏颜色与页面hd部分的颜色自动保持一致。</p></div>
 <div class="block">
 <h2 id="showLogin">@fn showLogin(page?)</h2>
 <p class="param"><strong>@param page=pageRef/jpage</strong>  如果指定, 则登录成功后转向该页面; 否则转向登录前所在的页面.</p>
