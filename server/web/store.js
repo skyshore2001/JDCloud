@@ -48,6 +48,23 @@ var ListOptions = {
 		};
 		return opts;
 	},
+	UserGrid: function () {
+		var opts = {
+			jd_vField: "userName",
+			panelWidth: 450,
+			width: '95%',
+			textField: "name",
+			columns: [[
+				{field:'id',title:'编号',width:80},
+				{field:'name',title:'名称',width:120},
+				{field:'phone',title:'手机号',width:120}
+			]],
+			url: WUI.makeUrl('User.query', {
+				res: 'id,name,phone',
+			})
+		};
+		return opts;
+	},
 	Role: function () {
 		var opts = {
 			valueField: "name",

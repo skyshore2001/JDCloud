@@ -9,24 +9,12 @@ $.extend(WUI.options, {
 
 // ==== defines {{{
 var OrderStatusMap = {
-	CR: "未付款", 
+	CR: "新创建", 
 	PA: "待服务", 
-	RE: "已服务", 
+	RE: "已完成", 
 	RA: "已评价", 
 	CA: "已取消", 
 	ST: "正在服务"
-};
-
-var ActionMap = {
-	CR: "创建",
-	PA: "付款",
-	RE: "服务完成",
-	CA: "取消",
-	RA: "评价",
-	ST: "开始服务",
-	CT: "更改预约时间",
-	AS: "派单",
-	AC: "接单"
 };
 
 var PermMap = {

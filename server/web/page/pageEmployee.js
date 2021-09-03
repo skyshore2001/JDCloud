@@ -6,7 +6,7 @@ function initPageEmployee()
 
 	jtbl.datagrid({
 		url: WUI.makeUrl("Employee.query"),
-		toolbar: WUI.dg_toolbar(jtbl, jdlg, "export"),
+		toolbar: WUI.dg_toolbar(jtbl, jdlg, "import", "export", "qsearch"),
 		onDblClickRow: WUI.dg_dblclick(jtbl, jdlg)
 	});
 }
