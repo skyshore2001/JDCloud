@@ -2473,16 +2473,22 @@ function kvList2Str(kv, sep, sep2)
 }
 
 /**
-@fn parseKvList(kvListStr, sep, sep2) -> kvMap
+@fn parseKvList(kvListStr, sep, sep2, doReverse?) -> kvMap
 
 解析key-value列表字符串，返回kvMap。
+
+- doReverse: 设置为true时返回反向映射
+
 示例：
 
 	var map = parseKvList("CR:新创建;PA:已付款", ";", ":");
 	// map: {"CR": "新创建", "PA":"已付款"}
+
+	var map = parseKvList("CR:新创建;PA:已付款", ";", ":", true);
+	// map: {"新创建":"CR", "已付款":"PA"}
 */
 self.parseKvList = parseKvList;
-function parseKvList(str, sep, sep2)
+function parseKvList(str, sep, sep2, doReverse)
 {
 	var map = {};
 	$.each(str.split(sep), function (i, e) {
@@ -2491,7 +2497,10 @@ function parseKvList(str, sep, sep2)
 		if (kv.length < 2) {
 			kv[1] = kv[0];
 		}
-		map[kv[0]] = kv[1];
+		if (!doReverse)
+			map[kv[0]] = kv[1];
+		else
+			map[kv[1]] = kv[0];
 	});
 	return map;
 }

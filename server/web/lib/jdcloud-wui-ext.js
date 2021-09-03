@@ -2452,8 +2452,8 @@ function showDataReport(opt, showPageOpt)
 	opt.gres2.forEach(e => {
 		if (e) {
 			gres.push(e);
-			var arr = e.split(" ");
-			pivot.push(arr[1] || arr[0]);
+			var rv = getFieldInfo(e);
+			pivot.push(rv.title);
 		}
 	});
 
@@ -2487,26 +2487,34 @@ function showDataReport(opt, showPageOpt)
 				return;
 			return WUI.makeLink(value, function () {
 				var cond = {};
-				if (opt.gres) {
-					opt.gres.forEach((e, i) => {
-						var arr = e.split(' '); // e: "name title?"
-						var name = arr[0];
-						var title = arr.length > 1? arr[1].replace('"', ''): name;
-						cond[name] = row[title];
-					});
-				}
-				if (opt.gres2) {
-					opt.gres2.forEach((e, i) => {
-						var name = e.split(' ')[0]; // e: "name title?"
-						cond[name] = col.title.split('-')[i]; // col.title: "field1-field2"
-					});
-				}
+				opt.gres.forEach((e, i) => {
+					var rv = getFieldInfo(e);
+					var val = row[rv.title];
+					if (val == null) {
+						val = "null";
+					}
+					else if (rv.enumMapReverse) {
+						val = rv.enumMapReverse[val];
+					}
+					cond[rv.name] = val;
+				});
+				opt.gres2.forEach((e, i) => {
+					var rv = getFieldInfo(e);
+					var val = col.title.split('-')[i]; // col.title: "field1-field2"
+					if (val == "(null)") {
+						val = "null";
+					}
+					else if (rv.enumMapReverse) {
+						val = rv.enumMapReverse[val];
+					}
+					cond[rv.name] = val;
+				});
 				console.log(cond);
 				if (queryParams.cond) {
 					cond = [queryParams.cond, cond];
 				}
 
-				var title = opt.title + "-明细项";
+				var title = opt.title + "-明细项!";
 				if (opt.detailPageName) {
 					opt.detailPageParamArr[1] = cond;
 					self.showPage(opt.detailPageName, title, opt.detailPageParamArr);
@@ -2519,6 +2527,32 @@ function showDataReport(opt, showPageOpt)
 				}
 			});
 		}
+	}
+
+	// "name", "name title", 'name "title"', "name =CR:xx;RE:yy", "name title=CR:xx;RE:yy"
+	// return {name, title, enumMapReverse?}
+	function getFieldInfo(res)
+	{
+		var arr = res.split(' ');
+		var name = arr[0];
+		var title = name;
+		var mapStr = null;
+		if (arr.length > 1) {
+			var arr1 = arr[1].split('=');
+			if (arr1.length == 1) {
+				title = arr1[0];
+			}
+			else {
+				if (arr1[0])
+					title = arr1[0];
+				mapStr = arr1[1];
+			}
+		}
+		var rv = {name:name, title:title};
+		if (mapStr) {
+			rv.enumMapReverse = WUI.parseKvList(mapStr, ";", ":", true);
+		}
+		return rv;
 	}
 }
 
