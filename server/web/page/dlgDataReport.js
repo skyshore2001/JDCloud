@@ -50,6 +50,8 @@ function initDlgDataReport()
 	function onBeforeShow(ev, formMode, opt) {
 		var jpage = WUI.getActivePage();
 		jpage_ = jpage;
+		enumMap_ = null;
+
 		var jtbl = jpage.find("table.datagrid-f:first");
 
 		var param = WUI.getQueryParamFromTable(jtbl);
@@ -66,14 +68,13 @@ function initDlgDataReport()
 			return;
 		}
 
-		setFields(frm.tmField.value);
-
 		setTimeout(onShow);
 
 		function onShow() {
 			frm.ac.value = url;
 			frm.cond.value = param.cond || null;
 			setSumField();
+			setFields(frm.tmField.value);
 		}
 	}
 
