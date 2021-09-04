@@ -2413,9 +2413,11 @@ function diffObj(obj, obj1)
 	数组每个元素符合后端query接口res参数要求，可以是1个字段也可以是逗号分隔的多个字段；如果为空则跳过。
 - gres2: 列统计字段。格式与gres相同。
 - cond: 查询条件，符合后端query接口的格式均可（字符串，数组或对象）
+- orderby: 排序方式
 - title: 统计页面标题
 - detailPageName: 在统计表中点击数值，可以显示明细页面。这里指定用哪个页面来显示明细项；如果未指定则以pageSimple来显示。
 - detailPageParamArr: 如果指定了detailPageName，可以用此参数来定制showPage的第三参数(paramArr)。
+- tmUnit: 按时间优化
 
 示例：
 
@@ -2475,6 +2477,7 @@ function showDataReport(opt, showPageOpt)
 	var queryParams = {
 		res: opt.res,
 		cond: opt.cond,
+		orderby: opt.orderby,
 		gres: gresAll.join(','),
 		pivot: pivot.join(','),
 
@@ -2493,6 +2496,20 @@ function showDataReport(opt, showPageOpt)
 				col.formatter = getFormatter(col);
 		});
 		// console.log(columns);
+
+		if (opt.showChart) {
+			var xlen = gres.length;
+			var rs2StatOpt = {
+				xcol: range(0, xlen),
+				ycol: range(xlen, data.h.length),
+				tmUnit: opt.tmUnit
+			};
+			var seriesOpt = {
+				type: (opt.tmUnit || rs2StatOpt.ycol.length>1)? "bar": "pie",
+//				stack: rs2statopt.ycol.length>1? "X": undefined // 堆叠柱图
+			};
+			self.showDlgChart(data, rs2StatOpt, seriesOpt);
+		}
 	}
 	function getFormatter(col) {
 		return formatter_sum;
@@ -2543,6 +2560,14 @@ function showDataReport(opt, showPageOpt)
 			});
 		}
 	}
+	// 区间 [start, end)
+	function range(start, end) {
+		var ret = [];
+		for (var i=start; i<end; ++i) {
+			ret.push(i);
+		}
+		return ret;
+	}
 
 	// "name", "name title", 'name "title"', "name =CR:xx;RE:yy", "name title=CR:xx;RE:yy"
 	// return {name, title, enumMapReverse?}
@@ -2568,6 +2593,177 @@ function showDataReport(opt, showPageOpt)
 			rv.enumMapReverse = WUI.parseKvList(mapStr, ";", ":", true);
 		}
 		return rv;
+	}
+}
+
+var dfdStatLib_;
+window.loadStatLib = loadStatLib;
+function loadStatLib()
+{
+	if (dfdStatLib_ == null) {
+		dfdStatLib_ = $.when(
+			WUI.loadScript("lib/echarts.min.js"),
+			WUI.loadScript("lib/jdcloud-wui-stat.js")
+		);
+	}
+	return dfdStatLib_;
+}
+
+/**
+@fn showDlgChart(data, rs2StatOpt, seriesOpt, chartOpt)
+
+- data: 可以是数据，也可以是deferred对象（比如callSvr返回）
+- rs2StatOpt: 数据转换选项，参考rs2Stat
+- seriesOpt, chartOpt: 参考百度echarts全局参数以及series参数: http://echarts.baidu.com/echarts2/doc/doc.html
+
+@see WUI.rs2Stat 图表数据转换
+@see WUI.initChart　显示图表
+
+示例：
+
+```javascript
+// 各状态订单数: 柱图
+WUI.showDlgChart(callSvr("Ordr.query", {
+	gres: "status =CR:新创建;RE:已完成;CA:已取消",
+	res: "count(*) 总数",
+}));
+
+// 各状态订单数: 饼图，习惯上应占比排序
+WUI.showDlgChart(callSvr("Ordr.query", {
+	gres: "status =CR:新创建;RE:已完成;CA:已取消",
+	res: "count(*) 总数",
+	orderby: "总数 DESC"
+}), null, {
+	type: "pie"
+});
+
+// 订单年报
+WUI.showDlgChart(callSvr("Ordr.query", {
+	gres: "y",
+	res: "count(*) 总数",
+}));
+
+// 订单月报，横坐标为年月（两列）
+WUI.showDlgChart(callSvr("Ordr.query", {
+	gres: "y,m",
+	res: "count(*) 总数",
+}), {  // rs2StatOpt
+	xcol:[0,1]
+});
+
+// 订单月报，指定tmUnit，注意加orderby让时间排序，支持自动补齐缺少的时间
+WUI.showDlgChart(callSvr("Ordr.query", {
+	gres: "y,m",
+	res: "count(*) 总数",
+	orderby: "y,m"
+}), {  // rs2StatOpt
+	tmUnit: "y,m"
+});
+
+// 订单各月占比，显示为饼图，哪个月订单多则排在前
+WUI.showDlgChart(callSvr("Ordr.query", {
+	gres: "y,m",
+	res: "count(*) 总数",
+	orderby: "总数 DESC"
+}), {  // rs2StatOpt
+	xcol:[0,1]
+}, { // seriesOpt
+	type: "pie"
+}, { // chartOpt
+	title: { text: "订单各月分布" }
+});
+
+// 分状态订单月报
+WUI.showDlgChart(callSvr("Ordr.query", {
+	gres: "y,m,status =CR:新创建;RE:已完成;CA:已取消",
+	res: "count(*) 总数",
+	orderby: "y,m"
+}), {  // rs2StatOpt
+	tmUnit: "y,m"
+});
+
+// 同上，配置堆积柱状图，配置stack
+WUI.showDlgChart(callSvr("Ordr.query", {
+	gres: "y,m,status =CR:新创建;RE:已完成;CA:已取消",
+	res: "count(*) 总数",
+	orderby: "y,m"
+}), {  // rs2StatOpt
+	tmUnit: "y,m"
+}, {
+	type: "bar",
+	stack: "X"
+});
+
+// 分用户订单月报
+WUI.showDlgChart(callSvr("Ordr.query", {
+	cond: {createTm: ">=2010-1-1 and <2030-1-1"},
+	gres: "userId",
+	res: "userName,count(*) 总数",
+	orderby: "总数 DESC"
+}), {  // rs2StatOpt
+	xcol: 1
+},{ // seriesOpt
+	type: 'pie', // 饼图
+});
+
+// 分用户订单月报
+WUI.showDlgChart(callSvr("Ordr.query", {
+	cond: {createTm: ">=2020-1-1 and <2021-1-1"},
+	gres: "y,m,userId",
+	res: "userName,count(*) 总数",
+	orderby: "y,m"
+}), {  // rs2StatOpt
+	tmUnit: "y,m"
+}, { // seriesOpt
+	type: 'bar',
+});
+```
+ */
+self.showDlgChart = showDlgChart;
+function showDlgChart(data, rs2StatOpt, seriesOpt, chartOpt)
+{
+	var dfd = loadStatLib();
+	$.when(dfd, data).then(function (tmp, data) {
+		showChart(data);
+	});
+
+	function showChart(data)
+	{
+		var jdlg = $('<div style="width:800px; height:600px;"><div id="divChart" style="width:100%;height:100%"></div></div>');
+		WUI.showDlg(jdlg, {
+			title: "统计图"
+		});
+
+		var jchart = jdlg.find("#divChart");
+		var statData = WUI.rs2Stat(data, rs2StatOpt);
+		// 饼图配置
+		if (seriesOpt && seriesOpt.type == "pie") {
+			seriesOpt = $.extend(true, {
+				type: 'pie',
+				itemStyle: {
+					normal: {
+						label: {
+							show: true,
+							formatter: '{b}: {d}%'
+						}
+					}
+				}
+			}, seriesOpt);
+		}
+		// 柱图配置
+		else if (!seriesOpt || seriesOpt.type == "bar" || seriesOpt.type == "line") {
+			chartOpt = $.extend(true, {
+				toolbox: {
+					show: true,
+					feature: {
+						dataView: {},
+						magicType: {type: ['line', 'bar']},
+						restore: {},
+					}
+				}
+			}, chartOpt);
+		}
+		WUI.initChart(jchart[0], statData, seriesOpt, chartOpt);
 	}
 }
 

@@ -893,7 +893,7 @@ function rs2Stat(rs, opt)
 			var tmArr = xarr(row);
 			x = makeTm(opt.tmUnit, tmArr);
 			var completeCnt = 0;
-			if (lastX != null) {
+			if (lastX) {
 				while (lastX != x) {
 					lastTmArr = nextTm(opt.tmUnit, lastTmArr);
 					var nextX = makeTm(opt.tmUnit, lastTmArr);
@@ -1081,6 +1081,7 @@ function initChart(chartTable, statData, seriesOpt, chartOpt)
 	var seriesOpt1 = $.extend(true, {
 		type: 'line',
 	}, seriesOpt);
+	chartOpt = $.extend(true, {}, chartOpt);
 
 	var chartOpt0;
 	if (seriesOpt1.type == 'line' || seriesOpt1.type == 'bar') {

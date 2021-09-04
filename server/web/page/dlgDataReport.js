@@ -135,6 +135,20 @@ function initDlgDataReport()
 		formData.detailPageName = showPageArgs[0];
 		formData.detailPageParamArr = showPageArgs[2] || [];
 
+		if (formData.showChart) {
+			if (formData.gres && formData.gres.length > 0) {
+				var g0 = formData.gres[0];
+				if (g0 === "y 年,m 月,d 日") {
+					formData.tmUnit = "y,m,d";
+					formData.orderby = "y,m,d";
+				}
+				else if (g0 === "y 年,m 月") {
+					formData.tmUnit = "y,m";
+					formData.orderby = "y,m";
+				}
+			}
+		}
+
 		console.log(formData);
 		WUI.showDataReport(formData);
 	}
