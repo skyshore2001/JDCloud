@@ -4,6 +4,7 @@ function initDlgDataReport()
 	var frm = jdlg[0];
 	var jpage_ = null;
 	var param_ = null;
+	var enumMap_ = null;
 	var title0 = jdlg.attr("title");
 
 	jdlg.on("beforeshow", onBeforeShow)
@@ -14,6 +15,36 @@ function initDlgDataReport()
 
 	$(frm.tmField).on("change", function (ev) {
 		setFields(this.value);
+	});
+
+	jdlg.find(".btnForSum").click(function (ev) {
+		jdlg.find(".forSum").toggle();
+	});
+	jdlg.find(".cboSum, .cboSumField").change(function (ev) {
+		setSumField();
+	});
+
+	jdlg.find(".btnAddCond").click(function (ev) {
+		var jtpl = jdlg.find(".forCond:first");
+		var jo = jtpl.clone();
+		WUI.enhanceWithin(jo);
+		jo.show();
+		jo.find(".condValue")
+			.addClass("wui-find-field")
+			.attr("title", WUI.queryHint);
+		jo.find(".fields").trigger("setOption", {
+			jdEnumMap: enumMap_
+		});
+
+		// 插入到同类复制项的最后
+		while (true) {
+			var j1 = jtpl.next(".forCond");
+			if (j1.size() > 0)
+				jtpl = j1;
+			else
+				break;
+		}
+		jtpl.after(jo);
 	});
 
 	function onBeforeShow(ev, formMode, opt) {
@@ -42,7 +73,7 @@ function initDlgDataReport()
 		function onShow() {
 			frm.ac.value = url;
 			frm.cond.value = param.cond || null;
-			frm.res.value = "COUNT(*) 总数";
+			setSumField();
 		}
 	}
 
@@ -68,14 +99,33 @@ function initDlgDataReport()
 				"wd 周几": "时间-周几"
 			});
 		}
+		enumMap_ = enumMap;
 		jdlg.find(".fields").trigger("setOption", {
 			jdEnumMap: enumMap
 		});
+	}
 
+	function getUserCond() {
+		var kv = {};
+		jdlg.find(".forCond").each(function () {
+			var key = $(this).find(".condKey").val();
+			key = key.split(' ')[0]; // field name
+			var val = $(this).find(".condValue").val();
+			kv[key] = val;
+		});
+		return WUI.getQueryCond(kv);
 	}
 
 	function onValidate(ev, mode, oriData, newData) {
 		var formData = WUI.getFormData(jdlg);
+		var cond = getUserCond();
+		if (cond) {
+			if (formData.cond)
+				formData.cond += " AND (" + cond + ")";
+			else
+				formData.cond = cond;
+		}
+
 		var jpage = jpage_;
 
 		formData.title = "统计报表-" + jpage.attr("title");
@@ -110,5 +160,14 @@ function initDlgDataReport()
 	function btnRemove_click(ev) {
 		var jtr = $(ev.target).closest("tr");
 		jtr.remove();
+	}
+
+	function setSumField() {
+		var sum = jdlg.find(".cboSum").val() || "COUNT";
+		var sumField = jdlg.find(".cboSumField").val() || "1";
+		sumField = sumField.split(' ')[0];
+		var title = sum=="COUNT"? "总数": "总和";
+		var val = sum + "(" + sumField + ")" + " " + title;
+		$(frm.res).val(val);
 	}
 }
