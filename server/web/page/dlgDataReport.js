@@ -3,6 +3,7 @@ function initDlgDataReport()
 	var jdlg = $(this);
 	var frm = jdlg[0];
 	var jpage_ = null;
+	var param_ = null;
 	var title0 = jdlg.attr("title");
 
 	jdlg.on("beforeshow", onBeforeShow)
@@ -10,7 +11,11 @@ function initDlgDataReport()
 
 	jdlg.on("click", ".btnAdd", btnAdd_click);
 	jdlg.on("click", ".btnRemove", btnRemove_click);
-	
+
+	$(frm.tmField).on("change", function (ev) {
+		setFields(this.value);
+	});
+
 	function onBeforeShow(ev, formMode, opt) {
 		var jpage = WUI.getActivePage();
 		jpage_ = jpage;
@@ -18,6 +23,7 @@ function initDlgDataReport()
 
 		var param = WUI.getQueryParamFromTable(jtbl);
 		console.log(param);
+		param_ = param;
 
 		opt.title = title0 + "-" + jpage.attr("title");
 
@@ -29,22 +35,43 @@ function initDlgDataReport()
 			return;
 		}
 
-		var enumMap = {};
-		param.res.split(/\s*,\s*/).forEach(e => {
-			var val = e.replace(/["]/g, '');
-			var arr = val.split(" ");
-			enumMap[val] = arr[1] || arr[0];
-		});
-		jdlg.find(".fields").trigger("setOption", {
-			jdEnumMap: enumMap
-		});
+		setFields(frm.tmField.value);
+
 		setTimeout(onShow);
 
 		function onShow() {
 			frm.ac.value = url;
 			frm.cond.value = param.cond || null;
-			frm.res.value = "COUNT(*) 数量";
+			frm.res.value = "COUNT(*) 总数";
 		}
+	}
+
+	function setFields(tmField) {
+		var enumMap = {};
+		param_.res.split(/\s*,\s*/).forEach(e => {
+			var val = e.replace(/["]/g, '');
+			var arr = val.split(" ");
+			enumMap[val] = arr[1] || arr[0];
+		});
+
+		if (tmField) {
+			$.extend(enumMap, {
+				"y 年,m 月,d 日": "时间-年月日",
+				"y 年,m 月": "时间-年月",
+				"y 年,w 周": "时间-年周",
+				"y 年": "时间-年",
+				"m 月": "时间-月",
+				"d 日": "时间-日",
+				"h 时": "时间-小时",
+				"q 季度": "时间-季度",
+				"w 周": "时间-周",
+				"wd 周几": "时间-周几"
+			});
+		}
+		jdlg.find(".fields").trigger("setOption", {
+			jdEnumMap: enumMap
+		});
+
 	}
 
 	function onValidate(ev, mode, oriData, newData) {

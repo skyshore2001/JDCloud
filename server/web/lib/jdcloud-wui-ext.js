@@ -2409,8 +2409,9 @@ function diffObj(obj, obj1)
 @fn showDataReport(opt={ac, @gres, @gres2?, res?, cond?, title?="统计报表", detailPageName?, detailPageParamArr?})
 
 - res: 汇总字段，默认为`COUNT(*) 数量`
-- gres: 行统计字段
-- gres2: 列统计字段
+- gres: 行统计字段。须为数组，示例：`["userPhone", "userName 用户", null, "status 状态=CR:新创建;RE:已完成", "y 年, m 月, d 日"]`。
+	数组每个元素符合后端query接口res参数要求，可以是1个字段也可以是逗号分隔的多个字段；如果为空则跳过。
+- gres2: 列统计字段。格式与gres相同。
 - cond: 查询条件，符合后端query接口的格式均可（字符串，数组或对象）
 - title: 统计页面标题
 - detailPageName: 在统计表中点击数值，可以显示明细页面。这里指定用哪个页面来显示明细项；如果未指定则以pageSimple来显示。
@@ -2441,26 +2442,40 @@ function showDataReport(opt, showPageOpt)
 	}, opt);
 
 	var gres = [];
+	var gres2 = [];
+	var gresAll = [];
 	var pivot = [];
 
 	self.assert($.isArray(opt.gres), "gres必须为数组");
-	opt.gres.forEach(e => {
-		if (e)
+	opt.gres.forEach(e0 => {
+		if (! e0)
+			return;
+		e0.split(/\s*,\s*/).forEach(e => {
+			if (! e)
+				return;
 			gres.push(e);
+			gresAll.push(e);
+		});
 	});
+
 	self.assert($.isArray(opt.gres2), "gres2必须为数组");
-	opt.gres2.forEach(e => {
-		if (e) {
-			gres.push(e);
+	opt.gres2.forEach(e0 => {
+		if (! e0)
+			return;
+		e0.split(/\s*,\s*/).forEach(e => {
+			if (! e)
+				return;
+			gres2.push(e);
+			gresAll.push(e);
 			var rv = getFieldInfo(e);
 			pivot.push(rv.title);
-		}
+		});
 	});
 
 	var queryParams = {
 		res: opt.res,
 		cond: opt.cond,
-		gres: gres.join(','),
+		gres: gresAll.join(','),
 		pivot: pivot.join(','),
 
 		pagesz: -1
@@ -2474,7 +2489,7 @@ function showDataReport(opt, showPageOpt)
 		// columns: 列数组，可设置列的formatter等属性
 		// data: ajax得到的原始数据
 		$.each(columns, function (i, col) {
-			if (i >= opt.gres.length)
+			if (i >= gres.length)
 				col.formatter = getFormatter(col);
 		});
 		// console.log(columns);
@@ -2487,7 +2502,7 @@ function showDataReport(opt, showPageOpt)
 				return;
 			return WUI.makeLink(value, function () {
 				var cond = {};
-				opt.gres.forEach((e, i) => {
+				gres.forEach((e, i) => {
 					var rv = getFieldInfo(e);
 					var val = row[rv.title];
 					if (val == null) {
@@ -2498,7 +2513,7 @@ function showDataReport(opt, showPageOpt)
 					}
 					cond[rv.name] = val;
 				});
-				opt.gres2.forEach((e, i) => {
+				gres2.forEach((e, i) => {
 					var rv = getFieldInfo(e);
 					var val = col.title.split('-')[i]; // col.title: "field1-field2"
 					if (val == "(null)") {

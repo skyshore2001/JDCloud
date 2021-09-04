@@ -401,7 +401,7 @@ query/get接口生成的查询语句大致为：
 
 注意：关于时间统计相关的虚拟字段，一般通过tmCols函数来指定：
 
-	function __construct() {
+	protected function onInit() {
 		$this->vcolDefs[] = [ "res" => tmCols() ];
 	}
 
@@ -1335,6 +1335,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		$this->isAggregatinQuery = isset($this->sqlConf["gres"]);
 
 		$this->initVColMap();
+		$this->supportTmField();
 
 		# support internal param res2/join/cond2, 内部使用, 必须用dbExpr()包装一下.
 		if (($v = param("res2")) != null) {
@@ -2001,7 +2002,8 @@ addCond用于添加查询条件，可以使用表的字段或虚拟字段(无须
 		}
 	}
 
-	private function setColFromRes($res, $NOT_USED=false, $vcolDefIdx=-1)
+	// $force: false: 如果字段已定义则报重复定义错；true: 覆盖而不报错。
+	private function setColFromRes($res, $force=false, $vcolDefIdx=-1)
 	{
 		if (preg_match('/^(\w+)\.(\w+)$/u', $res, $ms)) {
 			if ($ms[1] == "t0")
@@ -2017,7 +2019,7 @@ addCond用于添加查询条件，可以使用表的字段或虚拟字段(无须
 			throw new MyException(E_SERVER, "bad res definition: `$res`");
 
 		$colName = self::removeQuote($colName);
-		if (array_key_exists($colName, $this->vcolMap)) {
+		if (!$force && array_key_exists($colName, $this->vcolMap)) {
 			throw new MyException(E_SERVER, "redefine vcol `{$this->table}.$colName`", "虚拟字段定义重复");
 		}
 		else {
@@ -2878,6 +2880,26 @@ qsearch的格式是`字段1,字符2,...:查询内容`(使用英文逗号及冒�
 			addToStr($cond, "($cond1)", ' AND ');
 		}
 		$this->addCond($cond);
+	}
+
+	protected function supportTmField()
+	{
+		// tmField
+		$tmField = param("tmField");
+		if (!$tmField)
+			return;
+		if (! isset($this->vcolMap[$tmField])) {
+			$vcolDef = [ "res" => tmCols("t0." . $tmField) ];
+		}
+		else {
+			$def = $this->vcolMap[$tmField]["def"];
+			$vcolDef = [ "res" => tmCols($def), "require" => $tmField ];
+		}
+		$idx = count($this->vcolDefs);
+		$this->vcolDefs[$idx] = $vcolDef;
+		foreach ($vcolDef["res"] as $e) {
+			$this->setColFromRes($e, true, $idx);
+		}
 	}
 
 	protected function supportQsearch()
@@ -3803,7 +3825,7 @@ function issetval($k, $arr = null)
 	class TaskBatchAddLogic extends BatchAddLogic
 	{
 		protected $vendorCache = [];
-		function __construct () {
+		protected function onInit () {
 			// 每个对象添加时都会用的字段，加在$this->params数组中
 			$this->params["orderId"] = mparam("orderId", "G"); // mparam要求必须指定该字段
 			$this->params["task1"] = param("task1", null, "G");

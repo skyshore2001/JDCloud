@@ -4,7 +4,7 @@
 			<td>汇总字段</td>
 			<td>
 				<input name="res" class="wui-picker-edit">
-				<p class="hint">示例-对某列求和：`SUM(amount) 总额`</p>
+				<p class="hint">示例-对某列求和：`SUM(amount) 总和`</p>
 				<input style="display:none" name="ac">
 			</td>
 		</tr>
@@ -12,6 +12,14 @@
 			<td>查询条件</td>
 			<td>
 				<input name="cond" class="wui-picker-edit">
+				<p class="hint">示例：tm&gt;='2020-8-1 and tm&lt;'2020-9-1'</p>
+			</td>
+		</tr>
+		<tr>
+			<td>时间统计字段</td>
+			<td>
+				<select name="tmField" class="my-combobox fields"></select>
+				<p class="hint">选择后，行、列统计字段列表将多出时间字段</p>
 			</td>
 		</tr>
 		<tr>
