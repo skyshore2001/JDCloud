@@ -7407,7 +7407,7 @@ function appendCond(cond, cond1)
 function loadDialog(jdlg, onLoad)
 {
 	// 判断dialog未被移除
-	if (jdlg.size() > 0 && (jdlg.data("dialog") == null || (jdlg[0].parentElement != null && jdlg[0].parentElement.parentElement != null)))
+	if (jdlg.size() > 0 && jdlg[0].parentElement != null && jdlg[0].parentElement.parentElement != null)
 		return;
 	var jo = $(jdlg.selector);
 	if (jo.size() > 0) {
