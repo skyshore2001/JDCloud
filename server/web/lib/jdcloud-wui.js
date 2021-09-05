@@ -7205,19 +7205,23 @@ function unloadDialog(jdlg)
 	else {
 		console.error("WUI.unloadDialog: bad dialog spec", jdlg);
 	}
-	if (jdlg.size() == 0)
-		return;
-	if (jdlg.is(":visible")) {
-		try { closeDlg(jdlg); } catch (ex) { console.log(ex); }
-	}
 
-	// 是内部对话框，不做删除处理
-	if (jdlg.attr("wui-pageFile") == null)
-		return;
-	var dlgId = jdlg.attr("id");
-	try { jdlg.dialog("destroy"); } catch (ex) { console.log(ex); }
-	jdlg.remove();
-	$("style[wui-origin=" + dlgId + "]").remove();
+	jdlg.each(function () {
+		var jdlg = $(this);  // 故意覆盖原jdlg, 分别处理
+		if (jdlg.size() == 0)
+			return;
+		if (jdlg.is(":visible")) {
+			try { closeDlg(jdlg); } catch (ex) { console.log(ex); }
+		}
+
+		// 是内部对话框，不做删除处理
+		if (jdlg.attr("wui-pageFile") == null)
+			return;
+		var dlgId = jdlg.attr("id");
+		try { jdlg.dialog("destroy"); } catch (ex) { console.log(ex); }
+		jdlg.remove();
+		$("style[wui-origin=" + dlgId + "]").remove();
+	});
 }
 
 /**
