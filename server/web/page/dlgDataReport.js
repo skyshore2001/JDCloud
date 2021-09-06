@@ -27,7 +27,7 @@ function initDlgDataReport()
 	jdlg.find(".btnAddCond").click(function (ev) {
 		var jtpl = jdlg.find(".forCond:first");
 		var jo = jtpl.clone();
-		WUI.enhanceWithin(jo);
+		WUI.enhanceWithin(jo); // init mycombobox
 		jo.show();
 		jo.find(".condValue")
 			.addClass("wui-find-field")
@@ -178,11 +178,11 @@ function initDlgDataReport()
 	}
 
 	function setSumField() {
-		var sum = jdlg.find(".cboSum").val() || "COUNT";
+		var sum = jdlg.find(".cboSum").val() || "COUNT 总数";
+		var sumArr = sum.split(' '); // ["COUNT", "总数"]
 		var sumField = jdlg.find(".cboSumField").val() || "1";
 		sumField = sumField.split(' ')[0];
-		var title = sum=="COUNT"? "总数": "总和";
-		var val = sum + "(" + sumField + ")" + " " + title;
+		var val = sumArr[0] + "(" + sumField + ")" + " " + sumArr[1];
 		$(frm.res).val(val);
 	}
 }
