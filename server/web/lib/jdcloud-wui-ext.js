@@ -2533,8 +2533,8 @@ function showDataReport(opt, showPageOpt)
 				gres2.forEach((e, i) => {
 					var rv = getFieldInfo(e);
 					var val = col.title.split('-')[i]; // col.title: "field1-field2"
-					if (val == "null") {
-						// val = "null";
+					if (val == "(null)") {
+						val = "null";
 					}
 					else if (rv.enumMapReverse) {
 						val = rv.enumMapReverse[val];

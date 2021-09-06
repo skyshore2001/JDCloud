@@ -970,7 +970,7 @@ function pivot($objArr, $gcols, $ycolCnt=1)
 		$garr = array_map(function ($col) use ($row) {
 			return $row[$col];
 		}, $gcols);
-		$g = join('-', $garr) ?: "null";
+		$g = join('-', $garr) ?: "(null)";
 
 		if (! array_key_exists($x, $xMap)) {
 			$xMap[$x] = $xarr;
