@@ -9682,6 +9682,7 @@ function mainInit()
 		// 强制datagrid重排
 		var jo = $(this);
 		jo.find(".datagrid").closest(".panel-body:visible").panel("doLayout", true);
+		jo.trigger("resize");
 	}
 	$.fn.dialog.defaults.onResize = onResizePanel;
 }

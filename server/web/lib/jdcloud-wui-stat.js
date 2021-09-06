@@ -1152,14 +1152,19 @@ function initChart(chartTable, statData, seriesOpt, chartOpt)
 	myChart.setOption(chartOpt1, true); // true: 清除之前设置过的选项
 	chartTable.echart = myChart;
 
-	// handle resize
+	// handle resize (不能用resize事件，否则将bubble向上导致无限循环)
 	$(chartTable).addClass("jd-echart").off("doResize").on("doResize", function () {
 		myChart.resize();
 	});
 	return myChart;
 }
+
 $(window).on('resize.echart', function () {
 	$(".jd-echart").trigger("doResize");
+});
+// 对话框(wui-dialog)放缩时，框架已经处理让其发出"resize"事件
+$(document).on('resize.echart', '.panel-body', function (ev) {
+	$(ev.target).find(".jd-echart").trigger("doResize");
 });
 
 /**
