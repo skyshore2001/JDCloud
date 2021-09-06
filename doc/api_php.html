@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2021-09-03</div>
+<div>最后更新：2021-09-06</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -2834,7 +2834,7 @@ WHERE ...</code></pre>
 比如query(res=&quot;id,ym&quot;)会在查询时引入y,m字段，但最终并不返回. (内部使用了hiddenFields机制)</p>
 <p>注意：目前外部虚拟字段不支持使用join, cond条件。</p>
 <p>注意：关于时间统计相关的虚拟字段，一般通过tmCols函数来指定：</p>
-<pre><code>function __construct() {
+<pre><code>protected function onInit() {
     $this-&gt;vcolDefs[] = [ "res" =&gt; tmCols() ];
 }</code></pre>
 <p>外部虚拟字段主要用于性能优化。对于上例中的计算字段，即使没有外部虚拟字段机制，也还可以利用MySQL变量做这样实现：</p>
@@ -3902,7 +3902,7 @@ if (issetval(&quot;perms&quot;)) ...</p>
 <pre><code>class TaskBatchAddLogic extends BatchAddLogic
 {
     protected $vendorCache = [];
-    function __construct () {
+    protected function onInit () {
         // 每个对象添加时都会用的字段，加在$this-&gt;params数组中
         $this-&gt;params["orderId"] = mparam("orderId", "G"); // mparam要求必须指定该字段
         $this-&gt;params["task1"] = param("task1", null, "G");

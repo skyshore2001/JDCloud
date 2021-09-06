@@ -1054,7 +1054,8 @@ function runStat(jo, jcharts, setStatOpt)
 
 - chartTable: 图表DOM对象
 - statData: 符合echarts规范的数据，格式为 {@xData, @yData=[{name, @data}]}.
-- seriesOpt, chartOpt: 参考百度echarts全局参数以及series参数: http://echarts.baidu.com/echarts2/doc/doc.html
+- seriesOpt, chartOpt: 参考echarts全局参数以及series参数: https://echarts.apache.org/zh/option.html#series
+  echarts示例：https://echarts.apache.org/examples/zh/index.html
 
 statData示例：
 

@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2021-09-03</div>
+<div>最后更新：2021-09-06</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -261,6 +261,7 @@ code {
 <p><a href="#showDataReport">showDataReport (fn)</a></p>
 <p><a href="#showDlg">showDlg (fn)</a></p>
 <p><a href="#showDlgByMeta">showDlgByMeta (fn)</a></p>
+<p><a href="#showDlgChart">showDlgChart (fn)</a></p>
 <p><a href="#showDlgQuery">showDlgQuery (fn)</a></p>
 <p><a href="#showLoading">showLoading (fn)</a></p>
 <p><a href="#showObjDlg">showObjDlg (fn)</a></p>
@@ -1585,11 +1586,17 @@ var html = applyTpl(tpl, data);
 <pre><code>var str = kvList2Str({"CR":"Created", "PA":"Paid"}, ';', ':');
 // str="CR:Created;PA:Paid"</code></pre></div>
 <div class="block">
-<h2 id="parseKvList">@fn parseKvList(kvListStr, sep, sep2) -> kvMap</h2>
-<p>解析key-value列表字符串，返回kvMap。<br />
-示例：</p>
+<h2 id="parseKvList">@fn parseKvList(kvListStr, sep, sep2, doReverse?) -> kvMap</h2>
+<p>解析key-value列表字符串，返回kvMap。</p>
+<ul>
+<li>doReverse: 设置为true时返回反向映射</li>
+</ul>
+<p>示例：</p>
 <pre><code>var map = parseKvList("CR:新创建;PA:已付款", ";", ":");
-// map: {"CR": "新创建", "PA":"已付款"}</code></pre></div>
+// map: {"CR": "新创建", "PA":"已付款"}
+
+var map = parseKvList("CR:新创建;PA:已付款", ";", ":", true);
+// map: {"新创建":"CR", "已付款":"PA"}</code></pre></div>
 <div class="block">
 <h2 id="Q">@fn Q(str, q?="'")</h2>
 <pre><code>Q("abc") -&gt; 'abc'
@@ -4717,12 +4724,15 @@ var rv = diffObj("hello", 99);
 <h2 id="showDataReport">@fn showDataReport(opt={ac, @gres, @gres2?, res?, cond?, title?="统计报表", detailPageName?, detailPageParamArr?})</h2>
 <ul>
 <li>res: 汇总字段，默认为<code>COUNT(*) 数量</code></li>
-<li>gres: 行统计字段</li>
-<li>gres2: 列统计字段</li>
+<li>gres: 行统计字段。须为数组，示例：<code>["userPhone", "userName 用户", null, "status 状态=CR:新创建;RE:已完成", "y 年, m 月, d 日"]</code>。<br />
+数组每个元素符合后端query接口res参数要求，可以是1个字段也可以是逗号分隔的多个字段；如果为空则跳过。</li>
+<li>gres2: 列统计字段。格式与gres相同。</li>
 <li>cond: 查询条件，符合后端query接口的格式均可（字符串，数组或对象）</li>
+<li>orderby: 排序方式</li>
 <li>title: 统计页面标题</li>
 <li>detailPageName: 在统计表中点击数值，可以显示明细页面。这里指定用哪个页面来显示明细项；如果未指定则以pageSimple来显示。</li>
 <li>detailPageParamArr: 如果指定了detailPageName，可以用此参数来定制showPage的第三参数(paramArr)。</li>
+<li>tmUnit: 按时间优化</li>
 </ul>
 <p>示例：</p>
 <pre><code>WUI.showDataReport({
@@ -4732,6 +4742,114 @@ var rv = diffObj("hello", 99);
     cond: {status: '在职'},
     detailPageName: "pageEmployee1",
     title: "师资报表"
+});</code></pre></div>
+<div class="block">
+<h2 id="showDlgChart">@fn showDlgChart(data, rs2StatOpt, seriesOpt, chartOpt)</h2>
+<ul>
+<li>data: 可以是数据，也可以是deferred对象（比如callSvr返回）</li>
+<li>rs2StatOpt: 数据转换选项，参考rs2Stat</li>
+<li>seriesOpt, chartOpt: 参考echarts全局参数以及series参数: <a href="https://echarts.apache.org/zh/option.html#series">https://echarts.apache.org/zh/option.html#series</a><br />
+echarts示例：<a href="https://echarts.apache.org/examples/zh/index.html">https://echarts.apache.org/examples/zh/index.html</a></li>
+</ul>
+<p class="see"><strong>@see <a href="#WUI.rs2Stat">WUI.rs2Stat</a></strong>  图表数据转换</p>
+<p class="see"><strong>@see <a href="#WUI.initChart　显示图表">WUI.initChart　显示图表</a></strong> </p>
+<p>示例：</p>
+<pre><code class="language-javascript">// 各状态订单数: 柱图
+WUI.showDlgChart(callSvr("Ordr.query", {
+    gres: "status =CR:新创建;RE:已完成;CA:已取消",
+    res: "count(*) 总数",
+}));
+
+// 各状态订单数: 饼图，习惯上应占比排序
+WUI.showDlgChart(callSvr("Ordr.query", {
+    gres: "status =CR:新创建;RE:已完成;CA:已取消",
+    res: "count(*) 总数",
+    orderby: "总数 DESC"
+}), null, {
+    type: "pie"
+});
+
+// 订单年报
+WUI.showDlgChart(callSvr("Ordr.query", {
+    gres: "y",
+    res: "count(*) 总数",
+}));
+
+// 订单月报，横坐标为年月（两列）
+WUI.showDlgChart(callSvr("Ordr.query", {
+    gres: "y,m",
+    res: "count(*) 总数",
+}), {  // rs2StatOpt
+    xcol:[0,1]
+});
+
+// 订单月报，指定tmUnit，注意加orderby让时间排序，支持自动补齐缺少的时间
+WUI.showDlgChart(callSvr("Ordr.query", {
+    gres: "y,m",
+    res: "count(*) 总数",
+    orderby: "y,m"
+}), {  // rs2StatOpt
+    tmUnit: "y,m"
+});
+
+// 订单各月占比，显示为饼图，哪个月订单多则排在前
+WUI.showDlgChart(callSvr("Ordr.query", {
+    gres: "y,m",
+    res: "count(*) 总数",
+    orderby: "总数 DESC"
+}), {  // rs2StatOpt
+    xcol:[0,1]
+}, { // seriesOpt
+    type: "pie"
+}, { // chartOpt
+    title: { text: "订单各月分布" }
+});
+
+// 分状态订单月报
+WUI.showDlgChart(callSvr("Ordr.query", {
+    gres: "y,m,status =CR:新创建;RE:已完成;CA:已取消",
+    res: "count(*) 总数",
+    orderby: "y,m"
+}), {  // rs2StatOpt
+    tmUnit: "y,m"
+});
+
+// 同上，配置堆积柱状图，配置stack
+WUI.showDlgChart(callSvr("Ordr.query", {
+    gres: "y,m,status =CR:新创建;RE:已完成;CA:已取消",
+    res: "count(*) 总数",
+    orderby: "y,m"
+}), {  // rs2StatOpt
+    tmUnit: "y,m"
+}, { // seriesOpt
+    type: "bar",
+    stack: "X"
+}, { // chartOpt
+    // swapXY: true // 横向柱状图
+});
+
+// 分用户订单月报
+WUI.showDlgChart(callSvr("Ordr.query", {
+    cond: {createTm: "&gt;=2010-1-1 and &lt;2030-1-1"},
+    gres: "userId",
+    res: "userName,count(*) 总数",
+    orderby: "总数 DESC"
+}), {  // rs2StatOpt
+    xcol: 1
+},{ // seriesOpt
+    type: 'pie', // 饼图
+});
+
+// 分用户订单月报
+WUI.showDlgChart(callSvr("Ordr.query", {
+    cond: {createTm: "&gt;=2020-1-1 and &lt;2021-1-1"},
+    gres: "y,m,userId",
+    res: "userName,count(*) 总数",
+    orderby: "y,m"
+}), {  // rs2StatOpt
+    tmUnit: "y,m"
+}, { // seriesOpt
+    type: 'bar',
 });</code></pre></div>
 <div class="block">
 <h2 id="JdcloudStat">@module JdcloudStat</h2>
@@ -5156,7 +5274,8 @@ var statData = rs2Stat(rs, {tmUnit: "y,m,d"});</code></pre>
 <ul>
 <li>chartTable: 图表DOM对象</li>
 <li>statData: 符合echarts规范的数据，格式为 {@xData, @yData=[{name, @data}]}.</li>
-<li>seriesOpt, chartOpt: 参考百度echarts全局参数以及series参数: <a href="http://echarts.baidu.com/echarts2/doc/doc.html">http://echarts.baidu.com/echarts2/doc/doc.html</a></li>
+<li>seriesOpt, chartOpt: 参考echarts全局参数以及series参数: <a href="https://echarts.apache.org/zh/option.html#series">https://echarts.apache.org/zh/option.html#series</a><br />
+echarts示例：<a href="https://echarts.apache.org/examples/zh/index.html">https://echarts.apache.org/examples/zh/index.html</a></li>
 </ul>
 <p>statData示例：</p>
 <pre><code>statData = {

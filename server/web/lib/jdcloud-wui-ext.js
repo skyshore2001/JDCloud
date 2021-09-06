@@ -2614,7 +2614,8 @@ function loadStatLib()
 
 - data: 可以是数据，也可以是deferred对象（比如callSvr返回）
 - rs2StatOpt: 数据转换选项，参考rs2Stat
-- seriesOpt, chartOpt: 参考百度echarts全局参数以及series参数: http://echarts.baidu.com/echarts2/doc/doc.html
+- seriesOpt, chartOpt: 参考echarts全局参数以及series参数: https://echarts.apache.org/zh/option.html#series
+  echarts示例：https://echarts.apache.org/examples/zh/index.html
 
 @see WUI.rs2Stat 图表数据转换
 @see WUI.initChart　显示图表
@@ -2689,9 +2690,11 @@ WUI.showDlgChart(callSvr("Ordr.query", {
 	orderby: "y,m"
 }), {  // rs2StatOpt
 	tmUnit: "y,m"
-}, {
+}, { // seriesOpt
 	type: "bar",
 	stack: "X"
+}, { // chartOpt
+	// swapXY: true // 横向柱状图
 });
 
 // 分用户订单月报
@@ -2756,9 +2759,10 @@ function showDlgChart(data, rs2StatOpt, seriesOpt, chartOpt)
 				toolbox: {
 					show: true,
 					feature: {
-						dataView: {},
-						magicType: {type: ['line', 'bar']},
-						restore: {},
+						saveAsImage: { show: true },
+						dataView: { show: true },
+						magicType: {type: ['line', 'bar', 'stack']},
+						restore: { show: true}
 					}
 				}
 			}, chartOpt);
