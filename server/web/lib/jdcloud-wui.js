@@ -6746,7 +6746,6 @@ function showDlgByMeta(itemArr, opt)
 	}
 
 	var jdlg = $("<form><table>" + code + "</table></form>");
-	self.enhanceWithin(jdlg);
 	return self.showDlg(jdlg, opt);
 }
 
@@ -7413,6 +7412,11 @@ function loadDialog(jdlg, onLoad)
 	// 判断dialog未被移除
 	if (jdlg.size() > 0 && jdlg[0].parentElement != null && jdlg[0].parentElement.parentElement != null)
 		return;
+	// showDlg支持jdlg为新创建的jquery对象，这时selector为空，这种情况不需要动态load
+	if (!jdlg.selector) {
+		loadDialogTpl1();
+		return;
+	}
 	var jo = $(jdlg.selector);
 	if (jo.size() > 0) {
 		fixJdlg(jo);
@@ -7471,27 +7475,27 @@ function loadDialog(jdlg, onLoad)
 			return;
 		}
 		loadDialogTpl1();
+	}
 
-		function loadDialogTpl1()
-		{
-			$.parser.parse(jdlg); // easyui enhancement
-			jdlg.find(">table:first, form>table:first").has(":input").addClass("wui-form-table");
-			self.enhanceWithin(jdlg);
+	function loadDialogTpl1()
+	{
+		$.parser.parse(jdlg); // easyui enhancement
+		jdlg.find(">table:first, form>table:first").has(":input").addClass("wui-form-table");
+		self.enhanceWithin(jdlg);
 
-			var val = jdlg.attr("wui-script");
-			if (val != null) {
-				var path = getModulePath(val);
-				var dfd = mCommon.loadScript(path, onLoad);
-				dfd.fail(function () {
-					self.app_alert("加载失败: " + val);
-				});
-			}
-			else {
-				// bugfix: 第1次点击对象链接时(showObjDlg动态加载对话框), 如果出错(如id不存在), 系统报错但遮罩层未清, 导致无法继续操作.
-				// 原因是, 在ajax回调中再调用*同步*ajax操作且失败(这时$.active=2), 在dataFilter中会$.active减1, 然后强制用app_abort退出, 导致$.active清0, 从而在leaveWaiting时无法hideLoading
-				// 解决方案: 在ajax回调处理中, 为防止后面调用同步ajax出错, 使用setTimeout让第一个调用先结束.
-				setTimeout(onLoad);
-			}
+		var val = jdlg.attr("wui-script");
+		if (val != null) {
+			var path = getModulePath(val);
+			var dfd = mCommon.loadScript(path, onLoad);
+			dfd.fail(function () {
+				self.app_alert("加载失败: " + val);
+			});
+		}
+		else {
+			// bugfix: 第1次点击对象链接时(showObjDlg动态加载对话框), 如果出错(如id不存在), 系统报错但遮罩层未清, 导致无法继续操作.
+			// 原因是, 在ajax回调中再调用*同步*ajax操作且失败(这时$.active=2), 在dataFilter中会$.active减1, 然后强制用app_abort退出, 导致$.active清0, 从而在leaveWaiting时无法hideLoading
+			// 解决方案: 在ajax回调处理中, 为防止后面调用同步ajax出错, 使用setTimeout让第一个调用先结束.
+			setTimeout(onLoad);
 		}
 	}
 	return true;
