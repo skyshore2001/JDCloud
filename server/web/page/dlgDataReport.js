@@ -61,7 +61,8 @@ function initDlgDataReport()
 		opt.title = title0 + "-" + jpage.attr("title");
 
 		var strArr = [];
-		var url = jtbl.datagrid("options").url;
+		var datagrid = WUI.isTreegrid(jtbl)? "treegrid": "datagrid";
+		var url = jtbl[datagrid]("options").url;
 		if (!url) {
 			app_alert("此页面不支持统计", "w");
 			opt.cancel = true;

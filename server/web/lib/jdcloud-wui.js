@@ -5716,6 +5716,17 @@ function getRow(jtbl, silent)
 	return row;
 }
 
+/**
+@fn isTreegrid(jtbl)
+
+判断是treegrid还是datagrid。
+示例：
+
+	var datagrid = WUI.isTreegrid(jtbl)? "treegrid": "datagrid";
+	var opt = jtbl[datagrid]("options");
+
+ */
+self.isTreegrid = isTreegrid;
 function isTreegrid(jtbl)
 {
 	return !! jtbl.data().treegrid;
@@ -8658,7 +8669,8 @@ var GridHeaderMenu = {
 			title += "-" + title1;
 
 		var strArr = [];
-		var url = jtbl.datagrid("options").url;
+		var datagrid = WUI.isTreegrid(jtbl)? "treegrid": "datagrid";
+		var url = jtbl[datagrid]("options").url;
 		if (url && url.action)
 			strArr.push("<b>[接口]</b>\n" + url.action);
 		if (param.cond)
@@ -8682,7 +8694,8 @@ var GridHeaderMenu = {
 	},
 	showDlgQuery: function (jtbl) {
 		var data = null;
-		var url = jtbl.datagrid("options").url;
+		var datagrid = WUI.isTreegrid(jtbl)? "treegrid": "datagrid";
+		var url = jtbl[datagrid]("options").url;
 		if (url && url.action)
 			data = {ac: url.action};
 		self.showDlgQuery(data);
@@ -8730,6 +8743,7 @@ $.extend($.fn.treegrid.defaults, {
 	idField: "id",
 	treeField: "id", // 只影响显示，在该字段上折叠
 	pagination: false,
+	rownumbers:true,
 	fatherField: "fatherId", // 该字段为WUI扩展，指向父节点的字段
 	singleSelect: false,
 	ctrlSelect: true, // 默认是单选，按ctrl或shift支持多选
@@ -8749,7 +8763,8 @@ $.extend($.fn.treegrid.defaults, {
 	onLoadSuccess: function (row, data) {
 		// 空数据显示优化
 		$.fn.datagrid.defaults.onLoadSuccess.call(this, data);
-	}
+	},
+	onHeaderContextMenu: $.fn.datagrid.defaults.onHeaderContextMenu
 });
 
 /*
