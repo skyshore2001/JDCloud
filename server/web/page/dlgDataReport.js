@@ -188,11 +188,13 @@ function initDlgDataReport()
 		var param = param_;
 		$.extend(param, formData);
 		param.showChart = formData.showChart;
+		param.gres = param.gres.filter(e => e);
+		param.gres2 = param.gres2.filter(e => e);
 		getUserCond(param);
 
 		var autoSet = false;
 		if (param.showChart) {
-			if (param.gres && param.gres.length == 1) {
+			if (param.gres.length == 1) {
 				var g0 = param.gres[0];
 				$.each(tmUnitArr, function (i, e) {
 					if (g0 == e.value) {
@@ -204,7 +206,7 @@ function initDlgDataReport()
 				});
 			}
 			// 饼图自动倒排序
-			if (!autoSet && (!param.gres2 || !param.gres2[0])) {
+			if (!autoSet && param.gres2.length == 0) {
 				delete param.tmUnit;
 				param.orderby = param.res.split(' ')[1] + " DESC";
 				autoSet = true;
