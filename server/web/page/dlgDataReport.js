@@ -1,16 +1,28 @@
+/*
+对话框应支持两种模式：
+
+- 基于某列表页，通过WUI.getParamFromTable(jtbl)从数据表取到字段列表、查询条件等；
+ 在调用showDataReport后将所有参数保存到统计页数据表的showDataReportOpt中；
+- 基于某统计页打开，通过jtbl.data("showDataReportOpt")取到字段列表(resFields)、查询条件(cond)、用户追加的条件(userCondArr)、行列统计字段(gres/gres2)等，
+ 显示到对话框上，用户可修改参数后重新运行。
+ */
 function initDlgDataReport()
 {
 	var jdlg = $(this);
 	var frm = jdlg[0];
 	var jpage_ = null;
-	var param_ = null;
+	var param_ = null;  // WUI.showDataReport({ title, ac, res, cond, cond2, tmField, @gres, @gres2, showChart, detailPageName, detailPageParamArr, resFields, tmField, userCondArr })
 	var enumMap_ = null;
 	var title0 = jdlg.attr("title");
+
+	var jtplCond = $(jdlg.find("#tplCond").html());
+	var jtplGres = $(jdlg.find("#tplGres").html());
+	var jtplGres2 = $(jdlg.find("#tplGres2").html());
 
 	jdlg.on("beforeshow", onBeforeShow)
 		.on("validate", onValidate);
 
-	jdlg.on("click", ".btnAdd", btnAdd_click);
+	jdlg.on("click", ".btnAddGres, .btnAddGres2", btnAddGres_click);
 	jdlg.on("click", ".btnRemove", btnRemove_click);
 
 	$(frm.tmField).on("change", function (ev) {
@@ -25,10 +37,9 @@ function initDlgDataReport()
 	});
 
 	jdlg.find(".btnAddCond").click(function (ev) {
-		var jtpl = jdlg.find(".forCond:first");
-		var jo = jtpl.clone();
+		var jo = jtplCond.clone();
+		$.parser.parse(jo); // easyui enhancement
 		WUI.enhanceWithin(jo); // init mycombobox
-		jo.show();
 		jo.find(".condValue")
 			.addClass("wui-find-field")
 			.attr("title", WUI.queryHint);
@@ -37,14 +48,7 @@ function initDlgDataReport()
 		});
 
 		// 插入到同类复制项的最后
-		while (true) {
-			var j1 = jtpl.next(".forCond");
-			if (j1.size() > 0)
-				jtpl = j1;
-			else
-				break;
-		}
-		jtpl.after(jo);
+		jdlg.find(".trCond:last").after(jo);
 	});
 
 	function onBeforeShow(ev, formMode, opt) {
@@ -53,35 +57,72 @@ function initDlgDataReport()
 		enumMap_ = null;
 
 		var jtbl = jpage.find("table.datagrid-f:first");
+		var param =  jtbl.data("showDataReportOpt");
+		if (!param) {
+			var datagrid = WUI.isTreegrid(jtbl)? "treegrid": "datagrid";
+			var url = jtbl[datagrid]("options").url;
+			if (!url) {
+				app_alert("此页面不支持统计", "w");
+				opt.cancel = true;
+				return;
+			}
 
-		var param = WUI.getQueryParamFromTable(jtbl);
-		console.log(param);
-		param_ = param;
+			var param1 = WUI.getQueryParamFromTable(jtbl);
+			param = {
+				title: "统计报表-" + jpage.attr("title"),
+				ac: url,
+				res: null,
+				cond: param1.cond,
+				resFields: param1.res,
+				tmField: null
+			};
 
-		opt.title = title0 + "-" + jpage.attr("title");
-
-		var strArr = [];
-		var datagrid = WUI.isTreegrid(jtbl)? "treegrid": "datagrid";
-		var url = jtbl[datagrid]("options").url;
-		if (!url) {
-			app_alert("此页面不支持统计", "w");
-			opt.cancel = true;
-			return;
+			var showPageArgs = $.extend([], jpage.data("showPageArgs_")); // showPage(pageName, title, [userParam, cond])
+			param.detailPageName = showPageArgs[0];
+			param.detailPageParamArr = showPageArgs[2] || [];
 		}
+		console.log(param);
+		opt.data = param_ = param;
+		opt.title = title0 + "-" + jpage.attr("title");
 
 		setTimeout(onShow);
 
 		function onShow() {
-			frm.ac.value = url;
-			frm.cond.value = param.cond || null;
-			setSumField();
-			setFields(frm.tmField.value);
+			if (!param.res) {
+				setSumField();
+			}
+			setFields($(frm.tmField).val());
+			setUserCond();
+
+			array2Fields(param.gres, "[name='gres[]']", function () {
+				jdlg.find(".btnAddGres").click();
+			});
+			array2Fields(param.gres2, "[name='gres2[]']", function () {
+				jdlg.find(".btnAddGres2").click();
+			});
 		}
+	}
+
+	// 将arr中每一项赋值到selector对应的DOM中; 如果缺少DOM，用onAddField创建; onGetValue定制如何从数组一项中取值，可缺省。
+	function array2Fields(arr, selector, onAddField, onGetValue) {
+		if (!arr || arr.length == 0)
+			return;
+		var jo = jdlg.find(selector);
+		for (var i=jo.size(); i<arr.length; ++i) {
+			onAddField();
+		}
+		jo = jdlg.find(selector);
+		jo.each(function (i, e) {
+			if (i < arr.length) {
+				var val = onGetValue? onGetValue(arr[i]): arr[i];
+				$(this).val(val);
+			}
+		});
 	}
 
 	function setFields(tmField) {
 		var enumMap = {};
-		param_.res.split(/\s*,\s*/).forEach(e => {
+		param_.resFields.split(/\s*,\s*/).forEach(e => {
 			var val = e.replace(/["]/g, '');
 			var arr = val.split(" ");
 			enumMap[val] = arr[1] || arr[0];
@@ -107,74 +148,74 @@ function initDlgDataReport()
 		});
 	}
 
-	function getUserCond() {
+	function setUserCond() {
+		var kvarr = param_.userCondArr; // elem: [key, value]
+		jdlg.find(".trCond:not(:first)").remove();
+		if (!kvarr || kvarr.length == 0)
+			return;
+
+		array2Fields(kvarr, ".trCond .condKey", function () {
+			jdlg.find(".btnAddCond").click();
+		}, e => e[0]);
+		array2Fields(kvarr, ".trCond .condValue", function () {
+			jdlg.find(".btnAddCond").click();
+		}, e => e[1]);
+	}
+	function getUserCond(param) {
 		var kv = {};
-		jdlg.find(".forCond").each(function () {
+		var kvarr = [];
+		jdlg.find(".trCond:not(:first)").each(function () {
 			var key = $(this).find(".condKey").val();
-			key = key.split(' ')[0]; // field name
 			var val = $(this).find(".condValue").val();
-			kv[key] = val;
+			kvarr.push([key, val]); // 用于显示对话框时恢复条件
+			key = key.split(' ')[0]; // field name
+			kv[key] = val; // 用于查询
 		});
-		return WUI.getQueryCond(kv);
+		param.cond2 = WUI.getQueryCond(kv);
+		param.userCondArr = kvarr;
 	}
 
 	function onValidate(ev, mode, oriData, newData) {
 		var formData = WUI.getFormData(jdlg);
-		var cond = getUserCond();
-		if (cond) {
-			if (formData.cond)
-				formData.cond += " AND (" + cond + ")";
-			else
-				formData.cond = cond;
-		}
+		var param = param_;
+		$.extend(param, formData);
+		param.showChart = formData.showChart;
+		getUserCond(param);
 
-		var jpage = jpage_;
-
-		formData.title = "统计报表-" + jpage.attr("title");
-
-		var showPageArgs = $.extend([], jpage.data("showPageArgs_")); // showPage(pageName, title, [userParam, cond])
-		formData.detailPageName = showPageArgs[0];
-		formData.detailPageParamArr = showPageArgs[2] || [];
-
-		if (formData.showChart) {
-			if (formData.gres && formData.gres.length > 0) {
-				var g0 = formData.gres[0];
+		if (param.showChart) {
+			if (param.gres && param.gres.length > 0) {
+				var g0 = param.gres[0];
 				if (g0 === "y 年,m 月,d 日") {
-					formData.tmUnit = "y,m,d";
-					formData.orderby = "y,m,d";
+					param.tmUnit = "y,m,d";
+					param.orderby = "y,m,d";
 				}
 				else if (g0 === "y 年,m 月") {
-					formData.tmUnit = "y,m";
-					formData.orderby = "y,m";
+					param.tmUnit = "y,m";
+					param.orderby = "y,m";
 				}
 			}
 		}
 
-		console.log(formData);
-		WUI.showDataReport(formData);
+		console.log(param);
+		WUI.showDataReport(param);
 	}
 
-	function btnAdd_click(ev) {
-		var jtr = $(ev.target).closest("tr");
-		var jtr1 = jtr.clone();
-		jtr1.find("td:first").html("+").css("text-align", "right"); // 文字部分，显示一个"+"
-		jtr1.find(".btnAdd").hide();
-		jtr1.find(".btnRemove").show();
-		jtr1.addClass("clone");
+	function btnAddGres_click(ev) {
+		var isGres = $(this).hasClass("btnAddGres");
+		var jo = isGres? jtplGres.clone(): jtplGres2.clone();
+
+		$.parser.parse(jo); // easyui enhancement
+		WUI.enhanceWithin(jo); // init mycombobox
+		jo.find(".fields").trigger("setOption", {
+			jdEnumMap: enumMap_
+		});
 
 		// 插入到同类复制项的最后
-		while (true) {
-			var jo = jtr.next(".clone")
-			if (jo.size() > 0)
-				jtr = jo;
-			else
-				break;
-		}
-		jtr.after(jtr1);
+		jdlg.find(isGres?".trGres:last":".trGres2:last").after(jo);
 	}
 
 	function btnRemove_click(ev) {
-		var jtr = $(ev.target).closest("tr");
+		var jtr = $(this).closest("tr");
 		jtr.remove();
 	}
 

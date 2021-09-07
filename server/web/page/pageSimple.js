@@ -87,6 +87,12 @@ TODO: 允许定制查询条件对话框，如添加查询字段，可参考dlgIm
 					col.formatter = formatter_数量;
 			});
 			// console.log(columns);
+
+			// var btn = { text: "XX", iconCts: "icon-search", handler: ... };
+			// 替换工具栏按钮
+			// dgOpt.toolbar = WUI.dg_toolbar(jtbl, null, btn1);
+			// 或是：追加工具栏按钮
+			// dgOpt.toolbar.push.apply(dgOpt.toolbar, WUI.dg_toolbar(jtbl, null, btn1));
 		}
 
 		function formatter_数量(value, row) {

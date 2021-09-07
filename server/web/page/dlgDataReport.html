@@ -1,6 +1,6 @@
 <form title="自定义报表" style="width:450px;height:400px;" wui-script="dlgDataReport.js" my-initfn="initDlgDataReport">
 <style>
-.forSum,.forCond {
+.forSum {
 	display:none;
 }
 .wui-form-table {
@@ -24,19 +24,11 @@
 				<select class="my-combobox fields cboSumField"  style="width:45%"></select>
 			</td>
 		</tr>
-		<tr>
+		<tr class="trCond">
 			<td>查询条件</td>
 			<td>
 				<input name="cond" class="wui-picker-edit">
 				<a class="easyui-linkbutton btnAddCond" data-options="iconCls:'icon-add'"></a>
-			</td>
-		</tr>
-		<tr class="forCond">
-			<td style="text-align:right">+</td>
-			<td>
-				<select class="my-combobox fields condKey" style="width:45%"></select>
-				<input class="condValue" style="width:45%">
-				<a class="easyui-linkbutton btnRemove" data-options="iconCls:'icon-remove'"></a>
 			</td>
 		</tr>
 		<tr>
@@ -46,29 +38,55 @@
 				<p class="hint">选择后，行、列统计字段列表将多出时间字段</p>
 			</td>
 		</tr>
-		<tr>
+		<tr class="trGres">
 			<td>行统计字段</td>
 			<td>
 				<select name="gres[]" class="my-combobox fields"></select>
-				<a class="easyui-linkbutton btnAdd" data-options="iconCls:'icon-add'"></a>
-				<a class="easyui-linkbutton btnRemove" data-options="iconCls:'icon-remove'" style="display:none"></a>
+				<a class="easyui-linkbutton btnAddGres" data-options="iconCls:'icon-add'"></a>
 			</td>
 		</tr>
-		<tr>
+		<tr class="trGres2">
 			<td>列统计字段</td>
 			<td>
 				<select name="gres2[]" class="my-combobox fields"></select>
-				<a class="easyui-linkbutton btnAdd" data-options="iconCls:'icon-add'"></a>
-				<a class="easyui-linkbutton btnRemove" data-options="iconCls:'icon-remove'" style="display:none"></a>
+				<a class="easyui-linkbutton btnAddGres2" data-options="iconCls:'icon-add'"></a>
 			</td>
 		</tr>
 		<tr>
 			<td></td>
 			<td>
-				<label>
+				<label title="有时间统计字段或列统计字段时生成直方图，否则生成饼图">
 					<input type="checkbox" name="showChart"> 生成统计图
 				</label>
 			</td>
 		</tr>
 	</table>
+	<script type="text/template" id="tplCond">
+		<tr class="trCond">
+			<td style="text-align:right">+</td>
+			<td>
+				<select class="my-combobox fields condKey" style="width:45%"></select>
+				<input class="condValue" style="width:45%">
+				<a class="easyui-linkbutton btnRemove" data-options="iconCls:'icon-remove'"></a>
+			</td>
+		</tr>
+	</script>
+	<script type="text/template" id="tplGres">
+		<tr class="trGres">
+			<td style="text-align:right">+</td>
+			<td>
+				<select name="gres[]" class="my-combobox fields"></select>
+				<a class="easyui-linkbutton btnRemove" data-options="iconCls:'icon-remove'"></a>
+			</td>
+		</tr>
+	</script>
+	<script type="text/template" id="tplGres2">
+		<tr class="trGres2">
+			<td style="text-align:right">+</td>
+			<td>
+				<select name="gres2[]" class="my-combobox fields"></select>
+				<a class="easyui-linkbutton btnRemove" data-options="iconCls:'icon-remove'"></a>
+			</td>
+		</tr>
+	</script>
 </form>

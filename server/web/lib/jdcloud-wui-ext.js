@@ -2406,18 +2406,29 @@ function diffObj(obj, obj1)
 }
 
 /**
-@fn showDataReport(opt={ac, @gres, @gres2?, res?, cond?, title?="统计报表", detailPageName?, detailPageParamArr?})
+@fn showDataReport(opt={ac, @gres, @gres2?, res?, cond?, title?="统计报表", detailPageName?, detailPageParamArr?, resFields?, cond2?, tmField?, showChart?})
+
+选项说明：
 
 - res: 汇总字段，默认为`COUNT(*) 数量`
 - gres: 行统计字段。须为数组，示例：`["userPhone", "userName 用户", null, "status 状态=CR:新创建;RE:已完成", "y 年, m 月, d 日"]`。
 	数组每个元素符合后端query接口res参数要求，可以是1个字段也可以是逗号分隔的多个字段；如果为空则跳过。
+	注意：月报、日报的指定格式分别为"y 年, m 月"，"y 年, m 月, d 日".
 - gres2: 列统计字段。格式与gres相同。
-- cond: 查询条件，符合后端query接口的格式均可（字符串，数组或对象）
+- cond: 查询条件，字符串，示例：WUI.getQueryCond({id: ">1", status: "CR,RE", createTm: ">=2020-1-1 and <2021-1-1"}), 用getQueryCond可使用查询框支持的条件格式。
 - orderby: 排序方式
 - title: 统计页面标题
 - detailPageName: 在统计表中点击数值，可以显示明细页面。这里指定用哪个页面来显示明细项；如果未指定则以pageSimple来显示。
 - detailPageParamArr: 如果指定了detailPageName，可以用此参数来定制showPage的第三参数(paramArr)。
-- tmUnit: 按时间优化
+- tmField: 如果用到y,m,d等时间统计字段，应指定使用哪个时间字段进行运算。后端可能已经定义了时间字段(tmCols)，指定该选项可覆盖后端的定义。
+
+- resFields: 用户可选择的字段列表。如果指定，则工具栏多出“统计”按钮，可供用户进一步设置。它应包含gres,gres2,tmField,cond中出现的所有字段。
+
+- showChart: 是否显示统计图表对话框。
+- tmUnit: Enum("y,m"-年月,"y,m,d"-年月日)。用于统计图，特别用于月报、日报等，会自动补齐缺少的时间。
+
+- cond2: 内部使用，在cond基础上再加一层过滤，由报表对话框上用户设置的条件生成。
+ 在cond基础上再加一层过滤，条件由统计对话框上设置。参考WUI.getQueryCond。示例: 
 
 示例：
 
@@ -2425,11 +2436,29 @@ function diffObj(obj, obj1)
 		ac: "Employee.query",
 		gres: ["depName 部门", "性别"],
 		gres2: ["职称", "学历"],
-		cond: {status: '在职'},
+		cond: WUI.getQueryCond({status: '在职'}),
 		detailPageName: "pageEmployee1",
 		title: "师资报表"
 	});
 
+示例：订单月报
+
+	WUI.showDataReport({
+		ac: "Ordr.query",
+		res: "SUM(amount) 总额", // 不指定则默认为`COUNT(1) 总数`
+		tmField: "createTm 创建时间", // 注意如果定义了resFields，则gres,gres2中字段要与其中定义一致；否则报表对话框显示字段时有问题
+		gres: ["y 年,m 月", "status 状态=CR:新创建;RE:已完成;CA:已取消"],
+		gres2: ["cmt 订单类别"],
+		cond: WUI.getQueryCond({createTm: ">=2020-1-1 and <2021-1-1", status: "CR,RE,CA"}), // 生成条件字符串
+		detailPageName: "pageOrder",
+		title: "订单月报",
+
+		// 定义用户可选的字段，定义它会在工具栏显示“统计”按钮。注意不需要定义y,m等时间字段，它们由tmField自动生成。
+		resFields: "amount 金额, status 状态=CR:新创建;RE:已完成;CA:已取消, cmt 订单类别, userName 用户, userPhone 用户手机号, createTm 创建时间",
+
+		// showChart: true, // 显示统计图
+		//tmUnit: "y,m",
+	});
  */
 self.showDataReport = showDataReport;
 function showDataReport(opt, showPageOpt)
@@ -2474,10 +2503,18 @@ function showDataReport(opt, showPageOpt)
 		});
 	});
 
+	var cond = opt.cond;
+	if (opt.cond2) {
+		if (cond)
+			cond += " AND (" + opt.cond2 + ")";
+		else
+			cond = opt.cond2;
+	}
 	var queryParams = {
 		res: opt.res,
-		cond: opt.cond,
+		cond: cond,
 		orderby: opt.orderby,
+		tmField: opt.tmField && opt.tmField.split(' ')[0],
 		gres: gresAll.join(','),
 		pivot: pivot.join(','),
 
@@ -2488,6 +2525,13 @@ function showDataReport(opt, showPageOpt)
 
 	function onInitGrid(jpage, jtbl, dgOpt, columns, data)
 	{
+		// 用于dlgDataReport对话框打开时读取并继续设置参数
+		jtbl.data("showDataReportOpt", opt);
+		// 加个报表按钮
+		//dgOpt.toolbar = WUI.dg_toolbar(jtbl, null, "report");
+		if (opt.resFields)
+			dgOpt.toolbar.push.apply(dgOpt.toolbar, WUI.dg_toolbar(jtbl, null, "report"));
+
 		// dgOpt: datagrid的选项，如设置 dgOpt.onClickCell等属性
 		// columns: 列数组，可设置列的formatter等属性
 		// data: ajax得到的原始数据
