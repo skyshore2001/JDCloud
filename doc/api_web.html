@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2021-09-06</div>
+<div>最后更新：2021-09-08</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -204,6 +204,7 @@ code {
 <p><a href="#isBusy">isBusy (var)</a></p>
 <p><a href="#isIOS">isIOS (fn)</a></p>
 <p><a href="#isSmallScreen">isSmallScreen (fn)</a></p>
+<p><a href="#isTreegrid">isTreegrid (fn)</a></p>
 <p><a href="#isWeixin">isWeixin (fn)</a></p>
 <p><a href="#jQuery.fn.jdata">jQuery.fn.jdata (fn)</a></p>
 <p><a href="#jQuery.fn.mycombobox">jQuery.fn.mycombobox (fn)</a></p>
@@ -1651,7 +1652,7 @@ var arr = mCommon.rs2Array(rs);</code></pre>
 <p>返回模块映射列表。</p>
 <pre><code>var moduleMap = jdModule(); // 返回 { "jdcloud.common": JdcloudCommon, ... }</code></pre></div>
 <div class="block">
-<h2 id="getFormData">@fn getFormData(jo)</h2>
+<h2 id="getFormData">@fn getFormData(jo, doGetAll)</h2>
 <p>取DOM对象中带name属性的子对象的内容, 放入一个JS对象中, 以便手工调用callSvr.</p>
 <p>注意: </p>
 <ul>
@@ -1663,6 +1664,8 @@ var arr = mCommon.rs2Array(rs);</code></pre>
     var ac = jf.attr("action");
     callSvr(ac, fn, getFormData(jf));
 });</code></pre>
+<p>在dialog的onValidate/onOk回调中，由于在显示对话框时自动调用过setFormData，所以用getFormData只返回有修改变化的数据。如果要取所有数据可设置参数doGetAll=true:</p>
+<pre><code>var data = WUI.getFormData(jfrm, true);</code></pre>
 <p>如果在jo对象中存在有name属性的file组件(input[type=file][name])，或指定了属性enctype=&quot;multipart/form-data&quot;，则调用getFormData会返回FormData对象而非js对象，<br />
 再调用callSvr时，会以&quot;multipart/form-data&quot;格式提交数据。一般用于上传文件。<br />
 示例：</p>
@@ -2639,6 +2642,12 @@ callSvr("User.get", {res: "id,phone"}, api_UserGet);</code></pre>
 <pre><code>var row = WUI.getRow(jtbl);
 if (row == null)
     return;</code></pre></div>
+<div class="block">
+<h2 id="isTreegrid">@fn isTreegrid(jtbl)</h2>
+<p>判断是treegrid还是datagrid。<br />
+示例：</p>
+<pre><code>var datagrid = WUI.isTreegrid(jtbl)? "treegrid": "datagrid";
+var opt = jtbl[datagrid]("options");</code></pre></div>
 <div class="block">
 <h2 id="reload">@fn reload(jtbl, url?, queryParams?)</h2></div>
 <div class="block">
@@ -4721,27 +4730,73 @@ var rv = diffObj("hello", "hello");
 var rv = diffObj("hello", 99);
 // rv: true</code></pre></div>
 <div class="block">
-<h2 id="showDataReport">@fn showDataReport(opt={ac, @gres, @gres2?, res?, cond?, title?="统计报表", detailPageName?, detailPageParamArr?})</h2>
+<h2 id="showDataReport">@fn showDataReport(opt={ac, @gres, @gres2?, res?, cond?, title?="统计报表", detailPageName?, detailPageParamArr?, resFields?, cond2?, tmField?, showChart?})</h2>
+<p>选项说明：</p>
 <ul>
 <li>res: 汇总字段，默认为<code>COUNT(*) 数量</code></li>
-<li>gres: 行统计字段。须为数组，示例：<code>["userPhone", "userName 用户", null, "status 状态=CR:新创建;RE:已完成", "y 年, m 月, d 日"]</code>。<br />
-数组每个元素符合后端query接口res参数要求，可以是1个字段也可以是逗号分隔的多个字段；如果为空则跳过。</li>
+<li>gres: 行统计字段。须为数组，示例：<code>["userPhone", "userName 用户", null, "status 状态=CR:新创建;RE:已完成"]</code>。<br />
+数组每个元素符合后端query接口res参数要求，可以是1个字段也可以是逗号分隔的多个字段；如果为空则跳过。<br />
+注意：月报用 <a href="配合tmUnit:" title="y,m">&quot;y 年, m 月&quot;</a>，日报用 [&quot;y 年, m 月, d 日&quot;] (配合tmUnit: &quot;y,m,d&quot;)</li>
 <li>gres2: 列统计字段。格式与gres相同。</li>
-<li>cond: 查询条件，符合后端query接口的格式均可（字符串，数组或对象）</li>
+<li>cond: 查询条件，字符串，示例：WUI.getQueryCond({id: &quot;&gt;1&quot;, status: &quot;CR,RE&quot;, createTm: &quot;&gt;=2020-1-1 and &lt;2021-1-1&quot;}), 用getQueryCond可使用查询框支持的条件格式。</li>
 <li>orderby: 排序方式</li>
 <li>title: 统计页面标题</li>
 <li>detailPageName: 在统计表中点击数值，可以显示明细页面。这里指定用哪个页面来显示明细项；如果未指定则以pageSimple来显示。</li>
 <li>detailPageParamArr: 如果指定了detailPageName，可以用此参数来定制showPage的第三参数(paramArr)。</li>
-<li>tmUnit: 按时间优化</li>
+<li>
+<p>tmField: 如果用到y,m,d等时间统计字段，应指定使用哪个时间字段进行运算。后端可能已经定义了时间字段(tmCols)，指定该选项可覆盖后端的定义。</p>
+</li>
+<li>
+<p>resFields: 用户可选择的字段列表。如果指定，则工具栏多出“统计”按钮，可供用户进一步设置。它应包含gres,gres2,tmField,cond中出现的所有字段。</p>
+</li>
+<li>showChart: 是否显示统计图表对话框。</li>
+<li>tmUnit: 用于统计图，特别用于月报、日报等，会自动补齐缺少的时间。常用有：&quot;y,m&quot;-年月,&quot;y,m,d&quot;-年月日。注意一旦指定tmUnit则orderby选项自动与tmUnit相同。</li>
+</ul>
+<p class="see"><strong>@see <a href="#JdcloudStat.tmUnit">JdcloudStat.tmUnit</a></strong>  </p>
+<ul>
+<li>cond2: 内部使用，在cond基础上再加一层过滤，由报表对话框上用户设置的条件生成。<br />
+在cond基础上再加一层过滤，条件由统计对话框上设置。参考WUI.getQueryCond。示例: </li>
 </ul>
 <p>示例：</p>
 <pre><code>WUI.showDataReport({
     ac: "Employee.query",
     gres: ["depName 部门", "性别"],
     gres2: ["职称", "学历"],
-    cond: {status: '在职'},
+    cond: WUI.getQueryCond({status: '在职'}),
     detailPageName: "pageEmployee1",
     title: "师资报表"
+});</code></pre>
+<p>示例：订单月报</p>
+<pre><code>WUI.showDataReport({
+    ac: "Ordr.query",
+    res: "SUM(amount) 总和", // 不指定则默认为`COUNT(1) 总数`
+    tmField: "createTm 创建时间", // 注意如果定义了resFields，则gres,gres2中字段要与其中定义一致；否则报表对话框显示字段时有问题
+    gres: ["y 年,m 月", "status 状态=CR:新创建;RE:已完成;CA:已取消"],
+    gres2: ["dscr 订单类别"],
+    cond: WUI.getQueryCond({createTm: "&gt;=2020-1-1 and &lt;2021-1-1", status: "CR,RE,CA"}), // 生成条件字符串
+    detailPageName: "pageOrder",
+    title: "订单月报",
+
+    // 定义用户可选的字段，定义它会在工具栏显示“统计”按钮。注意不需要定义y,m等时间字段，它们由tmField自动生成。
+    resFields: "amount 金额, status 状态=CR:新创建;RE:已完成;CA:已取消, dscr 订单类别, userName 用户, userPhone 用户手机号, createTm 创建时间",
+
+    // showChart: true, // 显示统计图
+    // gres: ["y 年,m 月"],
+    // tmUnit: "y,m",
+});</code></pre>
+<p>示例：订单状态占比, 显示饼图（当只有gres没有gres2，且没有tmUnit时，可自动显示饼图）</p>
+<pre><code>WUI.showDataReport({
+    ac: "Ordr.query",
+    res: "COUNT(1) 总数", // 不指定则默认为`COUNT(1) 总数`
+    gres: ["status 状态=CR:新创建;RE:已完成;CA:已取消"],
+    detailPageName: "pageOrder",
+    title: "订单状态占比",
+
+    // 定义用户可选的字段，定义它会在工具栏显示“统计”按钮。注意不需要定义y,m等时间字段，它们由tmField自动生成。
+    resFields: "amount 金额, status 状态=CR:新创建;RE:已完成;CA:已取消, dscr 订单类别, userName 用户, userPhone 用户手机号, createTm 创建时间",
+
+    showChart: true, // 显示统计图
+    orderby: "总数 DESC"
 });</code></pre></div>
 <div class="block">
 <h2 id="showDlgChart">@fn showDlgChart(data, rs2StatOpt, seriesOpt, chartOpt)</h2>
@@ -4863,7 +4918,8 @@ WUI.showDlgChart(callSvr("Ordr.query", {
 <pre><code>"y,m"     年月
 "y,m,d"   年月日
 "y,m,d,h" 年月日时
-"y,w"     年周</code></pre></div>
+"y,w"     年周
+"y,q"     年季度</code></pre></div>
 <div class="block">
 <h2 id="WUI.pivot">@fn WUI.pivot(rs, opt)</h2>
 <p class="param"><strong>@param opt</strong>  {gcol, xcol, ycol?, gtext?, maxSeriesCnt?, formatter?}</p>
@@ -5570,6 +5626,12 @@ function onInitGrid(jpage, jtbl, dgOpt, columns, data)
                 col.formatter = formatter_数量;
         });
         // console.log(columns);
+
+        // var btn = { text: "XX", iconCts: "icon-search", handler: ... };
+        // 替换工具栏按钮
+        // dgOpt.toolbar = WUI.dg_toolbar(jtbl, null, btn1);
+        // 或是：追加工具栏按钮
+        // dgOpt.toolbar.push.apply(dgOpt.toolbar, WUI.dg_toolbar(jtbl, null, btn1));
     }
 
     function formatter_数量(value, row) {
