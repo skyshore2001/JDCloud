@@ -3024,6 +3024,58 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		$cnt = dbUpdate($rv["tblSql"], $kv, $rv["condSql"]);
 		return $cnt;
 	}
+
+	protected function batchOp($ac)
+	{
+		mparam("cond", "G");
+		$pagekey = null;
+		$cnt = 0;
+		while (true) {
+			$rv = $this->callSvc(null, "query", $_GET + [
+				"res" => "id",
+				"pagesz" => -1,
+				"pagekey" => $pagekey,
+				"fmt" => "list"
+			], null);
+			foreach ($rv["list"] as $row) {
+				$id = $row["id"];
+				try {
+					++ $cnt;
+					$this->callSvc(null, "set", ["id" => $id], $_POST);
+				}
+				catch (Exception $ex) {
+					$msg = "批量处理失败, id=$id: " . $ex->getMessage();
+					if ( ($ex instanceof MyException) && $ex->internalMsg != null)
+						$msg .= " (" .$ex->internalMsg. ")";
+					throw new MyException(E_PARAM, (string)$ex, $msg);
+				}
+			}
+			if (! isset($rv["nextkey"]))
+				break;
+			$pagekey = $rv["nextkey"];
+		}
+		return $cnt;
+	}
+
+/**
+@fn api_batchSet()
+
+与setIf接口不同，batchSet接口将根据cond参数查出所有的记录，一一进行set操作；即它会执行onValidate中的逻辑。
+*/
+	function api_batchSet()
+	{
+		return $this->batchOp("set");
+	}
+
+/**
+@fn api_batchDel()
+
+与delIf接口不同，batchDel接口将根据cond参数查出所有的记录，一一进行del操作；即它会执行onValidateId中的逻辑。
+*/
+	function api_batchDel()
+	{
+		return $this->batchOp("del");
+	}
 /**
 @fn AccessControl::api_delIf()
 
