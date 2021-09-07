@@ -2272,7 +2272,7 @@ function objarr2list(objarr, fields, sep, sep2)
 self.intSort = intSort;
 function intSort(a, b)
 {
-	return parseInt(a) - parseInt(b);
+	return (parseInt(a)||0) - (parseInt(b)||0);
 }
 
 /**
@@ -2286,7 +2286,7 @@ function intSort(a, b)
 self.numberSort = numberSort;
 function numberSort(a, b)
 {
-	return parseFloat(a) - parseFloat(b);
+	return (parseFloat(a)||0) - (parseFloat(b)||0);
 }
 
 /**
