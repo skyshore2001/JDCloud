@@ -15,6 +15,14 @@ function initDlgDataReport()
 	var enumMap_ = null;
 	var title0 = jdlg.attr("title");
 
+	var tmUnitArr = [
+		{name: "y,m,d", value: "y 年,m 月,d 日", title: "时间-年月日"},
+		{name: "y,m,d,h", value: "y 年,m 月,d 日,h 时", title: "时间-年月日时"},
+		{name: "y,m", value: "y 年,m 月", title: "时间-年月"},
+		{name: "y,q", value: "y 年,q 季度", title: "时间-年季度"},
+		{name: "y,w", value: "y 年,w 周", title: "时间-年周"}
+	];
+
 	var jtplCond = $(jdlg.find("#tplCond").html());
 	var jtplGres = $(jdlg.find("#tplGres").html());
 	var jtplGres2 = $(jdlg.find("#tplGres2").html());
@@ -129,10 +137,10 @@ function initDlgDataReport()
 		});
 
 		if (tmField) {
+			$.each(tmUnitArr, function (i, e) {
+				enumMap[e.value] = e.title;
+			});
 			$.extend(enumMap, {
-				"y 年,m 月,d 日": "时间-年月日",
-				"y 年,m 月": "时间-年月",
-				"y 年,w 周": "时间-年周",
 				"y 年": "时间-年",
 				"m 月": "时间-月",
 				"d 日": "时间-日",
@@ -176,24 +184,35 @@ function initDlgDataReport()
 	}
 
 	function onValidate(ev, mode, oriData, newData) {
-		var formData = WUI.getFormData(jdlg);
+		var formData = WUI.getFormData(jdlg, true);
 		var param = param_;
 		$.extend(param, formData);
 		param.showChart = formData.showChart;
 		getUserCond(param);
 
+		var autoSet = false;
 		if (param.showChart) {
-			if (param.gres && param.gres.length > 0) {
+			if (param.gres && param.gres.length == 1) {
 				var g0 = param.gres[0];
-				if (g0 === "y 年,m 月,d 日") {
-					param.tmUnit = "y,m,d";
-					param.orderby = "y,m,d";
-				}
-				else if (g0 === "y 年,m 月") {
-					param.tmUnit = "y,m";
-					param.orderby = "y,m";
-				}
+				$.each(tmUnitArr, function (i, e) {
+					if (g0 == e.value) {
+						param.tmUnit = e.name; // "y 年,m 月" -> "y,m"
+						param.orderby = e.name; 
+						autoSet = true;
+						return false;
+					}
+				});
 			}
+			// 饼图自动倒排序
+			if (!autoSet && (!param.gres2 || !param.gres2[0])) {
+				delete param.tmUnit;
+				param.orderby = param.res.split(' ')[1] + " DESC";
+				autoSet = true;
+			}
+		}
+		if (!autoSet) {
+			delete param.tmUnit;
+			delete param.orderby;
 		}
 
 		console.log(param);

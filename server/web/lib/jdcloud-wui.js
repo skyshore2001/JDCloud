@@ -2731,7 +2731,7 @@ self.assert(window.jQuery, "require jquery lib.");
 var mCommon = jdModule("jdcloud.common");
 
 /**
-@fn getFormData(jo)
+@fn getFormData(jo, doGetAll)
 
 取DOM对象中带name属性的子对象的内容, 放入一个JS对象中, 以便手工调用callSvr.
 
@@ -2746,6 +2746,10 @@ var mCommon = jdModule("jdcloud.common");
 		var ac = jf.attr("action");
 		callSvr(ac, fn, getFormData(jf));
 	});
+
+在dialog的onValidate/onOk回调中，由于在显示对话框时自动调用过setFormData，所以用getFormData只返回有修改变化的数据。如果要取所有数据可设置参数doGetAll=true:
+
+	var data = WUI.getFormData(jfrm, true);
 
 如果在jo对象中存在有name属性的file组件(input[type=file][name])，或指定了属性enctype="multipart/form-data"，则调用getFormData会返回FormData对象而非js对象，
 再调用callSvr时，会以"multipart/form-data"格式提交数据。一般用于上传文件。
@@ -2778,7 +2782,7 @@ var mCommon = jdModule("jdcloud.common");
 @see setFormData
  */
 self.getFormData = getFormData;
-function getFormData(jo)
+function getFormData(jo, doGetAll)
 {
 	var data = {};
 	var isFormData = false;
@@ -2797,7 +2801,7 @@ function getFormData(jo)
 		var content = it.getValue(ji);
 		if (content == null)
 			content = "";
-		if (content !== String(orgContent)) // 避免 "" == 0 或 "" == false
+		if (doGetAll || content !== String(orgContent)) // 避免 "" == 0 或 "" == false
 		{
 			if (! isFormData) {
 				// URL参数支持数组，如`a[]=hello&a[]=world`，表示数组`a=["hello","world"]`

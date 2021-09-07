@@ -2411,9 +2411,9 @@ function diffObj(obj, obj1)
 选项说明：
 
 - res: 汇总字段，默认为`COUNT(*) 数量`
-- gres: 行统计字段。须为数组，示例：`["userPhone", "userName 用户", null, "status 状态=CR:新创建;RE:已完成", "y 年, m 月, d 日"]`。
+- gres: 行统计字段。须为数组，示例：`["userPhone", "userName 用户", null, "status 状态=CR:新创建;RE:已完成"]`。
 	数组每个元素符合后端query接口res参数要求，可以是1个字段也可以是逗号分隔的多个字段；如果为空则跳过。
-	注意：月报、日报的指定格式分别为"y 年, m 月"，"y 年, m 月, d 日".
+	注意：月报用 ["y 年, m 月"](配合tmUnit: "y,m")，日报用 ["y 年, m 月, d 日"] (配合tmUnit: "y,m,d")
 - gres2: 列统计字段。格式与gres相同。
 - cond: 查询条件，字符串，示例：WUI.getQueryCond({id: ">1", status: "CR,RE", createTm: ">=2020-1-1 and <2021-1-1"}), 用getQueryCond可使用查询框支持的条件格式。
 - orderby: 排序方式
@@ -2425,7 +2425,9 @@ function diffObj(obj, obj1)
 - resFields: 用户可选择的字段列表。如果指定，则工具栏多出“统计”按钮，可供用户进一步设置。它应包含gres,gres2,tmField,cond中出现的所有字段。
 
 - showChart: 是否显示统计图表对话框。
-- tmUnit: Enum("y,m"-年月,"y,m,d"-年月日)。用于统计图，特别用于月报、日报等，会自动补齐缺少的时间。
+- tmUnit: 用于统计图，特别用于月报、日报等，会自动补齐缺少的时间。常用有："y,m"-年月,"y,m,d"-年月日。注意一旦指定tmUnit则orderby选项自动与tmUnit相同。
+
+@see JdcloudStat.tmUnit 
 
 - cond2: 内部使用，在cond基础上再加一层过滤，由报表对话框上用户设置的条件生成。
  在cond基础上再加一层过滤，条件由统计对话框上设置。参考WUI.getQueryCond。示例: 
@@ -2445,19 +2447,36 @@ function diffObj(obj, obj1)
 
 	WUI.showDataReport({
 		ac: "Ordr.query",
-		res: "SUM(amount) 总额", // 不指定则默认为`COUNT(1) 总数`
+		res: "SUM(amount) 总和", // 不指定则默认为`COUNT(1) 总数`
 		tmField: "createTm 创建时间", // 注意如果定义了resFields，则gres,gres2中字段要与其中定义一致；否则报表对话框显示字段时有问题
 		gres: ["y 年,m 月", "status 状态=CR:新创建;RE:已完成;CA:已取消"],
-		gres2: ["cmt 订单类别"],
+		gres2: ["dscr 订单类别"],
 		cond: WUI.getQueryCond({createTm: ">=2020-1-1 and <2021-1-1", status: "CR,RE,CA"}), // 生成条件字符串
 		detailPageName: "pageOrder",
 		title: "订单月报",
 
 		// 定义用户可选的字段，定义它会在工具栏显示“统计”按钮。注意不需要定义y,m等时间字段，它们由tmField自动生成。
-		resFields: "amount 金额, status 状态=CR:新创建;RE:已完成;CA:已取消, cmt 订单类别, userName 用户, userPhone 用户手机号, createTm 创建时间",
+		resFields: "amount 金额, status 状态=CR:新创建;RE:已完成;CA:已取消, dscr 订单类别, userName 用户, userPhone 用户手机号, createTm 创建时间",
 
 		// showChart: true, // 显示统计图
-		//tmUnit: "y,m",
+		// gres: ["y 年,m 月"],
+		// tmUnit: "y,m",
+	});
+
+示例：订单状态占比, 显示饼图（当只有gres没有gres2，且没有tmUnit时，可自动显示饼图）
+
+	WUI.showDataReport({
+		ac: "Ordr.query",
+		res: "COUNT(1) 总数", // 不指定则默认为`COUNT(1) 总数`
+		gres: ["status 状态=CR:新创建;RE:已完成;CA:已取消"],
+		detailPageName: "pageOrder",
+		title: "订单状态占比",
+
+		// 定义用户可选的字段，定义它会在工具栏显示“统计”按钮。注意不需要定义y,m等时间字段，它们由tmField自动生成。
+		resFields: "amount 金额, status 状态=CR:新创建;RE:已完成;CA:已取消, dscr 订单类别, userName 用户, userPhone 用户手机号, createTm 创建时间",
+
+		showChart: true, // 显示统计图
+		orderby: "总数 DESC"
 	});
  */
 self.showDataReport = showDataReport;
@@ -2536,8 +2555,14 @@ function showDataReport(opt, showPageOpt)
 		// columns: 列数组，可设置列的formatter等属性
 		// data: ajax得到的原始数据
 		$.each(columns, function (i, col) {
-			if (i >= gres.length)
+			if (i >= gres.length) {
 				col.formatter = getFormatter(col);
+				col.sortable = true;
+				col.sorter = numberSort;
+			}
+			else {
+				col.sortable = true;
+			}
 		});
 		// console.log(columns);
 
@@ -2778,7 +2803,10 @@ function showDlgChart(data, rs2StatOpt, seriesOpt, chartOpt)
 	{
 		var jdlg = $('<div style="width:800px; height:600px;"><div id="divChart" style="width:100%;height:100%"></div></div>');
 		WUI.showDlg(jdlg, {
-			title: "统计图"
+			title: "统计图",
+			onOk: function () {
+				WUI.closeDlg($(this));
+			}
 		});
 
 		var jchart = jdlg.find("#divChart");

@@ -43,10 +43,10 @@ self.options.statFormatter = {
 
 	// for tmUnit:
 	"y,m": function (tmArr) {
-		return tmArr.join('-');
+		return tmArr[0] + "-" + tmArr[1];
 	},
 	"y,m,d": function (tmArr) {
-		return tmArr.join('-');
+		return tmArr[0] + "-" + tmArr[1] + "-" + tmArr[2];
 	},
 	"y,m,d,h": function (tmArr) {
 		return tmArr[1] + "-" + tmArr[2] + " " + tmArr[3] + ":00";
@@ -72,6 +72,7 @@ tmUnit指定时间维度分析的类型，目前支持以下维度：
 	"y,m,d"   年月日
 	"y,m,d,h" 年月日时
 	"y,w"     年周
+	"y,q"     年季度
 
  */
 
@@ -414,7 +415,8 @@ function getArrFn(cols, allowNonArr) {
 	return function (row) {
 		if (! $.isArray(cols))
 			return allowNonArr? row[cols]: [row[cols]];
-		var arr = $.map(cols, function (e, i) {
+		// NOTE: $.map将自动过滤null值；而Array.map不会
+		var arr = cols.map(function (e, i) {
 			return row[e];
 		});
 		return allowNonArr && arr.length==1? arr[0]: arr;
@@ -888,10 +890,16 @@ function rs2Stat(rs, opt)
 			x = xtext(row);
 			xData.push(x);
 		}
+		else if (tmCnt != opt.xcol.length) { // 注意：即使指定tmUnit, 但xcol中列数与tmUnit中的列数不匹配，也不做补齐!
+			if (i == 0)
+				console.warn("tmUnit未生效: 时间列数与xcol列数不一致!");
+			x = xtext(row);
+			xData.push(x);
+		}
 		else {
 			// 补日期
 			var tmArr = xarr(row);
-			x = makeTm(opt.tmUnit, tmArr);
+			x = tmArr[0]? makeTm(opt.tmUnit, tmArr): null;
 			var completeCnt = 0;
 			if (lastX) {
 				while (lastX != x) {
@@ -900,8 +908,12 @@ function rs2Stat(rs, opt)
 					if (x == nextX)
 						break;
 					// xData.push(nextX);
-					xData.push(xtext(lastTmArr));
+					xData.push(opt.formatterX? xtext(lastTmArr): nextX);
 					++ completeCnt;
+					if (completeCnt > 1000) {
+						console.warn("!!! 补齐日期失败，是否是日期未排序？");
+						break;
+					}
 				}
 			}
 			lastTmArr = tmArr;
@@ -914,7 +926,7 @@ function rs2Stat(rs, opt)
 				});
 			}
 			// xData.push(x);
-			xData.push(xtext(tmArr));
+			xData.push(opt.formatterX? xtext(tmArr): x);
 		}
 	
 		$.each(ycols, function (i, ycol) {
