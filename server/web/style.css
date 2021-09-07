@@ -11,8 +11,12 @@ input,select,textarea {
 	font-size: 13px;
 	padding: 2px 5px;
 }
+.textbox-disabled, .textbox-label-disabled {
+	opacity: inherit; /* 取消显示灰掉 */
+}
 .combo {
 	border-color: rgb(169, 169, 169);
+	margin-left: 2px;
 }
 .wui-form-table td .combo.textbox {
 	width: 95% !important;
@@ -95,6 +99,7 @@ select[readonly] {
 input:disabled,select:disabled,textarea:disabled {
 	background-color: #fff3f3;
 	color: #000;
+	opacity: inherit;
 }
 .validatebox-invalid {
 	border-color: #ffa8a8 !important;

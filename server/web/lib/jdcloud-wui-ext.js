@@ -1229,8 +1229,14 @@ self.formItems[".combo-f"] = $.extend({}, self.defaultFormItems, {
 		var type = this.getComboType_(jo);
 		return jo[type]("getValue");
 	},
+	getDisabled: function (jo) {
+		return jo.combo("options").disabled;
+	},
+	setDisabled: function (jo, val) {
+		return jo.combo(val? "disable": "enable");
+	},
 	getReadonly: function (jo) {
-		return jo.combo("textbox").prop("readonly");
+		return jo.combo("readonly");
 	},
 	setReadonly: function (jo, val) {
 		jo.combo("readonly", val);
@@ -1240,7 +1246,10 @@ self.formItems[".combo-f"] = $.extend({}, self.defaultFormItems, {
 	getValue_vf: function (jo) {
 		var type = this.getComboType_(jo);
 		return jo[type]("getText");
-	}
+	},
+	getShowbox: function (jo) {
+		return jo.combo("textbox");
+	},
 });
 
 /*

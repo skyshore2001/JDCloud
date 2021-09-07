@@ -2977,7 +2977,7 @@ self.formItems["[name]"] = self.defaultFormItems = {
 		}
 		return val;
 	},
-	// TODO: 用于find模式设置。搜索"设置find模式"/datetime
+	// 用于find模式设置。搜索"设置find模式"/datetime
 	getShowbox: function (jo) {
 		return jo;
 	},
@@ -7748,48 +7748,48 @@ function showObjDlg(jdlg, mode, opt)
 	// 设置find模式
 	var doReset = ! (jd.mode == FormMode.forFind && mode == FormMode.forFind) // 一直是find, 则不清除
 	if (mode == FormMode.forFind && jd.mode != FormMode.forFind) {
-		jfrm.find(":input[name], .textbox-text").each (function (i,e) {
-			var je = $(e);
+		self.formItems(jfrm, function (je, name, it) {
+			var jshow = it.getShowbox(je);
 			var bak = je.jdata().bak = {
-				disabled: je.prop("disabled"),
-				readonly: je.prop("readonly"),
-				title: je.prop("title"),
+				disabled: it.getDisabled(je),
+				readonly: it.getReadonly(je),
+				title: jshow.prop("title"),
 				type: null
 			}
 			if (je.hasClass("notForFind") || je.attr("notForFind") != null) {
-				je.prop("disabled", true);
-				je.css("backgroundColor", "");
+				it.setDisabled(je, true);
+				jshow.css("backgroundColor", "");
 			}
 			else if (je.is("[type=hidden]")) {
 			}
 			else {
-				je.prop("disabled", false);
-				je.prop("readonly", false);
-				je.addClass("wui-find-field");
-				je.prop("title", self.queryHint);
-				var type = je.attr("type");
+				it.setDisabled(je, false);
+				it.setReadonly(je, false);
+				jshow.addClass("wui-find-field")
+					.prop("title", self.queryHint);
+				var type = jshow.attr("type");
 				if (type && ["number", "date", "time", "datetime"].indexOf(type) >= 0) {
 					bak.type = type;
-					je.attr("type", "text");
+					jshow.attr("type", "text");
 				}
 			}
 		});
 		jfrm.find(".easyui-validatebox").validatebox("disableValidation");
 	}
 	else if (jd.mode == FormMode.forFind && mode != FormMode.forFind) {
-		jfrm.find(":input[name], .textbox-text").each (function (i,e) {
-			var je = $(e);
+		self.formItems(jfrm, function (je, name, it) {
 			var bak = je.jdata().bak;
 			if (bak == null)
 				return;
-			je.prop("disabled", bak.disabled);
-			je.prop("readonly", bak.readonly);
-			je.removeClass("wui-find-field");
-			je.prop("title", bak.title);
+			it.setDisabled(je, bak.disabled);
+			it.setReadonly(je, bak.readonly);
+			var jshow = it.getShowbox(je);
+			jshow.removeClass("wui-find-field")
+			jshow.prop("title", bak.title);
 			if (bak.type) {
-				je.attr("type", bak.type);
+				jshow.attr("type", bak.type);
 			}
-		})
+		});
 		jfrm.find(".easyui-validatebox").validatebox("enableValidation");
 	}
 
