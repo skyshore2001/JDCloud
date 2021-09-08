@@ -2487,6 +2487,23 @@ function diffObj(obj, obj1)
 		showChart: true, // 显示统计图
 		orderby: "总数 DESC"
 	});
+
+示例：多个统计项：订单状态报表，同时统计数量和金额：
+
+	WUI.showDataReport({
+		ac: "Ordr.query",
+		res: "COUNT(1) 总数, SUM(amount) 总金额",
+		gres: ["status 状态=CR:新创建;RE:已完成;CA:已取消"],
+		// gres2: ["dscr 订单类别"], // 试试加上列统计项有何样式区别
+		detailPageName: "pageOrder",
+		title: "订单状态占比",
+
+		// 定义用户可选的字段，定义它会在工具栏显示“统计”按钮。注意不需要定义y,m等时间字段，它们由tmField自动生成。
+		resFields: "amount 金额, status 状态=CR:新创建;RE:已完成;CA:已取消, dscr 订单类别, userName 用户, userPhone 用户手机号, createTm 创建时间",
+	});
+
+注意：统计图(showChart:true)目前只支持第一个统计项。
+
  */
 self.showDataReport = showDataReport;
 function showDataReport(opt, showPageOpt)
@@ -2538,6 +2555,10 @@ function showDataReport(opt, showPageOpt)
 		else
 			cond = opt.cond2;
 	}
+
+	var resTitles = opt.res.split(/\s*,\s*/).map(function (res) {
+		return getFieldInfo(res).title;
+	});
 	var queryParams = {
 		res: opt.res,
 		cond: cond,
@@ -2545,7 +2566,7 @@ function showDataReport(opt, showPageOpt)
 		tmField: opt.tmField && opt.tmField.split(' ')[0],
 		gres: gresAll.join(','),
 		pivot: pivot.join(','),
-
+		pivotCnt: resTitles.length,
 		pagesz: -1
 	};
 	var url = WUI.makeUrl(opt.ac, queryParams);
@@ -2595,6 +2616,11 @@ function showDataReport(opt, showPageOpt)
 		function formatter_sum(value, row) {
 			if (!value)
 				return;
+			if ($.isArray(value)) {
+				value = value.map(function (e, i) {
+					return resTitles[i] + ": " + e;
+				}).join("<br>");
+			}
 			return WUI.makeLink(value, function () {
 				var cond = {};
 				gres.forEach((e, i) => {

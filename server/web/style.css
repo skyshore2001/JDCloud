@@ -48,6 +48,8 @@ form>table:first-child, .wui-form-table {
 
 a {
 	cursor: pointer;
+	color: #007bff;
+	text-decoration: none;
 }
 
 /* wui-dialog */

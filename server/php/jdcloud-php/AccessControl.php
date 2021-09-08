@@ -3600,22 +3600,25 @@ function KVtoCond($k, $v)
 	{
 		if (count($arr) == 0)
 			return "";
-		if (! isset($arr[0]))
+		return jsonEncode($arr);
+/*		if (! isset($arr[0]))
 			return join(':', $arr);
 		return join(',', array_map("self::array2Str", $arr));
+*/
 	}
 
-	static function outputCsvLine($row, $enc)
+	static function outputCsvLine($row, $enc, $sep=',')
 	{
 		$firstCol = true;
+		$autoEscape0 = $sep != "\t";
 		foreach ($row as $e) {
 			if ($firstCol)
 				$firstCol = false;
 			else
-				echo ',';
+				echo $sep;
 			if (is_array($e))
 				$e = self::array2Str($e);
-			$autoEscape = true;
+			$autoEscape = $autoEscape0;
 			if ($enc) {
 				$e = iconv("UTF-8", "{$enc}//TRANSLIT" , (string)$e);
 
@@ -3627,7 +3630,7 @@ function KVtoCond($k, $v)
 					$autoEscape = false;
 				}
 			}
-			if ($autoEscape && (strpos($e, '"') !== false || strpos($e, "\n") !== false || strpos($e, ",") !== false))
+			if ($autoEscape && (strpos($e, '"') !== false || strpos($e, "\n") !== false || strpos($e, $sep) !== false))
 				echo '"', str_replace('"', '""', $e), '"';
 			else
 				echo $e;
@@ -3647,9 +3650,9 @@ function KVtoCond($k, $v)
 	static function table2txt($tbl)
 	{
 		if (isset($tbl["h"]))
-			echo join("\t", $tbl["h"]), "\n";
+			self::outputCsvLine($tbl["h"], null, "\t");
 		foreach ($tbl["d"] as $row) {
-			echo join("\t", $row), "\n";
+			self::outputCsvLine($row, null, "\t");
 		}
 	}
 
@@ -3660,7 +3663,10 @@ function KVtoCond($k, $v)
 			$rv .= "<tr><th>" . join("</th><th>", $tbl["h"]) . "</th></tr>\n";
 		}
 		foreach ($tbl["d"] as $row) {
-			$rv .= "<tr><td>" . join("</td><td>", $row) . "</td></tr>\n";
+			$row1 = array_map(function ($e) {
+				return is_array($e)? array2Str($e): $e;
+			}, $row);
+			$rv .= "<tr><td>" . join("</td><td>", $row1) . "</td></tr>\n";
 		}
 		$rv .= "</table>";
 		if ($retStr)
@@ -3678,9 +3684,14 @@ function KVtoCond($k, $v)
 			$type = "GENERAL";
 			$rowCnt = count($tbl["d"]);
 			for ($rowIdx=0; $rowIdx<$rowCnt; ++$rowIdx) {
-				$e = $tbl["d"][$rowIdx][$colIdx];
+				$e = &$tbl["d"][$rowIdx][$colIdx];
+				if (is_array($e)) {
+					$e = self::array2Str($e);
+					$type = "string";
+					break;
+				}
 				// 含有非数值，或全数值达到11位以上（含11位），则当文本类型
-				if ($e && preg_match('/[^0-9.]|^\d{11,}$/', $e)) {
+				else if ($e && preg_match('/[^0-9.]|^\d{11,}$/', $e)) {
 					$type = "string";
 					break;
 				}
