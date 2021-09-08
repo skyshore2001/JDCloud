@@ -8002,6 +8002,7 @@ function dg_toolbar(jtbl, jdlg)
 	var toolbar = jtbl.jdata().toolbar;
 	if (toolbar == null)
 		toolbar = "rfasd";
+	jtbl.jdata().toolbar = ""; // 避免再调用时按钮添加重复
 	var btns = [];
 
 	/*
