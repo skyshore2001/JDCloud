@@ -3677,6 +3677,14 @@ function KVtoCond($k, $v)
 	static function table2excel($tbl)
 	{
 		$hdr = [];
+		// 处理值为数组的情况
+		foreach ($tbl["d"] as &$row) {
+			foreach ($row as &$e) {
+				if (is_array($e)) {
+					$e = self::array2Str($e);
+				}
+			}
+		}
 		// refer to: xlsxwriter::numberFormatStandardized
 		// 典型问题：11位手机号/18位身份证号等被当成数字，显示为科学计数法且损失了精度，对这种须指定格式为string(即格式"@")
 		foreach ($tbl["h"] as $colIdx=>$h) {
@@ -3684,14 +3692,9 @@ function KVtoCond($k, $v)
 			$type = "GENERAL";
 			$rowCnt = count($tbl["d"]);
 			for ($rowIdx=0; $rowIdx<$rowCnt; ++$rowIdx) {
-				$e = &$tbl["d"][$rowIdx][$colIdx];
-				if (is_array($e)) {
-					$e = self::array2Str($e);
-					$type = "string";
-					break;
-				}
+				$e = $tbl["d"][$rowIdx][$colIdx];
 				// 含有非数值，或全数值达到11位以上（含11位），则当文本类型
-				else if ($e && preg_match('/[^0-9.]|^\d{11,}$/', $e)) {
+				if ($e && preg_match('/[^0-9.]|^\d{11,}$/', $e)) {
 					$type = "string";
 					break;
 				}
