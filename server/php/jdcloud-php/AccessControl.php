@@ -2039,6 +2039,16 @@ addCond用于添加查询条件，可以使用表的字段或虚拟字段(无须
 		$reqColSet = []; // [col => true]
 		foreach ($vcolDef["res"] as $res) {
 			$isExt1 = preg_match('/\(.*select.*where(.*)\)/ui', $res, $ms)? true: false;
+			if ($isExt1) {
+				if (preg_match('/(\w+)\s*$/ui', $res, $ms)) {
+					$name = $ms[1];
+					// cond或orderby中若有用到，只能是内部字段，不可是外部字段。注意此时会做全表查询，效率很低。
+					if (containsWord($this->sqlConf['cond'][0],  $name) || containsWord($this->sqlConf['orderby'], $name)) {
+						$isExt = false;
+						break;
+					}
+				}
+			}
 			if ($isExt === null)
 				$isExt = $isExt1;
 			if ($isExt !== $isExt1) {

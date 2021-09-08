@@ -1342,4 +1342,10 @@ function readBlock2($getLine, $makeBlock, $isBlockStart, $isBlockEnd, $handleBlo
 	}
 }
 
+function containsWord($str, $word)
+{
+	if (!$str || stripos($str, $word) === false)
+		return false;
+	return !!preg_match('/\b' . $word . '\b/ui', $str);
+}
 // vi: foldmethod=marker
