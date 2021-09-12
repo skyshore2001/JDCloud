@@ -1747,7 +1747,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			if (! preg_match('/^\s*(\w+)(?:\s+(?:AS\s+)?([^,]+))?\s*$/iu', $col, $ms))
 			{
 				// 对于res, 还支持部分函数: "fn(col) as col1", 目前支持函数: count/sum，如"count(distinct ac) cnt", "sum(qty*price) docTotal"
-				if (!$gres && preg_match('/(\w+)\(([a-z0-9_.\'* ,+-\/]*)\)\s+(?:AS\s+)?([^,]+)/iu', $col, $ms)) {
+				if (!$gres && preg_match('/(\w+)\(([\w.\'* ,+-\/]*)\)\s+(?:AS\s+)?([^,]+)/iu', $col, $ms)) {
 					list($fn, $expr, $alias) = [strtoupper($ms[1]), $ms[2], $ms[3]];
 					if ($fn != "COUNT" && $fn != "SUM" && $fn != "AVG" && $fn != "MAX" && $fn != "MIN")
 						throw new MyException(E_FORBIDDEN, "function not allowed: `$fn`");
