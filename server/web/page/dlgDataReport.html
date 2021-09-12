@@ -34,7 +34,7 @@
 		<tr>
 			<td>时间统计字段</td>
 			<td>
-				<select name="tmField" class="my-combobox fields"></select>
+				<select name="tmField" class="my-combobox fields-tm"></select>
 				<p class="hint">选择后，行、列统计字段列表将多出时间字段</p>
 			</td>
 		</tr>
@@ -50,6 +50,14 @@
 			<td>
 				<select name="gres2[]" class="my-combobox fields"></select>
 				<a class="easyui-linkbutton btnAddGres2" data-options="iconCls:'icon-add'"></a>
+			</td>
+		</tr>
+		<tr>
+			<td></td>
+			<td>
+				<label title="在必要时自动添加合计行或合计列">
+					<input type="checkbox" name="showSum"> 显示合计
+				</label>
 			</td>
 		</tr>
 		<tr>

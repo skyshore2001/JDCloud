@@ -130,10 +130,13 @@ function initDlgDataReport()
 
 	function setFields(tmField) {
 		var enumMap = {};
+		var enumMap_tm = {};
 		param_.resFields.split(/\s*,\s*/).forEach(e => {
 			var val = e.replace(/["]/g, '');
 			var arr = val.split(" ");
 			enumMap[val] = arr[1] || arr[0];
+			if (/Tm|Dt|Date|Time|时间|日期/.test(val))
+				enumMap_tm[val] = arr[1] || arr[0];
 		});
 
 		if (tmField) {
@@ -153,6 +156,9 @@ function initDlgDataReport()
 		enumMap_ = enumMap;
 		jdlg.find(".fields").trigger("setOption", {
 			jdEnumMap: enumMap
+		});
+		jdlg.find(".fields-tm").trigger("setOption", {
+			jdEnumMap: enumMap_tm
 		});
 	}
 
@@ -208,7 +214,9 @@ function initDlgDataReport()
 			// 饼图自动倒排序
 			if (!autoSet && param.gres2.length == 0) {
 				delete param.tmUnit;
-				param.orderby = param.res.split(' ')[1] + " DESC";
+				var res1 = param.res.split(',')[0];
+				var resTitle = res1.split(' ')[1];
+				param.orderby = resTitle + " DESC";
 				autoSet = true;
 			}
 		}

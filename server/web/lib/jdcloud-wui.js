@@ -6061,9 +6061,9 @@ page调用示例:
 title用于唯一标识tab，即如果相同title的tab存在则直接切换过去。除非：
 (v5.5) 如果标题以"!"结尾, 则每次都打开新的tab页。
 
-(v6) 支持通过paramArr第二参数指定列表页过滤条件，示例
+(v6) 支持通过paramArr第二参数指定列表页过滤条件(SHOW_PAGE_FILTER)，示例
 
-	WUI.showPage("pageEmployee", "员工", [null, {status: "在职"}]);
+	WUI.showPage("pageEmployee", "员工", [null, {cond: {status: "在职"}}]);
 
 它直接影响页面中的datagrid的查询条件。
 */
@@ -8539,13 +8539,18 @@ function dgLoader(param, success, error)
 		}
 	}
 
-	// 根据showPage参数自动对页面中的datagrid进行过滤: 
-	// WUI.showPage(pageName, title, [param1, cond]) 内置支持cond参数
+	// SHOW_PAGE_FILTER 根据showPage参数自动对页面中的datagrid进行过滤: 
+	// WUI.showPage(pageName, title, [param1, {cond:cond}]) 
 	var jpage = jo.closest(".wui-page");
 	var showPageArgs = jpage.data("showPageArgs_");
 	if (showPageArgs && $.isArray(showPageArgs[2]) && showPageArgs[2][1]) {
-		var cond = showPageArgs[2][1];
-		param1.cond = appendCond(param1.cond, cond);
+		var filterParam = showPageArgs[2][1];
+		$.each(filterParam, function (k, v) {
+			if (k == "cond")
+				param1.cond = appendCond(param1.cond, v);
+			else
+				param1[k] = v;
+		});
 	}
 
 	var dfd = self.callSvr(opts.url, param1, success);

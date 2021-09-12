@@ -894,6 +894,21 @@ function text2html($s)
 
 注意：结果的第一行中，会包含所有可能出现的列，没有值的列填null。
 
+如果需要行列统计，可指定pivotSumField="合计"，这样就会添加一列叫"合计"，且添加一行统计行
+
+	$arr1 = pivot($arr, "cateId,cateName", 1, "合计");
+
+结果为:
+
+	$arr1 = [
+		["y"=>2019, "m"=>11, "1-衣服"=>20000, "2-食品"=>12000, "3-电器"=>null, "合计"=>32000],
+		["y"=>2019, "m"=>12, "2-食品"=>15000, "合计"=>15000],
+		["y"=>2020, "m"=>2, "1-衣服"=>19000, "3-电器"=>28000, "合计"=>47000],
+		["1-衣服"=>39000, "2-食品"=>27000, "3-电器"=>28000, "合计"=>94000]
+	];
+
+特别地，如果只有1行，则不添加统计行，如果只有1列数据列，不添加统计列。
+
 在后端查询时, 往往用id字段分组但显示为名字, 可以用hiddenFields参数指定不要返回的字段:
 例如上例中cateId若只需要参与查询, 不需要返回在最终结果中：
 
@@ -934,7 +949,7 @@ function text2html($s)
 	];
 
 */
-function pivot($objArr, $gcols, $ycolCnt=1)
+function pivot($objArr, $gcols, $ycolCnt=1, $pivotSumField=null)
 {
 	if (count($objArr) == 0)
 		return $objArr;
@@ -956,7 +971,6 @@ function pivot($objArr, $gcols, $ycolCnt=1)
 		
 	$xMap = []; // {x=>新行}
 	$xcols = array_diff($cols, $gcols);
-//	$xcolCnt = count($xcols);
 
 	$firstX = null;
 	foreach ($objArr as $row) {
@@ -1002,6 +1016,46 @@ function pivot($objArr, $gcols, $ycolCnt=1)
 		}
 	}
 	$ret = array_values($xMap);
+
+	// 自动添加统计列和统计行, 只有一行不添加统计行，只有一列不添加统计列
+	if ($pivotSumField && count($ret) > 0) {
+		$xcolCnt = count($xcols);
+		$addSumCol = (count($ret[0]) - $xcolCnt > 1);
+		$sumRow = [];
+		foreach ($ret as &$row) {
+			$coli = 0;
+			$rowSum = null;
+			foreach ($row as $col=>$e) {
+				if ($coli++ < $xcolCnt || !$e) {
+					continue;
+				}
+				if ($ycolCnt == 1) {
+					$rowSum += $e;
+					$sumRow[$col] += $e;
+					if ($addSumCol) {
+						$sumRow[$pivotSumField] += $e;
+					}
+				}
+				else {
+					for ($i=0; $i<$ycolCnt; ++$i) {
+						$rowSum[$i] += $e[$i];
+						$sumRow[$col][$i] += $e[$i];
+						if ($addSumCol) {
+							$sumRow[$pivotSumField][$i] += $e[$i];
+						}
+					}
+				}
+			}
+			if ($addSumCol)
+				$row[$pivotSumField] = $rowSum;
+		}
+		if (count($ret) > 1) {
+			if ($xcolCnt > 0) {
+				$sumRow[$xcols[0]] = $pivotSumField;
+			}
+			$ret[] = $sumRow;
+		}
+	}
 	return $ret;
 }
 

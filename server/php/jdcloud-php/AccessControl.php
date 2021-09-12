@@ -2746,8 +2746,13 @@ FROM ($sql) t0";
 		$this->after($ret);
 		$pivot = param("pivot");
 		if ($pivot && count($ret) > 0) {
-			$ret = pivot($ret, $pivot, param("pivotCnt/i", 1));
+			$ret = pivot($ret, $pivot, param("pivotCnt/i", 1), param("pivotSumField"));
 			$fixedColCnt = count($ret[0]);
+		}
+
+		// 添加合计行。注意有pivot的情况，用pivotSumField参数而非sumFields参数来控制
+		if (!$pivot && ($sumFields = param("sumFields")) != null) {
+			$this->handleSumFields($ret, $sumFields);
 		}
 
 		if ($pagesz == count($ret)) { // 还有下一页数据, 添加nextkey
@@ -2759,6 +2764,23 @@ FROM ($sql) t0";
 			}
 		}
 		return $this->queryRet($ret, $nextkey, $totalCnt, $fixedColCnt);
+	}
+
+	// sumFields: field array
+	private function handleSumFields(&$ret, $sumFields) {
+		if (count($ret) <= 1)
+			return;
+		$sumFields = preg_split('/\s*,\s*/', $sumFields);
+		$sumRow = [];
+		foreach ($ret as $row) {
+			foreach ($sumFields as $f) {
+				$sumRow[$f] += is_numeric($row[$f])? $row[$f]: 0;
+			}
+		}
+		$firstCol = key($ret[0]);
+		if (! array_key_exists($firstCol, $sumRow))
+			$sumRow[$firstCol] = "合计";
+		$ret[] = $sumRow;
 	}
 
 /**

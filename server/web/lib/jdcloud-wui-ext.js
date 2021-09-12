@@ -2431,10 +2431,13 @@ function diffObj(obj, obj1)
 - detailPageParamArr: 如果指定了detailPageName，可以用此参数来定制showPage的第三参数(paramArr)。
 - tmField: 如果用到y,m,d等时间统计字段，应指定使用哪个时间字段进行运算。后端可能已经定义了时间字段(tmCols)，指定该选项可覆盖后端的定义。
 
-- resFields: 用户可选择的字段列表。如果指定，则工具栏多出“统计”按钮，可供用户进一步设置。它应包含gres,gres2,tmField,cond中出现的所有字段。
+- resFields: 用户可选择的字段列表（如res, cond中出现的字段）。如果指定（或指定了gres或gres2），则工具栏多出“统计”按钮，可供用户进一步设置。
+ 注意gres,gres2,tmField中的字段会被自动加入，在resFields中指定或不指定都可以。
 
 - showChart: 是否显示统计图表对话框。
 - tmUnit: 用于统计图，特别用于月报、日报等，会自动补齐缺少的时间。常用有："y,m"-年月,"y,m,d"-年月日。注意一旦指定tmUnit则orderby选项自动与tmUnit相同。
+
+- showSum: 自动添加统计行或列
 
 @see JdcloudStat.tmUnit 
 
@@ -2457,14 +2460,14 @@ function diffObj(obj, obj1)
 	WUI.showDataReport({
 		ac: "Ordr.query",
 		res: "SUM(amount) 总和", // 不指定则默认为`COUNT(1) 总数`
-		tmField: "createTm 创建时间", // 注意如果定义了resFields，则gres,gres2中字段要与其中定义一致；否则报表对话框显示字段时有问题
+		tmField: "createTm 创建时间",
 		gres: ["y 年,m 月", "status 状态=CR:新创建;RE:已完成;CA:已取消"],
 		gres2: ["dscr 订单类别"],
 		cond: WUI.getQueryCond({createTm: ">=2020-1-1 and <2021-1-1", status: "CR,RE,CA"}), // 生成条件字符串
 		detailPageName: "pageOrder",
 		title: "订单月报",
 
-		// 定义用户可选的字段，定义它会在工具栏显示“统计”按钮。注意不需要定义y,m等时间字段，它们由tmField自动生成。
+		// 定义用户可选的字段，定义它或gres/gres2会在工具栏显示“统计”按钮。注意不需要定义y,m等时间字段，它们由tmField自动生成。
 		resFields: "amount 金额, status 状态=CR:新创建;RE:已完成;CA:已取消, dscr 订单类别, userName 用户, userPhone 用户手机号, createTm 创建时间",
 
 		// showChart: true, // 显示统计图
@@ -2481,7 +2484,7 @@ function diffObj(obj, obj1)
 		detailPageName: "pageOrder",
 		title: "订单状态占比",
 
-		// 定义用户可选的字段，定义它会在工具栏显示“统计”按钮。注意不需要定义y,m等时间字段，它们由tmField自动生成。
+		// 定义用户可选的字段，定义它或gres/gres2会在工具栏显示“统计”按钮。注意不需要定义y,m等时间字段，它们由tmField自动生成。
 		resFields: "amount 金额, status 状态=CR:新创建;RE:已完成;CA:已取消, dscr 订单类别, userName 用户, userPhone 用户手机号, createTm 创建时间",
 
 		showChart: true, // 显示统计图
@@ -2497,6 +2500,7 @@ function diffObj(obj, obj1)
 		// gres2: ["dscr 订单类别"], // 试试加上列统计项有何样式区别
 		detailPageName: "pageOrder",
 		title: "订单状态占比",
+		// showSum: true, // 自动添加行列统计
 
 		// 定义用户可选的字段，定义它会在工具栏显示“统计”按钮。注意不需要定义y,m等时间字段，它们由tmField自动生成。
 		resFields: "amount 金额, status 状态=CR:新创建;RE:已完成;CA:已取消, dscr 订单类别, userName 用户, userPhone 用户手机号, createTm 创建时间",
@@ -2565,10 +2569,20 @@ function showDataReport(opt, showPageOpt)
 		orderby: opt.orderby,
 		tmField: opt.tmField && opt.tmField.split(' ')[0],
 		gres: gresAll.join(','),
-		pivot: pivot.join(','),
-		pivotCnt: resTitles.length,
 		pagesz: -1
 	};
+	if (pivot.length > 0) {
+		queryParams.pivot = pivot.join(',');
+		queryParams.pivotCnt = resTitles.length;
+	}
+	if (opt.showSum) {
+		if (pivot.length == 0) {
+			queryParams.sumFields = resTitles.join(',');
+		}
+		else {
+			queryParams.pivotSumField = (opt.pivotSumField || "合计");
+		}
+	}
 	var url = WUI.makeUrl(opt.ac, queryParams);
 	WUI.showPage("pageSimple", opt.title + "!", [url, null, onInitGrid]);
 
@@ -2578,17 +2592,32 @@ function showDataReport(opt, showPageOpt)
 		jtbl.data("showDataReportOpt", opt);
 		// 加个报表按钮
 		//dgOpt.toolbar = WUI.dg_toolbar(jtbl, null, "report");
-		if (opt.resFields)
-			dgOpt.toolbar.push.apply(dgOpt.toolbar, WUI.dg_toolbar(jtbl, null, "report"));
+		if (opt.resFields || gresAll.length > 0) {
+			var arr = opt.resFields? opt.resFields.split(/\s*,\s*/): [];
+			$.each(gresAll, function (i, e) {
+				// 排除tmField衍生的时间字段
+				if (e && !/^(y|m|d|h|q|w|wd) /.test(e) && arr.indexOf(e) < 0)
+					arr.push(e);
+			});
+			if (opt.tmField && arr.indexOf(opt.tmField) < 0)
+				arr.push(opt.tmField);
+			opt.resFields = arr.join(',');
+			if (opt.resFields)
+				dgOpt.toolbar.push.apply(dgOpt.toolbar, WUI.dg_toolbar(jtbl, null, "report"));
+		}
 
 		// dgOpt: datagrid的选项，如设置 dgOpt.onClickCell等属性
 		// columns: 列数组，可设置列的formatter等属性
 		// data: ajax得到的原始数据
+		var rowCnt = data.d && data.d.length || 0;
 		$.each(columns, function (i, col) {
 			if (i >= gres.length) {
-				col.formatter = getFormatter(col);
+				col.formatter = getFormatter(col, rowCnt);
 				col.sortable = true;
 				col.sorter = numberSort;
+				if (opt.showSum && queryParams.pivotSumField == col.title) {
+					col.isSumCol = true;
+				}
 			}
 			else {
 				col.sortable = true;
@@ -2607,13 +2636,22 @@ function showDataReport(opt, showPageOpt)
 				type: (opt.tmUnit || rs2StatOpt.ycol.length>1)? "bar": "pie",
 //				stack: rs2statopt.ycol.length>1? "X": undefined // 堆叠柱图
 			};
-			self.showDlgChart(data, rs2StatOpt, seriesOpt);
+			var data1 = data;
+			if (opt.showSum) {
+				// 自动去除统计行或列
+				data1 = $.extend(true, {}, data);
+				if (queryParams.pivotSumField == data1.h[data1.h.length-1])
+					data1.h.pop();
+				if (data1.d.length > 1)
+					data1.d.pop();
+			}
+			self.showDlgChart(data1, rs2StatOpt, seriesOpt);
 		}
 	}
-	function getFormatter(col) {
+	function getFormatter(col, rowCnt) {
 		return formatter_sum;
 
-		function formatter_sum(value, row) {
+		function formatter_sum(value, row, rowIdx) {
 			if (!value)
 				return;
 			if ($.isArray(value)) {
@@ -2623,28 +2661,34 @@ function showDataReport(opt, showPageOpt)
 			}
 			return WUI.makeLink(value, function () {
 				var cond = {};
-				gres.forEach((e, i) => {
-					var rv = getFieldInfo(e);
-					var val = row[rv.title];
-					if (val == null) {
-						val = "null";
-					}
-					else if (rv.enumMapReverse) {
-						val = rv.enumMapReverse[val];
-					}
-					cond[rv.name] = val;
-				});
-				gres2.forEach((e, i) => {
-					var rv = getFieldInfo(e);
-					var val = col.title.split('-')[i]; // col.title: "field1-field2"
-					if (val == "(null)") {
-						val = "null";
-					}
-					else if (rv.enumMapReverse) {
-						val = rv.enumMapReverse[val];
-					}
-					cond[rv.name] = val;
-				});
+				// 最后一行设置isSumRow标记
+				var isSumRow = (opt.showSum && rowIdx > 0 && rowIdx == rowCnt-1);
+				if (!isSumRow) {
+					gres.forEach((e, i) => {
+						var rv = getFieldInfo(e);
+						var val = row[rv.title];
+						if (val == null) {
+							val = "null";
+						}
+						else if (rv.enumMapReverse) {
+							val = rv.enumMapReverse[val];
+						}
+						cond[rv.name] = val;
+					});
+				}
+				if (!col.isSumCol) {
+					gres2.forEach((e, i) => {
+						var rv = getFieldInfo(e);
+						var val = col.title.split('-')[i]; // col.title: "field1-field2"
+						if (val == "(null)") {
+							val = "null";
+						}
+						else if (rv.enumMapReverse) {
+							val = rv.enumMapReverse[val];
+						}
+						cond[rv.name] = val;
+					});
+				}
 				console.log(cond);
 				if (queryParams.cond) {
 					cond = [queryParams.cond, cond];
@@ -2652,7 +2696,10 @@ function showDataReport(opt, showPageOpt)
 
 				var title = opt.title + "-明细项!";
 				if (opt.detailPageName) {
-					opt.detailPageParamArr[1] = cond;
+					var queryParams1 = {cond: cond};
+					if (queryParams.tmField)
+						queryParams1.tmField = queryParams.tmField;
+					opt.detailPageParamArr[1] = queryParams1;
 					self.showPage(opt.detailPageName, title, opt.detailPageParamArr);
 				}
 				else {
