@@ -286,7 +286,7 @@ Ordr.get(id) -&gt; { id, dscr, %addr, @items }
 <h3 id="基本增删改查操作"><span class="header-section-number">3.1</span> 基本增删改查操作</h3>
 <p><strong>[添加操作]</strong></p>
 <p>接口原型：</p>
-<pre><code>Obj.add(uniKey?)(POST fields...) -&gt; id
+<pre><code>Obj.add(uniKey?, uniKeyMode?=set)(POST fields...) -&gt; id
 Obj.add(res)(POST fields...) -&gt; {fields...} (返回的字段由res参数指定)</code></pre>
 <p>对象的属性通过POST请求内容给出，为一个个键值对。 添加完成后，默认返回新对象的id, 如果想多返回其它字段，可设置res参数，如</p>
 <pre><code>callSvr(&quot;Ordr.add&quot;, $.noop, {status:&quot;CR&quot;, total:100})
@@ -298,7 +298,13 @@ callSvr(&quot;Ordr.add&quot;, {res:&quot;id,status,total&quot;}, $.noop, {status
 {id: 810, status:&quot;CR&quot;, total: 100}</code></pre>
 <p>对象id支持自动生成。</p>
 <ul>
-<li>uniKey: 唯一索引字段. 如果指定, 则以该字段查询记录是否存在(调用query接口）, 存在则更新（调用set接口）。例如&quot;code&quot;, 也支持多个字段（用于关联表），如&quot;bpId,itemId&quot;。</li>
+<li><p>uniKey: 唯一索引字段. 如果指定, 则以该字段查询记录是否存在(调用query接口）, 存在则更新（调用set接口）。例如&quot;code&quot;, 也支持多个字段（用于关联表），如&quot;bpId,itemId&quot;。 uniKey支持使用虚拟字段（如关联字段）。 该字段常用于检查记录不存在则添加记录，存在则更新记录；也用于避免记录重复添加。 特别地，如果uniKey以&quot;!&quot;结尾（如&quot;code!&quot;），则表示必须匹配到记录，不匹配则报错而不做添加，常用于通过导入批量更新数据。若不加!后缀也可更新记录，但若不匹配时会误添加。</p></li>
+<li>uniKeyMode: 在uniKey匹配时，默认处理是更新操作，可以通过本参数来定制匹配后的操作，其值定义为：
+<ul>
+<li>set: （默认）转为更新操作（如果要更新的字段刚好就是uniKey字段，则忽略更新），接口最终返回已存在记录的id。</li>
+<li>error: 报错：已存在重复记录。</li>
+<li>ignore: 忽略添加操作，接口直接返回已存在记录的id。</li>
+</ul></li>
 </ul>
 <p><strong>[更新操作]</strong></p>
 <p>接口原型：</p>
@@ -490,9 +496,16 @@ like用于字符串匹配，字符串中用&quot;%&quot;或&quot;*&quot;表示�
 <p>在对象查询接口中添加参数&quot;fmt&quot;，可以输出指定格式，一般用于列表导出。参数：</p>
 <dl>
 <dt>fmt</dt>
-<dd>Enum(csv,txt,excel). 导出Query的内容为指定格式。其中，csv为逗号分隔UTF8编码文本；txt为制表分隔的UTF8文本；excel为逗号分隔的使用本地编码如gb2312编码文本（因为默认excel打开Csv文件时不支持utf8编码）。
+<dd>Enum(csv,txt,excel,excelcsv,html). 导出Query的内容为指定格式。格式说明如下：
 </dd>
 </dl>
+<ul>
+<li>csv为逗号分隔UTF8编码文本；</li>
+<li>txt为制表分隔的UTF8文本；</li>
+<li>excel为microsoft excel格式(xlsx)。</li>
+<li>excelcsv为逗号分隔的使用本地编码如gb2312编码文本（因为默认excel打开Csv文件时不支持utf8编码）。</li>
+<li>html为网页格式。</li>
+</ul>
 <p>在实现时，注意设置正确的HTTP头，如csv文件：</p>
 <pre><code>Content-Type: application/csv; charset=UTF-8
 Content-Disposition: attachment;filename=1.csv</code></pre>
@@ -530,6 +543,29 @@ window.open(url); // 下载文件</code></pre>
         [ 2016, &quot;RA&quot;, 1530, 15580 ], // 已评价的订单
     ]
 ]</code></pre>
+<p>以下为约定时间统计字段：</p>
+<ul>
+<li>y: 年</li>
+<li>m: 月, 1-12</li>
+<li>d: 日, 1-31</li>
+<li>h: 时, 0-23</li>
+<li>q: 季度</li>
+<li>w: 周。计算模式为：一年中第一周，从该年第一个周一开始(mysql week函数模式7).</li>
+<li>wd: 周几, 1-7, 表示周一到周日</li>
+</ul>
+<p>后端可以默认提供这些时间统计字段，也可以由前端指定一个时间字段，生成这些统计字段：</p>
+<dl>
+<dt>tmField</dt>
+<dd>String. 指定时间字段，基于该字段生成时间统计字段（y,m,d等虚拟字段）。
+</dd>
+</dl>
+<p>示例：按付款时间payTm来统计每年订单数：</p>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {
+    res: &quot;count(*) cnt&quot;,
+    gres: &quot;y&quot;,
+    tmField: &quot;payTm&quot;
+});</code></pre>
+<p><strong>[行列转置]</strong></p>
 <p>在做数据透视表展示统计结果时，常常用到行列转置，可用以下参数：</p>
 <dl>
 <dt>pivot</dt>
@@ -552,6 +588,64 @@ window.open(url); // 下载文件</code></pre>
     d: [
         [ 2015, [1130, 14420], [2, 38], [0, 0] ],
         [ 2016, [170, 3390], [9, 220], [1530, 15580] ]
+    ]
+]</code></pre>
+<p><strong>[行列汇总]</strong></p>
+<p>没有pivot时，用sumFields参数指定要统计的列，支持多列；有pivot时，用pivotSumField参数指定新添加的统计列的名字，只有一列，不存在多列。</p>
+<dl>
+<dt>sumFields</dt>
+<dd>String. 在数据最后添加汇总行，对一个或多个字段进行汇总。当有pivot参数时，该选项无效，应使用pivotSumField参数（下面有介绍）。 注意如果数据仅有一行，不添加汇总行。如果有分页，即数据在一页内显示不完，(TODO 暂定)只累加当前页的数据。
+</dd>
+</dl>
+<p>示例：简单查询，汇总其中一列</p>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {
+    res: &quot;id, createTm, amount&quot;,
+    sumFields: &quot;amount&quot;
+})</code></pre>
+<p>返回内容示例：</p>
+<pre><code>[
+    h: [&quot;id&quot;, &quot;createTm&quot;, &quot;amount&quot;],
+    d: [
+        [ 100, &quot;2015-1-1 10:10:10&quot;, 1000],
+        [ 101, &quot;2015-1-2 10:11:10&quot;, 1200],
+        [ &quot;合计&quot;, null, 2200 ], // 自动添加的汇总行，对指定列进行汇总
+    ]
+]</code></pre>
+<p>示例：分组统计查询，汇总两列</p>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {
+    gres: &quot;y,status&quot;, res: &quot;count(&#39;A&#39;) totalCnt, sum(amount) totalAmount&quot;,
+    sumFields: &quot;totalCnt, totalAmount&quot;
+})</code></pre>
+<p>返回内容示例：</p>
+<pre><code>[
+    h: [&quot;y&quot;, &quot;status&quot;, &quot;totalCnt&quot;, &quot;totalAmount&quot;],
+    d: [
+        [ 2015, &quot;PA&quot;, 1130, 14420 ],  // 已付款，共1130单，14420元
+        [ 2015, &quot;CA&quot;, 2, 38 ], // 取消的订单
+        [ 2016, &quot;PA&quot;, 170, 3390 ],
+        [ 2016, &quot;CA&quot;, 9, 220 ],
+        [ 2016, &quot;RA&quot;, 1530, 15580 ], // 已评价的订单
+        [ &quot;合计&quot;, null, 2841, 33648 ], // 自动添加的汇总行，对指定的两列进行汇总
+    ]
+]</code></pre>
+<dl>
+<dt>pivotSumField</dt>
+<dd>String. 例如设置值为&quot;合计&quot;，则会在每行添加一个名为&quot;合计&quot;的汇总列，且在数据最后添加一个汇总行。 注意：如果行转置后只有一行，则不显示统计列；如果总共只有一行，则不显示统计行。
+</dd>
+</dl>
+<p>示例：</p>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {
+    gres: &quot;y,status&quot;, res: &quot;count(&#39;A&#39;) totalCnt, sum(amount) totalAmount&quot;,
+    pivot: &quot;status&quot;,
+    pivotSumField: &quot;合计&quot;
+})</code></pre>
+<p>返回内容示例：</p>
+<pre><code>[
+    h: [&quot;y&quot;, &quot;PA&quot;,&quot;CA&quot;,&quot;RA&quot;, &quot;合计&quot;], // 自动添加汇总列&quot;合计&quot;
+    d: [
+        [ 2015, [1130, 14420], [2, 38], [0, 0], [1132, 14458] ],
+        [ 2016, [170, 3390], [9, 220], [1530, 15580], [1709, 19190] ],
+        [ &quot;合计&quot;, [1300, 17810], [11, 258], [1530, 15580], [2841, 33648] ] // 自动添加汇总行
     ]
 ]</code></pre>
 <h3 id="查询分页机制"><span class="header-section-number">3.3</span> 查询分页机制</h3>
@@ -644,7 +738,7 @@ LIMIT ({pagekey}-1)*{pagesz}, {pagesz}</code></pre>
 <p>它在一个事务中执行，一行出错后立即失败返回，该行前面已导入的内容也会被取消（回滚）。</p>
 <ul>
 <li><p>title: List(fieldName). 指定标题行(即字段列表). 如果有该参数, 则忽略POST内容或文件中的标题行. 如&quot;title=name,-,addr&quot;表示导入第一列name和第三列addr, 其中&quot;-&quot;表示忽略该列，不导入。 字段列表以逗号或空白分隔, 如&quot;title=name - addr&quot;与&quot;title=name, -, addr&quot;都可以.</p></li>
-<li><p>uniKey: 唯一索引字段. 如果指定, 则以该字段查询记录是否存在, 存在则更新。例如&quot;code&quot;, 也支持多个字段（用于关联表），如&quot;bpId,itemId&quot;。</p></li>
+<li><p>uniKey: 唯一索引字段. 如果指定, 则以该字段查询记录是否存在, 存在则更新。例如&quot;code&quot;, 也支持多个字段（用于关联表），如&quot;bpId,itemId&quot;。 还可以加&quot;!&quot;后缀表示只更新不添加；支持通过参数uniKeyMode定制行为。详见add接口参数介绍。</p></li>
 <li><p>useColMap: 设置为1时，使用列名映射。</p></li>
 </ul>
 <h4 id="批量导入支持三种方式"><span class="header-section-number">3.4.1</span> 批量导入支持三种方式</h4>

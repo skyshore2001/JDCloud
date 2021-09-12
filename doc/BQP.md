@@ -698,7 +698,13 @@ multihash与hash类似，只是用数组表示结果，所以就算出现key重�
 在对象查询接口中添加参数"fmt"，可以输出指定格式，一般用于列表导出。参数：
 
 fmt
-: Enum(csv,txt,excel). 导出Query的内容为指定格式。其中，csv为逗号分隔UTF8编码文本；txt为制表分隔的UTF8文本；excel为逗号分隔的使用本地编码如gb2312编码文本（因为默认excel打开Csv文件时不支持utf8编码）。
+: Enum(csv,txt,excel,excelcsv,html). 导出Query的内容为指定格式。格式说明如下：
+
+- csv为逗号分隔UTF8编码文本；
+- txt为制表分隔的UTF8文本；
+- excel为microsoft excel格式(xlsx)。
+- excelcsv为逗号分隔的使用本地编码如gb2312编码文本（因为默认excel打开Csv文件时不支持utf8编码）。
+- html为网页格式。
 
 在实现时，注意设置正确的HTTP头，如csv文件：
 
@@ -771,6 +777,8 @@ tmField
 		tmField: "payTm"
 	});
 
+**[行列转置]**
+
 在做数据透视表展示统计结果时，常常用到行列转置，可用以下参数：
 
 pivot
@@ -795,6 +803,76 @@ pivotCnt
 		d: [
 			[ 2015, [1130, 14420], [2, 38], [0, 0] ],
 			[ 2016, [170, 3390], [9, 220], [1530, 15580] ]
+		]
+	]
+
+**[行列汇总]**
+
+没有pivot时，用sumFields参数指定要统计的列，支持多列；有pivot时，用pivotSumField参数指定新添加的统计列的名字，只有一列，不存在多列。
+
+sumFields
+: String. 在数据最后添加汇总行，对一个或多个字段进行汇总。当有pivot参数时，该选项无效，应使用pivotSumField参数（下面有介绍）。
+ 注意如果数据仅有一行，不添加汇总行。如果有分页，即数据在一页内显示不完，(TODO 暂定)只累加当前页的数据。
+
+示例：简单查询，汇总其中一列
+
+	callSvr("Ordr.query", {
+		res: "id, createTm, amount",
+		sumFields: "amount"
+	})
+
+返回内容示例：
+
+	[
+		h: ["id", "createTm", "amount"],
+		d: [
+			[ 100, "2015-1-1 10:10:10", 1000],
+			[ 101, "2015-1-2 10:11:10", 1200],
+			[ "合计", null, 2200 ], // 自动添加的汇总行，对指定列进行汇总
+		]
+	]
+
+示例：分组统计查询，汇总两列
+
+	callSvr("Ordr.query", {
+		gres: "y,status", res: "count('A') totalCnt, sum(amount) totalAmount",
+		sumFields: "totalCnt, totalAmount"
+	})
+
+返回内容示例：
+
+	[
+		h: ["y", "status", "totalCnt", "totalAmount"],
+		d: [
+			[ 2015, "PA", 1130, 14420 ],  // 已付款，共1130单，14420元
+			[ 2015, "CA", 2, 38 ], // 取消的订单
+			[ 2016, "PA", 170, 3390 ],
+			[ 2016, "CA", 9, 220 ],
+			[ 2016, "RA", 1530, 15580 ], // 已评价的订单
+			[ "合计", null, 2841, 33648 ], // 自动添加的汇总行，对指定的两列进行汇总
+		]
+	]
+
+pivotSumField
+: String. 例如设置值为"合计"，则会在每行添加一个名为"合计"的汇总列，且在数据最后添加一个汇总行。
+ 注意：如果行转置后只有一行，则不显示统计列；如果总共只有一行，则不显示统计行。
+
+示例：
+
+	callSvr("Ordr.query", {
+		gres: "y,status", res: "count('A') totalCnt, sum(amount) totalAmount",
+		pivot: "status",
+		pivotSumField: "合计"
+	})
+
+返回内容示例：
+
+	[
+		h: ["y", "PA","CA","RA", "合计"], // 自动添加汇总列"合计"
+		d: [
+			[ 2015, [1130, 14420], [2, 38], [0, 0], [1132, 14458] ],
+			[ 2016, [170, 3390], [9, 220], [1530, 15580], [1709, 19190] ],
+			[ "合计", [1300, 17810], [11, 258], [1530, 15580], [2841, 33648] ] // 自动添加汇总行
 		]
 	]
 
