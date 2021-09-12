@@ -3696,7 +3696,7 @@ function KVtoCond($k, $v)
 		}
 		foreach ($tbl["d"] as $row) {
 			$row1 = array_map(function ($e) {
-				return is_array($e)? array2Str($e): $e;
+				return is_array($e)? self::array2Str($e): $e;
 			}, $row);
 			$rv .= "<tr><td>" . join("</td><td>", $row1) . "</td></tr>\n";
 		}
