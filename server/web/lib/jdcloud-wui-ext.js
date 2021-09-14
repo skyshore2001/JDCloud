@@ -1236,7 +1236,7 @@ self.formItems[".combo-f"] = $.extend({}, self.defaultFormItems, {
 		return jo.combo(val? "disable": "enable");
 	},
 	getReadonly: function (jo) {
-		return jo.combo("readonly");
+		return jo.combo("options").readonly;
 	},
 	setReadonly: function (jo, val) {
 		jo.combo("readonly", val);
