@@ -959,6 +959,24 @@ function dbconn($fnConfirm = null)
 }
 
 /**
+@fn dbCommit($doRollback=false)
+
+中间先提交一次事务，然后进入另一个事务
+*/
+function dbCommit($doRollback=false)
+{
+	global $DBH;
+	if ($DBH && $DBH->inTransaction())
+	{
+		if ($doRollback)
+			$DBH->rollback();
+		else
+			$DBH->commit();
+		$DBH->beginTransaction();
+	}
+}
+
+/**
 @fn Q($str, $dbh=$DBH)
 
 quote string
@@ -2187,15 +2205,15 @@ class AppBase
 			addLog((string)$e, 9);
 		}
 
-		try {
-			if ($ok) {
-				foreach ($this->onAfterActions as $fn) {
+		if ($ok) {
+			foreach ($this->onAfterActions as $fn) {
+				try {
 					$fn();
 				}
+				catch (Exception $e) {
+					logit('onAfterActions fails: ' . (string)$e);
+				}
 			}
-		}
-		catch (Exception $e) {
-			logit((string)$e);
 		}
 
 		try {
