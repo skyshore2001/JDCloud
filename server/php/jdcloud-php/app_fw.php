@@ -961,7 +961,16 @@ function dbconn($fnConfirm = null)
 /**
 @fn dbCommit($doRollback=false)
 
-中间先提交一次事务，然后进入另一个事务
+中间先提交一次事务，然后进入另一个事务。
+
+用于一段事务执行完后及时提交，避免下一段出问题后导致全部回滚，示例：
+
+	// 上一批完成出库
+	$this->outOfBinDone(["portType" => "出库缓存架 OR 出库缓存架-大件"]);
+	dbCommit();
+	//处理当前出库单据
+	$this->outOfBin($_POST);
+
 */
 function dbCommit($doRollback=false)
 {
