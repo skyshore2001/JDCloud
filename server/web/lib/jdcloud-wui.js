@@ -4065,12 +4065,15 @@ function getexp(k, v)
 (v5.5) 支持在key中包含查询提示。如"code/s"表示不要自动猜测数值区间或日期区间。
 比如输入'126231-191024'时不会当作查询126231到191024的区间。
 
+(v6) 日期、时间字段查询时，可使用`WUI.getTmRange`函数支持的时间区间如"今天"，"本周"，"本月", "今年", "近3天(小时|周|月|季度|年)”，"前3天(小时|周|月|季度|年)”等。
+
 @see wui-find-hint
 */
 self.queryHint = "查询示例\n" +
 	"文本：\"王小明\", \"王*\"(匹配开头), \"*上海*\"(匹配部分)\n" +
 	"数字：\"5\", \">5\", \"5-10\", \"5-10,12,18\"\n" +
-	"时间：\">=2017-10-1\", \"<2017-10-1 18:00\", \"2017-10\"(10月份区间), \"2017-10-01~2017-11-01\"(10月份区间)\n" +
+	"时间：\">=2017-10-1\", \"<2017-10-1 18:00\", \"2017-10\"(10月), \"2017-7-1~2017-10-1\"(7-9月即3季度)\n" +
+	'支持"今天"，"本周"，"本月", "今年", "近3天(小时|周|月|季度|年)”，"前3天(小时|周|月|季度|年)"等。\n' + 
 	"高级：\"!5\"(排除5),\"1-10 and !5\", \"王*,张*\"(王某或张某), \"empty\"(为空), \"0,null\"(0或未设置)\n";
 
 self.getQueryCond = getQueryCond;
@@ -4122,8 +4125,8 @@ function getQueryCond(kvList)
 		var str = '';
 		var bracket = false;
 		// NOTE: 根据字段名判断时间类型
-		var isTm = hint == "tm" || /(Tm|^tm)\d*$/.test(k);
-		var isDt = hint == "dt" || /(Dt|^dt)\d*$/.test(k);
+		var isTm = hint == "tm" || /(Tm|^tm|时间)\d*$/.test(k);
+		var isDt = hint == "dt" || /(Dt|^dt|日期)\d*$/.test(k);
 		$.each(arr, function (i, v1) {
 			if ( (i % 2) == 1) {
 				str += ' ' + v1.toUpperCase() + ' ';
@@ -4163,6 +4166,10 @@ function getQueryCond(kvList)
 							}
 							str1 += "(" + k + ">='" + dt1 + "' AND " + k + "<'" + dt2 + "')";
 						}
+					}
+					else if (mt = self.getTmRange(v2)) {
+						str1 += "(" + k + ">='" + mt[0] + "' AND " + k + "<'" + mt[1] + "')";
+						isHandled = true;
 					}
 				}
 				if (!isHandled && hint != "s") {
@@ -8052,9 +8059,10 @@ $.extend(dg_toolbar, {
 		}} // Ctrl-点击，清空查询条件后查询。
 	},
 	f: function (ctx) {
-		return {text:'查询', iconCls:'icon-search', handler: function () {
+		// 支持用户自定义查询。class是扩展属性，参考 EXT_LINK_BUTTON
+		return {text:'查询', class: 'splitbutton', iconCls:'icon-search', handler: function () {
 			showObjDlg(ctx.jdlg, FormMode.forFind, {jtbl: ctx.jtbl});
-		}}
+		}, menu: self.createFindMenu(ctx.jtbl) }
 	},
 	a: function (ctx) {
 		return {text:'新增', iconCls:'icon-add', handler: function () {
@@ -8215,10 +8223,11 @@ fname自动根据当前页面的title以及datagrid当前的queryParam自动拼�
 self.getQueryParamFromTable = self.getParamFromTable = getQueryParamFromTable;
 function getQueryParamFromTable(jtbl, param)
 {
-	var opt = jtbl.datagrid("options");
+	var datagrid = self.isTreegrid(jtbl)? "treegrid": "datagrid";
+	var opt = jtbl[datagrid]("options");
 
 	param = $.extend({}, opt.queryParams, param);
-	var selArr =  jtbl.datagrid("getChecked");
+	var selArr =  jtbl[datagrid]("getChecked");
 	if (selArr.length > 1 && selArr[0].id != null) {
 		var idList = $.map(selArr, function (e) { return e.id}).join(',');
 		param.cond = "t0.id IN (" + idList + ")";
@@ -8912,6 +8921,40 @@ $.extend($.fn.tabs.defaults, {
 	}
 });
 */
+
+/*
+datagrid options中的toolbar，我们使用代码指定方式，即
+
+	var btnFind = {text:'查询', iconCls:'icon-search', handler: function () {
+		showObjDlg(ctx.jdlg, FormMode.forFind, {jtbl: ctx.jtbl});
+	};
+	jtbl.datagrid({ ... 
+		toolbar: WUI.dg_toolbar(jtbl, jdlg, ... btnFind)
+	});
+
+缺点是它只能使用默认的linkbutton组件（在easyui里写死了）。
+此处进行hack，增加class属性，让它支持splitbutton/menubutton，示例：
+
+	var jmneu = $('#mm').menu({
+		onClick: function (item) {
+			console.log(item.id);
+		}
+	});
+	var btnFind = {text:'查询', class: 'splitbutton', iconCls:'icon-search', handler: ..., menu: jmenu};
+
+@key EXT_LINK_BUTTON
+*/
+$.fn.linkbutton0 = $.fn.linkbutton;
+$.fn.linkbutton = function (a, b) {
+	if ($.isPlainObject(a) && a.class) {
+		mCommon.assert(a.class == "splitbutton" || a.class == "menubutton");
+		var cls = a.class;
+		delete a.class;
+		return $.fn[cls].apply(this, arguments);
+	}
+	return $.fn.linkbutton0.apply(this, arguments);
+}
+$.extend($.fn.linkbutton, $.fn.linkbutton0);
 // }}}
 
 // 支持自动初始化mycombobox

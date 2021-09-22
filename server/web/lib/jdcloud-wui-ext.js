@@ -1638,6 +1638,133 @@ $.extend(self.dg_toolbar, {
 	}
 });
 
+// 用户自定义查询
+self.createFindMenu = createFindMenu;
+function createFindMenu(jtbl)
+{
+	var items = null; // elem: { text, query }
+	var curItem = null;
+	var ac = null;
+
+	var jmenu = $('<div>' + 
+		'<div class="btnSave" data-options="iconCls:\'icon-save\', id:\'btnSave\'">保存查询</div>' + 
+		'<div class="btnClear" data-options="iconCls:\'icon-remove\', id:\'btnClear\'">清除查询</div>' + 
+		'<div class="menu-sep"></div>' + 
+		'</div>');
+	initCtxMenu();
+
+	jmenu.menu({
+		onClick: function (item) {
+			console.log(item);
+			if (item.id == "btnSave") {
+				var param = self.getQueryParamFromTable(jtbl);
+				app_alert("设置查询名称为? ", "p", function (queryName) {
+					if (items == null) {
+						items = [];
+					}
+					items.push({
+						text: queryName,
+						query: param.cond
+					});
+					updateMenu();
+					saveItems();
+				});
+			}
+			else if (item.id == "btnClear") {
+				WUI.reload(jtbl, null, {});
+			}
+			else if (item.opt) {
+				WUI.reload(jtbl, null, {cond: item.opt.query});
+			}
+		},
+		onShow: function () {
+			var cond = self.getQueryParamFromTable(jtbl).cond;
+			var btnSave = jmenu.find(".btnSave");
+			jmenu.menu(cond? "enableItem": "disableItem", btnSave);
+			var btnClear = jmenu.find(".btnClear");
+			jmenu.menu(cond? "enableItem": "disableItem", btnClear);
+		}
+	})
+
+	setTimeout(function () {
+		var datagrid = self.isTreegrid(jtbl)? "treegrid": "datagrid";
+		ac = jtbl[datagrid]("options").url;
+		while (ac.action) {
+			ac = ac.action;
+		}
+		loadItems(); 
+		updateMenu();
+	});
+
+
+	return jmenu;
+
+	function updateMenu()
+	{
+		jmenu.find(".menu-sep").nextAll().remove();
+		jmenu.find(".menu-sep").toggle(items.length > 0);
+		$.each(items, function (i, e) {
+			jmenu.menu("appendItem", {
+				text: e.text,
+				opt: e
+			});
+		});
+	}
+
+	function loadItems() {
+		var name = "userQuery." + ac;
+		items = self.getStorage(name) || [];
+	}
+	function saveItems() {
+		var name = "userQuery." + ac;
+		self.setStorage(name, items);
+	}
+
+	// 删除和修改菜单项
+	function initCtxMenu() {
+		var jctxMenu = $('<div>' +
+			'<div data-options="iconCls:\'icon-remove\', id:\'btnDel\'">删除</div>' +
+			'<div data-options="iconCls:\'icon-edit\', id:\'btnEdit\'">修改</div>' +
+		'</div>');
+		jctxMenu.menu({
+			onClick: function (item) {
+				if (item.id == "btnDel") {
+					app_alert("删除查询项`" + curItem.text + "`?", "q", function () {
+						var idx = items.indexOf(curItem.opt);
+						items.splice(idx, 1);
+						jmenu.menu("removeItem", curItem.target);
+						saveItems();
+					});
+				}
+				else if (item.id == "btnEdit") {
+					app_alert("设置查询名称为?", "p", function (queryName) {
+						curItem.text = queryName;
+						curItem.opt.text = queryName;
+						jmenu.menu("setText", {
+							target: curItem.target,
+							text: queryName
+						});
+						saveItems();
+					}, {defValue: curItem.text});
+				}
+			}
+		});
+		jmenu.on("contextmenu", ".menu-item", function (ev) {
+			var item = jmenu.menu("getItem", this);
+			if (item.opt) {
+				curItem = item;
+				jctxMenu.menu("show", {
+					left: ev.pageX,
+					top: ev.pageY
+				})
+			}
+			ev.preventDefault();
+			ev.stopImmediatePropagation();
+			return false;
+		});
+	}
+}
+
 /**
 @key .wui-subobj
 
