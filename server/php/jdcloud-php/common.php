@@ -968,7 +968,7 @@ function pivot($objArr, $gcols, $ycolCnt=1, $pivotSumField=null)
 			throw new MyException(E_PARAM, "bad gcol $gcol: not in cols", "分组列不正确: $gcol");
 		}
 	}
-		
+
 	$xMap = []; // {x=>新行}
 	$xcols = array_diff($cols, $gcols);
 
@@ -979,12 +979,15 @@ function pivot($objArr, $gcols, $ycolCnt=1, $pivotSumField=null)
 		foreach ($xcols as $col) {
 			$xarr[$col] = $row[$col];
 		}
-		$x = join('-', $xarr);
+		$xarr1 = array_map(function ($e) {
+			return is_null($e)? "(null)": $e;
+		}, $xarr);
+		$x = join('-', $xarr1);
 
 		$garr = array_map(function ($col) use ($row) {
-			return $row[$col];
+			return is_null($row[$col])? "(null)": $row[$col];
 		}, $gcols);
-		$g = join('-', $garr) ?: "(null)";
+		$g = join('-', $garr);
 
 		if (! array_key_exists($x, $xMap)) {
 			$xMap[$x] = $xarr;

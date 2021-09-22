@@ -2794,8 +2794,11 @@ function showDataReport(opt, showPageOpt)
 					gres.forEach((e, i) => {
 						var rv = getFieldInfo(e);
 						var val = row[rv.title];
-						if (val == null) {
+						if (val === null || val === "(null)") {
 							val = "null";
+						}
+						else if (val === "") {
+							val = "empty";
 						}
 						else if (rv.enumMapReverse) {
 							val = rv.enumMapReverse[val];
@@ -2807,8 +2810,11 @@ function showDataReport(opt, showPageOpt)
 					gres2.forEach((e, i) => {
 						var rv = getFieldInfo(e);
 						var val = col.title.split('-')[i]; // col.title: "field1-field2"
-						if (val == "(null)") {
+						if (val === "(null)") {
 							val = "null";
+						}
+						else if (val === "") {
+							val = "empty";
 						}
 						else if (rv.enumMapReverse) {
 							val = rv.enumMapReverse[val];
