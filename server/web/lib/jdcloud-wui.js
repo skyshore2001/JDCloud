@@ -8591,6 +8591,18 @@ function resetPageNumber(jtbl)
 	}
 }
 
+/**
+@key datagrid.quickAutoSize
+
+扩展属性quickAutoSize。当行列很多时，表格加载极慢。如果是简单表格（全部列都显示且自动大小，没有多行表头等），可以用这个属性优化。
+在pageSimple中默认quickAutoSize为true。
+
+	var dgOpt = {
+		...
+		quickAutoSize: true // WUI对easyui-datagrid的扩展属性，用于大量列时提升性能. 参考: jquery.easyui.min.js
+	};
+	jtbl.datagrid(dgOpt);
+*/
 var defaultDgLoader = $.fn.datagrid.defaults.loader;
 $.extend($.fn.datagrid.defaults, {
 // 		fit: true,

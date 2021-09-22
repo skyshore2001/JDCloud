@@ -126,7 +126,8 @@ function initPageSimple(url, queryParams, onInitGrid)
 			columns: [ columns ],
 			data: data,
 			pagination: pagesz !== -1,
-			toolbar: WUI.dg_toolbar(jtbl, null, btnExport)
+			toolbar: WUI.dg_toolbar(jtbl, null, btnExport),
+			quickAutoSize: true // WUI对easyui-datagrid的扩展属性，用于大量列时提升性能. 参考: jquery.easyui.min.js
 		};
 		onInitGrid && onInitGrid(jpage, jtbl, dgOpt, columns, data);
 		jtbl.datagrid(dgOpt);
