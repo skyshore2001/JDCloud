@@ -1517,16 +1517,16 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 @see callSvc
 @see callSvcInt
 */
-	final function callSvc($tbl, $ac, $param=null, $postParam=null)
+	final function callSvc($tbl, $ac, $param=null, $postParam=null, $useTmpEnv=true)
 	{
 		// 已初始化过，创建新对象调用接口，避免污染当前环境。
 		if ($this->ac && $this->table) {
 			$acObj = new static();
-			return $acObj->callSvc($tbl ?: $this->table, $ac, $param, $postParam);
+			return $acObj->callSvc($tbl ?: $this->table, $ac, $param, $postParam, $useTmpEnv);
 		}
-		if ($param !== null || $postParam !== null) {
+		if ($useTmpEnv) {
 			return tmpEnv($param, $postParam, function () use ($tbl, $ac) {
-				return $this->callSvc($tbl, $ac);
+				return $this->callSvc($tbl, $ac, $param, $postParam, false);
 			});
 		}
 
@@ -1559,8 +1559,10 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		"set" => "更新",
 		"del" => "删除",
 		"batchAdd" => "批量添加",
-		"setIf" => "批量更新",
-		"delIf" => "批量删除"
+		"setIf" => "条件更新",
+		"delIf" => "条件删除",
+		"batchSet" => "批量更新",
+		"batchDel" => "批量删除"
 	];
 	protected final function after(&$ret) 
 	{

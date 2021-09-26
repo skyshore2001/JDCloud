@@ -100,29 +100,35 @@ class DirectReturn extends LogicException
 
 成功返回：
 
-	jdRet(E_OK);
-	jdRet(E_OK, ["id" => 100]);
+	jdRet(0);
+	// 返回 [0, null]
+
+	jdRet(0, ["id" => 100]);
 	// 返回 [0, {"id": 100}]
 
 出错返回：
 
 	jdRet(E_PARAM);
-	jdRet(E_PARAM, "bad param");
-	jdRet(E_PARAM, "bad param", "参数错");
-	// 返回 [1, "参数错", "bad param"] 注意结果中字符串顺序不同，第3参数才是最终给用户看的报错信息（常用中文）。
+	jdRet(E_PARAM, "bad param"); // 第2参数是用于调试的错误信息，一般用英文
+	jdRet(E_PARAM, "bad param", "参数错"); // 第3参数是给用户看的错误信息，一般用中文
+	// 返回 [1, "参数错", "bad param"] 注意最终输出JSON数组中第2、3参数顺序对调了，以符合筋斗云[code, data, debuginfo...]的格式。
 
-(v6) 自定义返回：(code传null)
+(v6) 几种特殊用法
 
-	jdRet(null, "{\"code\": 0, \"msg\": \"hello\"}");
+自定义返回：(code传null)
+
+	jdRet(null, '{"code": 0, "msg": "hello"}');
 	// 返回`{"code": 0, "msg": "hello"}`，注意不是标准筋斗云返回格式。
 
-注意：对于自定义文本输出，用`jdRet(null, data)`比直接echo要好，因为echo不记录日志到debug日志，在ApiLog中也看不到输出，不利于接口内容审计。
+直接返回已有的JSON串:
 
-	echo("{\"code\": 0, \"msg\": \"hello\"}");
-	jdRet(null, "{\"code\": 0, \"msg\": \"hello\"}");
+	$str = '{"id": 100}';
+	jdRet(0, dbExpr($str));
+	// 返回`[0, {"id":100}]`
 
 更规范地，对于接口自定义格式输出，应使用 $X_RET_FN 定义转换函数。
 
+@see $X_RET_FN
 */
 function jdRet($code = null, $internalMsg = null, $msg = null)
 {

@@ -457,6 +457,8 @@ class ApiFw_
 @param $data 返回数据。
 @param $internalMsg 当返回错误时，作为额外调试信息返回。
 
+setRet在框架内部使用，用户应调用jdRet。
+
 设置返回数据，最终返回JSON格式数据为 [ code, data, internalMsg, debugInfo1, ...]
 其中按照BQP协议，前两项为必须，后面的内容一般仅用于调试，前端应用不应处理。
 
@@ -465,17 +467,17 @@ class ApiFw_
 如果参数$data未指定，则操作成功时值为null（按BQP协议返回null表示客户端应忽略处理，一般无特定返回应指定$data="OK"）；操作失败时使用默认错误信息。
 
 调用完后，要返回的数据存储在全局数组 $X_RET 中，以JSON字符串形式存储在全局字符串 $X_RET_STR 中。
-注意：也可以直接设置$X_RET_STR为要返回的字符串，从而避免setRet函数对返回对象进行JSON序列化，如
+(v6) 也可以直接指定返回的JSON串，避免setRet函数对返回对象进行JSON序列化，使用dbExpr:
 
-	$GLOBALS["X_RET_STR"] = '{"id":100, "name":"aaa"}';
+	$str = '{"id":100, "name":"aaa"}';
 	// 如果不想继续执行后面代码，可以自行调用：
-	setRet(0, "OK");
-	throw new DirectReturn();
+	jdRet(0, dbExpr($str));
 	// 最终返回字符串为 [0, {"id":100, "name":"aaa"}]
 
-@see $X_RET
-@see $X_RET_STR
-@see $X_RET_FN
+@see jdRet
+@see $X_RET 只读，接口返回数据，格式为[code, data, ...]
+@see $X_RET_STR 只读，接口最终输出的字符串
+@see $X_RET_FN 自定义返回格式
 @see $errorFn
 @see errQuit()
 */
@@ -494,12 +496,14 @@ function setRet($code, $data = null, $internalMsg = null)
 	if (isset($internalMsg))
 		$X_RET[] = $internalMsg;
 
-	$debugLog = getenv("P_DEBUG_LOG") ?: 0;
-	if ($debugLog == 1 || ($debugLog == 2 && $X_RET[0] != 0)) {
-		$ac = $GLOBALS["X_APP"]? $GLOBALS["X_APP"]->getAc(): 'unknown';
-		$retStr = $code === null? $data: jsonEncode($X_RET);
-		$s = 'ac=' . $ac . ', apiLogId=' . ApiLog::$lastId . ', ret=' . $retStr . ", dbgInfo=" . jsonEncode($GLOBALS["g_dbgInfo"], true);
-		logit($s, true, 'debug');
+	if (ApiFw_::$SOLO) {
+		$debugLog = getenv("P_DEBUG_LOG") ?: 0;
+		if ($debugLog == 1 || ($debugLog == 2 && $X_RET[0] != 0)) {
+			$ac = $GLOBALS["X_APP"]? $GLOBALS["X_APP"]->getAc(): 'unknown';
+			$retStr = $code === null? $data: jsonEncode($X_RET);
+			$s = 'ac=' . $ac . ', apiLogId=' . ApiLog::$lastId . ', ret=' . $retStr . ", dbgInfo=" . jsonEncode($GLOBALS["g_dbgInfo"], true);
+			logit($s, true, 'debug');
+		}
 	}
 	global $X_RET_STR;
 	if ($code === null) {
@@ -516,7 +520,7 @@ function setRet($code, $data = null, $internalMsg = null)
 
 	if (ApiFw_::$SOLO) {
 		global $X_RET_FN;
-		if (! isset($X_RET_STR)) {
+		if (! $data instanceof DbExpr) {
 			if (is_callable(@$X_RET_FN)) {
 				$ret1 = $X_RET_FN($X_RET);
 				if ($ret1 === false)
@@ -531,11 +535,14 @@ function setRet($code, $data = null, $internalMsg = null)
 			$X_RET_STR = jsonEncode($X_RET, $GLOBALS["TEST_MODE"]);
 		}
 		else {
-			$X_RET_STR = "[" . $code . ", " . $X_RET_STR . "]";
+			$X_RET_STR = "[" . $code . ", " . $data->val . "]";
 		}
 		echoRet();
 	}
 	else {
+		if ($data instanceof DbExpr) {
+			$X_RET[1] = jsonDecode($data->val);
+		}
 		$errfn = $GLOBALS["errorFn"] ?: "errQuit";
 		if ($code != 0) {
 			$errfn($X_RET[0], $X_RET[1], $X_RET[2]);
@@ -1618,21 +1625,14 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 	return $acObj->callSvc($tbl, $ac1);
 }
 
+
 /**
-@fn callSvcInt($ac, $param=null, $postParam=null)
+@fn callSvcInt($ac, $param=null, $postParam=null, $useTmpEnv=true)
 
 内部调用另一接口，获得返回值。
-如果指定了$param或$postParam参数，则会备份现有环境，并在调用后恢复。
-否则直接使用现有环境。
+如果未指定$param或$postParam参数，则默认值为空数组。
 
-如果想手工逐项设置GET, POST参数，可分别用
-
-	setParam(key, value); // 设置get参数
-	// 或批量设置用 setParam({key => value});
-	$_POST[key] = value; // 设置post参数
-
-与callSvc不同的是，它不处理事务、不写ApiLog，不输出数据，更轻量；
-与tableCRUD不同的是，它支持函数型调用。
+与callSvc不同的是，它不处理事务、不写ApiLog，不输出数据，更轻量。
 
 示例：
 
@@ -1641,26 +1641,33 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 		"tel" => $params["vendorPhone"]
 	]);
 
+它在独立环境中执行，不会影响当前的$_GET, $_POST参数，除非指定参数useTmpEnv=false（一般不应指定）。
+内部若有异常会抛上来，特别地，`jdRet(0)`会当成正常调用。
+
+示例：用当前的get/post参数执行。
+
+	$vendorId = callSvcInt("Vendor.add", $_GET, $_POST);
+
 (v5.4) 上面例子会自动根据当前用户角色来选择AC类，还可以直接指定使用哪个AC类来调用，如：
 
 	$acObj = new AC2_Vendor();
-	$vendorId = $acObj->callSvc("Vendor", "query", [
+	$vendorId = $acObj->callSvc("Vendor", "add", null, [
 		"name" => $params["vendorName"],
 		"tel" => $params["vendorPhone"]
 	]);
 
 注意请自行确保AC类对当前角色兼容性，如用户角色调用了管理员的AC类，就可能出问题。
 
-@see setParam
-@see tableCRUD (obsolete)
+
+@see tmpEnv
 @see callSvc
 @see AccessControl::callSvc
 */
-function callSvcInt($ac, $param=null, $postParam=null)
+function callSvcInt($ac, $param=null, $postParam=null, $useTmpEnv=true)
 {
-	if ($param != null || $postParam != null) {
+	if ($useTmpEnv) {
 		return tmpEnv($param, $postParam, function () use ($ac) {
-			return callSvcInt($ac);
+			return callSvcInt($ac, $param, $postParam, false);
 		});
 	}
 
@@ -1669,7 +1676,7 @@ function callSvcInt($ac, $param=null, $postParam=null)
 		list($tmp, $tbl, $ac1) = $ms;
 		// TODO: check meta
 		$acObj = AccessControl::create($tbl, $ac1);
-		$ret = $acObj->callSvc($tbl, $ac1);
+		$ret = $acObj->callSvc($tbl, $ac1, $param, $postParam, false);
 	}
 	elseif (function_exists($fn)) {
 		$ret = $fn();
@@ -1686,6 +1693,8 @@ function callSvcInt($ac, $param=null, $postParam=null)
 @fn tmpEnv($param, $postParam, $fn)
 
 (v5.4) 在指定的GET/POST参数下执行fn函数，执行完后恢复初始环境。
+$param或$postParam为null时，与空数组`[]`等价。
+
 示例：
 
 	$param = ["cond" => "createTm>'2019-1-1'];
@@ -1693,25 +1702,41 @@ function callSvcInt($ac, $param=null, $postParam=null)
 		return callSvcInt("User.query");
 	});
 
+示例：用当前参数环境执行：
+
+	$ret = tmpEnv($_GET, $_POST, function () {
+		return callSvcInt("User.query");
+	});
 */
 function tmpEnv($param, $postParam, $fn)
 {
-	$bak = [$_GET, $_POST, $_REQUEST];
+	$bak = [$_GET, $_POST, $_REQUEST, ApiFw_::$SOLO, $GLOBALS["X_RET_FN"]];
 	$_GET = $param ?: [];
 	$_POST = $postParam ?: [];
 	assert(is_array($_GET) && is_array($_POST));
 	$_REQUEST = $_GET + $_POST;
+
+	ApiFw_::$SOLO = false;
 
 	$ret = null;
 	$ex = null;
 	try {
 		$ret = $fn();
 	}
+	catch (DirectReturn $ex0) {
+		global $X_RET;
+		if ($X_RET[0] === null) {
+			$ex = $ex0;
+		}
+		else if ($X_RET[0] == 0) {
+			$ret = $X_RET[1];
+		}
+	}
 	catch (Exception $ex1) {
 		$ex = $ex1;
 	}
 	// restore env
-	list($_GET, $_POST, $_REQUEST) = $bak;
+	list($_GET, $_POST, $_REQUEST, ApiFw_::$SOLO, $GLOBALS["X_RET_FN"]) = $bak;
 	if ($ex)
 		throw $ex;
 	return $ret;
@@ -2418,7 +2443,7 @@ class ApiApp extends AppBase
 		global $DBH;
 		if ($useTrans && ! $DBH->inTransaction())
 			$DBH->beginTransaction();
-		$ret = callSvcInt($ac);
+		$ret = callSvcInt($ac, null, null, false);
 		if ($useTrans && $DBH && $DBH->inTransaction())
 			$DBH->commit();
 		setRet(0, $ret);
