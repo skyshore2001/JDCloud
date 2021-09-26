@@ -1645,6 +1645,10 @@ function createFindMenu(jtbl)
 	var items = null; // elem: { text, query }
 	var curItem = null;
 	var ac = null;
+	if (jtbl.size() == 0) {
+		console.warn("createFindMenu: bad jtbl", jtbl);
+		return;
+	}
 
 	var jmenu = $('<div>' + 
 		'<div class="btnSave" data-options="iconCls:\'icon-save\', id:\'btnSave\'">保存查询</div>' + 
