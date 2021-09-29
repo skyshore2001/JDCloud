@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2021-09-08</div>
+<div>最后更新：2021-09-29</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -49,6 +49,7 @@ code {
 <p><a href="#JdcloudExt">JdcloudExt (module)</a></p>
 <p><a href="#JdcloudStat">JdcloudStat (module)</a></p>
 <p><a href="#pageSimple">pageSimple (module)</a></p>
+<p><a href="#dlgReportCond">dlgReportCond (module)</a></p>
 </div><hr>
 <h2>Keywords</h2>
 <div class="toc">
@@ -144,6 +145,7 @@ code {
 <p><a href="#compressImg">compressImg (fn)</a></p>
 <p><a href="#data-options">data-options (key)</a></p>
 <p><a href="#datagrid.formatter">datagrid.formatter (key)</a></p>
+<p><a href="#datagrid.quickAutoSize">datagrid.quickAutoSize (key)</a></p>
 <p><a href="#datagrid.sortable">datagrid.sortable (key)</a></p>
 <p><a href="#datagrid.sorter">datagrid.sorter (key)</a></p>
 <p><a href="#datagrid.styler">datagrid.styler (key)</a></p>
@@ -157,6 +159,7 @@ code {
 <p><a href="#dg_toolbar">dg_toolbar (fn)</a></p>
 <p><a href="#diffObj">diffObj (fn)</a></p>
 <p><a href="#disableBatch">disableBatch (var)</a></p>
+<p><a href="#dlgReportCond">dlgReportCond (module)</a></p>
 <p><a href="#doFind">doFind (fn)</a></p>
 <p><a href="#doSpecial">doSpecial (fn)</a></p>
 <p><a href="#easyui-tabs">easyui-tabs (key)</a></p>
@@ -2061,6 +2064,7 @@ var cond = getQueryCond({tm: [null, null]); // 返回null</code></pre>
 <p class="see"><strong>@see <a href="#doFind">doFind</a></strong> </p>
 <p>(v5.5) 支持在key中包含查询提示。如&quot;code/s&quot;表示不要自动猜测数值区间或日期区间。<br />
 比如输入'126231-191024'时不会当作查询126231到191024的区间。</p>
+<p>(v6) 日期、时间字段查询时，可使用<code>WUI.getTmRange</code>函数支持的时间区间如&quot;今天&quot;，&quot;本周&quot;，&quot;本月&quot;, &quot;今年&quot;, &quot;近3天(小时|周|月|季度|年)”，&quot;前3天(小时|周|月|季度|年)”等。</p>
 <p class="see"><strong>@see <a href="#wui-find-hint">wui-find-hint</a></strong> </p></div>
 <div class="block">
 <h2 id="getQueryParam">@fn getQueryParam(kvList)</h2>
@@ -2655,8 +2659,16 @@ var opt = jtbl[datagrid]("options");</code></pre></div>
 <p>临时reload一下，完事后恢复原url</p></div>
 <div class="block">
 <h2 id="reloadRow">@fn reloadRow(jtbl, rowData?)</h2>
-<p class="param"><strong>@param rowData</strong>  must be the original data from table row</p>
-<p>rowData如果未指定，则使用当前选择的行。</p></div>
+<p class="param"><strong>@param rowData</strong>  通过原始数据指定行，可通过WUI.getRow(jtbl)获取当前所选择的行数据。</p>
+<p>rowData如果未指定，则使用当前选择的行。</p>
+<p>示例：</p>
+<pre><code>var row = WUI.getRow(jtbl);
+if (row == null)
+    return;
+...
+WUI.reloadRow(jtbl, row);</code></pre>
+<p>如果要刷新整个表，可用WUI.reload(jtbl)。<br />
+刷新整个页面可用WUI.reloadPage()，但一般只用于调试，不用于生产环境。</p></div>
 <div class="block">
 <h2 id="showPage">@fn showPage(pageName, title?, paramArr?)</h2>
 <p class="param"><strong>@param pageName</strong>  由page上的class指定。</p>
@@ -2676,8 +2688,8 @@ WUI.showPage("pageHome", "我的首页"); // 默认标题是"首页"，这里指
 <pre><code>WUI.showPage("pageHome", "%s-" + cityName, [{cityName: cityName}]); //e.g. 显示 "首页-上海"</code></pre>
 <p>title用于唯一标识tab，即如果相同title的tab存在则直接切换过去。除非：<br />
 (v5.5) 如果标题以&quot;!&quot;结尾, 则每次都打开新的tab页。</p>
-<p>(v6) 支持通过paramArr第二参数指定列表页过滤条件，示例</p>
-<pre><code>WUI.showPage("pageEmployee", "员工", [null, {status: "在职"}]);</code></pre>
+<p>(v6) 支持通过paramArr第二参数指定列表页过滤条件(SHOW_PAGE_FILTER)，示例</p>
+<pre><code>WUI.showPage("pageEmployee", "员工", [null, {cond: {status: "在职"}}]);</code></pre>
 <p>它直接影响页面中的datagrid的查询条件。</p></div>
 <div class="block">
 <h2 id="wui-pageFile">@key wui-pageFile</h2>
@@ -2695,6 +2707,7 @@ WUI.showPage("pageHome", "我的首页"); // 默认标题是"首页"，这里指
 <p style="margin-left:0em"><a href="#showDlg-5 reset控制">5 reset控制</a></p>
 <p style="margin-left:0em"><a href="#showDlg-6 控制底层jquery-easyui对话框">6 控制底层jquery-easyui对话框</a></p>
 <p style="margin-left:0em"><a href="#showDlg-7 复用dialog模板">7 复用dialog模板</a></p>
+<p style="margin-left:0em"><a href="#showDlg-8 动态生成字段的对话框">8 动态生成字段的对话框</a></p>
 </div>
 <p class="param"><strong>@param jdlg</strong>  可以是jquery对象，也可以是selector字符串或DOM对象，比如 "#dlgOrder".</p>
 <p>注意：当对话框动态从外部加载时，jdlg=$(&quot;#dlgOrder&quot;) 一开始会为空数组，这时也可以调用该函数，且调用后jdlg会被修改为实际加载的对话框对象。</p>
@@ -2712,6 +2725,8 @@ WUI.showPage("pageHome", "我的首页"); // 默认标题是"首页"，这里指
 <li>opt.title: String. 如果指定，则更新对话框标题。</li>
 <li>opt.dialogOpt: 底层jquery-easyui dialog选项。参考http://www.jeasyui.net/plugins/159.html</li>
 <li>opt.reload: (v5.5) 先重置再加载。只用于开发环境，方便在Chrome控制台中调试。</li>
+<li>opt.meta: (v6) 指定通过meta自动生成的输入项</li>
+<li>opt.metaParent: (v6) 指定meta自动生成项的父结点，默认为对话框下第一个table，仅当meta存在时有效</li>
 </ul>
 <h4 id="showDlg-1 对话框加载">1 对话框加载</h4>
 <p>示例1：静态加载（在web/store.html中的my-pages中定义），通过对话框的id属性标识。</p>
@@ -2739,7 +2754,7 @@ WUI.showPage("pageHome", "我的首页"); // 默认标题是"首页"，这里指
 <p>示例4：不用HTML，直接JS中创建DOM：</p>
 <pre><code>var jdlg = $('&lt;div title="商户登录"&gt;Hello World&lt;/div&gt;');
 WUI.showDlg(jdlg);</code></pre>
-<p>适合编程动态实现的对话框。参考使用更简单的WUI.showDlgByMeta。</p>
+<p>适合编程动态实现的对话框。参考使用更简单的WUI.showDlgByMeta或WUI.showDlg的meta选项。</p>
 <h4 id="showDlg-2 对话框编程模式">2 对话框编程模式</h4>
 <p>对话框有两种编程模式，一是通过opt参数在启动对话框时设置属性及回调函数(如onOk)，另一种是在dialog初始化函数中处理事件(如validate事件)实现逻辑，有利于独立模块化。</p>
 <p>对话框显示时会触发以下事件：</p>
@@ -2886,17 +2901,51 @@ jfrm.on("beforeshow",function(ev, formMode, opt) {
     opt.dialogOpt = dialogOpt;
 })</code></pre>
 <h4 id="showDlg-7 复用dialog模板">7 复用dialog模板</h4>
-<p>(v5.3引入，v6已移除)</p>
-<p>本功能已移除，请参考 WUI.options.moduleExt</p>
-<p>如 dlgUDT<strong>A 与 dlgUDT</strong>B 共用dlgUDT对话框模板，只要用&quot;__&quot;分隔对话框模板文件和后缀名。</p>
-<pre><code>WUI.showDlg("dlgUDT__A"); // 自动加载page/dlgUDT.html文件</code></pre>
+<p>(v5.3引入，v6修改) 该机制可用于自定义表(UDT, 对话框动态生成)。</p>
+<p>如 dlgUDT_inst_A 与 dlgUDT_inst_B 会共用dlgUDT对话框模板，只要用&quot;<em>inst</em>&quot;分隔对话框模板文件和后缀名。</p>
+<pre><code>WUI.showDlg("dlgUDT_inst_A"); // 自动加载page/dlgUDT.html文件</code></pre>
+<p>若涉及重用其它模块中的页面或对话框，请参考 WUI.options.moduleExt</p>
+<h4 id="showDlg-8 动态生成字段的对话框">8 动态生成字段的对话框</h4>
+<p>(v6) 该机制可用于为已有对话框动态追加字段（比如用于用户自定义字段UDF)，或是只用纯JS而不用html来创建对话框。</p>
+<p>示例：为对话框dlgReportCond追加两个输入字段。</p>
+<pre><code>var itemArr = [
+    // title, dom, hint?
+    {title: "状态", dom: '&lt;select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap"&gt;&lt;/select&gt;'},
+    {title: "订单号", dom: "&lt;textarea name='param' rows=5&gt;&lt;/textarea&gt;", hint: '每行一个订单号'}
+];
+WUI.showDlg("#dlgReportCond", {
+    meta: itemArr,
+    onOk: function (data) {
+        console.log(data)
+    },
+    // metaParent: "table:first" // 也可指定插入点父结点
+});</code></pre>
+<p>通过指定opt.meta动态生成字段，这些字段默认放置于对话框中的第一个table下。<br />
+一般详情对话框DOM模型均为&quot;<form><table></table></form>&quot;。</p>
+<p>注意由于对话框有id，只会创建一次。之后再调用也不会再创建。如果希望能创建多的对话框互不影响，可以用&quot;#dlgReportCond_inst_A&quot;这种方式指定是用它的一个实例。</p>
+<p>示例2：动态创建一个登录对话框</p>
+<pre><code>var jdlg = $('&lt;form title="商户登录"&gt;&lt;table&gt;&lt;/table&gt;&lt;/form&gt;');
+var meta = [
+    {title: "用户名", dom: '&lt;input name="uname" class="easyui-validatebox" required&gt;', hint: "字母开头或11位手机号"},
+    {title: "密码", dom: '&lt;input type="password" name="pwd" class="easyui-validatebox" required&gt;'}
+];
+WUI.showDlg(jdlg, {
+    meta: meta,
+    onOk: function (data) {
+        console.log(data); // 根据meta中每个带name项的输入框生成：{uname, pwd}
+        callSvr("login", function () {
+            app_show("登录成功");
+            WUI.closeDlg(jdlg);
+        }, data);
+    }
+});</code></pre>
 <p class="see"><strong>@see <a href="#showDlgByMeta">showDlgByMeta</a></strong> </p>
 <p class="see"><strong>@see <a href="#showObjDlg">showObjDlg</a></strong> </p></div>
 <div class="block">
-<h2 id="showDlgByMeta">@fn showDlgByMeta(itemArr, opt)</h2>
+<h2 id="showDlgByMeta">@fn showDlgByMeta(meta, opt)</h2>
 <p>WUI.showDlg的简化版本，通过直接指定组件创建对话框。</p>
 <ul>
-<li>itemArr: [{title, dom, hint?}]</li>
+<li>meta: [{title, dom, hint?}]</li>
 <li>opt: 同showDlg的参数</li>
 </ul>
 <p>示例：</p>
@@ -2905,14 +2954,14 @@ jfrm.on("beforeshow",function(ev, formMode, opt) {
     {title: "接口名", dom: "&lt;input name='ac' required&gt;", hint: "示例: Ordr.query"},
     {title: "参数", dom: "&lt;textarea name='param' rows=5&gt;&lt;/textarea&gt;", hint: '示例: {cond: {createTm: "&gt;2020-1-1"}, res: "count(*) cnt", gres: "status"}'}
 ];
-WUI.showDlgByMeta(itemArr, {
+WUI.showDlgByMeta(meta, {
     title: "通用查询",
     modal: false,
     onOk: function (data) {
         app_alert(JSON.stringify(data));
     }
 });</code></pre>
-<p class="see"><strong>@see <a href="#showDlg">showDlg</a></strong> </p></div>
+<p class="see"><strong>@see <a href="#showDlg">showDlg</a></strong>  参考opt.meta选项</p></div>
 <div class="block">
 <h2 id="batchOp">@fn batchOp(obj, ac, jtbl, opt={data, acName="操作", onBatchDone, batchOpMode=0, queryParam})</h2><div class="toc"><p style="margin-left:0em"><a href="#batchOp-1 示例1: 无须对话框填写额外信息的批量操作">1 示例1: 无须对话框填写额外信息的批量操作</a></p>
 <p style="margin-left:0em"><a href="#batchOp-2 示例2：打开对话框，批量设置一些信息">2 示例2：打开对话框，批量设置一些信息</a></p>
@@ -3415,6 +3464,18 @@ Formatter = $.extend(WUI.formatter, Formatter);</code></pre>
 &lt;th data-options="field:'userName', sortable:true, formatter:Formatter.linkTo('userId', '#dlgUser')"&gt;用户&lt;/th&gt;
 &lt;th data-options="field:'status', sortable:true, jdEnumMap: OrderStatusMap, formatter: Formatter.orderStatus"&gt;状态&lt;/th&gt;
 &lt;th data-options="field:'done', sortable:true, formatter: Formatter.flag()"&gt;已处理&lt;/th&gt;</code></pre></div>
+<div class="block">
+<h2 id="datagrid.quickAutoSize">@key datagrid.quickAutoSize</h2>
+<p>扩展属性quickAutoSize。当行很多且列很多时，表格加载极慢。如果是简单表格（全部列都显示且自动大小，没有多行表头等），可以用这个属性优化。<br />
+在pageSimple中默认quickAutoSize为true。</p>
+<pre><code>var dgOpt = {
+    ...
+    pageSize: 200, // 默认一页20，改为200后，默认性能将显著下降; 设置为500后，显示将超过10秒
+    pageList: [200, 500, 1000],
+    quickAutoSize: true // WUI对easyui-datagrid的扩展属性，用于大量列时提升性能. 参考: jquery.easyui.min.js
+};
+jtbl.datagrid(dgOpt);</code></pre>
+<p>其原因是easyui-datagrid的autoSizeColumn方法有性能问题。当一页行数很多时可尝试使用quickAutoSize选项。</p></div>
 <div class="block">
 <h2 id=".noData">@key .noData</h2>
 <p>CSS类, 可定义无数据提示的样式</p></div>
@@ -4416,16 +4477,22 @@ var isKF = g_data.hasRole("客服");</code></pre>
 };</code></pre>
 <p class="see"><strong>@see <a href="#fname">fname</a></strong> </p></div>
 <div class="block">
-<h2 id=".wui-subobj">@key .wui-subobj</h2><div class="toc"><p style="margin-left:0em"><a href="#.wui-subobj-1 示例1：可以增删改查的子表：">1 示例1：可以增删改查的子表：</a></p>
-<p style="margin-left:0em"><a href="#.wui-subobj-2 示例2：主表记录添加时不需要展示，添加之后子表/关联表可以增删改查：">2 示例2：主表记录添加时不需要展示，添加之后子表/关联表可以增删改查：</a></p>
-<p style="margin-left:0em"><a href="#.wui-subobj-3 示例3：和主表字段一起添加，添加后变成只读不可再新增、更新、删除：">3 示例3：和主表字段一起添加，添加后变成只读不可再新增、更新、删除：</a></p>
-<p style="margin-left:0em"><a href="#.wui-subobj-4 示例4: 动态启用/禁用子表">4 示例4: 动态启用/禁用子表</a></p>
-<p style="margin-left:0em"><a href="#.wui-subobj-5 示例5：显示为树表(treegrid)">5 示例5：显示为树表(treegrid)</a></p>
-<p style="margin-left:0em"><a href="#.wui-subobj-6 示例6：offline模式时显示虚拟字段以及提交时排除虚拟字段">6 示例6：offline模式时显示虚拟字段以及提交时排除虚拟字段</a></p>
+<h2 id=".wui-subobj">@key .wui-subobj</h2><div class="toc"><p style="margin-left:0em"><a href="#.wui-subobj-1 示例：可以增删改查的子表：">1 示例：可以增删改查的子表：</a></p>
+<p style="margin-left:0em"><a href="#.wui-subobj-2 动态修改选项">2 动态修改选项</a></p>
+<p style="margin-left:0em"><a href="#.wui-subobj-3 定制子对象操作按钮toobar">3 定制子对象操作按钮toobar</a></p>
+<p style="margin-left:0em"><a href="#.wui-subobj-4 添加主对象时检查子表">4 添加主对象时检查子表</a></p>
+<p style="margin-left:0em"><a href="#.wui-subobj-5 示例2：主表记录添加时不需要展示，添加之后子表/关联表可以增删改查：">5 示例2：主表记录添加时不需要展示，添加之后子表/关联表可以增删改查：</a></p>
+<p style="margin-left:0em"><a href="#.wui-subobj-6 示例3：和主表字段一起添加，添加后变成只读不可再新增、更新、删除：">6 示例3：和主表字段一起添加，添加后变成只读不可再新增、更新、删除：</a></p>
+<p style="margin-left:0em"><a href="#.wui-subobj-7 示例4: 动态启用/禁用子表">7 示例4: 动态启用/禁用子表</a></p>
+<p style="margin-left:0em"><a href="#.wui-subobj-8 示例5：显示为树表(treegrid)">8 示例5：显示为树表(treegrid)</a></p>
+<p style="margin-left:0em"><a href="#.wui-subobj-9 示例6：offline模式时显示虚拟字段以及提交时排除虚拟字段">9 示例6：offline模式时显示虚拟字段以及提交时排除虚拟字段</a></p>
 </div>
-<p>选项：{obj, relatedKey, res?, dlg?/关联的明细对话框, datagrid/treegrid}</p>
+<p>选项：opt={obj, relatedKey, res?, dlg?/关联的明细对话框, datagrid/treegrid}</p>
 <p>这些选项在dlg设置时有效：{valueField, readonly, objParam, toolbar, vFields}</p>
-<h4 id=".wui-subobj-1 示例1：可以增删改查的子表：">1 示例1：可以增删改查的子表：</h4>
+<ul>
+<li>opt.forceLoad: 显示为Tab页时（即每个Tab页一个子表），为减少后端查询，若该Tab页尚未显示，是不加载该子表的。设置forceLoad为true则无论是否显示均强制加载。</li>
+</ul>
+<h4 id=".wui-subobj-1 示例：可以增删改查的子表：">1 示例：可以增删改查的子表：</h4>
 <pre><code>&lt;div class="wui-subobj" data-options="obj:'CusOrder', relatedKey:'cusId', valueField:'orders', dlg:'dlgCusOrder'"&gt;
     &lt;p&gt;&lt;b&gt;物流订单&lt;/b&gt;&lt;/p&gt;
     &lt;table&gt;
@@ -4439,7 +4506,7 @@ var isKF = g_data.hasRole("客服");</code></pre>
 <p>选项说明：</p>
 <ul>
 <li>
-<p>obj: 子表对象，与relatedKey字段一起自动生成子表查询，即<code>{obj}.query</code>接口。</p>
+<p>opt.obj: 子表对象，与relatedKey字段一起自动生成子表查询，即<code>{obj}.query</code>接口。</p>
 <pre><code>class AC2_CusOrder extends AccessControl
 {
 }</code></pre>
@@ -4451,12 +4518,12 @@ var isKF = g_data.hasRole("客服");</code></pre>
 支持多个关联字段设置, 如<code>relId={id} AND type={type}</code>.<br />
 支持in方式关联，如<code>id in ({itemIds})</code>，其中itemIds字段为逗号分割的id列表，如&quot;100,102&quot;</p>
 </li>
-<li>dlg: 对应子表详情对话框。如果指定，则允许添加、更新、查询操作。</li>
+<li>opt.dlg: 对应子表详情对话框。如果指定，则允许添加、更新、查询操作。</li>
 </ul>
 <p>以下字段仅当关联对话框（即dlg选项设置）后有效：</p>
 <ul>
 <li>
-<p>valueField: 对应后端子表名称，在随主表一起添加子表时，会用到该字段。如果不指定，则不可在主表添加时一起添加。它对应的后端实现示例如下：</p>
+<p>opt.valueField: 对应后端子表名称，在随主表一起添加子表时，会用到该字段。如果不指定，则不可在主表添加时一起添加。它对应的后端实现示例如下：</p>
 <pre><code>class AC2_Customer extends AccessControl
 {
     protected $subobj = [
@@ -4465,9 +4532,9 @@ var isKF = g_data.hasRole("客服");</code></pre>
 }</code></pre>
 </li>
 <li>
-<p>readonly: 默认为false, 设置为true则在主表添加之后，不可对子表进行添加、更新或删除。</p>
+<p>opt.readonly: 默认为false, 设置为true则在主表添加之后，不可对子表进行添加、更新或删除。</p>
 </li>
-<li>objParam: 关联的明细对象对话框的初始参数, 对应dialogOpt.objParam. 例如有 offline, onCrud()等选项. 
+<li>opt.objParam: 关联的明细对象对话框的初始参数, 对应dialogOpt.objParam. 例如有 offline, onCrud()等选项. 
 <p class="see"><strong>@see <a href="#objParam">objParam</a></strong> </p></li>
 </ul>
 <p>示例：在对话框dlgOrder上设置子表关联对话框dlgOrder1:</p>
@@ -4481,44 +4548,63 @@ function onBeforeShow(ev, formMode, opt)
     tab1Opt.objParam = { type: type };
     ...
 }</code></pre>
-<ul>
-<li>toolbar: 指定修改对象时的增删改查按钮, Enum(a-add, s-set, d-del, f-find, r-refresh), 字符串或数组, 缺省是所有按钮, 空串&quot;&quot;或空数组[]表示没有任何按钮.<br />
-示例：只留下删除和刷新: toolbar='rd'
-<p class="see"><strong>@see <a href="#dg_toolbar">dg_toolbar</a></strong> </p></li>
-</ul>
-<p>可以在validate事件中，对添加的子表进行判断处理：</p>
-<pre><code>function onValidate(ev, mode, oriData, newData) 
-{
-    // 由于valueField选项设置为"orders", 子表数组会写在newDate.orders中
-    if (newData.orders.length == 0) {
-        WUI.app_alert("请添加子表项!", "w");
-        return false;
-    }
-    // 假如需要压缩成一个字符串：
-    // newData.orders = WUI.objarr2list(newData.orders, ["type", "amount"]);
-}</code></pre>
+<h4 id=".wui-subobj-2 动态修改选项">2 动态修改选项</h4>
 <p>选项可以动态修改，如：</p>
 <pre><code>// 在dialog的beforeshow回调中：
 var jsub = jdlg.find(".wui-subobj");
 WUI.getOptions(jsub).readonly = !g_data.hasRole("emp,mgr");</code></pre>
+<h4 id=".wui-subobj-3 定制子对象操作按钮toobar">3 定制子对象操作按钮toobar</h4>
 <ul>
-<li>forceLoad: 显示为Tab页时（即每个Tab页一个子表），为减少后端查询，若该Tab页尚未显示，是不加载该子表的。设置forceLoad为true则无论是否显示均强制加载。</li>
+<li>opt.toolbar: 指定修改对象时的增删改查按钮, Enum(a-add, s-set, d-del, f-find, r-refresh), 字符串或数组, 缺省是所有按钮, 空串&quot;&quot;或空数组[]表示没有任何按钮.</li>
 </ul>
-<h4 id=".wui-subobj-2 示例2：主表记录添加时不需要展示，添加之后子表/关联表可以增删改查：">2 示例2：主表记录添加时不需要展示，添加之后子表/关联表可以增删改查：</h4>
+<p>示例：只留下删除和刷新: </p>
+<pre><code>&lt;div ... class="wui-subobj" data-options="..., toolbar:'rd'"</code></pre>
+<p>示例：为子表定制一个操作按钮“取消”：</p>
+<pre><code>// function initPageXXX() 自定义个按钮
+var btnCancelOrder = {text: "取消订单", iconCls:'icon-delete', handler: function () {
+    var row = WUI.getRow(jtbl);
+    if (row == null)
+        return;
+    callSvc("Ordr.cancel", {id: row.id}, function () {
+        app_show("操作完成");
+        WUI.reloadRow(jtbl, row);
+    })
+}};
+
+// 在dialog的beforeshow回调中：
+var jsub = jdlg.find(".wui-subobj");
+WUI.getOptions(jsub).toolbar = ["r", "f", "s", btnCancelOrder]</code></pre>
+<p class="see"><strong>@see <a href="#dg_toolbar">dg_toolbar</a></strong> </p>
+<h4 id=".wui-subobj-4 添加主对象时检查子表">4 添加主对象时检查子表</h4>
+<p>可以在validate事件中，对添加的子表进行判断处理：</p>
+<pre><code>function onValidate(ev, mode, oriData, newData) 
+{
+    if (mode == FormMode.forAdd) {
+        // 由于valueField选项设置为"orders", 子表数组会写在newDate.orders中
+        if (newData.orders.length == 0) {
+            WUI.app_alert("请添加子表项!", "w");
+            return false;
+        }
+        // 假如需要压缩成一个字符串：
+        // newData.orders = WUI.objarr2list(newData.orders, ["type", "amount"]);
+    }
+}</code></pre>
+<p>注意：只有在主对象添加时可以检查子表。在更新模式下，子对象的更改是直接单独提交的，主对象中无法处理。</p>
+<h4 id=".wui-subobj-5 示例2：主表记录添加时不需要展示，添加之后子表/关联表可以增删改查：">5 示例2：主表记录添加时不需要展示，添加之后子表/关联表可以增删改查：</h4>
 <pre><code>&lt;div class="wui-subobj" data-options="obj:'CusOrder', relatedKey:'cusId', dlg:'dlgCusOrder'&gt;
     ...
 &lt;/div&gt;</code></pre>
-<h4 id=".wui-subobj-3 示例3：和主表字段一起添加，添加后变成只读不可再新增、更新、删除：">3 示例3：和主表字段一起添加，添加后变成只读不可再新增、更新、删除：</h4>
+<h4 id=".wui-subobj-6 示例3：和主表字段一起添加，添加后变成只读不可再新增、更新、删除：">6 示例3：和主表字段一起添加，添加后变成只读不可再新增、更新、删除：</h4>
 <pre><code>&lt;div class="wui-subobj" data-options="obj:'CusOrder', relatedKey:'cusId', valueField:'orders', dlg:'dlgCusOrder', readonly: true"&gt;
     ...
 &lt;/div&gt;</code></pre>
-<p>示例4：最简单的只读子表，只查看，也不关联对话框</p>
+<p>示例：最简单的只读子表，只查看，也不关联对话框</p>
 <pre><code>&lt;div class="wui-subobj" data-options="obj:'CusOrder', res:'id,tm,status,amount', relatedKey:'cusId'"&gt;
 &lt;/div&gt;</code></pre>
 <ul>
-<li>res: 指定返回字段以提高性能，即query接口的res参数。注意在关联详细对话框（即指定dlg选项）时，一般不指定res，否则双击打开对话框时会字段显示不全。</li>
+<li>opt.res: 指定返回字段以提高性能，即query接口的res参数。注意在关联详细对话框（即指定dlg选项）时，一般不指定res，否则双击打开对话框时会字段显示不全。</li>
 </ul>
-<h4 id=".wui-subobj-4 示例4: 动态启用/禁用子表">4 示例4: 动态启用/禁用子表</h4>
+<h4 id=".wui-subobj-7 示例4: 动态启用/禁用子表">7 示例4: 动态启用/禁用子表</h4>
 <p>启用或禁用可通过事件发送指令:<br />
 jo.trigger(&quot;setDisabled&quot;, boolDisabledVal); // 会自动刷新UI</p>
 <p>示例: 在物料明细对话框(dlgItem)中, 在Tabs组件中放置&quot;组合&quot;子表, 当下拉框选择&quot;组合&quot;时, 启用&quot;组合&quot;子表Tab页:</p>
@@ -4574,7 +4660,7 @@ function toggleItem1(type)
     var dis = type!="P";
     jdlg.find("#tabItem1").trigger("setDisabled", dis);
 }</code></pre>
-<h4 id=".wui-subobj-5 示例5：显示为树表(treegrid)">5 示例5：显示为树表(treegrid)</h4>
+<h4 id=".wui-subobj-8 示例5：显示为树表(treegrid)">8 示例5：显示为树表(treegrid)</h4>
 <ul>
 <li>opt.datagrid: 设置easyui-datagrid的选项</li>
 <li>opt.treegrid: 如果指定，则以树表方式展示子表，设置easyui-treegrid的选项</li>
@@ -4587,7 +4673,7 @@ function toggleItem1(type)
 }</code></pre>
 <p>子表以树表显示时，不支持分页（查询时自动设置参数pagesz=-1）。</p>
 <p class="see"><strong>@see <a href="#treegrid">treegrid</a></strong> </p>
-<h4 id=".wui-subobj-6 示例6：offline模式时显示虚拟字段以及提交时排除虚拟字段">6 示例6：offline模式时显示虚拟字段以及提交时排除虚拟字段</h4>
+<h4 id=".wui-subobj-9 示例6：offline模式时显示虚拟字段以及提交时排除虚拟字段">9 示例6：offline模式时显示虚拟字段以及提交时排除虚拟字段</h4>
 <p>在添加主对象时，对子对象的添加、更新、删除操作不会立即操作数据库，而是将最终子对象列表与主对象一起提交（接口是主对象.add）。<br />
 我们称这时的子对象对话框为offline模式，它会带来一个问题，即子对象对话框上点确定后，子表列表中无法显示虚拟字段。</p>
 <p>解决方案是：1. 在对话框中用jd_vField选项指定虚拟字段名，2. 在subobj选项中以vFields选项指定这些字段只显示而不最终提交到add接口中。</p>
@@ -4747,10 +4833,14 @@ var rv = diffObj("hello", 99);
 <p>tmField: 如果用到y,m,d等时间统计字段，应指定使用哪个时间字段进行运算。后端可能已经定义了时间字段(tmCols)，指定该选项可覆盖后端的定义。</p>
 </li>
 <li>
-<p>resFields: 用户可选择的字段列表。如果指定，则工具栏多出“统计”按钮，可供用户进一步设置。它应包含gres,gres2,tmField,cond中出现的所有字段。</p>
+<p>resFields: 用户可选择的字段列表（如res, cond中出现的字段）。如果指定（或指定了gres或gres2），则工具栏多出“统计”按钮，可供用户进一步设置。<br />
+注意gres,gres2,tmField中的字段会被自动加入，在resFields中指定或不指定都可以。</p>
 </li>
 <li>showChart: 是否显示统计图表对话框。</li>
-<li>tmUnit: 用于统计图，特别用于月报、日报等，会自动补齐缺少的时间。常用有：&quot;y,m&quot;-年月,&quot;y,m,d&quot;-年月日。注意一旦指定tmUnit则orderby选项自动与tmUnit相同。</li>
+<li>
+<p>tmUnit: 用于统计图，特别用于月报、日报等，会自动补齐缺少的时间。常用有：&quot;y,m&quot;-年月,&quot;y,m,d&quot;-年月日。注意一旦指定tmUnit则orderby选项自动与tmUnit相同。</p>
+</li>
+<li>showSum: 自动添加统计行或列</li>
 </ul>
 <p class="see"><strong>@see <a href="#JdcloudStat.tmUnit">JdcloudStat.tmUnit</a></strong>  </p>
 <ul>
@@ -4770,14 +4860,14 @@ var rv = diffObj("hello", 99);
 <pre><code>WUI.showDataReport({
     ac: "Ordr.query",
     res: "SUM(amount) 总和", // 不指定则默认为`COUNT(1) 总数`
-    tmField: "createTm 创建时间", // 注意如果定义了resFields，则gres,gres2中字段要与其中定义一致；否则报表对话框显示字段时有问题
+    tmField: "createTm 创建时间",
     gres: ["y 年,m 月", "status 状态=CR:新创建;RE:已完成;CA:已取消"],
     gres2: ["dscr 订单类别"],
     cond: WUI.getQueryCond({createTm: "&gt;=2020-1-1 and &lt;2021-1-1", status: "CR,RE,CA"}), // 生成条件字符串
     detailPageName: "pageOrder",
     title: "订单月报",
 
-    // 定义用户可选的字段，定义它会在工具栏显示“统计”按钮。注意不需要定义y,m等时间字段，它们由tmField自动生成。
+    // 定义用户可选的字段，定义它或gres/gres2会在工具栏显示“统计”按钮。注意不需要定义y,m等时间字段，它们由tmField自动生成。
     resFields: "amount 金额, status 状态=CR:新创建;RE:已完成;CA:已取消, dscr 订单类别, userName 用户, userPhone 用户手机号, createTm 创建时间",
 
     // showChart: true, // 显示统计图
@@ -4792,12 +4882,26 @@ var rv = diffObj("hello", 99);
     detailPageName: "pageOrder",
     title: "订单状态占比",
 
-    // 定义用户可选的字段，定义它会在工具栏显示“统计”按钮。注意不需要定义y,m等时间字段，它们由tmField自动生成。
+    // 定义用户可选的字段，定义它或gres/gres2会在工具栏显示“统计”按钮。注意不需要定义y,m等时间字段，它们由tmField自动生成。
     resFields: "amount 金额, status 状态=CR:新创建;RE:已完成;CA:已取消, dscr 订单类别, userName 用户, userPhone 用户手机号, createTm 创建时间",
 
     showChart: true, // 显示统计图
     orderby: "总数 DESC"
-});</code></pre></div>
+});</code></pre>
+<p>示例：多个统计项：订单状态报表，同时统计数量和金额：</p>
+<pre><code>WUI.showDataReport({
+    ac: "Ordr.query",
+    res: "COUNT(1) 总数, SUM(amount) 总金额",
+    gres: ["status 状态=CR:新创建;RE:已完成;CA:已取消"],
+    // gres2: ["dscr 订单类别"], // 试试加上列统计项有何样式区别
+    detailPageName: "pageOrder",
+    title: "订单状态占比",
+    // showSum: true, // 自动添加行列统计
+
+    // 定义用户可选的字段，定义它会在工具栏显示“统计”按钮。注意不需要定义y,m等时间字段，它们由tmField自动生成。
+    resFields: "amount 金额, status 状态=CR:新创建;RE:已完成;CA:已取消, dscr 订单类别, userName 用户, userPhone 用户手机号, createTm 创建时间",
+});</code></pre>
+<p>注意：统计图(showChart:true)目前只支持第一个统计项。</p></div>
 <div class="block">
 <h2 id="showDlgChart">@fn showDlgChart(data, rs2StatOpt, seriesOpt, chartOpt)</h2>
 <ul>
@@ -5591,7 +5695,8 @@ jtbl.datagrid({
     ...
 });</code></pre>
 <p>回调函数参数data是对话框中设置了name的输入字段，默认有tm1, tm2。</p>
-<p>TODO: 允许定制查询条件对话框，如添加查询字段，可参考dlgImport.js设计，添加forXXX类。</p>
+<p>允许定制查询条件对话框，如添加查询字段，详见dlgReportCond对话框文档。</p>
+<p class="see"><strong>@see <a href="#dlgReportCond">dlgReportCond</a></strong> </p>
 <h4 id="pageSimple-3 示例3：菜单上增加报表，且定制报表列实现交互">3 示例3：菜单上增加报表，且定制报表列实现交互</h4>
 <p>允许定制表格显示参数，如</p>
 <pre><code>WUI.showPage("pageSimple", "订单月报表!", [url, queryParams, onInitGrid]);
@@ -5644,6 +5749,35 @@ function onInitGrid(jpage, jtbl, dgOpt, columns, data)
         });
     }
 }</code></pre></div>
+<div class="block">
+<h2 id="dlgReportCond">@module dlgReportCond</h2>
+<pre><code>DlgReportCond.show(onOk, meta?, inst?);</code></pre>
+<ul>
+<li>onOk(data): 回调函数</li>
+<li>meta: 用于追加动态字段, 参考WUI.showByMeta</li>
+<li>inst: 实例名，与meta配合使用，不同场景配不同meta.</li>
+</ul>
+<p>用于显示查询对话框，默认包含startDt, endDt字段。</p>
+<pre><code>DlgReportCond.show(function (data) {
+    console.log(data);
+})</code></pre>
+<p>也可以增加自定义字段：</p>
+<pre><code>var meta = [
+    // title, dom, hint?
+    {title: "状态", dom: '&lt;select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap"&gt;&lt;/select&gt;'},
+    {title: "订单号", dom: "&lt;textarea name='param' rows=5&gt;&lt;/textarea&gt;", hint: '每行一个订单号'}
+];
+DlgReportCond.show(function (data) {
+    console.log(data);
+}, meta)</code></pre>
+<p>如果有多个不同的使用场景，对应的自定义字段不同，可以指定实例名来实现，如订单和工单的查询条件有些不同，可分开写：</p>
+<pre><code>DlgReportCond.show(function (data) {
+    console.log(data);
+}, meta1, "订单");
+
+DlgReportCond.show(function (data) {
+    console.log(data);
+}, meta2, "工单");</code></pre></div>
 <div style="text-align:center">Generated by jdcloud-gendoc</div>
 </body>
 

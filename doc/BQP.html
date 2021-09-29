@@ -42,7 +42,9 @@
 <li><a href="#查询结果格式fmt"><span class="toc-section-number">3.2.2</span> 查询结果格式(fmt)</a></li>
 <li><a href="#查询结果支持分页"><span class="toc-section-number">3.2.3</span> 查询结果支持分页</a></li>
 <li><a href="#导出文件"><span class="toc-section-number">3.2.4</span> 导出文件</a></li>
-<li><a href="#分组统计"><span class="toc-section-number">3.2.5</span> 分组统计</a></li>
+<li><a href="#枚举名字映射"><span class="toc-section-number">3.2.5</span> 枚举名字映射</a></li>
+<li><a href="#分组统计"><span class="toc-section-number">3.2.6</span> 分组统计</a></li>
+<li><a href="#模糊查询"><span class="toc-section-number">3.2.7</span> 模糊查询</a></li>
 </ul></li>
 <li><a href="#查询分页机制"><span class="toc-section-number">3.3</span> 查询分页机制</a></li>
 <li><a href="#批量导入数据"><span class="toc-section-number">3.4</span> 批量导入数据</a><ul>
@@ -322,8 +324,10 @@ callSvr(&quot;Ordr.add&quot;, {res:&quot;id,status,total&quot;}, $.noop, {status
 <p>另外注意，上例是设置字段为null，而不是设置成空串&quot;&quot;。 如果要将字符串置空串(一般不建议使用)，可以用&quot;empty&quot;, 例如：</p>
 <pre><code>callSvr(&quot;Obj.set&quot;, {id: 809}, $.noop, {sn: &quot;empty&quot;})</code></pre>
 <p>假如sn是数值类型，会导致其值为0或0.0。</p>
-<p>支持根据条件批量更新，使用setIf接口：</p>
-<pre><code>Obj.setIf(cond)(POST fields...)</code></pre>
+<p>支持根据条件批量更新，使用setIf或batchSet接口：</p>
+<pre><code>Obj.setIf(cond)(POST fields...)
+Obj.batchSet(cond)(POST fields...)</code></pre>
+<p>注意：setIf接口相当于执行1条数据库SQL UPDATE语句，不执行业务逻辑，速度快； 而batchSet接口先根据条件查出所有记录，然后对每个记录逐一调用set接口进行更新，会执行每条记录更新时的业务逻辑。</p>
 <p>示例：</p>
 <pre><code>callSvr(&quot;Obj.setIf&quot;, {cond: &quot;tm&gt;=&#39;2010-1-1&#39; and tm&lt;&#39;2011-1-1&#39;&quot;}, $.noop, {dscr: &quot;已处理&quot;});</code></pre>
 <p><strong>[获取对象操作]</strong></p>
@@ -336,7 +340,9 @@ callSvr(&quot;Ordr.add&quot;, {res:&quot;id,status,total&quot;}, $.noop, {status
 <p>根据id删除一个对象，例如：</p>
 <pre><code>callSvr(&quot;Obj.del&quot;, {id: 809})</code></pre>
 <p>支持根据条件进行批量删除，使用delIf接口：</p>
-<pre><code>Obj.delIf(cond)</code></pre>
+<pre><code>Obj.delIf(cond)
+Obj.batchDel(cond)</code></pre>
+<p>delIf与batchDel的区别，类似于setIf与batchSet的区别。前者只根据条件执行一条SQL DELETE语句，速度快；后者是先查出符合条件的所有记录，再逐一记录删除（走del接口）。</p>
 <p>示例：</p>
 <pre><code>callSvr(&quot;Obj.delIf&quot;, {cond: &quot;tm&gt;=&#39;2010-1-1&#39; and tm&lt;&#39;2011-1-1&#39;&quot;});</code></pre>
 <h3 id="查询操作"><span class="header-section-number">3.2</span> 查询操作</h3>
@@ -520,7 +526,22 @@ Content-Disposition: attachment;filename=1.txt</code></pre>
 })
 window.open(url); // 下载文件</code></pre>
 <p>注意，由于默认会有分页，要想导出所有数据，一般可指定分页大小为-1（后端最大限制一般为10000条，可在后端调整）</p>
-<h4 id="分组统计"><span class="header-section-number">3.2.5</span> 分组统计</h4>
+<h4 id="枚举名字映射"><span class="header-section-number">3.2.5</span> 枚举名字映射</h4>
+<p>例如有状态字段，定义为：</p>
+<ul>
+<li>status: Enum(CR:新创建;CA:已取消)。我们称之为枚举字段。</li>
+</ul>
+<p>在query接口中，可以通过res指定映射关系，示例：</p>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {res: &quot;id, status =CR:新创建;CA:已取消&quot;})</code></pre>
+<p>如果该字段值为CR，应返回&quot;新创建&quot;，返回示例：</p>
+<pre><code>[ {id: 1, status: &quot;新创建&quot;} , {id: 2, status: &quot;已取消&quot;} ]</code></pre>
+<p>如果字段值是多个逗号分隔的值列表，如&quot;CR,CA&quot;，则应返回&quot;新创建,已取消&quot;。</p>
+<p>可以与别名一起使用，示例：</p>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {res: &quot;id 编号, status 状态=CR:新创建;CA:已取消&quot;})</code></pre>
+<p>返回示例：</p>
+<pre><code>[ {编号: 1, 状态: &quot;新创建&quot;} , {编号: 2, 状态: &quot;已取消&quot;} ]</code></pre>
+<p>该特性在使用query接口导出文件时特别有用。</p>
+<h4 id="分组统计"><span class="header-section-number">3.2.6</span> 分组统计</h4>
 <p>主要通过gres参数实现查询结果分组：</p>
 <dl>
 <dt>gres</dt>
@@ -590,6 +611,21 @@ window.open(url); // 下载文件</code></pre>
         [ 2016, [170, 3390], [9, 220], [1530, 15580] ]
     ]
 ]</code></pre>
+<p>转置到列上的数据如果为null，则以&quot;(null)&quot;来显示；如果是空串，不做特殊处理。</p>
+<p>pivot参数可以设置多列，以逗号分隔，如将年、月显示到列上：</p>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {
+    gres: &quot;y,m,status&quot;, res: &quot;count(&#39;A&#39;) totalCnt&quot;,
+    cond: &quot;tm&gt;=&#39;2015-1-1&#39; and tm&lt;&#39;2017-1-1&#39;&quot;,
+    pivot: &quot;y,m&quot;
+})</code></pre>
+<p>转置到列后的字段以&quot;-&quot;拼接，如果有值为null的，以&quot;(null)&quot;显示。 返回内容示例：</p>
+<pre><code>[
+    h: [&quot;status&quot;, &quot;2020-1&quot;, &quot;2020-2&quot;, &quot;2020-(null)&quot;, &quot;(null)-(null)&quot;],
+    d: [
+        [ &quot;PA&quot;, 120, 230, 1, 0],
+        [ &quot;CA&quot;, 300, 310, 0, 2]
+    ]
+]</code></pre>
 <p><strong>[行列汇总]</strong></p>
 <p>没有pivot时，用sumFields参数指定要统计的列，支持多列；有pivot时，用pivotSumField参数指定新添加的统计列的名字，只有一列，不存在多列。</p>
 <dl>
@@ -648,6 +684,16 @@ window.open(url); // 下载文件</code></pre>
         [ &quot;合计&quot;, [1300, 17810], [11, 258], [1530, 15580], [2841, 33648] ] // 自动添加汇总行
     ]
 ]</code></pre>
+<h4 id="模糊查询"><span class="header-section-number">3.2.7</span> 模糊查询</h4>
+<dl>
+<dt>qsearch</dt>
+<dd>格式是<code>字段1,字符2,...:查询内容</code>(使用英文逗号及冒号分隔), 表示在指定的若干字段中模糊查询。
+</dd>
+</dl>
+<p>示例：在dscr或cmt字段中，查找以&quot;张&quot;开头，并且包含&quot;退款&quot;的订单记录</p>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {qsearch: &quot;dscr,cmt:张* 退款&quot;})</code></pre>
+<p>字段可以使用虚拟字段。</p>
+<p>查询内容是一个字符串，或多个以空格分隔的字符串。例如&quot;aa bb&quot;表示字段包含&quot;aa&quot;且包含&quot;bb&quot;。 每个字符串中可以用通配符<code>*</code>，如<code>a*</code>表示以a开头，<code>*a</code>表示以a结尾，而<code>*a*</code>和<code>a</code>是效果相同的。</p>
 <h3 id="查询分页机制"><span class="header-section-number">3.3</span> 查询分页机制</h3>
 <p>如果一个查询支持分页(paging), 则一般调用形式为</p>
 <pre><code>Ordr.query(page/pagekey?, pagesz/rows?=20) -&gt; {nextkey, total?, @h, @d}</code></pre>

@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2021-09-06</div>
+<div>最后更新：2021-09-29</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -152,6 +152,8 @@ code {
 <p><a href="#addToStr">addToStr (fn)</a></p>
 <p><a href="#apiMain">apiMain (key)</a></p>
 <p><a href="#api_async">api_async (fn)</a></p>
+<p><a href="#api_batchDel">api_batchDel (fn)</a></p>
+<p><a href="#api_batchSet">api_batchSet (fn)</a></p>
 <p><a href="#api_checkIp">api_checkIp (fn)</a></p>
 <p><a href="#api_fw">api_fw (module)</a></p>
 <p><a href="#app_fw">app_fw (module)</a></p>
@@ -167,6 +169,7 @@ code {
 <p><a href="#checkAuth">checkAuth (fn)</a></p>
 <p><a href="#checkParams">checkParams (fn)</a></p>
 <p><a href="#conf.php">conf.php (key)</a></p>
+<p><a href="#dbCommit">dbCommit (fn)</a></p>
 <p><a href="#dbConfirmFn">dbConfirmFn (key)</a></p>
 <p><a href="#dbExpr">dbExpr (fn)</a></p>
 <p><a href="#dbInsert">dbInsert (fn)</a></p>
@@ -288,21 +291,26 @@ throw new DirectReturn();</code></pre></div>
 <pre><code>readfile(f1);
 jdRet();</code></pre>
 <p>成功返回：</p>
-<pre><code>jdRet(E_OK);
-jdRet(E_OK, ["id" =&gt; 100]);
+<pre><code>jdRet(0);
+// 返回 [0, null]
+
+jdRet(0, ["id" =&gt; 100]);
 // 返回 [0, {"id": 100}]</code></pre>
 <p>出错返回：</p>
 <pre><code>jdRet(E_PARAM);
-jdRet(E_PARAM, "bad param");
-jdRet(E_PARAM, "bad param", "参数错");
-// 返回 [1, "参数错", "bad param"] 注意结果中字符串顺序不同，第3参数才是最终给用户看的报错信息（常用中文）。</code></pre>
-<p>(v6) 自定义返回：(code传null)</p>
-<pre><code>jdRet(null, "{\"code\": 0, \"msg\": \"hello\"}");
+jdRet(E_PARAM, "bad param"); // 第2参数是用于调试的错误信息，一般用英文
+jdRet(E_PARAM, "bad param", "参数错"); // 第3参数是给用户看的错误信息，一般用中文
+// 返回 [1, "参数错", "bad param"] 注意最终输出JSON数组中第2、3参数顺序对调了，以符合筋斗云[code, data, debuginfo...]的格式。</code></pre>
+<p>(v6) 几种特殊用法</p>
+<p>自定义返回：(code传null)</p>
+<pre><code>jdRet(null, '{"code": 0, "msg": "hello"}');
 // 返回`{"code": 0, "msg": "hello"}`，注意不是标准筋斗云返回格式。</code></pre>
-<p>注意：对于自定义文本输出，用<code>jdRet(null, data)</code>比直接echo要好，因为echo不记录日志到debug日志，在ApiLog中也看不到输出，不利于接口内容审计。</p>
-<pre><code>echo("{\"code\": 0, \"msg\": \"hello\"}");
-jdRet(null, "{\"code\": 0, \"msg\": \"hello\"}");</code></pre>
-<p>更规范地，对于接口自定义格式输出，应使用 $X_RET_FN 定义转换函数。</p></div>
+<p>直接返回已有的JSON串:</p>
+<pre><code>$str = '{"id": 100}';
+jdRet(0, dbExpr($str));
+// 返回`[0, {"id":100}]`</code></pre>
+<p>更规范地，对于接口自定义格式输出，应使用 $X_RET_FN 定义转换函数。</p>
+<p class="see"><strong>@see <a href="#$X_RET_FN">$X_RET_FN</a></strong> </p></div>
 <div class="block">
 <h2 id="tobool">@fn tobool($s)</h2></div>
 <div class="block">
@@ -591,6 +599,16 @@ $arr1 = pivot($arr, "cateId,cateName");</code></pre>
     ["y"=&gt;2020, "m"=&gt;2, "1-衣服"=&gt;19000, "3-电器"=&gt;28000]
 ];</code></pre>
 <p>注意：结果的第一行中，会包含所有可能出现的列，没有值的列填null。</p>
+<p>如果需要行列统计，可指定pivotSumField=&quot;合计&quot;，这样就会添加一列叫&quot;合计&quot;，且添加一行统计行</p>
+<pre><code>$arr1 = pivot($arr, "cateId,cateName", 1, "合计");</code></pre>
+<p>结果为:</p>
+<pre><code>$arr1 = [
+    ["y"=&gt;2019, "m"=&gt;11, "1-衣服"=&gt;20000, "2-食品"=&gt;12000, "3-电器"=&gt;null, "合计"=&gt;32000],
+    ["y"=&gt;2019, "m"=&gt;12, "2-食品"=&gt;15000, "合计"=&gt;15000],
+    ["y"=&gt;2020, "m"=&gt;2, "1-衣服"=&gt;19000, "3-电器"=&gt;28000, "合计"=&gt;47000],
+    ["1-衣服"=&gt;39000, "2-食品"=&gt;27000, "3-电器"=&gt;28000, "合计"=&gt;94000]
+];</code></pre>
+<p>特别地，如果只有1行，则不添加统计行，如果只有1列数据列，不添加统计列。</p>
 <p>在后端查询时, 往往用id字段分组但显示为名字, 可以用hiddenFields参数指定不要返回的字段:<br />
 例如上例中cateId若只需要参与查询, 不需要返回在最终结果中：</p>
 <pre><code>callSvr("Ordr.query", {gres: "y,m,cateId", res: "cateName,SUM(amount) sum", pivot: "cateName", hiddenFields:"cateId"})</code></pre>
@@ -1124,6 +1142,15 @@ if (! isset($user)) {
 
 dir1/dir2/carsvc.db (以.db文件扩展名标识的文件路径，表示SQLITE数据库）</code></pre>
 <p>环境变量 P_DBCRED 指定用户名密码，格式为 base64(dbuser:dbpwd).</p></div>
+<div class="block">
+<h2 id="dbCommit">@fn dbCommit($doRollback=false)</h2>
+<p>中间先提交一次事务，然后进入另一个事务。</p>
+<p>用于一段事务执行完后及时提交，避免下一段出问题后导致全部回滚，示例：</p>
+<pre><code>// 上一批完成出库
+$this-&gt;outOfBinDone(["portType" =&gt; "出库缓存架 OR 出库缓存架-大件"]);
+dbCommit();
+//处理当前出库单据
+$this-&gt;outOfBin($_POST);</code></pre></div>
 <div class="block">
 <h2 id="Q">@fn Q($str, $dbh=$DBH)</h2>
 <p>quote string</p>
@@ -1941,6 +1968,7 @@ $X_RET_FN = function ($X_RET) {
 <li>如果接口返回错误, 该回调不执行. (DirectReturn返回除外)</li>
 <li>此时接口输出已完成，不可再输出内容，否则将导致返回内容错乱。addLog此时也无法输出日志(可以使用logit记日志到文件)</li>
 <li>此时接口的数据库事务已提交，如果再操作数据库，与之前操作不在同一事务中。</li>
+<li>若出现异常，只会写日志，不会抛出错误，且所有函数仍会依次执行。</li>
 </ul>
 <p>示例: 当创建工单时, <strong>异步</strong>向用户发送通知消息, 且在异步操作中需要查询新创建的工单, 不应立即发送或使用AccessControl的onAfterActions;<br />
 因为在异步任务查询新工单时, 可能接口还未执行完, 数据库事务尚未提交, 所以只有放在X_APP的onAfterActions中才可靠.</p></div>
@@ -1949,21 +1977,22 @@ $X_RET_FN = function ($X_RET) {
 <p class="param"><strong>@param $code</strong>  Integer. 返回码, 0表示成功, 否则表示操作失败。(v6) 如果为null，则直接输出data内容(仍会记录debug和ApiLog日志)</p>
 <p class="param"><strong>@param $data</strong>  返回数据。</p>
 <p class="param"><strong>@param $internalMsg</strong>  当返回错误时，作为额外调试信息返回。</p>
+<p>setRet在框架内部使用，用户应调用jdRet。</p>
 <p>设置返回数据，最终返回JSON格式数据为 [ code, data, internalMsg, debugInfo1, ...]<br />
 其中按照BQP协议，前两项为必须，后面的内容一般仅用于调试，前端应用不应处理。</p>
 <p>当成功时，返回数据可以是任何类型（根据API设计返回相应数据）。<br />
 当失败时，为String类型错误信息。<br />
 如果参数$data未指定，则操作成功时值为null（按BQP协议返回null表示客户端应忽略处理，一般无特定返回应指定$data=&quot;OK&quot;）；操作失败时使用默认错误信息。</p>
 <p>调用完后，要返回的数据存储在全局数组 $X_RET 中，以JSON字符串形式存储在全局字符串 $X_RET_STR 中。<br />
-注意：也可以直接设置$X_RET_STR为要返回的字符串，从而避免setRet函数对返回对象进行JSON序列化，如</p>
-<pre><code>$GLOBALS["X_RET_STR"] = '{"id":100, "name":"aaa"}';
+(v6) 也可以直接指定返回的JSON串，避免setRet函数对返回对象进行JSON序列化，使用dbExpr:</p>
+<pre><code>$str = '{"id":100, "name":"aaa"}';
 // 如果不想继续执行后面代码，可以自行调用：
-setRet(0, "OK");
-throw new DirectReturn();
+jdRet(0, dbExpr($str));
 // 最终返回字符串为 [0, {"id":100, "name":"aaa"}]</code></pre>
-<p class="see"><strong>@see <a href="#$X_RET">$X_RET</a></strong> </p>
-<p class="see"><strong>@see <a href="#$X_RET_STR">$X_RET_STR</a></strong> </p>
-<p class="see"><strong>@see <a href="#$X_RET_FN">$X_RET_FN</a></strong> </p>
+<p class="see"><strong>@see <a href="#jdRet">jdRet</a></strong> </p>
+<p class="see"><strong>@see <a href="#$X_RET">$X_RET</a></strong>  只读，接口返回数据，格式为[code, data, ...]</p>
+<p class="see"><strong>@see <a href="#$X_RET_STR">$X_RET_STR</a></strong>  只读，接口最终输出的字符串</p>
+<p class="see"><strong>@see <a href="#$X_RET_FN">$X_RET_FN</a></strong>  自定义返回格式</p>
 <p class="see"><strong>@see <a href="#$errorFn">$errorFn</a></strong> </p>
 <p class="see"><strong>@see <a href="#errQuit">errQuit</a></strong> ()</p></div>
 <div class="block">
@@ -2366,38 +2395,40 @@ v5.4后建议这样实现：</p>
 <p class="see"><strong>@see <a href="#callSvcInt">callSvcInt</a></strong> </p>
 <p class="see"><strong>@see <a href="#callSvc">callSvc</a></strong> </p></div>
 <div class="block">
-<h2 id="callSvcInt">@fn callSvcInt($ac, $param=null, $postParam=null)</h2>
+<h2 id="callSvcInt">@fn callSvcInt($ac, $param=null, $postParam=null, $useTmpEnv=true)</h2>
 <p>内部调用另一接口，获得返回值。<br />
-如果指定了$param或$postParam参数，则会备份现有环境，并在调用后恢复。<br />
-否则直接使用现有环境。</p>
-<p>如果想手工逐项设置GET, POST参数，可分别用</p>
-<pre><code>setParam(key, value); // 设置get参数
-// 或批量设置用 setParam({key =&gt; value});
-$_POST[key] = value; // 设置post参数</code></pre>
-<p>与callSvc不同的是，它不处理事务、不写ApiLog，不输出数据，更轻量；<br />
-与tableCRUD不同的是，它支持函数型调用。</p>
+如果未指定$param或$postParam参数，则默认值为空数组。</p>
+<p>与callSvc不同的是，它不处理事务、不写ApiLog，不输出数据，更轻量。</p>
 <p>示例：</p>
 <pre><code>$vendorId = callSvcInt("Vendor.add", null, [
     "name" =&gt; $params["vendorName"],
     "tel" =&gt; $params["vendorPhone"]
 ]);</code></pre>
+<p>它在独立环境中执行，不会影响当前的$_GET, $_POST参数，除非指定参数useTmpEnv=false（一般不应指定）。<br />
+内部若有异常会抛上来，特别地，<code>jdRet(0)</code>会当成正常调用。</p>
+<p>示例：用当前的get/post参数执行。</p>
+<pre><code>$vendorId = callSvcInt("Vendor.add", $_GET, $_POST);</code></pre>
 <p>(v5.4) 上面例子会自动根据当前用户角色来选择AC类，还可以直接指定使用哪个AC类来调用，如：</p>
 <pre><code>$acObj = new AC2_Vendor();
-$vendorId = $acObj-&gt;callSvc("Vendor", "query", [
+$vendorId = $acObj-&gt;callSvc("Vendor", "add", null, [
     "name" =&gt; $params["vendorName"],
     "tel" =&gt; $params["vendorPhone"]
 ]);</code></pre>
 <p>注意请自行确保AC类对当前角色兼容性，如用户角色调用了管理员的AC类，就可能出问题。</p>
-<p class="see"><strong>@see <a href="#setParam">setParam</a></strong> </p>
-<p class="see"><strong>@see <a href="#tableCRUD">tableCRUD</a></strong>  (obsolete)</p>
+<p class="see"><strong>@see <a href="#tmpEnv">tmpEnv</a></strong> </p>
 <p class="see"><strong>@see <a href="#callSvc">callSvc</a></strong> </p>
 <p class="see"><strong>@see <a href="#AccessControl::callSvc">AccessControl::callSvc</a></strong> </p></div>
 <div class="block">
 <h2 id="tmpEnv">@fn tmpEnv($param, $postParam, $fn)</h2>
 <p>(v5.4) 在指定的GET/POST参数下执行fn函数，执行完后恢复初始环境。<br />
-示例：</p>
+$param或$postParam为null时，与空数组<code>[]</code>等价。</p>
+<p>示例：</p>
 <pre><code>$param = ["cond" =&gt; "createTm&gt;'2019-1-1'];
 $ret = tmpEnv($param, null, function () {
+    return callSvcInt("User.query");
+});</code></pre>
+<p>示例：用当前参数环境执行：</p>
+<pre><code>$ret = tmpEnv($_GET, $_POST, function () {
     return callSvcInt("User.query");
 });</code></pre></div>
 <div class="block">
@@ -3645,6 +3676,12 @@ $this-&gt;checkSetFields([&quot;status&quot;, &quot;cmt&quot;]);<br />
         return parent::api_setIf();
     }
 }</code></pre></div>
+<div class="block">
+<h2 id="api_batchSet">@fn api_batchSet()</h2>
+<p>与setIf接口不同，batchSet接口将根据cond参数查出所有的记录，一一进行set操作；即它会执行onValidate中的逻辑。</p></div>
+<div class="block">
+<h2 id="api_batchDel">@fn api_batchDel()</h2>
+<p>与delIf接口不同，batchDel接口将根据cond参数查出所有的记录，一一进行del操作；即它会执行onValidateId中的逻辑。</p></div>
 <div class="block">
 <h2 id="AccessControl::api_delIf">@fn AccessControl::api_delIf()</h2>
 <p>批量删除。返回删除记录数。<br />
