@@ -947,7 +947,7 @@ function dbconn($fnConfirm = null)
 	
 	if ($DBTYPE == "mysql") {
 		++ $DBH->skipLogCnt;
-		$DBH->exec('set names utf8');
+		$DBH->exec('set names utf8mb4');
 	}
 	$DBH->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION); # by default use PDO::ERRMODE_SILENT
 
@@ -2031,7 +2031,7 @@ function utf8InputFilter($fp, $fnTest=null)
 
 	global $DBH;
 	++ $DBH->skipLogCnt;  // 若要忽略两条就用 $DBH->skipLogCnt+=2
-	$DBH->exec('set names utf8'); // 也可以是queryOne/execOne等函数。
+	$DBH->exec('set names utf8mb4'); // 也可以是queryOne/execOne等函数。
 
 @see queryAll,execOne,dbconn
  */
