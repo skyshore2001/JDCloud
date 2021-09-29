@@ -24,11 +24,12 @@ var DlgImport = {
 };
 
 var DlgReportCond = {
-	cb_: null,
-	// cb(data): 回调函数
-	show: function (cb) {
-		this.cb_ = cb;
-		WUI.showDlg("#dlgReportCond", {modal:false, reset:false});
+	// cb(data): 回调函数, meta: 动态字段(参考WUI.showByMeta), inst: 实例名
+	show: function (cb, meta, inst) {
+		var dlg = "#dlgReportCond";
+		if (inst)
+			dlg += "_inst_" + inst;
+		WUI.showDlg(dlg, {modal:false, reset:false, onOk: cb, meta: meta});
 	}
 };
 //}}}

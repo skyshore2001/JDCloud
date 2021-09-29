@@ -43,7 +43,9 @@
 
 回调函数参数data是对话框中设置了name的输入字段，默认有tm1, tm2。
 
-TODO: 允许定制查询条件对话框，如添加查询字段，可参考dlgImport.js设计，添加forXXX类。
+允许定制查询条件对话框，如添加查询字段，详见dlgReportCond对话框文档。
+
+@see dlgReportCond
 
 ## 示例3：菜单上增加报表，且定制报表列实现交互
 
