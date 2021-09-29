@@ -28,6 +28,7 @@ class SqlDiff
 
 	public $ntext = "NTEXT";
 	public $ntext2 = "NTEXT";
+	public $nvarchar = "NVARCHAR";
 	public $autoInc = 'AUTOINCREMENT';
 	public $money = "MONEY";
 	public $createOpt = "";
@@ -62,8 +63,9 @@ class SqlDiff_sqlite extends SqlDiff
 
 class SqlDiff_mysql extends SqlDiff
 {
-	public $ntext = "TEXT CHARACTER SET utf8mb4";
-	public $ntext2 = "MEDIUMTEXT CHARACTER SET utf8mb4";
+	public $ntext = "TEXT"; // CHARACTER SET utf8mb4;
+	public $ntext2 = "MEDIUMTEXT"; // CHARACTER SET utf8mb4;
+	public $nvarchar = "VARCHAR"; // https://dev.mysql.com/doc/refman/8.0/en/char.html
 	public $autoInc = 'AUTO_INCREMENT';
 	public $money = "DECIMAL(19,2)";
 	public $createOpt = "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
@@ -175,7 +177,7 @@ function parseFieldDef($fieldDef, $tableName)
 		}
 		elseif ($tag == 's' || $tag == 'm' || $tag == 'l') {
 			$ret["len"] = $CHAR_SZ[$tag];
-			$def = "NVARCHAR(" . $CHAR_SZ[$tag] . ")";
+			$def = $SQLDIFF->nvarchar . "(" . $CHAR_SZ[$tag] . ")";
 		}
 		elseif ($tag == 'n') {
 			$ret["type"] = $tag;
@@ -200,7 +202,7 @@ function parseFieldDef($fieldDef, $tableName)
 		}
 		elseif (is_numeric($tag)) {
 			$ret["len"] = $tag;
-			$def = "NVARCHAR($tag)";
+			$def = $SQLDIFF->nvarchar . "($tag)";
 		}
 		else {
 			die1("unknown type of string fields: @{$tableName}.$f");
@@ -249,7 +251,7 @@ function parseFieldDef($fieldDef, $tableName)
 	}
 	elseif (preg_match('/^\w+$/u', $f)) { # default
 		$ret["len"] = $CHAR_SZ['m'];
-		$def = "NVARCHAR(" . $CHAR_SZ['m'] . ")";
+		$def = $SQLDIFF->nvarchar ."(" . $CHAR_SZ['m'] . ")";
 	}
 	else {
 		die1("unknown type of fields: @{$tableName}.$f");
@@ -875,7 +877,7 @@ class UpgHelper
 		case "id":
 			return $dbType == "int";
 		case "flag":
-			return $dbType == "tinyint";
+			return $dbType == "tinyint" || $dbType == "tinyint unsigned";
 		case "n":
 			return $dbType == "decimal" && $len == $meta["len"];
 		case "real":
