@@ -6324,6 +6324,8 @@ if (isSmallScreen()) {
 - opt.title: String. 如果指定，则更新对话框标题。
 - opt.dialogOpt: 底层jquery-easyui dialog选项。参考http://www.jeasyui.net/plugins/159.html
 - opt.reload: (v5.5) 先重置再加载。只用于开发环境，方便在Chrome控制台中调试。
+- opt.meta: (v6) 指定通过meta自动生成的输入项
+- opt.metaParent: (v6) 指定meta自动生成项的父结点，默认为对话框下第一个table，仅当meta存在时有效
 
 ## 对话框加载
 
@@ -6363,7 +6365,7 @@ if (isSmallScreen()) {
 	var jdlg = $('<div title="商户登录">Hello World</div>');
 	WUI.showDlg(jdlg);
 
-适合编程动态实现的对话框。参考使用更简单的WUI.showDlgByMeta。
+适合编程动态实现的对话框。参考使用更简单的WUI.showDlgByMeta或WUI.showDlg的meta选项。
 
 ## 对话框编程模式
 
@@ -6550,13 +6552,56 @@ form提交后事件，用于处理返回数据
 	})
 
 ## 复用dialog模板
-(v5.3引入，v6已移除)
 
-本功能已移除，请参考 WUI.options.moduleExt
+(v5.3引入，v6修改) 该机制可用于自定义表(UDT, 对话框动态生成)。
 
-如 dlgUDT__A 与 dlgUDT__B 共用dlgUDT对话框模板，只要用"__"分隔对话框模板文件和后缀名。
+如 dlgUDT_inst_A 与 dlgUDT_inst_B 会共用dlgUDT对话框模板，只要用"_inst_"分隔对话框模板文件和后缀名。
 
-	WUI.showDlg("dlgUDT__A"); // 自动加载page/dlgUDT.html文件
+	WUI.showDlg("dlgUDT_inst_A"); // 自动加载page/dlgUDT.html文件
+
+若涉及重用其它模块中的页面或对话框，请参考 WUI.options.moduleExt
+
+## 动态生成字段的对话框
+
+(v6) 该机制可用于为已有对话框动态追加字段（比如用于用户自定义字段UDF)，或是只用纯JS而不用html来创建对话框。
+
+示例：为对话框dlgReportCond追加两个输入字段。
+
+	var itemArr = [
+		// title, dom, hint?
+		{title: "状态", dom: '<select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap"></select>'},
+		{title: "订单号", dom: "<textarea name='param' rows=5></textarea>", hint: '每行一个订单号'}
+	];
+	WUI.showDlg("#dlgReportCond", {
+		meta: itemArr,
+		onOk: function (data) {
+			console.log(data)
+		},
+		// metaParent: "table:first" // 也可指定插入点父结点
+	});
+
+通过指定opt.meta动态生成字段，这些字段默认放置于对话框中的第一个table下。
+一般详情对话框DOM模型均为"<form><table></table></form>"。
+
+注意由于对话框有id，只会创建一次。之后再调用也不会再创建。如果希望能创建多的对话框互不影响，可以用"#dlgReportCond_inst_A"这种方式指定是用它的一个实例。
+
+示例2：动态创建一个登录对话框
+
+	var jdlg = $('<form title="商户登录"><table></table></form>');
+	var meta = [
+		{title: "用户名", dom: '<input name="uname" class="easyui-validatebox" required>', hint: "字母开头或11位手机号"},
+		{title: "密码", dom: '<input type="password" name="pwd" class="easyui-validatebox" required>'}
+	];
+	WUI.showDlg(jdlg, {
+		meta: meta,
+		onOk: function (data) {
+			console.log(data); // 根据meta中每个带name项的输入框生成：{uname, pwd}
+			callSvr("login", function () {
+				app_show("登录成功");
+				WUI.closeDlg(jdlg);
+			}, data);
+		}
+	});
 
 @see showDlgByMeta
 @see showObjDlg
@@ -6577,7 +6622,7 @@ function showDlg(jdlg, opt)
 			jdlg = $("#" + jdlg.attr("id"));
 		}
 	}
-	if (loadDialog(jdlg, onLoad))
+	if (loadDialog(jdlg, onLoad, opt))
 		return;
 	function onLoad() {
 		showDlg(jdlg, opt);
@@ -6742,11 +6787,11 @@ function showDlg(jdlg, opt)
 }
 
 /**
-@fn showDlgByMeta(itemArr, opt)
+@fn showDlgByMeta(meta, opt)
 
 WUI.showDlg的简化版本，通过直接指定组件创建对话框。
 
-- itemArr: [{title, dom, hint?}]
+- meta: [{title, dom, hint?}]
 - opt: 同showDlg的参数
 
 示例：
@@ -6756,7 +6801,7 @@ WUI.showDlg的简化版本，通过直接指定组件创建对话框。
 		{title: "接口名", dom: "<input name='ac' required>", hint: "示例: Ordr.query"},
 		{title: "参数", dom: "<textarea name='param' rows=5></textarea>", hint: '示例: {cond: {createTm: ">2020-1-1"}, res: "count(*) cnt", gres: "status"}'}
 	];
-	WUI.showDlgByMeta(itemArr, {
+	WUI.showDlgByMeta(meta, {
 		title: "通用查询",
 		modal: false,
 		onOk: function (data) {
@@ -6764,10 +6809,19 @@ WUI.showDlg的简化版本，通过直接指定组件创建对话框。
 		}
 	});
 
-@see showDlg
+@see showDlg 参考opt.meta选项
  */
 self.showDlgByMeta = showDlgByMeta;
 function showDlgByMeta(itemArr, opt)
+{
+	var jdlg = $("<form><table></table></form>");
+	if (! opt)
+		opt = {};
+	opt.meta = itemArr;
+	return self.showDlg(jdlg, opt);
+}
+
+function addFieldByMeta(itemArr, jp)
 {
 	var code = '';
 	for (var i=0; i<itemArr.length; ++i) {
@@ -6777,9 +6831,11 @@ function showDlgByMeta(itemArr, opt)
 			hint = "<p class=\"hint\">" + item.hint + "</p>";
 		code += "<tr><td>" + item.title + "</td><td>" + item.dom + hint + "</td></tr>";
 	}
-
-	var jdlg = $("<form><table>" + code + "</table></form>");
-	return self.showDlg(jdlg, opt);
+	if (code) {
+		$(code).appendTo(jp);
+		$.parser.parse(jp); // easyui enhancement
+		self.enhanceWithin(jp);
+	}
 }
 
 // 按住Ctrl/Command键进入批量模式。
@@ -7439,16 +7495,19 @@ function appendCond(cond, cond1)
 	function onLoad() {
 		showDlg(jdlg...);
 	}
+
+opt: {meta, metaParent}
 */
-function loadDialog(jdlg, onLoad)
+function loadDialog(jdlg, onLoad, opt)
 {
 	// 判断dialog未被移除
 	if (jdlg.size() > 0 && jdlg[0].parentElement != null && jdlg[0].parentElement.parentElement != null)
 		return;
-	// showDlg支持jdlg为新创建的jquery对象，这时selector为空，这种情况不需要动态load
+	opt = opt || {};
+	// showDlg支持jdlg为新创建的jquery对象，这时selector为空
 	if (!jdlg.selector) {
 		loadDialogTpl1();
-		return;
+		return true;
 	}
 	var jo = $(jdlg.selector);
 	if (jo.size() > 0) {
@@ -7463,7 +7522,7 @@ function loadDialog(jdlg, onLoad)
 
 	var dlgId = jdlg.selector.substr(1);
 	// 支持dialog复用，dlgId格式为"{模板id}_inst_{后缀名}"。如 dlgUDT_inst_A 与 dlgUDT_inst_B 共用dlgUDT对话框模板。
-	var arr = dlgId.split("_inst_"); // TODO: UDT功能重新设计
+	var arr = dlgId.split("_inst_");
 	var tplName = arr[0];
 	var sel = "#tpl_" + tplName;
 	var html = $(sel).html();
@@ -7512,6 +7571,16 @@ function loadDialog(jdlg, onLoad)
 
 	function loadDialogTpl1()
 	{
+		// 支持由meta动态生成输入字段
+		if ($.isArray(opt.meta)) {
+			var jp = jdlg.find(opt.metaParent || "table:first");
+			// 通过wui-meta-parent类控制只加1次meta
+			if (jp.size() > 0 && !jp.hasClass("wui-meta-parent")) {
+				addFieldByMeta(opt.meta, jp);
+				jp.addClass("wui-meta-parent");
+			}
+		}
+
 		$.parser.parse(jdlg); // easyui enhancement
 		jdlg.find(">table:first, form>table:first").has(":input").addClass("wui-form-table");
 		self.enhanceWithin(jdlg);
@@ -7675,7 +7744,7 @@ function showObjDlg(jdlg, mode, opt)
 {
 	if (jdlg.constructor != jQuery)
 		jdlg = $(jdlg);
-	if (loadDialog(jdlg, onLoad))
+	if (loadDialog(jdlg, onLoad, opt))
 		return;
 	function onLoad() {
 		showObjDlg(jdlg, mode, opt);
