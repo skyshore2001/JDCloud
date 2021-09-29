@@ -340,7 +340,24 @@ ios系统镜像：
 	cordova platform add ios
 	make
 
-打开xcode，加载工程，编译、测试和发布。
+打开xcode，加载工程（自动生成的platforms/ios/{项目名}.xcworkspace），编译、测试和发布。
+
+如果是干净的macos系统，先从苹果应用市场或官网下载适合版本的xcode（注意xcode对macos系统版本有要求，而上架应用市场时对xcode和ios sdk版本有要求）。
+然后下载nodejs（包含npm，http://nodejs.cn/），然后参考android环境的配置：
+
+	（设置taobao源, 下载包速度较快）
+	npm config set registry https://registry.npm.taobao.org 
+
+cordova开发环境安装（目前使用10.0版本）：
+
+	npm install -g cordova@10.0
+
+检查：
+
+	cordova -v
+	(应该是10.0)
+
+然后进行上面常规项目操作即可。
 
 ## 测试环境
 

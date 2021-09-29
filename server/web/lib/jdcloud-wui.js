@@ -5891,9 +5891,20 @@ function jdListToTree(data, idField, fatherField, parentId, isLeaf)
 /** 
 @fn reloadRow(jtbl, rowData?)
 
-@param rowData must be the original data from table row
+@param rowData 通过原始数据指定行，可通过WUI.getRow(jtbl)获取当前所选择的行数据。
 
 rowData如果未指定，则使用当前选择的行。
+
+示例：
+
+	var row = WUI.getRow(jtbl);
+	if (row == null)
+		return;
+	...
+	WUI.reloadRow(jtbl, row);
+
+如果要刷新整个表，可用WUI.reload(jtbl)。
+刷新整个页面可用WUI.reloadPage()，但一般只用于调试，不用于生产环境。
  */
 self.reloadRow = reloadRow;
 function reloadRow(jtbl, rowData)

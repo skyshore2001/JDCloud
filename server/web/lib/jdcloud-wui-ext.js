@@ -1772,11 +1772,13 @@ function createFindMenu(jtbl)
 /**
 @key .wui-subobj
 
-选项：{obj, relatedKey, res?, dlg?/关联的明细对话框, datagrid/treegrid}
+选项：opt={obj, relatedKey, res?, dlg?/关联的明细对话框, datagrid/treegrid}
 
 这些选项在dlg设置时有效：{valueField, readonly, objParam, toolbar, vFields}
 
-## 示例1：可以增删改查的子表：
+- opt.forceLoad: 显示为Tab页时（即每个Tab页一个子表），为减少后端查询，若该Tab页尚未显示，是不加载该子表的。设置forceLoad为true则无论是否显示均强制加载。
+
+## 示例：可以增删改查的子表：
 
 	<div class="wui-subobj" data-options="obj:'CusOrder', relatedKey:'cusId', valueField:'orders', dlg:'dlgCusOrder'">
 		<p><b>物流订单</b></p>
@@ -1791,7 +1793,7 @@ function createFindMenu(jtbl)
 
 选项说明：
 
-- obj: 子表对象，与relatedKey字段一起自动生成子表查询，即`{obj}.query`接口。
+- opt.obj: 子表对象，与relatedKey字段一起自动生成子表查询，即`{obj}.query`接口。
 
 		class AC2_CusOrder extends AccessControl
 		{
@@ -1803,11 +1805,11 @@ function createFindMenu(jtbl)
  支持多个关联字段设置, 如`relId={id} AND type={type}`.
  支持in方式关联，如`id in ({itemIds})`，其中itemIds字段为逗号分割的id列表，如"100,102"
 
-- dlg: 对应子表详情对话框。如果指定，则允许添加、更新、查询操作。
+- opt.dlg: 对应子表详情对话框。如果指定，则允许添加、更新、查询操作。
 
 以下字段仅当关联对话框（即dlg选项设置）后有效：
 
-- valueField: 对应后端子表名称，在随主表一起添加子表时，会用到该字段。如果不指定，则不可在主表添加时一起添加。它对应的后端实现示例如下：
+- opt.valueField: 对应后端子表名称，在随主表一起添加子表时，会用到该字段。如果不指定，则不可在主表添加时一起添加。它对应的后端实现示例如下：
 
 		class AC2_Customer extends AccessControl
 		{
@@ -1816,9 +1818,9 @@ function createFindMenu(jtbl)
 			]
 		}
 
-- readonly: 默认为false, 设置为true则在主表添加之后，不可对子表进行添加、更新或删除。
+- opt.readonly: 默认为false, 设置为true则在主表添加之后，不可对子表进行添加、更新或删除。
 
-- objParam: 关联的明细对象对话框的初始参数, 对应dialogOpt.objParam. 例如有 offline, onCrud()等选项. 
+- opt.objParam: 关联的明细对象对话框的初始参数, 对应dialogOpt.objParam. 例如有 offline, onCrud()等选项. 
 @see objParam
 
 示例：在对话框dlgOrder上设置子表关联对话框dlgOrder1:
@@ -1836,22 +1838,7 @@ function createFindMenu(jtbl)
 		...
 	}
 
-- toolbar: 指定修改对象时的增删改查按钮, Enum(a-add, s-set, d-del, f-find, r-refresh), 字符串或数组, 缺省是所有按钮, 空串""或空数组[]表示没有任何按钮.
-示例：只留下删除和刷新: toolbar='rd'
-@see dg_toolbar
-
-可以在validate事件中，对添加的子表进行判断处理：
-
-	function onValidate(ev, mode, oriData, newData) 
-	{
-		// 由于valueField选项设置为"orders", 子表数组会写在newDate.orders中
-		if (newData.orders.length == 0) {
-			WUI.app_alert("请添加子表项!", "w");
-			return false;
-		}
-		// 假如需要压缩成一个字符串：
-		// newData.orders = WUI.objarr2list(newData.orders, ["type", "amount"]);
-	}
+## 动态修改选项
 
 选项可以动态修改，如：
 
@@ -1859,7 +1846,51 @@ function createFindMenu(jtbl)
 	var jsub = jdlg.find(".wui-subobj");
 	WUI.getOptions(jsub).readonly = !g_data.hasRole("emp,mgr");
 
-- forceLoad: 显示为Tab页时（即每个Tab页一个子表），为减少后端查询，若该Tab页尚未显示，是不加载该子表的。设置forceLoad为true则无论是否显示均强制加载。
+## 定制子对象操作按钮toobar
+
+- opt.toolbar: 指定修改对象时的增删改查按钮, Enum(a-add, s-set, d-del, f-find, r-refresh), 字符串或数组, 缺省是所有按钮, 空串""或空数组[]表示没有任何按钮.
+
+示例：只留下删除和刷新: 
+
+	<div ... class="wui-subobj" data-options="..., toolbar:'rd'"
+
+示例：为子表定制一个操作按钮“取消”：
+
+	// function initPageXXX() 自定义个按钮
+	var btnCancelOrder = {text: "取消订单", iconCls:'icon-delete', handler: function () {
+		var row = WUI.getRow(jtbl);
+		if (row == null)
+			return;
+		callSvc("Ordr.cancel", {id: row.id}, function () {
+			app_show("操作完成");
+			WUI.reloadRow(jtbl, row);
+		})
+	}};
+
+	// 在dialog的beforeshow回调中：
+	var jsub = jdlg.find(".wui-subobj");
+	WUI.getOptions(jsub).toolbar = ["r", "f", "s", btnCancelOrder]
+
+@see dg_toolbar
+
+## 添加主对象时检查子表
+
+可以在validate事件中，对添加的子表进行判断处理：
+
+	function onValidate(ev, mode, oriData, newData) 
+	{
+		if (mode == FormMode.forAdd) {
+			// 由于valueField选项设置为"orders", 子表数组会写在newDate.orders中
+			if (newData.orders.length == 0) {
+				WUI.app_alert("请添加子表项!", "w");
+				return false;
+			}
+			// 假如需要压缩成一个字符串：
+			// newData.orders = WUI.objarr2list(newData.orders, ["type", "amount"]);
+		}
+	}
+
+注意：只有在主对象添加时可以检查子表。在更新模式下，子对象的更改是直接单独提交的，主对象中无法处理。
 
 ## 示例2：主表记录添加时不需要展示，添加之后子表/关联表可以增删改查：
 
@@ -1873,12 +1904,12 @@ function createFindMenu(jtbl)
 		...
 	</div>
 
-示例4：最简单的只读子表，只查看，也不关联对话框
+示例：最简单的只读子表，只查看，也不关联对话框
 
 	<div class="wui-subobj" data-options="obj:'CusOrder', res:'id,tm,status,amount', relatedKey:'cusId'">
 	</div>
 
-- res: 指定返回字段以提高性能，即query接口的res参数。注意在关联详细对话框（即指定dlg选项）时，一般不指定res，否则双击打开对话框时会字段显示不全。
+- opt.res: 指定返回字段以提高性能，即query接口的res参数。注意在关联详细对话框（即指定dlg选项）时，一般不指定res，否则双击打开对话框时会字段显示不全。
 
 
 ## 示例4: 动态启用/禁用子表

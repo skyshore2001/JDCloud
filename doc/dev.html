@@ -229,7 +229,16 @@ cd tomatomall-app
 npm i
 cordova platform add ios
 make</code></pre>
-<p>打开xcode，加载工程，编译、测试和发布。</p>
+<p>打开xcode，加载工程（自动生成的platforms/ios/{项目名}.xcworkspace），编译、测试和发布。</p>
+<p>如果是干净的macos系统，先从苹果应用市场或官网下载适合版本的xcode（注意xcode对macos系统版本有要求，而上架应用市场时对xcode和ios sdk版本有要求）。 然后下载nodejs（包含npm，http://nodejs.cn/），然后参考android环境的配置：</p>
+<pre><code>（设置taobao源, 下载包速度较快）
+npm config set registry https://registry.npm.taobao.org </code></pre>
+<p>cordova开发环境安装（目前使用10.0版本）：</p>
+<pre><code>npm install -g cordova@10.0</code></pre>
+<p>检查：</p>
+<pre><code>cordova -v
+(应该是10.0)</code></pre>
+<p>然后进行上面常规项目操作即可。</p>
 <h2 id="测试环境"><span class="header-section-number">4</span> 测试环境</h2>
 <p>用于自动化测试(目前很少使用，且phpunit已换成jasmine。此章节跳过。)</p>
 <p>前提: 先配置好Windows开发环境(git/php等).</p>
