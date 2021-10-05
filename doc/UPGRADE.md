@@ -1,3 +1,13 @@
+## 升级到v6.0
+
+用jdRet替代MyException和DirectReturn。
+
+callSvc接口变量（重构后简化）。
+
+移除全局变量$X_RET, $errorFn, $g_dbgInfo(以$X_APP->dbgInfo替代).
+
+移除AppBase类,ApiApp类,setRet函数,errQuit函数等
+
 ## 升级到v5.5
 
 ### 前端批量处理函数原型更新batchOp

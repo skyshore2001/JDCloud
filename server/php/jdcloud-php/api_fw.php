@@ -3,7 +3,8 @@
 #error_reporting(E_ALL & (~(E_NOTICE|E_USER_NOTICE)));
 error_reporting(E_ALL & ~E_NOTICE);
 
-/** @module api_fw
+/** @module JDEnv
+@alias api_fw
 
 服务接口实现框架。
 
@@ -379,7 +380,6 @@ require_once("app_fw.php");
 require_once("AccessControl.php");
 
 // ====== config {{{
-global $X_RET; // maybe set by the caller
 global $X_RET_STR;
 /**
 @var $X_RET_FN
@@ -389,26 +389,27 @@ global $X_RET_STR;
 
 - 如果返回对象，则输出json格式。
 - 如果返回false，应自行用echo输出。注意API日志中仍记录筋斗云返回数据格式。
+- (v6) 如果有参数`{jdcloud:1}`，则忽略此处设置，仍使用筋斗云格式输出。
 
 示例：返回 `{code, data}`格式：
 
 	global $X_RET_FN;
-	$X_RET_FN = function ($X_RET) {
+	$X_RET_FN = function ($ret) {
 		$ret = [
-			"code" => $X_RET[0],
-			"data" => $X_RET[1]
+			"code" => $ret[0],
+			"data" => $ret[1]
 		];
 		if ($GLOBALS["TEST_MODE"])
-			$ret["jdData"] = $X_RET;
+			$ret["jdData"] = $ret;
 		return $ret;
 	};
 
 示例：返回xml格式：
 
 	global $X_RET_FN;
-	$X_RET_FN = function ($X_RET) {
+	$X_RET_FN = function ($ret) {
 		header("Content-Type: application/xml");
-		echo "<xml><code>$X_RET[0]</code><data>$_RET[1]</data></xml>";
+		echo "<xml><code>$ret[0]</code><data>$ret[1]</data></xml>";
 		return false;
 	};
 	
@@ -439,116 +440,8 @@ global $X_APP;
 const PAGE_SZ_LIMIT = 10000;
 // }}}
 
-// ====== ApiFw_: module internals {{{
-
-class ApiFw_
-{
-	static $SOLO = true;
-	static $perms = null;
-	static $exPerm = null;
-}
-//}}}
-
 // ====== functions {{{
-/**
-@fn setRet($code, $data?, $internalMsg?)
 
-@param $code Integer. 返回码, 0表示成功, 否则表示操作失败。(v6) 如果为null，则直接输出data内容(仍会记录debug和ApiLog日志)
-@param $data 返回数据。
-@param $internalMsg 当返回错误时，作为额外调试信息返回。
-
-setRet在框架内部使用，用户应调用jdRet。
-
-设置返回数据，最终返回JSON格式数据为 [ code, data, internalMsg, debugInfo1, ...]
-其中按照BQP协议，前两项为必须，后面的内容一般仅用于调试，前端应用不应处理。
-
-当成功时，返回数据可以是任何类型（根据API设计返回相应数据）。
-当失败时，为String类型错误信息。
-如果参数$data未指定，则操作成功时值为null（按BQP协议返回null表示客户端应忽略处理，一般无特定返回应指定$data="OK"）；操作失败时使用默认错误信息。
-
-调用完后，要返回的数据存储在全局数组 $X_RET 中，以JSON字符串形式存储在全局字符串 $X_RET_STR 中。
-(v6) 也可以直接指定返回的JSON串，避免setRet函数对返回对象进行JSON序列化，使用dbExpr:
-
-	$str = '{"id":100, "name":"aaa"}';
-	// 如果不想继续执行后面代码，可以自行调用：
-	jdRet(0, dbExpr($str));
-	// 最终返回字符串为 [0, {"id":100, "name":"aaa"}]
-
-@see jdRet
-@see $X_RET 只读，接口返回数据，格式为[code, data, ...]
-@see $X_RET_STR 只读，接口最终输出的字符串
-@see $X_RET_FN 自定义返回格式
-@see $errorFn
-@see errQuit()
-*/
-function setRet($code, $data = null, $internalMsg = null)
-{
-	global $TEST_MODE;
-	global $ERRINFO;
-	global $X_RET;
-
-	if (!isset($data) && $code) {
-		assert(array_key_exists($code, $ERRINFO));
-		$data = $ERRINFO[$code];
-	}
-	$X_RET = [$code, $data];
-
-	if (isset($internalMsg))
-		$X_RET[] = $internalMsg;
-
-	if (ApiFw_::$SOLO) {
-		$debugLog = getenv("P_DEBUG_LOG") ?: 0;
-		if ($debugLog == 1 || ($debugLog == 2 && $X_RET[0] != 0)) {
-			$ac = $GLOBALS["X_APP"]? $GLOBALS["X_APP"]->getAc(): 'unknown';
-			$retStr = $code === null? $data: jsonEncode($X_RET);
-			$s = 'ac=' . $ac . ', apiLogId=' . ApiLog::$lastId . ', ret=' . $retStr . ", dbgInfo=" . jsonEncode($GLOBALS["g_dbgInfo"], true);
-			logit($s, true, 'debug');
-		}
-	}
-	global $X_RET_STR;
-	if ($code === null) {
-		$X_RET_STR = $data;
-		echo($X_RET_STR);
-		return;
-	}
-
-	if ($TEST_MODE) {
-		global $g_dbgInfo;
-		if (count($g_dbgInfo) > 0)
-			$X_RET[] = $g_dbgInfo;
-	}
-
-	if (ApiFw_::$SOLO) {
-		global $X_RET_FN;
-		if (! $data instanceof DbExpr) {
-			if (is_callable(@$X_RET_FN)) {
-				$ret1 = $X_RET_FN($X_RET);
-				if ($ret1 === false)
-					return;
-				if (is_string($ret1)) {
-					$X_RET_STR = $ret1;
-					echo $X_RET_STR . "\n";
-					return;
-				}
-				$X_RET = $ret1;
-			}
-			$X_RET_STR = jsonEncode($X_RET, $GLOBALS["TEST_MODE"]);
-		}
-		else {
-			$X_RET_STR = "[" . $code . ", " . $data->val . "]";
-		}
-		echoRet();
-	}
-	else {
-		if ($data instanceof DbExpr) {
-			$X_RET[1] = jsonDecode($data->val);
-		}
-		$errfn = $GLOBALS["errorFn"] ?: "errQuit";
-		if ($code != 0) {
-			$errfn($X_RET[0], $X_RET[1], $X_RET[2]);
-		}
-	}
-}
 
 /**
 @var _jsonp 用于支持jsonp返回格式的URL参数
@@ -586,22 +479,6 @@ JS示例：
 	console.log(api_order);
 	</script>
 */
-function echoRet()
-{
-	global $X_RET_STR;
-	$jsonp = $_GET["_jsonp"];
-	if ($jsonp) {
-		if (substr($jsonp,-1) === '=') {
-			echo $jsonp . $X_RET_STR . ";\n";
-		}
-		else {
-			echo $jsonp . "(" . $X_RET_STR . ");\n";
-		}
-	}
-	else {
-		echo $X_RET_STR . "\n";
-	}
-}
 
 /**
 @fn setServerRev()
@@ -779,7 +656,7 @@ HTTP Basic认证，即添加HTTP头：
 function hasPerm($perms, $exPerms=null)
 {
 	assert(is_null($exPerms) || is_array($exPerms));
-	if (is_null(ApiFw_::$perms)) {
+	if (is_null(JDEnv::$perms)) {
 		// 扩展认证登录
 		if (count($_SESSION) == 0) { // 有session项则不进行认证
 			$authTypes = $exPerms;
@@ -791,24 +668,24 @@ function hasPerm($perms, $exPerms=null)
 						$authTypes[] = $e["authType"];
 				}
 			}
-			ApiFw_::$exPerm = null;
+			JDEnv::$exPerm = null;
 			foreach ($authTypes as $e) {
 				$fn = Conf::$authHandlers[$e];
 				if (! is_callable($fn))
 					jdRet(E_SERVER, "unregistered authType `$e`", "未知认证类型`$e`");
 				if ($fn()) {
-					ApiFw_::$exPerm = $e;
+					JDEnv::$exPerm = $e;
 					session_destroy();  // 对于第三方认证，不保存session（即使其中模拟了管理员登录，也不会影响下次调用）
 					break;
 				}
 			}
 		}
-		ApiFw_::$perms = onGetPerms();
+		JDEnv::$perms = onGetPerms();
 	}
 
-	if ( (ApiFw_::$perms & $perms) != 0 )
+	if ( (JDEnv::$perms & $perms) != 0 )
 		return true;
-	if (is_array($exPerms) && ApiFw_::$exPerm && in_array(ApiFw_::$exPerm, $exPerms))
+	if (is_array($exPerms) && JDEnv::$exPerm && in_array(JDEnv::$exPerm, $exPerms))
 		return true;
 	return false;
 }
@@ -1289,23 +1166,22 @@ e.g. 修改ApiLog的ac:
 // 		$logStr = "=== [" . date("Y-m-d H:i:s") . "] id={$this->logId} from=$remoteAddr ses=" . session_id() . " app=$APP user=$userId ac=$ac >>>$content<<<\n";
 	}
 
-	function logAfter()
+	function logAfter($ret)
 	{
 		global $DBH;
 		global $X_RET_STR;
-		global $X_RET;
 		if ($DBH == null)
 			return;
 		$iv = sprintf("%.0f", (microtime(true) - $this->startTm) * 1000); // ms
 		if ($X_RET_STR == null)
-			$X_RET_STR = jsonEncode($X_RET, $GLOBALS["TEST_MODE"]);
-		$logLen = $X_RET[0] !== 0? 2000: 200;
+			$X_RET_STR = jsonEncode($ret, $GLOBALS["TEST_MODE"]);
+		$logLen = $ret[0] !== 0? 2000: 200;
 		$content = $this->myVarExport($X_RET_STR, $logLen);
 
 		++ $DBH->skipLogCnt;
 		$rv = dbUpdate("ApiLog", [
 			"t" => $iv,
-			"retval" => $X_RET[0],
+			"retval" => $ret[0],
 			"ressz" => strlen($X_RET_STR),
 			"res" => dbExpr(Q($content)),
 			"userId" => $this->userId ?: $this->getUserId(),
@@ -1324,15 +1200,14 @@ e.g. 修改ApiLog的ac:
 			$this->req1 .= ";\n" . $content2;
 	}
 
-	function logAfter1()
+	function logAfter1($ret)
 	{
 		global $DBH;
-		global $X_RET;
 		if ($DBH == null)
 			return;
 		$iv = sprintf("%.0f", (microtime(true) - $this->startTm1) * 1000); // ms
-		$res = jsonEncode($X_RET, $GLOBALS["TEST_MODE"]);
-		$logLen = $X_RET[0] !== 0? 2000: 200;
+		$res = jsonEncode($ret, $GLOBALS["TEST_MODE"]);
+		$logLen = $ret[0] !== 0? 2000: 200;
 		$content = $this->myVarExport($res, $logLen);
 
 		++ $DBH->skipLogCnt;
@@ -1340,7 +1215,7 @@ e.g. 修改ApiLog的ac:
 			"apiLogId" => $this->id,
 			"ac" => $this->ac1,
 			"t" => $iv,
-			"retval" => $X_RET[0],
+			"retval" => $ret[0],
 			"req" => dbExpr(Q($this->req1)),
 			"res" => dbExpr(Q($content))
 		]);
@@ -1710,13 +1585,11 @@ $param或$postParam为null时，与空数组`[]`等价。
 */
 function tmpEnv($param, $postParam, $fn)
 {
-	$bak = [$_GET, $_POST, $_REQUEST, ApiFw_::$SOLO, $GLOBALS["X_RET_FN"]];
+	$bak = [$_GET, $_POST, $_REQUEST, $GLOBALS["X_RET_FN"]];
 	$_GET = $param ?: [];
 	$_POST = $postParam ?: [];
 	assert(is_array($_GET) && is_array($_POST));
 	$_REQUEST = $_GET + $_POST;
-
-	ApiFw_::$SOLO = false;
 
 	$ret = null;
 	$ex = null;
@@ -1724,19 +1597,18 @@ function tmpEnv($param, $postParam, $fn)
 		$ret = $fn();
 	}
 	catch (DirectReturn $ex0) {
-		global $X_RET;
-		if ($X_RET[0] === null) {
+		if ($ex0->isUserFmt) {
 			$ex = $ex0;
 		}
-		else if ($X_RET[0] == 0) {
-			$ret = $X_RET[1];
+		else {
+			$ret = $ex0->data;
 		}
 	}
 	catch (Exception $ex1) {
 		$ex = $ex1;
 	}
 	// restore env
-	list($_GET, $_POST, $_REQUEST, ApiFw_::$SOLO, $GLOBALS["X_RET_FN"]) = $bak;
+	list($_GET, $_POST, $_REQUEST, $GLOBALS["X_RET_FN"]) = $bak;
 	if ($ex)
 		throw $ex;
 	return $ret;
@@ -2096,86 +1968,27 @@ function api_async() {
 // }}}
 
 // ====== main routine {{{
-function apiMain()
+function callSvc($ac=null, $useTrans=true)
 {
-	if ($_SERVER["REQUEST_METHOD"] == "OPTIONS")
-		return;
-
-	// TODO: 如允许api.php被包含后直接调用api，应设置 ApiFw_::$SOLO=false
-	//$script = basename($_SERVER["SCRIPT_NAME"]);
-	//ApiFw_::$SOLO = ($script == API_ENTRY_PAGE || $script == 'index.php');
-	if (@$GLOBALS["noExecApi"] || isCLI())
-		ApiFw_::$SOLO = false;
-
-	$supportJson = function () {
-		// 支持POST为json格式
-		$ct = getContentType();
-		if (strstr($ct, "/json") !== false) {
-			$content = getHttpInput();
-			@$arr = json_decode($content, true);
-			if (!is_array($arr)) {
-				logit("bad json-format body: `$content`");
-				throw new MyException(E_PARAM, "bad json-format body");
-			}
-			$_POST = $arr;
-			$_REQUEST += $arr;
-		}
-	};
-
-	global $BASE_DIR;
-	// optional plugins
-	$plugins = "$BASE_DIR/plugin/index.php";
-	if (file_exists($plugins))
-		include_once($plugins);
-
-	require_once("{$BASE_DIR}/conf.php");
-
-	if (ApiFw_::$SOLO) {
-		$api = new ApiApp();
-		$GLOBALS["X_APP"] = $api;
-		$api->onBeforeActions[] = $supportJson;
-		$api->exec();
-
-		// 删除空会话
-		if (isset($_SESSION) && count($_SESSION) == 0) {
-			// jd-php框架ApiWatch中设置过lastAccess，则空会话至少有1个key。v5.3不再使用ApiWatch
-			// @session_destroy();
-			safe_sessionDestroy();
-		}
+	global $X_APP;
+	if (!$X_APP) {
+		$X_APP = new JDEnv();
 	}
+	$ret = $X_APP->callSvcSafe($ac, $useTrans);
+	return $ret;
 }
 
-class BatchApiApp extends AppBase
+function apiMain()
 {
-	protected $apiApp;
-	protected $useTrans;
+	global $X_APP;
+	$X_APP = new JDEnv();
+	if (@$GLOBALS["noExecApi"] || isCLI())
+		return;
+	return callSvc();
+}
 
-	public $ac;
-
-	function __construct($apiApp, $useTrans)
-	{
-		$this->apiApp = $apiApp;
-		$this->useTrans = $useTrans;
-	}
-
-	protected function onExec()
-	{
-		$this->apiApp->call($this->ac, !$this->useTrans);
-	}
-
-	protected function onErr($code, $msg, $msg2)
-	{
-		setRet($code, $msg, $msg2);
-	}
-
-	protected function onAfter($ok)
-	{
-		global $X_RET_STR;
-		global $g_dbgInfo;
-		$X_RET_STR = null;
-		$g_dbgInfo = [];
-	}
-
+class BatchUtil
+{
 /*
 	static function handleBatchRef($ref, $retVal)
 	{
@@ -2283,25 +2096,121 @@ class BatchApiApp extends AppBase
 
 // 取当前全局APP可以用X_APP，如
 //  $ac = $GLOBALS["X_APP"]? $GLOBALS["X_APP"]->getAc(): 'unknown';
-class ApiApp extends AppBase
+// TODO: $DBH/$_GET/$_POST等全局变量移入这里. 通过X_APP取本实例，全局queryOne,param等函数改成$X_APP->queryOne等。
+class JDEnv
 {
 	private $apiLog;
 	private $apiWatch;
 	private $ac;
 
+	// TODO: private
+	static $perms = null;
+	static $exPerm = null;
+
+	public $onAfterActions = [];
+	private $dbgInfo = [];
+
 	function getAc() {
 		return $this->ac;
 	}
 
-	protected function onExec()
-	{
-		if (! isCLI())
-		{
-			if (ApiFw_::$SOLO)
-			{
-				header("Content-Type: text/plain; charset=UTF-8");
-				#header("Content-Type: application/json; charset=UTF-8");
+	function __construct() {
+		$this->initEnv();
+	}
+
+	private function initEnv() {
+		mb_internal_encoding("UTF-8");
+		setlocale(LC_ALL, "zh_CN.UTF-8");
+
+		require_once("ext.php");
+
+		global $TEST_MODE, $MOCK_MODE, $DBG_LEVEL;
+		$TEST_MODE = getenv("P_TEST_MODE")===false? 0: intval(getenv("P_TEST_MODE"));
+
+		$defaultDebugLevel = getenv("P_DEBUG")===false? 0 : intval(getenv("P_DEBUG"));
+		$DBG_LEVEL = param("_debug/i", $defaultDebugLevel, $_GET);
+
+		if ($TEST_MODE) {
+			$MOCK_MODE = getenv("P_MOCK_MODE") ?: 0;
+		}
+
+		global $DB, $DBCRED, $DBTYPE;
+		$DBTYPE = getenv("P_DBTYPE");
+		$DB = getenv("P_DB") ?: $DB;
+		$DBCRED = getenv("P_DBCRED") ?: $DBCRED;
+
+		// e.g. P_DB="../carsvc.db"
+		if (! $DBTYPE) {
+			if (preg_match('/\.db$/i', $DB)) {
+				$DBTYPE = "sqlite";
 			}
+			else {
+				$DBTYPE = "mysql";
+			}
+		}
+
+		global $BASE_DIR;
+		// optional plugins
+		$plugins = "$BASE_DIR/plugin/index.php";
+		if (file_exists($plugins))
+			include_once($plugins);
+
+		require_once("{$BASE_DIR}/conf.php");
+	}
+
+	private function initRequest() {
+
+		global $TEST_MODE, $MOCK_MODE;
+		$isCLI = isCLI();
+
+		if (! $isCLI) {
+			if ($TEST_MODE)
+				header("X-Daca-Test-Mode: $TEST_MODE");
+			if ($MOCK_MODE)
+				header("X-Daca-Mock-Mode: $MOCK_MODE");
+		}
+		// 默认允许跨域
+		@$origin = $_SERVER['HTTP_ORIGIN'];
+		if (isset($origin) && !$isCLI) {
+			header('Access-Control-Allow-Origin: ' . $origin);
+			header('Access-Control-Allow-Credentials: true');
+			header('Access-Control-Expose-Headers: X-Daca-Server-Rev, X-Daca-Test-Mode, X-Daca-Mock-Mode');
+			
+			@$val = $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS'];
+			if ($val) {
+				header('Access-Control-Allow-Headers: ' . $val);
+			}
+			@$val = $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD'];
+			if ($val) {
+				header('Access-Control-Allow-Methods: ' . $val);
+			}
+		}
+		if ($_SERVER["REQUEST_METHOD"] === "OPTIONS")
+			exit();
+
+		if (!$isCLI)
+			self::setupSession();
+
+		global $MOCK_MODE;
+		if ($TEST_MODE) {
+			$MOCK_MODE = getenv("P_MOCK_MODE") ?: 0;
+		}
+		// supportJson: 支持POST为json格式
+		$ct = getContentType();
+		if (strstr($ct, "/json") !== false) {
+			$content = getHttpInput();
+			@$arr = jsonDecode($content);
+			if (!is_array($arr)) {
+				logit("bad json-format body: `$content`");
+				throw new MyException(E_PARAM, "bad json-format body");
+			}
+			$_POST = $arr;
+			$_REQUEST += $arr;
+		}
+
+		if (! $isCLI) {
+			header("Content-Type: text/plain; charset=UTF-8");
+			#header("Content-Type: application/json; charset=UTF-8");
 			header("Cache-Control: no-cache");
 		}
 		setServerRev();
@@ -2321,26 +2230,12 @@ class ApiApp extends AppBase
 		}
 
 		Conf::onApiInit($ac);
-		$this->ac = $ac;
 
-		dbconn();
-
-		global $DBH;
-		if (! isCLI() && Conf::$enableAutoSession) {
-			session_start();
-		}
-
-		if (Conf::$enableApiLog)
-		{
-			$this->apiLog = new ApiLog($ac);
-			$this->apiLog->logBefore();
-		}
-
-/*
-		// API调用监控
-		$this->apiWatch = new ApiWatch($ac);
-		$this->apiWatch->execute();
-*/
+	/*
+			// API调用监控
+			$this->apiWatch = new ApiWatch($ac);
+			$this->apiWatch->execute();
+	*/
 		if (Conf::$enableSecure) {
 			if (!BlackList::isWhiteReq() && (BlackList::isBlackReq() || Conf::checkSecure($ac) === false)) {
 				setRet(E_FORBIDDEN, "OK");
@@ -2348,12 +2243,140 @@ class ApiApp extends AppBase
 			}
 		}
 
-		if ($ac == "batch") {
-			$useTrans = param("useTrans", false, $_GET);
-			$ret = $this->batchCall($useTrans);
+		return $ac;
+	}
+
+	// 返回[code, data, ...]
+	function callSvcSafe($ac = null, $useTrans=true)
+	{
+		global $ERRINFO;
+		global $DBH;
+		$ret = [0, null];
+		$isUserFmt = false;
+
+		$isDefaultCall = ($ac === null);
+		try {
+			if ($isDefaultCall) {
+				$this->ac = $ac = $this->initRequest();
+
+				dbconn();
+
+				if (! isCLI() && Conf::$enableAutoSession) {
+					session_start();
+				}
+
+				if (Conf::$enableApiLog)
+				{
+					$this->apiLog = new ApiLog($ac);
+					$this->apiLog->logBefore();
+				}
+			}
+
+			if ($ac !== "batch") {
+				if ($useTrans && ! $DBH->inTransaction())
+					$DBH->beginTransaction();
+				$ret[1] = callSvcInt($ac, null, null, false);
+			}
+			else {
+				$batchUseTrans = param("useTrans", false, $_GET);
+				if ($useTrans && $batchUseTrans && !$DBH->inTransaction())
+					$DBH->beginTransaction();
+				else
+					$useTrans = false;
+				$ret = $this->batchCall($batchUseTrans);
+			}
+		}
+		catch (DirectReturn $e) {
+			$ret[1] = $e->data;
+			$isUserFmt = $e->isUserFmt;
+		}
+		catch (MyException $e) {
+			$ret = [$e->getCode(), $e->getMessage(), $e->internalMsg];
+			addLog((string)$e, 9);
+		}
+		catch (PDOException $e) {
+			// SQLSTATE[23000]: Integrity constraint violation: 1451 Cannot delete or update a parent row: a foreign key constraint fails (`jdcloud`.`Obj1`, CONSTRAINT `Obj1_ibfk_1` FOREIGN KEY (`objId`) REFERENCES `Obj` (`id`))",
+			$ret = [E_DB, $ERRINFO[E_DB], $e->getMessage()];
+			if (preg_match('/a foreign key constraint fails [()]`\w+`.`(\w+)`/', $ret[2], $ms)) {
+				$tbl = function_exists("T")? T($ms[1]) : $ms[1]; // T: translate function
+				$ret[1] = "`$tbl`表中有数据引用了本记录";
+			}
+			addLog((string)$e, 9);
+		}
+		catch (Exception $e) {
+			$ret = [E_SERVER, $ERRINFO[E_SERVER], $e->getMessage()];
+			addLog((string)$e, 9);
+		}
+
+		global $DBH;
+		try {
+			if ($useTrans && $DBH && $DBH->inTransaction())
+			{
+				if ($ret[0] == 0)
+					$DBH->commit();
+				else
+					$DBH->rollback();
+			}
+		}
+		catch (Exception $e) {
+			logit((string)$e);
+		}
+
+		if ($isDefaultCall) {
+			$debugLog = getenv("P_DEBUG_LOG") ?: 0;
+			if ($debugLog == 1 || ($debugLog == 2 && $ret[0] != 0)) {
+				$retStr = $isUserFmt? $ret[1]: jsonEncode($ret);
+				$s = 'ac=' . $ac . ', apiLogId=' . ApiLog::$lastId . ', ret=' . $retStr . ", dbgInfo=" . jsonEncode($this->dbgInfo, true);
+				logit($s, true, 'debug');
+			}
+		}
+		global $TEST_MODE;
+		if ($TEST_MODE && count($this->dbgInfo) > 0) {
+			foreach ($this->dbgInfo as $e) {
+				$ret[] = $e;
+			}
+		}
+
+		if ($isDefaultCall) {
+			$this->echoRet($ret, $isUserFmt);
 		}
 		else {
-			$ret = $this->call($ac, true);
+			if ($ret[1] instanceof DbExpr) {
+				$ret[1] = jsonDecode($ret[1]->val);
+			}
+		}
+
+		if ($isDefaultCall && $ret[0] == 0) {
+			foreach ($this->onAfterActions as $fn) {
+				try {
+					$fn();
+				}
+				catch (Exception $e) {
+					logit('onAfterActions fails: ' . (string)$e);
+				}
+			}
+		}
+		try {
+/*
+			if ($this->apiWatch)
+				$this->apiWatch->postExecute();
+*/
+			if ($this->apiLog)
+				$this->apiLog->logAfter($ret);
+
+			// 及时关闭数据库连接
+			global $DBH;
+			$DBH = null;
+
+			// 删除空会话
+			if (isset($_SESSION) && count($_SESSION) == 0) {
+				// jd-php框架ApiWatch中设置过lastAccess，则空会话至少有1个key。v5.3不再使用ApiWatch
+				// @session_destroy();
+				safe_sessionDestroy();
+			}
+		}
+		catch (Exception $e) {
+			logit((string)$e);
 		}
 
 		return $ret;
@@ -2365,25 +2388,12 @@ class ApiApp extends AppBase
 		if ($method !== "POST")
 			throw new MyException(E_PARAM, "batch MUST use `POST' method");
 
-		$s = getHttpInput();
-		$calls = json_decode($s, true);
+		$calls = $_POST;
 		if (! is_array($calls))
 			throw new MyException(E_PARAM, "bad batch request");
 
-		global $DBH;
-		global $X_RET;
-
-		// 以下过程不允许抛出异常, 一旦有异常, 返回将不符合batch协议
-		try {
-
-		$batchApiApp = new BatchApiApp($this, $useTrans);
-		if ($useTrans && !$DBH->inTransaction())
-			$DBH->beginTransaction();
-		$solo = ApiFw_::$SOLO;
-		ApiFw_::$SOLO = false;
 		$retVal = [];
 		$retCode = 0;
-		$GLOBALS["errorFn"] = function () {};
 		$acList = [];
 		foreach ($calls as $call) {
 			if ($useTrans && $retCode) {
@@ -2396,77 +2406,82 @@ class ApiApp extends AppBase
 			}
 			$acList[] = $call["ac"];
 
-			$_GET = BatchApiApp::getParams($call, "get", $retVal);
-			$_POST = BatchApiApp::getParams($call, "post", $retVal);
+			$_GET = BatchUtil::getParams($call, "get", $retVal);
+			$_POST = BatchUtil::getParams($call, "post", $retVal);
 			$_REQUEST = array_merge($_GET, $_POST);
 			if ($this->apiLog) {
 				$this->apiLog->logBefore1($call["ac"]);
 			}
 
-			$batchApiApp->ac = $call["ac"];
 			// 如果batch使用trans, 则单次调用不用trans
-			$batchApiApp->exec(! $useTrans);
+			$rv = $this->callSvcSafe($call["ac"], !$useTrans);
 
-			$retCode = $X_RET[0];
-			if ($retCode && $useTrans) {
-				if ($DBH && $DBH->inTransaction())
-				{
-					$DBH->rollback();
-				}
-			}
-			$retVal[] = $X_RET;
+			$retCode = $rv[0];
+			$retVal[] = $rv;
+
 			if ($this->apiLog) {
-				$this->apiLog->logAfter1();
+				$this->apiLog->logAfter1($rv);
 			}
+
+			global $X_RET_STR;
+			$X_RET_STR = null;
+			$this->dbgInfo = [];
 		}
 		if ($this->apiLog) {
 			$this->apiLog->batchAc = 'batch:' . count($acList) . ',' . join(',', $acList);
 		}
-		if ($useTrans && $DBH && $DBH->inTransaction())
-			$DBH->commit();
-		ApiFw_::$SOLO = $solo;
-		setRet(0, $retVal);
 
-		} /* try */
-		catch (Exception $ex) {
-			ApiFw_::$SOLO = $solo;
-			logit($ex);
-			throw $ex;
+		if (! $useTrans)
+			$retCode = 0;
+		return [$retCode, $retVal];
+	}
+
+	private function echoRet($ret, $isUserFmt)
+	{
+		global $TEST_MODE;
+		global $ERRINFO;
+
+		list ($code, $data) = $ret;
+
+		global $X_RET_STR;
+		if ($isUserFmt) {
+			$X_RET_STR = $data;
+			echo($X_RET_STR);
+			return;
 		}
 
-		return $retVal;
-	}
+		global $X_RET_FN;
+		if (! $data instanceof DbExpr) {
+			if (is_callable(@$X_RET_FN) && !param("jdcloud")) {
+				$ret1 = $X_RET_FN($ret);
+				if ($ret1 === false)
+					return;
+				if (is_string($ret1)) {
+					$X_RET_STR = $ret1;
+					echo $X_RET_STR . "\n";
+					return;
+				}
+				$ret = $ret1;
+			}
+			$X_RET_STR = jsonEncode($ret, $GLOBALS["TEST_MODE"]);
+		}
+		else {
+			$X_RET_STR = "[" . $code . ", " . $data->val . "]";
+		}
 
-	// 将被BatchApiApp调用
-	public function call($ac, $useTrans)
-	{
-		global $DBH;
-		if ($useTrans && ! $DBH->inTransaction())
-			$DBH->beginTransaction();
-		$ret = callSvcInt($ac, null, null, false);
-		if ($useTrans && $DBH && $DBH->inTransaction())
-			$DBH->commit();
-		setRet(0, $ret);
-		return $ret;
-	}
-
-	protected function onErr($code, $msg, $msg2)
-	{
-		setRet($code, $msg, $msg2);
-	}
-
-	protected function onAfter($ok)
-	{
-/*
-		if ($this->apiWatch)
-			$this->apiWatch->postExecute();
-*/
-		if ($this->apiLog)
-			$this->apiLog->logAfter();
-
-		// 及时关闭数据库连接
-		global $DBH;
-		$DBH = null;
+		global $X_RET_STR;
+		$jsonp = $_GET["_jsonp"];
+		if ($jsonp) {
+			if (substr($jsonp,-1) === '=') {
+				echo $jsonp . $X_RET_STR . ";\n";
+			}
+			else {
+				echo $jsonp . "(" . $X_RET_STR . ");\n";
+			}
+		}
+		else {
+			echo $X_RET_STR . "\n";
+		}
 	}
 
 	private function getPathInfo()
@@ -2572,6 +2587,41 @@ class ApiApp extends AppBase
 		}
 		return "{$obj}.{$ac}";
 	}
+
+	private static function setupSession()
+	{
+		global $APP;
+
+		# normal: "userid"; testmode: "tuserid"
+		$name = $APP . "id";
+		session_name($name);
+
+		$path = getenv("P_SESSION_DIR") ?: $GLOBALS["BASE_DIR"] . "/session";
+		if (!  is_dir($path)) {
+			if (! mkdir($path, 0777, true))
+				throw new MyException(E_SERVER, "fail to create session folder: $path");
+		}
+		if (! is_writeable($path))
+			throw new MyException(E_SERVER, "session folder is NOT writeable: $path");
+		session_save_path ($path);
+
+		ini_set("session.cookie_httponly", 1);
+
+		$path = getenv("P_URL_PATH");
+		if ($path)
+		{
+			// e.g. path=/cheguanjia
+			ini_set("session.cookie_path", $path);
+		}
+	}
+
+	function addLog($data, $logLevel=0) {
+		global $DBG_LEVEL;
+		if ($DBG_LEVEL >= $logLevel)
+		{
+			$this->dbgInfo[] = $data;
+		}
+	}
 }
 
 /*
@@ -2651,49 +2701,6 @@ function safe_sessionDestroy()
 		fclose($fp);
 		// echo("!!! ignore session destroy !!!\n");
 	}
-}
-
-/**
-@fn callSvc($ac?, $urlParam?, $postParam?, $cleanCall?=false, $hideResult?=false)
-
-直接调用接口，返回数据。如果出错，将调用$GLOBALS['errorFn'] (缺省为errQuit).
-
-@param $cleanCall Boolean. 如果为true, 则不使用现有的$_GET, $_POST等变量中的值。
-@param $hideResult Boolean. 如果为true, 不输出结果。
- */
-function callSvc($ac = null, $urlParam = null, $postParam = null, $cleanCall = false, $hideResult = false)
-{
-	global $DBH; // 避免api->exec完成后关闭数据库连接
-	$bak = [$_GET, $_POST, $_REQUEST, ApiFw_::$SOLO, $DBH];
-
-	if ($cleanCall) {
-		$_GET = [];
-		$_POST = [];
-		$_REQUEST = [];
-	}
-	if ($ac)
-		$_GET["_ac"] = $ac;
-	if ($urlParam) {
-		foreach ($urlParam as $k=>$v) {
-			setParam($k, $v);
-		}
-	}
-	if ($postParam) {
-		foreach ($postParam as $k=>$v) {
-			$_POST[$k] = $v;
-		}
-	}
-	if ($hideResult) {
-		ApiFw_::$SOLO = false;
-	}
-
-	$api = new ApiApp();
-	$ret = $api->exec();
-
-	global $X_RET_STR;
-	$X_RET_STR = null;
-	list($_GET, $_POST, $_REQUEST, ApiFw_::$SOLO, $DBH) = $bak;
-	return $ret;
 }
 #}}}
 

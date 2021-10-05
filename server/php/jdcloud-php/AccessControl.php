@@ -1272,7 +1272,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		class_exists("AC_$tbl"); // !!! 自动加载文件 AC_{obj}.php
 		if (is_string($cls)) {
 			if (! class_exists($cls))
-				throw new MyException(E_SERVER, "bad class $cls");
+				jdRet(E_SERVER, "bad class $cls");
 		}
 		else if ($cls === true || hasPerm(AUTH_ADMIN))
 		{
@@ -1298,11 +1298,11 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		if ($cls == null)
 		{
 			$msg = $ac ? "$tbl.$ac": $tbl;
-			throw new MyException(!hasPerm(AUTH_LOGIN)? E_NOAUTH: E_FORBIDDEN, "Operation is not allowed for current user: `$msg`");
+			jdRet(!hasPerm(AUTH_LOGIN)? E_NOAUTH: E_FORBIDDEN, "Operation is not allowed for current user: `$msg`");
 		}
 		$x = new $cls;
 		if (!is_a($x, "AccessControl")) {
-			throw new MyException(E_SERVER, "bad AC class `$cls`. MUST extend AccessControl", "AC类定义错误");
+			jdRet(E_SERVER, "bad AC class `$cls`. MUST extend AccessControl", "AC类定义错误");
 		}
 		return $x;
 	}
@@ -1340,17 +1340,17 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		# support internal param res2/join/cond2, 内部使用, 必须用dbExpr()包装一下.
 		if (($v = param("res2")) != null) {
 			if (! $v instanceof DbExpr)
-				throw new MyException(E_SERVER, "res2 should be DbExpr");
+				jdRet(E_SERVER, "res2 should be DbExpr");
 			$this->filterRes($v->val);
 		}
 		if (($v = param("join")) != null) {
 			if (! $v instanceof DbExpr)
-				throw new MyException(E_SERVER, "join should be DbExpr");
+				jdRet(E_SERVER, "join should be DbExpr");
 			$this->addJoin($v->val);
 		}
 		if (($v = param("cond2", null, null, false)) != null) {
 			if (! $v instanceof DbExpr)
-				throw new MyException(E_SERVER, "cond2 should be DbExpr");
+				jdRet(E_SERVER, "cond2 should be DbExpr");
 			$this->addCond($v->val);
 		}
 
@@ -1419,7 +1419,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		foreach ($this->readonlyFields as $field) {
 			if (array_key_exists($field, $_POST) && !($this->ac == "add" && array_search($field, $this->requiredFields) !== false)) {
 				if ($useStrictReadonly)
-					throw new MyException(E_FORBIDDEN, "set readonly field {$this->table}.`$field`");
+					jdRet(E_FORBIDDEN, "set readonly field {$this->table}.`$field`");
 				logit("!!! warn: attempt to change readonly field {$this->table}.`$field`");
 				unset($_POST[$field]);
 			}
@@ -1428,7 +1428,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			foreach ($this->readonlyFields2 as $field) {
 				if (array_key_exists($field, $_POST)) {
 					if ($useStrictReadonly)
-						throw new MyException(E_FORBIDDEN, "set readonly field {$this->table}.`$field`");
+						jdRet(E_FORBIDDEN, "set readonly field {$this->table}.`$field`");
 					logit("!!! warn: attempt to change readonly field {$this->table}.`$field`");
 					unset($_POST[$field]);
 				}
@@ -1438,7 +1438,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			try {
 			foreach ($this->requiredFields as $field) {
 // 					if (! issetval($field, $_POST))
-// 						throw new MyException(E_PARAM, "missing field `{$field}`", "参数`{$field}`未填写");
+// 						jdRet(E_PARAM, "missing field `{$field}`", "参数`{$field}`未填写");
 				mparam($field, $_POST); // validate field and type; refer to field/type format for mparam.
 			}
 			} catch (MyException $ex) {
@@ -1452,7 +1452,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 				if (is_array($field)) // TODO
 					continue;
 				if (array_key_exists($field, $_POST) && ( ($v=$_POST[$field]) === "null" || $v === "" || $v==="empty" )) {
-					throw new MyException(E_PARAM, "{$this->table}.set: cannot set field `$field` to null.", "字段`$field`不允许置空");
+					jdRet(E_PARAM, "{$this->table}.set: cannot set field `$field` to null.", "字段`$field`不允许置空");
 				}
 			}
 		}
@@ -1537,7 +1537,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 
 		$fn = "api_" . $ac;
 		if (! is_callable([$this, $fn]))
-			throw new MyException(E_PARAM, "Bad request - unknown `$tbl` method: `$ac`", "接口不支持");
+			jdRet(E_PARAM, "Bad request - unknown `$tbl` method: `$ac`", "接口不支持");
 		$this->before();
 		$ret = $this->$fn();
 		$this->after($ret);
@@ -1549,7 +1549,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		$ac = $this->ac;
 		if (isset($this->allowedAc) && in_array($ac, self::$stdAc) && !in_array($ac, $this->allowedAc)) {
 			$errCode = hasPerm(AUTH_LOGIN)? E_FORBIDDEN: E_NOAUTH;
-			throw new MyException($errCode, "Operation `$ac` is not allowed on object `$this->table`");
+			jdRet($errCode, "Operation `$ac` is not allowed on object `$this->table`");
 		}
 	}
 
@@ -1648,7 +1648,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 				if ($key[0] == "'")
 					continue;
 				if (!in_array(strtoupper($key), ["AND", "OR", "IN"]))
-					throw new MyException(E_FORBIDDEN, "forbidden `$key` in param cond");
+					jdRet(E_FORBIDDEN, "forbidden `$key` in param cond");
 			}
 		}
 
@@ -1722,7 +1722,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		if (array_key_exists("%d", $def)) {
 			$col = $def["%d"];
 			if (preg_match('/\W/u', $col)) {
-				throw new MyException(E_PARAM, "bad subobj.relatedKey=`$col`. MUST be a column or virtual column.", "子对象定义错误");
+				jdRet(E_PARAM, "bad subobj.relatedKey=`$col`. MUST be a column or virtual column.", "子对象定义错误");
 			}
 			$this->addVCol($col, self::VCOL_ADD_RES, null, true);
 		}
@@ -1752,7 +1752,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 				if (!$gres && preg_match('/(\w+)\(([\w.\'* ,+-\/]*)\)\s+(?:AS\s+)?([^,]+)/iu', $col, $ms)) {
 					list($fn, $expr, $alias) = [strtoupper($ms[1]), $ms[2], $ms[3]];
 					if ($fn != "COUNT" && $fn != "SUM" && $fn != "AVG" && $fn != "MAX" && $fn != "MIN")
-						throw new MyException(E_FORBIDDEN, "function not allowed: `$fn`");
+						jdRet(E_FORBIDDEN, "function not allowed: `$fn`");
 					// 支持对虚拟字段的聚合函数 (addVCol)
 					$expr = preg_replace_callback('/\b\w+\b/iu', function ($ms) {
 						$col1 = $ms[0];
@@ -1767,7 +1767,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 					$this->isAggregatinQuery = true;
 				}
 				else 
-					throw new MyException(E_PARAM, "bad property `$col`");
+					jdRet(E_PARAM, "bad property `$col`");
 			}
 			else {
 				if ($ms[2]) {
@@ -1786,7 +1786,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			}
 
 // 			if (! ctype_alnum($col))
-// 				throw new MyException(E_PARAM, "bad property `$col`");
+// 				jdRet(E_PARAM, "bad property `$col`");
 			if ($this->addVCol($col, true, $alias) === false) {
 				if (!$gres && array_key_exists($col, $this->subobj)) {
 					$key = self::removeQuote($alias ?: $col);
@@ -1794,7 +1794,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 				}
 				else {
 					if ($isAll)
-						throw new MyException(E_PARAM, "`$col` MUST be virtual column when `res` has `*`", "虚拟字段未定义: $col");
+						jdRet(E_PARAM, "`$col` MUST be virtual column when `res` has `*`", "虚拟字段未定义: $col");
 					$col = "t0." . $col;
 					$col1 = $col;
 					if (isset($alias)) {
@@ -1814,7 +1814,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		$colArr = [];
 		foreach (explode(',', $orderby) as $col) {
 			if (! preg_match('/^\s*(\w+\.)?(\w+)(\s+(asc|desc))?\s*$/iu', $col, $ms))
-				throw new MyException(E_PARAM, "bad property `$col`");
+				jdRet(E_PARAM, "bad property `$col`");
 			if ($ms[1]) // e.g. "t0.id desc"
 			{
 				$colArr[] = $col;
@@ -2018,11 +2018,11 @@ addCond用于添加查询条件，可以使用表的字段或虚拟字段(无须
 			$def = $ms[1];
 		}
 		else
-			throw new MyException(E_SERVER, "bad res definition: `$res`");
+			jdRet(E_SERVER, "bad res definition: `$res`");
 
 		$colName = self::removeQuote($colName);
 		if (!$force && array_key_exists($colName, $this->vcolMap)) {
-			throw new MyException(E_SERVER, "redefine vcol `{$this->table}.$colName`", "虚拟字段定义重复");
+			jdRet(E_SERVER, "redefine vcol `{$this->table}.$colName`", "虚拟字段定义重复");
 		}
 		else {
 			$this->vcolMap[ $colName ] = ["def"=>$def, "def0"=>$res, "vcolDefIdx"=>$vcolDefIdx];
@@ -2054,7 +2054,7 @@ addCond用于添加查询条件，可以使用表的字段或虚拟字段(无须
 			if ($isExt === null)
 				$isExt = $isExt1;
 			if ($isExt !== $isExt1) {
-				throw new MyException(E_SERVER, "bad res: '$res'", "字段定义错误：外部虚拟字段与普通虚拟字段不可定义在一起，请分拆成多组，或明确定义`isExt`。");
+				jdRet(E_SERVER, "bad res: '$res'", "字段定义错误：外部虚拟字段与普通虚拟字段不可定义在一起，请分拆成多组，或明确定义`isExt`。");
 			}
 			if (preg_match_all('/\bt0\.(\w+)\b/u', $ms[1], $ms1)) {
 				foreach ($ms1[1] as $e) {
@@ -2118,7 +2118,7 @@ addCond用于添加查询条件，可以使用表的字段或虚拟字段(无须
 				$rv = true;
 			}
 			else if ($ignoreError === false) {
-				throw new MyException(E_SERVER, "unknown vcol `$col`");
+				jdRet(E_SERVER, "unknown vcol `$col`");
 			}
 			else if ($ignoreError & self::VCOL_ADD_RES) {
 				$rv = $this->addRes("t0.". $col);
@@ -2168,7 +2168,7 @@ addCond用于添加查询条件，可以使用表的字段或虚拟字段(无须
 			return;
 		}
 		if (strpos($col, '.') !== false)
-			throw new MyException(E_PARAM, "`require` cannot use table name: $col", "字段依赖设置错误");
+			jdRet(E_PARAM, "`require` cannot use table name: $col", "字段依赖设置错误");
 		$this->addVCol($col, self::VCOL_ADD_RES | self::VCOL_ADD_SUBOBJ, null, true);
 	}
 
@@ -2387,7 +2387,7 @@ uniKey可以指定多个字段，以逗号分隔即可，常用于关联表，�
 			if ($rv["condSql"]) {
 				$sql = sprintf("SELECT t0.id FROM %s WHERE t0.id=%s AND %s", $rv["tblSql"], $this->id, $rv["condSql"]);
 				if (queryOne($sql) === false)
-					throw new MyException(E_PARAM, "bad {$this->table}.id=" . $this->id . ". Check addCond in `onQuery`.", "操作对象不存在或无权限修改");
+					jdRet(E_PARAM, "bad {$this->table}.id=" . $this->id . ". Check addCond in `onQuery`.", "操作对象不存在或无权限修改");
 			}
 		}
 	}
@@ -2414,7 +2414,7 @@ uniKey可以指定多个字段，以逗号分隔即可，常用于关联表，�
 			if (is_array($_POST[$k]) && isset($v["obj"])) {
 				$subobjList = $_POST[$k];
 				if (! isArray012($subobjList)) {
-					throw new MyException(E_PARAM, "bad subobj $k", "子对象必须为数组: $k");
+					jdRet(E_PARAM, "bad subobj $k", "子对象必须为数组: $k");
 				}
 				$onAfterActions[] = function (&$ret) use ($subobjList, $v) {
 					$relatedKey = null;
@@ -2424,7 +2424,7 @@ uniKey可以指定多个字段，以逗号分隔即可，常用于关联表，�
 						$relatedKeyTo = $ms[3];
 					}
 					if ($relatedKey == null) {
-						throw new MyException(E_SERVER, "bad cond: cannot get relatedKey", "子表配置错误");
+						jdRet(E_SERVER, "bad cond: cannot get relatedKey", "子表配置错误");
 					}
 
 					$objName = $v["obj"];
@@ -2433,7 +2433,7 @@ uniKey可以指定多个字段，以逗号分隔即可，常用于关联表，�
 					if ($relatedKeyTo != null && $relatedKeyTo != "id") {
 						$relatedValue = $_POST[$relatedKeyTo];
 						if (! isset($relatedValue))
-							throw new MyException(E_PARAM, "subobj-add/set fails: require relatedKey `$relatedKeyTo`");
+							jdRet(E_PARAM, "subobj-add/set fails: require relatedKey `$relatedKeyTo`");
 					}
 					// set接口对子表的更新支持2种模式
 					if ($this->ac == "set") {
@@ -2468,7 +2468,7 @@ uniKey可以指定多个字段，以逗号分隔即可，常用于关联表，�
 							/*
 							$fatherId = queryOne("SELECT $relatedKey FROM $objName WHERE id=$subid");
 							if ($fatherId != $this->id)
-								throw new MyException(E_FORBIDDEN, "$objName id=$subid: require $relatedKey={$this->id}, actual " . var_export($fatherId, true), "不可操作该子项");
+								jdRet(E_FORBIDDEN, "$objName id=$subid: require $relatedKey={$this->id}, actual " . var_export($fatherId, true), "不可操作该子项");
 							*/
 							// set/del接口支持cond.
 							$cond = $relatedKey . "=" . $relatedValue;
@@ -2520,7 +2520,7 @@ uniKey可以指定多个字段，以逗号分隔即可，常用于关联表，�
 					continue;
 				# TODO: check meta
 				if (! preg_match('/^\w+$/', $k))
-					throw new MyException(E_PARAM, "bad key $k");
+					jdRet(E_PARAM, "bad key $k");
 
 				if ($condSql !== '') {
 					$condSql .= " AND ";
@@ -2564,7 +2564,7 @@ FROM ($sql) t0";
 			$sql = $this->genQuerySql();
 			$ret = queryOne($sql, true);
 			if ($ret === false) 
-				throw new MyException(E_PARAM, "not found `{$this->table}.id`=`{$this->id}`");
+				jdRet(E_PARAM, "not found `{$this->table}.id`=`{$this->id}`");
 		}
 		else {
 			// 如果get用res字段指定只取子对象，则不必多次查询。e.g. callSvr('Ordr.get', {res: orderLog});
@@ -2806,7 +2806,7 @@ FROM ($sql) t0";
 		}
 		else if ($fmt === "one") {
 			if (count($ret) == 0)
-				throw new MyException(E_PARAM, "no data", "查询不到数据");
+				jdRet(E_PARAM, "no data", "查询不到数据");
 			return $ret[0];
 		}
 		else if ($fmt === "one?") {
@@ -2961,7 +2961,7 @@ qsearch的格式是`字段1,字符2,...:查询内容`(使用英文逗号及冒�
 			: sprintf("UPDATE %s SET %s=1 WHERE id=%s", $this->table, $this->delField, $this->id);
 		$cnt = execOne($sql);
 		if (param('force')!=1 && $cnt != 1)
-			throw new MyException(E_PARAM, "del: not found {$this->table}.id={$this->id}");
+			jdRet(E_PARAM, "del: not found {$this->table}.id={$this->id}");
 		return "OK";
 	}
 
@@ -2979,7 +2979,7 @@ e.g.
 	{
 		foreach (array_keys($_POST) as $k) {
 			if (! in_array($k, $allowedFields))
-				throw new MyException(E_FORBIDDEN, "forbidden to set field `$k`");
+				jdRet(E_FORBIDDEN, "forbidden to set field `$k`");
 		}
 	}
 
@@ -2999,7 +2999,7 @@ e.g.
 
 		$sqlConf = $this->sqlConf;
 		if ($checkCond && count($sqlConf["cond"]) == 0)
-			throw new MyException(E_PARAM, "requires condition", "未指定操作条件");
+			jdRet(E_PARAM, "requires condition", "未指定操作条件");
 
 		$tblSql = "{$this->table} t0";
 		if ($sqlConf["join"] && count($sqlConf["join"]) > 0)
@@ -3041,7 +3041,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		$roFields = $this->readonlyFields + $this->readonlyFields2;
 		foreach ($roFields as $field) {
 			if (array_key_exists($field, $_POST))
-				throw new MyException(E_FORBIDDEN, "forbidden to set field `$field`");
+				jdRet(E_FORBIDDEN, "forbidden to set field `$field`");
 		}
 
 		$rv = $this->genCondSql();
@@ -3081,7 +3081,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 					$msg = "批量处理失败, id=$id: " . $ex->getMessage();
 					if ( ($ex instanceof MyException) && $ex->internalMsg != null)
 						$msg .= " (" .$ex->internalMsg. ")";
-					throw new MyException(E_PARAM, (string)$ex, $msg);
+					jdRet(E_PARAM, (string)$ex, $msg);
 				}
 			}
 			if (! isset($rv["nextkey"]))
@@ -3339,10 +3339,8 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 			"cnt" => 0,
 			"idList" => []
 		];
-		$bak_SOLO = ApiFw_::$SOLO;
 		$st->getObj(function ($obj) use ($st, &$ret, $bak_SOLO) {
 			try {
-				ApiFw_::$SOLO = false; // 避免其间有setRet输出
 				$st->beforeAdd($obj);
 				$param = $_GET + [  // 用+而不是array_merge, 允许用户指定参数覆盖，比如可指定submod参数
 					"useStrictReadonly" => 0,
@@ -3351,36 +3349,25 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 				$id = $this->callSvc(null, "add", $param, $obj);
 			}
 			catch (DirectReturn $ex) {
-				global $X_RET;
-				if ($X_RET[0] == 0) {
-					$id = $X_RET[1];
-				}
-				else {
-					$msg = ($X_RET[2] ?: $X_RET[1]);
-					ApiFw_::$SOLO = $bak_SOLO;
-					list($row, $n) = $st->getRowInfo();
-					throw new MyException(E_PARAM, $X_RET[1], "第{$n}行出错(\"" . join(',', $row) . "\"): " . $msg);
-				}
+				$id = $ex->data;
 			}
 			catch (Exception $ex) {
 				$msg = $ex->getMessage();
 				if ( ($ex instanceof MyException) && $ex->internalMsg != null)
 					$msg .= " (" .$ex->internalMsg. ")";
-				ApiFw_::$SOLO = $bak_SOLO;
 				list($row, $n) = $st->getRowInfo();
-				throw new MyException(E_PARAM, (string)$ex, "第{$n}行出错(\"" . join(',', $row) . "\"): " . $msg);
+				jdRet(E_PARAM, (string)$ex, "第{$n}行出错(\"" . join(',', $row) . "\"): " . $msg);
 			}
 			++ $ret["cnt"];
 			$ret["idList"][] = $id;
 		});
-		ApiFw_::$SOLO = $bak_SOLO;
 		return $ret;
 	}
 
 	// k: subobj name
 	protected function querySubObj($k, &$opt, $opt1) {
 		if (! isset($opt["obj"])) 
-			throw new MyException(E_PARAM, "missing subobj.obj", "子表定义错误");
+			jdRet(E_PARAM, "missing subobj.obj", "子表定义错误");
 
 		$param = $opt;
 
@@ -3407,7 +3394,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		$param["fmt"] = "list";
 		if ($this->ac == "query" && !param("disableSubobjOptimize/b")) {
 			if (array_key_exists("pagesz", $param))
-				throw new MyException(E_PARAM, "pagesz not allowed", "子查询query接口不可指定pagesz参数，请使用get接口或加disableSubobjOptimize=1参数");
+				jdRet(E_PARAM, "pagesz not allowed", "子查询query接口不可指定pagesz参数，请使用get接口或加disableSubobjOptimize=1参数");
 			// 由于query操作对子查询做了查询优化，不支持指定pagesz, 必须查全部子对象数据。
 			$param["pagesz"] = -1;
 		}
@@ -3871,7 +3858,7 @@ function KVtoCond($k, $v)
 			$handled = true;
 		}
 		if ($handled)
-			throw new DirectReturn();
+			jdRet();
 	}
 
 /**
@@ -3939,7 +3926,7 @@ function issetval($k, $arr = null)
 			$vendorId = $this->vendorCache->get($params["vendorName"], function () use ($params) {
 				$id = queryOne("SELECT id FROM Vendor", false, ["name" => $params["vendorName"]] );
 				if (!$id) {
-					// throw new MyException(E_PARAM, "请添加供应商", "供应商未注册: " . $params["vendorName"]);
+					// jdRet(E_PARAM, "请添加供应商", "供应商未注册: " . $params["vendorName"]);
 					// 自动添加
 					$id = callSvcInt("Vendor.add", null, [
 						"name" => $params["vendorName"],
@@ -4082,7 +4069,7 @@ class BatchAddStrategy
 						$newRow1[] = $realCol;
 						$idx = array_search($showCol, $this->row);
 						if ($idx === false)
-							throw new MyException(E_PARAM, "require col: $showCol", "缺少列`$showCol`");
+							jdRet(E_PARAM, "require col: $showCol", "缺少列`$showCol`");
 						$this->colMap[$arr[0]] = $idx;
 					}
 					$row1 = $newRow1;
@@ -4222,7 +4209,7 @@ class BatchAddStrategy
 		$dir = "upload/import";
 		if (! is_dir($dir)) {
 			if (mkdir($dir, 0777, true) === false)
-				throw new MyException(E_SERVER, "fail to create folder: $dir");
+				jdRet(E_SERVER, "fail to create folder: $dir");
 		}
 		$fname = $dir . "/" . date("Ymd_His");
 		$ext = strtolower(pathinfo($orgName, PATHINFO_EXTENSION)) ?: "txt";
@@ -4274,7 +4261,7 @@ class CsvBatchAddStrategy extends BatchAddStrategy
 		else {
 			$f = current($_FILES);
 			if ($f["size"] <= 0 || $f["error"] != 0)
-				throw new MyException(E_PARAM, "error file: code={$f['error']}", "文件数据出错");
+				jdRet(E_PARAM, "error file: code={$f['error']}", "文件数据出错");
 
 			$orgName = $f["name"];
 			$file = $f["tmp_name"];

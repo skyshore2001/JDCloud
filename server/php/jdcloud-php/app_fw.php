@@ -111,12 +111,6 @@ PHP默认的session过期时间为1440s(24分钟)，每次在使用session时，
 
 注意：前端会记住cookie过期时间，假如后端再次改成保留10天，由于前端已记录的是7天过期，无法立即更新，只能清除cookie后再请求才能生效。
 
-## 应用框架
-
-继承AppBase类，可实现提供符合BQP协议接口的模块。[api_fw](#api_fw)框架就是使用它的一个典型例子。
-
-@see AppBase
-
 **********************************************************/
 
 require_once("common.php");
@@ -127,8 +121,6 @@ const RTEST_MODE=2;
 //}}}
 
 // ====== config {{{
-// such vars are set manually or by init proc (AppFw_::initGlobal); use it like consts.
-
 /**
 @var $BASE_DIR
 
@@ -154,11 +146,6 @@ global $DBH;
 global $APP;
 $APP = param("_app", "user", $_GET);
 // }}}
-
-// ====== global {{{
-global $g_dbgInfo;
-$g_dbgInfo = [];
-//}}}
 
 // load user config
 $userConf = "{$BASE_DIR}/php/conf.user.php";
@@ -256,23 +243,23 @@ function param_varr($str, $type, $name)
 					$row1[] = null;
 					continue;
 				}
-				throw new MyException(E_PARAM, "Bad Request - param `$name`: list($type). require col: `$row0`[$i]");
+				jdRet(E_PARAM, "Bad Request - param `$name`: list($type). require col: `$row0`[$i]");
 			}
 			$e = htmlEscape($e);
 			if ($t === "i") {
 				if (! ctype_digit($e))
-					throw new MyException(E_PARAM, "Bad Request - param `$name`: list($type). require integer col: `$row0`[$i]=`$e`.");
+					jdRet(E_PARAM, "Bad Request - param `$name`: list($type). require integer col: `$row0`[$i]=`$e`.");
 				$row1[] = intval($e);
 			}
 			elseif ($t === "n") {
 				if (! is_numeric($e))
-					throw new MyException(E_PARAM, "Bad Request - param `$name`: list($type). require numberic col: `$row0`[$i]=`$e`.");
+					jdRet(E_PARAM, "Bad Request - param `$name`: list($type). require numberic col: `$row0`[$i]=`$e`.");
 				$row1[] = doubleval($e);
 			}
 			else if ($t === "b") {
 				$val = null;
 				if (!tryParseBool($e, $val))
-					throw new MyException(E_PARAM, "Bad Request - param `$name`: list($type). require bool col: `$row0`[$i]=`$e`.");
+					jdRet(E_PARAM, "Bad Request - param `$name`: list($type). require bool col: `$row0`[$i]=`$e`.");
 				$row1[] = $val;
 			}
 			else if ($t === "s") {
@@ -281,20 +268,20 @@ function param_varr($str, $type, $name)
 			else if ($t === "dt" || $t === "tm") {
 				$v = strtotime($e);
 				if ($v === false)
-					throw new MyException(E_PARAM, "Bad Request - param `$name`: list($type). require datetime col: `$row0`[$i]=`$e`.");
+					jdRet(E_PARAM, "Bad Request - param `$name`: list($type). require datetime col: `$row0`[$i]=`$e`.");
 				if ($t === "dt")
 					$v = strtotime(date("Y-m-d", $v));
 				$row1[] = $v;
 			}
 			else {
-				throw new MyException(E_SERVER, "unknown elem type `$t` for param `$name`: list($type)");
+				jdRet(E_SERVER, "unknown elem type `$t` for param `$name`: list($type)");
 			}
 			++ $i;
 		}
 		$ret[] = $row1;
 	}
 	if (count($ret) == 0)
-		throw new MyException(E_PARAM, "Bad Request - list param `$name` is empty.");
+		jdRet(E_PARAM, "Bad Request - list param `$name` is empty.");
 	return $ret;
 }
 /**
@@ -403,42 +390,42 @@ function param($name, $defVal = null, $col = null, $doHtmlEscape = true)
 			if (! is_numeric($ret)) {
 				$ret1 = jdEncryptI($ret, "D", "hex");
 				if (! is_numeric($ret1))
-					throw new MyException(E_PARAM, "Bad Request - id param `$name`=`$ret`.");
+					jdRet(E_PARAM, "Bad Request - id param `$name`=`$ret`.");
 				$ret = $ret1;
 			}
 			$ret = intval($ret);
 		}
 		elseif ($type === "i") {
 			if (! is_numeric($ret))
-				throw new MyException(E_PARAM, "Bad Request - integer param `$name`=`$ret`.");
+				jdRet(E_PARAM, "Bad Request - integer param `$name`=`$ret`.");
 			$ret = intval($ret);
 		}
 		elseif ($type === "n") {
 			if (! is_numeric($ret))
-				throw new MyException(E_PARAM, "Bad Request - numeric param `$name`=`$ret`.");
+				jdRet(E_PARAM, "Bad Request - numeric param `$name`=`$ret`.");
 			$ret = doubleval($ret);
 		}
 		elseif ($type === "b") {
 			$val = null;
 			if (!tryParseBool($ret, $val))
-				throw new MyException(E_PARAM, "Bad Request - bool param `$name`=`$val`.");
+				jdRet(E_PARAM, "Bad Request - bool param `$name`=`$val`.");
 			$ret = $val;
 		}
 		elseif ($type == "i+") {
 			$arr = [];
 			foreach (explode(',', $ret) as $e) {
 				if (! ctype_digit($e))
-					throw new MyException(E_PARAM, "Bad Request - int array param `$name` contains `$e`.");
+					jdRet(E_PARAM, "Bad Request - int array param `$name` contains `$e`.");
 				$arr[] = intval($e);
 			}
 			if (count($arr) == 0)
-				throw new MyException(E_PARAM, "Bad Request - int array param `$name` is empty.");
+				jdRet(E_PARAM, "Bad Request - int array param `$name` is empty.");
 			$ret = $arr;
 		}
 		elseif ($type === "dt" || $type === "tm") {
 			$ret1 = strtotime($ret);
 			if ($ret1 === false)
-				throw new MyException(E_PARAM, "Bad Request - invalid datetime param `$name`=`$ret`.");
+				jdRet(E_PARAM, "Bad Request - invalid datetime param `$name`=`$ret`.");
 			if ($type === "dt")
 				$ret1 = strtotime(date("Y-m-d", $ret1));
 			$ret = $ret1;
@@ -446,18 +433,18 @@ function param($name, $defVal = null, $col = null, $doHtmlEscape = true)
 		elseif ($type === "js" || $type === "tbl") {
 			$ret1 = json_decode($ret, true);
 			if ($ret1 === null)
-				throw new MyException(E_PARAM, "Bad Request - invalid json param `$name`=`$ret`.");
+				jdRet(E_PARAM, "Bad Request - invalid json param `$name`=`$ret`.");
 			if ($type === "tbl") {
 				$ret1 = table2objarr($ret1);
 				if ($ret1 === false)
-					throw new MyException(E_PARAM, "Bad Request - invalid table param `$name`=`$ret`.");
+					jdRet(E_PARAM, "Bad Request - invalid table param `$name`=`$ret`.");
 			}
 			$ret = $ret1;
 		}
 		else if (strpos($type, ":") >0)
 			$ret = param_varr($ret, $type, $name);
 		else 
-			throw new MyException(E_SERVER, "unknown type `$type` for param `$name`");
+			jdRet(E_SERVER, "unknown type `$type` for param `$name`");
 	}
 # 	$name1 = strtoupper("HTTP_$name");
 # 	if (isset($_SERVER[$name1]))
@@ -500,7 +487,7 @@ function mparam($name, $col = null)
 		}
 		if (!$found) {
 			$s = join($name, " or ");
-			throw new MyException(E_PARAM, "Bad Request - require param $s", "缺少参数`$s`");
+			jdRet(E_PARAM, "Bad Request - require param $s", "缺少参数`$s`");
 		}
 		return $arr;
 	}
@@ -509,7 +496,7 @@ function mparam($name, $col = null)
 	if (isset($rv))
 		return $rv;
 	parseType_($name); // remove the type tag.
-	throw new MyException(E_PARAM, "Bad Request - param `$name` is missing", "缺少参数`$name`");
+	jdRet(E_PARAM, "Bad Request - param `$name` is missing", "缺少参数`$name`");
 }
 
 /**
@@ -546,7 +533,7 @@ function checkParams($params, $names, $errPrefix="")
 		else
 			$showName .= "({$name})";
 		if (!isset($params[$name]) || $params[$name] === "") {
-			throw new MyException(E_PARAM, "require param `$name`", $errPrefix."缺少参数`$showName`");
+			jdRet(E_PARAM, "require param `$name`", $errPrefix."缺少参数`$showName`");
 		}
 	}
 }
@@ -619,12 +606,12 @@ function checkObjArrParam($name, $arr, $fields = null)
 {
 	#var_export($arr);
 	if (! is_array($arr))
-		throw new MyException(E_PARAM, "bad param `$name` - require array");
+		jdRet(E_PARAM, "bad param `$name` - require array");
 	if (isset($fields)) {
 		foreach ($arr as $e) {
 			foreach ($fields as $k) {
 				if (! array_key_exists($k, $e)) {
-					throw new MyException(E_PARAM, "missing param {$name}[][$k]");
+					jdRet(E_PARAM, "missing param {$name}[][$k]");
 				}
 			}
 		}
@@ -917,7 +904,7 @@ function dbconn($fnConfirm = null)
 			// e.g. P_DB="115.29.199.210/carsvc"
 			// e.g. P_DB="115.29.199.210:3306/carsvc"
 			if (! preg_match('/^"?(.*?)(:(\d+))?\/(\w+)"?$/', $DB, $ms))
-				throw new MyException(E_SERVER, "bad db=`$DB`", "未知数据库");
+				jdRet(E_SERVER, "bad db=`$DB`", "未知数据库");
 			$dbhost = $ms[1];
 			$dbport = $ms[3] ?: 3306;
 			$dbname = $ms[4];
@@ -942,7 +929,7 @@ function dbconn($fnConfirm = null)
 	catch (PDOException $e) {
 		$msg = $GLOBALS["TEST_MODE"] ? $e->getMessage() : "dbconn fails";
 		logit("dbconn fails: " . $e->getMessage());
-		throw new MyException(E_DB, $msg, "数据库连接失败");
+		jdRet(E_DB, $msg, "数据库连接失败");
 	}
 	
 	if ($DBTYPE == "mysql") {
@@ -1235,21 +1222,21 @@ function execOne($sql, $getInsertId = false)
 
 	$row = queryOne("SELECT name,phone FROM User WHERE id={$id}");
 	if ($row === false)
-		throw new MyException(E_PARAM, "bad user id");
+		jdRet(E_PARAM, "bad user id");
 	// $row = ["John", "13712345678"]
 
 也可返回关联数组:
 
 	$row = queryOne("SELECT name,phone FROM User WHERE id={$id}", true);
 	if ($row === false)
-		throw new MyException(E_PARAM, "bad user id");
+		jdRet(E_PARAM, "bad user id");
 	// $row = ["name"=>"John", "phone"=>"13712345678"]
 
 当查询结果只有一列且assoc=false时，直接返回该数值。
 
 	$phone = queryOne("SELECT phone FROM User WHERE id={$id}");
 	if ($phone === false)
-		throw new MyException(E_PARAM, "bad user id");
+		jdRet(E_PARAM, "bad user id");
 	// $phone = "13712345678"
 
 (v5.3)
@@ -1381,7 +1368,7 @@ function dbInsert($table, $kv)
 			continue;
 		# TODO: check meta
 		if (! preg_match('/^\w+$/u', $k))
-			throw new MyException(E_PARAM, "bad key $k");
+			jdRet(E_PARAM, "bad key $k");
 
 		if ($keys !== '') {
 			$keys .= ", ";
@@ -1392,14 +1379,14 @@ function dbInsert($table, $kv)
 			$values .= $v->val;
 		}
 		else if (is_array($v)) {
-			throw new MyException(E_PARAM, "dbInsert: array `$k` is not allowed. pls define subobj to use array.", "未定义的子表`$k`");
+			jdRet(E_PARAM, "dbInsert: array `$k` is not allowed. pls define subobj to use array.", "未定义的子表`$k`");
 		}
 		else {
 			$values .= Q(htmlEscape($v));
 		}
 	}
 	if (strlen($keys) == 0) 
-		throw new MyException(E_PARAM, "no field found to be added: $table");
+		jdRet(E_PARAM, "no field found to be added: $table");
 	$sql = sprintf("INSERT INTO %s (%s) VALUES (%s)", $table, $keys, $values);
 #			var_dump($sql);
 	return execOne($sql, true);
@@ -1521,7 +1508,7 @@ function flag_getExpForSet($k, $v)
 		$v = "trim(replace($k1, " . Q($v1) . ", ''))";
 	}
 	else {
-		throw new MyException(E_PARAM, "bad value for flag/prop `$k`=`$v`");
+		jdRet(E_PARAM, "bad value for flag/prop `$k`=`$v`");
 	}
 	return "$k1=" . $v;
 }
@@ -1601,7 +1588,7 @@ cond条件可以用key-value指定(cond写法参考getQueryCond)，如：
 function dbUpdate($table, $kv, $cond)
 {
 	if ($cond === null)
-		throw new MyException(E_SERVER, "bad cond for update $table");
+		jdRet(E_SERVER, "bad cond for update $table");
 
 	$condStr = getQueryCond($cond);
 	$kvstr = "";
@@ -1613,7 +1600,7 @@ function dbUpdate($table, $kv, $cond)
 			continue;
 		# TODO: check meta
 		if (! preg_match('/^(\w+\.)?\w+$/u', $k))
-			throw new MyException(E_PARAM, "bad key $k");
+			jdRet(E_PARAM, "bad key $k");
 
 		if ($kvstr !== '')
 			$kvstr .= ", ";
@@ -1928,21 +1915,17 @@ END;
 }
 
 /**
-@fn addLog($str, $logLevel=0)
+@fn addLog($data, $logLevel=0)
 
 输出调试信息到前端。调试信息将出现在最终的JSON返回串中。
 如果只想输出调试信息到文件，不想让前端看到，应使用logit.
 
 @see logit
  */
-function addLog($str, $logLevel=0)
+function addLog($data, $logLevel=0)
 {
-	global $DBG_LEVEL;
-	if ($DBG_LEVEL >= $logLevel)
-	{
-		global $g_dbgInfo;
-		$g_dbgInfo[] = $str;
-	}
+	global $X_APP;
+	$X_APP->addLog($data, $logLevel);
 }
 
 /**
@@ -2145,133 +2128,6 @@ class Coord
 }
 
 /**
-@class AppBase
-
-应用框架，用于提供符合BQP协议的接口。
-在onExec中返回协议数据；在onAfter中建议及时关闭DB.
-包含通用错误处理等。
-
-示例：接口`url.php(p)`预处理一些参数，然后调用api.php。
-在预处理中，如果有MyException报错，可以优雅处理。
-
-	require_once('app.php');
-	class UrlApp extends AppBase
-	{
-		protected function onExec()
-		{
-			$p = mparam("p");
-			$param = json_decode(jdEncrypt($p, "D"), true);
-			if (!$param) {
-				throw new MyException(E_PARAM);
-			}
-			$_GET = $param["get"];
-			$_POST = $param["post"];
-			if ($param["ses"]) {
-				session_id($param["ses"]);
-			}
-		}
-	}
-	$app = new UrlApp();
-	$ret = $app->exec();
-	require_once('api.php');
-
- */
-class AppBase
-{
-	public $onBeforeActions = [];
-	public $onAfterActions = [];
-	public function exec($handleTrans=true)
-	{
-		global $DBH;
-		global $ERRINFO;
-		$ok = false;
-		$ret = false;
-		try {
-			foreach ($this->onBeforeActions as $fn) {
-				$fn();
-			}
-			$ret = $this->onExec();
-			$ok = true;
-		}
-		catch (DirectReturn $e) {
-			$ok = true;
-		}
-		catch (MyException $e) {
-			list($code, $msg, $msg2) = [$e->getCode(), $e->getMessage(), $e->internalMsg];
-			addLog((string)$e, 9);
-		}
-		catch (PDOException $e) {
-			// SQLSTATE[23000]: Integrity constraint violation: 1451 Cannot delete or update a parent row: a foreign key constraint fails (`jdcloud`.`Obj1`, CONSTRAINT `Obj1_ibfk_1` FOREIGN KEY (`objId`) REFERENCES `Obj` (`id`))",
-			list($code, $msg, $msg2) = [E_DB, $ERRINFO[E_DB], $e->getMessage()];
-			if (preg_match('/a foreign key constraint fails [()]`\w+`.`(\w+)`/', $msg2, $ms)) {
-				$tbl = function_exists("T")? T($ms[1]) : $ms[1]; // T: translate function
-				$msg = "`$tbl`表中有数据引用了本记录";
-			}
-			addLog((string)$e, 9);
-		}
-		catch (Exception $e) {
-			list($code, $msg, $msg2) = [E_SERVER, $ERRINFO[E_SERVER], $e->getMessage()];
-			addLog((string)$e, 9);
-		}
-
-		if ($ok) {
-			foreach ($this->onAfterActions as $fn) {
-				try {
-					$fn();
-				}
-				catch (Exception $e) {
-					logit('onAfterActions fails: ' . (string)$e);
-				}
-			}
-		}
-
-		try {
-			if ($handleTrans && $DBH && $DBH->inTransaction())
-			{
-				if ($ok)
-					$DBH->commit();
-				else
-					$DBH->rollback();
-			}
-			if (!$ok) {
-				$this->onErr($code, $msg, $msg2);
-			}
-		}
-		catch (Exception $e) {
-			logit((string)$e);
-		}
-
-		try {
-			$this->onAfter($ok);
-		}
-		catch (Exception $e) {
-			logit((string)$e);
-		}
-
-		//$DBH = null;
-		return $ret;
-	}
-
-	protected function onExec()
-	{
-		return "OK";
-	}
-
-	protected function onErr($code, $msg, $msg2)
-	{
-		@$fn = $GLOBALS["errorFn"] ?: "errQuit";
-		$fn($code, $msg, $msg2);
-	}
-
-	// 应用程序应及时关闭数据库连接
-	protected function onAfter($ok)
-	{
-		global $DBH;
-		$DBH = null;
-	}
-}
-
-/**
 @class JDSingleton (trait)
 
 用于单件类，提供getInstance方法，例：
@@ -2332,13 +2188,13 @@ trait JDSingletonImp
 			if (! class_exists($name)) {
 				$cls = new ReflectionClass(__class__);
 				if ($cls->isAbstract()) {
-					throw new MyException(E_SERVER, "Singleton class NOT defined: $name");
+					jdRet(E_SERVER, "Singleton class NOT defined: $name");
 				}
 				$inst = new static();
 				// $inst = $cls->newInstance();
 			}
 			else if (! is_subclass_of($name, __class__)) {
-				throw new MyException(E_SERVER, "$name MUST extends " . __class__);
+				jdRet(E_SERVER, "$name MUST extends " . __class__);
 			}
 			else {
 				$inst = new $name;
@@ -2418,104 +2274,6 @@ trait JDEvent
 	}
 }
 // }}}
-
-// ====== AppFw_: module internals {{{
-// app framework内部实现，外部一般不应调用。
-class AppFw_
-{
-	private static function initGlobal()
-	{
-		global $TEST_MODE;
-		global $DBG_LEVEL;
-		$TEST_MODE = getenv("P_TEST_MODE")===false? 0: intval(getenv("P_TEST_MODE"));
-		$isCLI = isCLI();
-		if ($TEST_MODE) {
-			if (!$isCLI)
-				header("X-Daca-Test-Mode: $TEST_MODE");
-		}
-		// 默认允许跨域
-		@$origin = $_SERVER['HTTP_ORIGIN'];
-		if (isset($origin) && !$isCLI) {
-			header('Access-Control-Allow-Origin: ' . $origin);
-			header('Access-Control-Allow-Credentials: true');
-			header('Access-Control-Expose-Headers: X-Daca-Server-Rev, X-Daca-Test-Mode, X-Daca-Mock-Mode');
-			
-			@$val = $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS'];
-			if ($val) {
-				header('Access-Control-Allow-Headers: ' . $val);
-			}
-			@$val = $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD'];
-			if ($val) {
-				header('Access-Control-Allow-Methods: ' . $val);
-			}
-		}
-		if ($_SERVER["REQUEST_METHOD"] === "OPTIONS")
-			exit();
-
-		$defaultDebugLevel = getenv("P_DEBUG")===false? 0 : intval(getenv("P_DEBUG"));
-		$DBG_LEVEL = param("_debug/i", $defaultDebugLevel, $_GET);
-
-		global $MOCK_MODE;
-		if ($TEST_MODE) {
-			$MOCK_MODE = getenv("P_MOCK_MODE") ?: 0;
-		}
-		if ($MOCK_MODE && !$isCLI) {
-			header("X-Daca-Mock-Mode: $MOCK_MODE");
-		}
-
-		global $DB, $DBCRED, $DBTYPE;
-		$DBTYPE = getenv("P_DBTYPE");
-		$DB = getenv("P_DB") ?: $DB;
-		$DBCRED = getenv("P_DBCRED") ?: $DBCRED;
-
-		// e.g. P_DB="../carsvc.db"
-		if (! $DBTYPE) {
-			if (preg_match('/\.db$/i', $DB)) {
-				$DBTYPE = "sqlite";
-			}
-			else {
-				$DBTYPE = "mysql";
-			}
-		}
-	}
-
-	private static function setupSession()
-	{
-		global $APP;
-
-		# normal: "userid"; testmode: "tuserid"
-		$name = $APP . "id";
-		session_name($name);
-
-		$path = getenv("P_SESSION_DIR") ?: $GLOBALS["BASE_DIR"] . "/session";
-		if (!  is_dir($path)) {
-			if (! mkdir($path, 0777, true))
-				throw new MyException(E_SERVER, "fail to create session folder: $path");
-		}
-		if (! is_writeable($path))
-			throw new MyException(E_SERVER, "session folder is NOT writeable: $path");
-		session_save_path ($path);
-
-		ini_set("session.cookie_httponly", 1);
-
-		$path = getenv("P_URL_PATH");
-		if ($path)
-		{
-			// e.g. path=/cheguanjia
-			ini_set("session.cookie_path", $path);
-		}
-	}
-
-	static function init()
-	{
-		mb_internal_encoding("UTF-8");
-		setlocale(LC_ALL, "zh_CN.UTF-8");
-		self::initGlobal();
-		if (!isCLI())
-			self::setupSession();
-	}
-}
-//}}}
 
 // ====== ext {{{
 /**
@@ -2647,24 +2405,4 @@ function logext($s, $addHeader=true)
 }
 
 //}}}
-
-// ====== main {{{
-
-try {
-	AppFw_::init();
-}
-catch (MyException $ex) {
-	echo $ex;
-	exit;
-}
-catch (Exception $ex) {
-	echo "*** Exception";
-	logit($ex);
-	exit;
-}
-
-#}}}
-
-require_once("ext.php");
-
 // vim: set foldmethod=marker :
