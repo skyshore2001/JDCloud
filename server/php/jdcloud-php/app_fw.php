@@ -330,33 +330,37 @@ $objarr值为：
 	$cond = mparam("cond");
 	$gcond = param("gcond/cond");
 */
-function param($name, $defVal = null, $col = null, $doHtmlEscape = true)
+function param($name, $defVal = null, $col = null, $doHtmlEscape = true, $env = null)
 {
 	$type = parseType_($name); // NOTE: $name will change.
-
+	if ($env === null) {
+		$env = getJDEnv();
+	}
 	// cond特别处理
 	if ($name == "cond" || $type == "cond")
-		return getQueryCond([$_GET[$name], $_POST[$name]]);
+		return getQueryCond([$env->_GET($name), $env->_POST($name)]);
 
 	$ret = $defVal;
 	if ($col === "G") {
-		if (isset($_GET[$name]))
-			$ret = $_GET[$name];
+		$rv = $env->_GET($name);
+		if (isset($rv))
+			$ret = $rv;
 	}
 	else if ($col === "P") {
-		if (isset($_POST[$name]))
-			$ret = $_POST[$name];
+		$rv = $env->_POST($name);
+		if (isset($rv))
+			$ret = $rv;
 	}
 	// 兼容旧式直接指定col=$_GET这样参数
 	else if (is_array($col)) {
-		if (isset($col[$name]))
-			$ret = $col[$name];
+		@$rv = $col[$name];
+		if (isset($rv))
+			$ret = $rv;
 	}
 	else {
-		if (isset($_GET[$name]))
-			$ret = $_GET[$name];
-		else if (isset($_POST[$name]))
-			$ret = $_POST[$name];
+		$ret = $env->_GET($name);
+		if ($ret === null)
+			$ret = $env->_POST($name);
 	}
 
 	// e.g. "a=1&b=&c=3", b当成未设置，取缺省值。
@@ -452,7 +456,7 @@ $name可以是一个数组，表示至少有一个参数有值，这时返回每
 	$itts = mparam("itts/i+")
 	list($svcId, $itts) = mparam(["svcId", "itts/i+"]); # require one of the 2 params
 */
-function mparam($name, $col = null)
+function mparam($name, $col = null, $env = null)
 {
 	if (is_array($name))
 	{
@@ -463,7 +467,7 @@ function mparam($name, $col = null)
 				$rv = null;
 			}
 			else {
-				$rv = param($name1, null, $col);
+				$rv = param($name1, null, $col, true, $env);
 				if (isset($rv))
 					$found = true;
 			}
@@ -476,7 +480,7 @@ function mparam($name, $col = null)
 		return $arr;
 	}
 
-	$rv = param($name, null, $col);
+	$rv = param($name, null, $col, true, $env);
 	if (isset($rv))
 		return $rv;
 	parseType_($name); // remove the type tag.
@@ -520,70 +524,6 @@ function checkParams($params, $names, $errPrefix="")
 			jdRet(E_PARAM, "require param `$name`", $errPrefix."缺少参数`$showName`");
 		}
 	}
-}
-
-/**
-@fn setParam($k, $v)
-@fn setParam(@kv)
-
-设置参数，其实是模拟客户端传入的参数。以便供tableCRUD等函数使用。
-
-(v5.1)不建议使用，param函数已更新，现在直接设置$_GET,$_POST即可。
-
-示例：
-
-	setParam("cond", "name LIKE " . Q("%$name%"));
-	setParam([
-		"fmt" => "list",
-		"orderby" => "id DESC"
-	]);
-
-@see tableCRUD
- */
-function setParam($k, $v=null)
-{
-	if (is_array($k)) {
-		foreach ($k as $k1 => $v1) {
-			$_GET[$k1] = $_REQUEST[$k1] = $v1;
-		}
-	}
-	else {
-		$_GET[$k] = $_REQUEST[$k] = $v;
-	}
-}
-/*
-# form/post param ($_POST)
-function fparam($name, $defVal = null)
-{
-	return param($name, $defVal, $_POST);
-}
-
-# mandatory form param
-function mfparam($name)
-{
-	return mparam($name, $_POST);
-}
-*/
-
-/**
-@fn getBcParam($name, $defVal=null)
-@fn setBcParam($name, $value)
-
-TODO: BC是什么？改名？
-
-获取或设置特别的HTTP头部参数。
- */
-function getBcParam($name, $defVal = null)
-{
-	$name1 = "HTTP_BC_" . strtoupper($name);
-	if (isset($_SERVER[$name1]))
-		return $_SERVER[$name1];
-	return $defVal;
-}
-
-function setBcParam($param, $value)
-{
-	header("bc-$param: $value");
 }
 
 function checkObjArrParam($name, $arr, $fields = null)
@@ -653,7 +593,7 @@ h是标题字段数组，d是数据行。
  */
 function queryAllWithHeader($sql, $wantArray=false)
 {
-	$env = $GLOBALS["X_APP"];
+	$env = getJDEnv();
 	$DBH = $env->dbconn();
 	$sth = $DBH->query($sql);
 
@@ -872,7 +812,7 @@ function getCred($cred)
  */
 function dbconn($fnConfirm = null)
 {
-	$env = $GLOBALS["X_APP"];
+	$env = getJDEnv();
 	return $env->dbconn($fnConfirm);
 }
 
@@ -892,7 +832,7 @@ function dbconn($fnConfirm = null)
 */
 function dbCommit($doRollback=false)
 {
-	$env = $GLOBALS["X_APP"];
+	$env = getJDEnv();
 	return $env->dbCommit($doRollback);
 }
 
@@ -919,7 +859,7 @@ function Q($s)
 
 function sql_concat()
 {
-	$env = $GLOBALS["X_APP"];
+	$env = getJDEnv();
 	if ($env->DBTYPE == "mysql")
 		return "CONCAT(" . join(", ", func_get_args()) . ")";
 
@@ -1127,7 +1067,7 @@ function genQuery($sql, $cond)
  */
 function execOne($sql, $getInsertId = false)
 {
-	$env = $GLOBALS["X_APP"];
+	$env = getJDEnv();
 	return $env->execOne($sql, $getInsertId);
 }
 
@@ -1168,7 +1108,7 @@ function execOne($sql, $getInsertId = false)
  */
 function queryOne($sql, $assoc = false, $cond = null)
 {
-	$env = $GLOBALS["X_APP"];
+	$env = getJDEnv();
 	return $env->queryOne($sql, $assoc, $cond);
 }
 
@@ -1222,7 +1162,7 @@ queryAll支持执行返回多结果集的存储过程，这时返回的不是单
  */
 function queryAll($sql, $assoc = false, $cond = null)
 {
-	$env = $GLOBALS["X_APP"];
+	$env = getJDEnv();
 	return $env->queryAll($sql, $assoc, $cond);
 }
 
@@ -1244,7 +1184,7 @@ e.g.
 */
 function dbInsert($table, $kv)
 {
-	$env = $GLOBALS["X_APP"];
+	$env = getJDEnv();
 	return $env->dbInsert($table, $kv);
 }
 
@@ -1443,7 +1383,7 @@ cond条件可以用key-value指定(cond写法参考getQueryCond)，如：
 */
 function dbUpdate($table, $kv, $cond)
 {
-	$env = $GLOBALS["X_APP"];
+	$env = getJDEnv();
 	return $env->dbUpdate($table, $kv, $cond);
 }
 //}}}
@@ -1737,7 +1677,7 @@ END;
  */
 function addLog($data, $logLevel=0)
 {
-	$env = $GLOBALS["X_APP"];
+	$env = getJDEnv();
 	$env->addLog($data, $logLevel);
 }
 
@@ -1800,14 +1740,14 @@ function utf8InputFilter($fp, $fnTest=null)
 /**
 @class JDPDO
 
-数据库类PDO增强。全局变量$X_APP->DBH为默认数据库连接，dbconn,queryAll,execOne等数据库函数都使用它。
+数据库类PDO增强。getJDEnv()->DBH为默认数据库连接，dbconn,queryAll,execOne等数据库函数都使用它。
 
 - 在调试等级P_DEBUG=9时，将SQL日志输出到前端，即`addLog(sqlStr, DEBUG=9)`。
 - 如果有符号文件CFG_CONN_POOL，则使用连接池（缺省不用）
 
 如果想忽略输出一条SQL日志，可以在调用SQL查询前设置skipLogCnt，如：
 
-	$env = $GLOBALS["X_APP"];
+	$env = getJDEnv();
 	++ $env->DBH->skipLogCnt;  // 若要忽略两条就用 $env->DBH->skipLogCnt+=2
 	$env->DBH->exec('set names utf8mb4'); // 也可以是queryOne/execOne等函数。
 
@@ -2124,7 +2064,7 @@ trait JDEvent
  */
 function isMockMode($extType)
 {
-	$env = $GLOBALS["X_APP"];
+	$env = getJDEnv();
 	if (intval($env->MOCK_MODE) === 1)
 		return true;
 

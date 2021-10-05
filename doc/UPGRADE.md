@@ -1,7 +1,7 @@
 ## 升级到v6.0
 
 - 移除类：AppBase,ApiApp
-- 移除函数：setRet,errQuit,apiMain(callSvc替代),getAppType(env->appType替代)
+- 移除函数：setRet,errQuit,apiMain(callSvc替代),getAppType(env->appType替代), setParam($env->get/post替代)
 - 移除全局变量: $X_RET, $errorFn, $noExecApi, 以下全局变量移到JDEnv内：
 	- $g_dbgInfo, $DBH, $APP
 	- $TEST_MODE, $MOCK_MODE, $DBG_LEVEL;

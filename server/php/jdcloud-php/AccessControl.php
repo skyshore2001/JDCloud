@@ -1015,7 +1015,7 @@ TODO: 可加一个系统参数`_enc`表示输出编码的格式。
 如果想生成`SELECT DISTINCT t0.a, ...`查询，
 当在AccessControl外部时，可以设置
 
-	setParam("distinct", 1);
+	$env->param("distinct", 1);
 
 如果是在AccessControl子类中，可以设置
 
@@ -1141,7 +1141,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 */
 
 # ====== functions {{{
-class AccessControl
+class AccessControl extends JDApiBase
 {
 	protected $table;
 	protected $ac;
@@ -1244,68 +1244,6 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 @see ApiLog::addObjLog (table, id, dscr) 手动加ObjLog
 */
 	protected $enableObjLog = true;
-
-/**
-@var AccessControl::create($tbl, $ac = null, $cls = null) 
-
-如果$cls非空，则按指定AC类创建AC对象。
-否则按当前登录类型自动创建AC类（回调onCreateAC）。
-
-特别地，为兼容旧版本，当$cls为true时，按超级管理员权限创建AC类（即检查"AC0_XX"或"AccessControl"类）。
-
-示例：
-
-	AccessControl::create("Ordr", "add");
-	AccessControl::create("Ordr", "add", true);
-	AccessControl::create("Ordr", null, "AC0_Ordr");
-
-*/
-	static function create($tbl, $ac = null, $cls = null) 
-	{
-		/*
-		if (!hasPerm(AUTH_USER | AUTH_EMP))
-		{
-			$wx = getWeixinUser();
-			$wx->autoLogin();
-		}
-		 */
-		class_exists("AC_$tbl"); // !!! 自动加载文件 AC_{obj}.php
-		if (is_string($cls)) {
-			if (! class_exists($cls))
-				jdRet(E_SERVER, "bad class $cls");
-		}
-		else if ($cls === true || hasPerm(AUTH_ADMIN))
-		{
-			$cls = "AC0_$tbl";
-			if (! class_exists($cls))
-				$cls = "AccessControl";
-		}
-		else {
-			$cls = onCreateAC($tbl);
-			if (!isset($cls))
-				$cls = "AC_$tbl";
-			if (! class_exists($cls))
-			{
-				// UDT general AC class
-				if (substr($tbl, 0, 2) === "U_" && class_exists("AC_U_Obj")) {
-					$cls = "AC_U_Obj";
-				}
-				else {
-					$cls = null;
-				}
-			}
-		}
-		if ($cls == null)
-		{
-			$msg = $ac ? "$tbl.$ac": $tbl;
-			jdRet(!hasPerm(AUTH_LOGIN)? E_NOAUTH: E_FORBIDDEN, "Operation is not allowed for current user: `$msg`");
-		}
-		$x = new $cls;
-		if (!is_a($x, "AccessControl")) {
-			jdRet(E_SERVER, "bad AC class `$cls`. MUST extend AccessControl", "AC类定义错误");
-		}
-		return $x;
-	}
 
 	private function getCondParam($name) {
 		return getQueryCond([$_GET[$name], $_POST[$name]]);
@@ -1437,9 +1375,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		if ($this->ac == "add") {
 			try {
 			foreach ($this->requiredFields as $field) {
-// 					if (! issetval($field, $_POST))
-// 						jdRet(E_PARAM, "missing field `{$field}`", "参数`{$field}`未填写");
-				mparam($field, $_POST); // validate field and type; refer to field/type format for mparam.
+				$this->env->mparam($field, "P"); // validate field and type; refer to field/type format for mparam.
 			}
 			} catch (MyException $ex) {
 				$ex->internalMsg .= " (by requiredFields check)";
@@ -1517,19 +1453,16 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 @see callSvc
 @see callSvcInt
 */
-	final function callSvc($tbl, $ac, $param=null, $postParam=null, $useTmpEnv=true)
+	function callSvc($tbl, $ac, $param=null, $postParam=null, $useTmpEnv=true)
 	{
+		if ($useTmpEnv)
+			return parent::callSvc($tbl, $ac, $param, $postParam, $useTmpEnv);
+
 		// 已初始化过，创建新对象调用接口，避免污染当前环境。
 		if ($this->ac && $this->table) {
 			$acObj = new static();
 			return $acObj->callSvc($tbl ?: $this->table, $ac, $param, $postParam, $useTmpEnv);
 		}
-		if ($useTmpEnv) {
-			return tmpEnv($param, $postParam, function () use ($tbl, $ac) {
-				return $this->callSvc($tbl, $ac, $param, $postParam, false);
-			});
-		}
-
 		if (is_null($this->table))
 			$this->table = $tbl;
 		$this->ac = $ac;
@@ -1678,21 +1611,22 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	}
 	private function supportEasyui()
 	{
+		$env = $this->env;
 		if (isset($_REQUEST["rows"])) {
-			setParam("pagesz", $_REQUEST["rows"]);
+			$env->param("pagesz", $env->_GET("rows"));
 		}
 		// support easyui: sort/order
 		if (isset($_REQUEST["sort"]))
 		{
 			$orderby = $_REQUEST["sort"];
 			if (isset($_REQUEST["order"]))
-				$orderby .= " " . $_REQUEST["order"];
+				$orderby .= " " . $env->_GET("order");
 			$this->sqlConf["orderby"] = $orderby;
 		}
 		// 兼容旧代码: 支持 _pagesz等参数，新代码应使用pagesz
 		foreach (["_pagesz", "_pagekey", "_fmt"] as $e) {
-			if (isset($_REQUEST[$e])) {
-				setParam(substr($e, 1), $_REQUEST[$e]);
+			if ($env->_GET[$e]) {
+				$env->_GET(substr($e, 1), $env->_GET[$e]);
 			}
 		}
 	}
@@ -2372,7 +2306,7 @@ uniKey可以指定多个字段，以逗号分隔即可，常用于关联表，�
 	{
 		$this->onValidateId();
 		if ($this->id === null) {
-			$this->id = mparam("id");
+			$this->id = $this->env->mparam("id");
 		}
 		else {
 			$checkCond = false; // 如已补上this->id，就不必再查验
@@ -3061,11 +2995,12 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 
 	protected function batchOp($ac)
 	{
-		mparam("cond", "G");
+		$env = $this->env;
+		$env->mparam("cond", "G");
 		$pagekey = null;
 		$cnt = 0;
 		while (true) {
-			$rv = $this->callSvc(null, "query", $_GET + [
+			$rv = $this->callSvc(null, "query", $env->_GET() + [
 				"res" => "id",
 				"pagesz" => -1,
 				"pagekey" => $pagekey,
@@ -3075,7 +3010,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 				$id = $row["id"];
 				try {
 					++ $cnt;
-					$this->callSvc(null, "set", ["id" => $id], $_POST);
+					$this->callSvc(null, "set", ["id" => $id], $env->_POST());
 				}
 				catch (Exception $ex) {
 					$msg = "批量处理失败, id=$id: " . $ex->getMessage();
@@ -3870,7 +3805,8 @@ function KVtoCond($k, $v)
 	{
 		if ($this->ac != "query")
 			return false;
-		$fmt = param("fmt");
+		$env = $this->env;
+		$fmt = $env->param("fmt");
 		return $fmt != null && $fmt != 'list' && $fmt != 'one' && $fmt != 'one?';
 	}
 }
