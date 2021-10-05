@@ -271,22 +271,51 @@ v3.4支持非标准对象接口。实现Ordr.cancel接口：
 
 ## 接口复用
 
-@key apiMain() 服务入口函数
-@key noExecApi 全局变量，禁止apiMain执行服务
+内部调用接口：
 
-一般在接口服务文件api.php中定义公共变量和函数，包含所有接口，在其最后调用服务入口函数apiMain()。
+	// 函数型接口
+	$rv = callSvcInt("test1");
+	// 对象型接口，自动根据当前权限匹配类：
+	$objArr = callSvcInt("MyObj.query", ["fmt"=>"array", "cond"=>...]);
 
-如果某应用想包含api.php，以便使用其中的接口实现，可以用callSvc:
+常用对象的add/set/query接口替代dbInsert/dbUpdate/queryOne/queryAll这些底层数据库函数，以支持对象中的定制逻辑。
 
-	// set_include_path(get_include_path() . PATH_SEPARATOR . "..");
-	$GLOBALS["noExecApi"] = true; // 在包含api.php前设置该变量，可禁止apiMain函数自动解析请求（CLI方式调用时默认就不解析请求，故也可以不设置该变量）。
+调用指定类的接口：
+
+	$ac = new AC2_MyObj();
+	$objArr = $ac->callSvc("MyObj", "query", ["fmt"=>"array", "cond"=>...]);
+
+特别地，在AC类内部调用同类接口：
+
+	$objArr = $this->callSvc(null, "query", ["fmt"=>"array", "cond"=>...]);
+
+注意：以上所有调用失败时，将直接向上抛出异常；且不记录调用日志（ApiLog）。
+
+直接调用callSvc将不会抛出异常，而且它会记录调用日志。
+
+	$ret = callSvc("MyObj.query", ["fmt"=>"array", "cond"=>...]);
+	// 返回数组，是[code, data, ...]格式。
+
+@see callSvcInt
+@see AccessControl::callSvc
+@see callSvc
+
+要复用框架，比如只调用框架函数（如数据库操作），不调用任何接口：tool/xx.php
+
+	require_once("api_fw.php");
+	$rv = queryOne("...");
+
+定义新的接口服务：api1.php
+
+	require_once("api_fw.php");
+	// 定义接口...
+	callSvc();
+
+调用已有接口：
+
 	require_once("api.php");
 	...
-	$GLOBALS["errorFn"] = function($code, $msg, $msg2=null) {...}
 	$ret = callSvc("genVoucher");
-	// 如果没有异常，返回数据；否则调用指定的errorFn函数(未指定则调用errQuit)
-
-@see callSvc
 
 ## 常用操作
 
@@ -315,7 +344,7 @@ v3.4支持非标准对象接口。实现Ordr.cancel接口：
 
 plugin/{pluginName}为插件目录。
 
-plugin/index.php是插件配置文件，在后端应用框架函数apiMain中引入，内容示例如下：
+plugin/index.php是插件配置文件，在后端应用框架中自动引入，内容示例如下：
 
 	<?php
 
@@ -1967,26 +1996,7 @@ function api_async() {
 }
 // }}}
 
-// ====== main routine {{{
-function callSvc($ac=null, $useTrans=true)
-{
-	global $X_APP;
-	if (!$X_APP) {
-		$X_APP = new JDEnv();
-	}
-	$ret = $X_APP->callSvcSafe($ac, $useTrans);
-	return $ret;
-}
-
-function apiMain()
-{
-	global $X_APP;
-	$X_APP = new JDEnv();
-	if (@$GLOBALS["noExecApi"] || isCLI())
-		return;
-	return callSvc();
-}
-
+// ====== JDEnv {{{
 class BatchUtil
 {
 /*
@@ -2703,5 +2713,17 @@ function safe_sessionDestroy()
 	}
 }
 #}}}
+
+// ====== main routine {{{
+function callSvc($ac=null, $useTrans=true)
+{
+	global $X_APP;
+	return $X_APP->callSvcSafe($ac, $useTrans);
+}
+
+global $X_APP;
+$X_APP = new JDEnv();
+
+// }}}
 
 // vim: set foldmethod=marker :
