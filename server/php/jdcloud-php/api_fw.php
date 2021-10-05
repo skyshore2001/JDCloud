@@ -423,12 +423,12 @@ global $X_RET_STR;
 示例：返回 `{code, data}`格式：
 
 	global $X_RET_FN;
-	$X_RET_FN = function ($ret) {
+	$X_RET_FN = function ($ret, $env) {
 		$ret = [
 			"code" => $ret[0],
 			"data" => $ret[1]
 		];
-		if ($GLOBALS["TEST_MODE"])
+		if ($env->TEST_MODE)
 			$ret["jdData"] = $ret;
 		return $ret;
 	};
@@ -436,7 +436,7 @@ global $X_RET_STR;
 示例：返回xml格式：
 
 	global $X_RET_FN;
-	$X_RET_FN = function ($ret) {
+	$X_RET_FN = function ($ret, $env) {
 		header("Content-Type: application/xml");
 		echo "<xml><code>$ret[0]</code><data>$ret[1]</data></xml>";
 		return false;
@@ -684,8 +684,9 @@ HTTP Basic认证，即添加HTTP头：
  */
 function hasPerm($perms, $exPerms=null)
 {
+	$env = $GLOBALS["X_APP"];
 	assert(is_null($exPerms) || is_array($exPerms));
-	if (is_null(JDEnv::$perms)) {
+	if (is_null($env->perms)) {
 		// 扩展认证登录
 		if (count($_SESSION) == 0) { // 有session项则不进行认证
 			$authTypes = $exPerms;
@@ -697,24 +698,24 @@ function hasPerm($perms, $exPerms=null)
 						$authTypes[] = $e["authType"];
 				}
 			}
-			JDEnv::$exPerm = null;
+			$env->exPerm = null;
 			foreach ($authTypes as $e) {
 				$fn = Conf::$authHandlers[$e];
 				if (! is_callable($fn))
 					jdRet(E_SERVER, "unregistered authType `$e`", "未知认证类型`$e`");
 				if ($fn()) {
-					JDEnv::$exPerm = $e;
+					$env->exPerm = $e;
 					session_destroy();  // 对于第三方认证，不保存session（即使其中模拟了管理员登录，也不会影响下次调用）
 					break;
 				}
 			}
 		}
-		JDEnv::$perms = onGetPerms();
+		$env->perms = onGetPerms();
 	}
 
-	if ( (JDEnv::$perms & $perms) != 0 )
+	if ( ($env->perms & $perms) != 0 )
 		return true;
-	if (is_array($exPerms) && JDEnv::$exPerm && in_array(JDEnv::$exPerm, $exPerms))
+	if (is_array($exPerms) && $env->exPerm && in_array($env->exPerm, $exPerms))
 		return true;
 	return false;
 }
@@ -1071,6 +1072,8 @@ checkSecure函数返回false则不处理该调用，并将请求加入黑名单�
 
 class ApiLog
 {
+	private $env;
+
 	private $startTm;
 	private $ac;
 	private $id;
@@ -1095,8 +1098,9 @@ e.g. 修改ApiLog的ac:
 */
 	static $instance;
 
-	function __construct($ac) 
+	function __construct($env, $ac) 
 	{
+		$this->env = $env;
 		$this->ac = $ac;
 	}
 
@@ -1152,9 +1156,9 @@ e.g. 修改ApiLog的ac:
 
 	function logBefore()
 	{
+		$env = $this->env;
 		$this->startTm = $_SERVER["REQUEST_TIME_FLOAT"] ?: microtime(true);
 
-		global $APP;
 		$content = $this->myVarExport($_GET, 2000);
 		$ct = getContentType();
 		if (! preg_match('/x-www-form-urlencoded|form-data/i', $ct)) {
@@ -1175,13 +1179,12 @@ e.g. 修改ApiLog的ac:
 		$ua = $_SERVER["HTTP_USER_AGENT"];
 		$ver = getClientVersion();
 
-		global $DBH;
-		++ $DBH->skipLogCnt;
-		$this->id = dbInsert("ApiLog", [
+		++ $env->DBH->skipLogCnt;
+		$this->id = $env->dbInsert("ApiLog", [
 			"tm" => date(FMT_DT),
 			"addr" => $remoteAddr,
 			"ua" => $ua,
-			"app" => $APP,
+			"app" => $env->appName,
 			"ses" => session_id(),
 			"userId" => $this->getUserId(),
 			"ac" => $this->ac,
@@ -1197,18 +1200,18 @@ e.g. 修改ApiLog的ac:
 
 	function logAfter($ret)
 	{
-		global $DBH;
 		global $X_RET_STR;
-		if ($DBH == null)
+		$env = $this->env;
+		if ($env->DBH == null)
 			return;
 		$iv = sprintf("%.0f", (microtime(true) - $this->startTm) * 1000); // ms
 		if ($X_RET_STR == null)
-			$X_RET_STR = jsonEncode($ret, $GLOBALS["TEST_MODE"]);
+			$X_RET_STR = jsonEncode($ret, $env->TEST_MODE);
 		$logLen = $ret[0] !== 0? 2000: 200;
 		$content = $this->myVarExport($X_RET_STR, $logLen);
 
-		++ $DBH->skipLogCnt;
-		$rv = dbUpdate("ApiLog", [
+		++ $env->DBH->skipLogCnt;
+		$rv = $env->dbUpdate("ApiLog", [
 			"t" => $iv,
 			"retval" => $ret[0],
 			"ressz" => strlen($X_RET_STR),
@@ -1231,16 +1234,16 @@ e.g. 修改ApiLog的ac:
 
 	function logAfter1($ret)
 	{
-		global $DBH;
-		if ($DBH == null)
+		$env = $this->env;
+		if ($env->DBH == null)
 			return;
 		$iv = sprintf("%.0f", (microtime(true) - $this->startTm1) * 1000); // ms
-		$res = jsonEncode($ret, $GLOBALS["TEST_MODE"]);
+		$res = jsonEncode($ret, $env->TEST_MODE);
 		$logLen = $ret[0] !== 0? 2000: 200;
 		$content = $this->myVarExport($res, $logLen);
 
-		++ $DBH->skipLogCnt;
-		$apiLog1Id = dbInsert("ApiLog1", [
+		++ $env->DBH->skipLogCnt;
+		$apiLog1Id = $env->dbInsert("ApiLog1", [
 			"apiLogId" => $this->id,
 			"ac" => $this->ac1,
 			"t" => $iv,
@@ -1249,7 +1252,7 @@ e.g. 修改ApiLog的ac:
 			"res" => dbExpr(Q($content))
 		]);
 		if (Conf::$enableObjLog && self::$objLogId) {
-			dbUpdate("ObjLog", ["apiLog1Id" => $apiLog1Id], self::$objLogId);
+			$env->dbUpdate("ObjLog", ["apiLog1Id" => $apiLog1Id], self::$objLogId);
 			self::$objLogId = null;
 		}
 	}
@@ -2106,16 +2109,36 @@ class BatchUtil
 
 // 取当前全局APP可以用X_APP，如
 //  $ac = $GLOBALS["X_APP"]? $GLOBALS["X_APP"]->getAc(): 'unknown';
-// TODO: $DBH/$_GET/$_POST等全局变量移入这里. 通过X_APP取本实例，全局queryOne,param等函数改成$X_APP->queryOne等。
+// TODO: $_GET/$_POST等全局变量移入这里. 通过X_APP取本实例
 class JDEnv
 {
 	private $apiLog;
 	private $apiWatch;
 	private $ac;
 
-	// TODO: private
-	static $perms = null;
-	static $exPerm = null;
+/**
+@var env.appName?=user
+
+客户端应用标识，默认为"user". 
+根据URL参数"_app"确定值。
+
+@var env.appType
+
+根据应用标识($env->appName)获取应用类型(AppType)。注意：应用标识一般由前端应用通过URL参数"_app"传递给后端。
+不同的应用标识可以对应相同的应用类型，如应用标识"emp", "emp2", "emp-adm" 都表示应用类型"emp"，即 应用类型=应用标识自动去除尾部的数字或"-xx"部分。
+
+不同的应用标识会使用不同的cookie名，因而即使用户同时操作多个应用，其session不会相互干扰。
+同样的应用类型将以相同的方式登录系统。
+ */
+	public $appName, $appType;
+	// public $clientVer;
+
+	public $perms, $exPerms;
+
+	public $DB, $DBCRED, $DBTYPE;
+	public $DBH;
+
+	public $TEST_MODE, $MOCK_MODE, $DBG_LEVEL;
 
 	public $onAfterActions = [];
 	private $dbgInfo = [];
@@ -2132,30 +2155,31 @@ class JDEnv
 		mb_internal_encoding("UTF-8");
 		setlocale(LC_ALL, "zh_CN.UTF-8");
 
+		$this->appName = param("_app", "user", $_GET);
+		$this->appType = preg_replace('/(\d+|-\w+)$/', '', $this->appName);
+
 		require_once("ext.php");
 
-		global $TEST_MODE, $MOCK_MODE, $DBG_LEVEL;
-		$TEST_MODE = getenv("P_TEST_MODE")===false? 0: intval(getenv("P_TEST_MODE"));
+		$this->TEST_MODE = getenv("P_TEST_MODE")===false? 0: intval(getenv("P_TEST_MODE"));
 
 		$defaultDebugLevel = getenv("P_DEBUG")===false? 0 : intval(getenv("P_DEBUG"));
-		$DBG_LEVEL = param("_debug/i", $defaultDebugLevel, $_GET);
+		$this->DBG_LEVEL = param("_debug/i", $defaultDebugLevel, $_GET);
 
-		if ($TEST_MODE) {
-			$MOCK_MODE = getenv("P_MOCK_MODE") ?: 0;
+		if ($this->TEST_MODE) {
+			$this->MOCK_MODE = getenv("P_MOCK_MODE") ?: 0;
 		}
 
-		global $DB, $DBCRED, $DBTYPE;
-		$DBTYPE = getenv("P_DBTYPE");
-		$DB = getenv("P_DB") ?: $DB;
-		$DBCRED = getenv("P_DBCRED") ?: $DBCRED;
+		$this->DBTYPE = getenv("P_DBTYPE");
+		$this->DB = getenv("P_DB") ?: "localhost/jdcloud";
+		$this->DBCRED = getenv("P_DBCRED") ?: "ZGVtbzpkZW1vMTIz"; // base64({user}:{pwd}), default: demo:demo123
 
 		// e.g. P_DB="../carsvc.db"
-		if (! $DBTYPE) {
-			if (preg_match('/\.db$/i', $DB)) {
-				$DBTYPE = "sqlite";
+		if (! $this->DBTYPE) {
+			if (preg_match('/\.db$/i', $this->DB)) {
+				$this->DBTYPE = "sqlite";
 			}
 			else {
-				$DBTYPE = "mysql";
+				$this->DBTYPE = "mysql";
 			}
 		}
 
@@ -2169,15 +2193,13 @@ class JDEnv
 	}
 
 	private function initRequest() {
-
-		global $TEST_MODE, $MOCK_MODE;
 		$isCLI = isCLI();
 
 		if (! $isCLI) {
-			if ($TEST_MODE)
-				header("X-Daca-Test-Mode: $TEST_MODE");
-			if ($MOCK_MODE)
-				header("X-Daca-Mock-Mode: $MOCK_MODE");
+			if ($this->TEST_MODE)
+				header("X-Daca-Test-Mode: $this->TEST_MODE");
+			if ($this->MOCK_MODE)
+				header("X-Daca-Mock-Mode: $this->MOCK_MODE");
 		}
 		// 默认允许跨域
 		@$origin = $_SERVER['HTTP_ORIGIN'];
@@ -2199,11 +2221,10 @@ class JDEnv
 			exit();
 
 		if (!$isCLI)
-			self::setupSession();
+			$this->setupSession();
 
-		global $MOCK_MODE;
-		if ($TEST_MODE) {
-			$MOCK_MODE = getenv("P_MOCK_MODE") ?: 0;
+		if ($this->TEST_MODE) {
+			$this->MOCK_MODE = getenv("P_MOCK_MODE") ?: 0;
 		}
 		// supportJson: 支持POST为json格式
 		$ct = getContentType();
@@ -2260,7 +2281,6 @@ class JDEnv
 	function callSvcSafe($ac = null, $useTrans=true)
 	{
 		global $ERRINFO;
-		global $DBH;
 		$ret = [0, null];
 		$isUserFmt = false;
 
@@ -2269,7 +2289,7 @@ class JDEnv
 			if ($isDefaultCall) {
 				$this->ac = $ac = $this->initRequest();
 
-				dbconn();
+				$this->dbconn();
 
 				if (! isCLI() && Conf::$enableAutoSession) {
 					session_start();
@@ -2277,20 +2297,20 @@ class JDEnv
 
 				if (Conf::$enableApiLog)
 				{
-					$this->apiLog = new ApiLog($ac);
+					$this->apiLog = new ApiLog($this, $ac);
 					$this->apiLog->logBefore();
 				}
 			}
 
 			if ($ac !== "batch") {
-				if ($useTrans && ! $DBH->inTransaction())
-					$DBH->beginTransaction();
+				if ($useTrans && ! $this->DBH->inTransaction())
+					$this->DBH->beginTransaction();
 				$ret[1] = callSvcInt($ac, null, null, false);
 			}
 			else {
 				$batchUseTrans = param("useTrans", false, $_GET);
-				if ($useTrans && $batchUseTrans && !$DBH->inTransaction())
-					$DBH->beginTransaction();
+				if ($useTrans && $batchUseTrans && !$this->DBH->inTransaction())
+					$this->DBH->beginTransaction();
 				else
 					$useTrans = false;
 				$ret = $this->batchCall($batchUseTrans);
@@ -2318,14 +2338,13 @@ class JDEnv
 			addLog((string)$e, 9);
 		}
 
-		global $DBH;
 		try {
-			if ($useTrans && $DBH && $DBH->inTransaction())
+			if ($useTrans && $this->DBH && $this->DBH->inTransaction())
 			{
 				if ($ret[0] == 0)
-					$DBH->commit();
+					$this->DBH->commit();
 				else
-					$DBH->rollback();
+					$this->DBH->rollback();
 			}
 		}
 		catch (Exception $e) {
@@ -2340,8 +2359,7 @@ class JDEnv
 				logit($s, true, 'debug');
 			}
 		}
-		global $TEST_MODE;
-		if ($TEST_MODE && count($this->dbgInfo) > 0) {
+		if ($this->TEST_MODE && count($this->dbgInfo) > 0) {
 			foreach ($this->dbgInfo as $e) {
 				$ret[] = $e;
 			}
@@ -2375,8 +2393,7 @@ class JDEnv
 				$this->apiLog->logAfter($ret);
 
 			// 及时关闭数据库连接
-			global $DBH;
-			$DBH = null;
+			$this->DBH = null;
 
 			// 删除空会话
 			if (isset($_SESSION) && count($_SESSION) == 0) {
@@ -2448,7 +2465,6 @@ class JDEnv
 
 	private function echoRet($ret, $isUserFmt)
 	{
-		global $TEST_MODE;
 		global $ERRINFO;
 
 		list ($code, $data) = $ret;
@@ -2463,7 +2479,7 @@ class JDEnv
 		global $X_RET_FN;
 		if (! $data instanceof DbExpr) {
 			if (is_callable(@$X_RET_FN) && !param("jdcloud")) {
-				$ret1 = $X_RET_FN($ret);
+				$ret1 = $X_RET_FN($ret, $this);
 				if ($ret1 === false)
 					return;
 				if (is_string($ret1)) {
@@ -2473,7 +2489,7 @@ class JDEnv
 				}
 				$ret = $ret1;
 			}
-			$X_RET_STR = jsonEncode($ret, $GLOBALS["TEST_MODE"]);
+			$X_RET_STR = jsonEncode($ret, $this->TEST_MODE);
 		}
 		else {
 			$X_RET_STR = "[" . $code . ", " . $data->val . "]";
@@ -2598,12 +2614,10 @@ class JDEnv
 		return "{$obj}.{$ac}";
 	}
 
-	private static function setupSession()
+	private function setupSession()
 	{
-		global $APP;
-
 		# normal: "userid"; testmode: "tuserid"
-		$name = $APP . "id";
+		$name = $this->appName . "id";
 		session_name($name);
 
 		$path = getenv("P_SESSION_DIR") ?: $GLOBALS["BASE_DIR"] . "/session";
@@ -2626,12 +2640,220 @@ class JDEnv
 	}
 
 	function addLog($data, $logLevel=0) {
-		global $DBG_LEVEL;
-		if ($DBG_LEVEL >= $logLevel)
+		if ($this->DBG_LEVEL >= $logLevel)
 		{
 			$this->dbgInfo[] = $data;
 		}
 	}
+
+// ====== dbconn {{{
+function dbconn($fnConfirm = null)
+{
+	$DBH = $this->DBH;
+	if (isset($DBH))
+		return $DBH;
+
+	// 未指定驱动类型，则按 mysql或sqlite 连接
+// 	if (! preg_match('/^\w{3,10}:/', $DB)) {
+		// e.g. P_DB="../carsvc.db"
+		if ($this->DBTYPE == "sqlite") {
+			$C = ["sqlite:" . $this->DB, '', ''];
+		}
+		else if ($this->DBTYPE == "mysql") {
+			// e.g. P_DB="115.29.199.210/carsvc"
+			// e.g. P_DB="115.29.199.210:3306/carsvc"
+			if (! preg_match('/^"?(.*?)(:(\d+))?\/(\w+)"?$/', $this->DB, $ms))
+				jdRet(E_SERVER, "bad db=`{$this->DB}`", "未知数据库");
+			$dbhost = $ms[1];
+			$dbport = $ms[3] ?: 3306;
+			$dbname = $ms[4];
+
+			list($dbuser, $dbpwd) = getCred($this->DBCRED); 
+			$C = ["mysql:host={$dbhost};dbname={$dbname};port={$dbport}", $dbuser, $dbpwd];
+		}
+// 	}
+// 	else {
+// 		list($dbuser, $dbpwd) = getCred($this->DBCRED); 
+// 		$C = [$this->DB, $dbuser, $dbpwd];
+// 	}
+
+	if ($fnConfirm == null)
+		@$fnConfirm = $GLOBALS["dbConfirmFn"];
+	if ($fnConfirm && $fnConfirm($C[0]) === false) {
+		exit;
+	}
+	try {
+		@$DBH = new JDPDO ($C[0], $C[1], $C[2]);
+	}
+	catch (PDOException $e) {
+		$msg = $this->TEST_MODE ? $e->getMessage() : "dbconn fails";
+		logit("dbconn fails: " . $e->getMessage());
+		jdRet(E_DB, $msg, "数据库连接失败");
+	}
+	
+	if ($this->DBTYPE == "mysql") {
+		++ $DBH->skipLogCnt;
+		$DBH->exec('set names utf8mb4');
+	}
+	$DBH->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION); # by default use PDO::ERRMODE_SILENT
+
+	# enable real types (works on mysql after php5.4)
+	# require driver mysqlnd (view "PDO driver" by "php -i")
+	$DBH->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+	$DBH->setAttribute(PDO::ATTR_STRINGIFY_FETCHES, false);
+	$this->DBH = $DBH;
+	return $DBH;
+}
+
+function dbCommit($doRollback=false)
+{
+	$DBH = $this->DBH;
+	if ($DBH && $DBH->inTransaction())
+	{
+		if ($doRollback)
+			$DBH->rollback();
+		else
+			$DBH->commit();
+		$DBH->beginTransaction();
+	}
+}
+
+function execOne($sql, $getInsertId = false)
+{
+	$DBH = $this->dbconn();
+	$rv = $DBH->exec($sql);
+	if ($getInsertId)
+		$rv = (int)$DBH->lastInsertId();
+	return $rv;
+}
+
+function queryOne($sql, $assoc = false, $cond = null)
+{
+	$DBH = $this->dbconn();
+	if ($cond)
+		$sql = genQuery($sql, $cond);
+	if (stripos($sql, "limit ") === false && stripos($sql, "for update") === false)
+		$sql .= " LIMIT 1";
+	$sth = $DBH->query($sql);
+
+	if ($sth === false)
+		return false;
+
+	$fetchMode = $assoc? PDO::FETCH_ASSOC: PDO::FETCH_NUM;
+	$row = $sth->fetch($fetchMode);
+	$sth->closeCursor();
+	if ($row !== false && count($row)===1 && !$assoc)
+		return $row[0];
+	return $row;
+}
+
+function queryAll($sql, $assoc = false, $cond = null)
+{
+	$DBH = $this->dbconn();
+	if ($cond)
+		$sql = genQuery($sql, $cond);
+	$sth = $DBH->query($sql);
+	if ($sth === false)
+		return false;
+	$fetchMode = $assoc? PDO::FETCH_ASSOC: PDO::FETCH_NUM;
+	$allRows = [];
+	do {
+		$rows = $sth->fetchAll($fetchMode);
+		$allRows[] = $rows;
+	}
+	while ($sth->nextRowSet());
+	// $sth->closeCursor();
+	return count($allRows)>1? $allRows: $allRows[0];
+}
+
+function dbInsert($table, $kv)
+{
+	$keys = '';
+	$values = '';
+	foreach ($kv as $k=>$v) {
+		if (is_null($v))
+			continue;
+		// ignore non-field param
+		if (substr($k,0,2) === "p_")
+			continue;
+		if ($v === "")
+			continue;
+		# TODO: check meta
+		if (! preg_match('/^\w+$/u', $k))
+			jdRet(E_PARAM, "bad key $k");
+
+		if ($keys !== '') {
+			$keys .= ", ";
+			$values .= ", ";
+		}
+		$keys .= $k;
+		if ($v instanceof DbExpr) { // 直接传SQL表达式
+			$values .= $v->val;
+		}
+		else if (is_array($v)) {
+			jdRet(E_PARAM, "dbInsert: array `$k` is not allowed. pls define subobj to use array.", "未定义的子表`$k`");
+		}
+		else {
+			$values .= Q(htmlEscape($v));
+		}
+	}
+	if (strlen($keys) == 0) 
+		jdRet(E_PARAM, "no field found to be added: $table");
+	$sql = sprintf("INSERT INTO %s (%s) VALUES (%s)", $table, $keys, $values);
+#			var_dump($sql);
+	return $this->execOne($sql, true);
+}
+
+function dbUpdate($table, $kv, $cond)
+{
+	if ($cond === null)
+		jdRet(E_SERVER, "bad cond for update $table");
+
+	$condStr = getQueryCond($cond);
+	$kvstr = "";
+	foreach ($kv as $k=>$v) {
+		if ($k === 'id' || is_null($v))
+			continue;
+		// ignore non-field param
+		if (substr($k,0,2) === "p_")
+			continue;
+		# TODO: check meta
+		if (! preg_match('/^(\w+\.)?\w+$/u', $k))
+			jdRet(E_PARAM, "bad key $k");
+
+		if ($kvstr !== '')
+			$kvstr .= ", ";
+
+		// 空串或null置空；empty设置空字符串
+		if ($v === "" || $v === "null")
+			$kvstr .= "$k=null";
+		else if ($v === "empty")
+			$kvstr .= "$k=''";
+		else if ($v instanceof DbExpr) { // 直接传SQL表达式
+			$kvstr .= $k . '=' . $v->val;
+		}
+		else if (startsWith($k, "flag_") || startsWith($k, "prop_"))
+		{
+			$kvstr .= flag_getExpForSet($k, $v);
+		}
+		else
+			$kvstr .= "$k=" . Q(htmlEscape($v));
+	}
+	$cnt = 0;
+	if (strlen($kvstr) == 0) {
+		addLog("no field found to be set: $table");
+	}
+	else {
+		if (isset($condStr))
+			$sql = sprintf("UPDATE %s SET %s WHERE %s", $table, $kvstr, $condStr);
+		else
+			$sql = sprintf("UPDATE %s SET %s", $table, $kvstr);
+		$cnt = $this->execOne($sql);
+	}
+	return $cnt;
+}
+// }}}
+
 }
 
 /*

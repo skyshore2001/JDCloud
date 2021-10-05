@@ -68,7 +68,7 @@ P_DBCRED格式为`{用户名}:{密码}`，或其base64编码后的值，如
 
 注意：v5.4起可设置P_DEBUG_LOG，在测试模式或生产模式都可用，可记录日志到后台debug.log文件中。一般用于在生产环境下，临时开放查看后台日志。
 
-注意：v3.4版本起不允许客户端设置_test参数，且用环境变量P_TEST_MODE替代符号文件CFG_TEST_MODE和设置全局变量TEST_MODE.
+注意：v3.4版本起不允许客户端设置_test参数，且用环境变量P_TEST_MODE替代符号文件CFG_TEST_MODE。
 
 在过去测试模式用于：可直接对生产环境进行测试且不影响生产环境，即部署后，在前端指定以测试模式连接，在后端为测试模式连接专用的测试数据库，且使用专用的cookie，实现与生产模式共用代码但互不影响。
 现已废弃这种用法，应搭建专用的测试环境用于测试开发。
@@ -81,7 +81,7 @@ P_DBCRED格式为`{用户名}:{密码}`，或其base64编码后的值，如
 
 对第三方系统依赖（如微信认证、支付宝支付、发送短信等），可通过设计Mock接口来模拟。
 
-注意：v3.4版本起用环境变量P_MOCK_MODE替代符号文件CFG_MOCK_MODE/CFG_MOCK_T_MODE和设置全局变量MOCK_MODE，且模拟模式只允许在测试模式激活时才能使用。
+注意：v3.4版本起用环境变量P_MOCK_MODE替代符号文件CFG_MOCK_MODE/CFG_MOCK_T_MODE，且模拟模式只允许在测试模式激活时才能使用。
 
 @see ExtMock
 
@@ -129,22 +129,6 @@ const RTEST_MODE=2;
 */
 global $BASE_DIR;
 $BASE_DIR = dirname(dirname(__DIR__));
-
-global $DB, $DBCRED, $DBTYPE;
-$DB = "localhost/jdcloud";
-$DBCRED = "ZGVtbzpkZW1vMTIz"; // base64({user}:{pwd}), default: demo:demo123
-
-global $TEST_MODE, $MOCK_MODE, $DBG_LEVEL;
-
-global $DBH;
-/**
-@var $APP?=user
-
-客户端应用标识，默认为"user". 
-根据URL参数"_app"确定值。
- */
-global $APP;
-$APP = param("_app", "user", $_GET);
 // }}}
 
 // load user config
@@ -669,7 +653,8 @@ h是标题字段数组，d是数据行。
  */
 function queryAllWithHeader($sql, $wantArray=false)
 {
-	global $DBH;
+	$env = $GLOBALS["X_APP"];
+	$DBH = $env->dbconn();
 	$sth = $DBH->query($sql);
 
 	$h = getRsHeader($sth);
@@ -877,9 +862,9 @@ function getCred($cred)
 
 连接数据库
 
-数据库由全局变量$DB(或环境变量P_DB）指定，格式可以为：
+数据库由环境变量P_DB指定，格式可以为：
 
-	host1/carsvc (无扩展名，表示某主机host1下的mysql数据库名；这时由 全局变量$DBCRED 或环境变量 P_DBCRED 指定用户名密码。
+	host1/carsvc (无扩展名，表示某主机host1下的mysql数据库名；这时由 环境变量 P_DBCRED 指定用户名密码。
 
 	dir1/dir2/carsvc.db (以.db文件扩展名标识的文件路径，表示SQLITE数据库）
 
@@ -887,62 +872,8 @@ function getCred($cred)
  */
 function dbconn($fnConfirm = null)
 {
-	global $DBH;
-	if (isset($DBH))
-		return $DBH;
-
-
-	global $DB, $DBCRED, $DBTYPE;
-
-	// 未指定驱动类型，则按 mysql或sqlite 连接
-// 	if (! preg_match('/^\w{3,10}:/', $DB)) {
-		// e.g. P_DB="../carsvc.db"
-		if ($DBTYPE == "sqlite") {
-			$C = ["sqlite:" . $DB, '', ''];
-		}
-		else if ($DBTYPE == "mysql") {
-			// e.g. P_DB="115.29.199.210/carsvc"
-			// e.g. P_DB="115.29.199.210:3306/carsvc"
-			if (! preg_match('/^"?(.*?)(:(\d+))?\/(\w+)"?$/', $DB, $ms))
-				jdRet(E_SERVER, "bad db=`$DB`", "未知数据库");
-			$dbhost = $ms[1];
-			$dbport = $ms[3] ?: 3306;
-			$dbname = $ms[4];
-
-			list($dbuser, $dbpwd) = getCred($DBCRED); 
-			$C = ["mysql:host={$dbhost};dbname={$dbname};port={$dbport}", $dbuser, $dbpwd];
-		}
-// 	}
-// 	else {
-// 		list($dbuser, $dbpwd) = getCred($DBCRED); 
-// 		$C = [$DB, $dbuser, $dbpwd];
-// 	}
-
-	if ($fnConfirm == null)
-		@$fnConfirm = $GLOBALS["dbConfirmFn"];
-	if ($fnConfirm && $fnConfirm($C[0]) === false) {
-		exit;
-	}
-	try {
-		@$DBH = new JDPDO ($C[0], $C[1], $C[2]);
-	}
-	catch (PDOException $e) {
-		$msg = $GLOBALS["TEST_MODE"] ? $e->getMessage() : "dbconn fails";
-		logit("dbconn fails: " . $e->getMessage());
-		jdRet(E_DB, $msg, "数据库连接失败");
-	}
-	
-	if ($DBTYPE == "mysql") {
-		++ $DBH->skipLogCnt;
-		$DBH->exec('set names utf8mb4');
-	}
-	$DBH->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION); # by default use PDO::ERRMODE_SILENT
-
-	# enable real types (works on mysql after php5.4)
-	# require driver mysqlnd (view "PDO driver" by "php -i")
-	$DBH->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
-	$DBH->setAttribute(PDO::ATTR_STRINGIFY_FETCHES, false);
-	return $DBH;
+	$env = $GLOBALS["X_APP"];
+	return $env->dbconn($fnConfirm);
 }
 
 /**
@@ -961,19 +892,12 @@ function dbconn($fnConfirm = null)
 */
 function dbCommit($doRollback=false)
 {
-	global $DBH;
-	if ($DBH && $DBH->inTransaction())
-	{
-		if ($doRollback)
-			$DBH->rollback();
-		else
-			$DBH->commit();
-		$DBH->beginTransaction();
-	}
+	$env = $GLOBALS["X_APP"];
+	return $env->dbCommit($doRollback);
 }
 
 /**
-@fn Q($str, $dbh=$DBH)
+@fn Q($str)
 
 quote string
 
@@ -984,7 +908,7 @@ quote string
 	$sql = sprintf("SELECT id FROM User WHERE uname=%s AND pwd=%s", Q(param("uname")), Q(param("pwd")));
 
  */
-function Q($s, $dbh = null)
+function Q($s)
 {
 	if ($s === null)
 		return "null";
@@ -995,8 +919,8 @@ function Q($s, $dbh = null)
 
 function sql_concat()
 {
-	global $DBTYPE;
-	if ($DBTYPE == "mysql")
+	$env = $GLOBALS["X_APP"];
+	if ($env->DBTYPE == "mysql")
 		return "CONCAT(" . join(", ", func_get_args()) . ")";
 
 	# sqlite3
@@ -1203,13 +1127,8 @@ function genQuery($sql, $cond)
  */
 function execOne($sql, $getInsertId = false)
 {
-	global $DBH;
-	if (! isset($DBH))
-		dbconn();
-	$rv = $DBH->exec($sql);
-	if ($getInsertId)
-		$rv = (int)$DBH->lastInsertId();
-	return $rv;
+	$env = $GLOBALS["X_APP"];
+	return $env->execOne($sql, $getInsertId);
 }
 
 /**
@@ -1249,24 +1168,8 @@ function execOne($sql, $getInsertId = false)
  */
 function queryOne($sql, $assoc = false, $cond = null)
 {
-	global $DBH;
-	if (! isset($DBH))
-		dbconn();
-	if ($cond)
-		$sql = genQuery($sql, $cond);
-	if (stripos($sql, "limit ") === false && stripos($sql, "for update") === false)
-		$sql .= " LIMIT 1";
-	$sth = $DBH->query($sql);
-
-	if ($sth === false)
-		return false;
-
-	$fetchMode = $assoc? PDO::FETCH_ASSOC: PDO::FETCH_NUM;
-	$row = $sth->fetch($fetchMode);
-	$sth->closeCursor();
-	if ($row !== false && count($row)===1 && !$assoc)
-		return $row[0];
-	return $row;
+	$env = $GLOBALS["X_APP"];
+	return $env->queryOne($sql, $assoc, $cond);
 }
 
 /**
@@ -1319,23 +1222,8 @@ queryAll支持执行返回多结果集的存储过程，这时返回的不是单
  */
 function queryAll($sql, $assoc = false, $cond = null)
 {
-	global $DBH;
-	if (! isset($DBH))
-		dbconn();
-	if ($cond)
-		$sql = genQuery($sql, $cond);
-	$sth = $DBH->query($sql);
-	if ($sth === false)
-		return false;
-	$fetchMode = $assoc? PDO::FETCH_ASSOC: PDO::FETCH_NUM;
-	$allRows = [];
-	do {
-		$rows = $sth->fetchAll($fetchMode);
-		$allRows[] = $rows;
-	}
-	while ($sth->nextRowSet());
-	// $sth->closeCursor();
-	return count($allRows)>1? $allRows: $allRows[0];
+	$env = $GLOBALS["X_APP"];
+	return $env->queryAll($sql, $assoc, $cond);
 }
 
 /**
@@ -1356,40 +1244,8 @@ e.g.
 */
 function dbInsert($table, $kv)
 {
-	$keys = '';
-	$values = '';
-	foreach ($kv as $k=>$v) {
-		if (is_null($v))
-			continue;
-		// ignore non-field param
-		if (substr($k,0,2) === "p_")
-			continue;
-		if ($v === "")
-			continue;
-		# TODO: check meta
-		if (! preg_match('/^\w+$/u', $k))
-			jdRet(E_PARAM, "bad key $k");
-
-		if ($keys !== '') {
-			$keys .= ", ";
-			$values .= ", ";
-		}
-		$keys .= $k;
-		if ($v instanceof DbExpr) { // 直接传SQL表达式
-			$values .= $v->val;
-		}
-		else if (is_array($v)) {
-			jdRet(E_PARAM, "dbInsert: array `$k` is not allowed. pls define subobj to use array.", "未定义的子表`$k`");
-		}
-		else {
-			$values .= Q(htmlEscape($v));
-		}
-	}
-	if (strlen($keys) == 0) 
-		jdRet(E_PARAM, "no field found to be added: $table");
-	$sql = sprintf("INSERT INTO %s (%s) VALUES (%s)", $table, $keys, $values);
-#			var_dump($sql);
-	return execOne($sql, true);
+	$env = $GLOBALS["X_APP"];
+	return $env->dbInsert($table, $kv);
 }
 
 /**
@@ -1587,51 +1443,8 @@ cond条件可以用key-value指定(cond写法参考getQueryCond)，如：
 */
 function dbUpdate($table, $kv, $cond)
 {
-	if ($cond === null)
-		jdRet(E_SERVER, "bad cond for update $table");
-
-	$condStr = getQueryCond($cond);
-	$kvstr = "";
-	foreach ($kv as $k=>$v) {
-		if ($k === 'id' || is_null($v))
-			continue;
-		// ignore non-field param
-		if (substr($k,0,2) === "p_")
-			continue;
-		# TODO: check meta
-		if (! preg_match('/^(\w+\.)?\w+$/u', $k))
-			jdRet(E_PARAM, "bad key $k");
-
-		if ($kvstr !== '')
-			$kvstr .= ", ";
-
-		// 空串或null置空；empty设置空字符串
-		if ($v === "" || $v === "null")
-			$kvstr .= "$k=null";
-		else if ($v === "empty")
-			$kvstr .= "$k=''";
-		else if ($v instanceof DbExpr) { // 直接传SQL表达式
-			$kvstr .= $k . '=' . $v->val;
-		}
-		else if (startsWith($k, "flag_") || startsWith($k, "prop_"))
-		{
-			$kvstr .= flag_getExpForSet($k, $v);
-		}
-		else
-			$kvstr .= "$k=" . Q(htmlEscape($v));
-	}
-	$cnt = 0;
-	if (strlen($kvstr) == 0) {
-		addLog("no field found to be set: $table");
-	}
-	else {
-		if (isset($condStr))
-			$sql = sprintf("UPDATE %s SET %s WHERE %s", $table, $kvstr, $condStr);
-		else
-			$sql = sprintf("UPDATE %s SET %s", $table, $kvstr);
-		$cnt = execOne($sql);
-	}
-	return $cnt;
+	$env = $GLOBALS["X_APP"];
+	return $env->dbUpdate($table, $kv, $cond);
 }
 //}}}
 
@@ -1924,25 +1737,8 @@ END;
  */
 function addLog($data, $logLevel=0)
 {
-	global $X_APP;
-	$X_APP->addLog($data, $logLevel);
-}
-
-/**
-@fn getAppType()
-
-根据应用标识($APP)获取应用类型(AppType)。注意：应用标识一般由前端应用通过URL参数"_app"传递给后端。
-不同的应用标识可以对应相同的应用类型，如应用标识"emp", "emp2", "emp-adm" 都表示应用类型"emp"，即 应用类型=应用标识自动去除尾部的数字或"-xx"部分。
-
-不同的应用标识会使用不同的cookie名，因而即使用户同时操作多个应用，其session不会相互干扰。
-同样的应用类型将以相同的方式登录系统。
-
-@see $APP
- */
-function getAppType()
-{
-	global $APP;
-	return preg_replace('/(\d+|-\w+)$/', '', $APP);
+	$env = $GLOBALS["X_APP"];
+	$env->addLog($data, $logLevel);
 }
 
 /** 
@@ -2003,18 +1799,17 @@ function utf8InputFilter($fp, $fnTest=null)
 // ====== classes {{{
 /**
 @class JDPDO
-@var $DBH
 
-数据库类PDO增强。全局变量$DBH为默认数据库连接，dbconn,queryAll,execOne等数据库函数都使用它。
+数据库类PDO增强。全局变量$X_APP->DBH为默认数据库连接，dbconn,queryAll,execOne等数据库函数都使用它。
 
 - 在调试等级P_DEBUG=9时，将SQL日志输出到前端，即`addLog(sqlStr, DEBUG=9)`。
 - 如果有符号文件CFG_CONN_POOL，则使用连接池（缺省不用）
 
 如果想忽略输出一条SQL日志，可以在调用SQL查询前设置skipLogCnt，如：
 
-	global $DBH;
-	++ $DBH->skipLogCnt;  // 若要忽略两条就用 $DBH->skipLogCnt+=2
-	$DBH->exec('set names utf8mb4'); // 也可以是queryOne/execOne等函数。
+	$env = $GLOBALS["X_APP"];
+	++ $env->DBH->skipLogCnt;  // 若要忽略两条就用 $env->DBH->skipLogCnt+=2
+	$env->DBH->exec('set names utf8mb4'); // 也可以是queryOne/execOne等函数。
 
 @see queryAll,execOne,dbconn
  */
@@ -2329,10 +2124,11 @@ trait JDEvent
  */
 function isMockMode($extType)
 {
-	if (intval($GLOBALS["MOCK_MODE"]) === 1)
+	$env = $GLOBALS["X_APP"];
+	if (intval($env->MOCK_MODE) === 1)
 		return true;
 
-	$mocks = explode(',', $GLOBALS["MOCK_MODE"]);
+	$mocks = explode(',', $env->MOCK_MODE);
 	return in_array($extType, $mocks);
 }
 
