@@ -478,7 +478,7 @@ function getJDEnv()
 	if (is_object($env)) {
 		return $env;
 	}
-	return $env[Coroutine::getcid()];
+	return $env[Swoole\Coroutine::getcid()];
 }
 
 /**
@@ -1127,7 +1127,7 @@ e.g. 修改ApiLog的ac:
 		$content = $this->myVarExport($env->_GET(), 2000);
 		$ct = getContentType($env);
 		if (! preg_match('/x-www-form-urlencoded|form-data/i', $ct)) {
-			$post = getHttpInput();
+			$post = getHttpInput($env);
 			$content2 = $this->myVarExport($post, 2000);
 		}
 		else {
@@ -1587,7 +1587,7 @@ function getHttpInput($env)
 	$content = $env->rawContent;
 	if ($content == null) {
 		$ct = getContentType($env);
-		$content = file_get_contents("php://input");
+		$content = $env->rawContent();
 		if (preg_match('/charset=([\w-]+)/i', $ct, $ms)) {
 			$charset = strtolower($ms[1]);
 			if ($charset != "utf-8") {
@@ -1889,13 +1889,8 @@ function api_async($env) {
 	if (!($f && in_array($f, $allowedAsyncCalls) && function_exists($f)))
 		jdRet(E_PARAM, "bad async fn: $f");
 
-	$param = file_get_contents("php://input");
-	$arr = json_decode($param, true);
-	if (! is_array($arr))
-		jdRet(E_PARAM, "bad param for async fn $f: $param");
-	
 	putenv("enableAsync=0");
-	return call_user_func_array($f, $arr);
+	return call_user_func_array($f, $env->_POST());
 }
 // }}}
 
@@ -2008,41 +2003,23 @@ class BatchUtil
 }
 
 // used by JDEnv
-//define("forDel", dbExpr(0));
-define("forDel", "__for_del__");
 trait JDServer
 {
-	protected function value($key, $val, &$arr) {
-		if ($key === null) {
-			return $arr;
-		}
-		if (is_array($key)) {
-			$arr = $key;
-			return;
-		}
-		if ($val === null) {
-			return $arr[$key];
-		}
-		if ($val === forDel) {
-			unset($arr[$key]);
-			return;
-		}
-		$arr[$key] = $val;
-	}
 	function _GET($key=null, $val=null) {
-		return $this->value($key, $val, $_GET);
+		return arrayOp($key, $val, $_GET, func_num_args());
 	}
 	function _POST($key=null, $val=null) {
-		return $this->value($key, $val, $_POST);
+		return arrayOp($key, $val, $_POST, func_num_args());
 	}
 	function _SESSION($key, $val=null) {
-		return $this->value($key, null, $_SESSION);
+		return arrayOp($key, null, $_SESSION, func_num_args());
 	}
 	function _SERVER($key) {
-		return $this->value($key, null, $_SERVER);
+		return arrayOp($key, null, $_SERVER, func_num_args());
 	}
 	function header($key=null, $val=null) {
-		if ($val === null) {
+		$argc = func_num_args();
+		if ($argc <= 1) {
 			if ($this->reqHeaders === null) {
 				$arr = getallheaders();
 				foreach ($arr as $k=>$v) {
@@ -2051,9 +2028,12 @@ trait JDServer
 			}
 			if (is_string($key))
 				$key = strtolower($key);
-			return $this->value($key, $val, $this->reqHeaders);
+			return arrayOp($key, $val, $this->reqHeaders, $argc);
 		}
 		header("$key: $val");
+	}
+	function rawContent() {
+		return file_get_contents("php://input");
 	}
 	function write($data) {
 		echo($data);
@@ -2582,7 +2562,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		return "{$obj}.{$ac}";
 	}
 
-	private function setupSession()
+	protected function setupSession()
 	{
 		# normal: "userid"; testmode: "tuserid"
 		$name = $this->appName . "id";
@@ -3114,7 +3094,7 @@ function callSvc($ac=null, $useTrans=true)
 	return $env->callSvcSafe($ac, $useTrans);
 }
 
-if (!class_exists("Coroutine"))
+if (!isSwoole())
 	$X_APP = new JDEnv();
 else
 	$X_APP = [];

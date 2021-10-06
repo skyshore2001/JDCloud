@@ -217,7 +217,7 @@ command-line interface. e.g. run "php x.php"
 */
 function isCLI()
 {
-	return php_sapi_name() == "cli";
+	return php_sapi_name() == "cli" && !isSwoole();
 }
 
 /** 
@@ -228,6 +228,11 @@ php built-in web server e.g. run "php -S 0.0.0.0:8080"
 function isCLIServer()
 {
 	return php_sapi_name() == "cli-server";
+}
+
+function isSwoole()
+{
+	return function_exists("swoole_version");
 }
 
 /** 
@@ -1431,4 +1436,63 @@ function containsWord($str, $word)
 		return false;
 	return !!preg_match('/\b' . $word . '\b/ui', $str);
 }
+
+/**
+@fn arrayOp($key, $val, &$arr, $argc)
+
+用于封装数组操作。示例：
+
+	function _POST($key=null, $val=null) {
+		return arrayOp($key, $val, $_POST, func_num_args());
+	}
+
+_POST函数可用于数组操作，如：
+
+	$_POST["a"] = $a;
+	->
+	_POST("a", $a);
+
+	$a = $_POST["a"];
+	->
+	$a = _POST("a");
+
+	unset($_POST["a"])
+	->
+	_POST("a", forDel);
+
+	$arr = $_POST;
+	->
+	$arr = _POST();
+
+	$_POST = $arr;
+	->
+	_POST($arr);
+
+*/
+//define("forDel", dbExpr(0));
+define("forDel", "__for_del__");
+function arrayOp($key, $val, &$arr, $argc)
+{
+	// e.g. $arr = $env->_GET();
+	if ($argc == 0) {
+		return isset($arr)? $arr: [];
+	}
+	// e.g. $env->_GET($arr);
+	if ($argc == 1 && is_array($key)) {
+		$arr = $key;
+		return;
+	}
+	// e.g. $v = $env->_GET("a");
+	if ($argc == 1) {
+		return $arr[$key];
+	}
+	// e.g. $env->_GET("a", forDel);
+	if ($val === forDel) {
+		unset($arr[$key]);
+		return;
+	}
+	// e.g. $env->_GET("a", "value1");
+	$arr[$key] = $val;
+}
+
 // vi: foldmethod=marker
