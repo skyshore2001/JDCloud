@@ -417,7 +417,8 @@ global $X_RET_STR;
 若想修改返回格式，可设置该回调函数。
 
 - 如果返回对象，则输出json格式。
-- 如果返回false，应自行用echo输出。注意API日志中仍记录筋斗云返回数据格式。
+- 如果返回String类型，则直接输出字符串。
+- 如果返回false，应自行用echo/readfile等输出。注意API日志中仍记录筋斗云返回数据格式。
 - (v6) 如果有参数`{jdcloud:1}`，则忽略此处设置，仍使用筋斗云格式输出。
 
 示例：返回 `{code, data}`格式：
@@ -438,8 +439,7 @@ global $X_RET_STR;
 	global $X_RET_FN;
 	$X_RET_FN = function ($ret, $env) {
 		header("Content-Type: application/xml");
-		echo "<xml><code>$ret[0]</code><data>$ret[1]</data></xml>";
-		return false;
+		return "<xml><code>$ret[0]</code><data>$ret[1]</data></xml>";
 	};
 	
 */
@@ -518,22 +518,22 @@ JS示例：
 	</script>
 */
 
-/**
-@fn setServerRev()
+/*
+@fn setServerRev($env)
 
 根据全局变量"SERVER_REV"或应用根目录下的文件"revision.txt"， 来设置HTTP响应头"X-Daca-Server-Rev"表示服务端版本信息（最多6位）。
 
 客户端框架可本地缓存该版本信息，一旦发现不一致，可刷新应用。
 服务器可使用$GLOBALS["SERVER_REV"]来取服务端版本号（6位）。
  */
-function setServerRev()
+function setServerRev($env)
 {
 	$ver = $GLOBALS["SERVER_REV"] ?: @file_get_contents("{$GLOBALS['BASE_DIR']}/revision.txt");
 	if (! $ver)
 		return;
 	$ver = substr($ver, 0, 6);
 	$GLOBALS["SERVER_REV"] = $ver;
-	header("X-Daca-Server-Rev: {$ver}");
+	$env->header("X-Daca-Server-Rev", $ver);
 }
 
 /**
@@ -712,7 +712,7 @@ function hasPerm($perms, $exPerms=null)
 				$fn = Conf::$authHandlers[$e];
 				if (! is_callable($fn))
 					jdRet(E_SERVER, "unregistered authType `$e`", "未知认证类型`$e`");
-				if ($fn()) {
+				if ($fn($env)) {
 					$env->exPerm = $e;
 					session_destroy();  // 对于第三方认证，不保存session（即使其中模拟了管理员登录，也不会影响下次调用）
 					break;
@@ -762,15 +762,15 @@ function checkAuthKeys($key, $authType)
 	return true;
 }
 
-function hasPerm_none()
+function hasPerm_none($env)
 {
 	return checkAuthKeys("", "none");
 }
 ConfBase::$authHandlers["none"] = "hasPerm_none";
 
-function hasPerm_simple()
+function hasPerm_simple($env)
 {
-	@$key = $_SERVER["HTTP_X_DACA_SIMPLE"];
+	$key = $env->_SERVER("HTTP_X_DACA_SIMPLE");
 	if (! $key)
 		return false;
 	$key1 = getenv("simplePwd");
@@ -780,9 +780,9 @@ function hasPerm_simple()
 }
 ConfBase::$authHandlers["simple"] = "hasPerm_simple";
 
-function hasPerm_basic()
+function hasPerm_basic($env)
 {
-	list($user, $pwd) = [@$_SERVER['PHP_AUTH_USER'], @$_SERVER['PHP_AUTH_PW']];
+	list($user, $pwd) = [$env->_SERVER('PHP_AUTH_USER'), $env->_SERVER('PHP_AUTH_PW')];
 	if (! isset($user))
 		return false;
 	$key = $user . ':' . $pwd;
@@ -1122,10 +1122,10 @@ e.g. 修改ApiLog的ac:
 	function logBefore()
 	{
 		$env = $this->env;
-		$this->startTm = $_SERVER["REQUEST_TIME_FLOAT"] ?: microtime(true);
+		$this->startTm = $env->_SERVER("REQUEST_TIME_FLOAT") ?: microtime(true);
 
 		$content = $this->myVarExport($env->_GET(), 2000);
-		$ct = getContentType();
+		$ct = getContentType($env);
 		if (! preg_match('/x-www-form-urlencoded|form-data/i', $ct)) {
 			$post = getHttpInput();
 			$content2 = $this->myVarExport($post, 2000);
@@ -1572,20 +1572,21 @@ function api_initClient($env)
 	return $ret;
 }
 
-function getContentType()
+function getContentType($env)
 {
-	static $ct;
+	$ct = $env->contentType;
 	if ($ct == null) {
-		$ct = @$_SERVER["HTTP_CONTENT_TYPE"] ?: $_SERVER["CONTENT_TYPE"];
+		$ct = $env->_SERVER("HTTP_CONTENT_TYPE") ?: $env->_SERVER("CONTENT_TYPE");
+		$env->contentType = $ct;
 	}
 	return $ct;
 }
 
-function getHttpInput()
+function getHttpInput($env)
 {
-	static $content;
+	$content = $env->rawContent;
 	if ($content == null) {
-		$ct = getContentType();
+		$ct = getContentType($env);
 		$content = file_get_contents("php://input");
 		if (preg_match('/charset=([\w-]+)/i', $ct, $ms)) {
 			$charset = strtolower($ms[1]);
@@ -1598,6 +1599,7 @@ function getHttpInput()
 			if ($content === false)
 				jdRet(E_PARAM, "unknown encoding $charset");
 		}
+		$env->rawContent = $content;
 	}
 	return $content;
 }
@@ -2039,12 +2041,21 @@ trait JDServer
 	function _SERVER($key) {
 		return $this->value($key, null, $_SERVER);
 	}
-	function header($key, $val=null) {
-		if ($val === null)
-			return header($key);
+	function header($key=null, $val=null) {
+		if ($val === null) {
+			if ($this->reqHeaders === null) {
+				$arr = getallheaders();
+				foreach ($arr as $k=>$v) {
+					$this->reqHeaders[strtolower($k)] = $v;
+				}
+			}
+			if (is_string($key))
+				$key = strtolower($key);
+			return $this->value($key, $val, $this->reqHeaders);
+		}
 		header("$key: $val");
 	}
-	function echo1($data) {
+	function write($data) {
 		echo($data);
 	}
 }
@@ -2152,27 +2163,27 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 
 		if (! $isCLI) {
 			if ($this->TEST_MODE)
-				header("X-Daca-Test-Mode: $this->TEST_MODE");
+				$this->header("X-Daca-Test-Mode", $this->TEST_MODE);
 			if ($this->MOCK_MODE)
-				header("X-Daca-Mock-Mode: $this->MOCK_MODE");
+				$this->header("X-Daca-Mock-Mode", $this->MOCK_MODE);
 		}
 		// 默认允许跨域
-		@$origin = $_SERVER['HTTP_ORIGIN'];
+		$origin = $this->_SERVER('HTTP_ORIGIN');
 		if (isset($origin) && !$isCLI) {
-			header('Access-Control-Allow-Origin: ' . $origin);
-			header('Access-Control-Allow-Credentials: true');
-			header('Access-Control-Expose-Headers: X-Daca-Server-Rev, X-Daca-Test-Mode, X-Daca-Mock-Mode');
+			$this->header('Access-Control-Allow-Origin', $origin);
+			$this->header('Access-Control-Allow-Credentials', 'true');
+			$this->header('Access-Control-Expose-Headers', 'X-Daca-Server-Rev, X-Daca-Test-Mode, X-Daca-Mock-Mode');
 			
-			@$val = $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS'];
+			$val = $this->_SERVER('HTTP_ACCESS_CONTROL_REQUEST_HEADERS');
 			if ($val) {
-				header('Access-Control-Allow-Headers: ' . $val);
+				$this->header('Access-Control-Allow-Headers', $val);
 			}
-			@$val = $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD'];
+			$val = $this->_SERVER('HTTP_ACCESS_CONTROL_REQUEST_METHOD');
 			if ($val) {
-				header('Access-Control-Allow-Methods: ' . $val);
+				$this->header('Access-Control-Allow-Methods', $val);
 			}
 		}
-		if ($_SERVER["REQUEST_METHOD"] === "OPTIONS")
+		if ($this->_SERVER("REQUEST_METHOD") === "OPTIONS")
 			exit();
 
 		if (!$isCLI)
@@ -2182,24 +2193,23 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			$this->MOCK_MODE = getenv("P_MOCK_MODE") ?: 0;
 		}
 		// supportJson: 支持POST为json格式
-		$ct = getContentType();
+		$ct = getContentType($this);
 		if (strstr($ct, "/json") !== false) {
-			$content = getHttpInput();
+			$content = getHttpInput($this);
 			@$arr = jsonDecode($content);
 			if (!is_array($arr)) {
 				logit("bad json-format body: `$content`");
 				jdRet(E_PARAM, "bad json-format body");
 			}
-			$_POST = $arr;
-			$_REQUEST += $arr;
+			$this->_POST($arr);
 		}
 
 		if (! $isCLI) {
-			header("Content-Type: text/plain; charset=UTF-8");
+			$this->header("Content-Type", "text/plain; charset=UTF-8");
 			#header("Content-Type: application/json; charset=UTF-8");
-			header("Cache-Control: no-cache");
+			$this->header("Cache-Control", "no-cache");
 		}
-		setServerRev();
+		setServerRev($this);
 
 		$ac = $this->param('_ac', null, "G");
 		if (! isset($ac))
@@ -2366,11 +2376,11 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 
 	protected function batchCall($useTrans)
 	{
-		$method = $_SERVER["REQUEST_METHOD"];
+		$method = $this->_SERVER("REQUEST_METHOD");
 		if ($method !== "POST")
 			jdRet(E_PARAM, "batch MUST use `POST' method");
 
-		$calls = $_POST;
+		$calls = $env->_POST();
 		if (! is_array($calls))
 			jdRet(E_PARAM, "bad batch request");
 
@@ -2388,9 +2398,10 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			}
 			$acList[] = $call["ac"];
 
-			$_GET = BatchUtil::getParams($call, "get", $retVal);
-			$_POST = BatchUtil::getParams($call, "post", $retVal);
-			$_REQUEST = array_merge($_GET, $_POST);
+			$get = BatchUtil::getParams($call, "get", $retVal);
+			$post = BatchUtil::getParams($call, "post", $retVal);
+			$this->_GET($get);
+			$this->_POST($post);
 			if ($this->apiLog) {
 				$this->apiLog->logBefore1($call["ac"]);
 			}
@@ -2427,7 +2438,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		global $X_RET_STR;
 		if ($isUserFmt) {
 			$X_RET_STR = $data;
-			echo($X_RET_STR);
+			$this->write($X_RET_STR);
 			return;
 		}
 
@@ -2439,7 +2450,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 					return;
 				if (is_string($ret1)) {
 					$X_RET_STR = $ret1;
-					echo $X_RET_STR . "\n";
+					$this->write($X_RET_STR . "\n");
 					return;
 				}
 				$ret = $ret1;
@@ -2451,26 +2462,26 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		}
 
 		global $X_RET_STR;
-		$jsonp = $_GET["_jsonp"];
+		$jsonp = $this->_GET("_jsonp");
 		if ($jsonp) {
 			if (substr($jsonp,-1) === '=') {
-				echo $jsonp . $X_RET_STR . ";\n";
+				$this->write($jsonp . $X_RET_STR . ";\n");
 			}
 			else {
-				echo $jsonp . "(" . $X_RET_STR . ");\n";
+				$this->write($jsonp . "(" . $X_RET_STR . ");\n");
 			}
 		}
 		else {
-			echo $X_RET_STR . "\n";
+			$this->write($X_RET_STR . "\n");
 		}
 	}
 
 	private function getPathInfo()
 	{
-		$pi = $_SERVER["PATH_INFO"];
+		$pi = $this->_SERVER("PATH_INFO");
 		if ($pi === null) {
 			# 支持rewrite后解析pathinfo
-			$uri = $_SERVER["REQUEST_URI"];
+			$uri = $this->_SERVER("REQUEST_URI");
 			if (strpos($uri, '.php') === false) {
 				$uri = preg_replace('/\?.*$/', '', $uri);
 				$baseUrl = getBaseUrl(false);
@@ -2478,7 +2489,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 				# uri=/jdy/api/login -> pi=/login
 				# uri=/jdy/login -> pi=/login
 				if (strpos($uri, $baseUrl) === 0) {
-					$script = basename($_SERVER["SCRIPT_NAME"], '.php'); // "api"
+					$script = basename($this->_SERVER("SCRIPT_NAME"), '.php'); // "api"
 					$len = strlen($baseUrl);
 					if (strpos($uri, $baseUrl . $script) === 0)
 						$len += strlen($script);
@@ -2553,7 +2564,9 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			if (! isset($id))
 				jdRet(E_PARAM, "missing id");
 			$ac = 'set';
-			parse_str(file_get_contents("php://input"), $_POST);
+			//parse_str(file_get_contents("php://input"), $_POST);
+			parse_str(getHttpInput($this), $arr);
+			$this->_POST($arr);
 			break;
 
 		// DELETE /Store/123
@@ -2975,7 +2988,7 @@ $param或$postParam为null时，与空数组`[]`等价。
 			];
 		}
 		// Mozilla/5.0 (Linux; U; Android 4.1.1; zh-cn; MI 2S Build/JRO03L) AppleWebKit/533.1 (KHTML, like Gecko)Version/4.0 MQQBrowser/5.4 TBS/025440 Mobile Safari/533.1 MicroMessenger/6.2.5.50_r0e62591.621 NetType/WIFI Language/zh_CN
-		else if (preg_match('/MicroMessenger\/([0-9.]+)/', $_SERVER["HTTP_USER_AGENT"], $ms)) {
+		else if (preg_match('/MicroMessenger\/([0-9.]+)/', $this->_SERVER("HTTP_USER_AGENT"), $ms)) {
 			$ver = $ms[1];
 			$ret = [
 				"type" => "wx",
