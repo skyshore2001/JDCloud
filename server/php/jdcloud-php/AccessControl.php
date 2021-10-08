@@ -1453,11 +1453,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 @see callSvc
 @see callSvcInt
 */
-	function callSvc($tbl, $ac, $param=null, $postParam=null, $useTmpEnv=true)
-	{
-		if ($useTmpEnv)
-			return parent::callSvc($tbl, $ac, $param, $postParam, $useTmpEnv);
-
+	protected function onCallSvc($tbl, $fn) {
 		// 已初始化过，创建新对象调用接口，避免污染当前环境。
 		if ($this->ac && $this->table) {
 			$acObj = new static();
@@ -1468,9 +1464,6 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		$this->ac = $ac;
 		$this->onInit();
 
-		$fn = "api_" . $ac;
-		if (! is_callable([$this, $fn]))
-			jdRet(E_PARAM, "Bad request - unknown `$tbl` method: `$ac`", "接口不支持");
 		$this->before();
 		$ret = $this->$fn();
 		$this->after($ret);

@@ -2528,7 +2528,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		if (!self::isId($id))
 			list($id,$ac) = [$ac,$id];
 		if (self::isId($id))
-			$env->param('id', $id);
+			$env->_GET('id', $id);
 
 		// 非标准CRUD操作，如：GET|POST /Store/123/close 或 /Store/close/123 或 /Store/closeAll
 		if (isset($ac)) {
@@ -3097,6 +3097,10 @@ class JDApiBase
 		$fn = "api_" . $ac;
 		if (! is_callable([$this, $fn]))
 			jdRet(E_PARAM, "Bad request - unknown `$tbl` method: `$ac`", "接口不支持");
+		return $this->onCallSvc($tbl, $fn);
+	}
+
+	protected function onCallSvc($tbl, $fn) {
 		$ret = $this->$fn();
 		return $ret;
 	}
