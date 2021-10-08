@@ -1,12 +1,132 @@
 ## 升级到v6.0
 
+### 去全局化，支持swoole
+
+与swoole环境相区别，在apache下运行则称为经典环境。
+
+增加JDEnv类（替代原先ApiApp），部分全局变量和全局函数移入JDEnv内；
+增加JDApiBase类作为AccessControl的基类，用于简单的函数型接口，不具备任何内置接口。
+
 - 移除类：AppBase,ApiApp
-- 移除函数：setRet,errQuit,apiMain(callSvc替代),getAppType(env->appType替代), setParam($env->get/post替代)
+- 移除函数：setRet,errQuit,apiMain(callSvc替代),getAppType(env->appType替代), setParam($env->get/post替代), getAppType()
 - 移除全局变量: $X_RET, $errorFn, $noExecApi, 以下全局变量移到JDEnv内：
 	- $g_dbgInfo, $DBH, $APP
 	- $TEST_MODE, $MOCK_MODE, $DBG_LEVEL;
-- 函数接口变化：callSvc（重构后简化）。
+- 函数接口变化：callSvc（重构后简化）。getHttpInput(增加env参数), getContentType(增加env参数), setServerRev(增加env参数)
 - 用jdRet替代MyException和DirectReturn类。
+
+#### 不兼容，需要修改
+
+原先：
+
+	global $DBH, $APP, $TEST_MODE, $X_APP;
+	$appType = getAppType();
+	$X_APP->onAfterActions[] = ...;
+
+改为：
+
+	$env = getJDEnv(); // 一般会有传入$env参数、或有$this->env，都没有时才用getJDEnv，非swoole环境下它与原先的全局变量$X_APP是相同的。
+	// $DBH = $env->DBH; // 只是取变量，可能为空
+	$DBH = $env->dbconn(); // 打开连接，如果已有连接，则直接重用
+	$TEST_MODE = $env->TEST_MODE;
+	$APP = $env->appName;
+	$appType = $env->appType;
+	$env->onAfterActions[] = ...;
+
+#### 兼容，建议修改
+
+原先：
+
+	throw new MyException(code, data, msg);
+	throw new DirectReturn();
+
+建议改为：
+
+	jdRet(code, data, msg);
+	jdRet();
+
+#### 兼容，经典环境下可不改
+
+v6的去全局化可支持在swoole环境下执行。
+非swoole环境的应用代码可以仍用经典形式，框架代码须使用新形式。
+在swoole环境下须按下面方法修改。
+
+对取参、数据库函数的处理：
+
+	$a = param("a");
+	$rv = queryOne("SELECT ...");
+	$rv2 = callSvcInt("Xxx.query");
+
+更新为：
+
+	$a = $env->param("a"); // 类似还有mparam等
+	$rv = $env->queryOne("SELECT ..."); // 类似还有queryAll, dbInsert, dbUpdate, execOne, dbCommit等数据库函数
+	$rv2 = $env->callSvcInt("Xxx.query");
+
+对$_POST, $_GET, $_SESSION等超全局变量的处理（注意_REQUEST不再使用）：
+
+	$_POST["a"] = $a;
+	$b = $_POST["b"];
+
+	unset($_POST["b"]);
+
+	$arr = $_POST;
+	$_POST = $arr;
+
+更新为：
+
+	$env->_POST("a", $a); // 赋值
+	$b = $env->_POST("b"); // 取值
+
+	$env->_POST("b", forDel); // 删除元素
+
+	$arr = $env->_POST(); // 取数组
+	$env->_POST($arr); // 重设数组
+
+对$_SERVER是只读的：
+
+	$a = $_SERVER["a"];
+	->
+	$a = $env->_SERVER("a");
+
+对HTTP头的读写：
+
+	$a = $_SERVER["HTTP_MY_HEADER"]; // 读request头; 以前自定义的请求头都是以"HTTP_{名称}"的形式存储在$_SERVER中。
+	header("My-Header: My-Value"); // 写response头
+
+更新为：
+
+	$a = $this->_SERVER["HTTP_MY_HEADER"]; 读request头
+	或
+	$a = $this->header("My-Header"); // 名字不区分大小写
+	$this->header("My-Header", "My-Value"); // 写response头，注意key, value分开了
+	$requestHeaderArr = $this->header(); // 取所有request头
+
+函数型函数增加`$env`参数：
+
+	function api_fn1($env) {  // 全局函数增加$env参数
+		$a = $env->param("a");
+		...
+	}
+
+对象型接口增加了$env成员变量，且以新增的JDApiBase类作为基类（它也是AccessControl的基类），如果不是典型CRUD的对象接口，只要继承JDApiBase即可。
+JDApiBase和AccessControl的子类通过`$this-env`取到`$env`参数：
+
+	class AC_Xxx extends JDApiBase {
+		function api_fn1() { // 和之前一样，并没有增加$env参数
+			$env = $this->env;  // JDApiBase或AccessControl类自带$this->env
+			$a = $env->param("a");
+			...
+		}
+	}
+
+输出结果：
+
+	echo($str);
+
+应改为:
+
+	$env->write($str);
 
 ## 升级到v5.5
 
