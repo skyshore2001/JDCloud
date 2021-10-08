@@ -697,7 +697,7 @@ function hasPerm($perms, $exPerms=null)
 	assert(is_null($exPerms) || is_array($exPerms));
 	if (is_null($env->perms)) {
 		// 扩展认证登录
-		if (count($_SESSION) == 0) { // 有session项则不进行认证
+		if (count($env->_SESSION()) == 0) { // 有session项则不进行认证
 			$authTypes = $exPerms;
 			if ($authTypes == null) {
 				$authTypes = [];
@@ -714,7 +714,7 @@ function hasPerm($perms, $exPerms=null)
 					jdRet(E_SERVER, "unregistered authType `$e`", "未知认证类型`$e`");
 				if ($fn($env)) {
 					$env->exPerm = $e;
-					session_destroy();  // 对于第三方认证，不保存session（即使其中模拟了管理员登录，也不会影响下次调用）
+					$env->session_destroy();  // 对于第三方认证，不保存session（即使其中模拟了管理员登录，也不会影响下次调用）
 					break;
 				}
 			}
@@ -730,9 +730,9 @@ function hasPerm($perms, $exPerms=null)
 }
 
 // $key 或 $keyFn($key)
-function checkAuthKeys($key, $authType)
+function checkAuthKeys($key, $authType, $env)
 {
-	$auth = arrFind(Conf::$authKeys, function ($e) use ($key, $authType) {
+	$auth = arrFind(Conf::$authKeys, function ($e) use ($key, $authType, $env) {
 		assert(isset($e["authType"]), "authKey requires authType");
 		if ($authType != $e["authType"])
 			return false;
@@ -746,7 +746,6 @@ function checkAuthKeys($key, $authType)
 		if (! isset($e["allowedAc"]))
 			return true;
 		assert(is_array($e["allowedAc"]), "authKey requires allowedAc");
-		$env = getJDEnv();
 		$ac = $env->getAc() ?: 'unknown';
 		foreach ($e["allowedAc"] as $e1) {
 			if (fnmatch($e1, $ac))
@@ -757,14 +756,16 @@ function checkAuthKeys($key, $authType)
 	if (! $auth)
 		return false;
 	if (is_array($auth["SESSION"])) {
-		arrCopy($_SESSION, $auth["SESSION"]);
+		foreach ($auth["SESSION"] as $k=>$v) {
+			$env->_SESSION($k, $v);
+		}
 	}
 	return true;
 }
 
 function hasPerm_none($env)
 {
-	return checkAuthKeys("", "none");
+	return checkAuthKeys("", "none", $env);
 }
 ConfBase::$authHandlers["none"] = "hasPerm_none";
 
@@ -776,7 +777,7 @@ function hasPerm_simple($env)
 	$key1 = getenv("simplePwd");
 	if ($key1 && $key === $key1)
 		return true;
-	return checkAuthKeys($key, "simple");
+	return checkAuthKeys($key, "simple", $env);
 }
 ConfBase::$authHandlers["simple"] = "hasPerm_simple";
 
@@ -786,7 +787,7 @@ function hasPerm_basic($env)
 	if (! isset($user))
 		return false;
 	$key = $user . ':' . $pwd;
-	return checkAuthKeys($key, "basic");
+	return checkAuthKeys($key, "basic", $env);
 }
 ConfBase::$authHandlers["basic"] = "hasPerm_basic";
 
@@ -1112,7 +1113,8 @@ e.g. 修改ApiLog的ac:
 	protected $userId;
 	protected function getUserId()
 	{
-		$userId = $_SESSION["empId"] ?: $_SESSION["uid"] ?: $_SESSION["adminId"];
+		$env = $this->env;
+		$userId = $env->_SESSION("empId") ?: $env->_SESSION("uid") ?: $env->_SESSION("adminId");
 		if (! (is_int($userId) || ctype_digit($userId)))
 			$userId = null;
 		$this->userId = $userId;
@@ -1456,13 +1458,13 @@ $file为插件主文件，可返回一个插件配置。如果未指定，则自
 		$storeId = $env->mparam("storeId");
 
 		// 定死输出内容。
-		$env->param("res", "id, score, dscr, tm, orderDscr");
+		$env->_GET("res", "id, score, dscr, tm, orderDscr");
 
 		// 相当于AccessControl框架中调用 addCond，用Obj.query接口的内部参数cond2以保证用户还可以使用cond参数。
-		$env->param("cond2", dbExpr("o.storeId=$storeId")); 
+		$env->_GET("cond2", dbExpr("o.storeId=$storeId")); 
 
 		// 定死排序条件
-		$env->param("orderby", "tm DESC");
+		$env->_GET("orderby", "tm DESC");
 
 		$ret = tableCRUD("query", "Rating", true);
 		return $ret;
@@ -2011,8 +2013,8 @@ trait JDServer
 	function _POST($key=null, $val=null) {
 		return arrayOp($key, $val, $_POST, func_num_args());
 	}
-	function _SESSION($key, $val=null) {
-		return arrayOp($key, null, $_SESSION, func_num_args());
+	function _SESSION($key=null, $val=null) {
+		return arrayOp($key, $val, $_SESSION, func_num_args());
 	}
 	function _SERVER($key) {
 		return arrayOp($key, null, $_SERVER, func_num_args());
@@ -2037,6 +2039,16 @@ trait JDServer
 	}
 	function write($data) {
 		echo($data);
+	}
+
+	function session_start() {
+		session_start();
+	}
+	function session_write_close() {
+		session_write_close();
+	}
+	function session_destroy() {
+		session_destroy();
 	}
 }
 
@@ -2237,7 +2249,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 				$this->dbconn();
 
 				if (! isCLI() && Conf::$enableAutoSession) {
-					session_start();
+					$this->session_start();
 				}
 
 				if (Conf::$enableApiLog)
@@ -2328,6 +2340,9 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 					logit('onAfterActions fails: ' . (string)$e);
 				}
 			}
+			if (! isCLI() && Conf::$enableAutoSession) {
+				$this->session_write_close();
+			}
 		}
 		try {
 /*
@@ -2339,13 +2354,14 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 
 			// 及时关闭数据库连接
 			$this->DBH = null;
-
+/* NOTE: 暂不处理
 			// 删除空会话
 			if (isset($_SESSION) && count($_SESSION) == 0) {
 				// jd-php框架ApiWatch中设置过lastAccess，则空会话至少有1个key。v5.3不再使用ApiWatch
 				// @session_destroy();
 				safe_sessionDestroy();
 			}
+*/
 		}
 		catch (Exception $e) {
 			logit((string)$e);

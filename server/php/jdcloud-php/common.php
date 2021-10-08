@@ -1475,7 +1475,9 @@ function arrayOp($key, $val, &$arr, $argc)
 {
 	// e.g. $arr = $env->_GET();
 	if ($argc == 0) {
-		return isset($arr)? $arr: [];
+		if (! isset($arr))
+			$arr = [];
+		return $arr;
 	}
 	// e.g. $env->_GET($arr);
 	if ($argc == 1 && is_array($key)) {
