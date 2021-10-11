@@ -1606,20 +1606,20 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	{
 		$env = $this->env;
 		if (isset($_REQUEST["rows"])) {
-			$env->param("pagesz", $env->_GET("rows"));
+			$env->param("pagesz", $env->_GET["rows"]);
 		}
 		// support easyui: sort/order
 		if (isset($_REQUEST["sort"]))
 		{
 			$orderby = $_REQUEST["sort"];
 			if (isset($_REQUEST["order"]))
-				$orderby .= " " . $env->_GET("order");
+				$orderby .= " " . $env->_GET["order"];
 			$this->sqlConf["orderby"] = $orderby;
 		}
 		// 兼容旧代码: 支持 _pagesz等参数，新代码应使用pagesz
 		foreach (["_pagesz", "_pagekey", "_fmt"] as $e) {
 			if ($env->_GET[$e]) {
-				$env->_GET(substr($e, 1), $env->_GET[$e]);
+				$env->_GET[substr($e, 1)] = $env->_GET[$e];
 			}
 		}
 	}
@@ -2993,7 +2993,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		$pagekey = null;
 		$cnt = 0;
 		while (true) {
-			$rv = $this->callSvc(null, "query", $env->_GET() + [
+			$rv = $this->callSvc(null, "query", $env->_GET + [
 				"res" => "id",
 				"pagesz" => -1,
 				"pagekey" => $pagekey,
@@ -3003,7 +3003,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 				$id = $row["id"];
 				try {
 					++ $cnt;
-					$this->callSvc(null, "set", ["id" => $id], $env->_POST());
+					$this->callSvc(null, "set", ["id" => $id], $env->_POST);
 				}
 				catch (Exception $ex) {
 					$msg = "批量处理失败, id=$id: " . $ex->getMessage();

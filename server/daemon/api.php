@@ -95,16 +95,10 @@ class SwooleEnv extends JDEnv
 	function __construct($req, $res) {
 		$this->req = $req;
 		$this->res = $res;
+		$this->_GET = &$this->req->get;
+		$this->_POST = &$this->req->post;
+		$this->_SESSION = [];
 		parent::__construct();
-	}
-	function _GET($key=null, $val=null) {
-		return arrayOp($key, $val, $this->req->get, func_num_args());
-	}
-	function _POST($key=null, $val=null) {
-		return arrayOp($key, $val, $this->req->post, func_num_args());
-	}
-	function _SESSION($key=null, $val=null) {
-		return arrayOp($key, $val, $this->_SESSION, func_num_args());
 	}
 	function _SERVER($key) {
 		// _SERVER("HTTP_MY_HEADER") -> header("MY-HEADER")
@@ -114,14 +108,16 @@ class SwooleEnv extends JDEnv
 			return $this->header($key);
 		}
 		$key = strtolower($key);
-		return arrayOp($key, null, $this->req->server, func_num_args());
+		return $this->req->server[$key];
 	}
 	function header($key=null, $val=null) {
 		$argc = func_num_args();
-		if ($argc <= 1) {
-			if (is_string($key))
-				$key = strtolower($key);
-			return arrayOp($key, $val, $this->req->header, $argc);
+		if ($argc == 0) {
+			return $this->req->header;
+		}
+		if ($argc == 1) {
+			$key = strtolower($key);
+			return $this->req->header[$key];
 		}
 		$this->res->header($key, $val);
 	}

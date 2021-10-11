@@ -338,16 +338,16 @@ function param($name, $defVal = null, $col = null, $doHtmlEscape = true, $env = 
 	}
 	// cond特别处理
 	if ($name == "cond" || $type == "cond")
-		return getQueryCond([$env->_GET($name), $env->_POST($name)]);
+		return getQueryCond([$env->_GET[$name], $env->_POST[$name]]);
 
 	$ret = $defVal;
 	if ($col === "G") {
-		$rv = $env->_GET($name);
+		$rv = $env->_GET[$name];
 		if (isset($rv))
 			$ret = $rv;
 	}
 	else if ($col === "P") {
-		$rv = $env->_POST($name);
+		$rv = $env->_POST[$name];
 		if (isset($rv))
 			$ret = $rv;
 	}
@@ -358,9 +358,9 @@ function param($name, $defVal = null, $col = null, $doHtmlEscape = true, $env = 
 			$ret = $rv;
 	}
 	else {
-		$ret = $env->_GET($name);
+		$ret = $env->_GET[$name];
 		if ($ret === null)
-			$ret = $env->_POST($name);
+			$ret = $env->_POST[$name];
 	}
 
 	// e.g. "a=1&b=&c=3", b当成未设置，取缺省值。

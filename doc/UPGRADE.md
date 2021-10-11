@@ -19,37 +19,42 @@
 
 原先：
 
-	global $DBH, $APP, $TEST_MODE, $X_APP;
+	global $DBH, $APP, $TEST_MODE;
 	$appType = getAppType();
-	$X_APP->onAfterActions[] = ...;
 
 改为：
 
-	$env = getJDEnv(); // 一般会有传入$env参数、或有$this->env，都没有时才用getJDEnv，非swoole环境下它与原先的全局变量$X_APP是相同的。
+	$env = getJDEnv(); // 一般会有传入$env参数、或有$this->env，都没有时可以用getJDEnv()，经典环境下它就是原全局变量$GLOBALS["X_APP"]。
 	// $DBH = $env->DBH; // 只是取变量，可能为空
 	$DBH = $env->dbconn(); // 打开连接，如果已有连接，则直接重用
 	$TEST_MODE = $env->TEST_MODE;
 	$APP = $env->appName;
 	$appType = $env->appType;
-	$env->onAfterActions[] = ...;
 
-#### 兼容，建议修改
+注意：直接$X_APP的用法仍兼容，但已不建议使用。
+
+#### 兼容经典环境，建议修改
 
 原先：
+
+	global $X_APP;
+	$X_APP->onAfterActions[] = ...;
 
 	throw new MyException(code, data, msg);
 	throw new DirectReturn();
 
 建议改为：
 
+	$env = getJDEnv();
+	$env->onAfterActions[] = ...; // 经典环境下$env就是$GLOBALS["X_APP"]
+
 	jdRet(code, data, msg);
 	jdRet();
 
-#### 兼容，经典环境下可不改
+#### 兼容经典环境，可不修改
 
-v6的去全局化可支持在swoole环境下执行。
-非swoole环境的应用代码可以仍用经典形式，框架代码须使用新形式。
-在swoole环境下须按下面方法修改。
+v6的去全局化可支持在swoole环境下执行。在swoole环境下须按下面方法修改。
+经典环境的应用代码可以不修改，但框架代码须使用新形式。
 
 对取参、数据库函数的处理：
 
@@ -63,7 +68,7 @@ v6的去全局化可支持在swoole环境下执行。
 	$rv = $env->queryOne("SELECT ..."); // 类似还有queryAll, dbInsert, dbUpdate, execOne, dbCommit等数据库函数
 	$rv2 = $env->callSvcInt("Xxx.query");
 
-对$_POST, $_GET, $_SESSION等超全局变量的处理（注意_REQUEST不再使用）：
+对$_POST, $_GET, $_SESSION等超全局变量的处理（注意_REQUEST不再使用），直接改成$this->_POST, $this->_GET, $this->_SESSION：
 
 	$_POST["a"] = $a;
 	$b = $_POST["b"];
@@ -75,15 +80,15 @@ v6的去全局化可支持在swoole环境下执行。
 
 更新为：
 
-	$env->_POST("a", $a); // 赋值
-	$b = $env->_POST("b"); // 取值
+	$env->_POST["a"] = $a; // 赋值
+	$b = $env->_POST["b"]; // 取值
 
-	$env->_POST("b", forDel); // 删除元素
+	unset($env->_POST["b"]); // 删除元素
 
-	$arr = $env->_POST(); // 取数组
-	$env->_POST($arr); // 重设数组
+	$arr = $env->_POST; // 取数组
+	$env->_POST = $arr; // 重设数组
 
-对$_SERVER是只读的：
+对$_SERVER是只读的，通过同名函数来取：
 
 	$a = $_SERVER["a"];
 	->
@@ -96,7 +101,7 @@ v6的去全局化可支持在swoole环境下执行。
 
 更新为：
 
-	$a = $this->_SERVER["HTTP_MY_HEADER"]; 读request头
+	$a = $this->_SERVER("HTTP_MY_HEADER"); 读request头
 	或
 	$a = $this->header("My-Header"); // 名字不区分大小写
 	$this->header("My-Header", "My-Value"); // 写response头，注意key, value分开了

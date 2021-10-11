@@ -697,7 +697,7 @@ function hasPerm($perms, $exPerms=null)
 	assert(is_null($exPerms) || is_array($exPerms));
 	if (is_null($env->perms)) {
 		// 扩展认证登录
-		if (count($env->_SESSION()) == 0) { // 有session项则不进行认证
+		if (count($env->_SESSION) == 0) { // 有session项则不进行认证
 			$authTypes = $exPerms;
 			if ($authTypes == null) {
 				$authTypes = [];
@@ -757,7 +757,7 @@ function checkAuthKeys($key, $authType, $env)
 		return false;
 	if (is_array($auth["SESSION"])) {
 		foreach ($auth["SESSION"] as $k=>$v) {
-			$env->_SESSION($k, $v);
+			$env->_SESSION[$k] = $v;
 		}
 	}
 	return true;
@@ -1114,7 +1114,7 @@ e.g. 修改ApiLog的ac:
 	protected function getUserId()
 	{
 		$env = $this->env;
-		$userId = $env->_SESSION("empId") ?: $env->_SESSION("uid") ?: $env->_SESSION("adminId");
+		$userId = $env->_SESSION["empId"] ?: $env->_SESSION["uid"] ?: $env->_SESSION["adminId"];
 		if (! (is_int($userId) || ctype_digit($userId)))
 			$userId = null;
 		$this->userId = $userId;
@@ -1126,14 +1126,14 @@ e.g. 修改ApiLog的ac:
 		$env = $this->env;
 		$this->startTm = $env->_SERVER("REQUEST_TIME_FLOAT") ?: microtime(true);
 
-		$content = $this->myVarExport($env->_GET(), 2000);
+		$content = $this->myVarExport($env->_GET, 2000);
 		$ct = getContentType($env);
 		if (! preg_match('/x-www-form-urlencoded|form-data/i', $ct)) {
 			$post = getHttpInput($env);
 			$content2 = $this->myVarExport($post, 2000);
 		}
 		else {
-			$content2 = $this->myVarExport($env->_POST(), 2000);
+			$content2 = $this->myVarExport($env->_POST, 2000);
 		}
 		if ($content2 != "")
 			$content .= ";\n" . $content2;
@@ -1194,8 +1194,8 @@ e.g. 修改ApiLog的ac:
 		$env = $this->env;
 		$this->ac1 = $ac1;
 		$this->startTm1 = microtime(true);
-		$this->req1 = $this->myVarExport($env->_GET(), 2000);
-		$content2 = $this->myVarExport($env->_POST(), 2000);
+		$this->req1 = $this->myVarExport($env->_GET, 2000);
+		$content2 = $this->myVarExport($env->_POST, 2000);
 		if ($content2 != "")
 			$this->req1 .= ";\n" . $content2;
 	}
@@ -1458,13 +1458,13 @@ $file为插件主文件，可返回一个插件配置。如果未指定，则自
 		$storeId = $env->mparam("storeId");
 
 		// 定死输出内容。
-		$env->_GET("res", "id, score, dscr, tm, orderDscr");
+		$env->_GET["res"] = "id, score, dscr, tm, orderDscr";
 
 		// 相当于AccessControl框架中调用 addCond，用Obj.query接口的内部参数cond2以保证用户还可以使用cond参数。
-		$env->_GET("cond2", dbExpr("o.storeId=$storeId")); 
+		$env->_GET["cond2"] = dbExpr("o.storeId=$storeId"); 
 
 		// 定死排序条件
-		$env->_GET("orderby", "tm DESC");
+		$env->_GET["orderby"] = "tm DESC";
 
 		$ret = tableCRUD("query", "Rating", true);
 		return $ret;
@@ -1892,7 +1892,7 @@ function api_async($env) {
 		jdRet(E_PARAM, "bad async fn: $f");
 
 	putenv("enableAsync=0");
-	return call_user_func_array($f, $env->_POST());
+	return call_user_func_array($f, $env->_POST);
 }
 // }}}
 
@@ -2007,17 +2007,10 @@ class BatchUtil
 // used by JDEnv
 trait JDServer
 {
-	function _GET($key=null, $val=null) {
-		return arrayOp($key, $val, $_GET, func_num_args());
-	}
-	function _POST($key=null, $val=null) {
-		return arrayOp($key, $val, $_POST, func_num_args());
-	}
-	function _SESSION($key=null, $val=null) {
-		return arrayOp($key, $val, $_SESSION, func_num_args());
-	}
+	public $_GET, $_POST, $_SESSION, $_FILES;
+
 	function _SERVER($key) {
-		return arrayOp($key, null, $_SERVER, func_num_args());
+		return $_SERVER[$key];
 	}
 	function header($key=null, $val=null) {
 		$argc = func_num_args();
@@ -2028,9 +2021,11 @@ trait JDServer
 					$this->reqHeaders[strtolower($k)] = $v;
 				}
 			}
-			if (is_string($key))
-				$key = strtolower($key);
-			return arrayOp($key, $val, $this->reqHeaders, $argc);
+			if ($argc == 0)
+				return $this->reqHeaders();
+
+			$key = strtolower($key);
+			return $this->reqHeaders[$key];
 		}
 		header("$key: $val");
 	}
@@ -2101,12 +2096,6 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 
 	function __construct() {
 		parent::__construct();
-	}
-
-	private function initRequest() {
-		$this->appName = $this->param("_app", "user", "G");
-		$this->appType = preg_replace('/(\d+|-\w+)$/', '', $this->appName);
-		$this->clientVer = $this->getClientVersion();
 
 		require_once("ext.php");
 
@@ -2117,6 +2106,19 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			include_once($plugins);
 
 		require_once("{$BASE_DIR}/conf.php");
+	}
+
+	private function initRequest() {
+		if (! isset($this->_GET)) {
+			$this->_GET = &$_GET;
+			$this->_POST = &$_POST;
+			$this->_SESSION = &$_SESSION;
+			$this->_FILES = &$_FILES;
+		}
+
+		$this->appName = $this->param("_app", "user", "G");
+		$this->appType = preg_replace('/(\d+|-\w+)$/', '', $this->appName);
+		$this->clientVer = $this->getClientVersion();
 
 		$isCLI = isCLI();
 
@@ -2160,7 +2162,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 				logit("bad json-format body: `$content`");
 				jdRet(E_PARAM, "bad json-format body");
 			}
-			$this->_POST($arr);
+			$this->_POST = $arr;
 		}
 
 		if (! $isCLI) {
@@ -2343,7 +2345,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		if ($method !== "POST")
 			jdRet(E_PARAM, "batch MUST use `POST' method");
 
-		$calls = $env->_POST();
+		$calls = $env->_POST;
 		if (! is_array($calls))
 			jdRet(E_PARAM, "bad batch request");
 
@@ -2361,10 +2363,8 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			}
 			$acList[] = $call["ac"];
 
-			$get = BatchUtil::getParams($call, "get", $retVal);
-			$post = BatchUtil::getParams($call, "post", $retVal);
-			$this->_GET($get);
-			$this->_POST($post);
+			$this->_GET = BatchUtil::getParams($call, "get", $retVal);
+			$this->_POST = BatchUtil::getParams($call, "post", $retVal);
 			if ($this->apiLog) {
 				$this->apiLog->logBefore1($call["ac"]);
 			}
@@ -2425,7 +2425,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		}
 
 		global $X_RET_STR;
-		$jsonp = $this->_GET("_jsonp");
+		$jsonp = $this->_GET["_jsonp"];
 		if ($jsonp) {
 			if (substr($jsonp,-1) === '=') {
 				$this->write($jsonp . $X_RET_STR . ";\n");
@@ -2495,7 +2495,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		if (!self::isId($id))
 			list($id,$ac) = [$ac,$id];
 		if (self::isId($id))
-			$env->_GET('id', $id);
+			$env->_GET['id'] = $id;
 
 		// 非标准CRUD操作，如：GET|POST /Store/123/close 或 /Store/close/123 或 /Store/closeAll
 		if (isset($ac)) {
@@ -2527,9 +2527,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			if (! isset($id))
 				jdRet(E_PARAM, "missing id");
 			$ac = 'set';
-			//parse_str(file_get_contents("php://input"), $_POST);
-			parse_str(getHttpInput($this), $arr);
-			$this->_POST($arr);
+			parse_str(getHttpInput($this), $this->_POST);
 			break;
 
 		// DELETE /Store/123
@@ -2625,14 +2623,10 @@ $param或$postParam为null时，与空数组`[]`等价。
 	{
 		assert(is_null($get)||is_array($get));
 		assert(is_null($post)||is_array($post));
-		$bak = [
-			"get" => $this->_GET(),
-			"post" => $this->_POST(),
-			"retFn" => $GLOBALS["X_RET_FN"]
-		];
+		$bak = [$this->_GET, $this->_POST, $GLOBALS["X_RET_FN"]];
 
-		$this->_GET($get ?: []);
-		$this->_POST($post ?: []);
+		$this->_GET = $get ?: [];
+		$this->_POST = $post ?: [];
 
 		$ret = null;
 		$ex = null;
@@ -2651,9 +2645,7 @@ $param或$postParam为null时，与空数组`[]`等价。
 			$ex = $ex1;
 		}
 		// restore env
-		$this->_GET($bak["get"]);
-		$this->_POST($bak["post"]);
-		$GLOBALS["X_RET_FN"] = $bak["X_RET_FN"];
+		list($this->_GET, $this->_POST, $GLOBALS["X_RET_FN"]) = $bak;
 		
 		if ($ex)
 			throw $ex;
