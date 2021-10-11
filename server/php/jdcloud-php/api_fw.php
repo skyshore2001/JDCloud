@@ -2322,7 +2322,8 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 				$this->apiLog->logAfter($ret);
 
 			// 及时关闭数据库连接
-			$this->DBH = null;
+			if ($isDefaultCall)
+				$this->DBH = null;
 /* NOTE: 暂不处理
 			// 删除空会话
 			if (isset($_SESSION) && count($_SESSION) == 0) {
@@ -2345,7 +2346,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		if ($method !== "POST")
 			jdRet(E_PARAM, "batch MUST use `POST' method");
 
-		$calls = $env->_POST;
+		$calls = $this->_POST;
 		if (! is_array($calls))
 			jdRet(E_PARAM, "bad batch request");
 
@@ -2495,7 +2496,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		if (!self::isId($id))
 			list($id,$ac) = [$ac,$id];
 		if (self::isId($id))
-			$env->_GET['id'] = $id;
+			$this->_GET['id'] = $id;
 
 		// 非标准CRUD操作，如：GET|POST /Store/123/close 或 /Store/close/123 或 /Store/closeAll
 		if (isset($ac)) {
@@ -2715,12 +2716,12 @@ $param或$postParam为null时，与空数组`[]`等价。
 		return $acObj;
 	}
 
-	function param($name, $defVal = null, $col = null) {
-		return param($name, $defVal, $col, true, $this);
+	function param($name, $defVal = null, $col = null, $doHtmlEscape = true) {
+		return param($name, $defVal, $col, $doHtmlEscape, $this);
 	}
 
-	function mparam($name, $col = null) {
-		return mparam($name, $col, $this);
+	function mparam($name, $col = null, $doHtmlEscape = true) {
+		return mparam($name, $col, $doHtmlEscape, $this);
 	}
 
 	private function getClientVersion()

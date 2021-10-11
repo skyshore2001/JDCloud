@@ -269,7 +269,7 @@ function param_varr($str, $type, $name)
 	return $ret;
 }
 /**
-@fn param($name, $defVal?, $col?, $doHtmlEscape=true)
+@fn param($name, $defVal?, $col?, $doHtmlEscape=true, $env = null)
 
 @param $col: 默认先取$_GET再取$_POST，"G" - 从$_GET中取; "P" - 从$_POST中取
 $col也可以直接指定一个集合，如
@@ -441,7 +441,7 @@ function param($name, $defVal = null, $col = null, $doHtmlEscape = true, $env = 
 }
 
 /** 
-@fn mparam($name, $col = null)
+@fn mparam($name, $col = null, $doHtmlEscape = true, $env = null)
 @brief mandatory param
 
 @param col 'G'-从URL参数即$_GET获取，'P'-从POST参数即$_POST获取。参见param函数同名参数。
@@ -456,7 +456,7 @@ $name可以是一个数组，表示至少有一个参数有值，这时返回每
 	$itts = mparam("itts/i+")
 	list($svcId, $itts) = mparam(["svcId", "itts/i+"]); # require one of the 2 params
 */
-function mparam($name, $col = null, $env = null)
+function mparam($name, $col = null, $doHtmlEscape = true, $env = null)
 {
 	if (is_array($name))
 	{
@@ -467,7 +467,7 @@ function mparam($name, $col = null, $env = null)
 				$rv = null;
 			}
 			else {
-				$rv = param($name1, null, $col, true, $env);
+				$rv = param($name1, null, $col, $doHtmlEscape, $env);
 				if (isset($rv))
 					$found = true;
 			}
