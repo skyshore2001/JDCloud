@@ -1388,6 +1388,252 @@ function dbUpdate($table, $kv, $cond)
 }
 //}}}
 
+// ====== DBEnv {{{
+class DBEnv
+{
+	public $DBH;
+	protected $DB, $DBCRED, $DBTYPE;
+
+	public $TEST_MODE, $MOCK_MODE, $DBG_LEVEL;
+
+	function __construct() {
+		$this->initEnv();
+	}
+
+	private function initEnv() {
+		mb_internal_encoding("UTF-8");
+		setlocale(LC_ALL, "zh_CN.UTF-8");
+
+		$this->DBTYPE = getenv("P_DBTYPE");
+		$this->DB = getenv("P_DB") ?: "localhost/jdcloud";
+		$this->DBCRED = getenv("P_DBCRED") ?: "ZGVtbzpkZW1vMTIz"; // base64({user}:{pwd}), default: demo:demo123
+
+		// e.g. P_DB="../carsvc.db"
+		if (! $this->DBTYPE) {
+			if (preg_match('/\.db$/i', $this->DB)) {
+				$this->DBTYPE = "sqlite";
+			}
+			else {
+				$this->DBTYPE = "mysql";
+			}
+		}
+
+		$this->TEST_MODE = getenv("P_TEST_MODE")===false? 0: intval(getenv("P_TEST_MODE"));
+		$this->DBG_LEVEL = getenv("P_DEBUG")===false? 0 : intval(getenv("P_DEBUG"));
+
+		if ($this->TEST_MODE) {
+			$this->MOCK_MODE = getenv("P_MOCK_MODE") ?: 0;
+		}
+	}
+
+	function dbconn($fnConfirm = null)
+	{
+		$DBH = $this->DBH;
+		if (isset($DBH))
+			return $DBH;
+
+		// 未指定驱动类型，则按 mysql或sqlite 连接
+	// 	if (! preg_match('/^\w{3,10}:/', $DB)) {
+			// e.g. P_DB="../carsvc.db"
+			if ($this->DBTYPE == "sqlite") {
+				$C = ["sqlite:" . $this->DB, '', ''];
+			}
+			else if ($this->DBTYPE == "mysql") {
+				// e.g. P_DB="115.29.199.210/carsvc"
+				// e.g. P_DB="115.29.199.210:3306/carsvc"
+				if (! preg_match('/^"?(.*?)(:(\d+))?\/(\w+)"?$/', $this->DB, $ms))
+					jdRet(E_SERVER, "bad db=`{$this->DB}`", "未知数据库");
+				$dbhost = $ms[1];
+				$dbport = $ms[3] ?: 3306;
+				$dbname = $ms[4];
+
+				list($dbuser, $dbpwd) = getCred($this->DBCRED); 
+				$C = ["mysql:host={$dbhost};dbname={$dbname};port={$dbport}", $dbuser, $dbpwd];
+			}
+	// 	}
+	// 	else {
+	// 		list($dbuser, $dbpwd) = getCred($this->DBCRED); 
+	// 		$C = [$this->DB, $dbuser, $dbpwd];
+	// 	}
+
+		if ($fnConfirm == null)
+			@$fnConfirm = $GLOBALS["dbConfirmFn"];
+		if ($fnConfirm && $fnConfirm($C[0]) === false) {
+			exit;
+		}
+		try {
+			@$DBH = new JDPDO ($C[0], $C[1], $C[2]);
+		}
+		catch (PDOException $e) {
+			$msg = $this->TEST_MODE ? $e->getMessage() : "dbconn fails";
+			logit("dbconn fails: " . $e->getMessage());
+			jdRet(E_DB, $msg, "数据库连接失败");
+		}
+		
+		if ($this->DBTYPE == "mysql") {
+			++ $DBH->skipLogCnt;
+			$DBH->exec('set names utf8mb4');
+		}
+		$DBH->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION); # by default use PDO::ERRMODE_SILENT
+
+		# enable real types (works on mysql after php5.4)
+		# require driver mysqlnd (view "PDO driver" by "php -i")
+		$DBH->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+		$DBH->setAttribute(PDO::ATTR_STRINGIFY_FETCHES, false);
+		$this->DBH = $DBH;
+		return $DBH;
+	}
+
+	function dbCommit($doRollback=false)
+	{
+		$DBH = $this->DBH;
+		if ($DBH && $DBH->inTransaction())
+		{
+			if ($doRollback)
+				$DBH->rollback();
+			else
+				$DBH->commit();
+			$DBH->beginTransaction();
+		}
+	}
+
+	function execOne($sql, $getInsertId = false)
+	{
+		$DBH = $this->dbconn();
+		$rv = $DBH->exec($sql);
+		if ($getInsertId)
+			$rv = (int)$DBH->lastInsertId();
+		return $rv;
+	}
+
+	function queryOne($sql, $assoc = false, $cond = null)
+	{
+		$DBH = $this->dbconn();
+		if ($cond)
+			$sql = genQuery($sql, $cond);
+		if (stripos($sql, "limit ") === false && stripos($sql, "for update") === false)
+			$sql .= " LIMIT 1";
+		$sth = $DBH->query($sql);
+
+		if ($sth === false)
+			return false;
+
+		$fetchMode = $assoc? PDO::FETCH_ASSOC: PDO::FETCH_NUM;
+		$row = $sth->fetch($fetchMode);
+		$sth->closeCursor();
+		if ($row !== false && count($row)===1 && !$assoc)
+			return $row[0];
+		return $row;
+	}
+
+	function queryAll($sql, $assoc = false, $cond = null)
+	{
+		$DBH = $this->dbconn();
+		if ($cond)
+			$sql = genQuery($sql, $cond);
+		$sth = $DBH->query($sql);
+		if ($sth === false)
+			return false;
+		$fetchMode = $assoc? PDO::FETCH_ASSOC: PDO::FETCH_NUM;
+		$allRows = [];
+		do {
+			$rows = $sth->fetchAll($fetchMode);
+			$allRows[] = $rows;
+		}
+		while ($sth->nextRowSet());
+		// $sth->closeCursor();
+		return count($allRows)>1? $allRows: $allRows[0];
+	}
+
+	function dbInsert($table, $kv)
+	{
+		$keys = '';
+		$values = '';
+		foreach ($kv as $k=>$v) {
+			if (is_null($v))
+				continue;
+			// ignore non-field param
+			if (substr($k,0,2) === "p_")
+				continue;
+			if ($v === "")
+				continue;
+			# TODO: check meta
+			if (! preg_match('/^\w+$/u', $k))
+				jdRet(E_PARAM, "bad key $k");
+
+			if ($keys !== '') {
+				$keys .= ", ";
+				$values .= ", ";
+			}
+			$keys .= $k;
+			if ($v instanceof DbExpr) { // 直接传SQL表达式
+				$values .= $v->val;
+			}
+			else if (is_array($v)) {
+				jdRet(E_PARAM, "dbInsert: array `$k` is not allowed. pls define subobj to use array.", "未定义的子表`$k`");
+			}
+			else {
+				$values .= Q(htmlEscape($v));
+			}
+		}
+		if (strlen($keys) == 0) 
+			jdRet(E_PARAM, "no field found to be added: $table");
+		$sql = sprintf("INSERT INTO %s (%s) VALUES (%s)", $table, $keys, $values);
+	#			var_dump($sql);
+		return $this->execOne($sql, true);
+	}
+
+	function dbUpdate($table, $kv, $cond)
+	{
+		if ($cond === null)
+			jdRet(E_SERVER, "bad cond for update $table");
+
+		$condStr = getQueryCond($cond);
+		$kvstr = "";
+		foreach ($kv as $k=>$v) {
+			if ($k === 'id' || is_null($v))
+				continue;
+			// ignore non-field param
+			if (substr($k,0,2) === "p_")
+				continue;
+			# TODO: check meta
+			if (! preg_match('/^(\w+\.)?\w+$/u', $k))
+				jdRet(E_PARAM, "bad key $k");
+
+			if ($kvstr !== '')
+				$kvstr .= ", ";
+
+			// 空串或null置空；empty设置空字符串
+			if ($v === "" || $v === "null")
+				$kvstr .= "$k=null";
+			else if ($v === "empty")
+				$kvstr .= "$k=''";
+			else if ($v instanceof DbExpr) { // 直接传SQL表达式
+				$kvstr .= $k . '=' . $v->val;
+			}
+			else if (startsWith($k, "flag_") || startsWith($k, "prop_"))
+			{
+				$kvstr .= flag_getExpForSet($k, $v);
+			}
+			else
+				$kvstr .= "$k=" . Q(htmlEscape($v));
+		}
+		$cnt = 0;
+		if (strlen($kvstr) == 0) {
+			addLog("no field found to be set: $table");
+		}
+		else {
+			if (isset($condStr))
+				$sql = sprintf("UPDATE %s SET %s WHERE %s", $table, $kvstr, $condStr);
+			else
+				$sql = sprintf("UPDATE %s SET %s", $table, $kvstr);
+			$cnt = $this->execOne($sql);
+		}
+		return $cnt;
+	}
+}
+// }}}
+
 /**
 @class SimpleCache
 
