@@ -3719,6 +3719,8 @@ function KVtoCond($k, $v)
 				}
 			}
 		}
+		unset($row);
+		unset($e);
 		// refer to: xlsxwriter::numberFormatStandardized
 		// 典型问题：11位手机号/18位身份证号等被当成数字，显示为科学计数法且损失了精度，对这种须指定格式为string(即格式"@")
 		foreach ($tbl["h"] as $colIdx=>$h) {
