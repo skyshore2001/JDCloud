@@ -2140,8 +2140,13 @@ function enhanceSubobj(jo)
 		if (jo.is(":hidden") && !opt.forceLoad)
 			return;
 
-		if (jo.data("subobjLoaded_"))
+		if (jo.data("subobjLoaded_")) {
+			// bugfix: 隐藏初始化datagrid后，再点过来时无法显示表格
+			if (opt.forceLoad) {
+				jo.closest(".panel-body").panel("doLayout", true);
+			}
 			return;
+		}
 		jo.data("subobjLoaded_", true);
 
 		if (jdlg1) {

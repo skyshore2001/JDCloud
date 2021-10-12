@@ -4543,6 +4543,7 @@ function leaveWaiting(ctx)
 			self.hideLoading();
 // 			if ($.mobile)
 // 				$.mobile.loading("hide");
+			$(document).trigger("idle");
 		}
 	});
 }
@@ -7767,7 +7768,13 @@ showObjDlg底层通过showDlg实现，(v5.5)showObjDlg的opt会合并到showDlg�
 			if (this.mode == FormMode.forDel) {
 				// after delete row
 			}
+
 			// ... 重新计算金额
+			var rows = jtbl.datagrid("getData").rows, amount = 0;
+			$.each(rows, function(e) {
+				amount += e.price * e.qty;
+			})
+			frm.amount.value = amount.toFixed(2);
 			// ... 刷新关联的表格行
 			// opt.objParam.reloadRow();
 		}
@@ -8008,7 +8015,7 @@ function showObjDlg(jdlg, mode, opt)
 		if (mode==FormMode.forFind) {
 			mCommon.assert(jtbl); // 查询结果显示到jtbl中
 			doFind(jfrm, jtbl);
-			onCrud();
+			// onCrud();
 			if (self.options.closeAfterFind)
 				closeDlg(jdlg);
 			return;
@@ -8052,6 +8059,10 @@ function showObjDlg(jdlg, mode, opt)
 	}
 
 	function onCrud() {
+		if (self.isBusy) {
+			$(document).one("idle", onCrud);
+			return;
+		}
 		if (obj && !opt.offline) {
 			console.log("refresh: " + obj);
 			$(".my-combobox,.wui-combogrid").trigger("markRefresh", obj);
@@ -8665,9 +8676,10 @@ $.extend($.fn.combobox.defaults, {
 function dgLoader(param, success, error)
 {
 	var jo = $(this);
-	var opts = jo.datagrid("options");
+	var datagrid = self.isTreegrid(jo)? "treegrid": "datagrid";
+	var opts = jo[datagrid]("options");
 	if (opts.data) {
-		return defaultDgLoader.apply(this, arguments);
+		return defaultDgLoader[datagrid].apply(this, arguments);
 	}
 	if (opts.url == null)
 		return false;
@@ -8698,7 +8710,7 @@ function dgLoader(param, success, error)
 	var dfd = self.callSvr(opts.url, param1, success);
 	dfd.fail(function () {
 		// hide the loading icon
-		jo.datagrid("loaded");
+		jo[datagrid]("loaded");
 	});
 }
 
@@ -8740,7 +8752,10 @@ function resetPageNumber(jtbl)
 
 其原因是easyui-datagrid的autoSizeColumn方法有性能问题。当一页行数很多时可尝试使用quickAutoSize选项。
 */
-var defaultDgLoader = $.fn.datagrid.defaults.loader;
+var defaultDgLoader = {
+	datagrid: $.fn.datagrid.defaults.loader,
+	treegrid: $.fn.treegrid.defaults.loader
+}
 $.extend($.fn.datagrid.defaults, {
 // 		fit: true,
 // 		width: 1200,
@@ -8921,6 +8936,7 @@ $.extend($.fn.treegrid.defaults, {
 		var ret = jdListToTree(data, opt.idField, opt.fatherField, parentId, isLeaf);
 		return ret;
 	},
+	loader: dgLoader,
 	onBeforeLoad: function (row, param) {
 		if (row) { // row非空表示展开父结点操作，须将param改为 {cond?, id} => {cond:"fatherId=1"}
 			var opt = $(this).treegrid("options");
