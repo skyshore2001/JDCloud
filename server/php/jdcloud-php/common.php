@@ -1090,8 +1090,13 @@ function myround($val, $n=0)
 
 显示工时。以"30s"（秒）, "5m"（分）, "1.2h"（小时）, "3d"（天）这种样式显示。
 */
-function mh($val)
+function mh($val, $mhUnit=null)
 {
+	if ($mhUnit == "h")
+		return myround($val, 4);
+	if ($mhUnit == "m")
+		return myround($val * 60, 4);
+
 	if ($val < 0.0166) // 小于1分钟，以秒计
 		return myround($val * 3600) . "s";
 	if ($val < 1) // 小于1小时，以分钟计
