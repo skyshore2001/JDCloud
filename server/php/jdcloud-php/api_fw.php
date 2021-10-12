@@ -2214,6 +2214,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		$isUserFmt = false;
 
 		$isDefaultCall = ($ac === null);
+		$ok = false; // commit or rollback trans
 		try {
 			if ($isDefaultCall) {
 				$this->ac = $ac = $this->initRequest();
@@ -2235,6 +2236,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 				if ($useTrans && ! $this->DBH->inTransaction())
 					$this->DBH->beginTransaction();
 				$ret[1] = $this->callSvcInt($ac, $this->_GET, $this->_POST, false);
+				$ok = true;
 			}
 			else {
 				$batchUseTrans = $this->param("useTrans", false, "G");
@@ -2242,10 +2244,11 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 					$this->DBH->beginTransaction();
 				else
 					$useTrans = false;
-				$ret = $this->batchCall($batchUseTrans);
+				$ret[1] = $this->batchCall($batchUseTrans, $ok);
 			}
 		}
 		catch (DirectReturn $e) {
+			$ok = true;
 			$ret[1] = $e->data;
 			$isUserFmt = $e->isUserFmt;
 		}
@@ -2270,7 +2273,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		try {
 			if ($useTrans && $this->DBH && $this->DBH->inTransaction())
 			{
-				if ($ret[0] == 0)
+				if ($ok)
 					$this->DBH->commit();
 				else
 					$this->DBH->rollback();
@@ -2343,7 +2346,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		return $ret;
 	}
 
-	protected function batchCall($useTrans)
+	protected function batchCall($useTrans, &$ok)
 	{
 		$method = $this->_SERVER("REQUEST_METHOD");
 		if ($method !== "POST")
@@ -2391,9 +2394,8 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			$this->apiLog->batchAc = 'batch:' . count($acList) . ',' . join(',', $acList);
 		}
 
-		if (! $useTrans)
-			$retCode = 0;
-		return [$retCode, $retVal];
+		$ok = $retCode == 0 || !$useTrans;
+		return $retVal;
 	}
 
 	private function echoRet($ret, $isUserFmt)

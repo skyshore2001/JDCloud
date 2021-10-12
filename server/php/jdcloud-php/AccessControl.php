@@ -1744,7 +1744,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	{
 		$colArr = [];
 		foreach (explode(',', $orderby) as $col) {
-			if (! preg_match('/^\s*(\w+\.)?(\w+)(\s+(asc|desc))?\s*$/iu', $col, $ms))
+			if (! preg_match('/^\s*(\w+\.)?(\w+|"[^"]+")(\s+(asc|desc))?\s*$/iu', $col, $ms))
 				jdRet(E_PARAM, "bad property `$col`");
 			if ($ms[1]) // e.g. "t0.id desc"
 			{
@@ -2359,7 +2359,7 @@ uniKey可以指定多个字段，以逗号分隔即可，常用于关联表，�
 					}
 
 					$objName = $v["obj"];
-					$acObj = AccessControl::create($objName, null, $v["AC"]);
+					$acObj = $this->env->createAC($objName, null, $v["AC"]);
 					$relatedValue = $this->id;
 					if ($relatedKeyTo != null && $relatedKeyTo != "id") {
 						$relatedValue = $_POST[$relatedKeyTo];
@@ -3342,7 +3342,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		}
 
 		$objName = $opt["obj"];
-		$acObj = AccessControl::create($objName, null, $opt["AC"]);
+		$acObj = $this->env->createAC($objName, null, $opt["AC"]);
 		$rv = $acObj->callSvc($objName, "query", $param);
 		if (array_key_exists("list", $rv))
 			$ret = $rv["list"];

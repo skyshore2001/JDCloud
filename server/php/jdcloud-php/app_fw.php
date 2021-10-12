@@ -342,24 +342,22 @@ function param($name, $defVal = null, $col = null, $doHtmlEscape = true, $env = 
 
 	$ret = $defVal;
 	if ($col === "G") {
-		$rv = $env->_GET[$name];
-		if (isset($rv))
-			$ret = $rv;
+		if (isset($env->_GET[$name]))
+			$ret = $env->_GET[$name];
 	}
 	else if ($col === "P") {
-		$rv = $env->_POST[$name];
-		if (isset($rv))
-			$ret = $rv;
+		if (isset($env->_POST[$name]))
+			$ret = $env->_POST[$name];
 	}
 	// 兼容旧式直接指定col=$_GET这样参数
 	else if (is_array($col)) {
-		@$rv = $col[$name];
-		if (isset($rv))
-			$ret = $rv;
+		if (isset($col[$name]))
+			$ret = $col[$name];
 	}
 	else {
-		$ret = $env->_GET[$name];
-		if ($ret === null)
+		if (isset($env->_GET[$name]))
+			$ret = $env->_GET[$name];
+		else if (isset($env->_POST[$name]))
 			$ret = $env->_POST[$name];
 	}
 
