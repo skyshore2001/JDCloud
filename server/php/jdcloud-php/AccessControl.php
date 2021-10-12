@@ -1453,20 +1453,24 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 @see callSvc
 @see callSvcInt
 */
-	protected function onCallSvc($tbl, $fn) {
+	protected function onCallSvc($tbl, $ac, $fn) {
 		// 已初始化过，创建新对象调用接口，避免污染当前环境。
 		if ($this->ac && $this->table) {
 			$acObj = new static();
-			return $acObj->callSvc($tbl ?: $this->table, $ac, $param, $postParam, $useTmpEnv);
+			$acObj->env = $this->env;
+			$acObj->table = $this->table;
 		}
-		if (is_null($this->table))
-			$this->table = $tbl;
-		$this->ac = $ac;
-		$this->onInit();
+		else {
+			$acObj = $this;
+		}
+		if (is_null($acObj->table))
+			$acObj->table = $tbl;
+		$acObj->ac = $ac;
+		$acObj->onInit();
 
-		$this->before();
-		$ret = $this->$fn();
-		$this->after($ret);
+		$acObj->before();
+		$ret = $acObj->$fn();
+		$acObj->after($ret);
 		return $ret;
 	}
 
@@ -1949,7 +1953,7 @@ addCond用于添加查询条件，可以使用表的字段或虚拟字段(无须
 
 		$colName = self::removeQuote($colName);
 		if (!$force && array_key_exists($colName, $this->vcolMap)) {
-			jdRet(E_SERVER, "redefine vcol `{$this->table}.$colName`", "虚拟字段定义重复");
+			jdRet(E_SERVER, "redefine vcol `{$this->table}.$colName: $res`", "虚拟字段定义重复");
 		}
 		else {
 			$this->vcolMap[ $colName ] = ["def"=>$def, "def0"=>$res, "vcolDefIdx"=>$vcolDefIdx];

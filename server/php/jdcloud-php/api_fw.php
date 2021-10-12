@@ -1505,7 +1505,7 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 @fn callSvcInt($ac, $param=null, $postParam=null, $useTmpEnv=true)
 
 内部调用另一接口，获得返回值。
-如果未指定$param或$postParam参数，则默认值为空数组。
+内部若有异常会抛上来，特别地，调用`jdRet(0)`会当成正常调用不会抛出异常，而`jdRet()`（用于自定义输出内容）仍会抛出异常。
 
 与callSvc不同的是，它不处理事务、不写ApiLog，不输出数据，更轻量。
 
@@ -1516,12 +1516,10 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 		"tel" => $params["vendorPhone"]
 	]);
 
-它在独立环境中执行，不会影响当前的$_GET, $_POST参数，除非指定参数useTmpEnv=false（一般不应指定）。
-内部若有异常会抛上来，特别地，`jdRet(0)`会当成正常调用。
+默认useTmpEnv=true时，它在独立环境中执行，不会影响当前环境的$_GET, $_POST参数，
+如果指定参数useTmpEnv=false，则$param或$postParam参数将直接覆盖当前环境的$_GET, $_POST参数。
 
-示例：用当前的get/post参数执行。
-
-	$vendorId = callSvcInt("Vendor.add", $_GET, $_POST);
+如果未指定$param或$postParam参数，默认值为空数组即没有参数。
 
 (v5.4) 上面例子会自动根据当前用户角色来选择AC类，还可以直接指定使用哪个AC类来调用，如：
 
@@ -1533,6 +1531,11 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 
 注意请自行确保AC类对当前角色兼容性，如用户角色调用了管理员的AC类，就可能出问题。
 
+示例：直接用当前的get/post参数执行，允许内部修改当前环境：
+
+	$vendorId = callSvcInt("Vendor.add", $_GET, $_POST, false); // 经典环境下可用
+	或
+	$vendorId = callSvcInt("Vendor.add", $env->_GET, $env->_POST, false);
 
 @see tmpEnv
 @see callSvc
@@ -2231,7 +2234,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			if ($ac !== "batch") {
 				if ($useTrans && ! $this->DBH->inTransaction())
 					$this->DBH->beginTransaction();
-				$ret[1] = $this->callSvcInt($ac, null, null, false);
+				$ret[1] = $this->callSvcInt($ac, $this->_GET, $this->_POST, false);
 			}
 			else {
 				$batchUseTrans = $this->param("useTrans", false, "G");
@@ -2578,20 +2581,16 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 
 	function callSvcInt($ac, $param=null, $postParam=null, $useTmpEnv=true)
 	{
-		if ($useTmpEnv) {
-			return $this->tmpEnv($param, $postParam, function () use ($ac) {
-				return $this->callSvcInt($ac, $param, $postParam, false);
-			});
-		}
-
 		$fn = "api_$ac";
 		if (preg_match('/^([A-Z]\w*)\.([a-z]\w*)$/u', $ac, $ms)) {
 			list($tmp, $tbl, $ac1) = $ms;
 			$acObj = $this->createAC($tbl, $ac1);
-			$ret = $acObj->callSvc($tbl, $ac1, $param, $postParam, false);
+			$ret = $acObj->callSvc($tbl, $ac1, $param, $postParam, $useTmpEnv);
 		}
 		elseif (function_exists($fn)) {
-			$ret = $fn($this);
+			$ret = $this->tmpEnv($param, $postParam, function () use ($fn) {
+				return $fn($this);
+			}, $useTmpEnv);
 		}
 		else {
 			jdRet(E_PARAM, "Bad request - unknown ac: {$ac}", "接口不支持");
@@ -2620,14 +2619,15 @@ $param或$postParam为null时，与空数组`[]`等价。
 		return callSvcInt("User.query");
 	});
 */
-	function tmpEnv($get, $post, $fn)
+	function tmpEnv($get, $post, $fn, $useTmpEnv)
 	{
 		assert(is_null($get)||is_array($get));
 		assert(is_null($post)||is_array($post));
-		$bak = [$this->_GET, $this->_POST, $GLOBALS["X_RET_FN"]];
-
-		$this->_GET = $get ?: [];
-		$this->_POST = $post ?: [];
+		if ($useTmpEnv) {
+			$bak = [$this->_GET, $this->_POST, $GLOBALS["X_RET_FN"]];
+		}
+		$this->_GET = isset($get) ? $get: [];
+		$this->_POST = isset($post) ? $post : [];
 
 		$ret = null;
 		$ex = null;
@@ -2645,8 +2645,11 @@ $param或$postParam为null时，与空数组`[]`等价。
 		catch (Exception $ex1) {
 			$ex = $ex1;
 		}
-		// restore env
-		list($this->_GET, $this->_POST, $GLOBALS["X_RET_FN"]) = $bak;
+
+		if ($useTmpEnv) {
+			// restore env
+			list($this->_GET, $this->_POST, $GLOBALS["X_RET_FN"]) = $bak;
+		}
 		
 		if ($ex)
 			throw $ex;
@@ -2840,19 +2843,16 @@ class JDApiBase
 
 	function callSvc($tbl, $ac, $param=null, $postParam=null, $useTmpEnv=true)
 	{
-		if ($useTmpEnv) {
-			return $this->env->tmpEnv($param, $postParam, function () use ($tbl, $ac) {
-				return $this->callSvc($tbl, $ac, $param, $postParam, false);
-			});
-		}
-
 		$fn = "api_" . $ac;
 		if (! is_callable([$this, $fn]))
 			jdRet(E_PARAM, "Bad request - unknown `$tbl` method: `$ac`", "接口不支持");
-		return $this->onCallSvc($tbl, $fn);
+
+		return $this->env->tmpEnv($param, $postParam, function () use ($tbl, $ac, $fn) {
+			return $this->onCallSvc($tbl, $ac, $fn);
+		}, $useTmpEnv);
 	}
 
-	protected function onCallSvc($tbl, $fn) {
+	protected function onCallSvc($tbl, $ac, $fn) {
 		$ret = $this->$fn();
 		return $ret;
 	}
