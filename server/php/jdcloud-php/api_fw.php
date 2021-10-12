@@ -1497,6 +1497,14 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 	return $acObj->callSvc($tbl, $ac1);
 }
 
+/**
+@fn setParam($k, $v)
+
+(v6) 已废弃。只用于兼容。用$_GET[$k]=$v替代。
+*/
+function setParam($k, $v) {
+	$_GET[$k] = $v;
+}
 
 /**
 @fn callSvcInt($ac, $param=null, $postParam=null, $useTmpEnv=true)
