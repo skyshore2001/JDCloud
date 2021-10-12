@@ -1041,11 +1041,10 @@ class ApiLog
 	private $env;
 
 	private $startTm;
-	private $ac;
 	private $id;
 
 	// for batch detail (ApiLog1)
-	private $ac1, $req1, $startTm1;
+	private $req1, $startTm1;
 	public $batchAc; // new ac for batch
 
 /**
@@ -1057,17 +1056,16 @@ class ApiLog
 /**
 @var ApiLog::$instance
 
-e.g. 修改ApiLog的ac:
+e.g. 修改ApiLog要记录的ac:
 
 	ApiLog::$instance->batchAc = "async:$f";
 
 */
 	static $instance;
 
-	function __construct($env, $ac) 
+	function __construct($env) 
 	{
 		$this->env = $env;
-		$this->ac = $ac;
 	}
 
 	private function myVarExport($var, $maxLength=200)
@@ -1154,7 +1152,7 @@ e.g. 修改ApiLog的ac:
 			"app" => $env->appName,
 			"ses" => session_id(),
 			"userId" => $this->getUserId(),
-			"ac" => $this->ac,
+			"ac" => $env->getAc(),
 			"req" => dbExpr(Q($content)),
 			"reqsz" => $reqsz,
 			"ver" => $ver["str"],
@@ -1189,10 +1187,9 @@ e.g. 修改ApiLog的ac:
 // 		$logStr = "=== id={$this->logId} t={$iv} >>>$content<<<\n";
 	}
 
-	function logBefore1($ac1)
+	function logBefore1()
 	{
 		$env = $this->env;
-		$this->ac1 = $ac1;
 		$this->startTm1 = microtime(true);
 		$this->req1 = $this->myVarExport($env->_GET, 2000);
 		$content2 = $this->myVarExport($env->_POST, 2000);
@@ -1213,7 +1210,7 @@ e.g. 修改ApiLog的ac:
 		++ $env->DBH->skipLogCnt;
 		$apiLog1Id = $env->dbInsert("ApiLog1", [
 			"apiLogId" => $this->id,
-			"ac" => $this->ac1,
+			"ac" => $env->getAc1(),
 			"t" => $iv,
 			"retval" => $ret[0],
 			"req" => dbExpr(Q($this->req1)),
@@ -2059,7 +2056,9 @@ class JDEnv extends DBEnv
 {
 	private $apiLog;
 	private $apiWatch;
-	private $ac;
+
+	// $ac是主调用名，如果是"batch"，则当前调用名存在$ac1中。通过getAc()/getAc1()获取。
+	protected $ac, $ac1;
 
 	use JDServer;
 
@@ -2100,6 +2099,9 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 
 	function getAc() {
 		return $this->ac;
+	}
+	function getAc1() {
+		return $this->ac1;
 	}
 
 	function __construct() {
@@ -2232,7 +2234,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 
 				if (Conf::$enableApiLog)
 				{
-					$this->apiLog = new ApiLog($this, $ac);
+					$this->apiLog = new ApiLog($this);
 					$this->apiLog->logBefore();
 				}
 			}
@@ -2288,11 +2290,12 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			logit((string)$e);
 		}
 
-		if ($isDefaultCall) {
+		// 记录调用日志，如果是batch，只记录子调用项，不记录batch本身
+		if (($isDefaultCall && $this->ac != "batch") || $this->ac1) {
 			$debugLog = getenv("P_DEBUG_LOG") ?: 0;
 			if ($debugLog == 1 || ($debugLog == 2 && $ret[0] != 0)) {
 				$retStr = $isUserFmt? $ret[1]: jsonEncode($ret);
-				$s = 'ac=' . $ac . ', apiLogId=' . ApiLog::$lastId . ', ret=' . $retStr . ", dbgInfo=" . jsonEncode($this->dbgInfo, true);
+				$s = 'ac=' . $ac . ($this->ac1? "(in batch)": "") . ', apiLogId=' . ApiLog::$lastId . ', ret=' . $retStr . ", dbgInfo=" . jsonEncode($this->dbgInfo, true);
 				logit($s, true, 'debug');
 			}
 		}
@@ -2373,12 +2376,13 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 				$retVal[] = [E_PARAM, "参数错误", "bad batch request: require `ac'"];
 				continue;
 			}
+			$this->ac1 = $call["ac"];
 			$acList[] = $call["ac"];
 
 			$this->_GET = BatchUtil::getParams($call, "get", $retVal);
 			$this->_POST = BatchUtil::getParams($call, "post", $retVal);
 			if ($this->apiLog) {
-				$this->apiLog->logBefore1($call["ac"]);
+				$this->apiLog->logBefore1();
 			}
 
 			// 如果batch使用trans, 则单次调用不用trans
@@ -2394,6 +2398,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			global $X_RET_STR;
 			$X_RET_STR = null;
 			$this->dbgInfo = [];
+			$this->ac1 = null;
 		}
 		if ($this->apiLog) {
 			$this->apiLog->batchAc = 'batch:' . count($acList) . ',' . join(',', $acList);
@@ -2405,8 +2410,6 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 
 	private function echoRet($ret, $isUserFmt)
 	{
-		global $ERRINFO;
-
 		list ($code, $data) = $ret;
 
 		global $X_RET_STR;
