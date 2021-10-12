@@ -418,7 +418,7 @@ function parseLoginToken($token)
 
 function api_login()
 {
-	$type = getAppType();
+	$type = getJDEnv()->appType;
 
 	if ($type != "user" && $type != "emp" && $type != "admin") {
 		throw new MyException(E_PARAM, "Unknown type `$type`");
@@ -577,7 +577,7 @@ function addToPwdTable($pwd)
 
 function api_chpwd()
 {
-	$type = getAppType();
+	$type = getJDEnv()->appType;
 
 	if ($type == "user") {
 		$phone = param("phone");

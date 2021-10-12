@@ -32,20 +32,23 @@ $ERRINFO = [
 @param $internalMsg String. 内部错误信息，前端不应处理。
 @param $outMsg String. 错误信息。如果为空，则会自动根据$code填上相应的错误信息。
 
-(v6) 一般建议使用jdRet。
+(v6) 内部使用，外部调用应使用jdRet。
 
 抛出错误，中断执行:
 
+	jdRet(E_PARAM, "Bad Request - numeric param `$name`=`$ret`.", "需要数值型参数");
+	或
 	throw new MyException(E_PARAM, "Bad Request - numeric param `$name`=`$ret`.", "需要数值型参数");
 
 注意：在API中抛出MyException异常后，将回滚对数据库的操作，即所有之前数据库操作都将失效。
-如果不想回滚，可以用：
+如果不想回滚，可在抛错前手工提交(dbCommit)。
 
 	$this->cancelOrder($id); // 数据库操作
-	setRet(E_FORBIDDEN, "付款码已失效", "fail to pay order $id: overdue");
-	throw new DirectReturn();
+	dbCommit();
+	jdRet(E_FORBIDDEN, "付款码已失效", "fail to pay order $id: overdue");
+
+@see jdRet
 */
-# Most time outMsg is optional because it can be filled according to code. It's set when you want to tell user the exact error.
 class MyException extends LogicException 
 {
 	function __construct($code, $internalMsg = null, $outMsg = null, $ex = null) {
@@ -69,25 +72,43 @@ class MyException extends LogicException
 }
 
 /**
-@class DirectReturn
+@class DirectReturn($data=null, $isUserFmt=false)
 
-(v6) 一般建议使用jdRet。
+(v6) 内部使用，外部调用应使用jdRet。
 
-抛出该异常，可以中断执行直接返回，不显示任何错误。
+中断执行，当作调用成功立即返回。
 
-例：API返回非BPQ协议标准数据，可以跳出setRet而直接返回：
-
-	echo "return data";
+	jdRet();
+	或
 	throw new DirectReturn();
+	// 返回 [0, null]
 
-例：返回指定数据后立即中断处理：
+例：返回指定数据：
 
-	setRet(0, ["id"=>1]);
-	throw new DirectReturn();
+	jdRet(0, ["id"=>1]);
+	或
+	throw new DirectReturn(["id"=>1]);
+	// 返回[0, {"id":1}]
 
+例：直接返回非标数据（非筋斗云格式）：
+
+	$str = '{"id":1}'; // 比如自定义的JSON
+	// $str = '<id>1</id>'; // 比如XML
+	jdRet(null, $str);
+	或
+	throw new DirectReturn($str, true);
+	// 返回 {"id":1}
+
+@see jdRet
 */
 class DirectReturn extends LogicException 
 {
+	public $data;
+	public $isUserFmt;
+	function __construct($data = null, $isUserFmt = false) {
+		$this->data = $data;
+		$this->isUserFmt = $isUserFmt;
+	}
 }
 
 /**
@@ -130,12 +151,11 @@ class DirectReturn extends LogicException
 
 @see $X_RET_FN
 */
-function jdRet($code = null, $internalMsg = null, $msg = null)
+function jdRet($code = null, $data = null, $msg = null)
 {
 	if ($code)
-		throw new MyException($code, $internalMsg, $msg);
-	setRet($code, $internalMsg, $msg);
-	throw new DirectReturn();
+		throw new MyException($code, $data, $msg);
+	throw new DirectReturn($data, $code === null);
 }
 
 /**
@@ -197,7 +217,7 @@ command-line interface. e.g. run "php x.php"
 */
 function isCLI()
 {
-	return php_sapi_name() == "cli";
+	return php_sapi_name() == "cli" && !isSwoole();
 }
 
 /** 
@@ -208,6 +228,11 @@ php built-in web server e.g. run "php -S 0.0.0.0:8080"
 function isCLIServer()
 {
 	return php_sapi_name() == "cli-server";
+}
+
+function isSwoole()
+{
+	return function_exists("swoole_version");
 }
 
 /** 

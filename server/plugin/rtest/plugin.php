@@ -200,16 +200,11 @@ WHERE userId={$this->uid} ORDER BY id DESC LIMIT 3) t
 	public function api_listByAc()
 	{
 		$ac = mparam("ac");
-		$param = [
+		$param = $_GET + [
 			"fmt" => "list",
 			"cond" => "ac=" . Q($ac)
 		];
-		/*
-		callSvc("UserApiLog.query", $param);
-		throw new DirectReturn();
-		*/
-		setParam($param);
-		return callSvcInt("UserApiLog.query");
+		return callSvcInt("UserApiLog.query", $param);
 	}
 }
 

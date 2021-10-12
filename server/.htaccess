@@ -1,0 +1,3 @@
+rewriteengine on
+rewriterule ^api/(.*)$ api.php?ac=$1 [QSA,PT,L]
+

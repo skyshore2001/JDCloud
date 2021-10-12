@@ -99,7 +99,8 @@ function onCreateAC($tbl)
 // ====== main {{{
 
 // 确保在api.php的最后
-apiMain();
+if (!isCLI() && endWith($_SERVER["SCRIPT_NAME"], "/api.php"))
+	callSvc();
 
 //}}}
 
