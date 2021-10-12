@@ -1010,6 +1010,8 @@ function getQueryExp($k, $v)
 		if (strpos($v, '%') === false)
 			$v = '%'.$v.'%';
 	}
+	if ($k == "id" && is_numeric($v))
+		return $k . $op . $v;
 	return $k . $op . Q($v);
 }
 
