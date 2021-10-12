@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2021-09-29</div>
+<div>最后更新：2021-10-12</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -2653,7 +2653,11 @@ if (row == null)
 <pre><code>var datagrid = WUI.isTreegrid(jtbl)? "treegrid": "datagrid";
 var opt = jtbl[datagrid]("options");</code></pre></div>
 <div class="block">
-<h2 id="reload">@fn reload(jtbl, url?, queryParams?)</h2></div>
+<h2 id="reload">@fn reload(jtbl, url?, queryParams?, doAppendFilter?) </h2>
+<p>刷新数据表，或用指定查询条件重新查询。</p>
+<p>url和queryParams都可以指定查询条件，url通过makeUrl指定查询参数，它是基础查询一般不改变；<br />
+queryParams在查询对话框做查询时会被替换、或是点Ctrl-刷新时会被清除；如果doAppendFilter为true时会叠加之前的查询条件。<br />
+在明细对话框上三击字段标题可查询，按住Ctrl后三击则是追加查询模式。</p></div>
 <div class="block">
 <h2 id="reloadTmp">@fn reloadTmp(jtbl, url?, queryParams?) </h2>
 <p>临时reload一下，完事后恢复原url</p></div>
@@ -2688,9 +2692,11 @@ WUI.showPage("pageHome", "我的首页"); // 默认标题是"首页"，这里指
 <pre><code>WUI.showPage("pageHome", "%s-" + cityName, [{cityName: cityName}]); //e.g. 显示 "首页-上海"</code></pre>
 <p>title用于唯一标识tab，即如果相同title的tab存在则直接切换过去。除非：<br />
 (v5.5) 如果标题以&quot;!&quot;结尾, 则每次都打开新的tab页。</p>
-<p>(v6) 支持通过paramArr第二参数指定列表页过滤条件(SHOW_PAGE_FILTER)，示例</p>
+<p>(v6) 支持通过paramArr第二参数指定列表页过滤条件(PAGE_FILTER)，示例</p>
 <pre><code>WUI.showPage("pageEmployee", "员工", [null, {cond: {status: "在职"}}]);</code></pre>
-<p>它直接影响页面中的datagrid的查询条件。</p></div>
+<p>它直接影响页面中的datagrid的查询条件。</p>
+<p>选项<code>_pageFilterOnly</code>用于影响datagrid查询只用page filter的条件。</p>
+<pre><code>WUI.showPage("pageEmployee", "员工", [null, {cond: {status: "在职"}, _pageFilterOnly: true}]);</code></pre></div>
 <div class="block">
 <h2 id="wui-pageFile">@key wui-pageFile</h2>
 <p>动态加载的逻辑页(或对话框)具有该属性，值为源文件名。</p></div>
@@ -3214,13 +3220,13 @@ WUI.reloadDialog(true); // 重置所有外部加载的对话框(v5.1)</code></pr
 还有种比较常见的情况是页面和对话框为多个对象共用的（如客户和供应商共用一个页面和对话框），也是确保菜单名、页面名、对话框一致，在处理时往往是以showPage将菜单名传到页面，从页面打开对话框时则以页面标题指定对话框标题。</li>
 </ul></div>
 <div class="block">
-<h2 id="doFind">@fn doFind(jo, jtbl?, appendFilter?=false)</h2>
+<h2 id="doFind">@fn doFind(jo, jtbl?, doAppendFilter?=false)</h2>
 <p>根据对话框中jo部分内容查询，结果显示到表格(jtbl)中。<br />
 jo一般为对话框内的form或td，也可以为dialog自身。<br />
 查询时，取jo内部带name属性的字段作为查询条件。如果有多个字段，则生成AND条件。</p>
 <p>如果查询条件为空，则不做查询；但如果指定jtbl的话，则强制查询。</p>
 <p>jtbl未指定时，自动取对话框关联的表格；如果未关联，则不做查询。<br />
-appendFilter=true时，表示追加过滤条件。</p>
+doAppendFilter=true时，表示追加过滤条件。</p>
 <p class="see"><strong>@see <a href="#.wui-notCond">.wui-notCond</a></strong>  指定独立查询条件</p></div>
 <div class="block">
 <h2 id="showObjDlg">@fn showObjDlg(jdlg, mode, opt?={jtbl, id, obj})</h2>
@@ -3268,7 +3274,13 @@ showObjDlg(jdlg, FormMode.forSet, {id:101});
         if (this.mode == FormMode.forDel) {
             // after delete row
         }
+
         // ... 重新计算金额
+        var rows = jtbl.datagrid("getData").rows, amount = 0;
+        $.each(rows, function(e) {
+            amount += e.price * e.qty;
+        })
+        frm.amount.value = amount.toFixed(2);
         // ... 刷新关联的表格行
         // opt.objParam.reloadRow();
     }
