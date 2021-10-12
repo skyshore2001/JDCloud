@@ -3731,6 +3731,46 @@ $.Deferred = function () {
 	return ret;
 }
 
+// 返回筋斗云后端query接口可接受的cond条件。可能会修改cond(如果它是数组)
+function appendCond(cond, cond1)
+{
+	if (!cond)
+		return cond1;
+	if (!cond1)
+		return cond;
+
+	if ($.isArray(cond)) {
+		cond.push(cond1);
+	}
+	else if (typeof(cond1) == "string") {
+		cond += " AND (" + cond1 + ")";
+	}
+	else {
+		cond = [cond, cond1];
+	}
+	return cond;
+}
+
+// 类似$.extend，但对cond做合并而不是覆盖处理. 将修改并返回target
+self.extendQueryParam = extendQueryParam;
+function extendQueryParam(target, a, b)
+{
+	var cond;
+	$.each(arguments, function (i, e) {
+		if (i == 0) {
+			cond = target.cond;
+		}
+		else if ($.isPlainObject(e)) {
+			cond = appendCond(cond, e.cond);
+			$.extend(target, e);
+		}
+	});
+	if (cond) {
+		target.cond = cond;
+	}
+	return target;
+}
+
 }
 // ====== WEBCC_END_FILE commonjq.js }}}
 
@@ -5744,10 +5784,16 @@ function isTreegrid(jtbl)
 }
 
 /** 
-@fn reload(jtbl, url?, queryParams?) 
+@fn reload(jtbl, url?, queryParams?, doAppendFilter?) 
+
+刷新数据表，或用指定查询条件重新查询。
+
+url和queryParams都可以指定查询条件，url通过makeUrl指定查询参数，它是基础查询一般不改变；
+queryParams在查询对话框做查询时会被替换、或是点Ctrl-刷新时会被清除；如果doAppendFilter为true时会叠加之前的查询条件。
+在明细对话框上三击字段标题可查询，按住Ctrl后三击则是追加查询模式。
 */
 self.reload = reload;
-function reload(jtbl, url, queryParams)
+function reload(jtbl, url, queryParams, doAppendFilter)
 {
 	var datagrid = isTreegrid(jtbl)? "treegrid": "datagrid";
 	if (url != null || queryParams != null) {
@@ -5756,7 +5802,7 @@ function reload(jtbl, url, queryParams)
 			opt.url = url;
 		}
 		if (queryParams != null) {
-			opt.queryParams = queryParams;
+			opt.queryParams = doAppendFilter? self.extendQueryParam(opt.queryParams, queryParams): queryParams;
 		}
 	}
 
@@ -6079,11 +6125,16 @@ page调用示例:
 title用于唯一标识tab，即如果相同title的tab存在则直接切换过去。除非：
 (v5.5) 如果标题以"!"结尾, 则每次都打开新的tab页。
 
-(v6) 支持通过paramArr第二参数指定列表页过滤条件(SHOW_PAGE_FILTER)，示例
+(v6) 支持通过paramArr第二参数指定列表页过滤条件(PAGE_FILTER)，示例
 
 	WUI.showPage("pageEmployee", "员工", [null, {cond: {status: "在职"}}]);
 
 它直接影响页面中的datagrid的查询条件。
+
+选项`_pageFilterOnly`用于影响datagrid查询只用page filter的条件。
+
+	WUI.showPage("pageEmployee", "员工", [null, {cond: {status: "在职"}, _pageFilterOnly: true}]);
+
 */
 self.showPage = showPage;
 function showPage(pageName, title, paramArr)
@@ -6218,6 +6269,36 @@ function showPage(pageName, title, paramArr)
 		else {
 			initPage();
 		}
+	}
+}
+
+// (target?={}, ignoreQueryParam?=false)  返回target或新对象，可任意修改。
+function getDgFilter(jtbl, target, ignoreQueryParam)
+{
+	var p1, p2;
+	var p3 = getPageFilter(jtbl.closest(".wui-page"));
+	if (p3 && p3._pageFilterOnly) {
+		p3 = $.extend(true, {}, p3); // 复制一份
+		delete p3._pageFilterOnly;
+	}
+	else {
+		var datagrid = isTreegrid(jtbl)? "treegrid": "datagrid";
+		var dgOpt = jtbl[datagrid]("options");
+		var p1 = dgOpt.url && dgOpt.url.params;
+		var p2 = !ignoreQueryParam && dgOpt.queryParams;
+	}
+	if (!target)
+		target = {};
+	return self.extendQueryParam(target, p1, p2, p3);
+}
+
+// 取页面的过滤参数，由框架自动处理：PAGE_FILTER. 返回showPage原始过滤参数或null。注意不要修改它。
+function getPageFilter(jpage)
+{
+	var showPageArgs = jpage.data("showPageArgs_");
+	// showPage(0:pageName, 1:title, 2:paramArr);  e.g. WUI.showPage(pageName, title, [param1, {cond:cond}]) 
+	if (showPageArgs && $.isArray(showPageArgs[2]) && $.isPlainObject(showPageArgs[2][1])) {
+		return showPageArgs[2][1];
 	}
 }
 
@@ -7124,11 +7205,7 @@ function batchOp(obj, ac, jtbl, opt)
 		confirmBatch(selArr.length);
 	}
 	else {
-		var datagrid = isTreegrid(jtbl)? "treegrid": "datagrid";
-		var dgOpt = jtbl[datagrid]("options");
-		var p1 = dgOpt.url && dgOpt.url.params;
-		var p2 = dgOpt.queryParams;
-		queryParams = $.extend({}, p1, p2);
+		queryParams = getDgFilter(jtbl);
 		if (!queryParams.cond)
 			queryParams.cond = "t0.id>0"; // 避免后台因无条件而报错
 		queryCnt();
@@ -7470,21 +7547,6 @@ function getFindData(jfrm)
 	return param;
 }
 
-// 返回筋斗云后端query接口可接受的cond条件：
-function appendCond(cond, cond1)
-{
-	if (!cond)
-		return cond1;
-
-	if ($.isArray(cond)) {
-		cond.push(cond1);
-	}
-	else {
-		cond = [cond, cond1];
-	}
-	return cond;
-}
-
 /*
 加载jdlg(当它的size为0时)，注意加载成功后会添加到jdlg对象中。
 返回true表示将动态加载对话框，调用者应立即返回，后续逻辑在onLoad回调中操作。
@@ -7506,6 +7568,9 @@ function loadDialog(jdlg, onLoad, opt)
 	opt = opt || {};
 	// showDlg支持jdlg为新创建的jquery对象，这时selector为空
 	if (!jdlg.selector) {
+		jdlg.addClass('wui-dialog');
+		var jcontainer = $("#my-pages");
+		jdlg.appendTo(jcontainer);
 		loadDialogTpl1();
 		return true;
 	}
@@ -7604,7 +7669,7 @@ function loadDialog(jdlg, onLoad, opt)
 }
 
 /**
-@fn doFind(jo, jtbl?, appendFilter?=false)
+@fn doFind(jo, jtbl?, doAppendFilter?=false)
 
 根据对话框中jo部分内容查询，结果显示到表格(jtbl)中。
 jo一般为对话框内的form或td，也可以为dialog自身。
@@ -7613,12 +7678,12 @@ jo一般为对话框内的form或td，也可以为dialog自身。
 如果查询条件为空，则不做查询；但如果指定jtbl的话，则强制查询。
 
 jtbl未指定时，自动取对话框关联的表格；如果未关联，则不做查询。
-appendFilter=true时，表示追加过滤条件。
+doAppendFilter=true时，表示追加过滤条件。
 
 @see .wui-notCond 指定独立查询条件
  */
 self.doFind = doFind;
-function doFind(jo, jtbl, appendFilter)
+function doFind(jo, jtbl, doAppendFilter)
 {
 	var force = (jtbl!=null);
 	if (!jtbl) {
@@ -7639,18 +7704,8 @@ function doFind(jo, jtbl, appendFilter)
 
 	// 归并table上的cond条件. dgOpt.url是makeUrl生成的，保存了原始的params
 	// 避免url和queryParams中同名cond条件被覆盖，因而用AND合并。
-	var dgOpt = jtbl.datagrid("options");
-	if (!appendFilter || $.isEmptyObject(dgOpt.queryParams)) { // 设置过滤条件
-		if (param.cond && dgOpt && dgOpt.url && dgOpt.url.params && dgOpt.url.params.cond) {
-			param.cond = dgOpt.url.params.cond + " AND (" + param.cond + ")";
-		}
-	}
-	else { // 追加过滤条件
-		if (dgOpt.queryParams.cond)
-			dgOpt.queryParams.cond += " AND (" + param.cond + ")";
-		$.extend(param, dgOpt.queryParams);
-	}
-	reload(jtbl, undefined, param);
+	// 注意：这些逻辑在dgLoader中处理。
+	reload(jtbl, undefined, param, doAppendFilter); // 将设置dgOpt.queryParams
 }
 
 /**
@@ -8306,16 +8361,22 @@ function getQueryParamFromTable(jtbl, param)
 	var datagrid = self.isTreegrid(jtbl)? "treegrid": "datagrid";
 	var opt = jtbl[datagrid]("options");
 
-	param = $.extend({}, opt.queryParams, param);
+	var param1 = getDgFilter(jtbl);
+	if (param != null) {
+		$.extend(param1, param); // 保留param中内容，不修改param
+	}
+	else {
+		param = {};
+	}
 	var selArr =  jtbl[datagrid]("getChecked");
 	if (selArr.length > 1 && selArr[0].id != null) {
 		var idList = $.map(selArr, function (e) { return e.id}).join(',');
-		param.cond = "t0.id IN (" + idList + ")";
+		param1.cond = "t0.id IN (" + idList + ")";
 	}
 	if (param.orderby === undefined && opt.sortName) {
-		param.orderby = opt.sortName;
+		param1.orderby = opt.sortName;
 		if (opt.sortOrder && opt.sortOrder.toLowerCase() != "asc")
-			param.orderby += " " + opt.sortOrder;
+			param1.orderby += " " + opt.sortOrder;
 	}
 	if (param.res === undefined) {
 		var res = '';
@@ -8333,21 +8394,23 @@ function getQueryParamFromTable(jtbl, param)
 				}
 			});
 		});
-		param.res = res;
+		param1.res = res;
 	}
 	if (param.fname === undefined) {
-		param.fname = jtbl.prop("title") || jtbl.closest(".wui-page").prop("title");
+		param1.fname = jtbl.prop("title") || jtbl.closest(".wui-page").prop("title");
+		/*
 		if (opt.queryParams && opt.queryParams.cond) {
 			var keys = [];
 			opt.queryParams.cond.replace(/'([^']+?)'/g, function (ms, ms1) {
 				keys.push(ms1);
 			});
 			if (keys.length > 0) {
-				param.fname += "-" + keys.join("-");
+				param1.fname += "-" + keys.join("-");
 			}
 		}
+		*/
 	}
-	return param;
+	return param1;
 }
 
 window.YesNoMap = {
@@ -8628,19 +8691,9 @@ function dgLoader(param, success, error)
 		}
 	}
 
-	// SHOW_PAGE_FILTER 根据showPage参数自动对页面中的datagrid进行过滤: 
+	// PAGE_FILTER 根据showPage参数自动对页面中的datagrid进行过滤: 
 	// WUI.showPage(pageName, title, [param1, {cond:cond}]) 
-	var jpage = jo.closest(".wui-page");
-	var showPageArgs = jpage.data("showPageArgs_");
-	if (showPageArgs && $.isArray(showPageArgs[2]) && showPageArgs[2][1]) {
-		var filterParam = showPageArgs[2][1];
-		$.each(filterParam, function (k, v) {
-			if (k == "cond")
-				param1.cond = appendCond(param1.cond, v);
-			else
-				param1[k] = v;
-		});
-	}
+	getDgFilter(jo, param1, true);
 
 	var dfd = self.callSvr(opts.url, param1, success);
 	dfd.fail(function () {

@@ -2864,7 +2864,8 @@ function showDataReport(opt, showPageOpt)
 
 				var title = opt.title + "-明细项!";
 				if (opt.detailPageName) {
-					var queryParams1 = {cond: cond};
+					// _pageFilterOnly防止datagrid上有其它查询参数影响结果
+					var queryParams1 = {cond: cond, _pageFilterOnly: true};
 					if (queryParams.tmField)
 						queryParams1.tmField = queryParams.tmField;
 					opt.detailPageParamArr[1] = queryParams1;
