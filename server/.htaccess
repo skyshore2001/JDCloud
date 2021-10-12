@@ -1,3 +1,5 @@
+addcharset utf-8 .html .js .css .txt .md
+
 rewriteengine on
 rewriterule ^api/(.*)$ api.php?ac=$1 [QSA,PT,L]
 
