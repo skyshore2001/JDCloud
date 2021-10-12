@@ -2045,6 +2045,7 @@ trait JDServer
 
 	function session_start() {
 		session_start();
+		$this->_SESSION = &$_SESSION;
 	}
 	function session_write_close() {
 		session_write_close();
