@@ -2106,6 +2106,15 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 
 	function __construct() {
 		parent::__construct();
+	}
+
+	private function initRequest() {
+		if (! isset($this->_GET)) {
+			$this->_GET = &$_GET;
+			$this->_POST = &$_POST;
+			$this->_SESSION = &$_SESSION;
+			$this->_FILES = &$_FILES;
+		}
 
 		require_once("ext.php");
 
@@ -2116,15 +2125,6 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			include_once($plugins);
 
 		require_once("{$BASE_DIR}/conf.php");
-	}
-
-	private function initRequest() {
-		if (! isset($this->_GET)) {
-			$this->_GET = &$_GET;
-			$this->_POST = &$_POST;
-			$this->_SESSION = &$_SESSION;
-			$this->_FILES = &$_FILES;
-		}
 
 		$this->appName = $this->param("_app", "user", "G");
 		$this->appType = preg_replace('/(\d+|-\w+)$/', '', $this->appName);
