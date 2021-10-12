@@ -12,7 +12,8 @@
 - 移除全局变量: $X_RET, $errorFn, $noExecApi, 以下全局变量移到JDEnv内：
 	- $g_dbgInfo, $DBH, $APP
 	- $TEST_MODE, $MOCK_MODE, $DBG_LEVEL;
-- 函数接口变化：callSvc（重构后简化）。getHttpInput(增加env参数), getContentType(增加env参数), setServerRev(增加env参数)
+- 函数接口变化：callSvc（重构后简化）。setServerRev(增加env参数)
+- AccessControl::create()改为env->createAC()
 - 用jdRet替代MyException和DirectReturn类。
 
 #### 不兼容，需要修改

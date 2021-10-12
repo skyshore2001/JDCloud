@@ -1577,8 +1577,10 @@ function api_initClient($env)
 	return $ret;
 }
 
-function getContentType($env)
+function getContentType($env = null)
 {
+	if ($env === null)
+		$env = getJDEnv();
 	$ct = $env->contentType;
 	if ($ct == null) {
 		$ct = $env->_SERVER("HTTP_CONTENT_TYPE") ?: $env->_SERVER("CONTENT_TYPE");
@@ -1587,8 +1589,10 @@ function getContentType($env)
 	return $ct;
 }
 
-function getHttpInput($env)
+function getHttpInput($env = null)
 {
+	if ($env === null)
+		$env = getJDEnv();
 	$content = $env->rawContent;
 	if ($content == null) {
 		$ct = getContentType($env);
