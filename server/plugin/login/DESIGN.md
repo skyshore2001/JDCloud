@@ -355,7 +355,7 @@ code为手机验证码，之前应调用过genCode接口。
 
 ## 后端接口
 
-$_SESSION:
+`$_SESSION`:
 
 - "uid": 用户登录后设置为用户id。
 - "empId": 员工登录后设置为员工id.
@@ -365,3 +365,30 @@ $_SESSION:
 ## 前端应用接口
 
 （无）
+
+## 在线用户/一处登录
+
+需求：
+
+- 用户（User或Employee）只允许在一处登录。即每次新登录应退出该用户此前的登录会话。
+
+配置示例：对emp应用类型开启一处登录(plugin/index.php中)
+
+	Login::$oneLogin = ["emp"];
+
+示例：对emp和user应用类型都开启一处登录
+
+	Login::$oneLogin = ["emp", "user"]
+
+实现方案：
+
+登录时(login接口), 记录用户会话到cache中，同时检查cache中是否已存在该用户，存在则删除会话。退出(logout接口)时删除会话。
+目前使用文件cache，文件为"cache/OnlineUser.json"
+
+Cache: OnlineUser: `{app}-{userId}` => tm, sessionId
+
+根据该cache可获取当前在线用户，但由于超时删除机制不可靠，在线用户列表并不准确。
+
+注意：
+
+- 读写cache须加锁，避免并发登录出问题。

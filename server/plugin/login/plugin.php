@@ -82,6 +82,34 @@
 
 */
 
+function updateCacheFile($file, $fn)
+{
+	assert(is_callable($fn));
+	$d = dirname($file);
+	if (! is_dir($d))
+		mkdir($d, 0770, true);
+	$fp = fopen($file, "c+");
+	flock($fp, LOCK_EX);
+	$cache = [];
+	if (($filesz=filesize($file)) > 0) {
+		$str = fread($fp, $filesz);
+		$cache = @jsonDecode($str) ?: [];
+	}
+	try {
+		$rv = $fn($cache);
+		if ($rv !== false) {
+			rewind($fp);
+			ftruncate($fp, 0);
+			fwrite($fp, jsonEncode($cache));
+		}
+	}
+	catch (Exception $e) {
+		logit($e);
+	}
+	flock($fp, LOCK_UN);
+	fclose($fp);
+}
+
 class Login
 {
 	static $autoRegUser = true;
@@ -93,6 +121,42 @@ class Login
 		"secret" => "381c380860a3aad4514853e216c7e1f3"
 	];
 	static $bindUserUseCode = true;
+	static $oneLogin = [];
+
+	static function supportOneLogin($isLogout) {
+		$appType = getJDEnv()->appType;
+		if (! (is_array(self::$oneLogin) && in_array($appType, self::$oneLogin)))
+			return;
+
+		switch ($appType) {
+		case "user":
+			$userId = $_SESSION["uid"];
+			break;
+		case "emp":
+			$userId = $_SESSION["empId"];
+			break;
+		}
+
+		$f = "cache/OnlineUser.json";
+		$k = "$appType-$userId";
+		updateCacheFile($f, function (&$cache) use ($k, $isLogout) {
+			if ($isLogout) {
+				unset($cache[$k]);
+				return;
+			}
+			@$v = $cache[$k];
+			$sessionId = session_id();
+			if ($v["sessionId"] && $v["sessionId"] != $sessionId) {
+				logit("login: kick off session $k: " . $v["sessionId"]);
+				// remove session
+				delSessionById($v["sessionId"]);
+			}
+			$cache[$k] = [
+				"tm" => time(),
+				"sessionId" => $sessionId
+			];
+		});
+	}
 }
 
 class LoginImpBase
@@ -524,12 +588,14 @@ function api_login()
 	if (! isset($token)) {
 		genLoginToken($ret, $uname, $pwd);
 	}
+	Login::supportOneLogin(false);
 	return $ret;
 }
 
 function api_logout()
 {
 	@session_destroy();
+	Login::supportOneLogin(true);
 	return "OK";
 }
 
