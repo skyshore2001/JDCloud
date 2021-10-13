@@ -138,6 +138,8 @@ class DirectReturn extends LogicException
 
 自定义返回：(code传null)
 
+	jdRet(null, ["code" => 0, "msg" => "hello"]);
+	或
 	jdRet(null, '{"code": 0, "msg": "hello"}');
 	// 返回`{"code": 0, "msg": "hello"}`，注意不是标准筋斗云返回格式。
 

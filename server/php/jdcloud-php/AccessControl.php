@@ -1440,11 +1440,10 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 					$postParam = array_merge($_POST, ["userPhone"=>trim($e)]);
 					$idList[] = $this->callSvc(null, "add", null, $postParam);
 				}
-				setRet(0, [
+				jdRet(0, [
 					"cnt"=>count($idList),
 					"idList"=>$idList
 				]);
-				throw new DirectReturn();
 			}
 		}
 		return parent::api_add();

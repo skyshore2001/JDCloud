@@ -1507,6 +1507,15 @@ function setParam($k, $v) {
 }
 
 /**
+@fn setParam($k, $v)
+
+(v6) 已废弃。只用于兼容。用$_GET[$k]=$v替代。
+*/
+function setParam($k, $v) {
+	$_GET[$k] = $v;
+}
+
+/**
 @fn callSvcInt($ac, $param=null, $postParam=null, $useTmpEnv=true)
 
 内部调用另一接口，获得返回值。
@@ -2102,6 +2111,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 
 	public $perms, $exPerms;
 
+	public $onBeforeActions = [];
 	public $onAfterActions = [];
 	private $dbgInfo = [];
 
@@ -2122,6 +2132,9 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			$this->_POST = &$_POST;
 			$this->_SESSION = &$_SESSION;
 			$this->_FILES = &$_FILES;
+		}
+		foreach ($this->onBeforeActions as $fn) {
+			$fn();
 		}
 
 		require_once("ext.php");
@@ -2213,8 +2226,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 	*/
 		if (Conf::$enableSecure) {
 			if (!BlackList::isWhiteReq() && (BlackList::isBlackReq() || Conf::checkSecure($ac) === false)) {
-				setRet(E_FORBIDDEN, "OK");
-				return "OK";
+				jdRet(null, [E_FORBIDDEN, "OK"]);
 			}
 		}
 
@@ -2302,7 +2314,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		if (($isDefaultCall && $this->ac != "batch") || $this->ac1) {
 			$debugLog = getenv("P_DEBUG_LOG") ?: 0;
 			if ($debugLog == 1 || ($debugLog == 2 && $ret[0] != 0)) {
-				$retStr = $isUserFmt? $ret[1]: jsonEncode($ret);
+				$retStr = $isUserFmt? (is_scalar($ret[1])? $ret[1]: jsonEncode($ret[1])): jsonEncode($ret);
 				$s = 'ac=' . $ac . ($this->ac1? "(in batch)": "") . ', apiLogId=' . ApiLog::$lastId . ', ret=' . $retStr . ", dbgInfo=" . jsonEncode($this->dbgInfo, true);
 				logit($s, true, 'debug');
 			}
@@ -2422,7 +2434,10 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 
 		global $X_RET_STR;
 		if ($isUserFmt) {
-			$X_RET_STR = $data;
+			if (is_scalar($data))
+				$X_RET_STR = $data;
+			else
+				$X_RET_STR = jsonEncode($data);
 			$this->write($X_RET_STR);
 			return;
 		}
