@@ -1507,15 +1507,6 @@ function setParam($k, $v) {
 }
 
 /**
-@fn setParam($k, $v)
-
-(v6) 已废弃。只用于兼容。用$_GET[$k]=$v替代。
-*/
-function setParam($k, $v) {
-	$_GET[$k] = $v;
-}
-
-/**
 @fn callSvcInt($ac, $param=null, $postParam=null, $useTmpEnv=true)
 
 内部调用另一接口，获得返回值。
@@ -2434,6 +2425,8 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 
 		global $X_RET_STR;
 		if ($isUserFmt) {
+			if (is_null($data))
+				return;
 			if (is_scalar($data))
 				$X_RET_STR = $data;
 			else
