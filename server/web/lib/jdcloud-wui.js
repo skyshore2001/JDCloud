@@ -8824,13 +8824,33 @@ CSS类, 可定义无数据提示的样式
 // 	}
 });
 
+/**
+@var GridHeaderMenu
+
+表头左上角右键菜单功能。
+
+扩展示例：
+
+	WUI.GridHeaderMenu.items.push('<div id="showObjLog">操作日志</div>');
+	WUI.GridHeaderMenu.showObjLog = function (jtbl) {
+		var row = WUI.getRow(jtbl);
+		if (!row)
+			return;
+		...
+		WUI.showPage("pageObjLog", "操作日志!", [null, param]);
+	};
+
+*/
 var GridHeaderMenu = {
 	jtbl_: null,
 	showMenu: function (pos, jtbl) {
 		var jmenu = $("#mnuGridHeader");
 		if (jmenu.size() == 0) {
 			// 注意id与函数名的匹配
-			jmenu = $('<div id="mnuGridHeader"><div id="showDlgFieldInfo">字段信息</div><div id="showDlgDataReport">自定义报表</div><div id="showDlgQuery">自定义查询</div></div>');
+			jmenu = $('<div id="mnuGridHeader"></div>');
+			$.each(GridHeaderMenu.items, function (i, e) {
+				$(e).appendTo(jmenu);
+			});
 			jmenu.menu({
 				onClick: function (mnuItem) {
 					GridHeaderMenu[mnuItem.id](GridHeaderMenu.jtbl_);
@@ -8840,6 +8860,11 @@ var GridHeaderMenu = {
 		this.jtbl_ = jtbl;
 		jmenu.menu('show', pos);
 	},
+	items: [
+		'<div id="showDlgFieldInfo">字段信息</div>',
+		'<div id="showDlgDataReport" data-options="iconCls:\'icon-sum\'">自定义报表</div>',
+		'<div id="showDlgQuery" data-options="iconCls:\'icon-search\'">自定义查询</div>'
+	],
 	// 以下为菜单项处理函数
 
 	showDlgFieldInfo: function (jtbl) {
@@ -8884,6 +8909,7 @@ var GridHeaderMenu = {
 		self.showDlgQuery(data);
 	}
 }
+self.GridHeaderMenu = GridHeaderMenu;
 
 /**
 @fn showDlgQuery(data?={ac, param})

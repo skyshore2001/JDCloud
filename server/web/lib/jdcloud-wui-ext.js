@@ -3099,4 +3099,49 @@ function showDlgChart(data, rs2StatOpt, seriesOpt, chartOpt)
 	}
 }
 
+// ====== 操作日志扩展 {{{
+/**
+@module ObjLog 操作日志
+
+系统默认会记录操作日志ObjLog，可在管理端展示：
+
+- 菜单：系统设置-操作日志，结合查询框查找
+
+		<a href="#pageObjLog">操作日志</a>
+
+- 表中选中任一记录，在表头右键菜单中，可查看该记录关联的操作日志。
+- 可添加“日志”菜单到工具栏，按钮名为"objLog"：
+
+		jtbl.datagrid({
+			...
+			toolbar: WUI.dg_toolbar(jtbl, jdlg, ..., 'objLog');
+		});
+
+ */
+WUI.GridHeaderMenu.items.push('<div id="showObjLog" data-options="iconCls:\'icon-tip\'">操作日志</div>');
+WUI.GridHeaderMenu.showObjLog = function (jtbl) {
+	var row = WUI.getRow(jtbl);
+	if (!row)
+		return;
+	var datagrid = WUI.isTreegrid(jtbl)? "treegrid": "datagrid";
+	var url = jtbl[datagrid]("options").url;
+	if (! (url && url.action))
+		return;
+	var obj = url.action.split('.')[0]; // "XX.query" => "XX"
+
+//	var param = WUI.getQueryParamFromTable(jtbl);
+
+	var param = {cond: {obj: obj, objId: row.id}}
+	WUI.showPage("pageObjLog", "操作日志-" + obj + "!", [{jtblSrc: jtbl}, param]);
+};
+
+$.extend(self.dg_toolbar, {
+	"objLog": function (ctx) {
+		return {text: "日志", iconCls:'icon-tip', handler: function () {
+			WUI.GridHeaderMenu.showObjLog(ctx.jtbl);
+		}};
+	},
+});
+// }}}
+
 }
