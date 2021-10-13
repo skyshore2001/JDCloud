@@ -1069,6 +1069,8 @@ enumFields机制支持字段别名，比如若调用`Ordr.query(res="id 编号,s
 	或指定alias:
 	Ordr.query(res="id 编号, status 状态=CR:Created;CA:Cancelled")
 
+也可定义空值(null)或空串("")的显示，如: `status =CR:新创建;CA:已取消;:(null)`，表示将空值显示为`(null)`。
+
 (版本5.1)
 设置enumFields也支持逗号分隔的枚举列表，比如字段值为"CR,CA"，实际可返回"Created,Cancelled"。
 
