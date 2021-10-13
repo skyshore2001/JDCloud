@@ -18,7 +18,7 @@ class Pay
 	{
 		$rv = self::fromOutTradeNo($outTradeNo);
 		if ($rv === false)
-			throw new MyException(E_PARAM, "bad outTradeNo=`$outTradeNo`");
+			jdRet(E_PARAM, "bad outTradeNo=`$outTradeNo`");
 
 		$pay = PayImpBase::getInstance();
 		$rv = $pay->onPayOrder($rv["tradeKey"], $rv["id"], $payType, $payNo, $amount);
@@ -105,7 +105,7 @@ abstract class PayImpBase
 		$tradeNo = mparam("tradeNo");
 		$trade = Pay::fromOutTradeNo($tradeNo);
 		if ($trade === false)
-			throw new MyException(E_PARAM, "bad trade=`$tradeNo`");
+			jdRet(E_PARAM, "bad trade=`$tradeNo`");
 
 		$pay = PayImpBase::getInstance();
 		$ret = $pay->onGetPayInfo($trade["tradeKey"], $trade["id"]);
@@ -168,7 +168,7 @@ function api_pay()
 	}
 	$fn = PayImpBase::$payTypes[$type];
 	if (!function_exists($fn))
-		throw new MyException(E_SERVER, "unknown pay type" . $type, "未知付款类型`$type'");
+		jdRet(E_SERVER, "unknown pay type" . $type, "未知付款类型`$type'");
 	return call_user_func($fn, $rv);
 }
 
@@ -179,7 +179,7 @@ function api_payMock()
 	$rv = PayImpBase::generalPay();
 	$fn = PayImpBase::$payMockTypes[$type];
 	if (!function_exists($fn))
-		throw new MyException(E_SERVER, "unknown pay type" . $type, "付款类型`$type'不支付模拟支付");
+		jdRet(E_SERVER, "unknown pay type" . $type, "付款类型`$type'不支付模拟支付");
 	return call_user_func($fn, $rv);
 }
 

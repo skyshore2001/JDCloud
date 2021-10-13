@@ -80,18 +80,18 @@ class Partner
 		$imp = PartnerImpBase::getInstance();
 		$pwd1 = $imp->onGetPartnerPwd($partnerId);
 		if (! $pwd1)
-			throw new MyException(E_FORBIDDEN, "unknown partnerId=$partnerId");
+			jdRet(E_FORBIDDEN, "unknown partnerId=$partnerId");
 
 		if ($pwd !== null) {
 			if (! self::isHttps())
-				throw new MyException(E_FORBIDDEN, "use param `_sign` instead of `_pwd`");
+				jdRet(E_FORBIDDEN, "use param `_sign` instead of `_pwd`");
 			if ($pwd != $pwd1)
-				throw new MyException(E_AUTHFAIL, "bad pwd for partnerId=$partnerId");
+				jdRet(E_AUTHFAIL, "bad pwd for partnerId=$partnerId");
 			return;
 		}
 		$sign1 = self::genSign($pwd1);
 		if (strtolower($sign) !== strtolower($sign1))
-			throw new MyException(E_AUTHFAIL, "bad sign for partnerId=$partnerId");
+			jdRet(E_AUTHFAIL, "bad sign for partnerId=$partnerId");
 
 		if (! self::$replayCheck)
 			return;
@@ -102,13 +102,13 @@ class Partner
 		}
 		$diff = abs(time() - $timestamp);
 		if ($diff > self::$timestampPeriod)
-			throw new MyException(E_FORBIDDEN, "timestamp expires in " . self::$timestampPeriod . "s", "时间戳过期");
+			jdRet(E_FORBIDDEN, "timestamp expires in " . self::$timestampPeriod . "s", "时间戳过期");
 		if (self::$replayCheck === "timestamp")
 			return;
 
 		$rv = queryOne(sprintf("SELECT 1 FROM OpenApiRecord WHERE sign=%s", Q($sign)));
 		if ($rv !== false)
-			throw new MyException(E_FORBIDDEN, "duplicated sign");
+			jdRet(E_FORBIDDEN, "duplicated sign");
 
 		dbInsert("OpenApiRecord", [
 			"partnerId"=>$partnerId,

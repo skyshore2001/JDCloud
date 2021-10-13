@@ -19,7 +19,7 @@ class AC0_Role extends AccessControl
 	{
 		if (issetval("name")) {
 			if (preg_match('/[^\w&]/u', $_POST["name"]))
-				throw new MyException(E_PARAM, "invalid char", "角色名包含非法字符");
+				jdRet(E_PARAM, "invalid char", "角色名包含非法字符");
 		}
 	}
 }

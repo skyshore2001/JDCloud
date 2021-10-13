@@ -102,16 +102,16 @@ function verifyPartnerSign($partnerId)
 	if (isset($pwd) && !isset($sign)) {
 		// 1: INTERNAL允许线上仍使用_pwd字段生成voucher.
 		if ($partnerId != 1 && !$GLOBALS["TEST_MODE"]) {
-			throw new MyException(E_FORBIDDEN, "Non-testmode: MUST use param `_sign` instead of `_pwd`", "上线后不允许使用`_pwd`");
+			jdRet(E_FORBIDDEN, "Non-testmode: MUST use param `_sign` instead of `_pwd`", "上线后不允许使用`_pwd`");
 		}
 		if ($pwd != $pwd1)
-			throw new MyException(E_PARAM, "bad pwd for partner id=`$partnerId`", "密码错误");
+			jdRet(E_PARAM, "bad pwd for partner id=`$partnerId`", "密码错误");
 		return true;
 	}
 
 	$sign1 = genSign($pwd1);
 	if ($sign !== $sign1)
-		throw new MyException(E_PARAM, "bad sign for partner id=`$partnerId`", "签名错误");
+		jdRet(E_PARAM, "bad sign for partner id=`$partnerId`", "签名错误");
 
 	return true;
 }
