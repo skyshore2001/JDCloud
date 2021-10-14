@@ -1462,7 +1462,7 @@ class DBEnv
 			exit;
 		}
 		try {
-			@$DBH = new JDPDO ($C[0], $C[1], $C[2]);
+			@$DBH = new JDPDO ($C[0], $C[1], $C[2], $this);
 		}
 		catch (PDOException $e) {
 			$msg = $this->TEST_MODE ? $e->getMessage() : "dbconn fails";
@@ -1500,9 +1500,7 @@ class DBEnv
 	function execOne($sql, $getInsertId = false)
 	{
 		$DBH = $this->dbconn();
-		$rv = $DBH->exec($sql);
-		if ($getInsertId)
-			$rv = (int)$DBH->lastInsertId();
+		$rv = $DBH->exec($sql, $getInsertId);
 		return $rv;
 	}
 
@@ -1515,12 +1513,16 @@ class DBEnv
 			$sql .= " LIMIT 1";
 		$sth = $DBH->query($sql);
 
-		if ($sth === false)
+		if ($sth === false) {
+			$DBH->amendLog("error");
 			return false;
+		}
 
 		$fetchMode = $assoc? PDO::FETCH_ASSOC: PDO::FETCH_NUM;
 		$row = $sth->fetch($fetchMode);
 		$sth->closeCursor();
+		if ($row === false)
+			$DBH->amendLog("cnt=0");
 		if ($row !== false && count($row)===1 && !$assoc)
 			return $row[0];
 		return $row;
@@ -1532,12 +1534,15 @@ class DBEnv
 		if ($cond)
 			$sql = genQuery($sql, $cond);
 		$sth = $DBH->query($sql);
-		if ($sth === false)
+		if ($sth === false) {
+			$DBH->amendLog("error");
 			return false;
+		}
 		$fetchMode = $assoc? PDO::FETCH_ASSOC: PDO::FETCH_NUM;
 		$allRows = [];
 		do {
 			$rows = $sth->fetchAll($fetchMode);
+			$DBH->amendLog("cnt=". count($rows));
 			$allRows[] = $rows;
 		}
 		while ($sth->nextRowSet());
@@ -1924,7 +1929,7 @@ END;
 function addLog($data, $logLevel=0)
 {
 	$env = getJDEnv();
-	$env->addLog($data, $logLevel);
+	return $env->addLog($data, $logLevel);
 }
 
 /** 
@@ -2001,32 +2006,50 @@ function utf8InputFilter($fp, $fnTest=null)
  */
 class JDPDO extends PDO
 {
+	protected $env;
 	public $skipLogCnt = 0;
-	function __construct($dsn, $user = null, $pwd = null)
+	private $logH;
+
+	function __construct($dsn, $user = null, $pwd = null, $env = null)
 	{
 		$opts = [];
 		// 如果使用连接池, 偶尔会出现连接失效问题, 所以缺省不用
 		if (hasSignFile("CFG_CONN_POOL"))
 			$opts[PDO::ATTR_PERSISTENT] = true;
 		parent::__construct($dsn, $user, $pwd, $opts);
+		$this->env = $env ?: getJDEnv();
 	}
 	private function addLog($str)
 	{
 		if ($this->skipLogCnt > 0) {
 			-- $this->skipLogCnt;
+			$this->logH = null;
 			return;
 		}
-		addLog($str, 9);
+		$this->logH = $this->env->addLog($str, 9);
+	}
+	function amendLog($str) {
+		if ($this->logH) {
+			$this->env->amendLog($this->logH, function (&$data) use ($str) {
+				$data .= " -- " . $str;
+			});
+		}
 	}
 	function query($sql)
 	{
 		$this->addLog($sql);
 		return parent::query($sql);
 	}
-	function exec($sql)
+	function exec($sql, $getInsertId = false)
 	{
-		$this->addLog($sql);
-		return parent::exec($sql);
+		$logH = $this->addLog($sql);
+		$rv = parent::exec($sql);
+		if ($getInsertId)
+			$rv = (int)parent::lastInsertId();
+
+		if ($logH)
+			$this->amendLog($getInsertId? "new id=$rv": "cnt=$rv");
+		return $rv;
 	}
 	function prepare($sql, $opts=[])
 	{

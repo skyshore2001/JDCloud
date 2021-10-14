@@ -1,13 +1,13 @@
 <?php
 
-function api_execSql()
+function api_execSql($env)
 {
 	checkAuth(AUTH_ADMIN | PERM_TEST_MODE);
 
 	# TODO: limit the function
 	$sql = html_entity_decode(mparam("sql"));
 	if (preg_match('/^\s*select/i', $sql)) {
-		global $DBH;
+		$DBH = $env->DBH;
 		$sth = $DBH->query($sql);
 		$fmt = param("fmt");
 		$wantArray = param("wantArray/b", false);

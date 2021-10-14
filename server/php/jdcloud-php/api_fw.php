@@ -1433,9 +1433,6 @@ $file为插件主文件，可返回一个插件配置。如果未指定，则自
 
 (v5.4)本函数仅做兼容使用，请用`callSvcInt`或`AccessControl::callSvc`方法替代。
 
-对象型接口的入口。
-也可直接被调用，常与setParam一起使用, 提供一些定制的操作。
-
 @param $asAdmin 默认根据用户身份自动选择"AC_"类; 如果为true, 则以超级管理员身份调用，即使用"AC0_"类。
 设置$asAdmin=true好处是对于超级管理员权限来说，即使未定义"AC0_"类，默认也可以访问所有内容。
 
@@ -1486,7 +1483,6 @@ v5.4后建议这样实现：
 		return $ret;
 	}
 
-@see setParam
 @see callSvcInt
 @see callSvc
  */
@@ -2606,7 +2602,15 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		if ($this->DBG_LEVEL >= $logLevel)
 		{
 			$this->dbgInfo[] = $data;
+			return count($this->dbgInfo);
 		}
+	}
+	// logHandle: return by addLog
+	function amendLog($logHandle, $fn)
+	{
+		if (! ($logHandle > 0 && $logHandle <= count($this->dbgInfo)) )
+			return;
+		$fn($this->dbgInfo[$logHandle-1]);
 	}
 
 	function callSvcInt($ac, $param=null, $postParam=null, $useTmpEnv=true)
