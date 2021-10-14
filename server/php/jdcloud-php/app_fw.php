@@ -894,6 +894,10 @@ function sql_concat()
 		生成 "id<100 AND tm>'2020-1-1" AND status<>'CR' AND name LIKE 'wang%' AND dscr LIKE '%aaa%' AND dscr2 NOT LIKE '%aaa%'"
 		like用于字符串匹配，字符串中用"%"或"*"表示通配符，如果不存在通配符，则表示包含该串(即生成'%xxx%')
 
+		支持IN和NOT IN:
+		["id"=>"IN 100,101", "status"=>"NOT IN CA,XX"]
+		生成"id IN (1,2,3) AND status NOT IN ('CR','XX')"
+
 		["b"=>"!null", "d"=>"!empty"]
 		生成 "b IS NOT NULL" AND d<>''"
 
@@ -989,6 +993,22 @@ function getQueryExp($k, $v)
 	if ($v === "!null")
 		return "$k IS NOT NULL";
 
+	$isId = preg_match('/(^id|Id)\d*$/', $k); // "id", "orderId", "orderId2"
+	$done = false;
+	// {id: "IN 1,2,3", status: "NOT IN CA,XX"} => "id IN (1,2,3) AND status NOT IN ('CR','XX')"
+	$v = preg_replace_callback('/^(IN|NOT IN) (.*)$/iu', function ($ms) use ($k, $isId, &$done) {
+		$done = true;
+		if ($isId && preg_match('/^[\d, ]+$/', $ms[2]))
+			return $k . ' ' . $ms[1] . " ({$ms[2]})";
+
+		$v1 = preg_replace_callback('/\w+/u', function ($ms1) {
+			return Q($ms1[0]);
+		}, $ms[2]);
+		return $k . ' ' . $ms[1] . " ($v1)";
+	}, $v);
+	if ($done)
+		return $v;
+
 	$op = '=';
 	$v = preg_replace_callback('/^[><=!~]+/', function ($ms) use (&$op) {
 		if ($ms[0] == '!' || $ms[0] == '!=')
@@ -1008,7 +1028,7 @@ function getQueryExp($k, $v)
 		if (strpos($v, '%') === false)
 			$v = '%'.$v.'%';
 	}
-	if ($k == "id" && is_numeric($v))
+	if ($isId && is_numeric($v))
 		return $k . $op . $v;
 	return $k . $op . Q($v);
 }

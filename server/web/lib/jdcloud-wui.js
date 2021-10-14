@@ -8326,6 +8326,10 @@ function getExportHandler(jtbl, ac, param)
 				throw "error: bad datagrid: \"" + jtbl.selector + "\"";
 			var datagrid = isTreegrid(jtbl)? "treegrid": "datagrid";
 			ac = jtbl[datagrid]("options").url;
+			if (ac == null) {
+				app_alert("该数据表不支持导出", "w");
+				return;
+			}
 		}
 		var p1 = getQueryParamFromTable(jtbl, param);
 		var debugShow = false;
@@ -8425,6 +8429,69 @@ function getQueryParamFromTable(jtbl, param)
 		*/
 	}
 	return param1;
+}
+
+/**
+@fn getDgInfo(jtbl, res?) -> { opt, isTreegrid, datagrid, url, param, ac, obj, sel?, selArr?, res? }
+
+取datagrid关联信息. 返回字段标记?的须显式指定，如：
+
+	var dg = WUI.getDgInfo(jtbl); // {opt, url, ...}
+	var dg = WUI.getDgInfo(jtbl, {res: null}); // 多返回res字段
+	var data = jtbl[dg.datagrid]("getData"); // 相当于jtbl.datagrid(...), 但兼容treegrid调用。
+
+- opt: 数据表option
+- url: 关联的查询URL
+- param: 额外查询参数
+- ac: 关联的后端接口，比如"Ordr.query"
+- obj: 关联的对象，比如"Ordr"
+- isTreegrid: 是否为treegrid
+- datagrid: "datagrid"或"treegrid"
+
+- sel: 当前选中行的数据，无选中时为null
+- selArr: 当前所有所中行的数据数据，无选中时为[]
+- res: 字段信息，{ field => {field, title, jdEnumMap?} }
+ */
+self.getDgInfo = getDgInfo;
+function getDgInfo(jtbl, res)
+{
+	if (!jtbl || jtbl.size() == 0 || !jtbl.hasClass("datagrid-f")) {
+		console.error("bad datagrid: ", jtbl);
+		throw "getDgInfo error: bad datagrid.";
+	}
+
+	if (res == null)
+		res = {};
+
+	res.isTreegrid = self.isTreegrid(jtbl);
+	var datagrid = res.datagrid = (res.isTreegrid? "treegrid": "datagrid");
+	var opt = res.opt = jtbl[datagrid]("options");
+	res.url = opt.url;
+	res.param = opt.queryParams;
+	res.ac = opt.url && opt.url.action;
+	if (res.ac) {
+		var m = res.ac.match(/\w+(?=\.query\b)/);
+		res.obj = m && m[0];
+	}
+	if (res.sel !== undefined) {
+		res.sel = jtbl[datagrid]('getSelected');
+	}
+	if (res.selArr !== undefined) {
+		res.selArr = jtbl[datagrid]("getChecked");
+	}
+	if (res.res !== undefined) {
+		res.res = {};
+		$.each([opt.frozenColumns[0], opt.columns[0]], function (idx0, cols) {
+			if (cols == null)
+				return;
+			$.each(cols, function (i, e) {
+				if (! e.field || e.field.substr(-1) == "_")
+					return;
+				res.res[e.field] = e;
+			});
+		});
+	}
+	return res;
 }
 
 window.YesNoMap = {
@@ -8866,7 +8933,9 @@ var GridHeaderMenu = {
 	items: [
 		'<div id="showDlgFieldInfo">字段信息</div>',
 		'<div id="showDlgDataReport" data-options="iconCls:\'icon-sum\'">自定义报表</div>',
-		'<div id="showDlgQuery" data-options="iconCls:\'icon-search\'">自定义查询</div>'
+		'<div id="showDlgQuery" data-options="iconCls:\'icon-search\'">自定义查询</div>',
+		'<div id="import" data-options="iconCls:\'icon-add\'">导入</div>',
+		'<div id="export" data-options="iconCls:\'icon-save\'">导出</div>'
 	],
 	// 以下为菜单项处理函数
 
@@ -8910,6 +8979,20 @@ var GridHeaderMenu = {
 		if (url && url.action)
 			data = {ac: url.action};
 		self.showDlgQuery(data);
+	},
+	'import': function (jtbl) {
+		var param = self.getDgInfo(jtbl);
+		if (!param.obj) {
+			app_alert("非对象表，不支持导入");
+			return;
+		}
+		DlgImport.show({obj: param.obj}, function () {
+			WUI.reload(jtbl);
+		});
+	},
+	'export': function (jtbl) {
+		var fn = getExportHandler(jtbl);
+		fn();
 	}
 }
 self.GridHeaderMenu = GridHeaderMenu;

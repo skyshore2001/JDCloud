@@ -1590,26 +1590,10 @@ function makeLink(text, fn)
 	return '<a href="javascript:' + self.fname(fn) + '()">' + text + '</a>';
 }
 
-function getObjFromJtbl(jtbl)
-{
-	if (!jtbl || jtbl.size() == 0 || !jtbl.hasClass("datagrid-f")) {
-		console.error("bad datagrid: ", jtbl);
-		throw "getObjFromJtbl error: bad datagrid.";
-	}
-	var url = jtbl.datagrid("options").url;
-	var m = url.match(/\w+(?=\.query\b)/);
-	return m && m[0];
-}
-
 $.extend(self.dg_toolbar, {
 	"import": function (ctx) {
 		return {text: "导入", "wui-perm": "新增", iconCls:'icon-add', handler: function () {
-			var obj = getObjFromJtbl(ctx.jtbl);
-			self.assert(obj, "dg_toolbar.import: 对象未指定，无法导入");
-			self.assert(DlgImport, "DlgImport未定义");
-			DlgImport.show({obj: obj}, function () {
-				WUI.reload(ctx.jtbl);
-			});
+			self.GridHeaderMenu['import'](ctx.jtbl);
 		}};
 	},
 
@@ -3127,15 +3111,24 @@ WUI.GridHeaderMenu.showObjLog = function (jtbl) {
 	var row = WUI.getRow(jtbl);
 	if (!row)
 		return;
-	var datagrid = WUI.isTreegrid(jtbl)? "treegrid": "datagrid";
-	var url = jtbl[datagrid]("options").url;
-	if (! (url && url.action))
+
+	var dg = WUI.getDgInfo(jtbl, {selArr: null});
+	if (! dg.obj) {
+		app_alert("该数据表不支持查看日志", "w");
 		return;
-	var obj = url.action.split('.')[0]; // "XX.query" => "XX"
+	}
+	var obj = dg.obj;
+	var objId = null;
+	if (dg.selArr.length == 1) {
+		objId = row.id;
+	}
+	else {
+		objId = "IN " + dg.selArr.map(function (e) {
+			return e.id;
+		}).join(',');
+	}
 
-//	var param = WUI.getQueryParamFromTable(jtbl);
-
-	var param = {cond: {obj: obj, objId: row.id}}
+	var param = {cond: {obj: obj, objId: objId}}
 	WUI.showPage("pageObjLog", "操作日志-" + obj + "!", [{jtblSrc: jtbl}, param]);
 };
 

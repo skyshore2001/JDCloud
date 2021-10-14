@@ -569,6 +569,10 @@ cond参数可以同时在URL参数和POST参数中指定，支持字符串、数
 		{b:"!null", d:"!empty"]
 		生成 "b IS NOT NULL" AND d<>''"
 
+		支持IN和NOT IN:
+		{id: "IN 100,101", status: "NOT IN CA,XX"}
+		生成"id IN (1,2,3) AND status NOT IN ('CR','XX')"。注意：如果是id字段（如id, empId, empId2都是id字段），且值都是数值则不对值加引号。
+
 	可用AND或OR连接多个条件，但不可加括号嵌套：
 
 		{tm: ">=2020-1-1 AND <2020-2-1", tm2: "<2020-1-1 OR >=2020-2-1"}
