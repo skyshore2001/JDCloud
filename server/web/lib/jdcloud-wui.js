@@ -8983,7 +8983,7 @@ var GridHeaderMenu = {
 	'import': function (jtbl) {
 		var param = self.getDgInfo(jtbl);
 		if (!param.obj) {
-			app_alert("非对象表，不支持导入");
+			app_alert("该数据表不支持导入", "w");
 			return;
 		}
 		DlgImport.show({obj: param.obj}, function () {
