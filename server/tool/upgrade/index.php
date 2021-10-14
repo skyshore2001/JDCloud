@@ -1,7 +1,6 @@
 <?php
 
 chdir(__DIR__);
-$GLOBALS["noExecApi"] = true;
 require_once("../../api.php");
 
 function upgrade()

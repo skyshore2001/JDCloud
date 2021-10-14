@@ -1,9 +1,10 @@
 <?php
 
 ###### config {{{
-global $LOGF, $CHAR_SZ, $SQLDIFF;
+global $LOGF, $CHAR_SZ, $SQLDIFF, $DBTYPE;
 
 $LOGF = "upgrade.log";
+$DBTYPE = getenv("P_DBTYPE") ?: "mysql";
 
 $CHAR_SZ = [
 	's' => 20,
