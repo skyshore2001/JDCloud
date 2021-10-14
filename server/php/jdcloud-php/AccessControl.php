@@ -1502,16 +1502,16 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 			return;
 		$this->afterIsCalled = true;
 
+		if ($this->enableObjLog && array_key_exists($this->ac, self::$objLogAcMap)) {
+			ApiLog::addObjLog($this->table, $this->id, self::$objLogAcMap[$this->ac]);
+		}
+
 		$this->onAfter($ret);
 
 		foreach ($this->onAfterActions as $fn)
 		{
 			# NOTE: php does not allow call $this->onAfterActions();
 			$fn($ret);
-		}
-
-		if ($this->enableObjLog && array_key_exists($this->ac, self::$objLogAcMap)) {
-			ApiLog::addObjLog($this->table, $this->id, self::$objLogAcMap[$this->ac]);
 		}
 	}
 
@@ -2206,13 +2206,17 @@ uniKey可以指定多个字段，以逗号分隔即可，常用于关联表，�
 		}
 		$this->handleSubObjForAddSet();
 		$this->id = dbInsert($this->table, $_POST);
+		$ret = $this->id;
+		$this->after($ret); // bugfix: 子表添加是在after中执行的，先执行after以免下面指定res查不出子表
 
 		$res = param("res");
 		if (isset($res)) {
-			$ret = $this->callSvc(null, "get", ["id"=>$this->id, "res"=>$res]);
-		}
-		else {
-			$ret = $this->id;
+			$get = ["id" => $this->id, "res"=>$res];
+			foreach ($_GET as $k=>$v) {
+				if (startsWith($k, "res_") || startsWith($k, "param_"))
+					$get[$k] = $v;
+			}
+			$ret = $this->callSvc(null, "get", $get);
 		}
 		return $ret;
 	}
@@ -2396,6 +2400,10 @@ uniKey可以指定多个字段，以逗号分隔即可，常用于关联表，�
 					}
 					foreach ($subobjList as $subobj) {
 						$subid = $subobj["id"];
+						if ($subid && $this->ac == "add") {
+							$subid = null;
+							unset($subobj["id"]);
+						}
 						if ($subid) {
 							/*
 							$fatherId = queryOne("SELECT $relatedKey FROM $objName WHERE id=$subid");
