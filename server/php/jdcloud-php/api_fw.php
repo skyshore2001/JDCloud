@@ -2387,17 +2387,20 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 				$retVal[] = [E_PARAM, "参数错误", "bad batch request: require `ac'"];
 				continue;
 			}
-			$this->ac1 = $call["ac"];
-			$acList[] = $call["ac"];
-
 			$this->_GET = BatchUtil::getParams($call, "get", $retVal);
 			$this->_POST = BatchUtil::getParams($call, "post", $retVal);
+
+			$this->ac1 = $this->parseRestfulUrl('/' . $call["ac"], empty($call["post"])?"GET":"POST");
+			Conf::onApiInit($this->ac1);
+
+			$acList[] = $this->ac1;
+
 			if ($this->apiLog) {
 				$this->apiLog->logBefore1();
 			}
 
 			// 如果batch使用trans, 则单次调用不用trans
-			$rv = $this->callSvcSafe($call["ac"], !$useTrans);
+			$rv = $this->callSvcSafe($this->ac1, !$useTrans);
 
 			$retCode = $rv[0];
 			$retVal[] = $rv;
@@ -2501,9 +2504,10 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 	}
 
 	// return: $ac
-	private function parseRestfulUrl($pathInfo)
+	private function parseRestfulUrl($pathInfo, $method=null)
 	{
-		$method = $this->_SERVER("REQUEST_METHOD");
+		if ($method === null)
+			$method = $this->_SERVER("REQUEST_METHOD");
 		$ac = htmlEscape(substr($pathInfo,1));
 		// POST /login  (小写开头)
 		// GET/POST /Store.add (含.)
