@@ -1819,6 +1819,9 @@ function createFindMenu(jtbl)
 		}
 
 - opt.readonly: 默认为false, 设置为true则在主表添加之后，不可对子表进行添加、更新或删除。
+	如果所属对话框是只读，则即使未设置opt.readonly，也会与只读模式一样，这时数据表上方工具栏是不显示的；如果要显示工具栏可以参考这样：
+
+		jdlg.find(".datagrid .datagrid-toolbar").show();
 
 - opt.objParam: 关联的明细对象对话框的初始参数, 对应dialogOpt.objParam. 例如有 offline, onCrud()等选项. 
 @see objParam
@@ -2167,7 +2170,8 @@ function enhanceSubobj(jo)
 			}
 			else if (formMode == FormMode.forSet) {
 				setObjParam(jdlg1.objParam, formData);
-				jdlg1.objParam.readonly = opt.readonly;
+				var readonly = opt.readonly || jdlg.hasClass("wui-readonly");
+				jdlg1.objParam.readonly = readonly;
 				jtbl.jdata().toolbar = opt.toolbar;  // 允许所有
 				var dgOpt = $.extend({
 					toolbar: WUI.dg_toolbar(jtbl, jdlg1),
@@ -2177,7 +2181,7 @@ function enhanceSubobj(jo)
 				jtbl[datagrid](dgOpt);
 
 				// 隐藏子表工具栏，不允许操作（但可以双击一行查看明细，会设置这时子对话框只读）
-				jtbl.closest(".datagrid").find(".datagrid-toolbar").toggle(!opt.readonly);
+				jtbl.closest(".datagrid").find(".datagrid-toolbar").toggle(!readonly);
 			}
 		}
 		else {

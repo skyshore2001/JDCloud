@@ -901,6 +901,8 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 
 设置是否为只读对话框只要加上该类：
 
+	jdlg.addClass("wui-readonly");
+	jdlg.removeClass("wui-readonly");
 	jdlg.toggleClass("wui-readonly", isReadonly);
 
 只读对话框不可输入(在style.css中设定pointer-events为none)，点击确定按钮后直接关闭。
@@ -6760,7 +6762,8 @@ function showDlg(jdlg, opt)
 	}
 	jdlg.dialog(dlgOpt);
 	var perm = jdlg.attr("wui-perm") || jdlg.dialog("options").title;
-	jdlg.toggleClass("wui-readonly", (opt.objParam && opt.objParam.readonly) || !self.canDo(perm, "对话框"));
+	if (! jdlg.hasClass("wui-readonly"))
+		jdlg.toggleClass("wui-readonly", (opt.objParam && opt.objParam.readonly) || !self.canDo(perm, "对话框"));
 
 	jdlg.okCancel(fnOk, opt.noCancel? undefined: fnCancel);
 
@@ -7508,7 +7511,7 @@ function canDo(topic, cmd, defaultVal)
 	rv = g_data.permSet[topic + ".只读"];
 	if (rv === undefined)
 		rv = g_data.permSet["只读"];
-	if (rv && (cmd == "新增" || cmd == "修改" || cmd == "删除" || cmd == "导出" || cmd == "对话框")) {
+	if (rv && (cmd == "新增" || cmd == "修改" || cmd == "删除" || cmd == "导入" || cmd == "对话框")) {
 		return false;
 	}
 
