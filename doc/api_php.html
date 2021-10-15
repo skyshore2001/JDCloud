@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2021-10-12</div>
+<div>最后更新：2021-10-15</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -216,8 +216,8 @@ code {
 <p><a href="#jsonEncode">jsonEncode (fn)</a></p>
 <p><a href="#list2varr">list2varr (fn)</a></p>
 <p><a href="#logext">logext (fn)</a></p>
-<p><a href="#logit">logit (fn)</a></p>
 <p><a href="#logit">logit (alias)</a></p>
+<p><a href="#logit">logit (fn)</a></p>
 <p><a href="#makeTree">makeTree (fn)</a></p>
 <p><a href="#makeUrl">makeUrl (fn)</a></p>
 <p><a href="#mh">mh (fn)</a></p>
@@ -240,6 +240,7 @@ code {
 <p><a href="#rc4">rc4 (fn)</a></p>
 <p><a href="#readBlock">readBlock (fn)</a></p>
 <p><a href="#readBlock2">readBlock2 (fn)</a></p>
+<p><a href="#setParam">setParam (fn)</a></p>
 <p><a href="#startsWith">startsWith (fn)</a></p>
 <p><a href="#table2objarr">table2objarr (fn)</a></p>
 <p><a href="#tableCRUD">tableCRUD (fn)</a></p>
@@ -307,7 +308,9 @@ jdRet(E_PARAM, "bad param", "参数错"); // 第3参数是给用户看的错误�
 // 返回 [1, "参数错", "bad param"] 注意最终输出JSON数组中第2、3参数顺序对调了，以符合筋斗云[code, data, debuginfo...]的格式。</code></pre>
 <p>(v6) 几种特殊用法</p>
 <p>自定义返回：(code传null)</p>
-<pre><code>jdRet(null, '{"code": 0, "msg": "hello"}');
+<pre><code>jdRet(null, ["code" =&gt; 0, "msg" =&gt; "hello"]);
+或
+jdRet(null, '{"code": 0, "msg": "hello"}');
 // 返回`{"code": 0, "msg": "hello"}`，注意不是标准筋斗云返回格式。</code></pre>
 <p>直接返回已有的JSON串:</p>
 <pre><code>$str = '{"id": 100}';
@@ -936,7 +939,7 @@ $snLog1 = varr2objarr($snLog1, ["snId"]); // [ ["snId"=&gt;10], ["snId"=&gt;11],
 <h2 id="param">@fn param($name, $defVal?, $col?, $doHtmlEscape=true, $env = null)</h2>
 <p class="param"><strong>@param $col:</strong>  默认先取$_GET再取$_POST，"G" - 从$_GET中取; "P" - 从$_POST中取</p>
 <p>$col也可以直接指定一个集合，如</p>
-<pre><code>param($name, $defVal, $_REQUEST)</code></pre>
+<pre><code>param($name, $defVal, $param)</code></pre>
 <p>获取名为$name的参数。<br />
 $name中可以指定类型，返回值根据类型确定。如果该参数未定义或是空串，直接返回缺省值$defVal。</p>
 <p>$name中指定类型的方式如下：</p>
@@ -1164,6 +1167,10 @@ $this-&gt;outOfBin($_POST);</code></pre></div>
 ["id"=&gt;"&lt;100", "tm"=&gt;"&gt;2020-1-1", "status"=&gt;"!CR", "name"=&gt;"~wang%", "dscr"=&gt;"~aaa", "dscr2"=&gt;"!~aaa"]
 生成 "id&lt;100 AND tm&gt;'2020-1-1" AND status&lt;&gt;'CR' AND name LIKE 'wang%' AND dscr LIKE '%aaa%' AND dscr2 NOT LIKE '%aaa%'"
 like用于字符串匹配，字符串中用"%"或"*"表示通配符，如果不存在通配符，则表示包含该串(即生成'%xxx%')
+
+支持IN和NOT IN:
+["id"=&gt;"IN 100,101", "status"=&gt;"NOT IN CA,XX"]
+生成"id IN (1,2,3) AND status NOT IN ('CR','XX')"
 
 ["b"=&gt;"!null", "d"=&gt;"!empty"]
 生成 "b IS NOT NULL" AND d&lt;&gt;''"</code></pre>
@@ -2276,8 +2283,6 @@ $file为插件主文件，可返回一个插件配置。如果未指定，则自
 <div class="block">
 <h2 id="tableCRUD">@fn tableCRUD($ac, $tbl, $asAdmin?=false)</h2>
 <p>(v5.4)本函数仅做兼容使用，请用<code>callSvcInt</code>或<code>AccessControl::callSvc</code>方法替代。</p>
-<p>对象型接口的入口。<br />
-也可直接被调用，常与setParam一起使用, 提供一些定制的操作。</p>
 <p class="param"><strong>@param $asAdmin</strong>  默认根据用户身份自动选择"AC_"类; 如果为true, 则以超级管理员身份调用，即使用"AC0_"类。</p>
 <p>设置$asAdmin=true好处是对于超级管理员权限来说，即使未定义&quot;AC0_&quot;类，默认也可以访问所有内容。</p>
 <p>假如有Rating（订单评价）对象，不想通过对象型接口来查询，而是通过函数型接口来定制输出，接口设计为：</p>
@@ -2321,9 +2326,11 @@ v5.4后建议这样实现：</p>
     ]);
     return $ret;
 }</code></pre>
-<p class="see"><strong>@see <a href="#setParam">setParam</a></strong> </p>
 <p class="see"><strong>@see <a href="#callSvcInt">callSvcInt</a></strong> </p>
 <p class="see"><strong>@see <a href="#callSvc">callSvc</a></strong> </p></div>
+<div class="block">
+<h2 id="setParam">@fn setParam($k, $v)</h2>
+<p>(v6) 已废弃。只用于兼容。用$_GET[$k]=$v替代。</p></div>
 <div class="block">
 <h2 id="callSvcInt">@fn callSvcInt($ac, $param=null, $postParam=null, $useTmpEnv=true)</h2>
 <p>内部调用另一接口，获得返回值。<br />
@@ -3326,6 +3333,7 @@ $this-&gt;enumFields["faultRate"] = function($v, $row) {
 <pre><code>Ordr.query(res="id, status =CR:Created;CA:Cancelled")
 或指定alias:
 Ordr.query(res="id 编号, status 状态=CR:Created;CA:Cancelled")</code></pre>
+<p>也可定义空值(null)或空串(&quot;&quot;)的显示，如: <code>status =CR:新创建;CA:已取消;:(null)</code>，表示将空值显示为<code>(null)</code>。</p>
 <p>(版本5.1)<br />
 设置enumFields也支持逗号分隔的枚举列表，比如字段值为&quot;CR,CA&quot;，实际可返回&quot;Created,Cancelled&quot;。</p>
 <p>(v5.2) 导出文件时，处理字段格式</p>
@@ -3419,11 +3427,10 @@ Coupon.add()(userPhone, ...) -&gt; {cnt, idList}</code></pre>
                 $postParam = array_merge($_POST, ["userPhone"=&gt;trim($e)]);
                 $idList[] = $this-&gt;callSvc(null, "add", null, $postParam);
             }
-            setRet(0, [
+            jdRet(0, [
                 "cnt"=&gt;count($idList),
                 "idList"=&gt;$idList
             ]);
-            throw new DirectReturn();
         }
     }
     return parent::api_add();

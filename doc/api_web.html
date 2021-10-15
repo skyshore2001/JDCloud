@@ -40,13 +40,14 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2021-10-12</div>
+<div>最后更新：2021-10-15</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
 <p><a href="#WUI">WUI (module)</a></p>
 <p><a href="#jquery-mycombobox">jquery-mycombobox (module)</a></p>
 <p><a href="#JdcloudExt">JdcloudExt (module)</a></p>
+<p><a href="#ObjLog">ObjLog (module)</a></p>
 <p><a href="#JdcloudStat">JdcloudStat (module)</a></p>
 <p><a href="#pageSimple">pageSimple (module)</a></p>
 <p><a href="#dlgReportCond">dlgReportCond (module)</a></p>
@@ -94,10 +95,13 @@ code {
 <p><a href="#Formatter.flag">Formatter.flag (fn)</a></p>
 <p><a href="#Formatter.pics">Formatter.pics (fn)</a></p>
 <p><a href="#Formatter.pics1">Formatter.pics1 (fn)</a></p>
+<p><a href="#Formatter.progress">Formatter.progress (fn)</a></p>
+<p><a href="#GridHeaderMenu">GridHeaderMenu (var)</a></p>
 <p><a href="#JdcloudExt">JdcloudExt (module)</a></p>
 <p><a href="#JdcloudStat">JdcloudStat (module)</a></p>
 <p><a href="#JdcloudStat.tmUnit">JdcloudStat.tmUnit (key)</a></p>
 <p><a href="#ListOptions">ListOptions (var)</a></p>
+<p><a href="#ObjLog">ObjLog (module)</a></p>
 <p><a href="#Plugins">Plugins (class)</a></p>
 <p><a href="#Plugins.exists">Plugins.exists (fn)</a></p>
 <p><a href="#Plugins.list">Plugins.list (fn)</a></p>
@@ -187,6 +191,7 @@ code {
 <p><a href="#getBaseUrl">getBaseUrl (fn)</a></p>
 <p><a href="#getCookie">getCookie (fn)</a></p>
 <p><a href="#getDataOptions">getDataOptions (fn)</a></p>
+<p><a href="#getDgInfo">getDgInfo (fn)</a></p>
 <p><a href="#getExportHandler">getExportHandler (fn)</a></p>
 <p><a href="#getFormData">getFormData (fn)</a></p>
 <p><a href="#getFormData_vf">getFormData_vf (fn)</a></p>
@@ -1034,8 +1039,19 @@ jdlg.objParam = {type: type, obj: obj};
 <p>(v5.1)</p>
 <p class="key"><strong>@key <a id=".wui-readonly">.wui-readonly</a></strong>  只读对话框类名</p>
 <p>设置是否为只读对话框只要加上该类：</p>
-<pre><code>jdlg.toggleClass("wui-readonly", isReadonly);</code></pre>
+<pre><code>jdlg.addClass("wui-readonly");
+jdlg.removeClass("wui-readonly");
+jdlg.toggleClass("wui-readonly", isReadonly);</code></pre>
 <p>只读对话框不可输入(在style.css中设定pointer-events为none)，点击确定按钮后直接关闭。</p>
+<p>注意：在dialog beforeshow事件中，不应直接设置wui-readonly类，因为框架之后会自动设置，导致前面设置无效。正确做法是设置<code>opt.objParam.readonly=true</code>，示例：</p>
+<pre><code>jdlg.on("beforeshow", onBeforeShow);
+function onBeforeShow(ev, formMode, opt)
+{
+    var objParam = opt.objParam;
+    var ro = (formMode == FormMode.forSet &amp;&amp; !!opt.data.usedFlag);
+    // beforeshow中设置对话框只读
+    objParam.readonly = ro;
+}</code></pre>
 <h5 id="WUI-2.6 只读字段：使用disabled和readonly属性">2.6 只读字段：使用disabled和readonly属性</h5>
 <ul>
 <li>
@@ -3154,19 +3170,23 @@ WUI.reloadDialog(true); // 重置所有外部加载的对话框(v5.1)</code></pr
 <li>由于不知道打开对话框的参数，reloadDialog无法重新打开对话框，因而它的行为与unloadDialog一样。</li>
 </ul></div>
 <div class="block">
-<h2 id="canDo">@fn canDo(topic, cmd=null, defaultVal=true)</h2><div class="toc"><p style="margin-left:0em"><a href="#canDo-1 关于页面与对话框">1 关于页面与对话框</a></p>
+<h2 id="canDo">@fn canDo(topic, cmd=null, defaultVal=null)</h2><div class="toc"><p style="margin-left:0em"><a href="#canDo-1 关于页面与对话框">1 关于页面与对话框</a></p>
 </div>
 <p>权限检查回调，支持以下场景：</p>
 <ol>
 <li>
 <p>页面上的操作（按钮）</p>
-<p>canDo(页面标题, 按钮标题, true);// 返回false则不显示该按钮</p>
+<p>canDo(页面标题, 按钮标题);// 返回false则不显示该按钮</p>
 </li>
 <li>
 <p>对话框上的操作</p>
-<p>canDo(对话框标题, &quot;对话框&quot;, true); // 返回false表示对话框只读</p>
+<p>canDo(对话框标题, &quot;对话框&quot;); // 返回false表示对话框只读<br />
+canDo(对话框标题, 按钮标题); // 返回false则不显示该按钮</p>
 </li>
 </ol>
+<p>特别地：如果对话框或页面上有wui-readonly类，则：</p>
+<pre><code>canDo("只读对象", 按钮标题); // 返回false则不显示该按钮</code></pre>
+<p>topic可理解为数据对象（页面、对话框对应的数据模型），cmd可理解为操作（增加、修改、删除、只读等，常常是工具栏按钮）。</p>
 <p>TODO:通过设置 WUI.options.canDo(topic, cmd) 可扩展定制权限。</p>
 <p>默认情况下，所有菜单不显示，其它操作均允许。<br />
 如果指定了&quot;*&quot;权限，则显示所有菜单。<br />
@@ -3354,7 +3374,8 @@ jtbl.datagrid(dgOpt);</code></pre>
     });
 }};</code></pre>
 <p>支持定义扩展，比如importOrdr:</p>
-<pre><code>// ctx = {jtbl, jpage, jdlg} // 注意jdlg在调用时可能尚未初始化，可以访问 jdlg.selector和jdlg.objParam等。
+<pre><code>// ctx = {jtbl, jp, jdlg} // jp是jpage或jdlg，为上一层容器。jdlg是表格关联的对话框，
+// 注意jdlg在调用时可能尚未初始化，可以访问 jdlg.selector和jdlg.objParam等。
 dg_toolbar.importOrdr = function (ctx) {
     return {text: "导入", "wui-perm": "新增", iconCls:'icon-ok', handler: function () {
         DlgImport.show({obj: "Ordr"}, function () {
@@ -3407,6 +3428,26 @@ var btnExport = {text:'导出', iconCls:'icon-save', handler: WUI.getExportHandl
 如title是&quot;检测记录报表&quot;, queryParam为&quot;tm&gt;='2020-1-1' and tm&lt;='2020-7-1&quot;，则生成文件名fname=&quot;检测记录报表-2020-1-1-2020-7-1&quot;.</p>
 <p class="see"><strong>@see <a href="#getExportHandler">getExportHandler</a></strong>  导出Excel</p></div>
 <div class="block">
+<h2 id="getDgInfo">@fn getDgInfo(jtbl, res?) -> { opt, isTreegrid, datagrid, url, param, ac, obj, sel?, selArr?, res? }</h2>
+<p>取datagrid关联信息. 返回字段标记?的须显式指定，如：</p>
+<pre><code>var dg = WUI.getDgInfo(jtbl); // {opt, url, ...}
+var dg = WUI.getDgInfo(jtbl, {res: null}); // 多返回res字段
+var data = jtbl[dg.datagrid]("getData"); // 相当于jtbl.datagrid(...), 但兼容treegrid调用。</code></pre>
+<ul>
+<li>opt: 数据表option</li>
+<li>url: 关联的查询URL</li>
+<li>param: 额外查询参数</li>
+<li>ac: 关联的后端接口，比如&quot;Ordr.query&quot;</li>
+<li>obj: 关联的对象，比如&quot;Ordr&quot;</li>
+<li>isTreegrid: 是否为treegrid</li>
+<li>
+<p>datagrid: &quot;datagrid&quot;或&quot;treegrid&quot;</p>
+</li>
+<li>sel: 当前选中行的数据，无选中时为null</li>
+<li>selArr: 当前所有所中行的数据数据，无选中时为[]</li>
+<li>res: 字段信息，{ field =&gt; {field, title, jdEnumMap?} }</li>
+</ul></div>
+<div class="block">
 <h2 id="Formatter.atts">@fn Formatter.atts</h2>
 <p>列表中显示附件（支持多个）, 每个附件一个链接，点击后可下载该附件。（使用服务端att接口）</p></div>
 <div class="block">
@@ -3452,6 +3493,10 @@ var btnExport = {text:'导出', iconCls:'icon-save', handler: WUI.getExportHandl
 <p>每个键是个表达式（其实是个函数），特殊变量v和row分别表示当前列值和当前行。缺省值可通过defaultColor传入。</p>
 <p class="see"><strong>@see <a href="#Formatter.enumStyler">Formatter.enumStyler</a></strong> </p></div>
 <div class="block">
+<h2 id="Formatter.progress">@fn Formatter.progress</h2>
+<p>以进度条方式显示百分比，传入数值value为[0,1]间小数：</p>
+<pre><code>&lt;th data-options="field:'progress', formatter: Formatter.progress"&gt;工单进度&lt;/th&gt;</code></pre></div>
+<div class="block">
 <h2 id="formatter">@var formatter = {dt, number, pics, flag(yes?=是,no?=否), enum(enumMap), linkTo(field, dlgRef, showId?=false) }</h2>
 <p>常常应用定义Formatter变量来扩展WUI.formatter，如</p>
 <pre><code>var Formatter = {
@@ -3491,6 +3536,18 @@ jtbl.datagrid(dgOpt);</code></pre>
 <div class="block">
 <h2 id=".noData">@key .noData</h2>
 <p>CSS类, 可定义无数据提示的样式</p></div>
+<div class="block">
+<h2 id="GridHeaderMenu">@var GridHeaderMenu</h2>
+<p>表头左上角右键菜单功能。</p>
+<p>扩展示例：</p>
+<pre><code>WUI.GridHeaderMenu.items.push('&lt;div id="showObjLog"&gt;操作日志&lt;/div&gt;');
+WUI.GridHeaderMenu.showObjLog = function (jtbl) {
+    var row = WUI.getRow(jtbl);
+    if (!row)
+        return;
+    ...
+    WUI.showPage("pageObjLog", "操作日志!", [null, param]);
+};</code></pre></div>
 <div class="block">
 <h2 id="showDlgQuery">@fn showDlgQuery(data?={ac, param})</h2></div>
 <div class="block">
@@ -5023,6 +5080,23 @@ WUI.showDlgChart(callSvr("Ordr.query", {
     type: 'bar',
 });</code></pre></div>
 <div class="block">
+<h2 id="ObjLog">@module ObjLog 操作日志</h2>
+<p>系统默认会记录操作日志ObjLog，可在管理端展示：</p>
+<ul>
+<li>
+<p>菜单：系统设置-操作日志，结合查询框查找</p>
+<pre><code>&lt;a href="#pageObjLog"&gt;操作日志&lt;/a&gt;</code></pre>
+</li>
+<li>表中选中任一记录，在表头右键菜单中，可查看该记录关联的操作日志。</li>
+<li>
+<p>可添加“日志”菜单到工具栏，按钮名为&quot;objLog&quot;：</p>
+<pre><code>jtbl.datagrid({
+    ...
+    toolbar: WUI.dg_toolbar(jtbl, jdlg, ..., 'objLog');
+});</code></pre>
+</li>
+</ul></div>
+<div class="block">
 <h2 id="JdcloudStat">@module JdcloudStat</h2>
 <p>按日期进行数据分析统计</p>
 <p class="see"><strong>@see <a href="#initPageStat">initPageStat</a></strong> </p></div>
@@ -5673,6 +5747,7 @@ callSvr("ApiLog.query", function (data) {
 <h2 id="pageSimple">@module pageSimple</h2><div class="toc"><p style="margin-left:0em"><a href="#pageSimple-1 示例1：列表页上加查看报表按钮">1 示例1：列表页上加查看报表按钮</a></p>
 <p style="margin-left:0em"><a href="#pageSimple-2 示例2：先弹出查询条件对话框，设置后再显示报表">2 示例2：先弹出查询条件对话框，设置后再显示报表</a></p>
 <p style="margin-left:0em"><a href="#pageSimple-3 示例3：菜单上增加报表，且定制报表列实现交互">3 示例3：菜单上增加报表，且定制报表列实现交互</a></p>
+<p style="margin-left:0em"><a href="#pageSimple-4 辅助列">4 辅助列</a></p>
 </div>
 <p>用于快捷展示报表。</p>
 <h4 id="pageSimple-1 示例1：列表页上加查看报表按钮">1 示例1：列表页上加查看报表按钮</h4>
@@ -5760,7 +5835,21 @@ function onInitGrid(jpage, jtbl, dgOpt, columns, data)
             WUI.showPage("pageSn", "工件-工单" + orderId, [ objParam ]);
         });
     }
-}</code></pre></div>
+}</code></pre>
+<h4 id="pageSimple-4 辅助列">4 辅助列</h4>
+<p>以下划线结尾的列不显示，也不导出。</p>
+<p>示例：显示工艺并可点击打开工艺对话框。</p>
+<pre><code>var url = WUI.makeUrl("Ordr.query", { res: 'id 工单号, flowId flowId_, flowName 工艺' });
+WUI.showPage("pageSimple", "工单工时统计!", [url, null, onInitGrid]);
+
+function onInitGrid(jpage, jtbl, dgOpt, columns, data)
+{
+    $.each(columns, function (i, col) {
+        if (col.field == "工艺")
+            col.formatter = Formatter.linkTo("flowId_", "#dlgFlow");
+    });
+}</code></pre>
+<p>上面flowId字段只用于链接，不显示，也不会导出。</p></div>
 <div class="block">
 <h2 id="dlgReportCond">@module dlgReportCond</h2>
 <pre><code>DlgReportCond.show(onOk, meta?, inst?);</code></pre>
