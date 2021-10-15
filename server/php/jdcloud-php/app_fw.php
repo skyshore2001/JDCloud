@@ -274,7 +274,7 @@ function param_varr($str, $type, $name)
 @param $col: 默认先取$_GET再取$_POST，"G" - 从$_GET中取; "P" - 从$_POST中取
 $col也可以直接指定一个集合，如
 
-	param($name, $defVal, $_REQUEST)
+	param($name, $defVal, $param)
 
 获取名为$name的参数。
 $name中可以指定类型，返回值根据类型确定。如果该参数未定义或是空串，直接返回缺省值$defVal。

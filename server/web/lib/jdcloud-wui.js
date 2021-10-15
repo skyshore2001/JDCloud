@@ -3747,8 +3747,13 @@ $.Deferred = function () {
 // 返回筋斗云后端query接口可接受的cond条件。可能会修改cond(如果它是数组)
 function appendCond(cond, cond1)
 {
-	if (!cond)
+	if (!cond) {
+		if ($.isArray(cond1))
+			return $.extend(true, [], cond1);
+		if ($.isPlainObject(cond1))
+			return $.extend(true, {}, cond1);
 		return cond1;
+	}
 	if (!cond1)
 		return cond;
 
@@ -6286,8 +6291,8 @@ function showPage(pageName, title, paramArr)
 	}
 }
 
-// (target?={}, ignoreQueryParam?=false)  返回target或新对象，可任意修改。
-function getDgFilter(jtbl, target, ignoreQueryParam)
+// (param?, ignoreQueryParam?=false)  param优先级最高，会返回新对象，不改变param 
+function getDgFilter(jtbl, param, ignoreQueryParam)
 {
 	var p1, p2;
 	var p3 = getPageFilter(jtbl.closest(".wui-page"));
@@ -6301,9 +6306,7 @@ function getDgFilter(jtbl, target, ignoreQueryParam)
 		var p1 = dgOpt.url && dgOpt.url.params;
 		var p2 = !ignoreQueryParam && dgOpt.queryParams;
 	}
-	if (!target)
-		target = {};
-	return self.extendQueryParam(target, p1, p2, p3);
+	return self.extendQueryParam({}, p1, p2, p3, param);
 }
 
 // 取页面的过滤参数，由框架自动处理：PAGE_FILTER. 返回showPage原始过滤参数或null。注意不要修改它。
@@ -8389,7 +8392,7 @@ function getQueryParamFromTable(jtbl, param)
 	var datagrid = self.isTreegrid(jtbl)? "treegrid": "datagrid";
 	var opt = jtbl[datagrid]("options");
 
-	var param1 = getDgFilter(jtbl);
+	var param1 = getDgFilter(jtbl); // param单独处理而不是一起合并，因为如果param.cond非空，不是做合并而是覆盖
 	if (param != null) {
 		$.extend(param1, param); // 保留param中内容，不修改param
 	}
@@ -8407,22 +8410,21 @@ function getQueryParamFromTable(jtbl, param)
 			param1.orderby += " " + opt.sortOrder;
 	}
 	if (param.res === undefined) {
-		var res = '';
+		var resArr = [];
 		$.each([opt.frozenColumns[0], opt.columns[0]], function (idx0, cols) {
 			if (cols == null)
 				return;
 			$.each(cols, function (i, e) {
 				if (! e.field || e.field.substr(-1) == "_")
 					return;
-				if (res.length > 0)
-					res += ',';
-				res += e.field + " \"" + e.title + "\"";
+				var one = e.field + " \"" + e.title + "\"";
 				if (e.jdEnumMap) {
-					res += '=' + mCommon.kvList2Str(e.jdEnumMap, ';', ':');
+					one += '=' + mCommon.kvList2Str(e.jdEnumMap, ';', ':');
 				}
+				resArr.push(one);
 			});
 		});
-		param1.res = res;
+		param1.res = resArr.join(',');
 	}
 	if (param.fname === undefined) {
 		param1.fname = jtbl.prop("title") || jtbl.closest(".wui-page").prop("title");
@@ -8765,15 +8767,15 @@ function dgLoader(param, success, error)
 		return false;
 	var param1 = {};
 	for (var k in param) {
-	/* TODO: enable page param in interface obj.query, disable rows/page
 		if (k === "rows") {
 			param1.pagesz = param[k];
 		}
+	/*  param page is supported by jdcloud
 		else if (k === "page") {
 			param1.page = param[k];
 		}
 	*/
-		if (k === "sort") {
+		else if (k === "sort") {
 			param1.orderby = param.sort + " " + param.order;
 		}
 		else if (k === "order") {
@@ -8785,7 +8787,7 @@ function dgLoader(param, success, error)
 
 	// PAGE_FILTER 根据showPage参数自动对页面中的datagrid进行过滤: 
 	// WUI.showPage(pageName, title, [param1, {cond:cond}]) 
-	getDgFilter(jo, param1, true);
+	param1 = getDgFilter(jo, param1, true); // 设置ignoreQueryParam=true因为param1中已包含了queryParams，不忽略的话条件会重复
 
 	var dfd = self.callSvr(opts.url, param1, success);
 	dfd.fail(function () {

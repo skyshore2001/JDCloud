@@ -1610,14 +1610,14 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	private function supportEasyui()
 	{
 		$env = $this->env;
-		if (isset($_REQUEST["rows"])) {
-			$env->param("pagesz", $env->_GET["rows"]);
+		if (isset($env->_GET["rows"])) {
+			$env->_GET["pagesz"] = $env->_GET["rows"];
 		}
 		// support easyui: sort/order
-		if (isset($_REQUEST["sort"]))
+		if (isset($env->_GET["sort"]))
 		{
-			$orderby = $_REQUEST["sort"];
-			if (isset($_REQUEST["order"]))
+			$orderby = $env->_GET["sort"];
+			if (isset($env->_GET["order"]))
 				$orderby .= " " . $env->_GET["order"];
 			$this->sqlConf["orderby"] = $orderby;
 		}
