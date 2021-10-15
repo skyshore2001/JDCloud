@@ -2062,12 +2062,12 @@ class JDPDO extends PDO
 	}
 	function exec($sql, $getInsertId = false)
 	{
-		$logH = $this->addLog($sql);
+		$this->addLog($sql);
 		$rv = parent::exec($sql);
 		if ($getInsertId)
 			$rv = (int)parent::lastInsertId();
 
-		if ($logH)
+		if ($this->logH)
 			$this->amendLog($getInsertId? "new id=$rv": "cnt=$rv");
 		return $rv;
 	}
