@@ -907,6 +907,17 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 
 只读对话框不可输入(在style.css中设定pointer-events为none)，点击确定按钮后直接关闭。
 
+注意：在dialog beforeshow事件中，不应直接设置wui-readonly类，因为框架之后会自动设置，导致前面设置无效。正确做法是设置`opt.objParam.readonly=true`，示例：
+
+	jdlg.on("beforeshow", onBeforeShow);
+	function onBeforeShow(ev, formMode, opt)
+	{
+		var objParam = opt.objParam;
+		var ro = (formMode == FormMode.forSet && !!opt.data.usedFlag);
+		// beforeshow中设置对话框只读
+		objParam.readonly = ro;
+	}
+
 ### 只读字段：使用disabled和readonly属性
 
 - disabled：不可添加或更新该字段，但可查询（即forAdd/forSet模式下只显示不提交，forFind时可设置和提交)，例如编号字段、计算字段。示例：
@@ -6762,8 +6773,7 @@ function showDlg(jdlg, opt)
 	}
 	jdlg.dialog(dlgOpt);
 	var perm = jdlg.attr("wui-perm") || jdlg.dialog("options").title;
-	if (! jdlg.hasClass("wui-readonly"))
-		jdlg.toggleClass("wui-readonly", (opt.objParam && opt.objParam.readonly) || !self.canDo(perm, "对话框"));
+	jdlg.toggleClass("wui-readonly", (opt.objParam && opt.objParam.readonly) || !self.canDo(perm, "对话框"));
 
 	jdlg.okCancel(fnOk, opt.noCancel? undefined: fnCancel);
 
