@@ -107,6 +107,25 @@
 			});
 		}
 	}
+
+## 辅助列
+
+以下划线结尾的列不显示，也不导出。
+
+示例：显示工艺并可点击打开工艺对话框。
+
+	var url = WUI.makeUrl("Ordr.query", { res: 'id 工单号, flowId flowId_, flowName 工艺' });
+	WUI.showPage("pageSimple", "工单工时统计!", [url, null, onInitGrid]);
+
+	function onInitGrid(jpage, jtbl, dgOpt, columns, data)
+	{
+		$.each(columns, function (i, col) {
+			if (col.field == "工艺")
+				col.formatter = Formatter.linkTo("flowId_", "#dlgFlow");
+		});
+	}
+
+上面flowId字段只用于链接，不显示，也不会导出。
 */
 function initPageSimple(url, queryParams, onInitGrid)
 {
@@ -116,11 +135,13 @@ function initPageSimple(url, queryParams, onInitGrid)
 	WUI.assert(url.makeUrl, "url须由makeUrl生成");
 	jtbl.jdata().toolbar = "r";
 	// 这里未直接用"export"而是重新定义，是为了禁止WUI.getExportHandler自动生成res参数。
-	var btnExport = {text:'导出', iconCls:'icon-save', handler: WUI.getExportHandler(jtbl, null, {res: url.params.res || null}) };
+	var btnExport = {text:'导出', iconCls:'icon-save', handler: WUI.getExportHandler(jtbl, null, {res: filterRes(url.params.res)}) };
 
 	var url1 = WUI.makeUrl(url, queryParams);
 	callSvr(url1, function (data) {
 		var columns = $.map(data.h, function (e) {
+			if (e.substr(-1) == "_")
+				return;
 			return {field: e, title: e};
 		});
 		var pagesz = url.params && url.params.pagesz;
@@ -131,10 +152,24 @@ function initPageSimple(url, queryParams, onInitGrid)
 			toolbar: WUI.dg_toolbar(jtbl, null, btnExport),
 			quickAutoSize: true // WUI对easyui-datagrid的扩展属性，用于大量列时提升性能. 参考: jquery.easyui.min.js
 		};
+		if (pagesz && pagesz !== -1) {
+			dgOpt.pageSize = pagesz;
+			dgOpt.pageList = [pagesz];
+		}
 		onInitGrid && onInitGrid(jpage, jtbl, dgOpt, columns, data);
 		jtbl.datagrid(dgOpt);
 		var opt = jtbl.datagrid("options");
 		opt.url = url;
+		delete opt.data;
 		opt.queryParams = queryParams;
 	});
+
+	function filterRes(res) {
+		if (!res)
+			return null;
+		var arr = $.map(res.split(/\s*,\s*/), function (e) {
+			return e.substr(-1) != "_"? e: null;
+		});
+		return arr.join(',');
+	}
 }

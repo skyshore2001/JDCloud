@@ -7407,17 +7407,24 @@ function unloadDialog(jdlg)
 }
 
 /**
-@fn canDo(topic, cmd=null, defaultVal=true)
+@fn canDo(topic, cmd=null, defaultVal=null)
 
 权限检查回调，支持以下场景：
 
 1. 页面上的操作（按钮）
 
-	canDo(页面标题, 按钮标题, true);// 返回false则不显示该按钮
+	canDo(页面标题, 按钮标题);// 返回false则不显示该按钮
 
 2. 对话框上的操作
 
-	canDo(对话框标题, "对话框", true); // 返回false表示对话框只读
+	canDo(对话框标题, "对话框"); // 返回false表示对话框只读
+	canDo(对话框标题, 按钮标题); // 返回false则不显示该按钮
+
+特别地：如果对话框或页面上有wui-readonly类，则：
+
+	canDo("只读对象", 按钮标题); // 返回false则不显示该按钮
+
+topic可理解为数据对象（页面、对话框对应的数据模型），cmd可理解为操作（增加、修改、删除、只读等，常常是工具栏按钮）。
 
 TODO:通过设置 WUI.options.canDo(topic, cmd) 可扩展定制权限。
 
@@ -7504,7 +7511,7 @@ function canDo(topic, cmd, defaultVal)
 		return true;
 	self.assert(topic);
 
-	if (defaultVal === undefined)
+	if (defaultVal == null)
 		defaultVal = (g_data.permSet['*'] !== false);
 	if (cmd == null) {
 		var rv = g_data.permSet[topic];
@@ -7521,9 +7528,14 @@ function canDo(topic, cmd, defaultVal)
 	if (rv !== undefined)
 		return rv;
 
-	rv = g_data.permSet[topic + ".只读"];
-	if (rv === undefined)
-		rv = g_data.permSet["只读"];
+	if (topic != "只读对象") {
+		rv = g_data.permSet[topic + ".只读"];
+		if (rv === undefined)
+			rv = g_data.permSet["只读"];
+	}
+	else {
+		rv = true;
+	}
 	if (rv && (cmd == "新增" || cmd == "修改" || cmd == "删除" || cmd == "导入" || cmd == "对话框")) {
 		return false;
 	}
@@ -8151,7 +8163,8 @@ function showObjDlg(jdlg, mode, opt)
 
 支持定义扩展，比如importOrdr:
 
-	// ctx = {jtbl, jpage, jdlg} // 注意jdlg在调用时可能尚未初始化，可以访问 jdlg.selector和jdlg.objParam等。
+	// ctx = {jtbl, jp, jdlg} // jp是jpage或jdlg，为上一层容器。jdlg是表格关联的对话框，
+	// 注意jdlg在调用时可能尚未初始化，可以访问 jdlg.selector和jdlg.objParam等。
 	dg_toolbar.importOrdr = function (ctx) {
 		return {text: "导入", "wui-perm": "新增", iconCls:'icon-ok', handler: function () {
 			DlgImport.show({obj: "Ordr"}, function () {
@@ -8190,10 +8203,17 @@ function dg_toolbar(jtbl, jdlg)
 		btnSpecArr.push(arguments[i]);
 	}
 
-	// TODO: dialog上的button未考虑
-	var jpage = jtbl.closest(".wui-page");
-	var perm = jpage.attr("wui-perm") || jpage.attr("title");
-	var ctx = {jpage: jpage, jtbl: jtbl, jdlg: jdlg};
+	// 页面或对话框上的button
+	var jp = jtbl.closest(".wui-page");
+	if (jp.size() == 0)
+		jp = jtbl.closest(".wui-dialog");
+	var perm = jp.hasClass("wui-readonly")? "只读对象": (jp.attr("wui-perm") || jp.attr("title"));
+	if (!perm && jp.hasClass("wui-dialog")) {
+		var tmp = jp.dialog("options");
+		if (tmp)
+			perm = tmp.title;
+	}
+	var ctx = {jp: jp, jtbl: jtbl, jdlg: jdlg};
 	for (var i=0; i<btnSpecArr.length; ++i) {
 		var btn = btnSpecArr[i];
 		if (! btn)
@@ -8713,6 +8733,25 @@ var Formatter = {
 				showField? (row[field] + "-" + value): value;
 			return self.makeLinkTo(dlgRef, row[field], val);
 		}
+	},
+
+/**
+@fn Formatter.progress
+
+以进度条方式显示百分比，传入数值value为[0,1]间小数：
+
+	<th data-options="field:'progress', formatter: Formatter.progress">工单进度</th>
+
+ */
+	progress: function (value, row) {
+		if (! value)
+			return;
+		value = Math.ceil(value * 100);
+		var htmlstr = '<div class="easyui-progressbar progressbar" style="min-width: 100px;width: 100%; height: 20px;">'
+			+ '<div class="progressbar-value" style="width: ' + value + '%; height: 20px; line-height: 20px;"></div>'
+			+ '<div class="progressbar-text" style="width: ' + value + '%; top: 0;">' + value+ '%</div>'
+			+ '</div>';
+		return htmlstr;
 	}
 };
 

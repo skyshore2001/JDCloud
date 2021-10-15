@@ -1600,16 +1600,17 @@ $.extend(self.dg_toolbar, {
 	qsearch: function (ctx) {
 		var randCls = "qsearch-" + WUI.randChr(4); // 避免有多个qsearch组件时重名冲突
 		setTimeout(function () {
-			ctx.jpage.find(".qsearch." + randCls).click(function () {
+			ctx.jp.find(".qsearch." + randCls).click(function () {
 				return false;
 			});
-			ctx.jpage.find(".qsearch." + randCls).keydown(function (e) {
+			ctx.jp.find(".qsearch." + randCls).keydown(function (e) {
 				if (e.keyCode == 13) {
 					$(this).closest(".l-btn").click();
+					return false; // 避免触发对话框回车事件
 				}
 			});
 		});
-		return {text: "<input style='width:8em' class='qsearch " + randCls + "'>", iconAlign:'right', iconCls:'icon-search', handler: function () {
+		return {text: "<input style='width:8em' class='qsearch " + randCls + "'>", iconAlign:'right', iconCls:'icon-search', "wui-perm": "查询", handler: function () {
 			var val = $(this).find(".qsearch").val();
 			WUI.reload(ctx.jtbl, null, {q: val});
 		}};
@@ -1803,9 +1804,6 @@ function createFindMenu(jtbl)
 		}
 
 - opt.readonly: 默认为false, 设置为true则在主表添加之后，不可对子表进行添加、更新或删除。
-	如果所属对话框是只读，则即使未设置opt.readonly，也会与只读模式一样，这时数据表上方工具栏是不显示的；如果要显示工具栏可以参考这样：
-
-		jdlg.find(".datagrid .datagrid-toolbar").show();
 
 - opt.objParam: 关联的明细对象对话框的初始参数, 对应dialogOpt.objParam. 例如有 offline, onCrud()等选项. 
 @see objParam
@@ -2165,7 +2163,7 @@ function enhanceSubobj(jo)
 				jtbl[datagrid](dgOpt);
 
 				// 隐藏子表工具栏，不允许操作（但可以双击一行查看明细，会设置这时子对话框只读）
-				jtbl.closest(".datagrid").find(".datagrid-toolbar").toggle(!readonly);
+				//jtbl.closest(".datagrid").find(".datagrid-toolbar").toggle(!readonly);
 			}
 		}
 		else {
