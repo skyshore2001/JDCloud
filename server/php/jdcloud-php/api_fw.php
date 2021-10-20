@@ -1896,6 +1896,8 @@ function api_async($env) {
 	$f = $env->mparam("f", "G");
 	ApiLog::$instance->batchAc = "async:$f";
 	global $allowedAsyncCalls;
+	if (!$allowedAsyncCalls)
+		jdRet(E_SERVER, "global array allowedAsyncCalls no defined");
 	if (!($f && in_array($f, $allowedAsyncCalls) && function_exists($f)))
 		jdRet(E_PARAM, "bad async fn: $f");
 
