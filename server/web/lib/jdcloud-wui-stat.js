@@ -1171,11 +1171,11 @@ function initChart(chartTable, statData, seriesOpt, chartOpt)
 	return myChart;
 }
 
-$(window).on('resize.echart', function () {
+$(window).on('resize', function () {
 	$(".jd-echart").trigger("doResize");
 });
 // 对话框(wui-dialog)放缩时，框架已经处理让其发出"resize"事件
-$(document).on('resize.echart', '.panel-body', function (ev) {
+$(document).on('resize.dialog', '.panel-body', function (ev) {
 	$(ev.target).find(".jd-echart").trigger("doResize");
 });
 
