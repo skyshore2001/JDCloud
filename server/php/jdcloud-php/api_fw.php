@@ -2304,7 +2304,8 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			$debugLog = getenv("P_DEBUG_LOG") ?: 0;
 			if ($debugLog == 1 || ($debugLog == 2 && $ret[0] != 0)) {
 				$retStr = $isUserFmt? (is_scalar($ret[1])? $ret[1]: jsonEncode($ret[1])): jsonEncode($ret);
-				$s = 'ac=' . $ac . ($this->ac1? "(in batch)": "") . ', apiLogId=' . ApiLog::$lastId . ', ret=' . $retStr . ", dbgInfo=" . jsonEncode($this->dbgInfo, true);
+				$s = 'ac=' . $ac . ($this->ac1? "(in batch)": "") . ', apiLogId=' . ApiLog::$lastId . ', ret=' . $retStr . ", dbgInfo=" . jsonEncode($this->dbgInfo, true) .
+					"\ncallSvr(\"$ac\", " . jsonEncode($this->_GET) . (empty($this->_POST)? '': ', $.noop, ' . jsonEncode($this->_POST)) . ")";
 				logit($s, true, 'debug');
 			}
 		}
@@ -2883,6 +2884,8 @@ class JDApiBase
 		if (! is_callable([$this, $fn]))
 			jdRet(E_PARAM, "Bad request - unknown `$tbl` method: `$ac`", "接口不支持");
 
+		if (is_null($this->env))
+			$this->env = getJDEnv();
 		return $this->env->tmpEnv($param, $postParam, function () use ($tbl, $ac, $fn) {
 			return $this->onCallSvc($tbl, $ac, $fn);
 		}, $useTmpEnv);

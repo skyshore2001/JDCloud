@@ -36,7 +36,7 @@ input,select,textarea {
 	min-height: 30;
 }
 
-form>table:first-child td {
+form>table:first-child td, .wui-form-table td {
 	vertical-align: top;
 }
 
@@ -286,6 +286,10 @@ input:disabled,select:disabled,textarea:disabled {
 }
 
 /* 对话框中子表tabs的上间距 */
-.wui-dialog .easyui-tabs {
+.wui-dialog .easyui-tabs:not(:first-child) {
 	margin-top: 20px;
+}
+
+.wui-form-tab {
+	padding: 5px;
 }

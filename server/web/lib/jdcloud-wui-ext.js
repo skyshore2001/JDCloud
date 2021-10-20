@@ -1381,12 +1381,16 @@ function toggleFields(jo, showMap)
 
 function initPermSet(rolePerms)
 {
-	if (!rolePerms)
-		return;
-
 	var permSet = {};
-	var rpArr = rolePerms.split(/\s+/);
+	var isAdm = g_data.hasRole("mgr,emp");
+	if (isAdm) {
+		permSet["*"] = true;
+	}
+	var rpArr = rolePerms? rolePerms.split(/\s+/): [];
 	$.each (rpArr, function (i, e) {
+		if (isAdm && (e.indexOf("不可")>=0 || e.indexOf("只读")>=0))
+			return;
+
 		var e1 = e.replace(/不可/, '');
 		if (e1.length != e.length) {
 			permSet[e1] = false;
@@ -1439,10 +1443,13 @@ function initPermSet(rolePerms)
 	var isAdm = g_data.hasRole("mgr,emp"); // 管理员(两种都行)
 	var isKF = g_data.hasRole("客服");
 
-自定义权限规则复杂，一般由框架管理，可以用g_data.permSet[perm]查询，如：
+自定义权限规则复杂，一般由框架管理，可以用`canDo(对象, 权限)`函数查询，如：
 
-	var bval = g_data.permSet["客户管理"];
+	var bval = WUI.canDo("客户管理"); // 查一个特定对象，名词性
+	var bval = WUI.canDo(null, "首件确认"); // 查一个特定权限，动词性。（最高）管理员或指定了"*"权限的话，则默认也允许。
+	var bval = WUI.canDo(null, "维修", false); // 查一个特定权限，动词性，缺省值设置false表示未直接设置就不允许，即使是（最高）管理员或指定了"*"权限也不允许。
 
+WUI.canDo的底层实现是通过`g_data.permSet[perm]`查询。
  */
 self.applyPermission = applyPermission;
 function applyPermission()
@@ -1463,6 +1470,7 @@ function applyPermission()
 		$(sel2).hide();
 	}
 
+	// 注意：Employee.perms指的是角色；rolePerms才是权限集合。用g_data.hasRole检查角色，用WUI.canDo检查权限
 	g_data.hasRole = g_data.hasPerm = function (perms) {
 		var arr1 = perms.split(',');
 		for (var i=0; i<arr1.length; ++i) {
@@ -1471,60 +1479,48 @@ function applyPermission()
 				return true;
 		}
 		return false;
-		
-/*
-		var found = false;
-		$.each(arr, function (i, e) {
-				if (e == perm) {
-					found = true;
-					return false;
-				}
+	}
+
+	g_data.permSet = initPermSet(rolePerms);
+	if (! g_data.hasRole("mgr,emp")) {
+		var defaultShow = self.canDo("*", null, false);
+		$("#menu .perm-emp .menu-expand-group").each(function () {
+			showGroup($(this));
 		});
-		return found;
-*/	}
+	}
 
-	if (rolePerms) {
-		g_data.permSet = initPermSet(rolePerms);
-		if (! g_data.hasRole("mgr,emp")) {
-			var defaultShow = self.canDo("*", null, false);
-			$("#menu .perm-emp .menu-expand-group").each(function () {
-				showGroup($(this));
-			});
-		}
-
-		// 支持多级嵌套
-		function showGroup(jo) {
-			var t = jo.find("a:first").text(); // 菜单组名称
-			var doShowGroup = self.canDo(t, null, defaultShow);
-			var doShow = defaultShow;
-			var allHidden = true;
-			jo.find(">.menu-expandable>a").each(function () {
-				var t = $(this).text();
-				if (WUI.canDo(t, null, doShowGroup)) {
-					doShow = true;
-					allHidden = false;
-					// $(this).show();
-				}
-				else {
-					$(this).hide();
-				}
-			});
-			jo.find(">.menu-expand-group").each(function () {
-				if (showGroup($(this))) {
-					doShow = true;
-					allHidden = false;
-				}
-			});
-			if (allHidden) {
-				jo.closest(".perm-emp").hide();
-				return false;
+	// 支持多级嵌套
+	function showGroup(jo) {
+		var t = jo.find("a:first").text(); // 菜单组名称
+		var doShowGroup = self.canDo(t, null, defaultShow);
+		var doShow = defaultShow;
+		var allHidden = true;
+		jo.find(">.menu-expandable>a").each(function () {
+			var t = $(this).text();
+			if (WUI.canDo(t, null, doShowGroup)) {
+				doShow = true;
+				allHidden = false;
+				// $(this).show();
 			}
-			else if (doShowGroup || doShow) {
-				jo.closest(".perm-emp").show();
-				return true;
+			else {
+				$(this).hide();
 			}
+		});
+		jo.find(">.menu-expand-group").each(function () {
+			if (showGroup($(this))) {
+				doShow = true;
+				allHidden = false;
+			}
+		});
+		if (allHidden) {
+			jo.closest(".perm-emp").hide();
 			return false;
 		}
+		else if (doShowGroup || doShow) {
+			jo.closest(".perm-emp").show();
+			return true;
+		}
+		return false;
 	}
 }
 

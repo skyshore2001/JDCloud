@@ -6749,7 +6749,7 @@ function showDlg(jdlg, opt)
 	if (! opt.noCancel) 
 		btns.push({text: opt.cancelLabel, iconCls:'icon-cancel', handler: fnCancel})
 	if ($.isArray(opt.buttons))
-		btns.push.apply(btns, opt.buttons);
+		btns.unshift.apply(btns, opt.buttons);
 
 	var small = self.isSmallScreen();
 	var dlgOpt = $.extend({
@@ -6887,7 +6887,7 @@ function showDlg(jdlg, opt)
 /**
 @fn showDlgByMeta(meta, opt)
 
-WUI.showDlg的简化版本，通过直接指定组件创建对话框。
+WUI.showDlg的简化版本，通过直接指定组件创建对话框。返回动态创建的jdlg。
 
 - meta: [{title, dom, hint?}]
 - opt: 同showDlg的参数
@@ -6916,7 +6916,8 @@ function showDlgByMeta(itemArr, opt)
 	if (! opt)
 		opt = {};
 	opt.meta = itemArr;
-	return self.showDlg(jdlg, opt);
+	self.showDlg(jdlg, opt);
+	return jdlg;
 }
 
 function addFieldByMeta(itemArr, jp)
@@ -7407,7 +7408,7 @@ function unloadDialog(jdlg)
 }
 
 /**
-@fn canDo(topic, cmd=null, defaultVal=null)
+@fn canDo(topic, cmd=null, defaultVal=null, permSet2=null)
 
 权限检查回调，支持以下场景：
 
@@ -7420,11 +7421,50 @@ function unloadDialog(jdlg)
 	canDo(对话框标题, "对话框"); // 返回false表示对话框只读
 	canDo(对话框标题, 按钮标题); // 返回false则不显示该按钮
 
-特别地：如果对话框或页面上有wui-readonly类，则：
+特别地：如果对话框或页面上有wui-readonly类，则额外优先用permSet2来检查：
 
-	canDo("只读对象", 按钮标题); // 返回false则不显示该按钮
+	canDo(对话框, 按钮标题, null, {只读:true}); // 返回false则不显示该按钮
 
 topic可理解为数据对象（页面、对话框对应的数据模型），cmd可理解为操作（增加、修改、删除、只读等，常常是工具栏按钮）。
+通过permSet2参数可指定额外权限。
+
+判断逻辑示例：canDo("工艺", "修改")
+
+	如果指定有"工艺.修改"，则返回true，或指定有"工艺.不可修改"，则返回false；否则
+	如果指定有"修改"，则返回true，或指定有"不可修改", 则返回 false; 否则
+	如果指定有"工艺.只读" 或 "只读"，则返回false; 否则
+	如果指定有"工艺"，则返回true，或指定有"不可工艺", 则返回 false; 否则返回默认值。
+
+判断逻辑示例：canDo("工艺", null)
+
+	如果指定有"工艺"，则返回true，或指定有"不可工艺", 则返回 false; 否则默认值
+
+判断逻辑示例：canDo(null, "修改")
+
+	如果指定有"修改"，则返回true，或指定有"不可修改", 则返回 false; 否则
+	如果指定有"只读"，则返回false; 否则返回默认值。
+
+默认值逻辑：
+
+	如果指定了默认值defaultVal，则返回defaultVal，否则
+	如果指定有"不可*"，则默认值为false，否则返回 true
+	(注意：如果未指定"*"或"不可*"，最终是允许)
+
+特别地，对于菜单显示来说，顶级菜单的默认值指定是false，所以如果未指定"*"或"不可*"则最终不显示；
+而子菜单的默认值则是父菜单是否允许，不指定则默认与父菜单相同。
+
+建议明确指定默认值，采用以下两种风格之一：
+
+风格一：默认允许，再逐一排除
+
+	* 不可删除 不可导出 不可修改
+
+风格二：默认限制，再逐一允许
+
+	不可* 工单管理
+
+要限制菜单项的话，先指定"不可*"，再加允许的菜单项，这样如果页面中链接其它页面或对话框，则默认是无权限的。
+否则链接对象默认是可编辑的，存在漏洞。
 
 TODO:通过设置 WUI.options.canDo(topic, cmd) 可扩展定制权限。
 
@@ -7504,48 +7544,59 @@ TODO:通过设置 WUI.options.canDo(topic, cmd) 可扩展定制权限。
 
  */
 self.canDo = canDo;
-function canDo(topic, cmd, defaultVal)
+function canDo(topic, cmd, defaultVal, permSet2)
 {
 //	console.log('canDo: ', topic, cmd);
-	if (!g_data.permSet)
+	if (!g_data.permSet) // 现在不可能为空了，管理员的permSet是 {"*": true}
 		return true;
-	self.assert(topic);
 
 	if (defaultVal == null)
-		defaultVal = (g_data.permSet['*'] !== false);
+		defaultVal = (checkPerm('*') !== false);
 	if (cmd == null) {
-		var rv = g_data.permSet[topic];
-		if (rv !== undefined)
-			return rv;
+		if (topic) {
+			var rv = checkPerm(topic);
+			if (rv !== undefined)
+				return rv;
+		}
 		return defaultVal;
 	}
 
-	var rv = g_data.permSet[topic + "." + cmd];
+	if (topic) {
+		var rv = checkPerm(topic + "." + cmd);
+		if (rv !== undefined)
+			return rv;
+	}
+
+	rv = checkPerm(cmd);
 	if (rv !== undefined)
 		return rv;
 
-	rv = g_data.permSet[cmd];
-	if (rv !== undefined)
-		return rv;
-
-	if (topic != "只读对象") {
-		rv = g_data.permSet[topic + ".只读"];
-		if (rv === undefined)
-			rv = g_data.permSet["只读"];
-	}
-	else {
-		rv = true;
-	}
+	// 对“只读”特殊处理
+	if (topic)
+		rv = checkPerm(topic + ".只读");
+	if (rv === undefined)
+		rv = checkPerm("只读");
 	if (rv && (cmd == "新增" || cmd == "修改" || cmd == "删除" || cmd == "导入" || cmd == "对话框")) {
 		return false;
 	}
 
-	rv = g_data.permSet[topic];
-	if (rv !== undefined)
-		return rv;
+	if (topic) {
+		rv = checkPerm(topic);
+		if (rv !== undefined)
+			return rv;
+	}
 	
 	return defaultVal;
-//	return self.options.canDo(topic, cmd);
+
+	// 返回true, false, undefined三种
+	function checkPerm(perm) {
+		if (permSet2) {
+			var rv = permSet2[perm];
+			if (rv !== undefined)
+				return rv;
+		}
+		return g_data.permSet[perm];
+	}
 }
 
 // ---- object CRUD {{{
@@ -8207,12 +8258,13 @@ function dg_toolbar(jtbl, jdlg)
 	var jp = jtbl.closest(".wui-page");
 	if (jp.size() == 0)
 		jp = jtbl.closest(".wui-dialog");
-	var perm = jp.hasClass("wui-readonly")? "只读对象": (jp.attr("wui-perm") || jp.attr("title"));
+	var perm = jp.attr("wui-perm") || jp.attr("title");
 	if (!perm && jp.hasClass("wui-dialog")) {
 		var tmp = jp.dialog("options");
 		if (tmp)
 			perm = tmp.title;
 	}
+	var permSet2 = jp.hasClass("wui-readonly")? {"只读": true}: null;
 	var ctx = {jp: jp, jtbl: jtbl, jdlg: jdlg};
 	for (var i=0; i<btnSpecArr.length; ++i) {
 		var btn = btnSpecArr[i];
@@ -8223,7 +8275,7 @@ function dg_toolbar(jtbl, jdlg)
 			mCommon.assert(btnfn, "toolbar button `" + btn + "` does not support");
 			btn = btnfn(ctx);
 		}
-		if (btn.text != "-" && perm && !self.canDo(perm, btn["wui-perm"] || btn.text)) {
+		if (btn.text != "-" && perm && !self.canDo(perm, btn["wui-perm"] || btn.text, null, permSet2)) {
 			continue;
 		}
 		btns.push(btn);
@@ -10035,13 +10087,16 @@ function mainInit()
 	});
 
 	// 标题栏右键菜单
-	var jmenu = $('<div><div id="mnuReload">刷新页面</div><div id="mnuBatch">批量模式</div></div>');
+	var jmenu = $('<div><div id="mnuReload">刷新页面</div><div id="mnuReloadDlg">刷新对话框</div><div id="mnuBatch">批量模式</div></div>');
 	jmenu.menu({
 		onClick: function (mnuItem) {
 			var mnuId = mnuItem.id;
 			switch (mnuItem.id) {
 			case "mnuReload":
 				self.reloadPage();
+				self.reloadDialog(true);
+				break;
+			case "mnuReloadDlg":
 				self.reloadDialog(true);
 				break;
 			case "mnuBatch":

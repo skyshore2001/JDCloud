@@ -2090,7 +2090,21 @@ addCond用于添加查询条件，可以使用表的字段或虚拟字段(无须
 		}
 	}
 
-	private function addRequireCol($col, $isExt) {
+/**
+@fn AccessControl::addRequireCol($col, $isExt=false)
+
+添加依赖字段，用法与vcolDefs中的require属性相同，可以指定一个或多个字段（多个字段以逗号分隔）。
+字段可以是实体字段、虚拟字段或子表字段。注意实体字段无须加"t0."表前缀。
+
+与addRes方法类似，但不影响最终返回结果，也不可指定别名。
+即如果这些字段没有在res中指定，则返回前会自动删除。
+示例：
+
+	$this->addRequireCol("flowId");
+	$this->addRequireCol("flowId,qty"); // 加多个字段
+
+*/
+	protected function addRequireCol($col, $isExt=false) {
 		if (strpos($col, ',') !== false) {
 			$colArr = explode(',', $col);
 			foreach ($colArr as $col1) {
@@ -3636,7 +3650,7 @@ function KVtoCond($k, $v)
 		echo($rv);
 	}
 
-	static function table2excel($tbl)
+	static function table2excel($tbl, $writer=null, $sheet="Sheet1")
 	{
 		$hdr = [];
 		// 处理值为数组的情况
@@ -3671,9 +3685,12 @@ function KVtoCond($k, $v)
 			$hdr[$h] = $type;
 		}
 //		jdRet(0, $hdr);
-		$writer = new XLSXWriter();
-		$writer->writeSheet($tbl["d"], "Sheet1", $hdr);
-		$writer->writeToStdOut();
+		$auto = ($writer === null);
+		if ($auto)
+			$writer = new XLSXWriter();
+		$writer->writeSheet($tbl["d"], $sheet, $hdr);
+		if ($auto)
+			$writer->writeToStdOut();
 	}
 
 /**
@@ -3815,7 +3832,7 @@ function KVtoCond($k, $v)
 			return false;
 		$env = $this->env;
 		$fmt = $env->param("fmt");
-		return $fmt != null && $fmt != 'list' && $fmt != 'one' && $fmt != 'one?';
+		return in_array($fmt, ["txt", "excel", "csv", "excelcsv", "html"]);
 	}
 }
 
