@@ -6236,8 +6236,8 @@ function showPage(pageName, title, paramArr)
 		function initPage1()
 		{
 			jpageNew.data("showPageArgs_", showPageArgs_); // used by WUI.reloadPage
+			enhancePage(jpageNew);
 			$.parser.parse(jpageNew); // easyui enhancement
-			enhanceGrid(jpageNew);
 			self.enhanceWithin(jpageNew);
 			callInitfn(jpageNew, paramArr);
 
@@ -6320,13 +6320,22 @@ function getPageFilter(jpage)
 }
 
 // 对于页面中只有一个datagrid的情况，铺满显示，且工具栏置顶。
-function enhanceGrid(jpage)
+function enhancePage(jpage)
 {
 	var o = jpage[0].firstElementChild;
 	if (o && o.tagName == "TABLE" && jpage[0].children.length == 1) {
 		if (o.style.height == "" || o.style.height == "auto")
 			o.style.height = "100%";
 	}
+}
+
+function enhanceDialog(jdlg)
+{
+	// tabs, datagrid宽度自适应, resize时自动调整
+	jdlg.find(".easyui-tabs, .wui-subobj>table").each(function () {
+		if (!this.style.width)
+			this.style.width = "100%";
+	});
 }
 
 /**
@@ -7726,6 +7735,7 @@ function loadDialog(jdlg, onLoad, opt)
 			}
 		}
 
+		enhanceDialog(jdlg);
 		$.parser.parse(jdlg); // easyui enhancement
 		jdlg.find(">table:first, form>table:first").has(":input").addClass("wui-form-table");
 		self.enhanceWithin(jdlg);
@@ -10113,6 +10123,7 @@ function mainInit()
 	self.doSpecial(self.tabMain.find(".tabs-header"), ".tabs-selected", onSpecial, 3);
 	self.tabMain.find(".tabs-header").on("contextmenu", ".tabs-selected", onSpecial);
 
+/* datagrid宽度自适应，page上似乎自动的；dialog上通过设置width:100%实现。见enhanceDialog/enhancePage
 	// bugfix for datagrid size after resizing
 	var tmr;
 	$(window).on("resize", function () {
@@ -10126,13 +10137,12 @@ function mainInit()
 			jpage.closest(".panel-body").panel("doLayout", true);
 		}, 200);
 	});
+*/
 
-	// 调整对话框上的datagrid大小
+	// 全局resize.dialog事件
 	function onResizePanel() {
 		//console.log("dialog resize");
-		// 强制datagrid重排
 		var jo = $(this);
-		jo.find(".datagrid").closest(".panel-body:visible").panel("doLayout", true);
 		jo.trigger("resize.dialog");
 	}
 	$.fn.dialog.defaults.onResize = onResizePanel;
