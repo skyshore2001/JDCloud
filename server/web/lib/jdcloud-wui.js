@@ -590,6 +590,7 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 
 - 设置为"s"，表示是字符串，禁用数值区间或日期区间。
 - 设置为"tm"或"dt"，表示是日期时间或日期，可匹配日期匹配。
+- "e"表示enum，mycombobox会自动设置。用于下拉框的值匹配，避免WUI.options.fuzzyMatch=true时对enum字段模糊匹配。
 
 示例：
 
@@ -4018,7 +4019,7 @@ function getOptions(jo, defVal)
 //}}}
 
 // 参考 getQueryCond中对v各种值的定义
-function getexp(k, v)
+function getexp(k, v, hint)
 {
 	if (typeof(v) == "number")
 		return k + "=" + v;
@@ -4033,7 +4034,7 @@ function getexp(k, v)
 	}
 	else if (v.indexOf("*") >= 0 || v.indexOf("%") >= 0) {
 		v = v.replace(/[*]/g, "%");
-		op = " like ";
+		op = " LIKE ";
 	}
 	v = $.trim(v);
 
@@ -4045,19 +4046,19 @@ function getexp(k, v)
 	}
 	if (v === "empty")
 		v = "";
-	var doFuzzy = self.options.fuzzyMatch && (k!="id" && k.substr(-2)!="Id");
-	if (doFuzzy || v.length == 0 || v.match(/\D/) || v[0] == '0') {
-		v = v.replace(/'/g, "\\'");
-		if (doFuzzy && op == "=" && v.length>0) {
-			op = " like ";
-			v = "%" + v + "%";
-		}
+
+	var isId = (k=="id" || k.substr(-2)=="Id");
+	if (isId && v.match(/^\d+$/))
+		return k + op + v;
+	var doFuzzy = self.options.fuzzyMatch && op == "=" && !(hint == "e"); // except enum
+	if (doFuzzy) {
+		op = " LIKE ";
+		v = "%" + v + "%";
+	}
 // 		// ???? 只对access数据库: 支持 yyyy-mm-dd, mm-dd, hh:nn, hh:nn:ss
 // 		if (!is_like && v.match(/^((19|20)\d{2}[\/.-])?\d{1,2}[\/.-]\d{1,2}$/) || v.match(/^\d{1,2}:\d{1,2}(:\d{1,2})?$/))
 // 			return op + "#" + v + "#";
-		return k + op + "'" + v + "'";
-	}
-	return k + op + v;
+	return k + op + Q(v);
 }
 
 /**
@@ -4165,20 +4166,6 @@ function getQueryCond(kvList)
 				condArr.push(k + "<'" + v[1] + "'");
 			return;
 		}
-		var hint = null;
-		var k1 = k.split('/');
-		if (k1.length > 1) {
-			k = k1[0];
-			hint = k1[1];
-		}
-
-		if ($.isArray(v)) {
-			if (v[0])
-				condArr.push(k + ">='" + v[0] + "'");
-			if (v[1])
-				condArr.push(k + "<'" + v[1] + "'");
-			return;
-		}
 		var arr = v.toString().split(/\s+(and|or)\s+/i);
 		var str = '';
 		var bracket = false;
@@ -4248,7 +4235,7 @@ function getQueryCond(kvList)
 					}
 				}
 				if (!isHandled) {
-					str1 += getexp(k, v2);
+					str1 += getexp(k, v2, hint);
 				}
 			});
 			if (bracket2)
@@ -10624,6 +10611,7 @@ function mycombobox(force)
 						.text(v)
 						.appendTo(jo);
 				});
+				jo.attr("wui-find-hint", "e"); // 查询时精确匹配
 			}
 
 			if (opts.url == null) {
