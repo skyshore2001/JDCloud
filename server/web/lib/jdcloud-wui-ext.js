@@ -3077,7 +3077,11 @@ function showDlgChart(data, rs2StatOpt, seriesOpt, chartOpt)
 				}
 			}, chartOpt);
 		}
-		WUI.initChart(jchart[0], statData, seriesOpt, chartOpt);
+		setTimeout(onShow);
+
+		function onShow() {
+			WUI.initChart(jchart[0], statData, seriesOpt, chartOpt);
+		}
 	}
 }
 
