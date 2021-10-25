@@ -441,7 +441,95 @@ global $X_RET_STR;
 		header("Content-Type: application/xml");
 		return "<xml><code>$ret[0]</code><data>$ret[1]</data></xml>";
 	};
-	
+
+@var _raw 通用URL参数，只返回内容
+
+如果有URL参数`_raw=1`，则结果不封装为`[code, data]`形式，而是直接返回data. 示例：
+
+	callSvr("Ordr.query", {cond:{id:5}, fmt:"one", _raw: 1});
+	或
+	callSvr("Ordr.get", {id:5, _raw: 1});
+	或
+	callSvr("Ordr/5", {_raw: 1});
+
+返回示例：
+
+	{"id": 5, ...}
+
+假如不加`_raw: 1`，则返回`[0, {"id": 5, ...}]`。
+
+如果指定`_raw: 2`，则进一步只返回值，如取订单数：
+
+	callSvr("Ordr", {_raw: 1, fmt:"one", res: "count(*) cnt"});
+	和
+	callSvr("Ordr", {_raw: 2, fmt:"one", res: "count(*) cnt"});
+
+分别返回
+
+	{"cnt": 275}
+	和
+	275
+
+如果值有多项，则以tab间隔，如：
+
+	callSvr("Ordr/5", {_raw: 1, res: "status,amount"});
+	和
+	callSvr("Ordr/5", {_raw: 2, res: "status,amount"});
+
+分别返回：
+
+	{"status": "CR", "amount": "128.00"}
+	和
+	CR	128.00
+
+常用于在shell脚本中集成，如：
+
+	baseUrl=http://localhost/jdcloud-ganlan/server/api.php
+	amount=$(curl "$baseUrl/Ordr/5?_raw=2&res=amount&_app=emp-adm")
+
+或
+
+	read status amount <<< $(curl "$baseUrl/Ordr/5?_raw=2&res=status+amount&_app=emp-adm")
+
+@var _jsonp 通用URL参数，返回函数调用或变量赋值格式
+
+示例：
+
+	http://localhost/p/jdcloud/api.php/Ordr/5?_jsonp=api_OrdrGet
+	返回
+
+	api_OrdrGet([0, {"id":5,...}]);
+
+	http://localhost/p/jdcloud/api.php/Ordr/5?_jsonp=api_order%3d
+	返回
+
+	api_order=[0, {"id":5,...}];
+
+常用于直接返回JS脚本，示例：
+
+	<script>
+	function api_OrdrGet(order)
+	{
+		console.log(order);
+	}
+	</script>
+	<script src="http://localhost/p/jdcloud/api.php/Ordr/5?_jsonp=api_OrdrGet"></script>
+
+JS示例：
+
+	<script src="http://localhost/p/jdcloud/api.php/Ordr/5?_jsonp=api_order%3d"></script>
+	<script>
+	console.log(api_order);
+	</script>
+
+可以叠加通用URL参数`_raw`:
+
+	http://localhost/p/jdcloud/api.php/Ordr/5?_jsonp=api_OrdrGet&_raw=1
+	返回
+
+	api_OrdrGet({"id":5,...});
+
+但不建议使用`_raw`参数，因为如果查询出错（如id不存在）则会返回错误的格式。
 */
 global $X_RET_FN;
 
@@ -480,43 +568,6 @@ function getJDEnv()
 	}
 	return $env[Swoole\Coroutine::getcid()];
 }
-
-/**
-@var _jsonp 用于支持jsonp返回格式的URL参数
-
-示例：
-
-	http://localhost/p/jdcloud/api.php/Ordr/10?_jsonp=api_OrdrGet
-	返回
-
-	api_OrdrGet([
-		0, {"id":10,...}
-	]);
-
-	http://localhost/p/jdcloud/api.php/Ordr/10?_jsonp=api_order%3d
-	返回
-
-	api_order=[
-		0, {"id":10,...}
-	];
-
-JS示例：
-
-	<script>
-	function api_OrdrGet(order)
-	{
-		console.log(order);
-	}
-	</script>
-	<script src="http://localhost/p/jdcloud/api.php/Ordr/10?_jsonp=api_OrdrGet"></script>
-
-JS示例：
-
-	<script src="http://localhost/p/jdcloud/api.php/Ordr/10?_jsonp=api_order%3d"></script>
-	<script>
-	console.log(api_order);
-	</script>
-*/
 
 /*
 @fn setServerRev($env)
@@ -2443,14 +2494,22 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 				$ret1 = $X_RET_FN($ret, $this);
 				if ($ret1 === false)
 					return;
-				if (is_string($ret1)) {
-					$X_RET_STR = $ret1;
-					$this->write($X_RET_STR . "\n");
-					return;
-				}
 				$ret = $ret1;
 			}
-			$X_RET_STR = jsonEncode($ret, $this->TEST_MODE);
+			else if ($_GET["_raw"]) {
+				$ret = $ret[1];
+				if ($_GET["_raw"] == 2) {
+					if (is_array($ret))
+						$ret = join("\t", $ret);
+				}
+			}
+
+			if (is_scalar($ret)) {
+				$X_RET_STR = (string)$ret;
+			}
+			else {
+				$X_RET_STR = jsonEncode($ret, $this->TEST_MODE);
+			}
 		}
 		else {
 			$X_RET_STR = "[" . $code . ", " . $data->val . "]";

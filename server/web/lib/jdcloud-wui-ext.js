@@ -1780,7 +1780,7 @@ function createFindMenu(jtbl)
 		{
 		}
 
-- relatedKey: 关联字段. 指定两表(当前表与obj对应表)如何关联, 用于自动创建子表查询条件以及子表对话框的关联值设置(wui-fixed-field)
+- relatedKey: 关联字段. 指定两表(当前表与obj对应表)如何关联, 用于自动创建子表查询条件以及子表对话框的关联值设置(wui-fixedField)
  值"cusId"与"cusId={id}"等价, 表示`主表.id=CusOrder.cusId`.
  可以明确指定被关联字段, 如relatedKey="name={name}" 表示`主表.name=CusOrder.name`. 
  支持多个关联字段设置, 如`relId={id} AND type={type}`.
@@ -2175,14 +2175,15 @@ function enhanceSubobj(jo)
 	// 根据主表数据和relatedKey设置子表固定数据
 	function setObjParam(objParam, formData) {
 		// 格式示例: `relId={id}`, `type='工艺'`, `flag=1`
+		var map = objParam.fixedFields = {};
 		relatedKey.replace(/(\w+)=(?:\{(\w+)\}|(\S+))/g, function (ms, key, key2, value) {
 			if (key2) {
-				objParam[key] = formData[key2];
-				if (objParam[key] === undefined)
-					objParam[key] = "";
+				map[key] = formData[key2];
+				if (map[key] === undefined)
+					map[key] = "";
 			}
 			else {
-				objParam[key] = value.replace(/['"]/g, '');
+				map[key] = value.replace(/['"]/g, '');
 			}
 		});
 	}

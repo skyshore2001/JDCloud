@@ -159,7 +159,7 @@
 
 ### 定义对话框的初始化函数
 
-@key example-dialog
+@key example-dialog-event
 
 默认对话框中由于设定了底层对象(my-obj)及属性关联（form中带name属性的组件，已关联对象属性），因而可自动显示和提交数据。
 
@@ -682,6 +682,8 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 @see showPage
 @key .wui-fixedField 固定值字段
 
+(v6) 推荐设置对话框参数 opt.objParam.fixedFields (值为field=>value映射), 它与设置wui-fixedField类作用相同。
+
 当打开对话框时, 标识为.wui-fixedField类的字段会自动从传入的opt.objParam中取值, 如果取到值则将自己设置为只读.
 
 此外，在Item页对应的详情对话框上（dlgItem.html页面中），还应设置storeId字段是只读的，在添加、设置和查询时不可被修改，在添加时还应自动填充值。
@@ -777,6 +779,8 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 
 ## 对话框功能
 
+@key example-dialog
+
 以群发短信功能为例。
 
 假定服务端已有以下接口：
@@ -804,10 +808,10 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 
 	function showDlgSendSms()
 	{
-		var jdlg = $("#dlgSendSms");
-		WUI.showDlg(jdlg, {
+		WUI.showDlg("#dlgSendSms", {
 			url: WUI.makeUrl("sendSms"),
-			onOk: function (data) {
+			onOk: function (data) {  // (v6.0) 可以直接用字符串 'close'
+				var jdlg = $(this);
 				WUI.closeDlg(jdlg);
 				app_show('操作成功!');
 			}
@@ -828,11 +832,9 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 @see showDlg
 @see app_show
 
-除了直接调用该函数显示对话框外，还有一种更简单的通过a标签href属性指定打开对话框的做法，如：
+点击菜单项显示对话框：
 
-	<a href="?showDlgSendSms" class="easyui-linkbutton" icon="icon-ok">群发短信</a><br/><br/>
-
-点击该按钮，即调用了showDlgSendSms函数打开对话框。
+	<a href="javascript:DlgSendSms.show()" class="easyui-linkbutton" icon="icon-ok">群发短信</a><br/><br/>
 
 可以通过my-initfn属性为对话框指定初始化函数。复杂对话框的逻辑一般都写在初始化函数中。习惯上命令名initDlgXXX，如：
 
@@ -847,6 +849,30 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 		jdlg.find("#btn1").click(btn1_click);
 		...
 	}
+
+### 数据存取型对话框
+
+示例：显示某订单，可设置属性并保存。
+
+假如已做好订单html模板 dlgOrder.html, 调用它：
+
+	var orderId = 99;
+	callSvr("Ordr.get", {id: orderId}, function (data) {
+		WUI.showDlg("#dlgOrder", {
+			modal: false, // 非模态框
+			data: data, // 初始化数据
+			forSet: true, // 与data选项合用，如果无数据修改则不提交
+			dialogOpt: {maximized: true}, // 打开时最大化
+			// reload: true, // 每次都重新加载（测试用）
+			url: WUI.makeUrl("Ordr.set", {id: orderId}), // 提交的URL，form中的内容通过POST请求发到后端。由于设置了opt.forSet=true, 只会提交修改部分。
+			onOk: 'close'
+		})
+	});
+
+由于是典型的对象操作，一般用前述章节的对象对话框来做。上例相当于：
+
+	var orderId = 99;
+	WUI.showObjDlg("#dlgOrder", FormMode.forSet, {id: orderId});
 
 ### 页面传参数给对话框
 
@@ -3199,7 +3225,7 @@ function loadScript(url, fnOK, options)
 	var script= document.createElement('script');
 	script.type= 'text/javascript';
 	script.src= url;
-	// script.async = !sync; // 不是同步调用的意思，参考script标签的async属性和defer属性。
+	script.async = false; // 用于确保执行的先后顺序. 动态创建的script其async值默认为true（因而可能后加载的先执行导致错误），而直接写页面里的script标签默认async为false. 注意该属性与异步加载文件无关，加载都是异步的。
 	script.onload = function () {
 		if (fnOK)
 			fnOK();
@@ -4538,19 +4564,33 @@ function leaveWaiting(ctx)
 			-- m_silentCall;
 		if ($.active < 0)
 			$.active = 0;
-		if ($.active-m_silentCall <= 0 && self.isBusy && m_manualBusy == 0) {
-			self.isBusy = 0;
-			var tv = new Date() - m_tmBusy;
-			m_tmBusy = 0;
-			console.log("idle after " + tv + "ms");
+		// 一直等到不忙，避免callSvr/$.ajax混用导致无法hideLoading
+		loopDo(function () {
+			if ($.active-m_silentCall > 0 || m_manualBusy != 0)
+				return;
+			if (self.isBusy) {
+				self.isBusy = 0;
+				var tv = new Date() - m_tmBusy;
+				m_tmBusy = 0;
+				console.log("idle after " + tv + "ms");
 
-			// handle idle
-			self.hideLoading();
+				// handle idle
+				self.hideLoading();
+				$(document).trigger("idle");
+			}
 // 			if ($.mobile)
 // 				$.mobile.loading("hide");
-			$(document).trigger("idle");
-		}
+			return true;
+		});
 	});
+}
+
+// fn()返回true时完成，否则反复执行
+function loopDo(fn)
+{
+	if (fn())
+		return;
+	setTimeout(loopDo.bind(this, fn), 50);
 }
 
 function defAjaxErrProc(xhr, textStatus, e)
@@ -6412,16 +6452,18 @@ if (isSmallScreen()) {
 - opt.buttons: Object数组。用于添加“确定”、“取消”按钮以外的其它按钮，如`[{text: '下一步', iconCls:'icon-ok', handler: btnNext_click}]`。
  用opt.okLabel/cancelLabel可修改“确定”、“取消”按钮的名字，用opt.noCancel=true可不要“取消”按钮。
 - opt.modal: Boolean.模态对话框，这时不可操作对话框外其它部分，如登录框等。设置为false改为非模态对话框。
-- opt.data: Object. 自动加载的数据, 将自动填充到对话框上带name属性的DOM上。在修改对象时，仅当与opt.data有差异的数据才会传到服务端。
+- opt.data: Object. 自动加载的数据, 将自动填充到对话框上带name属性的DOM上。(v6.0) 与opt.forSet一起使用时，在修改对象时，仅当与opt.data有差异的数据才会传到服务端。
 - opt.reset: Boolean. 显示对话框前先清空。默认为true.
 - opt.validate: Boolean. 是否提交前用easyui-form组件验证数据。内部使用。
 - opt.onSubmit: Function(data) 自动提交前回调。用于验证或补齐提交数据，返回false可取消提交。opt.url为空时不回调。
 - opt.onOk: Function(jdlg, data?) 如果自动提交(opt.url非空)，则服务端接口返回数据后回调，data为返回数据。如果是手动提交，则点确定按钮时回调，没有data参数。
+	(v6.0) 如果onOk设置为'close'，则显示操作成功并关闭对话框。
 - opt.title: String. 如果指定，则更新对话框标题。
 - opt.dialogOpt: 底层jquery-easyui dialog选项。参考http://www.jeasyui.net/plugins/159.html
 - opt.reload: (v5.5) 先重置再加载。只用于开发环境，方便在Chrome控制台中调试。
 - opt.meta: (v6) 指定通过meta自动生成的输入项
 - opt.metaParent: (v6) 指定meta自动生成项的父结点，默认为对话框下第一个table，仅当meta存在时有效
+- opt.forSet: (v6.0) 与opt.data一起使用，设置为true表示只提交修改的数据。
 
 ## 对话框加载
 
@@ -6475,7 +6517,7 @@ if (isSmallScreen()) {
 对于自动提交数据的对话框(设置了opt.url)，提交数据过程中回调函数及事件执行顺序为：
 
 	事件validate; // 提交前，用于验证或设置提交数据。返回false或ev.preventDefault()可取消提交，中止以下代码执行。
-	opt.onSubmit(); // 提交前，验证或设置提交数据，返回false将阻止提交。
+	opt.onSubmit.call(jdlg, data); // 提交前，验证或设置提交数据，返回false将阻止提交。
 	... 框架通过callSvr自动提交数据，如添加、更新对象等。
 	opt.onOk(data); // 提交且服务端返回数据后。回调函数中this为对话框jdlg, data是服务端返回数据。
 	事件retdata; // 与onOk类似。
@@ -6616,7 +6658,7 @@ form提交后事件，用于处理返回数据
 @key event-loaddata(ev, initData, formMode) form加载数据后，一般用于将服务端数据转为界面显示数据。将废弃，改用show事件。
 @key event-savedata(ev, formMode, initData) 对于设置了opt.url的窗口，将向后台提交数据，提交前将触发该事件，用于验证或补足数据（修正某个）将界面数据转为提交数据. 返回false或调用ev.preventDefault()可阻止form提交。将废弃，改用validate事件。
 
-@see example-dialog 在对话框中使用事件
+@see example-dialog-event 在对话框中使用事件
 
 ## reset控制
 
@@ -6635,9 +6677,10 @@ form提交后事件，用于处理返回数据
 
 ## 控制底层jquery-easyui对话框
 
-示例：关闭对话框时回调事件：
+示例：打开时最大化，关闭对话框时回调事件：
 
 	var dialogOpt = {  
+		maximized: true,
 		onClose:function(){
 			console.log("close");
 		}  
@@ -6724,13 +6767,15 @@ function showDlg(jdlg, opt)
 		showDlg(jdlg, opt);
 	}
 
+	var formMode = jdlg.jdata().mode;
 	opt = $.extend({
 		okLabel: "确定",
 		cancelLabel: "取消",
 		noCancel: false,
 		modal: opt && opt.noCancel,
 		reset: true,
-		validate: true
+		validate: true,
+		forSet: (formMode == FormMode.forSet)
 	}, opt);
 
 	jdlg.addClass('wui-dialog');
@@ -6738,7 +6783,6 @@ function showDlg(jdlg, opt)
 
 	// TODO: 事件换成jdlg触发，不用jfrm。目前旧应用仍使用jfrm监听事件，暂应保持兼容。
 	var jfrm = jdlg.is("form")? jdlg: jdlg.find("form:first");
-	var formMode = jdlg.jdata().mode;
 	jfrm.trigger("beforeshow", [formMode, opt]);
 	if (opt.cancel)
 		return;
@@ -6789,8 +6833,7 @@ function showDlg(jdlg, opt)
 	{
 		jfrm.trigger("initdata", [opt.data, formMode]); // TODO: remove. 用beforeshow替代。
 		//jfrm.form("load", opt.data);
-		var setOrigin = (formMode == FormMode.forSet);
-		mCommon.setFormData(jdlg, opt.data, {setOrigin: setOrigin});
+		mCommon.setFormData(jdlg, opt.data, {setOrigin: opt.forSet});
 		jfrm.trigger("loaddata", [opt.data, formMode]); // TODO: remove。用show替代。
 // 		// load for jquery-easyui combobox
 // 		// NOTE: depend on jeasyui implementation. for ver 1.4.2.
@@ -6800,7 +6843,7 @@ function showDlg(jdlg, opt)
 	}
 
 	// 含有固定值的对话框，根据opt.objParam[fieldName]填充值并设置只读.
-	setFixedFields(jdlg, opt);
+	setFixedFields(jfrm, opt);
 
 // 	openDlg(jdlg);
 	focusDlg(jdlg);
@@ -6833,7 +6876,14 @@ function showDlg(jdlg, opt)
 			var data = mCommon.getFormData(jdlg);
 			$.extend(data, newData);
 			if (opt.url) {
-				if (opt.onSubmit && opt.onSubmit(data) === false)
+				// 没有更新时直接关闭对话框
+				if (opt.forSet) {
+					if ($.isEmptyObject(data)) {
+						closeDlg(jdlg);
+						return false;
+					}
+				}
+				if (opt.onSubmit && opt.onSubmit.call(jdlg, data) === false)
 					return false;
 
 				var m = opt.url.action.match(/\.(add|set|del)$/);
@@ -6874,9 +6924,15 @@ function showDlg(jdlg, opt)
 
 		function success (data)
 		{
-			if (data != null && opt.onOk) {
+			if (opt.onOk) {
 				jfrm.trigger('retdata', [data, formMode]);
-				opt.onOk.call(jdlg, data);
+				if (opt.onOk === 'close') {
+					app_show("操作成功!");
+					WUI.closeDlg(jdlg);
+				}
+				else {
+					opt.onOk.call(jdlg, data);
+				}
 			}
 		}
 	}
@@ -7280,10 +7336,13 @@ function batchOp(obj, ac, jtbl, opt)
 如果objParam中指定了值，则字段只读，并且在forAdd模式下填充值。
 如果objParam中未指定值，则不限制该字段，可自由设置或修改。
 */
-function setFixedFields(jdlg, beforeShowOpt) {
-	self.formItems(jdlg.find(".wui-fixedField"), function (ji, name, it) {
-		var fixedVal = beforeShowOpt && beforeShowOpt.objParam && beforeShowOpt.objParam[name];
-		if (fixedVal || fixedVal == '') {
+function setFixedFields(jfrm, beforeShowOpt) {
+	var objParam = beforeShowOpt && beforeShowOpt.objParam;
+	var fixedFields = objParam && objParam.fixedFields;
+	self.formItems(jfrm, function (ji, name, it) {
+		var fixedVal = (ji.hasClass("wui-fixedField") && objParam && objParam[name] != null)? objParam[name]:
+			(fixedFields && fixedFields[name] != null)? fixedFields[name]: null;
+		if (fixedVal != null) {
 			it.setReadonly(ji, true);
 			var forAdd = beforeShowOpt.objParam.mode == FormMode.forAdd;
 			var forFind = beforeShowOpt.objParam.mode == FormMode.forFind;
@@ -8070,7 +8129,7 @@ function showObjDlg(jdlg, mode, opt)
 		modal: false,  // mode == FormMode.forAdd || mode == FormMode.forSet
 		reset: doReset,
 		data: load_data,
-		onSubmit: onSubmit,
+//		onSubmit: onSubmit,
 		onOk: onOk,
 		objParam: opt
 	});
@@ -8079,15 +8138,6 @@ function showObjDlg(jdlg, mode, opt)
 	if (mode == FormMode.forSet)
 		jfrm.form("validate");
 
-	function onSubmit(data) {
-		// 没有更新时直接关闭对话框
-		if (mode == FormMode.forSet) {
-			if ($.isEmptyObject(data)) {
-				closeDlg(jdlg);
-				return false;
-			}
-		}
-	}
 	function onOk (retData) {
 		var jtbl = jd.jtbl;
 		if (mode==FormMode.forFind) {
@@ -8336,22 +8386,25 @@ self.dg_dblclick = function (jtbl, jdlg)
 
 /**
 @key a[href=#page]
-@key a[href=?fn]
 
 页面中的a[href]字段会被框架特殊处理：
 
 	<a href="#pageHome">首页</a>
-	<a href="?logout">退出登录</a>
+	<a href="http://baidu.com">百度</a>
 
 - href="#pageXXX"开头的，点击时会调用 WUI.showPage("#pageXXX");
-- href="?fn"，会直接调用函数 fn(); 函数中this对象为当前DOM对象
 */
-self.m_enhanceFn["a[href^='#']"] = enhanceAnchor;
+self.m_enhanceFn["a[href]"] = enhanceAnchor;
+//self.m_enhanceFn["a[href^='#']"] = enhanceAnchor;
 function enhanceAnchor(jo)
 {
 	if (jo.attr("onclick"))
 		return;
+	if (jo.attr("target"))
+		return;
 
+	var title = jo.text();
+//	console.log(title);
 	jo.click(function (ev) {
 		var href = $(this).attr("href");
 		if (href.search(/^#(page\w+)$/) >= 0) {
@@ -8359,11 +8412,18 @@ function enhanceAnchor(jo)
 			WUI.showPage.call(this, pageName);
 			return false;
 		}
+/*
+		// href="?fn"，会直接调用函数 fn(); 函数中this对象为当前DOM对象
 		else if (href.search(/^\?(\w+)$/) >= 0) {
 			var fn = RegExp.$1;
 			fn = eval(fn);
 			if (fn)
 				fn.call(this);
+			return false;
+		}
+*/
+		if (href.match(/^https?:\/\//)) {
+			WUI.showPage("pageIframe", title, [href]);
 			return false;
 		}
 	});
@@ -8688,6 +8748,10 @@ var Formatter = {
 
 	<th data-options="field:'clearFlag', sortable:true, jdEnumMap:YesNoMap, formatter:Formatter.enum(YesNoMap), styler:Formatter.enumStyler({1:'Disabled',0:'Warning'}, 'Warning')">已结算</th>
 
+特别地，可以为null指定值：
+
+	<th data-options="field:'name', sortable:true, formatter:Formatter.enum({null:'(默认)'})">页面名</th>
+
 @see datagrid.formatter
 @see Formatter.enumStyler
  */
@@ -8695,7 +8759,7 @@ var Formatter = {
 		sep = sep || ',';
 		return function (value, row) {
 			if (value == null)
-				return;
+				return enumMap[value];
 			var v = enumMap[value];
 			if (v != null)
 				return v;
