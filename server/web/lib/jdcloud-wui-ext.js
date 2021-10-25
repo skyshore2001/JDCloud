@@ -1672,11 +1672,8 @@ function createFindMenu(jtbl)
 	})
 
 	setTimeout(function () {
-		var datagrid = self.isTreegrid(jtbl)? "treegrid": "datagrid";
-		ac = jtbl[datagrid]("options").url;
-		while (ac.action) {
-			ac = ac.action;
-		}
+		var dg = WUI.getDgInfo(jtbl);
+		ac = dg.ac;
 		loadItems(); 
 		updateMenu();
 	});
