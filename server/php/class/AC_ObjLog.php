@@ -18,4 +18,20 @@ LEFT JOIN ApiLog1 a1 on t0.apiLog1Id=a1.id",
 			"default" => true
 		]
 	];
+
+	protected function onQuery() {
+		$cond = $_GET["cond"];
+		@$obj = $cond["obj"];
+		@$objFilter = $_GET["objFilter"];
+		if ($objFilter && $obj) {
+			$acObj = $this->env->createAC($obj, "query");
+			$rv = $this->env->tmpEnv($objFilter, null, function () use ($acObj) {
+				return $acObj->genCondSql(false);
+			});
+			$condSql = "SELECT t0.id FROM " . $rv["tblSql"];
+			if ($rv["condSql"])
+				$condSql .= " WHERE " . $rv['condSql'];
+			$this->addJoin("JOIN ($condSql) t1 ON t1.id=t0.objId");
+		}
+	}
 }

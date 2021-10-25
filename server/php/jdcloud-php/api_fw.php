@@ -2656,7 +2656,7 @@ $param或$postParam为null时，与空数组`[]`等价。
 		return callSvcInt("User.query");
 	});
 */
-	function tmpEnv($get, $post, $fn, $useTmpEnv)
+	function tmpEnv($get, $post, $fn, $useTmpEnv=true)
 	{
 		assert(is_null($get)||is_array($get));
 		assert(is_null($post)||is_array($post));
@@ -2753,6 +2753,7 @@ $param或$postParam为null时，与空数组`[]`等价。
 			jdRet(E_SERVER, "bad AC class `$cls`. MUST extend JDApiBase or AccessControl", "AC类定义错误");
 		}
 		$acObj->env = $this;
+		$acObj->init($tbl, $ac);
 		return $acObj;
 	}
 
@@ -2894,6 +2895,9 @@ class JDApiBase
 	protected function onCallSvc($tbl, $ac, $fn) {
 		$ret = $this->$fn();
 		return $ret;
+	}
+
+	function init($tbl, $ac) {
 	}
 }
 #}}}

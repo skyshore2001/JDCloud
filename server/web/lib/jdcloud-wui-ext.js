@@ -3106,27 +3106,26 @@ function showDlgChart(data, rs2StatOpt, seriesOpt, chartOpt)
  */
 WUI.GridHeaderMenu.items.push('<div id="showObjLog" data-options="iconCls:\'icon-tip\'">操作日志</div>');
 WUI.GridHeaderMenu.showObjLog = function (jtbl) {
-	var row = WUI.getRow(jtbl);
-	if (!row)
-		return;
-
-	var dg = WUI.getDgInfo(jtbl, {selArr: null});
+	var dg = WUI.getDgInfo(jtbl, {selArr: null, dgFilter: null});
 	if (! dg.obj) {
 		app_alert("该数据表不支持查看日志", "w");
 		return;
 	}
 	var obj = dg.obj;
-	var objId = null;
-	if (dg.selArr.length == 1) {
-		objId = row.id;
+	var param = {cond: {obj: obj}}
+	if (dg.selArr.length == 0) { // 未选择时，显示表中所有行的日志
+		if (dg.dgFilter && !$.isEmptyObject(dg.dgFilter))
+			param.objFilter = dg.dgFilter;
+	}
+	else if (dg.selArr.length == 1) {
+		var objId = dg.selArr[0].id;
+		param.cond.objId = objId;
 	}
 	else {
-		objId = "IN " + dg.selArr.map(function (e) {
+		param.cond.objId = "IN " + dg.selArr.map(function (e) {
 			return e.id;
 		}).join(',');
 	}
-
-	var param = {cond: {obj: obj, objId: objId}}
 	WUI.showPage("pageObjLog", "操作日志-" + obj + "!", [{jtblSrc: jtbl}, param]);
 };
 

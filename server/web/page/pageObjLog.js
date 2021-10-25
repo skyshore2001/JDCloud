@@ -86,6 +86,8 @@ var ObjLogFormatter = {
 		var map0 = ObjLogFieldMap;
 		var map = ObjLogFieldMap[row.obj]; 
 		return value.replace(/(\w+)=([^, ;]*)/g, function (m, m1, m2) {
+			if (m1 == "_app")
+				return "";
 			if (!map || !map[m1]) {
 				if (map0[m1])
 					return map0[m1] + "=" + m2;

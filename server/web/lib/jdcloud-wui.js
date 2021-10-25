@@ -6291,6 +6291,8 @@ function getDgFilter(jtbl, param, ignoreQueryParam)
 		var datagrid = isTreegrid(jtbl)? "treegrid": "datagrid";
 		var dgOpt = jtbl[datagrid]("options");
 		var p1 = dgOpt.url && dgOpt.url.params;
+		if (p1)
+			delete p1._app;
 		var p2 = !ignoreQueryParam && dgOpt.queryParams;
 	}
 	return self.extendQueryParam({}, p1, p2, p3, param);
@@ -8513,7 +8515,7 @@ function getQueryParamFromTable(jtbl, param)
 }
 
 /**
-@fn getDgInfo(jtbl, res?) -> { opt, isTreegrid, datagrid, url, param, ac, obj, sel?, selArr?, res? }
+@fn getDgInfo(jtbl, res?) -> { opt, isTreegrid, datagrid, url, param, ac, obj, sel?, selArr?, res?, dgFilter? }
 
 取datagrid关联信息. 返回字段标记?的须显式指定，如：
 
@@ -8571,6 +8573,9 @@ function getDgInfo(jtbl, res)
 				res.res[e.field] = e;
 			});
 		});
+	}
+	if (res.dgFilter !== undefined) {
+		res.dgFilter = getDgFilter(jtbl);
 	}
 	return res;
 }

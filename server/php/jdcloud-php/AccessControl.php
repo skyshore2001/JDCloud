@@ -1454,25 +1454,31 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 @see callSvc
 @see callSvcInt
 */
+	private $isCalled = false;
 	protected function onCallSvc($tbl, $ac, $fn) {
 		// 已初始化过，创建新对象调用接口，避免污染当前环境。
-		if ($this->ac && $this->table) {
+		if ($this->isCalled) {
 			$acObj = new static();
 			$acObj->env = $this->env;
-			$acObj->table = $this->table;
 		}
 		else {
+			$this->isCalled = true;
 			$acObj = $this;
 		}
-		if (is_null($acObj->table))
-			$acObj->table = $tbl;
-		$acObj->ac = $ac;
-		$acObj->onInit();
+		if (! $acObj->ac)
+			$acObj->init($tbl, $ac);
 
 		$acObj->before();
 		$ret = $acObj->$fn();
 		$acObj->after($ret);
 		return $ret;
+	}
+
+	final function init($tbl, $ac) {
+		if (is_null($this->table))
+			$this->table = $tbl;
+		$this->ac = $ac;
+		$this->onInit();
 	}
 
 	protected final function before()
