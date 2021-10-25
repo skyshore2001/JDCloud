@@ -1092,10 +1092,10 @@ e.g. 修改ApiLog要记录的ac:
 				$s .= "$k=...";
 				break;
 			}
-/*			if ($k == "pwd" || $k == "oldpwd") {
+			else if ($k == "pwd" || $k == "oldpwd") {
 				$v = "?";
 			}
-*/			else if (! is_scalar($v)) {
+			else if (! is_scalar($v)) {
 				$v = "obj:" . jsonEncode($v);
 			}
 			if ($len == 0) {
