@@ -3240,6 +3240,78 @@ function loadScript(url, fnOK, options)
 }
 
 /**
+@fn evalOptions(_source, ctx?, errPrompt?)
+
+执行JS代码，返回JS对象，示例：
+
+	source='{a: 1, b:"hello", c: function () {} }'
+	前面允许有单行注释，如
+	source='// comment\n {a: 1, b:"hello", c: function () {} }'
+
+JS代码一般以花括号开头。在用于DOM属性时，也允许没有花括号的这种写法，如：
+
+	<div data-options="a:1,b:'hello',c:true"></div>
+
+上例可返回 `{a:1, b:'hello', c:true}`.
+
+也支持各种表达式及函数调用，如：
+
+	<div data-options="getSomeOption()"></div>
+
+更复杂的，如果代码不只是一个选项，前面还有其它JS语句，则返回最后一行语句的值，
+最后一行可以是变量、常量、函数调用等，但不可以是花括号开头的选项，对选项须用括号包起来：
+
+	function hello() { }
+	({a: 1, b:"hello", c: hello })
+
+或：
+
+	function hello() { }
+	var ret={a: 1, b:"hello", c: hello }
+	ret
+
+传入的参数变量ctx可以在代码中使用，用于框架与扩展代码的交互，如：
+
+	{a: 1, b:"hello", c: ctx.fn1() }
+
+执行出错时错误显示在控制台。调用者可回调处理错误。
+
+	evalOptions(src, null, function (ex) {
+		app_alert("文件" + url + "出错: " + ex);
+	});
+
+注意：受限于浏览器，若使用`try { eval(str) } catch(ex) {}` 结构会导致原始的错误行号丢失，
+为了避免大量代码中有错误时调试困难，在大于1行代码时，不使用try-catch，而是直接抛出错误。
+ */
+self.evalOptions = evalOptions;
+function evalOptions(_source, ctx, onError)
+{
+	// "a:1, b:'hello'"
+	if (/^\w+:/.test(_source)) {
+		_source = "({" + _source + "})";
+	}
+	// "{a:1, b:'hello'}" 且前面可以有单行注释
+	else if (/^(\s*\/\/[^\n]*\n)*\s*\{/.test(_source)) {
+		_source = "(" + _source + ")";
+	}
+	if (_source.indexOf("\n") > 0)
+		return eval(_source);
+
+	try {
+		return eval(_source);
+	}
+	catch (ex) {
+		console.error(ex);
+		if (onError) {
+			onError(ex);
+		}
+		else {
+			app_alert("代码错误: " + ex, "e");
+		}
+	}
+}
+
+/**
 @fn loadJson(url, fnOK, options)
 
 从远程获取JSON结果. 
@@ -3260,6 +3332,8 @@ function loadScript(url, fnOK, options)
 	}
 
 如果不处理结果, 则该函数与$.getScript效果类似.
+
+@see evalOptions
  */
 self.loadJson = loadJson;
 function loadJson(url, fnOK, options)
@@ -3268,7 +3342,9 @@ function loadJson(url, fnOK, options)
 		dataType: "text",
 		jdFilter: false,
 		success: function (data) {
-			val = eval("(" + data + ")");
+			val = self.evalOptions(data, null, function (ex) {
+				app_alert("文件" + url + "出错: " + ex, "e");
+			});
 			fnOK.call(this, val);
 		}
 	}, options);
@@ -3677,42 +3753,6 @@ function compressImg(fileObj, cb, opt)
 }
 
 /**
-@fn getDataOptions(jo, defVal?)
-@key data-options
-
-读取jo上的data-options属性，返回JS对象。例如：
-
-	<div data-options="a:1,b:'hello',c:true"></div>
-
-上例可返回 `{a:1, b:'hello', c:true}`.
-
-也支持各种表达式及函数调用，如：
-
-	<div data-options="getSomeOption()"></div>
-
-@see getOptions
- */
-self.getDataOptions = getDataOptions;
-function getDataOptions(jo, defVal)
-{
-	var optStr = jo.attr("data-options");
-	var opts;
-	try {
-		if (optStr) {
-			if (/^\w+:/.test(optStr)) {
-				opts = eval("({" + optStr + "})");
-			}
-			else {
-				opts = eval("(" + optStr + ")");
-			}
-		}
-	}catch (e) {
-		alert("bad data-options: " + optStr);
-	}
-	return $.extend({}, defVal, opts);
-}
-
-/**
 @fn triggerAsync(jo, ev, paramArr)
 
 触发含有异步操作的事件，在异步事件完成后继续。兼容同步事件处理函数，或多个处理函数中既有同步又有异步。
@@ -3856,25 +3896,16 @@ window.E_ABORT=-100;
 
 	<div mui-initfn="initMyPage"><div>
 
+@see evalOptions
 */
 self.evalAttr = evalAttr;
 function evalAttr(jo, name, ctx)
 {
 	var val = jo.attr(name);
 	if (val) {
-		if (val[0] != '{' && val.indexOf(":")>0) {
-			val1 = "({" + val + "})";
-		}
-		else {
-			val1 = "(" + val + ")";
-		}
-		try {
-			val = eval(val1);
-		}
-		catch (ex) {
-			self.app_alert("属性`" + name + "'格式错误: " + val, "e");
-			val = null;
-		}
+		val = self.evalOptions(val, ctx, function (ex) {
+			self.app_alert("属性`" + name + "'格式错误: <br>" + val + "<br>" + ex, "e");
+		});
 	}
 	return val;
 }
@@ -4029,17 +4060,30 @@ function enhanceWithin(jp)
 第一次调用，根据jo上设置的data-options属性及指定的defVal初始化，或为`{}`。
 存到jo.prop("muiOptions")上。之后调用，直接返回该属性。
 
-@see getDataOptions
+@see evalAttr
 */
 self.getOptions = getOptions;
 function getOptions(jo, defVal)
 {
 	var opt = jo.prop("muiOptions");
 	if (opt === undefined) {
-		opt = self.getDataOptions(jo, defVal);
+		opt = $.extend({}, defVal, self.evalAttr(jo, "data-options"));
 		jo.prop("muiOptions", opt);
 	}
+	else if ($.isPlainObject(defVal)) {
+		$.each(defVal, function (k, v) {
+			if (opt[k] === undefined)
+				opt[k] = v;
+		});
+	}
 	return opt;
+}
+
+self.setOptions = setOptions;
+function setOptions(jo, val)
+{
+	if ($.isPlainObject(val))
+		jo.prop("muiOptions", val);
 }
 
 //}}}
