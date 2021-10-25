@@ -1460,6 +1460,10 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		if ($this->isCalled) {
 			$acObj = new static();
 			$acObj->env = $this->env;
+			if ($tbl === null)
+				$tbl = $this->table;
+			if ($ac === null)
+				$ac = $this->ac;
 		}
 		else {
 			$this->isCalled = true;
