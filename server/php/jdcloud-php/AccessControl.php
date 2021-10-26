@@ -1255,6 +1255,13 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		return preg_replace('/^"(.*)"$/', '$1', $k);
 	}
 
+	final public function initTable($tbl = null) {
+		if (! $this->table) {
+			// AC_xxx -> xxx; xxx -> xxx
+			$this->table = $tbl ?: preg_replace('/^AC[^_]*_/', '', get_class($this));
+		}
+	}
+
 	// for get/query
 	protected function initQuery()
 	{
@@ -1454,35 +1461,23 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 @see callSvc
 @see callSvcInt
 */
-	private $isCalled = false;
 	protected function onCallSvc($tbl, $ac, $fn) {
 		// 已初始化过，创建新对象调用接口，避免污染当前环境。
-		if ($this->isCalled) {
+		if ($this->ac) {
 			$acObj = new static();
 			$acObj->env = $this->env;
-			if ($tbl === null)
-				$tbl = $this->table;
-			if ($ac === null)
-				$ac = $this->ac;
 		}
 		else {
-			$this->isCalled = true;
 			$acObj = $this;
 		}
-		if (! $acObj->ac)
-			$acObj->init($tbl, $ac);
+		$acObj->ac = $ac;
+		$acObj->initTable($tbl);
+		$acObj->onInit();
 
 		$acObj->before();
 		$ret = $acObj->$fn();
 		$acObj->after($ret);
 		return $ret;
-	}
-
-	final function init($tbl, $ac) {
-		if (is_null($this->table))
-			$this->table = $tbl;
-		$this->ac = $ac;
-		$this->onInit();
 	}
 
 	protected final function before()
@@ -2951,6 +2946,7 @@ e.g.
 	// return {tblSql, condSql}
 	protected function genCondSql($checkCond=true)
 	{
+		$this->initTable(); // 防止非callSvc调用时未初始化表
 		$cond = $this->getCondParam("cond");
 		if ($cond)
 			$this->addCond($cond, false, true);
