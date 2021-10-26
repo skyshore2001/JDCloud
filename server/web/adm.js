@@ -28,7 +28,6 @@ var DlgImport = {
 // ====== data-options {{{
 var Formatter = {
 	orderStatus: WUI.formatter.enum(OrderStatusMap),
-	orderAction: WUI.formatter.enum(ActionMap),
 	userId: WUI.formatter.linkTo("userId", "#dlgUser"),
 	empId: WUI.formatter.linkTo("empId", "#dlgEmployee"),
 	orderId: WUI.formatter.linkTo("orderId", "#dlgOrder")
