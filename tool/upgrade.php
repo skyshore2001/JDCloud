@@ -430,8 +430,11 @@ require_once('upglib.php');
 
 global $h;
 try {
-	$noDb = @($argv[1] === "export");
-	$h = new UpgHelper(false, $noDb);
+	$opt = [];
+	if (@$argv[1] === "export") {
+		$opt["noDb"] = true;
+	}
+	$h = new UpgHelper($opt);
 
 	if (count($argv) > 1) {
 		$cmd = join(' ', array_slice($argv, 1));

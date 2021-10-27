@@ -3,7 +3,7 @@
 ###### config {{{
 global $LOGF, $CHAR_SZ, $SQLDIFF, $DBTYPE;
 
-$LOGF = "upgrade.log";
+$LOGF = __DIR__ . "/upgrade.log";
 $DBTYPE = getenv("P_DBTYPE") ?: "mysql";
 
 $CHAR_SZ = [
@@ -108,7 +108,7 @@ function die1($msg)
 - name: 字段名，如"cmt".
 - dscr: 原始定义，如"cmt(l)"。
 - def: 字段生成的SQL语句
-- type: Enum("id", "s"-string, "t"-text(64K), "tt"-mediumtext(16M), "i"-int, "real", "n"-number, "date", "tm"-datetime, "flag")
+- type: Enum("s"-string, "t"-text(64K), "tt"-mediumtext(16M), "i"-int, "real", "n"-number, "date", "tm"-datetime, "flag")
 - len: 仅当type="nvarchar"时有意义，表示字串长。
 
 e.g.
@@ -129,7 +129,7 @@ function parseFieldDef($fieldDef, $tableName)
 		"def" => null
 	];
 	if ($f == 'id') {
-		$ret["type"] = "id";
+		$ret["type"] = "i";
 		$def = "INTEGER PRIMARY KEY " . $SQLDIFF->autoInc;
 	}
 	elseif (preg_match('/\((\w+)\)$/u', $f, $ms)) {
@@ -254,22 +254,6 @@ function genSql($meta)
 	return $sql;
 }
 
-function prompt($s)
-{
-	echo sprintf("%s", $s);
-}
-
-function logstr($s, $show=true)
-{
-	if ($show) {
-		prompt($s);
-	}
-	global $LOGF;
-	$fp = fopen($LOGF, "a");
-	fputs($fp, $s);
-	fclose($fp);
-}
-
 function sval($v)
 {
 	if (is_null($v))
@@ -366,20 +350,16 @@ class UpgHelper
 	private $ver = 0;
 	private $dbver = 0;
 	private $dbh = null;
-	private $forRtest = null;
+	private $opt = null;
 
-	function __construct ($forRtest=false, $noDb=false) {
-		$this->forRtest = $forRtest;
-		if (! $noDb)
-			$this->_init();
-		else
-			$this->_initMeta();
+	// opt={noDb, dbh, tableDefs, prompt(s)}
+	function __construct ($opt = []) {
+		$this->_init($opt);
 	}
 	function __destruct () {
 		global $LOGF;
-		logstr("=== [" . date('c') . "] done\n", false);
-		if (! $this->forRtest)
-			prompt("=== Done! Find log in $LOGF\n");
+		$this->logstr("=== [" . date('c') . "] done\n", false);
+		$this->prompt("=== Done! Find log in $LOGF\n");
 	}
 
 	// 添加文件到$files集合。
@@ -387,7 +367,7 @@ class UpgHelper
 		if (strpos($f, "*") === false) {
 			$f = str_replace("\\", "/", $f);
 			if (! file_exists($f)) {
-				logstr("!!! cannot read included file $f\n");
+				$this->logstr("!!! cannot read included file $f\n");
 				return;
 			}
 			$fi = new SplFileInfo($f);
@@ -402,6 +382,25 @@ class UpgHelper
 		}
 	}
 
+	private function addTableMeta($tableDef, $file)
+	{
+		if (! preg_match('/^@([\w_]+)[:：]\s+(\w.*?)\s*$/u', $tableDef, $ms))
+			return false;
+		$tableName = $ms[1];
+		foreach ($this->tableMeta as $e) {
+			if ($e["name"] == $tableName) {
+				$this->logstr("!!! `@{$tableName}' is redefined in file `$file', previous defined in file `{$e['file']}'.\n");
+				continue;
+			}
+		}
+		$fields = preg_split('/[\s,，]+/u', $ms[2]);
+		// fieldsMeta在SQL_DIFF初始化后再设置.
+		$this->tableMeta[] = ["name"=>$tableName, "fields"=>$fields, "fieldsMeta"=>null, "file"=>$file, "tableDef"=>$tableDef];
+# 			print "-- $_";
+# 			print genSql($tbl, $fields) . "\n";
+		return true;
+	}
+
 	# init meta and DB conn
 	private function _initMeta()
 	{
@@ -409,7 +408,7 @@ class UpgHelper
 		if (!$meta || !is_file($meta)) {
 			throw new Exception("*** bad main meta file $meta");
 		}
-		prompt("=== load metafile: $meta\n");
+		$this->prompt("=== load metafile: $meta\n");
 
 		$baseDir = dirname($meta);
 		$files = [$meta];
@@ -423,19 +422,7 @@ class UpgHelper
 				throw new Exception("*** cannot read meta file $file");
 
 			while (($s = fgets($fd)) !== false) {
-				if (preg_match('/^@([\w_]+)[:：]\s+(\w.*?)\s*$/u', $s, $ms)) {
-					$tableName = $ms[1];
-					foreach ($this->tableMeta as $e) {
-						if ($e["name"] == $tableName) {
-							logstr("!!! `@{$tableName}' is redefined in file `$file', previous defined in file `{$e['file']}'.\n");
-							continue;
-						}
-					}
-					$fields = preg_split('/[\s,，]+/u', $ms[2]);
-					// fieldsMeta在SQL_DIFF初始化后再设置.
-					$this->tableMeta[] = ["name"=>$ms[1], "fields"=>$fields, "fieldsMeta"=>null, "file"=>$file, "tableDef"=>$s];
-		# 			print "-- $_";
-		# 			print genSql($tbl, $fields) . "\n";
+				if ($this->addTableMeta($s, $file)) {
 				}
 				elseif (preg_match('/^@include\s+(\S+)/', $s, $ms)) {
 					$f = $baseDir . '/' . $ms[1];
@@ -451,16 +438,42 @@ class UpgHelper
 		}
 	}
 
-	private function _init()
+	private function _init($opt)
 	{
-		$this->_initMeta();
-		logstr("=== [" . date('c') . "] connect to $connstr\n", false);
-		try {
-		$this->dbh = dbconn($fnConfirm);
-		} catch (Exception $e) {
-			echo $e->getMessage() . "\n";
-			exit;
+		$this->opt = $opt;
+		if (! isset($opt["tableDefs"])) {
+			$this->_initMeta();
 		}
+		else {
+			assert(is_array($opt["tableDefs"]));
+			foreach ($opt["tableDefs"] as $tableDef) {
+				$this->addTableMeta($tableDef, "DiMeta");
+			}
+		}
+		if ($opt["noDb"])
+			return;
+
+		if (! isset($opt["dbh"])) {
+			$fnConfirm = function ($connstr) {
+				global $IS_CLI;
+				if ($IS_CLI) {
+					$this->prompt("=== connect to $connstr (enter to cont, ctrl-c to break) ");
+					fgets(STDIN);
+				}
+				$this->logstr("=== [" . date('c') . "] connect to $connstr\n", false);
+				return true;
+			};
+			try {
+				$this->dbh = dbconn($fnConfirm);
+			} catch (Exception $e) {
+				echo $e->getMessage() . "\n";
+				exit;
+			}
+		}
+		else {
+			$this->dbh = $opt["dbh"];
+		}
+
 		global $SQLDIFF;
 		$SQLDIFF = SqlDiff::create($this->dbh);
 		foreach ($this->tableMeta as &$e) {
@@ -507,7 +520,7 @@ class UpgHelper
 	/** @api */
 	function updateDB()
 	{
-		print "=== update DB\n"; 
+		$this->prompt("=== update DB\n"); 
 		foreach ($this->tableMeta as $e) {
 			$this->_addTableByMeta($e);
 		}
@@ -532,7 +545,7 @@ class UpgHelper
 			echo("$sql\n");
 		}
 		if (!$found) {
-			logstr("!!! cannot find table $tbl\n");
+			$this->logstr("!!! cannot find table $tbl\n");
 		}
 	}
 
@@ -541,7 +554,7 @@ class UpgHelper
 		global $SQLDIFF;
 		$tableName = $SQLDIFF->safeName($tableName);
 		$sql = "ALTER TABLE $tableName ADD " . genColSql($fieldMeta);
-		logstr("-- $sql\n");
+		$this->logstr("-- $sql\n");
 		$rv = $this->dbh->exec($sql);
 	}
 
@@ -637,9 +650,9 @@ class UpgHelper
 			}
 			$this->execSql("DROP TABLE $tbl1");
 		}
-		logstr("-- {$tbl}: " . join(',', $tableMeta['fields']) . "\n");
+		$this->logstr("-- {$tbl}: " . join(',', $tableMeta['fields']) . "\n");
 		$sql = genSql($tableMeta);
-		logstr("$sql\n");
+		$this->logstr("$sql\n");
 		try {
 			$this->dbh->exec($sql);
 		}
@@ -706,13 +719,13 @@ class UpgHelper
 			if (strcasecmp($e["name"], $tbl) != 0)
 				continue;
 			if ($this->_addTableByMeta($e, $force) === false) {
-				logstr("!!! ignore table $tbl\n");
+				$this->logstr("!!! ignore table $tbl\n");
 			}
 			$found = true;
 			break;
 		}
 		if (!$found) {
-			logstr("!!! cannot find table $tbl\n");
+			$this->logstr("!!! cannot find table $tbl\n");
 		}
 	}
 
@@ -732,5 +745,31 @@ class UpgHelper
 				echo "=== $rv records Affected.\n";
 		}
 		return $rv;
+	}
+
+	protected function prompt($s)
+	{
+		if (@$this->opt["prompt"]) {
+			$this->opt["prompt"]($s);
+			return;
+		}
+		global $IS_CLI;
+		if ($IS_CLI) {
+			fprintf(STDERR, "%s", $s);
+		}
+		else {
+			echo($s);
+		}
+	}
+
+	protected function logstr($s, $show=true)
+	{
+		if ($show) {
+			$this->prompt($s);
+		}
+		global $LOGF;
+		$fp = fopen($LOGF, "a");
+		fputs($fp, $s);
+		fclose($fp);
 	}
 }
