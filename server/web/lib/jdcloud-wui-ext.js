@@ -2148,6 +2148,7 @@ function enhanceSubobj(jo)
 				var readonly = opt.readonly || jdlg.hasClass("wui-readonly");
 				jdlg1.objParam.readonly = readonly;
 				jtbl.jdata().toolbar = opt.toolbar;  // 允许所有
+				jtbl.jdata().readonly = readonly;
 				var dgOpt = $.extend({
 					toolbar: WUI.dg_toolbar(jtbl, jdlg1),
 					onDblClickRow: WUI.dg_dblclick(jtbl, jdlg1),

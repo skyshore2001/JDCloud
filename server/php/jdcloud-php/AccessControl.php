@@ -1258,7 +1258,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 	final public function initTable($tbl = null) {
 		if (! $this->table) {
 			// AC_xxx -> xxx; xxx -> xxx
-			$this->table = $tbl ?: preg_replace('/^AC[^_]*_/', '', get_class($this));
+			$this->table = $tbl ?: preg_replace('/^AC[^_]*_|_Imp$/', '', get_class($this));
 		}
 	}
 
@@ -2800,6 +2800,9 @@ FROM ($sql) t0";
 				}
 			}
 			return $ret1;
+		}
+		else if ($fmt) {
+			jdRet(E_PARAM, "unknown query fmt=$fmt", "未知格式: fmt=$fmt");
 		}
 		else {
 			$ret = objarr2table($ret, $fixedColCnt);

@@ -2812,6 +2812,8 @@ $param或$postParam为null时，与空数组`[]`等价。
 			jdRet(E_SERVER, "bad AC class `$cls`. MUST extend JDApiBase or AccessControl", "AC类定义错误");
 		}
 		$acObj->env = $this;
+		if (is_a($acObj, "AccessControl"))
+			$acObj->initTable($tbl);
 		return $acObj;
 	}
 

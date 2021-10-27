@@ -3213,8 +3213,8 @@ function loadScript(url, fnOK, options)
 			success: fnOK,
 			url: url,
 			error: function (xhr, textStatus, err) {
-				console.log("*** loadScript fails for " + url);
-				console.log(err);
+				console.error("*** loadScript fails for " + url);
+				console.error(err);
 			}
 		}, options);
 
@@ -3233,7 +3233,7 @@ function loadScript(url, fnOK, options)
 	}
 	script.onerror = function () {
 		dfd_.reject();
-		console.log("*** loadScript fails for " + url);
+		console.error("*** loadScript fails for " + url);
 	}
 	document.head.appendChild(script);
 	return dfd_;
@@ -3993,9 +3993,17 @@ function setOnError()
 {
 	var fn = window.onerror;
 	window.onerror = function (msg, script, line, col, errObj) {
+		// 出错后尝试恢复callSvr变量
+		if ($.active || self.isBusy) {
+			setTimeout(function () {
+				$.active = 0;
+				self.isBusy = 0;
+				self.hideLoading();
+			}, 1000);
+		}
 		if (fn && fn.apply(this, arguments) === true)
 			return true;
-		if (errObj instanceof DirectReturn || /abort$/.test(msg) || (!script && !line))
+		if (errObj instanceof DirectReturn || /abort$/.test(msg))
 			return true;
 		if (self.options.skipErrorRegex && self.options.skipErrorRegex.test(msg))
 			return true;
@@ -4008,12 +4016,6 @@ function setOnError()
 		if (self.syslog)
 			self.syslog("fw", "ERR", content);
 		app_alert(msg, "e");
-		// 出错后尝试恢复callSvr变量
-		setTimeout(function () {
-			$.active = 0;
-			self.isBusy = 0;
-			self.hideLoading();
-		}, 1000);
 	}
 }
 setOnError();
@@ -4609,6 +4611,7 @@ function leaveWaiting(ctx)
 		if ($.active < 0)
 			$.active = 0;
 		// 一直等到不忙，避免callSvr/$.ajax混用导致无法hideLoading
+		// 注意：一旦在callSvc回调中异常出错，会在WUI.setOnError中处理($.active=0)，避免一直显示加载。
 		loopDo(function () {
 			if ($.active-m_silentCall > 0 || m_manualBusy != 0)
 				return;
@@ -7018,7 +7021,29 @@ function showDlgByMeta(itemArr, opt)
 	return jdlg;
 }
 
-function addFieldByMeta(itemArr, jp)
+/* 外部可扩展UDF
+var myUdf = {
+	prototype: WUI.UDF,
+	onGetMeta(obj) {
+		... 
+	},
+	addFieldByMeta: function (jdlg, jtbl, meta) {
+		if (...) {
+		}
+		this.prototype.addFieldByMeta(meta);
+	}
+}
+WUI.UDF = myUDF;
+ */
+self.UDF = {
+	onGetMeta: function (obj) {
+	},
+	addFieldByMeta: addFieldByMeta,
+	addColByMeta: function (columns) {
+	}
+};
+
+function addFieldByMeta(jdlg, jp, itemArr)
 {
 	var code = '';
 	for (var i=0; i<itemArr.length; ++i) {
@@ -7817,12 +7842,14 @@ function loadDialog(jdlg, onLoad, opt)
 
 	function loadDialogTpl1()
 	{
+		var obj = opt.obj || jdlg.attr("my-obj");
+		var meta = opt.meta || (obj && self.UDF.onGetMeta(obj));
 		// 支持由meta动态生成输入字段
-		if ($.isArray(opt.meta)) {
+		if (meta) {
 			var jp = jdlg.find(opt.metaParent || "table:first");
 			// 通过wui-meta-parent类控制只加1次meta
 			if (jp.size() > 0 && !jp.hasClass("wui-meta-parent")) {
-				addFieldByMeta(opt.meta, jp);
+				self.UDF.addFieldByMeta(jdlg, jp, meta);
 				jp.addClass("wui-meta-parent");
 			}
 		}
@@ -8357,7 +8384,7 @@ function dg_toolbar(jtbl, jdlg)
 		if (tmp)
 			perm = tmp.title;
 	}
-	var permSet2 = jp.hasClass("wui-readonly")? {"只读": true}: null;
+	var permSet2 = (jtbl.jdata().readonly || jp.hasClass("wui-readonly"))? {"只读": true}: null;
 	var ctx = {jp: jp, jtbl: jtbl, jdlg: jdlg};
 	for (var i=0; i<btnSpecArr.length; ++i) {
 		var btn = btnSpecArr[i];
@@ -9091,6 +9118,21 @@ CSS类, 可定义无数据提示的样式
 			var jmenu = GridHeaderMenu.showMenu({left: ev.pageX, top: ev.pageY}, jtbl);
 
 			ev.preventDefault();
+		}
+	},
+
+	onInitOptions: function (opt) {
+		var ac = opt.url && opt.url.action;
+		if (ac) {
+			var m = ac.match(/\w+(?=\.query\b)/);
+			var obj = m && m[0];
+			if (obj) {
+				opt.obj = obj;
+				var meta = self.UDF.onGetMeta(obj);
+				if (meta) {
+					self.UDF.addColByMeta(opt.columns[0], meta);
+				}
+			}
 		}
 	},
 
