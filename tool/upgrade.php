@@ -426,6 +426,10 @@ upgrade.php
 	update cinf set ver, update_tm
 */
 
+// 自动加载conf.user.php中的配置。
+if (getenv("P_DB") === false) {
+	@include_once(__DIR__ . "/../server/php/conf.user.php");
+}
 require_once('upglib.php');
 
 global $h;
@@ -534,4 +538,285 @@ if (dbver < 4) {
 
 	UpgLib\updateDbVer();
 }
-?>
+
+// ==== tool function in common and api_fw {{{
+function arrayCmp($a1, $a2, $fnEq, $cb)
+{
+	$mark = []; // index_of_a2 => true
+	foreach ($a1 as $e1) {
+		$found = null;
+		for ($i=0; $i<count($a2); ++$i) {
+			$e2 = $a2[$i];
+			if ($fnEq($e1, $e2)) {
+				$found = $e2;
+				$mark[$i] = true;
+				break;
+			}
+		}
+		$cb($e1, $found);
+	}
+	for ($i=0; $i<count($a2); ++$i) {
+		if (! array_key_exists($i, $mark)) {
+			$cb(null, $a2[$i]);
+		}
+	}
+}
+ 
+function getCred($cred)
+{
+	if (! $cred)
+		return null;
+	if (stripos($cred, ":") === false) {
+		$cred = base64_decode($cred);
+	}
+	return explode(":", $cred, 2);
+}
+
+function dbconn($fnConfirm = null)
+{
+	global $DBH;
+	if (isset($DBH))
+		return $DBH;
+
+	global $DB, $DBTYPE;
+	$DB = getenv("P_DB");
+	$DBCRED = getenv("P_DBCRED");
+	$DBTYPE = getenv("P_DBTYPE") ?: "mysql";
+
+	// 未指定驱动类型，则按 mysql或sqlite 连接
+	if (! preg_match('/^\w{3,10}:/', $DB)) {
+		// e.g. P_DB="../carsvc.db"
+		if ($DBTYPE == "sqlite") {
+			$C = ["sqlite:" . $DB, '', ''];
+		}
+		else if ($DBTYPE == "mysql") {
+			// e.g. P_DB="115.29.199.210/carsvc"
+			// e.g. P_DB="115.29.199.210:3306/carsvc"
+			if (! preg_match('/^"?(.*?)(:(\d+))?\/(\w+)"?$/', $DB, $ms))
+				throw new Exception("bad db=`$DB`");
+			$dbhost = $ms[1];
+			$dbport = $ms[3] ?: 3306;
+			$dbname = $ms[4];
+
+			list($dbuser, $dbpwd) = getCred($DBCRED); 
+			$C = ["mysql:host={$dbhost};dbname={$dbname};port={$dbport}", $dbuser, $dbpwd];
+		}
+		else {
+			throw new Exception("bad DB spec for dbtype=$DBTYPE");
+		}
+	}
+	else {
+		list($dbuser, $dbpwd) = getCred($DBCRED); 
+		$C = [$DB, $dbuser, $dbpwd];
+	}
+
+	if ($fnConfirm && $fnConfirm($C[0]) === false) {
+		exit;
+	}
+	try {
+		@$DBH = new PDO ($C[0], $C[1], $C[2]);
+	}
+	catch (PDOException $e) {
+		throw new Exception("dbconn fails: " . $e->getMessage());
+	}
+	
+	if ($DBTYPE == "mysql") {
+		$DBH->exec('set names utf8mb4');
+	}
+	$DBH->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION); # by default use PDO::ERRMODE_SILENT
+
+	# enable real types (works on mysql after php5.4)
+	# require driver mysqlnd (view "PDO driver" by "php -i")
+	$DBH->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+	$DBH->setAttribute(PDO::ATTR_STRINGIFY_FETCHES, false);
+	return $DBH;
+}
+
+class DbExpr
+{
+	public $val;
+	function __construct($val) {
+		$this->val = $val;
+	}
+}
+
+function dbExpr($val)
+{
+	return new DbExpr($val);
+}
+
+function Q($s, $dbh = null)
+{
+	if ($s === null)
+		return "null";
+	$s = str_replace("\\", "\\\\", $s);
+	return "'" . str_replace("'", "\\'", $s) . "'";
+	//return $dbh->quote($s);
+}
+
+function getQueryCond($cond)
+{
+	if ($cond === null || $cond === "ALL")
+		return null;
+	if (is_numeric($cond))
+		return "id=$cond";
+	if (!is_array($cond))
+		return $cond;
+	
+	$condArr = [];
+	foreach($cond as $k=>$v) {
+		if (is_int($k)) {
+			if (stripos($v, ' and ') !== false || stripos($v, ' or ') !== false)
+				$exp = "($v)";
+			else
+				$exp = $v;
+		}
+		else {
+			if ($v === null) {
+				$exp = "$k IS NULL";
+			}
+			else {
+				$exp = "$k=" . Q($v);
+			}
+		}
+		$condArr[] = $exp;
+	}
+	return join(' AND ', $condArr);
+}
+
+function genQuery($sql, $cond)
+{
+	$condStr = getQueryCond($cond);
+	if (!$condStr)
+		return $sql;
+	return $sql . ' WHERE ' . $condStr;
+}
+
+function execOne($sql, $getInsertId = false)
+{
+	global $DBH;
+	if (! isset($DBH))
+		dbconn();
+	$rv = $DBH->exec($sql);
+	if ($getInsertId)
+		$rv = (int)$DBH->lastInsertId();
+	return $rv;
+}
+
+function queryOne($sql, $assoc = false, $cond = null)
+{
+	global $DBH;
+	if (! isset($DBH))
+		dbconn();
+	if ($cond)
+		$sql = genQuery($sql, $cond);
+	if (stripos($sql, "limit ") === false)
+		$sql .= " LIMIT 1";
+	$sth = $DBH->query($sql);
+
+	if ($sth === false)
+		return false;
+
+	$fetchMode = $assoc? PDO::FETCH_ASSOC: PDO::FETCH_NUM;
+	$row = $sth->fetch($fetchMode);
+	$sth->closeCursor();
+	if ($row !== false && count($row)===1 && !$assoc)
+		return $row[0];
+	return $row;
+}
+
+function queryAll($sql, $assoc = false, $cond = null)
+{
+	global $DBH;
+	if (! isset($DBH))
+		dbconn();
+	if ($cond)
+		$sql = genQuery($sql, $cond);
+	$sth = $DBH->query($sql);
+	if ($sth === false)
+		return false;
+	$fetchMode = $assoc? PDO::FETCH_ASSOC: PDO::FETCH_NUM;
+	$allRows = [];
+	do {
+		$rows = $sth->fetchAll($fetchMode);
+		$allRows[] = $rows;
+	}
+	while ($sth->nextRowSet());
+	// $sth->closeCursor();
+	return count($allRows)>1? $allRows: $allRows[0];
+}
+
+function dbInsert($table, $kv)
+{
+	$keys = '';
+	$values = '';
+	foreach ($kv as $k=>$v) {
+		if (is_null($v))
+			continue;
+		if ($v === "")
+			continue;
+
+		if ($keys !== '') {
+			$keys .= ", ";
+			$values .= ", ";
+		}
+		$keys .= $k;
+		if ($v instanceof dbExpr) { // 直接传SQL表达式
+			$values .= $v->val;
+		}
+		else if (is_array($v)) {
+			throw new Exception("dbInsert: array is not allowed");
+		}
+		else {
+			$values .= Q($v);
+		}
+	}
+	if (strlen($keys) == 0) 
+		throw new Exception("no field found to be added");
+	$sql = sprintf("INSERT INTO %s (%s) VALUES (%s)", $table, $keys, $values);
+#			var_dump($sql);
+	return execOne($sql, true);
+}
+
+function dbUpdate($table, $kv, $cond)
+{
+	if ($cond === null)
+		throw new Exception("bad cond");
+
+	$condStr = getQueryCond($cond);
+	$kvstr = "";
+	foreach ($kv as $k=>$v) {
+		if ($k === 'id' || is_null($v))
+			continue;
+
+		if ($kvstr !== '')
+			$kvstr .= ", ";
+
+		// 空串或null置空；empty设置空字符串
+		if ($v === "" || $v === "null")
+			$kvstr .= "$k=null";
+		else if ($v === "empty")
+			$kvstr .= "$k=''";
+		else if ($v instanceof dbExpr) { // 直接传SQL表达式
+			$kvstr .= $k . '=' . $v->val;
+		}
+		else {
+			$kvstr .= "$k=" . Q($v);
+		}
+	}
+	$cnt = 0;
+	if (strlen($kvstr) == 0) {
+		// addLog("no field found to be set");
+	}
+	else {
+		if (isset($condStr))
+			$sql = sprintf("UPDATE %s SET %s WHERE $condStr", $table, $kvstr);
+		else
+			$sql = sprintf("UPDATE %s SET %s", $table, $kvstr);
+		$cnt = execOne($sql);
+	}
+	return $cnt;
+}
+// }}}
+
+// vim: foldmethod=marker

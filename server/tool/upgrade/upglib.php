@@ -11,6 +11,10 @@ $CHAR_SZ = [
 	'm' => 50,
 	'l' => 255 
 ];
+
+$IS_CLI = (php_sapi_name() == "cli");
+
+$UDT_defaultMeta = ["id", "tm", "updateTm"];
 #}}}
 
 ###### db adapter {{{
@@ -95,7 +99,13 @@ $SQLDIFF = null;
 // 注意：die返回0，请调用die1返回1标识出错。
 function die1($msg)
 {
-	echo($msg);
+	global $IS_CLI;
+	if ($IS_CLI) {
+		fwrite(STDERR, $msg . "\n");
+	}
+	else {
+		echo($msg);
+	}
 	exit(1);
 }
 
@@ -335,6 +345,10 @@ function getMetaFile()
 {
 	if ($a = getenv("P_METAFILE"))
 		return $a;
+	if (($a=__DIR__ . '/../DESIGN.md') && is_file($a))
+		return $a;
+	if (($a=__DIR__ . '/../DESIGN.wiki') && is_file($a))
+		return $a;
 }
 
 #}}}
@@ -450,7 +464,7 @@ class UpgHelper
 				$this->addTableMeta($tableDef, "DiMeta");
 			}
 		}
-		if ($opt["noDb"])
+		if (@$opt["noDb"])
 			return;
 
 		if (! isset($opt["dbh"])) {
@@ -771,5 +785,33 @@ class UpgHelper
 		$fp = fopen($LOGF, "a");
 		fputs($fp, $s);
 		fclose($fp);
+	}
+
+	/** @api */
+	function help($name = "")
+	{
+		showMethods(__CLASS__, $name);
+	}
+
+	/** @api */
+	function quit()
+	{
+		exit;
+	}
+
+	/** @api */
+	function export($type=0)
+	{
+		if ($type == 0) {
+			foreach ($this->tableMeta as $e) {
+				echo $e["tableDef"];
+			}
+		}
+		else if ($type == 1) {
+			$this->showTable(null);
+		}
+		else if ($type == 2) {
+			$this->showTable(null, true);
+		}
 	}
 }
