@@ -2675,10 +2675,10 @@ function showDataReport(opt, showPageOpt)
 	var pivot = [];
 
 	self.assert($.isArray(opt.gres), "gres必须为数组");
-	opt.gres.forEach(e0 => {
+	opt.gres.forEach(function (e0) {
 		if (! e0)
 			return;
-		e0.split(/\s*,\s*/).forEach(e => {
+		e0.split(/\s*,\s*/).forEach(function (e) {
 			if (! e)
 				return;
 			gres.push(e);
@@ -2687,10 +2687,10 @@ function showDataReport(opt, showPageOpt)
 	});
 
 	self.assert($.isArray(opt.gres2), "gres2必须为数组");
-	opt.gres2.forEach(e0 => {
+	opt.gres2.forEach(function (e0) {
 		if (! e0)
 			return;
-		e0.split(/\s*,\s*/).forEach(e => {
+		e0.split(/\s*,\s*/).forEach(function (e) {
 			if (! e)
 				return;
 			gres2.push(e);
@@ -2812,7 +2812,7 @@ function showDataReport(opt, showPageOpt)
 				// 最后一行设置isSumRow标记
 				var isSumRow = (opt.showSum && rowIdx > 0 && rowIdx == rowCnt-1);
 				if (!isSumRow) {
-					gres.forEach((e, i) => {
+					gres.forEach(function (e, i) {
 						var rv = getFieldInfo(e);
 						var val = row[rv.title];
 						if (val === null || val === "(null)") {
@@ -2828,7 +2828,7 @@ function showDataReport(opt, showPageOpt)
 					});
 				}
 				if (!col.isSumCol) {
-					gres2.forEach((e, i) => {
+					gres2.forEach(function (e, i) {
 						var rv = getFieldInfo(e);
 						var val = col.title.split('-')[i]; // col.title: "field1-field2"
 						if (val === "(null)") {
