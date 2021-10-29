@@ -2586,6 +2586,7 @@ function diffObj(obj, obj1)
 - tmUnit: 用于统计图，特别用于月报、日报等，会自动补齐缺少的时间。常用有："y,m"-年月,"y,m,d"-年月日。注意一旦指定tmUnit则orderby选项自动与tmUnit相同。
 
 - showSum: 自动添加统计行或列
+- pivotSumField: 统计列列名，默认为"合计"
 
 @see JdcloudStat.tmUnit 
 
