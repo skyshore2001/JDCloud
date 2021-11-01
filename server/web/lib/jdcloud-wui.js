@@ -2833,12 +2833,12 @@ function getFormData(jo, doGetAll)
 	}
 	var orgData = jo.data("origin_") || {};
 	formItems(jo, function (ji, name, it) {
-		if (it.getDisabled(ji))
+		if (it.getDisabled())
 			return;
 		var orgContent = orgData[name];
 		if (orgContent == null)
 			orgContent = "";
-		var content = it.getValue(ji);
+		var content = it.getValue();
 		if (content == null)
 			content = "";
 		if (doGetAll || content !== String(orgContent)) // 避免 "" == 0 或 "" == false
@@ -2896,7 +2896,7 @@ function getFormData_vf(jo)
 		var vname = WUI.getOptions(ji).jd_vField;
 		if (!vname)
 			return;
-		data[vname] = it.getValue_vf(ji);
+		data[vname] = it.getValue_vf();
 	});
 	return data;
 }
@@ -2905,7 +2905,6 @@ function getFormData_vf(jo)
 @fn formItems(jo, cb)
 
 表单对象遍历。对表单jo（实际可以不是form标签）下带name属性的控件，交给回调cb处理。
-可通过扩展`WUI.formItems[sel]`来为表单扩展其它类型控件，参考 `WUI.defaultFormItems`来查看要扩展的接口方法。
 
 注意:
 
@@ -2925,28 +2924,82 @@ function getFormData_vf(jo)
 	WUI.formItems(jdlg.find(".my-fixedField"), function (ji, name, it) {
 		var fixedVal = ...
 		if (fixedVal || fixedVal == '') {
-			it.setReadonly(ji, true);
+			it.setReadonly(true);
 			var forAdd = beforeShowOpt.objParam.mode == FormMode.forAdd;
 			if (forAdd) {
-				it.setValue(ji, fixedVal);
+				it.setValue(fixedVal);
 			}
 		}
 		else {
-			it.setReadonly(ji, false);
+			it.setReadonly(false);
 		}
 	});
 
-@key defaultFormItems
+@fn getFormItem(ji)
+
+获取对话框上一个组件的访问器。示例，设置名为orderId的组件值：
+
+	var ji = jdlg.find("[name=orderId]"); // 或者用 var ji = $(frm.orderId);
+	var it = WUI.getFormItem(ji);
+	it.setValue("hello"); // 类似于ji.val("hello")，但支持各种复杂组件
+
+
+还可以用更简洁的jo.gn，以及支持用链式风格的调用：
+
+	var it = jdlg.gn("orderId");
+	it.val("hello").disabled(true); // 等价于 it.setValue("hello");  it.setDisabled(true);
+
+@see jQuery.fn.gn(name?)
+
+@var getFormItemExt
+
+可通过扩展`WUI.getFormItemExt[新类型]`来为表单扩展其它类型控件。示例：
+
+	WUI.getFormItemExt["myinput"] = function (ji) {
+		if (ji.hasClass("myinput"))
+			return new MyInputFormItem(ji);
+	}
+	function MyInputFormItem(ji) {
+		WUI.FormItem.call(this, ji);
+	}
+	MyInputFormItem.prototype = $.extend(new WUI.FormItem(), {
+		getValue: function () {
+			return this.ji.val();
+		}
+	});
  */
 self.formItems = formItems;
-self.formItems["[name]"] = self.defaultFormItems = {
-	getName: function (jo) {
-		// !!! NOTE: 为避免控件处理两次，这里忽略easyui控件的值控件textbox-value。其它表单扩展控件也可使用该类。
-		if (jo.hasClass("textbox-value"))
-			return;
+self.getFormItemExt = {};
+self.getFormItem = getFormItem;
+function getFormItem(ji)
+{
+	var ret;
+	$.each(self.getFormItemExt, function (k, ext) {
+		var rv = ext(ji);
+		if (rv !== undefined) {
+			ret = rv;
+			return false;
+		}
+	});
+	return ret || new FormItem(ji);
+}
+
+self.FormItem = FormItem;
+function FormItem(ji) {
+	this.ji = ji;
+}
+
+// { ji }
+FormItem.prototype = {
+	getName: function () {
+		var jo = this.ji;
 		return jo.attr("name") || jo.prop("name");
 	},
-	getDisabled: function (jo) {
+	getJo: function () {
+		return this.ji;
+	},
+	getDisabled: function () {
+		var jo = this.ji;
 		var val = jo.prop("disabled");
 		if (val === undefined)
 			val = jo.attr("disabled");
@@ -2957,27 +3010,31 @@ self.formItems["[name]"] = self.defaultFormItems = {
 		}
 		return val;
 	},
-	setDisabled: function (jo, val) {
+	setDisabled: function (val) {
+		var jo = this.ji;
 		jo.prop("disabled", !!val);
 		if (val)
 			jo.attr("disabled", "disabled");
 		else
 			jo.removeAttr("disabled");
 	},
-	getReadonly: function (jo) {
+	getReadonly: function () {
+		var jo = this.ji;
 		var val = jo.prop("readonly");
 		if (val === undefined)
 			val = jo.attr("readonly");
 		return val;
 	},
-	setReadonly: function (jo, val) {
+	setReadonly: function (val) {
+		var jo = this.ji;
 		jo.prop("readonly", !!val);
 		if (val)
 			jo.attr("readonly", "readonly");
 		else
 			jo.removeAttr("readonly");
 	},
-	setValue: function (jo, val) {
+	setValue: function (val) {
+		var jo = this.ji;
 		var isInput = jo.is(":input");
 		if (val === undefined) {
 			if (isInput) {
@@ -3005,6 +3062,7 @@ self.formItems["[name]"] = self.defaultFormItems = {
 		}
 	},
 	getValue: function (jo) {
+		var jo = this.ji;
 		var val;
 		if (jo.is(":checkbox")) {
 			val = jo.prop("checked")? jo.val(): jo.attr("value-off");
@@ -3018,18 +3076,92 @@ self.formItems["[name]"] = self.defaultFormItems = {
 		return val;
 	},
 	// 用于find模式设置。搜索"设置find模式"/datetime
-	getShowbox: function (jo) {
-		return jo;
+	getShowbox: function () {
+		return this.ji;
 	},
 
 	// 用于显示的虚拟字段值, 此处以select为例，适用于my-combobox
-	getValue_vf: function (jo) {
+	getValue_vf: function () {
+		var jo = this.ji;
 		var o = jo[0];
 		if (o.tagName == "SELECT")
 			return o.selectedIndex >= 0 ? o.options[o.selectedIndex].innerText : '';
 		return this.getValue(jo);
+	},
+	getTitle: function () {
+		return this.ji.closest("td").prev("td").html();
+	},
+	setFocus: function () {
+		this.ji.focus();
+	},
+
+	// 链式接口
+	val: function (v) {
+		if (v === undefined)
+			return this.getValue();
+		this.setValue(v);
+		return this;
+	},
+	disabled: function (v) {
+		if (v === undefined)
+			return this.getDisabled();
+		this.setDisabled(v);
+		return this;
+	},
+	readonly: function (v) {
+		if (v === undefined)
+			return this.getReadonly();
+		this.setReadonly(v);
+		return this;
+	},
+	visible: function (v) {
+		var jp = this.ji.closest("tr,.wui-field");
+		if (v === undefined)
+			return jp.is(":visible");
+		jp.toggle(!!v);
+		return this;
+	},
+	setOption: function (v) {
+		if (!$.isPlainObject(v))
+			return;
+		this.ji.trigger("setOption", v);
+		return this;
+		// for: combo, subobj
+		//WUI.setOptions(ji, v);
 	}
 };
+
+/**
+@fn jQuery.fn.gn(name?)
+
+按名字访问组件（gn表示getElementByName），返回访问器（iterator），用于对各种组件进行通用操作。
+
+示例：
+
+	var it = jdlg.gn("orderId"); 
+	var v = it.val(); // 取值，相当于 jdlg.find("[name=orderId]").val(); 但兼容my-combobox, wui-combogrid, wui-subobj等复杂组件。
+	it.val(100); // 设置值
+
+	var isVisible = it.visible(); // 取是否显示
+	it.visible(false); // 设置隐藏
+
+	var isDisabled = it.disabled();
+	it.disabled(true);
+
+	var isReadonly = it.readonly();
+	it.readonly(true);
+
+如果未指定name，则以jQuery对象本身作为组件返回访问器。所以也可以这样用：
+
+	var jo = jdlg.find("[name=orderId]");
+	var it = jo.gn(); // name可以省略，表示取自身
+	it.val(100);
+
+*/
+jQuery.fn.gn = function (name) {
+	var ji = name? this.find("[name=" + name + "],.wui-subobj-" + name): this;
+	return WUI.getFormItem(ji);
+}
 
 /*
 // 倒序遍历对象obj, 用法与$.each相同。
@@ -3047,24 +3179,21 @@ function eachR(obj, cb)
 }
 */
 
-function formItems(jo, cb)
+function formItems(jo, cb, sel)
 {
-	var doBreak = false;
-	$.each(self.formItems, function (sel, it) {
-		jo.filter(sel).add(jo.find(sel)).each (function () {
-			var ji = $(this);
-			var name = it.getName(ji);
-			if (! name)
-				return;
-			if (cb(ji, name, it) === false) {
-				doBreak = true;
-				return false;
-			}
-		});
-		if (doBreak)
+	if (sel == null)
+		sel = "[name]";
+	var jiList = jo.filter(sel).add(jo.find(sel));
+	jiList.each (function () {
+		var it = getFormItem($(this));
+		var name = it.getName();
+		if (! name)
+			return;
+		var ji = it.getJo(); // 原jquery对象, 一般与$(this)相同，但像combo这类可能不同
+		if (cb(ji, name, it) === false) {
 			return false;
+		}
 	});
-	return !doBreak;
 }
 
 /**
@@ -3130,7 +3259,7 @@ function setFormData(jo, data, opt)
 		var content = data[name];
 		if (opt1.setOnlyDefined && content === undefined)
 			return;
-		it.setValue(ji, content);
+		it.setValue(content);
 	});
 	jo.data("origin_", opt1.setOrigin? data: null);
 }
@@ -6654,6 +6783,7 @@ if (isSmallScreen()) {
 
 操作对话框时会发出以下事件供回调：
 
+	create - 对话框创建（在my-initfn执行后）
 	beforeshow - 对话框显示前。常用来处理对话框显示参数opt或初始数据opt.data.
 	show - 显示对话框后。常用来设置字段值或样式，隐藏字段、初始化子表datagrid或隐藏子表列等。
 	validate - 用于提交前验证、补齐数据等。返回false可取消提交。(v5.2) 支持其中有异步操作.
@@ -6811,6 +6941,7 @@ function showDlg(jdlg, opt)
 	if (loadDialog(jdlg, onLoad, opt))
 		return;
 	function onLoad() {
+		jdlg.trigger('create');
 		showDlg(jdlg, opt);
 	}
 
@@ -6822,7 +6953,8 @@ function showDlg(jdlg, opt)
 		modal: opt && opt.noCancel,
 		reset: true,
 		validate: true,
-		forSet: (formMode == FormMode.forSet)
+		forSet: (formMode == FormMode.forSet),
+		data: {}
 	}, opt);
 
 	jdlg.addClass('wui-dialog');
@@ -6922,6 +7054,14 @@ function showDlg(jdlg, opt)
 
 			var data = mCommon.getFormData(jdlg);
 			$.extend(data, newData);
+
+/*
+			// 新的验证接口，不支持异步
+			var ev = $.Event("validate2");
+			jfrm.trigger(ev, [formMode, data]);
+			if (ev.isDefaultPrevented())
+				return false;
+*/
 			if (opt.url) {
 				// 没有更新时直接关闭对话框
 				if (opt.forSet) {
@@ -7412,15 +7552,15 @@ function setFixedFields(jfrm, beforeShowOpt) {
 		var fixedVal = (ji.hasClass("wui-fixedField") && objParam && objParam[name] != null)? objParam[name]:
 			(fixedFields && fixedFields[name] != null)? fixedFields[name]: null;
 		if (fixedVal != null) {
-			it.setReadonly(ji, true);
+			it.setReadonly(true);
 			var forAdd = beforeShowOpt.objParam.mode == FormMode.forAdd;
 			var forFind = beforeShowOpt.objParam.mode == FormMode.forFind;
 			if (forAdd || forFind) {
-				it.setValue(ji, fixedVal);
+				it.setValue(fixedVal);
 			}
 		}
 		else {
-			it.setReadonly(ji, false);
+			it.setReadonly(false);
 		}
 	});
 }
@@ -7736,7 +7876,7 @@ function getFindData(jfrm)
 	self.formItems(jfrm, function (ji, name, it) {
 		if (ji.hasClass("notForFind"))
 			return;
-		var v = it.getValue(ji);
+		var v = it.getValue();
 		if (v == null || v === "")
 			return;
 		if (ji.attr("wui-find-hint")) {
@@ -8106,24 +8246,24 @@ function showObjDlg(jdlg, mode, opt)
 	var doReset = ! (jd.mode == FormMode.forFind && mode == FormMode.forFind) // 一直是find, 则不清除
 	if (mode == FormMode.forFind && jd.mode != FormMode.forFind) {
 		self.formItems(jfrm, function (je, name, it) {
-			var jshow = it.getShowbox(je);
+			var jshow = it.getShowbox();
 			var bak = je.jdata().bak = {
-				disabled: it.getDisabled(je),
-				readonly: it.getReadonly(je),
+				disabled: it.getDisabled(),
+				readonly: it.getReadonly(),
 				title: jshow.prop("title"),
 				type: null
 			}
 			if (je.hasClass("notForFind") || je.attr("notForFind") != null) {
-				it.setDisabled(je, true);
+				it.setDisabled(true);
 				jshow.css("backgroundColor", "");
 			}
-			else if (je.is("[type=hidden]")) {
+			else if (jshow.is("[type=hidden]")) {
 			}
 			else {
-				it.setDisabled(je, false);
-				it.setReadonly(je, false);
 				jshow.addClass("wui-find-field")
 					.prop("title", self.queryHint);
+				it.setDisabled(false);
+				it.setReadonly(false);
 				var type = jshow.attr("type");
 				if (type && ["number", "date", "time", "datetime"].indexOf(type) >= 0) {
 					bak.type = type;
@@ -8138,9 +8278,9 @@ function showObjDlg(jdlg, mode, opt)
 			var bak = je.jdata().bak;
 			if (bak == null)
 				return;
-			it.setDisabled(je, bak.disabled);
-			it.setReadonly(je, bak.readonly);
-			var jshow = it.getShowbox(je);
+			it.setDisabled(bak.disabled);
+			it.setReadonly(bak.readonly);
+			var jshow = it.getShowbox();
 			jshow.removeClass("wui-find-field")
 			jshow.prop("title", bak.title);
 			if (bak.type) {
@@ -9129,7 +9269,7 @@ CSS类, 可定义无数据提示的样式
 			if (obj) {
 				opt.obj = obj;
 				var meta = self.UDF.onGetMeta(obj);
-				if (meta) {
+				if (meta && meta.defaultFlag) { // 防止对话框上的datagrid重复添加字段
 					self.UDF.addColByMeta(opt.columns[0], meta);
 				}
 			}
@@ -10838,6 +10978,7 @@ function mycombobox(force)
 			$.each(arr, function (i, row) {
 				var jopt = $("<option></option>")
 					.attr("value", row[opts.valueField])
+					.prop("chooseValue", row)
 					.text(getText(row))
 					.appendTo(jo);
 			});

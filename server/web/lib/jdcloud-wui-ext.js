@@ -894,14 +894,21 @@ function enhanceLabels(jp)
 图标使用font awesome库，由`<i class="fa fa-xxx"></i>`指定，图标查询可参考 http://www.fontawesome.com.cn/faicons/ 或 https://fontawesome.com/icons
 
  */
+self.enhanceMenu = enhanceMenu;
 function enhanceMenu()
 {
 	var jo = $('#menu');
+	var isReset = jo.hasClass("wui-enhanced");
 
 	jo.find("a").addClass("my-menu-item");
-	jo.find(".menu-expandable").hide();
+	if (!isReset)
+		jo.find(".menu-expandable").hide();
 	jo.find(".menu-expand-group").each(function () {
-		$(this).find("a:first")
+		var ji = $(this);
+		if (ji.hasClass("wui-enhanced"))
+			return;
+		ji.addClass("wui-enhanced");
+		ji.find("a:first")
 			.addClass("menu-item-head")
 			.click(menu_onexpand)
 			.append('<i class="fa fa-angle-down" aria-hidden="true"></i>')
@@ -912,6 +919,10 @@ function enhanceMenu()
 				}
 			});
 	});
+	if (isReset)
+		return;
+	jo.addClass("wui-enhanced");
+
 	// set active
 	jo[0].addEventListener("click", function (ev) {
 		if (ev.target.tagName != "A" || !$(ev.target).is(".my-menu-item:not(.menu-item-head)")<0)
@@ -1202,93 +1213,87 @@ form提交时能够正确获取它们的值：
 
 而且在查询模式下，日期等字段也不受格式限制，可输入诸如"2019-10", "2019-1-1~2019-7-1"这样的表达式。
 */
-self.formItems[".combo-f"] = $.extend({}, self.defaultFormItems, {
-	getComboType_: function (jo) {
-		var o = jo[0];
-		if (! o.comboType) {
-			var arr = Object.keys(jo.data()); // e.g. ["combogrid", "combo", "textbox"]
-			// console.log(arr);
-			for (var i=0; i<arr.length; ++i) {
-				if (jo[arr[i]]) {
-					o.comboType = arr[i];
-					break;
-				}
-			}
+self.getFormItemExt["combo"] = function (ji) {
+	// 注意：jo.combo()创建后，它会将name属性转移到一个新建的hidden对象。传入这里的ji可以是原combo对象也可以是那个hidden对象。
+	// 在实现方法时只根据原combo对象即jcombo
+	var jcombo;
+	if (ji.hasClass("combo-f")) {
+		jcombo = ji;
+	}
+	else if (ji.is("[type=hidden].textbox-value")) {
+		jcombo = ji.closest(".combo").prev(".combo-f");
+	}
+	else {
+		return;
+	}
+	if (jcombo.size() == 0)
+		return;
+
+	var jcomboCall;
+	var arr = Object.keys(jcombo.data()); // e.g. ["combogrid", "combo", "textbox"]
+	// console.log(arr);
+	for (var i=0; i<arr.length; ++i) {
+		if (jcombo[arr[i]]) {
+			var comboType = arr[i]; // e.g. combogrid
+			var fn = jcombo[comboType].bind(jcombo);
+			jcomboCall = fn;
+			break;
 		}
-		return o.comboType;
+	}
+	WUI.assert(jcomboCall);
+	return new ComboFormItem(ji, jcombo, jcomboCall);
+}
+
+function ComboFormItem(ji, jcombo, jcomboCall) {
+	WUI.FormItem.call(this, ji);
+	this.jcombo = jcombo;
+	this.jcomboCall = jcomboCall;
+}
+
+// 适用于 combo, combogrid, datebox, datetimebox
+// { ji, jcombo, jcomboCall
+ComboFormItem.prototype = $.extend(new WUI.FormItem(), {
+	getName: function () {
+		var jcombo = this.jcombo;
+		return jcombo.prop("nameForFind") || jcombo.attr("comboname");
 	},
-	getName: function (jo) {
-		// 取原始名字comboname
-		return jo.prop("nameForFind") || jo.attr("comboname");
+	getJo: function () {
+		return this.jcombo;
 	},
-	setValue: function (jo, val) {
-		var type = this.getComboType_(jo);
-		jo[type]("setValue", val);
+	setValue: function (val) {
+		var fn = this.jcomboCall;
+		fn("setValue", val); // 调用比如 jcombo.combogrid("setValue", ...)
 	},
-	getValue: function (jo) {
-		var type = this.getComboType_(jo);
-		return jo[type]("getValue");
+	getValue: function () {
+		var fn = this.jcomboCall;
+		return fn("getValue");
 	},
-	getDisabled: function (jo) {
-		return jo.combo("options").disabled;
+	getDisabled: function () {
+		var fn = this.jcomboCall;
+		return fn("options").disabled;
 	},
-	setDisabled: function (jo, val) {
-		return jo.combo(val? "disable": "enable");
+	setDisabled: function (val) {
+		var fn = this.jcomboCall;
+		fn(val? "disable": "enable");
 	},
-	getReadonly: function (jo) {
-		return jo.combo("options").readonly;
+	getReadonly: function () {
+		var fn = this.jcomboCall;
+		return fn("options").readonly;
 	},
-	setReadonly: function (jo, val) {
-		jo.combo("readonly", val);
-		//jo.combo("textbox").prop("readonly", val);
+	setReadonly: function (val) {
+		var fn = this.jcomboCall;
+		return fn("readonly", val);
 	},
 	// 用于显示的虚拟字段值
-	getValue_vf: function (jo) {
-		var type = this.getComboType_(jo);
-		return jo[type]("getText");
+	getValue_vf: function () {
+		var fn = this.jcomboCall;
+		return fn("getText");
 	},
-	getShowbox: function (jo) {
-		return jo.combo("textbox");
+	getShowbox: function () {
+		var fn = this.jcomboCall;
+		return fn("textbox");
 	},
 });
-
-/*
-self.formItems[".combogrid-f"] = $.extend({}, self.defaultFormItems, {
-	getName: function (jo) {
-		return jo.attr("comboname");
-	},
-	setValue: function (jo, val) {
-		jo.combogrid("setValue", val);
-	},
-	getValue: function (jo) {
-		return jo.combogrid("getValue");
-	}
-});
-
-self.formItems[".datebox-f"] = $.extend({}, self.defaultFormItems, {
-	getName: function (jo) {
-		return jo.attr("comboname");
-	},
-	setValue: function (jo, val) {
-		jo.datebox("setValue", val);
-	},
-	getValue: function (jo) {
-		return jo.datebox("getValue");
-	}
-});
-
-self.formItems[".datetimebox-f"] = $.extend({}, self.defaultFormItems, {
-	getName: function (jo) {
-		return jo.attr("comboname");
-	},
-	setValue: function (jo, val) {
-		jo.datetimebox("setValue", val);
-	},
-	getValue: function (jo) {
-		return jo.datetimebox("getValue");
-	}
-});
-*/
 
 /**
 @fn toggleCol(jtbl, col, show)
@@ -1893,64 +1898,32 @@ function createFindMenu(jtbl)
 ## 示例4: 动态启用/禁用子表
 
 启用或禁用可通过事件发送指令:
-	jo.trigger("setDisabled", boolDisabledVal); // 会自动刷新UI
+	jo.trigger("setOption", {disabled: boolDisabledVal}); // 会自动刷新UI
 
 示例: 在物料明细对话框(dlgItem)中, 在Tabs组件中放置"组合"子表, 当下拉框选择"组合"时, 启用"组合"子表Tab页:
 
 	<select name="type">
 		<option value="">(无)</option>
 		<option value="P">组合</option>
-		<!--<option value="U">拆卖</option>-->
+		<option value="U">拆卖</option>
 	</select>
 
 	<div class="easyui-tabs">
-		<div class="wui-subobj" id="tabItem1" data-options="obj:'Item1', valueField:'item1', relatedKey:'itemId', dlg:'dlgItem1'" title="组合">
-			<table>
-				<thead><tr>
-					<th data-options="field:'srcItemName'">源商品</th>
-					<th data-options="field:'qty', formatter:WUI.formatter.number">数量</th>
-				</tr></thead>
-			</table>
+		<!-- 注意 wui-subobj-item1 类定义了名字为 item1，以便下面setDlgLogic中引用。它一般和valueField相同，但valueField选项可能不存在 -->
+		<div class="wui-subobj wui-subobj-item1" data-options="obj:'Item1', valueField:'item1', relatedKey:'itemId', dlg:'dlgItem1'" title="组合">
+			...
 		</div>
 	</div>
 
 设置"组合"页随着type选择启用禁用:
 
-	$(frm.type).change(function () {
-		toggleItem1(this.value);
+	// 注意，subobj组件一般不设置name属性，而是通过定义CSS类`wui-subobj-{name}`类来标识名字，从而可以用 jdlg.gn("item1") 来找到它的通用接口。
+	WUI.setDlgLogic(jdlg, "item1", {
+		disabled: function (e) {
+			return e.type == "P";
+		},
+		required: true
 	});
-
-	jdlg.on("beforeshow", onBeforeShow)
-		.on("validate", onValidate);
-	
-	function onBeforeShow(ev, formMode, opt) 
-	{
-		toggleItem1(opt.data && opt.data.type);
-	}
-
-	function onValidate(ev, mode, oriData, newData) 
-	{
-		// 添加时验证子表值
-		if (mode == FormMode.forAdd) {
-			var type = frm.type.value;
-			if (type == "P") {
-				console.log(newData.item1);
-				if (newData.item1 == null || newData.item1.length == 0) {
-					app_alert("请添加组合明细!", "w");
-					// 自动切换到该页
-					jdlg.find(".easyui-tabs").tabs("select", "组合");
-					return false;
-				}
-			}
-		}
-	}
-
-	// 启用或禁用子表的Tab
-	function toggleItem1(type)
-	{
-		var dis = type!="P";
-		jdlg.find("#tabItem1").trigger("setDisabled", dis);
-	}
 
 ## 示例5：显示为树表(treegrid)
 
@@ -2052,9 +2025,14 @@ function enhanceSubobj(jo)
 		tabIndex = jtabs.tabs("getTabIndex", jo);
 		jo.on("tabSelect", loadData);
 	}
-	jo.on("setDisabled", function (ev, val) {
-		opt.disabled = val;
-		loadData();
+	jo.on("setOption", function (ev, val) {
+		$.extend(opt, val);
+		if (val.disabled != undefined) {
+			toggle(!val.disabled);
+		}
+		if (val.readonly !== undefined) {
+			// TODO:
+		}
 	});
 
 	var jdlg1;
@@ -2065,6 +2043,7 @@ function enhanceSubobj(jo)
 	}
 
 	var datagrid = opt.treegrid? "treegrid": "datagrid";
+	opt.dgCall = jtbl[datagrid].bind(jtbl); // FormItem中使用
 	
 	function onBeforeShow(ev, formMode, beforeShowOpt) 
 	{
@@ -2111,7 +2090,7 @@ function enhanceSubobj(jo)
 		var formMode = ctx.formMode;
 		var formData = ctx.formData;
 		var show = formMode == FormMode.forSet;
-		if (jdlg1 && (formMode == FormMode.forAdd && !!opt.valueField))
+		if (jdlg1 && (formMode == FormMode.forAdd && !!opt.valueField && !opt.readonly))
 			show = true;
 		toggle(!opt.disabled && show);
 
@@ -2241,12 +2220,65 @@ function toggleTab(jtabs, which, show, noEvent) {
 	jtab.css("visibility", show?"visible":"hidden");
 }
 
+self.getFormItemExt["wui-subobj"] = function (ji) {
+	if (ji.hasClass("wui-subobj")) {
+		return new SubobjFormItem(ji);
+	}
+}
+
+function SubobjFormItem(ji) {
+	WUI.FormItem.call(this, ji);
+}
+SubobjFormItem.prototype = $.extend(new WUI.FormItem(), {
+	getName: function () {
+		var opt = WUI.getOptions(this.ji);
+		return opt.valueField;
+	},
+	getDisabled: function () {
+		var opt = WUI.getOptions(this.ji);
+		return opt.disabled;
+	},
+	setDisabled: function (val) {
+		this.ji.trigger("setOption", {disabled: val});
+	},
+	getReadonly: function () {
+		var opt = WUI.getOptions(this.ji);
+		return opt.readonly;
+	},
+	setReadonly: function (val) {
+		this.ji.trigger("setOption", {readonly: val});
+	},
+	getValue: function () {
+		var opt = WUI.getOptions(this.ji);
+		WUI.assert(opt.dgCall);
+		var rows = opt.dgCall("getData").rows; // 就是jtbl.datagrid("getData")
+		return rows;
+	},
+	setValue: function (val) {
+		var opt = WUI.getOptions(this.ji);
+		WUI.assert(opt.dgCall);
+		opt.dgCall("loadData", val);
+	},
+	getTitle: function () {
+		return this.ji.panel("options").title;
+	},
+	setFocus: function () {
+		var title = this.getTitle();
+		this.ji.closest(".easyui-tabs").tabs("select", title);
+	}
+});
+
 /**
 @key .wui-picker 字段后的工具按钮
 
 示例：输入框后添加一个编辑按钮，默认不可编辑，点按钮编辑：
 
 	<input name="value" class="wui-picker-edit">
+
+尽管不可编辑，该字段还是可编辑的；要查看该字段是否只读，以及设置字段只读，可以：
+
+	var isReadonly = jo.triggerHandler("readonly"); // 取值
+	jo.triggerHandler("readonly", isReadonly); // 设置，也可以用trigger方法
 
 示例：输入框后添加一个帮助按钮：
 
@@ -2324,6 +2356,30 @@ function enhancePicker(jo)
 		window.open(url);
 	}
 }
+
+self.getFormItemExt["wui-picker-edit"] = function (ji) {
+	if (ji.hasClass("wui-picker-edit")) {
+		return new PickerFormItem(ji);
+	}
+}
+
+function PickerFormItem(ji) {
+	WUI.FormItem.call(this, ji);
+	this.jdlg = ji.closest(".wui-dialog");
+}
+PickerFormItem.prototype = $.extend(new WUI.FormItem(), {
+	getReadonly: function () {
+		return true;
+	},
+	setReadonly: function (val) {
+		if (this.ji.hasClass("wui-find-field")) {
+			this.ji.prop("readonly", !!val);
+			this.ji.next("a").css("visibility", "hidden");
+			return;
+		}
+		this.ji.next("a").css("visibility", val? "hidden": "visible");
+	}
+});
 
 /**
 @key .wui-more
@@ -3138,4 +3194,306 @@ $.extend(self.dg_toolbar, {
 });
 // }}}
 
+// ==== 支持对话框逻辑定义 setDlgLogic {{{
+/**
+@fn setDlgLogic(jdlg, name, logic)
+@key .wui-dialog-logic 指定对话框逻辑
+
+设置对话框业务逻辑。
+
+## readonly-是否只读,disabled-是否禁用,show-是否显示,value-设置值
+
+示例：对orderId组件，添加之后不可以修改：
+
+	// 一般可定义在initDlgXXX函数中
+	WUI.setDlgLogic(jdlg, "orderId", {
+		readonlyForSet: true
+	});
+
+也可以定义在DOM对象上，如：
+
+	<input name="orderId" class="wui-dialog-logic" data-options="readonlyForSet:true">
+
+如果是叠加在wui-combogrid组件上：
+
+	<input name="orderId" class="wui-combogrid wui-dialog-logic" data-options="$.extend(ListOptions.UserGrid(), readonlyForSet:true)">
+
+logic中支持readonly选项，也支持readonlyForAdd/readonlyForSet/readonlyForFind这些特定模式的选项，它们既可以设置为一个值，也可以是一个函数（或lambda）。
+如果同时指定了readonly和readonlyForAdd选项，则当添加模式时优先用readonlyForAdd选项，其它模式也类似。
+
+这个特性同样适用于以下disabled/readonly/value选项，比如有disabledForAdd/readonlyForSet/valueForAdd等选项。
+
+示例：添加时无须填写，但之后可修改：可设置添加时隐藏或只读
+
+	showForAdd: false
+	或
+	readonlyForAdd: true
+
+示例：添加时自动填写
+
+	填当前日期：
+	valueForAdd: () => new Date().format("D")
+
+	填当前操作员：
+	valueForAdd: g_data.user.id
+
+如果不允许改，则加上
+
+	readonlyForAdd: true
+
+示例：计算字段（不提交）
+
+	disabled: true
+	value: e => e.x + "-" + e.y
+
+由于后端没这个实体字段，所以不能提交。注意readonly和disabled在前端效果相似，但readonly字段会提交而disabled字段不提交。
+
+## watch-监控变化
+
+示例：根据status值，如果为CR就显示orderId字段
+
+	WUI.setDlgLogic(jdlg, "orderId", {
+		show: e => e.status == "CR",
+		watch: "status" // 指定依赖字段，当它变化时刷新当前字段
+	});
+
+上面用的是lambda写法，参数e是对话框初始数据。
+如果浏览器不支持lambda，可以用函数形式：
+
+	WUI.setDlgLogic(jdlg, "orderId", {
+		show: function (e) {
+			return e.status == "CR";
+		},
+		watch: "status"
+	});
+
+类似于readonly选项，选项show也支持showForAdd, showForSet, showForFind这些扩展选项。
+
+上面如果只设置show选项，则只会在打开对话框时设置字段，加上watch选项指定依赖字段，则当依赖字段发生变化时也会动态刷新。
+甚至可以依赖多字段，用逗号隔开即可，如单价(price)或数量(qty)变化后，更新总价(total):
+
+	WUI.setDlgLogic(jdlg, "total", {
+		value: e => e.price * e.qty,
+		watch: "price,qty" // 依赖多字段，以逗号分隔，注意不要多加空格
+	});
+
+watch选项会刷新disabled/readonly/show/value系列选项中的表达式。
+
+示例：对于仓库字段(名字name=whId，显示名vField=whName，是个wui-combogrid下拉框组件)，如果仓库名含有"原料", 则显示关联单据字段(orderId)
+
+	WUI.setDlgLogic(jdlg, "orderId", {
+		show: e => e.whName.indexOf("原料")
+		watch: "whId", 
+		onWatch: (e, ev) => e.whName = ev.data.name
+	});
+
+首先，对话框打开时，show选项定义了根据字段whName来确定是否显示；
+当watch字段whId变化时，先执行onWatch，更新字段whName，然后更执行show选项表达式，刷新显示状态。
+
+注意whName这种显示字段一般是虚拟字段，设置为禁用不提交到后端。
+
+上面onWatch选项定义一个函数，当watch字段变化后执行，参数有2个：`(e=当前对象数据, ev=扩展数据)`，在ev参数中：
+
+- ev.name表示当前变化的字段名，可用于依赖多个字段时用于区分是哪个字段变化。
+- ev.formMode表示当前对话框模式，是添加(FormMode.forAdd)、更新(FormMode.forSet)或是查找(FormMode.forFind)。
+- ev.data根据组件不同值也不同，对于wui-combogrid和my-combobox组件，它表示选择的数据行，比如列表定义了`id,name,code`三列，它就以`{id, name, code}`格式返回这三列数据。
+ TODO: 对于wui-subobj组件，它返回表格数据。
+
+## 动态设置combogrid/subobj等组件选项
+
+示例：type="入库"时，下拉列表moveType字段显示入库选项，type="出库"时，显示出库选项
+
+	var MoveTypeMap_出库 = {
+		602: "销售出库冲销",
+		202: "成本中心",
+		222: "项目",
+		552: "报废冲销"
+	};
+
+	var MoveTypeMap_入库 = {
+		102: "生产入库冲销",
+		201: "成本中心领料"
+	}
+
+	// html中的组件： <input name="moveType" class="my-combobox">
+	WUI.setDlgLogic(jdlg, "moveType", {
+		setOption: function (e) { return {
+			jdEnumMap: e.type == "入库"? MoveTypeMap_入库: MoveTypeMap_出库
+		}},
+		watch: "type"
+	});
+
+也可以直接设置静态值：
+
+	// html中：<input class="wui-combogrid">
+	WUI.setDlgLogic(jdlg, "whId", {
+		setOption: ListOptions.WhGrid()
+	});
+
+这与直接在html中设置是等价的：
+
+	<input class="wui-combogrid" data-options="ListOptions.WhGrid()">
+
+## 提交前验证
+
+	required: true,
+
+	// 返回一个非空字符串，则表示验证失败，字符串即是错误信息
+	validate: v => /^\d{11}$/.test(v) || "手机号须11位数字"
+
+注意验证选项对添加、更新有效，没有forAdd/forSet/forFind选项
+ */
+WUI.m_enhanceFn[".wui-dialog-logic"] = function (jo) {
+	var jdlg = jo.closest(".wui-dialog");
+	var it = WUI.getFormItem(jo);
+	var name = it.getName();
+	WUI.assert(jdlg.size()>0 && name);
+	WUI.setDlgLogic(jdlg, name, WUI.getOptions(jo));
 }
+
+WUI.setDlgLogic = setDlgLogic;
+function setDlgLogic(jdlg, name, logic)
+{
+	var map = {};
+	var gn = jdlg.gn.bind(jdlg);
+	var onShowArr = [];
+	$.each(logic, function (k, v) {
+		if (/^show/.test(k)) {
+			// 只绑一次
+			if (map["show"])
+				return;
+			map["show"] = true;
+			onShowArr.push(function (formMode, data) {
+				var val = calcVal("show", v, true, formMode, data);
+				gn(name).visible(val);
+			});
+		}
+		else if (/^disabled/.test(k)) {
+			if (map["disabled"])
+				return;
+			map["disabled"] = true;
+			onShowArr.push(function (formMode, data) {
+				var val = calcVal("disabled", v, false, formMode, data);
+				gn(name).disabled(val);
+			});
+		}
+		else if (/^readonly/.test(k)) {
+			if (map["readonly"])
+				return;
+			map["readonly"] = true;
+			onShowArr.push(function (formMode, data) {
+				var val = calcVal("readonly", v, false, formMode, data);
+				gn(name).readonly(val);
+			});
+		}
+		else if (/^value/.test(k)) {
+			if (map["value"])
+				return;
+			map["value"] = true;
+			onShowArr.push(function (formMode, data) {
+				var val = calcVal("value", v, undefined, formMode, data);
+				if (val !== undefined) {
+					gn(name).val(val);
+				}
+			});
+		}
+		else if (k == "setOption") {
+			if ($.isPlainObject(v)) {
+				gn(name).setOption(v);
+			}
+			else if ($.isFunction(v)) {
+				jdlg.on("beforeshow", function (ev, formMode, dlgOpt) {
+					var val = v(dlgOpt.data);
+					gn(name).setOption(val);
+				});
+			}
+			else {
+				console.error("bad dialog logic for " + k + ": ", v);
+			}
+		}
+		else if (k == "validate" || k == "required") {
+			if (map["validate"])
+				return;
+			map["validate"] = true;
+			jdlg.on("validate", function (ev, formMode, data) {
+				if (formMode === FormMode.forFind)
+					return;
+				var it = gn(name);
+				var val = it.val();
+				if (logic.required && (!val || ($.isArray(val) && val.length == 0))) {
+					app_alert(it.getTitle() + "不可为空。", "w", function () {
+						it.setFocus();
+					});
+					return false;
+				}
+				if (logic.validate) {
+					var rv = logic.validate(val);
+					if (typeof(rv) == "string") {
+						app_alert(rv, "w");
+						return false;
+					}
+				}
+			});
+		}
+	});
+
+	if (onShowArr.length > 0) {
+		jdlg.on("show", function (ev, formMode, initData) {
+			onShowArr.forEach(function (fn) {
+				fn(formMode, initData);
+			});
+		});
+	}
+	if (logic.watch) {
+		var watchArr = logic.watch.split(',');
+		jdlg.on("change", onChange); // for input/select/my-combobox
+		jdlg.on("choose", onChange); // for wui-combogrid
+		function onChange(ev, eventData) {
+			var jo = $(ev.target);
+			var watchField = jo.gn().getName();
+			if (watchArr.indexOf(watchField) >= 0) {
+				var data = WUI.getFormData(jdlg, true);
+				var formMode = jdlg.jdata().mode;
+				if (logic.onWatch) {
+					if (jo.hasClass("my-combobox"))
+						eventData = jo.prop("selectedOptions")[0].chooseValue || {};
+					logic.onWatch(data, {
+						name: watchField,
+						formMode: formMode,
+						data: eventData
+					});
+				}
+				onShowArr.forEach(function (fn) {
+					fn(formMode, data);
+				});
+				if (logic.setOption) {
+					var val = logic.setOption(data);
+					gn(name).setOption(val);
+				}
+			}
+		}
+	}
+
+	function calcVal(k, v, defVal, formMode, data) {
+		var val = defVal;
+		if (formMode == FormMode.forAdd && logic[k + "ForAdd"] !== undefined) {
+			val = logic[k + "ForAdd"];
+		}
+		else if (formMode == FormMode.forSet && logic[k + "ForSet"] !== undefined) {
+			val = logic[k + "ForSet"];
+		}
+		else if (formMode == FormMode.forFind && logic[k + "ForFind"] !== undefined) {
+			val = logic[k + "ForFind"];
+		}
+		else if (logic[k] !== undefined) {
+			val = logic[k];
+		}
+		if ($.isFunction(val))
+			val = val(data, gn);
+		return val;
+	}
+}
+// }}}
+
+}
+// vi: foldmethod=marker 
