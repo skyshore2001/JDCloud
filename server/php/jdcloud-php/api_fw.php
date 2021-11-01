@@ -546,13 +546,25 @@ global $X_RET_FN;
 
 注意：
 
-- 如果接口返回错误, 该回调不执行. (DirectReturn返回除外)
+- 如果接口返回错误, 该回调不执行(DirectReturn返回除外)，除非有dbExpr标识（见下面例子）。
 - 此时接口输出已完成，不可再输出内容，否则将导致返回内容错乱。addLog此时也无法输出日志(可以使用logit记日志到文件)
 - 此时接口的数据库事务已提交，如果再操作数据库，与之前操作不在同一事务中。
 - 若出现异常，只会写日志，不会抛出错误，且所有函数仍会依次执行。
 
 示例: 当创建工单时, **异步**向用户发送通知消息, 且在异步操作中需要查询新创建的工单, 不应立即发送或使用AccessControl的onAfterActions;
-因为在异步任务查询新工单时, 可能接口还未执行完, 数据库事务尚未提交, 所以只有放在X_APP的onAfterActions中才可靠.
+因为在异步任务查询新工单时, 可能接口还未执行完, 数据库事务尚未提交, 所以只有放在$env的onAfterActions中才可靠.
+
+注意：如果是batch接口，默认每个子操作接口是独立的（除非指定使用事务即useTrans=1），这时子操作接口失败也不会执行onAfterActions。
+
+如果接口失败也要强制执行，可使用dbExpr把函数包一层，来标识强制执行，示例：
+
+	$env->onAfterActions[] = dbExpr(function () use ($ifLog) {
+		logit("write ifLog");
+		dbInsert("IfLog", $ifLog);
+	});
+
+注意：接口失败时，之前的数据库写操作会被rollback，如果失败时也要写数据库，可将逻辑放在onAfterActions中。
+
 */
 global $X_APP;
 
@@ -2375,8 +2387,12 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			}
 		}
 
-		if ($isDefaultCall && $ret[0] == 0) {
+		if ($isDefaultCall) {
 			foreach ($this->onAfterActions as $fn) {
+				if ($ret[0] && ! ($fn instanceof DbExpr))
+					continue;
+				if ($fn instanceof DbExpr)
+					$fn = $fn->val;
 				try {
 					$fn();
 				}
@@ -2428,6 +2444,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		$retVal = [];
 		$retCode = 0;
 		$acList = [];
+		$afterActionCnt = 0;
 		foreach ($calls as $call) {
 			if ($useTrans && $retCode) {
 				$retVal[] = [E_ABORT, "事务失败，取消执行", "batch call cancelled."];
@@ -2463,6 +2480,16 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			$X_RET_STR = null;
 			$this->dbgInfo = [];
 			$this->ac1 = null;
+
+			// 接口失败，则删除非强制执行的onAfterActions
+			if ($retCode) {
+				for ($i=count($this->onAfterActions)-1; $i>=$afterActionCnt; --$i) {
+					if ($this->onAfterActions[$i] instanceof DbExpr)
+						continue;
+					array_splice($this->onAfterActions, $i);
+				}
+			}
+			$afterActionCnt = count($this->onAfterActions);
 		}
 		if ($this->apiLog) {
 			$this->apiLog->batchAc = 'batch:' . count($acList) . ',' . join(',', $acList);
