@@ -2801,9 +2801,6 @@ FROM ($sql) t0";
 			}
 			return $ret1;
 		}
-		else if ($fmt) {
-			jdRet(E_PARAM, "unknown query fmt=$fmt", "未知格式: fmt=$fmt");
-		}
 		else {
 			$ret = objarr2table($ret, $fixedColCnt);
 		}
