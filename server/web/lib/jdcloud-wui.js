@@ -2460,7 +2460,8 @@ function parseValue(str)
 self.applyTpl = applyTpl;
 function applyTpl(tpl, data)
 {
-	return tpl.replace(/{([^{}]+)}/g, function(m0, m1) {
+	// 支持中文，不能直接用\w匹配
+	return tpl.replace(/{([^{}:,.]+)}/g, function(m0, m1) {
 		return data[m1];
 	});
 }
@@ -2791,6 +2792,10 @@ var mCommon = jdModule("jdcloud.common");
 
 	var data = WUI.getFormData(jfrm, true);
 
+这也只返回非disabled的组件，如果包括disabled组件的值也需要，可以用
+
+	var data = WUI.getFormData(jfrm, "all");
+
 如果在jo对象中存在有name属性的file组件(input[type=file][name])，或指定了属性enctype="multipart/form-data"，则调用getFormData会返回FormData对象而非js对象，
 再调用callSvr时，会以"multipart/form-data"格式提交数据。一般用于上传文件。
 示例：
@@ -2833,7 +2838,7 @@ function getFormData(jo, doGetAll)
 	}
 	var orgData = jo.data("origin_") || {};
 	formItems(jo, function (ji, name, it) {
-		if (it.getDisabled())
+		if (doGetAll != "all" && it.getDisabled())
 			return;
 		var orgContent = orgData[name];
 		if (orgContent == null)
@@ -3066,6 +3071,10 @@ FormItem.prototype = {
 		var val;
 		if (jo.is(":checkbox")) {
 			val = jo.prop("checked")? jo.val(): jo.attr("value-off");
+			if (val === "on")
+				val = 1;
+			if (val === undefined)
+				val = 0;
 		}
 		else if (jo.is(":input")) {
 			val = jo.val();
@@ -3124,7 +3133,7 @@ FormItem.prototype = {
 	setOption: function (v) {
 		if (!$.isPlainObject(v))
 			return;
-		this.ji.trigger("setOption", v);
+		this.getJo().trigger("setOption", v);
 		return this;
 		// for: combo, subobj
 		//WUI.setOptions(ji, v);
@@ -6960,6 +6969,9 @@ function showDlg(jdlg, opt)
 	jdlg.addClass('wui-dialog');
 	callInitfn(jdlg, [opt]);
 
+	if (opt.fixedFields)
+		$.extend(opt.data, opt.fixedFields);
+
 	// TODO: 事件换成jdlg触发，不用jfrm。目前旧应用仍使用jfrm监听事件，暂应保持兼容。
 	var jfrm = jdlg.is("form")? jdlg: jdlg.find("form:first");
 	jfrm.trigger("beforeshow", [formMode, opt]);
@@ -6995,6 +7007,12 @@ function showDlg(jdlg, opt)
 			top: dlgOpt0.top
 		});
 	}
+	// 禁用阴影，避开自适应高度时显示问题
+	var h = jdlg[0].style.height;
+	if (h == "" || h == "auto") {
+		dlgOpt.shadow = false;
+	}
+
 	jdlg.dialog(dlgOpt);
 	var perm = jdlg.attr("wui-perm") || jdlg.dialog("options").title;
 	jdlg.toggleClass("wui-readonly", (opt.objParam && opt.objParam.readonly) || !self.canDo(perm, "对话框"));
