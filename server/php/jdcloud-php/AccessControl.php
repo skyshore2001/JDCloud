@@ -978,6 +978,7 @@ query接口支持fmt参数：
 - array: (v5.5) 直接返回对象数组, 没有分页信息. 若未指定pagesz参数, 则pagesz自动为-1, 尽可能返回全部数据.
 - tree: (v5.5) 将{id,fatherId}线性结构转为树型结构{id,children}.
 	可以通过URL参数treeFields重定义各字段名，默认值为`id,fatherId,children`，设置示例：`{treeFields:'code,fatherCode'}`，`{treeFields:'code,fatherCode,subtree'}`
+	注意：和array一样不支持分页。
 - one: 类似get接口，只返回第一条数据，常用于统计等接口。若查询不到则抛错。
 - one?: (v5.5) 与"one"相似，但若查询不到则返回false而不抛出错误。而且若只有一个字段，则直接返回该字段内容，而非该行对象。
 - csv/txt/excel: 导出文件，注意为了避免分页，调用时可设置较大的pagesz值。
@@ -988,6 +989,7 @@ query接口支持fmt参数：
 - hash: (v5.5) 返回key-value形式的数据. 值可以是对象, 数组还是标量, 从而有多种细分格式, 如
 	"hash", "hash:keyField", "hash:keyField,valueField", "multihash", "multihash:keyField", "multihash:keyField,valueField"等形式
 
+注意：hash/multihash和array, tree格式一样不支持分页。
 array和hash格式示例:
 
 	callSvr("Sn.query", {gres:"status", res:"COUNT(id) cnt")
@@ -2587,7 +2589,7 @@ FROM ($sql) t0";
 		}
 		if ($fmt === "one" || $fmt === "one?")
 			$pagesz = 1;
-		else if (! isset($pagesz) && ($fmt === "array" || $fmt == "tree"))
+		else if (! isset($pagesz) && ($fmt === "array" || $fmt == "tree" || startsWith($fmt, "hash") || startsWith($fmt, "multihash")))
 			$pagesz = -1;
 		else if (! isset($pagesz) || $pagesz == 0)
 			$pagesz = 20;
