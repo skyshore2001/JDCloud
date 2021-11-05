@@ -341,6 +341,9 @@ function enhanceUpload(jupload)
 	});
 
 	jupload.on("submit", onSubmit);
+	if (jupload.attr("disabled")) {
+		jupload.gn().setDisabled(true);
+	}
 
 	jdlg.on("show", onShow);
 	if (!opt.manual)
@@ -618,6 +621,53 @@ function onChooseFile(ev)
 		return ja;
 	}
 }
+
+self.getFormItemExt["wui-upload"] = function (ji) {
+	if (ji.hasClass("wui-upload")) {
+		return new UploadFormItem(ji);
+	}
+	if (ji.parent().hasClass("wui-upload")) {
+		return new UploadFormItem(ji.parent());
+	}
+}
+
+function UploadFormItem(ji) {
+	WUI.FormItem.call(this, ji);
+	this.jvalue = ji.find("[name]:first");
+}
+UploadFormItem.prototype = $.extend(new WUI.FormItem(), {
+	getName: function () {
+		return this.jvalue.attr("name");
+	},
+	getDisabled: function () {
+		return this.jvalue.prop("disabled");
+	},
+	setDisabled: function (val) {
+		this.jvalue.prop("disabled", val);
+		this.updateShow_();
+	},
+	getReadonly: function () {
+		return this.jvalue.prop("readonly");
+	},
+	setReadonly: function (val) {
+		this.jvalue.prop("readonly", val);
+		this.updateShow_();
+	},
+	getValue: function () {
+		return this.jvalue.val();
+	},
+	setValue: function (val) {
+		this.jvalue.val(val);
+	},
+	getShowbox: function () {
+		return $();
+	},
+
+	updateShow_: function () {
+		var show = !this.getDisabled() && !this.getReadonly();
+		this.jvalue.next(".imgs").nextAll().toggle(show);
+	}
+});
 
 /**
 @key .wui-checkList
@@ -898,15 +948,13 @@ self.enhanceMenu = enhanceMenu;
 function enhanceMenu()
 {
 	var jo = $('#menu');
-	var isReset = jo.hasClass("wui-enhanced");
 
 	jo.find("a").addClass("my-menu-item");
-	if (!isReset)
-		jo.find(".menu-expandable").hide();
 	jo.find(".menu-expand-group").each(function () {
 		var ji = $(this);
 		if (ji.hasClass("wui-enhanced"))
 			return;
+		ji.find(".menu-expandable").hide();
 		ji.addClass("wui-enhanced");
 		ji.find("a:first")
 			.addClass("menu-item-head")
@@ -919,7 +967,7 @@ function enhanceMenu()
 				}
 			});
 	});
-	if (isReset)
+	if (jo.hasClass("wui-enhanced"))
 		return;
 	jo.addClass("wui-enhanced");
 
@@ -986,10 +1034,10 @@ $(enhanceMenu);
 		...
 	});
 
-jo是easyui-combogrid，可以调用它的相应方法，如禁用它：
-	jo.combogrid({disabled: true}); 
-或
+jo是easyui-combogrid，可以调用它的相应方法，如禁用和启用它：
+
 	jo.combogrid("disable");
+	jo.combogrid("enable");
 
 在输入时，它会自动以url及参数q向后端发起查询，如`callSvr("Store.query", {res:'id,name', q='1'})`.
 在筋斗云后端须支持相应对象的模糊查询(请查阅文档qsearch)。
@@ -3218,7 +3266,7 @@ $.extend(self.dg_toolbar, {
 
 	<input name="orderId" class="wui-combogrid wui-dialog-logic" data-options="$.extend(ListOptions.UserGrid(), readonlyForSet:true)">
 
-logic中支持readonly选项，也支持readonlyForAdd/readonlyForSet/readonlyForFind这些特定模式的选项，它们既可以设置为一个值，也可以是一个函数（或lambda）。
+logic中支持readonly选项，也支持readonlyForAdd/readonlyForSet这些特定模式的选项，它们既可以设置为一个值，也可以是一个函数（或lambda）。
 如果同时指定了readonly和readonlyForAdd选项，则当添加模式时优先用readonlyForAdd选项，其它模式也类似。
 
 这个特性同样适用于以下disabled/readonly/value选项，比如有disabledForAdd/readonlyForSet/valueForAdd等选项。
@@ -3228,6 +3276,8 @@ logic中支持readonly选项，也支持readonlyForAdd/readonlyForSet/readonlyFo
 	showForAdd: false
 	或
 	readonlyForAdd: true
+
+特别地，show选项会影响forFind模式，可以单独指定showForFind。
 
 示例：添加时自动填写
 
@@ -3284,7 +3334,7 @@ watch选项会刷新disabled/readonly/show/value系列选项中的表达式。
 	WUI.setDlgLogic(jdlg, "orderId", {
 		show: e => e.whName.indexOf("原料")
 		watch: "whId", 
-		onWatch: (e, ev) => e.whName = ev.data.name
+		onWatch: (e, ev, gn) => e.whName = ev.data.name
 	});
 
 首先，对话框打开时，show选项定义了根据字段whName来确定是否显示；
@@ -3292,12 +3342,20 @@ watch选项会刷新disabled/readonly/show/value系列选项中的表达式。
 
 注意whName这种显示字段一般是虚拟字段，设置为禁用不提交到后端。
 
-上面onWatch选项定义一个函数，当watch字段变化后执行，参数有2个：`(e=当前对象数据, ev=扩展数据)`，在ev参数中：
+上面onWatch选项定义一个函数，当watch字段变化后执行，参数有2个：`(e=当前对象数据, ev=扩展数据, gn=字段访问器)`，在ev参数中：
 
 - ev.name表示当前变化的字段名，可用于依赖多个字段时用于区分是哪个字段变化。
 - ev.formMode表示当前对话框模式，是添加(FormMode.forAdd)、更新(FormMode.forSet)或是查找(FormMode.forFind)。
 - ev.data根据组件不同值也不同，对于wui-combogrid和my-combobox组件，它表示选择的数据行，比如列表定义了`id,name,code`三列，它就以`{id, name, code}`格式返回这三列数据。
- TODO: 对于wui-subobj组件，它返回表格数据。
+
+参数gn是一个函数，可以对任意字段进行处理，用`gn(字段名)`可以取到该字段，然后可调用通用接口，如`gn("orderId").visible(true).disabled(false).readonly(true).val(100)`。
+
+- visible: 获取或设置是否显示。无参数时表示获取。带参数设置时支持上例中的链式设置。
+- disabled: 获取或设置是否禁用
+- readonly: 获取或设置是否只读
+- val: 获取或设置值。对于wui-subobj组件，它返回表格数据。
+
+@see jQuery.fn.gn
 
 ## 动态设置combogrid/subobj等组件选项
 
@@ -3341,7 +3399,7 @@ watch选项会刷新disabled/readonly/show/value系列选项中的表达式。
 	// 返回一个非空字符串，则表示验证失败，字符串即是错误信息
 	validate: v => /^\d{11}$/.test(v) || "手机号须11位数字"
 
-注意验证选项对添加、更新有效，没有forAdd/forSet/forFind选项
+注意验证选项对添加、更新有效，没有forAdd/forSet选项
  */
 WUI.m_enhanceFn[".wui-dialog-logic"] = function (jo) {
 	var jdlg = jo.closest(".wui-dialog");
@@ -3364,7 +3422,7 @@ function setDlgLogic(jdlg, name, logic)
 				return;
 			map["show"] = true;
 			onShowArr.push(function (formMode, data) {
-				var val = calcVal("show", v, true, formMode, data);
+				var val = calcVal("show", v, true, formMode, data, true);
 				gn(name).visible(val);
 			});
 		}
@@ -3424,12 +3482,14 @@ function setDlgLogic(jdlg, name, logic)
 					app_alert(it.getTitle() + "不可为空。", "w", function () {
 						it.setFocus();
 					});
+					ev.stopImmediatePropagation();
 					return false;
 				}
 				if (logic.validate) {
 					var rv = logic.validate(val);
 					if (typeof(rv) == "string") {
 						app_alert(rv, "w");
+						ev.stopImmediatePropagation();
 						return false;
 					}
 				}
@@ -3452,7 +3512,7 @@ function setDlgLogic(jdlg, name, logic)
 			var jo = $(ev.target);
 			var watchField = jo.gn().getName();
 			if (watchArr.indexOf(watchField) >= 0) {
-				var data = WUI.getFormData(jdlg, true);
+				var data = WUI.getFormData(jdlg, "all");
 				var formMode = jdlg.jdata().mode;
 				if (logic.onWatch) {
 					if (jo.hasClass("my-combobox"))
@@ -3461,7 +3521,7 @@ function setDlgLogic(jdlg, name, logic)
 						name: watchField,
 						formMode: formMode,
 						data: eventData
-					});
+					}, gn);
 				}
 				onShowArr.forEach(function (fn) {
 					fn(formMode, data);
@@ -3474,8 +3534,10 @@ function setDlgLogic(jdlg, name, logic)
 		}
 	}
 
-	function calcVal(k, v, defVal, formMode, data) {
+	function calcVal(k, v, defVal, formMode, data, canForFind) {
 		var val = defVal;
+		if (formMode == FormMode.forFind && !canForFind)
+			return val;
 		if (formMode == FormMode.forAdd && logic[k + "ForAdd"] !== undefined) {
 			val = logic[k + "ForAdd"];
 		}

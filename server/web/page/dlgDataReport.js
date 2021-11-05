@@ -225,6 +225,21 @@ function initDlgDataReport()
 			delete param.orderby;
 		}
 
+		if (jdlg.find("#copyCode").prop("checked")) {
+			var code = "WUI.showDataReport(" + JSON.stringify(param,null,2) + ")";
+			jdlg.one("copy", function (ev) {
+				ev.originalEvent.clipboardData.setData('text/plain', code);
+				app_show("已复制到剪贴板，按Ctrl-V粘贴。");
+				if (g_args.dev) {
+					app_alert("是否创建菜单项？可以Ctrl-V粘贴代码创建菜单项。", "q", function () {
+						UiMeta.showDlgSetMenu();
+					});
+				}
+				return false;
+			});
+			document.execCommand("copy");
+			return;
+		}
 		console.log(param);
 		WUI.showDataReport(param);
 	}

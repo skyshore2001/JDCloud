@@ -207,7 +207,7 @@ function parseFieldDef($fieldDef, $tableName)
 		$ret["len"] = "19,2";
 		$def = $SQLDIFF->money;
 	}
-	elseif (preg_match('/(Id|编号)$/u', $f1)) {
+	elseif (preg_match('/(Id|Cnt|编号)$/u', $f1)) {
 		$ret["type"] = "i";
 		$def = "INTEGER";
 	}
