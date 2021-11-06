@@ -61,9 +61,8 @@ function addTooltip(html, tooltip)
 // ==== functions {{{
 function setAppTitle(title)
 {
-	if (document.title == "")
-		document.title = title;
-	$(".my-title").html(document.title);
+	document.title = title;
+	$(".my-title").html(title);
 	$("body.easyui-layout").layout("panel", "center").panel({title: "欢迎使用" + title});
 	$(".header-bar .header-bar_name").html(title);
 }

@@ -200,7 +200,7 @@ function showDlgSendSms()
 // ====== main {{{
 function main()
 {
-	setAppTitle(APP_TITLE);
+	setAppTitle(WUI.options.title);
 
 	WUI.initClient();
 	WUI.tryAutoLogin(handleLogin, "Employee.get");
