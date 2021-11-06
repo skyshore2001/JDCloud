@@ -2192,6 +2192,10 @@ function enhanceSubobj(jo)
 				var dgOpt = {
 					url: getQueryUrl(formData)
 				};
+				if (opt.toolbar) {
+					jtbl.jdata().toolbar = opt.toolbar;
+					dgOpt.toolbar = WUI.dg_toolbar(jtbl, $());
+				}
 				jtbl[datagrid](dgOpt);
 			}
 		}
