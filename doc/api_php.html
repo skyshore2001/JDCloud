@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2021-10-15</div>
+<div>最后更新：2021-11-06</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -78,6 +78,7 @@ code {
 <p><a href="#AccessControl::$vcolDefs">AccessControl::$vcolDefs (var)</a></p>
 <p><a href="#AccessControl::addCond">AccessControl::addCond (fn)</a></p>
 <p><a href="#AccessControl::addJoin">AccessControl::addJoin (fn)</a></p>
+<p><a href="#AccessControl::addRequireCol">AccessControl::addRequireCol (fn)</a></p>
 <p><a href="#AccessControl::addRes">AccessControl::addRes (fn)</a></p>
 <p><a href="#AccessControl::addVCol">AccessControl::addVCol (fn)</a></p>
 <p><a href="#AccessControl::api_add">AccessControl::api_add (fn)</a></p>
@@ -145,6 +146,7 @@ code {
 <p><a href="#Q">Q (fn)</a></p>
 <p><a href="#SimpleCache">SimpleCache (class)</a></p>
 <p><a href="#_jsonp">_jsonp (var)</a></p>
+<p><a href="#_raw">_raw (var)</a></p>
 <p><a href="#addLog">addLog (fn)</a></p>
 <p><a href="#addToStr">addToStr (fn)</a></p>
 <p><a href="#api_async">api_async (fn)</a></p>
@@ -216,8 +218,8 @@ code {
 <p><a href="#jsonEncode">jsonEncode (fn)</a></p>
 <p><a href="#list2varr">list2varr (fn)</a></p>
 <p><a href="#logext">logext (fn)</a></p>
-<p><a href="#logit">logit (alias)</a></p>
 <p><a href="#logit">logit (fn)</a></p>
+<p><a href="#logit">logit (alias)</a></p>
 <p><a href="#makeTree">makeTree (fn)</a></p>
 <p><a href="#makeUrl">makeUrl (fn)</a></p>
 <p><a href="#mh">mh (fn)</a></p>
@@ -1926,7 +1928,68 @@ $X_RET_FN = function ($ret, $env) {
 $X_RET_FN = function ($ret, $env) {
     header("Content-Type: application/xml");
     return "&lt;xml&gt;&lt;code&gt;$ret[0]&lt;/code&gt;&lt;data&gt;$ret[1]&lt;/data&gt;&lt;/xml&gt;";
-};</code></pre></div>
+};</code></pre>
+<p class="var"><strong>@var <a id="_raw">_raw</a></strong>  通用URL参数，只返回内容</p>
+<p>如果有URL参数<code>_raw=1</code>，则结果不封装为<code>[code, data]</code>形式，而是直接返回data. 示例：</p>
+<pre><code>callSvr("Ordr.query", {cond:{id:5}, fmt:"one", _raw: 1});
+或
+callSvr("Ordr.get", {id:5, _raw: 1});
+或
+callSvr("Ordr/5", {_raw: 1});</code></pre>
+<p>返回示例：</p>
+<pre><code>{"id": 5, ...}</code></pre>
+<p>假如不加<code>_raw: 1</code>，则返回<code>[0, {"id": 5, ...}]</code>。</p>
+<p>如果指定<code>_raw: 2</code>，则进一步只返回值，如取订单数：</p>
+<pre><code>callSvr("Ordr", {_raw: 1, fmt:"one", res: "count(*) cnt"});
+和
+callSvr("Ordr", {_raw: 2, fmt:"one", res: "count(*) cnt"});</code></pre>
+<p>分别返回</p>
+<pre><code>{"cnt": 275}
+和
+275</code></pre>
+<p>如果值有多项，则以tab间隔，如：</p>
+<pre><code>callSvr("Ordr/5", {_raw: 1, res: "status,amount"});
+和
+callSvr("Ordr/5", {_raw: 2, res: "status,amount"});</code></pre>
+<p>分别返回：</p>
+<pre><code>{"status": "CR", "amount": "128.00"}
+和
+CR  128.00</code></pre>
+<p>常用于在shell脚本中集成，如：</p>
+<pre><code>baseUrl=http://localhost/jdcloud-ganlan/server/api.php
+amount=$(curl "$baseUrl/Ordr/5?_raw=2&amp;res=amount&amp;_app=emp-adm")</code></pre>
+<p>或</p>
+<pre><code>read status amount &lt;&lt;&lt; $(curl "$baseUrl/Ordr/5?_raw=2&amp;res=status+amount&amp;_app=emp-adm")</code></pre>
+<p class="var"><strong>@var <a id="_jsonp">_jsonp</a></strong>  通用URL参数，返回函数调用或变量赋值格式</p>
+<p>示例：</p>
+<pre><code>http://localhost/p/jdcloud/api.php/Ordr/5?_jsonp=api_OrdrGet
+返回
+
+api_OrdrGet([0, {"id":5,...}]);
+
+http://localhost/p/jdcloud/api.php/Ordr/5?_jsonp=api_order%3d
+返回
+
+api_order=[0, {"id":5,...}];</code></pre>
+<p>常用于直接返回JS脚本，示例：</p>
+<pre><code>&lt;script&gt;
+function api_OrdrGet(order)
+{
+    console.log(order);
+}
+&lt;/script&gt;
+&lt;script src="http://localhost/p/jdcloud/api.php/Ordr/5?_jsonp=api_OrdrGet"&gt;&lt;/script&gt;</code></pre>
+<p>JS示例：</p>
+<pre><code>&lt;script src="http://localhost/p/jdcloud/api.php/Ordr/5?_jsonp=api_order%3d"&gt;&lt;/script&gt;
+&lt;script&gt;
+console.log(api_order);
+&lt;/script&gt;</code></pre>
+<p>可以叠加通用URL参数<code>_raw</code>:</p>
+<pre><code>http://localhost/p/jdcloud/api.php/Ordr/5?_jsonp=api_OrdrGet&amp;_raw=1
+返回
+
+api_OrdrGet({"id":5,...});</code></pre>
+<p>但不建议使用<code>_raw</code>参数，因为如果查询出错（如id不存在）则会返回错误的格式。</p></div>
 <div class="block">
 <h2 id="$X_APP">@var $X_APP</h2>
 <p class="fn"><strong>@fn <a id="getJDEnv">getJDEnv</a></strong> ()</p>
@@ -1937,42 +2000,25 @@ $env-&gt;onAfterActions[] = function () {
 };</code></pre>
 <p>注意：</p>
 <ul>
-<li>如果接口返回错误, 该回调不执行. (DirectReturn返回除外)</li>
+<li>如果接口返回错误, 该回调不执行(DirectReturn返回除外)，除非有dbExpr标识（见下面例子）。</li>
 <li>此时接口输出已完成，不可再输出内容，否则将导致返回内容错乱。addLog此时也无法输出日志(可以使用logit记日志到文件)</li>
 <li>此时接口的数据库事务已提交，如果再操作数据库，与之前操作不在同一事务中。</li>
 <li>若出现异常，只会写日志，不会抛出错误，且所有函数仍会依次执行。</li>
 </ul>
 <p>示例: 当创建工单时, <strong>异步</strong>向用户发送通知消息, 且在异步操作中需要查询新创建的工单, 不应立即发送或使用AccessControl的onAfterActions;<br />
-因为在异步任务查询新工单时, 可能接口还未执行完, 数据库事务尚未提交, 所以只有放在X_APP的onAfterActions中才可靠.</p></div>
-<div class="block">
-<h2 id="_jsonp">@var _jsonp 用于支持jsonp返回格式的URL参数</h2>
-<p>示例：</p>
-<pre><code>http://localhost/p/jdcloud/api.php/Ordr/10?_jsonp=api_OrdrGet
-返回
-
-api_OrdrGet([
-    0, {"id":10,...}
-]);
-
-http://localhost/p/jdcloud/api.php/Ordr/10?_jsonp=api_order%3d
-返回
-
-api_order=[
-    0, {"id":10,...}
-];</code></pre>
-<p>JS示例：</p>
-<pre><code>&lt;script&gt;
-function api_OrdrGet(order)
-{
-    console.log(order);
-}
-&lt;/script&gt;
-&lt;script src="http://localhost/p/jdcloud/api.php/Ordr/10?_jsonp=api_OrdrGet"&gt;&lt;/script&gt;</code></pre>
-<p>JS示例：</p>
-<pre><code>&lt;script src="http://localhost/p/jdcloud/api.php/Ordr/10?_jsonp=api_order%3d"&gt;&lt;/script&gt;
-&lt;script&gt;
-console.log(api_order);
-&lt;/script&gt;</code></pre></div>
+因为在异步任务查询新工单时, 可能接口还未执行完, 数据库事务尚未提交, 所以只有放在$env的onAfterActions中才可靠.</p>
+<p>注意：如果是batch接口，默认每个子操作接口是独立的（除非指定使用事务即useTrans=1），这时子操作接口失败也不会执行onAfterActions。</p>
+<p>如果接口失败也要强制执行，可使用dbExpr把函数包一层，来标识强制执行，示例：</p>
+<pre><code>$env-&gt;onAfterActions[] = dbExpr(function () use ($ifLog) {
+    logit("write ifLog");
+    dbInsert("IfLog", $ifLog);
+});</code></pre>
+<p>注意：接口失败时，之前的数据库写操作会被rollback，如果失败时也要写数据库，可将逻辑放在onAfterActions中。</p>
+<p>onAfterActions中的函数有一个<code>$ret</code>参数，可以获取接口返回数据：</p>
+<pre><code>$env-&gt;onAfterActions[] = function ($ret) {
+    // $ret符合筋斗云返回格式，$ret[0]是返回值，0表示成功，$ret[1]是返回数据。
+    // 由于此时已完成输出，无法通过声明`&amp;$ret`来修改返回数据。
+};</code></pre></div>
 <div class="block">
 <h2 id="hasPerm">@fn hasPerm($perms, $exPerms=null)</h2><div class="toc"><p style="margin-left:0em"><a href="#hasPerm-1 内置认证">1 内置认证</a></p>
 <p style="margin-left:0em"><a href="#hasPerm-2 扩展认证方式">2 扩展认证方式</a></p>
@@ -3508,6 +3554,15 @@ $this-&gt;addVCol("createTm", self::VCOL_ADD_RES); // ignoreError特别用法
 // 如果不是虚拟字段则当作子表字段或表字段添加
 $this-&gt;addVCol("createTm", self::VCOL_ADD_RES|self::VCOL_ADD_SUBOBJ); // ignoreError特别用法</code></pre>
 <p>如果isHiddenField=true, 则该字段是辅助字段，最终返回前将删除(AccessControl::hiddenFields机制)</p></div>
+<div class="block">
+<h2 id="AccessControl::addRequireCol">@fn AccessControl::addRequireCol($col, $isExt=false)</h2>
+<p>添加依赖字段，用法与vcolDefs中的require属性相同，可以指定一个或多个字段（多个字段以逗号分隔）。<br />
+字段可以是实体字段、虚拟字段或子表字段。注意实体字段无须加&quot;t0.&quot;表前缀。</p>
+<p>与addRes方法类似，但不影响最终返回结果，也不可指定别名。<br />
+即如果这些字段没有在res中指定，则返回前会自动删除。<br />
+示例：</p>
+<pre><code>$this-&gt;addRequireCol("flowId");
+$this-&gt;addRequireCol("flowId,qty"); // 加多个字段</code></pre></div>
 <div class="block">
 <h2 id="AccessControl::api_add">@fn AccessControl::api_add()</h2>
 <p>标准对象添加接口。</p>
