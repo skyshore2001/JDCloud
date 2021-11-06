@@ -9423,7 +9423,10 @@ var GridHeaderMenu = {
 			// 注意id与函数名的匹配
 			jmenu = $('<div id="mnuGridHeader"></div>');
 			$.each(GridHeaderMenu.items, function (i, e) {
-				$(e).appendTo(jmenu);
+				var je = $(e);
+				var perm = je.attr("wui-perm") || je.text();
+				if (canDo("通用", perm))
+					je.appendTo(jmenu);
 			});
 			jmenu.menu({
 				onClick: function (mnuItem) {
@@ -9438,7 +9441,7 @@ var GridHeaderMenu = {
 		'<div id="showDlgFieldInfo">字段信息</div>',
 		'<div id="showDlgDataReport" data-options="iconCls:\'icon-sum\'">自定义报表</div>',
 		'<div id="showDlgQuery" data-options="iconCls:\'icon-search\'">自定义查询</div>',
-		'<div id="import" data-options="iconCls:\'icon-add\'">导入</div>',
+		'<div id="import" wui-perm="新增" data-options="iconCls:\'icon-add\'">导入</div>',
 		'<div id="export" data-options="iconCls:\'icon-save\'">导出</div>'
 	],
 	// 以下为菜单项处理函数
