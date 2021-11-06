@@ -565,6 +565,13 @@ global $X_RET_FN;
 
 注意：接口失败时，之前的数据库写操作会被rollback，如果失败时也要写数据库，可将逻辑放在onAfterActions中。
 
+onAfterActions中的函数有一个`$ret`参数，可以获取接口返回数据：
+
+	$env->onAfterActions[] = function ($ret) {
+		// $ret符合筋斗云返回格式，$ret[0]是返回值，0表示成功，$ret[1]是返回数据。
+		// 由于此时已完成输出，无法通过声明`&$ret`来修改返回数据。
+	};
+
 */
 global $X_APP;
 
@@ -2394,7 +2401,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 				if ($fn instanceof DbExpr)
 					$fn = $fn->val;
 				try {
-					$fn();
+					$fn($ret);
 				}
 				catch (Exception $e) {
 					logit('onAfterActions fails: ' . (string)$e);
