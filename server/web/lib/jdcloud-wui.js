@@ -568,10 +568,9 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 可设置该样式来标识哪些字段可以查找。一般设置为黄色。
 
 @key .notForFind 指定非查询条件
-不参与查询的字段，可以用notForFind类标识(为兼容，也支持属性notForFind)，如：
+不参与查询的字段，可以用notForFind类标识，如：
 
 	登录密码: <input class="notForFind" type="password" name="pwd">
-	或者: <input notForFind type="password" name="pwd">
 
 @key .wui-notCond 指定独立查询条件
 
@@ -3965,7 +3964,7 @@ function appendCond(cond, cond1)
 	if ($.isArray(cond)) {
 		cond.push(cond1);
 	}
-	else if (typeof(cond1) == "string") {
+	else if (typeof(cond) == "string" && typeof(cond1) == "string") {
 		cond += " AND (" + cond1 + ")";
 	}
 	else {
@@ -6523,13 +6522,37 @@ function getDgFilter(jtbl, param, ignoreQueryParam)
 	return self.extendQueryParam({}, p1, p2, p3, param);
 }
 
-// 取页面的过滤参数，由框架自动处理：PAGE_FILTER. 返回showPage原始过滤参数或null。注意不要修改它。
-function getPageFilter(jpage)
+/**
+@fn getPageFilter(jpage, name?)
+@key PAGE_FILTER
+
+取页面的过滤参数，由框架自动处理.
+返回showPage原始过滤参数或null。注意不要修改它。
+
+如果指定name，则取page filter中的该过滤字段的值。示例：假如page filter有以下4种：
+
+	{ cond: { type: "A" }}
+	{ cond: "type='A'"}
+	{ cond: {type: "A OR B"} }
+	{ cond: {type: "~A*"} }
+
+则调用getPageFilter(jpage, "type")时，仅当第1种才返回"A"；
+其它几种的cond值要么不是对象，要么不是相等条件，均返回null。
+
+*/
+self.getPageFilter = getPageFilter;
+function getPageFilter(jpage, name)
 {
 	var showPageArgs = jpage.data("showPageArgs_");
 	// showPage(0:pageName, 1:title, 2:paramArr);  e.g. WUI.showPage(pageName, title, [param1, {cond:cond}]) 
 	if (showPageArgs && $.isArray(showPageArgs[2]) && $.isPlainObject(showPageArgs[2][1])) {
-		return showPageArgs[2][1];
+		var ret = showPageArgs[2][1];
+		if (name) {
+			ret = $.isPlainObject(ret.cond)? ret.cond[name]: null;
+			if (! isFixedField(ret))
+				ret = null;
+		}
+		return ret;
 	}
 }
 
@@ -6649,6 +6672,11 @@ if (isSmallScreen()) {
 - opt.meta: (v6) 指定通过meta自动生成的输入项
 - opt.metaParent: (v6) 指定meta自动生成项的父结点，默认为对话框下第一个table，仅当meta存在时有效
 - opt.forSet: (v6.0) 与opt.data一起使用，设置为true表示只提交修改的数据。
+
+如果是对象对话框（showObjDlg）调用过来，会自动带上以下选项：
+
+- opt.mode: formMode
+- opt.jtbl: 绑定的数据表(可能为空)
 
 ## 对话框加载
 
@@ -6954,7 +6982,7 @@ function showDlg(jdlg, opt)
 		showDlg(jdlg, opt);
 	}
 
-	var formMode = jdlg.jdata().mode;
+	var formMode = opt && opt.mode;
 	opt = $.extend({
 		okLabel: "确定",
 		cancelLabel: "取消",
@@ -7039,8 +7067,8 @@ function showDlg(jdlg, opt)
 // 		});
 	}
 
-	// 含有固定值的对话框，根据opt.objParam[fieldName]填充值并设置只读.
-	setFixedFields(jfrm, opt);
+	// 含有固定值的对话框，根据opt.fixedFields[fieldName]填充值并设置只读.
+	setFixedFields(jdlg, opt);
 
 // 	openDlg(jdlg);
 	focusDlg(jdlg);
@@ -7070,7 +7098,7 @@ function showDlg(jdlg, opt)
 			if (ev.isDefaultPrevented())
 				return false;
 
-			var data = mCommon.getFormData(jdlg);
+			var data = formMode != FormMode.forFind? mCommon.getFormData(jdlg): getFindData(jdlg);
 			$.extend(data, newData);
 
 /*
@@ -7559,28 +7587,82 @@ function batchOp(obj, ac, jtbl, opt)
 	}
 }
 
+function isFixedField(value) {
+	if (value == null)
+		return false;
+	if (typeof(value) != "string")
+		return true;
+	return !/^([!<>=~]|IN|NOT IN)/i.test(value);
+}
+
+// 修改和返回fixedFields，如果fixedFields为空，可能返回null
+function getFixedFields(jpage, fixedFields)
+{
+	if (! (jpage && jpage.size() > 0))
+		return fixedFields;
+
+	var filter = getPageFilter(jpage);
+	if (filter && filter.cond) {
+		handleCond(filter.cond);
+	}
+	return fixedFields;
+
+	function handleCond(cond) {
+		if (!cond)
+			return;
+		if ($.isArray(cond)) {
+			$.each(cond, function (i, e) {
+				handleCond(cond);
+			});
+		}
+		else if ($.isPlainObject(cond)) {
+			$.each(cond, function (k, v) {
+				if (isFixedField(v)) {
+					if (fixedFields == null)
+						fixedFields = {};
+					fixedFields[k] = v;
+				}
+			});
+		}
+	}
+}
+
 /*
 如果objParam中指定了值，则字段只读，并且在forAdd模式下填充值。
 如果objParam中未指定值，则不限制该字段，可自由设置或修改。
 */
 function setFixedFields(jfrm, beforeShowOpt) {
-	var objParam = beforeShowOpt && beforeShowOpt.objParam;
-	var fixedFields = objParam && objParam.fixedFields;
+	var objParam = beforeShowOpt.objParam;
+	var fixedFields = beforeShowOpt.fixedFields;
+	if (jfrm[0].cleanFn) {
+		$.each(jfrm[0].cleanFn, function (i, fn) {
+			fn();
+		});
+		jfrm[0].cleanFn = null;
+	}
+	var cleanFn = [];
+	var forFind = beforeShowOpt.mode == FormMode.forFind;
 	self.formItems(jfrm, function (ji, name, it) {
 		var fixedVal = (ji.hasClass("wui-fixedField") && objParam && objParam[name] != null)? objParam[name]:
 			(fixedFields && fixedFields[name] != null)? fixedFields[name]: null;
 		if (fixedVal != null) {
+			var oldVal = it.getReadonly();
 			it.setReadonly(true);
-			var forAdd = beforeShowOpt.objParam.mode == FormMode.forAdd;
-			var forFind = beforeShowOpt.objParam.mode == FormMode.forFind;
-			if (forAdd || forFind) {
-				it.setValue(fixedVal);
+			if (forFind) { // 查询模式时不用向后端提交fixedFields字段的值，它们会由列表页自动处理。
+				var oldVal2 = it.getDisabled();
+				it.setDisabled(true);
 			}
-		}
-		else {
-			it.setReadonly(false);
+			// 下次进来时恢复状态
+			cleanFn.push(function () {
+				it.setReadonly(oldVal);
+				if (forFind) {
+					it.setDisabled(oldVal2);
+				}
+			});
 		}
 	});
+	if (cleanFn.length > 0)
+		jfrm[0].cleanFn = cleanFn;
 }
 
 /**
@@ -7892,7 +7974,7 @@ function getFindData(jfrm)
 	var kvList = {};
 	var kvList2 = {};
 	self.formItems(jfrm, function (ji, name, it) {
-		if (ji.hasClass("notForFind"))
+		if (it.getDisabled() || ji.hasClass("notForFind"))
 			return;
 		var v = it.getValue();
 		if (v == null || v === "")
@@ -8271,7 +8353,7 @@ function showObjDlg(jdlg, mode, opt)
 				title: jshow.prop("title"),
 				type: null
 			}
-			if (je.hasClass("notForFind") || je.attr("notForFind") != null) {
+			if (je.hasClass("notForFind")) {
 				it.setDisabled(true);
 				jshow.css("backgroundColor", "");
 			}
@@ -8311,7 +8393,7 @@ function showObjDlg(jdlg, mode, opt)
 	jd.mode = mode;
 
 	// load data
-	var load_data;
+	var load_data = {};
 	if (mode == FormMode.forAdd) {
 		// var init_data = jd.init_data || (jd2 && jd2.init_data);
 		load_data = $.extend({}, opt.data);
@@ -8350,6 +8432,14 @@ function showObjDlg(jdlg, mode, opt)
 		if (mode == FormMode.forSet && opt.jtbl && rowData)
 			self.reloadRow(opt.jtbl, rowData);
 	};
+
+	// opt.fixedFields叠加上pageFilter.cond中的有效字段，并复制到opt.data中。
+	var jpage = opt.jtbl? opt.jtbl.closest(".wui-page"): null;
+	opt.fixedFields = getFixedFields(jpage, opt.fixedFields);
+	if (opt.fixedFields && (mode == FormMode.forAdd || mode == FormMode.forFind)) {
+		$.extend(load_data, opt.fixedFields);
+	}
+
 	// open the dialog
 	var showDlgOpt = $.extend({}, opt, {
 		url: url,
@@ -8371,7 +8461,8 @@ function showObjDlg(jdlg, mode, opt)
 		var jtbl = jd.jtbl;
 		if (mode==FormMode.forFind) {
 			mCommon.assert(jtbl); // 查询结果显示到jtbl中
-			doFind(jfrm, jtbl);
+			//doFind(jfrm, jtbl);
+			reload(jtbl, undefined, retData);
 			// onCrud();
 			if (self.options.closeAfterFind)
 				closeDlg(jdlg);
