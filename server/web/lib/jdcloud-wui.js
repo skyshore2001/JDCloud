@@ -7043,7 +7043,7 @@ function showDlg(jdlg, opt)
 
 	jdlg.dialog(dlgOpt);
 	var perm = jdlg.attr("wui-perm") || jdlg.dialog("options").title;
-	jdlg.toggleClass("wui-readonly", (opt.objParam && opt.objParam.readonly) || !self.canDo(perm, "对话框"));
+	jdlg.toggleClass("wui-readonly", (opt.objParam && opt.objParam.readonly) || !self.canDo(perm, "对话框") || (formMode==FormMode.forSet && !self.canDo(perm, "修改")) );
 
 	jdlg.okCancel(fnOk, opt.noCancel? undefined: fnCancel);
 
