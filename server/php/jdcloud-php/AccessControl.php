@@ -1579,7 +1579,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		$this->initVColMap();
 		// group(0)匹配：禁止各类函数（以后面跟括号来识别）和select子句）
 		// bugfix: 注意避免误匹配`field1='a(b)'`中的`a(b)`不是函数调用
-		if (preg_match_all('/\b \w+ (?=\s*\() | \b select \b | \'.+?\'/ix', $q, $ms)) {
+		if (preg_match_all('/\b \w+ (?=\s*\() | \b select \b | \'\' | \'.*?[^\\\\]\'/ix', $q, $ms)) {
 			foreach ($ms[0] as $key) {
 				if ($key[0] == "'")
 					continue;
@@ -1594,8 +1594,8 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 		}, $q);
 		# "aa = 100 and t1.bb>30 and cc IS null" -> "t0.aa = 100 and t1.bb>30 and t0.cc IS null" 
 		# "name not like 'a%'" => "t0.name not like 'a%'"
-		# NOTE: 避免字符串内被处理 "a='a=1'" 不要被处理成"t0.a='t0.a=1'"
-		$ret = preg_replace_callback('/(\'.+?\')|[\w.]+(?=\s*[=><]|\s+(IS|LIKE|BETWEEN|IN|NOT)\s)/iu', function ($ms) {
+		# NOTE: 避免字符串内被处理 "a='a=1'" 不要被处理成"t0.a='t0.a=1'"。注意忽略引号内的转义引号
+		$ret = preg_replace_callback('/(\'\'|\'.*?[^\\\\]\')|[\w.]+(?=\s*[=><]|\s+(IS|LIKE|BETWEEN|IN|NOT)\s)/iu', function ($ms) {
 			if ($ms[1])
 				return $ms[1];
 			// 't0.$0' for col, or 'voldef' for vcol
