@@ -9280,7 +9280,7 @@ function dgLoadFilter(data)
 	// 隐藏pager: 一页能显示完且不超过5条.
 	$(this).datagrid("getPager").toggle(! (isOnePage && ret.total <= 5));
 	// 超过1页使用remoteSort, 否则使用localSort.
-	$(this).datagrid("options").remoteSort = (! isOnePage);
+//	$(this).datagrid("options").remoteSort = (! isOnePage);
 	return ret;
 }
 
