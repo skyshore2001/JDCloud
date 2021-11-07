@@ -6830,6 +6830,9 @@ if (isSmallScreen()) {
 
 - 旧版本中的initdata, loaddata, savedata将废弃，应分别改用beforeshow, show, validate事件替代，注意事件参数及检查对话框模式。
 
+@key event-create(ev)
+对话框初始化函数执行后触发。
+
 @key event-beforeshow(ev, formMode, opt)
 显示对话框前触发。
 
@@ -8257,6 +8260,7 @@ function showObjDlg(jdlg, mode, opt)
 	if (loadDialog(jdlg, onLoad, opt))
 		return;
 	function onLoad() {
+		jdlg.trigger('create');
 		showObjDlg(jdlg, mode, opt);
 	}
 
@@ -8596,7 +8600,27 @@ function showObjDlg(jdlg, mode, opt)
 这时就可以直接这样来指定导入按钮（便于全局重用）：
 
 	WUI.dg_toolbar(jtbl, jdlg, ..., "importOrdr")
-	
+
+@key event-dg_toolbar(ev, jtbl, jdlg) 定制列表按钮事件
+
+示例：为订单列表增加一个“关联商品”按钮
+
+	$(document).on("dg_toolbar", ".wui-page.pageOrder", pageOrder_onToolbar);
+	// 用于二次开发，更成熟的写法像这样
+	// $(document).off("dg_toolbar.pageOrder").on("dg_toolbar.pageOrder", ".wui-page.pageOrder", pageOrder_onToolbar);
+	function pageOrder_onToolbar(ev, buttons, jtbl, jdlg) {
+		// var jpage = $(ev.target);
+		// console.log(jpage);
+		var btnLinkToItem = {text: "关联商品", iconCls: "icon-redo", handler: function () {
+			var row = WUI.getRow(jtbl);
+			if (row == null)
+				return;
+			var pageFilter = { cond: {id: row.itemId} };
+			PageUi.show("商品", "关联商品-订单"+row.id, pageFilter);
+		}};
+		buttons.push(btnLinkToItem);
+	}
+
 */
 self.dg_toolbar = dg_toolbar;
 function dg_toolbar(jtbl, jdlg)
@@ -8633,6 +8657,7 @@ function dg_toolbar(jtbl, jdlg)
 		if (tmp)
 			perm = tmp.title;
 	}
+	jp.trigger("dg_toolbar", [btnSpecArr, jtbl, jdlg]);
 	var permSet2 = (jtbl.jdata().readonly || jp.hasClass("wui-readonly"))? {"只读": true}: null;
 	var ctx = {jp: jp, jtbl: jtbl, jdlg: jdlg};
 	for (var i=0; i<btnSpecArr.length; ++i) {
