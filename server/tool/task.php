@@ -2,11 +2,9 @@
 /*
 注意：添加新任务时，请设置task.crontab.php，以便生成安装脚本。
  */
-chdir(dirname(__FILE__));
+chdir(__DIR__);
 
-$GLOBALS["noExecApi"] = true;
 require_once("../api.php");
-//require_once("../app.php");
 
 $GLOBALS["dbConfirmFn"] = function ($connstr) {
 	echo "=== connect to $connstr\n";
@@ -27,7 +25,12 @@ else {
 
 function ac_test()
 {
-	echo "=== mock mode=" . $GLOBALS["MOCK_MODE"] . "\n";
+	// 模拟AC2权限调用接口
+	$_SESSION = ["empId" => -1];
+	// 设置参数
+	$_GET = ["for" => "task", "fmt" => "one"];
+	$rv = callSvc("Employee.query");
+	echo "=== ret " . jsonEncode($rv) . "\n";
 }
 
 function ac_db()

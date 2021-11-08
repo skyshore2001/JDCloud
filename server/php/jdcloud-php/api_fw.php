@@ -603,7 +603,6 @@ function setServerRev($env)
 		return;
 	$ver = substr($ver, 0, 6);
 	$GLOBALS["SERVER_REV"] = $ver;
-	$env->header("X-Daca-Server-Rev", $ver);
 }
 
 /**
@@ -1579,6 +1578,7 @@ function setParam($k, $v) {
 内部若有异常会抛上来，特别地，调用`jdRet(0)`会当成正常调用不会抛出异常，而`jdRet()`（用于自定义输出内容）仍会抛出异常。
 
 与callSvc不同的是，它不处理事务、不写ApiLog，不输出数据，更轻量。
+由于不处理事务，它只应在接口实现内部使用。包含api.php后调用接口应使用callSvc.
 
 示例：
 
@@ -2186,38 +2186,10 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 	}
 
 	private function initRequest() {
-		if (! isset($this->_GET)) {
-			$this->_GET = &$_GET;
-			$this->_POST = &$_POST;
-			$this->_SESSION = &$_SESSION;
-			$this->_FILES = &$_FILES;
-		}
-		foreach ($this->onBeforeActions as $fn) {
-			$fn();
-		}
-
-		require_once("ext.php");
-
-		global $BASE_DIR;
-		// optional plugins
-		$plugins = "$BASE_DIR/plugin/index.php";
-		if (file_exists($plugins))
-			include_once($plugins);
-
-		require_once("{$BASE_DIR}/conf.php");
-
-		$this->appName = $this->param("_app", "user", "G");
-		$this->appType = preg_replace('/(\d+|-\w+)$/', '', $this->appName);
-		$this->clientVer = $this->getClientVersion();
-
-		$isCLI = isCLI();
-
-		if (! $isCLI) {
-			if ($this->TEST_MODE)
-				$this->header("X-Daca-Test-Mode", $this->TEST_MODE);
-			if ($this->MOCK_MODE)
-				$this->header("X-Daca-Mock-Mode", $this->MOCK_MODE);
-		}
+		if ($this->TEST_MODE)
+			$this->header("X-Daca-Test-Mode", $this->TEST_MODE);
+		if ($this->MOCK_MODE)
+			$this->header("X-Daca-Mock-Mode", $this->MOCK_MODE);
 		// 默认允许跨域
 		$origin = $this->_SERVER('HTTP_ORIGIN');
 		if (isset($origin) && !$isCLI) {
@@ -2237,12 +2209,6 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		if ($this->_SERVER("REQUEST_METHOD") === "OPTIONS")
 			exit();
 
-		if (!$isCLI)
-			$this->setupSession();
-
-		if ($this->TEST_MODE) {
-			$this->MOCK_MODE = getenv("P_MOCK_MODE") ?: 0;
-		}
 		// supportJson: 支持POST为json格式
 		$ct = getContentType($this);
 		if (strstr($ct, "/json") !== false) {
@@ -2255,12 +2221,11 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			$this->_POST = $arr;
 		}
 
-		if (! $isCLI) {
-			$this->header("Content-Type", "text/plain; charset=UTF-8");
-			#header("Content-Type: application/json; charset=UTF-8");
-			$this->header("Cache-Control", "no-cache");
-		}
-		setServerRev($this);
+		$this->header("Content-Type", "text/plain; charset=UTF-8");  // "application/json; charset=UTF-8"
+		$this->header("Cache-Control", "no-cache");
+		$ver = $GLOBALS["SERVER_REV"];
+		if ($ver)
+			$this->header("X-Daca-Server-Rev", $ver);
 
 		$ac = $this->param('_ac', null, "G");
 		if (! isset($ac))
@@ -2293,17 +2258,56 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 	}
 
 	// 返回[code, data, ...]
-	function callSvcSafe($ac = null, $useTrans=true)
+	function callSvcSafe($ac = null, $useTrans=true, $isSubCall = false)
 	{
 		global $ERRINFO;
 		$ret = [0, null];
 		$isUserFmt = false;
 
 		$isDefaultCall = ($ac === null);
+		$isCLI = isCLI();
+		if ($isCLI || $isSubCall)
+			assert($ac != null);
+
 		$ok = false; // commit or rollback trans
 		try {
-			if ($isDefaultCall) {
-				$this->ac = $ac = $this->initRequest();
+			if (!$isSubCall) {
+				$doInitEnv = !isset($this->_GET);
+				if ($doInitEnv) {
+					$this->_GET = &$_GET;
+					$this->_POST = &$_POST;
+					$this->_SESSION = &$_SESSION;
+					$this->_FILES = &$_FILES;
+				}
+				// onBeforeActions中允许根据参数重设GET/POST等环境
+				foreach ($this->onBeforeActions as $fn) {
+					$fn();
+				}
+
+				if ($doInitEnv) {
+					if (!$isCLI)
+						$this->setupSession();
+					require_once("ext.php");
+
+					global $BASE_DIR;
+					// optional plugins
+					$plugins = "$BASE_DIR/plugin/index.php";
+					if (file_exists($plugins))
+						include_once($plugins);
+
+					require_once("{$BASE_DIR}/conf.php");
+
+					$this->clientVer = $this->getClientVersion();
+					setServerRev($this);
+				}
+
+				$this->appName = $this->param("_app", "user", "G");
+				$this->appType = preg_replace('/(\d+|-\w+)$/', '', $this->appName);
+
+				if ($isDefaultCall && !$isCLI) {
+					$ac = $this->initRequest();
+				}
+				$this->ac = $ac;
 
 				$this->dbconn();
 
@@ -2370,7 +2374,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		}
 
 		// 记录调用日志，如果是batch，只记录子调用项，不记录batch本身
-		if (($isDefaultCall && $this->ac != "batch") || $this->ac1) {
+		if ($this->ac != "batch" || $isSubCall) {
 			$debugLog = getenv("P_DEBUG_LOG") ?: 0;
 			if ($debugLog == 1 || ($debugLog == 2 && $ret[0] != 0)) {
 				$retStr = $isUserFmt? (is_scalar($ret[1])? $ret[1]: jsonEncode($ret[1])): jsonEncode($ret);
@@ -2394,34 +2398,33 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			}
 		}
 
-		if ($isDefaultCall) {
-			foreach ($this->onAfterActions as $fn) {
-				if ($ret[0] && ! ($fn instanceof DbExpr))
-					continue;
-				if ($fn instanceof DbExpr)
-					$fn = $fn->val;
-				try {
-					$fn($ret);
-				}
-				catch (Exception $e) {
-					logit('onAfterActions fails: ' . (string)$e);
-				}
+		if ($isSubCall)
+			return $ret;
+
+		foreach ($this->onAfterActions as $fn) {
+			if ($ret[0] && ! ($fn instanceof DbExpr))
+				continue;
+			if ($fn instanceof DbExpr)
+				$fn = $fn->val;
+			try {
+				$fn($ret);
 			}
-			if (! isCLI() && Conf::$enableAutoSession) {
-				$this->session_write_close();
+			catch (Exception $e) {
+				logit('onAfterActions fails: ' . (string)$e);
 			}
 		}
+		if (! $isCLI && Conf::$enableAutoSession) {
+			$this->session_write_close();
+		}
+
 		try {
 /*
 			if ($this->apiWatch)
 				$this->apiWatch->postExecute();
 */
-			if ($this->apiLog)
+			if ($this->apiLog) {
 				$this->apiLog->logAfter($ret);
-
-			// 及时关闭数据库连接
-			if ($isDefaultCall)
-				$this->DBH = null;
+			}
 /* NOTE: 暂不处理
 			// 删除空会话
 			if (isset($_SESSION) && count($_SESSION) == 0) {
@@ -2434,6 +2437,13 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		catch (Exception $e) {
 			logit((string)$e);
 		}
+
+		// clean up
+		$this->DBH = null;
+		$this->onAfterActions = [];
+		$this->onBeforeActions = [];
+		$this->dbgInfo = [];
+		$this->apiLog = null;
 
 		return $ret;
 	}
@@ -2474,7 +2484,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			}
 
 			// 如果batch使用trans, 则单次调用不用trans
-			$rv = $this->callSvcSafe($this->ac1, !$useTrans);
+			$rv = $this->callSvcSafe($this->ac1, !$useTrans, true);
 
 			$retCode = $rv[0];
 			$retVal[] = $rv;
@@ -2879,6 +2889,14 @@ $param或$postParam为null时，与空数组`[]`等价。
 				"str" => "wx/{$ver}"
 			];
 		}
+		else if (isCLI()) {
+			global $argv;
+			$ret = [
+				"type" => "cli",
+				"ver" => 0,
+				"str" => join(" ", $argv)
+			];
+		}
 		else {
 			$ret = [
 				"type" => "web",
@@ -2994,6 +3012,29 @@ class JDApiBase
 #}}}
 
 // ====== main routine {{{
+/**
+@fn callSvc($ac=null, $useTrans=true)
+
+外部调用接口。返回符合筋斗云格式的数组，至少2元素，即`[0, 成功数据, 调试信息...]`或`[非0, 失败信息, 内部失败原因, 调试信息...]`
+
+- 如果不指定ac, 则自动从请求中解析，设置响应header并输出内容。
+- 自动开启数据库事务，除非指定useTrans=false
+- 自动记录调用日志、操作日志等。
+
+示例：接口应用api.php的最后
+
+	callSvc();
+
+示例：server/tool/task.php是命令行程序(通过php task.php执行)，用于定时任务，如果它想调用已有接口：
+
+	// 模拟AC2权限调用接口
+	$_SESSION = ["empId" => -1];
+	// 设置参数；当然也可以设置$_POST参数
+	$_GET = ["for" => "task", "fmt" => "one"];
+	$rv = callSvc("Employee.query");
+
+@see callSvcInt
+*/
 function callSvc($ac=null, $useTrans=true)
 {
 	$env = getJDEnv();
