@@ -4,6 +4,10 @@ function initDlg<?=$obj?>()
 	var jfrm = jdlg;
 	var frm = jfrm[0];
 /*
+	WUI.setDlgLogic(jdlg, "code", {
+		readonlyForSet: true
+	});
+
 	jdlg.on("beforeshow", onBeforeShow)
 		.on("validate", onValidate);
 	

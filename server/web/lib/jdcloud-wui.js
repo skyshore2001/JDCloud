@@ -7646,14 +7646,24 @@ function setFixedFields(jfrm, beforeShowOpt) {
 	var cleanFn = [];
 	var forFind = beforeShowOpt.mode == FormMode.forFind;
 	self.formItems(jfrm, function (ji, name, it) {
-		var fixedVal = (ji.hasClass("wui-fixedField") && objParam && objParam[name] != null)? objParam[name]:
-			(fixedFields && fixedFields[name] != null)? fixedFields[name]: null;
+		// 兼容旧的fixedFields设置方法. TODO: 未来将移除
+		var fixedVal = (ji.hasClass("wui-fixedField") && objParam && objParam[name] != null)? objParam[name]: null;
+		var isOld = false;
+		if (fixedVal != null) {
+			isOld = true;
+		}
+		else {
+			fixedVal = (fixedFields && fixedFields[name] != null)? fixedFields[name]: null;
+		}
 		if (fixedVal != null) {
 			var oldVal = it.getReadonly();
 			it.setReadonly(true);
 			if (forFind) { // 查询模式时不用向后端提交fixedFields字段的值，它们会由列表页自动处理。
 				var oldVal2 = it.getDisabled();
 				it.setDisabled(true);
+			}
+			if (isOld) {
+				it.setValue(fixedVal);
 			}
 			// 下次进来时恢复状态
 			cleanFn.push(function () {
