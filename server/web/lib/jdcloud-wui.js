@@ -7510,7 +7510,7 @@ function getFixedFields(jpage, fixedFields)
 			return;
 		if ($.isArray(cond)) {
 			$.each(cond, function (i, e) {
-				handleCond(cond);
+				handleCond(e);
 			});
 		}
 		else if ($.isPlainObject(cond)) {
