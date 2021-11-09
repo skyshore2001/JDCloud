@@ -11,8 +11,7 @@ function initDlg<?=$obj?>()
 	jdlg.on("beforeshow", onBeforeShow)
 		.on("validate", onValidate);
 	
-	function onBeforeShow(ev, formMode, opt) 
-	{
+	function onBeforeShow(ev, formMode, opt) {
 		var objParam = opt.objParam;
 		var forAdd = formMode == FormMode.forAdd;
 		setTimeout(onShow);
@@ -21,8 +20,7 @@ function initDlg<?=$obj?>()
 		}
 	}
 
-	function onValidate(ev, mode, oriData, newData) 
-	{
+	function onValidate(ev, mode, oriData, newData) {
 	}
 */
 }
