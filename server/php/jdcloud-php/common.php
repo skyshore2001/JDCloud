@@ -633,7 +633,7 @@ function arrFind($arr, $fn)
 }
 
 /**
-@fn arrMap($arr, $fn)
+@fn arrMap($arr, $fn, $doFilter=false)
 
 示例：
 
@@ -643,14 +643,18 @@ function arrFind($arr, $fn)
 	});
 	// [1, 2]
 
+如果doFilter为true，则return null或直接return时，该元素被过滤掉。
 */
-function arrMap($arr, $fn)
+function arrMap($arr, $fn, $doFilter=false)
 {
 	assert(is_array($arr));
 	assert(is_callable($fn));
 	$ret = [];
 	foreach ($arr as $e) {
-		$ret[] = $fn($e);
+		$rv = $fn($e);
+		if ($doFilter && $rv === null)
+			continue;
+		$ret[] = $rv;
 	}
 	return $ret;
 }
@@ -676,7 +680,7 @@ function arrGrep($arr, $fn, $mapFn=null)
 {
 	assert(is_array($arr));
 	assert(is_callable($fn));
-	assert(is_callable($mapFn));
+	assert(is_null($mapFn) || is_callable($mapFn));
 	$ret = [];
 	foreach ($arr as $e) {
 		if ($fn($e)) {
