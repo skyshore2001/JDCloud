@@ -2284,6 +2284,10 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 					$fn();
 				}
 
+				// NOTE: 须在setupSession之前设置appType
+				$this->appName = $this->param("_app", "user", "G");
+				$this->appType = preg_replace('/(\d+|-\w+)$/', '', $this->appName);
+
 				if ($doInitEnv) {
 					if (!$isCLI)
 						$this->setupSession();
@@ -2300,9 +2304,6 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 					$this->clientVer = $this->getClientVersion();
 					setServerRev($this);
 				}
-
-				$this->appName = $this->param("_app", "user", "G");
-				$this->appType = preg_replace('/(\d+|-\w+)$/', '', $this->appName);
 
 				if ($isDefaultCall && !$isCLI) {
 					$ac = $this->initRequest();
