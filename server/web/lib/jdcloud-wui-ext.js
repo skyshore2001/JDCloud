@@ -1100,6 +1100,25 @@ jo是easyui-combogrid，可以调用它的相应方法，如禁用和启用它�
 	var jo = jdlg.find("[comboname=categoryId]");
 	jo.trigger("setOption", ListOptions.CategoryGrid(cond));
 
+## 使用gn函数访问组件
+
+设置值：
+
+	jdlg.gn("userId").val(10);
+	jdlg.gn("userId").val([10, "用户1"]); // 如果传数组，则同时设置值和显示文本
+
+设置状态：
+
+	jdlg.gn("userId").visible(true)
+		.readonly(true)
+		.disabled(true);
+
+注意gn函数支持链式调用。
+
+重置选项：
+
+	jdlg.gn("userId").setOption(ListOptions.UserGrid({phone: "~*9204"}));
+
  */
 self.m_enhanceFn[".wui-combogrid"] = enhanceCombogrid;
 function enhanceCombogrid(jo)
@@ -1310,6 +1329,17 @@ ComboFormItem.prototype = $.extend(new WUI.FormItem(), {
 	},
 	setValue: function (val) {
 		var fn = this.jcomboCall;
+		if ($.isArray(val)) {
+			fn("setValue", val[0]);
+			var opt = WUI.getOptions(this.jcombo);
+			if (opt.jd_showId) {
+				fn("setText", val[0] + " - " + val[1]);
+			}
+			else {
+				fn("setText", val[1]);
+			}
+			return;
+		}
 		fn("setValue", val); // 调用比如 jcombo.combogrid("setValue", ...)
 	},
 	getValue: function () {
