@@ -2967,8 +2967,10 @@ FormItem.prototype = {
 			val = jo.prop("checked")? jo.val(): jo.attr("value-off");
 			if (val === "on")
 				val = 1;
+			/* NOTE: 复选框特别行为：如果不选则无值
 			if (val === undefined)
 				val = 0;
+			*/
 		}
 		else if (jo.is(":input")) {
 			val = jo.val();
@@ -10899,6 +10901,8 @@ function mycombobox(force)
 		jo.on("refresh", refresh);
 		jo.on("markRefresh", markRefresh);
 		jo.on("loadOptions", function (ev, param) {
+			if (param && opts.urlParams != param)
+				opts.isLoaded_ = false;
 			opts.urlParams = param;
 			loadOptions();
 		});
