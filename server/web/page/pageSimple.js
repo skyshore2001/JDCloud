@@ -102,8 +102,8 @@
 				return;
 			return WUI.makeLink(value, function () {
 				var orderId = row.工单号;
-				var objParam = {orderId: orderId };
-				WUI.showPage("pageSn", "工件-工单" + orderId, [ objParam ]);
+				var pageFilter = {cond: {orderId: orderId }};
+				WUI.showPage("pageSn", "工件-工单" + orderId, [ null, pageFilter ]);
 			});
 		}
 	}
