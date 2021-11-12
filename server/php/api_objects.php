@@ -20,9 +20,13 @@ class AC0_User extends AccessControl
 			$_POST["pwd"] = hashPwd($_POST["pwd"]);
 		}
 	}
+	protected function onQuery()
+	{
+		$this->qsearch(["id", "name", "uname", "phone"], param("q"));
+	}
 }
 
-class AC1_User extends AccessControl
+class AC1_User extends AC0_User
 {
 	protected $allowedAc = ["get", "set"];
 	protected $readonlyFields = ["pwd"];
@@ -34,9 +38,8 @@ class AC1_User extends AccessControl
 	}
 }
 
-class AC2_User extends AccessControl
+class AC2_User extends AC0_User
 {
-	protected $allowedAc = ["query", "get"];
 }
 #}}}
 

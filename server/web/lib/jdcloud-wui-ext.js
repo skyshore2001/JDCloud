@@ -1008,6 +1008,7 @@ $(enhanceMenu);
 
 	ListOptions.StoreGrid = {
 		jd_vField: "storeName",
+		jd_dlgForAdd: "#dlgStore",
 		panelWidth: 450,
 		width: '95%',
 		textField: "name",
@@ -1024,6 +1025,7 @@ $(enhanceMenu);
 
 - jd_vField: 显示文本对应的虚拟字段, 用于初始显示和查询。
 - jd_showId: 默认为true. 显示"idField - textField"格式. 设置为false时只显示textField.
+- jd_dlgForAdd: (v6) 如果指定，则下拉列表中显示“新增”按钮，可以打开该对话框添加对象。（支持权限控制）
 
 在选择一行并返回时，它会触发choose事件：
 
@@ -1207,6 +1209,17 @@ function enhanceCombogrid(jo)
 			}
 			*/
 		}, myopt, {url: null}); // URL在创建后再指定，这样初始化时不调用接口
+		if (myopt.jd_dlgForAdd && WUI.canDo(null, "新增")) {
+			var jdlgForAdd = $(myopt.jd_dlgForAdd);
+			var btnAdd = {text:'新增', iconCls:'icon-add', handler: function () {
+				jo.combo("hidePanel");
+				WUI.showObjDlg(jdlgForAdd, FormMode.forAdd, {onOk: function (retData) {
+					jo.combogrid("setValue", retData);
+					jo.combogrid("setText", retData + " - (新增)");
+				}});
+			}};
+			initOpt.toolbar = WUI.dg_toolbar(null, jdlgForAdd, btnAdd);
+		}
 		jo.combogrid(initOpt);
 		$dg = jo.combogrid("grid");
 	}

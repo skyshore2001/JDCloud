@@ -5907,7 +5907,10 @@ function getRow(jtbl, silent)
 self.isTreegrid = isTreegrid;
 function isTreegrid(jtbl)
 {
-	return !! jtbl.data().treegrid;
+	var d;
+	if (jtbl == null || jtbl.size() == 0 || (d=jtbl.data()) == null)
+		return false;
+	return !! d.treegrid;
 }
 
 /** 
@@ -8097,6 +8100,7 @@ showObjDlg底层通过showDlg实现，(v5.5)showObjDlg的opt会合并到showDlg�
 
 @param opt.title String. (v5.1) 指定对话框标题。
 @param opt.data Object. (v5.5) 为对话框指定初始数据，对话框中name属性匹配的控件会在beforeshow事件后且show事件前自动被赋值。
+param opt.onOk Function(retData) (v6) 与showDlg的onOk参数一致。在提交数据后回调，参数为后端返回数据，比如add接口返回新对象的id。
 
 注意：如果是forSet模式的对话框，即更新数据时，只有与原始数据不同的字段才会提交后端。
 
@@ -8369,6 +8373,7 @@ function showObjDlg(jdlg, mode, opt)
 		jfrm.form("validate");
 
 	function onOk (retData) {
+		opt.onOk && opt.onOk(retData);
 		var jtbl = jd.jtbl;
 		if (mode==FormMode.forFind) {
 			mCommon.assert(jtbl); // 查询结果显示到jtbl中
@@ -8532,10 +8537,16 @@ function showObjDlg(jdlg, mode, opt)
 self.dg_toolbar = dg_toolbar;
 function dg_toolbar(jtbl, jdlg)
 {
-	var toolbar = jtbl.jdata().toolbar;
-	if (toolbar == null)
-		toolbar = "rfasd";
-	jtbl.jdata().toolbar = ""; // 避免再调用时按钮添加重复
+	var toolbar = null;
+	if (jtbl == null) {
+		toolbar = "";
+	}
+	else {
+		toolbar = jtbl.jdata().toolbar;
+		if (toolbar == null)
+			toolbar = "rfasd";
+		jtbl.jdata().toolbar = ""; // 避免再调用时按钮添加重复
+	}
 	var btns = [];
 
 	/*
@@ -8555,17 +8566,20 @@ function dg_toolbar(jtbl, jdlg)
 	}
 
 	// 页面或对话框上的button
-	var jp = jtbl.closest(".wui-page");
-	if (jp.size() == 0)
-		jp = jtbl.closest(".wui-dialog");
-	var perm = jp.attr("wui-perm") || jp.attr("title");
-	if (!perm && jp.hasClass("wui-dialog")) {
-		var tmp = jp.dialog("options");
-		if (tmp)
-			perm = tmp.title;
+	var permSet2 = null;
+	if (jtbl) {
+		var jp = jtbl.closest(".wui-page");
+		if (jp.size() == 0)
+			jp = jtbl.closest(".wui-dialog");
+		var perm = jp.attr("wui-perm") || jp.attr("title");
+		if (!perm && jp.hasClass("wui-dialog")) {
+			var tmp = jp.dialog("options");
+			if (tmp)
+				perm = tmp.title;
+		}
+		jp.trigger("dg_toolbar", [btnSpecArr, jtbl, jdlg]);
+		permSet2 = (jtbl.jdata().readonly || jp.hasClass("wui-readonly"))? {"只读": true}: null;
 	}
-	jp.trigger("dg_toolbar", [btnSpecArr, jtbl, jdlg]);
-	var permSet2 = (jtbl.jdata().readonly || jp.hasClass("wui-readonly"))? {"只读": true}: null;
 	var ctx = {jp: jp, jtbl: jtbl, jdlg: jdlg};
 	for (var i=0; i<btnSpecArr.length; ++i) {
 		var btn = btnSpecArr[i];

@@ -14,7 +14,7 @@
 			<tr>
 				<td>用户</td>
 				<td>
-					<input name="userId" class="wui-combogrid" data-options="ListOptions.UserGrid()">
+					<input name="userId" class="wui-combogrid" data-options="ListOptions.UserGrid()" required>
 				</td>
 			</tr>
 			<tr>
@@ -26,13 +26,13 @@
 			<tr>
 				<td>创建时间</td>
 				<td>
-					<input name="createTm" class="easyui-datetimebox">
+					<input name="createTm" class="easyui-datetimebox" readonly>
 				</td>
 			</tr>
 			<tr>
 				<td>金额</td>
 				<td>
-					<input name="amount">
+					<input name="amount" class="easyui-validatebox" required>
 				</td>
 			</tr>
 			<tr>

@@ -52,6 +52,7 @@ var ListOptions = {
 	UserGrid: function () {
 		var opts = {
 			jd_vField: "userName",
+			jd_dlgForAdd: "#dlgUser",
 			panelWidth: 450,
 			width: '95%',
 			textField: "name",
