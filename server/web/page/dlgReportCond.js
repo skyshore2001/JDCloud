@@ -48,8 +48,10 @@ function initDlgReportCond()
 			WUI.setFormData(jfrm, {tm1: range[0], tm2: range[1]});
 		}
 	});
-	setTimeout(function () {
+	jdlg.on("show", onShow);
+
+	function onShow() {
 		txtTmRange.change();
-	});
+	}
 }
 
