@@ -2945,16 +2945,6 @@ function showDataReport(opt, showPageOpt)
 		// console.log(columns);
 
 		if (opt.showChart) {
-			var xlen = gres.length;
-			var rs2StatOpt = {
-				xcol: range(0, xlen),
-				ycol: range(xlen, data.h.length),
-				tmUnit: opt.tmUnit
-			};
-			var seriesOpt = {
-				type: (opt.tmUnit || rs2StatOpt.ycol.length>1)? "bar": "pie",
-//				stack: rs2statopt.ycol.length>1? "X": undefined // 堆叠柱图
-			};
 			var data1 = data;
 			if (opt.showSum) {
 				// 自动去除统计行或列
@@ -2964,6 +2954,16 @@ function showDataReport(opt, showPageOpt)
 				if (data1.d.length > 1)
 					data1.d.pop();
 			}
+			var xlen = gres.length;
+			var rs2StatOpt = {
+				xcol: range(0, xlen),
+				ycol: range(sumCol, data1.h.length),
+				tmUnit: opt.tmUnit
+			};
+			var seriesOpt = {
+				type: (opt.tmUnit || rs2StatOpt.ycol.length>1)? "bar": "pie",
+//				stack: rs2statopt.ycol.length>1? "X": undefined // 堆叠柱图
+			};
 			self.showDlgChart(data1, rs2StatOpt, seriesOpt);
 		}
 	}
