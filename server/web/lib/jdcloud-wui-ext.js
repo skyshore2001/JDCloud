@@ -2808,6 +2808,18 @@ function diffObj(obj, obj1)
 
 注意：统计图(showChart:true)目前只支持第一个统计项。
 
+res中也可以加一些不用于统计的字段，统计列必须放在res最后面，系统会自动将res中最后若干个连续地以COUNT或SUM聚合的字段会当成统计列。
+
+	WUI.showDataReport({
+		ac: "Ordr.query",
+		res: "userName 用户, userPhone 手机号, createTm 创建时间, COUNT(1) 总数, SUM(amount) 总金额", // 自动识别2个统计列，调用query接口时设置参数`pivotCnt:2`
+		gres: ["status 状态=CR:新创建;RE:已完成;CA:已取消"],
+		gres2: ["dscr 订单类别"],
+		detailPageName: "pageOrder",
+		title: "订单状态占比",
+		showSum: true, // 自动添加行列统计
+	});
+
  */
 self.showDataReport = showDataReport;
 function showDataReport(opt, showPageOpt)
@@ -2860,9 +2872,15 @@ function showDataReport(opt, showPageOpt)
 			cond = opt.cond2;
 	}
 
-	var resTitles = opt.res.split(/\s*,\s*/).map(function (res) {
-		return getFieldInfo(res).title;
-	});
+	var resCols = opt.res.split(/\s*,\s*/);
+	var sumTitles = [];
+	for (var idx=resCols.length-1; idx >= 0; -- idx) {
+		var res = resCols[idx];
+		var rv = getFieldInfo(res);
+		if (! /\b(count|sum)\b[()]/i.test(rv.name))
+			break;
+		sumTitles.unshift(rv.title);
+	}
 	var queryParams = {
 		res: opt.res,
 		cond: cond,
@@ -2873,11 +2891,11 @@ function showDataReport(opt, showPageOpt)
 	};
 	if (pivot.length > 0) {
 		queryParams.pivot = pivot.join(',');
-		queryParams.pivotCnt = resTitles.length;
+		queryParams.pivotCnt = sumTitles.length;
 	}
 	if (opt.showSum) {
 		if (pivot.length == 0) {
-			queryParams.sumFields = resTitles.join(',');
+			queryParams.sumFields = sumTitles.join(',');
 		}
 		else {
 			queryParams.pivotSumField = (opt.pivotSumField || "合计");
@@ -2910,8 +2928,9 @@ function showDataReport(opt, showPageOpt)
 		// columns: 列数组，可设置列的formatter等属性
 		// data: ajax得到的原始数据
 		var rowCnt = data.d && data.d.length || 0;
+		var sumCol = gres.length + (resCols.length - sumTitles.length);
 		$.each(columns, function (i, col) {
-			if (i >= gres.length) {
+			if (i >= sumCol) {
 				col.formatter = getFormatter(col, rowCnt);
 				col.sortable = true;
 				col.sorter = numberSort;
@@ -2956,7 +2975,7 @@ function showDataReport(opt, showPageOpt)
 				return;
 			if ($.isArray(value)) {
 				value = value.map(function (e, i) {
-					return resTitles[i] + ": " + e;
+					return sumTitles[i] + ": " + e;
 				}).join("<br>");
 			}
 			return WUI.makeLink(value, function () {
