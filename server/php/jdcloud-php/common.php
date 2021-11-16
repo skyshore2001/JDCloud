@@ -900,13 +900,20 @@ function text2html($s)
 }
 
 /**
-@fn pivot($objArr, $gcols, $ycolCnt=1)
+@fn pivot($objArr, $gcols, $ycolCnt=1, $pivotSumField=null, $gres=null)
 
 将行转置到列。一般用于统计分析数据处理。
 
 - $gcols为转置字段，可以是一个或多个字段。可以是个字符串("f1" 或 "f1,f2")，也可以是个数组（如["f1","f2"]）
 - $objArr是对象数组，默认最后一列是统计列，如果想要最后两列作为统计列，可以指定参数ycolCnt=2。注意此时最终统计值将是一个数组。
 - 以objArr[0]这个对象为基准，除去最后ycolCnt个字段做为统计列(ycols)，再除去gcols指定的要转置到列的字段，剩下的列就是xcols：相同的xcols会归并到一行中。
+
+objArr的列中包括三类：
+
+	分组列(含转置列) 普通列 统计列
+
+- 统计列必须在最后面，由ycolCnt指定有几列，必须为数值列
+- gres指定分组列（多个列以逗号分隔），gcols指定转置列，gres应包含gcols。如果未指定gres，则表示除了统计列都是分组列（即没有普通列）
 
 示例：
 
@@ -986,7 +993,7 @@ function text2html($s)
 	];
 
 */
-function pivot($objArr, $gcols, $ycolCnt=1, $pivotSumField=null)
+function pivot($objArr, $gcols, $ycolCnt=1, $pivotSumField=null, $gres=null)
 {
 	if (count($objArr) == 0)
 		return $objArr;
@@ -1008,6 +1015,14 @@ function pivot($objArr, $gcols, $ycolCnt=1, $pivotSumField=null)
 
 	$xMap = []; // {x=>新行}
 	$xcols = array_diff($cols, $gcols);
+	$xcols1 = null; // 用于标识一行
+	if ($gres) {
+		$gresArr = preg_split('/\s*,\s*/', $gres);
+		$xcols1 = array_diff($gresArr, $gcols);
+	}
+	else {
+		$xcols1 = $xcols;
+	}
 
 	$firstX = null;
 	foreach ($objArr as $row) {
@@ -1016,9 +1031,9 @@ function pivot($objArr, $gcols, $ycolCnt=1, $pivotSumField=null)
 		foreach ($xcols as $col) {
 			$xarr[$col] = $row[$col];
 		}
-		$xarr1 = array_map(function ($e) {
-			return is_null($e)? "(null)": $e;
-		}, $xarr);
+		$xarr1 = array_map(function ($col) use ($row) {
+			return is_null($row[$col])? "(null)": $row[$col];
+		}, $xcols1);
 		$x = join('-', $xarr1);
 
 		$garr = array_map(function ($col) use ($row) {
