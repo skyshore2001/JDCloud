@@ -2721,7 +2721,8 @@ function diffObj(obj, obj1)
 - res: 汇总字段，默认为`COUNT(*) 数量`
 - gres: 行统计字段。须为数组，示例：`["userPhone", "userName 用户", null, "status 状态=CR:新创建;RE:已完成"]`。
 	数组每个元素符合后端query接口res参数要求，可以是1个字段也可以是逗号分隔的多个字段；如果为空则跳过。
-	注意：月报用 ["y 年, m 月"](配合tmUnit: "y,m")，日报用 ["y 年, m 月, d 日"] (配合tmUnit: "y,m,d")
+	注意：时间字段固定用"y 年", "m 月", "d 日", "h 时", "q 季度", "w 周", "wd 周几"这些。这样当点开统计对话框时，可自动选上相应的时间字段，比如`["y 年", "m 月"]`将自动选中"时间-年"和"时间-月";
+	特别地，月报固定用 ["y 年,m 月"](配合tmUnit: "y,m", 统计图中可自动补齐缺失日期)，日报用 ["y 年,m 月,d 日"] (配合tmUnit: "y,m,d")。
 - gres2: 列统计字段。格式与gres相同。
 - cond: 查询条件，字符串，示例：WUI.getQueryCond({id: ">1", status: "CR,RE", createTm: ">=2020-1-1 and <2021-1-1"}), 用getQueryCond可使用查询框支持的条件格式。
 - orderby: 排序方式
