@@ -2949,6 +2949,12 @@ e.g.
 	protected function genCondSql($checkCond=true)
 	{
 		$this->initTable(); // 防止非callSvc调用时未初始化表
+		$this->sqlConf = [
+			"res" => [],
+			"resExt" => [],
+			"cond" => [],
+			"join" => []
+		];
 		$cond = $this->getCondParam("cond");
 		if ($cond)
 			$this->addCond($cond, false, true);
