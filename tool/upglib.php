@@ -538,6 +538,21 @@ class UpgHelper
 		foreach ($this->tableMeta as $e) {
 			$this->_addTableByMeta($e);
 		}
+
+		$doCreateEmp = true;
+		if ($doCreateEmp) {
+			$cnt = queryOne("SELECT COUNT(*) FROM Employee");
+			if ($cnt == 0) {
+				$this->prompt("=== create Employee admin:1234\n");
+				dbInsert("Employee", [
+					"phone" => "12345678901",
+					"name" => "管理员",
+					"uname" => "admin",
+					"pwd" => md5("1234"),
+					"perms" => "mgr"
+				]);
+			}
+		}
 	}
 
 	/** @api */
