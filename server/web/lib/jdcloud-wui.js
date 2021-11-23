@@ -10877,6 +10877,18 @@ defectId上暂时不设置，之后传参动态设置。
 假如某mycombobox组件查询Employee对象列表。当在Employee页面新建、修改、删除对象后，回到组件的页面，点击组件时将自动刷新列表。
 (wui-combogrid也具有类似功能)
 
+## 验证要求必填
+
+(v6) my-combobox继承easyui-validatebox，所以可以指定requried选项：
+
+	<select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap" required></select>
+	或
+	<select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap, required:true"></select>
+
+在v6之前须显式设置：
+
+	<select name="status" class="my-combobox easyui-validatebox" data-options="jdEnumMap:OrderStatusMap, required:true"></select>
+
  */
 var m_dataCache = {}; // url => data
 $.fn.mycombobox = mycombobox;
@@ -10891,6 +10903,8 @@ function mycombobox(force)
 		var opts = WUI.getOptions(jo);
 		if (!force && opts.isLoaded_)
 			return;
+		if (jo.attr("required"))
+			opts.required = true;
 		if (o.tagName != "SELECT") {
 			var jo1 = $("<select></select>");
 			$.each(o.attributes, function (i,e) {
@@ -10900,6 +10914,7 @@ function mycombobox(force)
 			jo = jo1;
 			o = jo1[0];
 		}
+		jo.validatebox(opts);
 
 		o.enableAsyncFix = true; // 有这个标志的select才做特殊处理
 		if (opts.url) {
