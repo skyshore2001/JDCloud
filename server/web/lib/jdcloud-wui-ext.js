@@ -2740,6 +2740,8 @@ function diffObj(obj, obj1)
 - showSum: 自动添加统计行或列
 - pivotSumField: 统计列列名，默认为"合计"
 
+- queryParam: 直接指定查询参数，如`{for: "xx报表"}`
+
 @see JdcloudStat.tmUnit 
 
 - cond2: 内部使用，在cond基础上再加一层过滤，由报表对话框上用户设置的条件生成。
@@ -2882,14 +2884,14 @@ function showDataReport(opt, showPageOpt)
 			break;
 		sumTitles.unshift(rv.title);
 	}
-	var queryParams = {
+	var queryParams = $.extend({
 		res: opt.res,
 		cond: cond,
 		orderby: opt.orderby,
 		tmField: opt.tmField && opt.tmField.split(' ')[0],
 		gres: gresAll.join(','),
 		pagesz: -1
-	};
+	}, opt.queryParam);
 	if (pivot.length > 0) {
 		queryParams.pivot = pivot.join(',');
 		queryParams.pivotCnt = sumTitles.length;
