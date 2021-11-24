@@ -10914,6 +10914,8 @@ function mycombobox(force)
 			jo = jo1;
 			o = jo1[0];
 		}
+		jo.removeAttr("data-options");
+		jo.addClass("easyui-validatebox");
 		jo.validatebox(opts);
 
 		o.enableAsyncFix = true; // 有这个标志的select才做特殊处理
