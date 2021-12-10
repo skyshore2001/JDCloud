@@ -450,7 +450,7 @@ function genLoginToken(&$ret, $uname, $pwd)
 	$data = [
 		"uname" => $uname,
 		"pwd" => $pwd,
-		"create" => time(0),
+		"create" => time(),
 		"expire" => 99999999
 	];
 	$token = jdEncrypt(serialize($data), "E");
@@ -473,7 +473,7 @@ function parseLoginToken($token)
 		jdRet(E_AUTHFAIL, "Bad login token (miss some fields)!");
 	
 	// TODO: check timeout
-	$now = time(0);
+	$now = time();
 	if ((int)$data["create"] + (int)$data["expire"] < $now)
 		jdRet(E_AUTHFAIL, "token exipres");
 
