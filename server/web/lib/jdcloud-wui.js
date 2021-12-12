@@ -10309,7 +10309,6 @@ function handleLogin(data)
 	if (g_args.autoLogin || /android|ipad|iphone/i.test(navigator.userAgent))
 		saveLoginToken(data);
 
-	self.dfdLogin.resolve();
 	WUI.applyPermission();
 
 	var jcont = $("body");
@@ -10323,6 +10322,7 @@ function handleLogin(data)
 		$(".user-phone").html(data.phone);
 	}
 
+	self.dfdLogin.resolve();
 	self.showPage(self.options.pageHome);
 	if (location.hash.startsWith("#page")) {
 		WUI.showPage(location.hash.replace('#', ''));
