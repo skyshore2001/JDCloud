@@ -1222,7 +1222,7 @@ e.g. 修改ApiLog要记录的ac:
 			"ses" => session_id(),
 			"userId" => $this->getUserId(),
 			"ac" => $env->getAc(),
-			"req" => dbExpr(Q($content)),
+			"req" => dbExpr(Q($content, $env)),
 			"reqsz" => $reqsz,
 			"ver" => $ver["str"],
 			"serverRev" => $GLOBALS["SERVER_REV"]
@@ -1249,7 +1249,7 @@ e.g. 修改ApiLog要记录的ac:
 			"t" => $iv,
 			"retval" => $ret[0],
 			"ressz" => strlen($X_RET_STR),
-			"res" => dbExpr(Q($content)),
+			"res" => dbExpr(Q($content, $env)),
 			"userId" => $this->userId ?: $this->getUserId(),
 			"ac" => $this->batchAc // 默认为null；对batch调用则列出详情
 		], $this->id);
@@ -1282,8 +1282,8 @@ e.g. 修改ApiLog要记录的ac:
 			"ac" => $env->getAc1(),
 			"t" => $iv,
 			"retval" => $ret[0],
-			"req" => dbExpr(Q($this->req1)),
-			"res" => dbExpr(Q($content))
+			"req" => dbExpr(Q($this->req1, $env)),
+			"res" => dbExpr(Q($content, $env))
 		]);
 		if (Conf::$enableObjLog && self::$objLogId) {
 			$env->dbUpdate("ObjLog", ["apiLog1Id" => $apiLog1Id], self::$objLogId);

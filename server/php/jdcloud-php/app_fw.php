@@ -835,7 +835,7 @@ function dbCommit($doRollback=false)
 }
 
 /**
-@fn Q($str)
+@fn Q($str, $env=null)
 
 quote string
 
@@ -845,14 +845,21 @@ quote string
 
 	$sql = sprintf("SELECT id FROM User WHERE uname=%s AND pwd=%s", Q(param("uname")), Q(param("pwd")));
 
+注意不同数据库对转义处理不同，如mysql将"'"转义为"\'"，而sqlite转义为"''"。
+如果未指定$env，则取当前$env.
  */
-function Q($s)
+function Q($s, $env=null)
 {
 	if ($s === null)
 		return "null";
-	$s = str_replace("\\", "\\\\", $s);
-	return "'" . str_replace("'", "\\'", $s) . "'";
-	//return $dbh->quote($s);
+	if ($env === null)
+		$env = getJDEnv();
+	$dbh = $env->DBH;
+	if ($dbh == null) {
+		$s = str_replace("\\", "\\\\", $s);
+		return "'" . str_replace("'", "\\'", $s) . "'";
+	}
+	return $dbh->quote($s);
 }
 
 function sql_concat()
@@ -1437,6 +1444,13 @@ class DBEnv
 				$this->DBTYPE = "mysql";
 			}
 		}
+		if ($this->DBTYPE == "sqlite") {
+			# 处理相对路径. 绝对路径：/..., \\xxx\..., c:\...
+			if ($this->DB[0] !== '/' && $this->DB[1] !== ':') {
+				global $BASE_DIR;
+				$this->DB = $BASE_DIR . '/' . $this->DB;
+			}
+		}
 
 		$this->TEST_MODE = getenv("P_TEST_MODE")===false? 0: intval(getenv("P_TEST_MODE"));
 		$this->DBG_LEVEL = getenv("P_DEBUG")===false? 0 : intval(getenv("P_DEBUG"));
@@ -1564,6 +1578,9 @@ class DBEnv
 			$rows = $sth->fetchAll($fetchMode);
 			$DBH->amendLog("cnt=". count($rows));
 			$allRows[] = $rows;
+			// bugfix:sqlite不支持nextRowSet
+			if ($this->DBTYPE = "sqlite")
+				break;
 		}
 		while ($sth->nextRowSet());
 		// $sth->closeCursor();
@@ -1598,7 +1615,7 @@ class DBEnv
 				jdRet(E_PARAM, "dbInsert: array `$k` is not allowed. pls define subobj to use array.", "未定义的子表`$k`");
 			}
 			else {
-				$values .= Q(htmlEscape($v));
+				$values .= Q(htmlEscape($v), $this);
 			}
 		}
 		if (strlen($keys) == 0) 

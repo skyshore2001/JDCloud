@@ -4737,8 +4737,11 @@ function defDataProc(rv)
 			if (g_data.mockMode)
 				modeStr = "测试模式+模拟模式";
 		}
-		if (modeStr)
-			self.app_alert(modeStr, {timeoutInterval:2000});
+		if (modeStr) {
+			self.dfdLogin.then(function () {
+				self.app_alert(modeStr, {timeoutInterval:2000});
+			});
+		}
 	}
 
 	try {
@@ -6544,9 +6547,12 @@ self.isSmallScreen = isSmallScreen;
 function isSmallScreen() {
 	return $(document.body).width() < 640;
 }
-if (isSmallScreen()) {
-	$('<meta name="viewport" content="width=device-width, initial-scale=0.8, maximum-scale=0.8">').appendTo(document.head);
-}
+setTimeout(function () {
+	if (isSmallScreen()) {
+		$('<meta name="viewport" content="width=device-width, initial-scale=0.8, maximum-scale=0.8">').appendTo(document.head);
+		$("#menu").attr("data-options", "collapsed:true");
+	}
+})
 
 /**
 @fn showDlg(jdlg, opt?)
@@ -6794,6 +6800,12 @@ form提交后事件，用于处理返回数据
 
 ## 控制底层jquery-easyui对话框
 
+wui-dialog可以使用底层easyui-dialog/easyui-window/easyui-panel的选项或方法，参考：
+
+- easyui-dialog: https://www.jeasyui.net/plugins/181.html
+- easyui-window: https://www.jeasyui.net/plugins/180.html
+- easyui-pandel: https://www.jeasyui.net/plugins/159.html
+
 示例：打开时最大化，关闭对话框时回调事件：
 
 	var dialogOpt = {  
@@ -6806,6 +6818,13 @@ form提交后事件，用于处理返回数据
 	jfrm.on("beforeshow",function(ev, formMode, opt) {
 		opt.dialogOpt = dialogOpt;
 	})
+
+(v6) 除了直接指定opt.dialogOpt，还可以直接通过data-options来设置，示例：
+不显示折叠、最大化按钮，自定义类名"loginPanel"
+
+	<div id="dlgLogin" title="登录" data-options="cls:'loginPanel',collapsible:false,maximizable:false" style="width:350px;height:210px;">  
+	...
+	</div>
 
 ## 复用dialog模板
 
@@ -6930,7 +6949,7 @@ function showDlg(jdlg, opt)
 		modal: opt.modal,
 		buttons: btns,
 		title: opt.title
-	}, opt.dialogOpt);
+	}, opt.dialogOpt, WUI.getOptions(jdlg));
 	if (jdlg.is(":visible")) {
 		dlgOpt0 = jdlg.dialog("options");
 		$.extend(dlgOpt, {
@@ -9994,7 +10013,7 @@ function app_alert(msg)
 
 	// 查看jquery-easyui对象，发现OK按钮的class=1-btn
 	setTimeout(function() {
-		var jbtn = jmsg.find(".l-btn");
+		var jbtn = jmsg.parent().find(".l-btn");
 		jbtn.focus();
 		if (alertOpt.timeoutInterval) {
 			setTimeout(function() {
@@ -10200,8 +10219,15 @@ function tryAutoLogin(onHandleLogin, reuseCmd)
 	if (ok)
 		return ok;
 
-	self.options.onShowLogin();
+	self.showLogin();
 	return ok;
+}
+
+self.showLogin = showLogin;
+function showLogin()
+{
+	$("body").addClass("login");
+	self.options.onShowLogin();
 }
 
 self.tryAutoLoginAsync = tryAutoLoginAsync;
@@ -10217,7 +10243,7 @@ function tryAutoLoginAsync(onHandleLogin, reuseCmd)
 	}
 	function fail() {
 		dfd.reject();
-		self.options.onShowLogin();
+		self.showLogin();
 	}
 
 	// first try "User.get"
@@ -10263,14 +10289,39 @@ function tryAutoLoginAsync(onHandleLogin, reuseCmd)
 处理login相关的操作, 如设置g_data.userInfo, 保存自动登录的token等等.
 
 (v5.5) 如果URL中包含hash（即"#pageIssue"这样），且以"#page"开头，则登录后会自动打开同名的列表页（如"pageIssue"页面）。
+
+@var dfdLogin
+
+用于在登录完成状态下执行操作的Deferred/Promise对象。
+示例：若未登录，则在登录后显示消息；若已登录则直接显示消息
+
+	WUI.dfdLogin.then(function () {
+		app_show("hello");
+	});
+
 */
 self.handleLogin = handleLogin;
+self.dfdLogin = $.Deferred();
 function handleLogin(data)
 {
 	g_data.userInfo = data;
 	// 自动登录: http://...?autoLogin
 	if (g_args.autoLogin || /android|ipad|iphone/i.test(navigator.userAgent))
 		saveLoginToken(data);
+
+	self.dfdLogin.resolve();
+	WUI.applyPermission();
+
+	var jcont = $("body");
+	jcont.removeClass("login");
+	jcont.layout();
+	$("#menu,#main").css("visibility", "");
+
+	$(".my-title").html(document.title);
+	if (data) {
+		$(".user-name").html(data.name || data.uname);
+		$(".user-phone").html(data.phone);
+	}
 
 	self.showPage(self.options.pageHome);
 	if (location.hash.startsWith("#page")) {

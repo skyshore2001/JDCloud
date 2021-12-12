@@ -1,5 +1,5 @@
 // ====== global {{{
-var APP_TITLE = "商户管理端";
+var APP_TITLE = "运营管理端";
 var APP_NAME = "emp-adm";
 
 $.extend(WUI.options, {
@@ -148,7 +148,6 @@ function initPageHome()
 	jtbl.datagrid({
 		data: [g_data.userInfo]
 	});
-	WUI.applyPermission();
 }
 
 // init functions }}}
