@@ -93,7 +93,7 @@ function main()
 {
 	setAppTitle(APP_TITLE);
 
-	WUI.tryAutoLogin(handleLogin);
+	WUI.tryAutoLogin(handleLogin, "whoami");
 }
 
 $(main);

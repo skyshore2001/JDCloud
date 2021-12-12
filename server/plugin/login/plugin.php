@@ -592,6 +592,25 @@ function api_login()
 	return $ret;
 }
 
+function api_whoami()
+{
+	$type = getJDEnv()->appType;
+
+	if ($type == "user") {
+		$ret = callSvcInt("User.get");
+	}
+	elseif($type == "emp") {
+		$ret = callSvcInt("Employee.get");
+	}
+	else if ($type == "admin") {
+		checkAuth(AUTH_ADMIN);
+		$adminId = $_SESSION["adminId"];
+		list ($uname1, $pwd1) = getCred(getenv("P_ADMIN_CRED"));
+		$ret = ["id" => $adminId, "uname" => $uname1];
+	}
+	return $ret;
+}
+
 function api_logout()
 {
 	@session_destroy();

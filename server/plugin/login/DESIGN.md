@@ -173,6 +173,15 @@ _expire
 
 	login(uname=liang, pwd=liang123, _app=admin)
 
+### 获取用户信息
+
+(v6) 用于进入系统时判断用户是否已经登录，如果登录，则返回用户信息。
+
+	whoami
+
+- AUTH_LOGIN (适用于User, Employee和Admin)
+- 调用成功时返回用户信息，与login接口返回一致。
+
 ### 用户注销
 
 	logout(_app?)
