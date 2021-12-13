@@ -4,7 +4,7 @@
 global $LOGF, $CHAR_SZ, $SQLDIFF, $DBTYPE;
 
 $LOGF = __DIR__ . "/upgrade.log";
-$DBTYPE = getenv("P_DBTYPE") ?: "mysql";
+$DBTYPE = getenv("P_DBTYPE") ?: (stripos(getenv("P_DB"), '.db') !== false? "sqlite": "mysql");
 
 $CHAR_SZ = [
 	's' => 20,
