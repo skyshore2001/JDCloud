@@ -13,11 +13,38 @@ init.php(ac="initdb")(db, dbcred0, dbcred, dbcred_ro?, urlPath?, adminCred?, cfg
 - 写用户配置文件 php/conf.user.php
 - 如果cfgonly=1, 只写配置文件，不检查数据库或用户。
 
+在非Windows平台下，生成配置文件后，须输入之前设置的超级管理端密码才能继续设置。
+如果未指定超级管理端密码，则默认为"admin:admin123"
+(Windows平台认为非生产环境，不检查密码)
+
+可以指定sqlite数据库，示例：
+
+- P_DB 填写 jdcloud.db
+- 选中"数据库已存在"
+- P_DBCRED随便填写一个
+- 点"执行初始化"即可。
+
 */
 
 //var_dump(phpinfo(INFO_MODULES));
 global $INFO;
 const CONF_FILE = "../php/conf.user.php";
+@include(CONF_FILE);
+
+if (PHP_OS != "WINNT") {
+	$adminCred = getenv("P_ADMIN_CRED") ?: "admin:admin123";
+	if ($adminCred) {
+		list($user, $pwd) = [@$_SERVER['PHP_AUTH_USER'], @$_SERVER['PHP_AUTH_PW']];
+		$code = "$user:$pwd";
+		$b64 = base64_encode($code);
+		if ($adminCred != $code && $adminCred != $b64) {
+			header('WWW-Authenticate: Basic realm="admin"');
+			header('HTTP/1.0 401 Unauthorized');
+			echo 'Forbidden! 请使用超级管理员帐号登录。';
+			exit;
+		}
+	}
+}
 
 $INFO = []; // { @check, allowInit }
 // check: [{value, result=0|1|'ignore'}]
@@ -25,7 +52,7 @@ $INFO = []; // { @check, allowInit }
 $INFO["check"] = checkEnv();
 $INFO["allowInit"] = !file_exists(CONF_FILE);
 
-$INFO["allowUpgrade"] = file_exists("upgrade/META") && @( (filemtime("upgrade/upgrade.log")?:0) < filemtime("upgrade/META"));
+//$INFO["allowUpgrade"] = file_exists("upgrade/META") && @( (filemtime("upgrade/upgrade.log")?:0) < filemtime("upgrade/META"));
 
 $ac = param("ac");
 if ($ac) {
@@ -198,6 +225,13 @@ function createUserForMysql8($dbuser, $dbpwd)
 function api_initDb()
 {
 	$db = mparam("db");
+	// sqlite db
+	if (preg_match('/\.db$/', $db)) {
+		$dbcred = '';
+		$urlPath = '';
+		goto write_conf;
+	}
+
 	$dbcred = mparam("dbcred");
 	$cfgonly = (int)param("cfgonly", 0);
 	if (! $cfgonly) {
@@ -277,6 +311,7 @@ function api_initDb()
 		}
 	}
 
+write_conf:
 	echo "=== 写配置文件 " . CONF_FILE . "\n";
 	$dbcred_b64 = base64_encode($dbcred);
 	$adminCred = base64_encode(param("adminCred", ""));
@@ -480,8 +515,8 @@ else {
 	$("#divInitDb .disallowInit").show();
 }
 
-$("#divUpgrade").toggle(info.allowUpgrade);
-$("#divResult").toggle(info.allowUpgrade || info.allowInit);
+//$("#divUpgrade").toggle(info.allowUpgrade);
+//$("#divResult").toggle(info.allowUpgrade || info.allowInit);
 
 $("#chkCfgOnly").change(function () {
 	if (this.checked) {

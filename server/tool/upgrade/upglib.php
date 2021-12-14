@@ -626,7 +626,7 @@ class UpgHelper
 	{
 		global $DBTYPE;
 		if ($DBTYPE != "mysql")
-			throw new Exception("*** check table supports only mssql database!");
+			throw new Exception("*** check table supports only mysql database!");
 
 		global $SQLDIFF;
 		$sth = $this->dbh->query("desc `$table`"); 
