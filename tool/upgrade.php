@@ -426,9 +426,12 @@ upgrade.php
 	update cinf set ver, update_tm
 */
 
+global $BASE_DIR;
+$BASE_DIR = __DIR__ . '/../server';
+
 // 自动加载conf.user.php中的配置。
 if (getenv("P_DB") === false) {
-	@include_once(__DIR__ . "/../server/php/conf.user.php");
+	@include_once($BASE_DIR . "/php/conf.user.php");
 }
 require_once('upglib.php');
 
@@ -584,7 +587,15 @@ function dbconn($fnConfirm = null)
 	global $DB, $DBTYPE;
 	$DB = getenv("P_DB");
 	$DBCRED = getenv("P_DBCRED");
-	$DBTYPE = getenv("P_DBTYPE") ?: "mysql";
+	$DBTYPE = getenv("P_DBTYPE") ?: (stripos($DB, '.db') !== false? "sqlite": "mysql");
+
+	if ($DBTYPE == "sqlite") {
+		# 处理相对路径. 绝对路径：/..., \\xxx\..., c:\...
+		if ($DB[0] !== '/' && $DB[1] !== ':') {
+			global $BASE_DIR;
+			$DB = $BASE_DIR . '/' . $DB;
+		}
+	}
 
 	// 未指定驱动类型，则按 mysql或sqlite 连接
 	if (! preg_match('/^\w{3,10}:/', $DB)) {
