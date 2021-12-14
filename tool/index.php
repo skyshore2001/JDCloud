@@ -23,7 +23,7 @@ if ($ac == "model") {
 	// upgrade db
 	echo("=== 升级数据库\n");
 	putenv("P_METAFILE=$metafile");
-	require_once('upglib.php');
+	require_once('upgrade.php');
  	$h = new UpgHelper();
 	$h->updateDB();
 

@@ -432,6 +432,9 @@ if (getenv("P_DB") === false) {
 }
 require_once('upglib.php');
 
+if (php_sapi_name() != "cli")
+	return;
+
 global $h;
 try {
 	$opt = [];
