@@ -31,18 +31,16 @@ global $INFO;
 const CONF_FILE = "../php/conf.user.php";
 @include(CONF_FILE);
 
-if (PHP_OS != "WINNT") {
+if (PHP_OS != "WINNT" && file_exists(CONF_FILE)) {
 	$adminCred = getenv("P_ADMIN_CRED") ?: "admin:admin123";
-	if ($adminCred) {
-		list($user, $pwd) = [@$_SERVER['PHP_AUTH_USER'], @$_SERVER['PHP_AUTH_PW']];
-		$code = "$user:$pwd";
-		$b64 = base64_encode($code);
-		if ($adminCred != $code && $adminCred != $b64) {
-			header('WWW-Authenticate: Basic realm="admin"');
-			header('HTTP/1.0 401 Unauthorized');
-			echo 'Forbidden! 请使用超级管理员帐号登录。';
-			exit;
-		}
+	list($user, $pwd) = [@$_SERVER['PHP_AUTH_USER'], @$_SERVER['PHP_AUTH_PW']];
+	$code = "$user:$pwd";
+	$b64 = base64_encode($code);
+	if ($adminCred != $code && $adminCred != $b64) {
+		header('WWW-Authenticate: Basic realm="admin"');
+		header('HTTP/1.0 401 Unauthorized');
+		echo 'Forbidden! 请使用超级管理员帐号登录。';
+		exit;
 	}
 }
 
