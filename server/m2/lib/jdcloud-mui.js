@@ -6911,7 +6911,7 @@ TODO: cordova-ios未来将使用WkWebView作为容器（目前仍使用UIWebView
 
 @var options.allowNoLogin(page)  (v6) 返回页面是否需要登录的函数
 
-示例：a1页面无须登录可直接打开
+示例："hello"页面或"test"开头的页面无须登录可直接打开：
 
 	MUI.options.allowNoLogin = function (page) {
 		return page == "hello" || /^test/.test(page);
