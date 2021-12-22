@@ -6187,6 +6187,7 @@ function enhanceNavbar(jo)
 
 function enhanceFooter(jfooter)
 {
+	jfooter.remove();
 	enhanceNavbar(jfooter);
 	jfooter.addClass("ft").addClass("mui-navbar");
 	var jnavs = jfooter.find(">a");
@@ -6908,6 +6909,14 @@ TODO: cordova-ios未来将使用WkWebView作为容器（目前仍使用UIWebView
 		skipErrorRegex: /ResizeObserver loop limit exceeded/i,
 	});
 
+@var options.allowNoLogin(page)  (v6) 返回页面是否需要登录的函数
+
+示例：a1页面无须登录可直接打开
+
+	MUI.options.allowNoLogin = function (page) {
+		return page == "hello" || /^test/.test(page);
+	}
+
 */
 	var m_opt = self.options = {
 		appName: "user",
@@ -7208,10 +7217,12 @@ self.showLogin = showLogin;
 function showLogin(page)
 {
 	var pageRef = getPageRef(page);
+	if (isLoginPage(pageRef))
+		return;
 	m_onLoginOK = function () {
 		// 如果当前仍在login系列页面上，则跳到指定页面。这样可以在handleLogin中用MUI.showPage手工指定跳转页面。
 		if (MUI.activePage && isLoginPage(MUI.getToPageId())) {
-			if (pageRef == null)
+			if (pageRef == null || isLoginPage(pageRef))
 				pageRef = m_opt.homePage;
 			MUI.showPage(pageRef);
 		}
@@ -7306,6 +7317,8 @@ function validateEntry(allowedEntries)
 		var found = false;
 		//var hash = decodeURIComponent(location.hash);
 		var hash = location.hash;
+		if (isAllowNoLogin(hash))
+			return true;
 		$.each(allowedEntries, function () {
 			if ( (this instanceof RegExp && this.test(hash)) || this == hash) {
 				found = true;
@@ -7414,6 +7427,18 @@ function deleteLoginToken()
 		// g_data.userInfo已赋值
 	}
 
+打开首页面逻辑：
+
+- 入口检查（MUI.validateEntry函数）：如果当前页面是免登录页面（通过MUI.options.allowNoLogin函数判定）或本身就是登录页，直接打开；
+  否则如果不是入口页则自动改为主页，然后重新进入。
+- 如果尚未登录过（或会话已过期）：
+	- 如果当前非登录页，则自动跳转登录页，且登录成功后跳转回当前页；
+	- 如果当前是登录页，则不跳转，登录成功后进入主页
+- 如果已登录
+	- 如果当前非登录页，直接打开
+	- 如果当前是登录页，则进入主页
+- 进入系统后点返回，不会回到登录页
+
 */
 self.tryAutoLogin = tryAutoLogin;
 function tryAutoLogin(onHandleLogin, reuseCmd, allowNoLogin)
@@ -7463,12 +7488,23 @@ function tryAutoLogin(onHandleLogin, reuseCmd, allowNoLogin)
 	if (ok)
 		return ok;
 
-	if (! allowNoLogin)
+	if (! (allowNoLogin || isAllowNoLogin()) )
 	{
 		self.showFirstPage = false;
 		showLogin();
 	}
 	return ok;
+}
+
+// page?=location.hash
+function isAllowNoLogin(page)
+{
+	if (page == null)
+		page = location.hash;
+	if (page[0] == '#')
+		page = page.substr(1);
+
+	return isLoginPage(page) || (self.options.allowNoLogin && self.options.allowNoLogin(page));
 }
 
 /**
@@ -7513,6 +7549,9 @@ function handleLogin(data)
 		var fn = m_onLoginOK;
 		m_onLoginOK = null;
 		setTimeout(fn);
+	}
+	else if (isLoginPage(location.hash)) {
+		MUI.showHome();
 	}
 }
 //}}}
