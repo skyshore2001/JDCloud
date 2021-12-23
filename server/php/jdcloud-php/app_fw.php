@@ -2446,5 +2446,11 @@ function logext($s, $addHeader=true)
 	logit($s, $addHeader, "ext");
 }
 
+// openwrt/padavan上不支持fnmatch函数
+if(!function_exists('fnmatch')) {
+	function fnmatch($pattern, $string) {
+		return preg_match('/^'.strtr(preg_quote($pattern, '#'), array('\*' => '.*', '\?' => '.')).'$/i', $string);
+	}
+}
 //}}}
 // vim: set foldmethod=marker :
