@@ -7901,12 +7901,12 @@ function canDo(topic, cmd, defaultVal, permSet2)
 var BTN_TEXT = ["添加", "保存", "保存", "查找", "删除"];
 // e.g. var text = BTN_TEXT[mode];
 
-function getFindData(jfrm)
+function getFindData(jfrm, doGetAll)
 {
 	var kvList = {};
 	var kvList2 = {};
 	self.formItems(jfrm, function (ji, name, it) {
-		if (it.getDisabled() || ji.hasClass("notForFind"))
+		if ((!doGetAll && it.getDisabled()) || ji.hasClass("notForFind"))
 			return;
 		var v = it.getValue();
 		if (v == null || v === "")
@@ -8077,7 +8077,7 @@ function doFind(jo, jtbl, doAppendFilter)
 		return;
 	}
 
-	var param = getFindData(jo);
+	var param = getFindData(jo, true);
 	if (!force && $.isEmptyObject(param)) {
 		console.warn("doFind: no param");
 		return;
