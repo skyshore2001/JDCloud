@@ -296,6 +296,7 @@ input:disabled,select:disabled,textarea:disabled {
 }
 
 /* 登录页背景 */
-body.login {
+.loginPanel + .window-shadow + .window-mask {
 	background: url('bg.jpg');
+	opacity: initial;
 }

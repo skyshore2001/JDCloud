@@ -10226,7 +10226,6 @@ function tryAutoLogin(onHandleLogin, reuseCmd)
 self.showLogin = showLogin;
 function showLogin()
 {
-	$("body").addClass("login");
 	self.options.onShowLogin();
 }
 
@@ -10312,8 +10311,9 @@ function handleLogin(data)
 	WUI.applyPermission();
 
 	var jcont = $("body");
-	jcont.removeClass("login");
 	jcont.layout();
+	// bugfix: jcont.layout()会导致panel-header类被去除，再显示login页时则会多显示一个窗口头部
+	$(".loginPanel > .window-header").addClass("panel-header");
 	$("#menu,#main").css("visibility", "");
 
 	$(".my-title").html(document.title);
