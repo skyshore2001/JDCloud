@@ -6547,12 +6547,9 @@ self.isSmallScreen = isSmallScreen;
 function isSmallScreen() {
 	return $(document.body).width() < 640;
 }
-setTimeout(function () {
-	if (isSmallScreen()) {
-		$('<meta name="viewport" content="width=device-width, initial-scale=0.8, maximum-scale=0.8">').appendTo(document.head);
-		$("#menu").attr("data-options", "collapsed:true");
-	}
-})
+if (isSmallScreen()) {
+	$('<meta name="viewport" content="width=device-width, initial-scale=0.8, maximum-scale=0.8">').appendTo(document.head);
+}
 
 /**
 @fn showDlg(jdlg, opt?)
@@ -10311,6 +10308,9 @@ function handleLogin(data)
 	WUI.applyPermission();
 
 	var jcont = $("body");
+	if (WUI.isSmallScreen()) {
+		$("#menu").attr("data-options", "collapsed:true");
+	}
 	jcont.layout();
 	// bugfix: jcont.layout()会导致panel-header类被去除，再显示login页时则会多显示一个窗口头部
 	$(".loginPanel > .window-header").addClass("panel-header");
