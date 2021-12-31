@@ -2,6 +2,7 @@
 <html>
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>筋斗云产品设计</title>
   <style type="text/css">code{white-space: pre;}</style>
 <link rel="stylesheet" href="doc/style.css" />
@@ -49,13 +50,13 @@
 <li><a href="#员工管理"><span class="toc-section-number">3.2.1</span> 员工管理</a></li>
 <li><a href="#订单管理-1"><span class="toc-section-number">3.2.2</span> 订单管理</a></li>
 </ul></li>
-<li><a href="#超级管理端"><span class="toc-section-number">3.3</span> 超级管理端</a></li>
 </ul></li>
 <li><a href="#前端应用接口"><span class="toc-section-number">4</span> 前端应用接口</a><ul>
 <li><a href="#移动客户端appuser"><span class="toc-section-number">4.1</span> 移动客户端(app=user)</a></li>
-<li><a href="#管理端appstore"><span class="toc-section-number">4.2</span> 管理端(app=store)</a></li>
+<li><a href="#管理端appemp-adm"><span class="toc-section-number">4.2</span> 管理端(app=emp-adm)</a></li>
 <li><a href="#超级管理端appadmin"><span class="toc-section-number">4.3</span> 超级管理端(app=admin)</a></li>
 </ul></li>
+<li><a href="#后端内部接口"><span class="toc-section-number">5</span> 后端内部接口</a></li>
 </ul></li>
 <li><a href="#专题设计">专题设计</a><ul>
 <li><a href="#用户登录"><span class="toc-section-number">1</span> 用户登录</a></li>
@@ -67,92 +68,102 @@
 <h2 id="概要设计"><span class="header-section-number">1</span> 概要设计</h2>
 <h3 id="主要用例"><span class="header-section-number">1.1</span> 主要用例</h3>
 <p>定义用户使用本系统的主要场景。用于指导<a href="#系统建模">系统建模</a>和<a href="#交互接口设计">交互接口设计</a>。</p>
-<p>系统用例图. <img src="doc/pic/usecase.png" /></p>
+<p>系统主要用例见下图：</p>
+<div class="figure">
+<img src="doc/pic/usecase.dio.png" />
+
+</div>
 <h3 id="系统建模"><span class="header-section-number">1.2</span> 系统建模</h3>
 <p>定义系统数据模型，描述基本概念。用于指导<a href="#数据库设计">数据库设计</a>。</p>
-<p>系统类图或ER图. <img src="doc/pic/datamodel.png" /></p>
+<p>系统核心概念及关系见下图：</p>
+<div class="figure">
+<img src="doc/pic/datamodel.dio.png" />
+
+</div>
 <h2 id="数据库设计"><span class="header-section-number">2</span> 数据库设计</h2>
 <p>根据<a href="#系统建模">系统建模</a>设计数据库表结构。</p>
 <p>参考<a href="doc/后端框架.html#数据库设计">后端框架-数据库设计</a>查看定义表及字段类型的基本规则.</p>
-<p><strong>[数据库信息]</strong></p>
-<p><span class="citation">@Cinf</span>: version, createTm, upgradeTm</p>
-<p>产品配置信息表.</p>
 <p><strong>[员工]</strong></p>
 <p><span class="citation">@Employee</span>: id, uname, phone(s), pwd, name(s), perms</p>
 <p>雇员表, 登录后可用于查看和处理业务数据。</p>
-<dl>
-<dt>phone/pwd</dt>
-<dd>String. 员工登录用的用户名（一般用手机号）和密码. 密码采用md5加密。
-</dd>
-<dt>perms</dt>
-<dd>List(perm/String). 逗号分隔的权限列表，如&quot;emp,mgr&quot;. 可用值: emp,mgr, 对应权限AUTH_EMP, PERM_MGR。
-</dd>
-</dl>
+<ul>
+<li>uname: 用于登录的用户名，不可数字开头。</li>
+<li>phone: 员工手机号，也可用于登录，数字开头。</li>
+<li>pwd: 登录密码，采用md5加密。</li>
+<li><p>perms: EnumList. 角色列表，多个角色以逗号分隔，如&quot;mgr&quot;, &quot;emp,mgr&quot;。</p>
+<pre><code>emp: 管理员/AUTH_EMP
+mgr: 最高管理员/PERM_MGR</code></pre></li>
+</ul>
 <p><strong>[用户]</strong></p>
 <p><span class="citation">@User</span>: id, uname, phone(s), pwd, name(s), createTm</p>
-<dl>
-<dt>phone/pwd</dt>
-<dd>登录用的用户名和密码。密码采用md5加密。
-</dd>
-<dt>createTm</dt>
-<dd>DateTime. 注册日期. 可用于分析用户数增长。
-</dd>
-</dl>
-<p><strong>[订单]</strong></p>
-<p><span class="citation">@Ordr</span>: id, userId, status(2), amount, dscr(l), cmt(l)</p>
-<dl>
-<dt>status</dt>
-<dd>Enum. 订单状态。CR-新创建,RE-已服务,CA-已取消. 其它备用值: PA-已付款(待服务), ST-开始服务, CL-已结算.
-</dd>
-</dl>
-<p>注意:</p>
 <ul>
-<li>使用ordr而不是order是为了避免与sql关键字order冲突</li>
+<li>uname: 用于登录的用户名，不可数字开头。</li>
+<li>phone: 员工手机号，也可用于登录，数字开头。</li>
+<li>pwd: 登录密码，采用md5加密。</li>
+<li>createTm: 创建时间。</li>
 </ul>
+<p><strong>[订单]</strong></p>
+<p><span class="citation">@Ordr</span>: id, userId, createTm, status(2), amount, dscr(l), cmt(l)</p>
+<dl>
+<dt>vcol</dt>
+<dd>userName, userPhone, <span class="citation">@orderLog</span>?/订单日志OrderLog, <span class="citation">@atts</span>?/订单图片OrderAtt
+</dd>
+</dl>
+<ul>
+<li><p>status: Enum. 订单状态。</p>
+<pre><code>CR: 新创建
+RE: 已服务
+CA: 已取消
+
+其它备用值: 
+PA: 已付款(待服务)
+ST: 开始服务
+CL: 已结算</code></pre></li>
+<li><span class="citation">@orderLog</span>: [{id, action, dscr, ...}]. 日志子表, 关联表OrderLog</li>
+<li><p><span class="citation">@atts</span>: [{id, attId}]. 订单图片，关联表OrderAtt</p></li>
+</ul>
+<p>注意：使用ordr而不是order是为了避免与sql关键字order冲突</p>
 <p><strong>[订单日志]</strong></p>
 <p><span class="citation">@OrderLog</span>: id, orderId, action, tm, dscr, empId</p>
 <p>例如：某时创建订单，某时付款等。</p>
-<dl>
-<dt>action</dt>
-<dd><p>参考Action定义:</p>
-<pre><code>CR:: Create (订单创建，待付款)
-PA:: Pay (付款，待服务)
-RE:: Receive (服务完成, 待评价)
-CA:: Cancel (取消订单)
-RA:: Rate (评价)
-ST:: StartOrder (开始服务)
-CT:: ChangeOrderTime (修改预约时间)
-AS:: Assign (分派订单给员工)
-AC:: Accept (员工接单)
-CL:: Close (订单结算)</code></pre>
-</dd>
-<dt>empId</dt>
-<dd>操作该订单的员工号
-</dd>
-</dl>
+<ul>
+<li><p>action: 参考订单状态(Ordr.status)。可用值参考：</p>
+<pre><code>CR: Create (订单创建，待付款)
+PA: Pay (付款，待服务)
+RE: Receive (服务完成, 待评价)
+CA: Cancel (取消订单)
+RA: Rate (评价)
+ST: StartOrder (开始服务)
+CT: ChangeOrderTime (修改预约时间)
+AS: Assign (分派订单给员工)
+AC: Accept (员工接单)
+CL: Close (订单结算)</code></pre></li>
+<li><p>empId: 操作该订单的员工号</p></li>
+</ul>
 <p><strong>[订单-图片关联]</strong></p>
 <p><span class="citation">@OrderAtt</span>: id, orderId, attId</p>
 <p><strong>[API调用日志]</strong></p>
-<p><span class="citation">@ApiLog</span>: id, tm, addr, ua(l), app, ses, userId, ac, t&amp;, retval&amp;, req(t), res(t), reqsz&amp;, ressz&amp;, ver</p>
-<dl>
-<dt>app</dt>
-<dd>&quot;user&quot;|&quot;emp&quot;|&quot;store&quot;...
-</dd>
-<dt>ua</dt>
-<dd>userAgent
-</dd>
-<dt>ses</dt>
-<dd>the php session id.
-</dd>
-<dt>t</dt>
-<dd>执行时间(单位：ms)
-</dd>
-<dt>ver</dt>
-<dd>客户端版本。格式为：&quot;web&quot;表示通用网页(通过ua可查看明细浏览器)，&quot;wx/{ver}&quot;表示微信版本如&quot;wx/6.2.5&quot;, &quot;a/{ver}&quot;表示安卓客户端及版本如&quot;a/1&quot;, &quot;ios/{ver}&quot;表示苹果客户端版本如&quot;ios/15&quot;.
-</dd>
-</dl>
+<p><span class="citation">@ApiLog</span>: id, tm, addr, ua(l), app, ses, userId, ac, t&amp;, retval&amp;, req(t), res(t), reqsz&amp;, ressz&amp;, ver, serverRev(10)</p>
+<ul>
+<li><p>app: Enum。存储请求的<code>_app</code>参数，常见值：</p>
+<pre><code>emp-adm: 电脑管理端(web/index.html)
+user: 移动客户端(m2/index.html)</code></pre></li>
+<li>ua: userAgent，用于区分客户端类型和版本</li>
+<li>ses: 会话标识(HTTP session id)</li>
+<li>t: 执行时间(单位：ms)</li>
+<li><p>ver: 客户端版本。</p>
+<pre><code>web: 表示通用网页(通过ua可查看明细浏览器)
+wx/{ver}: 表示微信版本如&quot;wx/6.2.5&quot;
+a/{ver}: 表示安卓客户端及版本如&quot;a/1&quot;
+ios/{ver}: 表示苹果客户端版本如&quot;ios/15&quot;.</code></pre></li>
+</ul>
+<p><span class="citation">@ApiLog1</span>: id, apiLogId, ac, t&amp;, retval&amp;, req(t), res(t)</p>
+<p>batch操作的明细表。</p>
+<p><strong>[操作日志]</strong></p>
+<p><span class="citation">@ObjLog</span>: id, obj, objId, dscr, apiLogId, apiLog1Id</p>
 <p><strong>[插件相关]</strong></p>
-<p><span class="citation">@include</span> server/plugin/*/DESIGN.md</p>
+<pre><code>@include server\plugin\login\DESIGN.md
+@include server\plugin\upload\DESIGN.md</code></pre>
 <h2 id="交互接口设计"><span class="header-section-number">3</span> 交互接口设计</h2>
 <p>本章根据<a href="#主要用例">主要用例</a>定义应用客户端与服务端的交互接口。关于通讯协议基本规则，可参考<a href="doc/后端框架.html#通讯协议设计">后端框架-通讯协议设计</a>。</p>
 <h3 id="客户端"><span class="header-section-number">3.1</span> 客户端</h3>
@@ -180,14 +191,6 @@ Ordr.query/get() -&gt; tbl(id, status, ..., @orderLog?)</code></pre>
 <li>添加订单后, 订单状态为&quot;CR&quot;; 且在OrderLog中添加一条创建记录(action=CR)</li>
 <li>不允许删除订单（可以取消）。</li>
 </ul>
-<dl>
-<dt>id</dt>
-<dd>Integer. 订单编号
-</dd>
-<dt><span class="citation">@orderLog</span></dt>
-<dd>[{id, action, dscr, ...}]. 日志子表, 详见表定义&quot;<span class="citation">@OrderLog</span>&quot;.
-</dd>
-</dl>
 <h3 id="员工端后台管理端"><span class="header-section-number">3.2</span> 员工端/后台管理端</h3>
 <p>本节API需要员工登录权限。 app类型为&quot;emp&quot;.</p>
 <h4 id="员工管理"><span class="header-section-number">3.2.1</span> 员工管理</h4>
@@ -207,8 +210,8 @@ Employee.del(id?)</code></pre>
 </ul>
 <h4 id="订单管理-1"><span class="header-section-number">3.2.2</span> 订单管理</h4>
 <p>查看订单</p>
-<pre><code>Ordr.query() -&gt; tbl(id, status, ..., @orderLog?)
-Ordr.get(id) -&gt; { 同上字段 }</code></pre>
+<pre><code>Ordr.query
+Ordr.get</code></pre>
 <p>完成订单或取消订单</p>
 <pre><code>Ordr.set(id)(status=RE)
 Ordr.set(id)(status=CA)</code></pre>
@@ -217,20 +220,29 @@ Ordr.set(id)(status=CA)</code></pre>
 <li>订单状态必须为&quot;CR&quot;才能完成或取消.</li>
 <li>更新操作应生成相应订单日志(OrderLog).</li>
 </ul>
-<h3 id="超级管理端"><span class="header-section-number">3.3</span> 超级管理端</h3>
-<p>本节API需要超级管理员权限.</p>
-<p>app类型为adm.</p>
 <h2 id="前端应用接口"><span class="header-section-number">4</span> 前端应用接口</h2>
 <p>定义应用入口及调用参数。每一个应用均应明确定义一个惟一的app代码。</p>
 <h3 id="移动客户端appuser"><span class="header-section-number">4.1</span> 移动客户端(app=user)</h3>
 <pre><code>m2/index.html</code></pre>
 <p>用户登录, 可以创建和查看订单等.</p>
-<h3 id="管理端appstore"><span class="header-section-number">4.2</span> 管理端(app=store)</h3>
+<h3 id="管理端appemp-adm"><span class="header-section-number">4.2</span> 管理端(app=emp-adm)</h3>
 <pre><code>web/store.html</code></pre>
 <p>员工登录, 可以查看和管理订单等.</p>
 <h3 id="超级管理端appadmin"><span class="header-section-number">4.3</span> 超级管理端(app=admin)</h3>
 <pre><code>web/adm.html</code></pre>
 <p>使用超级管理员帐号登录.</p>
+<h2 id="后端内部接口"><span class="header-section-number">5</span> 后端内部接口</h2>
+<p>会话变量：</p>
+<ul>
+<li>用户登录
+<ul>
+<li>uid: 用户编号</li>
+</ul></li>
+<li>员工登录
+<ul>
+<li>empId: 员工编号</li>
+</ul></li>
+</ul>
 <h1 id="专题设计">专题设计</h1>
 <h2 id="用户登录"><span class="header-section-number">1</span> 用户登录</h2>
 <p>参考插件login <span class="citation">@include</span> server.md</p>
