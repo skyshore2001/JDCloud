@@ -155,7 +155,7 @@ class AC1_Ordr extends AC0_Ordr
 			$_POST["userId"] = $userId;
 			$_POST["status"] = "CR";
 			$_POST["createTm"] = date(FMT_DT);
-			$statua = "CR";
+			$status = "CR";
 		}
 		else {
 			if (issetval("status")) {
