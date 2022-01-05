@@ -1763,7 +1763,7 @@ $var AccessControl::$enableObjLog ?=true 默认记ObjLog
 				$col1 = $ms[1];
 				// 注意：与cond不同，orderby使用了虚拟字段，应在res中添加。而cond中是直接展开了虚拟字段。因为where条件不支持虚拟字段。
 				// 故不用：$this->addVCol($col1, true, '-'); 但应在处理完后删除辅助字段，避免多余字段影响导出文件等场景。
-				if ($this->addVCol($col1, true, null, true) !== false)
+				if (isset($this->userRes[$col1]) || $this->addVCol($col1, true, null, true) !== false)
 					return $col1;
 				return "t0." . $col1;
 			}, $col);
