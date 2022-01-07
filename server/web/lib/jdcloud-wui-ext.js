@@ -2945,6 +2945,12 @@ function showDataReport(opt, showPageOpt)
 				col.sortable = true;
 			}
 		});
+		// 统计是在一页内全部显示，故只用本地排序；用sumRow
+		dgOpt.remoteSort = false;
+		// dgOpt.sumRow是datagrid扩展选项，用于最后一行不参与排序。
+		if (opt.showSum && rowCnt > 1)
+			dgOpt.sumRow = 1;
+
 		// console.log(columns);
 
 		if (opt.showChart) {
