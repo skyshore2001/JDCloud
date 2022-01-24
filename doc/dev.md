@@ -148,19 +148,25 @@ MySQL服务端不是必装的，自己学习的话可以安装一个，注意安
 
 解压到`d:\bat`目录。如果没有该目录，创建它，并将它加入PATH路径。
 
-检查：可运行make命令。
+检查：可运行make命令。有些文件夹下有Makefile文件，则表示可以在这个文件夹下运行make命令。
 
-安装图片处理工具imagemagick：
+安装图片处理工具imagemagick：（比如图片压缩等）
 
-	\\server-pc\share\software\android\ImageMagick-7.0.8-12-Q16-x64-dll.exe
+	\\server-pc\share\software\ImageMagick-7.0.8-12-Q16-x64-dll.exe
 
-检查：可以运行magick命令(6.x版本的命令叫convert, 现在已不再使用)
+检查：可以运行magick命令(6.x版本的命令叫convert, 现在已不再使用)。常用于图片压缩，比如将1.png转换并压缩为1.jpg，分辨率处理为长1200、宽自动：
+
+	magick 1.png -resize 1200 -quality 80 1.jpg
+
+还可以用`-resize 1200x1000>`表示长、宽分别不超过1200和1000，而`-resize 1200x1000!`表示拉伸至该分辨率。
 
 安装文档生成工具pandoc：
 
 	\\server-pc\share\software\pandoc-1.16.0.2-windows.msi
 
-检查：可以运行pandoc命令
+检查：可以运行pandoc命令。它常用于将markdown文档转为html，如：
+
+	pandoc 1.md > 1.html
 
 安装文件查找工具everything:
 

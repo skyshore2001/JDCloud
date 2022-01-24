@@ -115,13 +115,16 @@ lower_case_table_names=2</code></pre>
 <p>安装make工具：</p>
 <pre><code>\\server-pc\share\software\make-mingw.zip</code></pre>
 <p>解压到<code>d:\bat</code>目录。如果没有该目录，创建它，并将它加入PATH路径。</p>
-<p>检查：可运行make命令。</p>
-<p>安装图片处理工具imagemagick：</p>
-<pre><code>\\server-pc\share\software\android\ImageMagick-7.0.8-12-Q16-x64-dll.exe</code></pre>
-<p>检查：可以运行magick命令(6.x版本的命令叫convert, 现在已不再使用)</p>
+<p>检查：可运行make命令。有些文件夹下有Makefile文件，则表示可以在这个文件夹下运行make命令。</p>
+<p>安装图片处理工具imagemagick：（比如图片压缩等）</p>
+<pre><code>\\server-pc\share\software\ImageMagick-7.0.8-12-Q16-x64-dll.exe</code></pre>
+<p>检查：可以运行magick命令(6.x版本的命令叫convert, 现在已不再使用)。常用于图片压缩，比如将1.png转换并压缩为1.jpg，分辨率处理为长1200、宽自动：</p>
+<pre><code>magick 1.png -resize 1200 -quality 80 1.jpg</code></pre>
+<p>还可以用<code>-resize 1200x1000&gt;</code>表示长、宽分别不超过1200和1000，而<code>-resize 1200x1000!</code>表示拉伸至该分辨率。</p>
 <p>安装文档生成工具pandoc：</p>
 <pre><code>\\server-pc\share\software\pandoc-1.16.0.2-windows.msi</code></pre>
-<p>检查：可以运行pandoc命令</p>
+<p>检查：可以运行pandoc命令。它常用于将markdown文档转为html，如：</p>
+<pre><code>pandoc 1.md &gt; 1.html</code></pre>
 <p>安装文件查找工具everything:</p>
 <pre><code>\\server-pc\share\software\Everything_1.4.1.877_x64-Setup</code></pre>
 <h3 id="运行经典筋斗云项目的工程"><span class="header-section-number">1.7</span> 运行经典筋斗云项目的工程</h3>
