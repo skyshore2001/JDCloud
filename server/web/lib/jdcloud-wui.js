@@ -6976,7 +6976,7 @@ function showDlg(jdlg, opt)
 		// jdlg.find("[type=hidden]:not([noReset])").val(""); // setFormData可将hidden清除。
 		jdlg.find(".my-reset").empty();
 	}
-	if (opt.data)
+	if (opt.data && opt.reset)
 	{
 		jfrm.trigger("initdata", [opt.data, formMode]); // TODO: remove. 用beforeshow替代。
 		//jfrm.form("load", opt.data);
