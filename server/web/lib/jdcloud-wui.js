@@ -9235,6 +9235,35 @@ function dgLoader(param, success, error)
 	});
 }
 
+/**
+@key datagrid.sumFields 数据表统计列
+
+为datagrid扩展属性，用于在数据表底部显示统计值。
+默认统计逻辑是当前页面内累加，如：
+
+	var dgOpt = {
+		url: WUI.makeUrl("Contract.query"),
+		showFooter: true, // 指定要显示底部统计
+		sumFields: ["amount", "invoiceAmount", "recvAmount"], // 指定哪些列加统计值
+		...
+	});
+	jtbl.datagrid(dgOpt);
+
+如果想跨页统计，即显示所有页数据的统计（在当前查询条件下），需要为query调用添加statRes参数，如：
+
+	var dgOpt = {
+		url: WUI.makeUrl("Contract.query", {
+			// 指定返回amount, invoiceAmount两个统计列
+			statRes: "SUM(amount) amount, SUM(invoiceAmount) invoiceAmount",
+		}),
+		showFooter: true, // 指定要显示底部统计
+		sumFields: ["amount", "invoiceAmount", "recvAmount"], // 注意：此时amount,invoiceAmount由于在statRes中指定，是跨页数据统计，而recvAmount未在statRes中指定，则只统计当前显示页。
+		...
+	});
+	jtbl.datagrid(dgOpt);
+
+*/
+
 function dgLoadFilter(data)
 {
 	var ret = jdListToDgList(data);
@@ -9243,6 +9272,23 @@ function dgLoadFilter(data)
 	$(this).datagrid("getPager").toggle(! (isOnePage && ret.total <= 5));
 	// 超过1页使用remoteSort, 否则使用localSort.
 //	$(this).datagrid("options").remoteSort = (! isOnePage);
+
+	var dgOpt = $(this).datagrid("options");
+	// 支持统计列计算。TODO: 允许自定义统计逻辑与格式
+	if (dgOpt.showFooter && dgOpt.sumFields) {
+		var stat = data.stat || {};
+		dgOpt.sumFields.forEach(function (field) {
+			if (stat[field] !== undefined)
+				return;
+			stat[field] = ret.rows.reduce(function (s, row, i) {
+				var v = row[field];
+				if (!v || isNaN(v))
+					return s;
+				return s + parseFloat(v);
+			}, 0);
+		});
+		ret.footer = [stat];
+	}
 	return ret;
 }
 
