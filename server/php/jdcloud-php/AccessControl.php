@@ -2713,6 +2713,17 @@ FROM ($sql) t0";
 			$fixedColCnt = count($ret[0]);
 		}
 
+		// 计算统计列
+		$statRes = param("statRes");
+		if ($statRes) {
+			$param = [
+				"res" => $statRes,
+				"fmt" => "one",
+				"cond" => $this->sqlConf["cond"]
+			];
+			$this->statRes = $this->callSvc(null, "query",  $param);
+		}
+
 		// 添加合计行。注意有pivot的情况，用pivotSumField参数而非sumFields参数来控制
 		if (!$pivot && ($sumFields = param("sumFields")) != null) {
 			$this->handleSumFields($ret, $sumFields);
@@ -2735,8 +2746,12 @@ FROM ($sql) t0";
 			return;
 		$sumFields = preg_split('/\s*,\s*/', $sumFields);
 		$sumRow = [];
-		foreach ($ret as $row) {
-			foreach ($sumFields as $f) {
+		foreach ($sumFields as $f) {
+			if (isset($this->statRes[$f])) {
+				$sumRow[$f] = $this->statRes[$f];
+				continue;
+			}
+			foreach ($ret as $row) {
 				$sumRow[$f] += is_numeric($row[$f])? $row[$f]: 0;
 			}
 		}
@@ -2815,6 +2830,8 @@ FROM ($sql) t0";
 		if (isset($fmt))
 			$this->handleExportFormat($fmt, $ret, param("fname", $this->table));
 
+		if (isset($this->statRes))
+			$ret["stat"] = $this->statRes;
 		return $ret;
 	}
 

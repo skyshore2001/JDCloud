@@ -43,8 +43,9 @@
 <li><a href="#查询结果支持分页"><span class="toc-section-number">3.2.3</span> 查询结果支持分页</a></li>
 <li><a href="#导出文件"><span class="toc-section-number">3.2.4</span> 导出文件</a></li>
 <li><a href="#枚举名字映射"><span class="toc-section-number">3.2.5</span> 枚举名字映射</a></li>
-<li><a href="#分组统计"><span class="toc-section-number">3.2.6</span> 分组统计</a></li>
-<li><a href="#模糊查询"><span class="toc-section-number">3.2.7</span> 模糊查询</a></li>
+<li><a href="#汇总统计"><span class="toc-section-number">3.2.6</span> 汇总统计</a></li>
+<li><a href="#分组统计"><span class="toc-section-number">3.2.7</span> 分组统计</a></li>
+<li><a href="#模糊查询"><span class="toc-section-number">3.2.8</span> 模糊查询</a></li>
 </ul></li>
 <li><a href="#查询分页机制"><span class="toc-section-number">3.3</span> 查询分页机制</a></li>
 <li><a href="#批量导入数据"><span class="toc-section-number">3.4</span> 批量导入数据</a><ul>
@@ -410,7 +411,11 @@ type in (select type from table2) -- 子查询不允许</code></pre>
 like用于字符串匹配，字符串中用&quot;%&quot;或&quot;*&quot;表示通配符，如果不存在通配符，则表示包含该串(即生成&#39;%xxx%&#39;)
 
 {b:&quot;!null&quot;, d:&quot;!empty&quot;]
-生成 &quot;b IS NOT NULL&quot; AND d&lt;&gt;&#39;&#39;&quot;</code></pre>
+生成 &quot;b IS NOT NULL&quot; AND d&lt;&gt;&#39;&#39;&quot;
+
+支持IN和NOT IN:
+{id: &quot;IN 100,101&quot;, status: &quot;NOT IN CA,XX&quot;}
+生成&quot;id IN (1,2,3) AND status NOT IN (&#39;CR&#39;,&#39;XX&#39;)&quot;。注意：如果是id字段（如id, empId, empId2都是id字段），且值都是数值则不对值加引号。</code></pre>
 <p>可用AND或OR连接多个条件，但不可加括号嵌套：</p>
 <pre><code>{tm: &quot;&gt;=2020-1-1 AND &lt;2020-2-1&quot;, tm2: &quot;&lt;2020-1-1 OR &gt;=2020-2-1&quot;}
 生成 &quot;(tm&gt;=&#39;2020-1-1&#39; AND tm&lt;&#39;2020-2-1&#39;) AND (tm2&lt;&#39;2020-1-1&#39; OR tm2&gt;=&#39;2020-2-1&#39;&quot;
@@ -535,13 +540,54 @@ window.open(url); // 下载文件</code></pre>
 <pre><code>callSvr(&quot;Ordr.query&quot;, {res: &quot;id, status =CR:新创建;CA:已取消&quot;})</code></pre>
 <p>如果该字段值为CR，应返回&quot;新创建&quot;，返回示例：</p>
 <pre><code>[ {id: 1, status: &quot;新创建&quot;} , {id: 2, status: &quot;已取消&quot;} ]</code></pre>
+<p>也可定义空值(null)或空串(&quot;&quot;)的显示，如: <code>status =CR:新创建;CA:已取消;:(null)</code>，表示将空值显示为<code>(null)</code>。</p>
 <p>如果字段值是多个逗号分隔的值列表，如&quot;CR,CA&quot;，则应返回&quot;新创建,已取消&quot;。</p>
 <p>可以与别名一起使用，示例：</p>
 <pre><code>callSvr(&quot;Ordr.query&quot;, {res: &quot;id 编号, status 状态=CR:新创建;CA:已取消&quot;})</code></pre>
 <p>返回示例：</p>
 <pre><code>[ {编号: 1, 状态: &quot;新创建&quot;} , {编号: 2, 状态: &quot;已取消&quot;} ]</code></pre>
 <p>该特性在使用query接口导出文件时特别有用。</p>
-<h4 id="分组统计"><span class="header-section-number">3.2.6</span> 分组统计</h4>
+<h4 id="汇总统计"><span class="header-section-number">3.2.6</span> 汇总统计</h4>
+<p>通过在res中指定SUM等字段，可以返回汇总信息，如：</p>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {
+    res: &quot;COUNT(id) cnt, SUM(amount) amount&quot;,
+    fmt: &quot;one&quot; // 由于结果必然只有一行，指定one格式更方便
+})</code></pre>
+<p>返回示例：</p>
+<pre><code>{cnt: 82, amount: 35340}</code></pre>
+<p>也可以在查询的同时指定要统计哪些列，使用statRes字段。</p>
+<dl>
+<dt>statRes</dt>
+<dd>指定统计字段，会在分页返回结果中添加stat对象。注意fmt参数不能是one, array, hash等，只允许是list或默认（即hd格式）。
+</dd>
+</dl>
+<p>请求示例：</p>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {
+    res: &quot;id, createTm, amount&quot;,
+    statRes: &quot;COUNT(id) cnt, SUM(amount) amount&quot;,
+})</code></pre>
+<p>返回示例：</p>
+<pre><code>{
+    h: [&quot;id&quot;, &quot;createTm&quot;, &quot;amount&quot;],
+    d: [
+        [ 100, &quot;2015-1-1 10:10:10&quot;, 1000],
+        [ 101, &quot;2015-1-2 10:11:10&quot;, 1200],
+        ...
+    ],
+    stat: {cnt: 82, amount: 35340},
+    nextkey: 9
+}</code></pre>
+<p>如果上面指定<code>fmt: &quot;list&quot;</code>则返回示例：</p>
+<pre><code>{
+    list: [
+        { id: 100, createTm: &quot;2015-1-1 10:10:10&quot;, amount: 1000 },
+        { id: 101, createTm: &quot;2015-1-2 10:11:10&quot;, amount: 1200 },
+        ...
+    ],
+    stat: {cnt: 82, amount: 35340},
+    nextkey: 9
+}</code></pre>
+<h4 id="分组统计"><span class="header-section-number">3.2.7</span> 分组统计</h4>
 <p>主要通过gres参数实现查询结果分组：</p>
 <dl>
 <dt>gres</dt>
@@ -554,7 +600,7 @@ window.open(url); // 下载文件</code></pre>
     cond: &quot;tm&gt;=&#39;2015-1-1&#39; and tm&lt;&#39;2017-1-1&#39;&quot;
 })</code></pre>
 <p>返回内容示例：</p>
-<pre><code>[
+<pre><code>{
     h: [&quot;y&quot;, &quot;status&quot;, &quot;totalCnt&quot;, &quot;totalAmount&quot;],
     d: [
         [ 2015, &quot;PA&quot;, 1130, 14420 ],  // 已付款，共1130单，14420元
@@ -563,7 +609,7 @@ window.open(url); // 下载文件</code></pre>
         [ 2016, &quot;CA&quot;, 9, 220 ],
         [ 2016, &quot;RA&quot;, 1530, 15580 ], // 已评价的订单
     ]
-]</code></pre>
+}</code></pre>
 <p>以下为约定时间统计字段：</p>
 <ul>
 <li>y: 年</li>
@@ -604,13 +650,13 @@ window.open(url); // 下载文件</code></pre>
     pivotCnt: 2
 })</code></pre>
 <p>返回内容示例：</p>
-<pre><code>[
+<pre><code>{
     h: [&quot;y&quot;, &quot;PA&quot;,&quot;CA&quot;,&quot;RA&quot;],
     d: [
         [ 2015, [1130, 14420], [2, 38], [0, 0] ],
         [ 2016, [170, 3390], [9, 220], [1530, 15580] ]
     ]
-]</code></pre>
+}</code></pre>
 <p>转置到列上的数据如果为null，则以&quot;(null)&quot;来显示；如果是空串，不做特殊处理。</p>
 <p>pivot参数可以设置多列，以逗号分隔，如将年、月显示到列上：</p>
 <pre><code>callSvr(&quot;Ordr.query&quot;, {
@@ -619,18 +665,18 @@ window.open(url); // 下载文件</code></pre>
     pivot: &quot;y,m&quot;
 })</code></pre>
 <p>转置到列后的字段以&quot;-&quot;拼接，如果有值为null的，以&quot;(null)&quot;显示。 返回内容示例：</p>
-<pre><code>[
+<pre><code>{
     h: [&quot;status&quot;, &quot;2020-1&quot;, &quot;2020-2&quot;, &quot;2020-(null)&quot;, &quot;(null)-(null)&quot;],
     d: [
         [ &quot;PA&quot;, 120, 230, 1, 0],
         [ &quot;CA&quot;, 300, 310, 0, 2]
     ]
-]</code></pre>
+}</code></pre>
 <p><strong>[行列汇总]</strong></p>
 <p>没有pivot时，用sumFields参数指定要统计的列，支持多列；有pivot时，用pivotSumField参数指定新添加的统计列的名字，只有一列，不存在多列。</p>
 <dl>
 <dt>sumFields</dt>
-<dd>String. 在数据最后添加汇总行，对一个或多个字段进行汇总。当有pivot参数时，该选项无效，应使用pivotSumField参数（下面有介绍）。 注意如果数据仅有一行，不添加汇总行。如果有分页，即数据在一页内显示不完，(TODO 暂定)只累加当前页的数据。
+<dd>String. 在数据最后添加汇总行，对一个或多个字段进行汇总。当有pivot参数时，该选项无效，应使用pivotSumField参数（下面有介绍）。 注意如果数据仅有一行，不添加汇总行。注意如果有分页，即数据在一页内显示不完，只会累加当前页的数据。
 </dd>
 </dl>
 <p>示例：简单查询，汇总其中一列</p>
@@ -639,21 +685,41 @@ window.open(url); // 下载文件</code></pre>
     sumFields: &quot;amount&quot;
 })</code></pre>
 <p>返回内容示例：</p>
-<pre><code>[
+<pre><code>{
     h: [&quot;id&quot;, &quot;createTm&quot;, &quot;amount&quot;],
     d: [
         [ 100, &quot;2015-1-1 10:10:10&quot;, 1000],
         [ 101, &quot;2015-1-2 10:11:10&quot;, 1200],
         [ &quot;合计&quot;, null, 2200 ], // 自动添加的汇总行，对指定列进行汇总
     ]
-]</code></pre>
+}</code></pre>
+<p>如果一页无法返回所有数据，又想在汇总中累计所有数据，要么调整pagesz参数让数据尽可能在一页内返回，要么额外使用statRes参数（前面有介绍）得到统计字段，如：</p>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {
+    res: &quot;id, createTm, amount&quot;,
+    statRes: &quot;SUM(amount) amount&quot;,
+    sumFields: &quot;amount&quot;
+})</code></pre>
+<p>返回内容示例：</p>
+<pre><code>{
+    h: [&quot;id&quot;, &quot;createTm&quot;, &quot;amount&quot;],
+    d: [
+        [ 100, &quot;2015-1-1 10:10:10&quot;, 1000],
+        [ 101, &quot;2015-1-2 10:11:10&quot;, 1200],
+        ...
+        [ &quot;合计&quot;, null, 50200 ], // 自动添加的汇总行，对指定列进行汇总
+    ],
+    // statRes参数将会自动添加stat对象，表示各统计列
+    stat: { amount: 50200 },
+    nextkey: 9
+}</code></pre>
+<p>注意：sumFields中的字段，是优先从stat对象中获取的，如果在stat中不存在，才做页内累加。</p>
 <p>示例：分组统计查询，汇总两列</p>
 <pre><code>callSvr(&quot;Ordr.query&quot;, {
     gres: &quot;y,status&quot;, res: &quot;count(&#39;A&#39;) totalCnt, sum(amount) totalAmount&quot;,
     sumFields: &quot;totalCnt, totalAmount&quot;
 })</code></pre>
 <p>返回内容示例：</p>
-<pre><code>[
+<pre><code>{
     h: [&quot;y&quot;, &quot;status&quot;, &quot;totalCnt&quot;, &quot;totalAmount&quot;],
     d: [
         [ 2015, &quot;PA&quot;, 1130, 14420 ],  // 已付款，共1130单，14420元
@@ -663,7 +729,7 @@ window.open(url); // 下载文件</code></pre>
         [ 2016, &quot;RA&quot;, 1530, 15580 ], // 已评价的订单
         [ &quot;合计&quot;, null, 2841, 33648 ], // 自动添加的汇总行，对指定的两列进行汇总
     ]
-]</code></pre>
+}</code></pre>
 <dl>
 <dt>pivotSumField</dt>
 <dd>String. 例如设置值为&quot;合计&quot;，则会在每行添加一个名为&quot;合计&quot;的汇总列，且在数据最后添加一个汇总行。 注意：如果行转置后只有一行，则不显示统计列；如果总共只有一行，则不显示统计行。
@@ -676,15 +742,15 @@ window.open(url); // 下载文件</code></pre>
     pivotSumField: &quot;合计&quot;
 })</code></pre>
 <p>返回内容示例：</p>
-<pre><code>[
+<pre><code>{
     h: [&quot;y&quot;, &quot;PA&quot;,&quot;CA&quot;,&quot;RA&quot;, &quot;合计&quot;], // 自动添加汇总列&quot;合计&quot;
     d: [
         [ 2015, [1130, 14420], [2, 38], [0, 0], [1132, 14458] ],
         [ 2016, [170, 3390], [9, 220], [1530, 15580], [1709, 19190] ],
         [ &quot;合计&quot;, [1300, 17810], [11, 258], [1530, 15580], [2841, 33648] ] // 自动添加汇总行
     ]
-]</code></pre>
-<h4 id="模糊查询"><span class="header-section-number">3.2.7</span> 模糊查询</h4>
+}</code></pre>
+<h4 id="模糊查询"><span class="header-section-number">3.2.8</span> 模糊查询</h4>
 <dl>
 <dt>qsearch</dt>
 <dd>格式是<code>字段1,字符2,...:查询内容</code>(使用英文逗号及冒号分隔), 表示在指定的若干字段中模糊查询。
