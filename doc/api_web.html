@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2021-11-06</div>
+<div>最后更新：2022-01-30</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -153,11 +153,13 @@ code {
 <p><a href="#datagrid.sortable">datagrid.sortable (key)</a></p>
 <p><a href="#datagrid.sorter">datagrid.sorter (key)</a></p>
 <p><a href="#datagrid.styler">datagrid.styler (key)</a></p>
+<p><a href="#datagrid.sumFields">datagrid.sumFields (key)</a></p>
 <p><a href="#defDataProc">defDataProc (fn)</a></p>
 <p><a href="#delCookie">delCookie (fn)</a></p>
 <p><a href="#delStorage">delStorage (fn)</a></p>
 <p><a href="#delayDo">delayDo (fn)</a></p>
 <p><a href="#deleteParam">deleteParam (fn)</a></p>
+<p><a href="#dfdLogin">dfdLogin (var)</a></p>
 <p><a href="#dg_dblclick">dg_dblclick (fn)</a></p>
 <p><a href="#dg_toolbar">dg_toolbar (fn)</a></p>
 <p><a href="#diffObj">diffObj (fn)</a></p>
@@ -171,6 +173,8 @@ code {
 <p><a href="#evalAttr">evalAttr (fn)</a></p>
 <p><a href="#evalOptions">evalOptions (fn)</a></p>
 <p><a href="#event-beforeshow">event-beforeshow (key)</a></p>
+<p><a href="#event-create">event-create (key)</a></p>
+<p><a href="#event-dg_toolbar">event-dg_toolbar (key)</a></p>
 <p><a href="#event-initdata">event-initdata (key)</a></p>
 <p><a href="#event-loaddata">event-loaddata (key)</a></p>
 <p><a href="#event-pagecreate,pageshow,pagedestroy">event-pagecreate,pageshow,pagedestroy (key)</a></p>
@@ -318,8 +322,7 @@ code {
 <p style="margin-left:4em"><a href="#WUI-1.6.2 设计模式：关联选择框">1.6.2 设计模式：关联选择框</a></p>
 <p style="margin-left:4em"><a href="#WUI-1.6.3 picId字段显示图片">1.6.3 picId字段显示图片</a></p>
 <p style="margin-left:4em"><a href="#WUI-1.6.4 List字段显示为多个选项框">1.6.4 List字段显示为多个选项框</a></p>
-<p style="margin-left:2em"><a href="#WUI-1.7 设计模式：展示层次对象">1.7 设计模式：展示层次对象</a></p>
-<p style="margin-left:2em"><a href="#WUI-1.8 设计模式：页面间调用">1.8 设计模式：页面间调用</a></p>
+<p style="margin-left:2em"><a href="#WUI-1.7 设计模式：展示关联对象">1.7 设计模式：展示关联对象</a></p>
 <p style="margin-left:0em"><a href="#WUI-2 对话框功能">2 对话框功能</a></p>
 <p style="margin-left:2em"><a href="#WUI-2.1 定义对话框">2.1 定义对话框</a></p>
 <p style="margin-left:2em"><a href="#WUI-2.2 显示对话框">2.2 显示对话框</a></p>
@@ -821,11 +824,11 @@ jtbl.treegrid(dgOpt);</code></pre>
 <h6 id="WUI-1.6.4 List字段显示为多个选项框">1.6.4 List字段显示为多个选项框</h6>
 <p class="see"><strong>@see <a href="#hiddenToCheckbox">hiddenToCheckbox</a></strong>  </p>
 <p class="see"><strong>@see <a href="#checkboxToHidden　">checkboxToHidden　</a></strong> (有示例)</p>
-<h5 id="WUI-1.7 设计模式：展示层次对象">1.7 设计模式：展示层次对象</h5>
+<h5 id="WUI-1.7 设计模式：展示关联对象">1.7 设计模式：展示关联对象</h5>
 <p>例如设计有商品表Item, 每个商品属于特定的商户：</p>
 <pre><code>@Item: id, storeId, name
-storeId:: Integer. 商品所属商户编号。</code></pre>
-<p>也就是说，商户包含商品。要展现商品，可将它放在商户层次之下。<br />
+- storeId: Integer. 商品所属商户编号。</code></pre>
+<p>也就是说，一个商户对应多个商品。要展现商品，可将它放在商户层次之下。<br />
 可以这样设计用户操作：在商户列表上增加一个按钮“查看商品”，点击后打开一个新的列表页，显示该商户的商品列表。</p>
 <p>定义两个列表页：</p>
 <pre><code>&lt;div class="pageStore" title="商户列表" my-initfn="initPageStore"&gt;
@@ -837,122 +840,35 @@ storeId:: Integer. 商品所属商户编号。</code></pre>
 <pre><code>// 商户列表页
 function initPageStore()
 {
-    function showItemPage()
-    {
-        var row = jtbl.datagrid('getSelected');
-        if(row == null){
-            alert("您需要选择需要操作的行");
-            return;
-        }
-        // !!! 调用showPage显示新页 !!!
-        WUI.showPage("pageItem", "商户商品-" + row.name, [row.id]);
-        // 要使每个商户都打开一个商品页面而不是共享一个页面，必须保证第二个参数（页面标题）根据商户不同而不一样。
-        // 第三个参数是传给该页面初始化函数的参数列表，是一个数组。
-    }
-    var btn1 = {text: "查看商品", iconCls: "icon-search", handler: showItemPage};
-
     ...
+    var btn1 = {text: "查看商品", iconCls: "icon-search", handler: showItemPage};
     jtbl.datagrid({
         ...
         toolbar: WUI.dg_toolbar(jtbl, jdlg, btn1),
     });
-}
 
-// 商品列表页，注意有一个参数storeId, 并在查询时使用到它。
-function initPageItem(storeId)
-{
-    jtbl.datagrid({
-        // 用参数storeId过滤
-        url: WUI.makeUrl("Item.query", {cond: "storeId=" + storeId}),
-        ...
-    });
+    function showItemPage() {
+        var row = WUI.getRow(jtbl);
+        if (row == null)
+            return;
+        // !!! 调用showPage显示新页 !!!
+        var pageFilter = {cond: {storeId: row.id}};
+        WUI.showPage("pageItem", "商户商品-" + row.name, [null, pageFilter]);
+        // 要使每个商户都打开一个商品页面而不是共享一个页面，必须保证第二个参数（页面标题）根据商户不同而不一样。
+    }
 }</code></pre>
 <p>注意：</p>
 <p>调用WUI.showPage时，除了指定页面名，还指定了页面标题(第二参数)和页面初始化参数(第三参数, 一定是一个数组):</p>
-<pre><code>WUI.showPage("pageItem", "商户商品-" + row.name, [row.id]);</code></pre>
-<p>显然，第二个参数随着商户名称不同而不同，这保证了不同商户打开的商品页面不会共用。<br />
-在商品页面初始化时，第三参数将传递给初始化函数：</p>
-<pre><code>function initPageItem(storeId) // storeId=row.id</code></pre>
+<pre><code>WUI.showPage("pageItem", "商户商品-" + row.name, ...);</code></pre>
+<p>显然，第二个参数随着商户名称不同而不同，这保证了不同商户打开的商品页面不会共用。</p>
+<p>第三个参数是传给该页面初始化函数即initPageItem函数的参数列表，是一个数组。数组第一个元素是自定义参数，这里未使用；第二个元素称为pageFilter，会自动加到query接口参数中，对列表页进行过滤。</p>
 <p class="see"><strong>@see <a href="#showPage">showPage</a></strong> </p>
 <p class="key"><strong>@key <a id=".wui-fixedField">.wui-fixedField</a></strong>  固定值字段</p>
-<p>(v6) 推荐设置对话框参数 opt.objParam.fixedFields (值为field=&gt;value映射), 它与设置wui-fixedField类作用相同。</p>
-<p>当打开对话框时, 标识为.wui-fixedField类的字段会自动从传入的opt.objParam中取值, 如果取到值则将自己设置为只读.</p>
-<p>此外，在Item页对应的详情对话框上（dlgItem.html页面中），还应设置storeId字段是只读的，在添加、设置和查询时不可被修改，在添加时还应自动填充值。<br />
-(v5.3) 只要在字段上添加wui-fixedField类即可：</p>
+<p>(v6) 当打开商户关联的商品列表页时，点开商品明细对话框，商户这个字段(storeId)固定为<code>pageFilter.cond</code>中storeId的值，不可修改。这称为固定值字段（fixedField）。</p>
+<p>也可以通过WUI.showDlg/WUI.showObjDlg的opt.fixedFields参数来指定固定值字段(值为field=&gt;value映射)，或是通过jdlg设置对话框参数如<code>jdlg.objParam.fixedFields={storeId: row.id}</code>。</p>
+<p>v5.3引入了wui-fixedField类设置在字段上，v6起已不建议使用。以下仅用于兼容：<br />
+当打开对话框时, 标识为.wui-fixedField类的字段会自动从传入的opt.objParam中取值, 如果取到值则将自己设置为只读.</p>
 <pre><code>&lt;select name="storeId" class="my-combobox wui-fixedField" data-options="ListOptions.Store()"&gt;&lt;/select&gt;</code></pre>
-<p>注意：wui-fixedField在v5.3引入，之前方法是应先设置字段为readonly:</p>
-<pre><code>&lt;select name="storeId" class="my-combobox" data-options="ListOptions.Store()" readonly&gt;&lt;/select&gt;</code></pre>
-<p>（select组件默认不支持readonly属性，框架定义了CSS：为select[readonly]设置<code>pointer-events:none</code>达到类似效果。）</p>
-<p>然后，在initDlgItem函数中(dlgItem.js文件)，应设置在添加时自动填好该字段：</p>
-<pre><code>function onBeforeShow(ev, formMode, opt)
-    if (formMode == FormMode.forAdd &amp;&amp; objParam.storeId) {
-        opt.data.storeId = objParam.storeId;
-    }</code></pre>
-<h5 id="WUI-1.8 设计模式：页面间调用">1.8 设计模式：页面间调用</h5>
-<p>仍以上节数据结构为例，上节是在每个商品行上点“查看商品”，就打开一个新的该商户下的商品列表页，<br />
-现在我们换一种操作方法，改成只用一个商品列表页（默认打开时显示所有商户的商品，可以手工查找过滤），在商户页中点“查看商品”，就自动打开商品列表页并做条件过滤。</p>
-<p>先在主页面逻辑中为商品页定义一个接口：（比如在store.js中）</p>
-<pre><code>var PageItem = {
-    // param?: {storeId}
-    show: function (param) {
-        this.filterParam_ = param;
-        WUI.showPage("pageItem");
-    },
-    filterParam_: null
-};</code></pre>
-<p>在商户页中，点击“查看商品”按钮时做过滤：</p>
-<pre><code>function initPageStore()
-{
-    function showItemPage()
-    {
-        var row = jtbl.datagrid('getSelected');
-        ...
-        PageItem.show({storeId: row.id});
-    }
-    var btn1 = {text: "查看商品", iconCls: "icon-search", handler: showItemPage};
-
-    ...
-    jtbl.datagrid({
-        ...
-        toolbar: WUI.dg_toolbar(jtbl, jdlg, btn1),
-    });
-}</code></pre>
-<p>在商品页中，处理PageItem.filterParam_参数，实现过滤，我们在pageshow回调中处理它，同时把初始化datagrid也移到pageshow中：</p>
-<pre><code>function initPageItem()
-{
-    var isInit = true;
-    jpage.on("pageshow", pageShow);
-
-    function pageShow() {
-        // 接口变量PageItem.filterParam_用后即焚
-        var param = null;
-        if (PageItem.filterParam_) {
-            param = WUI.getQueryParam(PageItem.filterParam_);
-            PageItem.filterParam_ = null;
-        }
-        // 保证表格初始化只调用一次
-        if (isInit) {
-            jtbl.datagrid({
-                url: WUI.makeUrl("Item.query"),
-                queryParams: param,
-                toolbar: WUI.dg_toolbar(jtbl, jdlg, "export"),
-                onDblClickRow: WUI.dg_dblclick(jtbl, jdlg),
-                sortName: "id",
-                sortOrder: "desc"
-            });
-            isInit = false;
-        }
-        else if (param) {
-            WUI.reload(jtbl, null, param);
-        }
-    }
-}</code></pre>
-<p>注意：</p>
-<ul>
-<li>例子中通过页面接口，实现页面间的调用请求。</li>
-<li>上面用了WUI.reload，在点击列表上的“刷新”时，只会按当前条件刷新，不会刷新出所有数据来，必须点“查找”，清除所有条件后查找，才可以看到所有数据；<br />
-若想点“刷新”时显示所有数据，则可以将WUI.reload换成调用WUI.reloadTmp。</li>
-</ul>
 <h4 id="WUI-2 对话框功能">2 对话框功能</h4>
 <p class="key"><strong>@key <a id="example-dialog">example-dialog</a></strong> </p>
 <p>以群发短信功能为例。</p>
@@ -1089,9 +1005,6 @@ function onBeforeShow(ev, formMode, opt)
 <pre><code>&lt;input name="total" readonly&gt;</code></pre>
 </li>
 </ul>
-<p>(v5.3) 如果是在展示层次对象（参考[[设计模式：展示层次对象]]章节），某些字段是外部传入的固定值，这时用wui-fixedField类标识：</p>
-<pre><code>&lt;select name="storeId" class="my-combobox wui-fixedField" data-options="ListOptions.Store()"&gt;&lt;/select&gt;</code></pre>
-<p class="see"><strong>@see <a href="#.wui-fixedField">.wui-fixedField</a></strong> </p>
 <h4 id="WUI-3 模块化开发">3 模块化开发</h4>
 <p class="key"><strong>@key <a id="wui-script">wui-script</a></strong> </p>
 <p class="key"><strong>@key <a id="options.pageFolder">options.pageFolder</a></strong> </p>
@@ -2975,6 +2888,8 @@ retdata - 服务端返回结果时触发。用来根据服务器返回数据继�
 <ul>
 <li>旧版本中的initdata, loaddata, savedata将废弃，应分别改用beforeshow, show, validate事件替代，注意事件参数及检查对话框模式。</li>
 </ul>
+<p class="key"><strong>@key <a id="event-create">event-create</a></strong> (ev)</p>
+<p>对话框初始化函数执行后触发。</p>
 <p class="key"><strong>@key <a id="event-beforeshow">event-beforeshow</a></strong> (ev, formMode, opt)</p>
 <p>显示对话框前触发。</p>
 <ul>
@@ -3020,6 +2935,12 @@ function onValidate(ev, mode, oriData, newData)
 <p>某些字段希望设置后一直保留，不要被清空，可以设置noReset属性，例如：</p>
 <pre><code>&lt;input type="hidden" name="status" value="PA" noReset&gt;</code></pre>
 <h4 id="showDlg-6 控制底层jquery-easyui对话框">6 控制底层jquery-easyui对话框</h4>
+<p>wui-dialog可以使用底层easyui-dialog/easyui-window/easyui-panel的选项或方法，参考：</p>
+<ul>
+<li>easyui-dialog: <a href="https://www.jeasyui.net/plugins/181.html">https://www.jeasyui.net/plugins/181.html</a></li>
+<li>easyui-window: <a href="https://www.jeasyui.net/plugins/180.html">https://www.jeasyui.net/plugins/180.html</a></li>
+<li>easyui-pandel: <a href="https://www.jeasyui.net/plugins/159.html">https://www.jeasyui.net/plugins/159.html</a></li>
+</ul>
 <p>示例：打开时最大化，关闭对话框时回调事件：</p>
 <pre><code>var dialogOpt = {  
     maximized: true,
@@ -3031,6 +2952,11 @@ function onValidate(ev, mode, oriData, newData)
 jfrm.on("beforeshow",function(ev, formMode, opt) {
     opt.dialogOpt = dialogOpt;
 })</code></pre>
+<p>(v6) 除了直接指定opt.dialogOpt，还可以直接通过data-options来设置，示例：<br />
+不显示折叠、最大化按钮，自定义类名&quot;loginPanel&quot;</p>
+<pre><code>&lt;div id="dlgLogin" title="登录" data-options="cls:'loginPanel',collapsible:false,maximizable:false" style="width:350px;height:210px;"&gt;  
+...
+&lt;/div&gt;</code></pre>
 <h4 id="showDlg-7 复用dialog模板">7 复用dialog模板</h4>
 <p>(v5.3引入，v6修改) 该机制可用于自定义表(UDT, 对话框动态生成)。</p>
 <p>如 dlgUDT_inst_A 与 dlgUDT_inst_B 会共用dlgUDT对话框模板，只要用&quot;<em>inst</em>&quot;分隔对话框模板文件和后缀名。</p>
@@ -3406,6 +3332,7 @@ jdlg.on("beforeshow", function (ev, formMode, opt) {
 });</code></pre>
 <p class="param"><strong>@param opt.title</strong>  String. (v5.1) 指定对话框标题。</p>
 <p class="param"><strong>@param opt.data</strong>  Object. (v5.5) 为对话框指定初始数据，对话框中name属性匹配的控件会在beforeshow事件后且show事件前自动被赋值。</p>
+<p>param opt.onOk Function(retData) (v6) 与showDlg的onOk参数一致。在提交数据后回调，参数为后端返回数据，比如add接口返回新对象的id。</p>
 <p>注意：如果是forSet模式的对话框，即更新数据时，只有与原始数据不同的字段才会提交后端。</p>
 <p>其它参数可参考showDlg函数的opt参数。</p>
 <p class="key"><strong>@key <a id="objParam">objParam</a></strong>  对象对话框的初始参数。</p>
@@ -3517,7 +3444,24 @@ dg_toolbar.importOrdr = function (ctx) {
     }}
 };</code></pre>
 <p>这时就可以直接这样来指定导入按钮（便于全局重用）：</p>
-<pre><code>WUI.dg_toolbar(jtbl, jdlg, ..., "importOrdr")</code></pre></div>
+<pre><code>WUI.dg_toolbar(jtbl, jdlg, ..., "importOrdr")</code></pre>
+<p class="key"><strong>@key <a id="event-dg_toolbar">event-dg_toolbar</a></strong> (ev, jtbl, jdlg) 定制列表按钮事件</p>
+<p>示例：为订单列表增加一个“关联商品”按钮</p>
+<pre><code>$(document).on("dg_toolbar", ".wui-page.pageOrder", pageOrder_onToolbar);
+// 用于二次开发，更成熟的写法像这样
+// $(document).off("dg_toolbar.pageOrder").on("dg_toolbar.pageOrder", ".wui-page.pageOrder", pageOrder_onToolbar);
+function pageOrder_onToolbar(ev, buttons, jtbl, jdlg) {
+    // var jpage = $(ev.target);
+    // console.log(jpage);
+    var btnLinkToItem = {text: "关联商品", iconCls: "icon-redo", handler: function () {
+        var row = WUI.getRow(jtbl);
+        if (row == null)
+            return;
+        var pageFilter = { cond: {id: row.itemId} };
+        PageUi.show("商品", "关联商品-订单"+row.id, pageFilter);
+    }};
+    buttons.push(btnLinkToItem);
+}</code></pre></div>
 <div class="block">
 <h2 id="dg_dblclick">@fn dg_dblclick(jtbl, jdlg)</h2>
 <p class="param"><strong>@param jdlg</strong>  可以是对话框的jquery对象，或selector如"#dlgOrder".</p>
@@ -3654,6 +3598,28 @@ Formatter = $.extend(WUI.formatter, Formatter);</code></pre>
 &lt;th data-options="field:'userName', sortable:true, formatter:Formatter.linkTo('userId', '#dlgUser')"&gt;用户&lt;/th&gt;
 &lt;th data-options="field:'status', sortable:true, jdEnumMap: OrderStatusMap, formatter: Formatter.orderStatus"&gt;状态&lt;/th&gt;
 &lt;th data-options="field:'done', sortable:true, formatter: Formatter.flag()"&gt;已处理&lt;/th&gt;</code></pre></div>
+<div class="block">
+<h2 id="datagrid.sumFields">@key datagrid.sumFields 数据表统计列</h2>
+<p>为datagrid扩展属性，用于在数据表底部显示统计值。<br />
+默认统计逻辑是当前页面内累加，如：</p>
+<pre><code>var dgOpt = {
+    url: WUI.makeUrl("Contract.query"),
+    showFooter: true, // 指定要显示底部统计
+    sumFields: ["amount", "invoiceAmount", "recvAmount"], // 指定哪些列加统计值
+    ...
+});
+jtbl.datagrid(dgOpt);</code></pre>
+<p>如果想跨页统计，即显示所有页数据的统计（在当前查询条件下），需要为query调用添加statRes参数，如：</p>
+<pre><code>var dgOpt = {
+    url: WUI.makeUrl("Contract.query", {
+        // 指定返回amount, invoiceAmount两个统计列
+        statRes: "SUM(amount) amount, SUM(invoiceAmount) invoiceAmount",
+    }),
+    showFooter: true, // 指定要显示底部统计
+    sumFields: ["amount", "invoiceAmount", "recvAmount"], // 注意：此时amount,invoiceAmount由于在statRes中指定，是跨页数据统计，而recvAmount未在statRes中指定，则只统计当前显示页。
+    ...
+});
+jtbl.datagrid(dgOpt);</code></pre></div>
 <div class="block">
 <h2 id="datagrid.quickAutoSize">@key datagrid.quickAutoSize</h2>
 <p>扩展属性quickAutoSize。当行很多且列很多时，表格加载极慢。如果是简单表格（全部列都显示且自动大小，没有多行表头等），可以用这个属性优化。<br />
@@ -3794,7 +3760,7 @@ app_alert("输入要查询的名字:", "p", function (text) {
 <p class="param"><strong>@param fn</strong>  Function(isOk). 用户点击确定或取消后的回调。</p>
 <p>使用jQuery easyui弹出确认对话框.</p></div>
 <div class="block">
-<h2 id="app_show">@fn app_show(msg)</h2>
+<h2 id="app_show">@fn app_show(msg, title?)</h2>
 <p>使用jQuery easyui弹出对话框.</p></div>
 <div class="block">
 <h2 id="app_progress">@fn app_progress(value, msg?)</h2>
@@ -3835,7 +3801,13 @@ $(main);</code></pre>
 <h2 id="handleLogin">@fn handleLogin(data)</h2>
 <p class="param"><strong>@param data</strong>  调用API "login"成功后的返回数据.</p>
 <p>处理login相关的操作, 如设置g_data.userInfo, 保存自动登录的token等等.</p>
-<p>(v5.5) 如果URL中包含hash（即&quot;#pageIssue&quot;这样），且以&quot;#page&quot;开头，则登录后会自动打开同名的列表页（如&quot;pageIssue&quot;页面）。</p></div>
+<p>(v5.5) 如果URL中包含hash（即&quot;#pageIssue&quot;这样），且以&quot;#page&quot;开头，则登录后会自动打开同名的列表页（如&quot;pageIssue&quot;页面）。</p>
+<p class="var"><strong>@var <a id="dfdLogin">dfdLogin</a></strong> </p>
+<p>用于在登录完成状态下执行操作的Deferred/Promise对象。<br />
+示例：若未登录，则在登录后显示消息；若已登录则直接显示消息</p>
+<pre><code>WUI.dfdLogin.then(function () {
+    app_show("hello");
+});</code></pre></div>
 <div class="block">
 <h2 id="initClient">@fn initClient()</h2></div>
 <div class="block">
@@ -3879,6 +3851,7 @@ WUI.tabMain.tabs("close", idx);</code></pre>
 <p style="margin-left:2em"><a href="#jquery-mycombobox-4.2 旧方案(不建议使用)">4.2 旧方案(不建议使用)</a></p>
 <p style="margin-left:0em"><a href="#jquery-mycombobox-5 级联列表支持">5 级联列表支持</a></p>
 <p style="margin-left:0em"><a href="#jquery-mycombobox-6 自动感知对象变动并刷新列表">6 自动感知对象变动并刷新列表</a></p>
+<p style="margin-left:0em"><a href="#jquery-mycombobox-7 验证要求必填">7 验证要求必填</a></p>
 </div>
 <p class="fn"><strong>@fn <a id="jQuery.fn.mycombobox">jQuery.fn.mycombobox</a></strong> (force?=false)</p>
 <p class="key"><strong>@key <a id=".my-combobox">.my-combobox</a></strong>  关联选择框</p>
@@ -4154,7 +4127,14 @@ var ListOptions = {
 }</code></pre>
 <h4 id="jquery-mycombobox-6 自动感知对象变动并刷新列表">6 自动感知对象变动并刷新列表</h4>
 <p>假如某mycombobox组件查询Employee对象列表。当在Employee页面新建、修改、删除对象后，回到组件的页面，点击组件时将自动刷新列表。<br />
-(wui-combogrid也具有类似功能)</p></div>
+(wui-combogrid也具有类似功能)</p>
+<h4 id="jquery-mycombobox-7 验证要求必填">7 验证要求必填</h4>
+<p>(v6) my-combobox继承easyui-validatebox，所以可以指定requried选项：</p>
+<pre><code>&lt;select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap" required&gt;&lt;/select&gt;
+或
+&lt;select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap, required:true"&gt;&lt;/select&gt;</code></pre>
+<p>在v6之前须显式设置：</p>
+<pre><code>&lt;select name="status" class="my-combobox easyui-validatebox" data-options="jdEnumMap:OrderStatusMap, required:true"&gt;&lt;/select&gt;</code></pre></div>
 <div class="block">
 <h2 id="JdcloudExt">@module JdcloudExt</h2>
 <p>框架扩展功能或常用函数.</p></div>
@@ -4475,6 +4455,7 @@ callSvr("Conf.query", {cond: "name='企业分类'", fmt: "one", res: "value"}, f
 <div class="block">
 <h2 id=".wui-combogrid">@key .wui-combogrid</h2><div class="toc"><p style="margin-left:0em"><a href="#.wui-combogrid-1 markRefresh 标记下次打开时刷新列表">1 markRefresh 标记下次打开时刷新列表</a></p>
 <p style="margin-left:0em"><a href="#.wui-combogrid-2 动态修改下拉列表">2 动态修改下拉列表</a></p>
+<p style="margin-left:0em"><a href="#.wui-combogrid-3 使用gn函数访问组件">3 使用gn函数访问组件</a></p>
 </div>
 <p>可搜索的下拉列表。<br />
 示例：在dialog上，填写门店字段（填写Id，显示名字），从门店列表中选择一个门店。</p>
@@ -4489,6 +4470,7 @@ callSvr("Conf.query", {cond: "name='企业分类'", fmt: "one", res: "value"}, f
 <p>选项定义如下：</p>
 <pre><code>ListOptions.StoreGrid = {
     jd_vField: "storeName",
+    jd_dlgForAdd: "#dlgStore",
     panelWidth: 450,
     width: '95%',
     textField: "name",
@@ -4504,6 +4486,7 @@ callSvr("Conf.query", {cond: "name='企业分类'", fmt: "one", res: "value"}, f
 <ul>
 <li>jd_vField: 显示文本对应的虚拟字段, 用于初始显示和查询。</li>
 <li>jd_showId: 默认为true. 显示&quot;idField - textField&quot;格式. 设置为false时只显示textField.</li>
+<li>jd_dlgForAdd: (v6) 如果指定，则下拉列表中显示“新增”按钮，可以打开该对话框添加对象。（支持权限控制）</li>
 </ul>
 <p>在选择一行并返回时，它会触发choose事件：</p>
 <pre><code>// 注意要取combogrid对象要用comboname! 而不是用 "[name=storeId]"（原始的input已经变成一个hidden组件，只存储值）
@@ -4562,7 +4545,18 @@ jo.trigger("setOption", opt);</code></pre>
 var cond = type == 'A'? xx: yy...;
 // 取出选项，动态修改url
 var jo = jdlg.find("[comboname=categoryId]");
-jo.trigger("setOption", ListOptions.CategoryGrid(cond));</code></pre></div>
+jo.trigger("setOption", ListOptions.CategoryGrid(cond));</code></pre>
+<h4 id=".wui-combogrid-3 使用gn函数访问组件">3 使用gn函数访问组件</h4>
+<p>设置值：</p>
+<pre><code>jdlg.gn("userId").val(10);
+jdlg.gn("userId").val([10, "用户1"]); // 如果传数组，则同时设置值和显示文本</code></pre>
+<p>设置状态：</p>
+<pre><code>jdlg.gn("userId").visible(true)
+    .readonly(true)
+    .disabled(true);</code></pre>
+<p>注意gn函数支持链式调用。</p>
+<p>重置选项：</p>
+<pre><code>jdlg.gn("userId").setOption(ListOptions.UserGrid({phone: "~*9204"}));</code></pre></div>
 <div class="block">
 <h2 id=".combo-f">@key .combo-f</h2>
 <p>支持基于easyui-combo的表单扩展控件，如 combogrid/datebox/datetimebox等, 在使用WUI.getFormData时可以获取到控件值.</p>
@@ -4997,7 +4991,8 @@ var rv = diffObj("hello", 99);
 <li>res: 汇总字段，默认为<code>COUNT(*) 数量</code></li>
 <li>gres: 行统计字段。须为数组，示例：<code>["userPhone", "userName 用户", null, "status 状态=CR:新创建;RE:已完成"]</code>。<br />
 数组每个元素符合后端query接口res参数要求，可以是1个字段也可以是逗号分隔的多个字段；如果为空则跳过。<br />
-注意：月报用 <a href="配合tmUnit:" title="y,m">&quot;y 年, m 月&quot;</a>，日报用 [&quot;y 年, m 月, d 日&quot;] (配合tmUnit: &quot;y,m,d&quot;)</li>
+注意：时间字段固定用&quot;y 年&quot;, &quot;m 月&quot;, &quot;d 日&quot;, &quot;h 时&quot;, &quot;q 季度&quot;, &quot;w 周&quot;, &quot;wd 周几&quot;这些。这样当点开统计对话框时，可自动选上相应的时间字段，比如<code>["y 年", "m 月"]</code>将自动选中&quot;时间-年&quot;和&quot;时间-月&quot;;<br />
+特别地，月报固定用 [&quot;y 年,m 月&quot;](配合tmUnit: &quot;y,m&quot;, 统计图中可自动补齐缺失日期)，日报用 [&quot;y 年,m 月,d 日&quot;] (配合tmUnit: &quot;y,m,d&quot;)。</li>
 <li>gres2: 列统计字段。格式与gres相同。</li>
 <li>cond: 查询条件，字符串，示例：WUI.getQueryCond({id: &quot;&gt;1&quot;, status: &quot;CR,RE&quot;, createTm: &quot;&gt;=2020-1-1 and &lt;2021-1-1&quot;}), 用getQueryCond可使用查询框支持的条件格式。</li>
 <li>orderby: 排序方式</li>
@@ -5016,7 +5011,10 @@ var rv = diffObj("hello", 99);
 <p>tmUnit: 用于统计图，特别用于月报、日报等，会自动补齐缺少的时间。常用有：&quot;y,m&quot;-年月,&quot;y,m,d&quot;-年月日。注意一旦指定tmUnit则orderby选项自动与tmUnit相同。</p>
 </li>
 <li>showSum: 自动添加统计行或列</li>
-<li>pivotSumField: 统计列列名，默认为&quot;合计&quot;</li>
+<li>
+<p>pivotSumField: 统计列列名，默认为&quot;合计&quot;</p>
+</li>
+<li>queryParam: 直接指定查询参数，如<code>{for: "xx报表"}</code></li>
 </ul>
 <p class="see"><strong>@see <a href="#JdcloudStat.tmUnit">JdcloudStat.tmUnit</a></strong>  </p>
 <ul>
@@ -5077,7 +5075,17 @@ var rv = diffObj("hello", 99);
     // 定义用户可选的字段，定义它会在工具栏显示“统计”按钮。注意不需要定义y,m等时间字段，它们由tmField自动生成。
     resFields: "amount 金额, status 状态=CR:新创建;RE:已完成;CA:已取消, dscr 订单类别, userName 用户, userPhone 用户手机号, createTm 创建时间",
 });</code></pre>
-<p>注意：统计图(showChart:true)目前只支持第一个统计项。</p></div>
+<p>注意：统计图(showChart:true)目前只支持第一个统计项。</p>
+<p>res中也可以加一些不用于统计的字段，统计列必须放在res最后面，系统会自动将res中最后若干个连续地以COUNT或SUM聚合的字段会当成统计列。</p>
+<pre><code>WUI.showDataReport({
+    ac: "Ordr.query",
+    res: "userName 用户, userPhone 手机号, createTm 创建时间, COUNT(1) 总数, SUM(amount) 总金额", // 自动识别2个统计列，调用query接口时设置参数`pivotCnt:2`
+    gres: ["status 状态=CR:新创建;RE:已完成;CA:已取消"],
+    gres2: ["dscr 订单类别"],
+    detailPageName: "pageOrder",
+    title: "订单状态占比",
+    showSum: true, // 自动添加行列统计
+});</code></pre></div>
 <div class="block">
 <h2 id="showDlgChart">@fn showDlgChart(data, rs2StatOpt, seriesOpt, chartOpt)</h2>
 <ul>
@@ -6055,8 +6063,8 @@ function onInitGrid(jpage, jtbl, dgOpt, columns, data)
             return;
         return WUI.makeLink(value, function () {
             var orderId = row.工单号;
-            var objParam = {orderId: orderId };
-            WUI.showPage("pageSn", "工件-工单" + orderId, [ objParam ]);
+            var pageFilter = {cond: {orderId: orderId }};
+            WUI.showPage("pageSn", "工件-工单" + orderId, [ null, pageFilter ]);
         });
     }
 }</code></pre>

@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2021-11-06</div>
+<div>最后更新：2022-01-30</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -161,6 +161,7 @@ code {
 <p><a href="#arrMap">arrMap (fn)</a></p>
 <p><a href="#arrayCmp">arrayCmp (fn)</a></p>
 <p><a href="#callAsync">callAsync (fn)</a></p>
+<p><a href="#callSvc">callSvc (fn)</a></p>
 <p><a href="#callSvcAsync">callSvcAsync (fn)</a></p>
 <p><a href="#callSvcInt">callSvcInt (fn)</a></p>
 <p><a href="#checkAuth">checkAuth (fn)</a></p>
@@ -503,13 +504,14 @@ if ($person === false) {
     // 未找到
 }</code></pre></div>
 <div class="block">
-<h2 id="arrMap">@fn arrMap($arr, $fn)</h2>
+<h2 id="arrMap">@fn arrMap($arr, $fn, $doFilter=false)</h2>
 <p>示例：</p>
 <pre><code>$personArr = [ ["id"=&gt;1, "name"=&gt;"name1"], ["id"=&gt;2, "name"=&gt;"name2"] ];
 $personIdList = arrMap($arr, function ($e) {
     return $e["id"];
 });
-// [1, 2]</code></pre></div>
+// [1, 2]</code></pre>
+<p>如果doFilter为true，则return null或直接return时，该元素被过滤掉。</p></div>
 <div class="block">
 <h2 id="arrGrep">@fn arrGrep($arr, $fn, $mapFn=null)</h2>
 <p>示例：</p>
@@ -583,12 +585,18 @@ strList可以是数组或字符串。如果为字符串，则多个词以分隔�
     }
 }</code></pre></div>
 <div class="block">
-<h2 id="pivot">@fn pivot($objArr, $gcols, $ycolCnt=1)</h2>
+<h2 id="pivot">@fn pivot($objArr, $gcols, $ycolCnt=1, $pivotSumField=null, $gres=null)</h2>
 <p>将行转置到列。一般用于统计分析数据处理。</p>
 <ul>
 <li>$gcols为转置字段，可以是一个或多个字段。可以是个字符串(&quot;f1&quot; 或 &quot;f1,f2&quot;)，也可以是个数组（如[&quot;f1&quot;,&quot;f2&quot;]）</li>
 <li>$objArr是对象数组，默认最后一列是统计列，如果想要最后两列作为统计列，可以指定参数ycolCnt=2。注意此时最终统计值将是一个数组。</li>
 <li>以objArr[0]这个对象为基准，除去最后ycolCnt个字段做为统计列(ycols)，再除去gcols指定的要转置到列的字段，剩下的列就是xcols：相同的xcols会归并到一行中。</li>
+</ul>
+<p>objArr的列中包括三类：</p>
+<pre><code>分组列(含转置列) 普通列 统计列</code></pre>
+<ul>
+<li>统计列必须在最后面，由ycolCnt指定有几列，必须为数值列</li>
+<li>gres指定分组列（多个列以逗号分隔），gcols指定转置列，gres应包含gcols。如果未指定gres，则表示除了统计列都是分组列（即没有普通列）</li>
 </ul>
 <p>示例：</p>
 <pre><code>$arr = [
@@ -1136,11 +1144,13 @@ dbCommit();
 //处理当前出库单据
 $this-&gt;outOfBin($_POST);</code></pre></div>
 <div class="block">
-<h2 id="Q">@fn Q($str)</h2>
+<h2 id="Q">@fn Q($str, $env=null)</h2>
 <p>quote string</p>
 <p>一般是把字符串如&quot;abc&quot;转成加单引号的形式&quot;'abc'&quot;. 适用于根据用户输入串拼接成SQL语句时，对输入串处理，避免SQL注入。</p>
 <p>示例：</p>
-<pre><code>$sql = sprintf("SELECT id FROM User WHERE uname=%s AND pwd=%s", Q(param("uname")), Q(param("pwd")));</code></pre></div>
+<pre><code>$sql = sprintf("SELECT id FROM User WHERE uname=%s AND pwd=%s", Q(param("uname")), Q(param("pwd")));</code></pre>
+<p>注意不同数据库对转义处理不同，如mysql将&quot;'&quot;转义为&quot;\'&quot;，而sqlite转义为&quot;''&quot;。<br />
+如果未指定$env，则取当前$env.</p></div>
 <div class="block">
 <h2 id="getQueryCond">@fn getQueryCond(cond)</h2>
 <p>根据cond生成查询条件字符串。其中cond可以是</p>
@@ -1338,9 +1348,14 @@ $bi = new BatchInsert("Syslog", "module,tm,content", $opt);</code></pre>
 <pre><code>$id = dbInsert("Ordr", [
     "tm" =&gt; dbExpr("now()") // 使用dbExpr直接提供SQL表达式
 ]);</code></pre>
-<p>另外，写数据库时，为防止XSS跨域攻击，dbInsert/dbUpdate对值会自动做htmlentity转义，如&quot;&gt;7&quot;转成&quot;&gt;7&quot;。<br />
+<p>另外，写数据库时，为防止XSS跨域攻击，param/mparam/dbInsert/dbUpdate对值会自动做htmlentity转义(本项目用htmlEscape函数)，如&quot;&gt;7&quot;转成&quot;&gt;7&quot;。<br />
 为防止转义，使用原始字串值，可以用：</p>
-<pre><code>$id = dbUpdate("Ordr", [
+<pre><code>// 防止param/mparam转义，设置doHtmlEscape参数=false; 或直接从$_GET/$_POST中取值
+$value = mparam("value", null, false); // 第3参数是doHtmlEscape
+$value1 = $_POST["value1"]; // 不用param函数
+
+// 防止dbInsert/dbUpdate转义，用dbExpr和Q函数。
+$id = dbUpdate("Ordr", [
     "cond" =&gt; dbExpr(Q("f&gt;3 &amp;&amp; r&lt;60")); // 注意用Q函数对字符串加引号
 ]);</code></pre>
 <p>示例：对象set/add接口中，防止某字段被转义：</p>
@@ -2381,7 +2396,8 @@ v5.4后建议这样实现：</p>
 <h2 id="callSvcInt">@fn callSvcInt($ac, $param=null, $postParam=null, $useTmpEnv=true)</h2>
 <p>内部调用另一接口，获得返回值。<br />
 内部若有异常会抛上来，特别地，调用<code>jdRet(0)</code>会当成正常调用不会抛出异常，而<code>jdRet()</code>（用于自定义输出内容）仍会抛出异常。</p>
-<p>与callSvc不同的是，它不处理事务、不写ApiLog，不输出数据，更轻量。</p>
+<p>与callSvc不同的是，它不处理事务、不写ApiLog，不输出数据，更轻量。<br />
+由于不处理事务，它只应在接口实现内部使用。包含api.php后调用接口应使用callSvc.</p>
 <p>示例：</p>
 <pre><code>$vendorId = callSvcInt("Vendor.add", null, [
     "name" =&gt; $params["vendorName"],
@@ -2541,6 +2557,23 @@ $ret = $env-&gt;tmpEnv($param, null, function () {
 <pre><code>$env-&gt;createAC("Ordr", "add");
 $env-&gt;createAC("Ordr", "add", true);
 $env-&gt;createAC("Ordr", null, "AC0_Ordr");</code></pre></div>
+<div class="block">
+<h2 id="callSvc">@fn callSvc($ac=null, $useTrans=true)</h2>
+<p>外部调用接口。返回符合筋斗云格式的数组，至少2元素，即<code>[0, 成功数据, 调试信息...]</code>或<code>[非0, 失败信息, 内部失败原因, 调试信息...]</code></p>
+<ul>
+<li>如果不指定ac, 则自动从请求中解析，设置响应header并输出内容。</li>
+<li>自动开启数据库事务，除非指定useTrans=false</li>
+<li>自动记录调用日志、操作日志等。</li>
+</ul>
+<p>示例：接口应用api.php的最后</p>
+<pre><code>callSvc();</code></pre>
+<p>示例：server/tool/task.php是命令行程序(通过php task.php执行)，用于定时任务，如果它想调用已有接口：</p>
+<pre><code>// 模拟AC2权限调用接口
+$_SESSION = ["empId" =&gt; -1];
+// 设置参数；当然也可以设置$_POST参数
+$_GET = ["for" =&gt; "task", "fmt" =&gt; "one"];
+$rv = callSvc("Employee.query");</code></pre>
+<p class="see"><strong>@see <a href="#callSvcInt">callSvcInt</a></strong> </p></div>
 <div class="block">
 <h2 id="AccessControl">@module AccessControl</h2><div class="toc"><p style="margin-left:0em"><a href="#AccessControl-1 基本权限控制">1 基本权限控制</a></p>
 <p style="margin-left:0em"><a href="#AccessControl-2 虚拟字段(VCol)">2 虚拟字段(VCol)</a></p>
@@ -3303,7 +3336,8 @@ ORDER BY t0.id DESC)&quot;;<br />
 <li>list: 生成<code>{ @list, nextkey?, total? }</code>格式，而非缺省的 <code>{ @h, @d, nextkey?, total? }</code>格式</li>
 <li>array: (v5.5) 直接返回对象数组, 没有分页信息. 若未指定pagesz参数, 则pagesz自动为-1, 尽可能返回全部数据.</li>
 <li>tree: (v5.5) 将{id,fatherId}线性结构转为树型结构{id,children}.<br />
-可以通过URL参数treeFields重定义各字段名，默认值为<code>id,fatherId,children</code>，设置示例：<code>{treeFields:'code,fatherCode'}</code>，<code>{treeFields:'code,fatherCode,subtree'}</code></li>
+可以通过URL参数treeFields重定义各字段名，默认值为<code>id,fatherId,children</code>，设置示例：<code>{treeFields:'code,fatherCode'}</code>，<code>{treeFields:'code,fatherCode,subtree'}</code><br />
+注意：和array一样不支持分页。</li>
 <li>one: 类似get接口，只返回第一条数据，常用于统计等接口。若查询不到则抛错。</li>
 <li>one?: (v5.5) 与&quot;one&quot;相似，但若查询不到则返回false而不抛出错误。而且若只有一个字段，则直接返回该字段内容，而非该行对象。</li>
 <li>
@@ -3317,7 +3351,8 @@ ORDER BY t0.id DESC)&quot;;<br />
 <li>hash: (v5.5) 返回key-value形式的数据. 值可以是对象, 数组还是标量, 从而有多种细分格式, 如<br />
 &quot;hash&quot;, &quot;hash:keyField&quot;, &quot;hash:keyField,valueField&quot;, &quot;multihash&quot;, &quot;multihash:keyField&quot;, &quot;multihash:keyField,valueField&quot;等形式</li>
 </ul>
-<p>array和hash格式示例:</p>
+<p>注意：hash/multihash和array, tree格式一样不支持分页。<br />
+array和hash格式示例:</p>
 <pre><code>callSvr("Sn.query", {gres:"status", res:"COUNT(id) cnt")
 // {h: ["status","cnt"], d: [{status:"CA", cnt:2}, {status:"CR", cnt:50}, {status:"RE", cnt:2}]}
 
