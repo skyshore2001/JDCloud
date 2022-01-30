@@ -6084,6 +6084,8 @@ rowData如果未指定，则使用当前选择的行。
 
 如果要刷新整个表，可用WUI.reload(jtbl)。
 刷新整个页面可用WUI.reloadPage()，但一般只用于调试，不用于生产环境。
+
+返回Deferred对象，表示加载完成。
  */
 self.reloadRow = reloadRow;
 function reloadRow(jtbl, rowData)
@@ -6096,7 +6098,7 @@ function reloadRow(jtbl, rowData)
 	}
 	jtbl[datagrid]("loading");
 	var opt = jtbl[datagrid]("options");
-	self.callSvr(opt.url, api_queryOne, {cond: "id=" + rowData.id});
+	return self.callSvr(opt.url, api_queryOne, {cond: "id=" + rowData.id});
 
 	function api_queryOne(data) 
 	{
@@ -6575,6 +6577,7 @@ if (isSmallScreen()) {
 - opt.meta: (v6) 指定通过meta自动生成的输入项
 - opt.metaParent: (v6) 指定meta自动生成项的父结点，默认为对话框下第一个table，仅当meta存在时有效
 - opt.forSet: (v6.0) 与opt.data一起使用，设置为true表示只提交修改的数据。
+- opt.onShow: (v6.0) Function(formMode, data) 显示时回调
 
 如果是对象对话框（showObjDlg）调用过来，会自动带上以下选项：
 
@@ -6992,6 +6995,8 @@ function showDlg(jdlg, opt)
 // 	openDlg(jdlg);
 	focusDlg(jdlg);
 	jfrm.trigger("show", [formMode, opt.data]);
+
+	opt.onShow && opt.onShow(formMode, opt.data);
 
 	function fnCancel() {closeDlg(jdlg)}
 	function fnOk()
@@ -8371,6 +8376,8 @@ function showObjDlg(jdlg, mode, opt)
 		$.extend(load_data, opt.fixedFields);
 	}
 
+	var jchkClose = null;
+
 	// open the dialog
 	var showDlgOpt = $.extend({}, opt, {
 		url: url,
@@ -8381,27 +8388,63 @@ function showObjDlg(jdlg, mode, opt)
 		data: load_data,
 //		onSubmit: onSubmit,
 		onOk: onOk,
-		objParam: opt
+		objParam: opt,
+		onShow: onShow
 	});
 	showDlg(jdlg, showDlgOpt);
 
 	if (mode == FormMode.forSet)
 		jfrm.form("validate");
 
+	function onShow(formMode, data) {
+		var jbtns = jdlg.next(".dialog-button");
+		jchkClose = jbtns.find(".chkClose");
+		if (jchkClose.size() == 0) {
+			var jo = $("<label style='float:left'><input type='checkbox' class='chkClose'> 确定后关闭</label>").prependTo(jbtns);
+			jchkClose = jo.find(".chkClose");
+
+			if (formMode == FormMode.forAdd) {
+				var val = jdlg.data("closeAfterAdd");
+				if (val || self.options.closeAfterAdd)
+					jchkClose.prop("checked", true);
+			}
+			else if (formMode == FormMode.forFind) {
+				var val = jdlg.data("closeAfterFind");
+				if (val || self.options.closeAfterFind)
+					jchkClose.prop("checked", true);
+			}
+			else if (formMode == FormMode.forSet) {
+				jchkClose.prop("checked", true);
+			}
+			jchkClose.click(function () {
+				var val = jchkClose.prop("checked");
+				if (formMode == FormMode.forAdd) {
+					jdlg.data("closeAfterAdd", val);
+				}
+				else if (formMode == FormMode.forFind) {
+					jdlg.data("closeAfterFind", val);
+				}
+			});
+		}
+	}
+
 	function onOk (retData) {
 		opt.onOk && opt.onOk(retData);
 		var jtbl = jd.jtbl;
+		mCommon.assert(jchkClose.size() > 0);
+		var doClose = jchkClose.prop("checked");
 		if (mode==FormMode.forFind) {
 			mCommon.assert(jtbl); // 查询结果显示到jtbl中
 			//doFind(jfrm, jtbl);
 			reload(jtbl, undefined, retData);
 			// onCrud();
-			if (self.options.closeAfterFind)
+			if (doClose)
 				closeDlg(jdlg);
 			return;
 		}
 		// add/set/link
 		// TODO: add option to force reload all (for set/add)
+		var dfdSet = null;
 		if (jtbl) {
 			if (opt.offline) {
 				var retData_vf = self.getFormData_vf(jfrm);
@@ -8417,7 +8460,7 @@ function showObjDlg(jdlg, mode, opt)
 			}
 			else {
 				if (mode == FormMode.forSet && rowData)
-					reloadRow(jtbl, rowData);
+					dfdSet = reloadRow(jtbl, rowData);
 				else if (mode == FormMode.forAdd) {
 					appendRow(jtbl, retData);
 				}
@@ -8425,13 +8468,23 @@ function showObjDlg(jdlg, mode, opt)
 					reload(jtbl);
 			}
 		}
-		if (mode == FormMode.forAdd && !self.options.closeAfterAdd)
-		{
+		if (doClose) {
+			closeDlg(jdlg);
+		}
+		else if (mode == FormMode.forAdd) {
 			showObjDlg(jdlg, mode); // reset and add another
 		}
-		else
-		{
-			closeDlg(jdlg);
+		else if (mode == FormMode.forSet) {
+			if (dfdSet) {
+				dfdSet.then(function () {
+					showObjDlg(jdlg, mode, opt);
+				});
+			}
+			else {
+				setTimeout(function () {
+					showObjDlg(jdlg, mode, opt);
+				});
+			}
 		}
 		if (!opt.offline)
 			self.app_show('操作成功!');
