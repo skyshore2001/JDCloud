@@ -16,7 +16,6 @@ input,select,textarea {
 }
 .combo {
 	border-color: rgb(169, 169, 169);
-	margin-left: 2px;
 }
 .wui-form-table td .combo.textbox {
 	width: 95% !important;
@@ -44,6 +43,7 @@ form>table:first-child, .wui-form-table {
 	width: 100%;
 	white-space: nowrap;
 	border-spacing: 10px 2px;
+	border-collapse: initial; /* bootstrap table行太挤*/
 }
 
 a {
@@ -54,14 +54,16 @@ a {
 
 /* wui-dialog */
 input:not([type=button]), select, textarea {
-	padding: 2px 5px;
 	display: inline-block;
 	border-width: 1px;
 	border-style: solid;
 	border-color: rgb(169, 169, 169);
 	border-radius: 4px;
 	outline: none;
-	margin: 0 2px;
+}
+/* form上对齐 */
+input:not([type=button]), textarea {
+	padding: 2px 5px;
 }
 .wui-dialog td input:not([type=checkbox]):not([type=radio]):not([type=button]), .wui-dialog td select {
 	height:30px;
@@ -235,13 +237,19 @@ input:disabled,select:disabled,textarea:disabled {
 
 /* customize easyui */
 .datagrid-cell, .datagrid-cell-group {
-	padding: 7px 10px;
+	padding: 8px 10px;
 }
 /*
 .datagrid-header-rownumber, .datagrid-cell-rownumber {
 	padding: 7px 2px;
 }
 */
+/* 工具栏按钮自动换行 */
+.datagrid-toolbar tr:first-child{
+	display: flex;
+	flex-wrap: wrap;
+}
+
 .pagination td {
 	vertical-align: middle;
 }
@@ -288,7 +296,7 @@ input:disabled,select:disabled,textarea:disabled {
 
 /* 对话框中子表tabs的上间距 */
 .wui-dialog .easyui-tabs:not(:first-child) {
-	margin-top: 20px;
+	margin-top: 15px;
 }
 
 .wui-form-tab {
@@ -300,3 +308,4 @@ input:disabled,select:disabled,textarea:disabled {
 	background: url('bg.jpg');
 	opacity: initial;
 }
+
