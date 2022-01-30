@@ -478,7 +478,7 @@ function mparam($name, $col = null, $doHtmlEscape = true, $env = null)
 		return $arr;
 	}
 
-	$rv = param($name, null, $col, true, $env);
+	$rv = param($name, null, $col, $doHtmlEscape, $env);
 	if (isset($rv))
 		return $rv;
 	parseType_($name); // remove the type tag.
@@ -1353,9 +1353,14 @@ class DbExpr
 		"tm" => dbExpr("now()") // 使用dbExpr直接提供SQL表达式
 	]);
 
-另外，写数据库时，为防止XSS跨域攻击，dbInsert/dbUpdate对值会自动做htmlentity转义，如">7"转成"&gt;7"。
+另外，写数据库时，为防止XSS跨域攻击，param/mparam/dbInsert/dbUpdate对值会自动做htmlentity转义(本项目用htmlEscape函数)，如">7"转成"&gt;7"。
 为防止转义，使用原始字串值，可以用：
 
+	// 防止param/mparam转义，设置doHtmlEscape参数=false; 或直接从$_GET/$_POST中取值
+	$value = mparam("value", null, false); // 第3参数是doHtmlEscape
+	$value1 = $_POST["value1"]; // 不用param函数
+
+	// 防止dbInsert/dbUpdate转义，用dbExpr和Q函数。
 	$id = dbUpdate("Ordr", [
 		"cond" => dbExpr(Q("f>3 && r<60")); // 注意用Q函数对字符串加引号
 	]);
