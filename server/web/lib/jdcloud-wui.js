@@ -9324,12 +9324,23 @@ CSS类, 可定义无数据提示的样式
 
 	// 右键点左上角空白列:
 	onHeaderContextMenu: function (ev, field) {
-		if (field == null) {
-			var jtbl = $(this);
-			var jmenu = GridHeaderMenu.showMenu({left: ev.pageX, top: ev.pageY}, jtbl);
+		var jtbl = $(this);
+		var jmenu = GridHeaderMenu.showMenu({left: ev.pageX, top: ev.pageY, field}, jtbl, field);
 
-			ev.preventDefault();
-		}
+		ev.preventDefault();
+	},
+
+	onClickCell: function (row, field, val) {
+		var this_ = this;
+		var jtbl = $(this);
+
+		// 多选时显示列统计信息，一段时间内只显示一次
+		if (this_.infoTmr)
+			clearTimeout(this_.infoTmr);
+		this_.infoTmr = setTimeout(function () {
+			GridHeaderMenu.statSelection(jtbl, row, field);
+			delete this_.infoTmr;
+		}, 1000);
 	},
 
 	onInitOptions: function (opt) {
@@ -9378,33 +9389,35 @@ CSS类, 可定义无数据提示的样式
 
 */
 var GridHeaderMenu = {
-	jtbl_: null,
-	showMenu: function (pos, jtbl) {
-		var jmenu = $("#mnuGridHeader");
-		if (jmenu.size() == 0) {
-			// 注意id与函数名的匹配
-			jmenu = $('<div id="mnuGridHeader"></div>');
-			$.each(GridHeaderMenu.items, function (i, e) {
-				var je = $(e);
-				var perm = je.attr("wui-perm") || je.text();
-				if (canDo("通用", perm))
-					je.appendTo(jmenu);
-			});
-			jmenu.menu({
-				onClick: function (mnuItem) {
-					GridHeaderMenu[mnuItem.id](GridHeaderMenu.jtbl_);
-				}
-			});
-		}
-		this.jtbl_ = jtbl;
+	showMenu: function (pos, jtbl, field) {
+		// 注意id与函数名的匹配
+		jmenu = $('<div class="mnuGridHeader"></div>');
+		var items = field? GridHeaderMenu.itemsForField: GridHeaderMenu.items;
+		$.each(items, function (i, e) {
+			var je = $(e);
+			var perm = je.attr("wui-perm") || je.text();
+			if (canDo("通用", perm))
+				je.appendTo(jmenu);
+		});
+		jmenu.menu({
+			onClick: function (mnuItem) {
+				GridHeaderMenu[mnuItem.id].call(this, jtbl, field);
+			}
+		});
 		jmenu.menu('show', pos);
 	},
+	// 表头左侧右键菜单
 	items: [
 		'<div id="showDlgFieldInfo">字段信息</div>',
 		'<div id="showDlgDataReport" data-options="iconCls:\'icon-sum\'">自定义报表</div>',
 		'<div id="showDlgQuery" data-options="iconCls:\'icon-search\'">自定义查询</div>',
 		'<div id="import" wui-perm="新增" data-options="iconCls:\'icon-add\'">导入</div>',
 		'<div id="export" data-options="iconCls:\'icon-save\'">导出</div>'
+	],
+	// 列头右键菜单
+	itemsForField: [
+		'<div id="copyCol">复制本列</div>',
+		'<div id="statCol" data-options="iconCls:\'icon-sum\'">统计本列</div>',
 	],
 	// 以下为菜单项处理函数
 
@@ -9462,6 +9475,97 @@ var GridHeaderMenu = {
 	'export': function (jtbl) {
 		var fn = getExportHandler(jtbl);
 		fn();
+	},
+
+	dgStatCol: function (rows, field) {
+		var stat = {cnt: 0, realCnt: 0, numCnt: 0, sum: 0, max: 0, min: 0, info: []};
+		stat.cnt = rows.length;
+		if (stat.cnt < 1)
+			return stat;
+		rows.forEach(function (e) {
+			var v = e[field];
+			if (v === null || v === "")
+				return;
+			++ stat.realCnt;
+
+			if (isNaN(v))
+				return;
+			if (v.constructor !== Number) {
+				v = parseFloat(v);
+			}
+			++ stat.numCnt;
+			if (stat.numCnt == 1) {
+				stat.max = v;
+				stat.min = v;
+				stat.sum = v;
+			}
+			else {
+				stat.sum += v;
+				if (v > stat.max)
+					stat.max = v;
+				if (v < stat.min)
+					stat.min = v;
+			}
+		});
+		stat.info = [
+			"COUNT=" + stat.cnt,
+			"COUNT(非空项)=" + stat.realCnt
+		];
+		if (stat.numCnt > 0) {
+			stat.info.push(
+				"COUNT(数值项)=" + stat.numCnt,
+				"SUM=" + stat.sum,
+				"MAX=" + stat.max,
+				"MIN=" + stat.min,
+				"AVG=" + stat.sum/stat.numCnt
+			)
+		}
+		return stat;
+	},
+
+	statSelection: function (jtbl, row, field) {
+		var rows = jtbl.datagrid("getSelections");
+		if (rows.length < 2)
+			return;
+		var stat = GridHeaderMenu.dgStatCol(rows, field);
+		var colTitle = jtbl.datagrid("getColumnOption", field).title;
+		var title = "选中" + rows.length + "行，列=[" + colTitle + "]";
+		app_show(stat.info.join("<br>"), title);
+	},
+
+	copyCol: function (jtbl, field) {
+		var data = jtbl.datagrid("getData");
+		var arr = data.rows.map(function (e) {
+			return e[field];
+		});
+		var colTitle = jtbl.datagrid("getColumnOption", field).title;
+		arr.unshift(colTitle);
+		var ret = arr.join("\r\n");
+		$(window).one("copy", function (ev) {
+			ev.originalEvent.clipboardData.setData('text/plain', ret);
+			app_show("已复制到剪贴板，按Ctrl-V粘贴。");
+			return false;
+		});
+		document.execCommand("copy");
+	},
+	statCol: function (jtbl, field) {
+		var data = jtbl.datagrid("getData");
+		var colTitle = jtbl.datagrid("getColumnOption", field).title;
+		if (data.rows.length == 0) {
+			var info = "[" + colTitle + "]列: 无数据";
+			app_alert(info);
+			return;
+		}
+		var stat = GridHeaderMenu.dgStatCol(data.rows, field);
+		stat.info.unshift("<b>[" + colTitle + "]</b>列:");
+		var jdlg = $("<div title='列统计'><pre>" + stat.info.join("\n") + "</pre></div>");
+		WUI.showDlg(jdlg, {
+			modal: false,
+			onOk: function () {
+				WUI.closeDlg(this);
+			},
+			noCancel: true
+		});
 	}
 }
 self.GridHeaderMenu = GridHeaderMenu;
@@ -10038,14 +10142,14 @@ function app_confirm(msg, fn)
 }
 
 /**
-@fn app_show(msg)
+@fn app_show(msg, title?)
 
 使用jQuery easyui弹出对话框.
 */
 self.app_show = app_show;
-function app_show(msg)
+function app_show(msg, title)
 {
-	$.messager.show({title: self.options.title, msg: msg});
+	$.messager.show({title: title||self.options.title, msg: msg});
 }
 
 /**
