@@ -166,6 +166,7 @@ function showDlgLogin()
 			handleLogin(data);
 		}
 	});
+	jdlg.dialog("dialog").find("~.window-mask:first").addClass("loginPanel-mask");
 }
 
 function showDlgChpwd()

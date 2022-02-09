@@ -304,7 +304,8 @@ input:disabled,select:disabled,textarea:disabled {
 }
 
 /* 登录页背景 */
-.loginPanel + .window-shadow + .window-mask {
+/* 本意是 .loginPanel ~ .window-mask:first 但CSS first-of-type不支持class只能在JS中写 */
+.loginPanel-mask {
 	background: url('bg.jpg');
 	opacity: initial;
 }
