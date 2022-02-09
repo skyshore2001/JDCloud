@@ -102,7 +102,7 @@ class AC2_Employee extends AC0_Employee
 // ====== Ordr {{{
 class AC0_OrderLog extends AccessControl
 {
-	protected $defaultSort = "id DESC";
+	protected $defaultSort = "t0.id DESC";
 	protected $vcolDefs = [
 		[
 			"res" => ["emp.name empName", "emp.phone empPhone"],
