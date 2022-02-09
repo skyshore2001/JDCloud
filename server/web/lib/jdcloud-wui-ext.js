@@ -1730,6 +1730,7 @@ function createFindMenu(jtbl)
 	var jmenu = $('<div>' + 
 		'<div class="btnSave" data-options="iconCls:\'icon-save\', id:\'btnSave\'">保存查询</div>' + 
 		'<div class="btnClear" data-options="iconCls:\'icon-remove\', id:\'btnClear\'">清除查询</div>' + 
+		'<div class="btnUserQuery" data-options="iconCls:\'icon-search\', id:\'btnUserQuery\'">自定义查询</div>' + 
 		'<div class="menu-sep"></div>' + 
 		'</div>');
 	initCtxMenu();
@@ -1753,6 +1754,12 @@ function createFindMenu(jtbl)
 			}
 			else if (item.id == "btnClear") {
 				WUI.reload(jtbl, null, {});
+			}
+			else if (item.id == "btnUserQuery") {
+				var param = self.getQueryParamFromTable(jtbl);
+				app_alert("查询条件(cond)? ", "p", function (cond) {
+					WUI.reload(jtbl, null, {cond: cond});
+				}, {defValue: param.cond});
 			}
 			else if (item.opt) {
 				WUI.reload(jtbl, null, {cond: item.opt.query});

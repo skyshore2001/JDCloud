@@ -9559,7 +9559,8 @@ var GridHeaderMenu = {
 		var url = jtbl[datagrid]("options").url;
 		if (url && url.action)
 			data = {ac: url.action};
-		self.showDlgQuery(data);
+		var param = WUI.getQueryParamFromTable(jtbl);
+		self.showDlgQuery(data, param);
 	},
 	'import': function (jtbl) {
 		var param = self.getDgInfo(jtbl);
@@ -9673,16 +9674,16 @@ self.GridHeaderMenu = GridHeaderMenu;
 @fn showDlgQuery(data?={ac, param})
  */
 self.showDlgQuery = showDlgQuery;
-function showDlgQuery(data1)
+function showDlgQuery(data1, param)
 {
 	var itemArr = [
 		// title, dom, hint?
 		{title: "接口名", dom: "<input name='ac' required>", hint: "示例: Ordr.query"},
-		{title: "参数", dom: '<textarea name="param" rows=8></textarea>', hint: "cond:查询条件, res:返回字段, gres:分组字段, pivot:转置字段"}
+		{title: "参数", dom: '<textarea name="param" rows=8></textarea>', hint: "cond:查询条件, res:返回字段, gres:分组字段, pivot:转置字段, fmt:输出格式(html,excel,txt,list,array,csv等)"}
 	];
 	var data = $.extend({
 		ac: 'Ordr.query',
-		param: '{\n cond: {createTm: ">2020-1-1"},\n res: "count(*) 数量",\n gres: "status 状态=CR:新创建;PA:待处理;RE:已完成;CA:已取消",\n// pivot: "状态"\n}'
+		param: param ? JSON.stringify(param, null, 2) :  '{\n cond: {createTm: ">2020-1-1"},\n res: "count(*) 数量",\n gres: "status 状态=CR:新创建;PA:待处理;RE:已完成;CA:已取消",\n// pivot: "状态"\n}'
 	}, data1);
 	self.showDlgByMeta(itemArr, {
 		title: "高级查询",
@@ -9700,6 +9701,10 @@ function showDlgQuery(data1)
 				}
 			}
 			var url = self.makeUrl(data.ac, param);
+			if (param && param.fmt) {
+				window.open(url);
+				return;
+			}
 			WUI.showPage("pageSimple", "查询结果!", [ url ]);
 //			WUI.closeDlg(this);
 		}
