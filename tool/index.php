@@ -64,10 +64,12 @@ EOL;
 		file_put_contents($f, $str1);
 	}
 
+	if (@$_POST["doMui"]) {
 	// mobile link
 	echo("=== 移动端页面:\n");
 	echo("m2/index.html#". lcfirst($obj) ."\n");
 	echo("m2/index.html#". lcfirst(getListName($obj)) ."\n");
+	}
 
 	exit();
 }

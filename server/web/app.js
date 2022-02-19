@@ -8,6 +8,10 @@ $.extend(WUI.options, {
 });
 
 // ==== defines {{{
+var CinfList = [
+//	{ name: "faultLabel", text: "faultLabel(不良品标签)", dscr: "空格分隔的一组标签，如<code>标签1 标签2</code>" },
+];
+
 var OrderStatusMap = {
 	CR: "新创建", 
 	PA: "待服务", 

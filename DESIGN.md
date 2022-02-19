@@ -45,6 +45,12 @@
 
 参考[后端框架-数据库设计](doc/后端框架.html#数据库设计)查看定义表及字段类型的基本规则.
 
+**[系统配置项]**
+
+@Cinf: id, name(s), value(t)
+
+- name: 配置项名。由应用定义。下面文档中将使用`Cinf.xxx`来定义各配置项，比如`Cinf.version`表示name为"version"的配置项。
+
 **[员工]**
 
 @Employee: id, uname, phone(s), pwd, name(s), perms

@@ -1,0 +1,29 @@
+<form my-obj="Cinf" title="系统配置" style="width:500px;height:400px;" wui-script="dlgCinf.js" my-initfn="initDlgCinf">
+	<table>
+		<tr>
+			<td>编号</td>
+			<td>
+				<input name="id" disabled>
+			</td>
+		</tr>
+		<tr>
+			<td>配置名</td>
+			<td>
+				<input name="name" >
+			</td>
+		</tr>
+		<tr>
+			<td>配置值</td>
+			<td>
+				<textarea name="value"  rows=2></textarea>
+				<p class="valueHint hint"></p>
+			</td>
+		</tr>
+	</table>
+</form>
+<!-- examples:
+<input name="name" class="easyui-validatebox" data-options="required:true">
+<select name="customerId" class="my-combobox" data-options="ListOptions.Customer()"></select>
+<select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap"></select>
+<input name="customerId" class="wui-combogrid" data-options="ListOptions.CustomerGrid()">
+-->
