@@ -2020,6 +2020,7 @@ addCond用于添加查询条件，可以使用表的字段或虚拟字段(无须
 
 				$this->autoHandleExtVCol($vcolDef);
 			}
+			unset($vcolDef);
 		}
 	}
 
@@ -2696,6 +2697,7 @@ FROM ($sql) t0";
 			foreach ($ret as &$ret1) {
 				$this->handleRow($ret1, $i++, $rowCnt);
 			}
+			unset($ret1);
 		}
 		else {
 			$i = 0;
@@ -2705,6 +2707,7 @@ FROM ($sql) t0";
 					$this->handleSubObj($id1, $ret1);
 				$this->handleRow($ret1, $i++, $rowCnt);
 			}
+			unset($ret1);
 		}
 		$this->after($ret);
 		$pivot = param("pivot");
@@ -3503,6 +3506,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 				foreach ($ret as &$row) {
 					$row[$k] = $ret1;
 				}
+				unset($row);
 				continue;
 			}
 
@@ -3531,6 +3535,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 				}
 				$row[$k] = $val;
 			}
+			unset($row);
 		}
 	}
 
@@ -4278,6 +4283,7 @@ class CsvBatchAddStrategy extends BatchAddStrategy
 				$isEmpty = false;
 			}
 		}
+		unset($e);
 		return $isEmpty;
 	}
 	protected function onGetRow() {

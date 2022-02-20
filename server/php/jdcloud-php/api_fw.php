@@ -2060,6 +2060,7 @@ class BatchUtil
 			foreach ($val as &$v) {
 				self::calcRefValue($v, $arr);
 			}
+			unset($v);
 			return $val;
 		}
 		

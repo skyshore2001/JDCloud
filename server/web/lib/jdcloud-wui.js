@@ -9195,6 +9195,28 @@ var Formatter = {
 
 	<th data-options="field:'progress', formatter: Formatter.progress">工单进度</th>
 
+如果要定制颜色等样式，可以加个styler，如
+
+	<th data-options="field:'progress', formatter: Formatter.progress, styler: OrdrFormatter.progressStyler">工单进度</th>
+
+通过为cell指定一个class来控制内部进度条样式：
+
+	progressStyler: function (value, row) {
+		var st = ... // 'info', 'error'
+		return {class: st}; // 直接返回字符串表示styler; 也可以返回 {class, style}这样
+	}
+
+然后通过CSS类来改写进度条颜色：
+
+	<style>
+	.info .progressbar-value {
+		background-color: rgb(190, 247, 190) !important;
+	}
+	.error .progressbar-value {
+		background-color: rgb(253, 168, 172) !important;
+	}
+	</style>
+
  */
 	progress: function (value, row) {
 		if (! value)

@@ -472,7 +472,7 @@ function mparam($name, $col = null, $doHtmlEscape = true, $env = null)
 			$arr[] = $rv;
 		}
 		if (!$found) {
-			$s = join($name, " or ");
+			$s = join(" or ", $name);
 			jdRet(E_PARAM, "Bad Request - require param $s", "缺少参数`$s`");
 		}
 		return $arr;
@@ -985,6 +985,7 @@ function getQueryCond($cond)
 				$exp = "($exp)";
 			}
 		}
+		unset($exp);
 	}
 	return join($isOR?' OR ':' AND ', $condArr);
 }
