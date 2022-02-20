@@ -783,21 +783,83 @@ function hiddenToCheckbox(jp, sep)
 @key .wui-labels
 
 标签字段（labels）是空白分隔的一组词，每个词是一个标签（label）。
-可以在字段下方将常用标签列出供用户选择，点一下标签则添加到文本框中，再点一下删除它。(v6) 或者点一下就设置为选中标签(设置opt.simple=true)。
 
-示例1：列出各种类型，点一下类型标签就追加到对话框。
+一般会在字段下方将常用标签列出供用户选择，点一下标签则追加到文本框中，再点一下删除该标签项。多个标签以空格分隔。
+
+(v6) 可以设置选项opt.simple=true，这时如果单击一个标签，则直接填写（而不是追加）到文本框中，类似于单选。
+
+示例1：列出各种类型，点一下类型标签就追加到对话框，再点一下会删除该项。
 
 	<tr>
 		<td>标签</td>
 		<td class="wui-labels">
 			<input name="label" >
-			<p class="hint">企业类型：<span class="labels" dfd="StoreDialog.dfdLabel"></span></p>
+			<p class="hint">企业类型：<span class="labels" dfd="DlgStoreVar.onGetLabel()"></span></p>
 			<p class="hint">行业标签：<span class="labels">IT 金融 工业</span></p>
 			<p class="hint">位置标签：<span class="labels">一期 二期 三期 四期</span></p>
 		</td>
 	</tr>
 
-- 具有CSS类"labels"的组件，内容以空白分隔的多个标签，如`IT 金融 工业"。如果有dfd设置，则表示值是异步编程设置的（参考下面"异步获取示例"）。
+具有CSS类"labels"的组件，内容以空白分隔的多个标签，如`IT 金融 工业"。
+
+- 最终操作的文本字段是.wui-labels下带name属性的输入框。
+- 在.labels中的文本将被按空白切换，优化显示成一个个标签，可以点击。
+- 支持异步获取，比如要调用接口获取内容，可以指定`dfd`属性是一个Deferred对象。
+- 添加的标签具有`labelMark`类(label太常用，没有用它以免冲突)，默认已设置样式，可以为它自定义样式。
+
+本例中dfd属性"DlgStoreVar.onGetLabel()"是个函数调用，它返回的是一个Deferred对象，这样可以实现异步获取再设置标签列表，示例：（在dlgStore.js中）
+
+	function initDlgStore() {
+		// 按惯例，只被Xx页面使用的变量可放在dlgXx.js中的DlgXxVar中，而会被其它页面调用的变量则放在全局应用store.js中的DlgXx中（称为页面接口）。
+		window.DlgStoreVar = {
+			onGetLabel: function () {
+				var dfd = $.Deferred();
+				callSvr("Conf.query", {cond: "name='企业分类'", fmt: "one", res: "value"}, function (data) {
+					DlgStoreVar.dfdLabel.resolve(data.value);
+				})
+				return dfd;
+			}
+		};
+		...
+	}
+
+上面的DlgStoreVar.onGetLabel也可以直接返回标签列表，如：
+
+		window.DlgStoreVar = {
+			onGetLabel: function () {
+				return "标签1 标签2";
+			}
+		}
+
+在第一次打开页面时会调用onGetLabel函数，设置标签列表。
+
+(v6) 如果想每次打开页面都调用，只需要稍加修改，直接为dfd指定函数`DlgStoreVar.onGetLabel`（而不是函数调用后的返回值`DlgStoreVar.onGetLabel()`）：
+
+		<p class="hint">企业类型：<span class="labels" dfd="DlgStoreVar.onGetLabel"></span></p>
+
+(v6) 示例1-1：可以为不良品(Fault)设置标签，可通过系统配置项"Cinf.faultLabel"来配置可用的标签，即后端提供`Cinf.getValue({name: "faultLabel"})`接口获取可用标签列表（以空格分隔）
+
+在dlgFault.html中设置标签字段：
+
+		<tr>
+			<td>标签</td>
+			<td class="wui-labels">
+				<input name="label">
+				<p class="hint"><span class="labels" dfd="DlgFaultVar.onGetLabel"></span></p>
+			</td>
+		</tr>
+
+注意dfd属性直接指定为函数`DlgFaultVar.onGetLabel`，也就是每次打开页面都会执行它：这意味着当修改系统配置项`faultLabel`后，无须刷新系统，重新打开不良品对话框就可以点选新标签了。
+
+在dlgFault.js中定义动态获取标签：
+
+	window.DlgFaultVar = {
+		onGetLabel: function () {
+			return callSvr("Cinf.getValue", {name: "faultLabel"});
+		}
+	}
+
+注意：函数里比上例简化了很多，因为callSvr返回是就是Defered对象，而且由于`Cinf.getValue`接口刚好返回的数据格式就是"标签1 标签2"字符串，所以不用再新建一个Defered对象在处理格式转换后做resolve了。
 
 示例2：设置配置项，并配以说明和示例
 
@@ -813,23 +875,7 @@ function hiddenToCheckbox(jp, sep)
 		</td>
 	</tr>
 
-- 最终操作的文本字段是.wui-labels下带name属性的输入框。
-- 在.labels中的文本将被按空白切换，优化显示成一个个标签，可以点击。
-- 支持异步获取，比如要调用接口获取内容，可以指定`dfd`属性是一个Deferred对象。
-- 添加的标签具有`labelMark`类(label太常用，没有用它以免冲突)，默认已设置样式。
-
-异步获取示例：
-
-	var StoreDialog = {
-		dfdLabel: $.Deferred()
-	}
-	callSvr("Conf.query", {cond: "name='企业分类'", fmt: "one", res: "value"}, function (data) {
-		StoreDialog.dfdLabel.resolve(data.value);
-	})
-
-// TODO: 支持beforeShow时更新
-
-示例3：(v6) 可以从推荐项中选择，也可以直接填写的输入框.
+示例3：(v6) 推荐项为单选(simple模式)，且标签可以显示(text)与实际值(value)不同。
 
 		<tr>
 			<td>URL地址</td>
@@ -860,35 +906,34 @@ function enhanceLabels(jp)
 	var doInit = true;
 	jdlg.on("beforeshow", onBeforeShow);
 
+	jp.on("click", ".labelMark", function () {
+		var label = $(this).attr("value");
+		var o = jp.find(":input[name]")[0];
+		if (opt.simple) {
+			o.value = label;
+			return;
+		}
+		var str = o.value;
+		if (str.indexOf(label) < 0) {
+			if (str.length == 0)
+				str = label;
+			else
+				str += ' ' + label;
+		}
+		else {
+			str = str.replace(/\s*(\S+)/g, function (m, m1) {
+				if (m1 == label)
+					return "";
+				return m;
+			});
+		}
+		o.value = str;
+	});
+
 	function onBeforeShow() {
-		if (! doInit)
+		if (! doInit && ! opt.doUpdate)
 			return;
 		doInit = false;
-
-		jp.on("click", ".labelMark", function () {
-			var label = $(this).attr("value");
-			var o = jp.find(":input[name]")[0];
-			if (opt.simple) {
-				o.value = label;
-				return;
-			}
-			var str = o.value;
-			if (str.indexOf(label) < 0) {
-				if (str.length == 0)
-					str = label;
-				else
-					str += ' ' + label;
-			}
-			else {
-				str = str.replace(/\s*(\S+)/g, function (m, m1) {
-					if (m1 == label)
-						return "";
-					return m;
-				});
-			}
-			o.value = str;
-		});
-
 		showLabel();
 	}
 
@@ -898,10 +943,18 @@ function enhanceLabels(jp)
 			var prop = jo.attr("dfd");
 			if (prop) {
 				var rv = WUI.evalAttr(jo, "dfd");
-				WUI.assert(rv.then, "Property `dfd' MUST be a Deferred object: " + prop);
-				rv.then(function (text) {
-					handleLabel(jo, text);
-				})
+				if ($.isFunction(rv)) {
+					doInit = true; // NOTE: 只要设置是Function则每次打开页面都会初始化
+					rv = rv();
+				}
+				if (rv.then) {
+					rv.then(function (text) {
+						handleLabel(jo, text);
+					})
+				}
+				else {
+					handleLabel(jo, rv);
+				}
 			}
 			else {
 				handleLabel(jo, jo.html());
