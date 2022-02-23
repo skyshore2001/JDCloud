@@ -3890,6 +3890,62 @@ function extendQueryParam(target, a, b)
 	return target;
 }
 
+/**
+@fn makeTree(arr, idField="id", fatherIdField="fatherId", childrenField="children")
+
+将array转成tree. 注意它会修改arr（添加children属性），但返回新的数组。
+
+	var ret = WUI.makeTree([
+		{id: 1},
+		{id: 2, fatherId: 1},
+		{id: 3, fatherId: 2},
+		{id: 4, fatherId: 1}
+	]);
+
+结果：
+
+	ret = [
+		{id: 1, children:  [
+			{id: 2, fatherId: 1, children:  [
+				{id: 3, fatherId: 2},
+			],
+			{id: 4, fatherId: 1}
+		]
+	]
+ */
+self.makeTree = makeTree;
+function makeTree(arr, idField, fatherIdField, childrenField)
+{
+	if (idField == null)
+		idField = "id";
+	if (fatherIdField == null)
+		fatherIdField = "fatherId";
+	if (childrenField == null)
+		childrenField = "children";
+	var ret = [];
+	$.each(arr, function (i, e) {
+		var fid = e[fatherIdField];
+		if (fid == null) {
+			ret.push(e);
+			return;
+		}
+		var found = false;
+		$.each(arr, function (i1, e1) {
+			if (fid == e1[idField]) {
+				if (e1[childrenField] == null) {
+					e1[childrenField] = [];
+				}
+				e1[childrenField].push(e);
+				found = true;
+				return false;
+			}
+		});
+		if (! found)
+			ret.push(e);
+	});
+	return ret;
+}
+
 }
 // ====== WEBCC_END_FILE commonjq.js }}}
 
@@ -9760,6 +9816,50 @@ $.extend($.fn.treegrid.defaults, {
 		$.fn.datagrid.defaults.onLoadSuccess.call(this, data);
 	},
 	onHeaderContextMenu: $.fn.datagrid.defaults.onHeaderContextMenu
+});
+
+$.extend($.fn.combotree.defaults, {
+	idField: "id",
+	textField: "name",
+	fatherField: "fatherId", // 该字段为WUI扩展，指向父节点的字段
+	loadFilter: function (data, parentId) {
+		var arr = null;
+		// support simple array
+		if ($.isArray(data)) {
+			arr = data;
+		}
+		else if ($.isArray(data.list)) {
+			arr = data.list;
+		}
+		// support compressed table format: {h,d}
+		else if (data.h !== undefined)
+		{
+			arr = WUI.rs2Array(data);
+		}
+		else {
+			return data;
+		}
+		var opt = $(this).tree("options"); // NOTE: 这里this似乎是tree; 用combotree/combo都取不了
+		var ret = WUI.makeTree(arr, opt.idField, opt.fatherField);
+		$.each(arr, function (i, e) {
+			e.text = e[opt.textField];
+		// e.state = 'closed'; // 如果无结点, 则其展开时将触发ajax查询子结点
+		});
+		return ret;
+	}
+});
+
+$.extend($.fn.combogrid.defaults, {
+	loadFilter: $.fn.datagrid.defaults.loadFilter,
+	loader: $.fn.datagrid.defaults.loader,
+});
+
+$.extend($.fn.combotreegrid.defaults, {
+	idField: "id",
+	treeField: "name",
+	textField: "name",
+	fatherField: "fatherId", // 该字段为WUI扩展，指向父节点的字段
+	loadFilter: $.fn.treegrid.defaults.loadFilter
 });
 
 /*
