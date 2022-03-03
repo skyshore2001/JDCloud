@@ -8750,6 +8750,11 @@ function dg_toolbar(jtbl, jdlg)
 			mCommon.assert(btnfn, "toolbar button `" + btn + "` does not support");
 			btn = btnfn(ctx);
 		}
+		else if ($.isArray(btn) && typeof(btn[0]) == "string") {
+			var btnfn = dg_toolbar[btn[0]];
+			mCommon.assert(btnfn, "toolbar button `" + btn[0] + "` does not support");
+			btn = btnfn(ctx, btn[1]);
+		}
 		if (btn.text != "-" && perm && !self.canDo(perm, btn["wui-perm"] || btn.text, null, permSet2)) {
 			continue;
 		}

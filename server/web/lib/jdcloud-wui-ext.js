@@ -1744,7 +1744,38 @@ $.extend(self.dg_toolbar, {
 		}};
 	},
 
-	qsearch: function (ctx) {
+/**
+@key toolbar-qsearch
+
+工具栏-模糊查询。支持指定查询字段。
+
+	// pageXx.js function initPageXx
+	var dgOpt = {
+		...
+		toolbar: WUI.dg_toolbar(jtbl, jdlg, "qsearch"),
+	};
+	jtbl.datagrid(dgOpt);
+
+它调用接口`callSvr("Xx.query", {q: val})`
+需要后端支持查询，比如须指定在哪些字段查询：
+```php
+protected function onQuery() {
+    $this->qsearch(["code", "category"], param("q"));
+}
+```
+
+(v6) 新用法：也支持前端直接指定字段查询：
+
+	var dgOpt = {
+		...
+		// 表示在code或category两个字段中模糊查询。
+		toolbar: WUI.dg_toolbar(jtbl, jdlg, ["qsearch", "code,category"]),
+	};
+	jtbl.datagrid(dgOpt);
+
+它将调用接口`callSvr("Xx.query", {qsearch: "字段1,字段2:" + val})`。
+ */
+	qsearch: function (ctx, param) {
 		var randCls = "qsearch-" + WUI.randChr(4); // 避免有多个qsearch组件时重名冲突
 		setTimeout(function () {
 			ctx.jp.find(".qsearch." + randCls).click(function () {
@@ -1759,7 +1790,12 @@ $.extend(self.dg_toolbar, {
 		});
 		return {text: "<input style='width:8em' class='qsearch " + randCls + "'>", iconAlign:'right', iconCls:'icon-search', "wui-perm": "查询", handler: function () {
 			var val = $(this).find(".qsearch").val();
-			WUI.reload(ctx.jtbl, null, {q: val});
+			if (param == null) {
+				WUI.reload(ctx.jtbl, null, {q: val});
+			}
+			else {
+				WUI.reload(ctx.jtbl, null, {qsearch: param + ":" + val});
+			}
 		}};
 	},
 
