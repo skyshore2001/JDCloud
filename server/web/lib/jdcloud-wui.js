@@ -5936,6 +5936,15 @@ self.ctx = self.ctx || {};
 var mCommon = jdModule("jdcloud.common");
 var m_batchMode = false; // 批量操作模式, 按住Ctrl键。
 
+/**
+@fn isBatchMode()
+
+是否批量操作模式（即是否按住Ctrl键操作）。
+*/
+self.isBatchMode = function () {
+	return m_batchMode;
+}
+
 self.toggleBatchMode = toggleBatchMode;
 function toggleBatchMode(val) {
 	if (val !== undefined)
@@ -8645,6 +8654,8 @@ function showObjDlg(jdlg, mode, opt)
 		toolbar: WUI.dg_toolbar(jtbl, jdlg, "import", "export", "-", btn1, btn2, "qsearch"),
 	}
 
+@see toolbar-qsearch 模糊查询
+
 如果想自行定义导出行为参数，可以参考WUI.getExportHandler
 @see getExportHandler 导出按钮设置
 
@@ -10868,7 +10879,8 @@ function mainInit()
 				self.reloadDialog(true);
 				break;
 			case "mnuReloadDlg":
-				self.reloadDialog(true);
+				var jdlg = self.isBatchMode()? true: null;
+				self.reloadDialog(jdlg);
 				break;
 			case "mnuBatch":
 				self.toggleBatchMode();
