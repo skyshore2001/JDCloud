@@ -1233,13 +1233,14 @@ function enhanceCombogrid(jo)
 					jo.combogrid("setText", curText);
 					return;
 				}
+
+				jo.removeProp("nameForFind");
 				if (jdlg.size() > 0 && jdlg.jdata().mode == FormMode.forFind) {
 					if (myopt.jd_vField && /[^\d><=!,-]/.test(val) ) {
 						jo.prop("nameForFind", myopt.jd_vField);
 					}
 					return;
 				}
-				jo.removeProp("nameForFind");
 
 				var isId = (myopt.idField == "id");
 	//			var val1 = jo.combogrid("textbox").val();
@@ -1269,6 +1270,7 @@ function enhanceCombogrid(jo)
 				WUI.showObjDlg(jdlgForAdd, FormMode.forAdd, {onOk: function (retData) {
 					jo.combogrid("setValue", retData);
 					jo.combogrid("setText", retData + " - (新增)");
+					jo.removeProp("nameForFind");
 				}});
 			}};
 			initOpt.toolbar = WUI.dg_toolbar(null, jdlgForAdd, btnAdd);
