@@ -7069,7 +7069,7 @@ function showDlg(jdlg, opt)
 			// 隐藏的组件不验证
 			var jo = jfrm.find(".easyui-validatebox:hidden").filter(function () {
 				var ji = $(this);
-				return ji.css("display") == "none" || ji.closest("tr").css("display") == "none";
+				return ji.css("display") == "none" || ji.closest("tr,.wui-field").css("display") == "none";
 			});
 			jo.validatebox("disableValidation");
 			ret = jfrm.form("validate");
