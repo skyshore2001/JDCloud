@@ -2997,7 +2997,11 @@ FormItem.prototype = {
 		return this.ji.closest("td").prev("td").html();
 	},
 	setFocus: function () {
-		this.ji.focus();
+		var j1 = this.getShowbox();
+		if (j1.is(":hidden")) {
+			selectTab(j1);
+		}
+		j1.focus();
 	},
 
 	// 链式接口
@@ -3037,6 +3041,24 @@ FormItem.prototype = {
 		//WUI.setOptions(ji, v);
 	}
 };
+
+// jo是tabs下的某个组件
+function selectTab(jo)
+{
+	var jtabs = jo.closest(".easyui-tabs");
+	if (jtabs.size() == 0)
+		return;
+	var idx = -1;
+	jtabs.find(">.tabs-panels>.panel").each(function (idx1) {
+		if (jo.closest(this).size() > 0) {
+			idx = idx1;
+			return true;
+		}
+	});
+	if (idx < 0)
+		return;
+	jtabs.tabs("select", idx);
+}
 
 /**
 @fn jQuery.fn.gn(name?)
