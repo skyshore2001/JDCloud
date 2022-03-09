@@ -3614,6 +3614,8 @@ function setDlgLogic(jdlg, name, logic)
 				if (formMode === FormMode.forFind)
 					return;
 				var it = gn(name);
+				if (! it.visible())
+					return;
 				var val = it.val();
 				if (logic.required && (!val || ($.isArray(val) && val.length == 0))) {
 					app_alert(it.getTitle() + "不可为空。", "w", function () {

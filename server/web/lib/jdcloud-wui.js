@@ -3021,8 +3021,10 @@ FormItem.prototype = {
 	},
 	visible: function (v) {
 		var jp = this.ji.closest("tr,.wui-field");
-		if (v === undefined)
-			return jp.is(":visible");
+		if (v === undefined) {
+			return this.ji.css("display") != "none" && jp.css("display") != "none";
+			//return jp.is(":visible");
+		}
 		jp.toggle(!!v);
 		return this;
 	},
