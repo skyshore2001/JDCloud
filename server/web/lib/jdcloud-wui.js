@@ -7061,7 +7061,18 @@ function showDlg(jdlg, opt)
 			closeDlg(jdlg);
 			return;
 		}
-		var ret = opt.validate? jfrm.form("validate"): true;
+
+		var ret = true;
+		if (opt.validate) {
+			// 隐藏的组件不验证
+			var jo = jfrm.find(".easyui-validatebox:hidden").filter(function () {
+				var ji = $(this);
+				return ji.css("display") == "none" || ji.closest("tr").css("display") == "none";
+			});
+			jo.validatebox("disableValidation");
+			ret = jfrm.form("validate");
+			jo.validatebox("enableValidation");
+		}
 		if (! ret)
 			return false;
 
