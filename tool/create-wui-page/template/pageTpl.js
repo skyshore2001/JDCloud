@@ -13,7 +13,7 @@ function initPage<?=$obj?>()
 		if (row == null)
 			return;
 		var pageFilter = {cond: {closeLogId: row.id}};
-		WUI.showPage("pageOrder", "结算明细-订单" + row.id, [ null, pageFilter ]);
+		WUI.showPage("pageOrder", {title: "结算明细-订单" + row.id, pageFilter: pageFilter});
 	}};
 */
 

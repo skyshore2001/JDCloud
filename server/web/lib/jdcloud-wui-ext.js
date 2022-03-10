@@ -1778,6 +1778,8 @@ protected function onQuery() {
 	qsearch: function (ctx, param) {
 		var randCls = "qsearch-" + WUI.randChr(4); // 避免有多个qsearch组件时重名冲突
 		setTimeout(function () {
+			//给搜索框的父元素添加一个类名，方便修改样式
+			ctx.jp.find(".qsearch." + randCls).closest(".l-btn").addClass('qsearch-btn');
 			ctx.jp.find(".qsearch." + randCls).click(function () {
 				return false;
 			});
@@ -3507,7 +3509,10 @@ watch选项会刷新disabled/readonly/show/value系列选项中的表达式。
 	WUI.setDlgLogic(jdlg, "orderId", {
 		show: e => e.whName.indexOf("原料")
 		watch: "whId", 
-		onWatch: (e, ev, gn) => e.whName = ev.data.name
+		onWatch: function (e, ev, gn) {
+			gn("whName").val(ev.data.name); // 设置其它字段值，也可以用visible/disabled/readonly等函数控制字段
+			// e.whName = ev.data.name // 如果字段是不显示的，则直接设置到内部数据即可。
+		}
 	});
 
 首先，对话框打开时，show选项定义了根据字段whName来确定是否显示；
@@ -3527,6 +3532,21 @@ watch选项会刷新disabled/readonly/show/value系列选项中的表达式。
 - disabled: 获取或设置是否禁用
 - readonly: 获取或设置是否只读
 - val: 获取或设置值。对于wui-subobj组件，它返回表格数据。
+
+示例：当选择了一个工件(snId, 使用combogrid组件)后，自动填充工单(orderId, 使用combogrid组件)、工单开工时间(actualTm)等字段。
+
+	WUI.setDlgLogic(jdlg, "snId", {
+		watch: "snId",
+		onWatch: async function (e, ev, gn) {
+			console.log(ev);
+			// combogrid组件设置值可以用一个数组，同时设置value和text
+			gn("orderId").val([ev.data.orderId, ev.data.orderCode]);
+
+			// ev.data中没有现成数据，故再调用接口查一下
+			var rv = await callSvr("Ordr.get", {id: ev.data.orderId, res: "actualTm"})
+			gn("actualTm").val(rv.actualTm);
+		}
+	});
 
 @see jQuery.fn.gn
 

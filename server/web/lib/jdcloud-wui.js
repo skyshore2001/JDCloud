@@ -649,20 +649,21 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 				return;
 			// !!! 调用showPage显示新页 !!!
 			var pageFilter = {cond: {storeId: row.id}};
-			WUI.showPage("pageItem", "商户商品-" + row.name, [null, pageFilter]);
+			WUI.showPage("pageItem", {title: "商户商品-" + row.name, pageFilter: pageFilter});
 			// 要使每个商户都打开一个商品页面而不是共享一个页面，必须保证第二个参数（页面标题）根据商户不同而不一样。
 		}
 	}
 
 注意：
 
-调用WUI.showPage时，除了指定页面名，还指定了页面标题(第二参数)和页面初始化参数(第三参数, 一定是一个数组):
+WUI.showPage的第二参数既可以是简单的页面标题(title)，也可以是复杂的showPage选项(showPageOpt)，下面两个调用是相同的：
 
 	WUI.showPage("pageItem", "商户商品-" + row.name, ...);
+	WUI.showPage("pageItem", {title: "商户商品-" + row.name}, ...);
 
-显然，第二个参数随着商户名称不同而不同，这保证了不同商户打开的商品页面不会共用。
+显然，title随着商户名称不同而不同，这保证了不同商户打开的商品页面不会共用。
 
-第三个参数是传给该页面初始化函数即initPageItem函数的参数列表，是一个数组。数组第一个元素是自定义参数，这里未使用；第二个元素称为pageFilter，会自动加到query接口参数中，对列表页进行过滤。
+而showPageOpt.pageFilter参数会自动加到数据表调用后端的query接口参数中，对列表页进行过滤。
 
 @see showPage
 
@@ -3070,6 +3071,7 @@ function selectTab(jo)
 	var it = jdlg.gn("orderId"); 
 	var v = it.val(); // 取值，相当于 jdlg.find("[name=orderId]").val(); 但兼容my-combobox, wui-combogrid, wui-subobj等复杂组件。
 	it.val(100); // 设置值
+	// it.val([100, "ORDR-100"]); // 对于combogrid, 可以传数组，同时设置value和text
 
 	var isVisible = it.visible(); // 取是否显示
 	it.visible(false); // 设置隐藏
@@ -6322,10 +6324,13 @@ function getModulePath(file)
 }
 
 /** 
-@fn showPage(pageName, title?, paramArr?)
-@param pageName 由page上的class指定。
-@param title? 如果未指定，则使用page上的title属性.
-@param paramArr? 调用initfn时使用的参数，是一个数组。
+@fn showPage(pageName, showPageOpt?={title, target, pageFilter}, paramArr?=[showPageOpt])
+
+- pageName: 由page上的class指定。
+- showPageOpt.title: 如果未指定，则使用page上的title属性.
+- paramArr: 调用initfn时使用的参数，是一个数组。如果不指定，则调用initfn直接传入showPageOpt。推荐不指定该参数。
+
+@alias showPage(pageName, title?, paramArr?)
 
 新页面以title作为id。
 注意：每个页面都是根据pages下相应pageName复制出来的，显示在一个新的tab页中。相同的title当作同一页面。
@@ -6349,21 +6354,71 @@ page调用示例:
 title用于唯一标识tab，即如果相同title的tab存在则直接切换过去。除非：
 (v5.5) 如果标题以"!"结尾, 则每次都打开新的tab页。
 
-(v6) 支持通过paramArr第二参数指定列表页过滤条件(PAGE_FILTER)，示例
+## showPageOpt.pageFilter: (v6) 指定列表页过滤条件(PAGE_FILTER)
 
-	WUI.showPage("pageEmployee", "员工", [null, {cond: {status: "在职"}}]);
+示例
+
+	var pageFilter = {cond: {status: "在职"}};
+	WUI.showPage("pageEmployee", {title: "员工", pageFilter: pageFilter});
 
 它直接影响页面中的datagrid的查询条件。
 
 选项`_pageFilterOnly`用于影响datagrid查询只用page filter的条件。
 
-	WUI.showPage("pageEmployee", "员工", [null, {cond: {status: "在职"}, _pageFilterOnly: true}]);
+	var pageFilter = { cond: {status: "在职"}, _pageFilterOnly: true };
+	WUI.showPage("pageEmployee", {title: "员工", pageFilter: pageFilter});
 
+注意：旧应用中通过paramArr[1]来指定pageFilter, 目前兼容该用法，但不推荐使用：
+
+	WUI.showPage("pageEmployee", "员工", [null, pageFilter]); // 旧写法，不推荐使用
+	// 等价于
+	WUI.showPage("pageEmployee", {title: "员工", pageFilter: pageFilter});
+
+## (v6) 返回deferred对象
+
+showPage返回deferred/promise对象，表示页面加载完成。所以如果某些操作要依赖于页面完成，可以用：
+
+	var dfd = WUI.showPage(...);
+	dfd.then(fn);
+	// fn中的操作需要依赖上面页面。
+
+或
+
+	await WUI.showPage();
+	fn();
+
+## showPageOpt.target: 指定显示在哪个tabs中
+
+一般与系统页面pageTab合用，pageTab可显示一个或多个tabs，然后把新页面显示在指定tabs中。示例：
+
+	await WUI.showPage("pageTab", {title: "员工!", tabs:"40%,60%"});
+	WUI.showPage("pageEmployee", {title: "管理员", pageFilter:{cond: {perms:"~mgr"}}, target:"员工_1"});
+	WUI.showPage("pageEmployee", {title: "非管理员", pageFilter:{cond: {perms:"!~mgr"}}, target:"员工_2"});
+
+注意：下面两个页面target要依赖于pageTab页面，所以需要加await等待pageTab页面加载完成。
+
+@see pageTab
 */
 self.showPage = showPage;
-function showPage(pageName, title, paramArr)
+function showPage(pageName, title_or_opt, paramArr)
 {
-	var showPageArgs_ = arguments;
+	var showPageOpt = {pageName: pageName};
+	if ($.isPlainObject(title_or_opt)) {
+		$.extend(true, showPageOpt, title_or_opt);
+	}
+	else {
+		showPageOpt.title = title_or_opt;
+	}
+	if (paramArr == null) {
+		paramArr = [showPageOpt];
+	}
+	// 兼容旧应用，pageFilter=paramArr[1]; 新应用不应再使用
+	else if (!showPageOpt.pageFilter && $.isArray(paramArr) && $.isPlainObject(paramArr[1])) {
+		showPageOpt.pageFilter = paramArr[1];
+	}
+
+	var dfdShowPage = $.Deferred();
+	var showPageArgs_ = [pageName, showPageOpt, paramArr];
 	var sel = "#my-pages > div." + pageName;
 	var jpage = $(sel);
 	if (jpage.length > 0) {
@@ -6374,7 +6429,7 @@ function showPage(pageName, title, paramArr)
 		var html = $(sel).html();
 		if (html) {
 			loadPage(html, pageName, null);
-			return;
+			return dfdShowPage;
 		}
 
 		//jtab.append("开发中");
@@ -6387,10 +6442,12 @@ function showPage(pageName, title, paramArr)
 			//self.leaveWaiting();
 		});
 	}
+	return dfdShowPage;
 
 	function initPage()
 	{
 		var title0 = jpage.attr("title") || "无标题";
+		var title = showPageOpt.title;
 		if (title == null)
 			title = title0;
 		else
@@ -6402,10 +6459,11 @@ function showPage(pageName, title, paramArr)
 			title = title.substr(0, title.length-1);
 		}
 
-		var tt = self.tabMain;
+		var tt = showPageOpt.target? $("#"+showPageOpt.target): self.tabMain;
 		if (tt.tabs('exists', title)) {
 			if (!force) {
 				tt.tabs('select', title);
+				dfdShowPage.resolve();
 				return;
 			}
 			tt.tabs('close', title);
@@ -6448,6 +6506,7 @@ function showPage(pageName, title, paramArr)
 
 			jpageNew.trigger('pagecreate');
 			jpageNew.trigger('pageshow');
+			dfdShowPage.resolve();
 		}
 	}
 
@@ -6538,9 +6597,9 @@ self.getPageFilter = getPageFilter;
 function getPageFilter(jpage, name)
 {
 	var showPageArgs = jpage.data("showPageArgs_");
-	// showPage(0:pageName, 1:title, 2:paramArr);  e.g. WUI.showPage(pageName, title, [param1, {cond:cond}]) 
-	if (showPageArgs && $.isArray(showPageArgs[2]) && $.isPlainObject(showPageArgs[2][1])) {
-		var ret = showPageArgs[2][1];
+	// showPage(0:pageName, 1:opt={pageName, title, pageFilter?}, 2:paramArr?);  e.g. WUI.showPage(pageName, {title: "title", pageFilter: {cond:cond}})
+	if (showPageArgs && $.isPlainObject(showPageArgs[1].pageFilter)) {
+		var ret = showPageArgs[1].pageFilter;
 		if (name) {
 			ret = $.isPlainObject(ret.cond)? ret.cond[name]: null;
 			if (! isFixedField(ret))
@@ -10112,23 +10171,19 @@ function enhanceTableLayout(jo) {
 			doAddTr = true;
 		}
 	}
-	var rates = {
-		2: ["10%", "90%"],
-		4: ["10%", "40%", "10%", "40%"],
-		6: ["5%", "25%", "5%", "25%", "5%", "25%"]
-	};
-	if (!rates[colCnt])
-		return;
 	// 如果首行有colspan，则添加隐藏行定宽
 	if (doAddTr) {
 		var td = dup("<td></td>", colCnt);
 		$('<tr class="wui-form-table-tr-width" style="visibility:hidden">' + td + '</tr>').prependTo(jo);
 		tr = tbl.rows[0];
 	}
-	for (var i=0; i<colCnt; ++i) {
+	// 输入框等分
+	var w = 100 / (colCnt/2);
+	for (var i=1; i<colCnt; i+=2) {
 		var je = $(tr.cells[i]);
 		if (je.attr("width") == null)
-			je.attr("width", rates[colCnt][i]);
+			je.attr("width", w + "%");
+		je.css("min-width", "100px");
 	}
 
 	/*
