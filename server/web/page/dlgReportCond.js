@@ -34,6 +34,17 @@
 		console.log(data);
 	}, meta2, "工单");
 
+如果完全自定义对话框（连默认的日期选项也不要），可直接使用WUI.showDlgByMeta：
+
+	var meta = [
+		{title: "序列号", dom: '<input name="code" class="easyui-validatebox" required>'}
+	];
+	WUI.showDlgByMeta(meta, {modal:false, reset:false, title: "设备生命周期", onOk: async function (data) {
+		var pageFilter = {cond: data};
+		WUI.showPage("pageSn", {title: "设备生命周期-工件!", pageFilter: pageFilter});
+	}});
+
+@see showDlgByMeta
  */
 function initDlgReportCond()
 {
