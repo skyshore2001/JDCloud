@@ -856,8 +856,7 @@ function Q($s, $env=null)
 		$env = getJDEnv();
 	$dbh = $env->DBH;
 	if ($dbh == null) {
-		$s = str_replace("\\", "\\\\", $s);
-		return "'" . str_replace("'", "\\'", $s) . "'";
+		return qstr($s, "'");
 	}
 	return $dbh->quote($s);
 }

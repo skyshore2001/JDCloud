@@ -1456,10 +1456,82 @@ function readBlock2($getLine, $makeBlock, $isBlockStart, $isBlockEnd, $handleBlo
 	}
 }
 
+/**
+@fn containsWord($str, $word)
+
+检查是否包含一个词，与stripos等函数不同，它会检查词边界，如：
+
+	$rv = containsWord("hello, world", "hello"); // true
+	$rv = containsWord("hello, world", "llo"); // false
+*/
 function containsWord($str, $word)
 {
 	if (!$str || stripos($str, $word) === false)
 		return false;
 	return !!preg_match('/\b' . $word . '\b/ui', $str);
 }
+
+/**
+@fn qstr($s, $q="'")
+
+将字符串变成引用串，默认用双引号，如：
+
+	$str1 = qstr($str);
+
+效果：
+
+	hello => "hello"
+	"i'm ok", he said. => "\"i'm ok'\", he said."
+
+也可用单引号：
+
+	$str1 = qstr($str, "'"); 
+
+效果：
+
+	hello => 'hello'
+	i'm ok => 'i\'m ok'
+
+*/
+function qstr($s, $q='"')
+{
+	$s = str_replace("\\", "\\\\", $s);
+	return $q . str_replace($q, "\\" . $q, $s) . $q;
+}
+
+/**
+@fn myexec($cmd, $errMsg = "操作失败")
+
+执行Shell命令。如果出错则jdRet并记录日志。
+
+由于php exec函数限制，为了能够输出错误信息，一般建议加错误重定向，让出错信息显示在日志或接口返回中，如：
+	
+	myexec("magick 1.jpg -resize '1200x1200>' 2.jpg 2>&1");
+	myexec("magick 1.jpg -resize '1200x1200>' 2.jpg 2>&1", "图片处理失败"); // 可定制出错消息
+	myexec("php create_file.php 2>&1 >file1"); // 注意如果'2>&1'放在最后，则错误会输出到file1中。
+
+注意：为保证兼容性，在Windows下会使用sh命令, 自动在命令中加"sh -c"。
+
+- 在Windows环境下，sh是安装git-bash后自带的（路径示例：C:\Program Files\Git\usr\bin）
+	如果使用Apache系统服务的方式（默认是SYSTEM用户执行），应确保上述命令行在系统PATH（而不只是当前用户的PATH）中。
+
+- Win10环境中Apache+php调用shell可能会卡死，应修改git-bash下的文件：/etc/nsswitch.conf （路径示例：C:\Program Files\Git\etc\nsswitch.conf）
+
+		db_home: env 
+		#db_home: env windows cygwin desc
+
+*/
+function myexec($cmd, $errMsg = "操作失败")
+{
+	if (PHP_OS === "WINNT" && !startsWith($cmd, "sh ")) {
+		$cmd = 'sh -c ' . qstr($cmd);
+	}
+	exec($cmd, $out, $rv);
+	if ($rv) {
+		$outStr = join("\n", $out);
+		logit("exec fails: $cmd\nrv=$rv, out=$outStr");
+		jdRet(E_SERVER, $outStr, $errMsg);
+	}
+}
+
 // vi: foldmethod=marker
