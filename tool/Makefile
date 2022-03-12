@@ -67,3 +67,13 @@ meta2:
 
 meta3:
 	sh upgrade.sh 'export(2)'
+
+addon:
+	php ../server/tool/upgrade-addon.php all
+
+addon-install:
+	php ../server/tool/upgrade-addon.php install
+
+addon-clean:
+	php ../server/tool/upgrade-addon.php clean
+
