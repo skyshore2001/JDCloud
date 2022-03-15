@@ -4520,6 +4520,23 @@ function doSpecial(jo, filter, fn, cnt, interval)
 		fn.call(this, ev);
 	});
 }
+
+/**
+@fn execCopy(text)
+
+复制到剪贴板。
+*/
+self.execCopy = execCopy;
+function execCopy(text)
+{
+	$(window).one("copy", function (ev) {
+		ev.originalEvent.clipboardData.setData('text/plain', text);
+		app_show("已复制到剪贴板，按Ctrl-V粘贴。");
+		return false;
+	});
+	document.execCommand("copy");
+}
+
 }
 // vi: foldmethod=marker
 // ====== WEBCC_END_FILE app.js }}}
@@ -9715,6 +9732,7 @@ var GridHeaderMenu = {
 	itemsForField: [
 		'<div id="copyCol">复制本列</div>',
 		'<div id="statCol" data-options="iconCls:\'icon-sum\'">统计本列</div>',
+		'<div id="copyCells">复制选中项</div>',
 		'<div id="doFindCell" data-options="iconCls:\'icon-search\'">查询选中项</div>',
 	],
 	// 以下为菜单项处理函数
@@ -9840,12 +9858,7 @@ var GridHeaderMenu = {
 		var colTitle = jtbl.datagrid("getColumnOption", field).title;
 		arr.unshift(colTitle);
 		var ret = arr.join("\r\n");
-		$(window).one("copy", function (ev) {
-			ev.originalEvent.clipboardData.setData('text/plain', ret);
-			app_show("已复制到剪贴板，按Ctrl-V粘贴。");
-			return false;
-		});
-		document.execCommand("copy");
+		self.execCopy(ret);
 	},
 	statCol: function (jtbl, field) {
 		var data = jtbl.datagrid("getData");
@@ -9865,6 +9878,14 @@ var GridHeaderMenu = {
 			},
 			noCancel: true
 		});
+	},
+	copyCells: function (jtbl, field) {
+		var rows = jtbl.datagrid("getSelections");
+		var arr = rows.map(function (e) {
+			return e[field];
+		});
+		var ret = arr.join("\r\n");
+		self.execCopy(ret);
 	},
 	doFindCell: function (jtbl, field) {
 		var row = WUI.getRow(jtbl);
