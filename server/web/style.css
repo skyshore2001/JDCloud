@@ -239,6 +239,10 @@ input:disabled,select:disabled,textarea:disabled {
 .datagrid-cell, .datagrid-cell-group {
 	padding: 8px 10px;
 }
+/* 设置datagrid最大列宽 */
+.wui-datagrid-cell-max-width .datagrid-cell {
+	max-width: 500px;
+}
 /*
 .datagrid-header-rownumber, .datagrid-cell-rownumber {
 	padding: 7px 2px;
