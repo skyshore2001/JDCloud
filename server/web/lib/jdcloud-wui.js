@@ -4027,7 +4027,7 @@ function evalAttr(jo, name, ctx)
 }
 
 /*
-如果逻辑页中的css项没有以"#{pageId}"开头，则自动添加：
+如果css项没有以指定selector开头(示例：移动端页面"#page1", 管理端页面".pageX1", 管理端对话框"#dlgX1")，则自动添加selector限定：
 
 	.aa { color: red} .bb p {color: blue}
 	.aa, .bb { background-color: black }
@@ -4049,12 +4049,17 @@ function evalAttr(jo, name, ctx)
 		}
 		
 - 不处理"@"开头的选择器，如"media", "@keyframes"等。
+- 特定情况下，可以指定自身，如：
+
+		#page1 {
+		}
+		#page1 > .list {
+		}
+
 */
 self.ctx.fixPageCss = fixPageCss;
 function fixPageCss(css, selector)
 {
-	var prefix = selector + " ";
-
 	var level = 1;
 	var css1 = css.replace(/\/\*(.|\s)*?\*\//g, '')
 	.replace(/([^{}]*)([{}])/g, function (ms, text, brace) {
@@ -4067,9 +4072,14 @@ function fixPageCss(css, selector)
 
 		// level=1
 		return ms.replace(/((?:^|,)\s*)([^,{}]+)/g, function (ms, ms1, sel) { 
-			if (sel.startsWith(prefix) || sel[0] == '@')
+			if (sel[0] == '@')
 				return ms;
-			return ms1 + prefix + sel;
+			if (sel.startsWith(selector)) {
+				var ch = sel.substr(selector.length, 1);
+				if (ch == '' || ch == ' ' || ch == '.' || ch == '#' || ch == ':' || ch == '>' || ch == '+')
+					return ms;
+			}
+			return ms1 + selector + ' ' + sel;
 		});
 	});
 	return css1;
