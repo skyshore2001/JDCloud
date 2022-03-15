@@ -9715,6 +9715,7 @@ var GridHeaderMenu = {
 	itemsForField: [
 		'<div id="copyCol">复制本列</div>',
 		'<div id="statCol" data-options="iconCls:\'icon-sum\'">统计本列</div>',
+		'<div id="doFindCell" data-options="iconCls:\'icon-search\'">查询选中项</div>',
 	],
 	// 以下为菜单项处理函数
 
@@ -9864,6 +9865,17 @@ var GridHeaderMenu = {
 			},
 			noCancel: true
 		});
+	},
+	doFindCell: function (jtbl, field) {
+		var row = WUI.getRow(jtbl);
+		if (row == null)
+			return;
+		
+		var param = {cond: {} }
+		param.cond[field] = row[field];
+		var doAppendFilter = WUI.isBatchMode();
+		WUI.reload(jtbl, undefined, param, doAppendFilter);
+		console.log("查询(按住Ctrl点击可追加查询条件): ", param.cond);
 	}
 }
 self.GridHeaderMenu = GridHeaderMenu;
