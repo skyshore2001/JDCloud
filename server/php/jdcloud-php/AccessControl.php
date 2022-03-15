@@ -2734,7 +2734,7 @@ FROM ($sql) t0";
 
 		if ($pagesz == count($ret)) { // 还有下一页数据, 添加nextkey
 			if ($enablePartialQuery) {
-				$nextkey = $ret[count($ret)-1]["id"];
+				$nextkey = $this->getAliasVal($ret[count($ret)-1], "id");
 			}
 			else {
 				$nextkey = $pagekey + 1;
