@@ -241,11 +241,4 @@ class AC2_Ordr extends AC0_Ordr
 }
 // }}}
 
-class AC0_ApiLog extends AccessControl
-{
-	protected function onInit() {
-		$this->vcolDefs[] = [ "res" => tmCols() ];
-	}
-}
-
 // vi: foldmethod=marker
