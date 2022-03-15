@@ -9,6 +9,14 @@ $.extend(WUI.options, {
 	onShowLogin: showDlgLogin
 });
 
+// 定制模块的页面路径
+WUI.options.moduleExt.showPage = function (name) {
+	// 重用page下的通用页面
+	var ms = name.match(/\b(page|dlg)(Simple|Tab|Ui|DataReport|ReportCond)\b/);
+	if (ms)
+		return "page/" + name;
+}
+
 var g_data = {}; // { userInfo={id,uname} }
 
 // interface
