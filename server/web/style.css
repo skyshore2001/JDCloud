@@ -314,3 +314,8 @@ input:disabled,select:disabled,textarea:disabled {
 	opacity: initial;
 }
 
+/* 必填项在td中加星号标识 */
+td.required:after {
+	content: "*";
+	color: red;
+}

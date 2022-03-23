@@ -14,7 +14,8 @@
 			gres:"y 年,m 月, userId",
 			res:"userName 客户, COUNT(*) 订单数, SUM(amount) 总金额",
 			hiddenFields: "userId",
-			orderby: "总金额 DESC"
+			orderby: "总金额 DESC",
+			pagesz: -1
 		});
 		WUI.showPage("pageSimple", "订单月报表!", [url, queryParams]);
 	}};
@@ -24,6 +25,16 @@
 	});
 
 注意：调用WUI.showPage时，标题以"!"结尾表示每次调用都刷新该页面。而默认行为是如果页面已打开，就直接显示而不会刷新。
+
+注意：用`pagesz:-1`表示不分页，加载所有数据(实际上受限于后端，默认1000条)。
+
+如果要支持分页，必须指定页码参数：`page:1`，如：
+
+	var url = WUI.makeUrl("Sn.query", {
+		res: 'id 工件编号, code 序列号, code2 设备号, actualTm 工单开工, actualTm1 工单完工, itemName 产品名称, cateName 产品型号, ec 相关工程变更', 
+		page: 1
+	});
+	WUI.showPage("pageSimple", "工件列表!", [url]);
 
 ## 示例2：先弹出查询条件对话框，设置后再显示报表
 

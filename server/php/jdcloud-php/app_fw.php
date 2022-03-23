@@ -1194,7 +1194,7 @@ function queryAll($sql, $assoc = false, $cond = null)
 }
 
 /**
-@fn dbInsert(table, kv) -> newId
+@fn dbInsert(table, kv, noEscape=false) -> newId
 
 e.g. 
 
@@ -1205,14 +1205,26 @@ e.g.
 		"dscr" => null // null字段会被忽略
 	]);
 
+为防止XSS攻击，默认会处理字段值，将">", "<"转义为"&gt;"和"&lt;"。如果想保持原始值，可以用：
+
+	$id = dbInsert("Ordr", [
+		"cond" => dbExpr(Q("amount > 100"))
+	]);
+
+或
+
+	$id = dbInsert("Ordr", [
+		"cond" => "amount > 100"
+	], true); // noEscape=true
+
 如需高性能大批量插入数据，可以用BatchInsert
 
 @see BatchInsert
 */
-function dbInsert($table, $kv)
+function dbInsert($table, $kv, $noEscape=false)
 {
 	$env = getJDEnv();
-	return $env->dbInsert($table, $kv);
+	return $env->dbInsert($table, $kv, $noEscape);
 }
 
 /**
@@ -1383,7 +1395,7 @@ function dbExpr($val)
 }
 
 /**
-@fn dbUpdate(table, kv, id_or_cond?) -> cnt
+@fn dbUpdate(table, kv, id_or_cond?, noEscape=false) -> cnt
 
 @param id_or_cond 查询条件，如果是数值比如100或"100"，则当作条件"id=100"处理；否则直接作为查询表达式，比如"qty<0"；
 为了安全，cond必须指定值，不可为空（避免因第三参数为空导致误更新全表!）。如果要对全表更新，可传递特殊值"ALL"，或用"1=1"之类条件。
@@ -1412,11 +1424,23 @@ cond条件可以用key-value指定(cond写法参考getQueryCond)，如：
 	基本等价于 (当id1为null时稍有不同, 上面生成"IS NULL"，而下面的SQL为"=null"非标准)
 	dbUpdate("Task", ["vendorId" => $id], "vendorId=$id1"]);
 
+为防止XSS攻击，默认会处理字段值，将">", "<"转义为"&gt;"和"&lt;"。如果想保持原始值，可以用：
+
+	$cnt = dbUpdate("Ordr", [
+		"cond" => dbExpr(Q("amount > 100"))
+	]);
+
+或
+
+	$cnt = dbUpdate("Ordr", [
+		"cond" => "amount > 100"
+	], null, true); // noEscape=true
+
 */
-function dbUpdate($table, $kv, $cond)
+function dbUpdate($table, $kv, $cond, $noEscape=false)
 {
 	$env = getJDEnv();
-	return $env->dbUpdate($table, $kv, $cond);
+	return $env->dbUpdate($table, $kv, $cond, $noEscape);
 }
 //}}}
 
@@ -1592,7 +1616,7 @@ class DBEnv
 		return count($allRows)>1? $allRows: $allRows[0];
 	}
 
-	function dbInsert($table, $kv)
+	function dbInsert($table, $kv, $noEscape=false)
 	{
 		$keys = '';
 		$values = '';
@@ -1619,6 +1643,9 @@ class DBEnv
 			else if (is_array($v)) {
 				jdRet(E_PARAM, "dbInsert: array `$k` is not allowed. pls define subobj to use array.", "未定义的子表`$k`");
 			}
+			else if ($noEscape) {
+				$values .= Q($v, $this);
+			}
 			else {
 				$values .= Q(htmlEscape($v), $this);
 			}
@@ -1630,7 +1657,7 @@ class DBEnv
 		return $this->execOne($sql, true);
 	}
 
-	function dbUpdate($table, $kv, $cond)
+	function dbUpdate($table, $kv, $cond, $noEscape=false)
 	{
 		if ($cond === null)
 			jdRet(E_SERVER, "bad cond for update $table");
@@ -1662,8 +1689,12 @@ class DBEnv
 			{
 				$kvstr .= flag_getExpForSet($k, $v);
 			}
-			else
+			else if ($noEscape) {
+				$kvstr .= "$k=" . Q($v);
+			}
+			else {
 				$kvstr .= "$k=" . Q(htmlEscape($v));
+			}
 		}
 		$cnt = 0;
 		if (strlen($kvstr) == 0) {

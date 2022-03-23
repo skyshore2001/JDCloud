@@ -6485,6 +6485,7 @@ function showPage(pageName, title_or_opt, paramArr)
 			force = true;
 			title = title.substr(0, title.length-1);
 		}
+		showPageOpt.title = title;
 
 		var tt = showPageOpt.target? $("#"+showPageOpt.target): self.tabMain;
 		if (tt.tabs('exists', title)) {
@@ -6498,6 +6499,7 @@ function showPage(pageName, title_or_opt, paramArr)
 
 		var id = tabid(title);
 		var content = "<div id='" + id + "' title='" + title + "' />";
+		var jtab = $(content);
 		var closable = (pageName != self.options.pageHome);
 
 		tt.tabs('add',{
@@ -6505,10 +6507,8 @@ function showPage(pageName, title_or_opt, paramArr)
 			title: title,
 			closable: closable,
 			fit: true,
-			content: content
+			content: jtab
 		});
-
-		var jtab = $("#" + id);
 
 		var jpageNew = jpage.clone().appendTo(jtab);
 		jpageNew.addClass('wui-page');
@@ -6653,6 +6653,29 @@ function enhanceDialog(jdlg)
 		if (!this.style.width)
 			this.style.width = "100%";
 	});
+	// 如果td直接下面的某项设置有required属性，则自动在该项标题td上加required类（标记"*"表示必填）
+	jdlg.find("td>[required]").each(function () {
+		$(this).parent().prev("td").addClass("required");
+	});
+}
+
+/**
+@fn saveDlg(jdlg, noCloseDlg=false)
+
+对话框保存，相当于点击确定按钮。如果noCloseDlg=true，则不关闭对话框（即“应用”保存功能）。
+ */
+self.saveDlg = saveDlg;
+self.noCloseDlg = false;
+function saveDlg(jdlg, noCloseDlg)
+{
+	if (noCloseDlg) {
+		self.noCloseDlg = true;
+		setTimeout(function () {
+			self.noCloseDlg = false;
+		}, 2000); // 一般2s内保存完毕
+	}
+	// 点击确定按钮
+	jdlg.next(".dialog-button").find("#btnOk").click();
 }
 
 /**
@@ -6661,6 +6684,8 @@ function enhanceDialog(jdlg)
 self.closeDlg = closeDlg;
 function closeDlg(jdlg)
 {
+	if (self.noCloseDlg)
+		return;
 	jdlg.dialog("close");
 }
 
@@ -6692,6 +6717,8 @@ function focusDlg(jdlg)
 $.fn.okCancel = function (fnOk, fnCancel) {
 	this.unbind("keydown").keydown(function (e) {
 		if (e.keyCode == 13 && e.target.tagName != "TEXTAREA" && fnOk) {
+			// NOTE: 部分组件(如jsoneditor)上修改值后，仅在失去焦点时方可取到值。
+			$(e.target).blur().focus();
 			fnOk();
 			return false;
 		}
@@ -6705,6 +6732,12 @@ $.fn.okCancel = function (fnOk, fnCancel) {
 			showObjDlg($(this), FormMode.forFind, $(this).data("objParam"));
 			return false;
 		}
+		// Ctrl-D: duplicate
+		else if ((e.ctrlKey||e.metaKey) && e.which == 68)
+		{
+			dupDlg($(this));
+			return false;
+		}
 /* // Ctrl-A: add mode
 		else if ((e.ctrlKey||e.metaKey) && e.which == 65)
 		{
@@ -6712,6 +6745,72 @@ $.fn.okCancel = function (fnOk, fnCancel) {
 			return false;
 		}
 */
+	});
+}
+
+/**
+@fn dupDlg(jdlg)
+
+复制并添加对象。
+对象对话框在更新模式下，按Ctrl-D可复制当前对象，进入添加模式。
+
+支持对子表进行复制，注意仅当子表是允许添加的才会被复制（wui-subobj组件，且设置了valueField和dlg选项）。
+TODO 由于子表支持懒加载，目前有个限制，如果子表尚未加载则无法复制；可手工点击tab页让它加载才能复制。
+
+@key event-duplicate(ev, data) 对话框上复制添加对象
+
+如果要定制添加行为，可在对话框的duplicate事件中修改数据。示例：
+
+	jdlg.on("duplicate", function (ev, data) {
+		// 可修改data, 若有子表则是数组字段
+		// 主表id，子表id及关联主表的id将会自动删除，此处无须处理
+		console.log(data);
+	});
+
+ */
+self.dupDlg = dupDlg;
+function dupDlg(jdlg)
+{
+	var formMode = jdlg.jdata().mode;
+	if (formMode != FormMode.forSet)
+		return false;
+
+	var data = $.extend(true, {}, jdlg.data("origin_"));
+	jdlg.find(".wui-subobj").each(function () {
+		var jsub = $(this);
+		var subOpt = WUI.getOptions(jsub);
+		var isLoaded = jsub.data("subobjLoaded_"); // TODO: 懒加载的subobj，如何取数据？
+		// 有valueField和dlg属性的子表才能添加
+		if (! (subOpt.valueField && subOpt.dlg && subOpt.dgCall && isLoaded && subOpt.relatedKey))
+			return;
+
+		// 典型主子表，设置有关联字段的可以复制
+		var ms = subOpt.relatedKey.match(/^([^=]+)=/);
+		if (! ms)
+			return;
+		var relatedKey = ms[1];
+
+		var rows = subOpt.dgCall("getData").rows; // 就是jtbl.datagrid("getData")
+		data[subOpt.valueField] = rows;
+
+		setTimeout(function (ev) {
+			var rows1 = data[subOpt.valueField];
+			if (! $.isArray(rows1))
+				return;
+			rows1.forEach (function (e) {
+				delete e.id;
+				delete e[relatedKey];
+			});
+			subOpt.dgCall("loadData", rows);
+		}, 50);
+	});
+
+	// 可插入自定义逻辑
+	jdlg.trigger("duplicate", [data]);
+	delete data.id;
+
+	WUI.showObjDlg(jdlg, FormMode.forAdd, {
+		data: data
 	});
 }
 
@@ -7053,6 +7152,18 @@ wui-dialog可以使用底层easyui-dialog/easyui-window/easyui-panel的选项或
 		}
 	});
 
+可以没有title/dom，只用hint用于逻辑说明，示例:
+
+	var meta = [
+		{hint:'查询<code>工单实际开工日期</code>在指定日期区间的所有受EC到影响的工件'},
+		{title: "序列号", dom: '<input name="code">'},
+		...
+	];
+	WUI.showDlg("#dlgReportCond", {
+		meta: meta,
+		onOk: function (data) { ... }
+	});
+
 @see showDlgByMeta
 @see showObjDlg
 */
@@ -7103,9 +7214,9 @@ function showDlg(jdlg, opt)
 	if (opt.cancel)
 		return;
 
-	var btns = [{text: opt.okLabel, iconCls:'icon-ok', handler: fnOk}];
+	var btns = [{id: "btnOk", text: opt.okLabel, iconCls:'icon-ok', handler: fnOk}];
 	if (! opt.noCancel) 
-		btns.push({text: opt.cancelLabel, iconCls:'icon-cancel', handler: fnCancel})
+		btns.push({id: "btnCancel", text: opt.cancelLabel, iconCls:'icon-cancel', handler: fnCancel})
 	if ($.isArray(opt.buttons))
 		btns.unshift.apply(btns, opt.buttons);
 
@@ -7184,7 +7295,7 @@ function showDlg(jdlg, opt)
 		var ret = true;
 		if (opt.validate) {
 			// 隐藏的组件不验证
-			var jo = jfrm.find(".easyui-validatebox:hidden").filter(function () {
+			var jo = jfrm.find(".validatebox-text:hidden").filter(function () {
 				var ji = $(this);
 				return ji.css("display") == "none" || ji.closest("tr,.wui-field").css("display") == "none";
 			});
@@ -7192,8 +7303,19 @@ function showDlg(jdlg, opt)
 			ret = jfrm.form("validate");
 			jo.validatebox("enableValidation");
 		}
-		if (! ret)
+		if (! ret) {
+			var ji = jfrm.find(".validatebox-invalid:first");
+			var vb = ji.data("validatebox");
+			if (vb && vb.message && ji.is(":hidden,[readonly],:disabled")) {
+				// 可能隐藏在某Tab页中，应切换过去，避免点确定按钮无反应
+				var it = ji.gn();
+				var code = "验证失败: <br><span style='color:red'>字段\"" + it.getTitle() + "\": " + vb.message + '</span>';
+				app_alert(code, "w", function () {
+					it.setFocus();
+				});
+			}
 			return false;
+		}
 
 		var newData = {};
 		var dfd = self.triggerAsync(jfrm, "validate", [formMode, opt.data, newData]);
@@ -7257,24 +7379,28 @@ function showDlg(jdlg, opt)
 					if (rv !== false)
 						return;
 				}
-				self.callSvr(opt.url, success, data);
+				self.callSvr(opt.url, function (retData) {
+					success(data, retData);
+				}, data);
 			}
 			else {
-				success(data);
+				success(data, data);
 			}
 			// opt.onAfterSubmit && opt.onAfterSubmit(jfrm); // REMOVED
 		}
 
-		function success (data)
+		function success (reqData, retData)
 		{
+			if (opt.data) // 更新对话框的原始数据
+				$.extend(opt.data, reqData);
 			if (opt.onOk) {
-				jfrm.trigger('retdata', [data, formMode]);
+				jfrm.trigger('retdata', [retData, formMode]);
 				if (opt.onOk === 'close') {
 					app_show("操作成功!");
 					WUI.closeDlg(jdlg);
 				}
 				else {
-					opt.onOk.call(jdlg, data);
+					opt.onOk.call(jdlg, retData);
 				}
 			}
 		}
@@ -7347,7 +7473,7 @@ function addFieldByMeta(jdlg, jp, itemArr)
 		var hint = '';
 		if (item.hint)
 			hint = "<p class=\"hint\">" + item.hint + "</p>";
-		code += "<tr><td>" + item.title + "</td><td>" + item.dom + hint + "</td></tr>";
+		code += "<tr><td>" + (item.title||'') + "</td><td>" + (item.dom||'') + hint + "</td></tr>";
 	}
 	if (code) {
 		$(code).appendTo(jp);
@@ -8493,7 +8619,7 @@ function showObjDlg(jdlg, mode, opt)
 				}
 			}
 		});
-		jfrm.find(".easyui-validatebox").validatebox("disableValidation");
+		jfrm.form("disableValidation");
 	}
 	else if (jd.mode == FormMode.forFind && mode != FormMode.forFind) {
 		self.formItems(jfrm, function (je, name, it) {
@@ -8509,7 +8635,7 @@ function showObjDlg(jdlg, mode, opt)
 				jshow.attr("type", bak.type);
 			}
 		});
-		jfrm.find(".easyui-validatebox").validatebox("enableValidation");
+		jfrm.form("enableValidation");
 	}
 
 	jd.mode = mode;
@@ -9715,7 +9841,7 @@ var GridHeaderMenu = {
 		});
 		jmenu.menu({
 			onClick: function (mnuItem) {
-				GridHeaderMenu[mnuItem.id].call(this, jtbl, field);
+				GridHeaderMenu[mnuItem.id].call(mnuItem, jtbl, field);
 			}
 		});
 		jmenu.menu('show', pos);
@@ -9732,8 +9858,7 @@ var GridHeaderMenu = {
 	itemsForField: [
 		'<div id="copyCol">复制本列</div>',
 		'<div id="statCol" data-options="iconCls:\'icon-sum\'">统计本列</div>',
-		'<div id="copyCells">复制选中项</div>',
-		'<div id="doFindCell" data-options="iconCls:\'icon-search\'">查询选中项</div>',
+		'<div id="doFindCell" data-options="iconCls:\'icon-search\'">查询本列</div>',
 	],
 	// 以下为菜单项处理函数
 
@@ -9851,12 +9976,21 @@ var GridHeaderMenu = {
 	},
 
 	copyCol: function (jtbl, field) {
-		var data = jtbl.datagrid("getData");
-		var arr = data.rows.map(function (e) {
-			return e[field];
-		});
-		var colTitle = jtbl.datagrid("getColumnOption", field).title;
-		arr.unshift(colTitle);
+		var rows = jtbl.datagrid("getSelections");
+		var arr = null;
+		if (rows.length < 2) { // 非多选时，复制本列所有数据（包含标题行）
+			var data = jtbl.datagrid("getData");
+			arr = data.rows.map(function (e) {
+				return e[field];
+			});
+			var colTitle = jtbl.datagrid("getColumnOption", field).title;
+			arr.unshift(colTitle);
+		}
+		else { // 多选时，只复制已选择行的列数据
+			arr = rows.map(function (e) {
+				return e[field];
+			});
+		}
 		var ret = arr.join("\r\n");
 		self.execCopy(ret);
 	},
@@ -9878,14 +10012,6 @@ var GridHeaderMenu = {
 			},
 			noCancel: true
 		});
-	},
-	copyCells: function (jtbl, field) {
-		var rows = jtbl.datagrid("getSelections");
-		var arr = rows.map(function (e) {
-			return e[field];
-		});
-		var ret = arr.join("\r\n");
-		self.execCopy(ret);
 	},
 	doFindCell: function (jtbl, field) {
 		var row = WUI.getRow(jtbl);
@@ -10117,7 +10243,15 @@ var DefaultValidateRules = {
 		message: "11位手机号或客户代码"
 	}
 };
-$.extend($.fn.validatebox.defaults.rules, DefaultValidateRules);
+
+var validateboxDefaults = {
+	rules: DefaultValidateRules,
+	validateOnCreate: false,
+	missingMessage: "必填项，不可为空"
+}
+$.extend(true, $.fn.validatebox.defaults, validateboxDefaults);
+$.extend(true, $.fn.combo.defaults, validateboxDefaults);
+$.extend(true, $.fn.combogrid.defaults, validateboxDefaults);
 
 // tabs自动记住上次选择
 /*
@@ -10171,6 +10305,7 @@ datagrid options中的toolbar，我们使用代码指定方式，即
 	});
 	var btnFind = {text:'查询', class: 'splitbutton', iconCls:'icon-search', handler: ..., menu: jmenu};
 
+@key easyui-linkbutton
 @key EXT_LINK_BUTTON
 */
 $.fn.linkbutton0 = $.fn.linkbutton;
@@ -10966,27 +11101,53 @@ function mainInit()
 		}
 	});
 
+/**
+@var PageHeaderMenu
+
+页面上方标题栏的右键菜单
+
+扩展示例：
+
+	WUI.PageHeaderMenu.items.push('<div id="reloadUiMeta">刷新Addon</div>');
+	WUI.PageHeaderMenu.reloadUiMeta = function () {
+		UiMeta.reloadUiMeta();
+	}
+
+ */
 	// 标题栏右键菜单
-	var jmenu = $('<div><div id="mnuReload">刷新页面</div><div id="mnuReloadDlg">刷新对话框</div><div id="mnuBatch">批量模式</div></div>');
-	jmenu.menu({
-		onClick: function (mnuItem) {
-			var mnuId = mnuItem.id;
-			switch (mnuItem.id) {
-			case "mnuReload":
-				self.reloadPage();
-				self.reloadDialog(true);
-				break;
-			case "mnuReloadDlg":
-				var jdlg = self.isBatchMode()? true: null;
-				self.reloadDialog(jdlg);
-				break;
-			case "mnuBatch":
-				self.toggleBatchMode();
-				break;
-			}
+	self.PageHeaderMenu = {
+		items: [
+			'<div id="mnuReload">刷新页面</div>',
+			'<div id="mnuReloadDlg">刷新对话框</div>',
+			'<div id="mnuBatch">批量模式</div>'
+		],
+
+		// 处理函数
+		mnuReload: function () {
+			self.reloadPage();
+			self.reloadDialog(true);
+		},
+		mnuReloadDlg: function () {
+			var jdlg = self.isBatchMode()? true: null;
+			self.reloadDialog(jdlg);
+		},
+		mnuBatch: function () {
+			console.log(this);
+			self.toggleBatchMode();
 		}
-	});
+	};
+
+	var jmenu = null;
 	function onSpecial(ev) {
+		if (jmenu == null) {
+			jmenu = $('<div>' + self.PageHeaderMenu.items.join('') + '</div>');
+			jmenu.menu({
+				onClick: function (mnuItem) {
+					self.PageHeaderMenu[mnuItem.id].call(mnuItem);
+				}
+			});
+		}
+
 		jmenu.menu('show', {left: ev.pageX, top: ev.pageY});
 		return false;
 	}

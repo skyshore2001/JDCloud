@@ -28,9 +28,9 @@ var PermMap = {
 
 // 注意：与class "status-info", "status-warning"等保持一致。
 var Color = {
-	Info: "rgb(190, 247, 190)", // lightgreen,
-	Warning: "yellow",
-	Error: "rgb(253, 168, 172)", // red;
+	Info: "#bef7be", // lightgreen,
+	Warning: "#FFFF68",
+	Error: "#ff9999", // red;
 	Disabled: "#dddddd" // grey
 }
 //}}}

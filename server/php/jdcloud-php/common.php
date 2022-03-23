@@ -127,6 +127,11 @@ class DirectReturn extends LogicException
 	jdRet(0, ["id" => 100]);
 	// 返回 [0, {"id": 100}]
 
+	// 直接返回已有的JSON串:
+	$str = '{"id": 100}';
+	jdRet(0, dbExpr($str));
+	// 返回`[0, {"id":100}]`
+
 出错返回：
 
 	jdRet(E_PARAM);
@@ -134,20 +139,12 @@ class DirectReturn extends LogicException
 	jdRet(E_PARAM, "bad param", "参数错"); // 第3参数是给用户看的错误信息，一般用中文
 	// 返回 [1, "参数错", "bad param"] 注意最终输出JSON数组中第2、3参数顺序对调了，以符合筋斗云[code, data, debuginfo...]的格式。
 
-(v6) 几种特殊用法
-
-自定义返回：(code传null)
+(v6) 自定义返回：(code传null)
 
 	jdRet(null, ["code" => 0, "msg" => "hello"]);
 	或
 	jdRet(null, '{"code": 0, "msg": "hello"}');
 	// 返回`{"code": 0, "msg": "hello"}`，注意不是标准筋斗云返回格式。
-
-直接返回已有的JSON串:
-
-	$str = '{"id": 100}';
-	jdRet(0, dbExpr($str));
-	// 返回`[0, {"id":100}]`
 
 更规范地，对于接口自定义格式输出，应使用 $X_RET_FN 定义转换函数。
 
@@ -1534,4 +1531,31 @@ function myexec($cmd, $errMsg = "操作失败")
 	}
 }
 
+/**
+@fn redirectOut($fn)
+
+将$fn函数执行中的输出重定向，返回通过echo等方式输出的字符串。示例：
+
+	$str1 = redirectOut(function () {
+		echo("redirect 1");
+	});
+	// $str1="redirect 1"
+
+支持嵌套，示例：
+
+	$str1 = redirectOut(function () {
+		echo("redirect 1");
+		global $str2;
+		$str2 = redirectOut(function () {
+			echo("redirect 2");
+		});
+	});
+	echo($str1 . ',' . $str2);
+*/
+function redirectOut($fn)
+{
+	ob_start(function () {});
+	$fn();
+	return ob_get_flush();
+}
 // vi: foldmethod=marker

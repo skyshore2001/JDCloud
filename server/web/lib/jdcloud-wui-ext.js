@@ -1386,7 +1386,7 @@ function ComboFormItem(ji, jcombo, jcomboCall) {
 }
 
 // 适用于 combo, combogrid, datebox, datetimebox
-// { ji, jcombo, jcomboCall
+// { ji, jcombo, jcomboCall }
 ComboFormItem.prototype = $.extend(new WUI.FormItem(), {
 	getName: function () {
 		var jcombo = this.jcombo;
@@ -2444,12 +2444,16 @@ SubobjFormItem.prototype = $.extend(new WUI.FormItem(), {
 		this.ji.trigger("setOption", {readonly: val});
 	},
 	getValue: function () {
+		if (! this.ji.data("subobjLoaded_"))
+			return [];
 		var opt = WUI.getOptions(this.ji);
 		WUI.assert(opt.dgCall);
 		var rows = opt.dgCall("getData").rows; // 就是jtbl.datagrid("getData")
 		return rows;
 	},
 	setValue: function (val) {
+		if (! this.ji.data("subobjLoaded_")) // TODO: set value
+			return;
 		var opt = WUI.getOptions(this.ji);
 		WUI.assert(opt.dgCall);
 		opt.dgCall("loadData", val);
@@ -3441,7 +3445,13 @@ $.extend(self.dg_toolbar, {
 
 	<input name="orderId" class="wui-combogrid wui-dialog-logic" data-options="$.extend(ListOptions.UserGrid(), readonlyForSet:true)">
 
-logic中支持readonly选项，也支持readonlyForAdd/readonlyForSet这些特定模式的选项，它们既可以设置为一个值，也可以是一个函数（或lambda）。
+logic中支持readonly选项，也支持readonlyForAdd/readonlyForSet这些特定模式的选项，它们既可以设置为一个值，也可以是一个函数（或lambda），原型为：
+
+	// data为当前数据，可通过 WUI.getTopDialog().jdata().logicData.data 来实时查看；
+	// gn为字段操作器，用于手工操作其它字段。
+	logicFn(data, gn)
+	// 对于readonly/show等选项，返回值非undefined时有效; 对于value选项，仅当函数返回非undefined/false才会设置值；
+
 如果同时指定了readonly和readonlyForAdd选项，则当添加模式时优先用readonlyForAdd选项，其它模式也类似。
 
 这个特性同样适用于以下disabled/readonly/value选项，比如有disabledForAdd/readonlyForSet/valueForAdd等选项。
@@ -3452,15 +3462,22 @@ logic中支持readonly选项，也支持readonlyForAdd/readonlyForSet这些特�
 	或
 	readonlyForAdd: true
 
-特别地，show选项会影响forFind模式，可以单独指定showForFind。
+注意：
+
+- show选项会影响forFind模式，可以单独指定showForFind，它比show选项优先级高。
+- 带数据的对话框，在打开时不会修改数据，即value选项在forSet模式对话框刚打开时不会生效。
 
 示例：添加时自动填写
 
 	填当前日期：
+	valueForAdd: new Date().format("D")
+
+或指定lambda或函数：
+
 	valueForAdd: () => new Date().format("D")
 
 	填当前操作员：
-	valueForAdd: g_data.user.id
+	valueForAdd: () => g_data.userInfo.id
 
 如果不允许改，则加上
 
@@ -3504,29 +3521,31 @@ logic中支持readonly选项，也支持readonlyForAdd/readonlyForSet这些特�
 
 watch选项会刷新disabled/readonly/show/value系列选项中的表达式。
 
-示例：对于仓库字段(名字name=whId，显示名vField=whName，是个wui-combogrid下拉框组件)，如果仓库名含有"原料", 则显示关联单据字段(orderId)
+### 从下拉列表中取值
 
-	WUI.setDlgLogic(jdlg, "orderId", {
-		show: e => e.whName.indexOf("原料")
-		watch: "whId", 
-		onWatch: function (e, ev, gn) {
-			gn("whName").val(ev.data.name); // 设置其它字段值，也可以用visible/disabled/readonly等函数控制字段
-			// e.whName = ev.data.name // 如果字段是不显示的，则直接设置到内部数据即可。
-		}
+示例：对于商品字段(名字name=itemId，是个wui-combogrid下拉框组件，有id,name,price三列)，如果从下拉列表中选择了一个商品，则自动更新价格(price字段):
+
+	WUI.setDlgLogic(jdlg, "price", {
+		value: e => e.eventData_itemId?.price,
+		watch: "itemId"
 	});
 
-首先，对话框打开时，show选项定义了根据字段whName来确定是否显示；
-当watch字段whId变化时，先执行onWatch，更新字段whName，然后更执行show选项表达式，刷新显示状态。
+当选择商品后（itemId字段），可以从e.eventData_itemId数据中取到下拉列表的值，如`e.eventData_itemId.price`；
+使用`e.eventData_itemId?.price`表示当`e.eventData_itemId`不存在时(结果将返回undefined)不去修改值，也可以用`e.eventData_itemId && e.eventData_itemId.price`。
 
-注意whName这种显示字段一般是虚拟字段，设置为禁用不提交到后端。
+类似地，如果是其它字段变化，则可以从`e.eventData_{字段名}`中取值。my-combobox组件下拉时也是返回选择行对应的数据。
 
-上面onWatch选项定义一个函数，当watch字段变化后执行，参数有2个：`(e=当前对象数据, ev=扩展数据, gn=字段访问器)`，在ev参数中：
+注意：如果有其它字段依赖了修改的值，比如上节例子中total字段依赖price，则此时会连锁地去更新total字段。
+
+### 使用onWatch选项
+
+更自由地，可以用onWatch选项定义一个函数，当watch字段变化后执行，原型为：`onWatch(e=当前对象数据, ev=扩展数据, gn=字段访问器)`，在ev参数中：
 
 - ev.name表示当前变化的字段名，可用于依赖多个字段时用于区分是哪个字段变化。
 - ev.formMode表示当前对话框模式，是添加(FormMode.forAdd)、更新(FormMode.forSet)或是查找(FormMode.forFind)。
 - ev.data根据组件不同值也不同，对于wui-combogrid和my-combobox组件，它表示选择的数据行，比如列表定义了`id,name,code`三列，它就以`{id, name, code}`格式返回这三列数据。
 
-参数gn是一个函数，可以对任意字段进行处理，用`gn(字段名)`可以取到该字段，然后可调用通用接口，如`gn("orderId").visible(true).disabled(false).readonly(true).val(100)`。
+参数gn是一个函数，可以对任意字段进行处理，用`gn(字段名)`可以取到该字段，然后可以链式调用通用接口，如`gn("orderId").visible(true).disabled(false).readonly(true).val(100)`。
 
 - visible: 获取或设置是否显示。无参数时表示获取。带参数设置时支持上例中的链式设置。
 - disabled: 获取或设置是否禁用
@@ -3592,7 +3611,32 @@ watch选项会刷新disabled/readonly/show/value系列选项中的表达式。
 	// 返回一个非空字符串，则表示验证失败，字符串即是错误信息
 	validate: v => /^\d{11}$/.test(v) || "手机号须11位数字"
 
-注意验证选项对添加、更新有效，没有forAdd/forSet选项
+注意验证选项对添加、更新有效，没有forAdd/forSet选项。
+
+validate函数原型为：`validate(value, it, gn)`
+
+- value: 当前值
+- it: 当前字段访问器，如it.val()即value，还有it.getTitle()取字段标题。
+- gn: 字段访问器，如 gn("id") 取到id字段，gn("id").val()取id字段的值。
+
+示例：当status字段值为RE时，当前字段值不可为空：
+
+	{
+		validate: (v,it,gn) => (gn("status").val() != "RE" || v)? null: ("单据完成时[" + it.getTitle() + "]不可为空")
+	}
+
+用gn取其它字段值；用it.getTitle()取当前字段标题。
+
+此外，还可以设置validType选项，它与easyui-validatebox组件兼容。示例：
+
+	{
+		required: true,
+		validType: "email"
+	}
+
+注意：validType与validate选项不可一起使用。
+
+@see .easyui-validatebox
  */
 WUI.m_enhanceFn[".wui-dialog-logic"] = function (jo) {
 	var jdlg = jo.closest(".wui-dialog");
@@ -3608,6 +3652,17 @@ function setDlgLogic(jdlg, name, logic)
 	var map = {};
 	var gn = jdlg.gn.bind(jdlg);
 	var onShowArr = [];
+
+	// 对话框上保持该数据
+	var logicData = jdlg.jdata().logicData;
+	if (logicData == null) {
+		logicData = jdlg.jdata().logicData = {
+			doInit: true,
+			data: null,
+			initFnArr: [] // {name, watch, onShowArr}
+		}
+	}
+
 	$.each(logic, function (k, v) {
 		if (/^show/.test(k)) {
 			// 只绑一次
@@ -3616,7 +3671,9 @@ function setDlgLogic(jdlg, name, logic)
 			map["show"] = true;
 			onShowArr.push(function (formMode, data) {
 				var val = calcVal("show", v, true, formMode, data, true);
-				gn(name).visible(val);
+				if (val !== undefined) {
+					gn(name).visible(val);
+				}
 			});
 		}
 		else if (/^disabled/.test(k)) {
@@ -3625,7 +3682,9 @@ function setDlgLogic(jdlg, name, logic)
 			map["disabled"] = true;
 			onShowArr.push(function (formMode, data) {
 				var val = calcVal("disabled", v, false, formMode, data);
-				gn(name).disabled(val);
+				if (val !== undefined) {
+					gn(name).disabled(val);
+				}
 			});
 		}
 		else if (/^readonly/.test(k)) {
@@ -3634,17 +3693,24 @@ function setDlgLogic(jdlg, name, logic)
 			map["readonly"] = true;
 			onShowArr.push(function (formMode, data) {
 				var val = calcVal("readonly", v, false, formMode, data);
-				gn(name).readonly(val);
+				if (val !== undefined) {
+					gn(name).readonly(val);
+				}
 			});
 		}
 		else if (/^value/.test(k)) {
 			if (map["value"])
 				return;
 			map["value"] = true;
-			onShowArr.push(function (formMode, data) {
+			onShowArr.push(function (formMode, data, isInit) {
+				// forSet模式初始化时不修改数据。
+				if (isInit && formMode == FormMode.forSet)
+					return;
 				var val = calcVal("value", v, undefined, formMode, data);
-				if (val !== undefined) {
-					gn(name).val(val);
+				if (val !== undefined && val !== false) {
+					var it = gn(name);
+					it.val(val);
+					it.getJo().trigger("change");
 				}
 			});
 		}
@@ -3662,11 +3728,65 @@ function setDlgLogic(jdlg, name, logic)
 				console.error("bad dialog logic for " + k + ": ", v);
 			}
 		}
-		else if (k == "validate" || k == "required") {
+		else if (k == "validate" || k == "required" || k == "validType") {
 			if (map["validate"])
 				return;
 			map["validate"] = true;
-			jdlg.on("validate", function (ev, formMode, data) {
+
+			// wui-subobj单独处理
+			if (jdlg.find(".wui-subobj-" + name).size() > 0) {
+				jdlg.on("validate", subobj_onValidate);
+				return;
+			}
+
+			// 集成validatebox组件(easyui的combo/combogrid/datebox等普通输入组件都是基于它)
+			var opt = {
+				required: logic.required,
+				validType: logic.validType,
+			}
+			if (logic.validate) {
+				// NOTE: 1. rule名即validType选项只能字母，不可包含数字，否则找不到规则! easyui-validatebox组件之坑(已fix)
+				// 2. 原easyui validatebox在值为空时不走验证，已修改源码，以便实现根据其它字段值动态判断是否必填的需求
+				opt.rules = {
+					v: {
+						validator: validator,
+						message: '验证失败'
+					}
+				};
+				opt.validType = 'v';
+			}
+
+			// 等待UDF组件加完（WUI.enhanceWithin调用完）再添加逻辑
+			setTimeout(function () {
+				var it = gn(name);
+				if (it.jcomboCall) { // combo系列单独处理，不能直接用validatebox
+					it.jcomboCall(opt);
+				}
+				else {
+					it.getJo().validatebox(opt);
+				}
+				// 标题上标记"*"表示必填
+				if (logic.required) {
+					it.getJo().closest("td").prev("td").addClass("required");
+				}
+			});
+
+			function validator() {
+				var it = gn(name);
+				if (! it.visible())
+					return;
+				var val = it.val();
+				if (logic.validate) {
+					var rv = logic.validate(val, it, gn);
+					if (typeof(rv) == "string") {
+						opt.rules.v.message = rv;
+						return false;
+					}
+				}
+				return true;
+			}
+
+			function subobj_onValidate(ev, formMode, data) {
 				if (formMode === FormMode.forFind)
 					return;
 				var it = gn(name);
@@ -3681,24 +3801,54 @@ function setDlgLogic(jdlg, name, logic)
 					return false;
 				}
 				if (logic.validate) {
-					var rv = logic.validate(val);
+					var rv = logic.validate(val, it, gn);
 					if (typeof(rv) == "string") {
-						app_alert(rv, "w");
+						app_alert(rv, "w", function () {
+							it.setFocus();
+						});
 						ev.stopImmediatePropagation();
 						return false;
 					}
 				}
-			});
+			}
 		}
 	});
 
 	if (onShowArr.length > 0) {
+		logicData.initFnArr.push({name: name, watch: logic.watch, onShowArr: onShowArr});
+	}
+	if (logicData.doInit) {
+		logicData.doInit = false;
+		// 对话框onShow时，所有setDlgLogic中show/value等逻辑按依赖顺序执行。
+		// 用于解决valueForAdd设置字段后，依赖它的字段能自动更新的问题
 		jdlg.on("show", function (ev, formMode, initData) {
-			onShowArr.forEach(function (fn) {
-				fn(formMode, initData);
-			});
+			logicData.data = $.extend(true, {}, initData);
+
+			// 按依赖顺序调用, callmap用于检查是否已调用
+			var callmap = [];
+			logicData.initFnArr.forEach(execLogic);
+
+			function execLogic(elem, idx) {
+				if (callmap[idx]) // 已执行标记
+					return;
+				callmap[idx] = true;
+				if (elem.watch) { // 先执行依赖项
+					elem.watch.split(',').forEach(function (depName) {
+						logicData.initFnArr.forEach(function (elem1, idx1) {
+							if (elem1.name == depName && !callmap[idx1]) {
+								execLogic(elem1, idx1);
+							}
+						});
+					});
+				}
+				elem.onShowArr.forEach(function (fn) {
+					fn(formMode, logicData.data, true);
+				});
+				$.extend(logicData.data, WUI.getFormData(jdlg, "all"));
+			}
 		});
 	}
+
 	if (logic.watch) {
 		var watchArr = logic.watch.split(',');
 		jdlg.on("change", onChange); // for input/select/my-combobox
@@ -3707,11 +3857,16 @@ function setDlgLogic(jdlg, name, logic)
 			var jo = $(ev.target);
 			var watchField = jo.gn().getName();
 			if (watchArr.indexOf(watchField) >= 0) {
-				var data = WUI.getFormData(jdlg, "all");
+				var data = $.extend(logicData.data, WUI.getFormData(jdlg, "all") );
 				var formMode = jdlg.jdata().mode;
+				if (jo.hasClass("my-combobox"))
+					eventData = jo.prop("selectedOptions")[0].chooseValue || {};
+				data["eventData_" + watchField] = eventData;
+				setTimeout(function () { // 清除临时数据
+					delete data["eventData_" + watchField];
+				}, 50);
+
 				if (logic.onWatch) {
-					if (jo.hasClass("my-combobox"))
-						eventData = jo.prop("selectedOptions")[0].chooseValue || {};
 					logic.onWatch(data, {
 						name: watchField,
 						formMode: formMode,
