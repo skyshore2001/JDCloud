@@ -79,8 +79,10 @@ git clone server-pc:src/jdcloud-ganlan
 <p>配置文件：找到 {mysql安装目录}/data/my.ini 补上以下配置：</p>
 <pre><code>[mysqld]
 character-set-server=utf8mb4
-lower_case_table_names=2</code></pre>
+lower_case_table_names=2
+sql_mode=</code></pre>
 <p>注意windows环境下须配置<code>lower_case_table_names=2</code>，我们的表名中有大小写，若不配置此项则表名全部为小写。</p>
+<p>新版本mysql默认设置sql_mode为严格模式等，导致字段长度超出、数据类型或格式不对时报错，为了兼容应设置<code>sql_mode=</code>。</p>
 <p>通过windows服务启动、停止mysql服务器。</p>
 <p>测试：使用客户端连接本地mysql服务。</p>
 <h3 id="浏览器及移动设备"><span class="header-section-number">1.3</span> 浏览器及移动设备</h3>

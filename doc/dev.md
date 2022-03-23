@@ -75,8 +75,11 @@ MySQL服务端不是必装的，自己学习的话可以安装一个，注意安
 	[mysqld]
 	character-set-server=utf8mb4
 	lower_case_table_names=2
+	sql_mode=
 
 注意windows环境下须配置`lower_case_table_names=2`，我们的表名中有大小写，若不配置此项则表名全部为小写。
+
+新版本mysql默认设置sql_mode为严格模式等，导致字段长度超出、数据类型或格式不对时报错，为了兼容应设置`sql_mode=`。
 
 通过windows服务启动、停止mysql服务器。
 
