@@ -1777,7 +1777,7 @@ function objarr2list(objarr, fields, sep, sep2)
 self.intSort = intSort;
 function intSort(a, b)
 {
-	return parseInt(a) - parseInt(b);
+	return (parseInt(a)||0) - (parseInt(b)||0);
 }
 
 /**
@@ -1791,7 +1791,7 @@ function intSort(a, b)
 self.numberSort = numberSort;
 function numberSort(a, b)
 {
-	return parseFloat(a) - parseFloat(b);
+	return (parseFloat(a)||0) - (parseFloat(b)||0);
 }
 
 /**
@@ -1925,7 +1925,8 @@ function parseValue(str)
 self.applyTpl = applyTpl;
 function applyTpl(tpl, data)
 {
-	return tpl.replace(/{([^{}]+)}/g, function(m0, m1) {
+	// 支持中文，不能直接用\w匹配
+	return tpl.replace(/{([^{}:,.]+)}/g, function(m0, m1) {
 		return data[m1];
 	});
 }
@@ -1978,16 +1979,22 @@ function kvList2Str(kv, sep, sep2)
 }
 
 /**
-@fn parseKvList(kvListStr, sep, sep2) -> kvMap
+@fn parseKvList(kvListStr, sep, sep2, doReverse?) -> kvMap
 
 解析key-value列表字符串，返回kvMap。
+
+- doReverse: 设置为true时返回反向映射
+
 示例：
 
 	var map = parseKvList("CR:新创建;PA:已付款", ";", ":");
 	// map: {"CR": "新创建", "PA":"已付款"}
+
+	var map = parseKvList("CR:新创建;PA:已付款", ";", ":", true);
+	// map: {"新创建":"CR", "已付款":"PA"}
 */
 self.parseKvList = parseKvList;
-function parseKvList(str, sep, sep2)
+function parseKvList(str, sep, sep2, doReverse)
 {
 	var map = {};
 	$.each(str.split(sep), function (i, e) {
@@ -1996,7 +2003,10 @@ function parseKvList(str, sep, sep2)
 		if (kv.length < 2) {
 			kv[1] = kv[0];
 		}
-		map[kv[0]] = kv[1];
+		if (!doReverse)
+			map[kv[0]] = kv[1];
+		else
+			map[kv[1]] = kv[0];
 	});
 	return map;
 }
@@ -2108,6 +2118,29 @@ function text2html(s, pics)
 	return ret;
 }
 
+/**
+@fn extendNoOverride(a, b, ...)
+
+	var a = {a: 1};
+	WUI.extendNoOverride(a, {b: 'aa'}, {a: 99, b: '33', c: 'bb'});
+	// a = {a: 1, b: 'aa', c: 'bb'}
+ */
+self.extendNoOverride = extendNoOverride;
+function extendNoOverride(target)
+{
+	if (!target)
+		return target;
+	$.each(arguments, function (i, e) {
+		if (i == 0 || !$.isPlainObject(e))
+			return;
+		$.each(e, function (k, v) {
+			if (target[k] === undefined)
+				target[k] = v;
+		});
+	});
+	return target;
+}
+
 }/*jdcloud common*/
 
 /**
@@ -2204,7 +2237,7 @@ self.assert(window.jQuery, "require jquery lib.");
 var mCommon = jdModule("jdcloud.common");
 
 /**
-@fn getFormData(jo)
+@fn getFormData(jo, doGetAll)
 
 取DOM对象中带name属性的子对象的内容, 放入一个JS对象中, 以便手工调用callSvr.
 
@@ -2219,6 +2252,14 @@ var mCommon = jdModule("jdcloud.common");
 		var ac = jf.attr("action");
 		callSvr(ac, fn, getFormData(jf));
 	});
+
+在dialog的onValidate/onOk回调中，由于在显示对话框时自动调用过setFormData，所以用getFormData只返回有修改变化的数据。如果要取所有数据可设置参数doGetAll=true:
+
+	var data = WUI.getFormData(jfrm, true);
+
+这也只返回非disabled的组件，如果包括disabled组件的值也需要，可以用
+
+	var data = WUI.getFormData(jfrm, "all");
 
 如果在jo对象中存在有name属性的file组件(input[type=file][name])，或指定了属性enctype="multipart/form-data"，则调用getFormData会返回FormData对象而非js对象，
 再调用callSvr时，会以"multipart/form-data"格式提交数据。一般用于上传文件。
@@ -2236,10 +2277,22 @@ var mCommon = jdModule("jdcloud.common");
 		<input name="pdf" type="file" accept="application/pdf">
 	</form>
 
+如果有多个同名组件（name相同，且非disabled状态），最终值将以最后组件为准。
+如果想要以数组形式返回所有值，应在名字上加后缀"[]"，示例：
+
+	行统计字段: <select name="gres[]" class="my-combobox fields"></select>
+	行统计字段2: <select name="gres[]" class="my-combobox fields"></select>
+	列统计字段: <select name="gres2" class="my-combobox fields"></select>
+	列统计字段2: <select name="gres2" class="my-combobox fields"></select>
+
+取到的结果示例：
+
+	{ gres: ["id", "name"], gres2: "name" }
+
 @see setFormData
  */
 self.getFormData = getFormData;
-function getFormData(jo)
+function getFormData(jo, doGetAll)
 {
 	var data = {};
 	var isFormData = false;
@@ -2250,15 +2303,15 @@ function getFormData(jo)
 	}
 	var orgData = jo.data("origin_") || {};
 	formItems(jo, function (ji, name, it) {
-		if (it.getDisabled(ji))
+		if (doGetAll != "all" && it.getDisabled())
 			return;
 		var orgContent = orgData[name];
 		if (orgContent == null)
 			orgContent = "";
-		var content = it.getValue(ji);
+		var content = it.getValue();
 		if (content == null)
 			content = "";
-		if (content !== String(orgContent)) // 避免 "" == 0 或 "" == false
+		if (doGetAll || content !== String(orgContent)) // 避免 "" == 0 或 "" == false
 		{
 			if (! isFormData) {
 				// URL参数支持数组，如`a[]=hello&a[]=world`，表示数组`a=["hello","world"]`
@@ -2313,7 +2366,7 @@ function getFormData_vf(jo)
 		var vname = WUI.getOptions(ji).jd_vField;
 		if (!vname)
 			return;
-		data[vname] = it.getValue_vf(ji);
+		data[vname] = it.getValue_vf();
 	});
 	return data;
 }
@@ -2322,7 +2375,6 @@ function getFormData_vf(jo)
 @fn formItems(jo, cb)
 
 表单对象遍历。对表单jo（实际可以不是form标签）下带name属性的控件，交给回调cb处理。
-可通过扩展`WUI.formItems[sel]`来为表单扩展其它类型控件，参考 `WUI.defaultFormItems`来查看要扩展的接口方法。
 
 注意:
 
@@ -2342,28 +2394,82 @@ function getFormData_vf(jo)
 	WUI.formItems(jdlg.find(".my-fixedField"), function (ji, name, it) {
 		var fixedVal = ...
 		if (fixedVal || fixedVal == '') {
-			it.setReadonly(ji, true);
+			it.setReadonly(true);
 			var forAdd = beforeShowOpt.objParam.mode == FormMode.forAdd;
 			if (forAdd) {
-				it.setValue(ji, fixedVal);
+				it.setValue(fixedVal);
 			}
 		}
 		else {
-			it.setReadonly(ji, false);
+			it.setReadonly(false);
 		}
 	});
 
-@key defaultFormItems
+@fn getFormItem(ji)
+
+获取对话框上一个组件的访问器。示例，设置名为orderId的组件值：
+
+	var ji = jdlg.find("[name=orderId]"); // 或者用 var ji = $(frm.orderId);
+	var it = WUI.getFormItem(ji);
+	it.setValue("hello"); // 类似于ji.val("hello")，但支持各种复杂组件
+
+
+还可以用更简洁的jo.gn，以及支持用链式风格的调用：
+
+	var it = jdlg.gn("orderId");
+	it.val("hello").disabled(true); // 等价于 it.setValue("hello");  it.setDisabled(true);
+
+@see jQuery.fn.gn(name?)
+
+@var getFormItemExt
+
+可通过扩展`WUI.getFormItemExt[新类型]`来为表单扩展其它类型控件。示例：
+
+	WUI.getFormItemExt["myinput"] = function (ji) {
+		if (ji.hasClass("myinput"))
+			return new MyInputFormItem(ji);
+	}
+	function MyInputFormItem(ji) {
+		WUI.FormItem.call(this, ji);
+	}
+	MyInputFormItem.prototype = $.extend(new WUI.FormItem(), {
+		getValue: function () {
+			return this.ji.val();
+		}
+	});
  */
 self.formItems = formItems;
-self.formItems["[name]"] = self.defaultFormItems = {
-	getName: function (jo) {
-		// !!! NOTE: 为避免控件处理两次，这里忽略easyui控件的值控件textbox-value。其它表单扩展控件也可使用该类。
-		if (jo.hasClass("textbox-value"))
-			return;
+self.getFormItemExt = {};
+self.getFormItem = getFormItem;
+function getFormItem(ji)
+{
+	var ret;
+	$.each(self.getFormItemExt, function (k, ext) {
+		var rv = ext(ji);
+		if (rv !== undefined) {
+			ret = rv;
+			return false;
+		}
+	});
+	return ret || new FormItem(ji);
+}
+
+self.FormItem = FormItem;
+function FormItem(ji) {
+	this.ji = ji;
+}
+
+// { ji }
+FormItem.prototype = {
+	getName: function () {
+		var jo = this.ji;
 		return jo.attr("name") || jo.prop("name");
 	},
-	getDisabled: function (jo) {
+	getJo: function () {
+		return this.ji;
+	},
+	getDisabled: function () {
+		var jo = this.ji;
 		var val = jo.prop("disabled");
 		if (val === undefined)
 			val = jo.attr("disabled");
@@ -2374,27 +2480,31 @@ self.formItems["[name]"] = self.defaultFormItems = {
 		}
 		return val;
 	},
-	setDisabled: function (jo, val) {
+	setDisabled: function (val) {
+		var jo = this.ji;
 		jo.prop("disabled", !!val);
 		if (val)
 			jo.attr("disabled", "disabled");
 		else
 			jo.removeAttr("disabled");
 	},
-	getReadonly: function (jo) {
+	getReadonly: function () {
+		var jo = this.ji;
 		var val = jo.prop("readonly");
 		if (val === undefined)
 			val = jo.attr("readonly");
 		return val;
 	},
-	setReadonly: function (jo, val) {
+	setReadonly: function (val) {
+		var jo = this.ji;
 		jo.prop("readonly", !!val);
 		if (val)
 			jo.attr("readonly", "readonly");
 		else
 			jo.removeAttr("readonly");
 	},
-	setValue: function (jo, val) {
+	setValue: function (val) {
+		var jo = this.ji;
 		var isInput = jo.is(":input");
 		if (val === undefined) {
 			if (isInput) {
@@ -2422,9 +2532,16 @@ self.formItems["[name]"] = self.defaultFormItems = {
 		}
 	},
 	getValue: function (jo) {
+		var jo = this.ji;
 		var val;
 		if (jo.is(":checkbox")) {
 			val = jo.prop("checked")? jo.val(): jo.attr("value-off");
+			if (val === "on")
+				val = 1;
+			/* NOTE: 复选框特别行为：如果不选则无值
+			if (val === undefined)
+				val = 0;
+			*/
 		}
 		else if (jo.is(":input")) {
 			val = jo.val();
@@ -2434,19 +2551,118 @@ self.formItems["[name]"] = self.defaultFormItems = {
 		}
 		return val;
 	},
-	// TODO: 用于find模式设置。搜索"设置find模式"/datetime
-	getShowbox: function (jo) {
-		return jo;
+	// 用于find模式设置。搜索"设置find模式"/datetime
+	getShowbox: function () {
+		return this.ji;
 	},
 
 	// 用于显示的虚拟字段值, 此处以select为例，适用于my-combobox
-	getValue_vf: function (jo) {
+	getValue_vf: function () {
+		var jo = this.ji;
 		var o = jo[0];
 		if (o.tagName == "SELECT")
-			return o.options[o.selectedIndex].innerText;
+			return o.selectedIndex >= 0 ? o.options[o.selectedIndex].innerText : '';
 		return this.getValue(jo);
+	},
+	getTitle: function () {
+		return this.ji.closest("td").prev("td").html();
+	},
+	setFocus: function () {
+		var j1 = this.getShowbox();
+		if (j1.is(":hidden")) {
+			selectTab(j1);
+		}
+		j1.focus();
+	},
+
+	// 链式接口
+	val: function (v) {
+		if (v === undefined)
+			return this.getValue();
+		this.setValue(v);
+		return this;
+	},
+	disabled: function (v) {
+		if (v === undefined)
+			return this.getDisabled();
+		this.setDisabled(v);
+		return this;
+	},
+	readonly: function (v) {
+		if (v === undefined)
+			return this.getReadonly();
+		this.setReadonly(v);
+		return this;
+	},
+	visible: function (v) {
+		var jp = this.ji.closest("tr,.wui-field");
+		if (v === undefined) {
+			return this.ji.css("display") != "none" && jp.css("display") != "none";
+			//return jp.is(":visible");
+		}
+		jp.toggle(!!v);
+		return this;
+	},
+	setOption: function (v) {
+		if (!$.isPlainObject(v))
+			return;
+		this.getJo().trigger("setOption", v);
+		return this;
+		// for: combo, subobj
+		//WUI.setOptions(ji, v);
 	}
 };
+
+// jo是tabs下的某个组件
+function selectTab(jo)
+{
+	var jtabs = jo.closest(".easyui-tabs");
+	if (jtabs.size() == 0)
+		return;
+	var idx = -1;
+	jtabs.find(">.tabs-panels>.panel").each(function (idx1) {
+		if (jo.closest(this).size() > 0) {
+			idx = idx1;
+			return true;
+		}
+	});
+	if (idx < 0)
+		return;
+	jtabs.tabs("select", idx);
+}
+
+/**
+@fn jQuery.fn.gn(name?)
+
+按名字访问组件（gn表示getElementByName），返回访问器（iterator），用于对各种组件进行通用操作。
+
+示例：
+
+	var it = jdlg.gn("orderId"); 
+	var v = it.val(); // 取值，相当于 jdlg.find("[name=orderId]").val(); 但兼容my-combobox, wui-combogrid, wui-subobj等复杂组件。
+	it.val(100); // 设置值
+	// it.val([100, "ORDR-100"]); // 对于combogrid, 可以传数组，同时设置value和text
+
+	var isVisible = it.visible(); // 取是否显示
+	it.visible(false); // 设置隐藏
+
+	var isDisabled = it.disabled();
+	it.disabled(true);
+
+	var isReadonly = it.readonly();
+	it.readonly(true);
+
+如果未指定name，则以jQuery对象本身作为组件返回访问器。所以也可以这样用：
+
+	var jo = jdlg.find("[name=orderId]");
+	var it = jo.gn(); // name可以省略，表示取自身
+	it.val(100);
+
+*/
+jQuery.fn.gn = function (name) {
+	var ji = name? this.find("[name=" + name + "],.wui-subobj-" + name): this;
+	return WUI.getFormItem(ji);
+}
 
 /*
 // 倒序遍历对象obj, 用法与$.each相同。
@@ -2464,24 +2680,21 @@ function eachR(obj, cb)
 }
 */
 
-function formItems(jo, cb)
+function formItems(jo, cb, sel)
 {
-	var doBreak = false;
-	$.each(self.formItems, function (sel, it) {
-		jo.filter(sel).add(jo.find(sel)).each (function () {
-			var ji = $(this);
-			var name = it.getName(ji);
-			if (! name)
-				return;
-			if (cb(ji, name, it) === false) {
-				doBreak = true;
-				return false;
-			}
-		});
-		if (doBreak)
+	if (sel == null)
+		sel = "[name]";
+	var jiList = jo.filter(sel).add(jo.find(sel));
+	jiList.each (function () {
+		var it = getFormItem($(this));
+		var name = it.getName();
+		if (! name)
+			return;
+		var ji = it.getJo(); // 原jquery对象, 一般与$(this)相同，但像combo这类可能不同
+		if (cb(ji, name, it) === false) {
 			return false;
+		}
 	});
-	return !doBreak;
 }
 
 /**
@@ -2547,7 +2760,7 @@ function setFormData(jo, data, opt)
 		var content = data[name];
 		if (opt1.setOnlyDefined && content === undefined)
 			return;
-		it.setValue(ji, content);
+		it.setValue(content);
 	});
 	jo.data("origin_", opt1.setOrigin? data: null);
 }
@@ -2559,6 +2772,9 @@ function setFormData(jo, data, opt)
 @param ajaxOpt 传递给$.ajax的额外选项。
 
 默认未指定ajaxOpt时，简单地使用添加script标签机制异步加载。如果曾经加载过，可以重用cache。
+
+注意：再次调用时是否可以从cache中取，是由服务器的cache-control决定的，在web和web/page目录下的js文件一般是禁止缓存的，再次调用时会从服务器再取，若文件无更改，服务器会返回304状态。
+这是因为默认我们使用Apache做服务器，在相应目录下.htaccess中配置有缓存策略。
 
 如果指定ajaxOpt，且非跨域，则通过ajax去加载，可以支持同步调用。如果是跨域，仍通过script标签方式加载，注意加载完成后会自动删除script标签。
 
@@ -2581,10 +2797,37 @@ function setFormData(jo, data, opt)
 		loadScript("http://oliveche.com/1.js", {async: false});
 		// 一旦跨域，选项{async:false}指定无效，不可立即使用1.js中定义的内容。
 
+示例：在菜单中加一项“工单工时统计”，动态加载并执行一个JS文件：
+store.html中设置菜单：
+
+				<a href="javascript:WUI.loadScript('page/mod_工单工时统计.js')">工单工时统计</a>
+	
+在`page/mod_工单工时统计.js`文件中写报表逻辑，`mod`表示一个JS模块文件，示例：
+
+	function show工单工时统计()
+	{
+		DlgReportCond.show(function (data) {
+			var queryParams = WUI.getQueryParam({createTm: [data.tm1, data.tm2]});
+			var url = WUI.makeUrl("Ordr.query", { res: 'id 工单号, code 工单码, createTm 生产日期, itemCode 产品编码, itemName 产品名称, cate2Name 产品系列, itemCate 产品型号, qty 数量, mh 理论工时, mh1 实际工时', pagesz: -1 });
+			WUI.showPage("pageSimple", "工单工时统计!", [url, queryParams, onInitGrid]);
+		});
+	}
+	show工单工时统计();
+
+如果JS文件修改了，点菜单时可以实时执行最新的内容。
+
 如果要动态加载script，且使用后删除标签（里面定义的函数会仍然保留），建议直接使用`$.getScript`，它等同于：
 
 	loadScript("1.js", {cache: false});
 
+**[小技巧]**
+
+在index.js/app.js等文件中写代码，必须刷新整个页面才能加载生效。
+可以先把代码写在比如 web/test.js 中，这样每次修改后不用大刷新，直接在chrome控制台上加载运行：
+
+	WUI.loadScript("test.js")
+
+等改好了再拷贝到真正想放置这块代码的地方。修改已有的框架中函数也可以这样来快速迭代。
 */
 self.loadScript = loadScript;
 function loadScript(url, fnOK, options)
@@ -2600,8 +2843,8 @@ function loadScript(url, fnOK, options)
 			success: fnOK,
 			url: url,
 			error: function (xhr, textStatus, err) {
-				console.log("*** loadScript fails for " + url);
-				console.log(err);
+				console.error("*** loadScript fails for " + url);
+				console.error(err);
 			}
 		}, options);
 
@@ -2612,7 +2855,7 @@ function loadScript(url, fnOK, options)
 	var script= document.createElement('script');
 	script.type= 'text/javascript';
 	script.src= url;
-	// script.async = !sync; // 不是同步调用的意思，参考script标签的async属性和defer属性。
+	script.async = false; // 用于确保执行的先后顺序. 动态创建的script其async值默认为true（因而可能后加载的先执行导致错误），而直接写页面里的script标签默认async为false. 注意该属性与异步加载文件无关，加载都是异步的。
 	script.onload = function () {
 		if (fnOK)
 			fnOK();
@@ -2620,10 +2863,82 @@ function loadScript(url, fnOK, options)
 	}
 	script.onerror = function () {
 		dfd_.reject();
-		console.log("*** loadScript fails for " + url);
+		console.error("*** loadScript fails for " + url);
 	}
 	document.head.appendChild(script);
 	return dfd_;
+}
+
+/**
+@fn evalOptions(_source, ctx?, errPrompt?)
+
+执行JS代码，返回JS对象，示例：
+
+	source='{a: 1, b:"hello", c: function () {} }'
+	前面允许有单行注释，如
+	source='// comment\n {a: 1, b:"hello", c: function () {} }'
+
+JS代码一般以花括号开头。在用于DOM属性时，也允许没有花括号的这种写法，如：
+
+	<div data-options="a:1,b:'hello',c:true"></div>
+
+上例可返回 `{a:1, b:'hello', c:true}`.
+
+也支持各种表达式及函数调用，如：
+
+	<div data-options="getSomeOption()"></div>
+
+更复杂的，如果代码不只是一个选项，前面还有其它JS语句，则返回最后一行语句的值，
+最后一行可以是变量、常量、函数调用等，但不可以是花括号开头的选项，对选项须用括号包起来：
+
+	function hello() { }
+	({a: 1, b:"hello", c: hello })
+
+或：
+
+	function hello() { }
+	var ret={a: 1, b:"hello", c: hello }
+	ret
+
+传入的参数变量ctx可以在代码中使用，用于框架与扩展代码的交互，如：
+
+	{a: 1, b:"hello", c: ctx.fn1() }
+
+执行出错时错误显示在控制台。调用者可回调处理错误。
+
+	evalOptions(src, null, function (ex) {
+		app_alert("文件" + url + "出错: " + ex);
+	});
+
+注意：受限于浏览器，若使用`try { eval(str) } catch(ex) {}` 结构会导致原始的错误行号丢失，
+为了避免大量代码中有错误时调试困难，在大于1行代码时，不使用try-catch，而是直接抛出错误。
+ */
+self.evalOptions = evalOptions;
+function evalOptions(_source, ctx, onError)
+{
+	// "a:1, b:'hello'"
+	if (/^\w+:/.test(_source)) {
+		_source = "({" + _source + "})";
+	}
+	// "{a:1, b:'hello'}" 且前面可以有单行注释
+	else if (/^(\s*\/\/[^\n]*\n)*\s*\{/.test(_source)) {
+		_source = "(" + _source + ")";
+	}
+	if (_source.indexOf("\n") > 0)
+		return eval(_source);
+
+	try {
+		return eval(_source);
+	}
+	catch (ex) {
+		console.error(ex);
+		if (onError) {
+			onError(ex);
+		}
+		else {
+			app_alert("代码错误: " + ex, "e");
+		}
+	}
 }
 
 /**
@@ -2647,6 +2962,8 @@ function loadScript(url, fnOK, options)
 	}
 
 如果不处理结果, 则该函数与$.getScript效果类似.
+
+@see evalOptions
  */
 self.loadJson = loadJson;
 function loadJson(url, fnOK, options)
@@ -2655,7 +2972,9 @@ function loadJson(url, fnOK, options)
 		dataType: "text",
 		jdFilter: false,
 		success: function (data) {
-			val = eval("(" + data + ")");
+			val = self.evalOptions(data, null, function (ex) {
+				app_alert("文件" + url + "出错: " + ex, "e");
+			});
 			fnOK.call(this, val);
 		}
 	}, options);
@@ -3064,42 +3383,6 @@ function compressImg(fileObj, cb, opt)
 }
 
 /**
-@fn getDataOptions(jo, defVal?)
-@key data-options
-
-读取jo上的data-options属性，返回JS对象。例如：
-
-	<div data-options="a:1,b:'hello',c:true"></div>
-
-上例可返回 `{a:1, b:'hello', c:true}`.
-
-也支持各种表达式及函数调用，如：
-
-	<div data-options="getSomeOption()"></div>
-
-@see getOptions
- */
-self.getDataOptions = getDataOptions;
-function getDataOptions(jo, defVal)
-{
-	var optStr = jo.attr("data-options");
-	var opts;
-	try {
-		if (optStr != null) {
-			if (/^\w+:/.test(optStr)) {
-				opts = eval("({" + optStr + "})");
-			}
-			else {
-				opts = eval("(" + optStr + ")");
-			}
-		}
-	}catch (e) {
-		alert("bad data-options: " + optStr);
-	}
-	return $.extend({}, defVal, opts);
-}
-
-/**
 @fn triggerAsync(jo, ev, paramArr)
 
 触发含有异步操作的事件，在异步事件完成后继续。兼容同步事件处理函数，或多个处理函数中既有同步又有异步。
@@ -3158,6 +3441,107 @@ $.Deferred = function () {
 	return ret;
 }
 
+// 返回筋斗云后端query接口可接受的cond条件。可能会修改cond(如果它是数组)
+function appendCond(cond, cond1)
+{
+	if (!cond) {
+		if ($.isArray(cond1))
+			return $.extend(true, [], cond1);
+		if ($.isPlainObject(cond1))
+			return $.extend(true, {}, cond1);
+		return cond1;
+	}
+	if (!cond1)
+		return cond;
+
+	if ($.isArray(cond)) {
+		cond.push(cond1);
+	}
+	else if (typeof(cond) == "string" && typeof(cond1) == "string") {
+		cond += " AND (" + cond1 + ")";
+	}
+	else {
+		cond = [cond, cond1];
+	}
+	return cond;
+}
+
+// 类似$.extend，但对cond做合并而不是覆盖处理. 将修改并返回target
+self.extendQueryParam = extendQueryParam;
+function extendQueryParam(target, a, b)
+{
+	var cond;
+	$.each(arguments, function (i, e) {
+		if (i == 0) {
+			cond = target.cond;
+		}
+		else if ($.isPlainObject(e)) {
+			cond = appendCond(cond, e.cond);
+			$.extend(target, e);
+		}
+	});
+	if (cond) {
+		target.cond = cond;
+	}
+	return target;
+}
+
+/**
+@fn makeTree(arr, idField="id", fatherIdField="fatherId", childrenField="children")
+
+将array转成tree. 注意它会修改arr（添加children属性），但返回新的数组。
+
+	var ret = WUI.makeTree([
+		{id: 1},
+		{id: 2, fatherId: 1},
+		{id: 3, fatherId: 2},
+		{id: 4, fatherId: 1}
+	]);
+
+结果：
+
+	ret = [
+		{id: 1, children:  [
+			{id: 2, fatherId: 1, children:  [
+				{id: 3, fatherId: 2},
+			],
+			{id: 4, fatherId: 1}
+		]
+	]
+ */
+self.makeTree = makeTree;
+function makeTree(arr, idField, fatherIdField, childrenField)
+{
+	if (idField == null)
+		idField = "id";
+	if (fatherIdField == null)
+		fatherIdField = "fatherId";
+	if (childrenField == null)
+		childrenField = "children";
+	var ret = [];
+	$.each(arr, function (i, e) {
+		var fid = e[fatherIdField];
+		if (fid == null) {
+			ret.push(e);
+			return;
+		}
+		var found = false;
+		$.each(arr, function (i1, e1) {
+			if (fid == e1[idField]) {
+				if (e1[childrenField] == null) {
+					e1[childrenField] = [];
+				}
+				e1[childrenField].push(e);
+				found = true;
+				return false;
+			}
+		});
+		if (! found)
+			ret.push(e);
+	});
+	return ret;
+}
+
 }
 // ====== WEBCC_END_FILE commonjq.js }}}
 
@@ -3198,31 +3582,22 @@ window.E_ABORT=-100;
 
 	<div mui-initfn="initMyPage"><div>
 
+@see evalOptions
 */
 self.evalAttr = evalAttr;
 function evalAttr(jo, name, ctx)
 {
 	var val = jo.attr(name);
 	if (val) {
-		if (val[0] != '{' && val.indexOf(":")>0) {
-			val1 = "({" + val + "})";
-		}
-		else {
-			val1 = "(" + val + ")";
-		}
-		try {
-			val = eval(val1);
-		}
-		catch (ex) {
-			self.app_alert("属性`" + name + "'格式错误: " + val, "e");
-			val = null;
-		}
+		val = self.evalOptions(val, ctx, function (ex) {
+			self.app_alert("属性`" + name + "'格式错误: <br>" + val + "<br>" + ex, "e");
+		});
 	}
 	return val;
 }
 
 /*
-如果逻辑页中的css项没有以"#{pageId}"开头，则自动添加：
+如果css项没有以指定selector开头(示例：移动端页面"#page1", 管理端页面".pageX1", 管理端对话框"#dlgX1")，则自动添加selector限定：
 
 	.aa { color: red} .bb p {color: blue}
 	.aa, .bb { background-color: black }
@@ -3244,12 +3619,17 @@ function evalAttr(jo, name, ctx)
 		}
 		
 - 不处理"@"开头的选择器，如"media", "@keyframes"等。
+- 特定情况下，可以指定自身，如：
+
+		#page1 {
+		}
+		#page1 > .list {
+		}
+
 */
 self.ctx.fixPageCss = fixPageCss;
 function fixPageCss(css, selector)
 {
-	var prefix = selector + " ";
-
 	var level = 1;
 	var css1 = css.replace(/\/\*(.|\s)*?\*\//g, '')
 	.replace(/([^{}]*)([{}])/g, function (ms, text, brace) {
@@ -3262,9 +3642,14 @@ function fixPageCss(css, selector)
 
 		// level=1
 		return ms.replace(/((?:^|,)\s*)([^,{}]+)/g, function (ms, ms1, sel) { 
-			if (sel.startsWith(prefix) || sel[0] == '@')
+			if (sel[0] == '@')
 				return ms;
-			return ms1 + prefix + sel;
+			if (sel.startsWith(selector)) {
+				var ch = sel.substr(selector.length, 1);
+				if (ch == '' || ch == ' ' || ch == '.' || ch == '#' || ch == ':' || ch == '>' || ch == '+')
+					return ms;
+			}
+			return ms1 + selector + ' ' + sel;
 		});
 	});
 	return css1;
@@ -3304,9 +3689,17 @@ function setOnError()
 {
 	var fn = window.onerror;
 	window.onerror = function (msg, script, line, col, errObj) {
+		// 出错后尝试恢复callSvr变量
+		if ($.active || self.isBusy) {
+			setTimeout(function () {
+				$.active = 0;
+				self.isBusy = 0;
+				self.hideLoading();
+			}, 1000);
+		}
 		if (fn && fn.apply(this, arguments) === true)
 			return true;
-		if (errObj instanceof DirectReturn || /abort$/.test(msg) || (!script && !line))
+		if (errObj instanceof DirectReturn || /abort$/.test(msg))
 			return true;
 		if (self.options.skipErrorRegex && self.options.skipErrorRegex.test(msg))
 			return true;
@@ -3319,12 +3712,6 @@ function setOnError()
 		if (self.syslog)
 			self.syslog("fw", "ERR", content);
 		app_alert(msg, "e");
-		// 出错后尝试恢复callSvr变量
-		setTimeout(function () {
-			$.active = 0;
-			self.isBusy = 0;
-			self.hideLoading();
-		}, 1000);
 	}
 }
 setOnError();
@@ -3371,23 +3758,36 @@ function enhanceWithin(jp)
 第一次调用，根据jo上设置的data-options属性及指定的defVal初始化，或为`{}`。
 存到jo.prop("muiOptions")上。之后调用，直接返回该属性。
 
-@see getDataOptions
+@see evalAttr
 */
 self.getOptions = getOptions;
 function getOptions(jo, defVal)
 {
 	var opt = jo.prop("muiOptions");
 	if (opt === undefined) {
-		opt = self.getDataOptions(jo, defVal);
+		opt = $.extend({}, defVal, self.evalAttr(jo, "data-options"));
 		jo.prop("muiOptions", opt);
 	}
+	else if ($.isPlainObject(defVal)) {
+		$.each(defVal, function (k, v) {
+			if (opt[k] === undefined)
+				opt[k] = v;
+		});
+	}
 	return opt;
+}
+
+self.setOptions = setOptions;
+function setOptions(jo, val)
+{
+	if ($.isPlainObject(val))
+		jo.prop("muiOptions", val);
 }
 
 //}}}
 
 // 参考 getQueryCond中对v各种值的定义
-function getexp(k, v)
+function getexp(k, v, hint)
 {
 	if (typeof(v) == "number")
 		return k + "=" + v;
@@ -3402,7 +3802,7 @@ function getexp(k, v)
 	}
 	else if (v.indexOf("*") >= 0 || v.indexOf("%") >= 0) {
 		v = v.replace(/[*]/g, "%");
-		op = " like ";
+		op = " LIKE ";
 	}
 	v = $.trim(v);
 
@@ -3414,19 +3814,19 @@ function getexp(k, v)
 	}
 	if (v === "empty")
 		v = "";
-	var doFuzzy = self.options.fuzzyMatch && (k!="id" && k.substr(-2)!="Id");
-	if (doFuzzy || v.length == 0 || v.match(/\D/) || v[0] == '0') {
-		v = v.replace(/'/g, "\\'");
-		if (doFuzzy && op == "=" && v.length>0) {
-			op = " like ";
-			v = "%" + v + "%";
-		}
+
+	var isId = (k=="id" || k.substr(-2)=="Id");
+	if (isId && v.match(/^\d+$/))
+		return k + op + v;
+	var doFuzzy = self.options.fuzzyMatch && op == "=" && !(hint == "e"); // except enum
+	if (doFuzzy) {
+		op = " LIKE ";
+		v = "%" + v + "%";
+	}
 // 		// ???? 只对access数据库: 支持 yyyy-mm-dd, mm-dd, hh:nn, hh:nn:ss
 // 		if (!is_like && v.match(/^((19|20)\d{2}[\/.-])?\d{1,2}[\/.-]\d{1,2}$/) || v.match(/^\d{1,2}:\d{1,2}(:\d{1,2})?$/))
 // 			return op + "#" + v + "#";
-		return k + op + "'" + v + "'";
-	}
-	return k + op + v;
+	return k + op + Q(v);
 }
 
 /**
@@ -3492,12 +3892,15 @@ function getexp(k, v)
 (v5.5) 支持在key中包含查询提示。如"code/s"表示不要自动猜测数值区间或日期区间。
 比如输入'126231-191024'时不会当作查询126231到191024的区间。
 
+(v6) 日期、时间字段查询时，可使用`WUI.getTmRange`函数支持的时间区间如"今天"，"本周"，"本月", "今年", "近3天(小时|周|月|季度|年)”，"前3天(小时|周|月|季度|年)”等。
+
 @see wui-find-hint
 */
 self.queryHint = "查询示例\n" +
 	"文本：\"王小明\", \"王*\"(匹配开头), \"*上海*\"(匹配部分)\n" +
 	"数字：\"5\", \">5\", \"5-10\", \"5-10,12,18\"\n" +
-	"时间：\">=2017-10-1\", \"<2017-10-1 18:00\", \"2017-10\"(10月份区间), \"2017-10-01~2017-11-01\"(10月份区间)\n" +
+	"时间：\">=2017-10-1\", \"<2017-10-1 18:00\", \"2017-10\"(10月), \"2017-7-1~2017-10-1\"(7-9月即3季度)\n" +
+	'支持"今天"，"本周"，"本月", "今年", "近3天(小时|周|月|季度|年)”，"前3天(小时|周|月|季度|年)"等。\n' + 
 	"高级：\"!5\"(排除5),\"1-10 and !5\", \"王*,张*\"(王某或张某), \"empty\"(为空), \"0,null\"(0或未设置)\n";
 
 self.getQueryCond = getQueryCond;
@@ -3531,26 +3934,12 @@ function getQueryCond(kvList)
 				condArr.push(k + "<'" + v[1] + "'");
 			return;
 		}
-		var hint = null;
-		var k1 = k.split('/');
-		if (k1.length > 1) {
-			k = k1[0];
-			hint = k1[1];
-		}
-
-		if ($.isArray(v)) {
-			if (v[0])
-				condArr.push(k + ">='" + v[0] + "'");
-			if (v[1])
-				condArr.push(k + "<'" + v[1] + "'");
-			return;
-		}
 		var arr = v.toString().split(/\s+(and|or)\s+/i);
 		var str = '';
 		var bracket = false;
 		// NOTE: 根据字段名判断时间类型
-		var isTm = hint == "tm" || /(Tm|^tm)\d*$/.test(k);
-		var isDt = hint == "dt" || /(Dt|^dt)\d*$/.test(k);
+		var isTm = hint == "tm" || /(Tm|^tm|时间)\d*$/.test(k);
+		var isDt = hint == "dt" || /(Dt|^dt|日期)\d*$/.test(k);
 		$.each(arr, function (i, v1) {
 			if ( (i % 2) == 1) {
 				str += ' ' + v1.toUpperCase() + ' ';
@@ -3591,6 +3980,10 @@ function getQueryCond(kvList)
 							str1 += "(" + k + ">='" + dt1 + "' AND " + k + "<'" + dt2 + "')";
 						}
 					}
+					else if (mt = self.getTmRange(v2)) {
+						str1 += "(" + k + ">='" + mt[0] + "' AND " + k + "<'" + mt[1] + "')";
+						isHandled = true;
+					}
 				}
 				if (!isHandled && hint != "s") {
 					// "2018-5-1~2018-10-1"
@@ -3610,7 +4003,7 @@ function getQueryCond(kvList)
 					}
 				}
 				if (!isHandled) {
-					str1 += getexp(k, v2);
+					str1 += getexp(k, v2, hint);
 				}
 			});
 			if (bracket2)
@@ -3697,6 +4090,23 @@ function doSpecial(jo, filter, fn, cnt, interval)
 		fn.call(this, ev);
 	});
 }
+
+/**
+@fn execCopy(text)
+
+复制到剪贴板。
+*/
+self.execCopy = execCopy;
+function execCopy(text)
+{
+	$(window).one("copy", function (ev) {
+		ev.originalEvent.clipboardData.setData('text/plain', text);
+		app_show("已复制到剪贴板，按Ctrl-V粘贴。");
+		return false;
+	});
+	document.execCommand("copy");
+}
+
 }
 // vi: foldmethod=marker
 // ====== WEBCC_END_FILE app.js }}}
@@ -3913,18 +4323,34 @@ function leaveWaiting(ctx)
 			-- m_silentCall;
 		if ($.active < 0)
 			$.active = 0;
-		if ($.active-m_silentCall <= 0 && self.isBusy && m_manualBusy == 0) {
-			self.isBusy = 0;
-			var tv = new Date() - m_tmBusy;
-			m_tmBusy = 0;
-			console.log("idle after " + tv + "ms");
+		// 一直等到不忙，避免callSvr/$.ajax混用导致无法hideLoading
+		// 注意：一旦在callSvc回调中异常出错，会在WUI.setOnError中处理($.active=0)，避免一直显示加载。
+		loopDo(function () {
+			if ($.active-m_silentCall > 0 || m_manualBusy != 0)
+				return;
+			if (self.isBusy) {
+				self.isBusy = 0;
+				var tv = new Date() - m_tmBusy;
+				m_tmBusy = 0;
+				console.log("idle after " + tv + "ms");
 
-			// handle idle
-			self.hideLoading();
+				// handle idle
+				self.hideLoading();
+				$(document).trigger("idle");
+			}
 // 			if ($.mobile)
 // 				$.mobile.loading("hide");
-		}
+			return true;
+		});
 	});
+}
+
+// fn()返回true时完成，否则反复执行
+function loopDo(fn)
+{
+	if (fn())
+		return;
+	setTimeout(loopDo.bind(this, fn), 50);
 }
 
 function defAjaxErrProc(xhr, textStatus, e)
@@ -3990,8 +4416,11 @@ function defDataProc(rv)
 			if (g_data.mockMode)
 				modeStr = "测试模式+模拟模式";
 		}
-		if (modeStr)
-			self.app_alert(modeStr, {timeoutInterval:2000});
+		if (modeStr) {
+			self.dfdLogin.then(function () {
+				self.app_alert(modeStr, {timeoutInterval:2000});
+			});
+		}
 	}
 
 	try {
@@ -4033,7 +4462,10 @@ function defDataProc(rv)
 			return rv[1];
 		}
 		ctx.dfd && setTimeout(function () {
-			ctx.dfd.reject.call(that, rv[1]);
+			if (!that.noex)
+				ctx.dfd.reject.call(that, rv[1]);
+			else
+				ctx.dfd.resolve.call(that, false);
 		});
 
 		if (this.noex)
@@ -4138,7 +4570,7 @@ function makeUrl(action, params)
 			action = action[0] + "." + action[1];
 		}
 	}
-	else {
+	else if (action) {
 		var m = action.match(/^(\w+):(\w.*)/);
 		if (m) {
 			ext = m[1];
@@ -4147,6 +4579,9 @@ function makeUrl(action, params)
 		else {
 			ext = "default";
 		}
+	}
+	else {
+		throw "makeUrl error: no action";
 	}
 
 	// 有makeUrl属性表示已调用过makeUrl
@@ -4210,6 +4645,9 @@ function makeUrl(action, params)
 		params._app = self.options.appName;
 	if (g_args._debug)
 		params._debug = g_args._debug;
+	if (g_args.phpdebug)
+		params.XDEBUG_SESSION_START = 1;
+
 	var ret = mCommon.appendParam(url, $.param(params));
 	return makeUrlObj(ret);
 
@@ -4605,7 +5043,9 @@ callSvr扩展示例：
 		}
 	}
 
-## jQuery的$.Deferred兼容Promise接口
+## ES6支持：jQuery的$.Deferred兼容Promise接口 / 使用await
+
+支持Promise/Deferred编程风格:
 
 	var dfd = callSvr("...");
 	dfd.then(function (data) {
@@ -4617,6 +5057,24 @@ callSvr扩展示例：
 	.finally(...)
 
 支持catch/finally等Promise类接口。接口逻辑失败时，dfd.reject()触发fail/catch链。
+
+支持await编程风格，上例可写为：
+
+	// 使用await时callSvr调用失败是无法返回的，加{noex:1}选项可让失败时返回false
+	var rv = callSvr("...", $.noop, null, {noex:1});
+	if (rv === false) {
+		// 失败逻辑 dfd.catch. 取错误信息用WUI.lastError={ac, tm, tv, ret}
+		console.log(WUI.lastError.ret)
+	}
+	else {
+		// 成功逻辑 dfd.then
+	}
+	// finally逻辑
+
+示例：
+
+	let rv = await callSvr("Ordr.query", {res:"count(*) cnt", fmt:"one"})
+	let cnt = rv.cnt
 
 ## 直接取json类文件
 
