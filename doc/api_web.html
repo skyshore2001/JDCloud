@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2022-03-10</div>
+<div>最后更新：2022-03-24</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -105,6 +105,7 @@ code {
 <p><a href="#ListOptions">ListOptions (var)</a></p>
 <p><a href="#ObjLog">ObjLog (module)</a></p>
 <p><a href="#PAGE_FILTER">PAGE_FILTER (key)</a></p>
+<p><a href="#PageHeaderMenu">PageHeaderMenu (var)</a></p>
 <p><a href="#Plugins">Plugins (class)</a></p>
 <p><a href="#Plugins.exists">Plugins.exists (fn)</a></p>
 <p><a href="#Plugins.list">Plugins.list (fn)</a></p>
@@ -168,6 +169,7 @@ code {
 <p><a href="#dlgReportCond">dlgReportCond (module)</a></p>
 <p><a href="#doFind">doFind (fn)</a></p>
 <p><a href="#doSpecial">doSpecial (fn)</a></p>
+<p><a href="#dupDlg">dupDlg (fn)</a></p>
 <p><a href="#easyui-tabs">easyui-tabs (key)</a></p>
 <p><a href="#enhanceWithin">enhanceWithin (fn)</a></p>
 <p><a href="#enterWaiting">enterWaiting (fn)</a></p>
@@ -176,6 +178,7 @@ code {
 <p><a href="#event-beforeshow">event-beforeshow (key)</a></p>
 <p><a href="#event-create">event-create (key)</a></p>
 <p><a href="#event-dg_toolbar">event-dg_toolbar (key)</a></p>
+<p><a href="#event-duplicate">event-duplicate (key)</a></p>
 <p><a href="#event-initdata">event-initdata (key)</a></p>
 <p><a href="#event-loaddata">event-loaddata (key)</a></p>
 <p><a href="#event-pagecreate,pageshow,pagedestroy">event-pagecreate,pageshow,pagedestroy (key)</a></p>
@@ -186,6 +189,7 @@ code {
 <p><a href="#example-dialog">example-dialog (key)</a></p>
 <p><a href="#example-dialog-event">example-dialog-event (key)</a></p>
 <p><a href="#example-upload">example-upload (key)</a></p>
+<p><a href="#execCopy">execCopy (fn)</a></p>
 <p><a href="#extendNoOverride">extendNoOverride (fn)</a></p>
 <p><a href="#formItems">formItems (fn)</a></p>
 <p><a href="#formatter">formatter (var)</a></p>
@@ -271,6 +275,7 @@ code {
 <p><a href="#rs2Array">rs2Array (fn)</a></p>
 <p><a href="#rs2Hash">rs2Hash (fn)</a></p>
 <p><a href="#rs2MultiHash">rs2MultiHash (fn)</a></p>
+<p><a href="#saveDlg">saveDlg (fn)</a></p>
 <p><a href="#setApp">setApp (fn)</a></p>
 <p><a href="#setCookie">setCookie (fn)</a></p>
 <p><a href="#setDateBox">setDateBox (fn)</a></p>
@@ -287,8 +292,8 @@ code {
 <p><a href="#showDlgQuery">showDlgQuery (fn)</a></p>
 <p><a href="#showLoading">showLoading (fn)</a></p>
 <p><a href="#showObjDlg">showObjDlg (fn)</a></p>
-<p><a href="#showPage">showPage (fn)</a></p>
 <p><a href="#showPage">showPage (alias)</a></p>
+<p><a href="#showPage">showPage (fn)</a></p>
 <p><a href="#tabClose">tabClose (fn)</a></p>
 <p><a href="#tabMain">tabMain (var)</a></p>
 <p><a href="#text2html">text2html (fn)</a></p>
@@ -2135,6 +2140,9 @@ self.reloadDialog(true);</p>
 <p>连续3次点击对话框中的字段标题，触发查询：</p>
 <pre><code>WUI.doSpecial(jdlg, ".wui-form-table td", fn, 3);</code></pre></div>
 <div class="block">
+<h2 id="execCopy">@fn execCopy(text)</h2>
+<p>复制到剪贴板。</p></div>
+<div class="block">
 <h2 id="lastError">@var lastError = ctx</h2>
 <p>出错时，取出错调用的上下文信息。</p>
 <p>ctx: {ac, tm, tv, ret}</p>
@@ -2788,7 +2796,23 @@ WUI.showPage("pageEmployee", {title: "非管理员", pageFilter:{cond: {perms:"!
 <p>则调用getPageFilter(jpage, &quot;type&quot;)时，仅当第1种才返回&quot;A&quot;；<br />
 其它几种的cond值要么不是对象，要么不是相等条件，均返回null。</p></div>
 <div class="block">
+<h2 id="saveDlg">@fn saveDlg(jdlg, noCloseDlg=false)</h2>
+<p>对话框保存，相当于点击确定按钮。如果noCloseDlg=true，则不关闭对话框（即“应用”保存功能）。</p></div>
+<div class="block">
 <h2 id="closeDlg">@fn closeDlg(jdlg)</h2></div>
+<div class="block">
+<h2 id="dupDlg">@fn dupDlg(jdlg)</h2>
+<p>复制并添加对象。<br />
+对象对话框在更新模式下，按Ctrl-D可复制当前对象，进入添加模式。</p>
+<p>支持对子表进行复制，注意仅当子表是允许添加的才会被复制（wui-subobj组件，且设置了valueField和dlg选项）。<br />
+TODO 由于子表支持懒加载，目前有个限制，如果子表尚未加载则无法复制；可手工点击tab页让它加载才能复制。</p>
+<p class="key"><strong>@key <a id="event-duplicate">event-duplicate</a></strong> (ev, data) 对话框上复制添加对象</p>
+<p>如果要定制添加行为，可在对话框的duplicate事件中修改数据。示例：</p>
+<pre><code>jdlg.on("duplicate", function (ev, data) {
+    // 可修改data, 若有子表则是数组字段
+    // 主表id，子表id及关联主表的id将会自动删除，此处无须处理
+    console.log(data);
+});</code></pre></div>
 <div class="block">
 <h2 id="isSmallScreen">@fn isSmallScreen</h2>
 <p>判断是否为手机小屏显示. 宽度低于640当作小屏处理.</p></div>
@@ -3054,6 +3078,16 @@ WUI.showDlg(jdlg, {
             WUI.closeDlg(jdlg);
         }, data);
     }
+});</code></pre>
+<p>可以没有title/dom，只用hint用于逻辑说明，示例:</p>
+<pre><code>var meta = [
+    {hint:'查询&lt;code&gt;工单实际开工日期&lt;/code&gt;在指定日期区间的所有受EC到影响的工件'},
+    {title: "序列号", dom: '&lt;input name="code"&gt;'},
+    ...
+];
+WUI.showDlg("#dlgReportCond", {
+    meta: meta,
+    onOk: function (data) { ... }
 });</code></pre>
 <p class="see"><strong>@see <a href="#showDlgByMeta">showDlgByMeta</a></strong> </p>
 <p class="see"><strong>@see <a href="#showObjDlg">showObjDlg</a></strong> </p></div>
@@ -3918,6 +3952,14 @@ $(main);</code></pre>
 var idx = WUI.tabMain.tabs("getTabIndex", jtab);
 WUI.tabMain.tabs("close", idx);</code></pre>
 <p>注：要关闭当前Tab，可以直接用WUI.tabClose().</p></div>
+<div class="block">
+<h2 id="PageHeaderMenu">@var PageHeaderMenu</h2>
+<p>页面上方标题栏的右键菜单</p>
+<p>扩展示例：</p>
+<pre><code>WUI.PageHeaderMenu.items.push('&lt;div id="reloadUiMeta"&gt;刷新Addon&lt;/div&gt;');
+WUI.PageHeaderMenu.reloadUiMeta = function () {
+    UiMeta.reloadUiMeta();
+}</code></pre></div>
 <div class="block">
 <h2 id="jquery-mycombobox">@module jquery-mycombobox</h2><div class="toc"><p style="margin-left:0em"><a href="#jquery-mycombobox-1 用url选项加载下拉列表">1 用url选项加载下拉列表</a></p>
 <p style="margin-left:0em"><a href="#jquery-mycombobox-2 用jdEnumMap选项指定下拉列表">2 用jdEnumMap选项指定下拉列表</a></p>
@@ -5343,6 +5385,8 @@ WUI.showDlgChart(callSvr("Ordr.query", {
 <div class="block">
 <h2 id="setDlgLogic">@fn setDlgLogic(jdlg, name, logic)</h2><div class="toc"><p style="margin-left:0em"><a href="#setDlgLogic-1 readonly-是否只读,disabled-是否禁用,show-是否显示,value-设置值">1 readonly-是否只读,disabled-是否禁用,show-是否显示,value-设置值</a></p>
 <p style="margin-left:0em"><a href="#setDlgLogic-2 watch-监控变化">2 watch-监控变化</a></p>
+<p style="margin-left:2em"><a href="#setDlgLogic-2.1 从下拉列表中取值">2.1 从下拉列表中取值</a></p>
+<p style="margin-left:2em"><a href="#setDlgLogic-2.2 使用onWatch选项">2.2 使用onWatch选项</a></p>
 <p style="margin-left:0em"><a href="#setDlgLogic-3 动态设置combogrid/subobj等组件选项">3 动态设置combogrid/subobj等组件选项</a></p>
 <p style="margin-left:0em"><a href="#setDlgLogic-4 提交前验证">4 提交前验证</a></p>
 </div>
@@ -5358,20 +5402,30 @@ WUI.setDlgLogic(jdlg, "orderId", {
 <pre><code>&lt;input name="orderId" class="wui-dialog-logic" data-options="readonlyForSet:true"&gt;</code></pre>
 <p>如果是叠加在wui-combogrid组件上：</p>
 <pre><code>&lt;input name="orderId" class="wui-combogrid wui-dialog-logic" data-options="$.extend(ListOptions.UserGrid(), readonlyForSet:true)"&gt;</code></pre>
-<p>logic中支持readonly选项，也支持readonlyForAdd/readonlyForSet这些特定模式的选项，它们既可以设置为一个值，也可以是一个函数（或lambda）。<br />
-如果同时指定了readonly和readonlyForAdd选项，则当添加模式时优先用readonlyForAdd选项，其它模式也类似。</p>
+<p>logic中支持readonly选项，也支持readonlyForAdd/readonlyForSet这些特定模式的选项，它们既可以设置为一个值，也可以是一个函数（或lambda），原型为：</p>
+<pre><code>// data为当前数据，可通过 WUI.getTopDialog().jdata().logicData.data 来实时查看；
+// gn为字段操作器，用于手工操作其它字段。
+logicFn(data, gn)
+// 对于readonly/show等选项，返回值非undefined时有效; 对于value选项，仅当函数返回非undefined/false才会设置值；</code></pre>
+<p>如果同时指定了readonly和readonlyForAdd选项，则当添加模式时优先用readonlyForAdd选项，其它模式也类似。</p>
 <p>这个特性同样适用于以下disabled/readonly/value选项，比如有disabledForAdd/readonlyForSet/valueForAdd等选项。</p>
 <p>示例：添加时无须填写，但之后可修改：可设置添加时隐藏或只读</p>
 <pre><code>showForAdd: false
 或
 readonlyForAdd: true</code></pre>
-<p>特别地，show选项会影响forFind模式，可以单独指定showForFind。</p>
+<p>注意：</p>
+<ul>
+<li>show选项会影响forFind模式，可以单独指定showForFind，它比show选项优先级高。</li>
+<li>带数据的对话框，在打开时不会修改数据，即value选项在forSet模式对话框刚打开时不会生效。</li>
+</ul>
 <p>示例：添加时自动填写</p>
 <pre><code>填当前日期：
-valueForAdd: () =&gt; new Date().format("D")
+valueForAdd: new Date().format("D")</code></pre>
+<p>或指定lambda或函数：</p>
+<pre><code>valueForAdd: () =&gt; new Date().format("D")
 
 填当前操作员：
-valueForAdd: g_data.user.id</code></pre>
+valueForAdd: () =&gt; g_data.userInfo.id</code></pre>
 <p>如果不允许改，则加上</p>
 <pre><code>readonlyForAdd: true</code></pre>
 <p>示例：计算字段（不提交）</p>
@@ -5400,25 +5454,24 @@ value: e =&gt; e.x + "-" + e.y</code></pre>
     watch: "price,qty" // 依赖多字段，以逗号分隔，注意不要多加空格
 });</code></pre>
 <p>watch选项会刷新disabled/readonly/show/value系列选项中的表达式。</p>
-<p>示例：对于仓库字段(名字name=whId，显示名vField=whName，是个wui-combogrid下拉框组件)，如果仓库名含有&quot;原料&quot;, 则显示关联单据字段(orderId)</p>
-<pre><code>WUI.setDlgLogic(jdlg, "orderId", {
-    show: e =&gt; e.whName.indexOf("原料")
-    watch: "whId", 
-    onWatch: function (e, ev, gn) {
-        gn("whName").val(ev.data.name); // 设置其它字段值，也可以用visible/disabled/readonly等函数控制字段
-        // e.whName = ev.data.name // 如果字段是不显示的，则直接设置到内部数据即可。
-    }
+<h5 id="setDlgLogic-2.1 从下拉列表中取值">2.1 从下拉列表中取值</h5>
+<p>示例：对于商品字段(名字name=itemId，是个wui-combogrid下拉框组件，有id,name,price三列)，如果从下拉列表中选择了一个商品，则自动更新价格(price字段):</p>
+<pre><code>WUI.setDlgLogic(jdlg, "price", {
+    value: e =&gt; e.eventData_itemId?.price,
+    watch: "itemId"
 });</code></pre>
-<p>首先，对话框打开时，show选项定义了根据字段whName来确定是否显示；<br />
-当watch字段whId变化时，先执行onWatch，更新字段whName，然后更执行show选项表达式，刷新显示状态。</p>
-<p>注意whName这种显示字段一般是虚拟字段，设置为禁用不提交到后端。</p>
-<p>上面onWatch选项定义一个函数，当watch字段变化后执行，参数有2个：<code>(e=当前对象数据, ev=扩展数据, gn=字段访问器)</code>，在ev参数中：</p>
+<p>当选择商品后（itemId字段），可以从e.eventData_itemId数据中取到下拉列表的值，如<code>e.eventData_itemId.price</code>；<br />
+使用<code>e.eventData_itemId?.price</code>表示当<code>e.eventData_itemId</code>不存在时(结果将返回undefined)不去修改值，也可以用<code>e.eventData_itemId &amp;&amp; e.eventData_itemId.price</code>。</p>
+<p>类似地，如果是其它字段变化，则可以从<code>e.eventData_{字段名}</code>中取值。my-combobox组件下拉时也是返回选择行对应的数据。</p>
+<p>注意：如果有其它字段依赖了修改的值，比如上节例子中total字段依赖price，则此时会连锁地去更新total字段。</p>
+<h5 id="setDlgLogic-2.2 使用onWatch选项">2.2 使用onWatch选项</h5>
+<p>更自由地，可以用onWatch选项定义一个函数，当watch字段变化后执行，原型为：<code>onWatch(e=当前对象数据, ev=扩展数据, gn=字段访问器)</code>，在ev参数中：</p>
 <ul>
 <li>ev.name表示当前变化的字段名，可用于依赖多个字段时用于区分是哪个字段变化。</li>
 <li>ev.formMode表示当前对话框模式，是添加(FormMode.forAdd)、更新(FormMode.forSet)或是查找(FormMode.forFind)。</li>
 <li>ev.data根据组件不同值也不同，对于wui-combogrid和my-combobox组件，它表示选择的数据行，比如列表定义了<code>id,name,code</code>三列，它就以<code>{id, name, code}</code>格式返回这三列数据。</li>
 </ul>
-<p>参数gn是一个函数，可以对任意字段进行处理，用<code>gn(字段名)</code>可以取到该字段，然后可调用通用接口，如<code>gn("orderId").visible(true).disabled(false).readonly(true).val(100)</code>。</p>
+<p>参数gn是一个函数，可以对任意字段进行处理，用<code>gn(字段名)</code>可以取到该字段，然后可以链式调用通用接口，如<code>gn("orderId").visible(true).disabled(false).readonly(true).val(100)</code>。</p>
 <ul>
 <li>visible: 获取或设置是否显示。无参数时表示获取。带参数设置时支持上例中的链式设置。</li>
 <li>disabled: 获取或设置是否禁用</li>
@@ -5472,7 +5525,25 @@ WUI.setDlgLogic(jdlg, "whId", {
 
 // 返回一个非空字符串，则表示验证失败，字符串即是错误信息
 validate: v =&gt; /^\d{11}$/.test(v) || "手机号须11位数字"</code></pre>
-<p>注意验证选项对添加、更新有效，没有forAdd/forSet选项</p></div>
+<p>注意验证选项对添加、更新有效，没有forAdd/forSet选项。</p>
+<p>validate函数原型为：<code>validate(value, it, gn)</code></p>
+<ul>
+<li>value: 当前值</li>
+<li>it: 当前字段访问器，如it.val()即value，还有it.getTitle()取字段标题。</li>
+<li>gn: 字段访问器，如 gn(&quot;id&quot;) 取到id字段，gn(&quot;id&quot;).val()取id字段的值。</li>
+</ul>
+<p>示例：当status字段值为RE时，当前字段值不可为空：</p>
+<pre><code>{
+    validate: (v,it,gn) =&gt; (gn("status").val() != "RE" || v)? null: ("单据完成时[" + it.getTitle() + "]不可为空")
+}</code></pre>
+<p>用gn取其它字段值；用it.getTitle()取当前字段标题。</p>
+<p>此外，还可以设置validType选项，它与easyui-validatebox组件兼容。示例：</p>
+<pre><code>{
+    required: true,
+    validType: "email"
+}</code></pre>
+<p>注意：validType与validate选项不可一起使用。</p>
+<p class="see"><strong>@see <a href="#.easyui-validatebox">.easyui-validatebox</a></strong> </p></div>
 <div class="block">
 <h2 id="JdcloudStat">@module JdcloudStat</h2>
 <p>按日期进行数据分析统计</p>
@@ -6136,7 +6207,8 @@ var btnStat1 = {text: "月报表", "wui-perm": "导出", iconCls:'icon-ok', hand
         gres:"y 年,m 月, userId",
         res:"userName 客户, COUNT(*) 订单数, SUM(amount) 总金额",
         hiddenFields: "userId",
-        orderby: "总金额 DESC"
+        orderby: "总金额 DESC",
+        pagesz: -1
     });
     WUI.showPage("pageSimple", "订单月报表!", [url, queryParams]);
 }};
@@ -6145,6 +6217,13 @@ jtbl.datagrid({
     ...
 });</code></pre>
 <p>注意：调用WUI.showPage时，标题以&quot;!&quot;结尾表示每次调用都刷新该页面。而默认行为是如果页面已打开，就直接显示而不会刷新。</p>
+<p>注意：用<code>pagesz:-1</code>表示不分页，加载所有数据(实际上受限于后端，默认1000条)。</p>
+<p>如果要支持分页，必须指定页码参数：<code>page:1</code>，如：</p>
+<pre><code>var url = WUI.makeUrl("Sn.query", {
+    res: 'id 工件编号, code 序列号, code2 设备号, actualTm 工单开工, actualTm1 工单完工, itemName 产品名称, cateName 产品型号, ec 相关工程变更', 
+    page: 1
+});
+WUI.showPage("pageSimple", "工件列表!", [url]);</code></pre>
 <h4 id="pageSimple-2 示例2：先弹出查询条件对话框，设置后再显示报表">2 示例2：先弹出查询条件对话框，设置后再显示报表</h4>
 <p>常常与报表查询条件对话DlgReportCond一起使用, 先设置查询时间段，然后出报表，示例:</p>
 <pre><code>var btnStat1 = {text: "月统计", iconCls:'icon-ok', handler: function () {

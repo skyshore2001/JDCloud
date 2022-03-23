@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2022-01-30</div>
+<div>最后更新：2022-03-24</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -167,6 +167,7 @@ code {
 <p><a href="#checkAuth">checkAuth (fn)</a></p>
 <p><a href="#checkParams">checkParams (fn)</a></p>
 <p><a href="#conf.php">conf.php (key)</a></p>
+<p><a href="#containsWord">containsWord (fn)</a></p>
 <p><a href="#dbCommit">dbCommit (fn)</a></p>
 <p><a href="#dbConfirmFn">dbConfirmFn (key)</a></p>
 <p><a href="#dbExpr">dbExpr (fn)</a></p>
@@ -226,6 +227,7 @@ code {
 <p><a href="#mh">mh (fn)</a></p>
 <p><a href="#mparam">mparam (fn)</a></p>
 <p><a href="#myEncrypt">myEncrypt (fn)</a></p>
+<p><a href="#myexec">myexec (fn)</a></p>
 <p><a href="#myround">myround (fn)</a></p>
 <p><a href="#objarr2table">objarr2table (fn)</a></p>
 <p><a href="#onCreateAC">onCreateAC (fn)</a></p>
@@ -237,12 +239,14 @@ code {
 <p><a href="#plugin">plugin (key)</a></p>
 <p><a href="#plugin/index.php">plugin/index.php (key)</a></p>
 <p><a href="#qsearch">qsearch (key)</a></p>
+<p><a href="#qstr">qstr (fn)</a></p>
 <p><a href="#queryAll">queryAll (fn)</a></p>
 <p><a href="#queryAllWithHeader">queryAllWithHeader (fn)</a></p>
 <p><a href="#queryOne">queryOne (fn)</a></p>
 <p><a href="#rc4">rc4 (fn)</a></p>
 <p><a href="#readBlock">readBlock (fn)</a></p>
 <p><a href="#readBlock2">readBlock2 (fn)</a></p>
+<p><a href="#redirectOut">redirectOut (fn)</a></p>
 <p><a href="#setParam">setParam (fn)</a></p>
 <p><a href="#startsWith">startsWith (fn)</a></p>
 <p><a href="#table2objarr">table2objarr (fn)</a></p>
@@ -303,22 +307,22 @@ jdRet();</code></pre>
 // 返回 [0, null]
 
 jdRet(0, ["id" =&gt; 100]);
-// 返回 [0, {"id": 100}]</code></pre>
+// 返回 [0, {"id": 100}]
+
+// 直接返回已有的JSON串:
+$str = '{"id": 100}';
+jdRet(0, dbExpr($str));
+// 返回`[0, {"id":100}]`</code></pre>
 <p>出错返回：</p>
 <pre><code>jdRet(E_PARAM);
 jdRet(E_PARAM, "bad param"); // 第2参数是用于调试的错误信息，一般用英文
 jdRet(E_PARAM, "bad param", "参数错"); // 第3参数是给用户看的错误信息，一般用中文
 // 返回 [1, "参数错", "bad param"] 注意最终输出JSON数组中第2、3参数顺序对调了，以符合筋斗云[code, data, debuginfo...]的格式。</code></pre>
-<p>(v6) 几种特殊用法</p>
-<p>自定义返回：(code传null)</p>
+<p>(v6) 自定义返回：(code传null)</p>
 <pre><code>jdRet(null, ["code" =&gt; 0, "msg" =&gt; "hello"]);
 或
 jdRet(null, '{"code": 0, "msg": "hello"}');
 // 返回`{"code": 0, "msg": "hello"}`，注意不是标准筋斗云返回格式。</code></pre>
-<p>直接返回已有的JSON串:</p>
-<pre><code>$str = '{"id": 100}';
-jdRet(0, dbExpr($str));
-// 返回`[0, {"id":100}]`</code></pre>
 <p>更规范地，对于接口自定义格式输出，应使用 $X_RET_FN 定义转换函数。</p>
 <p class="see"><strong>@see <a href="#$X_RET_FN">$X_RET_FN</a></strong> </p></div>
 <div class="block">
@@ -837,6 +841,58 @@ function handleBlock($s)
     echo("&gt;&gt;&gt;$s&lt;&lt;&lt;\n");
 }</code></pre></div>
 <div class="block">
+<h2 id="containsWord">@fn containsWord($str, $word)</h2>
+<p>检查是否包含一个词，与stripos等函数不同，它会检查词边界，如：</p>
+<pre><code>$rv = containsWord("hello, world", "hello"); // true
+$rv = containsWord("hello, world", "llo"); // false</code></pre></div>
+<div class="block">
+<h2 id="qstr">@fn qstr($s, $q="'")</h2>
+<p>将字符串变成引用串，默认用双引号，如：</p>
+<pre><code>$str1 = qstr($str);</code></pre>
+<p>效果：</p>
+<pre><code>hello =&gt; "hello"
+"i'm ok", he said. =&gt; "\"i'm ok'\", he said."</code></pre>
+<p>也可用单引号：</p>
+<pre><code>$str1 = qstr($str, "'"); </code></pre>
+<p>效果：</p>
+<pre><code>hello =&gt; 'hello'
+i'm ok =&gt; 'i\'m ok'</code></pre></div>
+<div class="block">
+<h2 id="myexec">@fn myexec($cmd, $errMsg = "操作失败")</h2>
+<p>执行Shell命令。如果出错则jdRet并记录日志。</p>
+<p>由于php exec函数限制，为了能够输出错误信息，一般建议加错误重定向，让出错信息显示在日志或接口返回中，如：</p>
+<pre><code>myexec("magick 1.jpg -resize '1200x1200&gt;' 2.jpg 2&gt;&amp;1");
+myexec("magick 1.jpg -resize '1200x1200&gt;' 2.jpg 2&gt;&amp;1", "图片处理失败"); // 可定制出错消息
+myexec("php create_file.php 2&gt;&amp;1 &gt;file1"); // 注意如果'2&gt;&amp;1'放在最后，则错误会输出到file1中。</code></pre>
+<p>注意：为保证兼容性，在Windows下会使用sh命令, 自动在命令中加&quot;sh -c&quot;。</p>
+<ul>
+<li>
+<p>在Windows环境下，sh是安装git-bash后自带的（路径示例：C:\Program Files\Git\usr\bin）<br />
+如果使用Apache系统服务的方式（默认是SYSTEM用户执行），应确保上述命令行在系统PATH（而不只是当前用户的PATH）中。</p>
+</li>
+<li>
+<p>Win10环境中Apache+php调用shell可能会卡死，应修改git-bash下的文件：/etc/nsswitch.conf （路径示例：C:\Program Files\Git\etc\nsswitch.conf）</p>
+<pre><code>db_home: env 
+#db_home: env windows cygwin desc</code></pre>
+</li>
+</ul></div>
+<div class="block">
+<h2 id="redirectOut">@fn redirectOut($fn)</h2>
+<p>将$fn函数执行中的输出重定向，返回通过echo等方式输出的字符串。示例：</p>
+<pre><code>$str1 = redirectOut(function () {
+    echo("redirect 1");
+});
+// $str1="redirect 1"</code></pre>
+<p>支持嵌套，示例：</p>
+<pre><code>$str1 = redirectOut(function () {
+    echo("redirect 1");
+    global $str2;
+    $str2 = redirectOut(function () {
+        echo("redirect 2");
+    });
+});
+echo($str1 . ',' . $str2);</code></pre></div>
+<div class="block">
 <h2 id="app_fw">@module app_fw</h2><div class="toc"><p style="margin-left:0em"><a href="#app_fw-1 通用函数">1 通用函数</a></p>
 <p style="margin-left:0em"><a href="#app_fw-2 初始化配置">2 初始化配置</a></p>
 <p style="margin-left:2em"><a href="#app_fw-2.1 数据库配置">2.1 数据库配置</a></p>
@@ -1304,7 +1360,7 @@ return objarr2table($rows);</code></pre>
 <p class="see"><strong>@see <a href="#objarr2table">objarr2table</a></strong> </p>
 <p class="see"><strong>@see <a href="#getQueryCond">getQueryCond</a></strong> </p></div>
 <div class="block">
-<h2 id="dbInsert">@fn dbInsert(table, kv) -> newId</h2>
+<h2 id="dbInsert">@fn dbInsert(table, kv, noEscape=false) -> newId</h2>
 <p>e.g. </p>
 <pre><code>$orderId = dbInsert("Ordr", [
     "tm" =&gt; date(FMT_DT),
@@ -1312,6 +1368,14 @@ return objarr2table($rows);</code></pre>
     "amount" =&gt; 100,
     "dscr" =&gt; null // null字段会被忽略
 ]);</code></pre>
+<p>为防止XSS攻击，默认会处理字段值，将&quot;&gt;&quot;, &quot;&lt;&quot;转义为&quot;&gt;&quot;和&quot;&lt;&quot;。如果想保持原始值，可以用：</p>
+<pre><code>$id = dbInsert("Ordr", [
+    "cond" =&gt; dbExpr(Q("amount &gt; 100"))
+]);</code></pre>
+<p>或</p>
+<pre><code>$id = dbInsert("Ordr", [
+    "cond" =&gt; "amount &gt; 100"
+], true); // noEscape=true</code></pre>
 <p>如需高性能大批量插入数据，可以用BatchInsert</p>
 <p class="see"><strong>@see <a href="#BatchInsert">BatchInsert</a></strong> </p></div>
 <div class="block">
@@ -1368,7 +1432,7 @@ $id = dbUpdate("Ordr", [
 <p class="see"><strong>@see <a href="#dbInsert">dbInsert</a></strong> </p>
 <p class="see"><strong>@see <a href="#dbUpdate">dbUpdate</a></strong> </p></div>
 <div class="block">
-<h2 id="dbUpdate">@fn dbUpdate(table, kv, id_or_cond?) -> cnt</h2>
+<h2 id="dbUpdate">@fn dbUpdate(table, kv, id_or_cond?, noEscape=false) -> cnt</h2>
 <p class="param"><strong>@param id_or_cond</strong>  查询条件，如果是数值比如100或"100"，则当作条件"id=100"处理；否则直接作为查询表达式，比如"qty<0"；</p>
 <p>为了安全，cond必须指定值，不可为空（避免因第三参数为空导致误更新全表!）。如果要对全表更新，可传递特殊值&quot;ALL&quot;，或用&quot;1=1&quot;之类条件。</p>
 <p>e.g.</p>
@@ -1390,7 +1454,15 @@ $cnt = dbUpdate("Cinf", ["appleDeviceToken" =&gt; $token], "ALL");</code></pre>
 <p>cond条件可以用key-value指定(cond写法参考getQueryCond)，如：</p>
 <pre><code>dbUpdate("Task", ["vendorId" =&gt; $id], ["vendorId" =&gt; $id1]);
 基本等价于 (当id1为null时稍有不同, 上面生成"IS NULL"，而下面的SQL为"=null"非标准)
-dbUpdate("Task", ["vendorId" =&gt; $id], "vendorId=$id1"]);</code></pre></div>
+dbUpdate("Task", ["vendorId" =&gt; $id], "vendorId=$id1"]);</code></pre>
+<p>为防止XSS攻击，默认会处理字段值，将&quot;&gt;&quot;, &quot;&lt;&quot;转义为&quot;&gt;&quot;和&quot;&lt;&quot;。如果想保持原始值，可以用：</p>
+<pre><code>$cnt = dbUpdate("Ordr", [
+    "cond" =&gt; dbExpr(Q("amount &gt; 100"))
+]);</code></pre>
+<p>或</p>
+<pre><code>$cnt = dbUpdate("Ordr", [
+    "cond" =&gt; "amount &gt; 100"
+], null, true); // noEscape=true</code></pre></div>
 <div class="block">
 <h2 id="SimpleCache">@class SimpleCache</h2>
 <p>缓存在数组中。适合在循环中缓存key-value数据。</p>

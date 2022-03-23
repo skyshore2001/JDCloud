@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（移动Web版）</h1>
-<div>最后更新：2021-09-03</div>
+<div>最后更新：2022-03-24</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -109,9 +109,7 @@ code {
 <p><a href="#closeDialog">closeDialog (fn)</a></p>
 <p><a href="#compressImg">compressImg (fn)</a></p>
 <p><a href="#container">container (var)</a></p>
-<p><a href="#data-options">data-options (key)</a></p>
 <p><a href="#defDataProc">defDataProc (fn)</a></p>
-<p><a href="#defaultFormItems">defaultFormItems (key)</a></p>
 <p><a href="#delCookie">delCookie (fn)</a></p>
 <p><a href="#delStorage">delStorage (fn)</a></p>
 <p><a href="#delayDo">delayDo (fn)</a></p>
@@ -123,8 +121,11 @@ code {
 <p><a href="#enhanceWithin">enhanceWithin (fn)</a></p>
 <p><a href="#enterWaiting">enterWaiting (fn)</a></p>
 <p><a href="#evalAttr">evalAttr (fn)</a></p>
+<p><a href="#evalOptions">evalOptions (fn)</a></p>
 <p><a href="#example-list-choose">example-list-choose (key)</a></p>
 <p><a href="#example-upload">example-upload (key)</a></p>
+<p><a href="#execCopy">execCopy (fn)</a></p>
+<p><a href="#extendNoOverride">extendNoOverride (fn)</a></p>
 <p><a href="#filterCordovaModule">filterCordovaModule (fn)</a></p>
 <p><a href="#fixTopbarColor">fixTopbarColor (fn)</a></p>
 <p><a href="#formItems">formItems (fn)</a></p>
@@ -140,9 +141,10 @@ code {
 <p><a href="#getAncestor">getAncestor (fn)</a></p>
 <p><a href="#getBaseUrl">getBaseUrl (fn)</a></p>
 <p><a href="#getCookie">getCookie (fn)</a></p>
-<p><a href="#getDataOptions">getDataOptions (fn)</a></p>
 <p><a href="#getFormData">getFormData (fn)</a></p>
 <p><a href="#getFormData_vf">getFormData_vf (fn)</a></p>
+<p><a href="#getFormItem">getFormItem (fn)</a></p>
+<p><a href="#getFormItemExt">getFormItemExt (var)</a></p>
 <p><a href="#getOptions">getOptions (fn)</a></p>
 <p><a href="#getQueryCond">getQueryCond (fn)</a></p>
 <p><a href="#getQueryParam">getQueryParam (fn)</a></p>
@@ -163,6 +165,7 @@ code {
 <p><a href="#isBusy">isBusy (var)</a></p>
 <p><a href="#isIOS">isIOS (fn)</a></p>
 <p><a href="#isWeixin">isWeixin (fn)</a></p>
+<p><a href="#jQuery.fn.gn">jQuery.fn.gn (fn)</a></p>
 <p><a href="#jQuery.fn.jdata">jQuery.fn.jdata (fn)</a></p>
 <p><a href="#jdModule">jdModule (fn)</a></p>
 <p><a href="#kvList2Str">kvList2Str (fn)</a></p>
@@ -176,6 +179,7 @@ code {
 <p><a href="#m_curBatch">m_curBatch (var)</a></p>
 <p><a href="#m_enhanceFn">m_enhanceFn (var)</a></p>
 <p><a href="#m_pageStack">m_pageStack (var)</a></p>
+<p><a href="#makeTree">makeTree (fn)</a></p>
 <p><a href="#makeUrl">makeUrl (fn)</a></p>
 <p><a href="#mockData">mockData (var)</a></p>
 <p><a href="#mui-ani">mui-ani (key)</a></p>
@@ -193,6 +197,7 @@ code {
 <p><a href="#objarr2list">objarr2list (fn)</a></p>
 <p><a href="#options">options (var)</a></p>
 <p><a href="#options.PAGE_SZ">options.PAGE_SZ (var)</a></p>
+<p><a href="#options.allowNoLogin">options.allowNoLogin (var)</a></p>
 <p><a href="#options.appName">options.appName (var)</a></p>
 <p><a href="#options.disableFastClick">options.disableFastClick (var)</a></p>
 <p><a href="#options.enableSwitchApp">options.enableSwitchApp (var)</a></p>
@@ -1156,11 +1161,17 @@ var html = applyTpl(tpl, data);
 <pre><code>var str = kvList2Str({"CR":"Created", "PA":"Paid"}, ';', ':');
 // str="CR:Created;PA:Paid"</code></pre></div>
 <div class="block">
-<h2 id="parseKvList">@fn parseKvList(kvListStr, sep, sep2) -> kvMap</h2>
-<p>解析key-value列表字符串，返回kvMap。<br />
-示例：</p>
+<h2 id="parseKvList">@fn parseKvList(kvListStr, sep, sep2, doReverse?) -> kvMap</h2>
+<p>解析key-value列表字符串，返回kvMap。</p>
+<ul>
+<li>doReverse: 设置为true时返回反向映射</li>
+</ul>
+<p>示例：</p>
 <pre><code>var map = parseKvList("CR:新创建;PA:已付款", ";", ":");
-// map: {"CR": "新创建", "PA":"已付款"}</code></pre></div>
+// map: {"CR": "新创建", "PA":"已付款"}
+
+var map = parseKvList("CR:新创建;PA:已付款", ";", ":", true);
+// map: {"新创建":"CR", "已付款":"PA"}</code></pre></div>
 <div class="block">
 <h2 id="Q">@fn Q(str, q?="'")</h2>
 <pre><code>Q("abc") -&gt; 'abc'
@@ -1190,6 +1201,11 @@ jpage.find("#content").html(html);</code></pre>
 <pre><code>&lt;img src="../api.php/att?thumbId=100"&gt;
 &lt;img src="../api.php/att?thumbId=102"&gt;</code></pre></div>
 <div class="block">
+<h2 id="extendNoOverride">@fn extendNoOverride(a, b, ...)</h2>
+<pre><code>var a = {a: 1};
+WUI.extendNoOverride(a, {b: 'aa'}, {a: 99, b: '33', c: 'bb'});
+// a = {a: 1, b: 'aa', c: 'bb'}</code></pre></div>
+<div class="block">
 <h2 id="jdModule">@fn jdModule(name?, fn?)</h2>
 <p>定义JS模块。这是一个全局函数。</p>
 <p>定义一个模块:</p>
@@ -1210,7 +1226,7 @@ var arr = mCommon.rs2Array(rs);</code></pre>
 <p>返回模块映射列表。</p>
 <pre><code>var moduleMap = jdModule(); // 返回 { "jdcloud.common": JdcloudCommon, ... }</code></pre></div>
 <div class="block">
-<h2 id="getFormData">@fn getFormData(jo)</h2>
+<h2 id="getFormData">@fn getFormData(jo, doGetAll)</h2>
 <p>取DOM对象中带name属性的子对象的内容, 放入一个JS对象中, 以便手工调用callSvr.</p>
 <p>注意: </p>
 <ul>
@@ -1222,6 +1238,10 @@ var arr = mCommon.rs2Array(rs);</code></pre>
     var ac = jf.attr("action");
     callSvr(ac, fn, getFormData(jf));
 });</code></pre>
+<p>在dialog的onValidate/onOk回调中，由于在显示对话框时自动调用过setFormData，所以用getFormData只返回有修改变化的数据。如果要取所有数据可设置参数doGetAll=true:</p>
+<pre><code>var data = WUI.getFormData(jfrm, true);</code></pre>
+<p>这也只返回非disabled的组件，如果包括disabled组件的值也需要，可以用</p>
+<pre><code>var data = WUI.getFormData(jfrm, "all");</code></pre>
 <p>如果在jo对象中存在有name属性的file组件(input[type=file][name])，或指定了属性enctype=&quot;multipart/form-data&quot;，则调用getFormData会返回FormData对象而非js对象，<br />
 再调用callSvr时，会以&quot;multipart/form-data&quot;格式提交数据。一般用于上传文件。<br />
 示例：</p>
@@ -1234,6 +1254,14 @@ var arr = mCommon.rs2Array(rs);</code></pre>
     课程文档
     &lt;input name="pdf" type="file" accept="application/pdf"&gt;
 &lt;/form&gt;</code></pre>
+<p>如果有多个同名组件（name相同，且非disabled状态），最终值将以最后组件为准。<br />
+如果想要以数组形式返回所有值，应在名字上加后缀&quot;[]&quot;，示例：</p>
+<pre><code>行统计字段: &lt;select name="gres[]" class="my-combobox fields"&gt;&lt;/select&gt;
+行统计字段2: &lt;select name="gres[]" class="my-combobox fields"&gt;&lt;/select&gt;
+列统计字段: &lt;select name="gres2" class="my-combobox fields"&gt;&lt;/select&gt;
+列统计字段2: &lt;select name="gres2" class="my-combobox fields"&gt;&lt;/select&gt;</code></pre>
+<p>取到的结果示例：</p>
+<pre><code>{ gres: ["id", "name"], gres2: "name" }</code></pre>
 <p class="see"><strong>@see <a href="#setFormData">setFormData</a></strong> </p></div>
 <div class="block">
 <h2 id="getFormData_vf">@fn getFormData_vf(jo)</h2>
@@ -1246,8 +1274,7 @@ var arr = mCommon.rs2Array(rs);</code></pre>
 <p class="see"><strong>@see <a href="#defaultFormItems">defaultFormItems</a></strong> </p></div>
 <div class="block">
 <h2 id="formItems">@fn formItems(jo, cb)</h2>
-<p>表单对象遍历。对表单jo（实际可以不是form标签）下带name属性的控件，交给回调cb处理。<br />
-可通过扩展<code>WUI.formItems[sel]</code>来为表单扩展其它类型控件，参考 <code>WUI.defaultFormItems</code>来查看要扩展的接口方法。</p>
+<p>表单对象遍历。对表单jo（实际可以不是form标签）下带name属性的控件，交给回调cb处理。</p>
 <p>注意:</p>
 <ul>
 <li>通过取getDisabled接口判断，可忽略有disabled属性的控件以及未选中的checkbox/radiobutton。</li>
@@ -1262,17 +1289,60 @@ var arr = mCommon.rs2Array(rs);</code></pre>
 <pre><code>WUI.formItems(jdlg.find(".my-fixedField"), function (ji, name, it) {
     var fixedVal = ...
     if (fixedVal || fixedVal == '') {
-        it.setReadonly(ji, true);
+        it.setReadonly(true);
         var forAdd = beforeShowOpt.objParam.mode == FormMode.forAdd;
         if (forAdd) {
-            it.setValue(ji, fixedVal);
+            it.setValue(fixedVal);
         }
     }
     else {
-        it.setReadonly(ji, false);
+        it.setReadonly(false);
     }
 });</code></pre>
-<p class="key"><strong>@key <a id="defaultFormItems">defaultFormItems</a></strong> </p></div>
+<p class="fn"><strong>@fn <a id="getFormItem">getFormItem</a></strong> (ji)</p>
+<p>获取对话框上一个组件的访问器。示例，设置名为orderId的组件值：</p>
+<pre><code>var ji = jdlg.find("[name=orderId]"); // 或者用 var ji = $(frm.orderId);
+var it = WUI.getFormItem(ji);
+it.setValue("hello"); // 类似于ji.val("hello")，但支持各种复杂组件</code></pre>
+<p>还可以用更简洁的jo.gn，以及支持用链式风格的调用：</p>
+<pre><code>var it = jdlg.gn("orderId");
+it.val("hello").disabled(true); // 等价于 it.setValue("hello");  it.setDisabled(true);</code></pre>
+<p class="see"><strong>@see <a href="#jQuery.fn.gn">jQuery.fn.gn</a></strong> (name?)</p>
+<p class="var"><strong>@var <a id="getFormItemExt">getFormItemExt</a></strong> </p>
+<p>可通过扩展<code>WUI.getFormItemExt[新类型]</code>来为表单扩展其它类型控件。示例：</p>
+<pre><code>WUI.getFormItemExt["myinput"] = function (ji) {
+    if (ji.hasClass("myinput"))
+        return new MyInputFormItem(ji);
+}
+function MyInputFormItem(ji) {
+    WUI.FormItem.call(this, ji);
+}
+MyInputFormItem.prototype = $.extend(new WUI.FormItem(), {
+    getValue: function () {
+        return this.ji.val();
+    }
+});</code></pre></div>
+<div class="block">
+<h2 id="jQuery.fn.gn">@fn jQuery.fn.gn(name?)</h2>
+<p>按名字访问组件（gn表示getElementByName），返回访问器（iterator），用于对各种组件进行通用操作。</p>
+<p>示例：</p>
+<pre><code>var it = jdlg.gn("orderId"); 
+var v = it.val(); // 取值，相当于 jdlg.find("[name=orderId]").val(); 但兼容my-combobox, wui-combogrid, wui-subobj等复杂组件。
+it.val(100); // 设置值
+// it.val([100, "ORDR-100"]); // 对于combogrid, 可以传数组，同时设置value和text
+
+var isVisible = it.visible(); // 取是否显示
+it.visible(false); // 设置隐藏
+
+var isDisabled = it.disabled();
+it.disabled(true);
+
+var isReadonly = it.readonly();
+it.readonly(true);</code></pre>
+<p>如果未指定name，则以jQuery对象本身作为组件返回访问器。所以也可以这样用：</p>
+<pre><code>var jo = jdlg.find("[name=orderId]");
+var it = jo.gn(); // name可以省略，表示取自身
+it.val(100);</code></pre></div>
 <div class="block">
 <h2 id="setFormData">@fn setFormData(jo, data?, opt?)</h2>
 <p>用于为带name属性的DOM对象设置内容为data[name].<br />
@@ -1317,6 +1387,8 @@ $.extend(jo.data("origin_"), changedData); // 合并变化的部分到数据源.
 <p class="param"><strong>@param fnOK</strong>  加载成功后的回调函数</p>
 <p class="param"><strong>@param ajaxOpt</strong>  传递给$.ajax的额外选项。</p>
 <p>默认未指定ajaxOpt时，简单地使用添加script标签机制异步加载。如果曾经加载过，可以重用cache。</p>
+<p>注意：再次调用时是否可以从cache中取，是由服务器的cache-control决定的，在web和web/page目录下的js文件一般是禁止缓存的，再次调用时会从服务器再取，若文件无更改，服务器会返回304状态。<br />
+这是因为默认我们使用Apache做服务器，在相应目录下.htaccess中配置有缓存策略。</p>
 <p>如果指定ajaxOpt，且非跨域，则通过ajax去加载，可以支持同步调用。如果是跨域，仍通过script标签方式加载，注意加载完成后会自动删除script标签。</p>
 <p>返回defered对象(与$.ajax类似)，可以用 dfd.then() / dfd.fail() 异步处理。</p>
 <p>常见用法：</p>
@@ -1335,8 +1407,54 @@ loadScript("http://otherserver/path/1.js"); // 跨域加载</code></pre>
 // 一旦跨域，选项{async:false}指定无效，不可立即使用1.js中定义的内容。</code></pre>
 </li>
 </ul>
+<p>示例：在菜单中加一项“工单工时统计”，动态加载并执行一个JS文件：<br />
+store.html中设置菜单：</p>
+<pre><code>            &lt;a href="javascript:WUI.loadScript('page/mod_工单工时统计.js')"&gt;工单工时统计&lt;/a&gt;</code></pre>
+<p>在<code>page/mod_工单工时统计.js</code>文件中写报表逻辑，<code>mod</code>表示一个JS模块文件，示例：</p>
+<pre><code>function show工单工时统计()
+{
+    DlgReportCond.show(function (data) {
+        var queryParams = WUI.getQueryParam({createTm: [data.tm1, data.tm2]});
+        var url = WUI.makeUrl("Ordr.query", { res: 'id 工单号, code 工单码, createTm 生产日期, itemCode 产品编码, itemName 产品名称, cate2Name 产品系列, itemCate 产品型号, qty 数量, mh 理论工时, mh1 实际工时', pagesz: -1 });
+        WUI.showPage("pageSimple", "工单工时统计!", [url, queryParams, onInitGrid]);
+    });
+}
+show工单工时统计();</code></pre>
+<p>如果JS文件修改了，点菜单时可以实时执行最新的内容。</p>
 <p>如果要动态加载script，且使用后删除标签（里面定义的函数会仍然保留），建议直接使用<code>$.getScript</code>，它等同于：</p>
-<pre><code>loadScript("1.js", {cache: false});</code></pre></div>
+<pre><code>loadScript("1.js", {cache: false});</code></pre>
+<p><strong>[小技巧]</strong></p>
+<p>在index.js/app.js等文件中写代码，必须刷新整个页面才能加载生效。<br />
+可以先把代码写在比如 web/test.js 中，这样每次修改后不用大刷新，直接在chrome控制台上加载运行：</p>
+<pre><code>WUI.loadScript("test.js")</code></pre>
+<p>等改好了再拷贝到真正想放置这块代码的地方。修改已有的框架中函数也可以这样来快速迭代。</p></div>
+<div class="block">
+<h2 id="evalOptions">@fn evalOptions(_source, ctx?, errPrompt?)</h2>
+<p>执行JS代码，返回JS对象，示例：</p>
+<pre><code>source='{a: 1, b:"hello", c: function () {} }'
+前面允许有单行注释，如
+source='// comment\n {a: 1, b:"hello", c: function () {} }'</code></pre>
+<p>JS代码一般以花括号开头。在用于DOM属性时，也允许没有花括号的这种写法，如：</p>
+<pre><code>&lt;div data-options="a:1,b:'hello',c:true"&gt;&lt;/div&gt;</code></pre>
+<p>上例可返回 <code>{a:1, b:'hello', c:true}</code>.</p>
+<p>也支持各种表达式及函数调用，如：</p>
+<pre><code>&lt;div data-options="getSomeOption()"&gt;&lt;/div&gt;</code></pre>
+<p>更复杂的，如果代码不只是一个选项，前面还有其它JS语句，则返回最后一行语句的值，<br />
+最后一行可以是变量、常量、函数调用等，但不可以是花括号开头的选项，对选项须用括号包起来：</p>
+<pre><code>function hello() { }
+({a: 1, b:"hello", c: hello })</code></pre>
+<p>或：</p>
+<pre><code>function hello() { }
+var ret={a: 1, b:"hello", c: hello }
+ret</code></pre>
+<p>传入的参数变量ctx可以在代码中使用，用于框架与扩展代码的交互，如：</p>
+<pre><code>{a: 1, b:"hello", c: ctx.fn1() }</code></pre>
+<p>执行出错时错误显示在控制台。调用者可回调处理错误。</p>
+<pre><code>evalOptions(src, null, function (ex) {
+    app_alert("文件" + url + "出错: " + ex);
+});</code></pre>
+<p>注意：受限于浏览器，若使用<code>try { eval(str) } catch(ex) {}</code> 结构会导致原始的错误行号丢失，<br />
+为了避免大量代码中有错误时调试困难，在大于1行代码时，不使用try-catch，而是直接抛出错误。</p></div>
 <div class="block">
 <h2 id="loadJson">@fn loadJson(url, fnOK, options)</h2>
 <p>从远程获取JSON结果.<br />
@@ -1351,7 +1469,8 @@ loadScript("http://otherserver/path/1.js"); // 跨域加载</code></pre>
     b: "hello",
     // c: {}
 }</code></pre>
-<p>如果不处理结果, 则该函数与$.getScript效果类似.</p></div>
+<p>如果不处理结果, 则该函数与$.getScript效果类似.</p>
+<p class="see"><strong>@see <a href="#evalOptions">evalOptions</a></strong> </p></div>
 <div class="block">
 <h2 id="loadCss">@fn loadCss(url)</h2>
 <p>动态加载css文件, 示例:</p>
@@ -1475,15 +1594,6 @@ jfrm.find("input[type=file]").change(function (ev) {
 <p>参考：JIC.js (<a href="https://github.com/brunobar79/J-I-C">https://github.com/brunobar79/J-I-C</a>)</p>
 <p>TODO: 用完后及时释放内存，如调用revokeObjectURL等。</p></div>
 <div class="block">
-<h2 id="getDataOptions">@fn getDataOptions(jo, defVal?)</h2>
-<p class="key"><strong>@key <a id="data-options">data-options</a></strong> </p>
-<p>读取jo上的data-options属性，返回JS对象。例如：</p>
-<pre><code>&lt;div data-options="a:1,b:'hello',c:true"&gt;&lt;/div&gt;</code></pre>
-<p>上例可返回 <code>{a:1, b:'hello', c:true}</code>.</p>
-<p>也支持各种表达式及函数调用，如：</p>
-<pre><code>&lt;div data-options="getSomeOption()"&gt;&lt;/div&gt;</code></pre>
-<p class="see"><strong>@see <a href="#getOptions">getOptions</a></strong> </p></div>
-<div class="block">
 <h2 id="triggerAsync">@fn triggerAsync(jo, ev, paramArr)</h2>
 <p>触发含有异步操作的事件，在异步事件完成后继续。兼容同步事件处理函数，或多个处理函数中既有同步又有异步。<br />
 返回Deferred对象，或false表示要求取消之后操作。</p>
@@ -1506,6 +1616,24 @@ function doNext() { }</code></pre>
 <p class="alias"><strong>@alias <a id="Promise">Promise</a></strong> </p>
 <p>兼容Promise的接口，如then/catch/finally</p></div>
 <div class="block">
+<h2 id="makeTree">@fn makeTree(arr, idField="id", fatherIdField="fatherId", childrenField="children")</h2>
+<p>将array转成tree. 注意它会修改arr（添加children属性），但返回新的数组。</p>
+<pre><code>var ret = WUI.makeTree([
+    {id: 1},
+    {id: 2, fatherId: 1},
+    {id: 3, fatherId: 2},
+    {id: 4, fatherId: 1}
+]);</code></pre>
+<p>结果：</p>
+<pre><code>ret = [
+    {id: 1, children:  [
+        {id: 2, fatherId: 1, children:  [
+            {id: 3, fatherId: 2},
+        ],
+        {id: 4, fatherId: 1}
+    ]
+]</code></pre></div>
+<div class="block">
 <h2 id="evalAttr">@fn evalAttr(jo, name)</h2>
 <p>返回一个属性做eval后的js值。</p>
 <p>示例：读取一个对象值：</p>
@@ -1521,7 +1649,8 @@ function doNext() { }</code></pre>
 <p>读取一个函数名（或变量）:</p>
 <pre><code>var fn = evalAttr(jo, "mui-initfn");
 
-&lt;div mui-initfn="initMyPage"&gt;&lt;div&gt;</code></pre></div>
+&lt;div mui-initfn="initMyPage"&gt;&lt;div&gt;</code></pre>
+<p class="see"><strong>@see <a href="#evalOptions">evalOptions</a></strong> </p></div>
 <div class="block">
 <h2 id="app_abort">@fn app_abort()</h2>
 <p>中止之后的调用, 直接返回.</p></div>
@@ -1542,7 +1671,7 @@ allow throw(&quot;abort&quot;) as abort behavior.</p></div>
 <h2 id="getOptions">@fn getOptions(jo, defVal?)</h2>
 <p>第一次调用，根据jo上设置的data-options属性及指定的defVal初始化，或为<code>{}</code>。<br />
 存到jo.prop(&quot;muiOptions&quot;)上。之后调用，直接返回该属性。</p>
-<p class="see"><strong>@see <a href="#getDataOptions">getDataOptions</a></strong> </p></div>
+<p class="see"><strong>@see <a href="#evalAttr">evalAttr</a></strong> </p></div>
 <div class="block">
 <h2 id="getQueryCond">@fn getQueryCond(kvList)</h2>
 <p class="var"><strong>@var <a id="queryHint">queryHint</a></strong>  查询用法提示</p>
@@ -1588,6 +1717,7 @@ var cond = getQueryCond({tm: [null, null]); // 返回null</code></pre>
 <p class="see"><strong>@see <a href="#doFind">doFind</a></strong> </p>
 <p>(v5.5) 支持在key中包含查询提示。如&quot;code/s&quot;表示不要自动猜测数值区间或日期区间。<br />
 比如输入'126231-191024'时不会当作查询126231到191024的区间。</p>
+<p>(v6) 日期、时间字段查询时，可使用<code>WUI.getTmRange</code>函数支持的时间区间如&quot;今天&quot;，&quot;本周&quot;，&quot;本月&quot;, &quot;今年&quot;, &quot;近3天(小时|周|月|季度|年)”，&quot;前3天(小时|周|月|季度|年)”等。</p>
 <p class="see"><strong>@see <a href="#wui-find-hint">wui-find-hint</a></strong> </p></div>
 <div class="block">
 <h2 id="getQueryParam">@fn getQueryParam(kvList)</h2>
@@ -1614,6 +1744,9 @@ self.reloadDialog(true);</p>
 });</code></pre>
 <p>连续3次点击对话框中的字段标题，触发查询：</p>
 <pre><code>WUI.doSpecial(jdlg, ".wui-form-table td", fn, 3);</code></pre></div>
+<div class="block">
+<h2 id="execCopy">@fn execCopy(text)</h2>
+<p>复制到剪贴板。</p></div>
 <div class="block">
 <h2 id="lastError">@var lastError = ctx</h2>
 <p>出错时，取出错调用的上下文信息。</p>
@@ -1729,7 +1862,7 @@ callSvr("./1.php");</code></pre>
 <p style="margin-left:0em"><a href="#callSvr-2 文件上传支持(FormData)">2 文件上传支持(FormData)</a></p>
 <p style="margin-left:0em"><a href="#callSvr-3 callSvr扩展">3 callSvr扩展</a></p>
 <p style="margin-left:0em"><a href="#callSvr-4 适配RESTful API">4 适配RESTful API</a></p>
-<p style="margin-left:0em"><a href="#callSvr-5 jQuery的$.Deferred兼容Promise接口">5 jQuery的$.Deferred兼容Promise接口</a></p>
+<p style="margin-left:0em"><a href="#callSvr-5 ES6支持：jQuery的$.Deferred兼容Promise接口 / 使用await">5 ES6支持：jQuery的$.Deferred兼容Promise接口 / 使用await</a></p>
 <p style="margin-left:0em"><a href="#callSvr-6 直接取json类文件">6 直接取json类文件</a></p>
 </div>
 <p class="param"><strong>@param ac</strong>  String. action, 交互接口名. 也可以是URL(比如由makeUrl生成)</p>
@@ -2039,7 +2172,8 @@ callSvr("User.get", function (data) {
         return "./api.php/" + ac;
     }
 }</code></pre>
-<h4 id="callSvr-5 jQuery的$.Deferred兼容Promise接口">5 jQuery的$.Deferred兼容Promise接口</h4>
+<h4 id="callSvr-5 ES6支持：jQuery的$.Deferred兼容Promise接口 / 使用await">5 ES6支持：jQuery的$.Deferred兼容Promise接口 / 使用await</h4>
+<p>支持Promise/Deferred编程风格:</p>
 <pre><code>var dfd = callSvr("...");
 dfd.then(function (data) {
     console.log(data);
@@ -2049,6 +2183,20 @@ dfd.then(function (data) {
 })
 .finally(...)</code></pre>
 <p>支持catch/finally等Promise类接口。接口逻辑失败时，dfd.reject()触发fail/catch链。</p>
+<p>支持await编程风格，上例可写为：</p>
+<pre><code>// 使用await时callSvr调用失败是无法返回的，加{noex:1}选项可让失败时返回false
+var rv = callSvr("...", $.noop, null, {noex:1});
+if (rv === false) {
+    // 失败逻辑 dfd.catch. 取错误信息用WUI.lastError={ac, tm, tv, ret}
+    console.log(WUI.lastError.ret)
+}
+else {
+    // 成功逻辑 dfd.then
+}
+// finally逻辑</code></pre>
+<p>示例：</p>
+<pre><code>let rv = await callSvr("Ordr.query", {res:"count(*) cnt", fmt:"one"})
+let cnt = rv.cnt</code></pre>
 <h4 id="callSvr-6 直接取json类文件">6 直接取json类文件</h4>
 <p>(v5.5) 如果ac是调用相对路径, 则直接当成最终路径, 不做url拼接处理:</p>
 <pre><code>callSvr("./1.json"); // 如果是callSvr("1.json") 则实际url可能是 "../api.php/1.json"这样.
@@ -2660,7 +2808,12 @@ function onShowPage(pageRef, opt) {
 <p>示例：有video标签时，缩小窗口或全屏预览时，有时会报一个错（见下例），暂不清楚解决方案，也不影响执行，可以先安全忽略它不要报错：</p>
 <pre><code>$.extend(MUI.options, {
     skipErrorRegex: /ResizeObserver loop limit exceeded/i,
-});</code></pre></div>
+});</code></pre>
+<p class="var"><strong>@var <a id="options.allowNoLogin">options.allowNoLogin</a></strong> (page)  (v6) 返回页面是否需要登录的函数</p>
+<p>示例：&quot;hello&quot;页面或&quot;test&quot;开头的页面无须登录可直接打开：</p>
+<pre><code>MUI.options.allowNoLogin = function (page) {
+    return page == "hello" || /^test/.test(page);
+}</code></pre></div>
 <div class="block">
 <h2 id="setFormSubmit">@fn setFormSubmit(jf, fn?, opt?={validate?, onNoAction?})</h2>
 <p class="param"><strong>@param fn</strong>  Function(data); 与callSvr时的回调相同，data为服务器返回的数据。</p>
@@ -2766,7 +2919,23 @@ function handleLogin(data)
 {
     MUI.handleLogin(data);
     // g_data.userInfo已赋值
-}</code></pre></div>
+}</code></pre>
+<p>打开首页面逻辑：</p>
+<ul>
+<li>入口检查（MUI.validateEntry函数）：如果当前页面是免登录页面（通过MUI.options.allowNoLogin函数判定）或本身就是登录页，直接打开；<br />
+否则如果不是入口页则自动改为主页，然后重新进入。</li>
+<li>如果尚未登录过（或会话已过期）：
+<ul>
+<li>如果当前非登录页，则自动跳转登录页，且登录成功后跳转回当前页；</li>
+<li>如果当前是登录页，则不跳转，登录成功后进入主页</li>
+</ul></li>
+<li>如果已登录
+<ul>
+<li>如果当前非登录页，直接打开</li>
+<li>如果当前是登录页，则进入主页</li>
+</ul></li>
+<li>进入系统后点返回，不会回到登录页</li>
+</ul></div>
 <div class="block">
 <h2 id="handleLogin">@fn handleLogin(data)</h2>
 <p class="param"><strong>@param data</strong>  调用API "login"成功后的返回数据.</p>
