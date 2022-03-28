@@ -911,6 +911,34 @@ function tmCols($fieldName = "t0.tm")
 {
 	return ["year({$fieldName}) y", "quarter({$fieldName}) q", "month({$fieldName}) m", "week({$fieldName},7) w", "day({$fieldName}) d", "weekday({$fieldName})+1 wd", "hour({$fieldName}) h"];
 }
+
+/**
+@fn sqlCaseWhen($field, $map)
+
+生成SQL的case when语句，示例：
+
+	$CusOrderStatusMap = [
+		'CR'=> '待审核',
+		'AP'=> '已审核',
+		'RE'=> '已签收',
+		'CL'=> '已结算'
+	];
+	$rv = sqlCaseWhen("status", $CusOrderStatusMap);
+
+$rv的值为：
+
+	CASE status WHEN 'CR' THEN '待审核' WHEN 'AP' THEN '已审核' WHEN 'RE' THEN '已签收' WHEN 'RE' THEN '已签收' ELSE status END
+
+*/
+function sqlCaseWhen($field, $map)
+{
+	$ret = "CASE $field ";
+	foreach ($map as $k => $v) {
+		$ret .= "WHEN " . Q($k) . " THEN " . Q($v) . " ";
+	}
+	$ret .= "ELSE $field END";
+	return $ret;
+}
 // }}}
 
 // ====== classes {{{
