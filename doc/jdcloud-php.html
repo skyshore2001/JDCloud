@@ -2,6 +2,7 @@
 <html>
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>筋斗云接口编程</title>
   <style type="text/css">code{white-space: pre;}</style>
 <link rel="stylesheet" href="style.css" />
@@ -33,9 +34,9 @@
 <li><a href="#虚拟字段"><span class="toc-section-number">4.5</span> 虚拟字段</a><ul>
 <li><a href="#关联字段"><span class="toc-section-number">4.5.1</span> 关联字段</a></li>
 <li><a href="#关联字段依赖"><span class="toc-section-number">4.5.2</span> 关联字段依赖</a></li>
-<li><a href="#计算字段"><span class="toc-section-number">4.5.3</span> 计算字段</a></li>
+<li><a href="#查询字段"><span class="toc-section-number">4.5.3</span> 查询字段</a></li>
 </ul></li>
-<li><a href="#子表对象"><span class="toc-section-number">4.6</span> 子表对象</a></li>
+<li><a href="#子表字段"><span class="toc-section-number">4.6</span> 子表字段</a></li>
 <li><a href="#枚举字段与字段处理"><span class="toc-section-number">4.7</span> 枚举字段与字段处理</a></li>
 <li><a href="#虚拟表和视图"><span class="toc-section-number">4.8</span> 虚拟表和视图</a></li>
 <li><a href="#接口返回前回调"><span class="toc-section-number">4.9</span> 接口返回前回调</a></li>
@@ -890,7 +891,7 @@ Ordr.get(id) -&gt; { 同query接口字段...}
 }</code></pre></div>
 <p>常量PAGE_SZ_LIMIT定义了最大可以设置的值，目前是10000.</p>
 <h3 id="虚拟字段"><span class="header-section-number">4.5</span> 虚拟字段</h3>
-<p>前面已经学习过怎样把一个数据库中的表作为对象暴露出去。 其中，表的字段就可直接映射为对象的属性。对于不在对象主表中定义的字段，统称为虚拟字段。</p>
+<p>前面已经学习过怎样把一个数据库中的表作为对象暴露出去。 其中，表的字段就可直接映射为对象的属性。对于不在对象主表中定义的字段，称为虚拟字段，广义的虚拟字段还包括后面章节要介绍的子表字段、枚举字段（计算字段）等。</p>
 <p>通过<code>$vcolDefs</code>来定义虚拟字段，最简单的一类虚拟字段是字段别名，比如</p>
 <div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="kw">class</span> AC1_Ordr <span class="kw">extends</span> AccessControl
 {
@@ -986,7 +987,7 @@ Ordr.get(id) -&gt; { 同query接口字段...}
         <span class="ot">]</span>
     <span class="ot">];</span>
 }</code></pre></div>
-<h4 id="计算字段"><span class="header-section-number">4.5.3</span> 计算字段</h4>
+<h4 id="查询字段"><span class="header-section-number">4.5.3</span> 查询字段</h4>
 <p>在定义虚拟字段时，&quot;res&quot;也可以是一个计算值，或一个很复杂的子查询。</p>
 <p>例如表OrderItem是Ordr对象的一个子表，表示订单中每一项产品的名称、数量、价格：</p>
 <pre><code>@Ordr: id, userId, status(2), amount, dscr(l)
@@ -1009,7 +1010,7 @@ OrderItem(orderId) n&lt;-&gt;1 Ordr</code></pre>
     <span class="ot">];</span>
 }</code></pre></div>
 <p>这里amount2在res中定义为一个复杂的子查询，其中还用到了t0表，也即是主表&quot;Ordr&quot;的固定别名。 可想而知，在这个例子中，取该字段的查询效率是比较差的。也尽量不要把它用到cond条件中。</p>
-<p><strong>[子表字段]</strong></p>
+<p><strong>[压缩表字段]</strong></p>
 <p>上面Ordr与OrderItem表是典型的一对多关系，有时希望在返回一个对象时，同时返回一个子对象数组，比如获取一个订单像这样：</p>
 <pre><code>{ id: 1, dscr: &quot;换轮胎及洗车&quot;, ..., orderItem: [
     {id: 1, name: &quot;洗车&quot;, price: 25, qty: 1}
@@ -1022,7 +1023,7 @@ OrderItem(orderId) n&lt;-&gt;1 Ordr</code></pre>
 
 返回
 - itemsInfo: List(name, price, qty). 格式例如&quot;洗车:25:1,换轮胎:380:2&quot;, 表示两行记录，每行3个字段。注意字段内容中不可出现&quot;:&quot;, &quot;,&quot;这些分隔符。</code></pre>
-<p>子表字段也是一种计算字段，可实现如下：</p>
+<p>压缩表字段也是一种查询字段，可实现如下：</p>
 <div class="sourceCode"><pre class="sourceCode php"><code class="sourceCode php"><span class="kw">class</span> AC1_Ordr <span class="kw">extends</span> AccessControl
 {
     <span class="kw">protected</span> <span class="kw">$vcolDefs</span> = <span class="ot">[</span>
@@ -1032,12 +1033,12 @@ OrderItem(orderId) n&lt;-&gt;1 Ordr</code></pre>
         <span class="st">...</span>
     <span class="ot">]</span>
 }</code></pre></div>
-<p>注意：子表字段在MySQL数据库中有长度限制，默认是1024。如果想扩大，可以自行估算大小并设置：</p>
+<p>注意：压缩表字段在MySQL数据库中有长度限制，默认是1024。如果想扩大，可以自行估算大小并设置：</p>
 <pre><code>execOne(&quot;set group_concat_max_len=100000&quot;);</code></pre>
 <p>由于每次接口调用都是独立的连接会话，在接口的设置只会影响当前接口，不影响其它接口。</p>
-<h3 id="子表对象"><span class="header-section-number">4.6</span> 子表对象</h3>
-<p>前面提到过想在对象中返回子表时，可以使用压缩成一个字符串的子表字段，一般适合数据比较简单的场合。</p>
-<p>另一种方式是用<code>$subobj</code>来定义子表字段，注意它也适用于关联表字段。</p>
+<h3 id="子表字段"><span class="header-section-number">4.6</span> 子表字段</h3>
+<p>前面提到过想在对象中返回子表时，可以使用压缩成一个字符串的压缩表字段，一般适合数据比较简单的场合。</p>
+<p>另一种方式是用<code>$subobj</code>来定义子表字段，注意虽然名称叫子表，它也适用于关联表的字段。</p>
 <p>例如在获取订单时，同时返回订单日志，设计接口如下：</p>
 <pre><code>Ordr.get() -&gt; {id, ..., @orderLog?, %user?}
 
