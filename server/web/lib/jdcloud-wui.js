@@ -9663,11 +9663,15 @@ function dgLoadFilter(data)
 	var ret = jdListToDgList(data);
 	var isOnePage = (ret.total == ret.rows.length);
 	// 隐藏pager: 一页能显示完且不超过5条.
-	$(this).datagrid("getPager").toggle(! (isOnePage && ret.total <= 5));
+	var doHidePager = (isOnePage && ret.total <= 5);
 	// 超过1页使用remoteSort, 否则使用localSort.
 //	$(this).datagrid("options").remoteSort = (! isOnePage);
 
-	var dgOpt = $(this).datagrid("options");
+	var jtbl = $(this);
+	var dgOpt = jtbl.datagrid("options");
+	if (dgOpt.pagination) {
+		hidePagerAuto(jtbl, doHidePager);
+	}
 	// 支持统计列计算。TODO: 允许自定义统计逻辑与格式
 	if (dgOpt.showFooter && dgOpt.sumFields) {
 		var stat = data.stat || {};
@@ -9684,6 +9688,24 @@ function dgLoadFilter(data)
 		ret.footer = [stat];
 	}
 	return ret;
+
+	function hidePagerAuto(jtbl, doHidePager) {
+		var tmpName = "_restorefn_pager";
+		var jpager = jtbl.datagrid("getPager");
+		var isHidden = jpager.css("display") == "none";
+		if (doHidePager && !isHidden) {
+			var h = jpager.height();
+			jpager.hide().height(0);
+			jtbl.data(tmpName, function () {
+				jpager.height(h).show();
+			})
+		}
+		else if (!doHidePager && isHidden) {
+			var restorefn = jtbl.data(tmpName);
+			restorefn();
+			jtbl.data(tmpName, null);
+		}
+	}
 }
 
 function resetPageNumber(jtbl)

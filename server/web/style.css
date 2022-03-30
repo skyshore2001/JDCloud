@@ -187,7 +187,7 @@ input:disabled,select:disabled,textarea:disabled {
 	display: -ms-flexbox;
 	display: flex;
 	height: 47px;
-	padding-left: 25px;
+	padding-left: 50px;
 	-ms-flex-align: center;
 	align-items: center;
 	-ms-flex-pack: justify;
@@ -206,6 +206,7 @@ input:disabled,select:disabled,textarea:disabled {
 #menu .my-menu-item > span > i {
 	font-size: 18px;
 	margin-right: 12px;
+	margin-left: -30px;
 }
 
 #menu .menu-item-head.expanded, #menu .my-menu-item:hover {

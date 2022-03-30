@@ -2332,9 +2332,9 @@ function enhanceSubobj(jo)
 		}
 		else {
 			if (formMode == FormMode.forSet) {
-				var dgOpt = {
+				var dgOpt = $.extend({
 					url: getQueryUrl(formData)
-				};
+				}, opt[datagrid]);
 				if (opt.toolbar) {
 					jtbl.jdata().toolbar = opt.toolbar;
 					dgOpt.toolbar = WUI.dg_toolbar(jtbl, $());
