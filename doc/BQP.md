@@ -389,17 +389,32 @@ POST内容也可以使用json格式，如：
 
 接口原型：
 
-	Obj.add()(POST fields...) -> id
+	Obj.add(uniKey?, uniKeyMode?=set)(POST fields...) -> id
 	Obj.add(res)(POST fields...) -> {fields...} (返回的字段由res参数指定)
 
 对象的属性通过POST请求内容给出，为一个个键值对。
 添加完成后，默认返回新对象的id, 如果想多返回其它字段，可设置res参数，如 
 
-	callSvr("Ordr.add", $.noop, {status:"CR", total:100}) -> 809
+	callSvr("Ordr.add", $.noop, {status:"CR", total:100})
+	返回
+	809
 
-	callSvr("Ordr.add", {res:"id,status,total"}, $.noop, {status:"CR", total:100}) -> {id: 810, status:"CR", total: 100}
+	callSvr("Ordr.add", {res:"id,status,total"}, $.noop, {status:"CR", total:100})
+	返回
+	{id: 810, status:"CR", total: 100}
 
 对象id支持自动生成。
+
+- uniKey: 唯一索引字段. 如果指定, 则以该字段查询记录是否存在(调用query接口）, 存在则更新（调用set接口）。例如"code", 也支持多个字段（用于关联表），如"bpId,itemId"。
+ uniKey支持使用虚拟字段（如关联字段）。
+ 该字段常用于检查记录不存在则添加记录，存在则更新记录；也用于避免记录重复添加。
+ 特别地，如果uniKey以"!"结尾（如"code!"），则表示必须匹配到记录，不匹配则报错而不做添加，常用于通过导入批量更新数据。若不加!后缀也可更新记录，但若不匹配时会误添加。
+
+- uniKeyMode: 在uniKey匹配时，默认处理是更新操作，可以通过本参数来定制匹配后的操作，其值定义为：
+	- set: （默认）转为更新操作（如果要更新的字段刚好就是uniKey字段，则忽略更新），接口最终返回已存在记录的id。
+	- error: 报错：已存在重复记录。
+	- ignore: 忽略添加操作，接口直接返回已存在记录的id。
+
 
 **[更新操作]**
 
@@ -411,7 +426,9 @@ POST内容也可以使用json格式，如：
 
 示例：
 
-	callSvr("Obj.set", {id: 809}, $.noop, {status:"PA", empId:10}) -> "OK"
+	callSvr("Obj.set", {id: 809}, $.noop, {status:"PA", empId:10})
+	返回
+	"OK"
 
 如果未指定返回值，一般默认返回"OK"。下面示例也将省略返回值。
 
@@ -430,9 +447,13 @@ POST内容也可以使用json格式，如：
 
 假如sn是数值类型，会导致其值为0或0.0。
 
-支持根据条件批量更新，使用setIf接口：
+支持根据条件批量更新，使用setIf或batchSet接口：
 
 	Obj.setIf(cond)(POST fields...)
+	Obj.batchSet(cond)(POST fields...)
+
+注意：setIf接口相当于执行1条数据库SQL UPDATE语句，不执行业务逻辑，速度快；
+而batchSet接口先根据条件查出所有记录，然后对每个记录逐一调用set接口进行更新，会执行每条记录更新时的业务逻辑。
 
 示例：
 
@@ -459,6 +480,9 @@ POST内容也可以使用json格式，如：
 支持根据条件进行批量删除，使用delIf接口：
 
 	Obj.delIf(cond)
+	Obj.batchDel(cond)
+
+delIf与batchDel的区别，类似于setIf与batchSet的区别。前者只根据条件执行一条SQL DELETE语句，速度快；后者是先查出符合条件的所有记录，再逐一记录删除（走del接口）。
 
 示例：
 
@@ -502,15 +526,70 @@ distinct
 - res, orderby只能是字段（或虚拟字段）列表，不能出现表达式、函数、子查询等。特别地，res参数允许部分统计函数，见上面示例。
 - cond可以由多个条件通过and或or组合而成，而每个条件的左边是字段名，右边是常量。不允许对字段运算，不允许子查询（不可以有select等关键字）。
 
+#### 查询条件(cond)
+
 用参数`cond`指定查询条件, 如：
 
 	{cond: "type='A' and name like '%hello%'"}
+
+也可以使用键值对方式：
+
+	{cond: {type: "A", name: "~hello"} }
 
 以下情况都不允许：
 
 	left(type, 1)='A'  -- 条件左边只能是字段，不允许计算或函数
 	type=type2  -- 字段与字段比较不允许
 	type in (select type from table2) -- 子查询不允许
+
+cond参数可以同时在URL参数和POST参数中指定，支持字符串、数组、键值对方式指定查询条件。
+
+- 条件字符串，参考SQL语句WHERE条件语法（不支持函数、子查询等），示例：
+
+		"100"或100 生成 "id=100"
+		"id=1"
+		"id>=1 and id<100"
+		"status='CR'"  注意字符串要加引号
+		"status IN ('CR','PA')"
+		"tm>='2020-1-1' AND tm<'2020-2-1'"
+		"name like 'wang%' OR dscr like 'want%'"
+		"name IS NULL OR dscr IS NOT NULL"
+
+- 键值对，键为字段名，值为查询条件，使用更加直观（如字符串不用加引号），如：
+
+		{id:1, status:"CR", name:"null", dscr:null, f1:"", f2:"empty"}
+		生成 "id=1 AND status='CR'" AND name IS NULL AND f2=''
+		注意：null和空串匹配是特殊处理的，要用字符串"null"表示null, 用"empty"表示空串：
+
+		可以使用符号： > < >= <= !(not) ~(like匹配)
+		{id:"<100", tm:">2020-1-1", status:"!CR", name:"~wang%", dscr:"~aaa", dscr2:"!~aaa"}
+		生成 "id<100 AND tm>'2020-1-1" AND status<>'CR' AND name LIKE 'wang%' AND dscr LIKE '%aaa%' AND dscr2 NOT LIKE '%aaa%'"
+		like用于字符串匹配，字符串中用"%"或"*"表示通配符，如果不存在通配符，则表示包含该串(即生成'%xxx%')
+
+		{b:"!null", d:"!empty"]
+		生成 "b IS NOT NULL" AND d<>''"
+
+		支持IN和NOT IN:
+		{id: "IN 100,101", status: "NOT IN CA,XX"}
+		生成"id IN (1,2,3) AND status NOT IN ('CR','XX')"。注意：如果是id字段（如id, empId, empId2都是id字段），且值都是数值则不对值加引号。
+
+	可用AND或OR连接多个条件，但不可加括号嵌套：
+
+		{tm: ">=2020-1-1 AND <2020-2-1", tm2: "<2020-1-1 OR >=2020-2-1"}
+		生成 "(tm>='2020-1-1' AND tm<'2020-2-1') AND (tm2<'2020-1-1' OR tm2>='2020-2-1'"
+
+		{id:">=1 AND <100", status:"CR OR PA", status2:"!CR AND !PA OR null"}
+		生成 "(id>=1 AND id<100) AND (status='CR' OR status='PA') AND (status2<>'CR" AND status2<>'PA' OR status2 IS NULL)"
+
+		{a:"null OR empty", b:"!null AND !empty", _or: 1}
+		生成 "(a IS NULL OR a='') OR (b IS NOT NULL AND b<>'')", 默认为AND条件, `_or`选项用于指定OR条件
+
+- 数组，每个元素是上述条件字符串或键值对，如：
+
+		["id>=1", "id<100", "name LIKE 'wang%'"] // "id>=1 AND id<100" AND name LIKE 'wang%'"
+		[ {id: ">=1"}, {id:"<100"}, {name: "~want*} ] // 同上
+
+#### 查询结果格式(fmt)
 
 查询结果可以以指定形式返回, 缺省返回压缩表类型即"h/d"格式，例如：
 
@@ -522,6 +601,8 @@ distinct
 
 由于不会每行重复传输字段名，压缩表类型一般传输效率更高。
 
+**[list与array格式]**
+
 如果指定`{fmt: "list"}`，则返回对象列表格式:
 
 	{
@@ -532,18 +613,31 @@ distinct
 		nextkey: ... (用于分页，注意默认分页20条)
 	}
 
-如果指定`{fmt: "array"}`，则返回数组对象列表格式（相当于list格式的list内容部分），注意此时不支持分页，返回后端限制的最大行数的数据，一般用于行数不大的子表项查询：
+如果指定`{fmt: "array"}`，则返回数组对象列表格式（相当于list格式的list内容部分），注意此时不支持分页，返回后端限制的最大行数的数据（默认1000，最大可调到10000），常用于已知行数有限的查询：
 
 	[
 		{"id": 1, "name": "jerry"},
 		{"id": 2, "name": "tom"}
 	]
 
+**[one与one?格式]**
+
 如果指定`{fmt: "one"}`，则只以对象格式返回一行，类似get接口：
 
 	{"id": 1, "name": "jerry"}
 
-且如果查询不到数据，会抛出错误（也是与get接口类似）。如果查询不到数据时不想抛出错误，而是返回null，可以用`{fmt: "one?"}`参数。
+且如果查询不到数据，会抛出错误（也是与get接口类似）。
+
+如果查询不到数据时不想抛出错误，而是返回null，可以用`{fmt: "one?"}`参数。
+
+特别地，如果返回数据只有一列，`one?`格式则直接返回该列值。
+示例：查询订单数，返回只有一列cnt。
+
+	callSvr("Ordr.query", {res: "COUNT(*) cnt", fmt: "one?"})
+
+假如有99个订单，使用`fmt:"one?"`直接返回`99`，如果使用`fmt:"one"`则返回`{cnt: 99}`。
+
+**[hash与multihash格式]**
 
 如果指定`{fmt: "hash"}`，则以映射表格式返回：
 
@@ -580,16 +674,48 @@ multihash与hash类似，只是用数组表示结果，所以就算出现key重�
 
 	{"jerry": [ 1 ], "tom": [ 2 ]}
 
-**查询结果支持分页**
+**[tree树型结构]**
+
+例如如下`{id,fatherId}`线性结构数组中，数组的每个元素中有个fatherId字段指向父结点的id属性：
+
+	[
+		{"id":1},
+		{"id":2, "fatherId":1},
+		{"id":3, "fatherId":2},
+		{"id":4, "fatherId":1}
+	]
+
+如果指定`{fmt: "tree"}`,返回转为树型结构`{id,children}`:
+
+	[
+		{"id":1, "children": [
+			{"id":2, "fatherId":1, "children": [
+				{"id":3, "fatherId":2},
+			]},
+			{"id":4, "fatherId":1}
+		]},
+	]
+
+可以通过URL参数treeFields重定义各字段名，默认值为`id,fatherId,children`，设置示例：`{treeFields:'code,fatherCode'}`，`{treeFields:'code,fatherCode,subtree'}`
+
+#### 查询结果支持分页
 
 参数pagesz/pagekey等与返回分页列表有关，详细介绍请参考“[查询分页机制][]”章节。
+
+#### 导出文件
 
 **查询结果支持导出到文件**
 
 在对象查询接口中添加参数"fmt"，可以输出指定格式，一般用于列表导出。参数：
 
 fmt
-: Enum(csv,txt,excel). 导出Query的内容为指定格式。其中，csv为逗号分隔UTF8编码文本；txt为制表分隔的UTF8文本；excel为逗号分隔的使用本地编码如gb2312编码文本（因为默认excel打开Csv文件时不支持utf8编码）。
+: Enum(csv,txt,excel,excelcsv,html). 导出Query的内容为指定格式。格式说明如下：
+
+- csv为逗号分隔UTF8编码文本；
+- txt为制表分隔的UTF8文本；
+- excel为microsoft excel格式(xlsx)。
+- excelcsv为逗号分隔的使用本地编码如gb2312编码文本（因为默认excel打开Csv文件时不支持utf8编码）。
+- html为网页格式。
 
 在实现时，注意设置正确的HTTP头，如csv文件：
 
@@ -612,54 +738,324 @@ fmt
 
 注意，由于默认会有分页，要想导出所有数据，一般可指定分页大小为-1（后端最大限制一般为10000条，可在后端调整）
 
-**查询操作应支持分组统计**
+#### 枚举名字映射
+
+例如有状态字段，定义为：
+
+- status: Enum(CR:新创建;CA:已取消)。我们称之为枚举字段。
+
+在query接口中，可以通过res指定映射关系，示例：
+
+	callSvr("Ordr.query", {res: "id, status =CR:新创建;CA:已取消"})
+
+如果该字段值为CR，应返回"新创建"，返回示例：
+
+	[ {id: 1, status: "新创建"} , {id: 2, status: "已取消"} ]
+
+也可定义空值(null)或空串("")的显示，如: `status =CR:新创建;CA:已取消;:(null)`，表示将空值显示为`(null)`。
+
+如果字段值是多个逗号分隔的值列表，如"CR,CA"，则应返回"新创建,已取消"。
+
+可以与别名一起使用，示例：
+
+	callSvr("Ordr.query", {res: "id 编号, status 状态=CR:新创建;CA:已取消"})
+
+返回示例：
+
+	[ {编号: 1, 状态: "新创建"} , {编号: 2, 状态: "已取消"} ]
+
+该特性在使用query接口导出文件时特别有用。
+
+#### 汇总统计
+
+通过在res中指定SUM等字段，可以返回汇总信息，如：
+
+	callSvr("Ordr.query", {
+		res: "COUNT(id) cnt, SUM(amount) amount",
+		fmt: "one" // 由于结果必然只有一行，指定one格式更方便
+	})
+
+返回示例：
+
+	{cnt: 82, amount: 35340}
+
+也可以在查询的同时指定要统计哪些列，使用statRes字段。
+	
+statRes
+: 指定统计字段，会在分页返回结果中添加stat对象。注意fmt参数不能是one, array, hash等，只允许是list或默认（即hd格式）。
+
+请求示例：
+
+	callSvr("Ordr.query", {
+		res: "id, createTm, amount",
+		statRes: "COUNT(id) cnt, SUM(amount) amount",
+	})
+
+返回示例：
+
+	{
+		h: ["id", "createTm", "amount"],
+		d: [
+			[ 100, "2015-1-1 10:10:10", 1000],
+			[ 101, "2015-1-2 10:11:10", 1200],
+			...
+		],
+		stat: {cnt: 82, amount: 35340},
+		nextkey: 9
+	}
+
+如果上面指定`fmt: "list"`则返回示例：
+
+	{
+		list: [
+			{ id: 100, createTm: "2015-1-1 10:10:10", amount: 1000 },
+			{ id: 101, createTm: "2015-1-2 10:11:10", amount: 1200 },
+			...
+		],
+		stat: {cnt: 82, amount: 35340},
+		nextkey: 9
+	}
+
+#### 分组统计
 
 主要通过gres参数实现查询结果分组：
 
 gres
 : String. 分组字段。如果设置了gres字段，则res参数中每项应该带统计函数，如"sum(cnt) sum, count(id) userCnt". 最终返回列为gres参数指定的列加上res参数指定的列; 如果res参数未指定，则只返回gres参数列。
 
-例：统计2015年2月，按状态分类（如已付款、已评价、已取消等）的各类订单的总数和总金额。
+例：统计2015-2016两年间，按年份、状态分类（如已付款、已评价、已取消等）的各类订单的总数和总金额。
 
-	callSvr("Ordr.query", {gres: "status", res: "count('A') totalCnt, sum(amount) totalAmount", cond: "tm>='2016-1-1' and tm<'2016-2-1'"})
+	callSvr("Ordr.query", {
+		gres: "y,status", res: "count('A') totalCnt, sum(amount) totalAmount",
+		cond: "tm>='2015-1-1' and tm<'2017-1-1'"
+	})
 
 返回内容示例：
 
-	[
-		h: ["status", "totalCnt", "totalAmount"],
+	{
+		h: ["y", "status", "totalCnt", "totalAmount"],
 		d: [
-			[ "PA", 130, 1420 ],  // 已付款，共130单，1420元
-			[ "CA", 29, 310 ], // 取消的订单
-			[ "RA", 1530, 15580 ], // 已评价的订单
+			[ 2015, "PA", 1130, 14420 ],  // 已付款，共1130单，14420元
+			[ 2015, "CA", 2, 38 ], // 取消的订单
+			[ 2016, "PA", 170, 3390 ],
+			[ 2016, "CA", 9, 220 ],
+			[ 2016, "RA", 1530, 15580 ], // 已评价的订单
 		]
-	]
+	}
+
+以下为约定时间统计字段：
+
+- y: 年
+- m: 月, 1-12
+- d: 日, 1-31
+- h: 时, 0-23
+- q: 季度
+- w: 周。计算模式为：一年中第一周，从该年第一个周一开始(mysql week函数模式7).
+- wd: 周几, 1-7, 表示周一到周日
+
+后端可以默认提供这些时间统计字段，也可以由前端指定一个时间字段，生成这些统计字段：
+
+tmField
+: String. 指定时间字段，基于该字段生成时间统计字段（y,m,d等虚拟字段）。
+
+示例：按付款时间payTm来统计每年订单数：
+
+	callSvr("Ordr.query", {
+		res: "count(*) cnt",
+		gres: "y",
+		tmField: "payTm"
+	});
+
+**[行列转置]**
+
+在做数据透视表展示统计结果时，常常用到行列转置，可用以下参数：
+
+pivot
+: String. 设置行列转置。
+
+pivotCnt
+: Integer. 可选，默认统计列为最后1列，若最后两列都是是统计列，可以设置为2.
+
+例：上面示例中，将状态status列转置到行上：
+
+	callSvr("Ordr.query", {
+		gres: "y,status", res: "count('A') totalCnt, sum(amount) totalAmount",
+		cond: "tm>='2015-1-1' and tm<'2017-1-1'",
+		pivot: "status",
+		pivotCnt: 2
+	})
+
+返回内容示例：
+
+	{
+		h: ["y", "PA","CA","RA"],
+		d: [
+			[ 2015, [1130, 14420], [2, 38], [0, 0] ],
+			[ 2016, [170, 3390], [9, 220], [1530, 15580] ]
+		]
+	}
+
+转置到列上的数据如果为null，则以"(null)"来显示；如果是空串，不做特殊处理。
+
+pivot参数可以设置多列，以逗号分隔，如将年、月显示到列上：
+
+	callSvr("Ordr.query", {
+		gres: "y,m,status", res: "count('A') totalCnt",
+		cond: "tm>='2015-1-1' and tm<'2017-1-1'",
+		pivot: "y,m"
+	})
+
+转置到列后的字段以"-"拼接，如果有值为null的，以"(null)"显示。
+返回内容示例：
+
+	{
+		h: ["status", "2020-1", "2020-2", "2020-(null)", "(null)-(null)"],
+		d: [
+			[ "PA", 120, 230, 1, 0],
+			[ "CA", 300, 310, 0, 2]
+		]
+	}
+
+**[行列汇总]**
+
+没有pivot时，用sumFields参数指定要统计的列，支持多列；有pivot时，用pivotSumField参数指定新添加的统计列的名字，只有一列，不存在多列。
+
+sumFields
+: String. 在数据最后添加汇总行，对一个或多个字段进行汇总。当有pivot参数时，该选项无效，应使用pivotSumField参数（下面有介绍）。
+ 注意如果数据仅有一行，不添加汇总行。注意如果有分页，即数据在一页内显示不完，只会累加当前页的数据。
+
+示例：简单查询，汇总其中一列
+
+	callSvr("Ordr.query", {
+		res: "id, createTm, amount",
+		sumFields: "amount"
+	})
+
+返回内容示例：
+
+	{
+		h: ["id", "createTm", "amount"],
+		d: [
+			[ 100, "2015-1-1 10:10:10", 1000],
+			[ 101, "2015-1-2 10:11:10", 1200],
+			[ "合计", null, 2200 ], // 自动添加的汇总行，对指定列进行汇总
+		]
+	}
+
+如果一页无法返回所有数据，又想在汇总中累计所有数据，要么调整pagesz参数让数据尽可能在一页内返回，要么额外使用statRes参数（前面有介绍）得到统计字段，如：
+
+	callSvr("Ordr.query", {
+		res: "id, createTm, amount",
+		statRes: "SUM(amount) amount",
+		sumFields: "amount"
+	})
+
+返回内容示例：
+
+	{
+		h: ["id", "createTm", "amount"],
+		d: [
+			[ 100, "2015-1-1 10:10:10", 1000],
+			[ 101, "2015-1-2 10:11:10", 1200],
+			...
+			[ "合计", null, 50200 ], // 自动添加的汇总行，对指定列进行汇总
+		],
+		// statRes参数将会自动添加stat对象，表示各统计列
+		stat: { amount: 50200 },
+		nextkey: 9
+	}
+
+注意：sumFields中的字段，是优先从stat对象中获取的，如果在stat中不存在，才做页内累加。
+
+示例：分组统计查询，汇总两列
+
+	callSvr("Ordr.query", {
+		gres: "y,status", res: "count('A') totalCnt, sum(amount) totalAmount",
+		sumFields: "totalCnt, totalAmount"
+	})
+
+返回内容示例：
+
+	{
+		h: ["y", "status", "totalCnt", "totalAmount"],
+		d: [
+			[ 2015, "PA", 1130, 14420 ],  // 已付款，共1130单，14420元
+			[ 2015, "CA", 2, 38 ], // 取消的订单
+			[ 2016, "PA", 170, 3390 ],
+			[ 2016, "CA", 9, 220 ],
+			[ 2016, "RA", 1530, 15580 ], // 已评价的订单
+			[ "合计", null, 2841, 33648 ], // 自动添加的汇总行，对指定的两列进行汇总
+		]
+	}
+
+pivotSumField
+: String. 例如设置值为"合计"，则会在每行添加一个名为"合计"的汇总列，且在数据最后添加一个汇总行。
+ 注意：如果行转置后只有一行，则不显示统计列；如果总共只有一行，则不显示统计行。
+
+示例：
+
+	callSvr("Ordr.query", {
+		gres: "y,status", res: "count('A') totalCnt, sum(amount) totalAmount",
+		pivot: "status",
+		pivotSumField: "合计"
+	})
+
+返回内容示例：
+
+	{
+		h: ["y", "PA","CA","RA", "合计"], // 自动添加汇总列"合计"
+		d: [
+			[ 2015, [1130, 14420], [2, 38], [0, 0], [1132, 14458] ],
+			[ 2016, [170, 3390], [9, 220], [1530, 15580], [1709, 19190] ],
+			[ "合计", [1300, 17810], [11, 258], [1530, 15580], [2841, 33648] ] // 自动添加汇总行
+		]
+	}
+
+#### 模糊查询
+
+qsearch
+: 格式是`字段1,字符2,...:查询内容`(使用英文逗号及冒号分隔), 表示在指定的若干字段中模糊查询。
+
+示例：在dscr或cmt字段中，查找以"张"开头，并且包含"退款"的订单记录
+
+	callSvr("Ordr.query", {qsearch: "dscr,cmt:张* 退款"})
+
+字段可以使用虚拟字段。
+
+查询内容是一个字符串，或多个以空格分隔的字符串。例如"aa bb"表示字段包含"aa"且包含"bb"。
+每个字符串中可以用通配符`*`，如`a*`表示以a开头，`*a`表示以a结尾，而`*a*`和`a`是效果相同的。
 
 ### 查询分页机制
 
 如果一个查询支持分页(paging), 则一般调用形式为
 
-	Ordr.query(pagekey?, pagesz/rows?=20) -> {nextkey, total?, @h, @d}
+	Ordr.query(page/pagekey?, pagesz/rows?=20) -> {nextkey, total?, @h, @d}
 
 **[参数]**
 
 pagesz或rows
 : Integer. 这两个参数含义相同，均表示页大小，默认为20条数据。
 
+page
+: Integer. 可选，指定分页页码，默认为1（第1页）。
+
 pagekey
-: Integer. 一般首次查询时不填写（或填写0，表示需要返回总记录数即total字段），而下次查询时应根据上次调用时返回数据的"nextkey"字段来填写。
+: Integer. 与page参数指定页码不同，pagekey是另一种基于主键的分页。一般首次查询时不填写（或填写0，表示需要返回总记录数即total字段），而下次查询时应根据上次调用时返回数据的"nextkey"字段来填写。
 
 **[查询返回字段]**
 
 nextkey
-: Integer. 一个字符串, 供取下一页时填写参数"pagekey"。如果不存在该字段，则说明已经是最后一批数据。
+: Integer. 一个字符串, 供取下一页时填写参数"pagekey"或"page"。如果不存在该字段，则说明已经是最后一批数据。
 
 total
-: Integer. 返回总记录数，仅当"pagekey"指定为0时返回。（注：后面还会讲到如果有"page"参数时也会返回该属性。）
+: Integer. 返回总记录数，仅当"pagekey"指定为0时返回，或是指定"page"参数时也会返回。）
 
 h/d
 : 两个数组。实际数据表的头信息(header)和数据行(data)，符合压缩表对象的格式。
 
 **[示例]**
+
+基于page页码的查询较容易理解，常用于管理端分页列表。而pagekey是基于主键的查询，常用于移动端上拉自动加载下一页的列表，示例如下。
 
 第一次查询
 
@@ -759,26 +1155,11 @@ SQL样例如下：
 	ORDER BY comeTm DESC, t0.id
 	LIMIT ({pagekey}-1)*{pagesz}, {pagesz}
 
-**查询引擎应支持强制使用传统分页**
-
-如果在对象query接口中指定了page参数，则强制查询引擎使用传统分页方法，即page表示第几页，而返回字段nextkey一定等于page+1或空(当没有更多数据)。
-而且，返回字段中应包含total字段。
-
-接口原型：
-
-	Ordr.query(page, pagesz/rows?=20) -> {nextkey, total, @h, @d}
-
-例如：
-
-	callSvr("Ordr.query", {orderby:"id desc", page:1}) -> {h=["id",...], d=[...], total=180, nextkey=2}
-
-本来因为按主键id排序，查询引擎应使用分段查询，但由于指定了page字段，改为使用传统分页。
-
 ### 批量导入数据
 
 标准接口`Obj.batchAdd`用于批量导入数据（支持不存在则添加，存在则更新）。返回导入记录数cnt及编号列表idList：
 
-	Obj.batchAdd(title?, uniKey?)(...) -> {cnt, @idList}
+	Obj.batchAdd(title?, uniKey?, useColMap?)(...) -> {cnt, @idList}
 
 它在一个事务中执行，一行出错后立即失败返回，该行前面已导入的内容也会被取消（回滚）。
 
@@ -786,9 +1167,12 @@ SQL样例如下：
  如"title=name,-,addr"表示导入第一列name和第三列addr, 其中"-"表示忽略该列，不导入。
  字段列表以逗号或空白分隔, 如"title=name - addr"与"title=name, -, addr"都可以.
 
-- uniKey: 唯一索引字段. 如果指定, 则以该字段查询记录是否存在, 存在则更新. 通常可以设置为"id"或"code"等.
+- uniKey: 唯一索引字段. 如果指定, 则以该字段查询记录是否存在, 存在则更新。例如"code", 也支持多个字段（用于关联表），如"bpId,itemId"。
+ 还可以加"!"后缀表示只更新不添加；支持通过参数uniKeyMode定制行为。详见add接口参数介绍。
 
-支持三种方式上传：
+- useColMap: 设置为1时，使用列名映射。
+
+#### 批量导入支持三种方式
 
 1. 直接在HTTP POST中传输内容，数据格式为：首行为标题行(即字段名列表)，之后为实际数据行。
 行使用"\n"分隔, 列使用"\t"或逗号分隔（后端自动判断），方便直接从Excel中拷贝数据出来，或导出csv格式文件。
@@ -841,19 +1225,9 @@ SQL样例如下：
 		app_alert("成功导入" + ret.cnt + "条数据！");
 	}, fd);
 
-或者使用curl等工具导入：
-从excel中将数据全选复制到1.txt中(包含标题行，也可另存为csv格式文件)，然后导入。
-下面示例用curl工具调用VendorA.batchAdd导入：
-
-	#/bin/sh
-	baseUrl=http://localhost/p/anzhuang/api.php
-	param=title=name,phone,idCard,addr,email,legalAddr,weixin,qq,area
-	curl -v -F "file=@1.txt" "$baseUrl/VendorA.batchAdd?$param"
-
-如果要调试(php/xdebug)，可加URL参数`XDEBUG_SESSION_START=1`或Cookie中加`XDEBUG_SESSION=1`
-
 3. 传入对象数组
-格式为 {list: [...]}
+
+格式为 {list: [...]}，示例：
 
 	var data = {
 		list: [
@@ -863,7 +1237,62 @@ SQL样例如下：
 	};
 	callSvr("Store.batchAdd", function (ret) {
 		app_alert("成功导入" + ret.cnt + "条数据！");
-	}, data, {contentType:"application/json"});
+	}, data);
+
+#### 通过导入实现批量更新
+
+batchAdd接口配合标准add接口支持的uniKey参数，可实现存在则更新，不存在则添加的逻辑。
+
+示例：接上节示例，在导入时希望实现根据名称与电话(name和tel字段)匹配，则记录存在则做更新，不存在则添加，只须增加uniKey参数：
+
+	callSvr("Store.batchAdd", {uniKey: "name,tel"}, function (ret) {
+		app_alert("成功导入" + ret.cnt + "条数据！");
+	}, data);
+
+#### 支持带子表导入
+
+示例：有以下主-子表对象：
+
+	工单：@Ordr: id, code, itemId, qty
+	工单配料单 @BOM: id, orderId, code, name
+
+注意：拷贝到Excel中看的比较清楚；为避免Excel将长数字显示为科学计数法，在复制前先设置单元格格式为文本。
+
+	生产订单号	物料编码	物料规格	开工日期	完工日期	生产数量	子件编码	子件规格	基本用量
+	SCDD210202302	30101001010484	热像仪#Fotric 615C-L47	2021-02-04	2021-02-04	1.00	20901001000052	标品#Lantern_B31-L47	1
+	SCDD210202302	30101001010484	热像仪#Fotric 615C-L47	2021-02-04	2021-02-04	1.00	10205001000017	标签#Lantern_40*30mm铜版纸空白标签#中性#通用	1
+
+调用示例：
+
+	callSvr("Ordr.batchAdd", {title: "code,itemCode,itemName,planTm,planTm1,qty,@bom.code,@bom.name,@bom.qty", uniKey: "code"}, $.noop, data);
+
+注意：由于子表分布在多行，必须以uniKey参数指定主表唯一字段（支持多个字段联合，以逗号分隔），将根据此字段将多行数组组合成对象后一次导入。
+为了正确将主-子表结构的数据行组合成对象，必须保证：组成一个对象的所有行必须在一起，具有相同的uniKey字段，或是对象的第二行起，不指定uniKey字段。
+
+上例也可以简化定义成：(第二行起，无须主表字段，只需要最后三个子表字段) (拷贝到Excel中看)
+
+	生产订单号	物料编码	物料规格	开工日期	完工日期	生产数量	子件编码	子件规格	基本用量
+	SCDD210202302	30101001010484	热像仪#Fotric 615C-L47	2021-02-04	2021-02-04	1.00	20901001000052	标品#Lantern_B31-L47	1
+							10205001000017	标签#Lantern_40*30mm铜版纸空白标签#中性#通用	1
+
+#### 支持列名映射
+
+数据表导入时，默认是按固定列顺序来确定字段的，比如第1列必须是code，第2列必须是itemCode，如果要跳过一列，须通过"-"来指定；
+使用列名映射是另一种方式（通过指定参数useColMap=1激活），示例：
+
+	id	name	code	itemId	itemCode
+	1	name1	code1	101	item-101
+	2	name2	code2	102	item-102
+
+batchAdd调用参数为: `{title: "code,itemCode", useColMap:1}`。
+
+这时只通过列名来匹配（若找不到匹配列则报错！），列的顺序对导入就没有影响。可以通过`->`来指定列的别名，示例：
+
+	编号	物料名	编码	物料名	物料编码
+	1	name1	code1	101	item-101
+	2	name2	code2	102	item-102
+
+batchAdd调用参数为: `{title: "编码->code,物料编码->itemCode", useColMap:1}`。支持子对象列名映射，如`子件编码->@bom.code`。
 
 ### 子表的增删改查操作
 
@@ -873,6 +1302,8 @@ SQL样例如下：
 	vcol: @obj1 (说明：vcol表示虚拟字段，@obj1表示字段obj1是个数组，一般就是子对象)
 
 	@Obj1: id, objId, name （通过objId关联主对象)
+
+#### 子表添加
 
 在添加主对象时，同时添加子对象:
 
@@ -888,16 +1319,20 @@ SQL样例如下：
 		]
 	});
 
+#### 子表查询
+
 主对象添加后，可以通过get接口获取主对象及子对象：
 
-	callSvr("Obj.get", {id: 1001, res:"id,name,obj1"}) -> {
+	callSvr("Obj.get", {id: 1001, res:"id,name,obj1"})
+	返回
+	{
 		id: 1001,
 		name: "name1",
 		obj1: [
 			{ id: 10001, name: "obj1-name1" },
 			{ id: 10002, name: "obj1-name2" }
 		]
-	});
+	}
 
 要控制子对象的查询结果字段，可以加`res_{子对象名}`参数；要控制子对象的查询参数，可以加`param_{子对象名}`参数，示例：
 
@@ -906,16 +1341,26 @@ SQL样例如下：
 	callSvr("Obj.get", {id: 1001, res:"id,name,obj1", param_obj1: { res: "id,name"} })
 	callSvr("Obj.get", {id: 1001, res:"id,name,obj1", param_obj1: { res: "id,name", cond: "id>=10002"} })
 
+注意：如果使用了别名，则指定res,param时也要用别名：
+
+	callSvr("Obj.get", {id: 1001, res:"id,name,obj1 objList", res_objList:"id,name"})
+	// 甚至可以多别名分别指定:
+	callSvr("Obj.get", {id: 1001, res:"id,name,obj1 objList,obj1 objList2", res_objList:"id,name", res_objList2:"id,code"})
+
 当然，也可以直接查询子对象，如：
 
-	callSvr("Obj1.query", {cond: "objId=1001", res:"id,name,obj1", fmt:"array"}) -> [
+	callSvr("Obj1.query", {cond: "objId=1001", res:"id,name,obj1", fmt:"array"})
+	返回
+	[
 		{ id: 10001, name: "obj1-name1" },
 		{ id: 10002, name: "obj1-name2" }
 	]
 
 这里用fmt参数指定返回array格式，因为默认返回的是`h/d`格式.
 
-主对象添加后，可以通过set接口添加/更新/删除子对象：
+#### 子表更新与删除
+
+主对象添加后，可以通过set接口添加/更新/删除子对象。假定后端提供如下更新接口（可更新主表字段name等，子表名为obj1）：
 
 	Obj.set(id)(name?, @obj1...)
 
@@ -930,7 +1375,27 @@ SQL样例如下：
 		]
 	});
 
-主对象删除时（del/delIf接口），子对象不会自动删除。后端应根据情况自行处理。
+注意：主对象删除时（del/delIf接口），子对象不会自动删除。后端应根据情况自行处理。
+
+对子表的更新有patch/put两种模式，通过submode参数指定，该参数只对主表set接口有效：
+
+- patch: 默认模式，见上面示例。须用`_delete`指定要删除的原来子表项。
+- put: 覆盖更新模式。与patch的区别是无须指定`_delete`来删除原来子表项，新子表直接覆盖原子表。
+
+与上述示例中效果相同的操作示例：
+
+	// submode=put模式
+	callSvr("Obj.set", {id: 1001, submode: "put"}, $.noop, {
+		name: "name1",
+		obj1: [
+			{ id: 10001, name: "obj1-name1-changed" }, // set接口中指定子表id的，表示更新该子表行; 也可以不指定id，则原来记录被删除，这条会被重新添加。
+			{ name: "obj1-name3" },  // set接口中未指定子表id的，表示新增子表行
+			// 原表中的10002项未指定，则自动被删除。
+		]
+	});
+
+注意：add接口在指定uniKey参数时，可检查数据存在则更新(即调用set接口)。因此add/batchAdd接口也可以指定submode参数。
+在批量导入(batchAdd接口+uniKey参数)时，默认使用put模式做子表更新。
 
 ## 批请求
 

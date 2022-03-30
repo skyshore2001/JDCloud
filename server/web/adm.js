@@ -9,6 +9,14 @@ $.extend(WUI.options, {
 	onShowLogin: showDlgLogin
 });
 
+// 定制模块的页面路径
+WUI.options.moduleExt.showPage = function (name) {
+	// 重用page下的通用页面
+	var ms = name.match(/\b(page|dlg)(Import|Simple|Tab|Ui|DataReport|ReportCond)\b/);
+	if (ms)
+		return "page/" + name;
+}
+
 var g_data = {}; // { userInfo={id,uname} }
 
 // interface
@@ -28,7 +36,6 @@ var DlgImport = {
 // ====== data-options {{{
 var Formatter = {
 	orderStatus: WUI.formatter.enum(OrderStatusMap),
-	orderAction: WUI.formatter.enum(ActionMap),
 	userId: WUI.formatter.linkTo("userId", "#dlgUser"),
 	empId: WUI.formatter.linkTo("empId", "#dlgEmployee"),
 	orderId: WUI.formatter.linkTo("orderId", "#dlgOrder")
@@ -94,7 +101,7 @@ function main()
 {
 	setAppTitle(APP_TITLE);
 
-	WUI.tryAutoLogin(handleLogin);
+	WUI.tryAutoLogin(handleLogin, "whoami");
 }
 
 $(main);

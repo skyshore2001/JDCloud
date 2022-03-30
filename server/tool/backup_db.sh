@@ -12,10 +12,14 @@
 #	log_bin=mysql-bin
 #	log-bin-trust-function-creators=1 # 避免DETERMINISTIC function之类的错误
 
+# copy config to backup_db.user.sh and change it
 dbuser=xeycro
 dbpwd=xeyc2014
 dbhost=localhost
 db=carsvc
+
+cd `dirname $0`
+if [ -r "./backup_db.user.sh" ]; then . "./backup_db.user.sh"; fi
 
 bak=bak/db_`date +%Y%m%d_%H%M%S`.gz
 

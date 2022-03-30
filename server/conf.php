@@ -15,5 +15,9 @@ class Conf extends ConfBase
 	static function onInitClient(&$ret)
 	{
 	}
+	static $authKeys = [
+		["authType"=>"basic", "key" => "wms:1234", "SESSION" => ["empId"=>-9999], "allowedAc" => ["*.query","*.get"] ],
+		["authType"=>"none", "key" => "", "SESSION" => ["empId"=>-9999], "allowedAc" => ["queryEmp", "Wis.wis01"] ]
+	];
 */
 }

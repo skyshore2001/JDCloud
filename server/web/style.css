@@ -11,6 +11,9 @@ input,select,textarea {
 	font-size: 13px;
 	padding: 2px 5px;
 }
+.textbox-disabled, .textbox-label-disabled {
+	opacity: inherit; /* 取消显示灰掉 */
+}
 .combo {
 	border-color: rgb(169, 169, 169);
 }
@@ -32,7 +35,7 @@ input,select,textarea {
 	min-height: 30;
 }
 
-form>table:first-child td {
+form>table:first-child td, .wui-form-table td {
 	vertical-align: top;
 }
 
@@ -40,26 +43,31 @@ form>table:first-child, .wui-form-table {
 	width: 100%;
 	white-space: nowrap;
 	border-spacing: 10px 2px;
+	border-collapse: initial; /* bootstrap table行太挤*/
 }
 
 a {
 	cursor: pointer;
+	color: #007bff;
+	text-decoration: none;
 }
 
 /* wui-dialog */
 input:not([type=button]), select, textarea {
-	padding: 2px 5px;
 	display: inline-block;
 	border-width: 1px;
 	border-style: solid;
 	border-color: rgb(169, 169, 169);
 	border-radius: 4px;
 	outline: none;
-	margin: 0 2px;
+}
+/* form上对齐 */
+input:not([type=button]), textarea {
+	padding: 2px 5px;
 }
 .wui-dialog td input:not([type=checkbox]):not([type=radio]):not([type=button]), .wui-dialog td select {
 	height:30px;
-	line-height: 30px;
+	/*line-height: 30px;*/
 	width: 95%;
 }
 .wui-dialog td textarea {
@@ -95,9 +103,11 @@ select[readonly] {
 input:disabled,select:disabled,textarea:disabled {
 	background-color: #fff3f3;
 	color: #000;
+	opacity: inherit;
 }
 .validatebox-invalid {
 	border-color: #ffa8a8 !important;
+	background-color: #fffbce;
 }
 
 .window .window-header {
@@ -177,7 +187,7 @@ input:disabled,select:disabled,textarea:disabled {
 	display: -ms-flexbox;
 	display: flex;
 	height: 47px;
-	padding-left: 25px;
+	padding-left: 50px;
 	-ms-flex-align: center;
 	align-items: center;
 	-ms-flex-pack: justify;
@@ -196,6 +206,7 @@ input:disabled,select:disabled,textarea:disabled {
 #menu .my-menu-item > span > i {
 	font-size: 18px;
 	margin-right: 12px;
+	margin-left: -30px;
 }
 
 #menu .menu-item-head.expanded, #menu .my-menu-item:hover {
@@ -227,11 +238,23 @@ input:disabled,select:disabled,textarea:disabled {
 
 /* customize easyui */
 .datagrid-cell, .datagrid-cell-group {
-	padding: 7px 10px;
+	padding: 8px 10px;
 }
+/* 设置datagrid最大列宽 */
+.wui-datagrid-cell-max-width .datagrid-cell {
+	max-width: 500px;
+}
+/*
 .datagrid-header-rownumber, .datagrid-cell-rownumber {
 	padding: 7px 2px;
 }
+*/
+/* 工具栏按钮自动换行 */
+.datagrid-toolbar tr:first-child{
+	display: flex;
+	flex-wrap: wrap;
+}
+
 .pagination td {
 	vertical-align: middle;
 }
@@ -277,6 +300,23 @@ input:disabled,select:disabled,textarea:disabled {
 }
 
 /* 对话框中子表tabs的上间距 */
-.wui-dialog .easyui-tabs {
-	margin-top: 20px;
+.wui-dialog .easyui-tabs:not(:first-child) {
+	margin-top: 15px;
+}
+
+.wui-form-tab {
+	padding: 5px;
+}
+
+/* 登录页背景 */
+/* 本意是 .loginPanel ~ .window-mask:first 但CSS first-of-type不支持class只能在JS中写 */
+.loginPanel-mask {
+	background: url('bg.jpg');
+	opacity: initial;
+}
+
+/* 必填项在td中加星号标识 */
+td.required:after {
+	content: "*";
+	color: red;
 }

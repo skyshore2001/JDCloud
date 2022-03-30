@@ -10,7 +10,7 @@ class AC0_User extends AccessControl
 		],
 	];
 
-	function __construct() {
+	protected function onInit() {
 		$this->vcolDefs[] = [ "res" => tmCols("t0.createTm") ];
 	}
 
@@ -20,9 +20,13 @@ class AC0_User extends AccessControl
 			$_POST["pwd"] = hashPwd($_POST["pwd"]);
 		}
 	}
+	protected function onQuery()
+	{
+		$this->qsearch(["id", "name", "uname", "phone"], param("q"));
+	}
 }
 
-class AC1_User extends AccessControl
+class AC1_User extends AC0_User
 {
 	protected $allowedAc = ["get", "set"];
 	protected $readonlyFields = ["pwd"];
@@ -30,13 +34,12 @@ class AC1_User extends AccessControl
 	protected function onValidateId()
 	{
 		$uid = $_SESSION["uid"];
-		setParam("id", $uid);
+		$this->id = $uid;
 	}
 }
 
-class AC2_User extends AccessControl
+class AC2_User extends AC0_User
 {
-	protected $allowedAc = ["query", "get"];
 }
 #}}}
 
@@ -67,7 +70,7 @@ class AC2_Employee extends AC0_Employee
 	protected $requiredFields = [["phone", "uname"], "pwd"];
 	protected $allowedAc = ["query", "get", "set"];
 
-	function __construct()
+	protected function onInit()
 	{
 		if (hasPerm(PERM_MGR)) {
 			$this->allowedAc = null; // all ac
@@ -81,7 +84,7 @@ class AC2_Employee extends AC0_Employee
 	{
 		$id = param("id");
 		if (!hasPerm(PERM_MGR) || is_null($id)) {
-			setParam("id", $_SESSION["empId"]);
+			$this->id = $_SESSION["empId"];
 		}
 	}
 
@@ -90,28 +93,45 @@ class AC2_Employee extends AC0_Employee
 		if ($this->ac == "get" && $GLOBALS["P_initClient"]["enableRole"]) {
 			AC0_Role::handleRole($this);
 		}
+		$this->qsearch(["id", "name", "phone"], param("q"));
 	}
 }
 
 //}}}
 
 // ====== Ordr {{{
+class AC0_OrderLog extends AccessControl
+{
+	protected $defaultSort = "t0.id DESC";
+	protected $vcolDefs = [
+		[
+			"res" => ["emp.name empName", "emp.phone empPhone"],
+			"join" => "LEFT JOIN Employee emp ON emp.id=t0.empId",
+			"default" => true
+		]
+	];
+}
+
+class AC2_OrderLog extends AC0_OrderLog
+{
+}
+
 class AC0_Ordr extends AccessControl
 {
 	protected $subobj = [
-		"orderLog" => ["sql"=>"SELECT ol.*, e.uname AS empPhone, e.name AS empName FROM OrderLog ol LEFT JOIN Employee e ON ol.empId=e.id WHERE orderId=%d", "wantOne"=>false],
-		// "atts" => ["sql"=>"SELECT id, attId FROM OrderAtt WHERE orderId=%d", "wantOne"=>false],
-		"atts" => ["obj"=>"OrderAtt", "cond"=>"orderId=%d", "AC"=>"AccessControl", "res"=>"id,attId"]
+		"orderLog" => ["obj"=>"OrderLog", "cond"=>"orderId={id}"],
+		"atts" => ["obj"=>"OrderAtt", "cond"=>"orderId={id}", "AC"=>"AccessControl", "res"=>"id,attId"]
 	];
 
 	protected $vcolDefs = [
 		[
-			"res" => ["u.name AS userName", "u.phone AS userPhone"],
-			"join" => "INNER JOIN User u ON u.id=t0.userId"
+			"res" => ["u.name userName", "u.phone userPhone"],
+			"join" => "LEFT JOIN User u ON u.id=t0.userId",
+			"default" => true
 		]
 	];
 
-	function __construct() {
+	protected function onInit() {
 		$this->vcolDefs[] = [ "res" => tmCols("t0.createTm") ];
 	}
 }
@@ -124,31 +144,31 @@ class AC1_Ordr extends AC0_Ordr
 	protected function onQuery()
 	{
 		$userId = $_SESSION["uid"];
-		$this->addCond("t0.userId={$userId}");
+		$this->addCond("userId={$userId}");
 	}
 
 	protected function onValidate()
 	{
-		$logAction = null;
+		$status = null;
 		if ($this->ac == "add") {
 			$userId = $_SESSION["uid"];
 			$_POST["userId"] = $userId;
 			$_POST["status"] = "CR";
 			$_POST["createTm"] = date(FMT_DT);
-			$logAction = "CR";
+			$status = "CR";
 		}
 		else {
 			if (issetval("status")) {
 				// TODO: validate status
-				$logAction = $_POST["status"];
+				$status = $_POST["status"];
 			}
 		}
 
-		if ($logAction) {
-			$this->onAfterActions[] = function () use ($logAction) {
+		if ($status) {
+			$this->onAfterActions[] = function () use ($status) {
 				dbInsert("OrderLog", [
 					"orderId" => $this->id,
-					"action" => $logAction,
+					"action" => $status,
 					"tm" => date(FMT_DT)
 				]);
 			};
@@ -158,32 +178,47 @@ class AC1_Ordr extends AC0_Ordr
 
 class AC2_Ordr extends AC0_Ordr
 {
-	protected $allowedAc = ["get", "query", "set"];
-	protected $readonlyFields = ["userId"];
+	//protected $allowedAc = ["get", "query", "set"];
+	//protected $readonlyFields = ["userId"];
+
+	protected function onQuery()
+	{
+		$this->qsearch(["id", "userPhone"], param("q"));
+	}
 
 	protected function onValidate()
 	{
-		if ($this->ac == "set") {
+		$status = null;
+		if ($this->ac == "add") {
+			$_POST["status"] = "CR";
+			$_POST["createTm"] = date(FMT_DT);
+			$status = "CR";
+		}
+		else if ($this->ac == "set") {
 			if (issetval("status")) {
 				$status = $_POST["status"];
+				/* 示例：检查旧状态->新状态是否允许
 				if ($status == "RE" || $status == "CA") {
 					$oldStatus = queryOne("SELECT status FROM Ordr WHERE id={$this->id}");
 					if ($oldStatus != "CR") {
-						throw new MyException(E_FORBIDDEN, "forbidden to change status to $status");
+						jdRet(E_FORBIDDEN, "forbidden to change status to $status");
 					}
-					$this->onAfterActions[] = function () use ($status) {
-						dbInsert("OrderLog", [
-							"orderId" => $this->id,
-							"action" => $status,
-							"tm" => date(FMT_DT),
-							"empId" => $_SESSION["empId"]
-						]);
-					};
 				}
 				else {
-					throw new MyException(E_FORBIDDEN, "forbidden to change status to {$_POST['status']}");
+					jdRet(E_FORBIDDEN, "forbidden to change status to {$_POST['status']}");
 				}
+				*/
 			}
+		}
+		if ($status) {
+			$this->onAfterActions[] = function () use ($status) {
+				dbInsert("OrderLog", [
+					"orderId" => $this->id,
+					"action" => $status,
+					"tm" => date(FMT_DT),
+					"empId" => $_SESSION["empId"]
+				]);
+			};
 		}
 	}
 
@@ -205,12 +240,5 @@ class AC2_Ordr extends AC0_Ordr
 */
 }
 // }}}
-
-class AC0_ApiLog extends AccessControl
-{
-	function __construct() {
-		$this->vcolDefs[] = [ "res" => tmCols() ];
-	}
-}
 
 // vi: foldmethod=marker

@@ -1,0 +1,62 @@
+<form my-obj="ObjLog" title="操作日志" style="width:500px;height:500px;">
+<!-- wui-script="dlgObjLog.js" my-initfn="initDlgObjLog"  -->
+	<table>
+		<tr>
+			<td>编号</td>
+			<td>
+				<input name="id" disabled>
+			</td>
+		</tr>
+		<tr>
+			<td>对象</td>
+			<td>
+				<input name="obj" style="width:46%" disabled>
+				<input name="objId" style="width:46%" disabled>
+			</td>
+		</tr>
+		<tr>
+			<td>操作接口</td>
+			<td>
+				<input name="ac" disabled>
+				<p class="hint">接口日志编号: <span name="apiLogId"></span> <span name="apiLog1Id"></span></p>
+			</td>
+		</tr>
+		<tr>
+			<td>操作</td>
+			<td>
+				<input name="dscr" disabled>
+			</td>
+		</tr>
+		<tr>
+			<td>时间</td>
+			<td>
+				<input name="tm" disabled>
+			</td>
+		</tr>
+		<tr>
+			<td>用户</td>
+			<td>
+				<input name="empName" style="width:46%" disabled>
+				<input name="userId" style="width:46%" disabled>
+			</td>
+		</tr>
+		<tr>
+			<td>IP地址</td>
+			<td>
+				<input name="addr" disabled>
+			</td>
+		</tr>
+		<tr>
+			<td>明细</td>
+			<td>
+				<textarea name="req" rows=5 disabled></textarea>
+			</td>
+		</tr>
+	</table>
+</form>
+<!-- examples:
+<input name="name" class="easyui-validatebox" data-options="required:true">
+<select name="customerId" class="my-combobox" data-options="ListOptions.Customer()"></select>
+<select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap"></select>
+<input name="customerId" class="wui-combogrid" data-options="ListOptions.CustomerGrid()">
+-->

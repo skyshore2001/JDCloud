@@ -1,4 +1,4 @@
-@Cinf: version, createTm, upgradeTm
+@Cinf: id, name(s), value(t)
 @Employee: id, uname, phone(s), pwd, name(s), perms
 @User: id, uname, phone(s), pwd, name(s), createTm
 @Ordr: id, userId, createTm, status(2), amount, dscr(l), cmt(l)

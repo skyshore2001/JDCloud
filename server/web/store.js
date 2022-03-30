@@ -1,5 +1,5 @@
 // ====== global {{{
-var APP_TITLE = "商户管理端";
+var APP_TITLE = "运营管理端";
 var APP_NAME = "emp-adm";
 
 $.extend(WUI.options, {
@@ -24,11 +24,12 @@ var DlgImport = {
 };
 
 var DlgReportCond = {
-	cb_: null,
-	// cb(data): 回调函数
-	show: function (cb) {
-		this.cb_ = cb;
-		WUI.showDlg("#dlgReportCond", {modal:false, reset:false});
+	// cb(data): 回调函数, meta: 动态字段(参考WUI.showByMeta), inst: 实例名
+	show: function (cb, meta, inst) {
+		var dlg = "#dlgReportCond";
+		if (inst)
+			dlg += "_inst_" + inst;
+		WUI.showDlg(dlg, {modal:false, reset:false, onOk: cb, meta: meta});
 	}
 };
 //}}}
@@ -45,6 +46,24 @@ var ListOptions = {
 				pagesz: -1
 			}),
 			formatter: function (row) { return row.id + '-' + row.name; }
+		};
+		return opts;
+	},
+	UserGrid: function () {
+		var opts = {
+			jd_vField: "userName",
+			jd_dlgForAdd: "#dlgUser",
+			panelWidth: 450,
+			width: '95%',
+			textField: "name",
+			columns: [[
+				{field:'id',title:'编号',width:80},
+				{field:'name',title:'名称',width:120},
+				{field:'phone',title:'手机号',width:120}
+			]],
+			url: WUI.makeUrl('User.query', {
+				res: 'id,name,phone',
+			})
 		};
 		return opts;
 	},
@@ -129,7 +148,6 @@ function initPageHome()
 	jtbl.datagrid({
 		data: [g_data.userInfo]
 	});
-	WUI.applyPermission();
 }
 
 // init functions }}}
@@ -148,6 +166,7 @@ function showDlgLogin()
 			handleLogin(data);
 		}
 	});
+	jdlg.dialog("dialog").find("~.window-mask:first").addClass("loginPanel-mask");
 }
 
 function showDlgChpwd()
@@ -182,7 +201,7 @@ function showDlgSendSms()
 // ====== main {{{
 function main()
 {
-	setAppTitle(APP_TITLE);
+	setAppTitle(WUI.options.title);
 
 	WUI.initClient();
 	WUI.tryAutoLogin(handleLogin, "Employee.get");

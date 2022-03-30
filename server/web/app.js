@@ -8,25 +8,17 @@ $.extend(WUI.options, {
 });
 
 // ==== defines {{{
+var CinfList = [
+//	{ name: "faultLabel", text: "faultLabel(不良品标签)", dscr: "空格分隔的一组标签，如<code>标签1 标签2</code>" },
+];
+
 var OrderStatusMap = {
-	CR: "未付款", 
+	CR: "新创建", 
 	PA: "待服务", 
-	RE: "已服务", 
+	RE: "已完成", 
 	RA: "已评价", 
 	CA: "已取消", 
 	ST: "正在服务"
-};
-
-var ActionMap = {
-	CR: "创建",
-	PA: "付款",
-	RE: "服务完成",
-	CA: "取消",
-	RA: "评价",
-	ST: "开始服务",
-	CT: "更改预约时间",
-	AS: "派单",
-	AC: "接单"
 };
 
 var PermMap = {
@@ -36,9 +28,9 @@ var PermMap = {
 
 // 注意：与class "status-info", "status-warning"等保持一致。
 var Color = {
-	Info: "rgb(190, 247, 190)", // lightgreen,
-	Warning: "yellow",
-	Error: "rgb(253, 168, 172)", // red;
+	Info: "#bef7be", // lightgreen,
+	Warning: "#FFFF68",
+	Error: "#ff9999", // red;
 	Disabled: "#dddddd" // grey
 }
 //}}}
@@ -73,10 +65,8 @@ function addTooltip(html, tooltip)
 // ==== functions {{{
 function setAppTitle(title)
 {
-	if (document.title == "")
-		document.title = title;
-	$(".my-title").html(document.title);
-	$("body.easyui-layout").layout("panel", "center").panel({title: "欢迎使用" + title});
+	document.title = title;
+	$(".my-title").html(title);
 	$(".header-bar .header-bar_name").html(title);
 }
 

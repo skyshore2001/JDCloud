@@ -341,6 +341,9 @@ function enhanceUpload(jupload)
 	});
 
 	jupload.on("submit", onSubmit);
+	if (jupload.attr("disabled")) {
+		jupload.gn().setDisabled(true);
+	}
 
 	jdlg.on("show", onShow);
 	if (!opt.manual)
@@ -619,6 +622,53 @@ function onChooseFile(ev)
 	}
 }
 
+self.getFormItemExt["wui-upload"] = function (ji) {
+	if (ji.hasClass("wui-upload")) {
+		return new UploadFormItem(ji);
+	}
+	if (ji.parent().hasClass("wui-upload")) {
+		return new UploadFormItem(ji.parent());
+	}
+}
+
+function UploadFormItem(ji) {
+	WUI.FormItem.call(this, ji);
+	this.jvalue = ji.find("[name]:first");
+}
+UploadFormItem.prototype = $.extend(new WUI.FormItem(), {
+	getName: function () {
+		return this.jvalue.attr("name");
+	},
+	getDisabled: function () {
+		return this.jvalue.prop("disabled");
+	},
+	setDisabled: function (val) {
+		this.jvalue.prop("disabled", val);
+		this.updateShow_();
+	},
+	getReadonly: function () {
+		return this.jvalue.prop("readonly");
+	},
+	setReadonly: function (val) {
+		this.jvalue.prop("readonly", val);
+		this.updateShow_();
+	},
+	getValue: function () {
+		return this.jvalue.val();
+	},
+	setValue: function (val) {
+		this.jvalue.val(val);
+	},
+	getShowbox: function () {
+		return $();
+	},
+
+	updateShow_: function () {
+		var show = !this.getDisabled() && !this.getReadonly();
+		this.jvalue.next(".imgs").nextAll().toggle(show);
+	}
+});
+
 /**
 @key .wui-checkList
 
@@ -733,17 +783,83 @@ function hiddenToCheckbox(jp, sep)
 @key .wui-labels
 
 标签字段（labels）是空白分隔的一组词，每个词是一个标签（label）。
-可以在字段下方将常用标签列出供用户选择，点一下标签则添加到文本框中，再点一下删除它。
+
+一般会在字段下方将常用标签列出供用户选择，点一下标签则追加到文本框中，再点一下删除该标签项。多个标签以空格分隔。
+
+(v6) 可以设置选项opt.simple=true，这时如果单击一个标签，则直接填写（而不是追加）到文本框中，类似于单选。
+
+示例1：列出各种类型，点一下类型标签就追加到对话框，再点一下会删除该项。
 
 	<tr>
 		<td>标签</td>
 		<td class="wui-labels">
 			<input name="label" >
-			<p class="hint">企业类型：<span class="labels" dfd="StoreDialog.dfdLabel"></span></p>
+			<p class="hint">企业类型：<span class="labels" dfd="DlgStoreVar.onGetLabel()"></span></p>
 			<p class="hint">行业标签：<span class="labels">IT 金融 工业</span></p>
 			<p class="hint">位置标签：<span class="labels">一期 二期 三期 四期</span></p>
 		</td>
 	</tr>
+
+具有CSS类"labels"的组件，内容以空白分隔的多个标签，如`IT 金融 工业"。
+
+- 最终操作的文本字段是.wui-labels下带name属性的输入框。
+- 在.labels中的文本将被按空白切换，优化显示成一个个标签，可以点击。
+- 支持异步获取，比如要调用接口获取内容，可以指定`dfd`属性是一个Deferred对象。
+- 添加的标签具有`labelMark`类(label太常用，没有用它以免冲突)，默认已设置样式，可以为它自定义样式。
+
+本例中dfd属性"DlgStoreVar.onGetLabel()"是个函数调用，它返回的是一个Deferred对象，这样可以实现异步获取再设置标签列表，示例：（在dlgStore.js中）
+
+	function initDlgStore() {
+		// 按惯例，只被Xx页面使用的变量可放在dlgXx.js中的DlgXxVar中，而会被其它页面调用的变量则放在全局应用store.js中的DlgXx中（称为页面接口）。
+		window.DlgStoreVar = {
+			onGetLabel: function () {
+				var dfd = $.Deferred();
+				callSvr("Conf.query", {cond: "name='企业分类'", fmt: "one", res: "value"}, function (data) {
+					DlgStoreVar.dfdLabel.resolve(data.value);
+				})
+				return dfd;
+			}
+		};
+		...
+	}
+
+上面的DlgStoreVar.onGetLabel也可以直接返回标签列表，如：
+
+		window.DlgStoreVar = {
+			onGetLabel: function () {
+				return "标签1 标签2";
+			}
+		}
+
+在第一次打开页面时会调用onGetLabel函数，设置标签列表。
+
+(v6) 如果想每次打开页面都调用，只需要稍加修改，直接为dfd指定函数`DlgStoreVar.onGetLabel`（而不是函数调用后的返回值`DlgStoreVar.onGetLabel()`）：
+
+		<p class="hint">企业类型：<span class="labels" dfd="DlgStoreVar.onGetLabel"></span></p>
+
+(v6) 示例1-1：可以为不良品(Fault)设置标签，可通过系统配置项"Cinf.faultLabel"来配置可用的标签，即后端提供`Cinf.getValue({name: "faultLabel"})`接口获取可用标签列表（以空格分隔）
+
+在dlgFault.html中设置标签字段：
+
+		<tr>
+			<td>标签</td>
+			<td class="wui-labels">
+				<input name="label">
+				<p class="hint"><span class="labels" dfd="DlgFaultVar.onGetLabel"></span></p>
+			</td>
+		</tr>
+
+注意dfd属性直接指定为函数`DlgFaultVar.onGetLabel`，也就是每次打开页面都会执行它：这意味着当修改系统配置项`faultLabel`后，无须刷新系统，重新打开不良品对话框就可以点选新标签了。
+
+在dlgFault.js中定义动态获取标签：
+
+	window.DlgFaultVar = {
+		onGetLabel: function () {
+			return callSvr("Cinf.getValue", {name: "faultLabel"});
+		}
+	}
+
+注意：函数里比上例简化了很多，因为callSvr返回是就是Defered对象，而且由于`Cinf.getValue`接口刚好返回的数据格式就是"标签1 标签2"字符串，所以不用再新建一个Defered对象在处理格式转换后做resolve了。
 
 示例2：设置配置项，并配以说明和示例
 
@@ -759,21 +875,20 @@ function hiddenToCheckbox(jp, sep)
 		</td>
 	</tr>
 
-- 最终操作的文本字段是.wui-labels下带name属性的输入框。
-- 在.labels中的文本将被按空白切换，优化显示成一个个标签，可以点击。
-- 支持异步获取，比如要调用接口获取内容，可以指定`dfd`属性是一个Deferred对象。
-- 添加的标签具有`labelMark`类(label太常用，没有用它以免冲突)，默认已设置样式。
+示例3：(v6) 推荐项为单选(simple模式)，且标签可以显示(text)与实际值(value)不同。
 
-异步获取示例：
+		<tr>
+			<td>URL地址</td>
+			<td class="wui-labels" data-options="simple:true">
+				<input name="url" value="http://oliveche.com/mes/">
+				<p class="hint">
+					<span class="labels">生产环境|http://192.168.10.23/mes/ 测试|http://oliveche.com/mes/</span>
+				</p>
+			</td>
+		</tr>
 
-	var StoreDialog = {
-		dfdLabel: $.Deferred()
-	}
-	callSvr("Conf.query", {cond: "name='企业分类'", fmt: "one", res: "value"}, function (data) {
-		StoreDialog.dfdLabel.resolve(data.value);
-	})
-
-// TODO: 支持beforeShow时更新
+- 设置组件选项(data-options内)simple为true
+- 每项标签的格式为"text|value?"(前面例子也适用)，如"生产环境|http://192.168.10.23/mes/"表示显示"生产环境"，但点击后取值为"http://192.168.10.23/mes/"。
  */ 
 self.m_enhanceFn[".wui-labels"] = enhanceLabels;
 
@@ -783,34 +898,42 @@ function enhanceLabels(jp)
 	if (jdlg.size() == 0)
 		return;
 
+	var defOpt = {
+		simple: false,
+	};
+	var opt = WUI.getOptions(jp, defOpt);
+
 	var doInit = true;
 	jdlg.on("beforeshow", onBeforeShow);
 
+	jp.on("click", ".labelMark", function () {
+		var label = $(this).attr("value");
+		var o = jp.find(":input[name]")[0];
+		if (opt.simple) {
+			o.value = label;
+			return;
+		}
+		var str = o.value;
+		if (str.indexOf(label) < 0) {
+			if (str.length == 0)
+				str = label;
+			else
+				str += ' ' + label;
+		}
+		else {
+			str = str.replace(/\s*(\S+)/g, function (m, m1) {
+				if (m1 == label)
+					return "";
+				return m;
+			});
+		}
+		o.value = str;
+	});
+
 	function onBeforeShow() {
-		if (! doInit)
+		if (! doInit && ! opt.doUpdate)
 			return;
 		doInit = false;
-
-		jp.on("click", ".labelMark", function () {
-			var label = $(this).text();
-			var o = jp.find(":input[name]")[0];
-			var str = o.value;
-			if (str.indexOf(label) < 0) {
-				if (str.length == 0)
-					str = label;
-				else
-					str += ' ' + label;
-			}
-			else {
-				str = str.replace(/\s*(\S+)/g, function (m, m1) {
-					if (m1 == label)
-						return "";
-					return m;
-				});
-			}
-			o.value = str;
-		});
-
 		showLabel();
 	}
 
@@ -820,10 +943,18 @@ function enhanceLabels(jp)
 			var prop = jo.attr("dfd");
 			if (prop) {
 				var rv = WUI.evalAttr(jo, "dfd");
-				WUI.assert(rv.then, "Property `dfd' MUST be a Deferred object: " + prop);
-				rv.then(function (text) {
-					handleLabel(jo, text);
-				})
+				if ($.isFunction(rv)) {
+					doInit = true; // NOTE: 只要设置是Function则每次打开页面都会初始化
+					rv = rv();
+				}
+				if (rv.then) {
+					rv.then(function (text) {
+						handleLabel(jo, text);
+					})
+				}
+				else {
+					handleLabel(jo, rv);
+				}
 			}
 			else {
 				handleLabel(jo, jo.html());
@@ -834,7 +965,9 @@ function enhanceLabels(jp)
 	function handleLabel(jo, s) {
 		if (s && s.indexOf("span") < 0) {
 			var spanHtml = s.split(/\s+/).map(function (e) {
-				return '<span class="labelMark">' + e + '</span>';
+				var a = e.split('|');
+				var text = a[0], value = (a[1]||a[0]);
+				return '<span class="labelMark" value="' + value + '">' + text + '</span>';
 			}).join(' ');
 			jo.html(spanHtml);
 		}
@@ -864,14 +997,19 @@ function enhanceLabels(jp)
 图标使用font awesome库，由`<i class="fa fa-xxx"></i>`指定，图标查询可参考 http://www.fontawesome.com.cn/faicons/ 或 https://fontawesome.com/icons
 
  */
+self.enhanceMenu = enhanceMenu;
 function enhanceMenu()
 {
 	var jo = $('#menu');
 
 	jo.find("a").addClass("my-menu-item");
-	jo.find(".menu-expandable").hide();
 	jo.find(".menu-expand-group").each(function () {
-		$(this).find("a:first")
+		var ji = $(this);
+		if (ji.hasClass("wui-enhanced"))
+			return;
+		ji.find(".menu-expandable").hide();
+		ji.addClass("wui-enhanced");
+		ji.find("a:first")
 			.addClass("menu-item-head")
 			.click(menu_onexpand)
 			.append('<i class="fa fa-angle-down" aria-hidden="true"></i>')
@@ -882,6 +1020,10 @@ function enhanceMenu()
 				}
 			});
 	});
+	if (jo.hasClass("wui-enhanced"))
+		return;
+	jo.addClass("wui-enhanced");
+
 	// set active
 	jo[0].addEventListener("click", function (ev) {
 		if (ev.target.tagName != "A" || !$(ev.target).is(".my-menu-item:not(.menu-item-head)")<0)
@@ -919,6 +1061,7 @@ $(enhanceMenu);
 
 	ListOptions.StoreGrid = {
 		jd_vField: "storeName",
+		jd_dlgForAdd: "#dlgStore",
 		panelWidth: 450,
 		width: '95%',
 		textField: "name",
@@ -935,14 +1078,21 @@ $(enhanceMenu);
 
 - jd_vField: 显示文本对应的虚拟字段, 用于初始显示和查询。
 - jd_showId: 默认为true. 显示"idField - textField"格式. 设置为false时只显示textField.
+- jd_dlgForAdd: (v6) 如果指定，则下拉列表中显示“新增”按钮，可以打开该对话框添加对象。（支持权限控制）
 
 在选择一行并返回时，它会触发choose事件：
 
-	var jo = jdlg.find("[comboname=storeId]"); // 注意不是 "[name=storeId]"（原始的input已经变成一个hidden组件，只存储值）
+	// 注意要取combogrid对象要用comboname! 而不是用 "[name=storeId]"（原始的input已经变成一个hidden组件，只存储值）
+	var jo = jdlg.find("[comboname=storeId]"); 
 	jo.on("choose", function (ev, row) {
 		console.log('choose row: ', row);
 		...
 	});
+
+jo是easyui-combogrid，可以调用它的相应方法，如禁用和启用它：
+
+	jo.combogrid("disable");
+	jo.combogrid("enable");
 
 在输入时，它会自动以url及参数q向后端发起查询，如`callSvr("Store.query", {res:'id,name', q='1'})`.
 在筋斗云后端须支持相应对象的模糊查询(请查阅文档qsearch)。
@@ -987,76 +1137,147 @@ $(enhanceMenu);
 (v5.5) 与my-combobox类似，组件会在其它页面更新对象后自动刷新列表。
 外部想要刷新组件列表，可以触发markRefresh事件：
 
+	jo = jdlg.find("[comboname=xxxId]");
 	jo.trigger("markRefresh", obj); // obj是可选的，若指定则仅当obj匹配组件对应obj时才会刷新。
+
+## 动态修改下拉列表
+
+(v6) 与my-combobox方法相同，重新设置选项：
+
+	jo = jdlg.find("[comboname=xxxId]");
+	jo.trigger("setOption", opt);
+
+动态修改组件选项示例：
+
+	// 比如每打开对话框时，根据type动态显示列表。可在dialog的beforeShow事件中编码：
+	var cond = type == 'A'? xx: yy...;
+	// 取出选项，动态修改url
+	var jo = jdlg.find("[comboname=categoryId]");
+	jo.trigger("setOption", ListOptions.CategoryGrid(cond));
+
+## 使用gn函数访问组件
+
+设置值：
+
+	jdlg.gn("userId").val(10);
+	jdlg.gn("userId").val([10, "用户1"]); // 如果传数组，则同时设置值和显示文本
+
+设置状态：
+
+	jdlg.gn("userId").visible(true)
+		.readonly(true)
+		.disabled(true);
+
+注意gn函数支持链式调用。
+
+重置选项：
+
+	jdlg.gn("userId").setOption(ListOptions.UserGrid({phone: "~*9204"}));
 
  */
 self.m_enhanceFn[".wui-combogrid"] = enhanceCombogrid;
 function enhanceCombogrid(jo)
 {
-	var opt1 = WUI.getOptions(jo);
-	jo.removeAttr("data-options"); // 避免被easyui错误解析
-	var jdlg;
-	var $dg;
-	var doInit = true;
-
-	var opt = $.extend({}, $.fn.datagrid.defaults, {
+	var myopt = WUI.getOptions(jo);
+	// add default option
+	WUI.extendNoOverride(myopt, {
+		jd_showId: true,
 		delay: 500,
 		idField: "id",
 		textField: "name",
-		jd_showId: true,
 		mode: 'remote',
-		// 首次打开面板时加载url
-		onShowPanel: function () {
-			if (doInit && opt1.url) {
-				doInit = false;
-				$dg.datagrid("options").url = opt1.url;
-				$dg.datagrid("reload");
-			}
-		},
-		// 值val必须为数值(因为值对应id字段)才合法, 否则将清空val和text
-		onHidePanel: function () {
-			var val = jo.combogrid("getValue");
-			if (! val)
-				return;
-			if (jdlg.size() > 0 && jdlg.jdata().mode == FormMode.forFind) {
-				if (vfield && /[^\d><=!,-]/.test(val) ) {
-					jo.prop("nameForFind", vfield);
-				}
-				return;
-			}
-			jo.removeProp("nameForFind");
+	});
+	jo.removeAttr("data-options"); // 避免被easyui错误解析
 
-			var isId = (opt.idField == "id");
-//			var val1 = jo.combogrid("textbox").val();
-			if (isId && ! $.isNumeric(val)) {
-				jo.combogrid("setValue", "");
-			}
-			else if (opt.jd_showId) {
-				var txt = jo.combogrid("getText");
-				if (! /^\d+ - /.test(txt)) {
-					jo.combogrid("setText", val + " - " + txt);
+	var jdlg;
+	var isCombogridCreated = false;
+	var doInit = true;
+
+	setOption();
+
+	jo.on("markRefresh", markRefresh);
+	jo.on("setOption", function (ev, opt) {
+		setOption(opt);
+	});
+
+	jdlg = jo.closest(".wui-dialog");
+	if (jdlg.size() == 0)
+		return;
+
+	jdlg.on("beforeshow", onBeforeShow);
+
+	function initCombogrid()
+	{
+		if (isCombogridCreated)
+			return;
+		isCombogridCreated = true;
+
+		var $dg;
+		var curVal, curText;
+
+		var initOpt = $.extend({}, $.fn.datagrid.defaults, {
+			// 首次打开面板时加载url
+			onShowPanel: function () {
+				if (doInit && myopt.url) {
+					doInit = false;
+					$dg.datagrid("options").url = myopt.url;
+					$dg.datagrid("reload");
 				}
+				curVal = jo.combogrid("getValue");
+				curText = jo.combogrid("getText");
+			},
+			// 值val必须为数值(因为值对应id字段)才合法, 否则将清空val和text
+			onHidePanel: function () {
+				var val = jo.combogrid("getValue");
+				if (! val || curVal == val) {
+					jo.combogrid("setText", curText);
+					return;
+				}
+
+				jo.removeProp("nameForFind");
+				if (jdlg.size() > 0 && jdlg.jdata().mode == FormMode.forFind) {
+					if (myopt.jd_vField && /[^\d><=!,-]/.test(val) ) {
+						jo.prop("nameForFind", myopt.jd_vField);
+					}
+					return;
+				}
+
+				var isId = (myopt.idField == "id");
+	//			var val1 = jo.combogrid("textbox").val();
+				if (isId && ! $.isNumeric(val)) {
+					jo.combogrid("setValue", "");
+				}
+				else if (myopt.jd_showId) {
+					var txt = jo.combogrid("getText");
+					if (! /^\d+ - /.test(txt)) {
+						jo.combogrid("setText", val + " - " + txt);
+					}
+				}
+				var row = $dg.datagrid("getSelected");
+				if (row)
+					jo.trigger("choose", [row]);
+			},
+			/* !!! TODO: 解决combogrid 1.4.2的bug. 1.5.2以上已修复, 应移除。
+			onLoadSuccess: function () {
+				$dg && $.fn.datagrid.defaults.onLoadSuccess.apply($dg[0], arguments);
 			}
-			var row = $dg.datagrid("getSelected");
-			if (row)
-				jo.trigger("choose", [row]);
-		},
-		// !!! TODO: 解决combogrid 1.4.2的bug. 1.5.2以上已修复, 应移除。
-		onLoadSuccess: function () {
-			$dg && $.fn.datagrid.defaults.onLoadSuccess.apply($dg[0], arguments);
+			*/
+		}, myopt, {url: null}); // URL在创建后再指定，这样初始化时不调用接口
+		if (myopt.jd_dlgForAdd && WUI.canDo(null, "新增")) {
+			var jdlgForAdd = $(myopt.jd_dlgForAdd);
+			var btnAdd = {text:'新增', iconCls:'icon-add', handler: function () {
+				jo.combo("hidePanel");
+				WUI.showObjDlg(jdlgForAdd, FormMode.forAdd, {onOk: function (retData) {
+					jo.combogrid("setValue", retData);
+					jo.combogrid("setText", retData + " - (新增)");
+					jo.removeProp("nameForFind");
+				}});
+			}};
+			initOpt.toolbar = WUI.dg_toolbar(null, jdlgForAdd, btnAdd);
 		}
-	}, opt1);
-
-	var vfield = opt.jd_vField;
-	var showId = opt.jd_showId;
-
-	// 创建后再指定，这样初始化时不调用接口
-	opt.url = null;
-	jo.combogrid(opt);
-	$dg = jo.combogrid("grid");
-// 	if (url) {
-// 		$dg.datagrid("options").url = url;
-// 	}
+		jo.combogrid(initOpt);
+		$dg = jo.combogrid("grid");
+	}
 
 /*
 	jo.combogrid("textbox").blur(function (ev) {
@@ -1064,31 +1285,25 @@ function enhanceCombogrid(jo)
 	});
 	*/
 
-	jdlg = jo.closest(".wui-dialog");
-	if (jdlg.size() == 0)
-		return;
-
-	jdlg.on("beforeshow", onBeforeShow);
-	jo.on("markRefresh", markRefresh);
-
-	function onBeforeShow(ev, formMode, opt) {
-		if (vfield && opt.data && opt.data[vfield]) {
-			setTimeout(function () {
+	function onBeforeShow(ev, formMode, formOpt) {
+		// 推迟执行，以便应用在onBeforeShow中设置组件选项。
+		setTimeout(function () {
+			if (myopt.jd_vField && formOpt.data && formOpt.data[myopt.jd_vField]) {
 				// onShow
 				var val = jo.combogrid("getValue");
 				if (val != "") {
-					var txt = opt.data[vfield];
-					if (showId) {
+					var txt = formOpt.data[myopt.jd_vField];
+					if (myopt.jd_showId) {
 						var prefix = val + " - ";
 						if (!txt.startsWith(prefix))
 							txt = prefix + txt;
 					}
 					jo.combogrid("setText", txt);
 				}
-			});
-			// nameForFind用于find模式下指定字段名，从而可以按名字来查询。Add/set模式下应清除。
-			jo.removeProp("nameForFind");
-		}
+				// nameForFind用于find模式下指定字段名，从而可以按名字来查询。Add/set模式下应清除。
+				jo.removeProp("nameForFind");
+			}
+		});
 	}
 
 	function markRefresh(ev, obj)
@@ -1102,6 +1317,19 @@ function enhanceCombogrid(jo)
 				return;
 		}
 		doInit = true;
+	}
+
+	function setOption(opt) {
+		var rv = diffObj(myopt, opt);
+		if (rv == null)
+			return;
+		$.extend(myopt, opt);
+		doInit = true;
+		if (opt && rv.columns) {
+			// 设置columns属性时做combogrid初始化
+			isCombogridCreated = false;
+		}
+		initCombogrid();
 	}
 }
 
@@ -1120,83 +1348,98 @@ form提交时能够正确获取它们的值：
 
 而且在查询模式下，日期等字段也不受格式限制，可输入诸如"2019-10", "2019-1-1~2019-7-1"这样的表达式。
 */
-self.formItems[".combo-f"] = $.extend({}, self.defaultFormItems, {
-	getComboType_: function (jo) {
-		var o = jo[0];
-		if (! o.comboType) {
-			var arr = Object.keys(jo.data()); // e.g. ["combogrid", "combo", "textbox"]
-			// console.log(arr);
-			for (var i=0; i<arr.length; ++i) {
-				if (jo[arr[i]]) {
-					o.comboType = arr[i];
-					break;
-				}
-			}
+self.getFormItemExt["combo"] = function (ji) {
+	// 注意：jo.combo()创建后，它会将name属性转移到一个新建的hidden对象。传入这里的ji可以是原combo对象也可以是那个hidden对象。
+	// 在实现方法时只根据原combo对象即jcombo
+	var jcombo;
+	if (ji.hasClass("combo-f")) {
+		jcombo = ji;
+	}
+	else if (ji.is("[type=hidden].textbox-value")) {
+		jcombo = ji.closest(".combo").prev(".combo-f");
+	}
+	else {
+		return;
+	}
+	if (jcombo.size() == 0)
+		return;
+
+	var jcomboCall;
+	var arr = Object.keys(jcombo.data()); // e.g. ["combogrid", "combo", "textbox"]
+	// console.log(arr);
+	for (var i=0; i<arr.length; ++i) {
+		if (jcombo[arr[i]]) {
+			var comboType = arr[i]; // e.g. combogrid
+			var fn = jcombo[comboType].bind(jcombo);
+			jcomboCall = fn;
+			break;
 		}
-		return o.comboType;
+	}
+	WUI.assert(jcomboCall);
+	return new ComboFormItem(ji, jcombo, jcomboCall);
+}
+
+function ComboFormItem(ji, jcombo, jcomboCall) {
+	WUI.FormItem.call(this, ji);
+	this.jcombo = jcombo;
+	this.jcomboCall = jcomboCall;
+}
+
+// 适用于 combo, combogrid, datebox, datetimebox
+// { ji, jcombo, jcomboCall }
+ComboFormItem.prototype = $.extend(new WUI.FormItem(), {
+	getName: function () {
+		var jcombo = this.jcombo;
+		return jcombo.prop("nameForFind") || jcombo.attr("comboname");
 	},
-	getName: function (jo) {
-		// 取原始名字comboname
-		return jo.prop("nameForFind") || jo.attr("comboname");
+	getJo: function () {
+		return this.jcombo;
 	},
-	setValue: function (jo, val) {
-		var type = this.getComboType_(jo);
-		jo[type]("setValue", val);
+	setValue: function (val) {
+		var fn = this.jcomboCall;
+		if ($.isArray(val)) {
+			fn("setValue", val[0]);
+			var opt = WUI.getOptions(this.jcombo);
+			if (opt.jd_showId) {
+				fn("setText", val[0] + " - " + val[1]);
+			}
+			else {
+				fn("setText", val[1]);
+			}
+			return;
+		}
+		fn("setValue", val); // 调用比如 jcombo.combogrid("setValue", ...)
 	},
-	getValue: function (jo) {
-		var type = this.getComboType_(jo);
-		return jo[type]("getValue");
+	getValue: function () {
+		var fn = this.jcomboCall;
+		return fn("getValue");
 	},
-	getReadonly: function (jo) {
-		return jo.combo("textbox").prop("readonly");
+	getDisabled: function () {
+		var fn = this.jcomboCall;
+		return fn("options").disabled;
 	},
-	setReadonly: function (jo, val) {
-		jo.combo("textbox").prop("readonly", val);
+	setDisabled: function (val) {
+		var fn = this.jcomboCall;
+		fn(val? "disable": "enable");
+	},
+	getReadonly: function () {
+		var fn = this.jcomboCall;
+		return fn("options").readonly;
+	},
+	setReadonly: function (val) {
+		var fn = this.jcomboCall;
+		return fn("readonly", val);
 	},
 	// 用于显示的虚拟字段值
-	getValue_vf: function (jo) {
-		var type = this.getComboType_(jo);
-		return jo[type]("getText");
-	}
+	getValue_vf: function () {
+		var fn = this.jcomboCall;
+		return fn("getText");
+	},
+	getShowbox: function () {
+		var fn = this.jcomboCall;
+		return fn("textbox");
+	},
 });
-
-/*
-self.formItems[".combogrid-f"] = $.extend({}, self.defaultFormItems, {
-	getName: function (jo) {
-		return jo.attr("comboname");
-	},
-	setValue: function (jo, val) {
-		jo.combogrid("setValue", val);
-	},
-	getValue: function (jo) {
-		return jo.combogrid("getValue");
-	}
-});
-
-self.formItems[".datebox-f"] = $.extend({}, self.defaultFormItems, {
-	getName: function (jo) {
-		return jo.attr("comboname");
-	},
-	setValue: function (jo, val) {
-		jo.datebox("setValue", val);
-	},
-	getValue: function (jo) {
-		return jo.datebox("getValue");
-	}
-});
-
-self.formItems[".datetimebox-f"] = $.extend({}, self.defaultFormItems, {
-	getName: function (jo) {
-		return jo.attr("comboname");
-	},
-	setValue: function (jo, val) {
-		jo.datetimebox("setValue", val);
-	},
-	getValue: function (jo) {
-		return jo.datetimebox("getValue");
-	}
-});
-*/
 
 /**
 @fn toggleCol(jtbl, col, show)
@@ -1289,12 +1532,16 @@ function toggleFields(jo, showMap)
 
 function initPermSet(rolePerms)
 {
-	if (!rolePerms)
-		return;
-
 	var permSet = {};
-	var rpArr = rolePerms.split(/\s+/);
+	var isAdm = g_data.hasRole("mgr,emp");
+	if (isAdm) {
+		permSet["*"] = true;
+	}
+	var rpArr = rolePerms? rolePerms.split(/\s+/): [];
 	$.each (rpArr, function (i, e) {
+		if (isAdm && (e.indexOf("不可")>=0 || e.indexOf("只读")>=0))
+			return;
+
 		var e1 = e.replace(/不可/, '');
 		if (e1.length != e.length) {
 			permSet[e1] = false;
@@ -1347,10 +1594,13 @@ function initPermSet(rolePerms)
 	var isAdm = g_data.hasRole("mgr,emp"); // 管理员(两种都行)
 	var isKF = g_data.hasRole("客服");
 
-自定义权限规则复杂，一般由框架管理，可以用g_data.permSet[perm]查询，如：
+自定义权限规则复杂，一般由框架管理，可以用`canDo(对象, 权限)`函数查询，如：
 
-	var bval = g_data.permSet["客户管理"];
+	var bval = WUI.canDo("客户管理"); // 查一个特定对象，名词性
+	var bval = WUI.canDo(null, "首件确认"); // 查一个特定权限，动词性。（最高）管理员或指定了"*"权限的话，则默认也允许。
+	var bval = WUI.canDo(null, "维修", false); // 查一个特定权限，动词性，缺省值设置false表示未直接设置就不允许，即使是（最高）管理员或指定了"*"权限也不允许。
 
+WUI.canDo的底层实现是通过`g_data.permSet[perm]`查询。
  */
 self.applyPermission = applyPermission;
 function applyPermission()
@@ -1371,6 +1621,7 @@ function applyPermission()
 		$(sel2).hide();
 	}
 
+	// 注意：Employee.perms指的是角色；rolePerms才是权限集合。用g_data.hasRole检查角色，用WUI.canDo检查权限
 	g_data.hasRole = g_data.hasPerm = function (perms) {
 		var arr1 = perms.split(',');
 		for (var i=0; i<arr1.length; ++i) {
@@ -1379,60 +1630,48 @@ function applyPermission()
 				return true;
 		}
 		return false;
-		
-/*
-		var found = false;
-		$.each(arr, function (i, e) {
-				if (e == perm) {
-					found = true;
-					return false;
-				}
+	}
+
+	g_data.permSet = initPermSet(rolePerms);
+	if (! g_data.hasRole("mgr,emp")) {
+		var defaultShow = self.canDo("*", null, false);
+		$("#menu .perm-emp .menu-expand-group").each(function () {
+			showGroup($(this));
 		});
-		return found;
-*/	}
+	}
 
-	if (rolePerms) {
-		g_data.permSet = initPermSet(rolePerms);
-		if (! g_data.hasRole("mgr,emp")) {
-			var defaultShow = self.canDo("*", null, false);
-			$("#menu .perm-emp .menu-expand-group").each(function () {
-				showGroup($(this));
-			});
-		}
-
-		// 支持多级嵌套
-		function showGroup(jo) {
-			var t = jo.find("a:first").text(); // 菜单组名称
-			var doShowGroup = self.canDo(t, null, defaultShow);
-			var doShow = defaultShow;
-			var allHidden = true;
-			jo.find(">.menu-expandable>a").each(function () {
-				var t = $(this).text();
-				if (WUI.canDo(t, null, doShowGroup)) {
-					doShow = true;
-					allHidden = false;
-					// $(this).show();
-				}
-				else {
-					$(this).hide();
-				}
-			});
-			jo.find(">.menu-expand-group").each(function () {
-				if (showGroup($(this))) {
-					doShow = true;
-					allHidden = false;
-				}
-			});
-			if (allHidden) {
-				jo.closest(".perm-emp").hide();
-				return false;
+	// 支持多级嵌套
+	function showGroup(jo) {
+		var t = jo.find("a:first").text(); // 菜单组名称
+		var doShowGroup = self.canDo(t, null, defaultShow);
+		var doShow = defaultShow;
+		var allHidden = true;
+		jo.find(">.menu-expandable>a").each(function () {
+			var t = $(this).text();
+			if (WUI.canDo(t, null, doShowGroup)) {
+				doShow = true;
+				allHidden = false;
+				// $(this).show();
 			}
-			else if (doShowGroup || doShow) {
-				jo.closest(".perm-emp").show();
-				return true;
+			else {
+				$(this).hide();
 			}
+		});
+		jo.find(">.menu-expand-group").each(function () {
+			if (showGroup($(this))) {
+				doShow = true;
+				allHidden = false;
+			}
+		});
+		if (allHidden) {
+			jo.closest(".perm-emp").hide();
 			return false;
 		}
+		else if (doShowGroup || doShow) {
+			jo.closest(".perm-emp").show();
+			return true;
+		}
+		return false;
 	}
 }
 
@@ -1498,56 +1737,222 @@ function makeLink(text, fn)
 	return '<a href="javascript:' + self.fname(fn) + '()">' + text + '</a>';
 }
 
-function getObjFromJtbl(jtbl)
-{
-	if (!jtbl || jtbl.size() == 0 || !jtbl.hasClass("datagrid-f")) {
-		console.error("bad datagrid: ", jtbl);
-		throw "getObjFromJtbl error: bad datagrid.";
-	}
-	var url = jtbl.datagrid("options").url;
-	var m = url.match(/\w+(?=\.query\b)/);
-	return m && m[0];
-}
-
 $.extend(self.dg_toolbar, {
 	"import": function (ctx) {
-		return {text: "导入", "wui-perm": "新增", iconCls:'icon-ok', handler: function () {
-			var obj = getObjFromJtbl(ctx.jtbl);
-			self.assert(obj, "dg_toolbar.import: 对象未指定，无法导入");
-			self.assert(DlgImport, "DlgImport未定义");
-			DlgImport.show({obj: obj}, function () {
-				WUI.reload(ctx.jtbl);
-			});
+		return {text: "导入", "wui-perm": "新增", iconCls:'icon-add', handler: function () {
+			self.GridHeaderMenu['import'](ctx.jtbl);
 		}};
 	},
 
-	qsearch: function (ctx) {
+/**
+@key toolbar-qsearch
+
+工具栏-模糊查询。支持指定查询字段。
+
+	// pageXx.js function initPageXx
+	var dgOpt = {
+		...
+		toolbar: WUI.dg_toolbar(jtbl, jdlg, "qsearch"),
+	};
+	jtbl.datagrid(dgOpt);
+
+它调用接口`callSvr("Xx.query", {q: val})`
+需要后端支持查询，比如须指定在哪些字段查询：
+```php
+protected function onQuery() {
+    $this->qsearch(["code", "category"], param("q"));
+}
+```
+
+(v6) 新用法：也支持前端直接指定字段查询：
+
+	var dgOpt = {
+		...
+		// 表示在code或category两个字段中模糊查询。
+		toolbar: WUI.dg_toolbar(jtbl, jdlg, ["qsearch", "code,category"]),
+	};
+	jtbl.datagrid(dgOpt);
+
+它将调用接口`callSvr("Xx.query", {qsearch: "字段1,字段2:" + val})`。
+ */
+	qsearch: function (ctx, param) {
 		var randCls = "qsearch-" + WUI.randChr(4); // 避免有多个qsearch组件时重名冲突
 		setTimeout(function () {
-			ctx.jpage.find(".qsearch." + randCls).click(function () {
+			//给搜索框的父元素添加一个类名，方便修改样式
+			ctx.jp.find(".qsearch." + randCls).closest(".l-btn").addClass('qsearch-btn');
+			ctx.jp.find(".qsearch." + randCls).click(function () {
 				return false;
 			});
-			ctx.jpage.find(".qsearch." + randCls).keydown(function (e) {
+			ctx.jp.find(".qsearch." + randCls).keydown(function (e) {
 				if (e.keyCode == 13) {
 					$(this).closest(".l-btn").click();
+					return false; // 避免触发对话框回车事件
 				}
 			});
 		});
-		return {text: "<input style='width:8em' class='qsearch " + randCls + "'>", iconAlign:'right', iconCls:'icon-search', handler: function () {
+		return {text: "<input style='width:8em' class='qsearch " + randCls + "'>", iconAlign:'right', iconCls:'icon-search', "wui-perm": "查询", handler: function () {
 			var val = $(this).find(".qsearch").val();
-			WUI.reload(ctx.jtbl, null, {q: val});
+			if (param == null) {
+				WUI.reload(ctx.jtbl, null, {q: val});
+			}
+			else {
+				WUI.reload(ctx.jtbl, null, {qsearch: param + ":" + val});
+			}
 		}};
+	},
+
+	report: function (ctx) {
+		return {text: '报表', iconCls: 'icon-sum', handler: function () {
+			self.showDlg("#dlgDataReport");
+		}};	
 	}
 });
+
+// 用户自定义查询
+self.createFindMenu = createFindMenu;
+function createFindMenu(jtbl)
+{
+	var items = null; // elem: { text, query }
+	var curItem = null;
+	var ac = null;
+	if (jtbl.size() == 0) {
+		console.warn("createFindMenu: bad jtbl", jtbl);
+		return;
+	}
+
+	var jmenu = $('<div>' + 
+		'<div class="btnSave" data-options="iconCls:\'icon-save\', id:\'btnSave\'">保存查询</div>' + 
+		'<div class="btnClear" data-options="iconCls:\'icon-remove\', id:\'btnClear\'">清除查询</div>' + 
+		'<div class="btnUserQuery" data-options="iconCls:\'icon-search\', id:\'btnUserQuery\'">自定义查询</div>' + 
+		'<div class="menu-sep"></div>' + 
+		'</div>');
+	initCtxMenu();
+
+	jmenu.menu({
+		onClick: function (item) {
+			console.log(item);
+			if (item.id == "btnSave") {
+				var param = self.getQueryParamFromTable(jtbl);
+				app_alert("设置查询名称为? ", "p", function (queryName) {
+					if (items == null) {
+						items = [];
+					}
+					items.push({
+						text: queryName,
+						query: param.cond
+					});
+					updateMenu();
+					saveItems();
+				});
+			}
+			else if (item.id == "btnClear") {
+				WUI.reload(jtbl, null, {});
+			}
+			else if (item.id == "btnUserQuery") {
+				var param = self.getQueryParamFromTable(jtbl);
+				app_alert("查询条件(cond)? ", "p", function (cond) {
+					WUI.reload(jtbl, null, {cond: cond});
+				}, {defValue: param.cond});
+			}
+			else if (item.opt) {
+				WUI.reload(jtbl, null, {cond: item.opt.query});
+			}
+		},
+		onShow: function () {
+			var cond = self.getQueryParamFromTable(jtbl).cond;
+			var btnSave = jmenu.find(".btnSave");
+			jmenu.menu(cond? "enableItem": "disableItem", btnSave);
+			var btnClear = jmenu.find(".btnClear");
+			jmenu.menu(cond? "enableItem": "disableItem", btnClear);
+		}
+	})
+
+	setTimeout(function () {
+		var dg = WUI.getDgInfo(jtbl);
+		ac = dg.ac;
+		loadItems(); 
+		updateMenu();
+	});
+
+
+	return jmenu;
+
+	function updateMenu()
+	{
+		jmenu.find(".menu-sep").nextAll().remove();
+		jmenu.find(".menu-sep").toggle(items.length > 0);
+		$.each(items, function (i, e) {
+			jmenu.menu("appendItem", {
+				text: e.text,
+				opt: e
+			});
+		});
+	}
+
+	function loadItems() {
+		var name = "userQuery." + ac;
+		items = self.getStorage(name) || [];
+	}
+	function saveItems() {
+		var name = "userQuery." + ac;
+		self.setStorage(name, items);
+	}
+
+	// 删除和修改菜单项
+	function initCtxMenu() {
+		var jctxMenu = $('<div>' +
+			'<div data-options="iconCls:\'icon-remove\', id:\'btnDel\'">删除</div>' +
+			'<div data-options="iconCls:\'icon-edit\', id:\'btnEdit\'">修改</div>' +
+		'</div>');
+		jctxMenu.menu({
+			onClick: function (item) {
+				if (item.id == "btnDel") {
+					app_alert("删除查询项`" + curItem.text + "`?", "q", function () {
+						var idx = items.indexOf(curItem.opt);
+						items.splice(idx, 1);
+						jmenu.menu("removeItem", curItem.target);
+						saveItems();
+					});
+				}
+				else if (item.id == "btnEdit") {
+					app_alert("设置查询名称为?", "p", function (queryName) {
+						curItem.text = queryName;
+						curItem.opt.text = queryName;
+						jmenu.menu("setText", {
+							target: curItem.target,
+							text: queryName
+						});
+						saveItems();
+					}, {defValue: curItem.text});
+				}
+			}
+		});
+		jmenu.on("contextmenu", ".menu-item", function (ev) {
+			var item = jmenu.menu("getItem", this);
+			if (item.opt) {
+				curItem = item;
+				jctxMenu.menu("show", {
+					left: ev.pageX,
+					top: ev.pageY
+				})
+			}
+			ev.preventDefault();
+			ev.stopImmediatePropagation();
+			return false;
+		});
+	}
+}
 
 /**
 @key .wui-subobj
 
-选项：{obj, relatedKey, res?, dlg?/关联的明细对话框, datagrid/treegrid}
+选项：opt={obj, relatedKey, res?, dlg?/关联的明细对话框, datagrid/treegrid}
 
 这些选项在dlg设置时有效：{valueField, readonly, objParam, toolbar, vFields}
 
-## 示例1：可以增删改查的子表：
+- opt.forceLoad: 显示为Tab页时（即每个Tab页一个子表），为减少后端查询，若该Tab页尚未显示，是不加载该子表的。设置forceLoad为true则无论是否显示均强制加载。
+
+## 示例：可以增删改查的子表：
 
 	<div class="wui-subobj" data-options="obj:'CusOrder', relatedKey:'cusId', valueField:'orders', dlg:'dlgCusOrder'">
 		<p><b>物流订单</b></p>
@@ -1562,22 +1967,23 @@ $.extend(self.dg_toolbar, {
 
 选项说明：
 
-- obj: 子表对象，与relatedKey字段一起自动生成子表查询，即`{obj}.query`接口。
+- opt.obj: 子表对象，与relatedKey字段一起自动生成子表查询，即`{obj}.query`接口。
 
 		class AC2_CusOrder extends AccessControl
 		{
 		}
 
-- relatedKey: 关联字段. 指定两表(当前表与obj对应表)如何关联, 用于自动创建子表查询条件以及子表对话框的关联值设置(wui-fixed-field)
+- relatedKey: 关联字段. 指定两表(当前表与obj对应表)如何关联, 用于自动创建子表查询条件以及子表对话框的关联值设置(wui-fixedField)
  值"cusId"与"cusId={id}"等价, 表示`主表.id=CusOrder.cusId`.
  可以明确指定被关联字段, 如relatedKey="name={name}" 表示`主表.name=CusOrder.name`. 
  支持多个关联字段设置, 如`relId={id} AND type={type}`.
+ 支持in方式关联，如`id in ({itemIds})`，其中itemIds字段为逗号分割的id列表，如"100,102"
 
-- dlg: 对应子表详情对话框。如果指定，则允许添加、更新、查询操作。
+- opt.dlg: 对应子表详情对话框。如果指定，则允许添加、更新、查询操作。
 
 以下字段仅当关联对话框（即dlg选项设置）后有效：
 
-- valueField: 对应后端子表名称，在随主表一起添加子表时，会用到该字段。如果不指定，则不可在主表添加时一起添加。它对应的后端实现示例如下：
+- opt.valueField: 对应后端子表名称，在随主表一起添加子表时，会用到该字段。如果不指定，则不可在主表添加时一起添加。它对应的后端实现示例如下：
 
 		class AC2_Customer extends AccessControl
 		{
@@ -1586,9 +1992,9 @@ $.extend(self.dg_toolbar, {
 			]
 		}
 
-- readonly: 默认为false, 设置为true则在主表添加之后，不可对子表进行添加、更新或删除。
+- opt.readonly: 默认为false, 设置为true则在主表添加之后，不可对子表进行添加、更新或删除。
 
-- objParam: 关联的明细对象对话框的初始参数, 对应dialogOpt.objParam. 例如有 offline, onCrud()等选项. 
+- opt.objParam: 关联的明细对象对话框的初始参数, 对应dialogOpt.objParam. 例如有 offline, onCrud()等选项. 
 @see objParam
 
 示例：在对话框dlgOrder上设置子表关联对话框dlgOrder1:
@@ -1606,22 +2012,7 @@ $.extend(self.dg_toolbar, {
 		...
 	}
 
-- toolbar: 指定修改对象时的增删改查按钮, Enum(a-add, s-set, d-del, f-find, r-refresh), 字符串或数组, 缺省是所有按钮, 空串""或空数组[]表示没有任何按钮.
-示例：只留下删除和刷新: toolbar='rd'
-@see dg_toolbar
-
-可以在validate事件中，对添加的子表进行判断处理：
-
-	function onValidate(ev, mode, oriData, newData) 
-	{
-		// 由于valueField选项设置为"orders", 子表数组会写在newDate.orders中
-		if (newData.orders.length == 0) {
-			WUI.app_alert("请添加子表项!", "w");
-			return false;
-		}
-		// 假如需要压缩成一个字符串：
-		// newData.orders = WUI.objarr2list(newData.orders, ["type", "amount"]);
-	}
+## 动态修改选项
 
 选项可以动态修改，如：
 
@@ -1629,7 +2020,51 @@ $.extend(self.dg_toolbar, {
 	var jsub = jdlg.find(".wui-subobj");
 	WUI.getOptions(jsub).readonly = !g_data.hasRole("emp,mgr");
 
-- forceLoad: 显示为Tab页时（即每个Tab页一个子表），为减少后端查询，若该Tab页尚未显示，是不加载该子表的。设置forceLoad为true则无论是否显示均强制加载。
+## 定制子对象操作按钮toobar
+
+- opt.toolbar: 指定修改对象时的增删改查按钮, Enum(a-add, s-set, d-del, f-find, r-refresh), 字符串或数组, 缺省是所有按钮, 空串""或空数组[]表示没有任何按钮.
+
+示例：只留下删除和刷新: 
+
+	<div ... class="wui-subobj" data-options="..., toolbar:'rd'"
+
+示例：为子表定制一个操作按钮“取消”：
+
+	// function initPageXXX() 自定义个按钮
+	var btnCancelOrder = {text: "取消订单", iconCls:'icon-delete', handler: function () {
+		var row = WUI.getRow(jtbl);
+		if (row == null)
+			return;
+		callSvc("Ordr.cancel", {id: row.id}, function () {
+			app_show("操作完成");
+			WUI.reloadRow(jtbl, row);
+		})
+	}};
+
+	// 在dialog的beforeshow回调中：
+	var jsub = jdlg.find(".wui-subobj");
+	WUI.getOptions(jsub).toolbar = ["r", "f", "s", btnCancelOrder]
+
+@see dg_toolbar
+
+## 添加主对象时检查子表
+
+可以在validate事件中，对添加的子表进行判断处理：
+
+	function onValidate(ev, mode, oriData, newData) 
+	{
+		if (mode == FormMode.forAdd) {
+			// 由于valueField选项设置为"orders", 子表数组会写在newDate.orders中
+			if (newData.orders.length == 0) {
+				WUI.app_alert("请添加子表项!", "w");
+				return false;
+			}
+			// 假如需要压缩成一个字符串：
+			// newData.orders = WUI.objarr2list(newData.orders, ["type", "amount"]);
+		}
+	}
+
+注意：只有在主对象添加时可以检查子表。在更新模式下，子对象的更改是直接单独提交的，主对象中无法处理。
 
 ## 示例2：主表记录添加时不需要展示，添加之后子表/关联表可以增删改查：
 
@@ -1643,75 +2078,43 @@ $.extend(self.dg_toolbar, {
 		...
 	</div>
 
-示例4：最简单的只读子表，只查看，也不关联对话框
+示例：最简单的只读子表，只查看，也不关联对话框
 
 	<div class="wui-subobj" data-options="obj:'CusOrder', res:'id,tm,status,amount', relatedKey:'cusId'">
 	</div>
 
-- res: 指定返回字段以提高性能，即query接口的res参数。注意在关联详细对话框（即指定dlg选项）时，一般不指定res，否则双击打开对话框时会字段显示不全。
+- opt.res: 指定返回字段以提高性能，即query接口的res参数。注意在关联详细对话框（即指定dlg选项）时，一般不指定res，否则双击打开对话框时会字段显示不全。
 
 
 ## 示例4: 动态启用/禁用子表
 
 启用或禁用可通过事件发送指令:
-	jo.trigger("setDisabled", boolDisabledVal); // 会自动刷新UI
+	jo.trigger("setOption", {disabled: boolDisabledVal}); // 会自动刷新UI
 
 示例: 在物料明细对话框(dlgItem)中, 在Tabs组件中放置"组合"子表, 当下拉框选择"组合"时, 启用"组合"子表Tab页:
 
 	<select name="type">
 		<option value="">(无)</option>
 		<option value="P">组合</option>
-		<!--<option value="U">拆卖</option>-->
+		<option value="U">拆卖</option>
 	</select>
 
 	<div class="easyui-tabs">
-		<div class="wui-subobj" id="tabItem1" data-options="obj:'Item1', valueField:'item1', relatedKey:'itemId', dlg:'dlgItem1'" title="组合">
-			<table>
-				<thead><tr>
-					<th data-options="field:'srcItemName'">源商品</th>
-					<th data-options="field:'qty', formatter:WUI.formatter.number">数量</th>
-				</tr></thead>
-			</table>
+		<!-- 注意 wui-subobj-item1 类定义了名字为 item1，以便下面setDlgLogic中引用。它一般和valueField相同，但valueField选项可能不存在 -->
+		<div class="wui-subobj wui-subobj-item1" data-options="obj:'Item1', valueField:'item1', relatedKey:'itemId', dlg:'dlgItem1'" title="组合">
+			...
 		</div>
 	</div>
 
 设置"组合"页随着type选择启用禁用:
 
-	$(frm.type).change(function () {
-		toggleItem1(this.value);
+	// 注意，subobj组件一般不设置name属性，而是通过定义CSS类`wui-subobj-{name}`类来标识名字，从而可以用 jdlg.gn("item1") 来找到它的通用接口。
+	WUI.setDlgLogic(jdlg, "item1", {
+		disabled: function (e) {
+			return e.type == "P";
+		},
+		required: true
 	});
-
-	jdlg.on("beforeshow", onBeforeShow)
-		.on("validate", onValidate);
-	
-	function onBeforeShow(ev, formMode, opt) 
-	{
-		toggleItem1(opt.data && opt.data.type);
-	}
-
-	function onValidate(ev, mode, oriData, newData) 
-	{
-		// 添加时验证子表值
-		if (mode == FormMode.forAdd) {
-			var type = frm.type.value;
-			if (type == "P") {
-				console.log(newData.item1);
-				if (newData.item1 == null || newData.item1.length == 0) {
-					app_alert("请添加组合明细!", "w");
-					// 自动切换到该页
-					jdlg.find(".easyui-tabs").tabs("select", "组合");
-					return false;
-				}
-			}
-		}
-	}
-
-	// 启用或禁用子表的Tab
-	function toggleItem1(type)
-	{
-		var dis = type!="P";
-		jdlg.find("#tabItem1").trigger("setDisabled", dis);
-	}
 
 ## 示例5：显示为树表(treegrid)
 
@@ -1754,19 +2157,19 @@ $.extend(self.dg_toolbar, {
 子表明细对话框中，为了在点击确定后将虚拟字段拷贝回subobj子表列表中，应通过data-options中指定jd_vField选项来指定虚拟字段名，如 dlgInvRecord1.html:
 
 	仓库   <select name="whId" class="my-combobox" required data-options="ListOptions.Warehouse()"></select>  (Warehouse函数中已定义{jd_vField: 'whName'})
-	到仓库 <select name="whId2" class="my-combobox" required data-options="$.extend(ListOptions.Warehouse(), {jd_vField:'whName2'})"></select> (覆盖Warehouse函数定义中的jd_vField选项)
+	到仓库 <select name="whId2" class="my-combobox" required data-options="ListOptions.Warehouse({jd_vField:'whName2'})"></select> (覆盖Warehouse函数定义中的jd_vField选项)
 	物料   <input name="itemId" class="wui-combogrid" required data-options="ListOptions.ItemGrid()">  (ItemGrid函数中已定义{jd_vField: 'itemName'})
 
 ListOptions中对下拉列表参数的设置示例：(store.js)
 
 	var ListOptions = {
 		...
-		Warehouse: function () {
-			return {
+		Warehouse: function (opt) {
+			return $.extend({
 				jd_vField: "whName", // 指定它在明细对话框中对应的虚拟字段名
 				textField: "name", // 注意区别于jd_vField，textField是指定显示内容是url返回表中的哪一列
 				url: ...
-			}
+			}, opt);
 		},
 		ItemGrid: function () {
 			return {
@@ -1813,9 +2216,14 @@ function enhanceSubobj(jo)
 		tabIndex = jtabs.tabs("getTabIndex", jo);
 		jo.on("tabSelect", loadData);
 	}
-	jo.on("setDisabled", function (ev, val) {
-		opt.disabled = val;
-		loadData();
+	jo.on("setOption", function (ev, val) {
+		$.extend(opt, val);
+		if (val.disabled != undefined) {
+			toggle(!val.disabled);
+		}
+		if (val.readonly !== undefined) {
+			// TODO:
+		}
 	});
 
 	var jdlg1;
@@ -1826,6 +2234,7 @@ function enhanceSubobj(jo)
 	}
 
 	var datagrid = opt.treegrid? "treegrid": "datagrid";
+	opt.dgCall = jtbl[datagrid].bind(jtbl); // FormItem中使用
 	
 	function onBeforeShow(ev, formMode, beforeShowOpt) 
 	{
@@ -1846,7 +2255,7 @@ function enhanceSubobj(jo)
 	{
 		if (opt.disabled)
 			return;
-		if (mode == FormMode.forAdd) {
+		if ((mode == FormMode.forAdd || mode == FormMode.forSet) && (jdlg1.objParam && jdlg1.objParam.offline)) {
 			// 添加时设置子表字段
 			self.assert(opt.valueField, "wui-subobj: 选项valueField未设置");
 			if (jo.data("subobjLoaded_")) {
@@ -1872,15 +2281,20 @@ function enhanceSubobj(jo)
 		var formMode = ctx.formMode;
 		var formData = ctx.formData;
 		var show = formMode == FormMode.forSet;
-		if (jdlg1 && (formMode == FormMode.forAdd && !!opt.valueField))
+		if (jdlg1 && (formMode == FormMode.forAdd && !!opt.valueField && !opt.readonly))
 			show = true;
 		toggle(!opt.disabled && show);
 
 		if (jo.is(":hidden") && !opt.forceLoad)
 			return;
 
-		if (jo.data("subobjLoaded_"))
+		if (jo.data("subobjLoaded_")) {
+			// bugfix: 隐藏初始化datagrid后，再点过来时无法显示表格
+			if (opt.forceLoad) {
+				jo.closest(".panel-body").panel("doLayout", true);
+			}
 			return;
+		}
 		jo.data("subobjLoaded_", true);
 
 		if (jdlg1) {
@@ -1901,8 +2315,10 @@ function enhanceSubobj(jo)
 			}
 			else if (formMode == FormMode.forSet) {
 				setObjParam(jdlg1.objParam, formData);
-				jdlg1.objParam.readonly = opt.readonly;
+				var readonly = opt.readonly || jdlg.hasClass("wui-readonly");
+				jdlg1.objParam.readonly = readonly;
 				jtbl.jdata().toolbar = opt.toolbar;  // 允许所有
+				jtbl.jdata().readonly = readonly;
 				var dgOpt = $.extend({
 					toolbar: WUI.dg_toolbar(jtbl, jdlg1),
 					onDblClickRow: WUI.dg_dblclick(jtbl, jdlg1),
@@ -1911,14 +2327,18 @@ function enhanceSubobj(jo)
 				jtbl[datagrid](dgOpt);
 
 				// 隐藏子表工具栏，不允许操作（但可以双击一行查看明细，会设置这时子对话框只读）
-				jtbl.closest(".datagrid").find(".datagrid-toolbar").toggle(!opt.readonly);
+				//jtbl.closest(".datagrid").find(".datagrid-toolbar").toggle(!readonly);
 			}
 		}
 		else {
 			if (formMode == FormMode.forSet) {
-				var dgOpt = {
+				var dgOpt = $.extend({
 					url: getQueryUrl(formData)
-				};
+				}, opt[datagrid]);
+				if (opt.toolbar) {
+					jtbl.jdata().toolbar = opt.toolbar;
+					dgOpt.toolbar = WUI.dg_toolbar(jtbl, $());
+				}
 				jtbl[datagrid](dgOpt);
 			}
 		}
@@ -1927,12 +2347,15 @@ function enhanceSubobj(jo)
 	// 根据主表数据和relatedKey设置子表固定数据
 	function setObjParam(objParam, formData) {
 		// 格式示例: `relId={id}`, `type='工艺'`, `flag=1`
+		var map = objParam.fixedFields = {};
 		relatedKey.replace(/(\w+)=(?:\{(\w+)\}|(\S+))/g, function (ms, key, key2, value) {
 			if (key2) {
-				objParam[key] = formData[key2];
+				map[key] = formData[key2];
+				if (map[key] === undefined)
+					map[key] = "";
 			}
 			else {
-				objParam[key] = value.replace(/['"]/g, '');
+				map[key] = value.replace(/['"]/g, '');
 			}
 		});
 	}
@@ -1948,8 +2371,12 @@ function enhanceSubobj(jo)
 
 	// 根据主表数据和relatedKey设置url
 	function getQueryUrl(formData) {
-		var cond = relatedKey.replace(/(\w+=)\{(\w+)\}/g, function (ms, ms1, ms2) {
-			return ms1 + Q(formData[ms2]);
+		var cond = relatedKey.replace(/\{(\w+)\}/g, function (ms, ms1) {
+			var val = formData[ms1];
+			// 支持`xx in (1,3,4)`方式
+			if (/^[\d,]+$/.test(val))
+				return val;
+			return Q(val);
 		});
 		var param = {cond: cond, res: opt.res};
 		// 树型子表，一次全部取出
@@ -1988,12 +2415,69 @@ function toggleTab(jtabs, which, show, noEvent) {
 	jtab.css("visibility", show?"visible":"hidden");
 }
 
+self.getFormItemExt["wui-subobj"] = function (ji) {
+	if (ji.hasClass("wui-subobj")) {
+		return new SubobjFormItem(ji);
+	}
+}
+
+function SubobjFormItem(ji) {
+	WUI.FormItem.call(this, ji);
+}
+SubobjFormItem.prototype = $.extend(new WUI.FormItem(), {
+	getName: function () {
+		var opt = WUI.getOptions(this.ji);
+		return opt.valueField;
+	},
+	getDisabled: function () {
+		var opt = WUI.getOptions(this.ji);
+		return opt.disabled;
+	},
+	setDisabled: function (val) {
+		this.ji.trigger("setOption", {disabled: val});
+	},
+	getReadonly: function () {
+		var opt = WUI.getOptions(this.ji);
+		return opt.readonly;
+	},
+	setReadonly: function (val) {
+		this.ji.trigger("setOption", {readonly: val});
+	},
+	getValue: function () {
+		if (! this.ji.data("subobjLoaded_"))
+			return [];
+		var opt = WUI.getOptions(this.ji);
+		WUI.assert(opt.dgCall);
+		var rows = opt.dgCall("getData").rows; // 就是jtbl.datagrid("getData")
+		return rows;
+	},
+	setValue: function (val) {
+		if (! this.ji.data("subobjLoaded_")) // TODO: set value
+			return;
+		var opt = WUI.getOptions(this.ji);
+		WUI.assert(opt.dgCall);
+		opt.dgCall("loadData", val);
+	},
+	getTitle: function () {
+		return this.ji.panel("options").title;
+	},
+	setFocus: function () {
+		var title = this.getTitle();
+		this.ji.closest(".easyui-tabs").tabs("select", title);
+	}
+});
+
 /**
 @key .wui-picker 字段后的工具按钮
 
 示例：输入框后添加一个编辑按钮，默认不可编辑，点按钮编辑：
 
 	<input name="value" class="wui-picker-edit">
+
+尽管不可编辑，该字段还是可编辑的；要查看该字段是否只读，以及设置字段只读，可以：
+
+	var isReadonly = jo.triggerHandler("readonly"); // 取值
+	jo.triggerHandler("readonly", isReadonly); // 设置，也可以用trigger方法
 
 示例：输入框后添加一个帮助按钮：
 
@@ -2002,9 +2486,14 @@ function toggleTab(jtabs, which, show, noEvent) {
 点击帮助按钮，跳往WUI.options.helpUrl指定的地址。如果指定data-helpKey，则跳到该锚点处。
 
 可以多个picker一起使用。
+
+帮助链接：(加wui-help类则点击可跳转，同时也支持用data-helpKey属性指定主题)
+
+	<a class="wui-help"><span><i class="fa fa-question-circle"></i>帮助</span></a>
+
 */
 
-self.m_enhanceFn[".wui-picker-edit, .wui-picker-help"] = enhancePicker;
+self.m_enhanceFn[".wui-picker-edit, .wui-picker-help, .wui-help"] = enhancePicker;
 function enhancePicker(jo)
 {
 	var jbtns = $();
@@ -2030,6 +2519,12 @@ function enhancePicker(jo)
 
 		jbtn.click(help);
 	}
+	if (jo.hasClass("wui-help")) {
+		jo.click(function () {
+			help();
+			return false;
+		});
+	}
 
 	if (jbtns.length > 0) {
 		jo.after(jbtns);
@@ -2046,6 +2541,9 @@ function enhancePicker(jo)
 		jo.prop("readonly", false);
 	}
 	function disable() {
+		// 对话框查询模式(forFind)下不禁用
+		if (jo.hasClass("wui-find-field"))
+			return;
 		jo.prop("readonly", true);
 	}
 	function help() {
@@ -2058,9 +2556,65 @@ function enhancePicker(jo)
 	}
 }
 
+self.getFormItemExt["wui-picker-edit"] = function (ji) {
+	if (ji.hasClass("wui-picker-edit")) {
+		return new PickerFormItem(ji);
+	}
+}
+
+function PickerFormItem(ji) {
+	WUI.FormItem.call(this, ji);
+	this.jdlg = ji.closest(".wui-dialog");
+}
+PickerFormItem.prototype = $.extend(new WUI.FormItem(), {
+	getReadonly: function () {
+		return true;
+	},
+	setReadonly: function (val) {
+		if (this.ji.hasClass("wui-find-field")) {
+			this.ji.prop("readonly", !!val);
+			this.ji.next("a").css("visibility", "hidden");
+			return;
+		}
+		this.ji.next("a").css("visibility", val? "hidden": "visible");
+	}
+});
+
+/**
+@key .wui-more
+
+显示一个按钮，用于隐藏（默认）或显示后面的内容。基于easyui-linkbutton创建，兼容该组件的options比如图标.
+
+	示例: 列对应: title=code,-,amount 
+	<span class="wui-more" data-options="iconCls: 'icon-tip'">更多示例</span>
+	<pre>
+	映射方式对应: title=编码->code, Total Sum->amount&amp;useColMap=1
+	根据code, 存在则更新: title=code,amount&amp;uniKey=code
+	根据code, 批量更新: title=code,amount&amp;uniKey=code!
+	带子表: title=code,amount,@order1.itemCode,@order1.qty&amp;uniKey=code
+	</pre>
+
+*/
+self.m_enhanceFn[".wui-more"] = enhanceMoreBtn;
+function enhanceMoreBtn(jo)
+{
+	var jmore = jo.nextAll();
+	jmore.hide();
+	jo.linkbutton({
+//		iconCls: 'icon-tip',
+//		plain: true,
+		toggle: true
+	});
+//	jo.css({float: "left"});
+	jo.click(function () {
+		jmore.toggle();
+	});
+}
 
 /**
 @fn WUI.showByType(jo, type)
+
+(v6) 该函数已不建议使用。本来用于显示多组mycombobox/wui-combogrid组件，现成推荐直接用组件的setOption事件动态修改组件选项。
 
 对话框上form内的一组控件中，根据type决定当前显示/启用哪一个控件。
 
@@ -2072,7 +2626,8 @@ HTML: 在对话框中，将这几种情况都定义出来：
 	<select name="status" class="my-combobox type-报修" style="display:none" data-options="jdEnumList:ItemStatusList_报修"></select>
 	<select name="status" class="my-combobox type-公告" style="display:none" data-options="jdEnumList:ItemStatusList_公告"></select>
 
-注意：当type与“报修”时，它按class为"type-报修"来匹配，显示匹配到的控件（并添加active类），隐藏其它控件，并添加disabled属性（从而在WUI.getFormData时不会取到它的数据）。
+注意：当type与“报修”时，它按class为"type-报修"来匹配，显示匹配到的控件（并添加active类），隐藏并禁用其它控件。
+如果都不匹配，这时看第一条，如果它不带`type-xxx`类，则使用第一条来显示，否则所有都不启用（隐藏、禁用）。
 
 JS: 根据type设置合适的status下拉列表，当type变化时更新列表：
 
@@ -2096,18 +2651,1261 @@ JS: 根据type设置合适的status下拉列表，当type变化时更新列表�
 			}
 		}
 	}
- */
+
+支持combogrid组件，注意combogrid组件用"[comboname]"而非"[name]"来找jQuery组件：
+
+	WUI.showByType(jdlg.find("[comboname=orderId]"), type);
+
+HTML示例：
+
+	<tr>
+		<td class="orderIdTd">关联单据</td>
+		<td>
+			<input name="orderId" class="wui-combogrid type-生产领料 type-生产调拨 type-生产入库 type-生产退料" data-options="ListOptions.OrderGrid({type:'生产工单'})">
+			<input name="orderId" class="wui-combogrid type-销售" data-options="ListOptions.OrderGrid({type:'销售计划'})">
+			...
+		</td>
+	</tr>
+
+支持组件状态被动态修改，比如添加模式时打开对话框就禁用该组件：
+
+	jdlg.find("[comboname=orderId]").combogrid({disabled: forAdd});
+
+这时调用showByType后，active组件仍会保持disabled状态。类似的，如果调用者先隐藏了组件，则调用showByType后active组件也是隐藏的。
+
+注意：对tr等包含输入框的块组件也可使用，但要求内部只有一个带name的输入组件，且各块的内部输入组件的name都相同。
+
+		<tr class="optional type-出库">...<input name="orderId">...</tr>
+		<tr class="optional type-入库">...<input name="orderId">...</tr>
+
+JS控制：
+
+	WUI.showByType(jdlg.find("tr.optional"), type);
+
+当一个块不显示时，其内部的带name的输入组件被设置disabled，提交时不会带该字段。
+如果块内部包含多个输入框，或各块内的输入框的name不同，如果各块内所有输入框都默认显示、未禁用（也不会动态修改显示、禁用），这时也可以使用showByType，否则会有问题。
+*/
 self.showByType = showByType;
 function showByType(jo, type) {
-	if (!type && jo.hasClass("active"))
-		return;
-	var j1 = type? jo.filter(".type-" + type): null;
-	if (!j1 || j1.size() == 0)
-		j1 = jo.first();
-	if (j1.hasClass("active"))
-		return;
-	jo.removeClass("active").prop("disabled", true).hide();
-	j1.addClass("active").prop("disabled", false).show();
+	var it = jo.hasClass("combo-f")? showByType.comboInterface :
+		showByType.defaultInterface;
+
+	// ja: 原active项，可能为空; 切换active项时，保持原有各状态不变
+	var ja = it.getActive(jo);
+	var visible = ja.size()>0? it.getVisible(ja): true;
+	var disabled = ja.size()>0? it.getDisabled(ja): false;
+
+	var jinit = it.getInitJo(jo); // jinit是带有原始type和class的元素
+	var j1 = type? jinit.filter(".type-" + type): ja;
+	if (j1.size() == 0) {
+		// 如果第一个jo中没有设置type-xxx，则尝试用第一个做active; 否则就没有active项
+		var cls = jinit.first().attr("class");
+		if (cls && cls.indexOf("type-") < 0)
+			j1 = jo.first();
+	}
+	jo.each(function () {
+		var je = $(this);
+		if (j1.size() >0 && j1[0] == je[0]) {
+			it.setActive(je, true);
+			it.setDisabled(je, disabled);
+			it.setVisible(je, visible);
+		}
+		else {
+			it.setActive(je, false);
+			it.setDisabled(je, true);
+			it.setVisible(je, false);
+		}
+	});
 }
 
+showByType.defaultInterface = {
+	getInitJo: function (jo) {
+		return jo;
+	},
+	getActive: function (jo) {
+		return jo.filter(".active");
+	},
+	setActive: function (jo, val) {
+		jo.toggleClass("active", val);
+	},
+	getVisible: function (jo) {
+		return jo.is(":visible");
+	},
+	setVisible: function (jo, val) {
+		return jo.toggle(val);
+	},
+	getDisabled: function (jo) {
+		if (jo.is("[name]"))
+			return jo.prop("disabled");
+		return jo.find("[name]").prop("disabled");
+	},
+	setDisabled: function (jo, val) {
+		if (jo.is("[name]"))
+			jo.prop("disabled", val);
+		else
+			jo.find("[name]").prop("disabled", val);
+	}
 }
+
+// combobox/combogrid特别处理 jo: hidden对象
+// DOM结构为: input[comboname].combo-f.textbox-f(是隐藏的,原始type类加在这里), 
+// 			span.combo(应隐藏它), input[type=hidden][name].textbox-value (jo:原始带name的字段,应disable它)
+showByType.comboInterface = $.extend({}, showByType.defaultInterface, {
+	getVisible: function (jo) {
+		return jo.next().is(":visible");
+	},
+	setVisible: function (jo, val) {
+		return jo.next().toggle(val);
+	},
+	getDisabled: function (jo) {
+		return jo.next().find(".textbox-value").prop("disabled");
+	},
+	setDisabled: function (jo, val) {
+		return jo.next().find(".textbox-value").prop("disabled", val);
+	}
+});
+
+/**
+
+@fn diffObj(obj, obj1)
+
+返回null-无差异，如果是对象与对象比较，返回差异对象，否则返回true表示有差异
+
+	var rv = diffObj({a:1, b:99}, {a:1, b:98, c:100});
+	// rv: {b:98, c:100}
+
+	var rv = diffObj([{a:1, b:99}], [{a:1, b:99}]);
+	// rv: null (无差异)
+
+	var rv = diffObj([{a:1, b:99}], [{a:1, b:99}, {a:2}]);
+	// rv: true
+	
+	var rv = diffObj("hello", "hello");
+	// rv: null (无差异)
+
+	var rv = diffObj("hello", 99);
+	// rv: true
+ */
+
+function diffObj(obj, obj1)
+{
+	if (obj == obj1)
+		return null;
+
+	if (typeof obj != typeof obj1)
+		return true;
+
+	if ($.isArray(obj) && $.isArray(obj1)) {
+		for (var i=0; i<obj1.length; ++i) {
+			if (diffObj(obj[i], obj1[i]) != null)
+				return true;
+		}
+		return null;
+	}
+	if (!$.isPlainObject(obj))
+		return JSON.stringify(obj) == JSON.stringify(obj1)? null: true;
+
+	var ret = {};
+	$.each(obj1, function (k, v) {
+		if (obj[k] === undefined || typeof(obj[k]) != typeof(v)) {
+			ret[k] = v;
+			return;
+		}
+		if (diffObj(obj[k], v) != null)
+			ret[k] = v;
+	});
+	return $.isEmptyObject(ret)? null: ret;
+}
+
+/**
+@fn showDataReport(opt={ac, @gres, @gres2?, res?, cond?, title?="统计报表", detailPageName?, detailPageParamArr?, resFields?, cond2?, tmField?, showChart?})
+
+选项说明：
+
+- res: 汇总字段，默认为`COUNT(*) 数量`
+- gres: 行统计字段。须为数组，示例：`["userPhone", "userName 用户", null, "status 状态=CR:新创建;RE:已完成"]`。
+	数组每个元素符合后端query接口res参数要求，可以是1个字段也可以是逗号分隔的多个字段；如果为空则跳过。
+	注意：时间字段固定用"y 年", "m 月", "d 日", "h 时", "q 季度", "w 周", "wd 周几"这些。这样当点开统计对话框时，可自动选上相应的时间字段，比如`["y 年", "m 月"]`将自动选中"时间-年"和"时间-月";
+	特别地，月报固定用 ["y 年,m 月"](配合tmUnit: "y,m", 统计图中可自动补齐缺失日期)，日报用 ["y 年,m 月,d 日"] (配合tmUnit: "y,m,d")。
+- gres2: 列统计字段。格式与gres相同。
+- cond: 查询条件，字符串，示例：WUI.getQueryCond({id: ">1", status: "CR,RE", createTm: ">=2020-1-1 and <2021-1-1"}), 用getQueryCond可使用查询框支持的条件格式。
+- orderby: 排序方式
+- title: 统计页面标题
+- detailPageName: 在统计表中点击数值，可以显示明细页面。这里指定用哪个页面来显示明细项；如果未指定则以pageSimple来显示。
+- detailPageParamArr: 如果指定了detailPageName，可以用此参数来定制showPage的第三参数(paramArr)。
+- tmField: 如果用到y,m,d等时间统计字段，应指定使用哪个时间字段进行运算。后端可能已经定义了时间字段(tmCols)，指定该选项可覆盖后端的定义。
+
+- resFields: 用户可选择的字段列表（如res, cond中出现的字段）。如果指定（或指定了gres或gres2），则工具栏多出“统计”按钮，可供用户进一步设置。
+ 注意gres,gres2,tmField中的字段会被自动加入，在resFields中指定或不指定都可以。
+
+- showChart: 是否显示统计图表对话框。
+- tmUnit: 用于统计图，特别用于月报、日报等，会自动补齐缺少的时间。常用有："y,m"-年月,"y,m,d"-年月日。注意一旦指定tmUnit则orderby选项自动与tmUnit相同。
+
+- showSum: 自动添加统计行或列
+- pivotSumField: 统计列列名，默认为"合计"
+
+- queryParam: 直接指定查询参数，如`{for: "xx报表"}`
+
+@see JdcloudStat.tmUnit 
+
+- cond2: 内部使用，在cond基础上再加一层过滤，由报表对话框上用户设置的条件生成。
+ 在cond基础上再加一层过滤，条件由统计对话框上设置。参考WUI.getQueryCond。示例: 
+
+示例：
+
+	WUI.showDataReport({
+		ac: "Employee.query",
+		gres: ["depName 部门", "性别"],
+		gres2: ["职称", "学历"],
+		cond: WUI.getQueryCond({status: '在职'}),
+		detailPageName: "pageEmployee1",
+		title: "师资报表"
+	});
+
+示例：订单月报
+
+	WUI.showDataReport({
+		ac: "Ordr.query",
+		res: "SUM(amount) 总和", // 不指定则默认为`COUNT(1) 总数`
+		tmField: "createTm 创建时间",
+		gres: ["y 年,m 月", "status 状态=CR:新创建;RE:已完成;CA:已取消"],
+		gres2: ["dscr 订单类别"],
+		cond: WUI.getQueryCond({createTm: ">=2020-1-1 and <2021-1-1", status: "CR,RE,CA"}), // 生成条件字符串
+		detailPageName: "pageOrder",
+		title: "订单月报",
+
+		// 定义用户可选的字段，定义它或gres/gres2会在工具栏显示“统计”按钮。注意不需要定义y,m等时间字段，它们由tmField自动生成。
+		resFields: "amount 金额, status 状态=CR:新创建;RE:已完成;CA:已取消, dscr 订单类别, userName 用户, userPhone 用户手机号, createTm 创建时间",
+
+		// showChart: true, // 显示统计图
+		// gres: ["y 年,m 月"],
+		// tmUnit: "y,m",
+	});
+
+示例：订单状态占比, 显示饼图（当只有gres没有gres2，且没有tmUnit时，可自动显示饼图）
+
+	WUI.showDataReport({
+		ac: "Ordr.query",
+		res: "COUNT(1) 总数", // 不指定则默认为`COUNT(1) 总数`
+		gres: ["status 状态=CR:新创建;RE:已完成;CA:已取消"],
+		detailPageName: "pageOrder",
+		title: "订单状态占比",
+
+		// 定义用户可选的字段，定义它或gres/gres2会在工具栏显示“统计”按钮。注意不需要定义y,m等时间字段，它们由tmField自动生成。
+		resFields: "amount 金额, status 状态=CR:新创建;RE:已完成;CA:已取消, dscr 订单类别, userName 用户, userPhone 用户手机号, createTm 创建时间",
+
+		showChart: true, // 显示统计图
+		orderby: "总数 DESC"
+	});
+
+示例：多个统计项：订单状态报表，同时统计数量和金额：
+
+	WUI.showDataReport({
+		ac: "Ordr.query",
+		res: "COUNT(1) 总数, SUM(amount) 总金额",
+		gres: ["status 状态=CR:新创建;RE:已完成;CA:已取消"],
+		// gres2: ["dscr 订单类别"], // 试试加上列统计项有何样式区别
+		detailPageName: "pageOrder",
+		title: "订单状态占比",
+		// showSum: true, // 自动添加行列统计
+
+		// 定义用户可选的字段，定义它会在工具栏显示“统计”按钮。注意不需要定义y,m等时间字段，它们由tmField自动生成。
+		resFields: "amount 金额, status 状态=CR:新创建;RE:已完成;CA:已取消, dscr 订单类别, userName 用户, userPhone 用户手机号, createTm 创建时间",
+	});
+
+注意：统计图(showChart:true)目前只支持第一个统计项。
+
+res中也可以加一些不用于统计的字段，统计列必须放在res最后面，系统会自动将res中最后若干个连续地以COUNT或SUM聚合的字段会当成统计列。
+
+	WUI.showDataReport({
+		ac: "Ordr.query",
+		res: "userName 用户, userPhone 手机号, createTm 创建时间, COUNT(1) 总数, SUM(amount) 总金额", // 自动识别2个统计列，调用query接口时设置参数`pivotCnt:2`
+		gres: ["status 状态=CR:新创建;RE:已完成;CA:已取消"],
+		gres2: ["dscr 订单类别"],
+		detailPageName: "pageOrder",
+		title: "订单状态占比",
+		showSum: true, // 自动添加行列统计
+	});
+
+ */
+self.showDataReport = showDataReport;
+function showDataReport(opt, showPageOpt)
+{
+	self.assert(opt && opt.ac, "选项ac未指定");
+	opt = $.extend({
+		title: "统计报表",
+		res: "COUNT(*) 数量",
+		gres: [],
+		gres2: [],
+		detailPageParamArr: []
+	}, opt);
+
+	var gres = [];
+	var gres2 = [];
+	var gresAll = [];
+	var pivot = [];
+
+	self.assert($.isArray(opt.gres), "gres必须为数组");
+	opt.gres.forEach(function (e0) {
+		if (! e0)
+			return;
+		e0.split(/\s*,\s*/).forEach(function (e) {
+			if (! e)
+				return;
+			gres.push(e);
+			gresAll.push(e);
+		});
+	});
+
+	self.assert($.isArray(opt.gres2), "gres2必须为数组");
+	opt.gres2.forEach(function (e0) {
+		if (! e0)
+			return;
+		e0.split(/\s*,\s*/).forEach(function (e) {
+			if (! e)
+				return;
+			gres2.push(e);
+			gresAll.push(e);
+			var rv = getFieldInfo(e);
+			pivot.push(rv.title);
+		});
+	});
+
+	var cond = opt.cond;
+	if (opt.cond2) {
+		if (cond)
+			cond += " AND (" + opt.cond2 + ")";
+		else
+			cond = opt.cond2;
+	}
+
+	var resCols = opt.res.split(/\s*,\s*/);
+	var sumTitles = [];
+	for (var idx=resCols.length-1; idx >= 0; -- idx) {
+		var res = resCols[idx];
+		var rv = getFieldInfo(res);
+		if (! /\b(count|sum)\b[()]/i.test(rv.name))
+			break;
+		sumTitles.unshift(rv.title);
+	}
+	var queryParams = $.extend({
+		res: opt.res,
+		cond: cond,
+		orderby: opt.orderby,
+		tmField: opt.tmField && opt.tmField.split(' ')[0],
+		gres: gresAll.join(','),
+		pagesz: -1
+	}, opt.queryParam);
+	if (pivot.length > 0) {
+		queryParams.pivot = pivot.join(',');
+		queryParams.pivotCnt = sumTitles.length;
+	}
+	if (opt.showSum) {
+		if (pivot.length == 0) {
+			queryParams.sumFields = sumTitles.join(',');
+		}
+		else {
+			queryParams.pivotSumField = (opt.pivotSumField || "合计");
+		}
+	}
+	var url = WUI.makeUrl(opt.ac, queryParams);
+	WUI.showPage("pageSimple", opt.title + "!", [url, null, onInitGrid]);
+
+	function onInitGrid(jpage, jtbl, dgOpt, columns, data)
+	{
+		// 用于dlgDataReport对话框打开时读取并继续设置参数
+		jtbl.data("showDataReportOpt", opt);
+		// 加个报表按钮
+		//dgOpt.toolbar = WUI.dg_toolbar(jtbl, null, "report");
+		if (opt.resFields || gresAll.length > 0) {
+			var arr = opt.resFields? opt.resFields.split(/\s*,\s*/): [];
+			$.each(gresAll, function (i, e) {
+				// 排除tmField衍生的时间字段
+				if (e && !/^(y|m|d|h|q|w|wd) /.test(e) && arr.indexOf(e) < 0)
+					arr.push(e);
+			});
+			if (opt.tmField && arr.indexOf(opt.tmField) < 0)
+				arr.push(opt.tmField);
+			opt.resFields = arr.join(',');
+			if (opt.resFields)
+				dgOpt.toolbar.push.apply(dgOpt.toolbar, WUI.dg_toolbar(jtbl, null, "report"));
+		}
+
+		// dgOpt: datagrid的选项，如设置 dgOpt.onClickCell等属性
+		// columns: 列数组，可设置列的formatter等属性
+		// data: ajax得到的原始数据
+		var rowCnt = data.d && data.d.length || 0;
+		var sumCol = gres.length + (resCols.length - sumTitles.length);
+		$.each(columns, function (i, col) {
+			if (i >= sumCol) {
+				col.formatter = getFormatter(col, rowCnt);
+				col.sortable = true;
+				col.sorter = numberSort;
+				if (opt.showSum && queryParams.pivotSumField == col.title) {
+					col.isSumCol = true;
+				}
+			}
+			else {
+				col.sortable = true;
+			}
+		});
+		// 统计是在一页内全部显示，故只用本地排序；用sumRow
+		dgOpt.remoteSort = false;
+		// dgOpt.sumRow是datagrid扩展选项，用于最后一行不参与排序。
+		if (opt.showSum && rowCnt > 1)
+			dgOpt.sumRow = 1;
+
+		// console.log(columns);
+
+		if (opt.showChart) {
+			var data1 = data;
+			if (opt.showSum) {
+				// 自动去除统计行或列
+				data1 = $.extend(true, {}, data);
+				if (queryParams.pivotSumField == data1.h[data1.h.length-1])
+					data1.h.pop();
+				if (data1.d.length > 1)
+					data1.d.pop();
+			}
+			var xlen = gres.length;
+			var rs2StatOpt = {
+				xcol: range(0, xlen),
+				ycol: range(sumCol, data1.h.length),
+				tmUnit: opt.tmUnit
+			};
+			var seriesOpt = {
+				type: (opt.tmUnit || rs2StatOpt.ycol.length>1)? "bar": "pie",
+//				stack: rs2statopt.ycol.length>1? "X": undefined // 堆叠柱图
+			};
+			self.showDlgChart(data1, rs2StatOpt, seriesOpt);
+		}
+	}
+	function getFormatter(col, rowCnt) {
+		return formatter_sum;
+
+		function formatter_sum(value, row, rowIdx) {
+			if (!value)
+				return;
+			if ($.isArray(value)) {
+				value = value.map(function (e, i) {
+					return sumTitles[i] + ": " + e;
+				}).join("<br>");
+			}
+			return WUI.makeLink(value, function () {
+				var cond = {};
+				// 最后一行设置isSumRow标记
+				var isSumRow = (opt.showSum && rowIdx > 0 && rowIdx == rowCnt-1);
+				if (!isSumRow) {
+					gres.forEach(function (e, i) {
+						var rv = getFieldInfo(e);
+						var val = row[rv.title];
+						if (val === null || val === "(null)") {
+							val = "null";
+						}
+						else if (val === "") {
+							val = "empty";
+						}
+						else if (rv.enumMapReverse) {
+							val = rv.enumMapReverse[val];
+						}
+						cond[rv.name] = val;
+					});
+				}
+				if (!col.isSumCol) {
+					gres2.forEach(function (e, i) {
+						var rv = getFieldInfo(e);
+						var val = col.title.split('-')[i]; // col.title: "field1-field2"
+						if (val === "(null)") {
+							val = "null";
+						}
+						else if (val === "") {
+							val = "empty";
+						}
+						else if (rv.enumMapReverse) {
+							val = rv.enumMapReverse[val];
+						}
+						cond[rv.name] = val;
+					});
+				}
+				console.log(cond);
+				if (queryParams.cond) {
+					cond = [queryParams.cond, cond];
+				}
+
+				var title = opt.title + "-明细项!";
+				if (opt.detailPageName) {
+					// _pageFilterOnly防止datagrid上有其它查询参数影响结果
+					var queryParams1 = {cond: cond, _pageFilterOnly: true};
+					if (queryParams.tmField)
+						queryParams1.tmField = queryParams.tmField;
+					opt.detailPageParamArr[1] = queryParams1;
+					self.showPage(opt.detailPageName, title, opt.detailPageParamArr);
+				}
+				else {
+					var url = WUI.makeUrl(opt.ac, {
+						cond: cond,
+					});
+					self.showPage("pageSimple", title, [url])
+				}
+			});
+		}
+	}
+	// 区间 [start, end)
+	function range(start, end) {
+		var ret = [];
+		for (var i=start; i<end; ++i) {
+			ret.push(i);
+		}
+		return ret;
+	}
+
+	// "name", "name title", 'name "title"', "name =CR:xx;RE:yy", "name title=CR:xx;RE:yy"
+	// return {name, title, enumMapReverse?}
+	function getFieldInfo(res)
+	{
+		var arr = res.split(' ');
+		var name = arr[0];
+		var title = name;
+		var mapStr = null;
+		if (arr.length > 1) {
+			var arr1 = arr[1].split('=');
+			if (arr1.length == 1) {
+				title = arr1[0];
+			}
+			else {
+				if (arr1[0])
+					title = arr1[0];
+				mapStr = arr1[1];
+			}
+		}
+		var rv = {name:name, title:title};
+		if (mapStr) {
+			rv.enumMapReverse = WUI.parseKvList(mapStr, ";", ":", true);
+		}
+		return rv;
+	}
+}
+
+var dfdStatLib_;
+window.loadStatLib = loadStatLib;
+function loadStatLib()
+{
+	if (dfdStatLib_ == null) {
+		dfdStatLib_ = $.when(
+			WUI.loadScript("lib/echarts.min.js"),
+			WUI.loadScript("lib/jdcloud-wui-stat.js")
+		);
+	}
+	return dfdStatLib_;
+}
+
+/**
+@fn showDlgChart(data, rs2StatOpt, seriesOpt, chartOpt)
+
+- data: 可以是数据，也可以是deferred对象（比如callSvr返回）
+- rs2StatOpt: 数据转换选项，参考rs2Stat
+- seriesOpt, chartOpt: 参考echarts全局参数以及series参数: https://echarts.apache.org/zh/option.html#series
+  echarts示例：https://echarts.apache.org/examples/zh/index.html
+
+@see WUI.rs2Stat 图表数据转换
+@see WUI.initChart　显示图表
+
+示例：
+
+```javascript
+// 各状态订单数: 柱图
+WUI.showDlgChart(callSvr("Ordr.query", {
+	gres: "status =CR:新创建;RE:已完成;CA:已取消",
+	res: "count(*) 总数",
+}));
+
+// 各状态订单数: 饼图，习惯上应占比排序
+WUI.showDlgChart(callSvr("Ordr.query", {
+	gres: "status =CR:新创建;RE:已完成;CA:已取消",
+	res: "count(*) 总数",
+	orderby: "总数 DESC"
+}), null, {
+	type: "pie"
+});
+
+// 订单年报
+WUI.showDlgChart(callSvr("Ordr.query", {
+	gres: "y",
+	res: "count(*) 总数",
+}));
+
+// 订单月报，横坐标为年月（两列）
+WUI.showDlgChart(callSvr("Ordr.query", {
+	gres: "y,m",
+	res: "count(*) 总数",
+}), {  // rs2StatOpt
+	xcol:[0,1]
+});
+
+// 订单月报，指定tmUnit，注意加orderby让时间排序，支持自动补齐缺少的时间
+WUI.showDlgChart(callSvr("Ordr.query", {
+	gres: "y,m",
+	res: "count(*) 总数",
+	orderby: "y,m"
+}), {  // rs2StatOpt
+	tmUnit: "y,m"
+});
+
+// 订单各月占比，显示为饼图，哪个月订单多则排在前
+WUI.showDlgChart(callSvr("Ordr.query", {
+	gres: "y,m",
+	res: "count(*) 总数",
+	orderby: "总数 DESC"
+}), {  // rs2StatOpt
+	xcol:[0,1]
+}, { // seriesOpt
+	type: "pie"
+}, { // chartOpt
+	title: { text: "订单各月分布" }
+});
+
+// 分状态订单月报
+WUI.showDlgChart(callSvr("Ordr.query", {
+	gres: "y,m,status =CR:新创建;RE:已完成;CA:已取消",
+	res: "count(*) 总数",
+	orderby: "y,m"
+}), {  // rs2StatOpt
+	tmUnit: "y,m"
+});
+
+// 同上，配置堆积柱状图，配置stack
+WUI.showDlgChart(callSvr("Ordr.query", {
+	gres: "y,m,status =CR:新创建;RE:已完成;CA:已取消",
+	res: "count(*) 总数",
+	orderby: "y,m"
+}), {  // rs2StatOpt
+	tmUnit: "y,m"
+}, { // seriesOpt
+	type: "bar",
+	stack: "X"
+}, { // chartOpt
+	// swapXY: true // 横向柱状图
+});
+
+// 分用户订单月报
+WUI.showDlgChart(callSvr("Ordr.query", {
+	cond: {createTm: ">=2010-1-1 and <2030-1-1"},
+	gres: "userId",
+	res: "userName,count(*) 总数",
+	orderby: "总数 DESC"
+}), {  // rs2StatOpt
+	xcol: 1
+},{ // seriesOpt
+	type: 'pie', // 饼图
+});
+
+// 分用户订单月报
+WUI.showDlgChart(callSvr("Ordr.query", {
+	cond: {createTm: ">=2020-1-1 and <2021-1-1"},
+	gres: "y,m,userId",
+	res: "userName,count(*) 总数",
+	orderby: "y,m"
+}), {  // rs2StatOpt
+	tmUnit: "y,m"
+}, { // seriesOpt
+	type: 'bar',
+});
+```
+ */
+self.showDlgChart = showDlgChart;
+function showDlgChart(data, rs2StatOpt, seriesOpt, chartOpt)
+{
+	var dfd = loadStatLib();
+	$.when(dfd, data).then(function (tmp, data) {
+		showChart(data);
+	});
+
+	function showChart(data)
+	{
+		var jdlg = $('<div style="width:800px; height:600px;"><div id="divChart" style="width:100%;height:100%"></div></div>');
+		WUI.showDlg(jdlg, {
+			title: "统计图",
+			onOk: function () {
+				WUI.closeDlg($(this));
+			}
+		});
+
+		var jchart = jdlg.find("#divChart");
+		var statData = WUI.rs2Stat(data, rs2StatOpt);
+		// 饼图配置
+		if (seriesOpt && seriesOpt.type == "pie") {
+			seriesOpt = $.extend(true, {
+				type: 'pie',
+				itemStyle: {
+					normal: {
+						label: {
+							show: true,
+							formatter: '{b}: {d}%'
+						}
+					}
+				}
+			}, seriesOpt);
+		}
+		// 柱图配置
+		else if (!seriesOpt || seriesOpt.type == "bar" || seriesOpt.type == "line") {
+			chartOpt = $.extend(true, {
+				toolbox: {
+					show: true,
+					feature: {
+						saveAsImage: { show: true },
+						dataView: { show: true },
+						magicType: {type: ['line', 'bar', 'stack']},
+						restore: { show: true}
+					}
+				}
+			}, chartOpt);
+		}
+		setTimeout(onShow);
+
+		function onShow() {
+			WUI.initChart(jchart[0], statData, seriesOpt, chartOpt);
+		}
+	}
+}
+
+// ====== 操作日志扩展 {{{
+/**
+@module ObjLog 操作日志
+
+系统默认会记录操作日志ObjLog，可在管理端展示：
+
+- 菜单：系统设置-操作日志，结合查询框查找
+
+		<a href="#pageObjLog">操作日志</a>
+
+- 表中选中任一记录，在表头右键菜单中，可查看该记录关联的操作日志。
+- 可添加“日志”菜单到工具栏，按钮名为"objLog"：
+
+		jtbl.datagrid({
+			...
+			toolbar: WUI.dg_toolbar(jtbl, jdlg, ..., 'objLog');
+		});
+
+ */
+WUI.GridHeaderMenu.items.push('<div id="showObjLog" data-options="iconCls:\'icon-tip\'">操作日志</div>');
+WUI.GridHeaderMenu.showObjLog = function (jtbl) {
+	var dg = WUI.getDgInfo(jtbl, {selArr: null, dgFilter: null});
+	if (! dg.obj) {
+		app_alert("该数据表不支持查看日志", "w");
+		return;
+	}
+	var obj = dg.obj;
+	var param = {cond: {obj: obj}}
+	if (dg.selArr.length == 0) { // 未选择时，显示表中所有行的日志
+		if (dg.dgFilter && !$.isEmptyObject(dg.dgFilter))
+			param.objFilter = dg.dgFilter;
+	}
+	else if (dg.selArr.length == 1) {
+		var objId = dg.selArr[0].id;
+		param.cond.objId = objId;
+	}
+	else {
+		param.cond.objId = "IN " + dg.selArr.map(function (e) {
+			return e.id;
+		}).join(',');
+	}
+	WUI.showPage("pageObjLog", "操作日志-" + obj + "!", [{jtblSrc: jtbl}, param]);
+};
+
+$.extend(self.dg_toolbar, {
+	"objLog": function (ctx) {
+		return {text: "日志", iconCls:'icon-tip', handler: function () {
+			WUI.GridHeaderMenu.showObjLog(ctx.jtbl);
+		}};
+	},
+});
+// }}}
+
+// ==== 支持对话框逻辑定义 setDlgLogic {{{
+/**
+@fn setDlgLogic(jdlg, name, logic)
+@key .wui-dialog-logic 指定对话框逻辑
+
+设置对话框业务逻辑。
+
+## readonly-是否只读,disabled-是否禁用,show-是否显示,value-设置值
+
+示例：对orderId组件，添加之后不可以修改：
+
+	// 一般可定义在initDlgXXX函数中
+	WUI.setDlgLogic(jdlg, "orderId", {
+		readonlyForSet: true
+	});
+
+也可以定义在DOM对象上，如：
+
+	<input name="orderId" class="wui-dialog-logic" data-options="readonlyForSet:true">
+
+如果是叠加在wui-combogrid组件上：
+
+	<input name="orderId" class="wui-combogrid wui-dialog-logic" data-options="$.extend(ListOptions.UserGrid(), readonlyForSet:true)">
+
+logic中支持readonly选项，也支持readonlyForAdd/readonlyForSet这些特定模式的选项，它们既可以设置为一个值，也可以是一个函数（或lambda），原型为：
+
+	// data为当前数据，可通过 WUI.getTopDialog().jdata().logicData.data 来实时查看；
+	// gn为字段操作器，用于手工操作其它字段。
+	logicFn(data, gn)
+	// 对于readonly/show等选项，返回值非undefined时有效; 对于value选项，仅当函数返回非undefined/false才会设置值；
+
+如果同时指定了readonly和readonlyForAdd选项，则当添加模式时优先用readonlyForAdd选项，其它模式也类似。
+
+这个特性同样适用于以下disabled/readonly/value选项，比如有disabledForAdd/readonlyForSet/valueForAdd等选项。
+
+示例：添加时无须填写，但之后可修改：可设置添加时隐藏或只读
+
+	showForAdd: false
+	或
+	readonlyForAdd: true
+
+注意：
+
+- show选项会影响forFind模式，可以单独指定showForFind，它比show选项优先级高。
+- 带数据的对话框，在打开时不会修改数据，即value选项在forSet模式对话框刚打开时不会生效。
+
+示例：添加时自动填写
+
+	填当前日期：
+	valueForAdd: new Date().format("D")
+
+或指定lambda或函数：
+
+	valueForAdd: () => new Date().format("D")
+
+	填当前操作员：
+	valueForAdd: () => g_data.userInfo.id
+
+如果不允许改，则加上
+
+	readonlyForAdd: true
+
+示例：计算字段（不提交）
+
+	disabled: true
+	value: e => e.x + "-" + e.y
+
+由于后端没这个实体字段，所以不能提交。注意readonly和disabled在前端效果相似，但readonly字段会提交而disabled字段不提交。
+
+## watch-监控变化
+
+示例：根据status值，如果为CR就显示orderId字段
+
+	WUI.setDlgLogic(jdlg, "orderId", {
+		show: e => e.status == "CR",
+		watch: "status" // 指定依赖字段，当它变化时刷新当前字段
+	});
+
+上面用的是lambda写法，参数e是对话框初始数据。
+如果浏览器不支持lambda，可以用函数形式：
+
+	WUI.setDlgLogic(jdlg, "orderId", {
+		show: function (e) {
+			return e.status == "CR";
+		},
+		watch: "status"
+	});
+
+类似于readonly选项，选项show也支持showForAdd, showForSet, showForFind这些扩展选项。
+
+上面如果只设置show选项，则只会在打开对话框时设置字段，加上watch选项指定依赖字段，则当依赖字段发生变化时也会动态刷新。
+甚至可以依赖多字段，用逗号隔开即可，如单价(price)或数量(qty)变化后，更新总价(total):
+
+	WUI.setDlgLogic(jdlg, "total", {
+		value: e => e.price * e.qty,
+		watch: "price,qty" // 依赖多字段，以逗号分隔，注意不要多加空格
+	});
+
+watch选项会刷新disabled/readonly/show/value系列选项中的表达式。
+
+### 从下拉列表中取值
+
+示例：对于商品字段(名字name=itemId，是个wui-combogrid下拉框组件，有id,name,price三列)，如果从下拉列表中选择了一个商品，则自动更新价格(price字段):
+
+	WUI.setDlgLogic(jdlg, "price", {
+		value: e => e.eventData_itemId?.price,
+		watch: "itemId"
+	});
+
+当选择商品后（itemId字段），可以从e.eventData_itemId数据中取到下拉列表的值，如`e.eventData_itemId.price`；
+使用`e.eventData_itemId?.price`表示当`e.eventData_itemId`不存在时(结果将返回undefined)不去修改值，也可以用`e.eventData_itemId && e.eventData_itemId.price`。
+
+类似地，如果是其它字段变化，则可以从`e.eventData_{字段名}`中取值。my-combobox组件下拉时也是返回选择行对应的数据。
+
+注意：如果有其它字段依赖了修改的值，比如上节例子中total字段依赖price，则此时会连锁地去更新total字段。
+
+### 使用onWatch选项
+
+更自由地，可以用onWatch选项定义一个函数，当watch字段变化后执行，原型为：`onWatch(e=当前对象数据, ev=扩展数据, gn=字段访问器)`，在ev参数中：
+
+- ev.name表示当前变化的字段名，可用于依赖多个字段时用于区分是哪个字段变化。
+- ev.formMode表示当前对话框模式，是添加(FormMode.forAdd)、更新(FormMode.forSet)或是查找(FormMode.forFind)。
+- ev.data根据组件不同值也不同，对于wui-combogrid和my-combobox组件，它表示选择的数据行，比如列表定义了`id,name,code`三列，它就以`{id, name, code}`格式返回这三列数据。
+
+参数gn是一个函数，可以对任意字段进行处理，用`gn(字段名)`可以取到该字段，然后可以链式调用通用接口，如`gn("orderId").visible(true).disabled(false).readonly(true).val(100)`。
+
+- visible: 获取或设置是否显示。无参数时表示获取。带参数设置时支持上例中的链式设置。
+- disabled: 获取或设置是否禁用
+- readonly: 获取或设置是否只读
+- val: 获取或设置值。对于wui-subobj组件，它返回表格数据。
+
+示例：当选择了一个工件(snId, 使用combogrid组件)后，自动填充工单(orderId, 使用combogrid组件)、工单开工时间(actualTm)等字段。
+
+	WUI.setDlgLogic(jdlg, "snId", {
+		watch: "snId",
+		onWatch: async function (e, ev, gn) {
+			console.log(ev);
+			// combogrid组件设置值可以用一个数组，同时设置value和text
+			gn("orderId").val([ev.data.orderId, ev.data.orderCode]);
+
+			// ev.data中没有现成数据，故再调用接口查一下
+			var rv = await callSvr("Ordr.get", {id: ev.data.orderId, res: "actualTm"})
+			gn("actualTm").val(rv.actualTm);
+		}
+	});
+
+@see jQuery.fn.gn
+
+## 动态设置combogrid/subobj等组件选项
+
+示例：type="入库"时，下拉列表moveType字段显示入库选项，type="出库"时，显示出库选项
+
+	var MoveTypeMap_出库 = {
+		602: "销售出库冲销",
+		202: "成本中心",
+		222: "项目",
+		552: "报废冲销"
+	};
+
+	var MoveTypeMap_入库 = {
+		102: "生产入库冲销",
+		201: "成本中心领料"
+	}
+
+	// html中的组件： <input name="moveType" class="my-combobox">
+	WUI.setDlgLogic(jdlg, "moveType", {
+		setOption: function (e) { return {
+			jdEnumMap: e.type == "入库"? MoveTypeMap_入库: MoveTypeMap_出库
+		}},
+		watch: "type"
+	});
+
+也可以直接设置静态值：
+
+	// html中：<input class="wui-combogrid">
+	WUI.setDlgLogic(jdlg, "whId", {
+		setOption: ListOptions.WhGrid()
+	});
+
+这与直接在html中设置是等价的：
+
+	<input class="wui-combogrid" data-options="ListOptions.WhGrid()">
+
+## 提交前验证
+
+	required: true,
+
+	// 返回一个非空字符串，则表示验证失败，字符串即是错误信息
+	validate: v => /^\d{11}$/.test(v) || "手机号须11位数字"
+
+注意验证选项对添加、更新有效，没有forAdd/forSet选项。
+
+validate函数原型为：`validate(value, it, gn)`
+
+- value: 当前值
+- it: 当前字段访问器，如it.val()即value，还有it.getTitle()取字段标题。
+- gn: 字段访问器，如 gn("id") 取到id字段，gn("id").val()取id字段的值。
+
+示例：当status字段值为RE时，当前字段值不可为空：
+
+	{
+		validate: (v,it,gn) => (gn("status").val() != "RE" || v)? null: ("单据完成时[" + it.getTitle() + "]不可为空")
+	}
+
+用gn取其它字段值；用it.getTitle()取当前字段标题。
+
+此外，还可以设置validType选项，它与easyui-validatebox组件兼容。示例：
+
+	{
+		required: true,
+		validType: "email"
+	}
+
+注意：validType与validate选项不可一起使用。
+
+@see .easyui-validatebox
+ */
+WUI.m_enhanceFn[".wui-dialog-logic"] = function (jo) {
+	var jdlg = jo.closest(".wui-dialog");
+	var it = WUI.getFormItem(jo);
+	var name = it.getName();
+	WUI.assert(jdlg.size()>0 && name);
+	WUI.setDlgLogic(jdlg, name, WUI.getOptions(jo));
+}
+
+WUI.setDlgLogic = setDlgLogic;
+function setDlgLogic(jdlg, name, logic)
+{
+	var map = {};
+	var gn = jdlg.gn.bind(jdlg);
+	var onShowArr = [];
+
+	// 对话框上保持该数据
+	var logicData = jdlg.jdata().logicData;
+	if (logicData == null) {
+		logicData = jdlg.jdata().logicData = {
+			doInit: true,
+			data: null,
+			initFnArr: [] // {name, watch, onShowArr}
+		}
+	}
+
+	$.each(logic, function (k, v) {
+		if (/^show/.test(k)) {
+			// 只绑一次
+			if (map["show"])
+				return;
+			map["show"] = true;
+			onShowArr.push(function (formMode, data) {
+				var val = calcVal("show", v, true, formMode, data, true);
+				if (val !== undefined) {
+					gn(name).visible(val);
+				}
+			});
+		}
+		else if (/^disabled/.test(k)) {
+			if (map["disabled"])
+				return;
+			map["disabled"] = true;
+			onShowArr.push(function (formMode, data) {
+				var val = calcVal("disabled", v, false, formMode, data);
+				if (val !== undefined) {
+					gn(name).disabled(val);
+				}
+			});
+		}
+		else if (/^readonly/.test(k)) {
+			if (map["readonly"])
+				return;
+			map["readonly"] = true;
+			onShowArr.push(function (formMode, data) {
+				var val = calcVal("readonly", v, false, formMode, data);
+				if (val !== undefined) {
+					gn(name).readonly(val);
+				}
+			});
+		}
+		else if (/^value/.test(k)) {
+			if (map["value"])
+				return;
+			map["value"] = true;
+			onShowArr.push(function (formMode, data, isInit) {
+				// forSet模式初始化时不修改数据。
+				if (isInit && formMode == FormMode.forSet)
+					return;
+				var val = calcVal("value", v, undefined, formMode, data);
+				if (val !== undefined && val !== false) {
+					var it = gn(name);
+					it.val(val);
+					it.getJo().trigger("change");
+				}
+			});
+		}
+		else if (k == "setOption") {
+			if ($.isPlainObject(v)) {
+				gn(name).setOption(v);
+			}
+			else if ($.isFunction(v)) {
+				jdlg.on("beforeshow", function (ev, formMode, dlgOpt) {
+					var val = v(dlgOpt.data);
+					gn(name).setOption(val);
+				});
+			}
+			else {
+				console.error("bad dialog logic for " + k + ": ", v);
+			}
+		}
+		else if (k == "validate" || k == "required" || k == "validType") {
+			if (map["validate"])
+				return;
+			map["validate"] = true;
+
+			// wui-subobj单独处理
+			if (jdlg.find(".wui-subobj-" + name).size() > 0) {
+				jdlg.on("validate", subobj_onValidate);
+				return;
+			}
+
+			// 集成validatebox组件(easyui的combo/combogrid/datebox等普通输入组件都是基于它)
+			var opt = {
+				required: logic.required,
+				validType: logic.validType,
+			}
+			if (logic.validate) {
+				// NOTE: 1. rule名即validType选项只能字母，不可包含数字，否则找不到规则! easyui-validatebox组件之坑(已fix)
+				// 2. 原easyui validatebox在值为空时不走验证，已修改源码，以便实现根据其它字段值动态判断是否必填的需求
+				opt.rules = {
+					v: {
+						validator: validator,
+						message: '验证失败'
+					}
+				};
+				opt.validType = 'v';
+			}
+
+			// 等待UDF组件加完（WUI.enhanceWithin调用完）再添加逻辑
+			setTimeout(function () {
+				var it = gn(name);
+				if (it.jcomboCall) { // combo系列单独处理，不能直接用validatebox
+					it.jcomboCall(opt);
+				}
+				else {
+					it.getJo().validatebox(opt);
+				}
+				// 标题上标记"*"表示必填
+				if (logic.required) {
+					it.getJo().closest("td").prev("td").addClass("required");
+				}
+			});
+
+			function validator() {
+				var it = gn(name);
+				if (! it.visible())
+					return;
+				var val = it.val();
+				if (logic.validate) {
+					var rv = logic.validate(val, it, gn);
+					if (typeof(rv) == "string") {
+						opt.rules.v.message = rv;
+						return false;
+					}
+				}
+				return true;
+			}
+
+			function subobj_onValidate(ev, formMode, data) {
+				if (formMode === FormMode.forFind)
+					return;
+				var it = gn(name);
+				if (! it.visible())
+					return;
+				var val = it.val();
+				if (logic.required && (!val || ($.isArray(val) && val.length == 0))) {
+					app_alert(it.getTitle() + "不可为空。", "w", function () {
+						it.setFocus();
+					});
+					ev.stopImmediatePropagation();
+					return false;
+				}
+				if (logic.validate) {
+					var rv = logic.validate(val, it, gn);
+					if (typeof(rv) == "string") {
+						app_alert(rv, "w", function () {
+							it.setFocus();
+						});
+						ev.stopImmediatePropagation();
+						return false;
+					}
+				}
+			}
+		}
+	});
+
+	if (onShowArr.length > 0) {
+		logicData.initFnArr.push({name: name, watch: logic.watch, onShowArr: onShowArr});
+	}
+	if (logicData.doInit) {
+		logicData.doInit = false;
+		// 对话框onShow时，所有setDlgLogic中show/value等逻辑按依赖顺序执行。
+		// 用于解决valueForAdd设置字段后，依赖它的字段能自动更新的问题
+		jdlg.on("show", function (ev, formMode, initData) {
+			logicData.data = $.extend(true, {}, initData);
+
+			// 按依赖顺序调用, callmap用于检查是否已调用
+			var callmap = [];
+			logicData.initFnArr.forEach(execLogic);
+
+			function execLogic(elem, idx) {
+				if (callmap[idx]) // 已执行标记
+					return;
+				callmap[idx] = true;
+				if (elem.watch) { // 先执行依赖项
+					elem.watch.split(',').forEach(function (depName) {
+						logicData.initFnArr.forEach(function (elem1, idx1) {
+							if (elem1.name == depName && !callmap[idx1]) {
+								execLogic(elem1, idx1);
+							}
+						});
+					});
+				}
+				elem.onShowArr.forEach(function (fn) {
+					fn(formMode, logicData.data, true);
+				});
+				$.extend(logicData.data, WUI.getFormData(jdlg, "all"));
+			}
+		});
+	}
+
+	if (logic.watch) {
+		var watchArr = logic.watch.split(',');
+		jdlg.on("change", onChange); // for input/select/my-combobox
+		jdlg.on("choose", onChange); // for wui-combogrid
+		function onChange(ev, eventData) {
+			var jo = $(ev.target);
+			var watchField = jo.gn().getName();
+			if (watchArr.indexOf(watchField) >= 0) {
+				var data = $.extend(logicData.data, WUI.getFormData(jdlg, "all") );
+				var formMode = jdlg.jdata().mode;
+				if (jo.hasClass("my-combobox"))
+					eventData = jo.prop("selectedOptions")[0].chooseValue || {};
+				data["eventData_" + watchField] = eventData;
+				setTimeout(function () { // 清除临时数据
+					delete data["eventData_" + watchField];
+				}, 50);
+
+				if (logic.onWatch) {
+					logic.onWatch(data, {
+						name: watchField,
+						formMode: formMode,
+						data: eventData
+					}, gn);
+				}
+				onShowArr.forEach(function (fn) {
+					fn(formMode, data);
+				});
+				if (logic.setOption) {
+					var val = logic.setOption(data);
+					gn(name).setOption(val);
+				}
+			}
+		}
+	}
+
+	function calcVal(k, v, defVal, formMode, data, canForFind) {
+		var val = defVal;
+		if (formMode == FormMode.forFind && !canForFind)
+			return val;
+		if (formMode == FormMode.forAdd && logic[k + "ForAdd"] !== undefined) {
+			val = logic[k + "ForAdd"];
+		}
+		else if (formMode == FormMode.forSet && logic[k + "ForSet"] !== undefined) {
+			val = logic[k + "ForSet"];
+		}
+		else if (formMode == FormMode.forFind && logic[k + "ForFind"] !== undefined) {
+			val = logic[k + "ForFind"];
+		}
+		else if (logic[k] !== undefined) {
+			val = logic[k];
+		}
+		if ($.isFunction(val))
+			val = val(data, gn);
+		return val;
+	}
+}
+// }}}
+
+}
+// vi: foldmethod=marker 

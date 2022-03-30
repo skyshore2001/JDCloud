@@ -12,7 +12,8 @@
 </head>
 <body>
 <h1 id="开发环境搭建">开发环境搭建</h1>
-<p>服务器共享软件的路径为 <code>\\server-pc\share\Software</code>, 请将以下<code>{SHARE_SVR}</code>替换成该地址。</p>
+<p>服务器共享软件的路径为 <code>\\server-pc\share\Software</code>, 请将以下<code>{SHARE_SVR}</code>替换成该地址。 外网环境使用路径<a href="http://oliveche.com/app/tool/" class="uri">http://oliveche.com/app/tool/</a></p>
+<p>(部分内部文件从ftp下载，路径为 ftp://oliveche.com:10021/software 用户名密码请询问管理员。如果访问不了，需要联系管理员添加IP到白名单)</p>
 
 <div id="TOC" class="toc">
 <ul>
@@ -47,19 +48,28 @@
 <pre><code>{SHARE_SVR}\Git\Git-2.28.0-64-bit.exe
 {SHARE_SVR}\Git\TortoiseGit-2.10.0.2-64bit.msi</code></pre>
 <p>浏览器右键点菜单 TortoiseGit-&gt;Settings-&gt;(左边菜单树中选择)Git-&gt;设置 Name 和 Email, 如</p>
-<pre><code>Name: liangjian
-Email: liangjian@oliveche.com</code></pre>
+<pre><code>Name: xxx（改成你的名字）
+Email: xxx@126.com（改成你的邮箱地址）</code></pre>
 <p>在 Settings-&gt;Network 中，确认右侧 SSH Client 使用的是刚刚安装的Git中的ssh路径，如</p>
-<pre><code>C:\Program Files (x86)\Git\bin\ssh.exe</code></pre>
-<p>如果代码服务器不提供用户名密码登录，那么需要设置ssh证书登录方式：</p>
-<p>在用户主目录下(开始-&gt;运行-&gt;输入 &quot;.&quot; 或 &quot;%userprofile%&quot;)创建目录&quot;.ssh&quot;, 将 <code>${SHARE_SVR}\server-pc-key</code> 目录下的文件(config, id_rsa等)拷贝到&quot;.ssh&quot;目录中。 如果目前下已经有同名文件，请手工修改和合并。</p>
-<p>在文件夹空白处点右键，打开 Git Bash，尝试 ssh 是否可以自动登录到代码服务器:</p>
+<pre><code>C:\Program Files\Git\usr\bin\ssh.exe</code></pre>
+<p>以下为配置登录公司相关服务器：</p>
+<p>公司内网代码服务器为server-pc（外部访问通过映射），一般采用ssh证书登录方式（免密码登录），配置如下：</p>
+<p>在用户主目录下(按Windows-R键打开运行对话框，输入 &quot;.&quot; 或 &quot;%userprofile%&quot;)，创建目录&quot;.ssh&quot;, 将 <code>${SHARE_SVR}\server-pc-key</code> 目录下的文件(config, id_rsa等)拷贝到&quot;.ssh&quot;目录中。 如果目前下已经有同名文件，请手工修改和合并。</p>
+<p>在文件夹空白处点右键，打开 Git Bash，尝试 ssh 是否可以自动登录到内网代码服务器:</p>
 <pre><code>ssh server-pc
 (应可免密登录上, 按Ctrl-D退出)</code></pre>
+<p>如果在外网，使用名称olive2（它就是server-pc服务器，映射到公网的），先配置刚刚复制到.ssh目录的config文件，添加上这些：</p>
+<pre><code>host olive2
+hostname oliveche.com
+port 10022</code></pre>
+<p>然后测试登录：</p>
+<pre><code>ssh olive2</code></pre>
 <p>创建目录d:，进行该目录拉取代码（在git-bash中运行）：</p>
 <pre><code>cd d:\project
 git clone server-pc:src/jdcloud-ganlan
 （应可免密下载项目）</code></pre>
+<p>(如果用olive2，则路径为 olive2:src/jdcloud-ganlan)</p>
+<p>一般推荐使用图形工具TortoiseGit，在project目录下右键选择Git Clone.</p>
 <h3 id="数据库mysql"><span class="header-section-number">1.2</span> 数据库MYSQL</h3>
 <p>办公室环境可直接使用配置好的server-pc服务器上的数据库服务器。</p>
 <p>为直接访问数据库，可以安装数据库客户端：</p>
@@ -69,32 +79,34 @@ git clone server-pc:src/jdcloud-ganlan
 <p>配置文件：找到 {mysql安装目录}/data/my.ini 补上以下配置：</p>
 <pre><code>[mysqld]
 character-set-server=utf8mb4
-lower_case_table_names=2</code></pre>
+lower_case_table_names=2
+sql_mode=</code></pre>
 <p>注意windows环境下须配置<code>lower_case_table_names=2</code>，我们的表名中有大小写，若不配置此项则表名全部为小写。</p>
+<p>新版本mysql默认设置sql_mode为严格模式等，导致字段长度超出、数据类型或格式不对时报错，为了兼容应设置<code>sql_mode=</code>。</p>
 <p>通过windows服务启动、停止mysql服务器。</p>
 <p>测试：使用客户端连接本地mysql服务。</p>
 <h3 id="浏览器及移动设备"><span class="header-section-number">1.3</span> 浏览器及移动设备</h3>
 <p>建议开发时使用chrome浏览器；请从网上下载并安装其最新版本。</p>
 <h3 id="编辑器"><span class="header-section-number">1.4</span> 编辑器</h3>
 <p>建议安装vscode编辑器和gvim编辑器。</p>
-<pre><code>\\server-pc\share\software\vsCode</code></pre>
+<p>{SHARE_SVR}下面有vscode安装包（VSCodeUserSetup-x64-1.46.1），也可从公网下载新版本。</p>
 <p>画图（如用例图、类图等）可安装drawio插件。</p>
 <p>安装vim: (项目有些文档必须用vim编辑; 且部署在Linux时一般只用vim，故建议安装和学习)</p>
 <pre><code>{SHARE_SVR}\vim\gvim74.exe</code></pre>
-<p>建议安装到 <code>d:\vim</code> 安装完成后将 <code>{SHARE_SVR}\vim\_vimrc</code> 拷贝到安装目录， 如<code>d:\vim</code></p>
+<p>建议安装到 <code>d:\vim</code> 安装完成后将配置文件 <code>{SHARE_SVR}\vim\_vimrc</code> 拷贝到安装目录下（如<code>d:\vim</code>目录）</p>
 <h3 id="服务器环境apachephp"><span class="header-section-number">1.5</span> 服务器环境Apache+PHP</h3>
 <p>安装php 5.4:</p>
 <pre><code>解压 {SHARE_SVR}\php\php-5.4.31-nts-Win32-VC9-x86-xdebug.zip 到 d:\php54</code></pre>
 <p>将解压路径如<code>d:\php54</code>加到系统环境变量 PATH 中，以便可以直接在命令行访问 php.</p>
 <p>测试：在<code>d:\project</code>下创建一个文件<code>index.php</code>，内容为：</p>
 <pre><code>hello, jdcloud.</code></pre>
-<p>命令行运行一下：</p>
+<p>在cmd命令行或git-bash中，进入<code>d:\project</code>目录，测试执行这个脚本文件，</p>
 <pre><code>php index.php</code></pre>
 <p>应能正常输出。</p>
-<p>安装apache2:</p>
-<pre><code>解压`{SHARE_SVR}\Apache24-x64-vc15-fcgid.rar` 到 `d:\`</code></pre>
-<p>检查配置文件：<code>D:\Apache24-x64-vc15\conf\__user.conf</code>其中路径是否相符。默认Web主目录为<code>d:\project</code>，检查php目录是否正确。</p>
-<p>双击<code>D:\Apache24-x64-vc15\bin\ApacheMonitor.exe</code>，在系统托盘中出现Apache管理图标，双击它打开可以启动、重启apache服务。修改配置文件后一般需要重启Aapche服务。</p>
+<p>安装apache2: 解压<code>{SHARE_SVR}\Apache24-x64-vc15-fcgid.rar</code> 到 <code>d:\</code>，得到目录<code>D:\Apache24-x64-vc15</code>，下面以<code>{APACHE_HOME}</code>指代该目录。</p>
+<p>检查配置文件：<code>{APACHE_HOME}\conf\__user.conf</code>（以及httpd.conf配置文件）其中各路径是否与实际文件路径相符。默认Web主目录为<code>d:\project</code>，检查php目录是否正确。</p>
+<p>右键<code>{APACHE_HOME}\install.bat</code>，选择“以管理员权限运行”，安装服务。 双击<code>{APACHE_HOME}\bin\ApacheMonitor.exe</code>，在系统托盘中出现Apache管理图标，双击它打开可以启动、重启apache服务。修改配置文件后一般需要重启Aapche服务。</p>
+<p>如果启动失败，常见原因是有目录配置错误，或端口80被其它程序占用，可以进入<code>{APACHE_HOME}\bin</code>目录下用命令行<code>httpd -X</code>调试启动查看错误信息。</p>
 <p>测试：刚刚在Web主目录<code>d:\project</code>下创建过文件<code>index.php</code>，现在到chrome浏览器访问一下：</p>
 <pre><code>http://localhost/</code></pre>
 <p>应能正常输出。</p>
@@ -105,13 +117,16 @@ lower_case_table_names=2</code></pre>
 <p>安装make工具：</p>
 <pre><code>\\server-pc\share\software\make-mingw.zip</code></pre>
 <p>解压到<code>d:\bat</code>目录。如果没有该目录，创建它，并将它加入PATH路径。</p>
-<p>检查：可运行make命令。</p>
-<p>安装图片处理工具imagemagick：</p>
-<pre><code>\\server-pc\share\software\android\ImageMagick-6.9.3-8-Q8-x64-dll.exe</code></pre>
-<p>检查：可以运行convert命令</p>
+<p>检查：可运行make命令。有些文件夹下有Makefile文件，则表示可以在这个文件夹下运行make命令。</p>
+<p>安装图片处理工具imagemagick：（比如图片压缩等）</p>
+<pre><code>\\server-pc\share\software\ImageMagick-7.0.8-12-Q16-x64-dll.exe</code></pre>
+<p>检查：可以运行magick命令(6.x版本的命令叫convert, 现在已不再使用)。常用于图片压缩，比如将1.png转换并压缩为1.jpg，分辨率处理为长1200、宽自动：</p>
+<pre><code>magick 1.png -resize 1200 -quality 80 1.jpg</code></pre>
+<p>还可以用<code>-resize 1200x1000&gt;</code>表示长、宽分别不超过1200和1000，而<code>-resize 1200x1000!</code>表示拉伸至该分辨率。</p>
 <p>安装文档生成工具pandoc：</p>
 <pre><code>\\server-pc\share\software\pandoc-1.16.0.2-windows.msi</code></pre>
-<p>检查：可以运行pandoc命令</p>
+<p>检查：可以运行pandoc命令。它常用于将markdown文档转为html，如：</p>
+<pre><code>pandoc 1.md &gt; 1.html</code></pre>
 <p>安装文件查找工具everything:</p>
 <pre><code>\\server-pc\share\software\Everything_1.4.1.877_x64-Setup</code></pre>
 <h3 id="运行经典筋斗云项目的工程"><span class="header-section-number">1.7</span> 运行经典筋斗云项目的工程</h3>
@@ -169,10 +184,16 @@ PATH=%JAVA_HOME%\bin;...</code></pre>
 <h2 id="app开发环境"><span class="header-section-number">3</span> App开发环境</h2>
 <p>使用Cordova框架，为安卓和IOS应用分别制作“壳”，实际仍以H5应用为核心。</p>
 <h3 id="安卓开发环境"><span class="header-section-number">3.1</span> 安卓开发环境</h3>
-<p>android SDK:</p>
-<pre><code>\\server-pc\share\software\android\sdk-tools-windows-4333796.rar</code></pre>
-<p>解压到<code>d:\</code> 配置</p>
+<p>先根据【Java后端开发环境】安装java(jdk8)。（编译安卓不需要eclipse或tomcat）</p>
+<p>android SDK: （840M, 包含tools, platform-tools, android target-API-29等）</p>
+<pre><code>\\server-pc\share\software\android\sdk-tools-windows-4333796.zip</code></pre>
+<p>解压到<code>d:\sdk-tools-windows-4333796</code> 配置环境变量：</p>
 <pre><code>ANDROID_HOME=d:\sdk-tools-windows-4333796</code></pre>
+<p>安装编译工具gradle:</p>
+<pre><code>\\server-pc\share\software\gradle-5.4.1.zip</code></pre>
+<p>解压到d:，配置环境变量：</p>
+<pre><code>GRADLE_HOME=d:\gradle-5.4.1
+PATH中添加 %GRADLE_HOME%/bin</code></pre>
 <p>安装nodejs/npm:</p>
 <pre><code>\\server-pc\share\software\nodejs</code></pre>
 <p>注意设置taobao源, 下载包速度较快：</p>
@@ -183,8 +204,8 @@ PATH=%JAVA_HOME%\bin;...</code></pre>
 <pre><code>cordova -v
 (应该是10.0)</code></pre>
 <p>其中要做图片处理，安装：</p>
-<pre><code>\\server-pc\share\software\android\ImageMagick-6.9.3-8-Q8-x64-dll.exe</code></pre>
-<p>检查：可以运行convert命令</p>
+<pre><code>\\server-pc\share\software\android\ImageMagick-7.0.8-12-Q16-x64-dll.exe</code></pre>
+<p>检查：可以运行magick命令</p>
 <p>如果要调试安卓插件，应安装android studio，并安装Android SDK.</p>
 <pre><code>\\server-pc\share\software\android</code></pre>
 <p>命令行编译安卓apk包, 以编译项目tomatomall-app为例：</p>
@@ -193,6 +214,12 @@ cd tomatomall-app
 npm i
 cordova platform add android
 make</code></pre>
+<p>如果有错误，可以查看下少装了什么：</p>
+<pre><code>cordova requirements</code></pre>
+<p>打开Makefile文件，修改其中的线上apk上传地址，如：</p>
+<pre><code>PUB=oliveche.com:html/app/apk/tomatomall-1.0.apk</code></pre>
+<p>这样可以直接发布上线：</p>
+<pre><code>make dist</code></pre>
 <h3 id="ios开发环境"><span class="header-section-number">3.2</span> IOS开发环境</h3>
 <p>安装ios虚机，使用其中的xcode开发。 虚拟使用vmware:</p>
 <pre><code>\\server-pc\share\software\vmware\VMware-player-16.1.0-17198959.exe</code></pre>
@@ -207,7 +234,16 @@ cd tomatomall-app
 npm i
 cordova platform add ios
 make</code></pre>
-<p>打开xcode，加载工程，编译、测试和发布。</p>
+<p>打开xcode，加载工程（自动生成的platforms/ios/{项目名}.xcworkspace），编译、测试和发布。</p>
+<p>如果是干净的macos系统，先从苹果应用市场或官网下载适合版本的xcode（注意xcode对macos系统版本有要求，而上架应用市场时对xcode和ios sdk版本有要求）。 然后下载nodejs（包含npm，http://nodejs.cn/），然后参考android环境的配置：</p>
+<pre><code>（设置taobao源, 下载包速度较快）
+npm config set registry https://registry.npm.taobao.org </code></pre>
+<p>cordova开发环境安装（目前使用10.0版本）：</p>
+<pre><code>npm install -g cordova@10.0</code></pre>
+<p>检查：</p>
+<pre><code>cordova -v
+(应该是10.0)</code></pre>
+<p>然后进行上面常规项目操作即可。</p>
 <h2 id="测试环境"><span class="header-section-number">4</span> 测试环境</h2>
 <p>用于自动化测试(目前很少使用，且phpunit已换成jasmine。此章节跳过。)</p>
 <p>前提: 先配置好Windows开发环境(git/php等).</p>

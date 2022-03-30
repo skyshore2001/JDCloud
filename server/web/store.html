@@ -1,7 +1,7 @@
 <html>
 <head>
 <meta http-equiv="content-type" content="text/html; charset=utf-8">
-<link rel="icon" href="logo.jpg"><!-- chrome use it -->
+<link rel="icon" href="../logo.jpg"><!-- chrome use it -->
 
 <script language="javascript" src="lib/easyui/jquery.min.js" type="text/javascript"></script>
 
@@ -24,10 +24,9 @@
 <script src="mockdata.js"></script-->
 </head>
 
-<body class="easyui-layout">
+<body>
 
-<div id="menu" region="west" split="true" title="选择操作" style="width:200px;">
-<script> if (WUI.isSmallScreen()) $("#menu").attr("data-options", "collapsed:true"); </script>
+<div id="menu" region="west" split="true" title="选择操作" style="width:200px; visibility: hidden">
 <!--
 如果为菜单加图标，将图标和文字放到span中如：
 	<a href="?chpwd"><span><i class="fa fa-pencil-square-o"></i>修改密码</span></a>
@@ -40,6 +39,8 @@ menu-expand-group下第一个a为菜单组标题，可加"expanded"类使其默�
 			<a><span><i class="fa fa-pencil-square-o"></i>系统设置</span></a>
 			<div class="menu-expandable">
 				<a href="#pageEmployee">登录帐户管理</a>
+				<a href="javascript:WUI.showDlg('#dlgImport')">批量导入</a>
+				<a href="#pageCinf">系统配置</a>
 			</div>
 		</div>
 	</div>
@@ -62,11 +63,10 @@ menu-expand-group下第一个a为菜单组标题，可加"expanded"类使其默�
 		</div>
 	</div-->
 
-	<a href="javascript:logout()"><span><i class="fa fa-user-times"></i>退出系统</span></a>
 	<a href="javascript:showDlgChpwd()"><span><i class="fa fa-user-times"></i>修改密码</span></a>
 </div>
 
-<div region="center" title="管理端">
+<div id="main" region="center" title="<div class='my-title' style='float:left'>管理端</div> <div style='float:right'><span class='user-name'>用户</span> | <a href='javascript:logout()'>退出</a></div>" style="visibility: hidden">
 	<div id="my-tabMain" class="easyui-tabs" fit=true>
 	</div>
 </div>
@@ -84,6 +84,7 @@ menu-expand-group下第一个a为菜单组标题，可加"expanded"类使其默�
 			<th data-options="field:'id'">编号</th>
 			<th data-options="field:'phone'">手机号</th>
 			<th data-options="field:'name'">姓名</th>
+			<th data-options="field:'uname'">登录名</th>
 			<th data-options="field:'perms', formatter:Formatter.enum(PermMap)">权限</th>
 		</tr></thead>
 	</table>
@@ -93,7 +94,22 @@ menu-expand-group下第一个a为菜单组标题，可加"expanded"类使其默�
 
 <!-- dialogs {{{ -->
 
-<div id="dlgLogin" title="商户登录" style="padding:20px 40px 20px 40px;width:350px;height:210px;">  
+<div id="dlgLogin" title="登录" data-options="cls:'loginPanel',collapsible:false,maximizable:false" style="width:350px">  
+<style>
+.loginPanel {
+	overflow: visible;
+}
+.loginPanel .my-title {
+	position: absolute;
+	top: -30%;
+	left: 50%;
+	transform: translate(-50%,-50%);
+	-webkit-transform: translate(-50%,-50%);
+	font-size: 30px;
+	white-space: nowrap;
+}
+</style>
+	<div class="my-title"></div>
 	<form>
 		<table>
 			<tr>
@@ -108,7 +124,7 @@ menu-expand-group下第一个a为菜单组标题，可加"expanded"类使其默�
 	</form>
 </div>
 
-<div id="dlgChpwd" title="修改密码" style="padding:20px 40px 20px 40px;width:350px;height:240px;">  
+<div id="dlgChpwd" title="修改密码" style="width:350px">  
 	<form>
 		<table>
 			<tr>

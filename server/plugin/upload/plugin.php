@@ -120,13 +120,12 @@ class Upload
 	{
 		session_commit();
 		if (!$zipname || count($pics) == 0) {
-			echo("没有图片或附件!");
-			throw new DirectReturn();
+			jdRet(null, "没有图片或附件!");
 		}
 		$zip = new ZipArchive;
 		$tmpf = tempnam("/tmp", "zip");
 		if (($rv=$zip->open($tmpf, ZipArchive::CREATE)) !== TRUE) {
-			throw new MyException(E_SERVER, "zip error $rv");
+			jdRet(E_SERVER, "zip error $rv");
 		}
 		foreach ($pics as $k=>$v) {
 			if (!$v)
@@ -163,7 +162,7 @@ class Upload
 		header('Content-Length: ' . filesize($tmpf));
 		readfile($tmpf);
 		unlink($tmpf);
-		throw new DirectReturn();
+		jdRet();
 	}
 }
 // ====== config {{{
@@ -186,11 +185,11 @@ $FILE_TAG = [
 function resizeImage($in, $w, $h, $out=null, $forceDo=false)
 {
 	if (! function_exists("imageJpeg")) 
-		throw new MyException(E_SERVER, "Require GD library");
+		jdRet(E_SERVER, "Require GD library");
 
 	list($srcw, $srch) = @getImageSize($in);
 	if (is_null($srcw))
-		throw new MyException(E_PARAM, "cannot get image info: $in");
+		jdRet(E_PARAM, "cannot get image info: $in");
 
 	// 保持宽高协调
 	if ($srcw < $srch) {
@@ -222,10 +221,10 @@ function resizeImage($in, $w, $h, $out=null, $forceDo=false)
 	else if ($ext == "gif")
 		$source = @imageCreateFromGif($in);
 	else
-		throw new MyException(E_PARAM, "format `$ext` is not supported. Require jpg/png/gif", "不支持的图片格式. 请使用jpg/png/gif");
+		jdRet(E_PARAM, "format `$ext` is not supported. Require jpg/png/gif", "不支持的图片格式. 请使用jpg/png/gif");
 
 	if ($source === false)
-		throw new MyException(E_PARAM, "cannot create image from: $in", "图片格式错误");
+		jdRet(E_PARAM, "cannot create image from: $in", "图片格式错误");
 
 	// Load
 	$thumb = imageCreateTrueColor($w, $h);
@@ -308,14 +307,23 @@ function api_upload()
 
 	$handleOneFile = function ($f, $genThumb, &$files) use ($cate, $cateConf)
 	{
-		if ($f["error"] === 1 || $f["error"] === 2)
-			throw new MyException(E_PARAM, "large file (>upload_max_filesize or >MAX_FILE_SIZE)", "文件太大，禁止上传");
-		elseif ($f["error"] === 3)
-			throw new MyException(E_SERVER, "partial data got", "文件内容不完整");
+		if ($f["error"]) {
+			logit("fail to upload: " . jsonEncode($f));
+			if ($f["error"] === 1 || $f["error"] === 2)
+				jdRet(E_PARAM, "large file (>upload_max_filesize or >MAX_FILE_SIZE)", "文件太大，禁止上传");
+			elseif ($f["error"] === 3)
+				jdRet(E_SERVER, "partial data got", "文件内容不完整");
+			elseif ($f["error"] === 7)
+				jdRet(E_SERVER, "fail to write file or no disk space", "文件写入失败，请检查服务器权限或磁盘空间");
+
+			jdRet(E_SERVER, "fail to upload file: " . jsonEncode($f), "上传失败：错误码为"  . $f["error"]);
+		}
 // 1 : 上传的文件超过了 php.ini 中 upload_max_filesize 选项限制的值.
 // 2 : 上传文件的大小超过了 HTML 表单中 MAX_FILE_SIZE 选项指定的值。
 // 3 : 文件只有部分被上传
 // 4 : 没有文件被上传
+// 6 : 找不到临时文件夹
+// 7 : 文件写入失败
 
 		if ($f["name"] != "" && $f["size"] > 0) {
 			// 检查文件类型
@@ -329,11 +337,11 @@ function api_upload()
 						// 猜测文件类型
 						$ext = guessFileType($f["tmp_name"]);
 						if ($ext === null)
-							throw new MyException(E_PARAM, "MIME type not supported: `$mtype`", "文件类型`$mtype`不支持.");
+							jdRet(E_PARAM, "MIME type not supported: `$mtype`", "文件类型`$mtype`不支持.");
 					}
 				}
 				if ($ext == "" || !array_key_exists($ext, Upload::$fileTypes)) {
-					throw new MyException(E_PARAM, "bad extension file name: `$orgName`", "文件扩展名`$ext`不支持");
+					jdRet(E_PARAM, "bad extension file name: `$orgName`", "文件扩展名`$ext`不支持");
 				}
 			}
 
@@ -341,7 +349,7 @@ function api_upload()
 			$dir = dirname($fname);
 			if (! is_dir($dir)) {
 				if (mkdir($dir, 0777, true) === false)
-					throw new MyException(E_SERVER, "fail to create folder: $dir");
+					jdRet(E_SERVER, "fail to create folder: $dir");
 			}
 			$rec = [$f["tmp_name"], $fname, $orgName];
 			if ($genThumb) {
@@ -402,7 +410,7 @@ function api_upload()
 	}
 	if (count($files) == 0) {
 		$sz = (@$_SERVER["HTTP_CONTENT_LENGTH"]?:$_SERVER["CONTENT_LENGTH"]?:0);
-		throw new MyException(E_PARAM, "no file uploaded. upload size=$sz", "没有文件上传或文件过大。");
+		jdRet(E_PARAM, "no file uploaded. upload size=$sz", "没有文件上传或文件过大。");
 		// return $ret;
 	}
 
@@ -425,7 +433,7 @@ function api_upload()
 			$rv = file_put_contents($fname, $s);
 		}
 		if ($rv === false) {
-			throw new MyException(E_SERVER, "fail to create or write uploaded file", "写文件失败！");
+			jdRet(E_SERVER, "fail to create or write uploaded file", "写文件失败！");
 		}
 		if ($autoResize && preg_match('/\.(jpg|jpeg|png)$/', $fname)) {
 			// 如果大于500K或是用autoResize指定了最大宽高, 则压缩.
@@ -514,7 +522,7 @@ function api_att()
 	list($file, $orgName) = $row;
 	if (preg_match('/(http:|https:)/', $file)) {
 		header('Location: ' . $file);
-		throw new DirectReturn();
+		jdRet();
 	}
 
 	chdir($GLOBALS["BASE_DIR"]);
@@ -550,7 +558,7 @@ function api_att()
 		$url = $baseUrl . $file;
 		header('Location: ' . $url);
 	}
-	throw new DirectReturn();
+	jdRet();
 }
 
 function api_pic()
@@ -559,9 +567,9 @@ function api_pic()
 	header("Content-Type: text/html");
 	$baseUrl = getBaseUrl();
 	$n = 0;
-	foreach ([param("id/s"), param("thumbId/s"), param("smallId/s")] as $pics) {
+	foreach ([param("id/i+"), param("thumbId/i+"), param("smallId/i+")] as $pics) {
 		if ($pics) {
-			foreach (explode(',', $pics) as $id) {
+			foreach ($pics as $id) {
 				$id = trim($id);
 				if ($id) {
 					if ($n == 0)
@@ -575,7 +583,7 @@ function api_pic()
 		}
 		++ $n;
 	}
-	throw new DirectReturn();
+	jdRet();
 }
 
 /*
@@ -593,9 +601,14 @@ function api_export()
 	$enc = param("enc", "utf-8");
 	header("Content-Type: text/plain; charset=" . $enc);
 	header('Content-Disposition: attachment; filename='. Upload::quote($fname));
+
+	$forexcel = param("forexcel/b", 1);
+	if ($forexcel && stripos($fname, ".csv") !== false) {
+		$str = preg_replace('/\b\d{11,}\b/', '="$0"', $str);
+	}
 	if ($enc != "utf-8")
 		$str = iconv("utf-8", "$enc//IGNORE", $str);
 	echo($str);
-	throw new DirectReturn();
+	jdRet();
 }
 

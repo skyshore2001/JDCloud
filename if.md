@@ -154,7 +154,7 @@ query接口默认返回格式为`{h,d}`，通过表头h与表内容d传数据表
 一般使用框架提供的`makeUrl`函数生成地址，如：
 
 	// 取图片地址：
-	var imgUrl = MUI.makeUrl("att", {id: 100});
+	var imgUrl = MUI.makeUrl("att", {id: 100}); // 其实就是 $BASE_URL/att?id=100
 	jimg.attr("src", imgUrl); // 设置到img.src属性。
 
 在支持缩略图时，字段内保存的是缩略图的编号，可以这样来取缩略图和原始大图的地址：
@@ -163,6 +163,12 @@ query接口默认返回格式为`{h,d}`，通过表头h与表内容d传数据表
 	var imgUrl = MUI.makeUrl("att", {id: 100});
 	// 取原始图地址：
 	var bigImgUrl = MUI.makeUrl("att", {thumbId: 100});
+
+服务端还支持pic接口，可生成一个显示图片的URL，直接在浏览器（或iframe）中显示。
+注意att接口直接返回一张图的内容，而pic接口返回html片段，它支持多图。用法示例：
+
+	var url = MUI.makeUrl("pic", {thumbId: "100,102"}); // 其实就是 $BASE_URL/pic?thumbId=100,102
+	jframe.attr("src", url);
 
 ### 上传文件
 
@@ -177,7 +183,7 @@ query接口默认返回格式为`{h,d}`，通过表头h与表内容d传数据表
 
 - genThumb: 默认为0。设置为1时表示生成缩略图。
 
-注意：该接口需要用户登录权限，也可以使用简单认证（参考之前章节）。
+注意：该接口需要用户登录权限，也可以使用[简单认证](#简单认证机制).
 
 返回：
 

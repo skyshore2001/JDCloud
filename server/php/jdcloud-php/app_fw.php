@@ -68,7 +68,7 @@ P_DBCRED格式为`{用户名}:{密码}`，或其base64编码后的值，如
 
 注意：v5.4起可设置P_DEBUG_LOG，在测试模式或生产模式都可用，可记录日志到后台debug.log文件中。一般用于在生产环境下，临时开放查看后台日志。
 
-注意：v3.4版本起不允许客户端设置_test参数，且用环境变量P_TEST_MODE替代符号文件CFG_TEST_MODE和设置全局变量TEST_MODE.
+注意：v3.4版本起不允许客户端设置_test参数，且用环境变量P_TEST_MODE替代符号文件CFG_TEST_MODE。
 
 在过去测试模式用于：可直接对生产环境进行测试且不影响生产环境，即部署后，在前端指定以测试模式连接，在后端为测试模式连接专用的测试数据库，且使用专用的cookie，实现与生产模式共用代码但互不影响。
 现已废弃这种用法，应搭建专用的测试环境用于测试开发。
@@ -81,7 +81,7 @@ P_DBCRED格式为`{用户名}:{密码}`，或其base64编码后的值，如
 
 对第三方系统依赖（如微信认证、支付宝支付、发送短信等），可通过设计Mock接口来模拟。
 
-注意：v3.4版本起用环境变量P_MOCK_MODE替代符号文件CFG_MOCK_MODE/CFG_MOCK_T_MODE和设置全局变量MOCK_MODE，且模拟模式只允许在测试模式激活时才能使用。
+注意：v3.4版本起用环境变量P_MOCK_MODE替代符号文件CFG_MOCK_MODE/CFG_MOCK_T_MODE，且模拟模式只允许在测试模式激活时才能使用。
 
 @see ExtMock
 
@@ -111,12 +111,6 @@ PHP默认的session过期时间为1440s(24分钟)，每次在使用session时，
 
 注意：前端会记住cookie过期时间，假如后端再次改成保留10天，由于前端已记录的是7天过期，无法立即更新，只能清除cookie后再请求才能生效。
 
-## 应用框架
-
-继承AppBase类，可实现提供符合BQP协议接口的模块。[api_fw](#api_fw)框架就是使用它的一个典型例子。
-
-@see AppBase
-
 **********************************************************/
 
 require_once("common.php");
@@ -127,8 +121,6 @@ const RTEST_MODE=2;
 //}}}
 
 // ====== config {{{
-// such vars are set manually or by init proc (AppFw_::initGlobal); use it like consts.
-
 /**
 @var $BASE_DIR
 
@@ -137,31 +129,7 @@ const RTEST_MODE=2;
 */
 global $BASE_DIR;
 $BASE_DIR = dirname(dirname(__DIR__));
-
-global $JSON_FLAG;
-$JSON_FLAG = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
-
-global $DB, $DBCRED, $DBTYPE;
-$DB = "localhost/jdcloud";
-$DBCRED = "ZGVtbzpkZW1vMTIz"; // base64({user}:{pwd}), default: demo:demo123
-
-global $TEST_MODE, $MOCK_MODE, $DBG_LEVEL;
-
-global $DBH;
-/**
-@var $APP?=user
-
-客户端应用标识，默认为"user". 
-根据URL参数"_app"确定值。
- */
-global $APP;
-$APP = param("_app", "user", $_GET);
 // }}}
-
-// ====== global {{{
-global $g_dbgInfo;
-$g_dbgInfo = [];
-//}}}
 
 // load user config
 $userConf = "{$BASE_DIR}/php/conf.user.php";
@@ -259,23 +227,23 @@ function param_varr($str, $type, $name)
 					$row1[] = null;
 					continue;
 				}
-				throw new MyException(E_PARAM, "Bad Request - param `$name`: list($type). require col: `$row0`[$i]");
+				jdRet(E_PARAM, "Bad Request - param `$name`: list($type). require col: `$row0`[$i]");
 			}
 			$e = htmlEscape($e);
 			if ($t === "i") {
 				if (! ctype_digit($e))
-					throw new MyException(E_PARAM, "Bad Request - param `$name`: list($type). require integer col: `$row0`[$i]=`$e`.");
+					jdRet(E_PARAM, "Bad Request - param `$name`: list($type). require integer col: `$row0`[$i]=`$e`.");
 				$row1[] = intval($e);
 			}
 			elseif ($t === "n") {
 				if (! is_numeric($e))
-					throw new MyException(E_PARAM, "Bad Request - param `$name`: list($type). require numberic col: `$row0`[$i]=`$e`.");
+					jdRet(E_PARAM, "Bad Request - param `$name`: list($type). require numberic col: `$row0`[$i]=`$e`.");
 				$row1[] = doubleval($e);
 			}
 			else if ($t === "b") {
 				$val = null;
 				if (!tryParseBool($e, $val))
-					throw new MyException(E_PARAM, "Bad Request - param `$name`: list($type). require bool col: `$row0`[$i]=`$e`.");
+					jdRet(E_PARAM, "Bad Request - param `$name`: list($type). require bool col: `$row0`[$i]=`$e`.");
 				$row1[] = $val;
 			}
 			else if ($t === "s") {
@@ -284,29 +252,29 @@ function param_varr($str, $type, $name)
 			else if ($t === "dt" || $t === "tm") {
 				$v = strtotime($e);
 				if ($v === false)
-					throw new MyException(E_PARAM, "Bad Request - param `$name`: list($type). require datetime col: `$row0`[$i]=`$e`.");
+					jdRet(E_PARAM, "Bad Request - param `$name`: list($type). require datetime col: `$row0`[$i]=`$e`.");
 				if ($t === "dt")
 					$v = strtotime(date("Y-m-d", $v));
 				$row1[] = $v;
 			}
 			else {
-				throw new MyException(E_SERVER, "unknown elem type `$t` for param `$name`: list($type)");
+				jdRet(E_SERVER, "unknown elem type `$t` for param `$name`: list($type)");
 			}
 			++ $i;
 		}
 		$ret[] = $row1;
 	}
 	if (count($ret) == 0)
-		throw new MyException(E_PARAM, "Bad Request - list param `$name` is empty.");
+		jdRet(E_PARAM, "Bad Request - list param `$name` is empty.");
 	return $ret;
 }
 /**
-@fn param($name, $defVal?, $col?, $doHtmlEscape=true)
+@fn param($name, $defVal?, $col?, $doHtmlEscape=true, $env = null)
 
 @param $col: 默认先取$_GET再取$_POST，"G" - 从$_GET中取; "P" - 从$_POST中取
 $col也可以直接指定一个集合，如
 
-	param($name, $defVal, $_REQUEST)
+	param($name, $defVal, $param)
 
 获取名为$name的参数。
 $name中可以指定类型，返回值根据类型确定。如果该参数未定义或是空串，直接返回缺省值$defVal。
@@ -357,18 +325,29 @@ $objarr值为：
 		[ "id"=>101, "qty"=>null, dscr=>"打蜡"]
 	]
 
+(v6) 对cond参数或cond类型是特别处理的，会自动从GET/POST中取值，并且支持字符串、数组、键值对多种形式，参考getQueryCond：
+
+	$cond = mparam("cond");
+	$gcond = param("gcond/cond");
 */
-function param($name, $defVal = null, $col = null, $doHtmlEscape = true)
+function param($name, $defVal = null, $col = null, $doHtmlEscape = true, $env = null)
 {
 	$type = parseType_($name); // NOTE: $name will change.
+	if ($env === null) {
+		$env = getJDEnv();
+	}
+	// cond特别处理
+	if ($name == "cond" || $type == "cond")
+		return getQueryCond([$env->_GET[$name], $env->_POST[$name]]);
+
 	$ret = $defVal;
 	if ($col === "G") {
-		if (isset($_GET[$name]))
-			$ret = $_GET[$name];
+		if (isset($env->_GET[$name]))
+			$ret = $env->_GET[$name];
 	}
 	else if ($col === "P") {
-		if (isset($_POST[$name]))
-			$ret = $_POST[$name];
+		if (isset($env->_POST[$name]))
+			$ret = $env->_POST[$name];
 	}
 	// 兼容旧式直接指定col=$_GET这样参数
 	else if (is_array($col)) {
@@ -376,10 +355,10 @@ function param($name, $defVal = null, $col = null, $doHtmlEscape = true)
 			$ret = $col[$name];
 	}
 	else {
-		if (isset($_GET[$name]))
-			$ret = $_GET[$name];
-		else if (isset($_POST[$name]))
-			$ret = $_POST[$name];
+		if (isset($env->_GET[$name]))
+			$ret = $env->_GET[$name];
+		else if (isset($env->_POST[$name]))
+			$ret = $env->_POST[$name];
 	}
 
 	// e.g. "a=1&b=&c=3", b当成未设置，取缺省值。
@@ -397,42 +376,42 @@ function param($name, $defVal = null, $col = null, $doHtmlEscape = true)
 			if (! is_numeric($ret)) {
 				$ret1 = jdEncryptI($ret, "D", "hex");
 				if (! is_numeric($ret1))
-					throw new MyException(E_PARAM, "Bad Request - id param `$name`=`$ret`.");
+					jdRet(E_PARAM, "Bad Request - id param `$name`=`$ret`.");
 				$ret = $ret1;
 			}
 			$ret = intval($ret);
 		}
 		elseif ($type === "i") {
 			if (! is_numeric($ret))
-				throw new MyException(E_PARAM, "Bad Request - integer param `$name`=`$ret`.");
+				jdRet(E_PARAM, "Bad Request - integer param `$name`=`$ret`.");
 			$ret = intval($ret);
 		}
 		elseif ($type === "n") {
 			if (! is_numeric($ret))
-				throw new MyException(E_PARAM, "Bad Request - numeric param `$name`=`$ret`.");
+				jdRet(E_PARAM, "Bad Request - numeric param `$name`=`$ret`.");
 			$ret = doubleval($ret);
 		}
 		elseif ($type === "b") {
 			$val = null;
 			if (!tryParseBool($ret, $val))
-				throw new MyException(E_PARAM, "Bad Request - bool param `$name`=`$val`.");
+				jdRet(E_PARAM, "Bad Request - bool param `$name`=`$val`.");
 			$ret = $val;
 		}
 		elseif ($type == "i+") {
 			$arr = [];
 			foreach (explode(',', $ret) as $e) {
 				if (! ctype_digit($e))
-					throw new MyException(E_PARAM, "Bad Request - int array param `$name` contains `$e`.");
+					jdRet(E_PARAM, "Bad Request - int array param `$name` contains `$e`.");
 				$arr[] = intval($e);
 			}
 			if (count($arr) == 0)
-				throw new MyException(E_PARAM, "Bad Request - int array param `$name` is empty.");
+				jdRet(E_PARAM, "Bad Request - int array param `$name` is empty.");
 			$ret = $arr;
 		}
 		elseif ($type === "dt" || $type === "tm") {
 			$ret1 = strtotime($ret);
 			if ($ret1 === false)
-				throw new MyException(E_PARAM, "Bad Request - invalid datetime param `$name`=`$ret`.");
+				jdRet(E_PARAM, "Bad Request - invalid datetime param `$name`=`$ret`.");
 			if ($type === "dt")
 				$ret1 = strtotime(date("Y-m-d", $ret1));
 			$ret = $ret1;
@@ -440,18 +419,18 @@ function param($name, $defVal = null, $col = null, $doHtmlEscape = true)
 		elseif ($type === "js" || $type === "tbl") {
 			$ret1 = json_decode($ret, true);
 			if ($ret1 === null)
-				throw new MyException(E_PARAM, "Bad Request - invalid json param `$name`=`$ret`.");
+				jdRet(E_PARAM, "Bad Request - invalid json param `$name`=`$ret`.");
 			if ($type === "tbl") {
 				$ret1 = table2objarr($ret1);
 				if ($ret1 === false)
-					throw new MyException(E_PARAM, "Bad Request - invalid table param `$name`=`$ret`.");
+					jdRet(E_PARAM, "Bad Request - invalid table param `$name`=`$ret`.");
 			}
 			$ret = $ret1;
 		}
 		else if (strpos($type, ":") >0)
 			$ret = param_varr($ret, $type, $name);
 		else 
-			throw new MyException(E_SERVER, "unknown type `$type` for param `$name`");
+			jdRet(E_SERVER, "unknown type `$type` for param `$name`");
 	}
 # 	$name1 = strtoupper("HTTP_$name");
 # 	if (isset($_SERVER[$name1]))
@@ -460,7 +439,7 @@ function param($name, $defVal = null, $col = null, $doHtmlEscape = true)
 }
 
 /** 
-@fn mparam($name, $col = null)
+@fn mparam($name, $col = null, $doHtmlEscape = true, $env = null)
 @brief mandatory param
 
 @param col 'G'-从URL参数即$_GET获取，'P'-从POST参数即$_POST获取。参见param函数同名参数。
@@ -475,7 +454,7 @@ $name可以是一个数组，表示至少有一个参数有值，这时返回每
 	$itts = mparam("itts/i+")
 	list($svcId, $itts) = mparam(["svcId", "itts/i+"]); # require one of the 2 params
 */
-function mparam($name, $col = null)
+function mparam($name, $col = null, $doHtmlEscape = true, $env = null)
 {
 	if (is_array($name))
 	{
@@ -486,24 +465,24 @@ function mparam($name, $col = null)
 				$rv = null;
 			}
 			else {
-				$rv = param($name1, null, $col);
+				$rv = param($name1, null, $col, $doHtmlEscape, $env);
 				if (isset($rv))
 					$found = true;
 			}
 			$arr[] = $rv;
 		}
 		if (!$found) {
-			$s = join($name, " or ");
-			throw new MyException(E_PARAM, "Bad Request - require param $s", "缺少参数`$s`");
+			$s = join(" or ", $name);
+			jdRet(E_PARAM, "Bad Request - require param $s", "缺少参数`$s`");
 		}
 		return $arr;
 	}
 
-	$rv = param($name, null, $col);
+	$rv = param($name, null, $col, $doHtmlEscape, $env);
 	if (isset($rv))
 		return $rv;
 	parseType_($name); // remove the type tag.
-	throw new MyException(E_PARAM, "Bad Request - param `$name` is missing", "缺少参数`$name`");
+	jdRet(E_PARAM, "Bad Request - param `$name` is missing", "缺少参数`$name`");
 }
 
 /**
@@ -540,85 +519,21 @@ function checkParams($params, $names, $errPrefix="")
 		else
 			$showName .= "({$name})";
 		if (!isset($params[$name]) || $params[$name] === "") {
-			throw new MyException(E_PARAM, "require param `$name`", $errPrefix."缺少参数`$showName`");
+			jdRet(E_PARAM, "require param `$name`", $errPrefix."缺少参数`$showName`");
 		}
 	}
-}
-
-/**
-@fn setParam($k, $v)
-@fn setParam(@kv)
-
-设置参数，其实是模拟客户端传入的参数。以便供tableCRUD等函数使用。
-
-(v5.1)不建议使用，param函数已更新，现在直接设置$_GET,$_POST即可。
-
-示例：
-
-	setParam("cond", "name LIKE " . Q("%$name%"));
-	setParam([
-		"fmt" => "list",
-		"orderby" => "id DESC"
-	]);
-
-@see tableCRUD
- */
-function setParam($k, $v=null)
-{
-	if (is_array($k)) {
-		foreach ($k as $k1 => $v1) {
-			$_GET[$k1] = $_REQUEST[$k1] = $v1;
-		}
-	}
-	else {
-		$_GET[$k] = $_REQUEST[$k] = $v;
-	}
-}
-/*
-# form/post param ($_POST)
-function fparam($name, $defVal = null)
-{
-	return param($name, $defVal, $_POST);
-}
-
-# mandatory form param
-function mfparam($name)
-{
-	return mparam($name, $_POST);
-}
-*/
-
-/**
-@fn getBcParam($name, $defVal=null)
-@fn setBcParam($name, $value)
-
-TODO: BC是什么？改名？
-
-获取或设置特别的HTTP头部参数。
- */
-function getBcParam($name, $defVal = null)
-{
-	$name1 = "HTTP_BC_" . strtoupper($name);
-	if (isset($_SERVER[$name1]))
-		return $_SERVER[$name1];
-	return $defVal;
-}
-
-function setBcParam($param, $value)
-{
-	header("bc-$param: $value");
 }
 
 function checkObjArrParam($name, $arr, $fields = null)
 {
 	#var_export($arr);
 	if (! is_array($arr))
-		throw new MyException(E_PARAM, "bad param `$name` - require array");
+		jdRet(E_PARAM, "bad param `$name` - require array");
 	if (isset($fields)) {
 		foreach ($arr as $e) {
 			foreach ($fields as $k) {
 				if (! array_key_exists($k, $e)) {
-					throw new MyException(E_PARAM, "missing param {$name}[][$k]");
+					jdRet(E_PARAM, "missing param {$name}[][$k]");
 				}
 			}
 		}
@@ -676,7 +591,8 @@ h是标题字段数组，d是数据行。
  */
 function queryAllWithHeader($sql, $wantArray=false)
 {
-	global $DBH;
+	$env = getJDEnv();
+	$DBH = $env->dbconn();
 	$sth = $DBH->query($sql);
 
 	$h = getRsHeader($sth);
@@ -884,9 +800,9 @@ function getCred($cred)
 
 连接数据库
 
-数据库由全局变量$DB(或环境变量P_DB）指定，格式可以为：
+数据库由环境变量P_DB指定，格式可以为：
 
-	host1/carsvc (无扩展名，表示某主机host1下的mysql数据库名；这时由 全局变量$DBCRED 或环境变量 P_DBCRED 指定用户名密码。
+	host1/carsvc (无扩展名，表示某主机host1下的mysql数据库名；这时由 环境变量 P_DBCRED 指定用户名密码。
 
 	dir1/dir2/carsvc.db (以.db文件扩展名标识的文件路径，表示SQLITE数据库）
 
@@ -894,66 +810,32 @@ function getCred($cred)
  */
 function dbconn($fnConfirm = null)
 {
-	global $DBH;
-	if (isset($DBH))
-		return $DBH;
-
-
-	global $DB, $DBCRED, $DBTYPE;
-
-	// 未指定驱动类型，则按 mysql或sqlite 连接
-// 	if (! preg_match('/^\w{3,10}:/', $DB)) {
-		// e.g. P_DB="../carsvc.db"
-		if ($DBTYPE == "sqlite") {
-			$C = ["sqlite:" . $DB, '', ''];
-		}
-		else if ($DBTYPE == "mysql") {
-			// e.g. P_DB="115.29.199.210/carsvc"
-			// e.g. P_DB="115.29.199.210:3306/carsvc"
-			if (! preg_match('/^"?(.*?)(:(\d+))?\/(\w+)"?$/', $DB, $ms))
-				throw new MyException(E_SERVER, "bad db=`$DB`", "未知数据库");
-			$dbhost = $ms[1];
-			$dbport = $ms[3] ?: 3306;
-			$dbname = $ms[4];
-
-			list($dbuser, $dbpwd) = getCred($DBCRED); 
-			$C = ["mysql:host={$dbhost};dbname={$dbname};port={$dbport}", $dbuser, $dbpwd];
-		}
-// 	}
-// 	else {
-// 		list($dbuser, $dbpwd) = getCred($DBCRED); 
-// 		$C = [$DB, $dbuser, $dbpwd];
-// 	}
-
-	if ($fnConfirm == null)
-		@$fnConfirm = $GLOBALS["dbConfirmFn"];
-	if ($fnConfirm && $fnConfirm($C[0]) === false) {
-		exit;
-	}
-	try {
-		@$DBH = new JDPDO ($C[0], $C[1], $C[2]);
-	}
-	catch (PDOException $e) {
-		$msg = $GLOBALS["TEST_MODE"] ? $e->getMessage() : "dbconn fails";
-		logit("dbconn fails: " . $e->getMessage());
-		throw new MyException(E_DB, $msg, "数据库连接失败");
-	}
-	
-	if ($DBTYPE == "mysql") {
-		++ $DBH->skipLogCnt;
-		$DBH->exec('set names utf8');
-	}
-	$DBH->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION); # by default use PDO::ERRMODE_SILENT
-
-	# enable real types (works on mysql after php5.4)
-	# require driver mysqlnd (view "PDO driver" by "php -i")
-	$DBH->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
-	$DBH->setAttribute(PDO::ATTR_STRINGIFY_FETCHES, false);
-	return $DBH;
+	$env = getJDEnv();
+	return $env->dbconn($fnConfirm);
 }
 
 /**
-@fn Q($str, $dbh=$DBH)
+@fn dbCommit($doRollback=false)
+
+中间先提交一次事务，然后进入另一个事务。
+
+用于一段事务执行完后及时提交，避免下一段出问题后导致全部回滚，示例：
+
+	// 上一批完成出库
+	$this->outOfBinDone(["portType" => "出库缓存架 OR 出库缓存架-大件"]);
+	dbCommit();
+	//处理当前出库单据
+	$this->outOfBin($_POST);
+
+*/
+function dbCommit($doRollback=false)
+{
+	$env = getJDEnv();
+	return $env->dbCommit($doRollback);
+}
+
+/**
+@fn Q($str, $env=null)
 
 quote string
 
@@ -963,20 +845,26 @@ quote string
 
 	$sql = sprintf("SELECT id FROM User WHERE uname=%s AND pwd=%s", Q(param("uname")), Q(param("pwd")));
 
+注意不同数据库对转义处理不同，如mysql将"'"转义为"\'"，而sqlite转义为"''"。
+如果未指定$env，则取当前$env.
  */
-function Q($s, $dbh = null)
+function Q($s, $env=null)
 {
 	if ($s === null)
 		return "null";
-	$s = str_replace("\\", "\\\\", $s);
-	return "'" . str_replace("'", "\\'", $s) . "'";
-	//return $dbh->quote($s);
+	if ($env === null)
+		$env = getJDEnv();
+	$dbh = $env->DBH;
+	if ($dbh == null) {
+		return qstr($s, "'");
+	}
+	return $dbh->quote($s);
 }
 
 function sql_concat()
 {
-	global $DBTYPE;
-	if ($DBTYPE == "mysql")
+	$env = getJDEnv();
+	if ($env->DBTYPE == "mysql")
 		return "CONCAT(" . join(", ", func_get_args()) . ")";
 
 	# sqlite3
@@ -986,58 +874,72 @@ function sql_concat()
 /**
 @fn getQueryCond(cond)
 
-示例：key-value形式
+根据cond生成查询条件字符串。其中cond可以是
 
-	$rv = getQueryCond([
-		"name"=>"eric",
-		"phone"=> null,
-		"city" => ""
-	]);
-	// name='eric' AND phone IS NULL AND city=''
+- null，忽略
 
-忽略null项：
+- 条件字符串，参考SQL语句WHERE条件语法（不支持函数、子查询等），示例：
 
-	$rv = getQueryCond([
-		"name"=>"eric",
-		"phone"=> null,
-		"city" => "", // 空串仍有效，不会被"_null"选项忽略
-		"_null"=>true
-	]);
-	// name='eric' AND city=''
+		"100"或100 生成 "id=100"
+		"id=1"
+		"id>=1 and id<100"
+		"status='CR'"  注意字符串要加引号
+		"status IN ('CR','PA')"
+		"tm>='2020-1-1' AND tm<'2020-2-1'"
+		"name like 'wang%' OR dscr like 'want%'"
+		"name IS NULL OR dscr IS NOT NULL"
 
-示例：条件数组
+- 键值对，键为字段名，值为查询条件，使用更加直观（如字符串不用加引号），如：
 
-	$rv = getQueryCond([
-		"type IS NOT NULL",
-		"tm>='2018-1-1' AND tm<'2019-1-1'"
-	]);
-	// "type IS NOT NULL AND (tm>='2018-1-1' AND tm<'2019-1-1')"
+		["id"=>1, "status"=>"CR", "name"=>"null", "dscr"=>null, "f1"=>"", "f2"=>"empty"]
+		生成 "id=1 AND status='CR'" AND name IS NULL AND f2=''
+		注意，当值为null或空串时会忽略掉该条件，用"null"表示"IS NULL"条件，用"empty"表示空串。
 
-（以上两种在jd-php中可混用）
+		可以使用符号： > < >= <= !(not) ~(like匹配)
+		["id"=>"<100", "tm"=>">2020-1-1", "status"=>"!CR", "name"=>"~wang%", "dscr"=>"~aaa", "dscr2"=>"!~aaa"]
+		生成 "id<100 AND tm>'2020-1-1" AND status<>'CR' AND name LIKE 'wang%' AND dscr LIKE '%aaa%' AND dscr2 NOT LIKE '%aaa%'"
+		like用于字符串匹配，字符串中用"%"或"*"表示通配符，如果不存在通配符，则表示包含该串(即生成'%xxx%')
 
-特别地：
+		支持IN和NOT IN:
+		["id"=>"IN 100,101", "status"=>"NOT IN CA,XX"]
+		生成"id IN (1,2,3) AND status NOT IN ('CR','XX')"
 
-	getQueryCond(null) => null
-	getQueryCond("ALL") => null
-	getQueryCond(100) => "id=100"
-	getQueryCond("100") => "id=100"
-	getQueryCond("id<>100") => "id<>100"
+		["b"=>"!null", "d"=>"!empty"]
+		生成 "b IS NOT NULL" AND d<>''"
 
-默认用AND连接条件，也支持OR连接：
+	可用AND或OR连接多个条件，但不可加括号嵌套：
 
-	$rv = getQueryCond([
-		"_or" => true, // 特殊用法，标识用OR连接条件
-		"name"=>"eric",
-		"phone IS NULL"
-	]);
-	// "name='eric' OR phone IS NULL"
+		["tm"=>">=2020-1-1 AND <2020-2-1", "tm2"=>"<2020-1-1 OR >=2020-2-1"]
+		生成 "(tm>='2020-1-1' AND tm<'2020-2-1') AND (tm2<'2020-1-1' OR tm2>='2020-2-1')"
 
-	$rv = getQueryCond([
-		"type IS NOT NULL",
-		"tm>='2018-1-1' AND tm<'2019-1-1'",
-		"_or" => true
-	]);
-	// "type IS NOT NULL OR (tm>='2018-1-1' AND tm<'2019-1-1')"
+		["id"=>">=1 AND <100", "status"=>"CR OR PA", "status2"=>"!CR AND !PA OR null"]
+		生成 "(id>=1 AND id<100) AND (status='CR' OR status='PA') AND (status2<>'CR" AND status2<>'PA' OR status2 IS NULL)"
+
+		["a"=>"null OR empty", "b"=>"!null AND !empty", "_or"=>1]
+		生成 "(a IS NULL OR a='') OR (b IS NOT NULL AND b<>'')", 默认为AND条件, `_or`选项用于指定OR条件
+
+
+- 数组，每个元素是上述条件字符串或键值对，如：
+
+		["id>=1", "id<100", "name LIKE 'wang%'"] // "id>=1 AND id<100" AND name LIKE 'wang%'"
+		等价于 ["id"=>">=1 AND <100", "name"=>"~wang%"] 或混合使用 [ ["id"=>">=1 AND <100"], "name LIKE 'wang%'"]
+		["id=1", "id=2", "_or"=>true]  // 下划线开头是特别选项，"_or"表示用或条件，生成"id=1 OR id=2"
+
+支持前端传入的get/post参数中同时有cond参数，且cond参数允许为数组，比如传
+
+	URL中：cond[]=a=1&cond[]=b=2
+	POST中：cond=c=3
+
+后端处理
+
+	getQueryCond([$_GET["cond"], $_POST["cond"]]);
+
+最终得到cond参数为"a=1 AND b=2 AND c=3"。
+
+前端callSvr示例: url参数或post参数均可支持数组或键值对：
+
+	callSvr("Hub.query", {res:"id", cond: {id: ">=1 AND <100"}})
+	callSvr("Hub.query", {res:"id", cond: ["id>=1", "id<100"]}, $.noop, {cond: {name:"~wang%", dscr:"~111"}})
 
 */
 function getQueryCond($cond)
@@ -1054,31 +956,88 @@ function getQueryCond($cond)
 	if (@$cond["_or"]) {
 		$isOR = true;
 	}
-	$ignoreNull = false;
-	if (@$cond["_null"]) {
-		$ignoreNull = true;
-	}
-
 	foreach($cond as $k=>$v) {
+		if ($v === null)
+			continue;
 		if (is_int($k)) {
-			if (stripos($v, ' and ') !== false || stripos($v, ' or ') !== false)
-				$exp = "($v)";
-			else
-				$exp = $v;
+			$exp = getQueryCond($v);
 		}
-		else if ($v === null) {
-			if ($ignoreNull)
-				continue;
-			$exp = "$k IS NULL";
+		else if ($k[0] == "_" || $v === null || $v === "") {
+			continue;
 		}
 		else {
-			if ($k[0] == "_")
-				continue;
-			$exp = "$k=" . Q($v);
+			// key => value, e.g. { id: ">100 AND <20", name: "~wang*", status: "CR OR PA", status2: "!CR AND !PA OR null"}
+			$exp = preg_replace_callback('/(.+?)(\s+(AND|OR)\s+|$)/i', function ($ms) use ($k) {
+				return getQueryExp($k, $ms[1]) . $ms[2];
+			}, $v);
 		}
+		if (!$exp)
+			continue;
 		$condArr[] = $exp;
 	}
+	if (count($condArr) == 0)
+		return null;
+	// 超过1个条件时，对复合条件自动加括号
+	if (count($condArr) > 1) {
+		foreach ($condArr as &$exp) {
+			if (stripos($exp, ' and ') !== false || stripos($exp, ' or ') !== false) {
+				$exp = "($exp)";
+			}
+		}
+		unset($exp);
+	}
 	return join($isOR?' OR ':' AND ', $condArr);
+}
+
+// similar to h5 getexp but not same
+function getQueryExp($k, $v)
+{
+	// 即使纯数值最好也加引号，不容易出错，特别是对0开头或很长数字的字符串
+// 	if (is_numeric($v))
+// 		return "$k='$v'";  
+	if ($v === "null")
+		return "$k IS NULL";
+	if ($v === "!null")
+		return "$k IS NOT NULL";
+
+	$isId = preg_match('/(^id|Id)\d*$/', $k); // "id", "orderId", "orderId2"
+	$done = false;
+	// {id: "IN 1,2,3", status: "NOT IN CA,XX"} => "id IN (1,2,3) AND status NOT IN ('CR','XX')"
+	$v = preg_replace_callback('/^(IN|NOT IN) (.*)$/iu', function ($ms) use ($k, $isId, &$done) {
+		$done = true;
+		if ($isId && preg_match('/^[\d, ]+$/', $ms[2]))
+			return $k . ' ' . $ms[1] . " ({$ms[2]})";
+
+		$v1 = preg_replace_callback('/\w+/u', function ($ms1) {
+			return Q($ms1[0]);
+		}, $ms[2]);
+		return $k . ' ' . $ms[1] . " ($v1)";
+	}, $v);
+	if ($done)
+		return $v;
+
+	$op = '=';
+	$v = preg_replace_callback('/^[><=!~]+/', function ($ms) use (&$op) {
+		if ($ms[0] == '!' || $ms[0] == '!=')
+			$op = '<>';
+		else if ($ms[0] == '~')
+			$op = ' LIKE ';
+		else if ($ms[0] == '!~')
+			$op = ' NOT LIKE ';
+		else
+			$op = $ms[0];
+		return "";
+	}, $v);
+	if ($v === "empty")
+		$v = "";
+	if (stripos($op, ' LIKE ') !== false) {
+		$v = str_replace("*", "%", $v);
+		if (strpos($v, '%') === false)
+			$v = '%'.$v.'%';
+	}
+	if ($isId && is_numeric($v))
+		return $k . $op . $v;
+	return $k . $op . Q($v);
 }
 
 /**
@@ -1135,13 +1094,8 @@ function genQuery($sql, $cond)
  */
 function execOne($sql, $getInsertId = false)
 {
-	global $DBH;
-	if (! isset($DBH))
-		dbconn();
-	$rv = $DBH->exec($sql);
-	if ($getInsertId)
-		$rv = (int)$DBH->lastInsertId();
-	return $rv;
+	$env = getJDEnv();
+	return $env->execOne($sql, $getInsertId);
 }
 
 /**
@@ -1154,21 +1108,21 @@ function execOne($sql, $getInsertId = false)
 
 	$row = queryOne("SELECT name,phone FROM User WHERE id={$id}");
 	if ($row === false)
-		throw new MyException(E_PARAM, "bad user id");
+		jdRet(E_PARAM, "bad user id");
 	// $row = ["John", "13712345678"]
 
 也可返回关联数组:
 
 	$row = queryOne("SELECT name,phone FROM User WHERE id={$id}", true);
 	if ($row === false)
-		throw new MyException(E_PARAM, "bad user id");
+		jdRet(E_PARAM, "bad user id");
 	// $row = ["name"=>"John", "phone"=>"13712345678"]
 
 当查询结果只有一列且assoc=false时，直接返回该数值。
 
 	$phone = queryOne("SELECT phone FROM User WHERE id={$id}");
 	if ($phone === false)
-		throw new MyException(E_PARAM, "bad user id");
+		jdRet(E_PARAM, "bad user id");
 	// $phone = "13712345678"
 
 (v5.3)
@@ -1181,24 +1135,8 @@ function execOne($sql, $getInsertId = false)
  */
 function queryOne($sql, $assoc = false, $cond = null)
 {
-	global $DBH;
-	if (! isset($DBH))
-		dbconn();
-	if ($cond)
-		$sql = genQuery($sql, $cond);
-	if (stripos($sql, "limit ") === false && stripos($sql, "for update") === false)
-		$sql .= " LIMIT 1";
-	$sth = $DBH->query($sql);
-
-	if ($sth === false)
-		return false;
-
-	$fetchMode = $assoc? PDO::FETCH_ASSOC: PDO::FETCH_NUM;
-	$row = $sth->fetch($fetchMode);
-	$sth->closeCursor();
-	if ($row !== false && count($row)===1 && !$assoc)
-		return $row[0];
-	return $row;
+	$env = getJDEnv();
+	return $env->queryOne($sql, $assoc, $cond);
 }
 
 /**
@@ -1251,27 +1189,12 @@ queryAll支持执行返回多结果集的存储过程，这时返回的不是单
  */
 function queryAll($sql, $assoc = false, $cond = null)
 {
-	global $DBH;
-	if (! isset($DBH))
-		dbconn();
-	if ($cond)
-		$sql = genQuery($sql, $cond);
-	$sth = $DBH->query($sql);
-	if ($sth === false)
-		return false;
-	$fetchMode = $assoc? PDO::FETCH_ASSOC: PDO::FETCH_NUM;
-	$allRows = [];
-	do {
-		$rows = $sth->fetchAll($fetchMode);
-		$allRows[] = $rows;
-	}
-	while ($sth->nextRowSet());
-	// $sth->closeCursor();
-	return count($allRows)>1? $allRows: $allRows[0];
+	$env = getJDEnv();
+	return $env->queryAll($sql, $assoc, $cond);
 }
 
 /**
-@fn dbInsert(table, kv) -> newId
+@fn dbInsert(table, kv, noEscape=false) -> newId
 
 e.g. 
 
@@ -1282,46 +1205,26 @@ e.g.
 		"dscr" => null // null字段会被忽略
 	]);
 
+为防止XSS攻击，默认会处理字段值，将">", "<"转义为"&gt;"和"&lt;"。如果想保持原始值，可以用：
+
+	$id = dbInsert("Ordr", [
+		"cond" => dbExpr(Q("amount > 100"))
+	]);
+
+或
+
+	$id = dbInsert("Ordr", [
+		"cond" => "amount > 100"
+	], true); // noEscape=true
+
 如需高性能大批量插入数据，可以用BatchInsert
 
 @see BatchInsert
 */
-function dbInsert($table, $kv)
+function dbInsert($table, $kv, $noEscape=false)
 {
-	$keys = '';
-	$values = '';
-	foreach ($kv as $k=>$v) {
-		if (is_null($v))
-			continue;
-		// ignore non-field param
-		if (substr($k,0,2) === "p_")
-			continue;
-		if ($v === "")
-			continue;
-		# TODO: check meta
-		if (! preg_match('/^\w+$/u', $k))
-			throw new MyException(E_PARAM, "bad key $k");
-
-		if ($keys !== '') {
-			$keys .= ", ";
-			$values .= ", ";
-		}
-		$keys .= $k;
-		if ($v instanceof DbExpr) { // 直接传SQL表达式
-			$values .= $v->val;
-		}
-		else if (is_array($v)) {
-			throw new MyException(E_PARAM, "dbInsert: array `$k` is not allowed. pls define subobj to use array.", "未定义的子表`$k`");
-		}
-		else {
-			$values .= Q(htmlEscape($v));
-		}
-	}
-	if (strlen($keys) == 0) 
-		throw new MyException(E_PARAM, "no field found to be added: $table");
-	$sql = sprintf("INSERT INTO %s (%s) VALUES (%s)", $table, $keys, $values);
-#			var_dump($sql);
-	return execOne($sql, true);
+	$env = getJDEnv();
+	return $env->dbInsert($table, $kv, $noEscape);
 }
 
 /**
@@ -1440,7 +1343,7 @@ function flag_getExpForSet($k, $v)
 		$v = "trim(replace($k1, " . Q($v1) . ", ''))";
 	}
 	else {
-		throw new MyException(E_PARAM, "bad value for flag/prop `$k`=`$v`");
+		jdRet(E_PARAM, "bad value for flag/prop `$k`=`$v`");
 	}
 	return "$k1=" . $v;
 }
@@ -1462,9 +1365,14 @@ class DbExpr
 		"tm" => dbExpr("now()") // 使用dbExpr直接提供SQL表达式
 	]);
 
-另外，写数据库时，为防止XSS跨域攻击，dbInsert/dbUpdate对值会自动做htmlentity转义，如">7"转成"&gt;7"。
+另外，写数据库时，为防止XSS跨域攻击，param/mparam/dbInsert/dbUpdate对值会自动做htmlentity转义(本项目用htmlEscape函数)，如">7"转成"&gt;7"。
 为防止转义，使用原始字串值，可以用：
 
+	// 防止param/mparam转义，设置doHtmlEscape参数=false; 或直接从$_GET/$_POST中取值
+	$value = mparam("value", null, false); // 第3参数是doHtmlEscape
+	$value1 = $_POST["value1"]; // 不用param函数
+
+	// 防止dbInsert/dbUpdate转义，用dbExpr和Q函数。
 	$id = dbUpdate("Ordr", [
 		"cond" => dbExpr(Q("f>3 && r<60")); // 注意用Q函数对字符串加引号
 	]);
@@ -1487,7 +1395,7 @@ function dbExpr($val)
 }
 
 /**
-@fn dbUpdate(table, kv, id_or_cond?) -> cnt
+@fn dbUpdate(table, kv, id_or_cond?, noEscape=false) -> cnt
 
 @param id_or_cond 查询条件，如果是数值比如100或"100"，则当作条件"id=100"处理；否则直接作为查询表达式，比如"qty<0"；
 为了安全，cond必须指定值，不可为空（避免因第三参数为空导致误更新全表!）。如果要对全表更新，可传递特殊值"ALL"，或用"1=1"之类条件。
@@ -1516,56 +1424,293 @@ cond条件可以用key-value指定(cond写法参考getQueryCond)，如：
 	基本等价于 (当id1为null时稍有不同, 上面生成"IS NULL"，而下面的SQL为"=null"非标准)
 	dbUpdate("Task", ["vendorId" => $id], "vendorId=$id1"]);
 
+为防止XSS攻击，默认会处理字段值，将">", "<"转义为"&gt;"和"&lt;"。如果想保持原始值，可以用：
+
+	$cnt = dbUpdate("Ordr", [
+		"cond" => dbExpr(Q("amount > 100"))
+	]);
+
+或
+
+	$cnt = dbUpdate("Ordr", [
+		"cond" => "amount > 100"
+	], null, true); // noEscape=true
+
 */
-function dbUpdate($table, $kv, $cond)
+function dbUpdate($table, $kv, $cond, $noEscape=false)
 {
-	if ($cond === null)
-		throw new MyException(E_SERVER, "bad cond for update $table");
-
-	$condStr = getQueryCond($cond);
-	$kvstr = "";
-	foreach ($kv as $k=>$v) {
-		if ($k === 'id' || is_null($v))
-			continue;
-		// ignore non-field param
-		if (substr($k,0,2) === "p_")
-			continue;
-		# TODO: check meta
-		if (! preg_match('/^(\w+\.)?\w+$/u', $k))
-			throw new MyException(E_PARAM, "bad key $k");
-
-		if ($kvstr !== '')
-			$kvstr .= ", ";
-
-		// 空串或null置空；empty设置空字符串
-		if ($v === "" || $v === "null")
-			$kvstr .= "$k=null";
-		else if ($v === "empty")
-			$kvstr .= "$k=''";
-		else if ($v instanceof DbExpr) { // 直接传SQL表达式
-			$kvstr .= $k . '=' . $v->val;
-		}
-		else if (startsWith($k, "flag_") || startsWith($k, "prop_"))
-		{
-			$kvstr .= flag_getExpForSet($k, $v);
-		}
-		else
-			$kvstr .= "$k=" . Q(htmlEscape($v));
-	}
-	$cnt = 0;
-	if (strlen($kvstr) == 0) {
-		addLog("no field found to be set: $table");
-	}
-	else {
-		if (isset($condStr))
-			$sql = sprintf("UPDATE %s SET %s WHERE $condStr", $table, $kvstr);
-		else
-			$sql = sprintf("UPDATE %s SET %s", $table, $kvstr);
-		$cnt = execOne($sql);
-	}
-	return $cnt;
+	$env = getJDEnv();
+	return $env->dbUpdate($table, $kv, $cond, $noEscape);
 }
 //}}}
+
+// ====== DBEnv {{{
+class DBEnv
+{
+	public $DBH;
+	protected $DB, $DBCRED, $DBTYPE;
+
+	public $TEST_MODE, $MOCK_MODE, $DBG_LEVEL;
+
+	function __construct() {
+		$this->initEnv();
+	}
+
+	private function initEnv() {
+		mb_internal_encoding("UTF-8");
+		setlocale(LC_ALL, "zh_CN.UTF-8");
+
+		$this->DBTYPE = getenv("P_DBTYPE");
+		$this->DB = getenv("P_DB") ?: "localhost/jdcloud";
+		$this->DBCRED = getenv("P_DBCRED") ?: "ZGVtbzpkZW1vMTIz"; // base64({user}:{pwd}), default: demo:demo123
+
+		// e.g. P_DB="../carsvc.db"
+		if (! $this->DBTYPE) {
+			if (preg_match('/\.db$/i', $this->DB)) {
+				$this->DBTYPE = "sqlite";
+			}
+			else {
+				$this->DBTYPE = "mysql";
+			}
+		}
+		if ($this->DBTYPE == "sqlite") {
+			# 处理相对路径. 绝对路径：/..., \\xxx\..., c:\...
+			if ($this->DB[0] !== '/' && $this->DB[1] !== ':') {
+				global $BASE_DIR;
+				$this->DB = $BASE_DIR . '/' . $this->DB;
+			}
+		}
+
+		$this->TEST_MODE = getenv("P_TEST_MODE")===false? 0: intval(getenv("P_TEST_MODE"));
+		$this->DBG_LEVEL = getenv("P_DEBUG")===false? 0 : intval(getenv("P_DEBUG"));
+
+		if ($this->TEST_MODE) {
+			$this->MOCK_MODE = getenv("P_MOCK_MODE") ?: 0;
+		}
+	}
+
+	function dbconn($fnConfirm = null)
+	{
+		$DBH = $this->DBH;
+		if (isset($DBH))
+			return $DBH;
+
+		// 未指定驱动类型，则按 mysql或sqlite 连接
+	// 	if (! preg_match('/^\w{3,10}:/', $DB)) {
+			// e.g. P_DB="../carsvc.db"
+			if ($this->DBTYPE == "sqlite") {
+				$C = ["sqlite:" . $this->DB, '', ''];
+			}
+			else if ($this->DBTYPE == "mysql") {
+				// e.g. P_DB="115.29.199.210/carsvc"
+				// e.g. P_DB="115.29.199.210:3306/carsvc"
+				if (! preg_match('/^"?(.*?)(:(\d+))?\/(\w+)"?$/', $this->DB, $ms))
+					jdRet(E_SERVER, "bad db=`{$this->DB}`", "未知数据库");
+				$dbhost = $ms[1];
+				$dbport = $ms[3] ?: 3306;
+				$dbname = $ms[4];
+
+				list($dbuser, $dbpwd) = getCred($this->DBCRED); 
+				$C = ["mysql:host={$dbhost};dbname={$dbname};port={$dbport}", $dbuser, $dbpwd];
+			}
+	// 	}
+	// 	else {
+	// 		list($dbuser, $dbpwd) = getCred($this->DBCRED); 
+	// 		$C = [$this->DB, $dbuser, $dbpwd];
+	// 	}
+
+		if ($fnConfirm == null)
+			@$fnConfirm = $GLOBALS["dbConfirmFn"];
+		if ($fnConfirm && $fnConfirm($C[0]) === false) {
+			exit;
+		}
+		try {
+			@$DBH = new JDPDO ($C[0], $C[1], $C[2], $this);
+		}
+		catch (PDOException $e) {
+			$msg = $this->TEST_MODE ? $e->getMessage() : "dbconn fails";
+			logit("dbconn fails: " . $e->getMessage());
+			jdRet(E_DB, $msg, "数据库连接失败");
+		}
+		
+		if ($this->DBTYPE == "mysql") {
+			++ $DBH->skipLogCnt;
+			$DBH->exec('set names utf8mb4');
+		}
+		$DBH->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION); # by default use PDO::ERRMODE_SILENT
+
+		# enable real types (works on mysql after php5.4)
+		# require driver mysqlnd (view "PDO driver" by "php -i")
+		$DBH->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+		$DBH->setAttribute(PDO::ATTR_STRINGIFY_FETCHES, false);
+		$this->DBH = $DBH;
+		return $DBH;
+	}
+
+	function dbCommit($doRollback=false)
+	{
+		$DBH = $this->DBH;
+		if ($DBH && $DBH->inTransaction())
+		{
+			if ($doRollback)
+				$DBH->rollback();
+			else
+				$DBH->commit();
+			$DBH->beginTransaction();
+		}
+	}
+
+	function execOne($sql, $getInsertId = false)
+	{
+		$DBH = $this->dbconn();
+		$rv = $DBH->exec($sql, $getInsertId);
+		return $rv;
+	}
+
+	function queryOne($sql, $assoc = false, $cond = null)
+	{
+		$DBH = $this->dbconn();
+		if ($cond)
+			$sql = genQuery($sql, $cond);
+		if (stripos($sql, "limit ") === false && stripos($sql, "for update") === false)
+			$sql .= " LIMIT 1";
+		$sth = $DBH->query($sql);
+
+		if ($sth === false) {
+			$DBH->amendLog("error");
+			return false;
+		}
+
+		$fetchMode = $assoc? PDO::FETCH_ASSOC: PDO::FETCH_NUM;
+		$row = $sth->fetch($fetchMode);
+		$sth->closeCursor();
+		if ($row === false)
+			$DBH->amendLog("cnt=0");
+		if ($row !== false && count($row)===1 && !$assoc)
+			return $row[0];
+		return $row;
+	}
+
+	function queryAll($sql, $assoc = false, $cond = null)
+	{
+		$DBH = $this->dbconn();
+		if ($cond)
+			$sql = genQuery($sql, $cond);
+		$sth = $DBH->query($sql);
+		if ($sth === false) {
+			$DBH->amendLog("error");
+			return false;
+		}
+		$fetchMode = $assoc? PDO::FETCH_ASSOC: PDO::FETCH_NUM;
+		$allRows = [];
+		do {
+			$rows = $sth->fetchAll($fetchMode);
+			$DBH->amendLog("cnt=". count($rows));
+			$allRows[] = $rows;
+			// bugfix:sqlite不支持nextRowSet
+			if ($this->DBTYPE = "sqlite")
+				break;
+		}
+		while ($sth->nextRowSet());
+		// $sth->closeCursor();
+		return count($allRows)>1? $allRows: $allRows[0];
+	}
+
+	function dbInsert($table, $kv, $noEscape=false)
+	{
+		$keys = '';
+		$values = '';
+		foreach ($kv as $k=>$v) {
+			if (is_null($v))
+				continue;
+			// ignore non-field param
+			if (substr($k,0,2) === "p_")
+				continue;
+			if ($v === "")
+				continue;
+			# TODO: check meta
+			if (! preg_match('/^\w+$/u', $k))
+				jdRet(E_PARAM, "bad key $k");
+
+			if ($keys !== '') {
+				$keys .= ", ";
+				$values .= ", ";
+			}
+			$keys .= $k;
+			if ($v instanceof DbExpr) { // 直接传SQL表达式
+				$values .= $v->val;
+			}
+			else if (is_array($v)) {
+				jdRet(E_PARAM, "dbInsert: array `$k` is not allowed. pls define subobj to use array.", "未定义的子表`$k`");
+			}
+			else if ($noEscape) {
+				$values .= Q($v, $this);
+			}
+			else {
+				$values .= Q(htmlEscape($v), $this);
+			}
+		}
+		if (strlen($keys) == 0) 
+			jdRet(E_PARAM, "no field found to be added: $table");
+		$sql = sprintf("INSERT INTO %s (%s) VALUES (%s)", $table, $keys, $values);
+	#			var_dump($sql);
+		return $this->execOne($sql, true);
+	}
+
+	function dbUpdate($table, $kv, $cond, $noEscape=false)
+	{
+		if ($cond === null)
+			jdRet(E_SERVER, "bad cond for update $table");
+
+		$condStr = getQueryCond($cond);
+		$kvstr = "";
+		foreach ($kv as $k=>$v) {
+			if ($k === 'id' || is_null($v))
+				continue;
+			// ignore non-field param
+			if (substr($k,0,2) === "p_")
+				continue;
+			# TODO: check meta
+			if (! preg_match('/^(\w+\.)?\w+$/u', $k))
+				jdRet(E_PARAM, "bad key $k");
+
+			if ($kvstr !== '')
+				$kvstr .= ", ";
+
+			// 空串或null置空；empty设置空字符串
+			if ($v === "" || $v === "null")
+				$kvstr .= "$k=null";
+			else if ($v === "empty")
+				$kvstr .= "$k=''";
+			else if ($v instanceof DbExpr) { // 直接传SQL表达式
+				$kvstr .= $k . '=' . $v->val;
+			}
+			else if (startsWith($k, "flag_") || startsWith($k, "prop_"))
+			{
+				$kvstr .= flag_getExpForSet($k, $v);
+			}
+			else if ($noEscape) {
+				$kvstr .= "$k=" . Q($v);
+			}
+			else {
+				$kvstr .= "$k=" . Q(htmlEscape($v));
+			}
+		}
+		$cnt = 0;
+		if (strlen($kvstr) == 0) {
+			addLog("no field found to be set: $table");
+		}
+		else {
+			if (isset($condStr))
+				$sql = sprintf("UPDATE %s SET %s WHERE %s", $table, $kvstr, $condStr);
+			else
+				$sql = sprintf("UPDATE %s SET %s", $table, $kvstr);
+			$cnt = $this->execOne($sql);
+		}
+		return $cnt;
+	}
+}
+// }}}
 
 /**
 @class SimpleCache
@@ -1847,38 +1992,17 @@ END;
 }
 
 /**
-@fn addLog($str, $logLevel=0)
+@fn addLog($data, $logLevel=0)
 
 输出调试信息到前端。调试信息将出现在最终的JSON返回串中。
 如果只想输出调试信息到文件，不想让前端看到，应使用logit.
 
 @see logit
  */
-function addLog($str, $logLevel=0)
+function addLog($data, $logLevel=0)
 {
-	global $DBG_LEVEL;
-	if ($DBG_LEVEL >= $logLevel)
-	{
-		global $g_dbgInfo;
-		$g_dbgInfo[] = $str;
-	}
-}
-
-/**
-@fn getAppType()
-
-根据应用标识($APP)获取应用类型(AppType)。注意：应用标识一般由前端应用通过URL参数"_app"传递给后端。
-不同的应用标识可以对应相同的应用类型，如应用标识"emp", "emp2", "emp-adm" 都表示应用类型"emp"，即 应用类型=应用标识自动去除尾部的数字或"-xx"部分。
-
-不同的应用标识会使用不同的cookie名，因而即使用户同时操作多个应用，其session不会相互干扰。
-同样的应用类型将以相同的方式登录系统。
-
-@see $APP
- */
-function getAppType()
-{
-	global $APP;
-	return preg_replace('/(\d+|-\w+)$/', '', $APP);
+	$env = getJDEnv();
+	return $env->addLog($data, $logLevel);
 }
 
 /** 
@@ -1939,49 +2063,66 @@ function utf8InputFilter($fp, $fnTest=null)
 // ====== classes {{{
 /**
 @class JDPDO
-@var $DBH
 
-数据库类PDO增强。全局变量$DBH为默认数据库连接，dbconn,queryAll,execOne等数据库函数都使用它。
+数据库类PDO增强。getJDEnv()->DBH为默认数据库连接，dbconn,queryAll,execOne等数据库函数都使用它。
 
 - 在调试等级P_DEBUG=9时，将SQL日志输出到前端，即`addLog(sqlStr, DEBUG=9)`。
 - 如果有符号文件CFG_CONN_POOL，则使用连接池（缺省不用）
 
 如果想忽略输出一条SQL日志，可以在调用SQL查询前设置skipLogCnt，如：
 
-	global $DBH;
-	++ $DBH->skipLogCnt;  // 若要忽略两条就用 $DBH->skipLogCnt+=2
-	$DBH->exec('set names utf8'); // 也可以是queryOne/execOne等函数。
+	$env = getJDEnv();
+	++ $env->DBH->skipLogCnt;  // 若要忽略两条就用 $env->DBH->skipLogCnt+=2
+	$env->DBH->exec('set names utf8mb4'); // 也可以是queryOne/execOne等函数。
 
 @see queryAll,execOne,dbconn
  */
 class JDPDO extends PDO
 {
+	protected $env;
 	public $skipLogCnt = 0;
-	function __construct($dsn, $user = null, $pwd = null)
+	private $logH;
+
+	function __construct($dsn, $user = null, $pwd = null, $env = null)
 	{
 		$opts = [];
 		// 如果使用连接池, 偶尔会出现连接失效问题, 所以缺省不用
 		if (hasSignFile("CFG_CONN_POOL"))
 			$opts[PDO::ATTR_PERSISTENT] = true;
 		parent::__construct($dsn, $user, $pwd, $opts);
+		$this->env = $env ?: getJDEnv();
 	}
 	private function addLog($str)
 	{
 		if ($this->skipLogCnt > 0) {
 			-- $this->skipLogCnt;
+			$this->logH = null;
 			return;
 		}
-		addLog($str, 9);
+		$this->logH = $this->env->addLog($str, 9);
+	}
+	function amendLog($str) {
+		if ($this->logH) {
+			$this->env->amendLog($this->logH, function (&$data) use ($str) {
+				$data .= " -- " . $str;
+			});
+		}
 	}
 	function query($sql)
 	{
 		$this->addLog($sql);
 		return parent::query($sql);
 	}
-	function exec($sql)
+	function exec($sql, $getInsertId = false)
 	{
 		$this->addLog($sql);
-		return parent::exec($sql);
+		$rv = parent::exec($sql);
+		if ($getInsertId)
+			$rv = (int)parent::lastInsertId();
+
+		if ($this->logH)
+			$this->amendLog($getInsertId? "new id=$rv": "cnt=$rv");
+		return $rv;
 	}
 	function prepare($sql, $opts=[])
 	{
@@ -2064,128 +2205,6 @@ class Coord
 }
 
 /**
-@class AppBase
-
-应用框架，用于提供符合BQP协议的接口。
-在onExec中返回协议数据；在onAfter中建议及时关闭DB.
-包含通用错误处理等。
-
-示例：接口`url.php(p)`预处理一些参数，然后调用api.php。
-在预处理中，如果有MyException报错，可以优雅处理。
-
-	require_once('app.php');
-	class UrlApp extends AppBase
-	{
-		protected function onExec()
-		{
-			$p = mparam("p");
-			$param = json_decode(jdEncrypt($p, "D"), true);
-			if (!$param) {
-				throw new MyException(E_PARAM);
-			}
-			$_GET = $param["get"];
-			$_POST = $param["post"];
-			if ($param["ses"]) {
-				session_id($param["ses"]);
-			}
-		}
-	}
-	$app = new UrlApp();
-	$ret = $app->exec();
-	require_once('api.php');
-
- */
-class AppBase
-{
-	public $onBeforeActions = [];
-	public $onAfterActions = [];
-	public function exec($handleTrans=true)
-	{
-		global $DBH;
-		global $ERRINFO;
-		$ok = false;
-		$ret = false;
-		try {
-			foreach ($this->onBeforeActions as $fn) {
-				$fn();
-			}
-			$ret = $this->onExec();
-			$ok = true;
-		}
-		catch (DirectReturn $e) {
-			$ok = true;
-		}
-		catch (MyException $e) {
-			list($code, $msg, $msg2) = [$e->getCode(), $e->getMessage(), $e->internalMsg];
-			addLog((string)$e, 9);
-		}
-		catch (PDOException $e) {
-			list($code, $msg, $msg2) = [E_DB, $ERRINFO[E_DB], $e->getMessage()];
-			addLog((string)$e, 9);
-		}
-		catch (Exception $e) {
-			list($code, $msg, $msg2) = [E_SERVER, $ERRINFO[E_SERVER], $e->getMessage()];
-			addLog((string)$e, 9);
-		}
-
-		try {
-			if ($ok) {
-				foreach ($this->onAfterActions as $fn) {
-					$fn();
-				}
-			}
-		}
-		catch (Exception $e) {
-			logit((string)$e);
-		}
-
-		try {
-			if ($handleTrans && $DBH && $DBH->inTransaction())
-			{
-				if ($ok)
-					$DBH->commit();
-				else
-					$DBH->rollback();
-			}
-			if (!$ok) {
-				$this->onErr($code, $msg, $msg2);
-			}
-		}
-		catch (Exception $e) {
-			logit((string)$e);
-		}
-
-		try {
-			$this->onAfter($ok);
-		}
-		catch (Exception $e) {
-			logit((string)$e);
-		}
-
-		//$DBH = null;
-		return $ret;
-	}
-
-	protected function onExec()
-	{
-		return "OK";
-	}
-
-	protected function onErr($code, $msg, $msg2)
-	{
-		@$fn = $GLOBALS["errorFn"] ?: "errQuit";
-		$fn($code, $msg, $msg2);
-	}
-
-	// 应用程序应及时关闭数据库连接
-	protected function onAfter($ok)
-	{
-		global $DBH;
-		$DBH = null;
-	}
-}
-
-/**
 @class JDSingleton (trait)
 
 用于单件类，提供getInstance方法，例：
@@ -2246,13 +2265,13 @@ trait JDSingletonImp
 			if (! class_exists($name)) {
 				$cls = new ReflectionClass(__class__);
 				if ($cls->isAbstract()) {
-					throw new MyException(E_SERVER, "Singleton class NOT defined: $name");
+					jdRet(E_SERVER, "Singleton class NOT defined: $name");
 				}
 				$inst = new static();
 				// $inst = $cls->newInstance();
 			}
 			else if (! is_subclass_of($name, __class__)) {
-				throw new MyException(E_SERVER, "$name MUST extends " . __class__);
+				jdRet(E_SERVER, "$name MUST extends " . __class__);
 			}
 			else {
 				$inst = new $name;
@@ -2333,107 +2352,6 @@ trait JDEvent
 }
 // }}}
 
-// ====== AppFw_: module internals {{{
-// app framework内部实现，外部一般不应调用。
-class AppFw_
-{
-	private static function initGlobal()
-	{
-		global $TEST_MODE;
-		global $JSON_FLAG;
-		global $DBG_LEVEL;
-		$TEST_MODE = getenv("P_TEST_MODE")===false? 0: intval(getenv("P_TEST_MODE"));
-		$isCLI = isCLI();
-		if ($TEST_MODE) {
-			if (!$isCLI)
-				header("X-Daca-Test-Mode: $TEST_MODE");
-			$JSON_FLAG |= JSON_PRETTY_PRINT;
-
-		}
-		// 默认允许跨域
-		@$origin = $_SERVER['HTTP_ORIGIN'];
-		if (isset($origin) && !$isCLI) {
-			header('Access-Control-Allow-Origin: ' . $origin);
-			header('Access-Control-Allow-Credentials: true');
-			header('Access-Control-Expose-Headers: X-Daca-Server-Rev, X-Daca-Test-Mode, X-Daca-Mock-Mode');
-			
-			@$val = $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS'];
-			if ($val) {
-				header('Access-Control-Allow-Headers: ' . $val);
-			}
-			@$val = $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD'];
-			if ($val) {
-				header('Access-Control-Allow-Methods: ' . $val);
-			}
-		}
-		if ($_SERVER["REQUEST_METHOD"] === "OPTIONS")
-			exit();
-
-		$defaultDebugLevel = getenv("P_DEBUG")===false? 0 : intval(getenv("P_DEBUG"));
-		$DBG_LEVEL = param("_debug/i", $defaultDebugLevel, $_GET);
-
-		global $MOCK_MODE;
-		if ($TEST_MODE) {
-			$MOCK_MODE = getenv("P_MOCK_MODE") ?: 0;
-		}
-		if ($MOCK_MODE && !$isCLI) {
-			header("X-Daca-Mock-Mode: $MOCK_MODE");
-		}
-
-		global $DB, $DBCRED, $DBTYPE;
-		$DBTYPE = getenv("P_DBTYPE");
-		$DB = getenv("P_DB") ?: $DB;
-		$DBCRED = getenv("P_DBCRED") ?: $DBCRED;
-
-		// e.g. P_DB="../carsvc.db"
-		if (! $DBTYPE) {
-			if (preg_match('/\.db$/i', $DB)) {
-				$DBTYPE = "sqlite";
-			}
-			else {
-				$DBTYPE = "mysql";
-			}
-		}
-	}
-
-	private static function setupSession()
-	{
-		global $APP;
-
-		# normal: "userid"; testmode: "tuserid"
-		$name = $APP . "id";
-		session_name($name);
-
-		$path = getenv("P_SESSION_DIR") ?: $GLOBALS["BASE_DIR"] . "/session";
-		if (!  is_dir($path)) {
-			if (! mkdir($path, 0777, true))
-				throw new MyException(E_SERVER, "fail to create session folder: $path");
-		}
-		if (! is_writeable($path))
-			throw new MyException(E_SERVER, "session folder is NOT writeable: $path");
-		session_save_path ($path);
-
-		ini_set("session.cookie_httponly", 1);
-
-		$path = getenv("P_URL_PATH");
-		if ($path)
-		{
-			// e.g. path=/cheguanjia
-			ini_set("session.cookie_path", $path);
-		}
-	}
-
-	static function init()
-	{
-		mb_internal_encoding("UTF-8");
-		setlocale(LC_ALL, "zh_CN.UTF-8");
-		self::initGlobal();
-		if (!isCLI())
-			self::setupSession();
-	}
-}
-//}}}
-
 // ====== ext {{{
 /**
 @module ext 集成外部系统
@@ -2488,10 +2406,11 @@ class AppFw_
  */
 function isMockMode($extType)
 {
-	if (intval($GLOBALS["MOCK_MODE"]) === 1)
+	$env = getJDEnv();
+	if (intval($env->MOCK_MODE) === 1)
 		return true;
 
-	$mocks = explode(',', $GLOBALS["MOCK_MODE"]);
+	$mocks = explode(',', $env->MOCK_MODE);
 	return in_array($extType, $mocks);
 }
 
@@ -2563,25 +2482,11 @@ function logext($s, $addHeader=true)
 	logit($s, $addHeader, "ext");
 }
 
+// openwrt/padavan上不支持fnmatch函数
+if(!function_exists('fnmatch')) {
+	function fnmatch($pattern, $string) {
+		return preg_match('/^'.strtr(preg_quote($pattern, '#'), array('\*' => '.*', '\?' => '.')).'$/i', $string);
+	}
+}
 //}}}
-
-// ====== main {{{
-
-try {
-	AppFw_::init();
-}
-catch (MyException $ex) {
-	echo $ex;
-	exit;
-}
-catch (Exception $ex) {
-	echo "*** Exception";
-	logit($ex);
-	exit;
-}
-
-#}}}
-
-require_once("ext.php");
-
 // vim: set foldmethod=marker :

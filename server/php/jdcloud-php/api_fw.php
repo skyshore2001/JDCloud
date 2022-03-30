@@ -3,7 +3,8 @@
 #error_reporting(E_ALL & (~(E_NOTICE|E_USER_NOTICE)));
 error_reporting(E_ALL & ~E_NOTICE);
 
-/** @module api_fw
+/** @module JDEnv
+@alias api_fw
 
 服务接口实现框架。
 
@@ -270,22 +271,51 @@ v3.4支持非标准对象接口。实现Ordr.cancel接口：
 
 ## 接口复用
 
-@key apiMain() 服务入口函数
-@key noExecApi 全局变量，禁止apiMain执行服务
+内部调用接口：
 
-一般在接口服务文件api.php中定义公共变量和函数，包含所有接口，在其最后调用服务入口函数apiMain()。
+	// 函数型接口
+	$rv = callSvcInt("test1");
+	// 对象型接口，自动根据当前权限匹配类：
+	$objArr = callSvcInt("MyObj.query", ["fmt"=>"array", "cond"=>...]);
 
-如果某应用想包含api.php，以便使用其中的接口实现，可以用callSvc:
+常用对象的add/set/query接口替代dbInsert/dbUpdate/queryOne/queryAll这些底层数据库函数，以支持对象中的定制逻辑。
 
-	// set_include_path(get_include_path() . PATH_SEPARATOR . "..");
-	$GLOBALS["noExecApi"] = true; // 在包含api.php前设置该变量，可禁止apiMain函数自动解析请求（CLI方式调用时默认就不解析请求，故也可以不设置该变量）。
+调用指定类的接口：
+
+	$ac = new AC2_MyObj();
+	$objArr = $ac->callSvc("MyObj", "query", ["fmt"=>"array", "cond"=>...]);
+
+特别地，在AC类内部调用同类接口：
+
+	$objArr = $this->callSvc(null, "query", ["fmt"=>"array", "cond"=>...]);
+
+注意：以上所有调用失败时，将直接向上抛出异常；且不记录调用日志（ApiLog）。
+
+直接调用callSvc将不会抛出异常，而且它会记录调用日志。
+
+	$ret = callSvc("MyObj.query", ["fmt"=>"array", "cond"=>...]);
+	// 返回数组，是[code, data, ...]格式。
+
+@see callSvcInt
+@see AccessControl::callSvc
+@see callSvc
+
+要复用框架，比如只调用框架函数（如数据库操作），不调用任何接口：tool/xx.php
+
+	require_once("api_fw.php");
+	$rv = queryOne("...");
+
+定义新的接口服务：api1.php
+
+	require_once("api_fw.php");
+	// 定义接口...
+	callSvc();
+
+调用已有接口：
+
 	require_once("api.php");
 	...
-	$GLOBALS["errorFn"] = function($code, $msg, $msg2=null) {...}
 	$ret = callSvc("genVoucher");
-	// 如果没有异常，返回数据；否则调用指定的errorFn函数(未指定则调用errQuit)
-
-@see callSvc
 
 ## 常用操作
 
@@ -314,7 +344,7 @@ v3.4支持非标准对象接口。实现Ordr.cancel接口：
 
 plugin/{pluginName}为插件目录。
 
-plugin/index.php是插件配置文件，在后端应用框架函数apiMain中引入，内容示例如下：
+plugin/index.php是插件配置文件，在后端应用框架中自动引入，内容示例如下：
 
 	<?php
 
@@ -379,7 +409,6 @@ require_once("app_fw.php");
 require_once("AccessControl.php");
 
 // ====== config {{{
-global $X_RET; // maybe set by the caller
 global $X_RET_STR;
 /**
 @var $X_RET_FN
@@ -388,174 +417,95 @@ global $X_RET_STR;
 若想修改返回格式，可设置该回调函数。
 
 - 如果返回对象，则输出json格式。
-- 如果返回false，应自行用echo输出。注意API日志中仍记录筋斗云返回数据格式。
+- 如果返回String类型，则直接输出字符串。
+- 如果返回false，应自行用echo/readfile等输出。注意API日志中仍记录筋斗云返回数据格式。
+- (v6) 如果有参数`{jdcloud:1}`，则忽略此处设置，仍使用筋斗云格式输出。
 
 示例：返回 `{code, data}`格式：
 
 	global $X_RET_FN;
-	$X_RET_FN = function ($X_RET) {
+	$X_RET_FN = function ($ret, $env) {
 		$ret = [
-			"code" => $X_RET[0],
-			"data" => $X_RET[1]
+			"code" => $ret[0],
+			"data" => $ret[1]
 		];
-		if ($GLOBALS["TEST_MODE"])
-			$ret["jdData"] = $X_RET;
+		if ($env->TEST_MODE)
+			$ret["jdData"] = $ret;
 		return $ret;
 	};
 
 示例：返回xml格式：
 
 	global $X_RET_FN;
-	$X_RET_FN = function ($X_RET) {
+	$X_RET_FN = function ($ret, $env) {
 		header("Content-Type: application/xml");
-		echo "<xml><code>$X_RET[0]</code><data>$_RET[1]</data></xml>";
-		return false;
-	};
-	
-*/
-global $X_RET_FN;
-
-/**
-@var $X_APP
-
-可以在应用结束前添加逻辑，如：
-
-	$GLOBALS["X_APP"]->onAfterActions[] = function () {
-		httpCall("http://oliveche.com/echo.php");
+		return "<xml><code>$ret[0]</code><data>$ret[1]</data></xml>";
 	};
 
-注意：
+@var _raw 通用URL参数，只返回内容
 
-- 如果接口返回错误, 该回调不执行. (DirectReturn返回除外)
-- 此时接口输出已完成，不可再输出内容，否则将导致返回内容错乱。addLog此时也无法输出日志(可以使用logit记日志到文件)
-- 此时接口的数据库事务已提交，如果再操作数据库，与之前操作不在同一事务中。
+如果有URL参数`_raw=1`，则结果不封装为`[code, data]`形式，而是直接返回data. 示例：
 
-示例: 当创建工单时, **异步**向用户发送通知消息, 且在异步操作中需要查询新创建的工单, 不应立即发送或使用AccessControl的onAfterActions;
-因为在异步任务查询新工单时, 可能接口还未执行完, 数据库事务尚未提交, 所以只有放在X_APP的onAfterActions中才可靠.
-*/
-global $X_APP;
+	callSvr("Ordr.query", {cond:{id:5}, fmt:"one", _raw: 1});
+	或
+	callSvr("Ordr.get", {id:5, _raw: 1});
+	或
+	callSvr("Ordr/5", {_raw: 1});
 
-const PAGE_SZ_LIMIT = 10000;
-// }}}
+返回示例：
 
-// ====== ApiFw_: module internals {{{
+	{"id": 5, ...}
 
-class ApiFw_
-{
-	static $SOLO = true;
-	static $perms = null;
-	static $exPerm = null;
-}
-//}}}
+假如不加`_raw: 1`，则返回`[0, {"id": 5, ...}]`。
 
-// ====== functions {{{
-/**
-@fn setRet($code, $data?, $internalMsg?)
+如果指定`_raw: 2`，则进一步只返回值，如取订单数：
 
-@param $code Integer. 返回码, 0表示成功, 否则表示操作失败。
-@param $data 返回数据。
-@param $internalMsg 当返回错误时，作为额外调试信息返回。
+	callSvr("Ordr", {_raw: 1, fmt:"one", res: "count(*) cnt"});
+	和
+	callSvr("Ordr", {_raw: 2, fmt:"one", res: "count(*) cnt"});
 
-设置返回数据，最终返回JSON格式数据为 [ code, data, internalMsg, debugInfo1, ...]
-其中按照BQP协议，前两项为必须，后面的内容一般仅用于调试，前端应用不应处理。
+分别返回
 
-当成功时，返回数据可以是任何类型（根据API设计返回相应数据）。
-当失败时，为String类型错误信息。
-如果参数$data未指定，则操作成功时值为null（按BQP协议返回null表示客户端应忽略处理，一般无特定返回应指定$data="OK"）；操作失败时使用默认错误信息。
+	{"cnt": 275}
+	和
+	275
 
-调用完后，要返回的数据存储在全局数组 $X_RET 中，以JSON字符串形式存储在全局字符串 $X_RET_STR 中。
-注意：也可以直接设置$X_RET_STR为要返回的字符串，从而避免setRet函数对返回对象进行JSON序列化，如
+如果值有多项，则以tab间隔，如：
 
-	$GLOBALS["X_RET_STR"] = '{"id":100, "name":"aaa"}';
-	// 如果不想继续执行后面代码，可以自行调用：
-	setRet(0, "OK");
-	throw new DirectReturn();
-	// 最终返回字符串为 [0, {"id":100, "name":"aaa"}]
+	callSvr("Ordr/5", {_raw: 1, res: "status,amount"});
+	和
+	callSvr("Ordr/5", {_raw: 2, res: "status,amount"});
 
-@see $X_RET
-@see $X_RET_STR
-@see $X_RET_FN
-@see $errorFn
-@see errQuit()
-*/
-function setRet($code, $data = null, $internalMsg = null)
-{
-	global $TEST_MODE;
-	global $JSON_FLAG;
-	global $ERRINFO;
-	global $X_RET;
+分别返回：
 
-	if (!isset($data) && $code) {
-		assert(array_key_exists($code, $ERRINFO));
-		$data = $ERRINFO[$code];
-	}
-	$X_RET = [$code, $data];
+	{"status": "CR", "amount": "128.00"}
+	和
+	CR	128.00
 
-	if (isset($internalMsg))
-		$X_RET[] = $internalMsg;
+常用于在shell脚本中集成，如：
 
-	$debugLog = getenv("P_DEBUG_LOG") ?: 0;
-	if ($debugLog == 1 || ($debugLog == 2 && $X_RET[0] != 0)) {
-		$ac = $GLOBALS["X_APP"]? $GLOBALS["X_APP"]->getAc(): 'unknown';
-		$s = 'ac=' . $ac . ', apiLogId=' . ApiLog::$lastId . ', ret=' . jsonEncode($X_RET) . ", dbgInfo=" . jsonEncode($GLOBALS["g_dbgInfo"], true);
-		logit($s, true, 'debug');
-	}
-	if ($TEST_MODE) {
-		global $g_dbgInfo;
-		if (count($g_dbgInfo) > 0)
-			$X_RET[] = $g_dbgInfo;
-	}
+	baseUrl=http://localhost/jdcloud-ganlan/server/api.php
+	amount=$(curl "$baseUrl/Ordr/5?_raw=2&res=amount&_app=emp-adm")
 
-	if (ApiFw_::$SOLO) {
-		global $X_RET_STR;
-		global $X_RET_FN;
-		if (! isset($X_RET_STR)) {
-			if (is_callable(@$X_RET_FN)) {
-				$ret1 = $X_RET_FN($X_RET);
-				if ($ret1 === false)
-					return;
-				if (is_string($ret1)) {
-					$X_RET_STR = $ret1;
-					echo $X_RET_STR . "\n";
-					return;
-				}
-				$X_RET = $ret1;
-			}
-			$X_RET_STR = json_encode($X_RET, $JSON_FLAG);
-		}
-		else {
-			$X_RET_STR = "[" . $code . ", " . $X_RET_STR . "]";
-		}
-		echoRet();
-	}
-	else {
-		$errfn = $GLOBALS["errorFn"] ?: "errQuit";
-		if ($code != 0) {
-			$errfn($X_RET[0], $X_RET[1], $X_RET[2]);
-		}
-	}
-}
+或
 
-/**
-@var _jsonp 用于支持jsonp返回格式的URL参数
+	read status amount <<< $(curl "$baseUrl/Ordr/5?_raw=2&res=status+amount&_app=emp-adm")
+
+@var _jsonp 通用URL参数，返回函数调用或变量赋值格式
 
 示例：
 
-	http://localhost/p/jdcloud/api.php/Ordr/10?_jsonp=api_OrdrGet
+	http://localhost/p/jdcloud/api.php/Ordr/5?_jsonp=api_OrdrGet
 	返回
 
-	api_OrdrGet([
-		0, {"id":10,...}
-	]);
+	api_OrdrGet([0, {"id":5,...}]);
 
-	http://localhost/p/jdcloud/api.php/Ordr/10?_jsonp=api_order%3d
+	http://localhost/p/jdcloud/api.php/Ordr/5?_jsonp=api_order%3d
 	返回
 
-	api_order=[
-		0, {"id":10,...}
-	];
+	api_order=[0, {"id":5,...}];
 
-JS示例：
+常用于直接返回JS脚本，示例：
 
 	<script>
 	function api_OrdrGet(order)
@@ -563,48 +513,96 @@ JS示例：
 		console.log(order);
 	}
 	</script>
-	<script src="http://localhost/p/jdcloud/api.php/Ordr/10?_jsonp=api_OrdrGet"></script>
+	<script src="http://localhost/p/jdcloud/api.php/Ordr/5?_jsonp=api_OrdrGet"></script>
 
 JS示例：
 
-	<script src="http://localhost/p/jdcloud/api.php/Ordr/10?_jsonp=api_order%3d"></script>
+	<script src="http://localhost/p/jdcloud/api.php/Ordr/5?_jsonp=api_order%3d"></script>
 	<script>
 	console.log(api_order);
 	</script>
+
+可以叠加通用URL参数`_raw`:
+
+	http://localhost/p/jdcloud/api.php/Ordr/5?_jsonp=api_OrdrGet&_raw=1
+	返回
+
+	api_OrdrGet({"id":5,...});
+
+但不建议使用`_raw`参数，因为如果查询出错（如id不存在）则会返回错误的格式。
 */
-function echoRet()
-{
-	global $X_RET_STR;
-	$jsonp = $_GET["_jsonp"];
-	if ($jsonp) {
-		if (substr($jsonp,-1) === '=') {
-			echo $jsonp . $X_RET_STR . ";\n";
-		}
-		else {
-			echo $jsonp . "(" . $X_RET_STR . ");\n";
-		}
-	}
-	else {
-		echo $X_RET_STR . "\n";
-	}
-}
+global $X_RET_FN;
 
 /**
-@fn setServerRev()
+@var $X_APP
+@fn getJDEnv()
+
+可以在应用结束前添加逻辑，如：
+
+	$env = getJDEnv(); // 非swoole环境下也可以直接用 $GLOBALS["X_APP"]
+	$env->onAfterActions[] = function () {
+		httpCall("http://oliveche.com/echo.php");
+	};
+
+注意：
+
+- 如果接口返回错误, 该回调不执行(DirectReturn返回除外)，除非有dbExpr标识（见下面例子）。
+- 此时接口输出已完成，不可再输出内容，否则将导致返回内容错乱。addLog此时也无法输出日志(可以使用logit记日志到文件)
+- 此时接口的数据库事务已提交，如果再操作数据库，与之前操作不在同一事务中。
+- 若出现异常，只会写日志，不会抛出错误，且所有函数仍会依次执行。
+
+示例: 当创建工单时, **异步**向用户发送通知消息, 且在异步操作中需要查询新创建的工单, 不应立即发送或使用AccessControl的onAfterActions;
+因为在异步任务查询新工单时, 可能接口还未执行完, 数据库事务尚未提交, 所以只有放在$env的onAfterActions中才可靠.
+
+注意：如果是batch接口，默认每个子操作接口是独立的（除非指定使用事务即useTrans=1），这时子操作接口失败也不会执行onAfterActions。
+
+如果接口失败也要强制执行，可使用dbExpr把函数包一层，来标识强制执行，示例：
+
+	$env->onAfterActions[] = dbExpr(function () use ($ifLog) {
+		logit("write ifLog");
+		dbInsert("IfLog", $ifLog);
+	});
+
+注意：接口失败时，之前的数据库写操作会被rollback，如果失败时也要写数据库，可将逻辑放在onAfterActions中。
+
+onAfterActions中的函数有一个`$ret`参数，可以获取接口返回数据：
+
+	$env->onAfterActions[] = function ($ret) {
+		// $ret符合筋斗云返回格式，$ret[0]是返回值，0表示成功，$ret[1]是返回数据。
+		// 由于此时已完成输出，无法通过声明`&$ret`来修改返回数据。
+	};
+
+*/
+global $X_APP;
+
+const PAGE_SZ_LIMIT = 10000;
+// }}}
+
+// ====== functions {{{
+function getJDEnv()
+{
+	$env = $GLOBALS["X_APP"];
+	if (is_object($env)) {
+		return $env;
+	}
+	return $env[Swoole\Coroutine::getcid()];
+}
+
+/*
+@fn setServerRev($env)
 
 根据全局变量"SERVER_REV"或应用根目录下的文件"revision.txt"， 来设置HTTP响应头"X-Daca-Server-Rev"表示服务端版本信息（最多6位）。
 
 客户端框架可本地缓存该版本信息，一旦发现不一致，可刷新应用。
 服务器可使用$GLOBALS["SERVER_REV"]来取服务端版本号（6位）。
  */
-function setServerRev()
+function setServerRev($env)
 {
 	$ver = $GLOBALS["SERVER_REV"] ?: @file_get_contents("{$GLOBALS['BASE_DIR']}/revision.txt");
 	if (! $ver)
 		return;
 	$ver = substr($ver, 0, 6);
 	$GLOBALS["SERVER_REV"] = $ver;
-	header("X-Daca-Server-Rev: {$ver}");
 }
 
 /**
@@ -655,7 +653,7 @@ login接口支持不同类别的用户登录，登录成功后会设置相应的
 		["authType"=>"basic", "key" => "user1:1234", "SESSION" => ["empId"=>-9999], "allowedAc" => ["*.query","*.get"] ]
 	];
 
-- authType指定的认证方式名是在Conf::$authHandlers注册过的，目前支持：basic, simple。
+- authType指定的认证方式名是在Conf::$authHandlers注册过的，目前支持：basic, simple, none(v6)。
   要扩展可以参考$authHandlers用法，比如插件jdcloud-plugin-jwt可支持jwt认证。
 
 @see ConfBase::$authHandlers
@@ -726,13 +724,49 @@ HTTP Basic认证，即添加HTTP头：
 
 	SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
 
+### none: 不验证/模拟身份认证
+
+(v6) 主要用于为某些接口设置模拟身份。
+某些接口无须登录验证即可调用，但在实现时需要调用要求权限验证的内部接口，这时需要模拟一个管理员的身份。
+
+示例：提供接口queryEmp和Wis.wis01，无须登录即可调用，其内部调用Carton.query接口：
+
+	// 函数接口示例
+	function api_queryEmp()
+	{
+		// 假设Employee.query接口在AC2_Employee中定义，必须管理端登录才能调用；所以必须在Conf::$authKeys中配置模拟身份，才能正常调用。
+		return callSvcInt("Employee.query", ["fmt"=>"list"]);
+	}
+
+	// 对象接口示例
+	class AC_Wis extends AccessControl
+	{
+		function api_wis01()
+		{
+			// 与queryEmp接口遇到的问题相同，必须在Conf::$authKeys中配置后，才能正常调用。
+			return callSvcInt("Employee.query", ["fmt"=>"list"]);
+		}
+	}
+	// AC2类不是必须的，只是为了在管理端控制台中测试方便，因为管理端登录后只能调用AC2类不能调用AC类
+	class AC2_Wis extends AC_Wis
+	{
+	}
+
+	// class Conf (在conf.php中)
+	static $authKeys = [
+		// ["authType"=>"basic", "key" => "user1:1234", "SESSION" => ["empId"=>-9999], "allowedAc" => ["*.query","*.get"] ]
+		["authType"=>"none", "key" => "", "SESSION" => ["empId"=>-9999], "allowedAc" => ["queryEmp", "Wis.*"] ]
+	];
+
+在authKeys中通过"allowedAc"指定了匹配"queryEmp"或"Wis.*"的这些接口无须验证，且模拟-9999号管理员。作为对比，也可以设置HTTP Basic验证。
  */
 function hasPerm($perms, $exPerms=null)
 {
+	$env = getJDEnv();
 	assert(is_null($exPerms) || is_array($exPerms));
-	if (is_null(ApiFw_::$perms)) {
+	if (is_null($env->perms)) {
 		// 扩展认证登录
-		if (count($_SESSION) == 0) { // 有session项则不进行认证
+		if (count($env->_SESSION) == 0) { // 有session项则不进行认证
 			$authTypes = $exPerms;
 			if ($authTypes == null) {
 				$authTypes = [];
@@ -742,31 +776,32 @@ function hasPerm($perms, $exPerms=null)
 						$authTypes[] = $e["authType"];
 				}
 			}
-			ApiFw_::$exPerm = null;
+			$env->exPerm = null;
 			foreach ($authTypes as $e) {
 				$fn = Conf::$authHandlers[$e];
 				if (! is_callable($fn))
 					jdRet(E_SERVER, "unregistered authType `$e`", "未知认证类型`$e`");
-				if ($fn()) {
-					ApiFw_::$exPerm = $e;
+				if ($fn($env)) {
+					$env->exPerm = $e;
+					$env->session_destroy();  // 对于第三方认证，不保存session（即使其中模拟了管理员登录，也不会影响下次调用）
 					break;
 				}
 			}
 		}
-		ApiFw_::$perms = onGetPerms();
+		$env->perms = onGetPerms();
 	}
 
-	if ( (ApiFw_::$perms & $perms) != 0 )
+	if ( ($env->perms & $perms) != 0 )
 		return true;
-	if (is_array($exPerms) && ApiFw_::$exPerm && in_array(ApiFw_::$exPerm, $exPerms))
+	if (is_array($exPerms) && $env->exPerm && in_array($env->exPerm, $exPerms))
 		return true;
 	return false;
 }
 
 // $key 或 $keyFn($key)
-function checkAuthKeys($key, $authType)
+function checkAuthKeys($key, $authType, $env)
 {
-	$auth = arrFind(Conf::$authKeys, function ($e) use ($key, $authType) {
+	$auth = arrFind(Conf::$authKeys, function ($e) use ($key, $authType, $env) {
 		assert(isset($e["authType"]), "authKey requires authType");
 		if ($authType != $e["authType"])
 			return false;
@@ -780,7 +815,7 @@ function checkAuthKeys($key, $authType)
 		if (! isset($e["allowedAc"]))
 			return true;
 		assert(is_array($e["allowedAc"]), "authKey requires allowedAc");
-		$ac = $GLOBALS["X_APP"]? $GLOBALS["X_APP"]->getAc(): 'unknown';
+		$ac = $env->getAc() ?: 'unknown';
 		foreach ($e["allowedAc"] as $e1) {
 			if (fnmatch($e1, $ac))
 				return true;
@@ -790,30 +825,38 @@ function checkAuthKeys($key, $authType)
 	if (! $auth)
 		return false;
 	if (is_array($auth["SESSION"])) {
-		arrCopy($_SESSION, $auth["SESSION"]);
+		foreach ($auth["SESSION"] as $k=>$v) {
+			$env->_SESSION[$k] = $v;
+		}
 	}
 	return true;
 }
 
-function hasPerm_simple()
+function hasPerm_none($env)
 {
-	@$key = $_SERVER["HTTP_X_DACA_SIMPLE"];
+	return checkAuthKeys("", "none", $env);
+}
+ConfBase::$authHandlers["none"] = "hasPerm_none";
+
+function hasPerm_simple($env)
+{
+	$key = $env->_SERVER("HTTP_X_DACA_SIMPLE");
 	if (! $key)
 		return false;
 	$key1 = getenv("simplePwd");
 	if ($key1 && $key === $key1)
 		return true;
-	return checkAuthKeys($key, "simple");
+	return checkAuthKeys($key, "simple", $env);
 }
 ConfBase::$authHandlers["simple"] = "hasPerm_simple";
 
-function hasPerm_basic()
+function hasPerm_basic($env)
 {
-	list($user, $pwd) = [@$_SERVER['PHP_AUTH_USER'], @$_SERVER['PHP_AUTH_PW']];
+	list($user, $pwd) = [$env->_SERVER('PHP_AUTH_USER'), $env->_SERVER('PHP_AUTH_PW')];
 	if (! isset($user))
 		return false;
 	$key = $user . ':' . $pwd;
-	return checkAuthKeys($key, "basic");
+	return checkAuthKeys($key, "basic", $env);
 }
 ConfBase::$authHandlers["basic"] = "hasPerm_basic";
 
@@ -845,54 +888,8 @@ function checkAuth($perms, $exPerms=null)
 				$auth[] = $name;
 			}
 		}
-		throw new MyException($errCode, "require auth to " . join("/", $auth));
+		jdRet($errCode, "require auth to " . join("/", $auth));
 	}
-}
-
-/** 
-@fn getClientVersion()
-
-通过参数`_ver`或useragent字段获取客户端版本号。
-
-@return: {type, ver, str}
-
-- type: "web"-网页客户端; "wx"-微信客户端; "a"-安卓客户端; "ios"-苹果客户端
-
-e.g. {type: "a", ver: 2, str: "a/2"}
-
- */
-function getClientVersion()
-{
-	global $CLIENT_VER;
-	if (! isset($CLIENT_VER))
-	{
-		$ver = param("_ver");
-		if ($ver != null) {
-			$a = explode('/', $ver);
-			$CLIENT_VER = [
-				"type" => $a[0],
-				"ver" => $a[1],
-				"str" => $ver
-			];
-		}
-		// Mozilla/5.0 (Linux; U; Android 4.1.1; zh-cn; MI 2S Build/JRO03L) AppleWebKit/533.1 (KHTML, like Gecko)Version/4.0 MQQBrowser/5.4 TBS/025440 Mobile Safari/533.1 MicroMessenger/6.2.5.50_r0e62591.621 NetType/WIFI Language/zh_CN
-		else if (preg_match('/MicroMessenger\/([0-9.]+)/', $_SERVER["HTTP_USER_AGENT"], $ms)) {
-			$ver = $ms[1];
-			$CLIENT_VER = [
-				"type" => "wx",
-				"ver" => $ver,
-				"str" => "wx/{$ver}"
-			];
-		}
-		else {
-			$CLIENT_VER = [
-				"type" => "web",
-				"ver" => 0,
-				"str" => "web"
-			];
-		}
-	}
-	return $CLIENT_VER;
 }
 
 /**
@@ -913,6 +910,34 @@ function getClientVersion()
 function tmCols($fieldName = "t0.tm")
 {
 	return ["year({$fieldName}) y", "quarter({$fieldName}) q", "month({$fieldName}) m", "week({$fieldName},7) w", "day({$fieldName}) d", "weekday({$fieldName})+1 wd", "hour({$fieldName}) h"];
+}
+
+/**
+@fn sqlCaseWhen($field, $map)
+
+生成SQL的case when语句，示例：
+
+	$CusOrderStatusMap = [
+		'CR'=> '待审核',
+		'AP'=> '已审核',
+		'RE'=> '已签收',
+		'CL'=> '已结算'
+	];
+	$rv = sqlCaseWhen("status", $CusOrderStatusMap);
+
+$rv的值为：
+
+	CASE status WHEN 'CR' THEN '待审核' WHEN 'AP' THEN '已审核' WHEN 'RE' THEN '已签收' WHEN 'RE' THEN '已签收' ELSE status END
+
+*/
+function sqlCaseWhen($field, $map)
+{
+	$ret = "CASE $field ";
+	foreach ($map as $k => $v) {
+		$ret .= "WHEN " . Q($k) . " THEN " . Q($v) . " ";
+	}
+	$ret .= "ELSE $field END";
+	return $ret;
 }
 // }}}
 
@@ -976,9 +1001,10 @@ class ConfBase
 
 	static function onApiInit(&$ac)
 	{
-		$ver = getClientVersion();
+		$env = $this->env;
+		$ver = $env->clientVer;
 		if ($ver["type"] == "ios" && $ver["ver"]<=15) {
-			throw new MyException(E_FORBIDDEN, "unsupport ios client version", "您使用的版本太低，请升级后使用!");
+			jdRet(E_FORBIDDEN, "unsupport ios client version", "您使用的版本太低，请升级后使用!");
 		}
 	}
 
@@ -1109,12 +1135,13 @@ checkSecure函数返回false则不处理该调用，并将请求加入黑名单�
 
 class ApiLog
 {
+	private $env;
+
 	private $startTm;
-	private $ac;
 	private $id;
 
 	// for batch detail (ApiLog1)
-	private $ac1, $req1, $startTm1;
+	private $req1, $startTm1;
 	public $batchAc; // new ac for batch
 
 /**
@@ -1126,16 +1153,16 @@ class ApiLog
 /**
 @var ApiLog::$instance
 
-e.g. 修改ApiLog的ac:
+e.g. 修改ApiLog要记录的ac:
 
 	ApiLog::$instance->batchAc = "async:$f";
 
 */
 	static $instance;
 
-	function __construct($ac) 
+	function __construct($env) 
 	{
-		$this->ac = $ac;
+		$this->env = $env;
 	}
 
 	private function myVarExport($var, $maxLength=200)
@@ -1162,11 +1189,11 @@ e.g. 修改ApiLog的ac:
 				$s .= "$k=...";
 				break;
 			}
-/*			if ($k == "pwd" || $k == "oldpwd") {
+			else if ($k == "pwd" || $k == "oldpwd") {
 				$v = "?";
 			}
-*/			else if (! is_scalar($v)) {
-				$v = "obj:" . json_encode($v, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+			else if (! is_scalar($v)) {
+				$v = "obj:" . jsonEncode($v);
 			}
 			if ($len == 0) {
 				$s = "$k=$v";
@@ -1181,7 +1208,8 @@ e.g. 修改ApiLog的ac:
 	protected $userId;
 	protected function getUserId()
 	{
-		$userId = $_SESSION["empId"] ?: $_SESSION["uid"] ?: $_SESSION["adminId"];
+		$env = $this->env;
+		$userId = $env->_SESSION["empId"] ?: $env->_SESSION["uid"] ?: $env->_SESSION["adminId"];
 		if (! (is_int($userId) || ctype_digit($userId)))
 			$userId = null;
 		$this->userId = $userId;
@@ -1190,17 +1218,17 @@ e.g. 修改ApiLog的ac:
 
 	function logBefore()
 	{
-		$this->startTm = $_SERVER["REQUEST_TIME_FLOAT"] ?: microtime(true);
+		$env = $this->env;
+		$this->startTm = $env->_SERVER("REQUEST_TIME_FLOAT") ?: microtime(true);
 
-		global $APP;
-		$content = $this->myVarExport($_GET, 2000);
-		$ct = getContentType();
+		$content = $this->myVarExport($env->_GET, 2000);
+		$ct = getContentType($env);
 		if (! preg_match('/x-www-form-urlencoded|form-data/i', $ct)) {
-			$post = getHttpInput();
+			$post = getHttpInput($env);
 			$content2 = $this->myVarExport($post, 2000);
 		}
 		else {
-			$content2 = $this->myVarExport($_POST, 2000);
+			$content2 = $this->myVarExport($env->_POST, 2000);
 		}
 		if ($content2 != "")
 			$content .= ";\n" . $content2;
@@ -1209,21 +1237,20 @@ e.g. 修改ApiLog的ac:
 			$remoteAddr = preg_replace('/,.+,/', ',,', $remoteAddr);
 		}
 		
-		$reqsz = strlen($_SERVER["REQUEST_URI"]) + (@$_SERVER["HTTP_CONTENT_LENGTH"]?:$_SERVER["CONTENT_LENGTH"]?:0);
-		$ua = $_SERVER["HTTP_USER_AGENT"];
-		$ver = getClientVersion();
+		$reqsz = strlen($env->_SERVER("REQUEST_URI")) + (@$env->_SERVER("HTTP_CONTENT_LENGTH")?:$env->_SERVER("CONTENT_LENGTH")?:0);
+		$ua = $env->_SERVER("HTTP_USER_AGENT");
+		$ver = $env->clientVer;
 
-		global $DBH;
-		++ $DBH->skipLogCnt;
-		$this->id = dbInsert("ApiLog", [
+		++ $env->DBH->skipLogCnt;
+		$this->id = $env->dbInsert("ApiLog", [
 			"tm" => date(FMT_DT),
 			"addr" => $remoteAddr,
 			"ua" => $ua,
-			"app" => $APP,
+			"app" => $env->appName,
 			"ses" => session_id(),
 			"userId" => $this->getUserId(),
-			"ac" => $this->ac,
-			"req" => dbExpr(Q($content)),
+			"ac" => $env->getAc(),
+			"req" => dbExpr(Q($content, $env)),
 			"reqsz" => $reqsz,
 			"ver" => $ver["str"],
 			"serverRev" => $GLOBALS["SERVER_REV"]
@@ -1233,63 +1260,61 @@ e.g. 修改ApiLog的ac:
 // 		$logStr = "=== [" . date("Y-m-d H:i:s") . "] id={$this->logId} from=$remoteAddr ses=" . session_id() . " app=$APP user=$userId ac=$ac >>>$content<<<\n";
 	}
 
-	function logAfter()
+	function logAfter($ret)
 	{
-		global $DBH;
 		global $X_RET_STR;
-		global $X_RET;
-		if ($DBH == null)
+		$env = $this->env;
+		if ($env->DBH == null)
 			return;
 		$iv = sprintf("%.0f", (microtime(true) - $this->startTm) * 1000); // ms
 		if ($X_RET_STR == null)
-			$X_RET_STR = json_encode($X_RET, $GLOBALS["JSON_FLAG"]);
-		$logLen = $X_RET[0] !== 0? 2000: 200;
+			$X_RET_STR = jsonEncode($ret, $env->TEST_MODE);
+		$logLen = $ret[0] !== 0? 2000: 200;
 		$content = $this->myVarExport($X_RET_STR, $logLen);
 
-		++ $DBH->skipLogCnt;
-		$rv = dbUpdate("ApiLog", [
+		++ $env->DBH->skipLogCnt;
+		$rv = $env->dbUpdate("ApiLog", [
 			"t" => $iv,
-			"retval" => $X_RET[0],
+			"retval" => $ret[0],
 			"ressz" => strlen($X_RET_STR),
-			"res" => dbExpr(Q($content)),
+			"res" => dbExpr(Q($content, $env)),
 			"userId" => $this->userId ?: $this->getUserId(),
 			"ac" => $this->batchAc // 默认为null；对batch调用则列出详情
 		], $this->id);
 // 		$logStr = "=== id={$this->logId} t={$iv} >>>$content<<<\n";
 	}
 
-	function logBefore1($ac1)
+	function logBefore1()
 	{
-		$this->ac1 = $ac1;
+		$env = $this->env;
 		$this->startTm1 = microtime(true);
-		$this->req1 = $this->myVarExport($_GET, 2000);
-		$content2 = $this->myVarExport($_POST, 2000);
+		$this->req1 = $this->myVarExport($env->_GET, 2000);
+		$content2 = $this->myVarExport($env->_POST, 2000);
 		if ($content2 != "")
 			$this->req1 .= ";\n" . $content2;
 	}
 
-	function logAfter1()
+	function logAfter1($ret)
 	{
-		global $DBH;
-		global $X_RET;
-		if ($DBH == null)
+		$env = $this->env;
+		if ($env->DBH == null)
 			return;
 		$iv = sprintf("%.0f", (microtime(true) - $this->startTm1) * 1000); // ms
-		$res = json_encode($X_RET, $GLOBALS["JSON_FLAG"]);
-		$logLen = $X_RET[0] !== 0? 2000: 200;
+		$res = jsonEncode($ret, $env->TEST_MODE);
+		$logLen = $ret[0] !== 0? 2000: 200;
 		$content = $this->myVarExport($res, $logLen);
 
-		++ $DBH->skipLogCnt;
-		$apiLog1Id = dbInsert("ApiLog1", [
+		++ $env->DBH->skipLogCnt;
+		$apiLog1Id = $env->dbInsert("ApiLog1", [
 			"apiLogId" => $this->id,
-			"ac" => $this->ac1,
+			"ac" => $env->getAc1(),
 			"t" => $iv,
-			"retval" => $X_RET[0],
-			"req" => dbExpr(Q($this->req1)),
-			"res" => dbExpr(Q($content))
+			"retval" => $ret[0],
+			"req" => dbExpr(Q($this->req1, $env)),
+			"res" => dbExpr(Q($content, $env))
 		]);
 		if (Conf::$enableObjLog && self::$objLogId) {
-			dbUpdate("ObjLog", ["apiLog1Id" => $apiLog1Id], self::$objLogId);
+			$env->dbUpdate("ObjLog", ["apiLog1Id" => $apiLog1Id], self::$objLogId);
 			self::$objLogId = null;
 		}
 	}
@@ -1360,7 +1385,7 @@ class ApiWatch
 						logit("call API too fast: bad={$_SESSION['bad']}, bad2={$_SESSION['bad2']}", true, "secure");
 						@++ $_SESSION["bad2"];
 						$_SESSION["bad"] = 0;
-						throw new MyException(E_FORBIDDEN, "call API too fast");
+						jdRet(E_FORBIDDEN, "call API too fast");
 					}
 				}
 			}
@@ -1480,11 +1505,11 @@ $file为插件主文件，可返回一个插件配置。如果未指定，则自
 		}
 		$f = $BASE_DIR . '/plugin/' . $file;
 		if (! is_file($f))
-			throw new MyException(E_SERVER, "cannot find plugin `$pname': $file");
+			jdRet(E_SERVER, "cannot find plugin `$pname': $file");
 
 		$p = require_once($f);
 		if ($p === true) { // 重复包含
-			throw new MyException(E_SERVER, "duplicated plugin `$pname': $file");
+			jdRet(E_SERVER, "duplicated plugin `$pname': $file");
 		}
 		if ($p === 1)
 			$p = [];
@@ -1505,9 +1530,6 @@ $file为插件主文件，可返回一个插件配置。如果未指定，则自
 
 (v5.4)本函数仅做兼容使用，请用`callSvcInt`或`AccessControl::callSvc`方法替代。
 
-对象型接口的入口。
-也可直接被调用，常与setParam一起使用, 提供一些定制的操作。
-
 @param $asAdmin 默认根据用户身份自动选择"AC_"类; 如果为true, 则以超级管理员身份调用，即使用"AC0_"类。
 设置$asAdmin=true好处是对于超级管理员权限来说，即使未定义"AC0_"类，默认也可以访问所有内容。
 
@@ -1522,18 +1544,18 @@ $file为插件主文件，可返回一个插件配置。如果未指定，则自
 
 底层利用tableCRUD实现它，这样便于保留分页、参数cond/gres等特性:
 
-	function api_queryRating()
+	function api_queryRating($env)
 	{
-		$storeId = mparam("storeId");
+		$storeId = $env->mparam("storeId");
 
 		// 定死输出内容。
-		setParam("res", "id, score, dscr, tm, orderDscr");
+		$env->_GET["res"] = "id, score, dscr, tm, orderDscr";
 
 		// 相当于AccessControl框架中调用 addCond，用Obj.query接口的内部参数cond2以保证用户还可以使用cond参数。
-		setParam("cond2", dbExpr("o.storeId=$storeId")); 
+		$env->_GET["cond2"] = dbExpr("o.storeId=$storeId"); 
 
 		// 定死排序条件
-		setParam("orderby", "tm DESC");
+		$env->_GET["orderby"] = "tm DESC";
 
 		$ret = tableCRUD("query", "Rating", true);
 		return $ret;
@@ -1543,9 +1565,9 @@ $file为插件主文件，可返回一个插件配置。如果未指定，则自
 一般应直接使用标准对象接口来实现需求，有时可能出于特别需要，不方便暴露标准接口，可以对标准接口进行了包装，定死一些参数。
 v5.4后建议这样实现：
 
-	function api_queryRating()
+	function api_queryRating($env)
 	{
-		$storeId = mparam("storeId");
+		$storeId = $env->mparam("storeId");
 
 		// 或用callSvcInt
 		$acObj = new AccessControl(); // 或 AC2_Rating，根据需要创建指定的类
@@ -1558,32 +1580,33 @@ v5.4后建议这样实现：
 		return $ret;
 	}
 
-@see setParam
 @see callSvcInt
 @see callSvc
  */
 
 function tableCRUD($ac1, $tbl, $asAdmin = false)
 {
-	$acObj = AccessControl::create($tbl, $ac1, $asAdmin);
+	$acObj = getJDEnv()->createAC($tbl, $ac1, $asAdmin);
 	return $acObj->callSvc($tbl, $ac1);
 }
 
 /**
-@fn callSvcInt($ac, $param=null, $postParam=null)
+@fn setParam($k, $v)
+
+(v6) 已废弃。只用于兼容。用$_GET[$k]=$v替代。
+*/
+function setParam($k, $v) {
+	$_GET[$k] = $v;
+}
+
+/**
+@fn callSvcInt($ac, $param=null, $postParam=null, $useTmpEnv=true)
 
 内部调用另一接口，获得返回值。
-如果指定了$param或$postParam参数，则会备份现有环境，并在调用后恢复。
-否则直接使用现有环境。
+内部若有异常会抛上来，特别地，调用`jdRet(0)`会当成正常调用不会抛出异常，而`jdRet()`（用于自定义输出内容）仍会抛出异常。
 
-如果想手工逐项设置GET, POST参数，可分别用
-
-	setParam(key, value); // 设置get参数
-	// 或批量设置用 setParam({key => value});
-	$_POST[key] = value; // 设置post参数
-
-与callSvc不同的是，它不处理事务、不写ApiLog，不输出数据，更轻量；
-与tableCRUD不同的是，它支持函数型调用。
+与callSvc不同的是，它不处理事务、不写ApiLog，不输出数据，更轻量。
+由于不处理事务，它只应在接口实现内部使用。包含api.php后调用接口应使用callSvc.
 
 示例：
 
@@ -1592,80 +1615,35 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 		"tel" => $params["vendorPhone"]
 	]);
 
+默认useTmpEnv=true时，它在独立环境中执行，不会影响当前环境的$_GET, $_POST参数，
+如果指定参数useTmpEnv=false，则$param或$postParam参数将直接覆盖当前环境的$_GET, $_POST参数。
+
+如果未指定$param或$postParam参数，默认值为空数组即没有参数。
+
 (v5.4) 上面例子会自动根据当前用户角色来选择AC类，还可以直接指定使用哪个AC类来调用，如：
 
 	$acObj = new AC2_Vendor();
-	$vendorId = $acObj->callSvc("Vendor", "query", [
+	$vendorId = $acObj->callSvc("Vendor", "add", null, [
 		"name" => $params["vendorName"],
 		"tel" => $params["vendorPhone"]
 	]);
 
 注意请自行确保AC类对当前角色兼容性，如用户角色调用了管理员的AC类，就可能出问题。
 
-@see setParam
-@see tableCRUD (obsolete)
+示例：直接用当前的get/post参数执行，允许内部修改当前环境：
+
+	$vendorId = callSvcInt("Vendor.add", $_GET, $_POST, false); // 经典环境下可用
+	或
+	$vendorId = callSvcInt("Vendor.add", $env->_GET, $env->_POST, false);
+
+@see tmpEnv
 @see callSvc
 @see AccessControl::callSvc
 */
-function callSvcInt($ac, $param=null, $postParam=null)
+function callSvcInt($ac, $param=null, $postParam=null, $useTmpEnv=true)
 {
-	if ($param != null || $postParam != null) {
-		return tmpEnv($param, $postParam, function () use ($ac) {
-			return callSvcInt($ac);
-		});
-	}
-
-	$fn = "api_$ac";
-	if (preg_match('/^([A-Z]\w*)\.([a-z]\w*)$/u', $ac, $ms)) {
-		list($tmp, $tbl, $ac1) = $ms;
-		// TODO: check meta
-		$acObj = AccessControl::create($tbl, $ac1);
-		$ret = $acObj->callSvc($tbl, $ac1);
-	}
-	elseif (function_exists($fn)) {
-		$ret = $fn();
-	}
-	else {
-		throw new MyException(E_PARAM, "Bad request - unknown ac: {$ac}", "接口不支持");
-	}
-//	if (!isset($ret))
-//		$ret = "OK";
-	return $ret;
-}
-
-/**
-@fn tmpEnv($param, $postParam, $fn)
-
-(v5.4) 在指定的GET/POST参数下执行fn函数，执行完后恢复初始环境。
-示例：
-
-	$param = ["cond" => "createTm>'2019-1-1'];
-	$ret = tmpEnv($param, null, function () {
-		return callSvcInt("User.query");
-	});
-
-*/
-function tmpEnv($param, $postParam, $fn)
-{
-	$bak = [$_GET, $_POST, $_REQUEST];
-	$_GET = $param ?: [];
-	$_POST = $postParam ?: [];
-	assert(is_array($_GET) && is_array($_POST));
-	$_REQUEST = $_GET + $_POST;
-
-	$ret = null;
-	$ex = null;
-	try {
-		$ret = $fn();
-	}
-	catch (Exception $ex1) {
-		$ex = $ex1;
-	}
-	// restore env
-	list($_GET, $_POST, $_REQUEST) = $bak;
-	if ($ex)
-		throw $ex;
-	return $ret;
+	$env = getJDEnv();
+	return $env->callSvcInt($ac, $param, $postParam, $useTmpEnv);
 }
 
 function filter_hash($arr, $keys)
@@ -1679,7 +1657,7 @@ function filter_hash($arr, $keys)
 	return $ret;
 }
 
-function api_initClient()
+function api_initClient($env)
 {
 	$ret = [];
 	if (! empty(Plugins::$map)) {
@@ -1694,25 +1672,30 @@ function api_initClient()
 			$ret[$k] = $v;
 		}
 	}
-	Conf::onInitClient($ret);
+	Conf::onInitClient($ret, $env);
 	return $ret;
 }
 
-function getContentType()
+function getContentType($env = null)
 {
-	static $ct;
+	if ($env === null)
+		$env = getJDEnv();
+	$ct = $env->contentType;
 	if ($ct == null) {
-		$ct = @$_SERVER["HTTP_CONTENT_TYPE"] ?: $_SERVER["CONTENT_TYPE"];
+		$ct = $env->_SERVER("HTTP_CONTENT_TYPE") ?: $env->_SERVER("CONTENT_TYPE");
+		$env->contentType = $ct;
 	}
 	return $ct;
 }
 
-function getHttpInput()
+function getHttpInput($env = null)
 {
-	static $content;
+	if ($env === null)
+		$env = getJDEnv();
+	$content = $env->rawContent;
 	if ($content == null) {
-		$ct = getContentType();
-		$content = file_get_contents("php://input");
+		$ct = getContentType($env);
+		$content = $env->rawContent();
 		if (preg_match('/charset=([\w-]+)/i', $ct, $ms)) {
 			$charset = strtolower($ms[1]);
 			if ($charset != "utf-8") {
@@ -1722,8 +1705,9 @@ function getHttpInput()
 				@$content = iconv($charset, "utf-8//IGNORE", $content);
 			}
 			if ($content === false)
-				throw new MyException(E_PARAM, "unknown encoding $charset");
+				jdRet(E_PARAM, "unknown encoding $charset");
 		}
+		$env->rawContent = $content;
 	}
 	return $content;
 }
@@ -1753,7 +1737,7 @@ function api_checkIp()
 		return;
 	$log = @sprintf("*** unauthorized call: ip is NOT in white list. ApiLog.id=%s", ApiLog::$lastId);
 	logit($log);
-	throw new MyException(E_PARAM, "ip is NOT in white list", "IP不在白名单");
+	jdRet(E_PARAM, "ip is NOT in white list", "IP不在白名单");
 }
 
 /**
@@ -1774,13 +1758,14 @@ $fn为对session的操作，当设置为false时，表示删除session.
 				$params = $_POST; // 注意：闭包不可直接use $_POST，否则得到null值
 				injectSession($this->id, "emp", function () use ($params) {
 					$_SESSION["perms"] = $params["perms"];
-					// $_SESSION["adminFlag"] = param("adminFlag/i", 0, $params); // 注意字段类型要正确，可用param函数。
+					// $_SESSION["adminFlag"] = $env->param("adminFlag/i", 0, $params); // 注意字段类型要正确，可用param函数。
 				});
 			}
 		}
 	}
 
 @see delSession
+@see injectSessionById
 */
 function injectSession($userId, $appType, $fn, $days=3)
 {
@@ -1791,7 +1776,6 @@ function injectSession($userId, $appType, $fn, $days=3)
 	}
 	addLog("$name(userId=$userId,appType=$appType)");
 	$tm = date(FMT_D, time() - $days * T_DAY);
-	$curSessionId = session_id();
 	// 目前允许将自己删除
 	// $sql = sprintf("SELECT distinct ses FROM ApiLog WHERE tm>='$tm' AND userId=%d AND app LIKE %s AND ses<>'%s'", $userId, Q("$appType%"), $curSessionId);
 	$sql = sprintf("SELECT ses, tm FROM ApiLog WHERE tm>='$tm' AND userId=%d AND app LIKE %s ORDER BY tm DESC LIMIT 1", $userId, Q("$appType%"));
@@ -1804,29 +1788,48 @@ function injectSession($userId, $appType, $fn, $days=3)
 
 	if (count($rv) > 0) {
 		logit("$name(userId=$userId, appType=$appType, days=$days): " . count($rv) . " sessions");
-		$GLOBALS["X_APP"]->onAfterActions[] = function () use ($rv, $curSessionId, $fn) {
-			if (session_status() == PHP_SESSION_ACTIVE) // 0: disabled, 1: none(before session_start), 2: active
-				session_write_close();
-
-			foreach ($rv as $e) {
-				session_id($e[0]);
-				// TODO: 检查session不存在时应不做操作
-				session_start();
-				if ($fn === false || count($_SESSION) == 0) {
-					session_destroy();
-				}
-				else {
-					$fn();
-					session_write_close();
-				}
-			}
-
-			// restore current session id
-			session_id($curSessionId);
-			session_start();
-			session_write_close();
-		};
+		$sessionIds = array_map(function ($e) { return $e[0]; }, $rv);
+		injectSessionById($sessionIds, $fn);
 	}
+}
+
+/**
+@fn injectSessionById($sessionId/$sessionIdArray, $fn)
+
+对别人的session进行操作，比如删除，修改参数等。
+$fn为对session的操作，当设置为false时，表示删除session.
+
+@see delSessionById
+*/
+function injectSessionById($sessionIds, $fn)
+{
+	if (!is_array($sessionIds))
+		$sessionIds = [$sessionIds];
+	$curSessionId = session_id();
+	$env = getJDEnv();
+	$env->onAfterActions[] = function () use ($sessionIds, $curSessionId, $fn) {
+		$isActive = (session_status() == PHP_SESSION_ACTIVE); // 0: disabled, 1: none(before session_start), 2: active
+		if ($isActive)
+			session_write_close();
+
+		foreach ($sessionIds as $e) {
+			session_id($e);
+			// TODO: 检查session不存在时应不做操作
+			session_start();
+			if ($fn === false || count($_SESSION) == 0) {
+				session_destroy();
+			}
+			else {
+				$fn();
+				session_write_close();
+			}
+		}
+
+		// restore current session id
+		session_id($curSessionId);
+		if ($isActive)
+			session_start();
+	};
 }
 
 /**
@@ -1849,6 +1852,18 @@ function injectSession($userId, $appType, $fn, $days=3)
 function delSession($userId, $appType, $days=3)
 {
 	injectSession($userId, $appType, false, $days);
+}
+
+/**
+@fn delSessionById($sessionId/$sessionIdArray)
+
+删除指定sessionId. 例如：踢掉在线用户等。
+
+@see injectSessionById
+*/
+function delSessionById($sessionIds)
+{
+	injectSessionById($sessionIds, false);
 }
 
 // ------ 异步调用支持 {{{
@@ -1880,7 +1895,7 @@ function httpCallAsync($url, $postParams = null)
 	$data = null;
 	if (isset($postParams)) {
 		if (is_array($postParams))
-			$data = json_encode($postParams, JSON_UNESCAPED_UNICODE);
+			$data = jsonEncode($postParams);
 		else if (!is_string($postParams))
 			$data = (string)$postParams;
 	}
@@ -1953,7 +1968,8 @@ function callAsync($ac, $param) {
 */
 function callSvcAsync($ac, $urlParam, $postParam = null) {
 	$url = makeUrl($ac, $urlParam);
-	$GLOBALS["X_APP"]->onAfterActions[] = function () use ($url, $postParam) {
+	$env = getJDEnv();
+	$env->onAfterActions[] = function () use ($url, $postParam) {
 		httpCallAsync($url, $postParam);
 	};
 }
@@ -1973,105 +1989,24 @@ function callSvcAsync($ac, $urlParam, $postParam = null) {
 @see enableAsync
 @see whiteIpList
 */
-function api_async() {
+function api_async($env) {
 	api_checkIp();
-	$f = mparam("f", "G");
+	$f = $env->mparam("f", "G");
 	ApiLog::$instance->batchAc = "async:$f";
 	global $allowedAsyncCalls;
+	if (!$allowedAsyncCalls)
+		jdRet(E_SERVER, "global array allowedAsyncCalls no defined");
 	if (!($f && in_array($f, $allowedAsyncCalls) && function_exists($f)))
-		throw new MyException(E_PARAM, "bad async fn: $f");
+		jdRet(E_PARAM, "bad async fn: $f");
 
-	$param = file_get_contents("php://input");
-	$arr = json_decode($param, true);
-	if (! is_array($arr))
-		throw new MyException(E_PARAM, "bad param for async fn $f: $param");
-	
 	putenv("enableAsync=0");
-	return call_user_func_array($f, $arr);
+	return call_user_func_array($f, $env->_POST);
 }
 // }}}
 
-// ====== main routine {{{
-function apiMain()
+// ====== JDEnv & JDApiBase {{{
+class BatchUtil
 {
-	if ($_SERVER["REQUEST_METHOD"] == "OPTIONS")
-		return;
-
-	// TODO: 如允许api.php被包含后直接调用api，应设置 ApiFw_::$SOLO=false
-	//$script = basename($_SERVER["SCRIPT_NAME"]);
-	//ApiFw_::$SOLO = ($script == API_ENTRY_PAGE || $script == 'index.php');
-	if (@$GLOBALS["noExecApi"] || isCLI())
-		ApiFw_::$SOLO = false;
-
-	$supportJson = function () {
-		// 支持POST为json格式
-		$ct = getContentType();
-		if (strstr($ct, "/json") !== false) {
-			$content = getHttpInput();
-			@$arr = json_decode($content, true);
-			if (!is_array($arr)) {
-				logit("bad json-format body: `$content`");
-				throw new MyException(E_PARAM, "bad json-format body");
-			}
-			$_POST = $arr;
-			$_REQUEST += $arr;
-		}
-	};
-
-	global $BASE_DIR;
-	// optional plugins
-	$plugins = "$BASE_DIR/plugin/index.php";
-	if (file_exists($plugins))
-		include_once($plugins);
-
-	require_once("{$BASE_DIR}/conf.php");
-
-	if (ApiFw_::$SOLO) {
-		$api = new ApiApp();
-		$GLOBALS["X_APP"] = $api;
-		$api->onBeforeActions[] = $supportJson;
-		$api->exec();
-
-		// 删除空会话
-		if (isset($_SESSION) && count($_SESSION) == 0) {
-			// jd-php框架ApiWatch中设置过lastAccess，则空会话至少有1个key。v5.3不再使用ApiWatch
-			// @session_destroy();
-			safe_sessionDestroy();
-		}
-	}
-}
-
-class BatchApiApp extends AppBase
-{
-	protected $apiApp;
-	protected $useTrans;
-
-	public $ac;
-
-	function __construct($apiApp, $useTrans)
-	{
-		$this->apiApp = $apiApp;
-		$this->useTrans = $useTrans;
-	}
-
-	protected function onExec()
-	{
-		$this->apiApp->call($this->ac, !$this->useTrans);
-	}
-
-	protected function onErr($code, $msg, $msg2)
-	{
-		setRet($code, $msg, $msg2);
-	}
-
-	protected function onAfter($ok)
-	{
-		global $X_RET_STR;
-		global $g_dbgInfo;
-		$X_RET_STR = null;
-		$g_dbgInfo = [];
-	}
-
 /*
 	static function handleBatchRef($ref, $retVal)
 	{
@@ -2153,6 +2088,7 @@ class BatchApiApp extends AppBase
 			foreach ($val as &$v) {
 				self::calcRefValue($v, $arr);
 			}
+			unset($v);
 			return $val;
 		}
 		
@@ -2177,32 +2113,150 @@ class BatchApiApp extends AppBase
 	}
 }
 
-// 取当前全局APP可以用X_APP，如
-//  $ac = $GLOBALS["X_APP"]? $GLOBALS["X_APP"]->getAc(): 'unknown';
-class ApiApp extends AppBase
+// used by JDEnv
+trait JDServer
+{
+	public $_GET, $_POST, $_SESSION, $_FILES;
+
+	function _SERVER($key) {
+		return $_SERVER[$key];
+	}
+	function header($key=null, $val=null) {
+		$argc = func_num_args();
+		if ($argc <= 1) {
+			if ($this->reqHeaders === null) {
+				$arr = getallheaders();
+				foreach ($arr as $k=>$v) {
+					$this->reqHeaders[strtolower($k)] = $v;
+				}
+			}
+			if ($argc == 0)
+				return $this->reqHeaders();
+
+			$key = strtolower($key);
+			return $this->reqHeaders[$key];
+		}
+		header("$key: $val");
+	}
+	function rawContent() {
+		return file_get_contents("php://input");
+	}
+	function write($data) {
+		echo($data);
+	}
+
+	function session_start() {
+		session_start();
+		$this->_SESSION = &$_SESSION;
+	}
+	function session_write_close() {
+		session_write_close();
+	}
+	function session_destroy() {
+		session_destroy();
+	}
+}
+
+class JDEnv extends DBEnv
 {
 	private $apiLog;
 	private $apiWatch;
-	private $ac;
+
+	// $ac是主调用名，如果是"batch"，则当前调用名存在$ac1中。通过getAc()/getAc1()获取。
+	protected $ac, $ac1;
+
+	use JDServer;
+
+/**
+@var env.appName?=user
+
+客户端应用标识，默认为"user". 
+根据URL参数"_app"确定值。
+
+@var env.appType
+
+根据应用标识($env->appName)获取应用类型(AppType)。注意：应用标识一般由前端应用通过URL参数"_app"传递给后端。
+不同的应用标识可以对应相同的应用类型，如应用标识"emp", "emp2", "emp-adm" 都表示应用类型"emp"，即 应用类型=应用标识自动去除尾部的数字或"-xx"部分。
+
+不同的应用标识会使用不同的cookie名，因而即使用户同时操作多个应用，其session不会相互干扰。
+同样的应用类型将以相同的方式登录系统。
+ */
+	public $appName, $appType;
+
+/*
+@var env.clientVer
+
+通过参数`_ver`或useragent字段获取客户端版本号。
+
+@return: {type, ver, str}
+
+- type: "web"-网页客户端; "wx"-微信客户端; "a"-安卓客户端; "ios"-苹果客户端
+
+e.g. {type: "a", ver: 2, str: "a/2"}
+
+ */
+	public $clientVer;
+
+	public $perms, $exPerms;
+
+	public $onBeforeActions = [];
+	public $onAfterActions = [];
+	private $dbgInfo = [];
 
 	function getAc() {
 		return $this->ac;
 	}
+	function getAc1() {
+		return $this->ac1;
+	}
 
-	protected function onExec()
-	{
-		if (! isCLI())
-		{
-			if (ApiFw_::$SOLO)
-			{
-				header("Content-Type: text/plain; charset=UTF-8");
-				#header("Content-Type: application/json; charset=UTF-8");
+	function __construct() {
+		parent::__construct();
+	}
+
+	private function initRequest() {
+		if ($this->TEST_MODE)
+			$this->header("X-Daca-Test-Mode", $this->TEST_MODE);
+		if ($this->MOCK_MODE)
+			$this->header("X-Daca-Mock-Mode", $this->MOCK_MODE);
+		// 默认允许跨域
+		$origin = $this->_SERVER('HTTP_ORIGIN');
+		if (isset($origin) && !$isCLI) {
+			$this->header('Access-Control-Allow-Origin', $origin);
+			$this->header('Access-Control-Allow-Credentials', 'true');
+			$this->header('Access-Control-Expose-Headers', 'X-Daca-Server-Rev, X-Daca-Test-Mode, X-Daca-Mock-Mode');
+			
+			$val = $this->_SERVER('HTTP_ACCESS_CONTROL_REQUEST_HEADERS');
+			if ($val) {
+				$this->header('Access-Control-Allow-Headers', $val);
 			}
-			header("Cache-Control: no-cache");
+			$val = $this->_SERVER('HTTP_ACCESS_CONTROL_REQUEST_METHOD');
+			if ($val) {
+				$this->header('Access-Control-Allow-Methods', $val);
+			}
 		}
-		setServerRev();
+		if ($this->_SERVER("REQUEST_METHOD") === "OPTIONS")
+			exit();
 
-		$ac = param('_ac', null, $_GET);
+		// supportJson: 支持POST为json格式
+		$ct = getContentType($this);
+		if (strstr($ct, "/json") !== false) {
+			$content = getHttpInput($this);
+			@$arr = jsonDecode($content);
+			if (!is_array($arr)) {
+				logit("bad json-format body: `$content`");
+				jdRet(E_PARAM, "bad json-format body");
+			}
+			$this->_POST = $arr;
+		}
+
+		$this->header("Content-Type", "text/plain; charset=UTF-8");  // "application/json; charset=UTF-8"
+		$this->header("Cache-Control", "no-cache");
+		$ver = $GLOBALS["SERVER_REV"];
+		if ($ver)
+			$this->header("X-Daca-Server-Rev", $ver);
+
+		$ac = $this->param('_ac', null, "G");
 		if (! isset($ac))
 		{
 			// 支持PATH_INFO模式。
@@ -2213,74 +2267,231 @@ class ApiApp extends AppBase
 			}
 		}
 		if (! isset($ac)) {
-			$ac = mparam('ac', $_GET);
+			$ac = $this->mparam('ac', "G");
 		}
 
 		Conf::onApiInit($ac);
-		$this->ac = $ac;
 
-		dbconn();
-
-		global $DBH;
-		if (! isCLI() && Conf::$enableAutoSession) {
-			session_start();
-		}
-
-		if (Conf::$enableApiLog)
-		{
-			$this->apiLog = new ApiLog($ac);
-			$this->apiLog->logBefore();
-		}
-
-/*
-		// API调用监控
-		$this->apiWatch = new ApiWatch($ac);
-		$this->apiWatch->execute();
-*/
+	/*
+			// API调用监控
+			$this->apiWatch = new ApiWatch($ac);
+			$this->apiWatch->execute();
+	*/
 		if (Conf::$enableSecure) {
 			if (!BlackList::isWhiteReq() && (BlackList::isBlackReq() || Conf::checkSecure($ac) === false)) {
-				setRet(E_FORBIDDEN, "OK");
-				return "OK";
+				jdRet(null, [E_FORBIDDEN, "OK"]);
 			}
 		}
 
-		if ($ac == "batch") {
-			$useTrans = param("useTrans", false, $_GET);
-			$ret = $this->batchCall($useTrans);
+		return $ac;
+	}
+
+	// 返回[code, data, ...]
+	function callSvcSafe($ac = null, $useTrans=true, $isSubCall = false)
+	{
+		global $ERRINFO;
+		$ret = [0, null];
+		$isUserFmt = false;
+
+		$isDefaultCall = ($ac === null);
+		$isCLI = isCLI();
+		if ($isCLI || $isSubCall)
+			assert($ac != null);
+
+		$ok = false; // commit or rollback trans
+		try {
+			if (!$isSubCall) {
+				$doInitEnv = !isset($this->_GET);
+				if ($doInitEnv) {
+					$this->_GET = &$_GET;
+					$this->_POST = &$_POST;
+					$this->_SESSION = &$_SESSION;
+					$this->_FILES = &$_FILES;
+				}
+				// onBeforeActions中允许根据参数重设GET/POST等环境
+				foreach ($this->onBeforeActions as $fn) {
+					$fn();
+				}
+
+				// NOTE: 须在setupSession之前设置appType
+				$this->appName = $this->param("_app", "user", "G");
+				$this->appType = preg_replace('/(\d+|-\w+)$/', '', $this->appName);
+
+				if ($doInitEnv) {
+					if (!$isCLI)
+						$this->setupSession();
+					require_once("ext.php");
+
+					global $BASE_DIR;
+					// optional plugins
+					$plugins = "$BASE_DIR/plugin/index.php";
+					if (file_exists($plugins))
+						include_once($plugins);
+
+					require_once("{$BASE_DIR}/conf.php");
+
+					$this->clientVer = $this->getClientVersion();
+					setServerRev($this);
+				}
+
+				if ($isDefaultCall && !$isCLI) {
+					$ac = $this->initRequest();
+				}
+				$this->ac = $ac;
+
+				$this->dbconn();
+
+				if (! isCLI() && Conf::$enableAutoSession) {
+					$this->session_start();
+				}
+
+				if (Conf::$enableApiLog)
+				{
+					$this->apiLog = new ApiLog($this);
+					$this->apiLog->logBefore();
+				}
+			}
+
+			if ($ac !== "batch") {
+				if ($useTrans && ! $this->DBH->inTransaction())
+					$this->DBH->beginTransaction();
+				$ret[1] = $this->callSvcInt($ac, $this->_GET, $this->_POST, false);
+				$ok = true;
+			}
+			else {
+				$batchUseTrans = $this->param("useTrans", false, "G");
+				if ($useTrans && $batchUseTrans && !$this->DBH->inTransaction())
+					$this->DBH->beginTransaction();
+				else
+					$useTrans = false;
+				$ret[1] = $this->batchCall($batchUseTrans, $ok);
+			}
+		}
+		catch (DirectReturn $e) {
+			$ok = true;
+			$ret[1] = $e->data;
+			$isUserFmt = $e->isUserFmt;
+		}
+		catch (MyException $e) {
+			$ret = [$e->getCode(), $e->getMessage(), $e->internalMsg];
+			$this->addLog((string)$e, 9);
+		}
+		catch (PDOException $e) {
+			// SQLSTATE[23000]: Integrity constraint violation: 1451 Cannot delete or update a parent row: a foreign key constraint fails (`jdcloud`.`Obj1`, CONSTRAINT `Obj1_ibfk_1` FOREIGN KEY (`objId`) REFERENCES `Obj` (`id`))",
+			$ret = [E_DB, $ERRINFO[E_DB], $e->getMessage()];
+			if (preg_match('/a foreign key constraint fails [()]`\w+`.`(\w+)`/', $ret[2], $ms)) {
+				$tbl = function_exists("T")? T($ms[1]) : $ms[1]; // T: translate function
+				$ret[1] = "`$tbl`表中有数据引用了本记录";
+			}
+			$this->addLog((string)$e, 9);
+		}
+		catch (Exception $e) {
+			$ret = [E_SERVER, $ERRINFO[E_SERVER], $e->getMessage()];
+			$this->addLog((string)$e, 9);
+		}
+
+		try {
+			if ($useTrans && $this->DBH && $this->DBH->inTransaction())
+			{
+				if ($ok)
+					$this->DBH->commit();
+				else
+					$this->DBH->rollback();
+			}
+		}
+		catch (Exception $e) {
+			logit((string)$e);
+		}
+
+		// 记录调用日志，如果是batch，只记录子调用项，不记录batch本身
+		if ($this->ac != "batch" || $isSubCall) {
+			$debugLog = getenv("P_DEBUG_LOG") ?: 0;
+			if ($debugLog == 1 || ($debugLog == 2 && $ret[0] != 0)) {
+				$retStr = $isUserFmt? (is_scalar($ret[1])? $ret[1]: jsonEncode($ret[1])): jsonEncode($ret);
+				$s = 'ac=' . $ac . ($this->ac1? "(in batch)": "") . ', apiLogId=' . ApiLog::$lastId . ', ret=' . $retStr . ", dbgInfo=" . jsonEncode($this->dbgInfo, true) .
+					"\ncallSvr(\"$ac\", " . jsonEncode($this->_GET) . (empty($this->_POST)? '': ', $.noop, ' . jsonEncode($this->_POST)) . ")";
+				logit($s, true, 'debug');
+			}
+		}
+		if ($this->TEST_MODE && count($this->dbgInfo) > 0) {
+			foreach ($this->dbgInfo as $e) {
+				$ret[] = $e;
+			}
+		}
+
+		if ($isDefaultCall) {
+			$this->echoRet($ret, $isUserFmt);
 		}
 		else {
-			$ret = $this->call($ac, true);
+			if ($ret[1] instanceof DbExpr) {
+				$ret[1] = jsonDecode($ret[1]->val);
+			}
 		}
+
+		if ($isSubCall)
+			return $ret;
+
+		foreach ($this->onAfterActions as $fn) {
+			if ($ret[0] && ! ($fn instanceof DbExpr))
+				continue;
+			if ($fn instanceof DbExpr)
+				$fn = $fn->val;
+			try {
+				$fn($ret);
+			}
+			catch (Exception $e) {
+				logit('onAfterActions fails: ' . (string)$e);
+			}
+		}
+		if (! $isCLI && Conf::$enableAutoSession) {
+			$this->session_write_close();
+		}
+
+		try {
+/*
+			if ($this->apiWatch)
+				$this->apiWatch->postExecute();
+*/
+			if ($this->apiLog) {
+				$this->apiLog->logAfter($ret);
+			}
+/* NOTE: 暂不处理
+			// 删除空会话
+			if (isset($_SESSION) && count($_SESSION) == 0) {
+				// jd-php框架ApiWatch中设置过lastAccess，则空会话至少有1个key。v5.3不再使用ApiWatch
+				// @session_destroy();
+				safe_sessionDestroy();
+			}
+*/
+		}
+		catch (Exception $e) {
+			logit((string)$e);
+		}
+
+		// clean up
+		$this->DBH = null;
+		$this->onAfterActions = [];
+		$this->onBeforeActions = [];
+		$this->dbgInfo = [];
+		$this->apiLog = null;
 
 		return $ret;
 	}
 
-	protected function batchCall($useTrans)
+	protected function batchCall($useTrans, &$ok)
 	{
-		$method = $_SERVER["REQUEST_METHOD"];
+		$method = $this->_SERVER("REQUEST_METHOD");
 		if ($method !== "POST")
-			throw new MyException(E_PARAM, "batch MUST use `POST' method");
+			jdRet(E_PARAM, "batch MUST use `POST' method");
 
-		$s = getHttpInput();
-		$calls = json_decode($s, true);
+		$calls = $this->_POST;
 		if (! is_array($calls))
-			throw new MyException(E_PARAM, "bad batch request");
+			jdRet(E_PARAM, "bad batch request");
 
-		global $DBH;
-		global $X_RET;
-
-		// 以下过程不允许抛出异常, 一旦有异常, 返回将不符合batch协议
-		try {
-
-		$batchApiApp = new BatchApiApp($this, $useTrans);
-		if ($useTrans && !$DBH->inTransaction())
-			$DBH->beginTransaction();
-		$solo = ApiFw_::$SOLO;
-		ApiFw_::$SOLO = false;
 		$retVal = [];
 		$retCode = 0;
-		$GLOBALS["errorFn"] = function () {};
 		$acList = [];
+		$afterActionCnt = 0;
 		foreach ($calls as $call) {
 			if ($useTrans && $retCode) {
 				$retVal[] = [E_ABORT, "事务失败，取消执行", "batch call cancelled."];
@@ -2290,87 +2501,115 @@ class ApiApp extends AppBase
 				$retVal[] = [E_PARAM, "参数错误", "bad batch request: require `ac'"];
 				continue;
 			}
-			$acList[] = $call["ac"];
+			$this->_GET = BatchUtil::getParams($call, "get", $retVal);
+			$this->_POST = BatchUtil::getParams($call, "post", $retVal);
 
-			$_GET = BatchApiApp::getParams($call, "get", $retVal);
-			$_POST = BatchApiApp::getParams($call, "post", $retVal);
-			$_REQUEST = array_merge($_GET, $_POST);
+			$this->ac1 = $this->parseRestfulUrl('/' . $call["ac"], empty($call["post"])?"GET":"POST");
+			Conf::onApiInit($this->ac1);
+
+			$acList[] = $this->ac1;
+
 			if ($this->apiLog) {
-				$this->apiLog->logBefore1($call["ac"]);
+				$this->apiLog->logBefore1();
 			}
 
-			$batchApiApp->ac = $call["ac"];
 			// 如果batch使用trans, 则单次调用不用trans
-			$batchApiApp->exec(! $useTrans);
+			$rv = $this->callSvcSafe($this->ac1, !$useTrans, true);
 
-			$retCode = $X_RET[0];
-			if ($retCode && $useTrans) {
-				if ($DBH && $DBH->inTransaction())
-				{
-					$DBH->rollback();
+			$retCode = $rv[0];
+			$retVal[] = $rv;
+
+			if ($this->apiLog) {
+				$this->apiLog->logAfter1($rv);
+			}
+
+			global $X_RET_STR;
+			$X_RET_STR = null;
+			$this->dbgInfo = [];
+			$this->ac1 = null;
+
+			// 接口失败，则删除非强制执行的onAfterActions
+			if ($retCode) {
+				for ($i=count($this->onAfterActions)-1; $i>=$afterActionCnt; --$i) {
+					if ($this->onAfterActions[$i] instanceof DbExpr)
+						continue;
+					array_splice($this->onAfterActions, $i);
 				}
 			}
-			$retVal[] = $X_RET;
-			if ($this->apiLog) {
-				$this->apiLog->logAfter1();
-			}
+			$afterActionCnt = count($this->onAfterActions);
 		}
 		if ($this->apiLog) {
 			$this->apiLog->batchAc = 'batch:' . count($acList) . ',' . join(',', $acList);
 		}
-		if ($useTrans && $DBH && $DBH->inTransaction())
-			$DBH->commit();
-		ApiFw_::$SOLO = $solo;
-		setRet(0, $retVal);
 
-		} /* try */
-		catch (Exception $ex) {
-			ApiFw_::$SOLO = $solo;
-			logit($ex);
-			throw $ex;
-		}
-
+		$ok = $retCode == 0 || !$useTrans;
 		return $retVal;
 	}
 
-	// 将被BatchApiApp调用
-	public function call($ac, $useTrans)
+	private function echoRet($ret, $isUserFmt)
 	{
-		global $DBH;
-		if ($useTrans && ! $DBH->inTransaction())
-			$DBH->beginTransaction();
-		$ret = callSvcInt($ac);
-		if ($useTrans && $DBH && $DBH->inTransaction())
-			$DBH->commit();
-		setRet(0, $ret);
-		return $ret;
-	}
+		list ($code, $data) = $ret;
 
-	protected function onErr($code, $msg, $msg2)
-	{
-		setRet($code, $msg, $msg2);
-	}
+		global $X_RET_STR;
+		if ($isUserFmt) {
+			if (is_null($data))
+				return;
+			if (is_scalar($data))
+				$X_RET_STR = $data;
+			else
+				$X_RET_STR = jsonEncode($data);
+			$this->write($X_RET_STR);
+			return;
+		}
 
-	protected function onAfter($ok)
-	{
-/*
-		if ($this->apiWatch)
-			$this->apiWatch->postExecute();
-*/
-		if ($this->apiLog)
-			$this->apiLog->logAfter();
+		global $X_RET_FN;
+		if (! $data instanceof DbExpr) {
+			if (is_callable(@$X_RET_FN) && !$this->param("jdcloud")) {
+				$ret1 = $X_RET_FN($ret, $this);
+				if ($ret1 === false)
+					return;
+				$ret = $ret1;
+			}
+			else if ($_GET["_raw"]) {
+				$ret = $ret[1];
+				if ($_GET["_raw"] == 2) {
+					if (is_array($ret))
+						$ret = join("\t", $ret);
+				}
+			}
 
-		// 及时关闭数据库连接
-		global $DBH;
-		$DBH = null;
+			if (is_scalar($ret)) {
+				$X_RET_STR = (string)$ret;
+			}
+			else {
+				$X_RET_STR = jsonEncode($ret, $this->TEST_MODE);
+			}
+		}
+		else {
+			$X_RET_STR = "[" . $code . ", " . $data->val . "]";
+		}
+
+		global $X_RET_STR;
+		$jsonp = $this->_GET["_jsonp"];
+		if ($jsonp) {
+			if (substr($jsonp,-1) === '=') {
+				$this->write($jsonp . $X_RET_STR . ";\n");
+			}
+			else {
+				$this->write($jsonp . "(" . $X_RET_STR . ");\n");
+			}
+		}
+		else {
+			$this->write($X_RET_STR . "\n");
+		}
 	}
 
 	private function getPathInfo()
 	{
-		$pi = $_SERVER["PATH_INFO"];
+		$pi = $this->_SERVER("PATH_INFO");
 		if ($pi === null) {
 			# 支持rewrite后解析pathinfo
-			$uri = $_SERVER["REQUEST_URI"];
+			$uri = $this->_SERVER("REQUEST_URI");
 			if (strpos($uri, '.php') === false) {
 				$uri = preg_replace('/\?.*$/', '', $uri);
 				$baseUrl = getBaseUrl(false);
@@ -2378,7 +2617,7 @@ class ApiApp extends AppBase
 				# uri=/jdy/api/login -> pi=/login
 				# uri=/jdy/login -> pi=/login
 				if (strpos($uri, $baseUrl) === 0) {
-					$script = basename($_SERVER["SCRIPT_NAME"], '.php'); // "api"
+					$script = basename($this->_SERVER("SCRIPT_NAME"), '.php'); // "api"
 					$len = strlen($baseUrl);
 					if (strpos($uri, $baseUrl . $script) === 0)
 						$len += strlen($script);
@@ -2397,16 +2636,17 @@ class ApiApp extends AppBase
 	}
 
 	// return: $ac
-	private function parseRestfulUrl($pathInfo)
+	private function parseRestfulUrl($pathInfo, $method=null)
 	{
-		$method = $_SERVER["REQUEST_METHOD"];
+		if ($method === null)
+			$method = $this->_SERVER("REQUEST_METHOD");
 		$ac = htmlEscape(substr($pathInfo,1));
 		// POST /login  (小写开头)
 		// GET/POST /Store.add (含.)
 		if (!preg_match('/^[A-Z][\w\/]+$/u', $ac))
 		{
 			if ($method !== 'GET' && $method !== 'POST')
-				throw new MyException(E_PARAM, "bad verb '$method'. use 'GET' or 'POST'");
+				jdRet(E_PARAM, "bad verb '$method'. use 'GET' or 'POST'");
 			return $ac;
 		}
 
@@ -2421,12 +2661,12 @@ class ApiApp extends AppBase
 		if (!self::isId($id))
 			list($id,$ac) = [$ac,$id];
 		if (self::isId($id))
-			setParam('id', $id);
+			$this->_GET['id'] = $id;
 
 		// 非标准CRUD操作，如：GET|POST /Store/123/close 或 /Store/close/123 或 /Store/closeAll
 		if (isset($ac)) {
 			if ($method !== 'GET' && $method !== 'POST')
-				throw new MyException(E_PARAM, "bad verb '$method' for user function. use 'GET' or 'POST'");
+				jdRet(E_PARAM, "bad verb '$method' for user function. use 'GET' or 'POST'");
 			return "{$obj}.{$ac}";
 		}
 
@@ -2444,31 +2684,259 @@ class ApiApp extends AppBase
 		// POST /Store
 		case 'POST':
 			if (isset($id))
-				throw new MyException(E_PARAM, "bad verb '$method' on id: $id");
+				jdRet(E_PARAM, "bad verb '$method' on id: $id");
 			$ac = 'add';
 			break;
 
 		// PATCH /Store/123
 		case 'PATCH':
 			if (! isset($id))
-				throw new MyException(E_PARAM, "missing id");
+				jdRet(E_PARAM, "missing id");
 			$ac = 'set';
-			parse_str(file_get_contents("php://input"), $_POST);
+			parse_str(getHttpInput($this), $this->_POST);
 			break;
 
 		// DELETE /Store/123
 		case 'DELETE':
 			if (! isset($id))
-				throw new MyException(E_PARAM, "missing id");
+				jdRet(E_PARAM, "missing id");
 			$ac = 'del';
 			break;
 
 		default:
-			throw new MyException(E_PARAM, "bad verb '$method'");
+			jdRet(E_PARAM, "bad verb '$method'");
 		}
 		return "{$obj}.{$ac}";
 	}
-}
+
+	protected function setupSession()
+	{
+		# normal: "userid"; testmode: "tuserid"
+		$name = $this->appType . "id";
+		session_name($name);
+
+		$path = getenv("P_SESSION_DIR") ?: $GLOBALS["BASE_DIR"] . "/session";
+		if (!  is_dir($path)) {
+			if (! mkdir($path, 0777, true))
+				jdRet(E_SERVER, "fail to create session folder: $path");
+		}
+		if (! is_writeable($path))
+			jdRet(E_SERVER, "session folder is NOT writeable: $path");
+		session_save_path ($path);
+
+		ini_set("session.cookie_httponly", 1);
+
+		$path = getenv("P_URL_PATH");
+		if ($path)
+		{
+			// e.g. path=/cheguanjia
+			ini_set("session.cookie_path", $path);
+		}
+	}
+
+	function addLog($data, $logLevel=0) {
+		if ($this->DBG_LEVEL >= $logLevel)
+		{
+			$this->dbgInfo[] = $data;
+			return count($this->dbgInfo);
+		}
+	}
+	// logHandle: return by addLog
+	function amendLog($logHandle, $fn)
+	{
+		if (! ($logHandle > 0 && $logHandle <= count($this->dbgInfo)) )
+			return;
+		$fn($this->dbgInfo[$logHandle-1]);
+	}
+
+	function callSvcInt($ac, $param=null, $postParam=null, $useTmpEnv=true)
+	{
+		$fn = "api_$ac";
+		if (preg_match('/^([A-Z]\w*)\.([a-z]\w*)$/u', $ac, $ms)) {
+			list($tmp, $tbl, $ac1) = $ms;
+			$acObj = $this->createAC($tbl, $ac1);
+			$ret = $acObj->callSvc($tbl, $ac1, $param, $postParam, $useTmpEnv);
+		}
+		elseif (function_exists($fn)) {
+			$ret = $this->tmpEnv($param, $postParam, function () use ($fn) {
+				return $fn($this);
+			}, $useTmpEnv);
+		}
+		else {
+			jdRet(E_PARAM, "Bad request - unknown ac: {$ac}", "接口不支持");
+		}
+	//	if (!isset($ret))
+	//		$ret = "OK";
+		return $ret;
+	}
+
+/**
+@fn env->tmpEnv($param, $postParam, $fn)
+
+(v5.4) 在指定的GET/POST参数下执行fn函数，执行完后恢复初始环境。
+$param或$postParam为null时，与空数组`[]`等价。
+
+示例：
+
+	$param = ["cond" => "createTm>'2019-1-1'];
+	$ret = $env->tmpEnv($param, null, function () {
+		return callSvcInt("User.query");
+	});
+
+示例：用当前参数环境执行：
+
+	$ret = $env->tmpEnv($_GET, $_POST, function () {
+		return callSvcInt("User.query");
+	});
+*/
+	function tmpEnv($get, $post, $fn, $useTmpEnv=true)
+	{
+		assert(is_null($get)||is_array($get));
+		assert(is_null($post)||is_array($post));
+		if ($useTmpEnv) {
+			$bak = [$this->_GET, $this->_POST, $GLOBALS["X_RET_FN"]];
+		}
+		$this->_GET = isset($get) ? $get: [];
+		$this->_POST = isset($post) ? $post : [];
+
+		$ret = null;
+		$ex = null;
+		try {
+			$ret = $fn();
+		}
+		catch (DirectReturn $ex0) {
+			if ($ex0->isUserFmt) {
+				$ex = $ex0;
+			}
+			else {
+				$ret = $ex0->data;
+			}
+		}
+		catch (Exception $ex1) {
+			$ex = $ex1;
+		}
+
+		if ($useTmpEnv) {
+			// restore env
+			list($this->_GET, $this->_POST, $GLOBALS["X_RET_FN"]) = $bak;
+		}
+		
+		if ($ex)
+			throw $ex;
+		return $ret;
+	}
+
+/**
+@fn env.createAC($tbl, $ac = null, $cls = null) 
+
+如果$cls非空，则按指定AC类创建AC对象。
+否则按当前登录类型自动创建AC类（回调onCreateAC）。
+
+特别地，为兼容旧版本，当$cls为true时，按超级管理员权限创建AC类（即检查"AC0_XX"或"AccessControl"类）。
+
+示例：
+
+	$env->createAC("Ordr", "add");
+	$env->createAC("Ordr", "add", true);
+	$env->createAC("Ordr", null, "AC0_Ordr");
+
+*/
+	function createAC($tbl, $ac = null, $cls = null) 
+	{
+		/*
+		if (!hasPerm(AUTH_USER | AUTH_EMP))
+		{
+			$wx = getWeixinUser();
+			$wx->autoLogin();
+		}
+		 */
+		class_exists("AC_$tbl"); // !!! 自动加载文件 AC_{obj}.php
+		if (is_string($cls)) {
+			if (! class_exists($cls))
+				jdRet(E_SERVER, "bad class $cls");
+		}
+		else if ($cls === true || hasPerm(AUTH_ADMIN))
+		{
+			$cls = "AC0_$tbl";
+			if (! class_exists($cls))
+				$cls = "AccessControl";
+		}
+		else {
+			$cls = onCreateAC($tbl);
+			if (!isset($cls))
+				$cls = "AC_$tbl";
+			if (! class_exists($cls))
+			{
+				// UDT general AC class
+				if (substr($tbl, 0, 2) === "U_" && class_exists("AC_U_Obj")) {
+					$cls = "AC_U_Obj";
+				}
+				else {
+					$cls = null;
+				}
+			}
+		}
+		if ($cls == null)
+		{
+			$msg = $ac ? "$tbl.$ac": $tbl;
+			jdRet(!hasPerm(AUTH_LOGIN)? E_NOAUTH: E_FORBIDDEN, "Operation is not allowed for current user: `$msg`");
+		}
+		$acObj = new $cls;
+		if (!is_a($acObj, "JDApiBase")) {
+			jdRet(E_SERVER, "bad AC class `$cls`. MUST extend JDApiBase or AccessControl", "AC类定义错误");
+		}
+		$acObj->env = $this;
+		if (is_a($acObj, "AccessControl"))
+			$acObj->initTable($tbl);
+		return $acObj;
+	}
+
+	function param($name, $defVal = null, $col = null, $doHtmlEscape = true) {
+		return param($name, $defVal, $col, $doHtmlEscape, $this);
+	}
+
+	function mparam($name, $col = null, $doHtmlEscape = true) {
+		return mparam($name, $col, $doHtmlEscape, $this);
+	}
+
+	private function getClientVersion()
+	{
+		$ver = $this->param("_ver");
+		if ($ver != null) {
+			$a = explode('/', $ver);
+			$ret = [
+				"type" => $a[0],
+				"ver" => $a[1],
+				"str" => $ver
+			];
+		}
+		// Mozilla/5.0 (Linux; U; Android 4.1.1; zh-cn; MI 2S Build/JRO03L) AppleWebKit/533.1 (KHTML, like Gecko)Version/4.0 MQQBrowser/5.4 TBS/025440 Mobile Safari/533.1 MicroMessenger/6.2.5.50_r0e62591.621 NetType/WIFI Language/zh_CN
+		else if (preg_match('/MicroMessenger\/([0-9.]+)/', $this->_SERVER("HTTP_USER_AGENT"), $ms)) {
+			$ver = $ms[1];
+			$ret = [
+				"type" => "wx",
+				"ver" => $ver,
+				"str" => "wx/{$ver}"
+			];
+		}
+		else if (isCLI()) {
+			global $argv;
+			$ret = [
+				"type" => "cli",
+				"ver" => 0,
+				"str" => join(" ", $argv)
+			];
+		}
+		else {
+			$ret = [
+				"type" => "web",
+				"ver" => 0,
+				"str" => "web"
+			];
+		}
+		return $ret;
+	}
+} /* JDEnv */
 
 /*
 Bug: session_start doesn't create session
@@ -2549,48 +3017,65 @@ function safe_sessionDestroy()
 	}
 }
 
-/**
-@fn callSvc($ac?, $urlParam?, $postParam?, $cleanCall?=false, $hideResult?=false)
-
-直接调用接口，返回数据。如果出错，将调用$GLOBALS['errorFn'] (缺省为errQuit).
-
-@param $cleanCall Boolean. 如果为true, 则不使用现有的$_GET, $_POST等变量中的值。
-@param $hideResult Boolean. 如果为true, 不输出结果。
- */
-function callSvc($ac = null, $urlParam = null, $postParam = null, $cleanCall = false, $hideResult = false)
+class JDApiBase
 {
-	global $DBH; // 避免api->exec完成后关闭数据库连接
-	$bak = [$_GET, $_POST, $_REQUEST, ApiFw_::$SOLO, $DBH];
+	public $env;
 
-	if ($cleanCall) {
-		$_GET = [];
-		$_POST = [];
-		$_REQUEST = [];
-	}
-	if ($ac)
-		$_GET["_ac"] = $ac;
-	if ($urlParam) {
-		foreach ($urlParam as $k=>$v) {
-			setParam($k, $v);
-		}
-	}
-	if ($postParam) {
-		foreach ($postParam as $k=>$v) {
-			$_POST[$k] = $v;
-		}
-	}
-	if ($hideResult) {
-		ApiFw_::$SOLO = false;
+	function callSvc($tbl, $ac, $param=null, $postParam=null, $useTmpEnv=true)
+	{
+		$fn = "api_" . $ac;
+		if (! is_callable([$this, $fn]))
+			jdRet(E_PARAM, "Bad request - unknown `$tbl` method: `$ac`", "接口不支持");
+
+		if (is_null($this->env))
+			$this->env = getJDEnv();
+		return $this->env->tmpEnv($param, $postParam, function () use ($tbl, $ac, $fn) {
+			return $this->onCallSvc($tbl, $ac, $fn);
+		}, $useTmpEnv);
 	}
 
-	$api = new ApiApp();
-	$ret = $api->exec();
-
-	global $X_RET_STR;
-	$X_RET_STR = null;
-	list($_GET, $_POST, $_REQUEST, ApiFw_::$SOLO, $DBH) = $bak;
-	return $ret;
+	protected function onCallSvc($tbl, $ac, $fn) {
+		$ret = $this->$fn();
+		return $ret;
+	}
 }
 #}}}
+
+// ====== main routine {{{
+/**
+@fn callSvc($ac=null, $useTrans=true)
+
+外部调用接口。返回符合筋斗云格式的数组，至少2元素，即`[0, 成功数据, 调试信息...]`或`[非0, 失败信息, 内部失败原因, 调试信息...]`
+
+- 如果不指定ac, 则自动从请求中解析，设置响应header并输出内容。
+- 自动开启数据库事务，除非指定useTrans=false
+- 自动记录调用日志、操作日志等。
+
+示例：接口应用api.php的最后
+
+	callSvc();
+
+示例：server/tool/task.php是命令行程序(通过php task.php执行)，用于定时任务，如果它想调用已有接口：
+
+	// 模拟AC2权限调用接口
+	$_SESSION = ["empId" => -1];
+	// 设置参数；当然也可以设置$_POST参数
+	$_GET = ["for" => "task", "fmt" => "one"];
+	$rv = callSvc("Employee.query");
+
+@see callSvcInt
+*/
+function callSvc($ac=null, $useTrans=true)
+{
+	$env = getJDEnv();
+	return $env->callSvcSafe($ac, $useTrans);
+}
+
+if (!isSwoole())
+	$X_APP = new JDEnv();
+else
+	$X_APP = [];
+
+// }}}
 
 // vim: set foldmethod=marker :

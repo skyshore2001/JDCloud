@@ -15,7 +15,7 @@
 
 - [jdclud-php](https://github.com/skyshore2001/jdcloud-php) (筋斗云后端php版本)
 - [jdclud-java](https://github.com/skyshore2001/jdcloud-java) (筋斗云后端java版本)
-- [jdclud-cs](https://github.com/skyshore2001/jdcloud-cs) (筋斗云后端.net版本)
+- [jdclud-cs](https://github.com/skyshore2001/jdcloud-cs) (筋斗云后端.net/c#版本)
 
 另外，筋斗云有实用的前端框架，支持构建模块化的H5单页应用：
 
@@ -66,6 +66,7 @@ class AC_ApiLog extends AccessControl
 **[函数型接口 - 简单直接]**
 
 除了对象型接口，还有一类叫函数型接口，比如要实现一个接口叫"getInfo"用于返回一些信息，开发起来也非常容易，只要定义下面一个函数：
+(习惯上函数型接口写在 server/php/api_functions.php中)
 ```php
 function api_getInfo()
 {
@@ -112,7 +113,7 @@ class AC2_ApiLog extends AccessControl
 	{
 		if (! hasPerm(PERM_MGR)) {
 			$empId = $_SESSION["empId"];
-			$this->addCond("t0.empId={$empId}");
+			$this->addCond("empId={$empId}");
 		}
 	}
 }
@@ -159,24 +160,19 @@ class AC2_ApiLog extends AccessControl
 注意“应用程序URL根路径”一项应与BASE_URL一致，如本例中为`/mysvc`。
 
 初始化工具运行完后，生成的配置文件为`php/conf.user.php`，之后也可以手工编辑该文件。
-同时创建了项目数据库。接下来，数据库中表的部署需要使用数据模型部署工具tool/upgrade.php。
+同时创建了项目数据库。接下来，要在数据库中创建表和字段，我们称为部署数据模型。
 
-数据模型定义在主设计文档DESIGN.md中，作为示例，里面定义了一些数据模型，像用户(User)，订单(Ordr)以及前面提过的操作日志(ApiLog)等，还定义了一些常用接口，如登录操作(login)等。
-我们通过通过命令行工具tool/upgrade.php可以创建或更新数据库：
+数据模型定义在主设计文档DESIGN.md中，作为示例，里面定义了用户(User)，订单(Ordr)以及前面提过的操作日志(ApiLog)等表。
+我们通过通过命令行工具`tool/upgrade.sh`可以创建或更新数据库，在git-bash中运行命令：
 
 	cd tool
-	php upgrade.php
-	(这时进入upgrade交互操作，输入initdb命令创建或更新数据库)
-	> initdb
-	(输入命令q退出)
-	> q
+	./upgrade.sh initdb
+	(确认数据库信息无误后回车执行)
 
-工具默认使用前面生成的配置(php/conf.user.php)去连接数据库。如果要连接其它数据库，也可以设置"P_DB", "P_DBCRED"环境变量来指定，如
+该命令行工具内部调用的是`upgrade.php`工具，使用前面生成的配置(php/conf.user.php)去连接数据库。所以运行它需要php运行环境。
+如果要连接其它数据库，可以基于`upgrade.sh`新建一个脚本比如`upgrade-dev.sh`，改下其中的连接参数后运行即可。
 
-	export P_DB="myserver/mydb"
-	export P_DBCRED="myuser:mypwd"
-	php upgrade.php
-
+注意：开发时使用`tool/upgrade.sh`工具维护数据库，部署实施时应使用在线升级机制，参考[数据库在线部署与升级]。
 
 为了学习对象型接口，我们以暴露ApiLog对象提供CRUD操作为例，只要在接口实现文件php/api_objects.php(包含在主入口api.php中)中添加代码：
 ```php
@@ -275,6 +271,12 @@ curl用"-d"参数指定参数通过HTTP body来传递，由于默认使用HTTP P
 
 这在调试SQL语句时很有用。此外，测试模式还会开放某些内部接口，以及缺省允许跨域访问，便于通过web页面测试接口。注意线上生产环境绝不可设置为测试模式。
 
+将接口返回内存保存到debug.log用于调试：
+
+	putenv("P_DEBUG_LOG=1");
+
+值为0: 不记日志；值为1：记录所有日志（适合调试或试用阶段）；值为2：只记录错误日志（适合正式使用）
+
 query接口也支持常用的数组返回，需要加上`fmt=list`参数：
 
 	curl http://localhost/mysvc/api.php/ApiLog.query -d "fmt=list"
@@ -292,9 +294,11 @@ query接口也支持常用的数组返回，需要加上`fmt=list`参数：
 
 还可以将`fmt`参数指定为"csv", "excel", "txt"等，在浏览器访问时可直接下载相应格式的文件，读者可自己尝试。
 
-取下一页可以用pagekey字段，还可指定一次取的数据条数，用pagesz字段：
+返回的nextkey字段表示数据未完，可以用pagekey字段来取下一页，还可指定一次取的数据条数，用pagesz字段：
 
 	curl "http://localhost/mysvc/api.php/ApiLog.query?pagekey=11349&pagesz=5"
+
+直到返回数据中没有nextkey字段，表示已到最后一页。
 
 不仅支持分页，query接口非常灵活，可以指定返回字段、查询条件、排序方式，
 比如查询2016年1月份的数据(cond参数)，结果只需返回id, addr字段(res参数，也可用于get接口)，按id倒序排列(orderby参数)：
@@ -542,8 +546,10 @@ param/mparam除了检查简单类型，还支持一些复杂类型，比如列�
 
 **[异常返回]**
 
-如果处理出错，应返回一个错误对象，这通过抛出MyException异常来实现，比如
+如果处理出错，应返回一个错误对象，这通过jdRet来实现，比如
 
+	jdRet(E_AUTHFAIL, "bad password", "密码错误");
+	// 等价于以下旧写法，即抛出MyException异常
 	throw new MyException(E_AUTHFAIL, "bad password", "密码错误");
 
 它最终返回的JSON为：
@@ -554,7 +560,7 @@ param/mparam除了检查简单类型，还支持一些复杂类型，比如列�
 
 也可以忽略错误信息，这时框架返回错误码对应的默认错误信息，如
 
-	throw new MyException(E_AUTHFAIL, "bad password");
+	jdRet(E_AUTHFAIL, "bad password");
 
 最终返回JSON为：
 
@@ -562,7 +568,7 @@ param/mparam除了检查简单类型，还支持一些复杂类型，比如列�
 
 甚至直接：
 
-	throw new MyException(E_AUTHFAIL);
+	jdRet(E_AUTHFAIL);
 
 最终返回JSON为：
 
@@ -580,22 +586,22 @@ const E_FORBIDDEN=5; // 无操作权限，不允许访问
 
 **[立即返回]**
 
-接口除了通过return来返回数据，还可以抛出DirectReturn异常，立即中断执行并返回结果，比如：
+接口可以用jdRet函数，立即中断执行并返回结果，例如：
 
-	setRet(0, $retObj); // 直接设置返回码和返回对象
-	throw new DirectReturn();
+	jdRet(0); // 返回 [0, null]
+	jdRet(E_OK, "OK"); // 返回 [0, "OK"]
 
-示例：实现获取图片接口pic。
+不加参数则直接返回. 示例：实现获取图片接口pic。
 
 	pic() -> 图片内容
 	
-注意：该接口直接返回图片内容，不符合筋斗云`[0, JSON数据]`的返回规范，所以用DirectReturn立即返回，避免框架干预：
+注意：该接口直接返回图片内容，不符合筋斗云`[0, JSON数据]`的返回规范，所以用jdRet立即返回，避免框架干预：
 ```php
 function api_pic()
 {
 	header("Content-Type: image/jpeg");
 	readfile("1.jpg");
-	throw new DirectReturn();
+	jdRet();
 }
 ```
 前端可以直接使用链接显示图片：
@@ -616,15 +622,22 @@ function api_weather()
 	@$rv = file_get_contents($URL);
 	if ($rv === false || is_null(json_decode($rv))) {
 		addLog($rv);
-		throw new MyException(E_SERVER, "bad data");
+		jdRet(E_SERVER, "bad data");
 	}
 	// 将已编码好的JSON数据包装成筋斗云返回格式
-	echo "[0, $rv]";
-	throw new DirectReturn();
+	$ret = "[0, $rv]";
+	jdRet(null, $ret);
 }
 ```
-
 上面在处理失败时，调用函数addLog用于将日志返回给前端，便于测试模式下查看。还可以用logit函数记录到服务端文件中。
+
+注意：这个例子也可以用echo输出，但echo不记录日志到debug日志，在ApiLog中也看不到输出，不利于接口内容审计。
+
+	$ret = "[0, $rv]";
+	echo($ret);
+	jdRet();
+
+更规范地，对于接口自定义格式输出，应使用 $X_RET_FN 定义转换函数。
 
 ### 数据库操作
 
@@ -691,7 +704,7 @@ queryOne只返回首行数据，特别地，如果返回行中只有一列，则
 	$pwd = mparam("pwd");
 	$id = queryOne("SELECT id FROM User WHERE uname='$uname' AND pwd='$pwd'");
 	if ($id === false)
-		throw new MyException(E_AUTHFAIL, "bad uname/pwd", "用户名或密码错误");
+		jdRet(E_AUTHFAIL, "bad uname/pwd", "用户名或密码错误");
 	// 登录成功
 	$_SESSION["uid"] = $id;
 	
@@ -742,6 +755,107 @@ function api_payOrder()
 而筋斗云已经帮我们自动使用了事务确保数据一致性。
 
 **筋斗云一次接口调用中的所有数据库查询都在一个事务中。** 开发者一般不必自行使用事务，除非为了优化并发和数据库锁。
+
+### 内部接口调用
+
+在接口内部实现时常常会调用其它接口，尤其是灵活的对象接口。用到的函数主要有callSvcInt。
+
+比如根据用户手机尾号查询所有订单(假设有User-Ordr表关联)，先用SQL查询来实现，后面再换成更推荐的调用内部对象接口来实现。
+在api_functions.php中加函数接口：
+
+```php
+function api_queryOrders()
+{
+	$phone = mparam("phone");
+	return queryAll("SELECT o.id orderId, o.tm, o.amount, u.phone, u.name 
+FROM Ordr o JOIN User u ON o.userId=u.id
+WHERE u.phone LIKE " . Q("%$phone"), true);
+}
+```
+注意在拼接SQL时，字符串参数一定要用Q函数来加引号，避免非法字符出错或产生SQL注入等安全漏洞。
+
+在chrome中打开筋斗云管理端(localhost/jdcloud/server/web/)，在JS控制台里用callSvr测试该接口：`callSvr("queryOrders", {phone: "1234"})`，在Network中查看返回结果。
+或调用并直接查看结果：`await callSvr("queryOrders", {phone: "1234"})`。
+
+一般后端会对Ordr对象做对象接口实现，比如默认实现了AC2_Ordr类（AC2要求管理端登录才能调用），其中定义有userPhone,userName这些虚拟字段（下一章详细介绍），前端其实可以直接调用对象接口实现类似功能，而且还默认支持列表分页，打开筋斗云管理端，登录后在JS控制台中测试：
+```javascript
+callSvr("Ordr.query", {res: "id orderId, tm, amount, userPhone, userName", fmt: "list", cond: "userPhone LIKE '%3389'"})
+```
+
+较新的实现还可以用cond参数的[支持数组或对象的新语法](http://oliveche.com/jdcloud-site/BQP.html#查询条件cond)，像这样：`{..., cond: {userPhone: "~*3389"}}`。
+其中`~`表示模糊匹配，`*`为通配符（也可以用`%`）；如果没有出现通配符比如`~3389`，它其实相当于`~*3389*`。
+
+下面我们换成通过callSvcInt内部调用对象接口的实现方法，以便复用逻辑，callSvcInt的后缀Int表示内部调用（即Internal）：
+```php
+function api_queryOrders2()
+{
+	$phone = mparam("phone");
+	return callSvcInt("Ordr.query", [
+		"res" => "id orderId, tm, amount, userPhone, userName",
+		"fmt" => "list", // "list"支持分页，也可以用"array"返回所有
+		"cond" => "userPhone LIKE " . Q("%$phone"),
+		// 或新语法 "cond" => ["userPhone" => "~*$phone"],
+	]);
+}
+```
+
+注意由于Ordr接口在AC2_Ordr中实现，即要求管理端登录，未登录调用是会出错的。
+我们在管理端分未登录和登录两种情况，在JS控制台里用callSvr分别测试该接口，看看输出情况：
+```javascript
+callSvr("queryOrders2");
+```
+
+要解决未登录时无权限调用内部接口的问题，需要模拟管理端的身份，有两种方法。
+
+一种是不用callSvcInt，换用底层的AC类的callSvc方法，这里直接指定用AC2类来实现接口:
+```php
+	$acObj = new AC2_Ordr;
+	return $acObj->callSvc("Ordr", "query", [
+		"res" => ...
+	]);
+```
+注意由于并不是管理员，在SESSION中没有`empId`这些变量，假如AC2类中有用`$_SESSION["empId"]`来取管理员id的操作是要做特殊处理的。
+
+推荐另一种较新支持的方法(v6)，是在`Conf::$authKeys`中设置SESSION来模拟身份：
+```php
+// class Conf (在conf.php中)
+static $authKeys = [
+    // ["authType"=>"basic", "key" => "user1:1234", "SESSION" => ["empId"=>-9999], "allowedAc" => ["queryOrders2"]],
+    ["authType"=>"none", "key" => "", "SESSION" => ["empId"=>-9999], "allowedAc" => ["queryOrders*"] ]
+];
+```
+上面意思是如果未登录时调用匹配`queryOrders*`的接口（可以用通配符`*`来匹配多个接口），则在SESSION中设置empId为-9999，这意味着模拟了一个id为-9999的管理端来调用接口。
+
+也可以换用注释掉的authType值为basic的第一行，这表示调用该接口时要使用HTTP Basic认证，且在key字段中指定了用户名密码。
+这常用于为第三方提供接口且通过密码保障安全性，这也是authKeys机制最初的作用。
+
+最后我们优化一下接口的灵活性。上面就把查询条件及返回字段固化了，若想要更灵活些，允许调用方指定些内部参数，可以稍作变化：
+```php
+function api_queryOrders2()
+{
+	$phone = mparam("phone");
+	return callSvcInt("Ordr.query", $_GET + [
+		"res" => "id orderId, tm, amount, userPhone, userName",
+		"fmt" => "list", // "list"支持分页，也可以用"array"返回所有
+		"cond2" => dbExpr(["userPhone" => "~*$phone"])
+	], $_POST);
+}
+```
+上面例子实现了调用方可以指定res或fmt参数覆盖默认的设置；而若指定cond参数则会做为额外追加条件。
+
+注意php的关联数组加法A+B，表示返回一个新关联数组，优先用A中字段，然后是B中字段，与`array_merge`函数不太相同。
+
+注意上面用了query接口的cond2参数，该参数只能内部使用，必须用dbExpr函数把值包起来，与cond参数并列生效。
+
+登录管理端，在JS控制台用callSvr测试该接口，先测试下默认行为：
+```javascript
+callSvr("queryOrders2", {phone: "3389"})
+```
+
+再查询手机尾号3389用户的金额大于100的订单，自定义返回结果，且最多返回50条(默认分页是20条)，注意观察后端调试输出的SQL语句：
+```javascript
+callSvr("queryOrders2", {phone: "3389", res: "id,amount,userName,orderLog", cond: "amount>100", pagesz: 50});
+```
 
 ## 对象型接口
 
@@ -824,7 +938,7 @@ function api_payOrder()
 class AC_ApiLog extends AccessControl
 {
 	protected $allowedAc = ["get", "query"];
-	// 默认值为 ["add", "get", "set", "del", "query"]
+	// 可以为 ["add", "get", "set", "del", "query"， "setIf", "delIf", "batchAdd"]中任意几个。
 }
 ```
 
@@ -945,7 +1059,7 @@ class AC1_Ordr extends AccessControl
 	protected function onQuery()
 	{
 		$userId = $_SESSION["uid"];
-		$this->addCond("t0.userId={$userId}");
+		$this->addCond("userId={$userId}");
 	}
 
 	// add/set接口会回调
@@ -961,7 +1075,7 @@ class AC1_Ordr extends AccessControl
 ```
 
 - 在get/query操作中，会回调`onQuery`函数，在这里我们用`addCond`添加了一条限制：用户只能查看到自己的订单。
- `addCond`的参数可理解为SQL语句中WHERE子句的片段；字段用"t0.userId"来表示，其中"t0"表示当前操作表"Ordr"的别名(alias)。后面会讲到联合查询(join)其它表，就可能使用其它表的别名。
+ `addCond`的参数可理解为SQL语句中WHERE子句的片段，它等价于前端调用对象query接口中的cond参数。
 
 - add/set操作会回调`onValidate`函数（本例中`$allowedAc`中未定义"set"，因而不会有"set"操作过来）。在这个回调中常常设置`$_POST[字段名]`来自动完成一些字段。
 
@@ -984,7 +1098,7 @@ class AC1_Ordr extends AccessControl
 		$id = mparam("id");
 		$rv = queryOne("SELECT id FROM Ordr WHERE id={$id} AND userId={$uid}");
 		if ($rv === false)
-			throw new MyException(E_FORBIDDEN, "not your order");
+			jdRet(E_FORBIDDEN, "not your order");
 	}
 }
 ```
@@ -994,15 +1108,15 @@ class AC1_Ordr extends AccessControl
 函数`queryOne`用来查询首行数据，如果查询只有一列，则返回首行首列数据，但如果查询不到数据，就返回false. 
 这里如果返回false，既可能是订单id不存在，也可能是虽然存在但是是别人的订单，简单处理，我们都返回一个E_FORBIDDEN异常。
 
-框架对异常会自动处理，一般不用特别再检查数据库操作失败之类的异常。如果返回错误对象，可抛出`MyException`异常：
+框架对异常会自动处理，一般不用特别再检查数据库操作失败之类的异常。如果返回错误，可调用jdRet:
 
-	throw new MyException(E_FORBIDDEN);
+	jdRet(E_FORBIDDEN);
 
 错误码"E_FORBIDDEN"表示没有权限，不允许操作；常用的其它错误码还有"E_PARAM"，表示参数错误。
 
-MyException的第二个参数是内部调试信息，第三个参数是对用户友好的报错信息，比如：
+jdRet的第二个参数是内部调试信息，第三个参数是对用户友好的报错信息，比如：
 
-	throw new MyException(E_FORBIDDEN, "order id {$id} does not belong to user {$uid}", "不是你的订单，不可操作");
+	jdRet(E_FORBIDDEN, "order id {$id} does not belong to user {$uid}", "不是你的订单，不可操作");
 
 ### 分页机制
 
@@ -1058,7 +1172,7 @@ class MyObj extends AccessControl
 ### 虚拟字段
 
 前面已经学习过怎样把一个数据库中的表作为对象暴露出去。
-其中，表的字段就可直接映射为对象的属性。对于不在对象主表中定义的字段，统称为虚拟字段。
+其中，表的字段就可直接映射为对象的属性。对于不在对象主表中定义的字段，称为虚拟字段，广义的虚拟字段还包括后面章节要介绍的子表字段、枚举字段（计算字段）等。
 
 通过`$vcolDefs`来定义虚拟字段，最简单的一类虚拟字段是字段别名，比如
 ```php
@@ -1200,7 +1314,7 @@ class AC1_Rating extends AccessControl
 }
 ```
 
-#### 计算字段
+#### 查询字段
 
 在定义虚拟字段时，"res"也可以是一个计算值，或一个很复杂的子查询。
 
@@ -1237,7 +1351,7 @@ class AC1_Ordr extends AccessControl
 这里amount2在res中定义为一个复杂的子查询，其中还用到了t0表，也即是主表"Ordr"的固定别名。
 可想而知，在这个例子中，取该字段的查询效率是比较差的。也尽量不要把它用到cond条件中。
 
-**[子表字段]**
+**[压缩表字段]**
 
 上面Ordr与OrderItem表是典型的一对多关系，有时希望在返回一个对象时，同时返回一个子对象数组，比如获取一个订单像这样：
 
@@ -1258,7 +1372,7 @@ class AC1_Ordr extends AccessControl
 	返回
 	- itemsInfo: List(name, price, qty). 格式例如"洗车:25:1,换轮胎:380:2", 表示两行记录，每行3个字段。注意字段内容中不可出现":", ","这些分隔符。
 
-子表字段也是一种计算字段，可实现如下：
+压缩表字段也是一种查询字段，可实现如下：
 
 ```php
 class AC1_Ordr extends AccessControl
@@ -1272,39 +1386,39 @@ class AC1_Ordr extends AccessControl
 }
 ```
 
-注意：子表字段在MySQL数据库中有长度限制，默认是1024。如果想扩大，可以自行估算大小并设置：
+注意：压缩表字段在MySQL数据库中有长度限制，默认是1024。如果想扩大，可以自行估算大小并设置：
 
 	execOne("set group_concat_max_len=100000");
 
 由于每次接口调用都是独立的连接会话，在接口的设置只会影响当前接口，不影响其它接口。
 
-### 子表对象
+### 子表字段
 
-前面提到过想在对象中返回子表时，可以使用压缩成一个字符串的子表字段，一般适合数据比较简单的场合。
+前面提到过想在对象中返回子表时，可以使用压缩成一个字符串的压缩表字段，一般适合数据比较简单的场合。
 
-另一种方式是用`$subobj`来定义子表字段，注意它也适用于关联表字段。
+另一种方式是用`$subobj`来定义子表字段，注意虽然名称叫子表，它也适用于关联表的字段。
 
 例如在获取订单时，同时返回订单日志，设计接口如下：
 
-	Ordr.get() -> {id, ..., @orderLog?, @user?}
+	Ordr.get() -> {id, ..., @orderLog?, %user?}
 
-	数据库中订单，日志及用户表如下：
-	@Ordr: id, userId, tm, amount (通过userId关联User)
-	@OrderLog: id, orderId, tm, dscr (通过orderId关联Ordr)
-	@User: id, name
+	- orderLog: [{tm, dscr}] 订单日志（子表）。
+	- user: {id, name} 关联的用户（关联表）。
 
-	返回
-	orderLog: {tm, dscr} 订单日志（子表）。
-	user: {id, name} 关联的用户（关联表）。
+上面接口原型描述中，字段orderLog前面的"@"标记表示它是一个数组，字段user前面的"%"标记它是一个对象。
 
-	示例
+接口返回示例：
 
 	{id: 1, dscr: "换轮胎及洗车", ..., orderLog: [
 		{tm: "2016-1-1 10:10", dscr: "创建订单"},
 		{tm: "2016-1-1 10:20", dscr: "付款"}
 	], user: {id: 1, name: "用户1"} }
 
-上面接口原型描述中，字段orderLog前面的"@"标记表示它是一个数组，在返回值介绍中列出了它的数据结构。
+数据库中订单，日志及用户表如下：
+
+	@Ordr: id, userId, tm, amount (通过userId关联User)
+	@OrderLog: id, orderId, tm, dscr (通过orderId关联Ordr)
+	@User: id, name
 
 实现示例：
 
@@ -1356,8 +1470,7 @@ class AC1_OrderLog extends AccessControl
 
 有了子表定义，可以在`Ordr.add`接口中直接添加子项，如
 
-	callSvr("Ordr.add", $.noop, {..., orderLog: [{dscr:"操作1"}, {dscr:"操作2"}]}, {contentType: "application/json"});
-	(注意前端callSvr接口可指定contentType为json格式，传输更清晰)
+	callSvr("Ordr.add", $.noop, {..., orderLog: [{dscr:"操作1"}, {dscr:"操作2"}]});
 
 它内部会调用`OrderLog.add`接口。
 
@@ -1376,7 +1489,7 @@ class AC1_OrderLog extends AccessControl
 
 ### 枚举字段与字段处理
 
-之前讲的虚拟字段都是通过数据库来关联或计算的，还有一种方式可以使用代码任意处理返回字段值，这就是枚举字段。
+之前讲的虚拟字段都是通过数据库来关联或计算的，还有一种方式可以使用代码任意处理返回字段值，这就是枚举字段，也称计算字段。
 
 示例：实现接口
 
@@ -1414,12 +1527,13 @@ class AC1_Ordr extends AccessControl
 class AC1_Ordr extends AccessControl
 {
 	protected $vcolDefs = [
-		// 定义statusStr就是status，如果希望默认返回，可加"default":true选项。
+		// 定义虚拟字段statusStr，如果希望query接口默认返回该字段，可追加`"default":true`选项。
 		[ "res" => ["status statusStr"] ],
 	];
 	static $statusMap = ["CR"=>"新创建", "PA"=>"已付款"];
 	protected function onInit()
 	{
+		// 字段计算逻辑
 		$this->enumFields["statusStr"] = function ($val, $row) {
 			return @self::$statusMap[$val] ?: $val;
 		};
@@ -1427,28 +1541,47 @@ class AC1_Ordr extends AccessControl
 }
 ```
 
-由于enumFields很灵活，我们经常使用enumFields机制来实现计算字段。
+由于enumFields很灵活，我们经常使用enumFields机制来对虚拟字段、子表字段做自定义计算处理，实现计算字段。
 
-若遇到用虚拟字段不易解决的问题，还可以用试试更加底层的onHandleRow回调。
-下面的实现表示，如果返回了status字段，则自动添加statusStr字段：
+假如上例中statusStr由status,type,closeFlag多个字段计算得来，可以使用require选项让它依赖其它字段。
+依赖的字段可以是表字段、其它虚拟字段、子表字段等，支持多个字段，以逗号分隔，如：
 
 ```php
-class AC1_Ordr extends AccessControl
-{
+	protected $vcolDefs = [
+		[
+			"res" => ["status statusStr"],
+			"require" => "type,closeFlag"
+		],
+	];
 	static $statusMap = ["CR"=>"新创建", "PA"=>"已付款"];
-	// get/query接口会回调
- 	protected function onHandleRow(&$row)
- 	{
-		if (isset($row["status"])) {
-			$val = $row["status"];
-			$row["statusStr"] = @self::$statusMap[$val] ?: $val;
-		}
- 	}
-}
+	protected function onInit()
+	{
+		// 字段计算逻辑，注意如果要对$row进行修改(setAliasVal)，应声明&$row而非$row
+		$this->enumFields["statusStr"] = function ($val, &$row) {
+			$status = $val;
+			// 用getAliasVal取字段值，不要直接用$row[k]，这样可以支持使用了别名的字段
+			$type = $this->getAliasVal($row, "type");
+			$closeFlag = $this->getAliasVal($row, "closeFlag");
+			... 计算逻辑 ...
+
+			// 示例：设置status1字段
+			// 如果是设置已定义过的虚拟字段，应使用setAliasVal以支持别名，而非直接`$row["status1"] = $val`
+			$this->setAliasVal($row, "status1", ...);
+			return $val;
+		};
+	}
 ```
 
-这个实现有一点问题，它不支持字段别名，比如接口调用`Ordr.query(res="id 编号, status 状态")`，这时在onHandleRow中取不到status字段，只有"状态"字段。
-解决方法是用 getAliasVal 函数取字段值：
+类似地，可以对子表字段做深度处理，比如修改格式、增加字段等。
+要注意的是，在enumField中应尽量少做SQL查询，因为在query接口中，每一行记录都会调用它，会导致大量的SQL调用和返回缓慢。
+
+一般通过计算字段已经可以解决绝大多数问题。
+若遇到不易解决的问题，还可以试试更加底层的onHandleRow回调。
+
+示例：如果返回了status字段，则自动添加statusStr字段。
+
+显然，这个需求可以更优雅地通过`enumField("status", fn)`来解决，这里做为示例用onHandleRow实现如下：
+
 ```php
 class AC1_Ordr extends AccessControl
 {
@@ -1465,8 +1598,6 @@ class AC1_Ordr extends AccessControl
  	}
 }
 ```
-
-在enumFields回调中也是用getAliasVal和setAliasVal来支持字段别名的。
 
 ### 虚拟表和视图
 
@@ -1526,7 +1657,7 @@ class AC2_EmpLog extends AccessControl
 
 	// get/query操作都会走这里
 	protected function onQuery() {
-		$this->addCond("t0.app='emp' and t0.userId IS NOT NULL");
+		$this->addCond("app='emp' and userId IS NOT NULL");
 	}
 }
 ```
@@ -1626,9 +1757,16 @@ class AC1_Ordr extends AccessControl
 注意必须在conf.user.php中激活测试模式才能看到日志返回：
 
 	putenv("P_TEST_MODE",  1);
+	putenv("P_DEBUG",  9); // 设置调试等级，9为最高（输出SQL）
 
 测试模式下，输出的JSON串经过美化更易读。
-调用接口时添加URL参数`_debug`可以设置调试等级，如`http://.../api.php/Ordr.add?_debug=1`。
+也可以在调用接口时添加URL参数`_debug`来设置本次调用的调试等级，如`http://.../api.php/Ordr.add?_debug=9`。
+
+开启选项`P_DEBUG_LOG`可将接口调用日志记录到debug.log文件中，包括接口返回内容以及addLog记录的日志（详细程度由P_DEBUG决定）：
+
+	putenv("P_DEBUG_LOG=1"); // 0: no log to 'debug.log' 1: all log, 2: error log
+
+默认值为0表示不记录，设置值为1为记录所有日志，值为2为记录错误日志（接口返回值非0为错误）。
 
 **[模拟模式]**
 
@@ -1662,6 +1800,8 @@ class AC1_Ordr extends AccessControl
 - req/res: 请求内容与响应内容，记录最多1K字节。
 - reqsz/ressz: 请求与响应的长度。
 - ver 前端应用版本。调用接口时通过URL参数`_ver`来指定应用版本名。
+
+如果要使用PHP调试功能，支持打断点、看变量、单步运行，推荐使用xdebug+vscode(php debug插件)，[具体参考这里](http://oliveche.com/jdcloud-site/phpdebug.html)
 
 ### 会话管理
 
@@ -1837,7 +1977,37 @@ task.php是以命令行方式运行的，写好任务"db"后可以这样运行�
 - 如果在task.php中调用了外部脚本，确保该脚本有可执行权限。
 - 即使手工运行脚本通过，在计划任务中运行也可能出错，因为运行环境不同，注意查看日志。
 
+### 数据库在线部署与升级
+
+系统上线前，应刷新META文件，进入tool目录下，在git-bash中运行命令:
+
+	make meta
+
+它将根据DESIGN.md中的声明生成或更新META文件，然后使用git提交更新，推送上线即可。
+
+在线访问URL:
+
+	http://{myserver}/{mysvc}/tool/init.php
+
+点击"数据库升级"按钮即可（如果没有更新，则不会显示该按钮）。
+
+注意：
+
+- 为了安全，工具默认只会添加表或字段，不会删除或更新字段类型。这时可以点击“数据库比较”按钮，将生成的SQL语句拷贝出来手工执行。
+- 工具不会自动删除表，要删除表必须手工操作数据。
+- 开发时使用tool/upgrade.sh工具直接升级（参考[创建筋斗云Web接口项目]），上线实施时应使用在线部署升级。
+
+若要强制手工升级，可以访问URL：
+
+	http://{myserver}/{mysvc}/tool/upgrade/
+
+若要强制查看字段差异，可以访问URL：
+
+	http://localhost/quiz/server/tool/upgrade/?diff=1
+
 ### 自动化发布上线
+
+（以下方法已过时，仅供参考）
 
 如果希望每次修改一些内容后，可以快速将差异部分上线，不必每次都上传所有文件，可以使用筋斗云自带的上线工具。
 
@@ -1870,6 +2040,14 @@ task.php是以命令行方式运行的，写好任务"db"后可以这样运行�
 在Windows平台上，打开git shell运行build_web.sh即可上线。
 
 ### 自动化接口测试
+
+目前对筋斗云后端框架的自动化测试，使用的是基于开源单元测试框架[jasmine](https://jasmine.github.io/)封装的后端接口测试框架：
+
+- [jdclud-rtest](https://github.com/skyshore2001/jdcloud-rtest) (筋斗云后端接口测试框架)
+
+在实际项目中，也常常使用SoapUI/JMeter/Postman等工具对接口进行自动化测试。
+
+（以下方法已过时，仅供参考）
 
 创建Web Service后，可对每个接口(WebAPI)进行自动化回归测试。自动化测试可用于持续集成环境的搭建。
 
@@ -1967,7 +2145,7 @@ function api_getOssParam()
 ```php
 interface ISmsSupport
 {
-	// 如果失败，抛出 MyException(E_SMS) 异常，并写日志到trace.log
+	// 如果失败，中断执行立即返回，并写日志到trace.log
 	function sendSms($phone, $content, $channel);
 }
 ```

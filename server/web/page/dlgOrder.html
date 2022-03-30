@@ -8,28 +8,37 @@
 			<tr>
 				<td>订单状态</td>
 				<td>
-					<!--select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap"></select-->
-					<select name="status">
-						<option value="">&nbsp;</option>
-						<option value="CR">未付款</option>
-						<option value="PA">待服务(已付款)</option>
-						<option value="ST">正在服务</option>
-						<option value="RE">已服务(待评价)</option>
-						<option value="RA">已评价</option>
-						<option value="CA">已取消</option>
-					</select>
+					<select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap"></select>
 				</td>
 			</tr>
 			<tr>
-				<td>用户编号</td>
+				<td>用户</td>
 				<td>
-					<input name="userId" disabled>
+					<input name="userId" class="wui-combogrid" data-options="ListOptions.UserGrid()" required>
 				</td>
 			</tr>
 			<tr>
-				<td>用户联系方式</td>
+				<td>联系方式</td>
 				<td>
-					<input name="userPhone" class="easyui-validatebox" data-options="validType:'usercode'">
+					<input name="userPhone" disabled>
+				</td>
+			</tr>
+			<tr>
+				<td>创建时间</td>
+				<td>
+					<input name="createTm" class="easyui-datetimebox" readonly>
+				</td>
+			</tr>
+			<tr>
+				<td>描述</td>
+				<td>
+					<select name="dscr" class="my-combobox" data-options="jdEnumList:'基础套餐;精英套餐'">
+				</td>
+			</tr>
+			<tr>
+				<td>金额</td>
+				<td>
+					<input name="amount" class="easyui-validatebox" required>
 				</td>
 			</tr>
 			<tr>
@@ -40,17 +49,25 @@
 		</table>  
 	</form>
 
-	<div id="divOrderLog" class="forSet">
-		<div class="form-caption"><hr>订单日志</div>
-		<table id="tblOrderLog" width="100%">
-			<thead><tr>
-				<th data-options="field:'action', formatter:WUI.formatter.enum(ActionMap)">操作</th>
-				<th data-options="field:'empName'">员工</th>
-				<th data-options="field:'dscr'">描述</th>
-				<th data-options="field:'tm'">时间</th>
-			</tr></thead>
-		</table>
-
+	<div class="easyui-tabs">
+		<div class="wui-subobj" data-options="obj:'OrderLog', relatedKey:'orderId', valueField:'orderLog'" title="订单日志">
+			<table>
+				<thead><tr>
+					<th data-options="field:'id', sortable:true, sorter:intSort">编号</th>
+					<th data-options="field:'action', formatter:Formatter.enum(OrderStatusMap), sortable:true">状态</th>
+					<th data-options="field:'empName', sortable:true">员工</th>
+					<th data-options="field:'dscr', sortable:true">描述</th>
+					<th data-options="field:'tm', sortable:true">时间</th>
+				</tr></thead>
+			</table>
+		</div>
 	</div>
+
 </div>
 
+<!-- examples:
+<input name="name" class="easyui-validatebox" data-options="required:true">
+<select name="customerId" class="my-combobox" data-options="ListOptions.Customer()"></select>
+<select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap"></select>
+<input name="customerId" class="wui-combogrid" data-options="ListOptions.CustomerGrid()">
+-->

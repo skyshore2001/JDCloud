@@ -82,6 +82,34 @@
 
 */
 
+function updateCacheFile($file, $fn)
+{
+	assert(is_callable($fn));
+	$d = dirname($file);
+	if (! is_dir($d))
+		mkdir($d, 0770, true);
+	$fp = fopen($file, "c+");
+	flock($fp, LOCK_EX);
+	$cache = [];
+	if (($filesz=filesize($file)) > 0) {
+		$str = fread($fp, $filesz);
+		$cache = @jsonDecode($str) ?: [];
+	}
+	try {
+		$rv = $fn($cache);
+		if ($rv !== false) {
+			rewind($fp);
+			ftruncate($fp, 0);
+			fwrite($fp, jsonEncode($cache));
+		}
+	}
+	catch (Exception $e) {
+		logit($e);
+	}
+	flock($fp, LOCK_UN);
+	fclose($fp);
+}
+
 class Login
 {
 	static $autoRegUser = true;
@@ -93,6 +121,42 @@ class Login
 		"secret" => "381c380860a3aad4514853e216c7e1f3"
 	];
 	static $bindUserUseCode = true;
+	static $oneLogin = [];
+
+	static function supportOneLogin($isLogout) {
+		$appType = getJDEnv()->appType;
+		if (! (is_array(self::$oneLogin) && in_array($appType, self::$oneLogin)))
+			return;
+
+		switch ($appType) {
+		case "user":
+			$userId = $_SESSION["uid"];
+			break;
+		case "emp":
+			$userId = $_SESSION["empId"];
+			break;
+		}
+
+		$f = "cache/OnlineUser.json";
+		$k = "$appType-$userId";
+		updateCacheFile($f, function (&$cache) use ($k, $isLogout) {
+			if ($isLogout) {
+				unset($cache[$k]);
+				return;
+			}
+			@$v = $cache[$k];
+			$sessionId = session_id();
+			if ($v["sessionId"] && $v["sessionId"] != $sessionId) {
+				logit("login: kick off session $k: " . $v["sessionId"]);
+				// remove session
+				delSessionById($v["sessionId"]);
+			}
+			$cache[$k] = [
+				"tm" => time(),
+				"sessionId" => $sessionId
+			];
+		});
+	}
 }
 
 class LoginImpBase
@@ -172,7 +236,7 @@ class LoginImpBase
 		//查询是否绑定微信用户
 		$row = queryOne("SELECT id, weixinKey FROM User WHERE phone=$phone", true);
 		if(isset($row["weixinKey"])){ //绑定过
-			throw new MyException(E_AUTHFAIL, "phone had binding", "该手机已经被绑定");
+			jdRet(E_AUTHFAIL, "phone had binding", "该手机已经被绑定");
 		}
 		if(isset($row["id"])){ //将微信用户merge过来
 			//取出weixinKey
@@ -226,7 +290,7 @@ function genDynCode($type)
 	$t = substr($type, 0, 1);
 	$n = (int)substr($type, 1);
 	if ($n <= 0)
-		throw new MyException(E_PARAM, "Bad type '$type' for genCode");
+		jdRet(E_PARAM, "Bad type '$type' for genCode");
 	$r = '';
 	for ($i=0; $i<$n; ++$i) {
 		$r .= randChr($t);
@@ -250,17 +314,17 @@ function validateDynCode($code, $phone = null)
 		goto nx;
 
 	if (is_null($code1) || is_null($phone1))
-		throw new MyException(E_FORBIDDEN, "gencode required", "请先发送验证码!");
+		jdRet(E_FORBIDDEN, "gencode required", "请先发送验证码!");
 
 	
 	if (time() - $codetm > 60*5)
-		throw new MyException(E_FORBIDDEN, "code expires (max 5min)", "验证码已过期(有效期5分钟)");
+		jdRet(E_FORBIDDEN, "code expires (max 5min)", "验证码已过期(有效期5分钟)");
 
 	if ($code != $code1)
-		throw new MyException(E_PARAM, "bad code", "验证码错误");
+		jdRet(E_PARAM, "bad code", "验证码错误");
 
 	if ($phone != null && $phone != $phone1)
-		throw new MyException(E_PARAM, "bad phone number. expect for phone '$phone1'");
+		jdRet(E_PARAM, "bad phone number. expect for phone '$phone1'");
 
 nx:
 	unset($_SESSION["code"]);
@@ -274,14 +338,14 @@ function api_genCode()
 {
 	$phone = mparam("phone");
 	if ($phone && !preg_match('/^\d{11}$/', $phone)) 
-		throw new MyException(E_PARAM, "bad phone number", "手机号不合法");
+		jdRet(E_PARAM, "bad phone number", "手机号不合法");
 
 	$type = param("type", "d6");
 	$debug = $GLOBALS["TEST_MODE"]? param("debug/b", false): false;
 	$codetm = $_SESSION["codetm"] ?: 0;
 	# dont generate again in 60s
 	if (!$debug && time() - $codetm < 55) // 说60s, 其实不到, 避免时间差一点导致出错.
-		throw new MyException(E_FORBIDDEN, "gencode is not allowed to call again in 60s", "60秒内只能生成一次验证码");
+		jdRet(E_FORBIDDEN, "gencode is not allowed to call again in 60s", "60秒内只能生成一次验证码");
 	# TODO: not allow to gencode again for the same phone in 60s
 
 	$_SESSION["phone"] = $phone;
@@ -301,7 +365,7 @@ function api_genCode()
 function api_reg()
 {
 	if (! Login::$allowManualReg)
-		throw new MyException(E_FORBIDDEN, "manual reg is disabled.", "系统未开放用户注册。");
+		jdRet(E_FORBIDDEN, "manual reg is disabled.", "系统未开放用户注册。");
 
 	list($uname, $phone) = mparam(["uname", "phone"], "P");
 	$pwd = mparam("pwd", "P");
@@ -309,12 +373,12 @@ function api_reg()
 	if (isset($uname)) {
 		$rv = queryOne("SELECT 1 FROM User WHERE uname=" . Q($uname));
 		if ($rv !== false)
-			throw new MyException(E_PARAM, "duplicate uname", "用户名已存在");
+			jdRet(E_PARAM, "duplicate uname", "用户名已存在");
 	}
 	else if (isset($phone)) {
 		$rv = queryOne("SELECT 1 FROM User WHERE phone=" . Q($phone));
 		if ($rv !== false)
-			throw new MyException(E_PARAM, "duplicate phone", "手机号已存在");
+			jdRet(E_PARAM, "duplicate phone", "手机号已存在");
 	}
 
 	addToPwdTable($pwd);
@@ -386,7 +450,7 @@ function genLoginToken(&$ret, $uname, $pwd)
 	$data = [
 		"uname" => $uname,
 		"pwd" => $pwd,
-		"create" => time(0),
+		"create" => time(),
 		"expire" => 99999999
 	];
 	$token = jdEncrypt(serialize($data), "E");
@@ -401,27 +465,27 @@ function parseLoginToken($token)
 	if ($data === false) {
 		$data = @unserialize(myEncrypt($token, "D"));
 		if ($data === false)
-			throw new MyException(E_AUTHFAIL, "Bad login token!");
+			jdRet(E_AUTHFAIL, "Bad login token!");
 	}
 
 	$diff = array_diff(["uname", "pwd", "create", "expire"], array_keys($data));
 	if (count($diff) != 0)
-		throw new MyException(E_AUTHFAIL, "Bad login token (miss some fields)!");
+		jdRet(E_AUTHFAIL, "Bad login token (miss some fields)!");
 	
 	// TODO: check timeout
-	$now = time(0);
+	$now = time();
 	if ((int)$data["create"] + (int)$data["expire"] < $now)
-		throw new MyException(E_AUTHFAIL, "token exipres");
+		jdRet(E_AUTHFAIL, "token exipres");
 
 	return $data;
 }
 
 function api_login()
 {
-	$type = getAppType();
+	$type = getJDEnv()->appType;
 
 	if ($type != "user" && $type != "emp" && $type != "admin") {
-		throw new MyException(E_PARAM, "Unknown type `$type`");
+		jdRet(E_PARAM, "Unknown type `$type`");
 	}
 
 	$token = param("token");
@@ -473,7 +537,7 @@ function api_login()
 			}
 		}
 		if (!isset($ret))
-			throw new MyException(E_AUTHFAIL, "bad uname or password", "手机号或密码错误");
+			jdRet(E_AUTHFAIL, "bad uname or password", "手机号或密码错误");
 
 		$_SESSION["uid"] = $ret["id"];
 	}
@@ -494,7 +558,7 @@ function api_login()
 			$ret = ['id' => $row['id']];
 		}
 		if (!isset($ret))
-			throw new MyException(E_AUTHFAIL, "bad uname or password", "用户名或密码错误");
+			jdRet(E_AUTHFAIL, "bad uname or password", "用户名或密码错误");
 		
 		$_SESSION["empId"] = $ret["id"];
 		if ($row && $row["perms"]) {
@@ -505,9 +569,9 @@ function api_login()
 	else if ($type == "admin") {
 		list ($uname1, $pwd1) = getCred(getenv("P_ADMIN_CRED"));
 		if (! isset($uname1))
-			throw new MyException(E_AUTHFAIL, "admin user is not enabled.", "超级管理员用户未设置，不可登录。");
+			jdRet(E_AUTHFAIL, "admin user is not enabled.", "超级管理员用户未设置，不可登录。");
 		if ($uname != $uname1 || $pwd != $pwd1)
-			throw new MyException(E_AUTHFAIL, "bad uname or password", "用户名或密码错误");
+			jdRet(E_AUTHFAIL, "bad uname or password", "用户名或密码错误");
 		$adminId = 1;
 		$_SESSION["adminId"] = $adminId;
 		$ret = ["id" => $adminId, "uname" => $uname1];
@@ -524,12 +588,33 @@ function api_login()
 	if (! isset($token)) {
 		genLoginToken($ret, $uname, $pwd);
 	}
+	Login::supportOneLogin(false);
+	return $ret;
+}
+
+function api_whoami()
+{
+	$type = getJDEnv()->appType;
+
+	if ($type == "user") {
+		$ret = callSvcInt("User.get");
+	}
+	elseif($type == "emp") {
+		$ret = callSvcInt("Employee.get");
+	}
+	else if ($type == "admin") {
+		checkAuth(AUTH_ADMIN);
+		$adminId = $_SESSION["adminId"];
+		list ($uname1, $pwd1) = getCred(getenv("P_ADMIN_CRED"));
+		$ret = ["id" => $adminId, "uname" => $uname1];
+	}
 	return $ret;
 }
 
 function api_logout()
 {
 	@session_destroy();
+	Login::supportOneLogin(true);
 	return "OK";
 }
 
@@ -577,7 +662,7 @@ function addToPwdTable($pwd)
 
 function api_chpwd()
 {
-	$type = getAppType();
+	$type = getJDEnv()->appType;
 
 	if ($type == "user") {
 		$phone = param("phone");
@@ -588,7 +673,7 @@ function api_chpwd()
 		else {
 			$uid = queryOne("SELECT id FROM User WHERE phone=" . Q($phone));
 			if ($uid === false)
-				throw new MyException(E_AUTHFAIL, "bad user", "手机号未注册");
+				jdRet(E_AUTHFAIL, "bad user", "手机号未注册");
 		}
 	}
 	elseif($type == "emp") {
@@ -611,7 +696,7 @@ function api_chpwd()
 		}
 		$row = queryOne($sql);
 		if ($row === false)
-			throw new MyException(E_AUTHFAIL, "bad password", "密码验证失败");
+			jdRet(E_AUTHFAIL, "bad password", "密码验证失败");
 	}
 	else { // 使用验证码
 		validateDynCode($code);
@@ -656,7 +741,7 @@ function api_login2()
 	// 成功时返回 {openid, session_key} (没有errcode!), 失败时返回 {errcode, errmsg}
 	if (@!$ret["openid"]) {
 		logit("login2(wxCode) error: $rv");
-		throw new MyException(E_AUTHFAIL, @$ret["errmsg"]);
+		jdRet(E_AUTHFAIL, @$ret["errmsg"]);
 	}
 	// {openid, session_key, unionid?, ...}
 	// TODO: get user info?

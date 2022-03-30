@@ -11,7 +11,7 @@ class AC2_UDT extends AccessControl
 		if ($name) {
 			$this->id = queryOne("SELECT id FROM UDT", false, ["name"=>$name]);
 			if (!$this->id)
-				throw new MyException(E_PARAM);
+				jdRet(E_PARAM);
 		}
 	}
 }

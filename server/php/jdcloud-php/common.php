@@ -32,18 +32,23 @@ $ERRINFO = [
 @param $internalMsg String. 内部错误信息，前端不应处理。
 @param $outMsg String. 错误信息。如果为空，则会自动根据$code填上相应的错误信息。
 
+(v6) 内部使用，外部调用应使用jdRet。
+
 抛出错误，中断执行:
 
+	jdRet(E_PARAM, "Bad Request - numeric param `$name`=`$ret`.", "需要数值型参数");
+	或
 	throw new MyException(E_PARAM, "Bad Request - numeric param `$name`=`$ret`.", "需要数值型参数");
 
 注意：在API中抛出MyException异常后，将回滚对数据库的操作，即所有之前数据库操作都将失效。
-如果不想回滚，可以用：
+如果不想回滚，可在抛错前手工提交(dbCommit)。
 
 	$this->cancelOrder($id); // 数据库操作
-	setRet(E_FORBIDDEN, "付款码已失效", "fail to pay order $id: overdue");
-	throw new DirectReturn();
+	dbCommit();
+	jdRet(E_FORBIDDEN, "付款码已失效", "fail to pay order $id: overdue");
+
+@see jdRet
 */
-# Most time outMsg is optional because it can be filled according to code. It's set when you want to tell user the exact error.
 class MyException extends LogicException 
 {
 	function __construct($code, $internalMsg = null, $outMsg = null, $ex = null) {
@@ -67,42 +72,89 @@ class MyException extends LogicException
 }
 
 /**
-@class DirectReturn
+@class DirectReturn($data=null, $isUserFmt=false)
 
-抛出该异常，可以中断执行直接返回，不显示任何错误。
+(v6) 内部使用，外部调用应使用jdRet。
 
-例：API返回非BPQ协议标准数据，可以跳出setRet而直接返回：
+中断执行，当作调用成功立即返回。
 
-	echo "return data";
+	jdRet();
+	或
 	throw new DirectReturn();
+	// 返回 [0, null]
 
-例：返回指定数据后立即中断处理：
+例：返回指定数据：
 
-	setRet(0, ["id"=>1]);
-	throw new DirectReturn();
+	jdRet(0, ["id"=>1]);
+	或
+	throw new DirectReturn(["id"=>1]);
+	// 返回[0, {"id":1}]
 
+例：直接返回非标数据（非筋斗云格式）：
+
+	$str = '{"id":1}'; // 比如自定义的JSON
+	// $str = '<id>1</id>'; // 比如XML
+	jdRet(null, $str);
+	或
+	throw new DirectReturn($str, true);
+	// 返回 {"id":1}
+
+@see jdRet
 */
 class DirectReturn extends LogicException 
 {
+	public $data;
+	public $isUserFmt;
+	function __construct($data = null, $isUserFmt = false) {
+		$this->data = $data;
+		$this->isUserFmt = $isUserFmt;
+	}
 }
 
 /**
-@fn jdRet($code, $internalMsg?, $msg?)
+@fn jdRet($code?, $internalMsg?, $msg?)
+
+直接返回（可用echo/readfile等自行输出返回内容，否则系统不自动输出）：
+
+	readfile(f1);
+	jdRet();
 
 成功返回：
 
-	jdRet(E_OK, ["id" => 100]);
+	jdRet(0);
+	// 返回 [0, null]
+
+	jdRet(0, ["id" => 100]);
+	// 返回 [0, {"id": 100}]
+
+	// 直接返回已有的JSON串:
+	$str = '{"id": 100}';
+	jdRet(0, dbExpr($str));
+	// 返回`[0, {"id":100}]`
 
 出错返回：
 
-	jdRet(E_SERVER);
+	jdRet(E_PARAM);
+	jdRet(E_PARAM, "bad param"); // 第2参数是用于调试的错误信息，一般用英文
+	jdRet(E_PARAM, "bad param", "参数错"); // 第3参数是给用户看的错误信息，一般用中文
+	// 返回 [1, "参数错", "bad param"] 注意最终输出JSON数组中第2、3参数顺序对调了，以符合筋斗云[code, data, debuginfo...]的格式。
+
+(v6) 自定义返回：(code传null)
+
+	jdRet(null, ["code" => 0, "msg" => "hello"]);
+	或
+	jdRet(null, '{"code": 0, "msg": "hello"}');
+	// 返回`{"code": 0, "msg": "hello"}`，注意不是标准筋斗云返回格式。
+
+更规范地，对于接口自定义格式输出，应使用 $X_RET_FN 定义转换函数。
+
+@see $X_RET_FN
 */
-function jdRet($code, $internalMsg = null, $msg = null)
+function jdRet($code = null, $data = null, $msg = null)
 {
 	if ($code)
-		throw new MyException($code, $internalMsg, $msg);
-	setRet(0, $internalMsg);
-	throw new DirectReturn();
+		throw new MyException($code, $data, $msg);
+	throw new DirectReturn($data, $code === null);
 }
 
 /**
@@ -164,7 +216,7 @@ command-line interface. e.g. run "php x.php"
 */
 function isCLI()
 {
-	return php_sapi_name() == "cli";
+	return php_sapi_name() == "cli" && !isSwoole();
 }
 
 /** 
@@ -175,6 +227,11 @@ php built-in web server e.g. run "php -S 0.0.0.0:8080"
 function isCLIServer()
 {
 	return php_sapi_name() == "cli-server";
+}
+
+function isSwoole()
+{
+	return function_exists("swoole_version");
 }
 
 /** 
@@ -573,7 +630,7 @@ function arrFind($arr, $fn)
 }
 
 /**
-@fn arrMap($arr, $fn)
+@fn arrMap($arr, $fn, $doFilter=false)
 
 示例：
 
@@ -583,14 +640,18 @@ function arrFind($arr, $fn)
 	});
 	// [1, 2]
 
+如果doFilter为true，则return null或直接return时，该元素被过滤掉。
 */
-function arrMap($arr, $fn)
+function arrMap($arr, $fn, $doFilter=false)
 {
 	assert(is_array($arr));
 	assert(is_callable($fn));
 	$ret = [];
 	foreach ($arr as $e) {
-		$ret[] = $fn($e);
+		$rv = $fn($e);
+		if ($doFilter && $rv === null)
+			continue;
+		$ret[] = $rv;
 	}
 	return $ret;
 }
@@ -616,7 +677,7 @@ function arrGrep($arr, $fn, $mapFn=null)
 {
 	assert(is_array($arr));
 	assert(is_callable($fn));
-	assert(is_callable($mapFn));
+	assert(is_null($mapFn) || is_callable($mapFn));
 	$ret = [];
 	foreach ($arr as $e) {
 		if ($fn($e)) {
@@ -707,6 +768,8 @@ function logit($s, $addHeader=true, $type="trace")
 function jsonEncode($data, $doPretty=false)
 {
 	$flag = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
+	if (defined("JSON_INVALID_UTF8_SUBSTITUTE")) // php7 JSON_INVALID_UTF8_IGNORE
+		$flag |= JSON_INVALID_UTF8_SUBSTITUTE;
 	if ($doPretty)
 		$flag |= JSON_PRETTY_PRINT;
 	return json_encode($data, $flag);
@@ -834,13 +897,20 @@ function text2html($s)
 }
 
 /**
-@fn pivot($objArr, $gcols, $ycolCnt=1)
+@fn pivot($objArr, $gcols, $ycolCnt=1, $pivotSumField=null, $gres=null)
 
 将行转置到列。一般用于统计分析数据处理。
 
 - $gcols为转置字段，可以是一个或多个字段。可以是个字符串("f1" 或 "f1,f2")，也可以是个数组（如["f1","f2"]）
 - $objArr是对象数组，默认最后一列是统计列，如果想要最后两列作为统计列，可以指定参数ycolCnt=2。注意此时最终统计值将是一个数组。
 - 以objArr[0]这个对象为基准，除去最后ycolCnt个字段做为统计列(ycols)，再除去gcols指定的要转置到列的字段，剩下的列就是xcols：相同的xcols会归并到一行中。
+
+objArr的列中包括三类：
+
+	分组列(含转置列) 普通列 统计列
+
+- 统计列必须在最后面，由ycolCnt指定有几列，必须为数值列
+- gres指定分组列（多个列以逗号分隔），gcols指定转置列，gres应包含gcols。如果未指定gres，则表示除了统计列都是分组列（即没有普通列）
 
 示例：
 
@@ -864,6 +934,21 @@ function text2html($s)
 	];
 
 注意：结果的第一行中，会包含所有可能出现的列，没有值的列填null。
+
+如果需要行列统计，可指定pivotSumField="合计"，这样就会添加一列叫"合计"，且添加一行统计行
+
+	$arr1 = pivot($arr, "cateId,cateName", 1, "合计");
+
+结果为:
+
+	$arr1 = [
+		["y"=>2019, "m"=>11, "1-衣服"=>20000, "2-食品"=>12000, "3-电器"=>null, "合计"=>32000],
+		["y"=>2019, "m"=>12, "2-食品"=>15000, "合计"=>15000],
+		["y"=>2020, "m"=>2, "1-衣服"=>19000, "3-电器"=>28000, "合计"=>47000],
+		["1-衣服"=>39000, "2-食品"=>27000, "3-电器"=>28000, "合计"=>94000]
+	];
+
+特别地，如果只有1行，则不添加统计行，如果只有1列数据列，不添加统计列。
 
 在后端查询时, 往往用id字段分组但显示为名字, 可以用hiddenFields参数指定不要返回的字段:
 例如上例中cateId若只需要参与查询, 不需要返回在最终结果中：
@@ -905,7 +990,7 @@ function text2html($s)
 	];
 
 */
-function pivot($objArr, $gcols, $ycolCnt=1)
+function pivot($objArr, $gcols, $ycolCnt=1, $pivotSumField=null, $gres=null)
 {
 	if (count($objArr) == 0)
 		return $objArr;
@@ -924,10 +1009,17 @@ function pivot($objArr, $gcols, $ycolCnt=1)
 			throw new MyException(E_PARAM, "bad gcol $gcol: not in cols", "分组列不正确: $gcol");
 		}
 	}
-		
+
 	$xMap = []; // {x=>新行}
 	$xcols = array_diff($cols, $gcols);
-//	$xcolCnt = count($xcols);
+	$xcols1 = null; // 用于标识一行
+	if ($gres) {
+		$gresArr = preg_split('/\s*,\s*/', $gres);
+		$xcols1 = array_diff($gresArr, $gcols);
+	}
+	else {
+		$xcols1 = $xcols;
+	}
 
 	$firstX = null;
 	foreach ($objArr as $row) {
@@ -936,12 +1028,15 @@ function pivot($objArr, $gcols, $ycolCnt=1)
 		foreach ($xcols as $col) {
 			$xarr[$col] = $row[$col];
 		}
-		$x = join('-', $xarr);
+		$xarr1 = array_map(function ($col) use ($row) {
+			return is_null($row[$col])? "(null)": $row[$col];
+		}, $xcols1);
+		$x = join('-', $xarr1);
 
 		$garr = array_map(function ($col) use ($row) {
-			return $row[$col];
+			return is_null($row[$col])? "(null)": $row[$col];
 		}, $gcols);
-		$g = join('-', $garr) ?: "(null)";
+		$g = join('-', $garr);
 
 		if (! array_key_exists($x, $xMap)) {
 			$xMap[$x] = $xarr;
@@ -973,6 +1068,46 @@ function pivot($objArr, $gcols, $ycolCnt=1)
 		}
 	}
 	$ret = array_values($xMap);
+
+	// 自动添加统计列和统计行, 只有一行不添加统计行，只有一列不添加统计列
+	if ($pivotSumField && count($ret) > 0) {
+		$xcolCnt = count($xcols);
+		$addSumCol = (count($ret[0]) - $xcolCnt > 1);
+		$sumRow = [];
+		foreach ($ret as &$row) {
+			$coli = 0;
+			$rowSum = null;
+			foreach ($row as $col=>$e) {
+				if ($coli++ < $xcolCnt || !$e) {
+					continue;
+				}
+				if ($ycolCnt == 1) {
+					$rowSum += $e;
+					$sumRow[$col] += $e;
+					if ($addSumCol) {
+						$sumRow[$pivotSumField] += $e;
+					}
+				}
+				else {
+					for ($i=0; $i<$ycolCnt; ++$i) {
+						$rowSum[$i] += $e[$i];
+						$sumRow[$col][$i] += $e[$i];
+						if ($addSumCol) {
+							$sumRow[$pivotSumField][$i] += $e[$i];
+						}
+					}
+				}
+			}
+			if ($addSumCol)
+				$row[$pivotSumField] = $rowSum;
+		}
+		if (count($ret) > 1) {
+			if ($xcolCnt > 0) {
+				$sumRow[$xcols[0]] = $pivotSumField;
+			}
+			$ret[] = $sumRow;
+		}
+	}
 	return $ret;
 }
 
@@ -998,8 +1133,13 @@ function myround($val, $n=0)
 
 显示工时。以"30s"（秒）, "5m"（分）, "1.2h"（小时）, "3d"（天）这种样式显示。
 */
-function mh($val)
+function mh($val, $mhUnit=null)
 {
+	if ($mhUnit == "h")
+		return myround($val, 4);
+	if ($mhUnit == "m")
+		return myround($val * 60, 4);
+
 	if ($val < 0.0166) // 小于1分钟，以秒计
 		return myround($val * 3600) . "s";
 	if ($val < 1) // 小于1小时，以分钟计
@@ -1098,4 +1238,324 @@ function makeTree($arr, $idField="id", $fatherIdField="fatherId", $childrenField
 	return $ret;
 }
 
+/**
+@fn readBlock($getLine, $makeBlock, $isNewBlock, $handleBlock, $opt)
+
+readBlock编程模式
+
+原型问题：读一个文件，其中以"#"开头的行(curLine)表示一个块(block)开始，这个块一直到下一个块开始处才结束。如：
+
+	# block1
+	paragraph 1
+	paragraph 2
+	# block 2
+	paragraph 3
+	# block 3
+
+提供以下回调函数，将解析出每个块，并最终交给handleBlock回调处理：
+
+	$block = null;
+	$curLine = getLine() // 读一行，返回null或false表示结束
+	makeBlock(&$block, $curLine) // 读一行时，添加到block
+	isNewBlock($curLine); // 判断一个新的block开始
+	handleBlock($block) // 处理block
+
+- opt: {skipStart=false} 可设置忽略开头行
+
+使用模型后示例如下：
+
+	$fp = fopen("1.txt","r");
+	readBlock(function () use ($fp) { // getLine
+		return fgets($fp);
+	}, function (&$block, $curLine) { // makeBlock
+		$block .= $curLine;
+	}, function ($curLine) { // isNewBlock
+		return $curLine[0] == "#";
+	}, function ($block) { // handleBlock
+		echo(">>>$block<<<\n");
+	});
+	fclose($fp);
+
+假如以数组方式处理，示例如下（注意除了getLine不同，其余部分相同）：
+
+	$arr = file("1.txt");
+	$i = 0;
+	readBlock(function () use ($arr, &$i) { // getLine
+		if ($i == count($arr))
+			return false;
+		return $arr[$i++];
+	}, function (&$block, $curLine) { // makeBlock
+		$block .= $curLine;
+	}, function ($curLine) { // isNewBlock
+		return $curLine[0] == "#";
+	}, function ($block) { // handleBlock
+		echo("$block\n");
+	});
+
+## 参考原型程序
+
+	$fp = fopen("1.txt","r");
+	$block = null;
+	while (true) {
+		$curLine = fgets($fp);
+		if ($curLine === false || ($block != null && $curLine[0] == "#")) {
+			handleBlock($block);
+			if ($curLine === false)
+				break;
+			$block = $curLine;
+			continue;
+		}
+		$block .= $curLine;
+	}
+	fclose($fp);
+
+## 协程(php5.5后支持)
+
+将`$handleBlock($block)`调用改为`yield $block`可提供协程式编程风格，可把循环控制交给主程序，调用示例：
+
+	$fp = fopen("1.txt","r");
+	$g = readBlockG(...);
+	while($g->valid()) {
+		$block = $g->current();
+		handleBlock($block);
+		$g->next();
+	}
+	fclose($fp);
+
+*/
+function readBlock($getLine, $makeBlock, $isNewBlock, $handleBlock, $opt=[])
+{
+	$opt += ["skipStart" => false];
+	$block = null;
+	while (true) {
+		$curLine = $getLine();
+		$isEnd = ($curLine === false || $curLine === null);
+		if ($isEnd || $isNewBlock($curLine)) {
+			if ($block != null)
+				$handleBlock($block);
+			if ($isEnd)
+				break;
+			$block = null; // init
+			if (! $opt["skipStart"])
+				$makeBlock($block, $curLine);
+			continue;
+		}
+		$makeBlock($block, $curLine);
+	}
+}
+
+/**
+@fn readBlock2($getLine, $makeBlock, $isBlockStart, $isBlockEnd, $handleBlock, $opt=[])
+
+readBlock2编程模式
+
+原型问题：读一个文件，其中以"#"开头的行(curLine)表示一个块(block)开始，以"."开头的行表示一个块结束，如：
+
+	# block1
+	paragraph 1
+	paragraph 2
+	.
+	others -- out of block
+	# block 2
+	paragraph 3
+	.
+	other2 -- out of block
+	# block 3
+
+提供以下回调函数，将解析出每个块，并最终交给handleBlock回调处理：
+
+	$block = null;
+	$curLine = getLine() // 读一行，返回null或false表示结束
+	makeBlock(&$block, $curLine) // 读一行时，添加到block
+	isBlockStart($curLine); // 判断一个block开始
+	isBlockEnd($curLine); // 判断一个block结束
+	handleBlock($block) // 处理block
+
+- opt: {skipStart=false, skipEnd=true} 可设置忽略开头行，以及包含结束行
+
+使用模型后的代码：
+
+	$fp = fopen("1.txt","r");
+	readBlock2(function () use ($fp) { // getLine
+		return fgets($fp);
+	}, function (&$block, $curLine) { // makeBlock
+		$block .= $curLine;
+	}, function ($curLine) { // isBlockStart
+		return $curLine[0] == "#";
+	}, function ($curLine) { // isBlockEnd
+		return $curLine[0] == ".";
+	}, function ($block) { // handleBlock
+		echo(">>>$block<<<\n");
+	});
+	fclose($fp);
+
+设置选项示例：
+
+	readBlock2(...
+	, ["skipStart"=>true]);
+
+原型代码：
+
+	$fp = fopen("1.txt","r");
+	$block = null;
+	$blockFlag = false;
+	while (true) {
+		$curLine = fgets($fp);
+		if ($curLine === false)
+			break;
+		if (! $blockFlag) {
+			if ($curLine[0] == "#")
+				$blockFlag = true;
+		}
+		else if ($curLine[0] == '.') {
+			$blockFlag = false;
+			handleBlock($block);
+			$block = null;
+			continue;
+		}
+		if ($blockFlag)
+			$block .= $curLine;
+	}
+	fclose($fp);
+
+	function handleBlock($s)
+	{
+		echo(">>>$s<<<\n");
+	}
+*/
+function readBlock2($getLine, $makeBlock, $isBlockStart, $isBlockEnd, $handleBlock, $opt=[])
+{
+	$opt += ["skipStart"=>false, "skipEnd"=>true];
+	$block = null;
+	$blockFlag = false;
+	while (true) {
+		$curLine = $getLine();
+		if ($curLine === false || $curLine === null)
+			break;
+		if (! $blockFlag) {
+			if ($isBlockStart($curLine)) {
+				$blockFlag = true;
+				if ($opt["skipStart"])
+					continue;
+			}
+		}
+		else if ($isBlockEnd($curLine)) {
+			if (! $opt["skipEnd"])
+				$makeBlock($block, $curLine);
+			$blockFlag = false;
+			if ($block != null)
+				$handleBlock($block);
+			$block = null; // init
+			continue;
+		}
+		if ($blockFlag)
+			$makeBlock($block, $curLine);
+	}
+}
+
+/**
+@fn containsWord($str, $word)
+
+检查是否包含一个词，与stripos等函数不同，它会检查词边界，如：
+
+	$rv = containsWord("hello, world", "hello"); // true
+	$rv = containsWord("hello, world", "llo"); // false
+*/
+function containsWord($str, $word)
+{
+	if (!$str || stripos($str, $word) === false)
+		return false;
+	return !!preg_match('/\b' . $word . '\b/ui', $str);
+}
+
+/**
+@fn qstr($s, $q="'")
+
+将字符串变成引用串，默认用双引号，如：
+
+	$str1 = qstr($str);
+
+效果：
+
+	hello => "hello"
+	"i'm ok", he said. => "\"i'm ok'\", he said."
+
+也可用单引号：
+
+	$str1 = qstr($str, "'"); 
+
+效果：
+
+	hello => 'hello'
+	i'm ok => 'i\'m ok'
+
+*/
+function qstr($s, $q='"')
+{
+	$s = str_replace("\\", "\\\\", $s);
+	return $q . str_replace($q, "\\" . $q, $s) . $q;
+}
+
+/**
+@fn myexec($cmd, $errMsg = "操作失败")
+
+执行Shell命令。如果出错则jdRet并记录日志。
+
+由于php exec函数限制，为了能够输出错误信息，一般建议加错误重定向，让出错信息显示在日志或接口返回中，如：
+	
+	myexec("magick 1.jpg -resize '1200x1200>' 2.jpg 2>&1");
+	myexec("magick 1.jpg -resize '1200x1200>' 2.jpg 2>&1", "图片处理失败"); // 可定制出错消息
+	myexec("php create_file.php 2>&1 >file1"); // 注意如果'2>&1'放在最后，则错误会输出到file1中。
+
+注意：为保证兼容性，在Windows下会使用sh命令, 自动在命令中加"sh -c"。
+
+- 在Windows环境下，sh是安装git-bash后自带的（路径示例：C:\Program Files\Git\usr\bin）
+	如果使用Apache系统服务的方式（默认是SYSTEM用户执行），应确保上述命令行在系统PATH（而不只是当前用户的PATH）中。
+
+- Win10环境中Apache+php调用shell可能会卡死，应修改git-bash下的文件：/etc/nsswitch.conf （路径示例：C:\Program Files\Git\etc\nsswitch.conf）
+
+		db_home: env 
+		#db_home: env windows cygwin desc
+
+*/
+function myexec($cmd, $errMsg = "操作失败")
+{
+	if (PHP_OS === "WINNT" && !startsWith($cmd, "sh ")) {
+		$cmd = 'sh -c ' . qstr($cmd);
+	}
+	exec($cmd, $out, $rv);
+	if ($rv) {
+		$outStr = join("\n", $out);
+		logit("exec fails: $cmd\nrv=$rv, out=$outStr");
+		jdRet(E_SERVER, $outStr, $errMsg);
+	}
+}
+
+/**
+@fn redirectOut($fn)
+
+将$fn函数执行中的输出重定向，返回通过echo等方式输出的字符串。示例：
+
+	$str1 = redirectOut(function () {
+		echo("redirect 1");
+	});
+	// $str1="redirect 1"
+
+支持嵌套，示例：
+
+	$str1 = redirectOut(function () {
+		echo("redirect 1");
+		global $str2;
+		$str2 = redirectOut(function () {
+			echo("redirect 2");
+		});
+	});
+	echo($str1 . ',' . $str2);
+*/
+function redirectOut($fn)
+{
+	ob_start(function () {});
+	$fn();
+	return ob_get_flush();
+}
 // vi: foldmethod=marker

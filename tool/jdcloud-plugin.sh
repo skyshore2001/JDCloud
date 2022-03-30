@@ -7,7 +7,8 @@
 
 用法：须在项目目录下调用，假设项目目录为myproject, 插件为jdcloud-plugin-notify. 两个目录必须都使用git管理。
 
-	git clone server-pc:jdcloud-plugin-notify
+	# 用git下载插件，注意与项目目录平级
+	git clone server-pc:src/jdcloud-plugin-notify
 	cd myproject
 
 	# 安装
@@ -18,11 +19,13 @@
 	也可以用
 	./tool/jdcloud-plugin del ../jdcloud-plugin-notify
 
-	# 创建插件: 根据plugin.dat的内容创建插件到指定路径。
-	./tool/jdcloud-plugin create ../jdcloud-plugin-notify
+插件的目录结构与项目目录一致。
 
-插件的目录结构与项目目录一致。安装时，将插件目录下的文件复制到项目相应目录下，或对于项目中已有的文件，则会将内容追加到相应文件中，然后将安装信息写入plugin.dat文件中，并将相关文件均添加到git。
+安装时，将插件目录下的文件复制到项目相应目录下，或对于项目中已有的文件，则会将内容合并到相应文件中，然后将安装信息写入plugin.dat文件中，并将相关文件均添加到git。
 删除插件时，根据plugin.dat中的相应数据，删除文件或删除共享文件中插件的内容。
+目前不支持直接更新插件，可先删除再安装。
+
+特别地，插件下的README.md文件将被复制到项目下的路径`server/plugin/{插件名}.README.md`。
 
 plugin.dat格式如下：
 
@@ -32,6 +35,39 @@ plugin.dat格式如下：
 
 版本行只用于记录版本，无处理逻辑。标记为+的文件在删除插件时，会自动将追加的内容删除掉，而不是删除整个文件。
 
+## 创建插件
+
+假如要创建名为jdcloud-plugin-url的插件，须先在plugin.dat中注册插件需要的所有文件，如：
+
+	jdcloud-plugin-url	#init
+	jdcloud-plugin-url	server/url.php
+	jdcloud-plugin-url	+server/plugin/index.php
+
+其中第1行表示插件名；第2行表示将指定文件添加到插件；第3行中，文件名前有加号，表示只需要该文件将特定标识内的内容添加到插件。
+
+特定标识为`{插件名} BEGIN`和`{插件名} END`，其中的内容即为插件内容，特定标识一般包在注释内，示例：
+
+	/*! jdcloud-plugin-url BEGIN */
+	function api_getShareUrl()
+	{
+		...
+	}
+	/*! jdcloud-plugin-url END */
+
+创建一个说明文件，路径为`server/plugin/{插件名}.README.md`。这里创建`server/plugin/jdcloud-plugin-url.README.md`。
+该文件将对应插件目录下的README.md文件。
+
+接下来，创建独立的插件目录和代码库，它与项目平级：
+
+	git init jdcloud-plugin-url
+
+然后回到项目目录，调用命令，根据plugin.dat的内容创建插件到指定路径：
+
+	./tool/jdcloud-plugin create ../jdcloud-plugin-url
+
+然后进入插件目录，提交文件到git库即可。
+
+若要更新插件，也是相同步骤：更新plugin.dat，调用`jdcloud-plugin create`命令，提交文件到插件git库。
 */
 ### global
 pluginName=
@@ -48,10 +84,17 @@ function addOne() {
 		echo "append $1"
 		dstFile=$2/$1
 
+		if [[ $1 == *.html || $1 == *.md ]]; then
+			tag1="<!--"
+			tag2="-->"
+		else
+			tag1="/*!"
+			tag2="*/"
+		fi
 		echo >> $dstFile
-		echo "/*! $pluginName BEGIN */" >> $dstFile
+		echo "$tag1 $pluginName BEGIN $tag2" >> $dstFile
 		cat $1 >> $dstFile
-		echo "/*! $pluginName END */" >> $dstFile
+		echo "$tag1 $pluginName END $tag2" >> $dstFile
 		return 1
 	fi
 }

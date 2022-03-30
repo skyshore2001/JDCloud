@@ -37,10 +37,28 @@
 </ul></li>
 <li><a href="#通用对象操作接口"><span class="toc-section-number">3</span> 通用对象操作接口</a><ul>
 <li><a href="#基本增删改查操作"><span class="toc-section-number">3.1</span> 基本增删改查操作</a></li>
-<li><a href="#查询操作"><span class="toc-section-number">3.2</span> 查询操作</a></li>
+<li><a href="#查询操作"><span class="toc-section-number">3.2</span> 查询操作</a><ul>
+<li><a href="#查询条件cond"><span class="toc-section-number">3.2.1</span> 查询条件(cond)</a></li>
+<li><a href="#查询结果格式fmt"><span class="toc-section-number">3.2.2</span> 查询结果格式(fmt)</a></li>
+<li><a href="#查询结果支持分页"><span class="toc-section-number">3.2.3</span> 查询结果支持分页</a></li>
+<li><a href="#导出文件"><span class="toc-section-number">3.2.4</span> 导出文件</a></li>
+<li><a href="#枚举名字映射"><span class="toc-section-number">3.2.5</span> 枚举名字映射</a></li>
+<li><a href="#汇总统计"><span class="toc-section-number">3.2.6</span> 汇总统计</a></li>
+<li><a href="#分组统计"><span class="toc-section-number">3.2.7</span> 分组统计</a></li>
+<li><a href="#模糊查询"><span class="toc-section-number">3.2.8</span> 模糊查询</a></li>
+</ul></li>
 <li><a href="#查询分页机制"><span class="toc-section-number">3.3</span> 查询分页机制</a></li>
-<li><a href="#批量导入数据"><span class="toc-section-number">3.4</span> 批量导入数据</a></li>
-<li><a href="#子表的增删改查操作"><span class="toc-section-number">3.5</span> 子表的增删改查操作</a></li>
+<li><a href="#批量导入数据"><span class="toc-section-number">3.4</span> 批量导入数据</a><ul>
+<li><a href="#批量导入支持三种方式"><span class="toc-section-number">3.4.1</span> 批量导入支持三种方式</a></li>
+<li><a href="#通过导入实现批量更新"><span class="toc-section-number">3.4.2</span> 通过导入实现批量更新</a></li>
+<li><a href="#支持带子表导入"><span class="toc-section-number">3.4.3</span> 支持带子表导入</a></li>
+<li><a href="#支持列名映射"><span class="toc-section-number">3.4.4</span> 支持列名映射</a></li>
+</ul></li>
+<li><a href="#子表的增删改查操作"><span class="toc-section-number">3.5</span> 子表的增删改查操作</a><ul>
+<li><a href="#子表添加"><span class="toc-section-number">3.5.1</span> 子表添加</a></li>
+<li><a href="#子表查询"><span class="toc-section-number">3.5.2</span> 子表查询</a></li>
+<li><a href="#子表更新与删除"><span class="toc-section-number">3.5.3</span> 子表更新与删除</a></li>
+</ul></li>
 </ul></li>
 <li><a href="#批请求"><span class="toc-section-number">4</span> 批请求</a></li>
 <li><a href="#服务端信息反馈x-daca头"><span class="toc-section-number">5</span> 服务端信息反馈/X-Daca头</a></li>
@@ -271,19 +289,34 @@ Ordr.get(id) -&gt; { id, dscr, %addr, @items }
 <h3 id="基本增删改查操作"><span class="header-section-number">3.1</span> 基本增删改查操作</h3>
 <p><strong>[添加操作]</strong></p>
 <p>接口原型：</p>
-<pre><code>Obj.add()(POST fields...) -&gt; id
+<pre><code>Obj.add(uniKey?, uniKeyMode?=set)(POST fields...) -&gt; id
 Obj.add(res)(POST fields...) -&gt; {fields...} (返回的字段由res参数指定)</code></pre>
 <p>对象的属性通过POST请求内容给出，为一个个键值对。 添加完成后，默认返回新对象的id, 如果想多返回其它字段，可设置res参数，如</p>
-<pre><code>callSvr(&quot;Ordr.add&quot;, $.noop, {status:&quot;CR&quot;, total:100}) -&gt; 809
+<pre><code>callSvr(&quot;Ordr.add&quot;, $.noop, {status:&quot;CR&quot;, total:100})
+返回
+809
 
-callSvr(&quot;Ordr.add&quot;, {res:&quot;id,status,total&quot;}, $.noop, {status:&quot;CR&quot;, total:100}) -&gt; {id: 810, status:&quot;CR&quot;, total: 100}</code></pre>
+callSvr(&quot;Ordr.add&quot;, {res:&quot;id,status,total&quot;}, $.noop, {status:&quot;CR&quot;, total:100})
+返回
+{id: 810, status:&quot;CR&quot;, total: 100}</code></pre>
 <p>对象id支持自动生成。</p>
+<ul>
+<li><p>uniKey: 唯一索引字段. 如果指定, 则以该字段查询记录是否存在(调用query接口）, 存在则更新（调用set接口）。例如&quot;code&quot;, 也支持多个字段（用于关联表），如&quot;bpId,itemId&quot;。 uniKey支持使用虚拟字段（如关联字段）。 该字段常用于检查记录不存在则添加记录，存在则更新记录；也用于避免记录重复添加。 特别地，如果uniKey以&quot;!&quot;结尾（如&quot;code!&quot;），则表示必须匹配到记录，不匹配则报错而不做添加，常用于通过导入批量更新数据。若不加!后缀也可更新记录，但若不匹配时会误添加。</p></li>
+<li>uniKeyMode: 在uniKey匹配时，默认处理是更新操作，可以通过本参数来定制匹配后的操作，其值定义为：
+<ul>
+<li>set: （默认）转为更新操作（如果要更新的字段刚好就是uniKey字段，则忽略更新），接口最终返回已存在记录的id。</li>
+<li>error: 报错：已存在重复记录。</li>
+<li>ignore: 忽略添加操作，接口直接返回已存在记录的id。</li>
+</ul></li>
+</ul>
 <p><strong>[更新操作]</strong></p>
 <p>接口原型：</p>
 <pre><code>Obj.set(id)(POST fields...)</code></pre>
 <p>与add操作类似，对象属性的修改通过POST请求传递，而在URL参数中需要有id标识哪个对象。</p>
 <p>示例：</p>
-<pre><code>callSvr(&quot;Obj.set&quot;, {id: 809}, $.noop, {status:&quot;PA&quot;, empId:10}) -&gt; &quot;OK&quot;</code></pre>
+<pre><code>callSvr(&quot;Obj.set&quot;, {id: 809}, $.noop, {status:&quot;PA&quot;, empId:10})
+返回
+&quot;OK&quot;</code></pre>
 <p>如果未指定返回值，一般默认返回&quot;OK&quot;。下面示例也将省略返回值。</p>
 <p>如果要将某字段置空, 可以用空串或&quot;null&quot; (小写)。例如：</p>
 <pre><code>callSvr(&quot;Obj.set&quot;, {id: 809}, $.noop, {picId:&quot;&quot;, empId:&quot;null&quot;})
@@ -292,8 +325,10 @@ callSvr(&quot;Ordr.add&quot;, {res:&quot;id,status,total&quot;}, $.noop, {status
 <p>另外注意，上例是设置字段为null，而不是设置成空串&quot;&quot;。 如果要将字符串置空串(一般不建议使用)，可以用&quot;empty&quot;, 例如：</p>
 <pre><code>callSvr(&quot;Obj.set&quot;, {id: 809}, $.noop, {sn: &quot;empty&quot;})</code></pre>
 <p>假如sn是数值类型，会导致其值为0或0.0。</p>
-<p>支持根据条件批量更新，使用setIf接口：</p>
-<pre><code>Obj.setIf(cond)(POST fields...)</code></pre>
+<p>支持根据条件批量更新，使用setIf或batchSet接口：</p>
+<pre><code>Obj.setIf(cond)(POST fields...)
+Obj.batchSet(cond)(POST fields...)</code></pre>
+<p>注意：setIf接口相当于执行1条数据库SQL UPDATE语句，不执行业务逻辑，速度快； 而batchSet接口先根据条件查出所有记录，然后对每个记录逐一调用set接口进行更新，会执行每条记录更新时的业务逻辑。</p>
 <p>示例：</p>
 <pre><code>callSvr(&quot;Obj.setIf&quot;, {cond: &quot;tm&gt;=&#39;2010-1-1&#39; and tm&lt;&#39;2011-1-1&#39;&quot;}, $.noop, {dscr: &quot;已处理&quot;});</code></pre>
 <p><strong>[获取对象操作]</strong></p>
@@ -306,7 +341,9 @@ callSvr(&quot;Ordr.add&quot;, {res:&quot;id,status,total&quot;}, $.noop, {status
 <p>根据id删除一个对象，例如：</p>
 <pre><code>callSvr(&quot;Obj.del&quot;, {id: 809})</code></pre>
 <p>支持根据条件进行批量删除，使用delIf接口：</p>
-<pre><code>Obj.delIf(cond)</code></pre>
+<pre><code>Obj.delIf(cond)
+Obj.batchDel(cond)</code></pre>
+<p>delIf与batchDel的区别，类似于setIf与batchSet的区别。前者只根据条件执行一条SQL DELETE语句，速度快；后者是先查出符合条件的所有记录，再逐一记录删除（走del接口）。</p>
 <p>示例：</p>
 <pre><code>callSvr(&quot;Obj.delIf&quot;, {cond: &quot;tm&gt;=&#39;2010-1-1&#39; and tm&lt;&#39;2011-1-1&#39;&quot;});</code></pre>
 <h3 id="查询操作"><span class="header-section-number">3.2</span> 查询操作</h3>
@@ -343,12 +380,56 @@ Obj.query(fmt=csv/txt/excel, ...) -&gt; 文件内容</code></pre>
 <li>res, orderby只能是字段（或虚拟字段）列表，不能出现表达式、函数、子查询等。特别地，res参数允许部分统计函数，见上面示例。</li>
 <li>cond可以由多个条件通过and或or组合而成，而每个条件的左边是字段名，右边是常量。不允许对字段运算，不允许子查询（不可以有select等关键字）。</li>
 </ul>
+<h4 id="查询条件cond"><span class="header-section-number">3.2.1</span> 查询条件(cond)</h4>
 <p>用参数<code>cond</code>指定查询条件, 如：</p>
 <pre><code>{cond: &quot;type=&#39;A&#39; and name like &#39;%hello%&#39;&quot;}</code></pre>
+<p>也可以使用键值对方式：</p>
+<pre><code>{cond: {type: &quot;A&quot;, name: &quot;~hello&quot;} }</code></pre>
 <p>以下情况都不允许：</p>
 <pre><code>left(type, 1)=&#39;A&#39;  -- 条件左边只能是字段，不允许计算或函数
 type=type2  -- 字段与字段比较不允许
 type in (select type from table2) -- 子查询不允许</code></pre>
+<p>cond参数可以同时在URL参数和POST参数中指定，支持字符串、数组、键值对方式指定查询条件。</p>
+<ul>
+<li><p>条件字符串，参考SQL语句WHERE条件语法（不支持函数、子查询等），示例：</p>
+<pre><code>&quot;100&quot;或100 生成 &quot;id=100&quot;
+&quot;id=1&quot;
+&quot;id&gt;=1 and id&lt;100&quot;
+&quot;status=&#39;CR&#39;&quot;  注意字符串要加引号
+&quot;status IN (&#39;CR&#39;,&#39;PA&#39;)&quot;
+&quot;tm&gt;=&#39;2020-1-1&#39; AND tm&lt;&#39;2020-2-1&#39;&quot;
+&quot;name like &#39;wang%&#39; OR dscr like &#39;want%&#39;&quot;
+&quot;name IS NULL OR dscr IS NOT NULL&quot;</code></pre></li>
+<li><p>键值对，键为字段名，值为查询条件，使用更加直观（如字符串不用加引号），如：</p>
+<pre><code>{id:1, status:&quot;CR&quot;, name:&quot;null&quot;, dscr:null, f1:&quot;&quot;, f2:&quot;empty&quot;}
+生成 &quot;id=1 AND status=&#39;CR&#39;&quot; AND name IS NULL AND f2=&#39;&#39;
+注意：null和空串匹配是特殊处理的，要用字符串&quot;null&quot;表示null, 用&quot;empty&quot;表示空串：
+
+可以使用符号： &gt; &lt; &gt;= &lt;= !(not) ~(like匹配)
+{id:&quot;&lt;100&quot;, tm:&quot;&gt;2020-1-1&quot;, status:&quot;!CR&quot;, name:&quot;~wang%&quot;, dscr:&quot;~aaa&quot;, dscr2:&quot;!~aaa&quot;}
+生成 &quot;id&lt;100 AND tm&gt;&#39;2020-1-1&quot; AND status&lt;&gt;&#39;CR&#39; AND name LIKE &#39;wang%&#39; AND dscr LIKE &#39;%aaa%&#39; AND dscr2 NOT LIKE &#39;%aaa%&#39;&quot;
+like用于字符串匹配，字符串中用&quot;%&quot;或&quot;*&quot;表示通配符，如果不存在通配符，则表示包含该串(即生成&#39;%xxx%&#39;)
+
+{b:&quot;!null&quot;, d:&quot;!empty&quot;]
+生成 &quot;b IS NOT NULL&quot; AND d&lt;&gt;&#39;&#39;&quot;
+
+支持IN和NOT IN:
+{id: &quot;IN 100,101&quot;, status: &quot;NOT IN CA,XX&quot;}
+生成&quot;id IN (1,2,3) AND status NOT IN (&#39;CR&#39;,&#39;XX&#39;)&quot;。注意：如果是id字段（如id, empId, empId2都是id字段），且值都是数值则不对值加引号。</code></pre>
+<p>可用AND或OR连接多个条件，但不可加括号嵌套：</p>
+<pre><code>{tm: &quot;&gt;=2020-1-1 AND &lt;2020-2-1&quot;, tm2: &quot;&lt;2020-1-1 OR &gt;=2020-2-1&quot;}
+生成 &quot;(tm&gt;=&#39;2020-1-1&#39; AND tm&lt;&#39;2020-2-1&#39;) AND (tm2&lt;&#39;2020-1-1&#39; OR tm2&gt;=&#39;2020-2-1&#39;&quot;
+
+{id:&quot;&gt;=1 AND &lt;100&quot;, status:&quot;CR OR PA&quot;, status2:&quot;!CR AND !PA OR null&quot;}
+生成 &quot;(id&gt;=1 AND id&lt;100) AND (status=&#39;CR&#39; OR status=&#39;PA&#39;) AND (status2&lt;&gt;&#39;CR&quot; AND status2&lt;&gt;&#39;PA&#39; OR status2 IS NULL)&quot;
+
+{a:&quot;null OR empty&quot;, b:&quot;!null AND !empty&quot;, _or: 1}
+生成 &quot;(a IS NULL OR a=&#39;&#39;) OR (b IS NOT NULL AND b&lt;&gt;&#39;&#39;)&quot;, 默认为AND条件, `_or`选项用于指定OR条件</code></pre></li>
+<li><p>数组，每个元素是上述条件字符串或键值对，如：</p>
+<pre><code>[&quot;id&gt;=1&quot;, &quot;id&lt;100&quot;, &quot;name LIKE &#39;wang%&#39;&quot;] // &quot;id&gt;=1 AND id&lt;100&quot; AND name LIKE &#39;wang%&#39;&quot;
+[ {id: &quot;&gt;=1&quot;}, {id:&quot;&lt;100&quot;}, {name: &quot;~want*} ] // 同上</code></pre></li>
+</ul>
+<h4 id="查询结果格式fmt"><span class="header-section-number">3.2.2</span> 查询结果格式(fmt)</h4>
 <p>查询结果可以以指定形式返回, 缺省返回压缩表类型即&quot;h/d&quot;格式，例如：</p>
 <pre><code>{
     h: [&quot;id&quot;, &quot;name&quot;],
@@ -356,6 +437,7 @@ type in (select type from table2) -- 子查询不允许</code></pre>
     nextkey: ... (用于分页，注意默认分页20条)
 }</code></pre>
 <p>由于不会每行重复传输字段名，压缩表类型一般传输效率更高。</p>
+<p><strong>[list与array格式]</strong></p>
 <p>如果指定<code>{fmt: &quot;list&quot;}</code>，则返回对象列表格式:</p>
 <pre><code>{
     &quot;list&quot;: [
@@ -364,14 +446,20 @@ type in (select type from table2) -- 子查询不允许</code></pre>
     ],
     nextkey: ... (用于分页，注意默认分页20条)
 }</code></pre>
-<p>如果指定<code>{fmt: &quot;array&quot;}</code>，则返回数组对象列表格式（相当于list格式的list内容部分），注意此时不支持分页，返回后端限制的最大行数的数据，一般用于行数不大的子表项查询：</p>
+<p>如果指定<code>{fmt: &quot;array&quot;}</code>，则返回数组对象列表格式（相当于list格式的list内容部分），注意此时不支持分页，返回后端限制的最大行数的数据（默认1000，最大可调到10000），常用于已知行数有限的查询：</p>
 <pre><code>[
     {&quot;id&quot;: 1, &quot;name&quot;: &quot;jerry&quot;},
     {&quot;id&quot;: 2, &quot;name&quot;: &quot;tom&quot;}
 ]</code></pre>
+<p><strong>[one与one?格式]</strong></p>
 <p>如果指定<code>{fmt: &quot;one&quot;}</code>，则只以对象格式返回一行，类似get接口：</p>
 <pre><code>{&quot;id&quot;: 1, &quot;name&quot;: &quot;jerry&quot;}</code></pre>
-<p>且如果查询不到数据，会抛出错误（也是与get接口类似）。如果查询不到数据时不想抛出错误，而是返回null，可以用<code>{fmt: &quot;one?&quot;}</code>参数。</p>
+<p>且如果查询不到数据，会抛出错误（也是与get接口类似）。</p>
+<p>如果查询不到数据时不想抛出错误，而是返回null，可以用<code>{fmt: &quot;one?&quot;}</code>参数。</p>
+<p>特别地，如果返回数据只有一列，<code>one?</code>格式则直接返回该列值。 示例：查询订单数，返回只有一列cnt。</p>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {res: &quot;COUNT(*) cnt&quot;, fmt: &quot;one?&quot;})</code></pre>
+<p>假如有99个订单，使用<code>fmt:&quot;one?&quot;</code>直接返回<code>99</code>，如果使用<code>fmt:&quot;one&quot;</code>则返回<code>{cnt: 99}</code>。</p>
+<p><strong>[hash与multihash格式]</strong></p>
 <p>如果指定<code>{fmt: &quot;hash&quot;}</code>，则以映射表格式返回：</p>
 <pre><code>{
     1: {&quot;id&quot;: 1, &quot;name&quot;: &quot;jerry&quot;},
@@ -394,15 +482,41 @@ type in (select type from table2) -- 子查询不允许</code></pre>
 }</code></pre>
 <p>如果指定<code>{fmt: &quot;multihash:name,id&quot;}</code>:</p>
 <pre><code>{&quot;jerry&quot;: [ 1 ], &quot;tom&quot;: [ 2 ]}</code></pre>
-<p><strong>查询结果支持分页</strong></p>
+<p><strong>[tree树型结构]</strong></p>
+<p>例如如下<code>{id,fatherId}</code>线性结构数组中，数组的每个元素中有个fatherId字段指向父结点的id属性：</p>
+<pre><code>[
+    {&quot;id&quot;:1},
+    {&quot;id&quot;:2, &quot;fatherId&quot;:1},
+    {&quot;id&quot;:3, &quot;fatherId&quot;:2},
+    {&quot;id&quot;:4, &quot;fatherId&quot;:1}
+]</code></pre>
+<p>如果指定<code>{fmt: &quot;tree&quot;}</code>,返回转为树型结构<code>{id,children}</code>:</p>
+<pre><code>[
+    {&quot;id&quot;:1, &quot;children&quot;: [
+        {&quot;id&quot;:2, &quot;fatherId&quot;:1, &quot;children&quot;: [
+            {&quot;id&quot;:3, &quot;fatherId&quot;:2},
+        ]},
+        {&quot;id&quot;:4, &quot;fatherId&quot;:1}
+    ]},
+]</code></pre>
+<p>可以通过URL参数treeFields重定义各字段名，默认值为<code>id,fatherId,children</code>，设置示例：<code>{treeFields:'code,fatherCode'}</code>，<code>{treeFields:'code,fatherCode,subtree'}</code></p>
+<h4 id="查询结果支持分页"><span class="header-section-number">3.2.3</span> 查询结果支持分页</h4>
 <p>参数pagesz/pagekey等与返回分页列表有关，详细介绍请参考“<a href="#查询分页机制">查询分页机制</a>”章节。</p>
+<h4 id="导出文件"><span class="header-section-number">3.2.4</span> 导出文件</h4>
 <p><strong>查询结果支持导出到文件</strong></p>
 <p>在对象查询接口中添加参数&quot;fmt&quot;，可以输出指定格式，一般用于列表导出。参数：</p>
 <dl>
 <dt>fmt</dt>
-<dd>Enum(csv,txt,excel). 导出Query的内容为指定格式。其中，csv为逗号分隔UTF8编码文本；txt为制表分隔的UTF8文本；excel为逗号分隔的使用本地编码如gb2312编码文本（因为默认excel打开Csv文件时不支持utf8编码）。
+<dd>Enum(csv,txt,excel,excelcsv,html). 导出Query的内容为指定格式。格式说明如下：
 </dd>
 </dl>
+<ul>
+<li>csv为逗号分隔UTF8编码文本；</li>
+<li>txt为制表分隔的UTF8文本；</li>
+<li>excel为microsoft excel格式(xlsx)。</li>
+<li>excelcsv为逗号分隔的使用本地编码如gb2312编码文本（因为默认excel打开Csv文件时不支持utf8编码）。</li>
+<li>html为网页格式。</li>
+</ul>
 <p>在实现时，注意设置正确的HTTP头，如csv文件：</p>
 <pre><code>Content-Type: application/csv; charset=UTF-8
 Content-Disposition: attachment;filename=1.csv</code></pre>
@@ -417,49 +531,264 @@ Content-Disposition: attachment;filename=1.txt</code></pre>
 })
 window.open(url); // 下载文件</code></pre>
 <p>注意，由于默认会有分页，要想导出所有数据，一般可指定分页大小为-1（后端最大限制一般为10000条，可在后端调整）</p>
-<p><strong>查询操作应支持分组统计</strong></p>
+<h4 id="枚举名字映射"><span class="header-section-number">3.2.5</span> 枚举名字映射</h4>
+<p>例如有状态字段，定义为：</p>
+<ul>
+<li>status: Enum(CR:新创建;CA:已取消)。我们称之为枚举字段。</li>
+</ul>
+<p>在query接口中，可以通过res指定映射关系，示例：</p>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {res: &quot;id, status =CR:新创建;CA:已取消&quot;})</code></pre>
+<p>如果该字段值为CR，应返回&quot;新创建&quot;，返回示例：</p>
+<pre><code>[ {id: 1, status: &quot;新创建&quot;} , {id: 2, status: &quot;已取消&quot;} ]</code></pre>
+<p>也可定义空值(null)或空串(&quot;&quot;)的显示，如: <code>status =CR:新创建;CA:已取消;:(null)</code>，表示将空值显示为<code>(null)</code>。</p>
+<p>如果字段值是多个逗号分隔的值列表，如&quot;CR,CA&quot;，则应返回&quot;新创建,已取消&quot;。</p>
+<p>可以与别名一起使用，示例：</p>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {res: &quot;id 编号, status 状态=CR:新创建;CA:已取消&quot;})</code></pre>
+<p>返回示例：</p>
+<pre><code>[ {编号: 1, 状态: &quot;新创建&quot;} , {编号: 2, 状态: &quot;已取消&quot;} ]</code></pre>
+<p>该特性在使用query接口导出文件时特别有用。</p>
+<h4 id="汇总统计"><span class="header-section-number">3.2.6</span> 汇总统计</h4>
+<p>通过在res中指定SUM等字段，可以返回汇总信息，如：</p>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {
+    res: &quot;COUNT(id) cnt, SUM(amount) amount&quot;,
+    fmt: &quot;one&quot; // 由于结果必然只有一行，指定one格式更方便
+})</code></pre>
+<p>返回示例：</p>
+<pre><code>{cnt: 82, amount: 35340}</code></pre>
+<p>也可以在查询的同时指定要统计哪些列，使用statRes字段。</p>
+<dl>
+<dt>statRes</dt>
+<dd>指定统计字段，会在分页返回结果中添加stat对象。注意fmt参数不能是one, array, hash等，只允许是list或默认（即hd格式）。
+</dd>
+</dl>
+<p>请求示例：</p>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {
+    res: &quot;id, createTm, amount&quot;,
+    statRes: &quot;COUNT(id) cnt, SUM(amount) amount&quot;,
+})</code></pre>
+<p>返回示例：</p>
+<pre><code>{
+    h: [&quot;id&quot;, &quot;createTm&quot;, &quot;amount&quot;],
+    d: [
+        [ 100, &quot;2015-1-1 10:10:10&quot;, 1000],
+        [ 101, &quot;2015-1-2 10:11:10&quot;, 1200],
+        ...
+    ],
+    stat: {cnt: 82, amount: 35340},
+    nextkey: 9
+}</code></pre>
+<p>如果上面指定<code>fmt: &quot;list&quot;</code>则返回示例：</p>
+<pre><code>{
+    list: [
+        { id: 100, createTm: &quot;2015-1-1 10:10:10&quot;, amount: 1000 },
+        { id: 101, createTm: &quot;2015-1-2 10:11:10&quot;, amount: 1200 },
+        ...
+    ],
+    stat: {cnt: 82, amount: 35340},
+    nextkey: 9
+}</code></pre>
+<h4 id="分组统计"><span class="header-section-number">3.2.7</span> 分组统计</h4>
 <p>主要通过gres参数实现查询结果分组：</p>
 <dl>
 <dt>gres</dt>
 <dd>String. 分组字段。如果设置了gres字段，则res参数中每项应该带统计函数，如&quot;sum(cnt) sum, count(id) userCnt&quot;. 最终返回列为gres参数指定的列加上res参数指定的列; 如果res参数未指定，则只返回gres参数列。
 </dd>
 </dl>
-<p>例：统计2015年2月，按状态分类（如已付款、已评价、已取消等）的各类订单的总数和总金额。</p>
-<pre><code>callSvr(&quot;Ordr.query&quot;, {gres: &quot;status&quot;, res: &quot;count(&#39;A&#39;) totalCnt, sum(amount) totalAmount&quot;, cond: &quot;tm&gt;=&#39;2016-1-1&#39; and tm&lt;&#39;2016-2-1&#39;&quot;})</code></pre>
+<p>例：统计2015-2016两年间，按年份、状态分类（如已付款、已评价、已取消等）的各类订单的总数和总金额。</p>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {
+    gres: &quot;y,status&quot;, res: &quot;count(&#39;A&#39;) totalCnt, sum(amount) totalAmount&quot;,
+    cond: &quot;tm&gt;=&#39;2015-1-1&#39; and tm&lt;&#39;2017-1-1&#39;&quot;
+})</code></pre>
 <p>返回内容示例：</p>
-<pre><code>[
-    h: [&quot;status&quot;, &quot;totalCnt&quot;, &quot;totalAmount&quot;],
+<pre><code>{
+    h: [&quot;y&quot;, &quot;status&quot;, &quot;totalCnt&quot;, &quot;totalAmount&quot;],
     d: [
-        [ &quot;PA&quot;, 130, 1420 ],  // 已付款，共130单，1420元
-        [ &quot;CA&quot;, 29, 310 ], // 取消的订单
-        [ &quot;RA&quot;, 1530, 15580 ], // 已评价的订单
+        [ 2015, &quot;PA&quot;, 1130, 14420 ],  // 已付款，共1130单，14420元
+        [ 2015, &quot;CA&quot;, 2, 38 ], // 取消的订单
+        [ 2016, &quot;PA&quot;, 170, 3390 ],
+        [ 2016, &quot;CA&quot;, 9, 220 ],
+        [ 2016, &quot;RA&quot;, 1530, 15580 ], // 已评价的订单
     ]
-]</code></pre>
+}</code></pre>
+<p>以下为约定时间统计字段：</p>
+<ul>
+<li>y: 年</li>
+<li>m: 月, 1-12</li>
+<li>d: 日, 1-31</li>
+<li>h: 时, 0-23</li>
+<li>q: 季度</li>
+<li>w: 周。计算模式为：一年中第一周，从该年第一个周一开始(mysql week函数模式7).</li>
+<li>wd: 周几, 1-7, 表示周一到周日</li>
+</ul>
+<p>后端可以默认提供这些时间统计字段，也可以由前端指定一个时间字段，生成这些统计字段：</p>
+<dl>
+<dt>tmField</dt>
+<dd>String. 指定时间字段，基于该字段生成时间统计字段（y,m,d等虚拟字段）。
+</dd>
+</dl>
+<p>示例：按付款时间payTm来统计每年订单数：</p>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {
+    res: &quot;count(*) cnt&quot;,
+    gres: &quot;y&quot;,
+    tmField: &quot;payTm&quot;
+});</code></pre>
+<p><strong>[行列转置]</strong></p>
+<p>在做数据透视表展示统计结果时，常常用到行列转置，可用以下参数：</p>
+<dl>
+<dt>pivot</dt>
+<dd>String. 设置行列转置。
+</dd>
+<dt>pivotCnt</dt>
+<dd>Integer. 可选，默认统计列为最后1列，若最后两列都是是统计列，可以设置为2.
+</dd>
+</dl>
+<p>例：上面示例中，将状态status列转置到行上：</p>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {
+    gres: &quot;y,status&quot;, res: &quot;count(&#39;A&#39;) totalCnt, sum(amount) totalAmount&quot;,
+    cond: &quot;tm&gt;=&#39;2015-1-1&#39; and tm&lt;&#39;2017-1-1&#39;&quot;,
+    pivot: &quot;status&quot;,
+    pivotCnt: 2
+})</code></pre>
+<p>返回内容示例：</p>
+<pre><code>{
+    h: [&quot;y&quot;, &quot;PA&quot;,&quot;CA&quot;,&quot;RA&quot;],
+    d: [
+        [ 2015, [1130, 14420], [2, 38], [0, 0] ],
+        [ 2016, [170, 3390], [9, 220], [1530, 15580] ]
+    ]
+}</code></pre>
+<p>转置到列上的数据如果为null，则以&quot;(null)&quot;来显示；如果是空串，不做特殊处理。</p>
+<p>pivot参数可以设置多列，以逗号分隔，如将年、月显示到列上：</p>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {
+    gres: &quot;y,m,status&quot;, res: &quot;count(&#39;A&#39;) totalCnt&quot;,
+    cond: &quot;tm&gt;=&#39;2015-1-1&#39; and tm&lt;&#39;2017-1-1&#39;&quot;,
+    pivot: &quot;y,m&quot;
+})</code></pre>
+<p>转置到列后的字段以&quot;-&quot;拼接，如果有值为null的，以&quot;(null)&quot;显示。 返回内容示例：</p>
+<pre><code>{
+    h: [&quot;status&quot;, &quot;2020-1&quot;, &quot;2020-2&quot;, &quot;2020-(null)&quot;, &quot;(null)-(null)&quot;],
+    d: [
+        [ &quot;PA&quot;, 120, 230, 1, 0],
+        [ &quot;CA&quot;, 300, 310, 0, 2]
+    ]
+}</code></pre>
+<p><strong>[行列汇总]</strong></p>
+<p>没有pivot时，用sumFields参数指定要统计的列，支持多列；有pivot时，用pivotSumField参数指定新添加的统计列的名字，只有一列，不存在多列。</p>
+<dl>
+<dt>sumFields</dt>
+<dd>String. 在数据最后添加汇总行，对一个或多个字段进行汇总。当有pivot参数时，该选项无效，应使用pivotSumField参数（下面有介绍）。 注意如果数据仅有一行，不添加汇总行。注意如果有分页，即数据在一页内显示不完，只会累加当前页的数据。
+</dd>
+</dl>
+<p>示例：简单查询，汇总其中一列</p>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {
+    res: &quot;id, createTm, amount&quot;,
+    sumFields: &quot;amount&quot;
+})</code></pre>
+<p>返回内容示例：</p>
+<pre><code>{
+    h: [&quot;id&quot;, &quot;createTm&quot;, &quot;amount&quot;],
+    d: [
+        [ 100, &quot;2015-1-1 10:10:10&quot;, 1000],
+        [ 101, &quot;2015-1-2 10:11:10&quot;, 1200],
+        [ &quot;合计&quot;, null, 2200 ], // 自动添加的汇总行，对指定列进行汇总
+    ]
+}</code></pre>
+<p>如果一页无法返回所有数据，又想在汇总中累计所有数据，要么调整pagesz参数让数据尽可能在一页内返回，要么额外使用statRes参数（前面有介绍）得到统计字段，如：</p>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {
+    res: &quot;id, createTm, amount&quot;,
+    statRes: &quot;SUM(amount) amount&quot;,
+    sumFields: &quot;amount&quot;
+})</code></pre>
+<p>返回内容示例：</p>
+<pre><code>{
+    h: [&quot;id&quot;, &quot;createTm&quot;, &quot;amount&quot;],
+    d: [
+        [ 100, &quot;2015-1-1 10:10:10&quot;, 1000],
+        [ 101, &quot;2015-1-2 10:11:10&quot;, 1200],
+        ...
+        [ &quot;合计&quot;, null, 50200 ], // 自动添加的汇总行，对指定列进行汇总
+    ],
+    // statRes参数将会自动添加stat对象，表示各统计列
+    stat: { amount: 50200 },
+    nextkey: 9
+}</code></pre>
+<p>注意：sumFields中的字段，是优先从stat对象中获取的，如果在stat中不存在，才做页内累加。</p>
+<p>示例：分组统计查询，汇总两列</p>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {
+    gres: &quot;y,status&quot;, res: &quot;count(&#39;A&#39;) totalCnt, sum(amount) totalAmount&quot;,
+    sumFields: &quot;totalCnt, totalAmount&quot;
+})</code></pre>
+<p>返回内容示例：</p>
+<pre><code>{
+    h: [&quot;y&quot;, &quot;status&quot;, &quot;totalCnt&quot;, &quot;totalAmount&quot;],
+    d: [
+        [ 2015, &quot;PA&quot;, 1130, 14420 ],  // 已付款，共1130单，14420元
+        [ 2015, &quot;CA&quot;, 2, 38 ], // 取消的订单
+        [ 2016, &quot;PA&quot;, 170, 3390 ],
+        [ 2016, &quot;CA&quot;, 9, 220 ],
+        [ 2016, &quot;RA&quot;, 1530, 15580 ], // 已评价的订单
+        [ &quot;合计&quot;, null, 2841, 33648 ], // 自动添加的汇总行，对指定的两列进行汇总
+    ]
+}</code></pre>
+<dl>
+<dt>pivotSumField</dt>
+<dd>String. 例如设置值为&quot;合计&quot;，则会在每行添加一个名为&quot;合计&quot;的汇总列，且在数据最后添加一个汇总行。 注意：如果行转置后只有一行，则不显示统计列；如果总共只有一行，则不显示统计行。
+</dd>
+</dl>
+<p>示例：</p>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {
+    gres: &quot;y,status&quot;, res: &quot;count(&#39;A&#39;) totalCnt, sum(amount) totalAmount&quot;,
+    pivot: &quot;status&quot;,
+    pivotSumField: &quot;合计&quot;
+})</code></pre>
+<p>返回内容示例：</p>
+<pre><code>{
+    h: [&quot;y&quot;, &quot;PA&quot;,&quot;CA&quot;,&quot;RA&quot;, &quot;合计&quot;], // 自动添加汇总列&quot;合计&quot;
+    d: [
+        [ 2015, [1130, 14420], [2, 38], [0, 0], [1132, 14458] ],
+        [ 2016, [170, 3390], [9, 220], [1530, 15580], [1709, 19190] ],
+        [ &quot;合计&quot;, [1300, 17810], [11, 258], [1530, 15580], [2841, 33648] ] // 自动添加汇总行
+    ]
+}</code></pre>
+<h4 id="模糊查询"><span class="header-section-number">3.2.8</span> 模糊查询</h4>
+<dl>
+<dt>qsearch</dt>
+<dd>格式是<code>字段1,字符2,...:查询内容</code>(使用英文逗号及冒号分隔), 表示在指定的若干字段中模糊查询。
+</dd>
+</dl>
+<p>示例：在dscr或cmt字段中，查找以&quot;张&quot;开头，并且包含&quot;退款&quot;的订单记录</p>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {qsearch: &quot;dscr,cmt:张* 退款&quot;})</code></pre>
+<p>字段可以使用虚拟字段。</p>
+<p>查询内容是一个字符串，或多个以空格分隔的字符串。例如&quot;aa bb&quot;表示字段包含&quot;aa&quot;且包含&quot;bb&quot;。 每个字符串中可以用通配符<code>*</code>，如<code>a*</code>表示以a开头，<code>*a</code>表示以a结尾，而<code>*a*</code>和<code>a</code>是效果相同的。</p>
 <h3 id="查询分页机制"><span class="header-section-number">3.3</span> 查询分页机制</h3>
 <p>如果一个查询支持分页(paging), 则一般调用形式为</p>
-<pre><code>Ordr.query(pagekey?, pagesz/rows?=20) -&gt; {nextkey, total?, @h, @d}</code></pre>
+<pre><code>Ordr.query(page/pagekey?, pagesz/rows?=20) -&gt; {nextkey, total?, @h, @d}</code></pre>
 <p><strong>[参数]</strong></p>
 <dl>
 <dt>pagesz或rows</dt>
 <dd>Integer. 这两个参数含义相同，均表示页大小，默认为20条数据。
 </dd>
+<dt>page</dt>
+<dd>Integer. 可选，指定分页页码，默认为1（第1页）。
+</dd>
 <dt>pagekey</dt>
-<dd>Integer. 一般首次查询时不填写（或填写0，表示需要返回总记录数即total字段），而下次查询时应根据上次调用时返回数据的&quot;nextkey&quot;字段来填写。
+<dd>Integer. 与page参数指定页码不同，pagekey是另一种基于主键的分页。一般首次查询时不填写（或填写0，表示需要返回总记录数即total字段），而下次查询时应根据上次调用时返回数据的&quot;nextkey&quot;字段来填写。
 </dd>
 </dl>
 <p><strong>[查询返回字段]</strong></p>
 <dl>
 <dt>nextkey</dt>
-<dd>Integer. 一个字符串, 供取下一页时填写参数&quot;pagekey&quot;。如果不存在该字段，则说明已经是最后一批数据。
+<dd>Integer. 一个字符串, 供取下一页时填写参数&quot;pagekey&quot;或&quot;page&quot;。如果不存在该字段，则说明已经是最后一批数据。
 </dd>
 <dt>total</dt>
-<dd>Integer. 返回总记录数，仅当&quot;pagekey&quot;指定为0时返回。（注：后面还会讲到如果有&quot;page&quot;参数时也会返回该属性。）
+<dd>Integer. 返回总记录数，仅当&quot;pagekey&quot;指定为0时返回，或是指定&quot;page&quot;参数时也会返回。）
 </dd>
 <dt>h/d</dt>
 <dd>两个数组。实际数据表的头信息(header)和数据行(data)，符合压缩表对象的格式。
 </dd>
 </dl>
 <p><strong>[示例]</strong></p>
+<p>基于page页码的查询较容易理解，常用于管理端分页列表。而pagekey是基于主键的查询，常用于移动端上拉自动加载下一页的列表，示例如下。</p>
 <p>第一次查询</p>
 <pre><code>callSvr(&quot;Ordr.query&quot;)</code></pre>
 <p>返回</p>
@@ -515,22 +844,16 @@ LIMIT 0,{pagesz}</code></pre>
 ...
 ORDER BY comeTm DESC, t0.id
 LIMIT ({pagekey}-1)*{pagesz}, {pagesz}</code></pre>
-<p><strong>查询引擎应支持强制使用传统分页</strong></p>
-<p>如果在对象query接口中指定了page参数，则强制查询引擎使用传统分页方法，即page表示第几页，而返回字段nextkey一定等于page+1或空(当没有更多数据)。 而且，返回字段中应包含total字段。</p>
-<p>接口原型：</p>
-<pre><code>Ordr.query(page, pagesz/rows?=20) -&gt; {nextkey, total, @h, @d}</code></pre>
-<p>例如：</p>
-<pre><code>callSvr(&quot;Ordr.query&quot;, {orderby:&quot;id desc&quot;, page:1}) -&gt; {h=[&quot;id&quot;,...], d=[...], total=180, nextkey=2}</code></pre>
-<p>本来因为按主键id排序，查询引擎应使用分段查询，但由于指定了page字段，改为使用传统分页。</p>
 <h3 id="批量导入数据"><span class="header-section-number">3.4</span> 批量导入数据</h3>
 <p>标准接口<code>Obj.batchAdd</code>用于批量导入数据（支持不存在则添加，存在则更新）。返回导入记录数cnt及编号列表idList：</p>
-<pre><code>Obj.batchAdd(title?, uniKey?)(...) -&gt; {cnt, @idList}</code></pre>
+<pre><code>Obj.batchAdd(title?, uniKey?, useColMap?)(...) -&gt; {cnt, @idList}</code></pre>
 <p>它在一个事务中执行，一行出错后立即失败返回，该行前面已导入的内容也会被取消（回滚）。</p>
 <ul>
 <li><p>title: List(fieldName). 指定标题行(即字段列表). 如果有该参数, 则忽略POST内容或文件中的标题行. 如&quot;title=name,-,addr&quot;表示导入第一列name和第三列addr, 其中&quot;-&quot;表示忽略该列，不导入。 字段列表以逗号或空白分隔, 如&quot;title=name - addr&quot;与&quot;title=name, -, addr&quot;都可以.</p></li>
-<li><p>uniKey: 唯一索引字段. 如果指定, 则以该字段查询记录是否存在, 存在则更新. 通常可以设置为&quot;id&quot;或&quot;code&quot;等.</p></li>
+<li><p>uniKey: 唯一索引字段. 如果指定, 则以该字段查询记录是否存在, 存在则更新。例如&quot;code&quot;, 也支持多个字段（用于关联表），如&quot;bpId,itemId&quot;。 还可以加&quot;!&quot;后缀表示只更新不添加；支持通过参数uniKeyMode定制行为。详见add接口参数介绍。</p></li>
+<li><p>useColMap: 设置为1时，使用列名映射。</p></li>
 </ul>
-<p>支持三种方式上传：</p>
+<h4 id="批量导入支持三种方式"><span class="header-section-number">3.4.1</span> 批量导入支持三种方式</h4>
 <ol style="list-style-type: decimal">
 <li><p>直接在HTTP POST中传输内容，数据格式为：首行为标题行(即字段名列表)，之后为实际数据行。 行使用&quot;&quot;分隔, 列使用&quot;&quot;或逗号分隔（后端自动判断），方便直接从Excel中拷贝数据出来，或导出csv格式文件。 接口为：</p>
 <p>{Obj}.batchAdd(title?)(标题行，数据行) (Content-Type=text/plain)</p></li>
@@ -566,22 +889,58 @@ fd.append(&quot;file&quot;, frm.f.files[0]);
 callSvr(&quot;Store.batchAdd&quot;, {title: &quot;name,addr&quot;}, function (ret) {
     app_alert(&quot;成功导入&quot; + ret.cnt + &quot;条数据！&quot;);
 }, fd);</code></pre>
-<p>或者使用curl等工具导入： 从excel中将数据全选复制到1.txt中(包含标题行，也可另存为csv格式文件)，然后导入。 下面示例用curl工具调用VendorA.batchAdd导入：</p>
-<pre><code>#/bin/sh
-baseUrl=http://localhost/p/anzhuang/api.php
-param=title=name,phone,idCard,addr,email,legalAddr,weixin,qq,area
-curl -v -F &quot;file=@1.txt&quot; &quot;$baseUrl/VendorA.batchAdd?$param&quot;</code></pre>
-<p>如果要调试(php/xdebug)，可加URL参数<code>XDEBUG_SESSION_START=1</code>或Cookie中加<code>XDEBUG_SESSION=1</code></p>
 <ol start="3" style="list-style-type: decimal">
-<li><p>传入对象数组 格式为 {list: [...]}</p>
-<p>var data = { list: [ {name: &quot;郭志强&quot;, tel: &quot;15384811000&quot;}, {name: &quot;高长平&quot;, tel: &quot;18375991001&quot;} ] }; callSvr(&quot;Store.batchAdd&quot;, function (ret) { app_alert(&quot;成功导入&quot; + ret.cnt + &quot;条数据！&quot;); }, data, {contentType:&quot;application/json&quot;});</p></li>
+<li>传入对象数组</li>
 </ol>
+<p>格式为 {list: [...]}，示例：</p>
+<pre><code>var data = {
+    list: [
+        {name: &quot;郭志强&quot;, tel: &quot;15384811000&quot;},
+        {name: &quot;高长平&quot;, tel: &quot;18375991001&quot;}
+    ]
+};
+callSvr(&quot;Store.batchAdd&quot;, function (ret) {
+    app_alert(&quot;成功导入&quot; + ret.cnt + &quot;条数据！&quot;);
+}, data);</code></pre>
+<h4 id="通过导入实现批量更新"><span class="header-section-number">3.4.2</span> 通过导入实现批量更新</h4>
+<p>batchAdd接口配合标准add接口支持的uniKey参数，可实现存在则更新，不存在则添加的逻辑。</p>
+<p>示例：接上节示例，在导入时希望实现根据名称与电话(name和tel字段)匹配，则记录存在则做更新，不存在则添加，只须增加uniKey参数：</p>
+<pre><code>callSvr(&quot;Store.batchAdd&quot;, {uniKey: &quot;name,tel&quot;}, function (ret) {
+    app_alert(&quot;成功导入&quot; + ret.cnt + &quot;条数据！&quot;);
+}, data);</code></pre>
+<h4 id="支持带子表导入"><span class="header-section-number">3.4.3</span> 支持带子表导入</h4>
+<p>示例：有以下主-子表对象：</p>
+<pre><code>工单：@Ordr: id, code, itemId, qty
+工单配料单 @BOM: id, orderId, code, name</code></pre>
+<p>注意：拷贝到Excel中看的比较清楚；为避免Excel将长数字显示为科学计数法，在复制前先设置单元格格式为文本。</p>
+<pre><code>生产订单号   物料编码    物料规格    开工日期    完工日期    生产数量    子件编码    子件规格    基本用量
+SCDD210202302   30101001010484  热像仪#Fotric 615C-L47 2021-02-04  2021-02-04  1.00    20901001000052  标品#Lantern_B31-L47  1
+SCDD210202302   30101001010484  热像仪#Fotric 615C-L47 2021-02-04  2021-02-04  1.00    10205001000017  标签#Lantern_40*30mm铜版纸空白标签#中性#通用 1</code></pre>
+<p>调用示例：</p>
+<pre><code>callSvr(&quot;Ordr.batchAdd&quot;, {title: &quot;code,itemCode,itemName,planTm,planTm1,qty,@bom.code,@bom.name,@bom.qty&quot;, uniKey: &quot;code&quot;}, $.noop, data);</code></pre>
+<p>注意：由于子表分布在多行，必须以uniKey参数指定主表唯一字段（支持多个字段联合，以逗号分隔），将根据此字段将多行数组组合成对象后一次导入。 为了正确将主-子表结构的数据行组合成对象，必须保证：组成一个对象的所有行必须在一起，具有相同的uniKey字段，或是对象的第二行起，不指定uniKey字段。</p>
+<p>上例也可以简化定义成：(第二行起，无须主表字段，只需要最后三个子表字段) (拷贝到Excel中看)</p>
+<pre><code>生产订单号   物料编码    物料规格    开工日期    完工日期    生产数量    子件编码    子件规格    基本用量
+SCDD210202302   30101001010484  热像仪#Fotric 615C-L47 2021-02-04  2021-02-04  1.00    20901001000052  标品#Lantern_B31-L47  1
+                        10205001000017  标签#Lantern_40*30mm铜版纸空白标签#中性#通用 1</code></pre>
+<h4 id="支持列名映射"><span class="header-section-number">3.4.4</span> 支持列名映射</h4>
+<p>数据表导入时，默认是按固定列顺序来确定字段的，比如第1列必须是code，第2列必须是itemCode，如果要跳过一列，须通过&quot;-&quot;来指定； 使用列名映射是另一种方式（通过指定参数useColMap=1激活），示例：</p>
+<pre><code>id  name    code    itemId  itemCode
+1   name1   code1   101 item-101
+2   name2   code2   102 item-102</code></pre>
+<p>batchAdd调用参数为: <code>{title: &quot;code,itemCode&quot;, useColMap:1}</code>。</p>
+<p>这时只通过列名来匹配（若找不到匹配列则报错！），列的顺序对导入就没有影响。可以通过<code>-&gt;</code>来指定列的别名，示例：</p>
+<pre><code>编号  物料名 编码  物料名 物料编码
+1   name1   code1   101 item-101
+2   name2   code2   102 item-102</code></pre>
+<p>batchAdd调用参数为: <code>{title: &quot;编码-&gt;code,物料编码-&gt;itemCode&quot;, useColMap:1}</code>。支持子对象列名映射，如<code>子件编码-&gt;@bom.code</code>。</p>
 <h3 id="子表的增删改查操作"><span class="header-section-number">3.5</span> 子表的增删改查操作</h3>
 <p>假设主对象为Obj，子对象为Obj1，设计如下：</p>
 <pre><code>@Obj: id, name
 vcol: @obj1 (说明：vcol表示虚拟字段，@obj1表示字段obj1是个数组，一般就是子对象)
 
 @Obj1: id, objId, name （通过objId关联主对象)</code></pre>
+<h4 id="子表添加"><span class="header-section-number">3.5.1</span> 子表添加</h4>
 <p>在添加主对象时，同时添加子对象:</p>
 <pre><code>Obj.add()(name, @obj1...) -&gt; id</code></pre>
 <p>示例：</p>
@@ -592,27 +951,37 @@ vcol: @obj1 (说明：vcol表示虚拟字段，@obj1表示字段obj1是个数组
         { name: &quot;obj1-name2&quot; }
     ]
 });</code></pre>
+<h4 id="子表查询"><span class="header-section-number">3.5.2</span> 子表查询</h4>
 <p>主对象添加后，可以通过get接口获取主对象及子对象：</p>
-<pre><code>callSvr(&quot;Obj.get&quot;, {id: 1001, res:&quot;id,name,obj1&quot;}) -&gt; {
+<pre><code>callSvr(&quot;Obj.get&quot;, {id: 1001, res:&quot;id,name,obj1&quot;})
+返回
+{
     id: 1001,
     name: &quot;name1&quot;,
     obj1: [
         { id: 10001, name: &quot;obj1-name1&quot; },
         { id: 10002, name: &quot;obj1-name2&quot; }
     ]
-});</code></pre>
+}</code></pre>
 <p>要控制子对象的查询结果字段，可以加<code>res_{子对象名}</code>参数；要控制子对象的查询参数，可以加<code>param_{子对象名}</code>参数，示例：</p>
 <pre><code>callSvr(&quot;Obj.get&quot;, {id: 1001, res:&quot;id,name,obj1&quot;, res_obj1:&quot;id,name&quot;})
 或
 callSvr(&quot;Obj.get&quot;, {id: 1001, res:&quot;id,name,obj1&quot;, param_obj1: { res: &quot;id,name&quot;} })
 callSvr(&quot;Obj.get&quot;, {id: 1001, res:&quot;id,name,obj1&quot;, param_obj1: { res: &quot;id,name&quot;, cond: &quot;id&gt;=10002&quot;} })</code></pre>
+<p>注意：如果使用了别名，则指定res,param时也要用别名：</p>
+<pre><code>callSvr(&quot;Obj.get&quot;, {id: 1001, res:&quot;id,name,obj1 objList&quot;, res_objList:&quot;id,name&quot;})
+// 甚至可以多别名分别指定:
+callSvr(&quot;Obj.get&quot;, {id: 1001, res:&quot;id,name,obj1 objList,obj1 objList2&quot;, res_objList:&quot;id,name&quot;, res_objList2:&quot;id,code&quot;})</code></pre>
 <p>当然，也可以直接查询子对象，如：</p>
-<pre><code>callSvr(&quot;Obj1.query&quot;, {cond: &quot;objId=1001&quot;, res:&quot;id,name,obj1&quot;, fmt:&quot;array&quot;}) -&gt; [
+<pre><code>callSvr(&quot;Obj1.query&quot;, {cond: &quot;objId=1001&quot;, res:&quot;id,name,obj1&quot;, fmt:&quot;array&quot;})
+返回
+[
     { id: 10001, name: &quot;obj1-name1&quot; },
     { id: 10002, name: &quot;obj1-name2&quot; }
 ]</code></pre>
 <p>这里用fmt参数指定返回array格式，因为默认返回的是<code>h/d</code>格式.</p>
-<p>主对象添加后，可以通过set接口添加/更新/删除子对象：</p>
+<h4 id="子表更新与删除"><span class="header-section-number">3.5.3</span> 子表更新与删除</h4>
+<p>主对象添加后，可以通过set接口添加/更新/删除子对象。假定后端提供如下更新接口（可更新主表字段name等，子表名为obj1）：</p>
 <pre><code>Obj.set(id)(name?, @obj1...)</code></pre>
 <p>示例：</p>
 <pre><code>callSvr(&quot;Obj.set&quot;, {id: 1001}, $.noop, {
@@ -623,7 +992,23 @@ callSvr(&quot;Obj.get&quot;, {id: 1001, res:&quot;id,name,obj1&quot;, param_obj1
         { id: 10002, _delete: 1}  // set接口中指定子表id且设置了`_delete: 1`，表示删除该子表行
     ]
 });</code></pre>
-<p>主对象删除时（del/delIf接口），子对象不会自动删除。后端应根据情况自行处理。</p>
+<p>注意：主对象删除时（del/delIf接口），子对象不会自动删除。后端应根据情况自行处理。</p>
+<p>对子表的更新有patch/put两种模式，通过submode参数指定，该参数只对主表set接口有效：</p>
+<ul>
+<li>patch: 默认模式，见上面示例。须用<code>_delete</code>指定要删除的原来子表项。</li>
+<li>put: 覆盖更新模式。与patch的区别是无须指定<code>_delete</code>来删除原来子表项，新子表直接覆盖原子表。</li>
+</ul>
+<p>与上述示例中效果相同的操作示例：</p>
+<pre><code>// submode=put模式
+callSvr(&quot;Obj.set&quot;, {id: 1001, submode: &quot;put&quot;}, $.noop, {
+    name: &quot;name1&quot;,
+    obj1: [
+        { id: 10001, name: &quot;obj1-name1-changed&quot; }, // set接口中指定子表id的，表示更新该子表行; 也可以不指定id，则原来记录被删除，这条会被重新添加。
+        { name: &quot;obj1-name3&quot; },  // set接口中未指定子表id的，表示新增子表行
+        // 原表中的10002项未指定，则自动被删除。
+    ]
+});</code></pre>
+<p>注意：add接口在指定uniKey参数时，可检查数据存在则更新(即调用set接口)。因此add/batchAdd接口也可以指定submode参数。 在批量导入(batchAdd接口+uniKey参数)时，默认使用put模式做子表更新。</p>
 <h2 id="批请求"><span class="header-section-number">4</span> 批请求</h2>
 <p>BQP协议支持批请求，即在一次请求中，包含多条接口调用。 而且支持向前引用，即后面的调用可以引用前面调用的返回值。 而且在创建批请求时，可以指定这些调用是否在一个事务(transaction)中，一起成功提交或失败回滚。</p>
 <p>假如某场景需要两个请求，先获取用户信息(User.get接口)，然后上传页面名、用户编号等信息到服务器(ActionLog.add接口)供统计分析，调用示意如下：</p>

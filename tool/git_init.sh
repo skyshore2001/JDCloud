@@ -19,6 +19,7 @@ cd $name
 
 git config receive.denyCurrentBranch ignore
 git config receive.denyNonFastForwards false
+git config receive.shallowUpdate true
 cat <<.  > .git/hooks/post-update
 #!/bin/sh
 unset GIT_DIR
@@ -27,10 +28,10 @@ umask 002
 git reset --hard
 
 ### reload tomcat app, for jd-java project
-# touch -c WEB-INF/web.xml
+[[ -d WEB-INF ]] && touch -c WEB-INF/web.xml
 
 ### for dev release (no build_web): generate revision file for auto refresh
-git log -1 --format=%H > server/revision.txt
+[[ -d server ]] && git log -1 --format=%H > server/revision.txt
 .
 chmod a+x .git/hooks/post-update
 

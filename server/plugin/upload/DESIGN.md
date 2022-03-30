@@ -233,11 +233,12 @@ thumbId
 
 导出指定文本的文件，可指定编码。
 
-	export(fname, str, enc?)
+	export(fname, str, enc?, forexcel?=1)
 
 - fname: 下载文件的默认文件名。
 - str: 文件内容。
 - enc: 要转换的编码，默认utf-8。最终以该编码输出。
+- forexcel: 默认当fname后缀为".csv"时，为避免excel误处理大数字（手机号/身份证号等），会自动转成`="12345678901"`的形式。本参数设置为0时禁用该处理。
 
 JS使用示例：
 

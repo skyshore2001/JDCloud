@@ -13,7 +13,7 @@ function initDlgImport()
 	{
 		var obj = frm.obj.value;
 		var jtpl = jdlg.find(".tpl" + obj);
-		WUI.assert(jtpl.size() >0, "import template for obj \"" + obj + "\" is NOT defined in dlgImport");
+//		WUI.assert(jtpl.size() >0, "import template for obj \"" + obj + "\" is NOT defined in dlgImport");
 		var text = jtpl.html().trim();
 		if (text[0] == "!") {
 			// 首行以!开头表示参数指定, 如 "!title=a,b,c&type=CK"
@@ -41,9 +41,14 @@ function initDlgImport()
 			if (window.DlgImport && DlgImport.data_) {
 				var data = DlgImport.data_;
 				DlgImport.data_ = null;
-				var obj = data.obj;
-				$(frm.obj).val(obj).change();
-				WUI.assert(obj && frm.obj.value, "obj \"" + obj + "\" is NOT defined in dlgImport");
+				var jo = $(frm.obj);
+				if (data.obj == null || jo.find("[value=" + data.obj + "]").size() == 0) {
+					if (data.obj)
+						console.warn("obj \"" + data.obj + "\" is NOT defined in dlgImport");
+					$(frm.obj_).val(data.obj);
+					data.obj = "XX";
+				}
+				jo.val(data.obj).change();
 				WUI.setFormData($(frm), data, {setOnlyDefined:true});
 			}
 		}
@@ -95,15 +100,16 @@ function initDlgImport()
 
 		function batchAdd() {
 			$.extend(param, frm.content.param_);
+			var obj0 = obj.indexOf("__") < 0? obj: obj.split('__')[0];
 			if (files.length) {
 				var fd = new FormData();
 				fd.append("file", files[0]);
-				callSvr(obj + ".batchAdd", param, api_batchAdd, fd, {
+				callSvr(obj0 + ".batchAdd", param, api_batchAdd, fd, {
 					//contentType: ""
 				});
 			}
 			else {
-				callSvr(obj + ".batchAdd", param, api_batchAdd, text, {
+				callSvr(obj0 + ".batchAdd", param, api_batchAdd, text, {
 					contentType: "text/plain"
 				});
 			}

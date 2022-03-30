@@ -23,6 +23,78 @@
 
 # 版本日志
 
+## v6 - 2022/3
+
+- 后端(jd-php)
+ - 重构应用框架。引入JDEnv替代ApiApp，DBH等全局变量移入JDEnv，$_GET/$_POST/$_SERVER/header/echo去全局化
+ - 支持swoole环境，用于守护进程服务（daemon）的开发: server/daemon下有示例。
+ - 支持后端扩展（二次开发/扩展开发/Addon开发），优先找Imp类。
+ - 通用query接口：
+   - 支持tmField参数，用于自定义报表中支持指定时间统计字段；
+   - 统计增强：支持statRes参数，返回统计列；增强sumFields参数，支持统计跨页数据；pivotSumField参数，分组后统计。
+   - pivot: 支持在分组查询时包含非分组、非统计的普通列。
+   - 查询参数cond除支持字符串数组外，增加支持键值对，增强getQueryCond函数；可用params("cond")取cond参数，会同时从GET/POST参数中取
+   - 支持通用Obj.query(qsearch)接口，如`callSvr("Ordr.query", {qsearch: "dscr,cmt:张* 退款"})`
+   - 导出excel时(query接口)自动判断列类型(以前全部用字符串,不方便在excel中做数值计算)
+   - 导出excel支持某项为数组
+ - 子表更新支持patch/put两种模式
+ - 批量导入时的更新机制增强(batchAdd+uniKey), uniKey支持虚拟字段，支持只批量更新模式(uniKey加!结尾); 全面支持子表更新(默认使用put模式更新子表)
+ - 增加通用对象接口batchSet/batchDel，与setIf/delIf接口相同，但对每个对象依次处理，可执行定制逻辑。
+ - 通用add接口：除指定res外，还可以指定res_xxx, param_xxx子表选项。
+ - SQL日志记录INSERT/UPDATE语句返回值（或新的ID），记录queryOne/queryAll的返回记录数
+ - 支持通用URL参数_raw，返回非json的纯数据，用于与shell集成。
+ - 会话名由{appName}id改为采用{appType}id，这样浏览器中不同应用(比如员工移动端emp和管理端emp-adm)可共享登录会话
+ - 引入readBlock函数编程模型(common.php)
+ - 支持在免认证接口内部调用需要认证的接口，支持模拟身份认证（Conf::$authKeys增加none类型）
+ - 推荐使用jdRet函数替代MyException/DirectReturn/setRet等
+ - 统一使用jsonEncode, 去除全局JSON_FLAG
+ - 增加对ApiLog与SyslogV接口，允许超级管理员(admin)或最高管理员(emp:mgr)访问
+ - common: 增加qstr, myexec, redirectOut等函数。
+
+- 管理端(jd-web)
+ - 二次开发支持
+   - WUI.setDlgLogic: 新的对话框逻辑设置方式。
+   - gn字段访问器：formItems底层重构，支持WUI.getFormItem/gn(jquery)通用组件访问接口
+   - upgrade-addon: 支持addon的导入（安装）、导出。
+   - 引入jsoneditor与ace代码编辑器。
+   - 页面增加dg_toolbar事件，支持定制列表工具栏按钮
+ - 通用统计报表（WUI.showDataReport、dlgDataReport）支持数据透视表
+    - 支持指定行、列分组项和统计项，支持多个统计项，支持查询条件，支持指定时间字段自动按年月等分组；支持行、列上汇总。
+    - 支持生成统计图。WUI.showDlgChart支持直接显示统计图。
+    - 支持treegrid树表显示
+ - datagrid数据表
+   - 支持列统计，右键列头或多选时可见。支持在数据表底部显示列统计值。datagrid扩展sumFields选项，可结合后端query接口的statRes做跨页统计
+   - 支持自动限制最大列宽为500px。支持通过CSS设置datagrid最大列宽(wui-datagrid-cell-max-width)
+   - 增加表头右键和列上右键，增加字段信息、自定义查询、自定义报表、操作日志等一系列通用操作。
+ - 通用操作日志(pageObjLog)，关联当前表格，或当前选择的单行或多行中的对象
+ - 通用页面筛选条件。WUI.showPage接口支持指定额外筛选条件（pageFilter选项）。注意WUI.showPage接口支持选项，导致initPageXxx(objParam)这种定义不兼容需要手工升级;
+ - pageIframe: 支持超链接在系统内tab页显示
+ - pageTab: 通用布局页，支持页面内左右或上下布局，每个布局区域支持多tabs；WUI.showPage通过target选项指定在哪个tab显示页面
+ - pageSimple: 通用数据表页面，可用于自定义查询和自定义统计分析的输出，支持分页、支持辅助列
+ - 对话框
+   - 增加“应用”（saveDlg），立即保存，不关闭对话框
+   - 在forSet模式对话框上按Ctrl-D，复制新增(dupDlg)功能；
+   - 增加“确定后关闭”选项，兼容WUI.options.closeAfterAdd/closeAfterFind。默认行为：连续添加、连续查询、单次修改后关闭。修改后不关闭对话框，则会重新刷新当前对话框。
+ - plugin login: 支持限制用户一处登录
+ - treegrid支持多选。
+ - 页面的toolbar按钮逻辑扩展支持参数，比如qsearch工具栏按钮支持指定字段参数。
+ - 系统间同步数据最佳实践：添加“复制到”对话框(dlgCopyTo)。
+ - 升级到jquery easyui 1.7.6(支持jquery1.x的最新版)
+ - 增加 wui-help 组件，wui-more组件（点击展开内容）
+ - URL参数phpdebug=1支持php调试
+ - combobox/combogrid支持动态设置选项。combobox延迟加载列表。
+ - dlgImport: 支持批量更新以及对一个对象多种导入
+ - 增加Formatter.progress显示百分比
+ - wui-combogrid组件：支持下拉列表中添加对象
+ - Cinf用于系统配置。CinfList配置
+ - wui-labels组件优化：支持每次打开对话框时均刷新标签列表
+ - batchOp增强，支持基于指定查询条件的批量操作模式。
+
+- 工具(jd-tool)
+ - 在线升级工具tool/init.php在配置存在时要求输入密码进入。支持初始化sqlite
+ - fix-table.php用于批量导入图片或文件
+ - upgrade-addon: 支持addon的导入（安装）、导出。
+
 ## v5.5 - 2021/2
 
 - 后端(jd-php)

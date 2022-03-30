@@ -83,13 +83,17 @@ function onCreateAC($tbl)
 	$cls = null;
 	if (hasPerm(AUTH_USER))
 	{
-		$cls = "AC1_$tbl";
+		$cls = "AC1_{$tbl}_Imp";
+		if (! class_exists($cls))
+			$cls = "AC1_$tbl";
 		if (! class_exists($cls))
 			$cls = "AC_$tbl";
 	}
 	else if (hasPerm(AUTH_EMP))
 	{
-		$cls = "AC2_$tbl";
+		$cls = "AC2_{$tbl}_Imp";
+		if (! class_exists($cls))
+			$cls = "AC2_$tbl";
 	}
 	return $cls;
 }
@@ -99,7 +103,8 @@ function onCreateAC($tbl)
 // ====== main {{{
 
 // 确保在api.php的最后
-apiMain();
+if (!isCLI() && endWith($_SERVER["SCRIPT_NAME"], "/api.php"))
+	callSvc();
 
 //}}}
 

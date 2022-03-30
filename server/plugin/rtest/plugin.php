@@ -26,7 +26,7 @@ function api_fn()
 		$ret = execOne($sql, $getNewId);	
 	}
 	else
-		throw new MyException(E_SERVER, "not implemented");
+		jdRet(E_SERVER, "not implemented");
 	return $ret;
 }
 
@@ -38,7 +38,7 @@ function api_login()
 	$sql = sprintf("SELECT id FROM User WHERE uname=%s", Q($uname));
 	$id = queryOne($sql);
 	if ($id === false)
-		throw new MyException(E_AUTHFAIL, "bad uname or pwd");
+		jdRet(E_AUTHFAIL, "bad uname or pwd");
 	$_SESSION["uid"] = $id;
 	return ["id" => $id];
 }
@@ -187,7 +187,7 @@ WHERE userId={$this->uid} ORDER BY id DESC LIMIT 3) t
 			$id = mparam("id");
 			$rv = queryOne("SELECT id FROM ApiLog WHERE id={$id} AND userId={$this->uid}");
 			if ($rv === false)
-				throw new MyException(E_FORBIDDEN, "not your log");
+				jdRet(E_FORBIDDEN, "not your log");
 		}
 	}
 
@@ -200,16 +200,11 @@ WHERE userId={$this->uid} ORDER BY id DESC LIMIT 3) t
 	public function api_listByAc()
 	{
 		$ac = mparam("ac");
-		$param = [
+		$param = $_GET + [
 			"fmt" => "list",
 			"cond" => "ac=" . Q($ac)
 		];
-		/*
-		callSvc("UserApiLog.query", $param);
-		throw new DirectReturn();
-		*/
-		setParam($param);
-		return callSvcInt("UserApiLog.query");
+		return callSvcInt("UserApiLog.query", $param);
 	}
 }
 

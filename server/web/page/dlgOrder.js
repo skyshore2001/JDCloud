@@ -1,23 +1,20 @@
 function initDlgOrder()
 {
 	var jdlg = $(this);
+	var jfrm = jdlg.find("form:first");
+	var frm = jfrm[0];
+
 	jdlg.on("beforeshow", onBeforeShow)
 	
 	function onBeforeShow(ev, formMode, opt)
 	{
-		var forFind = formMode == FormMode.forFind;
-		var forSet = formMode == FormMode.forSet;
-		jdlg.find(".forFind").toggle(forFind);
-		jdlg.find(".forSet").toggle(forSet);
+		var forAdd = formMode == FormMode.forAdd;
+		$(frm.status).prop("disabled", forAdd);
 
 		setTimeout(onShow);
 		function onShow() {
-			// 对字段或表格的设置应放在onShow里
-			if (forSet) {
-				jdlg.find("#tblOrderLog").datagrid({
-					data: opt.data.orderLog || []
-				});
-			}
+			if (forAdd)
+				$(frm.status).val("CR");
 		}
 	}
 }

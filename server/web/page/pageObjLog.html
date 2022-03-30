@@ -1,0 +1,19 @@
+<div wui-script="pageObjLog.js" title="操作日志" my-initfn="initPageObjLog">
+	<table id="tblObjLog" style="width:auto;height:100%">
+		<thead><tr>
+			<th data-options="field:'id', sortable:true, sorter:intSort">编号</th>
+			<th data-options="field:'obj', sortable:true, formatter:ObjLogFormatter.obj">对象</th>
+			<th data-options="field:'objId', sortable:true, sorter:intSort">对象编号</th>
+			<th data-options="field:'dscr', sortable:true">操作</th>
+			<th data-options="field:'ac', sortable:true, hidden: true">操作接口</th>
+			<th data-options="field:'tm', sortable:true">时间</th>
+			<th data-options="field:'empName', sortable:true, formatter:ObjLogFormatter.empName">用户</th>
+			<th data-options="field:'addr', sortable:true">IP地址</th>
+			<th data-options="field:'req', sortable:true, formatter:ObjLogFormatter.req, width: '200px'">明细</th>
+		</tr></thead>
+	</table>
+</div>
+<!-- examples:
+			<th data-options="field:'customerCode', sortable:true, formatter:Formatter.customerId">客户代码</th>
+			<th data-options="field:'status', sortable:true, jdEnumMap:OrderStatusMap, formatter:Formatter.enum(OrderStatusMap), styler:Formatter.enumStyler({PA:'Warning',CL:'Disabled'})">状态</th>
+-->

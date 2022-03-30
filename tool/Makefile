@@ -25,7 +25,7 @@ refdoc: $(refdoc_targets)
 ../doc/api_m2.html: ../server/m2/lib/jdcloud-mui.js ../server/m2/lib/jdcloud-uploadpic.js
 	$(gendoc) $^ -title "API²Î¿¼ - ½î¶·ÔÆÇ°¶Ë£¨ÒÆ¶¯Web°æ£©" $(opt) > $@
 
-../doc/api_web.html: ../server/web/lib/jdcloud-wui.js ../server/web/lib/jdcloud-wui-ext.js ../server/web/lib/jdcloud-wui-stat.js
+../doc/api_web.html: ../server/web/lib/jdcloud-wui.js ../server/web/lib/jdcloud-wui-ext.js ../server/web/lib/jdcloud-wui-stat.js ../server/web/page/pageSimple.js ../server/web/page/dlgReportCond.js ../server/web/page/pageTab.js 
 	$(gendoc) $^ -title "API²Î¿¼ - ½î¶·ÔÆÇ°¶Ë£¨×ÀÃæWeb°æ£©" $(opt) > $@
 
 ../doc/api_php.html: ../server/php/jdcloud-php/common.php ../server/php/jdcloud-php/app_fw.php ../server/php/jdcloud-php/api_fw.php ../server/php/jdcloud-php/AccessControl.php ../server/php/jdcloud-php/ext.php
@@ -67,3 +67,13 @@ meta2:
 
 meta3:
 	sh upgrade.sh 'export(2)'
+
+addon:
+	php ../server/tool/upgrade-addon.php all
+
+addon-install:
+	php ../server/tool/upgrade-addon.php install
+
+addon-clean:
+	php ../server/tool/upgrade-addon.php clean
+

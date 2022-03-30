@@ -27,15 +27,17 @@
 
 定义用户使用本系统的主要场景。用于指导[系统建模]和[交互接口设计]。
 
-系统用例图.
-![](doc/pic/usecase.png)
+系统主要用例见下图：
+
+![](doc/pic/usecase.dio.png)
 
 ### 系统建模
 
 定义系统数据模型，描述基本概念。用于指导[数据库设计]。
 
-系统类图或ER图.
-![](doc/pic/datamodel.png)
+系统核心概念及关系见下图：
+
+![](doc/pic/datamodel.dio.png)
 
 ## 数据库设计
 
@@ -43,11 +45,11 @@
 
 参考[后端框架-数据库设计](doc/后端框架.html#数据库设计)查看定义表及字段类型的基本规则.
 
-**[数据库信息]**
+**[系统配置项]**
 
-@Cinf: version, createTm, upgradeTm
+@Cinf: id, name(s), value(t)
 
-产品配置信息表.
+- name: 配置项名。由应用定义。下面文档中将使用`Cinf.xxx`来定义各配置项，比如`Cinf.version`表示name为"version"的配置项。
 
 **[员工]**
 
@@ -55,32 +57,45 @@
 
 雇员表, 登录后可用于查看和处理业务数据。
 
-phone/pwd
-: String. 员工登录用的用户名（一般用手机号）和密码. 密码采用md5加密。
+- uname: 用于登录的用户名，不可数字开头。
+- phone: 员工手机号，也可用于登录，数字开头。
+- pwd: 登录密码，采用md5加密。
+- perms: EnumList. 角色列表，多个角色以逗号分隔，如"mgr", "emp,mgr"。
 
-perms
-: List(perm/String). 逗号分隔的权限列表，如"emp,mgr". 可用值: emp,mgr, 对应权限AUTH_EMP, PERM_MGR。
+		emp: 管理员/AUTH_EMP
+		mgr: 最高管理员/PERM_MGR
 
 **[用户]**
 
 @User: id, uname, phone(s), pwd, name(s), createTm
 
-phone/pwd
-: 登录用的用户名和密码。密码采用md5加密。
-
-createTm
-: DateTime. 注册日期. 可用于分析用户数增长。
+- uname: 用于登录的用户名，不可数字开头。
+- phone: 员工手机号，也可用于登录，数字开头。
+- pwd: 登录密码，采用md5加密。
+- createTm: 创建时间。
 
 **[订单]**
 
 @Ordr: id, userId, createTm, status(2), amount, dscr(l), cmt(l)
 
-status
-: Enum. 订单状态。CR-新创建,RE-已服务,CA-已取消. 其它备用值: PA-已付款(待服务), ST-开始服务, CL-已结算.
+vcol
+: userName, userPhone, @orderLog?/订单日志OrderLog, @atts?/订单图片OrderAtt
 
-注意:
+- status: Enum. 订单状态。
 
-- 使用ordr而不是order是为了避免与sql关键字order冲突
+		CR: 新创建
+		RE: 已服务
+		CA: 已取消
+
+		其它备用值: 
+		PA: 已付款(待服务)
+		ST: 开始服务
+		CL: 已结算
+
+- @orderLog: [{id, action, dscr, ...}]. 日志子表, 关联表OrderLog
+- @atts: [{id, attId}]. 订单图片，关联表OrderAtt
+
+注意：使用ordr而不是order是为了避免与sql关键字order冲突
 
 **[订单日志]**
 
@@ -88,22 +103,20 @@ status
 
 例如：某时创建订单，某时付款等。
 
-action
-: 参考Action定义:
+- action: 参考订单状态(Ordr.status)。可用值参考：
 
-		CR:: Create (订单创建，待付款)
-		PA:: Pay (付款，待服务)
-		RE:: Receive (服务完成, 待评价)
-		CA:: Cancel (取消订单)
-		RA:: Rate (评价)
-		ST:: StartOrder (开始服务)
-		CT:: ChangeOrderTime (修改预约时间)
-		AS:: Assign (分派订单给员工)
-		AC:: Accept (员工接单)
-		CL:: Close (订单结算)
+		CR: Create (订单创建，待付款)
+		PA: Pay (付款，待服务)
+		RE: Receive (服务完成, 待评价)
+		CA: Cancel (取消订单)
+		RA: Rate (评价)
+		ST: StartOrder (开始服务)
+		CT: ChangeOrderTime (修改预约时间)
+		AS: Assign (分派订单给员工)
+		AC: Accept (员工接单)
+		CL: Close (订单结算)
 
-empId
-: 操作该订单的员工号
+- empId: 操作该订单的员工号
 
 **[订单-图片关联]**
 
@@ -113,20 +126,20 @@ empId
 
 @ApiLog: id, tm, addr, ua(l), app, ses, userId, ac, t&, retval&, req(t), res(t), reqsz&, ressz&, ver, serverRev(10)
 
-app
-: "user"|"emp"|"store"...
+- app: Enum。存储请求的`_app`参数，常见值：
 
-ua
-: userAgent
+		emp-adm: 电脑管理端(web/index.html)
+		user: 移动客户端(m2/index.html)
 
-ses
-: the php session id.
+- ua: userAgent，用于区分客户端类型和版本
+- ses: 会话标识(HTTP session id)
+- t: 执行时间(单位：ms)
+- ver: 客户端版本。
 
-t
-: 执行时间(单位：ms)
-
-ver
-: 客户端版本。格式为："web"表示通用网页(通过ua可查看明细浏览器)，"wx/{ver}"表示微信版本如"wx/6.2.5", "a/{ver}"表示安卓客户端及版本如"a/1", "ios/{ver}"表示苹果客户端版本如"ios/15".
+		web: 表示通用网页(通过ua可查看明细浏览器)
+		wx/{ver}: 表示微信版本如"wx/6.2.5"
+		a/{ver}: 表示安卓客户端及版本如"a/1"
+		ios/{ver}: 表示苹果客户端版本如"ios/15".
 
 @ApiLog1: id, apiLogId, ac, t&, retval&, req(t), res(t)
 
@@ -138,8 +151,10 @@ batch操作的明细表。
 
 **[插件相关]**
 
+```
 @include server\plugin\login\DESIGN.md
 @include server\plugin\upload\DESIGN.md
+```
 
 ## 交互接口设计
 
@@ -177,12 +192,6 @@ app类型为"user".
 - 添加订单后, 订单状态为"CR"; 且在OrderLog中添加一条创建记录(action=CR)
 - 不允许删除订单（可以取消）。
 
-id
-: Integer. 订单编号
-
-@orderLog
-: [{id, action, dscr, ...}]. 日志子表, 详见表定义"@OrderLog".
-
 ### 员工端/后台管理端
 
 本节API需要员工登录权限。
@@ -209,8 +218,8 @@ app类型为"emp".
 
 查看订单
 
-	Ordr.query() -> tbl(id, status, ..., @orderLog?)
-	Ordr.get(id) -> { 同上字段 }
+	Ordr.query
+	Ordr.get
 
 完成订单或取消订单
 
@@ -220,12 +229,6 @@ app类型为"emp".
 - 权限：AUTH_EMP
 - 订单状态必须为"CR"才能完成或取消.
 - 更新操作应生成相应订单日志(OrderLog).
-
-### 超级管理端
-
-本节API需要超级管理员权限.
-
-app类型为"admin".
 
 ## 前端应用接口
 
