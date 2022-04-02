@@ -1558,4 +1558,112 @@ function redirectOut($fn)
 	$fn();
 	return ob_get_flush();
 }
+
+/**
+@fn mypack($data, $format)
+
+结构体封包。解包使用myunpack.
+
+数据格式代码参考: https://www.php.net/manual/en/function.pack.php
+常用格式：
+
+	C - 8位整数(网络序)
+	n - 16位整数(网络序)
+	N - 32位整数(网络序)
+	a{数字} - 定长字符串(长度不足补0)
+
+示例：
+
+	$format = [
+		"a4", "type", // 定长字符串（不足补0）
+		"N", "deviceId", // 设备id,
+		"C", "y", // 年
+		"C", "m", // 月
+		"C", "d", // 日
+		"C", "h", // 时
+		"C", "n", // 分
+		"C", "s", // 秒
+	];
+	$tm = localtime(strtotime("2022-4-1 09:10:11"), true);
+	$data = [
+		"deviceId" => 20501, // 设备id,
+		"type" => "WM",
+		"y" => $tm["tm_year"]-100, // 年
+		"m" => $tm["tm_mon"]+1, // 月
+		"d" => $tm["tm_mday"], // 日
+		"h" => $tm["tm_hour"], // 时
+		"n" => $tm["tm_min"], // 分
+		"s" => $tm["tm_sec"], // 秒
+	];
+	$packData = mypack($data, $format);
+	print("enc=" . bin2hex($packData) . ", len=" . strlen($packData). "\n");
+
+	$data1 = myunpack($packData, $format);
+	var_dump($data1);
+
+TODO: 支持结构体、数组等：
+
+	$format_st = [
+		"N", "a"
+		"a4", "b"
+	];
+	$format = [
+		["f", 4], "arr", // 定长数组, 不足补0
+		["f", "*"], "arr1", // 不定长数组(内置长度)
+		$format_st, "st", // 结构体
+		[$format_st, 4], "stList" // 结构体定长数组
+		[$format_st, "*"], "stList2" // 结构体不定长数组(内置长度)
+	];
+	$data = [
+		"arr" => [1.1, 2.2],
+		"arr1" => [3.3, 4.4, 5.5],
+		"st" => [ "a" => 100, "b" => "BB" ],
+		"stList" => [
+			[ "a" => 101, "b" => "b1"],
+			[ "a" => 102, "b" => "b2"]
+		],
+		"stList2" => [
+			[ "a" => 101, "b" => "b1"],
+			[ "a" => 102, "b" => "b2"]
+		]
+	];
+*/
+function mypack($data, $format)
+{
+	if (is_string($format)) 
+		return pack($format, $data);
+	$cnt = count($format);
+	assert($cnt % 2 == 0);
+	$params = [];
+	$format0 = "";
+	for ($i=0; $i<$cnt; $i+=2) {
+		$format0 .= $format[$i];
+		$params[] = $data[$format[$i+1]];
+	}
+	array_unshift($params, $format0);
+	return call_user_func_array("pack", $params);
+}
+
+/**
+@fn myunpack($packData, $format)
+
+结构体解包。
+
+@see mypack
+*/
+function myunpack($packData, $format)
+{
+	if (is_string($format))
+		return unpack($format, $packData);
+	$cnt = count($format);
+	assert($cnt % 2 == 0);
+	$format0 = null;
+	for ($i=0; $i<$cnt; $i+=2) {
+		if ($format0 !== null) {
+			$format0 .= '/';
+		}
+		$format0 .= $format[$i] . $format[$i+1];
+	}
+	return unpack($format0, $packData);
+}
 // vi: foldmethod=marker
