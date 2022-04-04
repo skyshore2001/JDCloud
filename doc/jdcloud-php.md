@@ -1801,7 +1801,11 @@ class AC1_Ordr extends AccessControl
 - reqsz/ressz: 请求与响应的长度。
 - ver 前端应用版本。调用接口时通过URL参数`_ver`来指定应用版本名。
 
-如果要使用PHP调试功能，支持打断点、看变量、单步运行，推荐使用xdebug+vscode(php debug插件)，[具体参考这里](http://oliveche.com/jdcloud-site/phpdebug.html)
+#### PHP调试
+
+如果要使用PHP调试功能，支持打断点、看变量、单步运行，推荐使用xdebug+vscode(php debug插件)，具体请参考
+
+- [PHP调试](http://oliveche.com/jdcloud-site/phpdebug.html)
 
 ### 会话管理
 

@@ -43,7 +43,9 @@
 <li><a href="#非标准对象接口"><span class="toc-section-number">4.10</span> 非标准对象接口</a></li>
 </ul></li>
 <li><a href="#框架功能"><span class="toc-section-number">5</span> 框架功能</a><ul>
-<li><a href="#日志与调试"><span class="toc-section-number">5.1</span> 日志与调试</a></li>
+<li><a href="#日志与调试"><span class="toc-section-number">5.1</span> 日志与调试</a><ul>
+<li><a href="#php调试"><span class="toc-section-number">5.1.1</span> PHP调试</a></li>
+</ul></li>
 <li><a href="#会话管理"><span class="toc-section-number">5.2</span> 会话管理</a></li>
 <li><a href="#批量请求"><span class="toc-section-number">5.3</span> 批量请求</a></li>
 <li><a href="#类的按需加载autoload"><span class="toc-section-number">5.4</span> 类的按需加载(autoload)</a></li>
@@ -1319,7 +1321,11 @@ putenv(&quot;P_MOCK_MODE&quot;, 1);</code></pre>
 <li>reqsz/ressz: 请求与响应的长度。</li>
 <li>ver 前端应用版本。调用接口时通过URL参数<code>_ver</code>来指定应用版本名。</li>
 </ul>
-<p>如果要使用PHP调试功能，支持打断点、看变量、单步运行，推荐使用xdebug+vscode(php debug插件)，<a href="http://oliveche.com/jdcloud-site/phpdebug.html">具体参考这里</a></p>
+<h4 id="php调试"><span class="header-section-number">5.1.1</span> PHP调试</h4>
+<p>如果要使用PHP调试功能，支持打断点、看变量、单步运行，推荐使用xdebug+vscode(php debug插件)，具体请参考</p>
+<ul>
+<li><a href="http://oliveche.com/jdcloud-site/phpdebug.html">PHP调试</a></li>
+</ul>
 <h3 id="会话管理"><span class="header-section-number">5.2</span> 会话管理</h3>
 <p>筋斗云使用cookie机制来维持与客户端的会话。 它默认使用的cookie名称是&quot;userid&quot;，但可以由客户端请求中URL参数<code>_app</code>来修改，比如<code>_app=emp</code>，则使用cookie名称为&quot;empid&quot;。 在筋斗云中，<code>_app</code>参数称为前端应用名，因而不同的应用即使同时在浏览器中打开也不会发生会话错乱和冲突。</p>
 <p>示例请求：</p>
