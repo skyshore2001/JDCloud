@@ -9206,7 +9206,13 @@ function getQueryParamFromTable(jtbl, param)
 			$.each(cols, function (i, e) {
 				if (! e.field || e.field.substr(-1) == "_")
 					return;
-				var one = e.field + " \"" + e.title + "\"";
+				var one = e.field;
+				if (one != e.title || e.jdEnumMap) {
+					if (/[\s()\[\]\{\}\/\\,<>.!@#$%^&*-+]|^\d/.test(e.title))
+						one += " " + Q(e.title, '"');
+					else
+						one += " " + e.title;
+				}
 				if (e.jdEnumMap) {
 					one += '=' + mCommon.kvList2Str(e.jdEnumMap, ';', ':');
 				}
