@@ -84,6 +84,17 @@ function initDlgDataReport()
 				resFields: param1.res,
 				tmField: null
 			};
+			if (param.ac.makeUrl) {
+				var p = param.ac.params;
+				// 避免与cond重复
+				delete p.cond; 
+				// 去除分页参数
+				delete p.page;
+				delete p.pagekey;
+				if (!$.isEmptyObject(p))
+					param.queryParam = p;
+				param.ac = param.ac.action;
+			}
 
 			var showPageArgs = $.extend([], jpage.data("showPageArgs_")); // showPage(pageName, title, [userParam, cond])
 			param.detailPageName = showPageArgs[0];
@@ -189,8 +200,21 @@ function initDlgDataReport()
 		param.userCondArr = kvarr;
 	}
 
+	function handleJson(data, field) {
+		// cond支持直接指定json格式(或js代码)
+		var val = data[field];
+		if (val && val[0] == '{' || val[0] == '[') {
+			data[field] = eval("(" + val + ")");
+		}
+	}
+
 	function onValidate(ev, mode, oriData, newData) {
 		var formData = WUI.getFormData(jdlg, true);
+
+		// cond支持直接指定json格式(或js代码)
+		handleJson(formData, "cond");
+		handleJson(formData, "queryParam");
+
 		var param = param_;
 		$.extend(param, formData);
 		param.showChart = formData.showChart;
@@ -240,7 +264,7 @@ function initDlgDataReport()
 			document.execCommand("copy");
 			return;
 		}
-		console.log(param);
+		console.log('WUI.showDataReport', param);
 		WUI.showDataReport(param);
 	}
 

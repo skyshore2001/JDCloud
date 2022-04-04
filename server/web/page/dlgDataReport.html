@@ -1,4 +1,4 @@
-<form title="自定义报表" style="width:450px;height:400px;" wui-script="dlgDataReport.js" my-initfn="initDlgDataReport">
+<form title="自定义报表" style="width:450px;height:450px;" wui-script="dlgDataReport.js" my-initfn="initDlgDataReport">
 <style>
 .forSum {
 	display:none;
@@ -29,6 +29,13 @@
 			<td>
 				<input name="cond" class="wui-picker-edit">
 				<a class="easyui-linkbutton btnAddCond" data-options="iconCls:'icon-add'"></a>
+			</td>
+		</tr>
+		<tr>
+			<td>自定义参数</td>
+			<td>
+				<input name="queryParam" class="wui-picker-edit">
+				<p class="hint">示例: {orderby: "id DESC"}</p>
 			</td>
 		</tr>
 		<tr>
