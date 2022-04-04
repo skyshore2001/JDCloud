@@ -2951,6 +2951,10 @@ FormItem.prototype = {
 				val = "";
 			}
 		}
+		if ($.isArray(val) || $.isPlainObject(val)) {
+			val = JSON.stringify(val);
+		}
+
 		if (jo.is(":checkbox")) {
 			jo.prop("checked", mCommon.tobool(val));
 		}
