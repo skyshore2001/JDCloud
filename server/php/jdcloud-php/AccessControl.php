@@ -2712,7 +2712,7 @@ FROM ($sql) t0";
 		$this->after($ret);
 		$pivot = param("pivot");
 		if ($pivot && count($ret) > 0) {
-			$ret = pivot($ret, $pivot, param("pivotCnt/i", 1), param("pivotSumField"), $this->sqlConf["gres"]);
+			$ret = pivot($ret, $pivot, param("pivotCnt/i", 1), param("pivotSumField"), param("gres"));
 			$fixedColCnt = count($ret[0]);
 		}
 

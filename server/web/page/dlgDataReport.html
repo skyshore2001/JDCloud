@@ -1,4 +1,4 @@
-<form title="自定义报表" style="width:450px;height:450px;" wui-script="dlgDataReport.js" my-initfn="initDlgDataReport">
+<form title="自定义报表" style="width:450px;height:500px;" wui-script="dlgDataReport.js" my-initfn="initDlgDataReport">
 <style>
 .forSum {
 	display:none;
@@ -65,9 +65,19 @@
 				<label title="在必要时自动添加合计行或合计列">
 					<input type="checkbox" name="showSum"> 显示合计
 				</label>
-				<label title="有时间统计字段或列统计字段时生成直方图，否则生成饼图">
+			</td>
+		</tr>
+		<tr>
+			<td></td>
+			<td>
+				<label>
 					<input type="checkbox" name="showChart"> 生成统计图
 				</label>
+				<select name="chartType" style="width:80px; height:22px; float:right">
+					<option value="line">折线图</option>
+					<option value="bar">直方图</option>
+					<option value="pie">饼图</option>
+				</select>
 			</td>
 		</tr>
 		<tr id="copyCodeTr">

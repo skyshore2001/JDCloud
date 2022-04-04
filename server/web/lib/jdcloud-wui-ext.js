@@ -2818,7 +2818,7 @@ function diffObj(obj, obj1)
 }
 
 /**
-@fn showDataReport(opt={ac, @gres, @gres2?, res?, cond?, title?="统计报表", detailPageName?, detailPageParamArr?, resFields?, cond2?, tmField?, showChart?})
+@fn showDataReport(opt={ac, @gres, @gres2?, res?, cond?, title?="统计报表", detailPageName?, detailPageParamArr?, resFields?, cond2?, tmField?, showChart?, chartType?=line})
 
 选项说明：
 
@@ -2840,6 +2840,7 @@ function diffObj(obj, obj1)
 
 - showChart: 是否显示统计图表对话框。
 - tmUnit: 用于统计图，特别用于月报、日报等，会自动补齐缺少的时间。常用有："y,m"-年月,"y,m,d"-年月日。注意一旦指定tmUnit则orderby选项自动与tmUnit相同。
+- chartType: line-折线图(默认), bar-直方图, pie-饼图
 
 - showSum: 自动添加统计行或列
 - pivotSumField: 统计列列名，默认为"合计"
@@ -3074,7 +3075,7 @@ function showDataReport(opt, showPageOpt)
 				tmUnit: opt.tmUnit
 			};
 			var seriesOpt = {
-				type: (opt.tmUnit || rs2StatOpt.ycol.length>1)? "bar": "pie",
+				type: opt.chartType || "line",
 //				stack: rs2statopt.ycol.length>1? "X": undefined // 堆叠柱图
 			};
 			self.showDlgChart(data1, rs2StatOpt, seriesOpt);

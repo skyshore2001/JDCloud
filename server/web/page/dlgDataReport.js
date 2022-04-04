@@ -43,6 +43,13 @@ function initDlgDataReport()
 	jdlg.find(".cboSum, .cboSumField").change(function (ev) {
 		setSumField();
 	});
+	jdlg.find("[name=showChart]").change(function (ev) {
+		var bval = $(this).prop("checked");
+		var jo = jdlg.find("[name=chartType]");
+		jo.toggle(bval);
+		if (bval && !jo.val())
+			jo.val("line");
+	});
 
 	jdlg.find(".btnAddCond").click(function (ev) {
 		var jo = jtplCond.clone();
@@ -119,6 +126,7 @@ function initDlgDataReport()
 			array2Fields(param.gres2, "[name='gres2[]']", function () {
 				jdlg.find(".btnAddGres2").click();
 			});
+			jdlg.find("[name=showChart]").trigger("change");
 		}
 	}
 
@@ -217,7 +225,8 @@ function initDlgDataReport()
 
 		var param = param_;
 		$.extend(param, formData);
-		param.showChart = formData.showChart;
+		if (!param.showChart)
+			delete param.chartType;
 		param.gres = param.gres.filter(e => e);
 		param.gres2 = param.gres2.filter(e => e);
 		getUserCond(param);
