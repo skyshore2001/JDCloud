@@ -9925,9 +9925,34 @@ var GridHeaderMenu = {
 		}
 		if (param.orderby)
 			strArr.push("<b>[排序]</b>\n" + param.orderby);
-		strArr.push("<b>[字段列表]</b>\n" + param.res.replace(/,/g, "\n"));
 
-		var jdlg = $("<div title='" + title + "'><pre>" + strArr.join("\n\n") + "</pre></div>");
+		// {name/字段名, title/标题, cmt/备注?, example/示例?}
+		var varr = WUI.list2varr(param.res, " ", ",");
+		var resArr = WUI.rs2Array({h:["name","title"], d:varr});
+		var rows = jtbl.datagrid("getData").rows;
+		if (rows.length > 0) {
+			var colMap = {};
+			$.each(resArr, function (i, res) {
+				colMap[ res.name ] = true; // name
+				addExample(rows, res);
+			});
+			$.each(rows[0], function (field, val) {
+				if (colMap[field])
+					return;
+				var res = { name:field, title:"(未使用)"};
+				addExample(rows, res);
+				resArr.push(res);
+			});
+		}
+		strArr.push("<b>[字段列表]</b>\n");
+
+		var jdlg = $("<div style='width:500px;height:500px' title='" + title + "'><pre>" + strArr.join("\n\n") + "</pre>" +
+			"<table id='res' style='width:100%'></table>" +
+			"<style>" + 
+				".datagrid-cell { white-space: normal }" +
+				".example { color: blue; font-size: 0.6em }" +
+			"</style>" +
+			"</div>");
 		WUI.showDlg(jdlg, {
 			modal: false,
 			onOk: function () {
@@ -9935,6 +9960,42 @@ var GridHeaderMenu = {
 			},
 			noCancel: true
 		});
+		setTimeout(onShow);
+
+		function onShow() {
+			jdlg.find("#res").datagrid({
+				columns: [[
+					{ field: "name", title: "字段", width: "33%" },
+					{ field: "title", title: "标题", width:"34%" },
+					{ field: "example", title: "示例", width: "33%"},
+				]],
+				pagination: false,
+				data: resArr
+			});
+		}
+
+		function addExample(rows, res) {
+			var field = res.name;
+			if (rows[0][field] === undefined) {
+				res.name += "<span style='color:red'>(缺失)</span>";
+			}
+			if (res.title) {
+				res.title = "<span>" + res.title + "</span>";
+			}
+			var arr = [];
+			var MAX_EXAMPLE = 2;
+			var lastOne = null;
+			$.each(rows, function (i, row) {
+				if (row[field] && row[field] != lastOne) {
+					arr.push(row[field]);
+					lastOne = row[field];
+					if (arr.length == MAX_EXAMPLE)
+						return false;
+				}
+			});
+			if (arr.length > 0)
+				res.example = "<span class='example'>" + arr.join('<br>') + "</span>";
+		}
 	},
 
 	filterGrid: function (jtbl) {
@@ -10618,12 +10679,14 @@ parseArgs();
 	// 错误框
 	app_alert("操作失败", "e");
 
-	// 确认框(确定/取消)
+	// 确认框(confirm, 确定/取消)
+	// 仅当点击“确定”按钮才会进入回调函数。如果想处理取消事件，可使用opt.onCancel()回调
 	app_alert("立即付款?", "q", function () {
 		WUI.showPage("#pay");
 	});
 
-	// 输入框
+	// 提示输入框(prompt)
+	// 仅当点击“确定”按钮且输入值非空时才会进入回调函数。可使用opt.defValue指定缺省值
 	app_alert("输入要查询的名字:", "p", function (text) {
 		callSvr("Book.query", {cond: "name like '%" + text + "%'"});
 	});
