@@ -31,7 +31,11 @@ class AC0_Cinf extends AccessControl
 	}
 	function api_setValue() {
 		$name = mparam("name");
-		$value = mparam("value", null, false);
+		$value = $_POST["value"];
+		if (is_null($value))
+			jdRet(E_PARAM, "require value");
+		if ($value === "")
+			$value = null;
 		Cinf::setValue($name, $value);
 	}
 }

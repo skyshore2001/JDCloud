@@ -447,6 +447,8 @@ function param($name, $defVal = null, $col = null, $doHtmlEscape = true, $env = 
 $name可以是一个数组，表示至少有一个参数有值，这时返回每个参数的值。
 参考param函数，查看$name如何支持各种类型。
 
+注意：即使传入值是空串，也会当作未传值而报错！
+
 示例：
 
 	$svcId = mparam("svcId");
