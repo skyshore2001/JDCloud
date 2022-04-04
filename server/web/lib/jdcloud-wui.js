@@ -7954,9 +7954,17 @@ function unloadPage(pageName)
 		self.tabClose();
 	}
 	// 不要删除内部页面
-	var jo = $("."+pageName);
+	var sel = "."+pageName;
+	var jo = $(sel);
 	if (jo.attr("wui-pageFile") == null)
 		return;
+	
+	// 关闭所有引用该页面的tab页
+	var jtabs = WUI.tabMain.tabs("tabs");
+	for (var i=jtabs.length-1; i>=0; --i) {
+		if (jtabs[i].find(sel).size() > 0)
+			WUI.tabClose(i);
+	}
 	jo.remove();
 	$("style[wui-origin=" + pageName + "]").remove();
 }
