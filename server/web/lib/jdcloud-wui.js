@@ -9881,8 +9881,9 @@ var GridHeaderMenu = {
 	// 表头左侧右键菜单
 	items: [
 		'<div id="showDlgFieldInfo">字段信息</div>',
+		'<div id="filterGrid" data-options="iconCls:\'icon-search\'">自定义查询</div>',
 		'<div id="showDlgDataReport" data-options="iconCls:\'icon-sum\'">自定义报表</div>',
-		'<div id="showDlgQuery" data-options="iconCls:\'icon-search\'">自定义查询</div>',
+		'<div id="showDlgQuery">高级查询</div>',
 		'<div id="import" wui-perm="新增" data-options="iconCls:\'icon-add\'">导入</div>',
 		'<div id="export" data-options="iconCls:\'icon-save\'">导出</div>'
 	],
@@ -9908,8 +9909,12 @@ var GridHeaderMenu = {
 		var url = jtbl[datagrid]("options").url;
 		if (url && url.action)
 			strArr.push("<b>[接口]</b>\n" + url.action);
-		if (param.cond)
-			strArr.push("<b>[查询条件]</b>\n" + param.cond);
+		if (param.cond) {
+			var cond = param.cond;
+			if ($.isArray(cond) || $.isPlainObject(cond))
+				cond = JSON.stringify(cond);
+			strArr.push("<b>[查询条件]</b>\n" + cond);
+		}
 		if (param.orderby)
 			strArr.push("<b>[排序]</b>\n" + param.orderby);
 		strArr.push("<b>[字段列表]</b>\n" + param.res.replace(/,/g, "\n"));
@@ -9924,6 +9929,12 @@ var GridHeaderMenu = {
 		});
 	},
 
+	filterGrid: function (jtbl) {
+		var param = self.getDgInfo(jtbl).param;
+		app_alert("查询条件(cond)? ", "p", function (cond) {
+			WUI.reload(jtbl, null, {cond: cond});
+		}, {defValue: param && param.cond});
+	},
 	showDlgDataReport: function (jtbl) {
 		self.showDlg("#dlgDataReport");
 	},
@@ -10046,15 +10057,23 @@ var GridHeaderMenu = {
 		});
 	},
 	doFindCell: function (jtbl, field) {
-		var row = WUI.getRow(jtbl);
-		if (row == null)
-			return;
-		
-		var param = {cond: {} }
-		param.cond[field] = row[field];
-		var doAppendFilter = WUI.isBatchMode();
-		WUI.reload(jtbl, undefined, param, doAppendFilter);
-		console.log("查询(按住Ctrl点击可追加查询条件): ", param.cond);
+		var dgInfo = WUI.getDgInfo(jtbl);
+		var colTitle = jtbl.datagrid("getColumnOption", field).title;
+		if (colTitle != field)
+			colTitle += "(" + field + ")";
+		var info = "请输入<b>[" + colTitle + "]</b>的过滤条件：<br>" +
+			"按住Ctrl点\"确定\"可追加过滤条件。";
+		var rows = jtbl.datagrid("getSelections");
+		var defValue = $.map(rows, function (row) {
+			return row[field];
+		}).join(',');
+		app_alert(info, "p", function (text) {
+			var kv = {};
+			kv[field] = text;
+			var param = WUI.getQueryParam(kv);
+			var doAppendFilter = WUI.isBatchMode();
+			WUI.reload(jtbl, undefined, param, doAppendFilter);
+		}, {defValue: defValue});
 	}
 }
 self.GridHeaderMenu = GridHeaderMenu;

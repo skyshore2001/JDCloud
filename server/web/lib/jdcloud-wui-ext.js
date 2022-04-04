@@ -1849,10 +1849,7 @@ function createFindMenu(jtbl)
 				WUI.reload(jtbl, null, {});
 			}
 			else if (item.id == "btnUserQuery") {
-				var param = self.getQueryParamFromTable(jtbl);
-				app_alert("查询条件(cond)? ", "p", function (cond) {
-					WUI.reload(jtbl, null, {cond: cond});
-				}, {defValue: param.cond});
+				WUI.GridHeaderMenu.filterGrid(jtbl);
 			}
 			else if (item.opt) {
 				WUI.reload(jtbl, null, {cond: item.opt.query});
