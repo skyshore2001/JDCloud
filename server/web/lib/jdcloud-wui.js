@@ -9946,13 +9946,16 @@ var GridHeaderMenu = {
 		}
 		strArr.push("<b>[字段列表]</b>\n");
 
-		var jdlg = $("<div style='width:500px;height:500px' title='" + title + "'><pre>" + strArr.join("\n\n") + "</pre>" +
+		var jdlg = $("<div class='dlgFieldInfo' style='width:500px;height:500px' title='" + title + "'><pre>" + strArr.join("\n\n") + "</pre>" +
 			"<table id='res' style='width:100%'></table>" +
-			"<style>" + 
-				".datagrid-cell { white-space: normal }" +
-				".example { color: blue; font-size: 0.6em }" +
-			"</style>" +
 			"</div>");
+		if ($("#styleFieldInfo").size() == 0) {
+			var style = "<style id='styleFieldInfo'>" + 
+				".dlgFieldInfo .datagrid-cell { white-space: normal }" +
+				".dlgFieldInfo .example { color: blue; font-size: 0.6em }" +
+				"</style>";
+			$(style).appendTo(document.head);
+		}
 		WUI.showDlg(jdlg, {
 			modal: false,
 			onOk: function () {
