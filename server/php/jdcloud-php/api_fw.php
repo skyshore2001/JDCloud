@@ -2212,6 +2212,27 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 
 	function __construct() {
 		parent::__construct();
+
+		$this->onBeforeActions[] = function () {
+			$xp = $this->_GET["xp"];
+			if (isset($xp)) {
+				$this->contentType = "application/xparam";
+				parse_str(b64d($xp, true), $this->_GET);
+				if (! is_array($this->_GET)) {
+					logit("error: bad url xparam $xp");
+					jdRet(E_PARAM, "bad url xparam");
+				}
+				$postData = getHttpInput($this);
+				if ($postData) {
+					$this->rawContent = b64d($postData, true);
+					$this->_POST = jsonDecode($this->rawContent, true);
+					if (! is_array($this->_POST)) {
+						logit("error: bad post xparam $postData");
+						jdRet(E_PARAM, "bad post xparam");
+					}
+				}
+			}
+		};
 	}
 
 	private function initRequest() {
@@ -2443,7 +2464,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 				logit('onAfterActions fails: ' . (string)$e);
 			}
 		}
-		if (! $isCLI && Conf::$enableAutoSession) {
+		if (! $isCLI && class_exists("Conf") && Conf::$enableAutoSession) {
 			$this->session_write_close();
 		}
 

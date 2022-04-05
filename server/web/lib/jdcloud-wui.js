@@ -3977,6 +3977,107 @@ function makeTree(arr, idField, fatherIdField, childrenField)
 }
 
 }
+
+// ==== jQuery.base64Encode/base64Decode
+(function ($) {
+
+    var keyString = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+
+    var utf8Encode = function (string) {
+        string = string.replace(/\x0d\x0a/g, "\x0a");
+        var output = "";
+        for (var n = 0; n < string.length; n++) {
+            var c = string.charCodeAt(n);
+            if (c < 128) {
+                output += String.fromCharCode(c);
+            } else if ((c > 127) && (c < 2048)) {
+                output += String.fromCharCode((c >> 6) | 192);
+                output += String.fromCharCode((c & 63) | 128);
+            } else {
+                output += String.fromCharCode((c >> 12) | 224);
+                output += String.fromCharCode(((c >> 6) & 63) | 128);
+                output += String.fromCharCode((c & 63) | 128);
+            }
+        }
+        return output;
+    };
+
+    var utf8Decode = function (input) {
+        var string = "";
+        var i = 0;
+        var c = c1 = c2 = 0;
+        while (i < input.length) {
+            c = input.charCodeAt(i);
+            if (c < 128) {
+                string += String.fromCharCode(c);
+                i++;
+            } else if ((c > 191) && (c < 224)) {
+                c2 = input.charCodeAt(i + 1);
+                string += String.fromCharCode(((c & 31) << 6) | (c2 & 63));
+                i += 2;
+            } else {
+                c2 = input.charCodeAt(i + 1);
+                c3 = input.charCodeAt(i + 2);
+                string += String.fromCharCode(((c & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63));
+                i += 3;
+            }
+        }
+        return string;
+    };
+
+    $.extend({
+        base64Encode:function (input, enhance) {
+            var output = "";
+            var chr1, chr2, chr3, enc1, enc2, enc3, enc4;
+            var i = 0;
+            input = utf8Encode(input);
+			// TODO: enhance
+            while (i < input.length) {
+                chr1 = input.charCodeAt(i++);
+                chr2 = input.charCodeAt(i++);
+                chr3 = input.charCodeAt(i++);
+                enc1 = chr1 >> 2;
+                enc2 = ((chr1 & 3) << 4) | (chr2 >> 4);
+                enc3 = ((chr2 & 15) << 2) | (chr3 >> 6);
+                enc4 = chr3 & 63;
+                if (isNaN(chr2)) {
+                    enc3 = enc4 = 64;
+                } else if (isNaN(chr3)) {
+                    enc4 = 64;
+                }
+                output = output + keyString.charAt(enc1) + keyString.charAt(enc2) + keyString.charAt(enc3) + keyString.charAt(enc4);
+            }
+            return output;
+        },
+        base64Decode:function (input) {
+            var output = "";
+            var chr1, chr2, chr3;
+            var enc1, enc2, enc3, enc4;
+            var i = 0;
+            input = input.replace(/[^A-Za-z0-9\+\/\=]/g, "");
+            while (i < input.length) {
+                enc1 = keyString.indexOf(input.charAt(i++));
+                enc2 = keyString.indexOf(input.charAt(i++));
+                enc3 = keyString.indexOf(input.charAt(i++));
+                enc4 = keyString.indexOf(input.charAt(i++));
+                chr1 = (enc1 << 2) | (enc2 >> 4);
+                chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
+                chr3 = ((enc3 & 3) << 6) | enc4;
+                output = output + String.fromCharCode(chr1);
+                if (enc3 != 64) {
+                    output = output + String.fromCharCode(chr2);
+                }
+                if (enc4 != 64) {
+                    output = output + String.fromCharCode(chr3);
+                }
+            }
+            output = utf8Decode(output);
+            return output;
+        }
+    });
+    return 0;
+})(jQuery);
+
 // ====== WEBCC_END_FILE commonjq.js }}}
 
 // ====== WEBCC_BEGIN_FILE app.js {{{
@@ -4843,6 +4944,7 @@ function defDataProc(rv)
 			g_data.testMode = val;
 			if (g_data.testMode)
 				modeStr = "测试模式";
+			self.options.xparam = 0;
 		}
 		val = mCommon.parseValue(this.xhr_.getResponseHeader("X-Daca-Mock-Mode"));
 		if (g_data.mockMode != val) {
@@ -5042,7 +5144,7 @@ function makeUrl(action, params)
 	else if (action[0] != '.' && action.indexOf(".php") < 0)
 	{
 		var opt = self.options;
-		var usePathInfo = !opt.serverUrlAc;
+		var usePathInfo = !opt.serverUrlAc && !opt.xparam;
 		if (usePathInfo) {
 			if (opt.serverUrl.slice(-1) == '/')
 				url = opt.serverUrl + action;
@@ -5051,7 +5153,7 @@ function makeUrl(action, params)
 		}
 		else {
 			url = opt.serverUrl;
-			params[opt.serverUrlAc] = action;
+			params[opt.serverUrlAc || "ac"] = action;
 		}
 	}
 	else {
@@ -5082,7 +5184,10 @@ function makeUrl(action, params)
 	if (g_args.phpdebug)
 		params.XDEBUG_SESSION_START = 1;
 
-	var ret = mCommon.appendParam(url, $.param(params));
+	var p = $.param(params);
+	if (opt.xparam)
+		p = "xp=" + (p? $.base64Encode(p, true): 1);
+	var ret = mCommon.appendParam(url, p);
 	return makeUrlObj(ret);
 
 	function makeUrlObj(url)
@@ -5639,14 +5744,22 @@ function callSvr(ac, params, fn, postParams, userOptions)
 		}
 	}
 
+	console.log(callType + ": " + opt.type + " " + ac0);
+	if (ctx.isMock)
+		return callSvrMock(opt, isSyncCall);
+
 	// post json content
 	var isJson = opt.contentType && opt.contentType.indexOf("/json")>0;
 	if (isJson && opt.data instanceof Object)
 		opt.data = JSON.stringify(opt.data);
 
-	console.log(callType + ": " + opt.type + " " + ac0);
-	if (ctx.isMock)
-		return callSvrMock(opt, isSyncCall);
+	if (opt.data && self.options.xparam) {
+		if (typeof(opt.data) === "string")
+			opt.data = $.base64Encode(opt.data, true);
+		else
+			opt.data = $.base64Encode(JSON.stringify(opt.data), true);
+		opt.contentType = "application/xparam";
+	}
 	$.ajax(opt);
 	// dfd.resolve/reject is done in defDataProc
 	return ctx.dfd;
@@ -10678,7 +10791,12 @@ self.options = {
 
 详细用法案例，可参考：筋斗云开发实例讲解 - 系统复用与微服务方案。
 */
-	moduleExt: { showPage: $.noop, callSvr: $.noop }
+	moduleExt: { showPage: $.noop, callSvr: $.noop },
+
+/**
+@var WUI.options.xparam
+ */
+	xparam: 1
 };
 
 //}}}

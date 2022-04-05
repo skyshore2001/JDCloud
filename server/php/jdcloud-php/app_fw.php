@@ -1967,6 +1967,16 @@ function jdEncryptI($data, $enc='E', $fmt='hex', $key=null)
 	}
 	return $n;
 }
+
+function b64e($str, $enhance=0)
+{
+	return base64_encode($str);
+}
+
+function b64d($str, $enhance=0)
+{
+	return base64_decode($str);
+}
 //}}}
 
 /**
