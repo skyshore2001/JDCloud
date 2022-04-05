@@ -137,8 +137,25 @@
 	}
 
 上面flowId字段只用于链接，不显示，也不会导出。
+
+## 显示统计图
+
+在显示表格同时可以显示统计图。它与表格共用数据源。
+
+	// 也可以与pageSimple列表页结合，同时显示列表页和统计图：
+	var url = WUI.makeUrl("Ordr.query", {
+		gres: "y 年,m 月",
+		res: "count(*) 总数",
+		orderby: "y,m"
+	});
+	var showChartParam = [ {tmUnit: "y,m"} ];
+	WUI.showPage("pageSimple", "订单统计!", [url, null, null, showChartParam]);
+
+其中showChartParam必须指定为一个数组，即WUI.showDlgChart函数的后三个参数：[rs2StatOpt, seriesOpt, chartOpt]
+
+@see showDlgChart 显示统计图
 */
-function initPageSimple(url, queryParams, onInitGrid)
+function initPageSimple(url, queryParams, onInitGrid, showChartParam)
 {
 	var jpage = $(this);
 	var jtbl = jpage.find("table:first");
@@ -149,7 +166,7 @@ function initPageSimple(url, queryParams, onInitGrid)
 	var btnExport = {text:'导出', iconCls:'icon-save', handler: WUI.getExportHandler(jtbl, null, {res: filterRes(url.params.res)}) };
 
 	var url1 = WUI.makeUrl(url, queryParams);
-	callSvr(url1, function (data) {
+	var dfd = callSvr(url1, function (data) {
 		var columns = $.map(data.h, function (e) {
 			if (e.substr(-1) == "_")
 				return;
@@ -174,6 +191,10 @@ function initPageSimple(url, queryParams, onInitGrid)
 		delete opt.data;
 		opt.queryParams = queryParams;
 	});
+	if ($.isArray(showChartParam)) {
+		showChartParam.unshift(dfd);
+		WUI.showDlgChart.apply(this, showChartParam);
+	}
 
 	function filterRes(res) {
 		if (!res)

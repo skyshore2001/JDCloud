@@ -10152,6 +10152,8 @@ self.GridHeaderMenu = GridHeaderMenu;
 
 /**
 @fn showDlgQuery(data?={ac, param})
+
+显示高级查询对话框。在表头左上角右键菜单中有“高级查询”对话框。
  */
 self.showDlgQuery = showDlgQuery;
 function showDlgQuery(data1, param)
@@ -10159,13 +10161,18 @@ function showDlgQuery(data1, param)
 	var itemArr = [
 		// title, dom, hint?
 		{title: "接口名", dom: "<input name='ac' required>", hint: "示例: Ordr.query"},
-		{title: "参数", dom: '<textarea name="param" rows=8></textarea>', hint: "cond:查询条件, res:返回字段, gres:分组字段, pivot:转置字段, fmt:输出格式(html,excel,txt,list,array,csv等)"}
+		{title: "参数", dom: '<textarea name="param" rows=8></textarea>', hint: "cond:查询条件, res:返回字段, gres:分组字段, pivot:转置字段, fmt:输出格式(html,excel,txt,list,array,csv等)"},
+		{title: "统计图<br>参数", dom: '<textarea name="showChartParam" rows=4></textarea>', 
+			hint: "<a target='_blank' href='https://oliveche.com/jdcloud-site/api_web.html#showDlgChart'>须为数组，原型为[rs2StatOpt, seriesOpt, chartOpt]</a><br>" + 
+				"示例: <span class='example'>[]</span> <span class='example'>[{xcol: [0,1]}]</span>" +
+				" <span class='example'>[{ tmUnit: 'y,m' }]</span> <span class='example'>[null, {type:'pie'}]</span>"
+		}
 	];
 	var data = $.extend({
 		ac: 'Ordr.query',
 		param: param ? JSON.stringify(param, null, 2) :  '{\n cond: {createTm: ">2020-1-1"},\n res: "count(*) 数量",\n gres: "status 状态=CR:新创建;PA:待处理;RE:已完成;CA:已取消",\n// pivot: "状态"\n}'
 	}, data1);
-	self.showDlgByMeta(itemArr, {
+	var jdlg = self.showDlgByMeta(itemArr, {
 		title: "高级查询",
 		modal: false,
 		data: data,
@@ -10180,14 +10187,35 @@ function showDlgQuery(data1, param)
 					return false;
 				}
 			}
+			var showChartParam;
+			if (data.showChartParam) {
+				try {
+					showChartParam = eval("(" + data.showChartParam + ")");
+				}
+				catch (ex) {
+					app_alert("参数格式出错：须为JS对象格式");
+					return false;
+				}
+				if (! $.isArray(showChartParam)) {
+					app_alert("统计图表参数必须为JS数组格式");
+					return false;
+				}
+			}
 			var url = self.makeUrl(data.ac, param);
 			if (param && param.fmt) {
 				window.open(url);
 				return;
 			}
-			WUI.showPage("pageSimple", "查询结果!", [ url ]);
+			WUI.showPage("pageSimple", "查询结果!", [ url, null, null, showChartParam ]);
 //			WUI.closeDlg(this);
 		}
+	});
+	jdlg.find(".example").css({
+		//fontStyle: "italic",
+		backgroundColor: "#eeeeee",
+		cursor: "pointer"
+	}).click(function () {
+		$(this).closest("td").find("textarea:first").val($(this).text());
 	});
 }
 

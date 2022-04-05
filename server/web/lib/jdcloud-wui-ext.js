@@ -3207,6 +3207,7 @@ function loadStatLib()
 
 @see WUI.rs2Stat 图表数据转换
 @see WUI.initChart　显示图表
+@see pageSimple 通用列表页
 
 示例：
 
@@ -3216,6 +3217,14 @@ WUI.showDlgChart(callSvr("Ordr.query", {
 	gres: "status =CR:新创建;RE:已完成;CA:已取消",
 	res: "count(*) 总数",
 }));
+
+// 也可以与pageSimple列表页结合，同时显示列表页和统计图：
+var url = WUI.makeUrl("Ordr.query", {
+	gres: "status 状态=CR:新创建;RE:已完成;CA:已取消",
+	res: "count(*) 总数",
+});
+var showChartParam = []; // 必须指定数组，即showDlgChart的后三个参数：[rs2StatOpt, seriesOpt, chartOpt]
+WUI.showPage("pageSimple", "订单统计!", [url, null, null, showChartParam]);
 
 // 各状态订单数: 饼图，习惯上应占比排序
 WUI.showDlgChart(callSvr("Ordr.query", {
@@ -3248,6 +3257,15 @@ WUI.showDlgChart(callSvr("Ordr.query", {
 }), {  // rs2StatOpt
 	tmUnit: "y,m"
 });
+
+// 也可以与pageSimple列表页结合，同时显示列表页和统计图：
+var url = WUI.makeUrl("Ordr.query", {
+	gres: "y 年,m 月",
+	res: "count(*) 总数",
+	orderby: "y,m"
+});
+var showChartParam = [ {tmUnit: "y,m"} ];
+WUI.showPage("pageSimple", "订单统计!", [url, null, null, showChartParam]);
 
 // 订单各月占比，显示为饼图，哪个月订单多则排在前
 WUI.showDlgChart(callSvr("Ordr.query", {
