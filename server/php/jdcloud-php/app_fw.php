@@ -1975,7 +1975,31 @@ function b64e($str, $enhance=0)
 
 function b64d($str, $enhance=0)
 {
-	return base64_decode($str);
+	if ($enhance) {
+		$str = str_replace('-', '+', $str);
+		$key = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+		$n = strpos($key, $str[0]);
+		$len = strpos($key, $str[1]);
+		if ($n === false || $len === false)
+			return false;
+		$len = ($len + 64 - $n) % 64;
+		$key1 = substr($key, $n,64-$n) . substr($key, 0, $n);
+		$str1 = '';
+		for ($i=2; $i<strlen($str); ++$i) {
+			$p = strpos($key1, $str[$i]);
+			if ($p === false)
+				return false;
+			$str1 .= $key[$p];
+		}
+		$str = $str1;
+	}
+	$rv = base64_decode($str);
+	// print_r([$len, $str, $rv]);
+	if ($rv && $enhance) {
+		if ((strlen($rv) % 64) != $len)
+			return false;
+	}
+	return $rv;
 }
 //}}}
 

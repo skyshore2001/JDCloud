@@ -3976,8 +3976,6 @@ function makeTree(arr, idField, fatherIdField, childrenField)
 	return ret;
 }
 
-}
-
 // ==== jQuery.base64Encode/base64Decode
 (function ($) {
 
@@ -4025,13 +4023,19 @@ function makeTree(arr, idField, fatherIdField, childrenField)
         return string;
     };
 
-    $.extend({
+    $.extend(self, {
         base64Encode:function (input, enhance) {
             var output = "";
             var chr1, chr2, chr3, enc1, enc2, enc3, enc4;
             var i = 0;
             input = utf8Encode(input);
-			// TODO: enhance
+            var key = keyString;
+            if (enhance) {
+                var n = self.randInt(1,63);
+                var n1 = (n+input.length) % 64;
+                output = key.charAt(n) + key.charAt(n1);
+                key = key.substr(n,64-n) + key.substr(0, n) + ' '; // last is changed to space for trim
+            }
             while (i < input.length) {
                 chr1 = input.charCodeAt(i++);
                 chr2 = input.charCodeAt(i++);
@@ -4045,8 +4049,10 @@ function makeTree(arr, idField, fatherIdField, childrenField)
                 } else if (isNaN(chr3)) {
                     enc4 = 64;
                 }
-                output = output + keyString.charAt(enc1) + keyString.charAt(enc2) + keyString.charAt(enc3) + keyString.charAt(enc4);
+                output = output + key.charAt(enc1) + key.charAt(enc2) + key.charAt(enc3) + key.charAt(enc4);
             }
+            if (enhance)
+                output = output.trim().replace(/[+]/g, '-');
             return output;
         },
         base64Decode:function (input) {
@@ -4077,6 +4083,8 @@ function makeTree(arr, idField, fatherIdField, childrenField)
     });
     return 0;
 })(jQuery);
+
+}
 
 // ====== WEBCC_END_FILE commonjq.js }}}
 
@@ -5186,7 +5194,7 @@ function makeUrl(action, params)
 
 	var p = $.param(params);
 	if (opt.xparam)
-		p = "xp=" + (p? $.base64Encode(p, true): 1);
+		p = "xp=" + (p? self.base64Encode(p, true): 1);
 	var ret = mCommon.appendParam(url, p);
 	return makeUrlObj(ret);
 
@@ -5755,9 +5763,9 @@ function callSvr(ac, params, fn, postParams, userOptions)
 
 	if (opt.data && self.options.xparam) {
 		if (typeof(opt.data) === "string")
-			opt.data = $.base64Encode(opt.data, true);
+			opt.data = self.base64Encode(opt.data, true);
 		else
-			opt.data = $.base64Encode(JSON.stringify(opt.data), true);
+			opt.data = self.base64Encode(JSON.stringify(opt.data), true);
 		opt.contentType = "application/xparam";
 	}
 	$.ajax(opt);
