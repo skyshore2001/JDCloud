@@ -1215,7 +1215,7 @@ class AccessControl extends JDApiBase
 	protected $batchAddLogic;
 
 /**
-$var AccessControl::$uuid ?=false 将id伪装为uuid
+@var AccessControl::$uuid ?=false 将id伪装为uuid
 
 为避免整数类型的id暴露内部编号，可输出仿uuid类型的id，例如：
 
@@ -1241,7 +1241,7 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 	protected $uuid = false;
 
 /**
-$var AccessControl::$enableObjLog ?=true 默认记ObjLog
+@var AccessControl::$enableObjLog ?=true 默认记ObjLog
 
 标准增删改方法会自动记录ObjLog。如果不要自动记录，可设置此字段为false.
 
