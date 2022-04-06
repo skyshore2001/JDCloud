@@ -10467,7 +10467,7 @@ validType还支持：
 - usercode: 11位手机号或客户代码
 - idcard: 18位身份证号
 - datetime: 格式为"年-月-日 时:分:秒"，时间部分可忽略
-- equalTo(selector): 校验两次密码输入相同
+- equalTo(selector): 校验两次密码输入相同，示例：`validType:'equalTo[\'#txtNewPwd\']'`。它会找在同一个form下的指定组件与其比较。
 - pwd: 4-16位密码
 
 注意：
@@ -10522,7 +10522,7 @@ var DefaultValidateRules = {
 	},
 	equalTo: {
 		validator: function (v, param) { // param: [selector]
-			return v==$(param[0]).val();
+			return v==$(this).closest("form").find(param[0]).val();
 		},
 		message: "两次输入不一致."
 	},
