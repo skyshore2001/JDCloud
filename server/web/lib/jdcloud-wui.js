@@ -8393,8 +8393,13 @@ opt: {meta, metaParent}
 function loadDialog(jdlg, onLoad, opt)
 {
 	// 判断dialog未被移除
-	if (jdlg.size() > 0 && jdlg[0].parentElement != null && jdlg[0].parentElement.parentElement != null)
+	if (jdlg.size() > 0 && jdlg[0].parentElement != null && jdlg[0].parentElement.parentElement != null) {
+		if (! jdlg.hasClass("wui-dialog")) {
+			jdlg.addClass('wui-dialog');
+			enhanceDialog(jdlg);
+		}
 		return;
+	}
 	opt = opt || {};
 	// showDlg支持jdlg为新创建的jquery对象，这时selector为空
 	if (!jdlg.selector) {
@@ -10418,7 +10423,16 @@ $.extend($.fn.combotreegrid.defaults, {
 	loadFilter: $.fn.treegrid.defaults.loadFilter
 });
 
-/*
+/**
+@fn checkIdCard(idcard)
+
+身份证校验，示例：
+
+	var rv = WUI.checkIdCard("310115200809090927"); // false
+	var rv = WUI.checkIdCard("310115200809090928"); // true
+
+ */
+self.checkIdCard = checkIdCard;
 function checkIdCard(idcard)
 {
 	if (idcard.length != 18)
@@ -10437,20 +10451,31 @@ function checkIdCard(idcard)
 	var x = "10x98765432".substr(s % 11, 1);
 	return x == a[17].toLowerCase();
 }
-*/
+
 /**
 @key .easyui-validatebox
 
 为form中的组件加上该类，可以限制输入类型，如：
 
-	<input name="amount" class="easyui-validatebox" data-options="required:true,validType:'number'" >
+	<input name="amount" class="easyui-validatebox" data-options="validType:'number'" required>
 
 validType还支持：
 
 - number: 数字
 - uname: 4-16位用户名，字母开头
 - cellphone: 11位手机号
+- usercode: 11位手机号或客户代码
+- idcard: 18位身份证号
 - datetime: 格式为"年-月-日 时:分:秒"，时间部分可忽略
+- equalTo(selector): 校验两次密码输入相同
+- pwd: 4-16位密码
+
+注意：
+
+- required选项定义是否允许为空。它可以写在data-options中如`required:true;validType:'number'`，也可以单独以属性方式来写。
+ 建议使用属性方式来写，这样在对话框上会自动添加"*"号标识。
+
+- 如果未填写，则不检查validType指定的rule。除非在rule中定义了`checkEmpty:true`选项(这是jdcloud扩展easyui的选项)。
 
 其它自定义规则(或改写上面规则)，可通过下列方式扩展：
 
@@ -10467,7 +10492,7 @@ validType还支持：
 var DefaultValidateRules = {
 	number: {
 		validator: function(v) {
-			return v.length==0 || /^[0-9.-]+$/.test(v);
+			return /^[0-9.-]+$/.test(v);
 		},
 		message: '必须为数字!'
 	},
@@ -10478,44 +10503,44 @@ var DefaultValidateRules = {
 		},
 		message: '格式例："1,3a,5b"表示周一,周三上午,周五下午.'
 	},
+	*/
 	idcard: {
 		validator: checkIdCard,
 		message: '18位身份证号有误!'
 	},
-	*/
 	uname: {
 		validator: function (v) {
-			return v.length==0 || (v.length>=4 && v.length<=16 && /^[a-z]\w+$/i.test(v));
+			return v.length>=4 && v.length<=16 && /^[a-z]\w+$/i.test(v);
 		},
 		message: "4-16位英文字母或数字，以字母开头，不能出现符号."
 	},
 	pwd: {
 		validator: function (v) {
-			return v.length==0 || (v.length>=4 && v.length<=16) || v.length==32; // 32 for md5 result
+			return (v.length>=4 && v.length<=16) || v.length==32; // 32 for md5 result
 		},
 		message: "4-16位字母、数字或符号."
 	},
 	equalTo: {
 		validator: function (v, param) { // param: [selector]
-			return v.length==0 || v==$(param[0]).val();
+			return v==$(param[0]).val();
 		},
 		message: "两次输入不一致."
 	},
 	cellphone: {
 		validator: function (v) {
-			return v.length==0 || (v.length==11 && !/\D/.test(v)); // "
+			return v.length==11 && !/\D/.test(v);
 		},
 		message: "手机号为11位数字"
 	},
 	datetime: {
 		validator: function (v) {
-			return v.length==0 || /\d{4}-\d{1,2}-\d{1,2}( \d{1,2}:\d{1,2}(:\d{1,2})?)?/.test(v);
+			return /\d{4}-\d{1,2}-\d{1,2}( \d{1,2}:\d{1,2}(:\d{1,2})?)?/.test(v);
 		},
 		message: "格式为\"年-月-日 时:分:秒\"，时间部分可忽略"
 	},
 	usercode: {
 		validator: function (v) {
-			return v.length==0 || /^[a-zA-Z]/.test(v) || (v.length==11 && !/\D/.test(v)); 
+			return /^[a-zA-Z]/.test(v) || (v.length==11 && !/\D/.test(v)); 
 		},
 		message: "11位手机号或客户代码"
 	}

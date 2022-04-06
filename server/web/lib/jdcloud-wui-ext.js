@@ -3762,11 +3762,12 @@ function setDlgLogic(jdlg, name, logic)
 			}
 			if (logic.validate) {
 				// NOTE: 1. rule名即validType选项只能字母，不可包含数字，否则找不到规则! easyui-validatebox组件之坑(已fix)
-				// 2. 原easyui validatebox在值为空时不走验证，已修改源码，以便实现根据其它字段值动态判断是否必填的需求
+				// 2. 原easyui validatebox在值为空时不走验证，已修改源码，扩展checkEmpty选项，以便实现根据其它字段值动态判断是否必填的需求
 				opt.rules = {
 					v: {
 						validator: validator,
-						message: '验证失败'
+						message: '验证失败',
+						checkEmpty: true
 					}
 				};
 				opt.validType = 'v';

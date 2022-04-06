@@ -114,11 +114,11 @@ menu-expand-group下第一个a为菜单组标题，可加"expanded"类使其默�
 		<table>
 			<tr>
 				<td>登录名</td>
-				<td><input name="uname" class="easyui-validatebox" data-options="required:true"></td>
+				<td><input name="uname" class="easyui-validatebox" required></td>
 			</tr>
 			<tr>
 				<td>密码</td>
-				<td><input type="password" name="pwd" class="easyui-validatebox" data-options="required:true,validType:'pwd'"></td>
+				<td><input type="password" name="pwd" class="easyui-validatebox" data-options="validType:'pwd'" required></td>
 			</tr>
 		</table>
 	</form>
@@ -129,15 +129,15 @@ menu-expand-group下第一个a为菜单组标题，可加"expanded"类使其默�
 		<table>
 			<tr>
 				<td>旧密码</td>
-				<td><input type="password" name="oldpwd" class="easyui-validatebox" data-options="required:true,validType:'pwd'"></td>
+				<td><input type="password" name="oldpwd" class="easyui-validatebox" data-options="validType:'pwd'" required></td>
 			</tr>
 			<tr>
 				<td>新密码</td>
-				<td><input type="password" id="txtNewPwd" name="pwd" class="easyui-validatebox" data-options="required:true,validType:'pwd'"></td>
+				<td><input type="password" id="txtNewPwd" name="pwd" class="easyui-validatebox" data-options="validType:'pwd'" required></td>
 			</tr>
 			<tr>
 				<td>确认密码</td>
-				<td><input type="password" class="easyui-validatebox" data-options="required:true,validType:'equalTo[\'#txtNewPwd\']'"></td>
+				<td><input type="password" class="easyui-validatebox" data-options="validType:'equalTo[\'#txtNewPwd\']'" required></td>
 			</tr>
 		</table>
 	</form>
