@@ -4780,6 +4780,7 @@ function makeUrl(action, params)
 			o.action = action;
 			o.params = params;
 		}
+		delete o.params.ac;
 		return o;
 	}
 }

@@ -1668,8 +1668,8 @@ $rv = callSvcInt(&quot;XX.query&quot;); // 这样就可以调用AC1_XX类的接�
 <p>对于POST内容，如果URL已加密，则建议加密，结果=b64e(原参数字符串 或 json_encode(原参数对象))，且在contentType中应附加&quot;;xparam=1&quot;字符串。 例外：上传文件场景(contentType是form-data)不加密。</p>
 <p>后端处理逻辑：</p>
 <ul>
-<li>URL中有xp参数则表示是加密传输，使用b64d解码;</li>
-<li>此时如果contentType中有&quot;;xparam=1&quot;字样，则对POST内容进行解密。</li>
+<li>对于URL参数，如果其中有xp参数则表示是加密传输，使用b64d对xp参数解密;</li>
+<li>对于POST参数，如果contentType中有&quot;;xparam=1&quot;字样，则对POST内容进行解密。</li>
 </ul>
 <p>示例：原调用为</p>
 <pre><code>POST /api/hello?a=1&amp;b=2

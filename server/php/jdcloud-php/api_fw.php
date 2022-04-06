@@ -2222,16 +2222,16 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 					jdRet(E_PARAM, "bad url xparam");
 				}
 				parse_str($param, $this->_GET);
+			}
 
-				$ct = getContentType($this);
-				if ($ct && strpos($ct, ';xparam=1') !== false) {
-					$postData = getHttpInput($this);
-					if ($postData) {
-						$this->rawContent = b64d($postData, true);
-						if ($this->rawContent === false) {
-							logit("error: bad post xparam $postData");
-							jdRet(E_PARAM, "bad post xparam");
-						}
+			$ct = getContentType($this);
+			if ($ct && strpos($ct, ';xparam=1') !== false) {
+				$postData = getHttpInput($this);
+				if ($postData) {
+					$this->rawContent = b64d($postData, true);
+					if ($this->rawContent === false) {
+						logit("error: bad post xparam $postData");
+						jdRet(E_PARAM, "bad post xparam");
 					}
 				}
 			}
