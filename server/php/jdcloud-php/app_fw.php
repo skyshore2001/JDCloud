@@ -1979,11 +1979,13 @@ function b64d($str, $enhance=0)
 		$str = str_replace('-', '+', $str);
 		$key = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
 		$n = strpos($key, $str[0]);
-		$len = strpos($key, $str[1]);
-		if ($n === false || $len === false)
+		if ($n === false)
+			return false;
+		$key1 = substr($key, $n,64-$n) . substr($key, 0, $n);
+		$len = strpos($key1, $str[1]);
+		if ($len === false)
 			return false;
 		$len = ($len + 64 - $n) % 64;
-		$key1 = substr($key, $n,64-$n) . substr($key, 0, $n);
 		$str1 = '';
 		for ($i=2; $i<strlen($str); ++$i) {
 			$p = strpos($key1, $str[$i]);

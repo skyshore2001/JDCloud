@@ -4033,8 +4033,8 @@ function makeTree(arr, idField, fatherIdField, childrenField)
             if (enhance) {
                 var n = self.randInt(1,63);
                 var n1 = (n+input.length) % 64;
-                output = key.charAt(n) + key.charAt(n1);
                 key = key.substr(n,64-n) + key.substr(0, n) + ' '; // last is changed to space for trim
+                output = keyString.charAt(n) + key.charAt(n1);
             }
             while (i < input.length) {
                 chr1 = input.charCodeAt(i++);

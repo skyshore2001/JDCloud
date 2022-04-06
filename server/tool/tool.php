@@ -26,9 +26,12 @@ if ($ac) {
 	}
 	else if ($ac == "base64") {
 		$text = mparam("text");
-		$isDecode = (int)param("isDecode", 0);
-		if ($isDecode)
+		if (param("isDecode") == "1") {
 			$val = base64_decode($text);
+		}
+		else if (param("isJdDecode") == "1") {
+			$val = b64d($text, true);
+		}
 		else
 			$val = base64_encode($text);
 		echo($val);
@@ -58,6 +61,36 @@ function mparam($name, $col = null)
 	return $val;
 }
 
+function b64d($str, $enhance=0)
+{
+	if ($enhance) {
+		$str = str_replace('-', '+', $str);
+		$key = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+		$n = strpos($key, $str[0]);
+		if ($n === false)
+			return false;
+		$key1 = substr($key, $n,64-$n) . substr($key, 0, $n);
+		$len = strpos($key1, $str[1]);
+		if ($len === false)
+			return false;
+		$len = ($len + 64 - $n) % 64;
+		$str1 = '';
+		for ($i=2; $i<strlen($str); ++$i) {
+			$p = strpos($key1, $str[$i]);
+			if ($p === false)
+				return false;
+			$str1 .= $key[$p];
+		}
+		$str = $str1;
+	}
+	$rv = base64_decode($str);
+	// print_r([$len, $str, $rv]);
+	if ($rv && $enhance) {
+		if ((strlen($rv) % 64) != $len)
+			return false;
+	}
+	return $rv;
+}
 ?>
 <html>
 <head>
@@ -81,9 +114,10 @@ iframe {
 <div>
 	<h2>BASE64工具</h2>
 	<form action="?ac=base64" method="POST" target="ifrBase64">
-		文本：<input type="text" name="text" value="jdcloud:FuZaMiMa">
+		文本：<textarea name="text" rows=3 style="width:400px">jdcloud:FuZaMiMa</textarea>
+		<button>提交</button><br>
 		<label><input type="checkbox" name="isDecode" value=1>解码</label>
-		<button>提交</button>
+		<label><input type="checkbox" name="isJdDecode" value=1>通讯解码</label>
 	</form>
 	<div>
 		<h3>结果</h3>
@@ -94,7 +128,7 @@ iframe {
 <div>
 	<h2>MD5工具</h2>
 	<form action="?ac=md5" method="POST" target="ifrMd5">
-		文本：<input type="text" name="text" value="1234">
+		文本：<textarea name="text" rows=3 style="width:400px">1234</textarea>
 		<button>提交</button>
 	</form>
 	<div>
