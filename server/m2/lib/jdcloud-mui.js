@@ -8114,9 +8114,18 @@ function isAllowNoLogin(page)
 		MUI.options.homePage = "#ma-home";
 	}
 
+@var dfdLogin
+
+(v6) 用于在登录完成状态下执行操作的Deferred/Promise对象。
+示例：若未登录，则在登录后显示消息；若已登录则直接显示消息
+
+	WUI.dfdLogin.then(function () {
+		app_show("hello");
+	});
 
 */
 self.handleLogin = handleLogin;
+self.dfdLogin = $.Deferred();
 function handleLogin(data)
 {
 	saveLoginToken(data);
@@ -8138,6 +8147,7 @@ function handleLogin(data)
 	if (popN > 0)
 		self.popPageStack(popN);
 
+	self.dfdLogin.resolve();
 	if (m_onLoginOK) {
 		var fn = m_onLoginOK;
 		m_onLoginOK = null;
