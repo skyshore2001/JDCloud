@@ -52,6 +52,9 @@ class AC0_Employee extends AccessControl
 		if ($this->ac == "add" && !issetval("perms")) {
 			$_POST["perms"] = "emp";
 		}
+		if ($this->ac == "add" && !issetval("pwd")) {
+			$_POST["pwd"] = "1234";
+		}
 		if ($this->ac == "set" && issetval("perms?")) {
 			$params = $_POST;
 			injectSession($this->id, "emp", function () use ($params) {
@@ -67,7 +70,7 @@ class AC0_Employee extends AccessControl
 
 class AC2_Employee extends AC0_Employee
 {
-	protected $requiredFields = [["phone", "uname"], "pwd"];
+	protected $requiredFields = [["phone", "uname"]];
 	protected $allowedAc = ["query", "get", "set"];
 
 	protected function onInit()
@@ -112,6 +115,10 @@ class AC0_OrderLog extends AccessControl
 	];
 }
 
+class AC1_OrderLog extends AC0_OrderLog
+{
+	protected $allowedAc = ["query"];
+}
 class AC2_OrderLog extends AC0_OrderLog
 {
 }
