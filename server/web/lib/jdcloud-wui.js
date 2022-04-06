@@ -5761,12 +5761,16 @@ function callSvr(ac, params, fn, postParams, userOptions)
 	if (isJson && opt.data instanceof Object)
 		opt.data = JSON.stringify(opt.data);
 
-	if (opt.data && self.options.xparam) {
-		if (typeof(opt.data) === "string")
+	if (opt.data && opt.processData !== false && opt.url.indexOf("?xp=") > 0) {
+		if (typeof(opt.data) === "string") {
 			opt.data = self.base64Encode(opt.data, true);
-		else
+		}
+		else {
 			opt.data = self.base64Encode(JSON.stringify(opt.data), true);
-		opt.contentType = "application/xparam";
+		}
+		if (!opt.contentType)
+			opt.contentType = "application/json";
+		opt.contentType += ";xparam=1";
 	}
 	$.ajax(opt);
 	// dfd.resolve/reject is done in defDataProc

@@ -2216,20 +2216,22 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		$this->onBeforeActions[] = function () {
 			$xp = $this->_GET["xp"];
 			if (isset($xp)) {
-				$this->contentType = "application/xparam";
 				$param = b64d($xp, true);
 				if ($param === false) {
 					logit("error: bad url xparam $xp");
 					jdRet(E_PARAM, "bad url xparam");
 				}
 				parse_str($param, $this->_GET);
-				$postData = getHttpInput($this);
-				if ($postData) {
-					$this->rawContent = b64d($postData, true);
-					$this->_POST = jsonDecode($this->rawContent, true);
-					if ($this->rawContent === false || !is_array($this->_POST)) {
-						logit("error: bad post xparam $postData");
-						jdRet(E_PARAM, "bad post xparam");
+
+				$ct = getContentType($this);
+				if ($ct && strpos($ct, ';xparam=1') !== false) {
+					$postData = getHttpInput($this);
+					if ($postData) {
+						$this->rawContent = b64d($postData, true);
+						if ($this->rawContent === false) {
+							logit("error: bad post xparam $postData");
+							jdRet(E_PARAM, "bad post xparam");
+						}
 					}
 				}
 			}
