@@ -1,3 +1,13 @@
+/**
+@module pageObjLog 操作日志
+
+- 在表头右键菜单中可选择“操作日志”，支持对话框中的子表
+- 表中如果有选择行（支持单行或多行, 按Ctrl或Shift点选可多选），则查所选择行的操作记录；如果没有选择行，则查该表全部操作记录（注：刷新一下或Ctrl-点选可以取消选择）。
+
+表中显示的操作数据做了字段映射处理，即将内部字段尽量转换为表中的标题。
+对于表名，以及表中未出现的字段，可在pageObjLog.js中统一定义映射：ObjLogObjMap和ObjLogFieldMap
+
+ */
 // param: {jtblSrc}, formFilter: {cond: {obj, objId}}
 function initPageObjLog(param, formFilter)
 {
