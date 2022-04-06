@@ -6361,10 +6361,6 @@ function showPage(pageRef, opt)
 	// path?=self.options.pageFolder
 	function loadPage(html, pageId, path)
 	{
-		// 放入dom中，以便document可以收到pagecreate等事件。
-		if (m_jstash == null) {
-			m_jstash = $("<div id='muiStash' style='display:none'></div>").appendTo(self.container);
-		}
 		// 注意：如果html片段中有script, 在append时会同步获取和执行(jquery功能)
 		var jpage = $(html).filter("div");
 		if (jpage.size() > 1 || jpage.size() == 0) {
@@ -6775,7 +6771,11 @@ function enhanceNavbar(jo)
 
 function enhanceFooter(jfooter)
 {
-	jfooter.remove();
+	// 放入dom中，以便document可以收到pagecreate等事件。
+	if (m_jstash == null) {
+		m_jstash = $("<div id='muiStash' style='display:none'></div>").appendTo(self.container);
+		jfooter.appendTo(m_jstash);
+	}
 	enhanceNavbar(jfooter);
 	jfooter.addClass("ft").addClass("mui-navbar");
 	var jnavs = jfooter.find(">a");
