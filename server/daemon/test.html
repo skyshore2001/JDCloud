@@ -1,0 +1,79 @@
+<style>
+iframe, #msg {
+	width: 100%;
+	height: 5em;
+	border: 1px solid;
+	overflow: auto;
+}
+form {
+	margin: 10px 0;
+	border: 1px solid;
+	background-color: #eeeeee;
+}
+input {
+	width: 50px;
+}
+</style>
+
+<form action="javascript:connect();">
+	app: <input id="app" name="app" value="app1">
+	user: <input id="user" name="user" value="user1">
+	<button>连接消息服务</button>
+</form>
+<div id="msg"></div>
+
+<form action="http://localhost:8081/push" target="ifr">
+	app: <input name="app" value="app1">
+	user: <input name="user" value="user1">
+	msg: <textarea name="msg">hello</textarea>
+	<button>推送消息</button>
+</form>
+
+<form action="http://localhost:8081/getUsers" target="ifr">
+	app: <input name="app" value="app1">
+	<button>取在线用户</button>
+</form>
+
+<form action="http://localhost:8081/setTimeout" target="ifr">
+	延时(ms): <input name="timeout" value="3000">
+	url: <input name="url" value="http://oliveche.com/echo.php?a=1" style="width:300px"><br>
+	data: <textarea name="data">b=2&amp;c=3</textarea>
+	<button>延迟调用</button>
+</form>
+
+<iframe name="ifr"></iframe>
+
+<script>
+function connect() {
+	var ws = new WebSocket("ws://localhost:8081");
+	console.log('connect...');
+
+	var app = document.getElementById("app").value;
+	var user = document.getElementById("user").value;
+
+	ws.onopen = function (ev) {
+		var req = {ac: 'init', app: app, user: user};
+		ws.send(JSON.stringify(req));
+	};
+	ws.onerror = function (ev) {
+		console.log('onerror');
+		console.log(ev);
+	};
+	ws.onclose = function (ev) {
+		console.log('onclose');
+		console.log(ev);
+		reconnect();
+	};
+	ws.onmessage = function (ev) {
+		console.log('onmessage');
+		document.getElementById('msg').innerHTML = ev.data + "<br>" + document.getElementById('msg').innerHTML;
+		//document.write("<p>" + ev.data);
+		console.log(ev.data);
+	};
+}
+
+function reconnect() {
+	setTimeout(connect, 5000);
+}
+
+</script>

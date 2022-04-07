@@ -16,6 +16,74 @@ function api_hello($env)
 	return ["id"=>$id, "hello"=>$hello, "cnt"=>$cnt];
 }
 
+function api_push($env)
+{
+	global $server;
+	global $clientMap;
+
+	$app = $env->mparam("app");
+	$userSpec = $env->mparam("user");
+	$msg = $env->mparam("msg");
+	if (is_array($msg))
+		$msg = jsonEncode($msg);
+
+	$n = 0;
+	$arr = explode(',', $userSpec);
+	foreach ($clientMap as $fd => $cli) {
+		foreach ($arr as $user) {
+			if ($app == $cli['app'] && fnmatch($user, $cli['user'])) {
+				++ $n;
+				$server->push($fd, $msg);
+			}
+		}
+	}
+	return $n;
+}
+
+function api_getUsers($env)
+{
+	global $clientMap;
+	$user = $env->param("user");
+	if (is_null($user)) {
+		return array_values($clientMap);
+	}
+	$ret = [];
+	foreach (explode(',', $user) as $one) {
+		foreach ($clientMap as $fd => $user) {
+			if (fnmatch($one, $user)) {
+				$ret[] = $user;
+			}
+		}
+	}
+	return $ret;
+}
+
+function api_setTimeout($env)
+{
+	$url = $env->mparam("url");
+	$data = $env->param("data");
+	$wait = $env->param("timeout/i");
+	$headers = $env->param("headers");
+	$tmr = swoole_timer_after($wait, function () use ($url, $data, $headers, &$tmr) {
+		logit("timer $tmr exec: httpCall($url, $data)");
+		try {
+			$opt = null;
+			if ($headers) {
+				$opt = [
+					"headers" => $headers
+				];
+			}
+			$rv = httpCall($url, $data, $opt);
+			logit("timer $tmr ret: $rv");
+		}
+		catch (Exception $ex) {
+			logit("timer $tmr fails: $ex");
+		}
+	});
+	logit("timer $tmr: wait {$wait}ms.");
+	return $tmr;
+}
+
 class AC_Test extends JDApiBase
 {
 	function api_hello() {
@@ -25,3 +93,4 @@ class AC_Test extends JDApiBase
 class AC_ApiLog extends AccessControl
 {
 }
+

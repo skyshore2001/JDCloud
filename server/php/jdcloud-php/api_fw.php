@@ -2310,6 +2310,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		return $ac;
 	}
 
+	private $doInitEnv = true;
 	// 返回[code, data, ...]
 	function callSvcSafe($ac = null, $useTrans=true, $isSubCall = false)
 	{
@@ -2325,8 +2326,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		$ok = false; // commit or rollback trans
 		try {
 			if (!$isSubCall) {
-				$doInitEnv = !isset($this->_GET);
-				if ($doInitEnv) {
+				if (!isset($this->_GET)) {
 					$this->_GET = &$_GET;
 					$this->_POST = &$_POST;
 					$this->_SESSION = &$_SESSION;
@@ -2341,7 +2341,8 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 				$this->appName = $this->param("_app", "user", "G");
 				$this->appType = preg_replace('/(\d+|-\w+)$/', '', $this->appName);
 
-				if ($doInitEnv) {
+				if ($this->doInitEnv) {
+					$this->doInitEnv = false;
 					if (!$isCLI)
 						$this->setupSession();
 					require_once("ext.php");
@@ -2351,7 +2352,6 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 					$plugins = "$BASE_DIR/plugin/index.php";
 					if (file_exists($plugins))
 						include_once($plugins);
-
 					require_once("{$BASE_DIR}/conf.php");
 
 					$this->clientVer = $this->getClientVersion();
