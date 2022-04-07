@@ -10,7 +10,7 @@ $server->set([
 echo("=== jdserver: port=$port, workers=$workerNum\n");
 
 // 用于websocket用户；允许一个用户多次出现，都能收到消息。
-$clientMap = []; // fd => {app, user}
+$clientMap = []; // fd => {app, user, isHttp?, tmr?}
 
 $server->on('Open', function ($ws, $req) {
 //	echo("onOpen: fd=" . $req->fd . "\n");
@@ -44,6 +44,37 @@ $server->on('WorkerStart', function ($server, $workerId) {
 });
 
 $server->on('Request', function ($req, $res) {
+	$ac = $req->server['path_info'];
+	if ($ac == "/getMsg") {
+		global $clientMap;
+		@$app = $req->get["app"];
+		if (is_null($app)) {
+			$res->end('*** error: require param `app`');
+			return;
+		}
+		@$user = $req->get["user"];
+		if (is_null($user)) {
+			$res->end('*** error: require param `user`');
+			return;
+		}
+		$fd = $res->fd;
+
+		@$timeout = $req->get["timeout"];
+		$tmr = null;
+		if ($timeout > 0) {
+			// 如果收到消息则clearTimeout
+			$tmr = swoole_timer_after($timeout*1000, function () use ($fd) {
+				$res = Swoole\Http\Response::create($fd);
+				$res->end();
+			});
+		}
+		echo("[app $app] add http user=$user, fd=$fd\n");
+		$clientMap[$fd] = ["app"=>$app, "user"=>$user, "isHttp"=>true, "tmr"=>$tmr];
+
+		$res->detach();
+		return;
+	}
+
 	$env = new SwooleEnv($req, $res);
 	$GLOBALS["X_APP"][Swoole\Coroutine::getcid()] = $env;
 	$env->callSvcSafe();

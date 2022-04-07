@@ -117,3 +117,15 @@
 
 	{"c":3, "d":4}
 
+## HTTP长轮询(comit server)
+
+连接并等待消息：
+
+	getMsg(app, user, timeout?)
+
+- app: 应用名
+- user: 用户标识
+- timeout: 指定最长等待时间，单位: 秒
+
+给它发送消息也是使用push接口。
+

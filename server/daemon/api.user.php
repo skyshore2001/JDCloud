@@ -33,7 +33,16 @@ function api_push($env)
 		foreach ($arr as $user) {
 			if ($app == $cli['app'] && fnmatch($user, $cli['user'])) {
 				++ $n;
-				$server->push($fd, $msg);
+				if (! @$cli["isHttp"]) { // websocket client
+					$server->push($fd, $msg);
+				}
+				else { // http³¤ÂÖÑ¯
+					if ($cli["tmr"]) {
+						swoole_timer_clear($cli["tmr"]);
+					}
+					$res = Swoole\Http\Response::create($fd);
+					$res->end($msg);
+				}
 			}
 		}
 	}
