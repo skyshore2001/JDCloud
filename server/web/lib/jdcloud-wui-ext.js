@@ -2465,16 +2465,26 @@ SubobjFormItem.prototype = $.extend(new WUI.FormItem(), {
 });
 
 /**
-@key .wui-picker 字段后的工具按钮
+@key .wui-picker 字段编辑框中的小按钮
+
+@key .wui-picker-edit 手工编辑按钮
 
 示例：输入框后添加一个编辑按钮，默认不可编辑，点按钮编辑：
 
 	<input name="value" class="wui-picker-edit">
 
-尽管不可编辑，该字段还是可编辑的；要查看该字段是否只读，以及设置字段只读，可以：
+特别地：
 
-	var isReadonly = jo.triggerHandler("readonly"); // 取值
-	jo.triggerHandler("readonly", isReadonly); // 设置，也可以用trigger方法
+- 添加时，如果有required属性，默认可编辑；
+- 查找时，如果这是个可查找字段则可编辑，且不显示picker按钮
+
+要查看该字段是否绝对只读（不显示picker按钮，不可手工编辑），可以通过gn函数：
+
+	var it = jo.gn(); // 或从对话框来取如 jdlg.gn("xxx")
+	var ro = it.readonly();
+	it.readonly(ro);
+
+@key .wui-picker-help 帮助按钮
 
 示例：输入框后添加一个帮助按钮：
 
@@ -2495,6 +2505,7 @@ function enhancePicker(jo)
 {
 	var jbtns = $();
 	if (jo.hasClass("wui-picker-edit")) {
+		jo.prop("realReadonly", false);
 		var jbtn = $("<a></a>");
 		jbtn.linkbutton({
 			iconCls: 'icon-edit',
@@ -2502,9 +2513,11 @@ function enhancePicker(jo)
 		});
 		jbtns = jbtns.add(jbtn);
 
-		disable();
 		jbtn.click(enable);
 		jo.blur(disable);
+
+		var jdlg = jo.closest(".wui-dialog");
+		jdlg.on("beforeshow", onBeforeShowForPickerEdit);
 	}
 	if (jo.hasClass("wui-picker-help")) {
 		var jbtn = $("<a></a>");
@@ -2531,9 +2544,6 @@ function enhancePicker(jo)
 			jo.css("vertical-align", "top");
 	}
 
-	//var jdlg = jo.closest(".wui-dialog");
-	//jdlg.on("beforeshow", disable);
-
 	function enable() {
 		jo.prop("readonly", false);
 	}
@@ -2551,6 +2561,15 @@ function enhancePicker(jo)
 			url += "#" + jo.attr("data-helpKey");
 		window.open(url);
 	}
+	function onBeforeShowForPickerEdit(ev, formMode, opt) {
+		// 添加模式下，如果是个带required属性的组件，不禁用
+		if (formMode == FormMode.forFind || (formMode == FormMode.forAdd && jo.prop("required")) ) {
+			enable();
+		}
+		else {
+			disable();
+		}
+	}
 }
 
 self.getFormItemExt["wui-picker-edit"] = function (ji) {
@@ -2561,13 +2580,14 @@ self.getFormItemExt["wui-picker-edit"] = function (ji) {
 
 function PickerFormItem(ji) {
 	WUI.FormItem.call(this, ji);
-	this.jdlg = ji.closest(".wui-dialog");
+//	this.jdlg = ji.closest(".wui-dialog");
 }
 PickerFormItem.prototype = $.extend(new WUI.FormItem(), {
 	getReadonly: function () {
-		return true;
+		return this.ji.prop("realReadonly");
 	},
 	setReadonly: function (val) {
+		this.ji.prop("realReadonly", !!val);
 		if (this.ji.hasClass("wui-find-field")) {
 			this.ji.prop("readonly", !!val);
 			this.ji.next("a").css("visibility", "hidden");

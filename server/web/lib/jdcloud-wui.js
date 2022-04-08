@@ -2840,9 +2840,8 @@ function getFormData_vf(jo)
 获取对话框上一个组件的访问器。示例，设置名为orderId的组件值：
 
 	var ji = jdlg.find("[name=orderId]"); // 或者用 var ji = $(frm.orderId);
-	var it = WUI.getFormItem(ji);
+	var it = WUI.getFormItem(ji); // 或者用 var it = ji.gn()
 	it.setValue("hello"); // 类似于ji.val("hello")，但支持各种复杂组件
-
 
 还可以用更简洁的jo.gn，以及支持用链式风格的调用：
 
@@ -8769,11 +8768,11 @@ function showObjDlg(jdlg, mode, opt)
 			var bak = je.jdata().bak;
 			if (bak == null)
 				return;
-			it.setDisabled(bak.disabled);
-			it.setReadonly(bak.readonly);
 			var jshow = it.getShowbox();
 			jshow.removeClass("wui-find-field")
 			jshow.prop("title", bak.title);
+			it.setDisabled(bak.disabled);
+			it.setReadonly(bak.readonly);
 			if (bak.type) {
 				jshow.attr("type", bak.type);
 			}
