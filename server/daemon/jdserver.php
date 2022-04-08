@@ -1,13 +1,16 @@
 <?php
 
-$port = 8081;
+$opt = getopt("p:a");
+$addr = isset($opt["a"]) ? "0.0.0.0": "127.0.0.1";
+$port = @$opt["p"] ?: 8081;
+
 $workerNum = 1; // 由于使用了全局变量来共享信息，这里只能为1。
 
-$server = new Swoole\WebSocket\Server("0.0.0.0", $port);
+$server = new Swoole\WebSocket\Server($addr, $port);
 $server->set([
 	'worker_num'=>$workerNum,
 ]);
-echo("=== jdserver: port=$port, workers=$workerNum\n");
+echo("=== jdserver on $addr:$port, workers=$workerNum\n");
 
 // 用于websocket用户；允许一个用户多次出现，都能收到消息。
 $clientMap = []; // fd => {app, user, isHttp?, tmr?}

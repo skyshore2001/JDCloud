@@ -1,4 +1,4 @@
-# jdserver守护进程
+# jdserver守护进程 - websocket服务及任务调度
 
 默认提供以下通用功能：
 
@@ -8,6 +8,18 @@
 须安装swoole。启动：
 
 	php jdserver.php
+
+默认使用`127.0.0.1:8081`地址和端口，只允许本机内部访问。
+
+用-p指定端口：
+
+	php jdserver.php -p 8800
+
+用-a指定允许外部连接，即监听0.0.0.0地址：
+
+	php jdserver.php -p 8800 -a
+
+一般jdserver服务只供内部调用，不建议开放出去。
 
 测试：
 
@@ -64,13 +76,13 @@
 
 ## 延时执行
 
-	setTimeout(url, data?, timeout?, @headers?) -> timerId
+	setTimeout(url, data?, wait?, @headers?) -> timerId
 
 - url: 回调URL地址
 - data: 如果指定，则使用POST方式提交数据。默认使用"application/www-urlencoded-data"格式。
 其它格式应在headers中指定ContentType。
 - headers: 指定HTTP头。
-- timeout: 毫秒。不指定则为0，立即执行.
+- wait: 毫秒。等待指定时间后执行。不指定则为0，立即执行。
 
 示例：
 
@@ -82,7 +94,7 @@
 
 	GET http://oliveche.com/echo.php?a=1&b=2
 
-在trace.log中查看调用结果。
+在trace.log中查看执行结果。
 
 示例：
 

@@ -36,7 +36,7 @@ function api_push($env)
 				if (! @$cli["isHttp"]) { // websocket client
 					$server->push($fd, $msg);
 				}
-				else { // http³¤ÂÖÑ¯
+				else { // httpé•¿è½®è¯¢
 					if ($cli["tmr"]) {
 						swoole_timer_clear($cli["tmr"]);
 					}
@@ -71,9 +71,10 @@ function api_setTimeout($env)
 {
 	$url = $env->mparam("url");
 	$data = $env->param("data");
-	$wait = $env->param("timeout/i");
+	$wait = $env->param("wait/i");
 	$headers = $env->param("headers");
-	$tmr = swoole_timer_after($wait, function () use ($url, $data, $headers, &$tmr) {
+	$tmr = 0;
+	$fn = function () use ($url, $data, $headers, &$tmr) {
 		logit("timer $tmr exec: httpCall($url, $data)");
 		try {
 			$opt = null;
@@ -88,8 +89,14 @@ function api_setTimeout($env)
 		catch (Exception $ex) {
 			logit("timer $tmr fails: $ex");
 		}
-	});
-	logit("timer $tmr: wait {$wait}ms.");
+	};
+	if ($wait > 0) {
+		$tmr = swoole_timer_after($wait, $fn);
+		logit("timer $tmr: wait {$wait}ms.");
+	}
+	else {
+		go($fn);
+	}
 	return $tmr;
 }
 
@@ -101,5 +108,6 @@ class AC_Test extends JDApiBase
 }
 class AC_ApiLog extends AccessControl
 {
+	protected $allowedAc = ["query", "get"];
 }
 
