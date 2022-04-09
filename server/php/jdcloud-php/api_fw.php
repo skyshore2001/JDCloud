@@ -2594,9 +2594,9 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 					return;
 				$ret = $ret1;
 			}
-			else if ($_GET["_raw"]) {
+			else if ($this->_GET["_raw"]) {
 				$ret = $ret[1];
-				if ($_GET["_raw"] == 2) {
+				if ($this->_GET["_raw"] == 2) {
 					if (is_array($ret))
 						$ret = join("\t", $ret);
 				}

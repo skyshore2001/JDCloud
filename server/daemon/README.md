@@ -1,9 +1,9 @@
-# jdserver守护进程 - websocket服务及任务调度
+# jdserver守护进程 - 消息推送与任务调度服务
 
 默认提供以下通用功能：
 
-- 某应用前端通过websocket连接jdserver, 接收应用后端推送的消息;
-- 某应用后端在N秒后执行一个操作，可以把这个操作封装为1个后端接口，让jdserver定时调用。
+- 消息推送：作为websocket服务器，某应用前端通过websocket连接jdserver, 接收应用后端推送的消息;
+- 任务调度：某应用后端在N秒后执行一个操作，可以把这个操作封装为1个后端接口，让jdserver定时调用。
 
 须安装swoole。推荐版本: 4.8.8 (编译选项全部yes)。
 启动：
@@ -31,6 +31,33 @@
 
 - 未提供验证机制
 - 使用全局变量存储会话，因而只能开1个worker进程。产品级可通过文件（同一主机多进程）或redis（多主机）存取会话。
+
+## jdserver与jdcloud
+
+jdcloud指传统的筋斗云后端接口框架，擅长CRUD，成熟稳定。生产环境运行于apache web服务器，易于修改和调试。
+
+理论上jdserver也可以替代jdcloud+apache，但意义不大，不是它的方向。
+
+jdserver定位于编写TCP/UDP/Websocket/MQTT等驻留服务（daemon/守护进程），功能越简单越好。复杂的业务应由jdcloud来完成。
+
+jdserver共享了jdcloud框架的基础库，获得以下主要特性：
+
+- common中的通用函数，如logit, jdRet, arrayCmp, httpCall等。
+- app_fw中的参数操作如param/mparam等，以及数据库操作如queryOne/dbInsert等。支持协程式并发。（关键在于使用request级变量而不是全局变量）
+- api_fw中的API接口框架，如函数型接口(api_xxx)和对象型接口(AC_Xxx，继承自JDApiBase). 支持自动记录ApiLog。
+包括各种通用参数，如`_raw`, `_jsonp`等。
+- 支持batch接口；支持RESTFul风格的对象接口；支持接口适配机制（X_RET_FN）
+- 共用conf.user.php中的数据库、调试选项等设置；但默认不包含Conf.php中的配置，可在daemon/api.php中自行包含。
+
+尽管jdserver中也包含了**AccessControl（CRUD框架）以及各种jdcloud插件，但只能用于单用户演示，不可用于生产！**。
+原因是这些业务代码大量使用了$_POST/$_GET/$_SESSION等全局变量，修改这些会改变传统编程风格，而且支持jdserver的意义却不大。
+jdserver用于构建中间件，它不是业务组件，它需要尽可能简单。
+
+jdserver与jdcloud的区别：
+
+- TODO: 默认不开启session。需要显式调用session_start()；session不过期。
+- 支持使用AC类接口对象接口，但只能继承自JDApiBase，不能继承AccessControl，因而不具备自动CRUD功能，所有数据库操作需要自行实现。
+- 没有内置的身份验证机制，默认不支持AUTH_USER/AUTH_EMP/AUTH_ADMIN这些权限检查。TODO：checkAuth/hasPerm的使用受限。
 
 ## 消息推送或即时通讯
 

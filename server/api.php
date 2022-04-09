@@ -18,6 +18,7 @@ const PERM_MGR = 0x100;
 const PERM_TEST_MODE = 0x1000;
 const PERM_MOCK_MODE = 0x2000;
 
+global $PERMS;
 $PERMS = [
 	AUTH_GUEST => "guest",
 	AUTH_USER => "user",

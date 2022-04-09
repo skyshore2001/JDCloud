@@ -15,6 +15,7 @@ const PERM_MGR = 0x100;
 const PERM_TEST_MODE = 0x1000;
 const PERM_MOCK_MODE = 0x2000;
 
+global $PERMS;
 $PERMS = [
 	AUTH_GUEST => "guest",
 	AUTH_USER => "user",
@@ -35,22 +36,6 @@ $PERMS = [
  */
 function onGetPerms()
 {
-	$perms = 0;
-	if (isset($_SESSION["uid"])) {
-		$perms |= AUTH_USER;
-	}
-	else if (isset($_SESSION["adminId"])) {
-		$perms |= AUTH_ADMIN;
-	}
-	else if (isset($_SESSION["empId"])) {
-		$perms |= AUTH_EMP;
-
-		$p = @$_SESSION["perms"];
-		if (inSet("mgr", $p)) {
-			$perms |= PERM_MGR;
-		}
-	}
-
 	if (@$GLOBALS["TEST_MODE"]) {
 		$perms |= PERM_TEST_MODE;
 	}
@@ -72,18 +57,7 @@ function onGetPerms()
  */
 function onCreateAC($tbl)
 {
-	$cls = null;
-	if (hasPerm(AUTH_USER))
-	{
-		$cls = "AC1_$tbl";
-		if (! class_exists($cls))
-			$cls = "AC_$tbl";
-	}
-	else if (hasPerm(AUTH_EMP))
-	{
-		$cls = "AC2_$tbl";
-	}
-	return $cls;
+	return null;
 }
 
 // override trait JDServer

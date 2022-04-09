@@ -14,6 +14,7 @@ const E_SMS = 1001;
 const E_WX = 1002;
 const E_PUSH_MSG = 1003;
 
+global $ERRINFO;
 $ERRINFO[E_SMS] = "发送短信失败";
 $ERRINFO[E_WX] = "微信调用失败";
 $ERRINFO[E_PUSH_MSG] = "推送失败";

@@ -16,6 +16,7 @@ const E_DB=3;
 const E_SERVER=4;
 const E_FORBIDDEN=5;
 
+global $ERRINFO;
 $ERRINFO = [
 	E_AUTHFAIL => "认证失败",
 	E_PARAM => "参数不正确",
