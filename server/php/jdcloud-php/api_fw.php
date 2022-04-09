@@ -2215,7 +2215,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 
 		$this->onBeforeActions[] = function () {
 			$xp = $this->_GET["xp"];
-			if (isset($xp)) {
+			if ($xp && $xp != '1') { // xp=1只是标识，忽略即可
 				$param = b64d($xp, true);
 				if ($param === false) {
 					logit("error: bad url xparam $xp");
@@ -2290,7 +2290,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 				$ac = $this->parseRestfulUrl($path);
 			}
 		}
-		if (! isset($ac)) {
+		if (! $ac) {
 			$ac = $this->mparam('ac', "G");
 		}
 
