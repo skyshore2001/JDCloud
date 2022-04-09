@@ -267,16 +267,24 @@ function urlEncodeArr($params)
 }
 
 /**
-@fn makeUrl($ac, $params, $hash)
+@fn makeUrl($ac, $params, $hash, $wantHost=false)
 
-e.g.
+生成被调用的URL。示例：
 
+	// 生成相对路径，如 /jdcloud/api.php/hello?id=100#test，一般用于调用自身，如callAsync("hello")。
+	$url = makeUrl("hello", ["id"=>100], "#test");
+
+	// 生成绝对路径(指定参数wantHost=true)，如 http://127.0.0.1/jdcloud/api.php/hello?id=100#test，URL可供外部调用。
+	$url = makeUrl("hello", ["id"=>100], "#test", true);
+
+	// $ac也可直接指定绝对路径
 	$url = makeUrl("http://oliveche.com/jdcloud/api.php", ["p1"=>"abc", "p2"=>"333"])
+
 */
-function makeUrl($ac, $params, $hash = null)
+function makeUrl($ac, $params, $hash = null, $wantHost=false)
 {
 	if (preg_match('/^[\w\.]+$/', $ac)) {
-		$url = getBaseUrl(false) . "api.php/" . $ac;
+		$url = getBaseUrl($wantHost) . "api.php/" . $ac;
 	}
 	else {
 		$url = $ac;

@@ -3623,9 +3623,11 @@ watch选项会刷新disabled/readonly/show/value系列选项中的表达式。
 
 	// html中的组件： <input name="moveType" class="my-combobox">
 	WUI.setDlgLogic(jdlg, "moveType", {
-		setOption: function (e) { return {
-			jdEnumMap: e.type == "入库"? MoveTypeMap_入库: MoveTypeMap_出库
-		}},
+		setOption: function (e) {
+			return {
+				jdEnumMap: e.type == "入库"? MoveTypeMap_入库: MoveTypeMap_出库
+			}
+		},
 		watch: "type"
 	});
 

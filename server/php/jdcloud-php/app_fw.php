@@ -1204,6 +1204,7 @@ e.g.
 		"tm" => date(FMT_DT),
 		"tm1" => dbExpr("now()"), // 使用dbExpr直接提供SQL表达式
 		"amount" => 100,
+		"raw" => ["id"=>100, "name"=>"jack"], // (v5.5) 数组转JSON保存
 		"dscr" => null // null字段会被忽略
 	]);
 
@@ -1408,6 +1409,7 @@ e.g.
 	$cnt = dbUpdate("Ordr", [
 		"amount" => 30,
 		"dscr" => "test dscr",
+		"raw" => ["id"=>100, "name"=>"jack"], // (v5.5) 数组转JSON保存
 		"tm" => "null", // 用""或"null"对字段置空；用"empty"对字段置空串。
 		"tm1" => null // null会被忽略
 	], 100);
@@ -1643,7 +1645,8 @@ class DBEnv
 				$values .= $v->val;
 			}
 			else if (is_array($v)) {
-				jdRet(E_PARAM, "dbInsert: array `$k` is not allowed. pls define subobj to use array.", "未定义的子表`$k`");
+				$values .= Q(jsonEncode($v));
+//				jdRet(E_PARAM, "dbInsert: array `$k` is not allowed. pls define subobj to use array.", "未定义的子表`$k`");
 			}
 			else if ($noEscape) {
 				$values .= Q($v, $this);
@@ -1686,6 +1689,9 @@ class DBEnv
 				$kvstr .= "$k=''";
 			else if ($v instanceof DbExpr) { // 直接传SQL表达式
 				$kvstr .= $k . '=' . $v->val;
+			}
+			else if (is_array($v)) {
+				$kvstr .= $k . '=' . Q(jsonEncode($v));
 			}
 			else if (startsWith($k, "flag_") || startsWith($k, "prop_"))
 			{

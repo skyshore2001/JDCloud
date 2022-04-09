@@ -1873,23 +1873,43 @@ function delSessionById($sessionIds)
 发起调用后立即返回，即用于发起异步调用。
 默认发起GET调用，如果postParams非空(可以为字符串、数值或数组)，则发起POST调用。
 
-示例：
+示例：调用自身服务，可使用相对路径：
 
 	httpCallAsync("/jdcloud/api.php?ac=async&f=sendSms", [
 		"phone" => "13712345678",
 		"msg" => "验证码为1234"
 	]);
 
-TODO:目前只用于本机
+指定完整URL：
+
+	httpCallAsync("http://127.0.0.1:8081/setTimeout", [
+		"url" => "http://127.0.0.1/jdcloud/api.php/hello",
+	]);
+
+TODO: 如果给定postParams，目前content-type固定使用application/json. 且不支持指定headers.
 */
 function httpCallAsync($url, $postParams = null)
 {
 	$host = '127.0.0.1';
-	$port = 80;
+	$port = @$_SERVER['SERVER_PORT'] ?: 80;
+	$rv = parse_url($url);
+	if (isset($rv['scheme'])) {
+		// localhost往往被解析为ipv6地址(::1)，而某些服务可能未监听该地址；用默认的"127.0.0.1"兼容性更好
+		if ($rv['host'] != "localhost")
+			$host = $rv['host'];
+		if ($rv['scheme'] == 'http') {
+			$port = @$rv['port'] ?: 80;
+		}
+		else if ($rv['scheme'] == 'https') {
+			$host = 'ssl://' . $host;
+			$port = @$rv['port'] ?: 443;
+		}
+	}
+	logext("httpCallAsync: $url ($host:$port)");
 
-	$fp = fsockopen($host, $port, $errno, $errstr, 3);
+	@$fp = fsockopen($host, $port, $errno, $errstr, 3);
 	if (!$fp) {
-		echo "$errstr ($errno)";
+		logit("httpCallAsync error $errno: url=$url, $errstr");
 		return false;
 	}
 	$data = null;
@@ -1917,16 +1937,14 @@ function httpCallAsync($url, $postParams = null)
 }
 
 /**
-@fn callAsync($ac, $params)
+@fn callAsync($ac, $params, $wait=0)
 
-在当前事务完成后，调用"async"接口，不等服务器输出数据就立即返回。
+异步调用某个内部函数。
 
-@key enableAsync 配置异步调用
+异步调用的原理是通过调用callSvcAsync函数，在当前接口执行完成后，发起一个async接口调用并立即返回。
+然后在async接口中正常同步调用指定的内部函数。
 
-发起异步调用请求，然后立即返回。它使用如下接口：
-
-	async(f)(params...)
-	其中params为JSON格式
+与直接调用callSvcAsync相比，使用callAsync更简单，不必将函数封装为外部接口，只需要在`$allowedAsyncCalls`中注册即可被外部调用。
 
 示例：让一个同步调用变成支持异步调用，以sendSms为例
 
@@ -1934,39 +1952,77 @@ function httpCallAsync($url, $postParams = null)
 	$allowedAsyncCalls = ["sendSms"];
 
 	function sendSms($phone, $msg) {
-		// 2. 为支持异步的函数加上判断分支
-		if (getenv("enableAsync") === "1") {
-			return callAsync('sendSms', func_get_args());
-		}
-		
 		// 同步调用
 		return httpCall("...");
 	}
 
-	// 3. 在conf.user.php中配置开启异步支持。如果不配置则为同步调用，便于比较区别与调试。
-	// 打开异步调用支持, 依赖 P_BASE_URL 和 whiteIpList 设置
-	putenv("enableAsync=1");
+	// 2. 异步调用
+	return callAsync('sendSms', [$phone, $msg]); // 参数
+
+注意：
+
+- 由于要被外部调用，须生成完整URL地址；如果部署时使用反向代理等机制，可能URL不正确，这时应设置P_BASE_URL，详见[getBaseUrl]。
+- 如果指定了等待时间$wait(毫秒)，表示在$wait豪秒后执行。此时必须连接jdserver做任务调度，须配置conf_jdserverUrl，详见[callSvcAsync]。
+- 安全性：调用async接口的服务器IP，如果不是本机，须配置加入白名单(whiteIpList)，详见[api_async]。
 
 @see callSvcAsync
 @see api_async
 */
-function callAsync($ac, $param) {
-	callSvcAsync("async", ["f"=>$ac], $param);
+function callAsync($ac, $param, $wait=0) {
+	callSvcAsync("async", ["f"=>$ac], $param, $wait);
 }
 
 /**
-@fn callSvcAsync($ac, $urlParam, $postParams)
+@fn callSvcAsync($ac, $urlParam, $postParams=null, $wait=0)
 
 在当前事务执行完后，调用指定接口并立即返回（不等服务器输出数据）。一般用于各种异步通知。
 示例：
 
+	// 支持调用自己
 	callSvcAsync("sendMail", ["type"=>"Issue", "id"=>100]);
 	// 自动以getBaseUrl来补全url
 
-	callSvcAsync("http://localhost/pdi/api/sendMail", ["type"=>"Issue", "id"=>100]);
-	// 将ac直接当成url
+	// 支持调用外部http或https, 将ac直接当成url
+	callSvcAsync("http://localhost:8080/pdi/api/sendMail", ["type"=>"Issue", "id"=>100]);
+	callSvcAsync("https://oliveche.com/pdi/api/sendMail", ["type"=>"Issue", "id"=>100]);
+
+
+
+@key $conf_jdserverUrl
+
+如果指定了等待时间$wait，表示在$wait秒后执行。示例：30秒后发送邮件：
+
+	$wait = 30;
+	callSvcAsync("sendMail", ["type"=>"Issue", "id"=>100], null, $wait);
+
+此时必须连接jdserver做任务调度，须配置conf_jdserverUrl，在conf.user.php中：
+
+	$conf_jdserverUrl = "http://127.0.0.1:8081";
+
+jdserver将在指定时间后回调。
+
 */
-function callSvcAsync($ac, $urlParam, $postParam = null) {
+function callSvcAsync($ac, $urlParam, $postParam = null, $wait = 0) {
+	if ($wait > 0) {
+		global $conf_jdserverUrl;
+		if (! $conf_jdserverUrl)
+			jdRet(E_SERVER, "bad conf", "conf_jdserverUrl未配置");
+		$url = makeUrl($ac, $urlParam, null, true);
+		$post = [
+			'url' => $url,
+			'wait' => $wait,
+		];
+		if ($postParam) {
+			$post += [
+				'data' => jsonEncode($postParam),
+				'headers' => [
+					'Content-Type: application/json',
+				]
+			];
+		}
+		callSvcAsync($conf_jdserverUrl . '/setTimeout', null, $post);
+		return;
+	}
 	$url = makeUrl($ac, $urlParam);
 	$env = getJDEnv();
 	$env->onAfterActions[] = function () use ($url, $postParam) {
@@ -1986,7 +2042,8 @@ function callSvcAsync($ac, $urlParam, $postParam = null) {
 
 	putenv("whiteIpList=115.238.59.110 127.0.0.1 ::1");
 
-@see enableAsync
+调用实际函数前会设置环境变量：enableAsync=0。
+
 @see whiteIpList
 */
 function api_async($env) {
