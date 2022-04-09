@@ -6,6 +6,9 @@ $port = @$opt["p"] ?: 8081;
 
 $workerNum = 1; // 由于使用了全局变量来共享信息，这里只能为1。
 
+// 开启协程!!!
+Co::set(['hook_flags'=> SWOOLE_HOOK_ALL]);
+
 $server = new Swoole\WebSocket\Server($addr, $port);
 $server->set([
 	'worker_num'=>$workerNum,
@@ -42,6 +45,8 @@ $server->on('Message', function ($ws, $frame) {
 });
 
 $server->on('WorkerStart', function ($server, $workerId) {
+	swoole_ignore_error(1004); // send but session is closed
+	swoole_ignore_error(1005); // end but session is closed
 	echo("=== worker $workerId starts. master_pid={$server->master_pid}, manager_pid={$server->manager_pid}, worker_pid={$server->worker_pid}\n");
 	require("api.php");
 });

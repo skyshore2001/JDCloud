@@ -5,7 +5,8 @@
 - 某应用前端通过websocket连接jdserver, 接收应用后端推送的消息;
 - 某应用后端在N秒后执行一个操作，可以把这个操作封装为1个后端接口，让jdserver定时调用。
 
-须安装swoole。启动：
+须安装swoole。推荐版本: 4.8.8 (编译选项全部yes)。
+启动：
 
 	php jdserver.php
 
@@ -140,4 +141,20 @@
 - timeout: 指定最长等待时间，单位: 秒
 
 给它发送消息也是使用push接口。
+
+## 服务器运行信息统计
+
+	stat
+
+返回信息中有：
+
+- jdserver_tm: 服务器当前时间
+- jdserver_start_time: 启动时间
+- connection_num: 当前连接的数量
+- accept_count: 接受了多少个连接
+- request_count: Server 收到的请求次数
+- worker_request_count: 当前 Worker 进程收到的请求次数
+- total_recv_bytes/total_send_bytes: 收到和发送的字节数
+
+更多返回内容参考：https://wiki.swoole.com/#/server/methods?id=stats
 

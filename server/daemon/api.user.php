@@ -16,6 +16,15 @@ function api_hello($env)
 	return ["id"=>$id, "hello"=>$hello, "cnt"=>$cnt];
 }
 
+function api_stat($env)
+{
+	global $server;
+	$rv = $server->stats();
+	$rv["jdserver_start_time"] = date(FMT_DT, $rv["start_time"]);
+	$rv["jdserver_tm"] = date(FMT_DT);
+	return $rv;
+}
+
 function api_push($env)
 {
 	global $server;
