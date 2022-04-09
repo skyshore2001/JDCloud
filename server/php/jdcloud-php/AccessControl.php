@@ -3619,7 +3619,7 @@ function KVtoCond($k, $v)
 */
 	}
 
-	static function outputCsvLine($row, $enc, $sep=',')
+	function outputCsvLine($row, $enc, $sep=',')
 	{
 		$firstCol = true;
 		$autoEscape0 = $sep != "\t";
@@ -3627,7 +3627,7 @@ function KVtoCond($k, $v)
 			if ($firstCol)
 				$firstCol = false;
 			else
-				echo $sep;
+				$this->write($sep);
 			if (is_array($e))
 				$e = self::array2Str($e);
 			$autoEscape = $autoEscape0;
@@ -3643,32 +3643,32 @@ function KVtoCond($k, $v)
 				}
 			}
 			if ($autoEscape && (strpos($e, '"') !== false || strpos($e, "\n") !== false || strpos($e, $sep) !== false))
-				echo '"', str_replace('"', '""', $e), '"';
+				$this->write('"', str_replace('"', '""', $e), '"');
 			else
-				echo $e;
+				$this->write($e);
 		}
-		echo "\n";
+		$this->write("\n");
 	}
 
-	static function table2csv($tbl, $enc = null)
+	function table2csv($tbl, $enc = null)
 	{
 		if (isset($tbl["h"]))
-			self::outputCsvLine($tbl["h"], $enc);
+			$this->outputCsvLine($tbl["h"], $enc);
 		foreach ($tbl["d"] as $row) {
-			self::outputCsvLine($row, $enc);
+			$this->outputCsvLine($row, $enc);
 		}
 	}
 
-	static function table2txt($tbl)
+	function table2txt($tbl)
 	{
 		if (isset($tbl["h"]))
-			self::outputCsvLine($tbl["h"], null, "\t");
+			$this->outputCsvLine($tbl["h"], null, "\t");
 		foreach ($tbl["d"] as $row) {
-			self::outputCsvLine($row, null, "\t");
+			$this->outputCsvLine($row, null, "\t");
 		}
 	}
 
-	static function table2html($tbl, $retStr=false)
+	function table2html($tbl, $retStr=false)
 	{
 		$rv = "<table border=1 cellspacing=0>";
 		if (isset($tbl["h"])) {
@@ -3683,10 +3683,10 @@ function KVtoCond($k, $v)
 		$rv .= "</table>";
 		if ($retStr)
 			return $rv;
-		echo($rv);
+		$this->write($rv);
 	}
 
-	static function table2excel($tbl, $writer=null, $sheet="Sheet1")
+	function table2excel($tbl, $writer=null, $sheet="Sheet1")
 	{
 		$hdr = [];
 		// 处理值为数组的情况
@@ -3726,7 +3726,7 @@ function KVtoCond($k, $v)
 			$writer = new XLSXWriter();
 		$writer->writeSheet($tbl["d"], $sheet, $hdr);
 		if ($auto)
-			$writer->writeToStdOut();
+			$this->write($writer->writeToString());
 	}
 
 /**
@@ -3822,35 +3822,35 @@ function KVtoCond($k, $v)
 		if ($handled) {
 		}
 		else if ($fmt === "csv") {
-			header("Content-Type: application/csv; charset=UTF-8");
-			header("Content-Disposition: attachment;filename={$fname}.csv");
-			self::table2csv($ret);
+			$this->header("Content-Type", "application/csv; charset=UTF-8");
+			$this->header("Content-Disposition", "attachment;filename={$fname}.csv");
+			$this->table2csv($ret);
 			$handled = true;
 		}
 		else if ($fmt === "excel") {
 			require_once("xlsxwriter.class.php");
-			header("Content-disposition: attachment; filename=" . XLSXWriter::sanitize_filename($fname) . ".xlsx");
-			header("Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-			header("Content-Transfer-Encoding: binary");
-			self::table2excel($ret);
+			$this->header("Content-disposition", "attachment; filename=" . XLSXWriter::sanitize_filename($fname) . ".xlsx");
+			$this->header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+			$this->header("Content-Transfer-Encoding", "binary");
+			$this->table2excel($ret);
 			$handled = true;
 		}
 		else if ($fmt === "excelcsv") {
-			header("Content-Type: application/csv; charset=gb18030");
-			header("Content-Disposition: attachment;filename={$fname}.csv");
-			self::table2csv($ret, "gb18030");
+			$this->header("Content-Type", "application/csv; charset=gb18030");
+			$this->header("Content-Disposition", "attachment;filename={$fname}.csv");
+			$this->table2csv($ret, "gb18030");
 			$handled = true;
 		}
 		else if ($fmt === "txt") {
-			header("Content-Type: text/plain; charset=UTF-8");
-			header("Content-Disposition: attachment;filename={$fname}.txt");
-			self::table2txt($ret);
+			$this->header("Content-Type", "text/plain; charset=UTF-8");
+			$this->header("Content-Disposition", "attachment;filename={$fname}.txt");
+			$this->table2txt($ret);
 			$handled = true;
 		}
 		else if ($fmt === "html") {
-			header("Content-Type: text/html; charset=UTF-8");
-			header("Content-Disposition: filename={$fname}.html");
-			self::table2html($ret);
+			$this->header("Content-Type", "text/html; charset=UTF-8");
+			$this->header("Content-Disposition", "filename={$fname}.html");
+			$this->table2html($ret);
 			$handled = true;
 		}
 		if ($handled)

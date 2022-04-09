@@ -125,6 +125,8 @@ class SwooleEnv extends JDEnv
 		return $this->req->rawContent();
 	}
 	function write($data) {
+		if ($data === null || $data === "")
+			return;
 		$this->res->write($data);
 	}
 

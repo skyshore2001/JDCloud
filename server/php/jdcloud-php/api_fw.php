@@ -3045,6 +3045,13 @@ class JDApiBase
 {
 	public $env;
 
+	function header($key=null, $val=null) {
+		$this->env->header($key, $val);
+	}
+	function write($s) {
+		$this->env->write($s);
+	}
+
 	function callSvc($tbl, $ac, $param=null, $postParam=null, $useTmpEnv=true)
 	{
 		$fn = "api_" . $ac;
