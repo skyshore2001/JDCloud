@@ -2352,7 +2352,8 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 					$plugins = "$BASE_DIR/plugin/index.php";
 					if (file_exists($plugins))
 						include_once($plugins);
-					require_once("{$BASE_DIR}/conf.php");
+					if (!class_exists("Conf"))
+						require_once("{$BASE_DIR}/conf.php");
 
 					$this->clientVer = $this->getClientVersion();
 					setServerRev($this);
@@ -2365,7 +2366,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 
 				$this->dbconn();
 
-				if (! isCLI() && Conf::$enableAutoSession) {
+				if (! $isCLI && Conf::$enableAutoSession) {
 					$this->session_start();
 				}
 
@@ -2467,8 +2468,8 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 				logit('onAfterActions fails: ' . (string)$e);
 			}
 		}
-		if (! $isCLI && class_exists("Conf") && Conf::$enableAutoSession) {
-			$this->session_write_close();
+		if (! $isCLI) {
+			@$this->session_write_close();
 		}
 
 		try {

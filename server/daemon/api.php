@@ -60,6 +60,11 @@ function onCreateAC($tbl)
 	return null;
 }
 
+class Conf extends ConfBase
+{
+	static $enableAutoSession = false;
+}
+
 // override trait JDServer
 // refer: https://wiki.swoole.com/#/http_server?id=httprequest
 class SwooleEnv extends JDEnv
@@ -69,6 +74,10 @@ class SwooleEnv extends JDEnv
 	function __construct($req, $res) {
 		$this->req = $req;
 		$this->res = $res;
+		if ($this->req->get === null)
+			$this->req->get = [];
+		if ($this->req->post === null)
+			$this->req->post = [];
 		$this->_GET = &$this->req->get;
 		$this->_POST = &$this->req->post;
 		$this->_SESSION = [];
@@ -157,7 +166,7 @@ class SwooleEnv extends JDEnv
 	function session_write_close() {
 //		var_export(["session" => $this->_SESSION, "sesId"=>$this->sesId, "sesFile"=>$this->sesFile]);
 		if ($this->sesH == null) {
-			logit("ignore session_write_close");
+			// logit("ignore session_write_close");
 			return;
 		}
 		$str = empty($this->_SESSION)? '': jsonEncode($this->_SESSION);

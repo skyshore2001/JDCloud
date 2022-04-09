@@ -50,14 +50,14 @@ jdserver共享了jdcloud框架的基础库，获得以下主要特性：
 - 共用conf.user.php中的数据库、调试选项等设置；但默认不包含Conf.php中的配置，可在daemon/api.php中自行包含。
 
 尽管jdserver中也包含了**AccessControl（CRUD框架）以及各种jdcloud插件，但只能用于单用户演示，不可用于生产！**。
-原因是这些业务代码大量使用了$_POST/$_GET/$_SESSION等全局变量，修改这些会改变传统编程风格，而且支持jdserver的意义却不大。
+原因是这些业务代码大量使用了$_POST/$_GET/$_SESSION等全局变量，目前支持jdserver的意义并不大。
 jdserver用于构建中间件，它不是业务组件，它需要尽可能简单。
 
 jdserver与jdcloud的区别：
 
-- TODO: 默认不开启session。需要显式调用session_start()；session不过期。
+- 默认不开启session。需要显式调用session_start()；session不过期，除非调用session_destory或手工删除session文件。
 - 支持使用AC类接口对象接口，但只能继承自JDApiBase，不能继承AccessControl，因而不具备自动CRUD功能，所有数据库操作需要自行实现。
-- 没有内置的身份验证机制，默认不支持AUTH_USER/AUTH_EMP/AUTH_ADMIN这些权限检查。TODO：checkAuth/hasPerm的使用受限。
+- 没有内置的身份验证机制，默认不支持AUTH_USER/AUTH_EMP/AUTH_ADMIN这些权限检查。但可以使用checkAuth/hasPerm函数。
 
 ## 消息推送或即时通讯
 
