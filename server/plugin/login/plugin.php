@@ -266,36 +266,16 @@ function hashPwd($pwd)
 	return md5($pwd);
 }
 
-function randChr($t)
-{
-	while (1) {
-		# all digits (no 0)
-		if ($t == 'd') {
-			$n = rand(ord('1'), ord('9'));
-			return chr($n);
-		}
-		
-		# A-Z (no O, I)
-		$n = rand(0, 25);
-		if ($n == ord('O')-ord('A') || $n == ord('I')-ord('A'))
-			continue;
-		return chr(ord('A') + $n);
-	}
-}
-
-# e.g. genDynCode("d4") - 4 digits
-# e.g. genDynCode("w4") - 4 chars (capital letters)
+# e.g. genDynCode("d4") - 纯数字
+# e.g. genDynCode("x6") - 字母数字，排除易混淆的01OI
+# e.g. genDynCode("w10") - 纯字母
 function genDynCode($type)
 {
 	$t = substr($type, 0, 1);
 	$n = (int)substr($type, 1);
 	if ($n <= 0)
 		jdRet(E_PARAM, "Bad type '$type' for genCode");
-	$r = '';
-	for ($i=0; $i<$n; ++$i) {
-		$r .= randChr($t);
-	}
-	return $r;
+	return randChr($n, $t);
 }
 
 function validateDynCode($code, $phone = null)

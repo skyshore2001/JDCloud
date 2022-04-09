@@ -144,13 +144,14 @@ class SwooleEnv extends JDEnv
 	function session_start() {
 		// TODO: check session timeout
 		if ($this->sesH == null) {
-			$sesName = $this->appName . "id";
+			$sesName = $this->appType . "id";
 			$this->sesId = $this->req->cookie[$sesName];
 			if ($this->sesId) {
-				$mode = "r+";
+				// $mode = "r+";
+				$mode = "c+"; // 如果指定session不存在则自动创建，不报错
 			}
 			else {
-				$this->sesId = Swoole\Coroutine::getcid(); //TODO: is it right?
+				$this->sesId = strtolower(randChr(26));
 				$this->res->cookie($sesName, $this->sesId);
 				$mode = "w";
 			}
@@ -164,7 +165,7 @@ class SwooleEnv extends JDEnv
 				jdRet(E_SERVER, "session folder is NOT writeable: $path");
 
 			$this->sesFile = "$path/jdsess_" . $this->sesId;
-			$fp = fopen($this->sesFile, $mode);
+			@$fp = fopen($this->sesFile, $mode);
 			if (!$fp) 
 				jdRet(E_SERVER, "cannot open session {$this->sesFile}", "Session错误");
 			flock($fp, LOCK_EX);
@@ -185,7 +186,7 @@ class SwooleEnv extends JDEnv
 			logit("ignore session_write_close");
 			return;
 		}
-		$str = jsonEncode($this->_SESSION);
+		$str = empty($this->_SESSION)? '': jsonEncode($this->_SESSION);
 		fseek($this->sesH, 0);
 		fwrite($this->sesH, $str);
 		flock($this->sesH, LOCK_UN);

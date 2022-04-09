@@ -1666,4 +1666,42 @@ function myunpack($packData, $format)
 	}
 	return unpack($format0, $packData);
 }
+
+/**
+@fn randChr($cnt, $type='c')
+
+生成指定长度的随机字符串。
+
+	$rv = randChr(10); // 10个字符, [0-9A-Z]
+	$rv = randChr(10, 'x'); // 同上但去除易混淆的01和OI
+	$rv = randChr(10, 'd'); // 10个纯数字, [0-9]
+	$rv = randChr(10, 'w'); // 10个纯字母, [A-Z]
+
+*/
+function randChr($cnt, $type='c')
+{
+	static $map = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+	$ret = '';
+	$range = null;
+	if ($type == 'd') {
+		$range = [0,9];
+	}
+	else if ($type == 'w') {
+		$range = [10,35];
+	}
+	else {
+		$range = [0, 35];
+	}
+
+	while ($cnt > 0) {
+		$n = rand($range[0], $range[1]);
+		$ch = $map[$n];
+		if ($type == 'x' && ($ch=='O' || $ch=='0' || $ch=='1' || $ch=='I'))
+			continue;
+		$ret .= $ch;
+		-- $cnt;
+	}
+	return $ret;
+}
+
 // vi: foldmethod=marker
