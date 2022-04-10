@@ -200,6 +200,29 @@ POST内容也可以使用json格式，如：
 **线上生产环境不可设置为测试模式。**
 当前端发现服务处于测试模式，应给予明确提示。
 
+### 通用接口格式参数
+
+接口默认返回格式为`[0, 数据, ...]`，支持以下通用URL参数：
+
+- _raw: 只返回数据部分（第2元素）；
+- _jsonp: 返回函数调用或变量赋值形式，是合法的javascript语句。
+
+示例：`callSvr("Ordr.get", {res: "id, tm, amount"})`假设返回`[0, {id: 100, tm: '2020-10-10', amount: 380.5}]`，那么：
+
+- `callSvr("Ordr.get", {res: "id, tm, amount", _raw:1})`返回`{id: 100, tm: '2020-10-10', amount: 380.5}`
+
+- `callSvr("Ordr.get", {res: "id, tm, amount", _raw:2})`返回`100	2020-10-10	380.5`
+字段间以TAB分隔的表；如果有多条记录则可以有多行。可用于与shell script集成。
+
+- `callSvr("Ordr.get", {res: "id, tm, amount", _jsonp:'handleOrder'})`返回`handleOrder([0, {id: 100, tm: '2020-10-10', amount: 380.5}])`
+即JS函数调用形式，可用于跨域调用。
+
+- `callSvr("Ordr.get", {res: "id, tm, amount", _jsonp:'api_order='})`返回`api_order=[0, {id: 100, tm: '2020-10-10', amount: 380.5}]`
+即JS变量赋值形式，可用于跨域调用。
+
+- `callSvr("Ordr.get", {res: "id, tm, amount", _raw:1, _jsonp:'api_order='})`返回`api_order={id: 100, tm: '2020-10-10', amount: 380.5}`
+两个参数可以组合使用。
+
 ## 接口描述
 
 接口描述应包括接口原型和应用逻辑的说明。
@@ -779,10 +802,30 @@ fmt
 
 	{cnt: 82, amount: 35340}
 
-也可以在查询的同时指定要统计哪些列，使用statRes字段。
+考虑安全性与便利性，res中只能使用白名单中的安全统计函数，包括：MAX, MIN, AVG, SUM, COUNT, SUMIF, COUNTIF.
+函数名不区分大小写。
+
+其中SUMIF和COUNTIF是扩展函数，便于进行带条件的统计，如统计今日(假设日期为2020-10-10)、本月、今年的累计订单数和订单金额：
+
+	callSvr("Ordr.query", {
+		res: "COUNTIF(createTm>='2020-10-10') 今日订单数, COUNTIF(createTm>='2020-10-1') 本月订单数, COUNTIF(createTm>='2020-1-1') 今年订单数, " +
+			"SUMIF(createTm>='2020-10-10', amount) 今日订单额, SUMIF(createTm>='2020-10-1', amount) 本月订单额, SUMIF(createTm>='2020-1-1', amount) 今年订单额",
+		fmt: "one" 
+	})
+
+它等价于多次下面带cond参数的调用：
+
+	callSvr("Ordr.query", {
+		res: "COUNT(1) 今日订单数, SUM(amount) 今日订单额",
+		cond: "createTm>'2020-10-10'",
+		fmt: "one" 
+	})
+
+也可以在普通查询的同时指定要统计哪些列，使用statRes字段。
 	
 statRes
 : 指定统计字段，会在分页返回结果中添加stat对象。注意fmt参数不能是one, array, hash等，只允许是list或默认（即hd格式）。
+statRes的写法与res相同，支持COUNT/COUNTIF等白名单内的统计函数。
 
 请求示例：
 

@@ -2754,7 +2754,7 @@ FROM ($sql) t0";
 		}
 
 		// 计算统计列
-		$statRes = param("statRes");
+		$statRes = param("statRes", null, null, false); // htmlEscape=false，如`statRes: "COUNTIF(tm>'2020-1-1') cnt"`
 		if ($statRes) {
 			$param = [
 				"res" => $statRes,
