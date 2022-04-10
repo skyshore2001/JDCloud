@@ -1267,8 +1267,8 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 	// for get/query
 	protected function initQuery()
 	{
-		$gres = param("gres");
-		$res = param("res");
+		$gres = param("gres", null, null, false);
+		$res = param("res", null, null, false);
 		$this->sqlConf = [
 			"res" => [],
 			"resExt" => [],
@@ -1667,14 +1667,34 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 		}
 	}
 
+	// 考虑括号匹配，比如"a, fn(a,1) b" => ["a", "fn(a,1) b"] 而不是 ["a", "fn(a", "1)b"]
+	// $arr = splitCols('a, b 字段b, if(a>b, a, b) 最大, sumif(a>1 and b<10, amount)')
+	static function splitCols($str) {
+		$len = strlen($str);
+		$arr = [];
+		$pos = 0; $n = 0;
+		for ($i=0; $i<$len; ++$i) {
+			if ($str[$i] == ',' && $n == 0) {
+				$arr[] = trim(substr($str, $pos, $i-$pos));
+				$pos = $i+1;
+				continue;
+			}
+			if ($str[$i] == '(')
+				++ $n;
+			else if ($str[$i] == ')')
+				-- $n;
+		}
+		$arr[] = trim(substr($str, $pos));
+		return $arr;
+	}
+
 	// 和fixUserQuery处理外部cond类似(安全版的addCond), filterRes处理外部传入的res (安全版的addRes)
 	// return: new field list
 	private function filterRes($res, $gres=false)
 	{
 		$cols = [];
 		$isAll = false;
-		foreach (explode(',', $res) as $col) {
-			$col = trim($col);
+		foreach (self::splitCols($res) as $col) {
 			$alias = null;
 			$fn = null;
 			if ($col === "*" || $col === "t0.*") {
@@ -1688,21 +1708,38 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 			if (! preg_match('/^\s*(\w+)(?:\s+(?:AS\s+)?([^,]+))?\s*$/iu', $col, $ms))
 			{
 				// 对于res, 还支持部分函数: "fn(col) as col1", 目前支持函数: count/sum，如"count(distinct ac) cnt", "sum(qty*price) docTotal"
-				if (!$gres && preg_match('/(\w+)\(([\w.\'* ,+-\/]*)\)\s+(?:AS\s+)?([^,]+)/iu', $col, $ms)) {
+				// 支持扩展的SUMIF/COUNTIF函数，'sumif(id>=100 and id<200, amount) s1, countif(id>10) c2'
+				// 重点防范: 1. 未知函数调用（字段中不可有括号）2. 变量(字符@);  比如 'select database(), user(), sleep(1), @@autocommit'这种调用
+				// CONCAT/IF这些能返回字符串的函数不建议开放。
+				if (!$gres && preg_match('/(\w+)\(([\w.\'* ,+-\/<>=]*)\)\s+(?:AS\s+)?([^,]+)/iu', $col, $ms)) {
 					list($fn, $expr, $alias) = [strtoupper($ms[1]), $ms[2], $ms[3]];
-					if ($fn != "COUNT" && $fn != "SUM" && $fn != "AVG" && $fn != "MAX" && $fn != "MIN")
+					if (! in_array($fn, ["COUNT", "SUM", "AVG", "MAX", "MIN", "COUNTIF", "SUMIF"]))
 						jdRet(E_FORBIDDEN, "function not allowed: `$fn`");
-					// 支持对虚拟字段的聚合函数 (addVCol)
-					$expr = preg_replace_callback('/\b\w+\b/iu', function ($ms) {
+					// 支持对虚拟字段的聚合函数 (addVCol)；不处理引号内文本如'RE'或关键字如AND/OR
+					$expr = preg_replace_callback('/\b\w+\b|\'[^\']+\'/iu', function ($ms) {
 						$col1 = $ms[0];
-						if (strcasecmp($col1, 'distinct') == 0 || is_numeric($col1))
+						if ($col1[0] == "'")
+							return $col1;
+						$s = strtoupper($col1);
+						if (in_array($s, ['DISTINCT', 'AND', 'OR']) || is_numeric($col1))
 							return $col1;
 						// isVCol
 						if ($this->addVCol($col1, true, '-'))
 							return $this->vcolMap[$col1]["def"];
 						return "t0." . $col1;
 					}, $expr);
-					$col = $fn . '(' . $expr . ') ' . $alias;
+
+					// `COUNTIF(status='RE')` => `COUNT(IF(a>1, 1, null))`
+					if ($fn == "COUNTIF") {
+						$col = 'COUNT(IF(' . $expr . ',1,NULL)) ' . $alias;
+					}
+					// `SUMIF(status='RE', amount)` => `SUM(IF(status='RE', amount, 0))`
+					else if ($fn == "SUMIF") {
+						$col = 'SUM(IF(' . $expr . ', 0)) ' . $alias;
+					}
+					else {
+						$col = $fn . '(' . $expr . ') ' . $alias;
+					}
 					$this->isAggregatinQuery = true;
 				}
 				else 
