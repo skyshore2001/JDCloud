@@ -893,12 +893,14 @@ function checkAuth($perms, $exPerms=null)
 }
 
 /**
-@fn tmCols($fieldName = "t0.tm")
+@fn tmCols($fieldName = "t0.tm", $doWeekFix=true)
 
 为查询添加时间维度单位: y,q,m,w,d,wd,h (年，季度，月，周，日，周几，时)。
 
 - wd: 1-7表示周一到周日
-- w: 一年中第一周，从该年第一个周一开始(mysql week函数模式7).
+- w: 一年中第几周，范围[0,53]。周从周一开始，新年第1周不足4天算第0周（mysql week模式5）。
+特别地，如果是年、周统计(gres=y,w)，范围[1,53]，新年第1周不足4天算到上年中，以便跨年时1周是完整的（mysql week模式7）。
+若要禁止该逻辑，可设置参数$doWeekFix=false。
 
 示例：
 
@@ -907,9 +909,23 @@ function checkAuth($perms, $exPerms=null)
 		$this->vcolDefs[] = [ "res" => tmCols("log_cr.tm"), "require" => "createTm" ];
 
  */
-function tmCols($fieldName = "t0.tm")
+function tmCols($fieldName = "t0.tm", $doWeekFix = true)
 {
-	return ["year({$fieldName}) y", "quarter({$fieldName}) q", "month({$fieldName}) m", "week({$fieldName},7) w", "day({$fieldName}) d", "weekday({$fieldName})+1 wd", "hour({$fieldName}) h"];
+	$ret = ["year({$fieldName}) y", "quarter({$fieldName}) q", "month({$fieldName}) m", "week({$fieldName},5) w", "day({$fieldName}) d", "weekday({$fieldName})+1 wd", "hour({$fieldName}) h"];
+	if ($doWeekFix) {
+		$gres = param("gres");
+/*
+- 默认(如y,m,w): year(@tm), month(@tm) m, week(@tm,5) w
+- 如果是年、周统计(gres=y,w): if(week(@tm,5)>0, year(@tm), year(@tm)-1) y, week(@tm,7) w
+
+如果gres="y,w"(或"y 年, w 周"这种)，应做修正: 将第0周合并到上年最后1周
+*/
+		if ($gres && preg_match('/^y( [^,]+)?,\s*w\b/', $gres)) {
+			$ret[0] = "if(week({$fieldName},5)>0, year({$fieldName}), year({$fieldName})-1) y";
+			$ret[3] = "week({$fieldName},7) w";
+		}
+	}
+	return $ret;
 }
 
 /**
