@@ -533,7 +533,7 @@ subobj: { name => {obj, cond, AC?, res?, default?=false, forceUpdate(v5.5) } } �
 
 或
 
-subobj: { name => {sql, default?=false, wantOne?=false} } 指定SQL语句，查询结果作为子表对象（旧写法，不建议使用。只允许查询，不支持对子表修改）
+subobj: { name => {sql, default?=false, wantOne?=0} } 指定SQL语句，查询结果作为子表对象（旧写法，不建议使用。只允许查询，不支持对子表修改）
 
 设计接口：
 
@@ -586,7 +586,7 @@ subobj: { name => {sql, default?=false, wantOne?=false} } 指定SQL语句，查�
 其它选项：
 
 - default: 与虚拟字段(vcolDefs)上的"default"选项一样，表示当"res"参数以"*"开头(比如`res="*,picCnt"`)或未指定时，是否默认返回该字段。
-- wantOne: 如果为true, 则结果以一个对象返回即 {id, tm, ...}, 适用于主表与子表一对一的情况。
+- wantOne: 如果为1, 则结果以一个对象返回即 {id, tm, ...}, 适用于主表与子表一对一的情况。(v6.1)如果值为2，则所有字段将直接合并到主表（如果有同名字段将覆盖）。
 
 ### 子表的增删改查操作
 
@@ -3408,7 +3408,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 				$param["cond2"] = dbExpr($cond);
 			}
 			if (isset($param1["wantOne"])) {
-				$opt["wantOne"] = param("wantOne/b", null, $param1);
+				$opt["wantOne"] = param("wantOne/i", null, $param1);
 			}
 		}
 		$res = param("res_$k");
@@ -3469,10 +3469,16 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 					$ret1 = queryAll($sql1, true);
 				}
 				if (@$opt["wantOne"]) {
-					if (count($ret1) > 0)
-						$mainObj[$k] = $ret1[0];
-					else
-						$mainObj[$k] = null;
+					if ($opt["wantOne"] == 2) { // 值为2时，合并到主表
+						if (count($ret1) > 0)
+							arrCopy($mainObj, $ret1[0]);
+					}
+					else {
+						if (count($ret1) > 0)
+							$mainObj[$k] = $ret1[0];
+						else
+							$mainObj[$k] = null;
+					}
 				}
 				else {
 					$mainObj[$k] = $ret1;
@@ -3489,7 +3495,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		if (! is_array($subobj) || count($subobj)==0 || count($ret) == 0)
 			return;
 
-		# $opt: {sql, wantOne=false}
+		# $opt: {sql, wantOne=0}
 		foreach ($subobj as $k => $opt) {
 			$idField = $opt["%d"] ?: "id"; // 主表关联字段，默认为id，也可由"%d"选项指定。
 			$joinField = null;
@@ -3565,6 +3571,11 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 				if (@$opt["wantOne"]) {
 					if ($val !== null)
 						$val = $val[0];
+					if ($opt["wantOne"] == 2) {
+						if ($val !== null)
+							arrCopy($row, $val);
+						continue;
+					}
 				}
 				else {
 					if ($val === null)
