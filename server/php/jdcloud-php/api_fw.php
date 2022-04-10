@@ -2782,11 +2782,12 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		// POST /Store
 		case 'POST':
 			if (isset($id))
-				jdRet(E_PARAM, "bad verb '$method' on id: $id");
+				jdRet(E_PARAM, "bad verb '$method'.use `PATCH $obj/$id` or `POST $obj/$id/set` for set.");
 			$ac = 'add';
 			break;
 
-		// PATCH /Store/123
+		// TODO: 暂不支持PUT操作。注意：PUT操作中未指定的字段将置空，可以使用MYSQL的`REPLACE INTO t0 (id, ...) VALUE (...)`来实现。
+		// PATCH /Store/123 (等价于 POST /Store/123/set，这里把set当做功能操作，故使用POST谓词)
 		case 'PATCH':
 			if (! isset($id))
 				jdRet(E_PARAM, "missing id");
@@ -2794,7 +2795,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			parse_str(getHttpInput($this), $this->_POST);
 			break;
 
-		// DELETE /Store/123
+		// DELETE /Store/123 (等价于 POST /Store/123/del)
 		case 'DELETE':
 			if (! isset($id))
 				jdRet(E_PARAM, "missing id");
