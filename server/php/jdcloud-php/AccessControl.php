@@ -716,15 +716,41 @@ subobj: { name => {sql, default?=false, wantOne?=0} } 指定SQL语句，查询�
 				"obj"=>"Ordr", "AC"=>"AC2_Ordr", "cond"=>"t0.id={orderId}", // 用`{主表字段名}`设置关联外键。注意它等价于定义 `"cond"=>"t0.id=%d", "%d"=>"orderId"`
 				//"sql"=>"SELECT * FROM Ordr t1 WHERE t1.id={orderId}", // 也可以用 "sql" 来替代obj/AC/res/cond等子表选项
 				"res" => "t0.*",
-				"wantOne"=>true,
+				"wantOne"=>1,
 				"default"=>true
 			]
 		];
 	}
 
-多对一的关联表往往设置`wantOne=true`，这样ordr属性就是个对象而非数组。
+多对一的关联表往往设置`wantOne=1`，这样ordr属性就是个对象而非数组。
 
 注意：在主表add接口中支持同时添加关联表, 但不可在set接口中添加/更新关联表.
+
+(v6.1) 设置`wantOne=2`，可以将子表合并到主表中。
+有一种统计型子表也比较常见，比如Task(任务)-Task1(子任务)的关联模型中，定义统计子表`%task1stat={successCnt/成功数, failCnt/失败数, lastTm/最后时间}`
+
+	class AC2_Task extends AccessControl
+	{
+		protected $subobj = [
+			"task1stat" => [
+				"obj" => 'Task1',
+				"cond" => 'task1Id={id}',
+				"res" => "COUNTIF(result='S') successCnt, COUNTIF(result='F') failCnt, MAX(tm) lastTm",
+				"wantOne" => 2
+			]
+		];
+	}
+
+注意：COUNTIF与SUMIF是筋斗云扩展的统计函数，允许在res中指定。
+
+	callSvr("Task.get", {id: 1, res:"id,name,task1stat"});
+
+出来的结果示例：`{id: 1, name: "task1", successCnt: 3, failCnt: 0, lastTm: "2020-1-1 10:10:10"}`。
+而如果`wantOne=1`，则结果为：`{id: 1, name: "task1", task1stat: {successCnt: 3, failCnt: 0, lastTm: "2020-1-1 10:10:10"}}`。
+
+一般在定义subobj时指定`wantOne=1`，而在调用时可通过`param_{subobj名}`参数中指定wantOne来灵活调整，如：
+
+	callSvr("Task.get", {id: 1, res:"id,name,task1stat", param_task1stat:{wantOne:2} });
 
 ### 子表查询参数
 
@@ -735,7 +761,7 @@ subobj: { name => {sql, default?=false, wantOne?=0} } 指定SQL语句，查询�
 	class AC2_Hub extends AccessControl
 	{
 		protected $subobj = [
-			"lastData" => ["obj"=>"HubData", "cond"=>"hubId=%d", "AC"=>"AC2_HubData", "res"=>"tm,pos,speed,alt", "wantOne"=>true ]
+			"lastData" => ["obj"=>"HubData", "cond"=>"hubId=%d", "AC"=>"AC2_HubData", "res"=>"tm,pos,speed,alt", "wantOne"=>1 ]
 		];
 	}
 
@@ -775,12 +801,12 @@ query接口的子查询默认是不分页的，即返回所有子对象数据（
 
 query接口子查询示例：
 
-	// subobj定义中指定了wantOne=true，但它仍会查所有子对象并取第一条（get接口没有这个问题），当子对象很多时可能丢失数据。
+	// subobj定义中指定了wantOne=1，但它仍会查所有子对象并取第一条（get接口没有这个问题），当子对象很多时可能丢失数据。
 	callSvr("Hub.query", {
 		res: "id,name,lastData"
 	});
 
-	// 禁用了子查询优化，这时为每个主表项分别查询子对象，根据wantOne=true为每个主表项返回1个子对象。
+	// 禁用了子查询优化，这时为每个主表项分别查询子对象，根据wantOne=1为每个主表项返回1个子对象。
 	callSvr("Hub.query", {
 		disableSubobjOptimize: 1,
 		res: "id,name,lastData"
