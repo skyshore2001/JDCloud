@@ -828,6 +828,33 @@ query接口子查询示例：
 
 此处细节较为复杂，最佳实践请参考“筋斗云开发实例讲解”文档的“最先、最后关联问题”。
 
+【res增强语法：指定子表查询参数】
+
+(v6.1) 在res参数中支持通过子表前后缀修饰来定义子表的wantOne和res参数。称为【子表修饰】
+示例：
+
+	callSvr("Task.query", {
+		res: "%task, @task1, ...task2stat={successCnt,failCnt}"
+	});
+
+相当于：
+
+	callSvr("Task.query", {
+		res: "%task, @task1={*,successCnt,failCnt}, ...task2stat"
+		param_task: {wantOne: 1},
+		param_task1: {wantOne: 0},
+		res_task1: "*,successCnt,failCnt",
+		param_task2stat: {wantOne: 2},
+	});
+
+- 前缀符号`@`,`%`和`...`分别表示输出形式为数组、对象(hash)和展开对象，即对应`param_{子表名}`中的wantOne参数的0，1和2值。
+如果不指定，那么以子表定义中的wantOne定义为准。
+
+- 后缀`={子表res}`定义子表res，等同于指定`res_{子表名}`参数。如果未指定，则使用子表定义中的res参数。
+
+- 支持同时指定别名，如：`@task1 子任务={*,successCnt}`
+- 支持嵌套定义，如：`@task1 子任务={*, ...task2stat={*,successCnt}}`
+
 ## 操作完成回调
 
 @fn AccessControl::onAfter(&$ret)  (for all) 操作完成时的回调。可修改操作结果ret。
@@ -1695,12 +1722,13 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 
 	// 考虑括号匹配，比如"a, fn(a,1) b" => ["a", "fn(a,1) b"] 而不是 ["a", "fn(a", "1)b"]
 	// $arr = splitCols('a, b 字段b, if(a>b, a, b) 最大, sumif(a>1 and b<10, amount)')
+	// 支持子表(subobj)修饰，如"%task, @task1, ...task2stat={successCnt,failCnt}"是3个字段
 	static function splitCols($str) {
 		$len = strlen($str);
 		$arr = [];
-		$pos = 0; $n = 0;
+		$pos = 0; $n = 0; $n1 = 0;
 		for ($i=0; $i<$len; ++$i) {
-			if ($str[$i] == ',' && $n == 0) {
+			if ($str[$i] == ',' && $n == 0 && $n1 == 0) {
 				$arr[] = trim(substr($str, $pos, $i-$pos));
 				$pos = $i+1;
 				continue;
@@ -1709,8 +1737,34 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 				++ $n;
 			else if ($str[$i] == ')')
 				-- $n;
+			if ($str[$i] == '{')
+				++ $n1;
+			else if ($str[$i] == '}')
+				-- $n1;
 		}
 		$arr[] = trim(substr($str, $pos));
+
+		// 【子表修饰】
+		// query接口res中支持指定子表wantOne和res: "%task, @task1, ...task2stat={successCnt,failCnt}"
+		// 可以指定别名："id,@task1 子任务={*,successCnt}"
+		// 可以嵌套定义："@task1={*,...task2stat={*,successCnt}}"
+		// TODO: 如果子表定义subobj中指定了res（其中有虚拟字段定义，比如"COUNT(*) cnt"），则通过`res_xxx`重新指定res时，应该允许重用原res中的虚拟字段(比如cnt).
+		foreach ($arr as &$col) {
+			// e.g. "@task1 子任务={id, name}" "...task2stat={successCnt,failCnt}"
+			if (preg_match('/^(@|%|\.\.\.)? ((\w+).*?) (?:=\{(.*)\})? $/xu', $col, $ms)) {
+				list ($all, $prefix, $colDef, $colName, $res) = $ms;
+				if ($prefix) {
+					$wantOne = $prefix=='@'? 0: ($prefix=='%'? 1: 2); // @arr, %hash, ...expanded
+					$_GET["param_$colName"] = ["wantOne"=>$wantOne];
+				}
+				if ($res) {
+					$_GET["res_$colName"] = $res;
+				}
+				$col = $colDef;
+			}
+		}
+		unset($col);
+
 		return $arr;
 	}
 
