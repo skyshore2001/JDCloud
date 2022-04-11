@@ -2648,6 +2648,152 @@ function jdModule(name, fn, overrideCtor)
 	return ret;
 }
 
+/**
+@fn jdPush(app, handleMsg, opt?={user, url, dataType})
+
+支持出错自动重连的websocket client. 默认连接同域下的jdserver。
+
+- app: 应用，或通道名，与后端推送应用名保持一致，一般使用项目名。
+- handleMsg(msg, ws): 回调函数. msg是JS对象。ws是websocket对象, 可发消息ws.send(str)、关闭ws.close()
+- opt.user: 注册用户，默认使用g_data.userInfo.id，如果不存在则报错。
+- opt.url: websocket地址，默认值是相对路径`/jdserver`，也可指定全路径，如 `ws://oliveche.com/jdserver`
+- opt.dataType=json: 默认只有json对象才回调handleMsg。设置text则处理所有数据。
+
+示例：
+
+	// 返回websocket proxy对象
+	var ws = jdPush("tighten", function (msg, ws) {
+		console.log(msg)
+		// 发送消息
+		ws.send({ac:"hello"}); // 发送JS对象会自动转JSON发送。
+	}, opt);
+
+	// 关闭
+	ws.close();
+
+开发环境可配置代理服务器连接jdserver，比如使用Apache，在web根目录下配置.htaccess:
+（确保已打开wstunnel模块且允许htaccess文件）
+
+	# 连接已部署的websocket server
+	rewriterule ^jdserver ws://oliveche.com/jdserver [P,L]
+
+	# 或连本地websocket server (注意最后/不可少)
+	# rewriterule ^jdserver ws://127.0.0.1:8081/ [P,L]
+
+jdserver同时支持http和websocket，建议设置为：（注意顺序）
+
+	rewriterule ^jdserver/(.+) http://127.0.0.1:8081/$1 [P,L]
+	rewriterule ^jdserver ws://127.0.0.1:8081/ [P,L]
+
+或
+
+	rewriterule ^jdserver/(.+) http://oliveche.com/jdserver/$1 [P,L]
+	rewriterule ^jdserver ws://oliveche.com/jdserver/ [P,L]
+
+这样，可以使用基于HTTP的push接口给别的客户端发消息：
+
+	callSvr("/jdserver/push", $.noop, {
+		app: "app1",
+		// user: "*", // 不指定user默认使用群发
+		msg: {
+			ac: "msg1",
+			data: "hello"
+		}
+	});
+	// 返回推送人次数量，示例：2
+
+取在线用户：
+
+	callSvr("/jdserver/getUsers", { app: "app1" });
+	// 返回示例： ['user1', 'user2' ]
+
+*/
+function jdPush(app, handleMsg, opt) {
+	opt = Object.assign({
+		user: window.g_data && g_data.userInfo.id,
+		url: "/jdserver",
+		dataType: "json",
+	}, opt);
+
+	if (! opt.user) {
+		throw "jdPush: require param `user`";
+	}
+
+	var ws;
+	var tmr;
+	var url = opt.url;
+	var doClose = false;
+
+	// 自动补全协议、主机
+	if (! /^wss?:/.test(url)) {
+		var proto = (location.protocol=="https:"? "wss:": "ws:");
+		if (url.substr(0, 2) == '//') {
+			url = proto + url;
+		}
+		else if (url[0] == '/') {
+			// 直接打开html文件时没有host
+			url = proto + '//' + (location.host || "localhost") + url;
+		}
+		else {
+			console.err("jdPush: 连接websocket服务器，请使用//或/开头的绝对地址!");
+			return;
+		}
+	}
+	connect();
+
+	var proxy = {
+		close: function () {
+			if (tmr)
+				clearTimeout(tmr);
+			ws.close();
+			doClose = true; // 禁止在onClose中重连
+		},
+		send: function (s) {
+			if (typeof(s) != "string")
+				s = JSON.stringify(s);
+			ws.send(s);
+		}
+	}
+	return proxy;
+
+	function connect() {
+		ws = new WebSocket(url);
+		console.log('connect to ', url);
+
+		ws.onopen = function (ev) {
+			var req = {ac: 'init', app: app, user: opt.user};
+			ws.send(JSON.stringify(req));
+		};
+		ws.onerror = function (ev) {
+			// console.warn('websocket error', ev);
+		};
+		ws.onclose = function (ev) {
+			// doClose: 通过proxy.close()关闭后，无须重连
+			// 1000: 正常关闭; 但连jdserver时ws.close()返回1005
+			if (!doClose && ev.code != 1000 && ev.code != 1005) {
+				console.warn('websocket close. will reconnect.');
+				reconnect();
+				return;
+			}
+			console.log('websocket close');
+		};
+		ws.onmessage = function (ev) {
+			if (opt.dataType == 'json') {
+				if (ev.data[0] == '{') // json msg
+					handleMsg(JSON.parse(ev.data), ws);
+				else
+					console.log(ev.data);
+				return;
+			}
+			handleMsg(ev.data, ws);
+		};
+	}
+
+	function reconnect() {
+		tmr = setTimeout(connect, 5000);
+	}
+}
+
 if (! String.prototype.replaceAll) {
 	String.prototype.replaceAll = function (from, to) {
 		return this.replace(new RegExp(from, "g"), to);

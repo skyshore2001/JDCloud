@@ -15,7 +15,7 @@ input {
 }
 </style>
 
-<form action="javascript:connect();">
+<form action="javascript:;" onsubmit="connectWs(this)">
 	app: <input id="app" name="app" value="app1">
 	user: <input id="user" name="user" value="user1">
 	<button>连接消息服务</button>
@@ -48,36 +48,110 @@ input {
 <iframe name="ifr"></iframe>
 
 <script>
-function connect() {
-	var ws = new WebSocket("ws://localhost:8081");
-	console.log('connect...');
+// var url = '//localhost:8081'
+// var url = '//oliveche.com/jdserver'
+var url = '/jdserver';
+document.querySelectorAll('form[action^=http]').forEach(e => {
+	e.action = e.action.replace('http://localhost:8081', url)
+})
 
-	var app = document.getElementById("app").value;
-	var user = document.getElementById("user").value;
+var ws;
+function connectWs(form) {
+	if (ws)
+		ws.close();
 
-	ws.onopen = function (ev) {
-		var req = {ac: 'init', app: app, user: user};
-		ws.send(JSON.stringify(req));
+	var app = form.app.value;
+	var user = form.user.value;
+	var opt = {
+		dataType: 'text',
+		user: user,
+		url: url
 	};
-	ws.onerror = function (ev) {
-		console.log('onerror');
-		console.log(ev);
-	};
-	ws.onclose = function (ev) {
-		console.log('onclose');
-		console.log(ev);
-		reconnect();
-	};
-	ws.onmessage = function (ev) {
-		console.log('onmessage');
-		document.getElementById('msg').innerHTML = ev.data + "<br>" + document.getElementById('msg').innerHTML;
-		//document.write("<p>" + ev.data);
-		console.log(ev.data);
-	};
+	ws = jdPush(app, function (msg, ws) {
+		console.log(msg);
+		document.getElementById('msg').innerHTML = msg + "<br>" + document.getElementById('msg').innerHTML;
+	}, opt);
 }
 
-function reconnect() {
-	setTimeout(connect, 5000);
+/**
+@fn jdPush(app, handleMsg, opt={user, url})
+
+支持出错自动重连的websocket client. 
+
+开发环境可配置代理服务器连接jdserver，比如使用Apache，确保已打开rewrite和wstunnel模块且允许htaccess文件，
+然后在web根目录下配置.htaccess:
+
+	rewriterule ^jdserver/(.+) http://oliveche.com/jdserver/$1 [P,L]
+	rewriterule ^jdserver ws://oliveche.com/jdserver/ [P,L]
+
+*/
+function jdPush(app, handleMsg, opt) {
+	var ws;
+	var tmr;
+	var url = opt.url;
+	var doClose = false;
+
+	// 自动补全协议、主机
+	if (! /^wss?:/.test(url)) {
+		var proto = (location.protocol=="https:"? "wss:": "ws:");
+		if (url.substr(0, 2) == '//') {
+			url = proto + url;
+		}
+		else if (url[0] == '/') {
+			// 直接打开html文件时没有host
+			url = proto + '//' + (location.host || "localhost") + url;
+		}
+		else {
+			console.err("jdPush: 连接websocket服务器，请使用//或/开头的绝对地址!");
+			return;
+		}
+	}
+	connect();
+
+	var proxy = {
+		close: function () {
+			if (tmr)
+				clearTimeout(tmr);
+			ws.close();
+			doClose = true; // 禁止在onClose中重连
+		},
+		send: function (s) {
+			if (typeof(s) != "string")
+				s = JSON.stringify(s);
+			ws.send(s);
+		}
+	}
+	return proxy;
+
+	function connect() {
+		ws = new WebSocket(url);
+		console.log('connect to ', url);
+
+		ws.onopen = function (ev) {
+			var req = {ac: 'init', app: app, user: opt.user};
+			ws.send(JSON.stringify(req));
+		};
+		ws.onerror = function (ev) {
+			// console.warn('websocket error', ev);
+		};
+		ws.onclose = function (ev) {
+			// doClose: 通过proxy.close()关闭后，无须重连
+			// 1000: 正常关闭; 但连jdserver时ws.close()返回1005
+			if (!doClose && ev.code != 1000 && ev.code != 1005) {
+				console.warn('websocket close. will reconnect.');
+				reconnect();
+				return;
+			}
+			console.log('websocket close');
+		};
+		ws.onmessage = function (ev) {
+			handleMsg(ev.data, ws);
+		};
+	}
+
+	function reconnect() {
+		tmr = setTimeout(connect, 5000);
+	}
 }
 
 </script>

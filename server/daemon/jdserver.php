@@ -26,6 +26,12 @@ $server->on('Open', function ($ws, $req) {
 $server->on('Message', function ($ws, $frame) {
 //	echo("onMessage(websocket): fd=" . $frame->fd . ", data=" . $frame->data . "\n");
 	$req = json_decode($frame->data, true);
+	if (! is_array($req)) {
+		$ws->push($frame->fd, '*** require json data. but recv: ' . $frame->data);
+		// 1007: 格式不符
+		$ws->disconnect($frame->fd, 1007, "bad data format");
+		return;
+	}
 	if (@$req["ac"] == "init") {
 		global $clientMap;
 		@$app = $req["app"];

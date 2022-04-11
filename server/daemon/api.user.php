@@ -62,16 +62,11 @@ function api_push($env)
 function api_getUsers($env)
 {
 	global $clientMap;
-	$user = $env->param("user");
-	if (is_null($user)) {
-		return array_values($clientMap);
-	}
+	$app = $env->mparam("app");
 	$ret = [];
-	foreach (explode(',', $user) as $one) {
-		foreach ($clientMap as $fd => $user) {
-			if (fnmatch($one, $user)) {
-				$ret[] = $user;
-			}
+	foreach ($clientMap as $fd => $cli) {
+		if ($cli['app'] == $app) {
+			$ret[] = $cli['user'];
 		}
 	}
 	return $ret;
