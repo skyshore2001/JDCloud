@@ -32,6 +32,54 @@
 - 未提供验证机制
 - 使用全局变量存储会话，因而只能开1个worker进程。产品级可通过文件（同一主机多进程）或redis（多主机）存取会话。
 
+## 部署
+
+安装swoole。CentOS7可下载我编译过的版本：
+https://oliveche.com/app/tool/swoole-4.8.8-php74-centos7-lj.xz
+
+	tar axf swoole-4.8.8-php74-centos7-lj.xz -C /opt
+	cd /opt/php74
+	./install.sh
+
+ubuntu20.04上可以用apt安装默认的php74后，下载swoole.so模块并配置cli版本的`extention=swoole.so`：
+https://oliveche.com/app/tool/swoole-4.8.8-ubuntu20-php74.tgz
+
+安装为服务，默认8081端口，只监听127.0.0.1；使用builder用户：
+
+	sudo ./jdserver.service.sh
+
+若要修改端口等，可修改该文件，示例：
+
+	ExecStart=/bin/sh -c "swoole $svc.php -p 8401 >> $svc.log 2>&1"
+
+服务名默认为文件名中的jdserver. 日志文件为该目录下的jdserver.log。
+
+启动、停止：
+
+	sudo systemctl start jdserver
+	sudo systemctl stop jdserver
+
+一般在Apache上配置代理。请确保已打开wstunnel模块且允许htaccess文件。
+jdserver同时支持http和websocket，建议设置为：（注意顺序）
+
+	rewriterule ^jdserver/(.+) http://127.0.0.1:8081/$1 [P,L]
+	rewriterule ^jdserver ws://127.0.0.1:8081/ [P,L]
+
+## 使用
+
+jdcloud前端使用jdPush函数连接jdserver并接收推送消息；
+也可以直接调用push/getUsers/stat等接口，如：
+
+	callSvr("/jdserver/push", ...)
+
+jdcloud后端通过jdPush函数调用jdserver的push接口，通过callSvcAsync函数调用jdserver的setTimeout接口实现延迟调用。
+它们都需要在conf.user.php中配置 conf_jdserverUrl，如：
+
+	conf_jdserverUrl='http://127.0.0.1:8081/';
+	// 或 conf_jdserverUrl='/jdserver';
+
+打开test.html，可测试websocket和http接口。
+
 ## jdserver与jdcloud
 
 jdcloud指传统的筋斗云后端接口框架，擅长CRUD，成熟稳定。生产环境运行于apache web服务器，易于修改和调试。
