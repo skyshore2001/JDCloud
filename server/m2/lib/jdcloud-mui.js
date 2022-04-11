@@ -4763,7 +4763,7 @@ function makeUrl(action, params)
 		params.XDEBUG_SESSION_START = 1;
 
 	var p = $.param(params);
-	if (opt.xparam)
+	if (self.options.xparam)
 		p = "xp=" + (p? self.base64Encode(p, true): 1);
 	var ret = mCommon.appendParam(url, p);
 	return makeUrlObj(ret);
