@@ -10119,9 +10119,12 @@ var GridHeaderMenu = {
 			var MAX_EXAMPLE = 2;
 			var lastOne = null;
 			$.each(rows, function (i, row) {
-				if (row[field] && row[field] != lastOne) {
-					arr.push(row[field]);
-					lastOne = row[field];
+				var s = row[field];
+				if ($.isArray(s) || $.isPlainObject(s))
+					s = JSON.stringify(s);
+				if (s && s != lastOne) {
+					arr.push(s);
+					lastOne = s;
 					if (arr.length == MAX_EXAMPLE)
 						return false;
 				}
