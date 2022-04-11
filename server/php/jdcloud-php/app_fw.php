@@ -488,6 +488,31 @@ function mparam($name, $col = null, $doHtmlEscape = true, $env = null)
 }
 
 /**
+@fn getConf($confName, $arr=$GLOBALS)
+
+取配置项，如果未配置则报错。
+
+	$url = getConf("conf_jdserverUrl");
+
+若不想报错则直接取：
+
+	if (isset($GLOBALS["conf_xxx"])) ...
+
+配置使用全局变量：
+
+	$GLOBALS["conf_jdserverUrl"] = "http://...";
+
+*/
+function getConf($confName, $arr=null)
+{
+	if ($arr === null)
+		$arr = $GLOBALS;
+	if (!array_key_exists($confName, $arr))
+		jdRet(E_SERVER, "require conf $confName", "参数未配置: $confName");
+	return $arr[$confName];
+}
+
+/**
 @fn checkParams($params, $names, $errPrefix?)
 
 检查必填参数。

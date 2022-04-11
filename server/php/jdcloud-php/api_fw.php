@@ -2014,15 +2014,13 @@ function callAsync($ac, $param, $wait=0) {
 此时必须连接jdserver做任务调度，须配置conf_jdserverUrl，在conf.user.php中：
 
 	$conf_jdserverUrl = "http://127.0.0.1:8081";
+	// $conf_jdserverUrl = "/jdserver"; // 配置代理后可用
 
 jdserver将在指定时间后回调。
 
 */
 function callSvcAsync($ac, $urlParam, $postParam = null, $wait = 0) {
 	if ($wait > 0) {
-		global $conf_jdserverUrl;
-		if (! $conf_jdserverUrl)
-			jdRet(E_SERVER, "bad conf", "conf_jdserverUrl未配置");
 		$url = makeUrl($ac, $urlParam, null, true);
 		$post = [
 			'url' => $url,
@@ -2036,7 +2034,7 @@ function callSvcAsync($ac, $urlParam, $postParam = null, $wait = 0) {
 				]
 			];
 		}
-		callSvcAsync($conf_jdserverUrl . '/setTimeout', null, $post);
+		callSvcAsync(getConf("conf_jdserverUrl") . '/setTimeout', null, $post);
 		return;
 	}
 	$url = makeUrl($ac, $urlParam);
@@ -2074,6 +2072,35 @@ function api_async($env) {
 
 	putenv("enableAsync=0");
 	return call_user_func_array($f, $env->_POST);
+}
+
+/**
+@fn jdPush($app, $msg, $user='*')
+
+借助jdserver实时推送消息到websocket。须配置conf_jdserverUrl。
+
+前端可直接通过jdserver调用push接口，给其它客户端发消息，示例：
+
+	callSvr("/jdserver/push", $.noop, {
+		app: "app1",
+		// user: "*", // 不指定user默认使用群发
+		msg: {
+			ac: "msg1",
+			data: "hello"
+		}
+	});
+
+详见前端文档[jdPush].
+
+@see jdserver
+*/
+function jdPush($app, $msg, $user='*') {
+	$url = getConf("conf_jdserverUrl") . '/push';
+	callSvcAsync($url, null, [
+		"app" => $app,
+		"user" => $user,
+		"msg" => $msg
+	]);
 }
 // }}}
 
