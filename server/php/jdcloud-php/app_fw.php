@@ -131,7 +131,7 @@ global $BASE_DIR;
 $BASE_DIR = dirname(dirname(__DIR__));
 
 // 配置项默认值（可在conf.user.php中覆盖）
-$GLOBALS["conf_jdserverUrl"] = '/jdserver';
+$GLOBALS["conf_jdserverUrl"] = 'http://127.0.0.1/jdserver';
 
 // }}}
 

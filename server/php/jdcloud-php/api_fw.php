@@ -1896,7 +1896,10 @@ function delSessionById($sessionIds)
 		"msg" => "验证码为1234"
 	]);
 
-指定完整URL：
+未指定主机时，固定连接127.0.0.1:80，若其它端口请修改源码。
+目前内部callAsync/callSvcAsync会用到它。
+
+调用其它系统可指定完整URL，支持http或https：
 
 	httpCallAsync("http://127.0.0.1:8081/setTimeout", [
 		"url" => "http://127.0.0.1/jdcloud/api.php/hello",
@@ -1907,23 +1910,26 @@ TODO: 如果给定postParams，目前content-type固定使用application/json. �
 function httpCallAsync($url, $postParams = null)
 {
 	$host = '127.0.0.1';
-	$port = @$_SERVER['SERVER_PORT'] ?: 80;
+	$port = 80; // 不要试图用$_SERVER["PORT"], 当用https访问时还是拿不到端口号
+	$isSsl = false;
 	$rv = parse_url($url);
 	if (isset($rv['scheme'])) {
 		// localhost往往被解析为ipv6地址(::1)，而某些服务可能未监听该地址；用默认的"127.0.0.1"兼容性更好
-		if ($rv['host'] != "localhost")
-			$host = $rv['host'];
+		$host = $rv['host'];
+		if ($host == 'localhost')
+			$host = '127.0.0.1';
 		if ($rv['scheme'] == 'http') {
 			$port = @$rv['port'] ?: 80;
 		}
 		else if ($rv['scheme'] == 'https') {
-			$host = 'ssl://' . $host;
 			$port = @$rv['port'] ?: 443;
+			$isSsl = true;
 		}
 	}
-	logext("httpCallAsync: $url ($host:$port)");
+	$addr = $isSsl? ('ssl://' . $host): $host;
+	logext("httpCallAsync: $url ($addr:$port)");
 
-	@$fp = fsockopen($host, $port, $errno, $errstr, 3);
+	@$fp = fsockopen($addr, $port, $errno, $errstr, 3);
 	if (!$fp) {
 		logit("httpCallAsync error $errno: url=$url, $errstr");
 		return false;
@@ -2002,21 +2008,26 @@ function callAsync($ac, $param, $wait=0) {
 	callSvcAsync("http://localhost:8080/pdi/api/sendMail", ["type"=>"Issue", "id"=>100]);
 	callSvcAsync("https://oliveche.com/pdi/api/sendMail", ["type"=>"Issue", "id"=>100]);
 
-
-
-@key $conf_jdserverUrl
-
 如果指定了等待时间$wait，表示在$wait秒后执行。示例：30秒后发送邮件：
 
 	$wait = 30;
 	callSvcAsync("sendMail", ["type"=>"Issue", "id"=>100], null, $wait);
 
-此时必须连接jdserver做任务调度，须配置conf_jdserverUrl，在conf.user.php中：
+此时必须连接jdserver做任务调度。
 
-	$conf_jdserverUrl = "http://127.0.0.1:8081";
-	// $conf_jdserverUrl = "/jdserver"; // 配置代理后可用
+@key $conf_jdserverUrl jdserver地址
 
-jdserver将在指定时间后回调。
+jdserver用于消息推送和任务调度, 是独立运行的守护进程, 提供websocket和http调用接口。
+jdcloud后端会用到jdserver的http接口，比如`http://127.0.0.1:8081/setTimeout`。
+
+习惯上会在Apache上配置代理路径'/jdserver'，
+即通过访问`http://{server}/jdserver/setTimeout`达到相同效果，并可以支持https/wss协议连接。
+
+jdserver默认路径配置为`http://127.0.0.1/jdserver`，通过本机Apache服务代理，端口80。
+如连其它服务器请修改配置，在conf.user.php中，示例：
+
+	$conf_jdserverUrl = "https://oliveche.com/jdserver";  // 路径带jdserver的是经代理的; 经公网最好走https
+	// $conf_jdserverUrl = "http://192.168.1.14:8081"; // 这种是直接连原始服务器
 
 */
 function callSvcAsync($ac, $urlParam, $postParam = null, $wait = 0) {
@@ -2092,7 +2103,7 @@ function api_async($env) {
 
 详见前端文档[jdPush].
 
-@see jdserver
+@see $conf_jdserverUrl 
 */
 function jdPush($app, $msg, $user='*') {
 	$url = getConf("conf_jdserverUrl") . '/push';
