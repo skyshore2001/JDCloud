@@ -2694,7 +2694,7 @@ jdserver同时支持http和websocket，建议设置为：（注意顺序）
 
 	callSvr("/jdserver/push", $.noop, {
 		app: "app1",
-		// user: "*", // 不指定user默认使用群发
+		user: "*", // 表示发给app1中所有人。也可指定`user1`, `user1,user2`, `user*`这样
 		msg: {
 			ac: "msg1",
 			data: "hello"
@@ -2702,11 +2702,21 @@ jdserver同时支持http和websocket，建议设置为：（注意顺序）
 	});
 	// 返回推送人次数量，示例：2
 
+上面通过msg字段发送js对象。
+注意jdPush默认只处理json消息: handleMsg(jsonObj)，其它消息只在控制台打印;
+想处理其它消息，可调用jdPush时设置opt.dataType='text'
+
 取在线用户：
 
 	callSvr("/jdserver/getUsers", { app: "app1" });
 	// 返回示例： ['user1', 'user2' ]
 
+示例：websocket连接jdserver，然后给自己发消息
+
+	jdPush('app1'); // 默认用户为g_data.userInfo.id
+	callSvr('/jdserver/push', {app: 'app1', user: '*', msg: 'hi'});
+	// 在控制台可收到hi
+	
 */
 function jdPush(app, handleMsg, opt) {
 	opt = Object.assign({
@@ -2778,6 +2788,10 @@ function jdPush(app, handleMsg, opt) {
 			console.log('websocket close');
 		};
 		ws.onmessage = function (ev) {
+			if (!handleMsg) {
+				console.log(ev.data);
+				return;
+			}
 			if (opt.dataType == 'json') {
 				if (ev.data[0] == '{') // json msg
 					handleMsg(JSON.parse(ev.data), ws);
@@ -5286,6 +5300,7 @@ function makeUrl(action, params)
 	if (params == null)
 		params = {};
 
+	var xparam = 0;
 	var url;
 	var fnMakeUrl = self.callSvrExt[ext] && self.callSvrExt[ext].makeUrl;
 	if (fnMakeUrl) {
@@ -5293,8 +5308,8 @@ function makeUrl(action, params)
 	}
 	else if (self.options.moduleExt && (url = self.options.moduleExt["callSvr"](action)) != null) {
 	}
-	// 缺省接口调用：callSvr('login'),  callSvr('./1.json') 或 callSvr("1.php") (以"./"或"../"等相对路径开头, 或是取".php"文件, 则不去自动拼接serverUrl)
-	else if (action[0] != '.' && action.indexOf(".php") < 0)
+	// 缺省接口调用：callSvr('login'),  callSvr('./1.json'), callSvr('/jdserver/stat') 或 callSvr("1.php") (以"/", "./"或"../"等绝对或相对路径开头, 或是取".php"文件, 则不去自动拼接serverUrl)
+	else if (action[0] != '.' && action[0] != '/' && action.indexOf(".php") < 0)
 	{
 		var opt = self.options;
 		var usePathInfo = !opt.serverUrlAc && !opt.xparam;
@@ -5308,6 +5323,7 @@ function makeUrl(action, params)
 			url = opt.serverUrl;
 			params[opt.serverUrlAc || "ac"] = action;
 		}
+		xparam = opt.xparam;
 	}
 	else {
 		if (location.protocol == "file:") {
@@ -5338,7 +5354,7 @@ function makeUrl(action, params)
 		params.XDEBUG_SESSION_START = 1;
 
 	var p = $.param(params);
-	if (self.options.xparam)
+	if (xparam)
 		p = "xp=" + (p? self.base64Encode(p, true): 1);
 	var ret = mCommon.appendParam(url, p);
 	return makeUrlObj(ret);
