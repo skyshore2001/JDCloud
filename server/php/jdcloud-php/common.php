@@ -252,9 +252,21 @@ e.g.
 	urlEncodeArr(["a"=>1, "b"=>null]) -> a=1
 
 NOTE: use http_build_query instead.
+
+	$rv = http_build_query(["a"=>1, "b"=>[20,30], "c"=>null, "d"=>"", "e"=>["e1"=>3] ]);
+	// $rv = "a=1&b%5B0%5D=20&b%5B1%5D=30&d=&e%5Be1%5D=3" 不包含c; 包含d; 
+
+	$rv1 = urldecode($rv);
+	// 解码后为 a=1&b[0]=20&b[1]=30&d=&e[e1]=3
+
+	parse_str($rv1, $rv2);
+	// $rv2是输出，值应与原始的$rv相同
+
 */
 function urlEncodeArr($params)
 {
+	return http_build_query($params);
+/*
 	$p = "";
 	foreach ($params as $k=>$v) {
 		if ($v === null)
@@ -264,6 +276,7 @@ function urlEncodeArr($params)
 		$p .= $k . "=" . urlencode($v);
 	}
 	return $p;
+*/
 }
 
 /**
@@ -290,7 +303,7 @@ function makeUrl($ac, $params, $hash = null, $wantHost=false)
 		$url = $ac;
 	}
 	if ($params) {
-		$url .= "?" . urlEncodeArr($params);
+		$url .= "?" . http_build_query($params); // 不再使用urlEncodeArr
 	}
 	if ($hash)
 		$url .= $hash;
