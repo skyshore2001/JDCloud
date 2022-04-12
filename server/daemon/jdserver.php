@@ -13,7 +13,7 @@ $server = new Swoole\WebSocket\Server($addr, $port);
 $server->set([
 	'worker_num'=>$workerNum,
 ]);
-echo("=== jdserver on $addr:$port, workers=$workerNum\n");
+writeLog("=== jdserver on $addr:$port, workers=$workerNum");
 
 // 用于websocket用户；允许一个用户多次出现，都能收到消息。
 $clientMap = []; // fd => {app, user, isHttp?, tmr?}
@@ -44,7 +44,7 @@ $server->on('Message', function ($ws, $frame) {
 			$ws->push($frame->fd, '*** error: require param `user`');
 			return;
 		}
-		echo("[app $app] add user=$user, fd={$frame->fd}\n");
+		writeLog("[app $app] add user=$user, fd={$frame->fd}");
 		$clientMap[$frame->fd] = ["app"=>$app, "user"=>$user];
 	}
 	$ws->push($frame->fd, 'OK');
@@ -53,7 +53,7 @@ $server->on('Message', function ($ws, $frame) {
 $server->on('WorkerStart', function ($server, $workerId) {
 	swoole_ignore_error(1004); // send but session is closed
 	swoole_ignore_error(1005); // end but session is closed
-	echo("=== worker $workerId starts. master_pid={$server->master_pid}, manager_pid={$server->manager_pid}, worker_pid={$server->worker_pid}\n");
+	writeLog("=== worker $workerId starts. master_pid={$server->master_pid}, manager_pid={$server->manager_pid}, worker_pid={$server->worker_pid}");
 	require("api.php");
 });
 
@@ -82,7 +82,7 @@ $server->on('Request', function ($req, $res) {
 				$res->end();
 			});
 		}
-		echo("[app $app] add http user=$user, fd=$fd\n");
+		writeLog("[app $app] add http user=$user, fd=$fd");
 		$clientMap[$fd] = ["app"=>$app, "user"=>$user, "isHttp"=>true, "tmr"=>$tmr];
 
 		$res->detach();
@@ -102,17 +102,17 @@ $server->on('Close', function ($ws, $fd) {
 	global $clientMap;
 	if (array_key_exists($fd, $clientMap)) {
 		$cli = $clientMap[$fd];
-		echo("[app {$cli['app']}] del user={$cli['user']}, fd=$fd\n");
+		writeLog("[app {$cli['app']}] del user={$cli['user']}, fd=$fd");
 		unset($clientMap[$fd]);
 	}
 });
 
-/*
-Swoole\Timer::after(13, function () {
-	echo(">>2000<<\n\n");
-});
-swoole_timer_after(4000, function () {
-	logit("4000");
-});
-*/
+function writeLog($s)
+{
+	if (is_array($s))
+		$s = var_export($s, true);
+	$s = "[".strftime("%Y/%m/%d %H:%M:%S",time())."] " . $s . "\n";
+	echo($s);
+}
+
 $server->start();
