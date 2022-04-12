@@ -709,15 +709,15 @@ function getReqIp()
 	if (isCLI()) {
 		return "cli";
 	}
-	static $reqIp;
-	if (!isset($reqIp)) {
-		$reqIp = @$_SERVER['REMOTE_ADDR'] ?: 'unknown';
-		@$fw = $_SERVER["HTTP_X_FORWARDED_FOR"] ?: $_SERVER["HTTP_CLIENT_IP"];
+	$env = getJDEnv();
+	if (!isset($env->reqIp)) {
+		$env->reqIp = $env->_SERVER('REMOTE_ADDR') ?: 'unknown';
+		@$fw = $env->_SERVER("HTTP_X_FORWARDED_FOR") ?: $env->_SERVER("HTTP_CLIENT_IP");
 		if ($fw) {
-			$reqIp .= '; ' . $fw;
+			$env->reqIp .= '; ' . $fw;
 		}
 	}
-	return $reqIp;
+	return $env->reqIp;
 }
 
 /**
