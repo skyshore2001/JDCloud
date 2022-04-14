@@ -311,7 +311,7 @@ function makeUrl($ac, $params, $hash = null, $wantHost=false)
 }
 
 /**
-@fn httpCall($url, $postParams =null, $opt={timeout?=5, @headers, %curlOpt={optName=>val} )
+@fn httpCall($url, $postParams =null, $opt={timeout?=5, @headers, %curlOpt={optName=>val}, useJson )
 
 请求URL，返回内容。
 默认使用GET请求，如果给定postParams，则使用POST请求。
@@ -362,7 +362,17 @@ postParams可以是一个kv数组或字符串，也可以是一个文件名(以"
 
 示例：提交application/json格式的内容
 
-	// 用json_encode将数组变成字符串。避免被httpCall转成urlencoded格式。
+(v6.1) 如果POST内容指定为对象，应指定选项useJson=1，否则默认会使用urlencoded格式：
+
+	$data = [
+		"name" => "xiaoming",
+		"classId" => 100
+	];
+	$rv = httpCall($url, $data, ["useJson"=>1]);
+	// 筋斗云：设置全局变量X_RET_STR可直接设置返回内容，避免再次被json编码。
+
+或直接先转成JSON再提交，这时要么使用`useJson:1`，要么在headers中指定Content-Type：
+
 	$data = json_encode([
 		"name" => "xiaoming",
 		"classId" => 100
@@ -371,8 +381,7 @@ postParams可以是一个kv数组或字符串，也可以是一个文件名(以"
 		"Content-type: application/json",
 		"Authorization: Basic dGVzdDp0ZXN0MTIz"
 	];
-	$GLOBALS["X_RET_STR"] = httpCall($url, $data, ["headers" => $headers]);
-	// 筋斗云：设置全局变量X_RET_STR可直接设置返回内容，避免再次被json编码。
+	$rv = httpCall($url, $data, ["headers" => $headers]);
 
 函数通过CURL实现，若需扩展功能，可以直接设置curlOpt选项（具体选项可查阅curl_setopt文档），如：
 
@@ -419,8 +428,6 @@ function httpCall($url, $postParams=null, $opt=[])
 
 	$timeout = @$opt["timeout"] ?: 5;
 	curl_setopt($h, CURLOPT_TIMEOUT, $timeout);
-	if (@$opt["headers"])
-		curl_setopt($h, CURLOPT_HTTPHEADER, $opt["headers"]);
 
 	if (@$opt["curlOpt"])
 		curl_setopt_array($h, $opt["curlOpt"]);
@@ -438,14 +445,34 @@ function httpCall($url, $postParams=null, $opt=[])
 
 	if (isset($postParams)) {
 		if (is_array($postParams)) {
-			$data = urlEncodeArr($postParams);
+			if (@$opt["useJson"]) {
+				$data = jsonEncode($postParams);
+			}
+			else {
+				$data = http_build_query($postParams);
+			}
 		}
 		else {
 			$data = $postParams;
 		}
 		curl_setopt($h, CURLOPT_POST, true);
 		curl_setopt($h, CURLOPT_POSTFIELDS, $data);
+
+		// 未指定content-type则自动添加
+		if (@$opt["useJson"]) {
+			if (!is_array(@$opt["headers"]))
+				$opt["headers"] = [];
+			$rv = arrFind($opt["headers"], function ($e) {
+				return stripos($e, "Content-Type") !== false;
+			});
+			if (! $rv) {
+				$opt["headers"][] = "Content-Type: application/json";
+			}
+		}
 	}
+	if (@$opt["headers"])
+		curl_setopt($h, CURLOPT_HTTPHEADER, $opt["headers"]);
+
 	$t0 = microtime(true);
 	$content = curl_exec($h);
 	$tv = round(microtime(true) - $t0, 2);
