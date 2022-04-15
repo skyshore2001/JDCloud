@@ -1,5 +1,11 @@
 <?php
 
+spl_autoload_register(function ($cls) {
+	$path = __DIR__ . '/class/' . $cls . '.php';
+	if (is_file($path))
+		include_once($path);
+});
+
 function api_hello($env)
 {
 	$env->session_start();
@@ -87,10 +93,17 @@ class AC_Timer extends JDApiBase
 			self::$list = $rv['list'];
 			self::$nextId = $rv['nextId'];
 		}
-		foreach (self::$list as $timer) {
-			if ($timer['disabled'])
-				continue;
-			self::setup($timer);
+		try {
+			foreach (self::$list as $timer) {
+				if ($timer['disabled'])
+					continue;
+				self::setup($timer);
+			}
+		}
+		catch (Exception $e) {
+			logit('AC_Timer::init fail: ' . $e);
+			self::$list = [];
+			self::$nextId = 1;
 		}
 		if (count(self::$list) > 0)
 			writeLog("=== load " . count(self::$list) . " timer(s)");
@@ -100,18 +113,15 @@ class AC_Timer extends JDApiBase
 		file_put_contents('timer.json', $rv);
 	}
 
-	// 根据unix风格cron，计算下一次执行时间离当前时间的毫秒数
-	protected static function getNextWait($cron) {
-		// TODO
-		return 100*1000;
-	}
-
 	static function count() {
 		return count(self::$list);
 	}
 	static function setup($timer) {
 		$tmrstr = null;
-		$fn = function () use ($timer, &$tmrstr) {
+		$filter = null; // 返回true才执行
+		$fn = function () use ($timer, &$tmrstr, &$filter) {
+			if ($filter && !$filter())
+				return;
 			logit("$tmrstr exec: httpCall({$timer['url']}, {$timer['data']})");
 			try {
 				$opt = [
@@ -137,26 +147,22 @@ class AC_Timer extends JDApiBase
 				self::$list[] = $timer;
 				self::save();
 			}
-			if ($cron == 1) {
-				$tmrId = swoole_timer_tick($wait, $fn);
-				self::$map[$id] = $tmrId;
-				$tmrstr = "timer#$id-$tmrId";
-				go($fn);
-			}
-			else {
-				$fn1 = null;
-				$n = 0;
-				$fn1 = function () use ($fn, $id, $cron, &$fn1, &$n, &$tmrstr) {
-					// 首次只设置不执行
-					if ($n++ > 0)
-						$fn();
-					$wait = self::getNextWait($cron);
-					$tmrId = swoole_timer_after($wait, $fn1);
-					$tmrstr = "timer#$id-$tmrId";
-					self::$map[$id] = $tmrId;
+			if ($wait && $wait < 100)
+				jdRet(E_PARAM, 'min wait time>100ms', '间隔时间(wait)太小不允许');
+			if ($cron != 1) {
+				if (($cronfn = Cron::parseCron($cron)) === false)
+					jdRet(E_PARAM, 'bad cron format', '时间设置(cron)不正确');
+				$filter = function () use ($fn, $cronfn) {
+					return $cronfn();
 				};
-				go($fn1);
+				// 不指定wait，则按crontab时间执行；否则按wait时间轮询但须同时符合crontab时间
+				if ($wait <= 0)
+					$wait = 60000; // 1分钟1次
 			}
+			$tmrId = swoole_timer_tick($wait, $fn);
+			self::$map[$id] = $tmrId;
+			$tmrstr = "timer#$id-$tmrId";
+			go($fn);
 		}
 		else {
 			if ($wait > 0) {

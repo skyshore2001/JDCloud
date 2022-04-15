@@ -5,22 +5,26 @@
 #curl 'localhost:8081/hello?a=1&b=2' -H "content-type: application/json" -d '{"c":"a","d":["bb","cc"]}' $@
 #curl 'localhost:8081/Test.hello?a=1&b=2' -H "content-type: application/json" -d '{"c":"a","d":["bb","cc"]}' $@
 
-# È¡websocketÔÚÏßÓÃ»§Êı
+# å–websocketåœ¨çº¿ç”¨æˆ·æ•°
 #curl 'localhost:8081/getUsers?app=app1'
-# ÍÆËÍÏûÏ¢
+# æ¨é€æ¶ˆæ¯
 #curl 'localhost:8081/push?app=app1&user=*' -d 'msg=hello'
-# HTTP³¤ÂÖÑ¯·½Ê½(comit)µÈ´ı½ÓÊÕÏûÏ¢
+# HTTPé•¿è½®è¯¢æ–¹å¼(comit)ç­‰å¾…æ¥æ”¶æ¶ˆæ¯
 #curl 'localhost:8081/getMsg?app=app1&user=store1&timeout=5'
 
-# Ìí¼ÓÒ»´ÎĞÔÑÓ³ÙÈÎÎñ
+# æ·»åŠ ä¸€æ¬¡æ€§å»¶è¿Ÿä»»åŠ¡
 #curl 'localhost:8081/setTimeout' -H 'content-type: application/json' \
 #	-d '{"wait":3000, "url":"http://oliveche.com/echo.php?a=1&b=2", "useJson":1, "headers": ["x-hello: world"], "data": "[10,20]"}'
 
-# Ìí¼Ó¶¨Ê±ÂÖÑ¯ÈÎÎñ
+# æ·»åŠ å®šæ—¶è½®è¯¢ä»»åŠ¡
 #curl 'localhost:8081/setTimeout' -H 'content-type: application/json' \
 #	-d '{"wait":3000, "url":"http://oliveche.com/echo.php?a=1&b=2", "cron":1}'
 
-# ÂÖÑ¯ÈÎÎñdisable/enable/del/query
+# æ·»åŠ å®šæ—¶è½®è¯¢ä»»åŠ¡ unix crontabé£æ ¼
+#curl 'localhost:8081/setTimeout' -H 'content-type: application/json' \
+#	-d '{"url":"http://oliveche.com/echo.php?a=1&b=2", "wait":5000, "cron":"9 0 * * *"}'
+
+# è½®è¯¢ä»»åŠ¡disable/enable/del/query
 #curl 'localhost:8081/Timer/7/disable' 
 #curl 'localhost:8081/Timer/3/enable' 
 #curl 'localhost:8081/Timer/7/del' 
