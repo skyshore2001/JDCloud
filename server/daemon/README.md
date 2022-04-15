@@ -119,7 +119,7 @@ jdserver与jdcloud的区别：
 
 支持单个发或群体：
 
-	push(user, app, msg)
+	push(user, app, msg) -> pushCnt
 
 - app: 指定应用
 - user: 用户标识字符串. 
@@ -131,6 +131,8 @@ jdserver与jdcloud的区别：
 	支持用户组，比如可将用户标识定义为"group1/1", "group2/1"这样，如果要给"group1"所有人发送，可以设置user="group1/*"。
 
 - msg: 如果是数组、字符串等标量类型，直接发送；如果是JS数组、对象等，则序列化为JSON发送。
+
+返回推送的次数。
 
 后端调用示例：
 
@@ -150,15 +152,16 @@ jdserver与jdcloud的区别：
 
 	httpCall("localhost:8081/getUsers?app=wms");
 
-## 延时执行
+## 延时执行和定时执行
 
-	setTimeout(url, data?, wait?, @headers?) -> timerId
+	setTimeout()(url, data?, wait?, @headers?, cron?) -> timerId
 
 - url: 回调URL地址
 - data: 如果指定，则使用POST方式提交数据。默认使用"application/www-urlencoded-data"格式。
 其它格式应在headers中指定ContentType。
 - headers: 指定HTTP头。
 - wait: 毫秒。等待指定时间后执行。不指定则为0，立即执行。
+- cron: 定时任务配置
 
 示例：
 
@@ -186,13 +189,14 @@ jdserver与jdcloud的区别：
 
 	c=3&d=4
 
-如果使用JSON：
+如果使用JSON格式，应指定选项`useJson:1`；还可以指定使用headers数组指定HTTP头：
 
 	httpCall("localhost:8081/setTimeout", [
 		"url" => makeUrl("http://oliveche.com/echo.php", [a=>1, b=>2]),
 		"data" => ["c"=>3, "d"=>4],
+		"useJson" => 1,
 		"headers" => [
-			"Content-Type: application/json",
+			// "Content-Type: application/json; charset=gb2312", // 默认会添加"Content-Type: application/json"，也可明确指定。
 			"Authorization: Basic dGVzdDp0ZXN0MTIz",
 		]
 	]);
@@ -204,6 +208,38 @@ jdserver与jdcloud的区别：
 	Authorization: Basic dGVzdDp0ZXN0MTIz
 
 	{"c":3, "d":4}
+
+### 定时任务
+
+使用cron参数指定定时任务。有两种指定格式。
+
+第一种语法，cron=1，表示每隔{wait}毫秒执行一次，相当于js setInterval的功能，比如`4000`表示每4秒执行一次；
+注意在设定后，它会立即执行一次。
+
+第二种语法，cron是一个5元组，指定精确的执行时间，分别表示分，时，日，月，年。
+语法与unix系统的crontab兼容，精确到分钟。
+
+	# 每5分钟, 实际上是当前时间每逢 *:00,*:05,*:10,*:15等时间执行
+	*/5 * * * *
+	# 每小时，实际上是当前时间每逢 *:10 时间执行
+	10 * * * *
+
+注意：
+
+cron一旦设置，会保存到文件里。当jdserver重启后可再加载。文件为daemon/timer.json。
+
+### 暂停或取消任务
+
+	暂停
+	Timer.disable(id)
+	恢复
+	Timer.enable(id)
+	取消/删除
+	Timer.del(id)
+
+- id: setTimeout返回的timerId。
+
+注意：1次性任务返回的id是负数，且不保存，如果重启服务则丢失。定时任务返回的id是正数，任务会保存在文件中。
 
 ## HTTP长轮询(comit server)
 
@@ -223,8 +259,9 @@ jdserver与jdcloud的区别：
 
 返回信息中有：
 
-- jdserver_tm: 服务器当前时间
-- jdserver_start_time: 启动时间
+- jdserver_tm: （扩展）服务器当前时间
+- jdserver_start_time: （扩展）服务启动时间
+- jdserver_timer_cnt: （扩展）通过setTimeout添加的周期性任务数量（包括disabled）
 - connection_num: 当前连接的数量
 - accept_count: 接受了多少个连接
 - request_count: Server 收到的请求次数

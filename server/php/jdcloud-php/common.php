@@ -659,21 +659,35 @@ function arrCopy(&$ret, $arr, $fields=null)
 示例：
 
 	$personArr = [ ["id"=>1, "name"=>"name1"], ["id"=>2, "name"=>"name2"] ];
-	$person = arrFind($arr, function ($e) {
+	$person = arrFind($personArr, function ($e) {
 		return $e["id"] === 1;
 	});
 	if ($person === false) {
 		// 未找到
 	}
-	
+
+支持检查和返回数组index(也支持非数字key)，如：
+
+	$person = arrFind($personArr, function ($e, $idx) {
+		return $idx != 0 && $e["id"] >= 1;
+	}, $idx);
+	// $idx=1, $person=["id"=>2, "name"=>"name2"]
+	if ($person === false) {
+		// 未找到
+	}
+
+注意：无法通过返回的元素(person)修改原数组元素；
+如果要修改数组中元素须使用返回的$idx: `$personArr[$idx]['name'] = 'new name'` 
 */
-function arrFind($arr, $fn)
+function arrFind($arr, $fn, &$idx=null)
 {
 	assert(is_array($arr));
 	assert(is_callable($fn));
-	foreach ($arr as $e) {
-		if ($fn($e))
+	foreach ($arr as $i=>$e) {
+		if ($fn($e, $i)) {
+			$idx = $i;
 			return $e;
+		}
 	}
 	return false;
 }
@@ -750,6 +764,8 @@ function getReqIp()
 		return "cli";
 	}
 	$env = getJDEnv();
+	if (!$env)
+		return;
 	if (!isset($env->reqIp)) {
 		$env->reqIp = $env->_SERVER('REMOTE_ADDR') ?: 'unknown';
 		@$fw = $env->_SERVER("HTTP_X_FORWARDED_FOR") ?: $env->_SERVER("HTTP_CLIENT_IP");
@@ -798,7 +814,12 @@ function logit($s, $addHeader=true, $type="trace")
 	}
 	if ($addHeader) {
 		$remoteAddr = getReqIp();
-		$s = "=== REQ from [$remoteAddr] at [".strftime("%Y/%m/%d %H:%M:%S",time())."] " . $s . "\n";
+		if ($remoteAddr) {
+			$s = "=== REQ from [$remoteAddr] at [".strftime("%Y/%m/%d %H:%M:%S",time())."] " . $s . "\n";
+		}
+		else {
+			$s = "=== [".strftime("%Y/%m/%d %H:%M:%S",time())."] " . $s . "\n";
+		}
 	}
 	else {
 		$s .= "\n";

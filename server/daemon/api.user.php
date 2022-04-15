@@ -23,6 +23,7 @@ function api_stat($env)
 	$rv = $server->stats();
 	$rv["jdserver_start_time"] = date(FMT_DT, $rv["start_time"]);
 	$rv["jdserver_tm"] = date(FMT_DT);
+	$rv["jdserver_timer_cnt"] = AC_Timer::count();
 	return $rv;
 }
 
@@ -72,37 +73,164 @@ function api_getUsers($env)
 	return $ret;
 }
 
+class AC_Timer extends JDApiBase
+{
+	protected static $list;
+	protected static $nextId = 1;
+	protected static $map; // $id=>$tmrId
+
+	static function init() {
+		self::$list = [];
+		self::$nextId = 1;
+		$rv = jsonDecode(@file_get_contents('timer.json'));
+		if ($rv && is_array($rv['list']) && is_int($rv['nextId'])) {
+			self::$list = $rv['list'];
+			self::$nextId = $rv['nextId'];
+		}
+		foreach (self::$list as $timer) {
+			if ($timer['disabled'])
+				continue;
+			self::setup($timer);
+		}
+		if (count(self::$list) > 0)
+			writeLog("=== load " . count(self::$list) . " timer(s)");
+	}
+	static function save() {
+		$rv = jsonEncode(['nextId'=>self::$nextId, 'list'=>self::$list], true);
+		file_put_contents('timer.json', $rv);
+	}
+
+	// 根据unix风格cron，计算下一次执行时间离当前时间的毫秒数
+	protected static function getNextWait($cron) {
+		// TODO
+		return 100*1000;
+	}
+
+	static function count() {
+		return count(self::$list);
+	}
+	static function setup($timer) {
+		$tmrstr = null;
+		$fn = function () use ($timer, &$tmrstr) {
+			logit("$tmrstr exec: httpCall({$timer['url']}, {$timer['data']})");
+			try {
+				$opt = [
+					'headers' => $timer['headers'],
+					'useJson' => $timer['useJson']
+				];
+				$rv = httpCall($timer['url'], $timer['data'], $opt);
+				logit("$tmrstr ret: $rv");
+			}
+			catch (Exception $ex) {
+				logit("$tmrstr fails: $ex");
+			}
+		};
+
+		$tmrId = null;
+		$wait = intval($timer['wait']);
+		$cron = $timer['cron'];
+		if ($cron) {
+			$id = $timer['id'];
+			if (! $id) {
+				$id = self::$nextId ++;
+				$timer['id'] = $id;
+				self::$list[] = $timer;
+				self::save();
+			}
+			if ($cron == 1) {
+				$tmrId = swoole_timer_tick($wait, $fn);
+				self::$map[$id] = $tmrId;
+				$tmrstr = "timer#$id-$tmrId";
+				go($fn);
+			}
+			else {
+				$fn1 = null;
+				$n = 0;
+				$fn1 = function () use ($fn, $id, $cron, &$fn1, &$n, &$tmrstr) {
+					// 首次只设置不执行
+					if ($n++ > 0)
+						$fn();
+					$wait = self::getNextWait($cron);
+					$tmrId = swoole_timer_after($wait, $fn1);
+					$tmrstr = "timer#$id-$tmrId";
+					self::$map[$id] = $tmrId;
+				};
+				go($fn1);
+			}
+		}
+		else {
+			if ($wait > 0) {
+				$tmrId = swoole_timer_after($wait, $fn);
+				$tmrstr = "timer-$tmrId";
+				logit("$tmrstr: wait {$wait}ms.");
+				$id= -$tmrId;
+			}
+			else {
+				$tmrstr = "timer";
+				go($fn);
+				$id = null;
+			}
+		}
+		return $id;
+	}
+
+	static function add($one) {
+		$one["id"] = self::$nextId ++;
+		self::$list[] = $one;
+		self::save();
+		return $one["id"];
+	}
+	function set($fn) {
+		$id = $this->env->mparam("id");
+		$one = arrFind(self::$list, function ($e) use ($id) {
+			return $e['id'] == $id;
+		}, $idx);
+		if ($one === false)
+			jdRet(E_PARAM, "bad timer $id");
+		$fn($id, $idx);
+		self::save();
+	}
+
+	function api_query() {
+		return self::$list;
+	}
+	function api_del() {
+		$this->set(function ($id, $idx) {
+			swoole_timer_clear(self::$map[$id]);
+			array_splice(self::$list, $idx, 1);
+		});
+	}
+	function api_clear() {
+//		Swoole\Timer::clearAll(); // 不要清除所有；可能有用于别的用途的timer
+		foreach ($map as $id=>$tmrId) {
+			swoole_timer_clear($tmrId);
+		}
+		// 并不清除nextId，它会永远增长。
+		self::$list = [];
+		self::save();
+	}
+	function api_disable() {
+		$this->set(function ($id, $idx) {
+			if (self::$list[$idx]["disabled"])
+				return;
+			swoole_timer_clear(self::$map[$id]);
+			self::$list[$idx]["disabled"] = true;
+		});
+	}
+	function api_enable() {
+		$this->set(function ($id, $idx) {
+			if (!self::$list[$idx]["disabled"])
+				return;
+			self::$list[$idx]["disabled"] = false;
+			self::setup(self::$list[$idx]);
+		});
+	}
+}
+
 function api_setTimeout($env)
 {
-	$url = $env->mparam("url");
-	$data = $env->param("data");
-	$wait = $env->param("wait/i");
-	$headers = $env->param("headers");
-	$tmr = 0;
-	$fn = function () use ($url, $data, $headers, &$tmr) {
-		logit("timer $tmr exec: httpCall($url, $data)");
-		try {
-			$opt = null;
-			if ($headers) {
-				$opt = [
-					"headers" => $headers
-				];
-			}
-			$rv = httpCall($url, $data, $opt);
-			logit("timer $tmr ret: $rv");
-		}
-		catch (Exception $ex) {
-			logit("timer $tmr fails: $ex");
-		}
-	};
-	if ($wait > 0) {
-		$tmr = swoole_timer_after($wait, $fn);
-		logit("timer $tmr: wait {$wait}ms.");
-	}
-	else {
-		go($fn);
-	}
-	return $tmr;
+	$env->mparam("url");
+	return AC_Timer::setup($env->_POST);
 }
 
 class AC_Test extends JDApiBase
