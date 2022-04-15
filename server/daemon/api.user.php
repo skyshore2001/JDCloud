@@ -208,7 +208,7 @@ class AC_Timer extends JDApiBase
 	}
 	function api_clear() {
 //		Swoole\Timer::clearAll(); // 不要清除所有；可能有用于别的用途的timer
-		foreach ($map as $id=>$tmrId) {
+		foreach (self::$map as $id=>$tmrId) {
 			swoole_timer_clear($tmrId);
 		}
 		// 并不清除nextId，它会永远增长。
