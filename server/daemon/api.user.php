@@ -116,7 +116,12 @@ class AC_Timer extends JDApiBase
 	static function count() {
 		return count(self::$list);
 	}
+	// 带cron的timer, 若无id则自动添加
 	static function setup($timer) {
+		// code须符合格式`{app}-{obj}-{id}`
+		if ($timer['code'] && ! preg_match('/^\w+-\w+-/u', $timer['code']))
+			jdRet(E_PARAM, 'bad code for timer: ' . $timer['code'], 'code参数格式错误');
+
 		$tmrstr = null;
 		$filter = null; // 返回true才执行
 		$fn = function () use ($timer, &$tmrstr, &$filter) {
@@ -136,17 +141,11 @@ class AC_Timer extends JDApiBase
 			}
 		};
 
+		$id = null;
 		$tmrId = null;
 		$wait = intval($timer['wait']);
 		$cron = $timer['cron'];
 		if ($cron) {
-			$id = $timer['id'];
-			if (! $id) {
-				$id = self::$nextId ++;
-				$timer['id'] = $id;
-				self::$list[] = $timer;
-				self::save();
-			}
 			if ($wait && $wait < 100)
 				jdRet(E_PARAM, 'min wait time>100ms', '间隔时间(wait)太小不允许');
 			if ($cron != 1) {
@@ -159,6 +158,15 @@ class AC_Timer extends JDApiBase
 				if ($wait <= 0)
 					$wait = 60000; // 1分钟1次
 			}
+			$id = $timer['id'];
+			if (! $id) {
+				$id = self::$nextId ++;
+				$timer['id'] = $id;
+				self::$list[] = $timer;
+				self::save();
+			}
+			if ($timer['disabled'])
+				return $id;
 			$tmrId = swoole_timer_tick($wait, $fn);
 			self::$map[$id] = $tmrId;
 			$tmrstr = "timer#$id-$tmrId";
@@ -180,16 +188,10 @@ class AC_Timer extends JDApiBase
 		return $id;
 	}
 
-	static function add($one) {
-		$one["id"] = self::$nextId ++;
-		self::$list[] = $one;
-		self::save();
-		return $one["id"];
-	}
 	function set($fn) {
-		$id = $this->env->mparam("id");
-		$one = arrFind(self::$list, function ($e) use ($id) {
-			return $e['id'] == $id;
+		list($id, $code) = $this->env->mparam(['id', 'code']);
+		$one = arrFind(self::$list, function ($e) use ($id, $code) {
+			return ($id && $e['id'] == $id) || ($code && $e['code'] == $code);
 		}, $idx);
 		if ($one === false)
 			jdRet(E_PARAM, "bad timer $id");
@@ -199,6 +201,15 @@ class AC_Timer extends JDApiBase
 
 	function api_query() {
 		return self::$list;
+	}
+	function api_set() {
+		$this->set(function ($id, $idx) {
+			swoole_timer_clear(self::$map[$id]);
+			$timer = &self::$list[$idx];
+			unset($this->env->_POST['id']); // 除了id, 其它都能改
+			arrCopy($timer, $this->env->_POST);
+			self::setup($timer);
+		});
 	}
 	function api_del() {
 		$this->set(function ($id, $idx) {
@@ -216,20 +227,12 @@ class AC_Timer extends JDApiBase
 		self::save();
 	}
 	function api_disable() {
-		$this->set(function ($id, $idx) {
-			if (self::$list[$idx]["disabled"])
-				return;
-			swoole_timer_clear(self::$map[$id]);
-			self::$list[$idx]["disabled"] = true;
-		});
+		$this->env->_POST['disabled'] = true;
+		return $this->api_set();
 	}
 	function api_enable() {
-		$this->set(function ($id, $idx) {
-			if (!self::$list[$idx]["disabled"])
-				return;
-			self::$list[$idx]["disabled"] = false;
-			self::setup(self::$list[$idx]);
-		});
+		$this->env->_POST['disabled'] = false;
+		return $this->api_set();
 	}
 }
 

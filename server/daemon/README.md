@@ -154,14 +154,15 @@ jdserver与jdcloud的区别：
 
 ## 延时执行和定时执行
 
-	setTimeout()(url, data?, wait?, @headers?, cron?) -> timerId
+	setTimeout()(url, data?, wait?, @headers?, cron?, code?) -> timerId
 
 - url: 回调URL地址
 - data: 如果指定，则使用POST方式提交数据。默认使用"application/www-urlencoded-data"格式。
 其它格式应在headers中指定ContentType。
 - headers: 指定HTTP头。
 - wait: 毫秒。等待指定时间后执行。不指定则为0，立即执行。
-- cron: 定时任务配置
+- cron: 定时任务配置。一旦指定，该任务将成为周期性任务，并会保存下来。可以通过返回的id或直接code来后续控制任务，比如暂停、删除等。
+- code: 惟一标识，仅当指定cron时该字段有意义。为防止重复，格式要求为`{app/应用代码}-{obj/应用中对象代码}-{objCode/对象惟一标识}`，比如`asyncTask-task-1`。
 
 示例：
 
@@ -228,16 +229,25 @@ jdserver与jdcloud的区别：
 
 cron一旦设置，会保存到文件里。当jdserver重启后可再加载。文件为daemon/timer.json。
 
-### 暂停或取消任务
+### 修改、暂停或取消任务
 
-	暂停
-	Timer.disable(id)
-	恢复
-	Timer.enable(id)
-	取消/删除
-	Timer.del(id)
+修改：
+
+	Timer.set(id/code)(cron, disabled, ...)
+
+暂停、恢复
+
+	Timer.disable(id/code)
+	Timer.enable(id/code)
+	(相当于)
+	Timer.set(id/code)(disabled:true/false)
+
+取消(删除)
+
+	Timer.del(id/code)
 
 - id: setTimeout返回的timerId。
+- code: 调用setTimeout时指定的惟一代码。
 
 注意：1次性任务返回的id是负数，且不保存，如果重启服务则丢失。定时任务返回的id是正数，任务会保存在文件中。
 
