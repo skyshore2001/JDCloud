@@ -1959,7 +1959,7 @@ function httpCallAsync($url, $postParams = null)
 }
 
 /**
-@fn callAsync($ac, $params, $wait=0)
+@fn callAsync($ac, $params, $opt={wait, cron, code})
 
 异步调用某个内部函数。
 
@@ -1984,18 +1984,20 @@ function httpCallAsync($url, $postParams = null)
 注意：
 
 - 由于要被外部调用，须生成完整URL地址；如果部署时使用反向代理等机制，可能URL不正确，这时应设置P_BASE_URL，详见[getBaseUrl]。
-- 如果指定了等待时间$wait(毫秒)，表示在$wait豪秒后执行。此时必须连接jdserver做任务调度，须配置conf_jdserverUrl，详见[callSvcAsync]。
+- 如果指定了等待时间opt.wait(毫秒)，表示在opt.wait豪秒后执行。此时必须连接jdserver做任务调度，须配置conf_jdserverUrl，详见[callSvcAsync]。
+ opt.cron和opt.code参数用于设置周期性任务。详见[jdserver]的setTimeout接口。
 - 安全性：调用async接口的服务器IP，如果不是本机，须配置加入白名单(whiteIpList)，详见[api_async]。
 
 @see callSvcAsync
 @see api_async
+@see jdserver
 */
-function callAsync($ac, $param, $wait=0) {
-	callSvcAsync("async", ["f"=>$ac], $param, $wait);
+function callAsync($ac, $param, $opt = null) {
+	callSvcAsync("async", ["f"=>$ac], $param, $opt);
 }
 
 /**
-@fn callSvcAsync($ac, $urlParam, $postParams=null, $wait=0)
+@fn callSvcAsync($ac, $urlParam, $postParams=null, $opt={wait, cron, code})
 
 在当前事务执行完后，调用指定接口并立即返回（不等服务器输出数据）。一般用于各种异步通知。
 示例：
@@ -2008,12 +2010,47 @@ function callAsync($ac, $param, $wait=0) {
 	callSvcAsync("http://localhost:8080/pdi/api/sendMail", ["type"=>"Issue", "id"=>100]);
 	callSvcAsync("https://oliveche.com/pdi/api/sendMail", ["type"=>"Issue", "id"=>100]);
 
-如果指定了等待时间$wait，表示在$wait秒后执行。示例：30秒后发送邮件：
+## 延迟执行任务
 
-	$wait = 30;
-	callSvcAsync("sendMail", ["type"=>"Issue", "id"=>100], null, $wait);
+如果指定了等待时间opt.wait，表示在opt.wait毫秒后执行。示例：30秒后发送邮件：
+
+	$wait = 30000;
+	callSvcAsync("sendMail", ["type"=>"Issue", "id"=>100], null, ['wait'=>$wait]);
 
 此时必须连接jdserver做任务调度。
+
+## 周期性任务
+
+cron和code参数用于添加周期性执行的任务，可以与wait合用。详见[jdserver]的setTimeout接口。
+
+示例：添加每30秒执行一次的周期任务：
+
+	$wait = 30000;
+	callSvcAsync("sendMail", ["type"=>"Issue", "id"=>100], null, ['wait'=>$wait, 'cron'=>1, 'code'=>'app1-task-1']);
+
+callSvcAsync使用异步调用，只管连通，不管对方是非处理成功。如果是同步调用，可使用callJdserver:
+
+	callJdserver("setTimeout", null, [
+		'url' => makeUrl('sendMail', ["type"=>"Issue", "id"=>100], null, true) // 默认为内部接口生成相对路径，此处是供外部调用，加第4参数true表示生成完整路径
+		'wait' => $wait,
+		'cron' => 1,
+		'code' => 'app1-task-1'
+	]);
+
+示例：添加周一到周五9:00-18:00间每30秒执行一次的周期任务：
+
+	$wait = 30000;
+	callSvcAsync("sendMail", ["type"=>"Issue", "id"=>100], null, ['wait'=>$wait, 'cron'=>'0 9-18 * * 1-5', 'code'=>'app1-task-2']);
+
+每晚1:00执行：
+
+	callSvcAsync("sendMail", ["type"=>"Issue", "id"=>100], null, ['cron'=>'0 1 * * *', 'code'=>'app1-task-2']);
+
+上面指定opt.code参数用于后期修改或删除任务，必须为`{应用}-{对象}-{标识}`结构，删除周期任务示例：
+
+	callJdserver('Timer.del', ['code'=>'app1-task-1']);
+
+@see callJdserver
 
 @key $conf_jdserverUrl jdserver地址
 
@@ -2030,12 +2067,14 @@ jdserver默认路径配置为`http://127.0.0.1/jdserver`，通过本机Apache服
 	// $conf_jdserverUrl = "http://192.168.1.14:8081"; // 这种是直接连原始服务器
 
 */
-function callSvcAsync($ac, $urlParam, $postParam = null, $wait = 0) {
-	if ($wait > 0) {
+function callSvcAsync($ac, $urlParam, $postParam = null, $opt = null) {
+	if ($opt['wait'] > 0 || $opt['cron']) {
 		$url = makeUrl($ac, $urlParam, null, true);
 		$post = [
 			'url' => $url,
-			'wait' => $wait,
+			'wait' => $opt['wait'],
+			'cron' => $opt['cron'],
+			'code' => $opt['code'],
 		];
 		if ($postParam) {
 			$post += [
@@ -2112,6 +2151,28 @@ function jdPush($app, $msg, $user='*') {
 		"user" => $user,
 		"msg" => $msg
 	]);
+}
+
+/**
+@fn callJdserver($ac, $param=null, $postParam=null)
+
+调用jdserver的接口。示例：
+
+	callJdserver('Timer.set', ['code'=>'asynctask-task-1'], [
+		'cron' => '0 1 * * *'
+	]);
+
+@see $conf_jdserverUrl 
+*/
+function callJdserver($ac, $param=null, $postParam=null) {
+	$url = makeUrl(getConf('conf_jdserverUrl') . '/' . $ac, $param);
+	$rvstr = httpCall($url, $postParam);
+	$rv = jsonDecode($rvstr);
+	if (!is_array($rv))
+		jdRet(E_SERVER, 'call jdserver fail: '.$rvstr, '调用jdserver失败: 协议错误');
+	if ($rv[0] != 0)
+		jdRet(E_SERVER, 'call jdserver fail: '.$rvstr, '调用jdserver失败: ' . $rv[1] . ($rv[2]? '(' . $rv[2] . ')': ''));
+	return $rv[1];
 }
 // }}}
 
