@@ -118,6 +118,7 @@ class AC_Timer extends JDApiBase
 	}
 	// 带cron的timer, 若无id则自动添加
 	static function setup($timer) {
+		checkParams($timer, ['url']);
 		// code须符合格式`{app}-{obj}-{id}`
 		if ($timer['code'] && ! preg_match('/^\w+-\w+-/u', $timer['code']))
 			jdRet(E_PARAM, 'bad code for timer: ' . $timer['code'], 'code参数格式错误');
@@ -185,6 +186,8 @@ class AC_Timer extends JDApiBase
 				$id = null;
 			}
 		}
+		if ($id > 0)
+			writeLog("=== set timer#$id cron=`$cron`");
 		return $id;
 	}
 
@@ -194,7 +197,7 @@ class AC_Timer extends JDApiBase
 			return ($id && $e['id'] == $id) || ($code && $e['code'] == $code);
 		}, $idx);
 		if ($one === false)
-			jdRet(E_PARAM, "bad timer $id");
+			jdRet(E_PARAM, 'bad timer ' . ($id?:$code));
 		$fn($id, $idx);
 		self::save();
 	}
@@ -238,7 +241,6 @@ class AC_Timer extends JDApiBase
 
 function api_setTimeout($env)
 {
-	$env->mparam("url");
 	return AC_Timer::setup($env->_POST);
 }
 

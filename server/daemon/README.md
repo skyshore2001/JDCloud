@@ -154,6 +154,8 @@ jdserver与jdcloud的区别：
 
 ## 延时执行和定时执行
 
+注意：参数主要使用POST内容传
+
 	setTimeout()(url, data?, wait?, @headers?, cron?, code?) -> timerId
 
 - url: 回调URL地址
