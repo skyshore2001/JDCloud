@@ -337,33 +337,37 @@ $objarr值为：
 function param($name, $defVal = null, $col = null, $doHtmlEscape = true, $env = null)
 {
 	$type = parseType_($name); // NOTE: $name will change.
-	if ($env === null) {
-		$env = getJDEnv();
-	}
-	// cond特别处理
-	if ($name == "cond" || $type == "cond")
-		return getQueryCond([$env->_GET[$name], $env->_POST[$name]]);
 
 	$ret = $defVal;
-	if ($col === "G") {
-		if (isset($env->_GET[$name]))
-			$ret = $env->_GET[$name];
+	$col2 = null;
+
+	if (! is_array($col)) {
+		if ($env === null) {
+			$env = getJDEnv();
+			if (!$env)
+				jdRet(E_SERVER, "param: no env");
+		}
+		if ($col === "G") {
+			$col = $env->_GET;
+		}
+		else if ($col === "P") {
+			$col = $env->_POST;
+		}
+		else {
+			$col = $env->_GET;
+			$col2 = $env->_POST;
+		}
 	}
-	else if ($col === "P") {
-		if (isset($env->_POST[$name]))
-			$ret = $env->_POST[$name];
+	// cond特别处理
+	if ($name == "cond" || $type == "cond") {
+		if ($col2)
+			return getQueryCond([$col, $col2]);
+		return getQueryCond($col);
 	}
-	// 兼容旧式直接指定col=$_GET这样参数
-	else if (is_array($col)) {
-		if (isset($col[$name]))
-			$ret = $col[$name];
-	}
-	else {
-		if (isset($env->_GET[$name]))
-			$ret = $env->_GET[$name];
-		else if (isset($env->_POST[$name]))
-			$ret = $env->_POST[$name];
-	}
+	if (isset($col[$name]))
+		$ret = $col[$name];
+	else if ($col2 && isset($col2[$name]))
+		$ret = $col2[$name];
 
 	// e.g. "a=1&b=&c=3", b当成未设置，取缺省值。
 	if ($ret === "")
@@ -517,59 +521,87 @@ function getConf($confName, $arr=null)
 }
 
 /**
-@fn checkParams($params, $names, $errPrefix?)
+@fn checkParams($obj, $names, $errPrefix?)
 
-检查必填参数。
+检查$obj对象中指定的必填参数（通过names指定）。
+检查失败直接抛出异常，不再向下执行。
 
-示例：params中必须有"brand", "vendorName"字段，否则应报错：
+示例：obj中必须有"brand", "vendorName"字段，否则应报错：
 
-	checkParams($params, [
+	checkParams($order, [
 		"brand", "vendorName"
 	]);
+	// 报错示例: "缺少参数`vendorName`"
 
 或如果希望报错时明确一些，可以翻译一下参数，这样来指定：
 
-	checkParams($params, [
+	checkParams($order, [
 		"brand" => "品牌",
 		"vendorName" => "供应商",
 		"phone" // 也允许不指定名字
-	]);
+	], "传入订单对象"); // 可选的第三参数errPrefix用于报错前缀
+	// 报错示例: "传入订单对象缺少参数`供应商(vendorName)`"
 
-示例：
+注意：它只检查是否有该字段，不检查该字段是否为null或空串("")。
+
+对于对象数组，可以用checkObjArrParam函数，示例
+
+	checkObjArrParam(null, $_POST, ["MATNR"=>"物料号", "MAKTX"=>"物料名"]);
+
+它相当于
 
 	foreach ($_POST as $i=>$e) {
 		checkParams($e, ["MATNR"=>"物料号", "MAKTX"=>"物料名"], "第".($i+1)."行"); // 设置第3参数，可让报错时前面会加上这个描述
 		...
 	}
+
+@see checkObjArrParams 对象数组参数检查
 */
-function checkParams($params, $names, $errPrefix="")
+function checkParams($obj, $fields, $errPrefix="")
 {
-	foreach ($names as $name=>$showName) {
+	foreach ($fields as $name=>$showName) {
 		if (is_int($name))
 			$name = $showName;
 		else
 			$showName .= "({$name})";
-		if (!isset($params[$name]) || $params[$name] === "") {
+		if (!isset($obj[$name]) || $obj[$name] === "") {
 			jdRet(E_PARAM, "require param `$name`", $errPrefix."缺少参数`$showName`");
 		}
 	}
 }
 
-function checkObjArrParam($name, $arr, $fields = null)
+/**
+@fn checkObjArrParams($objArr, $fields=null, $name='数组')
+
+检查对象数组$arr中是否填写字段，$name为数组名，用于报错。
+检查失败直接抛出异常，不再向下执行。
+
+	$personArr = [
+		["id" => 100, "name" => "name1"],
+		["id" => 101 ],
+	];
+	checkObjArrParams($personArr, ["id","name"]); 
+	// 报错: "数组第2行: 缺少参数`name`"
+
+或指定报错名称：
+
+	checkObjArrParams($personArr, ['id'=>'编号','name'=>'姓名'], 'personArr数组');
+	// 报错: "personArr数组第2行: 缺少参数`姓名(name)`"
+
+@see checkParams 对象参数检查
+*/
+function checkObjArrParams($objArr, $fields = null, $paramName = '数组')
 {
 	#var_export($arr);
-	if (! is_array($arr))
-		jdRet(E_PARAM, "bad param `$name` - require array");
+	if (! is_array($objArr))
+		jdRet(E_PARAM, "bad param `$paramName` - require array", "{$paramName}参数错误: 必须为数组");
 	if (isset($fields)) {
-		foreach ($arr as $e) {
-			foreach ($fields as $k) {
-				if (! array_key_exists($k, $e)) {
-					jdRet(E_PARAM, "missing param {$name}[][$k]");
-				}
-			}
+		$i = 0;
+		foreach ($objArr as $e) {
+			++ $i;
+			checkParams($e, $fields, $paramName . "第{$i}行");
 		}
 	}
-	return true;
 }
 
 function getRsHeader($sth)

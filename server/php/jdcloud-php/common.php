@@ -813,13 +813,9 @@ function logit($s, $addHeader=true, $type="trace")
 		$addHeader = true;
 	}
 	if ($addHeader) {
-		$remoteAddr = getReqIp();
-		if ($remoteAddr) {
-			$s = "=== REQ from [$remoteAddr] at [".strftime("%Y/%m/%d %H:%M:%S",time())."] " . $s . "\n";
-		}
-		else {
-			$s = "=== [".strftime("%Y/%m/%d %H:%M:%S",time())."] " . $s . "\n";
-		}
+		// 注意：此格式在日志工具log.php中使用，不应修改
+		$remoteAddr = getReqIp() ?: 'nil';
+		$s = "=== REQ from [$remoteAddr] at [".strftime("%Y/%m/%d %H:%M:%S",time())."] " . $s . "\n";
 	}
 	else {
 		$s .= "\n";
