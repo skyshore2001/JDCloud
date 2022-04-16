@@ -8795,6 +8795,8 @@ param opt.onOk Function(retData) (v6) 与showDlg的onOk参数一致。在提交�
 		}
 	}
 
+(v6.1) 通过jdlg.prop('objParam')可取到对象对话框的参数。
+
 @param opt.reloadRow() 可用于刷新本对话框关联的表格行数据
 
 事件参考：
@@ -9007,6 +9009,7 @@ function showObjDlg(jdlg, mode, opt)
 		objParam: opt,
 		onShow: onShow
 	});
+	jdlg.prop('objParam', opt);
 	showDlg(jdlg, showDlgOpt);
 
 	if (mode == FormMode.forSet)

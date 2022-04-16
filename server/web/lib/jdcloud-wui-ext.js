@@ -3404,6 +3404,49 @@ function showDlgChart(data, rs2StatOpt, seriesOpt, chartOpt)
 	}
 }
 
+// 对象对话框上右键操作
+$(document).on('contextmenu', '.wui-dialog[my-obj]', dlg_onContextMenu);
+function dlg_onContextMenu(ev) {
+	if (ev.target != this && ev.target.tagName != 'TD')
+		return;
+
+	var jdlg = $(this);
+	var jtarget = $(ev.target);
+	var menus = [];
+	if (ev.target.tagName == 'TD') {
+		var jo = jtarget.next();
+		if (jo.find('[name]').size() > 0) {
+			menus.push('<div id="find" data-options="iconCls:\'icon-search\'">查询该字段</div>');
+		}
+	}
+	var objParam = jdlg.prop('objParam');
+	if (objParam && !objParam.readonly && objParam.mode == FormMode.forSet) {
+		var perm = jdlg.attr("wui-perm") || jdlg.dialog("options").title;
+		if (WUI.canDo(perm, '新增'))
+			menus.push('<div id="dup" data-options="iconCls:\'icon-add\'">再次新增</div>');
+	}
+	if (menus.length == 0)
+		return;
+	var jmenu = $('<div>' + menus.join('') + '</div>');
+	jmenu.menu({
+		onClick: function (item) {
+			if (item.id == 'dup') {
+				WUI.dupDlg(jdlg);
+			}
+			else if (item.id == 'find') {
+				var appendFilter = (ev.ctrlKey || ev.metaKey);
+				WUI.doFind(jo, null, appendFilter);
+			}
+			return false;
+		}
+	});
+	jmenu.menu('show', {
+		left: ev.pageX,
+		top: ev.pageY
+	});
+	return false;
+}
+
 // ====== 操作日志扩展 {{{
 /**
 @module ObjLog 操作日志
