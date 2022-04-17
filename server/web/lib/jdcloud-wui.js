@@ -2826,6 +2826,11 @@ var self = this;
 self.assert(window.jQuery, "require jquery lib.");
 var mCommon = jdModule("jdcloud.common");
 
+// 原版不支持async函数。此处统一修改做兼容。
+$.isFunction = function (o) {
+	return typeof(o) == 'function';
+};
+
 /**
 @fn getFormData(jo, doGetAll)
 
@@ -9895,11 +9900,6 @@ var Formatter = {
 self.formatter = Formatter;
 
 // ---- easyui setup {{{
-
-$.extend($.fn.combobox.defaults, {
-	valueField: 'val',
-	textField: 'text'
-});
 
 function dgLoader(param, success, error)
 {
