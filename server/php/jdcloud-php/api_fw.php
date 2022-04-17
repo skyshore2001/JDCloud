@@ -2155,7 +2155,7 @@ function jdPush($app, $msg, $user='*') {
 }
 
 /**
-@fn callJdserver($ac, $param=null, $postParam=null)
+@fn callJdserver($ac, $param=null, $postParam=null, $async=false)
 
 调用jdserver的接口。示例：
 
@@ -2163,10 +2163,16 @@ function jdPush($app, $msg, $user='*') {
 		'cron' => '0 1 * * *'
 	]);
 
+如果指定参数async=true，则在当前接口程序完成后，发起异步调用，若出错将只记日志不报错。
+
 @see $conf_jdserverUrl 
 */
-function callJdserver($ac, $param=null, $postParam=null) {
+function callJdserver($ac, $param=null, $postParam=null, $async=false) {
 	$url = makeUrl(getConf('conf_jdserverUrl') . '/' . $ac, $param);
+	if ($async) {
+		callSvcAsync($url, null, $postParam);
+		return;
+	}
 	$rvstr = httpCall($url, $postParam);
 	$rv = jsonDecode($rvstr);
 	if (!is_array($rv))
