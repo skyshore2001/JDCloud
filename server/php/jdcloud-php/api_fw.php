@@ -1984,7 +1984,7 @@ function httpCallAsync($url, $postParams = null)
 注意：
 
 - 由于要被外部调用，须生成完整URL地址；如果部署时使用反向代理等机制，可能URL不正确，这时应设置P_BASE_URL，详见[getBaseUrl]。
-- 如果指定了等待时间opt.wait(毫秒)，表示在opt.wait豪秒后执行。此时必须连接jdserver做任务调度，须配置conf_jdserverUrl，详见[callSvcAsync]。
+- 如果指定了等待时间opt.wait(毫秒)，表示在opt.wait豪秒后执行。此时必须连接jdserver做任务调度，须配置conf_jdserverUrl和conf_jdserverBackUrl，详见[callSvcAsync]。
  opt.cron和opt.code参数用于设置周期性任务。详见[jdserver]的setTimeout接口。
 - 安全性：调用async接口的服务器IP，如果不是本机，须配置加入白名单(whiteIpList)，详见[api_async]。
 
@@ -2009,6 +2009,9 @@ function callAsync($ac, $param, $opt = null) {
 	// 支持调用外部http或https, 将ac直接当成url
 	callSvcAsync("http://localhost:8080/pdi/api/sendMail", ["type"=>"Issue", "id"=>100]);
 	callSvcAsync("https://oliveche.com/pdi/api/sendMail", ["type"=>"Issue", "id"=>100]);
+
+通过opt可以设置延迟执行或周期性循环执行的任务，它须通过jdserver中间件实现。
+须设置[conf_jdserverUrl]和[conf_jdserverBackUrl]。
 
 ## 延迟执行任务
 
@@ -2052,7 +2055,8 @@ callSvcAsync使用异步调用，只管连通，不管对方是非处理成功�
 
 @see callJdserver
 
-@key $conf_jdserverUrl jdserver地址
+@key conf_jdserverUrl jdserver地址
+@key conf_jdserverBackUrl jdserver回调地址，本系统被jdserver调用的地址
 
 jdserver用于消息推送和任务调度, 是独立运行的守护进程, 提供websocket和http调用接口。
 jdcloud后端会用到jdserver的http接口，比如`http://127.0.0.1:8081/setTimeout`。
@@ -2066,12 +2070,24 @@ jdserver默认路径配置为`http://127.0.0.1/jdserver`，通过本机Apache服
 	$conf_jdserverUrl = "https://oliveche.com/jdserver";  // 路径带jdserver的是经代理的; 经公网最好走https
 	// $conf_jdserverUrl = "http://192.168.1.14:8081"; // 这种是直接连原始服务器
 
+jdserver回调地址指的是jdserver调用本系统接口的地址，比如和jdserver在同一台机器，可以设置：
+
+	$conf_jdserverBackUrl = "http://127.0.0.1/jdcloud/api.php";
+
+又如在开发环境内网中，通过ssh隧道将web服务以8081端口代理到jdserver所在服务器线上，则可设置回调
+
+	$conf_jdserverBackUrl = "http://localhost:8081/asyncTask/server/api.php";
+
+注意，由于是代理到了jdserver所在服务器，所以此处localhost其实指的是jdserver所在服务器。
+
+注意：如果是调用了callAsync函数实现回调内部函数，它内部是通过jdserver回调async接口实现的，
+而async接口要求调用方（非本机调用）在IP白名单内，所以非本机调用情况下，还应设置IP白名单才可以回调成功。
 */
 function callSvcAsync($ac, $urlParam, $postParam = null, $opt = null) {
 	if ($opt['wait'] > 0 || $opt['cron']) {
-		$url = makeUrl($ac, $urlParam, null, true);
+		$url = getConf('conf_jdserverBackUrl') . '/' . $ac;
 		$post = [
-			'url' => $url,
+			'url' => makeUrl($url, $urlParam),
 			'wait' => $opt['wait'],
 			'cron' => $opt['cron'],
 			'code' => $opt['code'],
