@@ -186,6 +186,9 @@ class AC_Timer extends JDApiBase
 			$tmrId = swoole_timer_tick($wait, $fn);
 			self::$map[$id] = $tmrId;
 			$tmrstr = "timer#$id-$tmrId";
+			if ($timer['code']) {
+				$tmrstr .= ' '.$timer['code'];
+			}
 			go($fn);
 		}
 		else {
@@ -201,8 +204,9 @@ class AC_Timer extends JDApiBase
 				$id = null;
 			}
 		}
-		if ($id > 0)
-			writeLog("=== set timer#$id cron=`$cron`");
+		if ($id > 0) {
+			writeLog("=== set $tmrstr cron=`$cron`");
+		}
 		return $id;
 	}
 
