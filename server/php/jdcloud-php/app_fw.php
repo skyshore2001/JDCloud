@@ -1110,6 +1110,11 @@ function getQueryExp($k, $v)
 示例：
 
 	genQuery("SELECT id FROM Vendor", [name=>$name, "phone"=>$phone]);
+
+注意：当传入$name为null而$phone非null时，只生成phone的条件；而若$name和$phone都是null时，则生成没有WHERE条件的SQL，返回所有数据。
+
+其它示例：
+
 	genQuery("SELECT id FROM Vendor", [name=>$name, "phone IS NOT NULL"]);
 	genQuery("SELECT id FROM Vendor", [name=>$name, "phone"=>$phone, "_or"=>true]); // "name='eric' OR phone='13700000001'"
 
@@ -1193,6 +1198,8 @@ function execOne($sql, $getInsertId = false)
 
 	$id = queryOne("SELECT id FROM Vendor", false, ["phone"=>$phone]);
 
+注意：如果传入的$phone为null时，此时没有WHERE条件，返回第1条数据！
+
 @see queryAll
 @see getQueryCond
  */
@@ -1246,6 +1253,8 @@ queryAll支持执行返回多结果集的存储过程，这时返回的不是单
 可将WHERE条件单独指定：$cond参数形式该函数getQueryCond
 
 	$rows = queryAll("SELECT id FROM Vendor", false, ["phone"=>$phone]);
+
+注意：如果传入的$phone为null时，此时没有WHERE条件，返回所有数据！
 
 @see objarr2table
 @see getQueryCond

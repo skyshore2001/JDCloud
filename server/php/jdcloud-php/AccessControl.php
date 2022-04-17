@@ -1169,7 +1169,7 @@ onQuery中常用addCond来添加过滤条件，也可以设置enumFields。
 		];
 	}
 
-## 批量更新(setIf)和批量删除(delIf)
+## 批量更新(setIf/batchSet)和批量删除(delIf/batchDel)
 
 (v5.1) 以Ordr对象为例，要支持根据条件批量更新或删除：
 
@@ -1195,6 +1195,13 @@ onQuery中常用addCond来添加过滤条件，也可以设置enumFields。
 
 setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更新。
 也可以直接用checkSetFields指定哪些字段允许更新。
+
+(v6) batchSet与setIf接口原型相同，但batchSet接口将根据cond参数查出所有的记录，一一进行set操作；即它会执行onValidate中的逻辑。
+而setIf不走onValidate，相关逻辑必须为setIf接口再定制。
+
+类似地还有batchDel操作。显然，batchSet/batchDel逐条记录执行，会比setIf/delIf慢很多，但好处是可重用单条记录更新、删除的业务逻辑。
+
+注意：筋斗云web管理端上，多选或按Ctrl键进行的批量操作，用的是setIf/delIf。
 */
 
 # ====== functions {{{
