@@ -1997,7 +1997,7 @@ function callAsync($ac, $param, $opt = null) {
 }
 
 /**
-@fn callSvcAsync($ac, $urlParam, $postParams=null, $opt={wait, cron, code})
+@fn callSvcAsync($ac, $urlParam, $postParams=null, $opt={wait, cron, code, disabled})
 
 在当前事务执行完后，调用指定接口并立即返回（不等服务器输出数据）。一般用于各种异步通知。
 示例：
@@ -2075,6 +2075,7 @@ function callSvcAsync($ac, $urlParam, $postParam = null, $opt = null) {
 			'wait' => $opt['wait'],
 			'cron' => $opt['cron'],
 			'code' => $opt['code'],
+			'disabled' => $opt['disabled'],
 		];
 		if ($postParam) {
 			$post += [

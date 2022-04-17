@@ -161,9 +161,24 @@ class AC_Timer extends JDApiBase
 			}
 			$id = $timer['id'];
 			if (! $id) {
-				$id = self::$nextId ++;
-				$timer['id'] = $id;
-				self::$list[] = $timer;
+				// 添加时先根据code查找，找到则更新
+				$found = false;
+				$idx = null;
+				if ($timer['code']) {
+					$found = arrFind(self::$list, function ($e) use ($timer) {
+						return $e['code'] == $timer['code'];
+					}, $idx);
+				}
+				if (!$found) {
+					$id = self::$nextId ++;
+					$timer['id'] = $id;
+					self::$list[] = $timer;
+				}
+				else {
+					$id = $timer['id'] = $found['id'];
+					self::$list[$idx] = $timer;
+					swoole_timer_clear(self::$map[$id]);
+				}
 				self::save();
 			}
 			if ($timer['disabled'])
