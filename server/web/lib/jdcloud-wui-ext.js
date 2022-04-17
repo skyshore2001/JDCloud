@@ -3650,6 +3650,12 @@ watch选项会刷新disabled/readonly/show/value系列选项中的表达式。
 
 ## 动态设置combogrid/subobj等组件选项
 
+可使用`setOption(e, it, gn)`来设置组件。
+
+- e: 当前数据
+- it: 当前组件的访问器，比如it.val('xx'), it.readonly(true)等
+- gn: 可访问对话框中各组件，如gn('ac').val()等
+
 示例：type="入库"时，下拉列表moveType字段显示入库选项，type="出库"时，显示出库选项
 
 	var MoveTypeMap_出库 = {
@@ -3666,7 +3672,7 @@ watch选项会刷新disabled/readonly/show/value系列选项中的表达式。
 
 	// html中的组件： <input name="moveType" class="my-combobox">
 	WUI.setDlgLogic(jdlg, "moveType", {
-		setOption: function (e) {
+		setOption: function (e, it, gn) {
 			return {
 				jdEnumMap: e.type == "入库"? MoveTypeMap_入库: MoveTypeMap_出库
 			}
@@ -3796,13 +3802,14 @@ function setDlgLogic(jdlg, name, logic)
 			});
 		}
 		else if (k == "setOption") {
+			var it = gn(name);
 			if ($.isPlainObject(v)) {
-				gn(name).setOption(v);
+				it.setOption(v);
 			}
 			else if ($.isFunction(v)) {
 				jdlg.on("beforeshow", function (ev, formMode, dlgOpt) {
-					var val = v(dlgOpt.data);
-					gn(name).setOption(val);
+					var val = v(dlgOpt.data, it, gn);
+					it.setOption(val);
 				});
 			}
 			else {
@@ -3959,8 +3966,9 @@ function setDlgLogic(jdlg, name, logic)
 					fn(formMode, data);
 				});
 				if (logic.setOption) {
-					var val = logic.setOption(data);
-					gn(name).setOption(val);
+					var it = gn(name);
+					var val = logic.setOption(data, it, gn);
+					it.setOption(val);
 				}
 			}
 		}
