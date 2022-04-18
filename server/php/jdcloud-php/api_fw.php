@@ -2487,6 +2487,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		}
 		if (! $ac) {
 			$ac = $this->mparam('ac', "G");
+			$ac = $this->parseRestfulUrl($ac);
 		}
 
 		Conf::onApiInit($ac);
@@ -2860,7 +2861,9 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 	{
 		if ($method === null)
 			$method = $this->_SERVER("REQUEST_METHOD");
-		$ac = htmlEscape(substr($pathInfo,1));
+		if ($pathInfo[0] == '/')
+			$pathInfo = substr($pathInfo,1);
+		$ac = htmlEscape($pathInfo);
 		// POST /login  (小写开头)
 		// GET/POST /Store.add (含.)
 		if (!preg_match('/^[A-Z][\w\/]+$/u', $ac))
