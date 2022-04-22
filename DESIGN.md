@@ -45,13 +45,13 @@
 
 参考[后端框架-数据库设计](doc/后端框架.html#数据库设计)查看定义表及字段类型的基本规则.
 
-**[系统配置项]**
+【系统配置项】
 
 @Cinf: id, name(s), value(t)
 
 - name: 配置项名。由应用定义。下面文档中将使用`Cinf.xxx`来定义各配置项，比如`Cinf.version`表示name为"version"的配置项。
 
-**[员工]**
+【员工】
 
 @Employee: id, uname, phone(s), pwd, name(s), perms
 
@@ -65,7 +65,7 @@
 		emp: 管理员/AUTH_EMP
 		mgr: 最高管理员/PERM_MGR
 
-**[用户]**
+【用户】
 
 @User: id, uname, phone(s), pwd, name(s), createTm
 
@@ -74,7 +74,7 @@
 - pwd: 登录密码，采用md5加密。
 - createTm: 创建时间。
 
-**[订单]**
+【订单】
 
 @Ordr: id, userId, createTm, status(2), amount, dscr(l), cmt(l)
 
@@ -97,7 +97,7 @@ vcol
 
 注意：使用ordr而不是order是为了避免与sql关键字order冲突
 
-**[订单日志]**
+【订单日志】
 
 @OrderLog: id, orderId, action, tm, dscr, empId
 
@@ -118,11 +118,11 @@ vcol
 
 - empId: 操作该订单的员工号
 
-**[订单-图片关联]**
+【订单-图片关联】
 
 @OrderAtt: id, orderId, attId
 
-**[API调用日志]**
+【API调用日志】
 
 @ApiLog: id, tm, addr, ua(l), app, ses, userId, ac, t&, retval&, req(t), res(t), reqsz&, ressz&, ver, serverRev(10)
 
@@ -145,11 +145,11 @@ vcol
 
 batch操作的明细表。
 
-**[操作日志]**
+【操作日志】
 
 @ObjLog: id, obj, objId, dscr, apiLogId, apiLog1Id
 
-**[插件相关]**
+【插件相关】
 
 ```
 @include server\plugin\login\DESIGN.md
@@ -171,7 +171,7 @@ app类型为"user".
 - 权限: AUTH_USER
 - 可修改字段参考User表。注意不可修改字段: uname, phone, pwd, createTm.
 
-**[示例]**
+【示例】
 
 上传一个头像并设置到该用户：
 
