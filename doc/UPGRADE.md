@@ -16,6 +16,45 @@
 - AccessControl::create()改为env->createAC()
 - 用jdRet替代MyException和DirectReturn类。
 
+#### callSvc/callSvcInt接口变化
+
+废弃setParam，内部接口调用函数（callSvcInt，JDApiBase::callSvc或AccessControl::callSvc）不会自动使用当前$_GET/$_POST环境，必须在调用时明确指定。
+
+原先：
+
+	setParam([
+		"type" => "QI",
+		"fmt" => "list",
+		"res" => param("res", "pdiId,code,DMSOrderNo,vinCode,userPhone,userName,pickupTm,licenseCode,mileage,empSAName,carConf"),
+		"cond2" => dbExpr($cond)
+	]);
+	$ret = (new PdiRecord())->callSvc("PdiRecord", "query");
+	或
+	$ret = callSvcInt("PdiRecord.query");
+
+改为：
+
+	$param = [
+		"type" => "QI",
+		"fmt" => "list",
+		"res" => param("res", "pdiId,code,DMSOrderNo,vinCode,userPhone,userName,pickupTm,licenseCode,mileage,empSAName,carConf"),
+		"cond2" => dbExpr($cond)
+	];
+	$ret = (new PdiRecord())->callSvc("PdiRecord", "query", $param);
+	或
+	$ret = callSvcInt("PdiRecord.query", $param);
+
+如果要使用当前环境，须显式指定。
+原先：
+
+	$_POST["status"] = "CF";
+	$rv = callSvcInt("Ordr.set");
+
+改为：
+
+	$_POST["status"] = "CF";
+	$rv = callSvcInt("Ordr.set", $_GET, $_POST);
+
 #### 不兼容，需要修改
 
 原先：

@@ -1468,7 +1468,8 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 	}
 
 /**
-@fn AccessControl::callSvc($tbl, $ac, $param=null, $postParam=null)
+@fn AccessControl::callSvc($tbl, $ac, $param=null, $postParam=null, $useTmpEnv=true)
+@alias JDApiBase::callSvc
 
 直接调用指定类的接口，如内部直接调用"PdiRecord.query"方法：
 
@@ -1484,7 +1485,11 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 	$acObj = new PdiRecord();
 	$acObj->callSvc("PdiRecord", "query");
 
-如果未指定param/postParam，则使用当前GET/POST环境参数执行，否则使用指定环境执行，并在执行后恢复当前环境。
+和callSvcInt一样，如果未指定param/postParam，则没有参数；
+若想使用当前环境的参数，应显式指定$_GET/$_POST环境参数，如`$acObj->callSvc("PdiRecord", "query", $_GET, $_POST);`
+默认对当前环境的修改(如修改$_GET等)会被恢复，除非指定参数$useTmpEnv=false。
+
+注意: 对比callSvc函数，它只能使用当前环境，不可指定param/postParam参数。
 
 也适用于AC类内的调用，这时可不传table，例如调用当前类的add接口：
 

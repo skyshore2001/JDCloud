@@ -2995,7 +2995,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 	}
 
 /**
-@fn env->tmpEnv($param, $postParam, $fn)
+@fn env->tmpEnv($param, $postParam, $fn, $useTmpEnv=true)
 
 (v5.4) 在指定的GET/POST参数下执行fn函数，执行完后恢复初始环境。
 $param或$postParam为null时，与空数组`[]`等价。
@@ -3012,6 +3012,8 @@ $param或$postParam为null时，与空数组`[]`等价。
 	$ret = $env->tmpEnv($_GET, $_POST, function () {
 		return callSvcInt("User.query");
 	});
+
+默认对当前环境的修改(如修改$_GET等)会被恢复，除非指定参数$useTmpEnv=false。
 */
 	function tmpEnv($get, $post, $fn, $useTmpEnv=true)
 	{
