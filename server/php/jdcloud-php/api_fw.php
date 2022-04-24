@@ -1607,12 +1607,24 @@ function tableCRUD($ac1, $tbl, $asAdmin = false)
 }
 
 /**
-@fn setParam($k, $v)
+@fn setParam($k, $v=null)
 
 (v6) 已废弃。只用于兼容。用$_GET[$k]=$v替代。
+
+	setParam("id", 100);
+	// 或一次设置多个
+	setParam(["id"=>100, "name"=>"name1"]);
+
 */
-function setParam($k, $v) {
-	$_GET[$k] = $v;
+function setParam($k, $v=null) {
+	if (is_array($k)) {
+		foreach ($k as $k1 => $v1) {
+			$_GET[$k1] = $v1;
+		}
+	}
+	else {
+		$_GET[$k] = $v;
+	}
 }
 
 /**
