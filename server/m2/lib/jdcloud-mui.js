@@ -2410,9 +2410,8 @@ function getFormData_vf(jo)
 获取对话框上一个组件的访问器。示例，设置名为orderId的组件值：
 
 	var ji = jdlg.find("[name=orderId]"); // 或者用 var ji = $(frm.orderId);
-	var it = WUI.getFormItem(ji);
+	var it = WUI.getFormItem(ji); // 或者用 var it = ji.gn()
 	it.setValue("hello"); // 类似于ji.val("hello")，但支持各种复杂组件
-
 
 还可以用更简洁的jo.gn，以及支持用链式风格的调用：
 
@@ -4711,6 +4710,7 @@ function makeUrl(action, params)
 	if (params == null)
 		params = {};
 
+	var xparam = 0;
 	var url;
 	var fnMakeUrl = self.callSvrExt[ext] && self.callSvrExt[ext].makeUrl;
 	if (fnMakeUrl) {
@@ -4718,8 +4718,8 @@ function makeUrl(action, params)
 	}
 	else if (self.options.moduleExt && (url = self.options.moduleExt["callSvr"](action)) != null) {
 	}
-	// 缺省接口调用：callSvr('login'),  callSvr('./1.json') 或 callSvr("1.php") (以"./"或"../"等相对路径开头, 或是取".php"文件, 则不去自动拼接serverUrl)
-	else if (action[0] != '.' && action.indexOf(".php") < 0)
+	// 缺省接口调用：callSvr('login'),  callSvr('./1.json'), callSvr('/jdserver/stat') 或 callSvr("1.php") (以"/", "./"或"../"等绝对或相对路径开头, 或是取".php"文件, 则不去自动拼接serverUrl)
+	else if (action[0] != '.' && action[0] != '/' && action.indexOf(".php") < 0)
 	{
 		var opt = self.options;
 		var usePathInfo = !opt.serverUrlAc && !opt.xparam;
@@ -4733,6 +4733,7 @@ function makeUrl(action, params)
 			url = opt.serverUrl;
 			params[opt.serverUrlAc || "ac"] = action;
 		}
+		xparam = opt.xparam;
 	}
 	else {
 		if (location.protocol == "file:") {
@@ -4763,7 +4764,7 @@ function makeUrl(action, params)
 		params.XDEBUG_SESSION_START = 1;
 
 	var p = $.param(params);
-	if (self.options.xparam)
+	if (xparam)
 		p = "xp=" + (p? self.base64Encode(p, true): 1);
 	var ret = mCommon.appendParam(url, p);
 	return makeUrlObj(ret);
