@@ -3556,7 +3556,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 					$ret1 = queryAll($sql1, true);
 				}
 				if (@$opt["wantOne"]) {
-					if ($opt["wantOne"] == 2) { // 值为2时，合并到主表
+					if ((int)$opt["wantOne"] === 2) { // 值为2时，合并到主表
 						if (count($ret1) > 0)
 							arrCopy($mainObj, $ret1[0]);
 					}
@@ -3665,7 +3665,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 				if (@$opt["wantOne"]) {
 					if ($val !== null)
 						$val = $val[0];
-					if ($opt["wantOne"] == 2) {
+					if ((int)$opt["wantOne"] === 2) {  // 注意! 不要用`$opt["wantOne"]==2`, 因为 true == 2 成立!
 						if ($val !== null)
 							arrCopy($row, $val);
 						continue;

@@ -361,8 +361,8 @@ function param($name, $defVal = null, $col = null, $doHtmlEscape = true, $env = 
 	// cond特别处理
 	if ($name == "cond" || $type == "cond") {
 		if ($col2)
-			return getQueryCond([$col, $col2]);
-		return getQueryCond($col);
+			return getQueryCond([$col[$name], $col2[$name]]);
+		return getQueryCond($col[$name]);
 	}
 	if (isset($col[$name]))
 		$ret = $col[$name];
