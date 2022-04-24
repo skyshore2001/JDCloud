@@ -126,8 +126,20 @@ function checkEnv()
 		"result" => $val
 	];
 
-	$val = function_exists('gd_info');
-	$txt = $val? "支持": "不支持(图像上传将受影响)";
+	$val = extension_loaded('zip');
+	$check["zip"] = [
+		"value"=>$val? "可用": "不可用",
+		"result" => $val
+	];
+
+	$val = extension_loaded('curl');
+	$check["curl"] = [
+		"value"=>$val? "可用": "不可用",
+		"result" => $val
+	];
+
+	$val = extension_loaded('gd');
+	$txt = $val? "可用": "不可用(图像上传将受影响)";
 	if ($val) {
 		$rv = gd_info();
 		if (! $rv["JPEG Support"]) {
@@ -140,9 +152,9 @@ function checkEnv()
 		"result" => $val
 	];
 
-	$val = function_exists('mb_substr');
+	$val = extension_loaded('mbstring');
 	$check["mbstring"] = [
-		"value"=>$val? "支持": "不可用",
+		"value"=>$val? "可用": "不可用",
 		"result" => $val
 	];
 
@@ -423,6 +435,12 @@ p.hint {
 		<td>中文支持(mbstring模块)</td><td data-item="mbstring"></td>
 	</tr>
 	<tr>
+		<td>zip模块(用于导出excel)</td><td data-item="zip"></td>
+	</tr>
+	<tr>
+		<td>curl模块(用于外部调用)</td><td data-item="curl"></td>
+	</tr>
+	<tr>
 		<td>上传文件设置</td><td data-item="uploadsz"></td>
 	</tr>
 </table>
@@ -501,6 +519,8 @@ $("#tblInfo td[data-item]").each(function () {
 	var e = info.check[item];
 	if (e) {
 		$(this).html(e.value);
+		if (e.value == '可用')
+			$(this).parent().hide();
 		if (e.result !== 'ignore')
 			$(this).addClass(e.result? "ok": "fail");
 	}
