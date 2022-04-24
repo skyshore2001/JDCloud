@@ -46,6 +46,11 @@ class SqlDiff
 	public function safeName($name) {
 		return $name;
 	}
+
+	// @fields={Field, Type, Null, Key, ...}
+	public function getFields($table) {
+		return queryAll("desc `$table`", true);
+	}
 }
 
 class SqlDiff_sqlite extends SqlDiff
@@ -629,9 +634,7 @@ class UpgHelper
 			throw new Exception("*** check table supports only mysql database!");
 
 		global $SQLDIFF;
-		$sth = $this->dbh->query("desc `$table`"); 
-		$dbFields = $sth->fetchAll(\PDO::FETCH_ASSOC); // elem={Field, Type, Null, Key, ...}
-
+		$dbFields = $SQLDIFF->getFields($table); // elem={Field, Type, Null, Key, ...}
 		$tableName = $SQLDIFF->safeName($tableMeta["name"]);
 		arrayCmp($tableMeta["fieldsMeta"], $dbFields, function ($meta, $dbField) {
 			return $meta["name"] === $dbField["Field"];
@@ -663,13 +666,15 @@ class UpgHelper
 			{
 				# check whether to add missing fields
 				# todo: get columns: mysql uses `desc {table}`, mssql uses `sp_help {table}`
-				$rs = $this->execSql("SELECT t1.* FROM (SELECT 1) t0 LEFT JOIN $tbl1 t1 ON 1<>1", true);
-				$row = $rs[0];
+				$dbFields = $SQLDIFF->getFields($tbl); // elem={Field, Type, Null, Key, ...}
+				$fieldArr = array_map(function ($e) {
+					return $e["Field"];
+				}, $dbFields);
 				$found = false;
 
 				foreach ($tableMeta["fieldsMeta"] as $fieldMeta) {
 					$fieldName = $fieldMeta["name"];
-					if (! array_key_exists($fieldName, $row)) {
+					if (! in_array($fieldName, $fieldArr)) {
 						$found = true;
 						$this->_addColByMeta($tbl, $fieldMeta);
 					}

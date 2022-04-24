@@ -11,7 +11,7 @@ function upgrade()
 	header("Content-Type: text/plain; charset=utf-8");
  	require_once("upglib.php");
  	$h = new UpgHelper();
-	$diff = @$_GET["diff"];
+	$diff = isset($_GET["diff"]);
 	if (! $diff) {
 		$h->updateDB();
 	}
