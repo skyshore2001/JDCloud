@@ -2553,7 +2553,6 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 					$this->doInitEnv = false;
 					if (!$isCLI)
 						$this->setupSession();
-					require_once("ext.php");
 
 					global $BASE_DIR;
 					// optional plugins
@@ -3321,6 +3320,7 @@ if (!isSwoole())
 else
 	$X_APP = [];
 
+require_once("ext.php");
 // }}}
 
 // vim: set foldmethod=marker :
