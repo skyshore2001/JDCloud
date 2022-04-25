@@ -764,7 +764,7 @@ function hasPerm($perms, $exPerms=null)
 {
 	$env = getJDEnv();
 	assert(is_null($exPerms) || is_array($exPerms));
-	if (is_null($env->perms)) {
+	if (is_null($env->perms) || $exPerms) {
 		// 扩展认证登录
 		if (count($env->_SESSION) == 0) { // 有session项则不进行认证
 			$authTypes = $exPerms;
