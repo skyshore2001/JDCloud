@@ -3791,42 +3791,37 @@ window.DirectReturn = DirectReturn;
 function DirectReturn() {}
 
 /**
-@fn setOnError()
+@fn windowOnError()
 
-一般框架自动设置onerror函数；如果onerror被其它库改写，应再次调用该函数。
-allow throw("abort") as abort behavior.
+框架自动在脚本出错时弹框报错，并上报服务端(syslog).
+可通过MUI.options.skipErrorRegex忽略指定错误。
  */
-self.setOnError = setOnError;
-function setOnError()
+function windowOnError(ev)
 {
-	var fn = window.onerror;
-	window.onerror = function (msg, script, line, col, errObj) {
-		// 出错后尝试恢复callSvr变量
-		if ($.active || self.isBusy) {
-			setTimeout(function () {
-				$.active = 0;
-				self.isBusy = 0;
-				self.hideLoading();
-			}, 1000);
-		}
-		if (fn && fn.apply(this, arguments) === true)
-			return true;
-		if (errObj instanceof DirectReturn || /abort$/.test(msg))
-			return true;
-		if (self.options.skipErrorRegex && self.options.skipErrorRegex.test(msg))
-			return true;
-		if (errObj === undefined && msg === "[object Object]") // fix for IOS9
-			return true;
-		debugger;
-		var content = msg + " (" + script + ":" + line + ":" + col + ")";
-		if (errObj && errObj.stack)
-			content += "\n" + errObj.stack.toString();
-		if (self.syslog)
-			self.syslog("fw", "ERR", content);
-		app_alert(msg, "e");
+	// 出错后尝试恢复callSvr变量
+	if ($.active || self.isBusy) {
+		setTimeout(function () {
+			$.active = 0;
+			self.isBusy = 0;
+			self.hideLoading();
+		}, 1000);
 	}
+	var msg = ev.message, errObj = ev.error;
+	if (errObj instanceof DirectReturn || /abort$/.test(msg))
+		return true;
+	if (self.options.skipErrorRegex && self.options.skipErrorRegex.test(msg))
+		return true;
+	if (errObj === undefined && msg === "[object Object]") // fix for IOS9
+		return true;
+	debugger;
+	var content = msg + " (" + ev.filename + ":" + ev.lineno + ":" + ev.colno + ")";
+	if (errObj && errObj.stack)
+		content += "\n" + errObj.stack.toString();
+	if (self.syslog)
+		self.syslog("fw", "ERR", content);
+	app_alert(msg, "e");
 }
-setOnError();
+window.addEventListener('error', windowOnError);
 
 // ------ enhanceWithin {{{
 /**
