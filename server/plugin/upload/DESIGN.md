@@ -164,6 +164,11 @@ multiple属性是html5新增属性，如果浏览器不支持，也可以这样�
 
 	[ {id:1, thumbId:2} ]
 
+使用callSvr测试：
+
+	callSvr("upload", {f:"1.txt",fmt:"raw"}, $.noop, "hello中文");
+	callSvr("upload", {f:"1.txt",fmt:"raw_b64"}, $.noop, MUI.base64Encode("hello中文"));
+
 ### 附件下载
 
 	att(id)

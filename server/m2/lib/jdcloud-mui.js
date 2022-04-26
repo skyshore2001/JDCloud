@@ -4764,6 +4764,7 @@ function makeUrl(action, params)
 		params.XDEBUG_SESSION_START = 1;
 
 	var p = $.param(params);
+	// 无参数时，也会设置xp=1，用于通知callSvr对post内容加密
 	if (xparam)
 		p = "xp=" + (p? self.base64Encode(p, true): 1);
 	var ret = mCommon.appendParam(url, p);
@@ -5309,7 +5310,7 @@ function callSvr(ac, params, fn, postParams, userOptions)
 	}
 
 	// 自动判断是否用json格式
-	if (!opt.contentType && opt.data) {
+	if (opt.contentType == null && opt.data) {
 		var useJson = $.isArray(opt.data);
 		if (!useJson && $.isPlainObject(opt.data)) {
 			$.each(opt.data, function (i, e) {
@@ -5335,13 +5336,25 @@ function callSvr(ac, params, fn, postParams, userOptions)
 
 	if (opt.data && opt.processData !== false && opt.url.indexOf("?xp=") > 0) {
 		if (typeof(opt.data) === "string") {
+			// 猜一下。最好还是应用明确指定
+			if (opt.contentType == null) {
+				var pos;
+				if (opt.data[0] == '{' || opt.data[0] == '[') {
+					opt.contentType = "application/json";
+				}
+				else if ((pos=opt.data.indexOf('=')>0) && pos<100) { // 变量名不超过100B (像`a[b][3]=1`这种就比较长)
+					opt.contentType = "application/x-www-form-urlencoded";
+				}
+				else {
+					opt.contentType = "text/plain";
+				}
+			}
 			opt.data = self.base64Encode(opt.data, true);
 		}
 		else {
 			opt.data = self.base64Encode(JSON.stringify(opt.data), true);
-		}
-		if (!opt.contentType)
 			opt.contentType = "application/json";
+		}
 		opt.contentType += ";xparam=1";
 	}
 	$.ajax(opt);
@@ -7528,6 +7541,9 @@ TODO: cordova-ios未来将使用WkWebView作为容器（目前仍使用UIWebView
 
 /**
 @var MUI.options.xparam
+
+参数加密特性。默认为1（开启），在后端接口返回当前是测试模式时，会改为0（关闭）。
+也可以在chrome控制台中直接修改，如`MUI.options.xparam=0`。
  */
 		xparam: 1
 	};

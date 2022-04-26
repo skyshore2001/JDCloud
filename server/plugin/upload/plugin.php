@@ -281,7 +281,7 @@ function getPath($orgName, $cate, $cateConf)
 	return $fname;
 }
 
-function api_upload()
+function api_upload($env)
 {
 	checkAuth(AUTH_LOGIN, ['simple']);
 	session_commit(); // !!!释放session锁避免阻塞其它调用。注意此后要修改session应先调用session_start
@@ -426,7 +426,7 @@ function api_upload()
 		}
 		else {
 			// for upload raw/raw_b64
-			$s = file_get_contents("php://input");
+			$s = getHttpInput($env);
 			if ($fmt === 'raw_b64') {
 				$s = base64_decode($s);
 			}
@@ -578,6 +578,7 @@ function api_pic()
 						echo("<img src='{$baseUrl}api.php/att?thumbId=$id'>\n");
 					else if ($n == 2)
 						echo("<a href='{$baseUrl}api.php/att?thumbId=$id' target='_blank'><img src='{$baseUrl}api.php/att?id=$id'></a>\n");
+					echo("<br/>\n");
 				}
 			}
 		}

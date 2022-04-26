@@ -29,8 +29,7 @@
 		"cond2" => dbExpr($cond)
 	]);
 	$ret = (new PdiRecord())->callSvc("PdiRecord", "query");
-	或
-	$ret = callSvcInt("PdiRecord.query");
+	// 或 $ret = callSvcInt("PdiRecord.query");
 
 改为：
 
@@ -40,9 +39,9 @@
 		"res" => param("res", "pdiId,code,DMSOrderNo,vinCode,userPhone,userName,pickupTm,licenseCode,mileage,empSAName,carConf"),
 		"cond2" => dbExpr($cond)
 	];
-	$ret = (new PdiRecord())->callSvc("PdiRecord", "query", $param);
-	或
-	$ret = callSvcInt("PdiRecord.query", $param);
+	// 注意：数组`+`操作不会覆盖前面已有参数，即越后面参数优先级越低
+	$ret = (new PdiRecord())->callSvc("PdiRecord", "query", $param + $_GET, $_POST);
+	// 或 $ret = callSvcInt("PdiRecord.query", $param + $_GET, $_POST);
 
 如果要使用当前环境，须显式指定。
 原先：
@@ -54,6 +53,11 @@
 
 	$_POST["status"] = "CF";
 	$rv = callSvcInt("Ordr.set", $_GET, $_POST);
+
+注意不应使用$_REQUEST，在参数使用json编码或经加密后，$_REQUEST中内容都不正确。
+该变量可用`$_GET+$_POST`替代(swoole环境下用$env->_GET + $env->_POST替代)。
+
+(v6.1)考虑参数加密，也不应使用`file_get_contents("php://input")`来取原始输入，而是要用getHttpInput()来取（取到解密后的数据）。
 
 #### 不兼容，需要修改
 

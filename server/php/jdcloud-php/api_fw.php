@@ -1716,6 +1716,16 @@ function getContentType($env = null)
 	return $ct;
 }
 
+/**
+@fn getHttpInput(env?)
+
+取用户请求的内容。如果是urlencoded或json格式，系统会自动解码到$_POST中，其它格式须应用自行处理。
+
+注意：
+应用应使用getHttpInput()而不是file_get_contents("php://input") 来取原始输入。
+因为为参数加密状态下(xparam特性)，两者是不同的，getHttpInput()返回才是正确的。
+
+*/
 function getHttpInput($env = null)
 {
 	if ($env === null)
@@ -2439,6 +2449,9 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 					if ($this->rawContent === false) {
 						logit("error: bad post xparam $postData");
 						jdRet(E_PARAM, "bad post xparam");
+					}
+					if (stripos($ct, 'x-www-form-urlencoded') != false) {
+						parse_str($this->rawContent, $this->_POST);
 					}
 				}
 			}
