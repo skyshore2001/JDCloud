@@ -15,6 +15,7 @@ fi
 
 if [[ $1 == remove ]]; then
 	systemctl stop $svc 2>/dev/null
+	systemctl disable $svc 2>/dev/null
 	rm /usr/lib/systemd/system/$svc.service 2>/dev/null && echo "=== service $svc removed"
 	exit
 elif [[ -n $1 ]]; then
@@ -30,7 +31,7 @@ After=syslog.target network.target auditd.service
 [Service]
 Type=simple
 User=builder
-ExecStart=/bin/sh -c "swoole $svc.php >> $svc.log 2>&1"
+ExecStart=/bin/sh -c "swoole $svc.php &>> $svc.log"
 WorkingDirectory=$dir
 Restart=on-failure
 RestartSec=5s
