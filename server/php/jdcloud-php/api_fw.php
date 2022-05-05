@@ -1159,6 +1159,7 @@ class ApiLog
 	// for batch detail (ApiLog1)
 	private $req1, $startTm1;
 	public $batchAc; // new ac for batch
+	public $updateLog; // 可定制ApiLog记录
 
 /**
 @var ApiLog::$lastId
@@ -1172,6 +1173,10 @@ class ApiLog
 e.g. 修改ApiLog要记录的ac:
 
 	ApiLog::$instance->batchAc = "async:$f";
+
+(v6.1) 可定制ApiLog记录，比如att接口中可指定
+
+	ApiLog::$instance->updateLog = ["res"=>"1.jpg", "ressz" => filesize("1.jpg")];
 
 */
 	static $instance;
@@ -1289,14 +1294,17 @@ e.g. 修改ApiLog要记录的ac:
 		$content = $this->myVarExport($X_RET_STR, $logLen);
 
 		++ $env->DBH->skipLogCnt;
-		$rv = $env->dbUpdate("ApiLog", [
+		$data = [
 			"t" => $iv,
 			"retval" => $ret[0],
 			"ressz" => strlen($X_RET_STR),
 			"res" => dbExpr(Q($content, $env)),
 			"userId" => $this->userId ?: $this->getUserId(),
 			"ac" => $this->batchAc // 默认为null；对batch调用则列出详情
-		], $this->id);
+		];
+		if ($this->updateLog)
+			$data = $this->updateLog + $data;
+		$rv = $env->dbUpdate("ApiLog", $data, $this->id);
 // 		$logStr = "=== id={$this->logId} t={$iv} >>>$content<<<\n";
 	}
 

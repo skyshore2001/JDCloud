@@ -558,6 +558,7 @@ function api_att()
 		$url = $baseUrl . $file;
 		header('Location: ' . $url);
 	}
+	ApiLog::$instance->updateLog = ["res"=>$file, "ressz" => filesize($file)];
 	jdRet();
 }
 
