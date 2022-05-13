@@ -1291,8 +1291,8 @@ ORDER BY t0.id DESC</code></pre>
 <pre><code>addLog(&quot;### debug info&quot;); // 调试等级0，只要是测试模式下，总是输出
 addLog(&quot;### debug info level 1&quot;, 1); // 在测试模式下且调试等级&gt;=1时输出。</code></pre>
 <p>注意必须在conf.user.php中激活测试模式才能看到日志返回：</p>
-<pre><code>putenv(&quot;P_TEST_MODE&quot;,  1);
-putenv(&quot;P_DEBUG&quot;,  9); // 设置调试等级，9为最高（输出SQL）</code></pre>
+<pre><code>putenv(&quot;P_TEST_MODE=1&quot;);
+putenv(&quot;P_DEBUG=9&quot;); // 设置调试等级，9为最高（输出SQL）</code></pre>
 <p>测试模式下，输出的JSON串经过美化更易读。 也可以在调用接口时添加URL参数<code>_debug</code>来设置本次调用的调试等级，如<code>http://.../api.php/Ordr.add?_debug=9</code>。</p>
 <p>开启选项<code>P_DEBUG_LOG</code>可将接口调用日志记录到debug.log文件中，包括接口返回内容以及addLog记录的日志（详细程度由P_DEBUG决定）：</p>
 <pre><code>putenv(&quot;P_DEBUG_LOG=1&quot;); // 0: no log to &#39;debug.log&#39; 1: all log, 2: error log</code></pre>
@@ -1300,8 +1300,8 @@ putenv(&quot;P_DEBUG&quot;,  9); // 设置调试等级，9为最高（输出SQL�
 <p><strong>[模拟模式]</strong></p>
 <p>系统中集成了第三方的短信发送功能，如何在日常测试时不用真发短信而走通流程，以及如果进行自动化测试？</p>
 <p>筋斗云建议，对第三方系统依赖（如微信认证、支付宝支付、发送短信等），应设计模拟接口来模拟。 如果在conf.user.php中配置：</p>
-<pre><code>putenv(&quot;P_TEST_MODE&quot;, 1);
-putenv(&quot;P_MOCK_MODE&quot;, 1);</code></pre>
+<pre><code>putenv(&quot;P_TEST_MODE=1&quot;);
+putenv(&quot;P_MOCK_MODE=1&quot;);</code></pre>
 <p>则激活了模拟模式，注意模拟模式只在测试模式下才生效，这时会走模拟接口。</p>
 <p>发送短信后，实际会输出信息到ext日志中，测试时可查看日志ext.log获取，或在线访问tool/log.php查看ext日志。</p>
 <p><strong>[API调用监控]</strong></p>
@@ -1333,8 +1333,8 @@ putenv(&quot;P_MOCK_MODE&quot;, 1);</code></pre>
 <p>如果请求中没有带cookie，则调用将返回HTTP头：</p>
 <pre><code>SetCookie: empid=xxxxxx; path=/mysvc; HttpOnly</code></pre>
 <p>浏览器根据这个指令来保存cookie。注意cookie的有效路径&quot;/mysvc&quot;是在文件conf.user.php中配置的，有一项P_URL_PATH变量设置：</p>
-<pre><code>putenv(&quot;P_URL_PATH&quot;, &quot;/mysvc&quot;);</code></pre>
-<p>这个URL路径要与实际访问服务器上的一致。如果服务放在根目录下，就要改设置为<code>putenv(&quot;P_URL_PATH&quot;, &quot;/&quot;)</code>。 一旦这里设置出错，可能出现登录后仍报未登录错误的现象，因为cookie不可用，无法维持会话。</p>
+<pre><code>putenv(&quot;P_URL_PATH=/mysvc&quot;);</code></pre>
+<p>这个URL路径要与实际访问服务器上的一致。如果服务放在根目录下，就要改设置为<code>putenv(&quot;P_URL_PATH=/&quot;)</code>。 一旦这里设置出错，可能出现登录后仍报未登录错误的现象，因为cookie不可用，无法维持会话。</p>
 <p>在代码中，可以用 getBaseUrl() 函数来获取基准URL。比如要返回一个URL路径，就可以用</p>
 <pre><code>$url = getBaseUrl() . &quot;notify_url.php&quot;;
 // $url = &quot;http://myserver/mysvc/notify_url.php&quot;</code></pre>

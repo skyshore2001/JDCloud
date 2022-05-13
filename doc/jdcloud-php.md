@@ -1756,8 +1756,8 @@ class AC1_Ordr extends AccessControl
 
 注意必须在conf.user.php中激活测试模式才能看到日志返回：
 
-	putenv("P_TEST_MODE",  1);
-	putenv("P_DEBUG",  9); // 设置调试等级，9为最高（输出SQL）
+	putenv("P_TEST_MODE=1");
+	putenv("P_DEBUG=9"); // 设置调试等级，9为最高（输出SQL）
 
 测试模式下，输出的JSON串经过美化更易读。
 也可以在调用接口时添加URL参数`_debug`来设置本次调用的调试等级，如`http://.../api.php/Ordr.add?_debug=9`。
@@ -1775,8 +1775,8 @@ class AC1_Ordr extends AccessControl
 筋斗云建议，对第三方系统依赖（如微信认证、支付宝支付、发送短信等），应设计模拟接口来模拟。
 如果在conf.user.php中配置：
 
-	putenv("P_TEST_MODE", 1);
-	putenv("P_MOCK_MODE", 1);
+	putenv("P_TEST_MODE=1");
+	putenv("P_MOCK_MODE=1");
 
 则激活了模拟模式，注意模拟模式只在测试模式下才生效，这时会走模拟接口。
 
@@ -1823,9 +1823,9 @@ class AC1_Ordr extends AccessControl
 
 浏览器根据这个指令来保存cookie。注意cookie的有效路径"/mysvc"是在文件conf.user.php中配置的，有一项P_URL_PATH变量设置：
 
-	putenv("P_URL_PATH", "/mysvc");
+	putenv("P_URL_PATH=/mysvc");
 
-这个URL路径要与实际访问服务器上的一致。如果服务放在根目录下，就要改设置为`putenv("P_URL_PATH", "/")`。
+这个URL路径要与实际访问服务器上的一致。如果服务放在根目录下，就要改设置为`putenv("P_URL_PATH=/")`。
 一旦这里设置出错，可能出现登录后仍报未登录错误的现象，因为cookie不可用，无法维持会话。
 
 在代码中，可以用 getBaseUrl() 函数来获取基准URL。比如要返回一个URL路径，就可以用
