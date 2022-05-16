@@ -1628,17 +1628,19 @@ function redirectOut($fn)
 }
 
 /**
-@fn mypack($data, $format)
+@fn mypack($data, $format=null)
 
 结构体封包。解包使用myunpack.
 
 数据格式代码参考: https://www.php.net/manual/en/function.pack.php
 常用格式：
 
-	C - 8位整数(网络序)
+	C - 8位整数
 	n - 16位整数(网络序)
 	N - 32位整数(网络序)
 	a{数字} - 定长字符串(长度不足补0)
+	f - float
+	d - double
 
 示例：
 
@@ -1669,6 +1671,15 @@ function redirectOut($fn)
 	$data1 = myunpack($packData, $format);
 	var_dump($data1);
 
+也可以不用format，直接封包：
+
+	$packData = mypack([
+		'C', 0x10,
+		'C', 0x02,
+		"n", $item['dbNumber'],
+		'N', (0x84000000 | ($item['startAddr'] * 8))
+	]);
+
 TODO: 支持结构体、数组等：
 
 	$format_st = [
@@ -1696,10 +1707,24 @@ TODO: 支持结构体、数组等：
 		]
 	];
 */
-function mypack($data, $format)
+function mypack($data, $format = null)
 {
 	if (is_string($format)) 
 		return pack($format, $data);
+
+	if (is_null($format)) {
+		$cnt = count($data);
+		assert($cnt % 2 == 0);
+		$params = [];
+		$format0 = "";
+		for ($i=0; $i<$cnt; $i+=2) {
+			$format0 .= $data[$i];
+			$params[] = $data[$i+1];
+		}
+		array_unshift($params, $format0);
+		return call_user_func_array("pack", $params);
+	}
+
 	$cnt = count($format);
 	assert($cnt % 2 == 0);
 	$params = [];

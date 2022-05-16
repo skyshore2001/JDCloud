@@ -52,6 +52,10 @@ P_DBCRED格式为`{用户名}:{密码}`，或其base64编码后的值，如
 
 连接SQLite数据库未做严格测试，不建议使用。
 
+做性能对比测试时还支持不连数据库(当然也不会写ApiLog)，可指定：
+
+	P_DB=null
+
 ## 测试模式与调试等级
 
 @key P_TEST_MODE Integer。环境变量，允许测试模式。0-生产模式；1-测试模式；2-自动化回归测试模式(RTEST_MODE)
@@ -1566,7 +1570,7 @@ class DBEnv
 	function dbconn($fnConfirm = null)
 	{
 		$DBH = $this->DBH;
-		if (isset($DBH))
+		if (isset($DBH) || $this->DB === "null")
 			return $DBH;
 
 		// 未指定驱动类型，则按 mysql或sqlite 连接

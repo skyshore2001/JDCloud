@@ -2598,7 +2598,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 					$this->session_start();
 				}
 
-				if (Conf::$enableApiLog)
+				if (Conf::$enableApiLog && $this->DBH)
 				{
 					$this->apiLog = new ApiLog($this);
 					$this->apiLog->logBefore();
@@ -2606,7 +2606,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			}
 
 			if ($ac !== "batch") {
-				if ($useTrans && ! $this->DBH->inTransaction())
+				if ($useTrans && $this->DBH && ! $this->DBH->inTransaction())
 					$this->DBH->beginTransaction();
 				$ret[1] = $this->callSvcInt($ac, $this->_GET, $this->_POST, false);
 				$ok = true;
