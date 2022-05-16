@@ -7,7 +7,8 @@ define("FMT_D", "Y-m-d");
 // const T_DAY = 24*T_HOUR; // not allowed
 
 # error code definition:
-const E_ABORT = -100; // 客户端不报错
+const E_ABORT = -100; // 静默忽略本次调用。客户端收到时应中止执行，但不报错。
+const E_EXT = -2; // 与第3方接口对接出错
 const E_AUTHFAIL=-1;
 const E_OK=0;
 const E_PARAM=1;
@@ -24,7 +25,8 @@ $ERRINFO = [
 	E_DB => "数据库错误",
 	E_SERVER => "服务器错误",
 	E_FORBIDDEN => "禁止操作",
-	E_ABORT => "中止执行"
+	E_ABORT => "中止执行",
+	E_EXT => "接口调用错误"
 ];
 
 /** 
