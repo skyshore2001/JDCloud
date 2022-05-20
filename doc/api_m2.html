@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（移动Web版）</h1>
-<div>最后更新：2022-03-24</div>
+<div>最后更新：2022-05-20</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -80,6 +80,7 @@ code {
 <p><a href="#FormMode">FormMode (var)</a></p>
 <p><a href="#MUI">MUI (module)</a></p>
 <p><a href="#MUI.UploadPic">MUI.UploadPic (class)</a></p>
+<p><a href="#MUI.options.xparam">MUI.options.xparam (var)</a></p>
 <p><a href="#MUI.setTopbarColor">MUI.setTopbarColor (fn)</a></p>
 <p><a href="#Plugins">Plugins (class)</a></p>
 <p><a href="#Plugins.exists">Plugins.exists (fn)</a></p>
@@ -116,6 +117,7 @@ code {
 <p><a href="#deleteParam">deleteParam (fn)</a></p>
 <p><a href="#deleteUrlParam">deleteUrlParam (fn)</a></p>
 <p><a href="#deviceready">deviceready (key)</a></p>
+<p><a href="#dfdLogin">dfdLogin (var)</a></p>
 <p><a href="#disableBatch">disableBatch (var)</a></p>
 <p><a href="#doSpecial">doSpecial (fn)</a></p>
 <p><a href="#enhanceWithin">enhanceWithin (fn)</a></p>
@@ -244,7 +246,6 @@ code {
 <p><a href="#setDocTitle">setDocTitle (fn)</a></p>
 <p><a href="#setFormData">setFormData (fn)</a></p>
 <p><a href="#setFormSubmit">setFormSubmit (fn)</a></p>
-<p><a href="#setOnError">setOnError (fn)</a></p>
 <p><a href="#setStorage">setStorage (fn)</a></p>
 <p><a href="#setTimeBox">setTimeBox (fn)</a></p>
 <p><a href="#setUrl">setUrl (fn)</a></p>
@@ -272,6 +273,7 @@ code {
 <p><a href="#useBatchCall">useBatchCall (fn)</a></p>
 <p><a href="#validateEntry">validateEntry (fn)</a></p>
 <p><a href="#waitFor">waitFor (fn)</a></p>
+<p><a href="#windowOnError">windowOnError (fn)</a></p>
 </div><hr>
 </div>
 <div class="block">
@@ -1302,7 +1304,7 @@ var arr = mCommon.rs2Array(rs);</code></pre>
 <p class="fn"><strong>@fn <a id="getFormItem">getFormItem</a></strong> (ji)</p>
 <p>获取对话框上一个组件的访问器。示例，设置名为orderId的组件值：</p>
 <pre><code>var ji = jdlg.find("[name=orderId]"); // 或者用 var ji = $(frm.orderId);
-var it = WUI.getFormItem(ji);
+var it = WUI.getFormItem(ji); // 或者用 var it = ji.gn()
 it.setValue("hello"); // 类似于ji.val("hello")，但支持各种复杂组件</code></pre>
 <p>还可以用更简洁的jo.gn，以及支持用链式风格的调用：</p>
 <pre><code>var it = jdlg.gn("orderId");
@@ -1660,9 +1662,9 @@ function doNext() { }</code></pre>
 <pre><code>throw new DirectReturn();</code></pre>
 <p>可直接调用app_abort();</p></div>
 <div class="block">
-<h2 id="setOnError">@fn setOnError()</h2>
-<p>一般框架自动设置onerror函数；如果onerror被其它库改写，应再次调用该函数。<br />
-allow throw(&quot;abort&quot;) as abort behavior.</p></div>
+<h2 id="windowOnError">@fn windowOnError()</h2>
+<p>框架自动在脚本出错时弹框报错，并上报服务端(syslog).<br />
+可通过MUI.options.skipErrorRegex忽略指定错误。</p></div>
 <div class="block">
 <h2 id="m_enhanceFn">@var m_enhanceFn</h2></div>
 <div class="block">
@@ -2815,6 +2817,10 @@ function onShowPage(pageRef, opt) {
     return page == "hello" || /^test/.test(page);
 }</code></pre></div>
 <div class="block">
+<h2 id="MUI.options.xparam">@var MUI.options.xparam</h2>
+<p>参数加密特性。默认为1（开启），在后端接口返回当前是测试模式时，会改为0（关闭）。<br />
+也可以在chrome控制台中直接修改，如<code>MUI.options.xparam=0</code>。</p></div>
+<div class="block">
 <h2 id="setFormSubmit">@fn setFormSubmit(jf, fn?, opt?={validate?, onNoAction?})</h2>
 <p class="param"><strong>@param fn</strong>  Function(data); 与callSvr时的回调相同，data为服务器返回的数据。</p>
 <p>函数中可以使用this[&quot;userPost&quot;] 来获取post参数。</p>
@@ -2946,7 +2952,13 @@ function handleLogin(data)
 }
 else if (role == "MA") {
     MUI.options.homePage = "#ma-home";
-}</code></pre></div>
+}</code></pre>
+<p class="var"><strong>@var <a id="dfdLogin">dfdLogin</a></strong> </p>
+<p>(v6) 用于在登录完成状态下执行操作的Deferred/Promise对象。<br />
+示例：若未登录，则在登录后显示消息；若已登录则直接显示消息</p>
+<pre><code>WUI.dfdLogin.then(function () {
+    app_show("hello");
+});</code></pre></div>
 <div class="block">
 <h2 id="initClient">@fn initClient(param?)</h2></div>
 <div class="block">

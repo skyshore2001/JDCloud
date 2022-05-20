@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2022-03-24</div>
+<div>最后更新：2022-05-20</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -78,6 +78,8 @@ code {
 <p><a href="#.wui-notCond">.wui-notCond (key)</a></p>
 <p><a href="#.wui-page">.wui-page (key)</a></p>
 <p><a href="#.wui-picker">.wui-picker (key)</a></p>
+<p><a href="#.wui-picker-edit">.wui-picker-edit (key)</a></p>
+<p><a href="#.wui-picker-help">.wui-picker-help (key)</a></p>
 <p><a href="#.wui-readonly">.wui-readonly (key)</a></p>
 <p><a href="#.wui-subobj">.wui-subobj (key)</a></p>
 <p><a href="#.wui-upload">.wui-upload (key)</a></p>
@@ -122,6 +124,7 @@ code {
 <p><a href="#WUI.options">WUI.options (var)</a></p>
 <p><a href="#WUI.options.moduleExt">WUI.options.moduleExt (var)</a></p>
 <p><a href="#WUI.options.statFormatter">WUI.options.statFormatter (var)</a></p>
+<p><a href="#WUI.options.xparam">WUI.options.xparam (var)</a></p>
 <p><a href="#WUI.pivot">WUI.pivot (fn)</a></p>
 <p><a href="#WUI.rs2Stat">WUI.rs2Stat (fn)</a></p>
 <p><a href="#WUI.showByType">WUI.showByType (fn)</a></p>
@@ -148,6 +151,7 @@ code {
 <p><a href="#callSvrExt[].makeUrl">callSvrExt[].makeUrl (key)</a></p>
 <p><a href="#callSvrSync">callSvrSync (fn)</a></p>
 <p><a href="#canDo">canDo (fn)</a></p>
+<p><a href="#checkIdCard">checkIdCard (fn)</a></p>
 <p><a href="#closeDlg">closeDlg (fn)</a></p>
 <p><a href="#compressImg">compressImg (fn)</a></p>
 <p><a href="#datagrid.formatter">datagrid.formatter (key)</a></p>
@@ -232,6 +236,7 @@ code {
 <p><a href="#jQuery.fn.mycombobox">jQuery.fn.mycombobox (fn)</a></p>
 <p><a href="#jdEnumMap">jdEnumMap (key)</a></p>
 <p><a href="#jdModule">jdModule (fn)</a></p>
+<p><a href="#jdPush">jdPush (fn)</a></p>
 <p><a href="#jquery-mycombobox">jquery-mycombobox (module)</a></p>
 <p><a href="#kvList2Str">kvList2Str (fn)</a></p>
 <p><a href="#lastError">lastError (var)</a></p>
@@ -814,7 +819,10 @@ jtbl.treegrid(dgOpt);</code></pre>
 <p>如果不加wui-notCond类，生成的查询参数为：<code>{cond: "status=0"}</code>；加上后，生成查询参数如：<code>{status: 0}</code>.</p>
 <p>(v5.3)</p>
 <ul>
-<li>在对话框中三击（2秒内）字段标题栏，可快速按查询该字段。Ctrl+三击为追加过滤条件。</li>
+<li>
+<p>在对话框中三击（2秒内）字段标题栏，可快速按查询该字段。Ctrl+三击为追加过滤条件。<br />
+(v6.1)也可以在对话框的字段标题上点右键，在菜单中选择“查询该字段”。</p>
+</li>
 <li>在页面工具栏中，按住Ctrl(batch模式)点击“刷新”按钮，可清空当前查询条件。</li>
 </ul>
 <p class="key"><strong>@key <a id="wui-find-hint">wui-find-hint</a></strong>  控制查询条件的生成。(v5.5) </p>
@@ -1621,6 +1629,59 @@ var arr = mCommon.rs2Array(rs);</code></pre>
 <p>返回模块映射列表。</p>
 <pre><code>var moduleMap = jdModule(); // 返回 { "jdcloud.common": JdcloudCommon, ... }</code></pre></div>
 <div class="block">
+<h2 id="jdPush">@fn jdPush(app, handleMsg, opt?={user, url, dataType})</h2>
+<p>支持出错自动重连的websocket client. 默认连接同域下的jdserver。</p>
+<ul>
+<li>app: 应用，或通道名，与后端推送应用名保持一致，一般使用项目名。</li>
+<li>handleMsg(msg, ws): 回调函数. msg是JS对象。ws是websocket对象, 可发消息ws.send(str)、关闭ws.close()</li>
+<li>opt.user: 注册用户，默认使用g_data.userInfo.id，如果不存在则报错。</li>
+<li>opt.url: websocket地址，默认值是相对路径<code>/jdserver</code>，也可指定全路径，如 <code>ws://oliveche.com/jdserver</code></li>
+<li>opt.dataType=json: 默认只有json对象才回调handleMsg。设置text则处理所有数据。</li>
+</ul>
+<p>示例：</p>
+<pre><code>// 返回websocket proxy对象
+var ws = jdPush("tighten", function (msg, ws) {
+    console.log(msg)
+    // 发送消息
+    ws.send({ac:"hello"}); // 发送JS对象会自动转JSON发送。
+}, opt);
+
+// 关闭
+ws.close();</code></pre>
+<p>开发环境可配置代理服务器连接jdserver，比如使用Apache，在web根目录下配置.htaccess:<br />
+（确保已打开wstunnel模块且允许htaccess文件）</p>
+<pre><code># 连接已部署的websocket server
+rewriterule ^jdserver ws://oliveche.com/jdserver [P,L]
+
+# 或连本地websocket server (注意最后/不可少)
+# rewriterule ^jdserver ws://127.0.0.1:8081/ [P,L]</code></pre>
+<p>jdserver同时支持http和websocket，建议设置为：（注意顺序）</p>
+<pre><code>rewriterule ^jdserver/(.+) http://127.0.0.1:8081/$1 [P,L]
+rewriterule ^jdserver ws://127.0.0.1:8081/ [P,L]</code></pre>
+<p>或</p>
+<pre><code>rewriterule ^jdserver/(.+) http://oliveche.com/jdserver/$1 [P,L]
+rewriterule ^jdserver ws://oliveche.com/jdserver/ [P,L]</code></pre>
+<p>这样，可以使用基于HTTP的push接口给别的客户端发消息：</p>
+<pre><code>callSvr("/jdserver/push", $.noop, {
+    app: "app1",
+    user: "*", // 表示发给app1中所有人。也可指定`user1`, `user1,user2`, `user*`这样
+    msg: {
+        ac: "msg1",
+        data: "hello"
+    }
+});
+// 返回推送人次数量，示例：2</code></pre>
+<p>上面通过msg字段发送js对象。<br />
+注意jdPush默认只处理json消息: handleMsg(jsonObj)，其它消息只在控制台打印;<br />
+想处理其它消息，可调用jdPush时设置opt.dataType='text'</p>
+<p>取在线用户：</p>
+<pre><code>callSvr("/jdserver/getUsers", { app: "app1" });
+// 返回示例： ['user1', 'user2' ]</code></pre>
+<p>示例：websocket连接jdserver，然后给自己发消息</p>
+<pre><code>jdPush('app1'); // 默认用户为g_data.userInfo.id
+callSvr('/jdserver/push', {app: 'app1', user: '*', msg: 'hi'});
+// 在控制台可收到hi</code></pre></div>
+<div class="block">
 <h2 id="getFormData">@fn getFormData(jo, doGetAll)</h2>
 <p>取DOM对象中带name属性的子对象的内容, 放入一个JS对象中, 以便手工调用callSvr.</p>
 <p>注意: </p>
@@ -1697,7 +1758,7 @@ var arr = mCommon.rs2Array(rs);</code></pre>
 <p class="fn"><strong>@fn <a id="getFormItem">getFormItem</a></strong> (ji)</p>
 <p>获取对话框上一个组件的访问器。示例，设置名为orderId的组件值：</p>
 <pre><code>var ji = jdlg.find("[name=orderId]"); // 或者用 var ji = $(frm.orderId);
-var it = WUI.getFormItem(ji);
+var it = WUI.getFormItem(ji); // 或者用 var it = ji.gn()
 it.setValue("hello"); // 类似于ji.val("hello")，但支持各种复杂组件</code></pre>
 <p>还可以用更简洁的jo.gn，以及支持用链式风格的调用：</p>
 <pre><code>var it = jdlg.gn("orderId");
@@ -2803,9 +2864,14 @@ WUI.showPage("pageEmployee", {title: "非管理员", pageFilter:{cond: {perms:"!
 <div class="block">
 <h2 id="dupDlg">@fn dupDlg(jdlg)</h2>
 <p>复制并添加对象。<br />
-对象对话框在更新模式下，按Ctrl-D可复制当前对象，进入添加模式。</p>
+对象对话框在更新模式下，按Ctrl-D或右键对话框空白处选择“再次新增”，可复制当前对象，进入添加模式。</p>
 <p>支持对子表进行复制，注意仅当子表是允许添加的才会被复制（wui-subobj组件，且设置了valueField和dlg选项）。<br />
 TODO 由于子表支持懒加载，目前有个限制，如果子表尚未加载则无法复制；可手工点击tab页让它加载才能复制。</p>
+<p>在对话框进入新增模式后，编号(id)会被清除，其它字段保留，<br />
+如果对话框编写过新增时的逻辑，比如自动填写或disable某些字段，这些逻辑会生效。</p>
+<p>如果字段在新增时是disabled状态，比如“添加时间”等字段，尽管它仍显示为旧数据且无法修改，<br />
+但在添加时它并不会提交，所以没有影响。</p>
+<p>如果要定制复制时的逻辑，可以使用下面事件：</p>
 <p class="key"><strong>@key <a id="event-duplicate">event-duplicate</a></strong> (ev, data) 对话框上复制添加对象</p>
 <p>如果要定制添加行为，可在对话框的duplicate事件中修改数据。示例：</p>
 <pre><code>jdlg.on("duplicate", function (ev, data) {
@@ -3472,6 +3538,7 @@ jtbl.datagrid({
         var objParam = opt.objParam; // {id, mode, jtbl?, offline?...}
     }
 }</code></pre>
+<p>(v6.1) 通过jdlg.prop('objParam')可取到对象对话框的参数。</p>
 <p class="param"><strong>@param opt.reloadRow</strong> () 可用于刷新本对话框关联的表格行数据</p>
 <p>事件参考：</p>
 <p class="see"><strong>@see <a href="#showDlg">showDlg</a></strong> </p></div>
@@ -3758,17 +3825,35 @@ WUI.GridHeaderMenu.showObjLog = function (jtbl) {
     WUI.showPage("pageObjLog", "操作日志!", [null, param]);
 };</code></pre></div>
 <div class="block">
-<h2 id="showDlgQuery">@fn showDlgQuery(data?={ac, param})</h2></div>
+<h2 id="showDlgQuery">@fn showDlgQuery(data?={ac, param})</h2>
+<p>显示高级查询对话框。在表头左上角右键菜单中有“高级查询”对话框。</p></div>
+<div class="block">
+<h2 id="checkIdCard">@fn checkIdCard(idcard)</h2>
+<p>身份证校验，示例：</p>
+<pre><code>var rv = WUI.checkIdCard("310115200809090927"); // false
+var rv = WUI.checkIdCard("310115200809090928"); // true</code></pre></div>
 <div class="block">
 <h2 id=".easyui-validatebox">@key .easyui-validatebox</h2>
 <p>为form中的组件加上该类，可以限制输入类型，如：</p>
-<pre><code>&lt;input name="amount" class="easyui-validatebox" data-options="required:true,validType:'number'" &gt;</code></pre>
+<pre><code>&lt;input name="amount" class="easyui-validatebox" data-options="validType:'number'" required&gt;</code></pre>
 <p>validType还支持：</p>
 <ul>
 <li>number: 数字</li>
 <li>uname: 4-16位用户名，字母开头</li>
 <li>cellphone: 11位手机号</li>
+<li>usercode: 11位手机号或客户代码</li>
+<li>idcard: 18位身份证号</li>
 <li>datetime: 格式为&quot;年-月-日 时:分:秒&quot;，时间部分可忽略</li>
+<li>equalTo(selector): 校验两次密码输入相同，示例：<code>validType:'equalTo[\'#txtNewPwd\']'</code>。它会找在同一个form下的指定组件与其比较。</li>
+<li>pwd: 4-16位密码</li>
+</ul>
+<p>注意：</p>
+<ul>
+<li>
+<p>required选项定义是否允许为空。它可以写在data-options中如<code>required:true;validType:'number'</code>，也可以单独以属性方式来写。<br />
+建议使用属性方式来写，这样在对话框上会自动添加&quot;*&quot;号标识。</p>
+</li>
+<li>如果未填写，则不检查validType指定的rule。除非在rule中定义了<code>checkEmpty:true</code>选项(这是jdcloud扩展easyui的选项)。</li>
 </ul>
 <p>其它自定义规则(或改写上面规则)，可通过下列方式扩展：</p>
 <pre><code>$.extend($.fn.validatebox.defaults.rules, {
@@ -3842,6 +3927,8 @@ WUI.options.moduleExt.callSvr = function (name) {
 }</code></pre>
 <p>详细用法案例，可参考：筋斗云开发实例讲解 - 系统复用与微服务方案。</p></div>
 <div class="block">
+<h2 id="WUI.options.xparam">@var WUI.options.xparam</h2></div>
+<div class="block">
 <h2 id="app_alert">@fn app_alert(msg, [type?=i], [fn?], opt?={timeoutInterval?, defValue?, onCancel()?})</h2>
 <p class="param"><strong>@param type</strong>  对话框类型: "i": info, 信息提示框; "e": error, 错误框; "w": warning, 警告框; "q"(与app_confirm一样): question, 确认框(会有"确定"和"取消"两个按钮); "p": prompt, 输入框</p>
 <p class="param"><strong>@param fn</strong>  Function(text?) 回调函数，当点击确定按钮时调用。当type="p" (prompt)时参数text为用户输入的内容。</p>
@@ -3856,12 +3943,14 @@ app_alert("操作成功", function () {
 // 错误框
 app_alert("操作失败", "e");
 
-// 确认框(确定/取消)
+// 确认框(confirm, 确定/取消)
+// 仅当点击“确定”按钮才会进入回调函数。如果想处理取消事件，可使用opt.onCancel()回调
 app_alert("立即付款?", "q", function () {
     WUI.showPage("#pay");
 });
 
-// 输入框
+// 提示输入框(prompt)
+// 仅当点击“确定”按钮且输入值非空时才会进入回调函数。可使用opt.defValue指定缺省值
 app_alert("输入要查询的名字:", "p", function (text) {
     callSvr("Book.query", {cond: "name like '%" + text + "%'"});
 });</code></pre></div>
@@ -5062,12 +5151,20 @@ which可以是Tab页的索引数或标题.<br />
 <pre><code>var jtabs = jdlg.find(".easyui-tabs");
 WUI.toggleTab(jtabs, "组合物料", formData.type == "P");</code></pre></div>
 <div class="block">
-<h2 id=".wui-picker">@key .wui-picker 字段后的工具按钮</h2>
+<h2 id=".wui-picker">@key .wui-picker 字段编辑框中的小按钮</h2>
+<p class="key"><strong>@key <a id=".wui-picker-edit">.wui-picker-edit</a></strong>  手工编辑按钮</p>
 <p>示例：输入框后添加一个编辑按钮，默认不可编辑，点按钮编辑：</p>
 <pre><code>&lt;input name="value" class="wui-picker-edit"&gt;</code></pre>
-<p>尽管不可编辑，该字段还是可编辑的；要查看该字段是否只读，以及设置字段只读，可以：</p>
-<pre><code>var isReadonly = jo.triggerHandler("readonly"); // 取值
-jo.triggerHandler("readonly", isReadonly); // 设置，也可以用trigger方法</code></pre>
+<p>特别地：</p>
+<ul>
+<li>添加时，如果有required属性，默认可编辑；</li>
+<li>查找时，如果这是个可查找字段则可编辑，且不显示picker按钮</li>
+</ul>
+<p>要查看该字段是否绝对只读（不显示picker按钮，不可手工编辑），可以通过gn函数：</p>
+<pre><code>var it = jo.gn(); // 或从对话框来取如 jdlg.gn("xxx")
+var ro = it.readonly();
+it.readonly(ro);</code></pre>
+<p class="key"><strong>@key <a id=".wui-picker-help">.wui-picker-help</a></strong>  帮助按钮</p>
 <p>示例：输入框后添加一个帮助按钮：</p>
 <pre><code>&lt;input name="value" class="wui-picker-help" data-helpKey="取消工单"&gt;</code></pre>
 <p>点击帮助按钮，跳往WUI.options.helpUrl指定的地址。如果指定data-helpKey，则跳到该锚点处。</p>
@@ -5156,7 +5253,7 @@ var rv = diffObj("hello", "hello");
 var rv = diffObj("hello", 99);
 // rv: true</code></pre></div>
 <div class="block">
-<h2 id="showDataReport">@fn showDataReport(opt={ac, @gres, @gres2?, res?, cond?, title?="统计报表", detailPageName?, detailPageParamArr?, resFields?, cond2?, tmField?, showChart?})</h2>
+<h2 id="showDataReport">@fn showDataReport(opt={ac, @gres, @gres2?, res?, cond?, title?="统计报表", detailPageName?, detailPageParamArr?, resFields?, cond2?, tmField?, showChart?, chartType?=line})</h2>
 <p>选项说明：</p>
 <ul>
 <li>res: 汇总字段，默认为<code>COUNT(*) 数量</code></li>
@@ -5178,14 +5275,16 @@ var rv = diffObj("hello", 99);
 注意gres,gres2,tmField中的字段会被自动加入，在resFields中指定或不指定都可以。</p>
 </li>
 <li>showChart: 是否显示统计图表对话框。</li>
+<li>tmUnit: 用于统计图，特别用于月报、日报等，会自动补齐缺少的时间。常用有：&quot;y,m&quot;-年月,&quot;y,m,d&quot;-年月日。注意一旦指定tmUnit则orderby选项自动与tmUnit相同。</li>
 <li>
-<p>tmUnit: 用于统计图，特别用于月报、日报等，会自动补齐缺少的时间。常用有：&quot;y,m&quot;-年月,&quot;y,m,d&quot;-年月日。注意一旦指定tmUnit则orderby选项自动与tmUnit相同。</p>
+<p>chartType: line-折线图(默认), bar-直方图, pie-饼图</p>
 </li>
 <li>showSum: 自动添加统计行或列</li>
 <li>
 <p>pivotSumField: 统计列列名，默认为&quot;合计&quot;</p>
 </li>
 <li>queryParam: 直接指定查询参数，如<code>{for: "xx报表"}</code></li>
+<li>frozen: 指定冻结列个数，冻结列不随着滚动条左右移动，<code>frozen:1</code>表示冻结1列。参考[pageSimple]中的冻结列。</li>
 </ul>
 <p class="see"><strong>@see <a href="#JdcloudStat.tmUnit">JdcloudStat.tmUnit</a></strong>  </p>
 <ul>
@@ -5267,12 +5366,21 @@ echarts示例：<a href="https://echarts.apache.org/examples/zh/index.html">http
 </ul>
 <p class="see"><strong>@see <a href="#WUI.rs2Stat">WUI.rs2Stat</a></strong>  图表数据转换</p>
 <p class="see"><strong>@see <a href="#WUI.initChart　显示图表">WUI.initChart　显示图表</a></strong> </p>
+<p class="see"><strong>@see <a href="#pageSimple">pageSimple</a></strong>  通用列表页</p>
 <p>示例：</p>
 <pre><code class="language-javascript">// 各状态订单数: 柱图
 WUI.showDlgChart(callSvr("Ordr.query", {
     gres: "status =CR:新创建;RE:已完成;CA:已取消",
     res: "count(*) 总数",
 }));
+
+// 也可以与pageSimple列表页结合，同时显示列表页和统计图：
+var url = WUI.makeUrl("Ordr.query", {
+    gres: "status 状态=CR:新创建;RE:已完成;CA:已取消",
+    res: "count(*) 总数",
+});
+var showChartParam = []; // 必须指定数组，即showDlgChart的后三个参数：[rs2StatOpt, seriesOpt, chartOpt]
+WUI.showPage("pageSimple", "订单统计!", [url, null, null, showChartParam]);
 
 // 各状态订单数: 饼图，习惯上应占比排序
 WUI.showDlgChart(callSvr("Ordr.query", {
@@ -5305,6 +5413,15 @@ WUI.showDlgChart(callSvr("Ordr.query", {
 }), {  // rs2StatOpt
     tmUnit: "y,m"
 });
+
+// 也可以与pageSimple列表页结合，同时显示列表页和统计图：
+var url = WUI.makeUrl("Ordr.query", {
+    gres: "y 年,m 月",
+    res: "count(*) 总数",
+    orderby: "y,m"
+});
+var showChartParam = [ {tmUnit: "y,m"} ];
+WUI.showPage("pageSimple", "订单统计!", [url, null, null, showChartParam]);
 
 // 订单各月占比，显示为饼图，哪个月订单多则排在前
 WUI.showDlgChart(callSvr("Ordr.query", {
@@ -5493,6 +5610,12 @@ value: e =&gt; e.x + "-" + e.y</code></pre>
 });</code></pre>
 <p class="see"><strong>@see <a href="#jQuery.fn.gn">jQuery.fn.gn</a></strong> </p>
 <h4 id="setDlgLogic-3 动态设置combogrid/subobj等组件选项">3 动态设置combogrid/subobj等组件选项</h4>
+<p>可使用<code>setOption(e, it, gn)</code>来设置组件。</p>
+<ul>
+<li>e: 当前数据</li>
+<li>it: 当前组件的访问器，比如it.val('xx'), it.readonly(true)等</li>
+<li>gn: 可访问对话框中各组件，如gn('ac').val()等</li>
+</ul>
 <p>示例：type=&quot;入库&quot;时，下拉列表moveType字段显示入库选项，type=&quot;出库&quot;时，显示出库选项</p>
 <pre><code>var MoveTypeMap_出库 = {
     602: "销售出库冲销",
@@ -5508,9 +5631,11 @@ var MoveTypeMap_入库 = {
 
 // html中的组件： &lt;input name="moveType" class="my-combobox"&gt;
 WUI.setDlgLogic(jdlg, "moveType", {
-    setOption: function (e) { return {
-        jdEnumMap: e.type == "入库"? MoveTypeMap_入库: MoveTypeMap_出库
-    }},
+    setOption: function (e, it, gn) {
+        return {
+            jdEnumMap: e.type == "入库"? MoveTypeMap_入库: MoveTypeMap_出库
+        }
+    },
     watch: "type"
 });</code></pre>
 <p>也可以直接设置静态值：</p>
@@ -6196,6 +6321,8 @@ callSvr("ApiLog.query", function (data) {
 <p style="margin-left:0em"><a href="#pageSimple-2 示例2：先弹出查询条件对话框，设置后再显示报表">2 示例2：先弹出查询条件对话框，设置后再显示报表</a></p>
 <p style="margin-left:0em"><a href="#pageSimple-3 示例3：菜单上增加报表，且定制报表列实现交互">3 示例3：菜单上增加报表，且定制报表列实现交互</a></p>
 <p style="margin-left:0em"><a href="#pageSimple-4 辅助列">4 辅助列</a></p>
+<p style="margin-left:0em"><a href="#pageSimple-5 显示统计图">5 显示统计图</a></p>
+<p style="margin-left:0em"><a href="#pageSimple-6 冻结列/固定列">6 冻结列/固定列</a></p>
 </div>
 <p>用于快捷展示报表。</p>
 <h4 id="pageSimple-1 示例1：列表页上加查看报表按钮">1 示例1：列表页上加查看报表按钮</h4>
@@ -6305,7 +6432,25 @@ function onInitGrid(jpage, jtbl, dgOpt, columns, data)
             col.formatter = Formatter.linkTo("flowId_", "#dlgFlow");
     });
 }</code></pre>
-<p>上面flowId字段只用于链接，不显示，也不会导出。</p></div>
+<p>上面flowId字段只用于链接，不显示，也不会导出。</p>
+<h4 id="pageSimple-5 显示统计图">5 显示统计图</h4>
+<p>在显示表格同时可以显示统计图。它与表格共用数据源。</p>
+<pre><code>// 也可以与pageSimple列表页结合，同时显示列表页和统计图：
+var url = WUI.makeUrl("Ordr.query", {
+    gres: "y 年,m 月",
+    res: "count(*) 总数",
+    orderby: "y,m"
+});
+var showChartParam = [ {tmUnit: "y,m"} ];
+WUI.showPage("pageSimple", "订单统计!", [url, null, null, showChartParam]);</code></pre>
+<p>其中showChartParam必须指定为一个数组，即WUI.showDlgChart函数的后三个参数：[rs2StatOpt, seriesOpt, chartOpt]</p>
+<p class="see"><strong>@see <a href="#showDlgChart">showDlgChart</a></strong>  显示统计图</p>
+<h4 id="pageSimple-6 冻结列/固定列">6 冻结列/固定列</h4>
+<p>如果列很多，会显示滚动条。<br />
+通过在queryParams中设置frozon，可指定前几列可以设置为冻结列，不跟随滚动条。</p>
+<p>示例：</p>
+<pre><code>WUI.showPage("pageSimple", "订单月报表!", [WUI.makeUrl("Ordr.query"), {frozen: 1}]);</code></pre>
+<p>类似地，若要冻结前2列，则指定<code>{frozen: 2}</code>。</p></div>
 <div class="block">
 <h2 id="dlgReportCond">@module dlgReportCond</h2>
 <pre><code>DlgReportCond.show(onOk, meta?, inst?);</code></pre>
