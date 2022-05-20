@@ -10218,6 +10218,7 @@ var GridHeaderMenu = {
 		'<div id="copyCol">复制本列</div>',
 		'<div id="statCol" data-options="iconCls:\'icon-sum\'">统计本列</div>',
 		'<div id="doFindCell" data-options="iconCls:\'icon-search\'">查询本列</div>',
+		'<div id="freezeCol" data-options="iconCls:\'icon-lock\'">冻结列</div>',
 	],
 	// 以下为菜单项处理函数
 
@@ -10467,6 +10468,25 @@ var GridHeaderMenu = {
 			var doAppendFilter = WUI.isBatchMode();
 			WUI.reload(jtbl, undefined, param, doAppendFilter);
 		}, {defValue: defValue});
+	},
+	freezeCol: function (jtbl, field) {
+		var dgOpt = jtbl.datagrid("options");
+		if (dgOpt.columns.length > 1) {
+			app_alert("不支持", "w");
+			return;
+		}
+		var cols = [];
+		if (dgOpt.frozenColumns[0])
+			cols.push.apply(cols, dgOpt.frozenColumns[0]);
+		cols.push.apply(cols, dgOpt.columns[0]);
+		var col = cols.findIndex(function (e) {
+			return e.field == field;
+		});
+		dgOpt.quickAutoSize = false; // TODO: 暂不支持性能优化，数据很多（比如几百行，且列很多）时会慢
+		jtbl.datagrid({
+			frozenColumns: [cols.slice(0, col+1)],
+			columns: [cols.slice(col+1)]
+		});
 	}
 }
 self.GridHeaderMenu = GridHeaderMenu;

@@ -2863,6 +2863,7 @@ function diffObj(obj, obj1)
 - pivotSumField: 统计列列名，默认为"合计"
 
 - queryParam: 直接指定查询参数，如`{for: "xx报表"}`
+- frozen: 指定冻结列个数，冻结列不随着滚动条左右移动，`frozen:1`表示冻结1列。参考[pageSimple]中的冻结列。
 
 @see JdcloudStat.tmUnit 
 
@@ -3027,7 +3028,7 @@ function showDataReport(opt, showPageOpt)
 		}
 	}
 	var url = WUI.makeUrl(opt.ac, queryParams);
-	WUI.showPage("pageSimple", opt.title + "!", [url, null, onInitGrid]);
+	WUI.showPage("pageSimple", opt.title + "!", [url, {frozen: opt.frozen}, onInitGrid]);
 
 	function onInitGrid(jpage, jtbl, dgOpt, columns, data)
 	{

@@ -154,6 +154,17 @@
 其中showChartParam必须指定为一个数组，即WUI.showDlgChart函数的后三个参数：[rs2StatOpt, seriesOpt, chartOpt]
 
 @see showDlgChart 显示统计图
+
+## 冻结列/固定列
+
+如果列很多，会显示滚动条。
+通过在queryParams中设置frozon，可指定前几列可以设置为冻结列，不跟随滚动条。
+
+示例：
+
+	WUI.showPage("pageSimple", "订单月报表!", [WUI.makeUrl("Ordr.query"), {frozen: 1}]);
+
+类似地，若要冻结前2列，则指定`{frozen: 2}`。
 */
 function initPageSimple(url, queryParams, onInitGrid, showChartParam)
 {
@@ -185,6 +196,13 @@ function initPageSimple(url, queryParams, onInitGrid, showChartParam)
 			dgOpt.pageList = [pagesz];
 		}
 		onInitGrid && onInitGrid(jpage, jtbl, dgOpt, columns, data);
+		if (queryParams && queryParams.frozen) { // 冻结列
+			var cnt = queryParams.frozen;
+			dgOpt.frozenColumns = [columns.slice(0, cnt)];
+			dgOpt.columns = [columns.slice(cnt)];
+			dgOpt.quickAutoSize = false; // TODO: 暂不支持性能优化，数据很多（比如几百行，且列很多）时会慢
+			delete queryParams.frozen;
+		}
 		jtbl.datagrid(dgOpt);
 		var opt = jtbl.datagrid("options");
 		opt.url = url;
