@@ -1803,7 +1803,7 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 				// 支持扩展的SUMIF/COUNTIF函数，'sumif(id>=100 and id<200, amount) s1, countif(id>10) c2'
 				// 重点防范: 1. 未知函数调用（字段中不可有括号）2. 变量(字符@);  比如 'select database(), user(), sleep(1), @@autocommit'这种调用
 				// CONCAT/IF这些能返回字符串的函数不建议开放。
-				if (!$gres && preg_match('/(\w+)\(([\w.\'* ,+-\/<>=]*)\)\s+(?:AS\s+)?([^,]+)/iu', $col, $ms)) {
+				if (!$gres && preg_match('/(\w+)\(([\w.\'* ,+-\/<>=:]*)\)\s+(?:AS\s+)?([^,]+)/iu', $col, $ms)) {
 					list($fn, $expr, $alias) = [strtoupper($ms[1]), $ms[2], $ms[3]];
 					if (! in_array($fn, ["COUNT", "SUM", "AVG", "MAX", "MIN", "COUNTIF", "SUMIF"]))
 						jdRet(E_FORBIDDEN, "function not allowed: `$fn`");
