@@ -30,6 +30,7 @@
 <li><a href="#关于空值"><span class="toc-section-number">1.1</span> 关于空值</a></li>
 <li><a href="#多应用支持与应用标识"><span class="toc-section-number">1.2</span> 多应用支持与应用标识</a></li>
 <li><a href="#测试模式及调试等级"><span class="toc-section-number">1.3</span> 测试模式及调试等级</a></li>
+<li><a href="#通用接口格式参数"><span class="toc-section-number">1.4</span> 通用接口格式参数</a></li>
 </ul></li>
 <li><a href="#接口描述"><span class="toc-section-number">2</span> 接口描述</a><ul>
 <li><a href="#接口原型描述"><span class="toc-section-number">2.1</span> 接口原型描述</a></li>
@@ -172,6 +173,20 @@ getOrder(id) -&gt; {id, dscr, total}</code></pre>
 </ul>
 <p>接口服务可配置调试等级为0到9，向前端输出不同级别的调试信息。一般设置为9（最高）时，可以查看SQL调用日志，便于调试SQL语句。 调试信息仅在测试模式下生效。</p>
 <p><strong>线上生产环境不可设置为测试模式。</strong> 当前端发现服务处于测试模式，应给予明确提示。</p>
+<h3 id="通用接口格式参数"><span class="header-section-number">1.4</span> 通用接口格式参数</h3>
+<p>接口默认返回格式为<code>[0, 数据, ...]</code>，支持以下通用URL参数：</p>
+<ul>
+<li>_raw: 只返回数据部分（第2元素）；</li>
+<li>_jsonp: 返回函数调用或变量赋值形式，是合法的javascript语句。</li>
+</ul>
+<p>示例：<code>callSvr(&quot;Ordr.get&quot;, {res: &quot;id, tm, amount&quot;})</code>假设返回<code>[0, {id: 100, tm: '2020-10-10', amount: 380.5}]</code>，那么：</p>
+<ul>
+<li><p><code>callSvr(&quot;Ordr.get&quot;, {res: &quot;id, tm, amount&quot;, _raw:1})</code>返回<code>{id: 100, tm: '2020-10-10', amount: 380.5}</code></p></li>
+<li><p><code>callSvr(&quot;Ordr.get&quot;, {res: &quot;id, tm, amount&quot;, _raw:2})</code>返回<code>100  2020-10-10  380.5</code> 字段间以TAB分隔的表；如果有多条记录则可以有多行。可用于与shell script集成。</p></li>
+<li><p><code>callSvr(&quot;Ordr.get&quot;, {res: &quot;id, tm, amount&quot;, _jsonp:'handleOrder'})</code>返回<code>handleOrder([0, {id: 100, tm: '2020-10-10', amount: 380.5}])</code> 即JS函数调用形式，可用于跨域调用。</p></li>
+<li><p><code>callSvr(&quot;Ordr.get&quot;, {res: &quot;id, tm, amount&quot;, _jsonp:'api_order='})</code>返回<code>api_order=[0, {id: 100, tm: '2020-10-10', amount: 380.5}]</code> 即JS变量赋值形式，可用于跨域调用。</p></li>
+<li><p><code>callSvr(&quot;Ordr.get&quot;, {res: &quot;id, tm, amount&quot;, _raw:1, _jsonp:'api_order='})</code>返回<code>api_order={id: 100, tm: '2020-10-10', amount: 380.5}</code> 两个参数可以组合使用。</p></li>
+</ul>
 <h2 id="接口描述"><span class="header-section-number">2</span> 接口描述</h2>
 <p>接口描述应包括接口原型和应用逻辑的说明。</p>
 <p>接口原型包括接口名、参数、请求数据、返回值的声明。应用逻辑常包括接口权限、字段自动完成逻辑、字段检查逻辑、关联数据添加或更新逻辑等。</p>
@@ -301,12 +316,12 @@ callSvr(&quot;Ordr.add&quot;, {res:&quot;id,status,total&quot;}, $.noop, {status
 {id: 810, status:&quot;CR&quot;, total: 100}</code></pre>
 <p>对象id支持自动生成。</p>
 <ul>
-<li><p>uniKey: 唯一索引字段. 如果指定, 则以该字段查询记录是否存在(调用query接口）, 存在则更新（调用set接口）。例如&quot;code&quot;, 也支持多个字段（用于关联表），如&quot;bpId,itemId&quot;。 uniKey支持使用虚拟字段（如关联字段）。 该字段常用于检查记录不存在则添加记录，存在则更新记录；也用于避免记录重复添加。 特别地，如果uniKey以&quot;!&quot;结尾（如&quot;code!&quot;），则表示必须匹配到记录，不匹配则报错而不做添加，常用于通过导入批量更新数据。若不加!后缀也可更新记录，但若不匹配时会误添加。</p></li>
+<li><p>uniKey: 唯一索引字段. 如果指定, 则以该字段查询记录是否存在(调用query接口）, 存在则更新（调用set接口）。例如&quot;code&quot;, 也支持多个字段（用于关联表），如&quot;bpId,itemId&quot;。 uniKey支持使用虚拟字段（如关联字段）。 该字段常用于检查记录不存在则添加记录，存在则更新记录；也用于避免记录重复添加。 特别地，如果uniKey以&quot;!&quot;结尾（如&quot;code!&quot;），则变成<strong>更新模式</strong>，表示必须匹配到记录，不匹配则报错而不做添加，常用于通过导入批量更新数据。 不加!后缀时虽然也可更新记录，但若不匹配时会误添加记录。</p></li>
 <li>uniKeyMode: 在uniKey匹配时，默认处理是更新操作，可以通过本参数来定制匹配后的操作，其值定义为：
 <ul>
 <li>set: （默认）转为更新操作（如果要更新的字段刚好就是uniKey字段，则忽略更新），接口最终返回已存在记录的id。</li>
-<li>error: 报错：已存在重复记录。</li>
-<li>ignore: 忽略添加操作，接口直接返回已存在记录的id。</li>
+<li>error: 如果已存在记录，则报错。在更新模式下等同于set，即记录不存在时报错。</li>
+<li>ignore: 忽略添加操作，接口直接返回已存在记录的id。在更新模式下，不添加，也不报错，以-1值返回记录id。</li>
 </ul></li>
 </ul>
 <p><strong>[更新操作]</strong></p>
@@ -555,10 +570,23 @@ window.open(url); // 下载文件</code></pre>
 })</code></pre>
 <p>返回示例：</p>
 <pre><code>{cnt: 82, amount: 35340}</code></pre>
-<p>也可以在查询的同时指定要统计哪些列，使用statRes字段。</p>
+<p>考虑安全性与便利性，res中只能使用白名单中的安全统计函数，包括：MAX, MIN, AVG, SUM, COUNT, SUMIF, COUNTIF. 函数名不区分大小写。</p>
+<p>其中SUMIF和COUNTIF是扩展函数，便于进行带条件的统计，如统计今日(假设日期为2020-10-10)、本月、今年的累计订单数和订单金额：</p>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {
+    res: &quot;COUNTIF(createTm&gt;=&#39;2020-10-10&#39;) 今日订单数, COUNTIF(createTm&gt;=&#39;2020-10-1&#39;) 本月订单数, COUNTIF(createTm&gt;=&#39;2020-1-1&#39;) 今年订单数, &quot; +
+        &quot;SUMIF(createTm&gt;=&#39;2020-10-10&#39;, amount) 今日订单额, SUMIF(createTm&gt;=&#39;2020-10-1&#39;, amount) 本月订单额, SUMIF(createTm&gt;=&#39;2020-1-1&#39;, amount) 今年订单额&quot;,
+    fmt: &quot;one&quot; 
+})</code></pre>
+<p>它等价于多次下面带cond参数的调用：</p>
+<pre><code>callSvr(&quot;Ordr.query&quot;, {
+    res: &quot;COUNT(1) 今日订单数, SUM(amount) 今日订单额&quot;,
+    cond: &quot;createTm&gt;&#39;2020-10-10&#39;&quot;,
+    fmt: &quot;one&quot; 
+})</code></pre>
+<p>也可以在普通查询的同时指定要统计哪些列，使用statRes字段。</p>
 <dl>
 <dt>statRes</dt>
-<dd>指定统计字段，会在分页返回结果中添加stat对象。注意fmt参数不能是one, array, hash等，只允许是list或默认（即hd格式）。
+<dd>指定统计字段，会在分页返回结果中添加stat对象。注意fmt参数不能是one, array, hash等，只允许是list或默认（即hd格式）。 statRes的写法与res相同，支持COUNT/COUNTIF等白名单内的统计函数。
 </dd>
 </dl>
 <p>请求示例：</p>

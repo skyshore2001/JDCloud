@@ -1452,6 +1452,7 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 				$ex->internalMsg .= " (by requiredFields check)";
 				throw $ex;
 			}
+			$this->checkUniKey(param("uniKey"), param("uniKeyMode", "set"), true);
 		}
 		else { # for set, the fields can not be set null
 			$fs = array_merge($this->requiredFields, $this->requiredFields2);
@@ -1463,7 +1464,6 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 				}
 			}
 		}
-		$this->checkUniKey(param("uniKey"), param("uniKeyMode", "set"), true);
 		$this->onValidate();
 	}
 
@@ -2315,31 +2315,39 @@ addCond用于添加查询条件，可以使用表的字段或虚拟字段(无须
 
 @key uniKey 防止重复机制/add接口支持存在则更新，不存在则添加
 
-(v6) 支持在添加时根据指定字段判断记录是否存在，若存在则更新，不存在才添加，称为uniKey机制。接口示例：
+(v6) 支持在添加时根据指定字段判断记录是否存在，若存在则更新，不存在才添加，称为uniKey机制。
+示例：添加工单，若指定code对应的工单已存在，则更新该工单
 
 	callSvr("Ordr.add", {uniKey: "code"}, $.noop, {code: "ordr1", itemId: 99});
-
-表示添加工单，若指定code已存在，则更新工单。
 
 uniKey可以指定多个字段，以逗号分隔即可，常用于关联表，如操作物料类别与打印模板的关联表Cate_PrintTpl:
 
 	callSvr("Cate_PrintTpl.add", {uniKey: "cateId,printTplId"}, $.noop, {cateId: 101, printTplId: 999});
 
-表示添加关联，若关联已存在则忽略。（当指定要添加的字段刚好完全就是uniKey中字段时，没必要做更新操作，会直接忽略。）
+表示添加关联记录，若关联记录已存在则忽略。（当指定要添加的字段刚好完全就是uniKey中字段时，没必要做更新操作，会直接忽略。）
 
 注意：uniKey支持使用虚拟字段（如关联字段）.
 
+如果uniKey以"!"结尾，则表示**更新模式**。示例：更新工单，当记录不存在时报错：
+
+	callSvr("Ordr.add", {uniKey: "code!"}, $.noop, {code: "ordr1", itemId: 99});
+
 在uniKey匹配时，默认处理是更新操作，可以通过`uniKeyMode`参数来定制行为：
 
-- set: 转为更新操作（如果要更新的字段刚好就是uniKey字段，则忽略更新），接口最终返回已存在记录的id。
-- error: 报错：已存在重复记录。
-- ignore: 忽略添加操作，接口直接返回已存在记录的id。
+- set: （默认）转为更新操作（如果要更新的字段刚好就是uniKey字段，则忽略更新），接口最终返回已存在记录的id。
+- error: 如果已存在记录，则报错。在更新模式下等同于set，即记录不存在时报错。
+- ignore: 忽略添加操作，接口直接返回已存在记录的id。在更新模式下，不添加，也不报错，以-1值返回记录id。
 
 示例：添加工单，如果code已存在则报错，不允许添加
 
 	callSvr("Ordr.add", {uniKey:"code", uniKeyMode:"error"}, $.noop, {code:"4500000088", itemId: 1, qty: 100});
 
-事实上set接口也会检查uniKey参数，若发现记录有重复会报错（uniKeyMode参数只影响add接口, 对set接口无效）。
+示例：更新工单，当记录不存在时返回-1，不报错：
+
+	callSvr("Ordr.add", {uniKey: "code!", uniKeyMode:"ignore"}, $.noop, {code: "ordr1", itemId: 99});
+
+注意：尽管add接口可通过uniKey实现更新模式，但set接口是不支持uniKey的。
+通过导入实现**批量更新**应使用batchAdd；一般地通过条件进行批量更新使用batchSet/setIf接口。
 
 以上示例是将记录的控制权交给接口调用方的（如前端或后端内部接口调用callSvcInt等）；如果要在后端对象内控制重复记录行为，请参考
 @see AccessControl::checkUniKey
@@ -2400,10 +2408,13 @@ uniKey可以指定多个字段，以逗号分隔即可，常用于关联表，�
 		$this->checkUniKey("name,phone", "set", true);
 	}
 
+uniKey以"!"结尾为更新模式，即必须匹配到记录，否则报错，详见[uniKey]
+
 @see uniKey
 */
 	protected function checkUniKey($uniKey, $handler, $required=false)
 	{
+		assert($this->ac == "add");
 		if (!$uniKey)
 			return;
 		$forceMatch = (substr($uniKey, -1) == '!');
@@ -2430,16 +2441,22 @@ uniKey可以指定多个字段，以逗号分隔即可，常用于关联表，�
 			return;
 		$param = array_merge($_GET, ["res"=>"id", "cond"=>$cond, "fmt"=>"one?"]);
 		$id = $this->callSvc(null, "query", $param, $_POST);
-		if (! $id && $forceMatch)
-			jdRet(E_PARAM, "uniKey does NOT match record", "找不到匹配项: uniKey=" . join(',', $cond));
-		if (! $id || ($this->ac == "set" && $id == $this->id))
+		if (! $id) { // 记录不存在
+			if ($forceMatch) {
+				// uniKeyMode=ignore时返回id=-1，否则报错
+				if ($handler !== "ignore")
+					jdRet(E_PARAM, "uniKey does NOT match record", "找不到匹配项: uniKey=" . join(',', $cond));
+				jdRet(0, -1); 
+			}
 			return;
+		}
 
-		if ($handler === "error" || $this->ac == "set")
+		// 记录存在
+		if ($handler === "error")
 			jdRet(E_PARAM, "duplicate record (id=$id): " . urlEncodeArr($cond), "已存在重复记录: uniKey=" . join(',', $cond));
 
 		if ($handler === "set") {
-			// 清空字段，避免set时再检查
+			// 清空字段，set时不必更新这些字段
 			foreach ($fields as $e) {
 				unset($_POST[$e]);
 			}
@@ -3272,8 +3289,8 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
  字段列表以逗号或空白分隔, 如"title=name - addr"与"title=name, -, addr"都可以.
 
 - uniKey: (v5.5) 唯一索引字段. 如果指定, 则以该字段查询记录是否存在, 存在则更新。例如"code", 也支持多个字段（用于关联表），如"bpId,itemId"。
- (v6) uniKey支持"!"结尾表示强制匹配，用于在批量更新时防止添加记录，如"code!"表示若code匹配则更新，不匹配则报错不添加。
-- uniKeyMode: (v6) 定制发现uniKey存在的行为，默认为更新，也可为报错或忽略。
+ (v6) uniKey支持"!"结尾称为"批量更新"模式，表示强制匹配，用于在批量更新时防止添加记录，如"code!"表示若code匹配则更新，不匹配则报错不添加。
+ uniKey和uniKeyMode参数是由add接口来支持的，uniKeyMode参数用于定制记录存在时的行为，默认为更新，也可为报错或忽略。参考[uniKey].
 
 @see uniKey
 
