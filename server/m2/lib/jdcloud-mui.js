@@ -3807,7 +3807,7 @@ function windowOnError(ev)
 		}, 1000);
 	}
 	var msg = ev.message, errObj = ev.error;
-	if (errObj instanceof DirectReturn || /abort$/.test(msg))
+	if (errObj instanceof DirectReturn || /(Possible side-effect in debug-evaluate|abort)$/.test(msg))
 		return true;
 	if (self.options.skipErrorRegex && self.options.skipErrorRegex.test(msg))
 		return true;
