@@ -2858,7 +2858,8 @@ FROM ($sql) t0";
 		$this->after($ret);
 		$pivot = param("pivot");
 		if ($pivot && count($ret) > 0) {
-			$ret = pivot($ret, $pivot, param("pivotCnt/i", 1), param("pivotSumField"), param("gres"));
+			// NOTE: 不要用param("gres")，因为它可能包含alias如"t0.source 分类". 而$this->sqlConf["gres"]是由filterRes处理后的。
+			$ret = pivot($ret, $pivot, param("pivotCnt/i", 1), param("pivotSumField"), $this->sqlConf["gres"]);
 			$fixedColCnt = count($ret[0]);
 		}
 
