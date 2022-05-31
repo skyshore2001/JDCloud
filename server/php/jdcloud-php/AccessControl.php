@@ -2455,7 +2455,7 @@ uniKey以"!"结尾为更新模式，即必须匹配到记录，否则报错，�
 		if ($handler === "error")
 			jdRet(E_PARAM, "duplicate record (id=$id): " . urlEncodeArr($cond), "已存在重复记录: uniKey=" . join(',', $cond));
 
-		if ($handler === "set") {
+		if ($handler === "set" || $forceMatch) {
 			// 清空字段，set时不必更新这些字段
 			foreach ($fields as $e) {
 				unset($_POST[$e]);
