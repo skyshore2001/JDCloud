@@ -4267,6 +4267,10 @@ class BatchAddStrategy
 
 		// for complex subobj
 		$uniKey = param("uniKey");
+		// NOTE: "!"结尾表示主表更新模式，此处用不到
+		if ($uniKey && substr($uniKey, -1) == "!") {
+			$uniKey = substr($uniKey, 0, -1);
+		}
 		$subobjFields = null; // array. 当有子对象且指定了uniKey时非空，用于将多行row组装成主对象obj交handleObj处理。
 		$uniKeyFields = null; // array. 在组装主对象时，当本行关键字段与上一行相同或为空时，表示与上一行是同一对象。
 		$lastKey = null;  // 根据uniKeyFields生成，用于确认当前行否是新的对象，还是从属于上一对象
