@@ -6,6 +6,52 @@
 
 服务端配置参数及调用接口见plugin.php中头部注释.
 
+### 关于图片
+
+系统中的图片字段，一般使用图片编号或编号列表。字段名常常叫做`picId`，内容如`100`, `101`这样的数字，或是字段名叫`pics`，内容是像`100,101`这样多个数字。
+要获取图片，可以用`att`接口，例如要显示编号为100的图片：
+
+	<img src="$BASE_URL/att?id=100">
+
+一般使用框架提供的`makeUrl`函数生成地址，如：
+
+	// 取图片地址：
+	var imgUrl = MUI.makeUrl("att", {id: 100}); // 其实就是 $BASE_URL/att?id=100
+	jimg.attr("src", imgUrl); // 设置到img.src属性。
+
+在支持缩略图时（upload接口的参数genThumb=1），上传后会返回id(原图)和thumbId(缩略图)两个编号。
+
+习惯上字段内保存的是缩略图的编号，可以这样来取缩略图和原始大图的地址：
+
+	// 取缩略图地址：
+	var imgUrl = MUI.makeUrl("att", {id: 100});
+	// 取原始图地址：
+	var bigImgUrl = MUI.makeUrl("att", {thumbId: 100});
+
+v6.1后字段内也可保存原图编号，这时这样来取缩略图和原始大图的地址：
+
+	// 取缩略图地址：
+	var imgUrl = MUI.makeUrl("att", {id: 100, thumb:1});
+	// 取原始图地址：
+	var bigImgUrl = MUI.makeUrl("att", {id: 100});
+
+pic接口用于可生成一个显示一组图片的URL，直接在浏览器（或iframe）中显示。
+注意att接口直接返回一张图的内容，而pic接口返回html片段，它支持多图。
+
+用法示例：根据图片编号列表"100,102"，显示图片列表
+
+	var url = MUI.makeUrl("pic", {id: "100,102"}); // 其实就是 $BASE_URL/pic?id=100,102
+	window.open(url);
+	//或jframe.attr("src", url);
+
+用法示例：pics字段中保存了缩略图编号列表，如"100,102"，则显示缩略图列表，点击一张图时显示原图：
+
+	var url = MUI.makeUrl("pic", {smallId: "100,102"}); // 其实就是 $BASE_URL/pic?thumbId=100,102
+
+若pics字段中保存的是原图编号列表，如"100,102"，则显示缩略图列表，点击一张图时显示原图：
+
+	var url = MUI.makeUrl("pic", {id: "100,102", thumb: 1}); // 其实就是 $BASE_URL/pic?id=100,102&thumb=1
+
 ## 数据库设计
 
 **[附件]**
@@ -16,7 +62,7 @@ path
 : String. 文件在服务器上的相对路径, 可方便的转成绝对路径或URL
 
 orgPicId
-: Integer. 原图编号。对于缩略图片，链接到对应原始大图片的id.
+: Integer. 原图编号。对于缩略图片，链接到对应原始大图片的id. (v6.1) 如果为负数，则表示当前是原图，-orgPicId链接到它的缩略图。原图和缩略图是双向链接的。
 
 exif
 : String. 图片或文件的扩展信息。以JSON字符串方式保存。典型的如时间和GPS信息，比如：`{"DateTime": "2015:10:08 11:03:02", "GPSLongtitude": [121,42,7.19], "GPSLatitude": [31,14,45.8]}`
@@ -171,14 +217,18 @@ multiple属性是html5新增属性，如果浏览器不支持，也可以这样�
 
 ### 附件下载
 
+根据id下载附件或图片：
+
 	att(id)
 	
-	根据id下载附件.
+取图片id的缩略图：
 	
+	att(id, thumb=1)
+	
+取缩略图id对应的原图：
+
 	att(thumbId)
 	
-	使用缩略图id获取原图. 
-
 注意: 该调用不符合接口规范, 它不返回格式为"[code, data]"的json串, 而是直接返回文件内容.
 
 HTTP header "Content-Type"将标识正确的文件MIME类型，如jpg类型为"image/jpeg".
@@ -198,9 +248,13 @@ thumbId
 
 	GET api.php/att?id=100
 
-已知缩略图id=100, 获取它对应的原图：
+(v6.1)取图片id=200, 获取它的缩略图：
 
-	GET api.php/att?thumbId=100
+	GET api.php/att?id=200&thumb=1
+
+在生成缩略图的情况下，常常图片200的缩略图编号为201（但并不总是这样）。若已知缩略图id=201, 获取它对应的原图：
+
+	GET api.php/att?thumbId=201
 
 找到图片返回:
 
@@ -213,6 +267,14 @@ thumbId
 
 	<img src="http://myserver/mysvc/api.php/att?id=100">
 
+(v6.1)显示图片100的缩略图：
+
+	<img src="http://myserver/mysvc/api.php/att?id=100&thumb=1">
+
+显示缩略图101对应的原图：
+
+	<img src="http://myserver/mysvc/api.php/att?thumbId=101">
+
 或找不到图片：
 
 	HTTP/1.1 404 Not Found
@@ -222,11 +284,12 @@ thumbId
 
 该接口生成一个图片列表网页。
 
-	pic(id?, thumbId?, smallId?)
+	pic(id?, thumbId?, smallId?, thumb?)
 
 - id: 图片编号，或编号列表(以逗号分隔)。
 - thumbId: 缩略图编号，或编号列表(以逗号分隔)。
 - smallId: 缩略图编号列表，显示小图，点击可跳转到大图
+- thumb: (v6.1) 与id合用，表示id是原图，但列表中显示为缩略图，点击可链接到原图
 
 示例：
 

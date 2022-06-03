@@ -461,6 +461,7 @@ function api_upload($env)
 					"tm" => date(FMT_DT),
 				]);
 				$r["thumbId"] = $thumbId;
+				dbUpdate("Attachment", ["orgPicId"=>-$thumbId], $id);
 			}
 			else {
 				dbUpdate("Attachment", ["orgPicId"=>$id], $id);
@@ -487,6 +488,9 @@ function api_att()
 	session_commit(); // !!!释放session锁避免阻塞其它调用。注意此后要修改session应先调用session_start
 
 	$id = param("id");
+	if ($id) {
+		$doGetThumb = param("thumb/b");
+	}
 	$thumbId = param("thumbId");
 
 	if ((is_null($id) || $id<=0) && (is_null($thumbId) || $thumbId<=0))
@@ -498,6 +502,8 @@ function api_att()
 	$etag = null;
 	if (is_null($thumbId)) {
 		$etag = "att-$id";
+		if ($doGetThumb)
+			$etag .= "-t";
 	}
 	else {
 		$etag = "att-t{$thumbId}";
@@ -507,8 +513,15 @@ function api_att()
 		header("Etag: $etag", true, 304);
 		exit();
 	}
-	if ($id !== null)
-		$sql = "SELECT path, orgName FROM Attachment WHERE id=$id";
+	if ($id !== null) {
+		if (!$doGetThumb) {
+			$sql = "SELECT path, orgName FROM Attachment WHERE id=$id";
+		}
+		else {
+			# t0: thumb, a2: original
+			$sql = "SELECT t0.path, t0.orgName FROM Attachment t0 INNER JOIN Attachment a2 ON t0.id=-a2.orgPicId WHERE a2.id=$id";
+		}
+	}
 	else {
 		# t0: original, a2: thumb
 		$sql = "SELECT t0.path, t0.orgName FROM Attachment t0 INNER JOIN Attachment a2 ON t0.id=a2.orgPicId WHERE a2.id=$thumbId";
@@ -570,11 +583,20 @@ function api_pic()
 	$n = 0;
 	foreach ([param("id/i+"), param("thumbId/i+"), param("smallId/i+")] as $pics) {
 		if ($pics) {
+			if ($n == 0) {
+				$doGetThumb = param("thumb/b");
+			}
 			foreach ($pics as $id) {
 				$id = trim($id);
 				if ($id) {
-					if ($n == 0)
-						echo("<img src='{$baseUrl}api.php/att?id=$id'>\n");
+					if ($n == 0) {
+						if (!$doGetThumb) {
+							echo("<img src='{$baseUrl}api.php/att?id=$id'>\n");
+						}
+						else {
+							echo("<a href='{$baseUrl}api.php/att?id=$id' target='_blank'><img src='{$baseUrl}api.php/att?id=$id&thumb=1'></a>\n");
+						}
+					}
 					else if ($n == 1)
 						echo("<img src='{$baseUrl}api.php/att?thumbId=$id'>\n");
 					else if ($n == 2)
