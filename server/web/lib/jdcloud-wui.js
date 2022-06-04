@@ -9666,37 +9666,59 @@ var Formatter = {
 		});
 	},
 /**
-@fn Formatter.pics1
+@fn Formatter.picx(opt={thumb?, preview?})
 
-显示图片（支持多图）, 显示为一个链接，点击后在新页面打开并依次显示所有的图片。（使用服务端pic接口）
-*/
-	pics1: function (value, row) {
-		if (value == null)
-			return "(无图)";
-		return '<a target="_black" href="' + WUI.makeUrl("pic", {id:value}) + '">' + value + '</a>';
-	},
-/**
-@fn Formatter.pics
+显示图片（支持多图）, 每个图可以有预览, 点击后在新页面打开并依次显示所有的图片.（使用服务端pic接口）
 
-显示图片（支持多图）, 每个图有预览, 点击后在新页面打开并依次显示所有的图片.（使用服务端pic接口）
-*/
-	pics: function (value, row) {
-		if (value == null)
-			return "(无图)";
-		var maxN = Formatter.pics.maxCnt || 3; // 最多显示图片数
-		// value = value + "," + value + "," + value;
-		value1 = value.toString().replace(/(\d+)(?::([^,]+))?,?/g, function (ms, picId, name) {
-			if (name == null)
-				name = "图" + picId;
-			if (maxN <= 0)
-				return name + " ";
-			-- maxN;
-			var url = WUI.makeUrl("att", {id: picId});
-			return '<img alt="' + name + '" src="' + url + '">';
-		});
-		var linkUrl = WUI.makeUrl("pic", {id:value});
-		return '<a target="_black" href="' + linkUrl + '">' + value1 + '</a>';
+- thumb: 空-不存在缩略图，1-id是缩略图，2-id是原图
+- preview: 非空时，表示显示图片编号预览，其值为显示预览图的个数。
+
+@alias Formatter.pics
+
+相当于picx({thumb:1, preview:3})。显示图片列表预览，点击链接显示图片列表。
+
+@alias Formatter.pics1
+
+相当于picx({thumb:1})。不显示图片列表预览，点击链接显示图片列表。
+ */
+	picx: function (opt) {
+		return function (value, row) {
+			if (value == null)
+				return "(无图)";
+			if (!opt.preview)
+				return '<a target="_black" href="' + linkUrl(value) + '">' + value + '</a>';
+
+			var maxN = opt.preview || 3; // 最多显示图片数
+			value1 = value.toString().replace(/(\d+)(?::([^,]+))?,?/g, function (ms, picId, name) {
+				if (name == null)
+					name = "图" + picId;
+				if (maxN <= 0)
+					return name + " ";
+				-- maxN;
+				var url;
+				if (!opt.thumb || opt.thumb == 1) {
+					url = WUI.makeUrl("att", {id: picId});
+				}
+				else if (opt.thumb == 2) {
+					url = WUI.makeUrl("att", {id: picId, thumb:1});
+				}
+				return '<img alt="' + name + '" src="' + url + '">';
+			});
+			return '<a target="_black" href="' + linkUrl(value) + '">' + value1 + '</a>';
+		}
+		function linkUrl(value) {
+			if (!opt.thumb) {
+				return WUI.makeUrl("pic", {id:value});
+			}
+			else if (opt.thumb == 1) {
+				return WUI.makeUrl("pic", {smallId:value});
+			}
+			else if (opt.thumb == 2) {
+				return WUI.makeUrl("pic", {id:value, thumb:1});
+			}
+		}
 	},
+
 /**
 @fn Formatter.flag(yes, no)
 
@@ -9884,6 +9906,8 @@ var Formatter = {
 		return htmlstr;
 	}
 };
+Formatter.pics = Formatter.picx({thumb:1, preview:3});
+Formatter.pics1 = Formatter.picx({thumb:1});
 
 /**
 @var formatter = {dt, number, pics, flag(yes?=是,no?=否), enum(enumMap), linkTo(field, dlgRef, showId?=false) }
