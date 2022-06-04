@@ -2282,7 +2282,7 @@ function enhanceSubobj(jo)
 			show = true;
 		toggle(!opt.disabled && show);
 
-		if (jo.is(":hidden") && !opt.forceLoad)
+		if (jo.is(":hidden") && !opt.forceLoad || opt.disabled)
 			return;
 
 		if (jo.data("subobjLoaded_")) {
