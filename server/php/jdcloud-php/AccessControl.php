@@ -2859,7 +2859,12 @@ FROM ($sql) t0";
 		$pivot = param("pivot");
 		if ($pivot && count($ret) > 0) {
 			// NOTE: 不要用param("gres")，因为它可能包含alias如"t0.source 分类". 而$this->sqlConf["gres"]是由filterRes处理后的。
-			$ret = pivot($ret, $pivot, param("pivotCnt/i", 1), param("pivotSumField"), $this->sqlConf["gres"]);
+			$gres = $this->sqlConf["gres"];
+			if ($gres) {
+				// "t0.source" => "source"
+				$gres = preg_replace('/\w+\./', '', $gres);
+			}
+			$ret = pivot($ret, $pivot, param("pivotCnt/i", 1), param("pivotSumField"), $gres);
 			$fixedColCnt = count($ret[0]);
 		}
 
