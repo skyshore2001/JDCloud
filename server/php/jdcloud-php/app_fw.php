@@ -958,11 +958,39 @@ function sql_concat()
 
 - 键值对，键为字段名，值为查询条件，使用更加直观（如字符串不用加引号），如：
 
-		["id"=>1, "status"=>"CR", "name"=>"null", "dscr"=>null, "f1"=>"", "f2"=>"empty"]
-		生成 "id=1 AND status='CR'" AND name IS NULL AND f2=''
-		注意，当值为null或空串时会忽略掉该条件，用"null"表示"IS NULL"条件，用"empty"表示空串。
+		[
+			"id"=>1,
+			"status"=>"CR",
+			"name"=>"null",
+			"dscr"=>null,
+			"f1"=>"",
+			"f2"=>"empty"
+		]
+		生成 "id=1 AND status='CR'" AND name IS NULL AND f2=''"
+		注意，当值为null或空串时会忽略掉该条件，所以dscr和f1参数没有进入条件；用字符串"null"表示"IS NULL"条件，用字符串"empty"表示空串。
 
 		可以使用符号： > < >= <= !(not) ~(like匹配)
+		[
+			"id>=" => 100, 
+			"id<=" => 200,
+			"tm>=" => "2020-1-1",
+			"tm<"  => "2021-1-1",
+			"status!"=>"CR",
+			"name~" => "wang%",
+			"dscr~" => "aaa",
+			"dscr2!~" =>"aaa"
+		]
+		生成 "id>=100 AND id<=200 AND tm>='2020-1-1" AND tm<'2021-1-1' AND status<>'CR' AND name LIKE 'wang%' AND dscr LIKE '%aaa%' AND dscr2 NOT LIKE '%aaa%'"
+		同样，如果值是null或""，则它不进入条件，如 `["id>=" => 100, "id<" => null]`生成条件为 `id>=100`
+
+		这样比较方便拼接条件，例如前端调用`callSvr("Ordr", {cond:{"createTm>=":tm1, "createTm<":tm2}})`，当tm1或tm2为空不产生条件;
+		后端也是类似，例如：
+
+			$tm1 = param("tm1");
+			$tm2 = param("tm2");
+			$cond = getQueryCond(["createTm>=" => $tm1, "createTm<"=>$tm2]); // 如果tm1或tm2为空，则不产生条件
+
+		也可以将符号放在值中（但这样则无法同一字段指定多次）：
 		["id"=>"<100", "tm"=>">2020-1-1", "status"=>"!CR", "name"=>"~wang%", "dscr"=>"~aaa", "dscr2"=>"!~aaa"]
 		生成 "id<100 AND tm>'2020-1-1" AND status<>'CR' AND name LIKE 'wang%' AND dscr LIKE '%aaa%' AND dscr2 NOT LIKE '%aaa%'"
 		like用于字符串匹配，字符串中用"%"或"*"表示通配符，如果不存在通配符，则表示包含该串(即生成'%xxx%')
@@ -1032,6 +1060,9 @@ function getQueryCond($cond)
 		else if ($k[0] == "_" || $v === null || $v === "") {
 			continue;
 		}
+		else if (preg_match('/^(\w+)\s*([<>=!~]+)$/u', $k, $ms)) {
+			$exp = getQueryExp($ms[1], $v, $ms[2]);
+		}
 		else {
 			// key => value, e.g. { id: ">100 AND <20", name: "~wang*", status: "CR OR PA", status2: "!CR AND !PA OR null"}
 			$exp = preg_replace_callback('/(.+?)(\s+(AND|OR)\s+|$)/i', function ($ms) use ($k) {
@@ -1057,7 +1088,7 @@ function getQueryCond($cond)
 }
 
 // similar to h5 getexp but not same
-function getQueryExp($k, $v)
+function getQueryExp($k, $v, $op = '=')
 {
 	// 即使纯数值最好也加引号，不容易出错，特别是对0开头或很长数字的字符串
 // 	if (is_numeric($v))
@@ -1083,7 +1114,6 @@ function getQueryExp($k, $v)
 	if ($done)
 		return $v;
 
-	$op = '=';
 	$v = preg_replace_callback('/^[><=!~]+/', function ($ms) use (&$op) {
 		if ($ms[0] == '!' || $ms[0] == '!=')
 			$op = '<>';
