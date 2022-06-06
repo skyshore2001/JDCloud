@@ -3055,6 +3055,12 @@ function showDataReport(opt, showPageOpt)
 		// data: ajax得到的原始数据
 		var rowCnt = data.d && data.d.length || 0;
 		var sumCol = gres.length + (resCols.length - sumTitles.length);
+		if (queryParams.hiddenFields) {
+			queryParams.hiddenFields.split(',').forEach(function (e) {
+				if (gres.indexOf(e) >= 0)
+					-- sumCol;
+			});
+		}
 		$.each(columns, function (i, col) {
 			if (i >= sumCol) {
 				col.formatter = getFormatter(col, rowCnt);
