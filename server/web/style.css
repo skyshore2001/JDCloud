@@ -207,6 +207,8 @@ input:disabled,select:disabled,textarea:disabled {
 	font-size: 18px;
 	margin-right: 12px;
 	margin-left: -30px;
+	text-align: center;
+	width: 18px;
 }
 
 #menu .menu-item-head.expanded, #menu .my-menu-item:hover {
