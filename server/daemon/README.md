@@ -59,9 +59,13 @@ https://oliveche.com/app/tool/swoole-4.8.8-ubuntu20-php74.tgz
 	sudo systemctl start jdserver
 	sudo systemctl stop jdserver
 
-一般在Apache上配置代理。请确保已打开wstunnel模块且允许htaccess文件。
-jdserver同时支持http和websocket，建议设置为：（注意顺序）
+一般在Apache上配置代理。请确保已打开proxy/proxy_http/proxy_wstunnel模块且允许.htaccess文件。示例(ubuntu上)：
 
+	sudo a2enmod headers rewrite proxy proxy_http proxy_wstunnel proxy_ajp cgi cgid 
+
+jdserver同时支持http和websocket，建议在网站根目录将下面设置放在.htaccess中：（注意顺序）
+
+	rewriteengine on
 	rewriterule ^jdserver/(.+) http://127.0.0.1:8081/$1 [P,L]
 	rewriterule ^jdserver ws://127.0.0.1:8081/ [P,L]
 
@@ -165,6 +169,9 @@ jdserver与jdcloud的区别：
 - wait: 毫秒。等待指定时间后执行。不指定则为0，立即执行。
 - cron: 定时任务配置。一旦指定，该任务将成为周期性任务，并会保存下来。可以通过返回的id或直接code来后续控制任务，比如暂停、删除等。
 - code: 惟一标识，仅当指定cron时该字段有意义。为防止重复，格式要求为`{app/应用代码}-{obj/应用中对象代码}-{objCode/对象惟一标识}`，比如`asyncTask-task-1`。
+
+返回的timerId可用于Timer.set/Timer.disable/Timer.enable/Timer.del等接口。
+注意：1次性任务(wait>0, cron为空)返回的timerId是负数，且不保存，如果重启服务则丢失。定时任务返回的id是正数，任务会保存在文件中。
 
 示例：
 
