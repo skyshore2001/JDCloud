@@ -21,6 +21,8 @@ db=carsvc
 cd `dirname $0`
 if [ -r "./backup_db.user.sh" ]; then . "./backup_db.user.sh"; fi
 
+[[ ! -d bak ]] && mkdir bak
+
 bak=bak/db_`date +%Y%m%d_%H%M%S`.gz
 
 mysqldump -h$dbhost -u$dbuser -p$dbpwd --routines $db --ignore-table=${db}.ApiLog --ignore-table=${db}.ApiLog1 --ignore-table=${db}.Syslog --ignore-table=${db}.ObjLog | gzip > $bak
