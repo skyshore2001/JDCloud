@@ -1600,7 +1600,7 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 	final protected function getAliasVal($row, $col) {
 		return @$row[$this->aliasMap[$col] ?: $col];
 	}
-	final protected function setAliasVal($row, $col, $val) {
+	final protected function setAliasVal(&$row, $col, $val) {
 		$row[$this->aliasMap[$col] ?: $col] = $val;
 	}
 
