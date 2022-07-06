@@ -77,7 +77,7 @@ POST内容也可以使用json格式，如：
 接口名为URL基地址后一个词（常称为PATH_INFO），如URL`/api/fn`中接口名为"fn"。
 如果难以实现，也可以使用URL参数ac表示接口名，即URL中`/api?ac=fn&p1=value1&p2=value2`中接口名也是"fn"。
 
-**[必须使用HTTP POST的情形]**
+【必须使用HTTP POST的情形】
 
 如果接口定义中有请求数据（即在接口原型中用两个括号），如：
 
@@ -408,7 +408,7 @@ POST内容也可以使用json格式，如：
 
 ### 基本增删改查操作
 
-**[添加操作]**
+【添加操作】
 
 接口原型：
 
@@ -428,6 +428,8 @@ POST内容也可以使用json格式，如：
 
 对象id支持自动生成。
 
+添加时支持检查重复数据，由uniKey和uniKeyMode参数来控制：
+
 - uniKey: 唯一索引字段. 如果指定, 则以该字段查询记录是否存在(调用query接口）, 存在则更新（调用set接口）。例如"code", 也支持多个字段（用于关联表），如"bpId,itemId"。
  uniKey支持使用虚拟字段（如关联字段）。
  该字段常用于检查记录不存在则添加记录，存在则更新记录；也用于避免记录重复添加。
@@ -439,7 +441,9 @@ POST内容也可以使用json格式，如：
 	- error: 如果已存在记录，则报错。在更新模式下等同于set，即记录不存在时报错。
 	- ignore: 忽略添加操作，接口直接返回已存在记录的id。在更新模式下，不添加，也不报错，以-1值返回记录id。
 
-**[更新操作]**
+这两个参数也常用于批量导入或批量更新，详见[批量导入数据]章节，即batchAdd接口。
+
+【更新操作】
 
 接口原型：
 
@@ -482,7 +486,7 @@ POST内容也可以使用json格式，如：
 
 	callSvr("Obj.setIf", {cond: "tm>='2010-1-1' and tm<'2011-1-1'"}, $.noop, {dscr: "已处理"});
 
-**[获取对象操作]**
+【获取对象操作】
 
 接口原型：
 
@@ -490,7 +494,7 @@ POST内容也可以使用json格式，如：
 	
 默认返回所有暴露的属性，通过res参数可以指定需要返回的字段。
 
-**[删除操作]**
+【删除操作】
 
 接口原型：
 
@@ -624,7 +628,7 @@ cond参数可以同时在URL参数和POST参数中指定，支持字符串、数
 
 由于不会每行重复传输字段名，压缩表类型一般传输效率更高。
 
-**[list与array格式]**
+【list与array格式】
 
 如果指定`{fmt: "list"}`，则返回对象列表格式:
 
@@ -643,7 +647,7 @@ cond参数可以同时在URL参数和POST参数中指定，支持字符串、数
 		{"id": 2, "name": "tom"}
 	]
 
-**[one与one?格式]**
+【one与one?格式】
 
 如果指定`{fmt: "one"}`，则只以对象格式返回一行，类似get接口：
 
@@ -660,7 +664,7 @@ cond参数可以同时在URL参数和POST参数中指定，支持字符串、数
 
 假如有99个订单，使用`fmt:"one?"`直接返回`99`，如果使用`fmt:"one"`则返回`{cnt: 99}`。
 
-**[hash与multihash格式]**
+【hash与multihash格式】
 
 如果指定`{fmt: "hash"}`，则以映射表格式返回：
 
@@ -697,7 +701,7 @@ multihash与hash类似，只是用数组表示结果，所以就算出现key重�
 
 	{"jerry": [ 1 ], "tom": [ 2 ]}
 
-**[tree树型结构]**
+【tree树型结构】
 
 例如如下`{id,fatherId}`线性结构数组中，数组的每个元素中有个fatherId字段指向父结点的id属性：
 
@@ -909,7 +913,7 @@ tmField
 		tmField: "payTm"
 	});
 
-**[行列转置]**
+【行列转置】
 
 在做数据透视表展示统计结果时，常常用到行列转置，可用以下参数：
 
@@ -959,7 +963,7 @@ pivot参数可以设置多列，以逗号分隔，如将年、月显示到列上
 		]
 	}
 
-**[行列汇总]**
+【行列汇总】
 
 没有pivot时，用sumFields参数指定要统计的列，支持多列；有pivot时，用pivotSumField参数指定新添加的统计列的名字，只有一列，不存在多列。
 
@@ -1074,7 +1078,7 @@ qsearch
 
 	Ordr.query(page/pagekey?, pagesz/rows?=20) -> {nextkey, total?, @h, @d}
 
-**[参数]**
+【参数】
 
 pagesz或rows
 : Integer. 这两个参数含义相同，均表示页大小，默认为20条数据。
@@ -1085,7 +1089,7 @@ page
 pagekey
 : Integer. 与page参数指定页码不同，pagekey是另一种基于主键的分页。一般首次查询时不填写（或填写0，表示需要返回总记录数即total字段），而下次查询时应根据上次调用时返回数据的"nextkey"字段来填写。
 
-**[查询返回字段]**
+【查询返回字段】
 
 nextkey
 : Integer. 一个字符串, 供取下一页时填写参数"pagekey"或"page"。如果不存在该字段，则说明已经是最后一批数据。
@@ -1096,7 +1100,7 @@ total
 h/d
 : 两个数组。实际数据表的头信息(header)和数据行(data)，符合压缩表对象的格式。
 
-**[示例]**
+【示例】
 
 基于page页码的查询较容易理解，常用于管理端分页列表。而pagekey是基于主键的查询，常用于移动端上拉自动加载下一页的列表，示例如下。
 
@@ -1140,7 +1144,7 @@ total字段表示总记录数。由于缺省页大小为20，所以可估计总�
 
 返回数据中不带"nextkey"属性，表示所有数据获取完毕。
 
-**[分页实现]**
+【分页实现】
 
 分页有两种实现方式：按主键字段的分段查询式分页，以及使用LIMIT操作为核心的传统分页。
 
@@ -1210,10 +1214,40 @@ SQL样例如下：
  如"title=name,-,addr"表示导入第一列name和第三列addr, 其中"-"表示忽略该列，不导入。
  字段列表以逗号或空白分隔, 如"title=name - addr"与"title=name, -, addr"都可以.
 
+- useColMap: 设置为1时，使用列名映射。
+
+#### 重复数据处理策略 / uniKey
+
 - uniKey: 唯一索引字段. 如果指定, 则以该字段查询记录是否存在, 存在则更新。例如"code", 也支持多个字段（用于关联表），如"bpId,itemId"。
  还可以加"!"后缀表示只更新不添加；支持通过参数uniKeyMode定制行为。详见add接口参数介绍。
 
-- useColMap: 设置为1时，使用列名映射。
+示例：导入订单，以createTm字段为唯一索引，检查记录是否存在。
+
+策略1：记录不存在则添加，存在则更新：
+
+	var data = {list: [
+		{ createTm: "2022-05-11 07:29:14", dscr: "dscr1" },
+		{ createTm: "2022-05-11 02:28:40", dscr: "dscr2" },
+	]};
+	callSvr("Ordr.batchAdd", {uniKey: "createTm"}, $.noop, data);
+
+策略2：记录不存在则添加，存在则忽略（不更新）：
+
+	callSvr("Ordr.batchAdd", {uniKey: "createTm", uniKeyMode: "ignore"}, $.noop, data);
+
+策略3：记录不存在则添加，存在则报错。一旦报错则整体导入失败，用户须手工修复数据后重新导入：
+
+	callSvr("Ordr.batchAdd", {uniKey: "createTm", uniKeyMode: "error"}, $.noop, data);
+
+策略4：（批量更新）记录存在则更新，不存在则报错（不添加）：
+
+	callSvr("Ordr.batchAdd", {uniKey: "createTm!"}, $.noop, data);
+
+策略5：（批量更新-不报错）记录存在则更新，不存在则忽略（不添加）：
+
+	callSvr("Ordr.batchAdd", {uniKey: "createTm!", uniKeyMode: "ignore"}, $.noop, data);
+
+导入支持多种数据格式，详见下节。
 
 #### 批量导入支持三种方式
 
@@ -1230,6 +1264,8 @@ SQL样例如下：
 	callSvr("Store.batchAdd", function (ret) {
 		app_alert("成功导入" + ret.cnt + "条数据！");
 	}, data, {contentType:"text/plain"});
+
+如果不指定contentType，后端一般也能兼容。最好是指定。
 
 或指定title参数:
 
@@ -1267,6 +1303,22 @@ SQL样例如下：
 	callSvr("Store.batchAdd", {title: "name,addr"}, function (ret) {
 		app_alert("成功导入" + ret.cnt + "条数据！");
 	}, fd);
+
+在chrome控制台上调用示例：按id匹配已有记录批量更新：
+
+	// 用逗号分隔，即csv
+	callSvr("Ordr.batchAdd", {uniKey: "id!"}, $.noop, `id,dscr
+	145,描述1
+	146,描述2`, {contentType:"text/plain"})
+
+	// 或用tab分隔，即txt
+	callSvr("Ordr.batchAdd", {uniKey: "id!"}, $.noop, `id	dscr
+	145	描述1
+	146	描述2`, {contentType:"text/plain"})
+
+数据首行是标题，用tab分隔或逗号分隔均可以，但须与内容部分一致。
+
+批量更新时若记录不存在则会失败报错，若不想出错可设置参数`uniKeyMode:"ignore"`
 
 3. 传入对象数组
 
@@ -1508,7 +1560,7 @@ batch的返回内容是多条调用返回内容组成的数组，样例如下：
 
 BQP协议规定，以下服务端信息应通过HTTP头反馈给客户端。
 
-**[接口服务版本号与前端应用热更新]**
+【接口服务版本号与前端应用热更新】
 
 服务端接口的版本号如果可以获取，应发送给客户端:
 
@@ -1519,7 +1571,7 @@ BQP协议规定，以下服务端信息应通过HTTP头反馈给客户端。
 前端应用程序可依据此信息实现热更新：
 假如某前端H5应用（或以H5应用为内核的手机原生应用）操作期间，后端接口服务刚好升级过，应用程序再请求时，可以依据版本号变更发现升级行为，从而自动刷新到新版本。
 
-**[测试模式和模拟模式]**
+【测试模式和模拟模式】
 
 如果服务运行于测试模式或模拟模式，应设置：
 
