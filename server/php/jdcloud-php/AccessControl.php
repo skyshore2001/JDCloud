@@ -4150,9 +4150,13 @@ class BatchAddLogic
 */
 class BatchAddStrategy
 {
-	// 由getRow设置
+	// 由getRow设置，当前行信息
 	protected $rowIdx;
 	protected $row;
+
+	// 由getObj设置，当前对象所在行信息。由于在解析对象时会多读一行，getRowInfo优先以该值返回。
+	protected $objRowIdx;
+	protected $objRow;
 
 	protected $logic; // BatchAddLogic
 	private $rows;
@@ -4260,6 +4264,8 @@ class BatchAddStrategy
 
 	// [row, rowNum] 取当前原始行信息，常用于报错
 	function getRowInfo() {
+		if (isset($this->objRowIdx))
+			return [$this->objRow, $this->objRowIdx];
 		return [$this->row, $this->rowIdx];
 	}
 	// 比getRow层次更高，一次返回一个对象，支持子对象. 回调 handleObj(block={obj, row, rowNum})
@@ -4309,6 +4315,8 @@ class BatchAddStrategy
 		}, function (&$obj, $lineObj) use (&$subobjFields) { // makeBlock
 			if ($subobjFields === null || $obj == null) {
 				$obj = $lineObj;
+				$this->objRow = $this->row;
+				$this->objRowIdx = $this->rowIdx;
 				return;
 			}
 			// lineObj组装成主对象obj
