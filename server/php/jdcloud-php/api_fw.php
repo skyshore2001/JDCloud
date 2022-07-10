@@ -2541,7 +2541,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 
 	private $doInitEnv = true;
 	// 返回[code, data, ...]
-	function callSvcSafe($ac = null, $useTrans=true, $isSubCall = false)
+	function callSvcSafe($ac = null, $useTrans=true, $isSubCall = false, $apiFn = null)
 	{
 		global $ERRINFO;
 		$ret = [0, null];
@@ -2608,7 +2608,12 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			if ($ac !== "batch") {
 				if ($useTrans && $this->DBH && ! $this->DBH->inTransaction())
 					$this->DBH->beginTransaction();
-				$ret[1] = $this->callSvcInt($ac, $this->_GET, $this->_POST, false);
+				if (! $apiFn) {
+					$ret[1] = $this->callSvcInt($ac, $this->_GET, $this->_POST, false);
+				}
+				else {
+					$ret[1] = $apiFn();
+				}
 				$ok = true;
 			}
 			else {
@@ -3007,6 +3012,8 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 
 	function callSvcInt($ac, $param=null, $postParam=null, $useTmpEnv=true)
 	{
+		if ($this->doInitEnv)
+			jdRet(E_SERVER, "bad usage of callSvcInt", "callSvcInt仅限接口内调用，外部调用请用callSvc");
 		$fn = "api_$ac";
 		if (preg_match('/^([A-Z]\w*)\.([a-z]\w*)$/u', $ac, $ms)) {
 			list($tmp, $tbl, $ac1) = $ms;
@@ -3308,7 +3315,7 @@ class JDApiBase
 
 // ====== main routine {{{
 /**
-@fn callSvc($ac=null, $useTrans=true)
+@fn callSvc($ac=null, $useTrans=true, $apiFn=null)
 
 外部调用接口。返回符合筋斗云格式的数组，至少2元素，即`[0, 成功数据, 调试信息...]`或`[非0, 失败信息, 内部失败原因, 调试信息...]`
 
@@ -3328,12 +3335,26 @@ class JDApiBase
 	$_GET = ["for" => "task", "fmt" => "one"];
 	$rv = callSvc("Employee.query");
 
+如果指定apiFn，则直接以接口环境执行该函数，包括记录ApiLog、开启数据库事务、开启并保存session等（注意接口执行会设置cookie路径和名称等）、使用jdRet报错等。
+示例：在server/weixin/auth.php中，实现微信登录，因为需要记录$_SESSION["uid"]，它必须在接口环境下执行，否则后续执行将会认为未登录：
+
+	$rv = callSvc("weixinLogin", true, function () use ($isMock) {
+		$userInfo = ...;
+		$imp = LoginImpBase::getInstance();
+		return $imp->onWeixinLogin($userInfo, $rawData);
+	});
+	if ($rv[0]) {
+		logit("weixin/auth.php fails: " . jsonEncode($rv));
+		echo("fail: " . $rv[1]);
+		exit();
+	}
+
 @see callSvcInt
 */
-function callSvc($ac=null, $useTrans=true)
+function callSvc($ac=null, $useTrans=true, $apiFn=null)
 {
 	$env = getJDEnv();
-	return $env->callSvcSafe($ac, $useTrans);
+	return $env->callSvcSafe($ac, $useTrans, false, $apiFn);
 }
 
 if (!isSwoole())
