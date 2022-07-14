@@ -5323,7 +5323,13 @@ function makeUrl(action, params)
 		}
 		else {
 			url = opt.serverUrl;
-			params[opt.serverUrlAc || "ac"] = action;
+			var ac = opt.serverUrlAc || "ac";
+			if (! params[ac]) {
+				params[ac] = action;
+			}
+			else { // 如果已有ac参数在用，则改用优先级更多的_ac参数，不覆盖原参数
+				params["_ac"] = action;
+			}
 		}
 		xparam = opt.xparam;
 	}
