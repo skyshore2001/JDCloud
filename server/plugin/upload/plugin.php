@@ -501,6 +501,7 @@ function api_att()
 		$doGetThumb = param("thumb/b");
 	}
 	$thumbId = param("thumbId");
+	$doDown = param("down");
 
 	if ((is_null($id) || $id<=0) && (is_null($thumbId) || $thumbId<=0))
 	{
@@ -559,7 +560,7 @@ function api_att()
 	//$mimeType = 'application/octet-stream';
 	$mimeType = Upload::$fileTypes[$ext] ?: 'application/octet-stream';
 	$reqRange = array_key_exists("HTTP_RANGE", $_SERVER);
-	// 对于大文件(>10M)或带range参数的请求，交给web server处理源文件。
+	// 对于大文件(>bigFileSize)或带range参数的请求，交给web server处理源文件。
 	if (!($reqRange || (Upload::$bigFileSize > 0 && filesize($file) > Upload::$bigFileSize))) {
 		header("Content-Type: $mimeType");
 		header("Etag: $etag");
@@ -568,7 +569,7 @@ function api_att()
 		header("Content-length: " . filesize($file));
 		if (! isset($orgName))
 			$orgName = basename($file);
-		if (preg_match('/^(image|video|audio)/', $mimeType)) {
+		if ($doDown === "0" || (!isset($doDown) && preg_match('/^(image|video|audio)/', $mimeType))) {
 			header('Content-Disposition: filename='. Upload::quote($orgName));
 		}
 		else {

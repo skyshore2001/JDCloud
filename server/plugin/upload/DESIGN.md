@@ -219,7 +219,7 @@ multiple属性是html5新增属性，如果浏览器不支持，也可以这样�
 
 根据id下载附件或图片：
 
-	att(id)
+	att(id, down?)
 	
 取图片id的缩略图：
 	
@@ -239,8 +239,9 @@ HTTP header "Content-Type"将标识正确的文件MIME类型，如jpg类型为"i
 
 **[参数]**
 
-thumbId
-: 缩略图id
+- thumbId: 缩略图编号
+- thumb: 指定为1时，取图片对应的缩略图，如果没有返回`404-Not found`。
+- down: 默认浏览器访问图片、音视频时自动预览（显示或播放，通过mimetype确认类型），其它类型则下载。如果指定down=0则直接预览，指定down=1则直接下载。
 
 **[示例]**
 
