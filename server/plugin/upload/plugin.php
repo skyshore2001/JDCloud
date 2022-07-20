@@ -564,10 +564,11 @@ function api_att()
 		header("Content-Type: $mimeType");
 		header("Etag: $etag");
 		#header("Expires: Thu, 3 Sep 2020 08:52:00 GMT");
-		#header("Content-length: " . filesize($file));
+		# 如果不指定length, 则会返回 Transfer-Encoding: chunked; 有些软件不兼容(如ios环境可能不支持播放mp4视频)
+		header("Content-length: " . filesize($file));
 		if (! isset($orgName))
 			$orgName = basename($file);
-		if ($ext == "jpg" || $ext == "png" || $ext == "gif") {
+		if (preg_match('/^(image|video|audio)/', $mimeType)) {
 			header('Content-Disposition: filename='. Upload::quote($orgName));
 		}
 		else {
