@@ -31,12 +31,18 @@
 		'xls' => 'application/vnd.ms-excel',
 		'zip' => 'application/zip',
 		'rar' => 'application/x-rar-compressed'
+		'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+		'ppt' => 'application/vnd.ms-powerpoint',
+		'mp3' => 'audio/mpeg',
+		'm4a' => 'audio/mp4',
+		'mp4' => 'video/mp4',
 	];
 
 增加上传类型示例：（一般在plugin/index.php中设置）
 
 	Upload::$fileTypes += [
-		'mp4'=>'video/mp4'
+		'm4v' => 'video/mp4',
+		'gz'  => 'application/gzip'
 	];
 
 如果允许上传所有文件类型(即不检查文件类型), 可以配置:
@@ -98,7 +104,10 @@ class Upload
 		'zip' => 'application/zip',
 		'rar' => 'application/x-rar-compressed',
 		'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-		'ppt' => 'application/vnd.ms-powerpoint'
+		'ppt' => 'application/vnd.ms-powerpoint',
+		'mp3' => 'audio/mpeg',
+		'm4a' => 'audio/mp4',
+		'mp4' => 'video/mp4',
 	];
 	static $checkFileType = true;
 
