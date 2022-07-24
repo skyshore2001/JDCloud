@@ -34,15 +34,22 @@
 
 ## 部署
 
-安装swoole。CentOS7可下载我编译过的版本：
-https://oliveche.com/app/tool/swoole-4.8.8-php74-centos7-lj.xz
+jdserver使用php swoole协程框架，须在Linux系统环境运行。
+在centos/ubuntu上提供预编译包，其它环境须自行编译swoole或php。
 
+centos7可下载预编译版本：
+
+	wget http://oliveche.com/app/tool/swoole-4.8.8-php74-centos7-lj.xz
 	tar axf swoole-4.8.8-php74-centos7-lj.xz -C /opt
 	cd /opt/php74
-	./install.sh
+	sudo ./install.sh
 
-ubuntu20.04上可以用apt安装默认的php74后，下载swoole.so模块并配置cli版本的`extention=swoole.so`：
-https://oliveche.com/app/tool/swoole-4.8.8-ubuntu20-php74.tgz
+ubuntu20.04上可以用apt安装默认的php74后，然后下载预编译模块：
+
+	wget http://oliveche.com/app/tool/swoole-4.8.8-ubuntu20-php74.tgz
+	tar zxf swoole-4.8.8-ubuntu20-php74.tgz
+	cd swoole-4.8.8-ubuntu20-php74
+	sudo ./install.sh
 
 安装为服务，默认8081端口，只监听127.0.0.1；使用builder用户：
 
