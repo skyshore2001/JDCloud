@@ -78,12 +78,19 @@ jdserver同时支持http和websocket，建议在网站根目录将下面设置�
 
 ## 使用
 
-jdcloud前端使用jdPush函数连接jdserver并接收推送消息；
+jdcloud前端使用[jdPush函数](http://oliveche.com/jdcloud-site/api_web.html#jdPush)连接jdserver并接收推送消息:
+
+	var ws = jdPush("app1", function (msg, ws) {
+		console.log(msg);
+		// 给user2发送自定义消息，后面介绍push消息
+		ws.send({ac: "push", app: "app1", user: "user2", msg: {event: "hello from user1"});
+	}, {user:"user1", url:"ws://oliveche.com/jdserver"});
+
 也可以直接调用push/getUsers/stat等接口，如：
 
 	callSvr("/jdserver/push", ...)
 
-jdcloud后端通过jdPush函数调用jdserver的push接口，通过callSvcAsync函数调用jdserver的setTimeout接口实现延迟调用。
+jdcloud后端通过[jdPush函数](http://oliveche.com/jdcloud-site/api_php.html#jdPush)调用jdserver的push接口，通过callSvcAsync函数调用jdserver的setTimeout接口实现延迟调用。
 它们都需要在conf.user.php中配置 conf_jdserverUrl，如：
 
 	conf_jdserverUrl='http://127.0.0.1:8081/';
@@ -109,7 +116,7 @@ jdserver共享了jdcloud框架的基础库，获得以下主要特性：
 - 共用conf.user.php中的数据库、调试选项等设置；但默认不包含Conf.php中的配置，可在daemon/api.php中自行包含。
 
 尽管jdserver中也包含了**AccessControl（CRUD框架）以及各种jdcloud插件，但只能用于单用户演示，不可用于生产！**。
-原因是这些业务代码大量使用了$_POST/$_GET/$_SESSION等全局变量，目前支持jdserver的意义并不大。
+原因是这些业务代码大量使用了`$_POST/$_GET/$_SESSION`等全局变量，目前支持jdserver的意义并不大。
 jdserver用于构建中间件，它不是业务组件，它需要尽可能简单。
 
 jdserver与jdcloud的区别：
@@ -120,7 +127,7 @@ jdserver与jdcloud的区别：
 
 ## 消息推送或即时通讯
 
-应用前端（websocket客户端）在连接jdserver后，须发出一个init消息:
+应用前端（websocket客户端）在连接jdserver后，须发出一个init消息，格式示例:
 
 	{"ac": "init", "app": "wms", "user": "100"}
 
@@ -128,7 +135,9 @@ jdserver与jdcloud的区别：
 - app: 指定一个应用。因此该服务可供多个应用共用。
 - user: 用户标识。数字编号或字符串均可。
 
-支持单个发或群体：
+jdcloud前端使用jdPush函数，会自动发送init消息。
+
+推送消息同时支持http和websocket两种方式，支持单发或群发，http接口为：
 
 	push(user, app, msg) -> pushCnt
 
@@ -152,6 +161,20 @@ jdserver与jdcloud的区别：
 		"user" => "*",
 		"msg" => ["id"=>1, "text"=>"订单10待审批"]
 	]);
+
+如果前端已经连接websocket，也可以通过websocket发送push消息，示例：
+
+	{"ac":"push", "app":"wms", "user":"*", "msg": {"id":1, "text":"订单10待审批"}}
+
+jdcloud前端使用示例:
+
+	var ws = jdPush("app1", ...);
+	ws.send({
+		ac: "push",
+		app: "wms",
+		user: "*",
+		msg: {id:1, text:"订单10待审批"}
+	});
 
 ## 查询在线用户
 

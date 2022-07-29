@@ -35,35 +35,12 @@ function api_stat($env)
 
 function api_push($env)
 {
-	global $server;
-	global $clientMap;
-
 	$app = $env->mparam("app");
-	$userSpec = $env->mparam("user");
+	$user = $env->mparam("user");
 	$msg = $env->mparam("msg");
 	if (is_array($msg))
 		$msg = jsonEncode($msg);
-
-	$n = 0;
-	$arr = explode(',', $userSpec);
-	foreach ($clientMap as $fd => $cli) {
-		foreach ($arr as $user) {
-			if ($app == $cli['app'] && fnmatch($user, $cli['user'])) {
-				++ $n;
-				if (! @$cli["isHttp"]) { // websocket client
-					$server->push($fd, $msg);
-				}
-				else { // http长轮询
-					if ($cli["tmr"]) {
-						swoole_timer_clear($cli["tmr"]);
-					}
-					$res = Swoole\Http\Response::create($fd);
-					$res->end($msg);
-				}
-			}
-		}
-	}
-	return $n;
+	return pushMsg($app, $user, $msg);
 }
 
 function api_getUsers($env)

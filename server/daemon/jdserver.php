@@ -32,7 +32,9 @@ $server->on('Message', function ($ws, $frame) {
 		$ws->disconnect($frame->fd, 1007, "bad data format");
 		return;
 	}
-	if (@$req["ac"] == "init") {
+	$ac = @$req["ac"];
+	$ret = 'OK';
+	if ($ac == "init") {
 		global $clientMap;
 		@$app = $req["app"];
 		if (is_null($app)) {
@@ -47,7 +49,25 @@ $server->on('Message', function ($ws, $frame) {
 		writeLog("[app $app] add user=$user, fd={$frame->fd}");
 		$clientMap[$frame->fd] = ["app"=>$app, "user"=>$user];
 	}
-	$ws->push($frame->fd, 'OK');
+	else if ($ac == "push") {
+		@$app = $req["app"];
+		if (is_null($app)) {
+			$ws->push($frame->fd, '*** error: require param `app`');
+			return;
+		}
+		@$user = $req["user"];
+		if (is_null($user)) {
+			$ws->push($frame->fd, '*** error: require param `user`');
+			return;
+		}
+		@$msg = $req["msg"];
+		if (is_null($msg)) {
+			$ws->push($frame->fd, '*** error: require param `msg`');
+			return;
+		}
+		$ret = pushMsg($app, $user, $msg);
+	}
+	$ws->push($frame->fd, $ret);
 });
 
 $server->on('WorkerStart', function ($server, $workerId) {
@@ -113,6 +133,36 @@ function writeLog($s)
 		$s = var_export($s, true);
 	$s = "[".strftime("%Y/%m/%d %H:%M:%S",time())."] " . $s . "\n";
 	echo($s);
+}
+
+function pushMsg($app, $userSpec, $msg)
+{
+	global $server;
+	global $clientMap;
+
+	if (is_array($msg))
+		$msg = jsonEncode($msg);
+
+	$n = 0;
+	$arr = explode(',', $userSpec);
+	foreach ($clientMap as $fd => $cli) {
+		foreach ($arr as $user) {
+			if ($app == $cli['app'] && fnmatch($user, $cli['user'])) {
+				++ $n;
+				if (! @$cli["isHttp"]) { // websocket client
+					$server->push($fd, $msg);
+				}
+				else { // http长轮询
+					if ($cli["tmr"]) {
+						swoole_timer_clear($cli["tmr"]);
+					}
+					$res = Swoole\Http\Response::create($fd);
+					$res->end($msg);
+				}
+			}
+		}
+	}
+	return $n;
 }
 
 $server->start();
