@@ -56,6 +56,21 @@ P_DBCRED格式为`{用户名}:{密码}`，或其base64编码后的值，如
 
 	P_DB=null
 
+其它类型只支持到DBEnv级(调用queryOne/execOne等)，示例：
+
+mssql over odbc:
+
+	putenv("P_DBTYPE=mssql");
+	//putenv("P_DB=odbc:filedsn=d:\\db\\jdcloud-mssql.dsn;");
+	putenv("P_DB=odbc:DRIVER={SQL Server Native Client 11.0}; UID=sa; LANGUAGE=us_english; DATABASE=jdcloud; SERVER=.; PWD=ibdibd");
+	putenv("P_DBCRED=sa:ibdibd");
+
+oracle:
+
+	putenv("P_DBTYPE=oracle");
+	putenv("P_DB=oci:dbname=10.30.250.131:1525/mesdzprd;charset=AL32UTF8");
+	putenv("P_DBCRED=sa:ibdibd");
+
 ## 测试模式与调试等级
 
 @key P_TEST_MODE Integer。环境变量，允许测试模式。0-生产模式；1-测试模式；2-自动化回归测试模式(RTEST_MODE)
@@ -1556,26 +1571,40 @@ function dbUpdate($table, $kv, $cond, $noEscape=false)
 class DBEnv
 {
 	public $DBH;
-	protected $DB, $DBCRED, $DBTYPE;
+	protected $DBTYPE;
+	protected $C; // [connectionString, user, pwd]
 
 	public $TEST_MODE, $MOCK_MODE, $DBG_LEVEL;
 
-	function __construct() {
+	function __construct($dbtype = null, $db = null, $user = null, $pwd = null) {
+		if ($dbtype) {
+			$this->DBTYPE = $dbtype;
+			assert($db);
+			$this->C = [$db, $user, $pwd];
+		}
+		else {
+			$this->initDbType();
+		}
 		$this->initEnv();
 	}
 
-	private function initEnv() {
+	private function initDbType() {
 		mb_internal_encoding("UTF-8");
 		setlocale(LC_ALL, "zh_CN.UTF-8");
 
 		$this->DBTYPE = getenv("P_DBTYPE");
-		$this->DB = getenv("P_DB") ?: "localhost/jdcloud";
-		$this->DBCRED = getenv("P_DBCRED") ?: "ZGVtbzpkZW1vMTIz"; // base64({user}:{pwd}), default: demo:demo123
+		$DB = getenv("P_DB") ?: "localhost/jdcloud";
+		$DBCRED = getenv("P_DBCRED") ?: "ZGVtbzpkZW1vMTIz"; // base64({user}:{pwd}), default: demo:demo123
 
+		// 未指定驱动类型，则按 mysql或sqlite 连接
 		// e.g. P_DB="../carsvc.db"
 		if (! $this->DBTYPE) {
-			if (preg_match('/\.db$/i', $this->DB)) {
+			if (preg_match('/\.db$/i', $DB)) {
 				$this->DBTYPE = "sqlite";
+			}
+			// P_DB=null: 做性能对比测试时, 指定不连数据库
+			else if ($DB === "null") {
+				$this->DBTYPE = null;
 			}
 			else {
 				$this->DBTYPE = "mysql";
@@ -1583,12 +1612,32 @@ class DBEnv
 		}
 		if ($this->DBTYPE == "sqlite") {
 			# 处理相对路径. 绝对路径：/..., \\xxx\..., c:\...
-			if ($this->DB[0] !== '/' && $this->DB[1] !== ':') {
+			if ($DB[0] !== '/' && $DB[1] !== ':') {
 				global $BASE_DIR;
-				$this->DB = $BASE_DIR . '/' . $this->DB;
+				$DB = $BASE_DIR . '/' . $DB;
 			}
 		}
 
+		// e.g. P_DB="../carsvc.db"
+		if ($this->DBTYPE == "sqlite") {
+			$DB = "sqlite:$DB";
+		}
+		else if ($this->DBTYPE == "mysql") {
+			// e.g. P_DB="115.29.199.210/carsvc"
+			// e.g. P_DB="115.29.199.210:3306/carsvc"
+			if (! preg_match('/^"?(.*?)(:(\d+))?\/(\w+)"?$/', $DB, $ms))
+				jdRet(E_SERVER, "bad db=`$DB`", "未知数据库");
+			$dbhost = $ms[1];
+			$dbport = $ms[3] ?: 3306;
+			$dbname = $ms[4];
+
+			$DB = "mysql:host={$dbhost};dbname={$dbname};port={$dbport}";
+		}
+		list($dbuser, $dbpwd) = getCred($DBCRED); 
+		$this->C = [$DB, $dbuser, $dbpwd];
+	}
+
+	private function initEnv() {
 		$this->TEST_MODE = getenv("P_TEST_MODE")===false? 0: intval(getenv("P_TEST_MODE"));
 		$this->DBG_LEVEL = getenv("P_DEBUG")===false? 0 : intval(getenv("P_DEBUG"));
 
@@ -1600,40 +1649,16 @@ class DBEnv
 	function dbconn($fnConfirm = null)
 	{
 		$DBH = $this->DBH;
-		if (isset($DBH) || $this->DB === "null")
+		if (isset($DBH) || $this->DBTYPE === null)
 			return $DBH;
-
-		// 未指定驱动类型，则按 mysql或sqlite 连接
-	// 	if (! preg_match('/^\w{3,10}:/', $DB)) {
-			// e.g. P_DB="../carsvc.db"
-			if ($this->DBTYPE == "sqlite") {
-				$C = ["sqlite:" . $this->DB, '', ''];
-			}
-			else if ($this->DBTYPE == "mysql") {
-				// e.g. P_DB="115.29.199.210/carsvc"
-				// e.g. P_DB="115.29.199.210:3306/carsvc"
-				if (! preg_match('/^"?(.*?)(:(\d+))?\/(\w+)"?$/', $this->DB, $ms))
-					jdRet(E_SERVER, "bad db=`{$this->DB}`", "未知数据库");
-				$dbhost = $ms[1];
-				$dbport = $ms[3] ?: 3306;
-				$dbname = $ms[4];
-
-				list($dbuser, $dbpwd) = getCred($this->DBCRED); 
-				$C = ["mysql:host={$dbhost};dbname={$dbname};port={$dbport}", $dbuser, $dbpwd];
-			}
-	// 	}
-	// 	else {
-	// 		list($dbuser, $dbpwd) = getCred($this->DBCRED); 
-	// 		$C = [$this->DB, $dbuser, $dbpwd];
-	// 	}
 
 		if ($fnConfirm == null)
 			@$fnConfirm = $GLOBALS["dbConfirmFn"];
-		if ($fnConfirm && $fnConfirm($C[0]) === false) {
+		if ($fnConfirm && $fnConfirm($this->C[0]) === false) {
 			exit;
 		}
 		try {
-			@$DBH = new JDPDO ($C[0], $C[1], $C[2], $this);
+			@$DBH = new JDPDO ($this->C[0], $this->C[1], $this->C[2], $this);
 		}
 		catch (PDOException $e) {
 			$msg = $this->TEST_MODE ? $e->getMessage() : "dbconn fails";
