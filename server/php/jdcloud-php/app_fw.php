@@ -56,20 +56,25 @@ P_DBCRED格式为`{用户名}:{密码}`，或其base64编码后的值，如
 
 	P_DB=null
 
-其它类型只支持到DBEnv级(调用queryOne/execOne等)，示例：
+也可以直接创建DBEnv来用(调用queryOne/execOne等)，示例：
 
-mssql over odbc:
+	# mysql
+	$db = "mysql:host=localhost;port=3306;dbname=jt_wms";
+	$env = new DBEnv("mysql", $db, "demo", "demo123");
 
-	putenv("P_DBTYPE=mssql");
-	//putenv("P_DB=odbc:filedsn=d:\\db\\jdcloud-mssql.dsn;");
-	putenv("P_DB=odbc:DRIVER={SQL Server Native Client 11.0}; UID=sa; LANGUAGE=us_english; DATABASE=jdcloud; SERVER=.; PWD=ibdibd");
-	putenv("P_DBCRED=sa:ibdibd");
+	# sqlite
+	$db = "sqlite:jdcloud.db";
+	$env = new DBEnv("sqlite", $db);
 
-oracle:
+	# mssql over odbc
+	$db = "odbc:DRIVER={SQL Server Native Client 11.0}; UID=sa; LANGUAGE=us_english; DATABASE=jdcloud; SERVER=.; PWD=ibdibd";
+	$env = new DBEnv("mssql", $db, "demo", "demo123");
 
-	putenv("P_DBTYPE=oracle");
-	putenv("P_DB=oci:dbname=10.30.250.131:1525/mesdzprd;charset=AL32UTF8");
-	putenv("P_DBCRED=sa:ibdibd");
+	# oracle
+	$db = "oci:dbname=10.30.250.131:1525/mesdzprd;charset=AL32UTF8";
+	$env = new DBEnv("oracle", $db, "demo", "demo123");
+
+如果配置了P_DEBUG_LOG=1且P_DEBUG=9，则记录SQL调用日志到debug.log
 
 ## 测试模式与调试等级
 
@@ -1571,10 +1576,11 @@ function dbUpdate($table, $kv, $cond, $noEscape=false)
 class DBEnv
 {
 	public $DBH;
-	protected $DBTYPE;
+	public $DBTYPE;
 	protected $C; // [connectionString, user, pwd]
+	protected $db; // sql strategy for supported db
 
-	public $TEST_MODE, $MOCK_MODE, $DBG_LEVEL;
+	public $TEST_MODE, $MOCK_MODE, $DBG_LEVEL, $DEBUG_LOG;
 
 	function __construct($dbtype = null, $db = null, $user = null, $pwd = null) {
 		if ($dbtype) {
@@ -1586,6 +1592,18 @@ class DBEnv
 			$this->initDbType();
 		}
 		$this->initEnv();
+	}
+
+	function addLog($data, $logLevel=0) {
+		if ($this->DEBUG_LOG == 1 && $this->DBG_LEVEL >= $logLevel) {
+			logit($data, true, 'debug');
+			return true;
+		}
+	}
+	function amendLog($logHandle, $fn) {
+		$data = '';
+		$fn($data);
+		logit($data, false, 'debug');
 	}
 
 	private function initDbType() {
@@ -1640,6 +1658,7 @@ class DBEnv
 	private function initEnv() {
 		$this->TEST_MODE = getenv("P_TEST_MODE")===false? 0: intval(getenv("P_TEST_MODE"));
 		$this->DBG_LEVEL = getenv("P_DEBUG")===false? 0 : intval(getenv("P_DEBUG"));
+		$this->DEBUG_LOG = getenv("P_DEBUG_LOG")===false? 0 : intval(getenv("P_DEBUG_LOG"));
 
 		if ($this->TEST_MODE) {
 			$this->MOCK_MODE = getenv("P_MOCK_MODE") ?: 0;
@@ -1658,7 +1677,7 @@ class DBEnv
 			exit;
 		}
 		try {
-			@$DBH = new JDPDO ($this->C[0], $this->C[1], $this->C[2], $this);
+			@$DBH = JDPDO::create($this->C[0], $this->C[1], $this->C[2], $this);
 		}
 		catch (PDOException $e) {
 			$msg = $this->TEST_MODE ? $e->getMessage() : "dbconn fails";
@@ -1666,10 +1685,6 @@ class DBEnv
 			jdRet(E_DB, $msg, "数据库连接失败");
 		}
 		
-		if ($this->DBTYPE == "mysql") {
-			++ $DBH->skipLogCnt;
-			$DBH->exec('set names utf8mb4');
-		}
 		$DBH->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION); # by default use PDO::ERRMODE_SILENT
 
 		# enable real types (works on mysql after php5.4)
@@ -1677,6 +1692,7 @@ class DBEnv
 		$DBH->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
 		$DBH->setAttribute(PDO::ATTR_STRINGIFY_FETCHES, false);
 		$this->DBH = $DBH;
+		$DBH->initConn();
 		return $DBH;
 	}
 
@@ -1705,8 +1721,7 @@ class DBEnv
 		$DBH = $this->dbconn();
 		if ($cond)
 			$sql = genQuery($sql, $cond);
-		if (stripos($sql, "limit ") === false && stripos($sql, "for update") === false)
-			$sql .= " LIMIT 1";
+		$DBH->addLimit1($sql);
 		$sth = $DBH->query($sql);
 
 		if ($sth === false) {
@@ -2256,6 +2271,21 @@ class JDPDO extends PDO
 	public $skipLogCnt = 0;
 	private $logH;
 
+	static function create($dsn, $user, $pwd, $env) {
+		$cls = "JDPDO_" . $env->DBTYPE;
+		if (!class_exists($cls))
+			jdRet(E_FORBIDDEN, "unsupport DBTYPE: " . $env->DBTYPE);
+		$dbh = new $cls($dsn, $user, $pwd, $env);
+		return $dbh;
+	}
+
+	// JDPDO interface
+	function initConn() {
+	}
+	function addLimit1(&$sql) {
+	}
+	// end
+
 	function __construct($dsn, $user = null, $pwd = null, $env = null)
 	{
 		$opts = [];
@@ -2301,6 +2331,40 @@ class JDPDO extends PDO
 	{
 		$this->addLog($sql);
 		return parent::prepare($sql, $opts);
+	}
+}
+
+class JDPDO_sqlite extends JDPDO
+{
+}
+
+class JDPDO_mysql extends JDPDO
+{
+	function initConn() {
+		$DBH = $this->env->DBH;
+		++ $DBH->skipLogCnt;
+		$DBH->exec('set names utf8mb4');
+	}
+	function addLimit1(&$sql) {
+		if (stripos($sql, "limit ") === false && stripos($sql, "for update") === false)
+			$sql .= " LIMIT 1";
+	}
+}
+
+class JDPDO_mssql extends JDPDO
+{
+}
+
+class JDPDO_oracle extends JDPDO
+{
+	function initConn() {
+		$DBH = $this->env->DBH;
+		++ $DBH->skipLogCnt;
+		$DBH->exec("ALTER SESSION SET NLS_DATE_FORMAT = 'YYYY-MM-DD HH24:MI:SS'");
+	}
+	function addLimit1(&$sql) {
+		if (stripos($sql, "ROWNUM ") === false && stripos($sql, "for update") === false)
+			$sql = "SELECT * FROM ($sql) t WHERE ROWNUM<=1";
 	}
 }
 

@@ -2663,7 +2663,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 
 		// 记录调用日志，如果是batch，只记录子调用项，不记录batch本身
 		if ($this->ac != "batch" || $isSubCall) {
-			$debugLog = getenv("P_DEBUG_LOG") ?: 0;
+			$debugLog = $this->DEBUG_LOG;
 			if ($debugLog == 1 || ($debugLog == 2 && $ret[0] != 0)) {
 				$retStr = $isUserFmt? (is_scalar($ret[1])? $ret[1]: jsonEncode($ret[1])): jsonEncode($ret);
 				$s = 'ac=' . $ac . ($this->ac1? "(in batch)": "") . ', apiLogId=' . ApiLog::$lastId . ', ret=' . $retStr . ", dbgInfo=" . jsonEncode($this->dbgInfo, true) .
