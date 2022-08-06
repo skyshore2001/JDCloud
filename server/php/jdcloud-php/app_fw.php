@@ -2274,7 +2274,8 @@ class JDPDO extends PDO
 	static function create($dsn, $user, $pwd, $env) {
 		$cls = "JDPDO_" . $env->DBTYPE;
 		if (!class_exists($cls))
-			jdRet(E_FORBIDDEN, "unsupport DBTYPE: " . $env->DBTYPE);
+			$cls = "JDPDO";
+			// jdRet(E_FORBIDDEN, "unsupport DBTYPE: " . $env->DBTYPE);
 		$dbh = new $cls($dsn, $user, $pwd, $env);
 		return $dbh;
 	}
@@ -2363,7 +2364,8 @@ class JDPDO_oracle extends JDPDO
 		$DBH->exec("ALTER SESSION SET NLS_DATE_FORMAT = 'YYYY-MM-DD HH24:MI:SS'");
 	}
 	function addLimit1(&$sql) {
-		if (stripos($sql, "ROWNUM ") === false && stripos($sql, "for update") === false)
+		// 12c support 'fetch first 1 row'
+		if (stripos($sql, "ROWNUM") === false && stripos($sql, "fetch ") === false)
 			$sql = "SELECT * FROM ($sql) t WHERE ROWNUM<=1";
 	}
 }
