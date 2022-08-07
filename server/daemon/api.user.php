@@ -240,6 +240,20 @@ function api_setTimeout($env)
 	return AC_Timer::setup($env->_POST);
 }
 
+function api_conf($env)
+{
+	$ret = [];
+	foreach ($env->_GET as $k => $v) {
+		if (startsWith($k, "conf_")) {
+			$GLOBALS[$k] = $v;
+			$ret[$k] = $v;
+		}
+	}
+	if ($ret)
+		writeLog("set conf: " . jsonEncode($ret));
+	return $ret;
+}
+
 class AC_Test extends JDApiBase
 {
 	function api_hello() {

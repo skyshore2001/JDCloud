@@ -321,7 +321,7 @@ cron一旦设置，会保存到文件里。当jdserver重启后可再加载。�
 
 更多返回内容参考：https://wiki.swoole.com/#/server/methods?id=stats
 
-## jdserver配置项
+## jdserver配置项与conf接口
 
 jdserver与jdcloud共用配置文件conf.user.php。它专用的配置项有：
 
@@ -329,6 +329,12 @@ jdserver与jdcloud共用配置文件conf.user.php。它专用的配置项有：
 日志文件为daemon/jdserver.log，可以通过tool/log.php在线查看。
 
 也可以在jdserver插件(见下节)中配置。
+
+注意：修改配置后需要重启jdserver生效，以`conf_`开头的部分配置可以通过http接口动态修改，示例：
+
+	http://localhost/jdserver/conf?conf_jdserver_log_ws=1
+
+修改会记录到日志中。
 
 ## jdserver插件
 
@@ -338,4 +344,29 @@ api.php还会加载jdserver.d目录下所有.php文件，这些文件称为jdser
 
 jdserver默认会处理websocket客户端发送中的ac=init/push消息，通过插件可处理这些系统消息，也可以处理应用自定义消息。
 具体示例见jdserver.d/10-example.php.disabled文件。
+
+	// 通过push接口(http或websocket)发消息
+	$GLOBALS["jdserver_event"]->on("push.app1", function ($user, $msg) {
+		// $msg = jsonDecode($msg);
+	}
+
+	// 监听websocket消息
+	$GLOBALS["jdserver_event"]->on('message.app1', function ($ws, $frame) {
+		@$ac = $frame->req["ac"];
+		if ($ac == "init") {
+			...
+			$ws->push($frame->fd, jsonEncode([
+				"ac" => "pos",
+				"pos"=> $pos
+			]));
+			// 任意推送
+			// pushMsg($app, $userSpec, $msg);
+		}
+	}
+
+注意：push或message事件后必须加上app名，即只能处理指定app的事件。
+
+注意：修改插件源码后需要重启jdserver:
+
+	sudo ./jdserver.service.sh restart
 

@@ -1,6 +1,6 @@
 <?php
 // 配置记录websocket日志
-$GLOBALS["conf_jdserver_log_ws"] = 1;
+// $GLOBALS["conf_jdserver_log_ws"] = 1;
 
 // 应用数据
 class App1
@@ -37,3 +37,4 @@ $GLOBALS["jdserver_event"]->on('message.app1', function ($ws, $frame) {
 	}
 });
 
+// vi: ft=php
