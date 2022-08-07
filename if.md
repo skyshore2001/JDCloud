@@ -157,16 +157,28 @@ query接口默认返回格式为`{h,d}`，通过表头h与表内容d传数据表
 	var imgUrl = MUI.makeUrl("att", {id: 100}); // 其实就是 $BASE_URL/att?id=100
 	jimg.attr("src", imgUrl); // 设置到img.src属性。
 
-在支持缩略图时，字段内保存的是缩略图的编号，可以这样来取缩略图和原始大图的地址：
+在支持缩略图时，如果字段内保存的是大图（原图）编号：
 
-	// 取缩略图地址：
+	// 取小图(缩略图)地址：加thumb=1参数表示取小图
+	var imgUrl = MUI.makeUrl("att", {id: 100, thumb: 1});
+	// 取大图(原图)地址：
+	var bigImgUrl = MUI.makeUrl("att", {id: 100});
+
+如果字段内保存的是缩略图的编号，可以这样来取缩略图和原始大图的地址：
+
+	// 取小图(缩略图)地址：
 	var imgUrl = MUI.makeUrl("att", {id: 100});
-	// 取原始图地址：
+	// 取大图(原图)地址：用参数thumbId=100表示曲取小图编号100对应的大图
 	var bigImgUrl = MUI.makeUrl("att", {thumbId: 100});
 
 服务端还支持pic接口，可生成一个显示图片的URL，直接在浏览器（或iframe）中显示。
 注意att接口直接返回一张图的内容，而pic接口返回html片段，它支持多图。用法示例：
 
+	// 如果"100,102"是大图
+	var url = MUI.makeUrl("pic", {id: "100,102"}); // 其实就是 $BASE_URL/pic?id=100,102
+	jframe.attr("src", url);
+
+	// 如果"100,102"是小图
 	var url = MUI.makeUrl("pic", {thumbId: "100,102"}); // 其实就是 $BASE_URL/pic?thumbId=100,102
 	jframe.attr("src", url);
 
@@ -195,7 +207,8 @@ query接口默认返回格式为`{h,d}`，通过表头h与表内容d传数据表
 注意返回的是一个数组，若一次上传多个文件，则依次返回。
 
 在填写文件字段比如atts时（或是不带缩略图的图片字段），将文件编号以逗号分隔后存入，比如`100`, `101,102`这样。取文件时用`att(id)`接口。
-在填写图片字段比如pics时，一般应支持缩略图，这时将缩略图编号以逗号分隔，比如`101,103`这样存入图片字段中。取图片时用`att(thumbId)`接口。
+在填写图片字段比如pics时，一般应支持缩略图(参数genThumb=1)，这时将图片编号以逗号分隔，比如`101,103`这样存入图片字段中。
+取图片时用`att(id)`接口。取缩略图用`att(id,thumb=1)`接口.
 
 示例：使用FormData对象上传
 

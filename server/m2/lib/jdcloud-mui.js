@@ -7540,7 +7540,17 @@ TODO: cordova-ios未来将使用WkWebView作为容器（目前仍使用UIWebView
 参数加密特性。默认为1（开启），在后端接口返回当前是测试模式时，会改为0（关闭）。
 也可以在chrome控制台中直接修改，如`MUI.options.xparam=0`。
  */
-		xparam: 1
+		xparam: 1,
+
+/**
+@var MUI.options.useNewThumb
+
+带缩略图的图片编号保存风格。
+
+- 0: 保存小图编号，用att(id)取小图，用att(thumbId)取大图
+- 1: 保存大图编号，用att(id,thumb=1)取小图，用att(id)取大图
+ */
+		useNewThumb: 0
 	};
 
 	var m_onLoginOK;

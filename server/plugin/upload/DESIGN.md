@@ -52,6 +52,11 @@ pic接口用于可生成一个显示一组图片的URL，直接在浏览器（�
 
 	var url = MUI.makeUrl("pic", {id: "100,102", thumb: 1}); // 其实就是 $BASE_URL/pic?id=100,102&thumb=1
 
+jdcloud管理端wui-upload组件支持上传和预览图片，选项WUI.options.useNewThumb=1时，表示字段内容为大图（原图）编号。
+管理端列表页的WUI.Formatter.pics/pics1/picx也支持WUI.option.useNewThumb指定带缩略图的图片编号保存风格。
+
+类似的，jdcloud移动端uploadpic组件使用MUI.options.useNewThumb=1来判断新风格。
+
 ## 数据库设计
 
 **[附件]**

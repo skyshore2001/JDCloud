@@ -275,6 +275,12 @@ HTML: 在data-options中指定菜单的ID和显示文字。缺省头像将添加
 		$(frm.url).val(resUrl);
 	}
 
+## 存储小图还是大图
+
+jdcloud传统风格是在上传图片后(upload接口)，存储返回的小图编号(thumbId), 通过att(thumbId)访问大图。
+
+WUI.options.useNewThumb=1时为新风格，即存储upload接口返回的大图编号(id)，通过att(id, thumb=1)访问小图。
+
  */
 self.m_enhanceFn[".wui-upload"] = enhanceUpload;
 
@@ -398,7 +404,8 @@ function arrayToImg(jp, arr)
 		if (attId == "")
 			return;
 		var url = WUI.makeUrl("att", {id: attId});
-		var linkUrl = (opt.nothumb||!opt.pic) ? url: WUI.makeUrl("att", {thumbId: attId});
+		var linkUrl = (opt.nothumb||!opt.pic) ? url: 
+			(WUI.options.useNewThumb? WUI.makeUrl("att", {id: attId}): WUI.makeUrl("att", {thumbId: attId}));
 		var ja = $('<a target="_blank">').attr({
 			"href": linkUrl,
 			"att": att,
@@ -485,7 +492,12 @@ function imgToHidden(jp, sep)
 			var params = {genThumb: 1, autoResize: 0};
 			dfd = callUpload(params, fd, function (data) {
 				$.each(data, function (i, e) {
-					val.push(e.thumbId);
+					if (WUI.options.useNewThumb) {
+						val.push(e.id); // 存大图
+					}
+					else {
+						val.push(e.thumbId); // 存小图
+					}
 					$(imgArr[i]).attr("picId", e.thumbId);
 					imgArr[i].picData_ = null;
 				});

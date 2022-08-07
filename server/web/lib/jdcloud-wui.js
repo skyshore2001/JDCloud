@@ -9676,7 +9676,7 @@ var Formatter = {
 
 显示图片（支持多图）, 每个图可以有预览, 点击后在新页面打开并依次显示所有的图片.（使用服务端pic接口）
 
-- thumb: 空-不存在缩略图，1-id是缩略图，2-id是原图
+- thumb: 空-不存在缩略图，1-有缩略图: WUI.options.useNewThumb=0时id是缩略图(传统)，为1时id是原图(新风格)
 - preview: 非空时，表示显示图片编号预览，其值为显示预览图的个数。
 
 @alias Formatter.pics
@@ -9688,6 +9688,8 @@ var Formatter = {
 相当于picx({thumb:1})。不显示图片列表预览，点击链接显示图片列表。
  */
 	picx: function (opt) {
+		if (opt === null)
+			opt = {};
 		return function (value, row) {
 			if (value == null)
 				return "(无图)";
@@ -9702,11 +9704,11 @@ var Formatter = {
 					return name + " ";
 				-- maxN;
 				var url;
-				if (!opt.thumb || opt.thumb == 1) {
-					url = WUI.makeUrl("att", {id: picId});
-				}
-				else if (opt.thumb == 2) {
+				if (opt.thumb && self.options.useNewThumb) {
 					url = WUI.makeUrl("att", {id: picId, thumb:1});
+				}
+				else {
+					url = WUI.makeUrl("att", {id: picId});
 				}
 				return '<img alt="' + name + '" src="' + url + '">';
 			});
@@ -9716,10 +9718,10 @@ var Formatter = {
 			if (!opt.thumb) {
 				return WUI.makeUrl("pic", {id:value});
 			}
-			else if (opt.thumb == 1) {
+			else if (!self.options.useNewThumb) {
 				return WUI.makeUrl("pic", {smallId:value});
 			}
-			else if (opt.thumb == 2) {
+			else {
 				return WUI.makeUrl("pic", {id:value, thumb:1});
 			}
 		}
@@ -11069,7 +11071,17 @@ self.options = {
 /**
 @var WUI.options.xparam
  */
-	xparam: 1
+	xparam: 1,
+
+/**
+@var MUI.options.useNewThumb
+
+带缩略图的图片编号保存风格。
+
+- 0: 保存小图编号，用att(id)取小图，用att(thumbId)取大图
+- 1: 保存大图编号，用att(id,thumb=1)取小图，用att(id)取大图
+ */
+	useNewThumb: 0
 };
 
 //}}}

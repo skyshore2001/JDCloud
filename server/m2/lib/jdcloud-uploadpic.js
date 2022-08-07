@@ -283,6 +283,13 @@ function setAtts(jo, val)
 	jo.attr("data-atts", val);
 }
 
+function getThumbUrl(attId)
+{
+	if (MUI.options.useNewThumb)
+		return MUI.makeUrl("att", {id: attId, thumb:1});
+	return MUI.makeUrl("att", {thumbId: attId});
+}
+
 function loadPreview(jo, isMul)
 {
 	var atts = getAtts(jo);
@@ -300,7 +307,7 @@ function loadPreview(jo, isMul)
 					var picData = jo.prop("picData_");
 					return picData && picData.b64src;
 				}
-				return MUI.makeUrl("att", {thumbId: attId});
+				return getThumbUrl(attId);
 			},
 			selector: ".uploadpic-item"
 		};
@@ -462,7 +469,10 @@ function submit1(jo, cb, progress, progressCb)
 		var atts = [];
 		$.each(imgArr, function(i) {
 			this.picData_ = null;
-			this.attId_ = data[i].thumbId;
+			if (MUI.options.useNewThumb)
+				this.attId_ = data[i].id;
+			else
+				this.attId_ = data[i].thumbId;
 			atts.push(this.attId_);
 		});
 		setAtts(jo, atts.join(','));
@@ -640,7 +650,7 @@ function initPageGallery()
 	function setupImage(ji) {
 		var attId = ji.prop("attId_");
 		if (attId) {
-			url = "url(" + MUI.makeUrl("att", {thumbId: attId}) + ")";
+			url = "url(" + getThumbUrl(attId) + ")";
 		}
 		else {
 			url = ji.css("background-image");
