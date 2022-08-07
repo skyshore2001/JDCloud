@@ -530,7 +530,7 @@ function mparam($name, $col = null, $doHtmlEscape = true, $env = null)
 
 	if (isset($GLOBALS["conf_xxx"])) ...
 
-配置使用全局变量：
+如果希望用户未配置时返回缺省值，可直接先配置其缺省值（应确保在conf.user.php中可被覆盖）：
 
 	$GLOBALS["conf_jdserverUrl"] = "http://...";
 

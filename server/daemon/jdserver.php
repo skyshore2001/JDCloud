@@ -6,6 +6,9 @@ $port = @$opt["p"] ?: 8081;
 
 $workerNum = 1; // 由于使用了全局变量来共享信息，这里只能为1。
 
+// 记录websocket收发日志
+$conf_jdserver_log_ws = 0;
+
 // 开启协程!!!
 Co::set(['hook_flags'=> SWOOLE_HOOK_ALL]);
 
@@ -26,54 +29,76 @@ $server->on('Open', function ($ws, $req) {
 $server->on('Message', function ($ws, $frame) {
 //	echo("onMessage(websocket): fd=" . $frame->fd . ", data=" . $frame->data . "\n");
 	$req = json_decode($frame->data, true);
+	$fd = $frame->fd;
 	if (! is_array($req)) {
-		$ws->push($frame->fd, '*** require json data. but recv: ' . $frame->data);
+		writeLog("*** require json message. recv from #fd: {$frame->data}");
+		$ws->push($fd, '*** require json data. but recv: ' . $frame->data);
 		// 1007: 格式不符
-		$ws->disconnect($frame->fd, 1007, "bad data format");
+		$ws->disconnect($fd, 1007, "bad data format");
 		return;
 	}
 	$ac = @$req["ac"];
 	$ret = 'OK';
+	$app = null;
+	$cli = null;
+	global $clientMap;
 	if ($ac == "init") {
-		global $clientMap;
+		if (getConf("conf_jdserver_log_ws"))
+			writeLog("recv init from #{$fd}: {$frame->data}");
 		@$app = $req["app"];
 		if (is_null($app)) {
-			$ws->push($frame->fd, '*** error: require param `app`');
+			$ws->push($fd, '*** error: require param `app`');
 			return;
 		}
 		@$user = $req["user"];
 		if (is_null($user)) {
-			$ws->push($frame->fd, '*** error: require param `user`');
+			$ws->push($fd, '*** error: require param `user`');
 			return;
 		}
-		writeLog("[app $app] add user=$user, fd={$frame->fd}");
-		$clientMap[$frame->fd] = ["app"=>$app, "user"=>$user];
+		writeLog("[app $app] add user: $user #$fd");
+		$cli = $clientMap[$fd] = ["app"=>$app, "user"=>$user];
 	}
-	else if ($ac == "push") {
+	else {
+		@$cli = $clientMap[$fd];
+		if (is_null($cli)) {
+			writeLog("*** require init message. recv from #{$fd}: {$frame->data}");
+			$ws->push($fd, '*** error: require init');
+			return;
+		}
+		$app = $cli["app"];
+		if (getConf("conf_jdserver_log_ws"))
+			writeLog("[app $app] recv from {$cli['user']} #{$fd}: {$frame->data}");
+	}
+
+	if ($ac == "push") {
 		@$app = $req["app"];
 		if (is_null($app)) {
-			$ws->push($frame->fd, '*** error: require param `app`');
+			$ws->push($fd, '*** error: require param `app`');
 			return;
 		}
 		@$user = $req["user"];
 		if (is_null($user)) {
-			$ws->push($frame->fd, '*** error: require param `user`');
+			$ws->push($fd, '*** error: require param `user`');
 			return;
 		}
 		@$msg = $req["msg"];
 		if (is_null($msg)) {
-			$ws->push($frame->fd, '*** error: require param `msg`');
+			$ws->push($fd, '*** error: require param `msg`');
 			return;
 		}
 		$ret = pushMsg($app, $user, $msg);
 	}
-	$ws->push($frame->fd, $ret);
+	$frame->req = $req;
+	$GLOBALS["jdserver_event"]->trigger("message.$app", [$ws, $frame]);
+
+	$ws->push($fd, $ret);
 });
 
 $server->on('WorkerStart', function ($server, $workerId) {
 	swoole_ignore_error(1004); // send but session is closed
 	swoole_ignore_error(1005); // end but session is closed
 	writeLog("=== worker $workerId starts. master_pid={$server->master_pid}, manager_pid={$server->manager_pid}, worker_pid={$server->worker_pid}");
+	// TODO: quit server if exception or fatal error. now write to stdout/jdserver.log
 	require("api.php");
 });
 
@@ -102,7 +127,7 @@ $server->on('Request', function ($req, $res) {
 				$res->end();
 			});
 		}
-		writeLog("[app $app] add http user=$user, fd=$fd");
+		writeLog("[app $app] add http user: $user #$fd");
 		$clientMap[$fd] = ["app"=>$app, "user"=>$user, "isHttp"=>true, "tmr"=>$tmr];
 
 		$res->detach();
@@ -122,7 +147,7 @@ $server->on('Close', function ($ws, $fd) {
 	global $clientMap;
 	if (array_key_exists($fd, $clientMap)) {
 		$cli = $clientMap[$fd];
-		writeLog("[app {$cli['app']}] del user={$cli['user']}, fd=$fd");
+		writeLog("[app {$cli['app']}] del user: {$cli['user']} #{$fd}");
 		unset($clientMap[$fd]);
 	}
 });
@@ -131,7 +156,7 @@ function writeLog($s)
 {
 	if (is_array($s))
 		$s = var_export($s, true);
-	$s = "[".strftime("%Y/%m/%d %H:%M:%S",time())."] " . $s . "\n";
+	$s = "=== REQ at [".strftime("%Y/%m/%d %H:%M:%S",time())."] " . $s . "\n";
 	echo($s);
 }
 
@@ -142,6 +167,8 @@ function pushMsg($app, $userSpec, $msg)
 
 	if (is_array($msg))
 		$msg = jsonEncode($msg);
+	if (getConf("conf_jdserver_log_ws"))
+		writeLog("[app $app] push to $userSpec: $msg");
 
 	$n = 0;
 	$arr = explode(',', $userSpec);
@@ -162,6 +189,7 @@ function pushMsg($app, $userSpec, $msg)
 			}
 		}
 	}
+	$GLOBALS["jdserver_event"]->trigger("push.$app", [$userSpec, $msg]);
 	return $n;
 }
 

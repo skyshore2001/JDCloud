@@ -60,6 +60,7 @@ xmp {
 <a href="?f=ext&sz=<?=$MAX_READ_SZ?>">ext</a>
 <a href="?f=debug&sz=<?=$MAX_READ_SZ?>">debug</a>
 <a href="?f=secure&sz=<?=$MAX_READ_SZ?>">secure</a>
+<a href="?f=daemon/jdserver&sz=<?=$MAX_READ_SZ?>">jdserver</a>
 
 <hr/>
 <?php

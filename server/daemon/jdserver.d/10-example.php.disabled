@@ -1,0 +1,39 @@
+<?php
+// 配置记录websocket日志
+$GLOBALS["conf_jdserver_log_ws"] = 1;
+
+// 应用数据
+class App1
+{
+	static $pos = null;
+}
+
+// 通过push接口(http或websocket)发消息
+$GLOBALS["jdserver_event"]->on("push.app1", function ($user, $msg) {
+	$msg = jsonDecode($msg);
+	@$ac = $msg["ac"];
+	if ($ac == "pos") {
+		$pos = $msg["pos"];
+		App1::$pos = $pos;
+		writeLog("update pos: $pos");
+	}
+});
+
+// 监听websocket消息
+$GLOBALS["jdserver_event"]->on('message.app1', function ($ws, $frame) {
+	// $frame->req: json data
+	@$ac = $frame->req["ac"];
+	if ($ac == "init") {
+		$pos = App1::$pos;
+		if (isset($pos)) {
+			// 给当前请求的客户端发送消息，注意消息必须转为string类型
+			$ws->push($frame->fd, jsonEncode([
+				"ac" => "pos",
+				"pos"=> $pos
+			]));
+			// 任意推送
+			// pushMsg($app, $userSpec, $msg);
+		}
+	}
+});
+

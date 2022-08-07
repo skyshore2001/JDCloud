@@ -189,6 +189,17 @@ class SwooleEnv extends JDEnv
 	}
 }
 
+class JDServerEvent
+{
+	use JDEvent;
+
+	/// @event message($arg1, $arg2)
+}
+$GLOBALS["jdserver_event"] = new JDServerEvent();
+foreach (glob(__DIR__ ."/jdserver.d/*.php") as $f) {
+	include($f);
+}
+
 AC_Timer::init();
 
 // vi: foldmethod=marker

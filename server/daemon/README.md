@@ -321,3 +321,21 @@ cron一旦设置，会保存到文件里。当jdserver重启后可再加载。�
 
 更多返回内容参考：https://wiki.swoole.com/#/server/methods?id=stats
 
+## jdserver配置项
+
+jdserver与jdcloud共用配置文件conf.user.php。它专用的配置项有：
+
+- conf_jdserver_log_ws: 设置为1时，记录收到的websocket客户端消息和发送到websocket客户端的消息，
+日志文件为daemon/jdserver.log，可以通过tool/log.php在线查看。
+
+也可以在jdserver插件(见下节)中配置。
+
+## jdserver插件
+
+jdserver设计为支持多应用共用，支持各应用定制插件并安装。
+jdserver启动后会加载api.php(框架)，再由api.php加载api.user.php，定制逻辑一般可写在这个文件里，但它不方便多应用共用。
+api.php还会加载jdserver.d目录下所有.php文件，这些文件称为jdserver插件。
+
+jdserver默认会处理websocket客户端发送中的ac=init/push消息，通过插件可处理这些系统消息，也可以处理应用自定义消息。
+具体示例见jdserver.d/10-example.php.disabled文件。
+
