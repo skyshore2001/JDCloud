@@ -14,9 +14,9 @@ function initPage<?=$obj?>()
 	// jpage.on("pagebeforeshow", onPageBeforeShow);
 
 	var pageItf = Page<?=$obj?>;
-<? if ($pics) { ?>
+<?php if ($pics) { ?>
 	var uploadPic = new MUI.UploadPic(jpage);
-<?}?>
+<?php }?>
 	if (pageItf.formMode == null) {
 		pageItf.showForAdd();
 	}
