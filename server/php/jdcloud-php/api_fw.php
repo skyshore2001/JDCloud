@@ -660,6 +660,8 @@ login接口支持不同类别的用户登录，登录成功后会设置相应的
 
 - key被相应的认证方式使用，其格式由认证方式决定，一般即直接是认证密钥。
 
+- keyfn(key): (v6.1) key和keyfn必须指定一个。与静态匹配key不同，keyfn是一个验证函数，常用于动态查询接口调用时提供的key是否在指定的表中，然后往往动态设置SESSION（见下面basic认证中的例子）。
+
 - 通过SESSION的设置，从而使得通过认证的接口请求，相当于具有系统-9999号用户的权限（即具有AUTH_EMP权限），
   意味着它可以直接调用AC2类，或是通过`checkAuth(AUTH_EMP)`的检查。
 
@@ -712,8 +714,8 @@ HTTP Basic认证，即添加HTTP头：
 
 	// class Conf (在conf.php中)
 	static $authKeys = [
-		["authType"=>"basic", "key" => "user1:1234"],
-		["authType"=>"basic", "key" => "user2:1235"], // 可以多个
+		["authType"=>"basic", "key" => "wms:1234", "SESSION" => ["empId"=>-9000], "allowedAc" => ["Item.*","*.query","*.get"]],
+		["authType"=>"basic", "key" => "mes:1235", "SESSION" => ["empId"=>-9001], "allowedAc" => ["*.query"]],  // 可以多个
 	];
 
 请求示例：
@@ -723,6 +725,29 @@ HTTP Basic认证，即添加HTTP头：
 注意：若php是基于apache fcgi方式的部署，可能无法收到认证串，可在apache中配置：
 
 	SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+
+(v6.1) 如果想动态查询数据库来验证key是否合法，可以使用**keyfn选项**来指定验证函数。示例：
+
+	static $authKeys = [
+		// 如果接口使用basic认证，则调用keyfn_appId(key)来检查key是否合法。通过验证后检查接口限制，只允许调用Task对象接口。
+		["authType"=>"basic", "keyfn" => "keyfn_appId", "allowedAc" => ["Task.*"] ],
+	];
+
+	// 验证key，返回true表示验证成功。然后可动态设置SESSION。
+	function keyfn_appId($key) {
+		list($user, $pwd) = explode(':', $key);
+		$sql = "SELECT id FROM App WHERE code=" . Q($user) . " AND secret=" . Q($pwd);
+		$appId = queryOne($sql);
+		if ($appId) {
+			// 模拟Employee身份，以便接口调用AC2系列类。为了与Employee的id区分，习惯上用负值
+			$_SESSION["empId"] = -$appId;
+			// 设置会话变量，以便在AC2类中处理
+			$_SESSION["appId"] = $appId;
+			return true;
+		}
+	}
+
+simple认证也可以使用keyfn机制。
 
 ### none: 不验证/模拟身份认证
 
@@ -805,10 +830,15 @@ function checkAuthKeys($key, $authType, $env)
 		assert(isset($e["authType"]), "authKey requires authType");
 		if ($authType != $e["authType"])
 			return false;
-		assert(isset($e["key"]), "authKey requires key");
+		assert(isset($e["key"]) || is_callable($e["keyfn"]), "authKey requires key or keyfn");
 
-		// support key as a fn($key)
-		$eq = is_callable($key) ? $key($e["key"]): $key == $e["key"];
+		if (isset($e["key"])) {
+			// support key as a fn($key)
+			$eq = is_callable($key) ? $key($e["key"]): $key == $e["key"];
+		}
+		else {
+			$eq = $e["keyfn"]($key);
+		}
 		if (! $eq)
 			return false;
 
