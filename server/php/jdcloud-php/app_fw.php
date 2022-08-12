@@ -1677,7 +1677,7 @@ class DBEnv
 			exit;
 		}
 		try {
-			@$DBH = JDPDO::create($this->C[0], $this->C[1], $this->C[2], $this);
+			@$DBH = JDPDO::create($this->C[0], $this->C[1], $this->C[2], $this->DBTYPE);
 		}
 		catch (PDOException $e) {
 			$msg = $this->TEST_MODE ? $e->getMessage() : "dbconn fails";
@@ -1850,7 +1850,7 @@ class DBEnv
 		}
 		$cnt = 0;
 		if (strlen($kvstr) == 0) {
-			addLog("no field found to be set: $table");
+			$this->addLog("no field found to be set: $table");
 		}
 		else {
 			if (isset($condStr))
@@ -2267,16 +2267,14 @@ function utf8InputFilter($fp, $fnTest=null)
  */
 class JDPDO extends PDO
 {
-	protected $env;
 	public $skipLogCnt = 0;
 	private $logH;
 
-	static function create($dsn, $user, $pwd, $env) {
-		$cls = "JDPDO_" . $env->DBTYPE;
+	static function create($dsn, $user, $pwd, $dbtype) {
+		$cls = "JDPDO_" . $dbtype;
 		if (!class_exists($cls))
 			$cls = "JDPDO";
-			// jdRet(E_FORBIDDEN, "unsupport DBTYPE: " . $env->DBTYPE);
-		$dbh = new $cls($dsn, $user, $pwd, $env);
+		$dbh = new $cls($dsn, $user, $pwd);
 		return $dbh;
 	}
 
@@ -2287,14 +2285,13 @@ class JDPDO extends PDO
 	}
 	// end
 
-	function __construct($dsn, $user = null, $pwd = null, $env = null)
+	function __construct($dsn, $user = null, $pwd = null)
 	{
 		$opts = [];
 		// 如果使用连接池, 偶尔会出现连接失效问题, 所以缺省不用
 		if (hasSignFile("CFG_CONN_POOL"))
 			$opts[PDO::ATTR_PERSISTENT] = true;
 		parent::__construct($dsn, $user, $pwd, $opts);
-		$this->env = $env ?: getJDEnv();
 	}
 	private function addLog($str)
 	{
@@ -2303,11 +2300,13 @@ class JDPDO extends PDO
 			$this->logH = null;
 			return;
 		}
-		$this->logH = $this->env->addLog($str, 9);
+		$env = getJDEnv();
+		$this->logH = $env->addLog($str, 9);
 	}
 	function amendLog($str) {
 		if ($this->logH) {
-			$this->env->amendLog($this->logH, function (&$data) use ($str) {
+			$env = getJDEnv();
+			$env->amendLog($this->logH, function (&$data) use ($str) {
 				$data .= " -- " . $str;
 			});
 		}
@@ -2342,9 +2341,8 @@ class JDPDO_sqlite extends JDPDO
 class JDPDO_mysql extends JDPDO
 {
 	function initConn() {
-		$DBH = $this->env->DBH;
-		++ $DBH->skipLogCnt;
-		$DBH->exec('set names utf8mb4');
+		++ $this->skipLogCnt;
+		$this->exec('set names utf8mb4');
 	}
 	function addLimit1(&$sql) {
 		if (stripos($sql, "limit ") === false && stripos($sql, "for update") === false)
@@ -2359,14 +2357,15 @@ class JDPDO_mssql extends JDPDO
 class JDPDO_oracle extends JDPDO
 {
 	function initConn() {
-		$DBH = $this->env->DBH;
-		++ $DBH->skipLogCnt;
+		++ $this->skipLogCnt;
 		$DBH->exec("ALTER SESSION SET NLS_DATE_FORMAT = 'YYYY-MM-DD HH24:MI:SS'");
 	}
 	function addLimit1(&$sql) {
+		/*
 		// 12c support 'fetch first 1 row'
 		if (stripos($sql, "ROWNUM") === false && stripos($sql, "fetch ") === false)
 			$sql = "SELECT * FROM ($sql) t WHERE ROWNUM<=1";
+		*/
 	}
 }
 

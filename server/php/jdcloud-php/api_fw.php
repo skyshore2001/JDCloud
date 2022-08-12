@@ -2495,6 +2495,11 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			}
 		};
 	}
+	function __destruct() {
+		if ($this->DEBUG_LOG == 1 && $this->dbgInfo) {
+			logit($this->dbgInfo, true, "debug");
+		}
+	}
 
 	private function initRequest() {
 		if ($this->TEST_MODE)
