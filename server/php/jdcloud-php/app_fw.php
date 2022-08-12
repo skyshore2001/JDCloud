@@ -157,6 +157,23 @@ $BASE_DIR = dirname(dirname(__DIR__));
 // 配置项默认值（可在conf.user.php中覆盖）
 $GLOBALS["conf_jdserverUrl"] = 'http://127.0.0.1/jdserver';
 
+/**
+@key conf_poweredBy ?= "jdcloud"
+
+设置HTTP头x-powered-by，用于与x-daca-server-rev一起共同决定系统版本。
+同时可隐藏默认的php标识及版本。
+
+当前端调用多个jdcloud应用接口（或有些后端接口配置了代理到其它服务）时，
+由于各jdcloud应用的版本不同， 会导致前端误判为版本已升级，从而引起前端自动刷新。 
+这时可在conf.user.php中配置conf_poweredBy，用于与其它应用区分。示例： 
+
+	$GLOBALS["conf_poweredBy"] = "wms";
+	或
+	$GLOBALS["conf_poweredBy"] = "wms@server-pc";
+
+jdcloud前端检查当x-powered-by未变化但x-daca-server-rev变化时，才会自动刷新实现实时热更新。 
+*/
+$GLOBALS["conf_poweredBy"] = "jdcloud";
 // }}}
 
 // load user config

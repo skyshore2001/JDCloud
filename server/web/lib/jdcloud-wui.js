@@ -5098,8 +5098,14 @@ function defDataProc(rv)
 	var ext = ctx.ext;
 
 	// ajax-beforeSend回调中设置
-	if (this.xhr_ && (ext == null || ext == "default") ) {
-		var val = this.xhr_.getResponseHeader("X-Daca-Server-Rev");
+	while (this.xhr_ && (ext == null || ext == "default") ) {
+		var val = this.xhr_.getResponseHeader("X-Powered-By");
+		if (g_data.poweredBy == null)
+			g_data.poweredBy = val;
+		else if (g_data.poweredBy != val)
+			break;
+
+		val = this.xhr_.getResponseHeader("X-Daca-Server-Rev");
 		if (val && g_data.serverRev != val) {
 			if (g_data.serverRev) {
 				mCommon.reloadSite();
@@ -5126,6 +5132,7 @@ function defDataProc(rv)
 				self.app_alert(modeStr, {timeoutInterval:2000});
 			});
 		}
+		break;
 	}
 
 	try {

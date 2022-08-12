@@ -2542,6 +2542,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		$ver = $GLOBALS["SERVER_REV"];
 		if ($ver)
 			$this->header("X-Daca-Server-Rev", $ver);
+		$this->header("X-Powered-By", getConf("conf_poweredBy"));
 
 		$ac = $this->param('_ac', null, "G");
 		if (! isset($ac))
