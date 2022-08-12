@@ -63,11 +63,15 @@ function addTooltip(html, tooltip)
 //}}}
 
 // ==== functions {{{
-function setAppTitle(title)
+function setAppTitle(title, logo)
 {
 	document.title = title;
 	$(".my-title").html(title);
 	$(".header-bar .header-bar_name").html(title);
+	if (logo) {
+		$(".header-bar .header-bar_logo").css("background-image", "url(" + logo +")");
+		$("link[rel=icon]").attr("href", logo);
+	}
 }
 
 function logout()
