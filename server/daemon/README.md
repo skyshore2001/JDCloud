@@ -348,7 +348,7 @@ jdserver默认会处理websocket客户端发送中的ac=init/push消息，通过
 	// 通过push接口(http或websocket)发消息
 	$GLOBALS["jdserver_event"]->on("push.app1", function ($user, $msg) {
 		// $msg = jsonDecode($msg);
-	}
+	});
 
 	// 监听websocket消息
 	$GLOBALS["jdserver_event"]->on('message.app1', function ($ws, $frame) {
@@ -362,7 +362,7 @@ jdserver默认会处理websocket客户端发送中的ac=init/push消息，通过
 			// 任意推送
 			// pushMsg($app, $userSpec, $msg);
 		}
-	}
+	});
 
 注意：push或message事件后必须加上app名，即只能处理指定app的事件。
 
