@@ -2384,6 +2384,10 @@ class JDPDO_oracle extends JDPDO
 			$sql = "SELECT * FROM ($sql) t WHERE ROWNUM<=1";
 		*/
 	}
+	function exec($sql, $getInsertId = false) {
+		// NOTE: oracle DO NOT support getLastId(). dont use dbInsert() to get id!
+		return parent::exec($sql, false);
+	}
 }
 
 // $dist_m = Coord::distance(121.62684, 31.217098, 121.704454, 31.19313);

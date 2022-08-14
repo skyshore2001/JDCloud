@@ -17,7 +17,13 @@ $ac = @$argv[1] or die("=== Usage: task {ac}\n");
 $fn = "ac_" . $ac;
 if (function_exists($fn)) {
 	echo "=== [" . date('Y-m-d H:i:s') . "] exec task: $ac\n";
-	$fn();
+	try {
+		$fn();
+	}
+	catch (Exception $e) {
+		echo($e);
+	}
+	// 正常结束，以确保全局对象析构(JDEnv)时输出日志到debug.log
 }
 else {
 	die("*** unknown ac=`$ac`\n");
