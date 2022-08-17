@@ -2380,15 +2380,15 @@ uniKey可以指定多个字段，以逗号分隔即可，常用于关联表，�
 		return $ret;
 	}
 
-/*
-@fn AccessControl::checkUniKey($uniKey, $handler, $required=false)
+/**
+@fn AccessControl::checkUniKey($uniKey, $handler="error", $required=false)
 
 后端检查uniKey用于防止重复：
 
 - 添加时，如果根据uniKey匹配的记录已存在，则做更新处理（或报错不许重复设置）；
-- 更新时，如果根据uniKey匹配的记录已存在（且非当前记录），则报错不许设置。
+- 更新时，如果根据uniKey匹配的记录已存在，则报错不许设置（或忽略不设置）。
 
-如果不是add接口，则不做处理，直接忽略。
+该函数只对add/set接口有效，一般用在onValidate回调中。
 
 @param handler 添加时遇到重复记录的处理方式，可指定为以下字符串值
 
@@ -2396,13 +2396,15 @@ uniKey可以指定多个字段，以逗号分隔即可，常用于关联表，�
 - error: 报错：已存在重复记录。
 - ignore: 忽略添加操作，接口直接返回已存在记录的id。
 
-@param required 如果设置为true，则该字段添加时不可为空
+handler参数只用于add接口; set接口遇到重复均报错处理.
+
+@param required 如果设置为true，则该字段添加时不可为空。只对add接口有效，set接口忽略该参数。
 
 用法示例：
 
 	function onValidate()
 	{
-		// code字段不允许重复, 添加时若发现该记录已存在则报错("error")，但该字段可以为空。
+		// code字段不允许重复, 添加或更新(add/set)时若发现该记录已存在则报错("error")，但该字段可以为空。
 		$this->checkUniKey("code", "error");
 
 		// uniKey支持多字段：
@@ -2414,12 +2416,19 @@ uniKey以"!"结尾为更新模式，即必须匹配到记录，否则报错，�
 
 @see uniKey
 */
-	protected function checkUniKey($uniKey, $handler, $required=false)
+	protected $uniKeys = null;
+	protected function checkUniKey($uniKey, $handler="error", $required=false)
 	{
-		if ($this->ac != "add")
+		if ($this->ac != "add" && $this->ac != "set")
 			return;
 		if (!$uniKey)
 			return;
+
+		// 已经检查过的记录到uniKeys数组，避免对相同uniKey重复检查或handler冲突
+		if (is_array($this->uniKeys) && in_array($uniKey, $this->uniKeys))
+			return;
+		$this->uniKeys[] = $uniKey;
+
 		$forceMatch = (substr($uniKey, -1) == '!');
 		if ($forceMatch)
 			$uniKey = substr($uniKey, 0, strlen($uniKey)-1);
@@ -2442,8 +2451,18 @@ uniKey以"!"结尾为更新模式，即必须匹配到记录，否则报错，�
 		}
 		if ($allNull)
 			return;
-		$param = array_merge($_GET, ["res"=>"id", "cond"=>$cond, "fmt"=>"one?"]);
+		$cond1 = $cond;
+		if ($this->ac == "set") {
+			$cond1["id<>"] = $this->id;
+		}
+		$param = array_merge($_GET, ["res"=>"id", "cond"=>$cond1, "fmt"=>"one?"]);
 		$id = $this->callSvc(null, "query", $param, $_POST);
+		if ($this->ac == "set") {
+			if ($id)
+				jdRet(E_PARAM, "duplicate record (id=$id): " . urlEncodeArr($cond), "已存在重复记录: uniKey=" . join(',', $cond));
+			return;
+		}
+
 		if (! $id) { // 记录不存在
 			if ($forceMatch) {
 				// uniKeyMode=ignore时返回id=-1，否则报错
@@ -2459,7 +2478,7 @@ uniKey以"!"结尾为更新模式，即必须匹配到记录，否则报错，�
 			jdRet(E_PARAM, "duplicate record (id=$id): " . urlEncodeArr($cond), "已存在重复记录: uniKey=" . join(',', $cond));
 
 		if ($handler === "set" || $forceMatch) {
-			// 清空字段，set时不必更新这些字段
+			// 清空字段，set时不必更新这些字段, 同时可忽略set接口中对同样字段的checkUniKey检查
 			foreach ($fields as $e) {
 				unset($_POST[$e]);
 			}
