@@ -1073,6 +1073,13 @@ function sql_concat()
 	callSvr("Hub.query", {res:"id", cond: {id: ">=1 AND <100"}})
 	callSvr("Hub.query", {res:"id", cond: ["id>=1", "id<100"]}, $.noop, {cond: {name:"~wang%", dscr:"~111"}})
 
+字段名支持中文，也支持带表名如`t0.xxx`的形式：
+
+	$cond = getQueryCond([
+		"t0.createTm>=" => $tm1,
+		"t0.createTm<"  => $tm2
+	]);
+
 */
 function getQueryCond($cond)
 {
@@ -1097,7 +1104,7 @@ function getQueryCond($cond)
 		else if ($k[0] == "_" || $v === null || $v === "") {
 			continue;
 		}
-		else if (preg_match('/^(\w+)\s*([<>=!~]+)$/u', $k, $ms)) {
+		else if (preg_match('/^([.\w]+)\s*([<>=!~]+)$/u', $k, $ms)) {
 			$exp = getQueryExp($ms[1], $v, $ms[2]);
 		}
 		else {
