@@ -67,9 +67,9 @@ class MyException extends LogicException
 
 	function __toString()
 	{
-		$str = "MyException({$this->code}): {$this->internalMsg} - " . $this->file . ':' . $this->line;
-		if ($this->getMessage() != null)
-			$str = "Error: " . $this->getMessage() . " - " . $str;
+		$str = parent::__toString();
+		if ($this->internalMsg)
+			$str .= "\nMyException({$this->code}): {$this->internalMsg}";
 		return $str;
 	}
 }

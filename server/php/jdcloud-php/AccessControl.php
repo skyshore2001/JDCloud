@@ -3517,7 +3517,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 				if ( ($ex instanceof MyException) && $ex->internalMsg != null)
 					$msg .= " (" .$ex->internalMsg. ")";
 				list($row, $n) = $st->getRowInfo();
-				jdRet(E_PARAM, (string)$ex, "第{$n}行出错(\"" . join(',', $row) . "\"): " . $msg);
+				jdRet(E_PARAM, null, "第{$n}行出错(\"" . join(',', $row) . "\"): " . $msg);
 			}
 			++ $ret["cnt"];
 			$ret["idList"][] = $id;

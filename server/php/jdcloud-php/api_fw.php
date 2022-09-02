@@ -2668,7 +2668,9 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		}
 		catch (MyException $e) {
 			$ret = [$e->getCode(), $e->getMessage(), $e->internalMsg];
-			$this->addLog((string)$e, 9);
+			if (!in_array($e->getCode(), [E_NOAUTH, E_AUTHFAIL])) {
+				logit("fail to call `$ac`: $e");
+			}
 		}
 		catch (PDOException $e) {
 			// SQLSTATE[23000]: Integrity constraint violation: 1451 Cannot delete or update a parent row: a foreign key constraint fails (`jdcloud`.`Obj1`, CONSTRAINT `Obj1_ibfk_1` FOREIGN KEY (`objId`) REFERENCES `Obj` (`id`))",
@@ -2677,11 +2679,11 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 				$tbl = function_exists("T")? T($ms[1]) : $ms[1]; // T: translate function
 				$ret[1] = "`$tbl`表中有数据引用了本记录";
 			}
-			$this->addLog((string)$e, 9);
+			logit("fail to call `$ac`: $e");
 		}
 		catch (Exception $e) {
 			$ret = [E_SERVER, $ERRINFO[E_SERVER], $e->getMessage()];
-			$this->addLog((string)$e, 9);
+			logit("fail to call `$ac`: $e");
 		}
 
 		try {
