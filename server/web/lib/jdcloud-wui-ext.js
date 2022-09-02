@@ -1038,10 +1038,11 @@ function enhanceMenu()
 
 	// set active
 	jo[0].addEventListener("click", function (ev) {
-		if (ev.target.tagName != "A" || !$(ev.target).is(".my-menu-item:not(.menu-item-head)")<0)
+		var ji = $(ev.target).closest(".my-menu-item:not(.menu-item-head)");
+		if (ji.size() == 0)
 			return;
-		jo.find(".my-menu-item").removeClass("active");
-		$(ev.target).addClass("active");
+		jo.find(".my-menu-item.active").removeClass("active");
+		ji.addClass("active");
 	}, true);
 
 	// add event handler to menu items
