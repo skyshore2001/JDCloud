@@ -9983,6 +9983,9 @@ function dgLoader(param, success, error)
 		}
 		else if (k === "order") {
 		}
+		else if (k === "q" && opts.jd_qsearch) {
+			param1.qsearch = opts.jd_qsearch + ":" + param.q;
+		}
 		else {
 			param1[k] = param[k];
 		}

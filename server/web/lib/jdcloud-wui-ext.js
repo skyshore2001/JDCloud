@@ -1091,6 +1091,8 @@ $(enhanceMenu);
 - jd_vField: 显示文本对应的虚拟字段, 用于初始显示和查询。
 - jd_showId: 默认为true. 显示"idField - textField"格式. 设置为false时只显示textField.
 - jd_dlgForAdd: (v6) 如果指定，则下拉列表中显示“新增”按钮，可以打开该对话框添加对象。（支持权限控制）
+- jd_qsearch: (v6.1) 指定模糊查询的字段列表(多个以逗号分隔); 不指定时则需要在后端配置qsearch字段, 否则模糊查询不可用。
+(由datagrid适配即dgLoader实现)
 
 在选择一行并返回时，它会触发choose事件：
 
