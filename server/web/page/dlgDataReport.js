@@ -95,6 +95,7 @@ function initDlgDataReport()
 				var p = param.ac.params;
 				// 避免与cond重复
 				delete p.cond; 
+				delete p.res; 
 				// 去除分页参数
 				delete p.page;
 				delete p.pagekey;
