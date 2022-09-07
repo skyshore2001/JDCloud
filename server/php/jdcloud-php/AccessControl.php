@@ -2823,7 +2823,7 @@ FROM ($sql) t0";
 		}
 
 		if ($enableTotalCnt) {
-			if (!$complexCntSql) {
+			if (!$complexCntSql && !$sqlConf["distinct"]) {
 				$cntSql = "SELECT COUNT(*) FROM $tblSql";
 				if ($condSql)
 					$cntSql .= "\nWHERE $condSql";
