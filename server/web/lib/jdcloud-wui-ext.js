@@ -1440,7 +1440,7 @@ ComboFormItem.prototype = $.extend(new WUI.FormItem(), {
 	},
 	getValue: function () {
 		var fn = this.jcomboCall;
-		return fn("getValue");
+		return fn("getValue").trim();
 	},
 	getDisabled: function () {
 		var fn = this.jcomboCall;

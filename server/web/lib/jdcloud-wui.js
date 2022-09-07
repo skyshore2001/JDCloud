@@ -3144,7 +3144,7 @@ FormItem.prototype = {
 			*/
 		}
 		else if (jo.is(":input")) {
-			val = jo.val();
+			val = jo.val().trim();
 		}
 		else {
 			val = jo.html();
