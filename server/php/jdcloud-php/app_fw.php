@@ -2335,13 +2335,43 @@ class JDPDO extends PDO
 			});
 		}
 	}
+/**
+@key conf_tableAlias 配置数据库表的别名
+
+常用于跨库调用和jdcloud微服务配置。
+例如主系统saic需要集成erp子系统用于库存管理，在erp子系统中应配置直接使用主系统saic中的用户、权限等表，可在conf.user.php中配置：
+
+	$GLOBALS["conf_tableAlias"] = [
+		"Employee" => "saic.Employee",
+		"Role" => "saic.Role",
+		"Cinf" => "saic.Cinf",
+		"ApiLog" => "saic.ApiLog",
+		"ObjLog" => "saic.ObjLog",
+		"Syslog" => "saic.Syslog"
+	];
+
+*/
+	protected function filterSql(&$sql) {
+		if (! isset($GLOBALS["conf_tableAlias"]))
+			return;
+		$conf_tableAlias = $GLOBALS["conf_tableAlias"];
+		$sql = preg_replace_callback('/(?:FROM|JOIN|UPDATE|DELETE|INSERT INTO) \K(\w+)/iu', function ($ms) use ($conf_tableAlias) {
+			if (array_key_exists($ms[1], $conf_tableAlias)) {
+				return $conf_tableAlias[$ms[1]];
+			}
+			return $ms[1];
+		}, $sql);
+	}
+
 	function query($sql)
 	{
+		$this->filterSql($sql);
 		$this->addLog($sql);
 		return parent::query($sql);
 	}
 	function exec($sql, $getInsertId = false)
 	{
+		$this->filterSql($sql);
 		$this->addLog($sql);
 		$rv = parent::exec($sql);
 		if ($getInsertId)
