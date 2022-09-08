@@ -7542,6 +7542,25 @@ TODO: cordova-ios未来将使用WkWebView作为容器（目前仍使用UIWebView
 		skipErrorRegex: null,
 
 /**
+@var MUI.options.moduleExt
+
+用于模块扩展。
+
+	// 定制模块的接口调用地址
+	MUI.options.moduleExt.callSvr = function (name) {
+		// name为callSvr调用的接口名，返回实际URL地址；示例：
+		var map = {
+			"Ordr__Mes.query" => "../../mes/api/Ordr.query",
+			"Ordr__Item.query" => "../../mes/api/Item.query"
+		}
+		return map[name] || name;
+	}
+
+详细用法案例，可参考：筋斗云开发实例讲解 - 系统复用与微服务方案。
+*/
+		moduleExt: {},
+
+/**
 @var MUI.options.xparam
 
 参数加密特性。默认为1（开启），在后端接口返回当前是测试模式时，会改为0（关闭）。
