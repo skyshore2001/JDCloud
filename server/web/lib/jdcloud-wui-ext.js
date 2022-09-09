@@ -4032,5 +4032,54 @@ function setDlgLogic(jdlg, name, logic)
 }
 // }}}
 
+// 查询模式下，显示开始、结束日期选择框
+var DateBoxForFind = {
+	delay: 1000,
+	onShowPanel: function () {
+		var jo = $(this);
+		if (! jo.combo("textbox").is(".wui-find-field"))
+			return;
+		var data = jo.data("combo");
+		if (data.rangeStep == null)
+			data.rangeStep = 0;
+		var label = (data.rangeStep == 1? "选结束<i class='hint' title='例如`2020-1-1~2020-2-1`就是2020年1月全月，不包含结束日期2月1日这天，这样更简单不必考虑每月最后一天是几号。'>不含<i>": "选开始");
+		jo.combo("panel").find(".datebox-button .datebox-button-a:eq(1)").html(label);
+	},
+	onChange: function (newVal, oldVal) {
+		var jo = $(this);
+		if (! jo.combo("textbox").is(".wui-find-field") || !newVal || newVal.indexOf("~") >= 0)
+			return;
+		var data = jo.data("combo");
+		if (data.rangeStep == null) { // 未经panel选择，不处理
+			return;
+		}
+		else if (data.rangeStep === 0) {
+			setTimeout(function () {
+				if (jo.combo("panel").is(":visible")) // 如果setValue不是点击触发的，则panel未关闭，此时不处理
+					return;
+				data.rangeStep = 1;
+				jo.combo("showPanel");
+			}, 200);
+		}
+		else if (data.rangeStep === 1) {
+			if (oldVal.indexOf("~")>0) {
+				oldVal = oldVal.replace(/~.*$/, '');
+			}
+			var t = oldVal + "~" + newVal;
+			t = t.replace(/ 00:00:00/g, '');
+			setTimeout(function () {
+				data.rangeStep = null;
+				jo.next().find(".textbox-value").val(t); // setValue but no validate
+				jo.combo("setText", t);
+				// restore label
+				jo.combo("panel").find(".datebox-button .datebox-button-a:eq(1)").html("确定");
+			});
+		}
+	}
+};
+
+$.extend($.fn.datebox.defaults, DateBoxForFind);
+$.extend($.fn.datetimebox.defaults, DateBoxForFind);
+
 }
 // vi: foldmethod=marker 
