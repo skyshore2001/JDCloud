@@ -8208,11 +8208,7 @@ function setFixedFields(jfrm, beforeShowOpt) {
 	self.formItems(jfrm, function (ji, name, it) {
 		// 兼容旧的fixedFields设置方法. TODO: 未来将移除
 		var fixedVal = (ji.hasClass("wui-fixedField") && objParam && objParam[name] != null)? objParam[name]: null;
-		var isOld = false;
-		if (fixedVal != null) {
-			isOld = true;
-		}
-		else {
+		if (fixedVal == null) {
 			fixedVal = (fixedFields && fixedFields[name] != null)? fixedFields[name]: null;
 		}
 		if (fixedVal != null) {
@@ -8222,9 +8218,7 @@ function setFixedFields(jfrm, beforeShowOpt) {
 				var oldVal2 = it.getDisabled();
 				it.setDisabled(true);
 			}
-			if (isOld) {
-				it.setValue(fixedVal);
-			}
+			it.setValue(fixedVal);
 			// 下次进来时恢复状态
 			cleanFn.push(function () {
 				it.setReadonly(oldVal);
