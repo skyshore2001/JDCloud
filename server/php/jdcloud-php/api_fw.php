@@ -2800,7 +2800,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			$this->_GET = BatchUtil::getParams($call, "get", $retVal);
 			$this->_POST = BatchUtil::getParams($call, "post", $retVal);
 
-			$this->ac1 = $this->parseRestfulUrl('/' . $call["ac"], empty($call["post"])?"GET":"POST");
+			$this->ac1 = $this->parseRestfulUrl($call["ac"], empty($call["post"])?"GET":"POST");
 			Conf::onApiInit($this->ac1);
 
 			$acList[] = $this->ac1;
@@ -2937,7 +2937,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		if ($method === null)
 			$method = $this->_SERVER("REQUEST_METHOD");
 		if ($pathInfo[0] == '/')
-			$pathInfo = substr($pathInfo,1);
+			$pathInfo = preg_replace('/^\/+/', '', $pathInfo);
 		$ac = htmlEscape($pathInfo);
 		// POST /login  (小写开头)
 		// GET/POST /Store.add (含.)
