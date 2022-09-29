@@ -76,6 +76,8 @@ jdserver同时支持http和websocket，建议在网站根目录将下面设置�
 	rewriterule ^jdserver/(.+) http://127.0.0.1:8081/$1 [P,L]
 	rewriterule ^jdserver ws://127.0.0.1:8081/ [P,L]
 
+部署后，可在浏览器中打开测试页面测试，如：`http://localhost/jdcloud/daemon/test.html`。点点查看连接、发消息、取统计信息是否正常。
+
 ## 使用
 
 jdcloud前端使用[jdPush函数](http://oliveche.com/jdcloud-site/api_web.html#jdPush)连接jdserver并接收推送消息:
