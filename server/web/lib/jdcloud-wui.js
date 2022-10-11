@@ -7091,8 +7091,8 @@ TODO 由于子表支持懒加载，目前有个限制，如果子表尚未加载
 如果要定制添加行为，可在对话框的duplicate事件中修改数据。示例：
 
 	jdlg.on("duplicate", function (ev, data) {
-		// 可修改data, 若有子表则是数组字段
-		// 主表id，子表id及关联主表的id将会自动删除，此处无须处理
+		// 可修改data, 若有子表则是有相应的数组字段
+		// 主表id，子表id及关联字段在这里可以访问，之后会被框架自动删除，此处无须处理
 		console.log(data);
 	});
 
@@ -7113,8 +7113,8 @@ function dupDlg(jdlg)
 		if (! (subOpt.valueField && subOpt.dlg && subOpt.dgCall && isLoaded && subOpt.relatedKey))
 			return;
 
-		// 典型主子表，设置有关联字段的可以复制
-		var ms = subOpt.relatedKey.match(/^([^=]+)=/);
+		// 典型主子表，设置有关联字段的可以复制。支持relatedKey类似如: 'invId'或'invId={id}'这种。
+		var ms = subOpt.relatedKey.match(/^([^ =]+)/);
 		if (! ms)
 			return;
 		var relatedKey = ms[1];
@@ -8744,7 +8744,7 @@ function doFind(jo, jtbl, doAppendFilter)
 
 @param jdlg 可以是jquery对象，也可以是selector字符串或DOM对象，比如 "#dlgOrder". 注意：当对话框保存为单独模块时，jdlg=$("#dlgOrder") 一开始会为空数组，这时也可以调用该函数，且调用后jdlg会被修改为实际加载的对话框对象。
 
-@param opt.id String. 对话框set模式(mode=FormMode.forSet)时必设，set/del如缺省则从关联的opt.jtbl中取, add/find时不需要
+@param opt.id String. 对话框set模式(mode=FormMode.forSet)时可设置，表示从后端加载数据，set/del如缺省则从关联的opt.jtbl中取, add/find时不需要
 @param opt.jtbl Datagrid. 指定对话框关联的列表(datagrid)，用于从列表中取值，或最终自动刷新列表。 -- 如果dlg对应多个tbl, 必须每次打开都设置
 @param opt.obj String. (v5.1) 对象对话框的对象名，如果未指定，则从my-obj属性获取。通过该参数可动态指定对象名。
 @param opt.offline Boolean. (v5.1) 不与后台交互。
