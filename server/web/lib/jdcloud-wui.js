@@ -6412,6 +6412,8 @@ function reloadTmp(jtbl, url, queryParams)
 // 支持 [], { @list}, { @h, @d}格式 => {total, @rows}
 function jdListToDgList(data)
 {
+	if (!data)
+		data = [];
 	var ret = data;
 	// support simple array
 	if ($.isArray(data)) {
@@ -7172,7 +7174,7 @@ if (isSmallScreen()) {
 - opt.reset: Boolean. 显示对话框前先清空。默认为true.
 - opt.validate: Boolean. 是否提交前用easyui-form组件验证数据。内部使用。
 - opt.onSubmit: Function(data) 自动提交前回调。用于验证或补齐提交数据，返回false可取消提交。opt.url为空时不回调。
-- opt.onOk: Function(jdlg, data?) 如果自动提交(opt.url非空)，则服务端接口返回数据后回调，data为返回数据。如果是手动提交，则点确定按钮时回调，没有data参数。
+- opt.onOk: Function(data?) 如果自动提交(opt.url非空)，则服务端接口返回数据后回调，data为返回数据。如果是手动提交，则点确定按钮时回调，没有data参数。
 	(v6.0) 如果onOk设置为'close'，则显示操作成功并关闭对话框。
 - opt.title: String. 如果指定，则更新对话框标题。
 - opt.dialogOpt: 底层jquery-easyui dialog选项。参考http://www.jeasyui.net/plugins/159.html
@@ -7235,13 +7237,14 @@ if (isSmallScreen()) {
 
 	事件beforeshow
 	事件show
+	opt.onShow(formMode, data)
 
 对于自动提交数据的对话框(设置了opt.url)，提交数据过程中回调函数及事件执行顺序为：
 
 	事件validate; // 提交前，用于验证或设置提交数据。返回false或ev.preventDefault()可取消提交，中止以下代码执行。
-	opt.onSubmit.call(jdlg, data); // 提交前，验证或设置提交数据，返回false将阻止提交。
+	opt.onSubmit(jdlg, data); // 提交前，验证或设置提交数据，返回false将阻止提交。
 	... 框架通过callSvr自动提交数据，如添加、更新对象等。
-	opt.onOk(data); // 提交且服务端返回数据后。回调函数中this为对话框jdlg, data是服务端返回数据。
+	opt.onOk(data); // 提交且服务端返回数据后。data是服务端返回数据。
 	事件retdata; // 与onOk类似。
 
 对于手动提交数据的对话框(opt.url为空)，执行顺序为：
@@ -7251,6 +7254,7 @@ if (isSmallScreen()) {
 
 注意：
 
+- onOk/onShow/onSubmit等回调中this对象为当前对话框jdlg.
 - 参数opt可在beforeshow事件中设置，这样便于在对话框模块中自行设置选项，包括okLabel, onOk回调等等。
 - 旧版本中的回调 opt.onAfterSubmit() 回调已删除，请用opt.onOk()替代。
 
@@ -7611,7 +7615,7 @@ function showDlg(jdlg, opt)
 	focusDlg(jdlg);
 	jfrm.trigger("show", [formMode, opt.data]);
 
-	opt.onShow && opt.onShow(formMode, opt.data);
+	opt.onShow && opt.onShow.call(jdlg, formMode, opt.data);
 
 	function fnCancel() {closeDlg(jdlg)}
 	function fnOk()
@@ -9048,6 +9052,7 @@ function showObjDlg(jdlg, mode, opt)
 		jfrm.form("validate");
 
 	function onShow(formMode, data) {
+		opt.onShow && opt.onShow.call(this, formMode, data);
 		var jbtns = jdlg.next(".dialog-button");
 		jchkClose = jbtns.find(".chkClose");
 		if (jchkClose.size() == 0) {
@@ -9080,7 +9085,7 @@ function showObjDlg(jdlg, mode, opt)
 	}
 
 	function onOk (retData) {
-		opt.onOk && opt.onOk(retData);
+		opt.onOk && opt.onOk.call(this, retData);
 		var jtbl = jd.jtbl;
 		mCommon.assert(jchkClose.size() > 0);
 		var doClose = jchkClose.prop("checked");
