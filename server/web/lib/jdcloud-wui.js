@@ -10182,8 +10182,10 @@ CSS类, 可定义无数据提示的样式
 			if (obj) {
 				opt.obj = obj;
 				var meta = self.UDF.onGetMeta(obj);
-				if (meta && meta.defaultFlag) { // 防止对话框上的datagrid重复添加字段
+				var jtbl = $(this);
+				if (meta && !jtbl.data("udfLoaded_")) { // 防止对话框上的datagrid重复添加字段
 					self.UDF.addColByMeta(opt.columns[0], meta);
+					jtbl.data("udfLoaded_", true);
 				}
 			}
 		}
