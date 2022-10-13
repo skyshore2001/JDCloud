@@ -3186,6 +3186,8 @@ $param或$postParam为null时，与空数组`[]`等价。
 			$msg = $ac ? "$tbl.$ac": $tbl;
 			jdRet(!hasPerm(AUTH_LOGIN)? E_NOAUTH: E_FORBIDDEN, "Operation is not allowed for current user: `$msg`");
 		}
+		if (class_exists("{$cls}_Imp"))
+			$cls .= "_Imp";
 		$acObj = new $cls;
 		if (!is_a($acObj, "JDApiBase")) {
 			jdRet(E_SERVER, "bad AC class `$cls`. MUST extend JDApiBase or AccessControl", "AC类定义错误");
