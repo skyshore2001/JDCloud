@@ -2,8 +2,8 @@
 
 本文档中以`$BASE_URL`指代HTTP调用基本地址: 
 
-- 测试环境为 http://a.com/jdcloud/api.php/
-- 生产环境为 http://a.com/jdcloud/api.php/
+- 测试环境为 http://test.server.com/jdcloud/api/
+- 生产环境为 http://prod.server.com/jdcloud/api/
 
 本文档调用示例使用JS函数`callSvr`表示：
 
@@ -24,13 +24,18 @@
 
 - 所有交互内容采用UTF-8编码。
 
-### 简单认证机制
+### 认证机制
 
-双方使用预共享密钥，调用方在请求时加以下HTTP头传密钥（假设密钥为test123）：
+通过HTTP标准的Basic认证方式进行认证。
+调用方在请求时，添加以下HTTP头传用户名和密码（假设用户名、密码分别是test、1234）：
 
-	x-daca-simple: test123
+	Authorization: Basic dGVzdDoxMjM0
 
-可用于内部系统间交互。
+按HTTP协议，Basic后面的内容为"用户名:密码"进行base64编码，即base64_encode("test:1234") = "dGVzdDoxMjM0"
+
+使用curl测试示例：
+
+	curl -u test:1234 -d "p1=1&p2=xxx" http://localhost/jdcloud/api/hello?a=1
 
 ### 对象查询接口
 
