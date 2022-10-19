@@ -2486,6 +2486,20 @@ SubobjFormItem.prototype = $.extend(new WUI.FormItem(), {
 	getTitle: function () {
 		return this.ji.panel("options").title;
 	},
+	setTitle: function (val) {
+		this.ji.closest(".easyui-tabs").tabs("update", {
+			tab: this.ji,
+			options: { title: val }
+		});
+	},
+	visible: function (v) {
+		var ji = this.getShowbox();
+		if (v === undefined) {
+			return ji.is(":visible");
+		}
+		ji.toggle(!!v);
+		return this;
+	},
 	setFocus: function () {
 		var title = this.getTitle();
 		this.ji.closest(".easyui-tabs").tabs("select", title);

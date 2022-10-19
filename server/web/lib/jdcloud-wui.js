@@ -3169,6 +3169,9 @@ FormItem.prototype = {
 	getTitle: function () {
 		return this.ji.closest("td").prev("td").html();
 	},
+	setTitle: function (val) {
+		this.ji.closest("td").prev("td").html(val);
+	},
 	setFocus: function () {
 		var j1 = this.getShowbox();
 		if (j1.is(":hidden")) {
