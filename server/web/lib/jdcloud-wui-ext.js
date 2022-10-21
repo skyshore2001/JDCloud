@@ -878,7 +878,7 @@ function hiddenToCheckbox(jp, sep)
 	<tr>
 		<td>配置项名称</td>
 		<td class="wui-labels">
-			<input name="name" class="easyui-validatebox" data-options="required:true">
+			<input name="name" class="easyui-validatebox" required>
 			<div class="hint">可选项和示例值：
 				<p class="easyui-tooltip" title="在移动端提交缺陷问题时，可从下拉列表中选择问题类型，就是在此处配置的，多个值以英文分号分隔。"><span class="labels">常见问题</span> 内饰;轮胎</p>
 				<p class="easyui-tooltip" title="多个值以英文空格分隔"><span class="labels">集市品类</span> 办公用品 书籍 卡票券</p>

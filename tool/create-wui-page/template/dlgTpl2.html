@@ -62,7 +62,7 @@ EOL;
 	}
 	else {
 		if (@$v["required"]) {
-			$opts[] = 'class="easyui-validatebox" data-options="required:true"';
+			$opts[] = 'class="easyui-validatebox" required';
 		}
 		if (@$v["textField"]) {
 			$k = $v['textField'];
@@ -96,7 +96,7 @@ EOL;
 	</table>
 </form>
 <!-- examples:
-<input name="name" class="easyui-validatebox" data-options="required:true">
+<input name="name" class="easyui-validatebox" required>
 <select name="customerId" class="my-combobox" data-options="ListOptions.Customer()"></select>
 <select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap"></select>
 <input name="customerId" class="wui-combogrid" data-options="ListOptions.CustomerGrid()">

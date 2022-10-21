@@ -698,8 +698,8 @@ v5.3引入了wui-fixedField类设置在字段上，v6起已不建议使用。以
 
 	<div id="dlgSendSms" title="群发短信" style="width:500px;height:300px;">  
 		<form method="POST">
-			手机号：<input name="phone" class="easyui-validatebox" data-options="required:true">
-			发送内容： <textarea rows=5 cols=30 name="content" class="easyui-validatebox"  data-options="required:true"></textarea>
+			手机号：<input name="phone" class="easyui-validatebox" required>
+			发送内容： <textarea rows=5 cols=30 name="content" class="easyui-validatebox" required></textarea>
 		</form>
 	</div>
 
@@ -12143,13 +12143,11 @@ defectId上暂时不设置，之后传参动态设置。
 
 ## 验证要求必填
 
-(v6) my-combobox继承easyui-validatebox，所以可以指定requried选项：
+(v6) my-combobox继承easyui-validatebox，通过添加requried属性来指定必填项，显示时会在字段后自动加红色星号：
 
 	<select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap" required></select>
-	或
-	<select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap, required:true"></select>
 
-在v6之前须显式设置：
+旧用法（不建议使用）：
 
 	<select name="status" class="my-combobox easyui-validatebox" data-options="jdEnumMap:OrderStatusMap, required:true"></select>
 
