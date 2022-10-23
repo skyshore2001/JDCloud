@@ -3078,6 +3078,10 @@ FormItem.prototype = {
 	},
 	setDisabled: function (val) {
 		var jo = this.ji;
+		if (jo.hasClass("easyui-validatebox")) {
+			jo.validatebox({disabled: !!val});
+			return;
+		}
 		jo.prop("disabled", !!val);
 		if (val)
 			jo.attr("disabled", "disabled");
