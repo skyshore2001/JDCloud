@@ -2135,8 +2135,9 @@ function createFindMenu(jtbl)
 
 	// 注意，subobj组件一般不设置name属性，而是通过定义CSS类`wui-subobj-{name}`类来标识名字，从而可以用 jdlg.gn("item1") 来找到它的通用接口。
 	WUI.setDlgLogic(jdlg, "item1", {
+		watch: "type",
 		disabled: function (e) {
-			return e.type == "P";
+			return e.type != "P";
 		},
 		required: true
 	});
@@ -3758,10 +3759,26 @@ validate函数原型为：`validate(value, it, gn)`
 示例：当status字段值为RE时，当前字段值不可为空：
 
 	{
-		validate: (v,it,gn) => (gn("status").val() != "RE" || v)? null: ("单据完成时[" + it.getTitle() + "]不可为空")
+		validate: (v,it,gn) => {
+			if (gn("status").val() == "RE" && !v)
+				return "单据完成时[" + it.getTitle() + "]不可为空";
+		}
 	}
 
 用gn取其它字段值；用it.getTitle()取当前字段标题。
+
+注意：当字段未在对话框中显示，或是禁用状态时，不执行验证。
+
+子表（wui-subobj）对象一样支持required/validate，在validate函数中传入值v是一个数组，如果没有填写则v.length为0。示例：
+
+	{
+		//required: true,
+		validate: function (value, it, gn) {
+			if (value.length < 2) {
+				return "明细表至少添加2行!";
+			}
+		}
+	}
 
 此外，还可以设置validType选项，它与easyui-validatebox组件兼容。示例：
 
@@ -3928,7 +3945,7 @@ function setDlgLogic(jdlg, name, logic)
 				if (formMode === FormMode.forFind)
 					return;
 				var it = gn(name);
-				if (! it.visible())
+				if (it.disabled())
 					return;
 				var val = it.val();
 				if (logic.required && (!val || ($.isArray(val) && val.length == 0))) {
