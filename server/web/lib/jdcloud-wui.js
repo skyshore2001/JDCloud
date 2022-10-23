@@ -9665,7 +9665,8 @@ var Formatter = {
 		return dt.format("L");
 	},
 	number: function (value, row) {
-		return parseFloat(value);
+		var ret = parseFloat(value);
+		return isNaN(ret)? value: ret;
 	},
 /**
 @fn Formatter.atts
