@@ -61,6 +61,10 @@ input:not([type=button]), select, textarea {
 	border-radius: 4px;
 	outline: none;
 }
+/* for firefox: firefox默认下拉列表是灰色 */
+select {
+	background-color: #fff;
+}
 /* form上对齐 */
 input:not([type=button]), textarea {
 	padding: 2px 5px;
