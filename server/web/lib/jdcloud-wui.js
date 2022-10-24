@@ -6828,7 +6828,7 @@ function showPage(pageName, title_or_opt, paramArr)
 		}
 
 		var id = tabid(title);
-		var content = "<div id='" + id + "' title='" + title + "' />";
+		var content = "<div id='" + id + "' title='" + title + "' style='height:100%'/>";
 		var jtab = $(content);
 		var closable = (pageName != self.options.pageHome);
 
