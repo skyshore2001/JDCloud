@@ -8675,8 +8675,8 @@ function loadDialog(jdlg, onLoad, opt)
 
 	function loadDialogTpl1()
 	{
-		var obj = opt.obj || jdlg.attr("my-obj");
-		var meta = opt.meta || (obj && self.UDF.onGetMeta(obj));
+		var baseObj = jdlg.attr("my-obj") || opt.obj;
+		var meta = opt.meta || (baseObj && self.UDF.onGetMeta(baseObj));
 		// 支持由meta动态生成输入字段
 		if (meta) {
 			var jp = jdlg.find(opt.metaParent || "table:first");
@@ -10194,8 +10194,9 @@ CSS类, 可定义无数据提示的样式
 			var obj = m && m[0];
 			if (obj) {
 				opt.obj = obj;
-				var meta = self.UDF.onGetMeta(obj);
 				var jtbl = $(this);
+				var baseObj = jtbl.attr("my-obj") || obj;
+				var meta = self.UDF.onGetMeta(baseObj);
 				if (meta && !jtbl.data("udfLoaded_")) { // 防止对话框上的datagrid重复添加字段
 					self.UDF.addColByMeta(opt.columns[0], meta);
 					jtbl.data("udfLoaded_", true);
