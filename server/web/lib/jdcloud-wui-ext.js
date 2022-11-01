@@ -3919,12 +3919,12 @@ function setDlgLogic(jdlg, name, logic)
 			// 等待UDF组件加完（WUI.enhanceWithin调用完）再添加逻辑
 			setTimeout(function () {
 				var it = gn(name);
-				if (it.jcomboCall) { // combo系列单独处理，不能直接用validatebox
+				/* bugfix: combogrid等也调用validatebox而不是自身的combogrid方法，否则会将值清空掉
+				if (it.jcomboCall) { // combo系列单独处理
 					it.jcomboCall(opt);
 				}
-				else {
-					it.getJo().validatebox(opt);
-				}
+				*/
+				it.getJo().validatebox(opt);
 				// 标题上标记"*"表示必填
 				if (logic.required) {
 					it.getJo().closest("td").prev("td").addClass("required");
