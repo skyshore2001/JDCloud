@@ -1456,6 +1456,7 @@ ComboFormItem.prototype = $.extend(new WUI.FormItem(), {
 	},
 	setReadonly: function (val) {
 		var fn = this.jcomboCall;
+		fn(val? "disableValidation": "enableValidation");
 		return fn("readonly", val);
 	},
 	// 用于显示的虚拟字段值
@@ -3767,7 +3768,7 @@ validate函数原型为：`validate(value, it, gn)`
 
 用gn取其它字段值；用it.getTitle()取当前字段标题。
 
-注意：当字段未在对话框中显示，或是禁用状态时，不执行验证。
+注意：当字段未在对话框中显示，或是禁用状态时，或是只读状态时，不执行验证。
 
 子表（wui-subobj）对象一样支持required/validate，在validate函数中传入值v是一个数组，如果没有填写则v.length为0。示例：
 
@@ -3845,6 +3846,10 @@ function setDlgLogic(jdlg, name, logic)
 				return;
 			map["readonly"] = true;
 			onShowArr.push(function (formMode, data) {
+				// bugfix: 注意框架设置 fixedFields 时会自动将字段设置为readonly，此时不应再次处理
+				var o = jdlg.prop("objParam");
+				if (o && o.fixedFields && o.fixedFields[name] != null)
+					return;
 				var val = calcVal("readonly", v, false, formMode, data);
 				if (val !== undefined) {
 					gn(name).readonly(val);
@@ -3928,8 +3933,8 @@ function setDlgLogic(jdlg, name, logic)
 
 			function validator() {
 				var it = gn(name);
-				if (! it.visible())
-					return;
+				if (! it.visible() || it.readonly())
+					return true;
 				var val = it.val();
 				if (logic.validate) {
 					var rv = logic.validate(val, it, gn);
@@ -3945,7 +3950,7 @@ function setDlgLogic(jdlg, name, logic)
 				if (formMode === FormMode.forFind)
 					return;
 				var it = gn(name);
-				if (it.disabled())
+				if (it.disabled() || it.readonly())
 					return;
 				var val = it.val();
 				if (logic.required && (!val || ($.isArray(val) && val.length == 0))) {
