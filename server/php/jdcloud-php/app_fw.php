@@ -2270,6 +2270,68 @@ function utf8InputFilter($fp, $fnTest=null)
 	if ($fnTest)
 		$fnTest($str);
 }
+
+/**
+@fn name2id($refNameFields, $refIdField, $refTable, $nameFields, $opt=[])
+
+常用于导入，或数据同步，把code/name等唯一字段替换成内部id.
+
+- 支持缓存数据，以优化循环效率
+- 支持查不到时报错或自动添加两种模式
+
+实例：如果给定数组（默认$_POST）含有cateName字段，则通过查询表ItemCategory中的name字段，得到相应的id字段，用cateId字段替代原cateName字段：
+
+	name2id("cateName", "cateId", "ItemCategory", "name");
+	(即 cateId = SELECT id FROM ItemCategory WHERE name={cateName} )
+
+如果查不到则会报错。
+也可指定不报错(doAutoAdd)，直接插入ItemCategory表中，用新插入的id值作为cateId字段，替代原cateName字段：
+
+	name2id("cateName", "cateId", "ItemCategory", "name", ["doAutoAdd"=>true]);
+
+如果添加时还要指定其它字段，指定onAdd：
+
+	name2id("cateName", "cateId", "ItemCategory", "name", [
+		"doAutoAdd"=>true, 
+		"onAdd" => function (&$data) {
+			$data["contactName"] = $_POST["cateContactName"];
+			$data["tm"] = date(FMT_DT);
+		},
+		// "arr" => &$myarr, // 修改$myarr数组，而不是默认的$_POST，注意加'&'
+	]);
+
+TODO: 支持多字段联合查询:
+
+	name2id("city,storeName", "storeId", "Store", "city,name");
+
+*/
+function name2id($refNameFields, $refIdField, $refTable, $nameFields, $opt = [])
+{
+	if (is_array($opt["arr"])) {
+		$arr = &$opt["arr"];
+	}
+	else {
+		$arr = &$_POST;
+	}
+	if (issetval($refNameFields, $arr)) {
+		$v = $arr[$refNameFields];
+		$id = SimpleCache::getInstance()->get("name2id-$refTable-$refNameFields-$v", function () use ($refTable, $refNameFields, $nameFields, $v, $opt) {
+			$id = queryOne("SELECT id FROM $refTable WHERE $nameFields=" . Q($v));
+			if (! $id) {
+				if (! $opt["doAutoAdd"])
+					jdRet(E_PARAM, "bad $refNameFields", "找不到被引用的数据: " . $v); 
+				$data = [];
+				$data[$nameFields] = $v;
+				if ($opt["onAdd"]) {
+					$opt["onAdd"]($data);
+				}
+				$id = dbInsert($refTable, $data);
+			}
+		});
+		$arr[$refIdField] = $id;
+		unset($arr[$refNameFields]);
+	}
+}
 //}}}
 
 // ====== classes {{{
