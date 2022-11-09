@@ -9368,9 +9368,30 @@ $.extend(dg_toolbar, {
 		}}
 	},
 	'export': function (ctx) {
-		return {text: '导出', iconCls: 'icon-save', handler: getExportHandler(ctx.jtbl)}
+		return {text: '导出', class: 'splitbutton', iconCls: 'icon-save', handler: getExportHandler(ctx.jtbl),
+			menu: createExportMenu(ctx.jtbl)
+		}
 	}
 });
+
+function createExportMenu(jtbl)
+{
+	var jmenu = $('<div>' + 
+		'<div data-options="id:\'csv\'">逗号分隔(csv)</div>' + 
+		'<div data-options="id:\'txt\'">TAB分隔(txt)</div>' + 
+		'<div data-options="id:\'html\'">网页(html)</div>' + 
+		'<div data-options="id:\'outfile\'">原始数据(outfile)</div>' + 
+		'</div>');
+
+	jmenu.menu({
+		onClick: function (item) {
+			console.log(item);
+			var handler = getExportHandler(jtbl, null, {fmt: item.id});
+			handler();
+		}
+	})
+	return jmenu;
+}
 
 /**
 @fn dg_dblclick(jtbl, jdlg)
@@ -9483,7 +9504,7 @@ function getExportHandler(jtbl, ac, param)
 		var p1 = getQueryParamFromTable(jtbl, param);
 		var debugShow = false;
 		if (m_batchMode) {
-			var fmt = prompt("输入导出格式: excel csv txt excelcsv html (以!结尾为调试输出)", p1.fmt);
+			var fmt = prompt("输入导出格式: excel csv txt excelcsv html outfile (以!结尾为调试输出)", p1.fmt);
 			if (!fmt)
 				return;
 			if (fmt.substr(-1) == "!") {

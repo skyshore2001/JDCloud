@@ -2836,7 +2836,10 @@ FROM ($sql) t0";
 		if ($orderSql)
 			$sql .= "\nORDER BY " . $orderSql;
 
-		if ($enablePartialQuery) {
+		if ($fmt === "outfile") {
+			// no limit
+		}
+		else if ($enablePartialQuery) {
 			$sql .= "\nLIMIT " . $pagesz;
 		}
 		else {
@@ -2847,6 +2850,10 @@ FROM ($sql) t0";
 
 		if ($extSqlFn) {
 			$sql = $extSqlFn($sql);
+		}
+		if ($fmt === "outfile") {
+			$this->handleExportToOutfile($sql);
+			jdRet();
 		}
 		$ret = queryAll($sql, true);
 		if ($ret === false)
@@ -4045,6 +4052,23 @@ function KVtoCond($k, $v)
 		}
 		if ($handled)
 			jdRet();
+	}
+
+	function handleExportToOutfile($sql) {
+		$dir = "outfile";
+		if (! is_dir($dir)) {
+			// rw for mysql user
+			jdRet(E_SERVER, "no outfile dir", "导出目录未配置");
+		}
+		global $BASE_DIR;
+		$f = date("Ymd_His") . '.txt';
+		$cmd = "$sql into outfile '$BASE_DIR/$dir/$f'";
+		logit("export to outfile: $cmd");
+		execOne($cmd);
+
+		$this->header("Content-Type", "text/plain; charset=UTF-8");
+		$this->header("Content-Disposition", "attachment;filename=$f");
+		readfile("$dir/$f");
 	}
 
 /**
