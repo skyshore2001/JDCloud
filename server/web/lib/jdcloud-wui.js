@@ -9380,7 +9380,7 @@ function createExportMenu(jtbl)
 		'<div data-options="id:\'csv\'">逗号分隔(csv)</div>' + 
 		'<div data-options="id:\'txt\'">TAB分隔(txt)</div>' + 
 		'<div data-options="id:\'html\'">网页(html)</div>' + 
-		'<div data-options="id:\'outfile\'">原始数据(outfile)</div>' + 
+		//'<div data-options="id:\'outfile\'">原始数据(outfile)</div>' + 
 		'</div>');
 
 	jmenu.menu({
@@ -9504,7 +9504,7 @@ function getExportHandler(jtbl, ac, param)
 		var p1 = getQueryParamFromTable(jtbl, param);
 		var debugShow = false;
 		if (m_batchMode) {
-			var fmt = prompt("输入导出格式: excel csv txt excelcsv html outfile (以!结尾为调试输出)", p1.fmt);
+			var fmt = prompt("输入导出格式: excel csv txt excelcsv html outfile(无导出条数限制), 以!结尾为调试输出", p1.fmt);
 			if (!fmt)
 				return;
 			if (fmt.substr(-1) == "!") {
