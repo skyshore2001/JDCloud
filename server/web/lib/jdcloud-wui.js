@@ -11378,6 +11378,10 @@ function deleteLoginToken()
 self.tryAutoLogin = tryAutoLogin;
 function tryAutoLogin(onHandleLogin, reuseCmd)
 {
+	// initClient接口返回了userInfo，表示使用第三方认证，跳过tryAutoLogin
+	if (g_data.initClient && g_data.initClient.userInfo)
+		return;
+
 	var ok = false;
 	var ajaxOpt = {async: false, noex: true};
 
@@ -11471,8 +11475,8 @@ function tryAutoLoginAsync(onHandleLogin, reuseCmd)
 }
 
 /**
-@fn handleLogin(data)
-@param data 调用API "login"成功后的返回数据.
+@fn handleLogin(userInfo)
+@param userInfo 调用login/Employee.get等接口返回的用户信息数据。
 
 处理login相关的操作, 如设置g_data.userInfo, 保存自动登录的token等等.
 
@@ -11524,11 +11528,17 @@ function handleLogin(data)
 
 // ------ plugins {{{
 /**
-@fn initClient()
+@fn initClient(param = null)
+
+一般在进入页面时，同步地调用后端initClient接口，获取基本配置信息。
+此后可通过g_data.initClient取这些配置。
+
+若指定param参数(JS对象，如`{token: 123}`)，则作为POST参数调用initClient接口.
+
 */
 self.initClient = initClient;
 var plugins_ = {};
-function initClient()
+function initClient(param)
 {
 	self.callSvrSync('initClient', function (data) {
 		g_data.initClient = data;
@@ -11540,7 +11550,11 @@ function initClient()
 				mCommon.loadScript(js, {async:true});
 			}
 		});
-	});
+	}, param);
+	if (g_data.initClient && g_data.initClient.userInfo) {
+		WUI.handleLogin(g_data.initClient.userInfo);
+		// NOTE: 会自动跳过tryAutoLogin
+	}
 }
 
 /**

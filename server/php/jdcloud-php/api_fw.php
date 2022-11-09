@@ -1141,6 +1141,42 @@ class ConfBase
 		// ...
 	}
 	
+@key 单点登录(SSO)
+
+@alias 第三方认证
+
+通常设计为打开筋斗云前端应用时，通过传入url参数token，在初始化时调用接口`initClient{token: "xxxx"}`。
+后端Conf.onInitClient在使用token去第三方获取用户信息后，在接口返回数据中包含userInfo字段即用户信息(如userInfo字段)即可。
+例如内嵌应用:
+
+	<iframe id="ifr" src="https://myserver.com/jdcloud/web/store.html?token=test123" width="100%" height="80%"></iframe>
+
+内层应用前端处理示例：
+
+	function main()
+	{
+		...
+		WUI.initClient({token: g_args.token}); // 添加token参数
+	}
+
+后端处理示例：
+
+	// class Conf
+	static function onInitClient(&$ret)
+	{
+		$token = param("token");
+		if ($token) {
+			$_SESSION["empId"] = 1; // TO DO: 通过token从第三方获取用户信息并保存到Employee表
+			$ret["userInfo"] = callSvcInt("Employee.get");
+		}
+	}
+
+另外，通过iframe内嵌筋斗云应用时，如果内外层url不是同一个站（如y1.xx.com:8080与y2.xx.com是同站，不看端口），即跨站时，
+内层应用会出现登录后，仍是未登录状态的情况，这是因为受跨站限制，每次请求时cookie无法保持。
+解决方法只能内层应用须使用https协议，且后端server/.htaccess文件中添加SameSite配置：
+
+	header edit Set-Cookie $ ";Secure;SameSite=None"
+
  */
 	static function onInitClient(&$ret)
 	{
