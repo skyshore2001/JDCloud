@@ -539,6 +539,17 @@ class UpgHelper
 	/** @api */
 	function updateDB()
 	{
+		try {
+			$this->updateDB_i();
+		}
+		catch (Exception $ex) {
+			$this->logstr("*** Fail to updateDB: " . (string)$ex . "\n", false);
+			throw $ex;
+		}
+	}
+
+	private function updateDB_i()
+	{
 		$this->prompt("=== update DB\n"); 
 		foreach ($this->tableMeta as $e) {
 			$this->_addTableByMeta($e);

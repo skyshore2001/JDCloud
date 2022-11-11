@@ -21,4 +21,9 @@ function upgrade()
 	}
 }
 
-upgrade();
+try {
+	upgrade();
+}
+catch (Exception $ex) {
+	echo("*** Fail to upgrade: " . (string)$ex . "\n");
+}

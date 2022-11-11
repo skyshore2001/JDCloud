@@ -49,7 +49,7 @@ class SqlDiff
 
 	// @fields={Field, Type, Null, Key, ...}
 	public function getFields($table) {
-		return queryAll("desc `$table`", true);
+		return queryAll("desc $table", true); // 支持带数据库名，如`desc erp_saic.InvRecord`。
 	}
 }
 
@@ -72,7 +72,14 @@ class SqlDiff_mysql extends SqlDiff
 	public $createOpt = "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
 
 	public function tableExists($tbl) {
-		$sth = $this->dbh->query("show tables like '$tbl'");
+		if (strpos($tbl, '.') > 0) {
+			// select 1 from information_schema.tables where TABLE_NAME ='InvRecord' and table_schema='erp_saic'
+			$arr = explode('.', $tbl);
+			$sth = $this->dbh->query("select 1 from information_schema.tables where table_name ='$arr[1]' and table_schema='$arr[0]'");
+		}
+		else {
+			$sth = $this->dbh->query("show tables like '$tbl'");
+		}
 		return $sth->fetch() !== false;
 	}
 }
@@ -403,7 +410,7 @@ class UpgHelper
 
 	private function addTableMeta($tableDef, $file)
 	{
-		if (! preg_match('/^@([\w_]+)[:：]\s+(\w.*?)\s*$/u', $tableDef, $ms))
+		if (! preg_match('/^@([\w_.]+)[:：]\s+(\w.*?)\s*$/u', $tableDef, $ms))
 			return false;
 		$tableName = $ms[1];
 		foreach ($this->tableMeta as $e) {
@@ -538,6 +545,17 @@ class UpgHelper
 
 	/** @api */
 	function updateDB()
+	{
+		try {
+			$this->updateDB_i();
+		}
+		catch (Exception $ex) {
+			$this->logstr("*** Fail to updateDB: " . (string)$ex . "\n", false);
+			throw $ex;
+		}
+	}
+
+	private function updateDB_i()
 	{
 		$this->prompt("=== update DB\n"); 
 		foreach ($this->tableMeta as $e) {
