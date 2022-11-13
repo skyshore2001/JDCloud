@@ -3044,7 +3044,17 @@ FROM ($sql) t0";
 qsearch的格式是`字段1,字符2,...:查询内容`(使用英文逗号及冒号分隔).
 上例表示在dscr或cmt字段中查找包含"张%"(匹配开头)且包含"%退款%"的记录. 它等价于前端调用：
 
-	callSvr("Ordr.query", {cond: {dscr: "~张* and ~退款", cmt: "~张* and ~退款"}})
+	callSvr("Ordr.query", {cond: {_or: 1, dscr: "~张* and ~退款", cmt: "~张* and ~退款"}})
+
+(v6.1) 可以指定各字段的匹配规则，当查询短语中没有"*"时，默认表示包含（即"abc"等价于"*abc*"）；
+如果字段以"*"结尾，表示查询"abc"时等价于"abc*"（即该字段默认匹配开头）；
+如果字段以"!"结尾，表示必须精确匹配，即查询"abc"就是"abc"，不会模糊匹配。
+
+	callSvr("Sn.query", {qsearch: "code!,name*:a001"})
+
+上例表示查询code为"a001"，或是name以"a001"开头的项，等价于调用：
+
+	callSvr("Sn.query", {cond: {_or: 1, code: "a001", name: "~a001*"}})
 
 @see getQueryCond
 */
@@ -3058,17 +3068,36 @@ qsearch的格式是`字段1,字符2,...:查询内容`(使用英文逗号及冒�
 			return;
 
 		$cond = null;
+		$fieldMap = []; // $field => $matchMode  Enum(null, '*', '!')
+		foreach ($fields as $f) {
+			$mode = null;
+			if ($f[-1] == '*' || $f[-1] == '!') {
+				$mode = $f[-1];
+				$f = substr($f, 0, -1);
+			}
+			$fieldMap[$f] = $mode;
+		}
 		foreach (preg_split('/\s+/', $q) as $q1) {
 			if (strlen($q1) == 0)
 				continue;
+			$autoMatch = true;
 			if (strpos($q1, "*") !== false) {
 				$qstr = Q(str_replace("*", "%", $q1));
-			}
-			else {
-				$qstr = Q("%$q1%");
+				$autoMatch = false;
 			}
 			$cond1 = null;
-			foreach ($fields as $f) {
+			foreach ($fieldMap as $f=>$mode) {
+				if ($autoMatch) {
+					if ($mode === '*') {
+						$qstr = Q("$q1%");
+					}
+					else if ($mode == '!') {
+						$qstr = Q($q1);
+					}
+					else {
+						$qstr = Q("%$q1%");
+					}
+				}
 				addToStr($cond1, "$f LIKE $qstr", ' OR ');
 			}
 			addToStr($cond, "($cond1)", ' AND ');
@@ -3102,8 +3131,10 @@ qsearch的格式是`字段1,字符2,...:查询内容`(使用英文逗号及冒�
 		if ($qs === null)
 			return;
 		list ($fieldStr, $q) = explode(":", $qs, 2);
-		if (!$q || !$fieldStr)
+		if (!$fieldStr)
 			jdRet(E_PARAM, "bad qsearch format");
+		if (!$q)
+			return;
 		$fields = explode(",", $fieldStr);
 		$this->qsearch($fields, $q);
 	}
