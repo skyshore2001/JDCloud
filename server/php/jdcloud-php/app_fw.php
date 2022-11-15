@@ -62,6 +62,12 @@ P_DBCRED格式为`{用户名}:{密码}`，或其base64编码后的值，如
 	$db = "mysql:host=localhost;port=3306;dbname=jt_wms";
 	$env = new DBEnv("mysql", $db, "demo", "demo123");
 
+	$rows = $env->queryAll("SELECT * FROM Employee");
+	$rowCnt = $env->queryOne("SELECT COUNT(*) FROM Employee");
+	$newId = $env->dbInsert("Employee", ["name"=>"name1"]);
+	$cnt = $env->dbUpdate("Task", ["vendorId" => $id], ["vendorId" => $id1]);
+	$cnt = $env->execOne("UPDATE Task SET vendorId=venderId+1");
+
 	# sqlite
 	$db = "sqlite:jdcloud.db";
 	$env = new DBEnv("sqlite", $db);
@@ -1609,7 +1615,7 @@ class DBEnv
 	function __construct($dbtype = null, $db = null, $user = null, $pwd = null) {
 		if ($dbtype) {
 			$this->DBTYPE = $dbtype;
-			assert($db);
+			assert('$db');
 			$this->C = [$db, $user, $pwd];
 		}
 		else {
