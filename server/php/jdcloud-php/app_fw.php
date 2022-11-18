@@ -2333,6 +2333,7 @@ function name2id($refNameFields, $refIdField, $refTable, $nameFields, $opt = [])
 				}
 				$id = dbInsert($refTable, $data);
 			}
+			return $id;
 		});
 		$arr[$refIdField] = $id;
 		unset($arr[$refNameFields]);
