@@ -1431,7 +1431,7 @@ class BatchInsert
 		$verb = @$opt["useReplace"]? "REPLACE": "INSERT";
 		if (is_string($headers)) {
 			$headerStr = $headers;
-			$headers = preg_split('/\s*,/\s*/', $headerStr);
+			$headers = preg_split('/\s*,\s*/', $headerStr);
 		}
 		else {
 			$headerStr = join(',', $headers);
