@@ -132,6 +132,12 @@ function checkEnv()
 		"result" => $val
 	];
 
+	$val = extension_loaded('xml');
+	$check["xml"] = [
+		"value"=>$val? "可用": "不可用",
+		"result" => $val
+	];
+
 	$val = extension_loaded('curl');
 	$check["curl"] = [
 		"value"=>$val? "可用": "不可用",
@@ -439,6 +445,9 @@ p.hint {
 	</tr>
 	<tr>
 		<td>curl模块(用于外部调用)</td><td data-item="curl"></td>
+	</tr>
+	<tr>
+		<td>xml模块(用于导出addon)</td><td data-item="xml"></td>
 	</tr>
 	<tr>
 		<td>上传文件设置</td><td data-item="uploadsz"></td>
