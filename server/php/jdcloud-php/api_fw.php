@@ -2560,12 +2560,13 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 				$this->header('Access-Control-Allow-Methods', $val);
 			}
 		}
-		if ($this->_SERVER("REQUEST_METHOD") === "OPTIONS")
+		$method = $this->_SERVER("REQUEST_METHOD");
+		if ($method === "OPTIONS")
 			exit();
 
 		// supportJson: 支持POST为json格式
 		$ct = getContentType($this);
-		if (strstr($ct, "/json") !== false) {
+		if (strstr($ct, "/json") !== false && $method != "GET") {
 			$content = getHttpInput($this);
 			@$arr = jsonDecode($content);
 			if (!is_array($arr)) {
