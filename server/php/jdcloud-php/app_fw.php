@@ -2464,7 +2464,7 @@ class JDPDO_sqlite extends JDPDO
 class JDPDO_mysql extends JDPDO
 {
 	function initConn() {
-		++ $this->skipLogCnt;
+		$this->skipLogCnt += 2;
 		$this->exec('set names utf8mb4');
 		$this->exec('set sql_mode=\'\''); // compatible for mysql8
 	}
