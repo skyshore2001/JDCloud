@@ -2466,6 +2466,7 @@ class JDPDO_mysql extends JDPDO
 	function initConn() {
 		++ $this->skipLogCnt;
 		$this->exec('set names utf8mb4');
+		$this->exec('set sql_mode=\'\''); // compatible for mysql8
 	}
 	function addLimit1(&$sql) {
 		if (stripos($sql, "limit ") === false && stripos($sql, "for update") === false)
