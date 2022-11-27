@@ -810,7 +810,7 @@ function hasPerm($perms, $exPerms=null)
 					jdRet(E_SERVER, "unregistered authType `$e`", "未知认证类型`$e`");
 				if ($fn($env)) {
 					$env->exPerm = $e;
-					$env->session_destroy();  // 对于第三方认证，不保存session（即使其中模拟了管理员登录，也不会影响下次调用）
+					$env->session_destroy();  // 对于扩展认证，不保存session（即使其中模拟了管理员登录，也不会影响下次调用）
 					break;
 				}
 			}
@@ -1338,7 +1338,7 @@ e.g. 修改ApiLog要记录的ac:
 			"app" => $env->appName,
 			"ses" => session_id(),
 			"userId" => $this->getUserId(),
-			"ac" => $env->getAc(),
+			"ac" => $env->getAc(true),
 			"req" => dbExpr(Q($content, $env)),
 			"reqsz" => $reqsz,
 			"ver" => $ver["str"],
@@ -2496,8 +2496,18 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 	public $onAfterActions = [];
 	private $dbgInfo = [];
 
-	function getAc() {
-		return $this->ac;
+/**
+@fn env.getAc($wantBatch=false)
+
+取当前调用名。
+如果是batch调用，则返回当前子调用名。
+
+如果指定参数wantBatch=true, 则batch调用直接返回"batch"，此时可以用env.getAc1()返回子调用名。
+*/
+	function getAc($wantBatch=false) {
+		if ($wantBatch)
+			return $this->ac;
+		return $this->ac1 ?: $this->ac;
 	}
 	function getAc1() {
 		return $this->ac1;
@@ -2862,6 +2872,12 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			$X_RET_STR = null;
 			$this->dbgInfo = [];
 			$this->ac1 = null;
+			// 扩展认证时，每个子调用分别认证，确保allowedAc可被检查
+			$this->perms = null;
+			if ($this->exPerm) {
+				$this->_SESSION = [];
+				$this->exPerm = null;
+			}
 
 			// 接口失败，则删除非强制执行的onAfterActions
 			if ($retCode) {
