@@ -1935,6 +1935,14 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 	// 内部被addRes调用。避免重复添加字段到res。
 	// 返回true/false: 是否添加到输出列表
 	private function addResInt(&$resArr, $col) {
+		// 添加t0.*时，如果前面有t0.id等，应自动删除
+		if ($col == "t0.*") {
+			foreach ($resArr as $i=>$e) {
+				if (substr($e,0,3) == "t0." && strpos($e, ' ') === false) {
+					unset($resArr[$i]);
+				}
+			}
+		}
 		$ignoreT0 = in_array("t0.*", $resArr);
 		// 如果有"t0.*"，则忽略主表字段如"t0.id"，但应避免别名字段如"t0.id orderId"被去掉
 		if ($ignoreT0 && substr($col,0,3) == "t0." && strpos($col, ' ') === false)
