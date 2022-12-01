@@ -3368,7 +3368,9 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 
 ## 支持三种方式上传
 
-1. 直接在HTTP POST中传输内容，数据格式为：首行为标题行(即字段名列表)，之后为实际数据行。
+### 直接在HTTP POST中传输内容
+
+数据格式为：首行为标题行(即字段名列表)，之后为实际数据行。
 行使用"\n"分隔, 列使用"\t"或逗号分隔（后端自动判断）.
 接口为：
 
@@ -3396,7 +3398,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 	111	高长平	18375991001	500226198312065XXX	地址2	534
 	`, {contentType:"text/plain"});
 		
-2. 标准csv/txt文件上传：
+### 标准csv/txt文件上传
 
 上传的文件首行当作标题列，如果这一行不是后台要求的标题名称，可通过URL参数title重新定义。
 一般使用excel csv文件（编码一般为gbk），或txt文件（以"\t"分隔列）。
@@ -3430,7 +3432,8 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 
 如果要调试(php/xdebug)，可加URL参数`XDEBUG_SESSION_START=1`或Cookie中加`XDEBUG_SESSION=1`
 
-3. 传入对象数组
+### 传入对象数组
+
 格式为 {list: [...]}
 
 	var data = {
