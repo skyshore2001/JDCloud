@@ -9252,8 +9252,7 @@ function showObjDlg(jdlg, mode, opt)
 示例：为订单列表增加一个“关联商品”按钮
 
 	$(document).on("dg_toolbar", ".wui-page.pageOrder", pageOrder_onToolbar);
-	// 用于二次开发，更成熟的写法像这样
-	// $(document).off("dg_toolbar.pageOrder").on("dg_toolbar.pageOrder", ".wui-page.pageOrder", pageOrder_onToolbar);
+	// 用于二次开发，更成熟的写法像这样: UiMeta.on("dg_toolbar", "售后工单", function (ev, buttons, jtbl, jdlg) { ... })
 	function pageOrder_onToolbar(ev, buttons, jtbl, jdlg) {
 		// var jpage = $(ev.target);
 		// console.log(jpage);
@@ -9267,6 +9266,22 @@ function showObjDlg(jdlg, mode, opt)
 		buttons.push(btnLinkToItem);
 	}
 
+@key example-setToolbarMenu 动态修改数据表上的工具栏菜单状态
+
+在dg_toolbar事件中，如果想指定datagrid选项，比如要实现需求：
+单击一行时，自动根据当前行状态，设置菜单项是否disabled（比如非CR状态时，“删除”菜单不可点击）:
+
+	jtbl.prop("datagridOpt", {
+		onClickRow: function (rowIndex, rowData) {
+			var val = (rowData.status == 'CR');
+			WUI.setToolbarMenu(jtbl, {删除: val});
+			// 因为框架可能扩展过datagrid一些功能，加上这句比较稳妥
+			$.fn.datagrid.defaults.onClickRow(rowIndex, rowData);
+		}
+	});
+
+@see setToolbarMenu
+@key datagridOpt 二次开发中datagrid选项设置
 */
 self.dg_toolbar = dg_toolbar;
 function dg_toolbar(jtbl, jdlg)
@@ -9338,6 +9353,41 @@ function dg_toolbar(jtbl, jdlg)
 	if (btns.length == 0)
 		return null;
 	return btns;
+}
+
+/**
+@fn setToolbarMenu(jtbl, enableMap)
+
+设置数据表工具栏上的菜单项，禁用或启用：
+
+	WUI.setToolbarMenu(jtbl, {删除: false, 导出: true}); // 菜单项“删除”（即菜单标题）显示为禁用，“导出”显示为可用。
+
+也可以通过回调函数(或lambda)操作该菜单项：
+
+	WUI.setToolbarMenu(jtbl, {
+		删除: ji => ji.linkbutton("disable"), // 禁用，等同于设置false
+		导出: ji => ji.linkbutton("enable"), // 启用，等同于设置true
+		// 导入: ji => ji.toggle(true)
+		导入: function (ji) {
+			var show = ...;
+			ji.toggle(Show); // 显示或隐藏
+		}
+	});
+ */
+self.setToolbarMenu = setToolbarMenu;
+function setToolbarMenu(jtbl, enableMap)
+{
+	jtbl.datagrid("getPanel").find(".datagrid-toolbar .l-btn .l-btn-text").each(function (i, o) {
+		var val = enableMap[o.innerText];
+		if (val !== undefined) {
+			if ($.isFunction(val)) {
+				val($(o).closest('.l-btn'));
+			}
+			else {
+				$(o).closest('.l-btn').linkbutton(val? 'enable': 'disable');
+			}
+		}
+	});
 }
 
 $.extend(dg_toolbar, {
@@ -10208,6 +10258,7 @@ CSS类, 可定义无数据提示的样式
 		}, 1000);
 	},
 
+	// 此回调由扩展datagrid源码得来
 	onInitOptions: function (opt) {
 		var ac = opt.url && opt.url.action;
 		if (ac) {
@@ -10223,6 +10274,10 @@ CSS类, 可定义无数据提示的样式
 					jtbl.data("udfLoaded_", true);
 				}
 			}
+		}
+		// 支持通过 `jtbl.prop("datagridOpt", { onClickRow: ..., sortName: ...});`的方式配置datagrid选项，常用于二次开发时在dg_toolbar事件中设置datagrid选项。
+		if (this.datagridOpt) {
+			$.extend(opt, this.datagridOpt);
 		}
 	},
 
@@ -10867,7 +10922,10 @@ $.extend($.fn.tabs.defaults, {
 });
 */
 
-/*
+/**
+@key easyui-linkbutton
+@key EXT_LINK_BUTTON
+
 datagrid options中的toolbar，我们使用代码指定方式，即
 
 	var btnFind = {text:'查询', iconCls:'icon-search', handler: function () {
@@ -10887,8 +10945,6 @@ datagrid options中的toolbar，我们使用代码指定方式，即
 	});
 	var btnFind = {text:'查询', class: 'splitbutton', iconCls:'icon-search', handler: ..., menu: jmenu};
 
-@key easyui-linkbutton
-@key EXT_LINK_BUTTON
 */
 $.fn.linkbutton0 = $.fn.linkbutton;
 $.fn.linkbutton = function (a, b) {
