@@ -260,8 +260,8 @@ HTML: 在data-options中指定菜单的ID和显示文字。缺省头像将添加
  示例：调用`upload1(resource, version) -> [{id, ..., url}]` 接口。
  该接口扩展了默认的upload接口，需要传入resource等参数，返回的url字段需要设置到form相应字段上。
 
-    // function initDlgVersion
- 	var jo = jdlg.find(".uploadFile");
+	// function initDlgVersion
+	var jo = jdlg.find(".uploadFile");
 	var uploadOpt = WUI.getOptions(jo);
 	uploadOpt.onGetQueryParam = function () {
 		return {
@@ -1766,6 +1766,32 @@ function makeLink(text, fn)
 	return '<a href="javascript:' + self.fname(fn) + '()">' + text + '</a>';
 }
 
+window.ApproveFlagMap = {
+	0: "无审批",
+	1: "待审批",
+	2: "通过",
+	3: "不通过"
+}
+window.ApproveFlagStyler = {
+	0: "Disabled",
+	1: "Warning",
+	2: "Info",
+	3: "Error"
+}
+
+/**
+@key toolbar 工具栏扩展菜单项
+
+- import: 导入
+- export: 导出
+- report: 报表
+- qsearch: 模糊查询，支持指定字段
+@see toolbar-qsearch
+
+- approve: 审批
+
+@see toolbar-approve
+*/
 $.extend(self.dg_toolbar, {
 	"import": function (ctx) {
 		return {text: "导入", "wui-perm": "新增", iconCls:'icon-add', handler: function () {
@@ -1834,6 +1860,96 @@ protected function onQuery() {
 		return {text: '报表', iconCls: 'icon-sum', handler: function () {
 			self.showDlg("#dlgDataReport");
 		}};	
+	},
+
+/**
+@key toolbar-approve 审批菜单
+
+依赖字段：
+
+- approveFlag: 审批状态(ApproveFlagMap), Enum(0-无审批, 1-待审批, 2-通过, 3-不通过), 可用ApproveFlagStyler修饰各状态颜色。
+
+可选字段：
+
+- approveEmpId: 审批人
+
+	function canApprove_WO(row) {
+		return g_data.userInfo.id == row.approveEmpId || g_data.hasRole("mgr,售后审核");
+	}
+	var btnApprove = ["approve", {
+		obj: "WarrantyOrder", // 最终将调用"WarrantyOrder.set"接口
+		canApprove: function (row) {
+			return canApprove_WO(row);
+		},
+		// data: 待保存的新数据(data.approveFlag为新状态), row: 原数据
+		onSet: function (row, data) {
+			// 发起审批时，自动填写审批人
+			if (data.approveFlag ==1 && row.approveEmpId == null) {
+				var empId = callSvrSync("Employee.query", {fmt: "one?", res: "id", role:"售后审核"});
+				if (empId)
+					data.approveEmpId = empId;
+			}
+		}
+	}];
+
+	var dgOpt = {
+		...
+		toolbar: WUI.dg_toolbar(jtbl, jdlg, btnApprove),
+	};
+	jtbl.datagrid(dgOpt);
+
+对话框上approveFlag设置示例：
+
+	{
+		disabled: e => canApprove_WO(e),
+		enumMap: ApproveFlagMap,
+		styler: Formatter.enumStyler(ApproveFlagStyler),
+		desc: "【售后审核】角色或【最高管理员】或指定审批人可审批"
+	}
+
+对话框上approveEmpId设置示例：
+
+	{
+		disabled: e => canApprove_WO(e)
+	}
+
+ */
+	approve: function (ctx, opt) {
+		self.assert(opt.obj, "approve: opt.obj: 选项obj未指定");
+		var jmnuApprove = $('<div style="width:150px;display:none">' +
+			'<div id="ap1" data-options="iconCls:\'icon-help\'">发起审批</div>' +
+			'<div id="ap2" data-options="iconCls:\'icon-ok\'">审批通过</div>' +
+			'<div id="ap3" data-options="iconCls:\'icon-no\'">审批不通过</div>' +
+		'</div>');
+		jmnuApprove.menu({
+			onClick: function (o) {
+				var row = WUI.getRow(ctx.jtbl);
+				if (!row)
+					return;
+				var status = parseInt(o.id.replace('ap', '')); // "ap1" => 1
+				var status0 = row.approveFlag;
+				if (status == status0) {
+					app_alert("状态相符，无须操作", "w");
+					return;
+				}
+				var data = {approveFlag: status};
+				var canApprove = opt.canApprove && opt.canApprove(row);
+				if (!canApprove) {
+					if (status == 1 && (status0 == 0 || status0 == 3)) {
+					}
+					else {
+						app_alert("无权限操作", "w");
+						return;
+					}
+				}
+				opt.onSet && opt.onSet(row, data);
+				callSvr(opt.obj + ".set", {id: row.id}, function () {
+					app_show("操作成功");
+					WUI.reloadRow(ctx.jtbl, row);
+				}, data);
+			}
+		})
+		return {text: "审批", iconCls:"icon-more", class:"menubutton", menu: jmnuApprove};
 	}
 });
 
