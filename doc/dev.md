@@ -29,7 +29,7 @@
 
 公司内网代码服务器为server-pc（外部访问通过映射），一般采用ssh证书登录方式（免密码登录），配置如下：
 
-在用户主目录下(按Windows-R键打开运行对话框，输入 "." 或 "%userprofile%")，创建目录".ssh", 将 `${SHARE_SVR}\server-pc-key` 目录下的文件(config, id_rsa等)拷贝到".ssh"目录中。
+在用户主目录下(按Windows-R键打开运行对话框，输入 "." 或 "%userprofile%")，创建目录".ssh", 将 `{SHARE_SVR}\server-pc-key` 目录下的文件(config, id_rsa等)拷贝到".ssh"目录中。
 如果目前下已经有同名文件，请手工修改和合并。
 
 在文件夹空白处点右键，打开 Git Bash，尝试 ssh 是否可以自动登录到内网代码服务器:
@@ -106,7 +106,15 @@ MySQL服务端不是必装的，自己学习的话可以安装一个，注意安
 
 ### 服务器环境Apache+PHP 
 
-安装php 5.4:
+PHP支持5.4或7.4版本，均为32位NTS版本，与Apache一致。
+
+安装php7.4:
+
+	解压 {SHARE_SVR}\php\php74_22.11.zip 到 d:\ 盘，得到 d:\php74 目录
+
+将解压路径如`d:\php74`加到系统环境变量 PATH 中，以便可以直接在命令行访问 php.
+
+或安装php 5.4:
 
 	解压 {SHARE_SVR}\php\php-5.4.31-nts-Win32-VC9-x86-xdebug.zip 到 d:\php54
 
@@ -121,6 +129,8 @@ MySQL服务端不是必装的，自己学习的话可以安装一个，注意安
 	php index.php
 
 应能正常输出。
+
+php7.4在win7系统中，需要vc15运行库，如果不能运行，请先安装：{SHARE_SVR}\php\vc2015_vc14_runtime_redist.x86.exe
 
 安装apache2: 解压`{SHARE_SVR}\Apache24-x64-vc15-fcgid.rar` 到 `d:\`，得到目录`D:\Apache24-x64-vc15`，下面以`{APACHE_HOME}`指代该目录。
 
@@ -147,7 +157,7 @@ MySQL服务端不是必装的，自己学习的话可以安装一个，注意安
 
 安装make工具：
 
-	\\server-pc\share\software\make-mingw.zip
+	{SHARE_SVR}\make-mingw.zip
 
 解压到`d:\bat`目录。如果没有该目录，创建它，并将它加入PATH路径。
 
@@ -155,7 +165,8 @@ MySQL服务端不是必装的，自己学习的话可以安装一个，注意安
 
 安装图片处理工具imagemagick：（比如图片压缩等）
 
-	\\server-pc\share\software\ImageMagick-7.0.8-12-Q16-x64-dll.exe
+	{SHARE_SVR}\ImageMagick-7.1.0-52-Q8-x64-dll.exe
+	(注意：ImageMagick有Q8, Q16版本之分，为兼容最好用Q8版本）
 
 检查：可以运行magick命令(6.x版本的命令叫convert, 现在已不再使用)。常用于图片压缩，比如将1.png转换并压缩为1.jpg，分辨率处理为长1200、宽自动：
 
@@ -165,7 +176,7 @@ MySQL服务端不是必装的，自己学习的话可以安装一个，注意安
 
 安装文档生成工具pandoc：
 
-	\\server-pc\share\software\pandoc-1.16.0.2-windows.msi
+	{SHARE_SVR}\pandoc-1.16.0.2-windows.msi
 
 检查：可以运行pandoc命令。它常用于将markdown文档转为html，如：
 
@@ -173,7 +184,7 @@ MySQL服务端不是必装的，自己学习的话可以安装一个，注意安
 
 安装文件查找工具everything:
 
-	\\server-pc\share\software\Everything_1.4.1.877_x64-Setup
+	{SHARE_SVR}\Everything_1.4.1.877_x64-Setup
 
 ### 运行经典筋斗云项目的工程
 
