@@ -54,7 +54,7 @@ Email: xxx@126.com（改成你的邮箱地址）</code></pre>
 <pre><code>C:\Program Files\Git\usr\bin\ssh.exe</code></pre>
 <p>以下为配置登录公司相关服务器：</p>
 <p>公司内网代码服务器为server-pc（外部访问通过映射），一般采用ssh证书登录方式（免密码登录），配置如下：</p>
-<p>在用户主目录下(按Windows-R键打开运行对话框，输入 &quot;.&quot; 或 &quot;%userprofile%&quot;)，创建目录&quot;.ssh&quot;, 将 <code>${SHARE_SVR}\server-pc-key</code> 目录下的文件(config, id_rsa等)拷贝到&quot;.ssh&quot;目录中。 如果目前下已经有同名文件，请手工修改和合并。</p>
+<p>在用户主目录下(按Windows-R键打开运行对话框，输入 &quot;.&quot; 或 &quot;%userprofile%&quot;)，创建目录&quot;.ssh&quot;, 将 <code>{SHARE_SVR}\server-pc-key</code> 目录下的文件(config, id_rsa等)拷贝到&quot;.ssh&quot;目录中。 如果目前下已经有同名文件，请手工修改和合并。</p>
 <p>在文件夹空白处点右键，打开 Git Bash，尝试 ssh 是否可以自动登录到内网代码服务器:</p>
 <pre><code>ssh server-pc
 (应可免密登录上, 按Ctrl-D退出)</code></pre>
@@ -95,7 +95,11 @@ sql_mode=</code></pre>
 <pre><code>{SHARE_SVR}\vim\gvim74.exe</code></pre>
 <p>建议安装到 <code>d:\vim</code> 安装完成后将配置文件 <code>{SHARE_SVR}\vim\_vimrc</code> 拷贝到安装目录下（如<code>d:\vim</code>目录）</p>
 <h3 id="服务器环境apachephp"><span class="header-section-number">1.5</span> 服务器环境Apache+PHP</h3>
-<p>安装php 5.4:</p>
+<p>PHP支持5.4或7.4版本，均为32位NTS版本，与Apache一致。</p>
+<p>安装php7.4:</p>
+<pre><code>解压 {SHARE_SVR}\php\php74_22.11.zip 到 d:\ 盘，得到 d:\php74 目录</code></pre>
+<p>将解压路径如<code>d:\php74</code>加到系统环境变量 PATH 中，以便可以直接在命令行访问 php.</p>
+<p>或安装php 5.4:</p>
 <pre><code>解压 {SHARE_SVR}\php\php-5.4.31-nts-Win32-VC9-x86-xdebug.zip 到 d:\php54</code></pre>
 <p>将解压路径如<code>d:\php54</code>加到系统环境变量 PATH 中，以便可以直接在命令行访问 php.</p>
 <p>测试：在<code>d:\project</code>下创建一个文件<code>index.php</code>，内容为：</p>
@@ -103,6 +107,7 @@ sql_mode=</code></pre>
 <p>在cmd命令行或git-bash中，进入<code>d:\project</code>目录，测试执行这个脚本文件，</p>
 <pre><code>php index.php</code></pre>
 <p>应能正常输出。</p>
+<p>php7.4在win7系统中，需要vc15运行库，如果不能运行，请先安装：{SHARE_SVR}2015_vc14_runtime_redist.x86.exe</p>
 <p>安装apache2: 解压<code>{SHARE_SVR}\Apache24-x64-vc15-fcgid.rar</code> 到 <code>d:\</code>，得到目录<code>D:\Apache24-x64-vc15</code>，下面以<code>{APACHE_HOME}</code>指代该目录。</p>
 <p>检查配置文件：<code>{APACHE_HOME}\conf\__user.conf</code>（以及httpd.conf配置文件）其中各路径是否与实际文件路径相符。默认Web主目录为<code>d:\project</code>，检查php目录是否正确。</p>
 <p>右键<code>{APACHE_HOME}\install.bat</code>，选择“以管理员权限运行”，安装服务。 双击<code>{APACHE_HOME}\bin\ApacheMonitor.exe</code>，在系统托盘中出现Apache管理图标，双击它打开可以启动、重启apache服务。修改配置文件后一般需要重启Aapche服务。</p>
@@ -115,20 +120,21 @@ sql_mode=</code></pre>
 <p>查看环境检查是否为全绿色。</p>
 <h3 id="工具软件"><span class="header-section-number">1.6</span> 工具软件</h3>
 <p>安装make工具：</p>
-<pre><code>\\server-pc\share\software\make-mingw.zip</code></pre>
+<pre><code>{SHARE_SVR}\make-mingw.zip</code></pre>
 <p>解压到<code>d:\bat</code>目录。如果没有该目录，创建它，并将它加入PATH路径。</p>
 <p>检查：可运行make命令。有些文件夹下有Makefile文件，则表示可以在这个文件夹下运行make命令。</p>
 <p>安装图片处理工具imagemagick：（比如图片压缩等）</p>
-<pre><code>\\server-pc\share\software\ImageMagick-7.0.8-12-Q16-x64-dll.exe</code></pre>
+<pre><code>{SHARE_SVR}\ImageMagick-7.1.0-52-Q8-x64-dll.exe
+(注意：ImageMagick有Q8, Q16版本之分，为兼容最好用Q8版本）</code></pre>
 <p>检查：可以运行magick命令(6.x版本的命令叫convert, 现在已不再使用)。常用于图片压缩，比如将1.png转换并压缩为1.jpg，分辨率处理为长1200、宽自动：</p>
 <pre><code>magick 1.png -resize 1200 -quality 80 1.jpg</code></pre>
 <p>还可以用<code>-resize 1200x1000&gt;</code>表示长、宽分别不超过1200和1000，而<code>-resize 1200x1000!</code>表示拉伸至该分辨率。</p>
 <p>安装文档生成工具pandoc：</p>
-<pre><code>\\server-pc\share\software\pandoc-1.16.0.2-windows.msi</code></pre>
+<pre><code>{SHARE_SVR}\pandoc-1.16.0.2-windows.msi</code></pre>
 <p>检查：可以运行pandoc命令。它常用于将markdown文档转为html，如：</p>
 <pre><code>pandoc 1.md &gt; 1.html</code></pre>
 <p>安装文件查找工具everything:</p>
-<pre><code>\\server-pc\share\software\Everything_1.4.1.877_x64-Setup</code></pre>
+<pre><code>{SHARE_SVR}\Everything_1.4.1.877_x64-Setup</code></pre>
 <h3 id="运行经典筋斗云项目的工程"><span class="header-section-number">1.7</span> 运行经典筋斗云项目的工程</h3>
 <p>先从代码服务器下载代码。项目中的代码库命名规则一般如下：</p>
 <dl>

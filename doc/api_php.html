@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2022-05-20</div>
+<div>最后更新：2022-12-02</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -93,6 +93,7 @@ code {
 <p><a href="#AccessControl::api_setIf">AccessControl::api_setIf (fn)</a></p>
 <p><a href="#AccessControl::callSvc">AccessControl::callSvc (fn)</a></p>
 <p><a href="#AccessControl::checkSetFields">AccessControl::checkSetFields (fn)</a></p>
+<p><a href="#AccessControl::checkUniKey">AccessControl::checkUniKey (fn)</a></p>
 <p><a href="#AccessControl::getMaxPageSz">AccessControl::getMaxPageSz (fn)</a></p>
 <p><a href="#AccessControl::isFileExport">AccessControl::isFileExport (fn)</a></p>
 <p><a href="#AccessControl::onAfter">AccessControl::onAfter (fn)</a></p>
@@ -174,6 +175,8 @@ code {
 <p><a href="#conf.php">conf.php (key)</a></p>
 <p><a href="#conf_jdserverBackUrl">conf_jdserverBackUrl (key)</a></p>
 <p><a href="#conf_jdserverUrl">conf_jdserverUrl (key)</a></p>
+<p><a href="#conf_poweredBy">conf_poweredBy (key)</a></p>
+<p><a href="#conf_tableAlias">conf_tableAlias (key)</a></p>
 <p><a href="#containsWord">containsWord (fn)</a></p>
 <p><a href="#dbCommit">dbCommit (fn)</a></p>
 <p><a href="#dbConfirmFn">dbConfirmFn (key)</a></p>
@@ -188,6 +191,7 @@ code {
 <p><a href="#env.appName">env.appName (var)</a></p>
 <p><a href="#env.appType">env.appType (var)</a></p>
 <p><a href="#env.createAC">env.createAC (fn)</a></p>
+<p><a href="#env.getAc">env.getAc (fn)</a></p>
 <p><a href="#errQuit">errQuit (fn)</a></p>
 <p><a href="#execOne">execOne (fn)</a></p>
 <p><a href="#ext">ext (module)</a></p>
@@ -240,6 +244,7 @@ code {
 <p><a href="#mypack">mypack (fn)</a></p>
 <p><a href="#myround">myround (fn)</a></p>
 <p><a href="#myunpack">myunpack (fn)</a></p>
+<p><a href="#name2id">name2id (fn)</a></p>
 <p><a href="#objarr2table">objarr2table (fn)</a></p>
 <p><a href="#onCreateAC">onCreateAC (fn)</a></p>
 <p><a href="#onGetPerms">onGetPerms (fn)</a></p>
@@ -272,6 +277,8 @@ code {
 <p><a href="#urlEncodeArr">urlEncodeArr (fn)</a></p>
 <p><a href="#varr2objarr">varr2objarr (fn)</a></p>
 <p><a href="#whiteIpList">whiteIpList (key)</a></p>
+<p><a href="#单点登录">单点登录 (key)</a></p>
+<p><a href="#第三方认证">第三方认证 (alias)</a></p>
 </div><hr>
 </div>
 <div class="block">
@@ -1063,6 +1070,29 @@ P_DB=../myorder.db</code></pre>
 <p>连接SQLite数据库未做严格测试，不建议使用。</p>
 <p>做性能对比测试时还支持不连数据库(当然也不会写ApiLog)，可指定：</p>
 <pre><code>P_DB=null</code></pre>
+<p>也可以直接创建DBEnv来用(调用queryOne/execOne等)，示例：</p>
+<pre><code># mysql
+$db = "mysql:host=localhost;port=3306;dbname=jt_wms";
+$env = new DBEnv("mysql", $db, "demo", "demo123");
+
+$rows = $env-&gt;queryAll("SELECT * FROM Employee");
+$rowCnt = $env-&gt;queryOne("SELECT COUNT(*) FROM Employee");
+$newId = $env-&gt;dbInsert("Employee", ["name"=&gt;"name1"]);
+$cnt = $env-&gt;dbUpdate("Task", ["vendorId" =&gt; $id], ["vendorId" =&gt; $id1]);
+$cnt = $env-&gt;execOne("UPDATE Task SET vendorId=venderId+1");
+
+# sqlite
+$db = "sqlite:jdcloud.db";
+$env = new DBEnv("sqlite", $db);
+
+# mssql over odbc
+$db = "odbc:DRIVER={SQL Server Native Client 11.0}; UID=sa; LANGUAGE=us_english; DATABASE=jdcloud; SERVER=.; PWD=ibdibd";
+$env = new DBEnv("mssql", $db, "demo", "demo123");
+
+# oracle
+$db = "oci:dbname=10.30.250.131:1525/mesdzprd;charset=AL32UTF8";
+$env = new DBEnv("oracle", $db, "demo", "demo123");</code></pre>
+<p>如果配置了P_DEBUG_LOG=1且P_DEBUG=9，则记录SQL调用日志到debug.log</p>
 <h4 id="app_fw-3 测试模式与调试等级">3 测试模式与调试等级</h4>
 <p class="key"><strong>@key <a id="P_TEST_MODE">P_TEST_MODE</a></strong>  Integer。环境变量，允许测试模式。0-生产模式；1-测试模式；2-自动化回归测试模式(RTEST_MODE)</p>
 <p class="key"><strong>@key <a id="P_DEBUG">P_DEBUG</a></strong>  Integer。环境变量，设置调试等级，值范围0-9。</p>
@@ -1107,6 +1137,17 @@ P_DB=../myorder.db</code></pre>
 <h2 id="$BASE_DIR">@var $BASE_DIR</h2>
 <p>包含app_fw.php的主文件（如api.php）所在目录。常用于拼接子目录名。<br />
 最后不带&quot;/&quot;.</p></div>
+<div class="block">
+<h2 id="conf_poweredBy">@key conf_poweredBy ?= "jdcloud"</h2>
+<p>设置HTTP头x-powered-by，用于与x-daca-server-rev一起共同决定系统版本。<br />
+同时可隐藏默认的php标识及版本。</p>
+<p>当前端调用多个jdcloud应用接口（或有些后端接口配置了代理到其它服务）时，<br />
+由于各jdcloud应用的版本不同， 会导致前端误判为版本已升级，从而引起前端自动刷新。<br />
+这时可在conf.user.php中配置conf_poweredBy，用于与其它应用区分。示例： </p>
+<pre><code>$GLOBALS["conf_poweredBy"] = "wms";
+或
+$GLOBALS["conf_poweredBy"] = "wms@server-pc";</code></pre>
+<p>jdcloud前端检查当x-powered-by未变化但x-daca-server-rev变化时，才会自动刷新实现实时热更新。</p></div>
 <div class="block">
 <h2 id="param_varr">@fn param_varr($str, $type, $name)</h2>
 <p>type的格式如&quot;i:n:b?:dt:tm?&quot;.</p>
@@ -1189,7 +1230,7 @@ list($svcId, $itts) = mparam(["svcId", "itts/i+"]); # require one of the 2 param
 <pre><code>$url = getConf("conf_jdserverUrl");</code></pre>
 <p>若不想报错则直接取：</p>
 <pre><code>if (isset($GLOBALS["conf_xxx"])) ...</code></pre>
-<p>配置使用全局变量：</p>
+<p>如果希望用户未配置时返回缺省值，可直接先配置其缺省值（应确保在conf.user.php中可被覆盖）：</p>
 <pre><code>$GLOBALS["conf_jdserverUrl"] = "http://...";</code></pre></div>
 <div class="block">
 <h2 id="checkParams">@fn checkParams($obj, $names, $errPrefix?)</h2>
@@ -1384,11 +1425,39 @@ $this-&gt;outOfBin($_POST);</code></pre></div>
 </li>
 <li>
 <p>键值对，键为字段名，值为查询条件，使用更加直观（如字符串不用加引号），如：</p>
-<pre><code>["id"=&gt;1, "status"=&gt;"CR", "name"=&gt;"null", "dscr"=&gt;null, "f1"=&gt;"", "f2"=&gt;"empty"]
-生成 "id=1 AND status='CR'" AND name IS NULL AND f2=''
-注意，当值为null或空串时会忽略掉该条件，用"null"表示"IS NULL"条件，用"empty"表示空串。
+<pre><code>[
+    "id"=&gt;1,
+    "status"=&gt;"CR",
+    "name"=&gt;"null",
+    "dscr"=&gt;null,
+    "f1"=&gt;"",
+    "f2"=&gt;"empty"
+]
+生成 "id=1 AND status='CR'" AND name IS NULL AND f2=''"
+注意，当值为null或空串时会忽略掉该条件，所以dscr和f1参数没有进入条件；用字符串"null"表示"IS NULL"条件，用字符串"empty"表示空串。
 
 可以使用符号： &gt; &lt; &gt;= &lt;= !(not) ~(like匹配)
+[
+    "id&gt;=" =&gt; 100, 
+    "id&lt;=" =&gt; 200,
+    "tm&gt;=" =&gt; "2020-1-1",
+    "tm&lt;"  =&gt; "2021-1-1",
+    "status!"=&gt;"CR",
+    "name~" =&gt; "wang%",
+    "dscr~" =&gt; "aaa",
+    "dscr2!~" =&gt;"aaa"
+]
+生成 "id&gt;=100 AND id&lt;=200 AND tm&gt;='2020-1-1" AND tm&lt;'2021-1-1' AND status&lt;&gt;'CR' AND name LIKE 'wang%' AND dscr LIKE '%aaa%' AND dscr2 NOT LIKE '%aaa%'"
+同样，如果值是null或""，则它不进入条件，如 `["id&gt;=" =&gt; 100, "id&lt;" =&gt; null]`生成条件为 `id&gt;=100`
+
+这样比较方便拼接条件，例如前端调用`callSvr("Ordr", {cond:{"createTm&gt;=":tm1, "createTm&lt;":tm2}})`，当tm1或tm2为空不产生条件;
+后端也是类似，例如：
+
+    $tm1 = param("tm1");
+    $tm2 = param("tm2");
+    $cond = getQueryCond(["createTm&gt;=" =&gt; $tm1, "createTm&lt;"=&gt;$tm2]); // 如果tm1或tm2为空，则不产生条件
+
+也可以将符号放在值中（但这样则无法同一字段指定多次）：
 ["id"=&gt;"&lt;100", "tm"=&gt;"&gt;2020-1-1", "status"=&gt;"!CR", "name"=&gt;"~wang%", "dscr"=&gt;"~aaa", "dscr2"=&gt;"!~aaa"]
 生成 "id&lt;100 AND tm&gt;'2020-1-1" AND status&lt;&gt;'CR' AND name LIKE 'wang%' AND dscr LIKE '%aaa%' AND dscr2 NOT LIKE '%aaa%'"
 like用于字符串匹配，字符串中用"%"或"*"表示通配符，如果不存在通配符，则表示包含该串(即生成'%xxx%')
@@ -1424,7 +1493,12 @@ POST中：cond=c=3</code></pre>
 <p>最终得到cond参数为&quot;a=1 AND b=2 AND c=3&quot;。</p>
 <p>前端callSvr示例: url参数或post参数均可支持数组或键值对：</p>
 <pre><code>callSvr("Hub.query", {res:"id", cond: {id: "&gt;=1 AND &lt;100"}})
-callSvr("Hub.query", {res:"id", cond: ["id&gt;=1", "id&lt;100"]}, $.noop, {cond: {name:"~wang%", dscr:"~111"}})</code></pre></div>
+callSvr("Hub.query", {res:"id", cond: ["id&gt;=1", "id&lt;100"]}, $.noop, {cond: {name:"~wang%", dscr:"~111"}})</code></pre>
+<p>字段名支持中文，也支持带表名如<code>t0.xxx</code>的形式：</p>
+<pre><code>$cond = getQueryCond([
+    "t0.createTm&gt;=" =&gt; $tm1,
+    "t0.createTm&lt;"  =&gt; $tm2
+]);</code></pre></div>
 <div class="block">
 <h2 id="genQuery">@fn genQuery($sql, $cond)</h2>
 <p>连接SELECT主语句(不带WHERE条件)和查询条件。<br />
@@ -1724,6 +1798,30 @@ if ($n === false)
 <pre><code>$s = "a&amp;gt;1 and a&amp;lt;100";
 $s1 = html_entity_decode($s);</code></pre></div>
 <div class="block">
+<h2 id="name2id">@fn name2id($refNameFields, $refIdField, $refTable, $nameFields, $opt=[])</h2>
+<p>常用于导入，或数据同步，把code/name等唯一字段替换成内部id.</p>
+<ul>
+<li>支持缓存数据，以优化循环效率</li>
+<li>支持查不到时报错或自动添加两种模式</li>
+</ul>
+<p>实例：如果给定数组（默认$_POST）含有cateName字段，则通过查询表ItemCategory中的name字段，得到相应的id字段，用cateId字段替代原cateName字段：</p>
+<pre><code>name2id("cateName", "cateId", "ItemCategory", "name");
+(即 cateId = SELECT id FROM ItemCategory WHERE name={cateName} )</code></pre>
+<p>如果查不到则会报错。<br />
+也可指定不报错(doAutoAdd)，直接插入ItemCategory表中，用新插入的id值作为cateId字段，替代原cateName字段：</p>
+<pre><code>name2id("cateName", "cateId", "ItemCategory", "name", ["doAutoAdd"=&gt;true]);</code></pre>
+<p>如果添加时还要指定其它字段，指定onAdd：</p>
+<pre><code>name2id("cateName", "cateId", "ItemCategory", "name", [
+    "doAutoAdd"=&gt;true, 
+    "onAdd" =&gt; function (&amp;$data) {
+        $data["contactName"] = $_POST["cateContactName"];
+        $data["tm"] = date(FMT_DT);
+    },
+    // "arr" =&gt; &amp;$myarr, // 修改$myarr数组，而不是默认的$_POST，注意加'&amp;'
+]);</code></pre>
+<p>TODO: 支持多字段联合查询:</p>
+<pre><code>name2id("city,storeName", "storeId", "Store", "city,name");</code></pre></div>
+<div class="block">
 <h2 id="JDPDO">@class JDPDO</h2>
 <p>数据库类PDO增强。getJDEnv()-&gt;DBH为默认数据库连接，dbconn,queryAll,execOne等数据库函数都使用它。</p>
 <ul>
@@ -1735,6 +1833,18 @@ $s1 = html_entity_decode($s);</code></pre></div>
 ++ $env-&gt;DBH-&gt;skipLogCnt;  // 若要忽略两条就用 $env-&gt;DBH-&gt;skipLogCnt+=2
 $env-&gt;DBH-&gt;exec('set names utf8mb4'); // 也可以是queryOne/execOne等函数。</code></pre>
 <p class="see"><strong>@see <a href="#queryAll">queryAll</a> <a href="#execOne">execOne</a> <a href="#dbconn">dbconn</a></strong> </p></div>
+<div class="block">
+<h2 id="conf_tableAlias">@key conf_tableAlias 配置数据库表的别名</h2>
+<p>常用于跨库调用和jdcloud微服务配置。<br />
+例如主系统saic需要集成erp子系统用于库存管理，在erp子系统中应配置直接使用主系统saic中的用户、权限等表，可在conf.user.php中配置：</p>
+<pre><code>$GLOBALS["conf_tableAlias"] = [
+    "Employee" =&gt; "saic.Employee",
+    "Role" =&gt; "saic.Role",
+    "Cinf" =&gt; "saic.Cinf",
+    "ApiLog" =&gt; "saic.ApiLog",
+    "ObjLog" =&gt; "saic.ObjLog",
+    "Syslog" =&gt; "saic.Syslog"
+];</code></pre></div>
 <div class="block">
 <h2 id="JDSingleton">@class JDSingleton (trait)</h2>
 <p>用于单件类，提供getInstance方法，例：</p>
@@ -2315,6 +2425,9 @@ static $authKeys = [
 <li>
 <p>key被相应的认证方式使用，其格式由认证方式决定，一般即直接是认证密钥。</p>
 </li>
+<li>
+<p>keyfn(key): (v6.1) key和keyfn必须指定一个。与静态匹配key不同，keyfn是一个验证函数，常用于动态查询接口调用时提供的key是否在指定的表中，然后往往动态设置SESSION（见下面basic认证中的例子）。</p>
+</li>
 <li>通过SESSION的设置，从而使得通过认证的接口请求，相当于具有系统-9999号用户的权限（即具有AUTH_EMP权限），<br />
 意味着它可以直接调用AC2类，或是通过<code>checkAuth(AUTH_EMP)</code>的检查。</li>
 </ul>
@@ -2348,13 +2461,33 @@ HTTP Basic认证，即添加HTTP头：</p>
 可验证的用户名、密码在Conf类中配置，后端配置示例：</p>
 <pre><code>// class Conf (在conf.php中)
 static $authKeys = [
-    ["authType"=&gt;"basic", "key" =&gt; "user1:1234"],
-    ["authType"=&gt;"basic", "key" =&gt; "user2:1235"], // 可以多个
+    ["authType"=&gt;"basic", "key" =&gt; "wms:1234", "SESSION" =&gt; ["empId"=&gt;-9000], "allowedAc" =&gt; ["Item.*","*.query","*.get"]],
+    ["authType"=&gt;"basic", "key" =&gt; "mes:1235", "SESSION" =&gt; ["empId"=&gt;-9001], "allowedAc" =&gt; ["*.query"]],  // 可以多个
 ];</code></pre>
 <p>请求示例：</p>
 <pre><code>curl -u user1:1234 http://localhost/jdcloud/api.php/xxx</code></pre>
 <p>注意：若php是基于apache fcgi方式的部署，可能无法收到认证串，可在apache中配置：</p>
 <pre><code>SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1</code></pre>
+<p>(v6.1) 如果想动态查询数据库来验证key是否合法，可以使用<strong>keyfn选项</strong>来指定验证函数。示例：</p>
+<pre><code>static $authKeys = [
+    // 如果接口使用basic认证，则调用keyfn_appId(key)来检查key是否合法。通过验证后检查接口限制，只允许调用Task对象接口。
+    ["authType"=&gt;"basic", "keyfn" =&gt; "keyfn_appId", "allowedAc" =&gt; ["Task.*"] ],
+];
+
+// 验证key，返回true表示验证成功。然后可动态设置SESSION。
+function keyfn_appId($key) {
+    list($user, $pwd) = explode(':', $key);
+    $sql = "SELECT id FROM App WHERE code=" . Q($user) . " AND secret=" . Q($pwd);
+    $appId = queryOne($sql);
+    if ($appId) {
+        // 模拟Employee身份，以便接口调用AC2系列类。为了与Employee的id区分，习惯上用负值
+        $_SESSION["empId"] = -$appId;
+        // 设置会话变量，以便在AC2类中处理
+        $_SESSION["appId"] = $appId;
+        return true;
+    }
+}</code></pre>
+<p>simple认证也可以使用keyfn机制。</p>
 <h5 id="hasPerm-2.3 none: 不验证/模拟身份认证">2.3 none: 不验证/模拟身份认证</h5>
 <p>(v6) 主要用于为某些接口设置模拟身份。<br />
 某些接口无须登录验证即可调用，但在实现时需要调用要求权限验证的内部接口，这时需要模拟一个管理员的身份。</p>
@@ -2511,7 +2644,33 @@ $GLOBALS["P_initClient"] = [
 <p>前端框架在入口处会调用MUI.initClient(), 之后配置将放在 g_data.initClient 下面, 前端判断示例:</p>
 <pre><code>if (g_data.initClient.enableAppReviewMode) {
     // ...
-}</code></pre></div>
+}</code></pre>
+<p class="key"><strong>@key <a id="单点登录">单点登录</a></strong> (SSO)</p>
+<p class="alias"><strong>@alias <a id="第三方认证">第三方认证</a></strong> </p>
+<p>通常设计为打开筋斗云前端应用时，通过传入url参数token，在初始化时调用接口<code>initClient{token: "xxxx"}</code>。<br />
+后端Conf.onInitClient在使用token去第三方获取用户信息后，在接口返回数据中包含userInfo字段即用户信息(如userInfo字段)即可。<br />
+例如内嵌应用:</p>
+<pre><code>&lt;iframe id="ifr" src="https://myserver.com/jdcloud/web/store.html?token=test123" width="100%" height="80%"&gt;&lt;/iframe&gt;</code></pre>
+<p>内层应用前端处理示例：</p>
+<pre><code>function main()
+{
+    ...
+    WUI.initClient({token: g_args.token}); // 添加token参数
+}</code></pre>
+<p>后端处理示例：</p>
+<pre><code>// class Conf
+static function onInitClient(&amp;$ret)
+{
+    $token = param("token");
+    if ($token) {
+        $_SESSION["empId"] = 1; // TO DO: 通过token从第三方获取用户信息并保存到Employee表
+        $ret["userInfo"] = callSvcInt("Employee.get");
+    }
+}</code></pre>
+<p>另外，通过iframe内嵌筋斗云应用时，如果内外层url不是同一个站（如y1.xx.com:8080与y2.xx.com是同站，不看端口），即跨站时，<br />
+内层应用会出现登录后，仍是未登录状态的情况，这是因为受跨站限制，每次请求时cookie无法保持。<br />
+解决方法只能内层应用须使用https协议，且后端server/.htaccess文件中添加SameSite配置：</p>
+<pre><code>header edit Set-Cookie $ ";Secure;SameSite=None"</code></pre></div>
 <div class="block">
 <h2 id="ConfBase::checkSecure">@fn ConfBase::checkSecure($ac)</h2>
 <p class="var"><strong>@var <a id="ConfBase::enableSecure">ConfBase::enableSecure</a></strong>  ?=false</p>
@@ -2873,6 +3032,11 @@ params为JSON格式。</code></pre>
 <p>不同的应用标识会使用不同的cookie名，因而即使用户同时操作多个应用，其session不会相互干扰。<br />
 同样的应用类型将以相同的方式登录系统。</p></div>
 <div class="block">
+<h2 id="env.getAc">@fn env.getAc($wantBatch=false)</h2>
+<p>取当前调用名。<br />
+如果是batch调用，则返回当前子调用名。</p>
+<p>如果指定参数wantBatch=true, 则batch调用直接返回&quot;batch&quot;，此时可以用env.getAc1()返回子调用名。</p></div>
+<div class="block">
 <h2 id="env->tmpEnv">@fn env->tmpEnv($param, $postParam, $fn, $useTmpEnv=true)</h2>
 <p>(v5.4) 在指定的GET/POST参数下执行fn函数，执行完后恢复初始环境。<br />
 $param或$postParam为null时，与空数组<code>[]</code>等价。</p>
@@ -2896,7 +3060,7 @@ $ret = $env-&gt;tmpEnv($param, null, function () {
 $env-&gt;createAC("Ordr", "add", true);
 $env-&gt;createAC("Ordr", null, "AC0_Ordr");</code></pre></div>
 <div class="block">
-<h2 id="callSvc">@fn callSvc($ac=null, $useTrans=true)</h2>
+<h2 id="callSvc">@fn callSvc($ac=null, $useTrans=true, $apiFn=null)</h2>
 <p>外部调用接口。返回符合筋斗云格式的数组，至少2元素，即<code>[0, 成功数据, 调试信息...]</code>或<code>[非0, 失败信息, 内部失败原因, 调试信息...]</code></p>
 <ul>
 <li>如果不指定ac, 则自动从请求中解析，设置响应header并输出内容。</li>
@@ -2911,6 +3075,18 @@ $_SESSION = ["empId" =&gt; -1];
 // 设置参数；当然也可以设置$_POST参数
 $_GET = ["for" =&gt; "task", "fmt" =&gt; "one"];
 $rv = callSvc("Employee.query");</code></pre>
+<p>如果指定apiFn，则直接以接口环境执行该函数，包括记录ApiLog、开启数据库事务、开启并保存session等（注意接口执行会设置cookie路径和名称等）、使用jdRet报错等。<br />
+示例：在server/weixin/auth.php中，实现微信登录，因为需要记录$_SESSION[&quot;uid&quot;]，它必须在接口环境下执行，否则后续执行将会认为未登录：</p>
+<pre><code>$rv = callSvc("weixinLogin", true, function () use ($isMock) {
+    $userInfo = ...;
+    $imp = LoginImpBase::getInstance();
+    return $imp-&gt;onWeixinLogin($userInfo, $rawData);
+});
+if ($rv[0]) {
+    logit("weixin/auth.php fails: " . jsonEncode($rv));
+    echo("fail: " . $rv[1]);
+    exit();
+}</code></pre>
 <p class="see"><strong>@see <a href="#callSvcInt">callSvcInt</a></strong> </p></div>
 <div class="block">
 <h2 id="AccessControl">@module AccessControl</h2><div class="toc"><p style="margin-left:0em"><a href="#AccessControl-1 基本权限控制">1 基本权限控制</a></p>
@@ -4011,24 +4187,57 @@ $this-&gt;addRequireCol("flowId,qty"); // 加多个字段</code></pre></div>
 <h2 id="AccessControl::api_add">@fn AccessControl::api_add()</h2>
 <p>标准对象添加接口。</p>
 <p class="key"><strong>@key <a id="uniKey">uniKey</a></strong>  防止重复机制/add接口支持存在则更新，不存在则添加</p>
-<p>(v6) 支持在添加时根据指定字段判断记录是否存在，若存在则更新，不存在才添加，称为uniKey机制。接口示例：</p>
+<p>(v6) 支持在添加时根据指定字段判断记录是否存在，若存在则更新，不存在才添加，称为uniKey机制。<br />
+示例：添加工单，若指定code对应的工单已存在，则更新该工单</p>
 <pre><code>callSvr("Ordr.add", {uniKey: "code"}, $.noop, {code: "ordr1", itemId: 99});</code></pre>
-<p>表示添加工单，若指定code已存在，则更新工单。</p>
 <p>uniKey可以指定多个字段，以逗号分隔即可，常用于关联表，如操作物料类别与打印模板的关联表Cate_PrintTpl:</p>
 <pre><code>callSvr("Cate_PrintTpl.add", {uniKey: "cateId,printTplId"}, $.noop, {cateId: 101, printTplId: 999});</code></pre>
-<p>表示添加关联，若关联已存在则忽略。（当指定要添加的字段刚好完全就是uniKey中字段时，没必要做更新操作，会直接忽略。）</p>
+<p>表示添加关联记录，若关联记录已存在则忽略。（当指定要添加的字段刚好完全就是uniKey中字段时，没必要做更新操作，会直接忽略。）</p>
 <p>注意：uniKey支持使用虚拟字段（如关联字段）.</p>
+<p>如果uniKey以&quot;!&quot;结尾，则表示<strong>更新模式</strong>。示例：更新工单，当记录不存在时报错：</p>
+<pre><code>callSvr("Ordr.add", {uniKey: "code!"}, $.noop, {code: "ordr1", itemId: 99});</code></pre>
 <p>在uniKey匹配时，默认处理是更新操作，可以通过<code>uniKeyMode</code>参数来定制行为：</p>
+<ul>
+<li>set: （默认）转为更新操作（如果要更新的字段刚好就是uniKey字段，则忽略更新），接口最终返回已存在记录的id。</li>
+<li>error: 如果已存在记录，则报错。在更新模式下等同于set，即记录不存在时报错。</li>
+<li>ignore: 忽略添加操作，接口直接返回已存在记录的id。在更新模式下，不添加，也不报错，以-1值返回记录id。</li>
+</ul>
+<p>示例：添加工单，如果code已存在则报错，不允许添加</p>
+<pre><code>callSvr("Ordr.add", {uniKey:"code", uniKeyMode:"error"}, $.noop, {code:"4500000088", itemId: 1, qty: 100});</code></pre>
+<p>示例：更新工单，当记录不存在时返回-1，不报错：</p>
+<pre><code>callSvr("Ordr.add", {uniKey: "code!", uniKeyMode:"ignore"}, $.noop, {code: "ordr1", itemId: 99});</code></pre>
+<p>注意：尽管add接口可通过uniKey实现更新模式，但set接口是不支持uniKey的。<br />
+通过导入实现<strong>批量更新</strong>应使用batchAdd；一般地通过条件进行批量更新使用batchSet/setIf接口。</p>
+<p>以上示例是将记录的控制权交给接口调用方的（如前端或后端内部接口调用callSvcInt等）；如果要在后端对象内控制重复记录行为，请参考</p>
+<p class="see"><strong>@see <a href="#AccessControl::checkUniKey">AccessControl::checkUniKey</a></strong> </p></div>
+<div class="block">
+<h2 id="AccessControl::checkUniKey">@fn AccessControl::checkUniKey($uniKey, $handler="error", $required=false)</h2>
+<p>后端检查uniKey用于防止重复：</p>
+<ul>
+<li>添加时，如果根据uniKey匹配的记录已存在，则做更新处理（或报错不许重复设置）；</li>
+<li>更新时，如果根据uniKey匹配的记录已存在，则报错不许设置（或忽略不设置）。</li>
+</ul>
+<p>该函数只对add/set接口有效，一般用在onValidate回调中。</p>
+<p class="param"><strong>@param handler</strong>  添加时遇到重复记录的处理方式，可指定为以下字符串值</p>
 <ul>
 <li>set: 转为更新操作（如果要更新的字段刚好就是uniKey字段，则忽略更新），接口最终返回已存在记录的id。</li>
 <li>error: 报错：已存在重复记录。</li>
 <li>ignore: 忽略添加操作，接口直接返回已存在记录的id。</li>
 </ul>
-<p>示例：添加工单，如果code已存在则报错，不允许添加</p>
-<pre><code>callSvr("Ordr.add", {uniKey:"code", uniKeyMode:"error"}, $.noop, {code:"4500000088", itemId: 1, qty: 100});</code></pre>
-<p>事实上set接口也会检查uniKey参数，若发现记录有重复会报错（uniKeyMode参数只影响add接口, 对set接口无效）。</p>
-<p>以上示例是将记录的控制权交给接口调用方的（如前端或后端内部接口调用callSvcInt等）；如果要在后端对象内控制重复记录行为，请参考</p>
-<p class="see"><strong>@see <a href="#AccessControl::checkUniKey">AccessControl::checkUniKey</a></strong> </p></div>
+<p>handler参数只用于add接口; set接口遇到重复均报错处理.</p>
+<p class="param"><strong>@param required</strong>  如果设置为true，则该字段添加时不可为空。只对add接口有效，set接口忽略该参数。</p>
+<p>用法示例：</p>
+<pre><code>function onValidate()
+{
+    // code字段不允许重复, 添加或更新(add/set)时若发现该记录已存在则报错("error")，但该字段可以为空。
+    $this-&gt;checkUniKey("code", "error");
+
+    // uniKey支持多字段：
+    // name,phone字段组合不允许重复。在添加时若遇到重复则当作更新处理("set")，且添加时这两个字段不可为空。
+    $this-&gt;checkUniKey("name,phone", "set", true);
+}</code></pre>
+<p>uniKey以&quot;!&quot;结尾为更新模式，即必须匹配到记录，否则报错，详见[uniKey]</p>
+<p class="see"><strong>@see <a href="#uniKey">uniKey</a></strong> </p></div>
 <div class="block">
 <h2 id="AccessControl::api_set">@fn AccessControl::api_set()</h2>
 <p>标准对象设置接口。api函数应通过callSvc调用，不应直接调用。</p></div>
@@ -4083,7 +4292,13 @@ $ret = callSvcInt("PdiRecord.query", [
 <pre><code>callSvr("Ordr.query", {qsearch: "dscr,cmt:张* 退款"})</code></pre>
 <p>qsearch的格式是<code>字段1,字符2,...:查询内容</code>(使用英文逗号及冒号分隔).<br />
 上例表示在dscr或cmt字段中查找包含&quot;张%&quot;(匹配开头)且包含&quot;%退款%&quot;的记录. 它等价于前端调用：</p>
-<pre><code>callSvr("Ordr.query", {cond: {dscr: "~张* and ~退款", cmt: "~张* and ~退款"}})</code></pre>
+<pre><code>callSvr("Ordr.query", {cond: {_or: 1, dscr: "~张* and ~退款", cmt: "~张* and ~退款"}})</code></pre>
+<p>(v6.1) 可以指定各字段的匹配规则，当查询短语中没有&quot;<em>&quot;时，默认表示包含（即&quot;abc&quot;等价于&quot;</em>abc<em>&quot;）；<br />
+如果字段以&quot;</em>&quot;结尾，表示查询&quot;abc&quot;时等价于&quot;abc*&quot;（即该字段默认匹配开头）；<br />
+如果字段以&quot;!&quot;结尾，表示必须精确匹配，即查询&quot;abc&quot;就是&quot;abc&quot;，不会模糊匹配。</p>
+<pre><code>callSvr("Sn.query", {qsearch: "code!,name*:a001"})</code></pre>
+<p>上例表示查询code为&quot;a001&quot;，或是name以&quot;a001&quot;开头的项，等价于调用：</p>
+<pre><code>callSvr("Sn.query", {cond: {_or: 1, code: "a001", name: "~a001*"}})</code></pre>
 <p class="see"><strong>@see <a href="#getQueryCond">getQueryCond</a></strong> </p></div>
 <div class="block">
 <h2 id="AccessControl::api_del">@fn AccessControl::api_del()</h2>
@@ -4144,6 +4359,9 @@ $this-&gt;checkSetFields([&quot;status&quot;, &quot;cmt&quot;]);<br />
 }</code></pre></div>
 <div class="block">
 <h2 id="AccessControl::api_batchAdd">@fn AccessControl::api_batchAdd()</h2><div class="toc"><p style="margin-left:0em"><a href="#AccessControl::api_batchAdd-1 支持三种方式上传">1 支持三种方式上传</a></p>
+<p style="margin-left:2em"><a href="#AccessControl::api_batchAdd-1.1 直接在HTTP POST中传输内容">1.1 直接在HTTP POST中传输内容</a></p>
+<p style="margin-left:2em"><a href="#AccessControl::api_batchAdd-1.2 标准csv/txt文件上传">1.2 标准csv/txt文件上传</a></p>
+<p style="margin-left:2em"><a href="#AccessControl::api_batchAdd-1.3 传入对象数组">1.3 传入对象数组</a></p>
 <p style="margin-left:0em"><a href="#AccessControl::api_batchAdd-2 通过导入实现批量更新">2 通过导入实现批量更新</a></p>
 <p style="margin-left:0em"><a href="#AccessControl::api_batchAdd-3 支持带子表导入">3 支持带子表导入</a></p>
 <p style="margin-left:0em"><a href="#AccessControl::api_batchAdd-4 支持列名映射">4 支持列名映射</a></p>
@@ -4158,20 +4376,17 @@ $this-&gt;checkSetFields([&quot;status&quot;, &quot;cmt&quot;]);<br />
 字段列表以逗号或空白分隔, 如&quot;title=name - addr&quot;与&quot;title=name, -, addr&quot;都可以.</p>
 </li>
 <li>uniKey: (v5.5) 唯一索引字段. 如果指定, 则以该字段查询记录是否存在, 存在则更新。例如&quot;code&quot;, 也支持多个字段（用于关联表），如&quot;bpId,itemId&quot;。<br />
-(v6) uniKey支持&quot;!&quot;结尾表示强制匹配，用于在批量更新时防止添加记录，如&quot;code!&quot;表示若code匹配则更新，不匹配则报错不添加。</li>
-<li>uniKeyMode: (v6) 定制发现uniKey存在的行为，默认为更新，也可为报错或忽略。</li>
+(v6) uniKey支持&quot;!&quot;结尾称为&quot;批量更新&quot;模式，表示强制匹配，用于在批量更新时防止添加记录，如&quot;code!&quot;表示若code匹配则更新，不匹配则报错不添加。<br />
+uniKey和uniKeyMode参数是由add接口来支持的，uniKeyMode参数用于定制记录存在时的行为，默认为更新，也可为报错或忽略。参考[uniKey].</li>
 </ul>
 <p class="see"><strong>@see <a href="#uniKey">uniKey</a></strong> </p>
 <h4 id="AccessControl::api_batchAdd-1 支持三种方式上传">1 支持三种方式上传</h4>
-<ol>
-<li>
-<p>直接在HTTP POST中传输内容，数据格式为：首行为标题行(即字段名列表)，之后为实际数据行。<br />
+<h5 id="AccessControl::api_batchAdd-1.1 直接在HTTP POST中传输内容">1.1 直接在HTTP POST中传输内容</h5>
+<p>数据格式为：首行为标题行(即字段名列表)，之后为实际数据行。<br />
 行使用&quot;\n&quot;分隔, 列使用&quot;\t&quot;或逗号分隔（后端自动判断）.<br />
 接口为：</p>
-<p>{Obj}.batchAdd(title?)(标题行，数据行)<br />
-(Content-Type=text/plain)</p>
-</li>
-</ol>
+<pre><code>{Obj}.batchAdd(title?)(标题行，数据行)
+(Content-Type=text/plain)</code></pre>
 <p>前端JS调用示例：</p>
 <pre><code>var data = "name\taddr\n" + "门店1\t地址1\n门店2\t地址2\n";
 callSvr("Store.batchAdd", function (ret) {
@@ -4187,9 +4402,7 @@ callSvr("Store.batchAdd", {title: "name,addr"}, function (ret) {
 112 郭志强 15384811000 150221199211215XXX  地址1 532
 111 高长平 18375991001 500226198312065XXX  地址2 534
 `, {contentType:"text/plain"});</code></pre>
-<ol>
-<li>标准csv/txt文件上传：</li>
-</ol>
+<h5 id="AccessControl::api_batchAdd-1.2 标准csv/txt文件上传">1.2 标准csv/txt文件上传</h5>
 <p>上传的文件首行当作标题列，如果这一行不是后台要求的标题名称，可通过URL参数title重新定义。<br />
 一般使用excel csv文件（编码一般为gbk），或txt文件（以&quot;\t&quot;分隔列）。<br />
 接口为：</p>
@@ -4212,21 +4425,17 @@ baseUrl=http://localhost/p/anzhuang/api.php
 param=title=name,phone,idCard,addr,email,legalAddr,weixin,qq,area
 curl -v -F "file=@1.txt" "$baseUrl/VendorA.batchAdd?$param"</code></pre>
 <p>如果要调试(php/xdebug)，可加URL参数<code>XDEBUG_SESSION_START=1</code>或Cookie中加<code>XDEBUG_SESSION=1</code></p>
-<ol>
-<li>
-<p>传入对象数组<br />
-格式为 {list: [...]}</p>
-<p>var data = {<br />
-list: [<br />
-{name: &quot;郭志强&quot;, tel: &quot;15384811000&quot;},<br />
-{name: &quot;高长平&quot;, tel: &quot;18375991001&quot;}<br />
-]<br />
-};<br />
-callSvr(&quot;Store.batchAdd&quot;, function (ret) {<br />
-app_alert(&quot;成功导入&quot; + ret.cnt + &quot;条数据！&quot;);<br />
-}, data, {contentType:&quot;application/json&quot;});</p>
-</li>
-</ol>
+<h5 id="AccessControl::api_batchAdd-1.3 传入对象数组">1.3 传入对象数组</h5>
+<p>格式为 {list: [...]}</p>
+<pre><code>var data = {
+    list: [
+        {name: "郭志强", tel: "15384811000"},
+        {name: "高长平", tel: "18375991001"}
+    ]
+};
+callSvr("Store.batchAdd", function (ret) {
+    app_alert("成功导入" + ret.cnt + "条数据！");
+}, data, {contentType:"application/json"});</code></pre>
 <p>其中指定contentType为json不是必须的，因为新版本callSvr实现中会根据POST内容判断自动使用json。</p>
 <h4 id="AccessControl::api_batchAdd-2 通过导入实现批量更新">2 通过导入实现批量更新</h4>
 <p>(v5.5) batchAdd接口配合uniKey参数，可实现存在则更新，不存在则添加的逻辑。</p>

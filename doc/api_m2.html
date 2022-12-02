@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（移动Web版）</h1>
-<div>最后更新：2022-05-20</div>
+<div>最后更新：2022-12-02</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -80,6 +80,8 @@ code {
 <p><a href="#FormMode">FormMode (var)</a></p>
 <p><a href="#MUI">MUI (module)</a></p>
 <p><a href="#MUI.UploadPic">MUI.UploadPic (class)</a></p>
+<p><a href="#MUI.options.moduleExt">MUI.options.moduleExt (var)</a></p>
+<p><a href="#MUI.options.useNewThumb">MUI.options.useNewThumb (var)</a></p>
 <p><a href="#MUI.options.xparam">MUI.options.xparam (var)</a></p>
 <p><a href="#MUI.setTopbarColor">MUI.setTopbarColor (fn)</a></p>
 <p><a href="#Plugins">Plugins (class)</a></p>
@@ -2817,9 +2819,29 @@ function onShowPage(pageRef, opt) {
     return page == "hello" || /^test/.test(page);
 }</code></pre></div>
 <div class="block">
+<h2 id="MUI.options.moduleExt">@var MUI.options.moduleExt</h2>
+<p>用于模块扩展。</p>
+<pre><code>// 定制模块的接口调用地址
+MUI.options.moduleExt.callSvr = function (name) {
+    // name为callSvr调用的接口名，返回实际URL地址；示例：
+    var map = {
+        "Ordr__Mes.query" =&gt; "../../mes/api/Ordr.query",
+        "Ordr__Item.query" =&gt; "../../mes/api/Item.query"
+    }
+    return map[name] || name;
+}</code></pre>
+<p>详细用法案例，可参考：筋斗云开发实例讲解 - 系统复用与微服务方案。</p></div>
+<div class="block">
 <h2 id="MUI.options.xparam">@var MUI.options.xparam</h2>
 <p>参数加密特性。默认为1（开启），在后端接口返回当前是测试模式时，会改为0（关闭）。<br />
 也可以在chrome控制台中直接修改，如<code>MUI.options.xparam=0</code>。</p></div>
+<div class="block">
+<h2 id="MUI.options.useNewThumb">@var MUI.options.useNewThumb</h2>
+<p>带缩略图的图片编号保存风格。</p>
+<ul>
+<li>0: 保存小图编号，用att(id)取小图，用att(thumbId)取大图</li>
+<li>1: 保存大图编号，用att(id,thumb=1)取小图，用att(id)取大图</li>
+</ul></div>
 <div class="block">
 <h2 id="setFormSubmit">@fn setFormSubmit(jf, fn?, opt?={validate?, onNoAction?})</h2>
 <p class="param"><strong>@param fn</strong>  Function(data); 与callSvr时的回调相同，data为服务器返回的数据。</p>

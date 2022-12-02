@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2022-05-20</div>
+<div>最后更新：2022-12-02</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -92,19 +92,22 @@ code {
 <p><a href="#Date.diff">Date.diff (fn)</a></p>
 <p><a href="#Date.format">Date.format (fn)</a></p>
 <p><a href="#DirectReturn">DirectReturn (class)</a></p>
+<p><a href="#EXT_LINK_BUTTON">EXT_LINK_BUTTON (key)</a></p>
 <p><a href="#Formatter.atts">Formatter.atts (fn)</a></p>
 <p><a href="#Formatter.enum">Formatter.enum (fn)</a></p>
 <p><a href="#Formatter.enumFnStyler">Formatter.enumFnStyler (fn)</a></p>
 <p><a href="#Formatter.enumStyler">Formatter.enumStyler (fn)</a></p>
 <p><a href="#Formatter.flag">Formatter.flag (fn)</a></p>
-<p><a href="#Formatter.pics">Formatter.pics (fn)</a></p>
-<p><a href="#Formatter.pics1">Formatter.pics1 (fn)</a></p>
+<p><a href="#Formatter.pics">Formatter.pics (alias)</a></p>
+<p><a href="#Formatter.pics1">Formatter.pics1 (alias)</a></p>
+<p><a href="#Formatter.picx">Formatter.picx (fn)</a></p>
 <p><a href="#Formatter.progress">Formatter.progress (fn)</a></p>
 <p><a href="#GridHeaderMenu">GridHeaderMenu (var)</a></p>
 <p><a href="#JdcloudExt">JdcloudExt (module)</a></p>
 <p><a href="#JdcloudStat">JdcloudStat (module)</a></p>
 <p><a href="#JdcloudStat.tmUnit">JdcloudStat.tmUnit (key)</a></p>
 <p><a href="#ListOptions">ListOptions (var)</a></p>
+<p><a href="#MUI.options.useNewThumb">MUI.options.useNewThumb (var)</a></p>
 <p><a href="#ObjLog">ObjLog (module)</a></p>
 <p><a href="#PAGE_FILTER">PAGE_FILTER (key)</a></p>
 <p><a href="#PageHeaderMenu">PageHeaderMenu (var)</a></p>
@@ -160,6 +163,7 @@ code {
 <p><a href="#datagrid.sorter">datagrid.sorter (key)</a></p>
 <p><a href="#datagrid.styler">datagrid.styler (key)</a></p>
 <p><a href="#datagrid.sumFields">datagrid.sumFields (key)</a></p>
+<p><a href="#datagridOpt">datagridOpt (key)</a></p>
 <p><a href="#defDataProc">defDataProc (fn)</a></p>
 <p><a href="#delCookie">delCookie (fn)</a></p>
 <p><a href="#delStorage">delStorage (fn)</a></p>
@@ -174,6 +178,7 @@ code {
 <p><a href="#doFind">doFind (fn)</a></p>
 <p><a href="#doSpecial">doSpecial (fn)</a></p>
 <p><a href="#dupDlg">dupDlg (fn)</a></p>
+<p><a href="#easyui-linkbutton">easyui-linkbutton (key)</a></p>
 <p><a href="#easyui-tabs">easyui-tabs (key)</a></p>
 <p><a href="#enhanceWithin">enhanceWithin (fn)</a></p>
 <p><a href="#enterWaiting">enterWaiting (fn)</a></p>
@@ -192,6 +197,7 @@ code {
 <p><a href="#event-validate">event-validate (key)</a></p>
 <p><a href="#example-dialog">example-dialog (key)</a></p>
 <p><a href="#example-dialog-event">example-dialog-event (key)</a></p>
+<p><a href="#example-setToolbarMenu">example-setToolbarMenu (key)</a></p>
 <p><a href="#example-upload">example-upload (key)</a></p>
 <p><a href="#execCopy">execCopy (fn)</a></p>
 <p><a href="#extendNoOverride">extendNoOverride (fn)</a></p>
@@ -286,9 +292,9 @@ code {
 <p><a href="#setDateBox">setDateBox (fn)</a></p>
 <p><a href="#setDlgLogic">setDlgLogic (fn)</a></p>
 <p><a href="#setFormData">setFormData (fn)</a></p>
-<p><a href="#setOnError">setOnError (fn)</a></p>
 <p><a href="#setStorage">setStorage (fn)</a></p>
 <p><a href="#setTimeBox">setTimeBox (fn)</a></p>
+<p><a href="#setToolbarMenu">setToolbarMenu (fn)</a></p>
 <p><a href="#setupCallSvrViaForm">setupCallSvrViaForm (fn)</a></p>
 <p><a href="#showDataReport">showDataReport (fn)</a></p>
 <p><a href="#showDlg">showDlg (fn)</a></p>
@@ -297,14 +303,16 @@ code {
 <p><a href="#showDlgQuery">showDlgQuery (fn)</a></p>
 <p><a href="#showLoading">showLoading (fn)</a></p>
 <p><a href="#showObjDlg">showObjDlg (fn)</a></p>
-<p><a href="#showPage">showPage (alias)</a></p>
 <p><a href="#showPage">showPage (fn)</a></p>
+<p><a href="#showPage">showPage (alias)</a></p>
 <p><a href="#tabClose">tabClose (fn)</a></p>
 <p><a href="#tabMain">tabMain (var)</a></p>
 <p><a href="#text2html">text2html (fn)</a></p>
 <p><a href="#tobool">tobool (fn)</a></p>
 <p><a href="#toggleCol">toggleCol (fn)</a></p>
 <p><a href="#toggleFields">toggleFields (fn)</a></p>
+<p><a href="#toolbar">toolbar (key)</a></p>
+<p><a href="#toolbar-approve">toolbar-approve (key)</a></p>
 <p><a href="#toolbar-qsearch">toolbar-qsearch (key)</a></p>
 <p><a href="#treegrid">treegrid (key)</a></p>
 <p><a href="#triggerAsync">triggerAsync (fn)</a></p>
@@ -313,6 +321,7 @@ code {
 <p><a href="#unloadPage">unloadPage (fn)</a></p>
 <p><a href="#useBatchCall">useBatchCall (fn)</a></p>
 <p><a href="#waitFor">waitFor (fn)</a></p>
+<p><a href="#windowOnError">windowOnError (fn)</a></p>
 <p><a href="#wui-deferred">wui-deferred (key)</a></p>
 <p><a href="#wui-find-hint">wui-find-hint (key)</a></p>
 <p><a href="#wui-pageFile">wui-pageFile (key)</a></p>
@@ -900,8 +909,8 @@ content:: 发送内容</code></pre>
 <p>注意：每个带name属性的组件对应接口中的参数。</p>
 <pre><code>&lt;div id="dlgSendSms" title="群发短信" style="width:500px;height:300px;"&gt;  
     &lt;form method="POST"&gt;
-        手机号：&lt;input name="phone" class="easyui-validatebox" data-options="required:true"&gt;
-        发送内容： &lt;textarea rows=5 cols=30 name="content" class="easyui-validatebox"  data-options="required:true"&gt;&lt;/textarea&gt;
+        手机号：&lt;input name="phone" class="easyui-validatebox" required&gt;
+        发送内容： &lt;textarea rows=5 cols=30 name="content" class="easyui-validatebox" required&gt;&lt;/textarea&gt;
     &lt;/form&gt;
 &lt;/div&gt;</code></pre>
 <p>在form中带name属性的字段上，可以设置class=&quot;easyui-validatebox&quot;对输入进行验证。</p>
@@ -2116,9 +2125,9 @@ function doNext() { }</code></pre>
 <pre><code>throw new DirectReturn();</code></pre>
 <p>可直接调用app_abort();</p></div>
 <div class="block">
-<h2 id="setOnError">@fn setOnError()</h2>
-<p>一般框架自动设置onerror函数；如果onerror被其它库改写，应再次调用该函数。<br />
-allow throw(&quot;abort&quot;) as abort behavior.</p></div>
+<h2 id="windowOnError">@fn windowOnError()</h2>
+<p>框架自动在脚本出错时弹框报错，并上报服务端(syslog).<br />
+可通过WUI.options.skipErrorRegex忽略指定错误。</p></div>
 <div class="block">
 <h2 id="m_enhanceFn">@var m_enhanceFn</h2></div>
 <div class="block">
@@ -2875,8 +2884,8 @@ TODO 由于子表支持懒加载，目前有个限制，如果子表尚未加载
 <p class="key"><strong>@key <a id="event-duplicate">event-duplicate</a></strong> (ev, data) 对话框上复制添加对象</p>
 <p>如果要定制添加行为，可在对话框的duplicate事件中修改数据。示例：</p>
 <pre><code>jdlg.on("duplicate", function (ev, data) {
-    // 可修改data, 若有子表则是数组字段
-    // 主表id，子表id及关联主表的id将会自动删除，此处无须处理
+    // 可修改data, 若有子表则是有相应的数组字段
+    // 主表id，子表id及关联字段在这里可以访问，之后会被框架自动删除，此处无须处理
     console.log(data);
 });</code></pre></div>
 <div class="block">
@@ -2904,7 +2913,7 @@ TODO 由于子表支持懒加载，目前有个限制，如果子表尚未加载
 <li>opt.reset: Boolean. 显示对话框前先清空。默认为true.</li>
 <li>opt.validate: Boolean. 是否提交前用easyui-form组件验证数据。内部使用。</li>
 <li>opt.onSubmit: Function(data) 自动提交前回调。用于验证或补齐提交数据，返回false可取消提交。opt.url为空时不回调。</li>
-<li>opt.onOk: Function(jdlg, data?) 如果自动提交(opt.url非空)，则服务端接口返回数据后回调，data为返回数据。如果是手动提交，则点确定按钮时回调，没有data参数。<br />
+<li>opt.onOk: Function(data?) 如果自动提交(opt.url非空)，则服务端接口返回数据后回调，data为返回数据。如果是手动提交，则点确定按钮时回调，没有data参数。<br />
 (v6.0) 如果onOk设置为'close'，则显示操作成功并关闭对话框。</li>
 <li>opt.title: String. 如果指定，则更新对话框标题。</li>
 <li>opt.dialogOpt: 底层jquery-easyui dialog选项。参考http://www.jeasyui.net/plugins/159.html</li>
@@ -2950,18 +2959,20 @@ WUI.showDlg(jdlg);</code></pre>
 <p>对话框有两种编程模式，一是通过opt参数在启动对话框时设置属性及回调函数(如onOk)，另一种是在dialog初始化函数中处理事件(如validate事件)实现逻辑，有利于独立模块化。</p>
 <p>对话框显示时会触发以下事件：</p>
 <pre><code>事件beforeshow
-事件show</code></pre>
+事件show
+opt.onShow(formMode, data)</code></pre>
 <p>对于自动提交数据的对话框(设置了opt.url)，提交数据过程中回调函数及事件执行顺序为：</p>
 <pre><code>事件validate; // 提交前，用于验证或设置提交数据。返回false或ev.preventDefault()可取消提交，中止以下代码执行。
-opt.onSubmit.call(jdlg, data); // 提交前，验证或设置提交数据，返回false将阻止提交。
+opt.onSubmit(jdlg, data); // 提交前，验证或设置提交数据，返回false将阻止提交。
 ... 框架通过callSvr自动提交数据，如添加、更新对象等。
-opt.onOk(data); // 提交且服务端返回数据后。回调函数中this为对话框jdlg, data是服务端返回数据。
+opt.onOk(data); // 提交且服务端返回数据后。data是服务端返回数据。
 事件retdata; // 与onOk类似。</code></pre>
 <p>对于手动提交数据的对话框(opt.url为空)，执行顺序为：</p>
 <pre><code>事件validate; // 用于验证、设置提交数据、提交数据。
 opt.onOk(); // 同上. 回调函数中this为jdlg.</code></pre>
 <p>注意：</p>
 <ul>
+<li>onOk/onShow/onSubmit等回调中this对象为当前对话框jdlg.</li>
 <li>参数opt可在beforeshow事件中设置，这样便于在对话框模块中自行设置选项，包括okLabel, onOk回调等等。</li>
 <li>旧版本中的回调 opt.onAfterSubmit() 回调已删除，请用opt.onOk()替代。</li>
 </ul>
@@ -3469,7 +3480,7 @@ doAppendFilter=true时，表示追加过滤条件。</p>
 <div class="block">
 <h2 id="showObjDlg">@fn showObjDlg(jdlg, mode, opt?={jtbl, id, obj})</h2>
 <p class="param"><strong>@param jdlg</strong>  可以是jquery对象，也可以是selector字符串或DOM对象，比如 "#dlgOrder". 注意：当对话框保存为单独模块时，jdlg=$("#dlgOrder") 一开始会为空数组，这时也可以调用该函数，且调用后jdlg会被修改为实际加载的对话框对象。</p>
-<p class="param"><strong>@param opt.id</strong>  String. 对话框set模式(mode=FormMode.forSet)时必设，set/del如缺省则从关联的opt.jtbl中取, add/find时不需要</p>
+<p class="param"><strong>@param opt.id</strong>  String. 对话框set模式(mode=FormMode.forSet)时可设置，表示从后端加载数据，set/del如缺省则从关联的opt.jtbl中取, add/find时不需要</p>
 <p class="param"><strong>@param opt.jtbl</strong>  Datagrid. 指定对话框关联的列表(datagrid)，用于从列表中取值，或最终自动刷新列表。 -- 如果dlg对应多个tbl, 必须每次打开都设置</p>
 <p class="param"><strong>@param opt.obj</strong>  String. (v5.1) 对象对话框的对象名，如果未指定，则从my-obj属性获取。通过该参数可动态指定对象名。</p>
 <p class="param"><strong>@param opt.offline</strong>  Boolean. (v5.1) 不与后台交互。</p>
@@ -3609,8 +3620,7 @@ dg_toolbar.importOrdr = function (ctx) {
 <p class="key"><strong>@key <a id="event-dg_toolbar">event-dg_toolbar</a></strong> (ev, jtbl, jdlg) 定制列表按钮事件</p>
 <p>示例：为订单列表增加一个“关联商品”按钮</p>
 <pre><code>$(document).on("dg_toolbar", ".wui-page.pageOrder", pageOrder_onToolbar);
-// 用于二次开发，更成熟的写法像这样
-// $(document).off("dg_toolbar.pageOrder").on("dg_toolbar.pageOrder", ".wui-page.pageOrder", pageOrder_onToolbar);
+// 用于二次开发，更成熟的写法像这样: UiMeta.on("dg_toolbar", "售后工单", function (ev, buttons, jtbl, jdlg) { ... })
 function pageOrder_onToolbar(ev, buttons, jtbl, jdlg) {
     // var jpage = $(ev.target);
     // console.log(jpage);
@@ -3622,7 +3632,34 @@ function pageOrder_onToolbar(ev, buttons, jtbl, jdlg) {
         PageUi.show("商品", "关联商品-订单"+row.id, pageFilter);
     }};
     buttons.push(btnLinkToItem);
-}</code></pre></div>
+}</code></pre>
+<p class="key"><strong>@key <a id="example-setToolbarMenu">example-setToolbarMenu</a></strong>  动态修改数据表上的工具栏菜单状态</p>
+<p>在dg_toolbar事件中，如果想指定datagrid选项，比如要实现需求：<br />
+单击一行时，自动根据当前行状态，设置菜单项是否disabled（比如非CR状态时，“删除”菜单不可点击）:</p>
+<pre><code>jtbl.prop("datagridOpt", {
+    onClickRow: function (rowIndex, rowData) {
+        var val = (rowData.status == 'CR');
+        WUI.setToolbarMenu(jtbl, {删除: val});
+        // 因为框架可能扩展过datagrid一些功能，加上这句比较稳妥
+        $.fn.datagrid.defaults.onClickRow(rowIndex, rowData);
+    }
+});</code></pre>
+<p class="see"><strong>@see <a href="#setToolbarMenu">setToolbarMenu</a></strong> </p>
+<p class="key"><strong>@key <a id="datagridOpt">datagridOpt</a></strong>  二次开发中datagrid选项设置</p></div>
+<div class="block">
+<h2 id="setToolbarMenu">@fn setToolbarMenu(jtbl, enableMap)</h2>
+<p>设置数据表工具栏上的菜单项，禁用或启用：</p>
+<pre><code>WUI.setToolbarMenu(jtbl, {删除: false, 导出: true}); // 菜单项“删除”（即菜单标题）显示为禁用，“导出”显示为可用。</code></pre>
+<p>也可以通过回调函数(或lambda)操作该菜单项：</p>
+<pre><code>WUI.setToolbarMenu(jtbl, {
+    删除: ji =&gt; ji.linkbutton("disable"), // 禁用，等同于设置false
+    导出: ji =&gt; ji.linkbutton("enable"), // 启用，等同于设置true
+    // 导入: ji =&gt; ji.toggle(true)
+    导入: function (ji) {
+        var show = ...;
+        ji.toggle(Show); // 显示或隐藏
+    }
+});</code></pre></div>
 <div class="block">
 <h2 id="dg_dblclick">@fn dg_dblclick(jtbl, jdlg)</h2>
 <p class="param"><strong>@param jdlg</strong>  可以是对话框的jquery对象，或selector如"#dlgOrder".</p>
@@ -3687,11 +3724,16 @@ var data = jtbl[dg.datagrid]("getData"); // 相当于jtbl.datagrid(...), 但兼�
 <h2 id="Formatter.atts">@fn Formatter.atts</h2>
 <p>列表中显示附件（支持多个）, 每个附件一个链接，点击后可下载该附件。（使用服务端att接口）</p></div>
 <div class="block">
-<h2 id="Formatter.pics1">@fn Formatter.pics1</h2>
-<p>显示图片（支持多图）, 显示为一个链接，点击后在新页面打开并依次显示所有的图片。（使用服务端pic接口）</p></div>
-<div class="block">
-<h2 id="Formatter.pics">@fn Formatter.pics</h2>
-<p>显示图片（支持多图）, 每个图有预览, 点击后在新页面打开并依次显示所有的图片.（使用服务端pic接口）</p></div>
+<h2 id="Formatter.picx">@fn Formatter.picx(opt={thumb?, preview?})</h2>
+<p>显示图片（支持多图）, 每个图可以有预览, 点击后在新页面打开并依次显示所有的图片.（使用服务端pic接口）</p>
+<ul>
+<li>thumb: 空-不存在缩略图，1-有缩略图: WUI.options.useNewThumb=0时id是缩略图(传统)，为1时id是原图(新风格)</li>
+<li>preview: 非空时，表示显示图片编号预览，其值为显示预览图的个数。</li>
+</ul>
+<p class="alias"><strong>@alias <a id="Formatter.pics">Formatter.pics</a></strong> </p>
+<p>相当于picx({thumb:1, preview:3})。显示图片列表预览，点击链接显示图片列表。</p>
+<p class="alias"><strong>@alias <a id="Formatter.pics1">Formatter.pics1</a></strong> </p>
+<p>相当于picx({thumb:1})。不显示图片列表预览，点击链接显示图片列表。</p></div>
 <div class="block">
 <h2 id="Formatter.flag">@fn Formatter.flag(yes, no)</h2>
 <p>显示flag类的值，示例：</p>
@@ -3865,6 +3907,24 @@ var rv = WUI.checkIdCard("310115200809090928"); // true</code></pre></div>
     }
 });</code></pre></div>
 <div class="block">
+<h2 id="easyui-linkbutton">@key easyui-linkbutton</h2>
+<p class="key"><strong>@key <a id="EXT_LINK_BUTTON">EXT_LINK_BUTTON</a></strong> </p>
+<p>datagrid options中的toolbar，我们使用代码指定方式，即</p>
+<pre><code>var btnFind = {text:'查询', iconCls:'icon-search', handler: function () {
+    showObjDlg(ctx.jdlg, FormMode.forFind, {jtbl: ctx.jtbl});
+};
+jtbl.datagrid({ ... 
+    toolbar: WUI.dg_toolbar(jtbl, jdlg, ... btnFind)
+});</code></pre>
+<p>缺点是它只能使用默认的linkbutton组件（在easyui里写死了）。<br />
+此处进行hack，增加class属性，让它支持splitbutton/menubutton，示例：</p>
+<pre><code>var jmneu = $('#mm').menu({
+    onClick: function (item) {
+        console.log(item.id);
+    }
+});
+var btnFind = {text:'查询', class: 'splitbutton', iconCls:'icon-search', handler: ..., menu: jmenu};</code></pre></div>
+<div class="block">
 <h2 id=".wui-form-table">@key .wui-form-table</h2>
 <p>在wui-dialog上，对于form下直接放置的table，一般用于字段列表排列，框架对它添加类wui-form-table并自动对列设置百分比宽度，以自适应显示。</p>
 <p>在非对话框上，也可手工添加此类来应用该功能。</p></div>
@@ -3928,6 +3988,13 @@ WUI.options.moduleExt.callSvr = function (name) {
 <p>详细用法案例，可参考：筋斗云开发实例讲解 - 系统复用与微服务方案。</p></div>
 <div class="block">
 <h2 id="WUI.options.xparam">@var WUI.options.xparam</h2></div>
+<div class="block">
+<h2 id="MUI.options.useNewThumb">@var MUI.options.useNewThumb</h2>
+<p>带缩略图的图片编号保存风格。</p>
+<ul>
+<li>0: 保存小图编号，用att(id)取小图，用att(thumbId)取大图</li>
+<li>1: 保存大图编号，用att(id,thumb=1)取小图，用att(id)取大图</li>
+</ul></div>
 <div class="block">
 <h2 id="app_alert">@fn app_alert(msg, [type?=i], [fn?], opt?={timeoutInterval?, defValue?, onCancel()?})</h2>
 <p class="param"><strong>@param type</strong>  对话框类型: "i": info, 信息提示框; "e": error, 错误框; "w": warning, 警告框; "q"(与app_confirm一样): question, 确认框(会有"确定"和"取消"两个按钮); "p": prompt, 输入框</p>
@@ -3997,8 +4064,8 @@ var html = makeLinkTo("#dlgOrder", orderId, "订单" + orderId);</code></pre>
 $(main);</code></pre>
 <p>该函数同步调用后端接口。如果要异步调用，请改用tryAutoLoginAsync函数，返回Deferred对象，resolve表示登录成功，reject表示登录失败。</p></div>
 <div class="block">
-<h2 id="handleLogin">@fn handleLogin(data)</h2>
-<p class="param"><strong>@param data</strong>  调用API "login"成功后的返回数据.</p>
+<h2 id="handleLogin">@fn handleLogin(userInfo)</h2>
+<p class="param"><strong>@param userInfo</strong>  调用login/Employee.get等接口返回的用户信息数据。</p>
 <p>处理login相关的操作, 如设置g_data.userInfo, 保存自动登录的token等等.</p>
 <p>(v5.5) 如果URL中包含hash（即&quot;#pageIssue&quot;这样），且以&quot;#page&quot;开头，则登录后会自动打开同名的列表页（如&quot;pageIssue&quot;页面）。</p>
 <p class="var"><strong>@var <a id="dfdLogin">dfdLogin</a></strong> </p>
@@ -4008,7 +4075,10 @@ $(main);</code></pre>
     app_show("hello");
 });</code></pre></div>
 <div class="block">
-<h2 id="initClient">@fn initClient()</h2></div>
+<h2 id="initClient">@fn initClient(param = null)</h2>
+<p>一般在进入页面时，同步地调用后端initClient接口，获取基本配置信息。<br />
+此后可通过g_data.initClient取这些配置。</p>
+<p>若指定param参数(JS对象，如<code>{token: 123}</code>)，则作为POST参数调用initClient接口.</p></div>
 <div class="block">
 <h2 id="Plugins">@class Plugins</h2></div>
 <div class="block">
@@ -4336,11 +4406,9 @@ var ListOptions = {
 <p>假如某mycombobox组件查询Employee对象列表。当在Employee页面新建、修改、删除对象后，回到组件的页面，点击组件时将自动刷新列表。<br />
 (wui-combogrid也具有类似功能)</p>
 <h4 id="jquery-mycombobox-7 验证要求必填">7 验证要求必填</h4>
-<p>(v6) my-combobox继承easyui-validatebox，所以可以指定requried选项：</p>
-<pre><code>&lt;select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap" required&gt;&lt;/select&gt;
-或
-&lt;select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap, required:true"&gt;&lt;/select&gt;</code></pre>
-<p>在v6之前须显式设置：</p>
+<p>(v6) my-combobox继承easyui-validatebox，通过添加requried属性来指定必填项，显示时会在字段后自动加红色星号：</p>
+<pre><code>&lt;select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap" required&gt;&lt;/select&gt;</code></pre>
+<p>旧用法（不建议使用）：</p>
 <pre><code>&lt;select name="status" class="my-combobox easyui-validatebox" data-options="jdEnumMap:OrderStatusMap, required:true"&gt;&lt;/select&gt;</code></pre></div>
 <div class="block">
 <h2 id="JdcloudExt">@module JdcloudExt</h2>
@@ -4351,6 +4419,7 @@ var ListOptions = {
 <p style="margin-left:0em"><a href="#.wui-upload-3 压缩参数">3 压缩参数</a></p>
 <p style="margin-left:0em"><a href="#.wui-upload-4 动态设置选项">4 动态设置选项</a></p>
 <p style="margin-left:0em"><a href="#.wui-upload-5 定制上传接口">5 定制上传接口</a></p>
+<p style="margin-left:0em"><a href="#.wui-upload-6 存储小图还是大图">6 存储小图还是大图</a></p>
 </div>
 <p>对话框上的上传文件组件。</p>
 <p>用于在对象详情对话框中，展示关联图片字段。图片可以为单张或多张。<br />
@@ -4566,7 +4635,10 @@ var resUrl = ret[0].url;<br />
 $(frm.url).val(resUrl);<br />
 }</p>
 </li>
-</ul></div>
+</ul>
+<h4 id=".wui-upload-6 存储小图还是大图">6 存储小图还是大图</h4>
+<p>jdcloud传统风格是在上传图片后(upload接口)，存储返回的小图编号(thumbId), 通过att(thumbId)访问大图。</p>
+<p>WUI.options.useNewThumb=1时为新风格，即存储upload接口返回的大图编号(id)，通过att(id, thumb=1)访问小图。</p></div>
 <div class="block">
 <h2 id=".wui-checkList">@key .wui-checkList</h2>
 <p>用于在对象详情对话框中，以一组复选框(checkbox)来对应一个逗号分隔式列表的字段。<br />
@@ -4650,7 +4722,7 @@ $(frm.url).val(resUrl);<br />
 <pre><code>&lt;tr&gt;
     &lt;td&gt;配置项名称&lt;/td&gt;
     &lt;td class="wui-labels"&gt;
-        &lt;input name="name" class="easyui-validatebox" data-options="required:true"&gt;
+        &lt;input name="name" class="easyui-validatebox" required&gt;
         &lt;div class="hint"&gt;可选项和示例值：
             &lt;p class="easyui-tooltip" title="在移动端提交缺陷问题时，可从下拉列表中选择问题类型，就是在此处配置的，多个值以英文分号分隔。"&gt;&lt;span class="labels"&gt;常见问题&lt;/span&gt; 内饰;轮胎&lt;/p&gt;
             &lt;p class="easyui-tooltip" title="多个值以英文空格分隔"&gt;&lt;span class="labels"&gt;集市品类&lt;/span&gt; 办公用品 书籍 卡票券&lt;/p&gt;
@@ -4709,6 +4781,7 @@ $(frm.url).val(resUrl);<br />
 <pre><code>ListOptions.StoreGrid = {
     jd_vField: "storeName",
     jd_dlgForAdd: "#dlgStore",
+    // jd_qsearch: "name", // 模糊匹配字段
     panelWidth: 450,
     width: '95%',
     textField: "name",
@@ -4725,7 +4798,19 @@ $(frm.url).val(resUrl);<br />
 <li>jd_vField: 显示文本对应的虚拟字段, 用于初始显示和查询。</li>
 <li>jd_showId: 默认为true. 显示&quot;idField - textField&quot;格式. 设置为false时只显示textField.</li>
 <li>jd_dlgForAdd: (v6) 如果指定，则下拉列表中显示“新增”按钮，可以打开该对话框添加对象。（支持权限控制）</li>
+<li>jd_qsearch: (v6.1) 指定模糊查询的字段列表(多个以逗号分隔)。由datagrid适配即dgLoader实现。</li>
 </ul>
+<p>在wui-combogrid的输入框中输入后会自动进行模糊查询，展示匹配的数据列表；<br />
+选项jd_qsearch用于直接指定模糊查询的字段列表；如果不指定的话，则须由后端指定，否则无法模糊查询。</p>
+<p>未指定jd_qsearch选项时，调用接口示例为<code>callSvr("Store.query", {res:"id,name", q="张三"})</code>.<br />
+须由筋斗云后端指定qsearch字段，示例如下：(详细可参考后端手册, 搜索qsearch):</p>
+<pre><code>class AC2_Xxx
+{
+    protected function onQuery() {
+        $this-&gt;qsearch("name,phone", param("q"));
+    }
+}</code></pre>
+<p>指定jd_qsearch时，调用接口示例为: <code>callSvr("Store.query", {res:"id,name", qserach:"name:张三"})</code>.</p>
 <p>在选择一行并返回时，它会触发choose事件：</p>
 <pre><code>// 注意要取combogrid对象要用comboname! 而不是用 "[name=storeId]"（原始的input已经变成一个hidden组件，只存储值）
 var jo = jdlg.find("[comboname=storeId]"); 
@@ -4736,8 +4821,6 @@ jo.on("choose", function (ev, row) {
 <p>jo是easyui-combogrid，可以调用它的相应方法，如禁用和启用它：</p>
 <pre><code>jo.combogrid("disable");
 jo.combogrid("enable");</code></pre>
-<p>在输入时，它会自动以url及参数q向后端发起查询，如<code>callSvr("Store.query", {res:'id,name', q='1'})</code>.<br />
-在筋斗云后端须支持相应对象的模糊查询(请查阅文档qsearch)。</p>
 <p>特别逻辑：</p>
 <ul>
 <li>在初始化时，由于尚未从后端查询文本，这时显示jd_vField字段的文本。</li>
@@ -4750,6 +4833,7 @@ jo.combogrid("enable");</code></pre>
 CateGrid: {
     jd_vField: "category",
     jd_showId: false,
+    // jd_qsearch: "name,fatherName",
     panelWidth: 450,
     width: '95%',
     idField: "name",
@@ -4913,6 +4997,19 @@ var bval = WUI.canDo(null, "维修", false); // 查一个特定权限，动词�
 };</code></pre>
 <p class="see"><strong>@see <a href="#fname">fname</a></strong> </p></div>
 <div class="block">
+<h2 id="toolbar">@key toolbar 工具栏扩展菜单项</h2>
+<ul>
+<li>import: 导入</li>
+<li>export: 导出</li>
+<li>report: 报表</li>
+<li>
+<p>qsearch: 模糊查询，支持指定字段</p>
+<p class="see"><strong>@see <a href="#toolbar-qsearch">toolbar-qsearch</a></strong> </p>
+</li>
+<li>approve: 审批</li>
+</ul>
+<p class="see"><strong>@see <a href="#toolbar-approve">toolbar-approve</a></strong> </p></div>
+<div class="block">
 <h2 id="toolbar-qsearch">@key toolbar-qsearch</h2>
 <p>工具栏-模糊查询。支持指定查询字段。</p>
 <pre><code>// pageXx.js function initPageXx
@@ -4934,6 +5031,52 @@ jtbl.datagrid(dgOpt);</code></pre>
 };
 jtbl.datagrid(dgOpt);</code></pre>
 <p>它将调用接口<code>callSvr("Xx.query", {qsearch: "字段1,字段2:" + val})</code>。</p></div>
+<div class="block">
+<h2 id="toolbar-approve">@key toolbar-approve 审批菜单</h2>
+<p>依赖字段：</p>
+<ul>
+<li>approveFlag: 审批状态(ApproveFlagMap), Enum(0-无审批, 1-待审批, 2-通过, 3-不通过), 可用ApproveFlagStyler修饰各状态颜色。</li>
+</ul>
+<p>可选字段：</p>
+<ul>
+<li>
+<p>approveEmpId: 审批人</p>
+<p>function canApprove_WO(row) {<br />
+return g_data.userInfo.id == row.approveEmpId || g_data.hasRole(&quot;mgr,售后审核&quot;);<br />
+}<br />
+var btnApprove = [&quot;approve&quot;, {<br />
+obj: &quot;WarrantyOrder&quot;, // 最终将调用&quot;WarrantyOrder.set&quot;接口<br />
+canApprove: function (row) {<br />
+return canApprove_WO(row);<br />
+},<br />
+// data: 待保存的新数据(data.approveFlag为新状态), row: 原数据<br />
+onSet: function (row, data) {<br />
+// 发起审批时，自动填写审批人<br />
+if (data.approveFlag ==1 &amp;&amp; row.approveEmpId == null) {<br />
+var empId = callSvrSync(&quot;Employee.query&quot;, {fmt: &quot;one?&quot;, res: &quot;id&quot;, role:&quot;售后审核&quot;});<br />
+if (empId)<br />
+data.approveEmpId = empId;<br />
+}<br />
+}<br />
+}];</p>
+<p>var dgOpt = {<br />
+...<br />
+toolbar: WUI.dg_toolbar(jtbl, jdlg, btnApprove),<br />
+};<br />
+jtbl.datagrid(dgOpt);</p>
+</li>
+</ul>
+<p>对话框上approveFlag设置示例：</p>
+<pre><code>{
+    disabled: e =&gt; canApprove_WO(e),
+    enumMap: ApproveFlagMap,
+    styler: Formatter.enumStyler(ApproveFlagStyler),
+    desc: "【售后审核】角色或【最高管理员】或指定审批人可审批"
+}</code></pre>
+<p>对话框上approveEmpId设置示例：</p>
+<pre><code>{
+    disabled: e =&gt; canApprove_WO(e)
+}</code></pre></div>
 <div class="block">
 <h2 id=".wui-subobj">@key .wui-subobj</h2><div class="toc"><p style="margin-left:0em"><a href="#.wui-subobj-1 示例：可以增删改查的子表：">1 示例：可以增删改查的子表：</a></p>
 <p style="margin-left:0em"><a href="#.wui-subobj-2 动态修改选项">2 动态修改选项</a></p>
@@ -5081,8 +5224,9 @@ jo.trigger(&quot;setOption&quot;, {disabled: boolDisabledVal}); // 会自动刷�
 <p>设置&quot;组合&quot;页随着type选择启用禁用:</p>
 <pre><code>// 注意，subobj组件一般不设置name属性，而是通过定义CSS类`wui-subobj-{name}`类来标识名字，从而可以用 jdlg.gn("item1") 来找到它的通用接口。
 WUI.setDlgLogic(jdlg, "item1", {
+    watch: "type",
     disabled: function (e) {
-        return e.type == "P";
+        return e.type != "P";
     },
     required: true
 });</code></pre>
@@ -5659,9 +5803,22 @@ validate: v =&gt; /^\d{11}$/.test(v) || "手机号须11位数字"</code></pre>
 </ul>
 <p>示例：当status字段值为RE时，当前字段值不可为空：</p>
 <pre><code>{
-    validate: (v,it,gn) =&gt; (gn("status").val() != "RE" || v)? null: ("单据完成时[" + it.getTitle() + "]不可为空")
+    validate: (v,it,gn) =&gt; {
+        if (gn("status").val() == "RE" &amp;&amp; !v)
+            return "单据完成时[" + it.getTitle() + "]不可为空";
+    }
 }</code></pre>
 <p>用gn取其它字段值；用it.getTitle()取当前字段标题。</p>
+<p>注意：当字段未在对话框中显示，或是禁用状态时，或是只读状态时，不执行验证。</p>
+<p>子表（wui-subobj）对象一样支持required/validate，在validate函数中传入值v是一个数组，如果没有填写则v.length为0。示例：</p>
+<pre><code>{
+    //required: true,
+    validate: function (value, it, gn) {
+        if (value.length &lt; 2) {
+            return "明细表至少添加2行!";
+        }
+    }
+}</code></pre>
 <p>此外，还可以设置validType选项，它与easyui-validatebox组件兼容。示例：</p>
 <pre><code>{
     required: true,
