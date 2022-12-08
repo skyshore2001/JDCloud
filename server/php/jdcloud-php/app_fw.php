@@ -45,7 +45,41 @@ P_DBCRED格式为`{用户名}:{密码}`，或其base64编码后的值，如
 	或
 	P_DBCRED=Z2FubGFuOjEyMzQ=
 
+连接mysql示例(注意在php.ini中打开php_pdo_mysql扩展)，设置以下环境变量：
+
+	P_DBTYPE=mysql
+	P_DB=172.12.77.221/jdcloud
+	P_DBCRED=demo:demo123
+
+P_DBTYPE参数可以不设置，它默认值就是mysql。
+
+连接mssql示例(通过odbc连接，注意打开php_pdo_odbc扩展)
+
+	P_DBTYPE=mssql
+	P_DB=odbc:DRIVER=SQL Server Native Client 10.0; DATABASE=jdcloud; Trusted_Connection=Yes; SERVER=.\MSSQL2008;
+	P_DBCRED=sa:demo123
+
+或使用odbc的文件DSN（可通过系统自带的odbcad32工具创建），如：
+
+	P_DBTYPE=mssql
+	P_DB=odbc:FILEDSN=d:\db\jdcloud-mssql.dsn;
+	P_DBCRED=sa:demo123
+
+Linux下mssql over unixodbc示例:
+https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server?view=sql-server-ver16
+
+	P_DBTYPE=mssql
+	P_DB=odbc:DRIVER={ODBC Driver 18 for SQL Server}; LANGUAGE=us_english; DATABASE=FNWMS; SERVER=127.0.0.1; Encrypt=no 
+    # 不建议在connection string中指定用户密码, 因为有时日志会打印出来: UID=wms-usr; PWD={wms#User0001}; 
+    P_DBCRED=wms-usr:wms#User0001
+
+对oracle数据库为最基本的DBEnv级别支持, 不支持接口框架, 示例: (需要php扩展oci8.so和pdo_oci.so)
+
+	P_DBTYPE=oracle
+	P_DB=oci:dbname=10.30.250.131:1525/mesdzprd;charset=AL32UTF8
+
 此外，P_DB还试验性地支持SQLite数据库，直接指定以".db"为扩展名的文件，以及P_DBTYPE即可，不需要P_DBCRED。例如：
+连接sqlite示例(注意打开php_pdo_sqlite扩展)：
 
 	P_DBTYPE=sqlite
 	P_DB=../myorder.db
@@ -1782,11 +1816,19 @@ class DBEnv
 		$fetchMode = $assoc? PDO::FETCH_ASSOC: PDO::FETCH_NUM;
 		$allRows = [];
 		do {
-			$rows = $sth->fetchAll($fetchMode);
-			$DBH->amendLog("cnt=". count($rows));
+			try {
+				$rows = $sth->fetchAll($fetchMode);
+			}
+			catch (PDOException $ex) {
+                // NOTE: mssql (unixodbc) 执行'sp_help Cinf'时, nextRowSet未能返回false导致错误
+				// SQLSTATE[24000]: Invalid cursor state
+				if ($ex->getCode() == 24000)
+					break;
+				throw $ex;
+			}
 			$allRows[] = $rows;
 			// bugfix:sqlite不支持nextRowSet
-			if ($this->DBTYPE = "sqlite")
+			if ($this->DBTYPE == "sqlite")
 				break;
 		}
 		while ($sth->nextRowSet());
@@ -2432,11 +2474,11 @@ class JDPDO extends PDO
 		}, $sql);
 	}
 
-	function query($sql)
+	function query($sql, $fetchMode=0)
 	{
 		$this->filterSql($sql);
 		$this->addLog($sql);
-		return parent::query($sql);
+		return parent::query($sql, $fetchMode);
 	}
 	function exec($sql, $getInsertId = false)
 	{
@@ -2444,7 +2486,7 @@ class JDPDO extends PDO
 		$this->addLog($sql);
 		$rv = parent::exec($sql);
 		if ($getInsertId)
-			$rv = (int)parent::lastInsertId();
+			$rv = (int)$this->lastInsertId();
 
 		if ($this->logH)
 			$this->amendLog($getInsertId? "new id=$rv": "cnt=$rv");
@@ -2476,6 +2518,32 @@ class JDPDO_mysql extends JDPDO
 
 class JDPDO_mssql extends JDPDO
 {
+	function quote($s, $paramtype=null) {
+		return qstr($s, "'");
+	}
+	function lastInsertId($seqName = null) {
+		$this->skipLogCnt += 1;
+        $sth = $this->query("SELECT SCOPE_IDENTITY()");
+		return $sth->fetch(PDO::FETCH_NUM);
+	}
+
+	function query($s, $fetchMode=0) {
+		// for MSSQL: LIMIT -> TOP+ROW_NUMBER
+		$s = preg_replace_callback('/SELECT(.*) (?: 
+LIMIT\s+(\d+)
+| (ORDER\s+BY.*?)\s*LIMIT\s+(\d+),(\d+)  
+)\s*$/isx', function ($ms) {
+			if ($ms[2])
+			{
+				return "SELECT TOP " + $ms[2] + " " + $ms[1];
+			}
+			$n1 = $ms[4]+1;
+			$n2 = $n1+$ms[5]-1;
+			return "SELECT * FROM (SELECT ROW_NUMBER() OVER({$ms[3]}) _row, {$ms[1]}) t0 WHERE _row BETWEEN {$n1} AND {$n2}";
+		}, $s);
+
+	    return parent::query($s, $fetchMode);
+	}
 }
 
 class JDPDO_oracle extends JDPDO
