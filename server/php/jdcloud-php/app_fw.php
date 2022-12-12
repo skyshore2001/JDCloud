@@ -214,6 +214,20 @@ $GLOBALS["conf_jdserverUrl"] = 'http://127.0.0.1/jdserver';
 jdcloud前端检查当x-powered-by未变化但x-daca-server-rev变化时，才会自动刷新实现实时热更新。 
 */
 $GLOBALS["conf_poweredBy"] = "jdcloud";
+
+$GLOBALS["conf_disableSkipLog"] = false;
+
+/**
+@var conf_translateMysqlToMssql = true
+
+默认为true，即应用层可以使用部分mysql语法（常用于虚拟字段定义），框架自动转换为mssql/sqlserver数据库的T-SQL语法。
+支持：
+
+- LIMIT分页: 使用TOP或OFFSET/FETCH替代. 支持"LIMIT 20" / "LIMIT 100,20"两种语法.
+- group_concat函数: 使用string_agg替代(须sqlserver 2017以上版本). 支持order by / separator子句.
+- if/ifnull函数: 使用iis/isnull替代等
+*/
+$GLOBALS["conf_translateMysqlToMssql"] = true;
 // }}}
 
 // load user config
@@ -998,6 +1012,9 @@ function Q($s, $env=null)
 		return "null";
 	if ($env === null)
 		$env = getJDEnv();
+	if ($env->DBTYPE == "mssql") {
+		return "N'" . str_replace("'", "''", $s) . "'";
+	}
 	$dbh = $env->DBH;
 	if ($dbh == null) {
 		return qstr($s, "'");
@@ -1826,6 +1843,7 @@ class DBEnv
 					break;
 				throw $ex;
 			}
+			$DBH->amendLog("cnt=". count($rows));
 			$allRows[] = $rows;
 			// bugfix:sqlite不支持nextRowSet
 			if ($this->DBTYPE == "sqlite")
@@ -2398,6 +2416,8 @@ function name2id($refNameFields, $refIdField, $refTable, $nameFields, $opt = [])
 	++ $env->DBH->skipLogCnt;  // 若要忽略两条就用 $env->DBH->skipLogCnt+=2
 	$env->DBH->exec('set names utf8mb4'); // 也可以是queryOne/execOne等函数。
 
+设置`$GLOBALS["conf_disableSkipLog"]=1`可忽略skipLogCnt机制，常用于数据库底层调试。
+
 @see queryAll,execOne,dbconn
  */
 class JDPDO extends PDO
@@ -2418,6 +2438,15 @@ class JDPDO extends PDO
 	}
 	function addLimit1(&$sql) {
 	}
+	// mysql style
+	function paging(&$sql, $limit, $offset=0) {
+		if ($offset == 0) {
+			$sql .= "\nLIMIT $pagesz";
+		}
+		else {
+			$sql .= "\nLIMIT $offset, $pagesz";
+		}
+	}
 	// end
 
 	function __construct($dsn, $user = null, $pwd = null)
@@ -2432,8 +2461,9 @@ class JDPDO extends PDO
 	{
 		if ($this->skipLogCnt > 0) {
 			-- $this->skipLogCnt;
-			$this->logH = null;
-			return;
+			//$this->logH = null;
+			if (! $GLOBALS["conf_disableSkipLog"])
+				return;
 		}
 		$env = getJDEnv();
 		$this->logH = $env->addLog($str, 9);
@@ -2518,30 +2548,35 @@ class JDPDO_mysql extends JDPDO
 
 class JDPDO_mssql extends JDPDO
 {
-	function quote($s, $paramtype=null) {
-		return qstr($s, "'");
+	function paging(&$sql, $limit, $offset=0) {
+		if ($offset == 0) {
+			$sql = preg_replace('/^SELECT \K/i',  "TOP $limit ", $sql);
+		}
+		else {
+			$sql .= "\nOFFSET $offset ROWS FETCH NEXT $limit ROWS ONLY";
+# 			$body = $ms[1];
+# 			$orderby = "ORDER BY t0.id";
+# 			if (preg_match('/ORDER\s+BY [\.|\w]+(\s*,\s*[\.|\w]+)*/i', $body, $ms1)) {
+# 				$orderby = $ms1[0];
+# 			}
+# 			$offset2 = $offset + $limit;
+# 			$sql = "SELECT * FROM (SELECT ROW_NUMBER() OVER($orderby) _row, {$body}) t0 WHERE _row BETWEEN {$offset} AND {$offset2}";
+		}
 	}
+
 	function lastInsertId($seqName = null) {
-		$this->skipLogCnt += 1;
-        $sth = $this->query("SELECT SCOPE_IDENTITY()");
-		return $sth->fetch(PDO::FETCH_NUM);
+		// 不用$this->query, 避免log和额外处理
+		// !!!NOTE: unixodbc下mssql驱动有bug(2009年就发现), SCOPE_IDENTITY()返回空，只能暂时用@@IDENTITY替代. 
+		// 注意INSERT时若存在trigger可能会导致id返回错误。
+        //$sth = PDO::query("SELECT SCOPE_IDENTITY()");
+        $sth = PDO::query("SELECT @@IDENTITY");
+		$row = $sth->fetch(PDO::FETCH_NUM);
+		return $row[0];
 	}
 
 	function query($s, $fetchMode=0) {
-		// for MSSQL: LIMIT -> TOP+ROW_NUMBER
-		$s = preg_replace_callback('/SELECT(.*) (?: 
-LIMIT\s+(\d+)
-| (ORDER\s+BY.*?)\s*LIMIT\s+(\d+),(\d+)  
-)\s*$/isx', function ($ms) {
-			if ($ms[2])
-			{
-				return "SELECT TOP " + $ms[2] + " " + $ms[1];
-			}
-			$n1 = $ms[4]+1;
-			$n2 = $n1+$ms[5]-1;
-			return "SELECT * FROM (SELECT ROW_NUMBER() OVER({$ms[3]}) _row, {$ms[1]}) t0 WHERE _row BETWEEN {$n1} AND {$n2}";
-		}, $s);
-
+		if ($GLOBALS["conf_translateMysqlToMssql"])
+			MssqlCompatible::translateMysqlToMssql($s);
 	    return parent::query($s, $fetchMode);
 	}
 }

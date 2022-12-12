@@ -2848,12 +2848,14 @@ FROM ($sql) t0";
 			// no limit
 		}
 		else if ($enablePartialQuery) {
-			$sql .= "\nLIMIT " . $pagesz;
+			$this->env->DBH->paging($sql, $pagesz);
+			//$sql .= "\nLIMIT " . $pagesz;
 		}
 		else {
 			if (! $pagekey)
 				$pagekey = 1;
-			$sql .= "\nLIMIT " . ($pagekey-1)*$pagesz . "," . $pagesz;
+			$this->env->DBH->paging($sql, $pagesz, ($pagekey-1)*$pagesz);
+			//$sql .= "\nLIMIT " . ($pagekey-1)*$pagesz . "," . $pagesz;
 		}
 
 		if ($extSqlFn) {
