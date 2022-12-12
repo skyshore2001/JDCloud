@@ -2,7 +2,7 @@
 
 class MssqlCompatible
 {
-	function translateMysqlToMssql(&$sql) {
+	static function translateMysqlToMssql(&$sql) {
 		static $para_re = '( (?: [^()] | \( (?-1) \) )+ )';
 		static $para_re2 = '(\( (?: [^()] | (?-1) )+ \))';
 		// for MSSQL: LIMIT -> TOP/OFFSET FETCH

@@ -47,48 +47,53 @@ P_DBCRED格式为`{用户名}:{密码}`，或其base64编码后的值，如
 
 连接mysql示例(注意在php.ini中打开php_pdo_mysql扩展)，设置以下环境变量：
 
-	P_DBTYPE=mysql
-	P_DB=172.12.77.221/jdcloud
-	P_DBCRED=demo:demo123
+	putenv("P_DBTYPE=mysql");
+	putenv("P_DB=172.12.77.221/jdcloud");
+	putenv("P_DBCRED=demo:demo123");
 
 P_DBTYPE参数可以不设置，它默认值就是mysql。
 
-连接mssql示例(通过odbc连接，注意打开php_pdo_odbc扩展)
+连接mssql可以通过php_pdo_sqlsrv扩展+odbc驱动，也可以通过php_pdo_odbc扩展+odbc驱动, 建议前者。
 
-	P_DBTYPE=mssql
-	P_DB=odbc:DRIVER=SQL Server Native Client 10.0; DATABASE=jdcloud; Trusted_Connection=Yes; SERVER=.\MSSQL2008;
-	P_DBCRED=sa:demo123
+连接mssql示例(通过php_pdo_sqlsrv和php_sqlsrv扩展, 微软官网下载)
+https://learn.microsoft.com/en-us/sql/connect/php/installation-tutorial-linux-mac?view=sql-server-ver16
 
-或使用odbc的文件DSN（可通过系统自带的odbcad32工具创建），如：
+	putenv("P_DBTYPE=mssql");
+	putenv("P_DB=sqlsrv:DATABASE=FNWMS; SERVER=myserver.delta.corp; Encrypt=no");
+	putenv("P_DBCRED=wms:1234");
 
-	P_DBTYPE=mssql
-	P_DB=odbc:FILEDSN=d:\db\jdcloud-mssql.dsn;
-	P_DBCRED=sa:demo123
-
-Linux下mssql over unixodbc示例:
+连接mssql示例(通过php_pdo_odbc扩展), linux平台:
 https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server?view=sql-server-ver16
 
-	P_DBTYPE=mssql
-	P_DB=odbc:DRIVER={ODBC Driver 18 for SQL Server}; LANGUAGE=us_english; DATABASE=FNWMS; SERVER=127.0.0.1; Encrypt=no 
-    # 不建议在connection string中指定用户密码, 因为有时日志会打印出来: UID=wms-usr; PWD={wms#User0001}; 
-    P_DBCRED=wms-usr:wms#User0001
+	setlocale(LC_ALL, "en_US.UTF-8"); // 如果写入中文乱码，试试指定locale
+	$GLOBALS["conf_mssql_useOdbc"] = true;
+	putenv("P_DBTYPE=mssql");
+	// driver名字在/etc/odbcinst.ini中查看
+	putenv("P_DB=odbc:DRIVER={ODBC Driver 18 for SQL Server}; LANGUAGE=us_english; DATABASE=FNWMS; SERVER=myserver.delta.corp; Encrypt=no");
+	putenv("P_DBCRED=wms:1234");
+
+	// windows平台odbc示例:
+	// putenv("P_DB=odbc:DRIVER=SQL Server Native Client 10.0; DATABASE=jdcloud; Trusted_Connection=Yes; SERVER=.\MSSQL2008;");
+
+	// 使用odbc的文件DSN示例（可通过系统自带的odbcad32工具创建），如：
+	// putenv("P_DB=odbc:FILEDSN=d:\db\jdcloud-mssql.dsn");
 
 对oracle数据库为最基本的DBEnv级别支持, 不支持接口框架, 示例: (需要php扩展oci8.so和pdo_oci.so)
 
-	P_DBTYPE=oracle
-	P_DB=oci:dbname=10.30.250.131:1525/mesdzprd;charset=AL32UTF8
+	putenv("P_DBTYPE=oracle");
+	putenv("P_DB=oci:dbname=10.30.250.131:1525/mesdzprd;charset=AL32UTF8");
 
 此外，P_DB还试验性地支持SQLite数据库，直接指定以".db"为扩展名的文件，以及P_DBTYPE即可，不需要P_DBCRED。例如：
 连接sqlite示例(注意打开php_pdo_sqlite扩展)：
 
-	P_DBTYPE=sqlite
-	P_DB=../myorder.db
+	putenv("P_DBTYPE=sqlite");
+	putenv("P_DB=../myorder.db");
 
 连接SQLite数据库未做严格测试，不建议使用。
 
 做性能对比测试时还支持不连数据库(当然也不会写ApiLog)，可指定：
 
-	P_DB=null
+	putenv("P_DB=null");
 
 也可以直接创建DBEnv来用(调用queryOne/execOne等)，示例：
 
@@ -218,7 +223,7 @@ $GLOBALS["conf_poweredBy"] = "jdcloud";
 $GLOBALS["conf_disableSkipLog"] = false;
 
 /**
-@var conf_translateMysqlToMssql = true
+@var conf_mssql_translateMysql = true
 
 默认为true，即应用层可以使用部分mysql语法（常用于虚拟字段定义），框架自动转换为mssql/sqlserver数据库的T-SQL语法。
 支持：
@@ -226,8 +231,13 @@ $GLOBALS["conf_disableSkipLog"] = false;
 - LIMIT分页: 使用TOP或OFFSET/FETCH替代. 支持"LIMIT 20" / "LIMIT 100,20"两种语法.
 - group_concat函数: 使用string_agg替代(须sqlserver 2017以上版本). 支持order by / separator子句.
 - if/ifnull函数: 使用iis/isnull替代等
+
+@var conf_mssql_useOdbc = false
+
+默认通过pdo_sqlsrv驱动连接mssql，若通过pdo_odbc连接，应设置为true
 */
-$GLOBALS["conf_translateMysqlToMssql"] = true;
+$GLOBALS["conf_mssql_translateMysql"] = true;
+$GLOBALS["conf_mssql_useOdbc"] = false;
 // }}}
 
 // load user config
@@ -1839,7 +1849,8 @@ class DBEnv
 			catch (PDOException $ex) {
                 // NOTE: mssql (unixodbc) 执行'sp_help Cinf'时, nextRowSet未能返回false导致错误
 				// SQLSTATE[24000]: Invalid cursor state
-				if ($ex->getCode() == 24000)
+				// SQLSTATE[IMSSP]: The active result for the query contains no fields
+				if ($ex->getCode() == 24000 || $ex->getCode() == "IMSSP")
 					break;
 				throw $ex;
 			}
@@ -2565,8 +2576,10 @@ class JDPDO_mssql extends JDPDO
 	}
 
 	function lastInsertId($seqName = null) {
+		if (! $GLOBALS["conf_mssql_useOdbc"])
+			return PDO::lastInsertId($seqName);
 		// 不用$this->query, 避免log和额外处理
-		// !!!NOTE: unixodbc下mssql驱动有bug(2009年就发现), SCOPE_IDENTITY()返回空，只能暂时用@@IDENTITY替代. 
+		// !!!NOTE: unixodbc下mssql驱动有bug, SCOPE_IDENTITY()返回空，只能暂时用@@IDENTITY替代. 
 		// 注意INSERT时若存在trigger可能会导致id返回错误。
         //$sth = PDO::query("SELECT SCOPE_IDENTITY()");
         $sth = PDO::query("SELECT @@IDENTITY");
@@ -2575,7 +2588,7 @@ class JDPDO_mssql extends JDPDO
 	}
 
 	function query($s, $fetchMode=0) {
-		if ($GLOBALS["conf_translateMysqlToMssql"])
+		if ($GLOBALS["conf_mssql_translateMysql"])
 			MssqlCompatible::translateMysqlToMssql($s);
 	    return parent::query($s, $fetchMode);
 	}
