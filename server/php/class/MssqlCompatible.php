@@ -3,8 +3,8 @@
 class MssqlCompatible
 {
 	static function translateMysqlToMssql(&$sql) {
-		static $para_re = '( (?: [^()] | \( (?-1) \) )+ )';
-		static $para_re2 = '(\( (?: [^()] | (?-1) )+ \))';
+		static $para_re = '( (?: [^()] | \( (?-1) \) )* )';
+		static $para_re2 = '(\( (?: [^()] | (?-1) )* \))';
 		// for MSSQL: LIMIT -> TOP/OFFSET FETCH
 		while (preg_match('/\bLIMIT\s+\d/is', $sql)) {
 			$handled = false;
@@ -73,8 +73,10 @@ class MssqlCompatible
 				jdRet(E_SERVER, "bad sql to handle group_concat: `$sql`");
 		}
 		// 'select if(...)' => 'select iif(...)'
-		$sql = preg_replace('/\bif\s*\(/i', 'IIF(', $sql);
-		$sql = preg_replace('/\bifnull\s*\(/i', 'ISNULL(', $sql);
+		static $map = ["if"=>"iif", "ifnull"=>"isnull", "uuid"=>"newid"];
+		$sql = preg_replace_callback('/\b(if|ifnull|uuid)\s*(?=\()/i', function ($ms) use ($map) {
+			return $map[strtolower($ms[1])];
+		}, $sql);
 
 		// handle special name
 		$sql = preg_replace('/\b(user|proc)\b/i', '"$1"', $sql);
