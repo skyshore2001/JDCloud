@@ -27,6 +27,7 @@ class SqlDiff
 	public $nvarchar = "NVARCHAR";
 	public $autoInc = 'AUTOINCREMENT';
 	public $money = "MONEY";
+	public $flag = "TINYINT UNSIGNED NOT NULL DEFAULT 0";
 	public $createOpt = "";
 
 	public static function create($dbh) {
@@ -89,6 +90,7 @@ class SqlDiff_mssql extends SqlDiff
 	public $ntext = "NTEXT";
 	public $autoInc = 'IDENTITY(1,1)';
 	public $money = "DECIMAL(19,2)";
+	public $flag = "TINYINT NOT NULL DEFAULT 0";
 	public $createOpt = ""; // "DEFAULT CHARSET=utf8";
 
 	public function tableExists($tbl) {
@@ -98,9 +100,21 @@ class SqlDiff_mssql extends SqlDiff
 	}
 
 	public function safeName($name) {
-		if (preg_match('/^(user|order)$/i', $name))
+		if (preg_match('/^(user|order|proc)$/i', $name))
 			return "\"$name\"";
 		return $name;
+	}
+
+	// @fields={Field, Type, Null, Key, ...}
+	public function getFields($table) {
+		$rv = queryAll("sp_help [$table]", true)[1];
+		return array_map(function ($e) {
+			return [
+				"Field" => $e["Column_name"],
+				"Type" => $e["Type"] . '(' . $e["Length"] . ')',
+				"Null" => $e["Nullable"]
+			];
+		}, $rv);
 	}
 }
 
@@ -184,7 +198,7 @@ function parseFieldDef($fieldDef, $tableName)
 		}
 		elseif ($tag == 'flag') {
 			$ret["type"] = $tag;
-			$def = "TINYINT UNSIGNED NOT NULL DEFAULT 0";
+			$def = $SQLDIFF->flag;
 		}
 		elseif (is_numeric($tag)) {
 			$ret["len"] = $tag;
@@ -233,7 +247,7 @@ function parseFieldDef($fieldDef, $tableName)
 	}
 	elseif (preg_match('/^是否|Flag$/u', $f1)) {
 		$ret["type"] = "flag";
-		$def = "TINYINT UNSIGNED NOT NULL DEFAULT 0";
+		$def = $SQLDIFF->flag;
 	}
 	elseif (preg_match('/^\w+$/u', $f)) { # default
 		$ret["len"] = $CHAR_SZ['m'];
@@ -256,7 +270,9 @@ function parseFieldDef($fieldDef, $tableName)
 // $fieldDef: ref to FIELD_META_TYPE
 function genColSql($fieldDef)
 {
-	return $fieldDef["name"] . " " . $fieldDef["def"];
+	global $SQLDIFF;
+	$col = $SQLDIFF->safeName($fieldDef['name']);
+	return $col . " " . $fieldDef["def"];
 }
 
 # ret: $sql

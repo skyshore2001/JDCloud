@@ -708,24 +708,32 @@ function genQuery($sql, $cond)
 
 function execOne($sql, $getInsertId = false)
 {
-	global $DBH;
+	global $DBH,$DBTYPE;
 	if (! isset($DBH))
 		dbconn();
 	$rv = $DBH->exec($sql);
-	if ($getInsertId)
-		$rv = (int)$DBH->lastInsertId();
+	if ($getInsertId) {
+		if ($DBTYPE == "mssql") { // pdo-odbc
+			$rv = queryOne("SELECT SCOPE_IDENTITY()");
+		}
+		else {
+			$rv = (int)$DBH->lastInsertId();
+		}
+	}
 	return $rv;
 }
 
 function queryOne($sql, $assoc = false, $cond = null)
 {
-	global $DBH;
+	global $DBH, $DBTYPE;
 	if (! isset($DBH))
 		dbconn();
 	if ($cond)
 		$sql = genQuery($sql, $cond);
-	if (stripos($sql, "limit ") === false)
-		$sql .= " LIMIT 1";
+	if ($DBTYPE == "mysql") {
+		if (stripos($sql, "limit ") === false)
+			$sql .= " LIMIT 1";
+	}
 	$sth = $DBH->query($sql);
 
 	if ($sth === false)
@@ -752,7 +760,16 @@ function queryAll($sql, $assoc = false, $cond = null)
 	$fetchMode = $assoc? PDO::FETCH_ASSOC: PDO::FETCH_NUM;
 	$allRows = [];
 	do {
-		$rows = $sth->fetchAll($fetchMode);
+        try {
+            $rows = $sth->fetchAll($fetchMode);
+        }
+        catch (PDOException $ex) {
+            // NOTE: mssql (unixodbc) 执行'sp_help Cinf'时, nextRowSet未能返回false导致错误
+            // SQLSTATE[24000]: Invalid cursor state
+            if ($ex->getCode() == 24000)
+                break;
+            throw $ex;
+        }
 		$allRows[] = $rows;
 	}
 	while ($sth->nextRowSet());

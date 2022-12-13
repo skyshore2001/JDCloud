@@ -45,16 +45,55 @@ P_DBCRED格式为`{用户名}:{密码}`，或其base64编码后的值，如
 	或
 	P_DBCRED=Z2FubGFuOjEyMzQ=
 
-此外，P_DB还试验性地支持SQLite数据库，直接指定以".db"为扩展名的文件，以及P_DBTYPE即可，不需要P_DBCRED。例如：
+连接mysql示例(注意在php.ini中打开php_pdo_mysql扩展)，设置以下环境变量：
 
-	P_DBTYPE=sqlite
-	P_DB=../myorder.db
+	putenv("P_DBTYPE=mysql");
+	putenv("P_DB=172.12.77.221/jdcloud");
+	putenv("P_DBCRED=demo:demo123");
+
+P_DBTYPE参数可以不设置，它默认值就是mysql。
+
+连接mssql可以通过php_pdo_sqlsrv扩展+odbc驱动，也可以通过php_pdo_odbc扩展+odbc驱动, 建议前者。
+
+连接mssql示例(通过php_pdo_sqlsrv和php_sqlsrv扩展, 微软官网下载)
+https://learn.microsoft.com/en-us/sql/connect/php/installation-tutorial-linux-mac?view=sql-server-ver16
+
+	putenv("P_DBTYPE=mssql");
+	putenv("P_DB=sqlsrv:DATABASE=FNWMS; SERVER=myserver.delta.corp; Encrypt=no");
+	putenv("P_DBCRED=wms:1234");
+
+连接mssql示例(通过php_pdo_odbc扩展), linux平台:
+https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server?view=sql-server-ver16
+
+	setlocale(LC_ALL, "en_US.UTF-8"); // 如果写入中文乱码，试试指定locale
+	$GLOBALS["conf_mssql_useOdbc"] = true;
+	putenv("P_DBTYPE=mssql");
+	// driver名字在/etc/odbcinst.ini中查看
+	putenv("P_DB=odbc:DRIVER={ODBC Driver 18 for SQL Server}; LANGUAGE=us_english; DATABASE=FNWMS; SERVER=myserver.delta.corp; Encrypt=no");
+	putenv("P_DBCRED=wms:1234");
+
+	// windows平台odbc示例:
+	// putenv("P_DB=odbc:DRIVER=SQL Server Native Client 10.0; DATABASE=jdcloud; Trusted_Connection=Yes; SERVER=.\MSSQL2008;");
+
+	// 使用odbc的文件DSN示例（可通过系统自带的odbcad32工具创建），如：
+	// putenv("P_DB=odbc:FILEDSN=d:\db\jdcloud-mssql.dsn");
+
+对oracle数据库为最基本的DBEnv级别支持, 不支持接口框架, 示例: (需要php扩展oci8.so和pdo_oci.so)
+
+	putenv("P_DBTYPE=oracle");
+	putenv("P_DB=oci:dbname=10.30.250.131:1525/mesdzprd;charset=AL32UTF8");
+
+此外，P_DB还试验性地支持SQLite数据库，直接指定以".db"为扩展名的文件，以及P_DBTYPE即可，不需要P_DBCRED。例如：
+连接sqlite示例(注意打开php_pdo_sqlite扩展)：
+
+	putenv("P_DBTYPE=sqlite");
+	putenv("P_DB=../myorder.db");
 
 连接SQLite数据库未做严格测试，不建议使用。
 
 做性能对比测试时还支持不连数据库(当然也不会写ApiLog)，可指定：
 
-	P_DB=null
+	putenv("P_DB=null");
 
 也可以直接创建DBEnv来用(调用queryOne/execOne等)，示例：
 
@@ -180,6 +219,27 @@ $GLOBALS["conf_jdserverUrl"] = 'http://127.0.0.1/jdserver';
 jdcloud前端检查当x-powered-by未变化但x-daca-server-rev变化时，才会自动刷新实现实时热更新。 
 */
 $GLOBALS["conf_poweredBy"] = "jdcloud";
+
+$GLOBALS["conf_disableSkipLog"] = false;
+
+/**
+@var conf_mssql_translateMysql = true
+
+默认为true，即应用层可以使用部分mysql语法（常用于虚拟字段定义），框架自动转换为mssql/sqlserver数据库的T-SQL语法。
+支持：
+
+- LIMIT分页: 使用TOP或OFFSET/FETCH替代. 支持"LIMIT 20" / "LIMIT 100,20"两种语法.
+- group_concat函数: 使用string_agg替代(须sqlserver 2017以上版本). 支持order by / separator子句.
+- if/ifnull函数: 使用iis/isnull替代等
+
+@var conf_mssql_useOdbc = false
+
+默认通过pdo_sqlsrv驱动连接mssql，若通过pdo_odbc连接，应设置为true
+*/
+$GLOBALS["conf_mssql_translateMysql"] = true;
+$GLOBALS["conf_mssql_useOdbc"] = false;
+
+$GLOBALS["conf_httpCallAsyncPort"] = 80;
 // }}}
 
 // load user config
@@ -964,6 +1024,9 @@ function Q($s, $env=null)
 		return "null";
 	if ($env === null)
 		$env = getJDEnv();
+	if ($env->DBTYPE == "mssql") {
+		return "N'" . str_replace("'", "''", $s) . "'";
+	}
 	$dbh = $env->DBH;
 	if ($dbh == null) {
 		return qstr($s, "'");
@@ -1782,11 +1845,21 @@ class DBEnv
 		$fetchMode = $assoc? PDO::FETCH_ASSOC: PDO::FETCH_NUM;
 		$allRows = [];
 		do {
-			$rows = $sth->fetchAll($fetchMode);
+			try {
+				$rows = $sth->fetchAll($fetchMode);
+			}
+			catch (PDOException $ex) {
+                // NOTE: mssql (unixodbc) 执行'sp_help Cinf'时, nextRowSet未能返回false导致错误
+				// SQLSTATE[24000]: Invalid cursor state
+				// SQLSTATE[IMSSP]: The active result for the query contains no fields
+				if ($ex->getCode() == 24000 || $ex->getCode() == "IMSSP")
+					break;
+				throw $ex;
+			}
 			$DBH->amendLog("cnt=". count($rows));
 			$allRows[] = $rows;
 			// bugfix:sqlite不支持nextRowSet
-			if ($this->DBTYPE = "sqlite")
+			if ($this->DBTYPE == "sqlite")
 				break;
 		}
 		while ($sth->nextRowSet());
@@ -2356,6 +2429,8 @@ function name2id($refNameFields, $refIdField, $refTable, $nameFields, $opt = [])
 	++ $env->DBH->skipLogCnt;  // 若要忽略两条就用 $env->DBH->skipLogCnt+=2
 	$env->DBH->exec('set names utf8mb4'); // 也可以是queryOne/execOne等函数。
 
+设置`$GLOBALS["conf_disableSkipLog"]=1`可忽略skipLogCnt机制，常用于数据库底层调试。
+
 @see queryAll,execOne,dbconn
  */
 class JDPDO extends PDO
@@ -2376,6 +2451,18 @@ class JDPDO extends PDO
 	}
 	function addLimit1(&$sql) {
 	}
+	// mysql style
+	function paging(&$sql, $limit, $offset=0) {
+		if ($offset == 0) {
+			$sql .= "\nLIMIT $pagesz";
+		}
+		else {
+			$sql .= "\nLIMIT $offset, $pagesz";
+		}
+	}
+	function acceptAliasInOrderBy() {
+		return true;
+	}
 	// end
 
 	function __construct($dsn, $user = null, $pwd = null)
@@ -2390,8 +2477,9 @@ class JDPDO extends PDO
 	{
 		if ($this->skipLogCnt > 0) {
 			-- $this->skipLogCnt;
-			$this->logH = null;
-			return;
+			//$this->logH = null;
+			if (! $GLOBALS["conf_disableSkipLog"])
+				return;
 		}
 		$env = getJDEnv();
 		$this->logH = $env->addLog($str, 9);
@@ -2432,11 +2520,11 @@ class JDPDO extends PDO
 		}, $sql);
 	}
 
-	function query($sql)
+	function query($sql, $fetchMode=0)
 	{
 		$this->filterSql($sql);
 		$this->addLog($sql);
-		return parent::query($sql);
+		return parent::query($sql, $fetchMode);
 	}
 	function exec($sql, $getInsertId = false)
 	{
@@ -2444,7 +2532,7 @@ class JDPDO extends PDO
 		$this->addLog($sql);
 		$rv = parent::exec($sql);
 		if ($getInsertId)
-			$rv = (int)parent::lastInsertId();
+			$rv = (int)$this->lastInsertId();
 
 		if ($this->logH)
 			$this->amendLog($getInsertId? "new id=$rv": "cnt=$rv");
@@ -2476,6 +2564,47 @@ class JDPDO_mysql extends JDPDO
 
 class JDPDO_mssql extends JDPDO
 {
+	function initConn() {
+		$this->skipLogCnt += 1;
+		$this->exec('SET ansi_warnings OFF'); // disable truncate error
+	}
+	function paging(&$sql, $limit, $offset=0) {
+		if ($offset == 0) {
+			$sql = preg_replace('/^SELECT \K/i',  "TOP $limit ", $sql);
+		}
+		else {
+			$sql .= "\nOFFSET $offset ROWS FETCH NEXT $limit ROWS ONLY";
+# 			$body = $ms[1];
+# 			$orderby = "ORDER BY t0.id";
+# 			if (preg_match('/ORDER\s+BY [\.|\w]+(\s*,\s*[\.|\w]+)*/i', $body, $ms1)) {
+# 				$orderby = $ms1[0];
+# 			}
+# 			$offset2 = $offset + $limit;
+# 			$sql = "SELECT * FROM (SELECT ROW_NUMBER() OVER($orderby) _row, {$body}) t0 WHERE _row BETWEEN {$offset} AND {$offset2}";
+		}
+	}
+
+	function lastInsertId($seqName = null) {
+		if (! $GLOBALS["conf_mssql_useOdbc"])
+			return PDO::lastInsertId($seqName);
+		// 不用$this->query, 避免log和额外处理
+		// !!!NOTE: unixodbc下mssql驱动有bug, SCOPE_IDENTITY()返回空，只能暂时用@@IDENTITY替代. 
+		// 注意INSERT时若存在trigger可能会导致id返回错误。
+        //$sth = PDO::query("SELECT SCOPE_IDENTITY()");
+        $sth = PDO::query("SELECT @@IDENTITY");
+		$row = $sth->fetch(PDO::FETCH_NUM);
+		return $row[0];
+	}
+
+	function query($s, $fetchMode=0) {
+		if ($GLOBALS["conf_mssql_translateMysql"])
+			MssqlCompatible::translateMysqlToMssql($s);
+	    return parent::query($s, $fetchMode);
+	}
+
+	function acceptAliasInOrderBy() {
+		return false;
+	}
 }
 
 class JDPDO_oracle extends JDPDO

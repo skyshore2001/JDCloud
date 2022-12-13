@@ -1871,7 +1871,12 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 					$this->addRes($col1);
 				}
 			}
-			$cols[] = $alias ?: $col;
+			if ($this->env->DBH->acceptAliasInOrderBy()) {
+				$cols[] = $alias ?: $col;
+			}
+			else {
+				$cols[] = $this->vcolMap[$col]["def"] ?: $col;
+			}
 		}
 		if ($gres)
 			$this->sqlConf["gres"] = join(",", $cols);
@@ -1892,8 +1897,11 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 				$col1 = $ms[1];
 				// 注意：与cond不同，orderby使用了虚拟字段，应在res中添加。而cond中是直接展开了虚拟字段。因为where条件不支持虚拟字段。
 				// 故不用：$this->addVCol($col1, true, '-'); 但应在处理完后删除辅助字段，避免多余字段影响导出文件等场景。
-				if (isset($this->userRes[$col1]) || $this->addVCol($col1, true, null, true) !== false)
+				if (isset($this->userRes[$col1]) || $this->addVCol($col1, true, null, true) !== false) {
+					//if (! $this->env->DBH->acceptAliasInOrderBy())
+					//	return $this->vcolMap[$col1]["def"] ?: $col1;
 					return $col1;
+				}
 				return "t0." . $col1;
 			}, $col);
 			$colArr[] = $col;
@@ -2848,12 +2856,14 @@ FROM ($sql) t0";
 			// no limit
 		}
 		else if ($enablePartialQuery) {
-			$sql .= "\nLIMIT " . $pagesz;
+			$this->env->DBH->paging($sql, $pagesz);
+			//$sql .= "\nLIMIT " . $pagesz;
 		}
 		else {
 			if (! $pagekey)
 				$pagekey = 1;
-			$sql .= "\nLIMIT " . ($pagekey-1)*$pagesz . "," . $pagesz;
+			$this->env->DBH->paging($sql, $pagesz, ($pagekey-1)*$pagesz);
+			//$sql .= "\nLIMIT " . ($pagekey-1)*$pagesz . "," . $pagesz;
 		}
 
 		if ($extSqlFn) {
