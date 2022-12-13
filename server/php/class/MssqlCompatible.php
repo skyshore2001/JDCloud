@@ -78,6 +78,13 @@ class MssqlCompatible
 			return $map[strtolower($ms[1])];
 		}, $sql);
 
+		// 'xxx' => N'xxx'
+		$sql = preg_replace_callback("/(N?)('(?:[^']|'')*')/us", function ($ms) {
+			if ($ms[1])
+				return $ms[0];
+			return "N" . $ms[2];
+		}, $sql);
+
 		// handle special name
 		$sql = preg_replace('/\b(user|proc)\b/i', '"$1"', $sql);
 	}

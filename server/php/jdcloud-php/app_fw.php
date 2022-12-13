@@ -238,6 +238,8 @@ $GLOBALS["conf_disableSkipLog"] = false;
 */
 $GLOBALS["conf_mssql_translateMysql"] = true;
 $GLOBALS["conf_mssql_useOdbc"] = false;
+
+$GLOBALS["conf_httpCallAsyncPort"] = 80;
 // }}}
 
 // load user config
@@ -2562,6 +2564,10 @@ class JDPDO_mysql extends JDPDO
 
 class JDPDO_mssql extends JDPDO
 {
+	function initConn() {
+		$this->skipLogCnt += 1;
+		$this->exec('SET ansi_warnings OFF'); // disable truncate error
+	}
 	function paging(&$sql, $limit, $offset=0) {
 		if ($offset == 0) {
 			$sql = preg_replace('/^SELECT \K/i',  "TOP $limit ", $sql);

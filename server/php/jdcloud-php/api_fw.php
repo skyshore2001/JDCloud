@@ -1360,6 +1360,10 @@ e.g. 修改ApiLog要记录的ac:
 			$X_RET_STR = jsonEncode($ret, $env->TEST_MODE);
 		$logLen = $ret[0] !== 0? 2000: 200;
 		$content = $this->myVarExport($X_RET_STR, $logLen);
+		$batchAc = $this->batchAc;
+		if ($batchAc && mb_strlen($this->batchAc)>50) {
+			$batchAc = mb_substr($this->batchAc, 0, 50);
+		}
 
 		++ $env->DBH->skipLogCnt;
 		$data = [
@@ -1368,7 +1372,7 @@ e.g. 修改ApiLog要记录的ac:
 			"ressz" => strlen($X_RET_STR),
 			"res" => dbExpr(Q($content, $env)),
 			"userId" => $this->userId ?: $this->getUserId(),
-			"ac" => $this->batchAc // 默认为null；对batch调用则列出详情
+			"ac" => $batchAc // 默认为null；对batch调用则列出详情
 		];
 		if ($this->updateLog)
 			$data = $this->updateLog + $data;
@@ -1994,7 +1998,10 @@ function delSessionById($sessionIds)
 		"msg" => "验证码为1234"
 	]);
 
-未指定主机时，固定连接127.0.0.1:80，若其它端口请修改源码。
+未指定主机时，固定连接127.0.0.1:80，若其它端口可在conf.user.php中配置:
+
+	$GLOBALS["conf_httpCallAsyncPort"] = 8080;
+
 目前内部callAsync/callSvcAsync会用到它。
 
 调用其它系统可指定完整URL，支持http或https：
@@ -2008,7 +2015,7 @@ TODO: 如果给定postParams，目前content-type固定使用application/json. �
 function httpCallAsync($url, $postParams = null)
 {
 	$host = '127.0.0.1';
-	$port = 80; // 不要试图用$_SERVER["PORT"], 当用https访问时还是拿不到端口号
+	$port = $GLOBALS["conf_httpCallAsyncPort"]; // 不要试图用$_SERVER["PORT"], 当用https访问时还是拿不到端口号
 	$isSsl = false;
 	$rv = parse_url($url);
 	if (isset($rv['scheme'])) {
