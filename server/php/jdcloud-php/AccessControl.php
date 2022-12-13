@@ -1898,8 +1898,8 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 				// 注意：与cond不同，orderby使用了虚拟字段，应在res中添加。而cond中是直接展开了虚拟字段。因为where条件不支持虚拟字段。
 				// 故不用：$this->addVCol($col1, true, '-'); 但应在处理完后删除辅助字段，避免多余字段影响导出文件等场景。
 				if (isset($this->userRes[$col1]) || $this->addVCol($col1, true, null, true) !== false) {
-					if (! $this->env->DBH->acceptAliasInOrderBy())
-						return $this->vcolMap[$col1]["def"];
+					//if (! $this->env->DBH->acceptAliasInOrderBy())
+					//	return $this->vcolMap[$col1]["def"] ?: $col1;
 					return $col1;
 				}
 				return "t0." . $col1;
