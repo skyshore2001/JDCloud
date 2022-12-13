@@ -2458,6 +2458,9 @@ class JDPDO extends PDO
 			$sql .= "\nLIMIT $offset, $pagesz";
 		}
 	}
+	function acceptAliasInOrderBy() {
+		return true;
+	}
 	// end
 
 	function __construct($dsn, $user = null, $pwd = null)
@@ -2591,6 +2594,10 @@ class JDPDO_mssql extends JDPDO
 		if ($GLOBALS["conf_mssql_translateMysql"])
 			MssqlCompatible::translateMysqlToMssql($s);
 	    return parent::query($s, $fetchMode);
+	}
+
+	function acceptAliasInOrderBy() {
+		return false;
 	}
 }
 
