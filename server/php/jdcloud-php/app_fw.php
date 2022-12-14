@@ -2459,13 +2459,13 @@ class JDPDO extends PDO
 	// mysql style
 	function paging(&$sql, $limit, $offset=0) {
 		if ($offset == 0) {
-			$sql .= "\nLIMIT $pagesz";
+			$sql .= "\nLIMIT $limit";
 		}
 		else {
-			$sql .= "\nLIMIT $offset, $pagesz";
+			$sql .= "\nLIMIT $offset, $limit";
 		}
 	}
-	function acceptAliasInOrderBy() {
+	function acceptAliasInGroupBy() {
 		return true;
 	}
 	// end
@@ -2607,7 +2607,7 @@ class JDPDO_mssql extends JDPDO
 	    return parent::query($s, $fetchMode);
 	}
 
-	function acceptAliasInOrderBy() {
+	function acceptAliasInGroupBy() {
 		return false;
 	}
 }
