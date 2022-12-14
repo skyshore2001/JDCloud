@@ -1956,10 +1956,15 @@ class DBEnv
 			$this->addLog("no field found to be set: $table");
 		}
 		else {
-			if (isset($condStr))
-				$sql = sprintf("UPDATE %s SET %s WHERE %s", $table, $kvstr, $condStr);
-			else
+			if (preg_match('/^(\w+) t0\b/u', $table) && $this->DBTYPE == "mssql") {
+				$sql = sprintf("UPDATE t0 SET %s FROM %s", $kvstr, $table);
+			}
+			else {
 				$sql = sprintf("UPDATE %s SET %s", $table, $kvstr);
+			}
+			if (isset($condStr)) {
+				$sql .= "\nWHERE " . $condStr;
+			}
 			$cnt = $this->execOne($sql);
 		}
 		return $cnt;

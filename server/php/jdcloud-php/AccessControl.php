@@ -3350,10 +3350,16 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 	function api_delIf()
 	{
 		$rv = $this->genCondSql();
-		$sql = $this->delField === null
-			? sprintf("DELETE t0 FROM %s WHERE %s", $rv["tblSql"], $rv["condSql"])
-			: sprintf("UPDATE %s SET t0.%s=1 WHERE %s AND t0.%s=0", $rv["tblSql"], $this->delField, $rv["condSql"], $this->delField);
-		$cnt = execOne($sql);
+		if ($this->delField === null) {
+			$sql = sprintf("DELETE t0 FROM %s WHERE %s", $rv["tblSql"], $rv["condSql"]);
+			$cnt = execOne($sql);
+		}
+		else {
+			$cond = "{$rv["condSql"]} AND {$this->delField}=0";
+			$cnt = dbUpdate($rv["tblSql"], [
+				"t0.{$this->delField}" => 1
+			], $cond);
+		}
 		return $cnt;
 	}
 
