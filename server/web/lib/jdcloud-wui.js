@@ -7757,7 +7757,7 @@ WUI.showDlg的简化版本，通过直接指定组件创建对话框。返回动
 
 示例：
 
-	var itemArr = [
+	var meta = [
 		// title, dom, hint?
 		{title: "接口名", dom: "<input name='ac' required>", hint: "示例: Ordr.query"},
 		{title: "参数", dom: "<textarea name='param' rows=5></textarea>", hint: '示例: {cond: {createTm: ">2020-1-1"}, res: "count(*) cnt", gres: "status"}'}

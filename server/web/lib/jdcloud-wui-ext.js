@@ -1873,6 +1873,8 @@ protected function onQuery() {
 
 - approveEmpId: 审批人
 
+示例：显示审批菜单，在发起审批时，若未指定审批人则自动填写审批人
+
 	function canApprove_WO(row) {
 		return g_data.userInfo.id == row.approveEmpId || g_data.hasRole("mgr,售后审核");
 	}
@@ -1881,8 +1883,8 @@ protected function onQuery() {
 		canApprove: function (row) {
 			return canApprove_WO(row);
 		},
-		// data: 待保存的新数据(data.approveFlag为新状态), row: 原数据
-		onSet: function (row, data) {
+		// data: 待保存的新数据(data.approveFlag为新状态), row: 原数据, title: 当前菜单项名称，比如“发起审批”
+		onSet: function (row, data, title) {
 			// 发起审批时，自动填写审批人
 			if (data.approveFlag ==1 && row.approveEmpId == null) {
 				var empId = callSvrSync("Employee.query", {fmt: "one?", res: "id", role:"售后审核"});
@@ -1898,7 +1900,7 @@ protected function onQuery() {
 	};
 	jtbl.datagrid(dgOpt);
 
-对话框上approveFlag设置示例：
+做二次开发时，对话框上approveFlag设置示例：
 
 	{
 		disabled: e => canApprove_WO(e),
@@ -1913,6 +1915,72 @@ protected function onQuery() {
 		disabled: e => canApprove_WO(e)
 	}
 
+上面例子中用callSvrSync是使用同步方式来取数据的，更好的写法是直接用异步的callSvr。
+onSet回调支持异步，
+异步写法1：使用async/await。
+
+		onSet: async function (row, data) {
+			if (data.approveFlag ==1 && row.approveEmpId == null) {
+				var empId = await callSvr("Employee.query", {fmt: "one?", res: "id", role:"售后审核"});
+				if (empId)
+					data.approveEmpId = empId;
+			}
+		}
+
+异步写法2：返回一个Deferred对象(callSvr函数刚好返回Deferred对象)
+
+		onSet: function (row, data) {
+			if (data.approveFlag ==1 && row.approveEmpId == null) {
+				var dfd = callSvr("Employee.query", {fmt: "one?", res: "id", role:"售后审核"});
+				dfd.then(function (empId) {
+					if (empId)
+						data.approveEmpId = empId;
+				});
+				return dfd;
+			}
+		}
+
+示例：审批时弹出对话框，可输入备注(approveCmt)
+在onSet中使用WUI.showDlgByMeta弹出自定义对话框，显然是异步操作，需要返回dfd对象。
+
+	function canApprove_WO(row) {
+		return g_data.userInfo.id == row.approveEmpId || g_data.hasRole("mgr,售后审核");
+	}
+	var btnApprove = ["approve", {
+		obj: "WarrantyOrder",
+		canApprove: function (row) {
+			return canApprove_WO(row);
+		},
+		// data: 待保存的新数据(data.approveFlag为新状态), row: 原数据, title: 当前菜单项名称，比如“发起审批”
+	
+		onSet: function (row, data, title) {
+			var dfd = $.Deferred();
+			var meta = [
+				// title, dom, hint?
+				{title: "备注", dom: "<textarea name='approveCmt' rows=5></textarea>", hint: '选填，将添加到备注列表中'}
+			];
+			var jdlg = WUI.showDlgByMeta(meta, {
+				title: title,
+				onOk: async function (data1) {
+					// 发起审批时，自动填写审批人
+					if (data.approveFlag ==1 && row.approveEmpId == null) {
+						var empId = await callSvr("Employee.query", {fmt: "one?", res: "id", role:"售后审核"});
+						if (empId)
+							data.approveEmpId = empId;
+					}
+					if (data1.approveCmt) {
+						data.cmts = [
+							{text: data1.approveCmt}
+						];
+					}
+					dfd.resolve();
+					WUI.closeDlg(jdlg);
+				}
+			});
+			return dfd;
+		}
+	}];
+
  */
 	approve: function (ctx, opt) {
 		self.assert(opt.obj, "approve: opt.obj: 选项obj未指定");
@@ -1926,27 +1994,41 @@ protected function onQuery() {
 				var row = WUI.getRow(ctx.jtbl);
 				if (!row)
 					return;
-				var status = parseInt(o.id.replace('ap', '')); // "ap1" => 1
-				var status0 = row.approveFlag;
-				if (status == status0) {
-					app_alert("状态相符，无须操作", "w");
+				// approveFlag: 0: "无审批", 1: "待审批", 2: "通过", 3: "不通过"
+				var approveFlag = parseInt(o.id.replace('ap', '')); // "ap1" => 1
+				var approveFlag0 = row.approveFlag;
+				if (approveFlag == approveFlag0) {
+					app_alert("已经是\"" + ApproveFlagMap[approveFlag] + "\"状态，无须操作。", "w");
 					return;
 				}
-				var data = {approveFlag: status};
+				if ((approveFlag == 2 || approveFlag == 3) && approveFlag0 == 0) {
+					app_alert("请先[发起审批]后（状态为\"待审批\"）再操作。", "w");
+					return;
+				}
+				var data = {approveFlag: approveFlag};
 				var canApprove = opt.canApprove && opt.canApprove(row);
 				if (!canApprove) {
-					if (status == 1 && (status0 == 0 || status0 == 3)) {
+					if (approveFlag == 1 && (approveFlag0 == 0 || approveFlag0 == 3)) {
 					}
 					else {
 						app_alert("无权限操作", "w");
 						return;
 					}
 				}
-				opt.onSet && opt.onSet(row, data);
-				callSvr(opt.obj + ".set", {id: row.id}, function () {
-					app_show("操作成功");
-					WUI.reloadRow(ctx.jtbl, row);
-				}, data);
+				var rv = opt.onSet && opt.onSet(row, data, o.text);
+				if (rv && rv.then) {
+					rv.then(done);
+				}
+				else {
+					done();
+				}
+
+				function done() {
+					callSvr(opt.obj + ".set", {id: row.id}, function () {
+						app_show("操作成功");
+						WUI.reloadRow(ctx.jtbl, row);
+					}, data);
+				}
 			}
 		})
 		return {text: "审批", iconCls:"icon-more", class:"menubutton", menu: jmnuApprove};
