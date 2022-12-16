@@ -229,6 +229,10 @@ input:disabled,select:disabled,textarea:disabled {
 	transform: rotate(180deg);
 }
 
+#menu .menu-expandable .menu-expandable {
+	border-left: 5px solid #32373d;
+	border-bottom: 5px solid #32373d;
+}
 #menu .menu-expandable {
 	background: #171717;
 }
