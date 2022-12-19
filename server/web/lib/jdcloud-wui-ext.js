@@ -3773,12 +3773,11 @@ $.extend(self.dg_toolbar, {
 
 	<input name="orderId" class="wui-combogrid wui-dialog-logic" data-options="$.extend(ListOptions.UserGrid(), readonlyForSet:true)">
 
-logic中支持readonly选项，也支持readonlyForAdd/readonlyForSet这些特定模式的选项，它们既可以设置为一个值，也可以是一个函数（或lambda），原型为：
+logic中支持readonly选项，也支持readonlyForAdd/readonlyForSet这些特定模式的选项，它们既可以设置为一个值，也可以是一个函数`fn(data, gn)`（或等价的lambda表达式）:
 
-	// data为当前数据，可通过 WUI.getTopDialog().jdata().logicData.data 来实时查看；
-	// gn为字段操作器，用于手工操作其它字段。
-	logicFn(data, gn)
-	// 对于readonly/show等选项，返回值非undefined时有效; 对于value选项，仅当函数返回非undefined/false才会设置值；
+- 参数data: 当前对象的数据，可通过 WUI.getTopDialog().jdata().logicData.data 来实时查看；
+- 参数gn: 字段访问器，可用于操作其它字段。比如`gn("name").val()`取name字段值；参考[getFormItem]。
+- 返回值: 对于readonly/show等选项，无返回值(undefined)时表示不设置，否则将返回值转换为true/false; 对于value选项，仅当函数返回非undefined/false才会设置值；
 
 如果同时指定了readonly和readonlyForAdd选项，则当添加模式时优先用readonlyForAdd选项，其它模式也类似。
 
@@ -3797,12 +3796,12 @@ logic中支持readonly选项，也支持readonlyForAdd/readonlyForSet这些特�
 
 示例：添加时自动填写
 
-	填当前日期：
+	填当前日期：直接设置值
 	valueForAdd: new Date().format("D")
 
-或指定lambda或函数：
-
+	或指定lambda或函数：
 	valueForAdd: () => new Date().format("D")
+	（与直接指定值的区别是每次打开对话框时都会计算）
 
 	填当前操作员：
 	valueForAdd: () => g_data.userInfo.id
@@ -3851,15 +3850,15 @@ watch选项会刷新disabled/readonly/show/value系列选项中的表达式。
 
 ### 从下拉列表中取值
 
-示例：对于商品字段(名字name=itemId，是个wui-combogrid下拉框组件，有id,name,price三列)，如果从下拉列表中选择了一个商品，则自动更新价格(price字段):
+示例：商品字段(itemId)使用下拉数据表(wui-combogrid下拉框组件)显示，有id,name,price三列，如果从下拉列表中选择了一个商品，则自动用选中行的price列来更新对话框上的price字段:
 
 	WUI.setDlgLogic(jdlg, "price", {
 		value: e => e.eventData_itemId?.price,
 		watch: "itemId"
 	});
 
-当选择商品后（itemId字段），可以从e.eventData_itemId数据中取到下拉列表的值，如`e.eventData_itemId.price`；
-使用`e.eventData_itemId?.price`表示当`e.eventData_itemId`不存在时(结果将返回undefined)不去修改值，也可以用`e.eventData_itemId && e.eventData_itemId.price`。
+当选择商品后，可以从e.eventData_itemId数据中取到下拉列表的值（其中itemId是下拉列表对应的字段名），如`e.eventData_itemId.price`；
+`e.eventData_itemId?.price`中的`?.`是ES6写法，相当于`e.eventData_itemId && e.eventData_itemId.price`（如果e.eventData_itemId有值时再取e.eventData_itemId.price，避免字段为空报错）。
 
 类似地，如果是其它字段变化，则可以从`e.eventData_{字段名}`中取值。my-combobox组件下拉时也是返回选择行对应的数据。
 
