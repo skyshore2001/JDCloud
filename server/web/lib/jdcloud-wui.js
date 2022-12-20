@@ -4592,11 +4592,11 @@ function getexp(k, v, hint)
 
 在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。
 
-(v5.5) value支持用数组表示范围（前闭后开区间），主要内部使用：
+(v5.5) value支持用数组表示范围（前闭后开区间），特别方便为起始、结束时间生成条件：
 
 	var cond = getQueryCond({tm: ["2019-1-1", "2020-1-1"]}); // 生成 "tm>='2019-1-1' AND tm<'2020-1-1'"
-	var cond = getQueryCond({tm: [null, "2020-1-1"]}); // 生成 "tm<'2020-1-1'"
-	var cond = getQueryCond({tm: [null, null]); // 返回null
+	var cond = getQueryCond({tm: [null, "2020-1-1"]}); // 生成 "tm<'2020-1-1'"。数组中任一值为null或''都一样会被忽略。
+	var cond = getQueryCond({tm: [null, null]); // 返回空串''
 
 @see getQueryParam
 @see getQueryParamFromTable 获取datagrid的当前查询参数

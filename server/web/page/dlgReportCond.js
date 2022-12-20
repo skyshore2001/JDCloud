@@ -7,10 +7,12 @@
 - meta: 用于追加动态字段, 参考WUI.showByMeta
 - inst: 实例名，与meta配合使用，不同场景配不同meta.
 
-用于显示查询对话框，默认包含startDt, endDt字段。
+用于显示查询对话框，默认包含tm1, tm2字段对应用户输入的开始、结束时间。
+可以用WUI.getQueryCond生成查询条件，它支持任意一个字段为空的情况下也能生成正确的条件表达式。
 
 	DlgReportCond.show(function (data) {
-		console.log(data);
+		var cond = WUI.getQueryCond({tm: [data.tm1, data.tm2]});
+		console.log(data, cond); // 示例: data={tm1: "2021-1-1 8:00", tm2: ""}, cond="tm>='2021-1-1 8:00'"
 	})
 
 也可以增加自定义字段：
@@ -21,7 +23,9 @@
 		{title: "订单号", dom: "<textarea name='param' rows=5></textarea>", hint: '每行一个订单号'}
 	];
 	DlgReportCond.show(function (data) {
-		console.log(data);
+		console.log(data); // data中增加了status和param字段(如果没有填写则没有)
+		var cond = WUI.getQueryCond({tm: [data.tm1, data.tm2], status: data.status, param: data.param});
+		console.log(cond);
 	}, meta)
 
 如果有多个不同的使用场景，对应的自定义字段不同，可以指定实例名来实现，如订单和工单的查询条件有些不同，可分开写：
