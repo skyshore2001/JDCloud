@@ -1821,9 +1821,24 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 						return "t0." . $col1;
 					}, $expr);
 
-					// `COUNTIF(status='RE')` => `COUNT(IF(a>1, 1, null))`
+					// `COUNTIF(status='RE')` => `COUNT(IF(status='RE', 1, null))`
+					// `COUNTIF(status='RE', sn)` => `COUNT(IF(status='RE', sn, null))`
+					// `COUNTIF(status='RE', DISTINCT sn)` => `COUNT(DISTINCT IF(status='RE', sn, null))`
 					if ($fn == "COUNTIF") {
-						$col = 'COUNT(IF(' . $expr . ',1,NULL)) ' . $alias;
+						$distinct = false;
+						$field = '1';
+						if (preg_match('/^(.+)?,\s*(distinct )?(.+)$/i', $expr, $ms)) {
+							$expr = $ms[1];
+							if ($ms[2])
+								$distinct = true;
+							$field = $ms[3];
+						}
+						if ($distinct) {
+							$col = "COUNT(DISTINCT IF($expr,$field,NULL)) $alias";
+						}
+						else {
+							$col = "COUNT(IF($expr,$field,NULL)) $alias";
+						}
 					}
 					// `SUMIF(status='RE', amount)` => `SUM(IF(status='RE', amount, 0))`
 					else if ($fn == "SUMIF") {
