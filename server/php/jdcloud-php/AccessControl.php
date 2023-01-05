@@ -3034,7 +3034,7 @@ FROM ($sql) t0";
 			return $ret1;
 		}
 		else {
-			$ret = objarr2table($ret, $fixedColCnt);
+			$ret = objarr2table($ret, $fixedColCnt, array_keys($this->userRes));
 		}
 		if (isset($nextkey)) {
 			$ret["nextkey"] = $nextkey;

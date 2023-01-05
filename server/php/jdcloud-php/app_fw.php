@@ -783,7 +783,41 @@ function getRsAsTable($sql)
 }
 
 /**
-@fn objarr2table ($objarr, $fixedColCnt=null)
+@fn sortBySeq($arr, $seq)
+
+确保$arr数组中元素顺序与$seq数组中一致。
+示例：
+
+	$arr = ["id","age","name","prop"]
+	sortBySeq($arr, ["name", "age", "score"]);
+	// $arr为 ["id","name","age","prop"]
+
+注意: $seq中未指定的元素(如上例$arr中的"prop")，或是多指定的元素(如"score"在$arr中不存在)，都忽略不管，最终确保$arr中顺序与$seq不冲突即可。
+
+算法: 重新赋值$arr中在$seq指定的元素，如上例中重新赋值两个：
+
+	$arr[1]="name";
+	$arr[2]="age";
+*/
+function sortBySeq(&$arr, $seq)
+{
+	$idxArr = [];
+	$seq1 = [];
+	foreach ($seq as $e) {
+		$i = array_search($e, $arr);
+		if ($i !== false) {
+			$idxArr[] = $i;
+			$seq1[] = $e;
+		}
+	}
+	sort($idxArr);
+	foreach ($idxArr as $i) {
+		$arr[$i] = array_shift($seq1);
+	}
+}
+
+/**
+@fn objarr2table ($objarr, $fixedColCnt=null, $seq=null)
 
 将objarr格式转为table格式, 如：
 
@@ -821,10 +855,12 @@ function getRsAsTable($sql)
 			]
 		]
 
+可选参数$seq是个数组，可指定列顺序，如上例中指定$seq=`["name", "id"]`，则最终的列数组将为`["name", "id", "flag_v", "flag_r"]`。
+
 @see table2objarr
 @see varr2objarr
 */
-function objarr2table($rs, $fixedColCnt=null)
+function objarr2table($rs, $fixedColCnt=null, $seq = null)
 {
 	$h = [];
 	$d = [];
@@ -844,6 +880,11 @@ function objarr2table($rs, $fixedColCnt=null)
 			}
 		}
 	}
+	// 确保按$seq中指定的列顺序. 
+	if ($seq) {
+		sortBySeq($h, $seq);
+	}
+
 	$n = 0;
 	foreach ($rs as $row) {
 		$d[] = [];
