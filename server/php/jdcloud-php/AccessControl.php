@@ -921,6 +921,8 @@ query接口子查询示例：
 		...
 	}
 
+当query接口没有指定orderby参数时，使用$defaultSort排序；例外：对分组查询未指定orderby参数时（即指定有gres参数时），是不会加默认排序的。
+
 ### 缺省输出字段列表
 
 @var AccessControl::$defaultRes (for query)指定缺省输出字段列表. 如果不指定，则为"*", 即 "t0.*" 加默认虚拟字段(指定default=true的字段)
