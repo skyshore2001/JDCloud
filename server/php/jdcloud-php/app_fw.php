@@ -2619,6 +2619,8 @@ class JDPDO_mssql extends JDPDO
 			$sql = preg_replace('/^SELECT \K/i',  "TOP $limit ", $sql);
 		}
 		else {
+			if (!preg_match('/(ORDER\s+BY.*?) \s* $/isx', $sql))
+				jdRet(E_SERVER, "bad sql: require ORDER BY for paging");
 			$sql .= "\nOFFSET $offset ROWS FETCH NEXT $limit ROWS ONLY";
 # 			$body = $ms[1];
 # 			$orderby = "ORDER BY t0.id";
