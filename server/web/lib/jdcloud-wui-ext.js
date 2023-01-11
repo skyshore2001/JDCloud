@@ -1035,6 +1035,11 @@ function enhanceMenu()
 	if (jo.hasClass("wui-enhanced"))
 		return;
 	jo.addClass("wui-enhanced");
+	jo.find("a").each(function () {
+		if (! $(this).attr("wui-perm")) {
+			$(this).attr("wui-perm", $(this).text());
+		}
+	});
 	WUI.enhanceLang(jo.find("a, a span"));
 
 	// set active
@@ -1677,7 +1682,7 @@ function applyPermission()
 		var doShow = defaultShow;
 		var allHidden = true;
 		jo.find(">.menu-expandable>a").each(function () {
-			var t = $(this).text();
+			var t = $(this).attr("wui-perm") || $(this).text();
 			if (WUI.canDo(t, null, doShowGroup)) {
 				doShow = true;
 				allHidden = false;
