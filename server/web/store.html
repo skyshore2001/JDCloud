@@ -12,7 +12,6 @@
 <link rel="stylesheet" type="text/css" href="font-icon/css/font-awesome.css">
 
 <script language="javascript" src="lib/easyui/jquery.easyui.min.js" type="text/javascript" charset="utf-8"></script>
-<script language="javascript" src="lib/easyui/locale/easyui-lang-zh_CN.js" type="text/javascript" charset="utf-8"></script>
 
 <script src="lib/jdcloud-wui.js"></script>
 <script src="lib/jdcloud-wui-ext.js"></script>
@@ -67,7 +66,7 @@ menu-expand-group下第一个a为菜单组标题，可加"expanded"类使其默�
 	<a href="javascript:showDlgChpwd()"><span><i class="fa fa-user-times"></i>修改密码</span></a>
 </div>
 
-<div id="main" region="center" title="<div class='my-title' style='float:left'>管理端</div> <div style='float:right'><span class='user-name'>用户</span> | <a href='javascript:logout()'>退出</a></div>" style="visibility: hidden">
+<div id="main" region="center" title="<div class='my-title' style='float:left'>管理端</div> <div style='float:right'><span class='user-name'>用户</span> | <a href='javascript:logout()' class='lang'>退出</a></div>" style="visibility: hidden">
 	<div id="my-tabMain" class="easyui-tabs" fit=true>
 	</div>
 </div>
@@ -79,7 +78,7 @@ menu-expand-group下第一个a为菜单组标题，可加"expanded"类使其默�
 <div class="pageHome" title="首页" style="padding:5px" my-initfn="initPageHome">
 	<h2 class="my-title">管理端</h2>
 
-	<h3>用户</h3>
+	<h3 class="lang">用户</h3>
 	<table id="tblMe" style="width:auto;height:auto">
 		<thead><tr>
 			<th data-options="field:'id'">编号</th>
@@ -112,7 +111,7 @@ menu-expand-group下第一个a为菜单组标题，可加"expanded"类使其默�
 </style>
 	<div class="my-title"></div>
 	<form>
-		<table>
+		<table class="wui-form-table">
 			<tr>
 				<td>登录名</td>
 				<td><input name="uname" class="easyui-validatebox" required></td>
@@ -125,7 +124,8 @@ menu-expand-group下第一个a为菜单组标题，可加"expanded"类使其默�
 	</form>
 </div>
 
-<div id="dlgChpwd" title="修改密码" style="width:350px">  
+<script type="text/html" id="tpl_dlgChpwd">
+<div title="修改密码" style="width:350px">  
 	<form>
 		<table>
 			<tr>
@@ -143,6 +143,7 @@ menu-expand-group下第一个a为菜单组标题，可加"expanded"类使其默�
 		</table>
 	</form>
 </div>
+</script>
 
 <!-- dialogs }}} -->
 

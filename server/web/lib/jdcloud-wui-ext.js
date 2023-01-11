@@ -1035,6 +1035,7 @@ function enhanceMenu()
 	if (jo.hasClass("wui-enhanced"))
 		return;
 	jo.addClass("wui-enhanced");
+	WUI.enhanceLang(jo.find("a, a span"));
 
 	// set active
 	jo[0].addEventListener("click", function (ev) {
@@ -2060,7 +2061,7 @@ function createFindMenu(jtbl)
 			console.log(item);
 			if (item.id == "btnSave") {
 				var param = self.getQueryParamFromTable(jtbl);
-				app_alert("设置查询名称为? ", "p", function (queryName) {
+				app_alert(T("设置查询名称为? "), "p", function (queryName) {
 					if (items == null) {
 						items = [];
 					}
@@ -3194,7 +3195,7 @@ function showDataReport(opt, showPageOpt)
 {
 	self.assert(opt && opt.ac, "选项ac未指定");
 	opt = $.extend({
-		title: "统计报表",
+		title: T("统计报表"),
 		res: "COUNT(*) 数量",
 		gres: [],
 		gres2: [],

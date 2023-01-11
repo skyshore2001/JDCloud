@@ -1,5 +1,5 @@
 // ====== global {{{
-var APP_TITLE = "运营管理端";
+var APP_TITLE = T("运营管理端");
 var APP_NAME = "emp-adm";
 
 $.extend(WUI.options, {
@@ -7,8 +7,6 @@ $.extend(WUI.options, {
 	title: APP_TITLE,
 	onShowLogin: showDlgLogin
 });
-
-var g_data = {}; // {userInfo={id, storeId, perms,...}, hasPerm(perm)}
 
 // interface
 var DlgImport = {
@@ -155,29 +153,29 @@ function initPageHome()
 // ==== show dialog {{{
 function showDlgLogin()
 {
-	var jdlg = $("#dlgLogin");
-	WUI.showDlg(jdlg, {
+	WUI.showDlg("#dlgLogin", {
 		url: WUI.makeUrl("login"),
 		noCancel: true,
-		okLabel: '登录',
+		okLabel: T('登录'),
 
 		onOk: function (data) {
-			WUI.closeDlg(jdlg);
+			WUI.closeDlg(this);
 			handleLogin(data);
+		},
+		onShow: function (formMode, data) {
+			this.dialog("dialog").find("~.window-mask:first").addClass("loginPanel-mask");
 		}
 	});
-	jdlg.dialog("dialog").find("~.window-mask:first").addClass("loginPanel-mask");
 }
 
 function showDlgChpwd()
 {
-	var jdlg = $("#dlgChpwd");
-	WUI.showDlg(jdlg, {
+	WUI.showDlg("#dlgChpwd", {
 		url: WUI.makeUrl("chpwd"),
 
 		onOk: function (data) {
-			WUI.closeDlg(jdlg);
-			app_show('密码修改成功!');
+			WUI.closeDlg(this);
+			app_show(T('密码修改成功!'));
 		}
 	});
 }

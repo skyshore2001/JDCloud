@@ -17,8 +17,6 @@ WUI.options.moduleExt.showPage = function (name) {
 		return "page/" + name;
 }
 
-var g_data = {}; // { userInfo={id,uname} }
-
 // interface
 var DlgImport = {
 	data_: null,

@@ -1,7 +1,6 @@
 // ====== app shared 
 
 var DEFAULT_SEP = ',';
-var g_data = {}; // {userInfo={id,...} }
 
 $.extend(WUI.options, {
 	serverUrl: "../api.php"
@@ -22,8 +21,8 @@ var OrderStatusMap = {
 };
 
 var PermMap = {
-	mgr: "最高管理员",
-	emp: "管理员"
+	mgr: T("最高管理员"),
+	emp: T("管理员")
 };
 
 // 注意：与class "status-info", "status-warning"等保持一致。
@@ -65,7 +64,7 @@ function addTooltip(html, tooltip)
 // ==== functions {{{
 function setAppTitle(title, logo, icon)
 {
-	document.title = title;
+	WUI.options.title = document.title = title;
 	$(".my-title").html(title);
 	$(".header-bar .header-bar_name").html(title);
 	if (logo) {

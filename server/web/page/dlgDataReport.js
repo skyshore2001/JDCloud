@@ -13,7 +13,7 @@ function initDlgDataReport()
 	var jpage_ = null;
 	var param_ = null;  // WUI.showDataReport({ title, ac, res, cond, cond2, tmField, @gres, @gres2, showChart, detailPageName, detailPageParamArr, resFields, tmField, userCondArr })
 	var enumMap_ = null;
-	var title0 = jdlg.attr("title");
+	var title0 = T(jdlg.attr("title"));
 
 	var tmUnitArr = [
 		{name: "y,m,d", value: "y 年,m 月,d 日", title: "时间-年月日"},
@@ -84,7 +84,7 @@ function initDlgDataReport()
 
 			var param1 = WUI.getQueryParamFromTable(jtbl);
 			param = {
-				title: "统计报表-" + jpage.attr("title"),
+				title: T("统计报表") + ": " + jpage.attr("title"),
 				ac: url,
 				res: null,
 				cond: param1.cond,
@@ -110,7 +110,7 @@ function initDlgDataReport()
 		}
 		console.log(param);
 		opt.data = param_ = param;
-		opt.title = title0 + "-" + jpage.attr("title");
+		opt.title = title0 + ": " + jpage.attr("title");
 
 		setTimeout(onShow);
 

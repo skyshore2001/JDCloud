@@ -5127,14 +5127,14 @@ function defDataProc(rv)
 		if (g_data.testMode != val) {
 			g_data.testMode = val;
 			if (g_data.testMode)
-				modeStr = "测试模式";
+				modeStr = T("测试模式");
 			self.options.xparam = 0;
 		}
 		val = mCommon.parseValue(this.xhr_.getResponseHeader("X-Daca-Mock-Mode"));
 		if (g_data.mockMode != val) {
 			g_data.mockMode = val;
 			if (g_data.mockMode)
-				modeStr = "测试模式+模拟模式";
+				modeStr = T("测试模式") + "," + T("模拟模式");
 		}
 		if (modeStr) {
 			self.dfdLogin.then(function () {
@@ -5151,7 +5151,7 @@ function defDataProc(rv)
 	catch (e)
 	{
 		leaveWaiting(ctx);
-		var msg = "服务器数据错误。";
+		var msg = T("服务器数据错误。");
 		self.app_alert(msg);
 		ctx.dfd.reject.call(this, msg);
 		return;
@@ -5214,11 +5214,11 @@ function defDataProc(rv)
 			return RV_ABORT;
 		}
 		logError();
-		self.app_alert("操作失败：" + rv[1], "e");
+		self.app_alert(T("操作失败") + ": " + rv[1], "e");
 	}
 	else {
 		logError();
-		self.app_alert("服务器通讯协议异常!", "e"); // 格式不对
+		self.app_alert(T("服务器通讯协议异常!"), "e"); // 格式不对
 	}
 	return RV_ABORT;
 
@@ -6308,7 +6308,7 @@ function toggleBatchMode(val) {
 		m_batchMode = val;
 	else
 		m_batchMode = !m_batchMode;
-	app_alert("批量模式: " + (m_batchMode?"ON":"OFF"));
+	app_alert(T("批量模式") + ": " + (m_batchMode?"ON":"OFF"));
 	// 标题栏显示红色. 在style.css中设置#my-tabMain.batchMode.
 	self.tabMain.toggleClass("batchMode", m_batchMode);
 
@@ -6337,7 +6337,7 @@ function getRow(jtbl, silent)
 	var row = jtbl.datagrid('getSelected');
 	if (! row && ! silent)
 	{
-		self.app_alert("请先选择一行。", "w");
+		self.app_alert(T("请先选择一行。"), "w");
 		return null;
 	}
 	return row;
@@ -6806,9 +6806,9 @@ function showPage(pageName, title_or_opt, paramArr)
 		var title0 = jpage.attr("title") || "无标题";
 		var title = showPageOpt.title;
 		if (title == null)
-			title = title0;
+			title = T(title0);
 		else
-			title = title.replace('%s', title0);
+			title = T(title).replace('%s', title0);
 
 		var force = false;
 		if (title.substr(-1, 1) == "!") {
@@ -7736,7 +7736,7 @@ function showDlg(jdlg, opt)
 			if (opt.onOk) {
 				jfrm.trigger('retdata', [retData, formMode]);
 				if (opt.onOk === 'close') {
-					app_show("操作成功!");
+					app_show(T("操作成功!"));
 					WUI.closeDlg(jdlg);
 				}
 				else {
@@ -8070,7 +8070,7 @@ function batchOp(obj, ac, jtbl, opt)
 		return false;
 	}
 	if (batchOpMode === 2 && !m_batchMode && selArr.length == 0) {
-		self.app_alert("请先选择一行。", "w");
+		self.app_alert(T("请先选择一行。"), "w");
 		return false;
 	}
 
@@ -8921,7 +8921,7 @@ function showObjDlg(jdlg, mode, opt)
 			return;
 		}
 
-		self.app_confirm("确定要删除一条记录?", function (b) {
+		self.app_confirm(T("确定要删除一条记录?"), function (b) {
 			if (! b)
 				return;
 
@@ -8929,7 +8929,7 @@ function showObjDlg(jdlg, mode, opt)
 			self.callSvr(ac, {id: id}, function(data) {
 				if (jd.jtbl)
 					reload(jd.jtbl);
-				self.app_show('删除成功!');
+				self.app_show(T('删除成功!'));
 				onCrud();
 			});
 		});
@@ -9063,7 +9063,7 @@ function showObjDlg(jdlg, mode, opt)
 		var jbtns = jdlg.next(".dialog-button");
 		jchkClose = jbtns.find(".chkClose");
 		if (jchkClose.size() == 0) {
-			var jo = $("<label style='float:left'><input type='checkbox' class='chkClose'> 确定后关闭</label>").prependTo(jbtns);
+			var jo = $("<label style='float:left'><input type='checkbox' class='chkClose'> " + T("确定后关闭") + "</label>").prependTo(jbtns);
 			jchkClose = jo.find(".chkClose");
 
 			if (formMode == FormMode.forAdd) {
@@ -9150,7 +9150,7 @@ function showObjDlg(jdlg, mode, opt)
 			}
 		}
 		if (!opt.offline)
-			self.app_show('操作成功!');
+			self.app_show(T('操作成功!'));
 		onCrud();
 	}
 
@@ -9723,13 +9723,13 @@ function getDgInfo(jtbl, res)
 }
 
 window.YesNoMap = {
-	0: "否",
-	1: "是"
+	0: T("否"),
+	1: T("是")
 };
 window.YesNo2Map = {
-	0: "否",
-	1: "是",
-	2: "处理中"
+	0: T("否"),
+	1: T("是"),
+	2: T("处理中")
 };
 
 var Formatter = {
@@ -9828,9 +9828,9 @@ var Formatter = {
 */
 	flag: function (yes, no) {
 		if (yes == null)
-			yes = "是";
+			yes = T("是");
 		if (no == null)
-			no = "否";
+			no = T("否");
 		return function (value, row) {
 			if (value == null)
 				return;
@@ -10279,6 +10279,10 @@ CSS类, 可定义无数据提示的样式
 		if (this.datagridOpt) {
 			$.extend(opt, this.datagridOpt);
 		}
+		// support lang: 表头翻译
+		opt.columns[0].forEach(function (e) {
+			e.title = T(e.title);
+		});
 	},
 
 	// Decided in dgLoadFilter: 超过1页使用remoteSort, 否则使用localSort.
@@ -10450,7 +10454,7 @@ var GridHeaderMenu = {
 
 	filterGrid: function (jtbl) {
 		var param = self.getDgInfo(jtbl).param;
-		app_alert("查询条件(cond)? ", "p", function (cond) {
+		app_alert(T("查询条件(cond)? "), "p", function (cond) {
 			WUI.reload(jtbl, null, {cond: cond});
 		}, {defValue: param && param.cond});
 	},
@@ -10469,7 +10473,7 @@ var GridHeaderMenu = {
 	'import': function (jtbl) {
 		var param = self.getDgInfo(jtbl);
 		if (!param.obj) {
-			app_alert("该数据表不支持导入", "w");
+			app_alert(T("该数据表不支持导入"), "w");
 			return;
 		}
 		DlgImport.show({obj: param.obj}, function () {
@@ -10829,7 +10833,7 @@ var DefaultValidateRules = {
 		validator: function(v) {
 			return /^[0-9.-]+$/.test(v);
 		},
-		message: '必须为数字!'
+		message: T("validate.number") || '必须为数字!'
 	},
 	/*
 	workday: {
@@ -10841,43 +10845,43 @@ var DefaultValidateRules = {
 	*/
 	idcard: {
 		validator: checkIdCard,
-		message: '18位身份证号有误!'
+		message: T("validate.idcard") || '18位身份证号有误!'
 	},
 	uname: {
 		validator: function (v) {
 			return v.length>=4 && v.length<=16 && /^[a-z]\w+$/i.test(v);
 		},
-		message: "4-16位英文字母或数字，以字母开头，不能出现符号."
+		message: T("validate.uname") || "4-16位英文字母或数字，以字母开头，不能出现符号."
 	},
 	pwd: {
 		validator: function (v) {
 			return (v.length>=4 && v.length<=16) || v.length==32; // 32 for md5 result
 		},
-		message: "4-16位字母、数字或符号."
+		message: T("validate.pwd") || "4-16位字母、数字或符号."
 	},
 	equalTo: {
 		validator: function (v, param) { // param: [selector]
 			return v==$(this).closest("form").find(param[0]).val();
 		},
-		message: "两次输入不一致."
+		message: T("validate.equalTo") || "两次输入不一致."
 	},
 	cellphone: {
 		validator: function (v) {
 			return v.length==11 && !/\D/.test(v);
 		},
-		message: "手机号为11位数字"
+		message: T("validate.cellphone") || "手机号为11位数字"
 	},
 	datetime: {
 		validator: function (v) {
 			return /\d{4}-\d{1,2}-\d{1,2}( \d{1,2}:\d{1,2}(:\d{1,2})?)?/.test(v);
 		},
-		message: "格式为\"年-月-日 时:分:秒\"，时间部分可忽略"
+		message: T("validate.datetime") || "格式为\"年-月-日 时:分:秒\"，时间部分可忽略"
 	},
 	usercode: {
 		validator: function (v) {
 			return /^[a-zA-Z]/.test(v) || (v.length==11 && !/\D/.test(v)); 
 		},
-		message: "11位手机号或客户代码"
+		message: T("validate.usercode") || "11位手机号或客户代码"
 	}
 };
 
@@ -10957,6 +10961,27 @@ $.fn.linkbutton = function (a, b) {
 	return $.fn.linkbutton0.apply(this, arguments);
 }
 $.extend($.fn.linkbutton, $.fn.linkbutton0);
+
+if (g_args.lang != "dev") {
+$.fn.datebox.defaults.formatter = function(date){
+	var y = date.getFullYear();
+	var m = date.getMonth()+1;
+	var d = date.getDate();
+	return y+'-'+(m<10?('0'+m):m)+'-'+(d<10?('0'+d):d);
+};
+$.fn.datebox.defaults.parser = function(s){
+	if (!s) return new Date();
+	var ss = s.split('-');
+	var y = parseInt(ss[0],10);
+	var m = parseInt(ss[1],10);
+	var d = parseInt(ss[2],10);
+	if (!isNaN(y) && !isNaN(m) && !isNaN(d)){
+		return new Date(y,m-1,d);
+	} else {
+		return new Date();
+	}
+};
+}
 // }}}
 
 // 支持自动初始化mycombobox
@@ -11001,6 +11026,7 @@ function enhanceTableLayout(jo) {
 			je.attr("width", w + "%");
 		je.css("min-width", "100px");
 	}
+	self.enhanceLang(jo.find("td:even"));
 
 	/*
 	2s内三击字段标题，触发查询。Ctrl+三击为追加过滤条件
@@ -11050,11 +11076,6 @@ function JdcloudWui()
 var self = this;
 var mCommon = jdModule("jdcloud.common");
 
-// 子模块
-JdcloudApp.call(self);
-JdcloudCall.call(self);
-JdcloudPage.call(self);
-
 // ====== global {{{
 /**
 @var isBusy
@@ -11064,7 +11085,7 @@ JdcloudPage.call(self);
 self.isBusy = false;
 
 /**
-@var g_args
+@var g_args 全局URL参数
 
 应用参数。
 
@@ -11078,22 +11099,27 @@ URL参数会自动加入该对象，例如URL为 `http://{server}/{app}/index.ht
 - g_args._debug: 在测试模式下，指定后台的调试等级，有效值为1-9. 参考：后端测试模式 P_TEST_MODE，调试等级 P_DEBUG.
 - g_args.autoLogin: 记住登录信息(token)，下次自动登录；注意：如果是在手机模式下打开，此行为是默认的。示例：http://server/jdcloud/web/?autoLogin
 - g_args.phpdebug: (v6) 设置为1时，以调用接口时激活PHP调试，与vscode/netbeans/vim-vdebug等PHP调试器联合使用。参考：http://oliveche.com/jdcloud-site/phpdebug.html
+- g_args.lang: (v6.1) 指定语言，默认为开发语言"dev"，支持英文"en"（加载lib/lang-en.js）。
 
 @see parseQuery URL参数通过该函数获取。
 */
-window.g_args = {}; // {_debug}
+window.g_args = {};
 
 /**
-@var g_data = {userInfo?}
+@var g_data = {userInfo?, initClient?, hasRole()}
 
 应用全局共享数据。
 
 在登录时，会自动设置userInfo属性为个人信息。所以可以通过 g_data.userInfo==null 来判断是否已登录。
 
-@key g_data.userInfo
+- g_data.userInfo: 登录后，保存用户信息。
+- g_data.hasRole(roleList): 检查用户是否有指定角色，如g_data.hasRole("mgr")，多个角色用逗号分隔如g_data.hasRole("mgr,业务员"). 
+注意：检查权限请用WUI.canDo()函数
+- g_data.initClient: 保存调用initCient接口返回的内容，用于获取后端配置项。
+例如后端全局变量P_initClient中设置的选项会存入g_data.initClient中。常用于用后端配置项控制前端逻辑。
 
 */
-window.g_data = {}; // {userInfo}
+window.g_data = {};
 
 /**
 @var BASE_URL
@@ -11185,6 +11211,14 @@ self.options = {
 
 //}}}
 
+parseArgs();
+initLang();
+
+// 子模块
+JdcloudApp.call(self);
+JdcloudCall.call(self);
+JdcloudPage.call(self);
+
 // set g_args
 function parseArgs()
 {
@@ -11192,7 +11226,77 @@ function parseArgs()
 		g_args = mCommon.parseQuery(location.search.substr(1));
 	}
 }
-parseArgs();
+
+// === language {{{
+/**
+@var LANG 多国语言支持/翻译
+
+系统支持通过URL参数lang指定语言，如指定英文版本：`http://myserver/myapp/web/store.html?lang=en`
+
+如果未指定lang参数，则根据html的lang属性来确定语言，如指定英文版：
+
+	<html lang="en">
+
+默认为开发语言(lang="dev")，以中文为主。英文版下若想切换到开发语言，可以用`http://myserver/myapp/web/store.html?lang=dev`
+g_args.lang中保存着实际使用的语言。
+
+自带英文语言翻译文件lib/lang-en.js，当lang=en时加载它。可扩展它或以它为模板创建其它语言翻译文件。
+语言翻译文件中，设置全局变量LANG，将开发语言翻译为其它语言。
+
+系统会自动为菜单项、页面标题、列表表头标题、对话框标题等查找翻译。
+其它DOM组件若想支持翻译，可手工添加CSS类lang，如:
+
+	<div><label class="lang"><input type="checkbox" value="mgr">最高管理员</label></div>
+
+	<a href="javascript:logout()" class="logout"><span class="lang"><i class="icon-exit"></i>退出系统</span></a>
+
+或在代码中，使用WUI.enhanceLang(jo)来为DOM组件支持翻译，或直接用T(str)翻译字符串。
+注意lang类或enhanceLang函数不能设置组件下子组件的文字，可先取到文字组件再设置如`WUI.enhanceLang(jo.find(".title"))`。
+
+@fn T(s) 字符串翻译
+
+T函数用于将开发语言翻译为当前使用的语言。
+
+@key .lang DOM组件支持翻译
+@fn enhanceLang(jo) DOM组件支持翻译
+
+ */
+function T(s) {
+	if (s == null || LANG == null)
+		return s;
+	var s1 = s;
+	if (s.length > 2 && s.substr(-2) == "管理")
+		s1 = s.substr(0, s.length-2);
+	return LANG[s1] || s;
+}
+
+function initLang() {
+	window.LANG = null;
+	window.T = T;
+	if (!g_args.lang)
+		g_args.lang = document.documentElement.lang || 'dev';
+	if (g_args.lang != 'dev') {
+		mCommon.loadScript("lib/lang-" + g_args.lang + ".js", {async: false});
+		mCommon.loadScript("lib/easyui/locale/easyui-lang-en.js");
+	}
+	else {
+		mCommon.loadScript("lib/easyui/locale/easyui-lang-zh_CN.js");
+	}
+}
+
+self.m_enhanceFn[".lang"] = self.enhanceLang = enhanceLang;
+function enhanceLang(jo)
+{
+	if (LANG == null)
+		return;
+	jo.contents().each(function () {
+		if (this.nodeType == 3) { // text
+			var t = T(this.nodeValue);
+			this.nodeValue = t;
+		}
+	});
+}
+// }}}
 
 /**
 @fn app_alert(msg, [type?=i], [fn?], opt?={timeoutInterval?, defValue?, onCancel()?})
@@ -11273,7 +11377,7 @@ function app_alert(msg)
 	}
 
 	var icon = {i: "info", w: "warning", e: "error"}[type];
-	var s = {i: "提示", w: "警告", e: "出错"}[type] || "";
+	var s = {i: T("提示"), w: T("警告"), e: T("出错")}[type] || "";
 	var s1 = "<b>[" + s + "]</b>";
 	jmsg = $.messager.alert(self.options.title + " - " + s, s1 + " " + msg, icon, fn);
 
@@ -11303,7 +11407,7 @@ self.app_confirm = app_confirm;
 function app_confirm(msg, fn)
 {
 	var s = "<div style='font-size:10pt'>" + msg.replace(/\n/g, "<br/>") + "</div>";
-	$.messager.confirm(self.options.title + " - " + "确认", s, fn);
+	$.messager.confirm(self.options.title + " - " + T("确认"), s, fn);
 }
 
 /**
