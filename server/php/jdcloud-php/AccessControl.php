@@ -1788,11 +1788,15 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 	{
 		$cols = [];
 		$isAll = false;
+		$addRes = true;
+		if ($gres && param("gresHidden"))
+			$addRes = false;
 		foreach (self::splitCols($res) as $col) {
 			$alias = null;
 			$fn = null;
 			if ($col === "*" || $col === "t0.*") {
-				$this->addRes("t0.*", false);
+				if ($addRes)
+					$this->addRes("t0.*", false);
 				$this->userRes[$col] = true;
 				$isAll = true;
 				continue;
@@ -1866,13 +1870,14 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 			$this->userRes[$alias ?: $col] = true;
 
 			if (isset($fn)) {
-				$this->addRes($col);
+				if ($addRes)
+					$this->addRes($col);
 				continue;
 			}
 
 // 			if (! ctype_alnum($col))
 // 				jdRet(E_PARAM, "bad property `$col`");
-			if ($this->addVCol($col, true, $alias) === false) {
+			if ($this->addVCol($col, true, $addRes?$alias:'-') === false) {
 				if (!$gres && array_key_exists($col, $this->subobj)) {
 					$key = self::removeQuote($alias ?: $col);
 					$this->addSubobj($key, $this->subobj[$col]);
@@ -1885,7 +1890,8 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 					if (isset($alias)) {
 						$col1 .= " {$alias}";
 					}
-					$this->addRes($col1);
+					if ($addRes)
+						$this->addRes($col1);
 				}
 			}
 			if ($this->env->DBH->acceptAliasInGroupBy()) {

@@ -9552,6 +9552,9 @@ function getExportHandler(jtbl, ac, param)
 			}
 		}
 		var p1 = getQueryParamFromTable(jtbl, param);
+		// dont export gres fields
+		if (p1.gres)
+			p1.gresHidden = 1;
 		var debugShow = false;
 		if (m_batchMode) {
 			var fmt = prompt("输入导出格式: excel csv txt excelcsv html outfile(无导出条数限制), 以!结尾为调试输出", p1.fmt);

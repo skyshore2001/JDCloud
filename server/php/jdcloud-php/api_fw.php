@@ -216,7 +216,7 @@ POST传参时支持其它编码，应在Content-Type中显示指定，如下面�
 	Obj.query(gres, gcond?, ...) -> tbl(fields...)
 
 - gres: String. 分组字段。如果设置了gres字段，则res参数中每项应该带统计函数，如"sum(cnt) sum, count(id) userCnt". 
- 最终返回列为gres参数指定的列加上res参数指定的列; 如果res参数未指定，则只返回gres参数列。
+ 最终返回列为gres参数指定的列加上res参数指定的列; 如果res参数未指定，则只返回gres参数列。(v6.1) 如果指定参数gresHidden=1，gres则不会自动加到最终结果列中。
 
 - gcond: String. (jdcloud-php扩展) 分组过滤条件(对照SQL HAVING子句).
 
