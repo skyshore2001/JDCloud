@@ -17,6 +17,8 @@ LANG = {
 	确定: "OK",
 	取消: "Cancel",
 	确定后关闭: "CloseAfterOK",
+	添加: "Add",
+	保存: "Save",
 	查询: "Find",
 	刷新: "Reload",
 	新增: "Add",

@@ -8554,7 +8554,7 @@ function canDo(topic, cmd, defaultVal, permSet2)
 }
 
 // ---- object CRUD {{{
-var BTN_TEXT = ["添加", "保存", "保存", "查找", "删除"];
+var BTN_TEXT = {A:"添加", S:"确定", F:"查询", D:"删除"};
 // e.g. var text = BTN_TEXT[mode];
 
 function getFindData(jfrm, doGetAll)
