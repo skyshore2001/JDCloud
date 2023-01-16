@@ -2,9 +2,9 @@
 header("Cache-Control: no-cache");
 header("Content-Type: text/html; charset=UTF-8");
 
-$F0 = @$_GET["f"] ?: "ext";
+$F0 = @$_GET["f"] ?: "trace";
 $F = "../{$F0}.log";
-$MAX_READ_SZ = @intval($_GET["sz"])?:5000;
+$MAX_READ_SZ = @intval($_GET["sz"])?:50000;
 
 $msgs = [];
 
