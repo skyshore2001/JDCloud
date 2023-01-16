@@ -93,7 +93,7 @@ class AC2_Employee extends AC0_Employee
 
 	protected function onQuery()
 	{
-		if ($this->ac == "get" && $GLOBALS["P_initClient"]["enableRole"]) {
+		if ($GLOBALS["P_initClient"]["enableRole"]) {
 			AC0_Role::handleRole($this);
 		}
 		$this->qsearch(["id", "name", "phone"], param("q"));

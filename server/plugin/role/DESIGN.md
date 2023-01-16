@@ -71,7 +71,7 @@
 	{
 		protected function onQuery()
 		{
-			if ($this->ac == "get" && $GLOBALS["P_initClient"]["enableRole"]) {
+			if ($GLOBALS["P_initClient"]["enableRole"]) {
 				AC0_Role::handleRole($this);
 			}
 		}
@@ -161,6 +161,12 @@
 	Employee.get() -> {... rolePerms}
 
 筋斗云前端框架自行根据Employee.rolePerms自行设置菜单和按钮，对其它框架给出参考设计实现。
+
+本插件还为Employee对象增加了查询参数role，如查询有“售后审核”权限的某个员工：
+
+	callSvr("Employee.query", {fmt: "one?", res: "id", role:"售后审核"})
+
+注意：它会支持一个人多角色的情况，如果使用查询条件`cond: "perms='售后审核'"`则不正确。
 
 ### 前端设计
 

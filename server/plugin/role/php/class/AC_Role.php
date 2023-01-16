@@ -1,18 +1,25 @@
 <?php
 class AC0_Role extends AccessControl
 {
+	// called by AC2_Employee::onQuery
 	static function handleRole($ac)
 	{
-		$ac->addRes("perms rolePerms");
-		$ac->enumFields["rolePerms"] = function ($perms, $row) {
-			if (! $perms)
-				return;
-			// "perm1, perm2" => "IN ('perm1', 'perm2')"
-			$permsExpr = preg_replace_callback('/[\w&]+/u', function ($ms) {
-				return Q($ms[0]);
-			}, $perms);
-			return queryOne("SELECT GROUP_CONCAT(perms) FROM Role WHERE name IN (" . $permsExpr . ")");
-		};
+		if ($ac->ac == "get") {
+			$ac->addRes("perms rolePerms");
+			$ac->enumFields["rolePerms"] = function ($perms, $row) {
+				if (! $perms)
+					return;
+				// "perm1, perm2" => "IN ('perm1', 'perm2')"
+				$permsExpr = preg_replace_callback('/[\w&]+/u', function ($ms) {
+					return Q($ms[0]);
+				}, $perms);
+				return queryOne("SELECT GROUP_CONCAT(perms) FROM Role WHERE name IN (" . $permsExpr . ")");
+			};
+		}
+		$role = param("role");
+		if ($role) {
+			$ac->addCond("find_in_set(" . Q($role) . ", perms)", false, false);
+		}
 	}
 
 	protected function onValidate()
