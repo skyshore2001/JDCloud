@@ -180,6 +180,20 @@ PHP默认的session过期时间为1440s(24分钟)，每次在使用session时，
 
 注意：前端会记住cookie过期时间，假如后端再次改成保留10天，由于前端已记录的是7天过期，无法立即更新，只能清除cookie后再请求才能生效。
 
+## 动态修改环境配置项
+
+在程序中可动态设置部分参数，比如一般建议debug.log只记错误（环境变量P_DEBUG_LOG设置为2），若想对于对外开发的某些接口调用记录所有日志，可以改为1，如：
+
+	function api_fn1($env) {
+		$env->DEBUG_LOG = 1; // 强制记录debug.log，也可设置0强制不记录；
+		// 注意$env即全局JDEnv/DBEnv对象，在函数接口中是参数传入的，在AC类中可用$this->env来取。
+		// $env->DBG_LEVEL = 9; // 对应环境配置项P_DEBUG
+
+		// 以下不建议程序中修改
+		// $env->TEST_MODE = 0; // 对应环境配置项P_TEST_MODE
+		// $env->MOCK_MODE = 0; // 对应环境配置项P_MOCK_MODE
+	}
+
 **********************************************************/
 
 require_once("common.php");
