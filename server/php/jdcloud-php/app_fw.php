@@ -142,6 +142,11 @@ https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-micr
 在过去测试模式用于：可直接对生产环境进行测试且不影响生产环境，即部署后，在前端指定以测试模式连接，在后端为测试模式连接专用的测试数据库，且使用专用的cookie，实现与生产模式共用代码但互不影响。
 现已废弃这种用法，应搭建专用的测试环境用于测试开发。
 
+@key _debug 前端URL参数
+
+(v6.1) 前端指定调试等级（相当于指定P_DEBUG），会同时记录debug日志（相当于后端设置P_DEBUG_LOG=1）；
+在测试模式下，调试信息会以指定等级输出到前端。
+
 @see addLog
 
 ## 模拟模式
@@ -182,10 +187,10 @@ PHP默认的session过期时间为1440s(24分钟)，每次在使用session时，
 
 ## 动态修改环境配置项
 
-在程序中可动态设置部分参数，比如一般建议debug.log只记错误（环境变量P_DEBUG_LOG设置为2），若想对于对外开发的某些接口调用记录所有日志，可以改为1，如：
+在程序中可动态设置部分参数，比如一般建议debug日志只记错误（环境变量P_DEBUG_LOG设置为2），若想对于对外开发的某些接口调用记录所有日志，可以改为1，如：
 
 	function api_fn1($env) {
-		$env->DEBUG_LOG = 1; // 强制记录debug.log，也可设置0强制不记录；
+		$env->DEBUG_LOG = 1; // 强制记录debug日志，也可设置0强制不记录；
 		// 注意$env即全局JDEnv/DBEnv对象，在函数接口中是参数传入的，在AC类中可用$this->env来取。
 		// $env->DBG_LEVEL = 9; // 对应环境配置项P_DEBUG
 
@@ -1805,8 +1810,14 @@ class DBEnv
 
 	private function initEnv() {
 		$this->TEST_MODE = getenv("P_TEST_MODE")===false? 0: intval(getenv("P_TEST_MODE"));
-		$this->DBG_LEVEL = getenv("P_DEBUG")===false? 0 : intval(getenv("P_DEBUG"));
-		$this->DEBUG_LOG = getenv("P_DEBUG_LOG")===false? 0 : intval(getenv("P_DEBUG_LOG"));
+		if (isset($_GET["_debug"])) {
+			$this->DBG_LEVEL = intval($_GET["_debug"]);
+			$this->DEBUG_LOG = 1;
+		}
+		else {
+			$this->DBG_LEVEL = getenv("P_DEBUG")===false? 0 : intval(getenv("P_DEBUG"));
+			$this->DEBUG_LOG = getenv("P_DEBUG_LOG")===false? 0 : intval(getenv("P_DEBUG_LOG"));
+		}
 
 		if ($this->TEST_MODE) {
 			$this->MOCK_MODE = getenv("P_MOCK_MODE") ?: 0;
