@@ -215,6 +215,9 @@ function initDlgDataReport()
 		if (val && val[0] == '{' || val[0] == '[') {
 			data[field] = eval("(" + val + ")");
 		}
+		else if (val === '') {
+			data[field] = null;
+		}
 	}
 
 	function onValidate(ev, mode, oriData, newData) {
