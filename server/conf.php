@@ -8,7 +8,7 @@ loaded by api_fw.php in apiMain
 class Conf extends ConfBase
 {
 /*
-	static $enableApiLog = true;
+	static $enableApiLog = 1;
 	static function onApiInit(&$ac)
 	{
 	}

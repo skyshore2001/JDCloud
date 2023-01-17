@@ -1023,22 +1023,44 @@ class ConfBase
 	static $enableAutoSession = true;
 
 /**
-@var ConfBase::$enableApiLog?=true
+@var ConfBase::$enableApiLog?=1
 
-设置为false可关闭ApiLog. 例：
+- 0: 不记录
+- 1: 接口进入时记录、完成时更新
+- 2: 只记出错(可在运行中再修改值)
+- 3或其它: 接口完成时记录(可在运行中再修改值)
 
-	static $enableApiLog = false;
+设置为0可关闭ApiLog. 例：
+
+	static $enableApiLog = 0;
+
+设置为2表示只在出错时记录日志，而且允许在程序中动态再改为其它值。
+例如某轮询接口Cmd.query，默认只记录错误，但若返回结果非空，也记录日志：
+
+	// class Conf
+	static function onApiInit(&$ac)
+	{
+		if ($ac == "Cmd.query") {
+			self::$enableApiLog = 2;
+		}
+	}
+
+	// 当想要记录时，直接修改：
+	Conf::$enableApiLog = 1;
+
+注意当值为1时，会在接口进入前就记录，进口完成时再更新，在接口中再动态改为0或2是无效的；
+其它值时，只会在接口完成时记录日志（这也意味着记录顺序与发生时间可能不一致），允许在接口中再动态修改值改为0或1。
  */
-	static $enableApiLog = true;
+	static $enableApiLog = 1;
 
 /**
-@var ConfBase::$enableObjLog?=true
+@var ConfBase::$enableObjLog?=1
 
-设置为false可关闭ObjLog. 例：
+设置为0可关闭ObjLog. 例：
 
-	static $enableObjLog = false;
+	static $enableObjLog = 0;
  */
-	static $enableObjLog = true;
+	static $enableObjLog = 1;
 
 /**
 @fn ConfBase::onApiInit()
@@ -1246,6 +1268,7 @@ e.g. 修改ApiLog要记录的ac:
 
 	ApiLog::$instance->updateLog = ["res"=>"1.jpg", "ressz" => filesize("1.jpg")];
 
+ApiLog请求内容记录2000字节，响应内容res在成功调用时记录200字节，出错时记录2000字节。
 */
 	static $instance;
 
@@ -1305,6 +1328,7 @@ e.g. 修改ApiLog要记录的ac:
 		return $userId;
 	}
 
+	protected $log;
 	function logBefore()
 	{
 		$env = $this->env;
@@ -1330,8 +1354,7 @@ e.g. 修改ApiLog要记录的ac:
 		$ua = $env->_SERVER("HTTP_USER_AGENT");
 		$ver = $env->clientVer;
 
-		++ $env->DBH->skipLogCnt;
-		$this->id = $env->dbInsert("ApiLog", [
+		$this->log = [
 			"tm" => date(FMT_DT),
 			"addr" => $remoteAddr,
 			"ua" => $ua,
@@ -1343,7 +1366,11 @@ e.g. 修改ApiLog要记录的ac:
 			"reqsz" => $reqsz,
 			"ver" => $ver["str"],
 			"serverRev" => $GLOBALS["SERVER_REV"]
-		]);
+		];
+		if (Conf::$enableApiLog == 1) {
+			++ $env->DBH->skipLogCnt;
+			$this->id = $env->dbInsert("ApiLog", $this->log);
+		}
 		self::$lastId = $this->id;
 		self::$instance = $this;
 // 		$logStr = "=== [" . date("Y-m-d H:i:s") . "] id={$this->logId} from=$remoteAddr ses=" . session_id() . " app=$APP user=$userId ac=$ac >>>$content<<<\n";
@@ -1355,6 +1382,9 @@ e.g. 修改ApiLog要记录的ac:
 		$env = $this->env;
 		if ($env->DBH == null)
 			return;
+		// 不记日志的情况
+		if (!$this->id && (Conf::$enableApiLog == 0 || (Conf::$enableApiLog == 2 && $ret[0] == 0)))
+			return;
 		$iv = sprintf("%.0f", (microtime(true) - $this->startTm) * 1000); // ms
 		if ($X_RET_STR == null)
 			$X_RET_STR = jsonEncode($ret, $env->TEST_MODE);
@@ -1365,18 +1395,26 @@ e.g. 修改ApiLog要记录的ac:
 			$batchAc = mb_substr($this->batchAc, 0, 50);
 		}
 
-		++ $env->DBH->skipLogCnt;
 		$data = [
 			"t" => $iv,
 			"retval" => $ret[0],
 			"ressz" => strlen($X_RET_STR),
 			"res" => dbExpr(Q($content, $env)),
 			"userId" => $this->userId ?: $this->getUserId(),
-			"ac" => $batchAc // 默认为null；对batch调用则列出详情
+			"ac" => $batchAc ?: $this->log["ac"] // batchAc默认为null；对batch调用则列出详情
 		];
 		if ($this->updateLog)
 			$data = $this->updateLog + $data;
-		$rv = $env->dbUpdate("ApiLog", $data, $this->id);
+
+		arrCopy($this->log, $data);
+		++ $env->DBH->skipLogCnt;
+		if ($this->id) {
+			$rv = $env->dbUpdate("ApiLog", $data, $this->id);
+		}
+		else {
+			$this->id = $env->dbInsert("ApiLog", $this->log);
+			self::$lastId = $this->id;
+		}
 // 		$logStr = "=== id={$this->logId} t={$iv} >>>$content<<<\n";
 	}
 
@@ -1889,7 +1927,7 @@ function injectSession($userId, $appType, $fn, $days=3)
 {
 	$name = $fn === false? "delSession": "injectSession";
 	if (! Conf::$enableApiLog) {
-		logit("warn: ignore $name as Conf::\$enableApiLog=false");
+		logit("warn: ignore $name as Conf::\$enableApiLog=0");
 		return false;
 	}
 	addLog("$name(userId=$userId,appType=$appType)");
