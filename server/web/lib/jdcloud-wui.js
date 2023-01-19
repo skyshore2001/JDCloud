@@ -6684,8 +6684,9 @@ function getModulePath(file)
 @fn showPage(pageName, showPageOpt?={title, target, pageFilter}, paramArr?=[showPageOpt])
 
 - pageName: 由page上的class指定。
-- showPageOpt.title: 如果未指定，则使用page上的title属性.
+- showPageOpt.title: 如果未指定，则使用page上的title属性. (v6.1) 如果有多语言翻译，此处title是未翻译过的开发语言。
 - paramArr: 调用initfn时使用的参数，是一个数组。如果不指定，则调用initfn直接传入showPageOpt。推荐不指定该参数。
+- force: (v6.1) 如果页面已存在，默认直接跳到该页面，指定`force: 1`会刷新该页面。
 
 @alias showPage(pageName, title?, paramArr?)
 
@@ -6703,13 +6704,17 @@ page调用示例:
 
 	WUI.showPage("pageHome");
 	WUI.showPage("pageHome", "我的首页"); // 默认标题是"首页"，这里指定显示标题为"我的首页"。
+	WUI.showPage("pageHome", {title: "我的首页"}); // 同上
 
 (v5.4) 如果标题中含有"%s"，将替换成原始标题，同时传参到initPage:
 
-	WUI.showPage("pageHome", "%s-" + cityName, [{cityName: cityName}]); //e.g. 显示 "首页-上海"
+	WUI.showPage("pageHome", {title: "%s-" + cityName, cityName: cityName}); //e.g. 显示 "首页-上海"
 
 title用于唯一标识tab，即如果相同title的tab存在则直接切换过去。除非：
-(v5.5) 如果标题以"!"结尾, 则每次都打开新的tab页。
+(v5.5) 如果标题以"!"结尾, 则每次都打开新的tab页，(v6.1)等价于指定选项`showPageOpt.force:1`:
+
+	WUI.showPage("pageHome", "我的首页!");
+	WUI.showPage("pageHome", {title: "我的首页", force:1}); // 同上
 
 ## showPageOpt.pageFilter: (v6) 指定列表页过滤条件(PAGE_FILTER)
 
@@ -6766,6 +6771,11 @@ function showPage(pageName, title_or_opt, paramArr)
 	else {
 		showPageOpt.title = title_or_opt;
 	}
+	var title = showPageOpt.title;
+	if (title && title.substr(-1, 1) == "!") {
+		showPageOpt.force = true;
+		showPageOpt.title = title.substr(0, title.length-1);
+	}
 	if (paramArr == null) {
 		paramArr = [showPageOpt];
 	}
@@ -6804,22 +6814,14 @@ function showPage(pageName, title_or_opt, paramArr)
 	function initPage()
 	{
 		var title0 = jpage.attr("title") || "无标题";
+		if (! showPageOpt.title)
+			showPageOpt.title = title0;
 		var title = showPageOpt.title;
-		if (title == null)
-			title = T(title0);
-		else
-			title = T(title).replace('%s', title0);
-
-		var force = false;
-		if (title.substr(-1, 1) == "!") {
-			force = true;
-			title = title.substr(0, title.length-1);
-		}
-		showPageOpt.title = title;
+		title = T(title).replace('%s', title0);
 
 		var tt = showPageOpt.target? $("#"+showPageOpt.target): self.tabMain;
 		if (tt.tabs('exists', title)) {
-			if (!force) {
+			if (!showPageOpt.force) {
 				tt.tabs('select', title);
 				dfdShowPage.resolve();
 				return;
@@ -10679,7 +10681,7 @@ function showDlgQuery(data1, param)
 				window.open(url);
 				return;
 			}
-			WUI.showPage("pageSimple", "查询结果!", [ url, null, null, showChartParam ]);
+			WUI.showPage("pageSimple", T("查询结果") + "!", [ url, null, null, showChartParam ]);
 //			WUI.closeDlg(this);
 		}
 	});
