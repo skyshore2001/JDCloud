@@ -25,7 +25,7 @@ if [ -r "./backup_db.user.sh" ]; then . "./backup_db.user.sh"; fi
 
 bak=bak/db_`date +%Y%m%d_%H%M%S`.gz
 
-mysqldump -h$dbhost -u$dbuser -p$dbpwd --routines $db --ignore-table=${db}.ApiLog --ignore-table=${db}.ApiLog1 --ignore-table=${db}.Syslog --ignore-table=${db}.ObjLog | gzip > $bak
+mysqldump --single-transaction -h$dbhost -u$dbuser -p$dbpwd --routines $db --ignore-table=${db}.ApiLog --ignore-table=${db}.ApiLog1 --ignore-table=${db}.Syslog --ignore-table=${db}.ObjLog | gzip > $bak
 #--master-data=2 
 
 echo "=== db backup to file '$bak'"
