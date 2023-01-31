@@ -1795,6 +1795,7 @@ window.ApproveFlagStyler = {
 @see toolbar-qsearch
 
 - approve: 审批
+- approveFlow: 审批流审批
 
 @see toolbar-approve
 */
@@ -1870,6 +1871,14 @@ protected function onQuery() {
 
 /**
 @key toolbar-approve 审批菜单
+
+参数选项：
+
+- text: 指定按钮显示文字，默认为"审批"
+- obj: 指定审批对象, 调用{obj}.set接口，将设置approveFlag字段（可由approveFlagField指定）；特别地，指定ApproveRec表示使用审批流组件，将调用ApproveRec.add接口做审批。
+- onSet(row, data, title): 见下面例子
+- canApprove(row): 权限检查回调，如果指定，用于在审批时由前端检查权限；不指定时不检查（后端检查）。
+- approveFlagField: 默认值为"approveFlag"，审批状态字段名。
 
 依赖字段：
 
@@ -1989,7 +1998,11 @@ onSet回调支持异步，
 
  */
 	approve: function (ctx, opt) {
-		self.assert(opt.obj, "approve: opt.obj: 选项obj未指定");
+		self.assert(opt.ac || opt.obj, "approve: 审批对象opt.obj或审批接口opt.ac至少指定一个");
+		opt = $.extend({
+			approveFlagField: "approveFlag",
+			text: "审批",
+		}, opt);
 		var jmnuApprove = $('<div style="width:150px;display:none">' +
 			'<div id="ap1" data-options="iconCls:\'icon-help\'">发起审批</div>' +
 			'<div id="ap2" data-options="iconCls:\'icon-ok\'">审批通过</div>' +
@@ -2002,7 +2015,7 @@ onSet回调支持异步，
 					return;
 				// approveFlag: 0: "无审批", 1: "待审批", 2: "通过", 3: "不通过"
 				var approveFlag = parseInt(o.id.replace('ap', '')); // "ap1" => 1
-				var approveFlag0 = row.approveFlag;
+				var approveFlag0 = row[opt.approveFlagField];
 				if (approveFlag == approveFlag0) {
 					app_alert("已经是\"" + ApproveFlagMap[approveFlag] + "\"状态，无须操作。", "w");
 					return;
@@ -2011,9 +2024,9 @@ onSet回调支持异步，
 					app_alert("请先[发起审批]后（状态为\"待审批\"）再操作。", "w");
 					return;
 				}
-				var data = {approveFlag: approveFlag};
-				var canApprove = opt.canApprove && opt.canApprove(row);
-				if (!canApprove) {
+				var data = {};
+				data[opt.approveFlagField] = approveFlag;
+				if (opt.canApprove && !opt.canApprove(row)) {
 					if (approveFlag == 1 && (approveFlag0 == 0 || approveFlag0 == 3)) {
 					}
 					else {
@@ -2030,14 +2043,94 @@ onSet回调支持异步，
 				}
 
 				function done() {
-					callSvr(opt.obj + ".set", {id: row.id}, function () {
-						app_show("操作成功");
-						WUI.reloadRow(ctx.jtbl, row);
-					}, data);
+					if (opt.obj) {
+						callSvr(opt.ac + ".set", {id: row.id}, function () {
+							app_show("操作成功");
+							WUI.reloadRow(ctx.jtbl, row);
+						}, data);
+					}
+					else if (opt.ac) {
+						callSvr(opt.ac, function () {
+							app_show("操作成功");
+							WUI.reloadRow(ctx.jtbl, row);
+						}, data);
+					}
 				}
 			}
 		})
-		return {text: "审批", iconCls:"icon-more", class:"menubutton", menu: jmnuApprove};
+		return {text: opt.text, iconCls:"icon-more", class:"menubutton", menu: jmnuApprove};
+	},
+
+/**
+@key toolbar-approveFlow 审批流审批菜单
+
+参数选项：
+
+- name: 审批流名称，须与审批流配置(conf_approve)中的名称一致。
+
+其它参数参考toolbar-approve（除ac/obj, onSet参数外），常用列举如下：
+
+- text: 指定按钮显示文字，默认为"审批"
+- approveFlagField: 默认值为"approveFlag"，审批状态字段名。
+
+示例：列表页工具栏上显示审批菜单(以二次开发为例)
+
+	UiMeta.on("dg_toolbar", "pageOrder", function (ev, buttons, jtbl, jdlg) {
+		var btnApprove = ["approveFlow", {
+			name: "订单毛利率",
+			text: "毛利率审批",
+		}];
+		var btnApprove2 = ["approveFlow", {
+			name: "门店下单",
+			text: "门店下单审批",
+			approveFlagField: "approveFlag2"
+		}];
+		buttons.push(btnApprove, btnApprove2);
+	});
+
+做二次开发时，对话框上approveFlag设置示例：
+
+	{
+		disabled: true,
+		enumMap: ApproveFlagMap,
+		styler: Formatter.enumStyler(ApproveFlagStyler),
+		formatter: function (val, row) {
+			return WUI.makeLink(val, function () {
+				WUI.showPage("pageUi", {uimeta:"metaApproveRec", title: "毛利率审批-订单" + row.id, force: 1, pageFilter: {cond: {objId: row.id, approveFlow:row.approveFlow} }});
+				// 如果是approveFlag2，则注意后面要用row.approveFlow2
+				// WUI.showPage("pageUi", {uimeta:"metaApproveRec", title: "门店下单审批-订单" + row.id, force: 1, pageFilter: {cond: {objId: row.id, approveFlow:row.approveFlow2} }});
+			})
+		}
+	}
+ */
+	approveFlow: function (ctx, opt) {
+		self.assert(opt.name, "approveFlow: 选项name未指定");
+		opt = $.extend({
+			ac: "ApproveRec.add",
+			onSet: function (row, data, title) {
+				data.objId = row.id;
+				data.approveFlow = opt.name;
+				if (opt.approveFlagField && opt.approveFlagField != "approveFlag") {
+					data.approveFlag = data[opt.approveFlagField];
+					delete data[opt.approveFlagField];
+				}
+				var dfd = $.Deferred();
+				var meta = [
+					// title, dom, hint?
+					{title: "审批备注", dom: "<textarea name='approveDscr' rows=5></textarea>", hint: '选填'},
+				];
+				var jdlg = WUI.showDlgByMeta(meta, {
+					title: title,
+					onOk: async function (data1) {
+						data.approveDscr = data1.approveDscr;
+						dfd.resolve();
+						WUI.closeDlg(jdlg);
+					}
+				});
+				return dfd;
+			}
+		}, opt);
+		return self.dg_toolbar.approve.call(this, ctx, opt);
 	}
 });
 
@@ -3096,7 +3189,7 @@ function diffObj(obj, obj1)
 - cond: 查询条件，字符串，示例：WUI.getQueryCond({id: ">1", status: "CR,RE", createTm: ">=2020-1-1 and <2021-1-1"}), 用getQueryCond可使用查询框支持的条件格式。
 - orderby: 排序方式
 - title: 统计页面标题
-- detailPageName: 在统计表中点击数值，可以显示明细页面。这里指定用哪个页面来显示明细项；如果未指定则以pageSimple来显示。
+- detailPageName: 在统计表中点击数值，可以显示明细页面。这里指定用哪个页面来显示明细项；如果未指定则不显示到明细页的链接。可以用"pageSimple"来显示通用页面。
 - detailPageParamArr: 如果指定了detailPageName，可以用此参数来定制showPage的第三参数(paramArr)。
 - tmField: 如果用到y,m,d等时间统计字段，应指定使用哪个时间字段进行运算。后端可能已经定义了时间字段(tmCols)，指定该选项可覆盖后端的定义。
 
@@ -3311,7 +3404,8 @@ function showDataReport(opt, showPageOpt)
 		}
 		$.each(columns, function (i, col) {
 			if (i >= sumCol) {
-				col.formatter = getFormatter(col, rowCnt);
+				if (opt.detailPageName)
+					col.formatter = getFormatter(col, rowCnt);
 				col.sortable = true;
 				col.sorter = numberSort;
 				if (opt.showSum && queryParams.pivotSumField == col.title) {
@@ -3414,7 +3508,7 @@ function showDataReport(opt, showPageOpt)
 					opt.detailPageParamArr[1] = queryParams1;
 					self.showPage(opt.detailPageName, title, opt.detailPageParamArr);
 				}
-				else {
+				else if (opt.detailPageName == "pageSimple") {
 					var url = WUI.makeUrl(opt.ac, {
 						cond: cond,
 					});

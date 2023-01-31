@@ -160,6 +160,15 @@ function jdRet($code = null, $data = null, $msg = null)
 	throw new DirectReturn($data, $code === null);
 }
 
+// php出错中止时，记录trace日志
+register_shutdown_function(function () {
+	$error = error_get_last();
+	if (!empty($error) && ($error["type"] & (E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR)) != 0) {
+		$errmsg = "Error {$error['type']}: " . $error['message'] . ', ' . $error['file'] . ':' . $error['line'];
+		logit($errmsg);
+	}
+});
+
 /**
 @fn tobool($s)
 */
@@ -1795,6 +1804,130 @@ function randChr($cnt, $type='c')
 		-- $cnt;
 	}
 	return $ret;
+}
+
+/**
+@fn evalExpr($expr, $arr)
+
+表达式计算引擎/规则引擎。
+变量必须出现在关联数组$arr中，表达式类似SQL，支持有限的几个函数但允许扩展，其它语法参考PHP（比如三目运算）。
+
+调用示例：
+
+	$rv = evalExpr("a>10 and b='AA'", ["a"=>98, "b"=>"AA"]);
+	var_dump($rv); // 如果有运行错将抛出；如果有语法错，php7以上可捕获并抛出，php5直接中止，可查看trace日志或PHP日志。
+
+表达式示例：基本比较运算和逻辑运算，支持括号嵌套，支持null常量：
+
+	a>1 and b='aa' and (c<=0 or c>=100) or (d=null or e!=null)
+
+- and/or/not可分别写作`&& || !`, 注意全部小写
+- `=`与`==`相同。
+- 单引号与双引号含义相同
+- 不允许出现'$'（PHP变量）或';'（多语句）
+
+示例：支持in/not in集合运算：
+
+	a in (3,4) or b not in ('CR', 'PA')
+
+示例：三目运算
+
+	a>1? b: c
+
+内置函数：
+
+- fnmatch(pattern, str), 用于模糊匹配，示例：`fnmatch("a*", b)`; `fnmatch('8*', 888)`值为true
+
+扩展函数：若调用了非内置函数如`f1()`或`f2(a, b)`，则会查询并调用函数`evalExpr_f1()`或`evalExpr_f2($a, $b)`。
+显然若函数不存在将报错。支持以下扩展函数：
+
+- timediff(tm1, tm2), 用于日期比较，计算日期tm1-tm2且以秒数返回，如`timediff(tm1, '2023-1-1 10:00') >= 60`; `timediff('2022-1-1 1:00', '2022-1-1')=3600`值为true
+
+@see getVarsFromExpr
+*/
+function evalExpr($expr, $arr)
+{
+	// in/not in
+	$expr1 = preg_replace_callback('/(\w+) \s* (not\s*)? in \s* \( ([^()]*) \)/ux', function ($ms) {
+		$k = $ms[1];
+		$v = $ms[3];
+		return ($ms[2]?'!':'') . "in_array($k, [$v])";
+	}, $expr);
+
+	// 变量求值并替换（后面带括号为函数不替换）；允许使用内置函数；禁止eval等函数，禁止分号
+	$expr1 = preg_replace_callback('/\b ([^\W\d]\w*) \b (\()?
+		| \'[^\']*\' | "[^"]"
+		| ([<>=!]+)
+		| ([;$])
+	/ux', function ($ms) use ($arr,$expr) {
+		@list ($all, $k, $isFn, $op, $deny) = $ms;
+		if ($op) {
+			if ($op == '=')
+				return '==';
+			if ($op == '<>')
+				return '!=';
+			return $op;
+		}
+		if ($k) {
+			if ($isFn) {
+				if (in_array($k, ['in_array', 'fnmatch']))
+					return $all;
+				$fn = "evalExpr_$k";
+				if (! function_exists($fn))
+					jdRet(E_SERVER, "unknown fn `$k`", "表达式错误: `$expr`, 未知函数`$k`");
+				return "$fn(";
+			}
+
+			if ($k == 'and')
+				return '&&';
+			if ($k == 'or')
+				return '||';
+			if ($k == 'not')
+				return '!';
+			if ($k == 'null')
+				return $all;
+
+			if (!array_key_exists($k, $arr))
+				jdRet(E_SERVER, "unknown var `$k`", "表达式错误: `$expr`, 未知变量`$k`");
+			$v = $arr[$k];
+			if (is_string($v))
+				return qstr($v);
+			if (is_null($v))
+				return 'null';
+			return $v;
+		}
+		if ($deny)
+			jdRet(E_SERVER, "forbidden token: `{$deny}`", "表达式错误: `$expr`, 不支持符号`$k`");
+		return $all;
+	}, $expr1);
+	#echo("eval: $expr1\n");
+	try {
+		return eval("return ($expr1);");
+	}
+	// php7以上可捕获语法错误(Parse Error)，php5直接中止. Throwable包含Exception和Error等
+	catch (Throwable $e) {
+		jdRet(E_SERVER, "表达式错误: `$expr`, " . $e->getMessage());
+	}
+}
+
+/**
+@fn getVarsFromExpr($expr)
+
+取表达式中的变量集合：
+
+	$rv = getVarsFromExpr("a in (98,99) and b=null and timediff(c1, '2022-1-1')>3600"); 
+	// $rv=["a","b","c1"]
+
+@see evalExpr 表达式引擎
+*/
+function getVarsFromExpr($expr)
+{
+	$rv = preg_match_all('/\b ([^\W\d]\w*) \b (?!\()
+		| \'[^\']*\' | "[^"]"
+	/ux', $expr, $ms);
+	return arrGrep($ms[1], function ($e) {
+		return $e && !in_array($e, ["and", "or", "not", "in", "null"]);
+	});
 }
 
 // vi: foldmethod=marker

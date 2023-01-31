@@ -17,16 +17,7 @@ function initPageObjLog(param, formFilter)
 
 	// 定制工具栏增删改查按钮：r(refresh), f(find), a(add), s(set), d(del)
 	jtbl.jdata().toolbar = "rf";
-/*
-	// 自定义按钮
-	var btn1 = {text: "结算明细", iconCls:'icon-ok', handler: function () {
-		var row = WUI.getRow(jtbl);
-		if (row == null)
-			return;
-		var objParam = {closeLogId: row.id};
-		WUI.showPage("pageOrder", "结算明细-" + row.id, [ objParam ]);
-	}};
-*/
+
 	if (param && param.jtblSrc && formFilter && formFilter.cond && formFilter.cond.obj) {
 		var map = {};
 		map[formFilter.cond.obj] = getFieldMap(param.jtblSrc);

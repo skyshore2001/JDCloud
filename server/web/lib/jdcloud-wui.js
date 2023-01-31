@@ -3564,13 +3564,45 @@ function evalOptions(_source, ctx, onError)
 
 1.js可以是返回任意JS对象的代码, 如:
 
+	// 可以有注释
 	{
 		a: 2 * 3600,
 		b: "hello",
 		// c: {}
+		d: function () {
+		},
 	}
 
-如果不处理结果, 则该函数与$.getScript效果类似.
+复杂地，可以定义变量、函数，注意最后返回值对象要用小括号把返回对象括起来，如：
+
+	var schema = {
+		title: "菜单配置",
+	};
+
+	function onReady() {
+	}
+
+	({
+		schema: schema,
+		onReady: onReady
+	})
+
+建议用模块方式来写，即用`(function() { ... return ... })()`把定义内容包起来，这样变量和函数不会污染全局空间：
+
+	(function () {
+	var schema = ...
+	function onReady() {...}
+	return {
+		schema: schema,
+		onReady: onReady
+	}
+	})();
+
+不处理结果时, 则该函数与$.getScript效果类似.
+
+@param options 参考$.ajax参数
+
+@options.async 默认为异步，设置`{async:false}`表示同步调用。
 
 @see evalOptions
  */

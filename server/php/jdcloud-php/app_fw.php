@@ -1639,7 +1639,7 @@ class DbExpr
 /**
 @fn dbExpr($val)
 
-用于在dbInsert/dbUpdate(插入或更新数据库)时，使用表达式：
+## 用于在dbInsert/dbUpdate(插入或更新数据库)时，使用表达式：
 
 	$id = dbInsert("Ordr", [
 		"tm" => dbExpr("now()") // 使用dbExpr直接提供SQL表达式
@@ -1664,6 +1664,16 @@ class DbExpr
 		if (issetval("cond")) {
 			$_POST["cond"] = dbExpr(Q($_POST["cond"]));
 		}
+	}
+
+## 也用于直接返回字符串数据，不经JSON编码处理，示例：
+
+	function api_test2()
+	{
+		$ret = '{"a":100, "b":[3,4]}';
+		return dbExpr($ret);
+		// 接口输出 [0, {"a":100, "b":[3,4]}]
+		// 也可以用 jdRet(0, dbExpr($ret));
 	}
 
 @see dbInsert

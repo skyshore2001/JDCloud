@@ -56,7 +56,7 @@ class ScriptEnv
 	// 安全检查: 设置允许调用的函数；设置为null则不做检查。
 	protected $allowedCallInScript = ["if", "else", "while", "for", "function", "use", "logit", "intval", "doubleval", "floor", "ceil", "round", 
 		"preg_match", "preg_replace", "preg_replace_callback", 
-		"substr", "strlen", "strpos", "mb_substr", "mb_strlen", "mb_strpos", "foreach", "explode"
+		"substr", "strlen", "strpos", "mb_substr", "mb_strlen", "mb_strpos", "foreach", "explode", "str_replace"
 	];
 	function execScript($script_) {
 		$env = $this;
