@@ -5,7 +5,9 @@ class AC0_Role extends AccessControl
 	static function handleRole($ac)
 	{
 		if ($ac->ac == "get") {
-			$ac->addRes("perms rolePerms");
+			$res = param("res");
+			if (!$res || strpos($res, "perms")!==false)
+				$ac->addRes("perms rolePerms");
 			$ac->enumFields["rolePerms"] = function ($perms, $row) {
 				if (! $perms)
 					return;

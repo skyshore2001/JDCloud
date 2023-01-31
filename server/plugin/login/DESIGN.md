@@ -47,6 +47,8 @@ weixinData
 : String. 从微信中取得的原始数据。一般为JSON格式: userInfo={openid, nickname, sex=1-男/2-女, province, city, country, headimgurl, privilege, unionid?}
  字段与User表的对应关系：User.weixinKey=openid, User.name=userInfo.nickname, User.pic=headimgurl
 
+2022/11更新：微信小程序已不支持在后端通过code2session接口获取头像、昵称等信息，只能通过小程序前端获取。后端login2接口只支持获取openid, unionid信息。
+
 ## 交互接口
 
 注意：对于注册、登录、修改密码这些操作，客户端建议使用HTTPS协议与服务端通信以确保安全。
@@ -354,7 +356,9 @@ code为手机验证码，之前应调用过genCode接口。
 参考：
 
 - 小程序登录过程：https://developers.weixin.qq.com/miniprogram/dev/framework/open-ability/login.html
-- 使用code2Session接口获取openid: https://developers.weixin.qq.com/miniprogram/dev/api/code2Session.html
+- 使用code2Session接口获取openid: https://developers.weixin.qq.com/miniprogram/dev/api-backend/open-api/login/auth.code2Session.html
+
+2022/11更新：login2接口只支持获取openid, unionid信息，已无法在后端通过code2session接口获取头像、昵称等信息，只能通过小程序前端获取。
 
 ### 查询openid
 
