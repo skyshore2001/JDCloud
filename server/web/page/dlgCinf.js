@@ -18,7 +18,7 @@ function initDlgCinf()
 		},
 		onChange: function (newVal, oldVal) {
 			var useJson = window.DlgJson && /^conf_/.test(newVal);
-			jbtnEditJson.parent().toggle(useJson);
+			jbtnEditJson.parent().toggle(!!useJson);
 		}
 	});
 
