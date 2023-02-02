@@ -8307,10 +8307,26 @@ function getTopDialog()
 删除一个页面。一般用于开发过程，在修改外部逻辑页后，调用该函数删除页面。此后载入页面，可以看到更新的内容。
 
 注意：对于内部逻辑页无意义。
+
+@var g_data.doUpload
+(v6.1) 为便于在reload页面时定制逻辑，在unload页面时会设置g_data.doUnload变量为true，可以页面pagedestory事件中检测处理，如：
+
+	jpage.on("pagedestroy", onPageDestroy);
+	function onPageDestroy() {
+		if (g_data.doUnload) {
+			console.log('!!! unload page');
+		}
+	}
+
+meta页面（或二次开发的页面）支持在更新meta后，点“刷新页面”重新加载meta，就是使用此机制。
 */
 self.unloadPage = unloadPage;
 function unloadPage(pageName)
 {
+	g_data.doUnload = true;
+	setTimeout(function () {
+		g_data.doUnload = false;
+	});
 	if (pageName == null) {
 		pageName = self.getActivePage().attr("wui-pageName");
 		if (pageName == null)
