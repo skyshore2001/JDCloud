@@ -1786,17 +1786,16 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 	// return: new field list
 	private function filterRes($res, $gres=false)
 	{
-		$cols = [];
+		$cols = []; // only for gres
 		$isAll = false;
-		$addRes = true;
+		$doAddRes = true;
 		if ($gres && param("gresHidden"))
-			$addRes = false;
+			$doAddRes = false;
 		foreach (self::splitCols($res) as $col) {
 			$alias = null;
 			$fn = null;
 			if ($col === "*" || $col === "t0.*") {
-				if ($addRes)
-					$this->addRes("t0.*", false);
+				$this->addRes("t0.*", false);
 				$this->userRes[$col] = true;
 				$isAll = true;
 				continue;
@@ -1840,18 +1839,18 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 							$field = $ms[3];
 						}
 						if ($distinct) {
-							$col = "COUNT(DISTINCT IF($expr,$field,NULL)) $alias";
+							$col = "COUNT(DISTINCT IF($expr,$field,NULL))";
 						}
 						else {
-							$col = "COUNT(IF($expr,$field,NULL)) $alias";
+							$col = "COUNT(IF($expr,$field,NULL))";
 						}
 					}
 					// `SUMIF(status='RE', amount)` => `SUM(IF(status='RE', amount, 0))`
 					else if ($fn == "SUMIF") {
-						$col = 'SUM(IF(' . $expr . ', 0)) ' . $alias;
+						$col = 'SUM(IF(' . $expr . ', 0))';
 					}
 					else {
-						$col = $fn . '(' . $expr . ') ' . $alias;
+						$col = $fn . '(' . $expr . ')';
 					}
 					$this->isAggregatinQuery = true;
 				}
@@ -1867,17 +1866,23 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 			if ($alias)
 				$this->handleAlias($col, $alias);
 
-			$this->userRes[$alias ?: $col] = true;
+			if ($doAddRes) {
+				$this->userRes[$alias ?: $col] = true;
+			}
+			else if ($alias) { // 只添加虚拟字段定义，不添加到最终列表
+				$this->setColFromRes("$col $alias", true);
+			}
 
 			if (isset($fn)) {
-				if ($addRes)
-					$this->addRes($col);
+				if ($doAddRes) {
+					$this->addRes($alias? "$col $alias": $col);
+				}
 				continue;
 			}
 
 // 			if (! ctype_alnum($col))
 // 				jdRet(E_PARAM, "bad property `$col`");
-			if ($this->addVCol($col, true, $addRes?$alias:'-') === false) {
+			if ($this->addVCol($col, true, $doAddRes?$alias:'-') === false) {
 				if (!$gres && array_key_exists($col, $this->subobj)) {
 					$key = self::removeQuote($alias ?: $col);
 					$this->addSubobj($key, $this->subobj[$col]);
@@ -1890,11 +1895,11 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 					if (isset($alias)) {
 						$col1 .= " {$alias}";
 					}
-					if ($addRes)
+					if ($doAddRes)
 						$this->addRes($col1);
 				}
 			}
-			if ($this->env->DBH->acceptAliasInGroupBy()) {
+			if ($this->env->DBH->acceptAliasInGroupBy() && $doAddRes) {
 				$cols[] = $alias ?: $col;
 			}
 			else {
@@ -1918,7 +1923,8 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 			}
 			$col = preg_replace_callback('/^\s*(\w+)/u', function ($ms) {
 				$col1 = $ms[1];
-				// 注意：与cond不同，orderby使用了虚拟字段，应在res中添加。而cond中是直接展开了虚拟字段。因为where条件不支持虚拟字段。
+				// 注意：orderby可以直接使用虚拟字段（须已在select子句即res参数中定义）；而where子句(cond参数)中必须展开虚拟字段；
+				// groupby在mysql中不必展开（只要在select子句中定义过即可），在mssql中则须展开。
 				// 故不用：$this->addVCol($col1, true, '-'); 但应在处理完后删除辅助字段，避免多余字段影响导出文件等场景。
 				if (isset($this->userRes[$col1]) || $this->addVCol($col1, true, null, true) !== false) {
 					//if (! $this->env->DBH->acceptAliasInGroupBy())
