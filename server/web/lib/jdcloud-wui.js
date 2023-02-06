@@ -9602,8 +9602,8 @@ function getExportHandler(jtbl, ac, param)
 			}
 		}
 		var p1 = getQueryParamFromTable(jtbl, param);
-		// dont export gres fields
-		if (p1.gres)
+		// dont export gres fields. 仅当未指定res时自动设置。
+		if (p1.gres && !(param && param.res))
 			p1.gresHidden = 1;
 		var debugShow = false;
 		if (m_batchMode) {
@@ -9634,7 +9634,7 @@ function getExportHandler(jtbl, ac, param)
 @alias getParamFromTable
 
 根据数据表当前设置，获取查询参数。
-可能会设置{cond, orderby, res, fname}参数。
+可能会设置{cond, orderby, res, fname}参数。但如果param中明确指定了比如res参数，则不会覆盖该参数。
 
 res参数从列设置中获取，如"id 编号,name 姓名", 特别地，如果列对应字段以"_"结尾，不会加入res参数。
 
