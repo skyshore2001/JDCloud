@@ -27,10 +27,17 @@ if ($ac) {
 	else if ($ac == "base64") {
 		$text = mparam("text");
 		if (param("isDecode") == "1") {
-			$val = base64_decode($text);
+			$val = @base64_decode($text);
 		}
 		else if (param("isJdDecode") == "1") {
 			$val = b64d($text, true);
+			if ($val === false) {
+				$val = "*** fail to decode";
+			}
+			else if (strpos($val, '=') !== false) {
+				parse_str($val, $arr);
+				$val .= "\n---\n" . json_encode($arr, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+			}
 		}
 		else
 			$val = base64_encode($text);
@@ -106,7 +113,7 @@ h2 {
 
 iframe {
 	width: 90%;
-	height: 50px;
+	height: 100px;
 	border: 1px solid #aaa;
 }
 </style>
