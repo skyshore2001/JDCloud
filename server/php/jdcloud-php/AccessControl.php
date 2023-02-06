@@ -1268,7 +1268,7 @@ class AccessControl extends JDApiBase
 	private $isAggregatinQuery; // 是聚合查询，如带group by或res中有聚合函数
 
 	// virtual columns
-	private $vcolMap; # elem: $vcol => {def, def0, vcolDefIdx?=-1}
+	private $vcolMap; # elem: $vcol => {def, vcolDefIdx?=-1}
 
 	// 在add后自动设置; 在get/set/del操作调用onValidateId后设置。
 	protected $id;
@@ -1869,9 +1869,6 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 			if ($doAddRes) {
 				$this->userRes[$alias ?: $col] = true;
 			}
-			else if ($alias) { // 只添加虚拟字段定义，不添加到最终列表
-				$this->setColFromRes("$col $alias", true);
-			}
 
 			if (isset($fn)) {
 				if ($doAddRes) {
@@ -1882,7 +1879,7 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 
 // 			if (! ctype_alnum($col))
 // 				jdRet(E_PARAM, "bad property `$col`");
-			if ($this->addVCol($col, true, $doAddRes?$alias:'-') === false) {
+			if ($this->addVCol($col, true, $alias, !$doAddRes) === false) {
 				if (!$gres && array_key_exists($col, $this->subobj)) {
 					$key = self::removeQuote($alias ?: $col);
 					$this->addSubobj($key, $this->subobj[$col]);
@@ -1899,7 +1896,7 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 						$this->addRes($col1);
 				}
 			}
-			if ($this->env->DBH->acceptAliasInGroupBy() && $doAddRes) {
+			if ($this->env->DBH->acceptAliasInGroupBy()) {
 				$cols[] = $alias ?: $col;
 			}
 			else {
@@ -2138,7 +2135,7 @@ addCond用于添加查询条件，可以使用表的字段或虚拟字段(无须
 			jdRet(E_SERVER, "redefine vcol `{$this->table}.$colName: $res`", "虚拟字段定义重复");
 		}
 		else {
-			$this->vcolMap[ $colName ] = ["def"=>$def, "def0"=>$res, "vcolDefIdx"=>$vcolDefIdx];
+			$this->vcolMap[ $colName ] = ["def"=>$def, "vcolDefIdx"=>$vcolDefIdx];
 		}
 	}
 
@@ -2252,7 +2249,7 @@ addCond用于添加查询条件，可以使用表的字段或虚拟字段(无须
 			$this->vcolMap[$alias] = $this->vcolMap[$col]; // vcol及其alias同时加入vcolMap
 		}
 		else {
-			$rv = $this->addRes($this->vcolMap[$col]["def0"], false, $isExt);
+			$rv = $this->addRes($this->vcolMap[$col]["def"] . " " . $col, false, $isExt);
 		}
 		if ($isHiddenField)
 			$this->hiddenFields0[] = $alias ?: $col;
