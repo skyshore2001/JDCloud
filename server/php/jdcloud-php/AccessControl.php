@@ -1892,11 +1892,16 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 					if (isset($alias)) {
 						$col1 .= " {$alias}";
 					}
-					if ($doAddRes)
+					if ($doAddRes) {
 						$this->addRes($col1);
+					}
+					else if ($alias){
+						$this->addRes($col1);
+						$this->hiddenFields0[] = $alias;
+					}
 				}
 			}
-			if ($this->env->DBH->acceptAliasInGroupBy()) {
+			if ($this->env->DBH->acceptAliasInGroupBy() && $doAddRes) {
 				$cols[] = $alias ?: $col;
 			}
 			else {
