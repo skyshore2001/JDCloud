@@ -2140,7 +2140,7 @@ addCond用于添加查询条件，可以使用表的字段或虚拟字段(无须
 			jdRet(E_SERVER, "redefine vcol `{$this->table}.$colName: $res`", "虚拟字段定义重复");
 		}
 		else {
-			$this->vcolMap[ $colName ] = ["def"=>$def, "vcolDefIdx"=>$vcolDefIdx];
+			$this->vcolMap[ $colName ] = ["def"=>$def, "def0"=>$res, "vcolDefIdx"=>$vcolDefIdx];
 		}
 	}
 
@@ -2250,11 +2250,15 @@ addCond用于添加查询条件，可以使用表的字段或虚拟字段(无须
 
 		$isExt = @ $vcolDef["isExt"] ? true : false;
 		if ($alias) {
-			$rv = $this->addRes($this->vcolMap[$col]["def"] . " " . $alias, false, $isExt);
+			$def0 = $this->vcolMap[$col]["def"] . " " . $alias;
+			$rv = $this->addRes($def0, false, $isExt);
 			$this->vcolMap[$alias] = $this->vcolMap[$col]; // vcol及其alias同时加入vcolMap
+			$this->vcolMap[$alias]["def0"] = $def0; // 更新def0
 		}
 		else {
-			$rv = $this->addRes($this->vcolMap[$col]["def"] . " " . $col, false, $isExt);
+			// 用def0而非"def col"是为了与原始定义一致，避免addRes中加入重复字段
+			// 比如先引入缺省字段"s.cusId"，此后require中再引入cusId时也要用"s.cusId"，如果引入是"s.cusId cusId"就会重复
+			$rv = $this->addRes($this->vcolMap[$col]["def0"], false, $isExt);
 		}
 		if ($isHiddenField)
 			$this->hiddenFields0[] = $alias ?: $col;
