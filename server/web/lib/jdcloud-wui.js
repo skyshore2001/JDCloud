@@ -2660,6 +2660,8 @@ function jdModule(name, fn, overrideCtor)
 - opt.user: 注册用户，默认使用g_data.userInfo.id，如果不存在则报错。
 - opt.url: websocket地址，默认值是相对路径`/jdserver`，也可指定全路径，如 `ws://oliveche.com/jdserver`
 - opt.dataType=json: 默认只有json对象才回调handleMsg。设置text则处理所有数据。
+- opt.keepAliveInterval=60: 默认每60秒发一次alive消息。设置为0则不发送。
+解决有时（如经多次代理时）可能过几分钟不发数据会被断开的问题。
 
 示例：
 
@@ -2722,9 +2724,10 @@ jdserver同时支持http和websocket，建议设置为：（注意顺序）
 */
 function jdPush(app, handleMsg, opt) {
 	opt = Object.assign({
-		user: window.g_data && g_data.userInfo.id,
+		user: window.g_data && g_data.userInfo && g_data.userInfo.id || ("jduser-" + Math.round(Math.random()*10000)),
 		url: "/jdserver",
 		dataType: "json",
+		keepAliveInterval: 60
 	}, opt);
 
 	if (! opt.user) {
@@ -2732,7 +2735,7 @@ function jdPush(app, handleMsg, opt) {
 	}
 
 	var ws;
-	var tmr;
+	var tmr, tmrAlive;
 	var url = opt.url;
 	var doClose = false;
 
@@ -2743,11 +2746,18 @@ function jdPush(app, handleMsg, opt) {
 			url = proto + url;
 		}
 		else if (url[0] == '/') {
+			var path = (location.host || "localhost");
+			// 支持代理，但路径必须＠开头，
+			// 如: http://oliveche.com/@dev7/jdcloud/m2/ -> ws://oliveche.com/@dev7/jdserver
+			var m = location.pathname.match(/^\/@[^\/]+/);
+			if (m) {
+				path += m[0];
+			}
 			// 直接打开html文件时没有host
-			url = proto + '//' + (location.host || "localhost") + url;
+			url = proto + '//' + path + url;
 		}
 		else {
-			console.err("jdPush: 连接websocket服务器，请使用//或/开头的绝对地址!");
+			console.error("jdPush: 连接websocket服务器，请使用//或/开头的绝对地址!");
 			return;
 		}
 	}
@@ -2775,6 +2785,8 @@ function jdPush(app, handleMsg, opt) {
 		ws.onopen = function (ev) {
 			var req = {ac: 'init', app: app, user: opt.user};
 			ws.send(JSON.stringify(req));
+			if (opt.keepAliveInterval)
+				tmrAlive = setInterval(alive, opt.keepAliveInterval*1000);
 		};
 		ws.onerror = function (ev) {
 			// console.warn('websocket error', ev);
@@ -2787,6 +2799,8 @@ function jdPush(app, handleMsg, opt) {
 				reconnect();
 				return;
 			}
+			if (tmrAlive)
+				clearTimeout(tmrAlive);
 			console.log('websocket close');
 		};
 		ws.onmessage = function (ev) {
@@ -2807,6 +2821,10 @@ function jdPush(app, handleMsg, opt) {
 
 	function reconnect() {
 		tmr = setTimeout(connect, 5000);
+	}
+	function alive() {
+		var req = {ac: "alive"};
+		ws.send(JSON.stringify(req));
 	}
 }
 

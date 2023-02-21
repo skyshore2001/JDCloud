@@ -2218,6 +2218,184 @@ function jdModule(name, fn, overrideCtor)
 	return ret;
 }
 
+/**
+@fn jdPush(app, handleMsg, opt?={user, url, dataType})
+
+支持出错自动重连的websocket client. 默认连接同域下的jdserver。
+
+- app: 应用，或通道名，与后端推送应用名保持一致，一般使用项目名。
+- handleMsg(msg, ws): 回调函数. msg是JS对象。ws是websocket对象, 可发消息ws.send(str)、关闭ws.close()
+- opt.user: 注册用户，默认使用g_data.userInfo.id，如果不存在则报错。
+- opt.url: websocket地址，默认值是相对路径`/jdserver`，也可指定全路径，如 `ws://oliveche.com/jdserver`
+- opt.dataType=json: 默认只有json对象才回调handleMsg。设置text则处理所有数据。
+- opt.keepAliveInterval=60: 默认每60秒发一次alive消息。设置为0则不发送。
+解决有时（如经多次代理时）可能过几分钟不发数据会被断开的问题。
+
+示例：
+
+	// 返回websocket proxy对象
+	var ws = jdPush("tighten", function (msg, ws) {
+		console.log(msg)
+		// 发送消息
+		ws.send({ac:"hello"}); // 发送JS对象会自动转JSON发送。
+	}, opt);
+
+	// 关闭
+	ws.close();
+
+开发环境可配置代理服务器连接jdserver，比如使用Apache，在web根目录下配置.htaccess:
+（确保已打开wstunnel模块且允许htaccess文件）
+
+	# 连接已部署的websocket server
+	rewriterule ^jdserver ws://oliveche.com/jdserver [P,L]
+
+	# 或连本地websocket server (注意最后/不可少)
+	# rewriterule ^jdserver ws://127.0.0.1:8081/ [P,L]
+
+jdserver同时支持http和websocket，建议设置为：（注意顺序）
+
+	rewriterule ^jdserver/(.+) http://127.0.0.1:8081/$1 [P,L]
+	rewriterule ^jdserver ws://127.0.0.1:8081/ [P,L]
+
+或
+
+	rewriterule ^jdserver/(.+) http://oliveche.com/jdserver/$1 [P,L]
+	rewriterule ^jdserver ws://oliveche.com/jdserver/ [P,L]
+
+这样，可以使用基于HTTP的push接口给别的客户端发消息：
+
+	callSvr("/jdserver/push", $.noop, {
+		app: "app1",
+		user: "*", // 表示发给app1中所有人。也可指定`user1`, `user1,user2`, `user*`这样
+		msg: {
+			ac: "msg1",
+			data: "hello"
+		}
+	});
+	// 返回推送人次数量，示例：2
+
+上面通过msg字段发送js对象。
+注意jdPush默认只处理json消息: handleMsg(jsonObj)，其它消息只在控制台打印;
+想处理其它消息，可调用jdPush时设置opt.dataType='text'
+
+取在线用户：
+
+	callSvr("/jdserver/getUsers", { app: "app1" });
+	// 返回示例： ['user1', 'user2' ]
+
+示例：websocket连接jdserver，然后给自己发消息
+
+	jdPush('app1'); // 默认用户为g_data.userInfo.id
+	callSvr('/jdserver/push', {app: 'app1', user: '*', msg: 'hi'});
+	// 在控制台可收到hi
+	
+*/
+function jdPush(app, handleMsg, opt) {
+	opt = Object.assign({
+		user: window.g_data && g_data.userInfo && g_data.userInfo.id || ("jduser-" + Math.round(Math.random()*10000)),
+		url: "/jdserver",
+		dataType: "json",
+		keepAliveInterval: 60
+	}, opt);
+
+	if (! opt.user) {
+		throw "jdPush: require param `user`";
+	}
+
+	var ws;
+	var tmr, tmrAlive;
+	var url = opt.url;
+	var doClose = false;
+
+	// 自动补全协议、主机
+	if (! /^wss?:/.test(url)) {
+		var proto = (location.protocol=="https:"? "wss:": "ws:");
+		if (url.substr(0, 2) == '//') {
+			url = proto + url;
+		}
+		else if (url[0] == '/') {
+			var path = (location.host || "localhost");
+			// 支持代理，但路径必须＠开头，
+			// 如: http://oliveche.com/@dev7/jdcloud/m2/ -> ws://oliveche.com/@dev7/jdserver
+			var m = location.pathname.match(/^\/@[^\/]+/);
+			if (m) {
+				path += m[0];
+			}
+			// 直接打开html文件时没有host
+			url = proto + '//' + path + url;
+		}
+		else {
+			console.error("jdPush: 连接websocket服务器，请使用//或/开头的绝对地址!");
+			return;
+		}
+	}
+	connect();
+
+	var proxy = {
+		close: function () {
+			if (tmr)
+				clearTimeout(tmr);
+			ws.close();
+			doClose = true; // 禁止在onClose中重连
+		},
+		send: function (s) {
+			if (typeof(s) != "string")
+				s = JSON.stringify(s);
+			ws.send(s);
+		}
+	}
+	return proxy;
+
+	function connect() {
+		ws = new WebSocket(url);
+		console.log('connect to ', url);
+
+		ws.onopen = function (ev) {
+			var req = {ac: 'init', app: app, user: opt.user};
+			ws.send(JSON.stringify(req));
+			if (opt.keepAliveInterval)
+				tmrAlive = setInterval(alive, opt.keepAliveInterval*1000);
+		};
+		ws.onerror = function (ev) {
+			// console.warn('websocket error', ev);
+		};
+		ws.onclose = function (ev) {
+			// doClose: 通过proxy.close()关闭后，无须重连
+			// 1000: 正常关闭; 但连jdserver时ws.close()返回1005
+			if (!doClose && ev.code != 1000 && ev.code != 1005) {
+				console.warn('websocket close. will reconnect.');
+				reconnect();
+				return;
+			}
+			if (tmrAlive)
+				clearTimeout(tmrAlive);
+			console.log('websocket close');
+		};
+		ws.onmessage = function (ev) {
+			if (!handleMsg) {
+				console.log(ev.data);
+				return;
+			}
+			if (opt.dataType == 'json') {
+				if (ev.data[0] == '{') // json msg
+					handleMsg(JSON.parse(ev.data), ws);
+				else
+					console.log(ev.data);
+				return;
+			}
+			handleMsg(ev.data, ws);
+		};
+	}
+
+	function reconnect() {
+		tmr = setTimeout(connect, 5000);
+	}
+	function alive() {
+		var req = {ac: "alive"};
+		ws.send(JSON.stringify(req));
+	}
+}
+
 if (! String.prototype.replaceAll) {
 	String.prototype.replaceAll = function (from, to) {
 		return this.replace(new RegExp(from, "g"), to);
@@ -2235,6 +2413,11 @@ var self = this;
 
 self.assert(window.jQuery, "require jquery lib.");
 var mCommon = jdModule("jdcloud.common");
+
+// 原版不支持async函数。此处统一修改做兼容。
+$.isFunction = function (o) {
+	return typeof(o) == 'function';
+};
 
 /**
 @fn getFormData(jo, doGetAll)
@@ -2548,6 +2731,8 @@ FormItem.prototype = {
 		}
 		else if (jo.is(":input")) {
 			val = jo.val();
+			if (val)
+				val = val.trim();
 		}
 		else {
 			val = jo.html();
@@ -2569,6 +2754,9 @@ FormItem.prototype = {
 	},
 	getTitle: function () {
 		return this.ji.closest("td").prev("td").html();
+	},
+	setTitle: function (val) {
+		this.ji.closest("td").prev("td").html(val);
 	},
 	setFocus: function () {
 		var j1 = this.getShowbox();
@@ -2600,7 +2788,7 @@ FormItem.prototype = {
 	visible: function (v) {
 		var jp = this.ji.closest("tr,.wui-field");
 		if (v === undefined) {
-			return this.ji.css("display") != "none" && jp.css("display") != "none";
+			return this.getShowbox().css("display") != "none" && jp.css("display") != "none";
 			//return jp.is(":visible");
 		}
 		jp.toggle(!!v);
@@ -2958,13 +3146,45 @@ function evalOptions(_source, ctx, onError)
 
 1.js可以是返回任意JS对象的代码, 如:
 
+	// 可以有注释
 	{
 		a: 2 * 3600,
 		b: "hello",
 		// c: {}
+		d: function () {
+		},
 	}
 
-如果不处理结果, 则该函数与$.getScript效果类似.
+复杂地，可以定义变量、函数，注意最后返回值对象要用小括号把返回对象括起来，如：
+
+	var schema = {
+		title: "菜单配置",
+	};
+
+	function onReady() {
+	}
+
+	({
+		schema: schema,
+		onReady: onReady
+	})
+
+建议用模块方式来写，即用`(function() { ... return ... })()`把定义内容包起来，这样变量和函数不会污染全局空间：
+
+	(function () {
+	var schema = ...
+	function onReady() {...}
+	return {
+		schema: schema,
+		onReady: onReady
+	}
+	})();
+
+不处理结果时, 则该函数与$.getScript效果类似.
+
+@param options 参考$.ajax参数
+
+@options.async 默认为异步，设置`{async:false}`表示同步调用。
 
 @see evalOptions
  */
@@ -3986,11 +4206,11 @@ function getexp(k, v, hint)
 
 在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。
 
-(v5.5) value支持用数组表示范围（前闭后开区间），主要内部使用：
+(v5.5) value支持用数组表示范围（前闭后开区间），特别方便为起始、结束时间生成条件：
 
 	var cond = getQueryCond({tm: ["2019-1-1", "2020-1-1"]}); // 生成 "tm>='2019-1-1' AND tm<'2020-1-1'"
-	var cond = getQueryCond({tm: [null, "2020-1-1"]}); // 生成 "tm<'2020-1-1'"
-	var cond = getQueryCond({tm: [null, null]); // 返回null
+	var cond = getQueryCond({tm: [null, "2020-1-1"]}); // 生成 "tm<'2020-1-1'"。数组中任一值为null或''都一样会被忽略。
+	var cond = getQueryCond({tm: [null, null]); // 返回空串''
 
 @see getQueryParam
 @see getQueryParamFromTable 获取datagrid的当前查询参数
