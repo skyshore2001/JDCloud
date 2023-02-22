@@ -1385,7 +1385,8 @@ ApiLog请求内容记录2000字节，响应内容res在成功调用时记录200�
 		// 不记日志的情况
 		if (!$this->id && (Conf::$enableApiLog == 0 || (Conf::$enableApiLog == 2 && $ret[0] == 0)))
 			return;
-		$iv = sprintf("%.0f", (microtime(true) - $this->startTm) * 1000); // ms
+		$t = microtime(true) - $this->startTm;
+		$iv = sprintf("%.0f", $t * 1000); // ms
 		if ($X_RET_STR == null)
 			$X_RET_STR = jsonEncode($ret, $env->TEST_MODE);
 		$logLen = $ret[0] !== 0? 2000: 200;
@@ -1414,6 +1415,11 @@ ApiLog请求内容记录2000字节，响应内容res在成功调用时记录200�
 		else {
 			$this->id = $env->dbInsert("ApiLog", $this->log);
 			self::$lastId = $this->id;
+		}
+		if ($t > getConf("conf_slowApiTime")) {
+			$ac = $batchAc ?: $this->log["ac"];
+			$t1 = round($t, 2);
+			logit("slow api call #{$this->id}: $ac, time={$t1}s", true, "slow");
 		}
 // 		$logStr = "=== id={$this->logId} t={$iv} >>>$content<<<\n";
 	}

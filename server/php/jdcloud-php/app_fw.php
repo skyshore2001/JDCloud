@@ -259,6 +259,20 @@ $GLOBALS["conf_mssql_translateMysql"] = true;
 $GLOBALS["conf_mssql_useOdbc"] = false;
 
 $GLOBALS["conf_httpCallAsyncPort"] = 80;
+
+/**
+@var conf_slowSqlTime SQL慢查询阈值时间，默认值为1.0(秒).
+@var conf_slowApiTime 慢接口阈值时间，默认值为1.0(秒).
+@var conf_slowHttpCallTime Web调用慢的阈值时间，默认值为1.0(秒).
+
+@key slow.log 慢查询日志
+
+当操作时间超过阈值时间时，会记录到慢查询日志slow.log。
+注意日志时间为SQL完成时的时间，日志时间减去操作时间才是开始时间。因此日志顺序与执行顺序不一定相同。
+*/
+$GLOBALS["conf_slowSqlTime"] = 1.0;
+$GLOBALS["conf_slowApiTime"] = 1.0;
+$GLOBALS["conf_slowHttpCallTime"] = 1.0;
 // }}}
 
 // load user config
@@ -2605,13 +2619,18 @@ class JDPDO extends PDO
 	{
 		$this->filterSql($sql);
 		$this->addLog($sql);
-		return parent::query($sql, $fetchMode);
+		$t0 = microtime(true);
+		$rv =parent::query($sql, $fetchMode);
+		$this->checkTime($t0, $sql);
+		return $rv;
 	}
 	function exec($sql, $getInsertId = false)
 	{
 		$this->filterSql($sql);
 		$this->addLog($sql);
+		$t0 = microtime(true);
 		$rv = parent::exec($sql);
+		$this->checkTime($t0, $sql);
 		if ($getInsertId)
 			$rv = (int)$this->lastInsertId();
 
@@ -2623,6 +2642,15 @@ class JDPDO extends PDO
 	{
 		$this->addLog($sql);
 		return parent::prepare($sql, $opts);
+	}
+
+	// t0: start time
+	protected function checkTime($t0, $sql) {
+		$t = microtime(true) - $t0;
+		if ($t > getConf("conf_slowSqlTime")) {
+			$t = round($t, 2);
+			logit("-- slow sql: time={$t}s\n$sql\n", "slow");
+		}
 	}
 }
 

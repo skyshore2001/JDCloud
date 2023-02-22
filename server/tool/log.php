@@ -59,7 +59,7 @@ xmp {
 <a href="?f=trace&sz=<?=$MAX_READ_SZ?>">trace</a>
 <a href="?f=ext&sz=<?=$MAX_READ_SZ?>">ext</a>
 <a href="?f=debug&sz=<?=$MAX_READ_SZ?>">debug</a>
-<a href="?f=secure&sz=<?=$MAX_READ_SZ?>">secure</a>
+<a href="?f=slow&sz=<?=$MAX_READ_SZ?>">slow</a>
 <a href="?f=daemon/jdserver&sz=<?=$MAX_READ_SZ?>">jdserver</a>
 
 <hr/>

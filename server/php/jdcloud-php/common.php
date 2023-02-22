@@ -412,11 +412,7 @@ postParams可以是一个kv数组或字符串，也可以是一个文件名(以"
 如果CURL返回错误，可在此查阅错误码：
 http://curl.haxx.se/libcurl/c/libcurl-errors.html
 
-出错及慢调用会记录到日志中，以下环境变量可控制日志记录：
-
-	# 默认情况下：日志记录到trace.log中，记录超过1s的慢调用
-	P_SLOW_CALL_LOG=trace
-	P_SLOW_CALL_VAL=1
+出错记到trace日志，慢调用会记录到slow日志中(可配置慢调用时间阀值，默认1秒：conf_slowHttpCallTime=1.0)
 
 e.g.
 
@@ -491,21 +487,20 @@ function httpCall($url, $postParams=null, $opt=[])
 // 	$status = curl_getinfo($h);
 // 	if (intval($status["http_code"]) != 200)
 // 		return false;
-	$slowLogFile = getenv("P_SLOW_CALL_LOG") ?: "trace";
 	$errno = curl_errno($h);
 	if ($errno)
 	{
 		$errmsg = curl_error($h);
 		curl_close($h);
 		$msg = "httpCall error $errno: time={$tv}s, url=$url, errmsg=$errmsg";
-		logit($msg, true, $slowLogFile);
+		logit($msg, true);
 		throw new MyException(E_SERVER, $msg, "服务器请求出错或超时");
 		// echo "<a href='http://curl.haxx.se/libcurl/c/libcurl-errors.html'>错误原因查询</a></br>";
 	}
 	// slow log
-	$slowVal = getenv("P_SLOW_CALL_VAL") ?: 1;
+	$slowVal = @$GLOBALS["conf_slowHttpCallTime"] ?: 1.0;
 	if ($tv > $slowVal) {
-		logit("httpCall slow call: time={$tv}s, url=$url", true, $slowLogFile);
+		logit("httpCall slow call: time={$tv}s, url=$url", true, "slow");
 	}
 	curl_close($h);
 	return $content;
