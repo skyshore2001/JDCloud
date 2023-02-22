@@ -1268,7 +1268,7 @@ class AccessControl extends JDApiBase
 	private $isAggregatinQuery; // 是聚合查询，如带group by或res中有聚合函数
 
 	// virtual columns
-	private $vcolMap; # elem: $vcol => {def, vcolDefIdx?=-1}
+	private $vcolMap; # elem: $vcol => {def, def0, vcolDefIdx?=-1}
 
 	// 在add后自动设置; 在get/set/del操作调用onValidateId后设置。
 	protected $id;
