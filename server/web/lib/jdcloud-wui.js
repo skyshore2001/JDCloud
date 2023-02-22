@@ -5374,7 +5374,7 @@ function makeUrl(action, params)
 	if (fnMakeUrl) {
 		url = fnMakeUrl(action, params);
 	}
-	else if (self.options.moduleExt && (url = self.options.moduleExt["callSvr"](action)) != null) {
+	else if (self.options.moduleExt && $.isFunction(self.options.moduleExt["callSvr"]) && (url = self.options.moduleExt["callSvr"](action)) != null) {
 	}
 	// 缺省接口调用：callSvr('login'),  callSvr('./1.json'), callSvr('/jdserver/stat') 或 callSvr("1.php") (以"/", "./"或"../"等绝对或相对路径开头, 或是取".php"文件, 则不去自动拼接serverUrl)
 	else if (action[0] != '.' && action[0] != '/' && action.indexOf(".php") < 0)

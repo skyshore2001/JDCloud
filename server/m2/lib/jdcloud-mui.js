@@ -2664,6 +2664,10 @@ FormItem.prototype = {
 	},
 	setDisabled: function (val) {
 		var jo = this.ji;
+		if (jo.hasClass("easyui-validatebox")) {
+			jo.validatebox({disabled: !!val});
+			return;
+		}
 		jo.prop("disabled", !!val);
 		if (val)
 			jo.attr("disabled", "disabled");
@@ -4014,7 +4018,7 @@ function DirectReturn() {}
 @fn windowOnError()
 
 框架自动在脚本出错时弹框报错，并上报服务端(syslog).
-可通过MUI.options.skipErrorRegex忽略指定错误。
+可通过WUI.options.skipErrorRegex忽略指定错误。
  */
 function windowOnError(ev)
 {
@@ -4741,14 +4745,14 @@ function defDataProc(rv)
 		if (g_data.testMode != val) {
 			g_data.testMode = val;
 			if (g_data.testMode)
-				modeStr = "测试模式";
+				modeStr = T("测试模式");
 			self.options.xparam = 0;
 		}
 		val = mCommon.parseValue(this.xhr_.getResponseHeader("X-Daca-Mock-Mode"));
 		if (g_data.mockMode != val) {
 			g_data.mockMode = val;
 			if (g_data.mockMode)
-				modeStr = "测试模式+模拟模式";
+				modeStr = T("测试模式") + "," + T("模拟模式");
 		}
 		if (modeStr) {
 			self.dfdLogin.then(function () {
@@ -4765,7 +4769,7 @@ function defDataProc(rv)
 	catch (e)
 	{
 		leaveWaiting(ctx);
-		var msg = "服务器数据错误。";
+		var msg = T("服务器数据错误。");
 		self.app_alert(msg);
 		ctx.dfd.reject.call(this, msg);
 		return;
@@ -4828,11 +4832,11 @@ function defDataProc(rv)
 			return RV_ABORT;
 		}
 		logError();
-		self.app_alert("操作失败：" + rv[1], "e");
+		self.app_alert(T("操作失败") + ": " + rv[1], "e");
 	}
 	else {
 		logError();
-		self.app_alert("服务器通讯协议异常!", "e"); // 格式不对
+		self.app_alert(T("服务器通讯协议异常!"), "e"); // 格式不对
 	}
 	return RV_ABORT;
 
@@ -4953,7 +4957,13 @@ function makeUrl(action, params)
 		}
 		else {
 			url = opt.serverUrl;
-			params[opt.serverUrlAc || "ac"] = action;
+			var ac = opt.serverUrlAc || "ac";
+			if (! params[ac]) {
+				params[ac] = action;
+			}
+			else { // 如果已有ac参数在用，则改用优先级更多的_ac参数，不覆盖原参数
+				params["_ac"] = action;
+			}
 		}
 		xparam = opt.xparam;
 	}
@@ -6748,7 +6758,9 @@ function showPage(pageRef, opt)
 		m_isback = null;
 		self.activePage = jpage;
 		fixPageSize();
-		var title = jpage.find(".hd h1, .hd h2").filter(":first").text() || self.title || jpage.attr("id");
+		var jpageTitle = jpage.find(".hd h1, .hd h2");
+		self.enhanceLang(jpageTitle);
+		var title = jpageTitle.filter(":first").text() || self.title || jpage.attr("id");
 		setDocTitle(title);
 
 		if (!enableAni) {
@@ -6793,7 +6805,6 @@ function setDocTitle(newTitle)
 {
 	document.title = newTitle;
 	if(mCommon.isIOS() && mCommon.isWeixin()) {
-		document.title = newTitle;
 		var $iframe = $('<iframe src="/favicon.ico"></iframe>');
 		$iframe.one('load',function() {
 			setTimeout(function() {
@@ -7225,8 +7236,8 @@ function app_alert(msg)
 '		<input type="text" id="txtInput" style="border:1px solid #bbb; height:30px; text-align: center">' +
 '	</div>' + 
 '	<div class="ft">' +
-'		<a href="javascript:;" id="btnCancel" class="mui-btn">取消</a>' +
-'		<a href="javascript:;" id="btnOK" class="mui-btn primary">确定</a>' +
+'		<a href="javascript:;" id="btnCancel" class="mui-btn lang">取消</a>' +
+'		<a href="javascript:;" id="btnOK" class="mui-btn primary lang">确定</a>' +
 '	</div>' +
 '</div>'
 		jdlg = $(html);
@@ -7261,7 +7272,7 @@ function app_alert(msg)
 		});
 	}
 
-	jdlg.find(".p-title").html(s);
+	jdlg.find(".p-title").html(T(s));
 	jdlg.find(".p-msg").html(msg);
 	self.showDialog(jdlg);
 
@@ -8234,6 +8245,7 @@ function parseArgs()
 	}
 }
 parseArgs();
+initLang();
 
 // ---- login token for auto login {{{
 function tokenName()
@@ -8426,6 +8438,75 @@ function handleLogin(data)
 	}
 }
 //}}}
+
+// === language {{{
+/**
+@var LANG 多国语言支持/翻译
+
+系统支持通过URL参数lang指定语言，如指定英文版本：`http://myserver/myapp/m2/index.html?lang=en`
+
+如果未指定lang参数，则根据html的lang属性来确定语言，如指定英文版：
+
+	<html lang="en">
+
+默认为开发语言(lang="dev")，以中文为主。英文版下若想切换到开发语言，可以用`http://myserver/myapp/m2/index.html?lang=dev`
+g_args.lang中保存着实际使用的语言。
+
+自带英文语言翻译文件lib/lang-en.js，当lang=en时加载它。可扩展它或以它为模板创建其它语言翻译文件。
+语言翻译文件中，设置全局变量LANG，将开发语言翻译为其它语言。
+
+系统会自动为菜单项、页面标题、列表表头标题、对话框标题等查找翻译。
+其它DOM组件若想支持翻译，可手工添加CSS类lang，如:
+
+	<div><label class="lang"><input type="checkbox" value="mgr">最高管理员</label></div>
+
+	<a href="javascript:logout()" class="logout"><span class="lang"><i class="icon-exit"></i>退出系统</span></a>
+
+或在代码中，使用WUI.enhanceLang(jo)来为DOM组件支持翻译，或直接用T(str)翻译字符串。
+注意lang类或enhanceLang函数不能设置组件下子组件的文字，可先取到文字组件再设置如`WUI.enhanceLang(jo.find(".title"))`。
+
+@fn T(s) 字符串翻译
+
+T函数用于将开发语言翻译为当前使用的语言。
+
+@key .lang DOM组件支持翻译
+@fn enhanceLang(jo) DOM组件支持翻译
+
+ */
+function T(s) {
+	if (s == null || LANG == null)
+		return s;
+	return LANG[s] || s;
+}
+
+function initLang() {
+	window.LANG = null;
+	window.T = T;
+	if (!g_args.lang)
+		g_args.lang = document.documentElement.lang || 'dev';
+	if (g_args.lang != 'dev') {
+		mCommon.loadScript("lib/lang-" + g_args.lang + ".js", {async: false});
+		//mCommon.loadScript("lib/easyui/locale/easyui-lang-en.js");
+	}
+	else {
+		//mCommon.loadScript("lib/easyui/locale/easyui-lang-zh_CN.js");
+	}
+}
+
+self.m_enhanceFn[".lang, .weui-btn, mui-btn"] = self.enhanceLang = enhanceLang;
+function enhanceLang(jo)
+{
+	if (LANG == null)
+		return;
+	jo.contents().each(function () {
+		if (this.nodeType == 3) { // text
+			var t = T(this.nodeValue);
+			this.nodeValue = t;
+		}
+	});
+}
+// }}}
+
 //}}}
 
 // ------ plugins {{{
