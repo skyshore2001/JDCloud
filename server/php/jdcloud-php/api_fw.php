@@ -585,7 +585,7 @@ function getJDEnv()
 	if (is_object($env)) {
 		return $env;
 	}
-	if (!class_exists("Swoole"))
+	if (!isSwoole())
 		return null;
 	return $env[Swoole\Coroutine::getcid()];
 }
