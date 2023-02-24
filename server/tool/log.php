@@ -1,4 +1,13 @@
 <?php
+/**
+@key tool/log.php
+
+参数:
+
+- f: 指定显示哪个日志
+- sz: 指定一次取多少字节显示
+- noHeader: 设置为1时不显示标题.用于直接集成在系统中.
+*/
 header("Cache-Control: no-cache");
 header("Content-Type: text/html; charset=UTF-8");
 
@@ -55,6 +64,7 @@ xmp {
 }
 </style>
 
+<?php if (!$_GET["noHeader"]) { ?>
 <h2>查看日志</h2>
 <a href="?f=trace&sz=<?=$MAX_READ_SZ?>">trace</a>
 <a href="?f=ext&sz=<?=$MAX_READ_SZ?>">ext</a>
@@ -64,6 +74,8 @@ xmp {
 
 <hr/>
 <?php
+}
+
 if (count($msgs) == 0) {
 	echo "<p>没有数据</p>";
 }

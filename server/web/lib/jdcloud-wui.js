@@ -9566,7 +9566,7 @@ function enhanceAnchor(jo)
 			return false;
 		}
 */
-		if (href.match(/^https?:\/\//)) {
+		if (href.match(/^(http|[\.\/])/)) {
 			WUI.showPage("pageIframe", title, [href]);
 			return false;
 		}
