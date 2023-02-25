@@ -9550,10 +9550,15 @@ function enhanceAnchor(jo)
 	var title = jo.text();
 //	console.log(title);
 	jo.click(function (ev) {
+		var showPageOpt = {title: title};
 		var href = $(this).attr("href");
+		if (href[0] == '!') {
+			href = href.substr(1);
+			showPageOpt.force = 1;
+		}
 		if (href.search(/^#(page\w+)$/) >= 0) {
 			var pageName = RegExp.$1;
-			WUI.showPage.call(this, pageName);
+			WUI.showPage.call(this, pageName, showPageOpt);
 			return false;
 		}
 /*
@@ -9567,7 +9572,7 @@ function enhanceAnchor(jo)
 		}
 */
 		if (href.match(/^(http|[\.\/])/)) {
-			WUI.showPage("pageIframe", title, [href]);
+			WUI.showPage("pageIframe", showPageOpt, [href]);
 			return false;
 		}
 	});
