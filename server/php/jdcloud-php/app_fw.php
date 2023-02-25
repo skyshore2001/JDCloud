@@ -1949,7 +1949,7 @@ class DBEnv
 			$DBH->amendLog("cnt=". count($rows));
 			$allRows[] = $rows;
 			// bugfix:sqlite不支持nextRowSet
-			if ($this->DBTYPE == "sqlite")
+			if (! $DBH->supportNextRowSet())
 				break;
 		}
 		while ($sth->nextRowSet());
@@ -2558,6 +2558,10 @@ class JDPDO extends PDO
 	function acceptAliasInGroupBy() {
 		return true;
 	}
+	function supportNextRowSet() {
+		return true;
+	}
+
 	// end
 
 	function __construct($dsn, $user = null, $pwd = null)
@@ -2656,6 +2660,9 @@ class JDPDO extends PDO
 
 class JDPDO_sqlite extends JDPDO
 {
+	function supportNextRowSet() {
+		return false;
+	}
 }
 
 class JDPDO_mysql extends JDPDO
@@ -2734,6 +2741,9 @@ class JDPDO_oracle extends JDPDO
 	function exec($sql, $getInsertId = false) {
 		// NOTE: oracle DO NOT support getLastId(). dont use dbInsert() to get id!
 		return parent::exec($sql, false);
+	}
+	function supportNextRowSet() {
+		return false;
 	}
 }
 
