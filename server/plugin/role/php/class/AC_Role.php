@@ -15,7 +15,10 @@ class AC0_Role extends AccessControl
 				$permsExpr = preg_replace_callback('/[\w&]+/u', function ($ms) {
 					return Q($ms[0]);
 				}, $perms);
-				return queryOne("SELECT GROUP_CONCAT(perms) FROM Role WHERE name IN (" . $permsExpr . ")");
+				$rows = queryAll("SELECT perms FROM Role WHERE name IN (" . $permsExpr . ")");
+				$ret = join(" ", array_map(function ($e) { return $e[0]; }, $rows));
+				return $ret;
+				//return queryOne("SELECT GROUP_CONCAT(perms) FROM Role WHERE name IN (" . $permsExpr . ")");
 			};
 		}
 		$role = param("role");
