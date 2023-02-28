@@ -1251,6 +1251,10 @@ class ApiLog
 	public $batchAc; // new ac for batch
 	public $updateLog; // 可定制ApiLog记录
 
+	public $logReqLen = 2000;
+	public $logResLen = 200;
+	public $logResErrLen = 2000;
+
 /**
 @var ApiLog::$lastId
 
@@ -1262,13 +1266,21 @@ class ApiLog
 
 e.g. 修改ApiLog要记录的ac:
 
-	ApiLog::$instance->batchAc = "async:$f";
+	@ApiLog::$instance->batchAc = "async:$f";
+
+加@抑制错误, 因为当Conf::enableApiLog=0时不记录ApiLog, 此时$instance为空会出现报警或错误.
 
 (v6.1) 可定制ApiLog记录，比如att接口中可指定
 
-	ApiLog::$instance->updateLog = ["res"=>"1.jpg", "ressz" => filesize("1.jpg")];
+	@ApiLog::$instance->updateLog = ["res"=>"1.jpg", "ressz" => filesize("1.jpg")];
 
-ApiLog请求内容记录2000字节，响应内容res在成功调用时记录200字节，出错时记录2000字节。
+ApiLog中, req字段会记录url请求参数和post请求参数各2000字节;
+res字段会记录返回数据200字节(出错时记录2000字节). 
+必要时可以对某个webapi记录多一些返回内容, 可以在api实现中指定:
+
+	@ApiLog::$instance->logResLen = 2000; // res最多记录2000
+	(还有logReqLen和logResErrLen对应req记录和res出错记录, 默认都是2000)
+
 */
 	static $instance;
 
@@ -1281,7 +1293,7 @@ ApiLog请求内容记录2000字节，响应内容res在成功调用时记录200�
 	{
 		if (is_string($var)) {
 			$var = preg_replace('/\s+/', " ", $var);
-			if (strlen($var) > $maxLength)
+			if ($maxLength > 0 && strlen($var) > $maxLength)
 				$var = mb_substr($var, 0, $maxLength) . "...";
 			return $var;
 		}
@@ -1297,7 +1309,7 @@ ApiLog请求内容记录2000字节，响应内容res在成功调用时记录200�
 			if ($klen > $maxKeyLen)
 				return mb_substr($k, 0, $maxKeyLen) . "...";
 			$len = strlen($s);
-			if ($len >= $maxLength) {
+			if ($maxLength > 0 && $len >= $maxLength) {
 				$s .= "$k=...";
 				break;
 			}
@@ -1334,14 +1346,14 @@ ApiLog请求内容记录2000字节，响应内容res在成功调用时记录200�
 		$env = $this->env;
 		$this->startTm = $env->_SERVER("REQUEST_TIME_FLOAT") ?: microtime(true);
 
-		$content = $this->myVarExport($env->_GET, 2000);
+		$content = $this->myVarExport($env->_GET, $this->logReqLen);
 		$ct = getContentType($env);
 		if (! preg_match('/x-www-form-urlencoded|form-data/i', $ct)) {
 			$post = getHttpInput($env);
-			$content2 = $this->myVarExport($post, 2000);
+			$content2 = $this->myVarExport($post, $this->logReqLen);
 		}
 		else {
-			$content2 = $this->myVarExport($env->_POST, 2000);
+			$content2 = $this->myVarExport($env->_POST, $this->logReqLen);
 		}
 		if ($content2 != "")
 			$content .= ";\n" . $content2;
@@ -1389,7 +1401,7 @@ ApiLog请求内容记录2000字节，响应内容res在成功调用时记录200�
 		$iv = sprintf("%.0f", $t * 1000); // ms
 		if ($X_RET_STR == null)
 			$X_RET_STR = jsonEncode($ret, $env->TEST_MODE);
-		$logLen = $ret[0] !== 0? 2000: 200;
+		$logLen = $ret[0] !== 0? $this->logResErrLen: $this->logResLen;
 		$content = $this->myVarExport($X_RET_STR, $logLen);
 		$batchAc = $this->batchAc;
 		if ($batchAc && mb_strlen($this->batchAc)>50) {

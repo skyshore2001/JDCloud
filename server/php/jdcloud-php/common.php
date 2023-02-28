@@ -1589,6 +1589,8 @@ function qstr($s, $q='"')
 		db_home: env 
 		#db_home: env windows cygwin desc
 
+- Win11环境中在Win10修改的基础上，在windwows的服务里，打开Apache服务，选择[登录]标签页，勾选上[本地系统账户]和[允许服务与桌面交互], 选好后重启apache服务, 注意是在[服务]里重启apache服务，不是在apache里重启
+
 */
 function myexec($cmd, $errMsg = "操作失败")
 {

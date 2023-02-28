@@ -1887,7 +1887,9 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 				else {
 					if ($isAll)
 						jdRet(E_PARAM, "`$col` MUST be virtual column when `res` has `*`", "虚拟字段未定义: $col");
-					$col = "t0." . $col;
+					// 允许"null f1"占位字段
+					if ($col !== "null")
+						$col = "t0." . $col;
 					$col1 = $col;
 					if (isset($alias)) {
 						$col1 .= " {$alias}";
