@@ -323,6 +323,7 @@ input:disabled,select:disabled,textarea:disabled {
 .loginPanel-mask {
 	background: url('bg.jpg');
 	opacity: initial;
+	background-color: lightyellow; /* bugfix:图片加载不出时须用颜色盖住 */
 }
 
 /* 必填项在td中加星号标识 */
