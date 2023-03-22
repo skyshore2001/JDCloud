@@ -2784,7 +2784,10 @@ function enhancePicker(jo)
 		jo.blur(disable);
 
 		var jdlg = jo.closest(".wui-dialog");
-		jdlg.on("beforeshow", onBeforeShowForPickerEdit);
+		// 将事件处理推迟到validatebox等初始化之后
+		setTimeout(function () {
+			jdlg.on("beforeshow", onBeforeShowForPickerEdit);
+		});
 	}
 	if (jo.hasClass("wui-picker-help")) {
 		var jbtn = $("<a></a>");
@@ -2830,7 +2833,13 @@ function enhancePicker(jo)
 	}
 	function onBeforeShowForPickerEdit(ev, formMode, opt) {
 		// 添加模式下，如果是个带required属性的组件，不禁用
-		if (formMode == FormMode.forFind || (formMode == FormMode.forAdd && jo.prop("required")) ) {
+		var required = jo.prop("required");
+		if (!required) {
+			var d = jo.data("validatebox");
+			if (d && d.options && d.options.required)
+				required = true;
+		}
+		if (formMode == FormMode.forFind || (formMode == FormMode.forAdd && required)) {
 			enable();
 		}
 		else {
