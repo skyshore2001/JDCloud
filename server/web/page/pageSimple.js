@@ -36,6 +36,8 @@
 	});
 	WUI.showPage("pageSimple", "工件列表!", [url]);
 
+url中接口调用返回的数据支持query接口常用的hd/list/array格式。
+
 ## 示例2：先弹出查询条件对话框，设置后再显示报表
 
 常常与报表查询条件对话DlgReportCond一起使用, 先设置查询时间段，然后出报表，示例:
@@ -106,6 +108,8 @@
 			// dgOpt.toolbar = WUI.dg_toolbar(jtbl, null, btn1);
 			// 或是：追加工具栏按钮
 			// dgOpt.toolbar.push.apply(dgOpt.toolbar, WUI.dg_toolbar(jtbl, null, btn1));
+			// 不要工具栏
+			// dgOpt.toolbar = null;
 		}
 
 		function formatter_数量(value, row) {
@@ -178,7 +182,15 @@ function initPageSimple(url, queryParams, onInitGrid, showChartParam)
 
 	var url1 = WUI.makeUrl(url, queryParams);
 	var dfd = callSvr(url1, function (data) {
-		var columns = $.map(data.h, function (e) {
+		var h = data.h;
+		if (h == null) {
+			h = [];
+			var arr = data.list || data;
+			if ($.isArray(arr) && $.isPlainObject(arr[0])) {
+				h = Object.keys(arr[0]);
+			}
+		}
+		var columns = $.map(h, function (e) {
 			if (e.substr(-1) == "_")
 				return;
 			return {field: e, title: e};
