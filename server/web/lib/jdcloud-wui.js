@@ -12452,6 +12452,7 @@ function mycombobox(force)
 			jo.replaceWith(jo1);
 			jo = jo1;
 			o = jo1[0];
+			opts = WUI.getOptions(jo, opts);
 		}
 		jo.removeAttr("data-options");
 		jo.addClass("easyui-validatebox");
