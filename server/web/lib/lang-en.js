@@ -119,5 +119,6 @@ LANG = {
 	日期: "Date",
 	时间: "Time",
 	明细: "Detail",
-	查询结果: "Query Result"
+	查询结果: "Query Result",
+	用户名或密码错误: "Auth fail: bad user name or password"
 };

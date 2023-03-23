@@ -18,6 +18,8 @@ LANG = {
 	"服务器数据错误。": "Bad data format!",
 	"服务器通讯协议异常!": "Bad protocol!",
 	"操作失败": "Fail",
+	手机号或密码错误: "Auth fail: bad phone number or password",
+	用户名或密码错误: "Auth fail: bad user name or password",
 	
 	// page home
 	首页: "Home",

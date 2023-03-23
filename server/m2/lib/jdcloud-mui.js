@@ -4823,7 +4823,7 @@ function defDataProc(rv)
 			return RV_ABORT;
 		}
 		else if (rv[0] == E_AUTHFAIL) {
-			var errmsg = rv[1] || "验证失败，请检查输入是否正确!";
+			var errmsg = T(rv[1]) || "验证失败，请检查输入是否正确!";
 			self.app_alert(errmsg, "e");
 			return RV_ABORT;
 		}
@@ -8465,7 +8465,7 @@ g_args.lang中保存着实际使用的语言。
 或在代码中，使用WUI.enhanceLang(jo)来为DOM组件支持翻译，或直接用T(str)翻译字符串。
 注意lang类或enhanceLang函数不能设置组件下子组件的文字，可先取到文字组件再设置如`WUI.enhanceLang(jo.find(".title"))`。
 
-@fn T(s) 字符串翻译
+@fn T(s, defVal?) 字符串翻译
 
 T函数用于将开发语言翻译为当前使用的语言。
 
@@ -8473,10 +8473,10 @@ T函数用于将开发语言翻译为当前使用的语言。
 @fn enhanceLang(jo) DOM组件支持翻译
 
  */
-function T(s) {
+function T(s, def) {
 	if (s == null || LANG == null)
-		return s;
-	return LANG[s] || s;
+		return def || s;
+	return LANG[s] || def || s;
 }
 
 function initLang() {
