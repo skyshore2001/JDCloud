@@ -61,17 +61,20 @@ var ListOptions = {
 // ====== functions {{{
 function showDlgLogin()
 {
-		var jdlg = $("#dlgLogin");
-		WUI.showDlg(jdlg, {
-			url: WUI.makeUrl("login"),
-			noCancel: true,
-			okLabel: '登录',
+	var jdlg = $("#dlgLogin");
+	WUI.showDlg(jdlg, {
+		url: WUI.makeUrl("login"),
+		noCancel: true,
+		okLabel: '登录',
 
-			onOk: function (data) {
-				WUI.closeDlg(jdlg);
-				handleLogin(data);
-			}
-		});
+		onOk: function (data) {
+			WUI.closeDlg(jdlg);
+			handleLogin(data);
+		},
+		onShow: function (formMode, data) {
+			this.dialog("dialog").find("~.window-mask:first").addClass("loginPanel-mask");
+		}
+	});
 }
 
 function handleLogin(data)
