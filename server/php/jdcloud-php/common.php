@@ -1929,4 +1929,43 @@ function getVarsFromExpr($expr)
 	});
 }
 
+/**
+@class JDStatusFile
+
+状态自动加载和保存.
+示例：从cleanData.json文件中加载状态到关联数组$stat，并在修改$stat后自动保存。
+
+	{
+		// $stat = ["id"=>1000]; // 可以给初始值
+		$st = new JDStatusFile("cleanData.json", $stat);
+		...
+		// unset($st); // 手工调用，立即保存。一般无须调用。
+	} // 当$st变量出作用域后，就会自动保存，即使中途有异常，也会自动保存。
+
+注意：
+- 保存前会检查$stat数据是否有变化，无变化时不保存。
+- 若存在并发访问时，以最后一次写入为准。
+ */
+class JDStatusFile
+{
+	private $file, $stat, $stat0;
+	function __construct($file, &$stat) {
+		$this->file = $file;
+		$this->stat0 = $stat;
+		$this->stat = &$stat;
+		@$s = file_get_contents($file);
+		if ($s) {
+			$stat = json_decode($s, true);
+		}
+		else if (!is_array($stat)) {
+			$stat = [];
+		}
+	}
+	function __destruct() {
+		if ($this->stat != $this->stat0) {
+			file_put_contents($this->file, json_encode($this->stat), LOCK_EX);
+		}
+	}
+}
+
 // vi: foldmethod=marker
