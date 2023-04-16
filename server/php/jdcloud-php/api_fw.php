@@ -2634,7 +2634,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			}
 		}
 		$method = $this->_SERVER("REQUEST_METHOD");
-		if ($method === "OPTIONS")
+		if ($method === "OPTIONS" || $method === "HEAD")
 			exit();
 
 		// supportJson: 支持POST为json格式
