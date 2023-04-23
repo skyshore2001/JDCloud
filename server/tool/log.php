@@ -64,7 +64,7 @@ xmp {
 }
 </style>
 
-<?php if (!$_GET["noHeader"]) { ?>
+<?php if (! @$_GET["noHeader"]) { ?>
 <h2>查看日志</h2>
 <a href="?f=trace&sz=<?=$MAX_READ_SZ?>">trace</a>
 <a href="?f=ext&sz=<?=$MAX_READ_SZ?>">ext</a>
