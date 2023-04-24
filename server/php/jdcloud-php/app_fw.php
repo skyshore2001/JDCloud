@@ -1762,7 +1762,7 @@ class DBEnv
 	function __construct($dbtype = null, $db = null, $user = null, $pwd = null) {
 		if ($dbtype) {
 			$this->DBTYPE = $dbtype;
-			assert('$db');
+			assert($db != null);
 			$this->C = [$db, $user, $pwd];
 		}
 		else {

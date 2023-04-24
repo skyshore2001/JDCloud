@@ -420,6 +420,13 @@ e.g.
 	echo(httpCall($url, ["c"=>1, "d"=>0] ));
 
 @see makeUrl
+
+使用PUT操作示例，同时指定用户密码：
+
+	$rv = httpCall($url, $data, [
+		"curlOpt" => [CURLOPT_CUSTOMREQUEST => "PUT", CURLOPT_USERPWD => "demo:demo123"]
+	]);
+
 */
 function httpCall($url, $postParams=null, $opt=[])
 {

@@ -6985,6 +6985,20 @@ function getDgFilter(jtbl, param, ignoreQueryParam)
 }
 
 /**
+@fn getPageOpt(jpage)
+
+返回showPage时传入的参数，是一个对象：{title, ...}。
+如果jpage不是页面，则返回null。
+ */
+self.getPageOpt = getPageOpt;
+function getPageOpt(jpage) 
+{
+	var showPageArgs = jpage.data("showPageArgs_");
+	// showPage(0:pageName, 1:opt={pageName, title, pageFilter?}, 2:paramArr?);  e.g. WUI.showPage(pageName, {title: "title", pageFilter: {cond:cond}})
+	return showPageArgs && showPageArgs[1];
+}
+
+/**
 @fn getPageFilter(jpage, name?)
 @key PAGE_FILTER
 
@@ -7005,10 +7019,10 @@ function getDgFilter(jtbl, param, ignoreQueryParam)
 self.getPageFilter = getPageFilter;
 function getPageFilter(jpage, name)
 {
-	var showPageArgs = jpage.data("showPageArgs_");
+	var showPageOpt = getPageOpt(jpage);
 	// showPage(0:pageName, 1:opt={pageName, title, pageFilter?}, 2:paramArr?);  e.g. WUI.showPage(pageName, {title: "title", pageFilter: {cond:cond}})
-	if (showPageArgs && $.isPlainObject(showPageArgs[1].pageFilter)) {
-		var ret = showPageArgs[1].pageFilter;
+	if (showPageOpt && $.isPlainObject(showPageOpt.pageFilter)) {
+		var ret = showPageOpt.pageFilter;
 		if (name) {
 			ret = $.isPlainObject(ret.cond)? ret.cond[name]: null;
 			if (! isFixedField(ret))
@@ -11776,7 +11790,7 @@ function handleLogin(data)
 	}
 
 	self.dfdLogin.resolve();
-	self.showPage(self.options.pageHome);
+	self.showPage(self.options.pageHome, self.options.pageHomeOpt);
 	if (location.hash.startsWith("#page")) {
 		WUI.showPage(location.hash.replace('#', ''));
 	}

@@ -1204,6 +1204,28 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 类似地还有batchDel操作。显然，batchSet/batchDel逐条记录执行，会比setIf/delIf慢很多，但好处是可重用单条记录更新、删除的业务逻辑。
 
 注意：筋斗云web管理端上，多选或按Ctrl键进行的批量操作，用的是setIf/delIf。
+
+## 连接第三方数据库
+
+如果是同一个数据库服务实例中的其它数据库，是可以直接访问的，只要访问时带上数据库名前缀即可。如：
+
+	class AC2_Data extends AccessControl
+	{
+		protected $table = "fiss.aiobjectdata";
+	}
+
+如果是在其它数据库服务器上，则可以通过修改env来实现，示例：
+
+	class AC2_Data extends AccessControl
+	{
+		protected $table = "fiss.aiobjectdata";
+		protected function onInit() {
+			$db = "mysql:host=10.80.140.32;port=3306;dbname=fiss"; // 也可以连oracle, mssql等各种其它类型数据库，参考DBEnv
+			$this->env = new DBEnv("mysql", $db, "root", "123456");
+			// 这里是直接打开新连接的，如果一次接口调用中访问多次，则应全局缓存该连接
+		}
+	}
+
 */
 
 # ====== functions {{{
@@ -2417,7 +2439,7 @@ uniKey可以指定多个字段，以逗号分隔即可，常用于关联表，�
 			unset($_POST["id"]);
 		}
 		$this->handleSubObjForAddSet();
-		$this->id = dbInsert($this->table, $_POST);
+		$this->id = $this->env->dbInsert($this->table, $_POST);
 		$ret = $this->id;
 		$this->after($ret); // bugfix: 子表添加是在after中执行的，先执行after以免下面指定res查不出子表
 
@@ -2563,7 +2585,7 @@ uniKey以"!"结尾为更新模式，即必须匹配到记录，否则报错，�
 
 			if ($rv["condSql"]) {
 				$sql = sprintf("SELECT t0.id FROM %s WHERE t0.id=%s AND %s", $rv["tblSql"], $this->id, $rv["condSql"]);
-				if (queryOne($sql) === false)
+				if ($this->env->queryOne($sql) === false)
 					jdRet(E_PARAM, "bad {$this->table}.id=" . $this->id . ". Check addCond in `onQuery`.", "操作对象不存在或无权限修改");
 			}
 		}
@@ -2580,7 +2602,7 @@ uniKey以"!"结尾为更新模式，即必须匹配到记录，否则报错，�
 		$this->validate();
 		$this->handleSubObjForAddSet();
 
-		$cnt = dbUpdate($this->table, $_POST, $this->id);
+		$cnt = $this->env->dbUpdate($this->table, $_POST, $this->id);
 		return "OK";
 	}
 
@@ -2743,7 +2765,7 @@ FROM ($sql) t0";
 		$hasFields = (count($this->sqlConf["res"]) > 0);
 		if ($hasFields) {
 			$sql = $this->genQuerySql();
-			$ret = queryOne($sql, true);
+			$ret = $this->env->queryOne($sql, true);
 			if ($ret === false) 
 				jdRet(E_PARAM, "not found `{$this->table}.id`=`{$this->id}`");
 		}
@@ -2884,7 +2906,7 @@ FROM ($sql) t0";
 			else {
 				$cntSql = "SELECT COUNT(*) FROM ($sql) t0";
 			}
-			$totalCnt = queryOne($cntSql);
+			$totalCnt = $this->env->queryOne($cntSql);
 		}
 		if ($orderSql)
 			$sql .= "\nORDER BY " . $orderSql;
@@ -2910,7 +2932,7 @@ FROM ($sql) t0";
 			$this->handleExportToOutfile($sql);
 			jdRet();
 		}
-		$ret = queryAll($sql, true);
+		$ret = $this->env->queryAll($sql, true);
 		if ($ret === false)
 			$ret = [];
 
@@ -3205,7 +3227,7 @@ qsearch的格式是`字段1,字符2,...:查询内容`(使用英文逗号及冒�
 		$sql = $this->delField === null
 			? sprintf("DELETE FROM %s WHERE id=%d", $this->table, $this->id)
 			: sprintf("UPDATE %s SET %s=1 WHERE id=%s", $this->table, $this->delField, $this->id);
-		$cnt = execOne($sql);
+		$cnt = $this->env->execOne($sql);
 		if (param('force')!=1 && $cnt != 1)
 			jdRet(E_PARAM, "del: not found {$this->table}.id={$this->id}");
 		return "OK";
@@ -3308,7 +3330,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 				$kv["t0.$k"] = $v;
 			}
 		}
-		$cnt = dbUpdate($rv["tblSql"], $kv, $rv["condSql"]);
+		$cnt = $this->env->dbUpdate($rv["tblSql"], $kv, $rv["condSql"]);
 		return $cnt;
 	}
 
@@ -3389,11 +3411,11 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		$rv = $this->genCondSql();
 		if ($this->delField === null) {
 			$sql = sprintf("DELETE t0 FROM %s WHERE %s", $rv["tblSql"], $rv["condSql"]);
-			$cnt = execOne($sql);
+			$cnt = $this->env->execOne($sql);
 		}
 		else {
 			$cond = "{$rv["condSql"]} AND {$this->delField}=0";
-			$cnt = dbUpdate($rv["tblSql"], [
+			$cnt = $this->env->dbUpdate($rv["tblSql"], [
 				"t0.{$this->delField}" => 1
 			], $cond);
 		}
@@ -3703,7 +3725,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 				}
 				else {
 					$sql1 = sprintf($opt["sql"], $id1); # e.g. "select * from OrderItem where orderId=%d"
-					$ret1 = queryAll($sql1, true);
+					$ret1 = $this->env->queryAll($sql1, true);
 				}
 				if (@$opt["wantOne"]) {
 					if ((int)$opt["wantOne"] === 2) { // 值为2时，合并到主表
@@ -3780,7 +3802,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 						// => "select status, count(*) cnt, orderId id_ FROM Task WHERE orderId IN (...) group by id_, status"
 						$sql = preg_replace('/group by/i', "$0 id_, ", $sql);
 					}
-					$ret1 = queryAll($sql, true);
+					$ret1 = $this->env->queryAll($sql, true);
 				}
 			}
 			if ($joinField === null) {
@@ -4159,7 +4181,7 @@ function KVtoCond($k, $v)
 		$f = date("Ymd_His") . '.txt';
 		$cmd = "$sql into outfile '$BASE_DIR/$dir/$f'";
 		logit("export to outfile: $cmd");
-		execOne($cmd);
+		$this->env->execOne($cmd);
 
 		$this->header("Content-Type", "text/plain; charset=UTF-8");
 		$this->header("Content-Disposition", "attachment;filename=$f");
