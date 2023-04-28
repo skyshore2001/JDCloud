@@ -78,6 +78,11 @@ class MssqlCompatible
 			return $map[strtolower($ms[1])];
 		}, $sql);
 
+		// hour(tm) => datepart(hour, tm)
+		$sql = preg_replace_callback('/\b(hour|week|weekday|quarter)\s*\(/i', function ($ms) {
+			return "DATEPART($ms[1], ";
+		}, $sql);
+
 		// 'xxx' => N'xxx'
 		$sql = preg_replace_callback("/(N?)('(?:[^']|'')*')/us", function ($ms) {
 			if ($ms[1])
