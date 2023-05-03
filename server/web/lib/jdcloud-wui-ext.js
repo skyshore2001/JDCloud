@@ -399,13 +399,19 @@ function arrayToImg(jp, arr)
 			text = arr1[1];
 		}
 		else {
-			attId = text = att;
+			text = att;
+			if (/^\d+$/.test(att))
+				attId = att;
 		}
-		if (attId == "")
-			return;
-		var url = WUI.makeUrl("att", {id: attId});
-		var linkUrl = (opt.nothumb||!opt.pic) ? url: 
-			(WUI.options.useNewThumb? WUI.makeUrl("att", {id: attId}): WUI.makeUrl("att", {thumbId: attId}));
+		if (attId) {
+			var url = WUI.makeUrl("att", {id: attId});
+			var linkUrl = (opt.nothumb||!opt.pic) ? url: 
+				(WUI.options.useNewThumb? WUI.makeUrl("att", {id: attId}): WUI.makeUrl("att", {thumbId: attId}));
+		}
+		else {
+			var url = '../' + att;
+			var linkUrl = url;
+		}
 		var ja = $('<a target="_blank">').attr({
 			"href": linkUrl,
 			"att": att,

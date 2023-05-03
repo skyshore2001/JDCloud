@@ -9870,6 +9870,14 @@ var Formatter = {
 		return function (value, row) {
 			if (value == null)
 				return "(无图)";
+
+			// value is url, not picId. TODO: 支持多图
+			if (! /^\d+([,:]|$)/.test(value)) {
+				var url = "../" + value;
+				value1 = '<img alt="' + value + '" src="' + url + '">';
+				return '<a target="_black" href="' + url + '">' + value1 + '</a>';
+			}
+			// TODO: 支持多图
 			if (!opt.preview)
 				return '<a target="_black" href="' + linkUrl(value) + '">' + value + '</a>';
 
@@ -9892,6 +9900,7 @@ var Formatter = {
 			return '<a target="_black" href="' + linkUrl(value) + '">' + value1 + '</a>';
 		}
 		function linkUrl(value) {
+			// TODO: 支持点击直接打开图片浏览器
 			if (!opt.thumb) {
 				return WUI.makeUrl("pic", {id:value});
 			}
