@@ -9310,12 +9310,16 @@ function showObjDlg(jdlg, mode, opt)
 	jtbl.datagrid(dgOpt);
 
 特别地，要添加导出数据到Excel文件的功能按钮，可以增加参数"export"作为按钮定义：
-导入可以用"import", 快速查询可以用"qsearch" (这两个以扩展方式在jdcloud-wui-ext.js中定义):
+导入可以用"import", 快速查询可以用"qsearch" (这两个以扩展方式在jdcloud-wui-ext.js中定义)，复制可以用"dup":
 
 	var dgOpt = {
 		...
-		toolbar: WUI.dg_toolbar(jtbl, jdlg, "import", "export", "-", btn1, btn2, "qsearch"),
+		toolbar: WUI.dg_toolbar(jtbl, jdlg, "import", "export", "dup", "-", btn1, btn2, "qsearch"),
 	}
+
+@var toolbar-dup 复制
+
+(v6.1) 复制一行或多行数据，调用后端{Obj}.dup(id)接口。
 
 @see toolbar-qsearch 模糊查询
 
@@ -9521,6 +9525,11 @@ $.extend(dg_toolbar, {
 		return {text: '导出', class: 'splitbutton', iconCls: 'icon-save', handler: getExportHandler(ctx.jtbl),
 			menu: createExportMenu(ctx.jtbl)
 		}
+	},
+	dup: function (ctx) {
+		return {text:'复制', iconCls:'icon-add', handler: function () {
+			self.GridHeaderMenu.dup(ctx.jtbl);
+		}}
 	}
 });
 
@@ -10458,6 +10467,7 @@ var GridHeaderMenu = {
 		'<div id="filterGrid" data-options="iconCls:\'icon-search\'">自定义查询</div>',
 		'<div id="showDlgDataReport" data-options="iconCls:\'icon-sum\'">自定义报表</div>',
 		'<div id="showDlgQuery">高级查询</div>',
+		'<div id="dup" wui-perm="新增">复制</div>',
 		'<div id="import" wui-perm="新增" data-options="iconCls:\'icon-add\'">导入</div>',
 		'<div id="export" data-options="iconCls:\'icon-save\'">导出</div>'
 	],
@@ -10602,6 +10612,37 @@ var GridHeaderMenu = {
 	'export': function (jtbl) {
 		var fn = getExportHandler(jtbl);
 		fn();
+	},
+	dup: function (jtbl) {
+		var param = self.getDgInfo(jtbl);
+		if (!param.obj) {
+			app_alert(T("该数据表不支持复制"), "w");
+			return;
+		}
+		var rows = jtbl.datagrid("getSelections");
+		if (rows.length == 0) {
+			app_alert("请选择要复制的行", "w");
+			return;
+		}
+
+		var idArr = $.map(rows, function (e) {
+			return e.id
+		}).sort();
+
+		if (rows.length > 1) {
+			app_alert("确认要复制" + rows.length + "行数据？", "q", function () {
+				dupObj();
+			});
+		}
+		else {
+			dupObj();
+		}
+
+		function dupObj() {
+			callSvr(param.obj + ".dup",{id: idArr.join(',')},function (res) {
+				WUI.reload(jtbl);
+			});
+		}
 	},
 
 	dgStatCol: function (rows, field) {

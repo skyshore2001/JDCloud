@@ -2664,6 +2664,7 @@ uniKey以"!"结尾为更新模式，即必须匹配到记录，否则报错，�
 					foreach ($subobjList as $subobj) {
 						$subid = $subobj["id"];
 						if ($subid && $this->ac == "add") {
+							$subid0 = $subid;
 							$subid = null;
 							unset($subobj["id"]);
 						}
@@ -2688,7 +2689,11 @@ uniKey以"!"结尾为更新模式，即必须匹配到记录，否则报错，�
 						}
 						else {
 							$subobj[$relatedKey] = $relatedValue;
-							$acObj->callSvc($objName, "add", null, $subobj);
+							$subid = $acObj->callSvc($objName, "add", null, $subobj);
+							if (isset($subid0)) {
+								$GLOBALS["idMap_$objName"][$subid0] = $subid;
+								unset($subid0);
+							}
 						}
 					}
 				};
@@ -3420,6 +3425,112 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 			], $cond);
 		}
 		return $cnt;
+	}
+
+/**
+@fn api_dup($opt)
+
+实现对象复制接口，支持一次复制多个。参数id可以是一个整数，或以逗号分隔的多个整数。
+
+	Obj.dup(id) -> [newId1, ...]
+
+支持定制，示例：
+
+	function api_dup() {
+		$this->dupObjOpt = [
+			// 在get请求前，已自动生成了get请求参数，已自动添加了子表项，这里可修改默认请求参数
+			"beforeGet" => function (&$param) {
+			},
+			// 在add请求前，可修改待添加的数据。如果不指定，默认是将code/name字段自动加随机数。注意原数据的id已删除。
+			"beforeAdd" => function (&$data) {
+				$data["code"] .= '-' . rand(1000,10000);
+				$data["name"] .= '-' . rand(1000,10000);
+			},
+		];
+		return parent::api_dup();
+	}
+
+特别地，如果涉及子表间引用，比如Item有子表specName和specValue，但specValue中有字段specNameId是引用SpecName表的，这种情况就需要将引用旧Id修正为新添加的Id。
+可以在子表的onValidateId中调用fixRefId函数来实现。
+
+	class AC2_SpecValue 
+	{
+		protected function onValidate()
+		{
+			if ($this->ac == 'add') {
+				// 修正Item.dup时的错误关联键specNameId，它指向SpecName中的id。
+				// 字段值可以是一个或多个（以逗号分隔）Id，如100, "100,101"均可。
+				self::fixRefId($_POST["specNameId"], "SpecName");
+			}
+		}
+	}
+
+*/
+	function api_dup() {
+		$idList = mparam("id/i+");
+		$newIdList = [];
+		foreach ($idList as $id) {
+			$newIdList[] = $this->dupObj($id);
+		}
+		return $newIdList;
+	}
+
+	private function dupObj($id) {
+		$param = [
+			"id" => $id,
+			"res" => "t0.*"
+		];
+		foreach ($this->subobj as $k=>$v) {
+			if ($v["wantOne"] || $v["notForAdd"])
+				continue;
+			if (strpos($v["cond"], "{id}") === false && strpos($v["cond"], "%d") === false)
+				continue;
+			addToStr($param["res"], $k);
+			$param["param_$k"] = ["res" => "t0.*", "orderby" => "id"];
+		}
+		$opt = $this->dupObjOpt;
+		if ($opt && is_callable($opt["beforeGet"])) {
+			$opt["beforeGet"]($param);
+		}
+		/* example:
+		$t0 = $this->callSvc(null, "get", [
+			"id" => $id,
+			"res" => "t0.*,specName,specValue",
+			"param_specName" => ["res" => "t0.*", "orderby" => "id"],
+			"param_specValue" => ["res" => "t0.*", "orderby" => "id"],
+		]);
+		*/
+		$t0 = $this->callSvc(null, "get", $param);
+		unset($t0["id"]);
+		if ($opt && is_callable($opt["beforeAdd"])) {
+			$opt["beforeAdd"]($t0);
+		}
+		else {
+			if (isset($t0["code"]))
+				$t0["code"] .= '-' . rand(1000,10000);
+			if (isset($t0["name"]))
+				$t0["name"] .= '-' . rand(1000,10000);
+		}
+		$newId = $this->callSvc(null, "add", null, $t0);
+		return $newId;
+	}
+
+	static function fixRefId(&$var, $refTableName) {
+		if (!$var)
+			return;
+		$map = $GLOBALS["idMap_$refTableName"];
+		if (!is_array($map))
+			return;
+		if (is_int($var)) {
+			if (array_key_exists($var, $map))
+				$var = $map[$var];
+		}
+		else {
+			$arr = array_map(function ($e) use ($map) {
+				return array_key_exists($e, $map)? $map[$e]: $e;
+			}, explode(',', $var));
+			$var = join(',', $arr);
+		}
 	}
 
 /**
