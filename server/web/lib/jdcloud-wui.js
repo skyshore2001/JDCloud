@@ -5912,7 +5912,7 @@ function callSvr(ac, params, fn, postParams, userOptions)
 		ext = 'default';
 	}
 
-	var isSyncCall = (userOptions && userOptions.async == false);
+	var isSyncCall = (userOptions && userOptions.async == false) || self.useSyncCall.active;
 	if (m_curBatch && !isSyncCall)
 	{
 		return m_curBatch.addCall({ac: ac, get: params, post: postParams}, fn, userOptions);
@@ -5969,6 +5969,8 @@ function callSvr(ac, params, fn, postParams, userOptions)
 		opt.contentType = false;
 	}
 	$.extend(opt, userOptions);
+	if (isSyncCall)
+		opt.async = false;
 	if (ext && self.callSvrExt[ext].beforeSend) {
 		self.callSvrExt[ext].beforeSend(opt);
 	}
@@ -6327,6 +6329,18 @@ function useBatchCall(opt, tv)
 	var batch = new self.batchCall(opt);
 	setTimeout(function () {
 		batch.commit();
+	}, tv);
+}
+
+self.useSyncCall = useSyncCall;
+function useSyncCall(tv)
+{
+	if (useSyncCall.active)
+		return;
+	tv = tv || 0;
+	useSyncCall.active = true;
+	setTimeout(function () {
+		useSyncCall.active = false;
 	}, tv);
 }
 
@@ -7151,7 +7165,7 @@ $.fn.okCancel = function (fnOk, fnCancel) {
 对象对话框在更新模式下，按Ctrl-D或右键对话框空白处选择“再次新增”，可复制当前对象，进入添加模式。
 
 支持对子表进行复制，注意仅当子表是允许添加的才会被复制（wui-subobj组件，且设置了valueField和dlg选项）。
-TODO 由于子表支持懒加载，目前有个限制，如果子表尚未加载则无法复制；可手工点击tab页让它加载才能复制。
+(由于子表支持懒加载，当运行“再次新增”时，会自动加载所有子表数据后再复制)
 
 在对话框进入新增模式后，编号(id)会被清除，其它字段保留，
 如果对话框编写过新增时的逻辑，比如自动填写或disable某些字段，这些逻辑会生效。
@@ -7183,10 +7197,12 @@ function dupDlg(jdlg)
 	jdlg.find(".wui-subobj").each(function () {
 		var jsub = $(this);
 		var subOpt = WUI.getOptions(jsub);
-		var isLoaded = jsub.data("subobjLoaded_"); // TODO: 懒加载的subobj，如何取数据？
 		// 有valueField和dlg属性的子表才能添加
-		if (! (subOpt.valueField && subOpt.dlg && subOpt.dgCall && isLoaded && subOpt.relatedKey))
+		if (! (subOpt.valueField && subOpt.dlg && subOpt.dgCall && subOpt.relatedKey))
 			return;
+
+		subOpt.forceLoadData();
+		// var isLoaded = jsub.data("subobjLoaded_"); // TODO: 懒加载的subobj，如何取数据？
 
 		// 典型主子表，设置有关联字段的可以复制。支持relatedKey类似如: 'invId'或'invId={id}'这种。
 		var ms = subOpt.relatedKey.match(/^([^ =]+)/);
@@ -7205,7 +7221,9 @@ function dupDlg(jdlg)
 				delete e.id;
 				delete e[relatedKey];
 			});
+			subOpt.forceLoadData();
 			subOpt.dgCall("loadData", rows);
+			//jsub.data("subobjLoaded_", true);
 		}, 50);
 	});
 
@@ -10142,9 +10160,11 @@ function dgLoader(param, success, error)
 	var jo = $(this);
 	var datagrid = self.isTreegrid(jo)? "treegrid": "datagrid";
 	var opts = jo[datagrid]("options");
+	/*
 	if (opts.data) {
 		return defaultDgLoader[datagrid].apply(this, arguments);
 	}
+	*/
 	if (opts.url == null)
 		return false;
 	var param1 = {};

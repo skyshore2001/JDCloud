@@ -2491,6 +2491,11 @@ function enhanceSubobj(jo)
 
 	var datagrid = opt.treegrid? "treegrid": "datagrid";
 	opt.dgCall = jtbl[datagrid].bind(jtbl); // FormItem中使用
+	// 同步强制加载数据，以便getData/setData可立即获取/设置数据
+	opt.forceLoadData = function () {
+		WUI.useSyncCall();
+		loadData(true);
+	};
 	
 	function onBeforeShow(ev, formMode, beforeShowOpt) 
 	{
@@ -2533,7 +2538,7 @@ function enhanceSubobj(jo)
 		}
 	}
 
-	function loadData() {
+	function loadData(forceLoad) {
 		var formMode = ctx.formMode;
 		var formData = ctx.formData;
 		var show = formMode == FormMode.forSet;
@@ -2541,12 +2546,14 @@ function enhanceSubobj(jo)
 			show = true;
 		toggle(!opt.disabled && show);
 
-		if (jo.is(":hidden") && !opt.forceLoad || opt.disabled)
+		if (opt.forceLoad)
+			forceLoad = true;
+		if (jo.is(":hidden") && !forceLoad || opt.disabled)
 			return;
 
 		if (jo.data("subobjLoaded_")) {
 			// bugfix: 隐藏初始化datagrid后，再点过来时无法显示表格
-			if (opt.forceLoad) {
+			if (forceLoad && !jo.is(":hidden")) {
 				jo.closest(".panel-body").panel("doLayout", true);
 			}
 			return;
@@ -2700,18 +2707,16 @@ SubobjFormItem.prototype = $.extend(new WUI.FormItem(), {
 		this.ji.trigger("setOption", {readonly: val});
 	},
 	getValue: function () {
-		if (! this.ji.data("subobjLoaded_"))
-			return [];
 		var opt = WUI.getOptions(this.ji);
 		WUI.assert(opt.dgCall);
+		opt.forceLoadData();
 		var rows = opt.dgCall("getData").rows; // 就是jtbl.datagrid("getData")
 		return rows;
 	},
 	setValue: function (val) {
-		if (! this.ji.data("subobjLoaded_")) // TODO: set value
-			return;
 		var opt = WUI.getOptions(this.ji);
 		WUI.assert(opt.dgCall);
+		opt.forceLoadData();
 		opt.dgCall("loadData", val);
 	},
 	getTitle: function () {
