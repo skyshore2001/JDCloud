@@ -241,9 +241,15 @@ function isCLIServer()
 	return php_sapi_name() == "cli-server";
 }
 
+/**
+@fn isSwoole()
+@var conf_swoole_env 设置为1表示在swoole服务环境下运行
+
+swoole服务环境下，getJDEnv()将返回各协程中的JDEnv.
+*/
 function isSwoole()
 {
-	return function_exists("swoole_version");
+	return (bool)$GLOBALS["conf_swoole_env"];
 }
 
 /** 

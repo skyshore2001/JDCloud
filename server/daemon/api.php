@@ -1,4 +1,5 @@
 <?php
+$GLOBALS["conf_swoole_env"] = 1;
 require_once('../php/jdcloud-php/api_fw.php');
 require_once('api.user.php');
 
