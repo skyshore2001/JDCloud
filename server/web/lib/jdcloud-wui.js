@@ -12508,6 +12508,13 @@ defectId上暂时不设置，之后传参动态设置。
 
 	<select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap" required></select>
 
+默认的select组件不支持设置必填选项（required属性，即使加easyui-validatebox类也不行；easyui-combobox可支持验证，但它默认并未限制选项必须在列表中），加上my-combobox类即可解决：
+
+	<select name="status" class="my-combobox" required>
+		<option value="CR">新创建</option>
+		<option value="RE">已完成</option>
+	</select>
+
 旧用法（不建议使用）：
 
 	<select name="status" class="my-combobox easyui-validatebox" data-options="jdEnumMap:OrderStatusMap, required:true"></select>
@@ -12592,6 +12599,9 @@ function mycombobox(force)
 			if (opts.isLoaded_)
 				return;
 			opts.isLoaded_ = true;
+			if (! (opts.jdEnumMap || opts.jdEnumList || opts.url))
+				return;
+
 			jo.prop("value_", jo.val()); // 备份val到value_
 			jo.empty();
 			// 添加空值到首行
