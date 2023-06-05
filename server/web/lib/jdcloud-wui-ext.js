@@ -2885,7 +2885,7 @@ PickerFormItem.prototype = $.extend(new WUI.FormItem(), {
 });
 
 /**
-@key .wui-more
+@key .wui-more 可折叠的在线帮助信息
 
 显示一个按钮，用于隐藏（默认）或显示后面的内容。基于easyui-linkbutton创建，兼容该组件的options比如图标.
 
@@ -2898,6 +2898,13 @@ PickerFormItem.prototype = $.extend(new WUI.FormItem(), {
 	带子表: title=code,amount,@order1.itemCode,@order1.qty&amp;uniKey=code
 	</pre>
 
+	<span class="wui-more"><i class="fa fa-question-circle"></i> 代码示例</span>
+	<pre class="hint">
+	$env->get("地址", "value");
+	$env->set("地址", "value", "上海市XX区");
+	</pre>
+
+@see .wui-help
 */
 self.m_enhanceFn[".wui-more"] = enhanceMoreBtn;
 function enhanceMoreBtn(jo)

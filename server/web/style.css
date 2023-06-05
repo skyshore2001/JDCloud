@@ -180,6 +180,9 @@ input:disabled,select:disabled,textarea:disabled {
 	color: blue;
 	white-space: normal;
 }
+pre.hint {
+	white-space: pre;
+}
 
 /* customize menu */
 #menu {
