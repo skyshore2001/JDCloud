@@ -1981,4 +1981,25 @@ class JDStatusFile
 	}
 }
 
+/**
+@class Guard
+
+示例:
+
+	new Guard(function () {
+		// do clean task
+	});
+*/
+class Guard
+{
+	private $fn;
+	function __construct($fn) {
+		assert(is_callable($fn));
+		$this->fn = $fn;
+	}
+	function __destruct() {
+		call_user_func($this->fn);
+	}
+}
+
 // vi: foldmethod=marker
