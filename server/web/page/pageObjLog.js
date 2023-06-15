@@ -86,7 +86,7 @@ var ObjLogFormatter = {
 		value = value.replace(/^.*?;\s*/, '');
 		var map0 = ObjLogFieldMap;
 		var map = ObjLogFieldMap[row.obj]; 
-		return value.replace(/(\w+)=([^, ;]*)|"(\w+)":"([^"]+)"/g, function (m, m1, m2, m3, m4) {
+		return value.replace(/([\w\u4e00-\u9fa5]+)=([^, ;]*)|"([\w\u4e00-\u9fa5]+)":"([^"]*)"/g, function (m, m1, m2, m3, m4) {
 			if (m1 == "_app")
 				return "";
 			var k = m1 || m3;
@@ -94,7 +94,7 @@ var ObjLogFormatter = {
 			if (!map || !map[k]) {
 				if (map0[k])
 					return map0[k] + "=" + v;
-				return m;
+				return k + "=" + v;
 			}
 			var o = map[k];
 			var v = o.jdEnumMap? (o.jdEnumMap[v] ||v) : v;
