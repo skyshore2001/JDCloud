@@ -9812,8 +9812,8 @@ function getDgInfo(jtbl, res)
 	res.param = opt.queryParams;
 	res.ac = opt.url && opt.url.action;
 	if (res.ac) {
-		var m = res.ac.match(/\w+(?=\.query\b)/);
-		res.obj = m && m[0];
+		var m = res.ac.match(/^([A-Z]\w*)(\.query)?$/); // e.g. "Contact.query" or "Contact"
+		res.obj = m && m[1];
 	}
 	if (res.sel !== undefined) {
 		res.sel = jtbl[datagrid]('getSelected');
@@ -10464,9 +10464,9 @@ var GridHeaderMenu = {
 	// 表头左侧右键菜单
 	items: [
 		'<div id="showDlgFieldInfo">字段信息</div>',
-		'<div id="filterGrid" data-options="iconCls:\'icon-search\'">自定义查询</div>',
+		'<div id="filterGrid">数据筛选</div>',
 		'<div id="showDlgDataReport" data-options="iconCls:\'icon-sum\'">自定义报表</div>',
-		'<div id="showDlgQuery">高级查询</div>',
+		'<div id="showDlgQuery" data-options="iconCls:\'icon-search\'">高级查询</div>',
 		'<div id="dup" wui-perm="新增">复制</div>',
 		'<div id="import" wui-perm="新增" data-options="iconCls:\'icon-add\'">导入</div>',
 		'<div id="export" data-options="iconCls:\'icon-save\'">导出</div>'
@@ -10583,7 +10583,7 @@ var GridHeaderMenu = {
 
 	filterGrid: function (jtbl) {
 		var param = self.getDgInfo(jtbl).param;
-		app_alert(T("查询条件(cond)? "), "p", function (cond) {
+		app_alert(T("筛选条件(cond)? "), "p", function (cond) {
 			WUI.reload(jtbl, null, {cond: cond});
 		}, {defValue: param && param.cond});
 	},
@@ -10791,7 +10791,7 @@ function showDlgQuery(data1, param)
 	var itemArr = [
 		// title, dom, hint?
 		{title: "接口名", dom: "<input name='ac' required>", hint: "示例: Ordr.query"},
-		{title: "参数", dom: '<textarea name="param" rows=8></textarea>', hint: "cond:查询条件, res:返回字段, gres:分组字段, pivot:转置字段, fmt:输出格式(html,excel,txt,list,array,csv等)"},
+		{title: "参数", dom: '<textarea name="param" rows=8></textarea>', hint: "cond:查询条件, res:返回字段, gres:分组字段, pivot:转置字段, fmt:输出格式(html,excel,txt,list,array,csv等), fname:页面名和导出文件名"},
 		{title: "统计图<br>参数", dom: '<textarea name="showChartParam" rows=4></textarea>', 
 			hint: "<a target='_blank' href='https://oliveche.com/jdcloud-site/api_web.html#showDlgChart'>须为数组，原型为[rs2StatOpt, seriesOpt, chartOpt]</a><br>" + 
 				"示例: <span class='example'>[]</span> <span class='example'>[{xcol: [0,1]}]</span>" +
@@ -10836,7 +10836,11 @@ function showDlgQuery(data1, param)
 				window.open(url);
 				return;
 			}
-			WUI.showPage("pageSimple", T("查询结果") + "!", [ url, null, null, showChartParam ]);
+			var title = T("查询结果");
+			if (param.fname) {
+				title += "-" + param.fname;
+			};
+			WUI.showPage("pageSimple", title + "!", [ url, null, null, showChartParam ]);
 //			WUI.closeDlg(this);
 		}
 	});

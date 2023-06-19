@@ -181,6 +181,8 @@ function initPageSimple(url, queryParams, onInitGrid, showChartParam)
 	var btnExport = {text:'导出', iconCls:'icon-save', handler: WUI.getExportHandler(jtbl, null, {res: filterRes(url.params.res)}) };
 
 	var url1 = WUI.makeUrl(url, queryParams);
+	var columns = null;
+	var jdlg = null;
 	var dfd = callSvr(url1, function (data) {
 		var h = data.h;
 		if (h == null) {
@@ -190,7 +192,7 @@ function initPageSimple(url, queryParams, onInitGrid, showChartParam)
 				h = Object.keys(arr[0]);
 			}
 		}
-		var columns = $.map(h, function (e) {
+		columns = $.map(h, function (e) {
 			if (e.substr(-1) == "_")
 				return;
 			return {field: e, title: e};
@@ -201,6 +203,7 @@ function initPageSimple(url, queryParams, onInitGrid, showChartParam)
 			data: data,
 			pagination: pagesz !== -1,
 			toolbar: WUI.dg_toolbar(jtbl, null, btnExport),
+			onDblClickRow: onDblClickRow,
 			quickAutoSize: true // WUI对easyui-datagrid的扩展属性，用于大量列时提升性能. 参考: jquery.easyui.min.js
 		};
 		if (pagesz && pagesz !== -1) {
@@ -233,5 +236,33 @@ function initPageSimple(url, queryParams, onInitGrid, showChartParam)
 			return e.substr(-1) != "_"? e: null;
 		});
 		return arr.join(',');
+	}
+
+	function onDblClickRow(idx, data) {
+		if (jdlg == null) {
+			var itemArr = $.map(columns, function (e) {
+				// title, dom, hint?
+				var dom;
+				if (e.field == 'id') {
+					dom = "<input name='" + e.field + "' readonly>";
+				}
+				else {
+					dom = "<textarea name='" + e.field + "' style='height: 30px' readonly></textarea>";
+				}
+				return {title: e.title, dom: dom};
+			});
+			var dialogTitle = WUI.getPageOpt(jpage).title;
+			jdlg = WUI.showDlgByMeta(itemArr, {
+				title: dialogTitle,
+				modal: false,
+				onOk: 'close',
+				data: data
+			});
+		}
+		else {
+			WUI.showDlg(jdlg, {
+				data: data
+			});
+		}
 	}
 }
