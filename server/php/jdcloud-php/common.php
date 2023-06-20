@@ -1956,27 +1956,34 @@ function getVarsFromExpr($expr)
 	} // 当$st变量出作用域后，就会自动保存，即使中途有异常，也会自动保存。
 
 注意：
+
 - 保存前会检查$stat数据是否有变化，无变化时不保存。
 - 若存在并发访问时，以最后一次写入为准。
+- 变量$st即使没有用到也要定义，它的作用域决定了何时写入状态文件。如果直接用`new JDStatusFile()`则对象立即释放无法保存状态。
+
  */
 class JDStatusFile
 {
 	private $file, $stat, $stat0;
 	function __construct($file, &$stat) {
 		$this->file = $file;
-		$this->stat0 = $stat;
-		$this->stat = &$stat;
 		@$s = file_get_contents($file);
 		if ($s) {
 			$stat = json_decode($s, true);
 		}
-		else if (!is_array($stat)) {
+		if (!is_array($stat)) {
 			$stat = [];
 		}
+		$this->stat0 = $stat;
+		$this->stat = &$stat;
 	}
 	function __destruct() {
 		if ($this->stat != $this->stat0) {
-			file_put_contents($this->file, json_encode($this->stat), LOCK_EX);
+			$flag = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
+			$rv = file_put_contents($this->file, json_encode($this->stat), LOCK_EX);
+			if ($rv === false) {
+				jdRet(E_SERVER, "fail to write status file: {$this->file}", "文件写入失败");
+			}
 		}
 	}
 }
