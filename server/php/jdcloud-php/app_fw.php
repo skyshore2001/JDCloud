@@ -273,6 +273,8 @@ $GLOBALS["conf_httpCallAsyncPort"] = 80;
 $GLOBALS["conf_slowSqlTime"] = 1.0;
 $GLOBALS["conf_slowApiTime"] = 1.0;
 $GLOBALS["conf_slowHttpCallTime"] = 1.0;
+
+initAppFw();
 // }}}
 
 // load user config
@@ -280,8 +282,15 @@ $userConf = "{$BASE_DIR}/php/conf.user.php";
 file_exists($userConf) && include_once($userConf);
 
 // ====== functions {{{
-// assert失败中止运行
-assert_options(ASSERT_BAIL, 1);
+function initAppFw()
+{
+	mb_internal_encoding("UTF-8");
+	setlocale(LC_ALL, "zh_CN.UTF-8");
+	umask(2); // 写文件时(如file_put_contents)，默认组可写
+
+	// assert失败中止运行
+	assert_options(ASSERT_BAIL, 1);
+}
 
 // ==== param {{{
 
@@ -1784,9 +1793,6 @@ class DBEnv
 	}
 
 	private function initDbType() {
-		mb_internal_encoding("UTF-8");
-		setlocale(LC_ALL, "zh_CN.UTF-8");
-
 		$this->DBTYPE = getenv("P_DBTYPE");
 		$DB = getenv("P_DB") ?: "localhost/jdcloud";
 		$DBCRED = getenv("P_DBCRED") ?: "ZGVtbzpkZW1vMTIz"; // base64({user}:{pwd}), default: demo:demo123
