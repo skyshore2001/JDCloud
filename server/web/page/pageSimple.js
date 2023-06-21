@@ -178,7 +178,8 @@ function initPageSimple(url, queryParams, onInitGrid, showChartParam)
 	WUI.assert(url.makeUrl, "url须由makeUrl生成");
 	jtbl.jdata().toolbar = "r";
 	// 这里未直接用"export"而是重新定义，是为了禁止WUI.getExportHandler自动生成res参数。
-	var btnExport = {text:'导出', iconCls:'icon-save', handler: WUI.getExportHandler(jtbl, null, {res: filterRes(url.params.res)}) };
+	var handler = WUI.getExportHandler(jtbl, null, {res: filterRes(url.params.res)});
+	var btnExport = {text:'导出', class: 'splitbutton', iconCls:'icon-save', handler: handler, menu: WUI.createExportMenu(handler) };
 
 	var url1 = WUI.makeUrl(url, queryParams);
 	var columns = null;

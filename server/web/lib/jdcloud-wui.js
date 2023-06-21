@@ -9522,8 +9522,9 @@ $.extend(dg_toolbar, {
 		}}
 	},
 	'export': function (ctx) {
-		return {text: '导出', class: 'splitbutton', iconCls: 'icon-save', handler: getExportHandler(ctx.jtbl),
-			menu: createExportMenu(ctx.jtbl)
+		var handler = getExportHandler(ctx.jtbl);
+		return {text: '导出', class: 'splitbutton', iconCls: 'icon-save', handler: handler,
+			menu: createExportMenu(handler)
 		}
 	},
 	dup: function (ctx) {
@@ -9533,7 +9534,8 @@ $.extend(dg_toolbar, {
 	}
 });
 
-function createExportMenu(jtbl)
+self.createExportMenu = createExportMenu;
+function createExportMenu(handler)
 {
 	var jmenu = $('<div>' + 
 		'<div data-options="id:\'csv\'">逗号分隔(csv)</div>' + 
@@ -9545,8 +9547,7 @@ function createExportMenu(jtbl)
 	jmenu.menu({
 		onClick: function (item) {
 			console.log(item);
-			var handler = getExportHandler(jtbl, null, {fmt: item.id});
-			handler();
+			handler({fmt: item.id});
 		}
 	})
 	return jmenu;
@@ -9649,12 +9650,11 @@ function enhanceAnchor(jo)
 self.getExportHandler = getExportHandler;
 function getExportHandler(jtbl, ac, param)
 {
-	param = $.extend({}, {
-		fmt: "excel",
-		pagesz: -1
-	}, param);
-
-	return function () {
+	return function (param1) {
+		var p0 = $.extend({}, {
+			fmt: "excel",
+			pagesz: -1
+		}, param, param1);
 		if (ac == null) {
 			if (jtbl.size() == 0 || !jtbl.hasClass("datagrid-f"))
 				throw "error: bad datagrid: \"" + jtbl.selector + "\"";
@@ -9665,9 +9665,9 @@ function getExportHandler(jtbl, ac, param)
 				return;
 			}
 		}
-		var p1 = getQueryParamFromTable(jtbl, param);
+		var p1 = getQueryParamFromTable(jtbl, p0);
 		// dont export gres fields. 仅当未指定res时自动设置。
-		if (p1.gres && !(param && param.res))
+		if (p1.gres && !(p0 && p0.res))
 			p1.gresHidden = 1;
 		var debugShow = false;
 		if (m_batchMode) {
