@@ -10464,10 +10464,10 @@ var GridHeaderMenu = {
 	// 表头左侧右键菜单
 	items: [
 		'<div id="showDlgFieldInfo">字段信息</div>',
-		'<div id="filterGrid">数据筛选</div>',
+		'<div id="filterGrid" data-options="iconCls:\'icon-filter\'">数据筛选</div>',
 		'<div id="showDlgDataReport" data-options="iconCls:\'icon-sum\'">自定义报表</div>',
 		'<div id="showDlgQuery" data-options="iconCls:\'icon-search\'">高级查询</div>',
-		'<div id="dup" wui-perm="新增">复制</div>',
+		'<div id="dup" wui-perm="新增">再次新增</div>',
 		'<div id="import" wui-perm="新增" data-options="iconCls:\'icon-add\'">导入</div>',
 		'<div id="export" data-options="iconCls:\'icon-save\'">导出</div>'
 	],
@@ -10475,7 +10475,7 @@ var GridHeaderMenu = {
 	itemsForField: [
 		'<div id="copyCol">复制本列</div>',
 		'<div id="statCol" data-options="iconCls:\'icon-sum\'">统计本列</div>',
-		'<div id="doFindCell" data-options="iconCls:\'icon-search\'">查询本列</div>',
+		'<div id="doFindCell" data-options="iconCls:\'icon-filter\'">筛选本列</div>',
 		'<div id="freezeCol" data-options="iconCls:\'icon-lock\'">冻结列</div>',
 	],
 	// 以下为菜单项处理函数
@@ -10616,7 +10616,7 @@ var GridHeaderMenu = {
 	dup: function (jtbl) {
 		var param = self.getDgInfo(jtbl);
 		if (!param.obj) {
-			app_alert(T("该数据表不支持复制"), "w");
+			app_alert(T("该数据表不支持再次新增"), "w");
 			return;
 		}
 		var rows = jtbl.datagrid("getSelections");
@@ -10629,14 +10629,9 @@ var GridHeaderMenu = {
 			return e.id
 		}).sort();
 
-		if (rows.length > 1) {
-			app_alert("确认要复制" + rows.length + "行数据？", "q", function () {
-				dupObj();
-			});
-		}
-		else {
+		app_alert("确认要复制" + rows.length + "行数据？将根据所选行复制并生成新行。", "q", function () {
 			dupObj();
-		}
+		});
 
 		function dupObj() {
 			callSvr(param.obj + ".dup",{id: idArr.join(',')},function (res) {
