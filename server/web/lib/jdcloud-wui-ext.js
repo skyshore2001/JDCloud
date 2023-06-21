@@ -1845,11 +1845,12 @@ protected function onQuery() {
 		var randCls = "qsearch-" + WUI.randChr(4); // 避免有多个qsearch组件时重名冲突
 		setTimeout(function () {
 			//给搜索框的父元素添加一个类名，方便修改样式
-			ctx.jp.find(".qsearch." + randCls).closest(".l-btn").addClass('qsearch-btn');
-			ctx.jp.find(".qsearch." + randCls).click(function () {
+			var jo = ctx.jp.find(".qsearch." + randCls);
+			jo.closest(".l-btn").addClass('qsearch-btn').removeAttr("href"); // 去除href属性，否则无法选框内文字
+			jo.click(function () {
 				return false;
 			});
-			ctx.jp.find(".qsearch." + randCls).keydown(function (e) {
+			jo.keydown(function (e) {
 				if (e.keyCode == 13) {
 					$(this).closest(".l-btn").click();
 					return false; // 避免触发对话框回车事件
