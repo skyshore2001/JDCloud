@@ -792,7 +792,7 @@ subobj: { name => {sql, default?=false, wantOne?=0} } 指定SQL语句，查询�
 例如典型的主、子表场景：一次查询不超过100个订单（分页<100），一个订单带有最多几十行明细，或最多几十条订单日志。
 不可用于总查询返回（主表项数乘以子表项数）超过千行的场景，因为会丢数据。虽可以通过调节子表的maxPageSz解决，但并不建议这样做。
 
-query接口的子查询默认是不分页的，即返回所有子对象数据（实现时是设置pagesz=-1，所有主表项的子对象数加起来最多返回1000条，所以可能会造成子对象丢失问题）。
+query接口的子查询默认是不分页的，即返回所有子对象数据（实现时是设置pagesz=-1，所有主表项的子对象数加起来默认最多10000条，所以可能会造成子对象丢失问题）。
 即使指定wantOne也会查询出所有数据后返回首行，若指定pagesz参数则会报错。
 
 这是由于query接口的子查询使用了查询优化，对所有主表项一次查询返回所有子对象。
@@ -929,21 +929,19 @@ query接口子查询示例：
 
 ### 最大每页数据条数
 
-@fn AccessControl::getMaxPageSz()  (for query) 取最大每页数据条数。为非负整数。
-@var AccessControl::$maxPageSz ?= 1000 (for query) 指定最大每页数据条数。值为负数表示取PAGE_SZ_LIMIT值.
+@var PAGE_SZ_LIMIT =10000 默认每页最大数据条数
 
-前端通过 {obj}.query(pagesz)来指定每页返回多少条数据，缺省是20条，最高不可超过100条。当指定为负数时，表示按最大允许值=min($maxPageSz, PAGE_SZ_LIMIT)返回。
-PAGE_SZ_LIMIT目前定为10000条。如果还不够，一定是应用设计有问题。
+@fn AccessControl::getMaxPageSz()  (for query) 取每页最大数据条数。为非负整数。
+@var AccessControl::$maxPageSz ?= -1 (for query) 指定某对象的每页最大数据条数。默认值为-1，表示使用PAGE_SZ_LIMIT值即10000。
 
-如果想返回每页超过100条数据，必须在后端设置，如：
+前端通过 {obj}.query(pagesz)来指定每页返回多少条数据，缺省是20条，最高不可超过$maxPageSz条。当指定为负数时，表示按$maxPageSz条返回。
+（旧版maxPageSz不允许超过PAGE_SZ_LIMIT，v6.1起不限制）
 
 	class MyObj extends AccessControl
 	{
-		protected $maxPageSz = 2000; // 最大允许返回2000条
+		protected $maxPageSz = 20000; // 最大允许返回20000条
 		// protected $maxPageSz = -1; // 最大允许返回 PAGE_SZ_LIMIT 条
 	}
-
-@var PAGE_SZ_LIMIT =10000
 
 ### 虚拟表和视图
 
@@ -1256,7 +1254,7 @@ class AccessControl extends JDApiBase
 	protected $defaultRes = "*"; // 缺省为 "t0.*" 加  default=true的虚拟字段
 	protected $defaultSort = "t0.id";
 	# for query
-	protected $maxPageSz = 1000;
+	protected $maxPageSz = -1;
 
 	# for get/query
 	# virtual columns
@@ -1617,7 +1615,7 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 	}
 	final public function getMaxPageSz()
 	{
-		return $this->maxPageSz <0? PAGE_SZ_LIMIT: min($this->maxPageSz, PAGE_SZ_LIMIT);
+		return $this->maxPageSz <0? PAGE_SZ_LIMIT: $this->maxPageSz;
 	}
 
 	// 用于onHandleRow或enumFields中，从结果中取指定列数据，避免直接用$row[$col]，因为字段有可能用的是别名。
