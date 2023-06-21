@@ -3777,7 +3777,7 @@ WUI.GridHeaderMenu.showObjLog = function (jtbl) {
 	}
 	var obj = dg.obj;
 	var param = {cond: {obj: obj}}
-	if (dg.selArr.length == 0) { // 未选择时，显示表中所有行的日志
+	if (dg.selArr.length == 0 || dg.selArr[0].id === undefined) { // 未选择时，显示表中所有行的日志
 		if (dg.dgFilter && !$.isEmptyObject(dg.dgFilter))
 			param.objFilter = dg.dgFilter;
 	}

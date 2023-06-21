@@ -6991,8 +6991,12 @@ function getDgFilter(jtbl, param, ignoreQueryParam)
 		var datagrid = isTreegrid(jtbl)? "treegrid": "datagrid";
 		var dgOpt = jtbl[datagrid]("options");
 		var p1 = dgOpt.url && dgOpt.url.params;
-		if (p1)
-			delete p1._app;
+		if (p1) {
+			var arr = ["_app", "res", "orderby", "fname", "page", "pagesz", "fmt"];
+			arr.forEach (function (e) {
+				delete p1[e];
+			});
+		}
 		var p2 = !ignoreQueryParam && dgOpt.queryParams;
 	}
 	return self.extendQueryParam({}, p1, p2, p3, param);
