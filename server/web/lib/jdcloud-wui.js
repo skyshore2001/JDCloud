@@ -9551,7 +9551,7 @@ function createExportMenu(handler)
 	jmenu.menu({
 		onClick: function (item) {
 			console.log(item);
-			handler({fmt: item.id});
+			handler({exportParam: {fmt: item.id}});
 		}
 	})
 	return jmenu;
@@ -9654,11 +9654,11 @@ function enhanceAnchor(jo)
 self.getExportHandler = getExportHandler;
 function getExportHandler(jtbl, ac, param)
 {
-	return function (param1) {
+	return function (ev) {
 		var p0 = $.extend({}, {
 			fmt: "excel",
 			pagesz: -1
-		}, param, param1);
+		}, param, ev.exportParam);
 		if (ac == null) {
 			if (jtbl.size() == 0 || !jtbl.hasClass("datagrid-f"))
 				throw "error: bad datagrid: \"" + jtbl.selector + "\"";
