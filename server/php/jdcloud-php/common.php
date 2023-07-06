@@ -1991,11 +1991,15 @@ class JDStatusFile
 /**
 @class Guard
 
+利用对象析构做清理工作，确保清理工作一定会完成。
+
 示例:
 
-	new Guard(function () {
+	$g = new Guard(function () {
 		// do clean task
 	});
+
+注意变量$g即使没有用到也要定义，它的作用域决定了何时清理。
 */
 class Guard
 {
