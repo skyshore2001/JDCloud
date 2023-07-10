@@ -1219,7 +1219,8 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 		protected $table = "fiss.aiobjectdata";
 		protected function onInit() {
 			$db = "mysql:host=10.80.140.32;port=3306;dbname=fiss"; // 也可以连oracle, mssql等各种其它类型数据库，参考DBEnv
-			$this->env = new DBEnv("mysql", $db, "root", "123456");
+			$this->env = clone $this->env;
+			$this->env->changeDb("mysql", $db, "root", "123456");
 			// 这里是直接打开新连接的，如果一次接口调用中访问多次，则应全局缓存该连接
 		}
 	}

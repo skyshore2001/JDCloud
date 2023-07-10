@@ -1795,6 +1795,12 @@ class DBEnv
 		$this->initEnv();
 	}
 
+	function changeDb($dbtype, $db, $user = null, $pwd = null) {
+		unset($this->DBH);
+		$this->__construct($dbtype, $db, $user, $pwd);
+		$this->dbconn();
+	}
+
 	function addLog($data, $logLevel=0) {
 		if ($this->DEBUG_LOG == 1 && $this->DBG_LEVEL >= $logLevel) {
 			logit($data, true, 'debug');
