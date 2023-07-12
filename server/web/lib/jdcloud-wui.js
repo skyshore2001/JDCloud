@@ -9593,7 +9593,7 @@ function enhanceAnchor(jo)
 	if (jo.attr("target"))
 		return;
 
-	var title = jo.text();
+	var title = jo.text().trim();
 //	console.log(title);
 	jo.click(function (ev) {
 		var showPageOpt = {title: title};
@@ -10175,7 +10175,7 @@ function dgLoader(param, success, error)
 	var opts = jo[datagrid]("options");
 	/*
 	if (opts.data) {
-		return defaultDgLoader[datagrid].apply(this, arguments);
+		return $.fn[datagrid].defaults_bak.loadFilter.apply(this, arguments);
 	}
 	*/
 	if (opts.url == null)
@@ -10320,10 +10320,7 @@ function resetPageNumber(jtbl)
 
 其原因是easyui-datagrid的autoSizeColumn方法有性能问题。当一页行数很多时可尝试使用quickAutoSize选项。
 */
-var defaultDgLoader = {
-	datagrid: $.fn.datagrid.defaults.loader,
-	treegrid: $.fn.treegrid.defaults.loader
-}
+$.fn.datagrid.defaults_bak = $.extend({}, $.fn.datagrid.defaults);
 $.extend($.fn.datagrid.defaults, {
 // 		fit: true,
 // 		width: 1200,
@@ -10349,7 +10346,7 @@ $.extend($.fn.datagrid.defaults, {
 	},
 
 	onLoadSuccess: function (data) {
-		if (data.total) {
+		if (data.total || ($.isArray(data) && data.length > 0)) {
 			// bugfix: 有时无法显示横向滚动条
 			$(this).datagrid("fitColumns");
 		}
@@ -10454,7 +10451,7 @@ var GridHeaderMenu = {
 		var items = field? GridHeaderMenu.itemsForField: GridHeaderMenu.items;
 		$.each(items, function (i, e) {
 			var je = $(e);
-			var perm = je.attr("wui-perm") || je.text();
+			var perm = je.attr("wui-perm") || je.text().trim();
 			if (canDo("通用", perm))
 				je.appendTo(jmenu);
 		});
@@ -10852,6 +10849,7 @@ function showDlgQuery(data1, param)
 	});
 }
 
+$.fn.treegrid.defaults_bak = $.extend({}, $.fn.treegrid.defaults);
 $.extend($.fn.treegrid.defaults, {
 	idField: "id",
 	treeField: "id", // 只影响显示，在该字段上折叠
@@ -10861,6 +10859,8 @@ $.extend($.fn.treegrid.defaults, {
 	singleSelect: false,
 	ctrlSelect: true, // 默认是单选，按ctrl或shift支持多选
 	loadFilter: function (data, parentId) {
+		if ($.isArray(data) && data[0] && $.isArray(data[0].children))
+			return data;
 		var opt = $(this).treegrid("options");
 		var isLeaf = opt.isLeaf;
 		var ret = jdListToTree(data, opt.idField, opt.fatherField, parentId, isLeaf);

@@ -1043,7 +1043,7 @@ function enhanceMenu()
 	jo.addClass("wui-enhanced");
 	jo.find("a").each(function () {
 		if (! $(this).attr("wui-perm")) {
-			$(this).attr("wui-perm", $(this).text());
+			$(this).attr("wui-perm", $(this).text().trim());
 		}
 	});
 	WUI.enhanceLang(jo.find("a, a span"));
@@ -1066,6 +1066,42 @@ function enhanceMenu()
 	}
 }
 $(enhanceMenu);
+
+/**
+@fn getMenuTree(jo=$("#menu"))
+
+返回主菜单的树型数组：[ {name, perm, @children} ]
+ */
+self.getMenuTree = getMenuTree;
+function getMenuTree(jo, arr)
+{
+	if (jo == null)
+		jo = $("#menu");
+	if (arr == null)
+		arr = [];
+	jo.children().each(function (i, e) {
+		var children = arr;
+		var je = $(e);
+		if (je.css("display") == "none")
+			return;
+		if (je.hasClass("my-menu-item")) {
+			var item = {
+				name: je.text().trim(),
+				perm: je.attr("wui-perm"),
+				children: []
+			};
+			arr.push(item);
+			je = je.next();
+			if (! je.hasClass("menu-expandable"))
+				return;
+			children = item.children;
+		}
+		else if (je.hasClass("menu-expandable"))
+			return;
+		getMenuTree(je, children);
+	});
+	return arr;
+}
 
 /**
 @key .wui-combogrid
@@ -1688,7 +1724,7 @@ function applyPermission()
 		var doShow = defaultShow;
 		var allHidden = true;
 		jo.find(">.menu-expandable>a").each(function () {
-			var t = $(this).attr("wui-perm") || $(this).text();
+			var t = $(this).attr("wui-perm") || $(this).text().trim();
 			if (WUI.canDo(t, null, doShowGroup)) {
 				doShow = true;
 				allHidden = false;
