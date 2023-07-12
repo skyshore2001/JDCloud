@@ -1068,13 +1068,53 @@ function enhanceMenu()
 $(enhanceMenu);
 
 /**
-@fn getMenuTree(jo=$("#menu"))
+@fn getMenuTree(jo=$("#menu")|opt)
 
-返回主菜单的树型数组：[ {name, perm, @children} ]
+- jo: 菜单对象，默认为 $("#menu")。
+- opt.filter: `fn(e) -> e` 用于调整返回对象结构。
+
+返回主菜单的树型数组：[ {name, perm, @children} ]，可通过opt.filter来修改返回结构。
+
+可以用tree组件展示，如：
+
+	// 转为 [{text, children}] 结构
+	var tree = WUI.getMenuTree({
+		filter: function (e) {
+			var text = e.name;
+			if (e.name != e.perm)
+				text += "(" + e.perm + ")";
+			return { text: text, children: e.children }
+		}
+	});
+	jo.tree({
+		data: tree,
+		checkbox: true
+	});
+
+可以用treegrid组件展示，如：
+
+	var tree = WUI.getMenuTree();
+	jtbl.treegrid({
+		data: tree,
+		idField: "name",
+		treeField: "name",
+		checkbox: true,
+		columns:[[
+			{title:'菜单项',field:'name',formatter: function (v, row) {
+				if (v == row.perm)
+					return v;
+				return v + "(" + row.perm + ")";
+			}},
+		]]
+	});
  */
 self.getMenuTree = getMenuTree;
-function getMenuTree(jo, arr)
+function getMenuTree(jo, arr, opt)
 {
+	if ($.isPlainObject(jo)) {
+		opt = jo;
+		jo = null;
+	}
 	if (jo == null)
 		jo = $("#menu");
 	if (arr == null)
@@ -1085,20 +1125,23 @@ function getMenuTree(jo, arr)
 		if (je.css("display") == "none")
 			return;
 		if (je.hasClass("my-menu-item")) {
+			children = [];
 			var item = {
 				name: je.text().trim(),
 				perm: je.attr("wui-perm"),
-				children: []
+				children: children
 			};
+			if (opt && opt.filter) {
+				item = opt.filter(item);
+			}
 			arr.push(item);
 			je = je.next();
 			if (! je.hasClass("menu-expandable"))
 				return;
-			children = item.children;
 		}
 		else if (je.hasClass("menu-expandable"))
 			return;
-		getMenuTree(je, children);
+		getMenuTree(je, children, opt);
 	});
 	return arr;
 }
