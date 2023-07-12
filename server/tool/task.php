@@ -46,3 +46,23 @@ function ac_db()
 	system("bash -l ./backup_db.sh");
 }
 
+// ApiLog日志归档到ApiLog_{date}, 如果日志很多，建议每半年执行一次，不定期手工删除
+// task.crontab.php建议(每年1/1,6/1执行): 10 4 1 1,6 * $TASK dblog >> $LOG 2>&1
+function ac_dblog()
+{
+	$dt = date("Ymd");
+	foreach (["ApiLog", "ApiLog1"] as $tbl) {
+		$cnt = queryOne("SELECT COUNT(*) FROM $tbl");
+		if ($cnt < 10000)
+			continue;
+
+		$tblBak = $tbl . '_' . $dt;
+		$tblNew = $tblBak . '_1';
+		echo("backup table $tbl to $tblNew\n");
+		execOne("create table $tblNew like $tbl");
+		execOne("insert into $tblNew select * from $tbl order by id desc limit 1");
+		execOne("DROP TABLE IF EXISTS $tblBak");
+		execOne("RENAME TABLE $tbl TO $tblBak, $tblNew TO $tbl");
+	}
+}
+
