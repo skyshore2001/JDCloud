@@ -470,12 +470,10 @@ select.right {
 
 /* 标题栏左右侧两个图标，一般是返回和菜单。适合16x16 */
 .hd >.btn-icon {
-	width: 16px;
-	height: 16px;
-	padding: 10px;
 	position: absolute;
-	line-height: 0;
 	top: 0;
+	margin: 5px;
+	color: inherit;
 }
 .hd >a.btn-icon:nth-of-type(2) {
 	right: 0;
@@ -493,6 +491,9 @@ select.right {
 	background-repeat: no-repeat;
 	display: inline-block;
 	vertical-align: middle;
+}
+.hd .icon {
+	margin: 5px;
 }
 
 /* 适合 16x16 列表项或菜单项 */

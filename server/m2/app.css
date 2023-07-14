@@ -30,9 +30,7 @@
 
 /* 定义通用图标大小，如顶栏和底栏
 .hd >.btn-icon {
-	width: 16px;
-	height: 16px;
-	padding: 10px;
+	margin: 5px;
 }
 .hd .icon {
 	background-size: 16px;
