@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（移动Web版）</h1>
-<div>最后更新：2022-12-02</div>
+<div>最后更新：2023-07-13</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -56,6 +56,7 @@ code {
 <p><a href="#.btn-icon">.btn-icon (key)</a></p>
 <p><a href="#.ft">.ft (key)</a></p>
 <p><a href="#.hd">.hd (key)</a></p>
+<p><a href="#.lang">.lang (key)</a></p>
 <p><a href="#.mui-android">.mui-android (key)</a></p>
 <p><a href="#.mui-container">.mui-container (key)</a></p>
 <p><a href="#.mui-cordova">.mui-cordova (key)</a></p>
@@ -78,6 +79,7 @@ code {
 <p><a href="#Date.format">Date.format (fn)</a></p>
 <p><a href="#DirectReturn">DirectReturn (class)</a></p>
 <p><a href="#FormMode">FormMode (var)</a></p>
+<p><a href="#LANG">LANG (var)</a></p>
 <p><a href="#MUI">MUI (module)</a></p>
 <p><a href="#MUI.UploadPic">MUI.UploadPic (class)</a></p>
 <p><a href="#MUI.options.moduleExt">MUI.options.moduleExt (var)</a></p>
@@ -90,6 +92,7 @@ code {
 <p><a href="#Promise">Promise (alias)</a></p>
 <p><a href="#Q">Q (fn)</a></p>
 <p><a href="#STORAGE_PREFIX">STORAGE_PREFIX (var)</a></p>
+<p><a href="#T">T (fn)</a></p>
 <p><a href="#WUI.getTmRange">WUI.getTmRange (fn)</a></p>
 <p><a href="#activePage">activePage (var)</a></p>
 <p><a href="#ajaxOpt.jdFilter">ajaxOpt.jdFilter (key)</a></p>
@@ -122,6 +125,7 @@ code {
 <p><a href="#dfdLogin">dfdLogin (var)</a></p>
 <p><a href="#disableBatch">disableBatch (var)</a></p>
 <p><a href="#doSpecial">doSpecial (fn)</a></p>
+<p><a href="#enhanceLang">enhanceLang (fn)</a></p>
 <p><a href="#enhanceWithin">enhanceWithin (fn)</a></p>
 <p><a href="#enterWaiting">enterWaiting (fn)</a></p>
 <p><a href="#evalAttr">evalAttr (fn)</a></p>
@@ -172,6 +176,7 @@ code {
 <p><a href="#jQuery.fn.gn">jQuery.fn.gn (fn)</a></p>
 <p><a href="#jQuery.fn.jdata">jQuery.fn.jdata (fn)</a></p>
 <p><a href="#jdModule">jdModule (fn)</a></p>
+<p><a href="#jdPush">jdPush (fn)</a></p>
 <p><a href="#kvList2Str">kvList2Str (fn)</a></p>
 <p><a href="#lastError">lastError (var)</a></p>
 <p><a href="#leaveWaiting">leaveWaiting (fn)</a></p>
@@ -1230,6 +1235,61 @@ var arr = mCommon.rs2Array(rs);</code></pre>
 <p>返回模块映射列表。</p>
 <pre><code>var moduleMap = jdModule(); // 返回 { "jdcloud.common": JdcloudCommon, ... }</code></pre></div>
 <div class="block">
+<h2 id="jdPush">@fn jdPush(app, handleMsg, opt?={user, url, dataType})</h2>
+<p>支持出错自动重连的websocket client. 默认连接同域下的jdserver。</p>
+<ul>
+<li>app: 应用，或通道名，与后端推送应用名保持一致，一般使用项目名。</li>
+<li>handleMsg(msg, ws): 回调函数. msg是JS对象。ws是websocket对象, 可发消息ws.send(str)、关闭ws.close()</li>
+<li>opt.user: 注册用户，默认使用g_data.userInfo.id，如果不存在则报错。</li>
+<li>opt.url: websocket地址，默认值是相对路径<code>/jdserver</code>，也可指定全路径，如 <code>ws://oliveche.com/jdserver</code></li>
+<li>opt.dataType=json: 默认只有json对象才回调handleMsg。设置text则处理所有数据。</li>
+<li>opt.keepAliveInterval=60: 默认每60秒发一次alive消息。设置为0则不发送。<br />
+解决有时（如经多次代理时）可能过几分钟不发数据会被断开的问题。</li>
+</ul>
+<p>示例：</p>
+<pre><code>// 返回websocket proxy对象
+var ws = jdPush("tighten", function (msg, ws) {
+    console.log(msg)
+    // 发送消息
+    ws.send({ac:"hello"}); // 发送JS对象会自动转JSON发送。
+}, opt);
+
+// 关闭
+ws.close();</code></pre>
+<p>开发环境可配置代理服务器连接jdserver，比如使用Apache，在web根目录下配置.htaccess:<br />
+（确保已打开wstunnel模块且允许htaccess文件）</p>
+<pre><code># 连接已部署的websocket server
+rewriterule ^jdserver ws://oliveche.com/jdserver [P,L]
+
+# 或连本地websocket server (注意最后/不可少)
+# rewriterule ^jdserver ws://127.0.0.1:8081/ [P,L]</code></pre>
+<p>jdserver同时支持http和websocket，建议设置为：（注意顺序）</p>
+<pre><code>rewriterule ^jdserver/(.+) http://127.0.0.1:8081/$1 [P,L]
+rewriterule ^jdserver ws://127.0.0.1:8081/ [P,L]</code></pre>
+<p>或</p>
+<pre><code>rewriterule ^jdserver/(.+) http://oliveche.com/jdserver/$1 [P,L]
+rewriterule ^jdserver ws://oliveche.com/jdserver/ [P,L]</code></pre>
+<p>这样，可以使用基于HTTP的push接口给别的客户端发消息：</p>
+<pre><code>callSvr("/jdserver/push", $.noop, {
+    app: "app1",
+    user: "*", // 表示发给app1中所有人。也可指定`user1`, `user1,user2`, `user*`这样
+    msg: {
+        ac: "msg1",
+        data: "hello"
+    }
+});
+// 返回推送人次数量，示例：2</code></pre>
+<p>上面通过msg字段发送js对象。<br />
+注意jdPush默认只处理json消息: handleMsg(jsonObj)，其它消息只在控制台打印;<br />
+想处理其它消息，可调用jdPush时设置opt.dataType='text'</p>
+<p>取在线用户：</p>
+<pre><code>callSvr("/jdserver/getUsers", { app: "app1" });
+// 返回示例： ['user1', 'user2' ]</code></pre>
+<p>示例：websocket连接jdserver，然后给自己发消息</p>
+<pre><code>jdPush('app1'); // 默认用户为g_data.userInfo.id
+callSvr('/jdserver/push', {app: 'app1', user: '*', msg: 'hi'});
+// 在控制台可收到hi</code></pre></div>
+<div class="block">
 <h2 id="getFormData">@fn getFormData(jo, doGetAll)</h2>
 <p>取DOM对象中带name属性的子对象的内容, 放入一个JS对象中, 以便手工调用callSvr.</p>
 <p>注意: </p>
@@ -1468,12 +1528,38 @@ ret</code></pre>
     // handle json value `data`
 });</code></pre>
 <p>1.js可以是返回任意JS对象的代码, 如:</p>
-<pre><code>{
+<pre><code>// 可以有注释
+{
     a: 2 * 3600,
     b: "hello",
     // c: {}
+    d: function () {
+    },
 }</code></pre>
-<p>如果不处理结果, 则该函数与$.getScript效果类似.</p>
+<p>复杂地，可以定义变量、函数，注意最后返回值对象要用小括号把返回对象括起来，如：</p>
+<pre><code>var schema = {
+    title: "菜单配置",
+};
+
+function onReady() {
+}
+
+({
+    schema: schema,
+    onReady: onReady
+})</code></pre>
+<p>建议用模块方式来写，即用<code>(function() { ... return ... })()</code>把定义内容包起来，这样变量和函数不会污染全局空间：</p>
+<pre><code>(function () {
+var schema = ...
+function onReady() {...}
+return {
+    schema: schema,
+    onReady: onReady
+}
+})();</code></pre>
+<p>不处理结果时, 则该函数与$.getScript效果类似.</p>
+<p class="param"><strong>@param options</strong>  参考$.ajax参数</p>
+<p>@options.async 默认为异步，设置<code>{async:false}</code>表示同步调用。</p>
 <p class="see"><strong>@see <a href="#evalOptions">evalOptions</a></strong> </p></div>
 <div class="block">
 <h2 id="loadCss">@fn loadCss(url)</h2>
@@ -1666,7 +1752,7 @@ function doNext() { }</code></pre>
 <div class="block">
 <h2 id="windowOnError">@fn windowOnError()</h2>
 <p>框架自动在脚本出错时弹框报错，并上报服务端(syslog).<br />
-可通过MUI.options.skipErrorRegex忽略指定错误。</p></div>
+可通过WUI.options.skipErrorRegex忽略指定错误。</p></div>
 <div class="block">
 <h2 id="m_enhanceFn">@var m_enhanceFn</h2></div>
 <div class="block">
@@ -1712,10 +1798,10 @@ WUI.getQueryCond(kvList); // 结果同上。</code></pre>
 <pre><code>{k1:'1-5,7-10', k2:'1-10 and &lt;&gt;6'}</code></pre>
 <p>符号优先级依次为：&quot;-&quot;(类似and) &quot;,&quot;(类似or) and or</p>
 <p>在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。</p>
-<p>(v5.5) value支持用数组表示范围（前闭后开区间），主要内部使用：</p>
+<p>(v5.5) value支持用数组表示范围（前闭后开区间），特别方便为起始、结束时间生成条件：</p>
 <pre><code>var cond = getQueryCond({tm: ["2019-1-1", "2020-1-1"]}); // 生成 "tm&gt;='2019-1-1' AND tm&lt;'2020-1-1'"
-var cond = getQueryCond({tm: [null, "2020-1-1"]}); // 生成 "tm&lt;'2020-1-1'"
-var cond = getQueryCond({tm: [null, null]); // 返回null</code></pre>
+var cond = getQueryCond({tm: [null, "2020-1-1"]}); // 生成 "tm&lt;'2020-1-1'"。数组中任一值为null或''都一样会被忽略。
+var cond = getQueryCond({tm: [null, null]); // 返回空串''</code></pre>
 <p class="see"><strong>@see <a href="#getQueryParam">getQueryParam</a></strong> </p>
 <p class="see"><strong>@see <a href="#getQueryParamFromTable">getQueryParamFromTable</a></strong>  获取datagrid的当前查询参数</p>
 <p class="see"><strong>@see <a href="#doFind">doFind</a></strong> </p>
@@ -2981,6 +3067,26 @@ else if (role == "MA") {
 <pre><code>WUI.dfdLogin.then(function () {
     app_show("hello");
 });</code></pre></div>
+<div class="block">
+<h2 id="LANG">@var LANG 多国语言支持/翻译</h2>
+<p>系统支持通过URL参数lang指定语言，如指定英文版本：<code>http://myserver/myapp/m2/index.html?lang=en</code></p>
+<p>如果未指定lang参数，则根据html的lang属性来确定语言，如指定英文版：</p>
+<pre><code>&lt;html lang="en"&gt;</code></pre>
+<p>默认为开发语言(lang=&quot;dev&quot;)，以中文为主。英文版下若想切换到开发语言，可以用<code>http://myserver/myapp/m2/index.html?lang=dev</code><br />
+g_args.lang中保存着实际使用的语言。</p>
+<p>自带英文语言翻译文件lib/lang-en.js，当lang=en时加载它。可扩展它或以它为模板创建其它语言翻译文件。<br />
+语言翻译文件中，设置全局变量LANG，将开发语言翻译为其它语言。</p>
+<p>系统会自动为菜单项、页面标题、列表表头标题、对话框标题等查找翻译。<br />
+其它DOM组件若想支持翻译，可手工添加CSS类lang，如:</p>
+<pre><code>&lt;div&gt;&lt;label class="lang"&gt;&lt;input type="checkbox" value="mgr"&gt;最高管理员&lt;/label&gt;&lt;/div&gt;
+
+&lt;a href="javascript:logout()" class="logout"&gt;&lt;span class="lang"&gt;&lt;i class="icon-exit"&gt;&lt;/i&gt;退出系统&lt;/span&gt;&lt;/a&gt;</code></pre>
+<p>或在代码中，使用WUI.enhanceLang(jo)来为DOM组件支持翻译，或直接用T(str)翻译字符串。<br />
+注意lang类或enhanceLang函数不能设置组件下子组件的文字，可先取到文字组件再设置如<code>WUI.enhanceLang(jo.find(".title"))</code>。</p>
+<p class="fn"><strong>@fn <a id="T">T</a></strong> (s, defVal?) 字符串翻译</p>
+<p>T函数用于将开发语言翻译为当前使用的语言。</p>
+<p class="key"><strong>@key <a id=".lang">.lang</a></strong>  DOM组件支持翻译</p>
+<p class="fn"><strong>@fn <a id="enhanceLang">enhanceLang</a></strong> (jo) DOM组件支持翻译</p></div>
 <div class="block">
 <h2 id="initClient">@fn initClient(param?)</h2></div>
 <div class="block">

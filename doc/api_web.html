@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2022-12-02</div>
+<div>最后更新：2023-07-13</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -61,6 +61,7 @@ code {
 <p><a href="#$.ajax">$.ajax (key)</a></p>
 <p><a href="#.combo-f">.combo-f (key)</a></p>
 <p><a href="#.easyui-validatebox">.easyui-validatebox (key)</a></p>
+<p><a href="#.lang">.lang (key)</a></p>
 <p><a href="#.my-combobox">.my-combobox (key)</a></p>
 <p><a href="#.my-reset">.my-reset (key)</a></p>
 <p><a href="#.noData">.noData (key)</a></p>
@@ -106,6 +107,7 @@ code {
 <p><a href="#JdcloudExt">JdcloudExt (module)</a></p>
 <p><a href="#JdcloudStat">JdcloudStat (module)</a></p>
 <p><a href="#JdcloudStat.tmUnit">JdcloudStat.tmUnit (key)</a></p>
+<p><a href="#LANG">LANG (var)</a></p>
 <p><a href="#ListOptions">ListOptions (var)</a></p>
 <p><a href="#MUI.options.useNewThumb">MUI.options.useNewThumb (var)</a></p>
 <p><a href="#ObjLog">ObjLog (module)</a></p>
@@ -117,6 +119,7 @@ code {
 <p><a href="#Promise">Promise (alias)</a></p>
 <p><a href="#Q">Q (fn)</a></p>
 <p><a href="#STORAGE_PREFIX">STORAGE_PREFIX (var)</a></p>
+<p><a href="#T">T (fn)</a></p>
 <p><a href="#WUI">WUI (module)</a></p>
 <p><a href="#WUI.applyPermission">WUI.applyPermission (fn)</a></p>
 <p><a href="#WUI.fname">WUI.fname (fn)</a></p>
@@ -180,6 +183,7 @@ code {
 <p><a href="#dupDlg">dupDlg (fn)</a></p>
 <p><a href="#easyui-linkbutton">easyui-linkbutton (key)</a></p>
 <p><a href="#easyui-tabs">easyui-tabs (key)</a></p>
+<p><a href="#enhanceLang">enhanceLang (fn)</a></p>
 <p><a href="#enhanceWithin">enhanceWithin (fn)</a></p>
 <p><a href="#enterWaiting">enterWaiting (fn)</a></p>
 <p><a href="#evalAttr">evalAttr (fn)</a></p>
@@ -205,7 +209,7 @@ code {
 <p><a href="#formatter">formatter (var)</a></p>
 <p><a href="#g_args">g_args (var)</a></p>
 <p><a href="#g_data">g_data (var)</a></p>
-<p><a href="#g_data.userInfo">g_data.userInfo (key)</a></p>
+<p><a href="#g_data.doUpload">g_data.doUpload (var)</a></p>
 <p><a href="#getActivePage">getActivePage (fn)</a></p>
 <p><a href="#getAncestor">getAncestor (fn)</a></p>
 <p><a href="#getBaseUrl">getBaseUrl (fn)</a></p>
@@ -216,8 +220,10 @@ code {
 <p><a href="#getFormData_vf">getFormData_vf (fn)</a></p>
 <p><a href="#getFormItem">getFormItem (fn)</a></p>
 <p><a href="#getFormItemExt">getFormItemExt (var)</a></p>
+<p><a href="#getMenuTree">getMenuTree (fn)</a></p>
 <p><a href="#getOptions">getOptions (fn)</a></p>
 <p><a href="#getPageFilter">getPageFilter (fn)</a></p>
+<p><a href="#getPageOpt">getPageOpt (fn)</a></p>
 <p><a href="#getParamFromTable">getParamFromTable (alias)</a></p>
 <p><a href="#getQueryCond">getQueryCond (fn)</a></p>
 <p><a href="#getQueryParam">getQueryParam (fn)</a></p>
@@ -313,6 +319,7 @@ code {
 <p><a href="#toggleFields">toggleFields (fn)</a></p>
 <p><a href="#toolbar">toolbar (key)</a></p>
 <p><a href="#toolbar-approve">toolbar-approve (key)</a></p>
+<p><a href="#toolbar-dup">toolbar-dup (var)</a></p>
 <p><a href="#toolbar-qsearch">toolbar-qsearch (key)</a></p>
 <p><a href="#treegrid">treegrid (key)</a></p>
 <p><a href="#triggerAsync">triggerAsync (fn)</a></p>
@@ -1646,6 +1653,8 @@ var arr = mCommon.rs2Array(rs);</code></pre>
 <li>opt.user: 注册用户，默认使用g_data.userInfo.id，如果不存在则报错。</li>
 <li>opt.url: websocket地址，默认值是相对路径<code>/jdserver</code>，也可指定全路径，如 <code>ws://oliveche.com/jdserver</code></li>
 <li>opt.dataType=json: 默认只有json对象才回调handleMsg。设置text则处理所有数据。</li>
+<li>opt.keepAliveInterval=60: 默认每60秒发一次alive消息。设置为0则不发送。<br />
+解决有时（如经多次代理时）可能过几分钟不发数据会被断开的问题。</li>
 </ul>
 <p>示例：</p>
 <pre><code>// 返回websocket proxy对象
@@ -1929,12 +1938,38 @@ ret</code></pre>
     // handle json value `data`
 });</code></pre>
 <p>1.js可以是返回任意JS对象的代码, 如:</p>
-<pre><code>{
+<pre><code>// 可以有注释
+{
     a: 2 * 3600,
     b: "hello",
     // c: {}
+    d: function () {
+    },
 }</code></pre>
-<p>如果不处理结果, 则该函数与$.getScript效果类似.</p>
+<p>复杂地，可以定义变量、函数，注意最后返回值对象要用小括号把返回对象括起来，如：</p>
+<pre><code>var schema = {
+    title: "菜单配置",
+};
+
+function onReady() {
+}
+
+({
+    schema: schema,
+    onReady: onReady
+})</code></pre>
+<p>建议用模块方式来写，即用<code>(function() { ... return ... })()</code>把定义内容包起来，这样变量和函数不会污染全局空间：</p>
+<pre><code>(function () {
+var schema = ...
+function onReady() {...}
+return {
+    schema: schema,
+    onReady: onReady
+}
+})();</code></pre>
+<p>不处理结果时, 则该函数与$.getScript效果类似.</p>
+<p class="param"><strong>@param options</strong>  参考$.ajax参数</p>
+<p>@options.async 默认为异步，设置<code>{async:false}</code>表示同步调用。</p>
 <p class="see"><strong>@see <a href="#evalOptions">evalOptions</a></strong> </p></div>
 <div class="block">
 <h2 id="loadCss">@fn loadCss(url)</h2>
@@ -2173,10 +2208,10 @@ WUI.getQueryCond(kvList); // 结果同上。</code></pre>
 <pre><code>{k1:'1-5,7-10', k2:'1-10 and &lt;&gt;6'}</code></pre>
 <p>符号优先级依次为：&quot;-&quot;(类似and) &quot;,&quot;(类似or) and or</p>
 <p>在详情页对话框中，切换到查找模式，在任一输入框中均可支持以上格式。</p>
-<p>(v5.5) value支持用数组表示范围（前闭后开区间），主要内部使用：</p>
+<p>(v5.5) value支持用数组表示范围（前闭后开区间），特别方便为起始、结束时间生成条件：</p>
 <pre><code>var cond = getQueryCond({tm: ["2019-1-1", "2020-1-1"]}); // 生成 "tm&gt;='2019-1-1' AND tm&lt;'2020-1-1'"
-var cond = getQueryCond({tm: [null, "2020-1-1"]}); // 生成 "tm&lt;'2020-1-1'"
-var cond = getQueryCond({tm: [null, null]); // 返回null</code></pre>
+var cond = getQueryCond({tm: [null, "2020-1-1"]}); // 生成 "tm&lt;'2020-1-1'"。数组中任一值为null或''都一样会被忽略。
+var cond = getQueryCond({tm: [null, null]); // 返回空串''</code></pre>
 <p class="see"><strong>@see <a href="#getQueryParam">getQueryParam</a></strong> </p>
 <p class="see"><strong>@see <a href="#getQueryParamFromTable">getQueryParamFromTable</a></strong>  获取datagrid的当前查询参数</p>
 <p class="see"><strong>@see <a href="#doFind">doFind</a></strong> </p>
@@ -2805,8 +2840,9 @@ WUI.reloadRow(jtbl, row);</code></pre>
 </div>
 <ul>
 <li>pageName: 由page上的class指定。</li>
-<li>showPageOpt.title: 如果未指定，则使用page上的title属性.</li>
+<li>showPageOpt.title: 如果未指定，则使用page上的title属性. (v6.1) 如果有多语言翻译，此处title是未翻译过的开发语言。</li>
 <li>paramArr: 调用initfn时使用的参数，是一个数组。如果不指定，则调用initfn直接传入showPageOpt。推荐不指定该参数。</li>
+<li>force: (v6.1) 如果页面已存在，默认直接跳到该页面，指定<code>force: 1</code>会刷新该页面。</li>
 </ul>
 <p class="alias"><strong>@alias <a id="showPage">showPage</a></strong> (pageName, title?, paramArr?)</p>
 <p>新页面以title作为id。<br />
@@ -2818,11 +2854,14 @@ WUI.reloadRow(jtbl, row);</code></pre>
 &lt;/div&gt;</code></pre>
 <p>page调用示例:</p>
 <pre><code>WUI.showPage("pageHome");
-WUI.showPage("pageHome", "我的首页"); // 默认标题是"首页"，这里指定显示标题为"我的首页"。</code></pre>
+WUI.showPage("pageHome", "我的首页"); // 默认标题是"首页"，这里指定显示标题为"我的首页"。
+WUI.showPage("pageHome", {title: "我的首页"}); // 同上</code></pre>
 <p>(v5.4) 如果标题中含有&quot;%s&quot;，将替换成原始标题，同时传参到initPage:</p>
-<pre><code>WUI.showPage("pageHome", "%s-" + cityName, [{cityName: cityName}]); //e.g. 显示 "首页-上海"</code></pre>
+<pre><code>WUI.showPage("pageHome", {title: "%s-" + cityName, cityName: cityName}); //e.g. 显示 "首页-上海"</code></pre>
 <p>title用于唯一标识tab，即如果相同title的tab存在则直接切换过去。除非：<br />
-(v5.5) 如果标题以&quot;!&quot;结尾, 则每次都打开新的tab页。</p>
+(v5.5) 如果标题以&quot;!&quot;结尾, 则每次都打开新的tab页，(v6.1)等价于指定选项<code>showPageOpt.force:1</code>:</p>
+<pre><code>WUI.showPage("pageHome", "我的首页!");
+WUI.showPage("pageHome", {title: "我的首页", force:1}); // 同上</code></pre>
 <h4 id="showPage-1 showPageOpt.pageFilter: (v6) 指定列表页过滤条件(PAGE_FILTER)">1 showPageOpt.pageFilter: (v6) 指定列表页过滤条件(PAGE_FILTER)</h4>
 <p>示例</p>
 <pre><code>var pageFilter = {cond: {status: "在职"}};
@@ -2854,6 +2893,10 @@ WUI.showPage("pageEmployee", {title: "非管理员", pageFilter:{cond: {perms:"!
 <h2 id="wui-pageFile">@key wui-pageFile</h2>
 <p>动态加载的逻辑页(或对话框)具有该属性，值为源文件名。</p></div>
 <div class="block">
+<h2 id="getPageOpt">@fn getPageOpt(jpage)</h2>
+<p>返回showPage时传入的参数，是一个对象：{title, ...}。<br />
+如果jpage不是页面，则返回null。</p></div>
+<div class="block">
 <h2 id="getPageFilter">@fn getPageFilter(jpage, name?)</h2>
 <p class="key"><strong>@key <a id="PAGE_FILTER">PAGE_FILTER</a></strong> </p>
 <p>取页面的过滤参数，由框架自动处理.<br />
@@ -2875,7 +2918,7 @@ WUI.showPage("pageEmployee", {title: "非管理员", pageFilter:{cond: {perms:"!
 <p>复制并添加对象。<br />
 对象对话框在更新模式下，按Ctrl-D或右键对话框空白处选择“再次新增”，可复制当前对象，进入添加模式。</p>
 <p>支持对子表进行复制，注意仅当子表是允许添加的才会被复制（wui-subobj组件，且设置了valueField和dlg选项）。<br />
-TODO 由于子表支持懒加载，目前有个限制，如果子表尚未加载则无法复制；可手工点击tab页让它加载才能复制。</p>
+(由于子表支持懒加载，当运行“再次新增”时，会自动加载所有子表数据后再复制)</p>
 <p>在对话框进入新增模式后，编号(id)会被清除，其它字段保留，<br />
 如果对话框编写过新增时的逻辑，比如自动填写或disable某些字段，这些逻辑会生效。</p>
 <p>如果字段在新增时是disabled状态，比如“添加时间”等字段，尽管它仍显示为旧数据且无法修改，<br />
@@ -3176,7 +3219,7 @@ WUI.showDlg("#dlgReportCond", {
 <li>opt: 同showDlg的参数</li>
 </ul>
 <p>示例：</p>
-<pre><code>var itemArr = [
+<pre><code>var meta = [
     // title, dom, hint?
     {title: "接口名", dom: "&lt;input name='ac' required&gt;", hint: "示例: Ordr.query"},
     {title: "参数", dom: "&lt;textarea name='param' rows=5&gt;&lt;/textarea&gt;", hint: '示例: {cond: {createTm: "&gt;2020-1-1"}, res: "count(*) cnt", gres: "status"}'}
@@ -3358,7 +3401,16 @@ return getFormData(jfrm);</code></pre>
 <h2 id="unloadPage">@fn unloadPage(pageName?)</h2>
 <p class="param"><strong>@param pageName</strong>  如未指定，表示当前页。</p>
 <p>删除一个页面。一般用于开发过程，在修改外部逻辑页后，调用该函数删除页面。此后载入页面，可以看到更新的内容。</p>
-<p>注意：对于内部逻辑页无意义。</p></div>
+<p>注意：对于内部逻辑页无意义。</p>
+<p class="var"><strong>@var <a id="g_data.doUpload">g_data.doUpload</a></strong> </p>
+<p>(v6.1) 为便于在reload页面时定制逻辑，在unload页面时会设置g_data.doUnload变量为true，可以页面pagedestory事件中检测处理，如：</p>
+<pre><code>jpage.on("pagedestroy", onPageDestroy);
+function onPageDestroy() {
+    if (g_data.doUnload) {
+        console.log('!!! unload page');
+    }
+}</code></pre>
+<p>meta页面（或二次开发的页面）支持在更新meta后，点“刷新页面”重新加载meta，就是使用此机制。</p></div>
 <div class="block">
 <h2 id="reloadPage">@fn reloadPage()</h2>
 <p>重新加载当前页面。一般用于开发过程，在修改外部逻辑页后，调用该函数可刷新页面。</p></div>
@@ -3590,11 +3642,13 @@ var dgOpt = {
 };
 jtbl.datagrid(dgOpt);</code></pre>
 <p>特别地，要添加导出数据到Excel文件的功能按钮，可以增加参数&quot;export&quot;作为按钮定义：<br />
-导入可以用&quot;import&quot;, 快速查询可以用&quot;qsearch&quot; (这两个以扩展方式在jdcloud-wui-ext.js中定义):</p>
+导入可以用&quot;import&quot;, 快速查询可以用&quot;qsearch&quot; (这两个以扩展方式在jdcloud-wui-ext.js中定义)，复制可以用&quot;dup&quot;:</p>
 <pre><code>var dgOpt = {
     ...
-    toolbar: WUI.dg_toolbar(jtbl, jdlg, "import", "export", "-", btn1, btn2, "qsearch"),
+    toolbar: WUI.dg_toolbar(jtbl, jdlg, "import", "export", "dup", "-", btn1, btn2, "qsearch"),
 }</code></pre>
+<p class="var"><strong>@var <a id="toolbar-dup">toolbar-dup</a></strong>  复制</p>
+<p>(v6.1) 复制一行或多行数据，调用后端{Obj}.dup(id)接口。</p>
 <p class="see"><strong>@see <a href="#toolbar-qsearch">toolbar-qsearch</a></strong>  模糊查询</p>
 <p>如果想自行定义导出行为参数，可以参考WUI.getExportHandler</p>
 <p class="see"><strong>@see <a href="#getExportHandler">getExportHandler</a></strong>  导出按钮设置</p>
@@ -3693,7 +3747,7 @@ var btnExport = {text:'导出', iconCls:'icon-save', handler: WUI.getExportHandl
 <h2 id="getQueryParamFromTable">@fn getQueryParamFromTable(jtbl, param?)</h2>
 <p class="alias"><strong>@alias <a id="getParamFromTable">getParamFromTable</a></strong> </p>
 <p>根据数据表当前设置，获取查询参数。<br />
-可能会设置{cond, orderby, res, fname}参数。</p>
+可能会设置{cond, orderby, res, fname}参数。但如果param中明确指定了比如res参数，则不会覆盖该参数。</p>
 <p>res参数从列设置中获取，如&quot;id 编号,name 姓名&quot;, 特别地，如果列对应字段以&quot;_&quot;结尾，不会加入res参数。</p>
 <p>(v5.2)<br />
 如果表上有多选行，则导出条件为cond=&quot;t0.id IN (id1, id2)&quot;这种形式。</p>
@@ -3932,23 +3986,30 @@ var btnFind = {text:'查询', class: 'splitbutton', iconCls:'icon-search', handl
 <h2 id="isBusy">@var isBusy</h2>
 <p>标识应用当前是否正在与服务端交互。一般用于自动化测试。</p></div>
 <div class="block">
-<h2 id="g_args">@var g_args</h2>
+<h2 id="g_args">@var g_args 全局URL参数</h2>
 <p>应用参数。</p>
 <p>URL参数会自动加入该对象，例如URL为 <code>http://{server}/{app}/index.html?orderId=10&amp;dscr=上门洗车</code>，则该对象有以下值：</p>
 <pre><code>g_args.orderId=10; // 注意：如果参数是个数值，则自动转为数值类型，不再是字符串。
 g_args.dscr="上门洗车"; // 对字符串会自动进行URL解码。</code></pre>
 <p>框架会自动处理一些参数：</p>
 <ul>
-<li>g_args._debug: 在测试模式下，指定后台的调试等级，有效值为1-9. 参考：后端测试模式 P_TEST_MODE，调试等级 P_DEBUG.</li>
+<li>g_args._debug: 指定后台的调试等级，有效值为1-9. 而且一旦指定，后端将记录debug日志。参考：后端测试模式 P_TEST_MODE，调试等级 P_DEBUG，调试日志 P_DEBUG_LOG</li>
 <li>g_args.autoLogin: 记住登录信息(token)，下次自动登录；注意：如果是在手机模式下打开，此行为是默认的。示例：<a href="http://server/jdcloud/web/?autoLogin">http://server/jdcloud/web/?autoLogin</a></li>
 <li>g_args.phpdebug: (v6) 设置为1时，以调用接口时激活PHP调试，与vscode/netbeans/vim-vdebug等PHP调试器联合使用。参考：<a href="http://oliveche.com/jdcloud-site/phpdebug.html">http://oliveche.com/jdcloud-site/phpdebug.html</a></li>
+<li>g_args.lang: (v6.1) 指定语言，默认为开发语言&quot;dev&quot;，支持英文&quot;en&quot;（加载lib/lang-en.js）。</li>
 </ul>
 <p class="see"><strong>@see <a href="#parseQuery">parseQuery</a></strong>  URL参数通过该函数获取。</p></div>
 <div class="block">
-<h2 id="g_data">@var g_data = {userInfo?}</h2>
+<h2 id="g_data">@var g_data = {userInfo?, initClient?, hasRole()}</h2>
 <p>应用全局共享数据。</p>
 <p>在登录时，会自动设置userInfo属性为个人信息。所以可以通过 g_data.userInfo==null 来判断是否已登录。</p>
-<p class="key"><strong>@key <a id="g_data.userInfo">g_data.userInfo</a></strong> </p></div>
+<ul>
+<li>g_data.userInfo: 登录后，保存用户信息。</li>
+<li>g_data.hasRole(roleList): 检查用户是否有指定角色，如g_data.hasRole(&quot;mgr&quot;)，多个角色用逗号分隔如g_data.hasRole(&quot;mgr,业务员&quot;).<br />
+注意：检查权限请用WUI.canDo()函数</li>
+<li>g_data.initClient: 保存调用initCient接口返回的内容，用于获取后端配置项。<br />
+例如后端全局变量P_initClient中设置的选项会存入g_data.initClient中。常用于用后端配置项控制前端逻辑。</li>
+</ul></div>
 <div class="block">
 <h2 id="BASE_URL">@var BASE_URL</h2>
 <p>TODO: remove</p>
@@ -3995,6 +4056,26 @@ WUI.options.moduleExt.callSvr = function (name) {
 <li>0: 保存小图编号，用att(id)取小图，用att(thumbId)取大图</li>
 <li>1: 保存大图编号，用att(id,thumb=1)取小图，用att(id)取大图</li>
 </ul></div>
+<div class="block">
+<h2 id="LANG">@var LANG 多国语言支持/翻译</h2>
+<p>系统支持通过URL参数lang指定语言，如指定英文版本：<code>http://myserver/myapp/web/store.html?lang=en</code></p>
+<p>如果未指定lang参数，则根据html的lang属性来确定语言，如指定英文版：</p>
+<pre><code>&lt;html lang="en"&gt;</code></pre>
+<p>默认为开发语言(lang=&quot;dev&quot;)，以中文为主。英文版下若想切换到开发语言，可以用<code>http://myserver/myapp/web/store.html?lang=dev</code><br />
+g_args.lang中保存着实际使用的语言。</p>
+<p>自带英文语言翻译文件lib/lang-en.js，当lang=en时加载它。可扩展它或以它为模板创建其它语言翻译文件。<br />
+语言翻译文件中，设置全局变量LANG，将开发语言翻译为其它语言。</p>
+<p>系统会自动为菜单项、页面标题、列表表头标题、对话框标题等查找翻译。<br />
+其它DOM组件若想支持翻译，可手工添加CSS类lang，如:</p>
+<pre><code>&lt;div&gt;&lt;label class="lang"&gt;&lt;input type="checkbox" value="mgr"&gt;最高管理员&lt;/label&gt;&lt;/div&gt;
+
+&lt;a href="javascript:logout()" class="logout"&gt;&lt;span class="lang"&gt;&lt;i class="icon-exit"&gt;&lt;/i&gt;退出系统&lt;/span&gt;&lt;/a&gt;</code></pre>
+<p>或在代码中，使用WUI.enhanceLang(jo)来为DOM组件支持翻译，或直接用T(str)翻译字符串。<br />
+注意lang类或enhanceLang函数不能设置组件下子组件的文字，可先取到文字组件再设置如<code>WUI.enhanceLang(jo.find(".title"))</code>。</p>
+<p class="fn"><strong>@fn <a id="T">T</a></strong> (s, defVal?) 字符串翻译</p>
+<p>T函数用于将开发语言翻译为当前使用的语言。</p>
+<p class="key"><strong>@key <a id=".lang">.lang</a></strong>  DOM组件支持翻译</p>
+<p class="fn"><strong>@fn <a id="enhanceLang">enhanceLang</a></strong> (jo) DOM组件支持翻译</p></div>
 <div class="block">
 <h2 id="app_alert">@fn app_alert(msg, [type?=i], [fn?], opt?={timeoutInterval?, defValue?, onCancel()?})</h2>
 <p class="param"><strong>@param type</strong>  对话框类型: "i": info, 信息提示框; "e": error, 错误框; "w": warning, 警告框; "q"(与app_confirm一样): question, 确认框(会有"确定"和"取消"两个按钮); "p": prompt, 输入框</p>
@@ -4408,6 +4489,11 @@ var ListOptions = {
 <h4 id="jquery-mycombobox-7 验证要求必填">7 验证要求必填</h4>
 <p>(v6) my-combobox继承easyui-validatebox，通过添加requried属性来指定必填项，显示时会在字段后自动加红色星号：</p>
 <pre><code>&lt;select name="status" class="my-combobox" data-options="jdEnumMap:OrderStatusMap" required&gt;&lt;/select&gt;</code></pre>
+<p>默认的select组件不支持设置必填选项（required属性，即使加easyui-validatebox类也不行；easyui-combobox可支持验证，但它默认并未限制选项必须在列表中），加上my-combobox类即可解决：</p>
+<pre><code>&lt;select name="status" class="my-combobox" required&gt;
+    &lt;option value="CR"&gt;新创建&lt;/option&gt;
+    &lt;option value="RE"&gt;已完成&lt;/option&gt;
+&lt;/select&gt;</code></pre>
 <p>旧用法（不建议使用）：</p>
 <pre><code>&lt;select name="status" class="my-combobox easyui-validatebox" data-options="jdEnumMap:OrderStatusMap, required:true"&gt;&lt;/select&gt;</code></pre></div>
 <div class="block">
@@ -4763,6 +4849,42 @@ $(frm.url).val(resUrl);<br />
 <p>菜单组由menu-expand-group标识，第一个a为菜单组标题，可加&quot;expanded&quot;类使其默认展开。<br />
 图标使用font awesome库，由<code>&lt;i class="fa fa-xxx"&gt;&lt;/i&gt;</code>指定，图标查询可参考 <a href="http://www.fontawesome.com.cn/faicons/">http://www.fontawesome.com.cn/faicons/</a> 或 <a href="https://fontawesome.com/icons">https://fontawesome.com/icons</a></p></div>
 <div class="block">
+<h2 id="getMenuTree">@fn getMenuTree(jo=$("#menu")|opt)</h2>
+<ul>
+<li>jo: 菜单对象，默认为 $(&quot;#menu&quot;)。</li>
+<li>opt.filter: <code>fn(e) -&gt; e</code> 用于调整返回对象结构。</li>
+</ul>
+<p>返回主菜单的树型数组：[ {name, perm, @children} ]，可通过opt.filter来修改返回结构。</p>
+<p>可以用tree组件展示，如：</p>
+<pre><code>// 转为 [{text, children}] 结构
+var tree = WUI.getMenuTree({
+    filter: function (e) {
+        var text = e.name;
+        if (e.name != e.perm)
+            text += "(" + e.perm + ")";
+        return { text: text, children: e.children }
+    }
+});
+jo.tree({
+    data: tree,
+    checkbox: true
+});</code></pre>
+<p>可以用treegrid组件展示，如：</p>
+<pre><code>var tree = WUI.getMenuTree();
+jtbl.treegrid({
+    data: tree,
+    idField: "name",
+    treeField: "name",
+    checkbox: true,
+    columns:[[
+        {title:'菜单项',field:'name',formatter: function (v, row) {
+            if (v == row.perm)
+                return v;
+            return v + "(" + row.perm + ")";
+        }},
+    ]]
+});</code></pre></div>
+<div class="block">
 <h2 id=".wui-combogrid">@key .wui-combogrid</h2><div class="toc"><p style="margin-left:0em"><a href="#.wui-combogrid-1 markRefresh 标记下次打开时刷新列表">1 markRefresh 标记下次打开时刷新列表</a></p>
 <p style="margin-left:0em"><a href="#.wui-combogrid-2 动态修改下拉列表">2 动态修改下拉列表</a></p>
 <p style="margin-left:0em"><a href="#.wui-combogrid-3 使用gn函数访问组件">3 使用gn函数访问组件</a></p>
@@ -5006,9 +5128,9 @@ var bval = WUI.canDo(null, "维修", false); // 查一个特定权限，动词�
 <p>qsearch: 模糊查询，支持指定字段</p>
 <p class="see"><strong>@see <a href="#toolbar-qsearch">toolbar-qsearch</a></strong> </p>
 </li>
-<li>approve: 审批</li>
-</ul>
-<p class="see"><strong>@see <a href="#toolbar-approve">toolbar-approve</a></strong> </p></div>
+<li>approve: 审批
+<p class="see"><strong>@see <a href="#toolbar-approve">toolbar-approve</a></strong> </p></li>
+</ul></div>
 <div class="block">
 <h2 id="toolbar-qsearch">@key toolbar-qsearch</h2>
 <p>工具栏-模糊查询。支持指定查询字段。</p>
@@ -5033,40 +5155,48 @@ jtbl.datagrid(dgOpt);</code></pre>
 <p>它将调用接口<code>callSvr("Xx.query", {qsearch: "字段1,字段2:" + val})</code>。</p></div>
 <div class="block">
 <h2 id="toolbar-approve">@key toolbar-approve 审批菜单</h2>
+<p>参数选项：</p>
+<ul>
+<li>text: 指定按钮显示文字，默认为&quot;审批&quot;</li>
+<li>obj: 指定审批对象, 调用{obj}.set接口，将设置approveFlag字段（可由approveFlagField指定）；特别地，指定ApproveRec表示使用审批流组件，将调用ApproveRec.add接口做审批。</li>
+<li>onSet(row, data, title): 见下面例子</li>
+<li>canApprove(row): 权限检查回调，如果指定，用于在审批时由前端检查权限；不指定时不检查（后端检查）。</li>
+<li>approveFlagField: 默认值为&quot;approveFlag&quot;，审批状态字段名。</li>
+</ul>
 <p>依赖字段：</p>
 <ul>
 <li>approveFlag: 审批状态(ApproveFlagMap), Enum(0-无审批, 1-待审批, 2-通过, 3-不通过), 可用ApproveFlagStyler修饰各状态颜色。</li>
 </ul>
 <p>可选字段：</p>
 <ul>
-<li>
-<p>approveEmpId: 审批人</p>
-<p>function canApprove_WO(row) {<br />
-return g_data.userInfo.id == row.approveEmpId || g_data.hasRole(&quot;mgr,售后审核&quot;);<br />
-}<br />
-var btnApprove = [&quot;approve&quot;, {<br />
-obj: &quot;WarrantyOrder&quot;, // 最终将调用&quot;WarrantyOrder.set&quot;接口<br />
-canApprove: function (row) {<br />
-return canApprove_WO(row);<br />
-},<br />
-// data: 待保存的新数据(data.approveFlag为新状态), row: 原数据<br />
-onSet: function (row, data) {<br />
-// 发起审批时，自动填写审批人<br />
-if (data.approveFlag ==1 &amp;&amp; row.approveEmpId == null) {<br />
-var empId = callSvrSync(&quot;Employee.query&quot;, {fmt: &quot;one?&quot;, res: &quot;id&quot;, role:&quot;售后审核&quot;});<br />
-if (empId)<br />
-data.approveEmpId = empId;<br />
-}<br />
-}<br />
-}];</p>
-<p>var dgOpt = {<br />
-...<br />
-toolbar: WUI.dg_toolbar(jtbl, jdlg, btnApprove),<br />
-};<br />
-jtbl.datagrid(dgOpt);</p>
-</li>
+<li>approveEmpId: 审批人</li>
 </ul>
-<p>对话框上approveFlag设置示例：</p>
+<p>示例：显示审批菜单，在发起审批时，若未指定审批人则自动填写审批人</p>
+<pre><code>function canApprove_WO(row) {
+    return g_data.userInfo.id == row.approveEmpId || g_data.hasRole("mgr,售后审核");
+}
+var btnApprove = ["approve", {
+    obj: "WarrantyOrder", // 最终将调用"WarrantyOrder.set"接口
+    canApprove: function (row) {
+        return canApprove_WO(row);
+    },
+    // data: 待保存的新数据(data.approveFlag为新状态), row: 原数据, title: 当前菜单项名称，比如“发起审批”
+    onSet: function (row, data, title) {
+        // 发起审批时，自动填写审批人
+        if (data.approveFlag ==1 &amp;&amp; row.approveEmpId == null) {
+            var empId = callSvrSync("Employee.query", {fmt: "one?", res: "id", role:"售后审核"});
+            if (empId)
+                data.approveEmpId = empId;
+        }
+    }
+}];
+
+var dgOpt = {
+    ...
+    toolbar: WUI.dg_toolbar(jtbl, jdlg, btnApprove),
+};
+jtbl.datagrid(dgOpt);</code></pre>
+<p>做二次开发时，对话框上approveFlag设置示例：</p>
 <pre><code>{
     disabled: e =&gt; canApprove_WO(e),
     enumMap: ApproveFlagMap,
@@ -5076,7 +5206,67 @@ jtbl.datagrid(dgOpt);</p>
 <p>对话框上approveEmpId设置示例：</p>
 <pre><code>{
     disabled: e =&gt; canApprove_WO(e)
-}</code></pre></div>
+}</code></pre>
+<p>上面例子中用callSvrSync是使用同步方式来取数据的，更好的写法是直接用异步的callSvr。<br />
+onSet回调支持异步，<br />
+异步写法1：使用async/await。</p>
+<pre><code>    onSet: async function (row, data) {
+        if (data.approveFlag ==1 &amp;&amp; row.approveEmpId == null) {
+            var empId = await callSvr("Employee.query", {fmt: "one?", res: "id", role:"售后审核"});
+            if (empId)
+                data.approveEmpId = empId;
+        }
+    }</code></pre>
+<p>异步写法2：返回一个Deferred对象(callSvr函数刚好返回Deferred对象)</p>
+<pre><code>    onSet: function (row, data) {
+        if (data.approveFlag ==1 &amp;&amp; row.approveEmpId == null) {
+            var dfd = callSvr("Employee.query", {fmt: "one?", res: "id", role:"售后审核"});
+            dfd.then(function (empId) {
+                if (empId)
+                    data.approveEmpId = empId;
+            });
+            return dfd;
+        }
+    }</code></pre>
+<p>示例：审批时弹出对话框，可输入备注(approveCmt)<br />
+在onSet中使用WUI.showDlgByMeta弹出自定义对话框，显然是异步操作，需要返回dfd对象。</p>
+<pre><code>function canApprove_WO(row) {
+    return g_data.userInfo.id == row.approveEmpId || g_data.hasRole("mgr,售后审核");
+}
+var btnApprove = ["approve", {
+    obj: "WarrantyOrder",
+    canApprove: function (row) {
+        return canApprove_WO(row);
+    },
+    // data: 待保存的新数据(data.approveFlag为新状态), row: 原数据, title: 当前菜单项名称，比如“发起审批”
+
+    onSet: function (row, data, title) {
+        var dfd = $.Deferred();
+        var meta = [
+            // title, dom, hint?
+            {title: "备注", dom: "&lt;textarea name='approveCmt' rows=5&gt;&lt;/textarea&gt;", hint: '选填，将添加到备注列表中'}
+        ];
+        var jdlg = WUI.showDlgByMeta(meta, {
+            title: title,
+            onOk: async function (data1) {
+                // 发起审批时，自动填写审批人
+                if (data.approveFlag ==1 &amp;&amp; row.approveEmpId == null) {
+                    var empId = await callSvr("Employee.query", {fmt: "one?", res: "id", role:"售后审核"});
+                    if (empId)
+                        data.approveEmpId = empId;
+                }
+                if (data1.approveCmt) {
+                    data.cmts = [
+                        {text: data1.approveCmt}
+                    ];
+                }
+                dfd.resolve();
+                WUI.closeDlg(jdlg);
+            }
+        });
+        return dfd;
+    }
+}];</code></pre></div>
 <div class="block">
 <h2 id=".wui-subobj">@key .wui-subobj</h2><div class="toc"><p style="margin-left:0em"><a href="#.wui-subobj-1 示例：可以增删改查的子表：">1 示例：可以增删改查的子表：</a></p>
 <p style="margin-left:0em"><a href="#.wui-subobj-2 动态修改选项">2 动态修改选项</a></p>
@@ -5316,7 +5506,7 @@ it.readonly(ro);</code></pre>
 <p>帮助链接：(加wui-help类则点击可跳转，同时也支持用data-helpKey属性指定主题)</p>
 <pre><code>&lt;a class="wui-help"&gt;&lt;span&gt;&lt;i class="fa fa-question-circle"&gt;&lt;/i&gt;帮助&lt;/span&gt;&lt;/a&gt;</code></pre></div>
 <div class="block">
-<h2 id=".wui-more">@key .wui-more</h2>
+<h2 id=".wui-more">@key .wui-more 可折叠的在线帮助信息</h2>
 <p>显示一个按钮，用于隐藏（默认）或显示后面的内容。基于easyui-linkbutton创建，兼容该组件的options比如图标.</p>
 <pre><code>示例: 列对应: title=code,-,amount 
 &lt;span class="wui-more" data-options="iconCls: 'icon-tip'"&gt;更多示例&lt;/span&gt;
@@ -5325,7 +5515,14 @@ it.readonly(ro);</code></pre>
 根据code, 存在则更新: title=code,amount&amp;amp;uniKey=code
 根据code, 批量更新: title=code,amount&amp;amp;uniKey=code!
 带子表: title=code,amount,@order1.itemCode,@order1.qty&amp;amp;uniKey=code
-&lt;/pre&gt;</code></pre></div>
+&lt;/pre&gt;
+
+&lt;span class="wui-more"&gt;&lt;i class="fa fa-question-circle"&gt;&lt;/i&gt; 代码示例&lt;/span&gt;
+&lt;pre class="hint"&gt;
+$env-&gt;get("地址", "value");
+$env-&gt;set("地址", "value", "上海市XX区");
+&lt;/pre&gt;</code></pre>
+<p class="see"><strong>@see <a href="#.wui-help">.wui-help</a></strong> </p></div>
 <div class="block">
 <h2 id="WUI.showByType">@fn WUI.showByType(jo, type)</h2>
 <p>(v6) 该函数已不建议使用。本来用于显示多组mycombobox/wui-combogrid组件，现成推荐直接用组件的setOption事件动态修改组件选项。</p>
@@ -5409,7 +5606,7 @@ var rv = diffObj("hello", 99);
 <li>cond: 查询条件，字符串，示例：WUI.getQueryCond({id: &quot;&gt;1&quot;, status: &quot;CR,RE&quot;, createTm: &quot;&gt;=2020-1-1 and &lt;2021-1-1&quot;}), 用getQueryCond可使用查询框支持的条件格式。</li>
 <li>orderby: 排序方式</li>
 <li>title: 统计页面标题</li>
-<li>detailPageName: 在统计表中点击数值，可以显示明细页面。这里指定用哪个页面来显示明细项；如果未指定则以pageSimple来显示。</li>
+<li>detailPageName: 在统计表中点击数值，可以显示明细页面。这里指定用哪个页面来显示明细项；如果未指定则不显示到明细页的链接。可以用&quot;pageSimple&quot;来显示通用页面。</li>
 <li>detailPageParamArr: 如果指定了detailPageName，可以用此参数来定制showPage的第三参数(paramArr)。</li>
 <li>
 <p>tmField: 如果用到y,m,d等时间统计字段，应指定使用哪个时间字段进行运算。后端可能已经定义了时间字段(tmCols)，指定该选项可覆盖后端的定义。</p>
@@ -5663,11 +5860,12 @@ WUI.setDlgLogic(jdlg, "orderId", {
 <pre><code>&lt;input name="orderId" class="wui-dialog-logic" data-options="readonlyForSet:true"&gt;</code></pre>
 <p>如果是叠加在wui-combogrid组件上：</p>
 <pre><code>&lt;input name="orderId" class="wui-combogrid wui-dialog-logic" data-options="$.extend(ListOptions.UserGrid(), readonlyForSet:true)"&gt;</code></pre>
-<p>logic中支持readonly选项，也支持readonlyForAdd/readonlyForSet这些特定模式的选项，它们既可以设置为一个值，也可以是一个函数（或lambda），原型为：</p>
-<pre><code>// data为当前数据，可通过 WUI.getTopDialog().jdata().logicData.data 来实时查看；
-// gn为字段操作器，用于手工操作其它字段。
-logicFn(data, gn)
-// 对于readonly/show等选项，返回值非undefined时有效; 对于value选项，仅当函数返回非undefined/false才会设置值；</code></pre>
+<p>logic中支持readonly选项，也支持readonlyForAdd/readonlyForSet这些特定模式的选项，它们既可以设置为一个值，也可以是一个函数<code>fn(data, gn)</code>（或等价的lambda表达式）:</p>
+<ul>
+<li>参数data: 当前对象的数据，可通过 WUI.getTopDialog().jdata().logicData.data 来实时查看；</li>
+<li>参数gn: 字段访问器，可用于操作其它字段。比如<code>gn("name").val()</code>取name字段值；参考[getFormItem]。</li>
+<li>返回值: 对于readonly/show等选项，无返回值(undefined)时表示不设置，否则将返回值转换为true/false; 对于value选项，仅当函数返回非undefined/false才会设置值；</li>
+</ul>
 <p>如果同时指定了readonly和readonlyForAdd选项，则当添加模式时优先用readonlyForAdd选项，其它模式也类似。</p>
 <p>这个特性同样适用于以下disabled/readonly/value选项，比如有disabledForAdd/readonlyForSet/valueForAdd等选项。</p>
 <p>示例：添加时无须填写，但之后可修改：可设置添加时隐藏或只读</p>
@@ -5680,10 +5878,12 @@ readonlyForAdd: true</code></pre>
 <li>带数据的对话框，在打开时不会修改数据，即value选项在forSet模式对话框刚打开时不会生效。</li>
 </ul>
 <p>示例：添加时自动填写</p>
-<pre><code>填当前日期：
-valueForAdd: new Date().format("D")</code></pre>
-<p>或指定lambda或函数：</p>
-<pre><code>valueForAdd: () =&gt; new Date().format("D")
+<pre><code>填当前日期：直接设置值
+valueForAdd: new Date().format("D")
+
+或指定lambda或函数：
+valueForAdd: () =&gt; new Date().format("D")
+（与直接指定值的区别是每次打开对话框时都会计算）
 
 填当前操作员：
 valueForAdd: () =&gt; g_data.userInfo.id</code></pre>
@@ -5716,13 +5916,13 @@ value: e =&gt; e.x + "-" + e.y</code></pre>
 });</code></pre>
 <p>watch选项会刷新disabled/readonly/show/value系列选项中的表达式。</p>
 <h5 id="setDlgLogic-2.1 从下拉列表中取值">2.1 从下拉列表中取值</h5>
-<p>示例：对于商品字段(名字name=itemId，是个wui-combogrid下拉框组件，有id,name,price三列)，如果从下拉列表中选择了一个商品，则自动更新价格(price字段):</p>
+<p>示例：商品字段(itemId)使用下拉数据表(wui-combogrid下拉框组件)显示，有id,name,price三列，如果从下拉列表中选择了一个商品，则自动用选中行的price列来更新对话框上的price字段:</p>
 <pre><code>WUI.setDlgLogic(jdlg, "price", {
     value: e =&gt; e.eventData_itemId?.price,
     watch: "itemId"
 });</code></pre>
-<p>当选择商品后（itemId字段），可以从e.eventData_itemId数据中取到下拉列表的值，如<code>e.eventData_itemId.price</code>；<br />
-使用<code>e.eventData_itemId?.price</code>表示当<code>e.eventData_itemId</code>不存在时(结果将返回undefined)不去修改值，也可以用<code>e.eventData_itemId &amp;&amp; e.eventData_itemId.price</code>。</p>
+<p>当选择商品后，可以从e.eventData_itemId数据中取到下拉列表的值（其中itemId是下拉列表对应的字段名），如<code>e.eventData_itemId.price</code>；<br />
+<code>e.eventData_itemId?.price</code>中的<code>?.</code>是ES6写法，相当于<code>e.eventData_itemId &amp;&amp; e.eventData_itemId.price</code>（如果e.eventData_itemId有值时再取e.eventData_itemId.price，避免字段为空报错）。</p>
 <p>类似地，如果是其它字段变化，则可以从<code>e.eventData_{字段名}</code>中取值。my-combobox组件下拉时也是返回选择行对应的数据。</p>
 <p>注意：如果有其它字段依赖了修改的值，比如上节例子中total字段依赖price，则此时会连锁地去更新total字段。</p>
 <h5 id="setDlgLogic-2.2 使用onWatch选项">2.2 使用onWatch选项</h5>
@@ -6508,6 +6708,7 @@ jtbl.datagrid({
     page: 1
 });
 WUI.showPage("pageSimple", "工件列表!", [url]);</code></pre>
+<p>url中接口调用返回的数据支持query接口常用的hd/list/array格式。</p>
 <h4 id="pageSimple-2 示例2：先弹出查询条件对话框，设置后再显示报表">2 示例2：先弹出查询条件对话框，设置后再显示报表</h4>
 <p>常常与报表查询条件对话DlgReportCond一起使用, 先设置查询时间段，然后出报表，示例:</p>
 <pre><code>var btnStat1 = {text: "月统计", iconCls:'icon-ok', handler: function () {
@@ -6564,6 +6765,8 @@ function onInitGrid(jpage, jtbl, dgOpt, columns, data)
         // dgOpt.toolbar = WUI.dg_toolbar(jtbl, null, btn1);
         // 或是：追加工具栏按钮
         // dgOpt.toolbar.push.apply(dgOpt.toolbar, WUI.dg_toolbar(jtbl, null, btn1));
+        // 不要工具栏
+        // dgOpt.toolbar = null;
     }
 
     function formatter_数量(value, row) {
@@ -6613,12 +6816,14 @@ WUI.showPage("pageSimple", "订单统计!", [url, null, null, showChartParam]);<
 <pre><code>DlgReportCond.show(onOk, meta?, inst?);</code></pre>
 <ul>
 <li>onOk(data): 回调函数</li>
-<li>meta: 用于追加动态字段, 参考WUI.showByMeta</li>
+<li>meta: 用于追加动态字段, 参考WUI.showDlgByMeta</li>
 <li>inst: 实例名，与meta配合使用，不同场景配不同meta.</li>
 </ul>
-<p>用于显示查询对话框，默认包含startDt, endDt字段。</p>
+<p>用于显示查询对话框，默认包含tm1, tm2字段对应用户输入的开始、结束时间。<br />
+可以用WUI.getQueryCond生成查询条件，它支持任意一个字段为空的情况下也能生成正确的条件表达式。</p>
 <pre><code>DlgReportCond.show(function (data) {
-    console.log(data);
+    var cond = WUI.getQueryCond({tm: [data.tm1, data.tm2]});
+    console.log(data, cond); // 示例: data={tm1: "2021-1-1 8:00", tm2: ""}, cond="tm&gt;='2021-1-1 8:00'"
 })</code></pre>
 <p>也可以增加自定义字段：</p>
 <pre><code>var meta = [
@@ -6627,7 +6832,9 @@ WUI.showPage("pageSimple", "订单统计!", [url, null, null, showChartParam]);<
     {title: "订单号", dom: "&lt;textarea name='param' rows=5&gt;&lt;/textarea&gt;", hint: '每行一个订单号'}
 ];
 DlgReportCond.show(function (data) {
-    console.log(data);
+    console.log(data); // data中增加了status和param字段(如果没有填写则没有)
+    var cond = WUI.getQueryCond({tm: [data.tm1, data.tm2], status: data.status, param: data.param});
+    console.log(cond);
 }, meta)</code></pre>
 <p>如果有多个不同的使用场景，对应的自定义字段不同，可以指定实例名来实现，如订单和工单的查询条件有些不同，可分开写：</p>
 <pre><code>DlgReportCond.show(function (data) {
@@ -6637,7 +6844,7 @@ DlgReportCond.show(function (data) {
 DlgReportCond.show(function (data) {
     console.log(data);
 }, meta2, "工单");</code></pre>
-<p>如果完全自定义对话框（连默认的日期选项也不要），可直接使用WUI.showDlgByMeta：</p>
+<p>如果完全自定义对话框（连默认的日期选项也不要），可直接使用<a href="api_web.html#showDlgByMeta">showDlgByMeta</a>：</p>
 <pre><code>var meta = [
     {title: "序列号", dom: '&lt;input name="code" class="easyui-validatebox" required&gt;'}
 ];
@@ -6645,6 +6852,29 @@ WUI.showDlgByMeta(meta, {modal:false, reset:false, title: "设备生命周期", 
     var pageFilter = {cond: data};
     WUI.showPage("pageSn", {title: "设备生命周期-工件!", pageFilter: pageFilter});
 }});</code></pre>
+<p>示例2: 对话框上面有计划日期、硫化区域、尺寸三个定制字段，其中计划日期是日期字段，通过<code>{data: {dt: xxx}}</code>为它指定初始值；<br />
+“硫化区域”是个下拉框，使用my-combobox组件，通过jdEnumMap指定下拉列表项。在onOk回调中生成查询url并以pageSimple来显示。<br />
+在onInitGrid中定制了工具栏，dgOpt.toolbar置空表示不要工具栏了。</p>
+<pre><code class="language-javascript">window.MachineMap = {
+    "~B*": "B区",
+    "~R*": "C区",
+    "~D*": "D区"
+};
+var meta = [
+    {title: "计划日期", dom: '&lt;input name="dt" class="easyui-datebox" required&gt;'},
+    {title: "硫化区域", dom: '&lt;input name="machine" class="my-combobox" data-options="jdEnumMap: MachineMap"&gt;'},
+    {title: "尺寸", dom: '&lt;input name="size"&gt;'}
+];
+var dt = new Date().addDay(-1); // 默认前1天
+WUI.showDlgByMeta(meta, {modal:false, title: "生产计划查询", data: {dt: dt.format("yyyy-mm-dd")}, onOk: function (data) {
+    var url = WUI.makeUrl("Plan.query", data);
+    WUI.showPage("pageSimple", "生产计划!", [url, null, onInitGrid]);
+}});
+
+function onInitGrid(jpage, jtbl, dgOpt, columns, data) {
+    // 列表页不显示工具栏
+    dgOpt.toolbar = null;
+}</code></pre>
 <p class="see"><strong>@see <a href="#showDlgByMeta">showDlgByMeta</a></strong> </p></div>
 <div class="block">
 <h2 id="pageTab">@module pageTab 一个多Tab页面</h2>
