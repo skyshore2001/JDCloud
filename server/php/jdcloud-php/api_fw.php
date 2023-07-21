@@ -3380,9 +3380,14 @@ function retfn_obj($ret, $env) {
 	else {
 		$ret1["message"] = $ret[1];
 	}
-	if ($env->TEST_MODE && count($ret) > 2) {
-		array_splice($ret, 0, 2);
-		$ret1["debug" ] = $ret;
+	if (count($ret) > 2) {
+		if ($env->TEST_MODE) {
+			array_splice($ret, 0, 2);
+			$ret1["debug" ] = $ret;
+		}
+		else if ($ret[0]) {
+			$ret1["debug" ] = $ret[2];
+		}
 	}
 	return $ret1;
 }
@@ -3395,7 +3400,7 @@ function retfn_raw($ret, $env) {
 	return $r;
 }
 function retfn_xml($ret, $env) {
-	header("Content-Type: application/xml");
+	$env->header("Content-Type", "application/xml; charset=UTF-8");
 	$ret1 = ["code" => $ret[0]];
 	if ($ret[0] == 0) {
 		$ret1["data"] = $ret[1];

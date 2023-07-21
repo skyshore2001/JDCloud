@@ -261,9 +261,10 @@ class AC_Test extends JDApiBase
 	}
 }
 
+/*
 // NOTE: 继承AccessControl的类不可用于生产环境，只用于单用户演示。生产环境下AC类应继承JDApiBase。
 class AC_ApiLog extends AccessControl
 {
 	protected $allowedAc = ["query", "get"];
 }
-
+*/

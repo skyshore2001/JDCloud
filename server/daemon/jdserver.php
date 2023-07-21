@@ -1,5 +1,10 @@
 <?php
 
+if (!function_exists("swoole_version")) {
+	echo("*** error: require swoole env!\n");
+	exit(1);
+}
+
 $opt = getopt("p:a");
 $addr = isset($opt["a"]) ? "0.0.0.0": "127.0.0.1";
 $port = @$opt["p"] ?: 8081;
