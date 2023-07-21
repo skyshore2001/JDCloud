@@ -50,10 +50,11 @@
 </ul></li>
 <li><a href="#查询分页机制"><span class="toc-section-number">3.3</span> 查询分页机制</a></li>
 <li><a href="#批量导入数据"><span class="toc-section-number">3.4</span> 批量导入数据</a><ul>
-<li><a href="#批量导入支持三种方式"><span class="toc-section-number">3.4.1</span> 批量导入支持三种方式</a></li>
-<li><a href="#通过导入实现批量更新"><span class="toc-section-number">3.4.2</span> 通过导入实现批量更新</a></li>
-<li><a href="#支持带子表导入"><span class="toc-section-number">3.4.3</span> 支持带子表导入</a></li>
-<li><a href="#支持列名映射"><span class="toc-section-number">3.4.4</span> 支持列名映射</a></li>
+<li><a href="#重复数据处理策略-unikey"><span class="toc-section-number">3.4.1</span> 重复数据处理策略 / uniKey</a></li>
+<li><a href="#批量导入支持三种方式"><span class="toc-section-number">3.4.2</span> 批量导入支持三种方式</a></li>
+<li><a href="#通过导入实现批量更新"><span class="toc-section-number">3.4.3</span> 通过导入实现批量更新</a></li>
+<li><a href="#支持带子表导入"><span class="toc-section-number">3.4.4</span> 支持带子表导入</a></li>
+<li><a href="#支持列名映射"><span class="toc-section-number">3.4.5</span> 支持列名映射</a></li>
 </ul></li>
 <li><a href="#子表的增删改查操作"><span class="toc-section-number">3.5</span> 子表的增删改查操作</a><ul>
 <li><a href="#子表添加"><span class="toc-section-number">3.5.1</span> 子表添加</a></li>
@@ -95,7 +96,7 @@ p2=value2</code></pre>
 <pre><code>callSvr(&quot;fn&quot;, {p1: &quot;value1&quot;}, $.noop, {p2: &quot;value2&quot;})</code></pre>
 <p>如果URL与POST内容中出现同名参数，最终以URL参数为准。</p>
 <p>接口名为URL基地址后一个词（常称为PATH_INFO），如URL<code>/api/fn</code>中接口名为&quot;fn&quot;。 如果难以实现，也可以使用URL参数ac表示接口名，即URL中<code>/api?ac=fn&amp;p1=value1&amp;p2=value2</code>中接口名也是&quot;fn&quot;。</p>
-<p><strong>[必须使用HTTP POST的情形]</strong></p>
+<p>【必须使用HTTP POST的情形】</p>
 <p>如果接口定义中有请求数据（即在接口原型中用两个括号），如：</p>
 <pre><code>fn(p1,p2)(p3,p4) -&gt; {field1, field2}</code></pre>
 <p>这时必须使用HTTP POST请求，参数只能通过URL传递，数据通过POST内容传递：</p>
@@ -178,11 +179,14 @@ getOrder(id) -&gt; {id, dscr, total}</code></pre>
 <ul>
 <li>_raw: 只返回数据部分（第2元素）；</li>
 <li>_jsonp: 返回函数调用或变量赋值形式，是合法的javascript语句。</li>
+<li>retfn=obj: 成功时返回<code>{code:0, data}</code>格式，失败时返回<code>{code, message}</code>格式，可选的debug字段为调试信息。</li>
+<li>retfn=xml: 成功时返回<code>&lt;ret&gt;&lt;code&gt;0&lt;/code&gt;&lt;data&gt;...&lt;/data&gt;&lt;/ret&gt;</code>，失败示例<code>&lt;ret&gt;&lt;code&gt;1&lt;/code&gt;&lt;message&gt;...&lt;/message&gt;&lt;/ret&gt;</code>。</li>
 </ul>
 <p>示例：<code>callSvr(&quot;Ordr.get&quot;, {res: &quot;id, tm, amount&quot;})</code>假设返回<code>[0, {id: 100, tm: '2020-10-10', amount: 380.5}]</code>，那么：</p>
 <ul>
 <li><p><code>callSvr(&quot;Ordr.get&quot;, {res: &quot;id, tm, amount&quot;, _raw:1})</code>返回<code>{id: 100, tm: '2020-10-10', amount: 380.5}</code></p></li>
 <li><p><code>callSvr(&quot;Ordr.get&quot;, {res: &quot;id, tm, amount&quot;, _raw:2})</code>返回<code>100  2020-10-10  380.5</code> 字段间以TAB分隔的表；如果有多条记录则可以有多行。可用于与shell script集成。</p></li>
+<li><p><code>callSvr(&quot;Ordr.get&quot;, {res: &quot;id, tm, amount&quot;, retfn:&quot;obj&quot;})</code>返回<code>{code: 0, data: {id: 100, tm: '2020-10-10', amount: 380.5}}</code></p></li>
 <li><p><code>callSvr(&quot;Ordr.get&quot;, {res: &quot;id, tm, amount&quot;, _jsonp:'handleOrder'})</code>返回<code>handleOrder([0, {id: 100, tm: '2020-10-10', amount: 380.5}])</code> 即JS函数调用形式，可用于跨域调用。</p></li>
 <li><p><code>callSvr(&quot;Ordr.get&quot;, {res: &quot;id, tm, amount&quot;, _jsonp:'api_order='})</code>返回<code>api_order=[0, {id: 100, tm: '2020-10-10', amount: 380.5}]</code> 即JS变量赋值形式，可用于跨域调用。</p></li>
 <li><p><code>callSvr(&quot;Ordr.get&quot;, {res: &quot;id, tm, amount&quot;, _raw:1, _jsonp:'api_order='})</code>返回<code>api_order={id: 100, tm: '2020-10-10', amount: 380.5}</code> 两个参数可以组合使用。</p></li>
@@ -302,7 +306,7 @@ Ordr.get(id) -&gt; { id, dscr, %addr, @items }
 <p>在做接口设计时，应以通用对象接口为基础，按业务逻辑需要进行定制形成专用接口，如进行权限限制、指定允许的操作类型(如只能get/set,不能add/del)、只读字段、隐藏字段等。</p>
 <p>下面将分别定义这些操作，其中用Obj代指对象实际名称。</p>
 <h3 id="基本增删改查操作"><span class="header-section-number">3.1</span> 基本增删改查操作</h3>
-<p><strong>[添加操作]</strong></p>
+<p>【添加操作】</p>
 <p>接口原型：</p>
 <pre><code>Obj.add(uniKey?, uniKeyMode?=set)(POST fields...) -&gt; id
 Obj.add(res)(POST fields...) -&gt; {fields...} (返回的字段由res参数指定)</code></pre>
@@ -315,6 +319,7 @@ callSvr(&quot;Ordr.add&quot;, {res:&quot;id,status,total&quot;}, $.noop, {status
 返回
 {id: 810, status:&quot;CR&quot;, total: 100}</code></pre>
 <p>对象id支持自动生成。</p>
+<p>添加时支持检查重复数据，由uniKey和uniKeyMode参数来控制：</p>
 <ul>
 <li><p>uniKey: 唯一索引字段. 如果指定, 则以该字段查询记录是否存在(调用query接口）, 存在则更新（调用set接口）。例如&quot;code&quot;, 也支持多个字段（用于关联表），如&quot;bpId,itemId&quot;。 uniKey支持使用虚拟字段（如关联字段）。 该字段常用于检查记录不存在则添加记录，存在则更新记录；也用于避免记录重复添加。 特别地，如果uniKey以&quot;!&quot;结尾（如&quot;code!&quot;），则变成<strong>更新模式</strong>，表示必须匹配到记录，不匹配则报错而不做添加，常用于通过导入批量更新数据。 不加!后缀时虽然也可更新记录，但若不匹配时会误添加记录。</p></li>
 <li>uniKeyMode: 在uniKey匹配时，默认处理是更新操作，可以通过本参数来定制匹配后的操作，其值定义为：
@@ -324,7 +329,15 @@ callSvr(&quot;Ordr.add&quot;, {res:&quot;id,status,total&quot;}, $.noop, {status
 <li>ignore: 忽略添加操作，接口直接返回已存在记录的id。在更新模式下，不添加，也不报错，以-1值返回记录id。</li>
 </ul></li>
 </ul>
-<p><strong>[更新操作]</strong></p>
+<p>这两个参数也常用于批量导入或批量更新，详见<a href="#批量导入数据">批量导入数据</a>章节，即batchAdd接口。</p>
+<p>【复制操作】</p>
+<p>复制指定id的对象，生成新的对象：</p>
+<pre><code>Obj.dup(id) -&gt; [id1, ...]</code></pre>
+<ul>
+<li>id: 被复制对象的id或id列表（以逗号分隔），示例: <code>100</code>, <code>100,101</code></li>
+</ul>
+<p>返回新对象的id数组，与原对象一一对应。</p>
+<p>【更新操作】</p>
 <p>接口原型：</p>
 <pre><code>Obj.set(id)(POST fields...)</code></pre>
 <p>与add操作类似，对象属性的修改通过POST请求传递，而在URL参数中需要有id标识哪个对象。</p>
@@ -346,11 +359,11 @@ Obj.batchSet(cond)(POST fields...)</code></pre>
 <p>注意：setIf接口相当于执行1条数据库SQL UPDATE语句，不执行业务逻辑，速度快； 而batchSet接口先根据条件查出所有记录，然后对每个记录逐一调用set接口进行更新，会执行每条记录更新时的业务逻辑。</p>
 <p>示例：</p>
 <pre><code>callSvr(&quot;Obj.setIf&quot;, {cond: &quot;tm&gt;=&#39;2010-1-1&#39; and tm&lt;&#39;2011-1-1&#39;&quot;}, $.noop, {dscr: &quot;已处理&quot;});</code></pre>
-<p><strong>[获取对象操作]</strong></p>
+<p>【获取对象操作】</p>
 <p>接口原型：</p>
 <pre><code>Obj.get(id, res?) -&gt; {fields...}</code></pre>
 <p>默认返回所有暴露的属性，通过res参数可以指定需要返回的字段。</p>
-<p><strong>[删除操作]</strong></p>
+<p>【删除操作】</p>
 <p>接口原型：</p>
 <pre><code>Obj.del(id)</code></pre>
 <p>根据id删除一个对象，例如：</p>
@@ -452,7 +465,7 @@ like用于字符串匹配，字符串中用&quot;%&quot;或&quot;*&quot;表示�
     nextkey: ... (用于分页，注意默认分页20条)
 }</code></pre>
 <p>由于不会每行重复传输字段名，压缩表类型一般传输效率更高。</p>
-<p><strong>[list与array格式]</strong></p>
+<p>【list与array格式】</p>
 <p>如果指定<code>{fmt: &quot;list&quot;}</code>，则返回对象列表格式:</p>
 <pre><code>{
     &quot;list&quot;: [
@@ -466,7 +479,7 @@ like用于字符串匹配，字符串中用&quot;%&quot;或&quot;*&quot;表示�
     {&quot;id&quot;: 1, &quot;name&quot;: &quot;jerry&quot;},
     {&quot;id&quot;: 2, &quot;name&quot;: &quot;tom&quot;}
 ]</code></pre>
-<p><strong>[one与one?格式]</strong></p>
+<p>【one与one?格式】</p>
 <p>如果指定<code>{fmt: &quot;one&quot;}</code>，则只以对象格式返回一行，类似get接口：</p>
 <pre><code>{&quot;id&quot;: 1, &quot;name&quot;: &quot;jerry&quot;}</code></pre>
 <p>且如果查询不到数据，会抛出错误（也是与get接口类似）。</p>
@@ -474,7 +487,7 @@ like用于字符串匹配，字符串中用&quot;%&quot;或&quot;*&quot;表示�
 <p>特别地，如果返回数据只有一列，<code>one?</code>格式则直接返回该列值。 示例：查询订单数，返回只有一列cnt。</p>
 <pre><code>callSvr(&quot;Ordr.query&quot;, {res: &quot;COUNT(*) cnt&quot;, fmt: &quot;one?&quot;})</code></pre>
 <p>假如有99个订单，使用<code>fmt:&quot;one?&quot;</code>直接返回<code>99</code>，如果使用<code>fmt:&quot;one&quot;</code>则返回<code>{cnt: 99}</code>。</p>
-<p><strong>[hash与multihash格式]</strong></p>
+<p>【hash与multihash格式】</p>
 <p>如果指定<code>{fmt: &quot;hash&quot;}</code>，则以映射表格式返回：</p>
 <pre><code>{
     1: {&quot;id&quot;: 1, &quot;name&quot;: &quot;jerry&quot;},
@@ -497,7 +510,7 @@ like用于字符串匹配，字符串中用&quot;%&quot;或&quot;*&quot;表示�
 }</code></pre>
 <p>如果指定<code>{fmt: &quot;multihash:name,id&quot;}</code>:</p>
 <pre><code>{&quot;jerry&quot;: [ 1 ], &quot;tom&quot;: [ 2 ]}</code></pre>
-<p><strong>[tree树型结构]</strong></p>
+<p>【tree树型结构】</p>
 <p>例如如下<code>{id,fatherId}</code>线性结构数组中，数组的每个元素中有个fatherId字段指向父结点的id属性：</p>
 <pre><code>[
     {&quot;id&quot;:1},
@@ -583,6 +596,7 @@ window.open(url); // 下载文件</code></pre>
     cond: &quot;createTm&gt;&#39;2020-10-10&#39;&quot;,
     fmt: &quot;one&quot; 
 })</code></pre>
+<p>COUNTIF也支持指定统计字段，如<code>COUNTIF(createTm&gt;='2020-10-10', userPhone)</code>或<code>COUNTIF(createTm&gt;='2020-10-10', DISTINCT userPhone)</code>， 前者表示统计指定条件下且userPhone非空的个数，后者表示统计指定条件下且userPhone非空且不重复的个数，其底层实现类似于<code>COUNT(DISTINCT IF(createTm&gt;='2020-10-10', userPhone, NULL))</code>。</p>
 <p>也可以在普通查询的同时指定要统计哪些列，使用statRes字段。</p>
 <dl>
 <dt>statRes</dt>
@@ -619,7 +633,7 @@ window.open(url); // 下载文件</code></pre>
 <p>主要通过gres参数实现查询结果分组：</p>
 <dl>
 <dt>gres</dt>
-<dd>String. 分组字段。如果设置了gres字段，则res参数中每项应该带统计函数，如&quot;sum(cnt) sum, count(id) userCnt&quot;. 最终返回列为gres参数指定的列加上res参数指定的列; 如果res参数未指定，则只返回gres参数列。
+<dd>String. 分组字段。如果设置了gres字段，则res参数中每项应该带统计函数，如&quot;sum(cnt) sum, count(id) userCnt&quot;. 最终返回列为gres参数指定的列加上res参数指定的列; 如果res参数未指定，则只返回gres参数列。 如果指定参数gresHidden=1，gres字段则不会自动加到最终结果列中。
 </dd>
 </dl>
 <p>例：统计2015-2016两年间，按年份、状态分类（如已付款、已评价、已取消等）的各类订单的总数和总金额。</p>
@@ -660,7 +674,7 @@ window.open(url); // 下载文件</code></pre>
     gres: &quot;y&quot;,
     tmField: &quot;payTm&quot;
 });</code></pre>
-<p><strong>[行列转置]</strong></p>
+<p>【行列转置】</p>
 <p>在做数据透视表展示统计结果时，常常用到行列转置，可用以下参数：</p>
 <dl>
 <dt>pivot</dt>
@@ -700,7 +714,7 @@ window.open(url); // 下载文件</code></pre>
         [ &quot;CA&quot;, 300, 310, 0, 2]
     ]
 }</code></pre>
-<p><strong>[行列汇总]</strong></p>
+<p>【行列汇总】</p>
 <p>没有pivot时，用sumFields参数指定要统计的列，支持多列；有pivot时，用pivotSumField参数指定新添加的统计列的名字，只有一列，不存在多列。</p>
 <dl>
 <dt>sumFields</dt>
@@ -791,7 +805,7 @@ window.open(url); // 下载文件</code></pre>
 <h3 id="查询分页机制"><span class="header-section-number">3.3</span> 查询分页机制</h3>
 <p>如果一个查询支持分页(paging), 则一般调用形式为</p>
 <pre><code>Ordr.query(page/pagekey?, pagesz/rows?=20) -&gt; {nextkey, total?, @h, @d}</code></pre>
-<p><strong>[参数]</strong></p>
+<p>【参数】</p>
 <dl>
 <dt>pagesz或rows</dt>
 <dd>Integer. 这两个参数含义相同，均表示页大小，默认为20条数据。
@@ -803,7 +817,7 @@ window.open(url); // 下载文件</code></pre>
 <dd>Integer. 与page参数指定页码不同，pagekey是另一种基于主键的分页。一般首次查询时不填写（或填写0，表示需要返回总记录数即total字段），而下次查询时应根据上次调用时返回数据的&quot;nextkey&quot;字段来填写。
 </dd>
 </dl>
-<p><strong>[查询返回字段]</strong></p>
+<p>【查询返回字段】</p>
 <dl>
 <dt>nextkey</dt>
 <dd>Integer. 一个字符串, 供取下一页时填写参数&quot;pagekey&quot;或&quot;page&quot;。如果不存在该字段，则说明已经是最后一批数据。
@@ -815,7 +829,7 @@ window.open(url); // 下载文件</code></pre>
 <dd>两个数组。实际数据表的头信息(header)和数据行(data)，符合压缩表对象的格式。
 </dd>
 </dl>
-<p><strong>[示例]</strong></p>
+<p>【示例】</p>
 <p>基于page页码的查询较容易理解，常用于管理端分页列表。而pagekey是基于主键的查询，常用于移动端上拉自动加载下一页的列表，示例如下。</p>
 <p>第一次查询</p>
 <pre><code>callSvr(&quot;Ordr.query&quot;)</code></pre>
@@ -837,7 +851,7 @@ window.open(url); // 下载文件</code></pre>
 <p>返回</p>
 <pre><code>{h: [...], d: [...]}</code></pre>
 <p>返回数据中不带&quot;nextkey&quot;属性，表示所有数据获取完毕。</p>
-<p><strong>[分页实现]</strong></p>
+<p>【分页实现】</p>
 <p>分页有两种实现方式：按主键字段的分段查询式分页，以及使用LIMIT操作为核心的传统分页。</p>
 <p>分段查询的原理是利用主键id进行查询条件控制（自动修改WHERE语句），每次返回的pagekey字段实际是上次数据的最后一个id.</p>
 <p>首次查询：</p>
@@ -878,10 +892,29 @@ LIMIT ({pagekey}-1)*{pagesz}, {pagesz}</code></pre>
 <p>它在一个事务中执行，一行出错后立即失败返回，该行前面已导入的内容也会被取消（回滚）。</p>
 <ul>
 <li><p>title: List(fieldName). 指定标题行(即字段列表). 如果有该参数, 则忽略POST内容或文件中的标题行. 如&quot;title=name,-,addr&quot;表示导入第一列name和第三列addr, 其中&quot;-&quot;表示忽略该列，不导入。 字段列表以逗号或空白分隔, 如&quot;title=name - addr&quot;与&quot;title=name, -, addr&quot;都可以.</p></li>
-<li><p>uniKey: 唯一索引字段. 如果指定, 则以该字段查询记录是否存在, 存在则更新。例如&quot;code&quot;, 也支持多个字段（用于关联表），如&quot;bpId,itemId&quot;。 还可以加&quot;!&quot;后缀表示只更新不添加；支持通过参数uniKeyMode定制行为。详见add接口参数介绍。</p></li>
 <li><p>useColMap: 设置为1时，使用列名映射。</p></li>
 </ul>
-<h4 id="批量导入支持三种方式"><span class="header-section-number">3.4.1</span> 批量导入支持三种方式</h4>
+<h4 id="重复数据处理策略-unikey"><span class="header-section-number">3.4.1</span> 重复数据处理策略 / uniKey</h4>
+<ul>
+<li>uniKey: 唯一索引字段. 如果指定, 则以该字段查询记录是否存在, 存在则更新。例如&quot;code&quot;, 也支持多个字段（用于关联表），如&quot;bpId,itemId&quot;。 还可以加&quot;!&quot;后缀表示只更新不添加；支持通过参数uniKeyMode定制行为。详见add接口参数介绍。</li>
+</ul>
+<p>示例：导入订单，以createTm字段为唯一索引，检查记录是否存在。</p>
+<p>策略1：记录不存在则添加，存在则更新：</p>
+<pre><code>var data = {list: [
+    { createTm: &quot;2022-05-11 07:29:14&quot;, dscr: &quot;dscr1&quot; },
+    { createTm: &quot;2022-05-11 02:28:40&quot;, dscr: &quot;dscr2&quot; },
+]};
+callSvr(&quot;Ordr.batchAdd&quot;, {uniKey: &quot;createTm&quot;}, $.noop, data);</code></pre>
+<p>策略2：记录不存在则添加，存在则忽略（不更新）：</p>
+<pre><code>callSvr(&quot;Ordr.batchAdd&quot;, {uniKey: &quot;createTm&quot;, uniKeyMode: &quot;ignore&quot;}, $.noop, data);</code></pre>
+<p>策略3：记录不存在则添加，存在则报错。一旦报错则整体导入失败，用户须手工修复数据后重新导入：</p>
+<pre><code>callSvr(&quot;Ordr.batchAdd&quot;, {uniKey: &quot;createTm&quot;, uniKeyMode: &quot;error&quot;}, $.noop, data);</code></pre>
+<p>策略4：（批量更新）记录存在则更新，不存在则报错（不添加）：</p>
+<pre><code>callSvr(&quot;Ordr.batchAdd&quot;, {uniKey: &quot;createTm!&quot;}, $.noop, data);</code></pre>
+<p>策略5：（批量更新-不报错）记录存在则更新，不存在则忽略（不添加）：</p>
+<pre><code>callSvr(&quot;Ordr.batchAdd&quot;, {uniKey: &quot;createTm!&quot;, uniKeyMode: &quot;ignore&quot;}, $.noop, data);</code></pre>
+<p>导入支持多种数据格式，详见下节。</p>
+<h4 id="批量导入支持三种方式"><span class="header-section-number">3.4.2</span> 批量导入支持三种方式</h4>
 <ol style="list-style-type: decimal">
 <li><p>直接在HTTP POST中传输内容，数据格式为：首行为标题行(即字段名列表)，之后为实际数据行。 行使用&quot;&quot;分隔, 列使用&quot;&quot;或逗号分隔（后端自动判断），方便直接从Excel中拷贝数据出来，或导出csv格式文件。 接口为：</p>
 <p>{Obj}.batchAdd(title?)(标题行，数据行) (Content-Type=text/plain)</p></li>
@@ -891,6 +924,7 @@ LIMIT ({pagekey}-1)*{pagesz}, {pagesz}</code></pre>
 callSvr(&quot;Store.batchAdd&quot;, function (ret) {
     app_alert(&quot;成功导入&quot; + ret.cnt + &quot;条数据！&quot;);
 }, data, {contentType:&quot;text/plain&quot;});</code></pre>
+<p>如果不指定contentType，后端一般也能兼容。最好是指定。</p>
 <p>或指定title参数:</p>
 <pre><code>var data = &quot;门店名\t地址\n&quot; + &quot;门店1\t地址1\n门店2\t地址2\n&quot;;
 callSvr(&quot;Store.batchAdd&quot;, {title: &quot;name,addr&quot;}, function (ret) {
@@ -917,6 +951,18 @@ fd.append(&quot;file&quot;, frm.f.files[0]);
 callSvr(&quot;Store.batchAdd&quot;, {title: &quot;name,addr&quot;}, function (ret) {
     app_alert(&quot;成功导入&quot; + ret.cnt + &quot;条数据！&quot;);
 }, fd);</code></pre>
+<p>在chrome控制台上调用示例：按id匹配已有记录批量更新：</p>
+<pre><code>// 用逗号分隔，即csv
+callSvr(&quot;Ordr.batchAdd&quot;, {uniKey: &quot;id!&quot;}, $.noop, `id,dscr
+145,描述1
+146,描述2`, {contentType:&quot;text/plain&quot;})
+
+// 或用tab分隔，即txt
+callSvr(&quot;Ordr.batchAdd&quot;, {uniKey: &quot;id!&quot;}, $.noop, `id   dscr
+145 描述1
+146 描述2`, {contentType:&quot;text/plain&quot;})</code></pre>
+<p>数据首行是标题，用tab分隔或逗号分隔均可以，但须与内容部分一致。</p>
+<p>批量更新时若记录不存在则会失败报错，若不想出错可设置参数<code>uniKeyMode:&quot;ignore&quot;</code></p>
 <ol start="3" style="list-style-type: decimal">
 <li>传入对象数组</li>
 </ol>
@@ -930,13 +976,13 @@ callSvr(&quot;Store.batchAdd&quot;, {title: &quot;name,addr&quot;}, function (re
 callSvr(&quot;Store.batchAdd&quot;, function (ret) {
     app_alert(&quot;成功导入&quot; + ret.cnt + &quot;条数据！&quot;);
 }, data);</code></pre>
-<h4 id="通过导入实现批量更新"><span class="header-section-number">3.4.2</span> 通过导入实现批量更新</h4>
+<h4 id="通过导入实现批量更新"><span class="header-section-number">3.4.3</span> 通过导入实现批量更新</h4>
 <p>batchAdd接口配合标准add接口支持的uniKey参数，可实现存在则更新，不存在则添加的逻辑。</p>
 <p>示例：接上节示例，在导入时希望实现根据名称与电话(name和tel字段)匹配，则记录存在则做更新，不存在则添加，只须增加uniKey参数：</p>
 <pre><code>callSvr(&quot;Store.batchAdd&quot;, {uniKey: &quot;name,tel&quot;}, function (ret) {
     app_alert(&quot;成功导入&quot; + ret.cnt + &quot;条数据！&quot;);
 }, data);</code></pre>
-<h4 id="支持带子表导入"><span class="header-section-number">3.4.3</span> 支持带子表导入</h4>
+<h4 id="支持带子表导入"><span class="header-section-number">3.4.4</span> 支持带子表导入</h4>
 <p>示例：有以下主-子表对象：</p>
 <pre><code>工单：@Ordr: id, code, itemId, qty
 工单配料单 @BOM: id, orderId, code, name</code></pre>
@@ -951,7 +997,7 @@ SCDD210202302   30101001010484  热像仪#Fotric 615C-L47 2021-02-04  2021-02-04
 <pre><code>生产订单号   物料编码    物料规格    开工日期    完工日期    生产数量    子件编码    子件规格    基本用量
 SCDD210202302   30101001010484  热像仪#Fotric 615C-L47 2021-02-04  2021-02-04  1.00    20901001000052  标品#Lantern_B31-L47  1
                         10205001000017  标签#Lantern_40*30mm铜版纸空白标签#中性#通用 1</code></pre>
-<h4 id="支持列名映射"><span class="header-section-number">3.4.4</span> 支持列名映射</h4>
+<h4 id="支持列名映射"><span class="header-section-number">3.4.5</span> 支持列名映射</h4>
 <p>数据表导入时，默认是按固定列顺序来确定字段的，比如第1列必须是code，第2列必须是itemCode，如果要跳过一列，须通过&quot;-&quot;来指定； 使用列名映射是另一种方式（通过指定参数useColMap=1激活），示例：</p>
 <pre><code>id  name    code    itemId  itemCode
 1   name1   code1   101 item-101
@@ -1083,12 +1129,12 @@ Content-Type: application/json;charset=utf-8
 <pre><code>POST /api/batch?useTrans=1</code></pre>
 <h2 id="服务端信息反馈x-daca头"><span class="header-section-number">5</span> 服务端信息反馈/X-Daca头</h2>
 <p>BQP协议规定，以下服务端信息应通过HTTP头反馈给客户端。</p>
-<p><strong>[接口服务版本号与前端应用热更新]</strong></p>
+<p>【接口服务版本号与前端应用热更新】</p>
 <p>服务端接口的版本号如果可以获取，应发送给客户端:</p>
 <pre><code>X-Daca-Server-Rev: {value}</code></pre>
 <p>其中value为最多6位的字符串。</p>
 <p>前端应用程序可依据此信息实现热更新： 假如某前端H5应用（或以H5应用为内核的手机原生应用）操作期间，后端接口服务刚好升级过，应用程序再请求时，可以依据版本号变更发现升级行为，从而自动刷新到新版本。</p>
-<p><strong>[测试模式和模拟模式]</strong></p>
+<p>【测试模式和模拟模式】</p>
 <p>如果服务运行于测试模式或模拟模式，应设置：</p>
 <pre><code>X-Daca-Test-Mode: {value}
 X-Daca-Mock-Mode: {value}</code></pre>

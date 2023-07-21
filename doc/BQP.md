@@ -206,6 +206,8 @@ POST内容也可以使用json格式，如：
 
 - _raw: 只返回数据部分（第2元素）；
 - _jsonp: 返回函数调用或变量赋值形式，是合法的javascript语句。
+- retfn=obj: 成功时返回`{code:0, data}`格式，失败时返回`{code, message}`格式，可选的debug字段为调试信息。
+- retfn=xml: 成功时返回`<ret><code>0</code><data>...</data></ret>`，失败示例`<ret><code>1</code><message>...</message></ret>`。
 
 示例：`callSvr("Ordr.get", {res: "id, tm, amount"})`假设返回`[0, {id: 100, tm: '2020-10-10', amount: 380.5}]`，那么：
 
@@ -213,6 +215,8 @@ POST内容也可以使用json格式，如：
 
 - `callSvr("Ordr.get", {res: "id, tm, amount", _raw:2})`返回`100	2020-10-10	380.5`
 字段间以TAB分隔的表；如果有多条记录则可以有多行。可用于与shell script集成。
+
+- `callSvr("Ordr.get", {res: "id, tm, amount", retfn:"obj"})`返回`{code: 0, data: {id: 100, tm: '2020-10-10', amount: 380.5}}`
 
 - `callSvr("Ordr.get", {res: "id, tm, amount", _jsonp:'handleOrder'})`返回`handleOrder([0, {id: 100, tm: '2020-10-10', amount: 380.5}])`
 即JS函数调用形式，可用于跨域调用。
@@ -835,6 +839,9 @@ fmt
 		fmt: "one" 
 	})
 
+COUNTIF也支持指定统计字段，如`COUNTIF(createTm>='2020-10-10', userPhone)`或`COUNTIF(createTm>='2020-10-10', DISTINCT userPhone)`，
+前者表示统计指定条件下且userPhone非空的个数，后者表示统计指定条件下且userPhone非空且不重复的个数，其底层实现类似于`COUNT(DISTINCT IF(createTm>='2020-10-10', userPhone, NULL))`。
+
 也可以在普通查询的同时指定要统计哪些列，使用statRes字段。
 	
 statRes
@@ -879,6 +886,7 @@ statRes的写法与res相同，支持COUNT/COUNTIF等白名单内的统计函数
 
 gres
 : String. 分组字段。如果设置了gres字段，则res参数中每项应该带统计函数，如"sum(cnt) sum, count(id) userCnt". 最终返回列为gres参数指定的列加上res参数指定的列; 如果res参数未指定，则只返回gres参数列。
+如果指定参数gresHidden=1，gres字段则不会自动加到最终结果列中。
 
 例：统计2015-2016两年间，按年份、状态分类（如已付款、已评价、已取消等）的各类订单的总数和总金额。
 
