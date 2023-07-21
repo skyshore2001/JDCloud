@@ -442,6 +442,18 @@ global $X_RET_STR;
 		return "<xml><code>$ret[0]</code><data>$ret[1]</data></xml>";
 	};
 
+@var retfn 通用URL参数，指定返回样式
+
+筋斗云默认返回样式是`[code, data]`，可通过指定URL参数retfn来修改：
+
+- retfn=obj: 成功返回{code:0,data,debug?}, 失败返回{code:非0,message,debug?}
+- retfn=raw: 与下面指定URL参数_raw=1或2相同
+- retfn=xml: 字段名与retfn=obj相同，以xml格式返回。
+
+如果需要扩展某种返回样式如xxx1，只需要定义下面函数，然后调用时指定参数`retfn=xxx1`：
+
+	function retfn_xxx1($ret, $env) {}
+
 @var _raw 通用URL参数，只返回内容
 
 如果有URL参数`_raw=1`，则结果不封装为`[code, data]`形式，而是直接返回data. 示例：
@@ -2976,20 +2988,19 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			return;
 		}
 
-		global $X_RET_FN;
 		if (! $data instanceof DbExpr) {
-			if (is_callable(@$X_RET_FN) && !$this->param("jdcloud")) {
-				$ret1 = $X_RET_FN($ret, $this);
+			$retfn = $this->_GET["retfn"] ?: $GLOBALS["X_RET_FN"];
+			if (is_string($retfn)) {
+				$retfn = "retfn_$retfn";
+			}
+			if ($this->_GET["_raw"]) { // 兼容原_raw=1/2参数
+				$retfn = "retfn_raw";
+			}
+			if (is_callable($retfn) && !$this->param("jdcloud")) {
+				$ret1 = $retfn($ret, $this);
 				if ($ret1 === false)
 					return;
 				$ret = $ret1;
-			}
-			else if ($this->_GET["_raw"]) {
-				$ret = $ret[1];
-				if ($this->_GET["_raw"] == 2) {
-					if (is_array($ret))
-						$ret = join("\t", $ret);
-				}
 			}
 
 			if (is_scalar($ret)) {
@@ -3360,6 +3371,43 @@ $param或$postParam为null时，与空数组`[]`等价。
 		return $ret;
 	}
 } /* JDEnv */
+
+function retfn_obj($ret, $env) {
+	$ret1 = ["code" => $ret[0]];
+	if ($ret[0] == 0) {
+		$ret1["data"] = $ret[1];
+	}
+	else {
+		$ret1["message"] = $ret[1];
+	}
+	if ($env->TEST_MODE && count($ret) > 2) {
+		array_splice($ret, 0, 2);
+		$ret1["debug" ] = $ret;
+	}
+	return $ret1;
+}
+function retfn_raw($ret, $env) {
+	$r = $ret[1];
+	if ($env->_GET["_raw"] == 2) {
+		if (is_array($r))
+			$r = join("\t", $r);
+	}
+	return $r;
+}
+function retfn_xml($ret, $env) {
+	header("Content-Type: application/xml");
+	$ret1 = ["code" => $ret[0]];
+	if ($ret[0] == 0) {
+		$ret1["data"] = $ret[1];
+	}
+	else {
+		$ret1["message"] = $ret[1];
+		if (count($ret) > 2)
+			$ret1["debug"] = $ret[2];
+	}
+	return SimpleXml::writeXml($ret1, "ret");
+}
+
 
 /*
 Bug: session_start doesn't create session

@@ -2013,4 +2013,72 @@ class Guard
 	}
 }
 
+class SimpleXml
+{
+	static function writeXml($obj, $tagName) {
+		$wr = new XmlWriter();
+		$wr->openMemory();
+		$wr->setIndent(true);
+		self::writeOne($wr, $tagName, $obj);
+		$xml = $wr->outputMemory(true);
+		return $xml;
+	}
+
+	static function writeArr($wr, $arr, $arrName, $elemName, $fieldFn = null) {
+		$wr->startElement($arrName);
+		$wr->writeAttribute("count", count($arr)); // count属性作为array标识，在readOne时用
+		foreach ($arr as $e) {
+			self::writeOne($wr, $elemName, $e, $fieldFn);
+		}
+		$wr->endElement();
+	}
+
+	static function writeOne($wr, $k, $v, $fieldFn = null) {
+		if ($v === null)
+			return;
+
+		$arrayItemPostfix = '_e';
+		if (is_array($v)) {
+			if (isArray012($v)) {
+				self::writeArr($wr, $v, $k, $k . $arrayItemPostfix, $fieldFn);
+				return;
+			}
+
+			// is obj
+			$wr->startElement($k);
+			foreach ($v as $k1=>$v1) {
+				self::writeOne($wr, $k1, $v1, $fieldFn);
+			}
+			$wr->endElement();
+			return;
+		}
+
+		if (is_string($v) && $v != "") {
+			if ($fieldFn && $fieldFn($k, $v) === true) {
+				return;
+			}
+			if (preg_match('/[\'\"\n]/', $v)) {
+				$wr->startElement($k);
+				if (stripos($v, "\n") !== false) {
+					$v = "\n" . trim($v) . "\n";
+				}
+				$wr->writeCData($v);
+				$wr->endElement();
+				return;
+			}
+		}
+
+		if ($v === null) {
+			$v = "null";
+		}
+		else if ($v === true) {
+			$v = "true";
+		}
+		else if ($v === false) {
+			$v = "false";
+		}
+		$wr->writeElement($k, $v);
+	}
+}
+
 // vi: foldmethod=marker
