@@ -72,14 +72,6 @@ class MssqlCompatible
 			if (!$handled)
 				jdRet(E_SERVER, "bad sql to handle group_concat: `$sql`");
 		}
-
-		// db.tbl / `db`.`tbl` => db.dbo.tbl / [db].dbo.[tbl]
-		$sql = preg_replace_callback('/\b(?:FROM|INTO|UPDATE)\s+\K(\S+)\.([`\w]+)/i', function ($ms) {
-			if (preg_match('/\bdbo|sys\b/i', $ms[1]))
-				return $ms[0];
-			return self::fixQuote($ms[1]) . '.dbo.' . self::fixQuote($ms[2]);
-		}, $sql);
-
 		// 'select if(...)' => 'select iif(...)'
 		static $map = ["if"=>"iif", "ifnull"=>"isnull", "uuid"=>"newid"];
 		$sql = preg_replace_callback('/\b(if|ifnull|uuid)\s*(?=\()/i', function ($ms) use ($map) {
@@ -100,12 +92,5 @@ class MssqlCompatible
 
 		// handle special name
 		$sql = preg_replace('/\b(user|proc)\b/i', '"$1"', $sql);
-	}
-
-	// `xxx` => [xxx]
-	static function fixQuote($name) {
-		if ($name[0] != '`')
-			return $name;
-		return '[' . substr($name, 1, strlen($name)-2) . ']';
 	}
 }
