@@ -6394,7 +6394,10 @@ function toggleBatchMode(val) {
 	self.tabMain.toggleClass("batchMode", m_batchMode);
 
 	// 允许点击多选
-	var opt = WUI.getActivePage().find(".datagrid-f").datagrid("options");
+	var jtbl = WUI.getActivePage().find(".datagrid-f");
+	if (jtbl.size() == 0)
+		return;
+	var opt = jtbl.datagrid("options");
 	opt.ctrlSelect = !m_batchMode;
 	$.fn.datagrid.defaults.singleSelect = false;
 	$.fn.datagrid.defaults.ctrlSelect = !m_batchMode;
@@ -7929,14 +7932,15 @@ function addFieldByMeta(jdlg, jp, itemArr)
 
 // 按住Ctrl/Command键进入批量模式。
 $(window).keydown(function (e) {
-	if (e.key == 'Control') {
+	// console.log(window.event);
+	if (e.key == 'Control' || e.key == 'Meta') {
 		m_batchMode = true;
 		//console.warn("batch mode on");
 	}
 });
 $(window).keyup(function (e) {
 	// console.log(window.event);
-	if (e.key == 'Control') {
+	if (e.key == 'Control' || e.key == 'Meta') {
 		m_batchMode = false;
 		//console.warn("batch mode off");
 	}
