@@ -1,10 +1,19 @@
-function initPageQuery() 
+function initPageQuery(pageOpt)
 {
 	var jpage = $(this);
+	var specialFn = null;
 
 	jpage.find("#btnQuery").click(btnQuery_click);
+	jpage.find("#btnNewTab").click(btnNewTab_click);
 
 	var jdivInfo = jpage.find("#divInfo");
+	if (pageOpt.sql) {
+		jpage.find("#txtQuery").val(pageOpt.sql);
+	}
+	if (pageOpt.exec) {
+		jpage.find("#btnQuery").click();
+	}
+
 	function addDynInfo(html)
 	{
 		var jo = $("<div class=\"dyninfo\">" + html + "</div>");
@@ -22,20 +31,23 @@ function initPageQuery()
 	// 只允许SELECT语句, 缺省禁用其它语句; 如果要用, 必须在语句前加"!".
 	function btnQuery_click(ev)
 	{
-		var query = jpage.find("#txtQuery").val();
+		var query = jpage.find("#txtQuery").val().trim();
 		cleanDynInfo();
 
 		if (query[0] == "!") {
 			query = query.substr(1);
 		}
 		else {
-			var ms = query.match(/select\s+.*?from\s+(\S+)/is);
+			var ms = query.match(/^select\s+.*?from\s+(\S+)|^show /is);
 			if (ms) {
-				addDynInfo("主表: <span id=\"txtMainTable\">" + ms[1] + "</span>");
+				if (ms[1])
+					addDynInfo("主表: <span id=\"txtMainTable\">" + ms[1] + "</span>");
+				/*
 				if (query.search(/limit/i) < 0) {
 					addDynInfo("<span class=\"status-warning\">只返回前20行.</span>");
 					query += " LIMIT 20";
 				}
+				*/
 			}
 			else {
 				app_alert("不允许SELECT之外的语句.", "w");
@@ -43,10 +55,14 @@ function initPageQuery()
 			}
 		}
 
+		var tm0 = new Date();
 		callSvr("execSql", {fmt: "table"}, api_execSql, {sql: query}, {noex: 1});
 
 		function api_execSql(data)
 		{
+			var t = new Date() - tm0;
+			addDynInfo("执行时间: " + t + "ms");
+
 			var jtbl = jpage.find("#tblQueryResult");
 			jtbl.empty();
 
@@ -64,6 +80,7 @@ function initPageQuery()
 			if (data.h === undefined) {
 				data = {h: ["Result"], d: [ [ "<xmp>" + data + "</xmp>"] ] };
 			}
+			handleSpecial(data);
 
 			// to html table
 			var jhead = $("<thead></thead>").appendTo(jtbl);
@@ -88,10 +105,44 @@ function initPageQuery()
 			});
 		}
 
+		function handleSpecial(data) {
+			var col1 = data.h[0];
+			specialFn = null;
+			if (data.d.length == 0)
+				return;
+
+			// 对show databases特殊支持, 双击查看表
+			if (col1 == 'Database') {
+				specialFn = function (jtd) {
+					var db = jtd.text();
+					openNewTab({sql: 'show tables from `' + db + "`", exec:1});
+				}
+				addDynInfo("<span class=\"status-info\">提示: 双击数据库名可查看表</span>");
+			}
+			// show tables特殊支持, 双击查看数据, ctrl-双击查看字段列表
+			else if (col1.match(/^Tables_in_(\S+)/)) {
+				var db = RegExp.$1;
+				specialFn = function (jtd) {
+					var tbl = '`' + db + "`." + jtd.text();
+					var sql = !WUI.isBatchMode()? 'select * from ' + tbl + ' limit 20': '!describe ' + tbl;
+					openNewTab({sql: sql, exec:1});
+				}
+				addDynInfo("<span class=\"status-info\">提示: 双击表名可查看数据, Ctrl-双击查看字段</span>");
+			}
+			else if (data.h.length > 1 && data.h[0] == "id") {
+				addDynInfo("<span class=\"status-info\">提示: 双击单元格可更新数据. </span>");
+			}
+		}
+
 		function td_dblclick_updateOneField(ev)
 		{
 			var jtd = $(this);
 			var jtbl = jtd.closest("table");
+
+			if (specialFn) {
+				specialFn(jtd);
+				return;
+			}
 
 			var tbl = jdivInfo.find("#txtMainTable").text();
 			if (tbl == "")
@@ -153,5 +204,18 @@ function initPageQuery()
 				jtd.on(col.on);
 		});
 		return jtr;
+	}
+
+	function btnNewTab_click(ev) {
+		openNewTab();
+	}
+
+	function openNewTab(pageOpt1) {
+		if (window.pageQueryCnt == null)
+			window.pageQueryCnt = 1;
+		else
+			++ window.pageQueryCnt;
+		var opt = $.extend({title: "查询语句_" + (window.pageQueryCnt)}, pageOpt1);
+		WUI.showPage("pageQuery", opt);
 	}
 }

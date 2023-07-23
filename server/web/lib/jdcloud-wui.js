@@ -7911,21 +7911,17 @@ function addFieldByMeta(jdlg, jp, itemArr)
 }
 
 // 按住Ctrl/Command键进入批量模式。
-var tmrBatch_;
-$(document).keydown(function (e) {
-	if (e.ctrlKey || e.metaKey) {
+$(window).keydown(function (e) {
+	if (e.key == 'Control') {
 		m_batchMode = true;
-		clearTimeout(tmrBatch_);
-		tmrBatch_ = setTimeout(function () {
-			m_batchMode = false;
-			tmrBatch_ = null;
-		},500);
+		//console.warn("batch mode on");
 	}
 });
 $(window).keyup(function (e) {
-	if (e.ctrlKey || e.metaKey) {
+	// console.log(window.event);
+	if (e.key == 'Control') {
 		m_batchMode = false;
-		clearTimeout(tmrBatch_);
+		//console.warn("batch mode off");
 	}
 });
 
