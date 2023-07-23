@@ -12075,7 +12075,9 @@ function mainInit()
 		items: [
 			'<div id="mnuReload">刷新页面</div>',
 			'<div id="mnuReloadDlg">刷新对话框</div>',
-			'<div id="mnuBatch">批量模式</div>'
+			'<div id="mnuBatch">批量模式</div>',
+			'<div id="mnuCloseTabs">关闭其它页</div>',
+			'<div id="mnuCloseTabs2">关闭右侧页</div>'
 		],
 
 		// 处理函数
@@ -12088,8 +12090,25 @@ function mainInit()
 			self.reloadDialog(jdlg);
 		},
 		mnuBatch: function () {
-			console.log(this);
+			// console.log(this);
 			self.toggleBatchMode();
+		},
+		mnuCloseTabs: function (doCloseRight) {
+			var jtabs = self.tabMain;
+			var curIdx = jtabs.tabs("getTabIndex", jtabs.tabs("getSelected"));
+			var arr = jtabs.tabs("tabs");
+			for (var i=arr.length-1; i>curIdx; --i) {
+				jtabs.tabs("close", i);
+			}
+			if (doCloseRight)
+				return;
+			// 首页不关(i=0)
+			for (var i=curIdx-1; i>0; --i) {
+				jtabs.tabs("close", i);
+			}
+		},
+		mnuCloseTabs2: function () {
+			self.PageHeaderMenu.mnuCloseTabs(true);
 		}
 	};
 
