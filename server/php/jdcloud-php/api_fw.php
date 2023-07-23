@@ -1255,7 +1255,6 @@ class ApiLog
 {
 	private $env;
 
-	private $startTm;
 	private $id;
 
 	// for batch detail (ApiLog1)
@@ -1356,7 +1355,6 @@ res字段会记录返回数据200字节(出错时记录2000字节).
 	function logBefore()
 	{
 		$env = $this->env;
-		$this->startTm = $env->_SERVER("REQUEST_TIME_FLOAT") ?: microtime(true);
 
 		$content = $this->myVarExport($env->_GET, $this->logReqLen);
 		$ct = getContentType($env);
@@ -1409,7 +1407,7 @@ res字段会记录返回数据200字节(出错时记录2000字节).
 		// 不记日志的情况
 		if (!$this->id && (Conf::$enableApiLog == 0 || (Conf::$enableApiLog == 2 && $ret[0] == 0)))
 			return;
-		$t = microtime(true) - $this->startTm;
+		$t = microtime(true) - $this->env->startTm;
 		$iv = sprintf("%.0f", $t * 1000); // ms
 		if ($X_RET_STR == null)
 			$X_RET_STR = jsonEncode($ret, $env->TEST_MODE);
@@ -1445,14 +1443,6 @@ res字段会记录返回数据200字节(出错时记录2000字节).
 			$t1 = round($t, 2);
 			logit("slow api call #{$this->id}: $ac, time={$t1}s", true, "slow");
 		}
-/**
-@var conf_returnExecTime
-
-如果值为1, 将通过HTTP头返回接口执行时间, 示例:
-	X-Exec-Time: 13ms
-*/
-		if ($GLOBALS["conf_returnExecTime"])
-			$this->env->header("X-Exec-Time", $iv . "ms");
 // 		$logStr = "=== id={$this->logId} t={$iv} >>>$content<<<\n";
 	}
 
@@ -2558,6 +2548,7 @@ class JDEnv extends DBEnv
 同样的应用类型将以相同的方式登录系统。
  */
 	public $appName, $appType;
+	public $startTm;
 
 /*
 @var env.clientVer
@@ -2716,6 +2707,9 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		$isUserFmt = false;
 
 		$isDefaultCall = ($ac === null);
+		if ($isDefaultCall) {
+			$this->startTm = $this->_SERVER("REQUEST_TIME_FLOAT") ?: microtime(true);
+		}
 		$isCLI = isCLI();
 		if ($isCLI || $isSubCall)
 			assert($ac != null);
@@ -2848,6 +2842,17 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		}
 
 		if ($isDefaultCall) {
+/**
+@var conf_returnExecTime
+
+如果值为1, 将通过HTTP头返回接口执行时间, 示例:
+	X-Exec-Time: 13ms
+*/
+			if ($GLOBALS["conf_returnExecTime"] && $this->startTm) {
+				$t = microtime(true) - $this->startTm;
+				// 如果之前已输出, 此时可能无法输出header
+				@$this->header("X-Exec-Time", round($t*1000, 3) . "ms");
+			}
 			$this->echoRet($ret, $isUserFmt);
 		}
 		else {
