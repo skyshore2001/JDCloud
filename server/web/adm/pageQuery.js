@@ -109,25 +109,37 @@ function initPageQuery(pageOpt)
 		}
 
 		function handleSpecial(data) {
-			var col1 = data.h[0];
 			specialFn = null;
 			if (data.d.length == 0)
 				return;
 
 			// 对show databases特殊支持, 双击查看表
-			if (col1 == 'Database') {
+			if (data.hint == 'db') {
 				specialFn = function (jtd) {
+					var idx = jtd.prop("cellIndex");
+					if (idx != 0)
+						return;
 					var db = jtd.text();
-					openNewTab({sql: 'show tables from `' + db + "`", exec:1});
+					if (/\W/.test(db))
+						db = '`' + db + '`';
+					openNewTab({sql: 'show tables from ' + db, exec:1});
 				}
 				addDynInfo("<span class=\"status-info\">提示: 双击数据库名可查看表</span>");
 			}
 			// show tables特殊支持, 双击查看数据, ctrl-双击查看字段列表
-			else if (col1.match(/^Tables_in_(\S+)/)) {
-				var db = RegExp.$1;
+			else if (data.hint == 'tbl') {
+				var db = data.db;
 				specialFn = function (jtd) {
-					var tbl = '`' + db + "`." + jtd.text();
-					var sql = !WUI.isBatchMode()? 'select * from ' + tbl + ' limit 20': '!describe ' + tbl;
+					var idx = jtd.prop("cellIndex");
+					if (idx != 0)
+						return;
+					var tbl = jtd.text();
+					if (db) {
+						if (/\W/.test(db))
+							db = '`' + db + '`';
+						tbl = db + '.' + tbl;
+					}
+					var sql = !WUI.isBatchMode()? ('select * from ' + tbl + ' limit 20'): ('!describe ' + tbl);
 					openNewTab({sql: sql, exec:1});
 				}
 				addDynInfo("<span class=\"status-info\">提示: 双击表名可查看数据, Ctrl-双击查看字段</span>");
