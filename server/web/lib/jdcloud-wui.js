@@ -10508,17 +10508,19 @@ var GridHeaderMenu = {
 		var varr = WUI.list2varr(param.res, " ", ",");
 		var resArr = WUI.rs2Array({h:["name","title"], d:varr});
 		var rows = jtbl.datagrid("getData").rows;
+		var sel = jtbl.datagrid("getSelected");
+		var rowStartIdx = sel? jtbl.datagrid("getRowIndex", sel): 0;
 		if (rows.length > 0) {
 			var colMap = {};
 			$.each(resArr, function (i, res) {
 				colMap[ res.name ] = true; // name
-				addExample(rows, res);
+				addExample(rows, res, rowStartIdx);
 			});
-			$.each(rows[0], function (field, val) {
+			$.each(rows[rowStartIdx], function (field, val) {
 				if (colMap[field])
 					return;
 				var res = { name:field, title:"(未使用)"};
-				addExample(rows, res);
+				addExample(rows, res, rowStartIdx);
 				resArr.push(res);
 			});
 		}
@@ -10555,9 +10557,9 @@ var GridHeaderMenu = {
 			});
 		}
 
-		function addExample(rows, res) {
+		function addExample(rows, res, rowStartIdx) {
 			var field = res.name;
-			if (rows[0][field] === undefined) {
+			if (rows[rowStartIdx][field] === undefined) {
 				res.name += "<span style='color:red'>(缺失)</span>";
 			}
 			if (res.title) {
@@ -10565,18 +10567,19 @@ var GridHeaderMenu = {
 			}
 			var arr = [];
 			var MAX_EXAMPLE = 2;
-			var lastOne = null;
-			$.each(rows, function (i, row) {
+			for (i=rowStartIdx; i<rows.length; ++i) {
+				var row = rows[i];
 				var s = row[field];
 				if ($.isArray(s) || $.isPlainObject(s))
 					s = JSON.stringify(s);
-				if (s && s != lastOne) {
-					arr.push(s);
-					lastOne = s;
-					if (arr.length == MAX_EXAMPLE)
-						return false;
-				}
-			});
+				if (s === null)
+					s = "(null)";
+				else if (s === undefined)
+					s = "(undefined)";
+				arr.push(s);
+				if (arr.length == MAX_EXAMPLE)
+					break;
+			}
 			if (arr.length > 0)
 				res.example = "<span class='example'>" + arr.join('<br>') + "</span>";
 		}
