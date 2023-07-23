@@ -5877,6 +5877,23 @@ callSvr扩展示例：
 
 	$.ajax("../1.php", {success: callback})
 
+## 获取HTTP返回状态码和响应头
+
+在回调中获取this.xhr_对象(即$.ajax()返回对象, 详细可参考$.ajax手册), 通过它的getResponseHeader()方法取响应头, status属性来获取状态码, 示例
+
+	callSvr("User.query", function (data) {
+		console.log("status", this.xhr_.status);
+		var v = this.xhr_.getResponseHeader("X-Powered-By"); // header名字不分区大小写,用"x-powered-by"也可以
+		console.log(v);
+	});
+
+当然也可以通过返回的dfd对象来操作:
+
+	rv = callSvr("User.query");
+	rv.then(function (data) {
+		console.log("status", this.xhr_.status);
+	});
+
 @see $.ajax
 */
 self.callSvr = callSvr;

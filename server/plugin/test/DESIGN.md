@@ -33,6 +33,11 @@ wantId
 fmt
 : String. 指定select查询的结果返回格式: "table"-table格式({h,d}), "array"-array格式 (相当于wantArray=1), "one"-如果查询有多列,则只取首行, 如果查询只有一列, 则只取首行首列数据(相当于框架中的queryOne函数), 缺省: object aray / rowset
 
+通过响应HTTP头将返回SQL内部执行时间(X-ExecSql-Time)以及接口执行时间(X-Exec-Time), 示例:
+
+	X-ExecSql-Time: 1.303ms
+	X-Exec-Time: 15ms
+
 **[示例]**
 
 请求

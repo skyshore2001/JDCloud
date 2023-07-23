@@ -2537,6 +2537,7 @@ function name2id($refNameFields, $refIdField, $refTable, $nameFields, $opt = [])
 class JDPDO extends PDO
 {
 	public $skipLogCnt = 0;
+	public $lastExecTime = 0; // 上次执行SQL时间,单位:秒
 	private $logH;
 
 	static function create($dsn, $user, $pwd, $dbtype) {
@@ -2657,6 +2658,7 @@ class JDPDO extends PDO
 	// t0: start time
 	protected function checkTime($t0, $sql) {
 		$t = microtime(true) - $t0;
+		$this->lastExecTime = $t;
 		if ($t > getConf("conf_slowSqlTime")) {
 			$t = round($t, 2);
 			logit("-- slow sql: time={$t}s\n$sql\n", "slow");

@@ -60,8 +60,11 @@ function initPageQuery(pageOpt)
 
 		function api_execSql(data)
 		{
-			var t = new Date() - tm0;
-			addDynInfo("执行时间: " + t + "ms");
+			var t2 = (new Date() - tm0) + "ms";
+			var t0 = this.xhr_.getResponseHeader("X-ExecSql-Time");
+			var t1 = this.xhr_.getResponseHeader("X-Exec-Time");
+
+			addDynInfo("SQL执行时间: " + t0 + ", 接口执行时间: " + t1 + ", 总时间: " + t2);
 
 			var jtbl = jpage.find("#tblQueryResult");
 			jtbl.empty();

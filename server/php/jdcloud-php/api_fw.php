@@ -1445,6 +1445,14 @@ res字段会记录返回数据200字节(出错时记录2000字节).
 			$t1 = round($t, 2);
 			logit("slow api call #{$this->id}: $ac, time={$t1}s", true, "slow");
 		}
+/**
+@var conf_returnExecTime
+
+如果值为1, 将通过HTTP头返回接口执行时间, 示例:
+	X-Exec-Time: 13ms
+*/
+		if ($GLOBALS["conf_returnExecTime"])
+			$this->env->header("X-Exec-Time", $iv . "ms");
 // 		$logStr = "=== id={$this->logId} t={$iv} >>>$content<<<\n";
 	}
 
