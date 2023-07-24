@@ -133,7 +133,7 @@ function initPageQuery(pageOpt)
 					if (idx != 0)
 						return;
 					var db = jtd.text();
-					if (/\W/.test(db))
+					if (/\W/.test(db) && db[0] != '`')
 						db = '`' + db + '`';
 					openNewTab({sql: 'show tables from ' + db, exec:1});
 				}
@@ -148,7 +148,7 @@ function initPageQuery(pageOpt)
 						return;
 					var tbl = jtd.text();
 					if (db) {
-						if (/\W/.test(db))
+						if (/\W/.test(db) && db[0] != '`')
 							db = '`' + db + '`';
 						tbl = db + '.' + tbl;
 					}

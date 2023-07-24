@@ -87,51 +87,45 @@ class DbExplorer
 		}
 		else if (preg_match('/^show tables\s*(?:from (\S+))?/i', $sql, $ms)) {
 			$hint = ["hint" => "tbl"];
+			$db = null;
 			if ($ms[1]) {
 				$db = $ms[1];
 				$hint["db"] = $db;
 			}
 			if ($env->DBTYPE == "mssql") {
-				if ($db) {
-					self::fixQuoteForMssql($db);
-					$tbl = "{$db}.sys.tables";
-				}
-				else {
-					$tbl = "sys.tables";
-				}
-				$sql = "select name,create_date,modify_date from $tbl";
+				$pre = $db? "$db.": '';
+				$sql = "select t1.name+ '.'+t0.name table_name,t0.create_date,t0.modify_date from {$pre}sys.tables t0
+inner join {$pre}sys.schemas t1 on t0.schema_id=t1.schema_id";
 			}
 		}
-		else if (preg_match('/^describe (?:(\S+)\.)?([`\w]+)/i', $sql, $ms)) {
-			$db = $ms[1];
-			$tbl = $ms[2];
+		else if (preg_match('/^describe (\S+)/i', $sql, $ms)) {
+			$tbl0 = $ms[1];
 			if ($env->DBTYPE == "mssql") {
-				self::fixQuoteForMssql($db);
-				self::fixQuoteForMssql($tbl);
-				if ($db) {
-					$sql = "select * from $db.sys.columns where object_id=object_id('$db.dbo.$tbl')";
+				$pre = '';
+				$tbl = $tbl0;
+				# db1.dbo.tbl1
+				if (preg_match('/(\w+)\.(\w+)\.(\w+)/', $tbl0, $ms)) {
+					$pre = $ms[1] . '.';
+					$tbl = $ms[3];
 				}
-				else {
-					$sql = "select * from sys.columns where object_id=object_id('$tbl')";
-				}
+				$sql = "select t0.name, t1.name type_name, t0.max_length, t0.precision, t0.scale, t0.collation_name, t0.is_nullable from {$pre}sys.columns t0
+join sys.types t1 on t0.system_type_id=t1.system_type_id
+where object_id=object_id('$tbl0')";
+				# $sql = "select column_name, data_type, character_maximum_length from {$pre}information_schema.columns where table_name='$tbl'";
 			}
 		}
-		else if ($env->DBTYPE == "mssql") {
-			// db.tbl / `db`.`tbl` => db.dbo.tbl / [db].dbo.[tbl]
-			$sql = preg_replace_callback('/\b(?:FROM|INTO|UPDATE)\s+\K(\S+)\.([`\w]+)/i', function ($ms) {
-				if (preg_match('/\bdbo|sys\b/i', $ms[1]))
-					return $ms[0];
-				self::fixQuoteForMssql($ms[1]);
-				self::fixQuoteForMssql($ms[2]);
-				return $ms[1] . '.dbo.' . $ms[2];
+		if ($env->DBTYPE == "mssql") {
+			// handle quote: `xxx` => [xxx]
+			$n = 0;
+			$sql = preg_replace_callback('/`/', function ($ms) use (&$n) {
+				if ($n == 0) {
+					$n = 1;
+					return '[';
+				}
+				$n = 0;
+				return ']';
 			}, $sql);
 		}
 		return $hint;
-	}
-
-	// `xxx` => [xxx]
-	static function fixQuoteForMssql(&$name) {
-		if ($name[0] == '`')
-			$name = '[' . substr($name, 1, strlen($name)-2) . ']';
 	}
 }
