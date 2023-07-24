@@ -52,7 +52,7 @@ function initPageQuery(pageOpt)
 		else {
 			var ms = query.match(/^select\s+.*?from\s+(\S+)|^show /is);
 			if (ms) {
-				if (ms[1])
+				if (ms[1] && ms[1][0] != '(')
 					addDynInfo("主表: <span id=\"txtMainTable\">" + ms[1] + "</span>");
 				/*
 				if (query.search(/limit/i) < 0) {
@@ -77,7 +77,8 @@ function initPageQuery(pageOpt)
 			var t0 = this.xhr_.getResponseHeader("X-ExecSql-Time");
 			var t1 = this.xhr_.getResponseHeader("X-Exec-Time");
 
-			addDynInfo("SQL执行时间: " + t0 + ", 接口执行时间: " + t1 + ", 总时间: " + t2);
+			var lineCnt = data.d? data.d.length: 1;
+			addDynInfo("SQL执行时间: " + t0 + ", 接口执行时间: " + t1 + ", 总时间: " + t2 + ", 行数: " + lineCnt);
 
 			var jtbl = jpage.find("#tblQueryResult");
 			jtbl.empty();

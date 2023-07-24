@@ -84,6 +84,13 @@ class DbExplorer
 			if ($env->DBTYPE == "mssql") {
 				$sql = 'SELECT name,create_date,collation_name FROM sys.databases';
 			}
+			else if ($env->DBTYPE == "oracle") {
+				$sql = 'select tablespace_name from user_tablespaces'; # 用all_tablespaces/dba_tablespaces报错找不到
+				#$sql = 'select t0.tablespace_name, nvl2(u.default_tablespace,1,0) is_user_default  from user_tablespaces t0
+#left join user_users u on t0.tablespace_name=u.default_tablespace';
+				# select username,default_tablespace from user_users
+				# $sql = 'select name from v$tablespace'; // 11g不支持
+			}
 		}
 		else if (preg_match('/^show tables\s*(?:from (\S+))?/i', $sql, $ms)) {
 			$hint = ["hint" => "tbl"];
@@ -96,6 +103,17 @@ class DbExplorer
 				$pre = $db? "$db.": '';
 				$sql = "select t1.name+ '.'+t0.name table_name,t0.create_date,t0.modify_date from {$pre}sys.tables t0
 inner join {$pre}sys.schemas t1 on t0.schema_id=t1.schema_id";
+			}
+			else if ($env->DBTYPE == "oracle") {
+				if ($db) {
+					$db = strtoupper($db);
+					$sql = "select owner || '.' || table_name name from all_tables where tablespace_name='$db'"; # user_tables;
+					# $sql = "select table_name from all_tables where tablespace_name='$db'"; // all_tables比user_tables看到更多
+				}
+				else {
+					$sql = "select table_name from user_tables";
+				}
+				unset($hint["db"]); # NOTE: 删除它因为oracle一般只用{owner}.{table}而不是{tablespace}.{table}
 			}
 		}
 		else if (preg_match('/^describe (\S+)/i', $sql, $ms)) {
@@ -113,6 +131,16 @@ join sys.types t1 on t0.system_type_id=t1.system_type_id
 where object_id=object_id('$tbl0')";
 				# $sql = "select column_name, data_type, character_maximum_length from {$pre}information_schema.columns where table_name='$tbl'";
 			}
+			else if ($env->DBTYPE == "oracle") {
+				$tbl = $tbl0;
+				// 只可查看用户所在的tablespace中的表(但可以看别的用户的表)
+				if (preg_match('/\.([\w\$]+)$/', $tbl0, $ms)) {
+					$tbl = $ms[1];
+				}
+				$tbl = strtoupper($tbl);
+				$sql = "select column_name,data_type,data_length,data_precision,nullable,character_set_name from all_tab_columns where table_name='$tbl'";
+				#$sql = "select * from user_tab_columns where table_name='$tbl0'";
+			}
 		}
 		if ($env->DBTYPE == "mssql") {
 			// handle quote: `xxx` => [xxx]
@@ -126,6 +154,19 @@ where object_id=object_id('$tbl0')";
 				return ']';
 			}, $sql);
 		}
+		else if ($env->DBTYPE == "oracle") {
+			// 12c之后可支持分页（之前使用where rownum<=10但不好用)
+			// limit $a => fetch next $a rows only;
+			// limit $a,$b => offset $a rows fetch next $b rows only;
+			$sql = preg_replace_callback('/\blimit\s+(\d+)(?:,\s*(\d+))?/', function ($ms) {
+				if ($ms[2]) {
+					return "offset {$ms[1]} rows fetch next {$ms[2]} rows only";
+				}
+				return "fetch next {$ms[1]} rows only";
+			}, $sql);
+			logit($sql);
+		}
+
 		return $hint;
 	}
 }
