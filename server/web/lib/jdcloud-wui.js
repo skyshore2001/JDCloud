@@ -7945,6 +7945,14 @@ $(window).keyup(function (e) {
 		//console.warn("batch mode off");
 	}
 });
+// bugfix: 有时按住ctrl键后会在浏览器外松开(如Ctrl-C复制内容后Ctrl键一直不松开直到焦点移出浏览器后按V键)，就会导致一直处于batch mode
+// 注意：之前用定时器重置会有问题，比如按Ctrl-V，按住Ctrl会一直有keydown事件但按下V后就没有了，这时定时器重置就不正确
+$(window).focus(function (e) {
+	if (m_batchMode) {
+		m_batchMode = false;
+		console.warn("fix: batch mode off");
+	}
+});
 
 /**
 @fn batchOp(obj, ac, jtbl, opt={data, acName="操作", onBatchDone, batchOpMode=0, queryParam})
