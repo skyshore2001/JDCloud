@@ -121,6 +121,21 @@ https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-micr
 
 如果配置了P_DEBUG_LOG=1且P_DEBUG=9，则记录SQL调用日志到debug.log
 
+@var conf_dbinst DB浏览器-数据库实例配置
+
+使用SQL语句`show databases`或`show tables`可查看数据库或数据表的列表。
+除了当前数据库实例，也支持连接到其它数据库实例。配置示例：
+
+	$mssql_db = "odbc:DRIVER={SQL Server Native Client 11.0}; UID=sa; LANGUAGE=us_english; DATABASE=jdcloud; SERVER=.; PWD=ibdibd";
+	$oracle_db = "oci:dbname=10.30.250.131:1525/mesdzprd;charset=AL32UTF8";
+	$GLOBALS["conf_dbinst"] = [
+		// 实例名称 => [数据库类型，PDO连接字符串，用户，密码]
+		"本地测试mysql" => ["mysql", "mysql:host=localhost;port=3306;dbname=wms", "demo", "demo123"],
+		"mssql实例" => ["mssql", $mssql_db, "demo", "demo123"],
+		"sqlite实例" => ["sqlite", "sqlite:jdcloud.db"],
+		"oracle实例" => ["oracle", $oracle_db, "demo", "demo123"],
+	];
+
 ## 测试模式与调试等级
 
 @key P_TEST_MODE Integer。环境变量，允许测试模式。0-生产模式；1-测试模式；2-自动化回归测试模式(RTEST_MODE)
