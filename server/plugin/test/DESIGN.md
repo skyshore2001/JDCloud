@@ -140,3 +140,26 @@ fmt
 
 注: 对于非SELECT语句, 返回affectedRows
 
+## DB浏览器(DbExplorer)
+
+用法：
+打开超级管理端，菜单【工具】-【查询语句】，输入`show databases`查看数据库列表，或`show tables`查看表列表。
+双击数据库名可查看表，双击数据表名可查看数据，Ctrl-双击数据表名可查看字段列表。
+
+除了当前数据库实例，也支持连接到其它数据库实例，只须在conf.user.php中配置后，前端dbinst下拉列表中即可选择。配置示例：
+
+	$mssql_db = "odbc:DRIVER={SQL Server Native Client 11.0}; UID=sa; LANGUAGE=us_english; DATABASE=jdcloud; SERVER=.; PWD=ibdibd";
+	$oracle_db = "oci:dbname=10.30.250.131:1525/mesdzprd;charset=AL32UTF8";
+	$GLOBALS["conf_dbinst"] = [
+		// 实例名称 => [数据库类型，PDO连接字符串，用户，密码]
+		"本地测试mysql" => ["mysql", "mysql:host=localhost;port=3306;dbname=wms", "demo", "demo123"],
+		"mssql实例" => ["mssql", $mssql_db, "demo", "demo123"],
+		"sqlite实例" => ["sqlite", "sqlite:jdcloud.db"],
+		"oracle实例" => ["oracle", $oracle_db, "demo", "demo123"],
+	];
+
+组件：
+
+- 前端-超级管理端前端页面(工具-查询语句): pageQuery
+- 后端-数据库查询接口: execSql
+

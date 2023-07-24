@@ -1,7 +1,10 @@
 <div wui-script="pageQuery.js" title="查询语句" my-initfn="initPageQuery">
 	<textarea id="txtQuery" rows=5 cols=80>select * from User limit 10</textarea>
-	<button id="btnQuery" style="vertical-align:top">执行</button>
-	<button id="btnNewTab" style="vertical-align:top">新窗口</button>
+	<div style="display: inline-block; vertical-align:top">
+		<button id="btnQuery">执行</button>
+		<button id="btnNewTab">新窗口</button>
+		dbinst: <select id="cboDbinst" style="width:100px"></select>
+	</div>
 	<table id="tblQueryResult" style="width:auto;height:auto" class="x-grid">
 	</table>
 	<div id="divInfo" style="display:none; margin-top:5px">

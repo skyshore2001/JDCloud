@@ -7,14 +7,25 @@ function api_execSql($env)
 	# TODO: limit the function
 	$sql = html_entity_decode(mparam("sql"));
 	$fmt = param("fmt");
-	$DBH = $env->DBH;
+
+	$dbinst = param("dbinst");
+	$env1 = $env;
+	if ($dbinst) {
+		@$c = getConf("conf_dbinst")[$dbinst];
+		if (!$c)
+			jdRet(E_PARAM, "unknown dbinst $dbinst");
+		$env1 = new DbEnv($c[0], $c[1], $c[2], $c[3]);
+		$env1->dbconn();
+	}
+
+	$DBH = $env1->DBH;
 	$addExecTime = function () use ($DBH, $env) {
 		$env->header("X-ExecSql-Time", round($DBH->lastExecTime * 1000, 3) . "ms");
 	};
 	$GLOBALS["conf_returnExecTime"] = true;
 
 	// 支持超级管理端的【数据库查询】工具：数据库列表、表列表、字段列表
-	$hint = DbExplorer::support($env, $sql);
+	$hint = DbExplorer::support($env1, $sql);
 
 	if ($fmt || preg_match('/^\s*(select|show) /i', $sql)) {
 		$sth = $DBH->query($sql);
@@ -48,10 +59,16 @@ function api_execSql($env)
 	}
 	else {
 		$wantId = param("wantId/b");
-		$ret = execOne($sql, $wantId);
+		$ret = $env1->execOne($sql, $wantId);
 		$addExecTime();
 	}
 	return $ret;
+}
+
+function api_dbinst()
+{
+	@$conf = $GLOBALS["conf_dbinst"];
+	return is_array($conf)? array_keys($conf): [];
 }
 
 class DbExplorer

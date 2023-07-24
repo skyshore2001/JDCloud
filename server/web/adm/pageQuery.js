@@ -5,10 +5,22 @@ function initPageQuery(pageOpt)
 
 	jpage.find("#btnQuery").click(btnQuery_click);
 	jpage.find("#btnNewTab").click(btnNewTab_click);
+	var jdbinst = jpage.find("#cboDbinst");
+	jdbinst.mycombobox({
+		url: WUI.makeUrl("dbinst"),
+		loadFilter: function (data) {
+			return $.map(data, function (e) {
+				return {name: e};
+			});
+		}
+	});
 
 	var jdivInfo = jpage.find("#divInfo");
 	if (pageOpt.sql) {
 		jpage.find("#txtQuery").val(pageOpt.sql);
+	}
+	if (pageOpt.dbinst) {
+		jdbinst.val(pageOpt.dbinst);
 	}
 	if (pageOpt.exec) {
 		jpage.find("#btnQuery").click();
@@ -56,7 +68,8 @@ function initPageQuery(pageOpt)
 		}
 
 		var tm0 = new Date();
-		callSvr("execSql", {fmt: "table"}, api_execSql, {sql: query}, {noex: 1});
+		var dbinst = jdbinst.val();
+		callSvr("execSql", {fmt: "table", dbinst:dbinst}, api_execSql, {sql: query}, {noex: 1});
 
 		function api_execSql(data)
 		{
@@ -231,6 +244,8 @@ function initPageQuery(pageOpt)
 		else
 			++ window.pageQueryCnt;
 		var opt = $.extend({title: "查询语句_" + (window.pageQueryCnt)}, pageOpt1);
+		if (opt.dbinst === undefined)
+			opt.dbinst = jdbinst.val();
 		WUI.showPage("pageQuery", opt);
 	}
 }

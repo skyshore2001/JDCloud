@@ -12196,11 +12196,11 @@ $.each([
 /**
 @module jquery-mycombobox
 
-@fn jQuery.fn.mycombobox(force?=false)
+@fn jQuery.fn.mycombobox(opt?)
 @key .my-combobox 关联选择框
 @var ListOptions 定义关联选择框的数据源
 
-@param force?=false 如果为true, 则调用时强制重新初始化。默认只初始化一次。
+@param opt.force?=false 如果为true, 则调用时强制重新初始化。默认只初始化一次。
 
 关联选择框组件。
 
@@ -12208,11 +12208,24 @@ $.each([
 
 	<select name="empId" class="my-combobox" data-options="valueField: 'id', ..."></select>
 
-通过data-options可设置选项: { url, formatter(row), loadFilter(data), valueField, textField, jdEnumMap/jdEnumList }
+通过函数参数opt或组件属性data-options可设置选项: { url, formatter(row), loadFilter(data), valueField, textField, jdEnumMap/jdEnumList }
 
 初始化：
 
 	var jo = $(".my-combobox").mycombobox();
+
+(v6) 使用参数opt直接指定参数，比使用data-options指定参数优先级高：
+
+	var jo = $(".my-combobox").mycombobox({
+		url: WUI.makeUrl("dbinst"),
+		// dbinst返回数组示例`["aa","bb"]`, 转为`[{name:"aa"}, {name:"bb"}]`才可正常显示. i
+		// 数组每1项须是个对象，前两个字段分别用作value和text，如果只有1个字段，则value和text均是这个字段；也可通过valueField和textField分别指定字段名。
+		loadFilter: function (data) {
+			return $.map(data, function (e) {
+				return {name: e};
+			});
+		}
+	});
 
 注意：使用WUI.showPage或WUI.showDlg显示的逻辑页或对话框中如果有my-combobox组件，会自动初始化，无须再调用上述代码。
 
@@ -12256,7 +12269,7 @@ $.each([
 
 (v6)也可以用input来代替select，组件会自动处理.
 
-注意查询默认是有分页的（页大小一般为20条），用参数`{pagesz:-1}`使用服务器设置的最大的页大小（后端最大pagesz默认100，可使用maxPageSz参数调节）。
+注意查询默认是有分页的（页大小一般为20条），用参数`{pagesz:-1}`使用服务器设置的最大的页大小（-1表示使用后端默认的pagesz，后端可使用maxPageSz参数调节）。
 为了精确控制返回字段与显示格式，data-options可能更加复杂，习惯上定义一个ListOptions变量包含各种下拉框的数据获取方式，便于多个页面上共享，像这样：
 
 	<select name="empId" class="my-combobox" data-options="ListOptions.Emp()"></select>
@@ -12564,7 +12577,7 @@ defectId上暂时不设置，之后传参动态设置。
  */
 var m_dataCache = {}; // url => data
 $.fn.mycombobox = mycombobox;
-function mycombobox(force) 
+function mycombobox(userOpts) 
 {
 	var mCommon = jdModule("jdcloud.common");
 	this.each(initCombobox);
@@ -12573,6 +12586,7 @@ function mycombobox(force)
 	{
 		var jo = $(o);
 		var opts = WUI.getOptions(jo);
+		var force = userOpts && userOpts.force;
 		if (!force && opts.isLoaded_)
 			return;
 		if (jo.attr("required"))
@@ -12587,6 +12601,7 @@ function mycombobox(force)
 			o = jo1[0];
 			opts = WUI.getOptions(jo, opts);
 		}
+		$.extend(opts, userOpts);
 		jo.removeAttr("data-options");
 		jo.addClass("easyui-validatebox");
 		jo.validatebox(opts);
