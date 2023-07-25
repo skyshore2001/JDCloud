@@ -1184,7 +1184,7 @@ function getMenuTree(jo, arr, opt)
 - jd_vField: 显示文本对应的虚拟字段, 用于初始显示和查询。
 - jd_showId: 默认为true. 显示"idField - textField"格式. 设置为false时只显示textField.
 - jd_dlgForAdd: (v6) 如果指定，则下拉列表中显示“新增”按钮，可以打开该对话框添加对象。（支持权限控制）
-- jd_qsearch: (v6.1) 指定模糊查询的字段列表(多个以逗号分隔)。由datagrid适配即dgLoader实现。
+- jd_qsearch: (v7) 指定模糊查询的字段列表(多个以逗号分隔)。由datagrid适配即dgLoader实现。
 
 在wui-combogrid的输入框中输入后会自动进行模糊查询，展示匹配的数据列表；
 选项jd_qsearch用于直接指定模糊查询的字段列表；如果不指定的话，则须由后端指定，否则无法模糊查询。

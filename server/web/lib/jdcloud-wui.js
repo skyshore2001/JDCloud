@@ -583,7 +583,7 @@ datagrid默认加载数据要求格式为`{total, rows}`，框架已对返回数
 (v5.3)
 
 - 在对话框中三击（2秒内）字段标题栏，可快速按查询该字段。Ctrl+三击为追加过滤条件。
-(v6.1)也可以在对话框的字段标题上点右键，在菜单中选择“查询该字段”。
+(v7)也可以在对话框的字段标题上点右键，在菜单中选择“查询该字段”。
 
 - 在页面工具栏中，按住Ctrl(batch模式)点击“刷新”按钮，可清空当前查询条件。
 
@@ -6768,9 +6768,10 @@ function getModulePath(file)
 @fn showPage(pageName, showPageOpt?={title, target, pageFilter}, paramArr?=[showPageOpt])
 
 - pageName: 由page上的class指定。
-- showPageOpt.title: 如果未指定，则使用page上的title属性. (v6.1) 如果有多语言翻译，此处title是未翻译过的开发语言。
+- showPageOpt.title: 如果未指定，则使用page上的title属性. (v7) 如果有多语言翻译，此处title是未翻译过的开发语言。
 - paramArr: 调用initfn时使用的参数，是一个数组。如果不指定，则调用initfn直接传入showPageOpt。推荐不指定该参数。
-- force: (v6.1) 如果页面已存在，默认直接跳到该页面，指定`force: 1`会刷新该页面。
+- force: (v7) 如果页面已存在，默认直接跳到该页面，指定`force: 1`会刷新该页面, 按住ctrl键打开页面时激活该功能。
+- forceNew: (v7) 强制打开新页面, 会在Tab页标题中添加数字后缀如"_1", 按住shift键打开页面时激活该功能。
 
 @alias showPage(pageName, title?, paramArr?)
 
@@ -6795,10 +6796,14 @@ page调用示例:
 	WUI.showPage("pageHome", {title: "%s-" + cityName, cityName: cityName}); //e.g. 显示 "首页-上海"
 
 title用于唯一标识tab，即如果相同title的tab存在则直接切换过去。除非：
-(v5.5) 如果标题以"!"结尾, 则每次都打开新的tab页，(v6.1)等价于指定选项`showPageOpt.force:1`:
+(v5.5) 如果标题以"!"结尾, 则每次都打开新的tab页，(v7)等价于指定选项`showPageOpt.force:1`:
 
 	WUI.showPage("pageHome", "我的首页!");
 	WUI.showPage("pageHome", {title: "我的首页", force:1}); // 同上
+
+(v7) 按住Ctrl点击菜单项打开页面, 也会刷新式打开, 相当于`force:1`选项
+按住Shift点击菜单项, 强制打开新页面, 相当于`forceNew:1`选项;
+如果菜单项是链接页面(指定href为一个url), 则会在新窗口打开(默认是在tab页内即pageIframe中打开).
 
 ## showPageOpt.pageFilter: (v6) 指定列表页过滤条件(PAGE_FILTER)
 
@@ -6860,6 +6865,12 @@ function showPage(pageName, title_or_opt, paramArr)
 		showPageOpt.force = true;
 		showPageOpt.title = title.substr(0, title.length-1);
 	}
+	if (self.isBatchMode()) {
+		showPageOpt.force = true;
+	}
+	if (window.event && window.event.shiftKey) {
+		showPageOpt.forceNew = true;
+	}
 	if (paramArr == null) {
 		paramArr = [showPageOpt];
 	}
@@ -6902,6 +6913,14 @@ function showPage(pageName, title_or_opt, paramArr)
 			showPageOpt.title = title0;
 		var title = showPageOpt.title;
 		title = T(title).replace('%s', title0);
+
+		if (showPageOpt.forceNew) {
+			if (window.showPageForceNewCnt == null)
+				window.showPageForceNewCnt = 1;
+			else
+				++ window.showPageForceNewCnt;
+			title += "_" + (window.showPageForceNewCnt);
+		}
 
 		var tt = showPageOpt.target? $("#"+showPageOpt.target): self.tabMain;
 		if (tt.tabs('exists', title)) {
@@ -8364,7 +8383,7 @@ function getTopDialog()
 注意：对于内部逻辑页无意义。
 
 @var g_data.doUpload
-(v6.1) 为便于在reload页面时定制逻辑，在unload页面时会设置g_data.doUnload变量为true，可以页面pagedestory事件中检测处理，如：
+(v7) 为便于在reload页面时定制逻辑，在unload页面时会设置g_data.doUnload变量为true，可以页面pagedestory事件中检测处理，如：
 
 	jpage.on("pagedestroy", onPageDestroy);
 	function onPageDestroy() {
@@ -8943,7 +8962,7 @@ param opt.onOk Function(retData) (v6) 与showDlg的onOk参数一致。在提交�
 		}
 	}
 
-(v6.1) 通过jdlg.prop('objParam')可取到对象对话框的参数。
+(v7) 通过jdlg.prop('objParam')可取到对象对话框的参数。
 
 @param opt.reloadRow() 可用于刷新本对话框关联的表格行数据
 
@@ -9324,7 +9343,7 @@ function showObjDlg(jdlg, mode, opt)
 
 @var toolbar-dup 复制
 
-(v6.1) 复制一行或多行数据，调用后端{Obj}.dup(id)接口。
+(v7) 复制一行或多行数据，调用后端{Obj}.dup(id)接口。
 
 @see toolbar-qsearch 模糊查询
 
@@ -9625,7 +9644,12 @@ function enhanceAnchor(jo)
 		}
 */
 		if (href.match(/^(http|[\.\/])/)) {
-			WUI.showPage("pageIframe", showPageOpt, [href]);
+			if (ev.shiftKey) {
+				window.open(href);
+			}
+			else {
+				WUI.showPage("pageIframe", showPageOpt, [href]);
+			}
 			return false;
 		}
 	});
@@ -11272,7 +11296,7 @@ URL参数会自动加入该对象，例如URL为 `http://{server}/{app}/index.ht
 - g_args._debug: 指定后台的调试等级，有效值为1-9. 而且一旦指定，后端将记录debug日志。参考：后端测试模式 P_TEST_MODE，调试等级 P_DEBUG，调试日志 P_DEBUG_LOG
 - g_args.autoLogin: 记住登录信息(token)，下次自动登录；注意：如果是在手机模式下打开，此行为是默认的。示例：http://server/jdcloud/web/?autoLogin
 - g_args.phpdebug: (v6) 设置为1时，以调用接口时激活PHP调试，与vscode/netbeans/vim-vdebug等PHP调试器联合使用。参考：http://oliveche.com/jdcloud-site/phpdebug.html
-- g_args.lang: (v6.1) 指定语言，默认为开发语言"dev"，支持英文"en"（加载lib/lang-en.js）。
+- g_args.lang: (v7) 指定语言，默认为开发语言"dev"，支持英文"en"（加载lib/lang-en.js）。
 
 @see parseQuery URL参数通过该函数获取。
 */
