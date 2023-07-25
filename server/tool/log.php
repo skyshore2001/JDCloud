@@ -51,6 +51,7 @@ function loadMsgs()
 
 loadMsgs();
 ?>
+<!DOCTYPE html>
 <html>
 <body>
 <style>

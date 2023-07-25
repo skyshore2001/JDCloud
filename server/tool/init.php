@@ -368,6 +368,7 @@ EOL;
 	echo("=== 完成! 请使用升级工具更新数据库。\n");
 }
 ?>
+<!DOCTYPE html>
 <html>
 <head>
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
