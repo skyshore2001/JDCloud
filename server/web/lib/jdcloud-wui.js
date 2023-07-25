@@ -9503,27 +9503,32 @@ $.extend(dg_toolbar, {
 	r: function (ctx) {
 		return {text:'刷新', iconCls:'icon-reload', handler: function() {
 			reload(ctx.jtbl, null, self.isBatchMode()?{}:null);
+			return false;
 		}} // Ctrl-点击，清空查询条件后查询。
 	},
 	f: function (ctx) {
 		// 支持用户自定义查询。class是扩展属性，参考 EXT_LINK_BUTTON
 		return {text:'查询', class: 'splitbutton', iconCls:'icon-search', handler: function () {
 			showObjDlg(ctx.jdlg, FormMode.forFind, {jtbl: ctx.jtbl});
+			return false;
 		}, menu: self.createFindMenu(ctx.jtbl) }
 	},
 	a: function (ctx) {
 		return {text:'新增', iconCls:'icon-add', handler: function () {
 			showObjDlg(ctx.jdlg, FormMode.forAdd, {jtbl: ctx.jtbl});
+			return false;
 		}}
 	},
 	s: function (ctx) {
 		return {text:'修改', iconCls:'icon-edit', handler: function () {
 			showObjDlg(ctx.jdlg, FormMode.forSet, {jtbl: ctx.jtbl});
+			return false;
 		}}
 	},
 	d: function (ctx) {
 		return {text:'删除', iconCls:'icon-remove', handler: function () {
 			showObjDlg(ctx.jdlg, FormMode.forDel, {jtbl: ctx.jtbl});
+			return false;
 		}}
 	},
 	'export': function (ctx) {
@@ -9535,6 +9540,7 @@ $.extend(dg_toolbar, {
 	dup: function (ctx) {
 		return {text:'复制', iconCls:'icon-add', handler: function () {
 			self.GridHeaderMenu.dup(ctx.jtbl);
+			return false;
 		}}
 	}
 });
@@ -9667,7 +9673,7 @@ function getExportHandler(jtbl, ac, param)
 			ac = jtbl[datagrid]("options").url;
 			if (ac == null) {
 				app_alert("该数据表不支持导出", "w");
-				return;
+				return false;
 			}
 		}
 		var p1 = getQueryParamFromTable(jtbl, p0);
@@ -9678,7 +9684,7 @@ function getExportHandler(jtbl, ac, param)
 		if (self.isBatchMode()) {
 			var fmt = prompt("输入导出格式: excel csv txt excelcsv html outfile(无导出条数限制), 以!结尾为调试输出", p1.fmt);
 			if (!fmt)
-				return;
+				return false;
 			if (fmt.substr(-1) == "!") {
 				fmt = fmt.substr(0, fmt.length-1);
 				debugShow = true;
@@ -9692,7 +9698,7 @@ function getExportHandler(jtbl, ac, param)
 		console.log("(HINT: debug via Ctrl-Export OR window.open=$.get)");
 		if (debugShow) {
 			$.get(url);
-			return;
+			return false;
 		}
 		window.open(url);
 	}
