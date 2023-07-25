@@ -239,14 +239,10 @@ function initPageQuery(pageOpt)
 		openNewTab();
 	}
 
-	function openNewTab(pageOpt1) {
-		if (window.pageQueryCnt == null)
-			window.pageQueryCnt = 1;
-		else
-			++ window.pageQueryCnt;
-		var opt = $.extend({title: "查询语句_" + (window.pageQueryCnt)}, pageOpt1);
-		if (opt.dbinst === undefined)
-			opt.dbinst = jdbinst.val();
-		WUI.showPage("pageQuery", opt);
+	function openNewTab(showPageOpt) {
+		showPageOpt = $.extend({forceNew:1}, showPageOpt);
+		if (showPageOpt.dbinst === undefined)
+			showPageOpt.dbinst = jdbinst.val();
+		WUI.showPage("pageQuery", showPageOpt);
 	}
 }
