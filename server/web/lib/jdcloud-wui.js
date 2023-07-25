@@ -6380,7 +6380,7 @@ var m_batchMode = false; // 批量操作模式, 按住Ctrl键。
 是否批量操作模式（即是否按住Ctrl键操作）。
 */
 self.isBatchMode = function () {
-	return m_batchMode;
+	return m_batchMode || (window.event? (window.event.ctrlKey || window.event.metaKey): false);
 }
 
 self.toggleBatchMode = toggleBatchMode;
@@ -7930,30 +7930,6 @@ function addFieldByMeta(jdlg, jp, itemArr)
 	}
 }
 
-// 按住Ctrl/Command键进入批量模式。
-$(window).keydown(function (e) {
-	// console.log(window.event);
-	if (e.key == 'Control' || e.key == 'Meta') {
-		m_batchMode = true;
-		//console.warn("batch mode on");
-	}
-});
-$(window).keyup(function (e) {
-	// console.log(window.event);
-	if (e.key == 'Control' || e.key == 'Meta') {
-		m_batchMode = false;
-		//console.warn("batch mode off");
-	}
-});
-// bugfix: 有时按住ctrl键后会在浏览器外松开(如Ctrl-C复制内容后Ctrl键一直不松开直到焦点移出浏览器后按V键)，就会导致一直处于batch mode
-// 注意：之前用定时器重置会有问题，比如按Ctrl-V，按住Ctrl会一直有keydown事件但按下V后就没有了，这时定时器重置就不正确
-$(window).focus(function (e) {
-	if (m_batchMode) {
-		m_batchMode = false;
-		console.warn("fix: batch mode off");
-	}
-});
-
 /**
 @fn batchOp(obj, ac, jtbl, opt={data, acName="操作", onBatchDone, batchOpMode=0, queryParam})
 
@@ -8179,17 +8155,17 @@ function batchOp(obj, ac, jtbl, opt)
 
 	var selArr =  jtbl.datagrid("getChecked");
 	var batchOpMode = opt.batchOpMode;
-	if (!batchOpMode && ! (m_batchMode || selArr.length > 1)) {
+	if (!batchOpMode && ! (self.isBatchMode() || selArr.length > 1)) {
 		return false;
 	}
-	if (batchOpMode === 2 && !m_batchMode && selArr.length == 0) {
+	if (batchOpMode === 2 && !self.isBatchMode() && selArr.length == 0) {
 		self.app_alert(T("请先选择一行。"), "w");
 		return false;
 	}
 
 	var doBatchOnSel = selArr.length > 1 && (selArr[0].id != null || opt.offline);
 	// batchOpMode=2时，未按Ctrl时选中一行也按批量操作
-	if (!doBatchOnSel && batchOpMode === 2 && !m_batchMode && selArr.length == 1 && selArr[0].id != null)
+	if (!doBatchOnSel && batchOpMode === 2 && !self.isBatchMode() && selArr.length == 1 && selArr[0].id != null)
 		doBatchOnSel = true;
 
 	// offline时批量删除单独处理
@@ -9526,7 +9502,7 @@ function setToolbarMenu(jtbl, enableMap)
 $.extend(dg_toolbar, {
 	r: function (ctx) {
 		return {text:'刷新', iconCls:'icon-reload', handler: function() {
-			reload(ctx.jtbl, null, m_batchMode?{}:null);
+			reload(ctx.jtbl, null, self.isBatchMode()?{}:null);
 		}} // Ctrl-点击，清空查询条件后查询。
 	},
 	f: function (ctx) {
@@ -9699,7 +9675,7 @@ function getExportHandler(jtbl, ac, param)
 		if (p1.gres && !(p0 && p0.res))
 			p1.gresHidden = 1;
 		var debugShow = false;
-		if (m_batchMode) {
+		if (self.isBatchMode()) {
 			var fmt = prompt("输入导出格式: excel csv txt excelcsv html outfile(无导出条数限制), 以!结尾为调试输出", p1.fmt);
 			if (!fmt)
 				return;
