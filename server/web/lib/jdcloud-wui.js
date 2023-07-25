@@ -9645,7 +9645,10 @@ function enhanceAnchor(jo)
 */
 		if (href.match(/^(http|[\.\/])/)) {
 			if (ev.shiftKey) {
-				window.open(href);
+				// 避免浏览器默认动作将shift在新窗口打开（希望在新tab页打开）
+				setTimeout(function () {
+					window.open(href);
+				});
 			}
 			else {
 				WUI.showPage("pageIframe", showPageOpt, [href]);
