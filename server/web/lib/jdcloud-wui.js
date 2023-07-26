@@ -7031,6 +7031,7 @@ function getDgFilter(jtbl, param, ignoreQueryParam)
 		var dgOpt = jtbl[datagrid]("options");
 		var p1 = dgOpt.url && dgOpt.url.params;
 		if (p1) {
+			p1 = $.extend(true, {}, p1);
 			var arr = ["_app", "res", "orderby", "fname", "page", "pagesz", "fmt"];
 			arr.forEach (function (e) {
 				delete p1[e];
