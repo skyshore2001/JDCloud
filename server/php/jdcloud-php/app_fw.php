@@ -1797,7 +1797,8 @@ class DBEnv
 
 	function changeDb($dbtype, $db, $user = null, $pwd = null) {
 		unset($this->DBH);
-		$this->__construct($dbtype, $db, $user, $pwd);
+		$this->DBTYPE = $dbtype;
+		$this->C = [$db, $user, $pwd];
 		$this->dbconn();
 	}
 
