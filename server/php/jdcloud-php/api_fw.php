@@ -3152,6 +3152,8 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 
 	protected function setupSession()
 	{
+		if (session_status() != PHP_SESSION_NONE)
+			return;
 		# normal: "userid"; testmode: "tuserid"
 		$name = $this->appType . "id";
 		session_name($name);
