@@ -50,7 +50,7 @@ function initPageQuery(pageOpt)
 			query = query.substr(1);
 		}
 		else {
-			var ms = query.match(/^select\s+.*?from\s+(\S+)|^show /is);
+			var ms = query.match(/^select\s+.*?(?:from\s+(\S+))?|^show /is);
 			if (ms) {
 				if (ms[1] && ms[1][0] != '(')
 					addDynInfo("主表: <span id=\"txtMainTable\">" + ms[1] + "</span>");
@@ -69,7 +69,8 @@ function initPageQuery(pageOpt)
 
 		var tm0 = new Date();
 		var dbinst = jdbinst.val();
-		callSvr("execSql", {fmt: "table", dbinst:dbinst}, api_execSql, {sql: query}, {noex: 1});
+		var isMultiQuery = /;.*\S/s.test(query);
+		callSvr("execSql", {fmt: (isMultiQuery?"":"table"), dbinst:dbinst}, api_execSql, {sql: query}, {noex: 1});
 
 		function api_execSql(data)
 		{
