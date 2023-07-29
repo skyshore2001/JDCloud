@@ -340,14 +340,15 @@ if (getenv("P_DB") === false) {
 	putenv("P_DBCRED={$dbcred_b64}");
 }
 putenv("P_ADMIN_CRED={$adminCred}");
-// putenv("P_URL_PATH={$urlPath}");
 
 EOL;
+// putenv("P_URL_PATH={$urlPath}");
 
 	if (! param("testmode")) {
 		$str .= <<<EOL
 // putenv("P_TEST_MODE=1");
 // putenv("P_DEBUG=9");
+putenv("P_DEBUG_LOG=2");
 
 EOL;
 	}
@@ -355,6 +356,7 @@ EOL;
 		$str .= <<<EOL
 putenv("P_TEST_MODE=1");
 putenv("P_DEBUG=9");
+putenv("P_DEBUG_LOG=1");
 
 EOL;
 	}
