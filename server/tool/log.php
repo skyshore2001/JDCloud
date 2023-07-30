@@ -4,9 +4,12 @@
 
 参数:
 
-- f: 指定显示哪个日志
+- f: 指定显示哪个日志, 路径是相对于server目录下的位置, 不包含.log后缀
 - sz: 指定一次取多少字节显示
 - noHeader: 设置为1时不显示标题.用于直接集成在系统中.
+
+支持日志格式：以"=== ... at [时间] "或"=== [时间] "开头，标识出一项记录。
+
 */
 header("Cache-Control: no-cache");
 header("Content-Type: text/html; charset=UTF-8");
@@ -32,9 +35,8 @@ function loadMsgs()
 	}
 
 	$curMsg = null;
-	$startTag = "=== REQ";
 	while ( ($s = fgets($fp)) !== false) {
-		if (substr($s, 0, strlen($startTag)) == $startTag) {
+		if (preg_match('/^===(.{1,100} at)? \[/', $s)) {
 			if ($curMsg != null)
 				$msgs[] = $curMsg;
 			$curMsg = $s;
@@ -84,7 +86,7 @@ else {
 	for ($i=count($msgs)-1; $i>=0; --$i) {
 		$hdr = null;
 		$msg = $msgs[$i];
-		$a = preg_split('/^(===.*? at \[.*?\]\s*)/', $msg, 2, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
+		$a = preg_split('/^(===(?:.{1,100} at)? \[.*?\]\s*)/', $msg, 2, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
 		if (count($a) == 2) {
 			$hdr = $a[0];
 			$msg = $a[1];
