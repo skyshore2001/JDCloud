@@ -6780,6 +6780,7 @@ function getModulePath(file)
 - paramArr: 调用initfn时使用的参数，是一个数组。如果不指定，则调用initfn直接传入showPageOpt。推荐不指定该参数。
 - force: (v7) 如果页面已存在，默认直接跳到该页面，指定`force: 1`会刷新该页面, 按住ctrl键打开页面时激活该功能。
 - forceNew: (v7) 强制打开新页面, 会在Tab页标题中添加数字后缀如"_1", 按住shift键打开页面时激活该功能。
+- selected: (v7) 设置为false时, 不激活tab页, 即后台打开页面
 
 @alias showPage(pageName, title?, paramArr?)
 
@@ -6950,7 +6951,8 @@ function showPage(pageName, title_or_opt, paramArr)
 			title: title,
 			closable: closable,
 			fit: true,
-			content: jtab
+			content: jtab,
+			selected: showPageOpt.selected
 		});
 
 		var jpageNew = jpage.clone().appendTo(jtab);
