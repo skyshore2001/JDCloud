@@ -1,7 +1,7 @@
 function initPageQuery(pageOpt)
 {
 	var jpage = $(this);
-	var specialFn = null;
+	var specialFn = null, ctxMenuFor = null;
 
 	jpage.find("#btnQuery").click(btnQuery_click);
 	jpage.find("#btnNewTab").click(btnNewTab_click);
@@ -47,24 +47,22 @@ function initPageQuery(pageOpt)
 		cleanDynInfo();
 
 		if (query[0] == "!") {
-			query = query.substr(1);
+			query = query.substr(1).trim();
+		}
+		else if (/^(select|show) /is.test(query)) {
+			var ms = query.match(/^select.* from (\S+)/is);
+			if (ms && ms[1][0] != '(')
+				addDynInfo("主表: <span id=\"txtMainTable\">" + ms[1] + "</span>");
+			/*
+			if (query.search(/limit/i) < 0) {
+				addDynInfo("<span class=\"status-warning\">只返回前20行.</span>");
+				query += " LIMIT 20";
+			}
+			*/
 		}
 		else {
-			var ms = query.match(/^select\s+.*?(?:from\s+(\S+))?|^show /is);
-			if (ms) {
-				if (ms[1] && ms[1][0] != '(')
-					addDynInfo("主表: <span id=\"txtMainTable\">" + ms[1] + "</span>");
-				/*
-				if (query.search(/limit/i) < 0) {
-					addDynInfo("<span class=\"status-warning\">只返回前20行.</span>");
-					query += " LIMIT 20";
-				}
-				*/
-			}
-			else {
-				app_alert("不允许SELECT之外的语句.", "w");
-				return;
-			}
+			app_alert("不允许SELECT之外的语句.", "w");
+			return;
 		}
 
 		var tm0 = new Date();
@@ -115,7 +113,7 @@ function initPageQuery(pageOpt)
 						e = "null";
 					var col = {
 						html: e,
-						on: {dblclick: td_dblclick_updateOneField}
+						on: {dblclick: td_dblclick_updateOneField, contextmenu: td_contextmenu}
 					};
 					cols.push(col);
 				});
@@ -125,12 +123,14 @@ function initPageQuery(pageOpt)
 
 		function handleSpecial(data) {
 			specialFn = null;
+			ctxMenuFor = null;
 			if (data.d.length == 0)
 				return;
 
 			// 对show databases特殊支持, 双击查看表
 			if (data.hint == 'db') {
-				specialFn = function (jtd) {
+				ctxMenuFor = 'db';
+				specialFn = function (jtd, op) {
 					var idx = jtd.prop("cellIndex");
 					if (idx != 0)
 						return;
@@ -143,8 +143,9 @@ function initPageQuery(pageOpt)
 			}
 			// show tables特殊支持, 双击查看数据, ctrl-双击查看字段列表
 			else if (data.hint == 'tbl') {
+				ctxMenuFor = 'tbl';
 				var db = data.db;
-				specialFn = function (jtd) {
+				specialFn = function (jtd, op) {
 					var idx = jtd.prop("cellIndex");
 					if (idx != 0)
 						return;
@@ -154,59 +155,27 @@ function initPageQuery(pageOpt)
 							db = '`' + db + '`';
 						tbl = db + '.' + tbl;
 					}
-					var sql = !WUI.isBatchMode()? ('select * from ' + tbl + ' limit 20'): ('!describe ' + tbl);
+					var isCtrl = WUI.isBatchMode();
+					if ((op == null && !isCtrl) || op == 'showData') {
+						sql = 'select * from ' + tbl + ' limit 20';
+					}
+					else if (op == 'showDataSortDesc') {
+						sql = 'select * from ' + tbl + ' order by id desc limit 20';
+					}
+					else if ((op == null && isCtrl) || op == 'showFields') {
+						sql = '!describe ' + tbl;
+					}
+					else if (op == 'showIndex') {
+						sql = 'show index from ' + tbl;
+					}
 					openNewTab({sql: sql, exec:1});
 				}
 				addDynInfo("<span class=\"status-info\">提示: 双击表名可查看数据, Ctrl-双击查看字段</span>");
 			}
 			else if (data.h.length > 1 && data.h[0] == "id") {
+				ctxMenuFor = 'id';
 				addDynInfo("<span class=\"status-info\">提示: 双击单元格可更新数据. </span>");
 			}
-		}
-
-		function td_dblclick_updateOneField(ev)
-		{
-			var jtd = $(this);
-			var jtbl = jtd.closest("table");
-
-			if (specialFn) {
-				specialFn(jtd);
-				return;
-			}
-
-			var tbl = jdivInfo.find("#txtMainTable").text();
-			if (tbl == "")
-				return;
-
-			var idCol = jtbl.find("th").filter(function () { return $(this).text() == "id"; }).prop("cellIndex");
-			if (idCol === undefined) {
-				app_alert("没有id字段, 无法更新!", "e");
-				return;
-			}
-			var idVal = jtd.closest("tr").find("td:eq(" + idCol + ")").text();
-
-			var oldVal = jtd.text();
-			var newVal = prompt("将值 \"" + oldVal + "\" 更新为: (可以填写null或empty)", oldVal);
-			if (newVal == null)
-				return;
-
-			newVal1 = newVal;
-			if (newVal == "null") {
-			}
-			else if (newVal == "empty" || newVal == "''") {
-				newVal1 = "''";
-			}
-			else {
-				newVal1 = "'" + newVal.replace(/'/g, "\\'") + "'";
-			}
-
-			var colName = jtbl.find("th:eq(" + jtd[0].cellIndex + ")").text();
-			var sql = "UPDATE " + tbl + " SET " + colName + "=" + newVal1 + " WHERE id=" + idVal;
-			addDynInfo("更新语句: <span class=\"status-warning\">" + sql + "<span>");
-			callSvr("execSql", {sql: sql}, function (data) {
-					jtd.text(newVal).css({backgroundColor: "yellow"});
-					app_show("执行成功, 更新记录数: " + data);
-			});
 		}
 
 	}
@@ -245,5 +214,89 @@ function initPageQuery(pageOpt)
 		if (showPageOpt.dbinst === undefined)
 			showPageOpt.dbinst = jdbinst.val();
 		WUI.showPage("pageQuery", showPageOpt);
+	}
+
+	function td_dblclick_updateOneField(ev)
+	{
+		var jtd = $(this);
+		handleOp(jtd);
+	}
+
+	function handleOp(jtd, op)
+	{
+		if (specialFn) {
+			specialFn(jtd, op);
+			return;
+		}
+
+		var tbl = jdivInfo.find("#txtMainTable").text();
+		if (tbl == "") {
+			app_alert("不支持更新!", "e");
+			return;
+		}
+
+		var jtbl = jtd.closest("table");
+		var idCol = jtbl.find("th").filter(function () { return $(this).text() == "id"; }).prop("cellIndex");
+		if (idCol === undefined) {
+			app_alert("没有id字段, 无法更新!", "e");
+			return;
+		}
+		var idVal = jtd.closest("tr").find("td:eq(" + idCol + ")").text();
+
+		var oldVal = jtd.text();
+		var newVal = prompt("将值 \"" + oldVal + "\" 更新为: (可以填写null或empty)", oldVal);
+		if (newVal == null)
+			return;
+
+		newVal1 = newVal;
+		if (newVal == "null") {
+		}
+		else if (newVal == "empty" || newVal == "''") {
+			newVal1 = "''";
+		}
+		else {
+			newVal1 = "'" + newVal.replace(/'/g, "\\'") + "'";
+		}
+
+		var colName = jtbl.find("th:eq(" + jtd[0].cellIndex + ")").text();
+		var sql = "UPDATE " + tbl + " SET " + colName + "=" + newVal1 + " WHERE id=" + idVal;
+		addDynInfo("更新语句: <span class=\"status-warning\">" + sql + "<span>");
+		callSvr("execSql", {sql: sql}, function (data) {
+				jtd.text(newVal).css({backgroundColor: "yellow"});
+				app_show("执行成功, 更新记录数: " + data);
+		});
+	}
+	function td_contextmenu(ev)
+	{
+		var jtd = $(this);
+		var pos = {left: ev.pageX, top: ev.pageY}
+		showCtxMenu(pos, jtd, ctxMenuFor);
+		ev.preventDefault();
+	}
+	// type: dblist | tablelist | table
+	function showCtxMenu(pos, jtd, ctxMenuFor)
+	{
+		jmenu = $('<div></div>');
+		if (ctxMenuFor == 'db') {
+			jmenu.append('<div id="showTable">查看表</div>');
+		}
+		else if (ctxMenuFor == 'tbl') {
+			jmenu.append('<div id="showData">查看数据</div>');
+			jmenu.append('<div id="showDataSortDesc">查看数据(倒序)</div>');
+			jmenu.append('<div id="showFields">查看字段定义</div>');
+			jmenu.append('<div id="showIndex">查看索引</div>');
+		}
+		else if (ctxMenuFor == 'id') {
+			jmenu.append('<div id="setData">修改</div>');
+		}
+		else {
+			return;
+		}
+		jmenu.menu({
+			onClick: function (mnuItem) {
+				handleOp(jtd, mnuItem.id);
+			}
+		});
+		jmenu.menu('show', pos);
 	}
 }
