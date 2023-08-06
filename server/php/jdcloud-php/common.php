@@ -55,7 +55,7 @@ $ERRINFO = [
 class MyException extends LogicException 
 {
 	function __construct($code, $internalMsg = null, $outMsg = null, $ex = null) {
-		parent::__construct($outMsg, $code, $ex);
+		parent::__construct(($outMsg?:""), $code, $ex);
 		$this->internalMsg = $internalMsg;
 		if ($code && !$outMsg) {
 			global $ERRINFO;
@@ -834,7 +834,7 @@ function logit($s, $addHeader=true, $type="trace")
 	if ($addHeader) {
 		// 注意：此格式在日志工具log.php中使用，不应修改
 		$remoteAddr = getReqIp() ?: 'nil';
-		$s = "=== REQ from [$remoteAddr] at [".strftime("%Y/%m/%d %H:%M:%S",time())."] " . $s . "\n";
+		$s = "=== REQ from [$remoteAddr] at [".date(FMT_DT)."] " . $s . "\n";
 	}
 	else {
 		$s .= "\n";

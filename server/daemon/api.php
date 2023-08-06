@@ -66,7 +66,7 @@ class Conf extends ConfBase
 	static $enableAutoSession = false;
 }
 
-// override trait JDServer
+// override trait JDEnvBase
 // refer: https://wiki.swoole.com/#/http_server?id=httprequest
 class SwooleEnv extends JDEnv
 {
@@ -190,6 +190,221 @@ class SwooleEnv extends JDEnv
 	}
 }
 
+// ====== JDServer {{{
+class JDServer
+{
+	// 用于websocket用户；允许一个用户多次出现，都能收到消息。
+	static $clientMap = []; // fd => {app, user, isHttp?, tmr?}
+
+	// reload时置true, 死循环协程应自觉退出
+	static $reloadFlag = false;
+
+	static $fileTypes = [
+		'html' => 'text/html; charset=utf-8',
+		'json' => 'application/json; charset=utf-8',
+		'js' => 'application/javascript; charset=utf-8',
+		'css' => 'text/css',
+		'jpg'=>'image/jpeg',
+		'jpeg'=>'image/jpeg',
+		'png'=>'image/png',
+		'gif'=>'image/gif',
+		'ico' => 'image/x-icon',
+		'txt'=>'text/plain',
+		'pdf' => 'application/pdf',
+		'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+		'doc' => 'application/msword',
+		'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+		'xls' => 'application/vnd.ms-excel',
+		'zip' => 'application/zip',
+		'rar' => 'application/x-rar-compressed',
+		'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+		'ppt' => 'application/vnd.ms-powerpoint',
+		'mp3' => 'audio/mpeg',
+		'm4a' => 'audio/mp4',
+		'mp4' => 'video/mp4',
+	];
+	// websocket message
+	static function onMessage($ws, $frame) {
+	//	echo("onMessage(websocket): fd=" . $frame->fd . ", data=" . $frame->data . "\n");
+		$req = json_decode($frame->data, true);
+		$fd = $frame->fd;
+		if (! is_array($req)) {
+			writeLog("*** require json message. recv from #fd: {$frame->data}");
+			$ws->push($fd, '*** require json data. but recv: ' . $frame->data);
+			// 1007: 格式不符
+			$ws->disconnect($fd, 1007, "bad data format");
+			return;
+		}
+		$ac = @$req["ac"];
+		$ret = 'OK';
+		$app = null;
+		$cli = null;
+		if ($ac == "init") {
+			if (getConf("conf_jdserver_log_ws"))
+				writeLog("recv init from #{$fd}: {$frame->data}");
+			@$app = $req["app"];
+			if (is_null($app)) {
+				$ws->push($fd, '*** error: require param `app`');
+				return;
+			}
+			@$user = $req["user"];
+			if (is_null($user)) {
+				$ws->push($fd, '*** error: require param `user`');
+				return;
+			}
+			writeLog("[app $app] add user: $user #$fd");
+			$cli = self::$clientMap[$fd] = ["app"=>$app, "user"=>$user];
+		}
+		else {
+			@$cli = self::$clientMap[$fd];
+			if (is_null($cli)) {
+				writeLog("*** require init message. recv from #{$fd}: {$frame->data}");
+				$ws->push($fd, '*** error: require init');
+				return;
+			}
+			$app = $cli["app"];
+			if (getConf("conf_jdserver_log_ws"))
+				writeLog("[app $app] recv from {$cli['user']} #{$fd}: {$frame->data}");
+		}
+
+		if ($ac == "push") {
+			@$app = $req["app"];
+			if (is_null($app)) {
+				$ws->push($fd, '*** error: require param `app`');
+				return;
+			}
+			@$user = $req["user"];
+			if (is_null($user)) {
+				$ws->push($fd, '*** error: require param `user`');
+				return;
+			}
+			@$msg = $req["msg"];
+			if (is_null($msg)) {
+				$ws->push($fd, '*** error: require param `msg`');
+				return;
+			}
+			$ret = self::pushMsg($app, $user, $msg);
+		}
+		$frame->req = $req;
+		$GLOBALS["jdserver_event"]->trigger("message.$app", [$ws, $frame]);
+
+		$ws->push($fd, $ret);
+	}
+
+	// http request
+	static function onRequest($req, $res) {
+		$ac = $req->server['path_info']; // 即url
+		if ($ac == '/')
+			$ac = '/index.html';
+		if (preg_match('/\.(\w+)$/', $ac, $ms) && array_key_exists($ms[1], self::$fileTypes)) {
+			$res->header("cache-control", "no-cache");
+			$f = substr($ac, 1);
+			if (! file_exists($f)) {
+				$res->status(404);
+				$res->end();
+				return;
+			}
+			$ct = self::$fileTypes[$ms[1]];
+			$res->header('Content-Type', $ct);
+			$res->sendfile($f);
+			return;
+		}
+		if ($ac == "/getMsg") {
+			@$app = $req->get["app"];
+			if (is_null($app)) {
+				$res->end('*** error: require param `app`');
+				return;
+			}
+			@$user = $req->get["user"];
+			if (is_null($user)) {
+				$res->end('*** error: require param `user`');
+				return;
+			}
+			$fd = $res->fd;
+
+			@$timeout = $req->get["timeout"];
+			$tmr = null;
+			if ($timeout > 0) {
+				// 如果收到消息则clearTimeout
+				$tmr = swoole_timer_after($timeout*1000, function () use ($fd) {
+					$res = Swoole\Http\Response::create($fd);
+					$res->end();
+				});
+			}
+			writeLog("[app $app] add http user: $user #$fd");
+			self::$clientMap[$fd] = ["app"=>$app, "user"=>$user, "isHttp"=>true, "tmr"=>$tmr];
+
+			$res->detach();
+			return;
+		}
+
+		$env = new SwooleEnv($req, $res);
+		$GLOBALS["X_APP"][Swoole\Coroutine::getcid()] = $env;
+		$env->callSvcSafe();
+		$res->end();
+	}
+
+	static function onClose($ws, $fd) {
+	// NOTE: http request comes here too
+	//	echo("onClose: fd=" . $fd . "\n");
+
+		if (array_key_exists($fd, self::$clientMap)) {
+			$cli = self::$clientMap[$fd];
+			writeLog("[app {$cli['app']}] del user: {$cli['user']} #{$fd}");
+			unset(self::$clientMap[$fd]);
+		}
+	}
+
+	static function pushMsg($app, $userSpec, $msg)
+	{
+		global $server;
+
+		if (is_array($msg))
+			$msg = jsonEncode($msg);
+		if (getConf("conf_jdserver_log_ws"))
+			writeLog("[app $app] push to $userSpec: $msg");
+
+		$n = 0;
+		$arr = explode(',', $userSpec);
+		foreach (self::$clientMap as $fd => $cli) {
+			foreach ($arr as $user) {
+				if ($app == $cli['app'] && fnmatch($user, $cli['user'])) {
+					++ $n;
+					if (! @$cli["isHttp"]) { // websocket client
+						$server->push($fd, $msg);
+					}
+					else { // http长轮询
+						if ($cli["tmr"]) {
+							swoole_timer_clear($cli["tmr"]);
+						}
+						$res = Swoole\Http\Response::create($fd);
+						$res->end($msg);
+					}
+				}
+			}
+		}
+		$GLOBALS["jdserver_event"]->trigger("push.$app", [$userSpec, $msg]);
+		return $n;
+	}
+
+	static function onWorkerExit($server, $workerId) {
+		JDServer::$reloadFlag = true;
+	}
+}
+
+// go()一旦异常,会导致整个进程所有协程退出, 所以应使用safeGo替代go, 失败时只影响当前协程
+function safeGo($fn)
+{
+	go(function () use ($fn) {
+		try {
+			$fn();
+		}
+		catch (Exception $ex) {
+			logit($ex);
+		}
+	});
+}
+
 class JDServerEvent
 {
 	use JDEvent;
@@ -200,6 +415,8 @@ $GLOBALS["jdserver_event"] = new JDServerEvent();
 foreach (glob(__DIR__ ."/jdserver.d/*.php") as $f) {
 	include($f);
 }
+
+// }}}
 
 AC_Timer::init();
 

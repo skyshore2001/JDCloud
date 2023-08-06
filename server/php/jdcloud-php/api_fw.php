@@ -1,7 +1,6 @@
 <?php
 
-#error_reporting(E_ALL & (~(E_NOTICE|E_USER_NOTICE)));
-error_reporting(E_ALL & ~E_NOTICE);
+error_reporting(E_ALL & ~(E_NOTICE|E_WARNING));
 
 /** @module JDEnv
 @alias api_fw
@@ -1345,8 +1344,6 @@ res字段会记录返回数据200字节(出错时记录2000字节).
 	{
 		$env = $this->env;
 		$userId = $env->_SESSION["empId"] ?: $env->_SESSION["uid"] ?: $env->_SESSION["adminId"];
-		if (! (is_int($userId) || ctype_digit($userId)))
-			$userId = null;
 		$this->userId = $userId;
 		return $userId;
 	}
@@ -1358,7 +1355,7 @@ res字段会记录返回数据200字节(出错时记录2000字节).
 
 		$content = $this->myVarExport($env->_GET, $this->logReqLen);
 		$ct = getContentType($env);
-		if (! preg_match('/x-www-form-urlencoded|form-data/i', $ct)) {
+		if (! ($ct && preg_match('/x-www-form-urlencoded|form-data/i', $ct))) {
 			$post = getHttpInput($env);
 			$content2 = $this->myVarExport($post, $this->logReqLen);
 		}
@@ -1880,7 +1877,7 @@ function getHttpInput($env = null)
 	if ($content == null) {
 		$ct = getContentType($env);
 		$content = $env->rawContent();
-		if (preg_match('/charset=([\w-]+)/i', $ct, $ms)) {
+		if ($ct && preg_match('/charset=([\w-]+)/i', $ct, $ms)) {
 			$charset = strtolower($ms[1]);
 			if ($charset != "utf-8") {
 				if ($charset == "gbk" || $charset == "gb2312") {
@@ -2480,7 +2477,7 @@ class BatchUtil
 }
 
 // used by JDEnv
-trait JDServer
+trait JDEnvBase
 {
 	public $_GET, $_POST, $_SESSION, $_FILES;
 
@@ -2531,7 +2528,7 @@ class JDEnv extends DBEnv
 	// $ac是主调用名，如果是"batch"，则当前调用名存在$ac1中。通过getAc()/getAc1()获取。
 	protected $ac, $ac1;
 
-	use JDServer;
+	use JDEnvBase;
 
 /**
 @var env.appName?=user
@@ -2650,7 +2647,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 
 		// supportJson: 支持POST为json格式
 		$ct = getContentType($this);
-		if (strstr($ct, "/json") !== false && $method != "GET") {
+		if ($ct && strstr($ct, "/json") !== false && $method != "GET") {
 			$content = getHttpInput($this);
 			@$arr = jsonDecode($content);
 			if (!is_array($arr)) {

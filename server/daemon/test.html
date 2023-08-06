@@ -121,7 +121,7 @@ function jdPush(app, handleMsg, opt) {
 			url = proto + '//' + (location.host || "localhost") + url;
 		}
 		else {
-			console.err("jdPush: 连接websocket服务器，请使用//或/开头的绝对地址!");
+			console.error("jdPush: 连接websocket服务器，请使用//或/开头的绝对地址!");
 			return;
 		}
 	}

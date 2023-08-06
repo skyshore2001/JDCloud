@@ -164,6 +164,9 @@ jdcloud前端使用jdPush函数，会自动发送init消息。
 		"msg" => ["id"=>1, "text"=>"订单10待审批"]
 	]);
 
+push接口也支持发批量消息, 将若干消息拼成一个数组, 这主要是为了在同时发送多个消息时, 确保消息到达顺序正确.
+jdcloud服务端可调用jdPush(), 它已支持批量消息, 会自动在接口操作完成后, 检查若存在多个消息, 则合成一个数组后一次性发送到jdserver.
+
 如果前端已经连接websocket，也可以通过websocket发送push消息，示例：
 
 	{"ac":"push", "app":"wms", "user":"*", "msg": {"id":1, "text":"订单10待审批"}}
@@ -338,6 +341,12 @@ jdserver与jdcloud共用配置文件conf.user.php。它专用的配置项有：
 
 修改会记录到日志中。
 
+## jdserver重启
+
+	reload
+
+当业务代码修改后，可调用该接口平滑重启。
+
 ## jdserver插件
 
 jdserver设计为支持多应用共用，支持各应用定制插件并安装。
@@ -368,7 +377,15 @@ jdserver默认会处理websocket客户端发送中的ac=init/push消息，通过
 
 注意：push或message事件后必须加上app名，即只能处理指定app的事件。
 
-注意：修改插件源码后需要重启jdserver:
+注意：修改插件源码后需要reload服务器，调用reload接口：
+
+	curl http://localhost:8081/reload
+
+或直接重启jdserver:
 
 	sudo ./jdserver.service.sh restart
 
+## 静态网站
+
+支持直接打开主目录下的静态页面，如html/js/css/图片等。
+访问URL根目录"/"时，自动使用index.html

@@ -1922,6 +1922,8 @@ class DBEnv
 
 	function execOne($sql, $getInsertId = false)
 	{
+		if ($this->DBTYPE === null)
+			return false;
 		$DBH = $this->dbconn();
 		$rv = $DBH->exec($sql, $getInsertId);
 		return $rv;
@@ -1929,6 +1931,8 @@ class DBEnv
 
 	function queryOne($sql, $assoc = false, $cond = null)
 	{
+		if ($this->DBTYPE === null)
+			return false;
 		$DBH = $this->dbconn();
 		if ($cond)
 			$sql = genQuery($sql, $cond);
@@ -1952,6 +1956,8 @@ class DBEnv
 
 	function queryAll($sql, $assoc = false, $cond = null)
 	{
+		if ($this->DBTYPE === null)
+			return false;
 		$DBH = $this->dbconn();
 		if ($cond)
 			$sql = genQuery($sql, $cond);
@@ -2648,7 +2654,8 @@ class JDPDO extends PDO
 		}, $sql);
 	}
 
-	function query($sql, $fetchMode=0)
+	#[\ReturnTypeWillChange]
+	function query($sql, $fetchMode=0, ...$fetchModeArgs)
 	{
 		$this->filterSql($sql);
 		$this->addLog($sql);
@@ -2657,6 +2664,7 @@ class JDPDO extends PDO
 		$this->checkTime($t0, $sql);
 		return $rv;
 	}
+	#[\ReturnTypeWillChange]
 	function exec($sql, $getInsertId = false)
 	{
 		$this->filterSql($sql);
@@ -2671,6 +2679,7 @@ class JDPDO extends PDO
 			$this->amendLog($getInsertId? "new id=$rv": "cnt=$rv");
 		return $rv;
 	}
+	#[\ReturnTypeWillChange]
 	function prepare($sql, $opts=[])
 	{
 		$this->addLog($sql);
@@ -2732,6 +2741,7 @@ class JDPDO_mssql extends JDPDO
 		}
 	}
 
+	#[\ReturnTypeWillChange]
 	function lastInsertId($seqName = null) {
 		if (! $GLOBALS["conf_mssql_useOdbc"])
 			return PDO::lastInsertId($seqName);
@@ -2744,7 +2754,7 @@ class JDPDO_mssql extends JDPDO
 		return $row[0];
 	}
 
-	function query($s, $fetchMode=0) {
+	function query($s, $fetchMode=0, ...$args) {
 		if ($GLOBALS["conf_mssql_translateMysql"])
 			MssqlCompatible::translateMysqlToMssql($s);
 	    return parent::query($s, $fetchMode);
@@ -2970,12 +2980,24 @@ trait JDEvent
 
 返回最后次调用的返回值，false表示中止之后事件调用 
 
-如果想在事件处理函数中返回复杂值，可使用$args传递，如下面返回一个数组：
+如果想在事件处理函数中返回值，可使用引用传递:
+
+	$obj->on('getResult', 'onGetResult');
+	$a = []; $b = null;
+	$obj->trigger('getResult', [&$a, &$b]);
+
+	function onGetResult(&$a, &$b)
+	{
+		$a[] = 100;
+		$b = 'hello';
+	}
+
+也可使用值传递, 通过一个对象来操作:
 
 	$obj->on('getResult', 'onGetResult');
 	$out = new stdclass();
 	$out->result = [];
-	$obj->trigger('getArray', [$out]);
+	$obj->trigger('getResult', [$out]);
 
 	function onGetResult($out)
 	{

@@ -33,22 +33,37 @@ function api_stat($env)
 	return $rv;
 }
 
-function api_push($env)
+function api_reload($env)
 {
-	$app = $env->mparam("app");
-	$user = $env->mparam("user");
-	$msg = $env->mparam("msg");
-	if (is_array($msg))
-		$msg = jsonEncode($msg);
-	return pushMsg($app, $user, $msg);
+	global $server;
+	JDServer::$reloadFlag = true;
+	foreach (JDServer::$clientMap as $fd => $cli) {
+		if (! @$cli["isHttp"]) { // websocket client
+			$server->close($fd);
+		}
+	}
+	return $server->reload();
+}
+
+// $param为内部使用
+function api_push($env, $param = null)
+{
+	if ($param == null && $env->_POST && isArray012($env->_POST)) {
+		return array_map(function ($e) use ($env) {
+			return api_push($env, $e);
+		}, $env->_POST);
+	}
+	$app = $env->mparam("app", $param);
+	$user = $env->mparam("user", $param);
+	$msg = $env->mparam("msg", $param);
+	return JDServer::pushMsg($app, $user, $msg);
 }
 
 function api_getUsers($env)
 {
-	global $clientMap;
 	$app = $env->mparam("app");
 	$ret = [];
-	foreach ($clientMap as $fd => $cli) {
+	foreach (JDServer::$clientMap as $fd => $cli) {
 		if ($cli['app'] == $app) {
 			$ret[] = $cli['user'];
 		}
