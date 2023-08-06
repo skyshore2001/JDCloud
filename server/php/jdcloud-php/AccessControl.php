@@ -2194,7 +2194,7 @@ addCond用于添加查询条件，可以使用表的字段或虚拟字段(无须
 			if ($isExt !== $isExt1) {
 				jdRet(E_SERVER, "bad res: '$res'", "字段定义错误：外部虚拟字段与普通虚拟字段不可定义在一起，请分拆成多组，或明确定义`isExt`。");
 			}
-			if (preg_match_all('/\bt0\.(\w+)\b/u', $ms[1], $ms1)) {
+			if (preg_match_all('/\bt0\.(\w+)\b/u', ($ms[1]?:''), $ms1)) {
 				foreach ($ms1[1] as $e) {
 					$reqColSet[$e] = true;
 				}
@@ -3061,7 +3061,7 @@ FROM ($sql) t0";
 		// multihash
 		// multihash:keyField
 		// multihash:keyField,valueField
-		else if (preg_match('/^(multi)?hash (: (\w+) (,(\w+))?)?$/xu', $fmt, $ms)) {
+		else if ($fmt && preg_match('/^(multi)?hash (: (\w+) (,(\w+))?)?$/xu', $fmt, $ms)) {
 			list($keyField, $isMulti, $valueField) = [$ms[3], $ms[1], $ms[5]];
 			$ret1 = [];
 			foreach ($ret as $row) {

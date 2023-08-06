@@ -115,6 +115,9 @@ inner join {$pre}sys.schemas t1 on t0.schema_id=t1.schema_id";
 				}
 				unset($hint["db"]); # NOTE: 删除它因为oracle一般只用{owner}.{table}而不是{tablespace}.{table}
 			}
+			else if ($env->DBTYPE == "sqlite") {
+				$sql = "SELECT name FROM sqlite_master WHERE type='table' order by name";
+			}
 		}
 		else if (preg_match('/^describe (\S+)/i', $sql, $ms)) {
 			$tbl0 = $ms[1];
@@ -140,6 +143,30 @@ where object_id=object_id('$tbl0')";
 				$tbl = strtoupper($tbl);
 				$sql = "select column_name,data_type,data_length,data_precision,nullable,character_set_name from all_tab_columns where table_name='$tbl'";
 				#$sql = "select * from user_tab_columns where table_name='$tbl0'";
+			}
+			else if ($env->DBTYPE == "sqlite") {
+				$sql = "pragma table_info($tbl0)";
+			}
+		}
+		else if (preg_match('/^show index from (\S+)/i', $sql, $ms)) {
+			$tbl = $ms[1];
+			if ($env->DBTYPE == "mssql") {
+				$pre = '';
+				# db1.dbo.tbl1
+				if (preg_match('/(\w+\.\w+\.)(\w+)/', $tbl, $ms)) {
+					$pre = $ms[1];
+					$tbl = $ms[3];
+				}
+				// db1.dbo.sp_index {tbl}
+				$sql = "{$pre}sp_helpindex $tbl";
+			}
+			else if ($env->DBTYPE == "oracle") {
+				// TODO:
+				$sql = "select * from all_indexes where table_name='$tbl'";
+			}
+			else if ($env->DBTYPE == "sqlite") {
+				$sql = "pragma index_list($tbl)";
+				// TODO: 只有索引名,没有字段列表. 参考pragma index_info(index-name)
 			}
 		}
 		if ($env->DBTYPE == "mssql") {

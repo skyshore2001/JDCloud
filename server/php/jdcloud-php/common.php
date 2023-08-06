@@ -207,6 +207,8 @@ function tryParseBool($s, &$val)
 */
 function startsWith($s, $pat)
 {
+	if ($s === null)
+		return false;
 	return substr($s, 0, strlen($pat)) == $pat;
 }
 
