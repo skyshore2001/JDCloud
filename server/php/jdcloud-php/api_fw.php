@@ -3357,7 +3357,7 @@ $param或$postParam为null时，与空数组`[]`等价。
 			];
 		}
 		// Mozilla/5.0 (Linux; U; Android 4.1.1; zh-cn; MI 2S Build/JRO03L) AppleWebKit/533.1 (KHTML, like Gecko)Version/4.0 MQQBrowser/5.4 TBS/025440 Mobile Safari/533.1 MicroMessenger/6.2.5.50_r0e62591.621 NetType/WIFI Language/zh_CN
-		else if (preg_match('/MicroMessenger\/([0-9.]+)/', $this->_SERVER("HTTP_USER_AGENT"), $ms)) {
+		else if (preg_match('/MicroMessenger\/([0-9.]+)/', ($this->_SERVER("HTTP_USER_AGENT")?:''), $ms)) {
 			$ver = $ms[1];
 			$ret = [
 				"type" => "wx",
