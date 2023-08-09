@@ -12117,10 +12117,10 @@ function mainInit()
 	// 标题栏右键菜单
 	self.PageHeaderMenu = {
 		items: [
-			'<div id="mnuReload">刷新页面</div>',
+			'<div id="mnuReload" data-options="iconCls:\'icon-reload\'">刷新页面</div>',
 			'<div id="mnuReloadDlg">刷新对话框</div>',
 			'<div id="mnuBatch">批量模式</div>',
-			'<div id="mnuCloseTabs">关闭其它页</div>',
+			'<div id="mnuCloseTabs" data-options="iconCls:\'icon-clear\'">关闭其它页</div>',
 			'<div id="mnuCloseTabs2">关闭右侧页</div>'
 		],
 
