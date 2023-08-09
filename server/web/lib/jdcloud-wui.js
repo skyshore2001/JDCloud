@@ -2573,6 +2573,21 @@ function extendNoOverride(target)
 	return target;
 }
 
+/**
+@fn myround(floatValue, digitCnt)
+
+与toFixed相比，它返回float数组，不带多余的0位。
+
+	myround(114957.15999999, 6) = 114957.16
+	myround(114957.15999999, 1) = 114957.2
+
+ */
+self.myround = myround
+function myround(f, n)
+{
+	return parseFloat(f.toFixed(n));
+}
+
 }/*jdcloud common*/
 
 /**
@@ -10314,6 +10329,7 @@ function dgLoadFilter(data)
 					return s;
 				return s + parseFloat(v);
 			}, 0);
+			stat[field] = self.myround(stat[field], 6);
 		});
 		ret.footer = [stat];
 	}
