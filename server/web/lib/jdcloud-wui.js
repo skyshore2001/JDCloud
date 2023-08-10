@@ -4339,7 +4339,7 @@ window.E_NOAUTH=2;
 window.E_ABORT=-100;
 
 /**
-@fn evalAttr(jo, name)
+@fn evalAttr(jo, name, ctx?)
 
 返回一个属性做eval后的js值。
 
@@ -4531,19 +4531,39 @@ function enhanceWithin(jp)
 }
 
 /**
-@fn getOptions(jo, defVal?)
+@fn getOptions(jo, defVal?, ctx?)
 
 第一次调用，根据jo上设置的data-options属性及指定的defVal初始化，或为`{}`。
 存到jo.prop("muiOptions")上。之后调用，直接返回该属性。
 
+通过指定ctx, 可以为属性计算时添加可访问接口, 示例: (eol1Sn属性是需要取下面input中的值)
+
+	<button type="button" class="btnPlcNotify" data-options="newItemFlag:1, eol1Sn:ctx.eolSn">Move In from eol-1</button>
+	<input id="eolSn" value="sn1"> 
+
+取值:
+
+	var data = WUI.getOptions($(this), null, {
+		eol1Sn: jpage.find("eolSn").val()
+	}
+
+当然ctx也可以做成个funciton比如:
+
+	<button type="button" class="btnPlcNotify" data-options="newItemFlag:1, eol1Sn:ctx('#eolSn').val()">Move In from eol-1</button>
+	<input id="eolSn" value="sn1"> 
+
+	var data = WUI.getOptions($(this), null, function (ref) {
+		return jpage.find(ref);
+	});
+
 @see evalAttr
 */
 self.getOptions = getOptions;
-function getOptions(jo, defVal)
+function getOptions(jo, defVal, ctx)
 {
 	var opt = jo.prop("muiOptions");
 	if (opt === undefined) {
-		opt = $.extend({}, defVal, self.evalAttr(jo, "data-options"));
+		opt = $.extend({}, defVal, self.evalAttr(jo, "data-options", ctx));
 		jo.prop("muiOptions", opt);
 	}
 	else if ($.isPlainObject(defVal)) {
