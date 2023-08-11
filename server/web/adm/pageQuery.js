@@ -1,8 +1,9 @@
 function initPageQuery(pageOpt)
 {
 	var jpage = $(this);
-	var specialFn = null, ctxMenuFor = null;
+	var jtbl = jpage.find("#tblQueryResult");
 
+	var lastData = {}; // 特殊处理: hint=db|tbl, db:show databases, tbl:show tables
 	jpage.find("#btnQuery").click(btnQuery_click);
 	jpage.find("#btnNewTab").click(btnNewTab_click);
 	var jdbinst = jpage.find("#cboDbinst");
@@ -14,6 +15,9 @@ function initPageQuery(pageOpt)
 			});
 		}
 	});
+
+	jpage.on("dblclick", "td", td_dblclick);
+	jpage.on("contextmenu", page_contextmenu);
 
 	var jdivInfo = jpage.find("#divInfo");
 	if (pageOpt.sql) {
@@ -79,7 +83,6 @@ function initPageQuery(pageOpt)
 			var lineCnt = data.d? data.d.length: 1;
 			addDynInfo("SQL执行时间: " + t0 + ", 接口执行时间: " + t1 + ", 总时间: " + t2 + ", 行数: " + lineCnt);
 
-			var jtbl = jpage.find("#tblQueryResult");
 			jtbl.empty();
 
 			if (data === false) {
@@ -96,6 +99,7 @@ function initPageQuery(pageOpt)
 			if (data.h === undefined) {
 				data = {h: ["Result"], d: [ [ "<xmp>" + data + "</xmp>"] ] };
 			}
+			lastData = data;
 			handleSpecial(data);
 
 			// to html table
@@ -118,68 +122,24 @@ function initPageQuery(pageOpt)
 				});
 				jtbl.append(row2tr({cols: cols}));
 			});
-			jtbl.on("dblclick", "td", td_dblclick_updateOneField);
-			jtbl.on("contextmenu", "td", td_contextmenu);
-			jpage.on("contextmenu", page_contextmenu);
 		}
 
 		function handleSpecial(data) {
-			specialFn = null;
-			ctxMenuFor = null;
 			if (data.d.length == 0)
 				return;
 
 			// 对show databases特殊支持, 双击查看表
 			if (data.hint == 'db') {
-				ctxMenuFor = 'db';
-				specialFn = function (jtd, op) {
-					var idx = jtd.prop("cellIndex");
-					if (idx != 0)
-						return;
-					var db = jtd.text();
-					if (/\W/.test(db) && db[0] != '`')
-						db = '`' + db + '`';
-					openNewTab({sql: 'show tables from ' + db, exec:1});
-				}
 				addDynInfo("<span class=\"status-info\">提示: 双击数据库名可查看表</span>");
 			}
 			// show tables特殊支持, 双击查看数据, ctrl-双击查看字段列表
 			else if (data.hint == 'tbl') {
-				ctxMenuFor = 'tbl';
-				var db = data.db;
-				specialFn = function (jtd, op) {
-					var idx = jtd.prop("cellIndex");
-					if (idx != 0)
-						return;
-					var tbl = jtd.text();
-					if (db) {
-						if (/\W/.test(db) && db[0] != '`')
-							db = '`' + db + '`';
-						tbl = db + '.' + tbl;
-					}
-					var isCtrl = WUI.isBatchMode();
-					if ((op == null && !isCtrl) || op == 'showData') {
-						sql = 'select * from ' + tbl + ' limit 20';
-					}
-					else if (op == 'showDataSortDesc') {
-						sql = 'select * from ' + tbl + ' order by id desc limit 20';
-					}
-					else if ((op == null && isCtrl) || op == 'showFields') {
-						sql = '!describe ' + tbl;
-					}
-					else if (op == 'showIndex') {
-						sql = 'show index from ' + tbl;
-					}
-					openNewTab({sql: sql, exec:1});
-				}
 				addDynInfo("<span class=\"status-info\">提示: 双击表名可查看数据, Ctrl-双击查看字段</span>");
 			}
-			else if (data.h.length > 1 && data.h[0] == "id") {
-				ctxMenuFor = 'id';
+			else if (getIdCol() >= 0) {
 				addDynInfo("<span class=\"status-info\">提示: 双击单元格可更新数据. </span>");
 			}
 		}
-
 	}
 
 /*
@@ -211,7 +171,11 @@ function initPageQuery(pageOpt)
 		openNewTab();
 	}
 
-	function execSql(sql) {
+	function execSql(sql, showInNewTab) {
+		if (showInNewTab) {
+			openNewTab({sql: sql, exec:1});
+			return;
+		}
 		if (sql)
 			jpage.find("#txtQuery").val(sql);
 		btnQuery_click();
@@ -224,59 +188,76 @@ function initPageQuery(pageOpt)
 		WUI.showPage("pageQuery", showPageOpt);
 	}
 
-	function td_dblclick_updateOneField(ev)
+	function td_dblclick(ev)
 	{
 		var jtd = $(ev.target);
-		handleOp(jtd);
+		var op = "setData";
+		if (lastData.hint == "db") {
+			op = "showTable";
+		}
+		else if (lastData.hint == "tbl") {
+			var isCtrl = WUI.isBatchMode();
+			op = isCtrl? "showFields": "showData";
+		}
+		handleOp(jtd, op);
 	}
 
+	// jtd是右键或双击时所在td位置，也可能为null，表示在非td上操作
 	function handleOp(jtd, op)
 	{
-		if (specialFn) {
-			specialFn(jtd, op);
+		if (op == "showTable") {
+			if (lastData.hint == 'db' && jtd) {
+				var idx = jtd.prop("cellIndex");
+				if (idx != 0)
+					return;
+				var db = jtd.text();
+				if (/\W/.test(db) && db[0] != '`')
+					db = '`' + db + '`';
+				execSql('show tables from ' + db, true);
+			}
+			else {
+				execSql('show tables');
+			}
 			return;
 		}
 
-		var tbl = jdivInfo.find("#txtMainTable").text();
-		if (tbl == "") {
+		var tbl = getOpTable(jtd);
+		if (!tbl) {
 			app_alert("没有表信息，不支持操作!", "e");
 			return;
 		}
-
 		var sql = null;
 		if (op == 'showData') {
 			sql = 'select * from ' + tbl + ' limit 20';
-			execSql(sql);
+			execSql(sql, lastData.hint=='tbl');
 			return;
 		}
-		else if (op == 'showDataSortDesc') {
+		if (op == 'showDataSortDesc') {
 			sql = 'select * from ' + tbl + ' order by id desc limit 20';
-			execSql(sql);
+			execSql(sql, lastData.hint=='tbl');
 			return;
 		}
-		else if (op == 'showFields') {
+		if (op == 'showFields') {
 			sql = '!describe ' + tbl;
-			openNewTab({sql: sql, exec:1});
+			execSql(sql, true);
 			return;
 		}
-		else if (op == 'showIndex') {
+		if (op == 'showIndex') {
 			sql = 'show index from ' + tbl;
-			openNewTab({sql: sql, exec:1});
+			execSql(sql, true);
 			return;
 		}
 
-		var jtbl = jtd.closest("table");
-		var idCol = jtbl.find("th").filter(function () { return $(this).text() == "id"; }).prop("cellIndex");
-		if (idCol === undefined) {
+		var idCol = getIdCol();
+		if (idCol < 0) {
 			app_alert("没有id字段, 无法操作!", "e");
 			return;
 		}
 
-		if (op == 'showNextPage') {
-			var lastId = jtd.closest("table").find("tr:last td:eq(" + idCol + ")").text();
-			var hit = false;
+		if (op == 'showNextPage' && lastData.d.length > 0) {
+			var lastId = lastData.d[lastData.d.length-1][idCol];
 			sql = jpage.find("#txtQuery").val();
-			isDesc = /\bdesc\b/i.test(sql);
+			var isDesc = /\bdesc\b/i.test(sql);
 			var cond = "id" + (isDesc? "<": ">") + lastId;
 			sql = sql.replace(/(\bfrom \S+).*$/i, function (m0, from) {
 				return from + " where " + cond + " order by id" + (isDesc? " desc": "") + " limit 20";
@@ -285,72 +266,88 @@ function initPageQuery(pageOpt)
 			return;
 		}
 
-		var idVal = jtd.closest("tr").find("td:eq(" + idCol + ")").text();
+		if (op == 'setData') {
+			var idVal = jtd.closest("tr").find("td:eq(" + idCol + ")").text();
 
-		var oldVal = jtd.text();
-		var newVal = prompt("将值 \"" + oldVal + "\" 更新为: (可以填写null或empty)", oldVal);
-		if (newVal == null)
+			var oldVal = jtd.text();
+			var newVal = prompt("将值 \"" + oldVal + "\" 更新为: (可以填写null或empty)", oldVal);
+			if (newVal == null)
+				return;
+
+			newVal1 = newVal;
+			if (newVal == "null") {
+			}
+			else if (newVal == "empty" || newVal == "''") {
+				newVal1 = "''";
+			}
+			else {
+				newVal1 = "'" + newVal.replace(/'/g, "\\'") + "'";
+			}
+
+			var colName = jtbl.find("th:eq(" + jtd[0].cellIndex + ")").text();
+			sql = "UPDATE " + tbl + " SET " + colName + "=" + newVal1 + " WHERE id=" + idVal;
+			addDynInfo("更新语句: <span class=\"status-warning\">" + sql + "<span>");
+			callSvr("execSql", {sql: sql}, function (data) {
+					jtd.text(newVal).css({backgroundColor: "yellow"});
+					app_show("执行成功, 更新记录数: " + data);
+			});
 			return;
-
-		newVal1 = newVal;
-		if (newVal == "null") {
 		}
-		else if (newVal == "empty" || newVal == "''") {
-			newVal1 = "''";
-		}
-		else {
-			newVal1 = "'" + newVal.replace(/'/g, "\\'") + "'";
-		}
-
-		var colName = jtbl.find("th:eq(" + jtd[0].cellIndex + ")").text();
-		sql = "UPDATE " + tbl + " SET " + colName + "=" + newVal1 + " WHERE id=" + idVal;
-		addDynInfo("更新语句: <span class=\"status-warning\">" + sql + "<span>");
-		callSvr("execSql", {sql: sql}, function (data) {
-				jtd.text(newVal).css({backgroundColor: "yellow"});
-				app_show("执行成功, 更新记录数: " + data);
-		});
 	}
 	function page_contextmenu(ev)
 	{
-		var tbl = jdivInfo.find("#txtMainTable").text();
-		if (!tbl)
-			return;
+		var jtd = $(ev.target).closest("td");
+		if (jtd.size() == 0)
+			jtd = null;
 		var pos = {left: ev.pageX, top: ev.pageY}
-		showCtxMenu(pos, null, "tbl");
+		showCtxMenu(pos, jtd);
 		return false;
 	}
-	function td_contextmenu(ev)
-	{
-		var jtd = $(ev.target);
-		var pos = {left: ev.pageX, top: ev.pageY}
-		showCtxMenu(pos, jtd, ctxMenuFor);
-		return false;
+	// 返回id字段的index(>=0), 找不到id字段返回-1
+	function getIdCol() {
+		var idCol = -1;
+		if (lastData.h && lastData.h.length > 1) {
+			idCol = lastData.h.indexOf("id");
+		}
+		return idCol;
+	}
+	function getOpTable(jtd) {
+		if (lastData.hint == 'tbl' && jtd) {
+			var db = lastData.db;
+			var idx = jtd.prop("cellIndex");
+			if (idx != 0)
+				return;
+			var tbl = jtd.text();
+			if (db) {
+				if (/\W/.test(db) && db[0] != '`')
+					db = '`' + db + '`';
+				tbl = db + '.' + tbl;
+			}
+			return tbl;
+		}
+
+		var tbl = jdivInfo.find("#txtMainTable").text();
+		return tbl;
 	}
 	// type: dblist | tablelist | table
-	function showCtxMenu(pos, jtd, ctxMenuFor)
+	function showCtxMenu(pos, jtd)
 	{
+		var menuArr = [];
+		if (getIdCol() >= 0 && jtd) {
+			menuArr.push('<div id="setData">修改</div>');
+		}
+		if (getOpTable(jtd)) {
+			menuArr.push('<div id="showNextPage">下一页</div>');
+			menuArr.push('<div id="showData">查看数据</div>');
+			menuArr.push('<div id="showDataSortDesc">查看数据(倒序)</div>');
+			menuArr.push('<div id="showFields">查看表结构</div>');
+			menuArr.push('<div id="showIndex">查看索引</div>');
+		}
+		menuArr.push('<div id="showTable">查看所有表</div>');
 		var jmenu = $('<div></div>');
-		if (ctxMenuFor == 'db') {
-			jmenu.append('<div id="showTable">查看表</div>');
-		}
-		else if (ctxMenuFor == 'tbl') {
-			jmenu.append('<div id="showNextPage">下一页</div>');
-			jmenu.append('<div id="showData">查看数据</div>');
-			jmenu.append('<div id="showDataSortDesc">查看数据(倒序)</div>');
-			jmenu.append('<div id="showFields">查看表结构</div>');
-			jmenu.append('<div id="showIndex">查看索引</div>');
-		}
-		else if (ctxMenuFor == 'id') {
-			jmenu.append('<div id="setData">修改</div>');
-			jmenu.append('<div id="showNextPage">下一页</div>');
-			jmenu.append('<div id="showData">查看数据</div>');
-			jmenu.append('<div id="showDataSortDesc">查看数据(倒序)</div>');
-			jmenu.append('<div id="showFields">查看表结构</div>');
-			jmenu.append('<div id="showIndex">查看索引</div>');
-		}
-		else {
-			return;
-		}
+		menuArr.forEach(function (e) {
+			jmenu.append(e);
+		});
 		jmenu.menu({
 			onClick: function (mnuItem) {
 				handleOp(jtd, mnuItem.id);
