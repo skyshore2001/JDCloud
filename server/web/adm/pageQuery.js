@@ -23,7 +23,7 @@ function initPageQuery(pageOpt)
 		jdbinst.val(pageOpt.dbinst);
 	}
 	if (pageOpt.exec) {
-		jpage.find("#btnQuery").click();
+		execSql();
 	}
 
 	function addDynInfo(html)
@@ -113,12 +113,14 @@ function initPageQuery(pageOpt)
 						e = "null";
 					var col = {
 						html: e,
-						on: {dblclick: td_dblclick_updateOneField, contextmenu: td_contextmenu}
 					};
 					cols.push(col);
 				});
 				jtbl.append(row2tr({cols: cols}));
 			});
+			jtbl.on("dblclick", "td", td_dblclick_updateOneField);
+			jtbl.on("contextmenu", "td", td_contextmenu);
+			jpage.on("contextmenu", page_contextmenu);
 		}
 
 		function handleSpecial(data) {
@@ -209,6 +211,12 @@ function initPageQuery(pageOpt)
 		openNewTab();
 	}
 
+	function execSql(sql) {
+		if (sql)
+			jpage.find("#txtQuery").val(sql);
+		btnQuery_click();
+	}
+
 	function openNewTab(showPageOpt) {
 		showPageOpt = $.extend({forceNew:1}, showPageOpt);
 		if (showPageOpt.dbinst === undefined)
@@ -218,7 +226,7 @@ function initPageQuery(pageOpt)
 
 	function td_dblclick_updateOneField(ev)
 	{
-		var jtd = $(this);
+		var jtd = $(ev.target);
 		handleOp(jtd);
 	}
 
@@ -231,16 +239,52 @@ function initPageQuery(pageOpt)
 
 		var tbl = jdivInfo.find("#txtMainTable").text();
 		if (tbl == "") {
-			app_alert("不支持更新!", "e");
+			app_alert("没有表信息，不支持操作!", "e");
+			return;
+		}
+
+		var sql = null;
+		if (op == 'showData') {
+			sql = 'select * from ' + tbl + ' limit 20';
+			execSql(sql);
+			return;
+		}
+		else if (op == 'showDataSortDesc') {
+			sql = 'select * from ' + tbl + ' order by id desc limit 20';
+			execSql(sql);
+			return;
+		}
+		else if (op == 'showFields') {
+			sql = '!describe ' + tbl;
+			openNewTab({sql: sql, exec:1});
+			return;
+		}
+		else if (op == 'showIndex') {
+			sql = 'show index from ' + tbl;
+			openNewTab({sql: sql, exec:1});
 			return;
 		}
 
 		var jtbl = jtd.closest("table");
 		var idCol = jtbl.find("th").filter(function () { return $(this).text() == "id"; }).prop("cellIndex");
 		if (idCol === undefined) {
-			app_alert("没有id字段, 无法更新!", "e");
+			app_alert("没有id字段, 无法操作!", "e");
 			return;
 		}
+
+		if (op == 'showNextPage') {
+			var lastId = jtd.closest("table").find("tr:last td:eq(" + idCol + ")").text();
+			var hit = false;
+			sql = jpage.find("#txtQuery").val();
+			isDesc = /\bdesc\b/i.test(sql);
+			var cond = "id" + (isDesc? "<": ">") + lastId;
+			sql = sql.replace(/(\bfrom \S+).*$/i, function (m0, from) {
+				return from + " where " + cond + " order by id" + (isDesc? " desc": "") + " limit 20";
+			});
+			execSql(sql);
+			return;
+		}
+
 		var idVal = jtd.closest("tr").find("td:eq(" + idCol + ")").text();
 
 		var oldVal = jtd.text();
@@ -259,35 +303,50 @@ function initPageQuery(pageOpt)
 		}
 
 		var colName = jtbl.find("th:eq(" + jtd[0].cellIndex + ")").text();
-		var sql = "UPDATE " + tbl + " SET " + colName + "=" + newVal1 + " WHERE id=" + idVal;
+		sql = "UPDATE " + tbl + " SET " + colName + "=" + newVal1 + " WHERE id=" + idVal;
 		addDynInfo("更新语句: <span class=\"status-warning\">" + sql + "<span>");
 		callSvr("execSql", {sql: sql}, function (data) {
 				jtd.text(newVal).css({backgroundColor: "yellow"});
 				app_show("执行成功, 更新记录数: " + data);
 		});
 	}
+	function page_contextmenu(ev)
+	{
+		var tbl = jdivInfo.find("#txtMainTable").text();
+		if (!tbl)
+			return;
+		var pos = {left: ev.pageX, top: ev.pageY}
+		showCtxMenu(pos, null, "tbl");
+		return false;
+	}
 	function td_contextmenu(ev)
 	{
-		var jtd = $(this);
+		var jtd = $(ev.target);
 		var pos = {left: ev.pageX, top: ev.pageY}
 		showCtxMenu(pos, jtd, ctxMenuFor);
-		ev.preventDefault();
+		return false;
 	}
 	// type: dblist | tablelist | table
 	function showCtxMenu(pos, jtd, ctxMenuFor)
 	{
-		jmenu = $('<div></div>');
+		var jmenu = $('<div></div>');
 		if (ctxMenuFor == 'db') {
 			jmenu.append('<div id="showTable">查看表</div>');
 		}
 		else if (ctxMenuFor == 'tbl') {
+			jmenu.append('<div id="showNextPage">下一页</div>');
 			jmenu.append('<div id="showData">查看数据</div>');
 			jmenu.append('<div id="showDataSortDesc">查看数据(倒序)</div>');
-			jmenu.append('<div id="showFields">查看字段定义</div>');
+			jmenu.append('<div id="showFields">查看表结构</div>');
 			jmenu.append('<div id="showIndex">查看索引</div>');
 		}
 		else if (ctxMenuFor == 'id') {
 			jmenu.append('<div id="setData">修改</div>');
+			jmenu.append('<div id="showNextPage">下一页</div>');
+			jmenu.append('<div id="showData">查看数据</div>');
+			jmenu.append('<div id="showDataSortDesc">查看数据(倒序)</div>');
+			jmenu.append('<div id="showFields">查看表结构</div>');
+			jmenu.append('<div id="showIndex">查看索引</div>');
 		}
 		else {
 			return;
