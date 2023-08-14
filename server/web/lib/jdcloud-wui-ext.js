@@ -820,7 +820,7 @@ function hiddenToCheckbox(jp, sep)
 
 具有CSS类"labels"的组件，内容以空白分隔的多个标签，如`IT 金融 工业"。
 
-- 最终操作的文本字段是.wui-labels下带name属性的输入框。
+- 最终操作的文本字段是.wui-labels下带name属性的输入框（或是指定有CSS类`wui-labelTarget`的输入框）。
 - 在.labels中的文本将被按空白切换，优化显示成一个个标签，可以点击。
 - 支持异步获取，比如要调用接口获取内容，可以指定`dfd`属性是一个Deferred对象。
 - 添加的标签具有`labelMark`类(label太常用，没有用它以免冲突)，默认已设置样式，可以为它自定义样式。
@@ -926,7 +926,7 @@ function enhanceLabels(jp)
 
 	jp.on("click", ".labelMark", function () {
 		var label = $(this).attr("value");
-		var o = jp.find(":input[name]")[0];
+		var o = jp.find(":input[name],.wui-labelTarget")[0];
 		if (opt.simple) {
 			o.value = label;
 			return;
