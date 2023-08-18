@@ -429,6 +429,16 @@ e.g.
 
 @see makeUrl
 
+如果是HTTP Basic认证，除了前述直接指定头"Authorization: Basic {base64(user:pwd)}"外，也可以：
+
+	$rv = httpCall($url, $data, [
+		"curlOpt" => [CURLOPT_USERPWD => "demo:demo123"]
+	]);
+
+或是在url中直接包含，如: 
+
+	$rv = httpCall("demo:demo123@" . $url, $data);
+
 使用PUT操作示例，同时指定用户密码：
 
 	$rv = httpCall($url, $data, [
