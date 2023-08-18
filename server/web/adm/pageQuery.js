@@ -285,7 +285,7 @@ function initPageQuery(pageOpt)
 			}
 
 			var colName = jtbl.find("th:eq(" + jtd[0].cellIndex + ")").text();
-			sql = "UPDATE " + tbl + " SET " + colName + "=" + newVal1 + " WHERE id=" + idVal;
+			sql = "UPDATE " + tbl + " SET " + colName + "=" + newVal1 + " WHERE id=" + Q(idVal);
 			addDynInfo("更新语句: <span class=\"status-warning\">" + sql + "<span>");
 			callSvr("execSql", {sql: sql}, function (data) {
 					jtd.text(newVal).css({backgroundColor: "yellow"});
