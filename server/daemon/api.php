@@ -283,7 +283,8 @@ class JDServer
 				$ws->push($fd, '*** error: require param `msg`');
 				return;
 			}
-			$ret = self::pushMsg($app, $user, $msg);
+			$from = "{$cli['user']} #{$fd}";
+			$ret = self::pushMsg($app, $user, $msg, $from);
 		}
 		$frame->req = $req;
 		$GLOBALS["jdserver_event"]->trigger("message.$app", [$ws, $frame]);
@@ -355,14 +356,21 @@ class JDServer
 		}
 	}
 
-	static function pushMsg($app, $userSpec, $msg)
+	static function pushMsg($app, $userSpec, $msg, $from = null)
 	{
 		global $server;
 
 		if (is_array($msg))
 			$msg = jsonEncode($msg);
-		if (getConf("conf_jdserver_log_ws"))
-			writeLog("[app $app] push to $userSpec: $msg");
+		if (getConf("conf_jdserver_log_ws")) {
+			if ($from) {
+				$s = "[app $app] push to $userSpec by $from: $msg";
+			}
+			else {
+				$s = "[app $app] push to $userSpec: $msg";
+			}
+			writeLog($s);
+		}
 
 		$n = 0;
 		$arr = explode(',', $userSpec);
