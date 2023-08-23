@@ -153,7 +153,7 @@ where object_id=object_id('$tbl0')";
 			if ($env->DBTYPE == "mssql") {
 				$pre = '';
 				# db1.dbo.tbl1
-				if (preg_match('/([^.]+\.\w+\.)(\w+)/', $tbl, $ms)) {
+				if (preg_match('/^((?:[^.]+\.)?\w+\.)(\w+)$/', $tbl, $ms)) {
 					$pre = $ms[1];
 					$tbl = $ms[2];
 				}
@@ -191,7 +191,7 @@ where object_id=object_id('$tbl0')";
 				}
 				return "fetch next {$ms[1]} rows only";
 			}, $sql);
-			logit($sql);
+			// logit($sql);
 		}
 
 		return $hint;
