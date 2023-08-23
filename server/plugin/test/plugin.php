@@ -125,7 +125,7 @@ inner join {$pre}sys.schemas t1 on t0.schema_id=t1.schema_id";
 				$pre = '';
 				$tbl = $tbl0;
 				# db1.dbo.tbl1
-				if (preg_match('/(\w+)\.(\w+)\.(\w+)/', $tbl0, $ms)) {
+				if (preg_match('/([^.]+)\.(\w+)\.(\w+)/', $tbl0, $ms)) {
 					$pre = $ms[1] . '.';
 					$tbl = $ms[3];
 				}
@@ -153,9 +153,9 @@ where object_id=object_id('$tbl0')";
 			if ($env->DBTYPE == "mssql") {
 				$pre = '';
 				# db1.dbo.tbl1
-				if (preg_match('/(\w+\.\w+\.)(\w+)/', $tbl, $ms)) {
+				if (preg_match('/([^.]+\.\w+\.)(\w+)/', $tbl, $ms)) {
 					$pre = $ms[1];
-					$tbl = $ms[3];
+					$tbl = $ms[2];
 				}
 				// db1.dbo.sp_index {tbl}
 				$sql = "{$pre}sp_helpindex $tbl";
