@@ -111,8 +111,10 @@ https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-micr
 	$db = "sqlite:jdcloud.db";
 	$env = new DBEnv("sqlite", $db);
 
+	# mssql over PDO
+	$db = "sqlsrv:DATABASE=FNWMS; SERVER=myserver.test.com; Encrypt=no";
 	# mssql over odbc
-	$db = "odbc:DRIVER={SQL Server Native Client 11.0}; UID=sa; LANGUAGE=us_english; DATABASE=jdcloud; SERVER=.; PWD=ibdibd";
+	# $db = "odbc:DRIVER={SQL Server Native Client 11.0}; LANGUAGE=us_english; DATABASE=jdcloud; SERVER=."; // "UID=demo; PWD=demo123"
 	$env = new DBEnv("mssql", $db, "demo", "demo123");
 
 	# oracle
@@ -126,7 +128,8 @@ https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-micr
 使用SQL语句`show databases`或`show tables`可查看数据库或数据表的列表。
 除了当前数据库实例，也支持连接到其它数据库实例。配置示例：
 
-	$mssql_db = "odbc:DRIVER={SQL Server Native Client 11.0}; UID=sa; LANGUAGE=us_english; DATABASE=jdcloud; SERVER=.; PWD=ibdibd";
+	$mssql_db = "odbc:DRIVER={SQL Server Native Client 11.0}; LANGUAGE=us_english; DATABASE=jdcloud; SERVER=."; // "UID=sa; PWD=ibdibd"
+	# $mssql_db = "sqlsrv:DATABASE=FNWMS; SERVER=myserver.test.com; Encrypt=no"; // mssql over PDO
 	$oracle_db = "oci:dbname=10.30.250.131:1525/mesdzprd;charset=AL32UTF8";
 	$GLOBALS["conf_dbinst"] = [
 		// 实例名称 => [数据库类型，PDO连接字符串，用户，密码]
