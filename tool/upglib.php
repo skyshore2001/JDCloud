@@ -61,6 +61,24 @@ class SqlDiff_sqlite extends SqlDiff
 		$n = $sth->fetchColumn();
 		return $n > 0;
 	}
+
+	// @fields={Field, Type, Null, Key, ...}
+	public function getFields($table) {
+		$rv = queryAll("pragma table_info($table)", true);
+		// cid|name|type|notnull|dflt_value|pk
+		// 0|id|INTEGER|0||1
+		// 1|name|NVARCHAR(20)|0||0
+		// 2|value|NTEXT|0||0
+		return array_map(function ($e) {
+			return [
+				"Field" => $e["name"],
+				"Type" => $e["type"],
+				"Null" => !$e["notnull"],
+				"Key" => $e["pk"],
+				"Default" => $e["dflt_value"]
+			];
+		}, $rv);
+	}
 }
 
 class SqlDiff_mysql extends SqlDiff
@@ -496,17 +514,30 @@ class UpgHelper
 			return;
 
 		if (! isset($opt["dbh"])) {
-			$fnConfirm = function ($connstr) {
+			$createdb = $opt["createdb"];
+			$fnConfirm = function (&$connstr) use (&$createdb) {
 				global $IS_CLI;
 				if ($IS_CLI) {
 					$this->prompt("=== connect to $connstr (enter to cont, ctrl-c to break) ");
 					fgets(STDIN);
+				}
+				if ($createdb) {
+					$connstr = preg_replace_callback('/;dbname=(\w+)/', function ($ms) use (&$createdb) {
+						$createdb = $ms[1];
+						return '';
+					}, $connstr);
 				}
 				$this->logstr("=== [" . date('c') . "] connect to $connstr\n", false);
 				return true;
 			};
 			try {
 				$this->dbh = dbconn($fnConfirm);
+				if ($createdb) {
+					$sql = "create database `$createdb` character set utf8mb4";
+					$this->dbh->exec($sql);
+					$sql = "use `$createdb`";
+					$this->dbh->exec($sql);
+				}
 			} catch (Exception $e) {
 				echo $e->getMessage() . "\n";
 				exit;
@@ -699,7 +730,7 @@ class UpgHelper
 			if (!$force)
 			{
 				# check whether to add missing fields
-				# todo: get columns: mysql uses `desc {table}`, mssql uses `sp_help {table}`
+				# get columns: mysql uses `desc {table}`, mssql uses `sp_help {table}`, sqlite uses `pragma table_info({table})`
 				$dbFields = $SQLDIFF->getFields($tbl); // elem={Field, Type, Null, Key, ...}
 				$fieldArr = array_map(function ($e) {
 					return $e["Field"];

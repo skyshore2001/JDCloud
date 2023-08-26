@@ -18,7 +18,7 @@ function upgrade()
 	$diff = isset($_GET["diff"]);
 	if (! $diff) {
 		$h->updateDB();
-		if ($createdb && file_exists("addon.xml")) {
+		if ($createdb && file_exists("addon.xml") && file_exists("../upgrade-addon.php")) {
 			$ac = "install";
 			include("../upgrade-addon.php");
 		}
