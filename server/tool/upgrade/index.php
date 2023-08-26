@@ -10,10 +10,18 @@ function upgrade()
 
 	header("Content-Type: text/plain; charset=utf-8");
  	require_once("upglib.php");
- 	$h = new UpgHelper();
+	$opt = [];
+	$createdb = isset($_GET["createdb"]);
+	if ($createdb)
+		$opt["createdb"] = 1;
+ 	$h = new UpgHelper($opt);
 	$diff = isset($_GET["diff"]);
 	if (! $diff) {
 		$h->updateDB();
+		if ($createdb && file_exists("addon.xml")) {
+			$ac = "install";
+			include("../upgrade-addon.php");
+		}
 	}
 	else {
 		$h->showTable(null, true);

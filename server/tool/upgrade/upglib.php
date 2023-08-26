@@ -514,17 +514,30 @@ class UpgHelper
 			return;
 
 		if (! isset($opt["dbh"])) {
-			$fnConfirm = function ($connstr) {
+			$createdb = $opt["createdb"];
+			$fnConfirm = function (&$connstr) use (&$createdb) {
 				global $IS_CLI;
 				if ($IS_CLI) {
 					$this->prompt("=== connect to $connstr (enter to cont, ctrl-c to break) ");
 					fgets(STDIN);
+				}
+				if ($createdb) {
+					$connstr = preg_replace_callback('/;dbname=(\w+)/', function ($ms) use (&$createdb) {
+						$createdb = $ms[1];
+						return '';
+					}, $connstr);
 				}
 				$this->logstr("=== [" . date('c') . "] connect to $connstr\n", false);
 				return true;
 			};
 			try {
 				$this->dbh = dbconn($fnConfirm);
+				if ($createdb) {
+					$sql = "create database `$createdb` character set utf8mb4";
+					$this->dbh->exec($sql);
+					$sql = "use `$createdb`";
+					$this->dbh->exec($sql);
+				}
 			} catch (Exception $e) {
 				echo $e->getMessage() . "\n";
 				exit;
