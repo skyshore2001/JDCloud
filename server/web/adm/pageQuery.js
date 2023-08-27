@@ -247,6 +247,24 @@ function initPageQuery(pageOpt)
 			execSql(sql, true);
 			return;
 		}
+		if (op == 'genSelect' || op == 'genUpdate' || op == 'genIndex') {
+			var val = jtd.text();
+			var colName = jtbl.find("th:eq(" + jtd[0].cellIndex + ")").text();
+			var cond = colName + "=" + Q(val);
+			if (op == 'genSelect') {
+				sql = 'select * from ' + tbl + ' where ' + cond + " limit 20";
+			}
+			else if (op == 'genUpdate') {
+				sql = 'update ' + tbl + ' set ' + cond + ' where ' + cond;
+			}
+			else if (op == 'genIndex') {
+				sql = 'create index idx_' + colName + ' on ' + tbl + '(' + colName + ')';
+			}
+			if (sql) {
+				jpage.find("#txtQuery").val(sql);
+			}
+			return;
+		}
 
 		var idCol = getIdCol();
 		if (idCol < 0) {
@@ -281,7 +299,7 @@ function initPageQuery(pageOpt)
 				newVal1 = "''";
 			}
 			else {
-				newVal1 = "'" + newVal.replace(/'/g, "\\'") + "'";
+				newVal1 = Q(newVal);
 			}
 
 			var colName = jtbl.find("th:eq(" + jtd[0].cellIndex + ")").text();
@@ -335,6 +353,7 @@ function initPageQuery(pageOpt)
 		var menuArr = [];
 		if (getIdCol() >= 0 && jtd) {
 			menuArr.push('<div id="setData">修改</div>');
+			menuArr.push('<div>SQL <div><div id="genSelect">SELECT</div> <div id="genUpdate">UPDATE</div> <div id="genIndex">CREATE INDEX</div></div> </div>');
 		}
 		if (getOpTable(jtd)) {
 			menuArr.push('<div id="showNextPage">下一页</div>');
