@@ -29,6 +29,7 @@ writeLog("=== jdserver on $addr:$port, workers=$workerNum");
 // 应用逻辑将在其它文件中实现，以便修改源码后可调用reload接口生效（onWorkerStart中重新加载），无须重启服务。
 
 $server->on('Open', function ($ws, $req) {
+	JDServer::onOpen($ws, $req);
 //	echo("onOpen: fd=" . $req->fd . "\n");
 //	print_r($req);
 });
