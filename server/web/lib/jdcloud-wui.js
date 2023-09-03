@@ -10210,9 +10210,10 @@ var Formatter = {
 		if (! value)
 			return;
 		value = Math.ceil(value * 100);
+		var w = (value > 100? 100: value);
 		var htmlstr = '<div class="easyui-progressbar progressbar" style="min-width: 100px;width: 100%; height: 20px;">'
-			+ '<div class="progressbar-value" style="width: ' + value + '%; height: 20px; line-height: 20px;"></div>'
-			+ '<div class="progressbar-text" style="width: ' + value + '%; top: 0;">' + value+ '%</div>'
+			+ '<div class="progressbar-value" style="width: ' + w + '%; height: 20px; line-height: 20px;"></div>'
+			+ '<div class="progressbar-text" style="width: ' + w + '%; top: 0;">' + value+ '%</div>'
 			+ '</div>';
 		return htmlstr;
 	}
