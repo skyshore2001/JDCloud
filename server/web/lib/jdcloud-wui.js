@@ -2574,17 +2574,19 @@ function extendNoOverride(target)
 }
 
 /**
-@fn myround(floatValue, digitCnt)
+@fn myround(floatValue, digitCnt=6)
 
 与toFixed相比，它返回float数组，不带多余的0位。
 
-	myround(114957.15999999, 6) = 114957.16
+	myround(114957.15999999, 4) = 114957.16
 	myround(114957.15999999, 1) = 114957.2
 
  */
 self.myround = myround
 function myround(f, n)
 {
+	if (n === undefined)
+		n = 6;
 	return parseFloat(f.toFixed(n));
 }
 
@@ -10762,10 +10764,10 @@ var GridHeaderMenu = {
 		if (stat.numCnt > 0) {
 			stat.info.push(
 				"COUNT(数值项)=" + stat.numCnt,
-				"SUM=" + stat.sum,
+				"SUM=" + self.myround(stat.sum),
 				"MAX=" + stat.max,
 				"MIN=" + stat.min,
-				"AVG=" + stat.sum/stat.numCnt
+				"AVG=" + self.myround(stat.sum/stat.numCnt)
 			)
 		}
 		return stat;
