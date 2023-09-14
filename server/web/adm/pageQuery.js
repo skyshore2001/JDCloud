@@ -302,13 +302,14 @@ function initPageQuery(pageOpt)
 				newVal1 = Q(newVal);
 			}
 
+			var dbinst = jdbinst.val();
 			var colName = jtbl.find("th:eq(" + jtd[0].cellIndex + ")").text();
 			sql = "UPDATE " + tbl + " SET " + colName + "=" + newVal1 + " WHERE id=" + Q(idVal);
 			addDynInfo("更新语句: <span class=\"status-warning\">" + sql + "<span>");
-			callSvr("execSql", {sql: sql}, function (data) {
-					jtd.text(newVal).css({backgroundColor: "yellow"});
-					app_show("执行成功, 更新记录数: " + data);
-			});
+			callSvr("execSql", function (data) {
+				jtd.text(newVal).css({backgroundColor: "yellow"});
+				addDynInfo("执行成功, 更新记录数: " + data);
+			}, {sql: sql, dbinst: dbinst});
 			return;
 		}
 	}
