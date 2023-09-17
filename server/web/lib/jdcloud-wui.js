@@ -2424,6 +2424,12 @@ function kvList2Str(kv, sep, sep2)
 
 	var map = parseKvList("CR:新创建;PA:已付款", ";", ":", true);
 	// map: {"新创建":"CR", "已付款":"PA"}
+
+sep和sep2支持使用正则式，以下处理结果相同：
+
+	var map = parseKvList("CR:新创建;PA:已付款", /[; ]/, /[:=]/);
+	var map2 = parseKvList("CR=新创建 PA=已付款", /[; ]/, /[:=]/);
+
 */
 self.parseKvList = parseKvList;
 function parseKvList(str, sep, sep2, doReverse)
@@ -12733,7 +12739,7 @@ function mycombobox(userOpts)
 				j1.text(opts.emptyText);
 
 			if (opts.jdEnumList) {
-				opts.jdEnumMap = mCommon.parseKvList(opts.jdEnumList, ';', ':');
+				opts.jdEnumMap = parseEnumList(opts.jdEnumList);
 			}
 			if (opts.jdEnumMap) {
 				$.each(opts.jdEnumMap, function (k, v) {
@@ -12768,7 +12774,7 @@ function mycombobox(userOpts)
 				opts.url_ = url;
 			}
 			if (m_dataCache[url] === undefined) {
-				self.callSvr(url, onLoadOptions);
+				WUI.callSvr(url, onLoadOptions);
 			}
 			else {
 				onLoadOptions(m_dataCache[url]);
@@ -12862,6 +12868,13 @@ function mycombobox_fixAsyncSetValue()
 			return hook.get.apply(this, arguments);
 		}
 	}
+}
+
+WUI.parseEnumList = parseEnumList;
+function parseEnumList(s)
+{
+	// 第一级：分号或空格，第二级：冒号或等号；均支持中文全角
+	return WUI.parseKvList(s, /[; ；　]/, /[:=：＝]/);
 }
 mycombobox_fixAsyncSetValue();
 //}}}

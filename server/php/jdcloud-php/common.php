@@ -640,9 +640,9 @@ function addToStr(&$str, $str1, $sep=',')
 }
 
 /**
-@fn arrCopy(&$dst, $src, $fields=null)
+@fn arrCopy(&$dst, $arr, $fields=null)
 
-将数组$src中指定字段复制到$dst中。
+将关联数组$arr中指定字段复制（覆盖）到$dst中。如果$arr是普通数组(键为数值)，则简单地追加到$dst中。
 数组$fields指定字段列表，如果未指定，则全部字段复制过去；如果字段复制后需要改名，可以以[$dstName, $srcName]这样的数组来表示。
 
 示例：将workItem提取指定字段后插入数据库中：
@@ -672,7 +672,12 @@ function arrCopy(&$ret, $arr, $fields=null)
 		$ret = [];
 	if ($fields == null) {
 		foreach ($arr as $k=>$v) {
-			$ret[$k] = $v;
+			if (is_int($k)) {
+				$ret[] = $v;
+			}
+			else {
+				$ret[$k] = $v;
+			}
 		}
 		return;
 	}

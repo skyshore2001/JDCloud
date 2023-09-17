@@ -155,7 +155,7 @@ function initDlgDataReport()
 			var val = e.replace(/["]/g, '');
 			var arr = val.split(" ");
 			enumMap[val] = arr[1] || arr[0];
-			if (/(^(tm|dt)|Tm|Dt|Date|Time|时间|日期)\b/.test(val))
+			if (/(^(tm|dt)|Tm|Dt|Date|Time|时间|日期)$/.test(val))
 				enumMap_tm[val] = arr[1] || arr[0];
 		});
 
