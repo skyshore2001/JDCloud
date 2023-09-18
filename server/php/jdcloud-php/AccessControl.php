@@ -4740,6 +4740,11 @@ class CsvBatchAddStrategy extends BatchAddStrategy
 		return $isEmpty;
 	}
 	protected function onGetRow() {
+		// NOTE: PHP BUG: windows版本php7上fgetcsv读中文有问题，切分不正确; php5和php8没有问题
+		// https://segmentfault.com/a/1190000043684726
+		if (PHP_OS == "WINNT" && substr(PHP_VERSION, 0, 1) == "7") {
+			setlocale(LC_CTYPE, "C");
+		}
 		do {
 			$row = fgetcsv($this->fp, 0, $this->delim);
 			if ($row === false) {
