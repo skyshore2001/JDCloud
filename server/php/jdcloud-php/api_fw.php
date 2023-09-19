@@ -2620,7 +2620,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		}
 	}
 
-	private function initRequest() {
+	private function initRequest(&$ac) {
 		if ($this->TEST_MODE)
 			$this->header("X-Daca-Test-Mode", $this->TEST_MODE);
 		if ($this->MOCK_MODE)
@@ -2691,8 +2691,6 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 				jdRet(null, [E_FORBIDDEN, "OK"]);
 			}
 		}
-
-		return $ac;
 	}
 
 	private $doInitEnv = true;
@@ -2746,8 +2744,9 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 					setServerRev($this);
 				}
 
+				$ac = null;
 				if ($isDefaultCall && !$isCLI) {
-					$ac = $this->initRequest();
+					$this->initRequest($ac);
 				}
 				$this->ac = $ac;
 
