@@ -799,6 +799,10 @@ function getReqIp()
 	if (isCLI()) {
 		return "cli";
 	}
+	if (!function_exists("getJDEnv")) {
+		@$ip = $_SERVER["HTTP_X_FORWARDED_FOR"] ?: $_SERVER["HTTP_CLIENT_IP"] ?: $_SERVER["REMOTE_ADDR"]; // HTTP_REMOTEIP
+		return $ip;
+	}
 	$env = getJDEnv();
 	if (!$env)
 		return;
