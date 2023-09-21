@@ -2530,7 +2530,7 @@ function enhanceSubobj(jo)
 	self.assert(opt.relatedKey, "wui-subobj: 选项relatedKey未设置");
 
 	var relatedKey = opt.relatedKey;
-	if (relatedKey.match(/^\w+$/))
+	if (relatedKey.match(/^[\u4e00-\u9fa5\w]+$/))
 		relatedKey += "={id}";
 
 	var ctx = {};
