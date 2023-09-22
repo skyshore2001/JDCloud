@@ -5475,8 +5475,6 @@ function makeUrl(action, params)
 		params._app = self.options.appName;
 	if (g_args._debug)
 		params._debug = g_args._debug;
-	if (g_args.phpdebug)
-		params.XDEBUG_SESSION_START = 1;
 
 	var p = $.param(params);
 	// 无参数时，也会设置xp=1，用于通知callSvr对post内容加密
@@ -11353,7 +11351,6 @@ URL参数会自动加入该对象，例如URL为 `http://{server}/{app}/index.ht
 
 - g_args._debug: 指定后台的调试等级，有效值为1-9. 而且一旦指定，后端将记录debug日志。参考：后端测试模式 P_TEST_MODE，调试等级 P_DEBUG，调试日志 P_DEBUG_LOG
 - g_args.autoLogin: 记住登录信息(token)，下次自动登录；注意：如果是在手机模式下打开，此行为是默认的。示例：http://server/jdcloud/web/?autoLogin
-- g_args.phpdebug: (v6) 设置为1时，以调用接口时激活PHP调试，与vscode/netbeans/vim-vdebug等PHP调试器联合使用。参考：http://oliveche.com/jdcloud-site/phpdebug.html
 - g_args.lang: (v7) 指定语言，默认为开发语言"dev"，支持英文"en"（加载lib/lang-en.js）。
 
 @see parseQuery URL参数通过该函数获取。

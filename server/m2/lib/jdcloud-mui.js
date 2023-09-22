@@ -4992,8 +4992,6 @@ function makeUrl(action, params)
 		params._app = self.options.appName;
 	if (g_args._debug)
 		params._debug = g_args._debug;
-	if (g_args.phpdebug)
-		params.XDEBUG_SESSION_START = 1;
 
 	var p = $.param(params);
 	// 无参数时，也会设置xp=1，用于通知callSvr对post内容加密
