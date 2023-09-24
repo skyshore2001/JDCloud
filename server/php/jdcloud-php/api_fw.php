@@ -2627,7 +2627,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			$this->header("X-Daca-Mock-Mode", $this->MOCK_MODE);
 		// 默认允许跨域
 		$origin = $this->_SERVER('HTTP_ORIGIN');
-		if (isset($origin) && !$isCLI) {
+		if (isset($origin)) {
 			$this->header('Access-Control-Allow-Origin', $origin);
 			$this->header('Access-Control-Allow-Credentials', 'true');
 			$this->header('Access-Control-Expose-Headers', 'X-Daca-Server-Rev, X-Daca-Test-Mode, X-Daca-Mock-Mode');
@@ -2744,7 +2744,6 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 					setServerRev($this);
 				}
 
-				$ac = null;
 				if ($isDefaultCall && !$isCLI) {
 					$this->initRequest($ac);
 				}
