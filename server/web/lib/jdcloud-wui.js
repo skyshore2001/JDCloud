@@ -737,7 +737,7 @@ v5.3引入了wui-fixedField类设置在字段上，v6起已不建议使用。以
 
 点击菜单项显示对话框：
 
-	<a href="javascript:DlgSendSms.show()" class="easyui-linkbutton" icon="icon-ok">群发短信</a><br/><br/>
+	<a href="javascript:;" onclick="DlgSendSms.show()" class="easyui-linkbutton" icon="icon-ok">群发短信</a><br/><br/>
 
 可以通过my-initfn属性为对话框指定初始化函数。复杂对话框的逻辑一般都写在初始化函数中。习惯上命令名initDlgXXX，如：
 
@@ -809,7 +809,7 @@ v5.3引入了wui-fixedField类设置在字段上，v6起已不建议使用。以
 默认pageBizPartner是供应商，如果要显示为"客户"页，需要明确调用showPage。
 
 	<a href="#pageBizPartner">供应商</a>
-	<a href="javascript:WUI.showPage('pageBizPartner', '客户', ['C']);">客户</a>
+	<a href="javascript:;" onclick="WUI.showPage('pageBizPartner', '客户', ['C']);">客户</a>
 
 在initPageBizPartner函数中，为对话框传递参数objParam：
 
@@ -3450,7 +3450,7 @@ function setFormData(jo, data, opt)
 示例：在菜单中加一项“工单工时统计”，动态加载并执行一个JS文件：
 store.html中设置菜单：
 
-				<a href="javascript:WUI.loadScript('page/mod_工单工时统计.js')">工单工时统计</a>
+				<a href="javascript:;" onclick="WUI.loadScript('page/mod_工单工时统计.js')">工单工时统计</a>
 	
 在`page/mod_工单工时统计.js`文件中写报表逻辑，`mod`表示一个JS模块文件，示例：
 
@@ -11500,7 +11500,7 @@ g_args.lang中保存着实际使用的语言。
 
 	<div><label class="lang"><input type="checkbox" value="mgr">最高管理员</label></div>
 
-	<a href="javascript:logout()" class="logout"><span class="lang"><i class="icon-exit"></i>退出系统</span></a>
+	<a href="javascript:;" onclick="logout()" class="logout"><span class="lang"><i class="icon-exit"></i>退出系统</span></a>
 
 或在代码中，使用WUI.enhanceLang(jo)来为DOM组件支持翻译，或直接用T(str)翻译字符串。
 注意lang类或enhanceLang函数不能设置组件下子组件的文字，可先取到文字组件再设置如`WUI.enhanceLang(jo.find(".title"))`。

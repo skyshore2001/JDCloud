@@ -1007,8 +1007,8 @@ function enhanceLabels(jp)
 			</div>
 		</div>
 		<!-- 单独的菜单项示例 -->
-		<a href="javascript:WUI.showDlg('#dlgImport',{modal:false})"><span><i class="fa fa-pencil-square-o"></i>批量导入</span></a>
-		<a href="javascript:showDlgChpwd()"><span><i class="fa fa-user-times"></i>修改密码</span></a>
+		<a href="javascript:;" onclick="WUI.showDlg('#dlgImport',{modal:false})"><span><i class="fa fa-pencil-square-o"></i>批量导入</span></a>
+		<a href="javascript:;" onclick="showDlgChpwd()"><span><i class="fa fa-user-times"></i>修改密码</span></a>
 	</div>
 
 菜单组由menu-expand-group标识，第一个a为菜单组标题，可加"expanded"类使其默认展开。
@@ -1854,7 +1854,7 @@ function fname(fn)
 self.makeLink = makeLink;
 function makeLink(text, fn)
 {
-	return '<a href="javascript:' + self.fname(fn) + '()">' + text + '</a>';
+	return '<a href="javascript:;" onclick="' + self.fname(fn) + '()">' + text + '</a>';
 }
 
 window.ApproveFlagMap = {

@@ -39,7 +39,7 @@ menu-expand-group下第一个a为菜单组标题，可加"expanded"类使其默�
 			<a><span><i class="fa fa-pencil-square-o"></i>系统设置</span></a>
 			<div class="menu-expandable">
 				<a href="#pageEmployee">登录帐户管理</a>
-				<a href="javascript:WUI.showDlg('#dlgImport')">批量导入</a>
+				<a href="javascript:;" onclick="WUI.showDlg('#dlgImport')">批量导入</a>
 				<a href="#pageCinf">系统配置</a>
 			</div>
 		</div>
@@ -58,15 +58,18 @@ menu-expand-group下第一个a为菜单组标题，可加"expanded"类使其默�
 		<div class="menu-expand-group">
 			<a><span><i class="fa fa-pencil-square-o"></i>工具</span></a>
 			<div class="menu-expandable">
-				<a href="javascript:showDlgSendSms()">群发短信</a>
+				<a href="javascript:;" onclick="showDlgSendSms()">群发短信</a>
 			</div>
 		</div>
 	</div-->
 
-	<a href="javascript:showDlgChpwd()"><span><i class="fa fa-user-times"></i>修改密码</span></a>
+	<a href="javascript:;" onclick="showDlgChpwd()">
+		<span><i class="fa fa-user-times"></i>修改密码</span>
+	</a>
+
 </div>
 
-<div id="main" region="center" title="<div class='my-title' style='float:left'>管理端</div> <div style='float:right'><span class='user-name'>用户</span> | <a href='javascript:logout()' class='lang'>退出</a></div>" style="visibility: hidden">
+<div id="main" region="center" title="<div class='my-title' style='float:left'>管理端</div> <div style='float:right'><span class='user-name'>用户</span> | <a href='javascript:;' onclick='logout()' class='lang'>退出</a></div>" style="visibility: hidden">
 	<div id="my-tabMain" class="easyui-tabs" fit=true>
 	</div>
 </div>
