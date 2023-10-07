@@ -175,7 +175,7 @@ input:disabled,select:disabled,textarea:disabled {
 }
 
 .hint {
-	font-size: 0.6em;
+	font-size: 0.8em;
 	margin: 2px;
 	color: blue;
 	white-space: normal;
