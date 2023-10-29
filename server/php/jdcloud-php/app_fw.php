@@ -2152,6 +2152,40 @@ class SimpleCache
 	}
 }
 
+/**
+@class FileCache
+
+简单的文件cache方案, 单机时可替代redis.
+
+	$myval = FileCache::get("myval.cache.json", function () {
+		return queryAll("SELECT ...", true);
+	}, ["timeout" => T_HOUR*4]);
+
+- 文件名建议为"{变量名}.cache.json"
+- timeout选项指定超时时间(秒), 默认不超时.
+*/
+class FileCache
+{
+	// return false if key does not exist
+	static function get($key, $fnGet = null, $opt = []) {
+		@$t = filemtime($key);
+		if ($t === false || (@$opt["timeout"] && time() - $t > $opt["timeout"])) {
+			if (!isset($fnGet))
+				return false;
+
+			$val = $fnGet();
+			self::set($key, $val);
+			return $val;
+		}
+		$val = jsonDecode(file_get_contents($key));
+		return $val;
+	}
+
+	static function set($key, $val) {
+		file_put_contents($key, jsonEncode($val));
+	}
+}
+
 function isHttps()
 {
 	if (!isset($_SERVER['HTTPS']))
