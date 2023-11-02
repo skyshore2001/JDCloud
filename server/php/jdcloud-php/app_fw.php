@@ -303,7 +303,8 @@ file_exists($userConf) && include_once($userConf);
 function initAppFw()
 {
 	mb_internal_encoding("UTF-8");
-	setlocale(LC_ALL, "zh_CN.UTF-8");
+	//setlocale(LC_ALL, "zh_CN.UTF-8"); // NOTE: en_US的兼容性更好。很多服务器上只安装有en_US.UTF-8(可用`locale -a`查看), 此时如果设置为zh_CN.UTF-8，则`basename("中文.txt")`会输出".txt"!
+	setlocale(LC_ALL, "en_US.UTF-8");
 	umask(2); // 写文件时(如file_put_contents)，默认组可写
 
 	// assert失败中止运行
