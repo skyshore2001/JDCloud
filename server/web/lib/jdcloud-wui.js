@@ -10476,7 +10476,8 @@ CSS类, 可定义无数据提示的样式
 
 	// 此回调由扩展datagrid源码得来
 	onInitOptions: function (opt) {
-		var ac = opt.url && opt.url.action;
+		// NOTE: opt.url1 for treegrid (fixed in easyui lib)
+		var ac = opt.url && opt.url.action || (opt.url1 && opt.url1.action);
 		if (ac) {
 			var m = ac.match(/\w+(?=\.query\b)/);
 			var obj = m && m[0];
