@@ -838,7 +838,7 @@ function getRealIp()
 
 记录日志。
 
-默认到日志文件 $BASE_DIR/trace.log. 如果指定type=secure, 则写到 $BASE_DIR/secure.log.
+默认到日志文件 $conf_dataDir/trace.log. 如果指定type如type=secure, 则写到 $conf_dataDir/secure.log.
 
 $s可以是字符串、数值或数组。
 
@@ -860,7 +860,7 @@ function logit($s, $addHeader=true, $type="trace")
 	else {
 		$s .= "\n";
 	}
-	@$baseDir = $GLOBALS['BASE_DIR'] ?: ".";
+	@$baseDir = $GLOBALS["conf_dataDir"] ?: ".";
 	file_put_contents($baseDir . "/{$type}.log", $s, FILE_APPEND | LOCK_EX);
 }
 
@@ -1988,6 +1988,10 @@ class JDStatusFile
 {
 	private $file, $stat, $stat0;
 	function __construct($file, &$stat) {
+		// 非绝对路径则放在dataDir下
+		if (@($GLOBALS["conf_dataDir"] && $file[0] != '/' && $file[1] != ':')) {
+			$file = $GLOBALS["conf_dataDir"] . '/' . $file;
+		}
 		$this->file = $file;
 		@$s = file_get_contents($file);
 		if ($s) {

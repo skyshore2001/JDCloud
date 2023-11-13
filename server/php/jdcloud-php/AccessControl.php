@@ -4287,9 +4287,9 @@ function KVtoCond($k, $v)
 			// rw for mysql user
 			jdRet(E_SERVER, "no outfile dir", "导出目录未配置");
 		}
-		global $BASE_DIR;
+		global $conf_dataDir;
 		$f = date("Ymd_His") . '.txt';
-		$cmd = "$sql into outfile '$BASE_DIR/$dir/$f'";
+		$cmd = "$sql into outfile '$conf_dataDir/$dir/$f'";
 		logit("export to outfile: $cmd");
 		$this->env->execOne($cmd);
 
@@ -4656,7 +4656,7 @@ class BatchAddStrategy
 
 	// backupFile(null, null): 保存http请求的内容.
 	static function backupFile($file, $orgName) {
-		$dir = "upload/import";
+		$dir = $GLOBALS["conf_dataDir"] . "/upload/import";
 		if (! is_dir($dir)) {
 			if (mkdir($dir, 0777, true) === false)
 				jdRet(E_SERVER, "fail to create folder: $dir");

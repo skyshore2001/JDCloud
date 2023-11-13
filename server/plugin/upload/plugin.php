@@ -149,7 +149,7 @@ class Upload
 			foreach($rows as $row) { // {id, path, orgName}
 				$ext = strtolower(pathinfo($row["orgName"], PATHINFO_EXTENSION));
 				$fname = "$k/{$row['id']}.$ext";
-				$realFile = $GLOBALS["BASE_DIR"] . '/' . $row["path"];
+				$realFile = $GLOBALS["conf_dataDir"] . '/' . $row["path"];
 				if (!is_file($realFile)) {
 					$fname = iconv("UTF-8", "GBK//IGNORE", "$fname.missing!"); // TODO: 支持中文
 					$zip->addFromString($fname, "");
@@ -312,7 +312,7 @@ function api_upload($env)
 	$ret = [];
 	$files = []; # elem: [$tmpname, $fname, $thumbName]
 
-	chdir($GLOBALS["BASE_DIR"]);
+	chdir($GLOBALS["conf_dataDir"]);
 
 	$handleOneFile = function ($f, $genThumb, &$files) use ($cate, $cateConf)
 	{
@@ -548,7 +548,7 @@ function api_att()
 		jdRet();
 	}
 
-	chdir($GLOBALS["BASE_DIR"]);
+	chdir($GLOBALS["conf_dataDir"]);
 	if (! is_file($file)) {
 		header(HTTP_NOT_FOUND);
 		exit;

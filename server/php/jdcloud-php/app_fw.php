@@ -180,10 +180,10 @@ https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-micr
 ## session管理
 
 - 应用的session名称为 "{app}id", 如应用名为 "user", 则session名为"userid". 因而不同的应用同时调用服务端也不会冲突。
-- 保存session文件的目录为 $BASE_DIR/session, 可使用环境变量P_SESSION_DIR重定义。
+- 保存session文件的目录为 $conf_dataDir/session, 可使用环境变量P_SESSION_DIR重定义(推荐配置$conf_dataDir而不是P_SESSION_DIR)。
 - 同一主机，不同URL下的session即使APP名相同，也不会相互冲突，因为框架会根据当前URL，设置cookie的有效路径。
 
-@key P_SESSION_DIR ?= $BASE_DIR/session 环境变量，定义session文件存放路径。
+@key P_SESSION_DIR ?= $conf_dataDir/session 环境变量，定义session文件存放路径。
 @key P_URL_PATH 环境变量。项目的URL路径，如"/jdcloud", 用于定义cookie生效的作用域，也用于拼接相对URL路径。
 @see getBaseUrl
 
@@ -230,11 +230,32 @@ const RTEST_MODE=2;
 /**
 @var $BASE_DIR
 
-包含app_fw.php的主文件（如api.php）所在目录。常用于拼接子目录名。
-最后不带"/".
+Web主目录实际路径，即包含api.php的目录，即server目录。
+为绝对路径，最后不带"/".
+
+@var conf_dataDir
+
+数据目录，默认值与$BASE_DIR相同，可在conf.user.php中改写，用于同一套程序部署多套环境。
+程序输出的文件都应存放于此目录下，如session目录, 日志文件(trace.log/debug.log等), 上传目录(upload目录), JDStatusFile状态文件。
+注意如果要设置，应设置为绝对路径。
+
+示例：(php/conf.user.php中配置)
+
+	if (strpos($_SERVER["SCRIPT_NAME"], "/jdcloud-a1/") === 0) {
+		putenv("P_DB=localhost/jdcloud_a1");
+		$GLOBALS["conf_dataDir"] = __DIR__ . "/../data-jdcloud-a1";
+		// $GLOBALS["conf_dataDir"] = "/var/www/src/jdcloud/server/data-jdcloud-a1";
+	}
+	else if (strpos($_SERVER["SCRIPT_NAME"], "/jdcloud-a2/") === 0) {
+		putenv("P_DB=localhost/jdcloud_a2");
+		$GLOBALS["conf_dataDir"] = __DIR__ . "/../data-jdcloud-a2";
+	}
+
 */
 global $BASE_DIR;
 $BASE_DIR = dirname(dirname(__DIR__));
+
+$GLOBALS["conf_dataDir"] = $BASE_DIR;
 
 // 配置项默认值（可在conf.user.php中覆盖）
 $GLOBALS["conf_jdserverUrl"] = 'http://127.0.0.1/jdserver';

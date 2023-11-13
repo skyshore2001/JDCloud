@@ -3153,7 +3153,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		$name = $this->appType . "id";
 		session_name($name);
 
-		$path = getenv("P_SESSION_DIR") ?: $GLOBALS["BASE_DIR"] . "/session";
+		$path = getenv("P_SESSION_DIR") ?: $GLOBALS["conf_dataDir"] . "/session";
 		if (!  is_dir($path)) {
 			if (! mkdir($path, 0777, true))
 				jdRet(E_SERVER, "fail to create session folder: $path");

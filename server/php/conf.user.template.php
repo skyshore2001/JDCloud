@@ -1,18 +1,10 @@
 <?php
 
-// $isTestEnv = (strpos($_SERVER["SCRIPT_NAME"], "-test") !== false);
-if (getenv("P_DB") === false) {
-	// use SQLite:
-	//putenv("P_DB=jdcloud.db");
-	//putenv("P_DBCRED=");
+// if (strpos($_SERVER["SCRIPT_NAME"], "/jdcloud-test/") === 0)
+putenv("P_DB=localhost/jdcloud");
+putenv("P_DBCRED=ZGVtbzpkZW1vMTIz");
 
-	// use MySQL:
-	putenv("P_DB=localhost/jdcloud");
-	putenv("P_DBCRED=ZGVtbzpkZW1vMTIz");
-}
-
-// Set the base URL, it affect session security, etc.
-// putenv("P_URL_PATH=/jdcloud");
+// $GLOBALS["conf_dataDir"] = __DIR__ . "/../data-jdcloud";
 
 // test mode: default value=0
 // putenv("P_TEST_MODE=1");
