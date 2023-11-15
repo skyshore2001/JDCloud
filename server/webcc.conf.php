@@ -11,8 +11,10 @@ $FILES = [
  */
 
 $RULES = [
-	'm2/*.html' => 'HASH',
-	'm2/lib/app_fw.js' => 'HASH',
+	'm2/index.html' => 'HASH',
+	'm2/lib/jdcloud-mui.js' => 'HASH',
+#	'web/store.html' => 'HASH',
+#	'web/adm.html' => 'HASH',
 
 # 如果支持App则使用这部分
 	'm2/cordova/cordova.js' => '
