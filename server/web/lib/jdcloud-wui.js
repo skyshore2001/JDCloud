@@ -12872,8 +12872,8 @@ function mycombobox_fixAsyncSetValue()
 WUI.parseEnumList = parseEnumList;
 function parseEnumList(s)
 {
-	// 第一级：分号或空格，第二级：冒号或等号；均支持中文全角
-	return WUI.parseKvList(s, /[; ；　]/, /[:=：＝]/);
+	// 第一级：分号或空格，第二级：冒号或等号
+	return WUI.parseKvList(s, /[; ]/, /[:=]/);
 }
 mycombobox_fixAsyncSetValue();
 //}}}
