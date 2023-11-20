@@ -1774,7 +1774,7 @@ function applyPermission()
 				// $(this).show();
 			}
 			else {
-				$(this).hide();
+				$(this).remove();
 			}
 		});
 		jo.find(">.menu-expand-group").each(function () {
@@ -1784,7 +1784,7 @@ function applyPermission()
 			}
 		});
 		if (allHidden) {
-			jo.closest(".perm-emp").hide();
+			jo.closest(".menu-expand-group").remove();
 			return false;
 		}
 		else if (doShowGroup || doShow) {
