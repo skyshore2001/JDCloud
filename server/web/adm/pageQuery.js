@@ -292,7 +292,7 @@ function initPageQuery(pageOpt)
 			if (newVal == null)
 				return;
 
-			newVal1 = newVal;
+			var newVal1 = newVal;
 			if (newVal == "null") {
 			}
 			else if (newVal == "empty" || newVal == "''") {

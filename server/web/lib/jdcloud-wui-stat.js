@@ -94,6 +94,7 @@ tmUnit指定时间维度分析的类型，目前支持以下维度：
  */
 function makeTm(tmUnit, tmArr)
 {
+	var fn;
 	if (fn = self.options.statFormatter[tmUnit]) {
 		return fn(tmArr);
 	}

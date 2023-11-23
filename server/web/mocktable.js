@@ -112,7 +112,7 @@ MockTable.prototype.svcfn = function (ac, cb)
 
 MockTable.prototype.regSvc = function (obj)
 {
-	for (ac in this.svc) {
+	for (var ac in this.svc) {
 		obj[this.name + "." + ac] = this.svc[ac];
 	}
 }

@@ -34,7 +34,7 @@ function initPageUdt()
 		var tplCellSys = jpage.find("#tplCellSys").html();
 		var jbtns = jpage.find("#divBtns");
 		$.each(udt.fields, function (i, field) {
-			var attr = {};
+			var attr = {}, tpl;
 			if (field.id == null) {
 				tpl = tplCellSys;
 			}

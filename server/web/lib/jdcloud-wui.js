@@ -1143,7 +1143,7 @@ function parseQuery(s)
 	if (s != "")
 	{
 		var a = s.split('&')
-		for (i=0; i<a.length; ++i) {
+		for (var i=0; i<a.length; ++i) {
 			var a1 = a[i].split("=");
 			var val = a1[1];
 			if (val === undefined)
@@ -2529,7 +2529,7 @@ function text2html(s, pics)
 		ret = s.replace(/^(?:([#-]+)\s+)?(.*)$/mg, function (m, begin, text) {
 			if (begin) {
 				if (begin[0] == '#') {
-					n = begin.length;
+					var n = begin.length;
 					return "<h" + n + ">" + text + "</h" + n + ">";
 				}
 				if (begin[0] == '-') {
@@ -3654,7 +3654,7 @@ function loadJson(url, fnOK, options)
 		dataType: "text",
 		jdFilter: false,
 		success: function (data) {
-			val = self.evalOptions(data, null, function (ex) {
+			var val = self.evalOptions(data, null, function (ex) {
 				app_alert("文件" + url + "出错: " + ex, "e");
 			});
 			fnOK.call(this, val);
@@ -3972,7 +3972,7 @@ function compressImg(fileObj, cb, opt)
 	// 火狐7以下版本要用 img.src = fileObj.getAsDataURL();
 	img.src = window.URL.createObjectURL(fileObj);
 	img.onload = function () {
-		var rv = resizeImg(img);
+		var rv = resizeImg();
 		rv.info = "compress " + rv.name + " q=" + rv.quality + ": " + rv.w0 + "x" + rv.h0 + "->" + rv.w + "x" + rv.h + ", " + (rv.size0/1024).toFixed(0) + "KB->" + (rv.size/1024).toFixed(0) + "KB(rate=" + (rv.size / rv.size0 * 100).toFixed(2) + "%,b64=" + (rv.b64size/1024).toFixed(0) + "KB)";
 		console.log(rv.info);
 		cb(rv);
@@ -4251,7 +4251,7 @@ function makeTree(arr, idField, fatherIdField, childrenField)
     var utf8Decode = function (input) {
         var string = "";
         var i = 0;
-        var c = c1 = c2 = 0;
+        var c = 0, c2 = 0, c3 = 0;
         while (i < input.length) {
             c = input.charCodeAt(i);
             if (c < 128) {
@@ -5070,7 +5070,7 @@ var ajaxOpt = {
 	//dataType: "text",
 	dataFilter: function (data, type) {
 		if (this.jdFilter) {
-			rv = defDataProc.call(this, data);
+			var rv = defDataProc.call(this, data);
 			if (rv !== RV_ABORT)
 				return rv;
 			-- $.active; // ajax调用中断,这里应做些清理
@@ -6786,6 +6786,7 @@ function callInitfn(jo, paramArr)
 	if (attr == null)
 		return;
 
+	var initfn;
 	try {
 		initfn = eval(attr);
 	}
@@ -7756,7 +7757,7 @@ function showDlg(jdlg, opt)
 		title: opt.title
 	}, opt.dialogOpt, WUI.getOptions(jdlg));
 	if (jdlg.is(":visible")) {
-		dlgOpt0 = jdlg.dialog("options");
+		var dlgOpt0 = jdlg.dialog("options");
 		$.extend(dlgOpt, {
 			left: dlgOpt0.left,
 			top: dlgOpt0.top
@@ -9988,6 +9989,7 @@ var Formatter = {
 			if (value == null)
 				return "(无图)";
 
+			var value1;
 			// value is url, not picId. TODO: 支持多图
 			if (! /^\d+([,:]|$)/.test(value)) {
 				var url = "../" + value;
@@ -10536,7 +10538,7 @@ CSS类, 可定义无数据提示的样式
 var GridHeaderMenu = {
 	showMenu: function (pos, jtbl, field) {
 		// 注意id与函数名的匹配
-		jmenu = $('<div class="mnuGridHeader"></div>');
+		var jmenu = $('<div class="mnuGridHeader"></div>');
 		var items = field? GridHeaderMenu.itemsForField: GridHeaderMenu.items;
 		$.each(items, function (i, e) {
 			var je = $(e);
@@ -10656,7 +10658,7 @@ var GridHeaderMenu = {
 			}
 			var arr = [];
 			var MAX_EXAMPLE = 2;
-			for (i=rowStartIdx; i<rows.length; ++i) {
+			for (var i=rowStartIdx; i<rows.length; ++i) {
 				var row = rows[i];
 				var s = row[field];
 				if ($.isArray(s) || $.isPlainObject(s))
@@ -11477,7 +11479,7 @@ JdcloudPage.call(self);
 function parseArgs()
 {
 	if (location.search) {
-		g_args = mCommon.parseQuery(location.search.substr(1));
+		window.g_args = mCommon.parseQuery(location.search.substr(1));
 	}
 }
 

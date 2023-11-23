@@ -1,4 +1,4 @@
-LANG = {
+window.LANG = {
 	提示: "Info",
 	警告: "Warn",
 	出错: "Error",

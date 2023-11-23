@@ -648,7 +648,7 @@ function initPageGallery()
 	});
 
 	function setupImage(ji) {
-		var attId = ji.prop("attId_");
+		var attId = ji.prop("attId_"), url;
 		if (attId) {
 			url = "url(" + getThumbUrl(attId) + ")";
 		}

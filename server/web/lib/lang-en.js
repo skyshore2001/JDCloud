@@ -1,4 +1,4 @@
-LANG = {
+window.LANG = {
 	// menu
 	选择操作: "Menu",
 	退出系统: "Exit",
