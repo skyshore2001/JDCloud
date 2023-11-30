@@ -125,6 +125,8 @@ f
 - 在保存文件时，文件路径使用以下规则: upload/{category}/{date:YYYYMM}/{6位随机数}.{原扩展名}
  例如, 商家图片(category=store)路径为 upload/store/201501/123456.jpg. 用户上传的某图片(category为空)路径可能为 upload/201501/123456.jpg
 
+注意：路径是相对$conf_dataDir配置的地址，默认为server目录下。
+
 **[返回]**
 
 id
@@ -398,3 +400,25 @@ JS:
 	Upload::$categoryMap["resource"] = ["path"=>"%{resource}/%{version}/%f", "sameNameOverwrite"=>true];
 
 sameNameOverwrite表示若重名则覆盖. 默认是重名则自动改名.
+
+## 上传的文件存数据库方案
+
+目前上传文件的存放路径为$conf_DataDir/upload/，如果是单台服务器，访问时是没有问题的。
+如果有双机热备或负载均衡环境，则访问不同的服务器，就无法确定拿到之前保存的文件了。
+
+解决方案：
+
+方案一：使用共享存储，比如引入一个第三方的nas网盘，通过nfs甚至ssh挂载到服务器上，再配置$conf_dataDir把数据目录指向共享盘
+方案二：双机同步，每台服务器上运行个同步进程，在发生变更时实时（比如inotify+rsyn方案）将文件同步到其它服务器。
+方案三：存数据库（其实也是共享存储方案，数据库是独立于这几台服务器的）。在上面条件不具备时，这是部署起来最简单的方案。
+
+为Attachment表添加字段data，类型按最大尺寸来选，blob: 64K; mediumblob: 16M; longblob: 4G，示例：
+
+	ALTER TABLE Attachment add data mediumblob
+
+在plugin/index.php或php/conf.user.php中添加配置项：
+
+	$GLOBALS["conf_upload_storeInDb"] = true;
+
+注意：即使文件保存在DB中，本地也会再存一份。
+

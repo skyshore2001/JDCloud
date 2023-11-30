@@ -424,6 +424,10 @@ function api_upload($env)
 	}
 
 	# 2nd round: save file and add to DB
+	$blobStmt = null;
+	if ($GLOBALS["conf_upload_storeInDb"]) {
+		$blobStmt = $env->DBH->prepare("UPDATE Attachment SET data=? WHERE id=?");
+	}
 	foreach ($files as $f) {
 		# 0: tmpname; 1: fname; 2: orgName; 3: thumbName(optional)
 		list($tmpname, $fname, $orgName, $thumbName) = $f;
@@ -458,6 +462,9 @@ function api_upload($env)
 			"tm" => date(FMT_DT),
 		]);
 		$r = ["id"=>$id, "orgName"=>$orgName, "size"=>filesize($fname), "path"=>$fname];
+		if ($blobStmt) {
+			$blobStmt->execute([file_get_contents($fname), $id]);
+		}
 
 		if ($genThumb) {
 			$rv = resizeImage($fname, $cateConf["w"], $cateConf["h"], $thumbName);
@@ -469,6 +476,9 @@ function api_upload($env)
 					"orgName" => $orgName,
 					"tm" => date(FMT_DT),
 				]);
+				if ($blobStmt) {
+					$blobStmt->execute([file_get_contents($thumbName), $thumbId]);
+				}
 				$r["thumbId"] = $thumbId;
 				dbUpdate("Attachment", ["orgPicId"=>-$thumbId], $id);
 			}
@@ -484,7 +494,7 @@ function api_upload($env)
 
 # NOTE: this function does not conform to the interface standard, it return file data directly or HTTP 404 error
 # please use "exit" instead of "return"
-function api_att()
+function api_att($env)
 {
 	// overwritten the default
 	header("Cache-Control: max-age=99999999");
@@ -525,16 +535,16 @@ function api_att()
 	}
 	if ($id !== null) {
 		if (!$doGetThumb) {
-			$sql = "SELECT path, orgName FROM Attachment WHERE id=$id";
+			$sql = "SELECT id, path, orgName FROM Attachment WHERE id=$id";
 		}
 		else {
 			# t0: thumb, a2: original
-			$sql = "SELECT t0.path, t0.orgName FROM Attachment t0 INNER JOIN Attachment a2 ON t0.id=-a2.orgPicId WHERE a2.id=$id";
+			$sql = "SELECT t0.id, t0.path, t0.orgName FROM Attachment t0 INNER JOIN Attachment a2 ON t0.id=-a2.orgPicId WHERE a2.id=$id";
 		}
 	}
 	else {
 		# t0: original, a2: thumb
-		$sql = "SELECT t0.path, t0.orgName FROM Attachment t0 INNER JOIN Attachment a2 ON t0.id=a2.orgPicId WHERE a2.id=$thumbId";
+		$sql = "SELECT t0.id, t0.path, t0.orgName FROM Attachment t0 INNER JOIN Attachment a2 ON t0.id=a2.orgPicId WHERE a2.id=$thumbId";
 	}
 	$row = queryOne($sql);
 	if ($row === false)
@@ -542,10 +552,23 @@ function api_att()
 		header(HTTP_NOT_FOUND);
 		exit;
 	}
-	list($file, $orgName) = $row;
+	list($picId, $file, $orgName) = $row;
 	if (preg_match('/(http:|https:)/', $file)) {
 		header('Location: ' . $file);
 		jdRet();
+	}
+	if ($GLOBALS["conf_upload_storeInDb"]) {
+		$data = queryOne("SELECT data FROM Attachment WHERE id=" . $picId);
+		$ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+		$mimeType = Upload::$fileTypes[$ext] ?: 'application/octet-stream';
+		if ($doDown === "0" || (!isset($doDown) && preg_match('/^(image|video|audio)/', $mimeType))) {
+			header('Content-Disposition: filename='. Upload::quote($orgName));
+		}
+		else {
+			header('Content-Disposition: attachment; filename='. Upload::quote($orgName));
+		}
+		ApiLog::$instance->updateLog = ["res"=>$file, "ressz" => strlen($data)];
+		jdRet(null, $data);
 	}
 
 	chdir($GLOBALS["conf_dataDir"]);
