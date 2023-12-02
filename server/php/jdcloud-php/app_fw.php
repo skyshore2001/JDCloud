@@ -297,6 +297,16 @@ $GLOBALS["conf_disableSkipLog"] = false;
 $GLOBALS["conf_mssql_translateMysql"] = true;
 $GLOBALS["conf_mssql_useOdbc"] = false;
 
+/**
+@var conf_mssql_translateMysql = true
+
+默认为true，即应用层可以使用部分mysql语法（常用于虚拟字段定义），框架自动转换为sqlite语法:
+
+- 转换 if(cond, t, f) => case when cond then t else f end 
+- 转换 concat(a, b) => (a || b)
+*/
+$GLOBALS["conf_sqlite_translateMysql"] = true;
+
 $GLOBALS["conf_httpCallAsyncPort"] = 80;
 
 /**
@@ -2760,6 +2770,12 @@ class JDPDO_sqlite extends JDPDO
 {
 	function supportNextRowSet() {
 		return false;
+	}
+
+	function query($s, $fetchMode=0, ...$args) {
+		if ($GLOBALS["conf_sqlite_translateMysql"])
+			SqliteCompatible::translateMysqlToSqlite($s);
+	    return parent::query($s, $fetchMode);
 	}
 }
 
