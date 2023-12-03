@@ -3734,7 +3734,7 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 			"cnt" => 0,
 			"idList" => []
 		];
-		$st->getObj(function ($obj) use ($st, &$ret, $bak_SOLO) {
+		$st->handleBatch(function ($obj, &$errors) use ($st, &$ret, $bak_SOLO) {
 			try {
 				$st->beforeAdd($obj);
 				$param = $_GET + [  // 用+而不是array_merge, 允许用户指定参数覆盖，比如可指定submod参数
@@ -3751,7 +3751,12 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 				if ( ($ex instanceof MyException) && $ex->internalMsg != null)
 					$msg .= " (" .$ex->internalMsg. ")";
 				list($row, $n) = $st->getRowInfo();
-				jdRet(E_PARAM, null, "第{$n}行出错(\"" . join(',', $row) . "\"): " . $msg);
+				$errors[] = "第{$n}行出错(\"" . join(',', $row) . "\"): " . $msg;
+				if (count($errors) >= $GLOBALS["conf_batchAddMaxErrors"]) {
+					$errors[] = "忽略更多错误...";
+					return false; // 停止继续处理
+				}
+				return;
 			}
 			++ $ret["cnt"];
 			$ret["idList"][] = $id;
@@ -4424,7 +4429,7 @@ class BatchAddStrategy
 	protected $rowIdx;
 	protected $row;
 
-	// 由getObj设置，当前对象所在行信息。由于在解析对象时会多读一行，getRowInfo优先以该值返回。
+	// 由handleBatch设置，当前对象所在行信息。由于在解析对象时会多读一行，getRowInfo优先以该值返回。
 	protected $objRowIdx;
 	protected $objRow;
 
@@ -4538,13 +4543,18 @@ class BatchAddStrategy
 			return [$this->objRow, $this->objRowIdx];
 		return [$this->row, $this->rowIdx];
 	}
-	// 比getRow层次更高，一次返回一个对象，支持子对象. 回调 handleObj(block={obj, row, rowNum})
-	function getObj($handleObj) {
+	// 比getRow层次更高，一次返回一个对象，支持子对象. 回调 handleObj(block={obj, row, rowNum}, &$errors)
+	// $handleObj()中应将错误写入$errors中，避免直接jdRet()，这样可以批量显示错误; 当它返回false时将停止继续处理。
+	function handleBatch($handleObj) {
+		$errors = [];
 		if (! $this->isTable()) {
 			while (($row = $this->getRow()) != null) {
-				$handleObj($row);
+				$rv = $handleObj($row, $errors);
+				if ($rv === false) {
+					break; // 停止继续处理
+				}
 			}
-			return;
+			goto quit;
 		}
 
 		// for complex subobj
@@ -4620,7 +4630,17 @@ class BatchAddStrategy
 				return false;
 			$lastKey = $key;
 			return true;
-		}, $handleObj);
+		}, function ($obj) use ($handleObj, &$errors) {
+			$rv = $handleObj($obj, $errors);
+			if ($rv === false) {
+				return false; // 停止继续处理
+			}
+		});
+quit:
+		if (count($errors) > 0) {
+			$errMsg = join("\n", $errors);
+			jdRet(E_PARAM, null, $errMsg);
+		}
 	}
 
 	private function rowToLineObj($row, $titleRow) {

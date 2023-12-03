@@ -5315,7 +5315,10 @@ function defDataProc(rv)
 			return RV_ABORT;
 		}
 		logError();
-		self.app_alert(T("操作失败") + ": " + rv[1], "e");
+		var msg = rv[1];
+		if (msg.indexOf("\n") >= 0)
+			msg = "<br><br><xmp>" + msg + "</xmp>";
+		self.app_alert(T("操作失败") + ": " + msg, "e");
 	}
 	else {
 		logError();

@@ -1364,7 +1364,7 @@ readBlock编程模式
 	$curLine = getLine() // 读一行，返回null或false表示结束
 	makeBlock(&$block, $curLine) // 读一行时，添加到block
 	isNewBlock($curLine); // 判断一个新的block开始
-	handleBlock($block) // 处理block
+	handleBlock($block) // 处理block，返回false表示立即结束循环
 
 - opt: {skipStart=false} 可设置忽略开头行
 
@@ -1437,8 +1437,11 @@ function readBlock($getLine, $makeBlock, $isNewBlock, $handleBlock, $opt=[])
 		$curLine = $getLine();
 		$isEnd = ($curLine === false || $curLine === null);
 		if ($isEnd || $isNewBlock($curLine)) {
-			if ($block != null)
-				$handleBlock($block);
+			if ($block != null) {
+				$rv = $handleBlock($block);
+				if ($rv === false)
+					break;
+			}
 			if ($isEnd)
 				break;
 			$block = null; // init

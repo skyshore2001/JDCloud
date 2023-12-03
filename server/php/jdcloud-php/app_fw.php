@@ -323,6 +323,13 @@ $GLOBALS["conf_slowSqlTime"] = 1.0;
 $GLOBALS["conf_slowApiTime"] = 1.0;
 $GLOBALS["conf_slowHttpCallTime"] = 1.0;
 
+/**
+@var conf_batchAddMaxErrors ?=20
+
+导入时，最多允许报错的条目数。
+*/
+$GLOBALS["conf_batchAddMaxErrors"] = 20;
+
 initAppFw();
 // }}}
 
