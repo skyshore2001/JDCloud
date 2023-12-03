@@ -860,8 +860,14 @@ function logit($s, $addHeader=true, $type="trace")
 	else {
 		$s .= "\n";
 	}
-	@$baseDir = $GLOBALS["conf_dataDir"] ?: ".";
-	file_put_contents($baseDir . "/{$type}.log", $s, FILE_APPEND | LOCK_EX);
+	$f = (@$GLOBALS["conf_dataDir"] ?: ".") . "/{$type}.log";
+	if (@$GLOBALS["conf_maxLogFileSize"]) {
+		@$sz = filesize($f);
+		if ($sz > $GLOBALS["conf_maxLogFileSize"]) { // 100M
+			rename($f, "$f.1");
+		}
+	}
+	file_put_contents($f, $s, FILE_APPEND | LOCK_EX);
 }
 
 /**

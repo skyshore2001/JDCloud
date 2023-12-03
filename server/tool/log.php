@@ -21,18 +21,17 @@ $MAX_READ_SZ = @intval($_GET["sz"])?:50000;
 
 $msgs = [];
 
-function loadMsgs()
+function loadMsgs($f, $readSz)
 {
-	global $F, $MAX_READ_SZ;
 	global $msgs;
 
-	@$sz = filesize($F);
+	@$sz = filesize($f);
 	if ($sz === false)
-		return;
+		return 0;
 
-	$fp = fopen($F, "r");
-	if ($sz > $MAX_READ_SZ) {
-		fseek($fp, -$MAX_READ_SZ, SEEK_END);
+	$fp = fopen($f, "r");
+	if ($sz > $readSz) {
+		fseek($fp, -$readSz, SEEK_END);
 	}
 
 	$curMsg = null;
@@ -50,9 +49,13 @@ function loadMsgs()
 		$msgs[] = $curMsg;
 
 	fclose($fp);
+	return min($sz, $readSz);
 }
 
-loadMsgs();
+$rv = loadMsgs($F, $MAX_READ_SZ);
+if ($rv > 0 && $rv < $MAX_READ_SZ) {
+	loadMsgs($F .".1", $MAX_READ_SZ - $rv);
+}
 ?>
 <!DOCTYPE html>
 <html>
