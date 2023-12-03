@@ -880,13 +880,17 @@ query接口子查询示例：
 				dbInsert("OrderLog", [
 					"orderId" => $orderId,
 					"action" => "CR",
-					"tm" => date(FMT_DT)  // 或用mysql表达式 ["now()"]
+					"tm" => date(FMT_DT)  // 或用mysql表达式 dbExpr("now()"]
 				]);
 			};
 		}
 	}
 
 与onAfter类似，加到onAfterActions集合中的函数，如果要修改返回数据，只要在函数参数中声明`&$ret`就可以修改它了。
+
+注意：
+
+- 如果接口返回错误(jdRet或throw Exception，包括DirectReturn), onAfter以及onAfterActions该回调均不执行
 
 (v5.4) 如果要在应用处理完成时添加逻辑，可使用全局对象`$X_APP`的onAfterActions方法，注意这时逻辑不在同一数据库事务中。
 @see $X_APP
@@ -1488,6 +1492,8 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 			}
 		}
 		$this->onValidate();
+		if (param("doValidateOnly/b", false, "G"))
+			jdRet(0);
 	}
 
 /**
@@ -2425,6 +2431,13 @@ uniKey可以指定多个字段，以逗号分隔即可，常用于关联表，�
 
 以上示例是将记录的控制权交给接口调用方的（如前端或后端内部接口调用callSvcInt等）；如果要在后端对象内控制重复记录行为，请参考
 @see AccessControl::checkUniKey
+
+@key doValidateOnly
+
+标准add/set接口支持的URL参数，如果为1，表示只做数据验证，不做实际的添加或更新动作，示例：
+
+	callSvr("Employee.add", {doValidateOnly: 1}, $.noop, {uname:'a'})
+
 */
 	function api_add()
 	{
@@ -3734,13 +3747,17 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 			"cnt" => 0,
 			"idList" => []
 		];
-		$st->handleBatch(function ($obj, &$errors) use ($st, &$ret, $bak_SOLO) {
+		$errors = [];
+		$st->handleBatch(function ($obj) use ($st, &$ret, $bak_SOLO, &$errors) {
 			try {
 				$st->beforeAdd($obj);
 				$param = $_GET + [  // 用+而不是array_merge, 允许用户指定参数覆盖，比如可指定submod参数
 					"useStrictReadonly" => 0,
 					"submode" => "put" // 若走更新接口，处理子表时，自动删除原先的子表项
 				];
+				if (count($errors) > 0) {
+					$param["doValidateOnly"] = 1;
+				}
 				$id = $this->callSvc(null, "add", $param, $obj);
 			}
 			catch (DirectReturn $ex) {
@@ -3761,6 +3778,10 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 			++ $ret["cnt"];
 			$ret["idList"][] = $id;
 		});
+		if (count($errors) > 0) {
+			$errMsg = join("\n", $errors);
+			jdRet(E_PARAM, null, $errMsg);
+		}
 		return $ret;
 	}
 
@@ -4543,18 +4564,17 @@ class BatchAddStrategy
 			return [$this->objRow, $this->objRowIdx];
 		return [$this->row, $this->rowIdx];
 	}
-	// 比getRow层次更高，一次返回一个对象，支持子对象. 回调 handleObj(block={obj, row, rowNum}, &$errors)
-	// $handleObj()中应将错误写入$errors中，避免直接jdRet()，这样可以批量显示错误; 当它返回false时将停止继续处理。
+	// 比getRow层次更高，一次返回一个对象，支持子对象. 
+	// 回调 handleObj(block={obj, row, rowNum}), 返回false时表示停止继续处理。
 	function handleBatch($handleObj) {
-		$errors = [];
 		if (! $this->isTable()) {
 			while (($row = $this->getRow()) != null) {
-				$rv = $handleObj($row, $errors);
+				$rv = $handleObj($row);
 				if ($rv === false) {
 					break; // 停止继续处理
 				}
 			}
-			goto quit;
+			return;
 		}
 
 		// for complex subobj
@@ -4630,17 +4650,12 @@ class BatchAddStrategy
 				return false;
 			$lastKey = $key;
 			return true;
-		}, function ($obj) use ($handleObj, &$errors) {
-			$rv = $handleObj($obj, $errors);
+		}, function ($obj) use ($handleObj) {
+			$rv = $handleObj($obj);
 			if ($rv === false) {
-				return false; // 停止继续处理
+				return false; // readBlock停止继续处理
 			}
 		});
-quit:
-		if (count($errors) > 0) {
-			$errMsg = join("\n", $errors);
-			jdRet(E_PARAM, null, $errMsg);
-		}
 	}
 
 	private function rowToLineObj($row, $titleRow) {
