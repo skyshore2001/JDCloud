@@ -5,7 +5,7 @@
 参数:
 
 - f: 指定显示哪个日志, 路径是相对于server目录下的位置, 不包含.log后缀；
-如果再指定参数f1=1，则读备份文件如trace.log.1
+如果再指定参数f1=1，则读备份文件如trace.log.1 (后端logit函数写日志文件超100M时，将自动转存为xx.log.1文件，避免日志一直增长)
 - sz: 指定一次取多少字节显示
 - page: 指定页码，默认为-1，即最后一页，下一页则为page=-2；也可以为1, 2等正数，表示从头开始读。注意日志显示时仍为倒序。
 - noHeader: 设置为1时不显示标题.用于直接集成在系统中.
@@ -15,7 +15,9 @@
 */
 header("Cache-Control: no-cache");
 header("Content-Type: text/html; charset=UTF-8");
-include_once("../php/conf.user.php");
+
+// 加载配置项如 $conf_dataDir
+@include_once("../php/conf.user.php");
 
 $F0 = @$_GET["f"] ?: "trace";
 $F = (@$GLOBALS["conf_dataDir"] ?: "..") . "/{$F0}.log";
