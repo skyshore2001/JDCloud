@@ -28,6 +28,7 @@ if (@$_GET["f1"]) {
 }
 
 $msgs = [];
+$pageCnt = 1;
 
 function loadMsgs($f, $pagesz, $page = -1)
 {
@@ -35,19 +36,19 @@ function loadMsgs($f, $pagesz, $page = -1)
 
 	@$sz = filesize($f);
 	if ($sz === false)
-		return 0;
+		return;
 
 	$fp = fopen($f, "r");
 	$pos = 0;
 	if ($page > 0) {
 		$pos = ($page-1) * $pagesz;
 		if ($pos > $sz)
-			return 0;
+			return;
 	}
 	else if ($page < 0) {
 		$pos = $sz - (-$page * $pagesz);
 		if ($pos + $pagesz < 0)
-			return 0;
+			return;
 		if ($pos < 0) {
 			$pos = 0;
 		}
@@ -71,14 +72,36 @@ function loadMsgs($f, $pagesz, $page = -1)
 		$msgs[] = $curMsg;
 
 	fclose($fp);
-	return min($pagesz, $sz);
 }
 
-$rv = loadMsgs($F, $PAGE_SZ, $PAGE);
-if ($PAGE == -1 && $rv > 0 && $rv < $PAGE_SZ) {
-	loadMsgs($F .".1", $PAGE_SZ - $rv);
+function showPager()
+{
+	global $pageCnt;
+	if ($pageCnt <= 1)
+		return;
+
+	global $PAGE;
+	echo('<div class="pager">');
+	$page = $PAGE < 0? ($PAGE+1): ($PAGE-1);
+	if (abs($page) > 0 && abs($page) <= $pageCnt) {
+		$p = http_build_query(array_merge($_GET, ["page"=>$page]));
+		echo("<a href=\"?$p\">上一页</a> ");
+	}
+	echo("{$PAGE}/{$pageCnt}页");
+	$page = $PAGE < 0? ($PAGE-1): ($PAGE+1);
+	if (abs($page) > 0 && abs($page) <= $pageCnt) {
+		$p = http_build_query(array_merge($_GET, ["page"=>$page]));
+		echo(" <a href=\"?$p\">下一页</a>");
+	}
+	echo('</div>');
 }
-$showNext = ($rv >= $PAGE_SZ);
+
+@$filesz = filesize($F);
+$pageCnt = ceil($filesz / $PAGE_SZ);
+if ($PAGE == -1 && $filesz < $PAGE_SZ) {
+	loadMsgs($F .".1", $PAGE_SZ - $filesz);
+}
+loadMsgs($F, $PAGE_SZ, $PAGE);
 ?>
 <!DOCTYPE html>
 <html>
@@ -92,6 +115,9 @@ p {
 xmp {
   overflow: auto;
 }
+.pager {
+	float: right;
+}
 </style>
 
 <?php if (! @$_GET["noHeader"]) { ?>
@@ -101,6 +127,7 @@ xmp {
 <a href="?f=debug&sz=<?=$PAGE_SZ?>">debug</a>
 <a href="?f=slow&sz=<?=$PAGE_SZ?>">slow</a>
 <a href="?f=daemon/jdserver&sz=<?=$PAGE_SZ?>">jdserver</a>
+<?php showPager(); ?>
 
 <hr/>
 <?php
@@ -126,11 +153,7 @@ else {
 	}
 }
 
-if ($showNext) {
-	$_GET["page"] = $PAGE>0? ($PAGE+1): ($PAGE-1);
-	$p = http_build_query($_GET);
-	echo("<a href=\"?$p\">下一页</a>");
-}
+showPager();
 ?>
 </body>
 </html>
