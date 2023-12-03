@@ -514,7 +514,7 @@ class UpgHelper
 			return;
 
 		if (! isset($opt["dbh"])) {
-			$createdb = $opt["createdb"];
+			$createdb = @$opt["createdb"];
 			$fnConfirm = function (&$connstr) use (&$createdb) {
 				global $IS_CLI;
 				if ($IS_CLI) {
