@@ -2791,7 +2791,13 @@ class JDPDO_sqlite extends JDPDO
 	function query($s, $fetchMode=0, ...$args) {
 		if ($GLOBALS["conf_sqlite_translateMysql"])
 			SqliteCompatible::translateMysqlToSqlite($s);
-	    return parent::query($s, $fetchMode);
+		return parent::query($s, $fetchMode);
+	}
+
+	function exec($sql, $getInsertId = false) {
+		if ($GLOBALS["conf_sqlite_translateMysql"])
+			SqliteCompatible::translateMysqlToSqlite($sql);
+		return parent::exec($sql, $getInsertId);
 	}
 }
 
@@ -2848,7 +2854,7 @@ class JDPDO_mssql extends JDPDO
 	function query($s, $fetchMode=0, ...$args) {
 		if ($GLOBALS["conf_mssql_translateMysql"])
 			MssqlCompatible::translateMysqlToMssql($s);
-	    return parent::query($s, $fetchMode);
+		return parent::query($s, $fetchMode);
 	}
 
 	function acceptAliasInGroupBy() {
