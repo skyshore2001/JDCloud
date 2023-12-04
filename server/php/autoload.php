@@ -15,8 +15,14 @@
 
 @key conf_classDir = ["class", "class/ext"]
 
-配置php类文件的路径，可以用相对或绝对路径。
-示例：添加一个类文件路径：
+配置php类文件的路径，可以用相对路径（相对于$BASE_DIR/php目录）或绝对路径。
+按惯例，数组第1元素为主类目录，第2元素为自动生成的addon类目录。
+
+示例：如果服务目录不可写，或是同一份代码配置了多个实例（用$conf_dataDir区分数据目录）且各实例addon有差异，可在conf.user.php中配置: 
+
+	$GLOBALS["conf_classDir"][1] = $GLOBALS["conf_dataDir"] . "/class/ext";
+
+示例：添加一个类文件搜索路径：
 
 	$GLOBALS["conf_classDir"][] = "/var/www/html/saic/php/class/erp_saic";
 	// $GLOBALS["conf_classDir"][] = "D:/project/saic/server/php/class/erp_saic";
