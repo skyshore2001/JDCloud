@@ -177,7 +177,7 @@ https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-micr
 
 @see ExtMock
 
-## session管理
+## session会话管理
 
 - 应用的session名称为 "{app}id", 如应用名为 "user", 则session名为"userid". 因而不同的应用同时调用服务端也不会冲突。
 - 保存session文件的目录为 $conf_dataDir/session, 可使用环境变量P_SESSION_DIR重定义(推荐配置$conf_dataDir而不是P_SESSION_DIR)。
@@ -187,7 +187,10 @@ https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-micr
 @key P_URL_PATH 环境变量。项目的URL路径，如"/jdcloud", 用于定义cookie生效的作用域，也用于拼接相对URL路径。
 @see getBaseUrl
 
-PHP默认的session过期时间为1440s(24分钟)，每次在使用session时，以1/1000的概率检查过期。
+PHP默认的session过期时间为1440s(24分钟)，每次在使用session时，以1/1000的概率检查过期(session.gc_divisor=1000, session.gc_probability=1)。
+查看PHP默认配置可以用：`php -r 'phpinfo();' |grep -i session.gc` 
+注意：在centos7/8中默认配置是1/1000，在ubuntu20+中默认配置为0/1000即禁用了概率回收机制，但在/etc/cron.d/php中以定时任务方式配置了每30分钟清理一次。
+
 要配置它，可以应用程序的conf.user.php中设置，如：
 
 	ini_set("session.gc_maxlifetime", "2592000"); // 30天过期
