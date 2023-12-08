@@ -50,5 +50,7 @@ class SqliteCompatible
 			}
 			return $m;
 		}, $sql);
+		# TODO: UPDATE sqlite_sequence SET seq = maxId + 2 WHERE name = 'tableName';
+		$sql = preg_replace('/TRUNCATE /isx', 'DELETE FROM ', $sql);
 	}
 }
