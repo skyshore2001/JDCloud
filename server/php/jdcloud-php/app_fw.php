@@ -206,6 +206,19 @@ PHP默认的session过期时间为1440s(24分钟)，每次在使用session时，
 
 注意：前端会记住cookie过期时间，假如后端再次改成保留10天，由于前端已记录的是7天过期，无法立即更新，只能清除cookie后再请求才能生效。
 
+@class SessionInDb
+
+支持将会话存在数据库表Session中。在多机部署应用服务时，有时不方便用文件保存会话，这时可以切换为用数据库保存。
+先在DESIGN.md中声明表并使用upgrade工具创建表:
+
+	@Session: id, name, value(t), tm
+
+然后在conf.php或conf.user.php中添加：
+
+	// 使用数据库保存会话
+	ini_set("session.save_headler", "user");
+	session_set_save_handler(new SessionInDb(), true);
+
 ## 动态修改环境配置项
 
 在程序中可动态设置部分参数，比如一般建议debug日志只记错误（环境变量P_DEBUG_LOG设置为2），若想对于对外开发的某些接口调用记录所有日志，可以改为1，如：
