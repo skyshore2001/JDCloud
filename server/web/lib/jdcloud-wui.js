@@ -9748,7 +9748,7 @@ function getExportHandler(jtbl, ac, param)
 		var p0 = $.extend({}, {
 			fmt: "excel",
 			pagesz: -1
-		}, param, ev.exportParam);
+		}, param, ev && ev.exportParam);
 		if (ac == null) {
 			if (jtbl.size() == 0 || !jtbl.hasClass("datagrid-f"))
 				throw "error: bad datagrid: \"" + jtbl.selector + "\"";
