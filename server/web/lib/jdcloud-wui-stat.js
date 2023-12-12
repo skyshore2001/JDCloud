@@ -1119,6 +1119,9 @@ function initChart(chartTable, statData, seriesOpt, chartOpt)
 		});
 
 		chartOpt0 = {
+			grid: {
+				containLabel: true // fix: 列标签显示不全
+			},
 			tooltip: {
 				trigger: 'axis'
 			},
