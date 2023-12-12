@@ -900,9 +900,9 @@ function rs2Stat(rs, opt)
 		else {
 			// 补日期
 			var tmArr = xarr(row);
-			x = tmArr[0]? makeTm(opt.tmUnit, tmArr): null;
+			x = !isNaN(tmArr[0])? makeTm(opt.tmUnit, tmArr): null;
 			var completeCnt = 0;
-			if (lastX) {
+			if (lastX && x != null) {
 				while (lastX != x) {
 					lastTmArr = nextTm(opt.tmUnit, lastTmArr);
 					var nextX = makeTm(opt.tmUnit, lastTmArr);
@@ -1044,6 +1044,9 @@ function runStat(jo, jcharts, setStatOpt)
 					delete rs2StatOpt.formatter;
 				}
 			}
+		}
+		else if (gres == "") {
+			rs2StatOpt.xcol = rs2StatOpt.ycol = [0];
 		}
 		else {
 			rs2StatOpt.xcol = rangeArr(0, gresArr.length);
