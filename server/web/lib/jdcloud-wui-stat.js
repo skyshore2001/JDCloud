@@ -438,7 +438,7 @@ function rangeArr(from, length)
 
 将query接口返回的数据，转成统计图需要的数据格式。
 
-@param opt {xcol, ycol, gcol, gtext, maxSeriesCnt, tmUnit, formatter, formatterX}
+@param opt {xcol, ycol, gcol, gtext, maxSeriesCnt, tmUnit, formatter, formatterX, noTmInsert=0}
 
 @param opt.xcol 指定X轴数据，可以是一列或多列，如0表示第0列, 值[0,1]表示前2列。可以没有x列，用空数组`[]`表示。
 @param opt.ycol 指定值数据，可以是一列或多列。
@@ -670,6 +670,8 @@ tmUnit用于指定时间字段: "y,m"-年,月; "y,m,d"-年,月,日; "y,w"-年,�
 	y,m,d,cateName,sum  完整参数为: { tmUnit: "y,m,d", xcol:[0,1,2], gcol:3, ycol: 4 }
 	y,m,d,cateId,cateName,sum  完整参数为:	{ tmUnit: "y,m,d", xcol:[0,1,2], gcol:3, gtext:4, ycol: 5 }
 
+指定tmUnit后会自动补齐缺失日期，并按预定格式显示。如果不想补日期，可以设置`noTmInsert:1`选项。
+
 示例一：
 
 	var rs = {
@@ -900,9 +902,10 @@ function rs2Stat(rs, opt)
 		else {
 			// 补日期
 			var tmArr = xarr(row);
-			x = !isNaN(tmArr[0])? makeTm(opt.tmUnit, tmArr): null;
+			var doTmInsert = !opt.noTmInsert && /^\d/.test(tmArr[0]);
+			x = doTmInsert? makeTm(opt.tmUnit, tmArr): xtext(tmArr);
 			var completeCnt = 0;
-			if (lastX && x != null) {
+			if (doTmInsert && lastX) {
 				while (lastX != x) {
 					lastTmArr = nextTm(opt.tmUnit, lastTmArr);
 					var nextX = makeTm(opt.tmUnit, lastTmArr);
@@ -917,14 +920,16 @@ function rs2Stat(rs, opt)
 					}
 				}
 			}
-			lastTmArr = tmArr;
-			lastX = x;
-			if (completeCnt > 0) {
-				$.each(ycols, function (i, ycol) {
-					var y = 0; // y默认补0
-					for (var j=0; j<completeCnt; ++j)
-						yData[i].data.push(y);
-				});
+			if (doTmInsert) {
+				lastTmArr = tmArr;
+				lastX = x;
+				if (completeCnt > 0) {
+					$.each(ycols, function (i, ycol) {
+						var y = 0; // y默认补0
+						for (var j=0; j<completeCnt; ++j)
+							yData[i].data.push(y);
+					});
+				}
 			}
 			// xData.push(x);
 			xData.push(opt.formatterX? xtext(tmArr): x);

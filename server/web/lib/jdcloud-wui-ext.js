@@ -3473,6 +3473,11 @@ function showDataReport(opt, showPageOpt)
 				ycol: range(sumCol, data1.h.length),
 				tmUnit: opt.tmUnit
 			};
+			if (opt.chartType == "pie") {
+				rs2StatOpt.maxSeriesCnt = 10;
+				if (rs2StatOpt.tmUnit)
+					rs2StatOpt.noTmInsert = 1;
+			}
 			var seriesOpt = {
 				type: opt.chartType || "line",
 //				stack: rs2statopt.ycol.length>1? "X": undefined // 堆叠柱图
