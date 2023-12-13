@@ -1,5 +1,20 @@
 <?php
+/*
+@class SessionInDb
 
+支持将会话存在数据库表Session中。在多机部署应用服务时，有时不方便用文件保存会话，这时可以切换为用数据库保存。
+先在DESIGN.md中声明表并使用upgrade工具创建表:
+
+	@Session: id, name, value(t), tm
+
+然后在conf.php或conf.user.php中添加：
+
+	// 使用数据库保存会话
+	session_set_save_handler(new SessionInDb(), true);
+	// ini_set("session.gc_maxlifetime", "1440"); // 配置会话超时时间，默认24分钟
+
+注意：无须配置`ini_set("session.save_handler", "user");`，在调用session_set_save_handler之后该配置项的值会自动变成"user"
+*/
 class SessionInDb implements SessionHandlerInterface
 {
 	private $id;

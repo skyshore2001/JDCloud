@@ -216,8 +216,8 @@ PHP默认的session过期时间为1440s(24分钟)，每次在使用session时，
 然后在conf.php或conf.user.php中添加：
 
 	// 使用数据库保存会话
-	ini_set("session.save_headler", "user");
 	session_set_save_handler(new SessionInDb(), true);
+	// ini_set("session.gc_maxlifetime", "1440"); // 配置会话超时时间，默认24分钟
 
 ## 动态修改环境配置项
 
