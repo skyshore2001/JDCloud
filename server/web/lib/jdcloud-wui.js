@@ -5317,7 +5317,7 @@ function defDataProc(rv)
 		logError();
 		var msg = rv[1];
 		if (msg.indexOf("\n") >= 0)
-			msg = "<br><br><xmp>" + msg + "</xmp>";
+			msg = "<br><br><xmp style='max-height:50vh ;'>" + msg + "</xmp>";
 		self.app_alert(T("操作失败") + ": " + msg, "e");
 	}
 	else {
