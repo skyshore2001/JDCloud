@@ -10601,9 +10601,26 @@ var GridHeaderMenu = {
 		// {name/字段名, title/标题, cmt/备注?, example/示例?}
 		var varr = WUI.list2varr(param.res, " ", ",");
 		var resArr = WUI.rs2Array({h:["name","title"], d:varr});
-		var rows = jtbl.datagrid("getData").rows;
-		var sel = jtbl.datagrid("getSelected");
-		var rowStartIdx = sel? jtbl.datagrid("getRowIndex", sel): 0;
+		var rows, rowStartIdx;
+		if (datagrid == "datagrid") {
+			rows = jtbl.datagrid("getData").rows;
+			var sel = jtbl.datagrid("getSelected");
+			rowStartIdx = sel? jtbl.datagrid("getRowIndex", sel): 0;
+		}
+		else {
+			rows = jtbl.treegrid("getData");
+			var sel = jtbl.treegrid("getSelected") || rows[0];
+			if (sel) {
+				var row = $.extend({}, sel);
+				delete row.children;
+				delete row.state;
+				delete row.checkState;
+				delete row.checked;
+				delete row._parentId;
+				rows = [row];
+			}
+			rowStartIdx = 0;
+		}
 		if (rows.length > 0) {
 			var colMap = {};
 			$.each(resArr, function (i, res) {
