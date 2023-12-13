@@ -10643,7 +10643,7 @@ var GridHeaderMenu = {
 		if ($("#styleFieldInfo").size() == 0) {
 			var style = "<style id='styleFieldInfo'>" + 
 				".dlgFieldInfo .datagrid-cell { white-space: normal }" +
-				".dlgFieldInfo .example { color: blue; font-size: 0.6em }" +
+				".dlgFieldInfo .example { color: blue; font-size: 0.8em }" +
 				"</style>";
 			$(style).appendTo(document.head);
 		}
