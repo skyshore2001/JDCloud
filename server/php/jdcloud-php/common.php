@@ -1188,13 +1188,13 @@ function pivot($objArr, $gcols, $ycolCnt=1, $pivotSumField=null, $gres=null)
 		$sumRow = [];
 		foreach ($ret as &$row) {
 			$coli = 0;
-			$rowSum = null;
+			$sumCol = null;
 			foreach ($row as $col=>$e) {
 				if ($coli++ < $xcolCnt || !$e) {
 					continue;
 				}
 				if ($ycolCnt == 1) {
-					$rowSum += $e;
+					$sumCol += $e;
 					$sumRow[$col] += $e;
 					if ($addSumCol) {
 						$sumRow[$pivotSumField] += $e;
@@ -1202,7 +1202,7 @@ function pivot($objArr, $gcols, $ycolCnt=1, $pivotSumField=null, $gres=null)
 				}
 				else {
 					for ($i=0; $i<$ycolCnt; ++$i) {
-						$rowSum[$i] += $e[$i];
+						$sumCol[$i] += $e[$i];
 						$sumRow[$col][$i] += $e[$i];
 						if ($addSumCol) {
 							$sumRow[$pivotSumField][$i] += $e[$i];
@@ -1210,14 +1210,15 @@ function pivot($objArr, $gcols, $ycolCnt=1, $pivotSumField=null, $gres=null)
 					}
 				}
 			}
-			if ($addSumCol)
-				$row[$pivotSumField] = $rowSum;
+			if ($addSumCol) {
+				$row[$pivotSumField] = myround($sumCol, 6);
+			}
 		}
 		if (count($ret) > 1) {
 			if ($xcolCnt > 0) {
 				$sumRow[$xcols[0]] = $pivotSumField;
 			}
-			$ret[] = $sumRow;
+			$ret[] = myround($sumRow, 6);
 		}
 	}
 	return $ret;
@@ -1226,18 +1227,25 @@ function pivot($objArr, $gcols, $ycolCnt=1, $pivotSumField=null, $gres=null)
 /**
 @fn myround($val, $n=0)
 
-保留指定小数点位数，返回字符串。如果有多余的0则删除。
+如果$val是数值，按指定小数位数进行四舍五入，返回数值。
+如果$val是个数组，则对数组中每项分别处理后返回新数组。
+否则原样返回。
 
-注意：php的round返回的是浮点数，不精确。比如0.53会返回0.53000000000000003
-而number_format函数尾部可能会有多余的0.
+注意：php的round返回的浮点数不精确。比如0.53会返回0.53000000000000003
+而number_format函数尾部可能会有多余的0, 且是字符串
 */
 function myround($val, $n=0)
 {
+	if (is_array($val)) {
+		return array_map(function ($e) use ($n) {
+			return myround($e, $n);
+		}, $val);
+	}
+	if (!is_numeric($val))
+		return $val;
 	$s = number_format($val, $n, ".", "");
-	// 去除多余的0或小数点
-	if (strpos($s, '.') !== false)
-		$s = preg_replace('/\.?0+$/', '', $s);
-	return $s;
+	// 转回数值
+	return floatval($s);
 }
 
 /**
