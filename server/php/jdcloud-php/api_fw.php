@@ -3172,11 +3172,23 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		}
 	}
 
+/**
+@var JDEnv::$MAX_DEBUG_LOG_CNT=2000
+
+调试日志最大条目数，默认2000条。
+达到极限时会清除掉前一半后继续记录，以避免内存耗尽。
+*/
+	static $MAX_DEBUG_LOG_CNT = 2000;
 	function addLog($data, $logLevel=0) {
 		if ($this->DBG_LEVEL >= $logLevel)
 		{
 			$this->dbgInfo[] = $data;
-			return count($this->dbgInfo);
+			$cnt = count($this->dbgInfo);
+			if ($cnt >= self::$MAX_DEBUG_LOG_CNT) {
+				array_splice($this->dbgInfo, 0, self::$MAX_DEBUG_LOG_CNT/2, ["... skip early logs"]);
+				$cnt = count($this->dbgInfo);
+			}
+			return $cnt;
 		}
 	}
 	// logHandle: return by addLog
