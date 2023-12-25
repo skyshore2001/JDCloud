@@ -1994,6 +1994,17 @@ function getVarsFromExpr($expr)
 		// unset($sf); // 手工调用，立即保存。一般无须调用。
 	} // 当$sf变量出作用域后，就会自动保存，即使中途有异常，也会自动保存。
 
+上面无论是否出异常都会保存，如果只想在正常时才保存，可在异常时调用rollback：
+
+	$sf = new JDStatusFile("cleanData.json", $stat);
+	try {
+		...
+		$sf->save();
+	}
+	catch (Exception $ex) {
+		$sf->rollback();
+	}
+
 注意：
 
 - 保存前会检查$stat数据是否有变化，无变化时不保存。
@@ -2029,6 +2040,9 @@ class JDStatusFile
 			}
 			$this->stat0 = $this->stat;
 		}
+	}
+	function rollback() {
+		$this->stat = $this->stat0;
 	}
 	function __destruct() {
 		$this->save();
