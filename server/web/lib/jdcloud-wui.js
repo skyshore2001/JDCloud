@@ -5298,7 +5298,11 @@ function defDataProc(rv)
 		}
 
 		if (rv[0] == E_NOAUTH) {
-			if (self.tryAutoLogin()) {
+			// 第三方认证
+			if (g_data.initClient && g_data.initClient.userInfo) {
+				self.showLogin();
+			}
+			else if (self.tryAutoLogin()) {
 				$.ajax(this);
 			}
 // 				self.popPageStack(0);
