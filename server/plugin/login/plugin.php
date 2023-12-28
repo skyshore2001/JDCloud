@@ -78,6 +78,12 @@
 				$_SESSION["storeId"] = $storeId ?: 0;
 			}
 		}
+		function onLogout($type)
+		{
+			if ($type == "emp") {
+				// ...
+			}
+		}
 	}
 
 */
@@ -180,6 +186,9 @@ class LoginImpBase
 	{
 	}
 
+	function onLogout($type)
+	{
+	}
 /**
 @fn LoginImpBase.onWeixinLogin($userInfo, $rawData)
 
@@ -593,6 +602,10 @@ function api_whoami()
 
 function api_logout()
 {
+	$type = getJDEnv()->appType;
+	$imp = LoginImpBase::getInstance();
+	$imp->onLogout($type);
+
 	@session_destroy();
 	Login::supportOneLogin(true);
 	return "OK";
