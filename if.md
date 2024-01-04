@@ -7,11 +7,15 @@
 
 本文档调用示例使用JS函数`callSvr`表示：
 
-	callSvr(调用名, URL参数/可选, $.noop(表示空的回调函数，用来分隔URL和POST参数), POST参数/可选, 其它选项/可选)
+	callSvr(调用名, URL参数(可不填), $.noop(占位标记，它后面跟着POST参数), POST参数/可选, 其它选项/可选)
+
+传入有POST参数则使用POST方法调用，否则使用GET方法调用。
 
 比如，下面表示同时传了URL参数id和POST参数amount：
 
 	callSvr("Ordr.set", {id: 100}, $.noop, {amount: 99.9});
+
+示例中调用名为Ordr.set，意味着接口完整URL地址为`$BASE_URL/Ordr.set`；传入了POST参数，意味着应使用POST方法。
 
 ## 通用机制
 
@@ -249,22 +253,128 @@ timestamp为unix时间戳（可由C语言`time()`生成，或Java/Javascript的`
 
 注意: 时间戳2小时内有效。
 
-## 设置店铺状态
+## 查询工单列表
 
-	POST $BASE_URL/Store.set?id={id}&_sign={sign}
-	
-	pause={pause}&timestamp={timestamp}
+	Ordr.query
 
-参数：
+**URL参数**
 
-- id: 店铺编号。
-- pause: 1-因低温暂停服务, 0-恢复正常服务
+- fmt: String. 固定填写"list"。
 
-调用成功返回
+**POST参数**
 
-	[0, "OK"]
+- cond: 查询状态为生产中的工单，填写`{"status":"ST"}` (JSON对象)
 
-其中0表示接口调用成功。调用失败时返回示例：
+**返回字段**
+
+- id: 工单编号。
+- status: 工件生产状态. Enum(CR-新创建,ST-生产中,RE-已完成,CA-已取消)。有参数for=exec时，只返回CR或ST状态。
+- itemName: 产品名
+- qty: 生产数量
+- flowName: 工艺名
+- createTm: 创建时间，格式如"2020-11-10 10:10:10"
+
+调用示例:
+
+	callSvr("Ordr.query", {fmt: "list"}, $.noop, {cond: {status: "ST"}})
+
+调用成功返回示例:
+
+	[
+		0,
+		{
+			"list": [{
+				"id": 30,
+				"status": "ST",
+				"itemName": "产品1",
+				"qty": 100,
+				"flowName": "Falcon系列成品",
+				"createTm": "2020-11-10 10:10:10"
+			}, {
+				...
+			}],
+			"nextkey": 144
+		}
+	]
+
+可以用返回的pagekey取下一页：
+
+	callSvr("Ordr.query", {fmt: "list", pagekey: 144}, $.noop, {cond: {status: "ST"}})
+
+调用失败时返回示例：
 
 	[1, "参数不正确"]
+
+## 查询工单明细
+
+	Ordr.get
+	
+**URL参数**
+
+- id: Integer. 工单编号。必填
+- for: String. 固定填写`exec`。
+
+**返回字段**
+
+- id: 工单编号。
+- code: 工单编码。
+- status: 工件生产状态. Enum(CR-新创建,ST-生产中,RE-已完成,CA-已取消)
+- itemName: 产品名
+- qty: 生产数量
+- flowName: 工艺名
+- createTm: 创建时间
+- orderConf: JSON: [{ name, value}]。配置信息. 如果指定了confName则返回，且confName中有多项则返回多项。
+
+调用示例:
+
+	callSvr("Ordr.get", {id: 30, for: "exec"})
+
+调用成功返回示例:
+
+	[
+		0,
+		{
+			"id": 30,
+			"status": "ST",
+			"itemName": "产品1",
+			"qty": 100,
+			"flowName": "Falcon系列成品",
+			"createTm": "2020-11-10 10:10:10",
+			"orderConf": [
+				{"name":"default", "value":{"参数1":"值1", "参数2":"值2"} }
+			]
+		}
+	]
+
+## 上报不良品
+
+	Fault.add
+
+**POST参数**
+
+- snId: 必填，工件编号
+- name: 必填，不良现象
+- dscr: 不良原因及处理情况
+- cmt: 备注
+- pics: 图片编号列表，如`101,102`，图片使用upload接口上传并返回编号。
+- label: 标签。空格分隔的一组标签，如`标签1 标签2`。
+
+**返回字段**
+
+返回新增的不良品编号。
+
+调用示例：
+
+	callSvr("Fault.add", $.noop, {
+		snId: 100,
+		name: "不良现象",
+		dscr: "不良原因”，
+		cmt: "备注",
+		pics: "101,102",
+		label: "标签1"
+	});
+
+调用成功返回示例：
+
+	[0, 90]
 
