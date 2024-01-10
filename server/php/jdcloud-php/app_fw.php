@@ -314,7 +314,7 @@ $GLOBALS["conf_mssql_translateMysql"] = true;
 $GLOBALS["conf_mssql_useOdbc"] = false;
 
 /**
-@var conf_mssql_translateMysql = true
+@var conf_sqlite_translateMysql = true
 
 默认为true，即应用层可以使用部分mysql语法（常用于虚拟字段定义），框架自动转换为sqlite语法:
 
@@ -347,7 +347,7 @@ $GLOBALS["conf_slowHttpCallTime"] = 1.0;
 $GLOBALS["conf_batchAddMaxErrors"] = 20;
 
 /**
-@var conf_batchAddMaxErrors ?=100000000
+@var conf_maxLogFileSize ?=100000000
 
 写日志文件的最大字节数，默认为100MB，例如写trace.log文件，当超过100MB后会自动转存为trace.log.1。
 这样的话写trace日志最多消耗约200MB空间。
