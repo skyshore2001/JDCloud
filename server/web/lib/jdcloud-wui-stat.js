@@ -936,7 +936,13 @@ function rs2Stat(rs, opt)
 		}
 	
 		$.each(ycols, function (i, ycol) {
-			var y = parseFloat(row[ycol]) || 0; // y默认补0
+			var y;
+			if (isNaN(row[ycol])) {  // 可以为null, 用seriesOpt={connectNulls: true}选项控制折线图忽略null值
+				y = row[ycol];
+			}
+			else {
+				y = parseFloat(row[ycol]);
+			}
 			yData[i].data.push(y);
 		});
 	});
@@ -1102,6 +1108,7 @@ function initChart(chartTable, statData, seriesOpt, chartOpt)
 
 	var seriesOpt1 = $.extend(true, {
 		type: 'line',
+		connectNulls: true,
 	}, seriesOpt);
 	chartOpt = $.extend(true, {}, chartOpt);
 
