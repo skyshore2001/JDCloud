@@ -4279,7 +4279,7 @@ function makeTree(arr, idField, fatherIdField, childrenField)
             input = utf8Encode(input);
             var key = keyString;
             if (enhance) {
-                var n = self.randInt(1,63);
+                var n = enhance == 2? (input.length%64 +1): self.randInt(1,63);
                 var n1 = (n+input.length) % 64;
                 key = key.substr(n,64-n) + key.substr(0, n) + ' '; // last is changed to space for trim
                 output = keyString.charAt(n) + key.charAt(n1);
@@ -5456,6 +5456,8 @@ function makeUrl(action, params)
 			}
 		}
 		xparam = opt.xparam;
+		if (xparam && /(att|pic)$/i.test(action))
+			xparam = 2;
 	}
 	else {
 		if (location.protocol == "file:") {
@@ -5486,7 +5488,7 @@ function makeUrl(action, params)
 	var p = $.param(params);
 	// 无参数时，也会设置xp=1，用于通知callSvr对post内容加密
 	if (xparam)
-		p = "xp=" + (p? self.base64Encode(p, true): 1);
+		p = "xp=" + (p? self.base64Encode(p, xparam): 1);
 	var ret = mCommon.appendParam(url, p);
 	return makeUrlObj(ret);
 
@@ -11475,6 +11477,15 @@ self.options = {
 
 /**
 @var WUI.options.xparam
+
+通讯加密。默认为1（开启），在后端接口返回当前是测试模式时，会改为0（关闭）。
+也可以在chrome控制台中直接修改，如MUI.options.xparam=0。
+
+URL参数加密后在URL参数中仅保留xp={加密值}, 即使没有URL参数也会强制加上xp=1以标识开启了加密；
+注意URL加密值每次会不一样，这将破坏浏览器的缓存机制，作为特例，对于以att/pic结尾的接口（如"att", "debugPic"等接口，按惯例为返回文件或图片的接口，一般支持缓存），在makeUrl/callSvc中加密时每次URL保持一致。
+设置WUI.options.xparam=2也会让每次加密后的URL相同。
+
+POST参数也将整体加密，且在contentType中会加上";xparam=1"标记。
  */
 	xparam: 1,
 
