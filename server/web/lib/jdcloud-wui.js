@@ -2411,11 +2411,12 @@ function kvList2Str(kv, sep, sep2)
 }
 
 /**
-@fn parseKvList(kvListStr, sep, sep2, doReverse?) -> kvMap
+@fn parseKvList(kvListStr, sep, sep2, doReverse?, onKv?) -> kvMap
 
 解析key-value列表字符串，返回kvMap。
 
 - doReverse: 设置为true时返回反向映射
+- onKv(kv): 如果指定，可函数对数组（必为2项）可进行修改
 
 示例：
 
@@ -2432,7 +2433,7 @@ sep和sep2支持使用正则式，以下处理结果相同：
 
 */
 self.parseKvList = parseKvList;
-function parseKvList(str, sep, sep2, doReverse)
+function parseKvList(str, sep, sep2, doReverse, onKv)
 {
 	var map = {};
 	$.each(str.split(sep), function (i, e) {
@@ -2440,6 +2441,9 @@ function parseKvList(str, sep, sep2, doReverse)
 		//assert(kv.length == 2, "bad kvList: " + str);
 		if (kv.length < 2) {
 			kv[1] = kv[0];
+		}
+		if (onKv) {
+			onKv(kv);
 		}
 		if (!doReverse)
 			map[kv[0]] = kv[1];
@@ -12448,6 +12452,11 @@ $.each([
 		"CA": "已取消"
 	};
 
+jdEnumList可以是键值对，如"CR:未付款;CA:已取消"（或写成"CR=未付款 CA=已取消"），与上面OrderStatusMap相同。
+也可以简化为一组值，如"未付款;已取消"（也可写成"未付款 已取消"），它实际表示的是：`{"未付款": "未付款", "已取消": "已取消"}`
+
+@see parseEnumList
+
 ## 用loadFilter调整返回数据
 
 另一个例子：在返回列表后，可通过loadFilter修改列表，例如添加或删除项：
@@ -12906,11 +12915,36 @@ function mycombobox_fixAsyncSetValue()
 	}
 }
 
+/**
+@fn parseEnumList(str)
+
+将字符串转换为键值对，专用于jdEnumList属性，常见风格示例:
+
+	a:1;b:2
+	a=1 b=2
+
+都对应: 
+
+	{a:"1", b:"2"}
+
+若值中需要转义可以用URL编码，值中有空格一般用"+"替代（也可用"%20"），示例：
+
+	COUNT+总数 SUM+总和
+
+它对应：
+
+	{"COUNT 总数": "COUNT 总数", "SUM 总和": "SUM 总和"}。
+
+@see parseKvList
+*/
 WUI.parseEnumList = parseEnumList;
 function parseEnumList(s)
 {
 	// 第一级：分号或空格，第二级：冒号或等号
-	return WUI.parseKvList(s, /[; ]/, /[:=]/);
+	return WUI.parseKvList(s, /[; ]/, /[:=]/, false, function (kv) {
+		for (var i=0; i<kv.length; ++i)
+			kv[i] = decodeURIComponent(kv[i]).replace('+', ' ');
+	});
 }
 mycombobox_fixAsyncSetValue();
 //}}}
