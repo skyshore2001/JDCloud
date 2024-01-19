@@ -2789,7 +2789,10 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		}
 		catch (MyException $e) {
 			$ret = [$e->getCode(), $e->getMessage(), $e->internalMsg];
-			if (!in_array($e->getCode(), [E_NOAUTH, E_AUTHFAIL])) {
+			if ($e->getCode() == E_ABORT) {
+				logit("fail to call `$ac`: " . $e->getMessage() . ' (' . $e->internalMsg . ')');
+			}
+			else if (!in_array($e->getCode(), [E_NOAUTH, E_AUTHFAIL])) {
 				logit("fail to call `$ac`: $e");
 			}
 		}
