@@ -46,7 +46,7 @@ pic接口用于可生成一个显示一组图片的URL，直接在浏览器（�
 
 用法示例：pics字段中保存了缩略图编号列表，如"100,102"，则显示缩略图列表，点击一张图时显示原图：
 
-	var url = MUI.makeUrl("pic", {smallId: "100,102"}); // 其实就是 $BASE_URL/pic?thumbId=100,102
+	var url = MUI.makeUrl("pic", {smallId: "100,102"}); // 其实就是 $BASE_URL/pic?smallId=100,102
 
 若pics字段中保存的是原图编号列表，如"100,102"，则显示缩略图列表，点击一张图时显示原图：
 

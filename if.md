@@ -153,43 +153,48 @@ query接口默认返回格式为`{h,d}`，通过表头h与表内容d传数据表
 
 	GET $BASE_URL/XX.del?id={id}
 
-### 图片地址
+### 图片或文件URL地址
 
-系统中的图片字段，一般使用图片编号或编号列表。字段名常常叫做`picId`，内容如`100`, `101`这样的数字，或是字段名叫`pics`，内容是像`100,101`这样多个数字。
-要获取图片，可以用`att`接口，例如要显示编号为100的图片：
+系统中的图片或附件文件字段，一般使用文件编号或编号列表。单图字段或单文件字段名以Id结尾如`picId`或`attId`，是一个整数，内容如`100`, `101`这样的数字；
+多图或多文件字段的字段名如`pics`或`atts`，是一个英文逗号分隔的字符串，内容是像`100,101`这样多个数字。
+多文件字段可以支持文件描述，格式示例为：`100:文件1.docx,101:文件2.pdf`，在编号和描述间以英文冒号":"分隔。
 
+要获取图片或文件，可以如下URL：
+
+	<!-- 显示编号为100的图片 -->
 	<img src="$BASE_URL/att?id=100">
 
-一般使用框架提供的`makeUrl`函数生成地址，如：
+	<!-- 下载编号为100和101的文件 -->
+	<a target="_black" href="$BASE_URL/att?id=100">文件1.docx</a>
+	<a target="_black" href="$BASE_URL/att?id=101">文件2.pdf</a>
 
-	// 取图片地址：
-	var imgUrl = MUI.makeUrl("att", {id: 100}); // 其实就是 $BASE_URL/att?id=100
-	jimg.attr("src", imgUrl); // 设置到img.src属性。
+**关于缩略图支持**
 
-在支持缩略图时，如果字段内保存的是大图（原图）编号：
+当图片支持缩略图时，如果字段内保存的是大图（原图）编号，可以这样显示缩略图（小图）：
 
-	// 取小图(缩略图)地址：加thumb=1参数表示取小图
-	var imgUrl = MUI.makeUrl("att", {id: 100, thumb: 1});
-	// 取大图(原图)地址：
-	var bigImgUrl = MUI.makeUrl("att", {id: 100});
+	已知大图编号为100，取小图URL，加thumb=1参数
+	<img src="$BASE_URL/att?id=100&thumb=1">
 
-如果字段内保存的是缩略图的编号，可以这样来取缩略图和原始大图的地址：
+如果字段内保存的是缩略图的编号，可以这样来取大图：
 
-	// 取小图(缩略图)地址：
-	var imgUrl = MUI.makeUrl("att", {id: 100});
-	// 取大图(原图)地址：用参数thumbId=100表示曲取小图编号100对应的大图
-	var bigImgUrl = MUI.makeUrl("att", {thumbId: 100});
+	已知小图编号为100，取大图URL，用thumbId参数
+	<img src="$BASE_URL/att?thumbId=100">
 
-服务端还支持pic接口，可生成一个显示图片的URL，直接在浏览器（或iframe）中显示。
-注意att接口直接返回一张图的内容，而pic接口返回html片段，它支持多图。用法示例：
+一般在字段内存大图编号，一些早期旧应用会存小图编号。
 
-	// 如果"100,102"是大图
-	var url = MUI.makeUrl("pic", {id: "100,102"}); // 其实就是 $BASE_URL/pic?id=100,102
-	jframe.attr("src", url);
+图片列表还支持直接在新的页面（或iframe）中打开显示，这时URL返回的其实是html片段：
 
-	// 如果"100,102"是小图
-	var url = MUI.makeUrl("pic", {thumbId: "100,102"}); // 其实就是 $BASE_URL/pic?thumbId=100,102
-	jframe.attr("src", url);
+	<a target="_black" href="$BASE_URL/pic?id=100,102">查看图片</a>
+	也可以用iframe设置URL直接显示图片:
+	<iframe src="$BASE_URL/pic?id=100,102"></iframe>
+
+图片支持缩略图时，则可以在新页面中显示缩略图列表，当点击一张图时再打开原图，URL示例为：
+
+	<!-- 如果字段内保存的是大图（原图）编号，默认应在列表中显示小图 -->
+	<a target="_black" href="$BASE_URL/pic?id=100,102&thumb=1">查看图片</a>
+
+	<!-- 如果字段内保存的是小图（缩略图）编号，使用smallId参数 -->
+	<a target="_black" href="$BASE_URL/pic?smallId=100,102">查看图片</a>
 
 ### 上传文件
 
