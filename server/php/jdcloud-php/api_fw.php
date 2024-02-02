@@ -954,6 +954,10 @@ function checkAuth($perms, $exPerms=null)
  */
 function tmCols($fieldName = "t0.tm", $doWeekFix = true)
 {
+	$env = getJDEnv();
+	if ($env->DBTYPE == "sqlite") {
+		return ["strftime('%Y',{$fieldName}) y", "(strftime('%m',{$fieldName})+2)/3 q", "strftime('%m',{$fieldName}) m", "strftime('%W',{$fieldName}) w", "strftime('%d',{$fieldName}) d", "strftime('%w',{$fieldName}) wd", "strftime('%H',{$fieldName}) h"];
+	}
 	$ret = ["year({$fieldName}) y", "quarter({$fieldName}) q", "month({$fieldName}) m", "week({$fieldName},5) w", "day({$fieldName}) d", "weekday({$fieldName})+1 wd", "hour({$fieldName}) h"];
 	if ($doWeekFix) {
 		$gres = param("gres");
