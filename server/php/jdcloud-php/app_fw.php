@@ -3263,6 +3263,36 @@ function logext($s, $addHeader=true)
 	logit($s, $addHeader, "ext");
 }
 
+/**
+@fn limitApiCall($name, $sec)
+
+对接口printSheet限制10秒内只能调用1次（按session限制，即限制用户登录后的连续调用）：
+
+	// $_SESSION["printSheetTm"]将记录上次调用时间
+	limitApiCall("printSheet", 10); // 10s内不允许重复调用
+
+TODO: 全局限定
+
+	limitApiCall("printSheet", 10, ["useSession"=>false]);
+
+TODO: 限制10s秒内对同一订单只能调用1次：
+
+	// $_SESSION["printSheetTm"]将记录一个时间数组
+	limitApiCall("printSheet", 10, [
+		"key" => orderId
+	]);
+
+*/
+function limitApiCall($name, $sec, $opt = null)
+{
+	$key = $name . "Tm";
+	$now = time();
+	$last = $_SESSION[$key];
+	if ($last && $now - $last < $sec) // N秒内不允许重复操作
+		jdRet(E_FORBIDDEN, "call `$name` too fast", "操作太快，请稍候操作");
+	$_SESSION[$key] = time();
+}
+
 // openwrt/padavan上不支持fnmatch函数
 if(!function_exists('fnmatch')) {
 	function fnmatch($pattern, $string) {
