@@ -493,7 +493,6 @@ function api_upload($env)
 }
 
 # NOTE: this function does not conform to the interface standard, it return file data directly or HTTP 404 error
-# please use "exit" instead of "return"
 function api_att($env)
 {
 	// overwritten the default
@@ -516,7 +515,7 @@ function api_att($env)
 	if ((is_null($id) || $id<=0) && (is_null($thumbId) || $thumbId<=0))
 	{
 		header(HTTP_NOT_FOUND);
-		exit;
+		jdRet();
 	}
 	// setup cache via etag.
 	$etag = null;
@@ -531,7 +530,7 @@ function api_att($env)
 	@$etag1 = $_SERVER['HTTP_IF_NONE_MATCH'];
 	if ($etag1 == $etag) {
 		header("Etag: $etag", true, 304);
-		exit();
+		jdRet();
 	}
 	if ($id !== null) {
 		if (!$doGetThumb) {
@@ -550,7 +549,7 @@ function api_att($env)
 	if ($row === false)
 	{
 		header(HTTP_NOT_FOUND);
-		exit;
+		jdRet();
 	}
 	list($picId, $file, $orgName) = $row;
 	if (preg_match('/(http:|https:)/', $file)) {
@@ -574,7 +573,7 @@ function api_att($env)
 	chdir($GLOBALS["conf_dataDir"]);
 	if (! is_file($file)) {
 		header(HTTP_NOT_FOUND);
-		exit;
+		jdRet();
 	}
 
 	# 对指定mime的直接返回，否则使用重定向。
