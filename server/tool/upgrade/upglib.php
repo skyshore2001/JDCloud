@@ -101,6 +101,12 @@ class SqlDiff_mysql extends SqlDiff
 		}
 		return $sth->fetch() !== false;
 	}
+	public function safeName($name) {
+		// mysql8 keyword 'row'
+		if (preg_match('/^(row)$/i', $name))
+			return "`$name`";
+		return $name;
+	}
 }
 
 class SqlDiff_mssql extends SqlDiff
