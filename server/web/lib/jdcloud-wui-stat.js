@@ -1097,12 +1097,14 @@ statData示例：
 
 特别地，设置 chartOpt.swapXY = true，表示横向柱状图。
 
+扩展项：暗黑模式请使用 chartOpt.theme = "dark"。
+
 @see WUI.rs2Stat, WUI.initPageStat
  */
 self.initChart = initChart;
 function initChart(chartTable, statData, seriesOpt, chartOpt)
 {
-	var myChart = echarts.init(chartTable);
+	var myChart = echarts.init(chartTable, chartOpt.theme);
 	var legendAry;
 	var seriesAry;
 
