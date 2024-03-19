@@ -7517,8 +7517,10 @@ if (isSmallScreen()) {
 
 - 查询(FormMode.forFind)
 - 显示及更新(FormMode.forSet)
-- 添加(FormMode.forAdd)
+- 新增(FormMode.forAdd)
 - 删除(FormMode.forDel)，但实际上不会打开对话框
+
+(v7) 按住Shift双击一行、或点击查询/新增/修改按钮，会打开新的对话框，而不是复用默认对话框。
 
 注意：
 
@@ -9040,6 +9042,15 @@ function showObjDlg(jdlg, mode, opt)
 {
 	if (jdlg.constructor != jQuery)
 		jdlg = $(jdlg);
+	// forceNew: 按住Shift双击点开对话框，或点添加/设置，则打开新对话框
+	if (window.event && window.event.shiftKey && (mode == FormMode.forAdd || mode == FormMode.forSet || mode == FormMode.forFind) && jdlg.selector[0] == '#') {
+		if (window.showDlgForceNewCnt == null)
+			window.showDlgForceNewCnt = 1;
+		else
+			++ window.showDlgForceNewCnt;
+		var sel = jdlg.selector + "_inst_" + window.showDlgForceNewCnt;
+		jdlg = $(sel);
+	}
 	if (loadDialog(jdlg, onLoad, opt))
 		return;
 	function onLoad() {
