@@ -440,13 +440,18 @@ e.g.
 	$rv = httpCall("demo:demo123@" . $url, $data);
 
 使用PUT操作示例，同时指定用户密码：
+取HTTP返回码，可在$opt中加"httpCode"字段，将会回写这个字段中：
 
-	$rv = httpCall($url, $data, [
-		"curlOpt" => [CURLOPT_CUSTOMREQUEST => "PUT", CURLOPT_USERPWD => "demo:demo123"]
-	]);
+	$out = [];
+	$rv = httpCall($f, getHttpInput(), [
+		"curlOpt" => [CURLOPT_CUSTOMREQUEST => "PUT", CURLOPT_USERPWD => "yibo:yibo123"],
+		"httpCode" => null
+	], $out);
+	if ($out["httpCode"] != 204)
+		jdRet(E_SERVER, "fail to put file: $rv", "保存文件失败");
 
 */
-function httpCall($url, $postParams=null, $opt=[])
+function httpCall($url, $postParams=null, $opt=[], &$out=[])
 {
 	$h = curl_init();
 	if(stripos($url,"https://")!==false){
@@ -508,7 +513,9 @@ function httpCall($url, $postParams=null, $opt=[])
 	$t0 = microtime(true);
 	$content = curl_exec($h);
 	$tv = round(microtime(true) - $t0, 2);
-//	$statusCode = curl_getinfo($h, CURLINFO_HTTP_CODE); // $status["http_code"]
+	if (array_key_exists("httpCode", $opt)) {
+		$out["httpCode"] = curl_getinfo($h, CURLINFO_HTTP_CODE); // $status["http_code"]
+	}
 // 	$status = curl_getinfo($h);
 // 	if (intval($status["http_code"]) != 200)
 // 		return false;
