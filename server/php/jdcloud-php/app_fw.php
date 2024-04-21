@@ -2762,7 +2762,10 @@ class JDPDO extends PDO
 		$this->addLog($sql);
 		$t0 = microtime(true);
 		$rv =parent::query($sql, $fetchMode);
-		$this->checkTime($t0, $sql);
+		$t = $this->checkTime($t0, $sql);
+		if ($this->logH && $t>0.001) {
+			$this->amendLog("t=" . round($t*1000,0). "ms");
+		}
 		return $rv;
 	}
 	#[\ReturnTypeWillChange]
@@ -2772,12 +2775,14 @@ class JDPDO extends PDO
 		$this->addLog($sql);
 		$t0 = microtime(true);
 		$rv = parent::exec($sql);
-		$this->checkTime($t0, $sql);
+		$t = $this->checkTime($t0, $sql);
 		if ($getInsertId)
 			$rv = (int)$this->lastInsertId();
 
-		if ($this->logH)
-			$this->amendLog($getInsertId? "new id=$rv": "cnt=$rv");
+		if ($this->logH) {
+			$tstr = $t>0.001? "t=" . round($t*1000,0) . "ms, ": "";
+			$this->amendLog($str . ($getInsertId? "new id=$rv": "cnt=$rv"));
+		}
 		return $rv;
 	}
 	#[\ReturnTypeWillChange]
@@ -2795,6 +2800,7 @@ class JDPDO extends PDO
 			$t = round($t, 2);
 			logit("-- slow sql: time={$t}s\n$sql\n", "slow");
 		}
+		return $t;
 	}
 }
 

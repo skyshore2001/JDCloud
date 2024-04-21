@@ -2828,7 +2828,8 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			$debugLog = $this->DEBUG_LOG;
 			if ($debugLog == 1 || ($debugLog == 2 && $ret[0] != 0)) {
 				$retStr = $isUserFmt? (is_scalar($ret[1])? $ret[1]: jsonEncode($ret[1])): jsonEncode($ret);
-				$s = 'ac=' . $ac . ($this->ac1? "(in batch)": "") . ', apiLogId=' . ApiLog::$lastId . ', ret=' . $retStr . ", dbgInfo=" . jsonEncode($this->dbgInfo, true) .
+				$t = microtime(true) - $this->startTm;
+				$s = 'ac=' . $ac . ($this->ac1? "(in batch)": "") . ', apiLogId=' . ApiLog::$lastId . ', t=' . round($t, 1) . 's, ret=' . $retStr . ", dbgInfo=" . jsonEncode($this->dbgInfo, true) .
 					"\ncallSvr(\"$ac\", " . jsonEncode($this->_GET) . (empty($this->_POST)? '': ', $.noop, ' . jsonEncode($this->_POST)) . ")";
 				logit($s, true, 'debug');
 			}
