@@ -9899,6 +9899,32 @@ function getQueryParamFromTable(jtbl, param)
 }
 
 /**
+@fn getFieldMap(jtbl) -> {$name => {title, jdEnumMap}}
+
+取数据表的字段列表（不含以"_"结尾的特殊字段）。
+*/
+self.getFieldMap = getFieldMap;
+function getFieldMap(jtbl)
+{
+	var map = {};
+	var datagrid = WUI.isTreegrid(jtbl)? "treegrid": "datagrid";
+	var opt = jtbl[datagrid]("options");
+	$.each([opt.frozenColumns[0], opt.columns[0]], function (idx0, cols) {
+		if (cols == null)
+			return;
+		$.each(cols, function (i, e) {
+			if (! e.field || e.field.substr(-1) == "_")
+				return;
+			map[e.field] = {
+				title: e.title,
+				jdEnumMap: e.jdEnumMap
+			};
+		});
+	});
+	return map;
+}
+
+/**
 @fn getDgInfo(jtbl, res?) -> { opt, isTreegrid, datagrid, url, param, ac, obj, sel?, selArr?, res?, dgFilter? }
 
 取datagrid关联信息. 返回字段标记?的须显式指定，如：

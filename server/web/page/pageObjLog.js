@@ -20,7 +20,7 @@ function initPageObjLog(param, formFilter)
 
 	if (param && param.jtblSrc && formFilter && formFilter.cond && formFilter.cond.obj) {
 		var map = {};
-		map[formFilter.cond.obj] = getFieldMap(param.jtblSrc);
+		map[formFilter.cond.obj] = WUI.getFieldMap(param.jtblSrc);
 		$.extend(true, ObjLogFieldMap, map);
 		console.log('fieldMap', map);
 	}
@@ -32,26 +32,6 @@ function initPageObjLog(param, formFilter)
 		sortOrder: "desc",
 		sortName: "id"
 	});
-
-	function getFieldMap(jtbl)
-	{
-		var map = {};
-		var datagrid = WUI.isTreegrid(jtbl)? "treegrid": "datagrid";
-		var opt = jtbl[datagrid]("options");
-		$.each([opt.frozenColumns[0], opt.columns[0]], function (idx0, cols) {
-			if (cols == null)
-				return;
-			$.each(cols, function (i, e) {
-				if (! e.field || e.field.substr(-1) == "_")
-					return;
-				map[e.field] = {
-					title: e.title,
-					jdEnumMap: e.jdEnumMap
-				};
-			});
-		});
-		return map;
-	}
 }
 
 var ObjLogObjMap = {
