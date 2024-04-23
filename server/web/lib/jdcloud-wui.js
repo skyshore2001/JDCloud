@@ -9669,7 +9669,17 @@ function createExportMenu(handler)
 */
 self.dg_dblclick = function (jtbl, jdlg)
 {
+	var t0;
 	return function (idx, data) {
+		// bugfix: easyui在手机上用touch事件模拟dblclick，在初次打开数据表并双击时会连续回调两次（电脑上无法重现），导致加载对话框报错(bad initfn xxx)。
+		// 这里设置500ms内不允许多次双击规避。
+		var t1 = new Date();
+		if (t0 && t1-t0 < 500) {
+			console.warn('ignore duplicate dblclick');
+			return;
+		}
+		t0 = t1;
+
 //		jtbl.datagrid("selectRow", idx);
 		showObjDlg(jdlg, FormMode.forSet, {jtbl: jtbl});
 	}
