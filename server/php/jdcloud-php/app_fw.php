@@ -355,6 +355,16 @@ $GLOBALS["conf_batchAddMaxErrors"] = 20;
 */
 $GLOBALS["conf_maxLogFileSize"] = 100000000; // 100MB
 
+/**
+@var conf_bigTables
+
+在管理端列表页显示大表（如超过1000万行）时，虽然有分页，但因为page参数会自动查询总数量而特别慢。将表加到该配置可跳过取数量，使得大表得以立即显示。示例：
+
+	$GLOBALS["conf_bigTables"] = ["Sn", "SnLog"];
+
+*/
+$GLOBALS["conf_bigTables"] = [];
+
 initAppFw();
 // }}}
 

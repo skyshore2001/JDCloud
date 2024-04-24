@@ -2842,7 +2842,7 @@ FROM ($sql) t0";
 			$pagekey = param("page/i");
 			if (isset($pagekey))
 			{
-				$enableTotalCnt = true;
+				$enableTotalCnt = !in_array($this->table, $GLOBALS["conf_bigTables"]);
 				$enablePartialQuery = false;
 			}
 		}

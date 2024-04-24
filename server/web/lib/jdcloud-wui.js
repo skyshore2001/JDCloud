@@ -6563,6 +6563,7 @@ function reloadTmp(jtbl, url, queryParams)
 
 // 筋斗云协议的若干列表格式转为easyui-datagrid的列表格式
 // 支持 [], { @list}, { @h, @d}格式 => {total, @rows}
+var PAGING_NO_TOTAL = 99999999;
 function jdListToDgList(data)
 {
 	if (!data)
@@ -6577,7 +6578,7 @@ function jdListToDgList(data)
 	}
 	else if ($.isArray(data.list)) {
 		ret = {
-			total: data.total || data.list.length,
+			total: data.total,
 			rows: data.list
 		};
 	}
@@ -6586,9 +6587,18 @@ function jdListToDgList(data)
 	{
 		var arr = mCommon.rs2Array(data);
 		ret = {
-			total: data.total || arr.length,
+			total: data.total,
 			rows: arr
 		};
+	}
+
+	if (ret.total === undefined) {
+		if (data.nextkey) {
+			ret.total = PAGING_NO_TOTAL;
+		}
+		else {
+			ret.total = ret.rows.length;
+		}
 	}
 	return ret;
 }
@@ -10404,7 +10414,20 @@ function dgLoadFilter(data)
 	var jtbl = $(this);
 	var dgOpt = jtbl.datagrid("options");
 	if (dgOpt.pagination) {
-		hidePagerAuto(jtbl, doHidePager);
+		var jpager = jtbl.datagrid("getPager");
+		if (ret.total == PAGING_NO_TOTAL && !dgOpt.pagingNoTotal) {
+			jpager.pagination({ layout:['first','prev','manual','next'], afterPageText:'页' });
+			dgOpt.pagingNoTotal = true;
+		}
+		// 无total时正确显示最后一页
+		if (dgOpt.pagingNoTotal && isOnePage) {
+			var pagerOpt = jpager.pagination('options');
+			if (pagerOpt.pageNumber != 1) {
+				ret.total = pagerOpt.pageNumber * pagerOpt.pageSize;
+			}
+		}
+
+		hidePagerAuto(jtbl, jpager, doHidePager);
 	}
 	// 支持统计列计算。TODO: 允许自定义统计逻辑与格式
 	if (dgOpt.showFooter && dgOpt.sumFields) {
@@ -10424,9 +10447,8 @@ function dgLoadFilter(data)
 	}
 	return ret;
 
-	function hidePagerAuto(jtbl, doHidePager) {
+	function hidePagerAuto(jtbl, jpager, doHidePager) {
 		var tmpName = "_restorefn_pager";
-		var jpager = jtbl.datagrid("getPager");
 		var isHidden = jpager.css("display") == "none";
 		if (doHidePager && !isHidden) {
 			var h = jpager.height();
