@@ -1935,6 +1935,18 @@ protected function onQuery() {
 					return false; // 避免触发对话框回车事件
 				}
 			});
+			// 提示搜索字段
+			if (param) {
+				var colMap = WUI.getFieldMap(ctx.jtbl);
+				var str = $.map(param.split(','), function (e) {
+					var e1 = e.replace(/[*]/g, '');
+					return (colMap[e1] && colMap[e1].title) || e;
+				}).join('/');
+				jo.attr({
+					placeholder: str,
+					title: "搜索字段: " + str + ' (' + param + ')'
+				});
+			}
 		});
 		return {text: "<input style='width:8em' class='qsearch " + randCls + "'>", iconAlign:'right', iconCls:'icon-search', "wui-perm": "查询", handler: function () {
 			var val = $(this).find(".qsearch").val();

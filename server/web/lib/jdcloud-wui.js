@@ -9669,7 +9669,17 @@ function createExportMenu(handler)
 */
 self.dg_dblclick = function (jtbl, jdlg)
 {
+	var t0;
 	return function (idx, data) {
+		// bugfix: easyui在手机上用touch事件模拟dblclick，在初次打开数据表并双击时会连续回调两次（电脑上无法重现），导致加载对话框报错(bad initfn xxx)。
+		// 这里设置500ms内不允许多次双击规避。
+		var t1 = new Date();
+		if (t0 && t1-t0 < 500) {
+			console.warn('ignore duplicate dblclick');
+			return;
+		}
+		t0 = t1;
+
 //		jtbl.datagrid("selectRow", idx);
 		showObjDlg(jdlg, FormMode.forSet, {jtbl: jtbl});
 	}
@@ -9886,6 +9896,32 @@ function getQueryParamFromTable(jtbl, param)
 		*/
 	}
 	return param1;
+}
+
+/**
+@fn getFieldMap(jtbl) -> {$name => {title, jdEnumMap}}
+
+取数据表的字段列表（不含以"_"结尾的特殊字段）。
+*/
+self.getFieldMap = getFieldMap;
+function getFieldMap(jtbl)
+{
+	var map = {};
+	var datagrid = WUI.isTreegrid(jtbl)? "treegrid": "datagrid";
+	var opt = jtbl[datagrid]("options");
+	$.each([opt.frozenColumns[0], opt.columns[0]], function (idx0, cols) {
+		if (cols == null)
+			return;
+		$.each(cols, function (i, e) {
+			if (! e.field || e.field.substr(-1) == "_")
+				return;
+			map[e.field] = {
+				title: e.title,
+				jdEnumMap: e.jdEnumMap
+			};
+		});
+	});
+	return map;
 }
 
 /**
