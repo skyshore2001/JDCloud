@@ -1295,6 +1295,21 @@ jo是easyui-combogrid，可以调用它的相应方法，如禁用和启用它�
 
 	jdlg.gn("userId").setOption(ListOptions.UserGrid({phone: "~*9204"}));
 
+## 显示为树表combotreegrid
+
+当设置选项treeField后，显示为树表，示例：
+
+	// var ListOptions 定义中：
+	CateGrid: {
+		treeField: "name", // 在name字段上折叠
+		...
+		url: WUI.makeUrl('Category.query', {
+			res: 'id,name,fatherName',
+			pagesz: -1 // 树表应全部显示
+		})
+	}
+
+TODO: 支持多选的数据表或数表
  */
 self.m_enhanceFn[".wui-combogrid"] = enhanceCombogrid;
 function enhanceCombogrid(jo)
@@ -1313,6 +1328,12 @@ function enhanceCombogrid(jo)
 	var jdlg;
 	var isCombogridCreated = false;
 	var doInit = true;
+
+	var combogrid = "combogrid", datagrid = "datagrid";
+	if (myopt.treeField) {
+		combogrid = "combotreegrid";
+		datagrid = "treegrid";
+	}
 
 	setOption();
 
@@ -1336,22 +1357,22 @@ function enhanceCombogrid(jo)
 		var $dg;
 		var curVal, curText;
 
-		var initOpt = $.extend({}, $.fn.datagrid.defaults, {
+		var initOpt = $.extend({}, $.fn[datagrid].defaults, {
 			// 首次打开面板时加载url
 			onShowPanel: function () {
 				if (doInit && myopt.url) {
 					doInit = false;
-					$dg.datagrid("options").url = myopt.url;
-					$dg.datagrid("reload");
+					$dg[datagrid]("options").url = myopt.url;
+					$dg[datagrid]("reload");
 				}
-				curVal = jo.combogrid("getValue");
-				curText = jo.combogrid("getText");
+				curVal = jo[combogrid]("getValue");
+				curText = jo[combogrid]("getText");
 			},
 			// 值val必须为数值(因为值对应id字段)才合法, 否则将清空val和text
 			onHidePanel: function () {
-				var val = jo.combogrid("getValue");
+				var val = jo[combogrid]("getValue");
 				if (! val || curVal == val) {
-					jo.combogrid("setText", curText);
+					jo[combogrid]("setText", curText);
 					return;
 				}
 
@@ -1364,17 +1385,17 @@ function enhanceCombogrid(jo)
 				}
 
 				var isId = (myopt.idField == "id");
-	//			var val1 = jo.combogrid("textbox").val();
+	//			var val1 = jo[combogrid]("textbox").val();
 				if (isId && ! $.isNumeric(val)) {
-					jo.combogrid("setValue", "");
+					jo[combogrid]("setValue", "");
 				}
 				else if (myopt.jd_showId) {
-					var txt = jo.combogrid("getText");
+					var txt = jo[combogrid]("getText");
 					if (! /^\d+ - /.test(txt)) {
-						jo.combogrid("setText", val + " - " + txt);
+						jo[combogrid]("setText", val + " - " + txt);
 					}
 				}
-				var row = $dg.datagrid("getSelected");
+				var row = $dg[datagrid]("getSelected");
 				if (row)
 					jo.trigger("choose", [row]);
 			},
@@ -1389,19 +1410,19 @@ function enhanceCombogrid(jo)
 			var btnAdd = {text:'新增', iconCls:'icon-add', handler: function () {
 				jo.combo("hidePanel");
 				WUI.showObjDlg(jdlgForAdd, FormMode.forAdd, {onOk: function (retData) {
-					jo.combogrid("setValue", retData);
-					jo.combogrid("setText", retData + " - (新增)");
+					jo[combogrid]("setValue", retData);
+					jo[combogrid]("setText", retData + " - (新增)");
 					jo.removeProp("nameForFind");
 				}});
 			}};
 			initOpt.toolbar = WUI.dg_toolbar(null, jdlgForAdd, btnAdd);
 		}
-		jo.combogrid(initOpt);
-		$dg = jo.combogrid("grid");
+		jo[combogrid](initOpt);
+		$dg = jo[combogrid]("grid");
 	}
 
 /*
-	jo.combogrid("textbox").blur(function (ev) {
+	jo[combogrid]("textbox").blur(function (ev) {
 		var val1 = this.value;
 	});
 	*/
@@ -1411,7 +1432,7 @@ function enhanceCombogrid(jo)
 		setTimeout(function () {
 			if (myopt.jd_vField && formOpt.data && formOpt.data[myopt.jd_vField]) {
 				// onShow
-				var val = jo.combogrid("getValue");
+				var val = jo[combogrid]("getValue");
 				if (val != "") {
 					var txt = formOpt.data[myopt.jd_vField];
 					if (myopt.jd_showId) {
@@ -1419,7 +1440,7 @@ function enhanceCombogrid(jo)
 						if (!txt.startsWith(prefix))
 							txt = prefix + txt;
 					}
-					jo.combogrid("setText", txt);
+					jo[combogrid]("setText", txt);
 				}
 				// nameForFind用于find模式下指定字段名，从而可以按名字来查询。Add/set模式下应清除。
 				jo.removeProp("nameForFind");
