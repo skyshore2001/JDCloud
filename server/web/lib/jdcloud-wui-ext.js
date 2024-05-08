@@ -1309,7 +1309,15 @@ jo是easyui-combogrid，可以调用它的相应方法，如禁用和启用它�
 		})
 	}
 
-TODO: 支持多选的数据表或数表
+## 支持多选的数据表或树表
+
+设置选项`multiple: true`后支持多选，combogrid和combotreegrid均支持。
+多个选项将以逗号分隔的id值如来保存, 如`2,3,4`; 此处id值由idField定义，不一定是数值。
+
+可以通过FormItem的getValue/setValue方法(或gn的val方法)来存取值，值为逗号分隔的字符串(而不是数组)。
+
+TODO：不支持jd_showId/jd_vField选项。因而在尚未加载过数据时（比如初次打开对话框时），会显示为值数字(id)而不是文本内容。
+
  */
 self.m_enhanceFn[".wui-combogrid"] = enhanceCombogrid;
 function enhanceCombogrid(jo)
@@ -1370,6 +1378,8 @@ function enhanceCombogrid(jo)
 			},
 			// 值val必须为数值(因为值对应id字段)才合法, 否则将清空val和text
 			onHidePanel: function () {
+				if (myopt.multiple)
+					return;
 				var val = jo[combogrid]("getValue");
 				if (! val || curVal == val) {
 					jo[combogrid]("setText", curText);
@@ -1430,6 +1440,15 @@ function enhanceCombogrid(jo)
 	function onBeforeShow(ev, formMode, formOpt) {
 		// 推迟执行，以便应用在onBeforeShow中设置组件选项。
 		setTimeout(function () {
+			if (myopt.multiple) {
+				// NOTE: 支持多选时，会生成0到多个带name属性的隐藏字段，自动setFormData无法正确处理, 这里单独处理
+				var name = jo.attr("comboname");
+				if (name && formOpt.data[name]) {
+					var val = formOpt.data[name].split(',');
+					jo[combogrid]("setValues", val);
+				}
+				return;
+			}
 			if (myopt.jd_vField && formOpt.data && formOpt.data[myopt.jd_vField]) {
 				// onShow
 				var val = jo[combogrid]("getValue");
@@ -1539,9 +1558,19 @@ ComboFormItem.prototype = $.extend(new WUI.FormItem(), {
 	},
 	setValue: function (val) {
 		var fn = this.jcomboCall;
+		var opt = WUI.getOptions(this.jcombo);
+		if (opt.multiple) {
+			if (val == null) {
+				val = [];
+			}
+			else if (! $.isArray(val)) {
+				val = val.split(',');
+			}
+			fn("setValues", val);
+			return;
+		}
 		if ($.isArray(val)) {
 			fn("setValue", val[0]);
-			var opt = WUI.getOptions(this.jcombo);
 			if (opt.jd_showId) {
 				fn("setText", val[0] + " - " + val[1]);
 			}
@@ -1554,6 +1583,10 @@ ComboFormItem.prototype = $.extend(new WUI.FormItem(), {
 	},
 	getValue: function () {
 		var fn = this.jcomboCall;
+		var opt = WUI.getOptions(this.jcombo);
+		if (opt.multiple) {
+			return fn("getValues").join(',');
+		}
 		return fn("getValue").trim();
 	},
 	getDisabled: function () {
