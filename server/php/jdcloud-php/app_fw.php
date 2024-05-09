@@ -2757,7 +2757,10 @@ class JDPDO extends PDO
 		if (! isset($GLOBALS["conf_tableAlias"]))
 			return;
 		$conf_tableAlias = $GLOBALS["conf_tableAlias"];
-		$sql = preg_replace_callback('/(?:FROM|JOIN|UPDATE|DELETE|INSERT INTO) \K(\w+)/iu', function ($ms) use ($conf_tableAlias) {
+		$ex1 = "'(?:[^']|\')*?'"; // 排除 '', 'from sn', '\'from sn\''
+		$sql = preg_replace_callback("/(?:FROM|JOIN|UPDATE|DELETE|INSERT INTO) \K(\w+)|$ex1/iu", function ($ms) use ($conf_tableAlias) {
+			if (!isset($ms[1]))
+				return $ms[0];
 			if (array_key_exists($ms[1], $conf_tableAlias)) {
 				return $conf_tableAlias[$ms[1]];
 			}
