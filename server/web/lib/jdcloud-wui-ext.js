@@ -1131,6 +1131,8 @@ function getMenuTree(jo, arr, opt)
 				perm: je.attr("wui-perm"),
 				children: children
 			};
+			if (! item.perm)
+				item.perm = item.name;
 			if (opt && opt.filter) {
 				item = opt.filter(item);
 			}
