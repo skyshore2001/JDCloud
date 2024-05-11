@@ -1471,15 +1471,16 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 			}
 		}
 		if ($this->ac == "add") {
+			// NOTE: checkUniKey须在add方法校验之前，因为内部可能转为set方法
+			$this->checkUniKey(param("uniKey"), param("uniKeyMode", "set"), true);
 			try {
-			foreach ($this->requiredFields as $field) {
-				$this->env->mparam($field, "P"); // validate field and type; refer to field/type format for mparam.
-			}
+				foreach ($this->requiredFields as $field) {
+					$this->env->mparam($field, "P"); // validate field and type; refer to field/type format for mparam.
+				}
 			} catch (MyException $ex) {
 				$ex->internalMsg .= " (by requiredFields check)";
 				throw $ex;
 			}
-			$this->checkUniKey(param("uniKey"), param("uniKeyMode", "set"), true);
 		}
 		else { # for set, the fields can not be set null
 			$fs = array_merge($this->requiredFields, $this->requiredFields2);
