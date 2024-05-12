@@ -50,15 +50,19 @@ function ac_db()
 // task.crontab.php建议(每年1/1,6/1执行): 10 4 1 1,6 * $TASK dblog >> $LOG 2>&1
 function ac_dblog()
 {
+	// 默认存在当前库，建议新建备份库如"bak"，否则db备份会很大！
+	$bakdb = '';
 	$dt = date("Ymd");
 	foreach (["ApiLog", "ApiLog1"] as $tbl) {
-		$cnt = queryOne("SELECT COUNT(*) FROM $tbl");
-		if ($cnt < 10000)
+		// $cnt = queryOne("SELECT COUNT(*) FROM $tbl"); // NOTE: 大表count非常慢
+		// if ($cnt < 10000)
+		$rv = queryOne("SELECT MAX(id) ma, MIN(id) mi FROM $tbl");
+		if (! ($rv && $rv[0] && $rv[0]-$rv[1] > 10000))
 			continue;
 
-		$tblBak = $tbl . '_' . $dt;
-		$tblNew = $tblBak . '_1';
-		echo("backup table $tbl to $tblNew\n");
+		$tblBak = $bakdb? "$bakdb.{$tbl}_$dt": "{$tbl}_$dt";
+		$tblNew = "{$tbl}_{$dt}_1";
+		echo("backup table $tbl to $tblBak\n");
 		execOne("create table $tblNew like $tbl");
 		execOne("insert into $tblNew select * from $tbl order by id desc limit 1");
 		execOne("DROP TABLE IF EXISTS $tblBak");
