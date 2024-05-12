@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2023-07-13</div>
+<div>最后更新：2024-05-12</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -122,9 +122,11 @@ code {
 <p><a href="#ENC_KEY">ENC_KEY (var)</a></p>
 <p><a href="#ExtFactory::getInstance">ExtFactory::getInstance (fn)</a></p>
 <p><a href="#ExtFactory::getObj">ExtFactory::getObj (fn)</a></p>
+<p><a href="#FileCache">FileCache (class)</a></p>
 <p><a href="#Guard">Guard (class)</a></p>
 <p><a href="#JDApiBase::callSvc">JDApiBase::callSvc (alias)</a></p>
 <p><a href="#JDEnv">JDEnv (module)</a></p>
+<p><a href="#JDEnv::$MAX_DEBUG_LOG_CNT=2000">JDEnv::$MAX_DEBUG_LOG_CNT=2000 (var)</a></p>
 <p><a href="#JDEvent">JDEvent (class)</a></p>
 <p><a href="#JDEvent.on">JDEvent.on (fn)</a></p>
 <p><a href="#JDEvent.trigger">JDEvent.trigger (fn)</a></p>
@@ -177,14 +179,21 @@ code {
 <p><a href="#checkObjArrParams">checkObjArrParams (fn)</a></p>
 <p><a href="#checkParams">checkParams (fn)</a></p>
 <p><a href="#conf.php">conf.php (key)</a></p>
+<p><a href="#conf_batchAddMaxErrors">conf_batchAddMaxErrors (var)</a></p>
+<p><a href="#conf_bigTables">conf_bigTables (var)</a></p>
+<p><a href="#conf_dataDir">conf_dataDir (var)</a></p>
+<p><a href="#conf_dbinst">conf_dbinst (var)</a></p>
 <p><a href="#conf_jdserverBackUrl">conf_jdserverBackUrl (key)</a></p>
 <p><a href="#conf_jdserverUrl">conf_jdserverUrl (key)</a></p>
+<p><a href="#conf_maxLogFileSize">conf_maxLogFileSize (var)</a></p>
 <p><a href="#conf_mssql_translateMysql">conf_mssql_translateMysql (var)</a></p>
 <p><a href="#conf_mssql_useOdbc">conf_mssql_useOdbc (var)</a></p>
 <p><a href="#conf_poweredBy">conf_poweredBy (key)</a></p>
+<p><a href="#conf_returnExecTime">conf_returnExecTime (var)</a></p>
 <p><a href="#conf_slowApiTime">conf_slowApiTime (var)</a></p>
 <p><a href="#conf_slowHttpCallTime">conf_slowHttpCallTime (var)</a></p>
 <p><a href="#conf_slowSqlTime">conf_slowSqlTime (var)</a></p>
+<p><a href="#conf_sqlite_translateMysql">conf_sqlite_translateMysql (var)</a></p>
 <p><a href="#conf_swoole_env">conf_swoole_env (var)</a></p>
 <p><a href="#conf_tableAlias">conf_tableAlias (key)</a></p>
 <p><a href="#containsWord">containsWord (fn)</a></p>
@@ -196,6 +205,7 @@ code {
 <p><a href="#dbconn">dbconn (fn)</a></p>
 <p><a href="#delSession">delSession (fn)</a></p>
 <p><a href="#delSessionById">delSessionById (fn)</a></p>
+<p><a href="#doValidateOnly">doValidateOnly (key)</a></p>
 <p><a href="#endWith">endWith (fn)</a></p>
 <p><a href="#env->tmpEnv">env->tmpEnv (fn)</a></p>
 <p><a href="#env.appName">env.appName (var)</a></p>
@@ -244,6 +254,7 @@ code {
 <p><a href="#jdRet">jdRet (fn)</a></p>
 <p><a href="#jsonDecode">jsonDecode (fn)</a></p>
 <p><a href="#jsonEncode">jsonEncode (fn)</a></p>
+<p><a href="#limitApiCall">limitApiCall (fn)</a></p>
 <p><a href="#list2varr">list2varr (fn)</a></p>
 <p><a href="#logext">logext (fn)</a></p>
 <p><a href="#logit">logit (fn)</a></p>
@@ -277,6 +288,7 @@ code {
 <p><a href="#readBlock">readBlock (fn)</a></p>
 <p><a href="#readBlock2">readBlock2 (fn)</a></p>
 <p><a href="#redirectOut">redirectOut (fn)</a></p>
+<p><a href="#retfn">retfn (var)</a></p>
 <p><a href="#setParam">setParam (fn)</a></p>
 <p><a href="#slow.log">slow.log (key)</a></p>
 <p><a href="#sortBySeq">sortBySeq (fn)</a></p>
@@ -486,10 +498,21 @@ $rv = httpCall($url, $data, ["curlOpt" =&gt; $curlOpt]);</code></pre>
 <pre><code>$url = makeUrl("http://oliveche.com/echo.php", ["a"=&gt;1, "b"=&gt;@$GLOBALS["b"]]);
 echo(httpCall($url, ["c"=&gt;1, "d"=&gt;0] ));</code></pre>
 <p class="see"><strong>@see <a href="#makeUrl">makeUrl</a></strong> </p>
-<p>使用PUT操作示例，同时指定用户密码：</p>
+<p>如果是HTTP Basic认证，除了前述直接指定头&quot;Authorization: Basic {base64(user:pwd)}&quot;外，也可以：</p>
 <pre><code>$rv = httpCall($url, $data, [
-    "curlOpt" =&gt; [CURLOPT_CUSTOMREQUEST =&gt; "PUT", CURLOPT_USERPWD =&gt; "demo:demo123"]
-]);</code></pre></div>
+    "curlOpt" =&gt; [CURLOPT_USERPWD =&gt; "demo:demo123"]
+]);</code></pre>
+<p>或是在url中直接包含，如: </p>
+<pre><code>$rv = httpCall("demo:demo123@" . $url, $data);</code></pre>
+<p>使用PUT操作示例，同时指定用户密码：<br />
+取HTTP返回码，可在$opt中加&quot;httpCode&quot;字段，将会回写这个字段中：</p>
+<pre><code>$out = [];
+$rv = httpCall($f, getHttpInput(), [
+    "curlOpt" =&gt; [CURLOPT_CUSTOMREQUEST =&gt; "PUT", CURLOPT_USERPWD =&gt; "yibo:yibo123"],
+    "httpCode" =&gt; null
+], $out);
+if ($out["httpCode"] != 204)
+    jdRet(E_SERVER, "fail to put file: $rv", "保存文件失败");</code></pre></div>
 <div class="block">
 <h2 id="parseKvList">@fn parseKvList($kvListStr, $sep, $sep2)</h2>
 <p>解析key-value列表字符串。如果出错抛出异常。<br />
@@ -541,8 +564,8 @@ addToStr($atts, "100");
 addToStr($atts, "200");
 // $atts = "100,200"</code></pre></div>
 <div class="block">
-<h2 id="arrCopy">@fn arrCopy(&$dst, $src, $fields=null)</h2>
-<p>将数组$src中指定字段复制到$dst中。<br />
+<h2 id="arrCopy">@fn arrCopy(&$dst, $arr, $fields=null)</h2>
+<p>将关联数组$arr中指定字段复制（覆盖）到$dst中。如果$arr是普通数组(键为数值)，则简单地追加到$dst中。<br />
 数组$fields指定字段列表，如果未指定，则全部字段复制过去；如果字段复制后需要改名，可以以[$dstName, $srcName]这样的数组来表示。</p>
 <p>示例：将workItem提取指定字段后插入数据库中：</p>
 <pre><code>$workItem = ["repairWiId"=&gt;$id, "wiName"=&gt;$name, ...];
@@ -610,7 +633,7 @@ $personNameArr1 = arrGrep($arr, function ($e) {
 <h2 id="logit">@fn logit($s, $addHeader=true, $type="trace")</h2>
 <p class="alias"><strong>@alias <a id="logit">logit</a></strong> ($s, $type)</p>
 <p>记录日志。</p>
-<p>默认到日志文件 $BASE_DIR/trace.log. 如果指定type=secure, 则写到 $BASE_DIR/secure.log.</p>
+<p>默认到日志文件 $conf_dataDir/trace.log. 如果指定type如type=secure, 则写到 $conf_dataDir/secure.log.</p>
 <p>$s可以是字符串、数值或数组。</p>
 <p>可通过在线日志工具 tool/log.php 来查看日志。也可直接打开日志文件查看。</p></div>
 <div class="block">
@@ -732,9 +755,11 @@ $arr1 = pivot($arr, "cateName", 2);</code></pre>
 ];</code></pre></div>
 <div class="block">
 <h2 id="myround">@fn myround($val, $n=0)</h2>
-<p>保留指定小数点位数，返回字符串。如果有多余的0则删除。</p>
-<p>注意：php的round返回的是浮点数，不精确。比如0.53会返回0.53000000000000003<br />
-而number_format函数尾部可能会有多余的0.</p></div>
+<p>如果$val是数值，按指定小数位数进行四舍五入，返回数值。<br />
+如果$val是个数组，则对数组中每项分别处理后返回新数组。<br />
+否则原样返回。</p>
+<p>注意：php的round返回的浮点数不精确。比如0.53会返回0.53000000000000003<br />
+而number_format函数尾部可能会有多余的0, 且是字符串</p></div>
 <div class="block">
 <h2 id="mh">@fn mh($val)</h2>
 <p>显示工时。以&quot;30s&quot;（秒）, &quot;5m&quot;（分）, &quot;1.2h&quot;（小时）, &quot;3d&quot;（天）这种样式显示。</p></div>
@@ -788,7 +813,7 @@ paragraph 3
 $curLine = getLine() // 读一行，返回null或false表示结束
 makeBlock(&amp;$block, $curLine) // 读一行时，添加到block
 isNewBlock($curLine); // 判断一个新的block开始
-handleBlock($block) // 处理block</code></pre>
+handleBlock($block) // 处理block，返回false表示立即结束循环</code></pre>
 <ul>
 <li>opt: {skipStart=false} 可设置忽略开头行</li>
 </ul>
@@ -1087,15 +1112,25 @@ var_dump($rv); // 如果有运行错将抛出；如果有语法错，php7以上�
 示例：从cleanData.json文件中加载状态到关联数组$stat，并在修改$stat后自动保存。</p>
 <pre><code>{
     // $stat = ["id"=&gt;1000]; // 可以给初始值
-    $st = new JDStatusFile("cleanData.json", $stat);
+    $sf = new JDStatusFile("cleanData.json", $stat);
     ...
-    // unset($st); // 手工调用，立即保存。一般无须调用。
-} // 当$st变量出作用域后，就会自动保存，即使中途有异常，也会自动保存。</code></pre>
+    // $sf-&gt;save(); // 立即保存
+    // unset($sf); // 手工调用，立即保存。一般无须调用。
+} // 当$sf变量出作用域后，就会自动保存，即使中途有异常，也会自动保存。</code></pre>
+<p>上面无论是否出异常都会保存，如果只想在正常时才保存，可在异常时调用rollback：</p>
+<pre><code>$sf = new JDStatusFile("cleanData.json", $stat);
+try {
+    ...
+    $sf-&gt;save();
+}
+catch (Exception $ex) {
+    $sf-&gt;rollback();
+}</code></pre>
 <p>注意：</p>
 <ul>
 <li>保存前会检查$stat数据是否有变化，无变化时不保存。</li>
 <li>若存在并发访问时，以最后一次写入为准。</li>
-<li>变量$st即使没有用到也要定义，它的作用域决定了何时写入状态文件。如果直接用<code>new JDStatusFile()</code>则对象立即释放无法保存状态。</li>
+<li>变量$sf即使没有用到也要定义，它的作用域决定了何时写入状态文件。如果直接用<code>new JDStatusFile()</code>则对象立即释放无法保存状态。</li>
 </ul></div>
 <div class="block">
 <h2 id="Guard">@class Guard</h2>
@@ -1111,7 +1146,7 @@ var_dump($rv); // 如果有运行错将抛出；如果有语法错，php7以上�
 <p style="margin-left:2em"><a href="#app_fw-2.1 数据库配置">2.1 数据库配置</a></p>
 <p style="margin-left:0em"><a href="#app_fw-3 测试模式与调试等级">3 测试模式与调试等级</a></p>
 <p style="margin-left:0em"><a href="#app_fw-4 模拟模式">4 模拟模式</a></p>
-<p style="margin-left:0em"><a href="#app_fw-5 session管理">5 session管理</a></p>
+<p style="margin-left:0em"><a href="#app_fw-5 session会话管理">5 session会话管理</a></p>
 <p style="margin-left:0em"><a href="#app_fw-6 动态修改环境配置项">6 动态修改环境配置项</a></p>
 </div>
 <p>筋斗云服务端通用应用框架。</p>
@@ -1196,14 +1231,29 @@ $cnt = $env-&gt;execOne("UPDATE Task SET vendorId=venderId+1");
 $db = "sqlite:jdcloud.db";
 $env = new DBEnv("sqlite", $db);
 
+# mssql over PDO
+$db = "sqlsrv:DATABASE=FNWMS; SERVER=myserver.test.com; Encrypt=no";
 # mssql over odbc
-$db = "odbc:DRIVER={SQL Server Native Client 11.0}; UID=sa; LANGUAGE=us_english; DATABASE=jdcloud; SERVER=.; PWD=ibdibd";
+# $db = "odbc:DRIVER={SQL Server Native Client 11.0}; LANGUAGE=us_english; DATABASE=jdcloud; SERVER=."; // "UID=demo; PWD=demo123"
 $env = new DBEnv("mssql", $db, "demo", "demo123");
 
 # oracle
 $db = "oci:dbname=10.30.250.131:1525/mesdzprd;charset=AL32UTF8";
 $env = new DBEnv("oracle", $db, "demo", "demo123");</code></pre>
 <p>如果配置了P_DEBUG_LOG=1且P_DEBUG=9，则记录SQL调用日志到debug.log</p>
+<p class="var"><strong>@var <a id="conf_dbinst">conf_dbinst</a></strong>  DB浏览器-数据库实例配置</p>
+<p>使用SQL语句<code>show databases</code>或<code>show tables</code>可查看数据库或数据表的列表。<br />
+除了当前数据库实例，也支持连接到其它数据库实例。配置示例：</p>
+<pre><code>$mssql_db = "odbc:DRIVER={SQL Server Native Client 11.0}; LANGUAGE=us_english; DATABASE=jdcloud; SERVER=."; // "UID=sa; PWD=ibdibd"
+# $mssql_db = "sqlsrv:DATABASE=FNWMS; SERVER=myserver.test.com; Encrypt=no"; // mssql over PDO
+$oracle_db = "oci:dbname=10.30.250.131:1525/mesdzprd;charset=AL32UTF8";
+$GLOBALS["conf_dbinst"] = [
+    // 实例名称 =&gt; [数据库类型，PDO连接字符串，用户，密码]
+    "本地测试mysql" =&gt; ["mysql", "mysql:host=localhost;port=3306;dbname=wms", "demo", "demo123"],
+    "mssql实例" =&gt; ["mssql", $mssql_db, "demo", "demo123"],
+    "sqlite实例" =&gt; ["sqlite", "sqlite:jdcloud.db"],
+    "oracle实例" =&gt; ["oracle", $oracle_db, "demo", "demo123"],
+];</code></pre>
 <h4 id="app_fw-3 测试模式与调试等级">3 测试模式与调试等级</h4>
 <p class="key"><strong>@key <a id="P_TEST_MODE">P_TEST_MODE</a></strong>  Integer。环境变量，允许测试模式。0-生产模式；1-测试模式；2-自动化回归测试模式(RTEST_MODE)</p>
 <p class="key"><strong>@key <a id="P_DEBUG">P_DEBUG</a></strong>  Integer。环境变量，设置调试等级，值范围0-9。</p>
@@ -1229,17 +1279,19 @@ $env = new DBEnv("oracle", $db, "demo", "demo123");</code></pre>
 <p>对第三方系统依赖（如微信认证、支付宝支付、发送短信等），可通过设计Mock接口来模拟。</p>
 <p>注意：v3.4版本起用环境变量P_MOCK_MODE替代符号文件CFG_MOCK_MODE/CFG_MOCK_T_MODE，且模拟模式只允许在测试模式激活时才能使用。</p>
 <p class="see"><strong>@see <a href="#ExtMock">ExtMock</a></strong> </p>
-<h4 id="app_fw-5 session管理">5 session管理</h4>
+<h4 id="app_fw-5 session会话管理">5 session会话管理</h4>
 <ul>
 <li>应用的session名称为 &quot;{app}id&quot;, 如应用名为 &quot;user&quot;, 则session名为&quot;userid&quot;. 因而不同的应用同时调用服务端也不会冲突。</li>
-<li>保存session文件的目录为 $BASE_DIR/session, 可使用环境变量P_SESSION_DIR重定义。</li>
+<li>保存session文件的目录为 $conf_dataDir/session, 可使用环境变量P_SESSION_DIR重定义(推荐配置$conf_dataDir而不是P_SESSION_DIR)。</li>
 <li>同一主机，不同URL下的session即使APP名相同，也不会相互冲突，因为框架会根据当前URL，设置cookie的有效路径。</li>
 </ul>
-<p class="key"><strong>@key <a id="P_SESSION_DIR">P_SESSION_DIR</a></strong>  ?= $BASE_DIR/session 环境变量，定义session文件存放路径。</p>
+<p class="key"><strong>@key <a id="P_SESSION_DIR">P_SESSION_DIR</a></strong>  ?= $conf_dataDir/session 环境变量，定义session文件存放路径。</p>
 <p class="key"><strong>@key <a id="P_URL_PATH">P_URL_PATH</a></strong>  环境变量。项目的URL路径，如"/jdcloud", 用于定义cookie生效的作用域，也用于拼接相对URL路径。</p>
 <p class="see"><strong>@see <a href="#getBaseUrl">getBaseUrl</a></strong> </p>
-<p>PHP默认的session过期时间为1440s(24分钟)，每次在使用session时，以1/1000的概率检查过期。<br />
-要配置它，可以应用程序的conf.user.php中设置，如：</p>
+<p>PHP默认的session过期时间为1440s(24分钟)，每次在使用session时，以1/1000的概率检查过期(session.gc_divisor=1000, session.gc_probability=1)。<br />
+查看PHP默认配置可以用：<code>php -r 'phpinfo();' |grep -i session.gc</code><br />
+注意：在centos7/8中默认配置是1/1000，在ubuntu20+中默认配置为0/1000即禁用了概率回收机制，但在/etc/cron.d/php中以定时任务方式配置了每30分钟清理一次。</p>
+<p>要配置它，可以应用程序的conf.user.php中设置，如：</p>
 <pre><code>ini_set("session.gc_maxlifetime", "2592000"); // 30天过期</code></pre>
 <p>测试时，想要到时间立即清除session，可以设置：</p>
 <pre><code>ini_set("session.gc_probability", "1000"); // 1000/1000概率做回收。每次访问都回收，性能差，仅用于测试。</code></pre>
@@ -1247,6 +1299,14 @@ $env = new DBEnv("oracle", $db, "demo", "demo123");</code></pre>
 若想保留指定时长，可以设置：</p>
 <pre><code>session_set_cookie_params(3600*24*7); // 保留7天</code></pre>
 <p>注意：前端会记住cookie过期时间，假如后端再次改成保留10天，由于前端已记录的是7天过期，无法立即更新，只能清除cookie后再请求才能生效。</p>
+<p class="class"><strong>@class SessionInDb</strong> </p>
+<p>支持将会话存在数据库表Session中。在多机部署应用服务时，有时不方便用文件保存会话，这时可以切换为用数据库保存。<br />
+先在DESIGN.md中声明表并使用upgrade工具创建表:</p>
+<pre><code>@Session: id, name, value(t), tm</code></pre>
+<p>然后在conf.php或conf.user.php中添加：</p>
+<pre><code>// 使用数据库保存会话
+session_set_save_handler(new SessionInDb(), true);
+// ini_set("session.gc_maxlifetime", "1440"); // 配置会话超时时间，默认24分钟</code></pre>
 <h4 id="app_fw-6 动态修改环境配置项">6 动态修改环境配置项</h4>
 <p>在程序中可动态设置部分参数，比如一般建议debug日志只记错误（环境变量P_DEBUG_LOG设置为2），若想对于对外开发的某些接口调用记录所有日志，可以改为1，如：</p>
 <pre><code>function api_fn1($env) {
@@ -1260,8 +1320,22 @@ $env = new DBEnv("oracle", $db, "demo", "demo123");</code></pre>
 }</code></pre></div>
 <div class="block">
 <h2 id="$BASE_DIR">@var $BASE_DIR</h2>
-<p>包含app_fw.php的主文件（如api.php）所在目录。常用于拼接子目录名。<br />
-最后不带&quot;/&quot;.</p></div>
+<p>Web主目录实际路径，即包含api.php的目录，即server目录。<br />
+为绝对路径，最后不带&quot;/&quot;.</p>
+<p class="var"><strong>@var <a id="conf_dataDir">conf_dataDir</a></strong> </p>
+<p>数据目录，默认值与$BASE_DIR相同，可在conf.user.php中改写，用于同一套程序部署多套环境。<br />
+程序输出的文件都应存放于此目录下，如session目录, 日志文件(trace.log/debug.log等), 上传目录(upload目录), JDStatusFile状态文件。<br />
+注意如果要设置，应设置为绝对路径。</p>
+<p>示例：(php/conf.user.php中配置)</p>
+<pre><code>if (strpos($_SERVER["SCRIPT_NAME"], "/jdcloud-a1/") === 0) {
+    putenv("P_DB=localhost/jdcloud_a1");
+    $GLOBALS["conf_dataDir"] = __DIR__ . "/../data-jdcloud-a1";
+    // $GLOBALS["conf_dataDir"] = "/var/www/src/jdcloud/server/data-jdcloud-a1";
+}
+else if (strpos($_SERVER["SCRIPT_NAME"], "/jdcloud-a2/") === 0) {
+    putenv("P_DB=localhost/jdcloud_a2");
+    $GLOBALS["conf_dataDir"] = __DIR__ . "/../data-jdcloud-a2";
+}</code></pre></div>
 <div class="block">
 <h2 id="conf_poweredBy">@key conf_poweredBy ?= "jdcloud"</h2>
 <p>设置HTTP头x-powered-by，用于与x-daca-server-rev一起共同决定系统版本。<br />
@@ -1285,12 +1359,30 @@ $GLOBALS["conf_poweredBy"] = "wms@server-pc";</code></pre>
 <p class="var"><strong>@var <a id="conf_mssql_useOdbc">conf_mssql_useOdbc</a></strong>  = false</p>
 <p>默认通过pdo_sqlsrv驱动连接mssql，若通过pdo_odbc连接，应设置为true</p></div>
 <div class="block">
+<h2 id="conf_sqlite_translateMysql">@var conf_sqlite_translateMysql = true</h2>
+<p>默认为true，即应用层可以使用部分mysql语法（常用于虚拟字段定义），框架自动转换为sqlite语法:</p>
+<ul>
+<li>转换 if(cond, t, f) =&gt; case when cond then t else f end </li>
+<li>转换 concat(a, b) =&gt; (a || b)</li>
+</ul></div>
+<div class="block">
 <h2 id="conf_slowSqlTime">@var conf_slowSqlTime SQL慢查询阈值时间，默认值为1.0(秒).</h2>
 <p class="var"><strong>@var <a id="conf_slowApiTime">conf_slowApiTime</a></strong>  慢接口阈值时间，默认值为1.0(秒).</p>
 <p class="var"><strong>@var <a id="conf_slowHttpCallTime">conf_slowHttpCallTime</a></strong>  Web调用慢的阈值时间，默认值为1.0(秒).</p>
 <p class="key"><strong>@key <a id="slow.log">slow.log</a></strong>  慢查询日志</p>
 <p>当操作时间超过阈值时间时，会记录到慢查询日志slow.log。<br />
 注意日志时间为SQL完成时的时间，日志时间减去操作时间才是开始时间。因此日志顺序与执行顺序不一定相同。</p></div>
+<div class="block">
+<h2 id="conf_batchAddMaxErrors">@var conf_batchAddMaxErrors ?=20</h2>
+<p>导入时，最多允许报错的条目数。</p></div>
+<div class="block">
+<h2 id="conf_maxLogFileSize">@var conf_maxLogFileSize ?=100000000</h2>
+<p>写日志文件的最大字节数，默认为100MB，例如写trace.log文件，当超过100MB后会自动转存为trace.log.1。<br />
+这样的话写trace日志最多消耗约200MB空间。</p></div>
+<div class="block">
+<h2 id="conf_bigTables">@var conf_bigTables</h2>
+<p>在管理端列表页显示大表（如超过1000万行）时，虽然有分页，但因为page参数会自动查询总数量而特别慢。将表加到该配置可跳过取数量，使得大表得以立即显示。示例：</p>
+<pre><code>$GLOBALS["conf_bigTables"] = ["Sn", "SnLog"];</code></pre></div>
 <div class="block">
 <h2 id="param_varr">@fn param_varr($str, $type, $name)</h2>
 <p>type的格式如&quot;i:n:b?:dt:tm?&quot;.</p>
@@ -1888,6 +1980,16 @@ if ($id === false) {
     $cache-&gt;set($key, $val);
 }</code></pre></div>
 <div class="block">
+<h2 id="FileCache">@class FileCache</h2>
+<p>简单的文件cache方案, 单机时可替代redis.</p>
+<pre><code>$myval = FileCache::get("myval.cache.json", function () {
+    return queryAll("SELECT ...", true);
+}, ["timeout" =&gt; T_HOUR*4]);</code></pre>
+<ul>
+<li>文件名建议为&quot;{变量名}.cache.json&quot;</li>
+<li>timeout选项指定超时时间(秒), 默认不超时.</li>
+</ul></div>
+<div class="block">
 <h2 id="getBaseUrl">@fn getBaseUrl($wantHost = true)</h2>
 <p>返回 $BASE_DIR 对应的网络路径（最后以&quot;/&quot;结尾），一般指api.php所在路径。<br />
 如果指定了环境变量 P_BASE_URL(可在conf.user.php中设置), 则使用该变量。<br />
@@ -2058,11 +2160,21 @@ function onEvent1($arg1, $arg2)
 <div class="block">
 <h2 id="JDEvent.trigger">@fn JDEvent.trigger($ev, $args)</h2>
 <p>返回最后次调用的返回值，false表示中止之后事件调用 </p>
-<p>如果想在事件处理函数中返回复杂值，可使用$args传递，如下面返回一个数组：</p>
+<p>如果想在事件处理函数中返回值，可使用引用传递:</p>
+<pre><code>$obj-&gt;on('getResult', 'onGetResult');
+$a = []; $b = null;
+$obj-&gt;trigger('getResult', [&amp;$a, &amp;$b]);
+
+function onGetResult(&amp;$a, &amp;$b)
+{
+    $a[] = 100;
+    $b = 'hello';
+}</code></pre>
+<p>也可使用值传递, 通过一个对象来操作:</p>
 <pre><code>$obj-&gt;on('getResult', 'onGetResult');
 $out = new stdclass();
 $out-&gt;result = [];
-$obj-&gt;trigger('getArray', [$out]);
+$obj-&gt;trigger('getResult', [$out]);
 
 function onGetResult($out)
 {
@@ -2123,6 +2235,18 @@ putenv("P_MOCK_MODE=1");
 <p>写日志到ext.log中，可在线打开tool/init.php查看。<br />
 (logit默认写日志到trace.log中)</p>
 <p class="see"><strong>@see <a href="#logit">logit</a></strong> </p></div>
+<div class="block">
+<h2 id="limitApiCall">@fn limitApiCall($name, $sec)</h2>
+<p>对接口printSheet限制10秒内只能调用1次（按session限制，即限制用户登录后的连续调用）：</p>
+<pre><code>// $_SESSION["printSheetTm"]将记录上次调用时间
+limitApiCall("printSheet", 10); // 10s内不允许重复调用</code></pre>
+<p>TODO: 全局限定</p>
+<pre><code>limitApiCall("printSheet", 10, ["useSession"=&gt;false]);</code></pre>
+<p>TODO: 限制10s秒内对同一订单只能调用1次：</p>
+<pre><code>// $_SESSION["printSheetTm"]将记录一个时间数组
+limitApiCall("printSheet", 10, [
+    "key" =&gt; orderId
+]);</code></pre></div>
 <div class="block">
 <h2 id="JDEnv">@module JDEnv</h2><div class="toc"><p style="margin-left:0em"><a href="#JDEnv-1 函数型接口">1 函数型接口</a></p>
 <p style="margin-left:0em"><a href="#JDEnv-2 对象型接口">2 对象型接口</a></p>
@@ -2455,6 +2579,15 @@ $X_RET_FN = function ($ret, $env) {
     header("Content-Type: application/xml");
     return "&lt;xml&gt;&lt;code&gt;$ret[0]&lt;/code&gt;&lt;data&gt;$ret[1]&lt;/data&gt;&lt;/xml&gt;";
 };</code></pre>
+<p class="var"><strong>@var <a id="retfn">retfn</a></strong>  通用URL参数，指定返回样式</p>
+<p>筋斗云默认返回样式是<code>[code, data]</code>，可通过指定URL参数retfn来修改：</p>
+<ul>
+<li>retfn=obj: 成功返回{code:0,data,debug?}, 失败返回{code:非0,message,debug?}</li>
+<li>retfn=raw: 与下面指定URL参数_raw=1或2相同</li>
+<li>retfn=xml: 字段名与retfn=obj相同，以xml格式返回。</li>
+</ul>
+<p>如果需要扩展某种返回样式如xxx1，只需要定义下面函数，然后调用时指定参数<code>retfn=xxx1</code>：</p>
+<pre><code>function retfn_xxx1($ret, $env) {}</code></pre>
 <p class="var"><strong>@var <a id="_raw">_raw</a></strong>  通用URL参数，只返回内容</p>
 <p>如果有URL参数<code>_raw=1</code>，则结果不封装为<code>[code, data]</code>形式，而是直接返回data. 示例：</p>
 <pre><code>callSvr("Ordr.query", {cond:{id:5}, fmt:"one", _raw: 1});
@@ -3230,6 +3363,14 @@ params为JSON格式。</code></pre>
 如果是batch调用，则返回当前子调用名。</p>
 <p>如果指定参数wantBatch=true, 则batch调用直接返回&quot;batch&quot;，此时可以用env.getAc1()返回子调用名。</p></div>
 <div class="block">
+<h2 id="conf_returnExecTime">@var conf_returnExecTime</h2>
+<p>如果值为1, 将通过HTTP头返回接口执行时间, 示例:<br />
+X-Exec-Time: 13ms</p></div>
+<div class="block">
+<h2 id="JDEnv::$MAX_DEBUG_LOG_CNT=2000">@var JDEnv::$MAX_DEBUG_LOG_CNT=2000</h2>
+<p>调试日志最大条目数，默认2000条。<br />
+达到极限时会清除掉前一半后继续记录，以避免内存耗尽。</p></div>
+<div class="block">
 <h2 id="env->tmpEnv">@fn env->tmpEnv($param, $postParam, $fn, $useTmpEnv=true)</h2>
 <p>(v5.4) 在指定的GET/POST参数下执行fn函数，执行完后恢复初始环境。<br />
 $param或$postParam为null时，与空数组<code>[]</code>等价。</p>
@@ -3975,12 +4116,16 @@ callSvr("Hub.query", {
             dbInsert("OrderLog", [
                 "orderId" =&gt; $orderId,
                 "action" =&gt; "CR",
-                "tm" =&gt; date(FMT_DT)  // 或用mysql表达式 ["now()"]
+                "tm" =&gt; date(FMT_DT)  // 或用mysql表达式 dbExpr("now()"]
             ]);
         };
     }
 }</code></pre>
 <p>与onAfter类似，加到onAfterActions集合中的函数，如果要修改返回数据，只要在函数参数中声明<code>&amp;$ret</code>就可以修改它了。</p>
+<p>注意：</p>
+<ul>
+<li>如果接口返回错误(jdRet或throw Exception，包括DirectReturn), onAfter以及onAfterActions该回调均不执行</li>
+</ul>
 <p>(v5.4) 如果要在应用处理完成时添加逻辑，可使用全局对象<code>$X_APP</code>的onAfterActions方法，注意这时逻辑不在同一数据库事务中。</p>
 <p class="see"><strong>@see <a href="#$X_APP">$X_APP</a></strong> </p>
 <p class="fn"><strong>@fn <a id="AccessControl::onHandleRow">AccessControl::onHandleRow</a></strong> (&$rowData) (for get/query) 在onAfter之前运行，用于修改行中字段。</p>
@@ -4237,7 +4382,8 @@ Ordr.delIf(cond)</code></pre>
     protected $table = "fiss.aiobjectdata";
     protected function onInit() {
         $db = "mysql:host=10.80.140.32;port=3306;dbname=fiss"; // 也可以连oracle, mssql等各种其它类型数据库，参考DBEnv
-        $this-&gt;env = new DBEnv("mysql", $db, "root", "123456");
+        $this-&gt;env = clone $this-&gt;env;
+        $this-&gt;env-&gt;changeDb("mysql", $db, "root", "123456");
         // 这里是直接打开新连接的，如果一次接口调用中访问多次，则应全局缓存该连接
     }
 }</code></pre></div>
@@ -4419,7 +4565,10 @@ $this-&gt;addRequireCol("flowId,qty"); // 加多个字段</code></pre></div>
 <p>注意：尽管add接口可通过uniKey实现更新模式，但set接口是不支持uniKey的。<br />
 通过导入实现<strong>批量更新</strong>应使用batchAdd；一般地通过条件进行批量更新使用batchSet/setIf接口。</p>
 <p>以上示例是将记录的控制权交给接口调用方的（如前端或后端内部接口调用callSvcInt等）；如果要在后端对象内控制重复记录行为，请参考</p>
-<p class="see"><strong>@see <a href="#AccessControl::checkUniKey">AccessControl::checkUniKey</a></strong> </p></div>
+<p class="see"><strong>@see <a href="#AccessControl::checkUniKey">AccessControl::checkUniKey</a></strong> </p>
+<p class="key"><strong>@key <a id="doValidateOnly">doValidateOnly</a></strong> </p>
+<p>标准add/set接口支持的URL参数，如果为1，表示只做数据验证，不做实际的添加或更新动作，示例：</p>
+<pre><code>callSvr("Employee.add", {doValidateOnly: 1}, $.noop, {uname:'a'})</code></pre></div>
 <div class="block">
 <h2 id="AccessControl::checkUniKey">@fn AccessControl::checkUniKey($uniKey, $handler="error", $required=false)</h2>
 <p>后端检查uniKey用于防止重复：</p>

@@ -454,7 +454,7 @@ xcol,ycol,gcol,gtext,maxSeriesCnt参数可参考函数 WUI.pivot
 tmUnit用于指定时间字段: "y,m"-年,月; "y,m,d"-年,月,日; "y,w"-年,周; "y,m,d,h"-年,月,日,时; "y,q"-年,季度
 若指定了tmUnit，则可以不指定xcol,gcol,ycol，而是由字段排列自动得到，详见"tmUnit使用举例"章节。
 
-@param opt.formatter 对汇总数据列进行格式化，缺省取WUI.options.statFormatter[ycolNames]。Function(value).
+@param opt.formatter 对汇总数据列进行格式化，缺省取WUI.options.statFormatter[gcolNames]。Function(value).
 @param opt.formatterX 对X轴数据进行格式化，缺省取WUI.options.statFormatter[xcolNames]。Function(value)。若opt.xcol是数组，则value也是数组。
 
 @return statData { @xData, @yData=[{name=seriesName, data=@seriesData}]  }
