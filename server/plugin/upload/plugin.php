@@ -612,7 +612,7 @@ function api_pic()
 {
 	session_commit();
 	header("Content-Type: text/html");
-	$baseUrl = getBaseUrl();
+	$baseUrl = $_SERVER["PATH_INFO"]? ".": "api.php"; // "xx/api.php/pic?id=80", "xx/api.php?ac=pic&id=80", "xx/api.php?xp=xxxx"
 	$n = 0;
 	foreach ([param("id/i+"), param("thumbId/i+"), param("smallId/i+")] as $pics) {
 		if ($pics) {
@@ -624,16 +624,16 @@ function api_pic()
 				if ($id) {
 					if ($n == 0) {
 						if (!$doGetThumb) {
-							echo("<img src='{$baseUrl}api.php/att?id=$id'>\n");
+							echo("<img src='{$baseUrl}/att?id=$id'>\n");
 						}
 						else {
-							echo("<a href='{$baseUrl}api.php/att?id=$id' target='_blank'><img src='{$baseUrl}api.php/att?id=$id&thumb=1'></a>\n");
+							echo("<a href='{$baseUrl}/att?id=$id' target='_blank'><img src='{$baseUrl}/att?id=$id&thumb=1'></a>\n");
 						}
 					}
 					else if ($n == 1)
-						echo("<img src='{$baseUrl}api.php/att?thumbId=$id'>\n");
+						echo("<img src='{$baseUrl}/att?thumbId=$id'>\n");
 					else if ($n == 2)
-						echo("<a href='{$baseUrl}api.php/att?thumbId=$id' target='_blank'><img src='{$baseUrl}api.php/att?id=$id'></a>\n");
+						echo("<a href='{$baseUrl}/att?thumbId=$id' target='_blank'><img src='{$baseUrl}/att?id=$id'></a>\n");
 					echo("<br/>\n");
 				}
 			}
