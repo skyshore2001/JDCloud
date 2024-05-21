@@ -2598,10 +2598,14 @@ function utf8InputFilter($fp, $fnTest=null)
 - 支持缓存数据，以优化循环效率
 - 支持查不到时报错或自动添加两种模式
 
+- opt={arr, doAutoAdd, onAdd}
+
 实例：如果给定数组（默认$_POST）含有cateName字段，则通过查询表ItemCategory中的name字段，得到相应的id字段，用cateId字段替代原cateName字段：
 
 	name2id("cateName", "cateId", "ItemCategory", "name");
 	(即 cateId = SELECT id FROM ItemCategory WHERE name={cateName} )
+	或
+	name2id("cateName", "cateId", "ItemCategory", "name", ["arr" => &$_POST]);
 
 如果查不到则会报错。
 也可指定不报错(doAutoAdd)，直接插入ItemCategory表中，用新插入的id值作为cateId字段，替代原cateName字段：
