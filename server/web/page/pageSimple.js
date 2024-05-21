@@ -169,6 +169,38 @@ url中接口调用返回的数据支持query接口常用的hd/list/array格式�
 	WUI.showPage("pageSimple", "订单月报表!", [WUI.makeUrl("Ordr.query"), {frozen: 1}]);
 
 类似地，若要冻结前2列，则指定`{frozen: 2}`。
+
+## 显示树表以及自定义列
+
+在onInitGrid中设置dgOpt.treeField就会显示为树表；
+可直接指定字段列表dgOpt.columns（默认是用的url接口返回的字段列表）。
+
+示例，以下url返回树型结构的`[{value, title, nodeClazz, @children}]` 这几列，让其显示为树型：
+
+```javascript
+var url = WUI.makeUrl("Muyuan.fields");
+WUI.showPage("pageSimple", "场区!", [url, null, onInitGrid]);
+
+function onInitGrid(jpage, jtbl, dgOpt, columns, data) {
+	// dgOpt: datagrid的选项，如设置 dgOpt.onClickCell等属性
+	// columns: 列数组，可设置列的formatter等属性
+	// data: ajax得到的原始数据
+	$.extend(dgOpt, {
+		treeField:"title",
+		url: WUI.makeUrl("Muyuan.fields"),
+		idField: "value",
+		textField: "title",
+		columns: [[
+			{field:'value',title:'编号',width:200},
+			{field:'title',title:'名称',width:500},
+			{field:'nodeClazz',title:'类别',width:200, formatter:Formatter.enum({
+				"region":"区域", "area":"子公司","field":"场区"
+			})}
+		]],
+	});
+}
+```
+
 */
 function initPageSimple(url, queryParams, onInitGrid, showChartParam)
 {
@@ -212,6 +244,9 @@ function initPageSimple(url, queryParams, onInitGrid, showChartParam)
 			dgOpt.pageList = [pagesz];
 		}
 		onInitGrid && onInitGrid(jpage, jtbl, dgOpt, columns, data);
+		if (dgOpt.columns[0] != columns) {
+			columns = dgOpt.columns[0];
+		}
 		if (queryParams && queryParams.frozen) { // 冻结列
 			var cnt = queryParams.frozen;
 			dgOpt.frozenColumns = [columns.slice(0, cnt)];
@@ -219,8 +254,9 @@ function initPageSimple(url, queryParams, onInitGrid, showChartParam)
 			dgOpt.quickAutoSize = false; // TODO: 暂不支持性能优化，数据很多（比如几百行，且列很多）时会慢
 			delete queryParams.frozen;
 		}
-		jtbl.datagrid(dgOpt);
-		var opt = jtbl.datagrid("options");
+		var datagrid = dgOpt.treeField? "treegrid": "datagrid";
+		jtbl[datagrid](dgOpt);
+		var opt = jtbl[datagrid]("options");
 		opt.url = url;
 		delete opt.data;
 		opt.queryParams = queryParams;
@@ -240,6 +276,9 @@ function initPageSimple(url, queryParams, onInitGrid, showChartParam)
 	}
 
 	function onDblClickRow(idx, data) {
+		if ($.isPlainObject(idx)) {
+			data = idx; // 兼容treegrid上双击事件
+		}
 		if (jdlg == null) {
 			var itemArr = $.map(columns, function (e) {
 				// title, dom, hint?
