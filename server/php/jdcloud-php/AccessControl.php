@@ -1343,11 +1343,18 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 	static function removeQuote($k) {
 		return preg_replace('/^"(.*)"$/', '$1', $k);
 	}
+/**
+@var AccessControl::$table AC表名
+@var AccessControl::$obj AC对象名
 
+AC类AC_MyObj1默认的表名和对象名都是MyObj1，但有时会修改表名（比如底层表其它是一个查询视图，或几个对象共享一张表），
+比如AC_Vender/AC_Customer的对象名分别为Vendor和Customer, 而表名都是BizPartner。
+*/
 	final public function initTable($tbl = null) {
+		$this->obj = preg_replace('/^AC[^_]*_|_Imp$/', '', get_class($this));
 		if (! $this->table) {
 			// AC_xxx -> xxx; xxx -> xxx
-			$this->table = $tbl ?: preg_replace('/^AC[^_]*_|_Imp$/', '', get_class($this));
+			$this->table = $tbl ?: $this->obj; 
 		}
 	}
 
@@ -2843,7 +2850,7 @@ FROM ($sql) t0";
 			$pagekey = param("page/i");
 			if (isset($pagekey))
 			{
-				$enableTotalCnt = !in_array($this->table, $GLOBALS["conf_bigTables"]);
+				$enableTotalCnt = !in_array($this->obj, $GLOBALS["conf_bigTables"]) && !in_array($this->table, $GLOBALS["conf_bigTables"]);
 				$enablePartialQuery = false;
 			}
 		}

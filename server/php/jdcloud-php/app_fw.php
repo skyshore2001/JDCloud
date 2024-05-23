@@ -362,6 +362,8 @@ $GLOBALS["conf_maxLogFileSize"] = 100000000; // 100MB
 
 	$GLOBALS["conf_bigTables"] = ["Sn", "SnLog"];
 
+注意：只要数组中包含有AC类的对象名($ac->obj)或表名($ac->table)，就会生效。
+比如AC_Data类的对象名是Data，而底层表名可能被改为了一个视图如"select ..."，此时若conf_bigTables中有"Data"就可以匹配该对象。
 */
 $GLOBALS["conf_bigTables"] = [];
 
