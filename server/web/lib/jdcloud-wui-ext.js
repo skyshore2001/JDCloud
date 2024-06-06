@@ -4520,5 +4520,14 @@ var DateBoxForFind = {
 $.extend($.fn.datebox.defaults, DateBoxForFind);
 $.extend($.fn.datetimebox.defaults, DateBoxForFind);
 
+// Ctrl-Alt双击元素：全屏显示多行文本框、代码编辑框、页面或对话框等
+$(document).on("dblclick", function(ev) {
+	if (! (ev.ctrlKey && ev.altKey))
+		return;
+	var jo = $(ev.target).closest("textarea,.ace_editor,.wui-page,.wui-dialog,.wui-fullscreen");
+	if (jo.size() > 0) {
+		jo[0].requestFullscreen();
+	}
+});
 }
 // vi: foldmethod=marker 

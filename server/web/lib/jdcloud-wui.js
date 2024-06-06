@@ -1052,6 +1052,12 @@ v5.3引入了wui-fixedField类设置在字段上，v6起已不建议使用。以
 
 参考wui-name.js模块。
 
+## 全屏显示
+
+@key .wui-fullscreen
+
+- 页面标题栏右键，选择“全屏”，可将页面全屏
+- Ctrl-Alt双击元素：全屏显示多行文本框、代码编辑框、页面或对话框，以及有CSS类"wui-fullscreen"的元素。
 */
 // ====== WEBCC_END_FILE doc.js }}}
 
@@ -12258,7 +12264,8 @@ function mainInit()
 			'<div id="mnuReloadDlg">刷新对话框</div>',
 			'<div id="mnuBatch">批量模式</div>',
 			'<div id="mnuCloseTabs" data-options="iconCls:\'icon-clear\'">关闭其它页</div>',
-			'<div id="mnuCloseTabs2">关闭右侧页</div>'
+			'<div id="mnuCloseTabs2">关闭右侧页</div>',
+			'<div id="mnuFullscreen" title="Ctrl+Alt+双击">全屏</div>'
 		],
 
 		// 处理函数
@@ -12290,6 +12297,11 @@ function mainInit()
 		},
 		mnuCloseTabs2: function () {
 			self.PageHeaderMenu.mnuCloseTabs(true);
+		},
+		mnuFullscreen: function () {
+			var jp = self.getActivePage();
+			if (jp.size() > 0)
+				jp[0].requestFullscreen();
 		}
 	};
 
