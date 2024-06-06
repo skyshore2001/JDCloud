@@ -46,7 +46,7 @@ AccessControl简写为AC，同时AC也表示自动补全(AutoComplete).
 @key AC_  游客权限(AUTH_GUEST)，如未定义则调用时报“无权操作”错误。
 @key AC0_ 超级管理员权限(AUTH_ADMIN)，如未定义，默认拥有所有权限。
 @key AC1_  用户权限(AUTH_USER)，如未定义，则降级使用游客权限接口(AC_)。
-@key AC2_  员工权限(AUTH_EMP/AUTH_MGR), 如未定义，报权限不足错误。
+@key AC2_  员工权限(AUTH_EMP/PERM_MGR), 如未定义，报权限不足错误。
 
 因而上例中命名为 "AC1_Ordr" 就表示用户登录后调用Ordr对象接口，将受该类控制。而这是个空的类，所以拥有一切操作权限。
 
@@ -1343,11 +1343,18 @@ param函数以"id"类型符来支持这种伪uuid类型，如：
 	static function removeQuote($k) {
 		return preg_replace('/^"(.*)"$/', '$1', $k);
 	}
+/**
+@var AccessControl::$table AC表名
+@var AccessControl::$obj AC对象名
 
+AC类AC_MyObj1默认的表名和对象名都是MyObj1，但有时会修改表名（比如底层表其它是一个查询视图，或几个对象共享一张表），
+比如AC_Vender/AC_Customer的对象名分别为Vendor和Customer, 而表名都是BizPartner。
+*/
 	final public function initTable($tbl = null) {
+		$this->obj = preg_replace('/^AC[^_]*_|_Imp$/', '', get_class($this));
 		if (! $this->table) {
 			// AC_xxx -> xxx; xxx -> xxx
-			$this->table = $tbl ?: preg_replace('/^AC[^_]*_|_Imp$/', '', get_class($this));
+			$this->table = $tbl ?: $this->obj; 
 		}
 	}
 
@@ -2843,7 +2850,7 @@ FROM ($sql) t0";
 			$pagekey = param("page/i");
 			if (isset($pagekey))
 			{
-				$enableTotalCnt = !in_array($this->table, $GLOBALS["conf_bigTables"]);
+				$enableTotalCnt = !in_array($this->obj, $GLOBALS["conf_bigTables"]) && !in_array($this->table, $GLOBALS["conf_bigTables"]);
 				$enablePartialQuery = false;
 			}
 		}
@@ -3740,6 +3747,18 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 	SCDD210202302	30101001010484	热像仪#Fotric 615C-L47	2021-02-04	2021-02-04	1.00	10205001000017	标签#Lantern_40*30mm铜版纸空白标签#中性#通用	1
 	</script>
 
+## 支持id与name转换
+
+传入参数示例：
+
+	name2id=empName,empId,Employee,name;itemName,itemId,Item,name,a
+
+以分号隔开一组，一组4到5个参数是定义一个转换，上面示例相当于调用：
+
+	name2id("empName", "empId", "Employee", "name");
+	name2id("itemName", "itemId", "Item", "name", ["doAutoAdd"=>true]);
+
+考虑安全性，尾部可选的a标志(表示如果引用对象不存在则自动添加)只允许最高管理员使用。
 */
 	function api_batchAdd()
 	{
@@ -3749,8 +3768,27 @@ setIf接口会检测readonlyFields及readonlyFields2中定义的字段不可更�
 			"idList" => []
 		];
 		$errors = [];
-		$st->handleBatch(function ($obj) use ($st, &$ret, $bak_SOLO, &$errors) {
+		$name2id = param("name2id");
+		if ($name2id) {
+			$name2id = list2varr($name2id, ',', ';');
+			foreach ($name2id as $e) {
+				if (count($e) < 4)
+					jdRet(E_PARAM, "name2id: at least 4 params", "name2id参数不正确, 至少4个参数");
+				if (inset('a', $e[4]) && !hasPerm(PERM_MGR))
+					jdRet(E_FORBIDDEN, "flag a not allowed for non-mgr", "a标记: 自动添加需要最高管理员权限");
+			}
+		}
+		$st->handleBatch(function ($obj) use ($st, &$ret, $bak_SOLO, &$errors, $name2id) {
 			try {
+				if ($name2id) {
+					foreach ($name2id as $e) {
+						$opt = ["arr" => &$obj];
+						if (inset('a', $e[4])) {
+							$opt["doAutoAdd"] = true;
+						}
+						name2id($e[0], $e[1], $e[2], $e[3], $opt);
+					}
+				}
 				$st->beforeAdd($obj);
 				$param = $_GET + [  // 用+而不是array_merge, 允许用户指定参数覆盖，比如可指定submod参数
 					"useStrictReadonly" => 0,

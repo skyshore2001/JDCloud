@@ -10059,7 +10059,7 @@ var Formatter = {
 相当于picx({thumb:1})。不显示图片列表预览，点击链接显示图片列表。
  */
 	picx: function (opt) {
-		if (opt === null)
+		if (opt == null) // undefined/null
 			opt = {};
 		return function (value, row) {
 			if (value == null)

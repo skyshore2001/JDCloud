@@ -9,11 +9,12 @@ class SqliteCompatible
 		$stack = []; // {fn, partIdx}
 		$sql = preg_replace_callback('/\b(if|concat)\s*\( | \( | \) | , /isx', function ($ms) use (&$stack) {
 			$m = $ms[0];
-			if (stripos($m, 'if') === 0) {
+			$m1 = strtolower($ms[1]);
+			if ($m1 == 'if') {
 				$stack[] = ['fn' => 'if', 'partIdx' => 0];
 				return 'case when ';
 			}
-			if (stripos($m, 'concat') === 0) {
+			if ($m1 == 'concat') {
 				$stack[] = ['fn' => 'concat', 'partIdx' => 0];
 				return '(';
 			}
