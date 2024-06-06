@@ -29,6 +29,7 @@ input,select,textarea {
 .wui-page {
 	box-sizing: border-box;
 	height: 100%;
+	background-color: #ffffff;
 }
 .wui-dialog button {
 	min-width: 100;
