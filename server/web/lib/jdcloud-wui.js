@@ -7803,6 +7803,7 @@ function showDlg(jdlg, opt)
 	jdlg.dialog(dlgOpt);
 	var perm = jdlg.attr("wui-perm") || jdlg.dialog("options").title;
 	jdlg.toggleClass("wui-readonly", (opt.objParam && opt.objParam.readonly) || !self.canDo(perm, "对话框") || (formMode==FormMode.forSet && !self.canDo(perm, "修改")) );
+	jdlg.parent().addClass("wui-fullscreen"); // ctrl-alt-双击对话框顶部或底部时支持窗口全屏(中间部分本身就支持全屏), 注意对话框须先最大化才能自动缩放
 
 	jdlg.okCancel(fnOk, opt.noCancel? undefined: fnCancel);
 
