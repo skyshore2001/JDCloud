@@ -10423,7 +10423,7 @@ function dgLoadFilter(data)
 	if (dgOpt.pagination) {
 		var jpager = jtbl.datagrid("getPager");
 		if (ret.total == PAGING_NO_TOTAL && !dgOpt.pagingNoTotal) {
-			jpager.pagination({ layout:['first','prev','manual','next'], afterPageText:'页' });
+			jpager.pagination({ layout:['list', 'sep', 'first','prev','manual','next', 'sep', 'refresh'], afterPageText:'页' });
 			dgOpt.pagingNoTotal = true;
 		}
 		// 无total时正确显示最后一页
