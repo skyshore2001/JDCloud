@@ -1,9 +1,10 @@
 <div wui-script="pageQuery.js" title="查询语句" my-initfn="initPageQuery">
 	<textarea id="txtQuery" rows=5 cols=80>select * from User limit 10</textarea>
 	<div style="display: inline-block; vertical-align:top">
-		<button id="btnQuery">执行</button>
+		<button id="btnQuery" title="执行SQL语句">执行</button>
+		<button id="btnQuerySel" title="只执行选中高亮部分的SQL语句">选择执行</button>
 		<button id="btnNewTab">新窗口</button>
-		dbinst: <select id="cboDbinst" style="width:100px"></select>
+		dbinst: <select id="cboDbinst" style="width:100px" title="在conf_dbinst中配置多数据库"></select>
 	</div>
 	<table id="tblQueryResult" style="width:auto;height:auto" class="x-grid">
 	</table>

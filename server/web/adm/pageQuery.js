@@ -5,6 +5,7 @@ function initPageQuery(pageOpt)
 
 	var lastData = {}; // 特殊处理: hint=db|tbl, db:show databases, tbl:show tables
 	jpage.find("#btnQuery").click(btnQuery_click);
+	jpage.find("#btnQuerySel").click({doSel: true}, btnQuery_click);
 	jpage.find("#btnNewTab").click(btnNewTab_click);
 	var jdbinst = jpage.find("#cboDbinst");
 	jdbinst.mycombobox({
@@ -47,7 +48,16 @@ function initPageQuery(pageOpt)
 	// 只允许SELECT语句, 缺省禁用其它语句; 如果要用, 必须在语句前加"!".
 	function btnQuery_click(ev)
 	{
-		var query = jpage.find("#txtQuery").val().trim();
+		var o = jpage.find("#txtQuery")[0];
+		var query;
+		if (ev && ev.data && ev.data.doSel) {
+			query = o.value.substring(o.selectionStart, o.selectionEnd).trim();
+		}
+		else {
+			query = o.value.trim();
+		}
+		if (!query)
+			return;
 		cleanDynInfo();
 
 		if (query[0] == "!") {
@@ -264,7 +274,8 @@ function initPageQuery(pageOpt)
 				sql = 'create index idx_' + colName + ' on ' + tbl + '(' + colName + ')';
 			}
 			if (sql) {
-				jpage.find("#txtQuery").val(sql);
+				openNewTab({sql: sql});
+				// jpage.find("#txtQuery").val(sql);
 			}
 			return;
 		}
