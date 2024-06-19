@@ -46,27 +46,44 @@ function ac_db()
 	system("bash -l ./backup_db.sh");
 }
 
+/**
+@fn archiveTable($tbl, $bakdb, $sqlKeepData = "order by id desc limit 1")
+
+日志大表存档。一般应指定$bakdb存到专用的存档数据库中。
+由$sqlKeepData指定保存小部分数据（默认1条），以确保id继续增加而不被重置。
+
+    // ApiLog => bak.ApiLog_20240119
+    $bakdb = "bak";
+    archiveTable("ApiLog", $bakdb);
+    archiveTable("SnLog", $bakdb, "where tm>'2024-6-19 18:00'");
+
+*/
+function archiveTable($tbl, $bakdb, $sqlKeepData = "order by id desc limit 1")
+{
+    // $cnt = queryOne("SELECT COUNT(*) FROM $tbl"); // NOTE: 大表count非常慢
+    // if ($cnt < 10000)
+    $rv = queryOne("SELECT MAX(id) ma, MIN(id) mi FROM $tbl");
+    if (! ($rv && $rv[0] && $rv[0]-$rv[1] > 10000))
+        return;
+
+	$dt = date("Ymd");
+    $tblBak = $bakdb? "$bakdb.{$tbl}_$dt": "{$tbl}_$dt";
+    $tblNew = "{$tbl}_{$dt}_1";
+    echo("backup table $tbl to $tblBak\n");
+    execOne("create table $tblNew like $tbl");
+    execOne("insert into $tblNew select * from $tbl $sqlKeepData");
+    execOne("DROP TABLE IF EXISTS $tblBak");
+    execOne("RENAME TABLE $tbl TO $tblBak, $tblNew TO $tbl");
+}
+
 // ApiLog日志归档到ApiLog_{date}, 如果日志很多，建议每半年执行一次，不定期手工删除
 // task.crontab.php建议(每年1/1,6/1执行): 10 4 1 1,6 * $TASK dblog >> $LOG 2>&1
 function ac_dblog()
 {
-	// 默认存在当前库，建议新建备份库如"bak"，否则db备份会很大！
-	$bakdb = '';
-	$dt = date("Ymd");
+	// 应新建专门的归档库如"bak"，否则用当前库db备份会包含进去很大！
+	$bakdb = 'bak';
 	foreach (["ApiLog", "ApiLog1"] as $tbl) {
-		// $cnt = queryOne("SELECT COUNT(*) FROM $tbl"); // NOTE: 大表count非常慢
-		// if ($cnt < 10000)
-		$rv = queryOne("SELECT MAX(id) ma, MIN(id) mi FROM $tbl");
-		if (! ($rv && $rv[0] && $rv[0]-$rv[1] > 10000))
-			continue;
-
-		$tblBak = $bakdb? "$bakdb.{$tbl}_$dt": "{$tbl}_$dt";
-		$tblNew = "{$tbl}_{$dt}_1";
-		echo("backup table $tbl to $tblBak\n");
-		execOne("create table $tblNew like $tbl");
-		execOne("insert into $tblNew select * from $tbl order by id desc limit 1");
-		execOne("DROP TABLE IF EXISTS $tblBak");
-		execOne("RENAME TABLE $tbl TO $tblBak, $tblNew TO $tbl");
+        archiveTable($tbl, $bakdb);
 	}
 }
 
