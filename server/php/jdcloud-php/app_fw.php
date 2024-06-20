@@ -2399,14 +2399,14 @@ function jdEncrypt($string, $enc='E', $fmt='b64', $key=null, $vcnt=4)
 {
 	if ($key == null) {
 		global $ENC_KEY;
-		$key = md5($ENC_KEY);
+		$key = md5($ENC_KEY, true);
 	}
 	else {
-		$key = md5($key);
+		$key = md5($key, true);
 	}
 	if ($enc == 'E') {
-		$data = substr(md5($string.$key),0,$vcnt) . $string;
-		$result = rc4($data, $key);
+		$vstr = substr(md5($string . $key, true), 0, $vcnt);
+		$result = $vstr . rc4($string, $vstr . $key);
 		if ($fmt == "hex")
 			return bin2hex($result);
 		return preg_replace('/=+$/', '', base64_encode($result));
@@ -2415,25 +2415,12 @@ function jdEncrypt($string, $enc='E', $fmt='b64', $key=null, $vcnt=4)
 		@$data = $fmt=='hex'? hex2bin($string): base64_decode($string);
 		if ($data === false)
 			return false;
-		$result = rc4($data, $key);
-		$result1 = substr($result,$vcnt);
-		if (substr($result,0,$vcnt) != substr(md5($result1.$key),0,$vcnt))
+		$vstr = substr($data, 0, $vcnt);
+		$result = rc4(substr($data, $vcnt), $vstr . $key);
+		if ($vstr != substr(md5($result . $key, true), 0, $vcnt))
 			return false;
-		return $result1;
+		return $result;
 	}
-}
-
-/**
-@fn myEncrypt($string, $enc=E|D)
-
-基于rc4的字符串加密算法。
-新代码不建议使用，仅用作兼容旧版本同名函数。缺省key='carsvc', vcnt=8(校验字节数)
-
-@see jdEncrypt
-*/
-function myEncrypt($string, $enc='E')
-{
-	return jdEncrypt($string, $enc, 'b64', 'carsvc', 8);
 }
 
 /**
