@@ -134,6 +134,9 @@ xmp {
 <hr/>
 <?php
 }
+else {
+	showPager();
+}
 
 if (count($msgs) == 0) {
 	echo "<p>没有数据</p>";
