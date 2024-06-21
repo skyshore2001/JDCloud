@@ -9,8 +9,9 @@
 # make clean-refdoc 
 ##############################
 
-# ×¢Òâ£ºÓÉÓÚwindowsÏÂphpÎÞ·¨½ÓÊÕutf-8±àÂëµÄÖÐÎÄ²ÎÊý£¨Ö»ÄÜ½ÓÊÜÏµÍ³Ä¬ÈÏµÄgb2312£©£¬¹Ê±¾ÎÄ¼þ±ØÐë±£´æ³Égb2312±àÂë£¬ÇÒÈÃ¹¤¾ßjdcloud-gendoc¸ù¾Ýencoding²ÎÊýÄÚ²¿×ª³Éutf-8ÔÙÊä³ö¡£
-opt=-encoding gb2312
+# æ³¨æ„ï¼šæŸäº›ç‰ˆæœ¬git-bashåªèƒ½ç”¨gb2312ç¼–ç å¯¼è‡´ä¼ åˆ°phpçš„ä¸­æ–‡å‚æ•°å¼‚å¸¸ï¼Œæ­¤æ—¶é¡»å°†æœ¬æ–‡ä»¶å¿…é¡»ä¿å­˜æˆgb2312ç¼–ç ï¼Œä¸”ä¸ºå·¥å…·jdcloud-gendocæŒ‡å®šencodingå‚æ•°å†…éƒ¨è½¬æˆutf-8å†è¾“å‡ºã€‚
+#opt=-encoding gb2312
+opt=
 gendoc=php jdcloud-gendoc.php -template refdoc-template.php -linkFiles "style.css,doc.css,refdoc.js"
 
 all: refdoc
@@ -23,25 +24,25 @@ refdoc_targets=../doc/api_m2.html ../doc/api_php.html ../doc/api_web.html ../doc
 refdoc: $(refdoc_targets)
 
 ../doc/api_m2.html: ../server/m2/lib/jdcloud-mui.js ../server/m2/lib/jdcloud-uploadpic.js
-	$(gendoc) $^ -title "API²Î¿¼ - ½î¶·ÔÆÇ°¶Ë£¨ÒÆ¶¯Web°æ£©" $(opt) > $@
+	$(gendoc) $^ -title "APIå‚è€ƒ - ç­‹æ–—äº‘å‰ç«¯ï¼ˆç§»åŠ¨Webç‰ˆï¼‰" $(opt) > $@
 
 ../doc/api_web.html: ../server/web/lib/jdcloud-wui.js ../server/web/lib/jdcloud-wui-ext.js ../server/web/lib/jdcloud-wui-stat.js ../server/web/page/pageSimple.js ../server/web/page/dlgReportCond.js ../server/web/page/pageTab.js 
-	$(gendoc) $^ -title "API²Î¿¼ - ½î¶·ÔÆÇ°¶Ë£¨×ÀÃæWeb°æ£©" $(opt) > $@
+	$(gendoc) $^ -title "APIå‚è€ƒ - ç­‹æ–—äº‘å‰ç«¯ï¼ˆæ¡Œé¢Webç‰ˆï¼‰" $(opt) > $@
 
 ../doc/api_php.html: ../server/php/jdcloud-php/common.php ../server/php/jdcloud-php/app_fw.php ../server/php/jdcloud-php/api_fw.php ../server/php/jdcloud-php/AccessControl.php ../server/php/jdcloud-php/ext.php
-	$(gendoc) $^ -title "API²Î¿¼ - ½î¶·ÔÆ·þÎñ¶Ë" $(opt) > $@
+	$(gendoc) $^ -title "APIå‚è€ƒ - ç­‹æ–—äº‘æœåŠ¡ç«¯" $(opt) > $@
 
 ../doc/webcc.html: webcc.php jdcloud-build.sh
-	$(gendoc) $^ -title "webcc - Õ¾µã·¢²¼ÓÅ»¯¹¤¾ß" $(opt) > $@
+	$(gendoc) $^ -title "webcc - ç«™ç‚¹å‘å¸ƒä¼˜åŒ–å·¥å…·" $(opt) > $@
 
 ../doc/jdcloud-sprite.html: jdcloud-sprite.php
-	$(gendoc) $^ -title "jdcloud-sprite - Í¼Æ¬ºÏ²¢£¨¾«ÁéÍ¼ÖÆ×÷£©¹¤¾ß" $(opt) > $@
+	$(gendoc) $^ -title "jdcloud-sprite - å›¾ç‰‡åˆå¹¶ï¼ˆç²¾çµå›¾åˆ¶ä½œï¼‰å·¥å…·" $(opt) > $@
 
 ../doc/jdcloud-gendoc.html: jdcloud-gendoc.php
-	$(gendoc) $^ -title "jdcloud-gendoc - ÎÄµµÉú³É¹¤¾ß" $(opt) > $@
+	$(gendoc) $^ -title "jdcloud-gendoc - æ–‡æ¡£ç”Ÿæˆå·¥å…·" $(opt) > $@
 
 ../doc/jdcloud-upgrade.html: upgrade.php
-	$(gendoc) $^ -title "jdcloud-upgrade - ½î¶·ÔÆÉý¼¶¹¤¾ß" $(opt) > $@
+	$(gendoc) $^ -title "jdcloud-upgrade - ç­‹æ–—äº‘å‡çº§å·¥å…·" $(opt) > $@
 
 clean: clean-refdoc
 
