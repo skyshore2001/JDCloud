@@ -1148,12 +1148,12 @@ function pivot($objArr, $gcols, $ycolCnt=1, $pivotSumField=null, $gres=null)
 			$xarr[$col] = $row[$col];
 		}
 		$xarr1 = array_map(function ($col) use ($row) {
-			return is_null($row[$col])? "(null)": $row[$col];
+			return filterEmpty($row[$col]);
 		}, $xcols1);
 		$x = join('-', $xarr1);
 
 		$garr = array_map(function ($col) use ($row) {
-			return is_null($row[$col])? "(null)": $row[$col];
+			return filterEmpty($row[$col]);
 		}, $gcols);
 		$g = join('-', $garr);
 
@@ -1229,6 +1229,15 @@ function pivot($objArr, $gcols, $ycolCnt=1, $pivotSumField=null, $gres=null)
 		}
 	}
 	return $ret;
+}
+
+function filterEmpty($v)
+{
+	if (is_null($v))
+		return "(null)";
+	if ($v === "")
+		return "(empty)";
+	return $v;
 }
 
 /**
