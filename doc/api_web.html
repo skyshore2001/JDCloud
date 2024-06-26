@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云前端（桌面Web版）</h1>
-<div>最后更新：2024-05-12</div>
+<div>最后更新：2024-06-26</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -74,6 +74,7 @@ code {
 <p><a href="#.wui-find-field">.wui-find-field (key)</a></p>
 <p><a href="#.wui-fixedField">.wui-fixedField (key)</a></p>
 <p><a href="#.wui-form-table">.wui-form-table (key)</a></p>
+<p><a href="#.wui-fullscreen">.wui-fullscreen (key)</a></p>
 <p><a href="#.wui-labels">.wui-labels (key)</a></p>
 <p><a href="#.wui-more">.wui-more (key)</a></p>
 <p><a href="#.wui-notCond">.wui-notCond (key)</a></p>
@@ -371,6 +372,7 @@ code {
 <p style="margin-left:2em"><a href="#WUI-3.1 页面模板支持">3.1 页面模板支持</a></p>
 <p style="margin-left:2em"><a href="#WUI-3.2 按需加载依赖库">3.2 按需加载依赖库</a></p>
 <p style="margin-left:0em"><a href="#WUI-4 参考文档说明">4 参考文档说明</a></p>
+<p style="margin-left:0em"><a href="#WUI-5 全屏显示">5 全屏显示</a></p>
 </div>
 <p>筋斗云前端框架-Web应用桌面版</p>
 <p>此框架实现与筋斗云服务端接口的无缝整合。在界面上以jquery-easyui库为基础展示列表、Tab页等。<br />
@@ -1193,7 +1195,13 @@ callSvrSync
 app_alert
 app_confirm
 app_show</code></pre>
-<p>参考wui-name.js模块。</p></div>
+<p>参考wui-name.js模块。</p>
+<h4 id="WUI-5 全屏显示">5 全屏显示</h4>
+<p class="key"><strong>@key <a id=".wui-fullscreen">.wui-fullscreen</a></strong> </p>
+<ul>
+<li>页面标题栏右键，选择“全屏”，可将页面全屏</li>
+<li>Ctrl-Alt双击元素：全屏显示多行文本框、代码编辑框、页面或对话框，以及有CSS类&quot;wui-fullscreen&quot;的元素。</li>
+</ul></div>
 <div class="block">
 <h2 id="assert">@fn assert(cond, dscr?)</h2></div>
 <div class="block">
@@ -6779,6 +6787,7 @@ callSvr("ApiLog.query", function (data) {
 <p style="margin-left:0em"><a href="#pageSimple-4 辅助列">4 辅助列</a></p>
 <p style="margin-left:0em"><a href="#pageSimple-5 显示统计图">5 显示统计图</a></p>
 <p style="margin-left:0em"><a href="#pageSimple-6 冻结列/固定列">6 冻结列/固定列</a></p>
+<p style="margin-left:0em"><a href="#pageSimple-7 显示树表以及自定义列">7 显示树表以及自定义列</a></p>
 </div>
 <p>用于快捷展示报表。</p>
 <h4 id="pageSimple-1 示例1：列表页上加查看报表按钮">1 示例1：列表页上加查看报表按钮</h4>
@@ -6909,7 +6918,32 @@ WUI.showPage("pageSimple", "订单统计!", [url, null, null, showChartParam]);<
 通过在queryParams中设置frozon，可指定前几列可以设置为冻结列，不跟随滚动条。</p>
 <p>示例：</p>
 <pre><code>WUI.showPage("pageSimple", "订单月报表!", [WUI.makeUrl("Ordr.query"), {frozen: 1}]);</code></pre>
-<p>类似地，若要冻结前2列，则指定<code>{frozen: 2}</code>。</p></div>
+<p>类似地，若要冻结前2列，则指定<code>{frozen: 2}</code>。</p>
+<h4 id="pageSimple-7 显示树表以及自定义列">7 显示树表以及自定义列</h4>
+<p>在onInitGrid中设置dgOpt.treeField就会显示为树表；<br />
+可直接指定字段列表dgOpt.columns（默认是用的url接口返回的字段列表）。</p>
+<p>示例，以下url返回树型结构的<code>[{value, title, nodeClazz, @children}]</code> 这几列，让其显示为树型：</p>
+<pre><code class="language-javascript">var url = WUI.makeUrl("Muyuan.fields");
+WUI.showPage("pageSimple", "场区!", [url, null, onInitGrid]);
+
+function onInitGrid(jpage, jtbl, dgOpt, columns, data) {
+    // dgOpt: datagrid的选项，如设置 dgOpt.onClickCell等属性
+    // columns: 列数组，可设置列的formatter等属性
+    // data: ajax得到的原始数据
+    $.extend(dgOpt, {
+        treeField:"title",
+        url: WUI.makeUrl("Muyuan.fields"),
+        idField: "value",
+        textField: "title",
+        columns: [[
+            {field:'value',title:'编号',width:200},
+            {field:'title',title:'名称',width:500},
+            {field:'nodeClazz',title:'类别',width:200, formatter:Formatter.enum({
+                "region":"区域", "area":"子公司","field":"场区"
+            })}
+        ]],
+    });
+}</code></pre></div>
 <div class="block">
 <h2 id="dlgReportCond">@module dlgReportCond</h2>
 <pre><code>DlgReportCond.show(onOk, meta?, inst?);</code></pre>
