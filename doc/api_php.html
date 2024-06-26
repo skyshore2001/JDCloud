@@ -40,7 +40,7 @@ code {
 
 <body>
 <h1>API参考 - 筋斗云服务端</h1>
-<div>最后更新：2024-05-12</div>
+<div>最后更新：2024-06-26</div>
 <div id="menu">
 <h2>Modules</h2>
 <div class="toc">
@@ -70,12 +70,14 @@ code {
 <p><a href="#AccessControl::$hiddenFields">AccessControl::$hiddenFields (var)</a></p>
 <p><a href="#AccessControl::$id">AccessControl::$id (var)</a></p>
 <p><a href="#AccessControl::$maxPageSz">AccessControl::$maxPageSz (var)</a></p>
+<p><a href="#AccessControl::$obj">AccessControl::$obj (var)</a></p>
 <p><a href="#AccessControl::$onAfterActions">AccessControl::$onAfterActions (var)</a></p>
 <p><a href="#AccessControl::$readonlyFields">AccessControl::$readonlyFields (var)</a></p>
 <p><a href="#AccessControl::$readonlyFields2">AccessControl::$readonlyFields2 (var)</a></p>
 <p><a href="#AccessControl::$requiredFields">AccessControl::$requiredFields (var)</a></p>
 <p><a href="#AccessControl::$requiredFields2">AccessControl::$requiredFields2 (var)</a></p>
 <p><a href="#AccessControl::$subobj">AccessControl::$subobj (var)</a></p>
+<p><a href="#AccessControl::$table">AccessControl::$table (var)</a></p>
 <p><a href="#AccessControl::$uuid">AccessControl::$uuid (var)</a></p>
 <p><a href="#AccessControl::$vcolDefs">AccessControl::$vcolDefs (var)</a></p>
 <p><a href="#AccessControl::addCond">AccessControl::addCond (fn)</a></p>
@@ -170,6 +172,7 @@ code {
 <p><a href="#arrGrep">arrGrep (fn)</a></p>
 <p><a href="#arrMap">arrMap (fn)</a></p>
 <p><a href="#arrayCmp">arrayCmp (fn)</a></p>
+<p><a href="#autoload">autoload (key)</a></p>
 <p><a href="#callAsync">callAsync (fn)</a></p>
 <p><a href="#callJdserver">callJdserver (fn)</a></p>
 <p><a href="#callSvc">callSvc (fn)</a></p>
@@ -181,6 +184,7 @@ code {
 <p><a href="#conf.php">conf.php (key)</a></p>
 <p><a href="#conf_batchAddMaxErrors">conf_batchAddMaxErrors (var)</a></p>
 <p><a href="#conf_bigTables">conf_bigTables (var)</a></p>
+<p><a href="#conf_classDir">conf_classDir (key)</a></p>
 <p><a href="#conf_dataDir">conf_dataDir (var)</a></p>
 <p><a href="#conf_dbinst">conf_dbinst (var)</a></p>
 <p><a href="#conf_jdserverBackUrl">conf_jdserverBackUrl (key)</a></p>
@@ -257,13 +261,12 @@ code {
 <p><a href="#limitApiCall">limitApiCall (fn)</a></p>
 <p><a href="#list2varr">list2varr (fn)</a></p>
 <p><a href="#logext">logext (fn)</a></p>
-<p><a href="#logit">logit (fn)</a></p>
 <p><a href="#logit">logit (alias)</a></p>
+<p><a href="#logit">logit (fn)</a></p>
 <p><a href="#makeTree">makeTree (fn)</a></p>
 <p><a href="#makeUrl">makeUrl (fn)</a></p>
 <p><a href="#mh">mh (fn)</a></p>
 <p><a href="#mparam">mparam (fn)</a></p>
-<p><a href="#myEncrypt">myEncrypt (fn)</a></p>
 <p><a href="#myexec">myexec (fn)</a></p>
 <p><a href="#mypack">mypack (fn)</a></p>
 <p><a href="#myround">myround (fn)</a></p>
@@ -1323,7 +1326,7 @@ session_set_save_handler(new SessionInDb(), true);
 <p>Web主目录实际路径，即包含api.php的目录，即server目录。<br />
 为绝对路径，最后不带&quot;/&quot;.</p>
 <p class="var"><strong>@var <a id="conf_dataDir">conf_dataDir</a></strong> </p>
-<p>数据目录，默认值与$BASE_DIR相同，可在conf.user.php中改写，用于同一套程序部署多套环境。<br />
+<p>数据目录，默认值与$BASE_DIR相同，可在conf.user.php中改写，用于同一套程序部署多套环境(称为&quot;多实例&quot;)。<br />
 程序输出的文件都应存放于此目录下，如session目录, 日志文件(trace.log/debug.log等), 上传目录(upload目录), JDStatusFile状态文件。<br />
 注意如果要设置，应设置为绝对路径。</p>
 <p>示例：(php/conf.user.php中配置)</p>
@@ -1335,7 +1338,10 @@ session_set_save_handler(new SessionInDb(), true);
 else if (strpos($_SERVER["SCRIPT_NAME"], "/jdcloud-a2/") === 0) {
     putenv("P_DB=localhost/jdcloud_a2");
     $GLOBALS["conf_dataDir"] = __DIR__ . "/../data-jdcloud-a2";
-}</code></pre></div>
+}</code></pre>
+<p>注意：二次开发后端的自动生成代码不受conf_dataDir控制，若多实例中某实例修改了二开后端配置，会立即在其它实例上也生效！<br />
+可以通过配置<code>$GLOBALS["conf_classDir"][1]</code>来实现多实例后端的隔离。</p>
+<p class="see"><strong>@see <a href="#conf_classDir">conf_classDir</a></strong> </p></div>
 <div class="block">
 <h2 id="conf_poweredBy">@key conf_poweredBy ?= "jdcloud"</h2>
 <p>设置HTTP头x-powered-by，用于与x-daca-server-rev一起共同决定系统版本。<br />
@@ -1382,7 +1388,9 @@ $GLOBALS["conf_poweredBy"] = "wms@server-pc";</code></pre>
 <div class="block">
 <h2 id="conf_bigTables">@var conf_bigTables</h2>
 <p>在管理端列表页显示大表（如超过1000万行）时，虽然有分页，但因为page参数会自动查询总数量而特别慢。将表加到该配置可跳过取数量，使得大表得以立即显示。示例：</p>
-<pre><code>$GLOBALS["conf_bigTables"] = ["Sn", "SnLog"];</code></pre></div>
+<pre><code>$GLOBALS["conf_bigTables"] = ["Sn", "SnLog"];</code></pre>
+<p>注意：只要数组中包含有AC类的对象名($ac-&gt;obj)或表名($ac-&gt;table)，就会生效。<br />
+比如AC_Data类的对象名是Data，而底层表名可能被改为了一个视图如&quot;select ...&quot;，此时若conf_bigTables中有&quot;Data&quot;就可以匹配该对象。</p></div>
 <div class="block">
 <h2 id="param_varr">@fn param_varr($str, $type, $name)</h2>
 <p>type的格式如&quot;i:n:b?:dt:tm?&quot;.</p>
@@ -2027,11 +2035,6 @@ if ($text === false)
 <p class="see"><strong>@see <a href="#rc4">rc4</a></strong>  基础rc4算法</p>
 <p class="see"><strong>@see <a href="#jdEncryptI">jdEncryptI</a></strong>  基于rc4的32位整数加密</p></div>
 <div class="block">
-<h2 id="myEncrypt">@fn myEncrypt($string, $enc=E|D)</h2>
-<p>基于rc4的字符串加密算法。<br />
-新代码不建议使用，仅用作兼容旧版本同名函数。缺省key='carsvc', vcnt=8(校验字节数)</p>
-<p class="see"><strong>@see <a href="#jdEncrypt">jdEncrypt</a></strong> </p></div>
-<div class="block">
 <h2 id="jdEncryptI">@fn jdEncryptI($data, $enc=E|D, $fmt=hex|b64, $key=$ENC_KEY)</h2>
 <p>基于rc4算法的32位整数加解密，缺省密码为全局变量$ENC_KEY.</p>
 <pre><code>$cipher = jdEncryptI(12345678, "E"); // dfa27c4c208489ca (4字节校验+4字节整数=8字节，用16进制文本表示为16个字节)
@@ -2069,11 +2072,16 @@ $s1 = html_entity_decode($s);</code></pre></div>
 <p>常用于导入，或数据同步，把code/name等唯一字段替换成内部id.</p>
 <ul>
 <li>支持缓存数据，以优化循环效率</li>
-<li>支持查不到时报错或自动添加两种模式</li>
+<li>
+<p>支持查不到时报错或自动添加两种模式</p>
+</li>
+<li>opt={arr, doAutoAdd, onAdd}</li>
 </ul>
 <p>实例：如果给定数组（默认$_POST）含有cateName字段，则通过查询表ItemCategory中的name字段，得到相应的id字段，用cateId字段替代原cateName字段：</p>
 <pre><code>name2id("cateName", "cateId", "ItemCategory", "name");
-(即 cateId = SELECT id FROM ItemCategory WHERE name={cateName} )</code></pre>
+(即 cateId = SELECT id FROM ItemCategory WHERE name={cateName} )
+或
+name2id("cateName", "cateId", "ItemCategory", "name", ["arr" =&gt; &amp;$_POST]);</code></pre>
 <p>如果查不到则会报错。<br />
 也可指定不报错(doAutoAdd)，直接插入ItemCategory表中，用新插入的id值作为cateId字段，替代原cateName字段：</p>
 <pre><code>name2id("cateName", "cateId", "ItemCategory", "name", ["doAutoAdd"=&gt;true]);</code></pre>
@@ -3485,7 +3493,7 @@ Ordr.del(id=1)</code></pre>
 <p class="key"><strong>@key <a id="AC_">AC_</a></strong>   游客权限(AUTH_GUEST)，如未定义则调用时报“无权操作”错误。</p>
 <p class="key"><strong>@key <a id="AC0_">AC0_</a></strong>  超级管理员权限(AUTH_ADMIN)，如未定义，默认拥有所有权限。</p>
 <p class="key"><strong>@key <a id="AC1_">AC1_</a></strong>   用户权限(AUTH_USER)，如未定义，则降级使用游客权限接口(AC_)。</p>
-<p class="key"><strong>@key <a id="AC2_">AC2_</a></strong>   员工权限(AUTH_EMP/AUTH_MGR), 如未定义，报权限不足错误。</p>
+<p class="key"><strong>@key <a id="AC2_">AC2_</a></strong>   员工权限(AUTH_EMP/PERM_MGR), 如未定义，报权限不足错误。</p>
 <p>因而上例中命名为 &quot;AC1_Ordr&quot; 就表示用户登录后调用Ordr对象接口，将受该类控制。而这是个空的类，所以拥有一切操作权限。</p>
 <p>框架为AUTH_ADMIN权限自动选择AC0_类，其它类可以通过函数 onCreateAC 进行自定义，仍未定义的框架使用AC_类。</p>
 <p>(v5.4) 当调用对象接口时，将自动尝试加载 php/class/AC_{obj}.php 文件。所以可将该obj相关的AC类放到该文件中。</p>
@@ -4416,6 +4424,11 @@ $key = param("pagekey/id");  // 支持整数或伪uuid类型</code></pre></div>
 <p>标准增删改方法会自动记录ObjLog。如果不要自动记录，可设置此字段为false.</p>
 <p class="see"><strong>@see <a href="#ApiLog::addObjLog">ApiLog::addObjLog</a></strong>  (table, id, dscr) 手动加ObjLog</p></div>
 <div class="block">
+<h2 id="AccessControl::$table">@var AccessControl::$table AC表名</h2>
+<p class="var"><strong>@var <a id="AccessControl::$obj">AccessControl::$obj</a></strong>  AC对象名</p>
+<p>AC类AC_MyObj1默认的表名和对象名都是MyObj1，但有时会修改表名（比如底层表其它是一个查询视图，或几个对象共享一张表），<br />
+比如AC_Vender/AC_Customer的对象名分别为Vendor和Customer, 而表名都是BizPartner。</p></div>
+<div class="block">
 <h2 id="AccessControl::callSvc">@fn AccessControl::callSvc($tbl, $ac, $param=null, $postParam=null, $useTmpEnv=true)</h2>
 <p class="alias"><strong>@alias <a id="JDApiBase::callSvc">JDApiBase::callSvc</a></strong> </p>
 <p>直接调用指定类的接口，如内部直接调用&quot;PdiRecord.query&quot;方法：</p>
@@ -4755,6 +4768,7 @@ $this-&gt;checkSetFields([&quot;status&quot;, &quot;cmt&quot;]);<br />
 <p style="margin-left:0em"><a href="#AccessControl::api_batchAdd-2 通过导入实现批量更新">2 通过导入实现批量更新</a></p>
 <p style="margin-left:0em"><a href="#AccessControl::api_batchAdd-3 支持带子表导入">3 支持带子表导入</a></p>
 <p style="margin-left:0em"><a href="#AccessControl::api_batchAdd-4 支持列名映射">4 支持列名映射</a></p>
+<p style="margin-left:0em"><a href="#AccessControl::api_batchAdd-5 支持id与name转换">5 支持id与name转换</a></p>
 </div>
 <p>标准接口<code>Obj.batchAdd</code>用于批量导入数据（支持不存在则添加，存在则更新）。返回导入记录数cnt及编号列表idList：</p>
 <pre><code>Obj.batchAdd(title?, uniKey?)(...) -&gt; {cnt, @idList}</code></pre>
@@ -4892,7 +4906,14 @@ id  name    code    itemId  itemCode
 生产订单号   物料编码    物料规格    开工日期    完工日期    生产数量    子件编码    子件规格    基本用量
 SCDD210202302   30101001010484  热像仪#Fotric 615C-L47 2021-02-04  2021-02-04  1.00    20901001000052  标品#Lantern_B31-L47  1
 SCDD210202302   30101001010484  热像仪#Fotric 615C-L47 2021-02-04  2021-02-04  1.00    10205001000017  标签#Lantern_40*30mm铜版纸空白标签#中性#通用 1
-&lt;/script&gt;</code></pre></div>
+&lt;/script&gt;</code></pre>
+<h4 id="AccessControl::api_batchAdd-5 支持id与name转换">5 支持id与name转换</h4>
+<p>传入参数示例：</p>
+<pre><code>name2id=empName,empId,Employee,name;itemName,itemId,Item,name,a</code></pre>
+<p>以分号隔开一组，一组4到5个参数是定义一个转换，上面示例相当于调用：</p>
+<pre><code>name2id("empName", "empId", "Employee", "name");
+name2id("itemName", "itemId", "Item", "name", ["doAutoAdd"=&gt;true]);</code></pre>
+<p>考虑安全性，尾部可选的a标志(表示如果引用对象不存在则自动添加)只允许最高管理员使用。</p></div>
 <div class="block">
 <h2 id="handleExportFormat">@fn handleExportFormat($fmt, $arr, $fname)</h2><div class="toc"><p style="margin-left:0em"><a href="#handleExportFormat-1 根据模板导出">1 根据模板导出</a></p>
 </div>
@@ -5023,6 +5044,22 @@ class AC2_Task extends AC0_Task
     }
 }</code></pre>
 <p class="see"><strong>@see <a href="#api_batchAdd">api_batchAdd</a></strong> </p></div>
+<div class="block">
+<h2 id="autoload">@key autoload 类文件按需加载</h2>
+<p>设置class目录为php类自动加载目录。<br />
+同时将class目录设置为默认库包含路径.</p>
+<p>在api.php或app.php中包含本文件，且php类放在php/class目录下，即可支持类的按需加载。</p>
+<pre><code>require_once("php/autoload.php");</code></pre>
+<p>特别地，对于AC类，统一按文件名&quot;AC_{对象}&quot;来查找，比如&quot;AC0_Role&quot;, &quot;AC_Role&quot;, &quot;AC2_Role&quot;都会找&quot;AC_Role.php&quot;文件。<br />
+(v6) 而且，&quot;Role&quot;类也会尝试在&quot;AC_Role&quot;中查找。</p>
+<p class="key"><strong>@key <a id="conf_classDir">conf_classDir</a></strong>  = ["class", "class/ext"]</p>
+<p>配置php类文件的路径，可以用相对路径（相对于$BASE_DIR/php目录）或绝对路径。<br />
+按惯例，数组第1元素为主类目录，第2元素为自动生成的addon类目录。</p>
+<p>示例：如果服务目录不可写，或是同一份代码配置了多个实例（用$conf_dataDir区分数据目录）且各实例addon有差异，可在conf.user.php中配置: </p>
+<pre><code>$GLOBALS["conf_classDir"][1] = $GLOBALS["conf_dataDir"] . "/class/ext";</code></pre>
+<p>示例：添加一个类文件搜索路径：</p>
+<pre><code>$GLOBALS["conf_classDir"][] = "/var/www/html/saic/php/class/erp_saic";
+// $GLOBALS["conf_classDir"][] = "D:/project/saic/server/php/class/erp_saic";</code></pre></div>
 <div style="text-align:center">Generated by jdcloud-gendoc</div>
 </body>
 

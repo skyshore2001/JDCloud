@@ -29,7 +29,7 @@ refdoc: $(refdoc_targets)
 ../doc/api_web.html: ../server/web/lib/jdcloud-wui.js ../server/web/lib/jdcloud-wui-ext.js ../server/web/lib/jdcloud-wui-stat.js ../server/web/page/pageSimple.js ../server/web/page/dlgReportCond.js ../server/web/page/pageTab.js 
 	$(gendoc) $^ -title "API参考 - 筋斗云前端（桌面Web版）" $(opt) > $@
 
-../doc/api_php.html: ../server/php/jdcloud-php/common.php ../server/php/jdcloud-php/app_fw.php ../server/php/jdcloud-php/api_fw.php ../server/php/jdcloud-php/AccessControl.php ../server/php/jdcloud-php/ext.php
+../doc/api_php.html: ../server/php/jdcloud-php/common.php ../server/php/jdcloud-php/app_fw.php ../server/php/jdcloud-php/api_fw.php ../server/php/jdcloud-php/AccessControl.php ../server/php/jdcloud-php/ext.php ../server/php/autoload.php
 	$(gendoc) $^ -title "API参考 - 筋斗云服务端" $(opt) > $@
 
 ../doc/webcc.html: webcc.php jdcloud-build.sh

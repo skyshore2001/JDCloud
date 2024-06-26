@@ -251,7 +251,7 @@ Web主目录实际路径，即包含api.php的目录，即server目录。
 
 @var conf_dataDir
 
-数据目录，默认值与$BASE_DIR相同，可在conf.user.php中改写，用于同一套程序部署多套环境。
+数据目录，默认值与$BASE_DIR相同，可在conf.user.php中改写，用于同一套程序部署多套环境(称为"多实例")。
 程序输出的文件都应存放于此目录下，如session目录, 日志文件(trace.log/debug.log等), 上传目录(upload目录), JDStatusFile状态文件。
 注意如果要设置，应设置为绝对路径。
 
@@ -267,6 +267,10 @@ Web主目录实际路径，即包含api.php的目录，即server目录。
 		$GLOBALS["conf_dataDir"] = __DIR__ . "/../data-jdcloud-a2";
 	}
 
+注意：二次开发后端的自动生成代码不受conf_dataDir控制，若多实例中某实例修改了二开后端配置，会立即在其它实例上也生效！
+可以通过配置`$GLOBALS["conf_classDir"][1]`来实现多实例后端的隔离。
+
+@see conf_classDir
 */
 global $BASE_DIR;
 $BASE_DIR = dirname(dirname(__DIR__));
