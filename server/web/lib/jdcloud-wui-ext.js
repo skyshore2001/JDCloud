@@ -3445,7 +3445,8 @@ function showDataReport(opt, showPageOpt)
 	for (var idx=resCols.length-1; idx >= 0; -- idx) {
 		var res = resCols[idx];
 		var rv = getFieldInfo(res);
-		if (! /\b(count|sum)\b[()]/i.test(rv.name))
+		// 目前后端允许使用：count|sum|max|min|avg|countif|sumif
+		if (! /\b(\w+)\b[()]/i.test(rv.name))
 			break;
 		sumTitles.unshift(rv.title);
 	}
