@@ -3180,21 +3180,90 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		}
 	}
 
+	private static function showArray($arr, $max=20) {
+		$n = 0;
+		return join(',', arrMap($arr, function ($a) use (&$n, $max) {
+			++ $n;
+			if ($n == $max+1)
+				return "...";
+			if ($n > $max)
+				return;
+			if (is_array($a)) {
+				return '[' . self::showArray($a, 10) . ']';
+			}
+			if (is_string($a)) {
+				if (strlen($a) > 100)
+					return Q(substr($a, 100) . '...');
+				return Q($a);
+			}
+			if (is_scalar($a)) {
+				return $a;
+			}
+			return ''; // 忽略fn等复杂类型
+		}, true));
+	}
+
+	// 取调用栈，返回字符串。默认只显示前面200和后面200项
+	function getBacktrace($max = 200) {
+		$arr = [];
+		$bt = debug_backtrace();
+		$n = count($bt);
+		foreach ($bt as $i=>$e) {
+			// 忽略函数自身
+			if ($i == 0) {  
+				-- $n;
+				continue;
+			}
+			// 忽略中间重复
+			if ($i > $max && $n > $max) {
+				-- $n;
+				continue;
+			}
+			$fn = $e["class"]? ($e["class"] . '->' . $e["function"]): $e["function"];
+			$args = self::showArray($e["args"]);
+			$arr[] = "#$n $fn($args) called at [{$e["file"]}:{$e["line"]}]";
+			-- $n;
+		}
+		return join("\n", $arr);
+	}
+
 /**
 @var JDEnv::$MAX_DEBUG_LOG_CNT=2000
 
 调试日志最大条目数，默认2000条。
 达到极限时会清除掉前一半后继续记录，以避免内存耗尽。
+
+addLog方法同时用于异常监测(确保开启P_DEBUG_LOG为1或2)，对于大于10秒的调用，或是日志首次溢出时，会记录一次调用栈。可在debug日志中搜索"call stack"关键字。
 */
 	static $MAX_DEBUG_LOG_CNT = 2000;
 	function addLog($data, $logLevel=0) {
+		$t = microtime(true) - $this->startTm;
+		// 超过10s的调用在debug日志中记录调用栈, 只记一次；用于死循环、递归耗尽内存等场景调试
+		if ($t > 10 && $this->DEBUG_LOG && !$this->longApiFlag) {
+			$this->longApiFlag = true;
+			$s = '!!! long call! ac=' . $this->ac . ($this->ac1? "(in batch)": "") . ', apiLogId=' . ApiLog::$lastId . ', t>' . round($t, 1) . "s\n### call stack:\n" . $this->getBacktrace();
+			logit($s, true, 'debug');
+		}
 		if ($this->DBG_LEVEL >= $logLevel)
 		{
 			$this->dbgInfo[] = $data;
 			$cnt = count($this->dbgInfo);
 			if ($cnt >= self::$MAX_DEBUG_LOG_CNT) {
-				array_splice($this->dbgInfo, 0, self::$MAX_DEBUG_LOG_CNT/2, ["... skip early logs"]);
+				$rv = array_splice($this->dbgInfo, 0, self::$MAX_DEBUG_LOG_CNT/2, ["... skip early logs"]);
 				$cnt = count($this->dbgInfo);
+				// 某次日志溢出时记录调用栈，用于死循环、递归耗尽内存等场景调试
+				if ($this->DEBUG_LOG) {
+					$s = '!!! log overflow! ac=' . $this->ac . ($this->ac1? "(in batch)": "") . ', apiLogId=' . ApiLog::$lastId . ', t>' . round($t, 1) . 's';
+					if (substr($rv[0], 0, 3) != "...") {
+						$s .= ', dbgInfo=' . jsonEncode($rv, true) .
+							"\ncallSvr(\"$this->ac\", " . jsonEncode($this->_GET) . (empty($this->_POST)? '': ', $.noop, ' . jsonEncode($this->_POST)) . ")\n### call stack:\n" . $this->getBacktrace();
+						logit($s, true, 'debug');
+					}
+					else {
+						$s .= ', skip dbgInfo';
+						logit($s, true, "debug");
+					}
+				}
 			}
 			return $cnt;
 		}
