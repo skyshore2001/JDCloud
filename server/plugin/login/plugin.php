@@ -452,9 +452,7 @@ function parseLoginToken($token)
 {
 	$data = @unserialize(jdEncrypt($token, "D"));
 	if ($data === false) {
-		$data = @unserialize(myEncrypt($token, "D"));
-		if ($data === false)
-			jdRet(E_AUTHFAIL, "Bad login token!");
+		jdRet(E_AUTHFAIL, "Bad login token!");
 	}
 
 	$diff = array_diff(["uname", "pwd", "create", "expire"], array_keys($data));
