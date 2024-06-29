@@ -344,6 +344,10 @@ $GLOBALS["conf_slowApiTime"] = 1.0;
 $GLOBALS["conf_slowHttpCallTime"] = 1.0;
 
 /**
+@var conf_slowApiDebugTime 当API调用超过该时间（默认10.0秒）时，在debug日志中记录当前调用栈和addLog日志
+*/
+$GLOBALS["conf_slowApiDebugTime"] = 10.0;
+/**
 @var conf_batchAddMaxErrors ?=20
 
 导入时，最多允许报错的条目数。

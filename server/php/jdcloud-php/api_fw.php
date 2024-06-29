@@ -3233,15 +3233,18 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 调试日志最大条目数，默认2000条。
 达到极限时会清除掉前一半后继续记录，以避免内存耗尽。
 
-addLog方法同时用于异常监测(确保开启P_DEBUG_LOG为1或2)，对于大于10秒的调用，或是日志首次溢出时，会记录一次调用栈。可在debug日志中搜索"call stack"关键字。
+addLog方法同时用于异常监测(确保开启P_DEBUG_LOG为1或2)，对于大于10秒的调用(conf_slowApiDebugTime=10.0)，或是日志首次溢出时，会记录一次调用栈。可在debug日志中搜索"call stack"关键字。
+
+@see conf_slowApiDebugTime
 */
 	static $MAX_DEBUG_LOG_CNT = 2000;
 	function addLog($data, $logLevel=0) {
 		$t = microtime(true) - $this->startTm;
 		// 超过10s的调用在debug日志中记录调用栈, 只记一次；用于死循环、递归耗尽内存等场景调试
-		if ($t > 10 && $this->DEBUG_LOG && !$this->longApiFlag) {
-			$this->longApiFlag = true;
-			$s = '!!! long call! ac=' . $this->ac . ($this->ac1? "(in batch)": "") . ', apiLogId=' . ApiLog::$lastId . ', t>' . round($t, 1) . "s\n### call stack:\n" . $this->getBacktrace();
+		if ($t > $GLOBALS["conf_slowApiDebugTime"] && $this->DEBUG_LOG && !$this->slowApiDebugFlag) {
+			$this->slowApiDebugFlag = true;
+			$s = '!!! slow api debug! ac=' . $this->ac . ($this->ac1? "(in batch)": "") . ', apiLogId=' . ApiLog::$lastId . ', t>' . round($t, 1) . 's, dbgInfo=' . jsonEncode($this->dbgInfo, true)
+			   	.  "\n### call stack:\n" . $this->getBacktrace();
 			logit($s, true, 'debug');
 		}
 		if ($this->DBG_LEVEL >= $logLevel)
