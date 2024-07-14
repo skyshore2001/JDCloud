@@ -6885,6 +6885,16 @@ title用于唯一标识tab，即如果相同title的tab存在则直接切换过�
 按住Shift点击菜单项, 强制打开新页面, 相当于`forceNew:1`选项;
 如果菜单项是链接页面(指定href为一个url), 则会在新窗口打开(默认是在tab页内即pageIframe中打开).
 
+@key pageIframe
+
+jdcloud-ganlan中内置在tab页打开独立网页（注意被开页面CSP设置及其后端跨域设置）功能，如：
+
+	WUI.showPage("pageIframe", "官网", ["http://yibo.ltd"])
+	// 也可使用绝对或相对路径
+	WUI.showPage("pageIframe", "官网", ["/"])
+
+它在store.html中包含了pageIframe的页面定义，在uimeta.js中定义了页面函数。
+
 ## showPageOpt.pageFilter: (v6) 指定列表页过滤条件(PAGE_FILTER)
 
 示例
