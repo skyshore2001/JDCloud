@@ -339,7 +339,7 @@ postParams可以是一个kv数组或字符串，也可以是一个文件名(以"
 如果请求失败，抛出E_SERVER异常。
 不检查http返回码。
 
-示例：指定postParams, 默认以application/x-www-form-urlencoded格式提交。
+## 示例：指定postParams, 默认以application/x-www-form-urlencoded格式提交。
 
 	$data = [
 		"name" => "xiaoming",
@@ -357,7 +357,7 @@ postParams可以是一个kv数组或字符串，也可以是一个文件名(以"
 同时主动指定了Cookie（Cookie名称需按服务端要求设置），以便与通过Session保持信息的服务器持续交互。
 （有的服务器不使用Cookie，而是在登录后通过返回token来标识，需要额外处理）
 
-示例：调用第三方服务，登录并调用筋斗云后端
+## 示例：调用第三方服务，登录并调用筋斗云后端
 
 	function jdcloudCall($ac, $param=null, $postParam=null)
 	{
@@ -379,7 +379,7 @@ postParams可以是一个kv数组或字符串，也可以是一个文件名(以"
 	// 保持会话，获取订单列表
 	$orders = jdcloudCall("Ordr.query");
 
-示例：提交application/json格式的内容
+## 示例：提交application/json格式的内容
 
 (v6.1) 如果POST内容指定为对象，应指定选项useJson=1，否则默认会使用urlencoded格式：
 
@@ -439,25 +439,77 @@ e.g.
 
 	$rv = httpCall("demo:demo123@" . $url, $data);
 
-使用PUT操作示例，同时指定用户密码：
-取HTTP返回码，可在$opt中加"httpCode"字段，将会回写这个字段中：
+## 示例：使用PUT操作，并取HTTP返回码检查
 
-	$out = [];
+取HTTP返回码，须在$out参数中设置"httpCode"字段为null，调用后返回码将输出到该字段中：
+
+	$out = [ "httpCode" => null ];
 	$rv = httpCall($f, getHttpInput(), [
 		"curlOpt" => [CURLOPT_CUSTOMREQUEST => "PUT", CURLOPT_USERPWD => "yibo:yibo123"],
-		"httpCode" => null
 	], $out);
 	if ($out["httpCode"] != 204)
 		jdRet(E_SERVER, "fail to put file: $rv", "保存文件失败");
 
+## 示例：使用cookie
+
+用$opt["cookieFile"]选项指定一个cookie文件，示例，使用一个临时文件做cookie文件，用完后删除
+
+	$cookieFile = tempnam(".", "cookie."); // 生成一个临时文件保存cookie，用完后记得unlink掉
+	$opt = ["cookieFile"=>$cookieFile];
+	$rv = httpCall("http://myserver/api/login?_app=emp", ["uname"=>"user1", "pwd"=>"1234"], $opt); // 登录后cookie存入文件
+	print_r($rv);
+	$rv = httpCall("http://myserver/api/User/1?_app=emp", null, $opt); // 会从文件中加载cookie传到服务端
+	print_r($rv);
+	// readfile($cookieFile);
+	unlink($cookieFile); // 删除临时文件
+
+## 示例：返回或复用连接
+
+登录并取数据，同上节例子，但两次调用使用相同连接, 即利用HTTP服务器keep-alive机制复用连接。
+首次调用应指定$out["h"]为null，调用后连接句柄将输出到$out["h"]，并在之后请求中保持传入$out参数:
+
+	$cookieFile = tempnam(".", "cookie."); // 生成一个临时文件保存cookie，用完后记得unlink掉
+	$opt = ["cookieFile"=>$cookieFile];
+	$out = ["h" => null]; // 指定要返回h字段, 置null
+	$rv = httpCall("http://myserver/api/login?_app=emp", ["uname"=>"user1", "pwd"=>"1234"], $opt, $out); // 调用后会设置$out["h"]
+	print_r($rv);
+	$rv = httpCall("http://myserver/api/User/1?_app=emp", null, $opt, $out); // 继续传入$out，复用刚刚得到的连接$out["h"]
+	print_r($rv);
+	unlink($cookieFile); // 删除临时文件
+	curl_close($out["h"]); // 注意：应用须自行关闭连接，否则程序执行完才会自动关闭
+
+注意：由于现代HTTP服务端一般都是HTTP 1.1以上，默认支持keep-alive.
+如果是HTTP 1.0则应自行添加header "Connection: keep-alive"。
+
+显然在使用同一连接多次调用时，URL中服务器站点应是相同的(协议，主机，端口)。
+注意Apache Web服务器默认keep-alive时间是5秒且最多复用次数为100，超过这些限制时对方会主动关闭连接导致出错。
+
+在关闭连接前可以对$out["h"]来取更多返回信息，参考: https://www.runoob.com/php/func-curl_getinfo.html
+
+	$status = curl_getinfo($out["h"]);
+	print_r($status);
+	$code = intval($status["http_code"]); // $code==200
+	curl_close($out["h"]);
+
 */
 function httpCall($url, $postParams=null, $opt=[], &$out=[])
 {
-	$h = curl_init();
-	if(stripos($url,"https://")!==false){
-		curl_setopt($h, CURLOPT_SSL_VERIFYPEER, false);
-		curl_setopt($h, CURLOPT_SSL_VERIFYHOST, false);
-		curl_setopt($h, CURLOPT_SSLVERSION, 1); //CURL_SSLVERSION_TLSv1
+	$wantH = array_key_exists("h", $out);
+	if (! $out["h"]) {
+		$h = curl_init();
+		if(stripos($url,"https://")!==false){
+			curl_setopt($h, CURLOPT_SSL_VERIFYPEER, false);
+			curl_setopt($h, CURLOPT_SSL_VERIFYHOST, false);
+			curl_setopt($h, CURLOPT_SSLVERSION, 1); //CURL_SSLVERSION_TLSv1
+		}
+		if ($wantH) {
+			$out["h"] = $h;
+		}
+	}
+	else {
+		$h = $out["h"];
+		// reset
+		curl_setopt($h, CURLOPT_HTTPGET, true);
 	}
 	curl_setopt($h, CURLOPT_URL, $url);
 	curl_setopt($h, CURLOPT_RETURNTRANSFER, true);
@@ -474,8 +526,10 @@ function httpCall($url, $postParams=null, $opt=[], &$out=[])
 	//curl_setopt($h, CURLOPT_PROXYPORT, 8080);
 
 	//cookie设置
-	//curl_setopt($h, CURLOPT_COOKIEFILE, $this->cookieFile);
-	//curl_setopt($h, CURLOPT_COOKIEJAR, $this->cookieFile);
+	if (isset($opt["cookieFile"])) {
+		curl_setopt($h, CURLOPT_COOKIEFILE, $opt["cookieFile"]);
+		curl_setopt($h, CURLOPT_COOKIEJAR, $opt["cookieFile"]);
+	}
 
 	// 伪装ua
 	//curl_setopt($h, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.110 Safari/537.36');
@@ -513,7 +567,7 @@ function httpCall($url, $postParams=null, $opt=[], &$out=[])
 	$t0 = microtime(true);
 	$content = curl_exec($h);
 	$tv = round(microtime(true) - $t0, 2);
-	if (array_key_exists("httpCode", $opt)) {
+	if (array_key_exists("httpCode", $out)) {
 		$out["httpCode"] = curl_getinfo($h, CURLINFO_HTTP_CODE); // $status["http_code"]
 	}
 // 	$status = curl_getinfo($h);
@@ -523,7 +577,8 @@ function httpCall($url, $postParams=null, $opt=[], &$out=[])
 	if ($errno)
 	{
 		$errmsg = curl_error($h);
-		curl_close($h);
+		if (!$wantH)
+			curl_close($h);
 		$msg = "httpCall error $errno: time={$tv}s, url=$url, errmsg=$errmsg";
 		logit($msg, true);
 		throw new MyException(E_SERVER, $msg, "服务器请求出错或超时");
@@ -534,7 +589,8 @@ function httpCall($url, $postParams=null, $opt=[], &$out=[])
 	if ($tv > $slowVal) {
 		logit("httpCall slow call: time={$tv}s, url=$url", true, "slow");
 	}
-	curl_close($h);
+	if (!$wantH)
+		curl_close($h);
 	return $content;
 }
 
