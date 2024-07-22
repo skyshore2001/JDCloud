@@ -7450,7 +7450,6 @@ URL参数会自动加入该对象，例如URL为 `http://{server}/{app}/index.ht
 - g_args._debug: 在测试模式下，指定后台的调试等级，有效值为1-9. 参考：后端测试模式 P_TEST_MODE，调试等级 P_DEBUG.
 - g_args.cordova: 用于在手机APP应用中加载H5应用，参考“原生应用支持”。示例：http://server/jdcloud/m2/index.html?cordova=1
 - g_args.wxCode: 用于在微信小程序中加载H5应用，并自动登录。参考：options.enableWxLogin 微信认证登录
-- g_args.enableSwitchApp: 允许多应用自动切换功能。参考：options.enableSwitchApp
 - g_args.logout: 退出登录后再进入应用。示例：http://server/jdcloud/m2/index.html?logout
 
 @see parseQuery URL参数通过该函数获取。
@@ -7660,17 +7659,16 @@ TODO: cordova-ios未来将使用WkWebView作为容器（目前仍使用UIWebView
 	});
 
 @var options.enableSwitchApp 自动保存和切换应用
-@key g_args.enableSwitchApp =1 应用自动切换
 
 同一个目录下的多个应用，支持自动切换。
 例如原生APP（或微信小程序中）的URL为用户端，但在登录页或个人中心页可切换到员工端。
 当进入员工端并登录成功后，希望下次打开APP后直接进入员工端，做法如下：
 
 在H5应用中设置选项options.enableSwitchApp=true。(例如在app.js中设置，这样所有应用都允许跳转）
-应用登录后将自动记录当前URL。
+应用登录后将自动记录当前URL到localStorage.appPage. (可通过设置STORAGE_PREFIX实现不同应用系列的隔离)
 
-在APP中初次打开H5应用(history.length<=1)时，会在进入应用后自动检查和切换应用（将在MUI.validateEntry函数中检查，一般H5应用的主JS文件入口处默认会调用它）。
-最好在URL中添加参数enableSwitchApp=1强制检查，例如在chrome中初次打开页面history.length为2，不加参数就无法自动切换H5应用。
+在APP中初次打开H5应用(或在浏览器新tab页中打开)时，会在进入应用后自动检查和切换应用（将在MUI.validateEntry函数中检查，一般H5应用的主JS文件入口处默认会调用它）。
+通过sessionStorage.switchApp是否有值来判定是否初次打开页面.
 
 @var options.onShowPage(pageRef, opt) 显示页面前回调
 
@@ -8162,8 +8160,9 @@ self.validateEntry = validateEntry;
 // check if the entry is in the entry list. if not, refresh the page without search query (?xx) or hash (#xx)
 function validateEntry(allowedEntries)
 {
-	// 自动切换APP
-	if (self.options.enableSwitchApp && (history.length <= 1 || g_args.enableSwitchApp)) {
+	// 首次打开时自动切换APP
+	if (self.options.enableSwitchApp && self.getStorage("switchApp", true) == null) {
+		self.setStorage("switchApp", 1, true);
 		var appPage0 = mCommon.getStorage("appPage")
 		if (appPage0) {
 			var appPage = getAppPage();
