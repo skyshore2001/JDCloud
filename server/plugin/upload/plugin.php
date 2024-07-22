@@ -315,7 +315,7 @@ function api_upload($env)
 		$cateConf = Upload::$categoryMap[$cate] + $cateConf;
 
 	$ret = [];
-	$files = []; # elem: {field/文件字段名, name/文件名, tmpname?, fname/文件相对路径, thumbName?/缩略图路径}
+	$files = []; # elem: {field/文件字段名, name/文件名, tmp_name?, fname/文件相对路径, thumbName?/缩略图路径}
 
 	chdir($GLOBALS["conf_dataDir"]);
 
@@ -445,8 +445,8 @@ function api_upload($env)
 		$rv = null;
 //		if (PHP_OS == "WINNT")
 //			$fname = @iconv("utf-8", "gb2312", $fname) ?: $fname;
-		if (isset($f["tmpname"])) {
-			$rv = move_uploaded_file($f["tmpname"], $fname);
+		if (isset($f["tmp_name"])) {
+			$rv = move_uploaded_file($f["tmp_name"], $fname);
 		}
 		else {
 			// for upload raw/raw_b64
