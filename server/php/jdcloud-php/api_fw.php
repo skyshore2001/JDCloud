@@ -805,14 +805,12 @@ function hasPerm($perms, $exPerms=null)
 	if (is_null($env->perms) || $exPerms) {
 		// 扩展认证登录
 		if (count($env->_SESSION) == 0) { // 有session项则不进行认证
-			$authTypes = $exPerms;
-			if ($authTypes == null) {
-				$authTypes = [];
-				foreach (Conf::$authKeys as $e) {
-					// 注意去重. 如果未设置allowedAc则不会自动检查权限
-					if (is_array($e["allowedAc"]) && !in_array($e["authType"], $authTypes))
-						$authTypes[] = $e["authType"];
-				}
+			$authTypes = [];
+			foreach (Conf::$authKeys as $e) {
+				$t = $e["authType"];
+				// 注意去重. 如果未设置allowedAc则不会自动检查权限
+				if ((is_array($e["allowedAc"]) || in_array($t, $exPerms)) && !in_array($t, $authTypes))
+					$authTypes[] = $t;
 			}
 			$env->exPerm = null;
 			foreach ($authTypes as $e) {
