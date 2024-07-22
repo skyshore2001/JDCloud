@@ -81,7 +81,7 @@ tm
 
 使用multipart/form-data格式上传（标准html支持，可一次传多个文件）:
 
-	upload(category?, genThumb?=0, autoResize?=1, onGetPath?)(POST content:multipart/form-data) -> [{id, orgName, size, path, thumbId?}]
+	upload(category?, genThumb?=0, autoResize?=1, f?, exif?)(POST content:multipart/form-data) -> [{id, name, orgName, size, path, thumbId?}]
 	
 直接传文件内容，一次只能传一个文件:
 
@@ -109,14 +109,16 @@ autoResize
  如果前端做过图片压缩, 宜指定此参数为0.
 
 exif
-: Object. 扩展信息。JSON格式，如上传时间及GPS信息：`{"DateTime": "2015:10:08 11:03:02", "GPSLongtitude": [121,42,7.19], "GPSLatitude": [31,14,45.8]}`
+: String. 扩展信息。如上传时间及GPS信息：`{"DateTime": "2015:10:08 11:03:02", "GPSLongtitude": [121,42,7.19], "GPSLatitude": [31,14,45.8]}`
  上传图片时可传图片扩展信息（exif信息），包括时间、GPS信息，注意：exif信息只在上传单图时有意义。
 
 fmt
 : 指定格式，可为"raw"或"raw_b64"。这时必须用参数"f"指定文件名; 且POST content为文件内容(fmt=raw)或文件经base64编码后(fmt=raw_b64)的内容。
 
 f
-: 指定文件名，后台将检查其扩展名。且在fmt="raw"/"raw_b64"时使用。
+: String. 
+使用默认的form-data格式上传时，指定文件字段的名称, 例如`f=ir`表示只对form-data数据块`Content-Disposition: form-data; name="ir"; filename="file1.txt"`保存到文件；可以用逗号分隔指定多个如`f=ir,ir-raw`；如果不指定则保存所有上传的文件。
+在fmt="raw"/"raw_b64"上传时，f必传用于指定文件名, 一般应带扩展名, 后台将检查其扩展名。
 
 注意：
 
@@ -132,14 +134,20 @@ f
 id
 : 附件id. 可根据att(id)接口获取该文件。
 
-thumbId
-: 如果参数设置了genThumb=1, 则会生成缩略图并返回该字段为生成的缩略图id.
+name
+: 文件字段名。对应上传时form-data块中的name值。
 
 orgName
-: 原文件名。可在form-data中获取，或从参数f中获取。在下载(att接口)时会使用到。
+: 原文件名。对应form-data块中的filename值，或从参数f中获取。在下载(att接口)时会使用到。
+
+size
+: 文件大小
 
 path
 : 文件路径. 可通过`{baseDir}/{path}`路径来下载文件. 但一般不建议使用它, 而是使用`att(id)`接口来下载文件.
+
+thumbId
+: 如果参数设置了genThumb=1, 则会生成缩略图并返回该字段为生成的缩略图id.
 
 **[示例1]**
 
@@ -421,4 +429,71 @@ sameNameOverwrite表示若重名则覆盖. 默认是重名则自动改名.
 	$GLOBALS["conf_upload_storeInDb"] = true;
 
 注意：即使文件保存在DB中，本地也会再存一份。
+
+## 文件和普通字段一起上传 - file2id
+
+接口默认处理所有带filename的项，也可以通过参数f来指定保存form-data块中指定name的文件(注意不是filename).
+
+示例：一次上传红外图文件(ir)、原始温度数据文件(ir-raw)、普通数据(result)
+
+上传内容示例如下:
+```txt
+--------------------------357185ac2c5d2929
+Content-Disposition: form-data; name="ir"; filename="1.jpg"
+Content-Type: image/jpeg
+
+(1.jpg content here)
+--------------------------357185ac2c5d2929
+Content-Disposition: form-data; name="ir-raw"; filename="1.dat"
+Content-Type: application/octet
+
+(1.dat content here)
+--------------------------357185ac2c5d2929
+Content-Disposition: form-data; name="result"
+Content-Type: application/json
+
+{"tm":"2021-1-1 10:10:10", "maxT":32.3}
+```
+
+可用curl命令生成上述请求：`curl -F "ir=@1.jpg" -F "ir-raw=@1.dat" -F "result=<1.json" -u $userpwd $url`
+
+假如对应处理接口为: `XX.add()(tm, maxT, irPicId, rawAttId)`
+
+可以用file2id函数来处理文件字段，它先调用upload接口，再将上传的附件id赋值到$_POST中:
+
+```php
+	// AC_Xxx::onValidate()
+	$_POST = jsonDecode($_POST["result"]);
+	$kmap = [
+		"ir" => "irPicId",
+		"ir-raw" => "rawAttId",
+	];
+	file2id($kmap, ["category"=>"muyuan", "autoResize"=>0]);
+```
+
+如果不使用file2id方法(即复用upload接口)，其参考简要实现如下：
+```php
+	// AC_Xxx::onValidate()
+    $kmap = [
+        "ir" => "irPicId",
+        "ir-raw" => "rawAttId",
+    ];
+    $dir = "upload/foitem/";
+    if (!is_dir($dir))
+        mkdir($dir, 0777, true);
+    foreach ($_FILES as $k=>$f) {
+        if (! array_key_exists($k, $kmap))
+            continue;
+
+        $fname = $dir . $f["name"];
+        move_uploaded_file($f["tmp_name"], $fname);
+        $attId = dbInsert("Attachment", [
+            "path" => $fname,
+            "orgName" => $f["name"],
+            "tm" => date(FMT_DT),
+        ]);
+        $k1 = $kmap[$k];
+        $_POST[$k1] = $attId;
+    }
+```
 
