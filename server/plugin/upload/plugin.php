@@ -13,7 +13,8 @@
 
 各配置项及默认值如下。
 
-- 定义允许上传的文件类型
+### 定义允许上传的文件类型
+
 上传文件时，如果文件扩展名不在列表中，则禁止上传。
 如果未指定扩展名，则检查MIME类型是否在此表中；若不在列表，则尝试根据文件头自动猜测文件类型(目前支持JPG/PNG/GIF, 见guessFileType)；猜测失败则禁止上传该文件。
 下载文件时(att接口)，将按该表返回文件MIME类型。
@@ -49,7 +50,7 @@
 
 	Upload::$checkFileType = false;
 
-- 定义文件分类及配置
+### 定义文件分类及配置
 
 	Upload::$categoryMap = [
 		"default" => ["path"=>"%m/%r", "sameNameOverwrite"=>false, "w"=>360, "h"=>360]
@@ -68,13 +69,14 @@
 
 注意：在windows上，如果路径中包含"%f"即原文件名，则原文件名有中文时会出现乱码，也可能操作失败。在Linux上无此问题。
 
-- 服务器图片压缩选项
- 调用upload接口时，超过maxPicKB的图片，会自动压缩到长宽不超过maxPicSize像素，除非接口参数autoResize设置为0。
+### 服务器图片压缩选项
+
+调用upload接口时，超过maxPicKB的图片，会自动压缩到长宽不超过maxPicSize像素，除非接口参数autoResize设置为0。
 
 	Upload::$maxPicKB = 500; // KB
 	Upload::$maxPicSize = 1280;
 
-- 导出zip文件
+### 导出zip文件
 
 	$fname = "ORDR-17.zip"; // 导出的文件名，不用目录名
 	// zip中子目录名，对应的附件编号列表
@@ -292,13 +294,16 @@ function getPath($orgName, $cate, $cateConf)
 
 function api_upload($env)
 {
-	checkAuth(AUTH_LOGIN, ['simple']);
+	checkAuth(AUTH_LOGIN, ['simple', 'basic']);
 	session_commit(); // !!!释放session锁避免阻塞其它调用。注意此后要修改session应先调用session_start
 
 	$fmt = param("fmt");
 	if ($fmt === 'raw' || $fmt === 'raw_b64')
 	{
 		$fileName = mparam("f");
+	}
+	else {
+		$fileName = param("f");
 	}
 	$genThumb = param("genThumb/b");
 	$autoResize = param("autoResize/i", 1);
@@ -310,10 +315,11 @@ function api_upload($env)
 		$cateConf = Upload::$categoryMap[$cate] + $cateConf;
 
 	$ret = [];
-	$files = []; # elem: [$tmpname, $fname, $thumbName]
+	$files = []; # elem: {field/文件字段名, name/文件名, tmpname?, fname/文件相对路径, thumbName?/缩略图路径}
 
 	chdir($GLOBALS["conf_dataDir"]);
 
+	// 检查错误并生成文件名
 	$handleOneFile = function ($f, $genThumb, &$files) use ($cate, $cateConf)
 	{
 		if ($f["error"]) {
@@ -360,12 +366,12 @@ function api_upload($env)
 				if (mkdir($dir, 0777, true) === false)
 					jdRet(E_SERVER, "fail to create folder: $dir");
 			}
-			$rec = [$f["tmp_name"], $fname, $orgName];
+			$f["fname"] = $fname;
+			$f["orgName"] = $orgName;
 			if ($genThumb) {
-				$thumbName = preg_replace('/(\.\w+)?$/', "-thumb.jpg", $fname, 1);
-				$rec[] = $thumbName;
+				$f["thumbName"] = preg_replace('/(\.\w+)?$/', "-thumb.jpg", $fname, 1);
 			}
-			$files[] = $rec;
+			$files[] = $f;
 		}
 	};
 
@@ -389,20 +395,25 @@ function api_upload($env)
 	# 1st round: just check and prepare data, not save file or add to DB.
 	if ($fmt === 'raw' || $fmt === 'raw_b64') {
 		$f1 = [
+			"field" => $fileName,
 			"name" => $fileName,
 			"type" => null,
 			"tmp_name" => null,
 			"error" => 0,
 			"size" => 1,
-			];
+		];
 		$handleOneFile($f1, $genThumb, $files);
 	}
 	else {
-		foreach ($_FILES as $f) {
+		$fs = $fileName? explode(',', $fileName): null;
+		foreach ($_FILES as $field=>$f) {
+			if ($fs && !in_array($field, $fs))
+				continue;
 			if (is_array($f["name"])) {
 				$cnt = count($f["name"]);
 				for ($i=0; $i<$cnt; ++$i) {
 					$f1 = [
+						"field" => $field,
 						"name" => $f["name"][$i],
 						"type" => $f["type"][$i],
 						"tmp_name" => $f["tmp_name"][$i],
@@ -413,6 +424,7 @@ function api_upload($env)
 				}
 			}
 			else {
+				$f["field"] = $field;
 				$handleOneFile($f, $genThumb, $files);
 			}
 		}
@@ -429,13 +441,12 @@ function api_upload($env)
 		$blobStmt = $env->DBH->prepare("UPDATE Attachment SET data=? WHERE id=?");
 	}
 	foreach ($files as $f) {
-		# 0: tmpname; 1: fname; 2: orgName; 3: thumbName(optional)
-		list($tmpname, $fname, $orgName, $thumbName) = $f;
+		$fname = $f["fname"];
 		$rv = null;
 //		if (PHP_OS == "WINNT")
 //			$fname = @iconv("utf-8", "gb2312", $fname) ?: $fname;
-		if (isset($tmpname)) {
-			$rv = move_uploaded_file($tmpname, $fname);
+		if (isset($f["tmpname"])) {
+			$rv = move_uploaded_file($f["tmpname"], $fname);
 		}
 		else {
 			// for upload raw/raw_b64
@@ -457,27 +468,27 @@ function api_upload($env)
 
 		$id = dbInsert("Attachment", [
 			"path" => $fname,
-			"orgName" => $orgName,
+			"orgName" => $f["orgName"],
 			"exif" => $exif,
 			"tm" => date(FMT_DT),
 		]);
-		$r = ["id"=>$id, "orgName"=>$orgName, "size"=>filesize($fname), "path"=>$fname];
+		$r = ["id"=>$id, "orgName"=>$f["orgName"], "size"=>filesize($fname), "path"=>$fname, "name"=>$f["field"]];
 		if ($blobStmt) {
 			$blobStmt->execute([file_get_contents($fname), $id]);
 		}
 
 		if ($genThumb) {
-			$rv = resizeImage($fname, $cateConf["w"], $cateConf["h"], $thumbName);
+			$rv = resizeImage($fname, $cateConf["w"], $cateConf["h"], $f["thumbName"]);
 			if ($rv) {
-				#file_put_contents($thumbName, "THUMB");
+				#file_put_contents($f["thumbName"], "THUMB");
 				$thumbId = dbInsert("Attachment", [
-					"path" => $thumbName,
+					"path" => $f["thumbName"],
 					"orgPicId" => $id,
-					"orgName" => $orgName,
+					"orgName" => $f["orgName"],
 					"tm" => date(FMT_DT),
 				]);
 				if ($blobStmt) {
-					$blobStmt->execute([file_get_contents($thumbName), $thumbId]);
+					$blobStmt->execute([file_get_contents($f["thumbName"]), $thumbId]);
 				}
 				$r["thumbId"] = $thumbId;
 				dbUpdate("Attachment", ["orgPicId"=>-$thumbId], $id);
@@ -667,5 +678,31 @@ function api_export()
 		$str = iconv("utf-8", "$enc//IGNORE", $str);
 	echo($str);
 	jdRet();
+}
+
+/**
+@fn file2id($kmap, $uploadOpt)
+
+保存指定文件，并将文件字段转为id字段，示例:
+
+    $kmap = [
+        "ir" => "irPicId",
+        "dc" => "dcPicId",
+        "ir-raw" => "rawAttId",
+    ];
+	file2id($kmap, ["category"=>"muyuan", "autoResize"=>0]);
+*/
+function file2id($kmap, $uploadOpt)
+{
+	// 限定处理的文件
+	$uploadOpt["f"] = join(',', array_keys($kmap));
+	$rv = callSvcInt("upload", $uploadOpt);
+	foreach ($rv as $e) {
+		$k = $e["name"];
+        if (! array_key_exists($k, $kmap))
+            continue;
+        $k1 = $kmap[$k];
+        $_POST[$k1] = $e["id"];
+	}
 }
 
