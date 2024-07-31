@@ -2246,14 +2246,15 @@ class SimpleCache
 	}, ["timeout" => T_HOUR*4]);
 
 - 文件名建议为"{变量名}.cache.json"
-- timeout选项指定超时时间(秒), 默认不超时.
+- timeout选项指定超时时间(秒), 默认不超时. 指定为0则意味着强制更新缓存。
+
 */
 class FileCache
 {
 	// return false if key does not exist
 	static function get($key, $fnGet = null, $opt = []) {
 		@$t = filemtime($key);
-		if ($t === false || (@$opt["timeout"] && time() - $t > $opt["timeout"])) {
+		if ($t === false || (isset($opt["timeout"]) && time() - $t > $opt["timeout"])) {
 			if (!isset($fnGet))
 				return false;
 
