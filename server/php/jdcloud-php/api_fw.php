@@ -2704,7 +2704,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		$isUserFmt = false;
 
 		$isDefaultCall = ($ac === null);
-		if ($isDefaultCall) {
+		if ($this->startTm === null) {
 			$this->startTm = $this->_SERVER("REQUEST_TIME_FLOAT") ?: microtime(true);
 		}
 		$isCLI = isCLI();
