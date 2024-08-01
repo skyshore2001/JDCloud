@@ -339,6 +339,9 @@ postParams可以是一个kv数组或字符串，也可以是一个文件名(以"
 如果请求失败，抛出E_SERVER异常。
 不检查http返回码。
 
+@var conf_httpCallTimeout=5 http超时时间（秒）
+默认为5秒超时，可通过timeout选项修改。全局修改可使用conf_httpCallTimeout配置项
+
 ## 示例：指定postParams, 默认以application/x-www-form-urlencoded格式提交。
 
 	$data = [
@@ -421,6 +424,8 @@ postParams可以是一个kv数组或字符串，也可以是一个文件名(以"
 http://curl.haxx.se/libcurl/c/libcurl-errors.html
 
 出错记到trace日志，慢调用会记录到slow日志中(可配置慢调用时间阀值，默认1秒：conf_slowHttpCallTime=1.0)
+
+@see conf_slowHttpCallTime
 
 e.g.
 
@@ -515,7 +520,7 @@ function httpCall($url, $postParams=null, $opt=[], &$out=[])
 	curl_setopt($h, CURLOPT_RETURNTRANSFER, true);
 	curl_setopt($h, CURLOPT_HEADER, false);
 
-	$timeout = @$opt["timeout"] ?: 5;
+	$timeout = @$opt["timeout"] ?: $GLOBALS["conf_httpCallTimeout"] ?: 5;
 	curl_setopt($h, CURLOPT_TIMEOUT, $timeout);
 
 	if (@$opt["curlOpt"])
