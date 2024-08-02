@@ -165,10 +165,11 @@ function checkEnv()
 	];
 
 	// upload
-	$val = sprintf("upload_max_filesize=%s, post_max_size=%s, max_execution_time=%s", 
+	$val = sprintf("upload_max_filesize=%s, post_max_size=%s, max_file_uploads=%s, max_input_time=%s", 
 		ini_get('upload_max_filesize'),
 		ini_get('post_max_size'),
-		ini_get('max_execution_time')
+		ini_get('max_file_uploads'),
+		ini_get('max_input_time')
 	);
 	$check["uploadsz"] = [
 		"value"=> $val,

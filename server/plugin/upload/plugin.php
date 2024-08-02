@@ -324,8 +324,15 @@ function api_upload($env)
 	{
 		if ($f["error"]) {
 			logit("fail to upload: " . jsonEncode($f));
-			if ($f["error"] === 1 || $f["error"] === 2)
-				jdRet(E_PARAM, "large file (>upload_max_filesize or >MAX_FILE_SIZE)", "文件太大，禁止上传");
+			if ($f["error"] === 1) {
+				$sz = ini_get("upload_max_filesize");
+				jdRet(E_PARAM, "file size>$sz (upload_max_filesize)", "文件大小不可超过$sz");
+			}
+			if ($f["error"] === 2) {
+				// 实际上总大小超过时并不走这里,而是直接$_FILES为空
+				$sz = ini_get("post_max_size");
+				jdRet(E_PARAM, "total post size>$sz (post_max_size)", "上传总数据不可超过$sz");
+			}
 			elseif ($f["error"] === 3)
 				jdRet(E_SERVER, "partial data got", "文件内容不完整");
 			elseif ($f["error"] === 7)
@@ -430,9 +437,22 @@ function api_upload($env)
 		}
 	}
 	if (count($files) == 0) {
+		// 上传失败: 一般是接收数据超时(>max_input_time, 默认60) 或 文件太大(>post_max_size)
+		$t = microtime(true) - $env->startTm;
+		$tstr = sprintf("%.1fs", $t);
+		$maxt = ini_get("max_input_time");
+		$msg = $t>$maxt? "上传超时": "上传失败";
+
 		$sz = (@$_SERVER["HTTP_CONTENT_LENGTH"]?:$_SERVER["CONTENT_LENGTH"]?:0);
-		jdRet(E_PARAM, "no file uploaded. upload size=$sz", "没有文件上传或文件过大。");
-		// return $ret;
+		$maxsz = ini_get("post_max_size");
+		$sz1 = $sz;
+		if ($sz > 1024*1024) {
+			$sz1 = sprintf("%.1fM", $sz/1024/1024);
+		}
+		else if ($sz > 1024) {
+			$sz1 = sprintf("%.1fK", $sz/1024);
+		}
+		jdRet(E_PARAM, "no file uploaded. upload size=$sz (post_max_size=$maxsz), t=$tstr (max_input_time=$maxt)", "{$msg}! 数据量为{$sz1}, 用时{$tstr}");
 	}
 
 	# 2nd round: save file and add to DB

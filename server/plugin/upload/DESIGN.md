@@ -123,7 +123,11 @@ f
 注意：
 
 - 仅支持上传指定的文件扩展名，可配置`Upload::$fileTypes`。
-- 文件最大可上传的大小，可在php.ini中修改配置upload_max_filesize, post_max_size, max_execution_time等相关选项。
+- 文件最大可上传的大小及上传时间，可在php.ini中修改配置upload_max_filesize, post_max_size, max_file_uploads等相关选项。
+	- max_input_time默认为60秒, 超出时报错"上传失败". ($_FILES为空)
+	- post_max_size默认为8M, 为上传数据大小限制, 超过时报错"上传失败". ($_FILES为空)
+	- upload_max_filesize默认为2M, 为单个文件大小限制, 超过时报错, 并提示文件不可超过多大.
+	- max_file_uploads为一次最多传多少文件, 默认20, 超过时不报错, 但后面的文件丢失.
 - 在保存文件时，文件路径使用以下规则: upload/{category}/{date:YYYYMM}/{6位随机数}.{原扩展名}
  例如, 商家图片(category=store)路径为 upload/store/201501/123456.jpg. 用户上传的某图片(category为空)路径可能为 upload/201501/123456.jpg
 
