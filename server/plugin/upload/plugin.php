@@ -441,7 +441,7 @@ function api_upload($env)
 		$t = microtime(true) - $env->startTm;
 		$tstr = sprintf("%.1fs", $t);
 		$maxt = ini_get("max_input_time");
-		$msg = $t>$maxt? "上传超时": "上传失败";
+		$msg = ($maxt>0 && $t>$maxt-1)? "上传超时": "上传失败"; // maxt=-1表示未启用; maxt=60,t=59.9时也是超时
 
 		$sz = (@$_SERVER["HTTP_CONTENT_LENGTH"]?:$_SERVER["CONTENT_LENGTH"]?:0);
 		$maxsz = ini_get("post_max_size");
