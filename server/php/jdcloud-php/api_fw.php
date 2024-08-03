@@ -3191,7 +3191,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			}
 			if (is_string($a)) {
 				if (strlen($a) > 100)
-					return Q(substr($a, 100) . '...');
+					return Q(substr($a, 0, 100) . '...');
 				return Q($a);
 			}
 			if (is_scalar($a)) {
