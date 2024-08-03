@@ -437,11 +437,11 @@ function api_upload($env)
 		}
 	}
 	if (count($files) == 0) {
-		// 上传失败: 一般是接收数据超时(>max_input_time, 默认60) 或 文件太大(>post_max_size)
+		// 上传失败: 一般可能是文件传输出错了, 导致误认为未传完而等待超时, 约60s (没有对应选项)
+		// 也可能是接收数据超时(>max_input_time, 默认60) 或 文件太大被丢弃(>post_max_size)
 		$t = microtime(true) - $env->startTm;
 		$tstr = sprintf("%.1fs", $t);
 		$maxt = ini_get("max_input_time");
-		$msg = ($maxt>0 && $t>$maxt-1)? "上传超时": "上传失败"; // maxt=-1表示未启用; maxt=60,t=59.9时也是超时
 
 		$sz = (@$_SERVER["HTTP_CONTENT_LENGTH"]?:$_SERVER["CONTENT_LENGTH"]?:0);
 		$maxsz = ini_get("post_max_size");
@@ -452,7 +452,7 @@ function api_upload($env)
 		else if ($sz > 1024) {
 			$sz1 = sprintf("%.1fK", $sz/1024);
 		}
-		jdRet(E_PARAM, "no file uploaded. upload size=$sz (post_max_size=$maxsz), t=$tstr (max_input_time=$maxt)", "{$msg}! 数据量为{$sz1}, 用时{$tstr}");
+		jdRet(E_PARAM, "no file uploaded. upload size=$sz (post_max_size=$maxsz), t=$tstr (max_input_time=$maxt)", "上传失败! 数据量为{$sz1}, 已用时{$tstr}");
 	}
 
 	# 2nd round: save file and add to DB
