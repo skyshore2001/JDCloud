@@ -1259,7 +1259,7 @@ class ApiLog
 	private $id;
 
 	// for batch detail (ApiLog1)
-	private $req1, $startTm1;
+	private $req1;
 	public $batchAc; // new ac for batch
 	public $updateLog; // 可定制ApiLog记录
 
@@ -1406,7 +1406,8 @@ res字段会记录返回数据200字节(出错时记录2000字节).
 		// 不记日志的情况
 		if (!$this->id && (Conf::$enableApiLog == 0 || (Conf::$enableApiLog == 2 && $ret[0] == 0)))
 			return;
-		$t = microtime(true) - $this->env->startTm;
+		// 注意：ApiLog记录时间t是从接收请求而不是实际处理(startTm)开始, 所以upload类接口会比较长; 而ApiLog1中记录中的t是从当前调用的实际时间开始(startTm1)
+		$t = microtime(true) - ($this->env->_SERVER("REQUEST_TIME_FLOAT") ?: $this->env->startTm);
 		$iv = sprintf("%.0f", $t * 1000); // ms
 		if ($X_RET_STR == null)
 			$X_RET_STR = jsonEncode($ret, $env->TEST_MODE);
@@ -1448,7 +1449,6 @@ res字段会记录返回数据200字节(出错时记录2000字节).
 	function logBefore1()
 	{
 		$env = $this->env;
-		$this->startTm1 = microtime(true);
 		$this->req1 = $this->myVarExport($env->_GET, 2000);
 		$content2 = $this->myVarExport($env->_POST, 2000);
 		if ($content2 != "")
@@ -1460,7 +1460,7 @@ res字段会记录返回数据200字节(出错时记录2000字节).
 		$env = $this->env;
 		if ($env->DBH == null)
 			return;
-		$iv = sprintf("%.0f", (microtime(true) - $this->startTm1) * 1000); // ms
+		$iv = sprintf("%.0f", (microtime(true) - $env->startTm1) * 1000); // ms
 		$res = jsonEncode($ret, $env->TEST_MODE);
 		$logLen = $ret[0] !== 0? 2000: 200;
 		$content = $this->myVarExport($res, $logLen);
@@ -2548,6 +2548,7 @@ class JDEnv extends DBEnv
  */
 	public $appName, $appType;
 	public $startTm;
+	public $startTm1; // 当前调用的开始时间，一般与startTm相同，如果是batch则为子调用的开始时间。
 
 /*
 @var env.clientVer
@@ -2588,6 +2589,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 
 	function __construct() {
 		parent::__construct();
+		$this->startTm = microtime(true);
 
 		$this->onBeforeActions[] = function () {
 			$xp = $this->_GET["xp"];
@@ -2704,9 +2706,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		$isUserFmt = false;
 
 		$isDefaultCall = ($ac === null);
-		if ($this->startTm === null) {
-			$this->startTm = $this->_SERVER("REQUEST_TIME_FLOAT") ?: microtime(true);
-		}
+		$this->startTm1 = microtime(true);
 		$isCLI = isCLI();
 		if ($isCLI || $isSubCall)
 			assert($ac != null);
@@ -2830,7 +2830,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			$debugLog = $this->DEBUG_LOG;
 			if ($debugLog == 1 || ($debugLog == 2 && $ret[0] != 0 && $ret[0] != E_NOAUTH && $ret[0] != E_ABORT)) {
 				$retStr = $isUserFmt? (is_scalar($ret[1])? $ret[1]: jsonEncode($ret[1])): jsonEncode($ret);
-				$t = microtime(true) - $this->startTm;
+				$t = microtime(true) - $this->startTm1;
 				$s = 'ac=' . $ac . ($this->ac1? "(in batch)": "") . ', apiLogId=' . ApiLog::$lastId . ', t=' . round($t, 1) . 's, ret=' . $retStr . ", dbgInfo=" . jsonEncode($this->dbgInfo, true) .
 					"\ncallSvr(\"$ac\", " . jsonEncode($this->_GET) . (empty($this->_POST)? '': ', $.noop, ' . jsonEncode($this->_POST)) . ")";
 				logit($s, true, 'debug');
