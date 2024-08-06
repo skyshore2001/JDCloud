@@ -1407,7 +1407,7 @@ res字段会记录返回数据200字节(出错时记录2000字节).
 		if (!$this->id && (Conf::$enableApiLog == 0 || (Conf::$enableApiLog == 2 && $ret[0] == 0)))
 			return;
 		// 注意：ApiLog记录时间t是从接收请求而不是实际处理(startTm)开始, 所以upload类接口会比较长; 而ApiLog1中记录中的t是从当前调用的实际时间开始(startTm1)
-		$t = microtime(true) - ($this->env->_SERVER("REQUEST_TIME_FLOAT") ?: $this->env->startTm);
+		$t = $this->env->getT(2);
 		$iv = sprintf("%.0f", $t * 1000); // ms
 		if ($X_RET_STR == null)
 			$X_RET_STR = jsonEncode($ret, $env->TEST_MODE);
@@ -1460,7 +1460,7 @@ res字段会记录返回数据200字节(出错时记录2000字节).
 		$env = $this->env;
 		if ($env->DBH == null)
 			return;
-		$iv = sprintf("%.0f", (microtime(true) - $env->startTm1) * 1000); // ms
+		$iv = sprintf("%.0f", $env->getT(1) * 1000); // ms
 		$res = jsonEncode($ret, $env->TEST_MODE);
 		$logLen = $ret[0] !== 0? 2000: 200;
 		$content = $this->myVarExport($res, $logLen);
@@ -2587,6 +2587,25 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 		return $this->ac1;
 	}
 
+/**
+@fn env.getT($type = 2)
+
+取处理时间(秒).
+
+- type: 0-从脚本处理开始, 
+	1-从当前调用开始(当有多个接口调用或batch子调用时和type=0不同), 
+	2(默认)-从请求开始(upload等接口请求时间较长时与type=0差异较大)
+
+@var env.startTm  Env创建时间
+@var env.startTm1  当前调用开始时间
+*/
+	function getT($type = 2) {
+		$t0 = $type == 0? $this->startTm
+			: $type == 1? $this->startTm1
+			: ($this->_SERVER("REQUEST_TIME_FLOAT") ?: $this->startTm);
+		return microtime(true) - $t0;
+	}
+
 	function __construct() {
 		parent::__construct();
 		$this->startTm = microtime(true);
@@ -2830,7 +2849,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			$debugLog = $this->DEBUG_LOG;
 			if ($debugLog == 1 || ($debugLog == 2 && $ret[0] != 0 && $ret[0] != E_NOAUTH && $ret[0] != E_ABORT)) {
 				$retStr = $isUserFmt? (is_scalar($ret[1])? $ret[1]: jsonEncode($ret[1])): jsonEncode($ret);
-				$t = microtime(true) - $this->startTm1;
+				$t = $this->getT(1);
 				$s = 'ac=' . $ac . ($this->ac1? "(in batch)": "") . ', apiLogId=' . ApiLog::$lastId . ', t=' . round($t, 1) . 's, ret=' . $retStr . ", dbgInfo=" . jsonEncode($this->dbgInfo, true) .
 					"\ncallSvr(\"$ac\", " . jsonEncode($this->_GET) . (empty($this->_POST)? '': ', $.noop, ' . jsonEncode($this->_POST)) . ")";
 				logit($s, true, 'debug');
@@ -2850,7 +2869,7 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 	X-Exec-Time: 13ms
 */
 			if ($GLOBALS["conf_returnExecTime"] && $this->startTm) {
-				$t = microtime(true) - $this->startTm;
+				$t = $this->getT(0);
 				// 如果之前已输出, 此时可能无法输出header
 				@$this->header("X-Exec-Time", round($t*1000, 3) . "ms");
 			}
@@ -3237,7 +3256,7 @@ addLog方法同时用于异常监测(确保开启P_DEBUG_LOG为1或2)，对于�
 */
 	static $MAX_DEBUG_LOG_CNT = 2000;
 	function addLog($data, $logLevel=0) {
-		$t = microtime(true) - $this->startTm;
+		$t = $this->getT(0);
 		// 超过10s的调用在debug日志中记录调用栈, 只记一次；用于死循环、递归耗尽内存等场景调试
 		if ($t > $GLOBALS["conf_slowApiDebugTime"] && $this->DEBUG_LOG && !$this->slowApiDebugFlag) {
 			$this->slowApiDebugFlag = true;

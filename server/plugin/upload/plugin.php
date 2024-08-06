@@ -439,7 +439,7 @@ function api_upload($env)
 	if (count($files) == 0) {
 		// 上传失败: 一般可能是文件传输出错了, 导致误认为未传完而等待超时, 约60s (没有对应选项)
 		// 也可能是接收数据超时(>max_input_time, 默认60) 或 文件太大被丢弃(>post_max_size)
-		$t = microtime(true) - $env->startTm;
+		$t = $env->getT(2);
 		$tstr = sprintf("%.1fs", $t);
 		$maxt = ini_get("max_input_time");
 
