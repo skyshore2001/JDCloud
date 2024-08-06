@@ -2600,9 +2600,15 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 @var env.startTm1  当前调用开始时间
 */
 	function getT($type = 2) {
-		$t0 = $type == 0? $this->startTm
-			: $type == 1? $this->startTm1
-			: ($this->_SERVER("REQUEST_TIME_FLOAT") ?: $this->startTm);
+		if ($type == 0) {
+			$t0 = $this->startTm;
+		}
+		else if ($type == 1) {
+			$t0 = $this->startTm1;
+		}
+		else {
+			$t0 = ($this->_SERVER("REQUEST_TIME_FLOAT") ?: $this->startTm);
+		}
 		return microtime(true) - $t0;
 	}
 
