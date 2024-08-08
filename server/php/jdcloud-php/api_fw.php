@@ -1670,7 +1670,8 @@ $file为插件主文件，可返回一个插件配置。如果未指定，则自
 
 		$p = require_once($f);
 		if ($p === true) { // 重复包含
-			jdRet(E_SERVER, "duplicated plugin `$pname': $file");
+			return;
+			// jdRet(E_SERVER, "duplicated plugin `$pname': $file");
 		}
 		if ($p === 1)
 			$p = [];
