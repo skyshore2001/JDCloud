@@ -496,6 +496,18 @@ e.g.
 	$code = intval($status["http_code"]); // $code==200
 	curl_close($out["h"]);
 
+## 并发调用
+
+设置isMulti选项为true，此时httpCall并不执行而是返回handle，将多个返回handle汇总成数组后调用httpCallMulti实现并发执行，示例：
+
+	$opt = ["isMulti"=>true];
+	$h[] = httpCall("http://yibo.ltd/echo.php?sleep=3", null, $opt);
+	$h[] = httpCall("http://yibo.ltd/echo.php?sleep=1", ["a"=>100, "b"=>"hello"], $opt);
+	$h[] = httpCall("http://yibo.ltd/echo.php?sleep=2", ["a"=>101, "b"=>"hello2"], ["useJson"=>1] + $opt);
+	$res = httpCallMulti($h); // 这里才开始真正并发执行
+
+返回的$res是一个数组，每项分别对应每个请求的返回。
+
 */
 function httpCall($url, $postParams=null, $opt=[], &$out=[])
 {
@@ -566,8 +578,12 @@ function httpCall($url, $postParams=null, $opt=[], &$out=[])
 			}
 		}
 	}
-	if (@$opt["headers"])
+	if (@$opt["headers"]) {
 		curl_setopt($h, CURLOPT_HTTPHEADER, $opt["headers"]);
+	}
+	if (@$opt["isMulti"]) {
+		return $h;
+	}
 
 	$t0 = microtime(true);
 	$content = curl_exec($h);
@@ -597,6 +613,29 @@ function httpCall($url, $postParams=null, $opt=[], &$out=[])
 	if (!$wantH)
 		curl_close($h);
 	return $content;
+}
+
+function httpCallMulti($harr)
+{
+	$h = curl_multi_init();
+	foreach ($harr as $h1) {
+		curl_multi_add_handle($h, $h1);
+	}
+	$active = null;
+	do {
+		$rv = curl_multi_exec($h, $active);
+		if ($rv != CURLM_CALL_MULTI_PERFORM) {
+			$rv = curl_multi_select($h);
+		}
+	} while ($active);
+
+	$res = [];
+	foreach ($harr as $h1) {
+		$res[] = curl_multi_getcontent($h1);
+		curl_multi_remove_handle($h, $h1);
+	}
+	curl_multi_close($h);
+	return $res;
 }
 
 /**
