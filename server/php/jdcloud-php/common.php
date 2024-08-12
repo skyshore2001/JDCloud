@@ -498,19 +498,38 @@ e.g.
 
 ## 并发调用
 
-设置isMulti选项为true，此时httpCall并不执行而是返回handle，将多个返回handle汇总成数组后调用httpCallMulti实现并发执行，示例：
+当$url为一个数组时，自动启用并发调用，返回一个结果数组：
 
-	$opt = ["isMulti"=>true];
-	$h[] = httpCall("http://yibo.ltd/echo.php?sleep=3", null, $opt);
-	$h[] = httpCall("http://yibo.ltd/echo.php?sleep=1", ["a"=>100, "b"=>"hello"], $opt);
-	$h[] = httpCall("http://yibo.ltd/echo.php?sleep=2", ["a"=>101, "b"=>"hello2"], ["useJson"=>1] + $opt);
-	$res = httpCallMulti($h); // 这里才开始真正并发执行
+	$urlArr = [
+		"http://yibo.ltd/echo.php?sleep=3",
+		"http://yibo.ltd/echo.php?sleep=1",
+		"http://yibo.ltd/echo.php?sleep=2",
+	];
+	$res = httpCall($urlArr, ["a"=>100, "b"=>"hello"]);
 
 返回的$res是一个数组，每项分别对应每个请求的返回。
+
+如果每个调用的参数有不同，那么先设置isMulti选项为true来调用httpCall，此时httpCall并不执行而是返回handle，将多个返回handle汇总成数组后调用httpCallMulti实现并发执行，示例：
+
+	$opt = ["isMulti"=>true];
+	$h = [
+		httpCall("http://yibo.ltd/echo.php?sleep=3", null, $opt),
+		httpCall("http://yibo.ltd/echo.php?sleep=1", ["a"=>100, "b"=>"hello"], $opt),
+		httpCall("http://yibo.ltd/echo.php?sleep=2", ["a"=>101, "b"=>"hello2"], ["useJson"=>1] + $opt)
+	];
+	$res = httpCallMulti($h); // 这里才开始真正并发执行
 
 */
 function httpCall($url, $postParams=null, $opt=[], &$out=[])
 {
+	if (is_array($url)) {
+		$h = [];
+		$opt["isMulti"] = true;
+		foreach($url as $url1) {
+			$h[] = httpCall($url1, $postParams, $opt);
+		}
+		return httpCallMulti($h);
+	}
 	$wantH = array_key_exists("h", $out);
 	if (! $out["h"]) {
 		$h = curl_init();
