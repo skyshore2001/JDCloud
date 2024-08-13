@@ -10877,14 +10877,7 @@ var GridHeaderMenu = {
 		}
 	},
 	copyTable: function (jtbl) {
-		var datagrid = WUI.isTreegrid(jtbl)? "treegrid": "datagrid";
-		var rows = jtbl[datagrid]("getSelections");
-		var dgOpt = jtbl[datagrid]("options");
-		// 非多选时，复制所有数据（包含标题行）; 多选时，只复制已选择行的列数据
-		if (rows.length < 2) {
-			var data = jtbl[datagrid]("getData");
-			rows = data.rows;
-		}
+		var rows = GridHeaderMenu.getRows(jtbl);
 		var colArr = self.getDgCols(jtbl);
 		var arr = rows.map(function (row) {
 			var a = colArr.map(function (e) {
@@ -10959,15 +10952,35 @@ var GridHeaderMenu = {
 		app_show(stat.info.join("<br>"), title);
 	},
 
-	copyCol: function (jtbl, field) {
+	getRows: function (jtbl) {
 		var datagrid = WUI.isTreegrid(jtbl)? "treegrid": "datagrid";
 		var rows = jtbl[datagrid]("getSelections");
 		var dgOpt = jtbl[datagrid]("options");
 		// 非多选时，复制所有数据（包含标题行）; 多选时，只复制已选择行的列数据
 		if (rows.length < 2) {
 			var data = jtbl[datagrid]("getData");
-			rows = data.rows;
+			if (datagrid == "treegrid") {
+				rows = [];
+				getTreeData(data, rows);
+			}
+			else {
+				rows = data.rows;
+			}
 		}
+		return rows;
+
+		function getTreeData(treeRows, rows) {
+			treeRows.forEach(function (e) {
+				rows.push(e);
+				if ($.isArray(e.children)) {
+					getTreeData(e.children, rows);
+				}
+			});
+		}
+	},
+
+	copyCol: function (jtbl, field) {
+		var rows = GridHeaderMenu.getRows(jtbl);
 		var colOpt = jtbl.datagrid("getColumnOption", field);
 		var arr = rows.map(function (row) {
 			var v = row[field];
