@@ -3637,7 +3637,7 @@ function showDataReport(opt, showPageOpt)
 	// return {name, title, enumMapReverse?}
 	function getFieldInfo(res)
 	{
-		var arr = res.split(' ');
+		var arr = res.split2(' ');
 		var name = arr[0];
 		var title = name;
 		var mapStr = null;

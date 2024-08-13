@@ -1242,7 +1242,11 @@ function pivot($objArr, $gcols, $ycolCnt=1, $pivotSumField=null, $gres=null)
 	$cols = array_keys($objArr[0]);
 	// $ycol = array_pop($cols); // 去除ycol
 	$ycols = array_splice($cols, -$ycolCnt); // 去除ycol
-	foreach ($gcols as $gcol) {
+	foreach ($gcols as &$gcol) {
+		// 处理引号括起来的字段: 去引号
+		if ($gcol[0] == '"') {
+			$gcol = substr($gcol, 1, strlen($gcol)-2);
+		}
 		if (! in_array($gcol, $cols)) {
 			throw new MyException(E_PARAM, "bad gcol $gcol: not in cols", "分组列不正确: $gcol");
 		}
@@ -1253,6 +1257,12 @@ function pivot($objArr, $gcols, $ycolCnt=1, $pivotSumField=null, $gres=null)
 	$xcols1 = null; // 用于标识一行
 	if ($gres) {
 		$gresArr = preg_split('/\s*,\s*/', $gres);
+		foreach ($gresArr as &$e) {
+			// 处理引号括起来的字段: 去引号; 注意mysql group-by中会使用反引号
+			if ($e[0] == '"' || $e[0] == '`') {
+				$e = substr($e, 1, strlen($e)-2);
+			}
+		}
 		$xcols1 = array_diff($gresArr, $gcols);
 	}
 	else {
