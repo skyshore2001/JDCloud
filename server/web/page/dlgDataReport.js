@@ -151,9 +151,9 @@ function initDlgDataReport()
 	function setFields(tmField) {
 		var enumMap = {};
 		var enumMap_tm = {};
-		param_.resFields.split(/\s*,\s*/).forEach(e => {
-			var val = e.replace(/["]/g, '');
-			var arr = val.split(" ");
+		param_.resFields.split(/\s*,\s*/).forEach(val => {
+			//var val = e.replace(/["]/g, ''); // 保留字段引号, 否则传到后端可能不对
+			var arr = val.split2(" ");
 			enumMap[val] = arr[1] || arr[0];
 			if (/(^(tm|dt)|Tm|Dt|Date|Time|时间|日期)$/.test(val))
 				enumMap_tm[val] = arr[1] || arr[0];

@@ -1673,6 +1673,9 @@ AC类AC_MyObj1默认的表名和对象名都是MyObj1，但有时会修改表名
 			$this->fixHiddenFields();
 		}
 		foreach ($this->hiddenFields as $field) {
+			if ($field[0] == '"') {
+				$field = substr($field, 1, strlen($field)-2);
+			}
 			unset($rowData[$field]);
 		}
 	}
@@ -1938,11 +1941,24 @@ AC类AC_MyObj1默认的表名和对象名都是MyObj1，但有时会修改表名
 					}
 				}
 			}
-			if ($this->env->DBH->acceptAliasInGroupBy() && $doAddRes) {
-				$cols[] = $alias ?: $col;
-			}
-			else {
-				$cols[] = $this->vcolMap[$col]["def"] ?: $col;
+			if ($gres) {
+				if ($this->env->DBH->acceptAliasInGroupBy()) {
+					$c = $alias ?: $col;
+				}
+				else {
+					$c = $this->vcolMap[$col]["def"] ?: $col;
+				}
+				/* NOTE: MYSQL GROUP BY BUG: 在group by中使用alias且带双引号会查询出错误的结果!
+				按SQL标准双引号用于表示字段(大小写敏感), 单引号为常量字符串, 
+				mysql在select子句中支持双引号, 但在group by中似乎将双引号等同为单引号了, 导致最终总是只有一条结果
+				select uname "user name" from Employee group by "user name"
+				应改为: (mysql用反引号表示字段且大小写不敏感)
+				select uname "user name" from Employee group by `user name`
+				*/
+				if ($c[0] == '"' && $this->DBTYPE = "mysql") {
+					$c = str_replace('"', '`', $c);
+				}
+				$cols[] = $c;
 			}
 		}
 		if ($gres)

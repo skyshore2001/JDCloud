@@ -2867,6 +2867,23 @@ if (! String.prototype.replaceAll) {
 	}
 }
 
+/**
+@fn String.split2(pattern)
+
+将字符串分为两块。替代JS默认的split函数limit参数的错误设计。
+
+	var str = "lot Lot ID";
+	var kv = str.split2(" "); // ["lot", "Lot ID"]
+	// str.split(" ", 2); // ["lot", "Lot"] 不合要求
+
+ */
+String.prototype.split2 = function (pat) {
+	var m = this.match(pat);
+	if (!m)
+		return [this.toString()];
+	return [this.substr(0, m.index), this.substr(m.index+m[0].length)]
+}
+
 // vi: foldmethod=marker 
 // ====== WEBCC_END_FILE common.js }}}
 
@@ -10695,8 +10712,10 @@ var GridHeaderMenu = {
 			strArr.push("<b>[排序]</b>\n" + param.orderby);
 
 		// {name/字段名, title/标题, cmt/备注?, example/示例?}
-		var varr = WUI.list2varr(param.res, " ", ",");
-		var resArr = WUI.rs2Array({h:["name","title"], d:varr});
+		var resArr = $.map(param.res.split(','), function (e) {
+			var a = e.split2(' ');
+			return {name: a[0], title: a[1]};
+		});
 		var rows, rowStartIdx;
 		if (datagrid == "datagrid") {
 			rows = jtbl.datagrid("getData").rows;
