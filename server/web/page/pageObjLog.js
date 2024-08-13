@@ -20,7 +20,7 @@ function initPageObjLog(param, formFilter)
 
 	if (param && param.jtblSrc && formFilter && formFilter.cond && formFilter.cond.obj) {
 		var map = {};
-		map[formFilter.cond.obj] = WUI.getFieldMap(param.jtblSrc);
+		map[formFilter.cond.obj] = WUI.getDgColMap(param.jtblSrc);
 		$.extend(true, ObjLogFieldMap, map);
 		console.log('fieldMap', map);
 	}

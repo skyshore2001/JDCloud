@@ -9903,25 +9903,18 @@ function getQueryParamFromTable(jtbl, param)
 			param1.orderby += " " + opt.sortOrder;
 	}
 	if (param.res === undefined) {
-		var resArr = [];
-		$.each([opt.frozenColumns[0], opt.columns[0]], function (idx0, cols) {
-			if (cols == null)
-				return;
-			$.each(cols, function (i, e) {
-				if (! e.field || e.field.substr(-1) == "_")
-					return;
-				var one = e.field;
-				if (one != e.title || e.jdEnumMap) {
-					if (/[\s()\[\]\{\}\/\\,<>.!@#$%^&*-+]|^\d/.test(e.title))
-						one += " " + Q(e.title, '"');
-					else
-						one += " " + e.title;
-				}
-				if (e.jdEnumMap) {
-					one += '=' + mCommon.kvList2Str(e.jdEnumMap, ';', ':');
-				}
-				resArr.push(one);
-			});
+		var resArr = self.getDgCols(opt, function (e) {
+			var one = e.field;
+			if (one != e.title || e.jdEnumMap) {
+				if (/[\s()\[\]\{\}\/\\,<>.!@#$%^&*-+]|^\d/.test(e.title))
+					one += " " + Q(e.title, '"');
+				else
+					one += " " + e.title;
+			}
+			if (e.jdEnumMap) {
+				one += '=' + mCommon.kvList2Str(e.jdEnumMap, ';', ':');
+			}
+			return one;
 		});
 		param1.res = resArr.join(',');
 	}
@@ -9943,29 +9936,51 @@ function getQueryParamFromTable(jtbl, param)
 }
 
 /**
-@fn getFieldMap(jtbl) -> {$name => {title, jdEnumMap}}
+@fn getDgColMap(jtbl|dgOpt) -> {field => {field,title,jdEnumMap?,...}}
 
-取数据表的字段列表（不含以"_"结尾的特殊字段）。
-*/
-self.getFieldMap = getFieldMap;
-function getFieldMap(jtbl)
+取datagrid/treegrid数据表的字段映射表（不含以"_"结尾的特殊字段）。
+ */
+self.getDgColMap = getDgColMap;
+function getDgColMap(jtbl_or_opt)
 {
 	var map = {};
-	var datagrid = WUI.isTreegrid(jtbl)? "treegrid": "datagrid";
-	var opt = jtbl[datagrid]("options");
-	$.each([opt.frozenColumns[0], opt.columns[0]], function (idx0, cols) {
+	getDgCols(jtbl_or_opt, function (e) {
+		map[e.field] = e;
+	});
+	return map;
+}
+
+/**
+@fn getDgCols(jtbl|dgOpt, fn) -> [{field,title,jdEnumMap?,...}]
+
+取datagrid/treegrid数据表的列信息数组（不含以"_"结尾的特殊字段）。
+如果指定一个处理方法fn(col), 则返回fn返回数据组装为列数组.
+*/
+self.getDgCols = getDgCols;
+function getDgCols(jtbl_or_dgOpt, fn)
+{
+	var dgOpt = jtbl_or_dgOpt;
+	if (jtbl_or_dgOpt instanceof jQuery) { // is jtbl
+		var jtbl = jtbl_or_dgOpt;
+		var datagrid = WUI.isTreegrid(jtbl)? "treegrid": "datagrid";
+		dgOpt = jtbl[datagrid]("options");
+	}
+	var ret = [];
+	$.each([dgOpt.frozenColumns[0], dgOpt.columns[0]], function (idx0, cols) {
 		if (cols == null)
 			return;
 		$.each(cols, function (i, e) {
 			if (! e.field || e.field.substr(-1) == "_")
 				return;
-			map[e.field] = {
-				title: e.title,
-				jdEnumMap: e.jdEnumMap
-			};
+			if (fn) {
+				ret.push(fn(e));
+			}
+			else {
+				ret.push(e);
+			}
 		});
 	});
-	return map;
+	return ret;
 }
 
 /**
@@ -10017,16 +10032,7 @@ function getDgInfo(jtbl, res)
 		res.selArr = jtbl[datagrid]("getChecked");
 	}
 	if (res.res !== undefined) {
-		res.res = {};
-		$.each([opt.frozenColumns[0], opt.columns[0]], function (idx0, cols) {
-			if (cols == null)
-				return;
-			$.each(cols, function (i, e) {
-				if (! e.field || e.field.substr(-1) == "_")
-					return;
-				res.res[e.field] = e;
-			});
-		});
+		res.res = getDgColMap(opt);
 	}
 	if (res.dgFilter !== undefined) {
 		res.dgFilter = getDgFilter(jtbl);
@@ -10677,7 +10683,8 @@ var GridHeaderMenu = {
 		'<div id="showDlgQuery" data-options="iconCls:\'icon-search\'">高级查询</div>',
 		'<div id="dup" wui-perm="新增">再次新增</div>',
 		'<div id="import" wui-perm="新增" data-options="iconCls:\'icon-add\'">导入</div>',
-		'<div id="export" data-options="iconCls:\'icon-save\'">导出</div>'
+		'<div id="export" data-options="iconCls:\'icon-save\'">导出</div>',
+		'<div id="copyTable">复制表</div>',
 	],
 	// 列头右键菜单
 	itemsForField: [
@@ -10869,6 +10876,32 @@ var GridHeaderMenu = {
 			});
 		}
 	},
+	copyTable: function (jtbl) {
+		var datagrid = WUI.isTreegrid(jtbl)? "treegrid": "datagrid";
+		var rows = jtbl[datagrid]("getSelections");
+		var dgOpt = jtbl[datagrid]("options");
+		// 非多选时，复制所有数据（包含标题行）; 多选时，只复制已选择行的列数据
+		if (rows.length < 2) {
+			var data = jtbl[datagrid]("getData");
+			rows = data.rows;
+		}
+		var colArr = self.getDgCols(jtbl);
+		var arr = rows.map(function (row) {
+			var a = colArr.map(function (e) {
+				var v = row[e.field];
+				if (e.jdEnumMap && e.formatter) {
+					v = e.formatter(v);
+				}
+				return v;
+			});
+			return a.join("\t");
+		});
+		var title = colArr.map(function (e) {
+			return e.title;
+		}).join("\t");
+		var ret = title + "\r\n" + arr.join("\r\n");
+		self.execCopy(ret);
+	},
 
 	dgStatCol: function (rows, field) {
 		var stat = {cnt: 0, realCnt: 0, numCnt: 0, sum: 0, max: 0, min: 0, info: []};
@@ -10927,21 +10960,23 @@ var GridHeaderMenu = {
 	},
 
 	copyCol: function (jtbl, field) {
-		var rows = jtbl.datagrid("getSelections");
-		var arr = null;
-		if (rows.length < 2) { // 非多选时，复制本列所有数据（包含标题行）
-			var data = jtbl.datagrid("getData");
-			arr = data.rows.map(function (e) {
-				return e[field];
-			});
-			var colTitle = jtbl.datagrid("getColumnOption", field).title;
-			arr.unshift(colTitle);
+		var datagrid = WUI.isTreegrid(jtbl)? "treegrid": "datagrid";
+		var rows = jtbl[datagrid]("getSelections");
+		var dgOpt = jtbl[datagrid]("options");
+		// 非多选时，复制所有数据（包含标题行）; 多选时，只复制已选择行的列数据
+		if (rows.length < 2) {
+			var data = jtbl[datagrid]("getData");
+			rows = data.rows;
 		}
-		else { // 多选时，只复制已选择行的列数据
-			arr = rows.map(function (e) {
-				return e[field];
-			});
-		}
+		var colOpt = jtbl.datagrid("getColumnOption", field);
+		var arr = rows.map(function (row) {
+			var v = row[field];
+			if (colOpt.jdEnumMap && colOpt.formatter) {
+				v = colOpt.formatter(v);
+			}
+			return v;
+		});
+		arr.unshift(colOpt.title);
 		var ret = arr.join("\r\n");
 		self.execCopy(ret);
 	},

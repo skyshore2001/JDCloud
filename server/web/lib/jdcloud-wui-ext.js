@@ -1993,7 +1993,7 @@ protected function onQuery() {
 			});
 			// 提示搜索字段
 			if (param) {
-				var colMap = WUI.getFieldMap(ctx.jtbl);
+				var colMap = WUI.getDgColMap(ctx.jtbl);
 				var str = $.map(param.split(','), function (e) {
 					var e1 = e.replace(/[*]/g, '');
 					return (colMap[e1] && colMap[e1].title) || e;
