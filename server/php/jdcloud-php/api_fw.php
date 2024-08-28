@@ -2709,6 +2709,9 @@ e.g. {type: "a", ver: 2, str: "a/2"}
 			$ac = $this->parseRestfulUrl($ac);
 		}
 
+		if ($ac == "UiCfg.script") {
+			Conf::$enableAutoSession = false;
+		}
 		Conf::onApiInit($ac);
 
 	/*
