@@ -10581,7 +10581,7 @@ CSS类, 可定义无数据提示的样式
 	// 右键点左上角空白列:
 	onHeaderContextMenu: function (ev, field) {
 		var jtbl = $(this);
-		var jmenu = GridHeaderMenu.showMenu({left: ev.pageX, top: ev.pageY, field}, jtbl, field);
+		var jmenu = GridHeaderMenu.showMenu({left: ev.pageX, top: ev.pageY}, jtbl, field);
 
 		ev.preventDefault();
 	},
